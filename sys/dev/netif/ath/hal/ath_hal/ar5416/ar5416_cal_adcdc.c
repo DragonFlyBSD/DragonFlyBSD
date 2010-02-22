@@ -14,7 +14,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: ar5416_cal_adcdc.c,v 1.2 2008/11/11 17:43:23 sam Exp $
+ * $FreeBSD: head/sys/dev/ath/ath_hal/ar5416/ar5416_cal_adcdc.c 203158 2010-01-29 10:07:17Z rpaulo $
+ * $DragonFly$
  */
 #include "opt_ah.h"
 

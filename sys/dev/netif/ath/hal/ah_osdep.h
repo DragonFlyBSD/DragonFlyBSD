@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2002-2006 Sam Leffler, Errno Consulting
+ * Copyright (c) 2002-2008 Sam Leffler, Errno Consulting
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -12,13 +12,6 @@
  *    similar to the "NO WARRANTY" disclaimer below ("Disclaimer") and any
  *    redistribution must be conditioned upon including a substantially
  *    similar Disclaimer requirement for further binary redistribution.
- * 3. Neither the names of the above-listed copyright holders nor the names
- *    of any contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * Alternatively, this software may be distributed under the terms of the
- * GNU General Public License ("GPL") version 2 as published by the Free
- * Software Foundation.
  *
  * NO WARRANTY
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
@@ -33,53 +26,69 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
- * $FreeBSD: src/sys/dev/ath/ah_osdep.h,v 1.1 2006/09/18 16:49:14 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/hal/ah_osdep.h,v 1.1 2007/02/22 05:17:09 sephe Exp $
+ * $FreeBSD: head/sys/dev/ath/ah_osdep.h 195418 2009-07-06 20:51:54Z sam $
  */
 #ifndef _ATH_AH_OSDEP_H_
 #define _ATH_AH_OSDEP_H_
 /*
  * Atheros Hardware Access Layer (HAL) OS Dependent Definitions.
  */
+#include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/endian.h>
-#include <sys/bus.h>
 #include <sys/linker_set.h>
+
+#include <machine/bus_at386.h>
+
+/*
+ * Bus i/o type definitions.
+ */
+typedef void *HAL_SOFTC;
+typedef bus_space_tag_t HAL_BUS_TAG;
+typedef bus_space_handle_t HAL_BUS_HANDLE;
 
 /*
  * Linker set writearounds for chip and RF backend registration.
  */
-#define OS_DATA_SET(set, item)  DATA_SET(set, item)
-#define OS_SET_DECLARE(set, ptype)      SET_DECLARE(set, ptype)
-#define OS_SET_FOREACH(pvar, set)       SET_FOREACH(pvar, set)
+#define	OS_DATA_SET(set, item)	DATA_SET(set, item)
+#define	OS_SET_DECLARE(set, ptype)	SET_DECLARE(set, ptype)
+#define	OS_SET_FOREACH(pvar, set)	SET_FOREACH(pvar, set)
+
 /*
  * Delay n microseconds.
  */
-extern	void ath_hal_delay(int);
-#define	OS_DELAY(_n)	ath_hal_delay(_n)
+#define	OS_DELAY(_n)	DELAY(_n)
 
 #define	OS_INLINE	__inline
-#define	OS_MEMZERO(_a, _n)	ath_hal_memzero((_a), (_n))
-extern void ath_hal_memzero(void *, size_t);
-#define	OS_MEMCPY(_d, _s, _n)	ath_hal_memcpy(_d,_s,_n)
-extern void *ath_hal_memcpy(void *, const void *, size_t);
+#define	OS_MEMZERO(_a, _n)	bzero((_a), (_n))
+#define	OS_MEMCPY(_d, _s, _n)	memcpy(_d,_s,_n)
 
 #define	abs(_a)		__builtin_abs(_a)
 
 struct ath_hal;
-extern	u_int32_t ath_hal_getuptime(struct ath_hal *);
-#define	OS_GETUPTIME(_ah)	ath_hal_getuptime(_ah)
+
+/*
+ * The hardware registers are native little-endian byte order.
+ * Big-endian hosts are handled by enabling hardware byte-swap
+ * of register reads and writes at reset.  But the PCI clock
+ * domain registers are not byte swapped!  Thus, on big-endian
+ * platforms we have to explicitly byte-swap those registers.
+ * OS_REG_UNSWAPPED identifies the registers that need special handling.
+ */
+#if _BYTE_ORDER == _BIG_ENDIAN
+#define	OS_REG_UNSWAPPED(_reg) \
+	(((_reg) >= 0x4000 && (_reg) < 0x5000) || \
+	 ((_reg) >= 0x7000 && (_reg) < 0x8000))
+#else /* _BYTE_ORDER == _LITTLE_ENDIAN */
+#define	OS_REG_UNSWAPPED(_reg)	(0)
+#endif /* _BYTE_ORDER */
 
 /*
  * Register read/write operations are either handled through
  * platform-dependent routines (or when debugging is enabled
  * with AH_DEBUG); or they are inline expanded using the macros
- * defined below.  For public builds we inline expand only for
- * platforms where it is certain what the requirements are to
- * read/write registers--typically they are memory-mapped and
- * no explicit synchronization or memory invalidation operations
- * are required (e.g. i386).
+ * defined below.
  */
 #if defined(AH_DEBUG) || defined(AH_REGOPS_FUNC) || defined(AH_DEBUG_ALQ)
 #define	OS_REG_WRITE(_ah, _reg, _val)	ath_hal_reg_write(_ah, _reg, _val)
@@ -97,12 +106,9 @@ extern	u_int32_t ath_hal_reg_read(struct ath_hal *ah, u_int reg);
  * Most of this code is collapsed at compile time because the
  * register values are constants.
  */
-#define	AH_LITTLE_ENDIAN	1234
-#define	AH_BIG_ENDIAN		4321
-
 #if _BYTE_ORDER == _BIG_ENDIAN
 #define OS_REG_WRITE(_ah, _reg, _val) do {				\
-	if ( (_reg) >= 0x4000 && (_reg) < 0x5000)			\
+	if (OS_REG_UNSWAPPED(_reg))					\
 		bus_space_write_4((bus_space_tag_t)(_ah)->ah_st,	\
 		    (bus_space_handle_t)(_ah)->ah_sh, (_reg), (_val));	\
 	else								\
@@ -110,7 +116,7 @@ extern	u_int32_t ath_hal_reg_read(struct ath_hal *ah, u_int reg);
 		    (bus_space_handle_t)(_ah)->ah_sh, (_reg), (_val));	\
 } while (0)
 #define OS_REG_READ(_ah, _reg)						\
-	(((_reg) >= 0x4000 && (_reg) < 0x5000) ?			\
+	(OS_REG_UNSWAPPED(_reg) ?					\
 		bus_space_read_4((bus_space_tag_t)(_ah)->ah_st,		\
 		    (bus_space_handle_t)(_ah)->ah_sh, (_reg)) :		\
 		bus_space_read_stream_4((bus_space_tag_t)(_ah)->ah_st,	\

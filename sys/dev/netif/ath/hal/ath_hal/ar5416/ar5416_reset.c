@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Sam Leffler, Errno Consulting
+ * Copyright (c) 2002-2009 Sam Leffler, Errno Consulting
  * Copyright (c) 2002-2008 Atheros Communications, Inc.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -14,7 +14,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: ar5416_reset.c,v 1.27 2008/11/27 22:30:08 sam Exp $
+ * $FreeBSD: head/sys/dev/ath/ath_hal/ar5416/ar5416_reset.c 203930 2010-02-15 17:49:49Z rpaulo $
+ * $DragonFly$
  */
 #include "opt_ah.h"
 
@@ -27,9 +28,6 @@
 #include "ar5416/ar5416.h"
 #include "ar5416/ar5416reg.h"
 #include "ar5416/ar5416phy.h"
-#ifdef AH_SUPPORT_AR9280
-#include "ar5416/ar9280.h"
-#endif
 
 /* Eeprom versioning macros. Returns true if the version is equal or newer than the ver specified */ 
 #define	EEP_MINOR(_ah) \
@@ -43,53 +41,37 @@
 #define RTC_PLL_SETTLE_DELAY    1000    /* 1 ms     */
 
 static void ar5416InitDMA(struct ath_hal *ah);
-static void ar5416InitBB(struct ath_hal *ah, HAL_CHANNEL *chan);
+static void ar5416InitBB(struct ath_hal *ah, const struct ieee80211_channel *);
 static void ar5416InitIMR(struct ath_hal *ah, HAL_OPMODE opmode);
 static void ar5416InitQoS(struct ath_hal *ah);
 static void ar5416InitUserSettings(struct ath_hal *ah);
 
-static HAL_BOOL ar5416SetTransmitPower(struct ath_hal *ah, 
-	HAL_CHANNEL_INTERNAL *chan, uint16_t *rfXpdGain);
-
 #if 0
-static HAL_BOOL	ar5416ChannelChange(struct ath_hal *, HAL_CHANNEL *);
+static HAL_BOOL	ar5416ChannelChange(struct ath_hal *, const struct ieee80211_channel *);
 #endif
-static void ar5416SetDeltaSlope(struct ath_hal *, HAL_CHANNEL_INTERNAL *);
-static void ar5416SpurMitigate(struct ath_hal *ah, HAL_CHANNEL_INTERNAL *chan);
-#ifdef AH_SUPPORT_AR9280
-static void ar9280SpurMitigate(struct ath_hal *ah, HAL_CHANNEL_INTERNAL *chan);
-#endif
+static void ar5416SetDeltaSlope(struct ath_hal *, const struct ieee80211_channel *);
 
 static HAL_BOOL ar5416SetResetPowerOn(struct ath_hal *ah);
 static HAL_BOOL ar5416SetReset(struct ath_hal *ah, int type);
-static void ar5416InitPLL(struct ath_hal *ah, HAL_CHANNEL *chan);
-static HAL_BOOL ar5416SetBoardValues(struct ath_hal *, HAL_CHANNEL_INTERNAL *);
+static void ar5416InitPLL(struct ath_hal *ah, const struct ieee80211_channel *chan);
 static HAL_BOOL ar5416SetPowerPerRateTable(struct ath_hal *ah,
 	struct ar5416eeprom *pEepData, 
-	HAL_CHANNEL_INTERNAL *chan, int16_t *ratesArray,
+	const struct ieee80211_channel *chan, int16_t *ratesArray,
 	uint16_t cfgCtl, uint16_t AntennaReduction,
 	uint16_t twiceMaxRegulatoryPower, 
 	uint16_t powerLimit);
 static HAL_BOOL ar5416SetPowerCalTable(struct ath_hal *ah,
 	struct ar5416eeprom *pEepData,
-	HAL_CHANNEL_INTERNAL *chan,
+	const struct ieee80211_channel *chan,
 	int16_t *pTxPowerIndexOffset);
 static uint16_t ar5416GetMaxEdgePower(uint16_t freq,
 	CAL_CTL_EDGES *pRdEdgesPower, HAL_BOOL is2GHz);
-static void ar5416GetTargetPowers(struct ath_hal *ah, 
-	HAL_CHANNEL_INTERNAL *chan, CAL_TARGET_POWER_HT *powInfo,
-	uint16_t numChannels, CAL_TARGET_POWER_HT *pNewPower,
-	uint16_t numRates, HAL_BOOL isHt40Target);
-static void ar5416GetTargetPowersLeg(struct ath_hal *ah, 
-	HAL_CHANNEL_INTERNAL *chan, CAL_TARGET_POWER_LEG *powInfo,
-	uint16_t numChannels, CAL_TARGET_POWER_LEG *pNewPower,
-	uint16_t numRates, HAL_BOOL isExtTarget);
 
 static int16_t interpolate(uint16_t target, uint16_t srcLeft,
 	uint16_t srcRight, int16_t targetLeft, int16_t targetRight);
-static void ar5416Set11nRegs(struct ath_hal *ah, HAL_CHANNEL *chan);
+static void ar5416Set11nRegs(struct ath_hal *ah, const struct ieee80211_channel *chan);
 static void ar5416GetGainBoundariesAndPdadcs(struct ath_hal *ah, 
-	HAL_CHANNEL_INTERNAL *chan, CAL_DATA_PER_FREQ *pRawDataSet,
+	const struct ieee80211_channel *chan, CAL_DATA_PER_FREQ *pRawDataSet,
 	uint8_t * bChans, uint16_t availPiers,
 	uint16_t tPdGainOverlap, int16_t *pMinCalPower,
 	uint16_t * pPdGainBoundaries, uint8_t * pPDADCValues,
@@ -110,37 +92,22 @@ static HAL_BOOL ar5416FillVpdTable(uint8_t pwrMin, uint8_t pwrMax,
  */
 HAL_BOOL
 ar5416Reset(struct ath_hal *ah, HAL_OPMODE opmode,
-	HAL_CHANNEL *chan, HAL_BOOL bChannelChange, HAL_STATUS *status)
+	struct ieee80211_channel *chan,
+	HAL_BOOL bChannelChange, HAL_STATUS *status)
 {
 #define	N(a)	(sizeof (a) / sizeof (a[0]))
 #define	FAIL(_code)	do { ecode = _code; goto bad; } while (0)
 	struct ath_hal_5212 *ahp = AH5212(ah);
 	HAL_CHANNEL_INTERNAL *ichan;
-	uint32_t softLedCfg;
 	uint32_t saveDefAntenna, saveLedState;
 	uint32_t macStaId1;
 	uint16_t rfXpdGain[2];
-	u_int modesIndex, freqIndex;
 	HAL_STATUS ecode;
-	int i, regWrites = 0;
 	uint32_t powerVal, rssiThrReg;
 	uint32_t ackTpcPow, ctsTpcPow, chirpTpcPow;
+	int i;
 
 	OS_MARK(ah, AH_MARK_RESET, bChannelChange);
-#define	IS(_c,_f)	(((_c)->channelFlags & _f) || 0)
-	if ((IS(chan, CHANNEL_2GHZ) ^ IS(chan, CHANNEL_5GHZ)) == 0) {
-		HALDEBUG(ah, HAL_DEBUG_ANY,
-		    "%s: invalid channel %u/0x%x; not marked as 2GHz or 5GHz\n",
-		    __func__, chan->channel, chan->channelFlags);
-		FAIL(HAL_EINVAL);
-	}
-	if ((IS(chan, CHANNEL_OFDM) ^ IS(chan, CHANNEL_CCK)) == 0) {
-		HALDEBUG(ah, HAL_DEBUG_ANY,
-		    "%s: invalid channel %u/0x%x; not marked as OFDM or CCK\n",
-		    __func__, chan->channel, chan->channelFlags);
-		FAIL(HAL_EINVAL);
-	}
-#undef IS
 
 	/* Bring out of sleep mode */
 	if (!ar5416SetPowerMode(ah, HAL_PM_AWAKE, AH_TRUE)) {
@@ -153,16 +120,8 @@ ar5416Reset(struct ath_hal *ah, HAL_OPMODE opmode,
 	 * Map public channel to private.
 	 */
 	ichan = ath_hal_checkchannel(ah, chan);
-	if (ichan == AH_NULL) {
-		HALDEBUG(ah, HAL_DEBUG_ANY,
-		    "%s: invalid channel %u/0x%x; no mapping\n",
-		    __func__, chan->channel, chan->channelFlags);
+	if (ichan == AH_NULL)
 		FAIL(HAL_EINVAL);
-	} else {
-		HALDEBUG(ah, HAL_DEBUG_RESET,
-		    "%s: Ch=%u Max=%d Min=%d\n",__func__,
-		    ichan->channel, ichan->maxTxPower, ichan->minTxPower);
-	}
 	switch (opmode) {
 	case HAL_M_STA:
 	case HAL_M_IBSS:
@@ -202,13 +161,6 @@ ar5416Reset(struct ath_hal *ah, HAL_OPMODE opmode,
 	saveLedState = OS_REG_READ(ah, AR_MAC_LED) &
 		(AR_MAC_LED_ASSOC | AR_MAC_LED_MODE |
 		 AR_MAC_LED_BLINK_THRESH_SEL | AR_MAC_LED_BLINK_SLOW);
-	softLedCfg = OS_REG_READ(ah, AR_GPIO_INTR_OUT);	
-
-	/*
-	 * Adjust gain parameters before reset if
-	 * there's an outstanding gain updated.
-	 */
-	(void) ar5416GetRfgain(ah);
 
 	if (!ar5416ChipReset(ah, chan)) {
 		HALDEBUG(ah, HAL_DEBUG_ANY, "%s: chip reset failed\n", __func__);
@@ -218,83 +170,12 @@ ar5416Reset(struct ath_hal *ah, HAL_OPMODE opmode,
 	/* Restore bmiss rssi & count thresholds */
 	OS_REG_WRITE(ah, AR_RSSI_THR, rssiThrReg);
 
-	/* Setup the indices for the next set of register array writes */
-	/* XXX Ignore 11n dynamic mode on the AR5416 for the moment */
-	switch (chan->channelFlags & CHANNEL_ALL) {
-	case CHANNEL_A:
-    	case CHANNEL_A_HT20:
-                modesIndex = 1;
-                freqIndex  = 1;
-		break;
-    	case CHANNEL_T:
-    	case CHANNEL_A_HT40PLUS:
-    	case CHANNEL_A_HT40MINUS:
-                modesIndex = 2;
-                freqIndex  = 1;
-	    	break;
-	case CHANNEL_PUREG:
-	case CHANNEL_G_HT20:
-	case CHANNEL_B:	/* treat as channel G , no  B mode suport in owl */
-		modesIndex = 4;
-		freqIndex  = 2;
-		break;
-    	case CHANNEL_G_HT40PLUS:
-    	case CHANNEL_G_HT40MINUS:
-		modesIndex = 3;
-		freqIndex  = 2;
-		break;
-	case CHANNEL_108G:
-		modesIndex = 5;
-		freqIndex  = 2;
-		break;
-	default:
-		HALDEBUG(ah, HAL_DEBUG_ANY, "%s: invalid channel flags 0x%x\n",
-		    __func__, chan->channelFlags);
-		FAIL(HAL_EINVAL);
-	}
-
 	OS_MARK(ah, AH_MARK_RESET_LINE, __LINE__);
 
-	/* Set correct Baseband to analog shift setting to access analog chips. */
-	OS_REG_WRITE(ah, AR_PHY(0), 0x00000007);
+	AH5416(ah)->ah_writeIni(ah, chan);
 
-	 /*
-	 * Write addac shifts
-	 */
-	OS_REG_WRITE(ah, AR_PHY_ADC_SERIAL_CTL, AR_PHY_SEL_EXTERNAL_RADIO);
-#if 0
-	/* NB: only required for Sowl */
-	ar5416EepromSetAddac(ah, ichan);
-#endif
-	regWrites = ath_hal_ini_write(ah, &AH5416(ah)->ah_ini_addac, 1,
-	    regWrites);
-	OS_REG_WRITE(ah, AR_PHY_ADC_SERIAL_CTL, AR_PHY_SEL_INTERNAL_ADDAC);
-
-	/* XXX Merlin ini fixups */
-	/* XXX Merlin 100us delay for shift registers */
-	regWrites = ath_hal_ini_write(ah, &ahp->ah_ini_modes, modesIndex,
-	    regWrites);
-#ifdef AH_SUPPORT_AR9280
-	if (AR_SREV_MERLIN_20_OR_LATER(ah)) {
-		regWrites = ath_hal_ini_write(ah, &AH9280(ah)->ah_ini_rxgain,
-		    modesIndex, regWrites);
-		regWrites = ath_hal_ini_write(ah, &AH9280(ah)->ah_ini_txgain,
-		    modesIndex, regWrites);
-	}
-#endif
-	/* XXX Merlin 100us delay for shift registers */
-	regWrites = ath_hal_ini_write(ah, &ahp->ah_ini_common, 1, regWrites);
 	/* Setup 11n MAC/Phy mode registers */
-	ar5416Set11nRegs(ah,chan);	
-	/* XXX updated regWrites? */
-	ahp->ah_rfHal->writeRegs(ah, modesIndex, freqIndex, regWrites);
-#ifdef AH_SUPPORT_AR9280
-	if (AR_SREV_MERLIN_20(ah) && IS_5GHZ_FAST_CLOCK_EN(ah, chan)) {
-		/* 5GHz channels w/ Fast Clock use different modal values */
-		regWrites = ath_hal_ini_write(ah, &AH9280(ah)->ah_ini_xmodes,
-		    modesIndex, regWrites);
-	}
-#endif
+	ar5416Set11nRegs(ah, chan);	
 
 	OS_MARK(ah, AH_MARK_RESET_LINE, __LINE__);
 
@@ -332,32 +213,28 @@ ar5416Reset(struct ath_hal *ah, HAL_OPMODE opmode,
 	OS_REG_WRITE(ah, AR_SELFGEN_MASK, AH5416(ah)->ah_tx_chainmask);
 
 	/* Setup the transmit power values. */
-	if (!ar5416SetTransmitPower(ah, ichan, rfXpdGain)) {
+	if (!ah->ah_setTxPower(ah, chan, rfXpdGain)) {
 		HALDEBUG(ah, HAL_DEBUG_ANY,
 		    "%s: error init'ing transmit power\n", __func__);
 		FAIL(HAL_EIO);
 	}
 
 	/* Write the analog registers */
-	if (!ahp->ah_rfHal->setRfRegs(ah, ichan, freqIndex, rfXpdGain)) {
+	if (!ahp->ah_rfHal->setRfRegs(ah, chan,
+	    IEEE80211_IS_CHAN_2GHZ(chan) ? 2: 1, rfXpdGain)) {
 		HALDEBUG(ah, HAL_DEBUG_ANY,
 		    "%s: ar5212SetRfRegs failed\n", __func__);
 		FAIL(HAL_EIO);
 	}
 
 	/* Write delta slope for OFDM enabled modes (A, G, Turbo) */
-	if (IS_CHAN_OFDM(chan)|| IS_CHAN_HT(chan))
-		ar5416SetDeltaSlope(ah, ichan);
+	if (IEEE80211_IS_CHAN_OFDM(chan)|| IEEE80211_IS_CHAN_HT(chan))
+		ar5416SetDeltaSlope(ah, chan);
 
-#ifdef AH_SUPPORT_AR9280
-	if (AR_SREV_MERLIN_10_OR_LATER(ah))
-		ar9280SpurMitigate(ah, ichan);
-	else
-#endif
-		ar5416SpurMitigate(ah, ichan);
+	AH5416(ah)->ah_spurMitigate(ah, chan);
 
 	/* Setup board specific options for EEPROM version 3 */
-	if (!ar5416SetBoardValues(ah, ichan)) {
+	if (!ah->ah_setBoardValues(ah, chan)) {
 		HALDEBUG(ah, HAL_DEBUG_ANY,
 		    "%s: error setting board options\n", __func__);
 		FAIL(HAL_EIO);
@@ -379,8 +256,6 @@ ar5416Reset(struct ath_hal *ah, HAL_OPMODE opmode,
 
 	/* Restore previous led state */
 	OS_REG_WRITE(ah, AR_MAC_LED, OS_REG_READ(ah, AR_MAC_LED) | saveLedState);
-	/* Restore soft Led state to GPIO */
-	OS_REG_WRITE(ah, AR_GPIO_INTR_OUT, softLedCfg);
 
 	/* Restore previous antenna */
 	OS_REG_WRITE(ah, AR_DEF_ANTENNA, saveDefAntenna);
@@ -394,7 +269,7 @@ ar5416Reset(struct ath_hal *ah, HAL_OPMODE opmode,
 
 	OS_REG_WRITE(ah, AR_ISR, ~0);		/* cleared on write */
 
-	if (!ar5212SetChannel(ah, ichan))
+	if (!ar5212SetChannel(ah, chan))
 		FAIL(HAL_EIO);
 
 	OS_MARK(ah, AH_MARK_RESET_LINE, __LINE__);
@@ -453,15 +328,8 @@ ar5416Reset(struct ath_hal *ah, HAL_OPMODE opmode,
 
 	AH_PRIVATE(ah)->ah_opmode = opmode;	/* record operating mode */
 
-	if (bChannelChange) {
-		if (!(ichan->privFlags & CHANNEL_DFS)) 
-			ichan->privFlags &= ~CHANNEL_INTERFERENCE;
-		chan->channelFlags = ichan->channelFlags;
-		chan->privFlags = ichan->privFlags;
-		chan->maxRegTxPower = ichan->maxRegTxPower;
-		chan->maxTxPower = ichan->maxTxPower;
-		chan->minTxPower = ichan->minTxPower;
-	}
+	if (bChannelChange && !IEEE80211_IS_CHAN_DFS(chan)) 
+		chan->ic_state &= ~IEEE80211_CHANSTATE_CWINT;
 
 	HALDEBUG(ah, HAL_DEBUG_RESET, "%s: done\n", __func__);
 
@@ -470,7 +338,7 @@ ar5416Reset(struct ath_hal *ah, HAL_OPMODE opmode,
 	return AH_TRUE;
 bad:
 	OS_MARK(ah, AH_MARK_RESET_DONE, ecode);
-	if (*status)
+	if (status != AH_NULL)
 		*status = ecode;
 	return AH_FALSE;
 #undef FAIL
@@ -485,7 +353,7 @@ bad:
  * time, the function returns false as a reset is necessary
  */
 HAL_BOOL
-ar5416ChannelChange(struct ath_hal *ah, HAL_CHANNEL *chan)
+ar5416ChannelChange(struct ath_hal *ah, const structu ieee80211_channel *chan)
 {
 	uint32_t       ulCount;
 	uint32_t   data, synthDelay, qnum;
@@ -520,11 +388,11 @@ ar5416ChannelChange(struct ath_hal *ah, HAL_CHANNEL *chan)
 	ar5416Set11nRegs(ah, chan);	/* NB: setup 5416-specific regs */
 
 	/* Change the synth */
-	if (!ar5212SetChannel(ah, ichan))
+	if (!ar5212SetChannel(ah, chan))
 		return AH_FALSE;
 
 	/* Setup the transmit power values. */
-	if (!ar5416SetTransmitPower(ah, ichan, rfXpdGain)) {
+	if (!ar5416SetTransmitPower(ah, chan, rfXpdGain)) {
 		HALDEBUG(ah, HAL_DEBUG_ANY,
 		    "%s: error init'ing transmit power\n", __func__);
 		return AH_FALSE;
@@ -548,27 +416,20 @@ ar5416ChannelChange(struct ath_hal *ah, HAL_CHANNEL *chan)
 	OS_REG_WRITE(ah, AR_PHY_RFBUS_REQ, 0);
 
 	/* Write delta slope for OFDM enabled modes (A, G, Turbo) */
-	if (IS_CHAN_OFDM(ichan)|| IS_CHAN_HT(chan)) {
-		if (ahp->ah_eeprom.ee_version >= AR_EEPROM_VER5_3 &&
-		    !IS_CHAN_B(chan))
-			ar5212SetSpurMitigation(ah, ichan);
-		ar5416SetDeltaSlope(ah, ichan);
+	if (IEEE80211_IS_CHAN_OFDM(ichan)|| IEEE80211_IS_CHAN_HT(chan)) {
+		HALASSERT(AH_PRIVATE(ah)->ah_eeversion >= AR_EEPROM_VER5_3);
+		ar5212SetSpurMitigation(ah, chan);
+		ar5416SetDeltaSlope(ah, chan);
 	}
 
 	/* XXX spur mitigation for Melin */
 
-	/* Copy over internal channel flags to public hal channel */
+	if (!IEEE80211_IS_CHAN_DFS(chan)) 
+		chan->ic_state &= ~IEEE80211_CHANSTATE_CWINT;
 
-	if (!(ichan->privFlags & CHANNEL_DFS)) 
-		ichan->privFlags &= ~CHANNEL_INTERFERENCE;
-	chan->channelFlags = ichan->channelFlags;
-	chan->privFlags = ichan->privFlags;
-	chan->maxRegTxPower = ichan->maxRegTxPower;
-	chan->maxTxPower = ichan->maxTxPower;
-	chan->minTxPower = ichan->minTxPower;
-	AH_PRIVATE(ah)->ah_curchan->ah_channel_time=0;
-	AH_PRIVATE(ah)->ah_curchan->ah_tsf_last = ar5212GetTsf64(ah);
-	ar5212TxEnable(ah,AH_TRUE);
+	ichan->channel_time = 0;
+	ichan->tsf_last = ar5212GetTsf64(ah);
+	ar5212TxEnable(ah, AH_TRUE);
 	return AH_TRUE;
 }
 #endif
@@ -609,7 +470,7 @@ ar5416InitDMA(struct ath_hal *ah)
 }
 
 static void
-ar5416InitBB(struct ath_hal *ah, HAL_CHANNEL *chan)
+ar5416InitBB(struct ath_hal *ah, const struct ieee80211_channel *chan)
 {
 	uint32_t synthDelay;
 
@@ -619,7 +480,7 @@ ar5416InitBB(struct ath_hal *ah, HAL_CHANNEL *chan)
 	 * Value is in 100ns increments.
 	  */
 	synthDelay = OS_REG_READ(ah, AR_PHY_RX_DELAY) & AR_PHY_RX_DELAY_DELAY;
-	if (IS_CHAN_CCK(chan)) {
+	if (IEEE80211_IS_CHAN_CCK(chan)) {
 		synthDelay = (4 * synthDelay) / 22;
 	} else {
 		synthDelay /= 10;
@@ -627,7 +488,7 @@ ar5416InitBB(struct ath_hal *ah, HAL_CHANNEL *chan)
 
 	/* Turn on PLL on 5416 */
 	HALDEBUG(ah, HAL_DEBUG_RESET, "%s %s channel\n",
-	    __func__, IS_CHAN_5GHZ(chan) ? "5GHz" : "2GHz");
+	    __func__, IEEE80211_IS_CHAN_5GHZ(chan) ? "5GHz" : "2GHz");
 	ar5416InitPLL(ah, chan);
 
 	/* Activate the PHY (includes baseband activate and synthesizer on) */
@@ -639,9 +500,9 @@ ar5416InitBB(struct ath_hal *ah, HAL_CHANNEL *chan)
 	 * extra BASE_ACTIVATE_DELAY usecs to ensure this condition
 	 * does not happen.
 	 */
-	if (IS_CHAN_HALF_RATE(AH_PRIVATE(ah)->ah_curchan)) {
+	if (IEEE80211_IS_CHAN_HALF(chan)) {
 		OS_DELAY((synthDelay << 1) + BASE_ACTIVATE_DELAY);
-	} else if (IS_CHAN_QUARTER_RATE(AH_PRIVATE(ah)->ah_curchan)) {
+	} else if (IEEE80211_IS_CHAN_QUARTER(chan)) {
 		OS_DELAY((synthDelay << 2) + BASE_ACTIVATE_DELAY);
 	} else {
 		OS_DELAY(synthDelay + BASE_ACTIVATE_DELAY);
@@ -673,10 +534,9 @@ ar5416InitIMR(struct ath_hal *ah, HAL_OPMODE opmode)
 		ahp->ah_maskReg |= AR_IMR_MIB;
 	OS_REG_WRITE(ah, AR_IMR, ahp->ah_maskReg);
 	/* Enable bus errors that are OR'd to set the HIUERR bit */
-	
 #if 0
 	OS_REG_WRITE(ah, AR_IMR_S2, 
-	    	OS_REG_READ(ah, AR_IMR_S2) | AR_IMR_S2_GTT | AR_IMR_S2_CST);      
+	    	OS_REG_READ(ah, AR_IMR_S2) | AR_IMR_S2_GTT | AR_IMR_S2_CST);
 #endif
 }
 
@@ -731,11 +591,9 @@ ar5416InitUserSettings(struct ath_hal *ah)
  * Places the hardware into reset and then pulls it out of reset
  */
 HAL_BOOL
-ar5416ChipReset(struct ath_hal *ah, HAL_CHANNEL *chan)
+ar5416ChipReset(struct ath_hal *ah, const struct ieee80211_channel *chan)
 {
-	uint32_t rfMode = 0;
-
-	OS_MARK(ah, AH_MARK_CHIPRESET, chan ? chan->channel : 0);
+	OS_MARK(ah, AH_MARK_CHIPRESET, chan ? chan->ic_freq : 0);
 	/*
 	 * Warm reset is optimistic.
 	 */
@@ -761,15 +619,17 @@ ar5416ChipReset(struct ath_hal *ah, HAL_CHANNEL *chan)
 	 * radio device.
 	 */
 	if (chan != AH_NULL) { 
+		uint32_t rfMode;
+
 		/* treat channel B as channel G , no  B mode suport in owl */
-		rfMode |= (IS_CHAN_G(chan) || IS_CHAN_B(chan)) ?
-			AR_PHY_MODE_DYNAMIC : AR_PHY_MODE_OFDM;
+		rfMode = IEEE80211_IS_CHAN_CCK(chan) ?
+		    AR_PHY_MODE_DYNAMIC : AR_PHY_MODE_OFDM;
 		if (AR_SREV_MERLIN_20(ah) && IS_5GHZ_FAST_CLOCK_EN(ah, chan)) {
 			/* phy mode bits for 5GHz channels require Fast Clock */
 			rfMode |= AR_PHY_MODE_DYNAMIC
 			       |  AR_PHY_MODE_DYN_CCK_DISABLE;
 		} else if (!AR_SREV_MERLIN_10_OR_LATER(ah)) {
-			rfMode |= (IS_CHAN_5GHZ(chan)) ?
+			rfMode |= IEEE80211_IS_CHAN_5GHZ(chan) ?
 				AR_PHY_MODE_RF5GHZ : AR_PHY_MODE_RF2GHZ;
 		}
 		OS_REG_WRITE(ah, AR_PHY_MODE, rfMode);
@@ -811,23 +671,23 @@ ar5416GetDeltaSlopeValues(struct ath_hal *ah, uint32_t coef_scaled,
 }
 
 void
-ar5416SetDeltaSlope(struct ath_hal *ah, HAL_CHANNEL_INTERNAL *chan)
+ar5416SetDeltaSlope(struct ath_hal *ah, const struct ieee80211_channel *chan)
 {
 #define INIT_CLOCKMHZSCALED	0x64000000
 	uint32_t coef_scaled, ds_coef_exp, ds_coef_man;
-	uint32_t clockMhzScaled = INIT_CLOCKMHZSCALED;
+	uint32_t clockMhzScaled;
 
 	CHAN_CENTERS centers;
 
-	if (IS_CHAN_TURBO(chan))
-		clockMhzScaled *= 2;
 	/* half and quarter rate can divide the scaled clock by 2 or 4 respectively */
 	/* scale for selected channel bandwidth */ 
-	if (IS_CHAN_HALF_RATE(chan)) {
-		clockMhzScaled = clockMhzScaled >> 1;
-	} else if (IS_CHAN_QUARTER_RATE(chan)) {
-		clockMhzScaled = clockMhzScaled >> 2;
-	} 
+	clockMhzScaled = INIT_CLOCKMHZSCALED;
+	if (IEEE80211_IS_CHAN_TURBO(chan))
+		clockMhzScaled <<= 1;
+	else if (IEEE80211_IS_CHAN_HALF(chan))
+		clockMhzScaled >>= 1;
+	else if (IEEE80211_IS_CHAN_QUARTER(chan))
+		clockMhzScaled >>= 2;
 
 	/*
 	 * ALGO -> coef = 1e8/fcarrier*fclock/40;
@@ -835,14 +695,14 @@ ar5416SetDeltaSlope(struct ath_hal *ah, HAL_CHANNEL_INTERNAL *chan)
 	 */
 	ar5416GetChannelCenters(ah, chan, &centers);
 	coef_scaled = clockMhzScaled / centers.synth_center;		
-	
+
  	ar5416GetDeltaSlopeValues(ah, coef_scaled, &ds_coef_man, &ds_coef_exp);
 
 	OS_REG_RMW_FIELD(ah, AR_PHY_TIMING3,
 		AR_PHY_TIMING3_DSC_MAN, ds_coef_man);
 	OS_REG_RMW_FIELD(ah, AR_PHY_TIMING3,
 		AR_PHY_TIMING3_DSC_EXP, ds_coef_exp);
-		
+
         /*
          * For Short GI,
          * scaled coeff is 9/10 that of normal coeff
@@ -858,556 +718,6 @@ ar5416SetDeltaSlope(struct ath_hal *ah, HAL_CHANNEL_INTERNAL *chan)
                 AR_PHY_HALFGI_DSC_EXP, ds_coef_exp);	
 #undef INIT_CLOCKMHZSCALED
 }
-
-/*
- * Convert to baseband spur frequency given input channel frequency 
- * and compute register settings below.
- */
-#define SPUR_RSSI_THRESH 40
-
-static void
-ar5416SpurMitigate(struct ath_hal *ah, HAL_CHANNEL_INTERNAL *chan)
-{
-    static const int pilot_mask_reg[4] = { AR_PHY_TIMING7, AR_PHY_TIMING8,
-                AR_PHY_PILOT_MASK_01_30, AR_PHY_PILOT_MASK_31_60 };
-    static const int chan_mask_reg[4] = { AR_PHY_TIMING9, AR_PHY_TIMING10,
-                AR_PHY_CHANNEL_MASK_01_30, AR_PHY_CHANNEL_MASK_31_60 };
-    static const int inc[4] = { 0, 100, 0, 0 };
-
-    int bb_spur = AR_NO_SPUR;
-    int bin, cur_bin;
-    int spur_freq_sd;
-    int spur_delta_phase;
-    int denominator;
-    int upper, lower, cur_vit_mask;
-    int tmp, new;
-    int i;
-
-    int8_t mask_m[123];
-    int8_t mask_p[123];
-    int8_t mask_amt;
-    int tmp_mask;
-    int cur_bb_spur;
-    HAL_BOOL is2GHz = IS_CHAN_2GHZ(chan);
-
-    OS_MEMZERO(mask_m, sizeof(mask_m));
-    OS_MEMZERO(mask_p, sizeof(mask_p));
-
-    /*
-     * Need to verify range +/- 9.5 for static ht20, otherwise spur
-     * is out-of-band and can be ignored.
-     */
-    for (i = 0; i < AR5416_EEPROM_MODAL_SPURS; i++) {
-        cur_bb_spur = ath_hal_getSpurChan(ah, i, is2GHz);
-        if (AR_NO_SPUR == cur_bb_spur)
-            break;
-        cur_bb_spur = cur_bb_spur - (chan->channel * 10);
-        if ((cur_bb_spur > -95) && (cur_bb_spur < 95)) {
-            bb_spur = cur_bb_spur;
-            break;
-        }
-    }
-    if (AR_NO_SPUR == bb_spur)
-        return;
-
-    bin = bb_spur * 32;
-
-    tmp = OS_REG_READ(ah, AR_PHY_TIMING_CTRL4_CHAIN(0));
-    new = tmp | (AR_PHY_TIMING_CTRL4_ENABLE_SPUR_RSSI |
-        AR_PHY_TIMING_CTRL4_ENABLE_SPUR_FILTER |
-        AR_PHY_TIMING_CTRL4_ENABLE_CHAN_MASK |
-        AR_PHY_TIMING_CTRL4_ENABLE_PILOT_MASK);
-
-    OS_REG_WRITE(ah, AR_PHY_TIMING_CTRL4_CHAIN(0), new);
-
-    new = (AR_PHY_SPUR_REG_MASK_RATE_CNTL |
-        AR_PHY_SPUR_REG_ENABLE_MASK_PPM |
-        AR_PHY_SPUR_REG_MASK_RATE_SELECT |
-        AR_PHY_SPUR_REG_ENABLE_VIT_SPUR_RSSI |
-        SM(SPUR_RSSI_THRESH, AR_PHY_SPUR_REG_SPUR_RSSI_THRESH));
-    OS_REG_WRITE(ah, AR_PHY_SPUR_REG, new);
-    /*
-     * Should offset bb_spur by +/- 10 MHz for dynamic 2040 MHz
-     * config, no offset for HT20.
-     * spur_delta_phase = bb_spur/40 * 2**21 for static ht20,
-     * /80 for dyn2040.
-     */
-    spur_delta_phase = ((bb_spur * 524288) / 100) &
-        AR_PHY_TIMING11_SPUR_DELTA_PHASE;
-    /*
-     * in 11A mode the denominator of spur_freq_sd should be 40 and
-     * it should be 44 in 11G
-     */
-    denominator = IS_CHAN_2GHZ(chan) ? 440 : 400;
-    spur_freq_sd = ((bb_spur * 2048) / denominator) & 0x3ff;
-
-    new = (AR_PHY_TIMING11_USE_SPUR_IN_AGC |
-        SM(spur_freq_sd, AR_PHY_TIMING11_SPUR_FREQ_SD) |
-        SM(spur_delta_phase, AR_PHY_TIMING11_SPUR_DELTA_PHASE));
-    OS_REG_WRITE(ah, AR_PHY_TIMING11, new);
-
-
-    /*
-     * ============================================
-     * pilot mask 1 [31:0] = +6..-26, no 0 bin
-     * pilot mask 2 [19:0] = +26..+7
-     *
-     * channel mask 1 [31:0] = +6..-26, no 0 bin
-     * channel mask 2 [19:0] = +26..+7
-     */
-    //cur_bin = -26;
-    cur_bin = -6000;
-    upper = bin + 100;
-    lower = bin - 100;
-
-    for (i = 0; i < 4; i++) {
-        int pilot_mask = 0;
-        int chan_mask  = 0;
-        int bp         = 0;
-        for (bp = 0; bp < 30; bp++) {
-            if ((cur_bin > lower) && (cur_bin < upper)) {
-                pilot_mask = pilot_mask | 0x1 << bp;
-                chan_mask  = chan_mask | 0x1 << bp;
-            }
-            cur_bin += 100;
-        }
-        cur_bin += inc[i];
-        OS_REG_WRITE(ah, pilot_mask_reg[i], pilot_mask);
-        OS_REG_WRITE(ah, chan_mask_reg[i], chan_mask);
-    }
-
-    /* =================================================
-     * viterbi mask 1 based on channel magnitude
-     * four levels 0-3
-     *  - mask (-27 to 27) (reg 64,0x9900 to 67,0x990c)
-     *      [1 2 2 1] for -9.6 or [1 2 1] for +16
-     *  - enable_mask_ppm, all bins move with freq
-     *
-     *  - mask_select,    8 bits for rates (reg 67,0x990c)
-     *  - mask_rate_cntl, 8 bits for rates (reg 67,0x990c)
-     *      choose which mask to use mask or mask2
-     */
-
-    /*
-     * viterbi mask 2  2nd set for per data rate puncturing
-     * four levels 0-3
-     *  - mask_select, 8 bits for rates (reg 67)
-     *  - mask (-27 to 27) (reg 98,0x9988 to 101,0x9994)
-     *      [1 2 2 1] for -9.6 or [1 2 1] for +16
-     */
-    cur_vit_mask = 6100;
-    upper        = bin + 120;
-    lower        = bin - 120;
-
-    for (i = 0; i < 123; i++) {
-        if ((cur_vit_mask > lower) && (cur_vit_mask < upper)) {
-            if ((abs(cur_vit_mask - bin)) < 75) {
-                mask_amt = 1;
-            } else {
-                mask_amt = 0;
-            }
-            if (cur_vit_mask < 0) {
-                mask_m[abs(cur_vit_mask / 100)] = mask_amt;
-            } else {
-                mask_p[cur_vit_mask / 100] = mask_amt;
-            }
-        }
-        cur_vit_mask -= 100;
-    }
-
-    tmp_mask = (mask_m[46] << 30) | (mask_m[47] << 28)
-          | (mask_m[48] << 26) | (mask_m[49] << 24)
-          | (mask_m[50] << 22) | (mask_m[51] << 20)
-          | (mask_m[52] << 18) | (mask_m[53] << 16)
-          | (mask_m[54] << 14) | (mask_m[55] << 12)
-          | (mask_m[56] << 10) | (mask_m[57] <<  8)
-          | (mask_m[58] <<  6) | (mask_m[59] <<  4)
-          | (mask_m[60] <<  2) | (mask_m[61] <<  0);
-    OS_REG_WRITE(ah, AR_PHY_BIN_MASK_1, tmp_mask);
-    OS_REG_WRITE(ah, AR_PHY_VIT_MASK2_M_46_61, tmp_mask);
-
-    tmp_mask =             (mask_m[31] << 28)
-          | (mask_m[32] << 26) | (mask_m[33] << 24)
-          | (mask_m[34] << 22) | (mask_m[35] << 20)
-          | (mask_m[36] << 18) | (mask_m[37] << 16)
-          | (mask_m[48] << 14) | (mask_m[39] << 12)
-          | (mask_m[40] << 10) | (mask_m[41] <<  8)
-          | (mask_m[42] <<  6) | (mask_m[43] <<  4)
-          | (mask_m[44] <<  2) | (mask_m[45] <<  0);
-    OS_REG_WRITE(ah, AR_PHY_BIN_MASK_2, tmp_mask);
-    OS_REG_WRITE(ah, AR_PHY_MASK2_M_31_45, tmp_mask);
-
-    tmp_mask = (mask_m[16] << 30) | (mask_m[16] << 28)
-          | (mask_m[18] << 26) | (mask_m[18] << 24)
-          | (mask_m[20] << 22) | (mask_m[20] << 20)
-          | (mask_m[22] << 18) | (mask_m[22] << 16)
-          | (mask_m[24] << 14) | (mask_m[24] << 12)
-          | (mask_m[25] << 10) | (mask_m[26] <<  8)
-          | (mask_m[27] <<  6) | (mask_m[28] <<  4)
-          | (mask_m[29] <<  2) | (mask_m[30] <<  0);
-    OS_REG_WRITE(ah, AR_PHY_BIN_MASK_3, tmp_mask);
-    OS_REG_WRITE(ah, AR_PHY_MASK2_M_16_30, tmp_mask);
-
-    tmp_mask = (mask_m[ 0] << 30) | (mask_m[ 1] << 28)
-          | (mask_m[ 2] << 26) | (mask_m[ 3] << 24)
-          | (mask_m[ 4] << 22) | (mask_m[ 5] << 20)
-          | (mask_m[ 6] << 18) | (mask_m[ 7] << 16)
-          | (mask_m[ 8] << 14) | (mask_m[ 9] << 12)
-          | (mask_m[10] << 10) | (mask_m[11] <<  8)
-          | (mask_m[12] <<  6) | (mask_m[13] <<  4)
-          | (mask_m[14] <<  2) | (mask_m[15] <<  0);
-    OS_REG_WRITE(ah, AR_PHY_MASK_CTL, tmp_mask);
-    OS_REG_WRITE(ah, AR_PHY_MASK2_M_00_15, tmp_mask);
-
-    tmp_mask =             (mask_p[15] << 28)
-          | (mask_p[14] << 26) | (mask_p[13] << 24)
-          | (mask_p[12] << 22) | (mask_p[11] << 20)
-          | (mask_p[10] << 18) | (mask_p[ 9] << 16)
-          | (mask_p[ 8] << 14) | (mask_p[ 7] << 12)
-          | (mask_p[ 6] << 10) | (mask_p[ 5] <<  8)
-          | (mask_p[ 4] <<  6) | (mask_p[ 3] <<  4)
-          | (mask_p[ 2] <<  2) | (mask_p[ 1] <<  0);
-    OS_REG_WRITE(ah, AR_PHY_BIN_MASK2_1, tmp_mask);
-    OS_REG_WRITE(ah, AR_PHY_MASK2_P_15_01, tmp_mask);
-
-    tmp_mask =             (mask_p[30] << 28)
-          | (mask_p[29] << 26) | (mask_p[28] << 24)
-          | (mask_p[27] << 22) | (mask_p[26] << 20)
-          | (mask_p[25] << 18) | (mask_p[24] << 16)
-          | (mask_p[23] << 14) | (mask_p[22] << 12)
-          | (mask_p[21] << 10) | (mask_p[20] <<  8)
-          | (mask_p[19] <<  6) | (mask_p[18] <<  4)
-          | (mask_p[17] <<  2) | (mask_p[16] <<  0);
-    OS_REG_WRITE(ah, AR_PHY_BIN_MASK2_2, tmp_mask);
-    OS_REG_WRITE(ah, AR_PHY_MASK2_P_30_16, tmp_mask);
-
-    tmp_mask =             (mask_p[45] << 28)
-          | (mask_p[44] << 26) | (mask_p[43] << 24)
-          | (mask_p[42] << 22) | (mask_p[41] << 20)
-          | (mask_p[40] << 18) | (mask_p[39] << 16)
-          | (mask_p[38] << 14) | (mask_p[37] << 12)
-          | (mask_p[36] << 10) | (mask_p[35] <<  8)
-          | (mask_p[34] <<  6) | (mask_p[33] <<  4)
-          | (mask_p[32] <<  2) | (mask_p[31] <<  0);
-    OS_REG_WRITE(ah, AR_PHY_BIN_MASK2_3, tmp_mask);
-    OS_REG_WRITE(ah, AR_PHY_MASK2_P_45_31, tmp_mask);
-
-    tmp_mask = (mask_p[61] << 30) | (mask_p[60] << 28)
-          | (mask_p[59] << 26) | (mask_p[58] << 24)
-          | (mask_p[57] << 22) | (mask_p[56] << 20)
-          | (mask_p[55] << 18) | (mask_p[54] << 16)
-          | (mask_p[53] << 14) | (mask_p[52] << 12)
-          | (mask_p[51] << 10) | (mask_p[50] <<  8)
-          | (mask_p[49] <<  6) | (mask_p[48] <<  4)
-          | (mask_p[47] <<  2) | (mask_p[46] <<  0);
-    OS_REG_WRITE(ah, AR_PHY_BIN_MASK2_4, tmp_mask);
-    OS_REG_WRITE(ah, AR_PHY_MASK2_P_61_45, tmp_mask);
-}
-
-#ifdef AH_SUPPORT_AR9280
-#define	AR_BASE_FREQ_2GHZ	2300
-#define	AR_BASE_FREQ_5GHZ	4900
-#define	AR_SPUR_FEEQ_BOUND_HT40	19
-#define	AR_SPUR_FEEQ_BOUND_HT20	10
-
-static void
-ar9280SpurMitigate(struct ath_hal *ah, HAL_CHANNEL_INTERNAL *ichan)
-{
-    static const int pilot_mask_reg[4] = { AR_PHY_TIMING7, AR_PHY_TIMING8,
-                AR_PHY_PILOT_MASK_01_30, AR_PHY_PILOT_MASK_31_60 };
-    static const int chan_mask_reg[4] = { AR_PHY_TIMING9, AR_PHY_TIMING10,
-                AR_PHY_CHANNEL_MASK_01_30, AR_PHY_CHANNEL_MASK_31_60 };
-    static int inc[4] = { 0, 100, 0, 0 };
-
-    int bb_spur = AR_NO_SPUR;
-    int freq;
-    int bin, cur_bin;
-    int bb_spur_off, spur_subchannel_sd;
-    int spur_freq_sd;
-    int spur_delta_phase;
-    int denominator;
-    int upper, lower, cur_vit_mask;
-    int tmp, newVal;
-    int i;
-    CHAN_CENTERS centers;
-
-    int8_t mask_m[123];
-    int8_t mask_p[123];
-    int8_t mask_amt;
-    int tmp_mask;
-    int cur_bb_spur;
-    HAL_BOOL is2GHz = IS_CHAN_2GHZ(ichan);
-
-    OS_MEMZERO(&mask_m, sizeof(int8_t) * 123);
-    OS_MEMZERO(&mask_p, sizeof(int8_t) * 123);
-
-    ar5416GetChannelCenters(ah, ichan, &centers);
-    freq = centers.synth_center;
-
-    /*
-     * Need to verify range +/- 9.38 for static ht20 and +/- 18.75 for ht40,
-     * otherwise spur is out-of-band and can be ignored.
-     */
-    for (i = 0; i < AR5416_EEPROM_MODAL_SPURS; i++) {
-        cur_bb_spur = ath_hal_getSpurChan(ah, i, is2GHz);
-        /* Get actual spur freq in MHz from EEPROM read value */ 
-        if (is2GHz) {
-            cur_bb_spur =  (cur_bb_spur / 10) + AR_BASE_FREQ_2GHZ;
-        } else {
-            cur_bb_spur =  (cur_bb_spur / 10) + AR_BASE_FREQ_5GHZ;
-        }
-
-        if (AR_NO_SPUR == cur_bb_spur)
-            break;
-        cur_bb_spur = cur_bb_spur - freq;
-
-        if (IS_CHAN_HT40(ichan)) {
-            if ((cur_bb_spur > -AR_SPUR_FEEQ_BOUND_HT40) && 
-                (cur_bb_spur < AR_SPUR_FEEQ_BOUND_HT40)) {
-                bb_spur = cur_bb_spur;
-                break;
-            }
-        } else if ((cur_bb_spur > -AR_SPUR_FEEQ_BOUND_HT20) &&
-                   (cur_bb_spur < AR_SPUR_FEEQ_BOUND_HT20)) {
-            bb_spur = cur_bb_spur;
-            break;
-        }
-    }
-
-    if (AR_NO_SPUR == bb_spur) {
-#if 1
-        /*
-         * MRC CCK can interfere with beacon detection and cause deaf/mute.
-         * Disable MRC CCK for now.
-         */
-        OS_REG_CLR_BIT(ah, AR_PHY_FORCE_CLKEN_CCK, AR_PHY_FORCE_CLKEN_CCK_MRC_MUX);
-#else
-        /* Enable MRC CCK if no spur is found in this channel. */
-        OS_REG_SET_BIT(ah, AR_PHY_FORCE_CLKEN_CCK, AR_PHY_FORCE_CLKEN_CCK_MRC_MUX);
-#endif
-        return;
-    } else {
-        /* 
-         * For Merlin, spur can break CCK MRC algorithm. Disable CCK MRC if spur
-         * is found in this channel.
-         */
-        OS_REG_CLR_BIT(ah, AR_PHY_FORCE_CLKEN_CCK, AR_PHY_FORCE_CLKEN_CCK_MRC_MUX);
-    }
-
-    bin = bb_spur * 320;
-
-    tmp = OS_REG_READ(ah, AR_PHY_TIMING_CTRL4_CHAIN(0));
-
-    newVal = tmp | (AR_PHY_TIMING_CTRL4_ENABLE_SPUR_RSSI |
-        AR_PHY_TIMING_CTRL4_ENABLE_SPUR_FILTER |
-        AR_PHY_TIMING_CTRL4_ENABLE_CHAN_MASK |
-        AR_PHY_TIMING_CTRL4_ENABLE_PILOT_MASK);
-    OS_REG_WRITE(ah, AR_PHY_TIMING_CTRL4_CHAIN(0), newVal);
-
-    newVal = (AR_PHY_SPUR_REG_MASK_RATE_CNTL |
-        AR_PHY_SPUR_REG_ENABLE_MASK_PPM |
-        AR_PHY_SPUR_REG_MASK_RATE_SELECT |
-        AR_PHY_SPUR_REG_ENABLE_VIT_SPUR_RSSI |
-        SM(SPUR_RSSI_THRESH, AR_PHY_SPUR_REG_SPUR_RSSI_THRESH));
-    OS_REG_WRITE(ah, AR_PHY_SPUR_REG, newVal);
-
-    /* Pick control or extn channel to cancel the spur */
-    if (IS_CHAN_HT40(ichan)) {
-        if (bb_spur < 0) {
-            spur_subchannel_sd = 1;
-            bb_spur_off = bb_spur + 10;
-        } else {
-            spur_subchannel_sd = 0;
-            bb_spur_off = bb_spur - 10;
-        }
-    } else {
-        spur_subchannel_sd = 0;
-        bb_spur_off = bb_spur;
-    }
-
-    /*
-     * spur_delta_phase = bb_spur/40 * 2**21 for static ht20,
-     * /80 for dyn2040.
-     */
-    if (IS_CHAN_HT40(ichan))
-        spur_delta_phase = ((bb_spur * 262144) / 10) & AR_PHY_TIMING11_SPUR_DELTA_PHASE;    
-    else
-        spur_delta_phase = ((bb_spur * 524288) / 10) & AR_PHY_TIMING11_SPUR_DELTA_PHASE;
-
-    /*
-     * in 11A mode the denominator of spur_freq_sd should be 40 and
-     * it should be 44 in 11G
-     */
-    denominator = IS_CHAN_2GHZ(ichan) ? 44 : 40;
-    spur_freq_sd = ((bb_spur_off * 2048) / denominator) & 0x3ff;
-
-    newVal = (AR_PHY_TIMING11_USE_SPUR_IN_AGC |
-        SM(spur_freq_sd, AR_PHY_TIMING11_SPUR_FREQ_SD) |
-        SM(spur_delta_phase, AR_PHY_TIMING11_SPUR_DELTA_PHASE));
-    OS_REG_WRITE(ah, AR_PHY_TIMING11, newVal);
-
-    /* Choose to cancel between control and extension channels */
-    newVal = spur_subchannel_sd << AR_PHY_SFCORR_SPUR_SUBCHNL_SD_S;
-    OS_REG_WRITE(ah, AR_PHY_SFCORR_EXT, newVal);
-
-    /*
-     * ============================================
-     * Set Pilot and Channel Masks
-     *
-     * pilot mask 1 [31:0] = +6..-26, no 0 bin
-     * pilot mask 2 [19:0] = +26..+7
-     *
-     * channel mask 1 [31:0] = +6..-26, no 0 bin
-     * channel mask 2 [19:0] = +26..+7
-     */
-    cur_bin = -6000;
-    upper = bin + 100;
-    lower = bin - 100;
-
-    for (i = 0; i < 4; i++) {
-        int pilot_mask = 0;
-        int chan_mask  = 0;
-        int bp         = 0;
-        for (bp = 0; bp < 30; bp++) {
-            if ((cur_bin > lower) && (cur_bin < upper)) {
-                pilot_mask = pilot_mask | 0x1 << bp;
-                chan_mask  = chan_mask | 0x1 << bp;
-            }
-            cur_bin += 100;
-        }
-        cur_bin += inc[i];
-        OS_REG_WRITE(ah, pilot_mask_reg[i], pilot_mask);
-        OS_REG_WRITE(ah, chan_mask_reg[i], chan_mask);
-    }
-
-    /* =================================================
-     * viterbi mask 1 based on channel magnitude
-     * four levels 0-3
-     *  - mask (-27 to 27) (reg 64,0x9900 to 67,0x990c)
-     *      [1 2 2 1] for -9.6 or [1 2 1] for +16
-     *  - enable_mask_ppm, all bins move with freq
-     *
-     *  - mask_select,    8 bits for rates (reg 67,0x990c)
-     *  - mask_rate_cntl, 8 bits for rates (reg 67,0x990c)
-     *      choose which mask to use mask or mask2
-     */
-
-    /*
-     * viterbi mask 2  2nd set for per data rate puncturing
-     * four levels 0-3
-     *  - mask_select, 8 bits for rates (reg 67)
-     *  - mask (-27 to 27) (reg 98,0x9988 to 101,0x9994)
-     *      [1 2 2 1] for -9.6 or [1 2 1] for +16
-     */
-    cur_vit_mask = 6100;
-    upper        = bin + 120;
-    lower        = bin - 120;
-
-    for (i = 0; i < 123; i++) {
-        if ((cur_vit_mask > lower) && (cur_vit_mask < upper)) {
-            if ((abs(cur_vit_mask - bin)) < 75) {
-                mask_amt = 1;
-            } else {
-                mask_amt = 0;
-            }
-            if (cur_vit_mask < 0) {
-                mask_m[abs(cur_vit_mask / 100)] = mask_amt;
-            } else {
-                mask_p[cur_vit_mask / 100] = mask_amt;
-            }
-        }
-        cur_vit_mask -= 100;
-    }
-
-    tmp_mask = (mask_m[46] << 30) | (mask_m[47] << 28)
-          | (mask_m[48] << 26) | (mask_m[49] << 24)
-          | (mask_m[50] << 22) | (mask_m[51] << 20)
-          | (mask_m[52] << 18) | (mask_m[53] << 16)
-          | (mask_m[54] << 14) | (mask_m[55] << 12)
-          | (mask_m[56] << 10) | (mask_m[57] <<  8)
-          | (mask_m[58] <<  6) | (mask_m[59] <<  4)
-          | (mask_m[60] <<  2) | (mask_m[61] <<  0);
-    OS_REG_WRITE(ah, AR_PHY_BIN_MASK_1, tmp_mask);
-    OS_REG_WRITE(ah, AR_PHY_VIT_MASK2_M_46_61, tmp_mask);
-
-    tmp_mask =             (mask_m[31] << 28)
-          | (mask_m[32] << 26) | (mask_m[33] << 24)
-          | (mask_m[34] << 22) | (mask_m[35] << 20)
-          | (mask_m[36] << 18) | (mask_m[37] << 16)
-          | (mask_m[48] << 14) | (mask_m[39] << 12)
-          | (mask_m[40] << 10) | (mask_m[41] <<  8)
-          | (mask_m[42] <<  6) | (mask_m[43] <<  4)
-          | (mask_m[44] <<  2) | (mask_m[45] <<  0);
-    OS_REG_WRITE(ah, AR_PHY_BIN_MASK_2, tmp_mask);
-    OS_REG_WRITE(ah, AR_PHY_MASK2_M_31_45, tmp_mask);
-
-    tmp_mask = (mask_m[16] << 30) | (mask_m[16] << 28)
-          | (mask_m[18] << 26) | (mask_m[18] << 24)
-          | (mask_m[20] << 22) | (mask_m[20] << 20)
-          | (mask_m[22] << 18) | (mask_m[22] << 16)
-          | (mask_m[24] << 14) | (mask_m[24] << 12)
-          | (mask_m[25] << 10) | (mask_m[26] <<  8)
-          | (mask_m[27] <<  6) | (mask_m[28] <<  4)
-          | (mask_m[29] <<  2) | (mask_m[30] <<  0);
-    OS_REG_WRITE(ah, AR_PHY_BIN_MASK_3, tmp_mask);
-    OS_REG_WRITE(ah, AR_PHY_MASK2_M_16_30, tmp_mask);
-
-    tmp_mask = (mask_m[ 0] << 30) | (mask_m[ 1] << 28)
-          | (mask_m[ 2] << 26) | (mask_m[ 3] << 24)
-          | (mask_m[ 4] << 22) | (mask_m[ 5] << 20)
-          | (mask_m[ 6] << 18) | (mask_m[ 7] << 16)
-          | (mask_m[ 8] << 14) | (mask_m[ 9] << 12)
-          | (mask_m[10] << 10) | (mask_m[11] <<  8)
-          | (mask_m[12] <<  6) | (mask_m[13] <<  4)
-          | (mask_m[14] <<  2) | (mask_m[15] <<  0);
-    OS_REG_WRITE(ah, AR_PHY_MASK_CTL, tmp_mask);
-    OS_REG_WRITE(ah, AR_PHY_MASK2_M_00_15, tmp_mask);
-
-    tmp_mask =             (mask_p[15] << 28)
-          | (mask_p[14] << 26) | (mask_p[13] << 24)
-          | (mask_p[12] << 22) | (mask_p[11] << 20)
-          | (mask_p[10] << 18) | (mask_p[ 9] << 16)
-          | (mask_p[ 8] << 14) | (mask_p[ 7] << 12)
-          | (mask_p[ 6] << 10) | (mask_p[ 5] <<  8)
-          | (mask_p[ 4] <<  6) | (mask_p[ 3] <<  4)
-          | (mask_p[ 2] <<  2) | (mask_p[ 1] <<  0);
-    OS_REG_WRITE(ah, AR_PHY_BIN_MASK2_1, tmp_mask);
-    OS_REG_WRITE(ah, AR_PHY_MASK2_P_15_01, tmp_mask);
-
-    tmp_mask =             (mask_p[30] << 28)
-          | (mask_p[29] << 26) | (mask_p[28] << 24)
-          | (mask_p[27] << 22) | (mask_p[26] << 20)
-          | (mask_p[25] << 18) | (mask_p[24] << 16)
-          | (mask_p[23] << 14) | (mask_p[22] << 12)
-          | (mask_p[21] << 10) | (mask_p[20] <<  8)
-          | (mask_p[19] <<  6) | (mask_p[18] <<  4)
-          | (mask_p[17] <<  2) | (mask_p[16] <<  0);
-    OS_REG_WRITE(ah, AR_PHY_BIN_MASK2_2, tmp_mask);
-    OS_REG_WRITE(ah, AR_PHY_MASK2_P_30_16, tmp_mask);
-
-    tmp_mask =             (mask_p[45] << 28)
-          | (mask_p[44] << 26) | (mask_p[43] << 24)
-          | (mask_p[42] << 22) | (mask_p[41] << 20)
-          | (mask_p[40] << 18) | (mask_p[39] << 16)
-          | (mask_p[38] << 14) | (mask_p[37] << 12)
-          | (mask_p[36] << 10) | (mask_p[35] <<  8)
-          | (mask_p[34] <<  6) | (mask_p[33] <<  4)
-          | (mask_p[32] <<  2) | (mask_p[31] <<  0);
-    OS_REG_WRITE(ah, AR_PHY_BIN_MASK2_3, tmp_mask);
-    OS_REG_WRITE(ah, AR_PHY_MASK2_P_45_31, tmp_mask);
-
-    tmp_mask = (mask_p[61] << 30) | (mask_p[60] << 28)
-          | (mask_p[59] << 26) | (mask_p[58] << 24)
-          | (mask_p[57] << 22) | (mask_p[56] << 20)
-          | (mask_p[55] << 18) | (mask_p[54] << 16)
-          | (mask_p[53] << 14) | (mask_p[52] << 12)
-          | (mask_p[51] << 10) | (mask_p[50] <<  8)
-          | (mask_p[49] <<  6) | (mask_p[48] <<  4)
-          | (mask_p[47] <<  2) | (mask_p[46] <<  0);
-    OS_REG_WRITE(ah, AR_PHY_BIN_MASK2_4, tmp_mask);
-    OS_REG_WRITE(ah, AR_PHY_MASK2_P_61_45, tmp_mask);
-}
-#endif /* AH_SUPPORT_AR9280 */
 
 /*
  * Set a limit on the overall output power.  Used for dynamic
@@ -1426,37 +736,29 @@ ar5416SetTxPowerLimit(struct ath_hal *ah, uint32_t limit)
 }
 
 HAL_BOOL
-ar5416GetChipPowerLimits(struct ath_hal *ah, HAL_CHANNEL *chans, uint32_t nchans)
+ar5416GetChipPowerLimits(struct ath_hal *ah,
+	struct ieee80211_channel *chan)
 {
 	struct ath_hal_5212 *ahp = AH5212(ah);
 	int16_t minPower, maxPower;
-	HAL_CHANNEL *chan;
-	int i;
 
 	/*
 	 * Get Pier table max and min powers.
 	 */
-	for (i = 0; i < nchans; i++) {
-		chan = &chans[i];
-		if (ahp->ah_rfHal->getChannelMaxMinPower(ah, chan, &maxPower, &minPower)) {
-			/* NB: rf code returns 1/4 dBm units, convert */
-			chan->maxTxPower = maxPower / 2;
-			chan->minTxPower = minPower / 2;
-		} else {
-			HALDEBUG(ah, HAL_DEBUG_ANY,
-			    "%s: no min/max power for %u/0x%x\n",
-			    __func__, chan->channel, chan->channelFlags);
-			chan->maxTxPower = AR5416_MAX_RATE_POWER;
-			chan->minTxPower = 0;
-		}
+	if (ahp->ah_rfHal->getChannelMaxMinPower(ah, chan, &maxPower, &minPower)) {
+		/* NB: rf code returns 1/4 dBm units, convert */
+		chan->ic_maxpower = maxPower / 2;
+		chan->ic_minpower = minPower / 2;
+	} else {
+		HALDEBUG(ah, HAL_DEBUG_ANY,
+		    "%s: no min/max power for %u/0x%x\n",
+		    __func__, chan->ic_freq, chan->ic_flags);
+		chan->ic_maxpower = AR5416_MAX_RATE_POWER;
+		chan->ic_minpower = 0;
 	}
-#ifdef AH_DEBUG
-	for (i=0; i<nchans; i++) {
-		HALDEBUG(ah, HAL_DEBUG_RESET,
-		    "Chan %d: MaxPow = %d MinPow = %d\n",
-		    chans[i].channel,chans[i].maxTxPower, chans[i].minTxPower);
-	}
-#endif
+	HALDEBUG(ah, HAL_DEBUG_RESET,
+	    "Chan %d: MaxPow = %d MinPow = %d\n",
+	    chan->ic_freq, chan->ic_maxpower, chan->ic_minpower);
 	return AH_TRUE;
 }
 
@@ -1480,8 +782,9 @@ typedef enum Ar5416_Rates {
  * Set the transmit power in the baseband for the given
  * operating channel and mode.
  */
-static HAL_BOOL
-ar5416SetTransmitPower(struct ath_hal *ah, HAL_CHANNEL_INTERNAL *chan, uint16_t *rfXpdGain)
+HAL_BOOL
+ar5416SetTransmitPower(struct ath_hal *ah,
+	const struct ieee80211_channel *chan, uint16_t *rfXpdGain)
 {
 #define POW_SM(_r, _s)     (((_r) & 0x3f) << (_s))
 #define N(a)            (sizeof (a) / sizeof (a[0]))
@@ -1504,14 +807,14 @@ ar5416SetTransmitPower(struct ath_hal *ah, HAL_CHANNEL_INTERNAL *chan, uint16_t 
     HALASSERT(AH_PRIVATE(ah)->ah_eeversion >= AR_EEPROM_VER14_1);
 
     /* Setup info for the actual eeprom */
-    ath_hal_memzero(ratesArray, sizeof(ratesArray));
-    cfgCtl = ath_hal_getctl(ah, (HAL_CHANNEL *)chan);
-    powerLimit = chan->maxRegTxPower * 2;
-    twiceAntennaReduction = chan->antennaMax;
+    OS_MEMZERO(ratesArray, sizeof(ratesArray));
+    cfgCtl = ath_hal_getctl(ah, chan);
+    powerLimit = chan->ic_maxregpower * 2;
+    twiceAntennaReduction = chan->ic_maxantgain;
     twiceMaxRegulatoryPower = AH_MIN(MAX_RATE_POWER, AH_PRIVATE(ah)->ah_powerLimit); 
-    pModal = &pEepData->modalHeader[IS_CHAN_2GHZ(chan)];
+    pModal = &pEepData->modalHeader[IEEE80211_IS_CHAN_2GHZ(chan)];
     HALDEBUG(ah, HAL_DEBUG_RESET, "%s Channel=%u CfgCtl=%u\n",
-	__func__,chan->channel, cfgCtl );      
+	__func__,chan->ic_freq, cfgCtl );      
   
     if (IS_EEP_MINOR_V2(ah)) {
         ht40PowerIncForPdadc = pModal->ht40PowerIncForPdadc;
@@ -1534,11 +837,11 @@ ar5416SetTransmitPower(struct ath_hal *ah, HAL_CHANNEL_INTERNAL *chan, uint16_t 
   
     maxPower = AH_MAX(ratesArray[rate6mb], ratesArray[rateHt20_0]);
 
-    if (IS_CHAN_2GHZ(chan)) {
+    if (IEEE80211_IS_CHAN_2GHZ(chan)) {
         maxPower = AH_MAX(maxPower, ratesArray[rate1l]);
     }
 
-    if (IS_CHAN_HT40(chan)) {
+    if (IEEE80211_IS_CHAN_HT40(chan)) {
         maxPower = AH_MAX(maxPower, ratesArray[rateHt40_0]);
     }
 
@@ -1574,7 +877,7 @@ ar5416SetTransmitPower(struct ath_hal *ah, HAL_CHANNEL_INTERNAL *chan, uint16_t 
           | POW_SM(ratesArray[rate24mb], 0)
     );
 
-    if (IS_CHAN_2GHZ(chan)) {
+    if (IEEE80211_IS_CHAN_2GHZ(chan)) {
         /* Write the CCK power per rate set */
         OS_REG_WRITE(ah, AR_PHY_POWER_TX_RATE3,
             POW_SM(ratesArray[rate2s], 24)
@@ -1608,7 +911,7 @@ ar5416SetTransmitPower(struct ath_hal *ah, HAL_CHANNEL_INTERNAL *chan, uint16_t 
           | POW_SM(ratesArray[rateHt20_4], 0)
     );
 
-    if (IS_CHAN_HT40(chan)) {
+    if (IEEE80211_IS_CHAN_HT40(chan)) {
         /* Write the HT40 power per rate set */
 	/* Correct PAR difference between HT40 and HT20/LEGACY */
         OS_REG_WRITE(ah, AR_PHY_POWER_TX_RATE7,
@@ -1681,21 +984,14 @@ ar5416PhyDisable(struct ath_hal *ah)
 HAL_BOOL
 ar5416SetResetReg(struct ath_hal *ah, uint32_t type)
 {
-	/*
-	 * Set force wake
-	 */
-	OS_REG_WRITE(ah, AR_RTC_FORCE_WAKE,
-	     AR_RTC_FORCE_WAKE_EN | AR_RTC_FORCE_WAKE_ON_INT);
-
 	switch (type) {
 	case HAL_RESET_POWER_ON:
 		return ar5416SetResetPowerOn(ah);
-		break;
 	case HAL_RESET_WARM:
 	case HAL_RESET_COLD:
 		return ar5416SetReset(ah, type);
-		break;
 	default:
+		HALASSERT(AH_FALSE);
 		return AH_FALSE;
 	}
 }
@@ -1738,7 +1034,7 @@ ar5416SetResetPowerOn(struct ath_hal *ah)
 static HAL_BOOL
 ar5416SetReset(struct ath_hal *ah, int type)
 {
-    uint32_t tmpReg;
+    uint32_t tmpReg, mask;
 
     /*
      * Force wake
@@ -1764,11 +1060,11 @@ ar5416SetReset(struct ath_hal *ah, int type)
     case HAL_RESET_WARM:
             OS_REG_WRITE(ah, AR_RTC_RC, AR_RTC_RC_MAC_WARM);
             break;
-        case HAL_RESET_COLD:
+    case HAL_RESET_COLD:
             OS_REG_WRITE(ah, AR_RTC_RC, AR_RTC_RC_MAC_WARM|AR_RTC_RC_MAC_COLD);
             break;
-        default:
-            HALASSERT(0);
+    default:
+            HALASSERT(AH_FALSE);
             break;
     }
 
@@ -1784,23 +1080,22 @@ ar5416SetReset(struct ath_hal *ah, int type)
     /* Clear AHB reset */
     OS_REG_WRITE(ah, AR_RC, 0);
 
-   /* Set register and descriptor swapping on 
-    * Bigendian platforms on cold reset 
-    */
-#ifdef __BIG_ENDIAN__
-    if (type == HAL_RESET_COLD) {
-    		uint32_t	mask;
-		
-		HALDEBUG(ah, HAL_DEBUG_RESET,
-		    "%s Applying descriptor swap\n", __func__);
-
-		mask = INIT_CONFIG_STATUS | AR_CFG_SWRD | AR_CFG_SWRG;
+	if (type == HAL_RESET_COLD) {
+		if (isBigEndian()) {
+			/*
+			 * Set CFG, little-endian for register
+			 * and descriptor accesses.
+			 */
+			mask = INIT_CONFIG_STATUS | AR_CFG_SWRD | AR_CFG_SWRG;
 #ifndef AH_NEED_DESC_SWAP
-		mask |= AR_CFG_SWTD;
+			mask |= AR_CFG_SWTD;
 #endif
-		OS_REG_WRITE(ah, AR_CFG, LE_READ_4(&mask));
+			HALDEBUG(ah, HAL_DEBUG_RESET,
+			    "%s Applying descriptor swap\n", __func__);
+			OS_REG_WRITE(ah, AR_CFG, LE_READ_4(&mask));
+		} else
+			OS_REG_WRITE(ah, AR_CFG, INIT_CONFIG_STATUS);
 	}
-#endif
 
     ar5416InitPLL(ah, AH_NULL);
 
@@ -1812,62 +1107,57 @@ ar5416SetReset(struct ath_hal *ah, int type)
 #endif
 
 static void
-ar5416InitPLL(struct ath_hal *ah, HAL_CHANNEL *chan)
+ar5416InitPLL(struct ath_hal *ah, const struct ieee80211_channel *chan)
 {
 	uint32_t pll;
 
-	if (AR_SREV_MERLIN_10_OR_LATER(ah)) {
+	if (AR_SREV_MERLIN_20(ah) &&
+	    chan != AH_NULL && IEEE80211_IS_CHAN_5GHZ(chan)) {
+		/*
+		 * PLL WAR for Merlin 2.0/2.1
+		 * When doing fast clock, set PLL to 0x142c
+		 * Else, set PLL to 0x2850 to prevent reset-to-reset variation 
+		 */
+		pll = IS_5GHZ_FAST_CLOCK_EN(ah, chan) ? 0x142c : 0x2850;
+	} else if (AR_SREV_MERLIN_10_OR_LATER(ah)) {
 		pll = SM(0x5, AR_RTC_SOWL_PLL_REFDIV);
-
-		if (chan != AH_NULL && IS_CHAN_HALF_RATE(chan)) {
-			pll |= SM(0x1, AR_RTC_SOWL_PLL_CLKSEL);
-		} else if (chan && IS_CHAN_QUARTER_RATE(chan)) {
-			pll |= SM(0x2, AR_RTC_SOWL_PLL_CLKSEL);
-		}
-		if (chan != AH_NULL && IS_CHAN_5GHZ(chan)) {
-			pll |= SM(0x28, AR_RTC_SOWL_PLL_DIV);
-
-			/*
-			 * PLL WAR for Merlin 2.0/2.1
-			 * When doing fast clock, set PLL to 0x142c
-			 * Else, set PLL to 0x2850 to prevent reset-to-reset variation 
-			 */
-			if (AR_SREV_MERLIN_20(ah)) {
-				if (IS_5GHZ_FAST_CLOCK_EN(ah, chan)) {
-					pll = 0x142c;
-				} else {
-					pll = 0x2850;
-				}
-			}
-		} else {
+		if (chan != AH_NULL) {
+			if (IEEE80211_IS_CHAN_HALF(chan))
+				pll |= SM(0x1, AR_RTC_SOWL_PLL_CLKSEL);
+			else if (IEEE80211_IS_CHAN_QUARTER(chan))
+				pll |= SM(0x2, AR_RTC_SOWL_PLL_CLKSEL);
+			else if (IEEE80211_IS_CHAN_5GHZ(chan))
+				pll |= SM(0x28, AR_RTC_SOWL_PLL_DIV);
+			else
+				pll |= SM(0x2c, AR_RTC_SOWL_PLL_DIV);
+		} else
 			pll |= SM(0x2c, AR_RTC_SOWL_PLL_DIV);
-		}
 	} else if (AR_SREV_SOWL_10_OR_LATER(ah)) {
 		pll = SM(0x5, AR_RTC_SOWL_PLL_REFDIV);
-
-		if (chan != AH_NULL && IS_CHAN_HALF_RATE(chan)) {
-			pll |= SM(0x1, AR_RTC_SOWL_PLL_CLKSEL);
-		} else if (chan && IS_CHAN_QUARTER_RATE(chan)) {
-			pll |= SM(0x2, AR_RTC_SOWL_PLL_CLKSEL);
-		}
-		if (chan != AH_NULL && IS_CHAN_5GHZ(chan)) {
-			pll |= SM(0x50, AR_RTC_SOWL_PLL_DIV);
-		} else {
+		if (chan != AH_NULL) {
+			if (IEEE80211_IS_CHAN_HALF(chan))
+				pll |= SM(0x1, AR_RTC_SOWL_PLL_CLKSEL);
+			else if (IEEE80211_IS_CHAN_QUARTER(chan))
+				pll |= SM(0x2, AR_RTC_SOWL_PLL_CLKSEL);
+			else if (IEEE80211_IS_CHAN_5GHZ(chan))
+				pll |= SM(0x50, AR_RTC_SOWL_PLL_DIV);
+			else
+				pll |= SM(0x58, AR_RTC_SOWL_PLL_DIV);
+		} else
 			pll |= SM(0x58, AR_RTC_SOWL_PLL_DIV);
-		}
 	} else {
 		pll = AR_RTC_PLL_REFDIV_5 | AR_RTC_PLL_DIV2;
-
-		if (chan != AH_NULL && IS_CHAN_HALF_RATE(chan)) {
-			pll |= SM(0x1, AR_RTC_PLL_CLKSEL);
-		} else if (chan != AH_NULL && IS_CHAN_QUARTER_RATE(chan)) {
-			pll |= SM(0x2, AR_RTC_PLL_CLKSEL);
-		}
-		if (chan != AH_NULL && IS_CHAN_5GHZ(chan)) {
-			pll |= SM(0xa, AR_RTC_PLL_DIV);
-		} else {
+		if (chan != AH_NULL) {
+			if (IEEE80211_IS_CHAN_HALF(chan))
+				pll |= SM(0x1, AR_RTC_PLL_CLKSEL);
+			else if (IEEE80211_IS_CHAN_QUARTER(chan))
+				pll |= SM(0x2, AR_RTC_PLL_CLKSEL);
+			else if (IEEE80211_IS_CHAN_5GHZ(chan))
+				pll |= SM(0xa, AR_RTC_PLL_DIV);
+			else
+				pll |= SM(0xb, AR_RTC_PLL_DIV);
+		} else
 			pll |= SM(0xb, AR_RTC_PLL_DIV);
-		}
 	}
 	OS_REG_WRITE(ah, AR_RTC_PLL_CONTROL, pll);
 
@@ -1884,8 +1174,8 @@ ar5416InitPLL(struct ath_hal *ah, HAL_CHANNEL *chan)
  * Read EEPROM header info and program the device for correct operation
  * given the channel value.
  */
-static HAL_BOOL
-ar5416SetBoardValues(struct ath_hal *ah, HAL_CHANNEL_INTERNAL *chan)
+HAL_BOOL
+ar5416SetBoardValues(struct ath_hal *ah, const struct ieee80211_channel *chan)
 {
     const HAL_EEPROM_v14 *ee = AH_PRIVATE(ah)->ah_eeprom;
     const struct ar5416eeprom *eep = &ee->ee_base;
@@ -1894,9 +1184,10 @@ ar5416SetBoardValues(struct ath_hal *ah, HAL_CHANNEL_INTERNAL *chan)
     uint8_t		txRxAttenLocal;    /* workaround for eeprom versions <= 14.2 */
 
     HALASSERT(AH_PRIVATE(ah)->ah_eeversion >= AR_EEPROM_VER14_1);
-    pModal = &(eep->modalHeader[IS_CHAN_2GHZ(chan)]);
+    pModal = &eep->modalHeader[IEEE80211_IS_CHAN_2GHZ(chan)];
 
-    txRxAttenLocal = IS_CHAN_2GHZ(chan) ? 23 : 44;    /* workaround for eeprom versions <= 14.2 */
+    /* NB: workaround for eeprom versions <= 14.2 */
+    txRxAttenLocal = IEEE80211_IS_CHAN_2GHZ(chan) ? 23 : 44;
 
     OS_REG_WRITE(ah, AR_PHY_SWITCH_COM, pModal->antCtrlCommon);
     for (i = 0; i < AR5416_MAX_CHAINS; i++) { 
@@ -1968,7 +1259,7 @@ ar5416SetBoardValues(struct ath_hal *ah, HAL_CHANNEL_INTERNAL *chan)
     }	
     
     if (IS_EEP_MINOR_V3(ah)) {
-	if (IS_CHAN_HT40(chan)) {
+	if (IEEE80211_IS_CHAN_HT40(chan)) {
 		/* Overwrite switch settling with HT40 value */
 		OS_REG_RMW_FIELD(ah, AR_PHY_SETTLING, AR_PHY_SETTLING_SWITCH, pModal->swSettleHt40);
 	}
@@ -2012,7 +1303,7 @@ ar5416SetBoardValues(struct ath_hal *ah, HAL_CHANNEL_INTERNAL *chan)
  */
 static HAL_BOOL
 ar5416SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom *pEepData,
-                           HAL_CHANNEL_INTERNAL *chan,
+                           const struct ieee80211_channel *chan,
                            int16_t *ratesArray, uint16_t cfgCtl,
                            uint16_t AntennaReduction, 
                            uint16_t twiceMaxRegulatoryPower,
@@ -2050,29 +1341,30 @@ ar5416SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom *pEepData,
 
 	/* Compute TxPower reduction due to Antenna Gain */
 
-	twiceLargestAntenna = AH_MAX(AH_MAX(pEepData->modalHeader[IS_CHAN_2GHZ(chan)].antennaGainCh[0],
-					pEepData->modalHeader[IS_CHAN_2GHZ(chan)].antennaGainCh[1]),
-					pEepData->modalHeader[IS_CHAN_2GHZ(chan)].antennaGainCh[2]);
+	twiceLargestAntenna = AH_MAX(AH_MAX(
+	    pEepData->modalHeader[IEEE80211_IS_CHAN_2GHZ(chan)].antennaGainCh[0],
+	    pEepData->modalHeader[IEEE80211_IS_CHAN_2GHZ(chan)].antennaGainCh[1]),
+	    pEepData->modalHeader[IEEE80211_IS_CHAN_2GHZ(chan)].antennaGainCh[2]);
 #if 0
 	/* Turn it back on if we need to calculate per chain antenna gain reduction */
 	/* Use only if the expected gain > 6dbi */
 	/* Chain 0 is always used */
-	twiceLargestAntenna = pEepData->modalHeader[IS_CHAN_2GHZ(chan)].antennaGainCh[0];
+	twiceLargestAntenna = pEepData->modalHeader[IEEE80211_IS_CHAN_2GHZ(chan)].antennaGainCh[0];
 
 	/* Look at antenna gains of Chains 1 and 2 if the TX mask is set */
 	if (ahp->ah_tx_chainmask & 0x2)
 		twiceLargestAntenna = AH_MAX(twiceLargestAntenna,
-			pEepData->modalHeader[IS_CHAN_2GHZ(chan)].antennaGainCh[1]);
+			pEepData->modalHeader[IEEE80211_IS_CHAN_2GHZ(chan)].antennaGainCh[1]);
 
 	if (ahp->ah_tx_chainmask & 0x4)
 		twiceLargestAntenna = AH_MAX(twiceLargestAntenna,
-			pEepData->modalHeader[IS_CHAN_2GHZ(chan)].antennaGainCh[2]);
+			pEepData->modalHeader[IEEE80211_IS_CHAN_2GHZ(chan)].antennaGainCh[2]);
 #endif
 	twiceLargestAntenna = (int16_t)AH_MIN((AntennaReduction) - twiceLargestAntenna, 0);
 
 	/* XXX setup for 5212 use (really used?) */
 	ath_hal_eepromSet(ah,
-	    IS_CHAN_2GHZ(chan) ? AR_EEP_ANTGAINMAX_2 : AR_EEP_ANTGAINMAX_5,
+	    IEEE80211_IS_CHAN_2GHZ(chan) ? AR_EEP_ANTGAINMAX_2 : AR_EEP_ANTGAINMAX_5,
 	    twiceLargestAntenna);
 
 	/* 
@@ -2087,10 +1379,10 @@ ar5416SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom *pEepData,
 	case 1:
 		break;
 	case 2:
-		scaledPower -= pEepData->modalHeader[IS_CHAN_2GHZ(chan)].pwrDecreaseFor2Chain;
+		scaledPower -= pEepData->modalHeader[IEEE80211_IS_CHAN_2GHZ(chan)].pwrDecreaseFor2Chain;
 		break;
 	case 3:
-		scaledPower -= pEepData->modalHeader[IS_CHAN_2GHZ(chan)].pwrDecreaseFor3Chain;
+		scaledPower -= pEepData->modalHeader[IEEE80211_IS_CHAN_2GHZ(chan)].pwrDecreaseFor3Chain;
 		break;
 	default:
 		return AH_FALSE; /* Unsupported number of chains */
@@ -2099,7 +1391,7 @@ ar5416SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom *pEepData,
 	scaledPower = AH_MAX(0, scaledPower);
 
 	/* Get target powers from EEPROM - our baseline for TX Power */
-	if (IS_CHAN_2GHZ(chan)) {
+	if (IEEE80211_IS_CHAN_2GHZ(chan)) {
 		/* Setup for CTL modes */
 		numCtlModes = N(ctlModesFor11g) - SUB_NUM_CTL_MODES_AT_2G_40; /* CTL_11B, CTL_11G, CTL_2GHT20 */
 		pCtlMode = ctlModesFor11g;
@@ -2111,7 +1403,7 @@ ar5416SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom *pEepData,
 		ar5416GetTargetPowers(ah,  chan, pEepData->calTargetPower2GHT20,
 				AR5416_NUM_2G_20_TARGET_POWERS, &targetPowerHt20, 8, AH_FALSE);
 
-		if (IS_CHAN_HT40(chan)) {
+		if (IEEE80211_IS_CHAN_HT40(chan)) {
 			numCtlModes = N(ctlModesFor11g);    /* All 2G CTL's */
 
 			ar5416GetTargetPowers(ah,  chan, pEepData->calTargetPower2GHT40,
@@ -2132,7 +1424,7 @@ ar5416SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom *pEepData,
 		ar5416GetTargetPowers(ah,  chan, pEepData->calTargetPower5GHT20,
 				AR5416_NUM_5G_20_TARGET_POWERS, &targetPowerHt20, 8, AH_FALSE);
 
-		if (IS_CHAN_HT40(chan)) {
+		if (IEEE80211_IS_CHAN_HT40(chan)) {
 			numCtlModes = N(ctlModesFor11a); /* All 5G CTL's */
 
 			ar5416GetTargetPowers(ah,  chan, pEepData->calTargetPower5GHT40,
@@ -2152,9 +1444,8 @@ ar5416SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom *pEepData,
 	 *
 	 */
 	for (ctlMode = 0; ctlMode < numCtlModes; ctlMode++) {
-
 		HAL_BOOL isHt40CtlMode = (pCtlMode[ctlMode] == CTL_5GHT40) ||
-								 (pCtlMode[ctlMode] == CTL_2GHT40);
+		    (pCtlMode[ctlMode] == CTL_2GHT40);
 		if (isHt40CtlMode) {
 			freq = centers.ctl_center;
 		} else if (pCtlMode[ctlMode] & EXT_ADDITIVE) {
@@ -2174,7 +1465,7 @@ ar5416SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom *pEepData,
 				rep = &(pEepData->ctlData[i]);
 				twiceMinEdgePower = ar5416GetMaxEdgePower(freq,
 							rep->ctlEdges[owl_get_ntxchains(AH5416(ah)->ah_tx_chainmask) - 1],
-							IS_CHAN_2GHZ(chan));
+							IEEE80211_IS_CHAN_2GHZ(chan));
 				if ((cfgCtl & ~CTL_MODE_M) == SD_NO_CTL) {
 					/* Find the minimum of all CTL edge powers that apply to this channel */
 					twiceMaxEdgePower = AH_MIN(twiceMaxEdgePower, twiceMinEdgePower);
@@ -2235,20 +1526,20 @@ ar5416SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom *pEepData,
 		ratesArray[rateHt20_0 + i] = targetPowerHt20.tPow2x[i];
 	}
 
-	if (IS_CHAN_2GHZ(chan)) {
+	if (IEEE80211_IS_CHAN_2GHZ(chan)) {
 		ratesArray[rate1l]  = targetPowerCck.tPow2x[0];
 		ratesArray[rate2s] = ratesArray[rate2l]  = targetPowerCck.tPow2x[1];
 		ratesArray[rate5_5s] = ratesArray[rate5_5l] = targetPowerCck.tPow2x[2];
 		ratesArray[rate11s] = ratesArray[rate11l] = targetPowerCck.tPow2x[3];
 	}
-	if (IS_CHAN_HT40(chan)) {
+	if (IEEE80211_IS_CHAN_HT40(chan)) {
 		for (i = 0; i < N(targetPowerHt40.tPow2x); i++) {
 			ratesArray[rateHt40_0 + i] = targetPowerHt40.tPow2x[i];
 		}
 		ratesArray[rateDupOfdm] = targetPowerHt40.tPow2x[0];
 		ratesArray[rateDupCck]  = targetPowerHt40.tPow2x[0];
 		ratesArray[rateExtOfdm] = targetPowerOfdmExt.tPow2x[0];
-		if (IS_CHAN_2GHZ(chan)) {
+		if (IEEE80211_IS_CHAN_2GHZ(chan)) {
 			ratesArray[rateExtCck]  = targetPowerCckExt.tPow2x[0];
 		}
 	}
@@ -2320,8 +1611,8 @@ ar5416GetMaxEdgePower(uint16_t freq, CAL_CTL_EDGES *pRdEdgesPower, HAL_BOOL is2G
  * Return the rates of target power for the given target power table
  * channel, and number of channels
  */
-static void
-ar5416GetTargetPowers(struct ath_hal *ah,  HAL_CHANNEL_INTERNAL *chan,
+void
+ar5416GetTargetPowers(struct ath_hal *ah,  const struct ieee80211_channel *chan,
                       CAL_TARGET_POWER_HT *powInfo, uint16_t numChannels,
                       CAL_TARGET_POWER_HT *pNewPower, uint16_t numRates,
                       HAL_BOOL isHt40Target)
@@ -2336,22 +1627,22 @@ ar5416GetTargetPowers(struct ath_hal *ah,  HAL_CHANNEL_INTERNAL *chan,
     freq = isHt40Target ? centers.synth_center : centers.ctl_center;
 
     /* Copy the target powers into the temp channel list */
-    if (freq <= fbin2freq(powInfo[0].bChannel, IS_CHAN_2GHZ(chan))) {
+    if (freq <= fbin2freq(powInfo[0].bChannel, IEEE80211_IS_CHAN_2GHZ(chan))) {
         matchIndex = 0;
     } else {
         for (i = 0; (i < numChannels) && (powInfo[i].bChannel != AR5416_BCHAN_UNUSED); i++) {
-            if (freq == fbin2freq(powInfo[i].bChannel, IS_CHAN_2GHZ(chan))) {
+            if (freq == fbin2freq(powInfo[i].bChannel, IEEE80211_IS_CHAN_2GHZ(chan))) {
                 matchIndex = i;
                 break;
-            } else if ((freq < fbin2freq(powInfo[i].bChannel, IS_CHAN_2GHZ(chan))) &&
-                       (freq > fbin2freq(powInfo[i - 1].bChannel, IS_CHAN_2GHZ(chan))))
+            } else if ((freq < fbin2freq(powInfo[i].bChannel, IEEE80211_IS_CHAN_2GHZ(chan))) &&
+                       (freq > fbin2freq(powInfo[i - 1].bChannel, IEEE80211_IS_CHAN_2GHZ(chan))))
             {
                 lowIndex = i - 1;
                 break;
             }
         }
         if ((matchIndex == -1) && (lowIndex == -1)) {
-            HALASSERT(freq > fbin2freq(powInfo[i - 1].bChannel, IS_CHAN_2GHZ(chan)));
+            HALASSERT(freq > fbin2freq(powInfo[i - 1].bChannel, IEEE80211_IS_CHAN_2GHZ(chan)));
             matchIndex = i - 1;
         }
     }
@@ -2364,8 +1655,8 @@ ar5416GetTargetPowers(struct ath_hal *ah,  HAL_CHANNEL_INTERNAL *chan,
          * Get the lower and upper channels, target powers,
          * and interpolate between them.
          */
-        clo = fbin2freq(powInfo[lowIndex].bChannel, IS_CHAN_2GHZ(chan));
-        chi = fbin2freq(powInfo[lowIndex + 1].bChannel, IS_CHAN_2GHZ(chan));
+        clo = fbin2freq(powInfo[lowIndex].bChannel, IEEE80211_IS_CHAN_2GHZ(chan));
+        chi = fbin2freq(powInfo[lowIndex + 1].bChannel, IEEE80211_IS_CHAN_2GHZ(chan));
 
         for (i = 0; i < numRates; i++) {
             pNewPower->tPow2x[i] = (uint8_t)interpolate(freq, clo, chi,
@@ -2379,9 +1670,9 @@ ar5416GetTargetPowers(struct ath_hal *ah,  HAL_CHANNEL_INTERNAL *chan,
  * Return the four rates of target power for the given target power table
  * channel, and number of channels
  */
-static void
+void
 ar5416GetTargetPowersLeg(struct ath_hal *ah, 
-                         HAL_CHANNEL_INTERNAL *chan,
+                         const struct ieee80211_channel *chan,
                          CAL_TARGET_POWER_LEG *powInfo, uint16_t numChannels,
                          CAL_TARGET_POWER_LEG *pNewPower, uint16_t numRates,
 			 HAL_BOOL isExtTarget)
@@ -2396,22 +1687,22 @@ ar5416GetTargetPowersLeg(struct ath_hal *ah,
     freq = (isExtTarget) ? centers.ext_center :centers.ctl_center;
 
     /* Copy the target powers into the temp channel list */
-    if (freq <= fbin2freq(powInfo[0].bChannel, IS_CHAN_2GHZ(chan))) {
+    if (freq <= fbin2freq(powInfo[0].bChannel, IEEE80211_IS_CHAN_2GHZ(chan))) {
         matchIndex = 0;
     } else {
         for (i = 0; (i < numChannels) && (powInfo[i].bChannel != AR5416_BCHAN_UNUSED); i++) {
-            if (freq == fbin2freq(powInfo[i].bChannel, IS_CHAN_2GHZ(chan))) {
+            if (freq == fbin2freq(powInfo[i].bChannel, IEEE80211_IS_CHAN_2GHZ(chan))) {
                 matchIndex = i;
                 break;
-            } else if ((freq < fbin2freq(powInfo[i].bChannel, IS_CHAN_2GHZ(chan))) &&
-                       (freq > fbin2freq(powInfo[i - 1].bChannel, IS_CHAN_2GHZ(chan))))
+            } else if ((freq < fbin2freq(powInfo[i].bChannel, IEEE80211_IS_CHAN_2GHZ(chan))) &&
+                       (freq > fbin2freq(powInfo[i - 1].bChannel, IEEE80211_IS_CHAN_2GHZ(chan))))
             {
                 lowIndex = i - 1;
                 break;
             }
         }
         if ((matchIndex == -1) && (lowIndex == -1)) {
-            HALASSERT(freq > fbin2freq(powInfo[i - 1].bChannel, IS_CHAN_2GHZ(chan)));
+            HALASSERT(freq > fbin2freq(powInfo[i - 1].bChannel, IEEE80211_IS_CHAN_2GHZ(chan)));
             matchIndex = i - 1;
         }
     }
@@ -2424,8 +1715,8 @@ ar5416GetTargetPowersLeg(struct ath_hal *ah,
          * Get the lower and upper channels, target powers,
          * and interpolate between them.
          */
-        clo = fbin2freq(powInfo[lowIndex].bChannel, IS_CHAN_2GHZ(chan));
-        chi = fbin2freq(powInfo[lowIndex + 1].bChannel, IS_CHAN_2GHZ(chan));
+        clo = fbin2freq(powInfo[lowIndex].bChannel, IEEE80211_IS_CHAN_2GHZ(chan));
+        chi = fbin2freq(powInfo[lowIndex + 1].bChannel, IEEE80211_IS_CHAN_2GHZ(chan));
 
         for (i = 0; i < numRates; i++) {
             pNewPower->tPow2x[i] = (uint8_t)interpolate(freq, clo, chi,
@@ -2442,7 +1733,8 @@ ar5416GetTargetPowersLeg(struct ath_hal *ah,
  * linear voltage to power level table.
  */
 static HAL_BOOL
-ar5416SetPowerCalTable(struct ath_hal *ah, struct ar5416eeprom *pEepData, HAL_CHANNEL_INTERNAL *chan, int16_t *pTxPowerIndexOffset)
+ar5416SetPowerCalTable(struct ath_hal *ah, struct ar5416eeprom *pEepData,
+	const struct ieee80211_channel *chan, int16_t *pTxPowerIndexOffset)
 {
     CAL_DATA_PER_FREQ *pRawDataset;
     uint8_t  *pCalBChans = AH_NULL;
@@ -2455,17 +1747,17 @@ ar5416SetPowerCalTable(struct ath_hal *ah, struct ar5416eeprom *pEepData, HAL_CH
     uint16_t xpdGainValues[AR5416_NUM_PD_GAINS];
     uint32_t reg32, regOffset, regChainOffset;
 
-    ath_hal_memzero(xpdGainValues, sizeof(xpdGainValues));
+    OS_MEMZERO(xpdGainValues, sizeof(xpdGainValues));
     
-    xpdMask = pEepData->modalHeader[IS_CHAN_2GHZ(chan)].xpdGain;
+    xpdMask = pEepData->modalHeader[IEEE80211_IS_CHAN_2GHZ(chan)].xpdGain;
 
     if (IS_EEP_MINOR_V2(ah)) {
-        pdGainOverlap_t2 = pEepData->modalHeader[IS_CHAN_2GHZ(chan)].pdGainOverlap;
+        pdGainOverlap_t2 = pEepData->modalHeader[IEEE80211_IS_CHAN_2GHZ(chan)].pdGainOverlap;
     } else { 
     	pdGainOverlap_t2 = (uint16_t)(MS(OS_REG_READ(ah, AR_PHY_TPCRG5), AR_PHY_TPCRG5_PD_GAIN_OVERLAP));
     }
 
-    if (IS_CHAN_2GHZ(chan)) {
+    if (IEEE80211_IS_CHAN_2GHZ(chan)) {
         pCalBChans = pEepData->calFreqPier2G;
         numPiers = AR5416_NUM_2G_CAL_PIERS;
     } else {
@@ -2505,7 +1797,7 @@ ar5416SetPowerCalTable(struct ath_hal *ah, struct ar5416eeprom *pEepData, HAL_CH
         }
 
         if (pEepData->baseEepHeader.txMask & (1 << i)) {
-            if (IS_CHAN_2GHZ(chan)) {
+            if (IEEE80211_IS_CHAN_2GHZ(chan)) {
                 pRawDataset = pEepData->calPierData2G[i];
             } else {
                 pRawDataset = pEepData->calPierData5G[i];
@@ -2567,7 +1859,8 @@ ar5416SetPowerCalTable(struct ath_hal *ah, struct ar5416eeprom *pEepData, HAL_CH
  */
 static void
 ar5416GetGainBoundariesAndPdadcs(struct ath_hal *ah, 
-                                 HAL_CHANNEL_INTERNAL *chan, CAL_DATA_PER_FREQ *pRawDataSet,
+                                 const struct ieee80211_channel *chan,
+				 CAL_DATA_PER_FREQ *pRawDataSet,
                                  uint8_t * bChans,  uint16_t availPiers,
                                  uint16_t tPdGainOverlap, int16_t *pMinCalPower, uint16_t * pPdGainBoundaries,
                                  uint8_t * pPDADCValues, uint16_t numXpdGains)
@@ -2606,7 +1899,7 @@ ar5416GetGainBoundariesAndPdadcs(struct ath_hal *ah,
     }
 
     /* Find pier indexes around the current channel */
-    match = getLowerUpperIndex((uint8_t)FREQ2FBIN(centers.synth_center, IS_CHAN_2GHZ(chan)),
+    match = getLowerUpperIndex((uint8_t)FREQ2FBIN(centers.synth_center, IEEE80211_IS_CHAN_2GHZ(chan)),
 			bChans, numPiers, &idxL, &idxR);
 
     if (match) {
@@ -2637,7 +1930,7 @@ ar5416GetGainBoundariesAndPdadcs(struct ath_hal *ah,
 
             /* Interpolate the final vpd */
             for (j = 0; j <= (maxPwrT4[i] - minPwrT4[i]) / 2; j++) {
-                vpdTableI[i][j] = (uint8_t)(interpolate((uint16_t)FREQ2FBIN(centers.synth_center, IS_CHAN_2GHZ(chan)),
+                vpdTableI[i][j] = (uint8_t)(interpolate((uint16_t)FREQ2FBIN(centers.synth_center, IEEE80211_IS_CHAN_2GHZ(chan)),
                     bChans[idxL], bChans[idxR], vpdTableL[i][j], vpdTableR[i][j]));
             }
         }
@@ -2771,6 +2064,7 @@ getLowerUpperIndex(uint8_t target, uint8_t *pList, uint16_t listSize,
         }
     }
     HALASSERT(0);
+    *indexL = *indexR = 0;
     return AH_FALSE;
 }
 
@@ -2830,12 +2124,12 @@ interpolate(uint16_t target, uint16_t srcLeft, uint16_t srcRight,
 }
 
 static void
-ar5416Set11nRegs(struct ath_hal *ah, HAL_CHANNEL *chan)
+ar5416Set11nRegs(struct ath_hal *ah, const struct ieee80211_channel *chan)
 {
 	uint32_t phymode;
 	HAL_HT_MACMODE macmode;		/* MAC - 20/40 mode */
 
-	if (!IS_CHAN_HT(chan))
+	if (!IEEE80211_IS_CHAN_HT(chan))
 		return;
 
 	/* Enable 11n HT, 20 MHz */
@@ -2843,11 +2137,11 @@ ar5416Set11nRegs(struct ath_hal *ah, HAL_CHANNEL *chan)
 		| AR_PHY_FC_SINGLE_HT_LTF1 | AR_PHY_FC_WALSH;
 
 	/* Configure baseband for dynamic 20/40 operation */
-	if (IS_CHAN_HT40(chan)) {
+	if (IEEE80211_IS_CHAN_HT40(chan)) {
 		phymode |= AR_PHY_FC_DYN2040_EN | AR_PHY_FC_SHORT_GI_40;
 
 		/* Configure control (primary) channel at +-10MHz */
-		if ((chan->channelFlags & CHANNEL_HT40PLUS))
+		if (IEEE80211_IS_CHAN_HT40U(chan))
 			phymode |= AR_PHY_FC_DYN2040_PRI_CH;
 #if 0
 		/* Configure 20/25 spacing */
@@ -2873,23 +2167,25 @@ ar5416Set11nRegs(struct ath_hal *ah, HAL_CHANNEL *chan)
 
 void
 ar5416GetChannelCenters(struct ath_hal *ah,
-	HAL_CHANNEL_INTERNAL *chan, CHAN_CENTERS *centers)
+	const struct ieee80211_channel *chan, CHAN_CENTERS *centers)
 {
-	centers->ctl_center = chan->channel;
-	centers->synth_center = chan->channel;
+	uint16_t freq = ath_hal_gethwchannel(ah, chan);
+
+	centers->ctl_center = freq;
+	centers->synth_center = freq;
 	/*
 	 * In 20/40 phy mode, the center frequency is
 	 * "between" the control and extension channels.
 	 */
-	if (chan->channelFlags & CHANNEL_HT40PLUS) {
+	if (IEEE80211_IS_CHAN_HT40U(chan)) {
 		centers->synth_center += HT40_CHANNEL_CENTER_SHIFT;
 		centers->ext_center =
 		    centers->synth_center + HT40_CHANNEL_CENTER_SHIFT;
-	} else if (chan->channelFlags & CHANNEL_HT40MINUS) {
+	} else if (IEEE80211_IS_CHAN_HT40D(chan)) {
 		centers->synth_center -= HT40_CHANNEL_CENTER_SHIFT;
 		centers->ext_center =
 		    centers->synth_center - HT40_CHANNEL_CENTER_SHIFT;
 	} else {
-		centers->ext_center = chan->channel;
+		centers->ext_center = freq;
 	}
 }

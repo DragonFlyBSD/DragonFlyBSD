@@ -94,6 +94,12 @@ SRCS+=	ah_eeprom_v14.c \
 SRCS+=	ar9160_attach.c
 # RF backend for 5416 and 9160
 SRCS+=	ar2133.c
+SRCS+=	ar9280_attach.c
+# RF backend for 9280
+SRCS+=	ar9280.c
+SRCS+=	ah_eeprom_v4k.c ar9285_reset.c ar9285_attach.c
+# RF backend for 9285
+SRCS+=	ar9285.c
 
 # NB: rate control is bound to the driver by symbol names so only pick one
 #.if ${ATH_RATE} == "sample"

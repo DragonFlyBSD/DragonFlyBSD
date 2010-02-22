@@ -14,7 +14,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: ar5211_interrupts.c,v 1.6 2008/11/27 22:29:52 sam Exp $
+ * $FreeBSD: head/sys/dev/ath/ath_hal/ar5211/ar5211_interrupts.c 192397 2009-05-19 17:35:15Z sam $
+ * $DragonFly$
  */
 #include "opt_ah.h"
 

@@ -14,7 +14,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: ar5416_misc.c,v 1.12 2008/11/27 22:30:07 sam Exp $
+ * $FreeBSD: head/sys/dev/ath/ath_hal/ar5416/ar5416_misc.c 203750 2010-02-10 11:11:37Z rpaulo $
+ * $DragonFly$
  */
 #include "opt_ah.h"
 
@@ -30,7 +31,7 @@
 #include "ar5416/ar5416phy.h"
 
 /*
- * Return the wireless modes (a,b,g,t) supported by hardware.
+ * Return the wireless modes (a,b,g,n,t) supported by hardware.
  *
  * This value is what is actually supported by the hardware
  * and is unaffected by regulatory/country code settings.

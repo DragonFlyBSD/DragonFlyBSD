@@ -14,7 +14,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: ah_eeprom_v14.h,v 1.3 2008/11/10 04:08:00 sam Exp $
+ * $FreeBSD: head/sys/dev/ath/ath_hal/ah_eeprom_v14.h 203682 2010-02-08 20:12:01Z rpaulo $
+ * $DragonFly$
  */
 #ifndef _AH_EEPROM_V14_H_
 #define _AH_EEPROM_V14_H_
@@ -76,6 +77,7 @@
 #define AR5416_EEPMISC_BIG_ENDIAN    	0x01
 #define FREQ2FBIN(x,y) 			((y) ? ((x) - 2300) : (((x) - 4800) / 5))
 #define AR5416_MAX_CHAINS            	3
+#define	AR5416_PWR_TABLE_OFFSET_DB	-5
 #define AR5416_ANT_16S               	25
 
 #define AR5416_NUM_ANT_CHAIN_FIELDS     7

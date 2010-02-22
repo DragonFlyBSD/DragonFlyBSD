@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2002-2006 Sam Leffler, Errno Consulting
+ * Copyright (c) 2002-2008 Sam Leffler, Errno Consulting
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -12,13 +12,6 @@
  *    similar to the "NO WARRANTY" disclaimer below ("Disclaimer") and any
  *    redistribution must be conditioned upon including a substantially
  *    similar Disclaimer requirement for further binary redistribution.
- * 3. Neither the names of the above-listed copyright holders nor the names
- *    of any contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * Alternatively, this software may be distributed under the terms of the
- * GNU General Public License ("GPL") version 2 as published by the Free
- * Software Foundation.
  *
  * NO WARRANTY
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
@@ -33,8 +26,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
- * $FreeBSD: src/sys/dev/ath/ah_osdep.c,v 1.1 2006/09/18 16:49:14 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/hal/ah_osdep.c,v 1.1 2007/02/22 05:17:09 sephe Exp $
+ * $FreeBSD: head/sys/dev/ath/ah_osdep.c 196970 2009-09-08 13:19:05Z phk $
  */
 #include "opt_ah.h"
 
@@ -43,23 +35,15 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/sysctl.h>
+#include <sys/bus.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
-#include <sys/priv.h>
 
 #include <machine/stdarg.h>
-#include <sys/bus.h>
+
 #include <net/ethernet.h>		/* XXX for ether_sprintf */
 
 #include <dev/netif/ath/hal/ath_hal/ah.h>
-
-#define ath_hal_version "081128"
-/*
- * Linker set writearounds for chip and RF backend registration.
- */
-#define OS_DATA_SET(set, item)  DATA_SET(set, item)
-#define OS_SET_DECLARE(set, ptype)      SET_DECLARE(set, ptype)
-#define OS_SET_FOREACH(pvar, set)       SET_FOREACH(pvar, set)
 
 /*
  * WiSoC boards overload the bus tag with information about the
@@ -72,7 +56,7 @@
 #define	BUSTAG(ah) \
 	((bus_space_tag_t) ((struct ar531x_config *)((ah)->ah_st))->tag)
 #else
-#define	BUSTAG(ah)	((bus_space_tag_t) (ah)->ah_st)
+#define	BUSTAG(ah)	((ah)->ah_st)
 #endif
 
 extern	void ath_hal_printf(struct ath_hal *, const char*, ...)
@@ -87,8 +71,7 @@ extern	void ath_hal_assert_failed(const char* filename,
 		int lineno, const char* msg);
 #endif
 #ifdef AH_DEBUG
-extern	void HALDEBUG(struct ath_hal *ah, const char* fmt, ...);
-extern	void HALDEBUGn(struct ath_hal *ah, u_int level, const char* fmt, ...);
+extern	void HALDEBUG(struct ath_hal *ah, u_int mask, const char* fmt, ...);
 #endif /* AH_DEBUG */
 
 /* NB: put this here instead of the driver to avoid circular references */
@@ -101,9 +84,6 @@ SYSCTL_INT(_hw_ath_hal, OID_AUTO, debug, CTLFLAG_RW, &ath_hal_debug,
 	    0, "Atheros HAL debugging printfs");
 TUNABLE_INT("hw.ath.hal.debug", &ath_hal_debug);
 #endif /* AH_DEBUG */
-
-SYSCTL_STRING(_hw_ath_hal, OID_AUTO, version, CTLFLAG_RD, ath_hal_version, 0,
-	"Atheros HAL version");
 
 /* NB: these are deprecated; they exist for now for compatibility */
 int	ath_hal_dma_beacon_response_time = 2;	/* in TU's */
@@ -130,7 +110,7 @@ ath_hal_malloc(size_t size)
 void
 ath_hal_free(void* p)
 {
-	return kfree(p, M_ATH_HAL);
+	kfree(p, M_ATH_HAL);
 }
 
 void
@@ -159,24 +139,13 @@ ath_hal_ether_sprintf(const u_int8_t *mac)
 
 #ifdef AH_DEBUG
 void
-HALDEBUG(struct ath_hal *ah, const char* fmt, ...)
+HALDEBUG(struct ath_hal *ah, u_int mask, const char* fmt, ...)
 {
-	if (ath_hal_debug) {
+	if (ath_hal_debug & mask) {
 		__va_list ap;
 		__va_start(ap, fmt);
 		ath_hal_vprintf(ah, fmt, ap);
 		__va_end(ap);
-	}
-}
-
-void
-HALDEBUGn(struct ath_hal *ah, u_int level, const char* fmt, ...)
-{
-	if (ath_hal_debug >= level) {
-		__va_list ap;
-		va_start(ap, fmt);
-		ath_hal_vprintf(ah, fmt, ap);
-		va_end(ap);
 	}
 }
 #endif /* AH_DEBUG */
@@ -211,21 +180,18 @@ ath_hal_setlogging(int enable)
 	int error;
 
 	if (enable) {
-		error = priv_check(curthread, PRIV_ROOT);
-		if (error == 0) {
-			error = alq_open(&ath_hal_alq, ath_hal_logfile,
-				curthread->td_ucred, ALQ_DEFAULT_CMODE,
-				sizeof (struct athregrec), ath_hal_alq_qsize);
-			ath_hal_alq_lost = 0;
-			ath_hal_alq_emitdev = 1;
-			kprintf("ath_hal: logging to %s enabled\n",
-				ath_hal_logfile);
-		}
+		error = alq_open(&ath_hal_alq, ath_hal_logfile,
+			curthread->td_ucred, ALQ_DEFAULT_CMODE,
+			sizeof (struct athregrec), ath_hal_alq_qsize);
+		ath_hal_alq_lost = 0;
+		ath_hal_alq_emitdev = 1;
+		printf("ath_hal: logging to %s enabled\n",
+			ath_hal_logfile);
 	} else {
 		if (ath_hal_alq)
 			alq_close(ath_hal_alq);
 		ath_hal_alq = NULL;
-		kprintf("ath_hal: logging disabled\n");
+		printf("ath_hal: logging disabled\n");
 		error = 0;
 	}
 	return (error);
@@ -278,7 +244,7 @@ void
 ath_hal_reg_write(struct ath_hal *ah, u_int32_t reg, u_int32_t val)
 {
 	bus_space_tag_t tag = BUSTAG(ah);
-	bus_space_handle_t h = (bus_space_handle_t) ah->ah_sh;
+	bus_space_handle_t h = ah->ah_sh;
 
 	if (ath_hal_alq) {
 		struct ale *ale = ath_hal_alq_get(ah);
@@ -291,7 +257,7 @@ ath_hal_reg_write(struct ath_hal *ah, u_int32_t reg, u_int32_t val)
 		}
 	}
 #if _BYTE_ORDER == _BIG_ENDIAN
-	if (reg >= 0x4000 && reg < 0x5000)
+	if (OS_REG_UNSWAPPED(reg))
 		bus_space_write_4(tag, h, reg, val);
 	else
 #endif
@@ -302,11 +268,11 @@ u_int32_t
 ath_hal_reg_read(struct ath_hal *ah, u_int32_t reg)
 {
 	bus_space_tag_t tag = BUSTAG(ah);
-	bus_space_handle_t h = (bus_space_handle_t) ah->ah_sh;
+	bus_space_handle_t h = ah->ah_sh;
 	u_int32_t val;
 
 #if _BYTE_ORDER == _BIG_ENDIAN
-	if (reg >= 0x4000 && reg < 0x5000)
+	if (OS_REG_UNSWAPPED(reg))
 		val = bus_space_read_4(tag, h, reg);
 	else
 #endif
@@ -354,10 +320,10 @@ void
 ath_hal_reg_write(struct ath_hal *ah, u_int32_t reg, u_int32_t val)
 {
 	bus_space_tag_t tag = BUSTAG(ah);
-	bus_space_handle_t h = (bus_space_handle_t) ah->ah_sh;
+	bus_space_handle_t h = ah->ah_sh;
 
 #if _BYTE_ORDER == _BIG_ENDIAN
-	if (reg >= 0x4000 && reg < 0x5000)
+	if (OS_REG_UNSWAPPED(reg))
 		bus_space_write_4(tag, h, reg, val);
 	else
 #endif
@@ -368,11 +334,11 @@ u_int32_t
 ath_hal_reg_read(struct ath_hal *ah, u_int32_t reg)
 {
 	bus_space_tag_t tag = BUSTAG(ah);
-	bus_space_handle_t h = (bus_space_handle_t) ah->ah_sh;
+	bus_space_handle_t h = ah->ah_sh;
 	u_int32_t val;
 
 #if _BYTE_ORDER == _BIG_ENDIAN
-	if (reg >= 0x4000 && reg < 0x5000)
+	if (OS_REG_UNSWAPPED(reg))
 		val = bus_space_read_4(tag, h, reg);
 	else
 #endif
@@ -385,63 +351,8 @@ ath_hal_reg_read(struct ath_hal *ah, u_int32_t reg)
 void
 ath_hal_assert_failed(const char* filename, int lineno, const char *msg)
 {
-	kprintf("Atheros HAL assertion failure: %s: line %u: %s\n",
+	printf("Atheros HAL assertion failure: %s: line %u: %s\n",
 		filename, lineno, msg);
 	panic("ath_hal_assert");
 }
 #endif /* AH_ASSERT */
-
-/*
- * Delay n microseconds.
- */
-void
-ath_hal_delay(int n)
-{
-	DELAY(n);
-}
-
-u_int32_t
-ath_hal_getuptime(struct ath_hal *ah)
-{
-	struct timeval tv;
-
-	getmicrouptime(&tv);
-	return (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
-}
-
-void
-ath_hal_memzero(void *dst, size_t n)
-{
-	bzero(dst, n);
-}
-
-void *
-ath_hal_memcpy(void *dst, const void *src, size_t n)
-{
-	return memcpy(dst, src, n);
-}
-
-/*
- * Module glue.
- */
-
-static int
-ath_hal_modevent(module_t mod, int type, void *unused)
-{
-	switch (type) {
-	case MOD_LOAD:
-		kprintf("ath_hal: %s\n", ath_hal_version);
-		return 0;
-	case MOD_UNLOAD:
-		return 0;
-	}
-	return EINVAL;
-}
-
-static moduledata_t ath_hal_mod = {
-	"ath_hal",
-	ath_hal_modevent,
-	0
-};
-DECLARE_MODULE(ath_hal, ath_hal_mod, SI_SUB_DRIVERS, SI_ORDER_ANY);
-MODULE_VERSION(ath_hal, 1);

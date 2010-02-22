@@ -14,7 +14,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: ar5210_interrupts.c,v 1.4 2008/11/10 04:08:02 sam Exp $
+ * $FreeBSD: head/sys/dev/ath/ath_hal/ar5210/ar5210_interrupts.c 192397 2009-05-19 17:35:15Z sam $
+ * $DragonFly$
  */
 #include "opt_ah.h"
 
@@ -59,7 +60,7 @@ ar5210GetPendingInterrupts(struct ath_hal *ah, HAL_INT *masked)
 	 * status bits leak through that weren't requested
 	 * (e.g. RXNOFRM) and that might confuse the caller.
 	 */
-	*masked = (isr & HAL_INT_COMMON) & ahp->ah_maskReg;
+	*masked = (isr & (HAL_INT_COMMON - HAL_INT_BNR)) & ahp->ah_maskReg;
 
 	if (isr & AR_FATAL_INT)
 		*masked |= HAL_INT_FATAL;
@@ -105,7 +106,7 @@ ar5210SetInterrupts(struct ath_hal *ah, HAL_INT ints)
 		OS_REG_WRITE(ah, AR_IER, AR_IER_DISABLE);
 	}
 
-	mask = ints & HAL_INT_COMMON;
+	mask = ints & (HAL_INT_COMMON - HAL_INT_BNR);
 	if (ints & HAL_INT_RX)
 		mask |= AR_IMR_RXOK_INT | AR_IMR_RXERR_INT;
 	if (ints & HAL_INT_TX) {

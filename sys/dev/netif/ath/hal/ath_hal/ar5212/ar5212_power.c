@@ -14,7 +14,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: ar5212_power.c,v 1.4 2008/11/10 04:08:03 sam Exp $
+ * $FreeBSD: head/sys/dev/ath/ath_hal/ar5212/ar5212_power.c 203159 2010-01-29 10:10:14Z rpaulo $
+ * $DragonFly$
  */
 #include "opt_ah.h"
 
@@ -38,8 +39,8 @@ static HAL_BOOL
 ar5212SetPowerModeAwake(struct ath_hal *ah, int setChip)
 {
 #define	AR_SCR_MASK \
-    (AR_SCR_SLDUR|AR_SCR_SLE|AR_SCR_SLE|AR_SCR_SLDTP|AR_SCR_SLDWP|\
-     AR_SCR_SLEPOL|AR_SCR_MIBIE)
+    (AR_SCR_SLDUR|AR_SCR_SLE|AR_SCR_SLDTP|AR_SCR_SLDWP|\
+     AR_SCR_SLEPOL|AR_SCR_MIBIE|AR_SCR_UNKNOWN)
 #define	POWER_UP_TIME	2000
 	uint32_t scr, val;
 	int i;

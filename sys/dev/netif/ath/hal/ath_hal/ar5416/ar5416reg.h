@@ -14,12 +14,13 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: ar5416reg.h,v 1.10 2008/11/11 00:11:30 sam Exp $
+ * $FreeBSD: head/sys/dev/ath/ath_hal/ar5416/ar5416reg.h 203959 2010-02-16 12:43:55Z rpaulo $
+ * $DragonFly$
  */
 #ifndef _DEV_ATH_AR5416REG_H
 #define	_DEV_ATH_AR5416REG_H
 
-#include "ar5212/ar5212reg.h"
+#include <dev/netif/ath/hal/ath_hal/ar5212/ar5212reg.h>
 
 /*
  * Register added starting with the AR5416
@@ -31,7 +32,8 @@
 #define	AR_GTTM			0x0068	/* global transmit timeout mode */
 #define	AR_CST			0x006C	/* carrier sense timeout */
 #define	AR_MAC_LED		0x1f04	/* LED control */
-#define	AR5416_PCIE_PM_CTRL	0x4014
+#define	AR_WA			0x4004	/* PCIE work-arounds */
+#define	AR_PCIE_PM_CTRL		0x4014
 #define	AR_AHB_MODE		0x4024	/* AHB mode for dma */
 #define	AR_INTR_SYNC_CAUSE_CLR	0x4028	/* clear interrupt */
 #define	AR_INTR_SYNC_CAUSE	0x4028	/* check pending interrupts */
@@ -42,8 +44,15 @@
 #define	AR_INTR_ASYNC_ENABLE	0x403c	/* enable interrupts */
 #define	AR5416_PCIE_SERDES	0x4040
 #define	AR5416_PCIE_SERDES2	0x4044
-#define	AR_GPIO_IN		0x4048	/* GPIO input register */
-#define	AR_GPIO_INTR_OUT	0x404c	/* GPIO output register */
+#define	AR_GPIO_IN_OUT		0x4048	/* GPIO input/output register */
+#define	AR_GPIO_OE_OUT		0x404c	/* GPIO output enable register */
+#define	AR_GPIO_INTR_POL	0x4050	/* GPIO interrupt polarity */
+#define	AR_GPIO_INPUT_EN_VAL	0x4054	/* GPIO input enable and value */
+#define	AR_GPIO_INPUT_MUX1	0x4058
+#define	AR_GPIO_INPUT_MUX2	0x405c
+#define	AR_GPIO_OUTPUT_MUX1	0x4060
+#define	AR_GPIO_OUTPUT_MUX2	0x4064
+#define	AR_GPIO_OUTPUT_MUX3	0x4068
 #define	AR_EEPROM_STATUS_DATA	0x407c
 #define	AR_OBS			0x4080
 #define	AR_RTC_RC		0x7000	/* reset control */
@@ -62,8 +71,20 @@
 #define	AR_AN_RF5G1_CH1         0x783C
 #define	AR_AN_TOP2		0x7894
 #define	AR_AN_SYNTH9            0x7868
-#define	AR9285_AN_RF2G3         0x7828
+#define	AR9285_AN_RF2G1		0x7820
+#define	AR9285_AN_RF2G2		0x7824
+#define	AR9285_AN_RF2G3		0x7828
+#define	AR9285_AN_RF2G4		0x782C
+#define	AR9285_AN_RF2G6		0x7834
+#define	AR9285_AN_RF2G7		0x7838
+#define	AR9285_AN_RF2G8		0x783C
+#define	AR9285_AN_RF2G9		0x7840
+#define	AR9285_AN_RXTXBB1	0x7854
+#define	AR9285_AN_TOP2		0x7868
 #define	AR9285_AN_TOP3		0x786c
+#define	AR9285_AN_TOP4		0x7870
+#define	AR9285_AN_TOP4_DEFAULT	0x10142c00
+
 #define	AR_RESET_TSF		0x8020
 #define	AR_RXFIFO_CFG		0x8114
 #define	AR_PHY_ERR_1		0x812c
@@ -179,6 +200,17 @@
 #define	AR_MAC_LED_ASSOC_PEND	0x00000800 /* STA is trying to associate */
 #define	AR_MAC_LED_ASSOC_S	10
 
+#define	AR_WA_UNTIE_RESET_EN	0x00008000	/* ena PCI reset to POR */
+#define	AR_WA_RESET_EN		0x00040000	/* ena AR_WA_UNTIE_RESET_EN */
+#define	AR_WA_ANALOG_SHIFT	0x00100000
+#define	AR_WA_POR_SHORT		0x00200000	/* PCIE phy reset control */
+
+#define	AR_WA_DEFAULT		0x0000073f
+#define	AR9280_WA_DEFAULT	0x0040073f
+#define	AR9285_WA_DEFAULT	0x004a05cb
+
+#define	AR_PCIE_PM_CTRL_ENA	0x00080000
+
 #define	AR_AHB_EXACT_WR_EN	0x00000000	/* write exact bytes */
 #define	AR_AHB_BUF_WR_EN	0x00000001	/* buffer write upto cacheline*/
 #define	AR_AHB_EXACT_RD_EN	0x00000000	/* read exact bytes */
@@ -258,6 +290,21 @@
 	 AR_INTR_SYNC_RADM_CPL_TIMEOUT | AR_INTR_SYNC_LOCAL_TIMEOUT | \
 	 AR_INTR_SYNC_MAC_SLEEP_ACCESS)
 
+#define	AR_INTR_SYNC_MASK_GPIO		0xFFFC0000
+#define	AR_INTR_SYNC_MASK_GPIO_S	18
+
+#define	AR_INTR_SYNC_ENABLE_GPIO	0xFFFC0000
+#define	AR_INTR_SYNC_ENABLE_GPIO_S	18
+
+#define	AR_INTR_ASYNC_MASK_GPIO		0xFFFC0000	/* async int mask */
+#define	AR_INTR_ASYNC_MASK_GPIO_S	18
+
+#define	AR_INTR_ASYNC_CAUSE_GPIO	0xFFFC0000	/* GPIO interrupts */
+#define	AR_INTR_ASYNC_USED	(AR_INTR_MAC_IRQ | AR_INTR_ASYNC_CAUSE_GPIO)
+
+#define	AR_INTR_ASYNC_ENABLE_GPIO	0xFFFC0000	/* enable interrupts */
+#define	AR_INTR_ASYNC_ENABLE_GPIO_S	18
+
 /* RTC registers */
 #define	AR_RTC_RC_M		0x00000003
 #define	AR_RTC_RC_MAC_WARM	0x00000001
@@ -325,42 +372,83 @@
 #define	AR_AN_SYNTH9_REFDIVA_S  27
 
 /* AR9285 Analog registers */
-#define	AR9285_AN_RF2G3_OB_0    0x00E00000
-#define	AR9285_AN_RF2G3_OB_0_S    21
-#define	AR9285_AN_RF2G3_OB_1    0x001C0000
-#define	AR9285_AN_RF2G3_OB_1_S    18
-#define	AR9285_AN_RF2G3_OB_2    0x00038000
-#define	AR9285_AN_RF2G3_OB_2_S    15
-#define	AR9285_AN_RF2G3_OB_3    0x00007000
-#define	AR9285_AN_RF2G3_OB_3_S    12
-#define	AR9285_AN_RF2G3_OB_4    0x00000E00
-#define	AR9285_AN_RF2G3_OB_4_S    9
+#define	AR9285_AN_RF2G1_ENPACAL      0x00000800
+#define	AR9285_AN_RF2G1_ENPACAL_S    11
+#define	AR9285_AN_RF2G1_PDPADRV1     0x02000000
+#define	AR9285_AN_RF2G1_PDPADRV1_S   25
+#define	AR9285_AN_RF2G1_PDPADRV2     0x01000000
+#define	AR9285_AN_RF2G1_PDPADRV2_S   24
+#define	AR9285_AN_RF2G1_PDPAOUT      0x00800000
+#define	AR9285_AN_RF2G1_PDPAOUT_S    23
 
-#define	AR9285_AN_RF2G3_DB1_0    0x000001C0
-#define	AR9285_AN_RF2G3_DB1_0_S    6
-#define	AR9285_AN_RF2G3_DB1_1    0x00000038
-#define	AR9285_AN_RF2G3_DB1_1_S    3
-#define	AR9285_AN_RF2G3_DB1_2    0x00000007
-#define	AR9285_AN_RF2G3_DB1_2_S    0
-#define	AR9285_AN_RF2G4         0x782C
-#define	AR9285_AN_RF2G4_DB1_3    0xE0000000
-#define	AR9285_AN_RF2G4_DB1_3_S    29
-#define	AR9285_AN_RF2G4_DB1_4    0x1C000000
-#define	AR9285_AN_RF2G4_DB1_4_S    26
+#define	AR9285_AN_RF2G2_OFFCAL       0x00001000
+#define	AR9285_AN_RF2G2_OFFCAL_S     12
 
-#define	AR9285_AN_RF2G4_DB2_0    0x03800000
-#define	AR9285_AN_RF2G4_DB2_0_S    23
-#define	AR9285_AN_RF2G4_DB2_1    0x00700000
-#define	AR9285_AN_RF2G4_DB2_1_S    20
-#define	AR9285_AN_RF2G4_DB2_2    0x000E0000
-#define	AR9285_AN_RF2G4_DB2_2_S    17
-#define	AR9285_AN_RF2G4_DB2_3    0x0001C000
-#define	AR9285_AN_RF2G4_DB2_3_S    14
-#define	AR9285_AN_RF2G4_DB2_4    0x00003800
-#define	AR9285_AN_RF2G4_DB2_4_S    11
+#define	AR9285_AN_RF2G3_PDVCCOMP	0x02000000
+#define	AR9285_AN_RF2G3_PDVCCOMP_S	25
+#define	AR9285_AN_RF2G3_OB_0	0x00E00000
+#define	AR9285_AN_RF2G3_OB_0_S	21
+#define	AR9285_AN_RF2G3_OB_1	0x001C0000
+#define	AR9285_AN_RF2G3_OB_1_S	18
+#define	AR9285_AN_RF2G3_OB_2	0x00038000
+#define	AR9285_AN_RF2G3_OB_2_S	15
+#define	AR9285_AN_RF2G3_OB_3	0x00007000
+#define	AR9285_AN_RF2G3_OB_3_S	12
+#define	AR9285_AN_RF2G3_OB_4	0x00000E00
+#define	AR9285_AN_RF2G3_OB_4_S	9
+
+#define	AR9285_AN_RF2G3_DB1_0	0x000001C0
+#define	AR9285_AN_RF2G3_DB1_0_S	6
+#define	AR9285_AN_RF2G3_DB1_1	0x00000038
+#define	AR9285_AN_RF2G3_DB1_1_S	3
+#define	AR9285_AN_RF2G3_DB1_2	0x00000007
+#define	AR9285_AN_RF2G3_DB1_2_S	0
+
+#define	AR9285_AN_RF2G4_DB1_3	0xE0000000
+#define	AR9285_AN_RF2G4_DB1_3_S	29
+#define	AR9285_AN_RF2G4_DB1_4	0x1C000000
+#define	AR9285_AN_RF2G4_DB1_4_S	26
+
+#define	AR9285_AN_RF2G4_DB2_0	0x03800000
+#define	AR9285_AN_RF2G4_DB2_0_S	23
+#define	AR9285_AN_RF2G4_DB2_1	0x00700000
+#define	AR9285_AN_RF2G4_DB2_1_S	20
+#define	AR9285_AN_RF2G4_DB2_2	0x000E0000
+#define	AR9285_AN_RF2G4_DB2_2_S	17
+#define	AR9285_AN_RF2G4_DB2_3	0x0001C000
+#define	AR9285_AN_RF2G4_DB2_3_S	14
+#define	AR9285_AN_RF2G4_DB2_4	0x00003800
+#define	AR9285_AN_RF2G4_DB2_4_S	11
+
+#define	AR9285_AN_RF2G6_CCOMP	0x00007800
+#define	AR9285_AN_RF2G6_CCOMP_S	11
+#define	AR9285_AN_RF2G6_OFFS	0x03f00000
+#define	AR9285_AN_RF2G6_OFFS_S	20
+
+#define	AR9271_AN_RF2G6_OFFS	0x07f00000
+#define	AR9271_AN_RF2G6_OFFS_S	20
+
+#define	AR9285_AN_RF2G7_PWDDB	0x00000002
+#define	AR9285_AN_RF2G7_PWDDB_S	1
+#define	AR9285_AN_RF2G7_PADRVGN2TAB0	0xE0000000
+#define	AR9285_AN_RF2G7_PADRVGN2TAB0_S	29
+
+#define	AR9285_AN_RF2G8_PADRVGN2TAB0	0x0001C000
+#define	AR9285_AN_RF2G8_PADRVGN2TAB0_S	14
+
+#define	AR9285_AN_RXTXBB1_PDRXTXBB1    0x00000020
+#define	AR9285_AN_RXTXBB1_PDRXTXBB1_S  5
+#define	AR9285_AN_RXTXBB1_PDV2I        0x00000080
+#define	AR9285_AN_RXTXBB1_PDV2I_S      7
+#define	AR9285_AN_RXTXBB1_PDDACIF      0x00000100
+#define	AR9285_AN_RXTXBB1_PDDACIF_S    8
+#define	AR9285_AN_RXTXBB1_SPARE9       0x00000001
+#define	AR9285_AN_RXTXBB1_SPARE9_S     0
 
 #define	AR9285_AN_TOP3_XPABIAS_LVL      0x0000000C
 #define	AR9285_AN_TOP3_XPABIAS_LVL_S    2
+#define	AR9285_AN_TOP3_PWDDAC		0x00800000
+#define	AR9285_AN_TOP3_PWDDAC_S		23
 
 /* Sleep control */
 #define	AR5416_SLEEP1_CAB_TIMEOUT	0xFFE00000	/* Cab timeout (TU) */
@@ -418,10 +506,27 @@
 #define	AR_GPIO_INTR_CTRL	0x3FF00000
 #define	AR_GPIO_INTR_CTRL_S	20
 
+#define	AR_GPIO_IN_VAL		0x0FFFC000	/* pre-9280 */
+#define	AR_GPIO_IN_VAL_S	14
+#define	AR928X_GPIO_IN_VAL	0x000FFC00
+#define	AR928X_GPIO_IN_VAL_S	10
+#define	AR9285_GPIO_IN_VAL	0x00FFF000
+#define	AR9285_GPIO_IN_VAL_S	12
+
+#define	AR_GPIO_OE_OUT_DRV	0x3	/* 2 bit mask shifted by 2*bitpos */
+#define	AR_GPIO_OE_OUT_DRV_NO	0x0	/* tristate */
+#define	AR_GPIO_OE_OUT_DRV_LOW	0x1	/* drive if low */
+#define	AR_GPIO_OE_OUT_DRV_HI	0x2	/* drive if high */
+#define	AR_GPIO_OE_OUT_DRV_ALL	0x3	/* drive always */
+
+#define	AR_GPIO_INTR_POL_VAL	0x1FFF
+#define	AR_GPIO_INTR_POL_VAL_S	0
+
 #define	AR_2040_JOINED_RX_CLEAR	0x00000001	/* use ctl + ext rx_clear for cca */
 
 #define	AR_PCU_TXBUF_CTRL_SIZE_MASK	0x7FF
 #define	AR_PCU_TXBUF_CTRL_USABLE_SIZE	0x700
+#define	AR_9285_PCU_TXBUF_CTRL_USABLE_SIZE 0x380
 
 /* Eeprom defines */
 #define	AR_EEPROM_STATUS_DATA_VAL           0x0000ffff
@@ -472,6 +577,8 @@
 #define	AR_XSREV_REVISION_MERLIN_21	2	/* Merlin 2.1 */
 #define	AR_XSREV_VERSION_KITE		0xC0	/* Kite Version */
 #define	AR_XSREV_REVISION_KITE_10	0	/* Kite 1.0 */
+#define	AR_XSREV_REVISION_KITE_11	1	/* Kite 1.1 */
+#define	AR_XSREV_REVISION_KITE_12	2	/* Kite 1.2 */
 
 #define	AR_SREV_OWL_20_OR_LATER(_ah) \
 	(AH_PRIVATE((_ah))->ah_macVersion >= AR_XSREV_VERSION_SOWL || \
@@ -494,7 +601,7 @@
 	(AH_PRIVATE((_ah))->ah_macVersion >= AR_XSREV_VERSION_MERLIN)
 #define	AR_SREV_MERLIN_20(_ah) \
 	(AR_SREV_MERLIN(_ah) && \
-	 AH_PRIVATE((_ah))->ah_macRev >= AR_XSREV_REVISION_MERLIN_20)
+	 AH_PRIVATE((_ah))->ah_macRev == AR_XSREV_REVISION_MERLIN_20)
 #define	AR_SREV_MERLIN_20_OR_LATER(_ah) \
 	(AR_SREV_MERLIN_20(_ah) || \
 	 AH_PRIVATE((_ah))->ah_macVersion > AR_XSREV_VERSION_MERLIN)
@@ -503,4 +610,16 @@
 	(AH_PRIVATE((_ah))->ah_macVersion == AR_XSREV_VERSION_KITE)
 #define	AR_SREV_KITE_10_OR_LATER(_ah) \
 	(AH_PRIVATE((_ah))->ah_macVersion >= AR_XSREV_VERSION_KITE)
+#define	AR_SREV_KITE_11(_ah) \
+	(AR_SREV_KITE(ah) && \
+	 AH_PRIVATE((_ah))->ah_macRev == AR_XSREV_REVISION_KITE_11)
+#define	AR_SREV_KITE_11_OR_LATER(_ah) \
+	(AR_SREV_KITE_11(_ah) || \
+	 AH_PRIVATE((_ah))->ah_macRev >= AR_XSREV_REVISION_KITE_11)
+#define	AR_SREV_KITE_12(_ah) \
+	(AR_SREV_KITE(ah) && \
+	 AH_PRIVATE((_ah))->ah_macRev == AR_XSREV_REVISION_KITE_12)
+#define	AR_SREV_KITE_12_OR_LATER(_ah) \
+	(AR_SREV_KITE_12(_ah) || \
+	 AH_PRIVATE((_ah))->ah_macRev >= AR_XSREV_REVISION_KITE_12)
 #endif /* _DEV_ATH_AR5416REG_H */

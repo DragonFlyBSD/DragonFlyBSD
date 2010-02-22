@@ -14,7 +14,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: ar5315_gpio.c,v 1.3 2008/11/10 04:08:04 sam Exp $
+ * $FreeBSD: head/sys/dev/ath/ath_hal/ar5312/ar5315_gpio.c 188974 2009-02-24 00:12:16Z sam $
+ * $DragonFly$
  */
 #include "opt_ah.h"
 
@@ -35,7 +36,7 @@
  * Configure GPIO Output lines
  */
 HAL_BOOL
-ar5315GpioCfgOutput(struct ath_hal *ah, uint32_t gpio)
+ar5315GpioCfgOutput(struct ath_hal *ah, uint32_t gpio, HAL_GPIO_MUX_TYPE type)
 {
 	uint32_t gpioOffset = (AR5315_GPIO_BASE - ((uint32_t) ah->ah_sh));
 

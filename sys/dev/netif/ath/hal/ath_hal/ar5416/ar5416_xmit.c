@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2008 Sam Leffler, Errno Consulting
+ * Copyright (c) 2002-2009 Sam Leffler, Errno Consulting
  * Copyright (c) 2002-2008 Atheros Communications, Inc.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -14,7 +14,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: ar5416_xmit.c,v 1.9 2008/11/27 22:30:08 sam Exp $
+ * $FreeBSD: head/sys/dev/ath/ath_hal/ar5416/ar5416_xmit.c 194135 2009-06-13 23:36:54Z sam $
+ * $DragonFly$
  */
 #include "opt_ah.h"
 
@@ -519,16 +520,13 @@ ar5416ProcTxDesc(struct ath_hal *ah,
 		ts->ts_rate = MS(ads->ds_ctl3, AR_XmitRate0);
 		break;
 	case 1:
-		ts->ts_rate = MS(ads->ds_ctl3, AR_XmitRate1) |
-			HAL_TXSTAT_ALTRATE;
+		ts->ts_rate = MS(ads->ds_ctl3, AR_XmitRate1);
 		break;
 	case 2:
-		ts->ts_rate = MS(ads->ds_ctl3, AR_XmitRate2) |
-			HAL_TXSTAT_ALTRATE;
+		ts->ts_rate = MS(ads->ds_ctl3, AR_XmitRate2);
 		break;
 	case 3:
-		ts->ts_rate = MS(ads->ds_ctl3, AR_XmitRate3) |
-			HAL_TXSTAT_ALTRATE;
+		ts->ts_rate = MS(ads->ds_ctl3, AR_XmitRate3);
 		break;
 	}
 

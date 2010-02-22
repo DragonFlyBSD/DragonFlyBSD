@@ -14,7 +14,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: ar5212_recv.c,v 1.4 2008/11/10 04:08:03 sam Exp $
+ * $FreeBSD: head/sys/dev/ath/ath_hal/ar5212/ar5212_recv.c 195809 2009-07-21 19:23:34Z sam $
+ * $DragonFly$
  */
 #include "opt_ah.h"
 
@@ -163,6 +164,9 @@ ar5212GetRxFilter(struct ath_hal *ah)
 		bits |= HAL_RX_FILTER_PHYRADAR;
 	if (phybits & (AR_PHY_ERR_OFDM_TIMING|AR_PHY_ERR_CCK_TIMING))
 		bits |= HAL_RX_FILTER_PHYERR;
+	if (AH_PRIVATE(ah)->ah_caps.halBssidMatchSupport &&
+	    (AH5212(ah)->ah_miscMode & AR_MISC_MODE_BSSID_MATCH_FORCE))
+		bits |= HAL_RX_FILTER_BSSID;
 	return bits;
 }
 
@@ -172,10 +176,12 @@ ar5212GetRxFilter(struct ath_hal *ah)
 void
 ar5212SetRxFilter(struct ath_hal *ah, uint32_t bits)
 {
+	struct ath_hal_5212 *ahp = AH5212(ah);
 	uint32_t phybits;
 
 	OS_REG_WRITE(ah, AR_RX_FILTER,
-	    bits &~ (HAL_RX_FILTER_PHYRADAR|HAL_RX_FILTER_PHYERR));
+	    bits &~ (HAL_RX_FILTER_PHYRADAR|HAL_RX_FILTER_PHYERR|
+	    HAL_RX_FILTER_BSSID));
 	phybits = 0;
 	if (bits & HAL_RX_FILTER_PHYRADAR)
 		phybits |= AR_PHY_ERR_RADAR;
@@ -188,6 +194,13 @@ ar5212SetRxFilter(struct ath_hal *ah, uint32_t bits)
 	} else {
 		OS_REG_WRITE(ah, AR_RXCFG,
 			OS_REG_READ(ah, AR_RXCFG) &~ AR_RXCFG_ZLFDMA);
+	}
+	if (AH_PRIVATE(ah)->ah_caps.halBssidMatchSupport) {
+		if (bits & HAL_RX_FILTER_BSSID)
+			ahp->ah_miscMode |= AR_MISC_MODE_BSSID_MATCH_FORCE;
+		else
+			ahp->ah_miscMode &= ~AR_MISC_MODE_BSSID_MATCH_FORCE;
+		OS_REG_WRITE(ah, AR_MISC_MODE, ahp->ah_miscMode);
 	}
 }
 

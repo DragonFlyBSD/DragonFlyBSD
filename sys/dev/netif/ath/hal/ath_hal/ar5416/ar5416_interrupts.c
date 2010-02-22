@@ -14,7 +14,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: ar5416_interrupts.c,v 1.6 2008/11/10 04:08:04 sam Exp $
+ * $FreeBSD: head/sys/dev/ath/ath_hal/ar5416/ar5416_interrupts.c 201758 2010-01-07 21:01:37Z mbr $
+ * $DragonFly$
  */
 #include "opt_ah.h"
 
@@ -104,7 +105,7 @@ ar5416GetPendingInterrupts(struct ath_hal *ah, HAL_INT *masked)
 		isr = OS_REG_READ(ah, AR_ISR_RAC);
 		if (isr == 0xffffffff) {
 			*masked = 0;
-			return AH_FALSE;;
+			return AH_FALSE;
 		}
 
 		*masked = isr & HAL_INT_COMMON;
@@ -167,7 +168,7 @@ ar5416SetInterrupts(struct ath_hal *ah, HAL_INT ints)
 {
 	struct ath_hal_5212 *ahp = AH5212(ah);
 	uint32_t omask = ahp->ah_maskReg;
-	uint32_t mask,mask2;
+	uint32_t mask, mask2;
 
 	HALDEBUG(ah, HAL_DEBUG_INTERRUPT, "%s: 0x%x => 0x%x\n",
 	    __func__, omask, ints);
@@ -248,11 +249,19 @@ ar5416SetInterrupts(struct ath_hal *ah, HAL_INT ints)
 		HALDEBUG(ah, HAL_DEBUG_INTERRUPT, "%s: enable IER\n", __func__);
 		OS_REG_WRITE(ah, AR_IER, AR_IER_ENABLE);
 
-		OS_REG_WRITE(ah, AR_INTR_ASYNC_ENABLE, AR_INTR_MAC_IRQ);
-		OS_REG_WRITE(ah, AR_INTR_ASYNC_MASK, AR_INTR_MAC_IRQ);
+		mask = AR_INTR_MAC_IRQ;
+		if (ints & HAL_INT_GPIO)
+			mask |= SM(AH5416(ah)->ah_gpioMask,
+			    AR_INTR_ASYNC_MASK_GPIO);
+		OS_REG_WRITE(ah, AR_INTR_ASYNC_ENABLE, mask);
+		OS_REG_WRITE(ah, AR_INTR_ASYNC_MASK, mask);
 
-		OS_REG_WRITE(ah, AR_INTR_SYNC_ENABLE, AR_INTR_SYNC_DEFAULT);
-		OS_REG_WRITE(ah, AR_INTR_SYNC_MASK, AR_INTR_SYNC_DEFAULT);
+		mask = AR_INTR_SYNC_DEFAULT;
+		if (ints & HAL_INT_GPIO)
+			mask |= SM(AH5416(ah)->ah_gpioMask,
+			    AR_INTR_SYNC_MASK_GPIO);
+		OS_REG_WRITE(ah, AR_INTR_SYNC_ENABLE, mask);
+		OS_REG_WRITE(ah, AR_INTR_SYNC_MASK, mask);
 	}
 
 	return omask;
