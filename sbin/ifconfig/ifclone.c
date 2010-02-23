@@ -97,8 +97,11 @@ clone_create(void)
 
 	memset(&ifr, 0, sizeof(ifr));
 	(void) strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+	wlan_create(s, &ifr);
+#if 0
 	if (ioctl(s, SIOCIFCREATE, &ifr) < 0)
 		err(1, "SIOCIFCREATE");
+#endif
 
 	/*
 	 * If we get a different name back then we put in, we probably

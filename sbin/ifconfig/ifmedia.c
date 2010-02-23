@@ -189,8 +189,8 @@ media_status(int s)
 	free(media_list);
 }
 
-static struct ifmediareq *
-getifmediastate(int s)
+struct ifmediareq *
+ifmedia_getstate(int s)
 {
 	static struct ifmediareq *ifmr = NULL;
 	int *mwords;
@@ -255,7 +255,7 @@ setmedia(const char *val, int d, int s, const struct afswtch *afp)
 	int subtype;
 	
 
-	ifmr = getifmediastate(s);
+	ifmr = ifmedia_getstate(s);
 
 	/*
 	 * We are primarily concerned with the top-level type.
@@ -300,7 +300,7 @@ domediaopt(const char *val, int clear, int s)
 	struct ifmediareq *ifmr;
 	int options;
 
-	ifmr = getifmediastate(s);
+	ifmr = ifmedia_getstate(s);
 
 	options = get_media_options(IFM_TYPE(ifmr->ifm_ulist[0]), val);
 
@@ -322,7 +322,7 @@ setmediamode(const char *val, int d, int s, const struct afswtch *afp)
 	struct ifmediareq *ifmr;
 	int mode;
 
-	ifmr = getifmediastate(s);
+	ifmr = ifmedia_getstate(s);
 
 	mode = get_media_mode(IFM_TYPE(ifmr->ifm_ulist[0]), val);
 
