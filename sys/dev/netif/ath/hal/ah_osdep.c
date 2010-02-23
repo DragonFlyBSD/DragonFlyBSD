@@ -79,7 +79,7 @@ SYSCTL_NODE(_hw, OID_AUTO, ath, CTLFLAG_RD, 0, "Atheros driver parameters");
 SYSCTL_NODE(_hw_ath, OID_AUTO, hal, CTLFLAG_RD, 0, "Atheros HAL parameters");
 
 #ifdef AH_DEBUG
-static	int ath_hal_debug = 0;
+static	int ath_hal_debug = 0xffffffff;
 SYSCTL_INT(_hw_ath_hal, OID_AUTO, debug, CTLFLAG_RW, &ath_hal_debug,
 	    0, "Atheros HAL debugging printfs");
 TUNABLE_INT("hw.ath.hal.debug", &ath_hal_debug);

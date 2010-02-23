@@ -199,6 +199,7 @@ struct taskqueue;
 struct ath_tx99;
 
 struct ath_softc {
+	struct arpcom           arpcom;
 	struct ifnet		*sc_ifp;	/* interface common */
 	struct ath_stats	sc_stats;	/* interface statistics */
 	int			sc_debug;
