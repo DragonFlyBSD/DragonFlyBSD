@@ -39,6 +39,4 @@ MAN=	ifconfig.8
 
 WARNS=	0
 
-CFLAGS+=	-I../../sys
-
 .include <bsd.prog.mk>
