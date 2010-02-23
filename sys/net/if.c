@@ -129,6 +129,9 @@ SYSINIT(interfaces, SI_SUB_PROTO_IF, SI_ORDER_FIRST, ifinit, NULL)
 /* Must be after netisr_init */
 SYSINIT(ifnet, SI_SUB_PRE_DRIVERS, SI_ORDER_SECOND, ifnetinit, NULL)
 
+static  if_com_alloc_t *if_com_alloc[256];
+static  if_com_free_t *if_com_free[256];
+
 MALLOC_DEFINE(M_IFADDR, "ifaddr", "interface address");
 MALLOC_DEFINE(M_IFMADDR, "ether_multi", "link-level multicast address");
 MALLOC_DEFINE(M_IFNET, "ifnet", "interface structure");
@@ -2129,6 +2132,13 @@ if_alloc(uint8_t type)
 
 	ifp->if_type = type;
 
+	if (if_com_alloc[type] != NULL) {
+		ifp->if_l2com = if_com_alloc[type](type, ifp);
+		if (ifp->if_l2com == NULL) {
+			kfree(ifp, M_IFNET);
+			return (NULL);
+		}
+	}
 	return (ifp);
 }
 
@@ -2489,4 +2499,30 @@ ifaddr_byindex(unsigned short idx)
 	if (!ifp)
 		return NULL;
 	return TAILQ_FIRST(&ifp->if_addrheads[mycpuid])->ifa;
+}
+
+void
+if_register_com_alloc(u_char type,
+    if_com_alloc_t *a, if_com_free_t *f)
+{
+
+        KASSERT(if_com_alloc[type] == NULL,
+            ("if_register_com_alloc: %d already registered", type));
+        KASSERT(if_com_free[type] == NULL,
+            ("if_register_com_alloc: %d free already registered", type));
+
+        if_com_alloc[type] = a;
+        if_com_free[type] = f;
+}
+
+void
+if_deregister_com_alloc(u_char type)
+{
+
+        KASSERT(if_com_alloc[type] != NULL,
+            ("if_deregister_com_alloc: %d not registered", type));
+        KASSERT(if_com_free[type] != NULL,
+            ("if_deregister_com_alloc: %d free not registered", type));
+        if_com_alloc[type] = NULL;
+        if_com_free[type] = NULL;
 }
