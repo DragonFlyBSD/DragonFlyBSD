@@ -800,12 +800,12 @@ wlan_modevent(module_t mod, int type, void *unused)
 		}
 #ifdef __FreeBSD__
 		if_clone_attach(&wlan_cloner);
-		if_register_com_alloc(IFT_IEEE80211, wlan_alloc, wlan_free);
 #endif
+		if_register_com_alloc(IFT_IEEE80211, wlan_alloc, wlan_free);
 		return 0;
 	case MOD_UNLOAD:
-#ifdef __FreeBSD__
 		if_deregister_com_alloc(IFT_IEEE80211);
+#ifdef __FreeBSD__
 		if_clone_detach(&wlan_cloner);
 #endif
 		EVENTHANDLER_DEREGISTER(bpf_track, wlan_bpfevent);

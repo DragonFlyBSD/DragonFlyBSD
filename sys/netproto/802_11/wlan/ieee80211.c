@@ -314,7 +314,7 @@ ieee80211_ifattach(struct ieee80211com *ic,
 	sdl->sdl_type = IFT_ETHER;		/* XXX IFT_IEEE80211? */
 	sdl->sdl_alen = IEEE80211_ADDR_LEN;
 	IEEE80211_ADDR_COPY(LLADDR(sdl), macaddr);
-	IFAFREE(ifa);
+//	IFAFREE(ifa);
 }
 
 /*
@@ -382,7 +382,7 @@ ieee80211_vap_setup(struct ieee80211com *ic, struct ieee80211vap *vap,
 {
 	struct ifnet *ifp;
 
-	ifp = if_alloc(IFT_ETHER);
+	ifp = if_alloc(IFT_IEEE80211);
 	if (ifp == NULL) {
 		if_printf(ic->ic_ifp, "%s: unable to allocate ifnet\n",
 		    __func__);
