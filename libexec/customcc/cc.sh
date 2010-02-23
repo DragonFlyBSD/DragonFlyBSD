@@ -3,19 +3,27 @@
 CDIR=$(dirname $0)
 CNAME=$(basename $0)
 
-# XXX clang is called only for "cc" and "gcc" for now
+# XXX clang needs some special handling
+#
+# it is called only for "cc" and "gcc" and even then it could have been
+# run on c++ files
 #
 if [ "${CCVER}" = "clang" ]; then
 	if [ "${CNAME}" = "cpp" ]; then
 		exec ${CDIR}/../gcc41/cpp "$@"
 	elif [ "${CNAME}" = "c++" -o "${CNAME}" = "g++" ]; then
 		exec ${CDIR}/../gcc41/c++ "$@"
-	else
+	elif [ -z $beenhere ]; then
+		export beenhere=1
+		oldargs="$@"
+		export oldargs
 		INCOPT="-nobuiltininc -nostdinc \
 		    -isysroot @@INCPREFIX@@ \
 		    -isystem /usr/include \
 		    -isystem /usr/libdata/gcc41 \
 		    -isystem /usr/include/c++/4.1"
+	elif [ "${CNAME}" = "cc" -o "${CNAME}" = "gcc" ]; then
+		exec ${CDIR}/../gcc41/cc $oldargs
 	fi
 fi
 

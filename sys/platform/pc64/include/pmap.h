@@ -178,6 +178,7 @@ pte_store(pt_entry_t *ptep, pt_entry_t pte)
 struct pv_entry;
 struct vm_page;
 struct vm_object;
+struct vmspace;
 
 struct md_page {
 	int pv_list_count;
@@ -212,6 +213,8 @@ struct pmap {
 	struct	vm_page		*pm_ptphint;	/* pmap ptp hint */
 	int			pm_generation;	/* detect pvlist deletions */
 };
+
+#define CPUMASK_LOCK		(1 << SMP_MAXCPU)
 
 #define pmap_resident_count(pmap) (pmap)->pm_stats.resident_count
 
@@ -253,7 +256,8 @@ extern vm_offset_t clean_sva;
 extern char *ptvmmap;		/* poor name! */
 
 void	init_paging(vm_paddr_t *);
-void	pmap_bootstrap ( vm_paddr_t *);
+void	pmap_interlock_wait (struct vmspace *);
+void	pmap_bootstrap (vm_paddr_t *);
 void	*pmap_mapdev (vm_paddr_t, vm_size_t);
 void	*pmap_mapdev_uncacheable(vm_paddr_t, vm_size_t);
 void	pmap_unmapdev (vm_offset_t, vm_size_t);

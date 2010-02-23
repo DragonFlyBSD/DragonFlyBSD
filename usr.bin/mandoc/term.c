@@ -1,4 +1,4 @@
-/*	$Id: term.c,v 1.127 2009/11/12 08:21:06 kristaps Exp $ */
+/*	$Id: term.c,v 1.128 2010/01/01 17:14:30 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009 Kristaps Dzonsons <kristaps@kth.se>
  *

@@ -4,6 +4,7 @@
 PROG=	stlload
 MAN=	stlload.8
 MANSUBDIR=/i386
+WARNS?= 2
 
 CFLAGS+=-DBOOTDIR=\"${BOOTDIR}\"
 

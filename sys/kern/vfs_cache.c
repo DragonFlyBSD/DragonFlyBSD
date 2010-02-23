@@ -522,6 +522,18 @@ _cache_link_parent(struct namecache *ncp, struct namecache *par,
 	KKASSERT(ncp->nc_parent == NULL);
 	ncp->nc_parent = par;
 	ncp->nc_head = nchpp;
+
+	/*
+	 * Set inheritance flags.  Note that the parent flags may be
+	 * stale due to getattr potentially not having been run yet
+	 * (it gets run during nlookup()'s).
+	 */
+	ncp->nc_flag &= ~(NCF_SF_PNOCACHE | NCF_UF_PCACHE);
+	if (par->nc_flag & (NCF_SF_NOCACHE | NCF_SF_PNOCACHE))
+		ncp->nc_flag |= NCF_SF_PNOCACHE;
+	if (par->nc_flag & (NCF_UF_CACHE | NCF_UF_PCACHE))
+		ncp->nc_flag |= NCF_UF_PCACHE;
+
 	LIST_INSERT_HEAD(&nchpp->list, ncp, nc_hash);
 
 	if (TAILQ_EMPTY(&par->nc_list)) {

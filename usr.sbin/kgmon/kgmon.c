@@ -347,7 +347,7 @@ dumpstate(struct kvmvars *kvp)
 			i = 0;
 	}
 	if (i != kvp->gpm.kcountsize)
-		errx(6, "read ticks: read %u, got %d: %s",
+		errx(6, "read ticks: read %lu, got %zd: %s",
 		    kvp->gpm.kcountsize, i,
 		    kflag ? kvm_geterr(kvp->kd) : strerror(errno));
 	if ((fwrite(tickbuf, kvp->gpm.kcountsize, 1, fp)) != 1)
@@ -369,7 +369,7 @@ dumpstate(struct kvmvars *kvp)
 			i = 0;
 	}
 	if (i != kvp->gpm.fromssize)
-		errx(9, "read froms: read %u, got %d: %s",
+		errx(9, "read froms: read %lu, got %zd: %s",
 		    kvp->gpm.fromssize, i,
 		    kflag ? kvm_geterr(kvp->kd) : strerror(errno));
 	if ((tos = (struct tostruct *)malloc(kvp->gpm.tossize)) == NULL)
@@ -384,11 +384,11 @@ dumpstate(struct kvmvars *kvp)
 			i = 0;
 	}
 	if (i != kvp->gpm.tossize)
-		errx(11, "read tos: read %u, got %d: %s",
+		errx(11, "read tos: read %lu, got %zd: %s",
 		    kvp->gpm.tossize, i,
 		    kflag ? kvm_geterr(kvp->kd) : strerror(errno));
 	if (debug)
-		warnx("lowpc 0x%x, textsize 0x%x",
+		warnx("lowpc 0x%tx, textsize 0x%lx",
 			      kvp->gpm.lowpc, kvp->gpm.textsize);
 	endfrom = kvp->gpm.fromssize / sizeof(*froms);
 	for (fromindex = 0; fromindex < endfrom; ++fromindex) {
@@ -399,7 +399,7 @@ dumpstate(struct kvmvars *kvp)
 		for (toindex = froms[fromindex]; toindex != 0;
 		   toindex = tos[toindex].link) {
 			if (debug)
-			    warnx("[mcleanup] frompc 0x%x selfpc 0x%x count %d",
+			    warnx("[mcleanup] frompc 0x%lx selfpc 0x%lx count %ld",
 			    frompc, tos[toindex].selfpc,
 			    tos[toindex].count);
 			rawarc.raw_frompc = frompc;

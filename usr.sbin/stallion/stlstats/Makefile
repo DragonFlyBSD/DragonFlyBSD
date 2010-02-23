@@ -4,6 +4,7 @@
 PROG=	stlstats
 MAN=	stlstats.8
 MANSUBDIR=/i386
+WARNS?= 2
 
 DPADD=	${LIBNCURSES} ${LIBMYTINFO}
 LDADD=	-lncurses -lmytinfo

@@ -2356,11 +2356,13 @@ vm_map_set_wired_quick(vm_map_t map, vm_offset_t addr, vm_size_t size, int *coun
  * If syncio is TRUE, dirty pages are written synchronously.
  * If invalidate is TRUE, any cached pages are freed as well.
  *
+ * This routine is called by sys_msync()
+ *
  * Returns an error if any part of the specified range is not mapped.
  */
 int
-vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end, boolean_t syncio,
-    boolean_t invalidate)
+vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
+	     boolean_t syncio, boolean_t invalidate)
 {
 	vm_map_entry_t current;
 	vm_map_entry_t entry;
@@ -2433,7 +2435,8 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end, boolean_t syncio,
 				size = IDX_TO_OFF(object->size) - offset;
 		}
 		if (object && (object->type == OBJT_VNODE) && 
-		    (current->protection & VM_PROT_WRITE)) {
+		    (current->protection & VM_PROT_WRITE) &&
+		    (object->flags & OBJ_NOMSYNC) == 0) {
 			/*
 			 * Flush pages if writing is allowed, invalidate them
 			 * if invalidation requested.  Pages undergoing I/O
@@ -2766,6 +2769,7 @@ vm_map_split(vm_map_entry_t entry)
 		break;
 	default:
 		/* not reached */
+		new_object = NULL;
 		KKASSERT(0);
 	}
 	if (new_object == NULL)

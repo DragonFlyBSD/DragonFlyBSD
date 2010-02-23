@@ -1,4 +1,4 @@
-/*	$Id: man_action.c,v 1.24 2009/11/02 06:22:45 kristaps Exp $ */
+/*	$Id: man_action.c,v 1.25 2010/01/01 17:14:27 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009 Kristaps Dzonsons <kristaps@kth.se>
  *

@@ -85,24 +85,40 @@ void
 pmap_inval_init(pmap_inval_info_t info)
 {
     info->pir_flags = 0;
+    crit_enter_id("inval");
 }
 
 /*
  * Add a (pmap, va) pair to the invalidation list and protect access
  * as appropriate.
+ *
+ * CPUMASK_LOCK is used to interlock thread switchins
  */
 void
-pmap_inval_add(pmap_inval_info_t info, pmap_t pmap, vm_offset_t va)
+pmap_inval_interlock(pmap_inval_info_t info, pmap_t pmap, vm_offset_t va)
 {
 #ifdef SMP
+    cpumask_t oactive;
+    cpumask_t nactive;
+
+    for (;;) {
+	oactive = pmap->pm_active & ~CPUMASK_LOCK;
+	nactive = oactive | CPUMASK_LOCK;
+	if (atomic_cmpset_int(&pmap->pm_active, oactive, nactive))
+		break;
+	crit_enter();
+	lwkt_process_ipiq();
+	crit_exit();
+    }
+
     if ((info->pir_flags & PIRF_CPUSYNC) == 0) {
 	info->pir_flags |= PIRF_CPUSYNC;
 	info->pir_cpusync.cs_run_func = NULL;
 	info->pir_cpusync.cs_fin1_func = NULL;
 	info->pir_cpusync.cs_fin2_func = NULL;
-	lwkt_cpusync_start(pmap->pm_active, &info->pir_cpusync);
+	lwkt_cpusync_start(oactive, &info->pir_cpusync);
     } else if (pmap->pm_active & ~info->pir_cpusync.cs_mask) {
-	lwkt_cpusync_add(pmap->pm_active, &info->pir_cpusync);
+	lwkt_cpusync_add(oactive, &info->pir_cpusync);
     }
 #else
     if (pmap->pm_active == 0)
@@ -129,6 +145,14 @@ pmap_inval_add(pmap_inval_info_t info, pmap_t pmap, vm_offset_t va)
     }
 }
 
+void
+pmap_inval_deinterlock(pmap_inval_info_t info, pmap_t pmap)
+{
+#ifdef SMP
+	atomic_clear_int(&pmap->pm_active, CPUMASK_LOCK);
+#endif
+}
+
 /*
  * Synchronize changes with target cpus.
  */
@@ -145,5 +169,12 @@ pmap_inval_flush(pmap_inval_info_t info)
 	cpu_invlpg(info->pir_cpusync.cs_data);
 #endif
     info->pir_flags = 0;
+}
+
+void
+pmap_inval_done(pmap_inval_info_t info)
+{
+    pmap_inval_flush(info);
+    crit_exit_id("inval");
 }
 

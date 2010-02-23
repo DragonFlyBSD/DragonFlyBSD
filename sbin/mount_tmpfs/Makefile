@@ -4,6 +4,7 @@
 PROG=	mount_tmpfs
 SRCS=	mount_tmpfs.c getmntopts.c
 MAN=	mount_tmpfs.8
+LDADD+= -lutil
 
 MOUNT=	${.CURDIR}/../mount
 CFLAGS+= -I${.CURDIR}/../../sys -I${MOUNT}

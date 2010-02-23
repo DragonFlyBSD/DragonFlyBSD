@@ -70,9 +70,8 @@ LSUBDIRS=	bus/cam bus/cam/scsi \
 	netproto/atalk netproto/atm netproto/ipsec netproto/ipx \
 	netproto/key netproto/natm netproto/ncp netproto/ns netproto/smb \
 	netproto/atm/ipatm netproto/atm/sigpvc netproto/atm/spans \
-	netproto/atm/uni netproto/802_11 netproto/mpls
-
-LSUBDIRS3= vfs/isofs/cd9660 net/i4b/include \
+	netproto/atm/uni netproto/802_11 netproto/mpls \
+	vfs/isofs/cd9660 net/i4b/include \
 	dev/disk/mpt/mpilib \
 	dev/misc/lpt dev/misc/ppi \
 	dev/netif/wi \
@@ -82,7 +81,6 @@ LSUBDIRS3= vfs/isofs/cd9660 net/i4b/include \
 # For SHARED=symlinks, bus/cam and netproto/atm are symlinks, so cam/scsi
 # and netproto/atm/* are taken care of
 LSYMSUBDIRS=	${LSUBDIRS:Nbus/cam/scsi:Nnetproto/atm/*:Nnet/*:Nnetgraph/*}
-LSYMSUBDIRS3=	${LSUBDIRS3:Nnet/*}
 
 # For obsolete headers which need to be removed
 RMHEADERS=	machine/ansi.h sys/inttypes.h
@@ -154,7 +152,7 @@ INCSLINKS+=	bus/pccard ${INCLUDEDIR}/pccard
 # architecture does not need to enhance.
 
 mtree_setup:
-.for i in ${LDIRS} ${LSYMSUBDIRS} ${LSYMSUBDIRS3} machine cpu crypto dev/acpica
+.for i in ${LDIRS} ${LSYMSUBDIRS} machine cpu crypto dev/acpica
 	if [ -h ${DESTDIR}/usr/include/$i ]; then \
 		rm -f ${DESTDIR}/usr/include/$i; \
 	fi
@@ -163,7 +161,7 @@ mtree_setup:
 		-p ${DESTDIR}/usr/include
 
 copies:		mtree_setup
-.for i in ${LDIRS} ${LSUBDIRS} ${LSUBDIRS3}
+.for i in ${LDIRS} ${LSUBDIRS}
 	cd ${.CURDIR}/../sys; \
 		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 $i/*.h \
 		${DESTDIR}/usr/include/$i
@@ -216,11 +214,7 @@ symlinks:	mtree_setup
 	${LN} -s ../../sys/opencrypto ${DESTDIR}/usr/include/crypto
 .for i in ${LSYMSUBDIRS}
 	rm -rf ${DESTDIR}/usr/include/$i
-	${LN} -s ../../../sys/$i ${DESTDIR}/usr/include/$i
-.endfor
-.for i in ${LSYMSUBDIRS3}
-	rm -rf ${DESTDIR}/usr/include/$i
-	${LN} -s ../../../../sys/$i ${DESTDIR}/usr/include/$i
+	${LN} -s ${i:C;[^/]+/?;../;g}../sys/$i ${DESTDIR}/usr/include/$i
 .endfor
 	rm -rf ${DESTDIR}/usr/include/cpu
 	${LN} -s ../../sys/cpu/${MACHINE_ARCH}/include ${DESTDIR}/usr/include/cpu

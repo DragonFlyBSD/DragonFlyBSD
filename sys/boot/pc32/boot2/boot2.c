@@ -104,8 +104,8 @@
 #define RBX_MASK	0x2005ffff
 
 #define PATH_CONFIG	"/boot.config"
-#define PATH_BOOT3	"/boot/loader"		/* /boot in root */
-#define PATH_BOOT3_ALT	"/loader"		/* /boot partition */
+#define PATH_BOOT3	"/loader"		/* /boot is dedicated */
+#define PATH_BOOT3_ALT	"/boot/loader"		/* /boot in root */
 #define PATH_KERNEL	"/kernel"
 
 #define NDEV		3

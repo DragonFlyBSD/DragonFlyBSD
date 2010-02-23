@@ -58,6 +58,7 @@
 
 #include <vfs/tmpfs/tmpfs.h>
 #include <vfs/tmpfs/tmpfs_vnops.h>
+#include <vfs/tmpfs/tmpfs_args.h>
 
 /*
  * Default permission for root node
@@ -76,53 +77,6 @@ static int	tmpfs_unmount(struct mount *, int);
 static int	tmpfs_root(struct mount *, struct vnode **);
 static int	tmpfs_fhtovp(struct mount *, struct vnode *, struct fid *, struct vnode **);
 static int	tmpfs_statfs(struct mount *, struct statfs *, struct ucred *cred);
-
-/* --------------------------------------------------------------------- */
-
-#define SWI_MAXMIB	3
-static u_int
-get_swpgtotal(void)
-{
-	struct swdevt swinfo;
-	char *sname = "vm.swap_info";
-	int soid[SWI_MAXMIB], oid[2];
-	u_int unswdev, total, dmmax, nswapdev;
-	size_t mibi, len;
-
-	total = 0;
-
-	len = sizeof(dmmax);
-	if (kernel_sysctlbyname("vm.dmmax", &dmmax, &len,
-				NULL, 0, NULL) != 0)
-		return total;
-
-	len = sizeof(nswapdev);
-	if (kernel_sysctlbyname("vm.nswapdev", &nswapdev, &len,
-				NULL, 0, NULL) != 0)
-		return total;
-
-	mibi = (SWI_MAXMIB - 1) * sizeof(int);
-	oid[0] = 0;
-	oid[1] = 3;
-
-	if (kernel_sysctl(oid, 2,
-			soid, &mibi, (void *)sname, strlen(sname),
-			NULL) != 0)
-		return total;
-
-	mibi = (SWI_MAXMIB - 1);
-	for (unswdev = 0; unswdev < nswapdev; ++unswdev) {
-		soid[mibi] = unswdev;
-		len = sizeof(struct swdevt);
-		if (kernel_sysctl(soid, mibi + 1, &swinfo, &len, NULL, 0,
-				NULL) != 0)
-			return total;
-		if (len == sizeof(struct swdevt))
-			total += (swinfo.sw_nblks - dmmax);
-	}
-
-	return total;
-}
 
 /* --------------------------------------------------------------------- */
 int
@@ -180,13 +134,15 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *root;
-	size_t pages, mem_size;
+	struct tmpfs_args args;
+	vm_pindex_t pages;
+	vm_pindex_t pages_limit;
 	ino_t nodes;
 	int error;
 	/* Size counters. */
-	ino_t	nodes_max = 0;
-	size_t	size_max = 0;
-	size_t size;
+	ino_t	nodes_max;
+	off_t	size_max;
+	size_t	size;
 
 	/* Root node attributes. */
 	uid_t	root_uid = cred->cr_uid;
@@ -200,12 +156,22 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		return EOPNOTSUPP;
 	}
 
-	/* Do not allow mounts if we do not have enough memory to preserve
-	 * the minimum reserved pages. */
-	mem_size = vmstats.v_free_count + vmstats.v_inactive_count + get_swpgtotal();
-	mem_size -= mem_size > vmstats.v_wire_count ? vmstats.v_wire_count : mem_size;
-	if (mem_size < TMPFS_PAGES_RESERVED)
-		return ENOSPC;
+	/*
+	 * mount info
+	 */
+	bzero(&args, sizeof(args));
+	size_max  = 0;
+	nodes_max = 0;
+
+	if (path) {
+		if (data) {
+			error = copyin(data, &args, sizeof(args));
+			if (error)
+				return (error);
+		}
+		size_max = args.ta_size_max;
+		nodes_max = args.ta_nodes_max;
+	}
 
 	/*
 	 * If mount by non-root, then verify that user has necessary
@@ -217,34 +183,38 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			root_mode |= VWRITE;
 	}
 
-	/* Get the maximum number of memory pages this file system is
-	 * allowed to use, based on the maximum size the user passed in
-	 * the mount structure.  A value of zero is treated as if the
-	 * maximum available space was requested. */
-	if (size_max < PAGE_SIZE || size_max >= SIZE_MAX)
-		pages = SIZE_MAX;
-	else
-		pages = howmany(size_max, PAGE_SIZE);
-	KKASSERT(pages > 0);
+	pages_limit = vm_swap_max + vmstats.v_page_count / 2;
 
-	if (nodes_max <= 3)
+	if (size_max == 0)
+		pages = pages_limit / 2;
+	else if (size_max < PAGE_SIZE)
+		pages = 1;
+	else if (OFF_TO_IDX(size_max) > pages_limit)
+		pages = pages_limit;
+	else
+		pages = OFF_TO_IDX(size_max);
+
+	if (nodes_max == 0)
 		nodes = 3 + pages * PAGE_SIZE / 1024;
+	else if (nodes_max < 3)
+		nodes = 3;
+	else if (nodes_max > pages)
+		nodes = pages;
 	else
 		nodes = nodes_max;
-	KKASSERT(nodes >= 3);
 
 	/* Allocate the tmpfs mount structure and fill it. */
-	tmp = (struct tmpfs_mount *)kmalloc(sizeof(struct tmpfs_mount),
-	    M_TMPFSMNT, M_WAITOK | M_ZERO);
+	tmp = kmalloc(sizeof(*tmp), M_TMPFSMNT, M_WAITOK | M_ZERO);
 
 	lockinit(&(tmp->allnode_lock), "tmpfs allnode lock", 0, LK_CANRECURSE);
 	tmp->tm_nodes_max = nodes;
 	tmp->tm_nodes_inuse = 0;
-	tmp->tm_maxfilesize = (u_int64_t)(vmstats.v_page_count + get_swpgtotal()) * PAGE_SIZE;
+	tmp->tm_maxfilesize = IDX_TO_OFF(pages_limit);
 	LIST_INIT(&tmp->tm_nodes_used);
 
 	tmp->tm_pages_max = pages;
 	tmp->tm_pages_used = 0;
+
 	tmp->tm_dirent_pool =  objcache_create( "tmpfs dirent cache",
 	    0, 0,
 	    NULL, NULL, NULL,
@@ -257,9 +227,15 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	    &tmpfs_node_pool_malloc_args);
 
 	/* Allocate the root node. */
-	error = tmpfs_alloc_node(tmp, VDIR, root_uid,
-	    root_gid, root_mode & ALLPERMS, NULL, NULL,
-	    VNOVAL, VNOVAL, &root);
+	error = tmpfs_alloc_node(tmp, VDIR, root_uid, root_gid,
+				 root_mode & ALLPERMS, NULL, NULL,
+				 VNOVAL, VNOVAL, &root);
+
+	/*
+	 * We are backed by swap, set snocache chflags flag so we
+	 * don't trip over swapcache.
+	 */
+	root->tn_flags = SF_NOCACHE;
 
 	if (error != 0 || root == NULL) {
 	    objcache_destroy(tmp->tm_node_pool);
@@ -275,6 +251,7 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	mp->mnt_kern_flag |= MNTK_RD_MPSAFE | MNTK_WR_MPSAFE | MNTK_GA_MPSAFE  |
 			     MNTK_IN_MPSAFE | MNTK_SG_MPSAFE;
 #endif
+	mp->mnt_kern_flag |= MNTK_NOMSYNC;
 	mp->mnt_data = (qaddr_t)tmp;
 	vfs_getnewfsid(mp);
 
@@ -310,11 +287,24 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 	if (mntflags & MNT_FORCE)
 		flags |= FORCECLOSE;
 
-	/* Tell vflush->vinvalbuf->fsync to throw away data */
 	tmp = VFS_TO_TMPFS(mp);
-	tmp->tm_flags |= TMPFS_FLAG_UNMOUNTING;
 
-	/* Finalize all pending I/O. */
+	/*
+	 * Finalize all pending I/O.  In the case of tmpfs we want
+	 * to throw all the data away so clean out the buffer cache
+	 * and vm objects before calling vflush().
+	 */
+	LIST_FOREACH(node, &tmp->tm_nodes_used, tn_entries) {
+		if (node->tn_type == VREG && node->tn_vnode) {
+			++node->tn_links;
+			TMPFS_NODE_LOCK(node);
+			vx_get(node->tn_vnode);
+			tmpfs_truncate(node->tn_vnode, 0);
+			vx_put(node->tn_vnode);
+			TMPFS_NODE_UNLOCK(node);
+			--node->tn_links;
+		}
+	}
 	error = vflush(mp, 0, flags);
 	if (error != 0)
 		return error;
@@ -471,11 +461,11 @@ tmpfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	sbp->f_iosize = PAGE_SIZE;
 	sbp->f_bsize = PAGE_SIZE;
 
-	sbp->f_blocks = TMPFS_PAGES_MAX(tmp);
-	sbp->f_bavail = sbp->f_bfree = TMPFS_PAGES_AVAIL(tmp);
+	sbp->f_blocks = tmp->tm_pages_max;
+	sbp->f_bavail = tmp->tm_pages_max - tmp->tm_pages_used;
+	sbp->f_bfree = sbp->f_bavail;
 
-	freenodes = MIN(tmp->tm_nodes_max - tmp->tm_nodes_inuse,
-	    TMPFS_PAGES_AVAIL(tmp) * PAGE_SIZE / sizeof(struct tmpfs_node));
+	freenodes = tmp->tm_nodes_max - tmp->tm_nodes_inuse;
 
 	sbp->f_files = freenodes + tmp->tm_nodes_inuse;
 	sbp->f_ffree = freenodes;

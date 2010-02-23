@@ -51,7 +51,6 @@
 
 #include "apmd.h"
 
-extern int	yyparse(void);
 
 int		debug_level = 0;
 int		verbose = 0;
@@ -540,7 +539,7 @@ check_battery(void)
 		if (p -> direction == AC_POWER_STATE &&
 			!(p -> done) &&
 			((p -> type == BATTERY_PERCENT && 
-				p -> level == pw_info.ai_batt_life) ||
+				p -> level == (int)pw_info.ai_batt_life) ||
 			(p -> type == BATTERY_MINUTES &&
 				p -> level == (pw_info.ai_batt_time / 60)))) {
 			p -> done++;

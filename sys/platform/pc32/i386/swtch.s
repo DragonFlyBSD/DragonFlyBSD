@@ -273,7 +273,6 @@ ENTRY(cpu_exit_switch)
 
 ENTRY(cpu_heavy_restore)
 	popfl
-	movl	TD_PCB(%eax),%edx		/* EDX = PCB */
 	movl	TD_LWP(%eax),%ecx
 
 #if defined(SWTCH_OPTIM_STATS)
@@ -285,8 +284,18 @@ ENTRY(cpu_heavy_restore)
 	 * pmap (remember, we do not hold the MP lock in the switch code).
 	 */
 	movl	LWP_VMSPACE(%ecx), %ecx		/* ECX = vmspace */
-	movl	PCPU(cpuid), %esi
-	MPLOCKED btsl	%esi, VM_PMAP+PM_ACTIVE(%ecx)
+	movl	PCPU(cpumask), %esi
+	MPLOCKED orl	%esi, VM_PMAP+PM_ACTIVE(%ecx)
+#ifdef SMP
+	testl	$CPUMASK_LOCK,VM_PMAP+PM_ACTIVE(%ecx)
+	jz	1f
+	pushl	%eax
+	pushl	%ecx
+	call	pmap_interlock_wait
+	popl	%ecx
+	popl	%eax
+1:
+#endif
 
 	/*
 	 * Restore the MMU address space.  If it is the same as the last
@@ -294,6 +303,7 @@ ENTRY(cpu_heavy_restore)
 	 * YYY which naturally also means that the PM_ACTIVE bit had better
 	 * already have been set before we set it above, check? YYY
 	 */
+	movl	TD_PCB(%eax),%edx		/* EDX = PCB */
 	movl	%cr3,%esi
 	movl	PCB_CR3(%edx),%ecx
 	cmpl	%esi,%ecx

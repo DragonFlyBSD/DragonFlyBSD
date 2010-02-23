@@ -1,4 +1,4 @@
-/*	$Id: arch.c,v 1.5 2009/10/26 17:05:43 kristaps Exp $ */
+/*	$Id: arch.c,v 1.6 2010/01/01 17:14:26 kristaps Exp $ */
 /*
  * Copyright (c) 2009 Kristaps Dzonsons <kristaps@kth.se>
  *

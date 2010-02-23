@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd August 11, 2009
+.Dd February 23, 2010
 .Os
 .Dt COMPILERS.CONF 5
 .Sh NAME
@@ -88,14 +88,62 @@ with
 .Pp
 Once configured the compiler can then be used like this:
 .Bd -literal -offset indent
-[build and install clang]
+env CCVER=clang make
+.Ed
+.Pp
+To build world and kernel, use the following instructions:
+.Bd -literal -offset indent
 cd /usr/src
-env WORLD_CCVER=clang make buildworld
+fetch http://leaf.dragonflybsd.org/~swildner/world_clang.diff
+patch -p1 <world_clang.diff
+env WORLD_CCVER=clang make -DNO_GCC44 buildworld
+env WORLD_CCVER=clang make buildkernel KERNCONF=MYCONF
 .Ed
 .Pp
 Currently, defaults are provided for
 .Nm clang
-(installed from SVN trunk).
+(installed from pkgsrc's
+.Pa lang/clang )
+and
+.Nm clangsvn
+(installed from SVN trunk as described in
+.Pa http://clang.llvm.org/get_started.html ) .
+.Sh IMPLEMENTATION NOTES
+In
+.Dx ,
+compilers are selected by setting the
+.Ev CCVER
+variable.
+The
+.Xr objformat 1
+deflector program is responsible for executing the correct programs (located in
+.Pa /usr/libexec/$CCVER )
+based on the setting of that variable.
+Traditionally,
+.Dx
+has 2 compilers in base, one of which is the default compiler and the other
+is either a newer or older version.
+.Pp
+In order to allow additional non-base compilers into
+.Dx Ap s
+build process,
+.Xr objformat 1
+deflects to
+.Pa /usr/libexec/custom
+when
+.Ev CCVER Ap s
+setting is not one of the compilers in base.
+This directory contains a
+.Pa cc
+wrapper script (and some links to it).
+The wrapper script then takes care of making the compiler look and behave
+like a compiler in base.
+.Pp
+The settings in
+.Nm
+specify paths and flags for the
+.Pa /usr/libexec/custom/cc
+script.
 .Sh FILES
 .Bl -tag -width ".Pa /etc/compilers.conf" -compact
 .It Pa /etc/compilers.conf

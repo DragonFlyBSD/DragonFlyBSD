@@ -43,6 +43,7 @@
 #include <evtr.h>
 #include "xml.h"
 #include "svg.h"
+#include "trivial.h"
 
 enum {
 	NR_TOP_THREADS = 5,
@@ -83,23 +84,7 @@ struct command {
 
 evtr_t evtr;
 char *opt_infile;
-static unsigned evtranalyze_debug;
-
-#define DEFINE_DEBUG_FLAG(nam, chr)\
-	nam = chr - 'a'
-
-enum debug_flags {
-	DEFINE_DEBUG_FLAG(INTV, 'i'),
-	DEFINE_DEBUG_FLAG(SVG, 's'),
-	DEFINE_DEBUG_FLAG(MISC, 'm'),
-};
-
-#define printd(subsys, ...)				\
-	do {						\
-		if (evtranalyze_debug & (subsys)) {	\
-			fprintf(stderr, __VA_ARGS__);	\
-		}					\
-	} while (0)
+unsigned evtranalyze_debug;
 
 static
 void

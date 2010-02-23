@@ -72,6 +72,7 @@
 #include <machine/specialreg.h>
 #include <machine/pcb.h>
 #include <machine/smp.h>
+#include <machine/pmap.h>
 
 ASSYM(P_VMSPACE, offsetof(struct proc, p_vmspace));
 ASSYM(VM_PMAP, offsetof(struct vmspace, vm_pmap));
@@ -109,6 +110,7 @@ ASSYM(VM_MAX_USER_ADDRESS, VM_MAX_USER_ADDRESS);
 ASSYM(GD_CURTHREAD, offsetof(struct mdglobaldata, mi.gd_curthread));
 ASSYM(GD_CNT, offsetof(struct mdglobaldata, mi.gd_cnt));
 ASSYM(GD_CPUID, offsetof(struct mdglobaldata, mi.gd_cpuid));
+ASSYM(GD_CPUMASK, offsetof(struct mdglobaldata, mi.gd_cpumask));
 
 ASSYM(PCB_CR3, offsetof(struct pcb, pcb_cr3));
 ASSYM(PCB_R15, offsetof(struct pcb, pcb_r15));
@@ -236,6 +238,9 @@ ASSYM(MACHINTR_INTREN, offsetof(struct machintr_abi, intren));
 
 ASSYM(TDPRI_CRIT, TDPRI_CRIT);
 ASSYM(TDPRI_INT_SUPPORT, TDPRI_INT_SUPPORT);
+#ifdef SMP
+ASSYM(CPUMASK_LOCK, CPUMASK_LOCK);
+#endif
 
 #ifdef SMP
 ASSYM(AIMI_APIC_ADDRESS, offsetof(struct apic_intmapinfo, apic_address));

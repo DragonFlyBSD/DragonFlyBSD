@@ -155,7 +155,7 @@ pmap_bootstrap(void)
 	kernel_pmap.pm_pdir = KernelPTD - (KvaStart >> SEG_SHIFT);
 	kernel_pmap.pm_pdirpte = KernelPTA[i];
 	kernel_pmap.pm_count = 1;
-	kernel_pmap.pm_active = (cpumask_t)-1;
+	kernel_pmap.pm_active = (cpumask_t)-1 & ~CPUMASK_LOCK;
 	TAILQ_INIT(&kernel_pmap.pm_pvlist);
 	i386_protection_init();
 }
@@ -2963,7 +2963,7 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 		if (curthread->td_lwp == lp) {
 			pmap = vmspace_pmap(newvm);
 #if defined(SMP)
-			atomic_set_int(&pmap->pm_active, 1 << mycpu->gd_cpuid);
+			atomic_set_int(&pmap->pm_active, mycpu->gd_cpumask);
 #else
 			pmap->pm_active |= 1;
 #endif
@@ -2972,8 +2972,7 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 #endif
 			pmap = vmspace_pmap(oldvm);
 #if defined(SMP)
-			atomic_clear_int(&pmap->pm_active,
-					  1 << mycpu->gd_cpuid);
+			atomic_clear_int(&pmap->pm_active, mycpu->gd_cpumask);
 #else
 			pmap->pm_active &= ~1;
 #endif

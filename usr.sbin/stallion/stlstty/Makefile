@@ -4,6 +4,7 @@
 PROG=	stlstty
 MAN=	stlstty.8
 MANSUBDIR=/i386
+WARNS?= 3
 
 DPADD=	${LIBNCURSES} ${LIBMYTINFO}
 LDADD=	-lncurses -lmytinfo

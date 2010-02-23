@@ -375,7 +375,7 @@ download(void)
 
 	strttime = time(NULL);
 	if (verbose)
-		printf("Waiting for slave alive marker, time=%x timeout=%d\n",
+		printf("Waiting for slave alive marker, time=%lx timeout=%d\n",
 			strttime, TIMEOUT);
 	while (time(NULL) < (strttime + TIMEOUT)) {
 		if (lseek(memfd, CDK_RDYADDR, SEEK_SET) != CDK_RDYADDR) {

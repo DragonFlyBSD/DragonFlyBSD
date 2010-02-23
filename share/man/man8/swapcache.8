@@ -17,7 +17,7 @@
 .Nd a
 mechanism which allows the system to use fast swap to cache filesystem
 data and meta-data.
-.Sh SYNOPSIS (defaults shown)
+.Sh SYNOPSIS
 .Cd sysctl vm.swapcache.accrate=100000
 .Cd sysctl vm.swapcache.maxfilesize=0
 .Cd sysctl vm.swapcache.maxburst=2000000000
@@ -28,6 +28,7 @@ data and meta-data.
 .Cd sysctl vm.swapcache.data_enable=0
 .Cd sysctl vm.swapcache.use_chflags=1
 .Cd sysctl vm.swapcache.maxlaunder=256
+.Cd sysctl vm.swapcache.hysteresis=(vm.stats.vm.v_inactive_target/2)
 .Sh DESCRIPTION
 .Nm
 is a system capability which allows a solid state disk (SSD) in a swap
@@ -52,11 +53,12 @@ using buffercache.  Meta-data is cached globally regardless of file
 or directory flags.
 .Pp
 .Cd vm.swapcache.data_enable
-enables the writing of filesystem file-data to the swapcache.  Filesystem
-filedata is any data which the filesystem accesses via a regular file.
-In technical terms, when the buffer cache is used to access a regular
-file through its vnode.  Please do not blindly turn on this option,
-see the PERFORMANCE TUNING section for more information.
+enables the writing of clean filesystem file-data to the swapcache.
+Filesystem filedata is any data which the filesystem accesses via a
+regular file.  In technical terms, when the buffer cache is used to access
+a regular file through its vnode.
+Please do not blindly turn on this option, see the PERFORMANCE TUNING
+section for more information.
 .Pp
 .Cd vm.swapcache.use_chflags
 enables the use of the
@@ -77,6 +79,19 @@ operation.
 controls which files are to be cached based on their size.
 If set to non-zero only files smaller than the specified size
 will be cached.  Larger files will not be cached.
+.Pp
+.Cd vm.swapcache.maxlaunder
+controls the maximum number of clean VM pages which will be added to
+the swap cache and written out to swap on each poll.
+Swapcache polls ten times a second.
+.Pp
+.Cd vm.swapcache.hysteresis
+controls how many pages swapcache waits to be added to the inactive page
+queue before continuing its scan.  Once it decides to scan it continues
+subject to the above limitations until it reaches the end of the inactive
+page queue.
+This parameter is designed to make swapcache generate more bulky bursts
+to swap which helps SSDs reduce write amplification effects.
 .Sh PERFORMANCE TUNING
 Best operation is achieved when the active data set fits within the
 swapcache.
@@ -92,17 +107,19 @@ Even though SSDs have limited write endurance, there is massive
 cost/performance benefit to using one in a swapcache configuration.
 .Pp
 Let's use the Intel X25V 40G MLC SATA SSD as an example.  This device
-has approximately a 40TB (40 terabyte) write endurance.
+has approximately a
+40TB (40 terabyte) write endurance, but see later
+notes on this, it is more a minimum value.
 Limiting the long term average bandwidth to 100K/sec leads to no more
 than ~9G/day writing which calculates approximately to a 12 year
 endurance.
 Endurance scales linearly with size.  The 80G version of this SSD
 will have a write endurance of approximately 80TB.
 .Pp
-MLC SSDs have approximately a 1000x write endurance, while the
-lower density higher-cost SLC SSDs have an approximately 10000x
-write endurance.  MLC SSDs can be used for the swapcache (and swap)
-as long as the system manager is cognizant of its limitations.
+MLC SSDs have a 1000-10000x write endurance, while the lower density
+higher-cost SLC SSDs have an approximately 10000-100000x write endurance.
+MLC SSDs can be used for the swapcache (and swap) as long as the system
+manager is cognizant of its limitations.
 .Pp
 .It Cd vm.swapcache.meta_enable
 Turning on just
@@ -111,6 +128,12 @@ causes only filesystem meta-data to be cached and will result
 in very fast directory operations even over millions of inodes
 and even in the face of other invasive operations being run
 by other processes.
+.Pp
+For HAMMER filesystems meta-data includes the B-Tree, directory entries,
+and data related to tiny files.  Approximately 6 GB of swapcache is needed
+for every 14 million or so inodes cached, effectively giving one the
+ability to cache all the meta-data in a multi-terrabyte filesystem using
+a fairly small SSD.
 .Pp
 .It Cd vm.swapcache.data_enable
 Turning on
@@ -130,18 +153,25 @@ memory (KVM) and cannot reliably support more than around
 100,000 active vnodes.  64-bit kernels can support 300,000+
 active vnodes.
 .Pp
-Data caching is definitely more wasteful of SSD write bandwidth
-than meta-data caching.  It doesn't hurt performance per se,
-but may cause the
-.Nm
-to exhaust its burst and smack against the long term average
-bandwidth limit, causing the SSD to wear out at the maximum rate you
-programmed.  Data caching is far less wasteful and more efficient
+Data caching is definitely more wasteful of the SSD's write durability
+than meta-data caching.
+The swapcache may exhaust its burst and smack against the long term
+average bandwidth limit, causing the SSD to wear out at the maximum rate
+you programmed.  Data caching is far less wasteful and more efficient
 if (on a 64-bit system only) you provide a sufficiently large SSD and
 increase
 .Cd kern.maxvnodes
 to cover the entire directory topology being served.
 Each vnode requires about 1K of physical ram.
+.Pp
+Due to the higher SSD write rate you may want to use a
+medium-sized SSD with good write performance to reduce interference
+between reading and writing.
+Write durability also scales with larger SSDs.
+For example, an Intel X25-V only has 40MB/s in write performance
+and burst writing by swapcache will seriously interfere with
+concurrent read operation on the SSD.  The 80G X25-M on the
+otherhand has double the write performance.
 .Pp
 When data caching is turned on you generally want to use
 .Xr chflags 1
@@ -150,22 +180,22 @@ with the
 flag to enable data caching on a directory.
 This flag is tracked by the namecache and does not need to be
 recursively set in the directory tree.
-Simply setting the flag in a top level directory is sufficient.
+Simply setting the flag in a top level directory or mount point
+is usually sufficient.
+However, the flag does not track across mount points.
 A typical setup is something like this:
 .Pp
 .Dl chflags cache /etc /sbin /bin /usr /home
 .Dl chflags noscache /usr/obj
 .Pp
-Alternatively if you have NFS mounts where chflags does not work you
-can enable caching in some parent directory, then selectively disable
-it.
-.Pp
-.Dl chflags cache /
-.Dl chflags noscache /usr/obj /tmp /var/tmp
-.Pp
 If that doesn't work you can turn off
 .Cd vm.swapcache.use_chflags
 entirely and not bother with any chflagging.
+.Pp
+Filesystems such as NFS which do not support flags generally
+have a
+.Cd cache
+mount option which enables swapcache operation on the mount.
 .Pp
 .It Cd vm.swapcache.maxfilesize
 This may be used to reduce cache thrashing when a focus on a small
@@ -192,6 +222,14 @@ This controls the maximum amount of swapspace
 .Nm
 may use, in percentage terms.
 .El
+.Pp
+It is important to note that you should always use
+.Xr disklabel64 8
+to label your SSD.  Disklabel64 will properly align the base of the
+partition space relative to the physical drive regardless of how badly
+aligned the fdisk slice is.
+This will significantly reduce write amplification and write combining
+inefficiencies on the SSD.
 .Pp
 Finally, interleaved swap (multiple SSDs) may be used to increase
 performance even further.  A single SATA SSD is typically capable of
@@ -263,7 +301,7 @@ The system operator should configure at least 4 times the SWAP space
 versus main memory and no less than 8G of swap space.
 If a 40G SSD is used the recommendation is to configure 16G to 32G of
 swap (note: 32-bit is limited to 32G of swap by default, for 64-bit
-it is 512G of swap).
+it is 512G of swap), and to leave the remainder unwritten and unused.
 .Pp
 The
 .Cd vm_swapcache.maxswappct
@@ -322,19 +360,32 @@ a -j 8 parallel build world in a little less than twice the time it
 would take if the system had 2G of ram, whereas it would take 5x to 10x
 as long with normal HD based swap.
 .Sh WARNINGS
-SSDs have limited durability and
+I am going to repeat and expand a bit on SSD wear.
+Wear on SSDs is a function of the write durability of the cells,
+whether the SSD implements static or dynamic wear leveling, and
+write amplification effects based on the type of write activity.
+Write amplification occurs due to wasted space when the SSD must
+erase and rewrite the underlying flash blocks.  e.g. MLC flash uses
+128KB erase/write blocks.
+.Pp
 .Nm
 parameters should be carefully chosen to avoid early wearout.
-For example, the Intel X25V 40G SSD has a nominal 40TB (terabyte)
-write durability.
+For example, the Intel X25V 40G SSD has a minimum write durability
+of 40TB and an actual durability that can be quite a bit higher.
 Generally speaking, you want to select parameters that will give you
-at least 5 years of service life.  10 years is a good compromise.
+at least 10 years of service life.
+The most important parameter to control this is
+.Cd vm.swapcache.accrate .
+.Nm
+uses a very conservative 100KB/sec default but even a small X25V
+can probably handle 300KB/sec of continuous writing and still last
+10 years.
 .Pp
-Durability typically scales with size and also depends on the
-wear-leveling algorithm used by the device.  Durability can often
-be improved by configuring less space (in a manufacturer-fresh drive)
-than the drive's capacity.  For example, by only using 32G of a 40G
-SSD.  SSDs typically implement 10% more storage than advertised and
+Depending on the wear leveling algorithm the drive uses, durability
+and performance can sometimes be improved by configuring less
+space (in a manufacturer-fresh drive) than the drive's probed capacity.
+For example, by only using 32G of a 40G SSD.
+SSDs typically implement 10% more storage than advertised and
 use this storage to improve wear leveling.  As cells begin to fail
 this overallotment slowly becomes part of the primary storage
 until it has been exhausted.  After that the SSD has basically failed.
@@ -351,10 +402,10 @@ for swap.
 (from pkgsrc's sysutils/smartmontools) may be used to retrieve 
 the wear indicator from the drive.
 One usually runs something like 'smartctl -d sat -a /dev/daXX'
-(for AHCI/SILI/SCSI), or 'smartctl -a /dev/adXX' for NATA.  Many SSDs
-will brick the SATA port when smart operations are done while the drive
-is busy with normal activity, so the tool should only be run when the
-SSD is idle.
+(for AHCI/SILI/SCSI), or 'smartctl -a /dev/adXX' for NATA.  Some SSDs
+(particularly the Intels) will brick the SATA port when smart operations
+are done while the drive is busy with normal activity, so the tool should
+only be run when the SSD is idle.
 .Pp
 ID 232 (0xe8) in the SMART data dump indicates available reserved
 space and ID 233 (0xe9) is the wear-out meter.  Reserved space
@@ -362,26 +413,43 @@ typically starts at 100 and decrements to 10, after which the SSD
 is considered to operate in a degraded mode.  The wear-out meter
 typically starts at 99 and decrements to 0, after which the SSD
 has failed.
-Wear on SSDs is a function only of the write durability which is
-essentially just the total aggregate sectors written.
+.Pp
 .Nm
-tends to use large 64K writes as well as operates in a bursty fashion
-which the SSD is able to take significant advantage of.
-Power-on hours, power cycles, and read operations do not really affect wear.
+tends to use large 64K writes and tends to cluster multiple writes
+linearly.  The SSD is able to take significant advantage of this
+and write amplification effects are greatly reduced.  If we
+take a 40G Intel X25V as an example the vendor specifies a write
+durability of approximately 40TB, but
+.Nm
+should be able to squeeze out upwards of 200TB due the fairly optimal
+write clustering it does.
+The theoretical limit for the Intel X25V is 400TB (10,000 erase cycles
+per MLC cell, 40G drive), but the firmware doesn't do perfect static
+wear leveling so the actual durability is less.
+.Pp
+In contrast, most filesystems directly stored on a SSD have
+fairly severe write amplification effects and will have durabilities
+ranging closer to the vendor-specified limit.
+Power-on hours, power cycles, and read operations do not really affect
+wear.
 .Pp
 SSD's with MLC-based flash technology are high-density, low-cost solutions
 with limited write durability.  SLC-based flash technology is a low-density,
 higher-cost solution with 10x the write durability as MLC.  The durability
-also scales with the amount of flash storage, with SLC based flash typically
+also scales with the amount of flash storage.  SLC based flash is typically
 twice as expensive per gigabyte.  From a cost perspective, SLC based flash
 is at least 5x more cost effective in situations where high write
-bandwidths are required (lasting 10x longer).  MLC is at least 2x more
-cost effective in situations where high write bandwidth is not required.
-When wear calculations are in years, these differences become huge.
+bandwidths are required (because it lasts 10x longer).  MLC is at least
+2x more cost effective in situations where high write bandwidth is not
+required.
+When wear calculations are in years, these differences become huge, but
+often the quantity of storage needed trumps the wear life so we expect most
+people will be using MLC.
 .Nm
 is usable with both technologies.
 .Sh SEE ALSO
 .Xr swapon 8 ,
+.Xr disklabel64 8 ,
 .Xr fstab 5
 .Sh HISTORY
 .Nm

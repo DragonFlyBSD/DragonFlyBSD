@@ -679,7 +679,7 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 
 	++ip->ino_data.nlinks;
 	ip->ino_data.ctime = trans->time;
-	hammer_modify_inode(ip, HAMMER_INODE_DDIRTY);
+	hammer_modify_inode(trans, ip, HAMMER_INODE_DDIRTY);
 
 	/*
 	 * Find an unused namekey.  Both the in-memory record tree and
@@ -735,7 +735,7 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 	error = hammer_mem_add(record);
 	if (error == 0) {
 		dip->ino_data.mtime = trans->time;
-		hammer_modify_inode(dip, HAMMER_INODE_MTIME);
+		hammer_modify_inode(trans, dip, HAMMER_INODE_MTIME);
 	}
 failed:
 	hammer_done_cursor(&cursor);
@@ -850,9 +850,9 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 			ip->ino_data.ctime = trans->time;
 		}
 		dip->ino_data.mtime = trans->time;
-		hammer_modify_inode(dip, HAMMER_INODE_MTIME);
+		hammer_modify_inode(trans, dip, HAMMER_INODE_MTIME);
 		if (ip) {
-			hammer_modify_inode(ip, HAMMER_INODE_DDIRTY);
+			hammer_modify_inode(trans, ip, HAMMER_INODE_DDIRTY);
 			if (ip->ino_data.nlinks == 0 &&
 			    (ip->vp == NULL || (ip->vp->v_flag & VINACTIVE))) {
 				hammer_done_cursor(cursor);
@@ -1381,7 +1381,7 @@ hammer_mem_add(hammer_record_t record)
 	++record->ip->rsv_recs;
 	record->ip->hmp->rsv_databytes += record->leaf.data_len;
 	record->flags |= HAMMER_RECF_ONRBTREE;
-	hammer_modify_inode(record->ip, HAMMER_INODE_XDIRTY);
+	hammer_modify_inode(NULL, record->ip, HAMMER_INODE_XDIRTY);
 	hammer_rel_mem_record(record);
 	return(0);
 }

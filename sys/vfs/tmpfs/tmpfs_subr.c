@@ -118,6 +118,7 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 	nnode->tn_gid = gid;
 	nnode->tn_mode = mode;
 	nnode->tn_id = tmpfs_fetch_ino();
+	nnode->tn_advlock.init_done = 0;
 
 	/* Type-specific initialization. */
 	switch (nnode->tn_type) {
@@ -152,7 +153,6 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 		break;
 
 	case VLNK:
-		KKASSERT((strlen(target) +1) < MAXPATHLEN);
 		nnode->tn_size = strlen(target);
 		nnode->tn_link = kmalloc(nnode->tn_size + 1, M_TMPFSNAME,
 					 M_WAITOK);
@@ -204,7 +204,7 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 void
 tmpfs_free_node(struct tmpfs_mount *tmp, struct tmpfs_node *node)
 {
-	size_t pages = 0;
+	vm_pindex_t pages = 0;
 
 #ifdef INVARIANTS
 	TMPFS_ASSERT_ELOCKED(node);
@@ -276,7 +276,7 @@ tmpfs_free_node(struct tmpfs_mount *tmp, struct tmpfs_node *node)
 
 	case VREG:
 		if (node->tn_reg.tn_aobj != NULL)
-			vm_pager_deallocate(node->tn_reg.tn_aobj);
+			vm_object_deallocate(node->tn_reg.tn_aobj);
 		node->tn_reg.tn_aobj = NULL;
 		pages = node->tn_reg.tn_aobj_pages;
 		break;
@@ -920,7 +920,7 @@ int
 tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
 {
 	int error;
-	size_t newpages, oldpages;
+	vm_pindex_t newpages, oldpages;
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *node;
 	off_t oldsize;
@@ -938,12 +938,12 @@ tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
 	 * because the last allocated page can accommodate the change on
 	 * its own. */
 	oldsize = node->tn_size;
-	oldpages = round_page(oldsize) / PAGE_SIZE;
+	oldpages = round_page64(oldsize) / PAGE_SIZE;
 	KKASSERT(oldpages == node->tn_reg.tn_aobj_pages);
-	newpages = round_page(newsize) / PAGE_SIZE;
+	newpages = round_page64(newsize) / PAGE_SIZE;
 
 	if (newpages > oldpages &&
-	    newpages - oldpages > TMPFS_PAGES_AVAIL(tmp)) {
+	   tmp->tm_pages_used + newpages - oldpages > tmp->tm_pages_max) {
 		error = ENOSPC;
 		goto out;
 	}
@@ -1041,6 +1041,9 @@ tmpfs_chflags(struct vnode *vp, int flags, struct ucred *cred)
 	/*
 	 * Unprivileged processes are not permitted to unset system
 	 * flags, or modify flags if any system flags are set.
+	 *
+	 * Silently enforce SF_NOCACHE on the root tmpfs vnode so
+	 * tmpfs data is not double-cached by swapcache.
 	 */
 	TMPFS_NODE_LOCK(node);
 	if (!priv_check_cred(cred, PRIV_VFS_SYSFLAGS, 0)) {
@@ -1058,6 +1061,8 @@ tmpfs_chflags(struct vnode *vp, int flags, struct ucred *cred)
 		  (node->tn_flags & SF_SNAPSHOT) != 0))
 			return (EPERM);
 #endif
+		if (vp->v_flag & VROOT)
+			flags |= SF_NOCACHE;
 		node->tn_flags = flags;
 	} else {
 		if (node->tn_flags

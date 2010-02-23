@@ -51,6 +51,7 @@
 #include <sysexits.h>
 #include <unistd.h>
 #include <inttypes.h>
+#include <libutil.h>
 
 #include "mntopts.h"
 #include "mount_tmpfs.h"
@@ -81,9 +82,8 @@ mount_tmpfs_parseargs(int argc, char *argv[],
 	gid_t gid;
 	uid_t uid;
 	mode_t mode;
-	int64_t tmpnumber = 0;
+	int64_t tmpnumber;
 	struct stat sb;
-	char *a;
 
 	/* Set default values for mount point arguments. */
 	memset(args, 0, sizeof(*args));
@@ -110,10 +110,10 @@ mount_tmpfs_parseargs(int argc, char *argv[],
 			break;
 
 		case 'n':
-			for (a = optarg; *optarg && isdigit(*optarg); ++optarg);
-			if (!*optarg)
-				tmpnumber = strtoimax(a, NULL, 10);
-
+			if (dehumanize_number(optarg, &tmpnumber) < 0) {
+				fprintf(stderr, "bad number for -n\n");
+				usage();
+			}
 			args->ta_nodes_max = tmpnumber;
 			break;
 
@@ -122,10 +122,10 @@ mount_tmpfs_parseargs(int argc, char *argv[],
 			break;
 
 		case 's':
-			for (a = optarg; *optarg && isdigit(*optarg); ++optarg);
-			if (!*optarg)
-				tmpnumber = strtoimax(a, NULL, 10);
-
+			if (dehumanize_number(optarg, &tmpnumber) < 0) {
+				fprintf(stderr, "bad number for -s\n");
+				usage();
+			}
 			args->ta_size_max = tmpnumber;
 			break;
 
@@ -246,7 +246,7 @@ mount_tmpfs(int argc, char *argv[])
 	if (error)
 		errx(EX_OSERR, "%s filesystem not available", "tmpfs");
 
-	if (mount(vfc.vfc_name, canon_dir, mntflags, 0) == -1)
+	if (mount(vfc.vfc_name, canon_dir, mntflags, &args) == -1)
 		err(EXIT_FAILURE, "tmpfs on %s", canon_dir);
 
 	return EXIT_SUCCESS;

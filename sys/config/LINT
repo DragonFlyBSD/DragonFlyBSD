@@ -1952,6 +1952,7 @@ device		miibus
 
 # PCI Ethernet NICs that use the common MII bus controller code.
 device		ae		# Attansic/Atheros L2 Fast Ethernet
+device		alc		# Atheros AR8131/AR8132
 device		ale		# Atheros AR8121/AR8113/AR8114
 device		age		# Attansic/Atheros L1 Gigabit Ethernet
 device		bce		# Broadcom NetXtreme II Gigabit Ethernet
@@ -2094,6 +2095,9 @@ device		coretemp
 # AMD Family 0Fh, 10h and 11h temperature sensors
 device		kate
 device		km
+
+# ThinkPad Active Protection System accelerometer
+device		aps0	at isa? port 0x1600
 
 # HW monitoring devices lm(4), it(4) and nsclpcsio.
 device		lm0	at isa? port 0x290

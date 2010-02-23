@@ -2,9 +2,8 @@
 ** This file is in the public domain, so clarified as of
 ** 1996-06-05 by Arthur David Olson.
 **
-** @(#)localtime.c	8.9
+** @(#)localtime.c	8.10
 ** $FreeBSD: src/lib/libc/stdtime/localtime.c,v 1.25.2.2 2002/08/13 16:08:07 bmilekic Exp $
-** $DragonFly: src/lib/libc/stdtime/localtime.c,v 1.7 2008/10/19 20:15:58 swildner Exp $
 */
 
 /*
@@ -1867,6 +1866,10 @@ time1(struct tm * const tmp,
 	int			types[TZ_MAX_TYPES];
 	int			okay;
 
+	if (tmp == NULL) {
+		errno = EINVAL;
+		return WRONG;
+	}
 	if (tmp->tm_isdst > 1)
 		tmp->tm_isdst = 1;
 	t = time2(tmp, funcp, offset, &okay);
@@ -1931,21 +1934,24 @@ mktime(struct tm * const tmp)
 time_t
 timelocal(struct tm * const tmp)
 {
-	tmp->tm_isdst = -1;	/* in case it wasn't initialized */
+	if (tmp != NULL)
+		tmp->tm_isdst = -1;	/* in case it wasn't initialized */
 	return mktime(tmp);
 }
 
 time_t
 timegm(struct tm * const tmp)
 {
-	tmp->tm_isdst = 0;
+	if (tmp != NULL)
+		tmp->tm_isdst = 0;
 	return time1(tmp, gmtsub, 0L);
 }
 
 time_t
 timeoff(struct tm * const tmp, const long offset)
 {
-	tmp->tm_isdst = 0;
+	if (tmp != NULL)
+		tmp->tm_isdst = 0;
 	return time1(tmp, gmtsub, offset);
 }
 

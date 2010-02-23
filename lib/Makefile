@@ -22,8 +22,10 @@ SUBDIR=	csu \
 	libbluetooth libcom_err libcrypt libm libmd libarchive \
 	libncurses libradius librt libtacplus libutil libsbuf \
 	libalias libatm ${_libbind} ${_libbind9} libbz2 libc ${_libc_r} \
-	libcalendar libcam libcompat libdevinfo libdevstat libedit libevent libfetch \
-	libftpio libipsec libipx libisc libkcore libkiconv libkinfo libkvm libmagic \
+	libcalendar libcam libcompat libdevinfo libdevstat libedit \
+	libevent libexpat libfetch \
+	libftpio libipsec libipx libisc libkcore libkiconv libkinfo \
+	libkvm libmagic \
 	${_libmilter} ${_libncp} libnetgraph libopie libpam \
 	libpcap libposix1e libsdp libthread_xu libpthread librpcsvc ${_libsm} \
 	${_libsmb} ${_libsmdb} ${_libsmutil} libstand libtelnet libusbhid \

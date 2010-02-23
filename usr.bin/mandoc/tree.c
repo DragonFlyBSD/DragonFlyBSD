@@ -1,4 +1,4 @@
-/*	$Id: tree.c,v 1.18 2009/10/30 18:53:09 kristaps Exp $ */
+/*	$Id: tree.c,v 1.19 2010/01/01 17:14:31 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009 Kristaps Dzonsons <kristaps@kth.se>
  *

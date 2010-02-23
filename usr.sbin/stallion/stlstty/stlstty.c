@@ -43,6 +43,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 
@@ -100,6 +101,10 @@ struct stloption longops[] = {
 	{ "-rxthold", (PFLAG_OFF | P_RXTHOLD) },
 	{ 0, 0 }
 };
+
+/* Function prototypes */
+void getpflags(void);
+void setpflags(unsigned long , unsigned long );
 
 /*****************************************************************************/
 

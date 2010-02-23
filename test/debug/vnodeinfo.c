@@ -245,6 +245,10 @@ dumpvp(kvm_t *kd, struct vnode *vp, int whichlist)
 #endif
     if (vn.v_flag & VOBJBUF)
 	printf(" VOBJBUF");
+#ifdef VSWAPCACHE
+    if (vn.v_flag & VSWAPCACHE)
+	printf(" VSWAPCACHE");
+#endif
     switch(vn.v_flag & (VAGE0 | VAGE1)) {
     case 0:
 	printf(" VAGE0");

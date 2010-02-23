@@ -324,7 +324,7 @@ prune_check_nlinks(hammer_cursor_t cursor, hammer_btree_leaf_elm_t elm)
 				(long long)elm->base.obj_id);
 		}
 		hammer_rel_inode(ip, 0);
-		hammer_inode_waitreclaims(cursor->trans->hmp);
+		hammer_inode_waitreclaims(cursor->trans);
 	} else {
 		kprintf("unable to prune disconnected inode %016llx\n",
 			(long long)elm->base.obj_id);

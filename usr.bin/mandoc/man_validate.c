@@ -1,4 +1,4 @@
-/*	$Id: man_validate.c,v 1.27 2009/11/02 06:22:45 kristaps Exp $ */
+/*	$Id: man_validate.c,v 1.28 2010/01/01 17:14:28 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009 Kristaps Dzonsons <kristaps@kth.se>
  *
