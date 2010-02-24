@@ -358,4 +358,4 @@ netproto/smb/smb_rq.c			optional	netsmb
 netproto/smb/smb_smb.c			optional	netsmb
 netproto/smb/smb_subr.c			optional	netsmb
 netproto/smb/smb_trantcp.c		optional	netsmb
-netproto/smb/smb_usr.c			optional nowerror	netsmb
+netproto/smb/smb_usr.c			optional 	netsmb
