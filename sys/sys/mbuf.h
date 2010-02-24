@@ -453,6 +453,7 @@ void		 m_adj(struct mbuf *, int);
 void		 m_align(struct mbuf *, int);
 int		 m_apply(struct mbuf *, int, int,
 		    int (*)(void *, void *, u_int), void *);
+int		m_append(struct mbuf *, int, c_caddr_t);
 void		 m_cat(struct mbuf *, struct mbuf *);
 u_int		 m_countm(struct mbuf *m, struct mbuf **lastm, u_int *mbcnt);
 void		 m_copyback(struct mbuf *, int, int, caddr_t);
