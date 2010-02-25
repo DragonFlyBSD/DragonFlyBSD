@@ -57,7 +57,7 @@ typedef struct {
 	lockmgr(IEEE80211_LOCK_OBJ(_ic), LK_EXCLUSIVE)
 #define	IEEE80211_UNLOCK(_ic)	   lockmgr(IEEE80211_LOCK_OBJ(_ic), LK_RELEASE)
 #define	IEEE80211_LOCK_ASSERT(_ic) \
-    	KKASSERT(lockstatus(IEEE80211_LOCK_OBJ(_ic), curthread) == LK_EXCLUSIVE)
+    	KKASSERT(lockstatus(IEEE80211_LOCK_OBJ(_ic), curthread) != 0)
 
 /*
  * Node locking definitions.
@@ -81,8 +81,7 @@ typedef struct {
 #define	IEEE80211_NODE_UNLOCK(_nt) \
 	lockmgr(IEEE80211_NODE_LOCK_OBJ(_nt), LK_RELEASE)
 #define	IEEE80211_NODE_LOCK_ASSERT(_nt)	\
-	KKASSERT(lockstatus(IEEE80211_NODE_LOCK_OBJ(_nt), curthread) \
-	    == LK_EXCLUSIVE)
+	KKASSERT(lockstatus(IEEE80211_NODE_LOCK_OBJ(_nt), curthread) != 0)
 
 /*
  * Node table iteration locking definitions; this protects the
@@ -151,7 +150,7 @@ typedef struct lock acl_lock_t;
 #define	ACL_LOCK(_as)			lockmgr(&(_as)->as_lock, LK_EXCLUSIVE)
 #define	ACL_UNLOCK(_as)			lockmgr(&(_as)->as_lock, LK_RELEASE)
 #define	ACL_LOCK_ASSERT(_as) \
-	KKASSERT(lockstatus(&(_as)->as_lock, curthread) == LK_EXCLUSIVE)
+	KKASSERT(lockstatus(&(_as)->as_lock, curthread) != 0)
 
 /*
  * Node reference counting definitions.
