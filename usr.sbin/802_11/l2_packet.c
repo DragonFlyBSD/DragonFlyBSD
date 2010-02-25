@@ -12,30 +12,29 @@
  *
  * See README and COPYING for more details.
  *
- * $FreeBSD: src/usr.sbin/wpa/l2_packet.c,v 1.4 2007/07/09 15:57:10 sam Exp $
- * $DragonFly: src/usr.sbin/802_11/l2_packet.c,v 1.5 2007/11/25 01:28:23 swildner Exp $
+ * $FreeBSD: head/usr.sbin/wpa/l2_packet.c 172682 2007-10-16 02:12:06Z mlaier $
+ * $DragonFly$
  */
 
 /*
- * DragonFlyBSD-specific implementation.
+ * DragonFly-specific implementation.
  */
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
 
+#include <net/bpf.h>
 #include <net/if.h>
 #include <net/if_dl.h>
-#include <net/bpf.h>
 #include <net/route.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <errno.h>
-#include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 #include <pcap.h>
 
 #include "common.h"
