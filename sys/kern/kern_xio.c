@@ -216,7 +216,7 @@ xio_init_pages(xio_t xio, struct vm_page **mbase, int npages, int xflags)
 
     xio->xio_flags = xflags;
     xio->xio_offset = 0;
-    xio->xio_bytes = 0;
+    xio->xio_bytes = npages * PAGE_SIZE;
     xio->xio_pages = xio->xio_internal_pages;
     xio->xio_npages = npages;
     xio->xio_error = 0;
