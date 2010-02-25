@@ -2705,6 +2705,9 @@ static void wpa_driver_ndis_adapter_close(struct wpa_driver_ndis_data *drv)
 
 static int ndis_add_multicast(struct wpa_driver_ndis_data *drv)
 {
+#ifndef OID_802_3_MULTICAST_LIST
+#define OID_802_3_MULTICAST_LIST 0x01010103
+#endif
 	if (ndis_set_oid(drv, OID_802_3_MULTICAST_LIST,
 			 (const char *) pae_group_addr, ETH_ALEN) < 0) {
 		wpa_printf(MSG_DEBUG, "NDIS: Failed to add PAE group address "
