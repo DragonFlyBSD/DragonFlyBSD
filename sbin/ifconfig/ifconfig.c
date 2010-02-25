@@ -95,7 +95,7 @@ int	supmedia = 0;
 int	printkeys = 0;		/* Print keying material for interfaces. */
 int	printname = 0;		/* Print the name of the created interface. */
 
-static	int ifconfig(int argc, char *const *argv, const struct afswtch *afp);
+static	int ifconfig(int argc, char *const *argv, int, const struct afswtch *afp);
 static	void status(const struct afswtch *afp, int addrcount,
 		    struct sockaddr_dl *sdl, struct if_msghdr *ifm,
 		    struct ifa_msghdr *ifam);
@@ -153,7 +153,9 @@ main(int argc, char *argv[])
 	size_t needed;
 	int mib[6];
 	char options[1024];
+	const char *ifname;
 	struct option *p;
+        size_t iflen;
 
 	all = downonly = uponly = namesonly = verbose = 0;
 
@@ -215,6 +217,7 @@ main(int argc, char *argv[])
 		if (argc > 1)
 			usage();
 
+		ifname = NULL;
 		ifindex = 0;
 		if (argc == 1) {
 			afp = af_getbyname(*argv);
@@ -229,27 +232,29 @@ main(int argc, char *argv[])
 		if (argc < 1)
 			usage();
 
-		strncpy(name, *argv, sizeof(name));
+		ifname = *argv;
 		argc--, argv++;
 
 		/* check and maybe load support for this interface */
 		ifmaybeload(name);
-
-		/*
-		 * NOTE:  We must special-case the `create' command right
-		 * here as we would otherwise fail when trying to find
-		 * the interface.
-		 */
-		if (argc > 0 && (strcmp(argv[0], "create") == 0 ||
-		    strcmp(argv[0], "plumb") == 0)) {
-			clone_create();
-			argc--, argv++;
-			if (argc == 0)
-				goto end;
-		}
-		ifindex = if_nametoindex(name);
-		if (ifindex == 0)
+		ifindex = if_nametoindex(ifname);
+		if (ifindex == 0) {
+			/*
+			 * NOTE:  We must special-case the `create' command
+			 * right here as we would otherwise fail when trying
+			 * to find the interface.
+			 */
+			if (argc > 0 && (strcmp(argv[0], "create") == 0 ||
+			    strcmp(argv[0], "plumb") == 0)) {
+				iflen = strlcpy(name, ifname, sizeof(name));
+				if (iflen >= sizeof(name))
+					errx(1, "%s: cloning name too long",
+					    ifname);
+				ifconfig(argc, argv, 1, NULL);
+				exit(0);
+			}
 			errx(1, "interface %s does not exist", name);
+		}
 	}
 
 	/* Check for address family */
@@ -357,7 +362,7 @@ retry:
 		}
 
 		if (argc > 0)
-			ifconfig(argc, argv, afp);
+			ifconfig(argc, argv, 0, afp);
 		else
 			status(afp, addrcount, sdl, ifm, ifam);
 	}
@@ -447,13 +452,20 @@ cmd_register(struct cmd *p)
 }
 
 static const struct cmd *
-cmd_lookup(const char *name)
+cmd_lookup(const char *name, int iscreate)
 {
 #define	N(a)	(sizeof(a)/sizeof(a[0]))
 	const struct cmd *p;
 
 	for (p = cmds; p != NULL; p = p->c_next)
 		if (strcmp(name, p->c_name) == 0)
+			if (iscreate) {
+				if (p->c_iscloneop)
+					return p;
+			} else {
+				if (!p->c_iscloneop)
+					return p;
+			}
 			return p;
 	return NULL;
 #undef N
@@ -489,17 +501,18 @@ static const struct cmd setifdstaddr_cmd =
 	DEF_CMD("ifdstaddr", 0, setifdstaddr);
 
 static int
-ifconfig(int argc, char *const *argv, const struct afswtch *afp)
+ifconfig(int argc, char *const *argv, int iscreate, const struct afswtch *uafp)
 {
+	const struct afswtch *afp, *nafp;
 	struct callback *cb;
 	int s;
 
-	if (afp == NULL)
-		afp = af_getbyname("inet");
+	strncpy(ifr.ifr_name, name, sizeof ifr.ifr_name);
+	afp = uafp != NULL ? uafp : af_getbyname("inet");
+top:
 	ifr.ifr_addr.sa_family =
 		afp->af_af == AF_LINK || afp->af_af == AF_UNSPEC ?
 		AF_INET : afp->af_af;
-	strncpy(ifr.ifr_name, name, sizeof ifr.ifr_name);
 
 	if ((s = socket(ifr.ifr_addr.sa_family, SOCK_DGRAM, 0)) < 0)
 		err(1, "socket(family %u,SOCK_DGRAM", ifr.ifr_addr.sa_family);
@@ -507,7 +520,39 @@ ifconfig(int argc, char *const *argv, const struct afswtch *afp)
 	while (argc > 0) {
 		const struct cmd *p;
 
-		p = cmd_lookup(*argv);
+		p = cmd_lookup(*argv, iscreate);
+
+                if (iscreate && p == NULL) {
+                        /*
+                         * Push the clone create callback so the new
+                         * device is created and can be used for any
+                         * remaining arguments.
+                         */
+                        cb = callbacks;
+                        if (cb == NULL)
+                                errx(1, "internal error, no callback");
+                        callbacks = cb->cb_next;
+                        cb->cb_func(s, cb->cb_arg);
+                        iscreate = 0;
+                        /*
+                         * Handle any address family spec that
+                         * immediately follows and potentially
+                         * recreate the socket.
+                         */
+                        nafp = af_getbyname(*argv);
+                        if (nafp != NULL) {
+                                argc--, argv++;
+                                if (nafp != afp) {
+                                        close(s);
+                                        afp = nafp;
+                                        goto top;
+                                }
+                        }
+                        /*
+                         * Look for a normal parameter.
+                         */
+                        continue;
+		}
 		if (p == NULL) {
 			/*
 			 * Not a recognized command, choose between setting

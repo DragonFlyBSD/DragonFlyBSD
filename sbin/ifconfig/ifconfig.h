@@ -152,7 +152,8 @@ void	printb(const char *s, unsigned value, const char *bits);
 
 void	ifmaybeload(char *);
 
-void	clone_create(void);
+typedef void clone_callback_func(int, struct ifreq *);
+void    clone_setdefcallback(const char *, clone_callback_func *);
 
 /*
  * XXX expose this so modules that neeed to know of any pending

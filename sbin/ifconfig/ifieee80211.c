@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: head/sbin/ifconfig/ifieee80211.c 203970 2010-02-16 21:39:20Z imp $
+ * $DragonFly$
  */
 
 /*-
@@ -5000,8 +5001,8 @@ wlan_create(int s, struct ifreq *ifr)
 	    memcmp(params.icp_bssid, zerobssid, sizeof(zerobssid)) == 0)
 		errx(1, "no bssid specified for WDS (use wlanbssid)");
 	ifr->ifr_data = (caddr_t) &params;
-	if (ioctl(s, SIOCIFCREATE, ifr) < 0)
-		err(1, "SIOCIFCREATE");
+	if (ioctl(s, SIOCIFCREATE2, ifr) < 0)
+		err(1, "SIOCIFCREATE2");
 }
 
 static
@@ -5272,6 +5273,6 @@ ieee80211_ctor(void)
 	for (i = 0; i < N(ieee80211_cmds);  i++)
 		cmd_register(&ieee80211_cmds[i]);
 	af_register(&af_ieee80211);
-	//clone_setdefcallback("wlan", wlan_create);
+	clone_setdefcallback("wlan", wlan_create);
 #undef N
 }

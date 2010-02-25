@@ -26,10 +26,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sbin/ifconfig/ifclone.c,v 1.1 2004/12/08 19:18:07 sam Exp $
- * $DragonFly: src/sbin/ifconfig/ifclone.c,v 1.1 2006/04/02 03:33:59 sephe Exp $
+ * $FreeBSD: head/sbin/ifconfig/ifclone.c 194799 2009-06-23 23:49:52Z delphij $
+ * $DragonFly$
  */
 
+#include <sys/queue.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -86,52 +87,87 @@ list_cloners(void)
 	free(buf);
 }
 
-void
-clone_create(void)
-{
-	int s;
+struct clone_defcb {
+	char ifprefix[IFNAMSIZ];
+	clone_callback_func *clone_cb;
+	SLIST_ENTRY(clone_defcb) next;
+};
 
-	s = socket(AF_INET, SOCK_DGRAM, 0);
-	if (s == -1)
-		err(1, "socket(AF_INET,SOCK_DGRAM)");
+static SLIST_HEAD(, clone_defcb) clone_defcbh =
+   SLIST_HEAD_INITIALIZER(clone_defcbh);
+
+void
+clone_setdefcallback(const char *ifprefix, clone_callback_func *p)
+{
+	struct clone_defcb *dcp;
+
+	dcp = malloc(sizeof(*dcp));
+	strlcpy(dcp->ifprefix, ifprefix, IFNAMSIZ-1);
+	dcp->clone_cb = p;
+	SLIST_INSERT_HEAD(&clone_defcbh, dcp, next);
+}
+
+/*
+ * Do the actual clone operation.  Any parameters must have been
+ * setup by now.  If a callback has been setup to do the work
+ * then defer to it; otherwise do a simple create operation with
+ * no parameters.
+ */
+static void
+ifclonecreate(int s, void *arg)
+{
+	struct ifreq ifr;
+	struct clone_defcb *dcp;
+	clone_callback_func *clone_cb = NULL;
 
 	memset(&ifr, 0, sizeof(ifr));
 	(void) strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
-	wlan_create(s, &ifr);
-#if 0
-	if (ioctl(s, SIOCIFCREATE, &ifr) < 0)
-		err(1, "SIOCIFCREATE");
-#endif
 
-	/*
-	 * If we get a different name back then we put in, we probably
-	 * want to print it out, but we might change our mind later so
-	 * we just signal our interest and leave the printout for later.
-	 */
-	if (strcmp(name, ifr.ifr_name) != 0) {
-		printname = 1;
-		strlcpy(name, ifr.ifr_name, sizeof(name));
+	if (clone_cb == NULL) {
+		/* Try to find a default callback */
+		SLIST_FOREACH(dcp, &clone_defcbh, next) {
+			if (strncmp(dcp->ifprefix, ifr.ifr_name,
+			    strlen(dcp->ifprefix)) == 0) {
+				clone_cb = dcp->clone_cb;
+				break;
+			}
+		}
+	}
+	if (clone_cb == NULL) {
+		/* NB: no parameters */
+		if (ioctl(s, SIOCIFCREATE2, &ifr) < 0)
+			err(1, "SIOCIFCREATE2");
+	} else {
+		clone_cb(s, &ifr);
 	}
 
-	close(s);
+	/*
+	 * If we get a different name back than we put in, print it.
+	 */
+	if (strncmp(name, ifr.ifr_name, sizeof(name)) != 0) {
+		strlcpy(name, ifr.ifr_name, sizeof(name));
+		printf("%s\n", name);
+	}
 }
 
-static void
-clone_destroy(const char *val, int d, int s, const struct afswtch *rafp)
+static
+DECL_CMD_FUNC(clone_create, arg, d)
 {
+	callback_register(ifclonecreate, NULL);
+}
 
+static
+DECL_CMD_FUNC(clone_destroy, arg, d)
+{
 	(void) strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
 	if (ioctl(s, SIOCIFDESTROY, &ifr) < 0)
 		err(1, "SIOCIFDESTROY");
-	/*
-	 * If we create and destroy an interface in the same command,
-	 * there isn't any reason to print it's name.
-	 */
-	printname = 0;
 }
 
 static struct cmd clone_cmds[] = {
+	DEF_CLONE_CMD("create",	0,	clone_create),
 	DEF_CMD("destroy",	0,	clone_destroy),
+	DEF_CLONE_CMD("plumb",	0,	clone_create),
 	DEF_CMD("unplumb",	0,	clone_destroy),
 };
 
@@ -141,13 +177,13 @@ clone_Copt_cb(const char *optarg __unused)
 	list_cloners();
 	exit(0);
 }
-static struct option clone_Copt = { "C", "[-C]", clone_Copt_cb };
+static struct option clone_Copt = { .opt = "C", .opt_usage = "[-C]", .cb = clone_Copt_cb };
 
 static __constructor void
 clone_ctor(void)
 {
 #define	N(a)	(sizeof(a) / sizeof(a[0]))
-	int i;
+	size_t i;
 
 	for (i = 0; i < N(clone_cmds);  i++)
 		cmd_register(&clone_cmds[i]);
