@@ -68,10 +68,6 @@ ieee80211_dfs_attach(struct ieee80211com *ic)
 {
 	struct ieee80211_dfs_state *dfs = &ic->ic_dfs;
 
-#ifdef __FreeBSD__
-	callout_init_mtx(&dfs->nol_timer, IEEE80211_LOCK_OBJ(ic), 0);
-	callout_init_mtx(&dfs->cac_timer, IEEE80211_LOCK_OBJ(ic), 0);
-#endif
 	callout_init(&dfs->nol_timer);
 	callout_init(&dfs->cac_timer);
 }
@@ -105,7 +101,7 @@ cac_timeout(void *arg)
 	struct ieee80211_dfs_state *dfs = &ic->ic_dfs;
 	int i;
 
-	IEEE80211_LOCK_ASSERT(ic);
+	IEEE80211_LOCK(ic);
 
 	if (vap->iv_state != IEEE80211_S_CAC)	/* NB: just in case */
 		return;
@@ -146,6 +142,8 @@ cac_timeout(void *arg)
 		    IEEE80211_NOTIFY_CAC_EXPIRE);
 		ieee80211_cac_completeswitch(vap);
 	}
+
+	IEEE80211_UNLOCK(ic);
 }
 
 /*
@@ -210,7 +208,7 @@ dfs_timeout(void *arg)
 	struct ieee80211_channel *c;
 	int i, oldest, now;
 
-	IEEE80211_LOCK_ASSERT(ic);
+	IEEE80211_LOCK(ic);
 
 	now = oldest = ticks;
 	for (i = 0; i < ic->ic_nchans; i++) {
@@ -241,6 +239,8 @@ dfs_timeout(void *arg)
 		callout_reset(&dfs->nol_timer, oldest + NOL_TIMEOUT - now,
 		    dfs_timeout, ic);
 	}
+
+	IEEE80211_UNLOCK(ic);
 }
 
 static void

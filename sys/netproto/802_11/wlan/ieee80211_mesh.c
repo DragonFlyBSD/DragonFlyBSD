@@ -141,7 +141,7 @@ static struct ieee80211_mesh_proto_metric	mesh_proto_metrics[4];
 
 #define	MESH_RT_LOCK(ms)	lockmgr(&(ms)->ms_rt_lock, LK_EXCLUSIVE)
 #define	MESH_RT_LOCK_ASSERT(ms)	\
-	KKASSERT(lockstatus(&(ms)->ms_rt_lock, curthread) == LK_EXCLUSIVE)
+	KKASSERT(lockstatus(&(ms)->ms_rt_lock, curthread) != 0)
 #define	MESH_RT_UNLOCK(ms)	lockmgr(&(ms)->ms_rt_lock, LK_RELEASE)
 
 MALLOC_DEFINE(M_80211_MESH_RT, "80211mesh", "802.11s routing table");
