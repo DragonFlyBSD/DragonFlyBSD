@@ -1870,7 +1870,8 @@ if_addmulti(
 	crit_enter();
 	LIST_INSERT_HEAD(&ifp->if_multiaddrs, ifma, ifma_link);
 	crit_exit();
-	*retifma = ifma;
+	if (retifma)
+		*retifma = ifma;
 
 	if (llsa != 0) {
 		LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
@@ -1899,7 +1900,8 @@ if_addmulti(
 	 */
 	crit_enter();
 	ifnet_serialize_all(ifp);
-	ifp->if_ioctl(ifp, SIOCADDMULTI, 0, NULL);
+	if (ifp->if_ioctl)
+		ifp->if_ioctl(ifp, SIOCADDMULTI, 0, NULL);
 	ifnet_deserialize_all(ifp);
 	crit_exit();
 
