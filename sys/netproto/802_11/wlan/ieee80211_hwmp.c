@@ -1318,11 +1318,17 @@ hwmp_discover(struct ieee80211vap *vap,
 			    ticks_to_msecs(ieee80211_hwmp_pathtimeout);
 			/* XXX check preq retries */
 			sendpreq = 1;
-			IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_HWMP, dest,
-			    "start path discovery (src %6D)",
-			    m == NULL ? "<none>" : 
-				mtod(m, struct ether_header *)->ether_shost,
-				":");
+			if (m != NULL) {
+				IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_HWMP,
+				    dest, "%s",
+				    "start path discovery (src <none>)");
+			} else {
+				IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_HWMP,
+				    dest,
+				    "start path discovery (src %6D)",
+				    mtod(m, struct ether_header *)->ether_shost,
+				    ":");
+			}
 			/*
 			 * Try to discover the path for this node.
 			 */

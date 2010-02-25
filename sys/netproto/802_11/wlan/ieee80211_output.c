@@ -120,7 +120,7 @@ ieee80211_start(struct ifnet *ifp)
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ifnet *parent = ic->ic_ifp;
 	struct ieee80211_node *ni;
-	struct mbuf *m;
+	struct mbuf *m = NULL;
 	struct ether_header *eh;
 	int error;
 

@@ -358,8 +358,8 @@ wep_encrypt(struct ieee80211_key *key, struct mbuf *m0, int hdrlen)
 		if (m->m_next == NULL) {
 			if (data_len != 0) {		/* out of data */
 				IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_CRYPTO,
-				    ether_sprintf(mtod(m0,
-					struct ieee80211_frame *)->i_addr2),
+				    mtod(m0,
+					struct ieee80211_frame *)->i_addr2,
 				    "out of data for WEP (data_len %zu)",
 				    data_len);
 				/* XXX stat */

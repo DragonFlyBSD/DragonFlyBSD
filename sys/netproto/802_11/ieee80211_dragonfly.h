@@ -111,7 +111,7 @@ typedef struct {
  */
 typedef struct lock ieee80211_psq_lock_t;
 #define	IEEE80211_PSQ_INIT(_psq, _name) \
-	lockinit(&(_psq)->psq_lock, _name, 0, 0)
+	lockinit(&(_psq)->psq_lock, __DECONST(char *, _name), 0, 0)
 #define	IEEE80211_PSQ_DESTROY(_psq)	lockuninit(&(_psq)->psq_lock)
 #define	IEEE80211_PSQ_LOCK(_psq)	lockmgr(&(_psq)->psq_lock, LK_EXCLUSIVE)
 #define	IEEE80211_PSQ_UNLOCK(_psq)	lockmgr(&(_psq)->psq_lock, LK_RELEASE)
@@ -136,7 +136,7 @@ typedef struct lock ieee80211_psq_lock_t;
  */
 typedef struct lock ieee80211_ageq_lock_t;
 #define	IEEE80211_AGEQ_INIT(_aq, _name) \
-	lockinit(&(_aq)->aq_lock, _name, 0, 0)
+	lockinit(&(_aq)->aq_lock, __DECONST(char *, _name), 0, 0)
 #define	IEEE80211_AGEQ_DESTROY(_aq)	lockuninit(&(_aq)->aq_lock)
 #define	IEEE80211_AGEQ_LOCK(_aq)	lockmgr(&(_aq)->aq_lock, LK_EXCLUSIVE)
 #define	IEEE80211_AGEQ_UNLOCK(_aq)	lockmgr(&(_aq)->aq_lock, LK_RELEASE)
@@ -146,7 +146,7 @@ typedef struct lock ieee80211_ageq_lock_t;
  */
 typedef struct lock acl_lock_t;
 #define	ACL_LOCK_INIT(_as, _name) \
-	lockinit(&(_as)->as_lock, _name, 0, 0)
+	lockinit(&(_as)->as_lock, __DECONST(char *, _name), 0, 0)
 #define	ACL_LOCK_DESTROY(_as)		lockuninit(&(_as)->as_lock)
 #define	ACL_LOCK(_as)			lockmgr(&(_as)->as_lock, LK_EXCLUSIVE)
 #define	ACL_UNLOCK(_as)			lockmgr(&(_as)->as_lock, LK_RELEASE)

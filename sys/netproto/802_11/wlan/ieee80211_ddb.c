@@ -79,8 +79,10 @@ static void _db_show_txparams(const char *tag, const void *arg,
 	const struct ieee80211_txparam *tp);
 static void _db_show_ageq(const char *tag, const struct ieee80211_ageq *q);
 static void _db_show_stats(const struct ieee80211_stats *);
+#if 0
 #ifdef IEEE80211_SUPPORT_MESH
 static void _db_show_mesh(const struct ieee80211_mesh_state *);
+#endif
 #endif
 
 DB_SHOW_COMMAND(sta, db_show_sta)
@@ -181,7 +183,9 @@ DB_SHOW_ALL_COMMAND(vaps, db_show_all_vaps)
 		}
 	}
 }
+#endif
 
+#if 0
 #ifdef IEEE80211_SUPPORT_MESH
 DB_SHOW_ALL_COMMAND(mesh, db_show_mesh)
 {
@@ -855,6 +859,7 @@ _db_show_stats(const struct ieee80211_stats *is)
 {
 }
 
+#if 0
 #ifdef IEEE80211_SUPPORT_MESH
 static void
 _db_show_mesh(const struct ieee80211_mesh_state *ms)
@@ -876,4 +881,5 @@ _db_show_mesh(const struct ieee80211_mesh_state *ms)
 	}
 }
 #endif /* IEEE80211_SUPPORT_MESH */
+#endif
 #endif /* DDB */

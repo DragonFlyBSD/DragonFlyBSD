@@ -64,6 +64,15 @@ SYSCTL_INT(_net_wlan, OID_AUTO, debug, CTLFLAG_RW, &ieee80211_debug,
 
 MALLOC_DEFINE(M_80211_COM, "80211com", "802.11 com state");
 
+
+static void	wlan_clone_destroy(struct ifnet *);
+static int	wlan_clone_create(struct if_clone *, int, caddr_t);
+
+static struct if_clone wlan_cloner = 
+	IF_CLONE_INITIALIZER("wlan", wlan_clone_create, wlan_clone_destroy,
+	    0, IF_MAXUNIT);
+
+
 /*
  * Allocate/free com structure in conjunction with ifnet;
  * these routines are registered with if_register_com_alloc
@@ -417,7 +426,7 @@ struct mbuf *
 ieee80211_realign(struct ieee80211vap *vap, struct mbuf *m, size_t align)
 {
 	int pktlen, space;
-	struct mbuf *n;
+	struct mbuf *n = NULL;
 
 	pktlen = m->m_pkthdr.len;
 	space = pktlen + align;
@@ -727,7 +736,9 @@ bpf_track(void *arg, struct ifnet *ifp, int dlt, int attach)
 {
 	/* NB: identify vap's by if_start */
 	if (dlt == DLT_IEEE802_11_RADIO && ifp->if_start == ieee80211_start) {
+#ifdef notyet
 		struct ieee80211vap *vap = ifp->if_softc;
+#endif
 		/*
 		 * Track bpf radiotap listener state.  We mark the vap
 		 * to indicate if any listener is present and the com
@@ -798,16 +809,12 @@ wlan_modevent(module_t mod, int type, void *unused)
 			EVENTHANDLER_DEREGISTER(bpf_track, wlan_bpfevent);
 			return ENOMEM;
 		}
-#ifdef __FreeBSD__
 		if_clone_attach(&wlan_cloner);
-#endif
 		if_register_com_alloc(IFT_IEEE80211, wlan_alloc, wlan_free);
 		return 0;
 	case MOD_UNLOAD:
 		if_deregister_com_alloc(IFT_IEEE80211);
-#ifdef __FreeBSD__
 		if_clone_detach(&wlan_cloner);
-#endif
 		EVENTHANDLER_DEREGISTER(bpf_track, wlan_bpfevent);
 		EVENTHANDLER_DEREGISTER(iflladdr_event, wlan_ifllevent);
 		return 0;
