@@ -2422,6 +2422,9 @@ in6_setmaxmtu(void)
 
 	for (ifp = TAILQ_FIRST(&ifnet); ifp; ifp = TAILQ_NEXT(ifp, if_list))
 	{
+		/* this function can be called during ifnet initialization */
+		if (!ifp->if_afdata[AF_INET6])
+			continue;
 		if (!(ifp->if_flags & IFF_LOOPBACK) &&
 		    ND_IFINFO(ifp)->linkmtu > maxmtu)
 			maxmtu =  ND_IFINFO(ifp)->linkmtu;
