@@ -3906,7 +3906,6 @@ list_mac(int s)
 static void
 print_regdomain(const struct ieee80211_regdomain *reg, int verb)
 {
-#if 0
 	if ((reg->regdomain != 0 &&
 	    reg->regdomain != reg->country) || verb) {
 		const struct regdomain *rd =
@@ -3934,7 +3933,6 @@ print_regdomain(const struct ieee80211_regdomain *reg, int verb)
 		LINE_CHECK("ecm");
 	else if (verb)
 		LINE_CHECK("-ecm");
-#endif
 }
 
 static void
