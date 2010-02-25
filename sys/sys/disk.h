@@ -127,6 +127,9 @@ struct disk {
 	cdev_t			d_cdev;		/* special whole-disk part */
 	struct diskslices	*d_slice;
 	struct disk_info	d_info;		/* info structure for media */
+	void			*d_dsched_priv1;/* I/O scheduler priv. data */
+	void			*d_dsched_priv2;/* I/O scheduler priv. data */
+	struct dsched_ops	*d_sched_ops;	/* I/O scheduler ops */
 	LIST_ENTRY(disk)	d_list;
 };
 

@@ -48,6 +48,7 @@
 #include <machine/stdarg.h>
 #include <sys/thread2.h>
 #include <sys/devfs.h>
+#include <sys/dsched.h>
 
 /*
  * system link descriptors identify the command in the
@@ -250,6 +251,10 @@ dev_dstrategy(cdev_t dev, struct bio *bio)
 	    track = &dev->si_track_write;
 	bio_track_ref(track);
 	bio->bio_track = track;
+
+	if (dsched_is_clear_buf_priv(bio->bio_buf))
+		dsched_new_buf(bio->bio_buf);
+
 	KKASSERT((bio->bio_flags & BIO_DONE) == 0);
 	(void)dev->si_ops->d_strategy(&ap);
 }

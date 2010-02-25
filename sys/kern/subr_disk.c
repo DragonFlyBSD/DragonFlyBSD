@@ -106,7 +106,7 @@
 #include <sys/devfs.h>
 #include <sys/thread.h>
 #include <sys/thread2.h>
-
+#include <sys/dsched.h>
 #include <sys/queue.h>
 #include <sys/lock.h>
 
@@ -531,6 +531,7 @@ disk_create(int unit, struct disk *dp, struct dev_ops *raw_ops)
 		    "disk_create (end): %s%d\n",
 			raw_ops->head.name, unit);
 
+	dsched_create(dp, raw_ops->head.name, unit);
 	return (dp->d_rawdev);
 }
 
@@ -903,7 +904,7 @@ diskstrategy(struct dev_strategy_args *ap)
 	 * or error due to being beyond the device size).
 	 */
 	if ((nbio = dscheck(dev, bio, dp->d_slice)) != NULL) {
-		dev_dstrategy(dp->d_rawdev, nbio);
+		dsched_queue(dp, nbio);
 	} else {
 		biodone(bio);
 	}

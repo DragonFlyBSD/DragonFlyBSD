@@ -280,6 +280,7 @@ struct	proc {
 
 	struct rusage	p_ru;		/* stats for this proc */
 	struct rusage	p_cru;		/* sum of stats for reaped children */
+	void		*p_dsched_priv1;
 
 /* The following fields are all copied upon creation in fork. */
 #define	p_startcopy	p_comm
@@ -297,8 +298,10 @@ struct	proc {
 	struct rtprio	p_rtprio;	/* Realtime priority. */
 	struct pargs	*p_args;
 	u_short		p_xstat;	/* Exit status or last stop signal */
+
+	void		*p_dsched_priv2;
 /* End area that is copied on creation. */
-#define	p_endcopy	p_xstat
+#define	p_endcopy	p_dsched_priv2
 	u_short		p_acflag;	/* Accounting flags. */
 
 	int		p_lock;		/* Prevent proc destruction */
@@ -453,7 +456,7 @@ extern u_long pidhash;
 extern LIST_HEAD(pgrphashhead, pgrp) *pgrphashtbl;
 extern u_long pgrphash;
 
-#if 0 
+#if 0
 #ifndef SET_CURPROC
 #define SET_CURPROC(p)	(curproc = (p))
 #endif

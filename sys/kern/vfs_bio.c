@@ -44,6 +44,7 @@
 #include <sys/sysctl.h>
 #include <sys/vmmeter.h>
 #include <sys/vnode.h>
+#include <sys/dsched.h>
 #include <sys/proc.h>
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -1049,6 +1050,9 @@ bdwrite(struct buf *bp)
 	}
 	bdirty(bp);
 
+	if (dsched_is_clear_buf_priv(bp))
+		dsched_new_buf(bp);
+
 	/*
 	 * Set B_CACHE, indicating that the buffer is fully valid.  This is
 	 * true even of NFS now.
@@ -1320,6 +1324,7 @@ brelse(struct buf *bp)
 	 * or B_RELBUF flags.
 	 */
 	bp->b_cmd = BUF_CMD_DONE;
+	dsched_clr_buf_priv(bp);
 
 	/*
 	 * VMIO buffer rundown.  Make sure the VM page array is restored
@@ -1652,6 +1657,7 @@ bqrelse(struct buf *bp)
 	 * buffer is actively locked.
 	 */
 	bp->b_flags &= ~(B_ORDERED | B_NOCACHE | B_RELBUF);
+	dsched_clr_buf_priv(bp);
 	BUF_UNLOCK(bp);
 }
 
@@ -2959,6 +2965,7 @@ loop:
 		allocbuf(bp, size);
 		rel_mplock();
 	}
+	KKASSERT(dsched_is_clear_buf_priv(bp));
 	return (bp);
 }
 
@@ -3007,6 +3014,7 @@ geteblk(int size)
 	allocbuf(bp, size);
 	rel_mplock();
 	bp->b_flags |= B_INVAL;	/* b_dep cleared by getnewbuf() */
+	KKASSERT(dsched_is_clear_buf_priv(bp));
 	return (bp);
 }
 
@@ -3396,6 +3404,8 @@ void
 bio_start_transaction(struct bio *bio, struct bio_track *track)
 {
 	bio->bio_track = track;
+	if (dsched_is_clear_buf_priv(bio->bio_buf))
+		dsched_new_buf(bio->bio_buf);
 	bio_track_ref(track);
 }
 
@@ -3449,6 +3459,8 @@ vn_strategy(struct vnode *vp, struct bio *bio)
                 track = &vp->v_track_write;
 	KKASSERT((bio->bio_flags & BIO_DONE) == 0);
 	bio->bio_track = track;
+	if (dsched_is_clear_buf_priv(bio->bio_buf))
+		dsched_new_buf(bio->bio_buf);
 	bio_track_ref(track);
         vop_strategy(*vp->v_ops, vp, bio);
 }

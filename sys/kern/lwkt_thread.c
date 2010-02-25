@@ -57,6 +57,8 @@
 #include <sys/spinlock2.h>
 #include <sys/mplock2.h>
 
+#include <sys/dsched.h>
+
 #include <vm/vm.h>
 #include <vm/vm_param.h>
 #include <vm/vm_kern.h>
@@ -380,6 +382,8 @@ lwkt_init_thread(thread_t td, void *stack, int stksize, int flags,
     TAILQ_INSERT_TAIL(&gd->gd_tdallq, td, td_allq);
     crit_exit_gd(mygd);
 #endif
+
+    dsched_new_thread(td);
 }
 
 void
@@ -418,6 +422,8 @@ lwkt_free_thread(thread_t td)
 {
     KASSERT((td->td_flags & TDF_RUNNING) == 0,
 	("lwkt_free_thread: did not exit! %p", td));
+
+    dsched_exit_thread(td);
 
     if (td->td_flags & TDF_ALLOCATED_THREAD) {
     	objcache_put(thread_cache, td);

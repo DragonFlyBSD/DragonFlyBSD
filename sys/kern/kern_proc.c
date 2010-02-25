@@ -44,6 +44,7 @@
 #include <sys/jail.h>
 #include <sys/filedesc.h>
 #include <sys/tty.h>
+#include <sys/dsched.h>
 #include <sys/signalvar.h>
 #include <sys/spinlock.h>
 #include <vm/vm.h>
@@ -492,6 +493,7 @@ proc_move_allproc_zombie(struct proc *p)
 	LIST_REMOVE(p, p_hash);
 	p->p_stat = SZOMB;
 	spin_unlock_wr(&allproc_spin);
+	dsched_exit_proc(p);
 }
 
 /*

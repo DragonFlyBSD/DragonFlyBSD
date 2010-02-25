@@ -214,6 +214,7 @@ struct thread {
     __uint64_t	td_iticks;	/* Statclock hits processing intr (uS) */
     int		td_locks;	/* lockmgr lock debugging */
     int		td_unused01;
+    void	*td_dsched_priv1;	/* priv data for I/O schedulers */
     int		td_refs;	/* hold position in gd_tdallq / hold free */
     int		td_nest_count;	/* prevent splz nesting */
 #ifdef SMP

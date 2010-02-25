@@ -77,6 +77,7 @@
 #include <sys/buf.h>
 #include <sys/ucred.h>
 #include <sys/malloc.h>
+#include <sys/dsched.h>
 #include <sys/proc.h>
 #include <sys/thread2.h>
 
@@ -307,6 +308,7 @@ getpbuf(int *pfreecnt)
 	spin_unlock_wr(&bswspin);
 
 	initpbuf(bp);
+	KKASSERT(dsched_is_clear_buf_priv(bp));
 	return bp;
 }
 
@@ -354,6 +356,7 @@ relpbuf(struct buf *bp, int *pfreecnt)
 	int wake_freecnt = 0;
 
 	KKASSERT(bp->b_flags & B_PAGING);
+	dsched_clr_buf_priv(bp);
 
 	spin_lock_wr(&bswspin);
 

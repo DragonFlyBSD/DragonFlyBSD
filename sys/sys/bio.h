@@ -46,7 +46,7 @@
 
 struct bio;
 struct bio_track;
-
+struct disk;
 typedef void biodone_t(struct bio *);
 
 /*
@@ -60,7 +60,9 @@ typedef void biodone_t(struct bio *);
  */
 struct bio {
 	TAILQ_ENTRY(bio) bio_act;	/* driver queue when active */
+	TAILQ_ENTRY(bio) link;
 	struct bio_track *bio_track;	/* BIO tracking structure */
+	struct disk	*bio_disk;
 	struct bio	*bio_prev;	/* BIO stack */
 	struct bio	*bio_next;	/* BIO stack / cached translations */
 	struct buf	*bio_buf;   	/* High-level buffer back-pointer. */
@@ -82,6 +84,12 @@ struct bio {
 		int	index;
 		struct buf *cluster_tail;
 	} bio_caller_info2;
+	union {
+		void	*ptr;
+		int	value;
+		long	lvalue;
+		struct	timeval tv;
+	} bio_caller_info3;
 };
 
 /*

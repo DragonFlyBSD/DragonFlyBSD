@@ -70,6 +70,8 @@
 #include <sys/spinlock2.h>
 #include <sys/mplock2.h>
 
+#include <sys/dsched.h>
+
 static MALLOC_DEFINE(M_ATFORK, "atfork", "atfork callback");
 
 /*
@@ -399,6 +401,8 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 		p2->p_args->ar_ref++;
 
 	p2->p_usched = p1->p_usched;
+	/* XXX: verify copy of the secondary iosched stuff */
+	dsched_new_proc(p2);
 
 	if (flags & RFSIGSHARE) {
 		p2->p_sigacts = p1->p_sigacts;
