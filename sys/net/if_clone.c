@@ -53,7 +53,7 @@ static struct if_clone	*if_clone_lookup(const char *, int *);
  * Create a clone network interface.
  */
 int
-if_clone_create(char *name, int len)
+if_clone_create(char *name, int len, caddr_t params)
 {
 	struct if_clone *ifc;
 	char *dp;
@@ -87,7 +87,7 @@ if_clone_create(char *name, int len)
 	if (unit > ifc->ifc_maxunit)
 		return (ENXIO);
 
-	err = (*ifc->ifc_create)(ifc, unit);
+	err = (*ifc->ifc_create)(ifc, unit, params);
 	if (err != 0)
 		return (err);
 
@@ -190,7 +190,7 @@ if_clone_attach(struct if_clone *ifc)
 	if_cloners_count++;
 
 	for (unit = 0; unit < ifc->ifc_minifs; unit++) {
-		err = (*ifc->ifc_create)(ifc, unit);
+		err = (*ifc->ifc_create)(ifc, unit, NULL);
 		KASSERT(err == 0,
 		    ("%s: failed to create required interface %s%d",
 		    __func__, ifc->ifc_name, unit));

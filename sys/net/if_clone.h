@@ -57,7 +57,7 @@ struct if_clone {
 	unsigned char	*ifc_units;	/* bitmap to handle units */
 	int 		ifc_bmlen;	/* bitmap length */
 
-	int		(*ifc_create)(struct if_clone *, int);
+	int		(*ifc_create)(struct if_clone *, int, caddr_t);
 	void		(*ifc_destroy)(struct ifnet *);
 };
 
@@ -72,7 +72,7 @@ struct if_clonereq;	/* XXX, should move definition from net/if.h */
 
 void	if_clone_attach(struct if_clone *);
 void	if_clone_detach(struct if_clone *);
-int	if_clone_create(char *, int);
+int	if_clone_create(char *, int, caddr_t);
 int	if_clone_destroy(const char *);
 int	if_clone_list(struct if_clonereq *);
 

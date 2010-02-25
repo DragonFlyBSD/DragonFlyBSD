@@ -108,7 +108,7 @@ static int faithmodevent (module_t, int, void *);
 static MALLOC_DEFINE(M_FAITH, FAITHNAME, "Firewall Assisted Tunnel Interface");
 LIST_HEAD(, faith_softc) faith_softc_list;
 
-int	faith_clone_create (struct if_clone *, int);
+int	faith_clone_create (struct if_clone *, int, caddr_t);
 void	faith_clone_destroy (struct ifnet *);
 
 struct if_clone faith_cloner = IF_CLONE_INITIALIZER(FAITHNAME,
@@ -156,7 +156,7 @@ DECLARE_MODULE(if_faith, faith_mod, SI_SUB_PSEUDO, SI_ORDER_ANY);
 MODULE_VERSION(if_faith, 1);
 
 int
-faith_clone_create(struct if_clone *ifc, int unit)
+faith_clone_create(struct if_clone *ifc, int unit, caddr_t param)
 {
 	struct faith_softc *sc;
 

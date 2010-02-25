@@ -89,7 +89,7 @@
 static MALLOC_DEFINE(M_GIF, "gif", "Generic Tunnel Interface");
 LIST_HEAD(, gif_softc) gif_softc_list;
 
-int	gif_clone_create (struct if_clone *, int);
+int	gif_clone_create (struct if_clone *, int, caddr_t);
 void	gif_clone_destroy (struct ifnet *);
 
 struct if_clone gif_cloner = IF_CLONE_INITIALIZER("gif", gif_clone_create,
@@ -129,7 +129,7 @@ SYSCTL_INT(_net_link_gif, OID_AUTO, parallel_tunnels, CTLFLAG_RW,
     &parallel_tunnels, 0, "Allow parallel tunnels?");
 
 int
-gif_clone_create(struct if_clone *ifc, int unit)
+gif_clone_create(struct if_clone *ifc, int unit, caddr_t params)
 {
 	struct gif_softc *sc;
 	
