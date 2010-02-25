@@ -61,7 +61,6 @@
 #include <sys/journal.h>
 #include <sys/file.h>
 #include <sys/proc.h>
-#include <sys/msfbuf.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 
