@@ -22,10 +22,10 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.sbin/wpa/wpa_supplicant/wpa_supplicant.8,v 1.2 2005/06/27 06:40:43 ru Exp $
-.\" $DragonFly: src/usr.sbin/802_11/wpa_supplicant/wpa_supplicant.8,v 1.7 2008/03/09 11:04:35 swildner Exp $
+.\" $FreeBSD: head/usr.sbin/wpa/wpa_supplicant/wpa_supplicant.8 195644 2009-07-12 19:58:52Z sam $
+.\" $DragonFly$
 .\"
-.Dd July 22, 2007
+.Dd March 24, 2008
 .Dt WPA_SUPPLICANT 8
 .Os
 .Sh NAME
@@ -33,10 +33,9 @@
 .Nd "WPA/802.11i Supplicant for wireless network devices"
 .Sh SYNOPSIS
 .Nm
-.Op Fl BdehLqvw
+.Op Fl BdehLqsvw
 .Fl i Ar ifname
 .Fl c Ar config-file
-.Op Fl N i Ar ifname Fl c Ar config-file ...
 .Sh DESCRIPTION
 The
 .Nm
@@ -102,12 +101,20 @@ Show help text.
 Decrease debugging verbosity (i.e., counteract the use of the
 .Fl d
 flag).
+.It Fl s
+Send log messages through
+.Xr syslog 3
+instead of to the terminal.
 .It Fl v
 Display version information on the terminal and exit.
 .It Fl w
 If the specified interface is not present, wait for it to be
 added; e.g.\& a cardbus device to be inserted.
-This option is not normally used.
+This option is not normally used; instead,
+.Xr devd 8
+should be configured to launch
+.Nm
+when a device is created.
 .It Fl B
 Detach from the controlling terminal and run as a daemon process
 in the background.
@@ -115,24 +122,21 @@ in the background.
 Include key information in debugging output.
 .It Fl L
 Display the license for this program on the terminal and exit.
-.It Fl N i Ar ifname Fl c Ar config-file ...
-Specify an additional interface and configuration file.
-If multiple interfaces are specified then
-.Nm
-will manage them all with a single process.
 .El
 .Sh SEE ALSO
-.Xr acx 4 ,
+.Xr an 4 ,
 .Xr ath 4 ,
-.Xr bwi 4 ,
+.Xr ipw 4 ,
 .Xr iwi 4 ,
-.Xr iwl 4 ,
 .Xr ral 4 ,
 .Xr rum 4 ,
 .Xr ural 4 ,
 .Xr wi 4 ,
 .Xr wlan 4 ,
+.Xr wpi 4 ,
+.Xr zyd 4 ,
 .Xr wpa_supplicant.conf 5 ,
+.Xr devd 8 ,
 .Xr ifconfig 8 ,
 .Xr wpa_cli 8
 .Sh HISTORY
@@ -144,7 +148,7 @@ utility first appeared in
 The
 .Nm
 utility was written by
-.An Jouni Malinen Aq jkmaline@cc.hut.fi .
+.An Jouni Malinen Aq j@w1.fi .
 This manual page is derived from the
 .Pa README
 file included in the

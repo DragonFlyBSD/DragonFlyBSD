@@ -29,15 +29,14 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/wpa/wpa_supplicant/Packet32.h,v 1.2.2.1 2005/10/27 17:06:47 wpaul Exp $
- * $DragonFly: src/usr.sbin/802_11/wpa_supplicant/Packet32.h,v 1.1 2006/06/24 07:29:44 sephe Exp $
+ * $FreeBSD: head/usr.sbin/wpa/wpa_supplicant/Packet32.h 151517 2005-10-20 16:49:31Z wpaul $
+ * $DragonFly$
  */
 
 #ifndef _PACKET32_H_
 #define _PACKET32_H_
 
 #include <sys/types.h>
-#include <sys/ioccom.h>
 #include <ntddndis.h>
 
 struct PACKET_OID_DATA {

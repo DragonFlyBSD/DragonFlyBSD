@@ -22,10 +22,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.sbin/wpa/wpa_supplicant/wpa_supplicant.conf.5,v 1.9 2007/07/11 16:04:08 sam Exp $
-.\" $DragonFly: src/usr.sbin/802_11/wpa_supplicant/wpa_supplicant.conf.5,v 1.4 2007/08/07 11:25:37 sephe Exp $
+.\" $FreeBSD: head/usr.sbin/wpa/wpa_supplicant/wpa_supplicant.conf.5 195644 2009-07-12 19:58:52Z sam $
 .\"
-.Dd July 22, 2007
+.Dd July 8, 2007
 .Dt WPA_SUPPLICANT.CONF 5
 .Os
 .Sh NAME
@@ -220,7 +219,11 @@ an 8-63 character
 passphrase.
 .Tn ASCII
 passphrases are dynamically converted to a 256-bit key at runtime
-using the network SSID.
+using the network SSID, or they can be statically converted at
+configuration time using
+the
+.Xr wpa_passphrase 8
+utility.
 .It Va eapol_flags
 Dynamic WEP key usage for non-WPA mode, specified as a bit field.
 Bit 0 (1) forces dynamically generated unicast WEP keys to be used.
@@ -236,10 +239,10 @@ used only as a Phase 2 method with EAP-PEAP or EAP-TTLS),
 used only as a Phase 2 method with EAP-PEAP or EAP-TTLS),
 .Li OTP
 (EAP-OTP, cannot be used with WPA;
-used only as a Phase 2 method with EAP-PEAP or EAP-TTLS),
+used only as a Phase 2 metod with EAP-PEAP or EAP-TTLS),
 .Li GTC
 (EAP-GTC, cannot be used with WPA;
-used only as a Phase 2 method with EAP-PEAP or EAP-TTLS),
+used only as a Phase 2 metod with EAP-PEAP or EAP-TTLS),
 .Li TLS
 (EAP-TLS, client and server certificate),
 .Li PEAP
@@ -400,7 +403,7 @@ PAC is being provisioned or refreshed.
 Enable/disable EAP workarounds for various interoperability issues
 with misbehaving authentication servers.
 By default these workarounds are enabled.
-String EAP conformance can be configured by setting this to 0.
+Strict EAP conformance can be configured by setting this to 0.
 .El
 .Sh CERTIFICATES
 Some EAP authentication methods require use of certificates.
@@ -515,8 +518,14 @@ network={
         wep_key0=42FEEDDEAFBABEDEAFBEEFAA55
 }
 .Ed
+.Sh FILES
+.Bl -tag -width ".Pa /usr/share/examples/etc/wpa_supplicant.conf" -compact
+.It Pa /etc/wpa_supplicant.conf
+.It Pa /usr/share/examples/etc/wpa_supplicant.conf
+.El
 .Sh SEE ALSO
 .Xr wpa_cli 8 ,
+.Xr wpa_passphrase 8 ,
 .Xr wpa_supplicant 8
 .Sh HISTORY
 The
@@ -533,4 +542,4 @@ and
 files in the
 .Nm wpa_supplicant
 distribution provided by
-.An Jouni Malinen Aq jkmaline@cc.hut.fi .
+.An Jouni Malinen Aq j@w1.fi .

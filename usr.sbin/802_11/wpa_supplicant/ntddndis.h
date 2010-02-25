@@ -2,8 +2,7 @@
 #define _NTDDNDIS_H_
 
 /*
- * $FreeBSD: src/usr.sbin/wpa/wpa_supplicant/ntddndis.h,v 1.2.2.1 2005/10/27 17:06:47 wpaul Exp $
- * $DragonFly: src/usr.sbin/802_11/wpa_supplicant/ntddndis.h,v 1.1 2006/06/24 07:29:44 sephe Exp $
+ * $FreeBSD: head/usr.sbin/wpa/wpa_supplicant/ntddndis.h 151517 2005-10-20 16:49:31Z wpaul $
  */
 
 /*
@@ -28,7 +27,5 @@ typedef char * PCHAR;
 #define FALSE 0
 
 #define OID_802_3_CURRENT_ADDRESS               0x01010102
-#define	OID_802_3_MULTICAST_LIST		0x01010103
-
 
 #endif /* _NTDDNDIS_H_ */

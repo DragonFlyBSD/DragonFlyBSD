@@ -1,12 +1,12 @@
-# $FreeBSD: src/usr.sbin/wpa/wpa_supplicant/Makefile,v 1.9 2007/07/11 16:04:08 sam Exp $
-# $DragonFly: src/usr.sbin/802_11/wpa_supplicant/Makefile,v 1.2 2007/08/07 11:25:36 sephe Exp $
+# $FreeBSD: head/usr.sbin/wpa/wpa_supplicant/Makefile 189263 2009-03-02 02:28:22Z sam $
+# $DragonFly$
 
 .include "${.CURDIR}/../Makefile.inc"
 
-.PATH.c:	${WPA_DISTDIR}/wpa_supplicant \
-		${WPA_DISTDIR}/src/drivers \
-		${WPA_DISTDIR}/src/eap_peer \
-		${WPA_DISTDIR}/src/rsn_supp
+.PATH.c:${WPA_DISTDIR}/wpa_supplicant \
+	${WPA_DISTDIR}/src/drivers \
+	${WPA_DISTDIR}/src/eap_peer \
+	${WPA_DISTDIR}/src/rsn_supp
 
 PROG=	wpa_supplicant
 SRCS=	aes.c aes_wrap.c blacklist.c common.c config.c ctrl_iface.c \
@@ -20,13 +20,21 @@ SRCS=	aes.c aes_wrap.c blacklist.c common.c config.c ctrl_iface.c \
 
 MAN=	wpa_supplicant.8 wpa_supplicant.conf.5
 
-CFLAGS+= -I${.CURDIR} -I${WPA_DISTDIR}
-CFLAGS+= -I${WPA_DISTDIR}/src/drivers
-CFLAGS+= -I${WPA_DISTDIR}/src/rsn_supp
+#.if ${MK_EXAMPLES} != "no"
+#FILESDIR= ${SHAREDIR}/examples/etc
+#.PATH:	${WPA_SUPPLICANT_DISTDIR}
+#FILES=	wpa_supplicant.conf
+#.endif
+
+CFLAGS+=-I${WPA_SUPPLICANT_DISTDIR}
+CFLAGS+=-I${WPA_DISTDIR}/src/drivers
+CFLAGS+=-I${WPA_DISTDIR}/src/rsn_supp
+
 CFLAGS+= -DCONFIG_DRIVER_BSD
 CFLAGS+= -DCONFIG_DRIVER_NDIS
 CFLAGS+= -DCONFIG_DRIVER_WIRED
 CFLAGS+= -DCONFIG_TERMINATE_ONLASTIF
+CFLAGS+= -DCONFIG_DEBUG_SYSLOG
 CFLAGS+= -g
 DPADD+=	${LIBPCAP}
 LDADD+=	-lpcap
@@ -35,17 +43,18 @@ LDADD+=	-lpcap
 SRCS+=	config_file.c base64.c
 CFLAGS+=-DCONFIG_BACKEND_FILE
 
-.if !defined(NO_WPA_SUPPLICANT_EAPOL)
-.PATH: ${.CURDIR}/.. ${WPA_DISTDIR}/src/eapol_supp
-.PATH: ${.CURDIR}/.. ${WPA_DISTDIR}/src/eap_peer
+# User customizations to the wpa_supplicant build environment
+CFLAGS+=${WPA_SUPPLICANT_CFLAGS}
+#DPADD+=${WPA_SUPPLICANT_DPADD}
+LDADD+=${WPA_SUPPLICANT_LDADD}
+#LDFLAGS+=${WPA_SUPPLICANT_LDFLAGS}
+
 SRCS+=	eapol_supp_sm.c eap.c eap_common.c eap_methods.c
 CFLAGS+= -DIEEE8021X_EAPOL
 
 .if !defined(NO_CRYPT) && !defined(NO_OPENSSL)
-.PATH:  ${.CURDIR}/.. ${WPA_DISTDIR}/src/eap_common
-.PATH:  ${.CURDIR}/.. ${WPA_DISTDIR}/eap_peer/
 CFLAGS+=-DEAP_TLS -DEAP_PEAP -DEAP_MSCHAPv2 -DEAP_LEAP -DEAP_PSK \
-	-DEAP_TLV -DEAP_TLS_FUNCS
+	-DEAP_TLV -DEAP_TLS_FUNCS -DEAP_TLS_OPENSSL
 SRCS+=	chap.c crypto_openssl.c \
 	eap_leap.c \
 	eap_mschapv2.c \
@@ -61,16 +70,79 @@ SRCS+=	eap_ttls.c eap_md5.c
 SRCS+=	eap_gtc.c
 .endif
 
+.if !empty(CFLAGS:M*-DEAP_OTP)
+SRCS+=	eap_otp.c
+.endif
+
+.if !empty(CFLAGS:M*-DEAP_AKA)
+NEED_SIM_COMMON=	true
+SRCS+=	eap_aka.c
+.endif
+
+.if !empty(CFLAGS:M*-DEAP_SIM)
+NEED_SIM_COMMON=	true
+SRCS+=	eap_sim.c
+.endif
+
+.if defined(NEED_SIM_COMMON)
+SRCS+=	eap_sim_common.c
+
+# PC/SC interface for smartcards (USIM, GSM SIM)
+# GSM/UMTS authentication algorithm (for EAP-SIM/EAP-AKA)
+# NB: requires devel/pcsc-lite
+#
+# WPA_SUPPLICANT_CFLAGS=-DEAP_AKA -DPCSC_FUNCS -I/usr/local/include/PCSC
+# WPA_SUPPLICANT_LDADD=-L/usr/local/lib
+#
+.if !empty(CFLAGS:M*-DPCSC_FUNCS)
+SRCS+=	pcsc_funcs.c
+DPADD+=${LIBPTHREAD}
+LDADD+=-lpcsclite -lpthread
+.endif
+.endif
+
+.if !empty(CFLAGS:M*-DEAP_GPSK)
+CFLAGS+=-DEAP_GPSK_SHA256
+SRCS+=	eap_gpsk.c eap_gpsk_common.c
+NEED_SHA256=	true
+.endif
+
+.if !empty(CFLAGS:M*-DEAP_PAX)
+SRCS+=	eap_pax.c eap_pax_common.c
+.endif
+
+.if !empty(CFLAGS:M*-DEAP_SAKE)
+SRCS+=	eap_sake.c eap_sake_common.c
+.endif
+
 # NB: requires patch to openssl
 #CFLAGS+= -DEAP_FAST
 #SRCS+=	eap_fast.c
 
-DPADD+= ${LIBSSL} ${LIBCRYPTO}
-LDADD+= -lssl -lcrypto
+NEED_LIBSSL=	true
 .else
+CFLAGS+= -DEAP_TLS_NONE
 SRCS+=	tls_none.c
 .endif
 
+#
+# Configure crypto/cipher support.
+#
+# EAPOL support requires openssl in which case we use their
+# cipher code.  Otherwise we use our internal versions.
+#
+.if !defined(NEED_LIBSSL)
+CFLAGS+= -DINTERNAL_AES
+CFLAGS+= -DINTERNAL_SHA1
+CFLAGS+= -DINTERNAL_MD5
+.else
+DPADD+= ${LIBSSL} ${LIBCRYPTO}
+LDADD+= -lssl -lcrypto
+.endif
+
+.if defined(NEED_SHA256)
+CFLAGS+=-DINTERNAL_SHA256
+SRCS+=	sha256.c
 .endif
 
 .include <bsd.prog.mk>
