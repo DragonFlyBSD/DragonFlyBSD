@@ -12,7 +12,8 @@
  *
  * See README and COPYING for more details.
  *
- * $FreeBSD: src/usr.sbin/wpa/hostapd/driver_freebsd.c,v 1.8 2009/03/02 02:28:22 sam Exp $
+ * $FreeBSD: head/usr.sbin/wpa/hostapd/driver_freebsd.c 193524 2009-06-05 17:19:55Z sam $
+ * $DragonFly$
  */
 #include <stdlib.h>
 #include <stdio.h>
@@ -32,20 +33,20 @@
 #undef WPA_OUI_TYPE
 #undef WME_OUI_TYPE
 
-#include "hostapd.h"
-#include "driver.h"
-#include "ieee802_1x.h"
-#include "ieee802_11_auth.h"
+#include "hostapd/hostapd.h"
+#include "hostapd/driver.h"
+#include "hostapd/ieee802_1x.h"
+#include "hostapd/ieee802_11_auth.h"
 #include "eloop.h"
-#include "sta_info.h"
+#include "hostapd/sta_info.h"
 #include "l2_packet/l2_packet.h"
 
-#include "eapol_sm.h"
-#include "wpa.h"
+#include "hostapd/eapol_sm.h"
+#include "hostapd/wpa.h"
 #include "radius/radius.h"
-#include "ieee802_11.h"
+#include "hostapd/ieee802_11.h"
 #include "common.h"
-#include "hostap_common.h"
+#include "hostapd/hostap_common.h"
 
 struct bsd_driver_data {
 	struct hostapd_data *hapd;		/* back pointer */
@@ -161,18 +162,6 @@ bsd_set_iface_flags(void *priv, int flags)
 		perror("ioctl[SIOCSIFFLAGS]");
 		return -1;
 	}
-
-	if (flags > 0) {
-		memset(&ifr, 0, sizeof(ifr));
-		snprintf(ifr.ifr_name, IFNAMSIZ, "%s", drv->iface);
-		ifr.ifr_mtu = HOSTAPD_MTU;
-		if (ioctl(drv->ioctl_sock, SIOCSIFMTU, &ifr) != 0) {
-			perror("ioctl[SIOCSIFMTU]");
-			printf("Setting MTU failed - trying to survive with "
-			       "current value\n");
-		}
-	}
-
 	return 0;
 }
 
@@ -407,11 +396,24 @@ bsd_sta_clear_stats(void *priv, const u8 *addr)
 static int
 bsd_set_opt_ie(const char *ifname, void *priv, const u8 *ie, size_t ie_len)
 {
-        /*
-         * Do nothing; we setup parameters at startup that define the
-         * contents of the beacon information element.
-         */
-        return 0;
+	struct bsd_driver_data *drv = priv;
+	struct hostapd_data *hapd = drv->hapd;
+	struct ieee80211req ireq;
+
+	memset(&ireq, 0, sizeof(ireq));
+	strncpy(ireq.i_name, drv->iface, IFNAMSIZ);
+	ireq.i_type = IEEE80211_IOC_APPIE;
+	ireq.i_val = IEEE80211_APPIE_WPA;
+	ireq.i_data = (void *) ie;
+	ireq.i_len = ie_len;
+
+	wpa_printf(MSG_DEBUG, "%s: set WPA+RSN ie (len %d)\n",
+	    __func__, ie_len);
+	if (ioctl(drv->ioctl_sock, SIOCS80211, &ireq) < 0) {
+		printf("Unable to set WPA+RSN ie\n");
+		return -1;
+	}
+	return 0;
 }
 
 static int

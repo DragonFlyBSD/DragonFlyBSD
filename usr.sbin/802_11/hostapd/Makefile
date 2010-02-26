@@ -1,11 +1,10 @@
-# $FreeBSD: src/usr.sbin/wpa/hostapd/Makefile,v 1.3 2007/07/09 16:26:48 sam Exp $
-# $DragonFly: src/usr.sbin/802_11/hostapd/Makefile,v 1.2 2007/08/07 11:25:36 sephe Exp $
+# $DragonFly$
 
 .include "${.CURDIR}/../Makefile.inc"
-.PATH.c:	${.CURDIR}/.. ${HOSTAPD_DISTDIR}/hostapd \
-		${HOSTAPD_DISTDIR}/src/eap_server \
-		${HOSTAPD_DISTDIR}/src/radius
 
+.PATH.c:${HOSTAPD_DISTDIR}/hostapd \
+	${HOSTAPD_DISTDIR}/src/eap_server \
+	${HOSTAPD_DISTDIR}/src/radius \
 
 PROG=	hostapd
 SRCS=	accounting.c aes.c aes_wrap.c ap_list.c beacon.c common.c \
@@ -16,37 +15,100 @@ SRCS=	accounting.c aes.c aes_wrap.c ap_list.c beacon.c common.c \
 	radius_client.c rc4.c sha1.c sta_info.c vlan_init.c wme.c \
 	wpa.c wpa_auth_ie.c wpa_common.c wpa_debug.c wpabuf.c
 SRCS+=	l2_packet.c driver_dragonfly.c os_unix.c
-SRCS+=	tls_none.c
-
-CLEANFILES=driver_conf.c
 
 MAN=	hostapd.8 hostapd.conf.5
 
-CFLAGS+= -I${HOSTAPD_DISTDIR}/hostapd
-CFLAGS+= -I${HOSTAPD_DISTDIR}/src/radius
+#.if ${MK_EXAMPLES} != "no"
+#FILESDIR= ${SHAREDIR}/examples/hostapd
+#.PATH:	${HOSTAPD_DISTDIR}
+#FILES=	hostapd.conf hostapd.eap_user hostapd.wpa_psk
+#.endif
+
+CFLAGS+= -I${HOSTAPD_DISTDIR}
+
 CFLAGS+= -DCONFIG_DRIVER_BSD
-CFLAGS+= -DCONFIG_CTRL_IFACE
-CFLAGS+= -DCONFIG_CTRL_IFACE_UNIX
+CFLAGS+= -DCONFIG_DRIVER_RADIUS_ACL
+#.if ${MK_INET6} != "no"
+CFLAGS+= -DCONFIG_IPV6
+#.endif
+CFLAGS+= -g
+DPADD+=	${LIBPCAP}
+LDADD+=	-lpcap
+
+# User customizations for wpa_supplicant/hostapd build environment
+CFLAGS+=${HOSTAPD_CFLAGS}
+#DPADD+=${HOSTAPD_DPADD}
+LDADD+=${HOSTAPD_LDADD}
+#LDFLAGS+=${HOSTAPD_LDFLAGS}
+
+.if !empty(CFLAGS:M*-DEAP_SERVER)
+#SRCS+=	eap.c eap_methods.c eap_identity.c
+
+.if !defined(NO_CRYPT) && !defined(NO_OPENSSL)
+
+CFLAGS+=-DEAP_TLS -DEAP_PEAP -DEAP_MSCHAPv2 -DEAP_PSK \
+	-DEAP_TLS_FUNCS -DEAP_TLS_OPENSSL
+SRCS+=	crypto_openssl.c
+SRCS+=	eap_tls.c eap_peap.c eap_peap_common.c eap_mschapv2.c \
+	eap_psk.c eap_psk_common.c \
+	eap_tls_common.c tls_openssl.c ms_funcs.c chap.c
+
+CFLAGS+=-DEAP_TTLS -DEAP_MD5
+SRCS+=	eap_ttls.c eap_md5.c
+
+.if !empty(CFLAGS:M*-DEAP_GTC)
+SRCS+=	eap_gtc.c
+.endif
+
+.if !empty(CFLAGS:M*-DEAP_AKA)
+NEED_SIM_COMMON=	true
+SRCS+=	eap_aka.c
+.endif
+
+.if !empty(CFLAGS:M*-DEAP_SIM)
+NEED_SIM_COMMON=	true
+SRCS+=	eap_sim.c
+.endif
+
+.if defined(NEED_SIM_COMMON)
+SRCS+=	eap_sim_common.c eap_sim_db.c
+.endif
+
+.if !empty(CFLAGS:M*-DEAP_GPSK)
+CFLAGS+=-DEAP_GPSK_SHA256
+SRCS+=	eap_gpsk.c eap_gpsk_common.c
+NEED_SHA256=	true
+.endif
+
+.if !empty(CFLAGS:M*-DEAP_PAX)
+SRCS+=	eap_pax.c eap_pax_common.c
+.endif
+
+.if !empty(CFLAGS:M*-DEAP_SAKE)
+SRCS+=	eap_sake.c eap_sake_common.c
+.endif
+
+DPADD+= ${LIBSSL} ${LIBCRYPTO}
+LDADD+= -lssl -lcrypto
+.else
+NEED_TLS_NONE=	true
+.endif
+
+.else
+NEED_TLS_NONE=	true
+.endif
+
+.if defined(NEED_SHA256)
+CFLAGS+=-DINTERNAL_SHA256
+SRCS+=	sha256.c
+.endif
+
+.if defined(NEED_TLS_NONE)
 CFLAGS+= -DEAP_TLS_NONE
 CFLAGS+= -DINTERNAL_AES
 CFLAGS+= -DINTERNAL_SHA1
 CFLAGS+= -DINTERNAL_MD5
-DPADD+=	${LIBPCAP}
-LDADD+=	-lpcap
-
-driver_conf.c: Makefile
-	rm -f driver_conf.c
-	echo '/* THIS FILE AUTOMATICALLY GENERATED, DO NOT EDIT! */' \
-							> driver_conf.c
-	echo '#include <stdlib.h>'			>> driver_conf.c
-	echo '#include <stdio.h>'			>> driver_conf.c
-	echo '#include <sys/types.h>'			>> driver_conf.c
-	echo '#include <netinet/in.h>'			>> driver_conf.c
-	echo '#include "hostapd.h"'			>> driver_conf.c
-	echo '#include "driver.h"'			>> driver_conf.c
-	echo "void bsd_driver_register(void);"		>> driver_conf.c
-	echo 'void register_drivers(void) {'		>> driver_conf.c
-	echo "bsd_driver_register();"			>> driver_conf.c
-	echo '}'					>> driver_conf.c
+SRCS+=	tls_none.c
+.endif
 
 .include <bsd.prog.mk>
