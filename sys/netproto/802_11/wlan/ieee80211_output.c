@@ -86,6 +86,7 @@
 static int ieee80211_fragment(struct ieee80211vap *, struct mbuf *,
 	u_int hdrsize, u_int ciphdrsize, u_int mtu);
 static	void ieee80211_tx_mgt_cb(struct ieee80211_node *, void *, int);
+static int ieee80211_handoff(struct ifnet *dst_ifp, struct mbuf *m);
 
 #ifdef IEEE80211_DEBUG
 /*
@@ -130,6 +131,7 @@ ieee80211_start(struct ifnet *ifp)
 		    "%s: ignore queue, parent %s not up+running\n",
 		    __func__, parent->if_xname);
 		/* XXX stat */
+		ifq_purge(&ifp->if_snd);
 		return;
 	}
 	if (vap->iv_state == IEEE80211_S_SLEEP) {
@@ -137,6 +139,7 @@ ieee80211_start(struct ifnet *ifp)
 		 * In power save, wakeup device for transmit.
 		 */
 		ieee80211_new_state(vap, IEEE80211_S_RUN, 0);
+		ifq_purge(&ifp->if_snd);
 		return;
 	}
 	/*
@@ -160,7 +163,7 @@ ieee80211_start(struct ifnet *ifp)
 		IEEE80211_UNLOCK(ic);
 	}
 	for (;;) {
-		ifq_dequeue(&ifp->if_snd, m);
+		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL)
 			break;
 		/*
@@ -358,7 +361,7 @@ ieee80211_start(struct ifnet *ifp)
 			}
 		}
 
-		error = parent->if_transmit(parent, m);
+		error = ieee80211_handoff(parent, m);
 		if (error != 0) {
 			/* NB: IFQ_HANDOFF reclaims mbuf */
 			ieee80211_free_node(ni);
@@ -369,6 +372,28 @@ ieee80211_start(struct ifnet *ifp)
 	}
 #undef IS_DWDS
 }
+
+static int
+ieee80211_handoff(struct ifnet *dst_ifp, struct mbuf *m)
+{
+        struct mbuf *m0;
+
+	/* We may be sending a fragment so traverse the mbuf */
+	for (; m; m = m0) {
+		struct altq_pktattr pktattr;
+
+		m0 = m->m_nextpkt;
+		m->m_nextpkt = NULL;
+
+		if (ifq_is_enabled(&dst_ifp->if_snd))
+			altq_etherclassify(&dst_ifp->if_snd, m, &pktattr);
+
+		ifq_dispatch(dst_ifp, m, &pktattr);
+	}
+
+	return (0);
+}
+
 
 /*
  * 802.11 output routine. This is (currently) used only to
