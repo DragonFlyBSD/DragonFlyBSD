@@ -461,7 +461,7 @@ ath_attach(u_int16_t devid, struct ath_softc *sc)
 
 	ATH_TXBUF_LOCK_INIT(sc);
 
-	sc->sc_tq = taskqueue_create("ath_taskq", M_NOWAIT,
+	sc->sc_tq = taskqueue_create("ath_taskq", M_INTWAIT,
 		taskqueue_thread_enqueue, &sc->sc_tq);
 	taskqueue_start_threads(&sc->sc_tq, 1, TDPRI_KERN_DAEMON, -1,
 		"%s taskq", ifp->if_xname);
@@ -3390,7 +3390,7 @@ ath_descdma_setup(struct ath_softc *sc,
 
 	/* allocate rx buffers */
 	bsize = sizeof(struct ath_buf) * nbuf;
-	bf = kmalloc(bsize, M_ATHDEV, M_NOWAIT | M_ZERO);
+	bf = kmalloc(bsize, M_ATHDEV, M_INTWAIT | M_ZERO);
 	if (bf == NULL) {
 		if_printf(ifp, "malloc of %s buffers failed, size %u\n",
 			dd->dd_name, bsize);
@@ -3509,7 +3509,7 @@ ath_node_alloc(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 	const size_t space = sizeof(struct ath_node) + sc->sc_rc->arc_space;
 	struct ath_node *an;
 
-	an = kmalloc(space, M_80211_NODE, M_NOWAIT|M_ZERO);
+	an = kmalloc(space, M_80211_NODE, M_INTWAIT|M_ZERO);
 	if (an == NULL) {
 		/* XXX stat+msg */
 		return NULL;
@@ -6142,7 +6142,7 @@ ath_ioctl_diag(struct ath_softc *sc, struct ath_diag *ad)
 		/*
 		 * Copy in data.
 		 */
-		indata = kmalloc(insize, M_TEMP, M_NOWAIT);
+		indata = kmalloc(insize, M_TEMP, M_INTWAIT);
 		if (indata == NULL) {
 			error = ENOMEM;
 			goto bad;
@@ -6159,7 +6159,7 @@ ath_ioctl_diag(struct ath_softc *sc, struct ath_diag *ad)
 		 * pointer for us to use below in reclaiming the buffer;
 		 * may want to be more defensive.
 		 */
-		outdata = kmalloc(outsize, M_TEMP, M_NOWAIT);
+		outdata = kmalloc(outsize, M_TEMP, M_INTWAIT);
 		if (outdata == NULL) {
 			error = ENOMEM;
 			goto bad;
