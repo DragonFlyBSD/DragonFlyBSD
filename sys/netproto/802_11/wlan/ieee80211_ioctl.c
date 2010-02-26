@@ -328,7 +328,7 @@ ieee80211_ioctl_getscanresults(struct ieee80211vap *vap,
 
 		space = req.space;
 		/* XXX M_WAITOK after driver lock released */
-		p = kmalloc(space, M_TEMP, M_NOWAIT | M_ZERO);
+		p = kmalloc(space, M_TEMP, M_INTWAIT | M_ZERO);
 		if (p == NULL)
 			return ENOMEM;
 		req.sr = p;
@@ -478,7 +478,7 @@ getstainfo_common(struct ieee80211vap *vap, struct ieee80211req *ireq,
 	if (req.space > 0) {
 		space = req.space;
 		/* XXX M_WAITOK after driver lock released */
-		p = kmalloc(space, M_TEMP, M_NOWAIT | M_ZERO);
+		p = kmalloc(space, M_TEMP, M_INTWAIT | M_ZERO);
 		if (p == NULL) {
 			error = ENOMEM;
 			goto bad;
@@ -703,7 +703,7 @@ ieee80211_ioctl_getdevcaps(struct ieee80211com *ic,
 		maxchans = 2048;
 	dc = (struct ieee80211_devcaps_req *)
 	    kmalloc(IEEE80211_DEVCAPS_SIZE(maxchans), M_TEMP,
-		M_NOWAIT | M_ZERO);
+		M_INTWAIT | M_ZERO);
 	if (dc == NULL)
 		return ENOMEM;
 	dc->dc_drivercaps = ic->ic_caps;
@@ -1589,7 +1589,7 @@ ieee80211_ioctl_setchanlist(struct ieee80211vap *vap, struct ieee80211req *ireq)
 	if (ireq->i_len > sizeof(ic->ic_chan_active))
 		ireq->i_len = sizeof(ic->ic_chan_active);
 	list = kmalloc(ireq->i_len + IEEE80211_CHAN_BYTES, M_TEMP,
-	    M_NOWAIT | M_ZERO);
+	    M_INTWAIT | M_ZERO);
 	if (list == NULL)
 		return ENOMEM;
 	error = copyin(ireq->i_data, list, ireq->i_len);
@@ -2030,7 +2030,7 @@ ieee80211_ioctl_setregdomain(struct ieee80211vap *vap,
 		return EINVAL;
 	}
 	reg = (struct ieee80211_regdomain_req *)
-	    kmalloc(IEEE80211_REGDOMAIN_SIZE(nchans), M_TEMP, M_NOWAIT);
+	    kmalloc(IEEE80211_REGDOMAIN_SIZE(nchans), M_TEMP, M_INTWAIT);
 	if (reg == NULL) {
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_IOCTL,
 		    "%s: no memory, nchans %d\n", __func__, nchans);
@@ -2179,7 +2179,8 @@ setappie(struct ieee80211_appie **aie, const struct ieee80211req *ireq)
 	 * XXX bad bad bad
 	 */
 	napp = (struct ieee80211_appie *) kmalloc(
-	    sizeof(struct ieee80211_appie) + ireq->i_len, M_80211_NODE_IE, M_NOWAIT);
+	    sizeof(struct ieee80211_appie) + ireq->i_len, M_80211_NODE_IE,
+	    M_INTWAIT);
 	if (napp == NULL)
 		return ENOMEM;
 	/* XXX holding ic lock */

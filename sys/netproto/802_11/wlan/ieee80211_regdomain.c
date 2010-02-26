@@ -242,7 +242,7 @@ ieee80211_alloc_countryie(struct ieee80211com *ic)
 	int i, skip, nruns;
 
 	aie = kmalloc(IEEE80211_COUNTRY_MAX_SIZE, M_80211_NODE_IE,
-	    M_NOWAIT | M_ZERO);
+	    M_INTWAIT | M_ZERO);
 	if (aie == NULL) {
 		if_printf(ic->ic_ifp,
 		    "%s: unable to allocate memory for country ie\n", __func__);

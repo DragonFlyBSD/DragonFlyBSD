@@ -100,7 +100,7 @@ ieee80211_superg_attach(struct ieee80211com *ic)
 	if (ic->ic_caps & IEEE80211_C_FF) {
 		sg = (struct ieee80211_superg *) kmalloc(
 		     sizeof(struct ieee80211_superg), M_80211_VAP,
-		     M_NOWAIT | M_ZERO);
+		     M_INTWAIT | M_ZERO);
 		if (sg == NULL) {
 			kprintf("%s: cannot allocate SuperG state block\n",
 			    __func__);
@@ -300,7 +300,7 @@ ieee80211_ff_decap(struct ieee80211_node *ni, struct mbuf *m)
 		vap->iv_stats.is_ff_tooshort++;
 		return NULL;
 	}
-	n = m_split(m, framelen, M_NOWAIT);
+	n = m_split(m, framelen, M_INTWAIT);
 	if (n == NULL) {
 		IEEE80211_DISCARD_MAC(vap, IEEE80211_MSG_ANY,
 		    ni->ni_macaddr, "fast-frame",
@@ -508,7 +508,7 @@ ff_transmit(struct ieee80211_node *ni, struct mbuf *m)
 		struct ifnet *ifp = vap->iv_ifp;
 		struct ifnet *parent = ni->ni_ic->ic_ifp;
 
-		error = parent->if_transmit(parent, m);
+		error = ieee80211_handoff(parent, m);
 		if (error != 0) {
 			/* NB: IFQ_HANDOFF reclaims mbuf */
 			ieee80211_free_node(ni);

@@ -86,7 +86,6 @@
 static int ieee80211_fragment(struct ieee80211vap *, struct mbuf *,
 	u_int hdrsize, u_int ciphdrsize, u_int mtu);
 static	void ieee80211_tx_mgt_cb(struct ieee80211_node *, void *, int);
-static int ieee80211_handoff(struct ifnet *dst_ifp, struct mbuf *m);
 
 #ifdef IEEE80211_DEBUG
 /*
@@ -371,27 +370,6 @@ ieee80211_start(struct ifnet *ifp)
 		ic->ic_lastdata = ticks;
 	}
 #undef IS_DWDS
-}
-
-static int
-ieee80211_handoff(struct ifnet *dst_ifp, struct mbuf *m)
-{
-        struct mbuf *m0;
-
-	/* We may be sending a fragment so traverse the mbuf */
-	for (; m; m = m0) {
-		struct altq_pktattr pktattr;
-
-		m0 = m->m_nextpkt;
-		m->m_nextpkt = NULL;
-
-		if (ifq_is_enabled(&dst_ifp->if_snd))
-			altq_etherclassify(&dst_ifp->if_snd, m, &pktattr);
-
-		ifq_dispatch(dst_ifp, m, &pktattr);
-	}
-
-	return (0);
 }
 
 
@@ -920,7 +898,7 @@ ieee80211_mbuf_adjust(struct ieee80211vap *vap, int hdrsize,
 		 */
 #ifdef __FreeBSD__
 		if (key->wk_flags & (IEEE80211_KEY_SWENCRYPT|IEEE80211_KEY_SWENMIC)) {
-			m = m_unshare(m, M_NOWAIT);
+			m = m_unshare(m, M_INTWAIT);
 			if (m == NULL) {
 				IEEE80211_DPRINTF(vap, IEEE80211_MSG_OUTPUT,
 				    "%s: cannot get writable mbuf\n", __func__);
@@ -940,7 +918,7 @@ ieee80211_mbuf_adjust(struct ieee80211vap *vap, int hdrsize,
 	 */
 	/* XXX check trailing space and copy instead? */
 	if (M_LEADINGSPACE(m) < needed_space - TO_BE_RECLAIMED) {
-		struct mbuf *n = m_gethdr(M_NOWAIT, m->m_type);
+		struct mbuf *n = m_gethdr(M_INTWAIT, m->m_type);
 		if (n == NULL) {
 			IEEE80211_DPRINTF(vap, IEEE80211_MSG_OUTPUT,
 			    "%s: cannot expand storage\n", __func__);

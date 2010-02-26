@@ -177,7 +177,7 @@ mesh_rt_add_locked(struct ieee80211_mesh_state *ms,
 	MESH_RT_LOCK_ASSERT(ms);
 
 	rt = kmalloc(ALIGN(sizeof(struct ieee80211_mesh_route)) +
-	    ms->ms_ppath->mpp_privlen, M_80211_MESH_RT, M_NOWAIT | M_ZERO);
+	    ms->ms_ppath->mpp_privlen, M_80211_MESH_RT, M_INTWAIT | M_ZERO);
 	if (rt != NULL) {
 		IEEE80211_ADDR_COPY(rt->rt_dest, dest);
 		rt->rt_priv = (void *)ALIGN(&rt[1]);
@@ -522,7 +522,7 @@ mesh_vattach(struct ieee80211vap *vap)
 	vap->iv_opdetach = mesh_vdetach;
 	vap->iv_recv_mgmt = mesh_recv_mgmt;
 	ms = kmalloc(sizeof(struct ieee80211_mesh_state), M_80211_VAP,
-	    M_NOWAIT | M_ZERO);
+	    M_INTWAIT | M_ZERO);
 	if (ms == NULL) {
 		kprintf("%s: couldn't alloc MBSS state\n", __func__);
 		return;
@@ -916,7 +916,7 @@ mesh_forward(struct ieee80211vap *vap, struct mbuf *m,
 
 	/* XXX do we know m_nextpkt is NULL? */
 	mcopy->m_pkthdr.rcvif = (void *) ni;
-	err = parent->if_transmit(parent, mcopy);
+	err = ieee80211_handoff(parent, mcopy);
 	if (err != 0) {
 		/* NB: IFQ_HANDOFF reclaims mbuf */
 		ieee80211_free_node(ni);
@@ -2614,7 +2614,7 @@ mesh_ioctl_get80211(struct ieee80211vap *vap, struct ieee80211req *ireq)
 			}
 			ireq->i_len = len;
 			/* XXX M_WAIT? */
-			p = kmalloc(len, M_TEMP, M_NOWAIT | M_ZERO);
+			p = kmalloc(len, M_TEMP, M_INTWAIT | M_ZERO);
 			if (p == NULL)
 				return ENOMEM;
 			off = 0;

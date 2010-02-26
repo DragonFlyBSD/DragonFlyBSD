@@ -238,7 +238,7 @@ hwmp_vattach(struct ieee80211vap *vap)
 	    ("not a mesh vap, opmode %d", vap->iv_opmode));
 
 	hs = kmalloc(sizeof(struct ieee80211_hwmp_state), M_80211_VAP,
-	    M_NOWAIT | M_ZERO);
+	    M_INTWAIT | M_ZERO);
 	if (hs == NULL) {
 		kprintf("%s: couldn't alloc HWMP state\n", __func__);
 		return;
@@ -1068,7 +1068,7 @@ hwmp_recv_prep(struct ieee80211vap *vap, struct ieee80211_node *ni,
 		m->m_nextpkt = NULL;
 		IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
 		    "flush queued frame %p len %d", m, m->m_pkthdr.len);
-		ifp->if_transmit(ifp, m);
+		ieee80211_handoff(ifp, m);
 	}
 }
 

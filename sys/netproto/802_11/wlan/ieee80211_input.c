@@ -400,7 +400,7 @@ ieee80211_alloc_challenge(struct ieee80211_node *ni)
 {
 	if (ni->ni_challenge == NULL)
 		ni->ni_challenge = (uint32_t *) kmalloc(IEEE80211_CHALLENGE_LEN,
-		    M_80211_NODE, M_NOWAIT);
+		    M_80211_NODE, M_INTWAIT);
 	if (ni->ni_challenge == NULL) {
 		IEEE80211_NOTE(ni->ni_vap,
 		    IEEE80211_MSG_DEBUG | IEEE80211_MSG_AUTH, ni,

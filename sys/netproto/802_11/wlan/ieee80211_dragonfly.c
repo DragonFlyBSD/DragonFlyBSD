@@ -50,6 +50,7 @@
 #include <net/if_types.h>
 #include <net/ethernet.h>
 #include <net/route.h>
+#include <net/ifq_var.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_input.h>
@@ -231,7 +232,7 @@ ieee80211_sysctl_vattach(struct ieee80211vap *vap)
 	char num[14];			/* sufficient for 32 bits */
 
 	ctx = (struct sysctl_ctx_list *) kmalloc(sizeof(struct sysctl_ctx_list),
-		M_DEVBUF, M_NOWAIT | M_ZERO);
+		M_DEVBUF, M_INTWAIT | M_ZERO);
 	if (ctx == NULL) {
 		if_printf(ifp, "%s: cannot allocate sysctl context!\n",
 			__func__);
@@ -397,7 +398,7 @@ ieee80211_getmgtframe(uint8_t **frm, int headroom, int pktlen)
 	len = roundup2(headroom + pktlen, 4);
 	KASSERT(len <= MCLBYTES, ("802.11 mgt frame too large: %u", len));
 	if (len < MINCLSIZE) {
-		m = m_gethdr(M_NOWAIT, MT_DATA);
+		m = m_gethdr(M_INTWAIT, MT_DATA);
 		/*
 		 * Align the data in case additional headers are added.
 		 * This should only happen when a WEP header is added
@@ -407,7 +408,7 @@ ieee80211_getmgtframe(uint8_t **frm, int headroom, int pktlen)
 		if (m != NULL)
 			MH_ALIGN(m, len);
 	} else {
-		m = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
+		m = m_getcl(M_INTWAIT, MT_DATA, M_PKTHDR);
 		if (m != NULL)
 			MC_ALIGN(m, len);
 	}
@@ -465,7 +466,7 @@ ieee80211_add_callback(struct mbuf *m,
 	struct ieee80211_cb *cb;
 
 	mtag = m_tag_alloc(MTAG_ABI_NET80211, NET80211_TAG_CALLBACK,
-			sizeof(struct ieee80211_cb), M_NOWAIT);
+			sizeof(struct ieee80211_cb), M_INTWAIT);
 	if (mtag == NULL)
 		return 0;
 
@@ -715,6 +716,27 @@ ieee80211_notify_radio(struct ieee80211com *ic, int state)
 	memset(&iev, 0, sizeof(iev));
 	iev.iev_state = state;
 	rt_ieee80211msg(ifp, RTM_IEEE80211_RADIO, &iev, sizeof(iev));
+}
+
+int
+ieee80211_handoff(struct ifnet *dst_ifp, struct mbuf *m)
+{
+        struct mbuf *m0;
+
+	/* We may be sending a fragment so traverse the mbuf */
+	for (; m; m = m0) {
+		struct altq_pktattr pktattr;
+
+		m0 = m->m_nextpkt;
+		m->m_nextpkt = NULL;
+
+		if (ifq_is_enabled(&dst_ifp->if_snd))
+			altq_etherclassify(&dst_ifp->if_snd, m, &pktattr);
+
+		ifq_dispatch(dst_ifp, m, &pktattr);
+	}
+
+	return (0);
 }
 
 void

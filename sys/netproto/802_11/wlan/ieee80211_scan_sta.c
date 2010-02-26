@@ -160,7 +160,7 @@ sta_attach(struct ieee80211_scan_state *ss)
 	struct sta_table *st;
 
 	st = (struct sta_table *) kmalloc(sizeof(struct sta_table),
-		M_80211_SCAN, M_NOWAIT | M_ZERO);
+		M_80211_SCAN, M_INTWAIT | M_ZERO);
 	if (st == NULL)
 		return 0;
 	lockinit(&st->st_lock, "scantable", 0, 0);
@@ -251,7 +251,7 @@ sta_add(struct ieee80211_scan_state *ss,
 		if (IEEE80211_ADDR_EQ(se->base.se_macaddr, macaddr))
 			goto found;
 	se = (struct sta_entry *) kmalloc(sizeof(struct sta_entry),
-		M_80211_SCAN, M_NOWAIT | M_ZERO);
+		M_80211_SCAN, M_INTWAIT | M_ZERO);
 	if (se == NULL) {
 		lockmgr(&st->st_lock, LK_RELEASE);
 		return 0;

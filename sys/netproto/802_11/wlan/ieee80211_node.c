@@ -171,7 +171,7 @@ ieee80211_node_latevattach(struct ieee80211vap *vap)
 		}
 		vap->iv_aid_bitmap = (uint32_t *) kmalloc(
 			howmany(vap->iv_max_aid, 32) * sizeof(uint32_t),
-			M_80211_NODE, M_NOWAIT | M_ZERO);
+			M_80211_NODE, M_INTWAIT | M_ZERO);
 		if (vap->iv_aid_bitmap == NULL) {
 			/* XXX no way to recover */
 			kprintf("%s: no memory for AID bitmap, max aid %d!\n",
@@ -854,7 +854,7 @@ node_alloc(struct ieee80211vap *vap, const uint8_t macaddr[IEEE80211_ADDR_LEN])
 	struct ieee80211_node *ni;
 
 	ni = (struct ieee80211_node *) kmalloc(sizeof(struct ieee80211_node),
-		M_80211_NODE, M_NOWAIT | M_ZERO);
+		M_80211_NODE, M_INTWAIT | M_ZERO);
 	return ni;
 }
 
@@ -875,7 +875,7 @@ ieee80211_ies_init(struct ieee80211_ies *ies, const uint8_t *data, int len)
 		ies->data = NULL;
 	}
 	if (ies->data == NULL) {
-		ies->data = (uint8_t *) kmalloc(len, M_80211_NODE_IE, M_NOWAIT);
+		ies->data = (uint8_t *) kmalloc(len, M_80211_NODE_IE, M_INTWAIT);
 		if (ies->data == NULL) {
 			ies->len = 0;
 			/* NB: pointers have already been zero'd above */
@@ -1826,7 +1826,7 @@ ieee80211_node_table_init(struct ieee80211com *ic,
 	if (nt->nt_keyixmax > 0) {
 		nt->nt_keyixmap = (struct ieee80211_node **) kmalloc(
 			keyixmax * sizeof(struct ieee80211_node *),
-			M_80211_NODE, M_NOWAIT | M_ZERO);
+			M_80211_NODE, M_INTWAIT | M_ZERO);
 		if (nt->nt_keyixmap == NULL)
 			if_printf(ic->ic_ifp,
 			    "Cannot allocate key index map with %u entries\n",

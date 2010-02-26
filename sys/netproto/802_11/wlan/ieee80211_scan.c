@@ -106,7 +106,7 @@ ieee80211_scan_attach(struct ieee80211com *ic)
 	struct scan_state *ss;
 
 	ss = (struct scan_state *) kmalloc(sizeof(struct scan_state),
-		M_80211_SCAN, M_NOWAIT | M_ZERO);
+		M_80211_SCAN, M_INTWAIT | M_ZERO);
 	if (ss == NULL) {
 		ic->ic_scan = NULL;
 		return;

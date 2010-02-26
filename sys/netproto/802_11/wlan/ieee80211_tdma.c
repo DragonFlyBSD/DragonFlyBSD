@@ -147,7 +147,8 @@ ieee80211_tdma_vattach(struct ieee80211vap *vap)
 	     ("not a tdma vap, caps 0x%x", vap->iv_caps));
 
 	ts = (struct ieee80211_tdma_state *) kmalloc(
-	     sizeof(struct ieee80211_tdma_state), M_80211_VAP, M_NOWAIT | M_ZERO);
+	     sizeof(struct ieee80211_tdma_state), M_80211_VAP,
+	     M_INTWAIT | M_ZERO);
 	if (ts == NULL) {
 		kprintf("%s: cannot allocate TDMA state block\n", __func__);
 		/* NB: fall back to adhdemo mode */

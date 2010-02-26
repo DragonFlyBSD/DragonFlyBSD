@@ -82,7 +82,7 @@ ieee80211_power_latevattach(struct ieee80211vap *vap)
 	if (vap->iv_opmode == IEEE80211_M_HOSTAP) {
 		vap->iv_tim_len = howmany(vap->iv_max_aid,8) * sizeof(uint8_t);
 		vap->iv_tim_bitmap = (uint8_t *) kmalloc(vap->iv_tim_len,
-			M_80211_POWER, M_NOWAIT | M_ZERO);
+			M_80211_POWER, M_INTWAIT | M_ZERO);
 		if (vap->iv_tim_bitmap == NULL) {
 			kprintf("%s: no memory for TIM bitmap!\n", __func__);
 			/* XXX good enough to keep from crashing? */
