@@ -325,8 +325,9 @@ TUNABLE_INT("hw.ath.debug", &ath_debug);
 	    (sc->sc_ifp->if_flags & (IFF_DEBUG|IFF_LINK2)) == (IFF_DEBUG|IFF_LINK2))
 #define	DPRINTF(sc, m, fmt, ...) do {				\
 	if (sc->sc_debug & (m))					\
-		printf(fmt, __VA_ARGS__);			\
+		kprintf(fmt, __VA_ARGS__);			\
 } while (0)
+#define ether_sprintf(x)	"<dummy>"
 #define	KEYPRINTF(sc, ix, hk, mac) do {				\
 	if (sc->sc_debug & ATH_DEBUG_KEYCACHE)			\
 		ath_keyprint(sc, __func__, ix, hk, mac);	\
@@ -1817,8 +1818,10 @@ ath_start(struct ifnet *ifp)
 	struct mbuf *m, *next;
 	ath_bufhead frags;
 
-	if ((ifp->if_flags & IFF_RUNNING) == 0 || sc->sc_invalid)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || sc->sc_invalid) {
+		ifq_purge(&ifp->if_snd);
 		return;
+	}
 	for (;;) {
 		/*
 		 * Grab a TX buffer and associated resources.
@@ -1927,21 +1930,21 @@ ath_keyprint(struct ath_softc *sc, const char *tag, u_int ix,
 	};
 	int i, n;
 
-	printf("%s: [%02u] %-7s ", tag, ix, ciphers[hk->kv_type]);
+	kprintf("%s: [%02u] %-7s ", tag, ix, ciphers[hk->kv_type]);
 	for (i = 0, n = hk->kv_len; i < n; i++)
-		printf("%02x", hk->kv_val[i]);
-	printf(" mac %s", ether_sprintf(mac));
+		kprintf("%02x", hk->kv_val[i]);
+	kprintf(" mac %s", ether_sprintf(mac));
 	if (hk->kv_type == HAL_CIPHER_TKIP) {
-		printf(" %s ", sc->sc_splitmic ? "mic" : "rxmic");
+		kprintf(" %s ", sc->sc_splitmic ? "mic" : "rxmic");
 		for (i = 0; i < sizeof(hk->kv_mic); i++)
-			printf("%02x", hk->kv_mic[i]);
+			kprintf("%02x", hk->kv_mic[i]);
 		if (!sc->sc_splitmic) {
-			printf(" txmic ");
+			kprintf(" txmic ");
 			for (i = 0; i < sizeof(hk->kv_txmic); i++)
-				printf("%02x", hk->kv_txmic[i]);
+				kprintf("%02x", hk->kv_txmic[i]);
 		}
 	}
-	printf("\n");
+	kprintf("\n");
 }
 #endif
 
@@ -4307,49 +4310,26 @@ ath_freetx(struct mbuf *m)
 static int
 ath_tx_dmasetup(struct ath_softc *sc, struct ath_buf *bf, struct mbuf *m0)
 {
-	struct mbuf *m;
 	int error;
 
 	/*
+	 * 
 	 * Load the DMA map so any coalescing is done.  This
 	 * also calculates the number of descriptors we need.
 	 */
-	error = bus_dmamap_load_mbuf_segment(sc->sc_dmat, bf->bf_dmamap, m0,
-				     bf->bf_segs, 1, &bf->bf_nseg,
-				     BUS_DMA_NOWAIT);
-	if (error == EFBIG) {
-		/* XXX packet requires too many descriptors */
-		bf->bf_nseg = ATH_TXDESC+1;
-	} else if (error != 0) {
+	error = bus_dmamap_load_mbuf_defrag(sc->sc_dmat, bf->bf_dmamap, &m0,
+				     bf->bf_segs, ATH_TXDESC,
+				     &bf->bf_nseg, BUS_DMA_NOWAIT);
+	if (error != 0) {
 		sc->sc_stats.ast_tx_busdma++;
 		ath_freetx(m0);
 		return error;
 	}
+
 	/*
-	 * Discard null packets and check for packets that
-	 * require too many TX descriptors.  We try to convert
-	 * the latter to a cluster.
+	 * Discard null packets.
 	 */
-	if (bf->bf_nseg > ATH_TXDESC) {		/* too many desc's, linearize */
-		sc->sc_stats.ast_tx_linear++;
-		m = m_collapse(m0, MB_DONTWAIT, ATH_TXDESC);
-		if (m == NULL) {
-			ath_freetx(m0);
-			sc->sc_stats.ast_tx_nombuf++;
-			return ENOMEM;
-		}
-		m0 = m;
-		error = bus_dmamap_load_mbuf_segment(sc->sc_dmat, bf->bf_dmamap, m0,
-					     bf->bf_segs, 1, &bf->bf_nseg,
-					     BUS_DMA_NOWAIT);
-		if (error != 0) {
-			sc->sc_stats.ast_tx_busdma++;
-			ath_freetx(m0);
-			return error;
-		}
-		KASSERT(bf->bf_nseg <= ATH_TXDESC,
-		    ("too many segments after defrag; nseg %u", bf->bf_nseg));
-	} else if (bf->bf_nseg == 0) {		/* null packet, discard */
+	if (bf->bf_nseg == 0) {		/* null packet, discard */
 		sc->sc_stats.ast_tx_nodata++;
 		ath_freetx(m0);
 		return EIO;
@@ -4585,8 +4565,9 @@ ath_tx_start(struct ath_softc *sc, struct ieee80211_node *ni, struct ath_buf *bf
 	 * also calculates the number of descriptors we need.
 	 */
 	error = ath_tx_dmasetup(sc, bf, m0);
-	if (error != 0)
+	if (error != 0) {
 		return error;
+	}
 	bf->bf_node = ni;			/* NB: held reference */
 	m0 = bf->bf_m;				/* NB: may have changed */
 	wh = mtod(m0, struct ieee80211_frame *);
@@ -5277,7 +5258,7 @@ ath_stoprecv(struct ath_softc *sc)
 		struct ath_buf *bf;
 		u_int ix;
 
-		printf("%s: rx queue %p, link %p\n", __func__,
+		kprintf("%s: rx queue %p, link %p\n", __func__,
 			(caddr_t)(uintptr_t) ath_hal_getrxbuf(ah), sc->sc_rxlink);
 		ix = 0;
 		STAILQ_FOREACH(bf, &sc->sc_rxbuf, bf_list) {
@@ -6069,7 +6050,7 @@ ath_printrxbuf(struct ath_softc *sc, const struct ath_buf *bf,
 	int i;
 
 	for (i = 0, ds = bf->bf_desc; i < bf->bf_nseg; i++, ds++) {
-		printf("R[%2u] (DS.V:%p DS.P:%p) L:%08x D:%08x%s\n"
+		kprintf("R[%2u] (DS.V:%p DS.P:%p) L:%08x D:%08x%s\n"
 		       "      %08x %08x %08x %08x\n",
 		    ix, ds, (const struct ath_desc *)bf->bf_daddr + i,
 		    ds->ds_link, ds->ds_data,
@@ -6077,7 +6058,7 @@ ath_printrxbuf(struct ath_softc *sc, const struct ath_buf *bf,
 		    ds->ds_ctl0, ds->ds_ctl1,
 		    ds->ds_hw[0], ds->ds_hw[1]);
 		if (ah->ah_magic == 0x20065416) {
-			printf("        %08x %08x %08x %08x %08x %08x %08x\n",
+			kprintf("        %08x %08x %08x %08x %08x %08x %08x\n",
 			    ds->ds_hw[2], ds->ds_hw[3], ds->ds_hw[4],
 			    ds->ds_hw[5], ds->ds_hw[6], ds->ds_hw[7],
 			    ds->ds_hw[8]);
@@ -6094,9 +6075,9 @@ ath_printtxbuf(struct ath_softc *sc, const struct ath_buf *bf,
 	const struct ath_desc *ds;
 	int i;
 
-	printf("Q%u[%3u]", qnum, ix);
+	kprintf("Q%u[%3u]", qnum, ix);
 	for (i = 0, ds = bf->bf_desc; i < bf->bf_nseg; i++, ds++) {
-		printf(" (DS.V:%p DS.P:%p) L:%08x D:%08x F:04%x%s\n"
+		kprintf(" (DS.V:%p DS.P:%p) L:%08x D:%08x F:04%x%s\n"
 		       "        %08x %08x %08x %08x %08x %08x\n",
 		    ds, (const struct ath_desc *)bf->bf_daddr + i,
 		    ds->ds_link, ds->ds_data, bf->bf_txflags,
@@ -6104,11 +6085,11 @@ ath_printtxbuf(struct ath_softc *sc, const struct ath_buf *bf,
 		    ds->ds_ctl0, ds->ds_ctl1,
 		    ds->ds_hw[0], ds->ds_hw[1], ds->ds_hw[2], ds->ds_hw[3]);
 		if (ah->ah_magic == 0x20065416) {
-			printf("        %08x %08x %08x %08x %08x %08x %08x %08x\n",
+			kprintf("        %08x %08x %08x %08x %08x %08x %08x %08x\n",
 			    ds->ds_hw[4], ds->ds_hw[5], ds->ds_hw[6],
 			    ds->ds_hw[7], ds->ds_hw[8], ds->ds_hw[9],
 			    ds->ds_hw[10],ds->ds_hw[11]);
-			printf("        %08x %08x %08x %08x %08x %08x %08x %08x\n",
+			kprintf("        %08x %08x %08x %08x %08x %08x %08x %08x\n",
 			    ds->ds_hw[12],ds->ds_hw[13],ds->ds_hw[14],
 			    ds->ds_hw[15],ds->ds_hw[16],ds->ds_hw[17],
 			    ds->ds_hw[18], ds->ds_hw[19]);
