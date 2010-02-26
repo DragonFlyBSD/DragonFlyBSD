@@ -1495,7 +1495,6 @@ struct vop_ops tmpfs_vnode_vops = {
 	.vop_print =			tmpfs_print,
 	.vop_pathconf =			tmpfs_pathconf,
 	.vop_bmap =			tmpfs_bmap,
-	.vop_bmap =			(void *)vop_eopnotsupp,
 	.vop_strategy =			tmpfs_strategy,
 	.vop_advlock =			tmpfs_advlock,
 };
