@@ -32,7 +32,7 @@ BIN1=	amd.map auth.conf \
 	inetd.conf login.access login.conf \
 	motd modems netconfig networks newsyslog.conf \
 	nscd.conf pf.conf phones printcap profile \
-	remote sensorsd.conf \
+	regdomain.xml remote sensorsd.conf \
 	shells sysctl.conf syslog.conf usbd.conf \
 	etc.${MACHINE_ARCH}/ttys
 .if defined(BINARY_UPGRADE) # location of these depends on upgrade method
