@@ -1032,14 +1032,10 @@ bpf_setif(struct bpf_d *d, struct ifreq *ifr)
 			continue;
 		/*
 		 * We found the requested interface.
-		 * If it's not up, return an error.
 		 * Allocate the packet buffers if we need to.
 		 * If we're already attached to requested interface,
 		 * just flush the buffer.
 		 */
-		if (!(ifp->if_flags & IFF_UP))
-			return(ENETDOWN);
-
 		if (d->bd_sbuf == NULL) {
 			error = bpf_allocbufs(d);
 			if (error != 0)
