@@ -27,5 +27,6 @@ typedef char * PCHAR;
 #define FALSE 0
 
 #define OID_802_3_CURRENT_ADDRESS               0x01010102
+#define	OID_802_3_MULTICAST_LIST		0x01010103
 
 #endif /* _NTDDNDIS_H_ */
