@@ -462,7 +462,6 @@ struct	mbuf	*m_copym(const struct mbuf *, int, int, int);
 struct	mbuf	*m_copypacket(struct mbuf *, int);
 struct	mbuf	*m_defrag(struct mbuf *, int);
 struct	mbuf	*m_defrag_nofree(struct mbuf *, int);
-struct	mbuf	*m_collapse(struct mbuf *, int, int);
 struct	mbuf	*m_devget(char *, int, int, struct ifnet *,
 		  void (*copy)(volatile const void *, volatile void *, size_t));
 struct	mbuf	*m_dup(struct mbuf *, int);
