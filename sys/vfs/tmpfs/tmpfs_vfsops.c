@@ -171,6 +171,9 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		}
 		size_max = args.ta_size_max;
 		nodes_max = args.ta_nodes_max;
+		root_uid = args.ta_root_uid;
+		root_gid = args.ta_root_gid;
+		root_mode = args.ta_root_mode;
 	}
 
 	/*
