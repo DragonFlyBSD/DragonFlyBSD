@@ -1568,7 +1568,7 @@ ieee80211_deliver_l2uf(struct ieee80211_node *ni)
 	struct l2_update_frame *l2uf;
 	struct ether_header *eh;
 	
-	m = m_gethdr(M_INTWAIT, MT_DATA);
+	m = m_gethdr(MB_DONTWAIT, MT_DATA);
 	if (m == NULL) {
 		IEEE80211_NOTE(vap, IEEE80211_MSG_ASSOC, ni,
 		    "%s", "no mbuf for l2uf frame");

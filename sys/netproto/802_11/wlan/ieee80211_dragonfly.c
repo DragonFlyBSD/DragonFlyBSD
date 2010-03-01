@@ -398,7 +398,7 @@ ieee80211_getmgtframe(uint8_t **frm, int headroom, int pktlen)
 	len = roundup2(headroom + pktlen, 4);
 	KASSERT(len <= MCLBYTES, ("802.11 mgt frame too large: %u", len));
 	if (len < MINCLSIZE) {
-		m = m_gethdr(M_INTWAIT, MT_DATA);
+		m = m_gethdr(MB_DONTWAIT, MT_DATA);
 		/*
 		 * Align the data in case additional headers are added.
 		 * This should only happen when a WEP header is added
@@ -408,7 +408,7 @@ ieee80211_getmgtframe(uint8_t **frm, int headroom, int pktlen)
 		if (m != NULL)
 			MH_ALIGN(m, len);
 	} else {
-		m = m_getcl(M_INTWAIT, MT_DATA, M_PKTHDR);
+		m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (m != NULL)
 			MC_ALIGN(m, len);
 	}

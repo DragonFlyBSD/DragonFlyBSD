@@ -898,7 +898,7 @@ ieee80211_mbuf_adjust(struct ieee80211vap *vap, int hdrsize,
 		 */
 #ifdef __FreeBSD__
 		if (key->wk_flags & (IEEE80211_KEY_SWENCRYPT|IEEE80211_KEY_SWENMIC)) {
-			m = m_unshare(m, M_INTWAIT);
+			m = m_unshare(m, MB_DONTWAIT);
 			if (m == NULL) {
 				IEEE80211_DPRINTF(vap, IEEE80211_MSG_OUTPUT,
 				    "%s: cannot get writable mbuf\n", __func__);
@@ -918,7 +918,7 @@ ieee80211_mbuf_adjust(struct ieee80211vap *vap, int hdrsize,
 	 */
 	/* XXX check trailing space and copy instead? */
 	if (M_LEADINGSPACE(m) < needed_space - TO_BE_RECLAIMED) {
-		struct mbuf *n = m_gethdr(M_INTWAIT, m->m_type);
+		struct mbuf *n = m_gethdr(MB_DONTWAIT, m->m_type);
 		if (n == NULL) {
 			IEEE80211_DPRINTF(vap, IEEE80211_MSG_OUTPUT,
 			    "%s: cannot expand storage\n", __func__);

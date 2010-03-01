@@ -89,7 +89,7 @@ wep_attach(struct ieee80211vap *vap, struct ieee80211_key *k)
 	struct wep_ctx *ctx;
 
 	ctx = (struct wep_ctx *) kmalloc(sizeof(struct wep_ctx),
-		M_80211_CRYPTO, M_NOWAIT | M_ZERO);
+		M_80211_CRYPTO, M_INTWAIT | M_ZERO);
 	if (ctx == NULL) {
 		vap->iv_stats.is_crypto_nomem++;
 		return NULL;
@@ -135,7 +135,7 @@ wep_encap(struct ieee80211_key *k, struct mbuf *m, uint8_t keyid)
 	/*
 	 * Copy down 802.11 header and add the IV + KeyID.
 	 */
-	M_PREPEND(m, wep.ic_header, M_NOWAIT);
+	M_PREPEND(m, wep.ic_header, MB_DONTWAIT);
 	if (m == NULL)
 		return 0;
 	ivp = mtod(m, uint8_t *);

@@ -181,7 +181,7 @@ tkip_encap(struct ieee80211_key *k, struct mbuf *m, uint8_t keyid)
 	/*
 	 * Copy down 802.11 header and add the IV, KeyID, and ExtIV.
 	 */
-	M_PREPEND(m, tkip.ic_header, M_NOWAIT);
+	M_PREPEND(m, tkip.ic_header, MB_DONTWAIT);
 	if (m == NULL)
 		return 0;
 	ivp = mtod(m, uint8_t *);

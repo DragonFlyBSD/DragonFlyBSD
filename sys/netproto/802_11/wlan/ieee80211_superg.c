@@ -300,7 +300,7 @@ ieee80211_ff_decap(struct ieee80211_node *ni, struct mbuf *m)
 		vap->iv_stats.is_ff_tooshort++;
 		return NULL;
 	}
-	n = m_split(m, framelen, M_INTWAIT);
+	n = m_split(m, framelen, MB_DONTWAIT);
 	if (n == NULL) {
 		IEEE80211_DISCARD_MAC(vap, IEEE80211_MSG_ANY,
 		    ni->ni_macaddr, "fast-frame",
