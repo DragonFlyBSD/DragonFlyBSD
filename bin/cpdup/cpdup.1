@@ -27,6 +27,7 @@
 .Op Fl H Ar path
 .Op Fl M Ar file
 .Op Fl V
+.Op Fl VV
 .Op Fl S
 .Op Fl k
 .Op Fl K Ar file
@@ -182,6 +183,11 @@ files appear to the be the same.  Whereas the
 (force) option forces a copy regardless, this option will avoid rewriting
 the target if everything matches and the contents are verified to be the
 same.
+.It Fl VV
+This works the same as
+.Fl V
+but ignores mtime entirely, making it suitable for comparing HAMMER
+master and slave filesystems or copies made without mtime retention.
 .It Fl S
 This places
 .Nm
