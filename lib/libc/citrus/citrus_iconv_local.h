@@ -32,6 +32,10 @@
 
 #include "citrus_module.h"
 
+struct _citrus_iconv;
+struct _citrus_iconv_ops;
+struct _citrus_iconv_shared;
+
 #define _CITRUS_ICONV_GETOPS_FUNC_BASE(_n_)				\
 int _n_(struct _citrus_iconv_ops *, size_t, uint32_t)
 #define _CITRUS_ICONV_GETOPS_FUNC(_n_)					\
