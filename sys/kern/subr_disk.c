@@ -425,7 +425,7 @@ disk_msg_core(void *arg)
 				    "received at core\n");
 			break;
 		}
-		lwkt_replymsg((lwkt_msg_t)msg, 0);
+		lwkt_replymsg(&msg->hdr, 0);
 	}
 	lwkt_exit();
 }
@@ -456,17 +456,20 @@ disk_msg_send(uint32_t cmd, void *load, void *load2)
 	disk_msg->load = load;
 	disk_msg->load2 = load2;
 	KKASSERT(port);
-	lwkt_sendmsg(port, (lwkt_msg_t)disk_msg);
+	lwkt_sendmsg(port, &disk_msg->hdr);
 }
 
 void
 disk_msg_send_sync(uint32_t cmd, void *load, void *load2)
 {
 	struct lwkt_port rep_port;
-	disk_msg_t disk_msg = objcache_get(disk_msg_cache, M_WAITOK);
-	disk_msg_t	msg_incoming;
-	lwkt_port_t port = &disk_msg_port;
+	disk_msg_t disk_msg;
+	lwkt_port_t port;
 
+	disk_msg = objcache_get(disk_msg_cache, M_WAITOK);
+	port = &disk_msg_port;
+
+	/* XXX could probably use curthread's built-in msgport */
 	lwkt_initport_thread(&rep_port, curthread);
 	lwkt_initmsg(&disk_msg->hdr, &rep_port, 0);
 
@@ -474,9 +477,9 @@ disk_msg_send_sync(uint32_t cmd, void *load, void *load2)
 	disk_msg->load = load;
 	disk_msg->load2 = load2;
 
-	KKASSERT(port);
-	lwkt_sendmsg(port, (lwkt_msg_t)disk_msg);
-	msg_incoming = lwkt_waitport(&rep_port, 0);
+	lwkt_sendmsg(port, &disk_msg->hdr);
+	lwkt_waitmsg(&disk_msg->hdr, 0);
+	objcache_put(disk_msg_cache, disk_msg);
 }
 
 /*
