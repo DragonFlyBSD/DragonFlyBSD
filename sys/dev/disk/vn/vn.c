@@ -886,6 +886,7 @@ vn_modevent(module_t mod, int type, void *data)
 			if (vn->sc_flags & VNF_INITED)
 				vnclear(vn);
 			/* Cleanup all cdev_t's that refer to this unit */
+			disk_destroy(&vn->sc_disk);
 			while ((dev = vn->sc_devlist) != NULL) {
 				vn->sc_devlist = dev->si_drv2;
 				dev->si_drv1 = dev->si_drv2 = NULL;
