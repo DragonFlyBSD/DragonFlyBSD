@@ -181,6 +181,7 @@ struct ieee80211_node {
 	uint8_t			ni_esslen;
 	uint8_t			ni_essid[IEEE80211_NWID_LEN];
 	struct ieee80211_rateset ni_rates;	/* negotiated rate set */
+	void			*ni_rate_data;
 	struct ieee80211_channel *ni_chan;
 	uint16_t		ni_fhdwell;	/* FH only */
 	uint8_t			ni_fhindex;	/* FH only */

@@ -57,6 +57,9 @@
 #include <netproto/802_11/ieee80211_proto.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
 #include <netproto/802_11/ieee80211_scan.h>
+#if defined(__DragonFly__)
+#include <netproto/802_11/ieee80211_ratectl.h>
+#endif
 
 #define	IEEE80211_TXPOWER_MAX	100	/* .5 dbM (XXX units?) */
 #define	IEEE80211_TXPOWER_MIN	0	/* kill radio */
@@ -471,6 +474,7 @@ struct ieee80211vap {
 	/* 802.3 output method for raw frame xmit */
 	int			(*iv_output)(struct ifnet *, struct mbuf *,
 				    struct sockaddr *, struct rtentry *);
+	struct ieee80211_ratectl_state iv_ratectl;
 	uint64_t		iv_spare[8];
 };
 MALLOC_DECLARE(M_80211_VAP);
