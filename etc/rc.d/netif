@@ -158,6 +158,7 @@ ifn_start()
 	ifconfig_up ${ifn} && cfg=0
 	ifalias_up ${ifn} && cfg=0
 	ipx_up ${ifn} && cfg=0
+	childif_create ${ifn} && cfg=0
 
 	return $cfg
 }
@@ -174,8 +175,91 @@ ifn_stop()
 	ifalias_down ${ifn} && cfg=0
 	ifconfig_down ${ifn} && cfg=0
 	ifscript_down ${ifn} && cfg=0
+	childif_destroy ${ifn} && cfg=0
 
 	return $cfg
+}
+
+# get_if_var if var [default]
+#	Return the value of the pseudo-hash corresponding to $if where
+#	$var is a string containg the sub-string "IF" which will be
+#	replaced with $if after the characters defined in _punct are
+#	replaced with '_'. If the variable is unset, replace it with
+#	$default if given.
+get_if_var()
+{
+	local _if _punct _var _default prefix suffix
+
+	if [ $# -ne 2 -a $# -ne 3 ]; then
+		err 3 'USAGE: get_if_var name var [default]'
+	fi
+
+	_if=$1
+	_punct=". - / +"
+	for _punct_c in $_punct; do
+		_if=`ltr ${_if} ${_punct_c} '_'`
+	done
+	_var=$2
+	_default=$3
+
+	prefix=${_var%%IF*}
+	suffix=${_var##*IF}
+	eval echo \${${prefix}${_if}${suffix}-${_default}}
+}
+
+# childif_create
+#	Create and configure child interfaces.  Return 0 if child
+#	interfaces are created.
+#
+childif_create()
+{
+	local cfg child child_vlans child_wlans create_args debug_flags ifn i
+	cfg=1
+	ifn=$1
+
+	# Create wireless interfaces
+	child_wlans=`get_if_var $ifn wlans_IF`
+
+	for child in ${child_wlans}; do
+		create_args="wlandev $ifn `get_if_var $child create_args_IF`"
+		debug_flags="`get_if_var $child wlandebug_IF`"
+
+		if expr $child : 'wlan[0-9][0-9]*$' >/dev/null 2>&1; then
+			ifconfig $child create ${create_args} && cfg=0
+			if [ -n "${debug_flags}" ]; then
+				wlandebug -i $child ${debug_flags}
+			fi
+		else
+			i=`ifconfig wlan create ${create_args}`
+			if [ -n "${debug_flags}" ]; then
+				wlandebug -i $i ${debug_flags}
+			fi
+			ifconfig $i name $child && cfg=0
+		fi
+		ifn_start $child
+	done
+
+	return ${cfg}
+}
+
+# childif_destroy
+#	Destroy child interfaces.
+#
+childif_destroy()
+{
+	local cfg child child_vlans child_wlans ifn
+	cfg=1
+
+	child_wlans=`get_if_var $ifn wlans_IF`
+	for child in ${child_wlans}; do
+		if ! ifexists $child; then
+			continue
+		fi
+		ifn_stop $child
+		ifconfig $child destroy && cfg=0
+	done
+
+	return ${cfg}
 }
 
 load_rc_config $name
