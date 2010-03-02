@@ -252,7 +252,7 @@ childif_destroy()
 
 	child_wlans=`get_if_var $ifn wlans_IF`
 	for child in ${child_wlans}; do
-		if ! ifexists $child; then
+		if ! `ifconfig -n $child > /dev/null 2>&1`; then
 			continue
 		fi
 		ifn_stop $child
