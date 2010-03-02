@@ -289,11 +289,13 @@ Any errors will show up with a
 in column 1 along with various
 other error flags.
 .Pp
-If you specify a localization and object id field,
+If you specify a localization field or a localization:obj_id field,
 .Ar lo Ns Cm \&: Ns Ar objid ,
 the dump will
 search for the key printing nodes as it recurses down, and then
-will iterate forwards.
+will iterate forwards.  These fields are specified in HEX.
+Note that the pfsid is the top 16 bits of the 32 bit localization
+field so pfs #1 would be 00010000.
 .Pp
 If you use
 .Fl q

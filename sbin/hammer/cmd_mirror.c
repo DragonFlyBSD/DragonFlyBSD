@@ -47,7 +47,8 @@ static int read_mrecords(int fd, char *buf, u_int size,
 			 hammer_ioc_mrecord_head_t pickup);
 static int generate_histogram(int fd, const char *filesystem,
 			 histogram_t *histogram_ary,
-			 struct hammer_ioc_mirror_rw *mirror_base);
+			 struct hammer_ioc_mirror_rw *mirror_base,
+			 int *repeatp);
 static hammer_ioc_mrecord_any_t read_mrecord(int fdin, int *errorp,
 			 hammer_ioc_mrecord_head_t pickup);
 static void write_mrecord(int fdout, u_int32_t type,
@@ -70,6 +71,9 @@ static void mirror_usage(int code);
  * The HAMMER VFS does most of the work, we add a few new mrecord
  * types to negotiate the TID ranges and verify that the entire
  * stream made it to the destination.
+ *
+ * streaming will be 0 for mirror-read, 1 for mirror-stream.  The code will
+ * set up a fake value of -1 when running the histogram for mirror-read.
  */
 void
 hammer_cmd_mirror_read(char **av, int ac, int streaming)
@@ -91,6 +95,8 @@ hammer_cmd_mirror_read(char **av, int ac, int streaming)
 	int histogram;
 	int histindex;
 	int histmax;
+	int repeat = 0;
+	int sameline;
 	int64_t total_bytes;
 	time_t base_t = time(NULL);
 	struct timeval bwtv;
@@ -107,6 +113,7 @@ hammer_cmd_mirror_read(char **av, int ac, int streaming)
 	histindex = 0;
 	histmax = 0;
 	histogram_ary = NULL;
+	sameline = 0;
 
 again:
 	bzero(&mirror, sizeof(mirror));
@@ -115,10 +122,12 @@ again:
 
 	fd = getpfs(&pfs, filesystem);
 
-	if (streaming && VerboseOpt && VerboseOpt < 2) {
-		fprintf(stderr, "\nRunning");
+	if (streaming >= 0 && VerboseOpt && VerboseOpt < 2) {
+		fprintf(stderr, "%cRunning  \b\b", (sameline ? '\r' : '\n'));
 		fflush(stderr);
+		sameline = 1;
 	}
+	sameline = 1;
 	total_bytes = 0;
 	gettimeofday(&bwtv, NULL);
 	bwcount = 0;
@@ -136,8 +145,8 @@ again:
 	 * first.  Use the target's current snapshot TID as our default
 	 * begin TID.
 	 */
-	mirror.tid_beg = 0;
 	if (TwoWayPipeOpt) {
+		mirror.tid_beg = 0;
 		n = validate_mrec_header(fd, 0, 0, pfs.pfs_id, &pickup,
 					 NULL, &mirror.tid_beg);
 		if (n < 0) {	/* got TERM record */
@@ -145,6 +154,10 @@ again:
 			return;
 		}
 		++mirror.tid_beg;
+	} else if (streaming && histogram) {
+		mirror.tid_beg = histogram_ary[histindex].tid + 1;
+	} else {
+		mirror.tid_beg = 0;
 	}
 
 	/*
@@ -167,7 +180,7 @@ again:
 	 *     now picking it up again.  Do another histogram.
 	 */
 #if 0
-	if (TwoWayPipeOpt && streaming && histogram && histindex == histend) {
+	if (streaming && histogram && histindex == histend) {
 		if (mirror.tid_end - mirror.tid_beg > BULK_MINIMUM)
 			histogram = 0;
 	}
@@ -179,15 +192,24 @@ again:
 	 * restarted without having to start over.
 	 */
 	if (histogram == 0 && BulkOpt == 0) {
-		if (VerboseOpt)
+		if (VerboseOpt && repeat == 0) {
 			fprintf(stderr, "\n");
+			sameline = 0;
+		}
 		histmax = generate_histogram(fd, filesystem,
-					     &histogram_ary, &mirror);
+					     &histogram_ary, &mirror,
+					     &repeat);
 		histindex = 0;
 		histogram = 1;
+
+		/*
+		 * Just stream the histogram, then stop
+		 */
+		if (streaming == 0)
+			streaming = -1;
 	}
 
-	if (TwoWayPipeOpt && streaming && histogram) {
+	if (streaming && histogram) {
 		++histindex;
 		mirror.tid_end = histogram_ary[histindex].tid;
 		estbytes = histogram_ary[histindex-1].bytes;
@@ -201,9 +223,9 @@ again:
 
 	/*
 	 * A cycle file overrides the beginning TID only if we are
-	 * not operating in two-way mode.
+	 * not operating in two-way or histogram mode.
 	 */
-	if (TwoWayPipeOpt == 0) {
+	if (TwoWayPipeOpt == 0 && histogram == 0) {
 		hammer_get_cycle(&mirror.key_beg, &mirror.tid_beg);
 	}
 
@@ -235,7 +257,9 @@ again:
 	if (mirror.tid_beg >= mirror.tid_end) {
 		if (streaming == 0 || VerboseOpt >= 2)
 			fprintf(stderr, "Mirror-read: No work to do\n");
+		sleep(DelayOpt);
 		didwork = 0;
+		histogram = 0;
 		goto done;
 	}
 	didwork = 1;
@@ -278,12 +302,13 @@ again:
 		total_bytes += mirror.count;
 		if (streaming && VerboseOpt) {
 			fprintf(stderr,
-				"\robj=%016jx tids=%016jx:%016jx %11jd",
+				"\rscan obj=%016jx tids=%016jx:%016jx %11jd",
 				(uintmax_t)mirror.key_cur.obj_id,
 				(uintmax_t)mirror.tid_beg,
 				(uintmax_t)mirror.tid_end,
 				(intmax_t)total_bytes);
 			fflush(stderr);
+			sameline = 0;
 		}
 		mirror.key_beg = mirror.key_cur;
 
@@ -303,9 +328,10 @@ again:
 	} while (mirror.count != 0);
 
 done:
-	if (streaming && VerboseOpt) {
+	if (streaming && VerboseOpt && sameline == 0) {
 		fprintf(stderr, "\n");
 		fflush(stderr);
+		sameline = 1;
 	}
 
 	/*
@@ -363,26 +389,34 @@ done:
 		time_t t2;
 
 		/*
-		 * Two way streaming tries to break down large bulk
-		 * transfers into smaller ones so it can sync the
-		 * transaction id on the slave.  This way if we get
-		 * interrupted a restart doesn't have to start from
-		 * scratch.
+		 * Try to break down large bulk transfers into smaller ones
+		 * so it can sync the transaction id on the slave.  This
+		 * way if we get interrupted a restart doesn't have to
+		 * start from scratch.
 		 */
-		if (TwoWayPipeOpt && streaming && histogram) {
+		if (streaming && histogram) {
 			if (histindex != histmax) {
-				if (VerboseOpt && VerboseOpt < 2)
+				if (VerboseOpt && VerboseOpt < 2 &&
+				    streaming >= 0) {
 					fprintf(stderr, " (bulk incremental)");
+				}
+				relpfs(fd, &pfs);
 				goto again;
 			}
 		}
 
-		if (VerboseOpt) {
+		if (VerboseOpt && streaming >= 0) {
 			fprintf(stderr, " W");
 			fflush(stderr);
 		}
 		pfs.ondisk->sync_end_tid = mirror.tid_end;
-		if (ioctl(fd, HAMMERIOC_WAI_PSEUDOFS, &pfs) < 0) {
+		if (streaming < 0) {
+			/*
+			 * Fake streaming mode when using a histogram to
+			 * break up a mirror-read, do not wait on source.
+			 */
+			streaming = 0;
+		} else if (ioctl(fd, HAMMERIOC_WAI_PSEUDOFS, &pfs) < 0) {
 			fprintf(stderr, "Mirror-read %s: cannot stream: %s\n",
 				filesystem, strerror(errno));
 		} else {
@@ -428,7 +462,8 @@ done:
 static int
 generate_histogram(int fd, const char *filesystem,
 		   histogram_t *histogram_ary,
-		   struct hammer_ioc_mirror_rw *mirror_base)
+		   struct hammer_ioc_mirror_rw *mirror_base,
+		   int *repeatp)
 {
 	struct hammer_ioc_mirror_rw mirror;
 	union hammer_ioc_mrecord_any *mrec;
@@ -460,11 +495,13 @@ generate_histogram(int fd, const char *filesystem,
 	tid_bytes = malloc(sizeof(*tid_bytes) * (HIST_COUNT + 2));
 	bzero(tid_bytes, sizeof(tid_bytes));
 
-	fprintf(stderr, "Prescan to break up bulk transfer");
-	if (VerboseOpt > 1)
-		fprintf(stderr, " (%juMB chunks)",
-			(uintmax_t)(SplitupOpt / (1024 * 1024)));
-	fprintf(stderr, "\n");
+	if (*repeatp == 0) {
+		fprintf(stderr, "Prescan to break up bulk transfer");
+		if (VerboseOpt > 1)
+			fprintf(stderr, " (%juMB chunks)",
+				(uintmax_t)(SplitupOpt / (1024 * 1024)));
+		fprintf(stderr, "\n");
+	}
 
 	/*
 	 * Note: (tid_beg,tid_end), range is inclusive of both beg & end.
@@ -556,7 +593,7 @@ generate_histogram(int fd, const char *filesystem,
 			}
 		}
 		if (VerboseOpt > 1) {
-			if (accum > SplitupOpt) {
+			if (*repeatp == 0 && accum > SplitupOpt) {
 				fprintf(stderr, ".");
 				fflush(stderr);
 				accum = 0;
@@ -593,19 +630,23 @@ generate_histogram(int fd, const char *filesystem,
 	(*histogram_ary)[res].tid = tid_end;
 	(*histogram_ary)[res].bytes = -1;
 
-	if (VerboseOpt > 1)
-		fprintf(stderr, "\n");	/* newline after ... */
-	assert(res <= HIST_COUNT);
-	fprintf(stderr, "Prescan %d chunks, total %ju MBytes (",
-		res, (uintmax_t)total / (1024 * 1024));
-	for (i = 0; i < res && i < 3; ++i) {
-		if (i)
-			fprintf(stderr, ", ");
-		fprintf(stderr, "%ju", (uintmax_t)(*histogram_ary)[i].bytes);
+	if (*repeatp == 0) {
+		if (VerboseOpt > 1)
+			fprintf(stderr, "\n");	/* newline after ... */
+		fprintf(stderr, "Prescan %d chunks, total %ju MBytes (",
+			res, (uintmax_t)total / (1024 * 1024));
+		for (i = 0; i < res && i < 3; ++i) {
+			if (i)
+				fprintf(stderr, ", ");
+			fprintf(stderr, "%ju",
+				(uintmax_t)(*histogram_ary)[i].bytes);
+		}
+		if (i < res)
+			fprintf(stderr, ", ...");
+		fprintf(stderr, ")\n");
 	}
-	if (i < res)
-		fprintf(stderr, ", ...");
-	fprintf(stderr, ")\n");
+	assert(res <= HIST_COUNT);
+	*repeatp = 1;
 
 	free(tid_bytes);
 	return(res);
@@ -879,6 +920,7 @@ hammer_cmd_mirror_dump(void)
 
 	mrec = read_mrecord(0, &error, &pickup);
 
+again:
 	/*
 	 * Read and process bulk records
 	 */
@@ -953,6 +995,13 @@ hammer_cmd_mirror_dump(void)
 		fprintf(stderr, "Mirror-dump: Did not get termination "
 				"sync record\n");
 	}
+
+	/*
+	 * Continue with more batches until EOF.
+	 */
+	mrec = read_mrecord(0, &error, &pickup);
+	if (mrec)
+		goto again;
 }
 
 void
