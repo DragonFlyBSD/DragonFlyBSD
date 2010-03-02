@@ -347,18 +347,6 @@ kvtop(void *addr)
 	return (pa);
 }
 
-int
-grow_stack(struct proc *p, vm_offset_t sp)
-{
-	int rv;
-
-	rv = vm_map_growstack (p, sp);
-	if (rv != KERN_SUCCESS)
-		return (0);
-
-	return (1);
-}
-
 /*
  * Tell whether this address is in some physical memory region.
  * Currently used by the kernel coredump code in order to avoid

@@ -279,7 +279,7 @@ linux_rt_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	 *	and the stack can not be grown. useracc will return FALSE
 	 *	if access is denied.
 	 */
-	if ((grow_stack (p, (int)fp) == FALSE) ||
+	if ((vm_map_growstack(p, (vm_offset_t)fp) != KERN_SUCCESS) ||
 	    !useracc((caddr_t)fp, sizeof (struct l_rt_sigframe), 
 	    VM_PROT_WRITE)) {
 		/*
@@ -442,7 +442,7 @@ linux_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	 *	and the stack can not be grown. useracc will return FALSE
 	 *	if access is denied.
 	 */
-	if ((grow_stack (p, (int)fp) == FALSE) ||
+	if ((vm_map_growstack(p, (vm_offset_t)fp) != KERN_SUCCESS) ||
 	    !useracc((caddr_t)fp, sizeof (struct l_sigframe), 
 	    VM_PROT_WRITE)) {
 		/*
