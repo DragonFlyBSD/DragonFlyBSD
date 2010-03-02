@@ -238,6 +238,7 @@ rebalance_node(struct hammer_ioc_rebalance *rebal, hammer_cursor_t cursor)
 	hammer_node_lock_t item;
 	hammer_btree_elm_t elm;
 	hammer_node_t node;
+	hammer_tid_t tid;
 	u_int8_t type1;
 	int base_count;
 	int root_count;
@@ -319,6 +320,10 @@ rebalance_node(struct hammer_ioc_rebalance *rebal, hammer_cursor_t cursor)
 	 * hammer_cursor_moved_element() is called for each element moved
 	 * to update tracked cursors, including the index beyond the last
 	 * element (at count).
+	 *
+	 * Any cursors tracking the internal node itself must also be
+	 * updated, potentially repointing them at a leaf and clearing
+	 * ATEDISK.
 	 */
 	base_item = TAILQ_FIRST(&lockroot.list);
 	base_count = 0;
@@ -368,23 +373,28 @@ rebalance_node(struct hammer_ioc_rebalance *rebal, hammer_cursor_t cursor)
 			base_item->flags |= HAMMER_NODE_LOCK_UPDATED;
 
 			/*
-			 * Adjust the mirror_tid of the target.  The parent
-			 * node (lockroot.node) should already have an
-			 * aggregate mirror_tid so we do not have to update
-			 * that.
+			 * Adjust the mirror_tid of the target and the
+			 * internal element linkage.
 			 *
-			 * However, it is possible for us to catch a
-			 * hammer_btree_mirror_propagate() with its pants
-			 * down.  Update the parent if necessary.
+			 * The parent node (lockroot.node) should already
+			 * have an aggregate mirror_tid so we do not have
+			 * to update that.  However, it is possible for us
+			 * to catch a hammer_btree_mirror_propagate() with
+			 * its pants down.  Update the parent if necessary.
 			 */
-			if (base_item->copy->mirror_tid <
-			    node->ondisk->mirror_tid) {
-				base_item->copy->mirror_tid =
-					node->ondisk->mirror_tid;
-				if (lockroot.copy->mirror_tid <
-				    node->ondisk->mirror_tid) {
-					lockroot.copy->mirror_tid =
-						node->ondisk->mirror_tid;
+			tid = node->ondisk->mirror_tid;
+
+			if (base_item->copy->mirror_tid < tid) {
+				base_item->copy->mirror_tid = tid;
+				if (lockroot.copy->mirror_tid < tid) {
+					lockroot.copy->mirror_tid = tid;
+					lockroot.flags |=
+						HAMMER_NODE_LOCK_UPDATED;
+				}
+				if (lockroot.copy->elms[root_count].
+				    internal.mirror_tid < tid) {
+					lockroot.copy->elms[root_count].
+						internal.mirror_tid = tid;
 					lockroot.flags |=
 						HAMMER_NODE_LOCK_UPDATED;
 				}
@@ -401,8 +411,11 @@ rebalance_node(struct hammer_ioc_rebalance *rebal, hammer_cursor_t cursor)
 				rebalance_parent_ptrs(base_item, base_count,
 						      item, chld_item);
 			}
-			hammer_cursor_moved_element(node, base_item->node,
-						    i, base_count);
+			hammer_cursor_moved_element(item->parent->node,
+						    item->index,
+						    node, i,
+						    base_item->node,
+						    base_count);
 			++base_count;
 			if (chld_item)
 				chld_item = TAILQ_NEXT(chld_item, entry);
@@ -412,8 +425,9 @@ rebalance_node(struct hammer_ioc_rebalance *rebal, hammer_cursor_t cursor)
 		 * Always call at the end (i == number of elements) in
 		 * case a cursor is sitting indexed there.
 		 */
-		hammer_cursor_moved_element(node, base_item->node,
-					    i, base_count);
+		hammer_cursor_moved_element(item->parent->node, item->index,
+					    node, i,
+					    base_item->node, base_count);
 	}
 
 	/*

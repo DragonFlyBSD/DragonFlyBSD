@@ -1077,8 +1077,9 @@ void	hammer_cursor_removed_node(hammer_node_t onode, hammer_node_t parent,
 			int index);
 void	hammer_cursor_split_node(hammer_node_t onode, hammer_node_t nnode,
 			int index);
-void	hammer_cursor_moved_element(hammer_node_t onode, hammer_node_t nnode,
-			int oindex, int nindex);
+void	hammer_cursor_moved_element(hammer_node_t oparent, int pindex,
+			hammer_node_t onode, int oindex,
+			hammer_node_t nnode, int nindex);
 void	hammer_cursor_parent_changed(hammer_node_t node, hammer_node_t oparent,
 			hammer_node_t nparent, int nindex);
 void	hammer_cursor_inserted_element(hammer_node_t node, int index);
