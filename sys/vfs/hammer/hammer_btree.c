@@ -2445,8 +2445,14 @@ hammer_btree_mirror_propagate(hammer_cursor_t cursor, hammer_tid_t mirror_tid)
 		}
 		if (error)
 			break;
+
+		/*
+		 * If the cursor deadlocked it could end up at a leaf
+		 * after we lost the lock.
+		 */
 		node = cursor->node;
-		KKASSERT (node->ondisk->type == HAMMER_BTREE_TYPE_INTERNAL);
+		if (node->ondisk->type != HAMMER_BTREE_TYPE_INTERNAL)
+			continue;
 
 		/*
 		 * Adjust the node's element
