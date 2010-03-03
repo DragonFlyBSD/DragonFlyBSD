@@ -353,11 +353,22 @@ vnstrategy(struct dev_strategy_args *ap)
 			auio.uio_rw = UIO_WRITE;
 		auio.uio_resid = bp->b_bcount;
 		auio.uio_td = curthread;
-		vn_lock(vn->sc_vp, LK_EXCLUSIVE | LK_RETRY);
-		if (bp->b_cmd == BUF_CMD_READ)
-			error = VOP_READ(vn->sc_vp, &auio, IO_DIRECT | IO_RECURSE, vn->sc_cred);
-		else
-			error = VOP_WRITE(vn->sc_vp, &auio, IO_DIRECT | IO_RECURSE, vn->sc_cred);
+
+		/*
+		 * Don't use IO_DIRECT here, it really gets in the way
+		 * due to typical blocksize differences between the
+		 * fs backing the VN device and whatever is running on
+		 * the VN device.
+		 */
+		if (bp->b_cmd == BUF_CMD_READ) {
+			vn_lock(vn->sc_vp, LK_SHARED | LK_RETRY);
+			error = VOP_READ(vn->sc_vp, &auio, IO_RECURSE,
+					 vn->sc_cred);
+		} else {
+			vn_lock(vn->sc_vp, LK_EXCLUSIVE | LK_RETRY);
+			error = VOP_WRITE(vn->sc_vp, &auio, IO_RECURSE,
+					  vn->sc_cred);
+		}
 		vn_unlock(vn->sc_vp);
 		bp->b_resid = auio.uio_resid;
 		if (error) {
