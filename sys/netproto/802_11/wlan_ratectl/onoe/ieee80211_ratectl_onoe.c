@@ -260,7 +260,7 @@ onoe_start(struct onoe_softc *osc, struct ieee80211_node *ni)
 		}
 	} else {
 		/*
-		 * A fixed rate is to be used; ic_fixed_rate is an
+		 * A fixed rate is to be used; ucastrate is an
 		 * index into the supported rate set.  Convert this
 		 * to the index into the negotiated rate set for
 		 * the node.  We know the rate is there because the
@@ -275,7 +275,7 @@ onoe_start(struct onoe_softc *osc, struct ieee80211_node *ni)
 		for (; srate >= 0 && RATE(srate) != r; srate--)
 			;
 		KASSERT(srate >= 0,
-			("fixed rate %d not in rate set", ic->ic_fixed_rate));
+			("fixed rate %d not in rate set", tp->ucastrate));
 	}
 	onoe_update(osc, ni, srate);
 #undef RATE
