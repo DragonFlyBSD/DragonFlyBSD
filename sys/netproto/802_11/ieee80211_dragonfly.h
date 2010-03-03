@@ -181,6 +181,7 @@ void	ieee80211_flush_ifq(struct ifqueue *, struct ieee80211vap *);
 
 void	ieee80211_vap_destroy(struct ieee80211vap *);
 int	ieee80211_handoff(struct ifnet *, struct mbuf *);
+uint16_t ieee80211_txtime(struct ieee80211_node *, u_int, uint8_t, uint32_t);
 
 #define	IFNET_IS_UP_RUNNING(_ifp) \
 	(((_ifp)->if_flags & IFF_UP) && \

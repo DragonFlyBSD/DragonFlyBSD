@@ -67,7 +67,7 @@
 #endif
 
 struct onoe_softc {
-	struct ieee80211com	*ic;
+	struct ieee80211vap	*vap;
 	struct callout		timer;		/* periodic timer */
 
 	struct sysctl_ctx_list	sysctl_ctx;
@@ -105,7 +105,7 @@ struct onoe_data {
  * XXX this algorithm is flawed.
  */
 
-static void	*onoe_attach(struct ieee80211com *);
+static void	*onoe_attach(struct ieee80211vap *);
 static void	onoe_detach(void *);
 static void	onoe_data_free(struct ieee80211_node *);
 static void	onoe_data_alloc(struct ieee80211_node *);
@@ -225,16 +225,19 @@ static void
 onoe_start(struct onoe_softc *osc, struct ieee80211_node *ni)
 {
 #define	RATE(_ix)	IEEE80211_RS_RATE(&ni->ni_rates, (_ix))
-	struct ieee80211com *ic = osc->ic;
+	struct ieee80211vap *vap = osc->vap;
 	int srate;
+	const struct ieee80211_txparam *tp = ni->ni_txparms;
+	enum ieee80211_phymode mode =
+	    ieee80211_chan2mode(vap->iv_ic->ic_curchan);
 
 	KASSERT(ni->ni_rates.rs_nrates > 0, ("no rates"));
-	if (ic->ic_fixed_rate == IEEE80211_FIXED_RATE_NONE) {
+	if (tp == NULL || tp->ucastrate == IEEE80211_FIXED_RATE_NONE) {
 		/*
 		 * For adhoc or ibss mode, start from the lowest rate.
 		 */
-		if (ic->ic_opmode == IEEE80211_M_AHDEMO ||
-		    ic->ic_opmode == IEEE80211_M_IBSS) {
+		if (vap->iv_opmode == IEEE80211_M_AHDEMO ||
+		    vap->iv_opmode == IEEE80211_M_IBSS) {
 			onoe_update(osc, ni, 0);
 			return;
 		}
@@ -245,7 +248,7 @@ onoe_start(struct onoe_softc *osc, struct ieee80211_node *ni)
 		 * and 11a, we start "in the middle" at 24Mb or 36Mb.
 		 */
 		srate = ni->ni_rates.rs_nrates - 1;
-		if (ic->ic_curmode != IEEE80211_MODE_11B) {
+		if (mode != IEEE80211_MODE_11B) {
 			/*
 			 * Scan the negotiated rate set to find the
 			 * closest rate.
@@ -264,8 +267,8 @@ onoe_start(struct onoe_softc *osc, struct ieee80211_node *ni)
 		 * rate set is checked when the station associates.
 		 */
 		const struct ieee80211_rateset *rs =
-			&ic->ic_sup_rates[ic->ic_curmode];
-		int r = IEEE80211_RS_RATE(rs, ic->ic_fixed_rate);
+			&vap->iv_ic->ic_sup_rates[vap->iv_ic->ic_curmode];
+		int r = IEEE80211_RS_RATE(rs, vap->iv_txparms[mode].ucastrate);
 
 		/* NB: the rate set is assumed sorted */
 		srate = ni->ni_rates.rs_nrates - 1;
@@ -288,20 +291,22 @@ static void
 onoe_newstate(void *arg, enum ieee80211_state state)
 {
 	struct onoe_softc *osc = arg;
-	struct ieee80211com *ic = osc->ic;
+	struct ieee80211vap *vap = osc->vap;
 	struct ieee80211_node *ni;
+	const struct ieee80211_txparam *tp = NULL;
 
 	if (state == IEEE80211_S_INIT) {
 		callout_stop(&osc->timer);
 		return;
 	}
 
-	if (ic->ic_opmode == IEEE80211_M_STA) {
+	if (vap->iv_opmode == IEEE80211_M_STA) {
 		/*
 		 * Reset local xmit state; this is really only
 		 * meaningful when operating in station mode.
 		 */
-		ni = ic->ic_bss;
+		ni = vap->iv_bss;
+		tp = ni->ni_txparms;
 		if (state == IEEE80211_S_RUN)
 			onoe_start(osc, ni);
 		else
@@ -313,11 +318,11 @@ onoe_newstate(void *arg, enum ieee80211_state state)
 		 * For any other operating mode we want to reset the
 		 * tx rate state of each node.
 		 */
-		ieee80211_iterate_nodes(&ic->ic_sta, onoe_rate_cb, osc);
-		onoe_update(osc, ic->ic_bss, 0);
+		ieee80211_iterate_nodes(&vap->iv_ic->ic_sta, onoe_rate_cb, osc);
+		onoe_update(osc, vap->iv_bss, 0);
 	}
 
-	if (ic->ic_fixed_rate == IEEE80211_FIXED_RATE_NONE &&
+	if ((tp == NULL || tp->ucastrate == IEEE80211_FIXED_RATE_NONE) &&
 	    state == IEEE80211_S_RUN) {
 		int interval;
 
@@ -326,7 +331,7 @@ onoe_newstate(void *arg, enum ieee80211_state state)
 		 * are not configured to use a fixed xmit rate.
 		 */
 		interval = osc->param->onoe_interval;
-		if (ic->ic_opmode == IEEE80211_M_STA)
+		if (vap->iv_opmode == IEEE80211_M_STA)
 			interval /= 2;
 		callout_reset(&osc->timer, (interval * hz) / 1000,
 			      onoe_tick, osc);
@@ -337,11 +342,11 @@ static void
 onoe_gather_stats(struct onoe_softc *osc, struct ieee80211_node *ni)
 {
 	struct onoe_data *od = ni->ni_rate_data;
-	struct ieee80211com *ic = osc->ic;
-	const struct ieee80211_ratectl_state *st = &ic->ic_ratectl;
+	struct ieee80211vap *vap = osc->vap;
+	const struct ieee80211_ratectl_state *st = &vap->iv_ratectl;
 	struct ieee80211_ratectl_stats stats;
 
-	st->rc_st_stats(ic, ni, &stats);
+	st->rc_st_stats(vap, ni, &stats);
 
 	od->od_tx_ok += stats.stats_pkt_ok;
 	od->od_tx_err += stats.stats_pkt_err;
@@ -353,7 +358,7 @@ onoe_ratectl(void *arg, struct ieee80211_node *ni)
 {
 	struct onoe_softc *osc = arg;
 	struct onoe_data *od = ni->ni_rate_data;
-	const struct ieee80211_ratectl_state *st = &osc->ic->ic_ratectl;
+	const struct ieee80211_ratectl_state *st = &osc->vap->iv_ratectl;
 	struct ieee80211_rateset *rs = &ni->ni_rates;
 	int dir = 0, nrate, enough;
 
@@ -427,21 +432,21 @@ static void
 onoe_tick(void *arg)
 {
 	struct onoe_softc *osc = arg;
-	struct ieee80211com *ic = osc->ic;
-	struct ifnet *ifp = &ic->ic_if;
+	struct ieee80211vap *vap = osc->vap;
+	struct ifnet *ifp = vap->iv_ifp;
 	int interval;
 
 	ifnet_serialize_all(ifp);
 
 	if (ifp->if_flags & IFF_RUNNING) {
-		if (ic->ic_opmode == IEEE80211_M_STA)
-			onoe_ratectl(osc, ic->ic_bss);	/* NB: no reference */
+		if (vap->iv_opmode == IEEE80211_M_STA)
+			onoe_ratectl(osc, vap->iv_bss);	/* NB: no reference */
 		else
-			ieee80211_iterate_nodes(&ic->ic_sta, onoe_ratectl, osc);
+			ieee80211_iterate_nodes(&vap->iv_ic->ic_sta, onoe_ratectl, osc);
 	}
 
 	interval = osc->param->onoe_interval;
-	if (ic->ic_opmode == IEEE80211_M_STA)
+	if (vap->iv_opmode == IEEE80211_M_STA)
 		interval /= 2;
 	callout_reset(&osc->timer, (interval * hz) / 1000, onoe_tick, osc);
 
@@ -453,7 +458,7 @@ onoe_sysctl_attach(struct onoe_softc *osc)
 {
 	sysctl_ctx_init(&osc->sysctl_ctx);
 	osc->sysctl_oid = SYSCTL_ADD_NODE(&osc->sysctl_ctx,
-		SYSCTL_CHILDREN(osc->ic->ic_sysctl_oid),
+		SYSCTL_CHILDREN(osc->vap->iv_oid),
 		OID_AUTO, "onoe_ratectl", CTLFLAG_RD, 0, "");
 	if (osc->sysctl_oid == NULL) {
 		kprintf("wlan_ratectl_onoe: create sysctl tree failed\n");
@@ -484,7 +489,7 @@ onoe_sysctl_attach(struct onoe_softc *osc)
 }
 
 static void *
-onoe_attach(struct ieee80211com *ic)
+onoe_attach(struct ieee80211vap *vap)
 {
 	struct onoe_softc *osc;
 
@@ -492,13 +497,13 @@ onoe_attach(struct ieee80211com *ic)
 
 	osc = kmalloc(sizeof(struct onoe_softc), M_DEVBUF, M_WAITOK | M_ZERO);
 
-	osc->ic = ic;
+	osc->vap = vap;
 	callout_init(&osc->timer);
-	osc->param = ic->ic_ratectl.rc_st_attach(ic, IEEE80211_RATECTL_ONOE);
+	osc->param = vap->iv_ratectl.rc_st_attach(vap, IEEE80211_RATECTL_ONOE);
 
 	onoe_sysctl_attach(osc);
 
-	onoe_newstate(osc, ic->ic_state);
+	onoe_newstate(osc, vap->iv_state);
 
 	return osc;
 }
@@ -513,12 +518,11 @@ static void
 onoe_detach(void *arg)
 {
 	struct onoe_softc *osc = arg;
-	struct ieee80211com *ic = osc->ic;
+	struct ieee80211vap *vap = osc->vap;
 
 	onoe_newstate(osc, IEEE80211_S_INIT);
 
-	ieee80211_iterate_nodes(&ic->ic_sta, _onoe_data_free, NULL);
-	ieee80211_iterate_nodes(&ic->ic_scan, _onoe_data_free, NULL);
+	ieee80211_iterate_nodes(&vap->iv_ic->ic_sta, _onoe_data_free, NULL);
 
 	if (osc->sysctl_oid != NULL)
 		sysctl_ctx_free(&osc->sysctl_ctx);

@@ -46,8 +46,8 @@ struct ieee80211_ratectl_state {
 	uint32_t	rc_st_flags;	   /* see IEEE80211_RATECTL_F_ */
 	u_int		rc_st_ratectl;	   /* see IEEE80211_RATECTL_ */
 	uint32_t	rc_st_ratectl_cap; /* see IEEE80211_RATECTL_CAP_ */
-	void		*(*rc_st_attach)(struct ieee80211com *, u_int);
-	void		(*rc_st_stats)(struct ieee80211com *,
+	void		*(*rc_st_attach)(struct ieee80211vap *, u_int);
+	void		(*rc_st_stats)(struct ieee80211vap *,
 				       struct ieee80211_node *,
 				       struct ieee80211_ratectl_stats *);
 };
@@ -73,7 +73,7 @@ struct ieee80211_ratectl {
 	const char	*rc_name;
 	u_int		rc_ratectl;	/* see IEEE80211_RATECTL_ */
 
-	void		*(*rc_attach)(struct ieee80211com *);
+	void		*(*rc_attach)(struct ieee80211vap *);
 	void		(*rc_detach)(void *);
 
 	void		(*rc_data_alloc)(struct ieee80211_node *);
@@ -110,6 +110,9 @@ struct ieee80211_ratectl {
 #define IEEE80211_RATECTL_CAP_AMRR	_IEEE80211_RATECTL_CAP(AMRR)
 #define IEEE80211_RATECTL_CAP_SAMPLE	_IEEE80211_RATECTL_CAP(SAMPLE)
 
+#define	IEEE80211_RS_RATE(rs, idx) \
+		((rs)->rs_rates[idx] & IEEE80211_RATE_VAL)
+
 extern const struct ieee80211_ratectl	ieee80211_ratectl_none;
 
 void	ieee80211_ratectl_attach(struct ieee80211com *);
@@ -136,3 +139,4 @@ int	ieee80211_ratectl_findrate(struct ieee80211_node *, int, int[], int);
 #endif	/* _KERNEL */
 
 #endif	/* !_NET80211_IEEE80211_RATECTL_H */
+

@@ -70,7 +70,7 @@
 #endif
 
 struct amrr_softc {
-	struct ieee80211com	*ic;
+	struct ieee80211vap	*vap;
 	struct callout		timer;		/* periodic timer */
 	struct sysctl_ctx_list	sysctl_ctx;
 	struct sysctl_oid	*sysctl_oid;
@@ -91,7 +91,7 @@ struct amrr_data {
   	u_int	ad_recovery;
 };
 
-static void	*amrr_attach(struct ieee80211com *);
+static void	*amrr_attach(struct ieee80211vap *);
 static void	amrr_detach(void *);
 static void	amrr_data_alloc(struct ieee80211_node *);
 static void	amrr_data_free(struct ieee80211_node *);
@@ -228,17 +228,20 @@ static void
 amrr_start(struct amrr_softc *asc, struct ieee80211_node *ni)
 {
 #define	RATE(_ix)	IEEE80211_RS_RATE(&ni->ni_rates, (_ix))
-	struct ieee80211com *ic = asc->ic;
+	struct ieee80211vap *vap = asc->vap;
 	int srate;
+	const struct ieee80211_txparam *tp = ni->ni_txparms;
+	enum ieee80211_phymode mode =
+	    ieee80211_chan2mode(vap->iv_ic->ic_curchan);
 
 	KASSERT(ni->ni_rates.rs_nrates > 0, ("no rates"));
 
-	if (ic->ic_fixed_rate == IEEE80211_FIXED_RATE_NONE) {
+	if (tp == NULL || tp->ucastrate == IEEE80211_FIXED_RATE_NONE) {
 		/*
 		 * For adhoc or ibss mode, start from the lowest rate.
 		 */
-		if (ic->ic_opmode == IEEE80211_M_AHDEMO ||
-		    ic->ic_opmode == IEEE80211_M_IBSS) {
+		if (vap->iv_opmode == IEEE80211_M_AHDEMO ||
+		    vap->iv_opmode == IEEE80211_M_IBSS) {
 			amrr_update(asc, ni, 0);
 			return;
 		}
@@ -249,7 +252,7 @@ amrr_start(struct amrr_softc *asc, struct ieee80211_node *ni)
 		 * and 11a, we start "in the middle" at 24Mb or 36Mb.
 		 */
 		srate = ni->ni_rates.rs_nrates - 1;
-		if (ic->ic_curmode != IEEE80211_MODE_11B) {
+		if (mode != IEEE80211_MODE_11B) {
 			/*
 			 * Scan the negotiated rate set to find the
 			 * closest rate.
@@ -268,8 +271,8 @@ amrr_start(struct amrr_softc *asc, struct ieee80211_node *ni)
 		 * rate set is checked when the station associates.
 		 */
 		const struct ieee80211_rateset *rs =
-			&ic->ic_sup_rates[ic->ic_curmode];
-		int r = IEEE80211_RS_RATE(rs, ic->ic_fixed_rate);
+			&vap->iv_ic->ic_sup_rates[vap->iv_ic->ic_curmode];
+		int r = IEEE80211_RS_RATE(rs, vap->iv_txparms[mode].ucastrate);
 
 		/* NB: the rate set is assumed sorted */
 		srate = ni->ni_rates.rs_nrates - 1;
@@ -295,20 +298,22 @@ static void
 amrr_newstate(void *arg, enum ieee80211_state state)
 {
 	struct amrr_softc *asc = arg;
-	struct ieee80211com *ic = asc->ic;
+	struct ieee80211vap *vap = asc->vap;
 	struct ieee80211_node *ni;
+	const struct ieee80211_txparam *tp = NULL;
 
 	if (state == IEEE80211_S_INIT) {
 		callout_stop(&asc->timer);
 		return;
 	}
 
-	if (ic->ic_opmode == IEEE80211_M_STA) {
+	if (vap->iv_opmode == IEEE80211_M_STA) {
 		/*
 		 * Reset local xmit state; this is really only
 		 * meaningful when operating in station mode.
 		 */
-		ni = ic->ic_bss;
+		ni = vap->iv_bss;
+		tp = ni->ni_txparms;
 		if (state == IEEE80211_S_RUN)
 			amrr_start(asc, ni);
 		else
@@ -320,10 +325,10 @@ amrr_newstate(void *arg, enum ieee80211_state state)
 		 * For any other operating mode we want to reset the
 		 * tx rate state of each node.
 		 */
-		ieee80211_iterate_nodes(&ic->ic_sta, amrr_rate_cb, asc);
-		amrr_update(asc, ic->ic_bss, 0);
+		ieee80211_iterate_nodes(&vap->iv_ic->ic_sta, amrr_rate_cb, asc);
+		amrr_update(asc, vap->iv_bss, 0);
 	}
-	if (ic->ic_fixed_rate == IEEE80211_FIXED_RATE_NONE &&
+	if ((tp == NULL || tp->ucastrate == IEEE80211_FIXED_RATE_NONE) &&
 	    state == IEEE80211_S_RUN) {
 		int interval;
 
@@ -332,7 +337,7 @@ amrr_newstate(void *arg, enum ieee80211_state state)
 		 * are not configured to use a fixed xmit rate.
 		 */
 		interval = asc->param->amrr_interval;
-		if (ic->ic_opmode == IEEE80211_M_STA)
+		if (vap->iv_opmode == IEEE80211_M_STA)
 			interval /= 2;
 		callout_reset(&asc->timer, (interval * hz) / 1000,
 			      amrr_tick, asc);
@@ -342,13 +347,13 @@ amrr_newstate(void *arg, enum ieee80211_state state)
 static void
 amrr_gather_stats(struct amrr_softc *asc, struct ieee80211_node *ni)
 {
-	struct ieee80211com *ic = asc->ic;
-	const struct ieee80211_ratectl_state *st = &ic->ic_ratectl;
+	struct ieee80211vap *vap = asc->vap;
+	const struct ieee80211_ratectl_state *st = &vap->iv_ratectl;
 	struct amrr_data *ad = ni->ni_rate_data;
 	struct ieee80211_ratectl_stats stats;
 	u_int total_tries = 0;
 
-	st->rc_st_stats(ic, ni, &stats);
+	st->rc_st_stats(vap, ni, &stats);
 
 	total_tries = stats.stats_pkt_ok +
 		      stats.stats_pkt_err +
@@ -365,7 +370,7 @@ static void
 amrr_ratectl(void *arg, struct ieee80211_node *ni)
 {
 	struct amrr_softc *asc = arg;
-	const struct ieee80211_ratectl_state *st = &asc->ic->ic_ratectl;
+	const struct ieee80211_ratectl_state *st = &asc->vap->iv_ratectl;
 	struct amrr_data *ad = ni->ni_rate_data;
 	int old_rate;
 
@@ -439,20 +444,21 @@ static void
 amrr_tick(void *arg)
 {
 	struct amrr_softc *asc = arg;
-	struct ieee80211com *ic = asc->ic;
-	struct ifnet *ifp = &ic->ic_if;
+	struct ieee80211vap *vap = asc->vap;
+	struct ifnet *ifp = vap->iv_ifp;
 	int interval;
 
 	ifnet_serialize_all(ifp);
 
 	if (ifp->if_flags & IFF_RUNNING) {
-		if (ic->ic_opmode == IEEE80211_M_STA)
-			amrr_ratectl(asc, ic->ic_bss);	/* NB: no reference */
+		if (vap->iv_opmode == IEEE80211_M_STA)
+			amrr_ratectl(asc, vap->iv_bss);	/* NB: no reference */
 		else
-			ieee80211_iterate_nodes(&ic->ic_sta, amrr_ratectl, asc);
+			ieee80211_iterate_nodes(&vap->iv_ic->ic_sta,
+			    amrr_ratectl, asc);
 	}
 	interval = asc->param->amrr_interval;
-	if (ic->ic_opmode == IEEE80211_M_STA)
+	if (vap->iv_opmode == IEEE80211_M_STA)
 		interval /= 2;
 	callout_reset(&asc->timer, (interval * hz) / 1000, amrr_tick, asc);
 
@@ -464,7 +470,7 @@ amrr_sysctl_attach(struct amrr_softc *asc)
 {
 	sysctl_ctx_init(&asc->sysctl_ctx);
 	asc->sysctl_oid = SYSCTL_ADD_NODE(&asc->sysctl_ctx,
-		SYSCTL_CHILDREN(asc->ic->ic_sysctl_oid),
+		SYSCTL_CHILDREN(asc->vap->iv_oid),
 		OID_AUTO, "amrr_ratectl", CTLFLAG_RD, 0, "");
 	if (asc->sysctl_oid == NULL) {
 		kprintf("wlan_ratectl_amrr: create sysctl tree failed\n");
@@ -491,7 +497,7 @@ amrr_sysctl_attach(struct amrr_softc *asc)
 }
 
 static void *
-amrr_attach(struct ieee80211com *ic)
+amrr_attach(struct ieee80211vap *vap)
 {
 	struct amrr_softc *asc;
 
@@ -499,13 +505,13 @@ amrr_attach(struct ieee80211com *ic)
 
 	asc = kmalloc(sizeof(struct amrr_softc), M_DEVBUF, M_WAITOK | M_ZERO);
 
-	asc->ic = ic;
+	asc->vap = vap;
 	callout_init(&asc->timer);
-	asc->param = ic->ic_ratectl.rc_st_attach(ic, IEEE80211_RATECTL_AMRR);
+	asc->param = vap->iv_ratectl.rc_st_attach(vap, IEEE80211_RATECTL_AMRR);
 
 	amrr_sysctl_attach(asc);
 
-	amrr_newstate(asc, ic->ic_state);
+	amrr_newstate(asc, vap->iv_state);
 
 	return asc;
 }
@@ -520,12 +526,11 @@ void
 amrr_detach(void *arg)
 {
 	struct amrr_softc *asc = arg;
-	struct ieee80211com *ic = asc->ic;
+	struct ieee80211vap *vap = asc->vap;
 
 	amrr_newstate(asc, IEEE80211_S_INIT);
 
-	ieee80211_iterate_nodes(&ic->ic_sta, _amrr_data_free, NULL);
-	ieee80211_iterate_nodes(&ic->ic_scan, _amrr_data_free, NULL);
+	ieee80211_iterate_nodes(&vap->iv_ic->ic_sta, _amrr_data_free, NULL);
 
 	if (asc->sysctl_oid != NULL)
 		sysctl_ctx_free(&asc->sysctl_ctx);

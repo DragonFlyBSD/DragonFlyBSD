@@ -739,6 +739,86 @@ ieee80211_handoff(struct ifnet *dst_ifp, struct mbuf *m)
 	return (0);
 }
 
+/* IEEE Std 802.11a-1999, page 9, table 79 */
+#define IEEE80211_OFDM_SYM_TIME                 4
+#define IEEE80211_OFDM_PREAMBLE_TIME            16
+#define IEEE80211_OFDM_SIGNAL_TIME              4
+/* IEEE Std 802.11g-2003, page 44 */
+#define IEEE80211_OFDM_SIGNAL_EXT_TIME          6
+
+/* IEEE Std 802.11a-1999, page 7, figure 107 */
+#define IEEE80211_OFDM_PLCP_SERVICE_NBITS       16
+#define IEEE80211_OFDM_TAIL_NBITS               6
+
+#define IEEE80211_OFDM_NBITS(frmlen) \
+	(IEEE80211_OFDM_PLCP_SERVICE_NBITS + \
+	((frmlen) * NBBY) + \
+	IEEE80211_OFDM_TAIL_NBITS)
+
+#define IEEE80211_OFDM_NBITS_PER_SYM(kbps) \
+	(((kbps) * IEEE80211_OFDM_SYM_TIME) / 1000)
+
+#define IEEE80211_OFDM_NSYMS(kbps, frmlen) \
+	howmany(IEEE80211_OFDM_NBITS((frmlen)), \
+	IEEE80211_OFDM_NBITS_PER_SYM((kbps)))
+
+#define IEEE80211_OFDM_TXTIME(kbps, frmlen) \
+	(IEEE80211_OFDM_PREAMBLE_TIME + \
+	IEEE80211_OFDM_SIGNAL_TIME + \
+	(IEEE80211_OFDM_NSYMS((kbps), (frmlen)) * IEEE80211_OFDM_SYM_TIME))
+
+/* IEEE Std 802.11b-1999, page 28, subclause 18.3.4 */
+#define IEEE80211_CCK_PREAMBLE_LEN      144
+#define IEEE80211_CCK_PLCP_HDR_TIME     48
+#define IEEE80211_CCK_SHPREAMBLE_LEN    72
+#define IEEE80211_CCK_SHPLCP_HDR_TIME   24
+
+#define IEEE80211_CCK_NBITS(frmlen)     ((frmlen) * NBBY)
+#define IEEE80211_CCK_TXTIME(kbps, frmlen) \
+	(((IEEE80211_CCK_NBITS((frmlen)) * 1000) + (kbps) - 1) / (kbps))
+
+uint16_t
+ieee80211_txtime(struct ieee80211_node *ni, u_int len, uint8_t rs_rate,
+		uint32_t flags)
+{
+	struct ieee80211vap *vap = ni->ni_vap;
+	uint16_t txtime;
+	int rate;
+
+	rs_rate &= IEEE80211_RATE_VAL;
+	rate = rs_rate * 500;   /* ieee80211 rate -> kbps */
+
+	if (vap->iv_ic->ic_phytype == IEEE80211_T_OFDM) {
+		/*
+		 * IEEE Std 802.11a-1999, page 37, equation (29)
+		 * IEEE Std 802.11g-2003, page 44, equation (42)
+		 */
+		txtime = IEEE80211_OFDM_TXTIME(rate, len);
+		if (vap->iv_ic->ic_curmode == IEEE80211_MODE_11G)
+			txtime += IEEE80211_OFDM_SIGNAL_EXT_TIME;
+	} else {
+		/*
+		 * IEEE Std 802.11b-1999, page 28, subclause 18.3.4
+		 * IEEE Std 802.11g-2003, page 45, equation (43)
+		 */
+		if (vap->iv_ic->ic_phytype == IEEE80211_T_OFDM_QUARTER+1)
+			++len;
+		txtime = IEEE80211_CCK_TXTIME(rate, len);
+
+		/*
+		 * Short preamble is not applicable for DS 1Mbits/s
+		 */
+		if (rs_rate != 2 && (flags & IEEE80211_F_SHPREAMBLE)) {
+			txtime += IEEE80211_CCK_SHPREAMBLE_LEN +
+				IEEE80211_CCK_SHPLCP_HDR_TIME;
+		} else {
+			txtime += IEEE80211_CCK_PREAMBLE_LEN +
+			IEEE80211_CCK_PLCP_HDR_TIME;
+		}
+	}
+	return txtime;
+}
+
 void
 ieee80211_load_module(const char *modname)
 {

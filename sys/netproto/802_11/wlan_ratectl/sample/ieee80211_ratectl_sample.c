@@ -66,7 +66,7 @@
 #endif
 
 struct sample_softc {
-	struct ieee80211com	*ic;
+	struct ieee80211vap	*vap;
 
 	struct sysctl_ctx_list	sysctl_ctx;
 	struct sysctl_oid	*sysctl_oid;
@@ -132,7 +132,7 @@ struct sample_data {
 #define STALE_FAILURE_TIMEOUT_MS	10000
 #define MIN_SWITCH_MS			1000
 
-static void	*sample_attach(struct ieee80211com *);
+static void	*sample_attach(struct ieee80211vap *);
 static void	sample_detach(void *);
 static void	sample_data_alloc(struct ieee80211_node *);
 static void	sample_data_free(struct ieee80211_node *);
@@ -213,7 +213,7 @@ unicast_pkt_time(struct sample_softc *ssc, struct ieee80211_node *ni,
 		 int rate, int len, int data_tries, int rts_tries,
 		 int *cw0)
 {
-	struct ieee80211com *ic = ssc->ic;
+	struct ieee80211vap *vap = ssc->vap;
 	int sifs, difs, slot;
 	int ack_dur, data_dur, cw;
 	int tt = 0;
@@ -221,8 +221,9 @@ unicast_pkt_time(struct sample_softc *ssc, struct ieee80211_node *ni,
 
 	ack_dur = ieee80211_txtime(ni,
 			sizeof(struct ieee80211_frame_ack) + IEEE80211_CRC_LEN,
-			ieee80211_ack_rate(ni, rate), ic->ic_flags);
-	data_dur = ieee80211_txtime(ni, len, rate, ic->ic_flags);
+			ieee80211_ack_rate(vap->iv_ic->ic_rt, rate),
+			vap->iv_flags);
+	data_dur = ieee80211_txtime(ni, len, rate, vap->iv_flags);
 
 	if (IEEE80211_IS_CHAN_5GHZ(ni->ni_chan)) {
 		cw = IEEE80211_CW_MIN_1;
@@ -232,7 +233,7 @@ unicast_pkt_time(struct sample_softc *ssc, struct ieee80211_node *ni,
 		/* XXX should base on characteristic rate set */
 		cw = IEEE80211_CW_MIN_0;
 		sifs = IEEE80211_DUR_SIFS;
-		slot = (ic->ic_flags & IEEE80211_F_SHSLOT)
+		slot = (vap->iv_flags & IEEE80211_F_SHSLOT)
 			? IEEE80211_DUR_SHSLOT
 			: IEEE80211_DUR_SLOT;
 	}
@@ -240,9 +241,9 @@ unicast_pkt_time(struct sample_softc *ssc, struct ieee80211_node *ni,
 		cw = *cw0;
 	difs = IEEE80211_DUR_DIFS(sifs, slot);
 
-	if (rts_tries > 0 && (ic->ic_flags & IEEE80211_F_USEPROT) &&
-	    ieee80211_rate2modtype(rate) == IEEE80211_MODTYPE_OFDM) {
-		if (ic->ic_protmode == IEEE80211_PROT_RTSCTS) {
+	if (rts_tries > 0 && (vap->iv_flags & IEEE80211_F_USEPROT) &&
+	    vap->iv_ic->ic_phytype == IEEE80211_T_OFDM) {
+		if (vap->iv_ic->ic_protmode == IEEE80211_PROT_RTSCTS) {
 			uint8_t rts_rate;
 			int rts_dur, cts_dur;
 
@@ -252,12 +253,13 @@ unicast_pkt_time(struct sample_softc *ssc, struct ieee80211_node *ni,
 			rts_dur = ieee80211_txtime(ni,
 					sizeof(struct ieee80211_frame_rts) +
 					IEEE80211_CRC_LEN,
-					rts_rate, ic->ic_flags);
+					rts_rate, vap->iv_flags);
 			cts_dur = ieee80211_txtime(ni,
 					sizeof(struct ieee80211_frame_cts) +
 					IEEE80211_CRC_LEN,
-					ieee80211_ack_rate(ni, rts_rate),
-					ic->ic_flags);
+					ieee80211_ack_rate(vap->iv_ic->ic_rt,
+					    rts_rate),
+					vap->iv_flags);
 
 			tt += rts_tries * (rts_dur + sifs + cts_dur);
 
@@ -270,12 +272,12 @@ unicast_pkt_time(struct sample_softc *ssc, struct ieee80211_node *ni,
 			 */
 			tt += sifs;
 			--rts_tries;
-		} else if (ic->ic_protmode == IEEE80211_PROT_CTSONLY) {
+		} else if (vap->iv_ic->ic_protmode == IEEE80211_PROT_CTSONLY) {
 			/* Assume CTS is sent at 2Mbits/s */
 			tt += ieee80211_txtime(ni,
 				sizeof(struct ieee80211_frame_cts) +
 				IEEE80211_CRC_LEN,
-				4, ic->ic_flags);
+				4, vap->iv_flags);
 			tt += sifs;
 			rts_tries = 0;
 		}
@@ -397,8 +399,8 @@ sample_findrate(void *arg, struct ieee80211_node *ni, int frame_len,
 {
 	struct sample_softc *ssc = arg;
 	struct sample_data *sd = ni->ni_rate_data;
-	struct ieee80211com *ic = ssc->ic;
-	struct ieee80211_ratectl_state *rc_st = &ic->ic_ratectl;
+	struct ieee80211vap *vap = ssc->vap;
+	struct ieee80211_ratectl_state *rc_st = &vap->iv_ratectl;
 	int ndx, size_bin, best_ndx, change_rates, ack_before, cur_ndx, i;
 	unsigned average_tx_time;
 
@@ -426,7 +428,7 @@ sample_findrate(void *arg, struct ieee80211_node *ni, int frame_len,
 	size_bin = size_to_bin(frame_len);
 
 	ack_before = (!(rc_st->rc_st_flags & IEEE80211_RATECTL_F_MRR) ||
-		      (ic->ic_flags & IEEE80211_F_USEPROT));
+		      (vap->iv_flags & IEEE80211_F_USEPROT));
 	best_ndx = best_rate_ndx(ni, size_bin, ack_before);
 	if (best_ndx >= 0)
 		average_tx_time = sd->stats[size_bin][best_ndx].average_tx_time;
@@ -672,8 +674,11 @@ static void
 sample_start(struct sample_softc *ssc, struct ieee80211_node *ni)
 {
 #define	RATE(_ix)	IEEE80211_RS_RATE(&ni->ni_rates, (_ix))
-	struct ieee80211com *ic = ssc->ic;
+	struct ieee80211vap *vap = ssc->vap;
 	struct sample_data *sd = ni->ni_rate_data;
+	const struct ieee80211_txparam *tp = ni->ni_txparms;
+	enum ieee80211_phymode mode =
+		ieee80211_chan2mode(vap->iv_ic->ic_curchan);
 	int x, y, srate;
 
 	if (sd == NULL) {
@@ -685,7 +690,7 @@ sample_start(struct sample_softc *ssc, struct ieee80211_node *ni)
 	}
 
         sd->static_rate_ndx = -1;
-	if (ic->ic_fixed_rate != IEEE80211_FIXED_RATE_NONE) {
+	if (tp == NULL || tp->ucastrate == IEEE80211_FIXED_RATE_NONE) {
 		/*
 		 * A fixed rate is to be used; ic_fixed_rate is an
 		 * index into the supported rate set.  Convert this
@@ -693,8 +698,8 @@ sample_start(struct sample_softc *ssc, struct ieee80211_node *ni)
 		 * the node.
 		 */
 		const struct ieee80211_rateset *rs =
-			&ic->ic_sup_rates[ic->ic_curmode];
-		int r = IEEE80211_RS_RATE(rs, ic->ic_fixed_rate);
+		    &vap->iv_ic->ic_sup_rates[vap->iv_ic->ic_curmode];
+		int r = IEEE80211_RS_RATE(rs, vap->iv_txparms[mode].ucastrate);
 
 		/* NB: the rate set is assumed sorted */
 		srate = ni->ni_rates.rs_nrates - 1;
@@ -788,16 +793,16 @@ sample_newstate(void *arg, enum ieee80211_state state)
 	struct sample_softc *ssc = arg;
 
 	if (state == IEEE80211_S_RUN) {
-		struct ieee80211com *ic = ssc->ic;
+		struct ieee80211vap *vap = ssc->vap;
 
-		if (ic->ic_opmode != IEEE80211_M_STA) {
+		if (vap->iv_opmode != IEEE80211_M_STA) {
 			/*
 			 * Sync rates for associated stations and neighbors.
 			 */
-			ieee80211_iterate_nodes(&ic->ic_sta, sample_rate_cb,
-						ssc);
+			ieee80211_iterate_nodes(&vap->iv_ic->ic_sta,
+			    sample_rate_cb, ssc);
 		}
-		sample_newassoc(ssc, ic->ic_bss, 1);
+		sample_newassoc(ssc, vap->iv_bss, 1);
 	}
 }
 
@@ -806,7 +811,7 @@ sample_sysctl_attach(struct sample_softc *ssc)
 {
 	sysctl_ctx_init(&ssc->sysctl_ctx);
 	ssc->sysctl_oid = SYSCTL_ADD_NODE(&ssc->sysctl_ctx,
-		SYSCTL_CHILDREN(ssc->ic->ic_sysctl_oid),
+		SYSCTL_CHILDREN(ssc->vap->iv_oid),
 		OID_AUTO, "sample_ratectl", CTLFLAG_RD, 0, "");
 	if (ssc->sysctl_oid == NULL) {
 		kprintf("wlan_ratectl_sample: create sysctl tree failed\n");
@@ -834,7 +839,7 @@ sample_sysctl_attach(struct sample_softc *ssc)
 }
 
 static void *
-sample_attach(struct ieee80211com *ic)
+sample_attach(struct ieee80211vap *vap)
 {
 	struct sample_softc *ssc;
 
@@ -842,12 +847,12 @@ sample_attach(struct ieee80211com *ic)
 
 	ssc = kmalloc(sizeof(struct sample_softc), M_DEVBUF, M_WAITOK | M_ZERO);
 
-	ssc->ic = ic;
-	ssc->param = ic->ic_ratectl.rc_st_attach(ic, IEEE80211_RATECTL_SAMPLE);
+	ssc->vap = vap;
+	ssc->param = vap->iv_ratectl.rc_st_attach(vap, IEEE80211_RATECTL_SAMPLE);
 
 	sample_sysctl_attach(ssc);
 
-	sample_newstate(ssc, ic->ic_state);
+	sample_newstate(ssc, vap->iv_state);
 
 	return ssc;
 }
@@ -862,12 +867,11 @@ static void
 sample_detach(void *arg)
 {
 	struct sample_softc *ssc = arg;
-	struct ieee80211com *ic = ssc->ic;
+	struct ieee80211vap *vap = ssc->vap;
 
 	sample_newstate(ssc, IEEE80211_S_INIT);
 
-	ieee80211_iterate_nodes(&ic->ic_sta, _sample_data_free, NULL);
-	ieee80211_iterate_nodes(&ic->ic_scan, _sample_data_free, NULL);
+	ieee80211_iterate_nodes(&vap->iv_ic->ic_sta, _sample_data_free, NULL);
 
 	if (ssc->sysctl_oid != NULL)
 		sysctl_ctx_free(&ssc->sysctl_ctx);
