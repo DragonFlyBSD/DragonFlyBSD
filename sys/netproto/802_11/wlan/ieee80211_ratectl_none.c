@@ -43,7 +43,7 @@
 
 #include <netproto/802_11/ieee80211_var.h>
 
-static void	*none_ratectl_attach(struct ieee80211com *);
+static void	*none_ratectl_attach(struct ieee80211vap *);
 static void	none_ratectl_detach(void *);
 static void	none_ratectl_data_alloc(struct ieee80211_node *);
 static void	none_ratectl_data_free(struct ieee80211_node *);
@@ -72,11 +72,11 @@ const struct ieee80211_ratectl ieee80211_ratectl_none = {
 };
 
 static void *
-none_ratectl_attach(struct ieee80211com *ic __unused)
+none_ratectl_attach(struct ieee80211vap *vap)
 {
-	struct ieee80211_ratectl_state *rc_st = &ic->ic_ratectl;
+	struct ieee80211_ratectl_state *rc_st = &vap->iv_ratectl;
 
-	rc_st->rc_st_attach(ic, IEEE80211_RATECTL_NONE);
+	rc_st->rc_st_attach(vap, IEEE80211_RATECTL_NONE);
 	return NULL;
 }
 

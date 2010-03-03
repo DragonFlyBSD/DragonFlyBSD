@@ -55,21 +55,21 @@ static const char *ratectl_modname[IEEE80211_RATECTL_MAX] = {
 };
 
 void
-ieee80211_ratectl_attach(struct ieee80211com *ic)
+ieee80211_ratectl_attach(struct ieee80211vap *vap)
 {
-	struct ieee80211_ratectl_state *rc_st = &ic->ic_ratectl;
+	struct ieee80211_ratectl_state *rc_st = &vap->iv_ratectl;
 	u_int cur_ratectl = rc_st->rc_st_ratectl;
 
 	rc_st->rc_st_ratectl_cap |= IEEE80211_RATECTL_CAP_NONE;
 	rc_st->rc_st_ratectl = IEEE80211_RATECTL_NONE;
 
-	ieee80211_ratectl_change(ic, cur_ratectl);
+	ieee80211_ratectl_change(vap, cur_ratectl);
 }
 
 void
-ieee80211_ratectl_detach(struct ieee80211com *ic)
+ieee80211_ratectl_detach(struct ieee80211vap *vap)
 {
-	ieee80211_ratectl_change(ic, IEEE80211_RATECTL_NONE);
+	ieee80211_ratectl_change(vap, IEEE80211_RATECTL_NONE);
 }
 
 void
@@ -120,9 +120,9 @@ ieee80211_ratectl_unregister(const struct ieee80211_ratectl *rc)
 }
 
 int
-ieee80211_ratectl_change(struct ieee80211com *ic, u_int rc_idx)
+ieee80211_ratectl_change(struct ieee80211vap *vap, u_int rc_idx)
 {
-	struct ieee80211_ratectl_state *rc_st = &ic->ic_ratectl;
+	struct ieee80211_ratectl_state *rc_st = &vap->iv_ratectl;
 	const struct ieee80211_ratectl *rc, *rc_old;
 
 	if (rc_idx == rc_st->rc_st_ratectl) {
@@ -159,7 +159,7 @@ ieee80211_ratectl_change(struct ieee80211com *ic, u_int rc_idx)
 
 	/* Attach new rate control */
 	rc_st->rc_st_ratectl = rc_idx;
-	rc_st->rc_st_ctx = rc->rc_attach(ic);
+	rc_st->rc_st_ctx = rc->rc_attach(vap);
 
 	return 0;
 }
@@ -167,8 +167,8 @@ ieee80211_ratectl_change(struct ieee80211com *ic, u_int rc_idx)
 void
 ieee80211_ratectl_data_alloc(struct ieee80211_node *ni)
 {
-	struct ieee80211com *ic = ni->ni_ic;
-	struct ieee80211_ratectl_state *rc_st = &ic->ic_ratectl;
+	struct ieee80211vap *vap = ni->ni_vap;
+	struct ieee80211_ratectl_state *rc_st = &vap->iv_ratectl;
 	const struct ieee80211_ratectl *rc = ratectls[rc_st->rc_st_ratectl];
 
 	rc->rc_data_alloc(ni);
@@ -178,8 +178,8 @@ void
 ieee80211_ratectl_data_dup(const struct ieee80211_node *oni,
 			   struct ieee80211_node *nni)
 {
-	struct ieee80211com *ic = oni->ni_ic;
-	struct ieee80211_ratectl_state *rc_st = &ic->ic_ratectl;
+	struct ieee80211vap *vap = oni->ni_vap;
+	struct ieee80211_ratectl_state *rc_st = &vap->iv_ratectl;
 	const struct ieee80211_ratectl *rc = ratectls[rc_st->rc_st_ratectl];
 
 	rc->rc_data_dup(oni, nni);
@@ -188,17 +188,17 @@ ieee80211_ratectl_data_dup(const struct ieee80211_node *oni,
 void
 ieee80211_ratectl_data_free(struct ieee80211_node *ni)
 {
-	struct ieee80211com *ic = ni->ni_ic;
-	struct ieee80211_ratectl_state *rc_st = &ic->ic_ratectl;
+	struct ieee80211vap *vap = ni->ni_vap;
+	struct ieee80211_ratectl_state *rc_st = &vap->iv_ratectl;
 	const struct ieee80211_ratectl *rc = ratectls[rc_st->rc_st_ratectl];
 
 	rc->rc_data_free(ni);
 }
 
 void
-ieee80211_ratectl_newstate(struct ieee80211com *ic, enum ieee80211_state state)
+ieee80211_ratectl_newstate(struct ieee80211vap *vap, enum ieee80211_state state)
 {
-	struct ieee80211_ratectl_state *rc_st = &ic->ic_ratectl;
+	struct ieee80211_ratectl_state *rc_st = &vap->iv_ratectl;
 	const struct ieee80211_ratectl *rc = ratectls[rc_st->rc_st_ratectl];
 
 	rc->rc_newstate(rc_st->rc_st_ctx, state);
@@ -210,8 +210,8 @@ ieee80211_ratectl_tx_complete(struct ieee80211_node *ni, int frame_len,
 			      int res_len, int data_retries, int rts_retries,
 			      int is_fail)
 {
-	struct ieee80211com *ic = ni->ni_ic;
-	struct ieee80211_ratectl_state *rc_st = &ic->ic_ratectl;
+	struct ieee80211vap *vap = ni->ni_vap;
+	struct ieee80211_ratectl_state *rc_st = &vap->iv_ratectl;
 	const struct ieee80211_ratectl *rc = ratectls[rc_st->rc_st_ratectl];
 
 	rc->rc_tx_complete(rc_st->rc_st_ctx, ni, frame_len, res, res_len,
@@ -221,8 +221,8 @@ ieee80211_ratectl_tx_complete(struct ieee80211_node *ni, int frame_len,
 void
 ieee80211_ratectl_newassoc(struct ieee80211_node *ni, int is_new)
 {
-	struct ieee80211com *ic = ni->ni_ic;
-	struct ieee80211_ratectl_state *rc_st = &ic->ic_ratectl;
+	struct ieee80211vap *vap = ni->ni_vap;
+	struct ieee80211_ratectl_state *rc_st = &vap->iv_ratectl;
 	const struct ieee80211_ratectl *rc = ratectls[rc_st->rc_st_ratectl];
 
 	rc->rc_newassoc(rc_st->rc_st_ctx, ni, is_new);
@@ -232,8 +232,8 @@ int
 ieee80211_ratectl_findrate(struct ieee80211_node *ni, int frame_len,
 			   int rateidx[], int rateidx_len)
 {
-	struct ieee80211com *ic = ni->ni_ic;
-	struct ieee80211_ratectl_state *rc_st = &ic->ic_ratectl;
+	struct ieee80211vap *vap = ni->ni_vap;
+	struct ieee80211_ratectl_state *rc_st = &vap->iv_ratectl;
 	const struct ieee80211_ratectl *rc = ratectls[rc_st->rc_st_ratectl];
 
 	KKASSERT(rateidx_len > 0);

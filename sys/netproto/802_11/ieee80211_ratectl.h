@@ -115,20 +115,20 @@ struct ieee80211_ratectl {
 
 extern const struct ieee80211_ratectl	ieee80211_ratectl_none;
 
-void	ieee80211_ratectl_attach(struct ieee80211com *);
-void	ieee80211_ratectl_detach(struct ieee80211com *);
+void	ieee80211_ratectl_attach(struct ieee80211vap *);
+void	ieee80211_ratectl_detach(struct ieee80211vap *);
 
 void	ieee80211_ratectl_register(const struct ieee80211_ratectl *);
 void	ieee80211_ratectl_unregister(const struct ieee80211_ratectl *);
 
-int	ieee80211_ratectl_change(struct ieee80211com *, u_int);
+int	ieee80211_ratectl_change(struct ieee80211vap *, u_int);
 
 void	ieee80211_ratectl_data_alloc(struct ieee80211_node *);
 void	ieee80211_ratectl_data_dup(const struct ieee80211_node *,
 				   struct ieee80211_node *);
 void	ieee80211_ratectl_data_free(struct ieee80211_node *);
 
-void	ieee80211_ratectl_newstate(struct ieee80211com *,
+void	ieee80211_ratectl_newstate(struct ieee80211vap *,
 				   enum ieee80211_state);
 void	ieee80211_ratectl_tx_complete(struct ieee80211_node *, int,
 				      const struct ieee80211_ratectl_res[],
