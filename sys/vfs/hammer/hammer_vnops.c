@@ -534,6 +534,7 @@ hammer_vop_write(struct vop_write_args *ap)
 		int blksize;
 		int blkmask;
 		int trivial;
+		int endofblk;
 		off_t nsize;
 
 		if ((error = hammer_checkspace(hmp, HAMMER_CHKSPC_WRITE)) != 0)
@@ -626,8 +627,12 @@ hammer_vop_write(struct vop_write_args *ap)
 		offset = (int)uio->uio_offset & blkmask;
 		base_offset = uio->uio_offset & ~(int64_t)blkmask;
 		n = blksize - offset;
-		if (n > uio->uio_resid)
+		if (n > uio->uio_resid) {
 			n = uio->uio_resid;
+			endofblk = 0;
+		} else {
+			endofblk = 1;
+		}
 		nsize = uio->uio_offset + n;
 		if (nsize > ip->ino_data.size) {
 			if (uio->uio_offset > ip->ino_data.size)
@@ -761,18 +766,25 @@ hammer_vop_write(struct vop_write_args *ap)
 		 * buffer cache simply cannot keep up.
 		 *
 		 * WARNING!  blksize is variable.  cluster_write() is
-		 * expected to not blow up if it encounters buffers that
-		 * do not match the passed blksize.
+		 *	     expected to not blow up if it encounters
+		 *	     buffers that do not match the passed blksize.
 		 *
 		 * NOTE!  Hammer shouldn't need to bawrite()/cluster_write().
 		 *	  The ip->rsv_recs check should burst-flush the data.
 		 *	  If we queue it immediately the buf could be left
 		 *	  locked on the device queue for a very long time.
+		 *
+		 * NOTE!  To avoid degenerate stalls due to mismatched block
+		 *	  sizes we only honor IO_DIRECT on the write which
+		 *	  abuts the end of the buffer.  However, we must
+		 *	  honor IO_SYNC in case someone is silly enough to
+		 *	  configure a HAMMER file as swap, or when HAMMER
+		 *	  is serving NFS (for commits).  Ick ick.
 		 */
 		bp->b_flags |= B_AGE;
 		if (ap->a_ioflag & IO_SYNC) {
 			bwrite(bp);
-		} else if (ap->a_ioflag & IO_DIRECT) {
+		} else if ((ap->a_ioflag & IO_DIRECT) && endofblk) {
 			bawrite(bp);
 		} else {
 #if 0
