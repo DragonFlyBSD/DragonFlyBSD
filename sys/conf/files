@@ -916,6 +916,8 @@ netproto/802_11/wlan/ieee80211_phy.c        optional wlan
 netproto/802_11/wlan/ieee80211_power.c      optional wlan
 netproto/802_11/wlan/ieee80211_proto.c      optional wlan
 netproto/802_11/wlan/ieee80211_radiotap.c   optional wlan
+netproto/802_11/wlan/ieee80211_ratectl.c    optional wlan
+netproto/802_11/wlan/ieee80211_ratectl_none.c optional wlan
 netproto/802_11/wlan/ieee80211_regdomain.c  optional wlan
 netproto/802_11/wlan/ieee80211_rssadapt.c   optional wlan_rssadapt
 netproto/802_11/wlan/ieee80211_scan.c       optional wlan
