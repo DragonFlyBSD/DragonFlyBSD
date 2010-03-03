@@ -692,7 +692,7 @@ sample_start(struct sample_softc *ssc, struct ieee80211_node *ni)
         sd->static_rate_ndx = -1;
 	if (tp == NULL || tp->ucastrate == IEEE80211_FIXED_RATE_NONE) {
 		/*
-		 * A fixed rate is to be used; ic_fixed_rate is an
+		 * A fixed rate is to be used; ucastrate is an
 		 * index into the supported rate set.  Convert this
 		 * to the index into the negotiated rate set for
 		 * the node.
@@ -706,7 +706,7 @@ sample_start(struct sample_softc *ssc, struct ieee80211_node *ni)
 		for (; srate >= 0 && RATE(srate) != r; srate--)
 			;
 		KASSERT(srate >= 0,
-			("fixed rate %d not in rate set", ic->ic_fixed_rate));
+			("fixed rate %d not in rate set", tp->ucastrate));
 		sd->static_rate_ndx = srate;
 	}
 
