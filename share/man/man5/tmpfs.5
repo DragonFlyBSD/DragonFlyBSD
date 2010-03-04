@@ -76,18 +76,18 @@ Normal filesystem operations such as fsync(), buffer cache flushing,
 and vnode recycling have no effect.
 .Pp
 .Nm
-stores meta-data in wired kernel memory.  Meta-data is not backed by
-swap so care must be taken if using
+stores meta-data in wired kernel memory.
+Meta-data is not backed by swap so care must be taken if using
 .Nm
 to store large numbers of small files.
 .Pp
 It is recommended that a large amount of swap space be reserved on modern
 .Dx
-platforms to accomodate
+platforms to accommodate
 .Nm
 and other subsystems.
-32-bit kernels can accomodate 32G of swap by default while 64-bit kernels
-can accomodate 512G of swap by default.
+32-bit kernels can accommodate 32G of swap by default while 64-bit kernels
+can accommodate 512G of swap by default.
 These defaults can be increased though it should be noted that 32-bit
 kernels are ultimately limited by the amount of KVM available in its
 small 32-bit address space.
@@ -97,7 +97,7 @@ will allocate and deallocate swap backing store on the fly based on usage.
 By default
 .Nm
 allows up to 100% of swap space to be used.
-If this is not desireable then the size option should be used to limit
+If this is not desirable then the size option should be used to limit
 its size.
 .Sh EXAMPLES
 To mount a
