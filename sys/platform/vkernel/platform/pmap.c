@@ -2843,7 +2843,7 @@ pmap_mapdev(vm_paddr_t pa, vm_size_t size)
 	offset = pa & PAGE_MASK;
 	size = roundup(offset + size, PAGE_SIZE);
 
-	va = kmem_alloc_nofault(&kernel_map, size);
+	va = kmem_alloc_nofault(&kernel_map, size, PAGE_SIZE);
 	if (!va)
 		panic("pmap_mapdev: Couldn't alloc kernel virtual memory");
 

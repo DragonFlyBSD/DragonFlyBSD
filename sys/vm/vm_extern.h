@@ -76,7 +76,7 @@ int swapon (struct proc *, void *, int *);
 int grow (struct proc *, size_t);
 int kernacc(c_caddr_t, int, int);
 vm_offset_t kmem_alloc3 (vm_map_t, vm_size_t, int flags);
-vm_offset_t kmem_alloc_nofault (vm_map_t, vm_size_t);
+vm_offset_t kmem_alloc_nofault (vm_map_t, vm_size_t, vm_size_t);
 vm_offset_t kmem_alloc_pageable (vm_map_t, vm_size_t);
 vm_offset_t kmem_alloc_wait (vm_map_t, vm_size_t);
 void kmem_free (vm_map_t, vm_offset_t, vm_size_t);

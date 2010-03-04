@@ -405,8 +405,8 @@ sys_linux_uselib(struct linux_uselib_args *args)
 		/* get anon user mapping, read+write+execute */
 		error = vm_map_find(&p->p_vmspace->vm_map, NULL, 0,
 				    &vmaddr, a_out->a_text + a_out->a_data,
-				    FALSE,
-				    VM_MAPTYPE_NORMAL,
+				    PAGE_SIZE,
+				    FALSE, VM_MAPTYPE_NORMAL,
 				    VM_PROT_ALL, VM_PROT_ALL,
 				    0);
 		if (error)
@@ -462,8 +462,8 @@ sys_linux_uselib(struct linux_uselib_args *args)
 		/* allocate some 'anon' space */
 		error = vm_map_find(&p->p_vmspace->vm_map, NULL, 0,
 				    &vmaddr, bss_size,
-				    FALSE,
-				    VM_MAPTYPE_NORMAL,
+				    PAGE_SIZE,
+				    FALSE, VM_MAPTYPE_NORMAL,
 				    VM_PROT_ALL, VM_PROT_ALL,
 				    0);
 		if (error)
