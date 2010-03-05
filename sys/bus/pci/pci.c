@@ -1484,6 +1484,14 @@ pci_alloc_msix_method(device_t dev, device_t child, int *count)
 	}
 	actual = i;
 
+	if (actual == 0) {
+		if (bootverbose) {
+			device_printf(child,
+			    "could not allocate any MSI-X vectors\n");
+		}
+		return  (ENXIO);
+	}
+
 	if (bootverbose) {
 		rle = resource_list_find(&dinfo->resources, SYS_RES_IRQ, 1);
 		if (actual == 1)
