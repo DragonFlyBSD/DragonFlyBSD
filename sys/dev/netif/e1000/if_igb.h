@@ -215,15 +215,15 @@
 #define DEBUG_IOCTL 0
 #define DEBUG_HW    0
 
-#define INIT_DEBUGOUT(S)            if (DEBUG_INIT)  printf(S "\n")
-#define INIT_DEBUGOUT1(S, A)        if (DEBUG_INIT)  printf(S "\n", A)
-#define INIT_DEBUGOUT2(S, A, B)     if (DEBUG_INIT)  printf(S "\n", A, B)
-#define IOCTL_DEBUGOUT(S)           if (DEBUG_IOCTL) printf(S "\n")
-#define IOCTL_DEBUGOUT1(S, A)       if (DEBUG_IOCTL) printf(S "\n", A)
-#define IOCTL_DEBUGOUT2(S, A, B)    if (DEBUG_IOCTL) printf(S "\n", A, B)
-#define HW_DEBUGOUT(S)              if (DEBUG_HW) printf(S "\n")
-#define HW_DEBUGOUT1(S, A)          if (DEBUG_HW) printf(S "\n", A)
-#define HW_DEBUGOUT2(S, A, B)       if (DEBUG_HW) printf(S "\n", A, B)
+#define INIT_DEBUGOUT(S)            if (DEBUG_INIT)  kprintf(S "\n")
+#define INIT_DEBUGOUT1(S, A)        if (DEBUG_INIT)  kprintf(S "\n", A)
+#define INIT_DEBUGOUT2(S, A, B)     if (DEBUG_INIT)  kprintf(S "\n", A, B)
+#define IOCTL_DEBUGOUT(S)           if (DEBUG_IOCTL) kprintf(S "\n")
+#define IOCTL_DEBUGOUT1(S, A)       if (DEBUG_IOCTL) kprintf(S "\n", A)
+#define IOCTL_DEBUGOUT2(S, A, B)    if (DEBUG_IOCTL) kprintf(S "\n", A, B)
+#define HW_DEBUGOUT(S)              if (DEBUG_HW) kprintf(S "\n")
+#define HW_DEBUGOUT1(S, A)          if (DEBUG_HW) kprintf(S "\n", A)
+#define HW_DEBUGOUT2(S, A, B)       if (DEBUG_HW) kprintf(S "\n", A, B)
 
 #define IGB_MAX_SCATTER		64
 #define IGB_VFTA_SIZE		128
@@ -297,8 +297,8 @@ struct igb_queue {
 struct tx_ring {
 	struct adapter		*adapter;
 	u32			me;
-	struct mtx		tx_mtx;
-	char			mtx_name[16];
+	struct spinlock		tx_spin;
+	char			spin_name[16];
 	struct igb_dma_alloc	txdma;
 	struct e1000_tx_desc	*tx_base;
 	u32			next_avail_desc;
@@ -327,12 +327,14 @@ struct rx_ring {
 	u32			me;
 	struct igb_dma_alloc	rxdma;
 	union e1000_adv_rx_desc	*rx_base;
+#if NET_LRO 
 	struct lro_ctrl		lro;
+#endif
 	bool			lro_enabled;
 	bool			hdr_split;
 	bool			discard;
-	struct mtx		rx_mtx;
-	char			mtx_name[16];
+	struct spinlock		rx_spin;
+	char			spin_name[16];
 	u32			last_cleaned;
 	u32			next_to_check;
 	struct igb_rx_buf	*rx_buffers;
@@ -358,11 +360,12 @@ struct rx_ring {
 };
 
 struct adapter {
+	struct arpcom		arpcom;
 	struct ifnet	*ifp;
 	struct e1000_hw	hw;
 
 	struct e1000_osdep osdep;
-	struct device	*dev;
+	device_t dev;
 
 	struct resource *pci_mem;
 	struct resource *msix_mem;
@@ -381,7 +384,7 @@ struct adapter {
 	int		if_flags;
 	int		max_frame_size;
 	int		min_frame_size;
-	struct mtx	core_mtx;
+	struct spinlock	core_spin;
 	int		igb_insert_vlan_header;
 	struct task     rxtx_task;
 	struct taskqueue *tq;	/* adapter task queue */
@@ -440,6 +443,10 @@ struct adapter {
 	struct hwtstamp_ctrl    hwtstamp;
 #endif
 
+	/* sysctl tree glue */
+	struct sysctl_ctx_list	sysctl_ctx;
+	struct sysctl_oid	*sysctl_tree;
+
 	struct e1000_hw_stats stats;
 };
 
@@ -472,23 +479,22 @@ struct igb_rx_buf {
 	bus_dmamap_t	pack_map;	/* bus_dma map for packet */
 };
 
-#define	IGB_CORE_LOCK_INIT(_sc, _name) \
-	mtx_init(&(_sc)->core_mtx, _name, "IGB Core Lock", MTX_DEF)
-#define	IGB_CORE_LOCK_DESTROY(_sc)	mtx_destroy(&(_sc)->core_mtx)
-#define	IGB_CORE_LOCK(_sc)		mtx_lock(&(_sc)->core_mtx)
-#define	IGB_CORE_UNLOCK(_sc)		mtx_unlock(&(_sc)->core_mtx)
-#define	IGB_CORE_LOCK_ASSERT(_sc)	mtx_assert(&(_sc)->core_mtx, MA_OWNED)
+#define	IGB_CORE_LOCK_INIT(_sc, _name)  spin_init(&(_sc)->core_spin)
+#define	IGB_CORE_LOCK_DESTROY(_sc)	spin_uninit(&(_sc)->core_spin)
+#define	IGB_CORE_LOCK(_sc)		spin_lock_wr(&(_sc)->core_spin)
+#define	IGB_CORE_UNLOCK(_sc)		spin_unlock_wr(&(_sc)->core_spin)
+#define	IGB_CORE_LOCK_ASSERT(_sc) 	
 
-#define	IGB_TX_LOCK_DESTROY(_sc)	mtx_destroy(&(_sc)->tx_mtx)
-#define	IGB_TX_LOCK(_sc)		mtx_lock(&(_sc)->tx_mtx)
-#define	IGB_TX_UNLOCK(_sc)		mtx_unlock(&(_sc)->tx_mtx)
-#define	IGB_TX_TRYLOCK(_sc)		mtx_trylock(&(_sc)->tx_mtx)
-#define	IGB_TX_LOCK_ASSERT(_sc)		mtx_assert(&(_sc)->tx_mtx, MA_OWNED)
+#define	IGB_TX_LOCK_DESTROY(_sc)	spin_uninit(&(_sc)->tx_spin)
+#define	IGB_TX_LOCK(_sc)		spin_lock_wr(&(_sc)->tx_spin)
+#define	IGB_TX_UNLOCK(_sc)		spin_unlock_wr(&(_sc)->tx_spin)
+#define	IGB_TX_TRYLOCK(_sc)		spin_trylock_wr(&(_sc)->tx_spin)
+#define	IGB_TX_LOCK_ASSERT(_sc)		
 
-#define	IGB_RX_LOCK_DESTROY(_sc)	mtx_destroy(&(_sc)->rx_mtx)
-#define	IGB_RX_LOCK(_sc)		mtx_lock(&(_sc)->rx_mtx)
-#define	IGB_RX_UNLOCK(_sc)		mtx_unlock(&(_sc)->rx_mtx)
-#define	IGB_TX_LOCK_ASSERT(_sc)		mtx_assert(&(_sc)->tx_mtx, MA_OWNED)
+#define	IGB_RX_LOCK_DESTROY(_sc)	spin_uninit(&(_sc)->rx_spin)
+#define	IGB_RX_LOCK(_sc)		spin_lock_wr(&(_sc)->rx_spin)
+#define	IGB_RX_UNLOCK(_sc)		spin_unlock_wr(&(_sc)->rx_spin)
+#define	IGB_TX_LOCK_ASSERT(_sc)		
 
 #endif /* _IGB_H_DEFINED_ */
 
