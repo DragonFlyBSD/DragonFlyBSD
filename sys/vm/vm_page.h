@@ -150,7 +150,6 @@ typedef struct vm_page_action *vm_page_action_t;
 
 TAILQ_HEAD(pglist, vm_page);
 
-struct msf_buf;
 struct vm_object;
 
 int rb_vm_page_compare(struct vm_page *, struct vm_page *);
@@ -185,7 +184,6 @@ struct vm_page {
 	u_short	valid;			/* map of valid DEV_BSIZE chunks */
 	u_short	dirty;			/* map of dirty DEV_BSIZE chunks */
 #endif
-	struct msf_buf *msf_hint; 	/* first page of an msfbuf map */
 	LIST_HEAD(,vm_page_action) action_list;
 };
 

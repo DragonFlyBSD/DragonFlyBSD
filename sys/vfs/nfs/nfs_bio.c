@@ -49,7 +49,6 @@
 #include <sys/mount.h>
 #include <sys/kernel.h>
 #include <sys/mbuf.h>
-#include <sys/msfbuf.h>
 
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
