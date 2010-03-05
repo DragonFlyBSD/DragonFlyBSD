@@ -96,6 +96,7 @@ int vm_fault_wire (vm_map_t, vm_map_entry_t, boolean_t);
 void vm_fork (struct proc *, struct proc *, int);
 void vm_fault_ratecheck(void);
 void vm_waitproc (struct proc *);
+void vm_wait_nominal (void);
 void vm_init_limits(struct proc *);
 
 int vm_mmap (vm_map_t, vm_offset_t *, vm_size_t, vm_prot_t, vm_prot_t, int, void *, vm_ooffset_t);
