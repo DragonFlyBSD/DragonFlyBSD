@@ -32,6 +32,11 @@
 
 #include "citrus_module.h"
 
+struct _citrus_mapper;
+struct _citrus_mapper_area;
+struct _citrus_mapper_ops;
+struct _citrus_mapper_traits;
+
 #define _CITRUS_MAPPER_GETOPS_FUNC_BASE(_n_)				\
 int _n_(struct _citrus_mapper_ops *, size_t, u_int32_t)
 #define _CITRUS_MAPPER_GETOPS_FUNC(_n_)					\

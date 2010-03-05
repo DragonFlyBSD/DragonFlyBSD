@@ -17,9 +17,6 @@
 #ifndef OPENSSL_NO_GMP
 # define OPENSSL_NO_GMP
 #endif
-#ifndef OPENSSL_NO_IDEA
-# define OPENSSL_NO_IDEA
-#endif
 #ifndef OPENSSL_NO_JPAKE
 # define OPENSSL_NO_JPAKE
 #endif
@@ -98,11 +95,13 @@
  * [Our "make depend" doesn't actually look at this, we use actual build settings
  * instead; we want to make it easy to remove subdirectories with disabled algorithms.]
  */
+
 #if 0
 #ifndef OPENSSL_FIPS
 #define OPENSSL_FIPS
 #endif
 #endif
+
 #endif
 
 /* Generate 80386 code? */

@@ -403,7 +403,7 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 	 */
 	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 	vm_map_lock(map);
-	if (vm_map_findspace(map, vm_map_min(map), size, 1, 0, &addr) !=
+	if (vm_map_findspace(map, vm_map_min(map), size, PAGE_SIZE, 0, &addr) !=
 	    KERN_SUCCESS) {
 		/*
 		 * XXX We almost never run out of kernel virtual

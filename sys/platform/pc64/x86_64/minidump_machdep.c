@@ -111,7 +111,7 @@ blk_write(struct dumperinfo *di, char *ptr, vm_paddr_t pa, size_t sz)
 		return (EINVAL);
 	}
 	if (ptr != NULL && pa != 0) {
-		kprintf("cant have both va and pa!\n");
+		kprintf("can't have both va and pa!\n");
 		return (EINVAL);
 	}
 	if (pa != 0 && (((uintptr_t)ptr) % PAGE_SIZE) != 0) {

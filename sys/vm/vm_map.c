@@ -989,7 +989,7 @@ vm_map_insert(vm_map_t map, int *countp,
  */
 int
 vm_map_findspace(vm_map_t map, vm_offset_t start, vm_size_t length,
-		 vm_offset_t align, int flags, vm_offset_t *addr)
+		 vm_size_t align, int flags, vm_offset_t *addr)
 {
 	vm_map_entry_t entry, next;
 	vm_offset_t end;
@@ -1100,7 +1100,7 @@ retry:
  */
 int
 vm_map_find(vm_map_t map, vm_object_t object, vm_ooffset_t offset,
-	    vm_offset_t *addr,	vm_size_t length,
+	    vm_offset_t *addr,	vm_size_t length, vm_size_t align,
 	    boolean_t fitit,
 	    vm_maptype_t maptype,
 	    vm_prot_t prot, vm_prot_t max,
@@ -1115,7 +1115,7 @@ vm_map_find(vm_map_t map, vm_object_t object, vm_ooffset_t offset,
 	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 	vm_map_lock(map);
 	if (fitit) {
-		if (vm_map_findspace(map, start, length, 1, 0, addr)) {
+		if (vm_map_findspace(map, start, length, align, 0, addr)) {
 			vm_map_unlock(map);
 			vm_map_entry_release(count);
 			return (KERN_NO_SPACE);

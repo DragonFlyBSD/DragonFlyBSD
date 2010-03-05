@@ -69,13 +69,11 @@
 #define	NKPT		30			/* starting general kptds */
 #endif
 
-#define NKGDPDE		SMP_MAXCPU		/* 16 typical */
-
 #ifndef NKPDE
-#define NKPDE	(KVA_PAGES - NKGDPDE - 2)	/* max general kptds */
+#define NKPDE	(KVA_PAGES - 2)	/* max general kptds */
 #endif
-#if NKPDE > KVA_PAGES - NKGDPDE - 2
-#error "Maximum NKPDE is KVA_PAGES - NKGDPDE - 2"
+#if NKPDE > KVA_PAGES - 2
+#error "Maximum NKPDE is KVA_PAGES - 2"
 #endif
 
 /*
@@ -87,13 +85,9 @@
  *		  of special PTDs.
  *
  *	+---------------+ End of kernel memory
- *	|   APTDPTDI	| currently unused alt page table map
+ *	|   APTDPTDI	| alt page table map for cpu 0
  *	+---------------+
  *	|    MPPTDI	| globaldata array
- *	+---------------+
- *	|		|
- *	|		| per-cpu page table self-maps
- *	|KGDTDI[NKGDPDE]|
  *	+---------------+
  *	|		|
  *	|		|
@@ -111,10 +105,9 @@
  * directory itself and any indexes >= KPTDI will correspond to the
  * common kernel page directory pages since all pmaps map the same ones.
  *
- * We no longer use APTmap or APTDpde (corresponding to APTDPTDI).  This
- * was a global page table map for accessing pmaps other then the current
- * pmap.  Instead we now implement an alternative pmap for EACH cpu
- * use the ptds at KGDTDI.
+ * APTmap / APTDpde are now used by cpu 0 as its alternative page table
+ * mapping via gd_GDMAP1 and GD_GDADDR1.  The remaining cpus allocate
+ * their own dynamically.
  *
  * Even though the maps are per-cpu the PTD entries are stored in the
  * individual pmaps and obviously not replicated so each process pmap
@@ -125,8 +118,7 @@
  */
 #define	APTDPTDI	(NPDEPG-1)	/* alt ptd entry that points to APTD */
 #define MPPTDI		(APTDPTDI-1)	/* globaldata array ptd entry */
-#define KGDTDI		(MPPTDI-NKGDPDE) /* per-cpu page table mappings */
-#define	KPTDI		(KGDTDI-NKPDE)	/* start of kernel virtual pde's */
+#define	KPTDI		(MPPTDI-NKPDE)	/* start of kernel virtual pde's */
 #define	PTDPTDI		(KPTDI-1)	/* ptd entry that points to ptd! */
 #define	UMAXPTDI	(PTDPTDI-1)	/* ptd entry for user space end */
 

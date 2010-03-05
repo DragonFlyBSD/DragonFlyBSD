@@ -225,6 +225,7 @@ struct jrecord_list {
 struct namecache;
 struct ucred;
 struct uio;
+struct xio;
 struct vnode;
 struct vattr;
 struct vm_page;
@@ -241,10 +242,13 @@ struct journal_subrecord *jrecord_push(
 			struct jrecord *jrec, int16_t rectype);
 void jrecord_pop(struct jrecord *jrec, struct journal_subrecord *parent);
 void jrecord_leaf(struct jrecord *jrec,
-			 int16_t rectype, void *ptr, int bytes);
+			int16_t rectype, void *ptr, int bytes);
+void jrecord_leaf_uio(struct jrecord *jrec,
+			int16_t rectype, struct uio *uio);
+void jrecord_leaf_xio(struct jrecord *jrec,
+			int16_t rectype, struct xio *xio);
 struct journal_subrecord *jrecord_write(struct jrecord *jrec,
 			int16_t rectype, int bytes);
-void jrecord_data(struct jrecord *jrec, const void *buf, int bytes);
 void jrecord_done(struct jrecord *jrec, int abortit);
 
 /*

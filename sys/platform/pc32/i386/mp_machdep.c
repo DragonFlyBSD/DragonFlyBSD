@@ -2278,12 +2278,18 @@ start_all_aps(u_int boot_addr)
 		gd->gd_CMAP2 = &SMPpt[pg + 1];
 		gd->gd_CMAP3 = &SMPpt[pg + 2];
 		gd->gd_PMAP1 = &SMPpt[pg + 3];
-		gd->gd_GDMAP1 = &PTD[KGDTDI+x];
 		gd->gd_CADDR1 = ps->CPAGE1;
 		gd->gd_CADDR2 = ps->CPAGE2;
 		gd->gd_CADDR3 = ps->CPAGE3;
 		gd->gd_PADDR1 = (unsigned *)ps->PPAGE1;
-		gd->gd_GDADDR1= (unsigned *)VADDR(KGDTDI+x, 0);
+
+		/*
+		 * Per-cpu pmap for get_ptbase().
+		 */
+		gd->gd_GDADDR1= (unsigned *)
+			kmem_alloc_nofault(&kernel_map, SEG_SIZE, SEG_SIZE);
+		gd->gd_GDMAP1 = &PTD[(vm_offset_t)gd->gd_GDADDR1 >> PDRSHIFT];
+
 		gd->mi.gd_ipiq = (void *)kmem_alloc(&kernel_map, sizeof(lwkt_ipiq) * (mp_naps + 1));
 		bzero(gd->mi.gd_ipiq, sizeof(lwkt_ipiq) * (mp_naps + 1));
 
@@ -2350,7 +2356,6 @@ start_all_aps(u_int boot_addr)
 	/* number of APs actually started */
 	return ncpus - 1;
 }
-
 
 /*
  * load the 1st level AP boot code into base memory.

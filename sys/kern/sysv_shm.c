@@ -329,7 +329,8 @@ again:
 	vm_object_reference(shm_handle->shm_object);
 	rv = vm_map_find(&p->p_vmspace->vm_map, 
 			 shm_handle->shm_object, 0,
-			 &attach_va, size,
+			 &attach_va,
+			 size, PAGE_SIZE,
 			 ((flags & MAP_FIXED) ? 0 : 1), 
 			 VM_MAPTYPE_NORMAL,
 			 prot, prot,

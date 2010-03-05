@@ -561,9 +561,9 @@ link_elf_load_file(const char* filename, linker_file_t* result)
     vm_object_reference(ef->object);
     ef->address = (caddr_t)vm_map_min(&kernel_map);
     error = vm_map_find(&kernel_map, ef->object, 0,
-			(vm_offset_t *)&ef->address, mapsize,
-			1,
-			VM_MAPTYPE_NORMAL,
+			(vm_offset_t *)&ef->address,
+			mapsize, PAGE_SIZE,
+			1, VM_MAPTYPE_NORMAL,
 			VM_PROT_ALL, VM_PROT_ALL,
 			0);
     if (error) {

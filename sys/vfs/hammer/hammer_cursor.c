@@ -771,22 +771,27 @@ again:
  * An element was moved from one node to another or within a node.  The
  * index may also represent the end of the node (index == numelements).
  *
+ * {oparent,pindex} is the parent node's pointer to onode/oindex.
+ *
  * This is used by the rebalancing code.  This is not an insertion or
  * deletion and any additional elements, including the degenerate case at
  * the end of the node, will be dealt with by additional distinct calls.
  */
 void
-hammer_cursor_moved_element(hammer_node_t onode, hammer_node_t nnode,
-			    int oindex, int nindex)
+hammer_cursor_moved_element(hammer_node_t oparent, int pindex,
+			    hammer_node_t onode, int oindex,
+			    hammer_node_t nnode, int nindex)
 {
 	hammer_cursor_t cursor;
 	hammer_node_ondisk_t ondisk;
 	hammer_node_ondisk_t nndisk;
 
+	/*
+	 * Adjust any cursors pointing at the element
+	 */
 	ondisk = onode->ondisk;
 	nndisk = nnode->ondisk;
-
-again:
+again1:
 	TAILQ_FOREACH(cursor, &onode->cursor_list, deadlk_entry) {
 		KKASSERT(cursor->node == onode);
 		if (cursor->index != oindex)
@@ -799,7 +804,44 @@ again:
 		cursor->index = nindex;
 		hammer_ref_node(nnode);
 		hammer_rel_node(onode);
-		goto again;
+		goto again1;
+	}
+
+	/*
+	 * When moving the first element of onode to a different node any
+	 * cursor which is pointing at (oparent,pindex) must be repointed
+	 * to nnode and ATEDISK must be cleared.
+	 *
+	 * This prevents cursors from losing track due to insertions.
+	 * Insertions temporarily release the cursor in order to update
+	 * the mirror_tids.  It primarily effects the mirror_write code.
+	 * The other code paths generally only do a single insertion and
+	 * then relookup or drop the cursor.
+	 */
+	if (onode == nnode || oindex)
+		return;
+	ondisk = oparent->ondisk;
+again2:
+	TAILQ_FOREACH(cursor, &oparent->cursor_list, deadlk_entry) {
+		KKASSERT(cursor->node == oparent);
+		if (cursor->index != pindex)
+			continue;
+		kprintf("HAMMER debug: shifted cursor pointing at parent\n"
+			"parent %016jx:%d onode %016jx:%d nnode %016jx:%d\n",
+			(intmax_t)oparent->node_offset, pindex,
+			(intmax_t)onode->node_offset, oindex,
+			(intmax_t)nnode->node_offset, nindex);
+		print_backtrace();
+		TAILQ_REMOVE(&oparent->cursor_list, cursor, deadlk_entry);
+		TAILQ_INSERT_TAIL(&nnode->cursor_list, cursor, deadlk_entry);
+		if (cursor->leaf == &ondisk->elms[oindex].leaf)
+			cursor->leaf = &nndisk->elms[nindex].leaf;
+		cursor->node = nnode;
+		cursor->index = nindex;
+		cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
+		hammer_ref_node(nnode);
+		hammer_rel_node(oparent);
+		goto again2;
 	}
 }
 

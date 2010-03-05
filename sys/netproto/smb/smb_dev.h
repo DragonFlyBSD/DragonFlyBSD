@@ -113,7 +113,7 @@ struct smbioc_rq {
 struct smbioc_t2rq {
 	u_int16_t	ioc_setup[3];
 	int		ioc_setupcnt;
-	const char *	ioc_name;
+	char *		ioc_name;
 	u_short		ioc_tparamcnt;
 	void *		ioc_tparam;
 	u_short		ioc_tdatacnt;

@@ -610,7 +610,7 @@ hammer_ioc_mirror_write_rec(hammer_cursor_t cursor,
 	/*
 	 * Certain records are not part of the mirroring operation
 	 */
-	if (hammer_mirror_nomirror(&mrec->leaf.base))
+	if (error == 0 && hammer_mirror_nomirror(&mrec->leaf.base))
 		return(0);
 
 	/*
@@ -628,10 +628,12 @@ hammer_ioc_mirror_write_rec(hammer_cursor_t cursor,
 	 *
 	 * These functions can return EDEADLK
 	 */
-	cursor->key_beg = mrec->leaf.base;
-	cursor->flags |= HAMMER_CURSOR_BACKEND;
-	cursor->flags &= ~HAMMER_CURSOR_INSERT;
-	error = hammer_btree_lookup(cursor);
+	if (error == 0) {
+		cursor->key_beg = mrec->leaf.base;
+		cursor->flags |= HAMMER_CURSOR_BACKEND;
+		cursor->flags &= ~HAMMER_CURSOR_INSERT;
+		error = hammer_btree_lookup(cursor);
+	}
 
 	if (error == 0 && hammer_mirror_check(cursor, mrec)) {
 		error = hammer_mirror_update(cursor, mrec);
