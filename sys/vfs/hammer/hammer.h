@@ -58,6 +58,7 @@
 #include <sys/ktr.h>
 #include <sys/globaldata.h>
 #include <sys/limits.h>
+#include <vm/vm_extern.h>
 
 #include <sys/buf2.h>
 #include <sys/signal2.h>

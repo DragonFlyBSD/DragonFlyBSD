@@ -113,6 +113,12 @@ retry:
 
 	while (error == 0) {
 		/*
+		 * Rebalancing can be hard on the memory allocator, make
+		 * sure there is enough free memory before doing it.
+		 */
+		vm_wait_nominal();
+
+		/*
 		 * We only care about internal nodes visited for the last
 		 * time on the way up... that is, a trailing scan of the
 		 * internal node after all of its children have been recursed
