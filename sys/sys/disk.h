@@ -154,7 +154,6 @@ void disk_config(void *);
 
 typedef struct disk_msg {
 	struct lwkt_msg hdr;
-
 	void	*load;
 	void	*load2;
 } *disk_msg_t;

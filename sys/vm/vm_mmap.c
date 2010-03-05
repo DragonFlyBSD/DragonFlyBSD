@@ -1257,11 +1257,13 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		rv = vm_map_stack(map, *addr, size, flags,
 				  prot, maxprot, docow);
 	} else if (flags & MAP_VPAGETABLE) {
-		rv = vm_map_find(map, object, foff, addr, size, fitit,
-				 VM_MAPTYPE_VPAGETABLE, prot, maxprot, docow);
+		rv = vm_map_find(map, object, foff, addr, size, PAGE_SIZE,
+				 fitit, VM_MAPTYPE_VPAGETABLE,
+				 prot, maxprot, docow);
 	} else {
-		rv = vm_map_find(map, object, foff, addr, size, fitit,
-				 VM_MAPTYPE_NORMAL, prot, maxprot, docow);
+		rv = vm_map_find(map, object, foff, addr, size, PAGE_SIZE,
+				 fitit, VM_MAPTYPE_NORMAL,
+				 prot, maxprot, docow);
 	}
 
 	if (rv != KERN_SUCCESS) {

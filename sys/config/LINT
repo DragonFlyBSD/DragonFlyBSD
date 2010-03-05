@@ -920,6 +920,7 @@ device		da			#SCSI direct access devices (aka disks)
 device		sa			#SCSI tapes
 device		cd			#SCSI CD-ROMs
 device		pass			#CAM passthrough driver
+device		sg			#Passthrough device (linux scsi generic)
 device		pt			#SCSI processor type
 device		ses			#SCSI SES/SAF-TE driver
 

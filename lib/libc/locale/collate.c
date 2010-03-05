@@ -254,7 +254,7 @@ __collate_err(int ex, const char *f)
 	const char *progname;
 	int serrno = errno;
 
-	progname = getprogname();
+	progname = _getprogname();
 	_write(STDERR_FILENO, progname, strlen(progname));
 	_write(STDERR_FILENO, ": ", 2);
 	_write(STDERR_FILENO, f, strlen(f));

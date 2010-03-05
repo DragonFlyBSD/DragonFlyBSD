@@ -128,8 +128,9 @@ exec_linux_imgact(struct image_params *imgp)
 	 */
 	vmaddr = virtual_offset;
 	error = vm_map_find(&vmspace->vm_map, NULL, 0, &vmaddr,
-		    	    a_out->a_text + a_out->a_data + bss_size, FALSE,
-			    VM_MAPTYPE_NORMAL,
+			    a_out->a_text + a_out->a_data + bss_size,
+			    PAGE_SIZE,
+			    FALSE, VM_MAPTYPE_NORMAL,
 			    VM_PROT_ALL, VM_PROT_ALL, 0);
 	if (error)
 	    return error;
@@ -199,8 +200,8 @@ exec_linux_imgact(struct image_params *imgp)
 	if (bss_size != 0) {
 	    vmaddr = virtual_offset + a_out->a_text + a_out->a_data;
 	    error = vm_map_find(&vmspace->vm_map, NULL, 0, &vmaddr, 
-				bss_size, FALSE,
-				VM_MAPTYPE_NORMAL,
+				bss_size, PAGE_SIZE,
+				FALSE, VM_MAPTYPE_NORMAL,
 				VM_PROT_ALL, VM_PROT_ALL,
 				0);
 	    if (error)

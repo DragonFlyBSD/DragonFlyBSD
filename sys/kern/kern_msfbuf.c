@@ -119,7 +119,8 @@ msf_buf_init(void *__dummy)
 	TAILQ_INIT(&msf_buf_freelist);
 
 	msf_base = kmem_alloc_nofault(&kernel_map,
-				      msf_buf_count * XIO_INTERNAL_SIZE);
+				      msf_buf_count * XIO_INTERNAL_SIZE,
+				      PAGE_SIZE);
 
 	msf_bufs = kmalloc(msf_buf_count * sizeof(struct msf_buf), M_MSFBUF,
 			M_WAITOK|M_ZERO);

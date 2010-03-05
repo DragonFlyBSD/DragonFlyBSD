@@ -146,7 +146,7 @@ The usefulness is somewhat mitigated by the maximum number
 of vnodes supported by the system via
 .Cd kern.maxfiles ,
 because the bulk data in the cache is lost when the related
-vnode is recycled.  In this case it might be desireable to
+vnode is recycled.  In this case it might be desirable to
 take the plunge into running a 64-bit kernel which can support
 far more vnodes.  32-bit kernels have limited kernel virtual
 memory (KVM) and cannot reliably support more than around
@@ -257,7 +257,7 @@ more in the 100-200G range certainly are.  If the machine has only a 1GigE
 ethernet (100MB/s) there's no point configuring it for more SSD bandwidth.
 A single SSD of the desired size would be sufficient.
 .Sh INITIAL BURSTING & REPEATED BURSTING
-Even though the average write bandwidth is limited it is desireable
+Even though the average write bandwidth is limited it is desirable
 to have a large initial burst after boot to load the cache.
 .Cd curburst
 is initialized to 4GB by default and you can force rebursting
@@ -448,9 +448,9 @@ people will be using MLC.
 .Nm
 is usable with both technologies.
 .Sh SEE ALSO
-.Xr swapon 8 ,
+.Xr fstab 5 ,
 .Xr disklabel64 8 ,
-.Xr fstab 5
+.Xr swapon 8
 .Sh HISTORY
 .Nm
 first appeared in

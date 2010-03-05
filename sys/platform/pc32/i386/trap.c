@@ -124,7 +124,6 @@
 int (*pmath_emulate) (struct trapframe *);
 
 extern void trap (struct trapframe *frame);
-extern int trapwrite (unsigned addr);
 extern void syscall2 (struct trapframe *frame);
 
 static int trap_pfault (struct trapframe *, int, vm_offset_t);
@@ -989,21 +988,6 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 		PHOLD(lp->lwp_proc);
 
 		/*
-		 * Grow the stack if necessary
-		 */
-		/* grow_stack returns false only if va falls into
-		 * a growable stack region and the stack growth
-		 * fails.  It returns true if va was not within
-		 * a growable stack region, or if the stack 
-		 * growth succeeded.
-		 */
-		if (!grow_stack(lp->lwp_proc, va)) {
-			rv = KERN_FAILURE;
-			PRELE(lp->lwp_proc);
-			goto nogo;
-		}
-
-		/*
 		 * Issue fault
 		 */
 		fault_flags = 0;
@@ -1164,50 +1148,6 @@ dblfault_handler(void)
 	kprintf("lapic.id = %08x\n", lapic.id);
 #endif
 	panic("double fault");
-}
-
-/*
- * Compensate for 386 brain damage (missing URKR).
- * This is a little simpler than the pagefault handler in trap() because
- * it the page tables have already been faulted in and high addresses
- * are thrown out early for other reasons.
- */
-int
-trapwrite(unsigned addr)
-{
-	struct lwp *lp;
-	vm_offset_t va;
-	struct vmspace *vm;
-	int rv;
-
-	va = trunc_page((vm_offset_t)addr);
-	/*
-	 * XXX - MAX is END.  Changed > to >= for temp. fix.
-	 */
-	if (va >= VM_MAX_USER_ADDRESS)
-		return (1);
-
-	lp = curthread->td_lwp;
-	vm = lp->lwp_vmspace;
-
-	PHOLD(lp->lwp_proc);
-
-	if (!grow_stack(lp->lwp_proc, va)) {
-		PRELE(lp->lwp_proc);
-		return (1);
-	}
-
-	/*
-	 * fault the data page
-	 */
-	rv = vm_fault(&vm->vm_map, va, VM_PROT_WRITE, VM_FAULT_DIRTY);
-
-	PRELE(lp->lwp_proc);
-
-	if (rv != KERN_SUCCESS)
-		return 1;
-
-	return (0);
 }
 
 /*

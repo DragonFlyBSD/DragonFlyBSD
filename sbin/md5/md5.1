@@ -93,12 +93,12 @@ The use of offsets is implemented using
 .Fn mmap
 and will only work on regular files and mmap-able devices.
 .Pp
-If the beginning offset is negative, its absolute value is substracted
+If the beginning offset is negative, its absolute value is subtracted
 from the file's size.
 Zero thus means the very beginning of each file,
 which is also the default if the option is omitted entirely.
 .It Fl e Ar offset
-If the end-offset is not positive, its absolute value is substracted
+If the end-offset is not positive, its absolute value is subtracted
 from the file's size.
 Zero thus means the very end of each file,
 which is also the default if the option is omitted entirely.

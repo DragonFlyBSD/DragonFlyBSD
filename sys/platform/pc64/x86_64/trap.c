@@ -857,21 +857,6 @@ trap_pfault(struct trapframe *frame, int usermode)
 		PHOLD(lp->lwp_proc);
 
 		/*
-		 * Grow the stack if necessary
-		 */
-		/* grow_stack returns false only if va falls into
-		 * a growable stack region and the stack growth
-		 * fails.  It returns true if va was not within
-		 * a growable stack region, or if the stack 
-		 * growth succeeded.
-		 */
-		if (!grow_stack(lp->lwp_proc, va)) {
-			rv = KERN_FAILURE;
-			PRELE(lp->lwp_proc);
-			goto nogo;
-		}
-
-		/*
 		 * Issue fault
 		 */
 		fault_flags = 0;

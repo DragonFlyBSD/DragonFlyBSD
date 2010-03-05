@@ -835,6 +835,17 @@ loop:
 }
 
 /*
+ * Wait for sufficient free memory for nominal heavy memory use kernel
+ * operations.
+ */
+void
+vm_wait_nominal(void)
+{
+	while (vm_page_count_min(0))
+		vm_wait(0);
+}
+
+/*
  * Block until free pages are available for allocation, called in various
  * places before memory allocations.
  */

@@ -106,9 +106,8 @@ kmem_alloc_pageable(vm_map_t map, vm_size_t size)
 	size = round_page(size);
 	addr = vm_map_min(map);
 	result = vm_map_find(map, NULL, (vm_offset_t) 0,
-			     &addr, size,
-			     TRUE, 
-			     VM_MAPTYPE_NORMAL,
+			     &addr, size, PAGE_SIZE,
+			     TRUE, VM_MAPTYPE_NORMAL,
 			     VM_PROT_ALL, VM_PROT_ALL,
 			     0);
 	if (result != KERN_SUCCESS) {
@@ -123,7 +122,7 @@ kmem_alloc_pageable(vm_map_t map, vm_size_t size)
  *	Same as kmem_alloc_pageable, except that it create a nofault entry.
  */
 vm_offset_t
-kmem_alloc_nofault(vm_map_t map, vm_size_t size)
+kmem_alloc_nofault(vm_map_t map, vm_size_t size, vm_size_t align)
 {
 	vm_offset_t addr;
 	int result;
@@ -131,9 +130,8 @@ kmem_alloc_nofault(vm_map_t map, vm_size_t size)
 	size = round_page(size);
 	addr = vm_map_min(map);
 	result = vm_map_find(map, NULL, (vm_offset_t) 0,
-			     &addr, size,
-			     TRUE,
-			     VM_MAPTYPE_NORMAL,
+			     &addr, size, align,
+			     TRUE, VM_MAPTYPE_NORMAL,
 			     VM_PROT_ALL, VM_PROT_ALL,
 			     MAP_NOFAULT);
 	if (result != KERN_SUCCESS) {
@@ -169,7 +167,7 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 	 * offset within the kernel map.
 	 */
 	vm_map_lock(map);
-	if (vm_map_findspace(map, vm_map_min(map), size, 1, 0, &addr)) {
+	if (vm_map_findspace(map, vm_map_min(map), size, PAGE_SIZE, 0, &addr)) {
 		vm_map_unlock(map);
 		if (kmflags & KM_KRESERVE)
 			vm_map_entry_krelease(count);
@@ -266,9 +264,8 @@ kmem_suballoc(vm_map_t parent, vm_map_t result,
 
 	*min = (vm_offset_t) vm_map_min(parent);
 	ret = vm_map_find(parent, NULL, (vm_offset_t) 0,
-			  min, size,
-			  TRUE,
-			  VM_MAPTYPE_UNSPECIFIED,
+			  min, size, PAGE_SIZE,
+			  TRUE, VM_MAPTYPE_UNSPECIFIED,
 			  VM_PROT_ALL, VM_PROT_ALL,
 			  0);
 	if (ret != KERN_SUCCESS) {
@@ -307,8 +304,8 @@ kmem_alloc_wait(vm_map_t map, vm_size_t size)
 		 * to lock out sleepers/wakers.
 		 */
 		vm_map_lock(map);
-		if (vm_map_findspace(map, vm_map_min(map), size,
-				     1, 0, &addr) == 0) {
+		if (vm_map_findspace(map, vm_map_min(map),
+				     size, PAGE_SIZE, 0, &addr) == 0) {
 			break;
 		}
 		/* no space now; see if we can ever get space */

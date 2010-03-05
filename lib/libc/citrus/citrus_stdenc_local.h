@@ -33,6 +33,11 @@
 
 #include "citrus_module.h"
 
+struct _citrus_stdenc;
+struct _citrus_stdenc_ops;
+struct _citrus_stdenc_state_desc;
+struct _citrus_stdenc_traits;
+
 #define _CITRUS_STDENC_GETOPS_FUNC_BASE(n)			\
 int n(struct _citrus_stdenc_ops *, size_t, uint32_t)
 #define _CITRUS_STDENC_GETOPS_FUNC(_e_)					\
