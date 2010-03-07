@@ -41,6 +41,7 @@
 #include <sys/types.h>
 #include <err.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <paths.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -115,7 +116,7 @@ static busTypeName busTypeTable[] =
     { UNKNOWN_BUSTYPE,	"---"    }
 };
 
-char* whereStrings[] = {
+const char* whereStrings[] = {
     "Extended BIOS Data Area",
     "BIOS top of memory",
     "Default top of memory",
@@ -306,7 +307,6 @@ main( int argc, char *argv[] )
     mpfps_t	mpfps;
     int		defaultConfig;
 
-    extern int	optreset;
     int		ch;
 
     /* announce ourselves */
@@ -359,7 +359,7 @@ main( int argc, char *argv[] )
     }
 
     if ( verbose )
-        printf( "\n MP FPS found in %s @ physical addr: 0x%08x\n",
+        printf( "\n MP FPS found in %s @ physical addr: 0x%08lx\n",
 	      whereStrings[ where - 1 ], paddr );
 
     puts( SEP_LINE );
@@ -412,16 +412,12 @@ apic_probe( vm_offset_t* paddr, int* where )
     if ( segment ) {		    /* search EBDA */
         target = (vm_offset_t)segment << 4;
 	if ( verbose )
-	    printf( "found, searching EBDA @ 0x%08x\n", target );
-        seekEntry( target );
-        readEntry( buffer, ONE_KBYTE );
+	    printf( "found, searching EBDA @ 0x%08lx\n", target );
 
-        for ( x = 0; x < ONE_KBYTE / sizeof ( unsigned int ); NEXT(x) ) {
-            if ( buffer[ x ] == MP_SIG ) {
-                *where = 1;
-                *paddr = (x * sizeof( unsigned int )) + target;
-                return;
-            }
+	if ((x = findMpSig(target, ONE_KBYTE)) != -1) {
+	    *where = 1;
+	    *paddr = x;
+	    return;
         }
     }
     else {
@@ -435,7 +431,7 @@ apic_probe( vm_offset_t* paddr, int* where )
     --segment;						/* less ONE_KBYTE */
     target = segment * 1024;
     if ( verbose )
-        printf( " searching CMOS 'top of mem' @ 0x%08x (%dK)\n",
+        printf( " searching CMOS 'top of mem' @ 0x%08lx (%dK)\n",
 	        target, segment );
     seekEntry( target );
     readEntry( buffer, ONE_KBYTE );
@@ -452,7 +448,7 @@ apic_probe( vm_offset_t* paddr, int* where )
     if ( target != (DEFAULT_TOPOFMEM - 1024)) {
 	target = (DEFAULT_TOPOFMEM - 1024);
 	if ( verbose )
-	    printf( " searching default 'top of mem' @ 0x%08x (%dK)\n",
+	    printf( " searching default 'top of mem' @ 0x%08lx (%ldK)\n",
 		    target, (target / 1024) );
 	seekEntry( target );
 	readEntry( buffer, ONE_KBYTE );
@@ -498,30 +494,22 @@ apic_probe( vm_offset_t* paddr, int* where )
 	/* search additional memory */
 	target = GROPE_AREA1;
 	if ( verbose )
-	    printf( " groping memory @ 0x%08x\n", target );
-	seekEntry( target );
-	readEntry( buffer, GROPE_SIZE );
+	    printf( " groping memory @ 0x%08lx\n", target );
 
-	for ( x = 0; x < GROPE_SIZE / sizeof( unsigned int ); NEXT(x) ) {
-	    if ( buffer[ x ] == MP_SIG ) {
-		*where = 6;
-		*paddr = (x * sizeof( unsigned int )) + GROPE_AREA1;
-		return;
-	    }
+	if ((x = findMpSig(target, GROPE_SIZE)) != -1) {
+	    *where = 6;
+	    *paddr = x;
+	    return;
 	}
 
 	target = GROPE_AREA2;
 	if ( verbose )
-	    printf( " groping memory @ 0x%08x\n", target );
-	seekEntry( target );
-	readEntry( buffer, GROPE_SIZE );
+	    printf( " groping memory @ 0x%08lx\n", target );
 
-	for ( x = 0; x < GROPE_SIZE / sizeof( unsigned int ); NEXT(x) ) {
-	    if ( buffer[ x ] == MP_SIG ) {
-		*where = 7;
-		*paddr = (x * sizeof( unsigned int )) + GROPE_AREA2;
-		return;
-	    }
+	if ((x = findMpSig(target, GROPE_SIZE)) != -1) {
+	    *where = 7;
+	    *paddr = x;
+	    return;
 	}
     }
 
@@ -570,7 +558,7 @@ MPFloatingPointer( vm_offset_t paddr, int where, mpfps_t* mpfps )
 	printf( "BOGUS!\n" );
 	exit( 1 );
     }
-    printf( "  physical address:\t\t0x%08x\n", paddr );
+    printf( "  physical address:\t\t0x%08lx\n", paddr );
 
     printf( "  signature:\t\t\t'" );
     pnstr( mpfps->signature, 4 );
@@ -967,14 +955,14 @@ ioApicEntry( void )
 }
 
 
-char* intTypes[] = {
+const char* intTypes[] = {
     "INT", "NMI", "SMI", "ExtINT"
 };
 
-char* polarityMode[] = {
+const char* polarityMode[] = {
     "conforms", "active-hi", "reserved", "active-lo"
 };
-char* triggerMode[] = {
+const char* triggerMode[] = {
     "conforms", "edge", "reserved", "level"
 };
 
@@ -1033,8 +1021,8 @@ sasEntry( void )
 	break;
     }
 
-    printf( " address base: 0x%qx\n", entry.addressBase );
-    printf( " address range: 0x%qx\n", entry.addressLength );
+    printf( " address base: 0x%" PRIx64 "\n", entry.addressBase );
+    printf( " address range: 0x%" PRIx64 "\n", entry.addressLength );
 }
 
 
