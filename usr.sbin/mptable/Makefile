@@ -2,7 +2,7 @@
 # $DragonFly: src/usr.sbin/mptable/Makefile,v 1.2 2003/06/17 04:29:57 dillon Exp $
 
 PROG = mptable
-WARNS?=	1
+WARNS?=	6
 
 BINMODE = 550
 
