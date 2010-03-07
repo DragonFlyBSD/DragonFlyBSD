@@ -150,7 +150,7 @@ tableEntry extendedtableEntryTypes[] =
 /* MP Floating Pointer Structure */
 typedef struct MPFPS {
     char	signature[ 4 ];
-    void*	pap;
+    uint32_t	pap;
     u_char	length;
     u_char	spec_rev;
     u_char	checksum;
@@ -164,16 +164,16 @@ typedef struct MPFPS {
 /* MP Configuration Table Header */
 typedef struct MPCTH {
     char	signature[ 4 ];
-    u_short	base_table_length;
+    uint16_t	base_table_length;
     u_char	spec_rev;
     u_char	checksum;
     u_char	oem_id[ 8 ];
     u_char	product_id[ 12 ];
-    void*	oem_table_pointer;
-    u_short	oem_table_size;
-    u_short	entry_count;
-    void*	apic_address;
-    u_short	extended_table_length;
+    uint32_t	oem_table_pointer;
+    uint16_t	oem_table_size;
+    uint16_t	entry_count;
+    uint32_t	apic_address;
+    uint16_t	extended_table_length;
     u_char	extended_table_checksum;
     u_char	reserved;
 } mpcth_t;
@@ -184,10 +184,10 @@ typedef struct PROCENTRY {
     u_char	apicID;
     u_char	apicVersion;
     u_char	cpuFlags;
-    u_long	cpuSignature;
-    u_long	featureFlags;
-    u_long	reserved1;
-    u_long	reserved2;
+    uint32_t	cpuSignature;
+    uint32_t	featureFlags;
+    uint32_t	reserved1;
+    uint32_t	reserved2;
 } ProcEntry;
 
 typedef struct BUSENTRY {
@@ -201,13 +201,13 @@ typedef struct IOAPICENTRY {
     u_char	apicID;
     u_char	apicVersion;
     u_char	apicFlags;
-    void*	apicAddress;
+    uint32_t	apicAddress;
 } IOApicEntry;
 
 typedef struct INTENTRY {
     u_char	type;
     u_char	intType;
-    u_short	intFlags;
+    uint16_t	intFlags;
     u_char	srcBusID;
     u_char	srcBusIRQ;
     u_char	dstApicID;
@@ -244,7 +244,7 @@ typedef struct CBASMENTRY {
     u_char	length;
     u_char	busID;
     u_char	addressMod;
-    u_int	predefinedRange;
+    uint32_t	predefinedRange;
 } CbasmEntry;
 
 
@@ -254,7 +254,7 @@ static void apic_probe( vm_offset_t* paddr, int* where );
 static void MPConfigDefault( int featureByte );
 
 static void MPFloatingPointer( vm_offset_t paddr, int where, mpfps_t* mpfps );
-static void MPConfigTableHeader( void* pap );
+static void MPConfigTableHeader( uint32_t pap );
 
 static int readType( void );
 static void seekEntry( vm_offset_t addr );
@@ -388,7 +388,7 @@ main( int argc, char *argv[] )
 /*
  * set PHYSICAL address of MP floating pointer structure
  */
-#define NEXT(X)		((X) += 4)
+#define NEXT(X)		((X) += sizeof(uint32_t))
 static void
 apic_probe( vm_offset_t* paddr, int* where )
 {
@@ -397,9 +397,9 @@ apic_probe( vm_offset_t* paddr, int* where )
      */
 
     int		x;
-    u_short	segment;
+    uint16_t	segment;
     vm_offset_t	target;
-    u_int	buffer[ BIOS_SIZE / sizeof( int ) ];
+    uint32_t	buffer[ BIOS_SIZE / sizeof( uint32_t ) ];
 
     if ( verbose )
         printf( "\n" );
@@ -408,7 +408,7 @@ apic_probe( vm_offset_t* paddr, int* where )
     if ( verbose )
         printf( " looking for EBDA pointer @ 0x%04x, ", EBDA_POINTER );
     seekEntry( (vm_offset_t)EBDA_POINTER );
-    readEntry( &segment, 2 );
+    readEntry( &segment, sizeof(segment) );
     if ( segment ) {		    /* search EBDA */
         target = (vm_offset_t)segment << 4;
 	if ( verbose )
@@ -431,7 +431,7 @@ apic_probe( vm_offset_t* paddr, int* where )
 
     /* read CMOS for real top of mem */
     seekEntry( (vm_offset_t)TOPOFMEM_POINTER );
-    readEntry( &segment, 2 );
+    readEntry( &segment, sizeof(segment) );
     --segment;						/* less ONE_KBYTE */
     target = segment * 1024;
     if ( verbose )
@@ -660,7 +660,7 @@ MPConfigDefault( int featureByte )
  * 
  */
 static void
-MPConfigTableHeader( void* pap )
+MPConfigTableHeader( uint32_t pap )
 {
     vm_offset_t paddr;
     mpcth_t	cth;
