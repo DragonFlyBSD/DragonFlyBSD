@@ -385,10 +385,24 @@ main( int argc, char *argv[] )
 }
 
 
+static int
+findMpSig(uint32_t target, size_t bufsize)
+{
+    uint32_t	buffer[BIOS_SIZE / sizeof(uint32_t)];
+    uint32_t *x;
+
+    seekEntry(target);
+    readEntry(buffer, (bufsize + sizeof(*x) - 1) & ~sizeof(*x));
+    for (x = buffer; x < buffer + bufsize / sizeof(*x); ++x) {
+	if (*x == MP_SIG)
+	    return (x - buffer) * sizeof(*x) + target;
+    }
+    return -1;
+}
+
 /*
  * set PHYSICAL address of MP floating pointer structure
  */
-#define NEXT(X)		((X) += sizeof(uint32_t))
 static void
 apic_probe( vm_offset_t* paddr, int* where )
 {
@@ -399,7 +413,6 @@ apic_probe( vm_offset_t* paddr, int* where )
     int		x;
     uint16_t	segment;
     vm_offset_t	target;
-    uint32_t	buffer[ BIOS_SIZE / sizeof( uint32_t ) ];
 
     if ( verbose )
         printf( "\n" );
@@ -433,15 +446,11 @@ apic_probe( vm_offset_t* paddr, int* where )
     if ( verbose )
         printf( " searching CMOS 'top of mem' @ 0x%08lx (%dK)\n",
 	        target, segment );
-    seekEntry( target );
-    readEntry( buffer, ONE_KBYTE );
 
-    for ( x = 0; x < ONE_KBYTE / sizeof ( unsigned int ); NEXT(x) ) {
-        if ( buffer[ x ] == MP_SIG ) {
-            *where = 2;
-            *paddr = (x * sizeof( unsigned int )) + target;
-            return;
-        }
+    if ((x = findMpSig(target, ONE_KBYTE)) != -1) {
+	*where = 2;
+	*paddr = x;
+	return;
     }
 
     /* we don't necessarily believe CMOS, check base of the last 1K of 640K */
@@ -450,44 +459,32 @@ apic_probe( vm_offset_t* paddr, int* where )
 	if ( verbose )
 	    printf( " searching default 'top of mem' @ 0x%08lx (%ldK)\n",
 		    target, (target / 1024) );
-	seekEntry( target );
-	readEntry( buffer, ONE_KBYTE );
 
-	for ( x = 0; x < ONE_KBYTE / sizeof ( unsigned int ); NEXT(x) ) {
-	    if ( buffer[ x ] == MP_SIG ) {
-		*where = 3;
-		*paddr = (x * sizeof( unsigned int )) + target;
-		return;
-	    }
+	if ((x = findMpSig(target, ONE_KBYTE)) != -1) {
+	    *where = 3;
+	    *paddr = x;
+	    return;
 	}
     }
 
     /* search the BIOS */
     if ( verbose )
         printf( " searching BIOS @ 0x%08x\n", BIOS_BASE );
-    seekEntry( BIOS_BASE );
-    readEntry( buffer, BIOS_SIZE );
 
-    for ( x = 0; x < BIOS_SIZE / sizeof( unsigned int ); NEXT(x) ) {
-        if ( buffer[ x ] == MP_SIG ) {
-            *where = 4;
-            *paddr = (x * sizeof( unsigned int )) + BIOS_BASE;
-            return;
-        }
+    if ((x = findMpSig(BIOS_BASE, BIOS_SIZE)) != -1) {
+	*where = 4;
+	*paddr = x;
+	return;
     }
 
     /* search the extended BIOS */
     if ( verbose )
         printf( " searching extended BIOS @ 0x%08x\n", BIOS_BASE2 );
-    seekEntry( BIOS_BASE2 );
-    readEntry( buffer, BIOS_SIZE );
 
-    for ( x = 0; x < BIOS_SIZE / sizeof( unsigned int ); NEXT(x) ) {
-        if ( buffer[ x ] == MP_SIG ) {
-            *where = 5;
-            *paddr = (x * sizeof( unsigned int )) + BIOS_BASE2;
-            return;
-        }
+    if ((x = findMpSig(BIOS_BASE2, BIOS_SIZE)) != -1) {
+	*where = 5;
+	*paddr = x;
+	return;
     }
 
     if ( grope ) {
