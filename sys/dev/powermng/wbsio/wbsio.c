@@ -2,6 +2,7 @@
 /*	$OpenBSD: wbsio.c,v 1.5 2009/03/29 21:53:52 sthen Exp $	*/
 /*
  * Copyright (c) 2008 Mark Kettenis <kettenis@openbsd.org>
+ * Copyright (c) 2010 Constantine A. Murenin <cnst++@dragonflybsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -21,14 +22,13 @@
  */
 
 #include <sys/param.h>
-#include <sys/device.h>
+#include <sys/bus.h>
 #include <sys/kernel.h>
+#include <sys/module.h>
+#include <sys/rman.h>
 #include <sys/systm.h>
 
-#include <machine/bus.h>
-
-#include <dev/isa/isareg.h>
-#include <dev/isa/isavar.h>
+#include <bus/isa/isavar.h>
 
 /* ISA bus registers */
 #define WBSIO_INDEX		0x00	/* Configuration Index Register */
@@ -60,18 +60,37 @@
 #define WBSIO_HM_ADDR_LSB	0x61	/* Address [7:0] */
 
 struct wbsio_softc {
-	struct device		sc_dev;
+	struct device		*sc_dev;
+
+	struct resource		*sc_iores;
+	int			sc_iorid;
 
 	bus_space_tag_t		sc_iot;
 	bus_space_handle_t	sc_ioh;
 };
 
-int	wbsio_probe(device_t, cfdata_t, void *);
-void	wbsio_attach(device_t, device_t, void *);
-int	wbsio_print(void *, const char *);
+static int	wbsio_probe(struct device *);
+static int	wbsio_attach(struct device *);
+static int	wbsio_detach(struct device *);
 
-CFATTACH_DECL_NEW(wbsio, sizeof(struct wbsio_softc),
-    wbsio_probe, wbsio_attach, NULL, NULL);
+static device_method_t wbsio_methods[] = {
+	DEVMETHOD(device_probe,		wbsio_probe),
+	DEVMETHOD(device_attach, 	wbsio_attach),
+	DEVMETHOD(device_detach,	wbsio_detach),
+
+	{ NULL, NULL}
+};
+
+static driver_t wbsio_driver = {
+	"wbsio",
+	wbsio_methods,
+	sizeof(struct wbsio_softc)
+};
+
+static devclass_t wbsio_devclass;
+
+DRIVER_MODULE(wbsio, isa, wbsio_driver, wbsio_devclass, NULL, NULL);
+
 
 static __inline void
 wbsio_conf_enable(bus_space_tag_t iot, bus_space_handle_t ioh)
@@ -101,75 +120,36 @@ wbsio_conf_write(bus_space_tag_t iot, bus_space_handle_t ioh, u_int8_t index,
 	bus_space_write_1(iot, ioh, WBSIO_DATA, data);
 }
 
-int
-wbsio_probe(device_t parent, cfdata_t match, void *aux)
+static int
+wbsio_probe(struct device *dev)
 {
-	struct isa_attach_args *ia = aux;
+	struct resource *iores;
+	int iorid = 0;
 	bus_space_tag_t iot;
 	bus_space_handle_t ioh;
-	u_int8_t reg;
-
-	/* Must supply an address */
-	if (ia->ia_nio < 1)
-		return 0;
-
-	if (ISA_DIRECT_CONFIG(ia))
-		return 0;
-
-	if (ia->ia_io[0].ir_addr == ISA_UNKNOWN_PORT)
-		return 0;
+	uint8_t reg_id, reg_rev;
+	const char *desc = NULL;
+	char fulldesc[64];
 
 	/* Match by device ID */
-	iot = ia->ia_iot;
-	if (bus_space_map(iot, ia->ia_io[0].ir_addr, WBSIO_IOSIZE, 0, &ioh))
-		return 0;
+
+	iores = bus_alloc_resource(dev, SYS_RES_IOPORT, &iorid,
+	    0ul, ~0ul, WBSIO_IOSIZE,
+	    RF_ACTIVE);
+	if (iores == NULL)
+		return ENXIO;
+	iot = rman_get_bustag(iores);
+	ioh = rman_get_bushandle(iores);
+
 	wbsio_conf_enable(iot, ioh);
-	reg = wbsio_conf_read(iot, ioh, WBSIO_ID);
-	aprint_debug("wbsio_probe: id 0x%02x\n", reg);
-	wbsio_conf_disable(iot, ioh);
-	bus_space_unmap(iot, ioh, WBSIO_IOSIZE);
-	switch (reg) {
-	case WBSIO_ID_W83627HF:
-	case WBSIO_ID_W83627THF:
-	case WBSIO_ID_W83627EHF:
-	case WBSIO_ID_W83627DHG:
-	case WBSIO_ID_W83637HF:
-	case WBSIO_ID_W83697HF:
-		ia->ia_nio = 1;
-		ia->ia_io[0].ir_size = WBSIO_IOSIZE;
-		ia->ia_niomem = 0;
-		ia->ia_nirq = 0;
-		ia->ia_ndrq = 0;
-		return 1;
-	}
-
-	return 0;
-}
-
-void
-wbsio_attach(device_t parent, device_t self, void *aux)
-{
-	struct wbsio_softc *sc = (void *)self;
-	struct isa_attach_args *ia = aux;
-	struct isa_attach_args nia;
-	const char *desc = NULL;
-	u_int8_t reg, reg0, reg1;
-	u_int16_t iobase;
-
-	/* Map ISA I/O space */
-	sc->sc_iot = ia->ia_iot;
-	if (bus_space_map(sc->sc_iot, ia->ia_io[0].ir_addr,
-	    WBSIO_IOSIZE, 0, &sc->sc_ioh)) {
-		aprint_error(": can't map i/o space\n");
-		return;
-	}
-
-	/* Enter configuration mode */
-	wbsio_conf_enable(sc->sc_iot, sc->sc_ioh);
-
 	/* Read device ID */
-	reg = wbsio_conf_read(sc->sc_iot, sc->sc_ioh, WBSIO_ID);
-	switch (reg) {
+	reg_id = wbsio_conf_read(iot, ioh, WBSIO_ID);
+	/* Read device revision */
+	reg_rev = wbsio_conf_read(iot, ioh, WBSIO_REV);
+	wbsio_conf_disable(iot, ioh);
+	bus_release_resource(dev, SYS_RES_IOPORT, iorid, iores);
+
+	switch (reg_id) {
 	case WBSIO_ID_W83627HF:
 		desc = "W83627HF";
 		break;
@@ -190,11 +170,39 @@ wbsio_attach(device_t parent, device_t self, void *aux)
 		break;
 	}
 
-	/* Read device revision */
-	reg = wbsio_conf_read(sc->sc_iot, sc->sc_ioh, WBSIO_REV);
+	if (desc == NULL)
+		return ENXIO;
 
-	aprint_naive("\n");
-	aprint_normal(": Winbond LPC Super I/O %s rev 0x%02x\n", desc, reg);
+	ksnprintf(fulldesc, sizeof(fulldesc),
+	    "Winbond LPC Super I/O %s rev 0x%02x", desc, reg_rev);
+	device_set_desc_copy(dev, fulldesc);
+	return 0;
+}
+
+static int
+wbsio_attach(struct device *dev)
+{
+	struct wbsio_softc *sc = device_get_softc(dev);
+	uint8_t reg0, reg1;
+	uint16_t iobase;
+	struct device *parent = device_get_parent(dev);
+	struct device *child;
+	struct devclass *c_dc;
+	int c_maxunit;
+
+	/* Map ISA I/O space */
+	sc->sc_iores = bus_alloc_resource(dev, SYS_RES_IOPORT, &sc->sc_iorid,
+	    0ul, ~0ul, WBSIO_IOSIZE,
+	    RF_ACTIVE);
+	if (sc->sc_iores == NULL) {
+		device_printf(dev, "can't map i/o space\n");
+		return ENXIO;
+	}
+	sc->sc_iot = rman_get_bustag(sc->sc_iores);
+	sc->sc_ioh = rman_get_bushandle(sc->sc_iores);
+
+	/* Enter configuration mode */
+	wbsio_conf_enable(sc->sc_iot, sc->sc_ioh);
 
 	/* Select HM logical device */
 	wbsio_conf_write(sc->sc_iot, sc->sc_ioh, WBSIO_LDN, WBSIO_LDN_HM);
@@ -208,29 +216,65 @@ wbsio_attach(device_t parent, device_t self, void *aux)
 	reg0 = wbsio_conf_read(sc->sc_iot, sc->sc_ioh, WBSIO_HM_ADDR_LSB);
 	reg1 = wbsio_conf_read(sc->sc_iot, sc->sc_ioh, WBSIO_HM_ADDR_MSB);
 	iobase = (reg1 << 8) | (reg0 & ~0x7);
+	device_printf(dev, "hardware monitor iobase is 0x%x\n", iobase);
 
 	/* Escape from configuration mode */
 	wbsio_conf_disable(sc->sc_iot, sc->sc_ioh);
 
-	if (iobase == 0)
-		return;
+	if (iobase == 0) {
+		device_printf(dev, "no hardware monitor configured\n");
+		return 0;
+	}
 
-	nia = *ia;
-	nia.ia_io[0].ir_addr = iobase;
-	config_found(self, &nia, wbsio_print);
+	child = NULL;
+	c_dc = devclass_find("lm");
+	if (c_dc == NULL) {
+		device_printf(dev, "lm devclass not found\n");
+		return ENXIO;
+	}
+	c_maxunit = devclass_get_maxunit(c_dc);
+	for (int u = 0; u < c_maxunit; u++) {
+		child = devclass_get_device(c_dc, u);
+		if (child == NULL)
+			continue;
+		if (isa_get_port(child) == iobase) {
+			if (device_is_attached(child)) {
+				device_printf(dev,
+				    "%s is already attached at 0x%x\n",
+				    device_get_nameunit(child), iobase);
+				return 0;
+			}
+			break;
+		}
+		if (device_is_attached(child))
+			continue;
+		device_printf(dev,
+		    "found unused %s at 0x%x with state %i, reusing at 0x%x\n",
+		    device_get_nameunit(child), isa_get_port(child),
+		    device_get_state(child), iobase);
+		break;
+	}
+	if (child == NULL)
+		child = BUS_ADD_CHILD(parent, parent, ISA_ORDER_PNP,
+		    "lm", -1);
+//	child = BUS_ADD_CHILD(parent, parent, ISA_ORDER_PNP,
+//	    "lm", 3 + device_get_unit(dev));
+	if (child == NULL) {
+		device_printf(dev, "cannot add child\n");
+		return ENXIO;
+	}
+	if (bus_set_resource(child, SYS_RES_IOPORT, 0, iobase, 8)) {
+		device_printf(dev, "cannot set resource\n");
+		return ENXIO;
+	}
+	return device_probe_and_attach(child);
 }
 
-int
-wbsio_print(void *aux, const char *pnp)
+static int
+wbsio_detach(struct device *dev)
 {
-	struct isa_attach_args *ia = aux;
+	struct wbsio_softc *sc = device_get_softc(dev);
 
-	if (pnp)
-		aprint_normal("%s", pnp);
-	if (ia->ia_io[0].ir_size)
-		aprint_normal(" port 0x%x", ia->ia_io[0].ir_addr);
-	if (ia->ia_io[0].ir_size > 1)
-		aprint_normal("-0x%x", ia->ia_io[0].ir_addr +
-		    ia->ia_io[0].ir_size - 1);
-	return (UNCONF);
+	return bus_release_resource(dev, SYS_RES_IOPORT,
+	    sc->sc_iorid, sc->sc_iores);
 }
