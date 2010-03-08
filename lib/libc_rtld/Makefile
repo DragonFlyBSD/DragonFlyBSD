@@ -5,15 +5,14 @@ INTERNALLIB=
 INSTALL_PIC_ARCHIVE=
 NOPROFILE=
 STATIC_LOCALES=
-BINDDIR= ${.CURDIR}/../../contrib/bind/lib/bind
 CFLAGS+=-I${.CURDIR}/../libc/include
+CFLAGS+=-I${.CURDIR}/../libc/resolv
 CFLAGS+=-I${.CURDIR}/../libc/rpc
 CFLAGS+=-I${.CURDIR}/../../include -D__thread=
 CFLAGS+=${AINC}
 
 AINC=	-I${.OBJDIR} -I${.CURDIR}/../libc/${MACHINE_ARCH}
 PRECIOUSLIB=	yes
-
 
 #
 # This is a list of syscalls that are renamed as __sys_{syscall}
@@ -32,5 +31,10 @@ HIDDEN_SYSCALLS= aio_suspend.o accept.o bind.o close.o connect.o dup.o dup2.o \
 	socketpair.o wait4.o write.o writev.o
 
 .include "${.CURDIR}/../libc/Makefile.inc"
+
+.PATH:  ${.CURDIR}/../libc/inet
+.PATH:  ${.CURDIR}/../libc/isc
+.PATH:  ${.CURDIR}/../libc/nameser
+.PATH:  ${.CURDIR}/../libc/resolv
 
 .include <bsd.lib.mk>

@@ -234,13 +234,6 @@ SUBDIR=	alias \
 	ypmatch \
 	ypwhich
 
-.if !defined(NO_BIND)
-SUBDIR+=dig \
-	dnssec-keygen \
-	dnssec-signzone \
-	host
-.endif
-
 .if defined(WANT_HESIOD)
 SUBDIR+=hesinfo
 .endif

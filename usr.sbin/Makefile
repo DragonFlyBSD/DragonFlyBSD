@@ -150,18 +150,6 @@ SUBDIR+=ipftest \
 	iptest
 .endif
 
-.if !defined(NO_BIND)
-SUBDIR+=named \
-	named.reload \
-	named.restart \
-	named-checkconf \
-	named-checkzone \
-	rndc \
-	rndc-confgen \
-	nslookup \
-	nsupdate
-.endif
-
 .if !defined(NO_LPR)
 SUBDIR+=lpr
 .endif

@@ -15,15 +15,14 @@ SRCS+=	base64.c ether_addr.c eui64.c \
 	if_indextoname.c if_nameindex.c if_nametoindex.c \
 	ip6opt.c linkaddr.c map_v4v6.c name6.c \
 	nsdispatch.c nslexer.c nsparser.y nss_compat.c ntoh.c \
-	rcmd.c rcmdsh.c recv.c res_comp.c res_data.c res_debug.c \
-	res_init.c res_mkquery.c res_query.c res_send.c \
+	rcmd.c rcmdsh.c recv.c \
 	rthdr.c sockatmark.c send.c vars.c
 
 .if !defined(NO_NS_CACHING)
 SRCS+=	nscache.c nscachedcli.c
 .endif
 
-CFLAGS+=-DINET6 -I${.OBJDIR}
+CFLAGS+=-DINET6 -I${.OBJDIR} -I${.CURDIR}/resolv
 
 YFLAGS+=-p_nsyy
 LFLAGS+=-P_nsyy
