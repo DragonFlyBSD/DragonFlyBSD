@@ -246,8 +246,10 @@ wbsio_attach(struct device *dev)
 			}
 			break;
 		}
-		if (device_is_attached(child))
+		if (device_is_attached(child)) {
+			child = NULL;
 			continue;
+		}
 		device_printf(dev,
 		    "found unused %s at 0x%x with state %i, reusing at 0x%x\n",
 		    device_get_nameunit(child), isa_get_port(child),
