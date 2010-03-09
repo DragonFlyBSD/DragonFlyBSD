@@ -54,7 +54,8 @@
 #include <sys/vmmeter.h>
 #include <sys/vnode.h>
 #include <sys/xio.h>
-#include <sys/sfbuf.h>
+
+#include <cpu/lwbuf.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -301,7 +302,7 @@ xio_copy_xtou(xio_t xio, int uoffset, void *uptr, int bytes)
     int error;
     int offset;
     vm_page_t m;
-    struct sf_buf *sf;
+    struct lwbuf *lwb;
 
     if (uoffset + bytes > xio->xio_bytes)
 	return(EFAULT);
@@ -316,9 +317,9 @@ xio_copy_xtou(xio_t xio, int uoffset, void *uptr, int bytes)
 	 ++i
     ) {
 	m = xio->xio_pages[i];
-	sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
-	error = copyout((char *)sf_buf_kva(sf) + offset, uptr, n);
-	sf_buf_free(sf);
+	lwb = lwbuf_alloc(m);
+	error = copyout((char *)lwbuf_kva(lwb) + offset, uptr, n);
+	lwbuf_free(lwb);
 	if (error)
 	    break;
 	bytes -= n;
@@ -349,7 +350,7 @@ xio_copy_xtok(xio_t xio, int uoffset, void *kptr, int bytes)
     int error;
     int offset;
     vm_page_t m;
-    struct sf_buf *sf;
+    struct lwbuf *lwb;
 
     if (bytes + uoffset > xio->xio_bytes)
 	return(EFAULT);
@@ -364,9 +365,9 @@ xio_copy_xtok(xio_t xio, int uoffset, void *kptr, int bytes)
 	 ++i
     ) {
 	m = xio->xio_pages[i];
-	sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
-	bcopy((char *)sf_buf_kva(sf) + offset, kptr, n);
-	sf_buf_free(sf);
+	lwb = lwbuf_alloc(m);
+	bcopy((char *)lwbuf_kva(lwb) + offset, kptr, n);
+	lwbuf_free(lwb);
 	bytes -= n;
 	kptr = (char *)kptr + n;
 	if (bytes == 0)
@@ -395,7 +396,7 @@ xio_copy_utox(xio_t xio, int uoffset, const void *uptr, int bytes)
     int error;
     int offset;
     vm_page_t m;
-    struct sf_buf *sf;
+    struct lwbuf *lwb;
 
     if (uoffset + bytes > xio->xio_bytes)
 	return(EFAULT);
@@ -410,9 +411,9 @@ xio_copy_utox(xio_t xio, int uoffset, const void *uptr, int bytes)
 	 ++i
     ) {
 	m = xio->xio_pages[i];
-	sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
-	error = copyin(uptr, (char *)sf_buf_kva(sf) + offset, n);
-	sf_buf_free(sf);
+	lwb = lwbuf_alloc(m);
+	error = copyin(uptr, (char *)lwbuf_kva(lwb) + offset, n);
+	lwbuf_free(lwb);
 	if (error)
 	    break;
 	bytes -= n;
@@ -443,7 +444,7 @@ xio_copy_ktox(xio_t xio, int uoffset, const void *kptr, int bytes)
     int error;
     int offset;
     vm_page_t m;
-    struct sf_buf *sf;
+    struct lwbuf *lwb;
 
     if (uoffset + bytes > xio->xio_bytes)
 	return(EFAULT);
@@ -458,9 +459,9 @@ xio_copy_ktox(xio_t xio, int uoffset, const void *kptr, int bytes)
 	 ++i
     ) {
 	m = xio->xio_pages[i];
-	sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
-	bcopy(kptr, (char *)sf_buf_kva(sf) + offset, n);
-	sf_buf_free(sf);
+	lwb = lwbuf_alloc(m);
+	bcopy(kptr, (char *)lwbuf_kva(lwb) + offset, n);
+	lwbuf_free(lwb);
 	bytes -= n;
 	kptr = (const char *)kptr + n;
 	if (bytes == 0)

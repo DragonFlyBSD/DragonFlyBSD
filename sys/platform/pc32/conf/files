@@ -140,6 +140,7 @@ platform/pc32/apm/apm.c		optional	apm
 cpu/i386/misc/atomic.c		standard				\
 	compile-with	"${CC} -c ${CFLAGS} ${WERROR} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
 cpu/i386/misc/elf_machdep.c		standard
+cpu/i386/misc/lwbuf.c			standard
 cpu/i386/misc/in_cksum2.s		optional	inet
 cpu/i386/misc/ktr.c			optional	ktr
 cpu/i386/misc/db_disasm.c		optional	ddb

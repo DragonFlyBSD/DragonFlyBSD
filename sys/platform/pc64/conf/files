@@ -95,6 +95,7 @@ platform/pc64/x86_64/mpboot.S		optional	smp
 
 # DDB XXX
 cpu/x86_64/misc/x86_64-gdbstub.c		optional	ddb
+cpu/x86_64/misc/lwbuf.c				standard
 platform/pc64/x86_64/elf_machdep.c		standard
 platform/pc64/x86_64/in_cksum2.s			optional	inet
 platform/pc64/x86_64/ktr.c			optional	ktr

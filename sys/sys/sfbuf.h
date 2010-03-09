@@ -35,6 +35,9 @@
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
+#ifndef _CPU_LWBUF_H_
+#include <cpu/lwbuf.h>
+#endif
 
 
 #if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
@@ -42,42 +45,19 @@
 #endif
 
 struct sf_buf {
-	LIST_ENTRY(sf_buf) list_entry;	/* hash chain of active buffers */
-	TAILQ_ENTRY(sf_buf) free_entry;	/* list of free buffers */
-	struct		vm_page *m;	/* currently mapped page */
-	vm_offset_t	kva;		/* va of mapping */
-	int		refcnt;		/* usage of this mapping */
-	int		flags;		/* global SFBA flags */
-	cpumask_t	cpumask;	/* cpu mapping synchronization */
+	struct	lwbuf *lwbuf;	/* lightweight buffer */
+	int	refs;
 };
 
-/*
- * sf_buf_alloc() flags (not all are stored in sf->flags)
- */
-#define SFB_CPUPRIVATE	0x0001		/* sync mapping to current cpu only */
-#define SFBA_ONFREEQ	0x0002		/* on the free queue (lazy move) */
-#define SFB_CATCH	0x0004		/* allow interruption */
-
-static __inline vm_offset_t
-sf_buf_kva(struct sf_buf *sf)
-{
-	return(sf->kva);
-}
-
-static __inline struct vm_page *
-sf_buf_page(struct sf_buf *sf)
-{
-	 return(sf->m);
-}
+#define sf_buf_kva(sf)	(lwbuf_kva((sf)->lwbuf))
+#define sf_buf_page(sf)	(lwbuf_page((sf)->lwbuf))
 
 
 #if defined(_KERNEL)
 
-extern int nsfbufs;
-
-struct sf_buf  *sf_buf_alloc(struct vm_page *, int flags);
-void		sf_buf_free(struct sf_buf *);
-void		sf_buf_ref(struct sf_buf *);
+struct sf_buf  *sf_buf_alloc(struct vm_page *);
+void		sf_buf_ref(void *);
+int		sf_buf_free(void *);
 
 #endif
 

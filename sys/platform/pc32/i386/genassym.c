@@ -210,6 +210,7 @@ ASSYM(GD_SPENDING, offsetof(struct mdglobaldata, gd_spending));
 ASSYM(GD_COMMON_TSS, offsetof(struct mdglobaldata, gd_common_tss));
 ASSYM(GD_COMMON_TSSD, offsetof(struct mdglobaldata, gd_common_tssd));
 ASSYM(GD_TSS_GDT, offsetof(struct mdglobaldata, gd_tss_gdt));
+ASSYM(GD_LWBUF_FPAGES, offsetof(struct mdglobaldata, gd_lwbuf_fpages));
 ASSYM(GD_NPXTHREAD, offsetof(struct mdglobaldata, gd_npxthread));
 ASSYM(GD_FPU_LOCK, offsetof(struct mdglobaldata, gd_fpu_lock));
 ASSYM(GD_SAVEFPU, offsetof(struct mdglobaldata, gd_savefpu));

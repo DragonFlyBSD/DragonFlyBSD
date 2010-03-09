@@ -82,9 +82,10 @@
 #include <sys/resourcevar.h>
 #include <sys/vmmeter.h>
 #include <sys/vkernel.h>
-#include <sys/sfbuf.h>
 #include <sys/lock.h>
 #include <sys/sysctl.h>
+
+#include <cpu/lwbuf.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -792,7 +793,7 @@ int
 vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 		    vpte_t vpte, int fault_type)
 {
-	struct sf_buf *sf;
+	struct lwbuf *lwb;
 	int vshift = 32 - PAGE_SHIFT;	/* page index bits remaining */
 	int result = KERN_SUCCESS;
 	vpte_t *ptep;
@@ -835,8 +836,8 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 		 * entry in the page table page.
 		 */
 		vshift -= VPTE_PAGE_BITS;
-		sf = sf_buf_alloc(fs->m, SFB_CPUPRIVATE);
-		ptep = ((vpte_t *)sf_buf_kva(sf) +
+		lwb = lwbuf_alloc(fs->m);
+		ptep = ((vpte_t *)lwbuf_kva(lwb) +
 		        ((*pindex >> vshift) & VPTE_PAGE_MASK));
 		vpte = *ptep;
 
@@ -862,7 +863,7 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 				vm_page_dirty(fs->m);
 			}
 		}
-		sf_buf_free(sf);
+		lwbuf_free(lwb);
 		vm_page_flag_set(fs->m, PG_REFERENCED);
 		vm_page_activate(fs->m);
 		vm_page_wakeup(fs->m);

@@ -240,11 +240,6 @@
 		cannot be set below the default determined when the kernel
 		was compiled.
 
-	set kern.ipc.nsfbufs=<value>		NSFBUFS
-
-		Set the number of sendfile buffers to be allocated.  This
-		overrides the value determined when the kernel was compiled.
-
 	set kern.vm.kmem.size=<value>
 
 		Sets the size of kernel memory (bytes).  This overrides
