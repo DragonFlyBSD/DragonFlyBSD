@@ -46,6 +46,7 @@ SUBDIR=	alias \
 	ctags \
 	cut \
 	dirname \
+	drill \
 	du \
 	ee \
 	enigma \
