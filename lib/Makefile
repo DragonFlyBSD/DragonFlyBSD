@@ -25,7 +25,7 @@ SUBDIR=	csu \
 	libalias libatm libbz2 libc ${_libc_r} \
 	libcalendar libcam libcompat libdevinfo libdevstat libedit \
 	libevent libexpat libfetch \
-	libftpio libipsec libipx libkcore libkiconv libkinfo \
+	libftpio libipsec libipx libldns libkcore libkiconv libkinfo \
 	libkvm libmagic \
 	${_libmilter} ${_libncp} libnetgraph libopie libpam \
 	libpcap libposix1e libsdp libthread_xu libpthread libprop \
