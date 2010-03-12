@@ -533,6 +533,8 @@ ahci_port_link_pwr_mgmt(struct ahci_port *ap, int link_pwr_mgmt)
 		kprintf("%s: enabling aggressive link power management.\n",
 			PORTNAME(ap));
 
+		ap->link_pwr_mgmt = link_pwr_mgmt;
+
 		ap->ap_intmask &= ~AHCI_PREG_IE_PRCE;
 		ahci_port_interrupt_enable(ap);
 
@@ -540,23 +542,36 @@ ahci_port_link_pwr_mgmt(struct ahci_port *ap, int link_pwr_mgmt)
 		sctl &= ~(AHCI_PREG_SCTL_IPM_DISABLED);
 		ahci_pwrite(ap, AHCI_PREG_SCTL, sctl);
 
+		/*
+		 * Enable device initiated link power management for
+		 * directly attached devices that support it.
+		 */
+		if (ap->ap_type != ATA_PORT_T_PM &&
+		    ap->ap_ata[0]->at_identify.satafsup & (1 << 3)) {
+			if (ahci_set_feature(ap, NULL, ATA_SATAFT_DEVIPS, 1))
+				kprintf("%s: Could not enable device initiated "
+				    "link power management.\n",
+				    PORTNAME(ap));
+		}
+
 		cmd = ahci_pread(ap, AHCI_PREG_CMD);
 		cmd |= AHCI_PREG_CMD_ASP;
 		cmd |= AHCI_PREG_CMD_ALPE;
 		ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
-
-		ap->link_pwr_mgmt = link_pwr_mgmt;
 
 	} else if (link_pwr_mgmt == AHCI_LINK_PWR_MGMT_MEDIUM &&
 	           (ap->ap_sc->sc_cap & AHCI_REG_CAP_PSC)) {
 		kprintf("%s: enabling medium link power management.\n",
 			PORTNAME(ap));
 
+		ap->link_pwr_mgmt = link_pwr_mgmt;
+
 		ap->ap_intmask &= ~AHCI_PREG_IE_PRCE;
 		ahci_port_interrupt_enable(ap);
 
 		sctl = ahci_pread(ap, AHCI_PREG_SCTL);
-		sctl &= ~(AHCI_PREG_SCTL_IPM_DISABLED);
+		sctl |= AHCI_PREG_SCTL_IPM_DISABLED;
+		sctl &= ~AHCI_PREG_SCTL_IPM_NOPARTIAL;
 		ahci_pwrite(ap, AHCI_PREG_SCTL, sctl);
 
 		cmd = ahci_pread(ap, AHCI_PREG_CMD);
@@ -564,14 +579,16 @@ ahci_port_link_pwr_mgmt(struct ahci_port *ap, int link_pwr_mgmt)
 		cmd |= AHCI_PREG_CMD_ALPE;
 		ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
 
-		ap->link_pwr_mgmt = link_pwr_mgmt;
-
 	} else if (link_pwr_mgmt == AHCI_LINK_PWR_MGMT_NONE) {
 		kprintf("%s: disabling link power management.\n",
 			PORTNAME(ap));
 
+		/* Disable device initiated link power management */
+		if (ap->ap_type != ATA_PORT_T_PM &&
+		    ap->ap_ata[0]->at_identify.satafsup & (1 << 3))
+			ahci_set_feature(ap, NULL, ATA_SATAFT_DEVIPS, 0);
+
 		cmd = ahci_pread(ap, AHCI_PREG_CMD);
-		cmd |= AHCI_PREG_CMD_ASP;
 		cmd &= ~(AHCI_PREG_CMD_ALPE | AHCI_PREG_CMD_ASP);
 		ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
 
@@ -584,7 +601,8 @@ ahci_port_link_pwr_mgmt(struct ahci_port *ap, int link_pwr_mgmt)
 		ahci_os_sleep(1000);
 		ahci_os_lock_port(ap);
 
-		ahci_pwrite(ap, AHCI_PREG_SERR, AHCI_PREG_SERR_DIAG_N);
+		ahci_pwrite(ap, AHCI_PREG_SERR,
+		    AHCI_PREG_SERR_DIAG_N | AHCI_PREG_SERR_DIAG_W);
 		ahci_pwrite(ap, AHCI_PREG_IS, AHCI_PREG_IS_PRCS);
 
 		ap->ap_intmask |= AHCI_PREG_IE_PRCE;
@@ -599,6 +617,26 @@ ahci_port_link_pwr_mgmt(struct ahci_port *ap, int link_pwr_mgmt)
 	ahci_os_unlock_port(ap);
 }
 
+/*
+ * Return current link power state.
+ */
+int
+ahci_port_link_pwr_state(struct ahci_port *ap)
+{
+	uint32_t r;
+
+	r = ahci_pread(ap, AHCI_PREG_SSTS);
+	switch (r & SATA_PM_SSTS_IPM) {
+	case SATA_PM_SSTS_IPM_ACTIVE:
+		return 1;
+	case SATA_PM_SSTS_IPM_PARTIAL:
+		return 2;
+	case SATA_PM_SSTS_IPM_SLUMBER:
+		return 3;
+	default:
+		return 0;
+	}
+}
 
 /*
  * Run the port / target state machine from a main context.
@@ -2273,6 +2311,13 @@ ahci_port_intr(struct ahci_port *ap, int blockable)
 		ap->ap_sactive, ahci_pread(ap, AHCI_PREG_SACT));
 #endif
 
+	/* ignore AHCI_PREG_IS_PRCS when link power management is on */
+	if (ap->link_pwr_mgmt != AHCI_LINK_PWR_MGMT_NONE) {
+		is &= ~AHCI_PREG_IS_PRCS;
+		ahci_pwrite(ap, AHCI_PREG_SERR,
+		    AHCI_PREG_SERR_DIAG_N | AHCI_PREG_SERR_DIAG_W);
+	}
+
 	if (is & AHCI_PREG_IS_TFES) {
 		/*
 		 * Command failed (blockable).
@@ -2525,11 +2570,6 @@ finish_error:
 	 *	     stopped (CR goes inactive) and the port must be stopped
 	 *	     and restarted.
 	 */
-
-	/* ignore AHCI_PREG_IS_PRCS when link power management is on */
-	if (ap->link_pwr_mgmt != AHCI_LINK_PWR_MGMT_NONE) {
-		is &= ~AHCI_PREG_IS_PRCS;
-	}
 
 	if (is & (AHCI_PREG_IS_PCS | AHCI_PREG_IS_PRCS)) {
 		kprintf("%s: Transient Errors: %b\n",
@@ -3430,4 +3470,36 @@ ahci_dummy_done(struct ata_xfer *xa)
 static void
 ahci_empty_done(struct ahci_ccb *ccb)
 {
+}
+
+int
+ahci_set_feature(struct ahci_port *ap, struct ata_port *atx, int feature, int enable)
+{
+	struct ata_port *at;
+	struct ata_xfer *xa;
+	int error;
+
+	at = atx ? atx : ap->ap_ata[0];
+
+	xa = ahci_ata_get_xfer(ap, atx);
+
+	xa->fis->type = ATA_FIS_TYPE_H2D;
+	xa->fis->flags = ATA_H2D_FLAGS_CMD | at->at_target;
+	xa->fis->command = ATA_C_SET_FEATURES;
+	xa->fis->features = enable ? ATA_C_SATA_FEATURE_ENA :
+	                             ATA_C_SATA_FEATURE_DIS;
+	xa->fis->sector_count = feature;
+	xa->fis->control = ATA_FIS_CONTROL_4BIT;
+
+	xa->complete = ahci_dummy_done;
+	xa->datalen = 0;
+	xa->flags = ATA_F_POLL;
+	xa->timeout = 1000;
+
+	if (ahci_ata_cmd(xa) == ATA_S_COMPLETE)
+		error = 0;
+	else
+		error = EIO;
+	ahci_ata_put_xfer(xa);
+	return(error);
 }

@@ -738,34 +738,6 @@ ahci_pm_phy_status(struct ahci_port *ap, int target, u_int32_t *datap)
 	return(error);
 }
 
-int
-ahci_pm_set_feature(struct ahci_port *ap, int feature, int enable)
-{
-	struct ata_xfer	*xa;
-	int error;
-
-	xa = ahci_ata_get_xfer(ap, ap->ap_ata[15]);
-
-	xa->fis->type = ATA_FIS_TYPE_H2D;
-	xa->fis->flags = ATA_H2D_FLAGS_CMD | 15;
-	xa->fis->command = enable ? ATA_C_SATA_FEATURE_ENA :
-				    ATA_C_SATA_FEATURE_DIS;
-	xa->fis->sector_count = feature;
-	xa->fis->control = ATA_FIS_CONTROL_4BIT;
-
-	xa->complete = ahci_pm_dummy_done;
-	xa->datalen = 0;
-	xa->flags = ATA_F_POLL;
-	xa->timeout = 1000;
-
-	if (ahci_ata_cmd(xa) == ATA_S_COMPLETE)
-		error = 0;
-	else
-		error = EIO;
-	ahci_ata_put_xfer(xa);
-	return(error);
-}
-
 /*
  * Check that a target is still good.
  */

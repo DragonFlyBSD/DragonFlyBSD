@@ -507,6 +507,7 @@ void	ahci_port_state_machine(struct ahci_port *ap, int initial);
 void	ahci_port_free(struct ahci_softc *, u_int);
 int	ahci_port_reset(struct ahci_port *, struct ata_port *at, int);
 void	ahci_port_link_pwr_mgmt(struct ahci_port *, int link_pwr_mgmt);
+int	ahci_port_link_pwr_state(struct ahci_port *);
 
 u_int32_t ahci_read(struct ahci_softc *, bus_size_t);
 void	ahci_write(struct ahci_softc *, bus_size_t, u_int32_t);
@@ -522,6 +523,8 @@ int	ahci_port_start(struct ahci_port *ap);
 int	ahci_port_stop(struct ahci_port *ap, int stop_fis_rx);
 int	ahci_port_clo(struct ahci_port *ap);
 void	ahci_flush_tfd(struct ahci_port *ap);
+int	ahci_set_feature(struct ahci_port *ap, struct ata_port *atx,
+			int feature, int enable);
 
 int	ahci_cam_attach(struct ahci_port *ap);
 void	ahci_cam_changed(struct ahci_port *ap, struct ata_port *at, int found);
@@ -535,7 +538,6 @@ int	ahci_ata_cmd(struct ata_xfer *xa);
 int     ahci_pm_port_probe(struct ahci_port *ap, int);
 int	ahci_pm_port_init(struct ahci_port *ap, struct ata_port *at);
 int	ahci_pm_identify(struct ahci_port *ap);
-int	ahci_pm_set_feature(struct ahci_port *ap, int feature, int enable);
 int	ahci_pm_hardreset(struct ahci_port *ap, int target, int hard);
 int	ahci_pm_softreset(struct ahci_port *ap, int target);
 int	ahci_pm_phy_status(struct ahci_port *ap, int target, u_int32_t *datap);
