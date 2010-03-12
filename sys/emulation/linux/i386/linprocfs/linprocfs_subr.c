@@ -147,11 +147,15 @@ loop:
 
 	switch (pfs_type) {
 	case Proot:	/* /proc = dr-xr-xr-x */
+		vsetflags(vp, VROOT);
+		/* fallthrough */
+	case Pnet:
+	case Psys:
+	case Psyskernel:
 		pfs->pfs_mode = (VREAD|VEXEC) |
 				(VREAD|VEXEC) >> 3 |
 				(VREAD|VEXEC) >> 6;
 		vp->v_type = VDIR;
-		vsetflags(vp, VROOT);
 		break;
 
 	case Pself:	/* /proc/self = lr--r--r-- */
@@ -169,6 +173,9 @@ loop:
 		break;
 
 	case Pexe:
+	case Pcwd:
+	case Pprocroot:
+	case Pfd:
 		pfs->pfs_mode = (VREAD|VEXEC) |
 				(VREAD|VEXEC) >> 3 |
 				(VREAD|VEXEC) >> 6;
@@ -183,14 +190,22 @@ loop:
 
 	case Pprocstat:
 	case Pprocstatus:
+	case Pcmdline:
+	case Penviron:
+	case Pstatm:
 		/* fallthrough */
-		
+	case Pmaps:
 	case Pmeminfo:
 	case Pcpuinfo:
 	case Pstat:
 	case Puptime:
 	case Pversion:
 	case Ploadavg:
+	case Pdevices:
+	case Pnetdev:
+	case Posrelease:
+	case Postype:
+	case Ppidmax:
 		pfs->pfs_mode = (VREAD) |
 				(VREAD >> 3) |
 				(VREAD >> 6);
@@ -267,7 +282,6 @@ linprocfs_rw(struct vop_read_args *ap)
 		tsleep(&pfs->pfs_lockowner, 0, "pfslck", 0);
 	}
 	pfs->pfs_lockowner = curthread;
-
 	switch (pfs->pfs_type) {
 	case Pmem:
 		rtval = procfs_domem(curp, lp, pfs, uio);
@@ -295,6 +309,27 @@ linprocfs_rw(struct vop_read_args *ap)
 		break;
 	case Ploadavg:
 		rtval = linprocfs_doloadavg(curp, p, pfs, uio);
+		break;
+	case Pnetdev:
+		rtval = linprocfs_donetdev(curp, p, pfs, uio);
+		break;
+	case Pdevices:
+		rtval = linprocfs_dodevices(curp, p, pfs, uio);
+		break;
+	case Posrelease:
+		rtval = linprocfs_doosrelease(curp, p, pfs, uio);
+		break;
+	case Postype:
+		rtval = linprocfs_doostype(curp, p, pfs, uio);
+		break;
+	case Ppidmax:
+		rtval = linprocfs_dopidmax(curp, p, pfs, uio);
+		break;
+	case Pmaps:
+		rtval = linprocfs_domaps(curp, p, pfs, uio);
+		break;
+	case Pstatm:
+		rtval = linprocfs_dostatm(curp, p, pfs, uio);
 		break;
 	default:
 		rtval = EOPNOTSUPP;
@@ -367,7 +402,7 @@ void
 linprocfs_init(void)
 {
 	lwkt_token_init(&pfs_token);
-}
+} 
 
 void
 linprocfs_exit(struct thread *td)

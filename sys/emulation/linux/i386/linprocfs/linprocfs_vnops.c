@@ -61,6 +61,7 @@
 #include <sys/dirent.h>
 #include <sys/malloc.h>
 #include <sys/reg.h>
+#include <sys/jail.h>
 #include <vm/vm_zone.h>
 #include "linprocfs.h"
 #include <sys/pioctl.h>
@@ -86,6 +87,9 @@ static int	linprocfs_setattr (struct vop_setattr_args *);
 
 static int	linprocfs_readdir_proc(struct vop_readdir_args *);
 static int	linprocfs_readdir_root(struct vop_readdir_args *);
+static int	linprocfs_readdir_net(struct vop_readdir_args *ap);
+static int	linprocfs_readdir_sys(struct vop_readdir_args *ap);
+static int	linprocfs_readdir_syskernel(struct vop_readdir_args *ap);
 
 /*
  * procfs vnode operations.
@@ -136,9 +140,20 @@ static struct proc_target {
 	{ DT_DIR, N("."),	Pproc,		NULL },
 	{ DT_DIR, N(".."),	Proot,		NULL },
 	{ DT_REG, N("mem"),	Pmem,		NULL },
+
 	{ DT_LNK, N("exe"),	Pexe,		NULL },
+	{ DT_LNK, N("cwd"),	Pcwd,		NULL },
+	{ DT_LNK, N("root"),	Pprocroot,	NULL },
+	{ DT_LNK, N("fd"),	Pfd,		NULL },
+
 	{ DT_REG, N("stat"),	Pprocstat,	NULL },
 	{ DT_REG, N("status"),	Pprocstatus,	NULL },
+	{ DT_REG, N("maps"),	Pmaps,		NULL },
+	{ DT_REG, N("statm"),	Pstatm,		NULL },
+#if 0
+	{ DT_REG, N("cmdline"),	Pcmdline,	NULL },
+	{ DT_REG, N("environ"),	Penviron,	NULL },
+#endif
 #undef N
 };
 static const int nproc_targets = sizeof(proc_targets) / sizeof(proc_targets[0]);
@@ -466,6 +481,9 @@ linprocfs_getattr(struct vop_getattr_args *ap)
 
 	switch (pfs->pfs_type) {
 	case Proot:
+	case Pnet:
+	case Psys:
+	case Psyskernel:
 		/*
 		 * Set nlink to 1 to tell fts(3) we don't actually know.
 		 */
@@ -491,10 +509,50 @@ linprocfs_getattr(struct vop_getattr_args *ap)
 
 	case Pexe: {
 		char *fullpath, *freepath;
-		error = vn_fullpath(procp, NULL, &fullpath, &freepath);
+		error = cache_fullpath(procp, &procp->p_textnch, &fullpath, &freepath);
+		/* error = vn_fullpath(procp, NULL, &fullpath, &freepath); */
 		if (error == 0) {
 			vap->va_size = strlen(fullpath);
 			kfree(freepath, M_TEMP);
+		} else {
+			vap->va_size = sizeof("unknown") - 1;
+			error = 0;
+		}
+		vap->va_bytes = vap->va_size;
+		break;
+	}
+	case Pcwd: {
+		char *fullpath, *freepath;
+		error = cache_fullpath(procp, &procp->p_fd->fd_ncdir, &fullpath, &freepath);
+		if (error == 0) {
+			vap->va_size = strlen(fullpath);
+			kfree(freepath, M_TEMP);
+		} else {
+			vap->va_size = sizeof("unknown") - 1;
+			error = 0;
+		}
+		vap->va_bytes = vap->va_size;
+		break;
+	}
+	case Pprocroot: {
+		struct nchandle *nchp;
+		char *fullpath, *freepath;
+		nchp = jailed(procp->p_ucred) ? &procp->p_fd->fd_njdir : &procp->p_fd->fd_nrdir;
+		error = cache_fullpath(procp, nchp, &fullpath, &freepath);
+		if (error == 0) {
+			vap->va_size = strlen(fullpath);
+			kfree(freepath, M_TEMP);
+		} else {
+			vap->va_size = sizeof("unknown") - 1;
+			error = 0;
+		}
+		vap->va_bytes = vap->va_size;
+		break;
+	}
+	case Pfd: {
+		if (procp == curproc) {
+			vap->va_size = sizeof("/dev/fd") - 1;
+			error = 0;	
 		} else {
 			vap->va_size = sizeof("unknown") - 1;
 			error = 0;
@@ -509,6 +567,11 @@ linprocfs_getattr(struct vop_getattr_args *ap)
 	case Puptime:
 	case Pversion:
 	case Ploadavg:
+	case Pnetdev:
+	case Pdevices:
+	case Posrelease:
+	case Postype:
+	case Ppidmax:
 		vap->va_bytes = vap->va_size = 0;
 		vap->va_uid = 0;
 		vap->va_gid = 0;
@@ -528,6 +591,10 @@ linprocfs_getattr(struct vop_getattr_args *ap)
 
 	case Pprocstat:
 	case Pprocstatus:
+	case Pcmdline:
+	case Penviron:
+	case Pmaps:
+	case Pstatm:
 		vap->va_bytes = vap->va_size = 0;
 		/* uid, gid are already set */
 		break;
@@ -651,6 +718,50 @@ linprocfs_lookup(struct vop_old_lookup_args *ap)
 
 	pfs = VTOPFS(dvp);
 	switch (pfs->pfs_type) {
+	case Psys:
+		if (cnp->cn_flags & CNP_ISDOTDOT) {
+			error = linprocfs_root(dvp->v_mount, vpp);
+			goto out;
+		}
+		if (CNEQ(cnp, "kernel", 6)) {
+			error = linprocfs_allocvp(dvp->v_mount, vpp, 0, Psyskernel);
+			goto out;
+		}		
+		break;
+	case Pnet:
+		if (cnp->cn_flags & CNP_ISDOTDOT) {
+			error = linprocfs_root(dvp->v_mount, vpp);
+			goto out;
+		}
+		if (CNEQ(cnp, "dev", 3)) {
+			error = linprocfs_allocvp(dvp->v_mount, vpp, 0, Pnetdev);
+			goto out;
+		}		
+		break;
+	case Psyskernel:
+		if (cnp->cn_flags & CNP_ISDOTDOT) {
+			/* XXX: this is wrong, wrong, wrong. */
+			error = linprocfs_root(dvp->v_mount, vpp);
+			goto out;
+		}
+		if (CNEQ(cnp, "osrelease", 9)) {
+			error = linprocfs_allocvp(dvp->v_mount, vpp, 0, Posrelease);
+			goto out;
+		}
+		if (CNEQ(cnp, "ostype", 6)) {
+			error = linprocfs_allocvp(dvp->v_mount, vpp, 0, Postype);
+			goto out;
+		}
+		if (CNEQ(cnp, "pid_max", 7)) {
+			error = linprocfs_allocvp(dvp->v_mount, vpp, 0, Ppidmax);
+			goto out;
+		}
+		if (CNEQ(cnp, "version", 7)) {
+			error = linprocfs_allocvp(dvp->v_mount, vpp, 0, Pversion);
+			goto out;
+		}
+		break;
+		
 	case Proot:
 		if (cnp->cn_flags & CNP_ISDOTDOT)
 			return (EIO);
@@ -681,6 +792,14 @@ linprocfs_lookup(struct vop_old_lookup_args *ap)
 		}
 		if (CNEQ(cnp, "loadavg", 7)) {
 			error = linprocfs_allocvp(dvp->v_mount, vpp, 0, Ploadavg);
+			goto out;
+		}
+		if (CNEQ(cnp, "net", 3)) {
+			error = linprocfs_allocvp(dvp->v_mount, vpp, 0, Pnet);
+			goto out;
+		}
+		if (CNEQ(cnp, "sys", 3)) {
+			error = linprocfs_allocvp(dvp->v_mount, vpp, 0, Psys);
 			goto out;
 		}
 
@@ -807,6 +926,15 @@ linprocfs_readdir(struct vop_readdir_args *ap)
 		 */
 		error = linprocfs_readdir_root(ap);
 		break;
+	case Pnet:
+		error = linprocfs_readdir_net(ap);
+		break;
+	case Psys:
+		error = linprocfs_readdir_sys(ap);
+		break;
+	case Psyskernel:
+		error = linprocfs_readdir_syskernel(ap);
+		break;
 	default:
 		error = ENOTDIR;
 		break;
@@ -870,7 +998,7 @@ linprocfs_readdir_root(struct vop_readdir_args *ap)
 {
 	struct linprocfs_readdir_root_info info;
 	struct uio *uio = ap->a_uio;
-	int res;
+	int res = 0;
 
 	info.error = 0;
 	info.i = uio->uio_offset;
@@ -878,7 +1006,7 @@ linprocfs_readdir_root(struct vop_readdir_args *ap)
 	info.uio = uio;
 	info.cred = ap->a_cred;
 
-	while (info.pcnt < 9) {
+	while (info.pcnt < 11) {
 		res = linprocfs_readdir_root_callback(NULL, &info);
 		if (res < 0)
 			break;
@@ -964,7 +1092,26 @@ linprocfs_readdir_root_callback(struct proc *p, void *data)
 		d_name = "loadavg";
 		d_type = DT_REG;
 		break;
-
+	case 9:
+		d_ino = PROCFS_FILENO(0, Pnet);
+		d_namlen = 3;
+		d_name = "net";
+		d_type = DT_DIR;
+		break;
+	case 10:
+		d_ino = PROCFS_FILENO(0, Psys);
+		d_namlen = 3;
+		d_name = "sys";
+		d_type = DT_DIR;
+		break;
+#if 0
+	case 11:
+		d_ino = PROCFS_FILENO(0, Pdevices);
+		d_namlen = 7;
+		d_name = "devices";
+		d_type = DT_REG;
+		break;		
+#endif
 	default:
 		/*
 		 * Ignore processes that aren't in our prison
@@ -1015,6 +1162,292 @@ linprocfs_readdir_root_callback(struct proc *p, void *data)
 }
 
 /*
+ * Scan the root directory by scanning all process
+ */
+static int linprocfs_readdir_net_callback(struct proc *p, void *data);
+
+static int
+linprocfs_readdir_net(struct vop_readdir_args *ap)
+{
+	struct linprocfs_readdir_root_info info;
+	struct uio *uio = ap->a_uio;
+	int res;
+
+	info.error = 0;
+	info.i = uio->uio_offset;
+	info.pcnt = 0;
+	info.uio = uio;
+	info.cred = ap->a_cred;
+
+	while (info.pcnt < 3) {
+		res = linprocfs_readdir_net_callback(NULL, &info);
+		if (res < 0)
+			break;
+	}
+
+	uio->uio_offset = info.i;
+	return(info.error);
+}
+
+static int
+linprocfs_readdir_net_callback(struct proc *p, void *data)
+{
+	struct linprocfs_readdir_root_info *info = data;
+	int retval;
+	struct uio *uio = info->uio;
+	ino_t d_ino;
+	const char *d_name;
+	size_t d_namlen;
+	uint8_t d_type;
+
+	switch (info->pcnt) {
+	case 0:		/* `.' */
+		d_ino = PROCFS_FILENO(0, Pnet);
+		d_name = ".";
+		d_namlen = 1;
+		d_type = DT_DIR;
+		break;
+	case 1:		/* `..' */
+		d_ino = PROCFS_FILENO(0, Proot);
+		d_name = "..";
+		d_namlen = 2;
+		d_type = DT_DIR;
+		break;
+
+	case 2:
+		d_ino = PROCFS_FILENO(0, Pnet);
+		d_namlen = 3;
+		d_name = "dev";
+		d_type = DT_REG;
+		break;
+	default:
+		d_ino = 0;
+		d_namlen = 0;
+		d_name = NULL;
+		d_type = DT_REG;
+		break;
+	}
+
+	/*
+	 * Skip processes we have already read
+	 */
+	if (info->pcnt < info->i) {
+		++info->pcnt;
+		return(0);
+	}
+	retval = vop_write_dirent(&info->error, info->uio, 
+				  d_ino, d_type, d_namlen, d_name);
+	if (retval == 0) {
+		++info->pcnt;	/* iterate proc candidates scanned */
+		++info->i;	/* iterate entries written */
+	}
+	if (retval || info->error || uio->uio_resid <= 0)
+		return(-1);
+	return(0);
+}
+
+
+
+
+
+
+
+/*
+ * Scan the root directory by scanning all process
+ */
+static int linprocfs_readdir_sys_callback(struct proc *p, void *data);
+
+static int
+linprocfs_readdir_sys(struct vop_readdir_args *ap)
+{
+	struct linprocfs_readdir_root_info info;
+	struct uio *uio = ap->a_uio;
+	int res;
+
+	info.error = 0;
+	info.i = uio->uio_offset;
+	info.pcnt = 0;
+	info.uio = uio;
+	info.cred = ap->a_cred;
+
+	while (info.pcnt < 3) {
+		res = linprocfs_readdir_sys_callback(NULL, &info);
+		if (res < 0)
+			break;
+	}
+
+	uio->uio_offset = info.i;
+	return(info.error);
+}
+
+static int
+linprocfs_readdir_sys_callback(struct proc *p, void *data)
+{
+	struct linprocfs_readdir_root_info *info = data;
+	int retval;
+	struct uio *uio = info->uio;
+	ino_t d_ino;
+	const char *d_name;
+	size_t d_namlen;
+	uint8_t d_type;
+
+	switch (info->pcnt) {
+	case 0:		/* `.' */
+		d_ino = PROCFS_FILENO(0, Psys);
+		d_name = ".";
+		d_namlen = 1;
+		d_type = DT_DIR;
+		break;
+	case 1:		/* `..' */
+		d_ino = PROCFS_FILENO(0, Proot);
+		d_name = "..";
+		d_namlen = 2;
+		d_type = DT_DIR;
+		break;
+
+	case 2:
+		d_ino = PROCFS_FILENO(0, Psyskernel);
+		d_namlen = 6;
+		d_name = "kernel";
+		d_type = DT_DIR;
+		break;
+	default:
+		d_ino = 0;
+		d_namlen = 0;
+		d_name = NULL;
+		d_type = DT_REG;
+		break;
+	}
+
+	/*
+	 * Skip processes we have already read
+	 */
+	if (info->pcnt < info->i) {
+		++info->pcnt;
+		return(0);
+	}
+	retval = vop_write_dirent(&info->error, info->uio, 
+				  d_ino, d_type, d_namlen, d_name);
+	if (retval == 0) {
+		++info->pcnt;	/* iterate proc candidates scanned */
+		++info->i;	/* iterate entries written */
+	}
+	if (retval || info->error || uio->uio_resid <= 0)
+		return(-1);
+	return(0);
+}
+
+
+
+
+
+/*
+ * Scan the root directory by scanning all process
+ */
+static int linprocfs_readdir_syskernel_callback(struct proc *p, void *data);
+
+static int
+linprocfs_readdir_syskernel(struct vop_readdir_args *ap)
+{
+	struct linprocfs_readdir_root_info info;
+	struct uio *uio = ap->a_uio;
+	int res;
+
+	info.error = 0;
+	info.i = uio->uio_offset;
+	info.pcnt = 0;
+	info.uio = uio;
+	info.cred = ap->a_cred;
+
+	while (info.pcnt < 6) {
+		res = linprocfs_readdir_syskernel_callback(NULL, &info);
+		if (res < 0)
+			break;
+	}
+
+	uio->uio_offset = info.i;
+	return(info.error);
+}
+
+static int
+linprocfs_readdir_syskernel_callback(struct proc *p, void *data)
+{
+	struct linprocfs_readdir_root_info *info = data;
+	int retval;
+	struct uio *uio = info->uio;
+	ino_t d_ino;
+	const char *d_name;
+	size_t d_namlen;
+	uint8_t d_type;
+
+	switch (info->pcnt) {
+	case 0:		/* `.' */
+		d_ino = PROCFS_FILENO(0, Psyskernel);
+		d_name = ".";
+		d_namlen = 1;
+		d_type = DT_DIR;
+		break;
+	case 1:		/* `..' */
+		d_ino = PROCFS_FILENO(0, Psys);
+		d_name = "..";
+		d_namlen = 2;
+		d_type = DT_DIR;
+		break;
+
+	case 2:
+		d_ino = PROCFS_FILENO(0, Posrelease);
+		d_namlen = 9;
+		d_name = "osrelease";
+		d_type = DT_REG;
+		break;
+
+	case 3:
+		d_ino = PROCFS_FILENO(0, Postype);
+		d_namlen = 4;
+		d_name = "ostype";
+		d_type = DT_REG;
+		break;
+
+	case 4:
+		d_ino = PROCFS_FILENO(0, Pversion);
+		d_namlen = 7;
+		d_name = "version";
+		d_type = DT_REG;
+		break;
+
+	case 5:
+		d_ino = PROCFS_FILENO(0, Ppidmax);
+		d_namlen = 7;
+		d_name = "pid_max";
+		d_type = DT_REG;
+		break;
+	default:
+		d_ino = 0;
+		d_namlen = 0;
+		d_name = NULL;
+		d_type = DT_REG;
+		break;
+	}
+
+	/*
+	 * Skip processes we have already read
+	 */
+	if (info->pcnt < info->i) {
+		++info->pcnt;
+		return(0);
+	}
+	retval = vop_write_dirent(&info->error, info->uio, 
+				  d_ino, d_type, d_namlen, d_name);
+	if (retval == 0) {
+		++info->pcnt;	/* iterate proc candidates scanned */
+		++info->i;	/* iterate entries written */
+	}
+	if (retval || info->error || uio->uio_resid <= 0)
+		return(-1);
+	return(0);
+}
+
+/*
  * readlink reads the link of `self' or `exe'
  */
 static int
@@ -1023,6 +1456,7 @@ linprocfs_readlink(struct vop_readlink_args *ap)
 	char buf[16];		/* should be enough */
 	struct proc *procp;
 	struct vnode *vp = ap->a_vp;
+	struct nchandle *nchp;
 	struct pfsnode *pfs = VTOPFS(vp);
 	char *fullpath, *freepath;
 	int error, len;
@@ -1047,13 +1481,61 @@ linprocfs_readlink(struct vop_readlink_args *ap)
 			return (uiomove("unknown", sizeof("unknown") - 1,
 			    ap->a_uio));
 		}
-		error = vn_fullpath(procp, NULL, &fullpath, &freepath);
+		error = cache_fullpath(procp, &procp->p_textnch, &fullpath, &freepath);
 		if (error != 0)
 			return (uiomove("unknown", sizeof("unknown") - 1,
 			    ap->a_uio));
 		error = uiomove(fullpath, strlen(fullpath), ap->a_uio);
 		kfree(freepath, M_TEMP);
 		return (error);
+	case Pcwd:
+		procp = PFIND(pfs->pfs_pid);
+		if (procp == NULL || procp->p_ucred == NULL) {
+			kprintf("linprocfs_readlink: pid %d disappeared\n",
+			    pfs->pfs_pid);
+			return (uiomove("unknown", sizeof("unknown") - 1,
+			    ap->a_uio));
+		}
+		error = cache_fullpath(procp, &procp->p_fd->fd_ncdir, &fullpath, &freepath);
+		if (error != 0)
+			return (uiomove("unknown", sizeof("unknown") - 1,
+			    ap->a_uio));
+		error = uiomove(fullpath, strlen(fullpath), ap->a_uio);
+		kfree(freepath, M_TEMP);
+		return (error);
+	case Pprocroot:
+		procp = PFIND(pfs->pfs_pid);
+		if (procp == NULL || procp->p_ucred == NULL) {
+			kprintf("linprocfs_readlink: pid %d disappeared\n",
+			    pfs->pfs_pid);
+			return (uiomove("unknown", sizeof("unknown") - 1,
+			    ap->a_uio));
+		}
+		nchp = jailed(procp->p_ucred) ? &procp->p_fd->fd_njdir : &procp->p_fd->fd_nrdir;
+		error = cache_fullpath(procp, nchp, &fullpath, &freepath);
+		if (error != 0)
+			return (uiomove("unknown", sizeof("unknown") - 1,
+			    ap->a_uio));
+		error = uiomove(fullpath, strlen(fullpath), ap->a_uio);
+		kfree(freepath, M_TEMP);
+		return (error);
+	case Pfd:
+		procp = PFIND(pfs->pfs_pid);
+		if (procp == NULL || procp->p_ucred == NULL) {
+			kprintf("linprocfs_readlink: pid %d disappeared\n",
+			    pfs->pfs_pid);
+			return (uiomove("unknown", sizeof("unknown") - 1,
+			    ap->a_uio));
+		}
+		if (procp == curproc) {
+			return (uiomove("/dev/fd", sizeof("/dev/fd") - 1,
+			    ap->a_uio));
+		} else {
+			return (uiomove("unknown", sizeof("unknown") - 1,
+			    ap->a_uio));
+		}
+		/* notreached */
+		break;
 	default:
 		return (EINVAL);
 	}

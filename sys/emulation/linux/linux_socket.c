@@ -41,6 +41,7 @@
 #include <sys/uio.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
+#include <sys/un.h>
 
 #include <sys/mplock2.h>
 
@@ -224,6 +225,8 @@ linux_to_bsd_so_sockopt(int opt)
 		return (SO_OOBINLINE);
 	case LINUX_SO_LINGER:
 		return (SO_LINGER);
+	case LINUX_SO_PEERCRED:
+		return (LOCAL_PEERCRED);
 	}
 	return (-1);
 }
@@ -826,6 +829,16 @@ linux_sendmsg(struct linux_sendmsg_args *args, size_t *res)
 	if (error)
 		return (error);
 
+	/* 
+	 * XXX: I'm not sure atm how this relates to dragonfly, but 
+	 *	just in case, I put it in.
+	 * Ping on linux does pass 0 in controllen which is forbidden
+	 * by FreeBSD but seems to be ok on Linux. This needs some
+	 * checking but now it lets ping work.
+	 */
+	if (msg.msg_control && msg.msg_controllen == 0)
+		msg.msg_control = NULL;
+
 	/*
 	 * Conditionally copyin msg.msg_name.
 	 */
@@ -1061,6 +1074,8 @@ linux_setsockopt(struct linux_setsockopt_args *args, int *res)
 	struct linux_setsockopt_args linux_args;
 	struct thread *td = curthread;
 	struct sockopt sopt;
+	l_timeval linux_tv;
+	struct timeval tv;
 	int error, name, level;
 
 	error = copyin(args, &linux_args, sizeof(linux_args));
@@ -1071,6 +1086,28 @@ linux_setsockopt(struct linux_setsockopt_args *args, int *res)
 	switch (level) {
 	case SOL_SOCKET:
 		name = linux_to_bsd_so_sockopt(linux_args.optname);
+		switch (name) {
+		case SO_RCVTIMEO:
+			/* FALLTHROUGH */
+		case SO_SNDTIMEO:
+			error = copyin(linux_args.optval, &linux_tv,
+			    sizeof(linux_tv));
+			if (error)
+				return (error);
+			tv.tv_sec = linux_tv.tv_sec;
+			tv.tv_usec = linux_tv.tv_usec;
+			sopt.sopt_dir = SOPT_SET;
+			sopt.sopt_level = level;
+			sopt.sopt_name = name;
+			sopt.sopt_valsize = sizeof(tv);
+			sopt.sopt_val = &tv;
+			sopt.sopt_td = td;
+			return (kern_setsockopt(linux_args.s, &sopt));
+			/* NOTREACHED */
+			break;
+		default:
+			break;
+		}
 		break;
 	case IPPROTO_IP:
 		name = linux_to_bsd_ip_sockopt(linux_args.optname);
@@ -1084,16 +1121,20 @@ linux_setsockopt(struct linux_setsockopt_args *args, int *res)
 		break;
 	}
 	if (name == -1)
+		return (ENOPROTOOPT);
+
+	if (linux_args.optlen < 0 || linux_args.optlen > SOMAXOPT_SIZE)
 		return (EINVAL);
+	if (linux_args.optval != NULL && linux_args.optlen == 0)
+		return (EINVAL);
+	if (linux_args.optval == NULL && linux_args.optlen != 0)
+		return (EFAULT);
 
 	sopt.sopt_dir = SOPT_SET;
 	sopt.sopt_level = level;
 	sopt.sopt_name = name;
 	sopt.sopt_valsize = linux_args.optlen;
 	sopt.sopt_td = td;
-
-	if (sopt.sopt_valsize < 0 || sopt.sopt_valsize > SOMAXOPT_SIZE)
-		return (EINVAL);
 
 	if (linux_args.optval) {
 		sopt.sopt_val = kmalloc(sopt.sopt_valsize, M_TEMP, M_WAITOK);
@@ -1129,26 +1170,78 @@ linux_getsockopt(struct linux_getsockopt_args *args, int *res)
 	struct linux_getsockopt_args linux_args;
 	struct thread *td = curthread;
 	struct sockopt sopt;
+	l_timeval linux_tv;
+	struct timeval tv;
+	struct xucred xu;
+	struct l_ucred lxu;
 	int error, name, valsize, level;
 
 	error = copyin(args, &linux_args, sizeof(linux_args));
 	if (error)
 		return (error);
 
-	if (linux_args.optval) {
+	if (linux_args.optlen) {
 		error = copyin(linux_args.optlen, &valsize, sizeof(valsize));
 		if (error)
 			return (error);
-		if (valsize < 0 || valsize > SOMAXOPT_SIZE)
-			return (EINVAL);
 	} else {
 		valsize = 0;
 	}
 
+	if (valsize < 0 || valsize > SOMAXOPT_SIZE)
+		return (EINVAL);
+	if (linux_args.optval != NULL && valsize == 0)
+		return (EFAULT);
+	if (linux_args.optval == NULL && valsize != 0)
+		return (EFAULT);
+		
 	level = linux_to_bsd_sockopt_level(linux_args.level);
 	switch (level) {
 	case SOL_SOCKET:
 		name = linux_to_bsd_so_sockopt(linux_args.optname);
+		switch (name) {
+		case SO_RCVTIMEO:
+			/* FALLTHROUGH */
+		case SO_SNDTIMEO:
+			sopt.sopt_dir = SOPT_GET;
+			sopt.sopt_level = level;
+			sopt.sopt_name = name;
+			sopt.sopt_valsize = sizeof(tv);
+			sopt.sopt_td = td;
+			sopt.sopt_val = &tv;
+			error = kern_getsockopt(linux_args.s, &sopt);
+			if (error)
+				return (error);
+			linux_tv.tv_sec = tv.tv_sec;
+			linux_tv.tv_usec = tv.tv_usec;
+			return (copyout(&linux_tv, linux_args.optval,
+			    sizeof(linux_tv)));
+			/* NOTREACHED */
+			break;
+		case LOCAL_PEERCRED:
+			if (valsize != sizeof(lxu))
+				return (EINVAL);
+			sopt.sopt_dir = SOPT_GET;
+			sopt.sopt_level = level;
+			sopt.sopt_name = name;
+			sopt.sopt_valsize = sizeof(xu);
+			sopt.sopt_td = td;
+			sopt.sopt_val = &xu;
+			error = kern_getsockopt(linux_args.s, &sopt);
+			if (error)
+				return (error);
+			/*
+			 * XXX Use 0 for pid as the FreeBSD does not cache peer pid.
+			 */
+			lxu.pid = 0;
+			lxu.uid = xu.cr_uid;
+			lxu.gid = xu.cr_gid;
+			return (copyout(&lxu, linux_args.optval, sizeof(lxu)));
+			/* NOTREACHED */
+			break;
+		default:
+			break;
+		}
 		break;
 	case IPPROTO_IP:
 		name = linux_to_bsd_ip_sockopt(linux_args.optname);
@@ -1162,7 +1255,9 @@ linux_getsockopt(struct linux_getsockopt_args *args, int *res)
 		break;
 	}
 	if (name == -1)
-		return (EINVAL);
+		return (EOPNOTSUPP);
+
+
 
 	sopt.sopt_dir = SOPT_GET;
 	sopt.sopt_level = level;
@@ -1179,8 +1274,11 @@ linux_getsockopt(struct linux_getsockopt_args *args, int *res)
 		sopt.sopt_val = NULL;
 	}
 	error = kern_getsockopt(linux_args.s, &sopt);
-	if (error)
+	if (error) {
+		if (error == EINVAL)
+			error = ENOPROTOOPT;
 		goto out;
+	}
 	valsize = sopt.sopt_valsize;
 	error = copyout(&valsize, linux_args.optlen, sizeof(valsize));
 	if (error)

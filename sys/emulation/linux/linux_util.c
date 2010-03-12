@@ -56,15 +56,23 @@ linux_copyin_path(char *uname, char **kname, int flags)
 	struct vattr vat, vatroot;
 	struct vnode *vp, *vproot;
 	char *buf, *cp;
-	int error, length, dummy;
+	int error, length, dummy, byte;
 
 	buf = (char *) kmalloc(MAXPATHLEN, M_TEMP, M_WAITOK);
 	*kname = buf;
 
 	/*
+	 * Read a byte and see if uname is a valid address. if not, EFAULT.
+	 */
+	byte = fubyte(uname);
+	if (byte == -1) {
+		error = EFAULT;
+		goto done;
+	}
+	/*
 	 * Don't bother trying to translate if the path is relative.
 	 */
-	if (fubyte(uname) != '/')
+	if (byte != '/')
 		goto dont_translate;
 
 	/*

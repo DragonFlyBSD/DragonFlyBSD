@@ -145,6 +145,89 @@ sys_linux_open(struct linux_open_args *args)
 		error = kern_open(&nd, flags,
 				  args->mode, &args->sysmsg_iresult);
 	}
+	nlookup_done(&nd);
+
+	if (error == 0 && !(flags & O_NOCTTY) && 
+		SESS_LEADER(p) && !(p->p_flag & P_CONTROLT)) {
+		struct file *fp;
+
+		fp = holdfp(p->p_fd, args->sysmsg_iresult, -1);
+		if (fp) {
+			if (fp->f_type == DTYPE_VNODE) {
+				fo_ioctl(fp, TIOCSCTTY, NULL,
+					 td->td_ucred, NULL);
+			}
+			fdrop(fp);
+		}
+	}
+	rel_mplock();
+#ifdef DEBUG
+	if (ldebug(open))
+		kprintf(LMSG("open returns error %d"), error);
+#endif
+	linux_free_path(&path);
+	return error;
+}
+
+int
+sys_linux_openat(struct linux_openat_args *args)
+{
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	struct nlookupdata nd;
+	struct file *fp;
+	char *path;
+	int error, flags, dfd;
+
+	if (args->flags & LINUX_O_CREAT) {
+		error = linux_copyin_path(args->path, &path,
+		    LINUX_PATH_CREATE);
+	} else {
+		error = linux_copyin_path(args->path, &path,
+		    LINUX_PATH_EXISTS);
+	}
+	if (error)
+		return (error);
+
+#ifdef DEBUG
+	if (ldebug(open))
+		kprintf(ARGS(open, "%s, 0x%x, 0x%x"), path, args->flags,
+		    args->mode);
+#endif
+	flags = 0;
+	if (args->flags & LINUX_O_RDONLY)
+		flags |= O_RDONLY;
+	if (args->flags & LINUX_O_WRONLY)
+		flags |= O_WRONLY;
+	if (args->flags & LINUX_O_RDWR)
+		flags |= O_RDWR;
+	if (args->flags & LINUX_O_NDELAY)
+		flags |= O_NONBLOCK;
+	if (args->flags & LINUX_O_APPEND)
+		flags |= O_APPEND;
+	if (args->flags & LINUX_O_SYNC)
+		flags |= O_FSYNC;
+	if (args->flags & LINUX_O_NONBLOCK)
+		flags |= O_NONBLOCK;
+	if (args->flags & LINUX_FASYNC)
+		flags |= O_ASYNC;
+	if (args->flags & LINUX_O_CREAT)
+		flags |= O_CREAT;
+	if (args->flags & LINUX_O_TRUNC)
+		flags |= O_TRUNC;
+	if (args->flags & LINUX_O_EXCL)
+		flags |= O_EXCL;
+	if (args->flags & LINUX_O_NOCTTY)
+		flags |= O_NOCTTY;
+
+	dfd = (args->dfd == LINUX_AT_FDCWD) ? AT_FDCWD : args->dfd;
+	get_mplock();
+	error = nlookup_init_at(&nd, &fp, dfd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0) {
+		error = kern_open(&nd, flags,
+				  args->mode, &args->sysmsg_iresult);
+	}
+	nlookup_done_at(&nd, fp);
 
 	if (error == 0 && !(flags & O_NOCTTY) && 
 		SESS_LEADER(p) && !(p->p_flag & P_CONTROLT)) {
@@ -414,7 +497,7 @@ again:
 			error = copyout(&linux_dirent, outp, linuxreclen);
 		} else {
 			if (is64bit) {
-				linux_dirent64.d_ino = bdp->d_ino;
+				linux_dirent64.d_ino = INO64TO32(bdp->d_ino);
 				linux_dirent64.d_off = (cookiep)
 				    ? (l_off_t)*cookiep
 				    : (l_off_t)(off + reclen);
@@ -557,6 +640,42 @@ sys_linux_unlink(struct linux_unlink_args *args)
 	return(error);
 }
 
+int
+sys_linux_unlinkat(struct linux_unlinkat_args *args)
+{
+	struct nlookupdata nd;
+	struct file *fp;
+	char *path;
+	int dfd, error;
+
+	if (args->flag & ~LINUX_AT_REMOVEDIR)
+		return (EINVAL);
+
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_EXISTS);
+	if (error) {
+		kprintf("linux_copyin_path says error = %d\n", error);
+		return (error);
+	}
+#ifdef DEBUG
+	if (ldebug(unlink))
+		kprintf(ARGS(unlink, "%s"), path);
+#endif
+
+	dfd = (args->dfd == LINUX_AT_FDCWD) ? AT_FDCWD : args->dfd;
+	get_mplock();
+	error = nlookup_init_at(&nd, &fp, dfd, path, UIO_SYSSPACE, 0);
+	if (error == 0) {
+		if (args->flag & LINUX_AT_REMOVEDIR)
+			error = kern_rmdir(&nd);
+		else
+			error = kern_unlink(&nd);
+	}
+	nlookup_done_at(&nd, fp);
+	rel_mplock();
+	linux_free_path(&path);
+	return(error);
+}
+
 /*
  * MPALMOSTSAFE
  */
@@ -640,6 +759,33 @@ sys_linux_mkdir(struct linux_mkdir_args *args)
 	return(error);
 }
 
+int
+sys_linux_mkdirat(struct linux_mkdirat_args *args)
+{
+	struct nlookupdata nd;
+	struct file *fp;
+	char *path;
+	int dfd, error;
+
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_CREATE);
+	if (error)
+		return (error);
+#ifdef DEBUG
+	if (ldebug(mkdir))
+		kprintf(ARGS(mkdir, "%s, %d"), path, args->mode);
+#endif
+	dfd = (args->dfd == LINUX_AT_FDCWD) ? AT_FDCWD : args->dfd;
+	get_mplock();
+	error = nlookup_init_at(&nd, &fp, dfd, path, UIO_SYSSPACE, 0);
+	if (error == 0)
+		error = kern_mkdir(&nd, args->mode);
+	nlookup_done_at(&nd, fp);
+	rel_mplock();
+
+	linux_free_path(&path);
+	return(error);
+}
+
 /*
  * MPALMOSTSAFE
  */
@@ -704,6 +850,43 @@ sys_linux_rename(struct linux_rename_args *args)
 	return(error);
 }
 
+int
+sys_linux_renameat(struct linux_renameat_args *args)
+{
+	struct nlookupdata fromnd, tond;
+	struct file *fp, *fp2;
+	char *from, *to;
+	int olddfd, newdfd,error;
+
+	error = linux_copyin_path(args->from, &from, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
+	error = linux_copyin_path(args->to, &to, LINUX_PATH_CREATE);
+	if (error) {
+		linux_free_path(&from);
+		return (error);
+	}
+#ifdef DEBUG
+	if (ldebug(rename))
+		kprintf(ARGS(rename, "%s, %s"), from, to);
+#endif
+	olddfd = (args->olddfd == LINUX_AT_FDCWD) ? AT_FDCWD : args->olddfd;
+	newdfd = (args->newdfd == LINUX_AT_FDCWD) ? AT_FDCWD : args->newdfd;
+	get_mplock();
+	error = nlookup_init_at(&fromnd, &fp, olddfd, from, UIO_SYSSPACE, 0);
+	if (error == 0) {
+		error = nlookup_init_at(&tond, &fp2, newdfd, to, UIO_SYSSPACE, 0);
+		if (error == 0)
+			error = kern_rename(&fromnd, &tond);
+		nlookup_done_at(&tond, fp2);
+	}
+	nlookup_done_at(&fromnd, fp);
+	rel_mplock();
+	linux_free_path(&from);
+	linux_free_path(&to);
+	return(error);
+}
+
 /*
  * MPALMOSTSAFE
  */
@@ -741,6 +924,42 @@ sys_linux_symlink(struct linux_symlink_args *args)
 	return(error);
 }
 
+int
+sys_linux_symlinkat(struct linux_symlinkat_args *args)
+{
+	struct thread *td = curthread;
+	struct nlookupdata nd;
+	struct file *fp;
+	char *path, *link;
+	int error;
+	int newdfd, mode;
+
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
+	error = linux_copyin_path(args->to, &link, LINUX_PATH_CREATE);
+	if (error) {
+		linux_free_path(&path);
+		return (error);
+	}
+#ifdef DEBUG
+	if (ldebug(symlink))
+		kprintf(ARGS(symlink, "%s, %s"), path, link);
+#endif
+	newdfd = (args->newdfd == LINUX_AT_FDCWD) ? AT_FDCWD : args->newdfd;
+	get_mplock();
+	error = nlookup_init_at(&nd, &fp, newdfd, link, UIO_SYSSPACE, 0);
+	if (error == 0) {
+		mode = ACCESSPERMS & ~td->td_proc->p_fd->fd_cmask;
+		error = kern_symlink(&nd, path, mode);
+	}
+	nlookup_done_at(&nd, fp);
+	rel_mplock();
+	linux_free_path(&path);
+	linux_free_path(&link);
+	return(error);
+}
+
 /*
  * MPALMOSTSAFE
  */
@@ -766,6 +985,35 @@ sys_linux_readlink(struct linux_readlink_args *args)
 				      &args->sysmsg_iresult);
 	}
 	nlookup_done(&nd);
+	rel_mplock();
+	linux_free_path(&path);
+	return(error);
+}
+
+int
+sys_linux_readlinkat(struct linux_readlinkat_args *args)
+{
+	struct nlookupdata nd;
+	struct file *fp;
+	char *path;
+	int dfd, error;
+
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
+#ifdef DEBUG
+	if (ldebug(readlink))
+		kprintf(ARGS(readlink, "%s, %p, %d"), path, (void *)args->buf,
+		    args->count);
+#endif
+	dfd = (args->dfd == LINUX_AT_FDCWD) ? AT_FDCWD : args->dfd;
+	get_mplock();
+	error = nlookup_init_at(&nd, &fp, dfd, path, UIO_SYSSPACE, 0);
+	if (error == 0) {
+		error = kern_readlink(&nd, args->buf, args->count,
+				      &args->sysmsg_iresult);
+	}
+	nlookup_done_at(&nd, fp);
 	rel_mplock();
 	linux_free_path(&path);
 	return(error);
@@ -898,6 +1146,46 @@ sys_linux_link(struct linux_link_args *args)
 		nlookup_done(&linknd);
 	}
 	nlookup_done(&nd);
+	rel_mplock();
+	linux_free_path(&path);
+	linux_free_path(&link);
+	return(error);
+}
+
+int
+sys_linux_linkat(struct linux_linkat_args *args)
+{
+	struct nlookupdata nd, linknd;
+	struct file *fp, *fp2;
+	char *path, *link;
+	int olddfd, newdfd, error;
+
+	if (args->flags != 0)
+		return (EINVAL);
+
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
+	error = linux_copyin_path(args->to, &link, LINUX_PATH_CREATE);
+	if (error) {
+		linux_free_path(&path);
+		return (error);
+	}
+#ifdef DEBUG
+	if (ldebug(link))
+		kprintf(ARGS(link, "%s, %s"), path, link);
+#endif
+	olddfd = (args->olddfd == LINUX_AT_FDCWD) ? AT_FDCWD : args->olddfd;
+	newdfd = (args->newdfd == LINUX_AT_FDCWD) ? AT_FDCWD : args->newdfd;
+	get_mplock();
+	error = nlookup_init_at(&nd, &fp, olddfd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0) {
+		error = nlookup_init_at(&linknd, &fp2, newdfd, link, UIO_SYSSPACE, 0);
+		if (error == 0)
+			error = kern_link(&nd, &linknd);
+		nlookup_done_at(&linknd, fp2);
+	}
+	nlookup_done_at(&nd, fp);
 	rel_mplock();
 	linux_free_path(&path);
 	linux_free_path(&link);
@@ -1386,3 +1674,55 @@ sys_linux_lchown(struct linux_lchown_args *args)
 	return(error);
 }
 
+int
+sys_linux_fchmodat(struct linux_fchmodat_args *args)
+{
+	struct fchmodat_args uap;
+	int error;
+
+	uap.fd = (args->dfd == LINUX_AT_FDCWD) ? AT_FDCWD : args->dfd;
+	uap.path = args->filename;
+	uap.mode = args->mode;
+	uap.flags = 0;
+
+	error = sys_fchmodat(&uap);
+
+	return (error);
+}
+
+int
+sys_linux_fchownat(struct linux_fchownat_args *args)
+{
+	struct fchownat_args uap;
+	int error;
+
+	if (args->flag & ~LINUX_AT_SYMLINK_NOFOLLOW)
+		return (EINVAL);
+
+	uap.fd = (args->dfd == LINUX_AT_FDCWD) ? AT_FDCWD : args->dfd;
+	uap.path = args->filename;
+	uap.uid = args->uid;
+	uap.gid = args->gid;
+	uap.flags = (args->flag & LINUX_AT_SYMLINK_NOFOLLOW) == 0 ? 0 :
+	    AT_SYMLINK_NOFOLLOW;
+
+	error = sys_fchownat(&uap);
+
+	return (error);
+}
+
+int
+sys_linux_faccessat(struct linux_faccessat_args *args)
+{
+	struct faccessat_args uap;
+	int error;
+
+	uap.fd = (args->dfd == LINUX_AT_FDCWD) ? AT_FDCWD : args->dfd;
+	uap.path = args->filename;
+	uap.amode = args->mode;
+	uap.flags = 0;
+
+	error = sys_faccessat(&uap);
+
+	return error;
+}

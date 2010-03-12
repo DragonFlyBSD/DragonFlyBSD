@@ -40,7 +40,9 @@
 #include <sys/priv.h>
 #include <sys/resource.h>
 #include <sys/resourcevar.h>
+#include <sys/ptrace.h>
 #include <sys/sysproto.h>
+#include <sys/thread2.h>
 #include <sys/unistd.h>
 #include <sys/wait.h>
 
@@ -60,6 +62,7 @@
 #include "../linux_ipc.h"
 #include "../linux_signal.h"
 #include "../linux_util.h"
+#include "../linux_emuldata.h"
 
 struct l_descriptor {
 	l_uint		entry_number;
@@ -139,8 +142,11 @@ sys_linux_execve(struct linux_execve_args *args)
 	 * Linux will register %edx as an atexit function and we must be
 	 * sure to set it to 0.  XXX
 	 */
-	if (error == 0)
+	if (error == 0) {
 		args->sysmsg_result64 = 0;
+		if (curproc->p_sysent == &elf_linux_sysvec)
+   		  	error = emuldata_init(curproc, NULL, 0);
+	}
 
 	exec_free_args(&exec_args);
 	linux_free_path(&path);
@@ -225,6 +231,10 @@ sys_linux_ipc(struct linux_ipc_args *args)
 
 		a.msqid = args->arg1;
 		a.msgsz = args->arg2;
+		if (a.msgsz < 0) {
+			error = EINVAL;
+			break;
+		}
 		a.msgflg = args->arg3;
 		a.sysmsg_lresult = 0;
 		if ((args->what >> 16) == 0) {
@@ -356,35 +366,80 @@ sys_linux_old_select(struct linux_old_select_args *args)
 int
 sys_linux_fork(struct linux_fork_args *args)
 {
+	struct lwp *lp = curthread->td_lwp;
+	struct proc *p2;
 	int error;
 
-#ifdef DEBUG
-	if (ldebug(fork))
-		kprintf(ARGS(fork, ""));
-#endif
+	get_mplock();
+	error = fork1(lp, RFFDG | RFPROC | RFPGLOCK, &p2);
+	if (error == 0) {
+		emuldata_init(curproc, p2, 0);
 
-	if ((error = sys_fork((struct fork_args *)args)) != 0)
-		return (error);
+		start_forked_proc(lp, p2);
+		args->sysmsg_fds[0] = p2->p_pid;
+		args->sysmsg_fds[1] = 0;
+	}
+	rel_mplock();
 
+	/* Are we the child? */
 	if (args->sysmsg_iresult == 1)
 		args->sysmsg_iresult = 0;
-	return (0);
+
+	return (error);
 }
 
 /*
- * MPSAFE
+ * MPALMOSTSAFE
  */
 int
 sys_linux_exit_group(struct linux_exit_group_args *args)
 {
-	struct exit_args newargs;
-	int error;
+	struct linux_emuldata *em, *e;
+	int sig;
 
-	newargs.sysmsg_iresult = 0;
-	newargs.rval = args->rval;
-	error = sys_exit(&newargs);
-	args->sysmsg_iresult = newargs.sysmsg_iresult;
-	return (error);
+	sig = args->rval;
+
+	get_mplock();
+
+	EMUL_LOCK();
+
+	em = emuldata_get(curproc);
+
+	if (em->s->refs == 1) {
+		exit1(W_EXITCODE(0, sig));
+		/* notreached */
+
+		EMUL_UNLOCK();
+
+		rel_mplock();
+		return (0);
+	}
+	KKASSERT(em->proc == curproc);
+	em->flags |= EMUL_DIDKILL;
+	em->s->flags |= LINUX_LES_INEXITGROUP;
+	em->s->xstat = W_EXITCODE(0, sig);
+
+	LIST_REMOVE(em, threads);
+	LIST_INSERT_HEAD(&em->s->threads, em, threads);
+	
+	while ((e = LIST_NEXT(em, threads)) != NULL) {
+		LIST_REMOVE(em, threads);
+		LIST_INSERT_AFTER(e, em, threads);
+		if ((e->flags & EMUL_DIDKILL) == 0) {
+			e->flags |= EMUL_DIDKILL;
+			KKASSERT(pfind(e->proc->p_pid) == e->proc);
+			ksignal(e->proc, SIGKILL);
+		}
+	}
+
+
+	EMUL_UNLOCK();
+
+	exit1(W_EXITCODE(0, sig));
+	rel_mplock();
+	/* notreached */
+
+	return (0);
 }
 
 /*
@@ -393,26 +448,26 @@ sys_linux_exit_group(struct linux_exit_group_args *args)
 int
 sys_linux_vfork(struct linux_vfork_args *args)
 {
+	struct lwp *lp = curthread->td_lwp;
+	struct proc *p2;
 	int error;
 
-#ifdef DEBUG
-	if (ldebug(vfork))
-		kprintf(ARGS(vfork, ""));
-#endif
+	get_mplock();
+	error = fork1(lp, RFFDG | RFPROC | RFPPWAIT | RFMEM | RFPGLOCK, &p2);
+	if (error == 0) {
+		emuldata_init(curproc, p2, 0);
 
-	if ((error = sys_vfork((struct vfork_args *)args)) != 0)
-		return (error);
-	/* Are we the child? */
+		start_forked_proc(lp, p2);
+		args->sysmsg_fds[0] = p2->p_pid;
+		args->sysmsg_fds[1] = 0;
+	}
+	rel_mplock();
+
 	if (args->sysmsg_iresult == 1)
 		args->sysmsg_iresult = 0;
-	return (0);
-}
 
-#define CLONE_VM	0x100
-#define CLONE_FS	0x200
-#define CLONE_FILES	0x400
-#define CLONE_SIGHAND	0x800
-#define CLONE_PID	0x1000
+	return (error);
+}
 
 /*
  * MPALMOSTSAFE
@@ -420,11 +475,16 @@ sys_linux_vfork(struct linux_vfork_args *args)
 int
 sys_linux_clone(struct linux_clone_args *args)
 {
+	struct segment_descriptor *desc;
+	struct l_user_desc info;
+	int idx;
+	int a[2];
+
+	struct lwp *lp = curthread->td_lwp;
 	int error, ff = RFPROC;
 	struct proc *p2 = NULL;
 	int exit_signal;
 	vm_offset_t start;
-	struct rfork_args rf_args;
 
 #ifdef DEBUG
 	if (ldebug(clone)) {
@@ -434,52 +494,111 @@ sys_linux_clone(struct linux_clone_args *args)
 			kprintf(LMSG("CLONE_PID not yet supported"));
 	}
 #endif
-
-	if (!args->stack)
-		return (EINVAL);
-
 	exit_signal = args->flags & 0x000000ff;
 	if (exit_signal >= LINUX_NSIG)
 		return (EINVAL);
-
 	if (exit_signal <= LINUX_SIGTBLSZ)
 		exit_signal = linux_to_bsd_signal[_SIG_IDX(exit_signal)];
 
-	/* RFTHREAD probably not necessary here, but it shouldn't hurt */
-	ff |= RFTHREAD;
-
-	if (args->flags & CLONE_VM)
+	if (args->flags & LINUX_CLONE_VM)
 		ff |= RFMEM;
-	if (args->flags & CLONE_SIGHAND)
+	if (args->flags & LINUX_CLONE_SIGHAND)
 		ff |= RFSIGSHARE;
-	if (!(args->flags & CLONE_FILES))
+	if (!(args->flags & (LINUX_CLONE_FILES | LINUX_CLONE_FS)))
 		ff |= RFFDG;
+	if ((args->flags & 0xffffff00) == LINUX_THREADING_FLAGS)
+		ff |= RFTHREAD;
+	if (args->flags & LINUX_CLONE_VFORK)
+		ff |= RFPPWAIT;
+	if (args->flags & LINUX_CLONE_PARENT_SETTID) {
+		if (args->parent_tidptr == NULL)
+ 			return (EINVAL);
+	}
 
 	error = 0;
 	start = 0;
 
-	rf_args.flags = ff;
-	rf_args.sysmsg_iresult = 0;
 	get_mplock();
-	if ((error = sys_rfork(&rf_args)) == 0) {
-		args->sysmsg_iresult = rf_args.sysmsg_iresult;
-
-		p2 = pfind(rf_args.sysmsg_iresult);
-		if (p2 == NULL)
-			error = ESRCH;
+	error = fork1(lp, ff | RFPGLOCK, &p2);
+	if (error) {
+		rel_mplock();
+		return error;
 	}
-	rel_mplock();
-	if (error == 0) {
-		p2->p_sigparent = exit_signal;
+
+	args->sysmsg_fds[0] = p2 ? p2->p_pid : 0;
+	args->sysmsg_fds[1] = 0;
+	
+	if (args->flags & (LINUX_CLONE_PARENT | LINUX_CLONE_THREAD))
+		proc_reparent(p2, curproc->p_pptr /* XXX */);
+
+	emuldata_init(curproc, p2, args->flags);
+	linux_proc_fork(p2, curproc, args->child_tidptr);
+	/*
+	 * XXX: this can't happen, p2 is never NULL, or else we'd have
+	 *	other problems, too (see p2->p_sigparent == ...,
+	 *	linux_proc_fork and emuldata_init.
+	 */
+	if (p2 == NULL) {
+		error = ESRCH;
+	} else {
+		if (args->flags & LINUX_CLONE_PARENT_SETTID) {
+			error = copyout(&p2->p_pid, args->parent_tidptr, sizeof(p2->p_pid));
+		}
+	}
+
+	p2->p_sigparent = exit_signal;
+	if (args->stack) {
 		ONLY_LWP_IN_PROC(p2)->lwp_md.md_regs->tf_esp =
-						(unsigned long)args->stack;
-
-#ifdef DEBUG
-		if (ldebug(clone))
-			kprintf(LMSG("clone: successful rfork to %ld"),
-			    (long)p2->p_pid);
-#endif
+					(unsigned long)args->stack;
 	}
+
+	if (args->flags & LINUX_CLONE_SETTLS) {
+		error = copyin((void *)curthread->td_lwp->lwp_md.md_regs->tf_esi, &info, sizeof(struct l_user_desc));
+		if (error) {
+			kprintf("copyin of tf_esi to info failed\n");
+		} else {
+			idx = info.entry_number;
+			/*
+			 * We understand both our own entries such as the ones
+			 * we provide on linux_set_thread_area, as well as the
+			 * linux-type entries 6-8.
+			 */
+			if ((idx < 6 || idx > 8) && (idx < GTLS_START)) {
+				kprintf("LINUX_CLONE_SETTLS, invalid idx requested: %d\n", idx);
+				goto out;
+			}
+			if (idx < GTLS_START) {
+				idx -= 6;
+			} else {
+#ifdef SMP
+				idx -= (GTLS_START + mycpu->gd_cpuid * NGDT);
+#else
+				idx -= GTLS_START;
+#endif	
+			}
+			KKASSERT(idx >= 0);
+
+			a[0] = LINUX_LDT_entry_a(&info);
+			a[1] = LINUX_LDT_entry_b(&info);
+			if (p2) {
+				desc = &FIRST_LWP_IN_PROC(p2)->lwp_thread->td_tls.tls[idx];
+				memcpy(desc, &a, sizeof(a));
+			} else {
+				kprintf("linux_clone... we don't have a p2\n");
+			}
+		}
+	}
+out:
+	if (p2)
+		start_forked_proc(lp, p2);
+
+	rel_mplock();
+#ifdef DEBUG
+	if (ldebug(clone))
+		kprintf(LMSG("clone: successful rfork to %ld"),
+		    (long)p2->p_pid);
+#endif
+
 	return (error);
 }
 
@@ -753,6 +872,7 @@ sys_linux_modify_ldt(struct linux_modify_ldt_args *uap)
 	struct i386_ldt_args *ldt;
 	struct l_descriptor ld;
 	union descriptor *desc;
+	int size, written;
 
 	sg = stackgap_init();
 
@@ -771,6 +891,14 @@ sys_linux_modify_ldt(struct linux_modify_ldt_args *uap)
 		error = sys_sysarch(&args);
 		uap->sysmsg_iresult = args.sysmsg_iresult *
 				      sizeof(union descriptor);
+		break;
+	case 0x02: /* read_default_ldt = 0 */
+		size = 5*sizeof(struct l_desc_struct);
+		if (size > uap->bytecount)
+			size = uap->bytecount;
+		for (written = error = 0; written < size && error == 0; written++)
+			error = subyte((char *)uap->ptr + written, 0);
+		uap->sysmsg_iresult = written;
 		break;
 	case 0x01: /* write_ldt */
 	case 0x11: /* write_ldt */
@@ -981,4 +1109,154 @@ sys_linux_sigaltstack(struct linux_sigaltstack_args *uap)
 	}
 
 	return (error);
+}
+
+int
+sys_linux_set_thread_area(struct linux_set_thread_area_args *args)
+{
+	struct segment_descriptor *desc;
+	struct l_user_desc info;
+	int error;
+	int idx;
+	int a[2];
+	int i;
+
+	error = copyin(args->desc, &info, sizeof(struct l_user_desc));
+	if (error)
+		return (EFAULT);
+
+#ifdef DEBUG
+	if (ldebug(set_thread_area))
+	   	kprintf(ARGS(set_thread_area, "%i, %x, %x, %i, %i, %i, %i, %i, %i\n"),
+		      info.entry_number,
+      		      info.base_addr,
+      		      info.limit,
+      		      info.seg_32bit,
+		      info.contents,
+      		      info.read_exec_only,
+      		      info.limit_in_pages,
+      		      info.seg_not_present,
+      		      info.useable);
+#endif
+
+	idx = info.entry_number;
+	if (idx != -1 && (idx < 6 || idx > 8))
+		return (EINVAL);
+
+	if (idx == -1) {
+		/* -1 means finding the first free TLS entry */
+		for (i = 0; i < NGTLS; i++) {
+			/*
+			 * try to determine if the TLS entry is empty by looking
+			 * at the lolimit entry.
+			 */
+			if (curthread->td_tls.tls[idx].sd_lolimit == 0) {
+				idx = i;
+				break;
+			}
+		}
+
+		if (idx == -1) {
+			/*
+			 * By now we should have an index. If not, it means
+			 * that no entry is free, so return ESRCH.
+			 */
+			return (ESRCH);
+		}
+	} else {
+		/* translate the index from Linux to ours */
+		idx -= 6;
+		KKASSERT(idx >= 0);
+	}
+
+	/* Tell the caller about the allocated entry number */
+#if 0
+	info.entry_number = idx;
+#endif
+#ifdef SMP
+	info.entry_number = GTLS_START + mycpu->gd_cpuid * NGDT + idx;
+#else
+	info.entry_number = GTLS_START + idx;
+#endif
+
+	error = copyout(&info, args->desc, sizeof(struct l_user_desc));
+	if (error)
+		return (error);
+
+	if (LINUX_LDT_empty(&info)) {
+		a[0] = 0;
+		a[1] = 0;
+	} else {
+		a[0] = LINUX_LDT_entry_a(&info);
+		a[1] = LINUX_LDT_entry_b(&info);
+	}
+
+	/*
+	 * Update the TLS and the TLS entries in the GDT, but hold a critical
+	 * section as required by set_user_TLS().
+	 */
+	crit_enter();
+	desc = &curthread->td_tls.tls[idx];
+	memcpy(desc, &a, sizeof(a));
+	set_user_TLS();
+	crit_exit();
+
+	return (0);
+}
+
+int
+sys_linux_get_thread_area(struct linux_get_thread_area_args *args)
+{
+	struct segment_descriptor *sd;
+	struct l_desc_struct desc;
+	struct l_user_desc info;
+	int error;
+	int idx;
+
+#ifdef DEBUG
+	if (ldebug(get_thread_area))
+		kprintf(ARGS(get_thread_area, "%p"), args->desc);
+#endif
+
+	error = copyin(args->desc, &info, sizeof(struct l_user_desc));
+	if (error)
+		return (EFAULT);
+		
+	idx = info.entry_number;
+	if ((idx < 6 || idx > 8) && (idx < GTLS_START)) {
+		kprintf("sys_linux_get_thread_area, invalid idx requested: %d\n", idx);
+		return (EINVAL);
+	}
+
+	memset(&info, 0, sizeof(info));
+
+	/* translate the index from Linux to ours */
+	info.entry_number = idx;
+	if (idx < GTLS_START) {
+		idx -= 6;
+	} else {
+#ifdef SMP
+		idx -= (GTLS_START + mycpu->gd_cpuid * NGDT);
+#else
+		idx -= GTLS_START;
+#endif	
+	}
+	KKASSERT(idx >= 0);
+
+	sd = &curthread->td_tls.tls[idx];
+	memcpy(&desc, sd, sizeof(desc));
+	info.base_addr = LINUX_GET_BASE(&desc);
+	info.limit = LINUX_GET_LIMIT(&desc);
+	info.seg_32bit = LINUX_GET_32BIT(&desc);
+	info.contents = LINUX_GET_CONTENTS(&desc);
+	info.read_exec_only = !LINUX_GET_WRITABLE(&desc);
+	info.limit_in_pages = LINUX_GET_LIMIT_PAGES(&desc);
+	info.seg_not_present = !LINUX_GET_PRESENT(&desc);
+	info.useable = LINUX_GET_USEABLE(&desc);
+
+	error = copyout(&info, args->desc, sizeof(struct l_user_desc));
+	if (error)
+		return (EFAULT);
+
+	return (0);
 }

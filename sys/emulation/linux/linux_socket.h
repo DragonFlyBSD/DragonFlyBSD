@@ -50,4 +50,10 @@
 #define LINUX_MSG_ERRQUEUE	0x2000
 #define LINUX_MSG_NOSIGNAL	0x4000
 
+struct l_ucred {
+        uint32_t        pid;
+        uint32_t        uid;
+        uint32_t        gid;
+};
+
 #endif /* _LINUX_SOCKET_H_ */

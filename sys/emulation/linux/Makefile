@@ -5,11 +5,14 @@
 
 ARCH=	arch_linux
 KMOD=	linux
-SRCS=	linux_dummy.c linux_file.c linux_getcwd.c linux_ioctl.c linux_ipc.c \
-	linux_machdep.c linux_mib.c linux_misc.c linux_signal.c linux_socket.c \
+SRCS=	linux_dummy.c linux_emuldata.c linux_epoll.c \
+	linux_file.c linux_futex.c linux_getcwd.c linux_ioctl.c \
+	linux_ipc.c \
+	linux_machdep.c linux_mib.c linux_misc.c linux_time.c linux_signal.c \
+	linux_socket.c \
 	linux_stats.c linux_sysctl.c linux_sysent.c linux_sysvec.c \
 	linux_util.c opt_compat.h opt_global.h opt_vmpage.h
-OBJS=	linux_locore.o
+OBJS=	linux_support.o linux_locore.o
 
 SUBDIR= i386/linprocfs
 .if ${MACHINE_ARCH} == "i386"
@@ -25,6 +28,10 @@ linux_assym.h: @/kern/genassym.sh
 	sh @/kern/genassym.sh linux_genassym.o > ${.TARGET}
 
 linux_locore.o: linux_locore.s linux_assym.h
+	${CC} -c -x assembler-with-cpp -DLOCORE ${CFLAGS} \
+	    ${.IMPSRC} -o ${.TARGET}
+
+linux_support.o: linux_support.s linux_assym.h
 	${CC} -c -x assembler-with-cpp -DLOCORE ${CFLAGS} \
 	    ${.IMPSRC} -o ${.TARGET}
 
