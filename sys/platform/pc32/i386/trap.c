@@ -237,8 +237,15 @@ static void
 userret(struct lwp *lp, struct trapframe *frame, int sticks)
 {
 	struct proc *p = lp->lwp_proc;
+	void (*hook)(void);
 	int sig;
 
+	if (p->p_userret != NULL) {
+		hook = p->p_userret;
+		p->p_userret = NULL;
+		(*hook)();
+	}
+		
 	/*
 	 * Charge system time if profiling.  Note: times are in microseconds.
 	 * This may do a copyout and block, so do it first even though it
@@ -1250,12 +1257,18 @@ syscall2(struct trapframe *frame)
 	}
 
 	code &= p->p_sysent->sv_mask;
+
 	if (code >= p->p_sysent->sv_size)
 		callp = &p->p_sysent->sv_table[0];
 	else
 		callp = &p->p_sysent->sv_table[code];
 
 	narg = callp->sy_narg & SYF_ARGMASK;
+
+#if 0
+	if (p->p_sysent->sv_name[0] == 'L')
+		kprintf("Linux syscall, code = %d\n", code);
+#endif
 
 	/*
 	 * copyin is MP aware, but the tracing code is not

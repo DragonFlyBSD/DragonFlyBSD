@@ -419,6 +419,10 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	if (p2->p_textvp)
 		vref(p2->p_textvp);
 
+	/* copy namecache handle to the text file */
+	if (p1->p_textnch.mount)
+		cache_copy(&p1->p_textnch, &p2->p_textnch);
+
 	/*
 	 * Handle file descriptors
 	 */

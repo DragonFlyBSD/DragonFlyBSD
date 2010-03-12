@@ -171,6 +171,13 @@ struct knote {
 struct proc;
 struct thread;
 struct filedesc;
+struct kevent_args;
+
+typedef int	(*k_copyout_fn)(void *arg, struct kevent *kevp, int count);
+typedef int	(*k_copyin_fn)(void *arg, struct kevent *kevp, int count);
+int kern_kevent(int fd, int nchanges, int nevents, struct kevent_args *uap,
+    k_copyin_fn kevent_copyin, k_copyout_fn kevent_copyout,
+    struct timespec *tsp);
 
 extern void	knote(struct klist *list, long hint);
 extern void	knote_remove(struct klist *list);
@@ -179,7 +186,7 @@ extern void	kqueue_init(struct kqueue *kq, struct filedesc *fdp);
 extern void	kqueue_terminate(struct kqueue *kq);
 extern int 	kqueue_register(struct kqueue *kq, struct kevent *kev);
 
-#endif 	/* !_KERNEL */
+#endif 	/* _KERNEL */
 
 #if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
 
@@ -191,7 +198,6 @@ int     kqueue (void);
 int     kevent (int, const struct kevent *, int, struct kevent *,
 		int, const struct timespec *);
 __END_DECLS
-
 #endif /* !_KERNEL */
 
 #endif /* !_SYS_EVENT_H_ */
