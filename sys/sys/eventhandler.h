@@ -159,6 +159,8 @@ extern struct eventhandler_list	*eventhandler_find_list(char *name);
 #define	EVENTHANDLER_PRI_LAST	20000
 
 struct image_params;
+struct proc;
+
 /* Shutdown events */
 typedef void (*shutdown_fn) (void *, int);
 

@@ -1126,10 +1126,6 @@ linux_ioctl_SIOCGIFMETRIC(struct file *fp, u_long cmd, u_long ocmd, caddr_t data
 	if (ifp == NULL)
 		return EINVAL;
 
-#if DEBUG
-	kprintf("Interface metric: %d\n", ifp->if_metric);
-#endif
-
 	metric = ifp->if_metric;
 	return (copyout(&metric, &ifr->ifr_ifmetric, sizeof(metric)));
 }

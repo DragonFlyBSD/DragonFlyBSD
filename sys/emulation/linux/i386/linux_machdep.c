@@ -486,14 +486,6 @@ sys_linux_clone(struct linux_clone_args *args)
 	int exit_signal;
 	vm_offset_t start;
 
-#ifdef DEBUG
-	if (ldebug(clone)) {
-		kprintf(ARGS(clone, "flags %x, stack %x"), 
-		    (unsigned int)args->flags, (unsigned int)args->stack);
-		if (args->flags & CLONE_PID)
-			kprintf(LMSG("CLONE_PID not yet supported"));
-	}
-#endif
 	exit_signal = args->flags & 0x000000ff;
 	if (exit_signal >= LINUX_NSIG)
 		return (EINVAL);
