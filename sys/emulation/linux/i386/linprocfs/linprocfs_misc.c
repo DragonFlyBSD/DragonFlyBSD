@@ -54,6 +54,7 @@
 #include <sys/vnode.h>
 #include <sys/lock.h>
 #include <sys/sbuf.h>
+#include <sys/mount.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -261,6 +262,65 @@ cpucnt(int offset)
 	count += *(unsigned int *)((char *)&gd->gd_cnt + offset);
     }
     return(count);
+}
+
+static int
+linprocfs_domounts_callback(struct mount *mp, void *data)
+{
+	struct statfs *st;
+	struct sbuf *sb = (struct sbuf *)data;
+	char *to, *from, *fs;
+
+	st = &mp->mnt_stat;
+
+	from = st->f_mntfromname;
+	to = st->f_mntonname;
+	fs = st->f_fstypename;
+
+	if (!strcmp(st->f_fstypename, "linprocfs"))
+		fs = "proc";
+	else if (!strcmp(st->f_fstypename, "ext2fs"))
+		fs = "ext2";
+	else if (!strcmp(st->f_fstypename, "msdos"))
+		fs = "vfat";
+	else if (!strcmp(st->f_fstypename, "msdosfs"))
+		fs = "vfat";
+
+	sbuf_printf(sb, "%s %s %s %s", from, to, fs,
+	    st->f_flags & MNT_RDONLY ? "ro" : "rw");
+
+#define OPT_ADD(name, flag) if (st->f_flags & (flag)) sbuf_printf(sb, "," name)
+	OPT_ADD("sync",		MNT_SYNCHRONOUS);
+	OPT_ADD("noexec",	MNT_NOEXEC);
+	OPT_ADD("nosuid",	MNT_NOSUID);
+	OPT_ADD("nodev",	MNT_NODEV);
+	OPT_ADD("async",	MNT_ASYNC);
+	OPT_ADD("suiddir",	MNT_SUIDDIR);
+	OPT_ADD("nosymfollow",	MNT_NOSYMFOLLOW);
+	OPT_ADD("noatime",	MNT_NOATIME);
+#undef OPT_ADD
+
+	sbuf_printf(sb, " 0 0\n");
+
+	return 0;
+}
+
+int
+linprocfs_domounts(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+		    struct uio *uio)
+{
+	struct sbuf *sb;
+	int error;
+
+	sb = sbuf_new_auto();
+
+	error = mountlist_scan(linprocfs_domounts_callback, sb, MNTSCAN_FORWARD);
+
+	sbuf_finish(sb);
+	if (error == 0)
+		error = uiomove_frombuf(sbuf_data(sb), sbuf_len(sb), uio);
+	sbuf_delete(sb);
+	return (error);
 }
 
 int

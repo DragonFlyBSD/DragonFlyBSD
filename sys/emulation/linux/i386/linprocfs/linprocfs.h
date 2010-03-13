@@ -74,6 +74,7 @@ typedef enum {
 	Penviron,
 	Pmaps,
 	Pstatm,
+	Pmounts,
 } pfstype;
 
 /*
@@ -145,6 +146,7 @@ int linprocfs_write_dbregs (struct proc *, struct dbreg *);
 #endif
 int linprocfs_domeminfo (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
 int linprocfs_docpuinfo (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
+int linprocfs_domounts (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
 int linprocfs_dostat (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
 int linprocfs_douptime (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
 int linprocfs_doversion (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);

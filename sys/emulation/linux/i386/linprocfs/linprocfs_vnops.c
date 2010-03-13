@@ -563,6 +563,7 @@ linprocfs_getattr(struct vop_getattr_args *ap)
 
 	case Pmeminfo:
 	case Pcpuinfo:
+	case Pmounts:
 	case Pstat:
 	case Puptime:
 	case Pversion:
@@ -776,6 +777,10 @@ linprocfs_lookup(struct vop_old_lookup_args *ap)
 		}
 		if (CNEQ(cnp, "cpuinfo", 7)) {
 			error = linprocfs_allocvp(dvp->v_mount, vpp, 0, Pcpuinfo);
+			goto out;
+		}
+		if (CNEQ(cnp, "mounts", 6)) {
+			error = linprocfs_allocvp(dvp->v_mount, vpp, 0, Pmounts);
 			goto out;
 		}
 		if (CNEQ(cnp, "stat", 4)) {
@@ -1006,7 +1011,7 @@ linprocfs_readdir_root(struct vop_readdir_args *ap)
 	info.uio = uio;
 	info.cred = ap->a_cred;
 
-	while (info.pcnt < 11) {
+	while (info.pcnt < 12) {
 		res = linprocfs_readdir_root_callback(NULL, &info);
 		if (res < 0)
 			break;
@@ -1102,6 +1107,12 @@ linprocfs_readdir_root_callback(struct proc *p, void *data)
 		d_ino = PROCFS_FILENO(0, Psys);
 		d_namlen = 3;
 		d_name = "sys";
+		d_type = DT_DIR;
+		break;
+	case 11:
+		d_ino = PROCFS_FILENO(0, Pmounts);
+		d_namlen = 6;
+		d_name = "mounts";
 		d_type = DT_DIR;
 		break;
 #if 0

@@ -197,6 +197,7 @@ loop:
 	case Pmaps:
 	case Pmeminfo:
 	case Pcpuinfo:
+	case Pmounts:
 	case Pstat:
 	case Puptime:
 	case Pversion:
@@ -297,6 +298,9 @@ linprocfs_rw(struct vop_read_args *ap)
 		break;
 	case Pcpuinfo:
 		rtval = linprocfs_docpuinfo(curp, p, pfs, uio);
+		break;
+	case Pmounts:
+		rtval = linprocfs_domounts(curp, p, pfs, uio);
 		break;
 	case Pstat:
 		rtval = linprocfs_dostat(curp, p, pfs, uio);
