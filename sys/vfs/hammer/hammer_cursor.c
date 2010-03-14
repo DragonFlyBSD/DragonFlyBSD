@@ -711,7 +711,14 @@ hammer_cursor_replaced_node(hammer_node_t onode, hammer_node_t nnode)
  * We have removed <node> from the parent and collapsed the parent.
  *
  * Cursors in deadlock recovery are seeked upward to the parent so the
- * btree_remove() recursion works properly.
+ * btree_remove() recursion works properly even though we have marked
+ * the cursor as requiring a reseek.
+ *
+ * This is the only cursor function which sets HAMMER_CURSOR_ITERATE_CHECK,
+ * meaning the cursor is no longer definitively pointing at an element
+ * within its iteration (if the cursor is being used to iterate).  The
+ * iteration code will take this into account instead of asserting if the
+ * cursor is outside the iteration range.
  */
 void
 hammer_cursor_removed_node(hammer_node_t node, hammer_node_t parent, int index)
@@ -730,6 +737,7 @@ hammer_cursor_removed_node(hammer_node_t node, hammer_node_t parent, int index)
 		if (cursor->leaf == &ondisk->elms[cursor->index].leaf)
 			cursor->leaf = NULL;
 		cursor->flags |= HAMMER_CURSOR_TRACKED_RIPOUT;
+		cursor->flags |= HAMMER_CURSOR_ITERATE_CHECK;
 		cursor->node = parent;
 		cursor->index = index;
 		hammer_ref_node(parent);

@@ -110,6 +110,12 @@ static void hammer_cursor_mirror_filter(hammer_cursor_t cursor);
  * to reinitiate the lookup and set key_beg to properly pick up where we
  * left off.
  *
+ * If HAMMER_CURSOR_ITERATE_CHECK is set it is possible that the cursor
+ * was reverse indexed due to being moved to a parent while unlocked,
+ * and something else might have inserted an element outside the iteration
+ * range.  When this case occurs the iterator just keeps iterating until
+ * it gets back into the iteration range (instead of asserting).
+ *
  * NOTE!  EDEADLK *CANNOT* be returned by this procedure.
  */
 int
@@ -237,25 +243,41 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 				error = ENOENT;
 				break;
 			}
-			KKASSERT(s <= 0);
 
 			/*
 			 * Better not be zero
 			 */
 			KKASSERT(elm->internal.subtree_offset != 0);
 
-			/*
-			 * If running the mirror filter see if we can skip
-			 * one or more entire sub-trees.  If we can we
-			 * return the internal mode and the caller processes
-			 * the skipped range (see mirror_read)
-			 */
-			if (cursor->flags & HAMMER_CURSOR_MIRROR_FILTERED) {
-				if (elm->internal.mirror_tid <
-				    cursor->cmirror->mirror_tid) {
-					hammer_cursor_mirror_filter(cursor);
-					return(0);
+			if (s <= 0) {
+				/*
+				 * If running the mirror filter see if we
+				 * can skip one or more entire sub-trees.
+				 * If we can we return the internal node
+				 * and the caller processes the skipped
+				 * range (see mirror_read).
+				 */
+				if (cursor->flags &
+				    HAMMER_CURSOR_MIRROR_FILTERED) {
+					if (elm->internal.mirror_tid <
+					    cursor->cmirror->mirror_tid) {
+						hammer_cursor_mirror_filter(cursor);
+						return(0);
+					}
 				}
+			} else {
+				/*
+				 * Normally it would be impossible for the
+				 * cursor to have gotten back-indexed,
+				 * but it can happen if a node is deleted
+				 * and the cursor is moved to its parent
+				 * internal node.  ITERATE_CHECK will be set.
+				 */
+				KKASSERT(cursor->flags &
+					 HAMMER_CURSOR_ITERATE_CHECK);
+				kprintf("hammer_btree_iterate: "
+					"DEBUG: Caught parent seek "
+					"in internal iteration\n");
 			}
 
 			error = hammer_cursor_down(cursor);
@@ -296,6 +318,28 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 				break;
 			}
 
+			/*
+			 * If ITERATE_CHECK is set an unlocked cursor may
+			 * have been moved to a parent and the iterate can
+			 * happen upon elements that are not in the requested
+			 * range.
+			 */
+			if (cursor->flags & HAMMER_CURSOR_ITERATE_CHECK) {
+				s = hammer_btree_cmp(&cursor->key_beg,
+						     &elm->base);
+				if (s > 0) {
+					kprintf("hammer_btree_iterate: "
+						"DEBUG: Caught parent seek "
+						"in leaf iteration\n");
+					++cursor->index;
+					continue;
+				}
+			}
+			cursor->flags &= ~HAMMER_CURSOR_ITERATE_CHECK;
+
+			/*
+			 * Return the element
+			 */
 			switch(elm->leaf.base.btype) {
 			case HAMMER_BTREE_TYPE_RECORD:
 				if ((cursor->flags & HAMMER_CURSOR_ASOF) &&
@@ -471,6 +515,11 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 				error = ENOENT;
 				break;
 			}
+
+			/*
+			 * It shouldn't be possible to be seeked past key_end,
+			 * even if the cursor got moved to a parent.
+			 */
 			KKASSERT(r >= 0);
 
 			/*
@@ -509,6 +558,15 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 				break;
 			}
 
+			/*
+			 * It shouldn't be possible to be seeked past key_end,
+			 * even if the cursor got moved to a parent.
+			 */
+			cursor->flags &= ~HAMMER_CURSOR_ITERATE_CHECK;
+
+			/*
+			 * Return the element
+			 */
 			switch(elm->leaf.base.btype) {
 			case HAMMER_BTREE_TYPE_RECORD:
 				if ((cursor->flags & HAMMER_CURSOR_ASOF) &&
@@ -588,6 +646,7 @@ hammer_btree_lookup(hammer_cursor_t cursor)
 {
 	int error;
 
+	cursor->flags &= ~HAMMER_CURSOR_ITERATE_CHECK;
 	KKASSERT ((cursor->flags & HAMMER_CURSOR_INSERT) == 0 ||
 		  cursor->trans->sync_lock_refs > 0);
 	++hammer_stats_btree_lookups;
@@ -2439,6 +2498,12 @@ hammer_btree_mirror_propagate(hammer_cursor_t cursor, hammer_tid_t mirror_tid)
 		error = hammer_cursor_up(cursor);
 		if (error == 0)
 			error = hammer_cursor_upgrade(cursor);
+
+		/*
+		 * We can ignore HAMMER_CURSOR_ITERATE_CHECK, the
+		 * cursor will still be properly positioned for
+		 * mirror propagation, just not for iterations.
+		 */
 		while (error == EDEADLK) {
 			hammer_recover_cursor(cursor);
 			error = hammer_cursor_upgrade(cursor);

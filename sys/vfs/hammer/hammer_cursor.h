@@ -140,6 +140,7 @@ typedef struct hammer_cursor *hammer_cursor_t;
 #define HAMMER_CURSOR_TRACKED		0x00040000
 #define HAMMER_CURSOR_TRACKED_RIPOUT	0x00080000
 #define HAMMER_CURSOR_LASTWASMEM	0x00100000 /* hammer_ip_next logic */
+#define HAMMER_CURSOR_ITERATE_CHECK	0x00200000
 
 /*
  * Flags we can clear when reusing a cursor (we can clear all of them)
