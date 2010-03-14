@@ -203,6 +203,7 @@ MAN=	aac.4 \
 	pfsync.4 \
 	pim.4 \
 	polling.4 \
+	powernow.4 \
 	ppbus.4 \
 	ppc.4 \
 	ppi.4 \
