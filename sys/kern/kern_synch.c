@@ -87,6 +87,8 @@ static struct callout loadav_callout;
 static struct callout schedcpu_callout;
 MALLOC_DEFINE(M_TSLEEP, "tslpque", "tsleep queues");
 
+#define __DEALL(ident)	__DEQUALIFY(void *, ident)
+
 #if !defined(KTR_TSLEEP)
 #define KTR_TSLEEP	KTR_ALL
 #endif
@@ -347,7 +349,7 @@ sleep_gdinit(globaldata_t gd)
  * the race conditions are covered.
  */
 static __inline void
-_tsleep_interlock(globaldata_t gd, void *ident, int flags)
+_tsleep_interlock(globaldata_t gd, const volatile void *ident, int flags)
 {
 	thread_t td = gd->gd_curthread;
 	int id;
@@ -370,7 +372,7 @@ _tsleep_interlock(globaldata_t gd, void *ident, int flags)
 }
 
 void
-tsleep_interlock(void *ident, int flags)
+tsleep_interlock(const volatile void *ident, int flags)
 {
 	_tsleep_interlock(mycpu, ident, flags);
 }
@@ -458,7 +460,7 @@ tsleep_wakeup(struct thread *td)
  * lower the priority briefly to allow interrupts, then return.
  */
 int
-tsleep(void *ident, int flags, const char *wmesg, int timo)
+tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 {
 	struct thread *td = curthread;
 	struct lwp *lp = td->td_lwp;
@@ -701,7 +703,7 @@ resume:
  * heavily.
  */
 int
-ssleep(void *ident, struct spinlock *spin, int flags,
+ssleep(const volatile void *ident, struct spinlock *spin, int flags,
        const char *wmesg, int timo)
 {
 	globaldata_t gd = mycpu;
@@ -716,8 +718,8 @@ ssleep(void *ident, struct spinlock *spin, int flags,
 }
 
 int
-lksleep(void *ident, struct lock *lock, int flags,
-       const char *wmesg, int timo)
+lksleep(const volatile void *ident, struct lock *lock, int flags,
+	const char *wmesg, int timo)
 {
 	globaldata_t gd = mycpu;
 	int error;
@@ -736,7 +738,7 @@ lksleep(void *ident, struct lock *lock, int flags,
  * and tsleep on the ident, then reacquire the mutex and return.
  */
 int
-mtxsleep(void *ident, struct mtx *mtx, int flags,
+mtxsleep(const volatile void *ident, struct mtx *mtx, int flags,
 	 const char *wmesg, int timo)
 {
 	globaldata_t gd = mycpu;
@@ -757,7 +759,7 @@ mtxsleep(void *ident, struct mtx *mtx, int flags,
  * and return.
  */
 int
-zsleep(void *ident, struct lwkt_serialize *slz, int flags,
+zsleep(const volatile void *ident, struct lwkt_serialize *slz, int flags,
        const char *wmesg, int timo)
 {
 	globaldata_t gd = mycpu;
@@ -860,6 +862,9 @@ endtsleep(void *arg)
  * This call may run without the MP lock held.  We can only manipulate thread
  * state on the cpu owning the thread.  We CANNOT manipulate process state
  * at all.
+ *
+ * _wakeup() can be passed to an IPI so we can't use (const volatile
+ * void *ident).
  */
 static void
 _wakeup(void *ident, int domain)
@@ -929,19 +934,19 @@ done:
  * Wakeup all threads tsleep()ing on the specified ident, on all cpus
  */
 void
-wakeup(void *ident)
+wakeup(const volatile void *ident)
 {
-    _wakeup(ident, PWAKEUP_ENCODE(0, mycpu->gd_cpuid));
+    _wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, mycpu->gd_cpuid));
 }
 
 /*
  * Wakeup one thread tsleep()ing on the specified ident, on any cpu.
  */
 void
-wakeup_one(void *ident)
+wakeup_one(const volatile void *ident)
 {
     /* XXX potentially round-robin the first responding cpu */
-    _wakeup(ident, PWAKEUP_ENCODE(0, mycpu->gd_cpuid) | PWAKEUP_ONE);
+    _wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, mycpu->gd_cpuid) | PWAKEUP_ONE);
 }
 
 /*
@@ -949,9 +954,9 @@ wakeup_one(void *ident)
  * only.
  */
 void
-wakeup_mycpu(void *ident)
+wakeup_mycpu(const volatile void *ident)
 {
-    _wakeup(ident, PWAKEUP_MYCPU);
+    _wakeup(__DEALL(ident), PWAKEUP_MYCPU);
 }
 
 /*
@@ -959,10 +964,10 @@ wakeup_mycpu(void *ident)
  * only.
  */
 void
-wakeup_mycpu_one(void *ident)
+wakeup_mycpu_one(const volatile void *ident)
 {
     /* XXX potentially round-robin the first responding cpu */
-    _wakeup(ident, PWAKEUP_MYCPU|PWAKEUP_ONE);
+    _wakeup(__DEALL(ident), PWAKEUP_MYCPU|PWAKEUP_ONE);
 }
 
 /*
@@ -970,13 +975,13 @@ wakeup_mycpu_one(void *ident)
  * only.
  */
 void
-wakeup_oncpu(globaldata_t gd, void *ident)
+wakeup_oncpu(globaldata_t gd, const volatile void *ident)
 {
 #ifdef SMP
     if (gd == mycpu) {
-	_wakeup(ident, PWAKEUP_MYCPU);
+	_wakeup(__DEALL(ident), PWAKEUP_MYCPU);
     } else {
-	lwkt_send_ipiq2(gd, _wakeup, ident, PWAKEUP_MYCPU);
+	lwkt_send_ipiq2(gd, _wakeup, __DEALL(ident), PWAKEUP_MYCPU);
     }
 #else
     _wakeup(ident, PWAKEUP_MYCPU);
@@ -988,13 +993,14 @@ wakeup_oncpu(globaldata_t gd, void *ident)
  * only.
  */
 void
-wakeup_oncpu_one(globaldata_t gd, void *ident)
+wakeup_oncpu_one(globaldata_t gd, const volatile void *ident)
 {
 #ifdef SMP
     if (gd == mycpu) {
-	_wakeup(ident, PWAKEUP_MYCPU | PWAKEUP_ONE);
+	_wakeup(__DEALL(ident), PWAKEUP_MYCPU | PWAKEUP_ONE);
     } else {
-	lwkt_send_ipiq2(gd, _wakeup, ident, PWAKEUP_MYCPU | PWAKEUP_ONE);
+	lwkt_send_ipiq2(gd, _wakeup, __DEALL(ident),
+			PWAKEUP_MYCPU | PWAKEUP_ONE);
     }
 #else
     _wakeup(ident, PWAKEUP_MYCPU | PWAKEUP_ONE);
@@ -1006,9 +1012,9 @@ wakeup_oncpu_one(globaldata_t gd, void *ident)
  * the specified domain, on all cpus.
  */
 void
-wakeup_domain(void *ident, int domain)
+wakeup_domain(const volatile void *ident, int domain)
 {
-    _wakeup(ident, PWAKEUP_ENCODE(domain, mycpu->gd_cpuid));
+    _wakeup(__DEALL(ident), PWAKEUP_ENCODE(domain, mycpu->gd_cpuid));
 }
 
 /*
@@ -1016,10 +1022,11 @@ wakeup_domain(void *ident, int domain)
  * the specified  domain, on any cpu.
  */
 void
-wakeup_domain_one(void *ident, int domain)
+wakeup_domain_one(const volatile void *ident, int domain)
 {
     /* XXX potentially round-robin the first responding cpu */
-    _wakeup(ident, PWAKEUP_ENCODE(domain, mycpu->gd_cpuid) | PWAKEUP_ONE);
+    _wakeup(__DEALL(ident),
+	    PWAKEUP_ENCODE(domain, mycpu->gd_cpuid) | PWAKEUP_ONE);
 }
 
 /*

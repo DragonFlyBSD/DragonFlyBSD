@@ -347,23 +347,23 @@ extern watchdog_tickle_fn	wdog_tickler;
  * Common `proc' functions are declared here so that proc.h can be included
  * less often.
  */
-int	tsleep (void *, int, const char *, int);
-int	ssleep (void *, struct spinlock *, int, const char *, int);
-int	lksleep (void *, struct lock *, int, const char *, int);
-int	mtxsleep (void *, struct mtx *, int, const char *, int);
-int	zsleep(void *, struct lwkt_serialize *, int, const char *, int);
-void	tsleep_interlock (void *, int);
+int	tsleep (const volatile void *, int, const char *, int);
+int	ssleep (const volatile void *, struct spinlock *, int, const char *, int);
+int	lksleep (const volatile void *, struct lock *, int, const char *, int);
+int	mtxsleep (const volatile void *, struct mtx *, int, const char *, int);
+int	zsleep(const volatile void *, struct lwkt_serialize *, int, const char *, int);
+void	tsleep_interlock (const volatile void *, int);
 void	tsleep_remove (struct thread *);
 int	lwkt_sleep (const char *, int);
 void	tstop (void);
-void	wakeup (void *chan);
-void	wakeup_one (void *chan);
-void	wakeup_mycpu (void *chan);
-void	wakeup_mycpu_one (void *chan);
-void	wakeup_oncpu (struct globaldata *gd, void *chan);
-void	wakeup_oncpu_one (struct globaldata *gd, void *chan);
-void	wakeup_domain (void *chan, int domain);
-void	wakeup_domain_one (void *chan, int domain);
+void	wakeup (const volatile void *chan);
+void	wakeup_one (const volatile void *chan);
+void	wakeup_mycpu (const volatile void *chan);
+void	wakeup_mycpu_one (const volatile void *chan);
+void	wakeup_oncpu (struct globaldata *gd, const volatile void *chan);
+void	wakeup_oncpu_one (struct globaldata *gd, const volatile void *chan);
+void	wakeup_domain (const volatile void *chan, int domain);
+void	wakeup_domain_one (const volatile void *chan, int domain);
 
 /*
  * Common `cdev_t' stuff are declared here to avoid #include poisoning

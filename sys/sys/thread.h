@@ -199,7 +199,7 @@ struct thread {
     struct pcb	*td_pcb;	/* points to pcb and top of kstack */
     struct globaldata *td_gd;	/* associated with this cpu */
     const char	*td_wmesg;	/* string name for blockage */
-    void	*td_wchan;	/* waiting on channel */
+    const volatile void	*td_wchan;	/* waiting on channel */
     int		td_pri;		/* 0-31, 31=highest priority (note 1) */
     int		td_flags;	/* TDF flags */
     int		td_wdomain;	/* domain for wchan address (typ 0) */
