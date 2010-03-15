@@ -699,7 +699,11 @@ linux_mmap_common(caddr_t linux_addr, size_t linux_len, int linux_prot,
 		len = linux_len;
 	}
 
-	prot = linux_prot | PROT_READ;
+	prot = linux_prot;
+
+	if (prot & (PROT_READ | PROT_WRITE | PROT_EXEC))
+		prot |= PROT_READ | PROT_EXEC;
+
 	if (linux_flags & LINUX_MAP_ANON) {
 		fd = -1;
 	} else {

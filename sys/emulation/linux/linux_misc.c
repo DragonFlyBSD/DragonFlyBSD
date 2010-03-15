@@ -107,7 +107,11 @@ struct l_sysinfo {
 	l_ulong		totalswap;	/* Total swap space size */
 	l_ulong		freeswap;	/* swap space still available */
 	l_ushort	procs;		/* Number of current processes */
-	char		_f[22];		/* Pads structure to 64 bytes */
+	l_ushort	pad;		/* explicit padding */
+	l_ulong		totalhigh;	/* Total high memory size */
+	l_ulong		freehigh;	/* Available high memory size */
+	l_uint		mem_unit;	/* Memory unit size in bytes */
+	char 		_f[20-2*sizeof(l_long)-sizeof(l_int)]; /* Padding for libc5 */
 };
 
 int
@@ -174,7 +178,10 @@ sys_linux_sysinfo(struct linux_sysinfo_args *args)
 	}
 	rel_mplock();
 
-	sysinfo.procs = 20; /* Hack */
+	sysinfo.procs = nprocs;
+	sysinfo.totalhigh = 0;
+	sysinfo.freehigh = 0;
+	sysinfo.mem_unit = 1; /* Set the basic mem unit to 1 */
 
 	error = copyout(&sysinfo, (caddr_t)args->info, sizeof(sysinfo));
 	return (error);
