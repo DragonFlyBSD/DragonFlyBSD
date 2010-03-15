@@ -2418,8 +2418,11 @@ btree_remove(hammer_cursor_t cursor)
 
 		/*
 		 * cursor->node is invalid, cursor up to make the cursor
-		 * valid again.
+		 * valid again.  We have to flag the condition in case
+		 * another thread wiggles an insertion in during an
+		 * iteration.
 		 */
+		cursor->flags |= HAMMER_CURSOR_ITERATE_CHECK;
 		error = hammer_cursor_up(cursor);
 	}
 	return (error);
