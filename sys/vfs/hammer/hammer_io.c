@@ -203,8 +203,8 @@ hammer_io_clear_error(struct hammer_io *io)
 {
 	if (io->ioerror) {
 		io->ioerror = 0;
-		hammer_unref(&io->lock);
-		KKASSERT(io->lock.refs > 0);
+		hammer_rel(&io->lock);
+		KKASSERT(hammer_isactive(&io->lock));
 	}
 }
 
@@ -361,7 +361,7 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 		BUF_KERNPROC(bp);
 		iou->io.reclaim = 1;
 		iou->io.waitdep = 1;
-		KKASSERT(iou->io.lock.refs == 1);
+		KKASSERT(hammer_isactive(&iou->io.lock) == 1);
 		hammer_rel_buffer(&iou->buffer, 0);
 		/*hammer_io_deallocate(bp);*/
 #endif
@@ -380,12 +380,15 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 
 /*
  * This routine is called on the last reference to a hammer structure.
- * The io is usually interlocked with io.loading and io.refs must be 1.
+ * The io must be interlocked with a refcount of zero.  The hammer structure
+ * will remain interlocked on return.
  *
- * This routine may return a non-NULL bp to the caller for dispoal.  Disposal
- * simply means the caller finishes decrementing the ref-count on the 
- * IO structure then brelse()'s the bp.  The bp may or may not still be
- * passively associated with the IO.
+ * This routine may return a non-NULL bp to the caller for dispoal.
+ * The caller typically brelse()'s the bp.
+ *
+ * The bp may or may not still be passively associated with the IO.  It
+ * will remain passively associated if it is unreleasable (e.g. a modified
+ * meta-data buffer).
  * 
  * The only requirement here is that modified meta-data and volume-header
  * buffer may NOT be disassociated from the IO structure, and consequently
@@ -600,7 +603,7 @@ hammer_io_flush(struct hammer_io *io, int reclaim)
 	 */
 	hammer_ref(&io->lock);
 	hammer_io_clear_modify(io, 0);
-	hammer_unref(&io->lock);
+	hammer_rel(&io->lock);
 
 	if (hammer_debug_io & 0x0002)
 		kprintf("hammer io_write %016jx\n", bp->b_bio1.bio_offset);
@@ -648,7 +651,7 @@ hammer_io_modify(hammer_io_t io, int count)
 	/*
 	 * Shortcut if nothing to do.
 	 */
-	KKASSERT(io->lock.refs != 0 && io->bp != NULL);
+	KKASSERT(hammer_isactive(&io->lock) && io->bp != NULL);
 	io->modify_refs += count;
 	if (io->modified && io->released == 0)
 		return;
@@ -817,7 +820,7 @@ restart:
 		}
 	}
 	/* caller must still have ref on io */
-	KKASSERT(io->lock.refs > 0);
+	KKASSERT(hammer_isactive(&io->lock));
 }
 
 /*
@@ -924,8 +927,6 @@ hammer_io_complete(struct buf *bp)
 			default:
 				if (iou->io.ioerror == 0) {
 					iou->io.ioerror = 1;
-					if (iou->io.lock.refs == 0)
-						++hammer_count_refedbufs;
 					hammer_ref(&iou->io.lock);
 				}
 				break;
@@ -963,10 +964,11 @@ hammer_io_complete(struct buf *bp)
 
 	/*
 	 * If B_LOCKED is set someone wanted to deallocate the bp at some
-	 * point, do it now if refs has become zero.
+	 * point, try to do it now.  The operation will fail if there are
+	 * refs or if hammer_io_deallocate() is unable to gain the
+	 * interlock.
 	 */
-	if ((bp->b_flags & B_LOCKED) && iou->io.lock.refs == 0) {
-		KKASSERT(iou->io.modified == 0);
+	if (bp->b_flags & B_LOCKED) {
 		--hammer_count_io_locked;
 		bp->b_flags &= ~B_LOCKED;
 		hammer_io_deallocate(bp);
@@ -995,13 +997,21 @@ hammer_io_deallocate(struct buf *bp)
 	hammer_io_structure_t iou = (void *)LIST_FIRST(&bp->b_dep);
 
 	KKASSERT((bp->b_flags & B_LOCKED) == 0 && iou->io.running == 0);
-	if (iou->io.lock.refs > 0 || iou->io.modified) {
+	if (hammer_try_interlock_norefs(&iou->io.lock) == 0) {
+		/*
+		 * We cannot safely disassociate a bp from a referenced
+		 * or interlocked HAMMER structure.
+		 */
+		bp->b_flags |= B_LOCKED;
+		++hammer_count_io_locked;
+	} else if (iou->io.modified) {
 		/*
 		 * It is not legal to disassociate a modified buffer.  This
 		 * case really shouldn't ever occur.
 		 */
 		bp->b_flags |= B_LOCKED;
 		++hammer_count_io_locked;
+		hammer_put_interlock(&iou->io.lock, 0);
 	} else {
 		/*
 		 * Disassociate the BP.  If the io has no refs left we
@@ -1016,6 +1026,7 @@ hammer_io_deallocate(struct buf *bp)
 			TAILQ_INSERT_TAIL(iou->io.mod_list, &iou->io, mod_entry);
 			crit_exit();
 		}
+		hammer_put_interlock(&iou->io.lock, 1);
 	}
 }
 
@@ -1090,7 +1101,7 @@ hammer_io_checkwrite(struct buf *bp)
 	if (io->modify_refs == 0 && io->modified) {
 		hammer_ref(&io->lock);
 		hammer_io_clear_modify(io, 0);
-		hammer_unref(&io->lock);
+		hammer_rel(&io->lock);
 	} else if (io->modified) {
 		KKASSERT(io->type == HAMMER_STRUCTURE_DATA_BUFFER);
 	}

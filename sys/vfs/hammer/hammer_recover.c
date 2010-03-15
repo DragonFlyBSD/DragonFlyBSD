@@ -963,6 +963,7 @@ int
 hammer_recover_flush_buffer_callback(hammer_buffer_t buffer, void *data)
 {
 	int final = *(int *)data;
+	int flush;
 
 	if (buffer->io.recovered) {
 		buffer->io.recovered = 0;
@@ -975,16 +976,17 @@ hammer_recover_flush_buffer_callback(hammer_buffer_t buffer, void *data)
 		}
 		hammer_rel_buffer(buffer, 0);
 	} else {
-		if (buffer->io.lock.refs == 0)
+		flush = hammer_ref_interlock(&buffer->io.lock);
+		if (flush)
 			++hammer_count_refedbufs;
-		hammer_ref(&buffer->io.lock);
+
 		if (final < 0) {
 			hammer_io_clear_error(&buffer->io);
 			hammer_io_clear_modify(&buffer->io, 1);
 		}
-		KKASSERT(buffer->io.lock.refs == 1);
+		KKASSERT(hammer_oneref(&buffer->io.lock));
 		buffer->io.reclaim = 1;
-		hammer_rel_buffer(buffer, 1);
+		hammer_rel_buffer(buffer, flush);
 	}
 	return(0);
 }

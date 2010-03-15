@@ -47,30 +47,31 @@ hammer_lock_ex_ident(struct hammer_lock *lock, const char *ident)
 	u_int lv;
 	u_int nlv;
 
-	KKASSERT(lock->refs > 0);
+	KKASSERT(lock->refs);
 	for (;;) {
 		lv = lock->lockval;
 
 		if (lv == 0) {
 			nlv = 1 | HAMMER_LOCKF_EXCLUSIVE;
 			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
-				lock->owner = td;
+				lock->lowner = td;
 				break;
 			}
-		} else if ((lv & HAMMER_LOCKF_EXCLUSIVE) && lock->owner == td) {
+		} else if ((lv & HAMMER_LOCKF_EXCLUSIVE) &&
+			   lock->lowner == td) {
 			nlv = (lv + 1);
 			if (atomic_cmpset_int(&lock->lockval, lv, nlv))
 				break;
 		} else {
 			if (hammer_debug_locks) {
 				kprintf("hammer_lock_ex: held by %p\n",
-					lock->owner);
+					lock->lowner);
 			}
 			nlv = lv | HAMMER_LOCKF_WANTED;
 			++hammer_contention_count;
-			tsleep_interlock(lock, 0);
+			tsleep_interlock(&lock->lockval, 0);
 			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
-				tsleep(lock, PINTERLOCKED, ident, 0);
+				tsleep(&lock->lockval, PINTERLOCKED, ident, 0);
 				if (hammer_debug_locks)
 					kprintf("hammer_lock_ex: try again\n");
 			}
@@ -89,18 +90,19 @@ hammer_lock_ex_try(struct hammer_lock *lock)
 	u_int lv;
 	u_int nlv;
 
-	KKASSERT(lock->refs > 0);
+	KKASSERT(lock->refs);
 	for (;;) {
 		lv = lock->lockval;
 
 		if (lv == 0) {
 			nlv = 1 | HAMMER_LOCKF_EXCLUSIVE;
 			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
-				lock->owner = td;
+				lock->lowner = td;
 				error = 0;
 				break;
 			}
-		} else if ((lv & HAMMER_LOCKF_EXCLUSIVE) && lock->owner == td) {
+		} else if ((lv & HAMMER_LOCKF_EXCLUSIVE) &&
+			   lock->lowner == td) {
 			nlv = (lv + 1);
 			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
 				error = 0;
@@ -126,8 +128,9 @@ hammer_lock_sh(struct hammer_lock *lock)
 	thread_t td = curthread;
 	u_int lv;
 	u_int nlv;
+	const char *ident = "hmrlck";
 
-	KKASSERT(lock->refs > 0);
+	KKASSERT(lock->refs);
 	for (;;) {
 		lv = lock->lockval;
 
@@ -135,7 +138,7 @@ hammer_lock_sh(struct hammer_lock *lock)
 			nlv = (lv + 1);
 			if (atomic_cmpset_int(&lock->lockval, lv, nlv))
 				break;
-		} else if (lock->owner == td) {
+		} else if (lock->lowner == td) {
 			/*
 			 * Disallowed case, drop into kernel debugger for
 			 * now.  A cont continues w/ an exclusive lock.
@@ -149,10 +152,9 @@ hammer_lock_sh(struct hammer_lock *lock)
 		} else {
 			nlv = lv | HAMMER_LOCKF_WANTED;
 			++hammer_contention_count;
-			tsleep_interlock(lock, 0);
-			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
-				tsleep(lock, PINTERLOCKED, "hmrlck", 0);
-			}
+			tsleep_interlock(&lock->lockval, 0);
+			if (atomic_cmpset_int(&lock->lockval, lv, nlv))
+				tsleep(&lock->lockval, PINTERLOCKED, ident, 0);
 		}
 	}
 }
@@ -165,7 +167,7 @@ hammer_lock_sh_try(struct hammer_lock *lock)
 	u_int nlv;
 	int error;
 
-	KKASSERT(lock->refs > 0);
+	KKASSERT(lock->refs);
 	for (;;) {
 		lv = lock->lockval;
 
@@ -175,7 +177,7 @@ hammer_lock_sh_try(struct hammer_lock *lock)
 				error = 0;
 				break;
 			}
-		} else if (lock->owner == td) {
+		} else if (lock->lowner == td) {
 			/*
 			 * Disallowed case, drop into kernel debugger for
 			 * now.  A cont continues w/ an exclusive lock.
@@ -217,12 +219,12 @@ hammer_lock_upgrade(struct hammer_lock *lock)
 		if ((lv & ~HAMMER_LOCKF_WANTED) == 1) {
 			nlv = lv | HAMMER_LOCKF_EXCLUSIVE;
 			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
-				lock->owner = td;
+				lock->lowner = td;
 				error = 0;
 				break;
 			}
 		} else if (lv & HAMMER_LOCKF_EXCLUSIVE) {
-			if (lock->owner != curthread)
+			if (lock->lowner != curthread)
 				panic("hammer_lock_upgrade: illegal state");
 			error = 0;
 			break;
@@ -251,19 +253,19 @@ hammer_lock_downgrade(struct hammer_lock *lock)
 
 	KKASSERT((lock->lockval & ~HAMMER_LOCKF_WANTED) ==
 		 (HAMMER_LOCKF_EXCLUSIVE | 1));
-	KKASSERT(lock->owner == td);
+	KKASSERT(lock->lowner == td);
 
 	/*
 	 * NOTE: Must clear owner before releasing exclusivity
 	 */
-	lock->owner = NULL;
+	lock->lowner = NULL;
 
 	for (;;) {
 		lv = lock->lockval;
 		nlv = lv & ~(HAMMER_LOCKF_EXCLUSIVE | HAMMER_LOCKF_WANTED);
 		if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
 			if (lv & HAMMER_LOCKF_WANTED)
-				wakeup(lock);
+				wakeup(&lock->lockval);
 			break;
 		}
 	}
@@ -279,7 +281,7 @@ hammer_unlock(struct hammer_lock *lock)
 	lv = lock->lockval;
 	KKASSERT(lv != 0);
 	if (lv & HAMMER_LOCKF_EXCLUSIVE)
-		KKASSERT(lock->owner == td);
+		KKASSERT(lock->lowner == td);
 
 	for (;;) {
 		lv = lock->lockval;
@@ -291,10 +293,10 @@ hammer_unlock(struct hammer_lock *lock)
 		} else if (nlv == 1) {
 			nlv = 0;
 			if (lv & HAMMER_LOCKF_EXCLUSIVE)
-				lock->owner = NULL;
+				lock->lowner = NULL;
 			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
 				if (lv & HAMMER_LOCKF_WANTED)
-					wakeup(lock);
+					wakeup(&lock->lockval);
 				break;
 			}
 		} else {
@@ -319,18 +321,418 @@ hammer_lock_status(struct hammer_lock *lock)
 	panic("hammer_lock_status: lock must be held: %p", lock);
 }
 
+/*
+ * Bump the ref count for a lock (not the excl/share count, but a separate
+ * structural reference count).  The CHECK flag will be set on a 0->1
+ * transition.
+ *
+ * This function does nothing to serialize races between multple threads.
+ * The caller can interlock it later on to deal with serialization.
+ *
+ * MPSAFE
+ */
 void
 hammer_ref(struct hammer_lock *lock)
 {
-	KKASSERT(lock->refs >= 0);
-	atomic_add_int(&lock->refs, 1);
+	u_int lv;
+	u_int nlv;
+
+	for (;;) {
+		lv = lock->refs;
+		if ((lv & ~HAMMER_REFS_FLAGS) == 0) {
+			nlv = (lv + 1) | HAMMER_REFS_CHECK;
+			if (atomic_cmpset_int(&lock->refs, lv, nlv))
+				return;
+		} else {
+			nlv = (lv + 1);
+			KKASSERT((int)nlv > 0);
+			if (atomic_cmpset_int(&lock->refs, lv, nlv))
+				return;
+		}
+	}
+	/* not reached */
 }
 
+/*
+ * Drop the ref count for a lock (not the excl/share count, but a separate
+ * structural reference count).  The CHECK flag will be cleared on a 1->0
+ * transition.
+ *
+ * This function does nothing to serialize races between multple threads.
+ *
+ * MPSAFE
+ */
 void
-hammer_unref(struct hammer_lock *lock)
+hammer_rel(struct hammer_lock *lock)
 {
-	KKASSERT(lock->refs > 0);
-	atomic_subtract_int(&lock->refs, 1);
+	u_int lv;
+	u_int nlv;
+
+	for (;;) {
+		lv = lock->refs;
+		if ((lv & ~HAMMER_REFS_FLAGS) == 1) {
+			nlv = (lv - 1) & ~HAMMER_REFS_CHECK;
+			if (atomic_cmpset_int(&lock->refs, lv, nlv))
+				return;
+		} else {
+			KKASSERT((int)lv > 0);
+			nlv = (lv - 1);
+			if (atomic_cmpset_int(&lock->refs, lv, nlv))
+				return;
+		}
+	}
+	/* not reached */
+}
+
+/*
+ * The hammer_*_interlock() and hammer_*_interlock_done() functions are
+ * more sophisticated versions which handle MP transition races and block
+ * when necessary.
+ *
+ * hammer_ref_interlock() bumps the ref-count and conditionally acquires
+ * the interlock for 0->1 transitions or if the CHECK is found to be set.
+ *
+ * This case will return TRUE, the interlock will be held, and the CHECK
+ * bit also set.  Other threads attempting to ref will see the CHECK bit
+ * and block until we clean up.
+ *
+ * FALSE is returned for transitions other than 0->1 when the CHECK bit
+ * is not found to be set, or if the function loses the race with another
+ * thread.
+ *
+ * TRUE is only returned to one thread and the others will block.
+ * Effectively a TRUE indicator means 'someone transitioned 0->1
+ * and you are the first guy to successfully lock it after that, so you
+ * need to check'.  Due to races the ref-count may be greater than 1 upon
+ * return.
+ *
+ * MPSAFE
+ */
+int
+hammer_ref_interlock(struct hammer_lock *lock)
+{
+	u_int lv;
+	u_int nlv;
+
+	/*
+	 * Integrated reference count bump, lock, and check, with hot-path.
+	 *
+	 * (a) Return 1	(+LOCKED, +CHECK)	0->1 transition
+	 * (b) Return 0 (-LOCKED, -CHECK)	N->N+1 transition
+	 * (c) Break out (+CHECK)		Check condition and Cannot lock
+	 * (d) Return 1 (+LOCKED, +CHECK)	Successfully locked
+	 */
+	for (;;) {
+		lv = lock->refs;
+		if (lv == 0) {
+			nlv = 1 | HAMMER_REFS_LOCKED | HAMMER_REFS_CHECK;
+			if (atomic_cmpset_int(&lock->refs, lv, nlv)) {
+				lock->rowner = curthread;
+				return(1);
+			}
+		} else {
+			nlv = (lv + 1);
+			if ((lv & ~HAMMER_REFS_FLAGS) == 0)
+				nlv |= HAMMER_REFS_CHECK;
+			if ((nlv & HAMMER_REFS_CHECK) == 0) {
+				if (atomic_cmpset_int(&lock->refs, lv, nlv))
+					return(0);
+			} else if (lv & HAMMER_REFS_LOCKED) {
+				/* CHECK also set here */
+				if (atomic_cmpset_int(&lock->refs, lv, nlv))
+					break;
+			} else {
+				/* CHECK also set here */
+				nlv |= HAMMER_REFS_LOCKED;
+				if (atomic_cmpset_int(&lock->refs, lv, nlv)) {
+					lock->rowner = curthread;
+					return(1);
+				}
+			}
+		}
+	}
+
+	/*
+	 * Defered check condition because we were unable to acquire the
+	 * lock.  We must block until the check condition is cleared due
+	 * to a race with another thread, or we are able to acquire the
+	 * lock.
+	 *
+	 * (a) Return 0	(-CHECK)		Another thread handled it
+	 * (b) Return 1 (+LOCKED, +CHECK)	We handled it.
+	 */
+	for (;;) {
+		lv = lock->refs;
+		if ((lv & HAMMER_REFS_CHECK) == 0)
+			return(0);
+		if (lv & HAMMER_REFS_LOCKED) {
+			tsleep_interlock(&lock->refs, 0);
+			nlv = (lv | HAMMER_REFS_WANTED);
+			if (atomic_cmpset_int(&lock->refs, lv, nlv))
+				tsleep(&lock->refs, PINTERLOCKED, "h1lk", 0);
+		} else {
+			/* CHECK also set here */
+			nlv = lv | HAMMER_REFS_LOCKED;
+			if (atomic_cmpset_int(&lock->refs, lv, nlv)) {
+				lock->rowner = curthread;
+				return(1);
+			}
+		}
+	}
+	/* not reached */
+}
+
+/*
+ * This is the same as hammer_ref_interlock() but asserts that the
+ * 0->1 transition is always true, thus the lock must have no references
+ * on entry or have CHECK set, and will have one reference with the
+ * interlock held on return.  It must also not be interlocked on entry
+ * by anyone.
+ *
+ * NOTE that CHECK will never be found set when the ref-count is 0.
+ *
+ * TRUE is always returned to match the API for hammer_ref_interlock().
+ * This function returns with one ref, the lock held, and the CHECK bit set.
+ */
+int
+hammer_ref_interlock_true(struct hammer_lock *lock)
+{
+	u_int lv;
+	u_int nlv;
+
+	for (;;) {
+		lv = lock->refs;
+
+		if (lv) {
+			panic("hammer_ref_interlock_true: bad lock %p %08x\n",
+			      lock, lock->refs);
+		}
+		nlv = 1 | HAMMER_REFS_LOCKED | HAMMER_REFS_CHECK;
+		if (atomic_cmpset_int(&lock->refs, lv, nlv)) {
+			lock->rowner = curthread;
+			return (1);
+		}
+	}
+}
+
+/*
+ * Unlock the interlock acquired by hammer_ref_interlock() and clear the
+ * CHECK flag.  The ref-count remains unchanged.
+ *
+ * This routine is called in the load path when the load succeeds.
+ */
+void
+hammer_ref_interlock_done(struct hammer_lock *lock)
+{
+	u_int lv;
+	u_int nlv;
+
+	for (;;) {
+		lv = lock->refs;
+		nlv = lv & ~HAMMER_REFS_FLAGS;
+		if (atomic_cmpset_int(&lock->refs, lv, nlv)) {
+			if (lv & HAMMER_REFS_WANTED)
+				wakeup(&lock->refs);
+			break;
+		}
+	}
+}
+
+/*
+ * hammer_rel_interlock() works a bit differently in that it must
+ * acquire the lock in tandem with a 1->0 transition.  CHECK is
+ * not used.
+ *
+ * TRUE is returned on 1->0 transitions with the lock held on return
+ * and FALSE is returned otherwise with the lock not held.
+ *
+ * It is important to note that the refs are not stable and may
+ * increase while we hold the lock, the TRUE indication only means
+ * that we transitioned 1->0, not necessarily that we stayed at 0.
+ *
+ * Another thread bumping refs while we hold the lock will set CHECK,
+ * causing one of the competing hammer_ref_interlock() calls to
+ * return TRUE after we release our lock.
+ *
+ * MPSAFE
+ */
+int
+hammer_rel_interlock(struct hammer_lock *lock, int locked)
+{
+	u_int lv;
+	u_int nlv;
+
+	/*
+	 * In locked mode (failure/unload path) we release the
+	 * ref-count but leave it locked.
+	 */
+	if (locked) {
+		hammer_rel(lock);
+		return(1);
+	}
+
+	/*
+	 * Integrated reference count drop with LOCKED, plus the hot-path
+	 * returns.
+	 */
+	for (;;) {
+		lv = lock->refs;
+
+		if (lv == 1) {
+			nlv = 0 | HAMMER_REFS_LOCKED;
+			if (atomic_cmpset_int(&lock->refs, lv, nlv)) {
+				lock->rowner = curthread;
+				return(1);
+			}
+		} else if ((lv & ~HAMMER_REFS_FLAGS) == 1) {
+			if ((lv & HAMMER_REFS_LOCKED) == 0) {
+				nlv = (lv - 1) | HAMMER_REFS_LOCKED;
+				if (atomic_cmpset_int(&lock->refs, lv, nlv)) {
+					lock->rowner = curthread;
+					return(1);
+				}
+			} else {
+				nlv = lv | HAMMER_REFS_WANTED;
+				tsleep_interlock(&lock->refs, 0);
+				if (atomic_cmpset_int(&lock->refs, lv, nlv)) {
+					tsleep(&lock->refs, PINTERLOCKED,
+					       "h0lk", 0);
+				}
+			}
+		} else {
+			nlv = (lv - 1);
+			KKASSERT((int)nlv >= 0);
+			if (atomic_cmpset_int(&lock->refs, lv, nlv))
+				return(0);
+		}
+	}
+	/* not reached */
+}
+
+/*
+ * Unlock the interlock acquired by hammer_rel_interlock().
+ *
+ * If orig_locked is non-zero the interlock was originally held prior to
+ * the hammer_rel_interlock() call and passed through to us.  In this
+ * case we want to retain the CHECK error state if not transitioning
+ * to 0.
+ *
+ * The code is the same either way so we do not have to conditionalize
+ * on orig_locked.
+ */
+void
+hammer_rel_interlock_done(struct hammer_lock *lock, int orig_locked __unused)
+{
+	u_int lv;
+	u_int nlv;
+
+	for (;;) {
+		lv = lock->refs;
+		nlv = lv & ~(HAMMER_REFS_LOCKED | HAMMER_REFS_WANTED);
+		if ((lv & ~HAMMER_REFS_FLAGS) == 0)
+			nlv &= ~HAMMER_REFS_CHECK;
+		if (atomic_cmpset_int(&lock->refs, lv, nlv)) {
+			if (lv & HAMMER_REFS_WANTED)
+				wakeup(&lock->refs);
+			break;
+		}
+	}
+}
+
+/*
+ * Acquire the interlock on lock->refs.
+ *
+ * Return TRUE if CHECK is currently set.  Note that CHECK will not
+ * be set if the reference count is 0, but can get set if this function
+ * is preceeded by, say, hammer_ref(), or through races with other
+ * threads.  The return value allows the caller to use the same logic
+ * as hammer_ref_interlock().
+ *
+ * MPSAFE
+ */
+int
+hammer_get_interlock(struct hammer_lock *lock)
+{
+	u_int lv;
+	u_int nlv;
+
+	for (;;) {
+		lv = lock->refs;
+		if (lv & HAMMER_REFS_LOCKED) {
+			nlv = lv | HAMMER_REFS_WANTED;
+			tsleep_interlock(&lock->refs, 0);
+			if (atomic_cmpset_int(&lock->refs, lv, nlv))
+				tsleep(&lock->refs, PINTERLOCKED, "hilk", 0);
+		} else {
+			nlv = (lv | HAMMER_REFS_LOCKED);
+			if (atomic_cmpset_int(&lock->refs, lv, nlv)) {
+				lock->rowner = curthread;
+				return((lv & HAMMER_REFS_CHECK) ? 1 : 0);
+			}
+		}
+	}
+}
+
+/*
+ * Attempt to acquire the interlock and expect 0 refs.  Used by the buffer
+ * cache callback code to disassociate or lock the bufs related to HAMMER
+ * structures.
+ *
+ * During teardown the related bp will be acquired by hammer_io_release()
+ * which interocks our test.
+ *
+ * Returns non-zero on success, zero on failure.
+ */
+int
+hammer_try_interlock_norefs(struct hammer_lock *lock)
+{
+	u_int lv;
+	u_int nlv;
+
+	for (;;) {
+		lv = lock->refs;
+		if (lv == 0) {
+			nlv = lv | HAMMER_REFS_LOCKED;
+			if (atomic_cmpset_int(&lock->refs, lv, nlv)) {
+				lock->rowner = curthread;
+				return(1);
+			}
+		} else {
+			return(0);
+		}
+	}
+	/* not reached */
+}
+
+/*
+ * Release the interlock on lock->refs.  This function will set
+ * CHECK if the refs is non-zero and error is non-zero, and clear
+ * CHECK otherwise.
+ *
+ * MPSAFE
+ */
+void
+hammer_put_interlock(struct hammer_lock *lock, int error)
+{
+	u_int lv;
+	u_int nlv;
+
+	for (;;) {
+		lv = lock->refs;
+		KKASSERT(lv & HAMMER_REFS_LOCKED);
+		nlv = lv & ~(HAMMER_REFS_LOCKED | HAMMER_REFS_WANTED);
+
+		if ((nlv & ~HAMMER_REFS_FLAGS) == 0 || error == 0)
+			nlv &= ~HAMMER_REFS_CHECK;
+		else
+			nlv |= HAMMER_REFS_CHECK;
+
+		if (atomic_cmpset_int(&lock->refs, lv, nlv)) {
+			if (lv & HAMMER_REFS_WANTED)
+				wakeup(&lock->refs);
+			return;
+		}
+	}
 }
 
 /*

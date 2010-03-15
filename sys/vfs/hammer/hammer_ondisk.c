@@ -50,6 +50,7 @@ static int hammer_load_volume(hammer_volume_t volume);
 static int hammer_load_buffer(hammer_buffer_t buffer, int isnew);
 static int hammer_load_node(hammer_transaction_t trans,
 				hammer_node_t node, int isnew);
+static void _hammer_rel_node(hammer_node_t node, int locked);
 
 static int
 hammer_vol_rb_compare(hammer_volume_t vol1, hammer_volume_t vol2)
@@ -290,14 +291,14 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 	 */
 	if (volume->io.ioerror) {
 		volume->io.ioerror = 0;
-		hammer_unref(&volume->io.lock);
+		hammer_rel(&volume->io.lock);
 	}
 
 	/*
-	 * This should release the bp.
+	 * This should release the bp.  Releasing the volume with flush set
+	 * implies the interlock is set.
 	 */
-	KKASSERT(volume->io.lock.refs == 0);
-	hammer_ref(&volume->io.lock);
+	hammer_ref_interlock_true(&volume->io.lock);
 	hammer_rel_volume(volume, 1);
 	KKASSERT(volume->io.bp == NULL);
 
@@ -305,7 +306,7 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 	 * There should be no references on the volume, no clusters, and
 	 * no super-clusters.
 	 */
-	KKASSERT(volume->io.lock.refs == 0);
+	KKASSERT(hammer_norefs(&volume->io.lock));
 
 	volume->ondisk = NULL;
 	if (volume->devvp) {
@@ -375,18 +376,18 @@ hammer_get_volume(struct hammer_mount *hmp, int32_t vol_no, int *errorp)
 		*errorp = ENOENT;
 		return(NULL);
 	}
-	hammer_ref(&volume->io.lock);
 
 	/*
-	 * Deal with on-disk info
+	 * Reference the volume, load/check the data on the 0->1 transition.
+	 * hammer_load_volume() will dispose of the interlock on return,
+	 * and also clean up the ref count on error.
 	 */
-	if (volume->ondisk == NULL || volume->io.loading) {
+	if (hammer_ref_interlock(&volume->io.lock)) {
 		*errorp = hammer_load_volume(volume);
-		if (*errorp) {
-			hammer_rel_volume(volume, 1);
+		if (*errorp)
 			volume = NULL;
-		}
 	} else {
+		KKASSERT(volume->ondisk);
 		*errorp = 0;
 	}
 	return(volume);
@@ -397,16 +398,14 @@ hammer_ref_volume(hammer_volume_t volume)
 {
 	int error;
 
-	hammer_ref(&volume->io.lock);
-
 	/*
-	 * Deal with on-disk info
+	 * Reference the volume and deal with the check condition used to
+	 * load its ondisk info.
 	 */
-	if (volume->ondisk == NULL || volume->io.loading) {
+	if (hammer_ref_interlock(&volume->io.lock)) {
 		error = hammer_load_volume(volume);
-		if (error)
-			hammer_rel_volume(volume, 1);
 	} else {
+		KKASSERT(volume->ondisk);
 		error = 0;
 	}
 	return (error);
@@ -419,18 +418,17 @@ hammer_get_root_volume(struct hammer_mount *hmp, int *errorp)
 
 	volume = hmp->rootvol;
 	KKASSERT(volume != NULL);
-	hammer_ref(&volume->io.lock);
 
 	/*
-	 * Deal with on-disk info
+	 * Reference the volume and deal with the check condition used to
+	 * load its ondisk info.
 	 */
-	if (volume->ondisk == NULL || volume->io.loading) {
+	if (hammer_ref_interlock(&volume->io.lock)) {
 		*errorp = hammer_load_volume(volume);
-		if (*errorp) {
-			hammer_rel_volume(volume, 1);
+		if (*errorp)
 			volume = NULL;
-		}
 	} else {
+		KKASSERT(volume->ondisk);
 		*errorp = 0;
 	}
 	return (volume);
@@ -438,58 +436,46 @@ hammer_get_root_volume(struct hammer_mount *hmp, int *errorp)
 
 /*
  * Load a volume's on-disk information.  The volume must be referenced and
- * not locked.  We temporarily acquire an exclusive lock to interlock
- * against releases or multiple get's.
+ * the interlock is held on call.  The interlock will be released on return.
+ * The reference will also be released on return if an error occurs.
  */
 static int
 hammer_load_volume(hammer_volume_t volume)
 {
 	int error;
 
-	++volume->io.loading;
-	hammer_lock_ex(&volume->io.lock);
-
 	if (volume->ondisk == NULL) {
 		error = hammer_io_read(volume->devvp, &volume->io,
 				       volume->maxraw_off);
-		if (error == 0)
+		if (error == 0) {
 			volume->ondisk = (void *)volume->io.bp->b_data;
+                        hammer_ref_interlock_done(&volume->io.lock);
+		} else {
+                        hammer_rel_volume(volume, 1);
+		}
 	} else {
 		error = 0;
 	}
-	--volume->io.loading;
-	hammer_unlock(&volume->io.lock);
 	return(error);
 }
 
 /*
- * Release a volume.  Call hammer_io_release on the last reference.  We have
- * to acquire an exclusive lock to interlock against volume->ondisk tests
- * in hammer_load_volume(), and hammer_io_release() also expects an exclusive
- * lock to be held.
+ * Release a previously acquired reference on the volume.
  *
  * Volumes are not unloaded from memory during normal operation.
  */
 void
-hammer_rel_volume(hammer_volume_t volume, int flush)
+hammer_rel_volume(hammer_volume_t volume, int locked)
 {
-	struct buf *bp = NULL;
+	struct buf *bp;
 
-	crit_enter();
-	if (volume->io.lock.refs == 1) {
-		++volume->io.loading;
-		hammer_lock_ex(&volume->io.lock);
-		if (volume->io.lock.refs == 1) {
-			volume->ondisk = NULL;
-			bp = hammer_io_release(&volume->io, flush);
-		}
-		--volume->io.loading;
-		hammer_unlock(&volume->io.lock);
+	if (hammer_rel_interlock(&volume->io.lock, locked)) {
+		volume->ondisk = NULL;
+		bp = hammer_io_release(&volume->io, locked);
+		hammer_rel_interlock_done(&volume->io.lock, locked);
+		if (bp)
+			brelse(bp);
 	}
-	hammer_unref(&volume->io.lock);
-	if (bp)
-		brelse(bp);
-	crit_exit();
 }
 
 int
@@ -537,17 +523,28 @@ again:
 	 */
 	buffer = RB_LOOKUP(hammer_buf_rb_tree, &hmp->rb_bufs_root, buf_offset);
 	if (buffer) {
-		if (buffer->io.lock.refs == 0)
-			++hammer_count_refedbufs;
-		hammer_ref(&buffer->io.lock);
-
 		/*
 		 * Once refed the ondisk field will not be cleared by
-		 * any other action.
+		 * any other action.  Shortcut the operation if the
+		 * ondisk structure is valid.
 		 */
-		if (buffer->ondisk && buffer->io.loading == 0) {
-			*errorp = 0;
+		if (hammer_ref_interlock(&buffer->io.lock) == 0) {
 			hammer_io_advance(&buffer->io);
+			KKASSERT(buffer->ondisk);
+			*errorp = 0;
+			return(buffer);
+		}
+
+		/*
+		 * 0->1 transition or defered 0->1 transition (CHECK),
+		 * interlock now held.  Shortcut if ondisk is already
+		 * assigned.
+		 */
+		++hammer_count_refedbufs;
+		if (buffer->ondisk) {
+			hammer_io_advance(&buffer->io);
+			hammer_ref_interlock_done(&buffer->io.lock);
+			*errorp = 0;
 			return(buffer);
 		}
 
@@ -637,15 +634,16 @@ again:
 			    (zone2_offset & HAMMER_OFF_SHORT_MASK);
 	buffer->io.bytes = bytes;
 	TAILQ_INIT(&buffer->clist);
-	hammer_ref(&buffer->io.lock);
+	hammer_ref_interlock_true(&buffer->io.lock);
 
 	/*
 	 * Insert the buffer into the RB tree and handle late collisions.
 	 */
 	if (RB_INSERT(hammer_buf_rb_tree, &hmp->rb_bufs_root, buffer)) {
 		hammer_rel_volume(volume, 0);
-		buffer->io.volume = NULL;	/* safety */
-		hammer_unref(&buffer->io.lock);	/* safety */
+		buffer->io.volume = NULL;			/* safety */
+		if (hammer_rel_interlock(&buffer->io.lock, 1))	/* safety */
+			hammer_rel_interlock_done(&buffer->io.lock, 1);
 		--hammer_count_buffers;
 		kfree(buffer, hmp->m_misc);
 		goto again;
@@ -654,19 +652,18 @@ again:
 found:
 
 	/*
-	 * Deal with on-disk info and loading races.
+	 * The buffer is referenced and interlocked.  Load the buffer
+	 * if necessary.  hammer_load_buffer() deals with the interlock
+	 * and, if an error is returned, also deals with the ref.
 	 */
-	if (buffer->ondisk == NULL || buffer->io.loading) {
+	if (buffer->ondisk == NULL) {
 		*errorp = hammer_load_buffer(buffer, isnew);
-		if (*errorp) {
-			hammer_rel_buffer(buffer, 1);
+		if (*errorp)
 			buffer = NULL;
-		} else {
-			hammer_io_advance(&buffer->io);
-		}
 	} else {
-		*errorp = 0;
 		hammer_io_advance(&buffer->io);
+		hammer_ref_interlock_done(&buffer->io.lock);
+		*errorp = 0;
 	}
 	return(buffer);
 }
@@ -745,7 +742,7 @@ hammer_del_buffers(hammer_mount_t hmp, hammer_off_t base_offset,
 				   base_offset);
 		if (buffer) {
 			error = hammer_ref_buffer(buffer);
-			if (error == 0 && buffer->io.lock.refs != 1) {
+			if (error == 0 && !hammer_oneref(&buffer->io.lock)) {
 				error = EAGAIN;
 				hammer_rel_buffer(buffer, 0);
 			}
@@ -778,6 +775,13 @@ hammer_del_buffers(hammer_mount_t hmp, hammer_off_t base_offset,
 	return (ret_error);
 }
 
+/*
+ * Given a referenced and interlocked buffer load/validate the data.
+ *
+ * The buffer interlock will be released on return.  If an error is
+ * returned the buffer reference will also be released (and the buffer
+ * pointer will thus be stale).
+ */
 static int
 hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 {
@@ -788,8 +792,6 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 	 * Load the buffer's on-disk info
 	 */
 	volume = buffer->io.volume;
-	++buffer->io.loading;
-	hammer_lock_ex(&buffer->io.lock);
 
 	if (hammer_debug_io & 0x0001) {
 		kprintf("load_buffer %016llx %016llx isnew=%d od=%p\n",
@@ -812,8 +814,12 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 	} else {
 		error = 0;
 	}
-	--buffer->io.loading;
-	hammer_unlock(&buffer->io.lock);
+	if (error == 0) {
+		hammer_io_advance(&buffer->io);
+		hammer_ref_interlock_done(&buffer->io.lock);
+	} else {
+		hammer_rel_buffer(buffer, 1);
+	}
 	return (error);
 }
 
@@ -830,25 +836,24 @@ hammer_unload_buffer(hammer_buffer_t buffer, void *data)
 {
 	struct hammer_volume *volume = (struct hammer_volume *) data;
 
-	if (volume != NULL && volume != buffer->io.volume) {
-		/*
-		 * We are only interested in unloading buffers of volume,
-		 * so skip it
-		 */
+	/*
+	 * If volume != NULL we are only interested in unloading buffers
+	 * associated with a particular volume.
+	 */
+	if (volume != NULL && volume != buffer->io.volume)
 		return 0;
-	}
 
 	/*
 	 * Clean up the persistent ref ioerror might have on the buffer
-	 * and acquire a ref (steal ioerror's if we can).
+	 * and acquire a ref.  Expect a 0->1 transition.
 	 */
 	if (buffer->io.ioerror) {
 		buffer->io.ioerror = 0;
-	} else {
-		if (buffer->io.lock.refs == 0)
-			++hammer_count_refedbufs;
-		hammer_ref(&buffer->io.lock);
+		hammer_rel(&buffer->io.lock);
+		--hammer_count_refedbufs;
 	}
+	hammer_ref_interlock_true(&buffer->io.lock);
+	++hammer_count_refedbufs;
 
 	/*
 	 * We must not flush a dirty buffer to disk on umount.  It should
@@ -860,9 +865,8 @@ hammer_unload_buffer(hammer_buffer_t buffer, void *data)
 	 */
 	hammer_io_clear_modify(&buffer->io, 1);
 	hammer_flush_buffer_nodes(buffer);
-	KKASSERT(buffer->io.lock.refs == 1);
 	buffer->io.waitdep = 1;
-	hammer_rel_buffer(buffer, 2);
+	hammer_rel_buffer(buffer, 1);
 	return(0);
 }
 
@@ -874,10 +878,13 @@ int
 hammer_ref_buffer(hammer_buffer_t buffer)
 {
 	int error;
+	int locked;
 
-	if (buffer->io.lock.refs == 0)
-		++hammer_count_refedbufs;
-	hammer_ref(&buffer->io.lock);
+	/*
+	 * Acquire a ref, plus the buffer will be interlocked on the
+	 * 0->1 transition.
+	 */
+	locked = hammer_ref_interlock(&buffer->io.lock);
 
 	/*
 	 * At this point a biodone() will not touch the buffer other then
@@ -888,20 +895,18 @@ hammer_ref_buffer(hammer_buffer_t buffer)
 	 */
 	if (buffer->io.mod_list == &buffer->io.hmp->lose_list) {
 		crit_enter();
-		TAILQ_REMOVE(buffer->io.mod_list, &buffer->io, mod_entry);
-		buffer->io.mod_list = NULL;
+		if (buffer->io.mod_list == &buffer->io.hmp->lose_list) {
+			TAILQ_REMOVE(buffer->io.mod_list, &buffer->io,
+				     mod_entry);
+			buffer->io.mod_list = NULL;
+		}
 		crit_exit();
 	}
 
-	if (buffer->ondisk == NULL || buffer->io.loading) {
+	if (locked) {
+		++hammer_count_refedbufs;
 		error = hammer_load_buffer(buffer, 0);
-		if (error) {
-			hammer_rel_buffer(buffer, 1);
-			/*
-			 * NOTE: buffer pointer can become stale after
-			 * the above release.
-			 */
-		}
+		/* NOTE: on error the buffer pointer is stale */
 	} else {
 		error = 0;
 	}
@@ -909,8 +914,9 @@ hammer_ref_buffer(hammer_buffer_t buffer)
 }
 
 /*
- * Release a buffer.  We have to deal with several places where
- * another thread can ref the buffer.
+ * Release a reference on the buffer.  On the 1->0 transition the
+ * underlying IO will be released but the data reference is left
+ * cached.
  *
  * Only destroy the structure itself if the related buffer cache buffer
  * was disassociated from it.  This ties the management of the structure
@@ -918,7 +924,7 @@ hammer_ref_buffer(hammer_buffer_t buffer)
  * embedded io is referenced or not.
  */
 void
-hammer_rel_buffer(hammer_buffer_t buffer, int flush)
+hammer_rel_buffer(hammer_buffer_t buffer, int locked)
 {
 	hammer_volume_t volume;
 	hammer_mount_t hmp;
@@ -927,42 +933,52 @@ hammer_rel_buffer(hammer_buffer_t buffer, int flush)
 
 	hmp = buffer->io.hmp;
 
-	crit_enter();
-	if (buffer->io.lock.refs == 1) {
-		++buffer->io.loading;	/* force interlock check */
-		hammer_lock_ex(&buffer->io.lock);
-		if (buffer->io.lock.refs == 1) {
-			bp = hammer_io_release(&buffer->io, flush);
+	if (hammer_rel_interlock(&buffer->io.lock, locked) == 0)
+		return;
 
-			if (buffer->io.lock.refs == 1)
-				--hammer_count_refedbufs;
+	/*
+	 * hammer_count_refedbufs accounting.  Decrement if we are in
+	 * the error path or if CHECK is clear.
+	 *
+	 * If we are not in the error path and CHECK is set the caller
+	 * probably just did a hammer_ref() and didn't account for it,
+	 * so we don't account for the loss here.
+	 */
+	if (locked || (buffer->io.lock.refs & HAMMER_REFS_CHECK) == 0)
+		--hammer_count_refedbufs;
 
-			if (buffer->io.bp == NULL &&
-			    buffer->io.lock.refs == 1) {
-				/*
-				 * Final cleanup
-				 *
-				 * NOTE: It is impossible for any associated
-				 * B-Tree nodes to have refs if the buffer
-				 * has no additional refs.
-				 */
-				RB_REMOVE(hammer_buf_rb_tree,
-					  &buffer->io.hmp->rb_bufs_root,
-					  buffer);
-				volume = buffer->io.volume;
-				buffer->io.volume = NULL; /* sanity */
-				hammer_rel_volume(volume, 0);
-				hammer_io_clear_modlist(&buffer->io);
-				hammer_flush_buffer_nodes(buffer);
-				KKASSERT(TAILQ_EMPTY(&buffer->clist));
-				freeme = 1;
-			}
-		}
-		--buffer->io.loading;
-		hammer_unlock(&buffer->io.lock);
+	/*
+	 * If the caller locked us or the normal released transitions
+	 * from 1->0 (and acquired the lock) attempt to release the
+	 * io.  If the called locked us we tell hammer_io_release()
+	 * to flush (which would be the unload or failure path).
+	 */
+	bp = hammer_io_release(&buffer->io, locked);
+
+	/*
+	 * If the buffer has no bp association and no refs we can destroy
+	 * it.
+	 *
+	 * NOTE: It is impossible for any associated B-Tree nodes to have
+	 * refs if the buffer has no additional refs.
+	 */
+	if (buffer->io.bp == NULL && hammer_norefs(&buffer->io.lock)) {
+		RB_REMOVE(hammer_buf_rb_tree,
+			  &buffer->io.hmp->rb_bufs_root,
+			  buffer);
+		volume = buffer->io.volume;
+		buffer->io.volume = NULL; /* sanity */
+		hammer_rel_volume(volume, 0);
+		hammer_io_clear_modlist(&buffer->io);
+		hammer_flush_buffer_nodes(buffer);
+		KKASSERT(TAILQ_EMPTY(&buffer->clist));
+		freeme = 1;
 	}
-	hammer_unref(&buffer->io.lock);
-	crit_exit();
+
+	/*
+	 * Cleanup
+	 */
+	hammer_rel_interlock_done(&buffer->io.lock, locked);
 	if (bp)
 		brelse(bp);
 	if (freeme) {
@@ -1115,6 +1131,7 @@ hammer_get_node(hammer_transaction_t trans, hammer_off_t node_offset,
 {
 	hammer_mount_t hmp = trans->hmp;
 	hammer_node_t node;
+	int doload;
 
 	KKASSERT((node_offset & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_BTREE);
 
@@ -1135,34 +1152,41 @@ again:
 			kfree(node, hmp->m_misc);
 			goto again;
 		}
-	}
-	hammer_ref(&node->lock);
-	if (node->ondisk) {
-		*errorp = 0;
-		hammer_io_advance(&node->buffer->io);
+		doload = hammer_ref_interlock_true(&node->lock);
 	} else {
+		doload = hammer_ref_interlock(&node->lock);
+	}
+	if (doload) {
 		*errorp = hammer_load_node(trans, node, isnew);
 		trans->flags |= HAMMER_TRANSF_DIDIO;
-	}
-	if (*errorp) {
-		hammer_rel_node(node);
-		node = NULL;
+		if (*errorp)
+			node = NULL;
+	} else {
+		KKASSERT(node->ondisk);
+		*errorp = 0;
+		hammer_io_advance(&node->buffer->io);
 	}
 	return(node);
 }
 
 /*
- * Reference an already-referenced node.
+ * Reference an already-referenced node.  0->1 transitions should assert
+ * so we do not have to deal with hammer_ref() setting CHECK.
  */
 void
 hammer_ref_node(hammer_node_t node)
 {
-	KKASSERT(node->lock.refs > 0 && node->ondisk != NULL);
+	KKASSERT(hammer_isactive(&node->lock) && node->ondisk != NULL);
 	hammer_ref(&node->lock);
 }
 
 /*
- * Load a node's on-disk data reference.
+ * Load a node's on-disk data reference.  Called with the node referenced
+ * and interlocked.
+ *
+ * On return the node interlock will be unlocked.  If a non-zero error code
+ * is returned the node will also be dereferenced (and the caller's pointer
+ * will be stale).
  */
 static int
 hammer_load_node(hammer_transaction_t trans, hammer_node_t node, int isnew)
@@ -1172,8 +1196,6 @@ hammer_load_node(hammer_transaction_t trans, hammer_node_t node, int isnew)
 	int error;
 
 	error = 0;
-	++node->loading;
-	hammer_lock_ex(&node->lock);
 	if (node->ondisk == NULL) {
 		/*
 		 * This is a little confusing but the jist is that
@@ -1230,8 +1252,11 @@ hammer_load_node(hammer_transaction_t trans, hammer_node_t node, int isnew)
 			error = EIO;
 	}
 failed:
-	--node->loading;
-	hammer_unlock(&node->lock);
+	if (error) {
+		_hammer_rel_node(node, 1);
+	} else {
+		hammer_ref_interlock_done(&node->lock);
+	}
 	return (error);
 }
 
@@ -1243,25 +1268,27 @@ hammer_ref_node_safe(hammer_transaction_t trans, hammer_node_cache_t cache,
 		     int *errorp)
 {
 	hammer_node_t node;
+	int doload;
 
 	node = cache->node;
 	if (node != NULL) {
-		hammer_ref(&node->lock);
-		if (node->ondisk) {
+		doload = hammer_ref_interlock(&node->lock);
+		if (doload) {
+			*errorp = hammer_load_node(trans, node, 0);
+			if (*errorp)
+				node = NULL;
+		} else {
+			KKASSERT(node->ondisk);
 			if (node->flags & HAMMER_NODE_CRCBAD) {
 				if (trans->flags & HAMMER_TRANSF_CRCDOM)
 					*errorp = EDOM;
 				else
 					*errorp = EIO;
+				_hammer_rel_node(node, 0);
+				node = NULL;
 			} else {
 				*errorp = 0;
 			}
-		} else {
-			*errorp = hammer_load_node(trans, node, 0);
-		}
-		if (*errorp) {
-			hammer_rel_node(node);
-			node = NULL;
 		}
 	} else {
 		*errorp = ENOENT;
@@ -1272,28 +1299,42 @@ hammer_ref_node_safe(hammer_transaction_t trans, hammer_node_cache_t cache,
 /*
  * Release a hammer_node.  On the last release the node dereferences
  * its underlying buffer and may or may not be destroyed.
+ *
+ * If locked is non-zero the passed node has been interlocked by the
+ * caller and we are in the failure/unload path, otherwise it has not and
+ * we are doing a normal release.
+ *
+ * This function will dispose of the interlock and the reference.
+ * On return the node pointer is stale.
  */
 void
-hammer_rel_node(hammer_node_t node)
+_hammer_rel_node(hammer_node_t node, int locked)
 {
 	hammer_buffer_t buffer;
 
 	/*
-	 * If this isn't the last ref just decrement the ref count and
-	 * return.
+	 * Deref the node.  If this isn't the 1->0 transition we're basically
+	 * done.  If locked is non-zero this function will just deref the
+	 * locked node and return TRUE, otherwise it will deref the locked
+	 * node and either lock and return TRUE on the 1->0 transition or
+	 * not lock and return FALSE.
 	 */
-	if (node->lock.refs > 1) {
-		hammer_unref(&node->lock);
+	if (hammer_rel_interlock(&node->lock, locked) == 0)
 		return;
-	}
 
 	/*
-	 * If there is no ondisk info or no buffer the node failed to load,
-	 * remove the last reference and destroy the node.
+	 * Either locked was non-zero and we are interlocked, or the
+	 * hammer_rel_interlock() call returned non-zero and we are
+	 * interlocked.
+	 *
+	 * The ref-count must still be decremented if locked != 0 so
+	 * the cleanup required still varies a bit.
+	 *
+	 * hammer_flush_node() when called with 1 or 2 will dispose of
+	 * the lock and possible ref-count.
 	 */
 	if (node->ondisk == NULL) {
-		hammer_unref(&node->lock);
-		hammer_flush_node(node);
+		hammer_flush_node(node, locked + 1);
 		/* node is stale now */
 		return;
 	}
@@ -1302,8 +1343,10 @@ hammer_rel_node(hammer_node_t node)
 	 * Do not disassociate the node from the buffer if it represents
 	 * a modified B-Tree node that still needs its crc to be generated.
 	 */
-	if (node->flags & HAMMER_NODE_NEEDSCRC)
+	if (node->flags & HAMMER_NODE_NEEDSCRC) {
+		hammer_rel_interlock_done(&node->lock, locked);
 		return;
+	}
 
 	/*
 	 * Do final cleanups and then either destroy the node and leave it
@@ -1313,18 +1356,25 @@ hammer_rel_node(hammer_node_t node)
 	node->ondisk = NULL;
 
 	if ((node->flags & HAMMER_NODE_FLUSH) == 0) {
-		hammer_unref(&node->lock);
-		hammer_rel_buffer(buffer, 0);
-		return;
-	}
+		/*
+		 * Normal release.
+		 */
+		hammer_rel_interlock_done(&node->lock, locked);
+	} else {
+		/*
+		 * Destroy the node.
+		 */
+		hammer_flush_node(node, locked + 1);
+		/* node is stale */
 
-	/*
-	 * Destroy the node.
-	 */
-	hammer_unref(&node->lock);
-	hammer_flush_node(node);
-	/* node is stale */
+	}
 	hammer_rel_buffer(buffer, 0);
+}
+
+void
+hammer_rel_node(hammer_node_t node)
+{
+	_hammer_rel_node(node, 0);
 }
 
 /*
@@ -1371,26 +1421,40 @@ hammer_uncache_node(hammer_node_cache_t cache)
 		TAILQ_REMOVE(&node->cache_list, cache, entry);
 		cache->node = NULL;
 		if (TAILQ_EMPTY(&node->cache_list))
-			hammer_flush_node(node);
+			hammer_flush_node(node, 0);
 	}
 }
 
 /*
  * Remove a node's cache references and destroy the node if it has no
  * other references or backing store.
+ *
+ * locked == 0	Normal unlocked operation
+ * locked == 1	Call hammer_rel_interlock_done(..., 0);
+ * locked == 2	Call hammer_rel_interlock_done(..., 1);
+ *
+ * XXX for now this isn't even close to being MPSAFE so the refs check
+ *     is sufficient.
  */
 void
-hammer_flush_node(hammer_node_t node)
+hammer_flush_node(hammer_node_t node, int locked)
 {
 	hammer_node_cache_t cache;
 	hammer_buffer_t buffer;
 	hammer_mount_t hmp = node->hmp;
+	int dofree;
 
 	while ((cache = TAILQ_FIRST(&node->cache_list)) != NULL) {
 		TAILQ_REMOVE(&node->cache_list, cache, entry);
 		cache->node = NULL;
 	}
-	if (node->lock.refs == 0 && node->ondisk == NULL) {
+
+	/*
+	 * NOTE: refs is predisposed if another thread is blocking and
+	 *	 will be larger than 0 in that case.  We aren't MPSAFE
+	 *	 here.
+	 */
+	if (node->ondisk == NULL && hammer_norefs(&node->lock)) {
 		KKASSERT((node->flags & HAMMER_NODE_NEEDSCRC) == 0);
 		RB_REMOVE(hammer_nod_rb_tree, &node->hmp->rb_nods_root, node);
 		if ((buffer = node->buffer) != NULL) {
@@ -1398,6 +1462,21 @@ hammer_flush_node(hammer_node_t node)
 			TAILQ_REMOVE(&buffer->clist, node, entry);
 			/* buffer is unreferenced because ondisk is NULL */
 		}
+		dofree = 1;
+	} else {
+		dofree = 0;
+	}
+
+	/*
+	 * Deal with the interlock if locked == 1 or locked == 2.
+	 */
+	if (locked)
+		hammer_rel_interlock_done(&node->lock, locked - 1);
+
+	/*
+	 * Destroy if requested
+	 */
+	if (dofree) {
 		--hammer_count_nodes;
 		kfree(node, hmp->m_misc);
 	}
@@ -1419,12 +1498,11 @@ hammer_flush_buffer_nodes(hammer_buffer_t buffer)
 		KKASSERT(node->ondisk == NULL);
 		KKASSERT((node->flags & HAMMER_NODE_NEEDSCRC) == 0);
 
-		if (node->lock.refs == 0) {
+		if (hammer_try_interlock_norefs(&node->lock)) {
 			hammer_ref(&node->lock);
 			node->flags |= HAMMER_NODE_FLUSH;
-			hammer_rel_node(node);
+			_hammer_rel_node(node, 1);
 		} else {
-			KKASSERT(node->loading != 0);
 			KKASSERT(node->buffer != NULL);
 			buffer = node->buffer;
 			node->buffer = NULL;

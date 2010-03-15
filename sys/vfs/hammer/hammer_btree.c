@@ -2346,7 +2346,7 @@ btree_remove(hammer_cursor_t cursor)
 				ondisk->type = HAMMER_BTREE_TYPE_DELETED;
 				ondisk->count = 0;
 				hammer_modify_node_done(node);
-				hammer_flush_node(node);
+				hammer_flush_node(node, 0);
 				hammer_delete_node(cursor->trans, node);
 			} else {
 				/*
@@ -2413,7 +2413,7 @@ btree_remove(hammer_cursor_t cursor)
 		hammer_modify_node_done(parent);
 		hammer_cursor_removed_node(node, parent, cursor->parent_index);
 		hammer_cursor_deleted_element(parent, cursor->parent_index);
-		hammer_flush_node(node);
+		hammer_flush_node(node, 0);
 		hammer_delete_node(cursor->trans, node);
 
 		/*
@@ -2804,7 +2804,7 @@ hammer_btree_sync_copy(hammer_cursor_t cursor, hammer_node_lock_t parent)
 		*parent->node->ondisk = *parent->copy;
                 hammer_modify_node_done(parent->node);
 		if (parent->copy->type == HAMMER_BTREE_TYPE_DELETED) {
-			hammer_flush_node(parent->node);
+			hammer_flush_node(parent->node, 0);
 			hammer_delete_node(cursor->trans, parent->node);
 		}
 	}
