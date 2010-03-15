@@ -389,6 +389,7 @@ MLINKS+=EVENTHANDLER.9 EVENTHANDLER_DECLARE.9 \
 	EVENTHANDLER.9 EVENTHANDLER_REGISTER.9 \
 	EVENTHANDLER.9 eventhandler_register.9
 MLINKS+=fetch.9 fubyte.9 \
+	fetch.9 casuword.9 \
 	fetch.9 fusword.9 \
 	fetch.9 fuword.9
 MLINKS+=firmware.9 firmware_image_load.9 \
@@ -525,6 +526,7 @@ MLINKS+=nlookup.9 naccess.9 \
 	nlookup.9 nlookup_done.9 \
 	nlookup.9 nlookup_init.9 \
 	nlookup.9 nlookup_init_raw.9 \
+	nlookup.9 nlookup_init_root.9 \
 	nlookup.9 nlookup_mp.9 \
 	nlookup.9 nlookup_set_cred.9 \
 	nlookup.9 nlookup_simple.9 \

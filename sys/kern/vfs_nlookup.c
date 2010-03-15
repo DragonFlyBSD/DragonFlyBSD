@@ -230,6 +230,50 @@ nlookup_init_raw(struct nlookupdata *nd,
 }
 
 /*
+ * This works similarly to nlookup_init_raw() but does not rely
+ * on rootnch being initialized yet.
+ */
+int
+nlookup_init_root(struct nlookupdata *nd, 
+	     const char *path, enum uio_seg seg, int flags,
+	     struct ucred *cred, struct nchandle *ncstart,
+	     struct nchandle *ncroot)
+{
+    size_t pathlen;
+    thread_t td;
+    int error;
+
+    td = curthread;
+
+    bzero(nd, sizeof(struct nlookupdata));
+    nd->nl_path = objcache_get(namei_oc, M_WAITOK);
+    nd->nl_flags |= NLC_HASBUF;
+    if (seg == UIO_SYSSPACE) 
+	error = copystr(path, nd->nl_path, MAXPATHLEN, &pathlen);
+    else
+	error = copyinstr(path, nd->nl_path, MAXPATHLEN, &pathlen);
+
+    /*
+     * Don't allow empty pathnames.
+     * POSIX.1 requirement: "" is not a vaild file name.
+     */
+    if (error == 0 && pathlen <= 1)
+	error = ENOENT;
+
+    if (error == 0) {
+	cache_copy(ncstart, &nd->nl_nch);
+	cache_copy(ncroot, &nd->nl_rootnch);
+	cache_copy(ncroot, &nd->nl_jailnch);
+	nd->nl_cred = crhold(cred);
+	nd->nl_td = td;
+	nd->nl_flags |= flags;
+    } else {
+	nlookup_done(nd);
+    }
+    return(error);
+}
+
+/*
  * Set a different credential; this credential will be used by future
  * operations performed on nd.nl_open_vp and nlookupdata structure.
  */
