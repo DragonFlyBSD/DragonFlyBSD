@@ -562,11 +562,10 @@ sys_linux_clone(struct linux_clone_args *args)
 			if (idx < GTLS_START) {
 				idx -= 6;
 			} else {
-#ifdef SMP
+#if 0 /* was SMP */
 				idx -= (GTLS_START + mycpu->gd_cpuid * NGDT);
-#else
+#endif
 				idx -= GTLS_START;
-#endif	
 			}
 			KKASSERT(idx >= 0);
 
@@ -1166,14 +1165,11 @@ sys_linux_set_thread_area(struct linux_set_thread_area_args *args)
 	}
 
 	/* Tell the caller about the allocated entry number */
-#if 0
-	info.entry_number = idx;
-#endif
-#ifdef SMP
+#if 0 /* was SMP */
 	info.entry_number = GTLS_START + mycpu->gd_cpuid * NGDT + idx;
-#else
-	info.entry_number = GTLS_START + idx;
 #endif
+	info.entry_number = GTLS_START + idx;
+
 
 	error = copyout(&info, args->desc, sizeof(struct l_user_desc));
 	if (error)
@@ -1231,11 +1227,11 @@ sys_linux_get_thread_area(struct linux_get_thread_area_args *args)
 	if (idx < GTLS_START) {
 		idx -= 6;
 	} else {
-#ifdef SMP
+#if 0 /* was SMP */
 		idx -= (GTLS_START + mycpu->gd_cpuid * NGDT);
-#else
+#endif
 		idx -= GTLS_START;
-#endif	
+
 	}
 	KKASSERT(idx >= 0);
 
