@@ -55,6 +55,7 @@
 #include <sys/lock.h>
 #include <sys/sbuf.h>
 #include <sys/mount.h>
+#include <sys/sysctl.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -171,9 +172,14 @@ linprocfs_docpuinfo(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 		    struct uio *uio)
 {
 	char *ps;
-	char psbuf[512];		/* XXX - conservative */
+	char psbuf[8192];
+	char hwmodel[128];
+	size_t	modellen = sizeof(hwmodel);
+	int mib[] = { CTL_HW, HW_MODEL };
 	int class;
+	int cpu;
         int i;
+	int error;
 #if 0
 	extern char *cpu_model;		/* Yuck */
 #endif
@@ -217,13 +223,21 @@ linprocfs_docpuinfo(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	}
 
 	ps = psbuf;
-	ps += ksprintf(ps,
-			"processor\t: %d\n"
-			"vendor_id\t: %.20s\n"
-			"cpu family\t: %d\n"
-			"model\t\t: %d\n"
-			"stepping\t: %d\n",
-			0, cpu_vendor, class, cpu, cpu_id & 0xf);
+
+	error = kernel_sysctl(mib, 2, hwmodel, &modellen, NULL, 0, NULL);
+	if (error)
+		strcpy(hwmodel, "unknown");
+
+	for (cpu = 0; cpu < ncpus; cpu++) {
+		ps += ksprintf(ps,
+		    "processor\t: %d\n"
+		    "vendor_id\t: %.20s\n"
+		    "cpu family\t: %d\n"
+		    "model\t\t: %d\n"
+		    "model name\t: %s\n"
+		    "stepping\t: %d\n",
+		    cpu, cpu_vendor, class, cpu, hwmodel, cpu_id & 0xf);
+	}
 
         ps += ksprintf(ps,
                         "flags\t\t:");
@@ -328,21 +342,34 @@ linprocfs_dostat(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 		 struct uio *uio)
 {
         char *ps;
-	char psbuf[512];
+	char psbuf[8192];
+	int cpu;
 
 	ps = psbuf;
 	ps += ksprintf(ps,
-		      "cpu %"PRIu64" %"PRIu64" %"PRIu64" %"PRIu64"\n"
+		      "cpu %"PRIu64" %"PRIu64" %"PRIu64" %"PRIu64"\n",
+		      T2J(cpu_time.cp_user),
+		      T2J(cpu_time.cp_nice),
+		      T2J(cpu_time.cp_sys),
+		      T2J(cpu_time.cp_idle));
+
+	for (cpu = 0; cpu < ncpus; cpu++) {
+		ps += ksprintf(ps,
+		      "cpu%d %"PRIu64" %"PRIu64" %"PRIu64" %"PRIu64"\n",
+		      cpu,
+		      T2J(cputime_percpu[cpu].cp_user),
+		      T2J(cputime_percpu[cpu].cp_nice),
+		      T2J(cputime_percpu[cpu].cp_sys),
+		      T2J(cputime_percpu[cpu].cp_idle));			
+	}
+
+	ps += ksprintf(ps,
 		      "disk 0 0 0 0\n"
 		      "page %u %u\n"
 		      "swap %u %u\n"
 		      "intr %u\n"
 		      "ctxt %u\n"
 		      "btime %ld\n",
-		      T2J(cpu_time.cp_user),
-		      T2J(cpu_time.cp_nice),
-		      T2J(cpu_time.cp_sys /*+ cpu_time[CP_INTR]*/),
-		      T2J(cpu_time.cp_idle),
 		      cpucnt(offsetof(struct vmmeter, v_vnodepgsin)),
 		      cpucnt(offsetof(struct vmmeter, v_vnodepgsout)),
 		      cpucnt(offsetof(struct vmmeter, v_swappgsin)),
@@ -350,6 +377,7 @@ linprocfs_dostat(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 		      cpucnt(offsetof(struct vmmeter, v_intr)),
 		      cpucnt(offsetof(struct vmmeter, v_swtch)),
 		      boottime.tv_sec);
+
 	return (uiomove_frombuf(psbuf, ps - psbuf, uio));
 }
 
