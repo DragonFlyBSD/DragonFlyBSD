@@ -943,7 +943,7 @@ sys_linux_sigaction(struct linux_sigaction_args *args)
 	l_osigaction_t osa;
 	l_sigaction_t linux_act, linux_oact;
 	struct sigaction act, oact;
-	int error;
+	int error, sig;
 
 #ifdef DEBUG
 	if (ldebug(sigaction))
@@ -963,8 +963,13 @@ sys_linux_sigaction(struct linux_sigaction_args *args)
 		linux_to_bsd_sigaction(&linux_act, &act);
 	}
 
+	if (args->sig <= LINUX_SIGTBLSZ)
+		sig = linux_to_bsd_signal[_SIG_IDX(args->sig)];
+	else
+		sig = args->sig;
+
 	get_mplock();
-	error = kern_sigaction(args->sig, args->nsa ? &act : NULL,
+	error = kern_sigaction(sig, args->nsa ? &act : NULL,
 			       args->osa ? &oact : NULL);
 	rel_mplock();
 
