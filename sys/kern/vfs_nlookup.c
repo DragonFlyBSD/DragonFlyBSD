@@ -408,6 +408,7 @@ nlookup_simple(const char *str, enum uio_seg seg,
 int
 nlookup(struct nlookupdata *nd)
 {
+    globaldata_t gd = mycpu;
     struct nlcomponent nlc;
     struct nchandle nch;
     struct nchandle par;
@@ -419,6 +420,7 @@ nlookup(struct nlookupdata *nd)
     int error;
     int len;
     int dflags;
+    int hit = 1;
 
 #ifdef KTRACE
     if (KTRPOINT(nd->nl_td, KTR_NAMEI))
@@ -559,6 +561,8 @@ nlookup(struct nlookupdata *nd)
 	    cache_unlock(&nd->nl_nch);
 	    nd->nl_flags &= ~NLC_NCPISLOCKED;
 	    nch = cache_nlookup(&nd->nl_nch, &nlc);
+	    if (nch.ncp->nc_flag & NCF_UNRESOLVED)
+		hit = 0;
 	    while ((error = cache_resolve(&nch, nd->nl_cred)) == EAGAIN) {
 		kprintf("[diagnostic] nlookup: relookup %*.*s\n", 
 			nch.ncp->nc_nlen, nch.ncp->nc_nlen, nch.ncp->nc_name);
@@ -608,6 +612,7 @@ nlookup(struct nlookupdata *nd)
 	 * previously resolved and thus cannot be newly created ncp's.
 	 */
 	if (nch.ncp->nc_flag & NCF_UNRESOLVED) {
+	    hit = 0;
 	    error = cache_resolve(&nch, nd->nl_cred);
 	    KKASSERT(error != EAGAIN);
 	} else {
@@ -813,6 +818,11 @@ nlookup(struct nlookupdata *nd)
 	error = 0;
 	break;
     }
+
+    if (hit)
+	    ++gd->gd_nchstats->ncs_longhits;
+    else
+	    ++gd->gd_nchstats->ncs_longmiss;
 
     /*
      * NOTE: If NLC_CREATE was set the ncp may represent a negative hit

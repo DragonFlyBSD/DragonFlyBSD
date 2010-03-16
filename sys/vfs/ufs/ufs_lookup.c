@@ -138,7 +138,6 @@ ufs_lookup(struct vop_old_lookup_args *ap)
 	struct ucred *cred = cnp->cn_cred;
 	int flags = cnp->cn_flags;
 	int nameiop = cnp->cn_nameiop;
-	globaldata_t gd = mycpu;
 
 	bp = NULL;
 	slotoffset = -1;
@@ -230,7 +229,6 @@ ufs_lookup(struct vop_old_lookup_args *ap)
 		    (error = ffs_blkatoff(vdp, (off_t)dp->i_offset, NULL, &bp)))
 			return (error);
 		numdirpasses = 2;
-		gd->gd_nchstats->ncs_2passes++;
 	}
 	prevoff = dp->i_offset;
 	endsearch = roundup2(dp->i_size, DIRBLKSIZ);
@@ -433,8 +431,6 @@ notfound:
 	return (ENOENT);
 
 found:
-	if (numdirpasses == 2)
-		gd->gd_nchstats->ncs_pass2++;
 	/*
 	 * Check that directory length properly reflects presence
 	 * of this entry.
