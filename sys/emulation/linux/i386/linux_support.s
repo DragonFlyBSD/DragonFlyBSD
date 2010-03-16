@@ -115,6 +115,7 @@ futex_tail:
 	movl	%eax,(%edx)
 	xorl	%eax,%eax
 	movl	PCPU(curthread),%ecx
+	movl	TD_PCB(%ecx),%ecx
 	movl	%eax,PCB_ONFAULT(%ecx)
 	ret
 
