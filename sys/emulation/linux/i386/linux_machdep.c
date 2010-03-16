@@ -395,9 +395,9 @@ int
 sys_linux_exit_group(struct linux_exit_group_args *args)
 {
 	struct linux_emuldata *em, *e;
-	int sig;
+	int rval;
 
-	sig = args->rval;
+	rval = args->rval;
 
 	get_mplock();
 
@@ -406,7 +406,7 @@ sys_linux_exit_group(struct linux_exit_group_args *args)
 	em = emuldata_get(curproc);
 
 	if (em->s->refs == 1) {
-		exit1(W_EXITCODE(0, sig));
+		exit1(W_EXITCODE(rval, 0));
 		/* notreached */
 
 		EMUL_UNLOCK();
@@ -417,7 +417,7 @@ sys_linux_exit_group(struct linux_exit_group_args *args)
 	KKASSERT(em->proc == curproc);
 	em->flags |= EMUL_DIDKILL;
 	em->s->flags |= LINUX_LES_INEXITGROUP;
-	em->s->xstat = W_EXITCODE(0, sig);
+	em->s->xstat = W_EXITCODE(rval, 0);
 
 	LIST_REMOVE(em, threads);
 	LIST_INSERT_HEAD(&em->s->threads, em, threads);
@@ -435,7 +435,7 @@ sys_linux_exit_group(struct linux_exit_group_args *args)
 
 	EMUL_UNLOCK();
 
-	exit1(W_EXITCODE(0, sig));
+	exit1(W_EXITCODE(rval, 0));
 	rel_mplock();
 	/* notreached */
 
