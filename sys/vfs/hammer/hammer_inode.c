@@ -3176,6 +3176,16 @@ hammer_inode_waitreclaims(hammer_transaction_t trans)
 		TAILQ_REMOVE(&hmp->reclaim_list, &reclaim, entry);
 }
 
+/*
+ * Keep track of reclaim statistics on a per-pid basis using a loose
+ * 4-way set associative hash table.  Collisions inherit the count of
+ * the previous entry.
+ *
+ * NOTE: We want to be careful here to limit the chain size.  If the chain
+ *	 size is too large a pid will spread its stats out over too many
+ *	 entries under certain types of heavy filesystem activity and
+ *	 wind up not delaying long enough.
+ */
 static
 struct hammer_inostats *
 hammer_inode_inostats(hammer_mount_t hmp, pid_t pid)
@@ -3183,17 +3193,29 @@ hammer_inode_inostats(hammer_mount_t hmp, pid_t pid)
 	struct hammer_inostats *stats;
 	int delta;
 	int chain;
+	static int iterator;	/* we don't care about MP races */
 
+	/*
+	 * Chain up to 4 times to find our entry.
+	 */
 	for (chain = 0; chain < 4; ++chain) {
 		stats = &hmp->inostats[(pid + chain) & HAMMER_INOSTATS_HMASK];
 		if (stats->pid == pid)
 			break;
 	}
+
+	/*
+	 * Replace one of the four chaining entries with our new entry.
+	 */
 	if (chain == 4) {
-		stats = &hmp->inostats[(pid + ticks) & HAMMER_INOSTATS_HMASK];
+		stats = &hmp->inostats[(pid + (iterator++ & 3)) &
+				       HAMMER_INOSTATS_HMASK];
 		stats->pid = pid;
 	}
 
+	/*
+	 * Decay the entry
+	 */
 	if (stats->count && stats->ltick != ticks) {
 		delta = ticks - stats->ltick;
 		stats->ltick = ticks;
