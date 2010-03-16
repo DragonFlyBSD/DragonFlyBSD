@@ -357,14 +357,14 @@ dsgone(struct diskslices **sspp)
 	struct diskslice *sp;
 	struct diskslices *ssp;
 
-	kprintf("dsgone is called... fear!\n");
-
-	for (slice = 0, ssp = *sspp; slice < ssp->dss_nslices; slice++) {
-		sp = &ssp->dss_slices[slice];
-		free_ds_label(ssp, slice);
+	if ((ssp = *sspp) != NULL) {
+		for (slice = 0; slice < ssp->dss_nslices; slice++) {
+			sp = &ssp->dss_slices[slice];
+			free_ds_label(ssp, slice);
+		}
+		kfree(ssp, M_DEVBUF);
+		*sspp = NULL;
 	}
-	kfree(ssp, M_DEVBUF);
-	*sspp = NULL;
 }
 
 /*
