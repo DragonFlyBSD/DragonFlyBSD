@@ -984,7 +984,7 @@ wakeup_oncpu(globaldata_t gd, const volatile void *ident)
 	lwkt_send_ipiq2(gd, _wakeup, __DEALL(ident), PWAKEUP_MYCPU);
     }
 #else
-    _wakeup(ident, PWAKEUP_MYCPU);
+    _wakeup(__DEALL(ident), PWAKEUP_MYCPU);
 #endif
 }
 
@@ -1003,7 +1003,7 @@ wakeup_oncpu_one(globaldata_t gd, const volatile void *ident)
 			PWAKEUP_MYCPU | PWAKEUP_ONE);
     }
 #else
-    _wakeup(ident, PWAKEUP_MYCPU | PWAKEUP_ONE);
+    _wakeup(__DEALL(ident), PWAKEUP_MYCPU | PWAKEUP_ONE);
 #endif
 }
 
