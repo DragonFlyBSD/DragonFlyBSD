@@ -77,6 +77,7 @@ static struct Info {
 	struct  vmstats Vms;
 	struct	nchstats nchstats;
 	long	nchcount;
+	long	nchpathcount;
 	long	*intrcnt;
 	int	bufspace;
 	int	desiredvnodes;
@@ -105,6 +106,7 @@ static void getinfo(struct Info *);
 static void putint(int, int, int, int, int);
 static void putfloat(double, int, int, int, int, int);
 static void putlongdouble(long double, int, int, int, int, int);
+static void putlongdoublez(long double, int, int, int, int, int);
 static int ucount(void);
 
 static	int ncpu;
@@ -180,7 +182,7 @@ static struct nlist namelist[] = {
 #define GRAPHCOL	 0
 #define NAMEIROW	14	/* uses 3 rows and 38 cols */
 #define NAMEICOL	 0
-#define DISKROW		18	/* uses 5 rows and 50 cols (for 9 drives) */
+#define DISKROW		17	/* uses 6 rows and 50 cols (for 9 drives) */
 #define DISKCOL		 0
 
 #define	DRIVESPACE	 7	/* max # for space */
@@ -319,20 +321,19 @@ labelkre(void)
 	mvprintw(GRAPHROW + 1, GRAPHCOL,
 		"|    |    |    |    |    |    |    |    |    |    |");
 
-	mvprintw(NAMEIROW, NAMEICOL, "Namei         Name-cache    Dir-cache");
-	mvprintw(NAMEIROW + 1, NAMEICOL,
-		"    Calls     hits    %%     hits    %%");
+	mvprintw(NAMEIROW, NAMEICOL, "Path-lookups   hits   %%    Components");
 	mvprintw(DISKROW, DISKCOL, "Disks");
 	mvprintw(DISKROW + 1, DISKCOL, "KB/t");
-	mvprintw(DISKROW + 2, DISKCOL, "tps");
-	mvprintw(DISKROW + 3, DISKCOL, "MB/s");
-	mvprintw(DISKROW + 4, DISKCOL, "%% busy");
+	mvprintw(DISKROW + 2, DISKCOL, "tps/r");
+	mvprintw(DISKROW + 3, DISKCOL, "MBs/r");
+	mvprintw(DISKROW + 4, DISKCOL, "tps/w");
+	mvprintw(DISKROW + 5, DISKCOL, "MBs/w");
+	mvprintw(DISKROW + 6, DISKCOL, "%% busy");
 	/*
 	 * For now, we don't support a fourth disk statistic.  So there's
 	 * no point in providing a label for it.  If someone can think of a
 	 * fourth useful disk statistic, there is room to add it.
 	 */
-	/* mvprintw(DISKROW + 4, DISKCOL, " msps"); */
 	j = 0;
 	for (i = 0; i < num_devices && j < MAXDRIVES; i++)
 		if (dev_select[i].selected) {
@@ -453,11 +454,14 @@ showkre(void)
 	}
 	putint(inttotal, INTSROW + 1, INTSCOL + 2, 6, 'D');
 	Z(ncs_goodhits); Z(ncs_badhits); Z(ncs_miss);
-	Z(ncs_long); Z(ncs_pass2); Z(ncs_2passes); Z(ncs_neghits);
+	Z(ncs_longhits); Z(ncs_longmiss); Z(ncs_neghits);
 	s.nchcount = nchtotal.ncs_goodhits + nchtotal.ncs_badhits +
-	    nchtotal.ncs_miss + nchtotal.ncs_long + nchtotal.ncs_neghits;
-	if (state == TIME)
+	    nchtotal.ncs_miss + nchtotal.ncs_neghits;
+	s.nchpathcount = nchtotal.ncs_longhits + nchtotal.ncs_longmiss;
+	if (state == TIME) {
 		s1.nchcount = s.nchcount;
+		s1.nchpathcount = s.nchpathcount;
+	}
 
 	psiz = 0;
 	f2 = 0.0;
@@ -567,16 +571,15 @@ showkre(void)
 				break;
 			}
 		}
-	putint(s.nchcount, NAMEIROW + 2, NAMEICOL, 9, 'D');
-	putint((nchtotal.ncs_goodhits + nchtotal.ncs_neghits),
-	   NAMEIROW + 2, NAMEICOL + 9, 9, 'D');
 #define nz(x)	((x) ? (x) : 1)
-	putfloat((nchtotal.ncs_goodhits+nchtotal.ncs_neghits) *
-	   100.0 / nz(s.nchcount),
-	   NAMEIROW + 2, NAMEICOL + 19, 4, 0, 1);
-	putint(nchtotal.ncs_pass2, NAMEIROW + 2, NAMEICOL + 23, 9, 'D');
-	putfloat(nchtotal.ncs_pass2 * 100.0 / nz(s.nchcount),
-	   NAMEIROW + 2, NAMEICOL + 33, 4, 0, 1);
+	putint(s.nchpathcount, NAMEIROW + 1, NAMEICOL + 3, 9, 'D');
+
+	putint(nchtotal.ncs_longhits, NAMEIROW + 1, NAMEICOL + 12, 7, 'D');
+	putfloat(nchtotal.ncs_longhits * 100.0 / nz(s.nchpathcount),
+	   NAMEIROW + 1, NAMEICOL + 19, 4, 0, 0);
+
+	putfloat((double)s.nchcount / nz(s.nchpathcount),
+		NAMEIROW + 1, NAMEICOL + 27, 5, 2, 1);
 #undef nz
 }
 
@@ -745,6 +748,20 @@ putlongdouble(long double f, int l, int lc, int w, int d, int nz)
 }
 
 static void
+putlongdoublez(long double f, int l, int lc, int w, int d, int nz)
+{
+	char b[128];
+
+	if (f == 0.0) {
+		move(l, lc);
+		sprintf(b, "%*.*s", w, w, "");
+		addstr(b);
+	} else {
+		putlongdouble(f, l, lc, w, d, nz);
+	}
+}
+
+static void
 getinfo(struct Info *ls)
 {
 	struct devinfo *tmp_dinfo;
@@ -850,8 +867,11 @@ copyinfo(struct Info *from, struct Info *to)
 static void
 dinfo(int dn, int lc, struct statinfo *now, struct statinfo *then)
 {
-	long double transfers_per_second;
-	long double kb_per_transfer, mb_per_second;
+	long double kb_per_transfer;
+	long double transfers_per_secondr;
+	long double transfers_per_secondw;
+	long double mb_per_secondr;
+	long double mb_per_secondw;
 	long double elapsed_time, device_busy;
 	int di;
 
@@ -865,26 +885,58 @@ dinfo(int dn, int lc, struct statinfo *now, struct statinfo *then)
 				     then->dinfo->devices[di].busy_time :
 				     now->dinfo->devices[di].dev_creation_time);
 
-	if (compute_stats(&now->dinfo->devices[di], then ?
-			  &then->dinfo->devices[di] : NULL, elapsed_time,
+	if (compute_stats(
+			  &now->dinfo->devices[di],
+			  (then ? &then->dinfo->devices[di] : NULL),
+			  elapsed_time,
 			  NULL, NULL, NULL,
-			  &kb_per_transfer, &transfers_per_second,
-			  &mb_per_second, NULL, NULL) != 0)
+			  &kb_per_transfer,
+			  NULL,
+			  NULL,
+			  NULL, NULL) != 0)
 		errx(1, "%s", devstat_errbuf);
 
-	if ((device_busy == 0) && (transfers_per_second > 5))
+	if (compute_stats_read(
+			  &now->dinfo->devices[di],
+			  (then ? &then->dinfo->devices[di] : NULL),
+			  elapsed_time,
+			  NULL, NULL, NULL,
+			  NULL,
+			  &transfers_per_secondr,
+			  &mb_per_secondr,
+			  NULL, NULL) != 0)
+		errx(1, "%s", devstat_errbuf);
+
+	if (compute_stats_write(
+			  &now->dinfo->devices[di],
+			  (then ? &then->dinfo->devices[di] : NULL),
+			  elapsed_time,
+			  NULL, NULL, NULL,
+			  NULL,
+			  &transfers_per_secondw,
+			  &mb_per_secondw,
+			  NULL, NULL) != 0)
+		errx(1, "%s", devstat_errbuf);
+
+	if ((device_busy == 0) &&
+	    (transfers_per_secondr > 5 || transfers_per_secondw > 5)) {
 		/* the device has been 100% busy, fake it because
 		 * as long as the device is 100% busy the busy_time
 		 * field in the devstat struct is not updated */
 		device_busy = elapsed_time;
-	if (device_busy > elapsed_time)
+	}
+	if (device_busy > elapsed_time) {
 		/* this normally happens after one or more periods
 		 * where the device has been 100% busy, correct it */
 		device_busy = elapsed_time;
+	}
 
 	lc = DISKCOL + lc * 6;
-	putlongdouble(kb_per_transfer, DISKROW + 1, lc, 5, 2, 0);
-	putlongdouble(transfers_per_second, DISKROW + 2, lc, 5, 0, 0);
-	putlongdouble(mb_per_second, DISKROW + 3, lc, 5, 2, 0);
-	putlongdouble(device_busy * 100 / elapsed_time, DISKROW + 4, lc, 5, 0, 0);
+	putlongdoublez(kb_per_transfer, DISKROW + 1, lc, 5, 2, 0);
+	putlongdoublez(transfers_per_secondr, DISKROW + 2, lc, 5, 0, 0);
+	putlongdoublez(mb_per_secondr, DISKROW + 3, lc, 5, 2, 0);
+	putlongdoublez(transfers_per_secondw, DISKROW + 4, lc, 5, 0, 0);
+	putlongdoublez(mb_per_secondw, DISKROW + 5, lc, 5, 2, 0);
+	putlongdouble(device_busy * 100 / elapsed_time,
+				      DISKROW + 6, lc, 5, 0, 0);
 }
