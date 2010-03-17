@@ -1043,6 +1043,8 @@ kern_setsockopt(int s, struct sockopt *sopt)
 
 	if (sopt->sopt_val == NULL && sopt->sopt_valsize != 0)
 		return (EFAULT);
+	if (sopt->sopt_val != NULL && sopt->sopt_valsize == 0)
+		return (EINVAL);
 	if (sopt->sopt_valsize < 0)
 		return (EINVAL);
 
@@ -1102,6 +1104,8 @@ kern_getsockopt(int s, struct sockopt *sopt)
 
 	if (sopt->sopt_val == NULL && sopt->sopt_valsize != 0)
 		return (EFAULT);
+	if (sopt->sopt_val != NULL && sopt->sopt_valsize == 0)
+		return (EINVAL);
 	if (sopt->sopt_valsize < 0 || sopt->sopt_valsize > SOMAXOPT_SIZE)
 		return (EINVAL);
 
