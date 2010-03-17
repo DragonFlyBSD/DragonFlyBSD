@@ -31,6 +31,7 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <err.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdarg.h>
@@ -43,24 +44,9 @@
 
 
 #include "evtr.h"
+#include "internal.h"
 
-static unsigned evtr_debug;
-
-#define DEFINE_DEBUG_FLAG(nam, chr)		\
-	nam = chr - 'a'
-
-enum debug_flags {
-	DEFINE_DEBUG_FLAG(IO, 'i'),
-	DEFINE_DEBUG_FLAG(DS, 't'),	/* data structures */
-	DEFINE_DEBUG_FLAG(MISC, 'm'),
-};
-
-#define printd(subsys, ...)				\
-	do {						\
-		if (evtr_debug & (subsys)) {	\
-			fprintf(stderr, __VA_ARGS__);	\
-		}					\
-	} while (0)
+unsigned evtr_debug;
 
 static
 void
@@ -77,7 +63,7 @@ printd_set_flags(const char *str, unsigned int *flags)
 		}
 		if (!islower(*str))
 			err(2, "invalid debug flag %c\n", *str);
-		*flags |= *str - 'a';
+		*flags |= 1 << (*str - 'a');
 	}
 }
 
@@ -89,11 +75,12 @@ enum {
 	EVTR_NS_FUNC,
 	EVTR_NS_DSTR,
 	EVTR_NS_MAX,
-	NR_BUCKETS = 1023, /* XXX */
+	NR_BUCKETS = 1021,	/* prime */
 	REC_ALIGN = 8,
 	REC_BOUNDARY = 1 << 14,
 	FILTF_ID = 0x10,
 	EVTRF_WR = 0x1,		/* open for writing */
+	EVTRQF_PENDING = 0x1,
 };
 
 typedef uint16_t fileid_t;
@@ -140,14 +127,19 @@ struct cpuinfo_event_header {
 } __attribute__((packed));
 
 struct hashentry {
-	const char *str;
-	uint16_t id;
+	uintptr_t key;
+	uintptr_t val;
 	struct hashentry *next;
 };
 
 struct hashtab {
 	struct hashentry *buckets[NR_BUCKETS];
-	uint16_t id;
+	uintptr_t (*hashfunc)(uintptr_t);
+	uintptr_t (*cmpfunc)(uintptr_t, uintptr_t);
+};
+
+struct symtab {
+	struct hashtab tab;
 };
 
 struct event_fmt {
@@ -193,9 +185,9 @@ struct cpu {
 
 struct evtr {
 	FILE *f;
-	int err;
 	int flags;
-	char *errmsg;
+	int err;
+	const char *errmsg;
 	off_t bytes;
 	union {
 		/*
@@ -204,7 +196,7 @@ struct evtr {
 		 * Paths, function names etc belong to different
 		 * namespaces.
 		 */
-		struct hashtab *strings[EVTR_NS_MAX - 1];
+		struct hashtab_str *strings[EVTR_NS_MAX - 1];
 		/*
 		 * When reading, we build a map from id to string.
 		 * Every id must be defined at the point of use.
@@ -214,15 +206,8 @@ struct evtr {
 	union {
 		/* same as above, but for subsys+fmt pairs */
 		struct fmt_map fmtmap;
-		struct hashtab *fmts;
+		struct hashtab_str *fmts;
 	};
-	/*
-	 * Filters that have a format specified and we
-	 * need to resolve that to an fmtid
-	 */
-	TAILQ_HEAD(, event_filter_unresolved) unresolved_filtq;
-	struct event_callback **cbs;
-	int ncbs;
 	struct thread_map threads;
 	struct cpu *cpus;
 	int ncpus;
@@ -237,6 +222,18 @@ struct evtr_query {
 	int ntried;
 	void *buf;
 	int bufsize;
+	struct symtab *symtab;
+	int ncbs;
+	struct event_callback **cbs;
+	/*
+	 * Filters that have a format specified and we
+	 * need to resolve that to an fmtid
+	 */
+	TAILQ_HEAD(, event_filter_unresolved) unresolved_filtq;
+	int err;
+	const char *errmsg;
+	int flags;
+	struct evtr_event pending_event;
 };
 
 void
@@ -277,50 +274,50 @@ id_tree_free(struct id_tree *root)
 
 static
 int
-evtr_register_callback(evtr_t evtr, void (*fn)(evtr_event_t, void *), void *d)
+evtr_register_callback(evtr_query_t q, void (*fn)(evtr_event_t, void *), void *d)
 {
 	struct event_callback *cb;
 	void *cbs;
 
 	if (!(cb = malloc(sizeof(*cb)))) {
-		evtr->err = ENOMEM;
+		q->err = ENOMEM;
 		return !0;
 	}
 	cb->cb = fn;
 	cb->data = d;
-	if (!(cbs = realloc(evtr->cbs, (++evtr->ncbs) * sizeof(cb)))) {
-		--evtr->ncbs;
+	if (!(cbs = realloc(q->cbs, (++q->ncbs) * sizeof(cb)))) {
+		--q->ncbs;
 		free(cb);
-		evtr->err = ENOMEM;
+		q->err = ENOMEM;
 		return !0;
 	}
-	evtr->cbs = cbs;
-	evtr->cbs[evtr->ncbs - 1] = cb;
+	q->cbs = cbs;
+	q->cbs[q->ncbs - 1] = cb;
 	return 0;
 }
 
 static
 void
-evtr_deregister_callbacks(evtr_t evtr)
+evtr_deregister_callbacks(evtr_query_t q)
 {
 	int i;
 
-	for (i = 0; i < evtr->ncbs; ++i) {
-		free(evtr->cbs[i]);
+	for (i = 0; i < q->ncbs; ++i) {
+		free(q->cbs[i]);
 	}
-	free(evtr->cbs);
-	evtr->cbs = NULL;
+	free(q->cbs);
+	q->cbs = NULL;
 }
 
 static
 void
-evtr_run_callbacks(evtr_event_t ev, evtr_t evtr)
+evtr_run_callbacks(evtr_event_t ev, evtr_query_t q)
 {
 	struct event_callback *cb;
 	int i;
 
-	for (i = 0; i < evtr->ncbs; ++i) {
-		cb = evtr->cbs[i];
+	for (i = 0; i < q->ncbs; ++i) {
+		cb = q->cbs[i];
 		cb->cb(ev, cb->data);
 	}
 }
@@ -354,45 +351,43 @@ parse_format_data(evtr_event_t ev, const char *fmt, ...)
 
 static
 void
-evtr_deregister_filters(evtr_t evtr, evtr_filter_t filt, int nfilt)
+evtr_deregister_filters(evtr_query_t q, evtr_filter_t filt, int nfilt)
 {
 	struct event_filter_unresolved *u, *tmp;
 	int i;
-	TAILQ_FOREACH_MUTABLE(u, &evtr->unresolved_filtq, link, tmp) {
+	TAILQ_FOREACH_MUTABLE(u, &q->unresolved_filtq, link, tmp) {
 		for (i = 0; i < nfilt; ++i) {
 			if (u->filt == &filt[i]) {
-				TAILQ_REMOVE(&evtr->unresolved_filtq, u, link);
+				TAILQ_REMOVE(&q->unresolved_filtq, u, link);
 			}
 		}
 	}
 }
 
 static
-void
-evtr_resolve_filters(evtr_t evtr, const char *fmt, int id)
-{
-	struct event_filter_unresolved *u, *tmp;
-	TAILQ_FOREACH_MUTABLE(u, &evtr->unresolved_filtq, link, tmp) {
-		if ((u->filt->fmt != NULL) && !strcmp(fmt, u->filt->fmt)) {
-			u->filt->fmtid = id;
-			u->filt->flags |= FILTF_ID;
-			TAILQ_REMOVE(&evtr->unresolved_filtq, u, link);
-		}
-	}
-}
-
-static
 int
-evtr_filter_register(evtr_t evtr, evtr_filter_t filt)
+evtr_filter_register(evtr_query_t q, evtr_filter_t filt)
 {
 	struct event_filter_unresolved *res;
 
 	if (!(res = malloc(sizeof(*res)))) {
-		evtr->err = ENOMEM;
+		q->err = ENOMEM;
 		return !0;
 	}
 	res->filt = filt;
-	TAILQ_INSERT_TAIL(&evtr->unresolved_filtq, res, link);
+	TAILQ_INSERT_TAIL(&q->unresolved_filtq, res, link);
+	return 0;
+}
+
+static
+int
+evtr_query_needs_parsing(evtr_query_t q)
+{
+	int i;
+
+	for (i = 0; i < q->nfilt; ++i)
+		if (q->filt[i].ev_type == EVTR_TYPE_STMT)
+			return !0;
 	return 0;
 }
 
@@ -410,7 +405,6 @@ evtr_event_data(evtr_event_t ev, char *buf, size_t len)
 	}
 }
 
-
 int
 evtr_error(evtr_t evtr)
 {
@@ -421,6 +415,20 @@ const char *
 evtr_errmsg(evtr_t evtr)
 {
 	return evtr->errmsg ? evtr->errmsg : strerror(evtr->err);
+}
+
+int
+evtr_query_error(evtr_query_t q)
+{
+	return q->err || (q->errmsg != NULL) || evtr_error(q->evtr);
+}
+
+const char *
+evtr_query_errmsg(evtr_query_t q)
+{
+	return q->errmsg ? q->errmsg :
+		(q->err ? strerror(q->err) :
+		 (evtr_errmsg(q->evtr)));
 }
 
 static
@@ -541,10 +549,74 @@ event_fmt_dup(const struct event_fmt *o)
 DEFINE_MAP_INSERT(string, const char *, strcmp, strdup)
 DEFINE_MAP_INSERT(fmt, const struct event_fmt *, event_fmt_cmp, event_fmt_dup)
 
-static
 int
-hashfunc(const char *str)
+hash_find(const struct hashtab *tab, uintptr_t key, uintptr_t *val)
 {
+	struct hashentry *ent;
+
+	for(ent = tab->buckets[tab->hashfunc(key)];
+	    ent && tab->cmpfunc(ent->key, key);
+	    ent = ent->next);
+
+	if (!ent)
+		return !0;
+	*val = ent->val;
+	return 0;
+}
+
+struct hashentry *
+hash_insert(struct hashtab *tab, uintptr_t key, uintptr_t val)
+{
+	struct hashentry *ent;
+	int hsh;
+
+	if (!(ent = malloc(sizeof(*ent)))) {
+		fprintf(stderr, "out of memory\n");
+		return NULL;
+	}
+	hsh = tab->hashfunc(key);
+	ent->next = tab->buckets[hsh];
+	ent->key = key;
+	ent->val = val;
+	tab->buckets[hsh] = ent;
+	return ent;
+}
+
+static
+uintptr_t
+cmpfunc_pointer(uintptr_t a, uintptr_t b)
+{
+	return b - a;
+}
+
+static
+uintptr_t
+hashfunc_pointer(uintptr_t p)
+{
+	return p;
+}
+
+struct hashtab *
+hash_new(void)
+{
+	struct hashtab *tab;
+	if (!(tab = calloc(sizeof(struct hashtab), 1)))
+		return tab;
+	tab->hashfunc = &hashfunc_pointer;
+	tab->cmpfunc = &cmpfunc_pointer;
+	return tab;
+}
+
+struct hashtab_str {	/* string -> id map */
+	struct hashtab tab;
+	uint16_t id;
+};
+
+static
+uintptr_t
+hashfunc_string(uintptr_t p)
+{
+	const char *str = (char *)p;
         unsigned long hash = 5381;
         int c;
 
@@ -554,46 +626,182 @@ hashfunc(const char *str)
 }
 
 static
-struct hashentry *
-hash_find(struct hashtab *tab, const char *str)
+uintptr_t
+cmpfunc_string(uintptr_t a, uintptr_t b)
 {
-	struct hashentry *ent;
+	return strcmp((char *)a, (char *)b);
+}
 
-	for(ent = tab->buckets[hashfunc(str)]; ent && strcmp(ent->str, str);
-	    ent = ent->next);
 
-	return ent;
+static
+struct hashtab_str *
+strhash_new(void)
+{
+	struct hashtab_str *strtab;
+	if (!(strtab = calloc(sizeof(struct hashtab_str), 1)))
+		return strtab;
+	strtab->tab.hashfunc = &hashfunc_string;
+	strtab->tab.cmpfunc = &cmpfunc_string;
+	return strtab;
 }
 
 static
-struct hashentry *
-hash_insert(struct hashtab *tab, const char *str)
+void
+strhash_destroy(struct hashtab_str *strtab)
 {
-	struct hashentry *ent;
-	int hsh;
+	free(strtab);
+}
 
-	if (!(ent = malloc(sizeof(*ent)))) {
-		fprintf(stderr, "out of memory\n");
-		return NULL;
-	}
-	hsh = hashfunc(str);
-	ent->next = tab->buckets[hsh];
-	ent->str = strdup(str);
-	ent->id = ++tab->id;
-	if (tab->id == 0) {
+static
+int
+strhash_find(struct hashtab_str *strtab, const char *str, uint16_t *id)
+{
+	uintptr_t val;
+
+	if (hash_find(&strtab->tab, (uintptr_t)str, &val))
+		return !0;
+	*id = (uint16_t)val;
+	return 0;
+}
+
+static
+int
+strhash_insert(struct hashtab_str *strtab, const char *str, uint16_t *id)
+{
+	uintptr_t val;
+
+	val = ++strtab->id;
+	if (strtab->id == 0) {
 		fprintf(stderr, "too many strings\n");
-		free(ent);
-		return NULL;
+		return ERANGE;
 	}
-	tab->buckets[hsh] = ent;
-	return ent;
+	str = strdup(str);
+	if (!str) {
+		fprintf(stderr, "out of memory\n");
+		--strtab->id;
+		return ENOMEM;
+	}
+	hash_insert(&strtab->tab, (uintptr_t)str, (uintptr_t)val);
+	*id = strtab->id;
+	return 0;
+}
+
+static
+struct symtab *
+symtab_new(void)
+{
+	struct symtab *symtab;
+	if (!(symtab = calloc(sizeof(struct symtab), 1)))
+		return symtab;
+	symtab->tab.hashfunc = &hashfunc_string;
+	symtab->tab.cmpfunc = &cmpfunc_string;
+	return symtab;
+}
+
+static
+void
+symtab_destroy(struct symtab *symtab)
+{
+	free(symtab);
+}
+
+struct evtr_variable *
+symtab_find(const struct symtab *symtab, const char *str)
+{
+	uintptr_t val;
+
+	if (hash_find(&symtab->tab, (uintptr_t)str, &val))
+		return NULL;
+	return (struct evtr_variable *)val;
+}
+
+int
+symtab_insert(struct symtab *symtab, const char *name,
+	       struct evtr_variable *var)
+{
+	name = strdup(name);
+	if (!name) {
+		fprintf(stderr, "out of memory\n");
+		return ENOMEM;
+	}
+	hash_insert(&symtab->tab, (uintptr_t)name, (uintptr_t)var);
+	return 0;
+}
+
+static
+int
+evtr_filter_match(evtr_query_t q, evtr_filter_t f, evtr_event_t ev)
+{
+	if ((f->cpu != -1) && (f->cpu != ev->cpu))
+		return 0;
+
+	assert(!(f->flags & FILTF_ID));
+	if (ev->type != f->ev_type)
+		return 0;
+	if (ev->type == EVTR_TYPE_PROBE) {
+		if (f->fmt && strcmp(ev->fmt, f->fmt))
+			return 0;
+	} else if (ev->type == EVTR_TYPE_STMT) {
+		struct evtr_variable *var;
+		/* resolve var */
+		/* XXX: no need to do that *every* time */
+		parse_var(f->var, q->symtab, &var);
+		if (var != ev->stmt.var)
+			return 0;
+	}
+	return !0;
+}
+
+static
+int
+evtr_match_filters(struct evtr_query *q, evtr_event_t ev)
+{
+	int i;
+
+	/* no filters means we're interested in all events */
+	if (!q->nfilt)
+		return !0;
+	++q->ntried;
+	for (i = 0; i < q->nfilt; ++i) {
+		if (evtr_filter_match(q, &q->filt[i], ev)) {
+			++q->nmatched;
+			return !0;
+		}
+	}
+	return 0;
+}
+
+static
+void
+parse_callback(evtr_event_t ev, void *d)
+{
+	evtr_query_t q = (evtr_query_t)d;
+	if (ev->type != EVTR_TYPE_PROBE)
+		return;
+	if (!ev->fmt || (ev->fmt[0] != '#'))
+		return;
+	/*
+	 * Copy the event to ->pending_event, then call
+	 * the parser to convert it into a synthesized
+	 * EVTR_TYPE_STMT event.
+	 */
+	memcpy(&q->pending_event, ev, sizeof(ev));
+	parse_string(&q->pending_event, q->symtab, &ev->fmt[1]);
+	if (!evtr_match_filters(q, &q->pending_event))
+		return;
+	/*
+	 * This will cause us to return ->pending_event next time
+	 * we're called.
+	 */
+	q->flags |= EVTRQF_PENDING;
 }
 
 static
 void
 thread_creation_callback(evtr_event_t ev, void *d)
 {
-	evtr_t evtr = (evtr_t)d;
+	evtr_query_t q = (evtr_query_t)d;
+	evtr_t evtr = q->evtr;
 	struct evtr_thread *td;
 	void *ktd;
 	char buf[20];
@@ -604,14 +812,14 @@ thread_creation_callback(evtr_event_t ev, void *d)
 	buf[19] = '\0';
 
 	if (!(td = malloc(sizeof(*td)))) {
-		evtr->err = ENOMEM;
+		q->err = ENOMEM;
 		return;
 	}
 	td->id = ktd;
 	td->userdata = NULL;
 	if (!(td->comm = strdup(buf))) {
 		free(td);
-		evtr->err = ENOMEM;
+		q->err = ENOMEM;
 		return;
 	}
 	printd(DS, "inserting new thread %p: %s\n", td->id, td->comm);
@@ -622,7 +830,7 @@ static
 void
 thread_switch_callback(evtr_event_t ev, void *d)
 {
-	evtr_t evtr = (evtr_t)d;
+	evtr_t evtr = ((evtr_query_t)d)->evtr;
 	struct evtr_thread *tdp, *tdn;
 	void *ktdp, *ktdn;
 	struct cpu *cpu;
@@ -633,7 +841,7 @@ thread_switch_callback(evtr_event_t ev, void *d)
 
 	cpu = evtr_cpu(evtr, ev->cpu);
 	if (!cpu) {
-		warnx("invalid cpu %d\n", ev->cpu);
+		printw("invalid cpu %d\n", ev->cpu);
 		return;
 	}
 	if (parse_format_data(ev, "sw  %p > %p", &ktdp, &ktdn) != 2) {
@@ -662,7 +870,7 @@ thread_switch_callback(evtr_event_t ev, void *d)
 		snprintf(tidstr, sizeof(tidstr), "%p", ktdn);
 		((void **)fmtdata)[0] = ktdn;
 		((char **)fmtdata)[1] = &tidstr[0];
-		thread_creation_callback(&tdcr, evtr);
+		thread_creation_callback(&tdcr, d);
 
 		tdn = thread_map_find(&evtr->threads, ktdn);
 		assert(tdn != NULL);
@@ -761,7 +969,8 @@ int
 evtr_dump_fmt(evtr_t evtr, uint64_t ts, const evtr_event_t ev)
 {
 	struct fmt_event_header fmt;
-	struct hashentry *ent;
+	uint16_t id;
+	int err;
 	char *subsys = "", buf[1024];
 
 	if (strlcpy(buf, subsys, sizeof(buf)) >= sizeof(buf)) {
@@ -775,11 +984,11 @@ evtr_dump_fmt(evtr_t evtr, uint64_t ts, const evtr_event_t ev)
 		return 0;
 	}
 
-	if ((ent = hash_find(evtr->fmts, buf))) {
-		return ent->id;
+	if (!strhash_find(evtr->fmts, buf, &id)) {
+		return id;
 	}
-	if (!(ent = hash_insert(evtr->fmts, buf))) {
-		evtr->err = evtr->fmts->id ? ENOMEM : ERANGE;
+	if ((err = strhash_insert(evtr->fmts, buf, &id))) {
+		evtr->err = err;
 		return 0;
 	}
 
@@ -787,7 +996,7 @@ evtr_dump_fmt(evtr_t evtr, uint64_t ts, const evtr_event_t ev)
 	fmt.eh.ts = ts;
 	fmt.subsys_len = strlen(subsys);
 	fmt.fmt_len = strlen(ev->fmt);
-	fmt.id = ent->id;
+	fmt.id = id;
 	if (evtr_dump_avoid_boundary(evtr, sizeof(fmt) + fmt.subsys_len +
 				     fmt.fmt_len))
 		return 0;
@@ -914,22 +1123,23 @@ int
 evtr_dump_string(evtr_t evtr, uint64_t ts, const char *str, int ns)
 {
 	struct string_event_header s;
-	struct hashentry *ent;
+	int err;
+	uint16_t id;
 
 	assert((0 <= ns) && (ns < EVTR_NS_MAX));
-	if ((ent = hash_find(evtr->strings[ns], str))) {
-		return ent->id;
+	if (!strhash_find(evtr->strings[ns], str, &id)) {
+		return id;
 	}
-	if (!(ent = hash_insert(evtr->strings[ns], str))) {
-		evtr->err = evtr->strings[ns]->id ? ENOMEM : ERANGE;
+	if ((err = strhash_insert(evtr->strings[ns], str, &id))) {
+		evtr->err = err;
 		return 0;
 	}
 
-	printd(DS, "hash_insert %s ns %d id %d\n", str, ns, ent->id);
+	printd(DS, "hash_insert %s ns %d id %d\n", str, ns, id);
 	s.eh.type = EVTR_TYPE_STR;
 	s.eh.ts = ts;
 	s.ns = ns;
-	s.id = ent->id;
+	s.id = id;
 	s.len = strnlen(str, PATH_MAX);
 
 	if (evtr_dump_avoid_boundary(evtr, sizeof(s) + s.len))
@@ -1004,7 +1214,7 @@ evtr_dump_probe(evtr_t evtr, evtr_event_t ev)
 			.evtr = evtr,
 			.ts = ev->ts,
 		};
-		assert(ev->fmtdatalen <= sizeof(buf));
+		assert(ev->fmtdatalen <= (int)sizeof(buf));
 		kev.datalen = ev->fmtdatalen;
 		/*
 		 * Replace all string pointers with string ids before dumping
@@ -1116,9 +1326,10 @@ evtr_alloc(FILE *f)
 	evtr->err = 0;
 	evtr->errmsg = NULL;
 	evtr->bytes = 0;
-	TAILQ_INIT(&evtr->unresolved_filtq);
 	return evtr;
 }
+
+static int evtr_next_event(evtr_t, evtr_event_t);
 
 evtr_t
 evtr_open_read(FILE *f)
@@ -1135,30 +1346,19 @@ evtr_open_read(FILE *f)
 		RB_INIT(&evtr->maps[i].root);
 	}
 	RB_INIT(&evtr->fmtmap.root);
-	TAILQ_INIT(&evtr->unresolved_filtq);
-	evtr->cbs = 0;
-	evtr->ncbs = 0;
 	RB_INIT(&evtr->threads.root);
 	evtr->cpus = NULL;
 	evtr->ncpus = 0;
-	if (evtr_register_callback(evtr, &thread_creation_callback, evtr)) {
-		goto free_evtr;
-	}
-	if (evtr_register_callback(evtr, &thread_switch_callback, evtr)) {
-		goto free_cbs;
-	}
 	/*
 	 * Load the first event so we can pick up any
 	 * sysinfo entries.
 	 */
 	if (evtr_next_event(evtr, &ev)) {
-		goto free_cbs;
+		goto free_evtr;
 	}
 	if (evtr_rewind(evtr))
-		goto free_cbs;
+		goto free_evtr;
 	return evtr;
-free_cbs:
-	evtr_deregister_callbacks(evtr);
 free_evtr:
 	free(evtr);
 	return NULL;
@@ -1175,14 +1375,13 @@ evtr_open_write(FILE *f)
 	}
 
 	evtr->flags = EVTRF_WR;
-	if (!(evtr->fmts = calloc(sizeof(struct hashtab), 1)))
+	if (!(evtr->fmts = strhash_new()))
 		goto free_evtr;
-
 	for (i = 0; i < EVTR_NS_MAX; ++i) {
-		evtr->strings[i] = calloc(sizeof(struct hashtab), 1);
+		evtr->strings[i] = strhash_new();
 		if (!evtr->strings[i]) {
 			for (j = 0; j < i; ++j) {
-				free(evtr->strings[j]);
+				strhash_destroy(evtr->strings[j]);
 			}
 			goto free_fmts;
 		}
@@ -1190,7 +1389,7 @@ evtr_open_write(FILE *f)
 
 	return evtr;
 free_fmts:
-	free(evtr->fmts);
+	strhash_destroy(evtr->fmts);
 free_evtr:
 	free(evtr);
 	return NULL;
@@ -1217,9 +1416,9 @@ evtr_close(evtr_t evtr)
 	int i;
 
 	if (evtr->flags & EVTRF_WR) {
-		hashtab_destroy(evtr->fmts);
+		hashtab_destroy(&evtr->fmts->tab);
 		for (i = 0; i < EVTR_NS_MAX; ++i)
-			hashtab_destroy(evtr->strings[i]);
+			hashtab_destroy(&evtr->strings[i]->tab);
 	} else {
 		id_tree_free(&evtr->fmtmap.root);
 		for (i = 0; i < EVTR_NS_MAX - 1; ++i) {
@@ -1251,8 +1450,9 @@ evtr_read(evtr_t evtr, void *buf, size_t size)
 
 static
 int
-evtr_load_fmt(evtr_t evtr, char *buf)
+evtr_load_fmt(evtr_query_t q, char *buf)
 {
+	evtr_t evtr = q->evtr;
 	struct fmt_event_header *evh = (struct fmt_event_header *)buf;
 	struct event_fmt *fmt;
 	char *subsys = NULL, *fmtstr;
@@ -1299,9 +1499,9 @@ evtr_load_fmt(evtr_t evtr, char *buf)
 			"different format (corrupt input)";
 		break;
 	default:
-		evtr_resolve_filters(evtr, fmt->fmt, evh->id);
+		;
 	}
-	return 0;
+	return evtr->err;
 
 free_fmtstr:
 	free(fmtstr);
@@ -1350,47 +1550,6 @@ evtr_load_string(evtr_t evtr, char *buf)
 		break;
 	default:
 		;
-	}
-	return 0;
-}
-
-static
-int
-evtr_filter_match(evtr_filter_t f, struct probe_event_header *pev)
-{
-	if ((f->cpu != -1) && (f->cpu != pev->cpu))
-		return 0;
-	if (!f->fmtid)
-		return !0;
-	/*
-	 * If we don't have an id for the required format
-	 * string, the format string won't match anyway
-	 * (we require that id <-> fmt mappings appear
-	 * before the first appearance of the fmt string),
-	 * so don't bother comparing.
-	 */
-	if (!(f->flags & FILTF_ID))
-		return 0;
-	if(pev->fmt == f->fmtid)
-		return !0;
-	return 0;
-}
-
-static
-int
-evtr_match_filters(struct evtr_query *q, struct probe_event_header *pev)
-{
-	int i;
-
-	/* no filters means we're interested in all events */
-	if (!q->nfilt)
-		return !0;
-	++q->ntried;
-	for (i = 0; i < q->nfilt; ++i) {
-		if (evtr_filter_match(&q->filt[i], pev)) {
-			++q->nmatched;
-			return !0;
-		}
 	}
 	return 0;
 }
@@ -1498,12 +1657,7 @@ evtr_load_probe(evtr_t evtr, evtr_event_t ev, char *buf, struct evtr_query *q)
 			ev->fmtdatalen = evh->datalen;
 		}
 	}
-	evtr_run_callbacks(ev, evtr);
-	/* we can't filter before running the callbacks */ 
-	if (!evtr_match_filters(q, evh)) {
-		return -1;	/* no match */
-	}
-
+	evtr_run_callbacks(ev, q);
 	return evtr->err;
 }
 
@@ -1588,6 +1742,12 @@ _evtr_next_event(evtr_t evtr, evtr_event_t ev, struct evtr_query *q)
 	struct trace_event_header *evhdr = (struct trace_event_header *)buf;
 
 	for (ret = 0; !ret;) {
+		if (q->flags & EVTRQF_PENDING) {
+			q->off = evtr->bytes;
+			memcpy(ev, &q->pending_event, sizeof(*ev));
+			q->flags &= ~EVTRQF_PENDING;
+			return 0;
+		}
 		if (evtr_read(evtr, &evhdr->type, 1)) {
 			if (feof(evtr->f)) {
 				evtr->errmsg = NULL;
@@ -1634,7 +1794,7 @@ _evtr_next_event(evtr_t evtr, evtr_event_t ev, struct evtr_query *q)
 			}
 			break;
 		case EVTR_TYPE_FMT:
-			if (evtr_load_fmt(evtr, buf)) {
+			if (evtr_load_fmt(q, buf)) {
 				return !0;
 			}
 			break;
@@ -1645,6 +1805,10 @@ _evtr_next_event(evtr_t evtr, evtr_event_t ev, struct evtr_query *q)
 		}
 		evtr_skip_to_record(evtr);
 		if (ret) {
+			if (!evtr_match_filters(q, ev)) {
+				ret = 0;
+				continue;
+			}
 			q->off = evtr->bytes;
 			return 0;
 		}
@@ -1653,6 +1817,7 @@ _evtr_next_event(evtr_t evtr, evtr_event_t ev, struct evtr_query *q)
 	return !0;
 }
 
+static
 int
 evtr_next_event(evtr_t evtr, evtr_event_t ev)
 {
@@ -1674,6 +1839,9 @@ evtr_last_event(evtr_t evtr, evtr_event_t ev)
 	struct stat st;
 	int fd;
 	off_t last_boundary;
+
+	if (evtr_error(evtr))
+		return !0;
 
 	fd = fileno(evtr->f);
 	if (fstat(fd, &st))
@@ -1722,22 +1890,44 @@ evtr_query_init(evtr_t evtr, evtr_filter_t filt, int nfilt)
 	if (!(q->buf = malloc(q->bufsize))) {
 		goto free_q;
 	}
+	if (!(q->symtab = symtab_new()))
+		goto free_buf;
 	q->evtr = evtr;
 	q->off = 0;
 	q->filt = filt;
 	q->nfilt = nfilt;
+	TAILQ_INIT(&q->unresolved_filtq);
 	q->nmatched = 0;
+	q->cbs = NULL;
+	q->ncbs = 0;
+	q->flags = 0;
+	memset(&q->pending_event, '\0', sizeof(q->pending_event));
+	if (evtr_register_callback(q, &thread_creation_callback, q)) {
+		goto free_symtab;
+	}
+	if (evtr_register_callback(q, &thread_switch_callback, q)) {
+		goto free_cbs;
+	}
+	if (evtr_query_needs_parsing(q) &&
+	    evtr_register_callback(q, &parse_callback, q)) {
+		goto free_cbs;
+	}
+
 	for (i = 0; i < nfilt; ++i) {
 		filt[i].flags = 0;
 		if (filt[i].fmt == NULL)
 			continue;
-		if (evtr_filter_register(evtr, &filt[i])) {
-			evtr_deregister_filters(evtr, filt, i);
-			goto free_buf;
+		if (evtr_filter_register(q, &filt[i])) {
+			evtr_deregister_filters(q, filt, i);
+			goto free_symtab;
 		}
 	}
 
 	return q;
+free_cbs:
+	evtr_deregister_callbacks(q);
+free_symtab:
+	symtab_destroy(q->symtab);
 free_buf:
 	free(q->buf);
 free_q:
@@ -1748,7 +1938,8 @@ free_q:
 void
 evtr_query_destroy(struct evtr_query *q)
 {
-	evtr_deregister_filters(q->evtr, q->filt, q->nfilt);
+	evtr_deregister_filters(q, q->filt, q->nfilt);
+		
 	free(q->buf);
 	free(q);
 }
@@ -1756,9 +1947,13 @@ evtr_query_destroy(struct evtr_query *q)
 int
 evtr_query_next(struct evtr_query *q, evtr_event_t ev)
 {
-	/* we may support that in the future */
-	if (q->off != q->evtr->bytes)
+	if (evtr_query_error(q))
 		return !0;
+	/* we may support that in the future */
+	if (q->off != q->evtr->bytes) {
+		q->errmsg = "evtr/query offset mismatch";
+		return !0;
+	}
 	return _evtr_next_event(q->evtr, ev, q);
 }
 

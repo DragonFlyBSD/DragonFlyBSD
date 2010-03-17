@@ -59,6 +59,7 @@ struct rows {
 
 CMD_PROTO(show);
 CMD_PROTO(svg);
+CMD_PROTO(stats);
 CMD_PROTO(summary);
 
 struct command {
@@ -72,6 +73,10 @@ struct command {
 	{
 		.name = "svg",
 		.func = &cmd_svg,
+	},
+	{
+		.name = "stats",
+		.func = &cmd_stats,
 	},
 	{
 		.name = "summary",
@@ -257,8 +262,8 @@ do_pass(struct pass_hook *hooks, int nhooks)
 				hooks[i].event(hooks[i].data, &ev);
 		}
 	}
-	if (evtr_error(evtr)) {
-		err(1, evtr_errmsg(evtr));
+	if (evtr_query_error(q)) {
+		err(1, evtr_query_errmsg(q));
 	}
 	evtr_query_destroy(q);
 
@@ -624,10 +629,12 @@ cmd_svg(int argc, char **argv)
 		{
 			.flags = 0,
 			.cpu = -1,
+			.ev_type = EVTR_TYPE_PROBE,
 		},
 		{
 			.flags = 0,
 			.cpu = -1,
+			.ev_type = EVTR_TYPE_PROBE,
 		},
 	};
 	struct pass_hook ctxsw_prepare = {
@@ -746,6 +753,9 @@ cmd_show(int argc, char **argv)
 	freq = cputab.cpus[0].freq;
 	freq /= 1000000;	/* we want to print out usecs */
 	printd(MISC, "using freq = %lf\n", freq);
+	filt.flags = 0;
+	filt.cpu = -1;
+	filt.ev_type = EVTR_TYPE_PROBE;
 	filt.fmt = NULL;
 	optind = 0;
 	optreset = 1;
@@ -756,8 +766,6 @@ cmd_show(int argc, char **argv)
 			break;
 		}
 	}
-	filt.flags = 0;
-	filt.cpu = -1;
 	q = evtr_query_init(evtr, &filt, 1);
 	if (!q)
 		err(1, "Can't initialize query\n");
@@ -785,12 +793,89 @@ cmd_show(int argc, char **argv)
 		}
 		last_ts = ev.ts;
 	}
-	if (evtr_error(evtr)) {
-		err(1, evtr_errmsg(evtr));
+	if (evtr_query_error(q)) {
+		err(1, evtr_query_errmsg(q));
 	}
 	evtr_query_destroy(q);
 	return 0;
 }
+
+static
+int
+cmd_stats(int argc, char **argv)
+{
+	struct evtr_event ev;
+	struct evtr_query *q;
+	struct evtr_filter filt;
+	struct cpu_table cputab;
+	double freq;
+	int ch;
+	uint64_t last_ts = 0;
+	enum evtr_value_type type = EVTR_VAL_INT;
+	uintmax_t sum, occurences;
+
+	cputab_init(&cputab);
+	/*
+	 * Assume all cores run on the same frequency
+	 * for now. There's no reason to complicate
+	 * things unless we can detect frequency change
+	 * events as well.
+	 *
+	 * Note that the code is very simplistic and will
+	 * produce garbage if the kernel doesn't fixup
+	 * the timestamps for cores running with different
+	 * frequencies.
+	 */
+	freq = cputab.cpus[0].freq;
+	freq /= 1000000;	/* we want to print out usecs */
+	printd(MISC, "using freq = %lf\n", freq);
+	filt.flags = 0;
+	filt.cpu = -1;
+	filt.ev_type = EVTR_TYPE_STMT;
+	filt.var = NULL;
+	optind = 0;
+	optreset = 1;
+#if 0
+	while ((ch = getopt(argc, argv, "f:")) != -1) {
+		switch (ch) {
+		case 'f':
+			filt.fmt = optarg;
+			break;
+		}
+	}
+#endif
+	if (argc != 2)
+		err(2, "Need exactly one variable");
+	filt.var = argv[1];
+	q = evtr_query_init(evtr, &filt, 1);
+	if (!q)
+		err(1, "Can't initialize query\n");
+	sum = occurences = 0;
+	while(!evtr_query_next(q, &ev)) {
+
+		if (!last_ts)
+			last_ts = ev.ts;
+
+		assert(ev.type == EVTR_TYPE_STMT);
+		if (type != ev.stmt.val->type) {
+			printf("ignoring assignment of wrong type %d (expected %d)\n",
+			       ev.stmt.val->type, type);
+		} else {
+			printf("STMT: var \"%s\" = %jx\n",
+			       ev.stmt.var->name, ev.stmt.val->num);
+			sum += ev.stmt.val->num;
+			++occurences;
+		}
+		last_ts = ev.ts;
+	}
+	if (evtr_query_error(q)) {
+		err(1, evtr_query_errmsg(q));
+	}
+	printf("median for variable %s is %lf\n", argv[1], (double)sum / occurences);
+	evtr_query_destroy(q);
+	return 0;
+}
+
 
 static
 int
@@ -809,6 +894,7 @@ cmd_summary(int argc, char **argv)
 	(void)argv;
 
 	cputab_init(&cputab);
+	filt.ev_type = EVTR_TYPE_PROBE;
 	filt.fmt = NULL;
 	filt.flags = 0;
 	filt.cpu = -1;
@@ -823,8 +909,8 @@ cmd_summary(int argc, char **argv)
 		++c->evcnt;
 		c->firstlast.end = ev.ts;
 	}
-	if (evtr_error(evtr)) {
-		err(1, evtr_errmsg(evtr));
+	if (evtr_query_error(q)) {
+		err(1, evtr_query_errmsg(q));
 	}
 	evtr_query_destroy(q);
 

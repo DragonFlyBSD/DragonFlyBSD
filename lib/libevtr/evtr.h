@@ -34,6 +34,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <sys/queue.h>
 /* XXX: remove */
 #include <sys/tree.h>
 
@@ -44,7 +45,31 @@ enum {
 	EVTR_TYPE_FMT = 0x3,
 	EVTR_TYPE_SYSINFO = 0x4,
 	EVTR_TYPE_CPUINFO = 0x5,
+	EVTR_TYPE_STMT = 0x6,
 };
+
+struct hashtab;
+typedef struct evtr_variable_value {
+	TAILQ_ENTRY(evtr_variable_value) link;
+	int refs;
+	enum evtr_value_type {
+		EVTR_VAL_NIL,
+		EVTR_VAL_INT,
+		EVTR_VAL_STR,
+		EVTR_VAL_HASH,
+	} type;
+	union {
+		uintmax_t num;
+		const char *str;
+		struct hashtab *hashtab;
+		const struct symtab *symtab;
+	};
+} *evtr_variable_value_t;
+
+typedef struct evtr_variable {
+	const char *name;
+	struct evtr_variable_value val;
+} *evtr_var_t;
 
 struct evtr_thread {
 	RB_ENTRY(evtr_thread) rb_node;
@@ -60,13 +85,20 @@ struct evtr_thread {
  */
 typedef struct evtr_event {
 	uint8_t type;
+	uint64_t ts;
 	union {
 		/* timestamp. Must be nondecreasing */
-		uint64_t ts;
 		uint16_t ncpus;	/* EVTR_TYPE_SYSINFO */
 		struct evtr_cpuinfo { /* EVTR_TYPE_CPUINFO */
 			double freq;
 		} cpuinfo;
+		struct evtr_stmt {
+			const struct evtr_variable *var;
+			enum evtr_op {
+				EVTR_OP_SET,
+			} op;
+			struct evtr_variable_value *val;
+		} stmt;
 	};
 	/*
 	 * Pointer to filename. NULL if n/a.
@@ -122,6 +154,8 @@ typedef struct evtr_filter {
 	 * do that internally)
 	 */
 	int cpu;
+	/* what event type we're interested in */
+	int ev_type;
 	/*
 	 * If the user sets fmt, only events with a format
 	 * string identical to the one specified will be
@@ -130,20 +164,23 @@ typedef struct evtr_filter {
 	union {
 		const char *fmt;
 		int fmtid;
+		const char *var;
 	};
 } *evtr_filter_t;
 
 struct evtr_query;
 struct evtr;
 typedef struct evtr *evtr_t;
+typedef struct evtr_query *evtr_query_t;
 
-int evtr_next_event(evtr_t, evtr_event_t);
 evtr_t evtr_open_read(FILE *);
 evtr_t evtr_open_write(FILE *);
 void evtr_close(evtr_t);
 int evtr_dump_event(evtr_t, evtr_event_t);
 int evtr_error(evtr_t);
 const char * evtr_errmsg(evtr_t);
+int evtr_query_error(evtr_query_t);
+const char * evtr_query_errmsg(evtr_query_t);
 void evtr_event_data(evtr_event_t, char *, size_t);
 struct evtr_query * evtr_query_init(evtr_t, evtr_filter_t, int);
 void evtr_query_destroy(struct evtr_query *);
