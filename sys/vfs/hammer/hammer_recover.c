@@ -85,6 +85,7 @@ hammer_recover_stage1(hammer_mount_t hmp, hammer_volume_t root_volume)
 	hammer_off_t last_offset;
 	u_int32_t seqno;
 	int error;
+	int degenerate_case = 0;
 
 	/*
 	 * Examine the UNDO FIFO indices in the volume header.
@@ -135,7 +136,7 @@ hammer_recover_stage1(hammer_mount_t hmp, hammer_volume_t root_volume)
 			}
 		}
 		if (error) {
-			kprintf("HAMMER(%s) meta-data recovery failure "
+			kprintf("HAMMER(%s) recovery failure "
 				"during seqno backscan\n",
 				root_volume->ondisk->vol_name);
 			goto done;
@@ -154,7 +155,7 @@ hammer_recover_stage1(hammer_mount_t hmp, hammer_volume_t root_volume)
 		 *	 fwd iteration points to the end of the returned
 		 *	 record.
 		 */
-		kprintf("HAMMER(%s) meta-data recovery check seqno=%08x\n",
+		kprintf("HAMMER(%s) recovery check seqno=%08x\n",
 			root_volume->ondisk->vol_name,
 			seqno);
 
@@ -191,7 +192,7 @@ hammer_recover_stage1(hammer_mount_t hmp, hammer_volume_t root_volume)
 			if (bytes >
 			    (rootmap->alloc_offset & HAMMER_OFF_LONG_MASK) *
 			    4 / 5) {
-				kprintf("HAMMER(%s) meta-data forward scan is "
+				kprintf("HAMMER(%s) recovery forward scan is "
 					"grossly beyond the last_offset in "
 					"the volume header, this can't be "
 					"right.\n",
@@ -208,17 +209,18 @@ hammer_recover_stage1(hammer_mount_t hmp, hammer_volume_t root_volume)
 		 */
 		hmp->undo_seqno = seqno;
 		if (error) {
-			kprintf("HAMMER(%s) meta-data recovery failure "
+			kprintf("HAMMER(%s) recovery failure "
 				"during seqno fwdscan\n",
 				root_volume->ondisk->vol_name);
 			goto done;
 		}
 		last_offset = scan_offset;
-		kprintf("HAMMER(%s) meta-data recovery range %016jx-%016jx "
-			"(invol %016jx) endseqno=%08x\n",
+		kprintf("HAMMER(%s) recovery range %016jx-%016jx\n"
+			"HAMMER(%s) recovery nexto %016jx endseqno=%08x\n",
 			root_volume->ondisk->vol_name,
 			(intmax_t)first_offset,
 			(intmax_t)last_offset,
+			root_volume->ondisk->vol_name,
 			(intmax_t)rootmap->next_offset,
 			seqno);
 	}
@@ -235,11 +237,12 @@ hammer_recover_stage1(hammer_mount_t hmp, hammer_volume_t root_volume)
 			(last_offset & HAMMER_OFF_LONG_MASK);
 	}
 	if (bytes == 0) {
+		degenerate_case = 1;
 		error = 0;
 		goto done;
 	}
 
-	kprintf("HAMMER(%s) Start meta-data recovery %016jx - %016jx "
+	kprintf("HAMMER(%s) Start recovery undo %016jx - %016jx "
 		"(%jd bytes of UNDO)%s\n",
 		root_volume->ondisk->vol_name,
 		(intmax_t)first_offset,
@@ -329,8 +332,13 @@ done:
 	} else {
 		hammer_recover_flush_buffers(hmp, root_volume, -1);
 	}
-	kprintf("HAMMER(%s) End meta-data recovery\n",
-		root_volume->ondisk->vol_name);
+	if (degenerate_case == 0) {
+		kprintf("HAMMER(%s) recovery complete\n",
+			root_volume->ondisk->vol_name);
+	} else {
+		kprintf("HAMMER(%s) mounted clean, no recovery needed\n",
+			root_volume->ondisk->vol_name);
+	}
 	return (error);
 }
 
@@ -343,7 +351,7 @@ done:
  * filesystem, and so forth.
  *
  * This code may only be called for read-write mounts or when a mount
- * switches from read-only to read-write.
+ * switches from read-only to read-write.  vnodes may or may not be present.
  *
  * The stage1 code will have already calculated the correct FIFO range
  * and stored it in the rootmap.
@@ -386,8 +394,8 @@ hammer_recover_stage2(hammer_mount_t hmp, hammer_volume_t root_volume)
 		bytes = rootmap->alloc_offset - first_offset +
 			(last_offset & HAMMER_OFF_LONG_MASK);
 	}
-	kprintf("HAMMER(%s) Start redo recovery %016jx - %016jx "
-		"(%jd bytes of UNDO)%s\n",
+	kprintf("HAMMER(%s) Start recovery redo %016jx - %016jx "
+		"(%jd bytes of REDO)%s\n",
 		root_volume->ondisk->vol_name,
 		(intmax_t)first_offset,
 		(intmax_t)last_offset,
