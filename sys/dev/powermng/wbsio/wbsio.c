@@ -203,8 +203,15 @@ wbsio_probe(struct device *dev)
 		break;
 	}
 
-	if (desc == NULL)
+	if (desc == NULL) {
+#ifndef KLD_MODULE
+		if (bootverbose)
+#endif
+			device_printf(dev, "%s port 0x%02x: "
+			    "Device ID 0x%02x, Rev 0x%02x\n",
+			    __func__, isa_get_port(dev), reg_id, reg_rev);
 		return ENXIO;
+	}
 
 	ksnprintf(fulldesc, sizeof(fulldesc),
 	    "Winbond LPC Super I/O %s rev 0x%02x", desc, reg_rev);
