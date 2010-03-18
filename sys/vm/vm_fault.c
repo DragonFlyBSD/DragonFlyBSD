@@ -225,12 +225,14 @@ vm_fault(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type, int fault_flags)
 	int result;
 	vm_pindex_t first_pindex;
 	struct faultstate fs;
+	int growstack;
 
 	mycpu->gd_cnt.v_vm_faults++;
 
 	fs.didlimit = 0;
 	fs.hardfault = 0;
 	fs.fault_flags = fault_flags;
+	growstack = 1;
 
 RetryFault:
 	/*
@@ -258,10 +260,19 @@ RetryFault:
 	 * to do a user wiring we have more work to do.
 	 */
 	if (result != KERN_SUCCESS) {
-		if (result != KERN_PROTECTION_FAILURE)
-			return result;
-		if ((fs.fault_flags & VM_FAULT_WIRE_MASK) != VM_FAULT_USER_WIRE)
-			return result;
+		if (result != KERN_PROTECTION_FAILURE ||
+		    (fs.fault_flags & VM_FAULT_WIRE_MASK) != VM_FAULT_USER_WIRE)
+		{
+			if (result == KERN_INVALID_ADDRESS && growstack &&
+			    map != &kernel_map && curproc != NULL) {
+				result = vm_map_growstack(curproc, vaddr);
+				if (result != KERN_SUCCESS)
+					return (KERN_FAILURE);
+				growstack = 0;
+				goto RetryFault;
+			}
+			return (result);
+		}
 
 		/*
    		 * If we are user-wiring a r/w segment, and it is COW, then

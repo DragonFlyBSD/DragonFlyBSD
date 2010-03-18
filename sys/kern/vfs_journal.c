@@ -76,7 +76,7 @@
 #include <sys/journal.h>
 #include <sys/file.h>
 #include <sys/proc.h>
-#include <sys/msfbuf.h>
+#include <sys/xio.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 
@@ -106,6 +106,8 @@ static void journal_abort(struct journal *jo,
 static void journal_commit(struct journal *jo,
                         struct journal_rawrecbeg **rawpp,
                         int bytes, int closeout);
+static void jrecord_data(struct jrecord *jrec,
+			void *buf, int bytes, int dtype);
 
 
 MALLOC_DEFINE(M_JOURNAL, "journal", "Journaling structures");
@@ -939,7 +941,37 @@ void
 jrecord_leaf(struct jrecord *jrec, int16_t rectype, void *ptr, int bytes)
 {
     jrecord_write(jrec, rectype, bytes);
-    jrecord_data(jrec, ptr, bytes);
+    jrecord_data(jrec, ptr, bytes, JDATA_KERN);
+}
+
+void
+jrecord_leaf_uio(struct jrecord *jrec, int16_t rectype,
+		 struct uio *uio)
+{
+    struct iovec *iov;
+    int i;
+
+    for (i = 0; i < uio->uio_iovcnt; ++i) {
+	iov = &uio->uio_iov[i];
+	if (iov->iov_len == 0)
+	    continue;
+	if (uio->uio_segflg == UIO_SYSSPACE) {
+	    jrecord_write(jrec, rectype, iov->iov_len);
+	    jrecord_data(jrec, iov->iov_base, iov->iov_len, JDATA_KERN);
+	} else { /* UIO_USERSPACE */
+	    jrecord_write(jrec, rectype, iov->iov_len);
+	    jrecord_data(jrec, iov->iov_base, iov->iov_len, JDATA_USER);
+	}
+    }
+}
+
+void
+jrecord_leaf_xio(struct jrecord *jrec, int16_t rectype, xio_t xio)
+{
+    int bytes = xio->xio_npages * PAGE_SIZE;
+
+    jrecord_write(jrec, rectype, bytes);
+    jrecord_data(jrec, xio, bytes, JDATA_XIO);
 }
 
 /*
@@ -1028,11 +1060,12 @@ jrecord_write(struct jrecord *jrec, int16_t rectype, int bytes)
  * being pushed out.   Callers should be aware that even the associated
  * subrecord header may become inaccessible due to stream record pushouts.
  */
-void
-jrecord_data(struct jrecord *jrec, const void *buf, int bytes)
+static void
+jrecord_data(struct jrecord *jrec, void *buf, int bytes, int dtype)
 {
     int pusheditout;
     int extsize;
+    int xio_offset = 0;
 
     KKASSERT(bytes >= 0 && bytes <= jrec->residual);
 
@@ -1044,8 +1077,21 @@ jrecord_data(struct jrecord *jrec, const void *buf, int bytes)
 	/*
 	 * Fill in any remaining space in the current stream record.
 	 */
-	bcopy(buf, jrec->stream_ptr, jrec->stream_residual);
-	buf = (const char *)buf + jrec->stream_residual;
+	switch (dtype) {
+	case JDATA_KERN:
+	    bcopy(buf, jrec->stream_ptr, jrec->stream_residual);
+	    break;
+	case JDATA_USER:
+	    copyin(buf, jrec->stream_ptr, jrec->stream_residual);
+	    break;
+	case JDATA_XIO:
+	    xio_copy_xtok((xio_t)buf, xio_offset, jrec->stream_ptr,
+			  jrec->stream_residual);
+	    xio_offset += jrec->stream_residual;
+	    break;
+	}
+	if (dtype != JDATA_XIO)
+	    buf = (char *)buf + jrec->stream_residual;
 	bytes -= jrec->stream_residual;
 	/*jrec->stream_ptr += jrec->stream_residual;*/
 	jrec->residual -= jrec->stream_residual;
@@ -1078,7 +1124,17 @@ jrecord_data(struct jrecord *jrec, const void *buf, int bytes)
      * Push out any remaining bytes into the current stream record.
      */
     if (bytes) {
-	bcopy(buf, jrec->stream_ptr, bytes);
+	switch (dtype) {
+	case JDATA_KERN:
+	    bcopy(buf, jrec->stream_ptr, bytes);
+	    break;
+	case JDATA_USER:
+	    copyin(buf, jrec->stream_ptr, bytes);
+	    break;
+	case JDATA_XIO:
+	    xio_copy_xtok((xio_t)buf, xio_offset, jrec->stream_ptr, bytes);
+	    break;
+	}
 	jrec->stream_ptr += bytes;
 	jrec->stream_residual -= bytes;
 	jrec->residual -= bytes;
@@ -1334,12 +1390,13 @@ jrecord_write_pagelist(struct jrecord *jrec, int16_t rectype,
 			struct vm_page **pglist, int *rtvals, int pgcount,
 			off_t offset)
 {
-    struct msf_buf *msf;
+    struct xio xio;
     int error;
     int b;
     int i;
 
     i = 0;
+    xio_init(&xio);
     while (i < pgcount) {
 	/*
 	 * Find the next valid section.  Skip any invalid elements
@@ -1365,16 +1422,14 @@ jrecord_write_pagelist(struct jrecord *jrec, int16_t rectype,
 	 * And write it out.
 	 */
 	if (i - b) {
-	    error = msf_map_pagelist(&msf, pglist + b, i - b, 0);
+	    error = xio_init_pages(&xio, pglist + b, i - b, XIOF_READ);
 	    if (error == 0) {
-		kprintf("RECORD PUTPAGES %d\n", msf_buf_bytes(msf));
 		jrecord_leaf(jrec, JLEAF_SEEKPOS, &offset, sizeof(offset));
-		jrecord_leaf(jrec, rectype, 
-			     msf_buf_kva(msf), msf_buf_bytes(msf));
-		msf_buf_free(msf);
+		jrecord_leaf_xio(jrec, rectype, &xio);
 	    } else {
-		kprintf("jrecord_write_pagelist: mapping failure\n");
+		kprintf("jrecord_write_pagelist: xio init failure\n");
 	    }
+	    xio_release(&xio);
 	    offset += (off_t)(i - b) << PAGE_SHIFT;
 	}
     }
@@ -1383,35 +1438,14 @@ jrecord_write_pagelist(struct jrecord *jrec, int16_t rectype,
 /*
  * Write out the data represented by a UIO.
  */
-struct jwuio_info {
-    struct jrecord *jrec;
-    int16_t rectype;
-};
-
-static int jrecord_write_uio_callback(void *info, char *buf, int bytes);
-
 void
 jrecord_write_uio(struct jrecord *jrec, int16_t rectype, struct uio *uio)
 {
-    struct jwuio_info info = { jrec, rectype };
-    int error;
-
     if (uio->uio_segflg != UIO_NOCOPY) {
 	jrecord_leaf(jrec, JLEAF_SEEKPOS, &uio->uio_offset, 
 		     sizeof(uio->uio_offset));
-	error = msf_uio_iterate(uio, jrecord_write_uio_callback, &info);
-	if (error)
-	    kprintf("XXX warning uio iterate failed %d\n", error);
+	jrecord_leaf_uio(jrec, rectype, uio);
     }
-}
-
-static int
-jrecord_write_uio_callback(void *info_arg, char *buf, int bytes)
-{
-    struct jwuio_info *info = info_arg;
-
-    jrecord_leaf(info->jrec, info->rectype, buf, bytes);
-    return(0);
 }
 
 void

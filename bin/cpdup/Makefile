@@ -8,8 +8,6 @@ SRCS=	cpdup.c hcproto.c hclink.c misc.c fsmid.c
 CFLAGS += -D_ST_FLAGS_PRESENT_=1
 .endif
 
-WARNS?=	6
-
 .if !defined(NOMD5)
 SRCS+=	md5.c
 .endif

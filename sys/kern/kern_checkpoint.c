@@ -137,7 +137,7 @@ elf_gethdr(struct file *fp, Elf_Ehdr *ehdr)
 	      ehdr->e_ident[EI_CLASS] == ELF_CLASS &&
 	      ehdr->e_ident[EI_DATA] == ELF_DATA &&
 	      ehdr->e_ident[EI_VERSION] == EV_CURRENT &&
-	      ehdr->e_ident[EI_OSABI] == ELFOSABI_FREEBSD &&
+	      ehdr->e_ident[EI_OSABI] == ELFOSABI_NONE &&
 	      ehdr->e_ident[EI_ABIVERSION] == 0)) {
 		PRINTF(("bad elf header\n there are %d segments\n",
 		       ehdr->e_phnum));
@@ -363,15 +363,15 @@ elf_demarshalnotes(void *src, prpsinfo_t *psinfo, prstatus_t *status,
 	size_t off = 0;
 
 	TRACE_ENTER;
-	error = elf_getnote(src, &off, "FreeBSD", NT_PRPSINFO,
+	error = elf_getnote(src, &off, "CORE", NT_PRPSINFO,
 			   (void **)&psinfo, sizeof(prpsinfo_t));
 	if (error)
 		goto done;
-	error = elf_getnote(src, &off, "FreeBSD", NT_PRSTATUS, 
+	error = elf_getnote(src, &off, "CORE", NT_PRSTATUS,
 			   (void **)&status, sizeof(prstatus_t));
 	if (error)
 		goto done;
-	error = elf_getnote(src, &off, "FreeBSD", NT_FPREGSET, 
+	error = elf_getnote(src, &off, "CORE", NT_FPREGSET,
 			   (void **)&fpregset, sizeof(prfpregset_t));
 	if (error)
 		goto done;
@@ -382,11 +382,11 @@ elf_demarshalnotes(void *src, prpsinfo_t *psinfo, prstatus_t *status,
 	 */
 	for (i = 0 ; i < nthreads - 1; i++) {
 		status++; fpregset++;
-		error = elf_getnote(src, &off, "FreeBSD", NT_PRSTATUS, 
+		error = elf_getnote(src, &off, "CORE", NT_PRSTATUS,
 				   (void **)&status, sizeof (prstatus_t));
 		if (error)
 			goto done;
-		error = elf_getnote(src, &off, "FreeBSD", NT_FPREGSET, 
+		error = elf_getnote(src, &off, "CORE", NT_FPREGSET,
 				   (void **)&fpregset, sizeof(prfpregset_t));
 		if (error)
 			goto done;

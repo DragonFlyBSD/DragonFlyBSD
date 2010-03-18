@@ -204,7 +204,7 @@ main(int ac, char **av)
 	    setlinebuf(stderr);
 	    break;
 	case 'V':
-	    ValidateOpt = 1;
+	    ++ValidateOpt;
 	    break;
 	case 'I':
 	    SummaryOpt = 1;
@@ -809,7 +809,7 @@ relink:
 	} else {
 	    if (ForceOpt == 0 &&
 		st1.st_size == st2.st_size &&
-		st1.st_mtime == st2.st_mtime &&
+		(ValidateOpt == 2 || st1.st_mtime == st2.st_mtime) &&
 		OwnerMatch(&st1, &st2)
 #ifndef NOMD5
 		&& (UseMD5Opt == 0 || !S_ISREG(st1.st_mode) ||

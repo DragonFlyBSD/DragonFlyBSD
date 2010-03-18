@@ -33,7 +33,6 @@ apps/dsa-pca.pem
 apps/dsa1024.pem
 apps/dsa512.pem
 apps/dsap.pem
-apps/genpkey.c
 apps/install.com
 apps/makeapps.com
 apps/md4.c
@@ -42,9 +41,6 @@ apps/openssl-vms.cnf
 apps/pca-cert.srl
 apps/pca-key.pem
 apps/pca-req.pem
-apps/pkey.c
-apps/pkeyparam.c
-apps/pkeyutl.c
 apps/privkey.pem
 apps/progs.pl
 apps/req.pem
@@ -58,8 +54,6 @@ apps/server.srl
 apps/server2.pem
 apps/set/
 apps/testCA.pem
-apps/ts.c
-apps/tsget
 apps/winrand.c
 bugs/
 certs/
@@ -71,17 +65,11 @@ crypto/LPdir_win32.c
 crypto/LPdir_wince.c
 crypto/Makefile
 crypto/aes/Makefile
-crypto/aes/aes_x86core.c
 crypto/aes/asm/
 crypto/asn1/Makefile
-crypto/asn1/ameth_lib.c
-crypto/asn1/asn1_locl.h
-crypto/asn1/bio_asn1.c
-crypto/asn1/bio_ndef.c
 crypto/asn1/charmap.pl
 crypto/asn1/p8_key.c
 crypto/asn1/tasn_prn.c
-crypto/asn1/x_nx509.c
 crypto/bf/INSTALL
 crypto/bf/Makefile
 crypto/bf/asm/
@@ -105,7 +93,6 @@ crypto/bn/exptest.c
 crypto/bn/vms-helper.c
 crypto/buffer/Makefile
 crypto/camellia/Makefile
-crypto/camellia/asm/
 crypto/cast/Makefile
 crypto/cast/asm/
 crypto/cast/cast_spd.c
@@ -233,7 +220,6 @@ crypto/pkcs7/server.pem
 crypto/pkcs7/sign.c
 crypto/pkcs7/t/
 crypto/pkcs7/verify.c
-crypto/ppccpuid.pl
 crypto/pqueue/Makefile
 crypto/rand/Makefile
 crypto/rand/rand_os2.c
@@ -263,7 +249,6 @@ crypto/ripemd/rmd160.c
 crypto/ripemd/rmdtest.c
 crypto/rsa/Makefile
 crypto/rsa/rsa_test.c
-crypto/s390xcpuid.S
 crypto/seed/
 crypto/sha/Makefile
 crypto/sha/asm/
@@ -275,7 +260,6 @@ crypto/sha/sha256t.c
 crypto/sha/sha512t.c
 crypto/sha/shatest.c
 crypto/sparccpuid.S
-crypto/sparcv9cap.c
 crypto/stack/Makefile
 crypto/store/Makefile
 crypto/threads/mttest.c
@@ -309,7 +293,7 @@ doc/openssl_button.html
 doc/ssleay.txt
 doc/standards.txt
 engines/Makefile
-engines/axp.opt
+engines/alpha.opt
 engines/e_4758cca.ec
 engines/e_aep.ec
 engines/e_atalla.ec
@@ -324,6 +308,7 @@ engines/e_nuron.ec
 engines/e_sureware.ec
 engines/e_ubsec.ec
 engines/engine_vector.mar
+engines/ia64.opt
 engines/makeengines.com
 engines/vax.opt
 fips/

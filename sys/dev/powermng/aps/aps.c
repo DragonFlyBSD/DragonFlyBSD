@@ -194,8 +194,7 @@ aps_do_io(struct resource *iores, unsigned char *buf, int wmask, int rmask)
 		stat = bus_space_read_1(iot, ioh, APS_STR3);
 		if (stat & (APS_STR3_MWMF))
 			break;
-		/* XXX: OpenBSD has an intended delay of 1 us */
-		tsleep(iores, 0, __func__, hz / 100);
+		DRIVERSLEEP(1);
 	}
 
 	if (n == 100) {
@@ -219,8 +218,7 @@ aps_do_io(struct resource *iores, unsigned char *buf, int wmask, int rmask)
 		stat = bus_space_read_1(iot, ioh, APS_STR3);
 		if (stat & (APS_STR3_OBF3B))
 			break;
-		/* XXX: OpenBSD has an intended delay of 500 us */
-		tsleep(iores, 0, __func__, hz / 100);
+		DRIVERSLEEP(500);
 	}
 
 	if (n == 100) {

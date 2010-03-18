@@ -34,6 +34,18 @@
 
 #ifdef __i386__
 
+
+struct l_msginfo {
+	l_int msgpool;
+	l_int msgmap;
+	l_int msgmax;
+	l_int msgmnb;
+	l_int msgmni;
+	l_int msgssz;
+	l_int msgtql;
+	l_ushort msgseg;
+};
+
 struct linux_msgctl_args 
 {
 	struct sysmsg	sysmsg;
@@ -124,6 +136,193 @@ struct linux_shmget_args
 	l_int		shmflg;
 };
 
+
+
+struct l_seminfo {
+	l_int semmap;
+	l_int semmni;
+	l_int semmns;
+	l_int semmnu;
+	l_int semmsl;
+	l_int semopm;
+	l_int semume;
+	l_int semusz;
+	l_int semvmx;
+	l_int semaem;
+};
+
+
+struct l_shminfo {
+	l_int shmmax;
+	l_int shmmin;
+	l_int shmmni;
+	l_int shmseg;
+	l_int shmall;
+};
+
+struct l_shm_info {
+	l_int used_ids;
+	l_ulong shm_tot;  /* total allocated shm */
+	l_ulong shm_rss;  /* total resident shm */
+	l_ulong shm_swp;  /* total swapped shm */
+	l_ulong swap_attempts;
+	l_ulong swap_successes;
+};
+
+
+struct l_ipc64_perm
+{
+	l_key_t		key;
+	l_uid_t		uid;
+	l_gid_t		gid;
+	l_uid_t		cuid;
+	l_gid_t		cgid;
+	l_mode_t	mode;
+	l_ushort	__pad1;
+	l_ushort	seq;
+	l_ushort	__pad2;
+	l_ulong		__unused1;
+	l_ulong		__unused2;
+};
+
+/*
+ * The msqid64_ds structure for i386 architecture.
+ * Note extra padding because this structure is passed back and forth
+ * between kernel and user space.
+ *
+ * Pad space is left for:
+ * - 64-bit time_t to solve y2038 problem
+ * - 2 miscellaneous 32-bit values
+ */
+
+struct l_msqid64_ds {
+	struct l_ipc64_perm msg_perm;
+	l_time_t	msg_stime;	/* last msgsnd time */
+	l_ulong		__unused1;
+	l_time_t	msg_rtime;	/* last msgrcv time */
+	l_ulong		__unused2;
+	l_time_t	msg_ctime;	/* last change time */
+	l_ulong		__unused3;
+	l_ulong		msg_cbytes;	/* current number of bytes on queue */
+	l_ulong		msg_qnum;	/* number of messages in queue */
+	l_ulong		msg_qbytes;	/* max number of bytes on queue */
+	l_pid_t		msg_lspid;	/* pid of last msgsnd */
+	l_pid_t		msg_lrpid;	/* last receive pid */
+	l_ulong		__unused4;
+	l_ulong		__unused5;
+};
+
+/*
+ * The semid64_ds structure for i386 architecture.
+ * Note extra padding because this structure is passed back and forth
+ * between kernel and user space.
+ *
+ * Pad space is left for:
+ * - 64-bit time_t to solve y2038 problem
+ * - 2 miscellaneous 32-bit values
+ */
+
+struct l_semid64_ds {
+	struct l_ipc64_perm sem_perm;	/* permissions */
+	l_time_t	sem_otime;	/* last semop time */
+	l_ulong		__unused1;
+	l_time_t	sem_ctime;	/* last change time */
+	l_ulong		__unused2;
+	l_ulong		sem_nsems;	/* no. of semaphores in array */
+	l_ulong		__unused3;
+	l_ulong		__unused4;
+};
+
+/*
+ * The shmid64_ds structure for i386 architecture.
+ * Note extra padding because this structure is passed back and forth
+ * between kernel and user space.
+ *
+ * Pad space is left for:
+ * - 64-bit time_t to solve y2038 problem
+ * - 2 miscellaneous 32-bit values
+ */
+
+struct l_shmid64_ds {
+	struct l_ipc64_perm shm_perm;	/* operation perms */
+	l_size_t	shm_segsz;	/* size of segment (bytes) */
+	l_time_t	shm_atime;	/* last attach time */
+	l_ulong		__unused1;
+	l_time_t	shm_dtime;	/* last detach time */
+	l_ulong		__unused2;
+	l_time_t	shm_ctime;	/* last change time */
+	l_ulong		__unused3;
+	l_pid_t		shm_cpid;	/* pid of creator */
+	l_pid_t		shm_lpid;	/* pid of last operator */
+	l_ulong		shm_nattch;	/* no. of current attaches */
+	l_ulong		__unused4;
+	l_ulong		__unused5;
+};
+
+struct l_shminfo64 {
+	l_ulong   	shmmax;
+	l_ulong   	shmmin;
+	l_ulong   	shmmni;
+	l_ulong   	shmseg;
+	l_ulong   	shmall;
+	l_ulong   	__unused1;
+	l_ulong   	__unused2;
+	l_ulong   	__unused3;
+	l_ulong   	__unused4;
+};
+
+
+struct l_ipc_perm {
+	l_key_t		key;
+	l_uid16_t	uid;
+	l_gid16_t	gid;
+	l_uid16_t	cuid;
+	l_gid16_t	cgid;
+	l_ushort	mode;
+	l_ushort	seq;
+};
+
+struct l_msqid_ds {
+	struct l_ipc_perm	msg_perm;
+	l_uintptr_t		msg_first;	/* first message on queue,unused */
+	l_uintptr_t		msg_last;	/* last message in queue,unused */
+	l_time_t		msg_stime;	/* last msgsnd time */
+	l_time_t		msg_rtime;	/* last msgrcv time */
+	l_time_t		msg_ctime;	/* last change time */
+	l_ulong			msg_lcbytes;	/* Reuse junk fields for 32 bit */
+	l_ulong			msg_lqbytes;	/* ditto */
+	l_ushort		msg_cbytes;	/* current number of bytes on queue */
+	l_ushort		msg_qnum;	/* number of messages in queue */
+	l_ushort		msg_qbytes;	/* max number of bytes on queue */
+	l_pid_t			msg_lspid;	/* pid of last msgsnd */
+	l_pid_t			msg_lrpid;	/* last receive pid */
+};
+
+struct l_semid_ds {
+	struct l_ipc_perm	sem_perm;
+	l_time_t		sem_otime;
+	l_time_t		sem_ctime;
+	void			*sem_base;
+	void			*sem_pending;
+	void			*sem_pending_last;
+	void			*undo;
+	l_ushort		sem_nsems;
+};
+
+struct l_shmid_ds {
+	struct l_ipc_perm	shm_perm;
+	l_int			shm_segsz;
+	l_time_t		shm_atime;
+	l_time_t		shm_dtime;
+	l_time_t		shm_ctime;
+	l_ushort		shm_cpid;
+	l_ushort		shm_lpid;
+	l_short			shm_nattch;
+	l_ushort		private1;
+	void			*private2;
+	void			*private3;
+};
+
 int linux_msgctl (struct linux_msgctl_args *);
 int linux_msgget (struct linux_msgget_args *);
 int linux_msgrcv (struct linux_msgrcv_args *);
@@ -137,7 +336,8 @@ int linux_shmat  (struct linux_shmat_args *);
 int linux_shmctl (struct linux_shmctl_args *);
 int linux_shmdt  (struct linux_shmdt_args *);
 int linux_shmget (struct linux_shmget_args *);
-
+#define	LINUX_MSG_INFO	12
+#define	LINUX_IPC_64	0x0100	/* New version (support 32-bit UIDs, bigger */
 #endif	/* __i386__ */
 
 #endif /* _LINUX_IPC_H_ */

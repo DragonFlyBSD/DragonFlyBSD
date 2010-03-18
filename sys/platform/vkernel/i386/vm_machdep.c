@@ -367,18 +367,6 @@ kvtop(void *addr)
 	return (pa);
 }
 
-int
-grow_stack(struct proc *p, vm_offset_t sp)
-{
-	int rv;
-
-	rv = vm_map_growstack (p, sp);
-	if (rv != KERN_SUCCESS)
-		return (0);
-
-	return (1);
-}
-
 SYSCTL_DECL(_vm_stats_misc);
 
 static int cnt_prezero;

@@ -249,7 +249,11 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 	return (msg ? EINVAL : 0);
 }
 
-
+/*
+ * This routine is only called for newly minted drives or to reprobe
+ * a drive with no open slices.  disk_probe_slice() is called directly
+ * when reprobing partition changes within slices.
+ */
 static void
 disk_probe(struct disk *dp, int reprobe)
 {
@@ -257,18 +261,20 @@ disk_probe(struct disk *dp, int reprobe)
 	cdev_t dev = dp->d_cdev;
 	cdev_t ndev;
 	int error, i, sno;
+	struct diskslices *osp;
 	struct diskslice *sp;
 
 	KKASSERT (info->d_media_blksize != 0);
 
+	osp = dp->d_slice;
 	dp->d_slice = dsmakeslicestruct(BASE_SLICE, info);
-	disk_debug(1,
-		    "disk_probe (begin): %s\n",
-			dp->d_cdev->si_name);
+	disk_debug(1, "disk_probe (begin): %s\n", dp->d_cdev->si_name);
 
 	error = mbrinit(dev, info, &(dp->d_slice));
-	if (error)
+	if (error) {
+		dsgone(&osp);
 		return;
+	}
 
 	for (i = 0; i < dp->d_slice->dss_nslices; i++) {
 		/*
@@ -341,9 +347,8 @@ disk_probe(struct disk *dp, int reprobe)
 			disk_probe_slice(dp, ndev, i, reprobe);
 		}
 	}
-	disk_debug(1,
-		    "disk_probe (end): %s\n",
-			dp->d_cdev->si_name);
+	dsgone(&osp);
+	disk_debug(1, "disk_probe (end): %s\n", dp->d_cdev->si_name);
 }
 
 
@@ -425,7 +430,7 @@ disk_msg_core(void *arg)
 				    "received at core\n");
 			break;
 		}
-		lwkt_replymsg((lwkt_msg_t)msg, 0);
+		lwkt_replymsg(&msg->hdr, 0);
 	}
 	lwkt_exit();
 }
@@ -456,17 +461,20 @@ disk_msg_send(uint32_t cmd, void *load, void *load2)
 	disk_msg->load = load;
 	disk_msg->load2 = load2;
 	KKASSERT(port);
-	lwkt_sendmsg(port, (lwkt_msg_t)disk_msg);
+	lwkt_sendmsg(port, &disk_msg->hdr);
 }
 
 void
 disk_msg_send_sync(uint32_t cmd, void *load, void *load2)
 {
 	struct lwkt_port rep_port;
-	disk_msg_t disk_msg = objcache_get(disk_msg_cache, M_WAITOK);
-	disk_msg_t	msg_incoming;
-	lwkt_port_t port = &disk_msg_port;
+	disk_msg_t disk_msg;
+	lwkt_port_t port;
 
+	disk_msg = objcache_get(disk_msg_cache, M_WAITOK);
+	port = &disk_msg_port;
+
+	/* XXX could probably use curthread's built-in msgport */
 	lwkt_initport_thread(&rep_port, curthread);
 	lwkt_initmsg(&disk_msg->hdr, &rep_port, 0);
 
@@ -474,9 +482,9 @@ disk_msg_send_sync(uint32_t cmd, void *load, void *load2)
 	disk_msg->load = load;
 	disk_msg->load2 = load2;
 
-	KKASSERT(port);
-	lwkt_sendmsg(port, (lwkt_msg_t)disk_msg);
-	msg_incoming = lwkt_waitport(&rep_port, 0);
+	lwkt_sendmsg(port, &disk_msg->hdr);
+	lwkt_waitmsg(&disk_msg->hdr, 0);
+	objcache_put(disk_msg_cache, disk_msg);
 }
 
 /*
@@ -685,8 +693,7 @@ disk_unprobe(struct disk *disk)
 void
 disk_invalidate (struct disk *disk)
 {
-	if (disk->d_slice)
-		dsgone(&disk->d_slice);
+	dsgone(&disk->d_slice);
 }
 
 struct disk *

@@ -564,7 +564,8 @@ pcie_cfgregopen(uint64_t base, uint8_t minbus, uint8_t maxbus)
 		if (pcie_array == NULL)
 			return (0);
 
-		va = kmem_alloc_nofault(&kernel_map, PCIE_CACHE * PAGE_SIZE);
+		va = kmem_alloc_nofault(&kernel_map, PCIE_CACHE * PAGE_SIZE,
+					PAGE_SIZE);
 		if (va == 0) {
 			kfree(pcie_array, M_DEVBUF);
 			return (0);

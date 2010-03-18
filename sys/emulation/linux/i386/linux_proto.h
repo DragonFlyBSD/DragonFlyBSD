@@ -323,6 +323,12 @@ struct	linux_ustat_args {
 	l_dev_t	dev;	char dev_[PAD_(l_dev_t)];
 	struct l_ustat *	ubuf;	char ubuf_[PAD_(struct l_ustat *)];
 };
+struct	linux_getppid_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
 struct	linux_sigaction_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -604,6 +610,9 @@ struct	linux_clone_args {
 #endif
 	l_int	flags;	char flags_[PAD_(l_int)];
 	void *	stack;	char stack_[PAD_(void *)];
+	void *	parent_tidptr;	char parent_tidptr_[PAD_(void *)];
+	int	dummy;	char dummy_[PAD_(int)];
+	void *	child_tidptr;	char child_tidptr_[PAD_(void *)];
 };
 struct	linux_newuname_args {
 #ifdef _KERNEL
@@ -1101,6 +1110,12 @@ struct	linux_fcntl64_args {
 	l_uint	cmd;	char cmd_[PAD_(l_uint)];
 	l_ulong	arg;	char arg_[PAD_(l_ulong)];
 };
+struct	linux_gettid_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
 struct	linux_setxattr_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -1173,6 +1188,52 @@ struct	linux_fremovexattr_args {
 #endif
 	register_t dummy;
 };
+struct	linux_tkill_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	int	tid;	char tid_[PAD_(int)];
+	int	sig;	char sig_[PAD_(int)];
+};
+struct	linux_sys_futex_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	void *	uaddr;	char uaddr_[PAD_(void *)];
+	int	op;	char op_[PAD_(int)];
+	int	val;	char val_[PAD_(int)];
+	struct l_timespec *	timeout;	char timeout_[PAD_(struct l_timespec *)];
+	void *	uaddr2;	char uaddr2_[PAD_(void *)];
+	int	val3;	char val3_[PAD_(int)];
+};
+struct	linux_sched_setaffinity_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	l_pid_t	pid;	char pid_[PAD_(l_pid_t)];
+	l_uint	len;	char len_[PAD_(l_uint)];
+	l_ulong *	user_mask_ptr;	char user_mask_ptr_[PAD_(l_ulong *)];
+};
+struct	linux_sched_getaffinity_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	l_pid_t	pid;	char pid_[PAD_(l_pid_t)];
+	l_uint	len;	char len_[PAD_(l_uint)];
+	l_ulong *	user_mask_ptr;	char user_mask_ptr_[PAD_(l_ulong *)];
+};
+struct	linux_set_thread_area_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	struct l_user_desc *	desc;	char desc_[PAD_(struct l_user_desc *)];
+};
+struct	linux_get_thread_area_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	struct l_user_desc *	desc;	char desc_[PAD_(struct l_user_desc *)];
+};
 struct	linux_fadvise64_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -1184,6 +1245,249 @@ struct	linux_exit_group_args {
 	struct sysmsg sysmsg;
 #endif
 	int	rval;	char rval_[PAD_(int)];
+};
+struct	linux_epoll_create_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	l_int	size;	char size_[PAD_(l_int)];
+};
+struct	linux_epoll_ctl_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	l_int	epfd;	char epfd_[PAD_(l_int)];
+	l_int	op;	char op_[PAD_(l_int)];
+	l_int	fd;	char fd_[PAD_(l_int)];
+	struct linux_epoll_event *	event;	char event_[PAD_(struct linux_epoll_event *)];
+};
+struct	linux_epoll_wait_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	l_int	epfd;	char epfd_[PAD_(l_int)];
+	struct linux_epoll_event *	events;	char events_[PAD_(struct linux_epoll_event *)];
+	l_int	maxevents;	char maxevents_[PAD_(l_int)];
+	l_int	timeout;	char timeout_[PAD_(l_int)];
+};
+struct	linux_set_tid_address_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	int *	tidptr;	char tidptr_[PAD_(int *)];
+};
+struct	linux_clock_settime_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	clockid_t	which;	char which_[PAD_(clockid_t)];
+	struct l_timespec *	tp;	char tp_[PAD_(struct l_timespec *)];
+};
+struct	linux_clock_gettime_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	clockid_t	which;	char which_[PAD_(clockid_t)];
+	struct l_timespec *	tp;	char tp_[PAD_(struct l_timespec *)];
+};
+struct	linux_clock_getres_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	clockid_t	which;	char which_[PAD_(clockid_t)];
+	struct l_timespec *	tp;	char tp_[PAD_(struct l_timespec *)];
+};
+struct	linux_clock_nanosleep_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	clockid_t	which;	char which_[PAD_(clockid_t)];
+	int	flags;	char flags_[PAD_(int)];
+	struct l_timespec *	rqtp;	char rqtp_[PAD_(struct l_timespec *)];
+	struct l_timespec *	rmtp;	char rmtp_[PAD_(struct l_timespec *)];
+};
+struct	linux_statfs64_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
+struct	linux_tgkill_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	int	tgid;	char tgid_[PAD_(int)];
+	int	pid;	char pid_[PAD_(int)];
+	int	sig;	char sig_[PAD_(int)];
+};
+struct	linux_utimes_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	char *	fname;	char fname_[PAD_(char *)];
+	struct l_timeval *	tptr;	char tptr_[PAD_(struct l_timeval *)];
+};
+struct	linux_mq_open_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	const char *	name;	char name_[PAD_(const char *)];
+	int	oflag;	char oflag_[PAD_(int)];
+	mode_t	mode;	char mode_[PAD_(mode_t)];
+	struct mq_attr *	attr;	char attr_[PAD_(struct mq_attr *)];
+};
+struct	linux_mq_getsetattr_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	l_mqd_t	mqd;	char mqd_[PAD_(l_mqd_t)];
+	const struct mq_attr *	attr;	char attr_[PAD_(const struct mq_attr *)];
+	struct mq_attr *	oattr;	char oattr_[PAD_(struct mq_attr *)];
+};
+struct	linux_openat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	l_int	dfd;	char dfd_[PAD_(l_int)];
+	char *	path;	char path_[PAD_(char *)];
+	l_int	flags;	char flags_[PAD_(l_int)];
+	l_int	mode;	char mode_[PAD_(l_int)];
+};
+struct	linux_mkdirat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	l_int	dfd;	char dfd_[PAD_(l_int)];
+	char *	path;	char path_[PAD_(char *)];
+	l_int	mode;	char mode_[PAD_(l_int)];
+};
+struct	linux_mknodat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	l_int	dfd;	char dfd_[PAD_(l_int)];
+	char *	path;	char path_[PAD_(char *)];
+	l_int	mode;	char mode_[PAD_(l_int)];
+	l_uint	dev;	char dev_[PAD_(l_uint)];
+};
+struct	linux_fchownat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	l_int	dfd;	char dfd_[PAD_(l_int)];
+	char *	filename;	char filename_[PAD_(char *)];
+	l_uid16_t	uid;	char uid_[PAD_(l_uid16_t)];
+	l_gid16_t	gid;	char gid_[PAD_(l_gid16_t)];
+	l_int	flag;	char flag_[PAD_(l_int)];
+};
+struct	linux_futimesat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	l_int	dfd;	char dfd_[PAD_(l_int)];
+	char *	fname;	char fname_[PAD_(char *)];
+	struct l_timeval *	tptr;	char tptr_[PAD_(struct l_timeval *)];
+};
+struct	linux_fstatat64_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	l_int	dfd;	char dfd_[PAD_(l_int)];
+	char *	path;	char path_[PAD_(char *)];
+	struct l_stat64 *	statbuf;	char statbuf_[PAD_(struct l_stat64 *)];
+	l_int	flag;	char flag_[PAD_(l_int)];
+};
+struct	linux_unlinkat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	l_int	dfd;	char dfd_[PAD_(l_int)];
+	char *	path;	char path_[PAD_(char *)];
+	l_int	flag;	char flag_[PAD_(l_int)];
+};
+struct	linux_renameat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	l_int	olddfd;	char olddfd_[PAD_(l_int)];
+	char *	from;	char from_[PAD_(char *)];
+	l_int	newdfd;	char newdfd_[PAD_(l_int)];
+	char *	to;	char to_[PAD_(char *)];
+};
+struct	linux_linkat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	l_int	olddfd;	char olddfd_[PAD_(l_int)];
+	char *	path;	char path_[PAD_(char *)];
+	l_int	newdfd;	char newdfd_[PAD_(l_int)];
+	char *	to;	char to_[PAD_(char *)];
+	l_int	flags;	char flags_[PAD_(l_int)];
+};
+struct	linux_symlinkat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	char *	path;	char path_[PAD_(char *)];
+	l_int	newdfd;	char newdfd_[PAD_(l_int)];
+	char *	to;	char to_[PAD_(char *)];
+};
+struct	linux_readlinkat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	l_int	dfd;	char dfd_[PAD_(l_int)];
+	char *	path;	char path_[PAD_(char *)];
+	char *	buf;	char buf_[PAD_(char *)];
+	l_int	count;	char count_[PAD_(l_int)];
+};
+struct	linux_fchmodat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	l_int	dfd;	char dfd_[PAD_(l_int)];
+	char *	filename;	char filename_[PAD_(char *)];
+	l_mode_t	mode;	char mode_[PAD_(l_mode_t)];
+};
+struct	linux_faccessat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	l_int	dfd;	char dfd_[PAD_(l_int)];
+	char *	filename;	char filename_[PAD_(char *)];
+	l_int	mode;	char mode_[PAD_(l_int)];
+};
+struct	linux_set_robust_list_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	struct linux_robust_list_head *	head;	char head_[PAD_(struct linux_robust_list_head *)];
+	l_size_t	len;	char len_[PAD_(l_size_t)];
+};
+struct	linux_get_robust_list_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	l_int	pid;	char pid_[PAD_(l_int)];
+	struct linux_robust_list_head **	head;	char head_[PAD_(struct linux_robust_list_head **)];
+	l_size_t *	len;	char len_[PAD_(l_size_t *)];
+};
+struct	linux_getcpu_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	l_uint *	pcpu;	char pcpu_[PAD_(l_uint *)];
+	l_uint *	pnode;	char pnode_[PAD_(l_uint *)];
+	void *	ptcache;	char ptcache_[PAD_(void *)];
+};
+struct	linux_utimensat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	l_int	dfd;	char dfd_[PAD_(l_int)];
+	char *	fname;	char fname_[PAD_(char *)];
+	struct l_timespec *	tptr;	char tptr_[PAD_(struct l_timespec *)];
+	l_int	flag;	char flag_[PAD_(l_int)];
 };
 
 #ifdef COMPAT_43
@@ -1257,6 +1561,7 @@ int	sys_linux_ioctl (struct linux_ioctl_args *);
 int	sys_linux_fcntl (struct linux_fcntl_args *);
 int	sys_linux_olduname (struct linux_olduname_args *);
 int	sys_linux_ustat (struct linux_ustat_args *);
+int	sys_linux_getppid (struct linux_getppid_args *);
 int	sys_linux_sigaction (struct linux_sigaction_args *);
 int	sys_linux_sgetmask (struct linux_sgetmask_args *);
 int	sys_linux_ssetmask (struct linux_ssetmask_args *);
@@ -1367,6 +1672,7 @@ int	sys_linux_mincore (struct linux_mincore_args *);
 int	sys_linux_madvise (struct linux_madvise_args *);
 int	sys_linux_getdents64 (struct linux_getdents64_args *);
 int	sys_linux_fcntl64 (struct linux_fcntl64_args *);
+int	sys_linux_gettid (struct linux_gettid_args *);
 int	sys_linux_setxattr (struct linux_setxattr_args *);
 int	sys_linux_lsetxattr (struct linux_lsetxattr_args *);
 int	sys_linux_fsetxattr (struct linux_fsetxattr_args *);
@@ -1379,8 +1685,44 @@ int	sys_linux_flistxattr (struct linux_flistxattr_args *);
 int	sys_linux_removexattr (struct linux_removexattr_args *);
 int	sys_linux_lremovexattr (struct linux_lremovexattr_args *);
 int	sys_linux_fremovexattr (struct linux_fremovexattr_args *);
+int	sys_linux_tkill (struct linux_tkill_args *);
+int	sys_linux_sys_futex (struct linux_sys_futex_args *);
+int	sys_linux_sched_setaffinity (struct linux_sched_setaffinity_args *);
+int	sys_linux_sched_getaffinity (struct linux_sched_getaffinity_args *);
+int	sys_linux_set_thread_area (struct linux_set_thread_area_args *);
+int	sys_linux_get_thread_area (struct linux_get_thread_area_args *);
 int	sys_linux_fadvise64 (struct linux_fadvise64_args *);
 int	sys_linux_exit_group (struct linux_exit_group_args *);
+int	sys_linux_epoll_create (struct linux_epoll_create_args *);
+int	sys_linux_epoll_ctl (struct linux_epoll_ctl_args *);
+int	sys_linux_epoll_wait (struct linux_epoll_wait_args *);
+int	sys_linux_set_tid_address (struct linux_set_tid_address_args *);
+int	sys_linux_clock_settime (struct linux_clock_settime_args *);
+int	sys_linux_clock_gettime (struct linux_clock_gettime_args *);
+int	sys_linux_clock_getres (struct linux_clock_getres_args *);
+int	sys_linux_clock_nanosleep (struct linux_clock_nanosleep_args *);
+int	sys_linux_statfs64 (struct linux_statfs64_args *);
+int	sys_linux_tgkill (struct linux_tgkill_args *);
+int	sys_linux_utimes (struct linux_utimes_args *);
+int	sys_linux_mq_open (struct linux_mq_open_args *);
+int	sys_linux_mq_getsetattr (struct linux_mq_getsetattr_args *);
+int	sys_linux_openat (struct linux_openat_args *);
+int	sys_linux_mkdirat (struct linux_mkdirat_args *);
+int	sys_linux_mknodat (struct linux_mknodat_args *);
+int	sys_linux_fchownat (struct linux_fchownat_args *);
+int	sys_linux_futimesat (struct linux_futimesat_args *);
+int	sys_linux_fstatat64 (struct linux_fstatat64_args *);
+int	sys_linux_unlinkat (struct linux_unlinkat_args *);
+int	sys_linux_renameat (struct linux_renameat_args *);
+int	sys_linux_linkat (struct linux_linkat_args *);
+int	sys_linux_symlinkat (struct linux_symlinkat_args *);
+int	sys_linux_readlinkat (struct linux_readlinkat_args *);
+int	sys_linux_fchmodat (struct linux_fchmodat_args *);
+int	sys_linux_faccessat (struct linux_faccessat_args *);
+int	sys_linux_set_robust_list (struct linux_set_robust_list_args *);
+int	sys_linux_get_robust_list (struct linux_get_robust_list_args *);
+int	sys_linux_getcpu (struct linux_getcpu_args *);
+int	sys_linux_utimensat (struct linux_utimensat_args *);
 
 #endif /* !_LINUX_SYSPROTO_H_ */
 #undef PAD_

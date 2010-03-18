@@ -651,12 +651,16 @@ getmnton(struct mount *m, struct namecache_list *ncplist, struct nchandle *ncr)
 	int i;
 
 	/*
-	 * If no ncp is passed try to find one via ncplist.
+	 * If no ncp is passed try to find one via ncplist.  Make sure
+	 * we are using the correct mount pointer or the matching code
+	 * will not know how to transition mount points properly.
 	 */
 	if (ncr == NULL || ncr->ncp == NULL) {
 		ncp = ncplist->tqh_first;
 	} else {
 		ncp = ncr->ncp;
+		if (ncr->mount)
+			m = ncr->mount;
 	}
 
 	/*

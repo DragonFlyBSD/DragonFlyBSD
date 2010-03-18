@@ -69,8 +69,8 @@ DUMMY(setfsuid);
 DUMMY(setfsgid);
 DUMMY(pivot_root);
 DUMMY(mincore);
-DUMMY(madvise);
 DUMMY(fadvise64);
+DUMMY(statfs64);
 
 #define DUMMY_XATTR(s)						\
 int								\

@@ -40,6 +40,7 @@
 #define FLAG_TOOFARRIGHT	0x0002
 #define FLAG_BADTYPE		0x0004
 #define FLAG_BADCHILDPARENT	0x0008
+#define FLAG_BADMIRRORTID	0x0010
 
 typedef struct btree_search {
 	u_int32_t	lo;
@@ -47,7 +48,7 @@ typedef struct btree_search {
 } *btree_search_t;
 
 static void print_btree_node(hammer_off_t node_offset, btree_search_t search,
-			int depth, int spike,
+			int depth, int spike, hammer_tid_t mirror_tid,
 			hammer_base_elm_t left_bound,
 			hammer_base_elm_t right_bound);
 static const char *check_data_crc(hammer_btree_elm_t elm);
@@ -99,15 +100,15 @@ hammer_cmd_show(hammer_off_t node_offset, u_int32_t lo, int64_t obj_id,
 		printf("show %016jx lo %08x obj_id %016jx depth %d\n",
 			(uintmax_t)node_offset, lo, (uintmax_t)obj_id, depth);
 	}
-	print_btree_node(node_offset, searchp, depth,
-			0, left_bound, right_bound);
-	print_btree_node(node_offset, searchp, depth,
-			1, left_bound, right_bound);
+	print_btree_node(node_offset, searchp, depth, 0, HAMMER_MAX_TID,
+			 left_bound, right_bound);
+	print_btree_node(node_offset, searchp, depth, 1, HAMMER_MAX_TID,
+			 left_bound, right_bound);
 }
 
 static void
 print_btree_node(hammer_off_t node_offset, btree_search_t search,
-		int depth, int spike,
+		int depth, int spike, hammer_tid_t mirror_tid,
 		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
 {
 	struct buffer_info *buffer = NULL;
@@ -117,6 +118,7 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 	int flags;
 	int maxcount;
 	char badc;
+	char badm;
 	const char *ext;
 
 	node = get_node(node_offset, &buffer);
@@ -126,10 +128,18 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 	else
 		badc = 'B';
 
+	if (node->mirror_tid <= mirror_tid) {
+		badm = ' ';
+	} else {
+		badm = 'M';
+		badc = 'B';
+	}
+
 	if (spike == 0) {
-		printf("%c   NODE %016jx cnt=%02d p=%016jx "
+		printf("%c%c   NODE %016jx cnt=%02d p=%016jx "
 		       "type=%c depth=%d",
 		       badc,
+		       badm,
 		       (uintmax_t)node_offset, node->count,
 		       (uintmax_t)node->parent,
 		       (node->type ? node->type : '?'), depth);
@@ -205,6 +215,7 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 			if (elm->internal.subtree_offset) {
 				print_btree_node(elm->internal.subtree_offset,
 						 search, depth + 1, spike,
+						 elm->internal.mirror_tid,
 						 &elm[0].base, &elm[1].base);
 				/*
 				 * Cause show to iterate after seeking to
@@ -235,7 +246,9 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 	if (flags & FLAG_BADTYPE)
 		flagstr[4] = 'T';
 	if (flags & FLAG_BADCHILDPARENT)
-		flagstr[4] = 'C';
+		flagstr[5] = 'C';
+	if (flags & FLAG_BADMIRRORTID)
+		flagstr[6] = 'M';
 
 	printf("%s\t%s %2d %c ",
 	       flagstr, label, i,
@@ -310,6 +323,8 @@ print_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 				flags |= FLAG_BADCHILDPARENT;
 			rel_buffer(buffer);
 		}
+		if (elm->internal.mirror_tid > node->mirror_tid)
+			flags |= FLAG_BADMIRRORTID;
 
 		switch(btype) {
 		case HAMMER_BTREE_TYPE_INTERNAL:
@@ -334,6 +349,14 @@ print_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 		}
 		break;
 	case HAMMER_BTREE_TYPE_LEAF:
+		if (elm->base.create_tid &&
+		    elm->base.create_tid > node->mirror_tid) {
+			flags |= FLAG_BADMIRRORTID;
+		}
+		if (elm->base.delete_tid &&
+		    elm->base.delete_tid > node->mirror_tid) {
+			flags |= FLAG_BADMIRRORTID;
+		}
 		switch(btype) {
 		case HAMMER_BTREE_TYPE_RECORD:
 			if (left_bound == NULL || right_bound == NULL)

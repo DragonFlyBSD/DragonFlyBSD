@@ -2,7 +2,7 @@
 ** This file is in the public domain, so clarified as of
 ** 1996-06-05 by Arthur David Olson.
 **
-** @(#)localtime.c	8.10
+** @(#)localtime.c	8.13
 ** $FreeBSD: src/lib/libc/stdtime/localtime.c,v 1.25.2.2 2002/08/13 16:08:07 bmilekic Exp $
 */
 
@@ -331,6 +331,8 @@ tzload(const char *name, struct state * const sp, const int doextend)
 					4 * TZ_MAX_TIMES];
 	} u;
 
+	sp->goback = sp->goahead = FALSE;
+
 	/* XXX The following is from OpenBSD, and I'm not sure it is correct */
 	if (name != NULL && issetugid() != 0)
 		if ((name[0] == ':' && name[1] == '/') || 
@@ -546,7 +548,6 @@ tzload(const char *name, struct state * const sp, const int doextend)
 					sp->ttis[sp->typecnt++] = ts.ttis[1];
 			}
 	}
-	sp->goback = sp->goahead = FALSE;
 	if (sp->timecnt > 1) {
 		for (i = 1; i < sp->timecnt; ++i)
 			if (typesequiv(sp, sp->types[i], sp->types[0]) &&

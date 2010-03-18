@@ -203,6 +203,7 @@ MAN=	aac.4 \
 	pfsync.4 \
 	pim.4 \
 	polling.4 \
+	powernow.4 \
 	ppbus.4 \
 	ppc.4 \
 	ppi.4 \
@@ -334,6 +335,7 @@ MAN=	aac.4 \
 	vr.4 \
 	watchdog.4 \
 	wb.4 \
+	wbsio.4 \
 	wi.4 \
 	wlan.4 \
 	wlan_acl.4 \

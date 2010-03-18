@@ -549,6 +549,7 @@ dosum(void)
 	size_t vmm_size = sizeof(vmm);
 	int cpucnt;
 	u_long nchtotal;
+	u_long nchpathtotal;
 	size_t nch_size = sizeof(struct nchstats) * SMP_MAXCPU;
 
 	if (sysctlbyname("vm.vmstats", &vms, &vms_size, NULL, 0)) {
@@ -621,17 +622,17 @@ dosum(void)
 
 	nchtotal = nchstats.ncs_goodhits + nchstats.ncs_neghits +
 	    nchstats.ncs_badhits + nchstats.ncs_falsehits +
-	    nchstats.ncs_miss + nchstats.ncs_long;
-	printf("%9ld total name lookups\n", nchtotal);
+	    nchstats.ncs_miss;
+	nchpathtotal = nchstats.ncs_longhits + nchstats.ncs_longmiss;
+	printf("%9ld total path lookups\n", nchpathtotal);
+	printf("%9ld total component lookups\n", nchtotal);
 	printf(
-	    "%9s cache hits (%ld%% pos + %ld%% neg) system %ld%% per-directory\n",
+	    "%9s cache hits (%ld%% pos + %ld%% neg)\n",
 	    "", PCT(nchstats.ncs_goodhits, nchtotal),
-	    PCT(nchstats.ncs_neghits, nchtotal),
-	    PCT(nchstats.ncs_pass2, nchtotal));
-	printf("%9s deletions %ld%%, falsehits %ld%%, toolong %ld%%\n", "",
+	    PCT(nchstats.ncs_neghits, nchtotal));
+	printf("%9s deletions %ld%%, falsehits %ld%%\n", "",
 	    PCT(nchstats.ncs_badhits, nchtotal),
-	    PCT(nchstats.ncs_falsehits, nchtotal),
-	    PCT(nchstats.ncs_long, nchtotal));
+	    PCT(nchstats.ncs_falsehits, nchtotal));
 	free(nch_tmp);
 }
 

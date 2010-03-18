@@ -67,7 +67,6 @@ static int	utmp_chk(const char *, const char *);
 int
 main(int argc, char **argv)
 {
-	char *cp;
 	time_t atime;
 	uid_t myuid;
 	int msgsok, mymsgok, myttyfd;
@@ -86,8 +85,8 @@ main(int argc, char **argv)
 		errx(1, "can't find your tty");
 	if (!(mytty = ttyname(myttyfd)))
 		errx(1, "can't find your tty's name");
-	if ((cp = strrchr(mytty, '/')))
-		mytty = cp + 1;
+	if (!strncmp(mytty, _PATH_DEV, strlen(_PATH_DEV)))
+		mytty += strlen(_PATH_DEV);
 	if (term_chk(mytty, &mymsgok, &atime, 1))
 		exit(1);
 	if (!mymsgok)

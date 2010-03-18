@@ -479,8 +479,6 @@ hammer_flusher_clean_loose_ios(hammer_mount_t hmp)
 			KKASSERT(io->mod_list == &hmp->lose_list);
 			TAILQ_REMOVE(&hmp->lose_list, io, mod_entry);
 			io->mod_list = NULL;
-			if (io->lock.refs == 0)
-				++hammer_count_refedbufs;
 			hammer_ref(&io->lock);
 			buffer = (void *)io;
 			hammer_rel_buffer(buffer, 0);
@@ -610,8 +608,6 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	while ((io = TAILQ_FIRST(&hmp->data_list)) != NULL) {
 		if (io->ioerror)
 			break;
-		if (io->lock.refs == 0)
-			++hammer_count_refedbufs;
 		hammer_ref(&io->lock);
 		hammer_io_write_interlock(io);
 		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
@@ -753,8 +749,6 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 		if (io->ioerror)
 			break;
 		KKASSERT(io->modify_refs == 0);
-		if (io->lock.refs == 0)
-			++hammer_count_refedbufs;
 		hammer_ref(&io->lock);
 		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
 		hammer_io_flush(io, 0);
@@ -845,8 +839,6 @@ hammer_flusher_flush_undos(hammer_mount_t hmp, int mode)
 	while ((io = TAILQ_FIRST(&hmp->undo_list)) != NULL) {
 		if (io->ioerror)
 			break;
-		if (io->lock.refs == 0)
-			++hammer_count_refedbufs;
 		hammer_ref(&io->lock);
 		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
 		hammer_io_write_interlock(io);

@@ -474,12 +474,12 @@ pmap_bootstrap(vm_paddr_t firstaddr, vm_paddr_t loadaddr)
 	gd->gd_CMAP2 = &SMPpt[pg + 1];
 	gd->gd_CMAP3 = &SMPpt[pg + 2];
 	gd->gd_PMAP1 = &SMPpt[pg + 3];
-	gd->gd_GDMAP1 = &PTD[KGDTDI];
+	gd->gd_GDMAP1 = &PTD[APTDPTDI];
 	gd->gd_CADDR1 = CPU_prvspace[0].CPAGE1;
 	gd->gd_CADDR2 = CPU_prvspace[0].CPAGE2;
 	gd->gd_CADDR3 = CPU_prvspace[0].CPAGE3;
 	gd->gd_PADDR1 = (unsigned *)CPU_prvspace[0].PPAGE1;
-	gd->gd_GDADDR1= (unsigned *)VADDR(KGDTDI, 0);
+	gd->gd_GDADDR1= (unsigned *)VADDR(APTDPTDI, 0);
 
 	cpu_invltlb();
 }
@@ -1282,7 +1282,7 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 	 */
 	if (p->pindex == PTDPTDI) {
 		bzero(pde + KPTDI, nkpt * PTESIZE);
-		bzero(pde + KGDTDI, (NPDEPG - KGDTDI) * PTESIZE);
+		bzero(pde + MPPTDI, (NPDEPG - MPPTDI) * PTESIZE);
 		vm_page_flag_set(p, PG_ZERO);
 		vm_page_wakeup(p);
 	} else {
@@ -3291,7 +3291,7 @@ pmap_mapdev(vm_paddr_t pa, vm_size_t size)
 	offset = pa & PAGE_MASK;
 	size = roundup(offset + size, PAGE_SIZE);
 
-	va = kmem_alloc_nofault(&kernel_map, size);
+	va = kmem_alloc_nofault(&kernel_map, size, PAGE_SIZE);
 	if (!va)
 		panic("pmap_mapdev: Couldn't alloc kernel virtual memory");
 
@@ -3453,7 +3453,7 @@ pmap_interlock_wait(struct vmspace *vm)
 	struct pmap *pmap = &vm->vm_pmap;
 
 	if (pmap->pm_active & CPUMASK_LOCK) {
-		kprintf("Warning: pmap_interlock %08x\n", pmap->pm_active);
+		kprintf("Debug: pmap_interlock %08x\n", pmap->pm_active);
 		while (pmap->pm_active & CPUMASK_LOCK) {
 			cpu_pause();
 			cpu_ccfence();

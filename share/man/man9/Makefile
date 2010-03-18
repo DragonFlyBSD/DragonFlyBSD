@@ -389,6 +389,7 @@ MLINKS+=EVENTHANDLER.9 EVENTHANDLER_DECLARE.9 \
 	EVENTHANDLER.9 EVENTHANDLER_REGISTER.9 \
 	EVENTHANDLER.9 eventhandler_register.9
 MLINKS+=fetch.9 fubyte.9 \
+	fetch.9 casuword.9 \
 	fetch.9 fusword.9 \
 	fetch.9 fuword.9
 MLINKS+=firmware.9 firmware_image_load.9 \
@@ -525,6 +526,7 @@ MLINKS+=nlookup.9 naccess.9 \
 	nlookup.9 nlookup_done.9 \
 	nlookup.9 nlookup_init.9 \
 	nlookup.9 nlookup_init_raw.9 \
+	nlookup.9 nlookup_init_root.9 \
 	nlookup.9 nlookup_mp.9 \
 	nlookup.9 nlookup_set_cred.9 \
 	nlookup.9 nlookup_simple.9 \
@@ -679,13 +681,17 @@ MLINKS+=sysctl_ctx_init.9 sysctl_ctx_entry_add.9 \
 	sysctl_ctx_init.9 sysctl_ctx_entry_find.9 \
 	sysctl_ctx_init.9 sysctl_ctx_free.9
 MLINKS+=taskqueue.9 TASK_INIT.9 \
+	taskqueue.9 taskqueue_block.9 \
 	taskqueue.9 taskqueue_create.9 \
+	taskqueue.9 taskqueue_drain.9 \
 	taskqueue.9 TASKQUEUE_DECLARE.9 \
 	taskqueue.9 TASKQUEUE_DEFINE.9 \
 	taskqueue.9 taskqueue_enqueue.9 \
 	taskqueue.9 taskqueue_find.9 \
 	taskqueue.9 taskqueue_free.9 \
-	taskqueue.9 taskqueue_run.9
+	taskqueue.9 taskqueue_run.9 \
+	taskqueue.9 taskqueue_start_threads.9 \
+	taskqueue.9 taskqueue_unblock.9
 MLINKS+=time.9 boottime.9 \
 	time.9 time_second.9
 MLINKS+=tvtohz.9 tvtohz_high.9 \

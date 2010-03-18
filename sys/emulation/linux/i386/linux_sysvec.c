@@ -48,6 +48,7 @@
 #include <sys/signalvar.h>
 #include <sys/sysent.h>
 #include <sys/sysproto.h>
+#include <sys/eventhandler.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -62,6 +63,8 @@
 #include "linux_proto.h"
 #include "../linux_signal.h"
 #include "../linux_util.h"
+#include "../linux_futex.h"
+#include "../linux_emuldata.h"
 
 MODULE_VERSION(linux, 1);
 
@@ -96,6 +99,9 @@ static void	linux_prepsyscall (struct trapframe *tf, int *args,
 static void     linux_sendsig (sig_t catcher, int sig, sigset_t *mask,
 				   u_long code);
 
+static eventhandler_tag linux_exec_tag;
+static eventhandler_tag linux_exit_tag;
+
 /*
  * Linux syscalls return negative errno's, we do positive and map them
  */
@@ -114,7 +120,7 @@ static int bsd_to_linux_errno[ELAST + 1] = {
 int bsd_to_linux_signal[LINUX_SIGTBLSZ] = {
 	LINUX_SIGHUP, LINUX_SIGINT, LINUX_SIGQUIT, LINUX_SIGILL,
 	LINUX_SIGTRAP, LINUX_SIGABRT, 0, LINUX_SIGFPE,
-	LINUX_SIGKILL, LINUX_SIGBUS, LINUX_SIGSEGV, 0,
+	LINUX_SIGKILL, LINUX_SIGBUS, LINUX_SIGSEGV, LINUX_SIGSYS,
 	LINUX_SIGPIPE, LINUX_SIGALRM, LINUX_SIGTERM, LINUX_SIGURG,
 	LINUX_SIGSTOP, LINUX_SIGTSTP, LINUX_SIGCONT, LINUX_SIGCHLD,
 	LINUX_SIGTTIN, LINUX_SIGTTOU, LINUX_SIGIO, LINUX_SIGXCPU,
@@ -130,7 +136,7 @@ int linux_to_bsd_signal[LINUX_SIGTBLSZ] = {
 	SIGCHLD, SIGCONT, SIGSTOP, SIGTSTP,
 	SIGTTIN, SIGTTOU, SIGURG, SIGXCPU,
 	SIGXFSZ, SIGVTALRM, SIGPROF, SIGWINCH,
-	SIGIO, SIGURG, 0
+	SIGIO, SIGURG, SIGSYS
 };
 
 #define LINUX_T_UNKNOWN  255
@@ -279,7 +285,7 @@ linux_rt_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	 *	and the stack can not be grown. useracc will return FALSE
 	 *	if access is denied.
 	 */
-	if ((grow_stack (p, (int)fp) == FALSE) ||
+	if ((vm_map_growstack(p, (vm_offset_t)fp) != KERN_SUCCESS) ||
 	    !useracc((caddr_t)fp, sizeof (struct l_rt_sigframe), 
 	    VM_PROT_WRITE)) {
 		/*
@@ -442,7 +448,7 @@ linux_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	 *	and the stack can not be grown. useracc will return FALSE
 	 *	if access is denied.
 	 */
-	if ((grow_stack (p, (int)fp) == FALSE) ||
+	if ((vm_map_growstack(p, (vm_offset_t)fp) != KERN_SUCCESS) ||
 	    !useracc((caddr_t)fp, sizeof (struct l_sigframe), 
 	    VM_PROT_WRITE)) {
 		/*
@@ -788,7 +794,7 @@ exec_linux_imgact_try(struct image_params *imgp)
 struct sysentvec linux_sysvec = {
 	LINUX_SYS_MAXSYSCALL,
 	linux_sysent,
-	0xff,
+	0xffffffff,
 	LINUX_SIGTBLSZ,
 	bsd_to_linux_signal,
 	ELAST + 1, 
@@ -808,7 +814,7 @@ struct sysentvec linux_sysvec = {
 struct sysentvec elf_linux_sysvec = {
 	LINUX_SYS_MAXSYSCALL,
 	linux_sysent,
-	0xff,
+	0xffffffff,
 	LINUX_SIGTBLSZ,
 	bsd_to_linux_signal,
 	ELAST + 1,
@@ -913,8 +919,15 @@ linux_elf_modevent(module_t mod, int type, void *data)
 		if (error == 0) {
 			if (bootverbose)
 				kprintf("Linux ELF exec handler installed\n");
-		} else
+		} else {
 			kprintf("cannot insert Linux ELF brand handler\n");
+		}
+		EMUL_LOCKINIT();
+		lockinit(&futex_mtx, "linftxs", 0, LK_CANRECURSE);
+		linux_exec_tag = EVENTHANDLER_REGISTER(process_exec, linux_proc_transition,
+		    NULL, 1000);
+		linux_exit_tag = EVENTHANDLER_REGISTER(process_exit, emuldata_exit,
+		    NULL, 1000);
 		break;
 	case MOD_UNLOAD:
 		for (brandinfo = &linux_brandlist[0]; *brandinfo != NULL;
@@ -930,8 +943,13 @@ linux_elf_modevent(module_t mod, int type, void *data)
 		if (error == 0) {
 			if (bootverbose)
 				kprintf("Linux ELF exec handler removed\n");
-		} else
+		} else {
 			kprintf("Could not deinstall ELF interpreter entry\n");
+		}
+		EVENTHANDLER_DEREGISTER(process_exec, linux_exec_tag);
+		EVENTHANDLER_DEREGISTER(process_exit, linux_exit_tag);
+		lockuninit(&futex_mtx);
+		EMUL_LOCKUNINIT();
 		break;
 	default:
 		break;

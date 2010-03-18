@@ -246,6 +246,10 @@ struct journal_subrecord {
 	/* ADDITIONAL DATA */
 };
 
+#define	JDATA_KERN		0x0001
+#define	JDATA_USER		0x0002
+#define	JDATA_XIO		0x0003
+
 #define JMASK_NESTED		0x8000	/* data is a nested recursion */
 #define JMASK_LAST		0x4000
 #define JMASK_SUBRECORD		0x0400

@@ -8,7 +8,6 @@ cp crypto/opensslconf.h ../../secure/lib/libcrypto/opensslconf-i386.h
 cp crypto/opensslconf.h ../../secure/lib/libcrypto/opensslconf-x86_64.h
 cd ../../secure/lib/libcrypto
 # Update the version in Makefile.inc
-# Add DragonFly keywords to opensslconf-*.h
 make man-makefile-update && make man-update
 cd ../libssl
 make man-makefile-update && make man-update
@@ -18,6 +17,3 @@ cd ../..
 cvs add lib/libcrypto/man/*.3 lib/libssl/man/*.3 usr.bin/openssl/man/*.1
 cd ../crypto/openssl-0.9
 xargs rm -rf < README.DELETED
-# make sure things work then import and commit
-# cvs import hint:
-# cvs import src/crypto/openssl-0.9 OPENSSL v0_9_??

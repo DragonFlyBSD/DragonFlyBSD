@@ -908,7 +908,6 @@ udf_lookup(struct vop_old_lookup_args *a)
 	} else {
 		offset = node->diroff;
 		numdirpasses = 2;
-		gd->gd_nchstats->ncs_2passes++;
 	}
 
 lookloop:
@@ -959,8 +958,6 @@ lookloop:
 			 */
 			if (nameiop == NAMEI_LOOKUP)
 				node->diroff = ds->offset + ds->off;
-			if (numdirpasses == 2)
-				gd->gd_nchstats->ncs_pass2++;
 			if ((flags & CNP_LOCKPARENT) == 0) {
 				a->a_cnp->cn_flags |= CNP_PDIRUNLOCK;
 				vn_unlock(dvp);

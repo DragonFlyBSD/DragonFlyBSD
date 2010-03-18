@@ -68,6 +68,7 @@
 #include <sys/upcall.h>
 #include <sys/caps.h>
 #include <sys/unistd.h>
+#include <sys/eventhandler.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -315,7 +316,7 @@ exit1(int rv)
 		}
 		while (p->p_peers) 
 			tsleep((caddr_t)p, 0, "exit1", 0);
-	} 
+	}
 
 #ifdef PGINPROF
 	vmsizmon();
@@ -327,6 +328,13 @@ exit1(int rv)
 	 * Check if any loadable modules need anything done at process exit.
 	 * e.g. SYSV IPC stuff
 	 * XXX what if one of these generates an error?
+	 */
+	p->p_xstat = rv;
+	EVENTHANDLER_INVOKE(process_exit, p);
+
+	/*
+	 * XXX: imho, the eventhandler stuff is much cleaner than this.
+	 *	Maybe we should move everything to use eventhandler.
 	 */
 	TAILQ_FOREACH(ep, &exit_list, next) 
 		(*ep->function)(td);
@@ -461,6 +469,10 @@ exit1(int rv)
 		vrele(vtmp);
 	}
 
+	/* Release namecache handle to text file */
+	if (p->p_textnch.ncp)
+		cache_drop(&p->p_textnch);
+
 	/*
 	 * Move the process to the zombie list.  This will block
 	 * until the process p_lock count reaches 0.  The process will
@@ -492,7 +504,6 @@ exit1(int rv)
 	 * Save exit status and final rusage info, adding in child rusage
 	 * info and self times.
 	 */
-	p->p_xstat = rv;
 	calcru_proc(p, &p->p_ru);
 	ruadd(&p->p_ru, &p->p_cru);
 

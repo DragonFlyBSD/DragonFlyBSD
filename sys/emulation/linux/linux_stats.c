@@ -57,9 +57,9 @@ static int
 newstat_copyout(struct stat *buf, void *ubuf)
 {
 	struct l_newstat tbuf;
-	cdev_t dev;
 	int error;
 
+	bzero(&tbuf, sizeof(tbuf));
 	tbuf.st_dev = uminor(buf->st_dev) | (umajor(buf->st_dev) << 8);
 	tbuf.st_ino = INO64TO32(buf->st_ino);
 	tbuf.st_mode = buf->st_mode;
@@ -73,22 +73,6 @@ newstat_copyout(struct stat *buf, void *ubuf)
 	tbuf.st_ctime = buf->st_ctime;
 	tbuf.st_blksize = buf->st_blksize;
 	tbuf.st_blocks = buf->st_blocks;
-
-	/* Lie about disk drives which are character devices
-	 * in FreeBSD but block devices under Linux.
-	 */
-	if (S_ISCHR(tbuf.st_mode) &&
-	    (dev = udev2dev(buf->st_rdev, 0)) != NULL) {
-		if (dev_is_good(dev) && (dev_dflags(dev) & D_DISK)) {
-			tbuf.st_mode &= ~S_IFMT;
-			tbuf.st_mode |= S_IFBLK;
-
-			/* XXX this may not be quite right */
-			/* Map major number to 0 */
-			tbuf.st_dev = uminor(buf->st_dev) & 0xf;
-			tbuf.st_rdev = buf->st_rdev & 0xff;
-		}
-	}
 
 	error = copyout(&tbuf, ubuf, sizeof(tbuf));
 	return (error);
@@ -385,7 +369,7 @@ stat64_copyout(struct stat *buf, void *ubuf)
 
 	bzero(&lbuf, sizeof(lbuf));
 	lbuf.st_dev = uminor(buf->st_dev) | (umajor(buf->st_dev) << 8);
-	lbuf.st_ino = buf->st_ino;
+	lbuf.st_ino = INO64TO32(buf->st_ino);
 	lbuf.st_mode = buf->st_mode;
 	lbuf.st_nlink = buf->st_nlink;
 	lbuf.st_uid = buf->st_uid;
@@ -493,5 +477,43 @@ sys_linux_fstat64(struct linux_fstat64_args *args)
 		error = stat64_copyout(&buf, args->statbuf);
 	return (error);
 }
+
+int
+sys_linux_fstatat64(struct linux_fstatat64_args *args)
+{
+	CACHE_MPLOCK_DECLARE;
+	struct nlookupdata nd;
+	struct file *fp;
+	struct stat st;
+	char *path;
+	int error, flags, dfd;
+
+	if (args->flag & ~LINUX_AT_SYMLINK_NOFOLLOW)
+		return (EINVAL);
+
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
+#ifdef DEBUG
+	if (ldebug(fstatat64))
+		kprintf(ARGS(fstatat64, "%s"), path);
+#endif
+	kprintf(ARGS(fstatat64, "%s"), path);
+	dfd = (args->dfd == LINUX_AT_FDCWD) ? AT_FDCWD : args->dfd;
+	flags = (args->flag & LINUX_AT_SYMLINK_NOFOLLOW) ? 0 : NLC_FOLLOW;
+
+	CACHE_GETMPLOCK1();
+	error = nlookup_init_at(&nd, &fp, dfd, path, UIO_SYSSPACE, flags);
+	if (error == 0) {
+		error = kern_stat(&nd, &st);
+		if (error == 0)
+			error = stat64_copyout(&st, args->statbuf);
+	}
+	nlookup_done_at(&nd, fp);
+	CACHE_RELMPLOCK();
+	linux_free_path(&path);
+	return (error);
+}
+
 
 #endif /* __i386__ */

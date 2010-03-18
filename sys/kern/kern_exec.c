@@ -450,6 +450,13 @@ interpret:
 	p->p_textvp = imgp->vp;
 	vref(p->p_textvp);
 
+	/* Release old namecache handle to text file */
+	if (p->p_textnch.ncp)
+		cache_drop(&p->p_textnch);
+
+	if (nd->nl_nch.mount)
+		cache_copy(&nd->nl_nch, &p->p_textnch);
+
         /*
          * Notify others that we exec'd, and clear the P_INEXEC flag
          * as we're now a bona fide freshly-execed process.

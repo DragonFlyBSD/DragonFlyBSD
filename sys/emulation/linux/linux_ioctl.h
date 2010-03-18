@@ -216,7 +216,7 @@
 #define	LINUX_KBD_MEDIUMRAW	2
 
 /*
- * socket
+ * socket (http://lxr.oss.org.cn/source/include/linux/sockios.h)
  */
 #define	LINUX_FIOSETOWN		0x8901
 #define	LINUX_SIOCSPGRP		0x8902
@@ -232,6 +232,7 @@
 #define	LINUX_SIOCGIFBRDADDR	0x8919
 #define	LINUX_SIOCGIFNETMASK	0x891b
 #define	LINUX_SIOCSIFNETMASK	0x891c
+#define LINUX_SIOCGIFMETRIC	0x891d		/* get metric                   */
 #define	LINUX_SIOCGIFMTU	0x8921
 #define	LINUX_SIOCSIFMTU	0x8922
 #define	LINUX_SIOCSIFNAME	0x8923
@@ -239,9 +240,14 @@
 #define	LINUX_SIOCGIFHWADDR	0x8927
 #define	LINUX_SIOCADDMULTI	0x8931
 #define	LINUX_SIOCDELMULTI	0x8932
+#define	LINUX_SIOCGIFINDEX	0x8933		/* name -> if_index mapping     */
+#define	LINUX_SIOCGIFCOUNT	0x8938		/* get number of devices 	*/
+#define LINUX_SIOCGIFTXQLEN	0x8942		/* Get the tx queue length      */
+#define LINUX_SIOCGIFMAP	0x8970		/* Get device parameters        */
+
 
 #define	LINUX_IOCTL_SOCKET_MIN	LINUX_FIOSETOWN
-#define	LINUX_IOCTL_SOCKET_MAX	LINUX_SIOCDELMULTI
+#define	LINUX_IOCTL_SOCKET_MAX	LINUX_SIOCGIFMAP
 
 /*
  * Device private ioctl calls 

@@ -79,7 +79,8 @@ static sy_call_t *shmcalls[] = {
 #define	SHMSEG_ALLOCATED	0x0800
 #define	SHMSEG_WANTED		0x1000
 
-static int shm_last_free, shm_nused, shm_committed, shmalloced;
+static int shm_last_free, shm_committed, shmalloced;
+int shm_nused;
 static struct shmid_ds	*shmsegs;
 
 struct shm_handle {
@@ -329,7 +330,8 @@ again:
 	vm_object_reference(shm_handle->shm_object);
 	rv = vm_map_find(&p->p_vmspace->vm_map, 
 			 shm_handle->shm_object, 0,
-			 &attach_va, size,
+			 &attach_va,
+			 size, PAGE_SIZE,
 			 ((flags & MAP_FIXED) ? 0 : 1), 
 			 VM_MAPTYPE_NORMAL,
 			 prot, prot,

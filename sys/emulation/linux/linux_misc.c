@@ -85,6 +85,8 @@
 #include <arch_linux/linux_proto.h>
 #include "linux_mib.h"
 #include "linux_util.h"
+#include "linux_emuldata.h"
+#include "i386/linux.h"
 
 #define BSD_TO_LINUX_SIGNAL(sig)	\
 	(((sig) <= LINUX_SIGTBLSZ) ? bsd_to_linux_signal[_SIG_IDX(sig)] : sig)
@@ -105,8 +107,18 @@ struct l_sysinfo {
 	l_ulong		totalswap;	/* Total swap space size */
 	l_ulong		freeswap;	/* swap space still available */
 	l_ushort	procs;		/* Number of current processes */
-	char		_f[22];		/* Pads structure to 64 bytes */
+	l_ushort	pad;		/* explicit padding */
+	l_ulong		totalhigh;	/* Total high memory size */
+	l_ulong		freehigh;	/* Available high memory size */
+	l_uint		mem_unit;	/* Memory unit size in bytes */
+	char 		_f[20-2*sizeof(l_long)-sizeof(l_int)]; /* Padding for libc5 */
 };
+
+int
+sys_linux_madvise(struct linux_madvise_args *args)
+{
+	return 0;
+}
 
 /*
  * MPALMOSTSAFE
@@ -166,7 +178,10 @@ sys_linux_sysinfo(struct linux_sysinfo_args *args)
 	}
 	rel_mplock();
 
-	sysinfo.procs = 20; /* Hack */
+	sysinfo.procs = nprocs;
+	sysinfo.totalhigh = 0;
+	sysinfo.freehigh = 0;
+	sysinfo.mem_unit = 1; /* Set the basic mem unit to 1 */
 
 	error = copyout(&sysinfo, (caddr_t)args->info, sizeof(sysinfo));
 	return (error);
@@ -405,8 +420,8 @@ sys_linux_uselib(struct linux_uselib_args *args)
 		/* get anon user mapping, read+write+execute */
 		error = vm_map_find(&p->p_vmspace->vm_map, NULL, 0,
 				    &vmaddr, a_out->a_text + a_out->a_data,
-				    FALSE,
-				    VM_MAPTYPE_NORMAL,
+				    PAGE_SIZE,
+				    FALSE, VM_MAPTYPE_NORMAL,
 				    VM_PROT_ALL, VM_PROT_ALL,
 				    0);
 		if (error)
@@ -462,8 +477,8 @@ sys_linux_uselib(struct linux_uselib_args *args)
 		/* allocate some 'anon' space */
 		error = vm_map_find(&p->p_vmspace->vm_map, NULL, 0,
 				    &vmaddr, bss_size,
-				    FALSE,
-				    VM_MAPTYPE_NORMAL,
+				    PAGE_SIZE,
+				    FALSE, VM_MAPTYPE_NORMAL,
 				    VM_PROT_ALL, VM_PROT_ALL,
 				    0);
 		if (error)
@@ -616,6 +631,20 @@ sys_linux_mremap(struct linux_mremap_args *args)
 		    (unsigned long)args->new_len,
 		    (unsigned long)args->flags);
 #endif
+	if (args->flags & ~(LINUX_MREMAP_FIXED | LINUX_MREMAP_MAYMOVE)) {
+		args->sysmsg_resultp = NULL;
+		return (EINVAL);
+	}
+
+	/*
+	 * Check for the page alignment.
+	 * Linux defines PAGE_MASK to be FreeBSD ~PAGE_MASK.
+	 */
+	if (args->addr & PAGE_MASK) {
+		args->sysmsg_resultp = NULL;
+		return (EINVAL);
+	}
+
 	args->new_len = round_page(args->new_len);
 	args->old_len = round_page(args->old_len);
 
@@ -759,6 +788,7 @@ sys_linux_newuname(struct linux_newuname_args *args)
 	return (copyout(&utsname, (caddr_t)args->buf, sizeof(utsname)));
 }
 
+/* XXX: why would this be i386-only? most of these are wrong! */
 #if defined(__i386__)
 struct l_utimbuf {
 	l_time_t l_actime;
@@ -802,6 +832,159 @@ sys_linux_utime(struct linux_utime_args *args)
 	rel_mplock();
 cleanup:
 	linux_free_path(&path);
+	return (error);
+}
+
+int
+sys_linux_utimes(struct linux_utimes_args *args)
+{
+	l_timeval ltv[2];
+	struct timeval tv[2], *tvp = NULL;
+	struct nlookupdata nd;
+	char *path;
+	int error;
+
+	error = linux_copyin_path(args->fname, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
+#ifdef DEBUG
+	if (ldebug(utimes))
+		kprintf(ARGS(utimes, "%s, *"), path);
+#endif
+
+	if (args->tptr) {
+		error = copyin(args->tptr, ltv, sizeof(ltv));
+		if (error)
+			goto cleanup;
+		tv[0].tv_sec = ltv[0].tv_sec;
+		tv[0].tv_usec = ltv[0].tv_usec;
+		tv[1].tv_sec = ltv[1].tv_sec;
+		tv[1].tv_usec = ltv[1].tv_usec;
+		tvp = tv;
+	}
+	get_mplock();
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = kern_utimes(&nd, tvp);
+	nlookup_done(&nd);
+	rel_mplock();
+cleanup:
+	linux_free_path(&path);
+	return (error);
+}
+
+int
+sys_linux_futimesat(struct linux_futimesat_args *args)
+{
+	l_timeval ltv[2];
+	struct timeval tv[2], *tvp = NULL;
+	struct file *fp;
+	struct nlookupdata nd;
+	char *path;
+	int dfd,error;
+
+	error = linux_copyin_path(args->fname, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
+#ifdef DEBUG
+	if (ldebug(futimesat))
+		kprintf(ARGS(futimesat, "%s, *"), path);
+#endif
+	if (args->tptr) {
+		error = copyin(args->tptr, ltv, sizeof(ltv));
+		if (error)
+			goto cleanup;
+		tv[0].tv_sec = ltv[0].tv_sec;
+		tv[0].tv_usec = ltv[0].tv_usec;
+		tv[1].tv_sec = ltv[1].tv_sec;
+		tv[1].tv_usec = ltv[1].tv_usec;
+		tvp = tv;
+	}
+	dfd = (args->dfd == LINUX_AT_FDCWD) ? AT_FDCWD : args->dfd;
+	get_mplock();
+	error = nlookup_init_at(&nd, &fp, dfd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = kern_utimes(&nd, tvp);
+	nlookup_done_at(&nd, fp);
+	rel_mplock();
+cleanup:
+	linux_free_path(&path);
+	return (error);
+}
+
+
+int
+sys_linux_utimensat(struct linux_utimensat_args *args)
+{
+	struct l_timespec ltv[2];
+	struct timeval tv[2], *tvp = NULL;
+	struct file *fp;
+	struct nlookupdata nd;
+	char *path;
+	int dfd, flags, error = 0;
+
+	if (args->flag & ~LINUX_AT_SYMLINK_NOFOLLOW)
+		return (EINVAL);
+
+	if (args->dfd == LINUX_AT_FDCWD && args->fname == NULL)
+		return (EINVAL);
+
+	if (args->fname) {
+		error = linux_copyin_path(args->fname, &path, LINUX_PATH_EXISTS);
+		if (error)
+			return (error);
+	}
+#ifdef DEBUG
+	if (ldebug(utimensat))
+		kprintf(ARGS(utimensat, "%s, *"), path);
+#endif
+	if (args->tptr) {
+		error = copyin(args->tptr, ltv, sizeof(ltv));
+		if (error)
+			goto cleanup;
+
+		if (ltv[0].tv_sec == LINUX_UTIME_NOW) {
+			microtime(&tv[0]);
+		} else if (ltv[0].tv_sec == LINUX_UTIME_OMIT) {
+			/* XXX: this is not right, but will do for now */
+			microtime(&tv[0]);
+		} else {
+			tv[0].tv_sec = ltv[0].tv_sec;
+			/* XXX: we lose precision here, as we don't have ns */
+			tv[0].tv_usec = ltv[0].tv_nsec/1000;
+		}
+		if (ltv[1].tv_sec == LINUX_UTIME_NOW) {
+			microtime(&tv[1]);
+		} else if (ltv[1].tv_sec == LINUX_UTIME_OMIT) {
+			/* XXX: this is not right, but will do for now */
+			microtime(&tv[1]);
+		} else {
+			tv[1].tv_sec = ltv[1].tv_sec;
+			/* XXX: we lose precision here, as we don't have ns */
+			tv[1].tv_usec = ltv[1].tv_nsec/1000;
+		}
+		tvp = tv;
+	}
+
+	dfd = (args->dfd == LINUX_AT_FDCWD) ? AT_FDCWD : args->dfd;
+	flags = (args->flag & LINUX_AT_SYMLINK_NOFOLLOW) ? 0 : NLC_FOLLOW;
+
+	get_mplock();
+	if (args->fname) {
+		error = nlookup_init_at(&nd, &fp, dfd, path, UIO_SYSSPACE, flags);
+		if (error == 0)
+			error = kern_utimes(&nd, tvp);
+		nlookup_done_at(&nd, fp);
+	} else {
+		/* Thank you, Linux, for another non-standard "feature" */
+		KKASSERT(dfd != AT_FDCWD);
+		error = kern_futimes(dfd, tvp);
+	}
+	rel_mplock();
+cleanup:
+	if (args->fname)
+		linux_free_path(&path);
+
 	return (error);
 }
 #endif /* __i386__ */
@@ -917,6 +1100,41 @@ sys_linux_mknod(struct linux_mknod_args *args)
 		}
 	}
 	nlookup_done(&nd);
+	rel_mplock();
+
+	linux_free_path(&path);
+	return(error);
+}
+
+int
+sys_linux_mknodat(struct linux_mknodat_args *args)
+{
+	struct nlookupdata nd;
+	struct file *fp;
+	char *path;
+	int dfd, error;
+
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_CREATE);
+	if (error)
+		return (error);
+#ifdef DEBUG
+	if (ldebug(mknod))
+		kprintf(ARGS(mknod, "%s, %d, %d"),
+		    path, args->mode, args->dev);
+#endif
+	get_mplock();
+	dfd = (args->dfd == LINUX_AT_FDCWD) ? AT_FDCWD : args->dfd;
+	error = nlookup_init_at(&nd, &fp, dfd, path, UIO_SYSSPACE, 0);
+	if (error == 0) {
+		if (args->mode & S_IFIFO) {
+			error = kern_mkfifo(&nd, args->mode);
+		} else {
+			error = kern_mknod(&nd, args->mode,
+					   umajor(args->dev),
+					   uminor(args->dev));
+		}
+	}
+	nlookup_done_at(&nd, fp);
 	rel_mplock();
 
 	linux_free_path(&path);
@@ -1366,6 +1584,13 @@ sys_linux_sched_get_priority_min(struct linux_sched_get_priority_min_args *args)
 #define REBOOT_CAD_ON	0x89abcdef
 #define REBOOT_CAD_OFF	0
 #define REBOOT_HALT	0xcdef0123
+#define REBOOT_RESTART	0x01234567
+#define REBOOT_RESTART2	0xA1B2C3D4
+#define REBOOT_POWEROFF	0x4321FEDC
+#define REBOOT_MAGIC1	0xfee1dead
+#define REBOOT_MAGIC2	0x28121969
+#define REBOOT_MAGIC2A	0x05121996
+#define REBOOT_MAGIC2B	0x16041998
 
 /*
  * MPSAFE
@@ -1380,9 +1605,33 @@ sys_linux_reboot(struct linux_reboot_args *args)
 	if (ldebug(reboot))
 		kprintf(ARGS(reboot, "0x%x"), args->cmd);
 #endif
-	if (args->cmd == REBOOT_CAD_ON || args->cmd == REBOOT_CAD_OFF)
-		return (0);
-	bsd_args.opt = (args->cmd == REBOOT_HALT) ? RB_HALT : 0;
+
+	if ((args->magic1 != REBOOT_MAGIC1) ||
+	    ((args->magic2 != REBOOT_MAGIC2) &&
+	    (args->magic2 != REBOOT_MAGIC2A) &&
+	    (args->magic2 != REBOOT_MAGIC2B)))
+		return EINVAL;
+
+	switch (args->cmd) {
+	case REBOOT_CAD_ON:
+	case REBOOT_CAD_OFF:
+		return (priv_check(curthread, PRIV_REBOOT));
+		/* NOTREACHED */
+	case REBOOT_HALT:
+		bsd_args.opt = RB_HALT;
+		break;
+	case REBOOT_RESTART:
+	case REBOOT_RESTART2:
+		bsd_args.opt = 0;
+		break;
+	case REBOOT_POWEROFF:
+		bsd_args.opt = RB_POWEROFF;
+		break;
+	default:
+		return EINVAL;
+		/* NOTREACHED */
+	}
+
 	bsd_args.sysmsg_result = 0;
 
 	error = sys_reboot(&bsd_args);
@@ -1403,15 +1652,59 @@ sys_linux_reboot(struct linux_reboot_args *args)
  */
 
 /*
- * MPSAFE
+ * MPALMOSTSAFE
  */
 int
 sys_linux_getpid(struct linux_getpid_args *args)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
+	struct linux_emuldata *em;
+	struct proc *p = curproc;
 
-	args->sysmsg_result = p->p_pid;
+	get_mplock();
+	EMUL_LOCK();
+	em = emuldata_get(p);
+	if (em == NULL) /* this should never happen */
+		args->sysmsg_result = p->p_pid;
+	else
+		args->sysmsg_result = em->s->group_pid;
+	kprintf("curproc %s requested getpid, return pid = %d\n", curproc->p_comm, em->s->group_pid);
+	EMUL_UNLOCK();
+	rel_mplock();
+	return (0);
+}
+
+/*
+ * MPALMOSTSAFE
+ */
+int
+sys_linux_getppid(struct linux_getppid_args *args)
+{
+	struct linux_emuldata *em;
+	struct proc *parent;
+	struct proc *p;
+
+	get_mplock();
+	EMUL_LOCK();
+	em = emuldata_get(curproc);
+	KKASSERT(em != NULL);
+
+	p = pfind(em->s->group_pid);
+	/* We are not allowed to fail */
+	if (p == NULL)
+		goto out;
+
+	parent = p->p_pptr;
+	if (parent->p_sysent == &elf_linux_sysvec) {
+		em = emuldata_get(parent);
+		args->sysmsg_result = em->s->group_pid;
+		kprintf("(a) curproc %s requested getppid, return pid = %d\n", curproc->p_comm, em->s->group_pid);
+	} else {
+		args->sysmsg_result = parent->p_pid;
+		kprintf("(b) curproc %s requested getppid, return pid = %d\n", curproc->p_comm, em->s->group_pid);
+	}
+out:
+	EMUL_UNLOCK();
+	rel_mplock();
 	return (0);
 }
 
@@ -1463,4 +1756,171 @@ linux_nosys(struct nosys_args *args)
 {
 	/* XXX */
 	return (ENOSYS);
+}
+
+int
+sys_linux_mq_open(struct linux_mq_open_args *args)
+{
+	struct mq_open_args moa;
+	int error, oflag;
+
+	oflag = 0;
+	if (args->oflag & LINUX_O_RDONLY)
+		oflag |= O_RDONLY;
+	if (args->oflag & LINUX_O_WRONLY)
+		oflag |= O_WRONLY;
+	if (args->oflag & LINUX_O_RDWR)
+		oflag |= O_RDWR;
+
+	if (args->oflag & LINUX_O_NONBLOCK)
+		oflag |= O_NONBLOCK;
+	if (args->oflag & LINUX_O_CREAT)
+		oflag |= O_CREAT;
+	if (args->oflag & LINUX_O_EXCL)
+		oflag |= O_EXCL;
+
+	moa.name = args->name;
+	moa.oflag = oflag;
+	moa.mode = args->mode;
+	moa.attr = args->attr;
+
+	error = sys_mq_open(&moa);
+
+	return (error);
+}
+
+int
+sys_linux_mq_getsetattr(struct linux_mq_getsetattr_args *args)
+{
+	struct mq_getattr_args gaa;
+	struct mq_setattr_args saa;
+	int error;
+
+	gaa.mqdes = args->mqd;
+	gaa.mqstat = args->oattr;
+
+	saa.mqdes = args->mqd;
+	saa.mqstat = args->attr;
+	saa.mqstat = args->oattr;
+
+	if (args->attr != NULL) {
+		error = sys_mq_setattr(&saa);
+	} else {
+		error = sys_mq_getattr(&gaa);
+	}
+
+	return error;
+}
+
+/*
+ * Get affinity of a process.
+ */
+int
+sys_linux_sched_getaffinity(struct linux_sched_getaffinity_args *args)
+{
+	cpumask_t mask;
+	struct proc *p;
+	struct lwp *lp;
+	int error = 0;
+
+#ifdef DEBUG
+	if (ldebug(sched_getaffinity))
+		kprintf(ARGS(sched_getaffinity, "%d, %d, *"), args->pid,
+		    args->len);
+#endif
+	if (args->len < sizeof(cpumask_t))
+		return (EINVAL);
+#if 0
+	if ((error = priv_check(curthread, PRIV_SCHED_CPUSET)) != 0)
+		return (EPERM);
+#endif
+	/* Get the mplock to ensure that the proc is not running */
+	get_mplock();
+	if (args->pid == 0) {
+		p = curproc;
+	} else {
+		p = pfind(args->pid);
+		if (p == NULL) {
+			error = ESRCH;
+			goto done;
+		}
+	}
+
+	lp = FIRST_LWP_IN_PROC(p);
+	/*
+	 * XXX: if lwp_cpumask is ever changed to support more than
+	 *	32 processors, this needs to be changed to a bcopy.
+	 */
+	mask = lp->lwp_cpumask;
+	if ((error = copyout(&mask, args->user_mask_ptr, sizeof(cpumask_t))))
+		error = EFAULT;
+done:
+	rel_mplock();
+#if 0
+	if (error == 0)
+		args->sysmsg_iresult = sizeof(cpumask_t);
+#endif
+	return (error);
+}
+
+/*
+ *  Set affinity of a process.
+ */
+int
+sys_linux_sched_setaffinity(struct linux_sched_setaffinity_args *args)
+{
+#ifdef DEBUG
+	if (ldebug(sched_setaffinity))
+		kprintf(ARGS(sched_setaffinity, "%d, %d, *"), args->pid,
+		    args->len);
+#endif
+	/*
+	 * From Linux man page:
+	 * sched_setaffinity() sets the CPU affinity mask of the process
+	 * whose ID is pid to the value specified by mask. If pid is zero, 
+	 * then the calling process is used. The argument cpusetsize is 
+	 * the length (in bytes) of the data pointed to by mask. Normally
+	 * this argument would be specified as sizeof(cpu_set_t).
+	 *
+	 * If the process specified by pid is not currently running on one
+	 * of the CPUs specified in mask, then that process is migrated to
+	 * one of the CPUs specified in mask.
+	 */
+	/*
+	 * About our implementation: I don't think that it is too important
+	 * to have a working implementation, but if it was ever needed,
+	 * the best approach would be to implement the whole mechanism
+	 * properly in kern_usched.
+	 * The idea has to be to change the affinity mask AND migrate the
+	 * lwp to one of the new valid CPUs for the lwp, in case the current
+	 * CPU isn't anymore in the affinity mask passed in.
+	 * For now, we'll just signal success even if we didn't do anything.
+	 */
+	return 0;
+}
+
+int
+sys_linux_gettid(struct linux_gettid_args *args)
+{
+	args->sysmsg_iresult = curproc->p_pid;
+	return 0;
+}
+
+int
+sys_linux_getcpu(struct linux_getcpu_args *args)
+{
+	struct globaldata *gd;
+	l_uint node = 0;
+	int error;
+
+	gd = mycpu;
+	error = copyout(&gd->gd_cpuid, args->pcpu, sizeof(gd->gd_cpuid));
+	if (error)
+		return (error);
+	/*
+	 * XXX: this should be the NUMA node, but since we don't implement it,
+	 *	just return 0 for it.
+	 */
+	error = copyout(&node, args->pnode, sizeof(node));
+	return (error);
 }

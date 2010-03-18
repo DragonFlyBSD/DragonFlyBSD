@@ -47,7 +47,7 @@ u_int32_t AhciNoFeatures = 0;
 static int	ahci_probe (device_t dev);
 static int	ahci_attach (device_t dev);
 static int	ahci_detach (device_t dev);
-static int	ahci_systcl_link_pwr_mgmt (SYSCTL_HANDLER_ARGS);
+static int	ahci_sysctl_link_pwr_mgmt (SYSCTL_HANDLER_ARGS);
 #if 0
 static int	ahci_shutdown (device_t dev);
 static int	ahci_suspend (device_t dev);
@@ -149,7 +149,7 @@ ahci_detach (device_t dev)
 }
 
 static int
-ahci_systcl_link_pwr_mgmt (SYSCTL_HANDLER_ARGS)
+ahci_sysctl_link_pwr_mgmt (SYSCTL_HANDLER_ARGS)
 {
 	struct ahci_port *ap = arg1;
 	int error, link_pwr_mgmt;
@@ -161,6 +161,22 @@ ahci_systcl_link_pwr_mgmt (SYSCTL_HANDLER_ARGS)
 
 	ahci_port_link_pwr_mgmt(ap, link_pwr_mgmt);
 	return 0;
+}
+
+static int
+ahci_sysctl_link_pwr_state (SYSCTL_HANDLER_ARGS)
+{
+	struct ahci_port *ap = arg1;
+	const char *state_names[] = {"unknown", "active", "partial", "slumber"};
+	char buf[16];
+	int state;
+
+	state = ahci_port_link_pwr_state(ap);
+	if (state < 0 || state >= sizeof(state_names) / sizeof(state_names[0]))
+		state = 0;
+
+	ksnprintf(buf, sizeof(buf), "%s", state_names[state]);
+	return sysctl_handle_string(oidp, buf, sizeof(buf), req);
 }
 
 #if 0
@@ -240,9 +256,14 @@ ahci_os_start_port(struct ahci_port *ap)
 		SYSCTL_ADD_PROC(&ap->sysctl_ctx,
 			SYSCTL_CHILDREN(ap->sysctl_tree), OID_AUTO,
 			"link_pwr_mgmt", CTLTYPE_INT | CTLFLAG_RW, ap, 0,
-			ahci_systcl_link_pwr_mgmt, "I",
-			"Link power management "
+			ahci_sysctl_link_pwr_mgmt, "I",
+			"Link power management policy "
 			"(0 = disabled, 1 = medium, 2 = aggressive)");
+		SYSCTL_ADD_PROC(&ap->sysctl_ctx,
+			SYSCTL_CHILDREN(ap->sysctl_tree), OID_AUTO,
+			"link_pwr_state", CTLTYPE_STRING | CTLFLAG_RD, ap, 0,
+			ahci_sysctl_link_pwr_state, "A",
+			"Link power management state");
 
 	}
 

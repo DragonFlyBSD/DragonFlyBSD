@@ -77,6 +77,7 @@
 .nr Dq 12n
 .nr Ds 6n\" many manpages still use this as a -width value
 .nr Dv 12n
+.nr Dx 1
 .nr Ec 3
 .nr Ef 8n\" ?
 .nr Ek 8n\" ?

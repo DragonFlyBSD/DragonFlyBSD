@@ -52,6 +52,8 @@
 #define	ETHER_MAX_LEN		1518
 #define	ETHER_MAX_LEN_JUMBO	9018	/* max jumbo frame len, including CRC */
 
+#define ETHER_VLAN_ENCAP_LEN	4       /* len of 802.1Q VLAN encapsulation */
+
 /*
  * Ethernet CRC32 polynomials (big- and little-endian verions).
  */

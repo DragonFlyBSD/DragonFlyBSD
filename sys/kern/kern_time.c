@@ -70,7 +70,7 @@ struct timezone tz;
  * timers when they expire.
  */
 
-static int	nanosleep1(struct timespec *rqt, struct timespec *rmt);
+int	nanosleep1(struct timespec *rqt, struct timespec *rmt);
 static int	settime(struct timeval *);
 static void	timevalfix(struct timeval *);
 
@@ -289,7 +289,7 @@ ns1_systimer(systimer_t info)
 	lwkt_schedule(info->data);
 }
 
-static int
+int
 nanosleep1(struct timespec *rqt, struct timespec *rmt)
 {
 	static int nanowait;
@@ -300,6 +300,7 @@ nanosleep1(struct timespec *rqt, struct timespec *rmt)
 
 	if (rqt->tv_nsec < 0 || rqt->tv_nsec >= 1000000000)
 		return (EINVAL);
+	/* XXX: imho this should return EINVAL at least for tv_sec < 0 */
 	if (rqt->tv_sec < 0 || (rqt->tv_sec == 0 && rqt->tv_nsec == 0))
 		return (0);
 	nanouptime(&ts);

@@ -30,13 +30,14 @@
 .\"
 .\" $DragonFly: src/share/man/man9/nlookup.9,v 1.11 2008/02/09 09:45:03 swildner Exp $
 .\"
-.Dd May 26, 2009
+.Dd March 14, 2010
 .Os
 .Dt NLOOKUP 9
 .Sh NAME
 .Nm nlookup ,
 .Nm nlookup_init ,
 .Nm nlookup_init_raw ,
+.Nm nlookup_init_root ,
 .Nm nlookup_set_cred ,
 .Nm nlookup_zero ,
 .Nm nlookup_done ,
@@ -55,6 +56,8 @@
 .Fn nlookup_init "struct nlookupdata *nd" "const char *path" "enum uio_seg seg" "int flags"
 .Ft int
 .Fn nlookup_init_raw "struct nlookupdata *nd" "const char *path" "enum uio_seg seg" "int flags" "struct ucred *cred" "struct namecache *ncstart"
+.Ft int
+.Fn nlookup_init_root "struct nlookupdata *nd" "const char *path" "enum uio_seg seg" "int flags" "struct ucred *cred" "struct namecache *ncstart" "struct namecache *ncroot"
 .Ft void
 .Fn nlookup_set_cred "struct nlookupdata *nd" "struct ucred *cred"
 .Ft void
@@ -117,6 +120,13 @@ but does not assume a process context.
 rootncp is always chosen for the root directory and the
 .Fa cred
 and starting directory are supplied in the arguments.
+.Pp
+.Fn nlookup_init_root
+works similarly to
+.Fn nlookup_init_raw
+but does not assume rootnch for the root directory.
+The root directory is supplied in the arguments, and is also
+used for the jail directory.
 .Pp
 .Fn nlookup_set_cred
 sets a different credential; this credential will be used by

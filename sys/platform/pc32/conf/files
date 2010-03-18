@@ -37,7 +37,10 @@ ukbdmap.h			optional	ukbd_dflt_keymap	\
 emulation/dragonfly12/dfbsd12_getdirentries.c	nonoptional compat_df12
 emulation/dragonfly12/dfbsd12_stat.c	nonoptional compat_df12
 #
+emulation/linux/linux_emuldata.c	optional	compat_linux
+emulation/linux/linux_epoll.c	optional	compat_linux
 emulation/linux/linux_file.c	optional	compat_linux
+emulation/linux/linux_futex.c	optional	compat_linux
 emulation/linux/linux_getcwd.c	optional	compat_linux
 emulation/linux/linux_ioctl.c	optional	compat_linux
 emulation/linux/linux_ipc.c	optional	compat_linux
@@ -47,6 +50,7 @@ emulation/linux/linux_signal.c	optional	compat_linux
 emulation/linux/linux_socket.c	optional	compat_linux
 emulation/linux/linux_stats.c	optional	compat_linux
 emulation/linux/linux_sysctl.c  optional        compat_linux
+emulation/linux/linux_time.c	optional	compat_linux
 emulation/linux/linux_uid16.c   optional        compat_linux
 emulation/linux/linux_util.c	optional	compat_linux
 #
@@ -244,6 +248,8 @@ emulation/linux/i386/linux_locore.s	optional	compat_linux	  \
 	dependency 	"linux_assym.h"
 emulation/linux/i386/linux_machdep.c	optional	compat_linux
 emulation/linux/i386/linux_ptrace.c	optional	compat_linux
+emulation/linux/i386/linux_support.s	optional	compat_linux	\
+	dependency	"linux_assym.h"
 emulation/linux/i386/linux_sysent.c	optional	compat_linux
 emulation/linux/i386/linux_sysvec.c	optional	compat_linux
 #
@@ -358,4 +364,4 @@ netproto/smb/smb_rq.c			optional	netsmb
 netproto/smb/smb_smb.c			optional	netsmb
 netproto/smb/smb_subr.c			optional	netsmb
 netproto/smb/smb_trantcp.c		optional	netsmb
-netproto/smb/smb_usr.c			optional nowerror	netsmb
+netproto/smb/smb_usr.c			optional 	netsmb
