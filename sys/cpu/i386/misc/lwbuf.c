@@ -103,6 +103,7 @@ lwbuf_initpages(struct lwbuf_free_kvp_list *fkvpl, int pages)
 static void
 lwbuf_init(void *arg)
 {
+    struct mdglobaldata *gd = mdcpu;
     int i;
 
     lwbuf_cache = objcache_create("lwbuf", 0, 0,
@@ -112,8 +113,8 @@ lwbuf_init(void *arg)
 
     /* Should probably be in cpu_gdinit */
     for (i = 0; i < SMP_MAXCPU; ++i) {
-        SLIST_INIT(&mdcpu->gd_lwbuf_fpages);
-        lwbuf_initpages(&mdcpu->gd_lwbuf_fpages, LWBUF_BOOT_PAGES);
+        SLIST_INIT(&gd->gd_lwbuf_fpages);
+        lwbuf_initpages(&gd->gd_lwbuf_fpages, LWBUF_BOOT_PAGES);
     }
 }
 
@@ -129,6 +130,7 @@ lwbuf_alloc(vm_page_t m)
 
     lwb->m = m;
 
+    crit_enter_gd(&gd->mi);
 check_slist:
     if (!SLIST_EMPTY(&gd->gd_lwbuf_fpages)) {
         free_kvp = SLIST_FIRST(&gd->gd_lwbuf_fpages);
@@ -140,10 +142,11 @@ check_slist:
     } else {
         if (lwbuf_initpages(&gd->gd_lwbuf_fpages,
                             LWBUF_ALLOC_PAGES) == FALSE)
-            tsleep(&gd->gd_lwbuf_fpages, 0, "lwbuf", hz);
+            tsleep(&gd->gd_lwbuf_fpages, 0, "lwbuf", 0);
 
         goto check_slist;
     }
+    crit_exit_gd(&gd->mi);
 
     pmap_kenter_quick(lwb->kva, lwb->m->phys_addr);
     lwb->cpumask |= gd->mi.gd_cpumask;
@@ -154,13 +157,16 @@ check_slist:
 void
 lwbuf_free(struct lwbuf *lwb)
 {
+    struct mdglobaldata *gd = mdcpu;
     struct lwbuf_free_kvp *free_kvp;
 
     free_kvp = (struct lwbuf_free_kvp *)
         kmalloc(sizeof(*free_kvp), M_LWBUF, M_WAITOK);
     free_kvp->kva = lwb->kva;
-    SLIST_INSERT_HEAD(&mdcpu->gd_lwbuf_fpages, free_kvp, next);
-    wakeup_one(&mdcpu->gd_lwbuf_fpages);
+    crit_enter_gd(&gd->mi);
+    SLIST_INSERT_HEAD(&gd->gd_lwbuf_fpages, free_kvp, next);
+    crit_exit_gd(&gd->mi);
+    wakeup_one(&gd->gd_lwbuf_fpages);
 
     lwb->m = NULL;
     lwb->kva = 0;
