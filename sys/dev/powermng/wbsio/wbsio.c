@@ -207,9 +207,11 @@ wbsio_probe(struct device *dev)
 #ifndef KLD_MODULE
 		if (bootverbose)
 #endif
-			device_printf(dev, "%s port 0x%02x: "
-			    "Device ID 0x%02x, Rev 0x%02x\n",
-			    __func__, isa_get_port(dev), reg_id, reg_rev);
+			if (!(reg_id == 0xff && reg_rev == 0xff))
+				device_printf(dev, "%s port 0x%02x: "
+				    "Device ID 0x%02x, Rev 0x%02x\n",
+				    __func__, isa_get_port(dev),
+				    reg_id, reg_rev);
 		return ENXIO;
 	}
 
