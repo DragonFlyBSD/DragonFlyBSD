@@ -46,9 +46,9 @@ struct	nchstats {
 	unsigned long	ncs_badhits;	/* hits we must drop */
 	unsigned long	ncs_falsehits;	/* hits with id mismatch */
 	unsigned long	ncs_miss;   	/* misses */
-	unsigned long	ncs_long;   	/* long names that ignore cache */
-	unsigned long	ncs_pass2;  	/* names found with passes == 2 */
-	unsigned long	ncs_2passes;	/* number of times we attempt it */
+	unsigned long	ncs_longhits;  	/* path lookup hits */
+	unsigned long	ncs_longmiss;	/* path lookup misses */
+	unsigned long	ncs_unused;	/* number of times we attempt it */
 };
 
 #endif /* _SYS_NCHSTATS_H_ */

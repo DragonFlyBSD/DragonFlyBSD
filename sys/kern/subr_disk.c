@@ -249,7 +249,11 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 	return (msg ? EINVAL : 0);
 }
 
-
+/*
+ * This routine is only called for newly minted drives or to reprobe
+ * a drive with no open slices.  disk_probe_slice() is called directly
+ * when reprobing partition changes within slices.
+ */
 static void
 disk_probe(struct disk *dp, int reprobe)
 {
@@ -257,18 +261,20 @@ disk_probe(struct disk *dp, int reprobe)
 	cdev_t dev = dp->d_cdev;
 	cdev_t ndev;
 	int error, i, sno;
+	struct diskslices *osp;
 	struct diskslice *sp;
 
 	KKASSERT (info->d_media_blksize != 0);
 
+	osp = dp->d_slice;
 	dp->d_slice = dsmakeslicestruct(BASE_SLICE, info);
-	disk_debug(1,
-		    "disk_probe (begin): %s\n",
-			dp->d_cdev->si_name);
+	disk_debug(1, "disk_probe (begin): %s\n", dp->d_cdev->si_name);
 
 	error = mbrinit(dev, info, &(dp->d_slice));
-	if (error)
+	if (error) {
+		dsgone(&osp);
 		return;
+	}
 
 	for (i = 0; i < dp->d_slice->dss_nslices; i++) {
 		/*
@@ -341,9 +347,8 @@ disk_probe(struct disk *dp, int reprobe)
 			disk_probe_slice(dp, ndev, i, reprobe);
 		}
 	}
-	disk_debug(1,
-		    "disk_probe (end): %s\n",
-			dp->d_cdev->si_name);
+	dsgone(&osp);
+	disk_debug(1, "disk_probe (end): %s\n", dp->d_cdev->si_name);
 }
 
 
@@ -688,8 +693,7 @@ disk_unprobe(struct disk *disk)
 void
 disk_invalidate (struct disk *disk)
 {
-	if (disk->d_slice)
-		dsgone(&disk->d_slice);
+	dsgone(&disk->d_slice);
 }
 
 struct disk *

@@ -85,14 +85,14 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		return (0);
 	
 	error = 0;
-	if (map != &curproc->p_vmspace->vm_map)
-		vm_map_lock_read(map);
+	vm_map_lock_read(map);
 	for (entry = map->header.next;
 		((uio->uio_resid > 0) && (entry != &map->header));
 		entry = entry->next) {
 		vm_object_t obj, tobj, lobj;
 		int ref_count, shadow_count, flags;
 		vm_offset_t addr;
+		vm_offset_t ostart;
 		int resident, privateresident;
 		char *type;
 
@@ -107,6 +107,15 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		else
 			privateresident = 0;
 
+		/*
+		 * Use map->hint as a poor man's ripout detector.
+		 */
+		map->hint = entry;
+		ostart = entry->start;
+
+		/*
+		 * Count resident pages (XXX can be horrible on 64-bit)
+		 */
 		resident = 0;
 		addr = entry->start;
 		while (addr < entry->end) {
@@ -168,12 +177,32 @@ case OBJT_DEVICE:
 			error = EFBIG;
 			break;
 		}
+
+		/*
+		 * We cannot safely hold the map locked while accessing
+		 * userspace as a VM fault might recurse the locked map.
+		 */
+		vm_map_unlock_read(map);
 		error = uiomove(mebuffer, len, uio);
+		vm_map_lock_read(map);
 		if (error)
 			break;
+
+		/*
+		 * We use map->hint as a poor man's ripout detector.  If
+		 * it does not match the entry we set it to prior to
+		 * unlocking the map the entry MIGHT now be stale.  In
+		 * this case we do an expensive lookup to find our place
+		 * in the iteration again.
+		 */
+		if (map->hint != entry) {
+			vm_map_entry_t reentry;
+
+			vm_map_lookup_entry(map, ostart, &reentry);
+			entry = reentry;
+		}
 	}
-	if (map != &curproc->p_vmspace->vm_map)
-		vm_map_unlock_read(map);
+	vm_map_unlock_read(map);
 
 	return error;
 }

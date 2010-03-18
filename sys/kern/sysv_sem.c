@@ -393,6 +393,7 @@ sys___semctl(struct __semctl_args *uap)
 	int i, rval, eval;
 	struct semid_ds sbuf;
 	struct semid_ds *semaptr;
+	struct semid_ds *semakptr;
 
 #ifdef SEM_DEBUG
 	kprintf("call to semctl(%d, %d, %d, 0x%x)\n", semid, semnum, cmd, arg);
@@ -401,11 +402,36 @@ sys___semctl(struct __semctl_args *uap)
 	if (!jail_sysvipc_allowed && cred->cr_prison != NULL)
 		return (ENOSYS);
 
-	semid = IPCID_TO_IX(semid);
-	if (semid < 0 || semid >= seminfo.semmni)
-		return(EINVAL);
-
 	get_mplock();
+	switch (cmd) {
+	case SEM_STAT:
+		/*
+		 * For this command we assume semid is an array index
+		 * rather than an IPC id.
+		 */
+		if (semid < 0 || semid >= seminfo.semmni) {
+			eval = EINVAL;
+			break;
+		}
+		semakptr = &sema[semid];
+		if ((semakptr->sem_perm.mode & SEM_ALLOC) == 0) {
+			eval = EINVAL;
+			break;
+		}
+		if ((eval = ipcperm(td->td_proc, &semakptr->sem_perm, IPC_R)))
+			break;
+
+		bcopy(&semakptr, arg->buf, sizeof(struct semid_ds));
+		rval = IXSEQ_TO_IPCID(semid, semakptr->sem_perm);
+		break;
+	}
+	
+	semid = IPCID_TO_IX(semid);
+	if (semid < 0 || semid >= seminfo.semmni) {
+		rel_mplock();
+		return(EINVAL);
+	}
+
 	semaptr = &sema[semid];
 	if ((semaptr->sem_perm.mode & SEM_ALLOC) == 0 ||
 	    semaptr->sem_perm.seq != IPCID_TO_SEQ(uap->semid)) {

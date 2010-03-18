@@ -53,6 +53,9 @@
 #include <sys/tty.h>
 #include <sys/vnode.h>
 #include <sys/lock.h>
+#include <sys/sbuf.h>
+#include <sys/mount.h>
+#include <sys/sysctl.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -67,8 +70,12 @@
 #include <machine/cputypes.h>
 #include <machine/inttypes.h>
 #include <machine/md_var.h>
+#include <machine/vmparam.h>
 
 #include "linprocfs.h"
+#include "../linux.h"
+#include "../../linux_ioctl.h"
+#include "../../linux_mib.h"
 
 /*
  * Various conversion macros
@@ -165,9 +172,14 @@ linprocfs_docpuinfo(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 		    struct uio *uio)
 {
 	char *ps;
-	char psbuf[512];		/* XXX - conservative */
+	char psbuf[8192];
+	char hwmodel[128];
+	size_t	modellen = sizeof(hwmodel);
+	int mib[] = { CTL_HW, HW_MODEL };
 	int class;
+	int cpu;
         int i;
+	int error;
 #if 0
 	extern char *cpu_model;		/* Yuck */
 #endif
@@ -211,13 +223,21 @@ linprocfs_docpuinfo(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	}
 
 	ps = psbuf;
-	ps += ksprintf(ps,
-			"processor\t: %d\n"
-			"vendor_id\t: %.20s\n"
-			"cpu family\t: %d\n"
-			"model\t\t: %d\n"
-			"stepping\t: %d\n",
-			0, cpu_vendor, class, cpu, cpu_id & 0xf);
+
+	error = kernel_sysctl(mib, 2, hwmodel, &modellen, NULL, 0, NULL);
+	if (error)
+		strcpy(hwmodel, "unknown");
+
+	for (cpu = 0; cpu < ncpus; cpu++) {
+		ps += ksprintf(ps,
+		    "processor\t: %d\n"
+		    "vendor_id\t: %.20s\n"
+		    "cpu family\t: %d\n"
+		    "model\t\t: %d\n"
+		    "model name\t: %s\n"
+		    "stepping\t: %d\n",
+		    cpu, cpu_vendor, class, cpu, hwmodel, cpu_id & 0xf);
+	}
 
         ps += ksprintf(ps,
                         "flags\t\t:");
@@ -258,26 +278,98 @@ cpucnt(int offset)
     return(count);
 }
 
+static int
+linprocfs_domounts_callback(struct mount *mp, void *data)
+{
+	struct statfs *st;
+	struct sbuf *sb = (struct sbuf *)data;
+	char *to, *from, *fs;
+
+	st = &mp->mnt_stat;
+
+	from = st->f_mntfromname;
+	to = st->f_mntonname;
+	fs = st->f_fstypename;
+
+	if (!strcmp(st->f_fstypename, "linprocfs"))
+		fs = "proc";
+	else if (!strcmp(st->f_fstypename, "ext2fs"))
+		fs = "ext2";
+	else if (!strcmp(st->f_fstypename, "msdos"))
+		fs = "vfat";
+	else if (!strcmp(st->f_fstypename, "msdosfs"))
+		fs = "vfat";
+
+	sbuf_printf(sb, "%s %s %s %s", from, to, fs,
+	    st->f_flags & MNT_RDONLY ? "ro" : "rw");
+
+#define OPT_ADD(name, flag) if (st->f_flags & (flag)) sbuf_printf(sb, "," name)
+	OPT_ADD("sync",		MNT_SYNCHRONOUS);
+	OPT_ADD("noexec",	MNT_NOEXEC);
+	OPT_ADD("nosuid",	MNT_NOSUID);
+	OPT_ADD("nodev",	MNT_NODEV);
+	OPT_ADD("async",	MNT_ASYNC);
+	OPT_ADD("suiddir",	MNT_SUIDDIR);
+	OPT_ADD("nosymfollow",	MNT_NOSYMFOLLOW);
+	OPT_ADD("noatime",	MNT_NOATIME);
+#undef OPT_ADD
+
+	sbuf_printf(sb, " 0 0\n");
+
+	return 0;
+}
+
+int
+linprocfs_domounts(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+		    struct uio *uio)
+{
+	struct sbuf *sb;
+	int error;
+
+	sb = sbuf_new_auto();
+
+	error = mountlist_scan(linprocfs_domounts_callback, sb, MNTSCAN_FORWARD);
+
+	sbuf_finish(sb);
+	if (error == 0)
+		error = uiomove_frombuf(sbuf_data(sb), sbuf_len(sb), uio);
+	sbuf_delete(sb);
+	return (error);
+}
+
 int
 linprocfs_dostat(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 		 struct uio *uio)
 {
         char *ps;
-	char psbuf[512];
+	char psbuf[8192];
+	int cpu;
 
 	ps = psbuf;
 	ps += ksprintf(ps,
-		      "cpu %"PRIu64" %"PRIu64" %"PRIu64" %"PRIu64"\n"
+		      "cpu %"PRIu64" %"PRIu64" %"PRIu64" %"PRIu64"\n",
+		      T2J(cpu_time.cp_user),
+		      T2J(cpu_time.cp_nice),
+		      T2J(cpu_time.cp_sys),
+		      T2J(cpu_time.cp_idle));
+
+	for (cpu = 0; cpu < ncpus; cpu++) {
+		ps += ksprintf(ps,
+		      "cpu%d %"PRIu64" %"PRIu64" %"PRIu64" %"PRIu64"\n",
+		      cpu,
+		      T2J(cputime_percpu[cpu].cp_user),
+		      T2J(cputime_percpu[cpu].cp_nice),
+		      T2J(cputime_percpu[cpu].cp_sys),
+		      T2J(cputime_percpu[cpu].cp_idle));			
+	}
+
+	ps += ksprintf(ps,
 		      "disk 0 0 0 0\n"
 		      "page %u %u\n"
 		      "swap %u %u\n"
 		      "intr %u\n"
 		      "ctxt %u\n"
 		      "btime %ld\n",
-		      T2J(cpu_time.cp_user),
-		      T2J(cpu_time.cp_nice),
-		      T2J(cpu_time.cp_sys /*+ cpu_time[CP_INTR]*/),
-		      T2J(cpu_time.cp_idle),
 		      cpucnt(offsetof(struct vmmeter, v_vnodepgsin)),
 		      cpucnt(offsetof(struct vmmeter, v_vnodepgsout)),
 		      cpucnt(offsetof(struct vmmeter, v_swappgsin)),
@@ -285,6 +377,7 @@ linprocfs_dostat(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 		      cpucnt(offsetof(struct vmmeter, v_intr)),
 		      cpucnt(offsetof(struct vmmeter, v_swtch)),
 		      boottime.tv_sec);
+
 	return (uiomove_frombuf(psbuf, ps - psbuf, uio));
 }
 
@@ -318,11 +411,59 @@ linprocfs_doversion(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	return (uiomove_frombuf(ps, xlen, uio));
 }
 
+#define B2P(x) ((x) >> PAGE_SHIFT)			/* bytes to pages */
+int
+linprocfs_dostatm(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+		    struct uio *uio)
+{
+	char *ps, psbuf[1024];
+	struct kinfo_proc kp;
+
+	fill_kinfo_proc(p, &kp);
+
+	ps = psbuf;
+	ps += ksprintf(ps, "%d", p->p_pid);
+#define PS_ADD(name, fmt, arg) ps += ksprintf(ps, " " fmt, arg)
+	PS_ADD("",	"%ju",	B2P((uintmax_t)(kp.kp_vm_tsize + kp.kp_vm_dsize + kp.kp_vm_ssize)));
+	PS_ADD("",	"%ju",	(uintmax_t)kp.kp_vm_rssize);
+	PS_ADD("",	"%ju",	(uintmax_t)0); /* XXX */
+	PS_ADD("",	"%ju",	(uintmax_t)kp.kp_vm_tsize);
+	PS_ADD("",	"%ju",	(uintmax_t)kp.kp_vm_dsize);
+	PS_ADD("",	"%ju",	(uintmax_t)kp.kp_vm_ssize);
+	PS_ADD("",	"%ju",	(uintmax_t)0); /* XXX */
+#undef	PS_ADD
+	ps += ksprintf(ps, "\n");
+
+	return (uiomove_frombuf(psbuf, ps - psbuf, uio));
+}
+
+#define P2K(x) ((x) << (PAGE_SHIFT - 10))		/* pages to kbytes */
 int
 linprocfs_doprocstat(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 		     struct uio *uio)
 {
+	vm_map_t map = &p->p_vmspace->vm_map;
+	vm_map_entry_t entry;
+	vm_offset_t start, end;
 	char *ps, psbuf[1024];
+	struct kinfo_proc kp;
+
+	fill_kinfo_proc(p, &kp);
+
+	start = 0;
+	end = 0;
+	vm_map_lock_read(map);
+	for (entry = map->header.next; entry != &map->header;
+		entry = entry->next) {
+		if (entry->maptype != VM_MAPTYPE_NORMAL &&
+		    entry->maptype != VM_MAPTYPE_VPAGETABLE) {
+			continue;
+		}
+		/* Assuming that text is the first entry */
+		start = entry->start;
+		end = entry->end;
+	}
+	vm_map_unlock_read(map);
 
 	ps = psbuf;
 	ps += ksprintf(ps, "%d", p->p_pid);
@@ -333,27 +474,27 @@ linprocfs_doprocstat(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	PS_ADD("pgrp",		"%d",	p->p_pgid);
 	PS_ADD("session",	"%d",	p->p_session->s_sid);
 	PS_ADD("tty",		"%d",	0); /* XXX */
-	PS_ADD("tpgid",		"%d",	0); /* XXX */
+	PS_ADD("tpgid",		"%d",	kp.kp_tpgid); /* XXX */
 	PS_ADD("flags",		"%u",	0); /* XXX */
-	PS_ADD("minflt",	"%u",	0); /* XXX */
-	PS_ADD("cminflt",	"%u",	0); /* XXX */
-	PS_ADD("majflt",	"%u",	0); /* XXX */
-	PS_ADD("cminflt",	"%u",	0); /* XXX */
-	PS_ADD("utime",		"%d",	0); /* XXX */
-	PS_ADD("stime",		"%d",	0); /* XXX */
-	PS_ADD("cutime",	"%d",	0); /* XXX */
-	PS_ADD("cstime",	"%d",	0); /* XXX */
-	PS_ADD("counter",	"%d",	0); /* XXX */
+	PS_ADD("minflt",	"%lu",	kp.kp_ru.ru_minflt); /* XXX */
+	PS_ADD("cminflt",	"%lu",	kp.kp_cru.ru_minflt); /* XXX */
+	PS_ADD("majflt",	"%lu",	kp.kp_ru.ru_majflt); /* XXX */
+	PS_ADD("cmajflt",	"%lu",	kp.kp_cru.ru_majflt); /* XXX */
+	PS_ADD("utime",		"%d",	T2J(tvtohz_high(&kp.kp_ru.ru_utime))); /* XXX */
+	PS_ADD("stime",		"%d",	T2J(tvtohz_high(&kp.kp_ru.ru_stime))); /* XXX */
+	PS_ADD("cutime",	"%d",	T2J(tvtohz_high(&kp.kp_cru.ru_utime))); /* XXX */
+	PS_ADD("cstime",	"%d",	T2J(tvtohz_high(&kp.kp_cru.ru_stime))); /* XXX */
 	PS_ADD("priority",	"%d",	0); /* XXX */
+	PS_ADD("nice",		"%d",	kp.kp_nice);
 	PS_ADD("timeout",	"%u",	0); /* XXX */
 	PS_ADD("itrealvalue",	"%u",	0); /* XXX */
-	PS_ADD("starttime",	"%d",	0); /* XXX */
-	PS_ADD("vsize",		"%u",	0); /* XXX */
-	PS_ADD("rss",		"%u",	0); /* XXX */
-	PS_ADD("rlim",		"%u",	0); /* XXX */
-	PS_ADD("startcode",	"%u",	0); /* XXX */
-	PS_ADD("endcode",	"%u",	0); /* XXX */
-	PS_ADD("startstack",	"%u",	0); /* XXX */
+	PS_ADD("starttime",	"%d",	T2J(tvtohz_high(&kp.kp_start))); /* XXX */
+	PS_ADD("vsize",		"%ju",	P2K((uintmax_t)(kp.kp_vm_tsize + kp.kp_vm_dsize + kp.kp_vm_ssize))); /* XXX: not sure */
+	PS_ADD("rss",		"%ju",	(uintmax_t)kp.kp_vm_rssize); /* XXX */
+	PS_ADD("rlim",		"%lu",	kp.kp_ru.ru_maxrss); /* XXX */
+	PS_ADD("startcode",	"%lu",	start); /* XXX */
+	PS_ADD("endcode",	"%lu",	end); /* XXX */
+	PS_ADD("startstack",	"%lu",	(u_long)p->p_vmspace->vm_minsaddr); /* XXX */
 	PS_ADD("kstkesp",	"%u",	0); /* XXX */
 	PS_ADD("kstkeip",	"%u",	0); /* XXX */
 	PS_ADD("signal",	"%d",	0); /* XXX */
@@ -361,6 +502,12 @@ linprocfs_doprocstat(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	PS_ADD("sigignore",	"%d",	0); /* XXX */
 	PS_ADD("sigcatch",	"%d",	0); /* XXX */
 	PS_ADD("wchan",		"%u",	0); /* XXX */
+	PS_ADD("nswap",		"%lu",	kp.kp_ru.ru_nswap); /* XXX */
+	PS_ADD("cnswap",	"%lu",	kp.kp_cru.ru_nswap); /* XXX */
+	PS_ADD("exitsignal",	"%d",	0); /* XXX */
+	PS_ADD("processor",	"%u",	kp.kp_lwp.kl_cpuid); /* XXX */
+	PS_ADD("rt_priority",	"%u",	0); /* XXX */ /* >= 2.5.19 */
+	PS_ADD("policy",	"%u",	kp.kp_nice); /* XXX */ /* >= 2.5.19 */
 #undef PS_ADD
 	ps += ksprintf(ps, "\n");
 	
@@ -483,3 +630,199 @@ linprocfs_doloadavg(struct proc *curp, struct proc *p,
 	return(uiomove_frombuf(psbuf, ps - psbuf, uio));
 }
 
+int
+linprocfs_donetdev(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+		   struct uio *uio)
+{
+	struct sbuf *sb;
+	char ifname[16]; /* XXX LINUX_IFNAMSIZ */
+	struct ifnet *ifp;
+	int error;
+
+	sb = sbuf_new_auto();
+
+	sbuf_printf(sb, "%6s|%58s|%s\n%6s|%58s|%58s\n",
+	    "Inter-", "   Receive", "  Transmit", " face",
+	    "bytes    packets errs drop fifo frame compressed",
+	    "bytes    packets errs drop fifo frame compressed");
+
+	crit_enter();
+	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+		linux_ifname(ifp, ifname, sizeof ifname);
+		sbuf_printf(sb, "%6.6s:", ifname);
+		sbuf_printf(sb, "%8lu %7lu %4lu %4lu %4lu %5lu %10lu %9lu ",
+		    0UL, 0UL, 0UL, 0UL, 0UL, 0UL, 0UL, 0UL);
+		sbuf_printf(sb, "%8lu %7lu %4lu %4lu %4lu %5lu %7lu %10lu\n",
+		    0UL, 0UL, 0UL, 0UL, 0UL, 0UL, 0UL, 0UL);
+	}
+	crit_exit();
+	sbuf_finish(sb);
+	error = uiomove_frombuf(sbuf_data(sb), sbuf_len(sb), uio);
+	sbuf_delete(sb);
+	return (error);
+}
+
+int
+linprocfs_dodevices(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+		   struct uio *uio)
+{
+	return 0;
+}
+
+int
+linprocfs_doosrelease(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+		   struct uio *uio)
+{
+	char *osrelease;
+
+	osrelease = linux_get_osrelease(curthread);
+	return(uiomove_frombuf(osrelease, strlen(osrelease)+1, uio));
+}
+
+int
+linprocfs_doostype(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+		   struct uio *uio)
+{
+	char *osname;
+
+	osname = linux_get_osname(curthread);
+	return(uiomove_frombuf(osname, strlen(osname)+1, uio));
+}
+
+int
+linprocfs_dopidmax(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+		   struct uio *uio)
+{
+	char buf[32];
+
+	ksnprintf(buf, sizeof(buf), "%d", PID_MAX);
+	return(uiomove_frombuf(buf, strlen(buf)+1, uio));
+	return 0;
+}
+
+int
+linprocfs_domaps(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+	     struct uio *uio)
+{
+	int len;
+	int error;
+	vm_map_t map = &p->p_vmspace->vm_map;
+	vm_map_entry_t entry;
+	vm_ooffset_t off = 0;
+	char mebuffer[256];
+	char *name = "", *freename = NULL;
+	struct vnode *vp;
+	struct vattr vat;
+	int major, minor;
+	ino_t ino;
+
+	if (uio->uio_rw != UIO_READ)
+		return (EOPNOTSUPP);
+
+	if (uio->uio_offset != 0)
+		return (0);
+	
+	error = 0;
+	vm_map_lock_read(map);
+	for (entry = map->header.next;
+		((uio->uio_resid > 0) && (entry != &map->header));
+		entry = entry->next) {
+		vm_object_t obj, tobj, lobj;
+		vm_offset_t ostart;
+		name = "";
+		freename = NULL;
+		ino = 0;
+		if (entry->maptype != VM_MAPTYPE_NORMAL &&
+		    entry->maptype != VM_MAPTYPE_VPAGETABLE) {
+			continue;
+		}
+		/*
+		 * Use map->hint as a poor man's ripout detector.
+		 */
+		map->hint = entry;
+		ostart = entry->start;
+		obj = entry->object.vm_object;
+
+		for( lobj = tobj = obj; tobj; tobj = tobj->backing_object)
+			lobj = tobj;
+
+		if (lobj) {
+			off = IDX_TO_OFF(lobj->size);
+			if (lobj->type == OBJT_VNODE) {
+				vp = lobj->handle;
+				if (vp)
+					vref(vp);
+			} else {
+				vp = NULL;
+			}
+			
+			if (vp) {
+				vn_fullpath(curproc, vp, &name, &freename);
+				vn_lock(vp, LK_SHARED | LK_RETRY);
+				VOP_GETATTR(vp, &vat);
+				ino = vat.va_fileid;
+				major = vat.va_rmajor;
+				minor = vat.va_rminor;
+				vput(vp);
+			}
+		}
+		if (freename == NULL) {
+			if (entry->eflags & MAP_ENTRY_STACK)
+				name = "[stack]";
+		}
+
+		/*
+		 * format:
+		 *  start-end access offset major:minor inode [.text file]
+		 */
+		ksnprintf(mebuffer, sizeof(mebuffer),
+		    "%08lx-%08lx %s%s%s%s %08llx %02x:%02x %llu%s%s\n",
+		    (u_long)entry->start, (u_long)entry->end,
+		    (entry->protection & VM_PROT_READ)?"r":"-",
+		    (entry->protection & VM_PROT_WRITE)?"w":"-",
+		    (entry->protection & VM_PROT_EXECUTE)?"x":"-",
+		    "p",
+		    off,	/* offset */
+		    0,		/* major */
+		    0,		/* minor */
+		    ino,	/* inode */
+		    *name ? "     " : "",
+		    name);
+
+		if (freename)
+			kfree(freename, M_TEMP);
+
+		len = strlen(mebuffer);
+		if (len > uio->uio_resid) {
+			error = EFBIG;
+			break;
+		}
+
+		/*
+		 * We cannot safely hold the map locked while accessing
+		 * userspace as a VM fault might recurse the locked map.
+		 */
+		vm_map_unlock_read(map);
+		error = uiomove(mebuffer, len, uio);
+		vm_map_lock_read(map);
+		if (error)
+			break;
+
+		/*
+		 * We use map->hint as a poor man's ripout detector.  If
+		 * it does not match the entry we set it to prior to
+		 * unlocking the map the entry MIGHT now be stale.  In
+		 * this case we do an expensive lookup to find our place
+		 * in the iteration again.
+		 */
+		if (map->hint != entry) {
+			vm_map_entry_t reentry;
+		
+			vm_map_lookup_entry(map, ostart, &reentry);
+			entry = reentry;
+		}
+	}
+	vm_map_unlock_read(map);
+
+	return error;
+}

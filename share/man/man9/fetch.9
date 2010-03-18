@@ -35,11 +35,12 @@
 .\" $FreeBSD: src/share/man/man9/fetch.9,v 1.6.2.4 2001/12/17 11:30:18 ru Exp $
 .\" $DragonFly: src/share/man/man9/fetch.9,v 1.4 2007/04/07 19:29:52 swildner Exp $
 .\"
-.Dd January 7, 1996
+.Dd March 14, 2010
 .Dt FETCH 9
 .Os
 .Sh NAME
 .Nm fetch ,
+.Nm casuword ,
 .Nm fubyte ,
 .Nm fusword ,
 .Nm fuword
@@ -49,6 +50,8 @@
 .In sys/time.h
 .In sys/systm.h
 .In sys/resourcevar.h
+.Ft u_long
+.Fn casuword "u_long *base" "u_long oldval" "u_long newval"
 .Ft int
 .Fn fubyte "const void *base"
 .Ft int
@@ -63,7 +66,19 @@ functions are designed to copy small amounts of data from user-space.
 The
 .Nm
 routines provide the following functionality:
-.Bl -tag -width ".Fn fusword"
+.Bl -tag -width ".Fn casuword"
+.It Fn casuword
+Compares
+.Fa oldval
+with the word at
+.Fa base ,
+and if equal,
+.Fa base
+is set to
+.Fa newval .
+The old value at
+.Fa base
+is then returned.
 .It Fn fubyte
 Fetches a byte of data from the user-space address
 .Fa base .

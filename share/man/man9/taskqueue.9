@@ -26,17 +26,20 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/taskqueue.9,v 1.21 2007/07/09 06:24:10 jmg Exp $
-.\" $DragonFly: src/share/man/man9/taskqueue.9,v 1.2 2007/11/07 21:38:00 swildner Exp $
 .\"
-.Dd August 10, 2007
+.Dd October 2, 2009
 .Dt TASKQUEUE 9
 .Os
 .Sh NAME
+.Nm taskqueue_block ,
 .Nm taskqueue_create ,
+.Nm tastqueue_drain ,
+.Nm taskqueue_enqueue ,
 .Nm taskqueue_free ,
 .Nm taskqueue_find ,
-.Nm taskqueue_enqueue ,
 .Nm taskqueue_run ,
+.Nm taskqueue_start_threads ,
+.Nm taskqueue_unblock ,
 .Nm TASK_INIT ,
 .Nm TASKQUEUE_DECLARE ,
 .Nm TASKQUEUE_DEFINE
@@ -159,10 +162,11 @@ enqueued after call to
 .Pp
 The
 .Fn taskqueue_block
-function is used to block a taskqueue. When a taskqueue
-is blocked, calls to enqueue will still enqueue tasks but
-they will not be run until the taskqueue is unblocked by
-calling
+function is used to block a taskqueue.
+When a taskqueue is blocked, calls to
+.Fn taskqueue_enqueue
+will still enqueue tasks but
+they will not be run until the taskqueue is unblocked by calling
 .Fn taskqueue_unblock .
 .Pp
 The
@@ -178,7 +182,7 @@ and the name given by
 with _N appended to it, where N is the number of the thread.
 If
 .Fa count
- > 1 and
+\*(Gt 1 and
 .Fa ncpu
 is -1, each of the
 .Fa count
@@ -232,13 +236,15 @@ allowing any further initialisation to be performed
 (such as registering an interrupt handler etc.)
 .Pp
 The system provides two global taskqueues,
-.Va taskqueue_swi ,
+.Va taskqueue_swi
+and
 .Va taskqueue_swi_mp ,
 which are run via a software interrupt mechanism.
 To use these queues, call
 .Fn taskqueue_enqueue
 with the value of the global variable
-.Va taskqueue_swi or
+.Va taskqueue_swi
+or
 .Va taskqueue_swi_mp .
 .Pp
 While

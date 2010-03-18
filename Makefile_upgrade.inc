@@ -1198,3 +1198,4 @@ TO_REMOVE+=/usr/share/games/fortune/fortunes2-o.dat
 TO_REMOVE+=/usr/share/games/fortune/fortunes2.dat
 TO_REMOVE+=/usr/share/man/cat8/tmpfs.8.gz
 TO_REMOVE+=/usr/share/man/man8/tmpfs.8.gz
+TO_REMOVE+=/usr/include/sys/msfbuf.h

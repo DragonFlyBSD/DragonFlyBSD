@@ -265,6 +265,7 @@ struct	proc {
 	sigset_t	p_siglist;	/* Signals arrived but not delivered. */
 
 	struct vnode	*p_textvp;	/* Vnode of executable. */
+	struct nchandle	p_textnch;	/* namecache handle of executable. */
 
 	unsigned int	p_stops;	/* procfs event bitmask */
 	unsigned int	p_stype;	/* procfs stop event type */
@@ -313,6 +314,7 @@ struct	proc {
 	struct usched	*p_usched;	/* Userland scheduling control */
 	struct vkernel_proc *p_vkernel; /* VKernel support, proc part */
 	int		p_numposixlocks; /* number of POSIX locks */
+	void		(*p_userret)(void);/* p: return-to-user hook */
 
 	struct spinlock p_spin;		/* Spinlock for LWP access to proc */
 };

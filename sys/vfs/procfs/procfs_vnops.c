@@ -579,7 +579,7 @@ procfs_getattr(struct vop_getattr_args *ap)
 
 	case Pfile: {
 		char *fullpath, *freepath;
-		error = vn_fullpath(procp, NULL, &fullpath, &freepath);
+		error = cache_fullpath(procp, &procp->p_textnch, &fullpath, &freepath);
 		if (error == 0) {
 			vap->va_size = strlen(fullpath);
 			kfree(freepath, M_TEMP);
@@ -1040,7 +1040,7 @@ procfs_readlink(struct vop_readlink_args *ap)
 			return (uiomove("unknown", sizeof("unknown") - 1,
 			    ap->a_uio));
 		}
-		error = vn_fullpath(procp, NULL, &fullpath, &freepath);
+		error = cache_fullpath(procp, &procp->p_textnch, &fullpath, &freepath);
 		if (error != 0)
 			return (uiomove("unknown", sizeof("unknown") - 1,
 			    ap->a_uio));

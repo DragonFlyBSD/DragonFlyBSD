@@ -127,13 +127,22 @@ typedef struct hammer_transaction *hammer_transaction_t;
  * HAMMER locks
  */
 struct hammer_lock {
-	int		refs;		/* active references delay writes */
+	volatile u_int	refs;		/* active references */
 	volatile u_int	lockval;	/* lock count and control bits */
-	struct thread	*owner;		/* owner if exclusively held */
+	struct thread	*lowner;	/* owner if exclusively held */
+	struct thread	*rowner;	/* owner if exclusively held */
 };
 
+#define HAMMER_REFS_LOCKED	0x40000000	/* transition check */
+#define HAMMER_REFS_WANTED	0x20000000	/* transition check */
+#define HAMMER_REFS_CHECK	0x10000000	/* transition check */
+
+#define HAMMER_REFS_FLAGS	(HAMMER_REFS_LOCKED | \
+				 HAMMER_REFS_WANTED | \
+				 HAMMER_REFS_CHECK)
+
 #define HAMMER_LOCKF_EXCLUSIVE	0x40000000
-#define HAMMER_LOCKF_WANTED	0x80000000
+#define HAMMER_LOCKF_WANTED	0x20000000
 
 static __inline int
 hammer_notlocked(struct hammer_lock *lock)
@@ -147,16 +156,37 @@ hammer_islocked(struct hammer_lock *lock)
 	return(lock->lockval != 0);
 }
 
+/*
+ * Returns the number of refs on the object.
+ */
 static __inline int
 hammer_isactive(struct hammer_lock *lock)
 {
-	return(lock->refs != 0);
+	return(lock->refs & ~HAMMER_REFS_FLAGS);
 }
 
 static __inline int
-hammer_islastref(struct hammer_lock *lock)
+hammer_oneref(struct hammer_lock *lock)
 {
-	return(lock->refs == 1);
+	return((lock->refs & ~HAMMER_REFS_FLAGS) == 1);
+}
+
+static __inline int
+hammer_norefs(struct hammer_lock *lock)
+{
+	return((lock->refs & ~HAMMER_REFS_FLAGS) == 0);
+}
+
+static __inline int
+hammer_norefsorlock(struct hammer_lock *lock)
+{
+	return(lock->refs == 0);
+}
+
+static __inline int
+hammer_refsorlock(struct hammer_lock *lock)
+{
+	return(lock->refs != 0);
 }
 
 /*
@@ -166,7 +196,7 @@ static __inline int
 hammer_lock_excl_owned(struct hammer_lock *lock, thread_t td)
 {
 	if ((lock->lockval & HAMMER_LOCKF_EXCLUSIVE) &&
-	    lock->owner == td) {
+	    lock->lowner == td) {
 		return(1);
 	}
 	return(0);
@@ -576,7 +606,6 @@ struct hammer_io {
 	struct buf		*bp;
 	int64_t			offset;	   /* zone-2 offset */
 	int			bytes;	   /* buffer cache buffer size */
-	int			loading;   /* loading/unloading interlock */
 	int			modify_refs;
 
 	u_int		modified : 1;	/* bp's data was modified */
@@ -660,7 +689,6 @@ struct hammer_node {
 	TAILQ_HEAD(, hammer_cursor) cursor_list;  /* deadlock recovery */
 	struct hammer_node_cache_list cache_list; /* passive caches */
 	int			flags;
-	int			loading;	/* load interlock */
 };
 
 #define HAMMER_NODE_DELETED	0x0001
@@ -1034,7 +1062,15 @@ void	hammer_lock_downgrade(struct hammer_lock *lock);
 int	hammer_lock_status(struct hammer_lock *lock);
 void	hammer_unlock(struct hammer_lock *lock);
 void	hammer_ref(struct hammer_lock *lock);
-void	hammer_unref(struct hammer_lock *lock);
+int	hammer_ref_interlock(struct hammer_lock *lock);
+int	hammer_ref_interlock_true(struct hammer_lock *lock);
+void	hammer_ref_interlock_done(struct hammer_lock *lock);
+void	hammer_rel(struct hammer_lock *lock);
+int	hammer_rel_interlock(struct hammer_lock *lock, int locked);
+void	hammer_rel_interlock_done(struct hammer_lock *lock, int orig_locked);
+int	hammer_get_interlock(struct hammer_lock *lock);
+int	hammer_try_interlock_norefs(struct hammer_lock *lock);
+void	hammer_put_interlock(struct hammer_lock *lock, int error);
 
 void	hammer_sync_lock_ex(hammer_transaction_t trans);
 void	hammer_sync_lock_sh(hammer_transaction_t trans);
@@ -1148,8 +1184,8 @@ int		hammer_ref_volume(hammer_volume_t volume);
 int		hammer_ref_buffer(hammer_buffer_t buffer);
 void		hammer_flush_buffer_nodes(hammer_buffer_t buffer);
 
-void		hammer_rel_volume(hammer_volume_t volume, int flush);
-void		hammer_rel_buffer(hammer_buffer_t buffer, int flush);
+void		hammer_rel_volume(hammer_volume_t volume, int locked);
+void		hammer_rel_buffer(hammer_buffer_t buffer, int locked);
 
 int		hammer_vfs_export(struct mount *mp, int op,
 			const struct export_args *export);
@@ -1164,7 +1200,7 @@ void		hammer_delete_node(hammer_transaction_t trans,
 void		hammer_cache_node(hammer_node_cache_t cache,
 			hammer_node_t node);
 void		hammer_uncache_node(hammer_node_cache_t cache);
-void		hammer_flush_node(hammer_node_t node);
+void		hammer_flush_node(hammer_node_t node, int locked);
 
 void hammer_dup_buffer(struct hammer_buffer **bufferp,
 			struct hammer_buffer *buffer);

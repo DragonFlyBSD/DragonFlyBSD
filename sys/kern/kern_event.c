@@ -459,10 +459,46 @@ sys_kqueue(struct kqueue_args *uap)
 }
 
 /*
+ * Copy 'count' items into the destination list pointed to by uap->eventlist.
+ */
+static int
+kevent_copyout(void *arg, struct kevent *kevp, int count)
+{
+	struct kevent_args *uap;
+	int error;
+
+	uap = (struct kevent_args *)arg;
+
+	error = copyout(kevp, uap->eventlist, count * sizeof *kevp);
+	if (error == 0)
+		uap->eventlist += count;
+	return (error);
+}
+
+/*
+ * Copy 'count' items from the list pointed to by uap->changelist.
+ */
+static int
+kevent_copyin(void *arg, struct kevent *kevp, int count)
+{
+	struct kevent_args *uap;
+	int error;
+
+	uap = (struct kevent_args *)arg;
+
+	error = copyin(uap->changelist, kevp, count * sizeof *kevp);
+	if (error == 0)
+		uap->changelist += count;
+	return (error);
+}
+
+/*
  * MPALMOSTSAFE
  */
 int
-sys_kevent(struct kevent_args *uap)
+kern_kevent(int fd, int nchanges, int nevents, struct kevent_args *uap,
+    k_copyin_fn kevent_copyinfn, k_copyout_fn kevent_copyoutfn,
+    struct timespec *tsp_in)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -474,7 +510,9 @@ sys_kevent(struct kevent_args *uap)
 	int i, n, total, nerrors, error;
 	struct kevent kev[KQ_NEVENTS];
 
-	fp = holdfp(p->p_fd, uap->fd, -1);
+	tsp = tsp_in;
+
+	fp = holdfp(p->p_fd, fd, -1);
 	if (fp == NULL)
 		return (EBADF);
 	if (fp->f_type != DTYPE_KQUEUE) {
@@ -482,22 +520,13 @@ sys_kevent(struct kevent_args *uap)
 		return (EBADF);
 	}
 
-	if (uap->timeout) {
-		error = copyin(uap->timeout, &ts, sizeof(ts));
-		if (error)
-			goto done;
-		tsp = &ts;
-	} else {
-		tsp = NULL;
-	}
-
 	kq = (struct kqueue *)fp->f_data;
 	nerrors = 0;
 
 	get_mplock();
-	while (uap->nchanges > 0) {
-		n = uap->nchanges > KQ_NEVENTS ? KQ_NEVENTS : uap->nchanges;
-		error = copyin(uap->changelist, kev, n * sizeof(struct kevent));
+	while (nchanges > 0) {
+		n = nchanges > KQ_NEVENTS ? KQ_NEVENTS : nchanges;
+		error = kevent_copyinfn(uap, kev, n);
 		if (error)
 			goto done;
 		for (i = 0; i < n; i++) {
@@ -505,21 +534,18 @@ sys_kevent(struct kevent_args *uap)
 			kevp->flags &= ~EV_SYSFLAGS;
 			error = kqueue_register(kq, kevp);
 			if (error) {
-				if (uap->nevents != 0) {
+				if (nevents != 0) {
 					kevp->flags = EV_ERROR;
 					kevp->data = error;
-					copyout(kevp, uap->eventlist,
-						sizeof(*kevp));
-					uap->eventlist++;
-					uap->nevents--;
+					kevent_copyoutfn(uap, kevp, 1);
+					nevents--;
 					nerrors++;
 				} else {
 					goto done;
 				}
 			}
 		}
-		uap->nchanges -= n;
-		uap->changelist += n;
+		nchanges -= n;
 	}
 	if (nerrors) {
         	uap->sysmsg_result = nerrors;
@@ -547,14 +573,13 @@ sys_kevent(struct kevent_args *uap)
 	 */
 	total = 0;
 	error = 0;
-	while ((n = uap->nevents - total) > 0) {
+	while ((n = nevents - total) > 0) {
 		if (n > KQ_NEVENTS)
 			n = KQ_NEVENTS;
 		i = kqueue_scan(kq, kev, n, tsp, &error);
 		if (i == 0)
 			break;
-		error = copyout(kev, uap->eventlist + total,
-				(size_t)i * sizeof(struct kevent));
+		error = kevent_copyoutfn(uap, kev, i);
 		total += i;
 		if (error || i != n)
 			break;
@@ -567,6 +592,30 @@ done:
 	rel_mplock();
 	if (fp != NULL)
 		fdrop(fp);
+	return (error);
+}
+
+/*
+ * MPALMOSTSAFE
+ */
+int
+sys_kevent(struct kevent_args *uap)
+{
+	struct timespec ts, *tsp;
+	int error;
+
+	if (uap->timeout) {
+		error = copyin(uap->timeout, &ts, sizeof(ts));
+		if (error)
+			return (error);
+		tsp = &ts;
+	} else {
+		tsp = NULL;
+	}
+
+	error = kern_kevent(uap->fd, uap->nchanges, uap->nevents,
+	    uap, kevent_copyin, kevent_copyout, tsp);
+
 	return (error);
 }
 

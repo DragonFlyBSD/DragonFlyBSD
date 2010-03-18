@@ -290,6 +290,39 @@ copyin_fault2:
 	ret
 
 /*
+ * casuword.  Compare and set user word.  Returns -1 or the current value.
+ */
+
+ENTRY(casuword)
+	movl	PCPU(curthread),%ecx
+	movl	TD_PCB(%ecx),%ecx
+	movl	$fusufault,PCB_ONFAULT(%ecx)
+	movl	4(%esp),%edx			/* dst */
+	movl	8(%esp),%eax			/* old */
+	movl	12(%esp),%ecx			/* new */
+
+	cmpl	$VM_MAX_USER_ADDRESS-4,%edx	/* verify address is valid */
+	ja	fusufault
+
+#ifdef SMP
+	lock
+#endif
+	cmpxchgl %ecx,(%edx)			/* Compare and set. */
+
+	/*
+	 * The old value is in %eax.  If the store succeeded it will be the
+	 * value we expected (old) from before the store, otherwise it will
+	 * be the current value.
+	 */
+
+	movl	PCPU(curthread),%ecx
+	movl	TD_PCB(%ecx),%ecx
+	movl	$fusufault,PCB_ONFAULT(%ecx)
+	movl	$0,PCB_ONFAULT(%ecx)
+	ret
+END(casuword)
+
+/*
  * fu{byte,sword,word} - MP SAFE
  *
  *	Fetch a byte (sword, word) from user memory

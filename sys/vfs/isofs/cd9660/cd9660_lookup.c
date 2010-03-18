@@ -93,7 +93,6 @@ int
 cd9660_lookup(struct vop_old_lookup_args *ap)
 {
 	struct vnode *vdp;	/* vnode for directory being searched */
-	globaldata_t gd = mycpu;
 	struct iso_node *dp;	/* inode for directory being searched */
 	struct iso_mnt *imp;	/* file system that directory is in */
 	struct buf *bp;			/* a buffer of directory entries */
@@ -168,7 +167,6 @@ cd9660_lookup(struct vop_old_lookup_args *ap)
 		    (error = cd9660_devblkatoff(vdp, (off_t)dp->i_offset, NULL, &bp)))
 				return (error);
 		numdirpasses = 2;
-		gd->gd_nchstats->ncs_2passes++;
 	}
 	endsearch = dp->i_size;
 	
@@ -315,9 +313,6 @@ notfound:
 	return (ENOENT);
 
 found:
-	if (numdirpasses == 2)
-		gd->gd_nchstats->ncs_pass2++;
-	
 	/*
 	 * Found component in pathname.
 	 * If the final component of path name, save information

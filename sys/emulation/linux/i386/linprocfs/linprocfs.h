@@ -58,7 +58,23 @@ typedef enum {
 	Pstat,	        /* kernel/system statistics */
 	Puptime,	/* system uptime */
 	Pversion,	/* system version */
-	Ploadavg	/* system load average */
+	Ploadavg,	/* system load average */
+	Pnet,		/* the net sub-directory */
+	Pnetdev,	/* net devices */
+	Psys,		/* the sys sub-directory */
+	Psyskernel,	/* the sys/kernel sub-directory */
+	Pdevices,	/* devices */
+	Posrelease,	/* osrelease */
+	Postype,	/* ostype */
+	Ppidmax,	/* pid_max */
+	Pcwd,
+	Pprocroot,
+	Pfd,
+	Pcmdline,
+	Penviron,
+	Pmaps,
+	Pstatm,
+	Pmounts,
 } pfstype;
 
 /*
@@ -130,13 +146,20 @@ int linprocfs_write_dbregs (struct proc *, struct dbreg *);
 #endif
 int linprocfs_domeminfo (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
 int linprocfs_docpuinfo (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
+int linprocfs_domounts (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
 int linprocfs_dostat (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
 int linprocfs_douptime (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
 int linprocfs_doversion (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
 int linprocfs_doprocstat (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
 int linprocfs_doprocstatus (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
 int linprocfs_doloadavg (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
-
+int linprocfs_donetdev (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
+int linprocfs_dodevices (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
+int linprocfs_doosrelease (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
+int linprocfs_doostype (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
+int linprocfs_dopidmax (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
+int linprocfs_domaps(struct proc *curp, struct proc *p, struct pfsnode *pfs, struct uio *uio);
+int linprocfs_dostatm(struct proc *curp, struct proc *p, struct pfsnode *pfs, struct uio *uio);
 /* functions to check whether or not files should be displayed */
 int linprocfs_validfile (struct proc *);
 

@@ -569,6 +569,20 @@ linux_ioctl_TCSETAF(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, stru
 }
 
 static int
+linux_ioctl_TIOCLINUX(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
+{
+	switch ((u_char)*data) {
+	case 11: /* LINUX_TIOCLINUX_KERNMSG */
+		return 0;
+	default:
+		kprintf("Unknown LINUX_TIOCLINUX: %d\n", ((u_char)*data));
+		kprintf("cmd = %lu, ocmd = %lu\n", cmd, ocmd);
+		return 0;
+	}
+	return 0;
+}
+
+static int
 linux_ioctl_TCXONC(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	switch ((u_long)data) {
@@ -1048,6 +1062,7 @@ linux_ioctl_SIOCGIFFLAGS(struct file *fp, u_long cmd, u_long ocmd, caddr_t data,
 	char ifname[IFNAMSIZ];
 	l_short flags;
 
+#if 0
 	if (fp->f_type != DTYPE_SOCKET) {
 		/* XXX: I doubt this is correct because
 		 *      we don't translate the ifname and
@@ -1055,8 +1070,12 @@ linux_ioctl_SIOCGIFFLAGS(struct file *fp, u_long cmd, u_long ocmd, caddr_t data,
 		 */
 		return (fo_ioctl(fp, SIOCGIFFLAGS, data, cred, NULL));
 	}
+#endif
 
 	ifp = ifname_linux_to_bsd(ifr->ifr_name, ifname);
+	if (ifp == NULL)
+		return (EINVAL);
+
 	flags = ifp->if_flags;
 	/* these flags have no Linux equivalent */
 	flags &= ~(IFF_SMART|IFF_OACTIVE|IFF_SIMPLEX|
@@ -1074,6 +1093,43 @@ linux_ioctl_SIOCGIFFLAGS(struct file *fp, u_long cmd, u_long ocmd, caddr_t data,
 #define ARPHRD_ETHER	1
 #define ARPHRD_LOOPBACK	772
 
+/* XXX: could implement using native ioctl, so only mapping */
+static int
+linux_ioctl_SIOCGIFINDEX(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
+{
+	struct l_ifreq *ifr = (struct l_ifreq *)data;
+	struct ifnet *ifp;
+	char ifname[IFNAMSIZ];
+	l_int index;
+
+	ifp = ifname_linux_to_bsd(ifr->ifr_name, ifname);
+	if (ifp == NULL)
+		return EINVAL;
+
+#if DEBUG
+	kprintf("Interface index: %d\n", ifp->if_index);
+#endif
+
+	index = ifp->if_index;
+	return (copyout(&index, &ifr->ifr_ifindex, sizeof(index)));
+}
+
+static int
+linux_ioctl_SIOCGIFMETRIC(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
+{
+	struct l_ifreq *ifr = (struct l_ifreq *)data;
+	struct ifnet *ifp;
+	char ifname[IFNAMSIZ];
+	l_int metric;
+
+	ifp = ifname_linux_to_bsd(ifr->ifr_name, ifname);
+	if (ifp == NULL)
+		return EINVAL;
+
+	metric = ifp->if_metric;
+	return (copyout(&metric, &ifr->ifr_ifmetric, sizeof(metric)));
+}
+
 static int
 linux_ioctl_SIOGIFHWADDR(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
@@ -1085,6 +1141,10 @@ linux_ioctl_SIOGIFHWADDR(struct file *fp, u_long cmd, u_long ocmd, caddr_t data,
 	struct ifaddr_container *ifac;
 
 	ifp = ifname_linux_to_bsd(ifr->ifr_name, ifname);
+	if (ifp == NULL) {
+		return EINVAL;
+	}
+
 	if (ifp->if_type == IFT_LOOP) {
 		bzero(&ifr->ifr_hwaddr, sizeof lsa);
 		ifr->ifr_hwaddr.sa_family = ARPHRD_LOOPBACK;
@@ -1186,6 +1246,7 @@ static struct ioctl_map_range linux_ioctl_map_entries[] = {
 	MAPPED_IOCTL_IOW(LINUX_TCSETAF, linux_ioctl_TCSETAF, struct linux_termio),
 	MAPPED_IOCTL_IO(LINUX_TCXONC, linux_ioctl_TCXONC),
 	MAPPED_IOCTL_IO(LINUX_TCFLSH, linux_ioctl_TCFLSH),
+	MAPPED_IOCTL_IO(LINUX_TIOCLINUX, linux_ioctl_TIOCLINUX),
 	MAPPED_IOCTL_MAP(LINUX_TIOCEXCL, TIOCEXCL),
 	MAPPED_IOCTL_MAP(LINUX_TIOCNXCL, TIOCNXCL),
 	MAPPED_IOCTL_MAP(LINUX_TIOCGPGRP, TIOCGPGRP),
@@ -1262,6 +1323,8 @@ static struct ioctl_map_range linux_ioctl_map_entries[] = {
 	MAPPED_IOCTL_MAPF(LINUX_SIOCGIFMTU, SIOCGIFMTU, linux_ioctl_map_ifname),
 	MAPPED_IOCTL_MAPF(LINUX_SIOCSIFMTU, SIOCSIFMTU, linux_ioctl_map_ifname),
 	MAPPED_IOCTL_IOWR(LINUX_SIOCGIFHWADDR, linux_ioctl_SIOGIFHWADDR, struct l_ifreq),
+	MAPPED_IOCTL_IOR(LINUX_SIOCGIFINDEX, linux_ioctl_SIOCGIFINDEX, struct l_ifreq),
+	MAPPED_IOCTL_IOR(LINUX_SIOCGIFMETRIC, linux_ioctl_SIOCGIFMETRIC, struct l_ifreq),
 	MAPPED_IOCTL_MAP(LINUX_SIOCADDMULTI, SIOCADDMULTI),
 	MAPPED_IOCTL_MAP(LINUX_SIOCDELMULTI, SIOCDELMULTI),
 	/*

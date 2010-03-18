@@ -79,7 +79,8 @@ static sy_call_t *shmcalls[] = {
 #define	SHMSEG_ALLOCATED	0x0800
 #define	SHMSEG_WANTED		0x1000
 
-static int shm_last_free, shm_nused, shm_committed, shmalloced;
+static int shm_last_free, shm_committed, shmalloced;
+int shm_nused;
 static struct shmid_ds	*shmsegs;
 
 struct shm_handle {

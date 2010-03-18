@@ -1119,6 +1119,176 @@ compute_stats(struct devstat *current, struct devstat *previous,
 	return(0);
 }
 
+int
+compute_stats_read(struct devstat *current, struct devstat *previous,
+	      long double etime, u_int64_t *total_bytes,
+	      u_int64_t *total_transfers, u_int64_t *total_blocks,
+	      long double *kb_per_transfer, long double *transfers_per_second,
+	      long double *mb_per_second, long double *blocks_per_second,
+	      long double *ms_per_transaction)
+{
+	u_int64_t totalbytes, totaltransfers, totalblocks;
+
+	/*
+	 * current is the only mandatory field.
+	 */
+	if (current == NULL) {
+		sprintf(devstat_errbuf, "%s: current stats structure was NULL",
+			__func__);
+		return(-1);
+	}
+
+	totalbytes = current->bytes_read -
+		     (previous ? previous->bytes_read : 0);
+
+	if (total_bytes)
+		*total_bytes = totalbytes;
+
+	totaltransfers = current->num_reads -
+			 (previous ? previous->num_reads : 0);
+	if (total_transfers)
+		*total_transfers = totaltransfers;
+
+	if (transfers_per_second) {
+		if (etime > 0.0) {
+			*transfers_per_second = totaltransfers;
+			*transfers_per_second /= etime;
+		} else
+			*transfers_per_second = 0.0;
+	}
+
+	if (kb_per_transfer) {
+		*kb_per_transfer = totalbytes;
+		*kb_per_transfer /= 1024;
+		if (totaltransfers > 0)
+			*kb_per_transfer /= totaltransfers;
+		else
+			*kb_per_transfer = 0.0;
+	}
+
+	if (mb_per_second) {
+		*mb_per_second = totalbytes;
+		*mb_per_second /= 1024 * 1024;
+		if (etime > 0.0)
+			*mb_per_second /= etime;
+		else
+			*mb_per_second = 0.0;
+	}
+
+	totalblocks = totalbytes;
+	if (current->block_size > 0)
+		totalblocks /= current->block_size;
+	else
+		totalblocks /= 512;
+
+	if (total_blocks)
+		*total_blocks = totalblocks;
+
+	if (blocks_per_second) {
+		*blocks_per_second = totalblocks;
+		if (etime > 0.0)
+			*blocks_per_second /= etime;
+		else
+			*blocks_per_second = 0.0;
+	}
+
+	if (ms_per_transaction) {
+		if (totaltransfers > 0) {
+			*ms_per_transaction = etime;
+			*ms_per_transaction /= totaltransfers;
+			*ms_per_transaction *= 1000;
+		} else
+			*ms_per_transaction = 0.0;
+	}
+
+	return(0);
+}
+
+int
+compute_stats_write(struct devstat *current, struct devstat *previous,
+	      long double etime, u_int64_t *total_bytes,
+	      u_int64_t *total_transfers, u_int64_t *total_blocks,
+	      long double *kb_per_transfer, long double *transfers_per_second,
+	      long double *mb_per_second, long double *blocks_per_second,
+	      long double *ms_per_transaction)
+{
+	u_int64_t totalbytes, totaltransfers, totalblocks;
+
+	/*
+	 * current is the only mandatory field.
+	 */
+	if (current == NULL) {
+		sprintf(devstat_errbuf, "%s: current stats structure was NULL",
+			__func__);
+		return(-1);
+	}
+
+	totalbytes = current->bytes_written -
+		     (previous ? previous->bytes_written : 0);
+
+	if (total_bytes)
+		*total_bytes = totalbytes;
+
+	totaltransfers = current->num_writes -
+			 (previous ? previous->num_writes : 0);
+	if (total_transfers)
+		*total_transfers = totaltransfers;
+
+	if (transfers_per_second) {
+		if (etime > 0.0) {
+			*transfers_per_second = totaltransfers;
+			*transfers_per_second /= etime;
+		} else
+			*transfers_per_second = 0.0;
+	}
+
+	if (kb_per_transfer) {
+		*kb_per_transfer = totalbytes;
+		*kb_per_transfer /= 1024;
+		if (totaltransfers > 0)
+			*kb_per_transfer /= totaltransfers;
+		else
+			*kb_per_transfer = 0.0;
+	}
+
+	if (mb_per_second) {
+		*mb_per_second = totalbytes;
+		*mb_per_second /= 1024 * 1024;
+		if (etime > 0.0)
+			*mb_per_second /= etime;
+		else
+			*mb_per_second = 0.0;
+	}
+
+	totalblocks = totalbytes;
+	if (current->block_size > 0)
+		totalblocks /= current->block_size;
+	else
+		totalblocks /= 512;
+
+	if (total_blocks)
+		*total_blocks = totalblocks;
+
+	if (blocks_per_second) {
+		*blocks_per_second = totalblocks;
+		if (etime > 0.0)
+			*blocks_per_second /= etime;
+		else
+			*blocks_per_second = 0.0;
+	}
+
+	if (ms_per_transaction) {
+		if (totaltransfers > 0) {
+			*ms_per_transaction = etime;
+			*ms_per_transaction /= totaltransfers;
+			*ms_per_transaction *= 1000;
+		} else
+			*ms_per_transaction = 0.0;
+	}
+
+	return(0);
+}
+
 long double
 compute_etime(struct timeval cur_time, struct timeval prev_time)
 {

@@ -369,9 +369,9 @@ hammer_rel_mem_record(struct hammer_record *record)
 	hammer_inode_t target_ip;
 	int diddrop;
 
-	hammer_unref(&record->lock);
+	hammer_rel(&record->lock);
 
-	if (record->lock.refs == 0) {
+	if (hammer_norefs(&record->lock)) {
 		/*
 		 * Upon release of the last reference wakeup any waiters.
 		 * The record structure may get destroyed so callers will
@@ -391,7 +391,7 @@ hammer_rel_mem_record(struct hammer_record *record)
 		if (record->flags & (HAMMER_RECF_DELETED_FE |
 				     HAMMER_RECF_DELETED_BE |
 				     HAMMER_RECF_COMMITTED)) {
-			KKASSERT(ip->lock.refs > 0);
+			KKASSERT(hammer_isactive(&ip->lock) > 0);
 			KKASSERT(record->flush_state != HAMMER_FST_FLUSH);
 
 			/*

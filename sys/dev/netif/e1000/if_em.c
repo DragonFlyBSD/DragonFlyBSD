@@ -83,6 +83,7 @@
 #include "e1000_api.h"
 #include "e1000_82571.h"
 #include "if_em.h"
+#include "ifcap_defines.h" // XXX
 
 /*********************************************************************
  *  Set this to one to display debug statistics

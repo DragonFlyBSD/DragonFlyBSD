@@ -902,7 +902,7 @@ hammer_free_inode(hammer_inode_t ip)
 	struct hammer_mount *hmp;
 
 	hmp = ip->hmp;
-	KKASSERT(ip->lock.refs == 1);
+	KKASSERT(hammer_oneref(&ip->lock));
 	hammer_uncache_node(&ip->cache[0]);
 	hammer_uncache_node(&ip->cache[1]);
 	hammer_uncache_node(&ip->cache[2]);
@@ -1118,9 +1118,9 @@ hammer_unload_pseudofs_callback(hammer_inode_t ip, void *data)
 	int res;
 
 	hammer_ref(&ip->lock);
-	if (ip->lock.refs == 2 && ip->vp)
+	if (hammer_isactive(&ip->lock) == 2 && ip->vp)
 		vclean_unlocked(ip->vp);
-	if (ip->lock.refs == 1 && ip->vp == NULL)
+	if (hammer_isactive(&ip->lock) == 1 && ip->vp == NULL)
 		res = 0;
 	else
 		res = -1;	/* stop, someone is using the inode */
@@ -1155,8 +1155,8 @@ hammer_unload_pseudofs(hammer_transaction_t trans, u_int32_t localization)
 void
 hammer_rel_pseudofs(hammer_mount_t hmp, hammer_pseudofs_inmem_t pfsm)
 {
-	hammer_unref(&pfsm->lock);
-	if (pfsm->lock.refs == 0) {
+	hammer_rel(&pfsm->lock);
+	if (hammer_norefs(&pfsm->lock)) {
 		RB_REMOVE(hammer_pfs_rb_tree, &hmp->rb_pfsm_root, pfsm);
 		kfree(pfsm, hmp->m_misc);
 	}
@@ -1426,7 +1426,7 @@ hammer_rel_inode(struct hammer_inode *ip, int flush)
 	 * Handle disposition when dropping the last ref.
 	 */
 	for (;;) {
-		if (ip->lock.refs == 1) {
+		if (hammer_oneref(&ip->lock)) {
 			/*
 			 * Determine whether on-disk action is needed for
 			 * the inode's final disposition.
@@ -1435,7 +1435,7 @@ hammer_rel_inode(struct hammer_inode *ip, int flush)
 			hammer_inode_unloadable_check(ip, 0);
 			if (ip->flags & HAMMER_INODE_MODMASK) {
 				hammer_flush_inode(ip, 0);
-			} else if (ip->lock.refs == 1) {
+			} else if (hammer_oneref(&ip->lock)) {
 				hammer_unload_inode(ip);
 				break;
 			}
@@ -1447,9 +1447,9 @@ hammer_rel_inode(struct hammer_inode *ip, int flush)
 			 * The inode still has multiple refs, try to drop
 			 * one ref.
 			 */
-			KKASSERT(ip->lock.refs >= 1);
-			if (ip->lock.refs > 1) {
-				hammer_unref(&ip->lock);
+			KKASSERT(hammer_isactive(&ip->lock) >= 1);
+			if (hammer_isactive(&ip->lock) > 1) {
+				hammer_rel(&ip->lock);
 				break;
 			}
 		}
@@ -1467,8 +1467,8 @@ hammer_unload_inode(struct hammer_inode *ip)
 {
 	hammer_mount_t hmp = ip->hmp;
 
-	KASSERT(ip->lock.refs == 1,
-		("hammer_unload_inode: %d refs\n", ip->lock.refs));
+	KASSERT(hammer_oneref(&ip->lock),
+		("hammer_unload_inode: %d refs\n", hammer_isactive(&ip->lock)));
 	KKASSERT(ip->vp == NULL);
 	KKASSERT(ip->flush_state == HAMMER_FST_IDLE);
 	KKASSERT(ip->cursor_ip_refs == 0);
@@ -1515,7 +1515,7 @@ hammer_destroy_inode_callback(struct hammer_inode *ip, void *data __unused)
 			--rec->flush_group->refs;
 		else
 			hammer_ref(&rec->lock);
-		KKASSERT(rec->lock.refs == 1);
+		KKASSERT(hammer_oneref(&rec->lock));
 		rec->flush_state = HAMMER_FST_IDLE;
 		rec->flush_group = NULL;
 		rec->flags |= HAMMER_RECF_DELETED_FE; /* wave hands */
@@ -1538,7 +1538,7 @@ hammer_destroy_inode_callback(struct hammer_inode *ip, void *data __unused)
 		ip->flush_group = NULL;
 		/* fall through */
 	case HAMMER_FST_SETUP:
-		hammer_unref(&ip->lock);
+		hammer_rel(&ip->lock);
 		ip->flush_state = HAMMER_FST_IDLE;
 		/* fall through */
 	case HAMMER_FST_IDLE:
@@ -2975,7 +2975,7 @@ defer_buffer_flush:
 		while (RB_ROOT(&ip->rec_tree)) {
 			hammer_record_t record = RB_ROOT(&ip->rec_tree);
 			hammer_ref(&record->lock);
-			KKASSERT(record->lock.refs == 1);
+			KKASSERT(hammer_oneref(&record->lock));
 			record->flags |= HAMMER_RECF_DELETED_BE;
 			++record->ip->rec_generation;
 			hammer_rel_mem_record(record);
@@ -3176,6 +3176,16 @@ hammer_inode_waitreclaims(hammer_transaction_t trans)
 		TAILQ_REMOVE(&hmp->reclaim_list, &reclaim, entry);
 }
 
+/*
+ * Keep track of reclaim statistics on a per-pid basis using a loose
+ * 4-way set associative hash table.  Collisions inherit the count of
+ * the previous entry.
+ *
+ * NOTE: We want to be careful here to limit the chain size.  If the chain
+ *	 size is too large a pid will spread its stats out over too many
+ *	 entries under certain types of heavy filesystem activity and
+ *	 wind up not delaying long enough.
+ */
 static
 struct hammer_inostats *
 hammer_inode_inostats(hammer_mount_t hmp, pid_t pid)
@@ -3183,17 +3193,29 @@ hammer_inode_inostats(hammer_mount_t hmp, pid_t pid)
 	struct hammer_inostats *stats;
 	int delta;
 	int chain;
+	static int iterator;	/* we don't care about MP races */
 
+	/*
+	 * Chain up to 4 times to find our entry.
+	 */
 	for (chain = 0; chain < 4; ++chain) {
 		stats = &hmp->inostats[(pid + chain) & HAMMER_INOSTATS_HMASK];
 		if (stats->pid == pid)
 			break;
 	}
+
+	/*
+	 * Replace one of the four chaining entries with our new entry.
+	 */
 	if (chain == 4) {
-		stats = &hmp->inostats[(pid + ticks) & HAMMER_INOSTATS_HMASK];
+		stats = &hmp->inostats[(pid + (iterator++ & 3)) &
+				       HAMMER_INOSTATS_HMASK];
 		stats->pid = pid;
 	}
 
+	/*
+	 * Decay the entry
+	 */
 	if (stats->count && stats->ltick != ticks) {
 		delta = ticks - stats->ltick;
 		stats->ltick = ticks;

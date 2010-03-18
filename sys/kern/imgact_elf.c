@@ -52,6 +52,7 @@
 #include <sys/sysent.h>
 #include <sys/vnode.h>
 #include <sys/sfbuf.h>
+#include <sys/eventhandler.h>
 
 #include <vm/vm.h>
 #include <vm/vm_kern.h>
@@ -851,6 +852,8 @@ exec_elf_imgact(struct image_params *imgp)
 	}
 
 	imgp->proc->p_sysent = brand_info->sysvec;
+	EVENTHANDLER_INVOKE(process_exec, imgp);
+
 	if (interp != NULL) {
 		path = kmalloc(MAXPATHLEN, M_TEMP, M_WAITOK);
 	        ksnprintf(path, MAXPATHLEN, "%s%s",

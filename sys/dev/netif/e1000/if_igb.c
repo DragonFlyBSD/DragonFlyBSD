@@ -91,6 +91,7 @@
 #include "e1000_api.h"
 #include "e1000_82575.h"
 #include "if_igb.h"
+#include "ifcap_defines.h" // XXX
 
 /*********************************************************************
  *  Set this to one to display debug statistics

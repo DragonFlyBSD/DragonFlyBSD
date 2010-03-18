@@ -43,6 +43,7 @@
 
 #include <arch_linux/linux.h>
 #include <arch_linux/linux_proto.h>
+#include "linux_emuldata.h"
 #include "linux_signal.h"
 #include "linux_util.h"
 
@@ -387,7 +388,6 @@ sys_linux_kill(struct linux_kill_args *args)
 	if (ldebug(kill))
 		kprintf(ARGS(kill, "%d, %d"), args->pid, args->signum);
 #endif
-
 	/*
 	 * Allow signal 0 as a means to check for privileges
 	 */
@@ -404,5 +404,79 @@ sys_linux_kill(struct linux_kill_args *args)
 	rel_mplock();
 
 	return(error);
+}
+
+
+static int
+linux_do_tkill(l_int tgid, l_int pid, l_int sig)
+{
+	struct linux_emuldata *em;
+	struct proc *p;
+	int error = 0;
+
+	/*
+	 * Allow signal 0 as a means to check for privileges
+	 */
+	if (sig < 0 || sig > LINUX_NSIG)
+		return (EINVAL);
+
+	if (sig > 0 && sig <= LINUX_SIGTBLSZ)
+		sig = linux_to_bsd_signal[_SIG_IDX(sig)];
+
+	get_mplock();
+	if ((p = pfind(pid)) == NULL) {
+		if ((p = zpfind(pid)) == NULL) {
+			rel_mplock();
+			return (ESRCH);
+		}
+	}
+
+	EMUL_LOCK();
+	em = emuldata_get(p);
+
+	if (em == NULL) {
+		EMUL_UNLOCK();
+		rel_mplock();
+		return (ESRCH);
+	}
+
+	if (tgid > 0 && em->s->group_pid != tgid) {
+		EMUL_UNLOCK();
+		rel_mplock();
+		return (ESRCH);
+	}
+	EMUL_UNLOCK();
+	
+	error = kern_kill(sig, pid, -1);
+	rel_mplock();
+
+	return (error);
+}
+
+int
+sys_linux_tgkill(struct linux_tgkill_args *args)
+{
+
+#ifdef DEBUG
+	if (ldebug(tgkill))
+		kprintf(ARGS(tgkill, "%d, %d, %d"), args->tgid, args->pid, args->sig);
+#endif
+	if (args->pid <= 0 || args->tgid <= 0)
+		return (EINVAL);
+
+	return (linux_do_tkill(args->tgid, args->pid, args->sig));
+}
+
+int
+sys_linux_tkill(struct linux_tkill_args *args)
+{
+#ifdef DEBUG
+	if (ldebug(tkill))
+		kprintf(ARGS(tkill, "%i, %i"), args->tid, args->sig);
+#endif
+	if (args->tid <= 0)
+		return (EINVAL);
+
+	return (linux_do_tkill(0, args->tid, args->sig));
 }
 

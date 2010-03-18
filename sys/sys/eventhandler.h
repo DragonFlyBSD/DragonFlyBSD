@@ -158,6 +158,9 @@ extern struct eventhandler_list	*eventhandler_find_list(char *name);
 #define	EVENTHANDLER_PRI_ANY	10000
 #define	EVENTHANDLER_PRI_LAST	20000
 
+struct image_params;
+struct proc;
+
 /* Shutdown events */
 typedef void (*shutdown_fn) (void *, int);
 
@@ -165,10 +168,14 @@ typedef void (*shutdown_fn) (void *, int);
 #define	SHUTDOWN_PRI_DEFAULT	EVENTHANDLER_PRI_ANY
 #define	SHUTDOWN_PRI_DRIVER	(EVENTHANDLER_PRI_ANY + 5000)
 #define	SHUTDOWN_PRI_LAST	EVENTHANDLER_PRI_LAST
+typedef void (*execlist_fn)(void *, struct image_params *);
+typedef void (*exit_list_fn)(void *, struct proc *);
 
 EVENTHANDLER_DECLARE(shutdown_pre_sync, shutdown_fn);	/* before fs sync */
 EVENTHANDLER_DECLARE(shutdown_post_sync, shutdown_fn);	/* after fs sync */
 EVENTHANDLER_DECLARE(shutdown_final, shutdown_fn);
+EVENTHANDLER_DECLARE(process_exec, execlist_fn);
+EVENTHANDLER_DECLARE(process_exit, exit_list_fn);
 
 #endif	/* _KERNEL */
 #endif	/* SYS_EVENTHANDLER_H */

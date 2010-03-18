@@ -41,6 +41,7 @@
 #include <sys/types.h>
 #include <err.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <paths.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -115,7 +116,7 @@ static busTypeName busTypeTable[] =
     { UNKNOWN_BUSTYPE,	"---"    }
 };
 
-char* whereStrings[] = {
+const char* whereStrings[] = {
     "Extended BIOS Data Area",
     "BIOS top of memory",
     "Default top of memory",
@@ -150,7 +151,7 @@ tableEntry extendedtableEntryTypes[] =
 /* MP Floating Pointer Structure */
 typedef struct MPFPS {
     char	signature[ 4 ];
-    void*	pap;
+    uint32_t	pap;
     u_char	length;
     u_char	spec_rev;
     u_char	checksum;
@@ -164,16 +165,16 @@ typedef struct MPFPS {
 /* MP Configuration Table Header */
 typedef struct MPCTH {
     char	signature[ 4 ];
-    u_short	base_table_length;
+    uint16_t	base_table_length;
     u_char	spec_rev;
     u_char	checksum;
     u_char	oem_id[ 8 ];
     u_char	product_id[ 12 ];
-    void*	oem_table_pointer;
-    u_short	oem_table_size;
-    u_short	entry_count;
-    void*	apic_address;
-    u_short	extended_table_length;
+    uint32_t	oem_table_pointer;
+    uint16_t	oem_table_size;
+    uint16_t	entry_count;
+    uint32_t	apic_address;
+    uint16_t	extended_table_length;
     u_char	extended_table_checksum;
     u_char	reserved;
 } mpcth_t;
@@ -184,10 +185,10 @@ typedef struct PROCENTRY {
     u_char	apicID;
     u_char	apicVersion;
     u_char	cpuFlags;
-    u_long	cpuSignature;
-    u_long	featureFlags;
-    u_long	reserved1;
-    u_long	reserved2;
+    uint32_t	cpuSignature;
+    uint32_t	featureFlags;
+    uint32_t	reserved1;
+    uint32_t	reserved2;
 } ProcEntry;
 
 typedef struct BUSENTRY {
@@ -201,13 +202,13 @@ typedef struct IOAPICENTRY {
     u_char	apicID;
     u_char	apicVersion;
     u_char	apicFlags;
-    void*	apicAddress;
+    uint32_t	apicAddress;
 } IOApicEntry;
 
 typedef struct INTENTRY {
     u_char	type;
     u_char	intType;
-    u_short	intFlags;
+    uint16_t	intFlags;
     u_char	srcBusID;
     u_char	srcBusIRQ;
     u_char	dstApicID;
@@ -244,7 +245,7 @@ typedef struct CBASMENTRY {
     u_char	length;
     u_char	busID;
     u_char	addressMod;
-    u_int	predefinedRange;
+    uint32_t	predefinedRange;
 } CbasmEntry;
 
 
@@ -254,7 +255,7 @@ static void apic_probe( vm_offset_t* paddr, int* where );
 static void MPConfigDefault( int featureByte );
 
 static void MPFloatingPointer( vm_offset_t paddr, int where, mpfps_t* mpfps );
-static void MPConfigTableHeader( void* pap );
+static void MPConfigTableHeader( uint32_t pap );
 
 static int readType( void );
 static void seekEntry( vm_offset_t addr );
@@ -306,7 +307,6 @@ main( int argc, char *argv[] )
     mpfps_t	mpfps;
     int		defaultConfig;
 
-    extern int	optreset;
     int		ch;
 
     /* announce ourselves */
@@ -359,7 +359,7 @@ main( int argc, char *argv[] )
     }
 
     if ( verbose )
-        printf( "\n MP FPS found in %s @ physical addr: 0x%08x\n",
+        printf( "\n MP FPS found in %s @ physical addr: 0x%08lx\n",
 	      whereStrings[ where - 1 ], paddr );
 
     puts( SEP_LINE );
@@ -385,10 +385,24 @@ main( int argc, char *argv[] )
 }
 
 
+static int
+findMpSig(uint32_t target, size_t bufsize)
+{
+    uint32_t	buffer[BIOS_SIZE / sizeof(uint32_t)];
+    uint32_t *x;
+
+    seekEntry(target);
+    readEntry(buffer, (bufsize + sizeof(*x) - 1) & ~sizeof(*x));
+    for (x = buffer; x < buffer + bufsize / sizeof(*x); ++x) {
+	if (*x == MP_SIG)
+	    return (x - buffer) * sizeof(*x) + target;
+    }
+    return -1;
+}
+
 /*
  * set PHYSICAL address of MP floating pointer structure
  */
-#define NEXT(X)		((X) += 4)
 static void
 apic_probe( vm_offset_t* paddr, int* where )
 {
@@ -397,9 +411,8 @@ apic_probe( vm_offset_t* paddr, int* where )
      */
 
     int		x;
-    u_short	segment;
+    uint16_t	segment;
     vm_offset_t	target;
-    u_int	buffer[ BIOS_SIZE / sizeof( int ) ];
 
     if ( verbose )
         printf( "\n" );
@@ -408,20 +421,16 @@ apic_probe( vm_offset_t* paddr, int* where )
     if ( verbose )
         printf( " looking for EBDA pointer @ 0x%04x, ", EBDA_POINTER );
     seekEntry( (vm_offset_t)EBDA_POINTER );
-    readEntry( &segment, 2 );
+    readEntry( &segment, sizeof(segment) );
     if ( segment ) {		    /* search EBDA */
         target = (vm_offset_t)segment << 4;
 	if ( verbose )
-	    printf( "found, searching EBDA @ 0x%08x\n", target );
-        seekEntry( target );
-        readEntry( buffer, ONE_KBYTE );
+	    printf( "found, searching EBDA @ 0x%08lx\n", target );
 
-        for ( x = 0; x < ONE_KBYTE / sizeof ( unsigned int ); NEXT(x) ) {
-            if ( buffer[ x ] == MP_SIG ) {
-                *where = 1;
-                *paddr = (x * sizeof( unsigned int )) + target;
-                return;
-            }
+	if ((x = findMpSig(target, ONE_KBYTE)) != -1) {
+	    *where = 1;
+	    *paddr = x;
+	    return;
         }
     }
     else {
@@ -431,97 +440,73 @@ apic_probe( vm_offset_t* paddr, int* where )
 
     /* read CMOS for real top of mem */
     seekEntry( (vm_offset_t)TOPOFMEM_POINTER );
-    readEntry( &segment, 2 );
+    readEntry( &segment, sizeof(segment) );
     --segment;						/* less ONE_KBYTE */
     target = segment * 1024;
     if ( verbose )
-        printf( " searching CMOS 'top of mem' @ 0x%08x (%dK)\n",
+        printf( " searching CMOS 'top of mem' @ 0x%08lx (%dK)\n",
 	        target, segment );
-    seekEntry( target );
-    readEntry( buffer, ONE_KBYTE );
 
-    for ( x = 0; x < ONE_KBYTE / sizeof ( unsigned int ); NEXT(x) ) {
-        if ( buffer[ x ] == MP_SIG ) {
-            *where = 2;
-            *paddr = (x * sizeof( unsigned int )) + target;
-            return;
-        }
+    if ((x = findMpSig(target, ONE_KBYTE)) != -1) {
+	*where = 2;
+	*paddr = x;
+	return;
     }
 
     /* we don't necessarily believe CMOS, check base of the last 1K of 640K */
     if ( target != (DEFAULT_TOPOFMEM - 1024)) {
 	target = (DEFAULT_TOPOFMEM - 1024);
 	if ( verbose )
-	    printf( " searching default 'top of mem' @ 0x%08x (%dK)\n",
+	    printf( " searching default 'top of mem' @ 0x%08lx (%ldK)\n",
 		    target, (target / 1024) );
-	seekEntry( target );
-	readEntry( buffer, ONE_KBYTE );
 
-	for ( x = 0; x < ONE_KBYTE / sizeof ( unsigned int ); NEXT(x) ) {
-	    if ( buffer[ x ] == MP_SIG ) {
-		*where = 3;
-		*paddr = (x * sizeof( unsigned int )) + target;
-		return;
-	    }
+	if ((x = findMpSig(target, ONE_KBYTE)) != -1) {
+	    *where = 3;
+	    *paddr = x;
+	    return;
 	}
     }
 
     /* search the BIOS */
     if ( verbose )
         printf( " searching BIOS @ 0x%08x\n", BIOS_BASE );
-    seekEntry( BIOS_BASE );
-    readEntry( buffer, BIOS_SIZE );
 
-    for ( x = 0; x < BIOS_SIZE / sizeof( unsigned int ); NEXT(x) ) {
-        if ( buffer[ x ] == MP_SIG ) {
-            *where = 4;
-            *paddr = (x * sizeof( unsigned int )) + BIOS_BASE;
-            return;
-        }
+    if ((x = findMpSig(BIOS_BASE, BIOS_SIZE)) != -1) {
+	*where = 4;
+	*paddr = x;
+	return;
     }
 
     /* search the extended BIOS */
     if ( verbose )
         printf( " searching extended BIOS @ 0x%08x\n", BIOS_BASE2 );
-    seekEntry( BIOS_BASE2 );
-    readEntry( buffer, BIOS_SIZE );
 
-    for ( x = 0; x < BIOS_SIZE / sizeof( unsigned int ); NEXT(x) ) {
-        if ( buffer[ x ] == MP_SIG ) {
-            *where = 5;
-            *paddr = (x * sizeof( unsigned int )) + BIOS_BASE2;
-            return;
-        }
+    if ((x = findMpSig(BIOS_BASE2, BIOS_SIZE)) != -1) {
+	*where = 5;
+	*paddr = x;
+	return;
     }
 
     if ( grope ) {
 	/* search additional memory */
 	target = GROPE_AREA1;
 	if ( verbose )
-	    printf( " groping memory @ 0x%08x\n", target );
-	seekEntry( target );
-	readEntry( buffer, GROPE_SIZE );
+	    printf( " groping memory @ 0x%08lx\n", target );
 
-	for ( x = 0; x < GROPE_SIZE / sizeof( unsigned int ); NEXT(x) ) {
-	    if ( buffer[ x ] == MP_SIG ) {
-		*where = 6;
-		*paddr = (x * sizeof( unsigned int )) + GROPE_AREA1;
-		return;
-	    }
+	if ((x = findMpSig(target, GROPE_SIZE)) != -1) {
+	    *where = 6;
+	    *paddr = x;
+	    return;
 	}
 
 	target = GROPE_AREA2;
 	if ( verbose )
-	    printf( " groping memory @ 0x%08x\n", target );
-	seekEntry( target );
-	readEntry( buffer, GROPE_SIZE );
+	    printf( " groping memory @ 0x%08lx\n", target );
 
-	for ( x = 0; x < GROPE_SIZE / sizeof( unsigned int ); NEXT(x) ) {
-	    if ( buffer[ x ] == MP_SIG ) {
-		*where = 7;
-		*paddr = (x * sizeof( unsigned int )) + GROPE_AREA2;
-		return;
-	    }
+	if ((x = findMpSig(target, GROPE_SIZE)) != -1) {
+	    *where = 7;
+	    *paddr = x;
+	    return;
 	}
     }
 
@@ -570,7 +555,7 @@ MPFloatingPointer( vm_offset_t paddr, int where, mpfps_t* mpfps )
 	printf( "BOGUS!\n" );
 	exit( 1 );
     }
-    printf( "  physical address:\t\t0x%08x\n", paddr );
+    printf( "  physical address:\t\t0x%08lx\n", paddr );
 
     printf( "  signature:\t\t\t'" );
     pnstr( mpfps->signature, 4 );
@@ -660,7 +645,7 @@ MPConfigDefault( int featureByte )
  * 
  */
 static void
-MPConfigTableHeader( void* pap )
+MPConfigTableHeader( uint32_t pap )
 {
     vm_offset_t paddr;
     mpcth_t	cth;
@@ -967,14 +952,14 @@ ioApicEntry( void )
 }
 
 
-char* intTypes[] = {
+const char* intTypes[] = {
     "INT", "NMI", "SMI", "ExtINT"
 };
 
-char* polarityMode[] = {
+const char* polarityMode[] = {
     "conforms", "active-hi", "reserved", "active-lo"
 };
-char* triggerMode[] = {
+const char* triggerMode[] = {
     "conforms", "edge", "reserved", "level"
 };
 
@@ -1033,8 +1018,8 @@ sasEntry( void )
 	break;
     }
 
-    printf( " address base: 0x%qx\n", entry.addressBase );
-    printf( " address range: 0x%qx\n", entry.addressLength );
+    printf( " address base: 0x%" PRIx64 "\n", entry.addressBase );
+    printf( " address range: 0x%" PRIx64 "\n", entry.addressLength );
 }
 
 
