@@ -48,6 +48,9 @@
 #ifndef _VM_PMAP_H_
 #include <vm/pmap.h>
 #endif
+#ifndef _VM_VM_PAGE_H_
+#include <vm/vm_page.h>
+#endif
 #ifndef _MACHINE_ATOMIC_H_
 #include <machine/atomic.h>
 #endif
