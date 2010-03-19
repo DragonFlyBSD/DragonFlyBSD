@@ -492,6 +492,11 @@ MLINKS+=lock.9 lockcount.9 \
 	lock.9 lockmgr.9 \
 	lock.9 lockmgr_printinfo.9 \
 	lock.9 lockstatus.9
+MLINKS+=lwbuf.9 lwbuf_alloc.9 \
+	lwbuf.9 lwbuf_free.9 \
+	lwbuf.9 lwbuf_kva.9 \
+	lwbuf.9 lwbuf_page.9 \
+	lwbuf.9 lwbuf_set_global.9
 MLINKS+=make_autoclone_dev.9 destroy_autoclone_dev.9 \
 	make_autoclone_dev.9 DEVFS_CLONE_BITMAP.9 \
 	make_autoclone_dev.9 devfs_clone_bitmap_chk.9 \

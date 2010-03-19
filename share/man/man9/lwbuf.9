@@ -30,7 +30,7 @@
 .\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
-.\" "
+.\"
 .Dd March 17, 2010
 .Os
 .Dt lwbuf 9
@@ -40,7 +40,7 @@
 .Nm lwbuf_page ,
 .Nm lwbuf_kva ,
 .Nm lwbuf_set_global
-.Nd "Lightweight buffers"
+.Nd lightweight buffers
 .Sh SYNOPSIS
 .In cpu/lwbuf.h
 .Ft "struct lwbuf *"
@@ -55,10 +55,10 @@
 .Fn lwbuf_set_global "struct lwbuf *lwb"
 .Sh DESCRIPTION
 The
-.Fa lwbuf
+.Nm lwbuf
 kernel functions are used for maintaining a lightweight reference to and
 accessing an arbitrary
-.Fa vm_page_t .
+.Vt vm_page_t .
 .Pp
 .Fn lwbuf_alloc
 returns a pointer to a lightweight buffer representing
@@ -72,40 +72,46 @@ frees all resources associated with the lightweight buffer
 and
 .Fn lwbuf_kva
 return the associated
-.Fa vm_page_t
+.Vt vm_page_t
 or
-.Fa vm_offset_t
+.Vt vm_offset_t
 of the lightweight buffer
 .Fa lwb .
 .Pp
 .Fn lwbuf_set_global
-ensures that a vm_offset_t previously obtained through
+ensures that a
+.Vt vm_offset_t
+previously obtained through
 .Fa lwbuf_kva
 will be valid on all processors without subsequent calls to
 .Fa lwbuf_kva .
 It should not be used.
 .Sh IMPLEMENTATION NOTES
 The implementation of
-.Fa lwbuf
-is cpu-dependent. On i386, pages taken from
+.Nm lwbuf
+is CPU-dependent.
+On i386, pages taken from
 per-processor pools of kernel virtual address space (KVA) are used to map
 arbitrary
-.Fa vm_page_t
-objects. On x86_64 such tricks are unnecessary, the
+.Vt vm_page_t
+objects.
+On x86_64 such tricks are unnecessary, the
 kernel maintains a direct map of KVA covering all physical memory.
 .Pp
 Lightweight buffers are thread and cross-processor safe with a number of
-limitations. Allocated buffers are not internally cached or reference counted.
+limitations.
+Allocated buffers are not internally cached or reference counted.
 Any consumer of lightweight buffers may elect to share allocated buffers
 or allow them to be used in other threads or on other processors, but care
-must be taken. Buffers must be externally refcounted or in some other manner
+must be taken.
+Buffers must be externally refcounted or in some other manner
 freed only after last use.
 .Sh HISTORY
 A
 .Nm lwbuf
 implementation first appeared in
 .Dx 2.5 .
-.Sh Authors
+.Sh AUTHORS
 The
 .Nm lwbuf
 implementation and this manpage were written by
