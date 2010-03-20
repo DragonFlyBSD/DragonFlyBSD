@@ -48,6 +48,7 @@
 #define WBSIO_ID_W83627THF	0x82
 #define WBSIO_ID_W83627EHF	0x88
 #define WBSIO_ID_W83627DHG	0xa0
+#define WBSIO_ID_W83627DHGP	0xb0
 #define WBSIO_ID_W83627SF	0x59
 #define WBSIO_ID_W83637HF	0x70
 #define WBSIO_ID_W83667HG	0xa5
@@ -192,6 +193,9 @@ wbsio_probe(struct device *dev)
 		break;
 	case WBSIO_ID_W83627DHG:
 		desc = "W83627DHG";
+		break;
+	case WBSIO_ID_W83627DHGP:
+		desc = "W83627DHG-P";
 		break;
 	case WBSIO_ID_W83637HF:
 		desc = "W83637HF";
