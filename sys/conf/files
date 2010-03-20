@@ -138,7 +138,7 @@ dev/netif/an/if_an_pci.c		optional an pci
 dev/netif/an/if_an_pccard.c		optional an pccard
 dev/netif/ar/if_ar.c			optional ar
 dev/netif/ar/if_ar_pci.c		optional ar pci
-dev/raid/asr/asr.c			optional nowerror asr pci
+dev/raid/asr/asr.c			optional asr pci
 dev/disk/ata/ata-all.c			optional ata
 dev/disk/ata/ata-isa.c			optional ata isa
 dev/disk/ata/ata-card.c			optional ata pccard
@@ -292,7 +292,7 @@ dev/netif/ale/if_ale.c			optional ale
 dev/netif/bce/if_bce.c			optional bce
 dev/netif/bfe/if_bfe.c			optional bfe
 dev/netif/bge/if_bge.c			optional bge
-dev/disk/buslogic/bt.c			optional nowerror bt
+dev/disk/buslogic/bt.c			optional bt
 dev/disk/buslogic/bt_isa.c		optional bt isa
 dev/disk/buslogic/bt_eisa.c		optional bt eisa
 dev/disk/buslogic/bt_pci.c		optional bt pci
@@ -305,7 +305,7 @@ dev/misc/dcons/dcons.c		optional dcons
 dev/misc/dcons/dcons_crom.c	optional dcons_crom
 dev/misc/dcons/dcons_os.c	optional dcons
 #dev/raid/dpt/dpt_control.c	optional dpt
-dev/raid/dpt/dpt_scsi.c	optional nowerror dpt
+dev/raid/dpt/dpt_scsi.c	optional dpt
 dev/raid/dpt/dpt_eisa.c	optional dpt eisa
 dev/raid/dpt/dpt_pci.c	optional dpt pci
 dev/netif/ed/if_ed.c		optional nowerror ed
@@ -1310,7 +1310,7 @@ dev/agp/agp_x86_64.c		optional agp
 dev/agp/agp_i810.c		optional agp
 dev/agp/agp_ati.c		optional agp
 dev/agp/agp_if.m		optional agp
-dev/disk/amd/amd.c		optional nowerror amd
+dev/disk/amd/amd.c		optional amd
 dev/video/bktr/bktr_audio.c	optional bktr pci
 dev/video/bktr/bktr_card.c	optional bktr pci
 dev/video/bktr/bktr_core.c	optional bktr pci
