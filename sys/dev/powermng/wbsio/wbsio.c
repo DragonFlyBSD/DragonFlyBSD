@@ -51,6 +51,7 @@
 #define WBSIO_ID_W83627SF	0x59
 #define WBSIO_ID_W83637HF	0x70
 #define WBSIO_ID_W83667HG	0xa5
+#define WBSIO_ID_W83687THF	0x85
 #define WBSIO_ID_W83697HF	0x60
 
 /* Logical Device Number (LDN) Assignments */
@@ -197,6 +198,9 @@ wbsio_probe(struct device *dev)
 		break;
 	case WBSIO_ID_W83667HG:
 		desc = "W83667HG";
+		break;
+	case WBSIO_ID_W83687THF:
+		desc = "W83687THF";
 		break;
 	case WBSIO_ID_W83697HF:
 		desc = "W83697HF";
