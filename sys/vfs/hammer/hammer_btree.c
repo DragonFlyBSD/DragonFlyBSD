@@ -1526,7 +1526,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	const int esize = sizeof(*elm);
 
 	hammer_node_lock_init(&lockroot, cursor->node);
-	error = hammer_btree_lock_children(cursor, 1, &lockroot);
+	error = hammer_btree_lock_children(cursor, 1, &lockroot, NULL);
 	if (error)
 		goto done;
 	if ((error = hammer_cursor_upgrade(cursor)) != 0)
@@ -1750,7 +1750,7 @@ btree_split_internal(hammer_cursor_t cursor)
 		 &cursor->node->ondisk->elms[cursor->node->ondisk->count].internal.base) >= 0);
 
 done:
-	hammer_btree_unlock_children(cursor, &lockroot);
+	hammer_btree_unlock_children(cursor->trans->hmp, &lockroot, NULL);
 	hammer_cursor_downgrade(cursor);
 	return (error);
 }
@@ -2668,6 +2668,54 @@ hammer_node_lock_init(hammer_node_lock_t parent, hammer_node_t node)
 }
 
 /*
+ * Initialize a cache of hammer_node_lock's including space allocated
+ * for node copies.
+ *
+ * This is used by the rebalancing code to preallocate the copy space
+ * for ~4096 B-Tree nodes (16MB of data) prior to acquiring any HAMMER
+ * locks, otherwise we can blow out the pageout daemon's emergency
+ * reserve and deadlock it.
+ *
+ * NOTE: HAMMER_NODE_LOCK_LCACHE is not set on items cached in the lcache.
+ *	 The flag is set when the item is pulled off the cache for use.
+ */
+void
+hammer_btree_lcache_init(hammer_mount_t hmp, hammer_node_lock_t lcache,
+			 int depth)
+{
+	hammer_node_lock_t item;
+	int count;
+
+	for (count = 1; depth; --depth)
+		count *= HAMMER_BTREE_LEAF_ELMS;
+	bzero(lcache, sizeof(*lcache));
+	TAILQ_INIT(&lcache->list);
+	while (count) {
+		item = kmalloc(sizeof(*item), hmp->m_misc, M_WAITOK|M_ZERO);
+		item->copy = kmalloc(sizeof(*item->copy),
+				     hmp->m_misc, M_WAITOK);
+		TAILQ_INIT(&item->list);
+		TAILQ_INSERT_TAIL(&lcache->list, item, entry);
+		--count;
+	}
+}
+
+void
+hammer_btree_lcache_free(hammer_mount_t hmp, hammer_node_lock_t lcache)
+{
+	hammer_node_lock_t item;
+
+	while ((item = TAILQ_FIRST(&lcache->list)) != NULL) {
+		TAILQ_REMOVE(&lcache->list, item, entry);
+		KKASSERT(item->copy);
+		KKASSERT(TAILQ_EMPTY(&item->list));
+		kfree(item->copy, hmp->m_misc);
+		kfree(item, hmp->m_misc);
+	}
+	KKASSERT(lcache->copy == NULL);
+}
+
+/*
  * Exclusively lock all the children of node.  This is used by the split
  * code to prevent anyone from accessing the children of a cursor node
  * while we fix-up its parent offset.
@@ -2683,7 +2731,8 @@ hammer_node_lock_init(hammer_node_lock_t parent, hammer_node_t node)
  */
 int
 hammer_btree_lock_children(hammer_cursor_t cursor, int depth,
-			   hammer_node_lock_t parent)
+			   hammer_node_lock_t parent,
+			   hammer_node_lock_t lcache)
 {
 	hammer_node_t node;
 	hammer_node_lock_t item;
@@ -2746,10 +2795,20 @@ hammer_btree_lock_children(hammer_cursor_t cursor, int depth,
 				error = EDEADLK;
 				hammer_rel_node(child);
 			} else {
-				item = kmalloc(sizeof(*item), hmp->m_misc,
-					       M_WAITOK|M_ZERO);
+				if (lcache) {
+					item = TAILQ_FIRST(&lcache->list);
+					KKASSERT(item != NULL);
+					item->flags |= HAMMER_NODE_LOCK_LCACHE;
+					TAILQ_REMOVE(&lcache->list,
+						     item, entry);
+				} else {
+					item = kmalloc(sizeof(*item),
+						       hmp->m_misc,
+						       M_WAITOK|M_ZERO);
+					TAILQ_INIT(&item->list);
+				}
+
 				TAILQ_INSERT_TAIL(&parent->list, item, entry);
-				TAILQ_INIT(&item->list);
 				item->parent = parent;
 				item->node = child;
 				item->index = i;
@@ -2762,13 +2821,14 @@ hammer_btree_lock_children(hammer_cursor_t cursor, int depth,
 					error = hammer_btree_lock_children(
 							cursor,
 							depth - 1,
-							item);
+							item,
+							lcache);
 				}
 			}
 		}
 	}
 	if (error)
-		hammer_btree_unlock_children(cursor, parent);
+		hammer_btree_unlock_children(hmp, parent, lcache);
 	return(error);
 }
 
@@ -2783,10 +2843,12 @@ hammer_btree_lock_copy(hammer_cursor_t cursor, hammer_node_lock_t parent)
 	hammer_node_lock_t item;
 
 	if (parent->copy == NULL) {
-		parent->copy = kmalloc(sizeof(*parent->copy), hmp->m_misc,
-				       M_WAITOK);
-		*parent->copy = *parent->node->ondisk;
+		KKASSERT((parent->flags & HAMMER_NODE_LOCK_LCACHE) == 0);
+		parent->copy = kmalloc(sizeof(*parent->copy),
+				       hmp->m_misc, M_WAITOK);
 	}
+	KKASSERT((parent->flags & HAMMER_NODE_LOCK_UPDATED) == 0);
+	*parent->copy = *parent->node->ondisk;
 	TAILQ_FOREACH(item, &parent->list, entry) {
 		hammer_btree_lock_copy(cursor, item);
 	}
@@ -2821,22 +2883,45 @@ hammer_btree_sync_copy(hammer_cursor_t cursor, hammer_node_lock_t parent)
  * Release previously obtained node locks.  The caller is responsible for
  * cleaning up parent->node itself (its usually just aliased from a cursor),
  * but this function will take care of the copies.
+ *
+ * NOTE: The root node is not placed in the lcache and node->copy is not
+ *	 deallocated when lcache != NULL.
  */
 void
-hammer_btree_unlock_children(hammer_cursor_t cursor, hammer_node_lock_t parent)
+hammer_btree_unlock_children(hammer_mount_t hmp, hammer_node_lock_t parent,
+			     hammer_node_lock_t lcache)
 {
 	hammer_node_lock_t item;
+	hammer_node_ondisk_t copy;
 
-	if (parent->copy) {
-		kfree(parent->copy, cursor->trans->hmp->m_misc);
-		parent->copy = NULL;	/* safety */
-	}
 	while ((item = TAILQ_FIRST(&parent->list)) != NULL) {
 		TAILQ_REMOVE(&parent->list, item, entry);
-		hammer_btree_unlock_children(cursor, item);
+		hammer_btree_unlock_children(hmp, item, lcache);
 		hammer_unlock(&item->node->lock);
 		hammer_rel_node(item->node);
-		kfree(item, cursor->trans->hmp->m_misc);
+		if (lcache) {
+			/*
+			 * NOTE: When placing the item back in the lcache
+			 *	 the flag is cleared by the bzero().
+			 *	 Remaining fields are cleared as a safety
+			 *	 measure.
+			 */
+			KKASSERT(item->flags & HAMMER_NODE_LOCK_LCACHE);
+			KKASSERT(TAILQ_EMPTY(&item->list));
+			copy = item->copy;
+			bzero(item, sizeof(*item));
+			TAILQ_INIT(&item->list);
+			item->copy = copy;
+			if (copy)
+				bzero(copy, sizeof(*copy));
+			TAILQ_INSERT_TAIL(&lcache->list, item, entry);
+		} else {
+			kfree(item, hmp->m_misc);
+		}
+	}
+	if (parent->copy && (parent->flags & HAMMER_NODE_LOCK_LCACHE) == 0) {
+		kfree(parent->copy, hmp->m_misc);
+		parent->copy = NULL;	/* safety */
 	}
 }
 

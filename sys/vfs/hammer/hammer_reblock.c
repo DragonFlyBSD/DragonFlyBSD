@@ -504,7 +504,7 @@ hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
 	int i;
 
 	hammer_node_lock_init(&lockroot, cursor->node);
-	error = hammer_btree_lock_children(cursor, 1, &lockroot);
+	error = hammer_btree_lock_children(cursor, 1, &lockroot, NULL);
 	if (error)
 		goto done;
 
@@ -586,7 +586,7 @@ hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
 	hammer_rel_node(onode);
 
 done:
-	hammer_btree_unlock_children(cursor, &lockroot);
+	hammer_btree_unlock_children(cursor->trans->hmp, &lockroot, NULL);
 	return (error);
 }
 
