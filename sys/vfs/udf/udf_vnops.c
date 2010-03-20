@@ -874,7 +874,6 @@ udf_lookup(struct vop_old_lookup_args *a)
 	struct fileid_desc *fid = NULL;
 	struct udf_dirstream *ds;
 	struct thread *td;
-	globaldata_t gd = mycpu;
 	u_long nameiop;
 	u_long flags;
 	char *nameptr;
