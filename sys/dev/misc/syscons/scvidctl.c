@@ -103,7 +103,7 @@ sc_set_text_mode(scr_stat *scp, struct tty *tp, int mode, int xsize, int ysize,
 	return error;
     }
 
-    if (sc_render_match(scp, scp->sc->adp->va_name, 0) == NULL) {
+    if (sc_render_match(scp, scp->sc->adp->va_name, V_INFO_MM_TEXT) == NULL) {
 	crit_exit();
 	return ENODEV;
     }
@@ -124,6 +124,7 @@ sc_set_text_mode(scr_stat *scp, struct tty *tp, int mode, int xsize, int ysize,
     scp->status |= UNKNOWN_MODE | MOUSE_HIDDEN;
     scp->status &= ~(GRAPHICS_MODE | PIXEL_MODE | MOUSE_VISIBLE);
     scp->mode = mode;
+    scp->model = V_INFO_MM_TEXT;
     scp->xsize = xsize;
     scp->ysize = ysize;
     scp->xoff = 0;
@@ -181,7 +182,7 @@ sc_set_graphics_mode(scr_stat *scp, struct tty *tp, int mode)
 	return error;
     }
 
-    if (sc_render_match(scp, scp->sc->adp->va_name, GRAPHICS_MODE) == NULL) {
+    if (sc_render_match(scp, scp->sc->adp->va_name, V_INFO_MM_OTHER) == NULL) {
 	crit_exit();
 	return ENODEV;
     }
@@ -190,6 +191,7 @@ sc_set_graphics_mode(scr_stat *scp, struct tty *tp, int mode)
     scp->status |= (UNKNOWN_MODE | GRAPHICS_MODE | MOUSE_HIDDEN);
     scp->status &= ~(PIXEL_MODE | MOUSE_VISIBLE);
     scp->mode = mode;
+    scp->model = V_INFO_MM_OTHER;
     /*
      * Don't change xsize and ysize; preserve the previous vty
      * and history buffers.
@@ -314,7 +316,7 @@ sc_set_pixel_mode(scr_stat *scp, struct tty *tp, int xsize, int ysize,
 	return error;
     }
 
-    if (sc_render_match(scp, scp->sc->adp->va_name, PIXEL_MODE) == NULL) {
+    if (sc_render_match(scp, scp->sc->adp->va_name, info.vi_mem_model) == NULL) {
 	crit_exit();
 	return ENODEV;
     }
@@ -337,6 +339,7 @@ sc_set_pixel_mode(scr_stat *scp, struct tty *tp, int xsize, int ysize,
     prev_ysize = scp->ysize;
     scp->status |= (UNKNOWN_MODE | PIXEL_MODE | MOUSE_HIDDEN);
     scp->status &= ~(GRAPHICS_MODE | MOUSE_VISIBLE);
+    scp->model = info.vi_mem_model;
     scp->xsize = xsize;
     scp->ysize = ysize;
     scp->xoff = (scp->xpixel/8 - xsize)/2;
@@ -622,15 +625,15 @@ sc_render_remove(sc_renderer_t *rndr)
 }
 
 sc_rndr_sw_t *
-sc_render_match(scr_stat *scp, char *name, int mode)
+sc_render_match(scr_stat *scp, char *name, int model)
 {
 	const sc_renderer_t **list;
 	const sc_renderer_t *p;
 
 	if (!LIST_EMPTY(&sc_rndr_list)) {
 		LIST_FOREACH(p, &sc_rndr_list, link) {
-			if ((strcmp(p->name, name) == 0)
-				&& (mode == p->mode)) {
+			if ((strcmp(p->name, name) == 0) &&
+			    (model == p->model)) {
 				scp->status &=
 				    ~(VR_CURSOR_ON | VR_CURSOR_BLINK);
 				return p->rndrsw;
@@ -639,8 +642,8 @@ sc_render_match(scr_stat *scp, char *name, int mode)
 	} else {
 		SET_FOREACH(list, scrndr_set) {
 			p = *list;
-			if ((strcmp(p->name, name) == 0)
-				&& (mode == p->mode)) {
+			if ((strcmp(p->name, name) == 0) &&
+			    (model == p->model)) {
 				scp->status &=
 				    ~(VR_CURSOR_ON | VR_CURSOR_BLINK);
 				return p->rndrsw;
