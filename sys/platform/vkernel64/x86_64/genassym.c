@@ -87,7 +87,7 @@ ASSYM(PCB_RBP, offsetof(struct pcb, pcb_rbp));
 ASSYM(PCB_RSP, offsetof(struct pcb, pcb_rsp));
 ASSYM(PCB_RBX, offsetof(struct pcb, pcb_rbx));
 ASSYM(PCB_RIP, offsetof(struct pcb, pcb_rip));
-ASSYM(TSS_RSP0, offsetof(struct amd64tss, tss_rsp0));
+ASSYM(TSS_RSP0, offsetof(struct x86_64tss, tss_rsp0));
 
 ASSYM(PCB_DR0, offsetof(struct pcb, pcb_dr0));
 ASSYM(PCB_DR1, offsetof(struct pcb, pcb_dr1));

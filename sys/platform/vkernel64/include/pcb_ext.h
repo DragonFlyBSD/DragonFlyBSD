@@ -47,7 +47,7 @@
 
 struct pcb_ext {
 	struct 	user_segment_descriptor ext_tssd;	/* tss descriptor */
-	struct 	amd64tss	ext_tss;	/* per-process amd64tss */
+	struct 	x86_64tss	ext_tss;	/* per-process amd64tss */
 	caddr_t	ext_iomap;		/* i/o permission bitmap */
 };
 

@@ -88,10 +88,11 @@
 #include <machine/tss.h>
 #include <machine/globaldata.h>
 
-
 #include <ddb/ddb.h>
+
 #include <sys/msgport2.h>
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #ifdef SMP
 
@@ -953,7 +954,7 @@ trap_fatal(struct trapframe *frame, int usermode, vm_offset_t eva)
 	kprintf("cpuid = %d\n", mycpu->gd_cpuid);
 #endif
 	if (type == T_PAGEFLT) {
-		kprintf("fault virtual address	= 0x%x\n", eva);
+		kprintf("fault virtual address	= %p\n", (void *)eva);
 		kprintf("fault code		= %s %s, %s\n",
 			usermode ? "user" : "supervisor",
 			code & PGEX_W ? "write" : "read",
@@ -983,7 +984,7 @@ trap_fatal(struct trapframe *frame, int usermode, vm_offset_t eva)
 	if (frame->tf_eflags & PSL_VM)
 		kprintf("vm86, ");
 #endif
-	kprintf("IOPL = %d\n", (frame->tf_rflags & PSL_IOPL) >> 12);
+	kprintf("IOPL = %jd\n", (intmax_t)((frame->tf_rflags & PSL_IOPL) >> 12));
 	kprintf("current process		= ");
 	if (curproc) {
 		kprintf("%lu (%s)\n",
@@ -1036,7 +1037,9 @@ trap_fatal(struct trapframe *frame, int usermode, vm_offset_t eva)
 void
 dblfault_handler(void)
 {
+#if JG
 	struct mdglobaldata *gd = mdcpu;
+#endif
 
 	kprintf("\nFatal double fault:\n");
 #if JG
@@ -1161,10 +1164,7 @@ syscall2(struct trapframe *frame)
 	 * call.  The current frame is copied out to the virtual kernel.
 	 */
 	if (lp->lwp_vkernel && lp->lwp_vkernel->ve) {
-		error = vkernel_trap(lp, frame);
-		frame->tf_rax = error;
-		if (error)
-			frame->tf_rflags |= PSL_C;
+		vkernel_trap(lp, frame);
 		error = EJUSTRETURN;
 		goto out;
 	}
@@ -1255,16 +1255,10 @@ syscall2(struct trapframe *frame)
 
 	STOPEVENT(p, S_SCE, narg);	/* MP aware */
 
-#ifdef SMP
 	/*
-	 * Try to run the syscall without the MP lock if the syscall
-	 * is MP safe.  We have to obtain the MP lock no matter what if
-	 * we are ktracing
+	 * NOTE: All system calls run MPSAFE now.  The system call itself
+	 *	 is responsible for getting the MP lock.
 	 */
-	if ((callp->sy_narg & SYF_MPSAFE) == 0)
-		MAKEMPSAFE(have_mplock);
-#endif
-
 	error = (*callp->sy_call)(&args);
 
 #if 0
@@ -1465,7 +1459,7 @@ go_user(struct intrframe *frame)
 #endif
 		if (r < 0) {
 			if (errno != EINTR)
-				panic("vmspace_ctl failed");
+				panic("vmspace_ctl failed error %d", errno);
 		} else {
 			if (tf->tf_trapno) {
 				user_trap(tf);
@@ -1498,4 +1492,18 @@ set_vkernel_fp(struct trapframe *frame)
 	} else {
 		td->td_pcb->pcb_flags &= ~FP_VIRTFP;
 	}
+}
+
+/*
+ * Called from vkernel_trap() to fixup the vkernel's syscall
+ * frame for vmspace_ctl() return.
+ */
+void
+cpu_vkernel_trap(struct trapframe *frame, int error)
+{
+	frame->tf_rax = error;
+	if (error)
+		frame->tf_rflags |= PSL_C;
+	else
+		frame->tf_rflags &= ~PSL_C;
 }

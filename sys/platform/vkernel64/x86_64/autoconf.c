@@ -128,8 +128,8 @@ cpu_startup(void *dummy)
 	vm_offset_t pager_eva;
 
 	kprintf("%s", version);
-	kprintf("real memory = %llu (%lluK bytes)\n",
-		ptoa(Maxmem), ptoa(Maxmem) / 1024);
+	kprintf("real memory = %ju (%juK bytes)\n",
+	    (uintmax_t)ptoa(Maxmem), (uintmax_t)(ptoa(Maxmem) / 1024));
 
 	if (nbuf == 0) {
 		int factor = 4 * BKVASIZE / 1024;

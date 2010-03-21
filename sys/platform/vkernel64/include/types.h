@@ -31,22 +31,12 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/platform/vkernel/include/proc.h,v 1.1 2006/11/07 18:50:07 dillon Exp $
  */
+#ifndef _MACHINE_TYPES_H_
+#define	_MACHINE_TYPES_H_
 
-#ifndef _MACHINE_PROC_H_
-#define	_MACHINE_PROC_H_
+#include <cpu/types.h>
 
-/*
- * When a trap or exception occurs the trap code stores the frame pointer
- * in md_regs so emulation and other code can modify it for the return.
- */
-struct trapframe;
+typedef __uint32_t	intrmask_t;
 
-struct mdproc {
-	struct trapframe *md_regs;	/* registers on current frame */
-};
-
-int grow_stack(struct proc *p, u_long sp); /* XXX swildner */
-
-#endif /* !_MACHINE_PROC_H_ */
+#endif /* !_MACHINE_TYPES_H_ */

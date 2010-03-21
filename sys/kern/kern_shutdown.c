@@ -426,10 +426,10 @@ shutdown_busycount2(struct buf *bp, void *info)
 		}
 #if defined(SHOW_BUSYBUFS) || defined(DIAGNOSTIC)
 		kprintf(
-	    "%p dev:?, flags:%08x, loffset:%lld, doffset:%lld\n",
+	    "%p dev:?, flags:%08x, loffset:%jd, doffset:%jd\n",
 		    bp, 
-		    bp->b_flags, bp->b_loffset,
-		    bp->b_bio2.bio_offset);
+		    bp->b_flags, (intmax_t)bp->b_loffset,
+		    (intmax_t)bp->b_bio2.bio_offset);
 #endif
 		return(1);
 	}

@@ -11,19 +11,19 @@ vfs/smbfs/smbfs_smb.c		optional	smbfs
 vfs/smbfs/smbfs_subr.c		optional	smbfs
 vfs/smbfs/smbfs_vfsops.c	optional	smbfs
 vfs/smbfs/smbfs_vnops.c		optional	smbfs
-cpu/amd64/misc/atomic.c		standard				\
+cpu/x86_64/misc/atomic.c	standard				\
 	compile-with	"${CC} -c ${CFLAGS} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
-platform/vkernel64/amd64/autoconf.c	standard
-platform/vkernel64/amd64/mp.c		optional	smp		\
+platform/vkernel64/x86_64/autoconf.c	standard
+platform/vkernel64/x86_64/mp.c		optional	smp		\
 	compile-with	"${CC} -c -pthread ${CFLAGS} -I/usr/include ${.IMPSRC}"
-platform/vkernel64/amd64/mplock.s		optional	smp
 #
 # DDB XXX
-cpu/amd64/misc/elf_machdep.c		standard
-cpu/amd64/misc/in_cksum2.s		optional	inet
-cpu/amd64/misc/ktr.c			optional	ktr
-cpu/amd64/misc/db_disasm.c		optional	ddb
-cpu/amd64/misc/amd64-gdbstub.c		optional	ddb
+cpu/x86_64/misc/elf_machdep.c		standard
+cpu/x86_64/misc/lwbuf.c			standard
+cpu/x86_64/misc/in_cksum2.s		optional	inet
+cpu/x86_64/misc/ktr.c			optional	ktr
+cpu/x86_64/misc/db_disasm.c		optional	ddb
+cpu/x86_64/misc/x86_64-gdbstub.c	optional	ddb
 #
 # DOS mbr and gpt
 kern/subr_diskmbr.c			standard
@@ -37,26 +37,26 @@ dev/virtual/net/if_vke.c		optional	vke
 
 # PLATFORM FILES
 #
-platform/vkernel64/amd64/global.s		standard
-platform/vkernel64/amd64/swtch.s		standard
-platform/vkernel64/amd64/npx.c		standard
-platform/vkernel64/amd64/db_interface.c	optional	ddb
-platform/vkernel64/amd64/db_trace.c	optional	ddb
-platform/vkernel64/amd64/vm_machdep.c	standard
-platform/vkernel64/amd64/cpu_regs.c	standard
-platform/vkernel64/amd64/userldt.c		standard
-platform/vkernel64/amd64/tls.c		standard
-platform/vkernel64/amd64/trap.c		standard
-platform/vkernel64/amd64/exception.c	standard
-platform/vkernel64/amd64/procfs_machdep.c	standard
-platform/vkernel64/amd64/fork_tramp.s	standard
-platform/vkernel64/platform/init.c	standard
+platform/vkernel64/x86_64/global.s		standard
+platform/vkernel64/x86_64/swtch.s		standard
+platform/vkernel64/x86_64/npx.c		standard
+platform/vkernel64/x86_64/db_interface.c	optional	ddb
+platform/vkernel64/x86_64/db_trace.c	optional	ddb
+platform/vkernel64/x86_64/vm_machdep.c	standard
+platform/vkernel64/x86_64/cpu_regs.c	standard
+platform/vkernel64/x86_64/userldt.c		standard
+platform/vkernel64/x86_64/tls.c		standard
+platform/vkernel64/x86_64/trap.c	standard
+platform/vkernel64/x86_64/exception.c	standard
+platform/vkernel64/x86_64/procfs_machdep.c	standard
+platform/vkernel64/x86_64/fork_tramp.s	standard
+platform/vkernel64/platform/init.c	standard nowerror
 platform/vkernel64/platform/globaldata.c	standard
 platform/vkernel64/platform/kqueue.c	standard
 platform/vkernel64/platform/shutdown.c	standard
 platform/vkernel64/platform/machintr.c	standard
 platform/vkernel64/platform/copyio.c	standard
-platform/vkernel64/platform/pmap.c	standard
+platform/vkernel64/platform/pmap.c	standard nowerror
 platform/vkernel64/platform/pmap_inval.c	standard
 platform/vkernel64/platform/busdma_machdep.c standard
 platform/vkernel64/platform/sysarch.c	standard

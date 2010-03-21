@@ -192,7 +192,6 @@ static void	i386_protection_init (void);
 static __inline void	pmap_clearbit (vm_page_t m, int bit);
 
 static void	pmap_remove_all (vm_page_t m);
-static void	pmap_enter_quick (pmap_t pmap, vm_offset_t va, vm_page_t m);
 static int pmap_remove_pte (struct pmap *pmap, pt_entry_t *ptq,
 				vm_offset_t sva);
 static void pmap_remove_page (struct pmap *pmap, vm_offset_t va);
@@ -805,7 +804,7 @@ pmap_kremove_quick(vm_offset_t va)
  *	specified memory.
  */
 vm_offset_t
-pmap_map(vm_offset_t virt, vm_paddr_t start, vm_paddr_t end, int prot)
+pmap_map(vm_offset_t *virtp, vm_paddr_t start, vm_paddr_t end, int prot)
 {
 	return PHYS_TO_DMAP(start);
 }
@@ -2343,7 +2342,7 @@ validate:
  *
  * Currently this routine may only be used on user pmaps, not kernel_pmap.
  */
-static void
+void
 pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 {
 	pt_entry_t *pte;
@@ -2471,7 +2470,7 @@ pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
 	if (lp == NULL || pmap != vmspace_pmap(lp->lwp_vmspace))
 		return;
 
-	psize = amd64_btop(size);
+	psize = x86_64_btop(size);
 
 	if ((object->type != OBJT_VNODE) ||
 		((limit & MAP_PREFAULT_PARTIAL) && (psize > MAX_INIT_PT) &&
@@ -2529,121 +2528,34 @@ pmap_object_init_pt_callback(vm_page_t p, void *data)
 		vm_page_busy(p);
 		rel_index = p->pindex - info->start_pindex;
 		pmap_enter_quick(info->pmap,
-				 info->addr + amd64_ptob(rel_index), p);
+				 info->addr + x86_64_ptob(rel_index), p);
 		vm_page_wakeup(p);
 	}
 	return(0);
 }
 
 /*
- * pmap_prefault provides a quick way of clustering pagefaults into a
- * processes address space.  It is a "cousin" of pmap_object_init_pt,
- * except it runs at page fault time instead of mmap time.
+ * Return TRUE if the pmap is in shape to trivially
+ * pre-fault the specified address.
+ *
+ * Returns FALSE if it would be non-trivial or if a
+ * pte is already loaded into the slot.
  */
-#define PFBAK 4
-#define PFFOR 4
-#define PAGEORDER_SIZE (PFBAK+PFFOR)
-
-static int pmap_prefault_pageorder[] = {
-	-PAGE_SIZE, PAGE_SIZE,
-	-2 * PAGE_SIZE, 2 * PAGE_SIZE,
-	-3 * PAGE_SIZE, 3 * PAGE_SIZE,
-	-4 * PAGE_SIZE, 4 * PAGE_SIZE
-};
-
-void
-pmap_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry)
+int
+pmap_prefault_ok(pmap_t pmap, vm_offset_t addr)
 {
-	int i;
-	vm_offset_t starta;
-	vm_offset_t addr;
-	vm_pindex_t pindex;
-	vm_page_t m;
-	vm_object_t object;
-	struct lwp *lp;
+	pt_entry_t *pte;
+	pd_entry_t *pde;
 
-	/*
-	 * We do not currently prefault mappings that use virtual page
-	 * tables.  We do not prefault foreign pmaps.
-	 */
-	if (entry->maptype == VM_MAPTYPE_VPAGETABLE)
-		return;
-	lp = curthread->td_lwp;
-	if (lp == NULL || (pmap != vmspace_pmap(lp->lwp_vmspace)))
-		return;
+	pde = pmap_pde(pmap, addr);
+	if (pde == NULL || *pde == 0)
+		return(0);
 
-	object = entry->object.vm_object;
+	pte = pmap_pde_to_pte(pde, addr);
+	if (*pte)
+		return(0);
 
-	starta = addra - PFBAK * PAGE_SIZE;
-	if (starta < entry->start)
-		starta = entry->start;
-	else if (starta > addra)
-		starta = 0;
-
-	/*
-	 * critical section protection is required to maintain the
-	 * page/object association, interrupts can free pages and remove
-	 * them from their objects.
-	 */
-	crit_enter();
-	for (i = 0; i < PAGEORDER_SIZE; i++) {
-		vm_object_t lobject;
-		pt_entry_t *pte;
-		pd_entry_t *pde;
-
-		addr = addra + pmap_prefault_pageorder[i];
-		if (addr > addra + (PFFOR * PAGE_SIZE))
-			addr = 0;
-
-		if (addr < starta || addr >= entry->end)
-			continue;
-
-		pde = pmap_pde(pmap, addr);
-		if (pde == NULL || *pde == 0)
-			continue;
-
-		pte = pmap_pde_to_pte(pde, addr);
-		if (*pte)
-			continue;
-
-		pindex = ((addr - entry->start) + entry->offset) >> PAGE_SHIFT;
-		lobject = object;
-
-		for (m = vm_page_lookup(lobject, pindex);
-		    (!m && (lobject->type == OBJT_DEFAULT) &&
-		     (lobject->backing_object));
-		    lobject = lobject->backing_object
-		) {
-			if (lobject->backing_object_offset & PAGE_MASK)
-				break;
-			pindex += (lobject->backing_object_offset >> PAGE_SHIFT);
-			m = vm_page_lookup(lobject->backing_object, pindex);
-		}
-
-		/*
-		 * give-up when a page is not in memory
-		 */
-		if (m == NULL)
-			break;
-
-		/*
-		 * If everything meets the requirements for pmap_enter_quick(),
-		 * then enter the page.
-		 */
-
-		if (((m->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL) &&
-			(m->busy == 0) &&
-		    (m->flags & (PG_BUSY | PG_FICTITIOUS)) == 0) {
-
-			if ((m->queue - m->pc) == PQ_CACHE) {
-				vm_page_deactivate(m);
-			}
-			vm_page_busy(m);
-			pmap_enter_quick(pmap, addr, m);
-			vm_page_wakeup(m);
-		}
-	}
-	crit_exit();
+	return(1);
 }
 
 /*
@@ -3069,7 +2981,7 @@ pmap_page_protect(vm_page_t m, vm_prot_t prot)
 vm_paddr_t
 pmap_phys_address(vm_pindex_t ppn)
 {
-	return (amd64_ptob(ppn));
+	return (x86_64_ptob(ppn));
 }
 
 /*

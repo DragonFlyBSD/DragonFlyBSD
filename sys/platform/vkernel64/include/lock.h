@@ -42,56 +42,7 @@
 #include <machine/psl.h>
 #endif
 
-/*
- * MP_FREE_LOCK is used by both assembly and C under SMP.
- */
-#ifdef SMP
-#define MP_FREE_LOCK		0xffffffff	/* value of lock when free */
-#endif
-
 #ifndef LOCORE
 
-#if defined(_KERNEL) || defined(_UTHREAD)
-
-/*
- * MP LOCK functions for SMP and UP.  Under UP the MP lock does not exist
- * but we leave a few functions intact as macros for convenience.
- */
-#ifdef SMP
-
-void	get_mplock(void);
-int	try_mplock(void);
-void	rel_mplock(void);
-int	cpu_try_mplock(void);
-void	cpu_get_initial_mplock(void);
-
-extern u_int	mp_lock;
-
-#define MP_LOCK_HELD()   (mp_lock == mycpu->gd_cpuid)
-#define ASSERT_MP_LOCK_HELD(td)   KASSERT(MP_LOCK_HELD(), ("MP_LOCK_HELD(): not held thread %p", td))
-
-static __inline void
-cpu_rel_mplock(void)
-{
-	mp_lock = MP_FREE_LOCK;
-}
-
-static __inline int
-owner_mplock(void)
-{
-	return (mp_lock);
-}
-
-#else
-
-#define get_mplock()
-#define try_mplock()	1
-#define rel_mplock()
-#define owner_mplock()	0	/* always cpu 0 */
-#define MP_LOCK_HELD()	(!0)
-#define ASSERT_MP_LOCK_HELD(td)
-
-#endif	/* SMP */
-#endif  /* _KERNEL || _UTHREAD */
 #endif	/* LOCORE */
 #endif	/* !_MACHINE_LOCK_H_ */

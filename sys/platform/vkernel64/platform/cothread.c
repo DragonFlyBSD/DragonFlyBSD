@@ -128,7 +128,6 @@ static void
 cothread_thread(void *arg)
 {
 	cothread_t cotd = arg;
-	int dummy = 0;
 
 	cpu_mask_all_signals(); /* XXX remove me? should already be masked */
 	/*

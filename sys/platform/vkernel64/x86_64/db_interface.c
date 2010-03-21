@@ -100,7 +100,7 @@ static int	db_global_jmpbuf_valid;
  *  kdb_trap - field a TRACE or BPT trap
  */
 int
-kdb_trap(int type, int code, struct amd64_saved_state *regs)
+kdb_trap(int type, int code, struct x86_64_saved_state *regs)
 {
 	volatile int ddb_mode = !(boothowto & RB_GDB);
 

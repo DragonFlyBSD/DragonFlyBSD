@@ -379,7 +379,7 @@ vconsgetc(void *private)
 			break;
 		if (n < 0 && errno == EINTR)
 			continue;
-		panic("vconsgetc: EOF on console %d %d", n ,errno);
+		panic("vconsgetc: EOF on console %jd %d", (intmax_t)n, errno);
 	}
 	console_stolen_by_kernel = 0;
 	return((int)c);

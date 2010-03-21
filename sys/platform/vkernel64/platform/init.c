@@ -91,6 +91,8 @@ vm_offset_t KvaEnd;
 vm_offset_t KvaSize;
 vm_offset_t virtual_start;
 vm_offset_t virtual_end;
+vm_offset_t virtual2_start;
+vm_offset_t virtual2_end;
 vm_offset_t kernel_vm_end;
 vm_offset_t crashdumpmap;
 vm_offset_t clean_sva;

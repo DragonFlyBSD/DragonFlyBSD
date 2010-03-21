@@ -3,8 +3,8 @@
 # $DragonFly: src/sys/config/VKERNEL,v 1.14 2008/11/09 18:57:17 dillon Exp $
 
 platform	vkernel64	# platform architecture (i386, vkernel, etc)
-machine		amd64
-machine_arch	amd64		# cpu architecture (i386, etc)
+machine		x86_64
+machine_arch	x86_64		# cpu architecture (i386, etc)
 ident		VKERNEL64
 maxusers	0
 

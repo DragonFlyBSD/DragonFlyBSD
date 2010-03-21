@@ -660,9 +660,9 @@ static
 void
 dl_symbol_values(long callpc, const char **name)
 {
+/*
 	Dl_info info;
 
-/*
 	if (*name == NULL) {
 		if (dladdr((const void *)callpc, &info) != 0) {
 			if (info.dli_saddr <= (const void *)callpc)

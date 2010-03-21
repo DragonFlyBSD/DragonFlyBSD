@@ -75,7 +75,7 @@ struct mdglobaldata {
 	struct user_segment_descriptor gd_common_tssd;
 	struct user_segment_descriptor *gd_tss_gdt;
 	struct thread   *gd_npxthread;
-	struct amd64tss gd_common_tss;
+	struct x86_64tss gd_common_tss;
 	union savefpu	gd_savefpu;	/* fast bcopy/zero temp fpu save area */
 	int		gd_fpu_lock;	/* fast bcopy/zero cpu lock */
 	int		gd_fpending;	/* fast interrupt pending */
