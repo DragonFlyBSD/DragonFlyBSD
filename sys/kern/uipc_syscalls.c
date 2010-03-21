@@ -86,13 +86,6 @@
 #include <netinet/sctp_peeloff.h>
 #endif /* SCTP */
 
-struct sfbuf_mref {
-	struct sf_buf	*sf;
-	int		mref_count;
-};
-
-static MALLOC_DEFINE(M_SENDFILE, "sendfile", "sendfile sfbuf ref structures");
-
 /*
  * System call interface to the socket abstraction.
  */
@@ -1403,39 +1396,24 @@ getsockaddr(struct sockaddr **namp, caddr_t uaddr, size_t len)
  * XXX vm_page_*() routines are not MPSAFE yet, the MP lock is required.
  */
 static void
-sf_buf_mref(void *arg)
-{
-	struct sfbuf_mref *sfm = arg;
-
-	/*
-	 * We must already hold a ref so there is no race to 0, just 
-	 * atomically increment the count.
-	 */
-	atomic_add_int(&sfm->mref_count, 1);
-}
-
-static void
 sf_buf_mfree(void *arg)
 {
-	struct sfbuf_mref *sfm = arg;
+	struct sf_buf *sf = arg;
 	vm_page_t m;
 
-	KKASSERT(sfm->mref_count > 0);
-	if (atomic_fetchadd_int(&sfm->mref_count, -1) == 1) {
-		/*
-		 * XXX vm_page_*() and SFBUF routines not MPSAFE yet.
-		 */
-		get_mplock();
-		crit_enter();
-		m = sf_buf_page(sfm->sf);
-		sf_buf_free(sfm->sf);
+	/*
+	 * XXX vm_page_*() and SFBUF routines not MPSAFE yet.
+	 */
+	get_mplock();
+	crit_enter();
+	m = sf_buf_page(sf);
+	if (sf_buf_free(sf) == 0) {
 		vm_page_unwire(m, 0);
 		if (m->wire_count == 0 && m->object == NULL)
 			vm_page_try_to_free(m);
-		crit_exit();
-		rel_mplock();
-		kfree(sfm, M_SENDFILE);
 	}
+	crit_exit();
+	rel_mplock();
 }
 
 /*
@@ -1573,7 +1551,6 @@ kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
 	struct file *fp;
 	struct mbuf *m;
 	struct sf_buf *sf;
-	struct sfbuf_mref *sfm;
 	struct vm_page *pg;
 	off_t off, xfsize;
 	off_t hbytes = 0;
@@ -1724,7 +1701,7 @@ retry_lookup:
 		 * Get a sendfile buf. We usually wait as long as necessary,
 		 * but this wait can be interrupted.
 		 */
-		if ((sf = sf_buf_alloc(pg, SFB_CATCH)) == NULL) {
+		if ((sf = sf_buf_alloc(pg)) == NULL) {
 			crit_enter();
 			vm_page_unwire(pg, 0);
 			vm_page_try_to_free(pg);
@@ -1745,19 +1722,12 @@ retry_lookup:
 			goto done;
 		}
 
-		/*
-		 * sfm is a temporary hack, use a per-cpu cache for this.
-		 */
-		sfm = kmalloc(sizeof(struct sfbuf_mref), M_SENDFILE, M_WAITOK);
-		sfm->sf = sf;
-		sfm->mref_count = 1;
-
 		m->m_ext.ext_free = sf_buf_mfree;
-		m->m_ext.ext_ref = sf_buf_mref;
-		m->m_ext.ext_arg = sfm;
-		m->m_ext.ext_buf = (void *)sf->kva;
+		m->m_ext.ext_ref = sf_buf_ref;
+		m->m_ext.ext_arg = sf;
+		m->m_ext.ext_buf = (void *)sf_buf_kva(sf);
 		m->m_ext.ext_size = PAGE_SIZE;
-		m->m_data = (char *) sf->kva + pgoff;
+		m->m_data = (char *)sf_buf_kva(sf) + pgoff;
 		m->m_flags |= M_EXT;
 		m->m_pkthdr.len = m->m_len = xfsize;
 		KKASSERT((m->m_flags & (M_EXT_CLUSTER)) == 0);

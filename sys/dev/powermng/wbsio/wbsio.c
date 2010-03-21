@@ -48,8 +48,12 @@
 #define WBSIO_ID_W83627THF	0x82
 #define WBSIO_ID_W83627EHF	0x88
 #define WBSIO_ID_W83627DHG	0xa0
+#define WBSIO_ID_W83627DHGP	0xb0
 #define WBSIO_ID_W83627SF	0x59
+#define WBSIO_ID_W83627UHG	0xa2
 #define WBSIO_ID_W83637HF	0x70
+#define WBSIO_ID_W83667HG	0xa5
+#define WBSIO_ID_W83687THF	0x85
 #define WBSIO_ID_W83697HF	0x60
 
 /* Logical Device Number (LDN) Assignments */
@@ -69,11 +73,13 @@ struct wbsio_softc {
 	bus_space_handle_t	sc_ioh;
 };
 
+static void	wbsio_identify(driver_t *, struct device *);
 static int	wbsio_probe(struct device *);
 static int	wbsio_attach(struct device *);
 static int	wbsio_detach(struct device *);
 
 static device_method_t wbsio_methods[] = {
+	DEVMETHOD(device_identify,	wbsio_identify),
 	DEVMETHOD(device_probe,		wbsio_probe),
 	DEVMETHOD(device_attach, 	wbsio_attach),
 	DEVMETHOD(device_detach,	wbsio_detach),
@@ -120,6 +126,33 @@ wbsio_conf_write(bus_space_tag_t iot, bus_space_handle_t ioh, u_int8_t index,
 	bus_space_write_1(iot, ioh, WBSIO_DATA, data);
 }
 
+static void
+wbsio_identify(driver_t *driver, struct device *parent)
+{
+#ifdef KLD_MODULE
+	struct device *child[2];
+	const int port[2] = { 0x2e, 0x4e };
+
+	for (int i = 0; i < 2; i++) {
+		child[i] = device_find_child(parent, driver->name, i);
+		if (child[i] == NULL) {
+			child[i] = BUS_ADD_CHILD(parent, parent, ISA_ORDER_PNP,
+			    driver->name, i);
+			if (child[i] == NULL) {
+				kprintf("%s: cannot add child[%i]\n",
+				    __func__, i);
+				continue;
+			}
+		} else
+			continue;
+		if (bus_set_resource(child[i], SYS_RES_IOPORT, 0,
+			port[i], WBSIO_IOSIZE))
+			kprintf("%s: cannot set resource for child[%i]\n",
+			    __func__, i);
+	}
+#endif
+}
+
 static int
 wbsio_probe(struct device *dev)
 {
@@ -162,16 +195,37 @@ wbsio_probe(struct device *dev)
 	case WBSIO_ID_W83627DHG:
 		desc = "W83627DHG";
 		break;
+	case WBSIO_ID_W83627DHGP:
+		desc = "W83627DHG-P";
+		break;
+	case WBSIO_ID_W83627UHG:
+		desc = "W83627UHG";
+		break;
 	case WBSIO_ID_W83637HF:
 		desc = "W83637HF";
+		break;
+	case WBSIO_ID_W83667HG:
+		desc = "W83667HG";
+		break;
+	case WBSIO_ID_W83687THF:
+		desc = "W83687THF";
 		break;
 	case WBSIO_ID_W83697HF:
 		desc = "W83697HF";
 		break;
 	}
 
-	if (desc == NULL)
+	if (desc == NULL) {
+#ifndef KLD_MODULE
+		if (bootverbose)
+#endif
+			if (!(reg_id == 0xff && reg_rev == 0xff))
+				device_printf(dev, "%s port 0x%02x: "
+				    "Device ID 0x%02x, Rev 0x%02x\n",
+				    __func__, isa_get_port(dev),
+				    reg_id, reg_rev);
 		return ENXIO;
+	}
 
 	ksnprintf(fulldesc, sizeof(fulldesc),
 	    "Winbond LPC Super I/O %s rev 0x%02x", desc, reg_rev);

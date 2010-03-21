@@ -76,10 +76,10 @@ struct execsw {
 #ifdef _KERNEL
 #include <sys/cdefs.h>
 
-struct sf_buf;
-int exec_map_page(struct image_params *, vm_pindex_t, struct sf_buf **,
+struct lwbuf;
+int exec_map_page(struct image_params *, vm_pindex_t, struct lwbuf **,
 		  const char **);
-void exec_unmap_page(struct sf_buf *);
+void exec_unmap_page(struct lwbuf *);
 int exec_map_first_page (struct image_params *);        
 void exec_unmap_first_page (struct image_params *);       
 

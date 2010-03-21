@@ -61,7 +61,8 @@
 #include <sys/buf.h>
 #include <sys/vmmeter.h>
 #include <sys/conf.h>
-#include <sys/sfbuf.h>
+
+#include <cpu/lwbuf.h>
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>
@@ -382,7 +383,7 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 			if (m && m->valid) {
 				int base = (int)nsize & PAGE_MASK;
 				int size = PAGE_SIZE - base;
-				struct sf_buf *sf;
+				struct lwbuf *lwb;
 
 				/*
 				 * Clear out partial-page garbage in case
@@ -391,10 +392,10 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 				 * This is byte aligned.
 				 */
 				vm_page_busy(m);
-				sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
-				kva = sf_buf_kva(sf);
+				lwb = lwbuf_alloc(m);
+				kva = lwbuf_kva(lwb);
 				bzero((caddr_t)kva + base, size);
-				sf_buf_free(sf);
+				lwbuf_free(lwb);
 
 				/*
 				 * XXX work around SMP data integrity race

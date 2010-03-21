@@ -35,7 +35,7 @@
 #include "hammer.h"
 
 static int rebalance_node(struct hammer_ioc_rebalance *rebal,
-			hammer_cursor_t cursor);
+			hammer_cursor_t cursor, hammer_node_lock_t lcache);
 static void rebalance_closeout(hammer_node_lock_t base_item, int base_count,
 			hammer_btree_elm_t elm);
 static void rebalance_parent_ptrs(hammer_node_lock_t base_item, int index,
@@ -55,6 +55,7 @@ hammer_ioc_rebalance(hammer_transaction_t trans, hammer_inode_t ip,
 		 struct hammer_ioc_rebalance *rebal)
 {
 	struct hammer_cursor cursor;
+	struct hammer_node_lock lcache;
 	hammer_btree_leaf_elm_t elm;
 	int error;
 	int seq;
@@ -78,6 +79,8 @@ hammer_ioc_rebalance(hammer_transaction_t trans, hammer_inode_t ip,
 	rebal->key_cur = rebal->key_beg;
 	rebal->key_cur.localization &= HAMMER_LOCALIZE_MASK;
 	rebal->key_cur.localization += ip->obj_localization;
+
+	hammer_btree_lcache_init(trans->hmp, &lcache, 2);
 
 	seq = trans->hmp->flusher.act;
 
@@ -135,7 +138,7 @@ retry:
 			 */
 			if (cursor.index == cursor.node->ondisk->count - 1) {
 				hammer_sync_lock_sh(trans);
-				error = rebalance_node(rebal, &cursor);
+				error = rebalance_node(rebal, &cursor, &lcache);
 				hammer_sync_unlock(trans);
 			}
 		} else {
@@ -208,6 +211,7 @@ retry:
 	}
 failed:
 	rebal->key_cur.localization &= HAMMER_LOCALIZE_MASK;
+	hammer_btree_lcache_free(trans->hmp, &lcache);
 	return(error);
 }
 
@@ -236,7 +240,8 @@ failed:
  * XXX live-tracked
  */
 static int
-rebalance_node(struct hammer_ioc_rebalance *rebal, hammer_cursor_t cursor)
+rebalance_node(struct hammer_ioc_rebalance *rebal, hammer_cursor_t cursor,
+	       struct hammer_node_lock *lcache)
 {
 	struct hammer_node_lock lockroot;
 	hammer_node_lock_t base_item;
@@ -264,7 +269,7 @@ rebalance_node(struct hammer_ioc_rebalance *rebal, hammer_cursor_t cursor)
 	error = hammer_cursor_upgrade(cursor);
 	if (error)
 		goto done;
-	error = hammer_btree_lock_children(cursor, 2, &lockroot);
+	error = hammer_btree_lock_children(cursor, 2, &lockroot, lcache);
 	if (error)
 		goto done;
 
@@ -480,7 +485,7 @@ rebalance_node(struct hammer_ioc_rebalance *rebal, hammer_cursor_t cursor)
 	 */
 	rebal->stat_nrebal += hammer_btree_sync_copy(cursor, &lockroot);
 done:
-	hammer_btree_unlock_children(cursor, &lockroot);
+	hammer_btree_unlock_children(cursor->trans->hmp, &lockroot, lcache);
 	hammer_cursor_downgrade(cursor);
 	return (error);
 }

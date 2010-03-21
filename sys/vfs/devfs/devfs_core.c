@@ -1932,8 +1932,10 @@ devfs_destroy_device_node(struct devfs_node *root, cdev_t target)
 	else
 		parent = root;
 
-	if (parent == NULL)
+	if (parent == NULL) {
+		kfree(name_buf, M_TEMP);
 		return 1;
+	}
 
 	node = devfs_find_device_node_by_name(parent, name);
 

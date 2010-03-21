@@ -724,6 +724,7 @@ struct hammer_node_lock {
 typedef struct hammer_node_lock *hammer_node_lock_t;
 
 #define HAMMER_NODE_LOCK_UPDATED	0x0001
+#define HAMMER_NODE_LOCK_LCACHE		0x0002
 
 /*
  * Common I/O management structure - embedded in in-memory structures
@@ -1142,14 +1143,19 @@ int	hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid);
 int	btree_set_parent(hammer_transaction_t trans, hammer_node_t node,
                         hammer_btree_elm_t elm);
 void	hammer_node_lock_init(hammer_node_lock_t parent, hammer_node_t node);
+void	hammer_btree_lcache_init(hammer_mount_t hmp, hammer_node_lock_t lcache,
+			int depth);
+void	hammer_btree_lcache_free(hammer_mount_t hmp, hammer_node_lock_t lcache);
 int	hammer_btree_lock_children(hammer_cursor_t cursor, int depth,
-			hammer_node_lock_t parent);
+			hammer_node_lock_t parent,
+			hammer_node_lock_t lcache);
 void	hammer_btree_lock_copy(hammer_cursor_t cursor,
 			hammer_node_lock_t parent);
 int	hammer_btree_sync_copy(hammer_cursor_t cursor,
 			hammer_node_lock_t parent);
-void	hammer_btree_unlock_children(hammer_cursor_t cursor,
-			hammer_node_lock_t parent);
+void	hammer_btree_unlock_children(hammer_mount_t hmp,
+			hammer_node_lock_t parent,
+			hammer_node_lock_t lcache);
 int	hammer_btree_search_node(hammer_base_elm_t elm, hammer_node_ondisk_t node);
 hammer_node_t hammer_btree_get_parent(hammer_transaction_t trans,
 			hammer_node_t node, int *parent_indexp,

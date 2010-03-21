@@ -63,9 +63,6 @@
 #ifndef MAXFILES
 #define	MAXFILES (maxproc * 16)
 #endif
-#ifndef NSFBUFS
-#define NSFBUFS (512 + maxusers * 16)
-#endif
 #ifndef MAXPOSIXLOCKSPERUID
 #define MAXPOSIXLOCKSPERUID (maxusers * 64) /* Should be a safe value */
 #endif
@@ -94,9 +91,6 @@ u_quad_t	maxdsiz;			/* max data size */
 u_quad_t	dflssiz;			/* initial stack size limit */
 u_quad_t	maxssiz;			/* max stack size */
 u_quad_t	sgrowsiz;			/* amount to grow stack */
-
-/* maximum # of sf_bufs (sendfile(2) zero-copy virtual buffers) */
-int	nsfbufs;
 
 /*
  * These have to be allocated somewhere; allocating
@@ -182,11 +176,8 @@ init_param2(int physpages)
 	TUNABLE_INT_FETCH("kern.maxposixlocksperuid", &maxposixlocksperuid);
 
 	/*
-	 * Cannot be changed after boot.  Unless overriden, NSFBUFS is based
-	 * on maxusers and NBUF is typically 0 (auto-sized later).
+	 * Unless overriden, NBUF is typically 0 (auto-sized later).
 	 */
-	nsfbufs = NSFBUFS;
-	TUNABLE_INT_FETCH("kern.ipc.nsfbufs", &nsfbufs);
 	nbuf = NBUF;
 	TUNABLE_INT_FETCH("kern.nbuf", &nbuf);
 

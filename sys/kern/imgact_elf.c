@@ -51,8 +51,9 @@
 #include <sys/sysctl.h>
 #include <sys/sysent.h>
 #include <sys/vnode.h>
-#include <sys/sfbuf.h>
 #include <sys/eventhandler.h>
+
+#include <cpu/lwbuf.h>
 
 #include <vm/vm.h>
 #include <vm/vm_kern.h>
@@ -255,7 +256,7 @@ elf_check_abi_note(struct image_params *imgp, const Elf_Phdr *ph)
 {
 	Elf_Brandinfo *match = NULL;
 	const Elf_Note *tmp_note;
-	struct sf_buf *sfb;
+	struct lwbuf *lwb;
 	const char *page;
 	char *data = NULL;
 	Elf_Off off;
@@ -272,7 +273,7 @@ elf_check_abi_note(struct image_params *imgp, const Elf_Phdr *ph)
 	if (len < sizeof(Elf_Note) || len > PAGE_SIZE)
 		return NULL; /* ENOEXEC? */
 
-	if (exec_map_page(imgp, off >> PAGE_SHIFT, &sfb, &page))
+	if (exec_map_page(imgp, off >> PAGE_SHIFT, &lwb, &page))
 		return NULL;
 
 	/*
@@ -283,8 +284,8 @@ elf_check_abi_note(struct image_params *imgp, const Elf_Phdr *ph)
 
 		bcopy(page + firstoff, data, firstlen);
 
-		exec_unmap_page(sfb);
-		if (exec_map_page(imgp, (off >> PAGE_SHIFT) + 1, &sfb, &page)) {
+		exec_unmap_page(lwb);
+		if (exec_map_page(imgp, (off >> PAGE_SHIFT) + 1, &lwb, &page)) {
 			kfree(data, M_TEMP);
 			return NULL;
 		}
@@ -326,7 +327,7 @@ next:
 
 	if (data != NULL)
 		kfree(data, M_TEMP);
-	exec_unmap_page(sfb);
+	exec_unmap_page(lwb);
 
 	return (match);
 }
@@ -435,15 +436,15 @@ elf_load_section(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 
 	if (copy_len != 0) {
 		vm_page_t m;
-		struct sf_buf *sf;
+		struct lwbuf *lwb;
 
 		m = vm_fault_object_page(object, trunc_page(offset + filsz),
 					 VM_PROT_READ, 0, &error);
 		if (m) {
-			sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
-			error = copyout((caddr_t)sf_buf_kva(sf),
+			lwb = lwbuf_alloc(m);
+			error = copyout((caddr_t)lwbuf_kva(lwb),
 					(caddr_t)map_addr, copy_len);
-			sf_buf_free(sf);
+			lwbuf_free(lwb);
 			vm_page_unhold(m);
 		}
 		if (error) {

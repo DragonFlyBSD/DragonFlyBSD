@@ -44,7 +44,6 @@
 #include <sys/proc.h>
 #include <sys/resourcevar.h>
 #include <sys/sched.h>
-#include <sys/sfbuf.h>
 #include <sys/stat.h>
 #include <sys/systm.h>
 #include <sys/unistd.h>
