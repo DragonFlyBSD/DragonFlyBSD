@@ -354,6 +354,10 @@ typedef void if_init_f_t (void *);
 
 #ifdef _KERNEL
 
+/* interface link layer address change event */
+typedef void (*iflladdr_event_handler_t)(void *, struct ifnet *);
+EVENTHANDLER_DECLARE(iflladdr_event, iflladdr_event_handler_t);
+
 #ifdef INVARIANTS
 #define ASSERT_IFNET_SERIALIZED_ALL(ifp) \
 	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_ALL, TRUE)

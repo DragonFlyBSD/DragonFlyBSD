@@ -265,6 +265,8 @@ bpf_attachd(struct bpf_d *d, struct bpf_if *bp)
 	d->bd_bif = bp;
 	SLIST_INSERT_HEAD(&bp->bif_dlist, d, bd_next);
 	*bp->bif_driverp = bp;
+
+	EVENTHANDLER_INVOKE(bpf_track, bp->bif_ifp, bp->bif_dlt, 1);
 }
 
 /*
@@ -290,6 +292,9 @@ bpf_detachd(struct bpf_d *d)
 		*bp->bif_driverp = NULL;
 	}
 	d->bd_bif = NULL;
+
+	EVENTHANDLER_INVOKE(bpf_track, ifp, bp->bif_dlt, 0);
+
 	/*
 	 * Check if this descriptor had requested promiscuous mode.
 	 * If so, turn it off.

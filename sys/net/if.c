@@ -1551,8 +1551,10 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		error = priv_check_cred(cred, PRIV_ROOT, 0);
 		if (error)
 			return (error);
-		return if_setlladdr(ifp,
+		error = if_setlladdr(ifp,
 		    ifr->ifr_addr.sa_data, ifr->ifr_addr.sa_len);
+		EVENTHANDLER_INVOKE(iflladdr_event, ifp);
+		return (error);
 
 	default:
 		oif_flags = ifp->if_flags;

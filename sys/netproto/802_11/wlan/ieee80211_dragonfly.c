@@ -838,9 +838,7 @@ bpf_track(void *arg, struct ifnet *ifp, int dlt, int attach)
 {
 	/* NB: identify vap's by if_start */
 	if (dlt == DLT_IEEE802_11_RADIO && ifp->if_start == ieee80211_start) {
-#ifdef notyet
 		struct ieee80211vap *vap = ifp->if_softc;
-#endif
 		/*
 		 * Track bpf radiotap listener state.  We mark the vap
 		 * to indicate if any listener is present and the com
@@ -848,17 +846,15 @@ bpf_track(void *arg, struct ifnet *ifp, int dlt, int attach)
 		 * vap.  This flag is used by drivers to prepare radiotap
 		 * state only when needed.
 		 */
-#ifdef notyet
 		if (attach) {
 			ieee80211_syncflag_ext(vap, IEEE80211_FEXT_BPF);
 			if (vap->iv_opmode == IEEE80211_M_MONITOR)
 				atomic_add_int(&vap->iv_ic->ic_montaps, 1);
-		} else if (!bpf_peers_present(vap->iv_rawbpf)) {
+		} else if (!vap->iv_rawbpf) {
 			ieee80211_syncflag_ext(vap, -IEEE80211_FEXT_BPF);
 			if (vap->iv_opmode == IEEE80211_M_MONITOR)
 				atomic_subtract_int(&vap->iv_ic->ic_montaps, 1);
 		}
-#endif
 	}
 }
 
