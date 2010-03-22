@@ -509,6 +509,9 @@ fetch:
 .if !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
 	(cd ${PKGSRC_PKG_PATH}; fetch ${PKGSRC_BOOTSTRAP_URL}/${CVSUP_BOOTSTRAP_KIT}.tgz)
 .endif
+.else
+fetch:
+	@echo "Fetch is a NOP for 64-bit builds"
 .endif
 
 pkgsrc_bootstrap:
