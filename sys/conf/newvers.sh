@@ -139,3 +139,6 @@ char kern_ident[] = "${i}";
 EOF
 
 echo `expr ${v} + 1` > version
+
+stamp=`date +%Y%m%d`
+echo DragonFly-${MACHINE}-${stamp}-${BRANCH}-${GITREV} > vers.txt
