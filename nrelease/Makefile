@@ -245,8 +245,14 @@ buildkernel1 buildkernel2:
 # MAKEOBJDIRPREFIX for targets that are not run through the buildworld and 
 # buildkernel mechanism.
 #
+# Unconditionally clean out /usr/release/root so a previous img build
+# does not blow up a future quick iso build
+#
 buildiso:
-	if [ ! -d ${ISOROOT} ]; then mkdir -p ${ISOROOT}; fi
+	-rm -rf ${ISOROOT}
+	-chflags -R noschg ${ISOROOT}
+	rm -rf ${ISOROOT}
+	mkdir -p ${ISOROOT}
 	if [ ! -d ${NRLOBJDIR}/nrelease ]; then mkdir -p ${NRLOBJDIR}/nrelease; fi
 	( cd ${.CURDIR}/..; make -DWANT_INSTALLER DESTDIR=${ISOROOT} installworld )
 	( cd ${.CURDIR}/../etc; MAKEOBJDIRPREFIX=${NRLOBJDIR}/nrelease \
