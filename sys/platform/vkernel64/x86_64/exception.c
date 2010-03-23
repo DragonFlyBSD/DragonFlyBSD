@@ -181,7 +181,7 @@ exc_segfault(int signo, siginfo_t *info, void *ctxp)
 {
 	ucontext_t *ctx = ctxp;
 
-#if 1
+#if 0
 	kprintf("CAUGHT SIG %d RIP %08lx ERR %08lx TRAPNO %ld "
 		"err %ld addr %08lx\n",
 		signo,

@@ -747,6 +747,16 @@ trap(struct trapframe *frame)
 		}
 		MAKEMPSAFE(have_mplock);
 		trap_fatal(frame, 0);
+		goto out2;
+	}
+
+	/*
+	 * Virtual kernel intercept - if the fault is directly related to a
+	 * VM context managed by a virtual kernel then let the virtual kernel
+	 * handle it.
+	 */
+	if (lp->lwp_vkernel && lp->lwp_vkernel->ve) {
+		vkernel_trap(lp, frame);
 		goto out;
 	}
 
