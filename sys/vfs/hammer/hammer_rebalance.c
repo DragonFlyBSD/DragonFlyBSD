@@ -119,7 +119,11 @@ retry:
 		 * Rebalancing can be hard on the memory allocator, make
 		 * sure there is enough free memory before doing it.
 		 */
-		vm_wait_nominal();
+		if (vm_test_nominal()) {
+			hammer_unlock_cursor(&cursor);
+			vm_wait_nominal();
+			hammer_lock_cursor(&cursor);
+		}
 
 		/*
 		 * We only care about internal nodes visited for the last
