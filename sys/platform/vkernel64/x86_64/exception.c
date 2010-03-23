@@ -181,12 +181,15 @@ exc_segfault(int signo, siginfo_t *info, void *ctxp)
 {
 	ucontext_t *ctx = ctxp;
 
-#if 0
-	kprintf("CAUGHT SEGFAULT EIP %08x ERR %08x TRAPNO %d err %d\n",
-		ctx->uc_mcontext.mc_eip,
+#if 1
+	kprintf("CAUGHT SIG %d RIP %08lx ERR %08lx TRAPNO %ld "
+		"err %ld addr %08lx\n",
+		signo,
+		ctx->uc_mcontext.mc_rip,
 		ctx->uc_mcontext.mc_err,
 		ctx->uc_mcontext.mc_trapno & 0xFFFF,
-		ctx->uc_mcontext.mc_trapno >> 16);
+		ctx->uc_mcontext.mc_trapno >> 16,
+		ctx->uc_mcontext.mc_addr);
 #endif
 	kern_trap((struct trapframe *)&ctx->uc_mcontext.mc_rdi);
 	splz();

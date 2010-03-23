@@ -793,7 +793,8 @@ kernel_trap:
 		MAKEMPSAFE(have_mplock);
 		trap_fatal(frame, FALSE, eva);
 		goto out2;
-	case T_SYSCALL80:	/* JG T_FAST_SYSCALL? */
+	case T_SYSCALL80:
+	case T_FAST_SYSCALL:
 		/*
 		 * Ignore this trap generated from a spurious SIGTRAP.
 		 *
