@@ -47,8 +47,9 @@
 #include <sys/sysunion.h>
 #include <sys/sysent.h>
 #include <sys/syscall.h>
-#include <sys/sfbuf.h>
 #include <sys/module.h>
+
+#include <cpu/lwbuf.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -101,7 +102,7 @@ int
 sys_umtx_sleep(struct umtx_sleep_args *uap)
 {
     int error = EBUSY;
-    struct sf_buf *sf;
+    struct lwbuf *lwb;
     struct vm_page_action action;
     vm_page_t m;
     void *waddr;
@@ -124,14 +125,14 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
 	error = EFAULT;
 	goto done;
     }
-    sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
+    lwb = lwbuf_alloc(m);
     offset = (vm_offset_t)uap->ptr & PAGE_MASK;
 
     /*
      * The critical section is required to interlock the tsleep against
      * a wakeup from another cpu.  The lfence forces synchronization.
      */
-    if (*(int *)(sf_buf_kva(sf) + offset) == uap->value) {
+    if (*(int *)(lwbuf_kva(lwb) + offset) == uap->value) {
 	if ((timeout = uap->timeout) != 0) {
 	    timeout = (timeout / 1000000) * hz +
 		      ((timeout % 1000000) * hz + 999999) / 1000000;
@@ -139,7 +140,7 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
 	waddr = (void *)((intptr_t)VM_PAGE_TO_PHYS(m) + offset);
 	crit_enter();
 	tsleep_interlock(waddr, PCATCH | PDOMAIN_UMTX);
-	if (*(int *)(sf_buf_kva(sf) + offset) == uap->value) {
+	if (*(int *)(lwbuf_kva(lwb) + offset) == uap->value) {
 	    vm_page_init_action(&action, umtx_sleep_page_action_cow, waddr);
 	    vm_page_register_action(m, &action, VMEVENT_COW);
 	    error = tsleep(waddr, PCATCH | PINTERLOCKED | PDOMAIN_UMTX,
@@ -156,7 +157,7 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
 	error = EBUSY;
     }
 
-    sf_buf_free(sf);
+    lwbuf_free(lwb);
     /*vm_page_dirty(m); we don't actually dirty the page */
     vm_page_unhold(m);
 done:

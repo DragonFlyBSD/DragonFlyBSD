@@ -2,10 +2,9 @@
 .\" the BSD Copyright as specified in the file "/usr/src/COPYRIGHT" in
 .\" the source tree.
 .\"
-.\" $FreeBSD: src/share/man/man7/tuning.7,v 1.1.2.30 2002/12/17 19:32:08 dillon Exp $
 .\" $DragonFly: src/share/man/man7/tuning.7,v 1.21 2008/10/17 11:30:24 swildner Exp $
 .\"
-.Dd March 4, 2007
+.Dd March 20, 2010
 .Dt TUNING 7
 .Os
 .Sh NAME
@@ -703,20 +702,6 @@ The
 option to
 .Xr netstat 1
 may be used to observe network cluster use.
-.Pp
-More and more programs are using the
-.Xr sendfile 2
-system call to transmit files over the network.
-The
-.Va kern.ipc.nsfbufs
-sysctl controls the number of filesystem buffers
-.Xr sendfile 2
-is allowed to use to perform its work.
-This parameter nominally scales
-with
-.Va kern.maxusers
-so you should not need to modify this parameter except under extreme
-circumstances.
 .Sh KERNEL CONFIG TUNING
 There are a number of kernel options that you may have to fiddle with in
 a large-scale system.

@@ -14,14 +14,27 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd February 17, 2010
+.Dd March 18, 2010
 .Dt APS 4
 .Os
 .Sh NAME
 .Nm aps
 .Nd ThinkPad Active Protection System accelerometer
 .Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device isa"
 .Cd "device aps0 at isa? port 0x1600"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+aps_load="YES"
+.Ed
 .Sh DESCRIPTION
 The
 .Nm

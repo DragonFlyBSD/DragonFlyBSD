@@ -25,9 +25,10 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>
-#include <sys/sensors.h>
-
+#include <sys/kernel.h>
+#include <sys/module.h>
 #include <sys/rman.h>
+#include <sys/sensors.h>
 
 #include <bus/isa/isavar.h>
 
@@ -136,6 +137,7 @@ struct aps_softc {
 	struct aps_sensor_rec	aps_data;
 };
 
+static void	aps_identify(driver_t *, struct device *);
 static int	aps_probe(struct device *);
 static int	aps_attach(struct device *);
 static int	aps_detach(struct device *);
@@ -150,6 +152,7 @@ static void	aps_refresh(void *);
 static int	aps_do_io(struct resource *, unsigned char *, int, int);
 
 static device_method_t aps_methods[] = {
+	DEVMETHOD(device_identify,	aps_identify),
 	DEVMETHOD(device_probe,		aps_probe),
 	DEVMETHOD(device_attach,	aps_attach),
 	DEVMETHOD(device_detach,	aps_detach),
@@ -240,6 +243,49 @@ aps_do_io(struct resource *iores, unsigned char *buf, int wmask, int rmask)
 	return (0);
 }
 
+/* for hints, see /sys/bus/isa/isahint.c */
+
+static void
+aps_identify(driver_t *driver, struct device *parent)
+{
+	struct device *child;
+
+	child = device_find_child(parent, driver->name, -1);
+	if (child != NULL) {
+		if (isa_get_portsize(child) == 0) {
+			// aps(4) must have been compiled into the kernel
+			if (bootverbose)
+				kprintf("%s: will specify the port\n",
+				    __func__);
+		} else if (isa_get_port(child) != APS_ADDR_BASE)
+			kprintf("%s: will overwrite specified port\n",
+			    __func__);
+		else {
+			if (isa_get_portsize(child) == APS_ADDR_SIZE) {
+				// aps.ko must have been reloaded
+				kprintf("%s: already have been invoked\n",
+				    __func__);
+				return;
+			} else
+				kprintf("%s: will amend the portsize\n",
+				    __func__);
+		}
+	} else {
+		// first invocation of `kldload aps.ko`
+		kprintf("%s: creating a new %s\n",
+		    __func__, driver->name);
+		child = BUS_ADD_CHILD(parent, parent, ISA_ORDER_PNP,
+		    driver->name, -1);
+		if (child == NULL) {
+			kprintf("%s: cannot add child\n", __func__);
+			return;
+		}
+	}
+	if (bus_set_resource(child, SYS_RES_IOPORT, 0,
+		APS_ADDR_BASE, APS_ADDR_SIZE))
+		kprintf("%s: cannot set resource\n", __func__);
+}
+
 static int
 aps_probe(struct device *dev)
 {
@@ -249,20 +295,13 @@ aps_probe(struct device *dev)
 	unsigned char iobuf[16];
 
 #if defined(APSDEBUG) || defined(KLD_MODULE)
-	device_printf(dev, "%s: 0x%x\n", __func__, isa_get_port(dev));
+	device_printf(dev, "%s: port 0x%x\n", __func__, isa_get_port(dev));
 #endif
 
 	if (device_get_unit(dev) != 0)
 		return ENXIO;
 
-#ifdef KLD_MODULE	/* XXX: isa modules need more work */
-	iores = bus_alloc_resource(dev, SYS_RES_IOPORT, &iorid,
-	    APS_ADDR_BASE, APS_ADDR_BASE + APS_ADDR_SIZE - 1, APS_ADDR_SIZE,
-	    RF_ACTIVE);
-#else
-	iores = bus_alloc_resource(dev, SYS_RES_IOPORT, &iorid,
-	    0ul, ~0ul, APS_ADDR_SIZE, RF_ACTIVE);
-#endif
+	iores = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &iorid, RF_ACTIVE);
 	if (iores == NULL) {
 		DPRINTF(("aps: can't map i/o space\n"));
 		return ENXIO;
@@ -302,20 +341,11 @@ aps_probe(struct device *dev)
 static int
 aps_attach(struct device *dev)
 {
-	struct aps_softc *sc;
+	struct aps_softc *sc = device_get_softc(dev);
 
-	sc = device_get_softc(dev);
 	sc->sc_dev = dev;
-
-#ifdef KLD_MODULE	/* XXX: isa modules need more work */
-	device_printf(dev, "%s: 0x%x\n", __func__, isa_get_port(dev));
-	sc->sc_iores = bus_alloc_resource(dev, SYS_RES_IOPORT, &sc->sc_iorid,
-	    APS_ADDR_BASE, APS_ADDR_BASE + APS_ADDR_SIZE - 1, APS_ADDR_SIZE,
-	    RF_ACTIVE);
-#else
-	sc->sc_iores = bus_alloc_resource(dev, SYS_RES_IOPORT, &sc->sc_iorid,
-	    0ul, ~0ul, APS_ADDR_SIZE, RF_ACTIVE);
-#endif
+	sc->sc_iores = bus_alloc_resource_any(dev, SYS_RES_IOPORT,
+	    &sc->sc_iorid, RF_ACTIVE);
 	if (sc->sc_iores == NULL) {
 		device_printf(dev, "can't map i/o space\n");
 		return ENXIO;

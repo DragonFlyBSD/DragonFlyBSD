@@ -52,9 +52,10 @@
 #include <sys/sysctl.h>
 #include <sys/uio.h>
 #include <sys/vnode.h>
-#include <sys/sfbuf.h>
 #include <sys/thread2.h>
 #include <machine/limits.h>
+
+#include <cpu/lwbuf.h>
 
 #include <vm/vm.h>
 #include <vm/vm_page.h>
@@ -446,13 +447,13 @@ iovec_copyin(struct iovec *uiov, struct iovec **kiov, struct iovec *siov,
  */
 
 /*
- * Implement uiomove(9) from physical memory using sf_bufs to reduce
+ * Implement uiomove(9) from physical memory using lwbuf's to reduce
  * the creation and destruction of ephemeral mappings.
  */
 int
 uiomove_fromphys(vm_page_t *ma, vm_offset_t offset, size_t n, struct uio *uio)
 {
-	struct sf_buf *sf;
+	struct lwbuf *lwb;
 	struct thread *td = curthread;
 	struct iovec *iov;
 	void *cp;
@@ -485,8 +486,8 @@ uiomove_fromphys(vm_page_t *ma, vm_offset_t offset, size_t n, struct uio *uio)
 		page_offset = offset & PAGE_MASK;
 		cnt = min(cnt, PAGE_SIZE - page_offset);
 		m = ma[offset >> PAGE_SHIFT];
-		sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
-		cp = (char *)sf_buf_kva(sf) + page_offset;
+		lwb = lwbuf_alloc(m);
+		cp = (char *)lwbuf_kva(lwb) + page_offset;
 		switch (uio->uio_segflg) {
 		case UIO_USERSPACE:
 			/*
@@ -498,7 +499,7 @@ uiomove_fromphys(vm_page_t *ma, vm_offset_t offset, size_t n, struct uio *uio)
 			else
 				error = copyin(iov->iov_base, cp, cnt);
 			if (error) {
-				sf_buf_free(sf);
+				lwbuf_free(lwb);
 				goto out;
 			}
 			break;
@@ -511,7 +512,7 @@ uiomove_fromphys(vm_page_t *ma, vm_offset_t offset, size_t n, struct uio *uio)
 		case UIO_NOCOPY:
 			break;
 		}
-		sf_buf_free(sf);
+		lwbuf_free(lwb);
 		iov->iov_base = (char *)iov->iov_base + cnt;
 		iov->iov_len -= cnt;
 		uio->uio_resid -= cnt;

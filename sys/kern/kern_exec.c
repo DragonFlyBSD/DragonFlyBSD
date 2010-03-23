@@ -47,7 +47,6 @@
 #include <sys/signalvar.h>
 #include <sys/pioctl.h>
 #include <sys/nlookup.h>
-#include <sys/sfbuf.h>
 #include <sys/sysent.h>
 #include <sys/shm.h>
 #include <sys/sysctl.h>
@@ -55,6 +54,8 @@
 #include <sys/vmmeter.h>
 #include <sys/aio.h>
 #include <sys/libkern.h>
+
+#include <cpu/lwbuf.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -583,7 +584,7 @@ sys_execve(struct execve_args *uap)
 
 int
 exec_map_page(struct image_params *imgp, vm_pindex_t pageno,
-	      struct sf_buf **psfb, const char **pdata)
+	      struct lwbuf **plwb, const char **pdata)
 {
 	int rv;
 	vm_page_t ma;
@@ -632,8 +633,8 @@ exec_map_page(struct image_params *imgp, vm_pindex_t pageno,
 	vm_page_wakeup(m);	/* unbusy the page */
 	crit_exit();
 
-	*psfb = sf_buf_alloc(m, SFB_CPUPRIVATE);
-	*pdata = (void *)sf_buf_kva(*psfb);
+	*plwb = lwbuf_alloc(m);
+	*pdata = (void *)lwbuf_kva(*plwb);
 
 	return (0);
 }
@@ -655,14 +656,14 @@ exec_map_first_page(struct image_params *imgp)
 }
 
 void
-exec_unmap_page(struct sf_buf *sfb)
+exec_unmap_page(struct lwbuf *lwb)
 {
 	vm_page_t m;
 
 	crit_enter();
-	if (sfb != NULL) {
-		m = sf_buf_page(sfb);
-		sf_buf_free(sfb);
+	if (lwb != NULL) {
+		m = lwbuf_page(lwb);
+		lwbuf_free(lwb);
 		vm_page_unhold(m);
 	}
 	crit_exit();

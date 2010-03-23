@@ -36,7 +36,7 @@
 
 #include <sys/types.h>
 #include <sys/systm.h>
-#include <sys/sfbuf.h>
+#include <cpu/lwbuf.h>
 #include <vm/vm_page.h>
 #include <vm/vm_extern.h>
 #include <assert.h>
@@ -128,7 +128,7 @@ int
 copyin(const void *udaddr, void *kaddr, size_t len)
 {
 	struct vmspace *vm = curproc->p_vmspace;
-	struct sf_buf *sf;
+	struct lwbuf *lwb;
 	vm_page_t m;
 	int error;
 	size_t n;
@@ -144,14 +144,14 @@ copyin(const void *udaddr, void *kaddr, size_t len)
 		n = PAGE_SIZE - ((vm_offset_t)udaddr & PAGE_MASK);
 		if (n > len)
 			n = len;
-		sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
-		bcopy((char *)sf_buf_kva(sf)+((vm_offset_t)udaddr & PAGE_MASK),
+		lwb = lwbuf_alloc(m);
+		bcopy((char *)lwbuf_kva(lwb)+((vm_offset_t)udaddr & PAGE_MASK),
 		      kaddr, n);
 		len -= n;
 		udaddr = (const char *)udaddr + n;
 		kaddr = (char *)kaddr + n;
 		vm_page_unhold(m);
-		sf_buf_free(sf);
+		lwbuf_free(lwb);
 	}
 	rel_mplock();
 	return (error);
@@ -166,7 +166,7 @@ int
 copyout(const void *kaddr, void *udaddr, size_t len)
 {
 	struct vmspace *vm = curproc->p_vmspace;
-	struct sf_buf *sf;
+	struct lwbuf *lwb;
 	vm_page_t m;
 	int error;
 	size_t n;
@@ -182,15 +182,15 @@ copyout(const void *kaddr, void *udaddr, size_t len)
 		n = PAGE_SIZE - ((vm_offset_t)udaddr & PAGE_MASK);
 		if (n > len)
 			n = len;
-		sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
-		bcopy(kaddr, (char *)sf_buf_kva(sf) +
+		lwb = lwbuf_alloc(m);
+		bcopy(kaddr, (char *)lwbuf_kva(lwb) +
 			     ((vm_offset_t)udaddr & PAGE_MASK), n);
 		len -= n;
 		udaddr = (char *)udaddr + n;
 		kaddr = (const char *)kaddr + n;
 		vm_page_dirty(m);
 		vm_page_unhold(m);
-		sf_buf_free(sf);
+		lwbuf_free(lwb);
 	}
 	rel_mplock();
 	return (error);
