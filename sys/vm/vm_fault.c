@@ -794,7 +794,7 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 		    vpte_t vpte, int fault_type)
 {
 	struct lwbuf *lwb;
-	int vshift = 48 - PAGE_SHIFT;	/* page index bits remaining */
+	int vshift = VPTE_FRAME_END - PAGE_SHIFT; /* index bits remaining */
 	int result = KERN_SUCCESS;
 	vpte_t *ptep;
 
@@ -852,7 +852,7 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 		if ((fault_type & VM_PROT_WRITE) && (vpte & VPTE_V) &&
 		    (vpte & VPTE_W)) {
 			if ((vpte & (VPTE_M|VPTE_A)) != (VPTE_M|VPTE_A)) {
-				atomic_set_long(ptep, VPTE_M|VPTE_A);
+				atomic_set_long(ptep, VPTE_M | VPTE_A);
 				vm_page_dirty(fs->m);
 			}
 		}

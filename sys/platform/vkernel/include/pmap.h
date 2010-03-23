@@ -120,7 +120,7 @@ struct pmap_statistics {
 typedef struct pmap_statistics *pmap_statistics_t;
 
 struct pmap {
-	pd_entry_t		*pm_pdir;	/* KVA of page directory */
+	vpte_t			*pm_pdir;	/* KVA of page directory */
 	vpte_t			pm_pdirpte;	/* pte mapping phys page */
 	struct vm_object	*pm_pteobj;	/* Container for pte's */
 	cpumask_t		pm_cpucachemask;/* Invalidate cpu mappings */

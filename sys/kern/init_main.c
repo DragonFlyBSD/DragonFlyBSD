@@ -81,10 +81,6 @@
 #include <sys/user.h>
 #include <sys/copyright.h>
 
-#if defined(__amd64__) && defined(_KERNEL_VIRTUAL)
-#include <stdio.h>
-#endif
-
 int vfs_mountroot_devfs(void);
 
 /* Components of the first process -- never freed. */
@@ -211,7 +207,7 @@ mi_startup(void)
 		 * linker set is wrong.
 		 */
 		if ((long)sysinit % 8 != 0) {
-			fprintf(stderr, "Fixing sysinit value...\n");
+			kprintf("Fixing sysinit value...\n");
 			sysinit = (long)sysinit + 4;
 		}
 #endif

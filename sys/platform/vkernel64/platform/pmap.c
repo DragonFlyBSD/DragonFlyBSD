@@ -3111,7 +3111,7 @@ pmap_mincore(pmap_t pmap, vm_offset_t addr)
 	}
 
 	if ((pte = *ptep) != 0) {
-		vm_offset_t pa;
+		vm_paddr_t pa;
 
 		val = MINCORE_INCORE;
 		if ((pte & VPTE_MANAGED) == 0)
