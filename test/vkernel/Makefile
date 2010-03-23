@@ -118,7 +118,7 @@ install: mount
 	    make -j 4 DESTDIR=${VKDIR}/root distribution
 	echo '/dev/vkd0s1a	/	ufs	rw	1 1' > ${VKDIR}/root/etc/fstab
 	echo 'proc		/proc	procfs	rw	0 0' >> ${VKDIR}/root/etc/fstab
-	echo 'vfs.root.mountfrom="ufs:vkds1a"' > ${VKDIR}/root/boot/loader.conf
+	echo 'vfs.root.mountfrom="ufs:vkd0s1a"' > ${VKDIR}/root/boot/loader.conf
 	#(egrep -v '^console' ${VKDIR}/root/etc/ttys; echo 'console "/usr/libexec/getty Pc"	cons25	on	secure') > ${VKDIR}/root/etc/ttys.new
 	#mv -f ${VKDIR}/root/etc/ttys.new ${VKDIR}/root/etc/ttys
 	cd ${SRCDIR} && \
