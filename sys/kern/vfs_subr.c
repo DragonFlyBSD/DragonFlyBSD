@@ -92,8 +92,6 @@ static MALLOC_DEFINE(M_NETADDR, "Export Host", "Export host address structure");
 
 int numvnodes;
 SYSCTL_INT(_debug, OID_AUTO, numvnodes, CTLFLAG_RD, &numvnodes, 0, "");
-int vfs_fastdev = 1;
-SYSCTL_INT(_vfs, OID_AUTO, fastdev, CTLFLAG_RW, &vfs_fastdev, 0, "");
 
 enum vtype iftovt_tab[16] = {
 	VNON, VFIFO, VCHR, VNON, VDIR, VNON, VBLK, VNON,

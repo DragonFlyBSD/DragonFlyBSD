@@ -57,7 +57,6 @@ static vr_draw_mouse_t		vga_txtmouse;
 #endif
 
 #ifdef SC_PIXEL_MODE
-static vr_init_t		vga_rndrinit;
 static vr_draw_border_t		vga_pxlborder_direct;
 static vr_draw_border_t		vga_pxlborder_planar;
 static vr_draw_t		vga_vgadraw_direct;
@@ -83,43 +82,47 @@ static vr_draw_border_t		vga_grborder;
 static void			vga_nop(scr_stat *scp, ...);
 
 static sc_rndr_sw_t txtrndrsw = {
-	(vr_init_t *)vga_nop,
 	vga_txtborder,
 	vga_txtdraw,	
 	vga_txtcursor_shape,
 	vga_txtcursor,
 	vga_txtblink,
-	(vr_set_mouse_t *)vga_nop,
 	vga_txtmouse,
 };
-RENDERER(vga, 0, txtrndrsw, vga_set);
+RENDERER(vga, V_INFO_MM_TEXT, txtrndrsw, vga_set);
 
 #ifdef SC_PIXEL_MODE
-static sc_rndr_sw_t vgarndrsw = {
-	vga_rndrinit,
-	(vr_draw_border_t *)vga_nop,
-	(vr_draw_t *)vga_nop,
+static sc_rndr_sw_t planarrndrsw = {
+	vga_pxlborder_planar,
+	vga_vgadraw_planar,
 	vga_pxlcursor_shape,
-	(vr_draw_cursor_t *)vga_nop,
-	(vr_blink_cursor_t *)vga_nop,
-	(vr_set_mouse_t *)vga_nop,
-	(vr_draw_mouse_t *)vga_nop,
+	vga_pxlcursor_planar,
+	vga_pxlblink_planar,
+	vga_pxlmouse_planar,
 };
-RENDERER(vga, PIXEL_MODE, vgarndrsw, vga_set);
+RENDERER(vga, V_INFO_MM_PLANAR, planarrndrsw, vga_set);
+
+static sc_rndr_sw_t directrndrsw = {
+	vga_pxlborder_direct,
+	vga_vgadraw_direct,
+	vga_pxlcursor_shape,
+	vga_pxlcursor_direct,
+	vga_pxlblink_direct,
+	vga_pxlmouse_direct,
+};
+RENDERER(vga, V_INFO_MM_DIRECT, directrndrsw, vga_set);
 #endif /* SC_PIXEL_MODE */
 
 #ifndef SC_NO_MODE_CHANGE
 static sc_rndr_sw_t grrndrsw = {
-	(vr_init_t *)vga_nop,
 	vga_grborder,
 	(vr_draw_t *)vga_nop,
 	(vr_set_cursor_t *)vga_nop,
 	(vr_draw_cursor_t *)vga_nop,
 	(vr_blink_cursor_t *)vga_nop,
-	(vr_set_mouse_t *)vga_nop,
 	(vr_draw_mouse_t *)vga_nop,
 };
-RENDERER(vga, GRAPHICS_MODE, grrndrsw, vga_set);
+RENDERER(vga, V_INFO_MM_OTHER, grrndrsw, vga_set);
 #endif /* SC_NO_MODE_CHANGE */
 
 RENDERER_MODULE(vga, vga_set);
@@ -403,24 +406,6 @@ vga_txtmouse(scr_stat *scp, int x, int y, int on)
 #ifdef SC_PIXEL_MODE
 
 /* pixel (raster text) mode renderer */
-
-static void
-vga_rndrinit(scr_stat *scp)
-{
-	if (scp->sc->adp->va_info.vi_mem_model == V_INFO_MM_PLANAR) {
-		scp->rndr->draw_border = vga_pxlborder_planar;
-		scp->rndr->draw = vga_vgadraw_planar;
-		scp->rndr->draw_cursor = vga_pxlcursor_planar;
-		scp->rndr->blink_cursor = vga_pxlblink_planar;
-		scp->rndr->draw_mouse = vga_pxlmouse_planar;
-	} else if (scp->sc->adp->va_info.vi_mem_model == V_INFO_MM_DIRECT) {
-		scp->rndr->draw_border = vga_pxlborder_direct;
-		scp->rndr->draw = vga_vgadraw_direct;
-		scp->rndr->draw_cursor = vga_pxlcursor_direct;
-		scp->rndr->blink_cursor = vga_pxlblink_direct;
-		scp->rndr->draw_mouse = vga_pxlmouse_direct;
-	}
-}
 
 static void
 vga_pxlborder_direct(scr_stat *scp, int color)

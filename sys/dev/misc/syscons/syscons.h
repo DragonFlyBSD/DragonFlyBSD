@@ -303,6 +303,7 @@ typedef struct scr_stat {
 	uint32_t	ega_palette[16];	/* ega palette */
 	u_char		border;			/* border color */
 	int	 	mode;			/* mode */
+	int		model;			/* memory model */
 	pid_t 		pid;			/* pid of controlling proc */
 	struct proc 	*proc;			/* proc* of controlling proc */
 	struct vt_mode 	smode;			/* switch mode */
@@ -400,7 +401,6 @@ extern struct linker_set scterm_set;
 		       SI_SUB_DRIVERS, SI_ORDER_MIDDLE)
 
 /* renderer function table */
-typedef void	vr_init_t(scr_stat *scp);
 typedef void	vr_draw_border_t(scr_stat *scp, int color);
 typedef void	vr_draw_t(scr_stat *scp, int from, int count, int flip);
 typedef void	vr_set_cursor_t(scr_stat *scp, int base, int height, int blink);
@@ -411,31 +411,29 @@ typedef void	vr_set_mouse_t(scr_stat *scp);
 typedef void	vr_draw_mouse_t(scr_stat *scp, int x, int y, int on);
 
 typedef struct sc_rndr_sw {
-	vr_init_t		*init;
 	vr_draw_border_t	*draw_border;
 	vr_draw_t		*draw;
 	vr_set_cursor_t		*set_cursor;
 	vr_draw_cursor_t	*draw_cursor;
 	vr_blink_cursor_t	*blink_cursor;
-	vr_set_mouse_t		*set_mouse;
 	vr_draw_mouse_t		*draw_mouse;
 } sc_rndr_sw_t;
 
 typedef struct sc_renderer {
 	char			*name;
-	int			mode;
+	int			model;
 	sc_rndr_sw_t		*rndrsw;
 	LIST_ENTRY(sc_renderer)	link;
 } sc_renderer_t;
 
 extern struct linker_set scrndr_set;
 
-#define RENDERER(name, mode, sw, set)				\
-	static struct sc_renderer scrndr_##name##_##mode = {	\
-		#name, mode, &sw				\
+#define RENDERER(name, model, sw, set)				\
+	static struct sc_renderer scrndr_##name##_##model = {	\
+		#name, model, &sw				\
 	};							\
-	DATA_SET(scrndr_set, scrndr_##name##_##mode);		\
-	DATA_SET(set, scrndr_##name##_##mode)
+	DATA_SET(scrndr_set, scrndr_##name##_##model);		\
+	DATA_SET(set, scrndr_##name##_##model)
 
 #define RENDERER_MODULE(name, set)				\
 	SET_DECLARE(set, sc_renderer_t);			\
@@ -571,7 +569,7 @@ int		sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data,
 
 int		sc_render_add(sc_renderer_t *rndr);
 int		sc_render_remove(sc_renderer_t *rndr);
-sc_rndr_sw_t	*sc_render_match(scr_stat *scp, char *name, int mode);
+sc_rndr_sw_t	*sc_render_match(scr_stat *scp, char *name, int model);
 
 /* scvtb.c */
 void		sc_vtb_init(sc_vtb_t *vtb, int type, int cols, int rows, 

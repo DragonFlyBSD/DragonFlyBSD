@@ -245,8 +245,14 @@ buildkernel1 buildkernel2:
 # MAKEOBJDIRPREFIX for targets that are not run through the buildworld and 
 # buildkernel mechanism.
 #
+# Unconditionally clean out /usr/release/root so a previous img build
+# does not blow up a future quick iso build
+#
 buildiso:
-	if [ ! -d ${ISOROOT} ]; then mkdir -p ${ISOROOT}; fi
+	-rm -rf ${ISOROOT}
+	-chflags -R noschg ${ISOROOT}
+	rm -rf ${ISOROOT}
+	mkdir -p ${ISOROOT}
 	if [ ! -d ${NRLOBJDIR}/nrelease ]; then mkdir -p ${NRLOBJDIR}/nrelease; fi
 	( cd ${.CURDIR}/..; make -DWANT_INSTALLER DESTDIR=${ISOROOT} installworld )
 	( cd ${.CURDIR}/../etc; MAKEOBJDIRPREFIX=${NRLOBJDIR}/nrelease \
@@ -503,6 +509,9 @@ fetch:
 .if !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
 	(cd ${PKGSRC_PKG_PATH}; fetch ${PKGSRC_BOOTSTRAP_URL}/${CVSUP_BOOTSTRAP_KIT}.tgz)
 .endif
+.else
+fetch:
+	@echo "Fetch is a NOP for 64-bit builds"
 .endif
 
 pkgsrc_bootstrap:

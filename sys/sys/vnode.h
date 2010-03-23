@@ -413,7 +413,6 @@ extern	struct vattr va_null;		/* predefined null vattr structure */
 extern	int vfs_ioopt;
 extern	int numvnodes;
 extern	int freevnodes;
-extern  int vfs_fastdev;		/* fast specfs device access */
 
 /*
  * Interlock for scanning list of vnodes attached to a mountpoint

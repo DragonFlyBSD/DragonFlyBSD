@@ -3,7 +3,9 @@
 .PATH: ${.CURDIR}/complex
 
 SRCS+= cabs.c cabsf.c carg.c cargf.c
-SRCS+= creal.c crealf.c creall.c cimag.c cimagf.c cimagl.c conj.c conjf.c
+SRCS+= creal.c crealf.c creall.c
+SRCS+= cimag.c cimagf.c cimagl.c
+SRCS+= conj.c conjf.c conjl.c
 SRCS+= cproj.c cprojf.c cprojl.c
 SRCS+= csqrt.c cexp.c clog.c cpow.c
 SRCS+= cephes_subr.c csin.c ccos.c ctan.c csinh.c ccosh.c ctanh.c
