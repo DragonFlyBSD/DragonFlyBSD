@@ -1386,14 +1386,14 @@ vfs/ufs/ffs_vnops.c		optional ffs
 vfs/ufs/ffs_vnops.c		optional mfs
 vfs/ufs/ffs_rawread.c		optional directio
 vfs/mfs/mfs_vfsops.c		optional mfs
-vfs/ufs/ufs_bmap.c		standard
-vfs/ufs/ufs_ihash.c		standard
-vfs/ufs/ufs_inode.c		standard
-vfs/ufs/ufs_lookup.c		standard
-vfs/ufs/ufs_quota.c		standard
-vfs/ufs/ufs_vfsops.c		standard
-vfs/ufs/ufs_vnops.c		standard
-vfs/ufs/ufs_dirhash.c		standard
+vfs/ufs/ufs_bmap.c		optional ffs
+vfs/ufs/ufs_ihash.c		optional ffs
+vfs/ufs/ufs_inode.c		optional ffs
+vfs/ufs/ufs_lookup.c		optional ffs
+vfs/ufs/ufs_quota.c		optional ffs
+vfs/ufs/ufs_vfsops.c		optional ffs
+vfs/ufs/ufs_vnops.c		optional ffs
+vfs/ufs/ufs_dirhash.c		optional ffs
 vfs/userfs/userfs_vfsops.c	optional userfs
 vfs/userfs/userfs_vnops.c	optional userfs
 vfs/userfs/userfs_inode.c	optional userfs
