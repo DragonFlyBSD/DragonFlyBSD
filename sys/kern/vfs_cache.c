@@ -3098,12 +3098,12 @@ STATNODE(numfullpathfound);
 
 int
 cache_fullpath(struct proc *p, struct nchandle *nchp,
-	       char **retbuf, char **freebuf)
+	       char **retbuf, char **freebuf, int guess)
 {
 	struct nchandle fd_nrdir;
 	struct nchandle nch;
 	struct namecache *ncp;
-	struct mount *mp;
+	struct mount *mp, *new_mp;
 	char *bp, *buf;
 	int slash_prefixed;
 	int error = 0;
@@ -3129,12 +3129,26 @@ cache_fullpath(struct proc *p, struct nchandle *nchp,
 	mp = nch.mount;
 
 	while (ncp && (ncp != fd_nrdir.ncp || mp != fd_nrdir.mount)) {
+		new_mp = NULL;
+
+		/*
+		 * If we are asked to guess the upwards path, we do so whenever
+		 * we encounter an ncp marked as a mountpoint. We try to find
+		 * the actual mountpoint by finding the mountpoint with this ncp.
+		 */
+		if (guess && (ncp->nc_flag & NCF_ISMOUNTPT)) {
+			new_mp = mount_get_by_nc(ncp);
+		}
 		/*
 		 * While traversing upwards if we encounter the root
 		 * of the current mount we have to skip to the mount point.
 		 */
 		if (ncp == mp->mnt_ncmountpt.ncp) {
-			nch = mp->mnt_ncmounton;
+			new_mp = mp;
+		}
+		if (new_mp) {
+			kprintf("bump. switch mountpoint.\n");
+			nch = new_mp->mnt_ncmounton;
 			_cache_drop(ncp);
 			ncp = nch.ncp;
 			if (ncp)
@@ -3210,7 +3224,7 @@ done:
 }
 
 int
-vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf, char **freebuf) 
+vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf, char **freebuf, int guess) 
 {
 	struct namecache *ncp;
 	struct nchandle nch;
@@ -3243,7 +3257,7 @@ vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf, char **freebuf)
 	atomic_add_int(&numfullpathcalls, -1);
 	nch.ncp = ncp;;
 	nch.mount = vn->v_mount;
-	error = cache_fullpath(p, &nch, retbuf, freebuf);
+	error = cache_fullpath(p, &nch, retbuf, freebuf, guess);
 	_cache_drop(ncp);
 	return (error);
 }

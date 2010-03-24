@@ -586,7 +586,7 @@ retry:
 
 	LIST_FOREACH(pr, &allprison, pr_list) {
 		error = cache_fullpath(lp->lwp_proc, &pr->pr_root,
-					&fullpath, &freepath);
+					&fullpath, &freepath, 0);
 		if (error)
 			continue;
 		if (jlsused && jlsused < jlssize)

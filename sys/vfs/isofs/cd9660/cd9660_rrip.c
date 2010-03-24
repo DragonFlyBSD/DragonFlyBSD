@@ -175,7 +175,7 @@ cd9660_rrip_slink(ISO_RRIP_SLINK *p, ISO_RRIP_ANALYZE *ana)
 			outbuf -= len;
 			len = 0;
 			error = cache_fullpath(NULL, &ana->imp->im_mountp->mnt_ncmountpt,
-					       &inbuf, &freebuf);
+					       &inbuf, &freebuf, 0);
 			if (error)
 				goto bad;
 			wlen = strlen(inbuf);
