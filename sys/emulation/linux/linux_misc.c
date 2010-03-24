@@ -1667,7 +1667,6 @@ sys_linux_getpid(struct linux_getpid_args *args)
 		args->sysmsg_result = p->p_pid;
 	else
 		args->sysmsg_result = em->s->group_pid;
-	kprintf("curproc %s requested getpid, return pid = %d\n", curproc->p_comm, em->s->group_pid);
 	EMUL_UNLOCK();
 	rel_mplock();
 	return (0);
@@ -1697,10 +1696,8 @@ sys_linux_getppid(struct linux_getppid_args *args)
 	if (parent->p_sysent == &elf_linux_sysvec) {
 		em = emuldata_get(parent);
 		args->sysmsg_result = em->s->group_pid;
-		kprintf("(a) curproc %s requested getppid, return pid = %d\n", curproc->p_comm, em->s->group_pid);
 	} else {
 		args->sysmsg_result = parent->p_pid;
-		kprintf("(b) curproc %s requested getppid, return pid = %d\n", curproc->p_comm, em->s->group_pid);
 	}
 out:
 	EMUL_UNLOCK();

@@ -3147,7 +3147,6 @@ cache_fullpath(struct proc *p, struct nchandle *nchp,
 			new_mp = mp;
 		}
 		if (new_mp) {
-			kprintf("bump. switch mountpoint.\n");
 			nch = new_mp->mnt_ncmounton;
 			_cache_drop(ncp);
 			ncp = nch.ncp;
