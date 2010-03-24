@@ -846,6 +846,17 @@ vm_wait_nominal(void)
 }
 
 /*
+ * Test if vm_wait_nominal() would block.
+ */
+int
+vm_test_nominal(void)
+{
+	if (vm_page_count_min(0))
+		return(1);
+	return(0);
+}
+
+/*
  * Block until free pages are available for allocation, called in various
  * places before memory allocations.
  */
