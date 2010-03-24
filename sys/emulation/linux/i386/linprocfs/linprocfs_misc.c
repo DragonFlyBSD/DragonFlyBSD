@@ -718,9 +718,6 @@ linprocfs_domaps(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	if (uio->uio_rw != UIO_READ)
 		return (EOPNOTSUPP);
 
-	if (uio->uio_offset != 0)
-		return (0);
-
 	sb = sbuf_new_auto();
 
 	error = 0;
@@ -822,7 +819,8 @@ linprocfs_domaps(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 
 	sbuf_finish(sb);
 	if (error == 0)
-		error = uiomove_frombuf(sbuf_data(sb), sbuf_len(sb), uio);
+		error = uiomove_frombuf(sbuf_data(sb) + uio->uio_offset,
+		    sbuf_len(sb) - uio->uio_offset, uio);
 	sbuf_delete(sb);
 	return error;
 }
