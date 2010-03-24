@@ -1483,7 +1483,7 @@ vm_pageout(void)
 	 *	 inactive queue becomes too small.  If the inactive queue
 	 *	 is large enough to satisfy page movement to free+cache
 	 *	 then it is repopulated more slowly from the active queue.
-	 *	 This allows a generate inactive_target default to be set.
+	 *	 This allows a general inactive_target default to be set.
 	 *
 	 *	 There is an issue here for processes which sit mostly idle
 	 *	 'overnight', such as sshd, tcsh, and X.  Any movement from
@@ -1491,8 +1491,11 @@ vm_pageout(void)
 	 *	 recycle eventually causing a lot of paging in the morning.
 	 *	 To reduce the incidence of this pages cycled out of the
 	 *	 buffer cache are moved directly to the inactive queue if
-	 *	 they were only used once or twice.  The vfs.vm_cycle_point
-	 *	 sysctl can be used to adjust this.
+	 *	 they were only used once or twice.
+	 *
+	 *	 The vfs.vm_cycle_point sysctl can be used to adjust this.
+	 *	 Increasing the value (up to 64) increases the number of
+	 *	 buffer recyclements which go directly to the inactive queue.
 	 */
 	if (vmstats.v_free_count > 2048) {
 		vmstats.v_cache_min = vmstats.v_free_target;
@@ -1501,7 +1504,7 @@ vm_pageout(void)
 		vmstats.v_cache_min = 0;
 		vmstats.v_cache_max = 0;
 	}
-	vmstats.v_inactive_target = vmstats.v_free_count / 2;
+	vmstats.v_inactive_target = vmstats.v_free_count / 4;
 
 	/* XXX does not really belong here */
 	if (vm_page_max_wired == 0)
