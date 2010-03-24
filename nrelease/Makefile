@@ -515,10 +515,8 @@ fetch:
 .endif
 
 pkgsrc_bootstrap:
-.if !exists(${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}.tgz)
 	mkdir -p /usr/release/bootstrap
 	(cd ${PKGSRC_PATH}/bootstrap; ./bootstrap --workdir /usr/release/bootstrap)
-.endif
 
 pkgsrc_cdrecord:
 .if !exists (${PKGBIN_MKISOFS})
