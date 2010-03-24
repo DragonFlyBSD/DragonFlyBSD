@@ -397,15 +397,15 @@
 267    STD     LINUX   { int linux_clock_nanosleep(clockid_t which, int flags, \
 						struct l_timespec *rqtp, struct l_timespec *rmtp); }
 268    STD     LINUX   { int linux_statfs64(void); }
-269    UNIMPL  LINUX   linux_fstatfs64
+269    STD     LINUX   { int linux_fstatfs64(void); }
 270    STD     LINUX   { int linux_tgkill(int tgid, int pid, int sig); }
 271    STD     LINUX   { int linux_utimes(char *fname, \
 					struct l_timeval *tptr); }
-272    UNIMPL  LINUX   linux_fadvise64_64
-273    UNIMPL  LINUX   linux_nonexistant
-274    UNIMPL  LINUX   linux_mbind
-275    UNIMPL  LINUX   linux_get_mempolicy
-276    UNIMPL  LINUX   linux_set_mempolicy
+272    STD     LINUX   { int linux_fadvise64_64(void); }
+273    UNIMPL  LINUX   /* sys_vserver */
+274    STD     LINUX   { int linux_mbind(void); }
+275    STD     LINUX   { int linux_get_mempolicy(void); }
+276    STD     LINUX   { int linux_set_mempolicy(void); }
 277    STD     LINUX   { int linux_mq_open(const char *name, int oflag, mode_t mode, \
 			struct mq_attr *attr); }
 278    NOPROTO LINUX   { int mq_unlink(const char *name); }
@@ -418,18 +418,18 @@
 281    NOPROTO LINUX   { int mq_notify(l_mqd_t mqd, const struct sigevent *notification); }
 282    STD     LINUX   { int linux_mq_getsetattr(l_mqd_t mqd, const struct mq_attr *attr, \
 			struct mq_attr *oattr); }
-283    UNIMPL  LINUX   linux_kexec_load
-284    UNIMPL  LINUX   linux_waitid
-285    UNIMPL  LINUX   linux_nonexistant2
-286    UNIMPL  LINUX   linux_add_key
-287    UNIMPL  LINUX   linux_request_key
-288    UNIMPL  LINUX   linux_keyctl
-289    UNIMPL  LINUX   linux_ioprio_set
-290    UNIMPL  LINUX   linux_ioprio_get
-291    UNIMPL  LINUX   linux_inotify_init
-292    UNIMPL  LINUX   linux_inotify_add_watch
-293    UNIMPL  LINUX   linux_inotify_rm_watch
-294    UNIMPL  LINUX   linux_migrate_pages
+283    STD     LINUX   { int linux_kexec_load(void); }
+284    STD     LINUX   { int linux_waitid(void); }
+285    UNIMPL  LINUX   /* available */
+286    STD     LINUX   { int linux_add_key(void); }
+287    STD     LINUX   { int linux_request_key(void); }
+288    STD     LINUX   { int linux_keyctl(void); }
+289    STD     LINUX   { int linux_ioprio_set(void); }
+290    STD     LINUX   { int linux_ioprio_get(void); }
+291    STD     LINUX   { int linux_inotify_init(void); }
+292    STD     LINUX   { int linux_inotify_add_watch(void); }
+293    STD     LINUX   { int linux_inotify_rm_watch(void); }
+294    STD     LINUX   { int linux_migrate_pages(void); }
 295    STD     LINUX   { int linux_openat(l_int dfd, char *path, \
 					l_int flags, l_int mode); }
 296    STD     LINUX   { int linux_mkdirat(l_int dfd, char *path, \
@@ -455,25 +455,25 @@
 306    STD     LINUX   { int linux_fchmodat(l_int dfd, char *filename, \
 					l_mode_t mode); }
 307    STD     LINUX   { int linux_faccessat(l_int dfd, char *filename, l_int mode); }
-308    UNIMPL  LINUX   linux_pselect6
-309    UNIMPL  LINUX   linux_ppoll
-310    UNIMPL  LINUX   linux_unshare
+308    STD     LINUX   { int linux_pselect6(void); }
+309    STD     LINUX   { int linux_ppoll(void); }
+310    STD     LINUX   { int linux_unshare(void); }
 311    STD     LINUX   { int linux_set_robust_list(struct linux_robust_list_head *head, \
 					l_size_t len); }
 312    STD     LINUX   { int linux_get_robust_list(l_int pid, struct linux_robust_list_head **head, \
 					l_size_t *len); }
-313    UNIMPL  LINUX   linux_splice
-314    UNIMPL  LINUX   linux_sync_file_range
-315    UNIMPL  LINUX   linux_tee
-316    UNIMPL  LINUX   linux_vmsplice
-317    UNIMPL  LINUX   linux_move_pages
+313    STD     LINUX   { int linux_splice(void); }
+314    STD     LINUX   { int linux_sync_file_range(void); }
+315    STD     LINUX   { int linux_tee(void); }
+316    STD     LINUX   { int linux_vmsplice(void); }
+317    STD     LINUX   { int linux_move_pages(void); }
 318    STD     LINUX   { int linux_getcpu(l_uint *pcpu, l_uint *pnode, void *ptcache); }
-319    UNIMPL  LINUX   linux_epoll_pwait
+319    STD     LINUX   { int linux_epoll_pwait(void); }
 320    STD     LINUX   { int linux_utimensat(l_int dfd, char *fname, \
 					struct l_timespec *tptr, l_int flag); }
-321    UNIMPL  LINUX   linux_signalfd
-322    UNIMPL  LINUX   linux_timerfd_create
-323    UNIMPL  LINUX   linux_eventfd
+321    STD     LINUX   { int linux_signalfd(void); }
+322    STD     LINUX   { int linux_timerfd(void); }
+323    STD     LINUX   { int linux_eventfd(void); }
 324    UNIMPL  LINUX   linux_fallocate
 325    UNIMPL  LINUX   linux_timerfd_settime
 326    UNIMPL  LINUX   linux_timerfd_gettime
@@ -481,7 +481,7 @@
 328    UNIMPL  LINUX   linux_eventfd2
 329    UNIMPL  LINUX   linux_epoll_create1
 330    UNIMPL  LINUX   linux_dup3
-331    UNIMPL  LINUX   linux_pipe2
+331    STD     LINUX   { int linux_pipe2(l_ulong *pipefds, l_int flags); }
 332    UNIMPL  LINUX   linux_inotify_init1
 333    UNIMPL  LINUX   linux_preadv
 334    UNIMPL  LINUX   linux_pwritev
