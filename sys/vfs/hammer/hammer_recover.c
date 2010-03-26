@@ -30,11 +30,117 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.29 2008/07/26 05:36:21 dillon Exp $
+ */
+
+/*
+ * UNDO ALGORITHM:
+ *
+ *	The UNDO algorithm is trivial.  The nominal UNDO range in the
+ *	FIFO is determined by taking the first/next offset stored in
+ *	the volume header.  The next offset may not be correct since
+ *	UNDO flushes are not required to flush the volume header, so
+ *	the code also scans forward until it finds a discontinuous
+ *	sequence number.
+ *
+ *	The UNDOs are then scanned and executed in reverse order.  These
+ *	UNDOs are effectively just data restorations based on HAMMER offsets.
+ *
+ * REDO ALGORITHM:
+ *
+ *	REDO records are laid down in the UNDO/REDO FIFO for nominal
+ *	writes, truncations, and file extension ops.  On a per-inode
+ *	basis two types of REDO records are generated, REDO_WRITE
+ *	and REDO_TRUNC.
+ *
+ *	Essentially the recovery block will contain UNDO records backing
+ *	out partial operations and REDO records to regenerate those partial
+ *	operations guaranteed by the filesystem during recovery.
+ *
+ *	REDO generation is optional, and can also be started and then
+ *	later stopped due to excessive write()s inbetween fsyncs, or not
+ *	started at all.  Because of this the recovery code must determine
+ *	when REDOs are valid and when they are not.  Additional records are
+ *	generated to help figure it out.
+ *
+ *	The REDO_TERM_WRITE and REDO_TERM_TRUNC records are generated
+ *	during a flush cycle indicating which records the flush cycle
+ *	has synched meta-data for, and HAMMER_REDO_SYNC is generated in
+ *	each flush cycle to indicate how far back in the UNDO/REDO FIFO
+ *	the recovery code must go to find the earliest applicable REDO
+ *	record.  Applicable REDO records can be far outside the nominal
+ *	UNDO recovery range, for example if a write() lays down a REDO but
+ *	the related file is not flushed for several cycles.
+ *
+ *	The SYNC reference is to a point prior to the nominal UNDO FIFO
+ *	range, creating an extended REDO range which must be scanned.
+ *
+ *	Any REDO_WRITE/REDO_TRUNC encountered within the extended range
+ *	which have no matching REDO_TERM_WRITE/REDO_TERM_TRUNC records
+ *	prior to the start of the nominal UNDO range are applicable.
+ *	That is, any REDO_TERM_* records in the extended range but not in
+ *	the nominal undo range will mask any redo operations for prior REDO
+ *	records.  This is necessary because once the TERM is laid down
+ *	followup operations may make additional changes to the related
+ *	records but not necessarily record them as REDOs (because REDOs are
+ *	optional).
+ *
+ *	REDO_TERM_WRITE/REDO_TERM_TRUNC records in the nominal UNDO range
+ *	must be ignored since they represent meta-data flushes which are
+ *	undone by the UNDOs in that nominal UNDO range by the recovery
+ *	code.  Only REDO_TERM_* records in the extended range but not
+ *	in the nominal undo range are applicable.
+ *
+ *	The REDO_SYNC record itself always exists in the nominal UNDO range
+ *	(this is how the extended range is determined).  For recovery
+ *	purposes the most recent REDO_SYNC record is always used if several
+ *	are found.
+ *
+ * CRASHES DURING UNDO/REDO
+ *
+ *	A crash during the UNDO phase requires no additional effort.  The
+ *	UNDOs will simply be re-run again.  The state of the UNDO/REDO fifo
+ *	remains unchanged and has no re-crash issues.
+ *
+ *	A crash during the REDO phase is more complex because the REDOs
+ *	run normal filesystem ops and generate additional UNDO/REDO records.
+ *	REDO is disabled during REDO recovery and any SYNC records generated
+ *	by flushes during REDO recovery must continue to reference the
+ *	original extended range.
+ *
+ *	If multiple crashes occur and the UNDO/REDO FIFO wraps, REDO recovery
+ *	may become impossible.  This is detected when the start of the
+ *	extended range fails to have monotonically increasing sequence
+ *	numbers leading into the nominal undo range.
  */
 
 #include "hammer.h"
+
+/*
+ * Each rterm entry has a list of fifo offsets indicating termination
+ * points.  These are stripped as the scan progresses.
+ */
+typedef struct hammer_rterm_entry {
+	struct hammer_rterm_entry *next;
+	hammer_off_t		fifo_offset;
+} *hammer_rterm_entry_t;
+
+/*
+ * rterm entries sorted in RB tree are indexed by objid, flags, and offset.
+ * TRUNC entries ignore the offset.
+ */
+typedef struct hammer_rterm {
+	RB_ENTRY(hammer_rterm)	rb_node;
+	int64_t			redo_objid;
+	u_int32_t		redo_localization;
+	u_int32_t		redo_flags;
+	hammer_off_t		redo_offset;
+	hammer_rterm_entry_t	term_list;
+} *hammer_rterm_t;
+
+static int hammer_rterm_rb_cmp(hammer_rterm_t rt1, hammer_rterm_t rt2);
+struct hammer_rterm_rb_tree;
+RB_HEAD(hammer_rterm_rb_tree, hammer_rterm);
+RB_PROTOTYPE(hammer_rterm_rb_tree, hammer_rterm, rb_node, hammer_rterm_rb_cmp);
 
 static int hammer_check_tail_signature(hammer_fifo_tail_t tail,
 			hammer_off_t end_off);
@@ -55,6 +161,16 @@ static void hammer_recover_debug_dump(int w, char *buf, int bytes);
 #endif
 static int hammer_recover_undo(hammer_mount_t hmp, hammer_volume_t root_volume,
 			hammer_fifo_undo_t undo);
+static int hammer_recover_redo_rec(hammer_mount_t hmp,
+			struct hammer_rterm_rb_tree *root,
+			hammer_off_t redo_fifo_offset, hammer_fifo_redo_t redo);
+static int hammer_recover_redo_run(hammer_mount_t hmp,
+			struct hammer_rterm_rb_tree *root,
+			hammer_off_t redo_fifo_offset, hammer_fifo_redo_t redo);
+static void hammer_recover_redo_exec(hammer_mount_t hmp,
+			hammer_fifo_redo_t redo);
+
+RB_GENERATE(hammer_rterm_rb_tree, hammer_rterm, rb_node, hammer_rterm_rb_cmp);
 
 /*
  * Recover filesystem meta-data on mount.  This procedure figures out the
@@ -95,6 +211,8 @@ hammer_recover_stage1(hammer_mount_t hmp, hammer_volume_t root_volume)
 	last_offset  = rootmap->next_offset;
 	buffer = NULL;
 	error = 0;
+
+	hmp->recover_stage2_offset = 0;
 
 	if (first_offset > rootmap->alloc_offset ||
 	    last_offset > rootmap->alloc_offset) {
@@ -162,6 +280,8 @@ hammer_recover_stage1(hammer_mount_t hmp, hammer_volume_t root_volume)
 		scan_offset = first_offset;
 		scan_offset_save = scan_offset;
 		++seqno;
+		hmp->recover_stage2_seqno = seqno;
+
 		for (;;) {
 			head = hammer_recover_scan_fwd(hmp, root_volume,
 						       &scan_offset,
@@ -242,8 +362,7 @@ hammer_recover_stage1(hammer_mount_t hmp, hammer_volume_t root_volume)
 		goto done;
 	}
 
-	kprintf("HAMMER(%s) Start recovery undo %016jx - %016jx "
-		"(%jd bytes of UNDO)%s\n",
+	kprintf("HAMMER(%s) recovery undo  %016jx-%016jx (%jd bytes)%s\n",
 		root_volume->ondisk->vol_name,
 		(intmax_t)first_offset,
 		(intmax_t)last_offset,
@@ -266,6 +385,10 @@ hammer_recover_stage1(hammer_mount_t hmp, hammer_volume_t root_volume)
 					       &scan_offset, &error, &buffer);
 		if (error)
 			break;
+
+		/*
+		 * Normal UNDO
+		 */
 		error = hammer_recover_undo(hmp, root_volume, &head->undo);
 		if (error) {
 			kprintf("HAMMER(%s) UNDO record at %016jx failed\n",
@@ -273,6 +396,28 @@ hammer_recover_stage1(hammer_mount_t hmp, hammer_volume_t root_volume)
 				(intmax_t)scan_offset - head->head.hdr_size);
 			break;
 		}
+
+		/*
+		 * The first REDO_SYNC record encountered (scanning backwards)
+		 * enables REDO processing.
+		 */
+		if (head->head.hdr_type == HAMMER_HEAD_TYPE_REDO &&
+		    head->redo.redo_flags == HAMMER_REDO_SYNC) {
+			if (hmp->flags & HAMMER_MOUNT_REDO_RECOVERY_REQ) {
+				kprintf("HAMMER(%s) Ignoring extra REDO_SYNC "
+					"records in UNDO/REDO FIFO.\n",
+					root_volume->ondisk->vol_name
+				);
+			} else {
+				hmp->flags |= HAMMER_MOUNT_REDO_RECOVERY_REQ;
+				hmp->recover_stage2_offset =
+					head->redo.redo_offset;
+				kprintf("HAMMER(%s) Found REDO_SYNC %016jx\n",
+					root_volume->ondisk->vol_name,
+					(intmax_t)head->redo.redo_offset);
+			}
+		}
+
 		bytes -= head->head.hdr_size;
 
 		/*
@@ -301,6 +446,7 @@ hammer_recover_stage1(hammer_mount_t hmp, hammer_volume_t root_volume)
 			}
 		}
 	}
+	KKASSERT(error || bytes == 0);
 done:
 	if (buffer) {
 		hammer_rel_buffer(buffer, 0);
@@ -354,7 +500,8 @@ done:
  * switches from read-only to read-write.  vnodes may or may not be present.
  *
  * The stage1 code will have already calculated the correct FIFO range
- * and stored it in the rootmap.
+ * for the nominal UNDO FIFO and stored it in the rootmap.  The extended
+ * range for REDO is stored in hmp->recover_stage2_offset.
  */
 int
 hammer_recover_stage2(hammer_mount_t hmp, hammer_volume_t root_volume)
@@ -362,21 +509,25 @@ hammer_recover_stage2(hammer_mount_t hmp, hammer_volume_t root_volume)
 	hammer_blockmap_t rootmap;
 	hammer_buffer_t buffer;
 	hammer_off_t scan_offset;
+	hammer_off_t oscan_offset;
 	hammer_off_t bytes;
+	hammer_off_t ext_bytes;
 	hammer_fifo_any_t head;
 	hammer_off_t first_offset;
 	hammer_off_t last_offset;
+	hammer_off_t ext_offset;
+	struct hammer_rterm_rb_tree rterm_root;
+	u_int32_t seqno;
 	int error;
+	int verbose = 0;
+	int dorscan;
 
 	/*
 	 * Stage 2 can only be run on a RW mount, or when the mount is
-	 * switched from RO to RW.  It must be run only once.
+	 * switched from RO to RW.
 	 */
 	KKASSERT(hmp->ronly == 0);
-
-	if (hmp->hflags & HMNT_STAGE2)
-		return(0);
-	hmp->hflags |= HMNT_STAGE2;
+	RB_INIT(&rterm_root);
 
 	/*
 	 * Examine the UNDO FIFO.  If it is empty the filesystem is clean
@@ -385,44 +536,159 @@ hammer_recover_stage2(hammer_mount_t hmp, hammer_volume_t root_volume)
 	rootmap = &root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
 	first_offset = rootmap->first_offset;
 	last_offset  = rootmap->next_offset;
-	if (first_offset == last_offset)
+	if (first_offset == last_offset) {
+		KKASSERT((hmp->flags & HAMMER_MOUNT_REDO_RECOVERY_REQ) == 0);
 		return(0);
+	}
 
+	/*
+	 * Stage2 must only be run once, and will not be run at all
+	 * if Stage1 did not find a REDO_SYNC record.
+	 */
+	error = 0;
+	buffer = NULL;
+
+	if ((hmp->flags & HAMMER_MOUNT_REDO_RECOVERY_REQ) == 0)
+		goto done;
+	hmp->flags &= ~HAMMER_MOUNT_REDO_RECOVERY_REQ;
+	hmp->flags |= HAMMER_MOUNT_REDO_RECOVERY_RUN;
+	ext_offset = hmp->recover_stage2_offset;
+	if (ext_offset == 0) {
+		kprintf("HAMMER(%s) REDO stage specified but no REDO_SYNC "
+			"offset, ignoring\n",
+			root_volume->ondisk->vol_name);
+		goto done;
+	}
+
+	/*
+	 * Calculate nominal UNDO range (this is not yet the extended
+	 * range).
+	 */
 	if (last_offset >= first_offset) {
 		bytes = last_offset - first_offset;
 	} else {
 		bytes = rootmap->alloc_offset - first_offset +
 			(last_offset & HAMMER_OFF_LONG_MASK);
 	}
-	kprintf("HAMMER(%s) Start recovery redo %016jx - %016jx "
-		"(%jd bytes of REDO)%s\n",
+	kprintf("HAMMER(%s) recovery redo  %016jx-%016jx (%jd bytes)%s\n",
 		root_volume->ondisk->vol_name,
 		(intmax_t)first_offset,
 		(intmax_t)last_offset,
 		(intmax_t)bytes,
 		(hmp->ronly ? " (RO)" : "(RW)"));
+	verbose = 1;
 	if (bytes > (rootmap->alloc_offset & HAMMER_OFF_LONG_MASK)) {
 		kprintf("Undo size is absurd, unable to mount\n");
-		return(EIO);
+		error = EIO;
+		goto fatal;
 	}
 
 	/*
-	 * Scan the REDOs forwards.
+	 * Scan the REDOs backwards collecting REDO_TERM_* information.
+	 * This information is only collected for the extended range,
+	 * non-inclusive of any TERMs in the nominal UNDO range.
+	 *
+	 * If the stage2 extended range is inside the nominal undo range
+	 * we have nothing to scan.
+	 *
+	 * This must fit in memory!
 	 */
-	scan_offset = first_offset;
-	buffer = NULL;
+	if (first_offset < last_offset) {
+		/*
+		 * [      first_offset........last_offset      ]
+		 */
+		if (ext_offset < first_offset) {
+			dorscan = 1;
+			ext_bytes = first_offset - ext_offset;
+		} else if (ext_offset > last_offset) {
+			dorscan = 1;
+			ext_bytes = (rootmap->alloc_offset - ext_offset) +
+				    (first_offset & HAMMER_OFF_LONG_MASK);
+		} else {
+			ext_bytes = -(ext_offset - first_offset);
+			dorscan = 0;
+		}
+	} else {
+		/*
+		 * [......last_offset         first_offset.....]
+		 */
+		if (ext_offset < last_offset) {
+			ext_bytes = -((rootmap->alloc_offset - first_offset) +
+				    (ext_offset & HAMMER_OFF_LONG_MASK));
+			dorscan = 0;
+		} else if (ext_offset > first_offset) {
+			ext_bytes = -(ext_offset - first_offset);
+			dorscan = 0;
+		} else {
+			ext_bytes = first_offset - ext_offset;
+			dorscan = 1;
+		}
+	}
 
-	while (bytes) {
+	if (dorscan) {
+		scan_offset = first_offset;
+		kprintf("HAMMER(%s) Find extended redo  %016jx, %jd extbytes\n",
+			root_volume->ondisk->vol_name,
+			(intmax_t)ext_offset,
+			(intmax_t)ext_bytes);
+		seqno = hmp->recover_stage2_seqno - 1;
+		for (;;) {
+			head = hammer_recover_scan_rev(hmp, root_volume,
+						       &scan_offset,
+						       &error, &buffer);
+			if (error)
+				break;
+			if (head->head.hdr_type != HAMMER_HEAD_TYPE_PAD) {
+				if (head->head.hdr_seq != seqno) {
+					error = ERANGE;
+					break;
+				}
+				error = hammer_recover_redo_rec(
+						hmp, &rterm_root,
+						scan_offset, &head->redo);
+				--seqno;
+			}
+			if (scan_offset == ext_offset)
+				break;
+		}
+		if (error) {
+			kprintf("HAMMER(%s) Find extended redo failed %d, "
+				"unable to run REDO\n",
+				root_volume->ondisk->vol_name,
+				error);
+			goto done;
+		}
+	} else {
+		kprintf("HAMMER(%s) Embeded extended redo %016jx, "
+			"%jd extbytes\n",
+			root_volume->ondisk->vol_name,
+			(intmax_t)ext_offset,
+			(intmax_t)ext_bytes);
+	}
+
+	/*
+	 * Scan the REDO forwards through the entire extended range.
+	 * Anything with a previously recorded matching TERM is discarded.
+	 */
+	scan_offset = ext_offset;
+	bytes += ext_bytes;
+
+	/*
+	 * NOTE: when doing a forward scan the returned scan_offset is
+	 *	 for the record following the returned record, so we
+	 *	 have to play a bit.
+	 */
+	while ((int64_t)bytes > 0) {
 		KKASSERT(scan_offset != last_offset);
 
+		oscan_offset = scan_offset;
 		head = hammer_recover_scan_fwd(hmp, root_volume,
 					       &scan_offset, &error, &buffer);
 		if (error)
 			break;
 
-#if 0
-		error = hammer_recover_redo(hmp, root_volume, &head->redo);
-#endif
+		error = hammer_recover_redo_run(hmp, &rterm_root,
+						oscan_offset, &head->redo);
 		if (error) {
 			kprintf("HAMMER(%s) UNDO record at %016jx failed\n",
 				root_volume->ondisk->vol_name,
@@ -431,9 +697,28 @@ hammer_recover_stage2(hammer_mount_t hmp, hammer_volume_t root_volume)
 		}
 		bytes -= head->head.hdr_size;
 	}
+	KKASSERT(error || bytes == 0);
 	if (buffer) {
 		hammer_rel_buffer(buffer, 0);
 		buffer = NULL;
+	}
+
+done:
+	/*
+	 * Cleanup rterm tree
+	 */
+	{
+		hammer_rterm_t rterm;
+		hammer_rterm_entry_t rte;
+
+		while ((rterm = RB_ROOT(&rterm_root)) != NULL) {
+			RB_REMOVE(hammer_rterm_rb_tree, &rterm_root, rterm);
+			while ((rte = rterm->term_list) != NULL) {
+				rterm->term_list = rte->next;
+				kfree(rte, hmp->m_misc);
+			}
+			kfree(rterm, hmp->m_misc);
+		}
 	}
 
 	/*
@@ -449,8 +734,12 @@ hammer_recover_stage2(hammer_mount_t hmp, hammer_volume_t root_volume)
 			hmp->hflags |= HMNT_UNDO_DIRTY;
 		hammer_flusher_sync(hmp);
 	}
-	kprintf("HAMMER(%s) End redo recovery\n",
-		root_volume->ondisk->vol_name);
+fatal:
+	hmp->flags &= ~HAMMER_MOUNT_REDO_RECOVERY_RUN;
+	if (verbose) {
+		kprintf("HAMMER(%s) End redo recovery\n",
+			root_volume->ondisk->vol_name);
+	}
 	return (error);
 }
 
@@ -741,11 +1030,8 @@ hammer_recover_undo(hammer_mount_t hmp, hammer_volume_t root_volume,
 	 * Only process UNDO records.  Flag if we find other records to
 	 * optimize stage2 recovery.
 	 */
-	if (undo->head.hdr_type != HAMMER_HEAD_TYPE_UNDO) {
-		if (undo->head.hdr_type == HAMMER_HEAD_TYPE_REDO)
-			hmp->hflags |= HMNT_HASREDO;
+	if (undo->head.hdr_type != HAMMER_HEAD_TYPE_UNDO)
 		return(0);
-	}
 
 	/*
 	 * Validate the UNDO record.
@@ -853,6 +1139,229 @@ hammer_recover_copy_undo(hammer_off_t undo_offset,
 	hammer_recover_debug_dump(22, src, bytes);
 #endif
 	bcopy(src, dst, bytes);
+}
+
+/*
+ * Record HAMMER_REDO_TERM_WRITE and HAMMER_REDO_TERM_TRUNC operations
+ * during the backwards scan of the extended UNDO/REDO FIFO.  This scan
+ * does not include the nominal UNDO range, just the extended range.
+ */
+int
+hammer_recover_redo_rec(hammer_mount_t hmp, struct hammer_rterm_rb_tree *root,
+			hammer_off_t scan_offset, hammer_fifo_redo_t redo)
+{
+	hammer_rterm_t rterm;
+	hammer_rterm_t nrterm;
+	hammer_rterm_entry_t rte;
+
+	if (redo->head.hdr_type != HAMMER_HEAD_TYPE_REDO)
+		return(0);
+	if (redo->redo_flags != HAMMER_REDO_TERM_WRITE &&
+	    redo->redo_flags != HAMMER_REDO_TERM_TRUNC) {
+		return(0);
+	}
+
+	nrterm = kmalloc(sizeof(*nrterm), hmp->m_misc, M_WAITOK|M_ZERO);
+	nrterm->redo_objid = redo->redo_objid;
+	nrterm->redo_localization = redo->redo_localization;
+	nrterm->redo_flags = redo->redo_flags;
+	nrterm->redo_offset = redo->redo_offset;
+
+	rterm = RB_INSERT(hammer_rterm_rb_tree, root, nrterm);
+	if (rterm)
+		kfree(nrterm, hmp->m_misc);
+	else
+		rterm = nrterm;
+
+	kprintf("record record %016jx objid %016jx offset %016jx flags %08x\n",
+		(intmax_t)scan_offset,
+		(intmax_t)redo->redo_objid,
+		(intmax_t)redo->redo_offset,
+		(int)redo->redo_flags);
+
+	/*
+	 * Scan in reverse order, rte prepended, so the rte list will be
+	 * in forward order.
+	 */
+	rte = kmalloc(sizeof(*rte), hmp->m_misc, M_WAITOK|M_ZERO);
+	rte->fifo_offset = scan_offset;
+	rte->next = rterm->term_list;
+	rterm->term_list = rte;
+
+	return(0);
+}
+
+/*
+ * Execute HAMMER_REDO_WRITE and HAMMER_REDO_TRUNC operations during
+ * the forwards scan of the entire extended UNDO/REDO FIFO range.
+ *
+ * Records matching previously recorded TERMs have already been committed
+ * and are ignored.
+ */
+int
+hammer_recover_redo_run(hammer_mount_t hmp, struct hammer_rterm_rb_tree *root,
+			hammer_off_t scan_offset, hammer_fifo_redo_t redo)
+{
+	struct hammer_rterm rtval;
+	hammer_rterm_t rterm;
+	hammer_rterm_entry_t rte;
+
+	if (redo->head.hdr_type != HAMMER_HEAD_TYPE_REDO)
+		return(0);
+
+	switch(redo->redo_flags) {
+	case HAMMER_REDO_WRITE:
+	case HAMMER_REDO_TRUNC:
+		/*
+		 * We hit a REDO request.  The REDO request is only executed
+		 * if there is no matching TERM.
+		 */
+		bzero(&rtval, sizeof(rtval));
+		rtval.redo_objid = redo->redo_objid;
+		rtval.redo_localization = redo->redo_localization;
+		rtval.redo_offset = redo->redo_offset;
+		rtval.redo_flags = (redo->redo_flags == HAMMER_REDO_WRITE) ?
+				   HAMMER_REDO_TERM_WRITE :
+				   HAMMER_REDO_TERM_TRUNC;
+
+		rterm = RB_FIND(hammer_rterm_rb_tree, root, &rtval);
+		if (rterm) {
+			kprintf("ignore record %016jx objid %016jx "
+				"offset %016jx flags %08x\n",
+				(intmax_t)scan_offset,
+				(intmax_t)redo->redo_objid,
+				(intmax_t)redo->redo_offset,
+				(int)redo->redo_flags);
+
+			break;
+		}
+		kprintf("run    record %016jx objid %016jx "
+			"offset %016jx flags %08x\n",
+			(intmax_t)scan_offset,
+			(intmax_t)redo->redo_objid,
+			(intmax_t)redo->redo_offset,
+			(int)redo->redo_flags);
+
+		/*
+		 * Redo stage2 can access a live filesystem, acquire the
+		 * vnode.
+		 */
+		hammer_recover_redo_exec(hmp, redo);
+		break;
+	case HAMMER_REDO_TERM_WRITE:
+	case HAMMER_REDO_TERM_TRUNC:
+		/*
+		 * As we encounter TERMs in the forward scan we remove
+		 * them.  Once the forward scan hits the nominal undo range
+		 * there will be no more recorded TERMs.
+		 */
+		bzero(&rtval, sizeof(rtval));
+		rtval.redo_objid = redo->redo_objid;
+		rtval.redo_localization = redo->redo_localization;
+		rtval.redo_flags = redo->redo_flags;
+		rtval.redo_offset = redo->redo_offset;
+
+		rterm = RB_FIND(hammer_rterm_rb_tree, root, &rtval);
+		if (rterm) {
+			if ((rte = rterm->term_list) != NULL) {
+				KKASSERT(rte->fifo_offset == scan_offset);
+				rterm->term_list = rte->next;
+				kfree(rte, hmp->m_misc);
+			}
+		}
+		break;
+	}
+	return(0);
+}
+
+static void
+hammer_recover_redo_exec(hammer_mount_t hmp, hammer_fifo_redo_t redo)
+{
+	struct hammer_transaction trans;
+	struct vattr va;
+	struct hammer_inode *ip;
+	struct vnode *vp = NULL;
+	int error;
+
+	hammer_start_transaction(&trans, hmp);
+
+	ip = hammer_get_inode(&trans, NULL, redo->redo_objid,
+			      HAMMER_MAX_TID, redo->redo_localization,
+			      0, &error);
+	if (ip == NULL) {
+		kprintf("unable to find objid %016jx lo %08x\n",
+			(intmax_t)redo->redo_objid, redo->redo_localization);
+		goto done2;
+	}
+	error = hammer_get_vnode(ip, &vp);
+	if (error) {
+		kprintf("unable to acquire vnode for %016jx lo %08x\n",
+			(intmax_t)redo->redo_objid, redo->redo_localization);
+		goto done1;
+	}
+
+	switch(redo->redo_flags) {
+	case HAMMER_REDO_WRITE:
+		error = VOP_OPEN(vp, FREAD|FWRITE, proc0.p_ucred, NULL);
+		if (error) {
+			kprintf("vn_rdwr open returned %d\n", error);
+			break;
+		}
+		vn_unlock(vp);
+		error = vn_rdwr(UIO_WRITE, vp, (void *)(redo + 1),
+				redo->redo_data_bytes,
+				redo->redo_offset, UIO_SYSSPACE,
+				0, proc0.p_ucred, NULL);
+		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
+		if (error)
+			kprintf("vn_rdwr write returned %d\n", error);
+		VOP_CLOSE(vp, FREAD|FWRITE);
+		break;
+	case HAMMER_REDO_TRUNC:
+		kprintf("setattr offset %016jx error %d\n",
+			(intmax_t)redo->redo_offset, error);
+		VATTR_NULL(&va);
+		va.va_size = redo->redo_offset;
+		error = VOP_SETATTR(vp, &va, proc0.p_ucred);
+		if (error)
+			kprintf("stattr returned %d\n", error);
+		break;
+	}
+	vput(vp);
+done1:
+	hammer_rel_inode(ip, 0);
+done2:
+	hammer_done_transaction(&trans);
+}
+
+/*
+ * RB tree compare function.  Note that REDO_TERM_TRUNC ops ignore
+ * the offset.
+ *
+ * WRITE@0 TERM@0 WRITE@0 .... (no TERM@0) etc.
+ */
+static int
+hammer_rterm_rb_cmp(hammer_rterm_t rt1, hammer_rterm_t rt2)
+{
+	if (rt1->redo_objid < rt2->redo_objid)
+		return(-1);
+	if (rt1->redo_objid > rt2->redo_objid)
+		return(1);
+	if (rt1->redo_localization < rt2->redo_localization)
+		return(-1);
+	if (rt1->redo_localization > rt2->redo_localization)
+		return(1);
+	if (rt1->redo_flags < rt2->redo_flags)
+		return(-1);
+	if (rt1->redo_flags > rt2->redo_flags)
+		return(1);
+	if (rt1->redo_flags != HAMMER_REDO_TERM_TRUNC) {
+		if (rt1->redo_offset < rt2->redo_offset)
+			return(-1);
+		if (rt1->redo_offset > rt2->redo_offset)
+			return(1);
+	}
+	return(0);
 }
 
 #if 0

@@ -275,7 +275,8 @@ mode1:
 		 * We weren't running REDOs before now so we have to fall
 		 * through and do a full fsync of what we have.
 		 */
-		if (hmp->version >= HAMMER_VOL_VERSION_FOUR) {
+		if (hmp->version >= HAMMER_VOL_VERSION_FOUR &&
+		    (hmp->flags & HAMMER_MOUNT_REDO_RECOVERY_RUN) == 0) {
 			ip->flags |= HAMMER_INODE_REDO;
 			ip->redo_count = 0;
 		}
@@ -2144,9 +2145,17 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 				break;
 
 			/*
-			 * Log the operation if in fast-fsync mode.
+			 * Log the operation if in fast-fsync mode or if
+			 * there are unterminated redo write records present.
+			 *
+			 * The second check is needed so the recovery code
+			 * properly truncates write redos even if nominal
+			 * REDO operations is turned off due to excessive
+			 * writes, because the related records might be
+			 * destroyed and never lay down a TERM_WRITE.
 			 */
-			if (ip->flags & HAMMER_INODE_REDO) {
+			if ((ip->flags & HAMMER_INODE_REDO) ||
+			    (ip->flags & HAMMER_INODE_RDIRTY)) {
 				error = hammer_generate_redo(&trans, ip,
 							     vap->va_size,
 							     HAMMER_REDO_TRUNC,

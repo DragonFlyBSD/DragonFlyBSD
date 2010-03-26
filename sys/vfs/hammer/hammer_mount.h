@@ -59,8 +59,6 @@ struct hammer_mount_info {
 #define HMNT_MASTERID	0x00000002	/* master_id field set */
 #define HMNT_EXPORTREQ	0x00000004
 #define HMNT_UNDO_DIRTY	0x00000008
-#define HMNT_STAGE2	0x00000010	/* ran stage-2 recovery */
-#define HMNT_HASREDO	0x00000020	/* stage-2 must scan for REDO */
 
 #define HMNT_USERFLAGS	(HMNT_NOHISTORY | HMNT_MASTERID)
 
