@@ -1173,11 +1173,14 @@ hammer_recover_redo_rec(hammer_mount_t hmp, struct hammer_rterm_rb_tree *root,
 	else
 		rterm = nrterm;
 
-	kprintf("record record %016jx objid %016jx offset %016jx flags %08x\n",
-		(intmax_t)scan_offset,
-		(intmax_t)redo->redo_objid,
-		(intmax_t)redo->redo_offset,
-		(int)redo->redo_flags);
+	if (bootverbose) {
+		kprintf("record record %016jx objid %016jx "
+			"offset %016jx flags %08x\n",
+			(intmax_t)scan_offset,
+			(intmax_t)redo->redo_objid,
+			(intmax_t)redo->redo_offset,
+			(int)redo->redo_flags);
+	}
 
 	/*
 	 * Scan in reverse order, rte prepended, so the rte list will be
