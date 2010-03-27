@@ -29,9 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man5/kernconf.5,v 1.8 2008/07/16 01:02:07 thomas Exp $
-.\"
-.Dd November 14, 2009
+.Dd March 28, 2010
 .Dt KERNCONF 5
 .Os
 .Sh NAME
@@ -174,15 +172,19 @@ of that language apply.
 Sets the platform of this kernel to
 .Ar name .
 Legal platforms are
-.Sy pc32 ,
-.Sy pc64 ,
-and
-.Sy vkernel ,
-meaning either a 32 bit
+.Sy pc32
+(32 bit
 .Tn Intel
-architecture, a 64 bit
+architecture),
+.Sy pc64
+(64 bit
 .Tn AMD
-architecture, or a virtual kernel.
+architecture),
+.Sy vkernel
+(32 bit virtual kernel),
+and
+.Sy vkernel64
+(64 bit virtual kernel).
 .Pp
 .It Sy pseudo-device Ar name Op Ar N
 Includes support for the pseudo-device
@@ -201,8 +203,16 @@ kernel configuration file
 .It Pa /sys/config/LINT
 kernel configuration file for checking all the sources,
 includes description of kernel configuration options
+.It Pa /sys/config/SOEKRIS
+kernel configuration file for the
+.Tn Soekris Engineering net5501
+board
 .It Pa /sys/config/VKERNEL
-default
+default 32 bit
+.Xr vkernel 7
+kernel configuration file
+.It Pa /sys/config/VKERNEL64
+default 64 bit
 .Xr vkernel 7
 kernel configuration file
 .It Pa /sys/config/X86_64_GENERIC
