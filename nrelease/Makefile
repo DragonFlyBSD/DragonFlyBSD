@@ -46,7 +46,6 @@ PKGBIN_PKG_ADMIN?=	${PKGSRC_PREFIX}/sbin/pkg_admin
 PKGBIN_MKISOFS?=	${PKGSRC_PREFIX}/bin/mkisofs
 PKGSRC_PKG_PATH?=	${ISODIR}/packages
 PKGSRC_BOOTSTRAP_URL?=	http://avalon.dragonflybsd.org/DragonFly-pkgsrc-packages/i386/1.12.0-RELEASE-BUILD
-CVSUP_BOOTSTRAP_KIT?=	cvsup-bootstrap-20070716
 
 # We use env -i in the chroot, so that environment variables won't
 # disturb any (pkgsrc) build.  This has happened for TARGET_ARCH,
@@ -67,6 +66,7 @@ PKGSRC_PACKAGES?=	pkgtools/pkg_leaves \
 			net/isc-dhcp4 \
 			net/isc-dhcpd4 \
 			sysutils/cdrtools \
+			net/csup \
 			${PKGSRC_EXTRA_PACKAGES}
 
 # pkgsrc options to use when building packages
@@ -191,10 +191,6 @@ check:
 	@echo "You never bootstrapped pkgsrc on your machine.  You can install it with:"
 	@echo "    make pkgsrc_bootstrap"
 .endif
-.if ${MACHINE_ARCH} == "i386" && !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
-	@echo "The cvsup bootstrap kit is not installed.  You can install it with:"
-	@echo "    make fetch"
-.endif
 .if !exists (${PKGBIN_MKISOFS})
 	@echo
 	@echo "Your machine does not have cdrtools installed.  You can install it with:"
@@ -204,9 +200,6 @@ check:
 	@echo "Please set PKGSRC_PATH to the pkgsrc tree that shall be used for"
 	@echo "package building.  For example /usr/pkgsrc.  See the Makefile"
 	@echo "in /usr if you are unfamiliar with pkgsrc."
-.endif
-.if ${MACHINE_ARCH} == "i386" && !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
-	@exit 1
 .endif
 .if !exists (${PKGBIN_MKISOFS})
 	@exit 1
@@ -285,7 +278,6 @@ buildiso:
 	done
 .endif
 	ln -s kernel ${ISOROOT}/boot/kernel.BOOTP
-	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.local.dist -p ${ISOROOT}/usr/local/
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
 
@@ -332,11 +324,6 @@ customizeiso:
 	@test -O ${.CURDIR} || echo "chowning copied files to root:wheel"
 	@test -O ${.CURDIR} || ((cd ${ROOTSKEL} && find .) | fgrep -v cpignore | (cd ${ISOROOT} && xargs chown root:wheel))
 .endfor
-.if ${MACHINE_ARCH} == "i386"
-	(cd ${PKGSRC_PKG_PATH}; tar xzpf ${CVSUP_BOOTSTRAP_KIT}.tgz)
-	cp -p ${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}/usr/local/bin/cvsup ${ISOROOT}/usr/local/bin/cvsup
-	cp -p ${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}/usr/local/man/man1/cvsup.1 ${ISOROOT}/usr/local/man/man1/cvsup.1
-.endif
 	pwd_mkdb -p -d ${ISOROOT}/etc ${ISOROOT}/etc/master.passwd
 .for UPGRADE_ITEM in Makefile			\
 		     etc.${MACHINE_ARCH} 	\
@@ -419,7 +406,6 @@ customizeiso:
 	umount ${ISOROOT}/usr/pkgsrc
 	rm -rf ${ISOROOT}/usr/pkgobj
 	rm -f ${ISOROOT}/etc/resolv.conf
-	makewhatis ${ISOROOT}/usr/local/man
 	makewhatis ${ISOROOT}/usr/pkg/man
 
 # So locate works
@@ -503,17 +489,6 @@ realclean:	clean
 	rm -rf ${ISODIR}/packages
 	rm -rf ${ISODIR}/distfiles
 
-.if ${MACHINE_ARCH} == "i386"
-fetch:
-	@if [ ! -d ${PKGSRC_PKG_PATH} ]; then mkdir -p ${PKGSRC_PKG_PATH}; fi
-.if !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
-	(cd ${PKGSRC_PKG_PATH}; fetch ${PKGSRC_BOOTSTRAP_URL}/${CVSUP_BOOTSTRAP_KIT}.tgz)
-.endif
-.else
-fetch:
-	@echo "Fetch is a NOP for 64-bit builds"
-.endif
-
 pkgsrc_bootstrap:
 	mkdir -p /usr/release/bootstrap
 	(cd ${PKGSRC_PATH}/bootstrap; ./bootstrap --workdir /usr/release/bootstrap)
@@ -536,6 +511,6 @@ help all:
 .PHONY: quick realquick
 .PHONY: check buildworld1 buildworld2
 .PHONY: buildkernel1 buildkernel2 buildiso customizeiso mklocatedb mkiso mkimg
-.PHONY: clean realclean fetch help all srcs
+.PHONY: clean realclean help all srcs
 
 .include <bsd.prog.mk>

@@ -4,7 +4,10 @@
 This directory contains sample "supfiles" for obtaining and updating
 the various BSDs via the Internet.  These supfiles will work with
 CVSup version 14.0 or later.  For general information on CVSup
-itself, please see http://www.dragonflybsd.org/docs/handbook/handbook-cvsup/
+itself, please see http://www.dragonflybsd.org/docs/handbook/handbook-cvsup/ .
+You can use net/csup from NetBSD pkgsrc collection to check out
+the source tree, or devel/cvsync to retrieve the CVS repository files,
+from a CVSup server.
 
 To maintain the sources for FreeBSD, use:
 
