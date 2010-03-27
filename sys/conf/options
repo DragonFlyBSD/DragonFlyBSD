@@ -669,3 +669,4 @@ WATCHDOG_ENABLE	opt_cpu.h
 # Panic settings
 WDOG_DISABLE_ON_PANIC	opt_panic.h
 ERROR_LED_ON_PANIC	opt_panic.h
+PANIC_REBOOT_WAIT_TIME	opt_panic.h
