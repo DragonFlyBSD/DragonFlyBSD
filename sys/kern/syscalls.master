@@ -361,7 +361,7 @@
 			    int msgflg); }
 227	STD	BSD	{ int msgrcv(int msqid, void *msgp, size_t msgsz, \
 			    long msgtyp, int msgflg); }
-228	STD	BSD	{ int shmat(int shmid, void *shmaddr, int shmflg); }
+228	STD	BSD	{ void *shmat(int shmid, void *shmaddr, int shmflg); }
 229	STD	BSD	{ int shmctl(int shmid, int cmd, \
 			    struct shmid_ds *buf); }
 230	STD	BSD	{ int shmdt(void *shmaddr); }
