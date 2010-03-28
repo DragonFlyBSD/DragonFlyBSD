@@ -110,6 +110,18 @@ The
 .Fn pselect
 function conforms to
 .St -p1003.1-2001 .
+.Sh HISTORY
+The
+.Fn pselect
+function first appeared in
+.Dx 1.11 .
+.Sh AUTHORS
+This manual page was originally written by
+.An Garrett Wollman Aq wollman@FreeBSD.org
+for
+.Fx
+and later modified for
+.Dx .
 .Sh BUGS
 The
 .Fn pselect
@@ -124,15 +136,3 @@ The
 .Fn pselect
 implementations in libthread_xu (kernel multi-threading) and libc
 (single-threading) operate atomically and are therefore race-free.
-.Sh HISTORY
-The
-.Fn pselect
-function first appeared in
-.Dx 1.11 .
-.Sh AUTHORS
-This manual page was originally written by
-.An Garrett Wollman Aq wollman@FreeBSD.org
-for
-.Fx
-and later modified for
-.Dx .

@@ -161,13 +161,6 @@ functions decode a UUID from an octet stream in little-endian and
 big-endian byte-order, respectively.
 These routines are not part of the DCE RPC API.
 They are provided for convenience.
-.Sh FILES
-.Bl -tag -width ".Pa /etc/defaults/uuids"
-.It Pa /etc/defaults/uuids
-A list of UUIDs and their symbolic names provided by the OS vendor.
-.It Pa /etc/uuids
-A list of UUIDs and their symbolic names provided by the system administrator.
-.El
 .Sh RETURN VALUES
 The successful or unsuccessful completion of the function is returned in the
 .Fa status
@@ -184,6 +177,13 @@ The string representation of an UUID is not valid.
 The meaning of the code escaped the writers mind.
 .It Dv uuid_s_not_found
 A UUID lookup failed.
+.El
+.Sh FILES
+.Bl -tag -width ".Pa /etc/defaults/uuids"
+.It Pa /etc/defaults/uuids
+A list of UUIDs and their symbolic names provided by the OS vendor.
+.It Pa /etc/uuids
+A list of UUIDs and their symbolic names provided by the system administrator.
 .El
 .Sh SEE ALSO
 .Xr uuidgen 1 ,

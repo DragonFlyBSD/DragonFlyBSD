@@ -280,6 +280,21 @@ default
 configuration file, for
 .Xr config 8 .
 .El
+.Sh CONFIGURATION FILES
+Your virtual kernel is a complete
+.Dx
+system, but you might not want to run all the services a normal kernel runs.
+Here is what a typical virtual kernel's
+.Pa /etc/rc.conf
+file looks like, with some additional possibilities commented out.
+.Bd -literal
+hostname="vkernel"
+network_interfaces="lo0 vke0"
+ifconfig_vke0="DHCP"
+sendmail_enable="NO"
+#syslog_enable="NO"
+blanktime="NO"
+.Ed
 .Sh EXAMPLES
 A couple of steps are necessary in order to prepare the system to build and
 run a virtual kernel.
@@ -400,21 +415,6 @@ building the world under a virtual kernel, like this:
 .Bd -literal
 vkernel# make MACHINE_PLATFORM=pc32 buildworld
 vkernel# make MACHINE_PLATFORM=pc32 installworld
-.Ed
-.Sh CONFIGURATION FILES
-Your virtual kernel is a complete
-.Dx
-system, but you might not want to run all the services a normal kernel runs.
-Here is what a typical virtual kernel's
-.Pa /etc/rc.conf
-file looks like, with some additional possibilities commented out.
-.Bd -literal
-hostname="vkernel"
-network_interfaces="lo0 vke0"
-ifconfig_vke0="DHCP"
-sendmail_enable="NO"
-#syslog_enable="NO"
-blanktime="NO"
 .Ed
 .Sh SEE ALSO
 .Xr vknet 1 ,
