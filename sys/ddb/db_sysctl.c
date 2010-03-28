@@ -73,6 +73,20 @@ sysctl_debug_enter_debugger(SYSCTL_HANDLER_ARGS)
 	return error;
 }
 
+static int
+sysctl_debug_panic(SYSCTL_HANDLER_ARGS)
+{
+	int err;
+	int val = 0;
+
+	err = sysctl_handle_int(oidp, &val, sizeof(val), req);
+	if (val == 1)
+		panic("sysctl_debug_panic");
+	return err;
+}
+
 SYSCTL_PROC(_debug, OID_AUTO, enter_debugger, CTLTYPE_STRING | CTLFLAG_RW,
     0, 0, sysctl_debug_enter_debugger, "A", DESCRIPTION);
 
+SYSCTL_PROC(_debug, OID_AUTO, panic, CTLTYPE_INT | CTLFLAG_RW, 0, 0,
+	    sysctl_debug_panic, "I", "Set to panic the system");
