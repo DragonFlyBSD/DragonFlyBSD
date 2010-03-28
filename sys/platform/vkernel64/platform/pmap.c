@@ -205,9 +205,10 @@ static vm_page_t pmap_allocpte (pmap_t pmap, vm_offset_t va);
 
 static int pmap_release_free_page (pmap_t pmap, vm_page_t p);
 static vm_page_t _pmap_allocpte (pmap_t pmap, vm_pindex_t ptepindex);
+#if JGPMAP32
 static pt_entry_t * pmap_pte_quick (pmap_t pmap, vm_offset_t va);
+#endif
 static vm_page_t pmap_page_lookup (vm_object_t object, vm_pindex_t pindex);
-static int pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t m);
 static int pmap_unuse_pt (pmap_t, vm_offset_t, vm_page_t);
 
 /*
@@ -220,6 +221,7 @@ static int pmap_unuse_pt (pmap_t, vm_offset_t, vm_page_t);
  *
  *	Should only be called while in a critical section.
  */
+#if JGPMAP32
 static __inline pt_entry_t *pmap_pte(pmap_t pmap, vm_offset_t va);
 
 static pt_entry_t *
@@ -227,6 +229,7 @@ pmap_pte_quick(pmap_t pmap, vm_offset_t va)
 {
 	return pmap_pte(pmap, va);
 }
+#endif
 
 /* Return a non-clipped PD index for a given VA */
 static __inline vm_pindex_t
@@ -358,7 +361,7 @@ vtopde(vm_offset_t va)
 	return (PDmap + ((va >> PDRSHIFT) & mask));
 }
 #else
-PMAP_INLINE pt_entry_t *
+static PMAP_INLINE pt_entry_t *
 vtopte(vm_offset_t va)
 {
 	pt_entry_t *x;
@@ -390,7 +393,7 @@ allocpages(vm_paddr_t *firstaddr, int n)
 	return (ret);
 }
 
-void
+static void
 create_pagetables(vm_paddr_t *firstaddr, int64_t ptov_offset)
 {
 	int i;
@@ -944,6 +947,9 @@ pmap_dispose_proc(struct proc *p)
  * Page table page management routines.....
  ***************************************************/
 
+static __inline int pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va,
+			vm_page_t m);
+
 /*
  * This routine unholds page table pages, and if the hold count
  * drops to zero, then it decrements the wire count.
@@ -1191,7 +1197,6 @@ pmap_pinit2(struct pmap *pmap)
 static int
 pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 {
-	pml4_entry_t *pml4 = pmap->pm_pml4;
 	/*
 	 * This code optimizes the case of freeing non-busy
 	 * page-table pages.  Those pages are zero now, and
@@ -1217,7 +1222,7 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 		 */
 		vm_page_t m4 = vm_page_lookup(pmap->pm_pteobj, NUPDE + NUPDPE + PML4PML4I);
 		KKASSERT(m4 != NULL);
-		pml4_entry_t *pml4 = PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m4));
+		pml4_entry_t *pml4 = (pml4_entry_t *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m4));
 		int idx = (p->pindex - (NUPDE + NUPDPE)) % NPML4EPG;
 		KKASSERT(pml4[idx] != 0);
 		pml4[idx] = 0;
@@ -1230,7 +1235,7 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 		 */
 		vm_page_t m3 = vm_page_lookup(pmap->pm_pteobj, NUPDE + NUPDPE + (p->pindex - NUPDE) / NPDPEPG);
 		KKASSERT(m3 != NULL);
-		pdp_entry_t *pdp = PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m3));
+		pdp_entry_t *pdp = (pdp_entry_t *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m3));
 		int idx = (p->pindex - NUPDE) % NPDPEPG;
 		KKASSERT(pdp[idx] != 0);
 		pdp[idx] = 0;
@@ -1242,7 +1247,7 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 		 */
 		vm_page_t m2 = vm_page_lookup(pmap->pm_pteobj, NUPDE + p->pindex / NPDEPG);
 		KKASSERT(m2 != NULL);
-		pd_entry_t *pd = PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m2));
+		pd_entry_t *pd = (pd_entry_t *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m2));
 		int idx = p->pindex % NPDEPG;
 		pd[idx] = 0;
 		m2->hold_count--;
@@ -2148,7 +2153,7 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 
 		for (pte = pmap_pde_to_pte(pde, sva); sva != va_next; pte++,
 		    sva += PAGE_SIZE) {
-			pt_entry_t obits, pbits;
+			pt_entry_t pbits;
 			vm_page_t m;
 
 			/*
@@ -2684,7 +2689,7 @@ pmap_copy_page(vm_paddr_t src, vm_paddr_t dst)
 	crit_enter();
 	src_virt = PHYS_TO_DMAP(src);
 	dst_virt = PHYS_TO_DMAP(dst);
-	bcopy(src_virt, dst_virt, PAGE_SIZE);
+	bcopy((void *)src_virt, (void *)dst_virt, PAGE_SIZE);
 	crit_exit();
 }
 
