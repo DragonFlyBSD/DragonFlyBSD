@@ -1558,6 +1558,7 @@ config_volume(int update)
 	    parameter++;				    /* skip the keyword */
 	    if (vinum_conf.flags & VF_READING_CONFIG) {
 		vol->state = VolState(token[parameter]);    /* set the state */
+		vol->volno = volno;	/* needs correct volno to make devs */
 		made_vol(vol);
 	    }
 	    break;
