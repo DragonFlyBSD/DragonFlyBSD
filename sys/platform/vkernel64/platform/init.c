@@ -450,10 +450,8 @@ init_kern_memory(void)
 {
 	void *base;
 	void *try;
-	char *zero;
 	char dummy;
 	char *topofstack = &dummy;
-	vpte_t pte;
 	int i;
 	void *firstfree;
 
@@ -474,7 +472,7 @@ init_kern_memory(void)
 	while ((char *)try + KERNEL_KVA_SIZE < topofstack) {
 		base = mmap(try, KERNEL_KVA_SIZE, PROT_READ|PROT_WRITE,
 			    MAP_FILE|MAP_SHARED|MAP_VPAGETABLE,
-			    MemImageFd, try);
+			    MemImageFd, (off_t)try);
 		if (base == try)
 			break;
 		if (base != MAP_FAILED)
@@ -501,7 +499,7 @@ init_kern_memory(void)
 	}
 
 	firstfree = 0;
-	pmap_bootstrap(&firstfree, base);
+	pmap_bootstrap((vm_paddr_t *)&firstfree, (int64_t)base);
 
 	mcontrol(base, KERNEL_KVA_SIZE, MADV_SETMAP,
 		 0 | VPTE_R | VPTE_W | VPTE_V);
@@ -510,7 +508,7 @@ init_kern_memory(void)
 	 * phys_avail[] represents unallocated physical memory.  MI code
 	 * will use phys_avail[] to create the vm_page array.
 	 */
-	phys_avail[0] = firstfree;
+	phys_avail[0] = (vm_paddr_t)firstfree;
 	phys_avail[0] = (phys_avail[0] + PAGE_MASK) & ~(vm_paddr_t)PAGE_MASK;
 	phys_avail[1] = Maxmem_bytes;
 

@@ -50,13 +50,13 @@ platform/vkernel64/x86_64/trap.c	standard
 platform/vkernel64/x86_64/exception.c	standard
 platform/vkernel64/x86_64/procfs_machdep.c	standard
 platform/vkernel64/x86_64/fork_tramp.s	standard
-platform/vkernel64/platform/init.c	standard nowerror
+platform/vkernel64/platform/init.c	standard
 platform/vkernel64/platform/globaldata.c	standard
 platform/vkernel64/platform/kqueue.c	standard
 platform/vkernel64/platform/shutdown.c	standard
 platform/vkernel64/platform/machintr.c	standard
 platform/vkernel64/platform/copyio.c	standard
-platform/vkernel64/platform/pmap.c	standard nowerror
+platform/vkernel64/platform/pmap.c	standard
 platform/vkernel64/platform/pmap_inval.c	standard
 platform/vkernel64/platform/busdma_machdep.c standard
 platform/vkernel64/platform/sysarch.c	standard
