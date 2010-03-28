@@ -329,8 +329,8 @@ hammer_vop_read(struct vop_read_args *ap)
 	 * Allow the UIO's size to override the sequential heuristic.
 	 */
 	blksize = hammer_blocksize(uio->uio_offset);
-	seqcount = (uio->uio_resid + (blksize - 1)) / blksize;
-	ioseqcount = ap->a_ioflag >> 16;
+	seqcount = (uio->uio_resid + (BKVASIZE - 1)) / BKVASIZE;
+	ioseqcount = (ap->a_ioflag >> 16);
 	if (seqcount < ioseqcount)
 		seqcount = ioseqcount;
 

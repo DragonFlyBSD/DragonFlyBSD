@@ -139,7 +139,8 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 		/*
 		 * Not sequential, do not do any read-ahead
 		 */
-		if (seqcount == 0 || maxra == 0)
+		seqcount -= (bp->b_bufsize + BKVASIZE - 1) / BKVASIZE;
+		if (seqcount <= 0 || maxra == 0)
 			return 0;
 
 		/*
@@ -237,12 +238,13 @@ single_block_read:
 	if (bp) {
 #if defined(CLUSTERDEBUG)
 		if (rcluster)
-			kprintf("S(%lld,%d,%d) ",
+			kprintf("S(%lld,%d,%d)\n",
 			    bp->b_loffset, bp->b_bcount, seqcount);
 #endif
 		if ((bp->b_flags & B_CLUSTER) == 0)
 			vfs_busy_pages(vp, bp);
 		bp->b_flags &= ~(B_ERROR|B_INVAL);
+		seqcount -= (bp->b_bufsize + BKVASIZE - 1) / BKVASIZE;
 		vn_strategy(vp, &bp->b_bio1);
 		error = 0;
 		/* bp invalid now */
@@ -257,7 +259,7 @@ single_block_read:
 	 * will do device-readahead irrespective of what the blocks
 	 * represent.
 	 */
-	while (!error && seqcount && maxra > 0 &&
+	while (!error && seqcount > 0 && maxra > 0 &&
 	       loffset + blksize <= filesize) {
 		int nblksread;
 		int ntoread;
@@ -306,18 +308,19 @@ single_block_read:
 		} else {
 			rbp->b_bio2.bio_offset = doffset;
 		}
+		seqcount -= (rbp->b_bufsize + BKVASIZE - 1) / BKVASIZE;
 #if defined(CLUSTERDEBUG)
 		if (rcluster) {
 			if (bp)
-				kprintf("A+(%lld,%d,%lld,%d) ",
+				kprintf("A+(%lld,%d,%lld,%d) ra=%d\n",
 				    rbp->b_loffset, rbp->b_bcount,
 				    rbp->b_loffset - origoffset,
-				    seqcount);
+				    seqcount, maxra);
 			else
-				kprintf("A(%lld,%d,%lld,%d) ",
+				kprintf("A-(%lld,%d,%lld,%d) ra=%d\n",
 				    rbp->b_loffset, rbp->b_bcount,
 				    rbp->b_loffset - origoffset,
-				    seqcount);
+				    seqcount, maxra);
 		}
 #endif
 		rbp->b_flags &= ~(B_ERROR|B_INVAL);
