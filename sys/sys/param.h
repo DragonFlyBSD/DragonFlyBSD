@@ -71,9 +71,11 @@
  * 200206 - *sleep() renames
  * 200400 - 2.4 branch
  * 200500 - 2.5 master
+ * 200600 - 2.6 branch
+ * 200700 - 2.7 master
  */
 #undef __DragonFly_version
-#define __DragonFly_version 200500	/* Master, propagated to newvers */
+#define __DragonFly_version 200600	/* propagated to newvers */
 
 #ifdef __FreeBSD__
 /* 
