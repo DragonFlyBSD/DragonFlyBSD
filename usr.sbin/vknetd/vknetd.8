@@ -45,17 +45,21 @@
 .Op Fl b Ar bridgeN
 .Op Fl p Ar socket_path
 .Op Fl t Ar tapN
-.Op Ar address/cidrbits
+.Op Ar address Ns / Ns Ar cidrbits
 .Sh DESCRIPTION
 The
 .Nm
 utility creates a virtualized bridged network suitable for vkernel use.
-The utility was created to simplify vkernel oprations and to allow user-run
+The utility was created to simplify
+.Nm vkernel
+operations and to allow user-run
 vkernels to have access to a network.
 General use is to specify a large 10-dot network which multiple vkernels are
 then able to connect to, and backfeed the whole mess to a TAP interface.
 .Pp
-A vkernel would make use of the virtualized network by specifying
+A
+.Nm vkernel
+would make use of the virtualized network by specifying
 .Fl I Ar /var/run/vknet
 instead of a
 .Xr tap 4
@@ -65,9 +69,10 @@ Any number of vkernels may connect to the virtual network.
 .Nm
 Implements a simple bridge for all entities connected to it.
 A cache
-of MAC addresses is built up (just like an etherswitch does) and matching
-packets will be forwarded directly to the proper 'port' (connected clients
-or TAP interface).
+of MAC addresses is built up (just like an ethernet switch does) and matching
+packets will be forwarded directly to the proper
+.Sq port
+(connected clients or TAP interface).
 Unknown MACs will be broadcast.
 .Pp
 The following options are available:
@@ -87,7 +92,7 @@ This is typically used with the
 .Fl b
 option to directly bridge
 .Nm
-into the host rather then operating it as a separate subnet.
+into the host rather than operating it as a separate subnet.
 .It Fl b Ar bridgeN
 The
 .Xr tap 4
@@ -103,49 +108,57 @@ Specify a particular
 interface to use.
 If not specified,
 .Nm
-will search for an unused tap interface.
-.It Ar address/cidrbits
+will search for an unused TAP interface.
+.It Ar address Ns / Ns Ar cidrbits
 When operating in secure mode (which is the default), a CIDR block must be
 specified.
 It is optional in unsecure mode.
-The address is the address you wish to assign to the TAP
+The
+.Ar address
+is the address you wish to assign to the TAP
 interface and will sit on both the host and virtual networks if not bridged.
 The
 .Ar cidrbits
 is the number of bits representing the virtual subnet.
 For example,
-10.1.0.1/24 places the tap interface on 10.1.0.1 and gives you an 8 bit
+10.1.0.1/24 places the TAP interface on 10.1.0.1 and gives you an 8 bit
 subnet capable of handling 254 hosts.
 An address of 0.0.0.0 is allowed as a special case in secure mode so that
-bootp
-.Xr ( dhclient 8 )
+bootp (
+.Xr dhclient 8 )
 can get through.
 .El
 .Sh FILES
-.Bl -tag -width /var/log/lastlog -compact
+.Bl -tag -width ".Pa /var/run/vknet" -compact
 .It Pa /dev/tap*
 TAP interface used to route packets from userland providers back into the
 real machine.
-If not otherwise specified an unused tap interface will be selected.
+If not otherwise specified an unused TAP interface will be selected.
 .It Pa /var/run/vknet
 Default socket
 .Nm
 sits on waiting for connections.
 .El
 .Sh EXAMPLES
-.Li "vknetd 10.1.0.1/16"
+.Dl "vknetd 10.1.0.1/16"
 .Sh REQUIREMENTS
 .Nm
 requires that the
-.Ar if_tap
+.Nm if_tap
 and
-.Ar if_bridge
+.Nm if_bridge
 modules be loaded.
-In addition, a 'vknet' group must exist in /etc/groups.
+In addition, a
+.Dq vknet
+group must exist in
+.Pa /etc/groups .
 .Sh SEE ALSO
 .Xr vknet 1 ,
+.Xr bridge 4 ,
+.Xr tap 4 ,
 .Xr vke 4 ,
-.Xr vkernel 7
+.Xr vkernel 7 ,
+.Xr dhclient 8
 .Sh HISTORY
 The
 .Nm

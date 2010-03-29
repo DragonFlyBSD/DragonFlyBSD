@@ -34,7 +34,7 @@
  * $DragonFly: src/usr.sbin/vknetd/vknetd.c,v 1.2 2008/06/02 20:03:22 dillon Exp $
  */
 /*
- * vknet [-p path] [-t tapdev] network/mask
+ * vknet [-cdU] [-b bridgeN] [-p socket_path] [-t tapN] [address/cidrbits]
  *
  * Create a named unix-domain socket which userland vkernels can open
  * to gain access to a local network.  All connections to the socket
@@ -473,8 +473,8 @@ static
 void
 usage(void)
 {
-	fprintf(stderr, "vknet [-p path] [-t tapdev] [-U] [network/bits]\n");
-	fprintf(stderr, "network must be specified in default secure mode\n");
+	fprintf(stderr, "usage: vknet [-cdU] [-b bridgeN] [-p socket_path] [-t tapN] [address/cidrbits]\n");
+	fprintf(stderr, "address/cidrbits must be specified in default secure mode.\n");
 	exit(1);
 }
 
