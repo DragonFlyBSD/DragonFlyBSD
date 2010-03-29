@@ -651,9 +651,9 @@ usage(void)
 {
 
 	fprintf(stderr, "%s\n%s\n%s\n",
-"usage: mount [-dfpruvw] [-o options] [-t ufs | external_type] special node",
-"       mount [-adfpruvw] [-o options] [-t ufs | external_type]",
-"       mount [-dfpruvw] special | node");
+"usage: mount [-adfpruvw] [-o options] [-t type]",
+"       mount [-dfpruvw] {special | node}",
+"       mount [-dfpruvw] [-o options] [-t type] special node");
 	exit(1);
 }
 
