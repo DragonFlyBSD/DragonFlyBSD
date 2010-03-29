@@ -1254,24 +1254,16 @@ vflush_scan(struct mount *mp, struct vnode *vp, void *data)
 	}
 
 	/*
-	 * If FORCECLOSE is set, forcibly close the vnode. For block
-	 * or character devices we just clean and leave the vp
-	 * associated with devfs.  For all other files, just kill them.
-	 *
-	 * XXX we need to do something about devfs here, I'd rather not
-	 *     blow away device associations.
+	 * If FORCECLOSE is set, forcibly destroy the vnode and then move
+	 * it to a dummymount structure so vop_*() functions don't deref
+	 * a NULL pointer.
 	 */
 	if (info->flags & FORCECLOSE) {
+		vhold(vp);
 		vgone_vxlocked(vp);
-#if 0
-		if (vp->v_type != VBLK && vp->v_type != VCHR) {
-			vgone_vxlocked(vp);
-		} else {
-			vclean_vxlocked(vp, 0);
-			/*vp->v_ops = &devfs_vnode_dev_vops_p;*/
-			insmntque(vp, NULL);
-		}
-#endif
+		if (vp->v_mount == NULL)
+			insmntque(vp, &dummymount);
+		vdrop(vp);
 		return(0);
 	}
 #ifdef DIAGNOSTIC
