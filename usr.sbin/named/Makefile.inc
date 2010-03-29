@@ -7,7 +7,7 @@ Mk.Inc?=defined
 
 BIND_DIR?=	${.CURDIR}/../../contrib/bind
 
-VER=		9.5.2-P2
+VER=		9.5.2-P3
 
 PS=		ps
 PIDDIR=		/var/run
