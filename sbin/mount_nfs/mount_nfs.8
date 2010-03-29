@@ -97,8 +97,8 @@ The options are:
 .Bl -tag -width indent
 .It Fl 2
 Use the NFS Version 2 protocol (the default is to try version 3 first
-then version 2).  Note that NFS version 2 has a file size limit of 2
-gigabytes.
+then version 2).
+Note that NFS version 2 has a file size limit of 2 gigabytes.
 .It Fl 3
 Use the NFS Version 3 protocol.
 .It Fl D
@@ -125,7 +125,7 @@ This requires that the kernel be built with the NFSKERB option.
 The use of this option will prevent the kernel from compiling
 unless calls to the appropriate Kerberos encryption routines
 are provided in the NFS source.
-(Refer to the INTERNET-DRAFT titled
+(Refer to RFC2695
 .%T "Authentication Mechanisms for ONC RPC" ,
 for more information.)
 .It Fl N
@@ -147,7 +147,8 @@ There is a 60 second delay between each attempt.
 .It Fl T
 Use TCP transport instead of UDP.
 This is recommended for servers that are not on the same LAN cable as
-the client.  This is the default.
+the client.
+This is the default.
 .It Fl U
 Use UDP transport instead of TCP.
 This is not recommended due to the ease of which
@@ -160,7 +161,7 @@ server reserve upwards of 2 MBytes of socket buffer space to hold
 the received UDP packets.
 .It Fl a
 Set the read-ahead count to the specified value.
-This may be in the range of 0 - 4, and determines how many blocks
+This may be in the range of 0 - 32, and determines how many blocks
 will be read ahead when a large file is being read sequentially.
 Trying a value greater than 1 for this is suggested for
 mounts with a large bandwidth * delay product.
@@ -195,11 +196,11 @@ point.
 Make the mount interruptible, which implies that file system calls that
 are delayed due to an unresponsive server will fail with
 .Er EINTR
-when a
-termination signal is posted for the process.
+when a termination signal is posted for the process.
 .It Fl l
-Used with NFSV3 to specify that the \fBReaddirPlus\fR RPC should
-be used.
+Used with NFSV3 to specify that the
+.Em ReaddirPlus
+RPC should be used.
 This option reduces RPC traffic for cases such as
 .Dq "ls -l" ,
 but tends to flood the attribute and name caches with prefetched entries.
@@ -207,6 +208,7 @@ Try this option and see whether performance improves or degrades.
 Probably
 most useful for client to server network interconnects with a large bandwidth
 times delay product.
+This is the default.
 .It Fl m
 Set the Kerberos realm to the string argument.
 Used with the
@@ -221,58 +223,73 @@ See the
 man page for possible options and their meanings.
 The following NFS specific option is also available:
 .Bl -tag -width indent
-.It port=<port_number>
+.It Cm port Ns =<port_number>
 Use specified port number for NFS requests.
 The default is to query the portmapper for the NFS port.
-.It acregmin=<seconds>
-.It acregmax=<seconds>
-.It acdirmin=<seconds>
-.It acdirmax=<seconds>
+.It Cm acregmin Ns =<seconds>
+.It Cm acregmax Ns =<seconds>
+.It Cm acdirmin Ns =<seconds>
+.It Cm acdirmax Ns =<seconds>
 When attributes of files are cached, a timeout calculated to determine
-whether a given cache entry has expired.  These four values determine the
+whether a given cache entry has expired.
+These four values determine the
 upper and lower bounds of the timeouts for ``directory'' attributes and
-``regular'' (ie: everything else).  The default values are 3 -> 60 seconds
-for regular files, and 30 -> 60 seconds for directories.  The algorithm to
-calculate the timeout is based on the age of the file.  The older the file,
+``regular'' (i.e.: everything else).
+The default values are 3 -> 60 seconds
+for regular files, and 30 -> 60 seconds for directories.
+The algorithm to
+calculate the timeout is based on the age of the file.
+The older the file,
 the longer the cache is considered valid, subject to the limits above.
-.It bg
+.It Cm bg
 Same as
 .Fl b .
-.It conn
+.It Cm cache
+Set
+.Cm cache
+.Xr chflags 2
+flag on mount point (recursive, does not cross mounts).
+NFS does not support
+.Xr chflags 2 ,
+this is alternate method to set flag.
+.Cm cache
+flag is used by
+.Xr swapcache 8 .
+.It Cm conn
 Same as not specifying
 .Fl c .
-.It dumbtimer
+.It Cm dumbtimer
 Same as
 .Fl d .
-.It intr
+.It Cm intr
 Same as
 .Fl i .
-.It kerb
+.It Cm kerb
 Same as
 .Fl K .
-.It nfsv2
+.It Cm nfsv2
 Same as
 .Fl 2 .
-.It nfsv3
+.It Cm nfsv3
 Same as
 .Fl 3 .
-.It rdirplus
+.It Cm rdirplus
 Same as
 .Fl l .
-.It mntudp
+.It Cm mntudp
 Same as
 .Fl U
 (obsolete).
-.It resvport
+.It Cm resvport
 Same as
 .Fl P .
-.It soft
+.It Cm soft
 Same as
 .Fl s .
-.It tcp
+.It Cm tcp
 Same as
 .Fl T .
-.It udp
+.It Cm udp
 Same as
 .Fl U .
 .El
@@ -293,8 +310,9 @@ See the
 .Fl w
 option as well.
 .It Fl s
-A soft mount, which implies that file system calls will fail
-after \fBRetry\fR round trip timeout intervals.
+A soft mount, which implies that file system calls will fail after
+.Em Retry
+round trip timeout intervals.
 .It Fl t
 Set the initial retransmit timeout to the specified value.
 May be useful for fine tuning UDP mounts over internetworks
@@ -303,12 +321,14 @@ Try increasing the interval if
 .Xr nfsstat 1
 shows high retransmit rates while the file system is active or reducing the
 value if there is a low retransmit rate but long response delay observed.
-(Normally, the -d option should be specified when using this option to manually
+(Normally, the
+.Fl d
+option should be specified when using this option to manually
 tune the timeout
 interval.)
 .It Fl w
 Set the write data size to the specified value.
-Ditto the comments w.r.t. the
+Ditto the comments w.r.t.\& the
 .Fl r
 option, but using the
 .Dq "fragments dropped due to timeout"
@@ -323,13 +343,15 @@ when mounting servers that do not support TCP mounts.
 Set the retransmit timeout count for soft mounts to the specified value.
 .El
 .Sh SEE ALSO
+.Xr netstat 1 ,
+.Xr nfsstat 1 ,
 .Xr mount 2 ,
 .Xr unmount 2 ,
 .Xr fstab 5 ,
 .Xr mount 8 ,
 .Xr nfsd 8 ,
-.Xr nfsiod 8 ,
-.Xr showmount 8
+.Xr showmount 8 ,
+.Xr swapcache 8
 .Sh BUGS
 Due to the way that Sun RPC is implemented on top of UDP (unreliable datagram)
 transport, tuning such mounts is really a black art that can only be expected
@@ -340,3 +362,6 @@ TCP transport is strongly recommended,
 but unfortunately this is restricted to mostly
 .Bx 4.4
 servers.
+.Pp
+NFS does not support
+.Xr chflags 2 .
