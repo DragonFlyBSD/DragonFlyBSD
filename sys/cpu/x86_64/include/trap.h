@@ -95,6 +95,7 @@
 
 /* Trap's coming from user mode */
 #define T_SYSCALL80	0x080
+#define T_FAST_SYSCALL	0x081
 #define	T_USER	0x100
 
 #endif /* !_CPU_TRAP_H_ */

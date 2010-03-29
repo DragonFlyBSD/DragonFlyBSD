@@ -200,8 +200,22 @@ mi_startup(void)
 
 	if (sysinit == NULL) {
 		sysinit = SET_BEGIN(sysinit_set);
+#if defined(__amd64__) && defined(_KERNEL_VIRTUAL)
+		/*
+		 * XXX For whatever reason, on 64-bit vkernels
+		 * the value of sysinit obtained from the
+		 * linker set is wrong.
+		 */
+		if ((long)sysinit % 8 != 0) {
+			kprintf("Fixing sysinit value...\n");
+			sysinit = (long)sysinit + 4;
+		}
+#endif
 		sysinit_end = SET_LIMIT(sysinit_set);
 	}
+#if defined(__amd64__) && defined(_KERNEL_VIRTUAL)
+	KKASSERT((long)sysinit % 8 == 0);
+#endif
 
 restart:
 	/*

@@ -67,8 +67,6 @@ struct tls_dtv {
 #define	RTLD_STATIC_TLS_EXTRA		256
 #define RTLD_STATIC_TLS_VARIANT_II
 
-#ifndef _KERNEL
-
 /* Get the current TCB. */
 static __inline struct tls_tcb *
 tls_get_tcb(void)
@@ -106,6 +104,20 @@ tls_set_tcb(struct tls_tcb *tcb)
 	seg = set_tls_area(0, &info, sizeof(info));
 	/*__asm __volatile("movl %0, %%fs" : : "r" (seg));*/
 }
+
+static __inline void
+tls_set_gs(void *base, size_t bytes)
+{
+	struct tls_info info;
+	int seg;
+
+	info.base = base;
+	info.size = bytes;
+	seg = set_tls_area(1, &info, sizeof(info));
+	/*__asm __volatile("mov %0, %%fs" : : "g" (seg));*/
+}
+
+#ifndef _KERNEL
 
 struct tls_tcb	*_rtld_allocate_tls(void);
 struct tls_tcb	*_libc_allocate_tls(void);

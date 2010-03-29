@@ -869,6 +869,8 @@ struct hammer_mount {
 	hammer_tid_t	flush_tid2;		/* flusher tid sequencing */
 	int64_t copy_stat_freebigblocks;	/* number of free bigblocks */
 	u_int32_t	undo_seqno;		/* UNDO/REDO FIFO seqno */
+	u_int32_t	recover_stage2_seqno;	/* REDO recovery seqno */
+	hammer_off_t	recover_stage2_offset;	/* REDO recovery offset */
 
 	struct netexport export;
 	struct hammer_lock sync_lock;
@@ -896,6 +898,8 @@ typedef struct hammer_mount	*hammer_mount_t;
 #define HAMMER_MOUNT_CRITICAL_ERROR	0x0001
 #define HAMMER_MOUNT_FLUSH_RECOVERY	0x0002
 #define HAMMER_MOUNT_REDO_SYNC		0x0004
+#define HAMMER_MOUNT_REDO_RECOVERY_REQ	0x0008
+#define HAMMER_MOUNT_REDO_RECOVERY_RUN	0x0010
 
 struct hammer_sync_info {
 	int error;

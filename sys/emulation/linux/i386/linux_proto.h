@@ -1312,6 +1312,12 @@ struct	linux_statfs64_args {
 #endif
 	register_t dummy;
 };
+struct	linux_fstatfs64_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
 struct	linux_tgkill_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -1326,6 +1332,30 @@ struct	linux_utimes_args {
 #endif
 	char *	fname;	char fname_[PAD_(char *)];
 	struct l_timeval *	tptr;	char tptr_[PAD_(struct l_timeval *)];
+};
+struct	linux_fadvise64_64_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
+struct	linux_mbind_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
+struct	linux_get_mempolicy_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
+struct	linux_set_mempolicy_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
 };
 struct	linux_mq_open_args {
 #ifdef _KERNEL
@@ -1343,6 +1373,72 @@ struct	linux_mq_getsetattr_args {
 	l_mqd_t	mqd;	char mqd_[PAD_(l_mqd_t)];
 	const struct mq_attr *	attr;	char attr_[PAD_(const struct mq_attr *)];
 	struct mq_attr *	oattr;	char oattr_[PAD_(struct mq_attr *)];
+};
+struct	linux_kexec_load_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
+struct	linux_waitid_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
+struct	linux_add_key_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
+struct	linux_request_key_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
+struct	linux_keyctl_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
+struct	linux_ioprio_set_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
+struct	linux_ioprio_get_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
+struct	linux_inotify_init_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
+struct	linux_inotify_add_watch_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
+struct	linux_inotify_rm_watch_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
+struct	linux_migrate_pages_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
 };
 struct	linux_openat_args {
 #ifdef _KERNEL
@@ -1457,6 +1553,24 @@ struct	linux_faccessat_args {
 	char *	filename;	char filename_[PAD_(char *)];
 	l_int	mode;	char mode_[PAD_(l_int)];
 };
+struct	linux_pselect6_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
+struct	linux_ppoll_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
+struct	linux_unshare_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
 struct	linux_set_robust_list_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -1472,6 +1586,36 @@ struct	linux_get_robust_list_args {
 	struct linux_robust_list_head **	head;	char head_[PAD_(struct linux_robust_list_head **)];
 	l_size_t *	len;	char len_[PAD_(l_size_t *)];
 };
+struct	linux_splice_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
+struct	linux_sync_file_range_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
+struct	linux_tee_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
+struct	linux_vmsplice_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
+struct	linux_move_pages_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
 struct	linux_getcpu_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -1479,6 +1623,12 @@ struct	linux_getcpu_args {
 	l_uint *	pcpu;	char pcpu_[PAD_(l_uint *)];
 	l_uint *	pnode;	char pnode_[PAD_(l_uint *)];
 	void *	ptcache;	char ptcache_[PAD_(void *)];
+};
+struct	linux_epoll_pwait_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
 };
 struct	linux_utimensat_args {
 #ifdef _KERNEL
@@ -1488,6 +1638,31 @@ struct	linux_utimensat_args {
 	char *	fname;	char fname_[PAD_(char *)];
 	struct l_timespec *	tptr;	char tptr_[PAD_(struct l_timespec *)];
 	l_int	flag;	char flag_[PAD_(l_int)];
+};
+struct	linux_signalfd_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
+struct	linux_timerfd_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
+struct	linux_eventfd_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	register_t dummy;
+};
+struct	linux_pipe2_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	l_ulong *	pipefds;	char pipefds_[PAD_(l_ulong *)];
+	l_int	flags;	char flags_[PAD_(l_int)];
 };
 
 #ifdef COMPAT_43
@@ -1702,10 +1877,26 @@ int	sys_linux_clock_gettime (struct linux_clock_gettime_args *);
 int	sys_linux_clock_getres (struct linux_clock_getres_args *);
 int	sys_linux_clock_nanosleep (struct linux_clock_nanosleep_args *);
 int	sys_linux_statfs64 (struct linux_statfs64_args *);
+int	sys_linux_fstatfs64 (struct linux_fstatfs64_args *);
 int	sys_linux_tgkill (struct linux_tgkill_args *);
 int	sys_linux_utimes (struct linux_utimes_args *);
+int	sys_linux_fadvise64_64 (struct linux_fadvise64_64_args *);
+int	sys_linux_mbind (struct linux_mbind_args *);
+int	sys_linux_get_mempolicy (struct linux_get_mempolicy_args *);
+int	sys_linux_set_mempolicy (struct linux_set_mempolicy_args *);
 int	sys_linux_mq_open (struct linux_mq_open_args *);
 int	sys_linux_mq_getsetattr (struct linux_mq_getsetattr_args *);
+int	sys_linux_kexec_load (struct linux_kexec_load_args *);
+int	sys_linux_waitid (struct linux_waitid_args *);
+int	sys_linux_add_key (struct linux_add_key_args *);
+int	sys_linux_request_key (struct linux_request_key_args *);
+int	sys_linux_keyctl (struct linux_keyctl_args *);
+int	sys_linux_ioprio_set (struct linux_ioprio_set_args *);
+int	sys_linux_ioprio_get (struct linux_ioprio_get_args *);
+int	sys_linux_inotify_init (struct linux_inotify_init_args *);
+int	sys_linux_inotify_add_watch (struct linux_inotify_add_watch_args *);
+int	sys_linux_inotify_rm_watch (struct linux_inotify_rm_watch_args *);
+int	sys_linux_migrate_pages (struct linux_migrate_pages_args *);
 int	sys_linux_openat (struct linux_openat_args *);
 int	sys_linux_mkdirat (struct linux_mkdirat_args *);
 int	sys_linux_mknodat (struct linux_mknodat_args *);
@@ -1719,10 +1910,23 @@ int	sys_linux_symlinkat (struct linux_symlinkat_args *);
 int	sys_linux_readlinkat (struct linux_readlinkat_args *);
 int	sys_linux_fchmodat (struct linux_fchmodat_args *);
 int	sys_linux_faccessat (struct linux_faccessat_args *);
+int	sys_linux_pselect6 (struct linux_pselect6_args *);
+int	sys_linux_ppoll (struct linux_ppoll_args *);
+int	sys_linux_unshare (struct linux_unshare_args *);
 int	sys_linux_set_robust_list (struct linux_set_robust_list_args *);
 int	sys_linux_get_robust_list (struct linux_get_robust_list_args *);
+int	sys_linux_splice (struct linux_splice_args *);
+int	sys_linux_sync_file_range (struct linux_sync_file_range_args *);
+int	sys_linux_tee (struct linux_tee_args *);
+int	sys_linux_vmsplice (struct linux_vmsplice_args *);
+int	sys_linux_move_pages (struct linux_move_pages_args *);
 int	sys_linux_getcpu (struct linux_getcpu_args *);
+int	sys_linux_epoll_pwait (struct linux_epoll_pwait_args *);
 int	sys_linux_utimensat (struct linux_utimensat_args *);
+int	sys_linux_signalfd (struct linux_signalfd_args *);
+int	sys_linux_timerfd (struct linux_timerfd_args *);
+int	sys_linux_eventfd (struct linux_eventfd_args *);
+int	sys_linux_pipe2 (struct linux_pipe2_args *);
 
 #endif /* !_LINUX_SYSPROTO_H_ */
 #undef PAD_

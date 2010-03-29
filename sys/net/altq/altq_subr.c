@@ -817,7 +817,7 @@ init_machclk(void)
 		machclk_freq = 1000000LLU << MACHCLK_SHIFT;
 		machclk_per_tick = machclk_freq / hz;
 #ifdef ALTQ_DEBUG
-		kprintf("altq: emulate %lluHz cpu clock\n", machclk_freq);
+		kprintf("altq: emulate %juHz cpu clock\n", (uintmax_t)machclk_freq);
 #endif
 		return;
 	}
@@ -855,7 +855,7 @@ init_machclk(void)
 	machclk_per_tick = machclk_freq / hz;
 
 #ifdef ALTQ_DEBUG
-	kprintf("altq: CPU clock: %lluHz\n", machclk_freq);
+	kprintf("altq: CPU clock: %juHz\n", (uintmax_t)machclk_freq);
 #endif
 }
 

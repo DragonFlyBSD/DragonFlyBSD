@@ -704,12 +704,11 @@ int
 linprocfs_domaps(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	     struct uio *uio)
 {
-	int len;
 	int error;
 	vm_map_t map = &p->p_vmspace->vm_map;
 	vm_map_entry_t entry;
 	vm_ooffset_t off = 0;
-	char mebuffer[256];
+	struct sbuf *sb;
 	char *name = "", *freename = NULL;
 	struct vnode *vp;
 	struct vattr vat;
@@ -719,9 +718,8 @@ linprocfs_domaps(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	if (uio->uio_rw != UIO_READ)
 		return (EOPNOTSUPP);
 
-	if (uio->uio_offset != 0)
-		return (0);
-	
+	sb = sbuf_new_auto();
+
 	error = 0;
 	vm_map_lock_read(map);
 	for (entry = map->header.next;
@@ -757,7 +755,7 @@ linprocfs_domaps(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 			}
 			
 			if (vp) {
-				vn_fullpath(curproc, vp, &name, &freename);
+				vn_fullpath(curproc, vp, &name, &freename, 1);
 				vn_lock(vp, LK_SHARED | LK_RETRY);
 				VOP_GETATTR(vp, &vat);
 				ino = vat.va_fileid;
@@ -772,10 +770,16 @@ linprocfs_domaps(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 		}
 
 		/*
+		 * We cannot safely hold the map locked while accessing
+		 * userspace as a VM fault might recurse the locked map.
+		 */
+		vm_map_unlock_read(map);
+
+		/*
 		 * format:
 		 *  start-end access offset major:minor inode [.text file]
 		 */
-		ksnprintf(mebuffer, sizeof(mebuffer),
+		error = sbuf_printf(sb,
 		    "%08lx-%08lx %s%s%s%s %08llx %02x:%02x %llu%s%s\n",
 		    (u_long)entry->start, (u_long)entry->end,
 		    (entry->protection & VM_PROT_READ)?"r":"-",
@@ -786,24 +790,13 @@ linprocfs_domaps(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 		    0,		/* major */
 		    0,		/* minor */
 		    ino,	/* inode */
-		    *name ? "     " : "",
-		    name);
-
+		    (name && *name) ? "     " : "",
+		    name ? name : "");
+		if (error == -1)
+			error = ENOMEM;
 		if (freename)
 			kfree(freename, M_TEMP);
 
-		len = strlen(mebuffer);
-		if (len > uio->uio_resid) {
-			error = EFBIG;
-			break;
-		}
-
-		/*
-		 * We cannot safely hold the map locked while accessing
-		 * userspace as a VM fault might recurse the locked map.
-		 */
-		vm_map_unlock_read(map);
-		error = uiomove(mebuffer, len, uio);
 		vm_map_lock_read(map);
 		if (error)
 			break;
@@ -824,5 +817,10 @@ linprocfs_domaps(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	}
 	vm_map_unlock_read(map);
 
+	sbuf_finish(sb);
+	if (error == 0)
+		error = uiomove_frombuf(sbuf_data(sb) + uio->uio_offset,
+		    sbuf_len(sb) - uio->uio_offset, uio);
+	sbuf_delete(sb);
 	return error;
 }

@@ -1,4 +1,4 @@
-/*	$Id: man_action.c,v 1.25 2010/01/01 17:14:27 kristaps Exp $ */
+/*	$Id: man_action.c,v 1.30 2010/03/27 10:04:56 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009 Kristaps Dzonsons <kristaps@kth.se>
  *
@@ -14,7 +14,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#include <sys/utsname.h>
 
 #include <assert.h>
 #include <stdlib.h>
@@ -28,6 +27,7 @@ struct	actions {
 };
 
 static	int	  post_TH(struct man *);
+static	int	  post_de(struct man *);
 static	int	  post_fi(struct man *);
 static	int	  post_nf(struct man *);
 
@@ -64,6 +64,15 @@ const	struct actions man_actions[MAN_MAX] = {
 	{ NULL }, /* DT */
 	{ NULL }, /* UC */
 	{ NULL }, /* PD */
+	{ NULL }, /* Sp */
+	{ post_nf }, /* Vb */
+	{ post_fi }, /* Ve */
+	{ post_de }, /* de */
+	{ post_de }, /* dei */
+	{ post_de }, /* am */
+	{ post_de }, /* ami */
+	{ post_de }, /* ig */
+	{ NULL }, /* . */
 };
 
 
@@ -98,6 +107,20 @@ post_fi(struct man *m)
 		if ( ! man_nwarn(m, m->last, WNLITERAL))
 			return(0);
 	m->flags &= ~MAN_LITERAL;
+	return(1);
+}
+
+
+static int
+post_de(struct man *m)
+{
+
+	/*
+	 * XXX: for the time being, we indiscriminately remove roff
+	 * instructions from the parse stream.
+	 */
+	if (MAN_BLOCK == m->last->type)
+		man_node_delete(m, m->last);
 	return(1);
 }
 
@@ -175,23 +198,9 @@ post_TH(struct man *m)
 		m->meta.vol = mandoc_strdup(n->string);
 
 	/*
-	 * The end document shouldn't have the prologue macros as part
-	 * of the syntax tree (they encompass only meta-data).
+	 * Remove the `TH' node after we've processed it for our
+	 * meta-data.
 	 */
-
-	if (m->last->parent->child == m->last) {
-		m->last->parent->child = NULL;
-		n = m->last;
-		m->last = m->last->parent;
-		m->next = MAN_NEXT_CHILD;
-	} else {
-		assert(m->last->prev);
-		m->last->prev->next = NULL;
-		n = m->last;
-		m->last = m->last->prev;
-		m->next = MAN_NEXT_SIBLING;
-	}
-
-	man_node_freelist(n);
+	man_node_delete(m, m->last);
 	return(1);
 }

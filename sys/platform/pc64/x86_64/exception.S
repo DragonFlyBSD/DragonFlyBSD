@@ -285,6 +285,7 @@ IDTVEC(fast_syscall)
 	movq	$KUDSEL,TF_SS(%rsp)
 	movq	$KUCSEL,TF_CS(%rsp)
 	movq	$2,TF_ERR(%rsp)
+	movq	$T_FAST_SYSCALL,TF_TRAPNO(%rsp)	/* for the vkernel */
 	movq	$0,TF_XFLAGS(%rsp)	/* note: used in signal frame */
 	movq	%rdi,TF_RDI(%rsp)	/* arg 1 */
 	movq	%rsi,TF_RSI(%rsp)	/* arg 2 */

@@ -1316,3 +1316,21 @@ bio_ops_sync(struct mount *mp)
 	}
 }
 
+/*
+ * Lookup a mount point by nch
+ */
+struct mount *
+mount_get_by_nc(struct namecache *ncp)
+{
+	struct mount *mp = NULL;
+	lwkt_tokref ilock;
+
+	lwkt_gettoken(&ilock, &mountlist_token);
+	TAILQ_FOREACH(mp, &mountlist, mnt_list) {
+		if (ncp == mp->mnt_ncmountpt.ncp)
+			break;
+	}
+	lwkt_reltoken(&ilock);
+	return (mp);
+}
+

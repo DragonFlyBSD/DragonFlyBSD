@@ -413,7 +413,6 @@ extern	struct vattr va_null;		/* predefined null vattr structure */
 extern	int vfs_ioopt;
 extern	int numvnodes;
 extern	int freevnodes;
-extern  int vfs_fastdev;		/* fast specfs device access */
 
 /*
  * Interlock for scanning list of vnodes attached to a mountpoint
@@ -535,7 +534,7 @@ int	debug_vn_lock (struct vnode *vp, int flags,
 
 int	vn_get_namelen(struct vnode *, int *);
 void	vn_setspecops (struct file *fp);
-int	vn_fullpath (struct proc *p, struct vnode *vn, char **retbuf, char **freebuf);
+int	vn_fullpath (struct proc *p, struct vnode *vn, char **retbuf, char **freebuf, int guess);
 int	vn_open (struct nlookupdata *ndp, struct file *fp, int fmode, int cmode);
 int	vn_opendisk (const char *devname, int fmode, struct vnode **vpp);
 void	vn_pollevent (struct vnode *vp, int events);

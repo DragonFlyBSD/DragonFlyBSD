@@ -71,6 +71,34 @@ DUMMY(pivot_root);
 DUMMY(mincore);
 DUMMY(fadvise64);
 DUMMY(statfs64);
+DUMMY(fstatfs64);
+DUMMY(fadvise64_64);
+DUMMY(mbind);
+DUMMY(get_mempolicy);
+DUMMY(set_mempolicy);
+DUMMY(kexec_load);
+DUMMY(waitid);
+DUMMY(add_key);
+DUMMY(request_key);
+DUMMY(keyctl);
+DUMMY(ioprio_set);
+DUMMY(ioprio_get);
+DUMMY(inotify_init);
+DUMMY(inotify_add_watch);
+DUMMY(inotify_rm_watch);
+DUMMY(migrate_pages);
+DUMMY(pselect6);
+DUMMY(ppoll);
+DUMMY(unshare);
+DUMMY(splice);
+DUMMY(sync_file_range);
+DUMMY(tee);
+DUMMY(vmsplice);
+DUMMY(move_pages);
+DUMMY(epoll_pwait);
+DUMMY(signalfd);
+DUMMY(timerfd);
+DUMMY(eventfd);
 
 #define DUMMY_XATTR(s)						\
 int								\

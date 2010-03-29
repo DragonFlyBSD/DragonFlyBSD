@@ -1,13 +1,13 @@
 /*
- * Copyright (c) 2005 The DragonFly Project.  All rights reserved.
- * 
+ * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -30,58 +30,31 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- */
-/*
- * Kernel tracepoint facility.
+ *
+ * $DragonFly: src/sys/platform/vkernel/i386/userldt.c,v 1.2 2007/01/07 08:37:35 dillon Exp $
  */
 
-#include "opt_ddb.h"
-#include "opt_ktr.h"
-
-#include <sys/param.h>
-#include <sys/cons.h>
+#include <sys/types.h>
 #include <sys/kernel.h>
-#include <sys/libkern.h>
-#include <sys/proc.h>
-#include <sys/sysctl.h>
-#include <sys/ktr.h>
+#include <sys/systm.h>
+#include <machine/pcb.h>
+#include <machine/pcb_ext.h>
 
-/*
- * This routine fills in the ktr_caller1 and ktr_caller2 fields by
- * tracing back through the kernel stack to locate the stack frames
- * and return addresses.
- *
- *
- *	[first argument]
- *	[retpc]
- *	[frameptr]		-> points to caller's frame pointer
- * sp ->[junk]
- */
-
-static __inline 
-void **
-FRAMEUP(void **frameptr)
+void
+set_user_ldt (struct pcb *pcb)
 {
-    void **newframeptr;
+	panic("set_user_ldt");
+}
 
-    newframeptr = (void **)frameptr[0];
-    if (((uintptr_t)newframeptr ^ (uintptr_t)frameptr) & ~16383)
-	newframeptr = frameptr;
-    return(newframeptr);
+struct pcb_ldt *
+user_ldt_alloc (struct pcb *pcb, int len)
+{
+	panic("user_ldt_alloc");
 }
 
 void
-cpu_ktr_caller(struct ktr_entry *_ktr)
+user_ldt_free (struct pcb *pcb)
 {
-    struct ktr_entry *ktr;
-    void **frameptr;
-
-    frameptr = (void **)&_ktr - 2;	/* frame, retpc to ktr_log */
-    ktr = _ktr;
-    frameptr = FRAMEUP(frameptr);	/* frame, retpc to traced function */
-    frameptr = FRAMEUP(frameptr);	/* frame, caller1 of traced function */
-    ktr->ktr_caller1 = frameptr[1];
-    frameptr = FRAMEUP(frameptr);	/* frame, caller2 of caller1 */
-    ktr->ktr_caller2 = frameptr[1];
+	if (pcb->pcb_ldt)
+		panic("user_ldt_free");
 }
-

@@ -179,6 +179,26 @@ In order for the new ioctl to be visible to the system, it is installed
 in either
 .In sys/ioctl.h or one of the files that are reached from
 .In sys/ioctl.h .
+.Sh RETURN VALUES
+A distinction must be made at this point.
+All
+.Fn *_ioctl
+routines from
+.Em within kernel
+should return either 0 for success
+or a defined error code, as described in
+.In sys/errno.h .
+At the libc level though a conversion takes place, so that eventually
+.Xr ioctl 2
+returns either 0 for success or -1 for failure, in which case the
+.Va errno
+variable is set accordingly.
+.Pp
+The use of magic numbers such as -1, to indicate that a given ioctl
+code was not handled, is strongly discouraged.
+The value -1 is bound to the
+.Er ERESTART
+pseudo-error, which is returned inside kernel to modify return to process.
 .Sh EXAMPLES
 Let's suppose that we want to pass an integer value to the kernel.
 From the user point of view, this is like writing to the kernel.
@@ -223,25 +243,5 @@ if (ioctl(fd, MYDEVIOCTL, \*[Am]a) == -1) {
 	/* Handle failure */
 }
 .Ed
-.Sh RETURN VALUES
-A distinction must be made at this point.
-All
-.Fn *_ioctl
-routines from
-.Em within kernel
-should return either 0 for success
-or a defined error code, as described in
-.In sys/errno.h .
-At the libc level though a conversion takes place, so that eventually
-.Xr ioctl 2
-returns either 0 for success or -1 for failure, in which case the
-.Va errno
-variable is set accordingly.
-.Pp
-The use of magic numbers such as -1, to indicate that a given ioctl
-code was not handled, is strongly discouraged.
-The value -1 is bound to the
-.Er ERESTART
-pseudo-error, which is returned inside kernel to modify return to process.
 .Sh SEE ALSO
 .Xr ioctl 2

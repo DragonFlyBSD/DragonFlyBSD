@@ -810,6 +810,45 @@ sys_linux_pipe(struct linux_pipe_args *args)
 }
 
 /*
+ * XXX: Preliminary
+ */
+int
+sys_linux_pipe2(struct linux_pipe2_args *args)
+{
+	struct thread *td = curthread;
+	int error;
+	int reg_edx;
+	struct pipe_args bsd_args;
+	union fcntl_dat dat;
+
+	reg_edx = args->sysmsg_fds[1];
+	error = sys_pipe(&bsd_args);
+	if (error) {
+		args->sysmsg_fds[1] = reg_edx;
+		return (error);
+	}
+
+//	if (args->flags & LINUX_O_CLOEXEC) {
+//	}
+
+	if (args->flags & LINUX_O_NONBLOCK) {
+		dat.fc_flags = O_NONBLOCK;
+		kern_fcntl(bsd_args.sysmsg_fds[0], F_SETFL, &dat, td->td_ucred);
+		kern_fcntl(bsd_args.sysmsg_fds[1], F_SETFL, &dat, td->td_ucred);
+	}
+
+	error = copyout(bsd_args.sysmsg_fds, args->pipefds, 2*sizeof(int));
+	if (error) {
+		args->sysmsg_fds[1] = reg_edx;
+		return (error);
+	}
+
+	args->sysmsg_fds[1] = reg_edx;
+	args->sysmsg_fds[0] = 0;
+	return (0);
+}
+
+/*
  * MPSAFE
  */
 int

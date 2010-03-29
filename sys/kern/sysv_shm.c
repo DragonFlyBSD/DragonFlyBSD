@@ -350,7 +350,7 @@ again:
 	shmseg->shm_lpid = p->p_pid;
 	shmseg->shm_atime = time_second;
 	shmseg->shm_nattch++;
-	uap->sysmsg_result = attach_va;
+	uap->sysmsg_resultp = (void *)attach_va;
 	error = 0;
 done:
 	rel_mplock();

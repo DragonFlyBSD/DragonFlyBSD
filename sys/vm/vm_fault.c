@@ -794,7 +794,7 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 		    vpte_t vpte, int fault_type)
 {
 	struct lwbuf *lwb;
-	int vshift = 32 - PAGE_SHIFT;	/* page index bits remaining */
+	int vshift = VPTE_FRAME_END - PAGE_SHIFT; /* index bits remaining */
 	int result = KERN_SUCCESS;
 	vpte_t *ptep;
 
@@ -826,7 +826,7 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 		 *
 		 * There is currently no real need to optimize this.
 		 */
-		result = vm_fault_object(fs, vpte >> PAGE_SHIFT,
+		result = vm_fault_object(fs, (vpte & VPTE_FRAME) >> PAGE_SHIFT,
 					 VM_PROT_READ|VM_PROT_WRITE);
 		if (result != KERN_SUCCESS)
 			return (result);
@@ -852,14 +852,14 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 		if ((fault_type & VM_PROT_WRITE) && (vpte & VPTE_V) &&
 		    (vpte & VPTE_W)) {
 			if ((vpte & (VPTE_M|VPTE_A)) != (VPTE_M|VPTE_A)) {
-				atomic_set_int(ptep, VPTE_M|VPTE_A);
+				atomic_set_long(ptep, VPTE_M | VPTE_A);
 				vm_page_dirty(fs->m);
 			}
 		}
 		if ((fault_type & VM_PROT_READ) && (vpte & VPTE_V) &&
 		    (vpte & VPTE_R)) {
 			if ((vpte & VPTE_A) == 0) {
-				atomic_set_int(ptep, VPTE_A);
+				atomic_set_long(ptep, VPTE_A);
 				vm_page_dirty(fs->m);
 			}
 		}
@@ -872,8 +872,9 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 	/*
 	 * Combine remaining address bits with the vpte.
 	 */
-	*pindex = (vpte >> PAGE_SHIFT) +
-		  (*pindex & ((1 << vshift) - 1));
+	/* JG how many bits from each? */
+	*pindex = ((vpte & VPTE_FRAME) >> PAGE_SHIFT) +
+		  (*pindex & ((1L << vshift) - 1));
 	return (KERN_SUCCESS);
 }
 

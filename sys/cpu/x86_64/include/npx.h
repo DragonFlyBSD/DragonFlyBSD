@@ -161,7 +161,6 @@ struct trapframe;
 void	npxexit (void);
 void	npxinit (u_short control);
 void	npxsave (union savefpu *addr);
-int	npxdna(void);
 #endif
 
 #endif /* !_CPU_NPX_H_ */

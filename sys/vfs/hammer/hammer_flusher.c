@@ -894,6 +894,8 @@ hammer_flusher_meta_halflimit(hammer_mount_t hmp)
 int
 hammer_flusher_haswork(hammer_mount_t hmp)
 {
+	if (hmp->ronly)
+		return(0);
 	if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR)
 		return(0);
 	if (TAILQ_FIRST(&hmp->flush_group_list) ||	/* dirty inodes */

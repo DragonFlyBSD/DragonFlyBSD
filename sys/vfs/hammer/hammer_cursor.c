@@ -839,7 +839,6 @@ again2:
 			(intmax_t)oparent->node_offset, pindex,
 			(intmax_t)onode->node_offset, oindex,
 			(intmax_t)nnode->node_offset, nindex);
-		print_backtrace();
 		TAILQ_REMOVE(&oparent->cursor_list, cursor, deadlk_entry);
 		TAILQ_INSERT_TAIL(&nnode->cursor_list, cursor, deadlk_entry);
 		if (cursor->leaf == &ondisk->elms[oindex].leaf)

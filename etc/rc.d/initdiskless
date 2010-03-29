@@ -225,7 +225,7 @@ for i in base default ${bootp_ipbca} ${bootp_ipa} ; do
 		if [ -f $j ]; then
 			create_md $subdir
 			echo "Loading /$subdir from cpio archive $j"
-			(cd / ; /usr/bin/gzip -d < $j | /usr/bin/cpio --extract -d )
+			(cd /$subdir ; /usr/bin/cpio --extract -d -F $j )
 		fi
 	done
 	for j in /conf/$i/*.remove ; do

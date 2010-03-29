@@ -105,10 +105,6 @@ run on the remote side of the
 link to use stdin and stdout as its
 remote specification.  This option is typically not specified manually.
 .El
-.Sh EXAMPLES
-.Li "vknet -r 5 /dev/vknet myhomesystem:/dev/vknet"
-.Pp
-.Li "vknet -r 5 -b bridge0 -B bridge0 auto myhomesystem:auto"
 .Sh REQUIREMENTS
 You may have to load the
 .Ar if_tap
@@ -130,8 +126,10 @@ Socket
 typically connects to, established by
 .Xr vknetd 8 .
 .El
-.Sh BUGS
-There are currently no known bugs.
+.Sh EXAMPLES
+.Li "vknet -r 5 /dev/vknet myhomesystem:/dev/vknet"
+.Pp
+.Li "vknet -r 5 -b bridge0 -B bridge0 auto myhomesystem:auto"
 .Sh SEE ALSO
 .Xr vke 4 ,
 .Xr vkernel 7 ,
@@ -142,3 +140,5 @@ The
 command was written by Matthew Dillon and first appeared in
 .Dx 1.13
 in May 2008.
+.Sh BUGS
+There are currently no known bugs.

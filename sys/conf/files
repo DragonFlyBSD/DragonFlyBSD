@@ -634,7 +634,7 @@ kern/imgact_resident.c	standard
 kern/imgact_gzip.c	optional gzip
 kern/imgact_shell.c	standard
 kern/inflate.c		optional gzip
-kern/init_main.c	standard
+kern/init_main.c	standard nowerror
 kern/init_sysent.c	standard
 kern/kern_checkpoint.c	standard
 kern/kern_sysref.c	standard
@@ -811,7 +811,6 @@ vfs/procfs/procfs_type.c	optional procfs
 vfs/procfs/procfs_vfsops.c	optional procfs
 vfs/procfs/procfs_vnops.c	optional procfs
 vfs/procfs/procfs_rlimit.c	optional procfs
-#vfs/specfs/spec_vnops.c	standard
 vfs/union/union_subr.c		optional union
 vfs/union/union_vfsops.c	optional union
 vfs/union/union_vnops.c		optional union

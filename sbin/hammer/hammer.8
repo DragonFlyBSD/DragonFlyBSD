@@ -1331,8 +1331,70 @@ Version 4 allows the UNDO FIFO to be flushed without also having
 to flush the volume header, removing 2 of the 4 disk syncs typically
 required for an fsync() and removing 1 of the 2 disk syncs typically
 required for a flush sequence.
-.Sh EXIT STATUS
-.Ex -std
+.Sh FSYNC FLUSH MODES
+Hammer implements five different fsync flush modes via the
+.Li vfs.hammer.fsync_mode
+sysctl.
+.Pp
+.Bl -tag -width indent
+.It mode 0
+Full synchronous fsync semantics without REDO.
+.Pp
+Hammer will not generate REDOs.  A fsync() will completely sync
+the data and meta-data and double-flush the FIFO, including
+issuing two disk synchronization commands.  The data is guaranteed
+to be on the media as of when fsync() returns.
+Needless to say, this is slow.
+.Pp
+Even though all modes are available in that release the REDO
+semantics are not well tested yet and not enabled by default.
+.It mode 1
+Relaxed asynchronous fsync semantics without REDO.
+.Pp
+This mode works the same as mode 0 except the last disk synchronization
+command is not issued.  It is faster than mode 0 but not even remotely
+close to the speed you get with mode 2 or mode 3.
+.Pp
+Note that there is no chance of meta-data corruption when using this
+mode, it simply means that the data you wrote and then fsync()'d might
+not have made it to the media if the storage system crashes at a bad
+time.
+.Pp
+.It mode 2
+Full synchronous fsync semantics using REDO.
+.Pp
+Hammer will generate REDOs in the UNDO/REDO FIFO based on a heuristic.
+If this is sufficient to satisfy the fsync() operation the blocks
+will be written out and hammer will wait for the I/Os to complete,
+and then followup with a disk sync command to guarantee the data
+is on the media before returning.
+This is slower than mode 3 and can result in significant disk or
+SSDs overheads, though not as bad as mode 0 or mode 1.
+.Pp
+.It mode 3
+Relaxed asynchronous fsync semantics using REDO.
+.Pp
+Hammer will generate REDOs in the UNDO/REDO FIFO based on a heuristic.
+If this is sufficient to satisfy the fsync() operation the blocks
+will be written out and hammer will wait for the I/Os to complete,
+but will
+.Em NOT
+issue a disk synchronization command.
+.Pp
+Note that there is no chance of meta-data corruption when using this
+mode, it simply means that the data you wrote and then fsync()'d might
+not have made it to the media if the storage system crashes at a bad
+time.
+.Pp
+This mode is the fastest production fsyncing mode available.
+This mode is equivalent to how the UFS fsync in the BSDs operates.
+.Pp
+.It mode 4
+fsync is ignored.
+.Pp
+Calls to fsync() will be ignored.  This mode is primarily designed
+for testing and should not be used on a production system.
+.El
 .Sh FILES
 .Bl -tag -width ".It Pa <fs>/var/slaves/<name>" -compact
 .It Pa <pfs>/snapshots
@@ -1359,6 +1421,8 @@ recommended slave PFS snapshots directory
 .Nm ( HAMMER
 VERSION 2-)
 .El
+.Sh EXIT STATUS
+.Ex -std
 .Sh SEE ALSO
 .Xr ssh 1 ,
 .Xr undo 1 ,

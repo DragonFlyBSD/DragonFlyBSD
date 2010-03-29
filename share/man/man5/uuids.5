@@ -59,13 +59,6 @@ i.e. 16 hexadecimal digits, with dash
 after digit no. 8, 12, 16 and 20.
 A name is a text string enclosed in double quotes
 .Pq Sq \&" .
-.Sh EXAMPLES
-A UUID with name
-.Dq test UUID :
-.Bd -literal -offset indent
-# test uuids(5) file
-061ceb5d-5beb-11dd-924c-010e0cd0bad1   "test UUID"
-.Ed
 .Sh FILES
 .Bl -tag -width ".Pa /etc/defaults/uuids" -compact
 .It Pa /etc/defaults/uuids
@@ -74,6 +67,13 @@ A list of UUIDs and their symbolic names provided by the OS vendor.
 A list of UUIDs and their symbolic names provided by the
 system administrator.
 .El
+.Sh EXAMPLES
+A UUID with name
+.Dq test UUID :
+.Bd -literal -offset indent
+# test uuids(5) file
+061ceb5d-5beb-11dd-924c-010e0cd0bad1   "test UUID"
+.Ed
 .Sh SEE ALSO
 .Xr uuid 3
 .Sh AUTHORS

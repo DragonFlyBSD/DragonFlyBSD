@@ -9,15 +9,21 @@ NCPUS ?= 2
 
 all: help
 
-scratch: world32 kernel32 install32
+.if ${MACHINE_ARCH} == "i386"
+USEKERNEL=VKERNEL
+.else
+USEKERNEL=VKERNEL64
+.endif
+
+scratch: world kernel install
 	@echo "Run the environment with:"
 	@echo "make VKDIR=${VKDIR} run"
 
-quickw: quickworld32 quickkernel32 reinstall32 reinstallkernel32
+quickw: quickworld quickkernel reinstall reinstallkernel
 	@echo "Run the environment with:"
 	@echo "make VKDIR=${VKDIR} run"
 
-quick: quickkernel32 reinstallkernel32
+quick: quickkernel reinstallkernel
 	@echo "Run the environment with:"
 	@echo "make VKDIR=${VKDIR} run"
 
@@ -40,16 +46,16 @@ help:
 	@echo ""
 	@echo "Individual target components:"
 	@echo ""
-	@echo "    world32           - build the 32 bit world from scratch"
-	@echo "    root32            - create a new, empty root.img"
-	@echo "    install32         - install a 32 bit world & kernel"
+	@echo "    world             - build the world from scratch"
+	@echo "    root              - create a new, empty root.img"
+	@echo "    install           - install a world & kernel"
 	@echo "                        into root.img"
-	@echo "    kernel32 	     - build 32 bit vkernel"
-	@echo "    quickworld32      - incremental rebuild world32"
-	@echo "    quickkernel32     - incremental rebuild kernel32"
-	@echo "    reinstall32       - reinstall world32 into root.img"
+	@echo "    kernel   	     - build vkernel"
+	@echo "    quickworld        - incremental rebuild world"
+	@echo "    quickkernel       - incremental rebuild kernel"
+	@echo "    reinstall         - reinstall world into root.img"
 	@echo "                        (just the installworld piece)"
-	@echo "    reinstallkernel32 - reinstall kernel32 into root.img"
+	@echo "    reinstallkernel   - reinstall kernel into root.img"
 	@echo ""
 
 # Unmount everything, de-configured VN, and clean up.
@@ -58,30 +64,30 @@ help:
 clean: check
 	rm -rf ${VKDIR}/root.img ${VKDIR}/root
 
-# Build the 32 bit world and kernel
+# Build the world and kernel
 #
 #
-world32: checkq
+world: checkq
 	cd ${SRCDIR} && make -j 4 buildworld
 
-kernel32: checkq
-	cd ${SRCDIR} && make -j 4 KERNCONF=VKERNEL buildkernel
+kernel: checkq
+	cd ${SRCDIR} && make -j 4 KERNCONF=${USEKERNEL} buildkernel
 
 # Quick build - just rebuild the kernel quickly
 #
 #
-quickworld32: checkq
+quickworld: checkq
 	cd ${SRCDIR} && make -j 4 quickworld
 
-quickkernel32: checkq
-	cd ${SRCDIR} && make KERNCONF=VKERNEL quickkernel
+quickkernel: checkq
+	cd ${SRCDIR} && make KERNCONF=${USEKERNEL} quickkernel
 
 # Build and mount an empty filesystem for the emulated root disk
 #
-# NOTE: root32 must umount when done because a later dependency may
+# NOTE: root must umount when done because a later dependency may
 #       have a dependency on mount.
 #
-root32:	check
+root:	check
 	vnconfig -c -T -S ${ROOTSIZE} -s labels \
 	    `cat ${VKDIR}/vn.which` ${VKDIR}/root.img
 	dd if=/dev/zero of=/dev/`cat ${VKDIR}/vn.which` bs=32k count=4
@@ -103,21 +109,21 @@ mount: check
 
 umount: check
 
-# Install a fresh 32 bit world & distribution, and kernel
+# Install a fresh world & distribution, and kernel
 #
-install32: mount
+install: mount
 	cd ${SRCDIR} && \
 	    make -j 4 DESTDIR=${VKDIR}/root installworld
 	cd ${SRCDIR}/etc && \
 	    make -j 4 DESTDIR=${VKDIR}/root distribution
 	echo '/dev/vkd0s1a	/	ufs	rw	1 1' > ${VKDIR}/root/etc/fstab
 	echo 'proc		/proc	procfs	rw	0 0' >> ${VKDIR}/root/etc/fstab
-	echo 'vfs.root.mountfrom="ufs:vkds1a"' > ${VKDIR}/root/boot/loader.conf
+	echo 'vfs.root.mountfrom="ufs:vkd0s1a"' > ${VKDIR}/root/boot/loader.conf
 	#(egrep -v '^console' ${VKDIR}/root/etc/ttys; echo 'console "/usr/libexec/getty Pc"	cons25	on	secure') > ${VKDIR}/root/etc/ttys.new
 	#mv -f ${VKDIR}/root/etc/ttys.new ${VKDIR}/root/etc/ttys
 	cd ${SRCDIR} && \
 	    make -j 4 \
-		 DESTDIR=${VKDIR}/root KERNCONF=VKERNEL \
+		 DESTDIR=${VKDIR}/root KERNCONF=${USEKERNEL} \
 		 NO_MODULES= \
 		 installkernel
 	cp ${VKDIR}/root/boot/kernel ${VKDIR}/vkernel
@@ -125,12 +131,12 @@ install32: mount
 # Quick reinstall - just install a new kernel on top of an existing image
 #
 #
-reinstall32: mount
+reinstall: mount
 	cd ${SRCDIR} && make -j 4 DESTDIR=${VKDIR}/root installworld
 
-reinstallkernel32: mount
+reinstallkernel: mount
 	cd ${SRCDIR} && \
-	    make -j 4 DESTDIR=${VKDIR}/root KERNCONF=VKERNEL \
+	    make -j 4 DESTDIR=${VKDIR}/root KERNCONF=${USEKERNEL} \
 		 NO_MODULES= installkernel
 	cp ${VKDIR}/root/boot/kernel ${VKDIR}/vkernel
 

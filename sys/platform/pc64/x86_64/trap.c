@@ -895,8 +895,10 @@ nogo:
 	 * kludge is needed to pass the fault address to signal handlers.
 	 */
 	struct proc *p = td->td_proc;
-	kprintf("seg-fault accessing address %p rip=%p pid=%d p_comm=%s\n",
-		(void *)va, (void *)frame->tf_rip, p->p_pid, p->p_comm);
+	if (td->td_lwp->lwp_vkernel == NULL) {
+		kprintf("seg-fault accessing address %p rip=%p pid=%d p_comm=%s\n",
+			(void *)va, (void *)frame->tf_rip, p->p_pid, p->p_comm);
+	}
 	/* Debugger("seg-fault"); */
 
 	return((rv == KERN_PROTECTION_FAILURE) ? SIGBUS : SIGSEGV);
@@ -1320,7 +1322,15 @@ generic_lwp_return(struct lwp *lp, struct trapframe *frame)
 void
 set_vkernel_fp(struct trapframe *frame)
 {
-	/* JGXXX */
+	struct thread *td = curthread;
+
+	if (frame->tf_xflags & PGEX_FPFAULT) {
+		td->td_pcb->pcb_flags |= FP_VIRTFP;
+		if (mdcpu->gd_npxthread == td)
+			npxexit();
+	} else {
+		td->td_pcb->pcb_flags &= ~FP_VIRTFP;
+	}
 }
 
 /*

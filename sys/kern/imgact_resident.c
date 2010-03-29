@@ -94,7 +94,7 @@ fill_xresident(struct vmresident *vr, struct xresident *in, struct thread *td)
 	in->res_id = vr->vr_id;
 	if (vrtmp) {
 		char *freepath, *fullpath;
-		error = vn_fullpath(td->td_proc, vrtmp, &fullpath, &freepath);
+		error = vn_fullpath(td->td_proc, vrtmp, &fullpath, &freepath, 0);
 		if (error != 0) {
 			/* could not retrieve cached path, return zero'ed string */
 			bzero(in->res_file, MAXPATHLEN);

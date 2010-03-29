@@ -88,18 +88,18 @@ vfs/smbfs/smbfs_subr.c		optional	smbfs
 vfs/smbfs/smbfs_vfsops.c	optional	smbfs
 vfs/smbfs/smbfs_vnops.c		optional	smbfs
 
-platform/pc64/x86_64/atomic.c			standard			\
+cpu/x86_64/misc/atomic.c		standard			\
         compile-with    "${CC} -c ${CFLAGS} ${WERROR} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
 platform/pc64/x86_64/autoconf.c	standard
 platform/pc64/x86_64/mpboot.S		optional	smp
 
 # DDB XXX
-cpu/x86_64/misc/x86_64-gdbstub.c		optional	ddb
-cpu/x86_64/misc/lwbuf.c				standard
-platform/pc64/x86_64/elf_machdep.c		standard
-platform/pc64/x86_64/in_cksum2.s			optional	inet
-platform/pc64/x86_64/ktr.c			optional	ktr
-platform/pc64/x86_64/db_disasm.c			optional	ddb
+cpu/x86_64/misc/x86_64-gdbstub.c	optional	ddb
+cpu/x86_64/misc/lwbuf.c			standard
+cpu/x86_64/misc/elf_machdep.c		standard
+cpu/x86_64/misc/in_cksum2.s		optional	inet
+cpu/x86_64/misc/ktr.c			optional	ktr
+cpu/x86_64/misc/db_disasm.c		optional	ddb
 #
 # DOS mbr and gpt
 kern/subr_diskmbr.c			standard

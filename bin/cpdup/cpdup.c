@@ -975,12 +975,13 @@ relink:
 
 	if (!skipdir) {
 	    List *list = malloc(sizeof(List));
-	    Node *node = NULL;
+	    Node *node;
 	    char *name;
 
 	    if (DirShowOpt)
 		logstd("Scanning %s ...\n", spath);
 	    InitList(list);
+	    node = NULL;
 	    if (ScanDir(list, &SrcHost, spath, &CountSourceReadBytes, 0) == 0) {
 		while ((name = IterateList(list, &node, 0)) != NULL) {
 		    char *nspath;
@@ -1010,7 +1011,8 @@ relink:
 		 * in the source.
 		 */
 		if (dpath && ScanDir(list, &DstHost, dpath,
-			&CountTargetReadBytes, 3) == 0) {
+				     &CountTargetReadBytes, 3) == 0) {
+		    node = NULL;
 		    while ((name = IterateList(list, &node, 3)) != NULL) {
 			/*
 			 * If object does not exist in source or .cpignore
