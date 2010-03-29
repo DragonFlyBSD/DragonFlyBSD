@@ -14,9 +14,7 @@
 .Os
 .Sh NAME
 .Nm swapcache
-.Nd a
-mechanism which allows the system to use fast swap to cache filesystem
-data and meta-data.
+.Nd a mechanism to use fast swap to cache filesystem data and meta-data
 .Sh SYNOPSIS
 .Cd sysctl vm.swapcache.accrate=100000
 .Cd sysctl vm.swapcache.maxfilesize=0
@@ -36,60 +34,66 @@ space configuration to be used to cache clean filesystem data and meta-data
 in addition to its normal function of backing anonymous memory.
 .Pp
 Sysctls are used to manage operational parameters and can be adjusted at
-any time.  Typically a large initial burst is desired after system boot,
+any time.
+Typically a large initial burst is desired after system boot,
 controlled by the initial
-.Cd vm.swapcache.curburst
+.Va vm.swapcache.curburst
 parameter.
 This parameter is reduced as data is written to swap by the swapcache
 and increased at a rate specified by
-.Cd vm.swapcache.accrate .
+.Va vm.swapcache.accrate .
 Once this parameter reaches zero write activity ceases until it has
 recovered sufficiently for write activity to resume.
 .Pp
-.Cd vm.swapcache.meta_enable
-enables the writing of filesystem meta-data to the swapcache.  Filesystem
+.Va vm.swapcache.meta_enable
+enables the writing of filesystem meta-data to the swapcache.
+Filesystem
 metadata is any data which the filesystem accesses via the disk device
-using buffercache.  Meta-data is cached globally regardless of file
-or directory flags.
+using buffercache.
+Meta-data is cached globally regardless of file or directory flags.
 .Pp
-.Cd vm.swapcache.data_enable
+.Va vm.swapcache.data_enable
 enables the writing of clean filesystem file-data to the swapcache.
 Filesystem filedata is any data which the filesystem accesses via a
-regular file.  In technical terms, when the buffer cache is used to access
+regular file.
+In technical terms, when the buffer cache is used to access
 a regular file through its vnode.
-Please do not blindly turn on this option, see the PERFORMANCE TUNING
+Please do not blindly turn on this option, see the
+.Sx PERFORMANCE TUNING
 section for more information.
 .Pp
-.Cd vm.swapcache.use_chflags
+.Va vm.swapcache.use_chflags
 enables the use of the
-.Cm cache
+.Va cache
 and
-.Cm noscache
+.Va noscache
 .Xr chflags 1
 flags to control which files will be data-cached.
-If this sysctl is disabled and data_enable is enabled,
-the system will ignore file flags and attempt to swapcache all
-regular files.
+If this sysctl is disabled and
+.Va data_enable
+is enabled, the system will ignore file flags and attempt to
+swapcache all regular files.
 .Pp
-.Cd vm.swapcache.read_enable
+.Va vm.swapcache.read_enable
 enables reading from the swapcache and should be set to 1 for normal
 operation.
 .Pp
-.Cd vm.swapcache.maxfilesize
+.Va vm.swapcache.maxfilesize
 controls which files are to be cached based on their size.
 If set to non-zero only files smaller than the specified size
-will be cached.  Larger files will not be cached.
+will be cached.
+Larger files will not be cached.
 .Pp
-.Cd vm.swapcache.maxlaunder
+.Va vm.swapcache.maxlaunder
 controls the maximum number of clean VM pages which will be added to
 the swap cache and written out to swap on each poll.
 Swapcache polls ten times a second.
 .Pp
-.Cd vm.swapcache.hysteresis
+.Va vm.swapcache.hysteresis
 controls how many pages swapcache waits to be added to the inactive page
-queue before continuing its scan.  Once it decides to scan it continues
-subject to the above limitations until it reaches the end of the inactive
-page queue.
+queue before continuing its scan.
+Once it decides to scan it continues subject to the above limitations
+until it reaches the end of the inactive page queue.
 This parameter is designed to make swapcache generate more bulky bursts
 to swap which helps SSDs reduce write amplification effects.
 .Sh PERFORMANCE TUNING
@@ -97,7 +101,7 @@ Best operation is achieved when the active data set fits within the
 swapcache.
 .Pp
 .Bl -tag -width 4n -compact
-.It Cd vm.swapcache.accrate
+.It Va vm.swapcache.accrate
 This specifies the burst accumulation rate in bytes per second and
 ultimately controls the write bandwidth to swap averaged over a long
 period of time.
@@ -106,14 +110,14 @@ the SSD in order to avoid wearing it out too quickly.
 Even though SSDs have limited write endurance, there is massive
 cost/performance benefit to using one in a swapcache configuration.
 .Pp
-Let's use the Intel X25V 40G MLC SATA SSD as an example.  This device
-has approximately a
+Let's use the Intel X25V 40GB MLC SATA SSD as an example.
+This device has approximately a
 40TB (40 terabyte) write endurance, but see later
 notes on this, it is more a minimum value.
-Limiting the long term average bandwidth to 100K/sec leads to no more
-than ~9G/day writing which calculates approximately to a 12 year
-endurance.
-Endurance scales linearly with size.  The 80G version of this SSD
+Limiting the long term average bandwidth to 100KB/sec leads to no more
+than ~9GB/day writing which calculates approximately to a 12 year endurance.
+Endurance scales linearly with size.
+The 80GB version of this SSD
 will have a write endurance of approximately 80TB.
 .Pp
 MLC SSDs have a 1000-10000x write endurance, while the lower density
@@ -121,48 +125,53 @@ higher-cost SLC SSDs have an approximately 10000-100000x write endurance.
 MLC SSDs can be used for the swapcache (and swap) as long as the system
 manager is cognizant of its limitations.
 .Pp
-.It Cd vm.swapcache.meta_enable
+.It Va vm.swapcache.meta_enable
 Turning on just
-.Cd meta_enable
+.Va meta_enable
 causes only filesystem meta-data to be cached and will result
 in very fast directory operations even over millions of inodes
 and even in the face of other invasive operations being run
 by other processes.
 .Pp
-For HAMMER filesystems meta-data includes the B-Tree, directory entries,
-and data related to tiny files.  Approximately 6 GB of swapcache is needed
+For
+.Nm HAMMER
+filesystems meta-data includes the B-Tree, directory entries,
+and data related to tiny files.
+Approximately 6 GB of swapcache is needed
 for every 14 million or so inodes cached, effectively giving one the
-ability to cache all the meta-data in a multi-terrabyte filesystem using
+ability to cache all the meta-data in a multi-terabyte filesystem using
 a fairly small SSD.
 .Pp
-.It Cd vm.swapcache.data_enable
+.It Va vm.swapcache.data_enable
 Turning on
-.Cd data_enable
-(with or without other features) allows bulk file data to be
-cached.
+.Va data_enable
+(with or without other features) allows bulk file data to be cached.
 This feature is very useful for web server operation when the
 operational data set fits in swap.
 The usefulness is somewhat mitigated by the maximum number
 of vnodes supported by the system via
-.Cd kern.maxfiles ,
+.Va kern.maxfiles ,
 because the bulk data in the cache is lost when the related
-vnode is recycled.  In this case it might be desirable to
+vnode is recycled.
+In this case it might be desirable to
 take the plunge into running a 64-bit kernel which can support
-far more vnodes.  32-bit kernels have limited kernel virtual
+far more vnodes.
+32-bit kernels have limited kernel virtual
 memory (KVM) and cannot reliably support more than around
-100,000 active vnodes.  64-bit kernels can support 300,000+
-active vnodes.
+100,000 active vnodes.
+64-bit kernels can support 300,000+ active vnodes.
 .Pp
 Data caching is definitely more wasteful of the SSD's write durability
 than meta-data caching.
 The swapcache may exhaust its burst and smack against the long term
 average bandwidth limit, causing the SSD to wear out at the maximum rate
-you programmed.  Data caching is far less wasteful and more efficient
+you programmed.
+Data caching is far less wasteful and more efficient
 if (on a 64-bit system only) you provide a sufficiently large SSD and
 increase
-.Cd kern.maxvnodes
+.Va kern.maxvnodes
 to cover the entire directory topology being served.
-Each vnode requires about 1K of physical ram.
+Each vnode requires about 1KB of physical RAM.
 .Pp
 Due to the higher SSD write rate you may want to use a
 medium-sized SSD with good write performance to reduce interference
@@ -170,13 +179,13 @@ between reading and writing.
 Write durability also scales with larger SSDs.
 For example, an Intel X25-V only has 40MB/s in write performance
 and burst writing by swapcache will seriously interfere with
-concurrent read operation on the SSD.  The 80G X25-M on the
-otherhand has double the write performance.
+concurrent read operation on the SSD.
+The 80GB X25-M on the otherhand has double the write performance.
 .Pp
 When data caching is turned on you generally want to use
 .Xr chflags 1
 with the
-.Cm cache
+.Va cache
 flag to enable data caching on a directory.
 This flag is tracked by the namecache and does not need to be
 recursively set in the directory tree.
@@ -189,35 +198,36 @@ A typical setup is something like this:
 .Dl chflags noscache /usr/obj
 .Pp
 If that doesn't work you can turn off
-.Cd vm.swapcache.use_chflags
-entirely and not bother with any chflagging.
+.Va vm.swapcache.use_chflags
+entirely and not bother with any
+.Nm chflag Ns 'ing .
 .Pp
 Filesystems such as NFS which do not support flags generally
 have a
-.Cd cache
+.Va cache
 mount option which enables swapcache operation on the mount.
 .Pp
-.It Cd vm.swapcache.maxfilesize
+.It Va vm.swapcache.maxfilesize
 This may be used to reduce cache thrashing when a focus on a small
 potentially fragmented filespace is desired, leaving the
 larger files alone.
 .Pp
-.It Cd vm.swapcache.minburst
+.It Va vm.swapcache.minburst
 This controls hysteresis and prevents nickel-and-dime write bursting.
 Once
-.Cd curburst
-drops to zero, writing to the swapcache ceases until it has recovered
-past
-.Cd minburst .
+.Va curburst
+drops to zero, writing to the swapcache ceases until it has recovered past
+.Va minburst .
 The idea here is to avoid creating a heavily fragmented swapcache where
 reading data from a file must alternate between the cache and the primary
-filesystem.  Doing so does not save disk seeks on the primary filesystem
-so we want to avoid doing small bursts.  This parameter allows us to do
-larger bursts.
+filesystem.
+Doing so does not save disk seeks on the primary filesystem
+so we want to avoid doing small bursts.
+This parameter allows us to do larger bursts.
 The larger bursts also tend to improve SSD performance as the SSD itself
 can do a better job write-combining and erasing blocks.
 .Pp
-.It Cd vm_swapcache.maxswappct
+.It Va vm_swapcache.maxswappct
 This controls the maximum amount of swapspace
 .Nm
 may use, in percentage terms.
@@ -225,71 +235,80 @@ may use, in percentage terms.
 .Pp
 It is important to note that you should always use
 .Xr disklabel64 8
-to label your SSD.  Disklabel64 will properly align the base of the
+to label your SSD.
+Disklabel64 will properly align the base of the
 partition space relative to the physical drive regardless of how badly
 aligned the fdisk slice is.
 This will significantly reduce write amplification and write combining
 inefficiencies on the SSD.
 .Pp
 Finally, interleaved swap (multiple SSDs) may be used to increase
-performance even further.  A single SATA SSD is typically capable of
-reading 120-220MB/sec.  Configuring two SSDs for your swap will
+performance even further.
+A single SATA SSD is typically capable of reading 120-220MB/sec.
+Configuring two SSDs for your swap will
 improve aggregate swapcache read performance by 1.5x to 1.8x.
-In tests with two Intel 40G SSDs 300MB/sec was easily achieved.
+In tests with two Intel 40GB SSDs 300MB/sec was easily achieved.
 .Pp
 At this point you will be configuring more swap space than a 32 bit
 .Dx
-kernel can handle (due to KVM limitations).  By default, 32 bit
+kernel can handle (due to KVM limitations).
+By default, 32 bit
 .Dx
-systems only support 32G of configured swap and while this limit
+systems only support 32GB of configured swap and while this limit
 can be increased somewhat in
 .Pa /boot/loader.conf
 you should really be using a 64-bit
 .Dx
-kernel instead.  64-bit systems support up to 512G of swap by default
-and can be boosted to up to 8TB if you are really crazy and have enough ram.
+kernel instead.
+64-bit systems support up to 512GB of swap by default
+and can be boosted to up to 8TB if you are really crazy and have enough RAM.
 Each 1GB of swap requires around 1MB of physical memory to manage it so
 the practical limit is more around 1TB of swap.
 .Pp
 Of course, a 1TB SSD is something on the order of $3000+ as of this writing.
 Even though a 1TB configuration might not be cost effective, storage levels
-more in the 100-200G range certainly are.  If the machine has only a 1GigE
+more in the 100-200GB range certainly are.
+If the machine has only a 1GigE
 ethernet (100MB/s) there's no point configuring it for more SSD bandwidth.
 A single SSD of the desired size would be sufficient.
 .Sh INITIAL BURSTING & REPEATED BURSTING
 Even though the average write bandwidth is limited it is desirable
 to have a large initial burst after boot to load the cache.
-.Cd curburst
+.Va curburst
 is initialized to 4GB by default and you can force rebursting
 by adjusting it with a sysctl.
 Remember that
-.Cd curburst
+.Va curburst
 dynamically tracks burst and will go up and down depending.
 .Pp
 In addition there will be periods of time where the system is in
-steady state and not writing to the swapcache.  During these periods
-.Cd curburst
+steady state and not writing to the swapcache.
+During these periods
+.Va curburst
 will inch back up but will not exceed
-.Cd maxburst .
+.Va maxburst .
 Thus the
-.Cd maxburst
+.Va maxburst
 value controls how large a repeated burst can be.
 .Pp
 A second bursting parameter called
-.Cd vm.swapcache.minburst
+.Va vm.swapcache.minburst
 controls bursting when the maximum write bandwidth has been reached.
 When
-.Cd minburst
+.Va minburst
 reaches zero write activity ceases and
-.Cd curburst
+.Va curburst
 is allowed to recover up to
-.Cd minburst
-before write activity resumes.  The recommended range for the
-.Cd minburst
-parameter is 1MB to 50MB.  This parameter has a relationship to
+.Va minburst
+before write activity resumes.
+The recommended range for the
+.Va minburst
+parameter is 1MB to 50MB.
+This parameter has a relationship to
 how fragmented the swapcache gets when not in a steady state.
 Large bursts reduce fragmentation and reduce incidences of
-excessive seeking on the hard drive.  If set too low the
+excessive seeking on the hard drive.
+If set too low the
 swapcache will become fragmented within a single regular file
 and the constant back-and-forth between the swapcache and the
 hard drive will result in excessive seeking on the hard drive.
@@ -298,13 +317,13 @@ The swapcache feature will use up to 75% of configured swap space
 by default.
 The remaining 25% is reserved for normal paging operation.
 The system operator should configure at least 4 times the SWAP space
-versus main memory and no less than 8G of swap space.
-If a 40G SSD is used the recommendation is to configure 16G to 32G of
-swap (note: 32-bit is limited to 32G of swap by default, for 64-bit
-it is 512G of swap), and to leave the remainder unwritten and unused.
+versus main memory and no less than 8GB of swap space.
+If a 40GB SSD is used the recommendation is to configure 16GB to 32GB of
+swap (note: 32-bit is limited to 32GB of swap by default, for 64-bit
+it is 512GB of swap), and to leave the remainder unwritten and unused.
 .Pp
 The
-.Cd vm_swapcache.maxswappct
+.Va vm_swapcache.maxswappct
 sysctl may be used to change the default.
 You may have to change this default if you also use
 .Xr tmpfs 5 ,
@@ -316,48 +335,53 @@ anyway).
 .Pp
 If swapcache reaches the 75% limit it will begin tearing down swap
 in linear bursts by iterating through available VM objects, until
-swap space use drops to 70%.  The tear-down is limited by the rate at
-which new data is written and this rate in turn is often limited
-by
-.Cd vm.swapcache.accrate ,
+swap space use drops to 70%.
+The tear-down is limited by the rate at
+which new data is written and this rate in turn is often limited by
+.Va vm.swapcache.accrate ,
 resulting in an orderly replacement of cached data and meta-data.
 The limit is typically only reached when doing full data+meta-data
 caching with no file size limitations and serving primarily large
-files, or (on a 64-bit system) bumping kern.maxvnodes up to very
-high values.
+files, or (on a 64-bit system) bumping
+.Va kern.maxvnodes
+up to very high values.
 .Sh NORMAL SWAP PAGING ACTIVITY WITH SSD SWAP
 This is not a function of
 .Nm
-per se but instead a normal function of the system.  Most systems have
-sufficient memory that they do not need to page memory to swap.  These
-types of systems are the ones best suited for MLC SSD configured swap
-running with a
+per se but instead a normal function of the system.
+Most systems have
+sufficient memory that they do not need to page memory to swap.
+These types of systems are the ones best suited for MLC SSD
+configured swap running with a
 .Nm
 configuration.
 Systems which modestly page to swap, in the range of a few hundred
 megabytes a day worth of writing, are also well suited for MLC SSD
-configured swap.  Desktops usually fall into this category even if they
+configured swap.
+Desktops usually fall into this category even if they
 page out a bit more because swap activity is governed by the actions of
 a single person.
 .Pp
 Systems which page anonymous memory heavily when
 .Nm
 would otherwise be turned off are not usually well suited for MLC SSD
-configured swap.  Heavy paging activity is not governed by
+configured swap.
+Heavy paging activity is not governed by
 .Nm
 bandwidth control parameters and can lead to excessive uncontrolled
-writing to the MLC SSD, causing premature wearout.  You would have to
-use the lower density, more expensive SLC SSD technology (which has 10x
-the durability).  This isn't to say that
+writing to the MLC SSD, causing premature wearout.
+You would have to use the lower density, more expensive SLC SSD
+technology (which has 10x the durability).
+This isn't to say that
 .Nm
 would be ineffective, just that the aggregate write bandwidth required
 to support the system would be too large for MLC flash technologies.
 .Pp
 With this caveat in mind, SSD based paging on systems with insufficient
-ram can be extremely effective in extending the useful life of the system.
-For example, a system with a measly 192MB of ram and SSD swap can run
+RAM can be extremely effective in extending the useful life of the system.
+For example, a system with a measly 192MB of RAM and SSD swap can run
 a -j 8 parallel build world in a little less than twice the time it
-would take if the system had 2G of ram, whereas it would take 5x to 10x
+would take if the system had 2GB of RAM, whereas it would take 5x to 10x
 as long with normal HD based swap.
 .Sh WARNINGS
 I am going to repeat and expand a bit on SSD wear.
@@ -365,30 +389,31 @@ Wear on SSDs is a function of the write durability of the cells,
 whether the SSD implements static or dynamic wear leveling, and
 write amplification effects based on the type of write activity.
 Write amplification occurs due to wasted space when the SSD must
-erase and rewrite the underlying flash blocks.  e.g. MLC flash uses
-128KB erase/write blocks.
+erase and rewrite the underlying flash blocks.
+E.g.\& MLC flash uses 128KB erase/write blocks.
 .Pp
 .Nm
 parameters should be carefully chosen to avoid early wearout.
-For example, the Intel X25V 40G SSD has a minimum write durability
+For example, the Intel X25V 40GB SSD has a minimum write durability
 of 40TB and an actual durability that can be quite a bit higher.
 Generally speaking, you want to select parameters that will give you
 at least 10 years of service life.
 The most important parameter to control this is
-.Cd vm.swapcache.accrate .
+.Va vm.swapcache.accrate .
 .Nm
 uses a very conservative 100KB/sec default but even a small X25V
-can probably handle 300KB/sec of continuous writing and still last
-10 years.
+can probably handle 300KB/sec of continuous writing and still last 10 years.
 .Pp
 Depending on the wear leveling algorithm the drive uses, durability
 and performance can sometimes be improved by configuring less
 space (in a manufacturer-fresh drive) than the drive's probed capacity.
-For example, by only using 32G of a 40G SSD.
+For example, by only using 32GB of a 40GB SSD.
 SSDs typically implement 10% more storage than advertised and
-use this storage to improve wear leveling.  As cells begin to fail
+use this storage to improve wear leveling.
+As cells begin to fail
 this overallotment slowly becomes part of the primary storage
-until it has been exhausted.  After that the SSD has basically failed.
+until it has been exhausted.
+After that the SSD has basically failed.
 Keep in mind that if you use a larger portion of the SSD's advertised
 storage the SSD will not know if/when you decide to use less unless
 appropriate TRIM commands are sent (if supported), or a low level
@@ -399,55 +424,64 @@ will generally not improve performance when a normal hard drive is used
 for swap.
 .Pp
 .Nm smartctl
-(from pkgsrc's sysutils/smartmontools) may be used to retrieve 
+(from pkgsrc's sysutils/smartmontools) may be used to retrieve
 the wear indicator from the drive.
-One usually runs something like 'smartctl -d sat -a /dev/daXX'
-(for AHCI/SILI/SCSI), or 'smartctl -a /dev/adXX' for NATA.  Some SSDs
+One usually runs something like
+.Ql smartctl -d sat -a /dev/daXX
+(for AHCI/SILI/SCSI), or
+.Ql smartctl -a /dev/adXX
+for NATA.
+Some SSDs
 (particularly the Intels) will brick the SATA port when smart operations
 are done while the drive is busy with normal activity, so the tool should
 only be run when the SSD is idle.
 .Pp
 ID 232 (0xe8) in the SMART data dump indicates available reserved
-space and ID 233 (0xe9) is the wear-out meter.  Reserved space
+space and ID 233 (0xe9) is the wear-out meter.
+Reserved space
 typically starts at 100 and decrements to 10, after which the SSD
-is considered to operate in a degraded mode.  The wear-out meter
-typically starts at 99 and decrements to 0, after which the SSD
-has failed.
+is considered to operate in a degraded mode.
+The wear-out meter typically starts at 99 and decrements to 0,
+after which the SSD has failed.
 .Pp
 .Nm
-tends to use large 64K writes and tends to cluster multiple writes
-linearly.  The SSD is able to take significant advantage of this
-and write amplification effects are greatly reduced.  If we
-take a 40G Intel X25V as an example the vendor specifies a write
+tends to use large 64KB writes and tends to cluster multiple writes
+linearly.
+The SSD is able to take significant advantage of this
+and write amplification effects are greatly reduced.
+If we take a 40GB Intel X25V as an example the vendor specifies a write
 durability of approximately 40TB, but
 .Nm
 should be able to squeeze out upwards of 200TB due the fairly optimal
 write clustering it does.
 The theoretical limit for the Intel X25V is 400TB (10,000 erase cycles
-per MLC cell, 40G drive), but the firmware doesn't do perfect static
+per MLC cell, 40GB drive), but the firmware doesn't do perfect static
 wear leveling so the actual durability is less.
 .Pp
 In contrast, most filesystems directly stored on a SSD have
 fairly severe write amplification effects and will have durabilities
 ranging closer to the vendor-specified limit.
-Power-on hours, power cycles, and read operations do not really affect
-wear.
+Power-on hours, power cycles, and read operations do not really affect wear.
 .Pp
 SSD's with MLC-based flash technology are high-density, low-cost solutions
-with limited write durability.  SLC-based flash technology is a low-density,
-higher-cost solution with 10x the write durability as MLC.  The durability
-also scales with the amount of flash storage.  SLC based flash is typically
-twice as expensive per gigabyte.  From a cost perspective, SLC based flash
+with limited write durability.
+SLC-based flash technology is a low-density,
+higher-cost solution with 10x the write durability as MLC.
+The durability also scales with the amount of flash storage.
+SLC based flash is typically
+twice as expensive per gigabyte.
+From a cost perspective, SLC based flash
 is at least 5x more cost effective in situations where high write
-bandwidths are required (because it lasts 10x longer).  MLC is at least
-2x more cost effective in situations where high write bandwidth is not
-required.
+bandwidths are required (because it lasts 10x longer).
+MLC is at least 2x more cost effective in situations where high
+write bandwidth is not required.
 When wear calculations are in years, these differences become huge, but
 often the quantity of storage needed trumps the wear life so we expect most
 people will be using MLC.
 .Nm
 is usable with both technologies.
 .Sh SEE ALSO
+.Xr chflags 1 ,
 .Xr fstab 5 ,
 .Xr disklabel64 8 ,
 .Xr swapon 8
