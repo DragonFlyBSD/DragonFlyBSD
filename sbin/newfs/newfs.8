@@ -39,7 +39,7 @@
 .Sh NAME
 .Nm newfs ,
 .Nm mount_mfs
-.Nd construct a new file system
+.Nd construct a new UFS file system
 .Sh SYNOPSIS
 .Nm
 .Op Fl NCOU
@@ -248,15 +248,15 @@ Nowadays this value should be set to 1 (which essentially disables the
 rotational position table) because modern drives with read-ahead and
 write-behind do better without the rotational position table.
 .It Fl o Ar optimization\ preference
-.Pq Ar space No or Ar time .
+.Pq Cm space No or Cm time .
 The file system can either be instructed to try to minimize the time spent
 allocating blocks, or to try to minimize the space fragmentation on the disk.
 If the value of minfree (see above) is less than 8%,
 the default is to optimize for
-.Ar space ;
+.Cm space ;
 if the value of minfree is greater than or equal to 8%,
 the default is to optimize for
-.Ar time .
+.Cm time .
 See
 .Xr tunefs 8
 for more details on how to set this option.
@@ -390,12 +390,13 @@ Mount a 64 MB large memory file system on
 with
 .Xr mount 8
 options
-.Ar nosuid ,
-.Ar nodev ,
+.Cm nosuid ,
+.Cm nodev ,
 and
-.Ar nosymfollow .
+.Cm nosymfollow .
 .Sh SEE ALSO
 .Xr fdformat 1 ,
+.Xr UFS 5 ,
 .Xr disktab 5 ,
 .Xr fs 5 ,
 .Xr camcontrol 8 ,
