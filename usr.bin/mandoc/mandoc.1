@@ -1,4 +1,4 @@
-.\"	$Id: mandoc.1,v 1.54 2010/03/27 10:10:10 kristaps Exp $
+.\"	$Id: mandoc.1,v 1.56 2010/03/29 10:10:35 kristaps Exp $
 .\"
 .\" Copyright (c) 2009 Kristaps Dzonsons <kristaps@kth.se>
 .\"
@@ -14,7 +14,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd March 27, 2010
+.Dd March 30, 2010
 .Dt MANDOC 1
 .Os
 .
@@ -220,7 +220,8 @@ and
 .Fl f Ns Ar no-ign-chars .
 .
 .It Fl f Ns Ar ign-errors
-Don't halt when encountering parse errors.  Useful with
+When parsing multiple files, don't halt when one errors out.  Useful
+with
 .Fl T Ns Ar lint
 over a large set of manuals passed on the command line.
 .El
