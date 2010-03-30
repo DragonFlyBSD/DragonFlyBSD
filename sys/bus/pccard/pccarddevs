@@ -219,6 +219,7 @@ product AIRONET 350		0x000a Aironet 350 Wireless LAN Adapter
 
 /* AirVast */
 product AIRVAST WN_100          0x7300 AirVast WN-100 
+product AIRVAST WN_100B		0x0001 AirVast WN-100 (alt)
 
 /* Allied Telesis K.K. */
 product ALLIEDTELESIS LA_PCM	0x0002 Allied Telesis LA-PCM
@@ -301,6 +302,8 @@ product ELSA MC2_IEEE		0x0001 AirLancer MC-2 IEEE
 product ELSA XI300_IEEE		0x0002 XI300 Wireless LAN
 product ELSA XI800_IEEE		0x0004 XI800 CF Wireless LAN
 product ELSA XI325_IEEE		0x0005 XI325 Wireless LAN
+product ELSA APDL325_IEEE	0x0006 ADPL325 Wireless LAN
+product ELSA XI330_IEEE		0x0010 XI330 Wireless LAN
 product ELSA WIFI_FLASH		0x0101 802.11b plus 128MB Flash
 
 /* EMTAC */
@@ -528,6 +531,7 @@ product SHARP PALDIO611S	0x0000  PALDIO 611S PC CARD
 
 /* Siemens */
 product SIEMENS SS1021		0x0002 Siemens SpeedStream 1021
+product SIEMENS SS1021A		0x3021 Siemens SpeedStream SS1021
 
 /* Simple Technology Products */
 product SIMPLETECH COMMUNICATOR288 0x0100 Simple Technology 28.8 Communicator
