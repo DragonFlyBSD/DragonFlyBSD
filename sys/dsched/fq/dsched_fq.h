@@ -84,6 +84,7 @@
 #define	FQ_GLOBAL_FQMP_UNLOCK(x) spin_unlock_wr(&fq_fqmp_lock)
 
 #define	FQ_REBALANCE_TIMEOUT	1	/* in seconds */
+#define FQ_TOTAL_DISK_TIME	1000000*FQ_REBALANCE_TIMEOUT	/* in useconds */
 
 /*
 #define	FQ_INNERQ_INIT(x)	spin_init(&(x)->lock)
@@ -130,6 +131,9 @@ struct dsched_fq_dpriv {
 	int	avg_rq_time;	/* XXX: unused */
 	int32_t	incomplete_tp;
 	int64_t	max_budget;
+	int	idle;
+	struct timeval start_idle;
+	int	idle_time;
 
 	/* list contains all fq_priv for this disk */
 	TAILQ_HEAD(, dsched_fq_priv)	fq_priv_list;
@@ -175,7 +179,7 @@ struct dsched_fq_dpriv	*fq_alloc_dpriv(struct disk *dp);
 struct dsched_fq_mpriv	*fq_alloc_mpriv(struct proc *p);
 void	fq_balance_thread(struct dsched_fq_dpriv *dpriv);
 void	fq_dispatcher(struct dsched_fq_dpriv *dpriv);
-biodone_t		fq_completed;
+biodone_t	fq_completed;
 
 void	fq_reference_dpriv(struct dsched_fq_dpriv *dpriv);
 void	fq_reference_priv(struct dsched_fq_priv *fqp);
@@ -183,7 +187,8 @@ void	fq_reference_mpriv(struct dsched_fq_mpriv *fqmp);
 void	fq_dereference_dpriv(struct dsched_fq_dpriv *dpriv);
 void	fq_dereference_priv(struct dsched_fq_priv *fqp);
 void	fq_dereference_mpriv(struct dsched_fq_mpriv *fqmp);
-
+void	fq_dispatch(struct dsched_fq_dpriv *dpriv, struct bio *bio,
+			struct dsched_fq_priv *fqp);
 #endif /* _KERNEL || _KERNEL_STRUCTURES */
 
 

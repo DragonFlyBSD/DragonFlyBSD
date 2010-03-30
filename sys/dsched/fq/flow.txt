@@ -52,3 +52,16 @@ stuff to iterate through disks with a particular scheduler
 
 
 http://pcca.ath.cx/updatedb.php
+
+
+
+
+
+
+
+
+------------------------
+
+calculate budget in respective thread
+Andrew File System Benchmark
+TPC-B database benchmark

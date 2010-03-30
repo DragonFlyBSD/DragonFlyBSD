@@ -284,10 +284,7 @@ fq_queue(struct disk *dp, struct bio *obio)
 				 * beware that we do have an fqp reference from the
 				 * queueing
 				 */
-				dsched_strategy_async(dp, bio, fq_completed, fqp);
-				atomic_add_int(&fqp->issued, 1);
-				atomic_add_int(&dpriv->incomplete_tp, 1);
-				atomic_add_int(&fq_stats.transactions, 1);
+				fq_dispatch(dpriv, bio, fqp);
 			}
 			FQ_FQP_UNLOCK(fqp);
 		}
@@ -295,10 +292,7 @@ fq_queue(struct disk *dp, struct bio *obio)
 		/* Nothing is pending from previous IO, so just pass it down */
 		fq_reference_priv(fqp);
 
-		dsched_strategy_async(dp, obio, fq_completed, fqp);
-		atomic_add_int(&fqp->issued, 1);
-		atomic_add_int(&dpriv->incomplete_tp, 1);
-		atomic_add_int(&fq_stats.transactions, 1);
+		fq_dispatch(dpriv, obio, fqp);
 	} else {
 		/*
 		 * This thread has exceeeded its fair share,
@@ -362,8 +356,13 @@ fq_completed(struct bio *bp)
 		delta = (int)(1000000*((tv.tv_sec - bp->bio_caller_info3.tv.tv_sec)) +
 		    (tv.tv_usec - bp->bio_caller_info3.tv.tv_usec));
 		if (delta <= 0)
-			delta = 10000; /* default assume 10ms */
+			delta = 10000; /* default assume 10 ms */
 
+		/* This is the last in-flight request and the disk is not idle yet */
+		if ((dpriv->incomplete_tp <= 1) && (!dpriv->idle)) {
+			dpriv->idle = 1;	/* Mark disk as idle */
+			dpriv->start_idle = tv;	/* Save start idle time */
+		}
 		atomic_subtract_int(&dpriv->incomplete_tp, 1);
 		transactions = atomic_fetchadd_int(&fqp->transactions, 1);
 		latency = atomic_fetchadd_int(&fqp->avg_latency, 0);
@@ -386,4 +385,24 @@ fq_completed(struct bio *bp)
 
 	obio = pop_bio(bp);
 	biodone(obio);
+}
+
+void
+fq_dispatch(struct dsched_fq_dpriv *dpriv, struct bio *bio,
+    struct dsched_fq_priv *fqp)
+{
+	struct timeval tv;
+
+	if (dpriv->idle) {
+		getmicrotime(&tv);		
+		atomic_add_int(&dpriv->idle_time,
+		    (int)(1000000*((tv.tv_sec - dpriv->start_idle.tv_sec)) +
+		    (tv.tv_usec - dpriv->start_idle.tv_usec)));
+		dpriv->idle = 0;
+	}
+	dsched_strategy_async(dpriv->dp, bio, fq_completed, fqp);
+
+	atomic_add_int(&fqp->issued, 1);
+	atomic_add_int(&dpriv->incomplete_tp, 1);
+	atomic_add_int(&fq_stats.transactions, 1);
 }

@@ -384,11 +384,7 @@ fq_dispatcher(struct dsched_fq_dpriv *dpriv)
 					 * beware that we do have an fqp reference
 					 * from the queueing
 					 */
-					dsched_strategy_async(dpriv->dp, bio,
-					    fq_completed, fqp);
-					atomic_add_int(&fqp->issued, 1);
-					atomic_add_int(&dpriv->incomplete_tp, 1);
-					atomic_add_int(&fq_stats.transactions, 1);
+					fq_dispatch(dpriv, bio, fqp);
 				}
 				FQ_FQP_UNLOCK(fqp);
 			}
@@ -404,15 +400,21 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 	static int last_full = 0, prev_full = 0;
 	static int limited_procs = 0;
 	int	incomplete_tp;
+	int	disk_busy;
 	int64_t budget, total_budget, used_budget;
 	int64_t budgetpb[FQ_PRIO_MAX+1];
 	int sum, i;
 
 	bzero(budgetpb, sizeof(budgetpb));
 	total_budget = 0;
-	
+
 	FQ_DPRIV_LOCK(dpriv);
+	disk_busy = (100*(FQ_TOTAL_DISK_TIME - dpriv->idle_time)) /
+	    FQ_TOTAL_DISK_TIME;
+	if (disk_busy < 0)
+		disk_busy = 0;
 	incomplete_tp = dpriv->incomplete_tp;
+	dpriv->idle_time = 0;
 
 	TAILQ_FOREACH_MUTABLE(fqp, &dpriv->fq_priv_list, dlink, fqp2) {
 		if (fqp->transactions > 0 /* 30 */) {
@@ -437,7 +439,7 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 #endif
 
 			++budgetpb[(fqp->p) ? fqp->p->p_ionice : 0];
-			
+
 			dsched_debug(LOG_INFO,
 			    "%d) avg_latency = %d, transactions = %d, ioprio = %d\n",
 			    n, fqp->avg_latency, fqp->transactions,
@@ -454,8 +456,8 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 	    "incomplete tp = %d\n", n, total_budget, incomplete_tp);
 
 	if (n == 0)
-		goto done;	
-	
+		goto done;
+
 	sum = 0;
 	for (i = 0; i < FQ_PRIO_MAX+1; i++) {
 		if (budgetpb[i] == 0)
@@ -477,6 +479,9 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 		dpriv->max_budget = total_budget;
 
 	limited_procs = 0;
+
+	dsched_debug(4, "disk is %d\% busy\n", disk_busy);
+
 	/*
 	 * XXX: eventually remove all the silly *10...
 	 */
@@ -493,28 +498,18 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 
 		/*
 		 * process is exceeding its fair share; rate-limit it, but only
-		 * if the disk is actually fully used.
+		 * if the disk is being used at 90+% of capacity
 		 */
-		if ((used_budget > budget) && (incomplete_tp > n*2)) {
-			/* kprintf("here we are, use_pct > avail_pct\n"); */
-			/* fqp->max_tp = avail_pct * fqp->avg_latency; */
+		if ((used_budget > budget) && (disk_busy >= 90) &&
+		    (incomplete_tp > n*2)) {
 			KKASSERT(fqp->avg_latency != 0);
-
-			/*
-			 * If the disk has not been fully used lately, augment the
-			 * budget.
-			 */
-			if (total_budget*3 < dpriv->max_budget*2) {
-				budget *= 2;
-				budget /= 3;
-			}
 
 			fqp->max_tp = budget/(10*fqp->avg_latency);
 			++limited_procs;
 			dsched_debug(LOG_INFO,
 			    "rate limited to %d transactions\n", fqp->max_tp);
 			atomic_add_int(&fq_stats.procs_limited, 1);
-		} else if (((used_budget*2 < budget) || (incomplete_tp < n*2)) &&
+		} else if (((used_budget*2 < budget) || (disk_busy < 90)) &&
 		    (!prev_full && !last_full)) {
 			/*
 			 * process is really using little of its timeslice, or the
@@ -532,7 +527,7 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 	}
 
 	prev_full = last_full;
-	last_full = (incomplete_tp > n*2)?1:0;
+	last_full = (disk_busy >= 90)?1:0;
 
 done:
 	FQ_DPRIV_UNLOCK(dpriv);
