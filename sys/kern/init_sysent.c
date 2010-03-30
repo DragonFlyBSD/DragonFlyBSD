@@ -553,4 +553,6 @@ struct sysent sysent[] = {
 	{ AS(mq_receive_args), (sy_call_t *)sys_mq_receive },	/* 517 = mq_receive */
 	{ AS(mq_timedsend_args), (sy_call_t *)sys_mq_timedsend },	/* 518 = mq_timedsend */
 	{ AS(mq_timedreceive_args), (sy_call_t *)sys_mq_timedreceive },	/* 519 = mq_timedreceive */
+	{ AS(ioprio_set_args), (sy_call_t *)sys_ioprio_set },	/* 520 = ioprio_set */
+	{ AS(ioprio_get_args), (sy_call_t *)sys_ioprio_get },	/* 521 = ioprio_get */
 };

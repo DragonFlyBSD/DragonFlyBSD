@@ -64,8 +64,11 @@ MALLOC_DECLARE(M_DSCHEDFQ);
 dsched_new_buf_t	fq_new_buf;
 dsched_new_proc_t	fq_new_proc;
 dsched_new_thread_t	fq_new_thread;
+dsched_exit_buf_t	fq_exit_buf;
 dsched_exit_proc_t	fq_exit_proc;
 dsched_exit_thread_t	fq_exit_thread;
+
+extern struct dsched_fq_stats	fq_stats;
 
 void
 fq_new_buf(struct buf *bp)
@@ -89,9 +92,25 @@ fq_new_buf(struct buf *bp)
 	KKASSERT(fqmp != NULL);
 #endif
 
-	if (fqmp)
+	if (fqmp) {
+		atomic_add_int(&fq_stats.nbufs, 1);
 		fq_reference_mpriv(fqmp);
+	}
 	dsched_set_buf_priv(bp, fqmp);
+	
+}
+
+void
+fq_exit_buf(struct buf *bp)
+{
+	struct dsched_fq_mpriv	*fqmp;
+
+	fqmp = dsched_get_buf_priv(bp);
+	if (fqmp != NULL) {
+		dsched_clr_buf_priv(bp);
+		fq_dereference_mpriv(fqmp);
+		atomic_subtract_int(&fq_stats.nbufs, 1);
+	}
 }
 
 void
@@ -101,9 +120,11 @@ fq_new_proc(struct proc *p)
 
 	KKASSERT(p != NULL);
 
-	fqmp = fq_alloc_mpriv();
+	fqmp = fq_alloc_mpriv(p);
 	fq_reference_mpriv(fqmp);
 	dsched_set_proc_priv(p, fqmp);
+	atomic_add_int(&fq_stats.nprocs, 1);
+	fqmp->p = p;
 }
 
 void
@@ -113,9 +134,11 @@ fq_new_thread(struct thread *td)
 
 	KKASSERT(td != NULL);
 
-	fqmp = fq_alloc_mpriv();
+	fqmp = fq_alloc_mpriv(NULL);
 	fq_reference_mpriv(fqmp);
 	dsched_set_thread_priv(td, fqmp);
+	atomic_add_int(&fq_stats.nthreads, 1);
+	fqmp->td = td;
 }
 
 void
@@ -130,9 +153,11 @@ fq_exit_proc(struct proc *p)
 #if 0
 	kprintf("exit_proc: fqmp = %p\n", fqmp);
 #endif
+	fqmp->dead = 0x1337;
 	dsched_set_proc_priv(p, 0);
 	fq_dereference_mpriv(fqmp); /* one for alloc, */
 	fq_dereference_mpriv(fqmp); /* one for ref */
+	atomic_subtract_int(&fq_stats.nprocs, 1);
 }
 
 void
@@ -147,7 +172,9 @@ fq_exit_thread(struct thread *td)
 #if 0
 	kprintf("exit_thread: fqmp = %p\n", fqmp);
 #endif
+	fqmp->dead = 0x1337;
 	dsched_set_thread_priv(td, 0);
 	fq_dereference_mpriv(fqmp); /* one for alloc, */
 	fq_dereference_mpriv(fqmp); /* one for ref */
+	atomic_subtract_int(&fq_stats.nthreads, 1);
 }

@@ -359,4 +359,6 @@
 #define	SYS_mq_receive	517
 #define	SYS_mq_timedsend	518
 #define	SYS_mq_timedreceive	519
-#define	SYS_MAXSYSCALL	520
+#define	SYS_ioprio_set	520
+#define	SYS_ioprio_get	521
+#define	SYS_MAXSYSCALL	522

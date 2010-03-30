@@ -356,7 +356,7 @@ relpbuf(struct buf *bp, int *pfreecnt)
 	int wake_freecnt = 0;
 
 	KKASSERT(bp->b_flags & B_PAGING);
-	dsched_clr_buf_priv(bp);
+	dsched_exit_buf(bp);
 
 	spin_lock_wr(&bswspin);
 

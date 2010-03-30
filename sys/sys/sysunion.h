@@ -406,4 +406,6 @@ union sysunion {
 	struct	mq_receive_args mq_receive;
 	struct	mq_timedsend_args mq_timedsend;
 	struct	mq_timedreceive_args mq_timedreceive;
+	struct	ioprio_set_args ioprio_set;
+	struct	ioprio_get_args ioprio_get;
 };

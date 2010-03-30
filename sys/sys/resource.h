@@ -48,6 +48,8 @@
  */
 #define	PRIO_MIN	-20
 #define	PRIO_MAX	20
+#define IOPRIO_MIN	1
+#define IOPRIO_MAX	10
 
 #define	PRIO_PROCESS	0
 #define	PRIO_PGRP	1
@@ -150,9 +152,11 @@ int	dosetrlimit (u_int which, struct rlimit *limp);
 
 __BEGIN_DECLS
 int	getpriority (int, int);
+int	ioprio_get (int, int);
 int	getrlimit (int, struct rlimit *);
 int	getrusage (int, struct rusage *);
 int	setpriority (int, int, int);
+int	ioprio_set (int, int, int);
 int	setrlimit (int, const struct rlimit *);
 __END_DECLS
 

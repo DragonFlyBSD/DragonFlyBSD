@@ -87,6 +87,7 @@ typedef int	dsched_queue_t(struct disk *dp, struct bio *bio);
 typedef	void	dsched_new_buf_t(struct buf *bp);
 typedef	void	dsched_new_proc_t(struct proc *p);
 typedef	void	dsched_new_thread_t(struct thread *td);
+typedef	void	dsched_exit_buf_t(struct buf *bp);
 typedef	void	dsched_exit_proc_t(struct proc *p);
 typedef	void	dsched_exit_thread_t(struct thread *td);
 
@@ -106,6 +107,7 @@ struct dsched_ops {
 	dsched_new_buf_t	*new_buf;
 	dsched_new_proc_t	*new_proc;
 	dsched_new_thread_t	*new_thread;
+	dsched_exit_buf_t	*exit_buf;
 	dsched_exit_proc_t	*exit_proc;
 	dsched_exit_thread_t	*exit_thread;
 };
@@ -147,7 +149,7 @@ int	dsched_debug(int level, char *fmt, ...);
 dsched_new_buf_t	dsched_new_buf;
 dsched_new_proc_t	dsched_new_proc;
 dsched_new_thread_t	dsched_new_thread;
-
+dsched_exit_buf_t	dsched_exit_buf;
 dsched_exit_proc_t	dsched_exit_proc;
 dsched_exit_thread_t	dsched_exit_thread;
 

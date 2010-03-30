@@ -299,6 +299,7 @@ struct	proc {
 	struct pargs	*p_args;
 	u_short		p_xstat;	/* Exit status or last stop signal */
 
+	int		p_ionice;
 	void		*p_dsched_priv2;
 /* End area that is copied on creation. */
 #define	p_endcopy	p_dsched_priv2

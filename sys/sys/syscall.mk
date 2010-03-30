@@ -298,4 +298,6 @@ MIASM =  \
 	mq_send.o \
 	mq_receive.o \
 	mq_timedsend.o \
-	mq_timedreceive.o
+	mq_timedreceive.o \
+	ioprio_set.o \
+	ioprio_get.o

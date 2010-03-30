@@ -527,4 +527,6 @@ const char *syscallnames[] = {
 	"mq_receive",			/* 517 = mq_receive */
 	"mq_timedsend",			/* 518 = mq_timedsend */
 	"mq_timedreceive",			/* 519 = mq_timedreceive */
+	"ioprio_set",			/* 520 = ioprio_set */
+	"ioprio_get",			/* 521 = ioprio_get */
 };

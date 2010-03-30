@@ -1324,7 +1324,7 @@ brelse(struct buf *bp)
 	 * or B_RELBUF flags.
 	 */
 	bp->b_cmd = BUF_CMD_DONE;
-	dsched_clr_buf_priv(bp);
+	dsched_exit_buf(bp);
 
 	/*
 	 * VMIO buffer rundown.  Make sure the VM page array is restored
@@ -1657,7 +1657,7 @@ bqrelse(struct buf *bp)
 	 * buffer is actively locked.
 	 */
 	bp->b_flags &= ~(B_ORDERED | B_NOCACHE | B_RELBUF);
-	dsched_clr_buf_priv(bp);
+	dsched_exit_buf(bp);
 	BUF_UNLOCK(bp);
 }
 

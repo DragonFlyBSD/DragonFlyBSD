@@ -423,8 +423,6 @@ lwkt_free_thread(thread_t td)
     KASSERT((td->td_flags & TDF_RUNNING) == 0,
 	("lwkt_free_thread: did not exit! %p", td));
 
-    dsched_exit_thread(td);
-
     if (td->td_flags & TDF_ALLOCATED_THREAD) {
     	objcache_put(thread_cache, td);
     } else if (td->td_flags & TDF_ALLOCATED_STACK) {
@@ -1490,6 +1488,7 @@ lwkt_remove_tdallq(thread_t td)
 {
     KKASSERT(td->td_gd == mycpu);
     TAILQ_REMOVE(&td->td_gd->gd_tdallq, td, td_allq);
+    dsched_exit_thread(td);
 }
 
 void

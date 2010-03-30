@@ -296,7 +296,7 @@ fq_alloc_dpriv(struct disk *dp)
 
 
 struct dsched_fq_mpriv *
-fq_alloc_mpriv()
+fq_alloc_mpriv(struct proc *p)
 {
 	struct dsched_fq_mpriv	*fqmp;
 	struct dsched_fq_priv	*fqp;
@@ -314,7 +314,7 @@ fq_alloc_mpriv()
 
 	while ((dp = dsched_disk_enumerate(dp, &dsched_fq_ops))) {
 		fqp = fq_alloc_priv(dp);
-
+		fqp->p = p;
 #if 0
 		fq_reference_priv(fqp);
 #endif
@@ -336,9 +336,27 @@ fq_alloc_mpriv()
 void
 fq_dispatcher(struct dsched_fq_dpriv *dpriv)
 {
+	struct dsched_fq_mpriv	*fqmp;
 	struct dsched_fq_priv	*fqp, *fqp2;
 	struct bio *bio, *bio2;
 	int count;
+
+	/*
+	 * We need to manually assign an fqp to the fqmp of this thread
+	 * since it isn't assigned one during fq_prepare, as the disk
+	 * is not set up yet.
+	 */
+	fqmp = dsched_get_thread_priv(curthread);
+	/* If fqmp is NULL, something went seriously wrong */
+	KKASSERT(fqmp != NULL);
+	fqp = fq_alloc_priv(dpriv->dp);
+	FQ_FQMP_LOCK(fqmp);
+#if 0
+	fq_reference_priv(fqp);
+#endif
+	TAILQ_INSERT_TAIL(&fqmp->fq_priv_list, fqp, link);
+	FQ_FQMP_UNLOCK(fqmp);
+
 
 	FQ_DPRIV_LOCK(dpriv);
 	for(;;) {
@@ -356,8 +374,7 @@ fq_dispatcher(struct dsched_fq_dpriv *dpriv)
 
 				TAILQ_FOREACH_MUTABLE(bio, &fqp->queue, link, bio2) {
 					if ((fqp->max_tp > 0) &&
-					    ((count >= fqp->max_tp) ||
-					    (fqp->transactions >= fqp->max_tp)))
+					    ((fqp->issued >= fqp->max_tp)))
 						break;
 					TAILQ_REMOVE(&fqp->queue, bio, link);
 
@@ -369,9 +386,9 @@ fq_dispatcher(struct dsched_fq_dpriv *dpriv)
 					 */
 					dsched_strategy_async(dpriv->dp, bio,
 					    fq_completed, fqp);
+					atomic_add_int(&fqp->issued, 1);
 					atomic_add_int(&dpriv->incomplete_tp, 1);
 					atomic_add_int(&fq_stats.transactions, 1);
-					++count;
 				}
 				FQ_FQP_UNLOCK(fqp);
 			}
@@ -379,26 +396,52 @@ fq_dispatcher(struct dsched_fq_dpriv *dpriv)
 	}
 }
 
-
 void
 fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 {
 	struct	dsched_fq_priv	*fqp, *fqp2;
 	int	n = 0;
 	static int last_full = 0, prev_full = 0;
+	static int limited_procs = 0;
 	int	incomplete_tp;
-	int64_t total_budget, use_pct, avail_pct;
-	total_budget = 0;
+	int64_t budget, total_budget, used_budget;
+	int64_t budgetpb[FQ_PRIO_MAX+1];
+	int sum, i;
 
+	bzero(budgetpb, sizeof(budgetpb));
+	total_budget = 0;
+	
 	FQ_DPRIV_LOCK(dpriv);
 	incomplete_tp = dpriv->incomplete_tp;
 
 	TAILQ_FOREACH_MUTABLE(fqp, &dpriv->fq_priv_list, dlink, fqp2) {
 		if (fqp->transactions > 0 /* 30 */) {
+
 			total_budget += (fqp->avg_latency * fqp->transactions);
+			/*
+			 * XXX: while the code below really sucked, the problem needs to
+			 *	be addressed eventually. Some processes take up their "fair"
+			 *	slice, but don't really need even a 10th of it.
+			 *	This kills performance for those that do need the
+			 *	performance.
+			 */
+#if 0
+			/*
+			 * This is *very* hackish. It basically tries to avoid that
+			 * processes that do only very few tps take away more bandwidth
+			 * than they should.
+			 */
+			if ((limited_procs >= 1) && (fqp->transactions < 25) &&
+			    (budgetpb[(fqp->p) ? fqp->p->p_ionice : 0] >= 1))
+				continue;
+#endif
+
+			++budgetpb[(fqp->p) ? fqp->p->p_ionice : 0];
+			
 			dsched_debug(LOG_INFO,
-			    "%d) avg_latency = %d, transactions = %d\n",
-			    n, fqp->avg_latency, fqp->transactions);
+			    "%d) avg_latency = %d, transactions = %d, ioprio = %d\n",
+			    n, fqp->avg_latency, fqp->transactions,
+			    (fqp->p) ? fqp->p->p_ionice : 0);
 			++n;
 		} else {
 			fqp->max_tp = 0;
@@ -411,49 +454,81 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 	    "incomplete tp = %d\n", n, total_budget, incomplete_tp);
 
 	if (n == 0)
-		goto done;
+		goto done;	
+	
+	sum = 0;
+	for (i = 0; i < FQ_PRIO_MAX+1; i++) {
+		if (budgetpb[i] == 0)
+			continue;
+		sum += (FQ_PRIO_BIAS+i)*budgetpb[i];
+	}
+	if (sum == 0)
+		sum = 1;
+	dsched_debug(LOG_INFO, "sum = %d\n", sum);
 
-#if 0
+	for (i = 0; i < FQ_PRIO_MAX+1; i++) {
+		if (budgetpb[i] == 0)
+			continue;
+
+		budgetpb[i] = ((FQ_PRIO_BIAS+i)*10)*total_budget/sum;
+	}
+
+	if (total_budget > dpriv->max_budget)
+		dpriv->max_budget = total_budget;
+
+	limited_procs = 0;
 	/*
-	 * XXX: hack. don't know why total_budget can be zero here
-	 * -> this doesn't apply anymore. total_budget is never 0 now
+	 * XXX: eventually remove all the silly *10...
 	 */
-	if (total_budget == 0)
-		total_budget = 1;
-#endif
-
 	TAILQ_FOREACH_MUTABLE(fqp, &dpriv->fq_priv_list, dlink, fqp2) {
-		/* XXX: proportional to scheduler class! */
-		avail_pct = (int64_t)1000/(int64_t)n;
+		budget = budgetpb[(fqp->p) ? fqp->p->p_ionice : 0];
 
-		/* XXX: 100/(sum of scheduler priorities) * scheduler priority */
-		/* XXX: but need to process queues of fqp on buckets or so...*/
+		used_budget = ((int64_t)10*(int64_t)fqp->avg_latency *
+		    (int64_t)fqp->transactions);
+		if (used_budget > 0) {
+			dsched_debug(LOG_INFO,
+			    "info: used_budget = %lld, budget = %lld\n", used_budget,
+			    budget);
+		}
 
-		use_pct = ((int64_t)1000* (int64_t)fqp->avg_latency *
-		    (int64_t)fqp->transactions)/(int64_t)total_budget;
-
-		/* process is exceeding its fair share; rate-limit it */
-		if ((use_pct > avail_pct) && (incomplete_tp > n*2)) {
+		/*
+		 * process is exceeding its fair share; rate-limit it, but only
+		 * if the disk is actually fully used.
+		 */
+		if ((used_budget > budget) && (incomplete_tp > n*2)) {
 			/* kprintf("here we are, use_pct > avail_pct\n"); */
 			/* fqp->max_tp = avail_pct * fqp->avg_latency; */
-			fqp->max_tp = total_budget/(n * fqp->avg_latency);
+			KKASSERT(fqp->avg_latency != 0);
+
+			/*
+			 * If the disk has not been fully used lately, augment the
+			 * budget.
+			 */
+			if (total_budget*3 < dpriv->max_budget*2) {
+				budget *= 2;
+				budget /= 3;
+			}
+
+			fqp->max_tp = budget/(10*fqp->avg_latency);
+			++limited_procs;
 			dsched_debug(LOG_INFO,
 			    "rate limited to %d transactions\n", fqp->max_tp);
 			atomic_add_int(&fq_stats.procs_limited, 1);
-		} else if (((use_pct < avail_pct/2) || (incomplete_tp < n*2)) &&
+		} else if (((used_budget*2 < budget) || (incomplete_tp < n*2)) &&
 		    (!prev_full && !last_full)) {
 			/*
 			 * process is really using little of its timeslice, or the
 			 * disk is not busy, so let's reset the rate-limit.
 			 * Without this, exceeding processes will get an unlimited
 			 * slice every other slice.
-			 * XXX: this still doesn't quite fix the issue, but maybe,
-			 * it's good that way so that heavy writes are interleaved.
+			 * XXX: this still doesn't quite fix the issue, but maybe
+			 * it's good that way, so that heavy writes are interleaved.
 			 */
 			fqp->max_tp = 0;
 		}
 		fqp->transactions = 0;
 		fqp->avg_latency = 0;
+		fqp->issued = 0;
 	}
 
 	prev_full = last_full;

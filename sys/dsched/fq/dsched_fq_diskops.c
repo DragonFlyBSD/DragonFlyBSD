@@ -72,6 +72,7 @@ static dsched_queue_t		fq_queue;
 dsched_new_buf_t	fq_new_buf;
 dsched_new_proc_t	fq_new_proc;
 dsched_new_thread_t	fq_new_thread;
+dsched_exit_buf_t	fq_exit_buf;
 dsched_exit_proc_t	fq_exit_proc;
 dsched_exit_thread_t	fq_exit_thread;
 
@@ -93,6 +94,7 @@ struct dsched_ops dsched_fq_ops = {
 	.new_buf = fq_new_buf,
 	.new_proc = fq_new_proc,
 	.new_thread = fq_new_thread,
+	.exit_buf = fq_exit_buf,
 	.exit_proc = fq_exit_proc,
 	.exit_thread = fq_exit_thread,
 };
@@ -246,14 +248,19 @@ fq_queue(struct disk *dp, struct bio *obio)
 		}
 	}
 	FQ_FQMP_UNLOCK(fqmp);
+	dsched_clr_buf_priv(obio->bio_buf);
 	fq_dereference_mpriv(fqmp); /* acquired on new_buf */
+	atomic_subtract_int(&fq_stats.nbufs, 1);
 
 	KKASSERT(found == 1);
 	dpriv = dsched_get_disk_priv(dp);
 
 	/* XXX: probably rather pointless doing this atomically */
 	max_tp = atomic_fetchadd_int(&fqp->max_tp, 0);
+#if 0
 	transactions = atomic_fetchadd_int(&fqp->transactions, 0);
+#endif
+	transactions = atomic_fetchadd_int(&fqp->issued, 0);
 
 	/* | No rate limiting || Hasn't reached limit rate |     */
 	if ((max_tp == 0) || (transactions < max_tp)) {
@@ -268,7 +275,7 @@ fq_queue(struct disk *dp, struct bio *obio)
 			count = 0;
 
 			TAILQ_FOREACH_MUTABLE(bio, &fqp->queue, link, bio2) {
-				if ((fqp->max_tp > 0) && (count >= fqp->max_tp))
+				if ((fqp->max_tp > 0) && (fqp->issued >= fqp->max_tp))
 					break;
 				TAILQ_REMOVE(&fqp->queue, bio, link);
 				--fqp->qlength;
@@ -278,6 +285,7 @@ fq_queue(struct disk *dp, struct bio *obio)
 				 * queueing
 				 */
 				dsched_strategy_async(dp, bio, fq_completed, fqp);
+				atomic_add_int(&fqp->issued, 1);
 				atomic_add_int(&dpriv->incomplete_tp, 1);
 				atomic_add_int(&fq_stats.transactions, 1);
 			}
@@ -288,6 +296,7 @@ fq_queue(struct disk *dp, struct bio *obio)
 		fq_reference_priv(fqp);
 
 		dsched_strategy_async(dp, obio, fq_completed, fqp);
+		atomic_add_int(&fqp->issued, 1);
 		atomic_add_int(&dpriv->incomplete_tp, 1);
 		atomic_add_int(&fq_stats.transactions, 1);
 	} else {
@@ -300,7 +309,20 @@ fq_queue(struct disk *dp, struct bio *obio)
 		 */
 		FQ_FQP_LOCK(fqp);
 		fq_reference_priv(fqp);
-		TAILQ_INSERT_TAIL(&fqp->queue, obio, link);
+
+		/*
+		 * Prioritize reads by inserting them at the front of the
+		 * queue.
+		 *
+		 * XXX: this might cause issues with data that should
+		 * 	have been written and is being read, but hasn't
+		 *	actually been written yet.
+		 */
+		if (obio->bio_buf->b_cmd == BUF_CMD_READ)
+			TAILQ_INSERT_HEAD(&fqp->queue, obio, link);
+		else
+			TAILQ_INSERT_TAIL(&fqp->queue, obio, link);
+
 		++fqp->qlength;
 		FQ_FQP_UNLOCK(fqp);
 	}

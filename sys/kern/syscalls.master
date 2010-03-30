@@ -728,3 +728,5 @@
 519	STD	POSIX	{ ssize_t mq_timedreceive(mqd_t mqdes, \
 				  char *msg_ptr, size_t msg_len, unsigned *msg_prio, \
 				  const struct timespec *abs_timeout); }
+520	STD	BSD	{ int ioprio_set(int which, int who, int prio); }
+521	STD	BSD	{ int ioprio_get(int which, int who); }

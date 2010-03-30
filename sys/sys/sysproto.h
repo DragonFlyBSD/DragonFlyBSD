@@ -2276,6 +2276,21 @@ struct	mq_timedreceive_args {
 	unsigned *	msg_prio;	char msg_prio_[PAD_(unsigned *)];
 	const struct timespec *	abs_timeout;	char abs_timeout_[PAD_(const struct timespec *)];
 };
+struct	ioprio_set_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	int	which;	char which_[PAD_(int)];
+	int	who;	char who_[PAD_(int)];
+	int	prio;	char prio_[PAD_(int)];
+};
+struct	ioprio_get_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	int	which;	char which_[PAD_(int)];
+	int	who;	char who_[PAD_(int)];
+};
 
 #ifdef COMPAT_43
 
@@ -2882,6 +2897,8 @@ int	sys_mq_send (struct mq_send_args *);
 int	sys_mq_receive (struct mq_receive_args *);
 int	sys_mq_timedsend (struct mq_timedsend_args *);
 int	sys_mq_timedreceive (struct mq_timedreceive_args *);
+int	sys_ioprio_set (struct ioprio_set_args *);
+int	sys_ioprio_get (struct ioprio_get_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_

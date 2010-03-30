@@ -26,23 +26,34 @@ int main(void)
 		"FQP:\t%d\n"
 		"DPRIV:\t%d\n"
 		"---------------------------------------------\n"
+		"Procs/Threads tracked\n"
+		"procs:\t\t%d\n"
+		"threads:\t%d\n"
+		"---------------------------------------------\n"
 		"Proccesses\n"
 		"Rate limited:\t%d\n"
 		"---------------------------------------------\n"
 		"Transactions\n"
 		"Issued:\t\t%d\n"
 		"Completed:\t%d\n"
-		"without FQMP:\t%d\n",
+		"without FQMP:\t%d\n"
+		"---------------------------------------------\n"
+		"Misc\n"
+		"FQMP refs for buf:\t%d\n",
 
 		fq_stats.fqmp_allocations,
 		fq_stats.fqp_allocations,
 		fq_stats.dpriv_allocations,
 
+		fq_stats.nprocs,
+		fq_stats.nthreads,
+
 		fq_stats.procs_limited,
 
 		fq_stats.transactions,
 		fq_stats.transactions_completed,
-		fq_stats.no_fqmp
+		fq_stats.no_fqmp,
+		fq_stats.nbufs
 		);
 
 

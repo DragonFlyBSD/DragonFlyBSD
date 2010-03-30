@@ -67,6 +67,7 @@ static biodone_t	default_completed;
 dsched_new_buf_t	*default_new_buf;
 dsched_new_proc_t	*default_new_proc;
 dsched_new_thread_t	*default_new_thread;
+dsched_exit_buf_t	*default_exit_buf;
 dsched_exit_proc_t	*default_exit_proc;
 dsched_exit_thread_t	*default_exit_thread;
 
@@ -90,7 +91,7 @@ static struct dsched_policy_head dsched_policy_list =
 
 static struct dsched_ops dsched_default_ops = {
 	.head = {
-		.name = "default"
+		.name = "noop"
 	},
 	.prepare = default_prepare,
 	.teardown = default_teardown,
@@ -243,6 +244,7 @@ dsched_register(struct dsched_ops *d_ops)
 			default_new_buf = d_ops->new_buf;
 			default_new_proc = d_ops->new_proc;
 			default_new_thread = d_ops->new_thread;
+			default_exit_buf = d_ops->exit_buf;
 			default_exit_proc = d_ops->exit_proc;
 			default_exit_thread = d_ops->exit_thread;
 		}
@@ -491,6 +493,12 @@ dsched_new_buf(struct buf *bp)
 		default_new_buf(bp);
 }
 
+void
+dsched_exit_buf(struct buf *bp)
+{
+	if (default_exit_buf != NULL)
+		default_exit_buf(bp);
+}
 
 void
 dsched_new_proc(struct proc *p)

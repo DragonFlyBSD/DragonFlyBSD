@@ -109,6 +109,7 @@ struct dsched_fq_priv {
 	struct	disk		*dp;
 	struct dsched_fq_dpriv	*dpriv;
 	struct dsched_fq_mpriv	*fqmp;
+	struct proc		*p;
 
 	int32_t	qlength;
 	int32_t	flags;
@@ -117,6 +118,7 @@ struct dsched_fq_priv {
 	int32_t	transactions;
 	int32_t	avg_latency;
 	int32_t	max_tp;
+	int32_t	issued;
 };
 
 struct dsched_fq_dpriv {
@@ -127,6 +129,7 @@ struct dsched_fq_dpriv {
 
 	int	avg_rq_time;	/* XXX: unused */
 	int32_t	incomplete_tp;
+	int64_t	max_budget;
 
 	/* list contains all fq_priv for this disk */
 	TAILQ_HEAD(, dsched_fq_priv)	fq_priv_list;
@@ -134,6 +137,9 @@ struct dsched_fq_dpriv {
 };
 
 struct dsched_fq_mpriv {
+	struct proc *p;
+	struct thread *td;
+	int dead;
 	struct spinlock	lock;
 	int	refcount;
 	TAILQ_HEAD(, dsched_fq_priv)	fq_priv_list;
@@ -156,14 +162,17 @@ struct dsched_fq_bucket {
 
 };
 
-
+#define FQ_PRIO_BIAS		5
+#define FQ_PRIO_MAX		10
+#define FQ_PRIO_MIN		1
+#define FQ_PRIO_IDLE		-1
 #define	FQ_BUCKET_ACTIVE	0x01
 
 
 
 struct dsched_fq_priv	*fq_alloc_priv(struct disk *dp);
 struct dsched_fq_dpriv	*fq_alloc_dpriv(struct disk *dp);
-struct dsched_fq_mpriv	*fq_alloc_mpriv(void);
+struct dsched_fq_mpriv	*fq_alloc_mpriv(struct proc *p);
 void	fq_balance_thread(struct dsched_fq_dpriv *dpriv);
 void	fq_dispatcher(struct dsched_fq_dpriv *dpriv);
 biodone_t		fq_completed;
@@ -190,6 +199,11 @@ struct dsched_fq_stats {
 	int32_t	cancelled;
 
 	int32_t	no_fqmp;
+
+	int32_t	nthreads;
+	int32_t	nprocs;
+
+	int32_t	nbufs;
 };
 
 #endif /* _DSCHED_FQ_H_ */

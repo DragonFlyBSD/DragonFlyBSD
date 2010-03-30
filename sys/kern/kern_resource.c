@@ -66,6 +66,7 @@
 #include <sys/mplock2.h>
 
 static int donice (struct proc *chgp, int n);
+static int doionice (struct proc *chgp, int n);
 
 static MALLOC_DEFINE(M_UIDINFO, "uidinfo", "uidinfo structures");
 #define	UIHASH(uid)	(&uihashtbl[(uid) & uihash])
@@ -284,6 +285,213 @@ donice(struct proc *chgp, int n)
 	FOREACH_LWP_IN_PROC(lp, chgp)
 		chgp->p_usched->resetpriority(lp);
 	return (0);
+}
+
+
+struct ioprio_get_info {
+	int high;
+	int who;
+};
+
+static int ioprio_get_callback(struct proc *p, void *data);
+
+/*
+ * MPALMOSTSAFE
+ */
+int
+sys_ioprio_get(struct ioprio_get_args *uap)
+{
+	struct ioprio_get_info info;
+	struct proc *curp = curproc;
+	struct proc *p;
+	int high = IOPRIO_MIN-2;
+	int error;
+
+	get_mplock();
+
+	switch (uap->which) {
+	case PRIO_PROCESS:
+		if (uap->who == 0)
+			p = curp;
+		else
+			p = pfind(uap->who);
+		if (p == 0)
+			break;
+		if (!PRISON_CHECK(curp->p_ucred, p->p_ucred))
+			break;
+		high = p->p_ionice;
+		break;
+
+	case PRIO_PGRP:
+	{
+		struct pgrp *pg;
+
+		if (uap->who == 0)
+			pg = curp->p_pgrp;
+		else if ((pg = pgfind(uap->who)) == NULL)
+			break;
+		LIST_FOREACH(p, &pg->pg_members, p_pglist) {
+			if ((PRISON_CHECK(curp->p_ucred, p->p_ucred) && p->p_nice > high))
+				high = p->p_ionice;
+		}
+		break;
+	}
+	case PRIO_USER:
+		if (uap->who == 0)
+			uap->who = curp->p_ucred->cr_uid;
+		info.high = high;
+		info.who = uap->who;
+		allproc_scan(ioprio_get_callback, &info);
+		high = info.high;
+		break;
+
+	default:
+		error = EINVAL;
+		goto done;
+	}
+	if (high == IOPRIO_MIN-2) {
+		error = ESRCH;
+		goto done;
+	}
+	uap->sysmsg_result = high;
+	error = 0;
+done:
+	rel_mplock();
+	return (error);
+}
+
+/*
+ * Figure out the current lowest nice priority for processes owned
+ * by the specified user.
+ */
+static
+int
+ioprio_get_callback(struct proc *p, void *data)
+{
+	struct ioprio_get_info *info = data;
+
+	if (PRISON_CHECK(curproc->p_ucred, p->p_ucred) &&
+	    p->p_ucred->cr_uid == info->who &&
+	    p->p_ionice > info->high) {
+		info->high = p->p_ionice;
+	}
+	return(0);
+}
+
+
+struct ioprio_set_info {
+	int prio;
+	int who;
+	int error;
+	int found;
+};
+
+static int ioprio_set_callback(struct proc *p, void *data);
+
+/*
+ * MPALMOSTSAFE
+ */
+int
+sys_ioprio_set(struct ioprio_set_args *uap)
+{
+	struct ioprio_set_info info;
+	struct proc *curp = curproc;
+	struct proc *p;
+	int found = 0, error = 0;
+
+	get_mplock();
+
+	switch (uap->which) {
+	case PRIO_PROCESS:
+		if (uap->who == 0)
+			p = curp;
+		else
+			p = pfind(uap->who);
+		if (p == 0)
+			break;
+		if (!PRISON_CHECK(curp->p_ucred, p->p_ucred))
+			break;
+		error = doionice(p, uap->prio);
+		found++;
+		break;
+
+	case PRIO_PGRP:
+	{
+		struct pgrp *pg;
+
+		if (uap->who == 0)
+			pg = curp->p_pgrp;
+		else if ((pg = pgfind(uap->who)) == NULL)
+			break;
+		LIST_FOREACH(p, &pg->pg_members, p_pglist) {
+			if (PRISON_CHECK(curp->p_ucred, p->p_ucred)) {
+				error = doionice(p, uap->prio);
+				found++;
+			}
+		}
+		break;
+	}
+	case PRIO_USER:
+		if (uap->who == 0)
+			uap->who = curp->p_ucred->cr_uid;
+		info.prio = uap->prio;
+		info.who = uap->who;
+		info.error = 0;
+		info.found = 0;
+		allproc_scan(ioprio_set_callback, &info);
+		error = info.error;
+		found = info.found;
+		break;
+
+	default:
+		error = EINVAL;
+		found = 1;
+		break;
+	}
+
+	rel_mplock();
+	if (found == 0)
+		error = ESRCH;
+	return (error);
+}
+
+static
+int
+ioprio_set_callback(struct proc *p, void *data)
+{
+	struct ioprio_set_info *info = data;
+	int error;
+
+	if (p->p_ucred->cr_uid == info->who &&
+	    PRISON_CHECK(curproc->p_ucred, p->p_ucred)) {
+		error = doionice(p, info->prio);
+		if (error)
+			info->error = error;
+		++info->found;
+	}
+	return(0);
+}
+
+int
+doionice(struct proc *chgp, int n)
+{
+	struct proc *curp = curproc;
+	struct ucred *cr = curp->p_ucred;
+
+	if (cr->cr_uid && cr->cr_ruid &&
+	    cr->cr_uid != chgp->p_ucred->cr_uid &&
+	    cr->cr_ruid != chgp->p_ucred->cr_uid)
+		return (EPERM);
+	if (n > IOPRIO_MAX)
+		n = IOPRIO_MAX;
+	if (n < IOPRIO_MIN)
+		n = IOPRIO_MIN;
+	if (n < chgp->p_ionice && priv_check_cred(cr, PRIV_SCHED_SETPRIORITY, 0))
+		return (EACCES);
+	chgp->p_ionice = n;
+
+	return (0);
+
 }
 
 /*
