@@ -140,7 +140,7 @@ static int sched_attach(void)
 }
 
 #define SYSCALL_NOT_PRESENT_GEN(SC) \
-int SC (struct SC##_args *uap) \
+int sys_##SC (struct SC##_args *uap) \
 { \
 	return syscall_not_present(#SC); \
 }

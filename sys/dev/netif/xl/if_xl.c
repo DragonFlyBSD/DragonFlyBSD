@@ -219,7 +219,6 @@ static void xl_txeoc		(struct xl_softc *);
 static void xl_intr		(void *);
 static void xl_start_body	(struct ifnet *, int);
 static void xl_start		(struct ifnet *);
-static void xl_start_poll	(struct ifnet *);
 static void xl_start_90xB	(struct ifnet *);
 static int xl_ioctl		(struct ifnet *, u_long, caddr_t,
 						struct ucred *);
@@ -227,6 +226,7 @@ static void xl_init		(void *);
 static void xl_stop		(struct xl_softc *);
 static void xl_watchdog		(struct ifnet *);
 #ifdef DEVICE_POLLING
+static void xl_start_poll	(struct ifnet *);
 static void xl_poll		(struct ifnet *, enum poll_cmd, int);
 #endif
 static void xl_enable_intrs	(struct xl_softc *, uint16_t);
@@ -2492,11 +2492,13 @@ xl_start(struct ifnet *ifp)
 	xl_start_body(ifp, 1);
 }
 
+#ifdef DEVICE_POLLING
 static void
 xl_start_poll(struct ifnet *ifp)
 {
 	xl_start_body(ifp, 0);
 }
+#endif
 
 /*
  * Main transmit routine. To avoid having to do mbuf copies, we put pointers

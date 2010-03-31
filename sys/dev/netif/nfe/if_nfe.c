@@ -109,6 +109,7 @@ static void	nfe_miibus_statchg(device_t);
 
 #ifdef DEVICE_POLLING
 static void	nfe_poll(struct ifnet *, enum poll_cmd, int);
+static void	nfe_disable_intrs(struct nfe_softc *);
 #endif
 static void	nfe_intr(void *);
 static int	nfe_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
@@ -150,7 +151,6 @@ static int	nfe_newbuf_std(struct nfe_softc *, struct nfe_rx_ring *, int,
 static int	nfe_newbuf_jumbo(struct nfe_softc *, struct nfe_rx_ring *, int,
 				 int);
 static void	nfe_enable_intrs(struct nfe_softc *);
-static void	nfe_disable_intrs(struct nfe_softc *);
 
 static int	nfe_sysctl_imtime(SYSCTL_HANDLER_ARGS);
 
@@ -2435,6 +2435,7 @@ nfe_enable_intrs(struct nfe_softc *sc)
 		sc->sc_flags &= ~NFE_F_IRQ_TIMER;
 }
 
+#ifdef DEVICE_POLLING
 static void
 nfe_disable_intrs(struct nfe_softc *sc)
 {
@@ -2442,3 +2443,4 @@ nfe_disable_intrs(struct nfe_softc *sc)
 	NFE_WRITE(sc, NFE_IRQ_MASK, 0);
 	sc->sc_flags &= ~NFE_F_IRQ_TIMER;
 }
+#endif

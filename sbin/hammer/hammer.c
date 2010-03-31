@@ -569,7 +569,9 @@ usage(int exit_code)
 		"hammer snap <path> [<note>]\n"
 		"hammer snaplo <path> [<note>]\n"
 		"hammer snapq <dir> [<note>]\n"
-		"hammer snaprm {<path> | <transid>} ...\n"
+		"hammer snaprm <path> ...\n"
+		"hammer snaprm <transid> ...\n"
+		"hammer snaprm <filesystem> <transid> ...\n"
 		"hammer snapls [<path> ...]\n"
 	);
 

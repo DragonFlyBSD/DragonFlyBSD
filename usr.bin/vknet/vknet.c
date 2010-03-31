@@ -34,8 +34,9 @@
  * $DragonFly: src/usr.bin/vknet/vknet.c,v 1.1 2008/05/27 23:26:38 dillon Exp $
  */
 /*
- * vknet [-r timeout[:retries]] [-C] [-b local_bridge] [-B remote_bridge] local remote
- * vknet -S [-b local_bridge] local	(server mode)
+ * vknet [-C] [-b local-bridge] [-B remote-bridge] [-r delay[:retries]]
+ *       local-spec [user@]remote[:remote-spec]
+ * vknet -S [-b local-bridge] local-spec	(server mode)
  *
  * Connect a SOCK_SEQPACKET socket or TUN device on the local host with
  * a SOCK_SEQPACKET socket or TUN device on the remote host through a SSH
@@ -256,7 +257,7 @@ vknet_stream(void *arg)
 }
 
 /*
- * vknet_connect() - Connect to local side, optinally find or bridge the tap
+ * vknet_connect() - Connect to local side, optionally find or bridge the tap
  *		     interface.
  */
 static void
@@ -460,7 +461,7 @@ vknet_execssh(int fdin, int fdout, int compressOpt,
 	if ((remotePath = strchr(remoteHost, ':')) != NULL) {
 		*remotePath++ = 0;
 	} else {
-		remotePath = strdup("/dev/vknet");
+		remotePath = strdup("/var/run/vknet");
 	}
 	ac = 0;
 	av[ac++] = "ssh";
@@ -491,8 +492,9 @@ void
 usage(void)
 {
 	fprintf(stderr, 
-		"vknet [-C] [-b local_bridge] [-B remote_bridge] local remote\n"
-		"vknet -S [-b local_bridge] local\n"
+		"vknet [-C] [-b local-bridge] [-B remote-bridge] [-r delay[:retries]]\n"
+		"      local-spec [user@]remote[:remote-spec]\n"
+		"vknet -S [-b local-bridge] local-spec\n"
 	);
 	exit(1);
 }

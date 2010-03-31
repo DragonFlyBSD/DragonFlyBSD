@@ -226,22 +226,22 @@ initkre(void)
 	if (nintr == 0) {
 		if (sysctlbyname("hw.intrnames", NULL, &bytes, NULL, 0) == 0) {
 			intrnamebuf = malloc(bytes);
-			sysctlbyname("hw.intrnames", intrnamebuf, &bytes, 
+			sysctlbyname("hw.intrnames", intrnamebuf, &bytes,
 					NULL, 0);
 			for (i = 0; i < bytes; ++i) {
-			    if (intrnamebuf[i] == 0)
-				++nintr;
+				if (intrnamebuf[i] == 0)
+					++nintr;
 			}
 			intrname = malloc(nintr * sizeof(char *));
 			intrloc = malloc(nintr * sizeof(*intrloc));
 			nintr = 0;
 			for (b = i = 0; i < bytes; ++i) {
-			    if (intrnamebuf[i] == 0) {
-				intrname[nintr] = intrnamebuf + b;
-				intrloc[nintr] = 0;
-				b = i + 1;
-				++nintr;
-			    }
+				if (intrnamebuf[i] == 0) {
+					intrname[nintr] = intrnamebuf + b;
+					intrloc[nintr] = 0;
+					b = i + 1;
+					++nintr;
+				}
 			}
 		}
 		nextintsrow = INTSROW + 2;
@@ -324,10 +324,10 @@ labelkre(void)
 	mvprintw(NAMEIROW, NAMEICOL, "Path-lookups   hits   %%    Components");
 	mvprintw(DISKROW, DISKCOL, "Disks");
 	mvprintw(DISKROW + 1, DISKCOL, "KB/t");
-	mvprintw(DISKROW + 2, DISKCOL, "tps/r");
-	mvprintw(DISKROW + 3, DISKCOL, "MBs/r");
-	mvprintw(DISKROW + 4, DISKCOL, "tps/w");
-	mvprintw(DISKROW + 5, DISKCOL, "MBs/w");
+	mvprintw(DISKROW + 2, DISKCOL, "tpr/s");
+	mvprintw(DISKROW + 3, DISKCOL, "MBr/s");
+	mvprintw(DISKROW + 4, DISKCOL, "tpw/s");
+	mvprintw(DISKROW + 5, DISKCOL, "MBw/s");
 	mvprintw(DISKROW + 6, DISKCOL, "%% busy");
 	/*
 	 * For now, we don't support a fourth disk statistic.  So there's
@@ -350,7 +350,7 @@ labelkre(void)
 		 * room for extended VM stats
 		 */
 		mvprintw(VMSTATROW + 11, VMSTATCOL - 6, "zfod");
-		mvprintw(VMSTATROW + 12, VMSTATCOL - 6, "ofod");
+		mvprintw(VMSTATROW + 12, VMSTATCOL - 6, "ozfod");
 		mvprintw(VMSTATROW + 13, VMSTATCOL - 6, "%%slo-z");
 		mvprintw(VMSTATROW + 14, VMSTATCOL - 6, "tfree");
 		extended_vm_stats = 1;
@@ -517,19 +517,13 @@ showkre(void)
 	PUTRATE(Vmm.v_intrans, VMSTATROW + 12, VMSTATCOL, 9);
 
 	if (extended_vm_stats) {
-	    PUTRATE(Vmm.v_zfod, VMSTATROW + 11, VMSTATCOL - 16, 9);
-	    PUTRATE(Vmm.v_ozfod, VMSTATROW + 12, VMSTATCOL - 16, 9);
-	    putint(
-		((s.Vmm.v_ozfod < s.Vmm.v_zfod) ?
-		    s.Vmm.v_ozfod * 100 / s.Vmm.v_zfod : 
-		    0
-		),
-		VMSTATROW + 13, 
-		VMSTATCOL - 16,
-		9,
-		'D'
-	    );
-	    PUTRATE(Vmm.v_tfree, VMSTATROW + 14, VMSTATCOL - 16, 9);
+		PUTRATE(Vmm.v_zfod, VMSTATROW + 11, VMSTATCOL - 16, 9);
+		PUTRATE(Vmm.v_ozfod, VMSTATROW + 12, VMSTATCOL - 16, 9);
+#define nz(x)	((x) ? (x) : 1)
+		putint((s.Vmm.v_zfod - s.Vmm.v_ozfod) * 100 / nz(s.Vmm.v_zfod),
+		    VMSTATROW + 13, VMSTATCOL - 16, 9, 'D');
+#undef nz
+		PUTRATE(Vmm.v_tfree, VMSTATROW + 14, VMSTATCOL - 16, 9);
 	}
 
 	putint(s.bufspace/1024, VMSTATROW + 13, VMSTATCOL, 9, 'K');
@@ -576,10 +570,10 @@ showkre(void)
 
 	putint(nchtotal.ncs_longhits, NAMEIROW + 1, NAMEICOL + 12, 7, 'D');
 	putfloat(nchtotal.ncs_longhits * 100.0 / nz(s.nchpathcount),
-	   NAMEIROW + 1, NAMEICOL + 19, 4, 0, 0);
+	    NAMEIROW + 1, NAMEICOL + 19, 4, 0, 0);
 
 	putfloat((double)s.nchcount / nz(s.nchpathcount),
-		NAMEIROW + 1, NAMEICOL + 27, 5, 2, 1);
+	    NAMEIROW + 1, NAMEICOL + 27, 5, 2, 1);
 #undef nz
 }
 
@@ -799,7 +793,7 @@ getinfo(struct Info *ls)
 		error("Can't get kernel info: %s\n", strerror(errno));
 		bzero(&ls->Total, sizeof(ls->Total));
 	}
-	
+
 	if ((nch_tmp = malloc(nch_size)) == NULL) {
 		perror("malloc");
 		exit(1);

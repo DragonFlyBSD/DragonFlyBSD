@@ -200,7 +200,9 @@ hammer_cmd_snapls(char **av, int ac)
 }
 
 /*
- * hammer snaprm {<path> | <transid>} ...
+ * hammer snaprm <path> ...
+ * hammer snaprm <transid> ...
+ * hammer snaprm <filesystem> <transid> ...
  */
 void
 hammer_cmd_snaprm(char **av, int ac)
@@ -558,12 +560,14 @@ void
 snapshot_usage(int exit_code)
 {
 	fprintf(stderr,
-    "hammer snap <path> [<note>]\t\tcreate snapshot & link, points to \n"
+    "hammer snap <path> [<note>]\t\tcreate snapshot & link, points to\n"
 				"\t\t\t\t\tbase of PFS mount\n"
-    "hammer snaplo <path> [<note>]\t\tcreate snapshot & link, points to \n"
+    "hammer snaplo <path> [<note>]\t\tcreate snapshot & link, points to\n"
 				"\t\t\t\t\ttarget dir\n"
     "hammer snapq <dir> [<note>]\t\tcreate snapshot, output path to stdout\n"
-    "hammer snaprm {<path> | <transid>} ...\tdelete snapshots\n"
+    "hammer snaprm <path> ...\t\tdelete snapshots; filesystem is CWD\n"
+    "hammer snaprm <transid> ...\t\tdelete snapshots\n"
+    "hammer snaprm <filesystem> <transid> ...\tdelete snapshots\n"
     "hammer snapls [<path> ...]\t\tlist available snapshots\n"
     "\n"
     "NOTE: Snapshots are created in filesystem meta-data, any directory\n"

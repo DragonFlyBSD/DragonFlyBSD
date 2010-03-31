@@ -287,6 +287,7 @@ sc_set_pixel_mode(scr_stat *scp, struct tty *tp, int xsize, int ysize,
      * We currently support the following graphic modes:
      *
      * - 4 bpp planar modes whose memory size does not exceed 64K
+     * - 8 bbp packed pixel modes
      * - 15, 16, 24 and 32 bpp direct modes with linear frame buffer
      */
 
@@ -300,6 +301,9 @@ sc_set_pixel_mode(scr_stat *scp, struct tty *tp, int xsize, int ysize,
 	 */
 
 	if (info.vi_width * info.vi_height / 8 > info.vi_window_size)
+	    return ENODEV;
+    } else if (info.vi_mem_model == V_INFO_MM_PACKED) {
+	if (info.vi_depth != 8)
 	    return ENODEV;
     } else if (info.vi_mem_model == V_INFO_MM_DIRECT) {
 	if (!(info.vi_flags & V_INFO_LINEAR) &&

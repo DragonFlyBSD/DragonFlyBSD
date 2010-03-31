@@ -252,10 +252,10 @@ kern_preadv(int fd, struct uio *auio, int flags, size_t *res)
 static int
 dofileread(int fd, struct file *fp, struct uio *auio, int flags, size_t *res)
 {
-	struct thread *td = curthread;
 	int error;
 	size_t len;
 #ifdef KTRACE
+	struct thread *td = curthread;
 	struct iovec *ktriov = NULL;
 	struct uio ktruio;
 #endif

@@ -51,8 +51,8 @@
 #include <sys/vmmeter.h>
 #include <sys/sysctl.h>
 #include <sys/lock.h>
-#ifdef KTRACE
 #include <sys/uio.h>
+#ifdef KTRACE
 #include <sys/ktrace.h>
 #endif
 #include <sys/xwait.h>
