@@ -123,8 +123,7 @@ lwbuf_alloc(vm_page_t m)
     struct mdglobaldata *gd = mdcpu;
     struct lwbuf *lwb;
 
-    while ((lwb = objcache_get(lwbuf_cache, M_WAITOK)) == NULL)
-	tsleep(lwbuf_cache, 0, "lwbuf", hz);
+    lwb = objcache_get(lwbuf_cache, M_WAITOK);
     KKASSERT(lwb->m == NULL);
     lwb->m = m;
     lwb->cpumask = gd->mi.gd_cpumask;
