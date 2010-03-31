@@ -73,6 +73,8 @@
 .ds doc-operating-system-DragonFly-2.3 2.3
 .ds doc-operating-system-DragonFly-2.4 2.4
 .ds doc-operating-system-DragonFly-2.5 2.5
+.ds doc-operating-system-DragonFly-2.6 2.6
+.ds doc-operating-system-DragonFly-2.7 2.7
 .
 .\" FreeBSD releases not found in doc-common.
 .ds doc-operating-system-FreeBSD-8.0  8.0
