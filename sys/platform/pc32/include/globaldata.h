@@ -51,9 +51,6 @@
 #ifndef _MACHINE_NPX_H_
 #include <machine/npx.h>
 #endif
-#ifndef _CPU_LWBUF_H_
-#include <cpu/lwbuf.h>
-#endif
 
 /*
  * Note on interrupt control.  Pending interrupts not yet dispatched are
