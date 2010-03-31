@@ -72,7 +72,7 @@ SYSCTL_INT(_kern_ipc, OID_AUTO, lwbuf_reserve, CTLFLAG_RD,
 static int
 do_lwbuf_count(SYSCTL_HANDLER_ARGS)
 {
-    int count[ncpus];
+    int count[SMP_MAXCPU];
     struct mdglobaldata *gd;
     int i;
 
