@@ -67,6 +67,7 @@ struct lwbuf {
     vm_page_t		m;		/* currently mapped page */
     vm_offset_t		kva;		/* va of mapping */
     cpumask_t		cpumask;	/* cpu mapping synchronization */
+    boolean_t		ephemeral;	/* lives out of objcache if true */
 };
 
 SLIST_HEAD(lwbuf_list, lwbuf);
