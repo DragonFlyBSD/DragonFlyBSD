@@ -143,7 +143,7 @@ struct savetls;
 struct krate;
 
 void	Debugger (const char *msg);
-void	print_backtrace(void);
+void	print_backtrace(int count);
 void	mi_gdinit (struct globaldata *gd, int cpu);
 void	mi_proc0init(struct globaldata *gd, struct user *proc0paddr);
 int	nullop (void);

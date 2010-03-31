@@ -229,7 +229,7 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 				kprintf("ip_output: "
 					"rt rt_cpuid %d accessed on cpu %d\n",
 					ro->ro_rt->rt_cpuid, mycpuid);
-				print_backtrace();
+				print_backtrace(-1);
 			}
 		}
 

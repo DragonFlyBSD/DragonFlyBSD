@@ -386,12 +386,12 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 }
 
 void
-print_backtrace(void)
+print_backtrace(int count)
 {
 	register_t  ebp;
 
 	__asm __volatile("movl %%ebp, %0" : "=r" (ebp));
-	db_stack_trace_cmd(ebp, 1, -1, NULL);
+	db_stack_trace_cmd(ebp, 1, count, NULL);
 }
 
 static int

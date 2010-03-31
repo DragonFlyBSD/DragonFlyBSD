@@ -192,7 +192,7 @@ __vfree(struct vnode *vp)
 #ifdef TRACKVNODE
 	if ((ulong)vp == trackvnode) {
 		kprintf("__vfree %p %08x\n", vp, vp->v_flag);
-		print_backtrace();
+		print_backtrace(-1);
 	}
 #endif
 	spin_lock_wr(&vfs_spin);

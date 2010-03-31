@@ -384,7 +384,7 @@ rtfree_remote(struct rtentry *rt, int allow_panic)
 	} else {
 		kprintf("rt remote free rt_cpuid %d, mycpuid %d\n",
 			rt->rt_cpuid, mycpuid);
-		print_backtrace();
+		print_backtrace(-1);
 	}
 
 	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
@@ -1423,7 +1423,7 @@ rt_addrinfo_print(int cmd, struct rt_addrinfo *rti)
 
 #ifdef ROUTE_DEBUG
 	if (cmd == RTM_DELETE && route_debug > 1)
-		print_backtrace();
+		print_backtrace(-1);
 #endif
 
 	switch(cmd) {

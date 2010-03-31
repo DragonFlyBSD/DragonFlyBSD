@@ -926,7 +926,7 @@ m_free(struct mbuf *m)
 
 		if (afewtimes-- > 0) {
 			kprintf("mfree: m->m_nextpkt != NULL\n");
-			print_backtrace();
+			print_backtrace(-1);
 		}
 		m->m_nextpkt = NULL;
 	}

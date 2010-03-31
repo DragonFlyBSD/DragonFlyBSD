@@ -496,7 +496,7 @@ lwkt_switch(void)
 		td->td_flags |= TDF_PANICWARN;
 		kprintf("Warning: thread switch from interrupt or IPI, "
 			"thread %p (%s)\n", td, td->td_comm);
-		print_backtrace();
+		print_backtrace(-1);
 	    }
 	    lwkt_switch();
 	    gd->gd_intr_nesting_level = savegdnest;

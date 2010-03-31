@@ -382,7 +382,7 @@ AcpiOsAcquireLock (ACPI_SPINLOCK Spin)
 	kprintf("%p(%s:%d): acpi_spinlock %p already held by %p(%s:%d)\n",
 		curthread, func, line, Spin, Spin->owner, Spin->func,
 		Spin->line);
-	print_backtrace();
+	print_backtrace(-1);
     } else {
 	Spin->owner = curthread;
 	Spin->func = func;
@@ -400,7 +400,7 @@ AcpiOsReleaseLock (ACPI_SPINLOCK Spin, ACPI_CPU_FLAGS Flags)
 	if (Spin->owner != NULL) {
 	    kprintf("%p: acpi_spinlock %p is unexectedly held by %p(%s:%d)\n",
 		    curthread, Spin, Spin->owner, Spin->func, Spin->line);
-	    print_backtrace();
+	    print_backtrace(-1);
 	} else
 	    return;
     }

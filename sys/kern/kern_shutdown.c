@@ -737,7 +737,7 @@ panic(const char *fmt, ...)
 
 #if defined(DDB)
 	if (newpanic && trace_on_panic)
-		print_backtrace();
+		print_backtrace(-1);
 	if (debugger_on_panic)
 		Debugger("panic");
 #endif

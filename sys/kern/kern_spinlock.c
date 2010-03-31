@@ -306,14 +306,14 @@ exponential_backoff(struct exponential_backoff *bo)
 			return (TRUE);
 #if defined(INVARIANTS)
 		if (spin_lock_test_mode) {
-			print_backtrace();
+			print_backtrace(-1);
 			return (TRUE);
 		}
 #endif
 		++bo->nsec;
 #if defined(INVARIANTS)
 		if (bo->nsec == 11)
-			print_backtrace();
+			print_backtrace(-1);
 #endif
 		if (bo->nsec == 60)
 			panic("spin_lock: %p, indefinite wait!\n", bo->mtx);

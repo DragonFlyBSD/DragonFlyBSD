@@ -4105,7 +4105,7 @@ vfs_clean_one_page(struct buf *bp, int pageno, vm_page_t m)
 				bp->b_dirtyoff, bp->b_dirtyend);
 			bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
 			if (debug_commit)
-				print_backtrace();
+				print_backtrace(-1);
 		}
 		/*
 		 * Only clear the pmap modified bits if ALL the dirty bits

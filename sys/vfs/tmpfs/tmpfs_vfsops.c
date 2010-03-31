@@ -410,7 +410,7 @@ tmpfs_root(struct mount *mp, struct vnode **vpp)
 	tmp = VFS_TO_TMPFS(mp);
 	if (tmp->tm_root == NULL) {
 		kprintf("tmpfs_root: called without root node %p\n", mp);
-		print_backtrace();
+		print_backtrace(-1);
 		*vpp = NULL;
 		error = EINVAL;
 	} else {

@@ -443,12 +443,12 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 }
 
 void
-print_backtrace(void)
+print_backtrace(int count)
 {
 	register_t  rbp;
 
 	__asm __volatile("movq %%rbp, %0" : "=r" (rbp));
-	db_stack_trace_cmd(rbp, 1, -1, NULL);
+	db_stack_trace_cmd(rbp, 1, count, NULL);
 }
 
 #define DB_DRX_FUNC(reg)						\

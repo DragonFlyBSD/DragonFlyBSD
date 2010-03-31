@@ -85,18 +85,6 @@ struct callout	fq_callout;
 
 extern struct dsched_ops dsched_fq_ops;
 
-void db_stack_trace_cmd(int addr, boolean_t have_addr, int count,char *modif);
-void fq_print_backtrace(void);
-
-void
-fq_print_backtrace(void)
-{
-	register_t  ebp;
-
-	__asm __volatile("movl %%ebp, %0" : "=r" (ebp));
-	db_stack_trace_cmd(ebp, 1, 4, NULL);
-}
-
 void
 fq_reference_dpriv(struct dsched_fq_dpriv *dpriv)
 {
@@ -142,7 +130,7 @@ fq_dereference_dpriv(struct dsched_fq_dpriv *dpriv)
 		atomic_subtract_int(&dpriv->refcount, 3); /* mark as: in destruction */
 #if 1
 		kprintf("dpriv (%p) destruction started, trace:\n", dpriv);
-		fq_print_backtrace();
+		print_backtrace(4);
 #endif
 		spin_lock_wr(&dpriv->lock);
 		TAILQ_FOREACH_MUTABLE(fqp, &dpriv->fq_priv_list, dlink, fqp2) {
@@ -172,7 +160,7 @@ fq_dereference_priv(struct dsched_fq_priv *fqp)
 		atomic_subtract_int(&fqp->refcount, 3); /* mark as: in destruction */
 #if 0
 		kprintf("fqp (%p) destruction started, trace:\n", fqp);
-		fq_print_backtrace();
+		print_backtrace(8);
 #endif
 		dpriv = fqp->dpriv;
 		KKASSERT(dpriv != NULL);
@@ -226,7 +214,7 @@ fq_dereference_mpriv(struct dsched_fq_mpriv *fqmp)
 		atomic_subtract_int(&fqmp->refcount, 3); /* mark as: in destruction */
 #if 0
 		kprintf("fqmp (%p) destruction started, trace:\n", fqmp);
-		fq_print_backtrace();
+		print_backtrace(8);
 #endif
 		FQ_GLOBAL_FQMP_LOCK();
 		spin_lock_wr(&fqmp->lock);

@@ -359,7 +359,7 @@ callout_reset(struct callout *c, int to_ticks, void (*ftn)(void *),
 		kprintf(
 		    "callout_reset(%p) from %p: callout was not initialized\n",
 		    c, ((int **)&c)[-1]);
-		print_backtrace();
+		print_backtrace(-1);
 	}
 #endif
 	gd = mycpu;
@@ -412,7 +412,7 @@ callout_stop(struct callout *c)
 		kprintf(
 		    "callout_stop(%p) from %p: callout was not initialized\n",
 		    c, ((int **)&c)[-1]);
-		print_backtrace();
+		print_backtrace(-1);
 	}
 #endif
 	crit_enter_gd(gd);

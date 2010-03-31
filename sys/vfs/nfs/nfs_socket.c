@@ -1240,7 +1240,7 @@ nfs_request_try(struct nfsreq *rep)
 	 * action possible is for r_mrep to be set (once we enqueue it).
 	 */
 	if (rep->r_flags == 0xdeadc0de) {
-		print_backtrace();
+		print_backtrace(-1);
 		panic("flags nbad\n");
 	}
 	KKASSERT((rep->r_flags & (R_LOCKED | R_ONREQQ)) == 0);

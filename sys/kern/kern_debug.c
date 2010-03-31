@@ -82,7 +82,7 @@
  */
 #ifndef DDB
 void
-print_backtrace(void)
+print_backtrace(int count __unused)
 {
 		kprintf("Cannot print stack trace.\n");
 		kprintf("DDB kernel option is needed.\n");

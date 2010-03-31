@@ -595,7 +595,7 @@ vkernel_lwp_exit(struct lwp *lp)
 		if ((ve = vklp->ve) != NULL) {
 			kprintf("Warning, pid %d killed with "
 				"active VC!\n", lp->lwp_proc->p_pid);
-			print_backtrace();
+			print_backtrace(-1);
 			pmap_setlwpvm(lp, lp->lwp_proc->p_vmspace);
 			vklp->ve = NULL;
 			KKASSERT(ve->refs > 0);
