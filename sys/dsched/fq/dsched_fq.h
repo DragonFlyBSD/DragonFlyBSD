@@ -152,21 +152,6 @@ struct dsched_fq_mpriv {
 };
 
 
-
-
-/* Bucket Magic */
-struct dsched_fq_bucket {
-	struct lock	bucket_lock;
-	struct disk	*dp;
-
-	int	nprocs;
-	int	flags;
-	int	prio;
-
-	TAILQ_HEAD(, dsched_fq_mpriv)	fq_mpriv_list;
-
-};
-
 #define FQ_PRIO_BIAS		5
 #define FQ_PRIO_MAX		10
 #define FQ_PRIO_MIN		1

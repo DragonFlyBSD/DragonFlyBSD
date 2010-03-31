@@ -339,7 +339,7 @@ fq_dispatcher(struct dsched_fq_dpriv *dpriv)
 	struct dsched_fq_mpriv	*fqmp;
 	struct dsched_fq_priv	*fqp, *fqp2;
 	struct bio *bio, *bio2;
-	int count, idle;
+	int idle;
 
 	/*
 	 * We need to manually assign an fqp to the fqmp of this thread
@@ -347,8 +347,8 @@ fq_dispatcher(struct dsched_fq_dpriv *dpriv)
 	 * is not set up yet.
 	 */
 	fqmp = dsched_get_thread_priv(curthread);
-	/* If fqmp is NULL, something went seriously wrong */
 	KKASSERT(fqmp != NULL);
+
 	fqp = fq_alloc_priv(dpriv->dp);
 	FQ_FQMP_LOCK(fqmp);
 #if 0
@@ -363,53 +363,66 @@ fq_dispatcher(struct dsched_fq_dpriv *dpriv)
 		idle = 0;
 		/* sleep ~60 ms */
 		if ((ssleep(dpriv, &dpriv->lock, 0, "fq_dispatcher", hz/15) == 0)) {
+			/*
+			 * We've been woken up; this either means that we are
+			 * supposed to die away nicely or that the disk is idle.
+			 */
+
 			if (dpriv->die == 1) {
 				FQ_DPRIV_UNLOCK(dpriv);
 				kprintf("fq_dispatcher is peacefully dying\n");
 				lwkt_exit();
 				/* NOTREACHED */
-
-				/*
-				 * We have been awakened because the disk is idle.
-				 * So let's get ready to dispatch some extra bios.
-				 */
-				idle = 1;
 			}
+
+			/*
+			 * We have been awakened because the disk is idle.
+			 * So let's get ready to dispatch some extra bios.
+			 */
+			idle = 1;
 		}
 
+		/* Maybe the disk is idle and we just didn't get the wakeup */
 		if (idle == 0)
 			idle = dpriv->idle;
 
+		/*
+		 * XXX: further room for improvements here. It would be better
+		 *	to dispatch a few requests from each fqp as to ensure
+		 *	real fairness.
+		 */
 		TAILQ_FOREACH_MUTABLE(fqp, &dpriv->fq_priv_list, dlink, fqp2) {
-			if (fqp->qlength > 0) {
-				FQ_FQP_LOCK(fqp);
-				count = 0;
+			if (fqp->qlength == 0)
+				continue;
+
+			FQ_FQP_LOCK(fqp);
+
+			/*
+			 * XXX: why 5 extra? should probably be dynamic,
+			 *	relying on information on latency.
+			 */
+			if ((fqp->max_tp > 0) && idle &&
+			    (fqp->issued >= fqp->max_tp)) {
+				fqp->max_tp += 5;
+				++fqp->idle_generation;
+			}
+
+			TAILQ_FOREACH_MUTABLE(bio, &fqp->queue, link, bio2) {
+				if ((fqp->max_tp > 0) &&
+				    ((fqp->issued >= fqp->max_tp)))
+					break;
+
+				TAILQ_REMOVE(&fqp->queue, bio, link);
+				--fqp->qlength;
 
 				/*
-				 * XXX: why 5 extra? should probably be dynamic,
-				 *	relying on information on latency.
+				 * beware that we do have an fqp reference
+				 * from the queueing
 				 */
-				if ((fqp->max_tp > 0) && idle &&
-				    (fqp->issued >= fqp->max_tp))
-					fqp->max_tp += 5;
-
-				TAILQ_FOREACH_MUTABLE(bio, &fqp->queue, link, bio2) {
-					if ((fqp->max_tp > 0) &&
-					    ((fqp->issued >= fqp->max_tp)))
-						break;
-
-					TAILQ_REMOVE(&fqp->queue, bio, link);
-
-					--fqp->qlength;
-					KKASSERT(fqp != NULL);
-					/*
-					 * beware that we do have an fqp reference
-					 * from the queueing
-					 */
-					fq_dispatch(dpriv, bio, fqp);
-				}
-				FQ_FQP_UNLOCK(fqp);
+				fq_dispatch(dpriv, bio, fqp);
 			}
+			FQ_FQP_UNLOCK(fqp);
+
 		}
 	}
 }
