@@ -62,15 +62,10 @@
 struct mdglobaldata;
 
 struct lwbuf {
-    SLIST_ENTRY(lwbuf)	next;		/* when on per-cpu free list */
-    struct mdglobaldata *gd;		/* originating cpu */
     vm_page_t		m;		/* currently mapped page */
     vm_offset_t		kva;		/* va of mapping */
     cpumask_t		cpumask;	/* cpu mapping synchronization */
-    boolean_t		ephemeral;	/* lives out of objcache if true */
 };
-
-SLIST_HEAD(lwbuf_list, lwbuf);
 
 static __inline vm_page_t
 lwbuf_page(struct lwbuf *lwb)
