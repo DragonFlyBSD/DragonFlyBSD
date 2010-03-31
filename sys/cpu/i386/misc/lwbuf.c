@@ -122,12 +122,14 @@ lwbuf_alloc(vm_page_t m)
     return (lwb);
 }
 
+#ifdef SMP
 static
 void
 lwbuf_free_remote(void *arg)
 {
     lwbuf_free(arg);
 }
+#endif
 
 void
 lwbuf_free(struct lwbuf *lwb)
