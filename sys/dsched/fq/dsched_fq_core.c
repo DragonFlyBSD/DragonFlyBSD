@@ -368,7 +368,25 @@ fq_dispatcher(struct dsched_fq_dpriv *dpriv)
 			 * supposed to die away nicely or that the disk is idle.
 			 */
 
-			if (dpriv->die == 1) {
+			if (__predict_false(dpriv->die == 1)) {
+				/* If we are supposed to die, drain all queues */
+				TAILQ_FOREACH_MUTABLE(fqp, &dpriv->fq_priv_list,
+				    dlink, fqp2) {
+					if (fqp->qlength == 0)
+						continue;
+
+					FQ_FQP_LOCK(fqp);
+					TAILQ_FOREACH_MUTABLE(bio, &fqp->queue,
+					    link, bio2) {
+						TAILQ_REMOVE(&fqp->queue, bio,
+						    link);
+						--fqp->qlength;
+						fq_dispatch(dpriv, bio, fqp);
+					}
+					FQ_FQP_UNLOCK(fqp);
+				}
+
+				/* Now we can safely unlock and exit */
 				FQ_DPRIV_UNLOCK(dpriv);
 				kprintf("fq_dispatcher is peacefully dying\n");
 				lwkt_exit();
@@ -404,7 +422,6 @@ fq_dispatcher(struct dsched_fq_dpriv *dpriv)
 			if ((fqp->max_tp > 0) && idle &&
 			    (fqp->issued >= fqp->max_tp)) {
 				fqp->max_tp += 5;
-				++fqp->idle_generation;
 			}
 
 			TAILQ_FOREACH_MUTABLE(bio, &fqp->queue, link, bio2) {

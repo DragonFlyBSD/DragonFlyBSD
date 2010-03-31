@@ -163,7 +163,7 @@ fq_teardown(struct disk *dp)
 	 *      but how do we get rid of all loose fqps?
 	 *    --> possibly same solution as devfs; tracking a list of
 	 *        orphans.
-	 *    but for now we don't care much about this yet
+	 * XXX XXX: this XXX is probably irrelevant by now :)
 	 */
 }
 
@@ -192,16 +192,17 @@ fq_cancel(struct disk *dp)
 	 */
 	FQ_DPRIV_LOCK(dpriv);
 	TAILQ_FOREACH_MUTABLE(fqp, &dpriv->fq_priv_list, dlink, fqp2) {
-		if (fqp->qlength > 0) {
-			FQ_FQP_LOCK(fqp);
-			TAILQ_FOREACH_MUTABLE(bio, &fqp->queue, link, bio2) {
-				TAILQ_REMOVE(&fqp->queue, bio, link);
-				--fqp->qlength;
-				dsched_cancel_bio(bio);
-				atomic_add_int(&fq_stats.cancelled, 1);
-			}
-			FQ_FQP_UNLOCK(fqp);
+		if (fqp->qlength == 0)
+			continue;
+
+		FQ_FQP_LOCK(fqp);
+		TAILQ_FOREACH_MUTABLE(bio, &fqp->queue, link, bio2) {
+			TAILQ_REMOVE(&fqp->queue, bio, link);
+			--fqp->qlength;
+			dsched_cancel_bio(bio);
+			atomic_add_int(&fq_stats.cancelled, 1);
 		}
+		FQ_FQP_UNLOCK(fqp);
 	}
 	FQ_DPRIV_UNLOCK(dpriv);
 }
