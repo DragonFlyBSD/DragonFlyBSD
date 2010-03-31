@@ -46,6 +46,8 @@
 #include <machine/elf.h>
 #endif
 
+#include <sys/module.h>
+
 #ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_LINKER);
 #endif
@@ -228,6 +230,11 @@ int linker_file_lookup_set(linker_file_t _file, const char *_name,
  * a malloc'ed buffer.
  */
 char *linker_search_path(const char *_filename);
+
+int linker_reference_module(const char *modname, struct mod_depend *verinfo,
+    linker_file_t *retult);
+int linker_release_module(const char *modname, struct mod_depend *verinfo,
+    linker_file_t lf);
 
 /*
  * DDB Helpers, tuned specifically for ddb/db_kld.c

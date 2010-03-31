@@ -7,7 +7,6 @@
 #
 #
 # +++ variables +++
-#
 # CLEANFILES	Additional files to remove for the clean and cleandir targets.
 #
 # KMOD          The name of the kernel module to build.
@@ -36,6 +35,8 @@
 #
 # MFILES	Optionally a list of interfaces used by the module.
 #		This file contains a default list of interfaces.
+#
+# FIRMWS	Firmware module in the form filename:shortname:version
 #
 # +++ targets +++
 #
@@ -133,6 +134,36 @@ CFLAGS+=	-fno-omit-frame-pointer
 .endif
 
 .include <bsd.patch.mk>
+
+.if defined(FIRMWS)
+AWK=/usr/bin/awk
+.if !exists(@)
+${KMOD:S/$/.c/}: @
+.else
+${KMOD:S/$/.c/}: @/tools/fw_stub.awk
+.endif
+	${AWK} -f @/tools/fw_stub.awk ${FIRMWS} -m${KMOD} -c${KMOD:S/$/.c/g} \
+	    ${FIRMWARE_LICENSE:C/.+/-l/}${FIRMWARE_LICENSE}
+
+SRCS+=	${KMOD:S/$/.c/}
+CLEANFILES+=	${KMOD:S/$/.c/}
+
+.for _firmw in ${FIRMWS}
+${_firmw:C/\:.*$/.fwo/}:	${_firmw:C/\:.*$//}
+	@${ECHO} ${_firmw:C/\:.*$//} ${.ALLSRC:M*${_firmw:C/\:.*$//}}
+	@if [ -e ${_firmw:C/\:.*$//} ]; then			\
+		${LD} -b binary --no-warn-mismatch ${LDFLAGS}	\
+		    -r -d -o ${.TARGET}	${_firmw:C/\:.*$//};	\
+	else							\
+		ln -s ${.ALLSRC:M*${_firmw:C/\:.*$//}} ${_firmw:C/\:.*$//}; \
+		${LD} -b binary --no-warn-mismatch ${LDFLAGS}	\
+		    -r -d -o ${.TARGET}	${_firmw:C/\:.*$//};	\
+		rm ${_firmw:C/\:.*$//};				\
+	fi
+
+OBJS+=	${_firmw:C/\:.*$/.fwo/}
+.endfor
+.endif
 
 OBJS+=  ${SRCS:N*.h:N*.patch:R:S/$/.o/g}
 
