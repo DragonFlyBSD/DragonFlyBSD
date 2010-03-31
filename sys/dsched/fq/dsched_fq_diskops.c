@@ -145,6 +145,7 @@ fq_teardown(struct disk *dp)
 
 	/* Basically kill the dispatcher thread */
 	callout_stop(&fq_callout);
+	dpriv->die = 1;
 	wakeup(dpriv);
 	tsleep(dpriv, 0, "fq_dispatcher", hz/5); /* wait 200 ms */
 	callout_stop(&fq_callout);
@@ -362,6 +363,7 @@ fq_completed(struct bio *bp)
 		if ((dpriv->incomplete_tp <= 1) && (!dpriv->idle)) {
 			dpriv->idle = 1;	/* Mark disk as idle */
 			dpriv->start_idle = tv;	/* Save start idle time */
+			wakeup(dpriv);		/* Wake up fq_dispatcher */
 		}
 		atomic_subtract_int(&dpriv->incomplete_tp, 1);
 		transactions = atomic_fetchadd_int(&fqp->transactions, 1);

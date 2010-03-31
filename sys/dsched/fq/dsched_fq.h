@@ -134,6 +134,7 @@ struct dsched_fq_dpriv {
 	int	idle;
 	struct timeval start_idle;
 	int	idle_time;
+	int	die;
 
 	/* list contains all fq_priv for this disk */
 	TAILQ_HEAD(, dsched_fq_priv)	fq_priv_list;
