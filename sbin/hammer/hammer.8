@@ -1207,9 +1207,9 @@ New snapshot management, using file system meta-data for saving
 configuration file and snapshots (transaction ids etc.).
 Also default snapshots directory has changed.
 .It 4
-.Dx 2.5
+.Dx 2.6
 default version.
-New undo/flush, giving faster sync.
+New undo/redo/flush, giving HAMMER a much faster sync and fsync.
 .El
 .El
 .Sh PSEUDO-FILESYSTEM (PFS) NOTES
@@ -1352,6 +1352,8 @@ required for an
 .Fn fsync
 and removing 1 of the 2 disk syncs typically
 required for a flush sequence.
+Version 4 also implements the REDO log (see below) which is capable
+of fsync()ing with either one disk flush or zero disk flushes.
 .Sh FSYNC FLUSH MODES
 .Nm HAMMER
 implements five different fsync flush modes via the
@@ -1360,10 +1362,10 @@ sysctl, for
 .Nm HAMMER
 version 4+ file systems.
 .Pp
-Even though all modes are available in
+As of
 .Dx 2.6
-the REDO
-semantics are not well tested yet and not enabled by default.
+fsync mode 3 is set by default.
+REDO operation and recovery is enabled by default.
 .Bl -tag -width indent
 .It mode 0
 Full synchronous fsync semantics without REDO.
@@ -1380,7 +1382,6 @@ to be on the media as of when
 .Fn fsync
 returns.
 Needless to say, this is slow.
-This is the default.
 .It mode 1
 Relaxed asynchronous fsync semantics without REDO.
 .Pp
@@ -1397,6 +1398,8 @@ time.
 .Pp
 .It mode 2
 Full synchronous fsync semantics using REDO.
+NOTE: If not running
+a HAMMER version 4 filesystem or later mode 0 is silently used.
 .Pp
 .Nm HAMMER
 will generate REDOs in the UNDO/REDO FIFO based on a heuristic.
@@ -1413,6 +1416,8 @@ SSDs overheads, though not as bad as mode 0 or mode 1.
 .Pp
 .It mode 3
 Relaxed asynchronous fsync semantics using REDO.
+NOTE: If not running
+a HAMMER version 4 filesystem or later mode 1 is silently used.
 .Pp
 .Nm HAMMER
 will generate REDOs in the UNDO/REDO FIFO based on a heuristic.
