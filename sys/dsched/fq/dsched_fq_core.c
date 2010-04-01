@@ -422,11 +422,14 @@ void
 fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 {
 	struct	dsched_fq_priv	*fqp, *fqp2;
+	static struct timeval old_tv;
+	struct timeval tv;
 	int	n = 0;
 	static int last_full = 0, prev_full = 0;
 	static int limited_procs = 0;
-	int	incomplete_tp;
+	static int first_run = 1;
 	int	disk_busy;
+	int	total_disk_time;
 	int64_t budget, total_budget, used_budget;
 	int64_t budgetpb[FQ_PRIO_MAX+1];
 	int sum, i;
@@ -434,12 +437,23 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 	bzero(budgetpb, sizeof(budgetpb));
 	total_budget = 0;
 
+	getmicrotime(&tv);
+
+	if (__predict_false(first_run)) {
+		total_disk_time = FQ_TOTAL_DISK_TIME;
+		first_run = 0;
+	} else {
+		total_disk_time = (int)(1000000*((tv.tv_sec - old_tv.tv_sec)) +
+		    (tv.tv_usec - old_tv.tv_usec));
+		dsched_debug(LOG_INFO, "total_disk_time = %d\n", total_disk_time);
+	}
+	old_tv = tv;
 	FQ_DPRIV_LOCK(dpriv);
-	disk_busy = (100*(FQ_TOTAL_DISK_TIME - dpriv->idle_time)) /
-	    FQ_TOTAL_DISK_TIME;
+
+	disk_busy = (100*(total_disk_time - dpriv->idle_time)) / total_disk_time;
 	if (disk_busy < 0)
 		disk_busy = 0;
-	incomplete_tp = dpriv->incomplete_tp;
+
 	dpriv->idle_time = 0;
 
 	TAILQ_FOREACH_MUTABLE(fqp, &dpriv->fq_priv_list, dlink, fqp2) {
@@ -460,7 +474,7 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 
 	dsched_debug(LOG_INFO, "%d procs competing for disk\n"
 	    "total_budget = %lld\n"
-	    "incomplete tp = %d\n", n, total_budget, incomplete_tp);
+	    "incomplete tp = %d\n", n, total_budget, dpriv->incomplete_tp);
 
 	if (n == 0)
 		goto done;
@@ -510,8 +524,7 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 		 * process is exceeding its fair share; rate-limit it, but only
 		 * if the disk is being used at 90+% of capacity
 		 */
-		if ((used_budget > budget) && (disk_busy >= 90) &&
-		    (incomplete_tp > n*2)) {
+		if ((used_budget > budget) && (disk_busy >= 90)) {
 			KKASSERT(fqp->avg_latency != 0);
 
 			fqp->max_tp = budget/(10*fqp->avg_latency);
