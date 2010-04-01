@@ -168,11 +168,44 @@ fq_teardown(struct disk *dp)
 }
 
 
-static void
-fq_flush(struct disk *dp, struct bio *biin)
+/* Must be called with locked dpriv */
+void
+fq_drain(struct dsched_fq_dpriv *dpriv, int mode)
 {
-	/* Our flushes are handled by queue, this should never be called */
+	struct dsched_fq_priv *fqp, *fqp2;
+	struct bio *bio, *bio2;
+
+	TAILQ_FOREACH_MUTABLE(fqp, &dpriv->fq_priv_list, dlink, fqp2) {
+		if (fqp->qlength == 0)
+			continue;
+
+		FQ_FQP_LOCK(fqp);
+		TAILQ_FOREACH_MUTABLE(bio, &fqp->queue, link, bio2) {
+			TAILQ_REMOVE(&fqp->queue, bio, link);
+			--fqp->qlength;
+			if (__predict_false(mode == FQ_DRAIN_CANCEL)) {
+				/* FQ_DRAIN_CANCEL */
+				dsched_cancel_bio(bio);
+				atomic_add_int(&fq_stats.cancelled, 1);
+
+				/* Release ref acquired on fq_queue */
+				/* XXX: possible failure point */
+				fq_dereference_priv(fqp);
+			} else {
+				/* FQ_DRAIN_FLUSH */
+				fq_dispatch(dpriv, bio, fqp);
+			}
+		}
+		FQ_FQP_UNLOCK(fqp);
+	}
 	return;
+}
+
+
+static void
+fq_flush(struct disk *dp, struct bio *bio)
+{
+	/* we don't do anything here */
 }
 
 
@@ -180,8 +213,6 @@ static void
 fq_cancel(struct disk *dp)
 {
 	struct dsched_fq_dpriv	*dpriv;
-	struct dsched_fq_priv	*fqp, *fqp2;
-	struct bio *bio, *bio2;
 
 	dpriv = dsched_get_disk_priv(dp);
 	KKASSERT(dpriv != NULL);
@@ -191,19 +222,7 @@ fq_cancel(struct disk *dp)
 	 * good thing we have a list of fqps per disk dpriv.
 	 */
 	FQ_DPRIV_LOCK(dpriv);
-	TAILQ_FOREACH_MUTABLE(fqp, &dpriv->fq_priv_list, dlink, fqp2) {
-		if (fqp->qlength == 0)
-			continue;
-
-		FQ_FQP_LOCK(fqp);
-		TAILQ_FOREACH_MUTABLE(bio, &fqp->queue, link, bio2) {
-			TAILQ_REMOVE(&fqp->queue, bio, link);
-			--fqp->qlength;
-			dsched_cancel_bio(bio);
-			atomic_add_int(&fq_stats.cancelled, 1);
-		}
-		FQ_FQP_UNLOCK(fqp);
-	}
+	fq_drain(dpriv, FQ_DRAIN_CANCEL);
 	FQ_DPRIV_UNLOCK(dpriv);
 }
 
@@ -219,6 +238,10 @@ fq_queue(struct disk *dp, struct bio *obio)
 	int count;
 	int max_tp, transactions;
 
+	/* We don't handle flushes, let dsched dispatch them */
+	if (__predict_false(obio->bio_buf->b_cmd == BUF_CMD_FLUSH))
+		return (EINVAL);
+
 	/* get fqmp and fqp */
 	fqmp = dsched_get_buf_priv(obio->bio_buf);
 
@@ -231,9 +254,9 @@ fq_queue(struct disk *dp, struct bio *obio)
 	KKASSERT(fqmp != NULL);
 #endif
 	if (fqmp == NULL) {
+		/* We don't handle this case, let dsched dispatch */
 		atomic_add_int(&fq_stats.no_fqmp, 1);
-		dsched_strategy_raw(dp, obio);
-		return 0;
+		return (EINVAL);
 	}
 
 
@@ -259,12 +282,9 @@ fq_queue(struct disk *dp, struct bio *obio)
 
 	/* XXX: probably rather pointless doing this atomically */
 	max_tp = atomic_fetchadd_int(&fqp->max_tp, 0);
-#if 0
-	transactions = atomic_fetchadd_int(&fqp->transactions, 0);
-#endif
 	transactions = atomic_fetchadd_int(&fqp->issued, 0);
 
-	/* | No rate limiting || Hasn't reached limit rate |     */
+	/* | No rate limiting || Hasn't reached limit rate | */
 	if ((max_tp == 0) || (transactions < max_tp)) {
 		/*
 		 * Process pending bios from previous _queue() actions that
@@ -397,7 +417,7 @@ fq_dispatch(struct dsched_fq_dpriv *dpriv, struct bio *bio,
 	struct timeval tv;
 
 	if (dpriv->idle) {
-		getmicrotime(&tv);		
+		getmicrotime(&tv);
 		atomic_add_int(&dpriv->idle_time,
 		    (int)(1000000*((tv.tv_sec - dpriv->start_idle.tv_sec)) +
 		    (tv.tv_usec - dpriv->start_idle.tv_usec)));

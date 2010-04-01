@@ -358,21 +358,7 @@ fq_dispatcher(struct dsched_fq_dpriv *dpriv)
 
 			if (__predict_false(dpriv->die == 1)) {
 				/* If we are supposed to die, drain all queues */
-				TAILQ_FOREACH_MUTABLE(fqp, &dpriv->fq_priv_list,
-				    dlink, fqp2) {
-					if (fqp->qlength == 0)
-						continue;
-
-					FQ_FQP_LOCK(fqp);
-					TAILQ_FOREACH_MUTABLE(bio, &fqp->queue,
-					    link, bio2) {
-						TAILQ_REMOVE(&fqp->queue, bio,
-						    link);
-						--fqp->qlength;
-						fq_dispatch(dpriv, bio, fqp);
-					}
-					FQ_FQP_UNLOCK(fqp);
-				}
+				fq_drain(dpriv, FQ_DRAIN_FLUSH);
 
 				/* Now we can safely unlock and exit */
 				FQ_DPRIV_UNLOCK(dpriv);
@@ -458,26 +444,7 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 
 	TAILQ_FOREACH_MUTABLE(fqp, &dpriv->fq_priv_list, dlink, fqp2) {
 		if (fqp->transactions > 0 /* 30 */) {
-
 			total_budget += (fqp->avg_latency * fqp->transactions);
-			/*
-			 * XXX: while the code below really sucked, the problem needs to
-			 *	be addressed eventually. Some processes take up their "fair"
-			 *	slice, but don't really need even a 10th of it.
-			 *	This kills performance for those that do need the
-			 *	performance.
-			 */
-#if 0
-			/*
-			 * This is *very* hackish. It basically tries to avoid that
-			 * processes that do only very few tps take away more bandwidth
-			 * than they should.
-			 */
-			if ((limited_procs >= 1) && (fqp->transactions < 25) &&
-			    (budgetpb[(fqp->p) ? fqp->p->p_ionice : 0] >= 1))
-				continue;
-#endif
-
 			++budgetpb[(fqp->p) ? fqp->p->p_ionice : 0];
 
 			dsched_debug(LOG_INFO,
@@ -499,13 +466,16 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 		goto done;
 
 	sum = 0;
+
 	for (i = 0; i < FQ_PRIO_MAX+1; i++) {
 		if (budgetpb[i] == 0)
 			continue;
 		sum += (FQ_PRIO_BIAS+i)*budgetpb[i];
 	}
+
 	if (sum == 0)
 		sum = 1;
+
 	dsched_debug(LOG_INFO, "sum = %d\n", sum);
 
 	for (i = 0; i < FQ_PRIO_MAX+1; i++) {

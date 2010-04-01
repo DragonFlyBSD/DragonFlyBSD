@@ -86,14 +86,9 @@
 #define	FQ_REBALANCE_TIMEOUT	1	/* in seconds */
 #define FQ_TOTAL_DISK_TIME	1000000*FQ_REBALANCE_TIMEOUT	/* in useconds */
 
-/*
-#define	FQ_INNERQ_INIT(x)	spin_init(&(x)->lock)
-#define	FQ_INNERQ_UNINIT(x)	spin_uninit(&(x)->lock)
-#define FQ_INNERQ_LOCK(x)	spin_lock_wr(&(x)->lock)
-#define	FQ_INNERQ_UNLOCK(x)	spin_unlock_wr(&(x)->lock)
-#define FQ_INNERQ_SLEEP(x,y,z)	ssleep((x), &(x)->lock, 0, y, z)
-*/
 
+#define	FQ_DRAIN_CANCEL	0x1
+#define	FQ_DRAIN_FLUSH	0x2
 
 struct disk;
 struct proc;
@@ -175,6 +170,7 @@ void	fq_dereference_priv(struct dsched_fq_priv *fqp);
 void	fq_dereference_mpriv(struct dsched_fq_mpriv *fqmp);
 void	fq_dispatch(struct dsched_fq_dpriv *dpriv, struct bio *bio,
 			struct dsched_fq_priv *fqp);
+void	fq_drain(struct dsched_fq_dpriv *dpriv, int mode);
 #endif /* _KERNEL || _KERNEL_STRUCTURES */
 
 

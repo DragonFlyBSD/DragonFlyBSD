@@ -75,7 +75,7 @@ fq_new_buf(struct buf *bp)
 {
 	struct dsched_fq_mpriv	*fqmp = NULL;
 
-	if (curproc != NULL /* XXX: is it -1 or is it 0? */) {
+	if (curproc != NULL) {
 		fqmp = dsched_get_proc_priv(curproc);
 	} else {
 		/* This is a kernel thread, so no proc info is available */
