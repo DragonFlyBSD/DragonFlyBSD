@@ -86,6 +86,11 @@
 #define	FQ_REBALANCE_TIMEOUT	1	/* in seconds */
 #define FQ_TOTAL_DISK_TIME	1000000*FQ_REBALANCE_TIMEOUT	/* in useconds */
 
+#define FQ_PRIO_BIAS		5
+#define FQ_PRIO_MAX		10
+#define FQ_PRIO_MIN		1
+#define FQ_PRIO_IDLE		-1
+#define	FQ_BUCKET_ACTIVE	0x01
 
 #define	FQ_DRAIN_CANCEL	0x1
 #define	FQ_DRAIN_FLUSH	0x2
@@ -117,6 +122,8 @@ struct dsched_fq_priv {
 	int32_t	s_avg_latency;
 	int32_t	max_tp;
 	int32_t	issued;
+
+	int	rebalance;
 };
 
 struct dsched_fq_dpriv {
@@ -134,6 +141,11 @@ struct dsched_fq_dpriv {
 	int	idle_time;
 	int	die;
 
+	int	prev_full;
+	int	last_full;
+	int	disk_busy;
+	int64_t	budgetpb[FQ_PRIO_MAX+1];
+
 	/* list contains all fq_priv for this disk */
 	TAILQ_HEAD(, dsched_fq_priv)	fq_priv_list;
 	TAILQ_ENTRY(dsched_fq_dpriv)	link;
@@ -150,11 +162,6 @@ struct dsched_fq_mpriv {
 };
 
 
-#define FQ_PRIO_BIAS		5
-#define FQ_PRIO_MAX		10
-#define FQ_PRIO_MIN		1
-#define FQ_PRIO_IDLE		-1
-#define	FQ_BUCKET_ACTIVE	0x01
 
 
 
@@ -174,6 +181,7 @@ void	fq_dereference_mpriv(struct dsched_fq_mpriv *fqmp);
 void	fq_dispatch(struct dsched_fq_dpriv *dpriv, struct bio *bio,
 			struct dsched_fq_priv *fqp);
 void	fq_drain(struct dsched_fq_dpriv *dpriv, int mode);
+void	fq_balance_self(struct dsched_fq_priv *fqp);
 #endif /* _KERNEL || _KERNEL_STRUCTURES */
 
 

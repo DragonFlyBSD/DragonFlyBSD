@@ -388,7 +388,8 @@ fq_dispatcher(struct dsched_fq_dpriv *dpriv)
 				continue;
 
 			FQ_FQP_LOCK(fqp);
-
+			if (atomic_cmpset_int(&fqp->rebalance, 1, 0))
+				fq_balance_self(fqp);
 			/*
 			 * XXX: why 5 extra? should probably be dynamic,
 			 *	relying on information on latency.
@@ -399,6 +400,8 @@ fq_dispatcher(struct dsched_fq_dpriv *dpriv)
 			}
 
 			TAILQ_FOREACH_MUTABLE(bio, &fqp->queue, link, bio2) {
+				if (atomic_cmpset_int(&fqp->rebalance, 1, 0))
+					fq_balance_self(fqp);
 				if ((fqp->max_tp > 0) &&
 				    ((fqp->issued >= fqp->max_tp)))
 					break;
@@ -424,13 +427,8 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 	struct	dsched_fq_priv	*fqp, *fqp2;
 	static struct timeval old_tv;
 	struct timeval tv;
-	int	n;
-	int last_full = 0, prev_full = 0;
-	int	disk_busy;
-	int	total_disk_time;
-	int64_t budget, total_budget, used_budget;
-	int64_t budgetpb[FQ_PRIO_MAX+1];
-	int sum, i;
+	int64_t	total_budget;
+	int	n, i, sum, total_disk_time;
 
 	getmicrotime(&old_tv);
 
@@ -444,7 +442,7 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 			}
 		}
 
-		bzero(budgetpb, sizeof(budgetpb));
+		bzero(dpriv->budgetpb, sizeof(dpriv->budgetpb));
 		total_budget = 0;
 		n = 0;
 
@@ -456,18 +454,18 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 
 		old_tv = tv;
 
-		disk_busy = (100*(total_disk_time - dpriv->idle_time)) / total_disk_time;
-		if (disk_busy < 0)
-			disk_busy = 0;
+		dpriv->disk_busy = (100*(total_disk_time - dpriv->idle_time)) / total_disk_time;
+		if (dpriv->disk_busy < 0)
+			dpriv->disk_busy = 0;
 
 		dpriv->idle_time = 0;
 
 		TAILQ_FOREACH_MUTABLE(fqp, &dpriv->fq_priv_list, dlink, fqp2) {
 			fqp->s_avg_latency = fqp->avg_latency;
 			fqp->s_transactions = fqp->transactions;
-			if (fqp->transactions > 0 /* 30 */) {
+			if (fqp->s_transactions > 0 /* 30 */) {
 				total_budget += (fqp->s_avg_latency * fqp->s_transactions);
-				++budgetpb[(fqp->p) ? fqp->p->p_ionice : 0];
+				++dpriv->budgetpb[(fqp->p) ? fqp->p->p_ionice : 0];
 
 				dsched_debug(LOG_INFO,
 				    "%d) avg_latency = %d, transactions = %d, ioprio = %d\n",
@@ -476,8 +474,10 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 				++n;
 			} else {
 				fqp->max_tp = 0;
-				fqp->avg_latency = 0;
 			}
+			fqp->transactions = 0;
+			fqp->avg_latency = 0;
+			fqp->issued = 0;
 		}
 
 		dsched_debug(LOG_INFO, "%d procs competing for disk\n"
@@ -490,9 +490,9 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 		sum = 0;
 
 		for (i = 0; i < FQ_PRIO_MAX+1; i++) {
-			if (budgetpb[i] == 0)
+			if (dpriv->budgetpb[i] == 0)
 				continue;
-			sum += (FQ_PRIO_BIAS+i)*budgetpb[i];
+			sum += (FQ_PRIO_BIAS+i)*dpriv->budgetpb[i];
 		}
 
 		if (sum == 0)
@@ -501,61 +501,65 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 		dsched_debug(LOG_INFO, "sum = %d\n", sum);
 
 		for (i = 0; i < FQ_PRIO_MAX+1; i++) {
-			if (budgetpb[i] == 0)
+			if (dpriv->budgetpb[i] == 0)
 				continue;
 
-			budgetpb[i] = ((FQ_PRIO_BIAS+i)*10)*total_budget/sum;
+			dpriv->budgetpb[i] = ((FQ_PRIO_BIAS+i)*10)*total_budget/sum;
 		}
 
 		if (total_budget > dpriv->max_budget)
 			dpriv->max_budget = total_budget;
 
-		dsched_debug(4, "disk is %d\% busy\n", disk_busy);
-
-		/*
-		 * XXX: eventually remove all the silly *10...
-		 */
-		TAILQ_FOREACH_MUTABLE(fqp, &dpriv->fq_priv_list, dlink, fqp2) {
-			budget = budgetpb[(fqp->p) ? fqp->p->p_ionice : 0];
-
-			used_budget = ((int64_t)10*(int64_t)fqp->s_avg_latency *
-			    (int64_t)fqp->s_transactions);
-			if (used_budget > 0) {
-				dsched_debug(LOG_INFO,
-				    "info: used_budget = %lld, budget = %lld\n", used_budget,
-				    budget);
-			}
-
-			/*
-			 * process is exceeding its fair share; rate-limit it, but only
-			 * if the disk is being used at 90+% of capacity
-			 */
-			if ((used_budget > budget) && (disk_busy >= 90)) {
-				KKASSERT(fqp->s_avg_latency != 0);
-
-				fqp->max_tp = budget/(10*fqp->s_avg_latency);
-				dsched_debug(LOG_INFO,
-				    "rate limited to %d transactions\n", fqp->max_tp);
-				atomic_add_int(&fq_stats.procs_limited, 1);
-			} else if (((used_budget*2 < budget) || (disk_busy < 80)) &&
-			    (!prev_full && !last_full)) {
-				/*
-				 * process is really using little of its timeslice, or the
-				 * disk is not busy, so let's reset the rate-limit.
-				 * Without this, exceeding processes will get an unlimited
-				 * slice every other slice.
-				 * XXX: this still doesn't quite fix the issue, but maybe
-				 * it's good that way, so that heavy writes are interleaved.
-				 */
-				fqp->max_tp = 0;
-			}
-			fqp->transactions = 0;
-			fqp->avg_latency = 0;
-			fqp->issued = 0;
+		dsched_debug(4, "disk is %d\% busy\n", dpriv->disk_busy);
+		TAILQ_FOREACH(fqp, &dpriv->fq_priv_list, dlink) {
+			fqp->rebalance = 1;
 		}
 
-		prev_full = last_full;
-		last_full = (disk_busy >= 90)?1:0;
+		dpriv->prev_full = dpriv->last_full;
+		dpriv->last_full = (dpriv->disk_busy >= 90)?1:0;
+	}
+}
+
+
+/*
+ * fq_balance_self should be called from all sorts of dispatchers. It basically
+ * offloads some of the heavier calculations on throttling onto the process that
+ * wants to do I/O instead of doing it in the fq_balance thread.
+ * - should be called with dpriv lock held
+ */
+void
+fq_balance_self(struct dsched_fq_priv *fqp) {
+	struct dsched_fq_dpriv *dpriv;
+
+	int64_t budget, used_budget;
+	int64_t	avg_latency;
+	int64_t	transactions;
+
+	transactions = (int64_t)fqp->s_transactions;
+	avg_latency = (int64_t)fqp->s_avg_latency;
+	dpriv = fqp->dpriv;
+
+	used_budget = ((int64_t)10 * avg_latency * transactions);
+	budget = dpriv->budgetpb[(fqp->p) ? fqp->p->p_ionice : 0];
+
+	if (used_budget > 0) {
+		dsched_debug(LOG_INFO,
+		    "info: used_budget = %lld, budget = %lld\n", used_budget,
+		    budget);
+	}
+
+	if ((used_budget > budget) && (dpriv->disk_busy >= 90)) {
+		KKASSERT(avg_latency != 0);
+
+		fqp->max_tp = budget/(10*avg_latency);
+		atomic_add_int(&fq_stats.procs_limited, 1);
+
+		dsched_debug(LOG_INFO,
+		    "rate limited to %d transactions\n", fqp->max_tp);
+
+	} else if (((used_budget*2 < budget) || (dpriv->disk_busy < 80)) &&
+	    (!dpriv->prev_full && !dpriv->last_full)) {
+		fqp->max_tp = 0;
 	}
 }
 
@@ -570,8 +574,6 @@ do_fqstats(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_kern, OID_AUTO, fq_stats, CTLTYPE_OPAQUE|CTLFLAG_RD,
     0, sizeof(struct dsched_fq_stats), do_fqstats, "fq_stats",
     "dsched_fq statistics");
-
-
 
 
 static void

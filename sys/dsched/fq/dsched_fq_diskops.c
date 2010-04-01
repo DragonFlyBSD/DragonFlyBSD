@@ -236,7 +236,6 @@ fq_queue(struct disk *dp, struct bio *obio)
 	struct dsched_fq_priv	*fqp;
 	struct dsched_fq_dpriv	*dpriv;
 	int found = 0;
-	int count;
 	int max_tp, transactions;
 
 	/* We don't handle flushes, let dsched dispatch them */
@@ -281,6 +280,9 @@ fq_queue(struct disk *dp, struct bio *obio)
 	KKASSERT(found == 1);
 	dpriv = dsched_get_disk_priv(dp);
 
+	if (atomic_cmpset_int(&fqp->rebalance, 1, 0))
+		fq_balance_self(fqp);
+
 	/* XXX: probably rather pointless doing this atomically */
 	max_tp = atomic_fetchadd_int(&fqp->max_tp, 0);
 	transactions = atomic_fetchadd_int(&fqp->issued, 0);
@@ -295,9 +297,11 @@ fq_queue(struct disk *dp, struct bio *obio)
 
 		if (fqp->qlength > 0) {
 			FQ_FQP_LOCK(fqp);
-			count = 0;
 
 			TAILQ_FOREACH_MUTABLE(bio, &fqp->queue, link, bio2) {
+				/* Rebalance ourselves if required */
+				if (atomic_cmpset_int(&fqp->rebalance, 1, 0))
+					fq_balance_self(fqp);
 				if ((fqp->max_tp > 0) && (fqp->issued >= fqp->max_tp))
 					break;
 				TAILQ_REMOVE(&fqp->queue, bio, link);
@@ -393,13 +397,14 @@ fq_completed(struct bio *bp)
 
 		if (latency != 0) {
 			/* Moving averager, ((n-1)*avg_{n-1} + x) / n */
-			latency = ((transactions) *
-			    latency + delta) / (transactions + 1);
+			latency = (int)(((int64_t)(transactions) *
+			    (int64_t)latency + (int64_t)delta) / ((int64_t)transactions + 1));
 		} else {
 			latency = delta;
 		}
 
 		fqp->avg_latency = latency;
+
 		atomic_add_int(&fq_stats.transactions_completed, 1);
 	}
 
