@@ -696,6 +696,7 @@ vm_pageout_scan(int pass)
 	struct vm_pageout_scan_info info;
 	vm_page_t m, next;
 	struct vm_page marker;
+	struct vnode *vpfailed;		/* warning, allowed to be stale */
 	int maxscan, pcount;
 	int recycle_count;
 	int inactive_shortage, active_shortage;
@@ -760,6 +761,7 @@ vm_pageout_scan(int pass)
 	 */
 	crit_enter();
 rescan0:
+	vpfailed = NULL;
 	maxscan = vmstats.v_inactive_count;
 	for (m = TAILQ_FIRST(&vm_page_queues[PQ_INACTIVE].pl);
 	     m != NULL && maxscan-- > 0 && inactive_shortage > 0;
@@ -946,12 +948,23 @@ rescan0:
 			 * vm_wait while holding this vnode.  We skip the 
 			 * vnode if we can't get it in a reasonable amount
 			 * of time.
+			 *
+			 * vpfailed is used to (try to) avoid the case where
+			 * a large number of pages are associated with a
+			 * locked vnode, which could cause the pageout daemon
+			 * to stall for an excessive amount of time.
 			 */
-
 			if (object->type == OBJT_VNODE) {
-				vp = object->handle;
+				int flags;
 
-				if (vget(vp, LK_EXCLUSIVE|LK_NOOBJ|LK_TIMELOCK)) {
+				vp = object->handle;
+				flags = LK_EXCLUSIVE | LK_NOOBJ;
+				if (vp == vpfailed)
+					flags |= LK_NOWAIT;
+				else
+					flags |= LK_TIMELOCK;
+				if (vget(vp, flags) != 0) {
+					vpfailed = vp;
 					++pageout_lock_miss;
 					if (object->flags & OBJ_MIGHTBEDIRTY)
 						    vnodes_skipped++;
