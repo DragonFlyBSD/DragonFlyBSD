@@ -424,138 +424,139 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 	struct	dsched_fq_priv	*fqp, *fqp2;
 	static struct timeval old_tv;
 	struct timeval tv;
-	int	n = 0;
-	static int last_full = 0, prev_full = 0;
-	static int limited_procs = 0;
-	static int first_run = 1;
+	int	n;
+	int last_full = 0, prev_full = 0;
 	int	disk_busy;
 	int	total_disk_time;
 	int64_t budget, total_budget, used_budget;
 	int64_t budgetpb[FQ_PRIO_MAX+1];
 	int sum, i;
 
-	bzero(budgetpb, sizeof(budgetpb));
-	total_budget = 0;
+	getmicrotime(&old_tv);
 
-	getmicrotime(&tv);
+	FQ_DPRIV_LOCK(dpriv);
+	for (;;) {
+		/* sleep ~1s */
+		if ((ssleep(curthread, &dpriv->lock, 0, "fq_balancer", hz) == 0)) {
+			if (__predict_false(dpriv->die)) {
+				FQ_DPRIV_UNLOCK(dpriv);
+				lwkt_exit();
+			}
+		}
 
-	if (__predict_false(first_run)) {
-		total_disk_time = FQ_TOTAL_DISK_TIME;
-		first_run = 0;
-	} else {
+		bzero(budgetpb, sizeof(budgetpb));
+		total_budget = 0;
+		n = 0;
+
+		getmicrotime(&tv);
+
 		total_disk_time = (int)(1000000*((tv.tv_sec - old_tv.tv_sec)) +
 		    (tv.tv_usec - old_tv.tv_usec));
 		dsched_debug(LOG_INFO, "total_disk_time = %d\n", total_disk_time);
-	}
-	old_tv = tv;
-	FQ_DPRIV_LOCK(dpriv);
 
-	disk_busy = (100*(total_disk_time - dpriv->idle_time)) / total_disk_time;
-	if (disk_busy < 0)
-		disk_busy = 0;
+		old_tv = tv;
 
-	dpriv->idle_time = 0;
+		disk_busy = (100*(total_disk_time - dpriv->idle_time)) / total_disk_time;
+		if (disk_busy < 0)
+			disk_busy = 0;
 
-	TAILQ_FOREACH_MUTABLE(fqp, &dpriv->fq_priv_list, dlink, fqp2) {
-		if (fqp->transactions > 0 /* 30 */) {
-			total_budget += (fqp->avg_latency * fqp->transactions);
-			++budgetpb[(fqp->p) ? fqp->p->p_ionice : 0];
+		dpriv->idle_time = 0;
 
-			dsched_debug(LOG_INFO,
-			    "%d) avg_latency = %d, transactions = %d, ioprio = %d\n",
-			    n, fqp->avg_latency, fqp->transactions,
-			    (fqp->p) ? fqp->p->p_ionice : 0);
-			++n;
-		} else {
-			fqp->max_tp = 0;
-			fqp->avg_latency = 0;
+		TAILQ_FOREACH_MUTABLE(fqp, &dpriv->fq_priv_list, dlink, fqp2) {
+			fqp->s_avg_latency = fqp->avg_latency;
+			fqp->s_transactions = fqp->transactions;
+			if (fqp->transactions > 0 /* 30 */) {
+				total_budget += (fqp->s_avg_latency * fqp->s_transactions);
+				++budgetpb[(fqp->p) ? fqp->p->p_ionice : 0];
+
+				dsched_debug(LOG_INFO,
+				    "%d) avg_latency = %d, transactions = %d, ioprio = %d\n",
+				    n, fqp->s_avg_latency, fqp->s_transactions,
+				    (fqp->p) ? fqp->p->p_ionice : 0);
+				++n;
+			} else {
+				fqp->max_tp = 0;
+				fqp->avg_latency = 0;
+			}
 		}
-	}
 
-	dsched_debug(LOG_INFO, "%d procs competing for disk\n"
-	    "total_budget = %lld\n"
-	    "incomplete tp = %d\n", n, total_budget, dpriv->incomplete_tp);
+		dsched_debug(LOG_INFO, "%d procs competing for disk\n"
+		    "total_budget = %lld\n"
+		    "incomplete tp = %d\n", n, total_budget, dpriv->incomplete_tp);
 
-	if (n == 0)
-		goto done;
-
-	sum = 0;
-
-	for (i = 0; i < FQ_PRIO_MAX+1; i++) {
-		if (budgetpb[i] == 0)
-			continue;
-		sum += (FQ_PRIO_BIAS+i)*budgetpb[i];
-	}
-
-	if (sum == 0)
-		sum = 1;
-
-	dsched_debug(LOG_INFO, "sum = %d\n", sum);
-
-	for (i = 0; i < FQ_PRIO_MAX+1; i++) {
-		if (budgetpb[i] == 0)
+		if (n == 0)
 			continue;
 
-		budgetpb[i] = ((FQ_PRIO_BIAS+i)*10)*total_budget/sum;
-	}
+		sum = 0;
 
-	if (total_budget > dpriv->max_budget)
-		dpriv->max_budget = total_budget;
-
-	limited_procs = 0;
-
-	dsched_debug(4, "disk is %d\% busy\n", disk_busy);
-
-	/*
-	 * XXX: eventually remove all the silly *10...
-	 */
-	TAILQ_FOREACH_MUTABLE(fqp, &dpriv->fq_priv_list, dlink, fqp2) {
-		budget = budgetpb[(fqp->p) ? fqp->p->p_ionice : 0];
-
-		used_budget = ((int64_t)10*(int64_t)fqp->avg_latency *
-		    (int64_t)fqp->transactions);
-		if (used_budget > 0) {
-			dsched_debug(LOG_INFO,
-			    "info: used_budget = %lld, budget = %lld\n", used_budget,
-			    budget);
+		for (i = 0; i < FQ_PRIO_MAX+1; i++) {
+			if (budgetpb[i] == 0)
+				continue;
+			sum += (FQ_PRIO_BIAS+i)*budgetpb[i];
 		}
+
+		if (sum == 0)
+			sum = 1;
+
+		dsched_debug(LOG_INFO, "sum = %d\n", sum);
+
+		for (i = 0; i < FQ_PRIO_MAX+1; i++) {
+			if (budgetpb[i] == 0)
+				continue;
+
+			budgetpb[i] = ((FQ_PRIO_BIAS+i)*10)*total_budget/sum;
+		}
+
+		if (total_budget > dpriv->max_budget)
+			dpriv->max_budget = total_budget;
+
+		dsched_debug(4, "disk is %d\% busy\n", disk_busy);
 
 		/*
-		 * process is exceeding its fair share; rate-limit it, but only
-		 * if the disk is being used at 90+% of capacity
+		 * XXX: eventually remove all the silly *10...
 		 */
-		if ((used_budget > budget) && (disk_busy >= 90)) {
-			KKASSERT(fqp->avg_latency != 0);
+		TAILQ_FOREACH_MUTABLE(fqp, &dpriv->fq_priv_list, dlink, fqp2) {
+			budget = budgetpb[(fqp->p) ? fqp->p->p_ionice : 0];
 
-			fqp->max_tp = budget/(10*fqp->avg_latency);
-			++limited_procs;
-			dsched_debug(LOG_INFO,
-			    "rate limited to %d transactions\n", fqp->max_tp);
-			atomic_add_int(&fq_stats.procs_limited, 1);
-		} else if (((used_budget*2 < budget) || (disk_busy < 90)) &&
-		    (!prev_full && !last_full)) {
+			used_budget = ((int64_t)10*(int64_t)fqp->s_avg_latency *
+			    (int64_t)fqp->s_transactions);
+			if (used_budget > 0) {
+				dsched_debug(LOG_INFO,
+				    "info: used_budget = %lld, budget = %lld\n", used_budget,
+				    budget);
+			}
+
 			/*
-			 * process is really using little of its timeslice, or the
-			 * disk is not busy, so let's reset the rate-limit.
-			 * Without this, exceeding processes will get an unlimited
-			 * slice every other slice.
-			 * XXX: this still doesn't quite fix the issue, but maybe
-			 * it's good that way, so that heavy writes are interleaved.
+			 * process is exceeding its fair share; rate-limit it, but only
+			 * if the disk is being used at 90+% of capacity
 			 */
-			fqp->max_tp = 0;
+			if ((used_budget > budget) && (disk_busy >= 90)) {
+				KKASSERT(fqp->s_avg_latency != 0);
+
+				fqp->max_tp = budget/(10*fqp->s_avg_latency);
+				dsched_debug(LOG_INFO,
+				    "rate limited to %d transactions\n", fqp->max_tp);
+				atomic_add_int(&fq_stats.procs_limited, 1);
+			} else if (((used_budget*2 < budget) || (disk_busy < 80)) &&
+			    (!prev_full && !last_full)) {
+				/*
+				 * process is really using little of its timeslice, or the
+				 * disk is not busy, so let's reset the rate-limit.
+				 * Without this, exceeding processes will get an unlimited
+				 * slice every other slice.
+				 * XXX: this still doesn't quite fix the issue, but maybe
+				 * it's good that way, so that heavy writes are interleaved.
+				 */
+				fqp->max_tp = 0;
+			}
+			fqp->transactions = 0;
+			fqp->avg_latency = 0;
+			fqp->issued = 0;
 		}
-		fqp->transactions = 0;
-		fqp->avg_latency = 0;
-		fqp->issued = 0;
+
+		prev_full = last_full;
+		last_full = (disk_busy >= 90)?1:0;
 	}
-
-	prev_full = last_full;
-	last_full = (disk_busy >= 90)?1:0;
-
-done:
-	FQ_DPRIV_UNLOCK(dpriv);
-	callout_reset(&fq_callout, hz * FQ_REBALANCE_TIMEOUT,
-	    (void (*)(void *))fq_balance_thread, dpriv);
 }
 
 

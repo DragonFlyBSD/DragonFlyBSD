@@ -107,7 +107,7 @@ fq_prepare(struct disk *dp)
 	struct	dsched_fq_dpriv	*dpriv;
 	struct dsched_fq_mpriv	*fqmp;
 	struct dsched_fq_priv	*fqp;
-	struct thread *td_core;
+	struct thread *td_core, *td_balance;
 
 	dpriv = fq_alloc_dpriv(dp);
 	fq_reference_dpriv(dpriv);
@@ -127,8 +127,10 @@ fq_prepare(struct disk *dp)
 
 	FQ_GLOBAL_FQMP_UNLOCK();
 	lwkt_create((void (*)(void *))fq_dispatcher, dpriv, &td_core, NULL,
-	    0, 0, "fq_dispatcher_%s", dp->d_cdev->si_name);
-	fq_balance_thread(dpriv);
+	    0, 0, "fq_dispatch_%s", dp->d_cdev->si_name);
+	lwkt_create((void (*)(void *))fq_balance_thread, dpriv, &td_balance,
+	    NULL, 0, 0, "fq_balance_%s", dp->d_cdev->si_name);
+	dpriv->td_balance = td_balance;
 
 	return 0;
 }
@@ -144,16 +146,15 @@ fq_teardown(struct disk *dp)
 	KKASSERT(dpriv != NULL);
 
 	/* Basically kill the dispatcher thread */
-	callout_stop(&fq_callout);
 	dpriv->die = 1;
+	wakeup(dpriv->td_balance);
 	wakeup(dpriv);
 	tsleep(dpriv, 0, "fq_dispatcher", hz/5); /* wait 200 ms */
-	callout_stop(&fq_callout);
+	wakeup(dpriv->td_balance);
 	wakeup(dpriv);
-	tsleep(dpriv, 0, "fq_dispatcher", hz/5); /* wait 200 ms */
-	callout_stop(&fq_callout);
-	/* XXX: we really need callout_drain, this REALLY sucks */
-
+	tsleep(dpriv, 0, "fq_dispatcher", hz/10); /* wait 100 ms */
+	wakeup(dpriv->td_balance);
+	wakeup(dpriv);
 
 	fq_dereference_dpriv(dpriv); /* from prepare */
 	fq_dereference_dpriv(dpriv); /* from alloc */

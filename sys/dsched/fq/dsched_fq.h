@@ -113,12 +113,15 @@ struct dsched_fq_priv {
 	int	refcount;
 	int32_t	transactions;
 	int32_t	avg_latency;
+	int32_t	s_transactions;
+	int32_t	s_avg_latency;
 	int32_t	max_tp;
 	int32_t	issued;
 };
 
 struct dsched_fq_dpriv {
 	struct thread	*td;
+	struct thread	*td_balance;
 	struct disk	*dp;
 	struct spinlock	lock;
 	int	refcount;
