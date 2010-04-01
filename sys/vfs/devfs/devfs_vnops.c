@@ -547,9 +547,9 @@ devfs_getattr(struct vop_getattr_args *ap)
 	vap->va_type = ap->a_vp->v_type;
 	vap->va_mode = node->mode;
 	vap->va_fileid = DEVFS_NODE(ap->a_vp)->d_dir.d_ino ;
-	vap->va_flags = 0; /* XXX: what should this be? */
+	vap->va_flags = 0;
 	vap->va_blocksize = DEV_BSIZE;
-	vap->va_bytes = vap->va_size = sizeof(struct devfs_node);
+	vap->va_bytes = vap->va_size = 0;
 
 	vap->va_fsid = ap->a_vp->v_mount->mnt_stat.f_fsid.val[0];
 
