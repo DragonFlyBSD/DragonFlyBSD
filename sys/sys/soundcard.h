@@ -1092,6 +1092,9 @@ typedef struct mixer_info {
 
 #define SOUND_MIXER_INFO		_IOR('M', 101, mixer_info)
 
+/* Some apps require this */
+#define OSS_GETVERSION			_IOR ('M', 118, int)
+
 #define LEFT_CHN	0
 #define RIGHT_CHN	1
 
