@@ -7,7 +7,7 @@
 # The ``rm -rf''s used below are safe because rm doesn't follow symbolic
 # links.
 
-CLEANFILES= osreldate.h version vers.c
+CLEANFILES= osreldate.h version vers.c vers.txt
 SUBDIR= arpa protocols rpc rpcsvc
 INCS=	a.out.h ar.h assert.h bitstring.h complex.h cpio.h ctype.h db.h \
 	dirent.h disktab.h \
