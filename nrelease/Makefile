@@ -42,7 +42,6 @@ PKGBIN_PKG_DELETE?=	${PKGSRC_PREFIX}/sbin/pkg_delete
 PKGBIN_PKG_ADMIN?=	${PKGSRC_PREFIX}/sbin/pkg_admin
 PKGBIN_MKISOFS?=	${PKGSRC_PREFIX}/bin/mkisofs
 PKGSRC_PKG_PATH?=	${ISODIR}/packages
-PKGSRC_BOOTSTRAP_URL?=	http://avalon.dragonflybsd.org/DragonFly-pkgsrc-packages/i386/1.12.0-RELEASE-BUILD
 
 # We use env -i in the chroot, so that environment variables won't
 # disturb any (pkgsrc) build.  This has happened for TARGET_ARCH,
