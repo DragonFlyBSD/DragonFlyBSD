@@ -86,6 +86,14 @@ or
 .Cm g
 to specify values in kilobytes, megabytes, and gigabytes per second.
 If no suffix is specified, bytes per second is assumed.
+.Pp
+Unfortunately this is only applicable to the pre-compression bandwidth
+when compression is used, so a better solution would probably be to
+use a
+.Xr ipfw 8
+pipe or a
+.Xr pf 4
+queue.
 .It Fl c Ar cyclefile
 When pruning, rebalancing or reblocking you can tell the utility
 to start at the object id stored in the specified file.
@@ -176,7 +184,7 @@ transaction ids to cut up the bulk transfers, creating
 restart points in case the stream is interrupted.
 If we don't do this and the stream is interrupted it might
 have to start all over again.
-The default is a splitsize of 100MB.
+The default is a splitsize of 4G.
 .Pp
 At the moment the run-through is disk-bandwidth-heavy but some
 future version will limit the run-through to just the B-Tree
@@ -188,6 +196,11 @@ or
 .Cm g
 to specify values in kilobytes, megabytes, or gigabytes.
 If no suffix is specified, bytes is assumed.
+.Pp
+When mirroring very large filesystems the minimum recommended
+split side is 4G.
+A small split size may wind up generating a great deal of overhead
+but very little actual incremental data and is not recommended.
 .It Fl X
 Enable compression for any remote ssh specifications.
 Unfortunately the

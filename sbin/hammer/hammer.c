@@ -59,7 +59,7 @@ int RunningIoctl;
 int DidInterrupt;
 int BulkOpt;
 u_int64_t BandwidthOpt;
-u_int64_t SplitupOpt = 100 * 1024 * 1024;
+u_int64_t SplitupOpt = 4ULL * 1024ULL * 1024ULL * 1024ULL;
 const char *CyclePath;
 const char *LinkPath;
 
