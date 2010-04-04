@@ -1,6 +1,3 @@
-# $DragonFly: src/nrelease/Makefile,v 1.90 2008/09/01 21:20:30 swildner Exp $
-#
-
 #########################################################################
 #				ENHANCEMENTS	 			#
 #########################################################################
@@ -278,6 +275,7 @@ buildiso:
 	done
 .endif
 	ln -s kernel ${ISOROOT}/boot/kernel.BOOTP
+	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.local.dist -p ${ISOROOT}/usr/local/
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
 
