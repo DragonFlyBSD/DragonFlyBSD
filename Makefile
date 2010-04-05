@@ -186,7 +186,3 @@ upgrade:	upgrade_etc
 #
 upgrade_etc:
 	@cd ${.CURDIR}/etc; make -m ${.CURDIR}/share/mk upgrade_etc
-
-iamoncrater:
-	@ [ "`hostname`" = "crater.dragonflybsd.org" ] || \
-		(echo "You are not on the master cvs host"; exit 1)
