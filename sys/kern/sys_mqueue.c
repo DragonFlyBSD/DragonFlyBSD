@@ -52,6 +52,7 @@
 #include <sys/priv.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
+#include <sys/mplock2.h>
 #include <sys/mqueue.h>
 #include <sys/objcache.h>
 #include <sys/poll.h>
@@ -669,7 +670,9 @@ mq_receive1(struct lwp *l, mqd_t mqdes, void *msg_ptr, size_t msg_len,
 	wakeup_one(&mq->mq_recv_cv);
 
 	/* Ready for sending now */
+	get_mplock();
 	selwakeup(&mq->mq_wsel);
+	rel_mplock();
 error:
 	lockmgr(&mq->mq_mtx, LK_RELEASE);
 	fdrop(fp);
@@ -858,7 +861,9 @@ mq_send1(struct lwp *l, mqd_t mqdes, const char *msg_ptr, size_t msg_len,
 	wakeup_one(&mq->mq_send_cv);
 
 	/* Ready for receiving now */
+	get_mplock();
 	selwakeup(&mq->mq_rsel);
+	rel_mplock();
 error:
 	lockmgr(&mq->mq_mtx, LK_RELEASE);
 	fdrop(fp);
@@ -1081,8 +1086,10 @@ sys_mq_unlink(struct mq_unlink_args *uap)
 	wakeup(&mq->mq_send_cv);
 	wakeup(&mq->mq_recv_cv);
 
+	get_mplock();
 	selwakeup(&mq->mq_rsel);
 	selwakeup(&mq->mq_wsel);
+	rel_mplock();
 
 	refcnt = mq->mq_refcnt;
 	if (refcnt == 0)
