@@ -53,12 +53,19 @@ hammer_format_volume_header(struct hammer_mount *hmp, struct vnode *devvp,
 static int
 hammer_clear_volume_header(struct vnode *devvp);
 
-static uint64_t
-hammer_format_freemap(hammer_transaction_t trans, hammer_volume_t volume);
+struct bigblock_stat {
+	uint64_t total_bigblocks;
+	uint64_t total_free_bigblocks;
+	uint64_t counter;
+};
 
 static int
-hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume);
+hammer_format_freemap(hammer_transaction_t trans, hammer_volume_t volume,
+	struct bigblock_stat *stat);
 
+static int
+hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume,
+	struct bigblock_stat *stat);
 
 int
 hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
@@ -158,15 +165,16 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 	volume = hammer_get_volume(hmp, free_vol_no, &error);
 	KKASSERT(volume != NULL && error == 0);
 
-	uint64_t total_free_bigblocks =
-		hammer_format_freemap(trans, volume);
+	struct bigblock_stat stat;
+	error =	hammer_format_freemap(trans, volume, &stat);
+	KKASSERT(error == 0);
 
 	/*
 	 * Increase the total number of bigblocks
 	 */
 	hammer_modify_volume_field(trans, trans->rootvol,
 		vol0_stat_bigblocks);
-	trans->rootvol->ondisk->vol0_stat_bigblocks += total_free_bigblocks;
+	trans->rootvol->ondisk->vol0_stat_bigblocks += stat.total_bigblocks;
 	hammer_modify_volume_done(trans->rootvol);
 
 	/*
@@ -175,7 +183,7 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 	 */
 	hammer_modify_volume_field(trans, trans->rootvol,
 		vol0_stat_freebigblocks);
-	trans->rootvol->ondisk->vol0_stat_freebigblocks += total_free_bigblocks;
+	trans->rootvol->ondisk->vol0_stat_freebigblocks += stat.total_free_bigblocks;
 	hmp->copy_stat_freebigblocks =
 		trans->rootvol->ondisk->vol0_stat_freebigblocks;
 	hammer_modify_volume_done(trans->rootvol);
@@ -308,7 +316,11 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	hammer_sync_lock_sh(trans);
 	hammer_lock_ex(&hmp->blkmap_lock);
 
-	error = hammer_free_freemap(trans, volume);
+	/*
+	 * We use stat later to update rootvol's bigblock stats
+	 */
+	struct bigblock_stat stat;
+	error = hammer_free_freemap(trans, volume, &stat);
 	if (error) {
 		kprintf("Failed to free volume. Volume not empty!\n");
 		hmp->volume_to_remove = -1;
@@ -369,6 +381,26 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 
 		hammer_rel_volume(volume, 0);
 	}
+
+	/*
+	 * Update the total number of bigblocks
+	 */
+	hammer_modify_volume_field(trans, trans->rootvol,
+		vol0_stat_bigblocks);
+	trans->rootvol->ondisk->vol0_stat_bigblocks -= stat.total_bigblocks;
+	hammer_modify_volume_done(trans->rootvol);
+
+	/*
+	 * Update the number of free bigblocks
+	 * (including the copy in hmp)
+	 */
+	hammer_modify_volume_field(trans, trans->rootvol,
+		vol0_stat_freebigblocks);
+	trans->rootvol->ondisk->vol0_stat_freebigblocks -= stat.total_free_bigblocks;
+	hmp->copy_stat_freebigblocks =
+		trans->rootvol->ondisk->vol0_stat_freebigblocks;
+	hammer_modify_volume_done(trans->rootvol);
+
 
 	hammer_unlock(&hmp->blkmap_lock);
 	hammer_sync_unlock(trans);
@@ -478,10 +510,6 @@ end:
 	return error;
 }
 
-struct format_bigblock_stat {
-	uint64_t total_free_bigblocks;
-	uint64_t free_bigblocks;
-};
 
 static int
 format_callback(hammer_transaction_t trans, hammer_volume_t volume,
@@ -492,7 +520,7 @@ format_callback(hammer_transaction_t trans, hammer_volume_t volume,
 	hammer_off_t block_off,
 	void *data)
 {
-	struct format_bigblock_stat *stat = (struct format_bigblock_stat*)data;
+	struct bigblock_stat *stat = (struct bigblock_stat*)data;
 
 	/*
 	 * Calculate the usable size of the volume, which must be aligned
@@ -509,12 +537,12 @@ format_callback(hammer_transaction_t trans, hammer_volume_t volume,
 		hammer_modify_buffer(trans, *bufferp, layer1, sizeof(*layer1));
 		bzero(layer1, sizeof(layer1));
 		layer1->phys_offset = phys_off;
-		layer1->blocks_free = stat->free_bigblocks;
+		layer1->blocks_free = stat->counter;
 		layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
 		hammer_modify_buffer_done(*bufferp);
 
-		stat->total_free_bigblocks += stat->free_bigblocks;
-		stat->free_bigblocks = 0; /* reset */
+		stat->total_free_bigblocks += stat->counter;
+		stat->counter = 0; /* reset */
 	} else if (layer2) {
 		hammer_modify_buffer(trans, *bufferp, layer2, sizeof(*layer2));
 		bzero(layer2, sizeof(*layer2));
@@ -526,6 +554,7 @@ format_callback(hammer_transaction_t trans, hammer_volume_t volume,
 			layer2->zone = HAMMER_ZONE_FREEMAP_INDEX;
 			layer2->append_off = HAMMER_LARGEBLOCK_SIZE;
 			layer2->bytes_free = 0;
+			++stat->total_bigblocks;
 		} else if (phys_off + block_off < aligned_buf_end_off) {
 			/*
 			 * Available bigblock
@@ -533,7 +562,8 @@ format_callback(hammer_transaction_t trans, hammer_volume_t volume,
 			layer2->zone = 0;
 			layer2->append_off = 0;
 			layer2->bytes_free = HAMMER_LARGEBLOCK_SIZE;
-			++stat->free_bigblocks;
+			++stat->total_bigblocks;
+			++stat->counter;
 		} else {
 			/*
 			 * Bigblock outside of physically available
@@ -553,20 +583,14 @@ format_callback(hammer_transaction_t trans, hammer_volume_t volume,
 	return 0;
 }
 
-static uint64_t
-hammer_format_freemap(hammer_transaction_t trans, hammer_volume_t volume)
+static int
+hammer_format_freemap(hammer_transaction_t trans, hammer_volume_t volume,
+	struct bigblock_stat *stat)
 {
-	int error = 0;
-
-	struct format_bigblock_stat stat;
-	stat.total_free_bigblocks = 0;
-	stat.free_bigblocks = 0;
-
-	error = hammer_iterate_l1l2_entries(trans, volume, format_callback,
-					(void*)&stat);
-	KKASSERT(error == 0);
-
-	return stat.total_free_bigblocks;
+	stat->total_bigblocks = 0;
+	stat->total_free_bigblocks = 0;
+	stat->counter = 0;
+	return hammer_iterate_l1l2_entries(trans, volume, format_callback, stat);
 }
 
 static int
@@ -578,10 +602,12 @@ free_callback(hammer_transaction_t trans, hammer_volume_t volume __unused,
 	hammer_off_t block_off __unused,
 	void *data)
 {
+	struct bigblock_stat *stat = (struct bigblock_stat*)data;
+
 	/*
 	 * No modifications to ondisk structures
 	 */
-	int testonly = (data != NULL);
+	int testonly = (stat == NULL);
 
 	if (layer1) {
 		if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
@@ -608,13 +634,26 @@ free_callback(hammer_transaction_t trans, hammer_volume_t volume __unused,
 
 		return 0;
 	} else if (layer2) {
-		if (layer2->zone == HAMMER_ZONE_FREEMAP_INDEX ||
-		    layer2->zone == HAMMER_ZONE_UNAVAIL_INDEX)
+		if (layer2->zone == HAMMER_ZONE_UNAVAIL_INDEX) {
 			return 0;
+		}
+
+		if (layer2->zone == HAMMER_ZONE_FREEMAP_INDEX) {
+			if (stat) {
+				++stat->total_bigblocks;
+			}
+			return 0;
+		}
 
 		if (layer2->append_off == 0 &&
-		    layer2->bytes_free == HAMMER_LARGEBLOCK_SIZE)
+		    layer2->bytes_free == HAMMER_LARGEBLOCK_SIZE) {
+			if (stat) {
+				++stat->total_bigblocks;
+				++stat->total_free_bigblocks;
+			}
 			return 0;
+		}
+
 		/*
 		 * We found a layer2 entry that is not empty!
 		 */
@@ -627,15 +666,20 @@ free_callback(hammer_transaction_t trans, hammer_volume_t volume __unused,
 }
 
 static int
-hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume)
+hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume,
+	struct bigblock_stat *stat)
 {
 	int error;
-	error = hammer_iterate_l1l2_entries(trans, volume, free_callback,
-					    (void*)1);
+
+	stat->total_bigblocks = 0;
+	stat->total_free_bigblocks = 0;
+	stat->counter = 0;
+
+	error = hammer_iterate_l1l2_entries(trans, volume, free_callback, NULL);
 	if (error)
 		return error;
 
-	error = hammer_iterate_l1l2_entries(trans, volume, free_callback, NULL);
+	error = hammer_iterate_l1l2_entries(trans, volume, free_callback, stat);
 	return error;
 }
 
