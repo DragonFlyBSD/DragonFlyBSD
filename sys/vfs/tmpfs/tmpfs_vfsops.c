@@ -138,10 +138,12 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	vm_pindex_t pages;
 	vm_pindex_t pages_limit;
 	ino_t nodes;
+	u_int64_t	maxfsize;
 	int error;
 	/* Size counters. */
 	ino_t	nodes_max;
 	off_t	size_max;
+	size_t	maxfsize_max;
 	size_t	size;
 
 	/* Root node attributes. */
@@ -162,6 +164,7 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	bzero(&args, sizeof(args));
 	size_max  = 0;
 	nodes_max = 0;
+	maxfsize_max = 0;
 
 	if (path) {
 		if (data) {
@@ -171,6 +174,7 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		}
 		size_max = args.ta_size_max;
 		nodes_max = args.ta_nodes_max;
+		maxfsize_max = args.ta_maxfsize_max;
 		root_uid = args.ta_root_uid;
 		root_gid = args.ta_root_gid;
 		root_mode = args.ta_root_mode;
@@ -206,13 +210,17 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	else
 		nodes = nodes_max;
 
+	maxfsize = IDX_TO_OFF(pages_limit);
+	if (maxfsize_max != 0 && maxfsize > maxfsize_max)
+		maxfsize = maxfsize_max;
+
 	/* Allocate the tmpfs mount structure and fill it. */
 	tmp = kmalloc(sizeof(*tmp), M_TMPFSMNT, M_WAITOK | M_ZERO);
 
 	lockinit(&(tmp->allnode_lock), "tmpfs allnode lock", 0, LK_CANRECURSE);
 	tmp->tm_nodes_max = nodes;
 	tmp->tm_nodes_inuse = 0;
-	tmp->tm_maxfilesize = IDX_TO_OFF(pages_limit);
+	tmp->tm_maxfilesize = maxfsize;
 	LIST_INIT(&tmp->tm_nodes_used);
 
 	tmp->tm_pages_max = pages;
@@ -472,7 +480,7 @@ tmpfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 
 	sbp->f_files = freenodes + tmp->tm_nodes_inuse;
 	sbp->f_ffree = freenodes;
-	/* sbp->f_owner = tmp->tn_uid; */
+	sbp->f_owner = tmp->tm_root->tn_uid;
 
 	return 0;
 }
