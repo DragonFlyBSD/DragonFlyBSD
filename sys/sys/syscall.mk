@@ -59,7 +59,6 @@ MIASM =  \
 	vfork.o \
 	sbrk.o \
 	sstk.o \
-	vadvise.o \
 	munmap.o \
 	mprotect.o \
 	madvise.o \

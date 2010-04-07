@@ -19,7 +19,7 @@
 .Os
 .Sh NAME
 .Nm sili
-.Nd Silicon Image 3124/3132/3531 SATA controller
+.Nd Silicon Image 3124/3132 SATA controller
 .Sh SYNOPSIS
 To compile this driver into the kernel,
 place the following line in your
@@ -38,12 +38,55 @@ sili_load="YES"
 The
 .Nm
 driver provides support for SATA controllers using the Silicon Image
-3124/3132/3531 SATALink chipsets.
+3124/3132 SATALink chipsets.
 .Pp
 Although
 .Nm
 controllers are actual ATA controllers, the driver emulates SCSI via a
 translation layer.
+.Sh LOADER TUNABLES
+The following hints may be set in
+.Xr loader.conf 5
+to control the
+.Nm
+driver's behavior.
+Note that the hint need only exist, so removing it requires commenting it out.
+.Pp
+Usually both the
+.Xr nata 4
+and the
+.Nm
+drivers are loaded.
+The
+.Xr nata 4
+driver will pick up any ata-like devices which the
+.Nm
+driver misses.
+If the
+.Nm
+driver is disabled the
+.Xr nata 4
+driver will typically pick up the
+.Nm
+devices, albeit under the
+.Pa ad
+disk name rather than the
+.Pa da
+disk name.
+.Bd -literal -offset indent
+hint.sili.disabled=1
+.Ed
+.Pp
+The
+.Nm
+driver can be told to force a lower-speed 1.5Gb link speed
+if necessary, and can also be told to refrain from attempting to send
+certain higher-level ATA commands to initialize ATA features which
+some devices might not properly implement.
+.Bd -literal -offset indent
+hint.sili.force150=1
+hint.sili.nofeatures=1
+.Ed
 .Sh SEE ALSO
 .Xr ahci 4 ,
 .Xr intro 4 ,
@@ -70,4 +113,5 @@ for
 It was ported to
 .Dx
 by
-.An Matt Dillon Aq dillon@apollo.backplane.com .
+.An Matt Dillon Aq dillon@apollo.backplane.com
+who added new features such as hot-plug and port multiplier support.

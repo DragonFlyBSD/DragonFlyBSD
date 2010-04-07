@@ -86,9 +86,16 @@ or
 .Cm g
 to specify values in kilobytes, megabytes, and gigabytes per second.
 If no suffix is specified, bytes per second is assumed.
+.Pp
+Unfortunately this is only applicable to the pre-compression bandwidth
+when compression is used, so a better solution would probably be to
+use a
+.Xr ipfw 8
+pipe or a
+.Xr pf 4
+queue.
 .It Fl c Ar cyclefile
-When pruning and reblocking you can instruction
-.Nm
+When pruning, rebalancing or reblocking you can tell the utility
 to start at the object id stored in the specified file.
 If the file does not exist
 .Nm
@@ -116,7 +123,11 @@ minimum delay after a batch ends before the next batch is allowed
 to start.
 The default is five seconds.
 .It Fl p Ar ssh-port
-This passes the -p <port> option to ssh when using a remote
+This passes the
+.Fl p Ar ssh-port
+option to
+.Xr ssh 1
+when using a remote
 specification for the source and/or destination.
 .It Fl q
 Decrease verboseness.
@@ -124,18 +135,18 @@ May be specified multiple times.
 .It Fl r
 Specify recursion for those commands which support it.
 .It Fl t Ar seconds
-When pruning and reblocking you can tell the utility to stop after a
-certain period of time.
+When pruning, rebalancing or reblocking you can tell the utility to stop
+after a certain period of time.
 This option is used along with the
 .Fl c Ar cyclefile
-option to prune or reblock a portion of the file system incrementally.
+option to prune, rebalance or reblock incrementally.
 .It Fl v
 Increase verboseness.
 May be specified multiple times.
 .It Fl y
 Force "yes" for any interactive question.
 .It Fl B
-Bulk Transfer.
+Bulk transfer.
 .Cm Mirror-stream
 will not attempt to break-up large initial bulk transfers into smaller
 pieces.
@@ -148,7 +159,7 @@ option.
 .It Fl C Ar cachesize Ns Op Ns Cm \&: Ns Ar readahead
 Set the memory cache size for any raw
 .Tn I/O .
-The default is 16m.
+The default is 16MB.
 A suffix of
 .Cm k
 for kilobytes and
@@ -164,14 +175,16 @@ This option is typically only used with diagnostic commands
 as kernel-supported commands will use the kernel's buffer cache.
 .It Fl S Ar splitsize
 Specify the bulk splitup size in bytes for mirroring streams.
-When a mirror-stream is first started
+When a
+.Cm mirror-stream
+is first started
 .Nm
 will do an initial run-through of the data to calculate good
 transaction ids to cut up the bulk transfers, creating
 restart points in case the stream is interrupted.
 If we don't do this and the stream is interrupted it might
 have to start all over again.
-The default is a splitsize of 100m.
+The default is a splitsize of 4G.
 .Pp
 At the moment the run-through is disk-bandwidth-heavy but some
 future version will limit the run-through to just the B-Tree
@@ -181,15 +194,22 @@ The splitsize may be suffixed with
 .Cm k , m ,
 or
 .Cm g
-to specify values in kilobytes, megabytes, or gigabytessecond.
+to specify values in kilobytes, megabytes, or gigabytes.
 If no suffix is specified, bytes is assumed.
+.Pp
+When mirroring very large filesystems the minimum recommended
+split side is 4G.
+A small split size may wind up generating a great deal of overhead
+but very little actual incremental data and is not recommended.
 .It Fl X
-Enable compression for any remote ssh specifications.  Unfortunately
-the
+Enable compression for any remote ssh specifications.
+Unfortunately the
 .Fl C
 option has already been reserved for other purposes so we had to use
-a different letter.  This option is typically used with the
-mirroring directives.
+a different letter.
+This option is typically used with the mirroring directives.
+.It Fl y
+Force "yes" for any interactive question.
 .El
 .Pp
 The commands are as follows:
@@ -224,7 +244,7 @@ directive may be what you are looking for.
 .It Cm bstats Op Ar interval
 Output
 .Nm HAMMER
-B-tree statistics until interrupted.
+B-Tree statistics until interrupted.
 Pause
 .Ar interval
 seconds between each display.
@@ -260,7 +280,7 @@ reverse engineered to some degree.
 .Pp
 In
 .Nm HAMMER
-allocations essentially appended to a selected big-block using
+allocations are essentially appended to a selected big-block using
 the append offset and deducted from the free byte count.
 When space is freed the free byte count is adjusted but
 .Nm HAMMER
@@ -280,7 +300,7 @@ This command needs the
 flag.
 .\" ==== show ====
 .It Cm show Op Ar lo Ns Cm \&: Ns Ar objid
-Dump the B-tree.
+Dump the B-Tree.
 By default this command will validate all B-Tree
 linkages and CRCs, including data CRCs, and will report the most verbose
 information it can dig up.
@@ -293,9 +313,10 @@ If you specify a localization field or a localization:obj_id field,
 .Ar lo Ns Cm \&: Ns Ar objid ,
 the dump will
 search for the key printing nodes as it recurses down, and then
-will iterate forwards.  These fields are specified in HEX.
+will iterate forwards.
+These fields are specified in HEX.
 Note that the pfsid is the top 16 bits of the 32 bit localization
-field so pfs #1 would be 00010000.
+field so PFS #1 would be 00010000.
 .Pp
 If you use
 .Fl q
@@ -310,7 +331,7 @@ If you use
 .Fl qqq
 the command will not report volume header information, big-block fill
 ratios, mirror transaction ids, or report or check data CRCs.
-B-tree CRCs and linkages are still checked.
+B-Tree CRCs and linkages are still checked.
 .Pp
 This command needs the
 .Fl f
@@ -325,7 +346,7 @@ This command needs the
 .Fl f
 flag.
 .\" .It Ar blockmap
-.\" Dump the B-tree, record, large-data, and small-data blockmaps, showing
+.\" Dump the B-Tree, record, large-data, and small-data blockmaps, showing
 .\" physical block assignments and free space percentages.
 .\" ==== namekey1 ====
 .It Cm namekey1 Ar filename
@@ -354,7 +375,7 @@ Shows extended information about all the mounted
 .Nm HAMMER
 file systems.
 The information is divided into sections:
-.Bl -tag
+.Bl -tag -width indent
 .It Volume identification
 General information, like the label of the
 .Nm HAMMER
@@ -366,7 +387,7 @@ Big block statistics, such as total, used, reserved and free big blocks.
 .It Space information
 Information about space used on the filesystem.
 Currently total size, used, reserved and free space are displayed.
-.It PFS Information
+.It PFS information
 Basic information about the PFSs currently present on a
 .Nm HAMMER
 filesystem.
@@ -519,6 +540,8 @@ file system becomes full.
 .It Cm config Op Ar filesystem Op Ar configfile
 .Nm ( HAMMER
 VERSION 3+)
+Show or change configuration for
+.Ar filesystem .
 If zero or one arguments are specified this function dumps the current
 configuration file to stdout.
 Zero arguments specifies the PFS containing the current directory.
@@ -787,9 +810,13 @@ This directive is not normally used on a production system.
 This command does not remove snapshot softlinks but will delete all
 snapshots recorded in file system meta-data (for file system version 3+).
 The user is responsible for deleting any softlinks.
+.Pp
+Pruning is a per PFS operation, so a
+.Nm HAMMER
+file system and each PFS in it have to be pruned separately.
 .\" ==== rebalance ====
 .It Cm rebalance Ar filesystem Op Ar saturation_percentage
-This command will rebalance the B-tree, nodes with small number of
+This command will rebalance the B-Tree, nodes with small number of
 elements will be combined and element counts will be smoothed out
 between nodes.
 .Pp
@@ -797,6 +824,10 @@ The saturation percentage is between 50% and 100%.
 The default is 75% (the
 .Sq %
 suffix is not needed).
+.Pp
+Rebalancing is a per PFS operation, so a
+.Nm HAMMER
+file system and each PFS in it have to be rebalanced separately.
 .\" ==== reblock* ====
 .It Cm reblock Ar filesystem Op Ar fill_percentage
 .It Cm reblock-btree Ar filesystem Op Ar fill_percentage
@@ -831,7 +862,7 @@ options to limit the run time.
 The file system would thus be defragmented over long period of time.
 .Pp
 It is recommended that separate invocations be used for each data type.
-B-tree nodes, inodes, and directories are typically the most important
+B-Tree nodes, inodes, and directories are typically the most important
 elements needing defragmentation.
 Data can be defragmented over a longer period of time.
 .Pp
@@ -1025,7 +1056,7 @@ This directive will refuse to run if any programs have open descriptors
 in the PFS, including programs chdir'd into the PFS.
 .\" ==== pfs-downgrade ====
 .It Cm pfs-downgrade Ar dirpath
-Downgrade a master PFS from master to slave operation
+Downgrade a master PFS from master to slave operation.
 The PFS becomes read-only and access will be locked to its
 .Cm sync-end-tid .
 .Pp
@@ -1045,8 +1076,12 @@ The stream ends when the transaction id space has been exhausted.
 .It Cm mirror-read-stream Ar filesystem Op Ar begin-tid
 Generate a mirroring stream to stdout.
 Upon completion the stream is paused until new data is synced to the
-master, then resumed.
+.Ar filesystem ,
+then resumed.
 Operation continues until the pipe is broken.
+See the
+.Cm mirror-stream
+command for more details.
 .\" ==== mirror-write ====
 .It Cm mirror-write Ar filesystem
 Take a mirroring stream on stdin.
@@ -1054,6 +1089,9 @@ Take a mirroring stream on stdin.
 This command will fail if the
 .Cm shared-uuid
 configuration field for the two file systems do not match.
+See the
+.Cm mirror-copy
+command for more details.
 .Pp
 If the target PFS does not exist this command will ask you whether
 you want to create a compatible PFS slave for the target or not.
@@ -1083,8 +1121,10 @@ and/or
 on the appropriate host.
 The source may be a master or slave PFS, and the target must be a slave PFS.
 .Pp
-This command also established full duplex communication and turns on
-the two-way protocol feature which automatically negotiates transaction id
+This command also establishes full duplex communication and turns on
+the 2-way protocol feature
+.Fl ( 2 )
+which automatically negotiates transaction id
 ranges without having to use a cyclefile.
 If the operation completes successfully the target PFS's
 .Cm sync-end-tid
@@ -1099,11 +1139,16 @@ you want to create a compatible PFS slave for the target or not.
 .It Cm mirror-stream \
 Oo Oo Ar user Ns Cm @ Oc Ns Ar host Ns Cm \&: Oc Ns Ar filesystem \
 Oo Oo Ar user Ns Cm @ Oc Ns Ar host Ns Cm \&: Oc Ns Ar filesystem
+This is a shortcut which pipes a
+.Cm mirror-read-stream
+command to a
+.Cm mirror-write
+command.
 This command works similarly to
 .Cm mirror-copy
 but does not exit after the initial mirroring completes.
 The mirroring operation will resume as changes continue to be made to the
-master.
+source.
 The command is commonly used with
 .Fl i Ar delay
 and
@@ -1119,10 +1164,12 @@ option.
 .Pp
 This command also detects the initial-mirroring case and spends some
 time scanning the B-Tree to find good break points, allowing the initial
-bulk mirroring operation to be broken down into about 20 separate pieces.
+bulk mirroring operation to be broken down into 100MB pieces.
 This means that the user can kill and restart the operation and it will
 not have to start from scratch once it has gotten past the first chunk.
 The
+.Fl S
+option may be used to change the size of pieces and the
 .Fl B
 option may be used to disable this feature and perform an initial bulk
 transfer instead.
@@ -1173,25 +1220,10 @@ New snapshot management, using file system meta-data for saving
 configuration file and snapshots (transaction ids etc.).
 Also default snapshots directory has changed.
 .It 4
-.Dx 2.5
+.Dx 2.6
 default version.
-New undo/flush, giving faster sync.
+New undo/redo/flush, giving HAMMER a much faster sync and fsync.
 .El
-.El
-.\".Sh EXAMPLES
-.Sh ENVIRONMENT
-If the following environment variables exist, they will be used by
-.Nm :
-.Bl -tag -width ".Ev EDITOR"
-.It Ev EDITOR
-The editor program specified in the variable
-.Ev EDITOR
-will be invoked instead of the default editor, which is
-.Xr vi 1
-.It Ev VISUAL
-Same effect as
-.Ev EDITOR
-variable.
 .El
 .Sh PSEUDO-FILESYSTEM (PFS) NOTES
 The root of a PFS is not hooked into the primary
@@ -1329,43 +1361,67 @@ a minute or two depending.
 .Pp
 Version 4 allows the UNDO FIFO to be flushed without also having
 to flush the volume header, removing 2 of the 4 disk syncs typically
-required for an fsync() and removing 1 of the 2 disk syncs typically
+required for an
+.Fn fsync
+and removing 1 of the 2 disk syncs typically
 required for a flush sequence.
+Version 4 also implements the REDO log (see below) which is capable
+of fsync()ing with either one disk flush or zero disk flushes.
 .Sh FSYNC FLUSH MODES
-Hammer implements five different fsync flush modes via the
-.Li vfs.hammer.fsync_mode
-sysctl.
+.Nm HAMMER
+implements five different fsync flush modes via the
+.Va vfs.hammer.fsync_mode
+sysctl, for
+.Nm HAMMER
+version 4+ file systems.
 .Pp
+As of
+.Dx 2.6
+fsync mode 3 is set by default.
+REDO operation and recovery is enabled by default.
 .Bl -tag -width indent
 .It mode 0
 Full synchronous fsync semantics without REDO.
 .Pp
-Hammer will not generate REDOs.  A fsync() will completely sync
+.Nm HAMMER
+will not generate REDOs.
+A
+.Fn fsync
+will completely sync
 the data and meta-data and double-flush the FIFO, including
-issuing two disk synchronization commands.  The data is guaranteed
-to be on the media as of when fsync() returns.
+issuing two disk synchronization commands.
+The data is guaranteed
+to be on the media as of when
+.Fn fsync
+returns.
 Needless to say, this is slow.
-.Pp
-Even though all modes are available in that release the REDO
-semantics are not well tested yet and not enabled by default.
 .It mode 1
 Relaxed asynchronous fsync semantics without REDO.
 .Pp
 This mode works the same as mode 0 except the last disk synchronization
-command is not issued.  It is faster than mode 0 but not even remotely
+command is not issued.
+It is faster than mode 0 but not even remotely
 close to the speed you get with mode 2 or mode 3.
 .Pp
 Note that there is no chance of meta-data corruption when using this
-mode, it simply means that the data you wrote and then fsync()'d might
-not have made it to the media if the storage system crashes at a bad
+mode, it simply means that the data you wrote and then
+.Fn fsync Ns 'd
+might not have made it to the media if the storage system crashes at a bad
 time.
 .Pp
 .It mode 2
 Full synchronous fsync semantics using REDO.
+NOTE: If not running
+a HAMMER version 4 filesystem or later mode 0 is silently used.
 .Pp
-Hammer will generate REDOs in the UNDO/REDO FIFO based on a heuristic.
-If this is sufficient to satisfy the fsync() operation the blocks
-will be written out and hammer will wait for the I/Os to complete,
+.Nm HAMMER
+will generate REDOs in the UNDO/REDO FIFO based on a heuristic.
+If this is sufficient to satisfy the
+.Fn fsync
+operation the blocks
+will be written out and
+.Nm HAMMER
+will wait for the I/Os to complete,
 and then followup with a disk sync command to guarantee the data
 is on the media before returning.
 This is slower than mode 3 and can result in significant disk or
@@ -1373,27 +1429,56 @@ SSDs overheads, though not as bad as mode 0 or mode 1.
 .Pp
 .It mode 3
 Relaxed asynchronous fsync semantics using REDO.
+NOTE: If not running
+a HAMMER version 4 filesystem or later mode 1 is silently used.
 .Pp
-Hammer will generate REDOs in the UNDO/REDO FIFO based on a heuristic.
-If this is sufficient to satisfy the fsync() operation the blocks
-will be written out and hammer will wait for the I/Os to complete,
+.Nm HAMMER
+will generate REDOs in the UNDO/REDO FIFO based on a heuristic.
+If this is sufficient to satisfy the
+.Fn fsync
+operation the blocks
+will be written out and
+.Nm HAMMER
+will wait for the I/Os to complete,
 but will
 .Em NOT
 issue a disk synchronization command.
 .Pp
 Note that there is no chance of meta-data corruption when using this
-mode, it simply means that the data you wrote and then fsync()'d might
+mode, it simply means that the data you wrote and then
+.Fn fsync Ns 'd
+might
 not have made it to the media if the storage system crashes at a bad
 time.
 .Pp
 This mode is the fastest production fsyncing mode available.
-This mode is equivalent to how the UFS fsync in the BSDs operates.
+This mode is equivalent to how the UFS fsync in the
+.Bx Ns s
+operates.
 .Pp
 .It mode 4
 fsync is ignored.
 .Pp
-Calls to fsync() will be ignored.  This mode is primarily designed
+Calls to
+.Fn fsync
+will be ignored.
+This mode is primarily designed
 for testing and should not be used on a production system.
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh ENVIRONMENT
+If the following environment variables exist, they will be used by:
+.Bl -tag -width ".Ev EDITOR"
+.It Ev EDITOR
+The editor program specified in the variable
+.Ev EDITOR
+will be invoked instead of the default editor, which is
+.Xr vi 1 .
+.It Ev VISUAL
+Same effect as
+.Ev EDITOR
+variable.
 .El
 .Sh FILES
 .Bl -tag -width ".It Pa <fs>/var/slaves/<name>" -compact
@@ -1421,8 +1506,7 @@ recommended slave PFS snapshots directory
 .Nm ( HAMMER
 VERSION 2-)
 .El
-.Sh EXIT STATUS
-.Ex -std
+.\".Sh EXAMPLES
 .Sh SEE ALSO
 .Xr ssh 1 ,
 .Xr undo 1 ,

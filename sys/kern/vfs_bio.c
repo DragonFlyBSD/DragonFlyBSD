@@ -3357,7 +3357,6 @@ _biowait(struct bio *bio, const char *wmesg, int to)
 				kprintf("tsleep error biowait %d\n", error);
 				return (error);
 			}
-			break;
 		}
 	}
 

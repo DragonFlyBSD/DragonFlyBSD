@@ -22,7 +22,6 @@
 # installkernel       - Install the kernel and the kernel-modules.
 # reinstallkernel     - Reinstall the kernel and the kernel-modules.
 # kernel              - buildkernel + installkernel.
-# update              - Convenient way to update your source tree (cvs).
 # preupgrade	      - Certain upgrades may have to be done before installworld.
 #			installworld will complain if they have not been done.  This
 #			target will do those upgrades... typically the addition of
@@ -76,7 +75,7 @@ TGTS=	all all-man buildkernel quickkernel nativekernel \
 	cleandepend cleandir depend everything \
 	hierarchy install installcheck installkernel \
 	reinstallkernel installmost installworld libraries lint maninstall \
-	manlint mk most obj objlink regress rerelease tags update \
+	manlint mk most obj objlink regress rerelease tags \
 	_obj _includes _libraries _depend _worldtmp \
 	_bootstrap-tools _obj _build-tools _cross-tools
 
@@ -187,35 +186,3 @@ upgrade:	upgrade_etc
 #
 upgrade_etc:
 	@cd ${.CURDIR}/etc; make -m ${.CURDIR}/share/mk upgrade_etc
-
-## Remove obsolete CVS commands, we are using GIT now.
-##
-## Convenient targets for use by the CVS repository meister.
-##
-#update_preview_tag:     iamoncrater
-#	cvs -d /cvs rtag -a -F DragonFly_Preview src
-#
-#update_release1_2_slip_tag:     iamoncrater
-#	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_1_2 DragonFly_RELEASE_1_2_Slip src
-#
-#update_release1_4_slip_tag:     iamoncrater
-#	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_1_4 DragonFly_RELEASE_1_4_Slip src
-#
-#update_release1_6_slip_tag:     iamoncrater
-#	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_1_6 DragonFly_RELEASE_1_6_Slip src
-#
-#update_release1_8_slip_tag:     iamoncrater
-#	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_1_8 DragonFly_RELEASE_1_8_Slip src
-#
-#update_release1_10_slip_tag:     iamoncrater
-#	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_1_10 DragonFly_RELEASE_1_10_Slip src
-#
-#update_release1_12_slip_tag:     iamoncrater
-#	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_1_12 DragonFly_RELEASE_1_12_Slip src
-#
-#update_release2_0_slip_tag:     iamoncrater
-#	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_2_0 DragonFly_RELEASE_2_0_Slip src
-
-iamoncrater:
-	@ [ "`hostname`" = "crater.dragonflybsd.org" ] || \
-		(echo "You are not on the master cvs host"; exit 1)

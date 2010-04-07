@@ -37,10 +37,10 @@
 .\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.30 2008/09/16 20:45:36 thomas Exp $
 .\"
 .Dd September 28, 2009
-.Dt DISKLABEL 8
+.Dt DISKLABEL32 8
 .Os
 .Sh NAME
-.Nm disklabel
+.Nm disklabel32
 .Nd read and write 32 bit disk pack label
 .Sh SYNOPSIS
 .Nm
@@ -559,15 +559,15 @@ If you are tight on space all sizes can be halved.
 Your mileage may vary.
 .Pp
 .Dl "fdisk -BI da0"
-.Dl "disklabel -w -B da0s1 auto"
-.Dl "disklabel -e da0s1"
+.Dl "disklabel32 -w -B da0s1 auto"
+.Dl "disklabel32 -e da0s1"
 .Ss Manual offset
 .Dx
 no longer snoop-adjusts the on-disk label when reading or writing
 raw labels.
 .Nm
 is now responsible for adjusting the label when operating in raw mode.
-Traditional (32 bit
+Traditional (32 bit,
 .Bx )
 disklabels store offsets as absolute block numbers
 rather than slice-relative block numbers.
@@ -764,7 +764,7 @@ for more details).
 The remainder of the line is a comment and shows the size of
 the partition in MB.
 .Sh EXAMPLES
-.Dl "disklabel da0s1"
+.Dl "disklabel32 da0s1"
 .Pp
 Display the in-core label for the first slice of the
 .Pa da0
@@ -775,7 +775,7 @@ disk, as obtained via
 the compatibility slice name should be specified, such as
 .Pa da0s0 . )
 .Pp
-.Dl "disklabel da0s1 > savedlabel"
+.Dl "disklabel32 da0s1 > savedlabel"
 .Pp
 Save the in-core label for
 .Pa da0s1
@@ -785,7 +785,7 @@ This file can be used with the
 .Fl R
 option to restore the label at a later date.
 .Pp
-.Dl "disklabel -w -r /dev/da0s1 da2212 foo"
+.Dl "disklabel32 -w -r /dev/da0s1 da2212 foo"
 .Pp
 Create a label for
 .Pa da0s1
@@ -796,14 +796,14 @@ found in
 Any existing bootstrap code will be clobbered
 and the disk rendered unbootable.
 .Pp
-.Dl "disklabel -e -r da0s1"
+.Dl "disklabel32 -e -r da0s1"
 .Pp
 Read the on-disk label for
 .Pa da0s1 ,
 edit it, and reinstall in-core as well as on-disk.
 Existing bootstrap code is unaffected.
 .Pp
-.Dl "disklabel -e -r -n da0s1"
+.Dl "disklabel32 -e -r -n da0s1"
 .Pp
 Read the on-disk label for
 .Pa da0s1 ,
@@ -812,7 +812,7 @@ It does
 .Em not
 install the new label either in-core or on-disk.
 .Pp
-.Dl "disklabel -r -w da0s1 auto"
+.Dl "disklabel32 -r -w da0s1 auto"
 .Pp
 Try to auto-detect the required information from
 .Pa da0s1 ,
@@ -822,7 +822,7 @@ Use another
 command to edit the
 partitioning and file system information.
 .Pp
-.Dl "disklabel -R da0s1 savedlabel"
+.Dl "disklabel32 -R da0s1 savedlabel"
 .Pp
 Restore the on-disk and in-core label for
 .Pa da0s1
@@ -830,7 +830,7 @@ from information in
 .Pa savedlabel .
 Existing bootstrap code is unaffected.
 .Pp
-.Dl "disklabel -R -n da0s1 label_layout"
+.Dl "disklabel32 -R -n da0s1 label_layout"
 .Pp
 Display what the label would be for
 .Pa da0s1
@@ -843,7 +843,7 @@ or
 .Cm *
 partition sizes.
 .Pp
-.Dl "disklabel -B da0s1"
+.Dl "disklabel32 -B da0s1"
 .Pp
 Install a new bootstrap on
 .Pa da0s1 .
@@ -853,7 +853,7 @@ and possibly
 .Pa /boot/boot2 .
 On-disk and in-core labels are unchanged.
 .Pp
-.Dl "disklabel -w -B /dev/da0s1 -b newboot1 -s newboot2 da2212"
+.Dl "disklabel32 -w -B /dev/da0s1 -b newboot1 -s newboot2 da2212"
 .Pp
 Install a new label and bootstrap.
 The label is derived from disktab information for
@@ -867,8 +867,8 @@ and
 .Dl "dd if=/dev/zero of=/dev/da0 bs=512 count=32"
 .Dl "fdisk -BI da0"
 .Dl "dd if=/dev/zero of=/dev/da0s1 bs=512 count=32"
-.Dl "disklabel -w -B da0s1 auto"
-.Dl "disklabel -e da0s1"
+.Dl "disklabel32 -w -B da0s1 auto"
+.Dl "disklabel32 -e da0s1"
 .Pp
 Completely wipe any prior information on the disk, creating a new bootable
 disk with a DOS partition table containing one
@@ -881,7 +881,7 @@ The
 commands are optional, but may be necessary for some BIOSes to properly
 recognize the disk.
 .Pp
-.Dl "disklabel -W da0s1"
+.Dl "disklabel32 -W da0s1"
 .Dl "dd if=/dev/zero of=/dev/da0s1 bs=512 count=32"
 .Dl "disklabel64 -r -w da0s1 auto"
 .Dl "disklabel64 -N da0s1"
@@ -902,7 +902,7 @@ and
 .Cm * ,
 which could be used as a source file for
 .Pp
-.Dl "disklabel -R ad0s1 new_label_file"
+.Dl "disklabel32 -R ad0s1 new_label_file"
 .Bd -literal -offset 4n
 # /dev/ad0s1:
 type: ESDI
@@ -972,7 +972,7 @@ or
 will not install bootstrap code that overlaps it.
 .Sh COMPATIBILITY
 Due to
-.Xr disklabel 5
+.Xr disklabel32 5
 storing sector numbers in 32 bit format
 .Nm
 is restricted to 2TB, using the prevalent sector size of 512B.
@@ -993,7 +993,7 @@ for read-only operation.
 .Sh SEE ALSO
 .Xr dd 1 ,
 .Xr ccd 4 ,
-.Xr disklabel 5 ,
+.Xr disklabel32 5 ,
 .Xr disktab 5 ,
 .Xr boot0cfg 8 ,
 .Xr diskinfo 8 ,

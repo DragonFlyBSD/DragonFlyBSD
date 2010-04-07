@@ -111,7 +111,7 @@ int hammer_verify_zone;
 int hammer_verify_data = 1;
 int hammer_write_mode;
 int hammer_yield_check = 16;
-int hammer_fsync_mode;
+int hammer_fsync_mode = 3;
 int64_t hammer_contention_count;
 int64_t hammer_zone_limit;
 

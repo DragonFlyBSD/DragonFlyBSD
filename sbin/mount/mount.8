@@ -43,14 +43,14 @@
 .Nm
 .Op Fl adfpruvw
 .Op Fl o Ar options
-.Op Fl t Ar ufs | external_type
+.Op Fl t Ar type
 .Nm
 .Op Fl dfpruvw
-.Ar special | node
+.Brq Ar special | node
 .Nm
 .Op Fl dfpruvw
 .Op Fl o Ar options
-.Op Fl t Ar ufs | external_type
+.Op Fl t Ar type
 .Ar special node
 .Sh DESCRIPTION
 The
@@ -105,6 +105,9 @@ caution).
 Options are specified with a
 .Fl o
 flag followed by a comma separated string of options.
+If a
+.Dq no
+prefix is added or removed from a option name, then meaning is negated.
 In case of conflicting options being specified, the rightmost option
 takes effect.
 The following options are available:
@@ -177,7 +180,7 @@ It is set automatically when the user does not have super-user privileges.
 .It Cm nosymfollow
 Do not follow symlinks
 on the mounted file system.
-.It Cm rdonly
+.It Cm rdonly , ro , norw
 The same as
 .Fl r ;
 mount the file system read-only (even the super-user may not write it).
@@ -233,14 +236,14 @@ For example, the
 .Nm
 command:
 .Bd -literal -offset indent
-mount -t mfs -o nosuid,-N,-s=4000 /dev/dk0b /tmp
+mount -t mfs -o nosuid,-N,-s=4000 /dev/da0s0b /tmp
 .Ed
 .Pp
 causes
 .Nm
 to execute the equivalent of:
 .Bd -literal -offset indent
-/sbin/mount_mfs -o nosuid -N -s 4000 /dev/dk0b /tmp
+/sbin/mount_mfs -o nosuid -N -s 4000 /dev/da0s0b /tmp
 .Ed
 .Pp
 Additional options specific to filesystem types
@@ -270,12 +273,12 @@ The same as the
 argument to the
 .Fl o
 option.
-.It Fl t Ar ufs | external_type
+.It Fl t Ar type
 The argument following the
 .Fl t
 is used to indicate the file system type.
 The type
-.Ar ufs
+.Cm ufs
 is the default.
 The
 .Fl t
@@ -300,7 +303,8 @@ mounts all filesystems except those of type
 and
 .Tn MFS .
 .Pp
-If the type is not one of the internally known types,
+If the type is not the internally known type,
+.Cm ufs ,
 .Nm
 will attempt to execute a program in
 .Pa /sbin/mount_ Ns Sy XXX
@@ -381,12 +385,16 @@ have permission to load the module.
 .Xr lsvfs 1 ,
 .Xr mount 2 ,
 .Xr vfsload 3 ,
+.Xr UFS 5 ,
+.Xr devtab 5 ,
 .Xr fstab 5 ,
 .Xr kldload 8 ,
 .Xr mount_cd9660 8 ,
+.Xr mount_devfs 8 ,
 .Xr mount_ext2fs 8 ,
 .Xr mount_fdesc 8 ,
 .Xr mount_hammer 8 ,
+.Xr mount_hpfs 8 ,
 .Xr mount_linprocfs 8 ,
 .Xr mount_mfs 8 ,
 .Xr mount_msdos 8 ,

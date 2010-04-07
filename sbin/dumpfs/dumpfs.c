@@ -316,7 +316,7 @@ marshal(const char *name)
 {
 	ssize_t n;
 	int fd;
-	static char realname[12];
+	static char realname[PATH_MAX];
 
 	if ((fd = open(name, O_RDONLY, 0)) < 0)
 		goto err;
@@ -338,9 +338,9 @@ marshal(const char *name)
  	}
 
 	if(strncmp(name, "/dev", 4) == 0) {
-		snprintf(realname, 12, "%s", name);
+		snprintf(realname, PATH_MAX, "%s", name);
 	} else {
-		snprintf(realname, 12, "/dev/%s", name);
+		snprintf(realname, PATH_MAX, "/dev/%s", name);
 	}
 
 	printf("# newfs command for %s (%s)\n", name, realname);

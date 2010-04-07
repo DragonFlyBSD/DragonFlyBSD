@@ -59,7 +59,7 @@ int RunningIoctl;
 int DidInterrupt;
 int BulkOpt;
 u_int64_t BandwidthOpt;
-u_int64_t SplitupOpt = 100 * 1024 * 1024;
+u_int64_t SplitupOpt = 4ULL * 1024ULL * 1024ULL * 1024ULL;
 const char *CyclePath;
 const char *LinkPath;
 
@@ -569,7 +569,9 @@ usage(int exit_code)
 		"hammer snap <path> [<note>]\n"
 		"hammer snaplo <path> [<note>]\n"
 		"hammer snapq <dir> [<note>]\n"
-		"hammer snaprm {<path> | <transid>} ...\n"
+		"hammer snaprm <path> ...\n"
+		"hammer snaprm <transid> ...\n"
+		"hammer snaprm <filesystem> <transid> ...\n"
 		"hammer snapls [<path> ...]\n"
 	);
 

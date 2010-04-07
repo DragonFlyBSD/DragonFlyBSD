@@ -59,20 +59,17 @@
 #error "This file should not be included by userland programs."
 #endif
 
+struct mdglobaldata;
+
 struct lwbuf {
     vm_page_t		m;		/* currently mapped page */
     vm_offset_t		kva;		/* va of mapping */
     cpumask_t		cpumask;	/* cpu mapping synchronization */
 };
 
-struct lwbuf_free_kvp {
-    vm_offset_t			kva;
-    SLIST_ENTRY(lwbuf_free_kvp)	next;
-};
-SLIST_HEAD(lwbuf_free_kvp_list, lwbuf_free_kvp);
-
 static __inline vm_page_t
-lwbuf_page(struct lwbuf *lwb) {
+lwbuf_page(struct lwbuf *lwb)
+{
     return (lwb->m);
 }
 

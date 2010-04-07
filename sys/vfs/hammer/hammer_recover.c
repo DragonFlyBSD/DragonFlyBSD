@@ -659,7 +659,7 @@ hammer_recover_stage2(hammer_mount_t hmp, hammer_volume_t root_volume)
 			goto done;
 		}
 	} else {
-		kprintf("HAMMER(%s) Embeded extended redo %016jx, "
+		kprintf("HAMMER(%s) Embedded extended redo %016jx, "
 			"%jd extbytes\n",
 			root_volume->ondisk->vol_name,
 			(intmax_t)ext_offset,

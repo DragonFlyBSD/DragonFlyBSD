@@ -82,12 +82,17 @@ Do not dump the file.
 The file may not be changed.
 .It UF_APPEND
 The file may only be appended to.
+.It UF_OPAQUE
+The directory is opaque when viewed through a union stack.
 .It UF_NOUNLINK
 The file may not be renamed or deleted.
 .It UF_NOHISTORY
 Do not retain history for file.
-.It UF_OPAQUE
-The directory is opaque when viewed through a union stack.
+.It UF_CACHE
+Enable
+.Xr swapcache 8
+data caching.
+The flag is recursive and need only be set on a top-level directory.
 .It SF_ARCHIVED
 The file may be archived.
 .It SF_IMMUTABLE
@@ -98,25 +103,21 @@ The file may only be appended to.
 The file may not be renamed or deleted.
 .It SF_NOHISTORY
 Do not retain history for file.
+.It SF_NOCACHE
+Disable
+.Xr swapcache 8
+data caching.
+The flag is recursive and need only be set on a top-level directory.
 .El
 .Pp
 The
-.Dq UF_IMMUTABLE ,
-.Dq UF_APPEND ,
-.Dq UF_NOUNLINK ,
-.Dq UF_NOHISTORY ,
-.Dq UF_NODUMP ,
-and
-.Dq UF_OPAQUE
+.Dq UF_
+prefixed
 flags may be set or unset by either the owner of a file or the super-user.
 .Pp
 The
-.Dq SF_IMMUTABLE ,
-.Dq SF_APPEND ,
-.Dq SF_NOUNLINK ,
-.Dq SF_NOHISTORY ,
-and
-.Dq SF_ARCHIVED
+.Dq SF_
+prefixed
 flags may only be set or unset by the super-user.
 Attempts by the non-super-user to set the super-user only flags
 are silently ignored.
@@ -183,7 +184,8 @@ The underlying file system does not support file flags.
 .Xr fflagstostr 3 ,
 .Xr strtofflags 3 ,
 .Xr init 8 ,
-.Xr mount_union 8
+.Xr mount_union 8 ,
+.Xr swapcache 8
 .Sh HISTORY
 The
 .Nm chflags

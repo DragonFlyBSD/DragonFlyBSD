@@ -52,19 +52,31 @@
 #include <machine/atomic.h>
 #include <machine/param.h>
 
+#include <sys/mplock2.h>
+
 static void lwbuf_init(void *);
 SYSINIT(sock_lwb, SI_BOOT2_MACHDEP, SI_ORDER_ANY, lwbuf_init, NULL);
-
-/* Number of pages of KVA to allocate at boot per cpu (1MB) */
-#define	LWBUF_BOOT_PAGES	256
-/* Number to allocate incrementally (128KB) */
-#define LWBUF_ALLOC_PAGES	32
 
 static struct objcache *lwbuf_cache;
 
 MALLOC_DEFINE(M_LWBUF, "lwbuf", "Lightweight buffers");
-struct objcache_malloc_args lwbuf_malloc_args = { sizeof(struct lwbuf), M_LWBUF };
+struct objcache_malloc_args lwbuf_malloc_args =
+	    { sizeof(struct lwbuf), M_LWBUF };
 
+/* Number of pages of KVA to allocate at boot per cpu (1MB) */
+static int lwbuf_reserve_pages = 256;
+static int lwbuf_count;
+static int lwbuf_kva_bytes;
+
+SYSCTL_INT(_kern_ipc, OID_AUTO, lwbuf_reserve, CTLFLAG_RD,
+           &lwbuf_reserve_pages, 0,
+           "Number of pre-allocated lightweight buffers");
+SYSCTL_INT(_kern_ipc, OID_AUTO, lwbuf_count, CTLFLAG_RD,
+	   &lwbuf_count, 0,
+	   "Currently allocated lightweight buffers");
+SYSCTL_INT(_kern_ipc, OID_AUTO, lwbuf_kva_bytes, CTLFLAG_RD,
+	   &lwbuf_kva_bytes, 0,
+	   "Currently used KVA for lightweight buffers");
 
 static boolean_t
 lwbuf_cache_ctor(void *obj, void *pdata, int ocflags)
@@ -72,84 +84,51 @@ lwbuf_cache_ctor(void *obj, void *pdata, int ocflags)
     struct lwbuf *lwb = (struct lwbuf *)obj;
 
     lwb->m = NULL;
-    lwb->kva = 0;
     lwb->cpumask = 0;
-
-    return (TRUE);
-}
-
-static boolean_t
-lwbuf_initpages(struct lwbuf_free_kvp_list *fkvpl, int pages)
-{
-    struct lwbuf_free_kvp *free_kvp;
-    vm_offset_t k;
-    int i;
-
-    k = kmem_alloc_nofault(&kernel_map, PAGE_SIZE * pages, PAGE_SIZE);
-    if (k == 0)
+    get_mplock();
+    lwb->kva = kmem_alloc_nofault(&kernel_map, PAGE_SIZE, PAGE_SIZE);
+    rel_mplock();
+    if (lwb->kva == 0)
         return (FALSE);
-
-    for (i = 0; i < pages; ++i) {
-        free_kvp = (struct lwbuf_free_kvp *)
-            kmalloc(sizeof(*free_kvp), M_LWBUF, M_WAITOK | M_ZERO);
-
-        free_kvp->kva = k + (i * PAGE_SIZE);
-        SLIST_INSERT_HEAD(fkvpl, free_kvp, next);
-    }
+    atomic_add_int(&lwbuf_kva_bytes, PAGE_SIZE);
 
     return (TRUE);
 }
 
 static void
+lwbuf_cache_dtor(void *obj, void *pdata)
+{
+    struct lwbuf *lwb = (struct lwbuf *)obj;
+
+    KKASSERT(lwb->kva != 0);
+    get_mplock();
+    kmem_free(&kernel_map, lwb->kva, PAGE_SIZE);
+    rel_mplock();
+    lwb->kva = 0;
+    atomic_add_int(&lwbuf_kva_bytes, -PAGE_SIZE);
+}
+
+static void
 lwbuf_init(void *arg)
 {
-    struct mdglobaldata *gd = mdcpu;
-    int i;
-
     lwbuf_cache = objcache_create("lwbuf", 0, 0,
-	lwbuf_cache_ctor, NULL, NULL,
-	objcache_malloc_alloc, objcache_malloc_free,
-	&lwbuf_malloc_args);
-
-    /* Should probably be in cpu_gdinit */
-    for (i = 0; i < SMP_MAXCPU; ++i) {
-        SLIST_INIT(&gd->gd_lwbuf_fpages);
-        lwbuf_initpages(&gd->gd_lwbuf_fpages, LWBUF_BOOT_PAGES);
-    }
+        lwbuf_cache_ctor, lwbuf_cache_dtor, NULL,
+        objcache_malloc_alloc, objcache_malloc_free,
+        &lwbuf_malloc_args);
 }
 
 struct lwbuf *
 lwbuf_alloc(vm_page_t m)
 {
     struct mdglobaldata *gd = mdcpu;
-    struct lwbuf_free_kvp *free_kvp;
     struct lwbuf *lwb;
 
-    if ((lwb = objcache_get(lwbuf_cache, M_WAITOK)) == NULL)
-        return (NULL);
-
+    lwb = objcache_get(lwbuf_cache, M_WAITOK);
+    KKASSERT(lwb->m == NULL);
     lwb->m = m;
-
-    crit_enter_gd(&gd->mi);
-check_slist:
-    if (!SLIST_EMPTY(&gd->gd_lwbuf_fpages)) {
-        free_kvp = SLIST_FIRST(&gd->gd_lwbuf_fpages);
-        SLIST_REMOVE_HEAD(&gd->gd_lwbuf_fpages, next);
-
-        lwb->kva = free_kvp->kva;
-
-        kfree(free_kvp, M_LWBUF);
-    } else {
-        if (lwbuf_initpages(&gd->gd_lwbuf_fpages,
-                            LWBUF_ALLOC_PAGES) == FALSE)
-            tsleep(&gd->gd_lwbuf_fpages, 0, "lwbuf", 0);
-
-        goto check_slist;
-    }
-    crit_exit_gd(&gd->mi);
-
-    pmap_kenter_quick(lwb->kva, lwb->m->phys_addr);
-    lwb->cpumask |= gd->mi.gd_cpumask;
+    lwb->cpumask = gd->mi.gd_cpumask;
+    pmap_kenter_quick(lwb->kva, m->phys_addr);
+    atomic_add_int(&lwbuf_count, 1);
 
     return (lwb);
 }
@@ -157,29 +136,20 @@ check_slist:
 void
 lwbuf_free(struct lwbuf *lwb)
 {
-    struct mdglobaldata *gd = mdcpu;
-    struct lwbuf_free_kvp *free_kvp;
-
-    free_kvp = (struct lwbuf_free_kvp *)
-        kmalloc(sizeof(*free_kvp), M_LWBUF, M_WAITOK);
-    free_kvp->kva = lwb->kva;
-    crit_enter_gd(&gd->mi);
-    SLIST_INSERT_HEAD(&gd->gd_lwbuf_fpages, free_kvp, next);
-    crit_exit_gd(&gd->mi);
-    wakeup_one(&gd->gd_lwbuf_fpages);
-
+    KKASSERT(lwb->m != NULL);
     lwb->m = NULL;
-    lwb->kva = 0;
     lwb->cpumask = 0;
-
     objcache_put(lwbuf_cache, lwb);
+    atomic_add_int(&lwbuf_count, -1);
 }
 
 void
 lwbuf_set_global(struct lwbuf *lwb)
 {
-    pmap_kenter_sync(lwb->kva);
-    lwb->cpumask = (cpumask_t)-1;
+    if (lwb->cpumask != (cpumask_t)-1) {
+	pmap_kenter_sync(lwb->kva);
+	lwb->cpumask = (cpumask_t)-1;
+    }
 }
 
 static vm_offset_t

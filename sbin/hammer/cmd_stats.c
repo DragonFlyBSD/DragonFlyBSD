@@ -166,7 +166,7 @@ hammer_cmd_iostats(char **av, int ac)
 		}
 		if (count) {
 			if ((count & 15) == 1)
-				printf("   file-rd   file-wr  dev-read dev-write inode_ops ino_flush cmmit    undo\n");
+				printf("  file-rd   file-wr  dev-read dev-write inode_ops ino_flsh cmmit     undo\n");
 			printf("%9jd %9jd %9jd %9jd %9jd %8jd %5jd %8jd\n",
 				(intmax_t)(stats[0] - copy[0]),
 				(intmax_t)(stats[1] - copy[1]),

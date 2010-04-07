@@ -70,7 +70,7 @@
 #include "pathnames.h"
 
 /*
- * Disklabel: read and write disklabels.
+ * Disklabel32: read and write 32 bit disklabels.
  * The label is usually placed on one of the first sectors of the disk.
  * Many machines also place a bootstrap in the same area,
  * in which case the label is embedded in the bootstrap.
@@ -1778,45 +1778,45 @@ usage(void)
 {
 #if NUMBOOT > 0
 	fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
-		"usage: disklabel [-r] disk",
+		"usage: disklabel32 [-r] disk",
 		"\t\t(to read label)",
-		"       disklabel -w [-r] [-n] disk type [packid]",
+		"       disklabel32 -w [-r] [-n] disk type [packid]",
 		"\t\t(to write label with existing boot program)",
-		"       disklabel -e [-r] [-n] disk",
+		"       disklabel32 -e [-r] [-n] disk",
 		"\t\t(to edit label)",
-		"       disklabel -R [-r] [-n] disk protofile",
+		"       disklabel32 -R [-r] [-n] disk protofile",
 		"\t\t(to restore label with existing boot program)",
 #if NUMBOOT > 1
-		"       disklabel -B [-n] [-b boot1 -s boot2] disk [type]",
+		"       disklabel32 -B [-n] [-b boot1 -s boot2] disk [type]",
 		"\t\t(to install boot program with existing label)",
-		"       disklabel -w -B [-n] [-b boot1 -s boot2] disk type [packid]",
+		"       disklabel32 -w -B [-n] [-b boot1 -s boot2] disk type [packid]",
 		"\t\t(to write label and boot program)",
-		"       disklabel -R -B [-n] [-b boot1 -s boot2] disk protofile [type]",
+		"       disklabel32 -R -B [-n] [-b boot1 -s boot2] disk protofile [type]",
 		"\t\t(to restore label and boot program)",
 #else
-		"       disklabel -B [-n] [-b bootprog] disk [type]",
+		"       disklabel32 -B [-n] [-b bootprog] disk [type]",
 		"\t\t(to install boot program with existing on-disk label)",
-		"       disklabel -w -B [-n] [-b bootprog] disk type [packid]",
+		"       disklabel32 -w -B [-n] [-b bootprog] disk type [packid]",
 		"\t\t(to write label and install boot program)",
-		"       disklabel -R -B [-n] [-b bootprog] disk protofile [type]",
+		"       disklabel32 -R -B [-n] [-b bootprog] disk protofile [type]",
 		"\t\t(to restore label and install boot program)",
 #endif
-		"       disklabel [-NW] disk",
+		"       disklabel32 [-NW] disk",
 		"\t\t(to write disable/enable label)");
 #else
 	fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
-		"usage: disklabel [-r] disk", "(to read label)",
-		"       disklabel -w [-r] [-n] disk type [packid]",
+		"usage: disklabel32 [-r] disk", "(to read label)",
+		"       disklabel32 -w [-r] [-n] disk type [packid]",
 		"\t\t(to write label)",
-		"       disklabel -e [-r] [-n] disk",
+		"       disklabel32 -e [-r] [-n] disk",
 		"\t\t(to edit label)",
-		"       disklabel -R [-r] [-n] disk protofile",
+		"       disklabel32 -R [-r] [-n] disk protofile",
 		"\t\t(to restore label)",
-		"       disklabel [-NW] disk",
+		"       disklabel32 [-NW] disk",
 		"\t\t(to write disable/enable label)");
 #endif
 	fprintf(stderr, "%s\n%s\n",
-		"       disklabel [-f slice_start_lba] [options]",
+		"       disklabel32 [-f slice_start_lba] [options]",
 		"\t\t(to force using manual offset)");
 	exit(1);
 }

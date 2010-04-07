@@ -51,9 +51,6 @@
 #ifndef _MACHINE_NPX_H_
 #include <machine/npx.h>
 #endif
-#ifndef _CPU_LWBUF_H_
-#include <cpu/lwbuf.h>
-#endif
 
 /*
  * Note on interrupt control.  Pending interrupts not yet dispatched are
@@ -76,7 +73,6 @@ struct mdglobaldata {
 	struct segment_descriptor *gd_tss_gdt;
 	struct thread   *gd_npxthread;
 	struct i386tss  gd_common_tss;
-	struct lwbuf_free_kvp_list gd_lwbuf_fpages; /* lwbuf: free kva */
 	union savefpu	gd_savefpu;	/* fast bcopy/zero temp fpu save area */
 	int		gd_fpu_lock;	/* fast bcopy/zero cpu lock */
 	int		gd_fpending;	/* fast interrupt pending */
