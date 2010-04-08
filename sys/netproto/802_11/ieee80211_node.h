@@ -23,14 +23,14 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/sys/net80211/ieee80211_node.h 195618 2009-07-11 15:02:45Z rpaulo $
+ * $FreeBSD: head/sys/net80211/ieee80211_node.h 206358 2010-04-07 15:29:13Z rpaulo $
  * $DragonFly$
  */
 #ifndef _NET80211_IEEE80211_NODE_H_
 #define _NET80211_IEEE80211_NODE_H_
 
-#include <netproto/802_11/ieee80211_ioctl.h>	/* for ieee80211_nodestats */
-#include <netproto/802_11/ieee80211_ht.h>	/* for aggregation state */
+#include <netproto/802_11/ieee80211_ioctl.h>		/* for ieee80211_nodestats */
+#include <netproto/802_11/ieee80211_ht.h>		/* for aggregation state */
 
 /*
  * Each ieee80211com instance has a single timer that fires every
@@ -181,7 +181,6 @@ struct ieee80211_node {
 	uint8_t			ni_esslen;
 	uint8_t			ni_essid[IEEE80211_NWID_LEN];
 	struct ieee80211_rateset ni_rates;	/* negotiated rate set */
-	void			*ni_rate_data;
 	struct ieee80211_channel *ni_chan;
 	uint16_t		ni_fhdwell;	/* FH only */
 	uint8_t			ni_fhindex;	/* FH only */
@@ -220,7 +219,8 @@ struct ieee80211_node {
 	struct ieee80211_nodestats ni_stats;	/* per-node statistics */
 
 	struct ieee80211vap	*ni_wdsvap;	/* associated WDS vap */
-	uint64_t		ni_spare[4];
+	void			*ni_rctls;	/* private ratectl state */
+	uint64_t		ni_spare[3];
 };
 MALLOC_DECLARE(M_80211_NODE);
 MALLOC_DECLARE(M_80211_NODE_IE);

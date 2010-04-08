@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/sys/net80211/ieee80211_node.c 201758 2010-01-07 21:01:37Z mbr $
+ * $FreeBSD: head/sys/net80211/ieee80211_node.c 206358 2010-04-07 15:29:13Z rpaulo $
  * $DragonFly$
  */
 
@@ -52,6 +52,7 @@
 #endif
 #include <netproto/802_11/ieee80211_wds.h>
 #include <netproto/802_11/ieee80211_mesh.h>
+#include <netproto/802_11/ieee80211_ratectl.h>
 
 #include <net/bpf.h>
 
@@ -1036,6 +1037,7 @@ node_free(struct ieee80211_node *ni)
 {
 	struct ieee80211com *ic = ni->ni_ic;
 
+	ieee80211_ratectl_node_deinit(ni);
 	ic->ic_node_cleanup(ni);
 	ieee80211_ies_cleanup(&ni->ni_ies);
 	ieee80211_psq_cleanup(&ni->ni_psq);

@@ -1,4 +1,4 @@
-/* $FreeBSD: head/sys/net80211/ieee80211_amrr.h 178354 2008-04-20 20:35:46Z sam $ */
+/* $FreeBSD: head/sys/net80211/ieee80211_amrr.h 206358 2010-04-07 15:29:13Z rpaulo $ */
 /*	$OpenBSD: ieee80211_amrr.h,v 1.3 2006/06/17 19:34:31 damien Exp $	*/
 
 /*-
@@ -58,44 +58,4 @@ struct ieee80211_amrr_node {
 	u_int	amn_retrycnt;
 };
 
-void	ieee80211_amrr_init(struct ieee80211_amrr *, struct ieee80211vap *,
-	    int, int, int);
-void	ieee80211_amrr_cleanup(struct ieee80211_amrr *);
-void	ieee80211_amrr_setinterval(struct ieee80211_amrr *, int);
-void	ieee80211_amrr_node_init(struct ieee80211_amrr *,
-	    struct ieee80211_amrr_node *, struct ieee80211_node *);
-int	ieee80211_amrr_choose(struct ieee80211_node *,
-	    struct ieee80211_amrr_node *);
-
-#define	IEEE80211_AMRR_SUCCESS	1
-#define	IEEE80211_AMRR_FAILURE	0
-
-/*
- * Update statistics with tx complete status.  Ok is non-zero
- * if the packet is known to be ACK'd.  Retries has the number
- * retransmissions (i.e. xmit attempts - 1).
- */
-static __inline void
-ieee80211_amrr_tx_complete(struct ieee80211_amrr_node *amn,
-    int ok, int retries)
-{
-	amn->amn_txcnt++;
-	if (ok)
-		amn->amn_success++;
-	amn->amn_retrycnt += retries;
-}
-
-/*
- * Set tx count/retry statistics explicitly.  Intended for
- * drivers that poll the device for statistics maintained
- * in the device.
- */
-static __inline void
-ieee80211_amrr_tx_update(struct ieee80211_amrr_node *amn,
-    int txcnt, int success, int retrycnt)
-{
-	amn->amn_txcnt = txcnt;
-	amn->amn_success = success;
-	amn->amn_retrycnt = retrycnt;
-}
 #endif /* _NET80211_IEEE80211_AMRR_H_ */
