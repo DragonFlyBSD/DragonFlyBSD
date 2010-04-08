@@ -1,4 +1,6 @@
-/*
+/*	$FreeBSD: head/sys/dev/ral/rt2560reg.h 178354 2008-04-20 20:35:46Z sam $	*/
+
+/*-
  * Copyright (c) 2005, 2006
  *	Damien Bergamini <damien.bergamini@free.fr>
  *
@@ -13,18 +15,10 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * $FreeBSD: src/sys/dev/ral/rt2560reg.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560reg.h,v 1.7 2008/01/25 15:09:42 sephe Exp $
  */
 
 #define RT2560_DEFAULT_RSSI_CORR	0x79
 #define RT2560_NOISE_FLOOR		-95
-
-#define RT2560_RXSNS_MAX		0x50	/* inclusive */
-#define RT2560_RXSNS_DYNMAX		0x40	/* inclusive */
-
-#define RT2560_DEFAULT_TXPOWER		24	/* dBm */
 
 #define RT2560_TX_RING_COUNT		48
 #define RT2560_ATIM_RING_COUNT		4
@@ -76,7 +70,7 @@
 #define RT2560_PCICSR		0x008c	/* PCI control */
 #define RT2560_RXCSR3		0x0090	/* BBP ID 0 */
 #define RT2560_TXCSR9		0x0094	/* OFDM TX BBP */
-#define RT2560_TXCSR8		0x0098	/* CCK TX BBP */
+#define RT2560_ARSP_PLCP_0	0x0098	/* Auto Responder PLCP address */
 #define RT2560_ARSP_PLCP_1	0x009c	/* Auto Responder Basic Rate mask */
 #define RT2560_CNT0		0x00a0	/* FCS error counter */
 #define RT2560_CNT1		0x00ac	/* PLCP error counter */
@@ -115,15 +109,9 @@
 #define RT2560_PLCP2MCSR	0x0140	/* Signal/Service/Length of ACK @2M */
 #define RT2560_PLCP5p5MCSR	0x0144	/* Signal/Service/Length of ACK @5.5M */
 #define RT2560_PLCP11MCSR	0x0148	/* Signal/Service/Length of ACK @11M */
-#define RT2560_ARTCSR0		0x014c	/* ACK/CTS padload consume time
-					 * @ 1/2/5.5/11M
-					 */
-#define RT2560_ARTCSR1		0x0150	/* ACK/CTS padload consume time
-					 * @ 18/12/9/6M
-					 */
-#define RT2560_ARTCSR2		0x0154	/* ACK/CTS padload consume time
-					 * @ 54/48/36/24M
-					 */
+#define RT2560_ACKPCTCSR	0x014c	/* ACK/CTS padload consume time */
+#define RT2560_ARTCSR1		0x0150	/* ACK/CTS padload consume time */
+#define RT2560_ARTCSR2		0x0154	/* ACK/CTS padload consume time */
 #define RT2560_SECCSR1		0x0158	/* WEP control */
 #define RT2560_BBPCSR1		0x015c	/* BBP TX Configuration */
 
@@ -220,6 +208,8 @@ struct rt2560_tx_desc {
 #define RT2560_TX_CIPHER_TKIP		(3 << 29)
 #define RT2560_TX_CIPHER_AES		(4 << 29)
 
+#define RT2560_TX_RETRYCNT(v)	(((v) >> 5) & 0x7)
+
 	uint32_t	physaddr;
 	uint16_t	wme;
 #define RT2560_LOGCWMAX(x)	(((x) & 0xf) << 12)
@@ -309,7 +299,6 @@ struct rt2560_rx_desc {
 #define RT2560_EEPROM_DELAY	1	/* minimum hold time (microsecond) */
 
 #define RT2560_EEPROM_CONFIG0	16
-#define RT2560_EEPROM_CONFIG1	17
 #define RT2560_EEPROM_BBP_BASE	19
 #define RT2560_EEPROM_TXPOWER	35
 #define RT2560_EEPROM_CALIBRATE	62
@@ -344,8 +333,8 @@ struct rt2560_rx_desc {
 	{ RT2560_CSR11,       0x07041483 },	\
 	{ RT2560_CNT3,        0x00000000 },	\
 	{ RT2560_TXCSR1,      0x07614562 },	\
-	{ RT2560_TXCSR8,      0x8c8d8b8a },	\
-	{ RT2560_ARTCSR0,     0x7038140a },	\
+	{ RT2560_ARSP_PLCP_0, 0x8c8d8b8a },	\
+	{ RT2560_ACKPCTCSR,   0x7038140a },	\
 	{ RT2560_ARTCSR1,     0x21212929 },	\
 	{ RT2560_ARTCSR2,     0x1d1d1d1d },	\
 	{ RT2560_RXCSR0,      0xffffffff },	\

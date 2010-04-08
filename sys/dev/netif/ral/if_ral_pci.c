@@ -1,4 +1,6 @@
-/*
+/*	$FreeBSD: head/sys/dev/ral/if_ral_pci.c 189575 2009-03-09 13:23:54Z imp $	*/
+
+/*-
  * Copyright (c) 2005, 2006
  *	Damien Bergamini <damien.bergamini@free.fr>
  *
@@ -13,10 +15,8 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * $FreeBSD: src/sys/dev/ral/if_ral_pci.c,v 1.4 2006/03/05 23:27:51 silby Exp $
- * $DragonFly: src/sys/dev/netif/ral/if_ral_pci.c,v 1.6 2008/01/15 09:01:13 sephe Exp $
  */
+
 
 /*
  * PCI/Cardbus front-end for the Ralink RT2560/RT2561/RT2561S/RT2661 driver.
@@ -32,8 +32,10 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <sys/rman.h>
 #include <sys/endian.h>
+
+#include <machine/bus_at386.h>
+#include <sys/rman.h>
 
 #include <net/bpf.h>
 #include <net/if.h>
@@ -45,67 +47,71 @@
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
-#include <netproto/802_11/wlan_ratectl/onoe/ieee80211_onoe_param.h>
-#include <netproto/802_11/wlan_ratectl/sample/ieee80211_sample_param.h>
+#include <netproto/802_11/ieee80211_amrr.h>
 
-#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
 #include <dev/netif/ral/rt2560var.h>
 #include <dev/netif/ral/rt2661var.h>
 
-struct ral_opns {
+MODULE_DEPEND(ral, pci, 1, 1, 1);
+MODULE_DEPEND(ral, firmware, 1, 1, 1);
+MODULE_DEPEND(ral, wlan, 1, 1, 1);
+MODULE_DEPEND(ral, wlan_amrr, 1, 1, 1);
+
+struct ral_pci_ident {
+	uint16_t	vendor;
+	uint16_t	device;
+	const char	*name;
+};
+
+static const struct ral_pci_ident ral_pci_ids[] = {
+	{ 0x1814, 0x0201, "Ralink Technology RT2560" },
+	{ 0x1814, 0x0301, "Ralink Technology RT2561S" },
+	{ 0x1814, 0x0302, "Ralink Technology RT2561" },
+	{ 0x1814, 0x0401, "Ralink Technology RT2661" },
+
+	{ 0, 0, NULL }
+};
+
+static struct ral_opns {
 	int	(*attach)(device_t, int);
 	int	(*detach)(void *);
 	void	(*shutdown)(void *);
 	void	(*suspend)(void *);
 	void	(*resume)(void *);
-};
+	void	(*intr)(void *);
 
-static const struct ral_opns ral_rt2560_opns = {
-	.attach		= rt2560_attach,
-	.detach		= rt2560_detach,
-	.shutdown	= rt2560_shutdown,
-	.suspend	= rt2560_suspend,
-	.resume		= rt2560_resume,
-};
+}  ral_rt2560_opns = {
+	rt2560_attach,
+	rt2560_detach,
+	rt2560_stop,
+	rt2560_stop,
+	rt2560_resume,
+	rt2560_intr
 
-static const struct ral_opns ral_rt2661_opns = {
-	.attach		= rt2661_attach,
-	.detach		= rt2661_detach,
-	.shutdown	= rt2661_shutdown,
-	.suspend	= rt2661_suspend,
-	.resume		= rt2661_resume,
-};
-
-static const struct ral_pci_ident {
-	uint16_t		vendor;
-	uint16_t		device;
-	const char		*name;
-	const struct ral_opns	*opns;
-} ral_pci_ids[] = {
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2560,
-		"Ralink Technology RT2560", &ral_rt2560_opns },
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2561S,
-		"Ralink Technology RT2561S", &ral_rt2661_opns },
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2561,
-		"Ralink Technology RT2561", &ral_rt2661_opns },
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2661,
-		"Ralink Technology RT2661", &ral_rt2661_opns },
-	{ 0, 0, NULL, NULL }
+}, ral_rt2661_opns = {
+	rt2661_attach,
+	rt2661_detach,
+	rt2661_shutdown,
+	rt2661_suspend,
+	rt2661_resume,
+	rt2661_intr
 };
 
 struct ral_pci_softc {
-	/* XXX MUST be the first field */
 	union {
 		struct rt2560_softc sc_rt2560;
 		struct rt2661_softc sc_rt2661;
 	} u;
 
-	const struct ral_opns	*sc_opns;
+	struct ral_opns		*sc_opns;
+	int			irq_rid;
 	int			mem_rid;
+	struct resource		*irq;
 	struct resource		*mem;
+	void			*sc_ih;
 };
 
 static int ral_pci_probe(device_t);
@@ -136,27 +142,15 @@ static driver_t ral_pci_driver = {
 static devclass_t ral_devclass;
 
 DRIVER_MODULE(ral, pci, ral_pci_driver, ral_devclass, 0, 0);
-DRIVER_MODULE(ral, cardbus, ral_pci_driver, ral_devclass, 0, 0);
-
-MODULE_DEPEND(ral, wlan, 1, 1, 1);
-MODULE_DEPEND(ral, wlan_ratectl_onoe, 1, 1, 1);
-MODULE_DEPEND(ral, wlan_ratectl_sample, 1, 1, 1);
-MODULE_DEPEND(ral, pci, 1, 1, 1);
-MODULE_DEPEND(ral, cardbus, 1, 1, 1);
 
 static int
 ral_pci_probe(device_t dev)
 {
 	const struct ral_pci_ident *ident;
-	uint16_t vid, did;
 
-	vid = pci_get_vendor(dev);
-	did = pci_get_device(dev);
 	for (ident = ral_pci_ids; ident->name != NULL; ident++) {
-		if (vid == ident->vendor && did == ident->device) {
-			struct ral_pci_softc *psc = device_get_softc(dev);
-
-			psc->sc_opns = ident->opns;
+		if (pci_get_vendor(dev) == ident->vendor &&
+		    pci_get_device(dev) == ident->device) {
 			device_set_desc(dev, ident->name);
 			return 0;
 		}
@@ -174,9 +168,6 @@ ral_pci_attach(device_t dev)
 	struct rt2560_softc *sc = &psc->u.sc_rt2560;
 	int error;
 
-	/* Assign `dev' earlier, so that we can do possible error clean up */
-	sc->sc_dev = dev;
-
 	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
 		device_printf(dev, "chip is in D%d power mode "
 		    "-- setting to D0\n", pci_get_powerstate(dev));
@@ -186,37 +177,64 @@ ral_pci_attach(device_t dev)
 	/* enable bus-mastering */
 	pci_enable_busmaster(dev);
 
+	psc->sc_opns = (pci_get_device(dev) == 0x0201) ? &ral_rt2560_opns :
+	    &ral_rt2661_opns;
+
 	psc->mem_rid = RAL_PCI_BAR0;
 	psc->mem = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &psc->mem_rid,
-					  RF_ACTIVE);
+	    RF_ACTIVE);
 	if (psc->mem == NULL) {
 		device_printf(dev, "could not allocate memory resource\n");
 		return ENXIO;
 	}
+
 	sc->sc_st = rman_get_bustag(psc->mem);
 	sc->sc_sh = rman_get_bushandle(psc->mem);
+	sc->sc_invalid = 1;
+	
+	psc->irq_rid = 0;
+	psc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &psc->irq_rid,
+	    RF_ACTIVE | RF_SHAREABLE);
+	if (psc->irq == NULL) {
+		device_printf(dev, "could not allocate interrupt resource\n");
+		return ENXIO;
+	}
 
-	error = psc->sc_opns->attach(dev, pci_get_device(dev));
+	error = (*psc->sc_opns->attach)(dev, pci_get_device(dev));
 	if (error != 0)
-		ral_pci_detach(dev);
+		return error;
 
-	return error;
+	/*
+	 * Hook our interrupt after all initialization is complete.
+	 */
+	error = bus_setup_intr(dev, psc->irq, INTR_MPSAFE,
+	    psc->sc_opns->intr, psc, &psc->sc_ih, NULL);
+	if (error != 0) {
+		device_printf(dev, "could not set up interrupt\n");
+		return error;
+	}
+	sc->sc_invalid = 0;
+	
+	return 0;
 }
 
 static int
 ral_pci_detach(device_t dev)
 {
 	struct ral_pci_softc *psc = device_get_softc(dev);
-
-	if (device_is_attached(dev))
-		psc->sc_opns->detach(psc);
+	struct rt2560_softc *sc = &psc->u.sc_rt2560;
+	
+	/* check if device was removed */
+	sc->sc_invalid = !bus_child_present(dev);
+	
+	(*psc->sc_opns->detach)(psc);
 
 	bus_generic_detach(dev);
+	bus_teardown_intr(dev, psc->irq, psc->sc_ih);
+	bus_release_resource(dev, SYS_RES_IRQ, psc->irq_rid, psc->irq);
 
-	if (psc->mem != NULL) {
-		bus_release_resource(dev, SYS_RES_MEMORY, psc->mem_rid,
-				     psc->mem);
-	}
+	bus_release_resource(dev, SYS_RES_MEMORY, psc->mem_rid, psc->mem);
+
 	return 0;
 }
 
@@ -225,7 +243,8 @@ ral_pci_shutdown(device_t dev)
 {
 	struct ral_pci_softc *psc = device_get_softc(dev);
 
-	psc->sc_opns->shutdown(psc);
+	(*psc->sc_opns->shutdown)(psc);
+
 	return 0;
 }
 
@@ -234,7 +253,8 @@ ral_pci_suspend(device_t dev)
 {
 	struct ral_pci_softc *psc = device_get_softc(dev);
 
-	psc->sc_opns->suspend(psc);
+	(*psc->sc_opns->suspend)(psc);
+
 	return 0;
 }
 
@@ -243,6 +263,7 @@ ral_pci_resume(device_t dev)
 {
 	struct ral_pci_softc *psc = device_get_softc(dev);
 
-	psc->sc_opns->resume(psc);
+	(*psc->sc_opns->resume)(psc);
+
 	return 0;
 }

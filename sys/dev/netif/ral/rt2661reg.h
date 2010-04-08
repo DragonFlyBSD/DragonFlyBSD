@@ -1,4 +1,6 @@
-/*
+/*	$FreeBSD: head/sys/dev/ral/rt2661reg.h 170530 2007-06-11 03:36:55Z sam $	*/
+
+/*-
  * Copyright (c) 2006
  *	Damien Bergamini <damien.bergamini@free.fr>
  *
@@ -13,9 +15,6 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * $FreeBSD: src/sys/dev/ral/rt2661reg.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661reg.h,v 1.11 2008/01/17 13:33:11 sephe Exp $
  */
 
 #define RT2661_NOISE_FLOOR	-95
@@ -23,12 +22,6 @@
 #define RT2661_TX_RING_COUNT	32
 #define RT2661_MGT_RING_COUNT	32
 #define RT2661_RX_RING_COUNT	64
-
-#define RT2661_CIPHER_NONE	0
-#define RT2661_CIPHER_WEP40	1
-#define RT2661_CIPHER_WEP104	2
-#define RT2661_CIPHER_TKIP	3
-#define RT2661_CIPHER_AES	4
 
 #define RT2661_TX_DESC_SIZE	(sizeof (struct rt2661_tx_desc))
 #define RT2661_TX_DESC_WSIZE	(RT2661_TX_DESC_SIZE / 4)
@@ -46,9 +39,6 @@
 #define RT2661_MCU_INT_SOURCE_CSR	0x0014
 #define RT2661_MCU_INT_MASK_CSR		0x0018
 #define RT2661_PCI_USEC_CSR		0x001c
-#define RT2661_GLOBAL_KEY_BASE		0x1000
-#define RT2661_PAIRWISE_KEY_BASE	0x1200
-#define RT2661_TARGET_ADDR_BASE		0x1a00
 #define RT2661_H2M_MAILBOX_CSR		0x2100
 #define RT2661_M2H_CMD_DONE_CSR		0x2104
 #define RT2661_HW_BEACON_BASE0		0x2c00
@@ -171,11 +161,9 @@
 #define RT2661_DROP_ACKCTS	(1 << 25)
 
 /* possible flags for register TXRX_CSR4 */
-#define RT2661_SHORT_PREAMBLE	(1 << 18)
-#define RT2661_MRR_ENABLED	(1 << 19)
-#define RT2661_MRR_CCK_FALLBACK	(1 << 22)
-#define RT2661_LRETRY_LIMIT(n)	(((n) & 0xf) << 24)
-#define RT2661_SRETRY_LIMIT(n)	(((n) & 0xf) << 28)
+#define RT2661_SHORT_PREAMBLE	(1 << 19)
+#define RT2661_MRR_ENABLED	(1 << 20)
+#define RT2661_MRR_CCK_FALLBACK	(1 << 23)
 
 /* possible flags for register TXRX_CSR9 */
 #define RT2661_TSF_TICKING	(1 << 16)
@@ -234,8 +222,6 @@ struct rt2661_tx_desc {
 #define RT2661_TX_OFDM		(1 << 5)
 #define RT2661_TX_IFS		(1 << 6)
 #define RT2661_TX_LONG_RETRY	(1 << 7)
-#define RT2661_TX_HWMIC		(1 << 8)
-#define RT2661_TX_PAIRWISE_KEY	(1 << 9)
 #define RT2661_TX_BURST		(1 << 28)
 
 	uint16_t	wme;
@@ -254,8 +240,8 @@ struct rt2661_tx_desc {
 	uint8_t		plcp_length_lo;
 	uint8_t		plcp_length_hi;
 
-	uint8_t		iv[4];
-	uint8_t		eiv[4];
+	uint32_t	iv;
+	uint32_t	eiv;
 
 	uint8_t		offset;
 	uint8_t		qid;
@@ -279,16 +265,15 @@ struct rt2661_rx_desc {
 #define RT2661_RX_DROP		(1 << 1)
 #define RT2661_RX_CRC_ERROR	(1 << 6)
 #define RT2661_RX_OFDM		(1 << 7)
-#define RT2661_RX_CIPHER_MASK	0x00000300
-#define RT2661_RX_KEYIX(f)	(((f) >> 10) & 0x3f)
-#define RT2661_RX_CIPHER(f)	(((f) >> 29) & 0x7)
+#define RT2661_RX_PHY_ERROR	(1 << 8)
+#define RT2661_RX_CIPHER_MASK	0x00000600
 
 	uint8_t		rate;
 	uint8_t		rssi;
 	uint8_t		reserved1;
 	uint8_t		offset;
-	uint8_t		iv[4];
-	uint8_t		eiv[4];
+	uint32_t	iv;
+	uint32_t	eiv;
 	uint32_t	reserved2;
 	uint32_t	physaddr;
 	uint32_t	reserved3[10];
@@ -306,8 +291,6 @@ struct rt2661_rx_desc {
 #define RT2661_RF_2527	3
 #define RT2661_RF_2529	4
 
-#define RT2661_BBP_2661D	0x2661d
-
 #define RT2661_RX_DESC_BACK	4
 
 #define RT2661_SMART_MODE	(1 << 0)
@@ -323,50 +306,12 @@ struct rt2661_rx_desc {
 #define RT2661_EEPROM_ANTENNA		0x10
 #define RT2661_EEPROM_CONFIG2		0x11
 #define RT2661_EEPROM_BBP_BASE		0x13
-#define RT2661_EEPROM_TXPOWER_2GHZ	0x23
-#define RT2661_EEPROM_2GHZ_TSSI1	0x2a
-#define RT2661_EEPROM_2GHZ_TSSI2	0x2b
-#define RT2661_EEPROM_2GHZ_TSSI3	0x2c
-#define RT2661_EEPROM_2GHZ_TSSI4	0x2d
-#define RT2661_EEPROM_2GHZ_TSSI5	0x2e
+#define RT2661_EEPROM_TXPOWER		0x23
 #define RT2661_EEPROM_FREQ_OFFSET	0x2f
-#define RT2661_EEPROM_LED_OFFSET	0x30
-#define RT2661_EEPROM_TXPOWER_5GHZ	0x31
 #define RT2661_EEPROM_RSSI_2GHZ_OFFSET	0x4d
 #define RT2661_EEPROM_RSSI_5GHZ_OFFSET	0x4e
 
-#define RT2661_EE_LED_RDYG		0x01
-#define RT2661_EE_LED_RDYA		0x02
-#define RT2661_EE_LED_ACT		0x04
-#define RT2661_EE_LED_GPIO0		0x08
-#define RT2661_EE_LED_GPIO1		0x10
-#define RT2661_EE_LED_GPIO2		0x20
-#define RT2661_EE_LED_GPIO3		0x40
-#define RT2661_EE_LED_GPIO4		0x80
-#define RT2661_EE_LED_MODE_SHIFT	8
-#define RT2661_EE_LED_MODE_MASK		0x1f
-
 #define RT2661_EEPROM_DELAY	1	/* minimum hold time (microsecond) */
-
-#define RT2661_MCU_LED_RF		(1 << 5)
-#define RT2661_MCU_LED_LINKG		(1 << 6)
-#define RT2661_MCU_LED_LINKA		(1 << 7)
-#define RT2661_MCU_LED_GPIO0		(1 << 8)
-#define RT2661_MCU_LED_GPIO1		(1 << 9)
-#define RT2661_MCU_LED_GPIO2		(1 << 10)
-#define RT2661_MCU_LED_GPIO3		(1 << 11)
-#define RT2661_MCU_LED_GPIO4		(1 << 12)
-#define RT2661_MCU_LED_ACT		(1 << 13)
-#define RT2661_MCU_LED_RDYG		(1 << 14)
-#define RT2661_MCU_LED_RDYA		(1 << 15)
-
-#define RT2661_MCU_LED_DEFAULT	\
-	(RT2661_MCU_LED_GPIO0 | RT2661_MCU_LED_GPIO1 | RT2661_MCU_LED_GPIO2 | \
-	 RT2661_MCU_LED_GPIO3 | RT2661_MCU_LED_GPIO4 | RT2661_MCU_LED_ACT | \
-	 RT2661_MCU_LED_RDYG | RT2661_MCU_LED_RDYA)
-
-#define RT2661_TXPOWER_DEFAULT		5
-#define RT2661_TXPOWER_MAX		36
 
 /*
  * control and status registers access macros
@@ -411,9 +356,6 @@ struct rt2661_rx_desc {
 	{ RT2661_MAC_CSR13,        0x0000e000 },	\
 	{ RT2661_SEC_CSR0,         0x00000000 },	\
 	{ RT2661_SEC_CSR1,         0x00000000 },	\
-	{ RT2661_SEC_CSR2,         0x00000000 },	\
-	{ RT2661_SEC_CSR3,         0x00000000 },	\
-	{ RT2661_SEC_CSR4,         0x00000000 },	\
 	{ RT2661_SEC_CSR5,         0x00000000 },	\
 	{ RT2661_PHY_CSR1,         0x000023b0 },	\
 	{ RT2661_PHY_CSR5,         0x060a100c },	\
