@@ -45,8 +45,10 @@
 #define _LOG_FACILITY			LOG_DAEMON
 #define _LOG_OPT			(LOG_NDELAY | LOG_PID)
 
+extern char *__progname;
+
 volatile sig_atomic_t quit = 0;
-char *device = _PATH_DEV_HOTPLUG;
+const char *device = _PATH_DEV_HOTPLUG;
 int devfd = -1;
 
 void exec_script(const char *, int, char *);
@@ -162,7 +164,7 @@ exec_script(const char *file, int class, char *name)
 
 /* ARGSUSED */
 void
-sigchild(int signum)
+sigchild(int signum __unused)
 {
 	struct syslog_data sdata = SYSLOG_DATA_INIT;
 	int saved_errno, status;
@@ -200,7 +202,7 @@ sigchild(int signum)
 
 /* ARGSUSED */
 void
-sigquit(int signum)
+sigquit(int signum __unused)
 {
 	quit = 1;
 }
@@ -208,8 +210,6 @@ sigquit(int signum)
 __dead void
 usage(void)
 {
-	extern char *__progname;
-
 	fprintf(stderr, "usage: %s [-d device]\n", __progname);
 	exit(1);
 }
