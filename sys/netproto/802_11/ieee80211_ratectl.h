@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/sys/net80211/ieee80211_ratectl.h 206367 2010-04-07 17:31:56Z rpaulo $
+ * $FreeBSD: head/sys/net80211/ieee80211_ratectl.h 206398 2010-04-08 13:34:08Z rpaulo $
  * $DragonFly$
  */
 
@@ -78,8 +78,6 @@ ieee80211_ratectl_node_init(struct ieee80211_node *ni)
 {
 	const struct ieee80211vap *vap = ni->ni_vap;
 
-	if (ni->ni_rctls == NULL)	/* ratectl not setup */
-		return;
 	vap->iv_rate->ir_node_init(ni);
 }
 
