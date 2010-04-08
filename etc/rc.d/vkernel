@@ -1,0 +1,105 @@
+#!/bin/sh
+#
+
+# PROVIDE: vkernel
+# REQUIRE: LOGIN NETWORKING
+
+. /etc/rc.subr
+
+name="vkernel"
+rcvar=`set_rcvar`
+start_cmd="vkernel_start"
+stop_cmd="vkernel_stop"
+
+vkernel_start()
+{
+	echo -n 'Starting virtual kernels:'
+	for _vkernel in ${vkernel_list}
+	do
+		# Check if already running
+		eval pidfile="/var/run/vkernel.${_vkernel}.pid"
+		if [ -f "${_pidfile}" ]; then
+			echo
+			warn "Vkernel ${_vkernel} already running? (check ${pidfile})"
+			continue
+		fi
+
+		# Configure vkernel binary
+		eval _bin=\"\${vkernel_${_vkernel}_bin}\"
+		if [ -z "${_bin}" -o ! -x "${_bin}" ]; then
+			echo
+			warn "Missing or undefined binary for vkernel '${_vkernel}'. Skipping."
+			continue
+		else
+			bin=${_bin}
+		fi
+
+		# Configure vkernel memory
+		eval _memsize=\"\$vkernel_${_vkernel}_memsize\"
+		if [ -z "${_memsize}" ]; then
+			echo
+			warn "No memsize has been defined for vkernel '${_vkernel}'. Skipping."
+			continue
+		else
+			memsize="-m ${_memsize}"
+		fi
+
+		# Configure vkernel root image(s)
+		eval _rootimgs=\"\${vkernel_${_vkernel}_rootimg_list}\"
+		if [ -z "${_rootimgs}" ]; then
+			echo
+			warn "No root image has been defined for vkernel '${_vkernel}'. Skipping."
+			continue
+		else
+			for _rootimg in ${_rootimgs}
+			do
+				eval rootimgs=\"${rootimgs} -r ${_rootimg}\"
+			done
+		fi
+
+		# Configure optional vkernel network interface(s)
+		eval _ifaces=\"\${vkernel_${_vkernel}_iface_list}\"
+		if [ -n "${_ifaces}" ]; then
+			for _iface in ${_ifaces}
+			do
+				eval ifaces=\"${ifaces} -I ${_iface}\"
+			done
+		fi
+
+		# Configure optional console logfile
+		eval logfile=\"\${vkernel_${_vkernel}_logfile}\"
+		[ -z "${logfile}" ] && logfile="/dev/null"
+
+		# Configure optional flags
+		eval flags=\"\${vkernel_${_vkernel}_flags}\"
+
+		eval "daemon ${bin} ${memsize} ${rootimgs} ${ifaces} ${flags} -p ${pidfile} >>${logfile} 2>&1"
+		echo -n " ${_vkernel}"
+	done
+	echo '.'
+}
+
+vkernel_stop()
+{
+	for _vkernel in ${vkernel_list}
+	do
+		eval pidfile="/var/run/vkernel.${_vkernel}.pid"
+		if [ -f "${pidfile}" ]; then
+			eval pid=`cat ${pidfile}`
+		else
+			eval _bin=\"\${vkernel_${_vkernel}_bin}\"
+			if [ -n "$_bin" ]; then
+				eval pid=`ps auxwww | grep ${_bin} | grep -v grep | awk '{print $2}'`
+			fi
+		fi
+		if [ -z "${pid}" ]; then
+			warn "vkernel '${_vkernel}' not running?"
+		else
+			eval kill -TERM ${pid}
+		fi
+	done
+}
+
+
+load_rc_config $name
+run_rc_command "$1"

@@ -23,8 +23,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.61 2008/10/20 07:35:08 swildner Exp $
-.Dd December 12, 2009
+.\"
+.Dd April 8, 2010
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -2824,6 +2824,35 @@ If set, start a watchdog timer in the background which will terminate
 if
 .Xr shutdown 8
 has not completed within the specified time (in seconds).
+.It Va vkernel_enable
+.Pq Vt bool
+If set to
+.Dq Li NO ,
+any configured vkernels will not be started.
+.It Va vkernel_list
+.Pq Vt str
+A space separated list of names for vkernels.
+This is purely a configuration aid to help identify and
+configure multiple vkernels.
+The names specified in this list will be used to
+identify settings common to a vkernel instance.
+Assuming that the vkernel in question was named
+.Li example ,
+you would have the following dependent variables
+(filled with reference values in this text):
+.Bd -literal
+vkernel_example_bin="/usr/obj/usr/src/sys/VKERNEL/kernel.debug"
+vkernel_example_memsize="64m"
+vkernel_example_rootimg_list="/var/vkernel/rootimg.01"
+vkernel_example_iface_list="auto:bridge0"
+vkernel_example_logfile="/dev/null"
+vkernel_example_flags="-U"
+.Ed
+.Pp
+The last three are optional.
+They default to an empty string if not set, except for logfile which defaults to
+.Pa /dev/null
+if it is not set.
 .El
 .Sh FILES
 .Bl -tag -width ".Pa /etc/start_if. Ns Aq Ar interface" -compact
