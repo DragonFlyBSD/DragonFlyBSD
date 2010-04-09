@@ -428,6 +428,7 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 	static struct timeval old_tv;
 	struct timeval tv;
 	int64_t	total_budget;
+	int64_t budget[FQ_PRIO_MAX+1];
 	int	n, i, sum, total_disk_time;
 
 	getmicrotime(&old_tv);
@@ -442,7 +443,7 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 			}
 		}
 
-		bzero(dpriv->budgetpb, sizeof(dpriv->budgetpb));
+		bzero(budget, sizeof(budget));
 		total_budget = 0;
 		n = 0;
 
@@ -465,8 +466,8 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 			fqp->s_transactions = fqp->transactions;
 			if (fqp->s_transactions > 0 /* 30 */) {
 				total_budget += (fqp->s_avg_latency * fqp->s_transactions);
-				++dpriv->budgetpb[(fqp->p) ? fqp->p->p_ionice : 0];
-
+				++budget[(fqp->p) ? fqp->p->p_ionice : 0];
+				KKASSERT(total_budget >= 0);
 				dsched_debug(LOG_INFO,
 				    "%d) avg_latency = %d, transactions = %d, ioprio = %d\n",
 				    n, fqp->s_avg_latency, fqp->s_transactions,
@@ -475,6 +476,7 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 			} else {
 				fqp->max_tp = 0;
 			}
+			fqp->rebalance = 0;
 			fqp->transactions = 0;
 			fqp->avg_latency = 0;
 			fqp->issued = 0;
@@ -490,9 +492,9 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 		sum = 0;
 
 		for (i = 0; i < FQ_PRIO_MAX+1; i++) {
-			if (dpriv->budgetpb[i] == 0)
+			if (budget[i] == 0)
 				continue;
-			sum += (FQ_PRIO_BIAS+i)*dpriv->budgetpb[i];
+			sum += (FQ_PRIO_BIAS+i)*budget[i];
 		}
 
 		if (sum == 0)
@@ -501,10 +503,11 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 		dsched_debug(LOG_INFO, "sum = %d\n", sum);
 
 		for (i = 0; i < FQ_PRIO_MAX+1; i++) {
-			if (dpriv->budgetpb[i] == 0)
+			if (budget[i] == 0)
 				continue;
 
 			dpriv->budgetpb[i] = ((FQ_PRIO_BIAS+i)*10)*total_budget/sum;
+			KKASSERT(dpriv->budgetpb[i] >= 0);
 		}
 
 		if (total_budget > dpriv->max_budget)

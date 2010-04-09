@@ -399,6 +399,7 @@ fq_completed(struct bio *bp)
 			/* Moving averager, ((n-1)*avg_{n-1} + x) / n */
 			latency = (int)(((int64_t)(transactions) *
 			    (int64_t)latency + (int64_t)delta) / ((int64_t)transactions + 1));
+			KKASSERT(latency > 0);
 		} else {
 			latency = delta;
 		}
