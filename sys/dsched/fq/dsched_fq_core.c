@@ -427,16 +427,17 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 	struct	dsched_fq_priv	*fqp, *fqp2;
 	static struct timeval old_tv;
 	struct timeval tv;
-	int64_t	total_budget;
+	int64_t	total_budget, product;
 	int64_t budget[FQ_PRIO_MAX+1];
 	int	n, i, sum, total_disk_time;
+	int	lost_bits;
 
 	getmicrotime(&old_tv);
 
 	FQ_DPRIV_LOCK(dpriv);
 	for (;;) {
 		/* sleep ~1s */
-		if ((ssleep(curthread, &dpriv->lock, 0, "fq_balancer", hz) == 0)) {
+		if ((ssleep(curthread, &dpriv->lock, 0, "fq_balancer", hz/2) == 0)) {
 			if (__predict_false(dpriv->die)) {
 				FQ_DPRIV_UNLOCK(dpriv);
 				lwkt_exit();
@@ -460,12 +461,20 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 			dpriv->disk_busy = 0;
 
 		dpriv->idle_time = 0;
+		lost_bits = 0;
 
 		TAILQ_FOREACH_MUTABLE(fqp, &dpriv->fq_priv_list, dlink, fqp2) {
 			fqp->s_avg_latency = fqp->avg_latency;
 			fqp->s_transactions = fqp->transactions;
 			if (fqp->s_transactions > 0 /* 30 */) {
-				total_budget += (fqp->s_avg_latency * fqp->s_transactions);
+				product = fqp->s_avg_latency * fqp->s_transactions;
+				product >>= lost_bits;
+				while(total_budget >= INT64_MAX - product) {
+					++lost_bits;
+					product >>= 1;
+					total_budget >>= 1;
+				}
+				total_budget += product;
 				++budget[(fqp->p) ? fqp->p->p_ionice : 0];
 				KKASSERT(total_budget >= 0);
 				dsched_debug(LOG_INFO,
@@ -483,8 +492,9 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 		}
 
 		dsched_debug(LOG_INFO, "%d procs competing for disk\n"
-		    "total_budget = %lld\n"
-		    "incomplete tp = %d\n", n, total_budget, dpriv->incomplete_tp);
+		    "total_budget = %lld (lost bits = %d)\n"
+		    "incomplete tp = %d\n", n, total_budget, lost_bits,
+		    dpriv->incomplete_tp);
 
 		if (n == 0)
 			continue;
@@ -506,7 +516,13 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 			if (budget[i] == 0)
 				continue;
 
-			dpriv->budgetpb[i] = ((FQ_PRIO_BIAS+i)*10)*total_budget/sum;
+			/*
+			 * XXX: if we still overflow here, we really need to switch to
+			 *	some more advanced mechanism such as compound int128 or
+			 *	storing the lost bits so they can be used in the
+			 *	fq_balance_self.
+			 */
+			dpriv->budgetpb[i] = ((FQ_PRIO_BIAS+i)*total_budget/sum) << lost_bits;
 			KKASSERT(dpriv->budgetpb[i] >= 0);
 		}
 
@@ -542,7 +558,7 @@ fq_balance_self(struct dsched_fq_priv *fqp) {
 	avg_latency = (int64_t)fqp->s_avg_latency;
 	dpriv = fqp->dpriv;
 
-	used_budget = ((int64_t)10 * avg_latency * transactions);
+	used_budget = ((int64_t)avg_latency * transactions);
 	budget = dpriv->budgetpb[(fqp->p) ? fqp->p->p_ionice : 0];
 
 	if (used_budget > 0) {
@@ -554,7 +570,7 @@ fq_balance_self(struct dsched_fq_priv *fqp) {
 	if ((used_budget > budget) && (dpriv->disk_busy >= 90)) {
 		KKASSERT(avg_latency != 0);
 
-		fqp->max_tp = budget/(10*avg_latency);
+		fqp->max_tp = budget/(avg_latency);
 		atomic_add_int(&fq_stats.procs_limited, 1);
 
 		dsched_debug(LOG_INFO,
