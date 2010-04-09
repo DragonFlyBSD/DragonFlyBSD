@@ -1,3 +1,4 @@
+/*	@(#)wwsuspend.c	8.1 (Berkeley) 6/6/93	*/
 /*	$NetBSD: wwsuspend.c,v 1.6 2003/08/07 11:17:45 agc Exp $	*/
 
 /*
@@ -31,15 +32,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)wwsuspend.c	8.1 (Berkeley) 6/6/93";
-#else
-__RCSID("$NetBSD: wwsuspend.c,v 1.6 2003/08/07 11:17:45 agc Exp $");
-#endif
-#endif /* not lint */
 
 #include <signal.h>
 #include "ww.h"

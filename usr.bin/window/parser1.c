@@ -1,3 +1,4 @@
+/*	@(#)parser1.c	8.1 (Berkeley) 6/6/93	*/
 /*	$NetBSD: parser1.c,v 1.6 2003/08/07 11:17:28 agc Exp $	*/
 
 /*
@@ -31,15 +32,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)parser1.c	8.1 (Berkeley) 6/6/93";
-#else
-__RCSID("$NetBSD: parser1.c,v 1.6 2003/08/07 11:17:28 agc Exp $");
-#endif
-#endif /* not lint */
 
 #include "defs.h"
 #include "parser.h"

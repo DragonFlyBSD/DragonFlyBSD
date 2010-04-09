@@ -1,3 +1,4 @@
+/*	@(#)wwunframe.c	8.1 (Berkeley) 6/6/93	*/
 /*	$NetBSD: wwunframe.c,v 1.7 2003/08/07 11:17:46 agc Exp $	*/
 
 /*
@@ -31,15 +32,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)wwunframe.c	8.1 (Berkeley) 6/6/93";
-#else
-__RCSID("$NetBSD: wwunframe.c,v 1.7 2003/08/07 11:17:46 agc Exp $");
-#endif
-#endif /* not lint */
 
 #include "ww.h"
 
