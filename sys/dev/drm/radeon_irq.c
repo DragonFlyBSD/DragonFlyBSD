@@ -28,6 +28,7 @@
  * Authors:
  *    Keith Whitwell <keith@tungstengraphics.com>
  *    Michel D�zer <michel@daenzer.net>
+ * __FBSDID("$FreeBSD: src/sys/dev/drm/radeon_irq.c,v 1.16 2009/09/28 22:37:07 rnoland Exp $");
  */
 
 #include "dev/drm/drmP.h"
@@ -191,6 +192,9 @@ irqreturn_t radeon_driver_irq_handler(DRM_IRQ_ARGS)
 	u32 r500_disp_int;
 	u32 tmp;
 
+	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_R600)
+		return IRQ_NONE;
+
 	/* Only consider the bits we're interested in - others could be used
 	 * outside the DRM
 	 */
@@ -320,6 +324,9 @@ int radeon_irq_emit(struct drm_device *dev, void *data, struct drm_file *file_pr
 	drm_radeon_irq_emit_t *emit = data;
 	int result;
 
+	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_R600)
+		return -EINVAL;
+
 	LOCK_TEST_WITH_RETURN(dev, file_priv);
 
 	if (!dev_priv) {
@@ -360,6 +367,9 @@ void radeon_driver_irq_preinstall(struct drm_device * dev)
 	    (drm_radeon_private_t *) dev->dev_private;
 	u32 dummy;
 
+	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_R600)
+		return;
+
 	/* Disable *all* interrupts */
 	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_RS600)
 		RADEON_WRITE(R500_DxMODE_INT_MASK, 0);
@@ -377,6 +387,9 @@ int radeon_driver_irq_postinstall(struct drm_device * dev)
 	atomic_set(&dev_priv->swi_emitted, 0);
 	DRM_INIT_WAITQUEUE(&dev_priv->swi_queue);
 
+	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_R600)
+		return 0;
+
 	radeon_irq_set_state(dev, RADEON_SW_INT_ENABLE, 1);
 
 	return 0;
@@ -390,6 +403,9 @@ void radeon_driver_irq_uninstall(struct drm_device * dev)
 		return;
 
 	dev_priv->irq_enabled = 0;
+
+	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_R600)
+		return;
 
 	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_RS600)
 		RADEON_WRITE(R500_DxMODE_INT_MASK, 0);

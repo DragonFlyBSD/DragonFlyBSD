@@ -63,6 +63,8 @@ struct drm_file;
 #include <vm/pmap.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_map.h>
+#include <vm/vm_object.h>
+#include <vm/vm_page.h>
 #include <vm/vm_param.h>
 #include <machine/param.h>
 #include <machine/pmap.h>
@@ -140,6 +142,8 @@ MALLOC_DECLARE(DRM_MEM_AGPLISTS);
 MALLOC_DECLARE(DRM_MEM_CTXBITMAP);
 MALLOC_DECLARE(DRM_MEM_SGLISTS);
 MALLOC_DECLARE(DRM_MEM_DRAWABLE);
+MALLOC_DECLARE(DRM_MEM_MM);
+MALLOC_DECLARE(DRM_MEM_HASHTAB);
 
 #define DRM_MAX_CTXBITMAP (PAGE_SIZE * 8)
 
@@ -183,6 +187,11 @@ MALLOC_DECLARE(DRM_MEM_DRAWABLE);
 typedef void			irqreturn_t;
 #define IRQ_HANDLED		/* nothing */
 #define IRQ_NONE		/* nothing */
+
+#define unlikely(x)            __builtin_expect(!!(x), 0)
+#define container_of(ptr, type, member) ({			\
+	__typeof( ((type *)0)->member ) *__mptr = (ptr);	\
+	(type *)( (char *)__mptr - offsetof(type,member) );})
 
 enum {
 	DRM_IS_NOT_AGP,

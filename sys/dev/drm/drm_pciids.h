@@ -1,5 +1,5 @@
 /*
- * $FreeBSD$
+ * $FreeBSD: src/sys/dev/drm/drm_pciids.h,v 1.21 2010/03/13 11:51:18 rnoland Exp $
  */
 /*
    This file is auto-generated from the drm_pciids.txt in the DRM CVS
@@ -338,6 +338,7 @@
 	{0x1002, 0x9440, CHIP_RV770|RADEON_NEW_MEMMAP, "ATI Radeon 4800 Series"}, \
 	{0x1002, 0x9441, CHIP_RV770|RADEON_NEW_MEMMAP, "ATI Radeon 4870 X2"}, \
 	{0x1002, 0x9442, CHIP_RV770|RADEON_NEW_MEMMAP, "ATI Radeon 4800 Series"}, \
+	{0x1002, 0x9443, CHIP_RV770|RADEON_NEW_MEMMAP, "ATI Radeon 4850 X2"}, \
 	{0x1002, 0x944C, CHIP_RV770|RADEON_NEW_MEMMAP, "ATI Radeon 4800 Series"}, \
 	{0x1002, 0x9450, CHIP_RV770|RADEON_NEW_MEMMAP, "AMD FireStream 9270"}, \
 	{0x1002, 0x9452, CHIP_RV770|RADEON_NEW_MEMMAP, "AMD FireStream 9250"}, \
@@ -548,12 +549,12 @@
 	{0x8086, 0x29B2, CHIP_I9XX|CHIP_I915, "Intel Q35"}, \
 	{0x8086, 0x29D2, CHIP_I9XX|CHIP_I915, "Intel Q33"}, \
 	{0x8086, 0x2A42, CHIP_I9XX|CHIP_I965, "Mobile Intel® GM45 Express Chipset"}, \
-	{0x8086, 0x2E02, CHIP_I9XX|CHIP_I965, "Intel Integrated Graphics Device"}, \
+	{0x8086, 0x2E02, CHIP_I9XX|CHIP_I965, "Intel Eaglelake"}, \
+	{0x8086, 0xA001, CHIP_I9XX|CHIP_I965, "Intel Pineview"}, \
+	{0x8086, 0xA011, CHIP_I9XX|CHIP_I965, "Intel Pineview (M)"}, \
 	{0x8086, 0x2E12, CHIP_I9XX|CHIP_I965, "Intel Q45/Q43"}, \
 	{0x8086, 0x2E22, CHIP_I9XX|CHIP_I965, "Intel G45/G43"}, \
 	{0x8086, 0x2E32, CHIP_I9XX|CHIP_I965, "Intel G41"}, \
-	{0x8086, 0xA001, CHIP_I9XX|CHIP_I965, "Intel IGD"}, \
-	{0x8086, 0xA011, CHIP_I9XX|CHIP_I965, "Intel IGD"}, \
 	{0, 0, 0, NULL}
 
 #define imagine_PCI_IDS \
