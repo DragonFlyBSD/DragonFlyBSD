@@ -160,6 +160,23 @@ sys_linux_open(struct linux_open_args *args)
 			fdrop(fp);
 		}
 	}
+
+	if (error == 0 && args->flags & LINUX_O_DIRECTORY) {
+		struct file *fp;
+		struct vnode *vp;
+
+		fp = holdfp(p->p_fd, args->sysmsg_iresult, -1);
+		if (fp) {
+			vp = (struct vnode *) fp->f_data;
+			if (vp->v_type != VDIR)
+				error = ENOTDIR;
+			fdrop(fp);
+
+			if (error)
+				kern_close(args->sysmsg_iresult);
+		}
+	}
+
 	rel_mplock();
 #ifdef DEBUG
 	if (ldebug(open))
