@@ -188,7 +188,7 @@ sys_linux_open(struct linux_open_args *args)
 
 #ifdef DEBUG
 	if (ldebug(open))
-		kprintf(ARGS(open, "%s, 0x%x, 0x%x"), path, args->flags,
+		kprintf(ARGS(open, "%s, 0x%x, 0x%x"), args->path, args->flags,
 		    args->mode);
 #endif
 
@@ -210,8 +210,8 @@ sys_linux_openat(struct linux_openat_args *args)
 
 #ifdef DEBUG
 	if (ldebug(openat))
-		kprintf(ARGS(openat, "%s, 0x%x, 0x%x"), path, args->flags,
-		    args->mode);
+		kprintf(ARGS(openat, "%s, 0x%x, 0x%x"), args->path,
+		    args->flags, args->mode);
 #endif
 
 	dfd = (args->dfd == LINUX_AT_FDCWD) ? AT_FDCWD : args->dfd;
