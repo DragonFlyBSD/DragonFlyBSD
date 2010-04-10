@@ -169,8 +169,8 @@ gen_setmodes(int new)
 		} else
 			if (gen_SE) {
 				ttxputs(gen_SE);
-				if (!strcmp(gen_SE->ts_str, gen_UE->ts_str) &&
-				    gen_UE && gen_US && new & WWM_UL)
+				if (gen_UE && gen_US && new & WWM_UL &&
+				    !strcmp(gen_SE->ts_str, gen_UE->ts_str))
 					ttxputs(gen_US);
 			}
 	}
@@ -181,8 +181,8 @@ gen_setmodes(int new)
 		} else
 			if (gen_UE) {
 				ttxputs(gen_UE);
-				if (!strcmp(gen_UE->ts_str, gen_SE->ts_str) &&
-				    gen_SE && gen_SO && new & WWM_REV)
+				if (gen_SE && gen_SO && new & WWM_REV &&
+				    !strcmp(gen_UE->ts_str, gen_SE->ts_str))
 					ttxputs(gen_SO);
 			}
 	}
