@@ -87,7 +87,7 @@ get_request(int so, struct portal_cred *pcr, char *key, int klen)
 	if (n < 0)
 		return (errno);
 
-	if (n <= sizeof(*pcr))
+	if ((size_t)n <= sizeof(*pcr))
 		return (EINVAL);
 
 	n -= sizeof(*pcr);
