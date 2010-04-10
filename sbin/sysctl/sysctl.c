@@ -717,7 +717,7 @@ show_var(int *oid, size_t nlen)
 		if (!nflag)
 			printf("%s%s", name, sep);
 		nul = memchr(p, '\0', len);
-		fwrite(p, nul == NULL ? len : nul - p, 1, stdout);
+		fwrite(p, nul == NULL ? (int)len : nul - p, 1, stdout);
 		return (0);
 		
 	case 'I':

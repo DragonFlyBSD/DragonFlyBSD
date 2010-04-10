@@ -4,6 +4,5 @@
 
 PROG=	sysctl
 MAN=	sysctl.8
-WARNS?=	2
 
 .include <bsd.prog.mk>
