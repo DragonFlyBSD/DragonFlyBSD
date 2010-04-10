@@ -3,7 +3,7 @@
 
 PROG=	xopenssl
 PROGNAME=	openssl
-WARNS?=	3
+WARNS?=	2
 
 DPADD=	${LIBSSL} ${LIBCRYPTO}
 LDADD=	-lssl -lcrypto
