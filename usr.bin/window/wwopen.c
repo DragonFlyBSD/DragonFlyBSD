@@ -1,3 +1,4 @@
+/*	@(#)wwopen.c	8.2 (Berkeley) 4/28/95	*/
 /*	$NetBSD: wwopen.c,v 1.12 2003/08/07 11:17:42 agc Exp $	*/
 
 /*
@@ -31,15 +32,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)wwopen.c	8.2 (Berkeley) 4/28/95";
-#else
-__RCSID("$NetBSD: wwopen.c,v 1.12 2003/08/07 11:17:42 agc Exp $");
-#endif
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/socket.h>

@@ -51,7 +51,8 @@
 #include "portald.h"
 
 int
-portal_file(struct portal_cred *pcr, char *key, char **v, int so, int *fdp)
+portal_file(struct portal_cred *pcr, char *key, char **v, int so __unused,
+    int *fdp)
 {
 	int fd;
 	char pbuf[MAXPATHLEN];

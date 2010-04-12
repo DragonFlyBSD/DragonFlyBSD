@@ -494,6 +494,7 @@ extern struct ioctl_map linux_ioctl_map;
 #define	LINUX_O_NDELAY		LINUX_O_NONBLOCK
 #define	LINUX_O_SYNC		010000
 #define	LINUX_FASYNC		020000
+#define	LINUX_O_DIRECTORY	00200000
 
 #define	LINUX_F_DUPFD		0
 #define	LINUX_F_GETFD		1

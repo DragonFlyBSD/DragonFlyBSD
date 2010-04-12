@@ -33,7 +33,8 @@ CWARNFLAGS	+=	-Wall
 .  endif
 .  if ${WARNS} >= 3
 CWARNFLAGS	+=	-W -Wno-unused-parameter -Wstrict-prototypes\
-			-Wmissing-prototypes -Wpointer-arith
+			-Wmissing-prototypes -Wpointer-arith\
+			-Wold-style-definition
 .  endif
 .  if ${WARNS} >= 4
 CWARNFLAGS	+=	-Wreturn-type -Wcast-qual -Wwrite-strings -Wswitch\

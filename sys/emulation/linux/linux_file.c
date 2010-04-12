@@ -65,6 +65,7 @@
 int
 sys_linux_creat(struct linux_creat_args *args)
 {
+	CACHE_MPLOCK_DECLARE;
 	struct nlookupdata nd;
 	char *path;
 	int error;
@@ -76,13 +77,13 @@ sys_linux_creat(struct linux_creat_args *args)
 	if (ldebug(creat))
 		kprintf(ARGS(creat, "%s, %d"), path, args->mode);
 #endif
-	get_mplock();
+	CACHE_GETMPLOCK1();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = kern_open(&nd, O_WRONLY | O_CREAT | O_TRUNC,
 				  args->mode, &args->sysmsg_iresult);
 	}
-	rel_mplock();
+	CACHE_RELMPLOCK();
 	linux_free_path(&path);
 	return(error);
 }
@@ -90,142 +91,57 @@ sys_linux_creat(struct linux_creat_args *args)
 /*
  * MPALMOSTSAFE
  */
-int
-sys_linux_open(struct linux_open_args *args)
+static int
+linux_open_common(int dfd, char *lpath, int lflags, int mode, int *iresult)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	struct nlookupdata nd;
-	char *path;
-	int error, flags;
-
-	if (args->flags & LINUX_O_CREAT) {
-		error = linux_copyin_path(args->path, &path,
-		    LINUX_PATH_CREATE);
-	} else {
-		error = linux_copyin_path(args->path, &path,
-		    LINUX_PATH_EXISTS);
-	}
-	if (error)
-		return (error);
-
-#ifdef DEBUG
-	if (ldebug(open))
-		kprintf(ARGS(open, "%s, 0x%x, 0x%x"), path, args->flags,
-		    args->mode);
-#endif
-	flags = 0;
-	if (args->flags & LINUX_O_RDONLY)
-		flags |= O_RDONLY;
-	if (args->flags & LINUX_O_WRONLY)
-		flags |= O_WRONLY;
-	if (args->flags & LINUX_O_RDWR)
-		flags |= O_RDWR;
-	if (args->flags & LINUX_O_NDELAY)
-		flags |= O_NONBLOCK;
-	if (args->flags & LINUX_O_APPEND)
-		flags |= O_APPEND;
-	if (args->flags & LINUX_O_SYNC)
-		flags |= O_FSYNC;
-	if (args->flags & LINUX_O_NONBLOCK)
-		flags |= O_NONBLOCK;
-	if (args->flags & LINUX_FASYNC)
-		flags |= O_ASYNC;
-	if (args->flags & LINUX_O_CREAT)
-		flags |= O_CREAT;
-	if (args->flags & LINUX_O_TRUNC)
-		flags |= O_TRUNC;
-	if (args->flags & LINUX_O_EXCL)
-		flags |= O_EXCL;
-	if (args->flags & LINUX_O_NOCTTY)
-		flags |= O_NOCTTY;
-	get_mplock();
-	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
-	if (error == 0) {
-		error = kern_open(&nd, flags,
-				  args->mode, &args->sysmsg_iresult);
-	}
-	nlookup_done(&nd);
-
-	if (error == 0 && !(flags & O_NOCTTY) && 
-		SESS_LEADER(p) && !(p->p_flag & P_CONTROLT)) {
-		struct file *fp;
-
-		fp = holdfp(p->p_fd, args->sysmsg_iresult, -1);
-		if (fp) {
-			if (fp->f_type == DTYPE_VNODE) {
-				fo_ioctl(fp, TIOCSCTTY, NULL,
-					 td->td_ucred, NULL);
-			}
-			fdrop(fp);
-		}
-	}
-	rel_mplock();
-#ifdef DEBUG
-	if (ldebug(open))
-		kprintf(LMSG("open returns error %d"), error);
-#endif
-	linux_free_path(&path);
-	return error;
-}
-
-int
-sys_linux_openat(struct linux_openat_args *args)
-{
+	CACHE_MPLOCK_DECLARE;
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct nlookupdata nd;
 	struct file *fp;
 	char *path;
-	int error, flags, dfd;
+	int error, flags;
 
-	if (args->flags & LINUX_O_CREAT) {
-		error = linux_copyin_path(args->path, &path,
+	if (lflags & LINUX_O_CREAT) {
+		error = linux_copyin_path(lpath, &path,
 		    LINUX_PATH_CREATE);
 	} else {
-		error = linux_copyin_path(args->path, &path,
+		error = linux_copyin_path(lpath, &path,
 		    LINUX_PATH_EXISTS);
 	}
 	if (error)
 		return (error);
 
-#ifdef DEBUG
-	if (ldebug(open))
-		kprintf(ARGS(open, "%s, 0x%x, 0x%x"), path, args->flags,
-		    args->mode);
-#endif
 	flags = 0;
-	if (args->flags & LINUX_O_RDONLY)
+	if (lflags & LINUX_O_RDONLY)
 		flags |= O_RDONLY;
-	if (args->flags & LINUX_O_WRONLY)
+	if (lflags & LINUX_O_WRONLY)
 		flags |= O_WRONLY;
-	if (args->flags & LINUX_O_RDWR)
+	if (lflags & LINUX_O_RDWR)
 		flags |= O_RDWR;
-	if (args->flags & LINUX_O_NDELAY)
+	if (lflags & LINUX_O_NDELAY)
 		flags |= O_NONBLOCK;
-	if (args->flags & LINUX_O_APPEND)
+	if (lflags & LINUX_O_APPEND)
 		flags |= O_APPEND;
-	if (args->flags & LINUX_O_SYNC)
+	if (lflags & LINUX_O_SYNC)
 		flags |= O_FSYNC;
-	if (args->flags & LINUX_O_NONBLOCK)
+	if (lflags & LINUX_O_NONBLOCK)
 		flags |= O_NONBLOCK;
-	if (args->flags & LINUX_FASYNC)
+	if (lflags & LINUX_FASYNC)
 		flags |= O_ASYNC;
-	if (args->flags & LINUX_O_CREAT)
+	if (lflags & LINUX_O_CREAT)
 		flags |= O_CREAT;
-	if (args->flags & LINUX_O_TRUNC)
+	if (lflags & LINUX_O_TRUNC)
 		flags |= O_TRUNC;
-	if (args->flags & LINUX_O_EXCL)
+	if (lflags & LINUX_O_EXCL)
 		flags |= O_EXCL;
-	if (args->flags & LINUX_O_NOCTTY)
+	if (lflags & LINUX_O_NOCTTY)
 		flags |= O_NOCTTY;
 
-	dfd = (args->dfd == LINUX_AT_FDCWD) ? AT_FDCWD : args->dfd;
-	get_mplock();
+	CACHE_GETMPLOCK1();
 	error = nlookup_init_at(&nd, &fp, dfd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0) {
-		error = kern_open(&nd, flags,
-				  args->mode, &args->sysmsg_iresult);
+		error = kern_open(&nd, flags, mode, iresult);
 	}
 	nlookup_done_at(&nd, fp);
 
@@ -233,7 +149,7 @@ sys_linux_openat(struct linux_openat_args *args)
 		SESS_LEADER(p) && !(p->p_flag & P_CONTROLT)) {
 		struct file *fp;
 
-		fp = holdfp(p->p_fd, args->sysmsg_iresult, -1);
+		fp = holdfp(p->p_fd, *iresult, -1);
 		if (fp) {
 			if (fp->f_type == DTYPE_VNODE) {
 				fo_ioctl(fp, TIOCSCTTY, NULL,
@@ -242,12 +158,71 @@ sys_linux_openat(struct linux_openat_args *args)
 			fdrop(fp);
 		}
 	}
-	rel_mplock();
+
+	if (error == 0 && lflags & LINUX_O_DIRECTORY) {
+		struct file *fp;
+		struct vnode *vp;
+
+		fp = holdfp(p->p_fd, *iresult, -1);
+		if (fp) {
+			vp = (struct vnode *) fp->f_data;
+			if (vp->v_type != VDIR)
+				error = ENOTDIR;
+			fdrop(fp);
+
+			if (error)
+				kern_close(*iresult);
+		}
+	}
+
+	CACHE_RELMPLOCK();
+
+	linux_free_path(&path);
+	return error;
+}
+
+int
+sys_linux_open(struct linux_open_args *args)
+{
+	int error;
+
+#ifdef DEBUG
+	if (ldebug(open))
+		kprintf(ARGS(open, "%s, 0x%x, 0x%x"), args->path, args->flags,
+		    args->mode);
+#endif
+
+	error = linux_open_common(AT_FDCWD, args->path, args->flags,
+	    args->mode, &args->sysmsg_iresult);
+
 #ifdef DEBUG
 	if (ldebug(open))
 		kprintf(LMSG("open returns error %d"), error);
 #endif
-	linux_free_path(&path);
+	return error;
+}
+
+int
+sys_linux_openat(struct linux_openat_args *args)
+{
+	int error;
+	int dfd;
+
+#ifdef DEBUG
+	if (ldebug(openat))
+		kprintf(ARGS(openat, "%s, 0x%x, 0x%x"), args->path,
+		    args->flags, args->mode);
+#endif
+
+	dfd = (args->dfd == LINUX_AT_FDCWD) ? AT_FDCWD : args->dfd;
+
+	error = linux_open_common(dfd, args->path, args->flags,
+	    args->mode, &args->sysmsg_iresult);
+
+#ifdef DEBUG
+	if (ldebug(openat))
+		kprintf(LMSG("openat returns error %d"), error);
+#endif
 	return error;
 }
 

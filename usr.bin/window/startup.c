@@ -1,3 +1,4 @@
+/*	@(#)startup.c	8.1 (Berkeley) 6/6/93	*/
 /*	$NetBSD: startup.c,v 1.8 2009/04/14 08:50:06 lukem Exp $	*/
 
 /*
@@ -31,15 +32,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)startup.c	8.1 (Berkeley) 6/6/93";
-#else
-__RCSID("$NetBSD: startup.c,v 1.8 2009/04/14 08:50:06 lukem Exp $");
-#endif
-#endif /* not lint */
 
 #include <stdlib.h>
 #include "defs.h"

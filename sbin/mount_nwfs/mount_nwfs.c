@@ -63,11 +63,13 @@ static int parsercfile(struct ncp_conn_loginfo *li, struct nwfs_args *mdata);
 
 static struct mntopt mopts[] = {
 	MOPT_STDOPTS,
-	{ NULL }
+	{ NULL , 0, 0, 0 }
 };
 
 static int 
-parsercfile(struct ncp_conn_loginfo *li, struct nwfs_args *mdata) {
+parsercfile(struct ncp_conn_loginfo *li __unused,
+    struct nwfs_args *mdata __unused)
+{
 	return 0;
 }
 
@@ -295,10 +297,10 @@ main(int argc, char *argv[]) {
 	if (ncp_geteinfo(mount_point, &einfo) == 0)
 		errx(EX_OSERR, "can't mount on %s twice", mount_point);
 
-	if (mdata.uid == -1) {
+	if (mdata.uid == (uid_t)-1) {
 		mdata.uid = st.st_uid;
 	}
-	if (mdata.gid == -1) {
+	if (mdata.gid == (gid_t)-1) {
 		mdata.gid = st.st_gid;
 	}
 	if (mdata.file_mode == 0 ) {

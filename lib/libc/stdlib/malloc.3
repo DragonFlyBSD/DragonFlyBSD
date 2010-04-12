@@ -276,20 +276,14 @@ and
 functions conform to
 .St -isoC .
 .Sh HISTORY
-The present allocation implementation started out as a filesystem for a
-drum attached to a 20bit binary challenged computer which was built
-with discrete germanium transistors.
-It has since graduated to handle primary storage rather than secondary.
-.Pp
 The
 .Fn reallocf
 function first appeared in
 .Fx 3.0 .
 .Pp
 .Dx Ap s
-current
 .Nm
-implementation is a complete rewrite based on the kernel's slab allocator (see
+implementation is based on the kernel's slab allocator (see
 .Xr posix_memalign 3 Ap s
 .Sx IMPLEMENTATION NOTES ) .
 It first appeared in

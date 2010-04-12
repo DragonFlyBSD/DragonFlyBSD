@@ -1,3 +1,4 @@
+/*	@(#)wwchild.c	8.1 (Berkeley) 6/6/93	*/
 /*	$NetBSD: wwchild.c,v 1.8 2006/12/18 20:04:55 christos Exp $	*/
 
 /*
@@ -31,15 +32,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)wwchild.c	8.1 (Berkeley) 6/6/93";
-#else
-__RCSID("$NetBSD: wwchild.c,v 1.8 2006/12/18 20:04:55 christos Exp $");
-#endif
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/wait.h>
