@@ -494,6 +494,8 @@ struct hammer_fifo_redo {
 	hammer_off_t		redo_offset;	/* logical offset in file */
 	int32_t			redo_data_bytes;
 	u_int32_t		redo_flags;
+	u_int32_t		redo_localization;
+	u_int32_t		redo_reserved;
 	u_int64_t		redo_mtime;	/* set mtime */
 };
 

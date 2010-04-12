@@ -160,8 +160,6 @@ made, and operate over the named
 pair.
 Otherwise, stdin/stdout will be used.
 .El
-.Sh EXIT STATUS
-.Ex -std
 .Sh FILES
 .Bl -tag -width ".Pa /dev/tty[p-sP-S][0-9a-v]" -compact
 .It Pa /dev/pty[p-sP-S][0-9a-v]
@@ -169,6 +167,8 @@ master pseudo terminals
 .It Pa /dev/tty[p-sP-S][0-9a-v]
 slave pseudo terminals
 .El
+.Sh EXIT STATUS
+.Ex -std
 .Sh EXAMPLES
 .Dl rfcomm_sppd -a 00:01:02:03:04:05 -s 1 -t /dev/ttyp1
 .Pp

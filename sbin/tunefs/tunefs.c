@@ -293,9 +293,9 @@ void
 usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n",
-"usage: tunefs [-A] [-a maxcontig] [-d rotdelay] [-e maxbpg] [-f avgfilesize]",
-"              [-m minfree] [-p] [-n enable | disable] [-o space | time]",
-"              [-s filesperdir] [special | filesystem]");
+"usage: tunefs [-Ap] [-a maxcontig] [-d rotdelay] [-e maxbpg] [-f avgfilesize]",
+"              [-m minfree] [-n enable | disable] [-o space | time]",
+"              [-s filesperdir] {special | filesystem}");
 	exit(2);
 }
 

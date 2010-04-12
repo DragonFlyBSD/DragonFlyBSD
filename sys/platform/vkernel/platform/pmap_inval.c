@@ -154,10 +154,10 @@ pmap_clean_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 
 	pte = *ptep;
 	if (pte & VPTE_V) {
-		atomic_clear_int(ptep, VPTE_W);
+		atomic_clear_long(ptep, VPTE_W);
 		pmap_inval_cpu(pmap, va, PAGE_SIZE);
 		pte = *ptep;
-		atomic_clear_int(ptep, VPTE_W|VPTE_M);
+		atomic_clear_long(ptep, VPTE_W|VPTE_M);
 	}
 	return(pte);
 }
@@ -169,10 +169,10 @@ pmap_clean_pde(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 
 	pte = *ptep;
 	if (pte & VPTE_V) {
-		atomic_clear_int(ptep, VPTE_W);
+		atomic_clear_long(ptep, VPTE_W);
 		pmap_inval_cpu(pmap, va, SEG_SIZE);
 		pte = *ptep;
-		atomic_clear_int(ptep, VPTE_W|VPTE_M);
+		atomic_clear_long(ptep, VPTE_W|VPTE_M);
 		pmap->pm_cpucachemask = 0;
 	}
 	return(pte);
@@ -192,7 +192,7 @@ pmap_setro_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 	pte = *ptep;
 	if (pte & VPTE_V) {
 		pte = *ptep;
-		atomic_clear_int(ptep, VPTE_W);
+		atomic_clear_long(ptep, VPTE_W);
 		pmap_inval_cpu(pmap, va, PAGE_SIZE);
 		pte |= *ptep & VPTE_M;
 	}
@@ -214,7 +214,7 @@ pmap_inval_loadandclear(volatile vpte_t *ptep, struct pmap *pmap,
 	pte = *ptep;
 	if (pte & VPTE_V) {
 		pte = *ptep;
-		atomic_clear_int(ptep, VPTE_R|VPTE_W);
+		atomic_clear_long(ptep, VPTE_R|VPTE_W);
 		pmap_inval_cpu(pmap, va, PAGE_SIZE);
 		pte |= *ptep & (VPTE_A | VPTE_M);
 	}

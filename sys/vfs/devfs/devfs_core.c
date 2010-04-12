@@ -247,7 +247,6 @@ devfs_allocp(devfs_nodetype devfsnodetype, char *name,
 	node->node_type = devfsnodetype;
 
 	/* Initialize the dirent structure of each devfs vnode */
-	KKASSERT(namlen < 256);
 	node->d_dir.d_namlen = namlen;
 	node->d_dir.d_name = kmalloc(namlen+1, M_DEVFS, M_WAITOK);
 	memcpy(node->d_dir.d_name, name, namlen);

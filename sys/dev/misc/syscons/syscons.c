@@ -2945,12 +2945,10 @@ sc_init_emulator(scr_stat *scp, char *name)
 
     rndr = NULL;
     if (strcmp(sw->te_renderer, "*") != 0) {
-	rndr = sc_render_match(scp, sw->te_renderer,
-			       scp->status & (GRAPHICS_MODE | PIXEL_MODE));
+	rndr = sc_render_match(scp, sw->te_renderer, scp->model);
     }
     if (rndr == NULL) {
-	rndr = sc_render_match(scp, scp->sc->adp->va_name,
-			       scp->status & (GRAPHICS_MODE | PIXEL_MODE));
+	rndr = sc_render_match(scp, scp->sc->adp->va_name, scp->model);
 	if (rndr == NULL)
 	    return ENODEV;
     }
@@ -2958,7 +2956,6 @@ sc_init_emulator(scr_stat *scp, char *name)
     if (sw == scp->tsw) {
 	error = (*sw->te_init)(scp, &scp->ts, SC_TE_WARM_INIT);
 	scp->rndr = rndr;
-	scp->rndr->init(scp);
 	sc_clear_screen(scp);
 	/* assert(error == 0); */
 	return error;
@@ -2979,7 +2976,6 @@ sc_init_emulator(scr_stat *scp, char *name)
     scp->tsw = sw;
     scp->ts = p;
     scp->rndr = rndr;
-    scp->rndr->init(scp);
 
     /* XXX */
     (*sw->te_default_attr)(scp, user_default.std_color, user_default.rev_color);
@@ -3350,7 +3346,6 @@ set_mode(scr_stat *scp)
 
     /* setup video hardware for the given mode */
     (*vidsw[scp->sc->adapter]->set_mode)(scp->sc->adp, scp->mode);
-    scp->rndr->init(scp);
     sc_vtb_init(&scp->scr, VTB_FRAMEBUFFER, scp->xsize, scp->ysize,
 		(void *)scp->sc->adp->va_window, FALSE);
 

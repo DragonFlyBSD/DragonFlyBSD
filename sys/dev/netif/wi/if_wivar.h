@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2002
  *	M Warner Losh <imp@freebsd.org>.  All rights reserved.
  * Copyright (c) 1997, 1998, 1999
@@ -31,14 +31,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/wi/if_wivar.h,v 1.25.2.1 2005/10/05 13:13:46 avatar Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wivar.h,v 1.10 2006/05/18 13:51:45 sephe Exp $
+ * $FreeBSD: head/sys/dev/wi/if_wivar.h 194023 2009-06-11 17:14:28Z avg $
  */
-
-#if 0
-#define WICACHE			/* turn on signal strength cache code */  
-#define	MAXWICACHE	10
-#endif
 
 /*
  * Encryption controls. We can enable or disable encryption as
@@ -60,15 +54,26 @@
 #define WI_RID_ROAMING_MODE	0xFC2D
 #define WI_RID_CUR_TX_RATE	0xFD44 /* current TX rate */
 
-#define WI_MAX_AID		256	/* max stations for ap operation */
+#define	WI_MAX_AID		256	/* max stations for ap operation */
+
+struct wi_vap {
+	struct ieee80211vap	wv_vap;
+	struct ieee80211_beacon_offsets	wv_bo;
+
+	void		(*wv_recv_mgmt)(struct ieee80211_node *, struct mbuf *,
+			    int, int, int);
+	int		(*wv_newstate)(struct ieee80211vap *,
+			    enum ieee80211_state, int);
+};
+#define	WI_VAP(vap)		((struct wi_vap *)(vap))
 
 struct wi_softc	{
-	struct ieee80211com	sc_ic;
-	int			(*sc_newstate)(struct ieee80211com *,
-					enum ieee80211_state, int);
-	int			(*sc_key_alloc)(struct ieee80211com *,
-					const struct ieee80211_key *,
-					ieee80211_keyix *, ieee80211_keyix *);
+	struct arpcom		arpcom;
+	struct ifnet		*sc_ifp;
+	device_t		sc_dev;
+	struct lock		sc_lock;
+	struct callout		sc_watchdog;
+	int			sc_unit;
 	int			wi_gone;
 	int			sc_enabled;
 	int			sc_reset;
@@ -79,6 +84,8 @@ struct wi_softc	{
 #define	WI_SYMBOL	3
 	int			sc_pri_firmware_ver;	/* Primary firmware */
 	int			sc_sta_firmware_ver;	/* Station firmware */
+	unsigned int		sc_nic_id;		/* Type of NIC */
+	char *			sc_nic_name;
 
 	int			wi_bus_type;	/* Bus attachment type */
 	struct resource *	local;
@@ -96,34 +103,24 @@ struct wi_softc	{
 	bus_space_handle_t	wi_bmemhandle;
 	bus_space_tag_t		wi_bmemtag;
 	void *			wi_intrhand;
+	struct ieee80211_channel *wi_channel;
 	int			wi_io_addr;
 	int			wi_cmd_count;
 
-	struct bpf_if		*sc_drvbpf;
 	int			sc_flags;
 	int			sc_if_flags;
 	int			sc_bap_id;
 	int			sc_bap_off;
 
-	u_int16_t		sc_procframe;
+	int			sc_porttype;
 	u_int16_t		sc_portnum;
+	u_int16_t		sc_encryption;
+	u_int16_t		sc_monitor_port;
 
 	/* RSSI interpretation */
 	u_int16_t		sc_min_rssi;	/* clamp sc_min_rssi < RSSI */
 	u_int16_t		sc_max_rssi;	/* clamp RSSI < sc_max_rssi */
 	u_int16_t		sc_dbm_offset;	/* dBm ~ RSSI - sc_dbm_offset */
-
-	u_int16_t		sc_max_datalen;
-	u_int16_t		sc_system_scale;
-	u_int16_t		sc_cnfauthmode;
-	u_int16_t		sc_roaming_mode;
-	u_int16_t		sc_microwave_oven;
-	u_int16_t		sc_authtype;
-	u_int16_t		sc_encryption;
-
-	int			sc_nodelen;
-	char			sc_nodename[IEEE80211_NWID_LEN];
-	char			sc_net_name[IEEE80211_NWID_LEN];
 
 	int			sc_buflen;		/* TX buffer size */
 	int			sc_ntxbuf;
@@ -135,66 +132,27 @@ struct wi_softc	{
 	int			sc_txnext;		/* index of next TX */
 	int			sc_txcur;		/* index of current TX*/
 	int			sc_tx_timer;
-	int			sc_scan_timer;
 
 	struct wi_counters	sc_stats;
 	u_int16_t		sc_ibss_port;
-
-#define WI_MAXAPINFO		30
-	struct wi_apinfo	sc_aps[WI_MAXAPINFO];
-	int			sc_naps;
-
-	struct {
-		u_int16_t               wi_sleep;
-		u_int16_t               wi_delaysupp;
-		u_int16_t               wi_txsupp;
-		u_int16_t               wi_monitor;
-		u_int16_t               wi_ledtest;
-		u_int16_t               wi_ledtest_param0;
-		u_int16_t               wi_ledtest_param1;
-		u_int16_t               wi_conttx;
-		u_int16_t               wi_conttx_param0;
-		u_int16_t               wi_contrx;
-		u_int16_t               wi_sigstate;
-		u_int16_t               wi_sigstate_param0;
-		u_int16_t               wi_confbits;
-		u_int16_t               wi_confbits_param0;
-	} wi_debug;
 
 	struct timeval		sc_last_syn;
 	int			sc_false_syns;
 
 	u_int16_t		sc_txbuf[IEEE80211_MAX_LEN/2];
 
-	union {
-		struct wi_tx_radiotap_header th;
-		u_int8_t	pad[64];
-	} u_tx_rt;
-	int			sc_tx_th_len;
-	union {
-		struct wi_rx_radiotap_header th;
-		u_int8_t	pad[64];
-	} u_rx_rt;
-	int			sc_rx_th_len;
+	struct wi_tx_radiotap_header sc_tx_th;
+	struct wi_rx_radiotap_header sc_rx_th;
+
+	struct sysctl_ctx_list  sc_sysctl_ctx;
 };
-#define	sc_if			sc_ic.ic_if
-#define	sc_tx_th		u_tx_rt.th
-#define	sc_rx_th		u_rx_rt.th
 
 /* maximum consecutive false change-of-BSSID indications */
 #define	WI_MAX_FALSE_SYNS		10	
 
-#define	WI_SCAN_INQWAIT			3	/* wait sec before inquire */
-#define	WI_SCAN_WAIT			5	/* maximum scan wait */
-
-#define	WI_FLAGS_ATTACHED		0x0001
-#define	WI_FLAGS_INITIALIZED		0x0002
-#define	WI_FLAGS_OUTRANGE		0x0004
-#define	WI_FLAGS_HAS_MOR		0x0010
+#define	WI_FLAGS_HAS_ENHSECURITY	0x0001
+#define	WI_FLAGS_HAS_WPASUPPORT		0x0002
 #define	WI_FLAGS_HAS_ROAMING		0x0020
-#define	WI_FLAGS_HAS_DIVERSITY		0x0040
-#define	WI_FLAGS_HAS_SYSSCALE		0x0080
-#define	WI_FLAGS_BUG_AUTOINC		0x0100
 #define	WI_FLAGS_HAS_FRAGTHR		0x0200
 #define	WI_FLAGS_HAS_DBMADJUST		0x0400
 
@@ -215,13 +173,18 @@ struct wi_card_ident {
 #define	WI_RSSI_TO_DBM(sc, rssi) (MIN((sc)->sc_max_rssi, \
     MAX((sc)->sc_min_rssi, (rssi))) - (sc)->sc_dbm_offset)
 
+#define	WI_LOCK(_sc) 		lockmgr(&(_sc)->sc_lock, LK_EXCLUSIVE)
+#define	WI_UNLOCK(_sc)		lockmgr(&(_sc)->sc_lock, LK_RELEASE)
+#define	WI_LOCK_ASSERT(_sc)	\
+    KKASSERT(lockstatus(&(_sc)->sc_lock, curthread) == LK_EXCLUSIVE)
+
 int	wi_attach(device_t);
 int	wi_detach(device_t);
-void	wi_shutdown(device_t);
+int	wi_shutdown(device_t);
 int	wi_alloc(device_t, int);
 void	wi_free(device_t);
 extern devclass_t wi_devclass;
 void	wi_init(void *);
 void	wi_intr(void *);
-void	wi_stop(struct ifnet *, int);
-int	wi_symbol_load_firm(struct wi_softc *, const void *, int, const void *, int);
+int	wi_mgmt_xmit(struct wi_softc *, caddr_t, int);
+void	wi_stop(struct wi_softc *, int);

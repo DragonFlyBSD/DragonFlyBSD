@@ -438,12 +438,6 @@ struct	sstk_args {
 #endif
 	int	incr;	char incr_[PAD_(int)];
 };
-struct	ovadvise_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	anom;	char anom_[PAD_(int)];
-};
 struct	munmap_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -2343,6 +2337,12 @@ struct	ommap_args {
 	int	fd;	char fd_[PAD_(int)];
 	long	pos;	char pos_[PAD_(long)];
 };
+struct	ovadvise_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	int	anom;	char anom_[PAD_(int)];
+};
 struct	gethostname_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -2487,6 +2487,7 @@ int	sys_ofstat (struct ofstat_args *);
 int	sys_ogetkerninfo (struct getkerninfo_args *);
 int	sys_ogetpagesize (struct getpagesize_args *);
 int	sys_ommap (struct ommap_args *);
+int	sys_ovadvise (struct ovadvise_args *);
 int	sys_owait (struct owait_args *);
 int	sys_ogethostname (struct gethostname_args *);
 int	sys_osethostname (struct sethostname_args *);
@@ -2643,7 +2644,6 @@ int	sys_msync (struct msync_args *);
 int	sys_vfork (struct vfork_args *);
 int	sys_sbrk (struct sbrk_args *);
 int	sys_sstk (struct sstk_args *);
-int	sys_ovadvise (struct ovadvise_args *);
 int	sys_munmap (struct munmap_args *);
 int	sys_mprotect (struct mprotect_args *);
 int	sys_madvise (struct madvise_args *);

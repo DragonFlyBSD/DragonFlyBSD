@@ -91,7 +91,9 @@ union sysunion {
 #ifdef COMPAT_43
 	struct	ommap_args sys_ommap;
 #endif
-	struct	ovadvise_args ovadvise;
+#ifdef COMPAT_43
+	struct	ovadvise_args vadvise;
+#endif
 	struct	munmap_args munmap;
 	struct	mprotect_args mprotect;
 	struct	madvise_args madvise;

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1997, 1998, 1999
  *	Bill Paul <wpaul@ctr.columbia.edu>.  All rights reserved.
  *
@@ -29,8 +29,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/wi/if_wi_pci.c,v 1.22 2004/03/17 17:50:48 njl Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi_pci.c,v 1.10 2008/06/05 18:06:31 swildner Exp $
+ * $FreeBSD: head/sys/dev/wi/if_wi_pci.c 181209 2008-08-02 20:45:28Z imp $
+ * $DragonFly$
  */
 
 /*
@@ -47,12 +47,9 @@
 #include <sys/systm.h>
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <sys/thread.h>
-#include <sys/serialize.h>
-#include <sys/rman.h>
-#include <sys/thread2.h>
 
-#include <machine/clock.h>
+#include <machine/bus_at386.h>
+#include <sys/rman.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
@@ -65,8 +62,8 @@
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
-#include <netproto/802_11/if_wavelan_ieee.h>
 
+#include <dev/netif/wi/if_wavelan_ieee.h>
 #include <dev/netif/wi/if_wireg.h>
 #include <dev/netif/wi/if_wivar.h>
 
@@ -93,11 +90,11 @@ static driver_t wi_pci_driver = {
 	sizeof(struct wi_softc)
 };
 
-static struct wi_pci_card {
+static struct {
 	unsigned int vendor,device;
 	int bus_type;
 	char *desc;
-} wi_pci_cards[] = {
+} pci_ids[] = {
 	/* Sorted by description */
 	{0x10b7, 0x7770, WI_BUS_PCI_PLX, "3Com Airconnect"},
 	{0x16ab, 0x1101, WI_BUS_PCI_PLX, "GLPRISM2 WaveLAN"},
@@ -118,20 +115,19 @@ MODULE_DEPEND(wi, pci, 1, 1, 1);
 MODULE_DEPEND(wi, wlan, 1, 1, 1);
 
 static int
-wi_pci_probe(device_t dev)
+wi_pci_probe(dev)
+	device_t	dev;
 {
-	struct wi_softc *sc;
-	struct wi_pci_card *p;
-	uint16_t vendor, device;
+	struct wi_softc		*sc;
+	int i;
 
-	vendor = pci_get_vendor(dev);
-	device = pci_get_device(dev);
-	for (p = wi_pci_cards; p->vendor != 0; p++) {
-		if (vendor == p->vendor && device == p->device) {
-			sc = device_get_softc(dev);
-			sc->wi_bus_type = p->bus_type;
-			device_set_desc(dev, p->desc);
-			return (0);
+	sc = device_get_softc(dev);
+	for(i=0; pci_ids[i].vendor != 0; i++) {
+		if ((pci_get_vendor(dev) == pci_ids[i].vendor) &&
+			(pci_get_device(dev) == pci_ids[i].device)) {
+			sc->wi_bus_type = pci_ids[i].bus_type;
+			device_set_desc(dev, pci_ids[i].desc);
+			return (BUS_PROBE_DEFAULT);
 		}
 	}
 	return(ENXIO);
@@ -141,14 +137,24 @@ static int
 wi_pci_attach(device_t dev)
 {
 	struct wi_softc		*sc;
+	u_int32_t		command, wanted;
 	u_int16_t		reg;
 	int			error;
+	int			timeout;
 
 	sc = device_get_softc(dev);
 
-	if (sc->wi_bus_type != WI_BUS_PCI_NATIVE) {
-		uint32_t command;
+	command = pci_read_config(dev, PCIR_COMMAND, 4);
+	wanted = PCIM_CMD_PORTEN|PCIM_CMD_MEMEN;
+	command |= wanted;
+	pci_write_config(dev, PCIR_COMMAND, command, 4);
+	command = pci_read_config(dev, PCIR_COMMAND, 4);
+	if ((command & wanted) != wanted) {
+		device_printf(dev, "wi_pci_attach() failed to enable pci!\n");
+		return (ENXIO);
+	}
 
+	if (sc->wi_bus_type != WI_BUS_PCI_NATIVE) {
 		error = wi_alloc(dev, WI_PCI_IORES);
 		if (error)
 			return (error);
@@ -184,10 +190,10 @@ wi_pci_attach(device_t dev)
 		sc->wi_bmemhandle = rman_get_bushandle(sc->mem);
 
 		/*
-		 * From Linux driver:
 		 * Write COR to enable PC card
 		 * This is a subset of the protocol that the pccard bus code
-		 * would do.
+		 * would do.  In theory, we should parse the CIS to find the
+		 * COR offset.  In practice, the COR_OFFSET is always 0x3e0.
 		 */
 		CSM_WRITE_1(sc, WI_COR_OFFSET, WI_COR_VALUE); 
 		reg = CSM_READ_1(sc, WI_COR_OFFSET);
@@ -198,16 +204,14 @@ wi_pci_attach(device_t dev)
 			return (ENXIO);
 		}
 	} else {
-		int timeout;
-
 		error = wi_alloc(dev, WI_PCI_LMEMRES);
 		if (error)
 			return (error);
 
-		CSR_WRITE_2(sc, WI_HFA384X_PCICOR_OFF, 0x0080);
+		CSR_WRITE_2(sc, WI_PCICOR_OFF, WI_PCICOR_RESET);
 		DELAY(250000);
 
-		CSR_WRITE_2(sc, WI_HFA384X_PCICOR_OFF, 0x0000);
+		CSR_WRITE_2(sc, WI_PCICOR_OFF, 0x0000);
 		DELAY(500000);
 
 		timeout=2000000;
@@ -216,7 +220,7 @@ wi_pci_attach(device_t dev)
 			DELAY(10);
 
 		if (timeout == 0) {
-			device_printf(dev, "couldn't reset prism2.5 core.\n");
+			device_printf(dev, "couldn't reset prism pci core.\n");
 			wi_free(dev);
 			return(ENXIO);
 		}
@@ -232,40 +236,30 @@ wi_pci_attach(device_t dev)
 		return (ENXIO);
 	}
 
-	return wi_attach(dev);
+	error = wi_attach(dev);
+	if (error != 0)
+		wi_free(dev);
+	return (error);
 }
 
 static int
 wi_pci_suspend(device_t dev)
 {
-	struct wi_softc		*sc;
-	struct ifnet *ifp;
+	struct wi_softc	*sc = device_get_softc(dev);
 
-	sc = device_get_softc(dev);
-	ifp = &sc->sc_if;
-
-	lwkt_serialize_enter(ifp->if_serializer);
-	wi_stop(ifp, 1);
-	lwkt_serialize_exit(ifp->if_serializer);
+	wi_stop(sc, 1);
 	
-	return 0;
+	return (0);
 }
 
 static int
 wi_pci_resume(device_t dev)
 {
-	struct wi_softc *sc;
-	struct ifnet *ifp;
+	struct wi_softc	*sc = device_get_softc(dev);
+	struct ifnet *ifp = sc->sc_ifp;
 
-	sc = device_get_softc(dev);
-	ifp = &sc->sc_if;
-
-	lwkt_serialize_enter(ifp->if_serializer);
-
-	if (sc->wi_bus_type != WI_BUS_PCI_NATIVE) {
-		lwkt_serialize_exit(ifp->if_serializer);
-		return 0;
-	}
+	if (sc->wi_bus_type != WI_BUS_PCI_NATIVE)
+		return (0);
 
 	if (ifp->if_flags & IFF_UP) {
 		ifp->if_init(ifp->if_softc);
@@ -273,7 +267,5 @@ wi_pci_resume(device_t dev)
 			ifp->if_start(ifp);
 	}
 
-	lwkt_serialize_exit(ifp->if_serializer);
-
-	return 0;
+	return (0);
 }

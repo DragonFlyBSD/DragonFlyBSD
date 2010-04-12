@@ -1,10 +1,13 @@
 # $DragonFly: src/sys/dev/netif/Makefile,v 1.34 2008/07/26 14:26:30 sephe Exp $
 #
 
-SUBDIR= an acx age alc ale ar ath aue axe bce bfe bge bwi \
+SUBDIR= an age alc ale ar ath aue axe bce bfe bge \
 	cue dc ed em ep et fwe \
-	fxp iwi iwl jme kue lge lnc mii_layer my msk mxge nfe nge pcn ral re \
-	rl rtw rue rum sbni sbsh sf sis sk sln sr ste stge ti tl tx txp ural \
+	fxp jme kue lge lnc mii_layer my msk mxge nfe nge pcn ral re \
+	rl rue sbni sbsh sf sis sk sln sr ste stge ti tl tx txp \
 	vge vr vx wb wi xe xl ig_hal emx ae
+
+# XXX need to be updated to the new net80211 stack
+# SUBDIR= acx bwi iwi iwl rtw rum ural
 
 .include <bsd.subdir.mk>

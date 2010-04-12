@@ -1,5 +1,4 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.98 2008/11/17 11:55:19 swildner Exp $
 #
 #        On the handling of kernel options
 #
@@ -126,6 +125,7 @@ MSGSSZ		opt_sysvipc.h
 MSGTQL		opt_sysvipc.h
 UCONSOLE
 ICMP_BANDLIM
+SHOW_BUSYBUFS
 VFS_AIO
 DIRECTIO	opt_directio.h
 
@@ -691,3 +691,4 @@ TDMA_TXRATE_QUARTER_DEFAULT	opt_tdma.h
 TDMA_TXRATE_11NA_DEFAULT	opt_tdma.h
 TDMA_TXRATE_11NG_DEFAULT	opt_tdma.h
 
+PANIC_REBOOT_WAIT_TIME	opt_panic.h

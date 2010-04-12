@@ -40,6 +40,13 @@
 #include <sys/priv.h>
 #include <sys/ucred.h>
 
+#define SYSCALL_NOT_PRESENT_GEN(SC, str) \
+int sys_##SC (struct SC##_args *uap) \
+{ \
+	sysv_nosys(str); \
+	return sys_nosys((struct nosys_args *)uap); \
+}
+
 #if defined(SYSVSEM) || defined(SYSVSHM) || defined(SYSVMSG)
 
 /*
@@ -100,33 +107,10 @@ sysv_nosys(char *s)
  * SYSVSEM stubs
  */
 
-int
-semsys(struct semsys_args *uap)
-{
-	sysv_nosys("SYSVSEM");
-	return nosys((struct nosys_args *)uap);
-};
-
-int
-__semctl(struct __semctl_args *uap)
-{
-	sysv_nosys("SYSVSEM");
-	return nosys((struct nosys_args *)uap);
-};
-
-int
-semget(struct semget_args *uap)
-{
-	sysv_nosys("SYSVSEM");
-	return nosys((struct nosys_args *)uap);
-};
-
-int
-semop(struct semop_args *uap)
-{
-	sysv_nosys("SYSVSEM");
-	return nosys((struct nosys_args *)uap);
-};
+SYSCALL_NOT_PRESENT_GEN(semsys, "SYSVSEM");
+SYSCALL_NOT_PRESENT_GEN(__semctl, "SYSVSEM");
+SYSCALL_NOT_PRESENT_GEN(semget, "SYSVSEM");
+SYSCALL_NOT_PRESENT_GEN(semop, "SYSVSEM");
 
 /* called from kern_exit.c */
 void
@@ -146,40 +130,11 @@ semexit(struct proc *p)
  * note: msgsys args actually var-args? YYYY
  */
 
-int
-msgsys(struct msgsys_args *uap)
-{
-	sysv_nosys("SYSVMSG");
-	return nosys((struct nosys_args *)uap);
-};
-
-int
-msgctl(struct msgctl_args *uap)
-{
-	sysv_nosys("SYSVMSG");
-	return nosys((struct nosys_args *)uap);
-};
-
-int
-msgget(struct msgget_args *uap)
-{
-	sysv_nosys("SYSVMSG");
-	return nosys((struct nosys_args *)uap);
-};
-
-int
-msgsnd(struct msgsnd_args *uap)
-{
-	sysv_nosys("SYSVMSG");
-	return nosys((struct nosys_args *)uap);
-};
-
-int
-msgrcv(struct msgrcv_args *uap)
-{
-	sysv_nosys("SYSVMSG");
-	return nosys((struct nosys_args *)uap);
-};
+SYSCALL_NOT_PRESENT_GEN(msgsys, "SYSVMSG");
+SYSCALL_NOT_PRESENT_GEN(msgctl, "SYSVMSG");
+SYSCALL_NOT_PRESENT_GEN(msgget, "SYSVMSG");
+SYSCALL_NOT_PRESENT_GEN(msgsnd, "SYSVMSG");
+SYSCALL_NOT_PRESENT_GEN(msgrcv, "SYSVMSG");
 
 #endif /* !defined(SYSVMSG) */
 
@@ -190,41 +145,11 @@ msgrcv(struct msgrcv_args *uap)
  * SYSVSHM stubs
  */
 
-int
-shmdt(struct shmdt_args *uap)
-{
-	sysv_nosys("SYSVSHM");
-	return nosys((struct nosys_args *)uap);
-};
-
-int
-shmat(struct shmat_args *uap)
-{
-	sysv_nosys("SYSVSHM");
-	return nosys((struct nosys_args *)uap);
-};
-
-int
-shmctl(struct shmctl_args *uap)
-{
-	sysv_nosys("SYSVSHM");
-	return nosys((struct nosys_args *)uap);
-};
-
-int
-shmget(struct shmget_args *uap)
-{
-	sysv_nosys("SYSVSHM");
-	return nosys((struct nosys_args *)uap);
-};
-
-/* XXX actually varargs. */
-int
-shmsys(struct shmsys_args *uap)
-{
-	sysv_nosys("SYSVSHM");
-	return nosys((struct nosys_args *)uap);
-};
+SYSCALL_NOT_PRESENT_GEN(shmdt, "SYSVSHM");
+SYSCALL_NOT_PRESENT_GEN(shmat, "SYSVSHM");
+SYSCALL_NOT_PRESENT_GEN(shmctl, "SYSVSHM");
+SYSCALL_NOT_PRESENT_GEN(shmget, "SYSVSHM");
+SYSCALL_NOT_PRESENT_GEN(shmsys, "SYSVSHM");
 
 /* called from kern_fork.c */
 void

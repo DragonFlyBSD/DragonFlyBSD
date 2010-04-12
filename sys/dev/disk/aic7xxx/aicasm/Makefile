@@ -10,6 +10,7 @@ YSRCS=	aicasm_gram.y aicasm_macro_gram.y
 LSRCS=	aicasm_scan.l aicasm_macro_scan.l
 
 GENHDRS=	aicasm_gram.h aicasm_macro_gram.h
+.ORDER: aicasm_gram.c aicasm_macro_gram.c aicasm_scan.c aicasm_macro_scan.c
 
 SRCS=	${GENHDRS} ${CSRCS} ${YSRCS} ${LSRCS}
 CLEANFILES+= ${GENHDRS} ${YSRCS:R:C/(.*)/\1.output/g}

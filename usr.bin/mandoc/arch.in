@@ -1,4 +1,4 @@
-/*	$Id: arch.in,v 1.5 2009/06/10 20:18:43 kristaps Exp $ */
+/*	$Id: arch.in,v 1.7 2010/03/26 07:07:58 kristaps Exp $ */
 /*
  * Copyright (c) 2009 Kristaps Dzonsons <kristaps@kth.se>
  *
@@ -25,6 +25,7 @@
  */
 
 LINE("alpha",		"Alpha")
+LINE("amd64",		"AMD64")
 LINE("amiga",		"Amiga")
 LINE("arc",		"ARC")
 LINE("arm",		"ARM")
@@ -35,6 +36,7 @@ LINE("hppa",		"HPPA")
 LINE("hppa64",		"HPPA64")
 LINE("i386",		"i386")
 LINE("landisk",		"LANDISK")
+LINE("loongson",	"Loongson")
 LINE("luna88k",		"Luna88k")
 LINE("mac68k",		"Mac68k")
 LINE("macppc",		"MacPPC")

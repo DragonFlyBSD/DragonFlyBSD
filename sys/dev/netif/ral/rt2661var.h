@@ -1,4 +1,6 @@
-/*
+/*	$FreeBSD: head/sys/dev/ral/rt2661var.h 192468 2009-05-20 20:00:40Z sam $	*/
+
+/*-
  * Copyright (c) 2005
  *	Damien Bergamini <damien.bergamini@free.fr>
  *
@@ -13,14 +15,7 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * $FreeBSD: src/sys/dev/ral/rt2661var.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661var.h,v 1.12 2008/02/08 09:42:30 sephe Exp $
  */
-
-#define RT2661_TSSI_LIMSZ	4
-#define RT2661_NCHAN_MAX	38
-#define RT2661_KEY_MAX		64
 
 struct rt2661_rx_radiotap_header {
 	struct ieee80211_radiotap_header wr_ihdr;
@@ -29,7 +24,8 @@ struct rt2661_rx_radiotap_header {
 	uint8_t		wr_rate;
 	uint16_t	wr_chan_freq;
 	uint16_t	wr_chan_flags;
-	uint8_t		wr_antsignal;
+	int8_t		wr_antsignal;
+	int8_t		wr_antnoise;
 } __packed;
 
 #define RT2661_RX_RADIOTAP_PRESENT					\
@@ -37,7 +33,8 @@ struct rt2661_rx_radiotap_header {
 	 (1 << IEEE80211_RADIOTAP_FLAGS) |				\
 	 (1 << IEEE80211_RADIOTAP_RATE) |				\
 	 (1 << IEEE80211_RADIOTAP_CHANNEL) |				\
-	 (1 << IEEE80211_RADIOTAP_DB_ANTSIGNAL))
+	 (1 << IEEE80211_RADIOTAP_DBM_ANTSIGNAL) |			\
+	 (1 << IEEE80211_RADIOTAP_DBM_ANTNOISE))
 
 struct rt2661_tx_radiotap_header {
 	struct ieee80211_radiotap_header wt_ihdr;
@@ -52,16 +49,12 @@ struct rt2661_tx_radiotap_header {
 	 (1 << IEEE80211_RADIOTAP_RATE) |				\
 	 (1 << IEEE80211_RADIOTAP_CHANNEL))
 
-struct rt2661_tx_ratectl {
+struct rt2661_tx_data {
+	bus_dmamap_t		map;
+	struct mbuf		*m;
 	struct ieee80211_node	*ni;
-	int			len;
-	int			rateidx;
-	STAILQ_ENTRY(rt2661_tx_ratectl)	link;
-};
-
-struct rt2661_data {
-	bus_dmamap_t	map;
-	struct mbuf	*m;
+	uint8_t			rix;
+	int8_t			rssi;
 };
 
 struct rt2661_tx_ring {
@@ -70,11 +63,17 @@ struct rt2661_tx_ring {
 	bus_dmamap_t		desc_map;
 	bus_addr_t		physaddr;
 	struct rt2661_tx_desc	*desc;
-	struct rt2661_data	*data;
+	struct rt2661_tx_data	*data;
 	int			count;
 	int			queued;
 	int			cur;
 	int			next;
+	int			stat;
+};
+
+struct rt2661_rx_data {
+	bus_dmamap_t	map;
+	struct mbuf	*m;
 };
 
 struct rt2661_rx_ring {
@@ -83,59 +82,48 @@ struct rt2661_rx_ring {
 	bus_dmamap_t		desc_map;
 	bus_addr_t		physaddr;
 	struct rt2661_rx_desc	*desc;
-	struct rt2661_data	*data;
+	struct rt2661_rx_data	*data;
 	int			count;
 	int			cur;
 	int			next;
 };
 
-struct rt2661_rfprog {
-	uint8_t		chan;
-	uint32_t	r1, r2, r3, r4;
+struct rt2661_vap {
+	struct ieee80211vap	ral_vap;
+
+	int			(*ral_newstate)(struct ieee80211vap *,
+				    enum ieee80211_state, int);
 };
+#define	RT2661_VAP(vap)		((struct rt2661_vap *)(vap))
 
 struct rt2661_softc {
-	struct ieee80211com		sc_ic;
+	struct arpcom			arpcom;
+	struct ifnet			*sc_ifp;
+	device_t			sc_dev;
 	bus_space_tag_t			sc_st;
 	bus_space_handle_t		sc_sh;
-	device_t			sc_dev;
 
-	int				sc_irq_rid;
-	struct resource			*sc_irq;
-	void				*sc_ih;
+	struct lock			sc_lock;
 
-	int				(*sc_newstate)
-					(struct ieee80211com *,
-					 enum ieee80211_state, int);
-
-	int				(*sc_key_alloc)
-					(struct ieee80211com *,
-					 const struct ieee80211_key *,
-					 ieee80211_keyix *, ieee80211_keyix *);
-
-	int				(*sc_key_delete)
-					(struct ieee80211com *,
-					 const struct ieee80211_key *);
-
-	int				(*sc_key_set)
-					(struct ieee80211com *,
-					 const struct ieee80211_key *,
-					 const uint8_t[IEEE80211_ADDR_LEN]);
-
-	struct callout			scan_ch;
-	struct callout			calib_ch;
+	struct callout			watchdog_ch;
 
 	int				sc_tx_timer;
-	int				sc_sifs;
-
+	int                             sc_invalid;
+	int				sc_debug;
+/*
+ * The same in both up to here
+ * ------------------------------------------------
+ */
+	
+	int                             sc_flags;
+#define	RAL_FW_LOADED		0x1
+#define	RAL_INPUT_RUNNING	0x2
+	int				sc_id;
 	struct ieee80211_channel	*sc_curchan;
-	int				sc_curchan_idx;
-	int				sc_txpwr_cnt;
-	int8_t				sc_txpwr;
 
 	uint8_t				rf_rev;
 
-	const struct rt2661_rfprog	*rfprog;
+	uint8_t				rfprog;
 	uint8_t				rffreq;
 
 	struct rt2661_tx_ring		txq[4];
@@ -143,7 +131,7 @@ struct rt2661_softc {
 	struct rt2661_rx_ring		rxq;
 
 	uint32_t			rf_regs[4];
-	int8_t				txpow[RT2661_NCHAN_MAX];
+	int8_t				txpow[38];
 
 	struct {
 		uint8_t	reg;
@@ -151,24 +139,12 @@ struct rt2661_softc {
 	}				bbp_prom[16];
 
 	int				hw_radio;
-	int				auto_txagc;
 	int				rx_ant;
 	int				tx_ant;
 	int				nb_ant;
-
 	int				ext_2ghz_lna;
-	int				rssi_2ghz_corr[2];
-	int				avg_rssi[2];
-	uint8_t				bbp17_2ghz_min;
-	uint8_t				bbp17_2ghz_max;
-
-	uint8_t				tssi_2ghz_up[RT2661_TSSI_LIMSZ];
-	uint8_t				tssi_2ghz_down[RT2661_TSSI_LIMSZ];
-	uint8_t				tssi_2ghz_ref;
-	int8_t				tssi_2ghz_step;
-	int8_t				tssi_2ghz_comp;
-
 	int				ext_5ghz_lna;
+	int				rssi_2ghz_corr;
 	int				rssi_5ghz_corr;
 
 	uint8_t				bbp18;
@@ -177,67 +153,25 @@ struct rt2661_softc {
 	uint8_t				bbp16;
 	uint8_t				bbp17;
 	uint8_t				bbp64;
-	uint16_t			mcu_led;
 
-	STAILQ_HEAD(, rt2661_tx_ratectl) tx_ratectl;
+	int				dwelltime;
 
-	struct bpf_if			*sc_drvbpf;
-
-	union {
-		struct rt2661_rx_radiotap_header th;
-		uint8_t	pad[64];
-	}				sc_rxtapu;
-#define sc_rxtap	sc_rxtapu.th
+	struct rt2661_rx_radiotap_header sc_rxtap;
 	int				sc_rxtap_len;
-
-	union {
-		struct rt2661_tx_radiotap_header th;
-		uint8_t	pad[64];
-	}				sc_txtapu;
-#define sc_txtap	sc_txtapu.th
+	struct rt2661_tx_radiotap_header sc_txtap;
 	int				sc_txtap_len;
 
-	struct sysctl_ctx_list		sysctl_ctx;
-	struct sysctl_oid		*sysctl_tree;
-
-	int				sc_txpwr_corr;
-	int				sc_calib_txpwr;
-	int				sc_calib_rxsns;
-	int				sc_dwelltime;
-	int				sc_debug;
-
-	struct ieee80211_onoe_param	sc_onoe_param;
-	struct ieee80211_sample_param	sc_sample_param;
-
-	uint32_t			sc_keymap[2];
+	struct sysctl_ctx_list  sc_sysctl_ctx;
 };
-
-#define RT2661_KEY_ASSERT(keyix) \
-	KASSERT((keyix) < RT2661_KEY_MAX, ("invalid keyix %d\n", (keyix)))
-
-#define RT2661_KEY_SET(sc, keyix) \
-do { \
-	RT2661_KEY_ASSERT((keyix)); \
-	(sc)->sc_keymap[(keyix) / 32] |= (1 << ((keyix) % 32)); \
-} while (0)
-
-#define RT2661_KEY_CLR(sc, keyix) \
-do { \
-	RT2661_KEY_ASSERT((keyix)); \
-	(sc)->sc_keymap[(keyix) / 32] &= ~(1 << ((keyix) % 32)); \
-} while (0)
-
-#define RT2661_KEY_ISSET(sc, keyix) \
-	((sc)->sc_keymap[(keyix) / 32] & (1 << ((keyix) % 32)))
-
-#define RT2661_RESET_AVG_RSSI(sc) \
-do { \
-	(sc)->avg_rssi[0] = -1; \
-	(sc)->avg_rssi[1] = -1; \
-} while (0)
 
 int	rt2661_attach(device_t, int);
 int	rt2661_detach(void *);
 void	rt2661_shutdown(void *);
 void	rt2661_suspend(void *);
 void	rt2661_resume(void *);
+void	rt2661_intr(void *);
+
+#define RAL_LOCK(sc)		lockmgr(&(sc)->sc_lock, LK_EXCLUSIVE)
+#define RAL_LOCK_ASSERT(sc)	\
+	KKASSERT(lockstatus(&(sc)->sc_lock, curthread) == LK_EXCLUSIVE)
+#define RAL_UNLOCK(sc)		lockmgr(&(sc)->sc_lock, LK_RELEASE)

@@ -792,7 +792,7 @@ vnget(cdev_t dev, struct vn_softc *vn, struct vn_user *vnu)
 			}
 
 			error = vn_fullpath(curproc, vn->sc_vp,
-						&fullpath, &freepath);
+						&fullpath, &freepath, 0);
 
 			if (error) {
 				kprintf("vnget: unable to resolve vp %p\n",

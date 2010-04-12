@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/sys/net80211/ieee80211.c 202612 2010-01-19 05:00:57Z thompsa $
+ * $FreeBSD: head/sys/net80211/ieee80211.c 206358 2010-04-07 15:29:13Z rpaulo $
  * $DragonFly$
  */
 
@@ -51,6 +51,7 @@
 #ifdef IEEE80211_SUPPORT_SUPERG
 #include <netproto/802_11/ieee80211_superg.h>
 #endif
+#include <netproto/802_11/ieee80211_ratectl.h>
 
 #include <net/bpf.h>
 
@@ -485,6 +486,7 @@ ieee80211_vap_setup(struct ieee80211com *ic, struct ieee80211vap *vap,
 	ieee80211_scan_vattach(vap);
 	ieee80211_regdomain_vattach(vap);
 	ieee80211_radiotap_vattach(vap);
+	ieee80211_ratectl_set(vap, IEEE80211_RATECTL_AMRR);
 
 	return 0;
 }

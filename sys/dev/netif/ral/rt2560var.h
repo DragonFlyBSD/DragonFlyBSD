@@ -1,4 +1,6 @@
-/*
+/*	$FreeBSD: head/sys/dev/ral/rt2560var.h 192468 2009-05-20 20:00:40Z sam $	*/
+
+/*-
  * Copyright (c) 2005, 2006
  *	Damien Bergamini <damien.bergamini@free.fr>
  *
@@ -13,9 +15,6 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * $FreeBSD: src/sys/dev/ral/rt2560var.h,v 1.1 2006/03/05 20:36:56 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2560var.h,v 1.12 2008/02/08 09:42:30 sephe Exp $
  */
 
 struct rt2560_rx_radiotap_header {
@@ -25,8 +24,9 @@ struct rt2560_rx_radiotap_header {
 	uint8_t		wr_rate;
 	uint16_t	wr_chan_freq;
 	uint16_t	wr_chan_flags;
+	int8_t		wr_antsignal;
+	int8_t		wr_antnoise;
 	uint8_t		wr_antenna;
-	uint8_t		wr_antsignal;
 };
 
 #define RT2560_RX_RADIOTAP_PRESENT					\
@@ -35,7 +35,8 @@ struct rt2560_rx_radiotap_header {
 	 (1 << IEEE80211_RADIOTAP_RATE) |				\
 	 (1 << IEEE80211_RADIOTAP_CHANNEL) |				\
 	 (1 << IEEE80211_RADIOTAP_ANTENNA) |				\
-	 (1 << IEEE80211_RADIOTAP_DB_ANTSIGNAL))
+	 (1 << IEEE80211_RADIOTAP_DBM_ANTSIGNAL) |			\
+	 (1 << IEEE80211_RADIOTAP_DBM_ANTNOISE))
 
 struct rt2560_tx_radiotap_header {
 	struct ieee80211_radiotap_header wt_ihdr;
@@ -56,7 +57,8 @@ struct rt2560_tx_data {
 	bus_dmamap_t			map;
 	struct mbuf			*m;
 	struct ieee80211_node		*ni;
-	int				rateidx;
+	uint8_t				rix;
+	int8_t				rssi;
 };
 
 struct rt2560_tx_ring {
@@ -93,30 +95,34 @@ struct rt2560_rx_ring {
 	int			cur_decrypt;
 };
 
+struct rt2560_vap {
+	struct ieee80211vap	ral_vap;
+	struct ieee80211_beacon_offsets	ral_bo;
+
+	int			(*ral_newstate)(struct ieee80211vap *,
+				    enum ieee80211_state, int);
+};
+#define	RT2560_VAP(vap)		((struct rt2560_vap *)(vap))
+
 struct rt2560_softc {
-	/*
-	 * NOTE: following four fields MUST be in the
-	 * same order as in rt2661_softc
-	 */
-	struct ieee80211com	sc_ic;
+	struct arpcom		arpcom;
+	struct ifnet		*sc_ifp;
+	device_t		sc_dev;
 	bus_space_tag_t		sc_st;
 	bus_space_handle_t	sc_sh;
-	device_t		sc_dev;
 
-	int			sc_irq_rid;
-	struct resource		*sc_irq;
-	void			*sc_ih;
+	struct lock		sc_lock;
 
-	int			(*sc_newstate)(struct ieee80211com *,
-				    enum ieee80211_state, int);
-
-	struct callout		scan_ch;
-	struct callout		calib_ch;
+	struct callout		watchdog_ch;
 
 	int			sc_tx_timer;
-	int			sc_sifs;
-
-	uint32_t		asic_rev;	/* RT2560_ASICREV_ */
+	int                     sc_invalid;
+	int			sc_debug;
+/*
+ * The same in both up to here
+ * ------------------------------------------------
+ */
+	uint32_t		asic_rev;
 	uint32_t		eeprom_rev;
 	uint8_t			rf_rev;
 	uint8_t			rssi_corr;
@@ -127,11 +133,8 @@ struct rt2560_softc {
 	struct rt2560_tx_ring	bcnq;
 	struct rt2560_rx_ring	rxq;
 
-	struct ieee80211_beacon_offsets	sc_bo;
-
 	uint32_t		rf_regs[4];
 	uint8_t			txpow[14];
-	uint8_t			sc_curtxpow;
 
 	struct {
 		uint8_t	reg;
@@ -144,51 +147,26 @@ struct rt2560_softc {
 	int			tx_ant;
 	int			nb_ant;
 
-	int			sc_avgrssi;
-	uint8_t			sc_bbp17;
-	uint8_t			sc_bbp17_dynmax;
-	uint8_t			sc_bbp17_dynmin;
-
-	int			sc_dwelltime;
-	int			sc_calib_rxsns;
-	int			sc_rxsns;
-
-	struct bpf_if		*sc_drvbpf;
-
-	union {
-		struct rt2560_rx_radiotap_header th;
-		uint8_t	pad[64];
-	}			sc_rxtapu;
-#define sc_rxtap	sc_rxtapu.th
+	struct rt2560_rx_radiotap_header sc_rxtap;
 	int			sc_rxtap_len;
 
-	union {
-		struct rt2560_tx_radiotap_header th;
-		uint8_t	pad[64];
-	}			sc_txtapu;
-#define sc_txtap	sc_txtapu.th
+	struct rt2560_tx_radiotap_header sc_txtap;
 	int			sc_txtap_len;
+#define RT2560_F_INPUT_RUNNING	0x1
+#define RT2560_F_PRIO_OACTIVE	0x2
+#define RT2560_F_DATA_OACTIVE	0x4
+	int			sc_flags;
 
-	struct sysctl_ctx_list	sysctl_ctx;
-	struct sysctl_oid	*sysctl_tree;
-
-	int			sc_debug;
-
-	struct ieee80211_onoe_param sc_onoe_param;
-	struct ieee80211_sample_param sc_sample_param;
-	uint32_t		sc_flags;
+	struct sysctl_ctx_list	sc_sysctl_ctx;
 };
-
-#define RT2560_FLAG_RXSNS	0x1
-#define RT2560_FLAG_PRIO_OACT	0x2	/* Management queue OACTIVE */
-#define RT2560_FLAG_DATA_OACT	0x4	/* Data queue OACTIVE */
-
-#define RT2560_ASICREV_B	2
-#define RT2560_ASICREV_C	3
-#define RT2560_ASICREV_D	4
 
 int	rt2560_attach(device_t, int);
 int	rt2560_detach(void *);
-void	rt2560_shutdown(void *);
-void	rt2560_suspend(void *);
+void	rt2560_stop(void *);
 void	rt2560_resume(void *);
+void	rt2560_intr(void *);
+
+#define RAL_LOCK(sc)		lockmgr(&(sc)->sc_lock, LK_EXCLUSIVE)
+#define RAL_LOCK_ASSERT(sc)	\
+	KKASSERT(lockstatus(&(sc)->sc_lock, curthread) == LK_EXCLUSIVE)
+#define RAL_UNLOCK(sc)		lockmgr(&(sc)->sc_lock, LK_RELEASE)

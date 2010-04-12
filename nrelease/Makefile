@@ -1,6 +1,3 @@
-# $DragonFly: src/nrelease/Makefile,v 1.90 2008/09/01 21:20:30 swildner Exp $
-#
-
 #########################################################################
 #				ENHANCEMENTS	 			#
 #########################################################################
@@ -35,7 +32,7 @@ KERNCONF ?= DFLYLIVE VKERNEL DFLYLIVE-SMP DFLYLIVE-SMP-NOAPIC
 .if ${MACHINE_ARCH} == "i386"
 KERNCONF ?= GENERIC VKERNEL
 .else
-KERNCONF ?= X86_64_GENERIC
+KERNCONF ?= X86_64_GENERIC VKERNEL64
 .endif
 .endif
 
@@ -45,8 +42,6 @@ PKGBIN_PKG_DELETE?=	${PKGSRC_PREFIX}/sbin/pkg_delete
 PKGBIN_PKG_ADMIN?=	${PKGSRC_PREFIX}/sbin/pkg_admin
 PKGBIN_MKISOFS?=	${PKGSRC_PREFIX}/bin/mkisofs
 PKGSRC_PKG_PATH?=	${ISODIR}/packages
-PKGSRC_BOOTSTRAP_URL?=	http://avalon.dragonflybsd.org/DragonFly-pkgsrc-packages/i386/1.12.0-RELEASE-BUILD
-CVSUP_BOOTSTRAP_KIT?=	cvsup-bootstrap-20070716
 
 # We use env -i in the chroot, so that environment variables won't
 # disturb any (pkgsrc) build.  This has happened for TARGET_ARCH,
@@ -67,6 +62,7 @@ PKGSRC_PACKAGES?=	pkgtools/pkg_leaves \
 			net/isc-dhcp4 \
 			net/isc-dhcpd4 \
 			sysutils/cdrtools \
+			net/csup \
 			${PKGSRC_EXTRA_PACKAGES}
 
 # pkgsrc options to use when building packages
@@ -191,10 +187,6 @@ check:
 	@echo "You never bootstrapped pkgsrc on your machine.  You can install it with:"
 	@echo "    make pkgsrc_bootstrap"
 .endif
-.if ${MACHINE_ARCH} == "i386" && !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
-	@echo "The cvsup bootstrap kit is not installed.  You can install it with:"
-	@echo "    make fetch"
-.endif
 .if !exists (${PKGBIN_MKISOFS})
 	@echo
 	@echo "Your machine does not have cdrtools installed.  You can install it with:"
@@ -204,9 +196,6 @@ check:
 	@echo "Please set PKGSRC_PATH to the pkgsrc tree that shall be used for"
 	@echo "package building.  For example /usr/pkgsrc.  See the Makefile"
 	@echo "in /usr if you are unfamiliar with pkgsrc."
-.endif
-.if ${MACHINE_ARCH} == "i386" && !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
-	@exit 1
 .endif
 .if !exists (${PKGBIN_MKISOFS})
 	@exit 1
@@ -245,8 +234,14 @@ buildkernel1 buildkernel2:
 # MAKEOBJDIRPREFIX for targets that are not run through the buildworld and 
 # buildkernel mechanism.
 #
+# Unconditionally clean out /usr/release/root so a previous img build
+# does not blow up a future quick iso build
+#
 buildiso:
-	if [ ! -d ${ISOROOT} ]; then mkdir -p ${ISOROOT}; fi
+	-rm -rf ${ISOROOT}
+	-chflags -R noschg ${ISOROOT}
+	rm -rf ${ISOROOT}
+	mkdir -p ${ISOROOT}
 	if [ ! -d ${NRLOBJDIR}/nrelease ]; then mkdir -p ${NRLOBJDIR}/nrelease; fi
 	( cd ${.CURDIR}/..; make -DWANT_INSTALLER DESTDIR=${ISOROOT} installworld )
 	( cd ${.CURDIR}/../etc; MAKEOBJDIRPREFIX=${NRLOBJDIR}/nrelease \
@@ -326,11 +321,6 @@ customizeiso:
 	@test -O ${.CURDIR} || echo "chowning copied files to root:wheel"
 	@test -O ${.CURDIR} || ((cd ${ROOTSKEL} && find .) | fgrep -v cpignore | (cd ${ISOROOT} && xargs chown root:wheel))
 .endfor
-.if ${MACHINE_ARCH} == "i386"
-	(cd ${PKGSRC_PKG_PATH}; tar xzpf ${CVSUP_BOOTSTRAP_KIT}.tgz)
-	cp -p ${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}/usr/local/bin/cvsup ${ISOROOT}/usr/local/bin/cvsup
-	cp -p ${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}/usr/local/man/man1/cvsup.1 ${ISOROOT}/usr/local/man/man1/cvsup.1
-.endif
 	pwd_mkdb -p -d ${ISOROOT}/etc ${ISOROOT}/etc/master.passwd
 .for UPGRADE_ITEM in Makefile			\
 		     etc.${MACHINE_ARCH} 	\
@@ -413,7 +403,6 @@ customizeiso:
 	umount ${ISOROOT}/usr/pkgsrc
 	rm -rf ${ISOROOT}/usr/pkgobj
 	rm -f ${ISOROOT}/etc/resolv.conf
-	makewhatis ${ISOROOT}/usr/local/man
 	makewhatis ${ISOROOT}/usr/pkg/man
 
 # So locate works
@@ -497,19 +486,9 @@ realclean:	clean
 	rm -rf ${ISODIR}/packages
 	rm -rf ${ISODIR}/distfiles
 
-.if ${MACHINE_ARCH} == "i386"
-fetch:
-	@if [ ! -d ${PKGSRC_PKG_PATH} ]; then mkdir -p ${PKGSRC_PKG_PATH}; fi
-.if !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
-	(cd ${PKGSRC_PKG_PATH}; fetch ${PKGSRC_BOOTSTRAP_URL}/${CVSUP_BOOTSTRAP_KIT}.tgz)
-.endif
-.endif
-
 pkgsrc_bootstrap:
-.if !exists(${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}.tgz)
 	mkdir -p /usr/release/bootstrap
 	(cd ${PKGSRC_PATH}/bootstrap; ./bootstrap --workdir /usr/release/bootstrap)
-.endif
 
 pkgsrc_cdrecord:
 .if !exists (${PKGBIN_MKISOFS})
@@ -529,6 +508,6 @@ help all:
 .PHONY: quick realquick
 .PHONY: check buildworld1 buildworld2
 .PHONY: buildkernel1 buildkernel2 buildiso customizeiso mklocatedb mkiso mkimg
-.PHONY: clean realclean fetch help all srcs
+.PHONY: clean realclean help all srcs
 
 .include <bsd.prog.mk>

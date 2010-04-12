@@ -282,7 +282,7 @@ vm_page_startup(vm_offset_t vaddr)
 	    VM_PROT_READ | VM_PROT_WRITE);
 	vm_page_array = (vm_page_t)mapped;
 
-#ifdef __x86_64__
+#if defined(__x86_64__) && !defined(_KERNEL_VIRTUAL)
 	/*
 	 * since pmap_map on amd64 returns stuff out of a direct-map region,
 	 * we have to manually add these pages to the minidump tracking so
@@ -843,6 +843,17 @@ vm_wait_nominal(void)
 {
 	while (vm_page_count_min(0))
 		vm_wait(0);
+}
+
+/*
+ * Test if vm_wait_nominal() would block.
+ */
+int
+vm_test_nominal(void)
+{
+	if (vm_page_count_min(0))
+		return(1);
+	return(0);
 }
 
 /*

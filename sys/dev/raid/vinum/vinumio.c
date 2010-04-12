@@ -327,7 +327,7 @@ read_drive_label(struct drive *drive, int verbose)
     int result;
     struct vinum_hdr *vhdr;
 
-    error = init_drive(drive, 0);			    /* find the drive */
+    error = init_drive(drive, verbose);			    /* find the drive */
     if (error)						    /* find the drive */
 	return DL_CANT_OPEN;				    /* not ours */
 
@@ -702,7 +702,7 @@ vinum_scandisk(char *devicename[], int drives)
 	char part;					    /* UNIX partition */
 	int slice;
 	int founddrive;					    /* flag when we find a vinum drive */
-	int has_slice = 0;
+	int has_slice = -1;
 	int has_part = 0;
 	char *tmp;
 
@@ -715,31 +715,27 @@ vinum_scandisk(char *devicename[], int drives)
 	 */
 	if ((tmp = rindex(devicename[driveno], '/')) == NULL)
 	    tmp = devicename[driveno];
-	while (*tmp && (*tmp < '0' || *tmp > '9'))
-	    ++tmp;
-	while (*tmp && *tmp >= '0' && *tmp <= '9')
-	    ++tmp;
-	if (*tmp == 's')
-	    has_slice = strtol(tmp + 1, &tmp, 0);
-	if (*tmp >= 'a' && *tmp <= 'p')
-	    has_part = *tmp;
+	else
+		tmp++;
+	ksscanf(tmp, "%*[a-z]%*d%*[s]%d%c", &has_slice, &has_part);
 
-	/*
-	 * Scan slices if no slice was specified, only if no partition was
-	 * specified.
-	 */
-	if (has_slice == 0 && has_part == 0)
 	for (slice = 0; slice < MAX_SLICES; slice++) {
-	    if (has_slice && slice != has_slice)
+	    if (has_slice >= 0 && slice != has_slice)
 		continue;
 
 	    for (part = 'a'; part < 'a' + MAXPARTITIONS; part++) {
-		if (has_part && part != has_part)
-		    continue;
 		if (part == 'c')
 		    continue;
-		ksnprintf(partname, DRIVENAMELEN,
-			"%ss%d%c", devicename[driveno], slice, part);
+		if (has_part && part != has_part)
+		    continue;
+		if (has_slice >= 0 && has_part)
+			strncpy(partname, devicename[driveno], DRIVENAMELEN);
+		else if (has_slice >= 0)
+			ksnprintf(partname, DRIVENAMELEN,
+				"%s%c", devicename[driveno], part);
+		else
+			ksnprintf(partname, DRIVENAMELEN,
+				"%ss%d%c", devicename[driveno], slice, part);
 		drive = check_drive(partname);	    /* try to open it */
 		if ((drive->lasterror != 0)		    /* didn't work, */
 		    ||(drive->state != drive_up))
@@ -753,34 +749,6 @@ vinum_scandisk(char *devicename[], int drives)
 		    drive->flags &= ~VF_NEWBORN;	    /* which is no longer newly born */
 		    gooddrives++;
 		    founddrive++;
-		}
-	    }
-	}
-	if (founddrive == 0 && has_slice == 0) {	    /* didn't find anything, */
-	    for (part = 'a'; part < 'a' + MAXPARTITIONS; part++) {	    /* try the compatibility partition */
-		if (has_part && has_part != part)
-		    continue;
-		if (part == 'c')
-		    continue;
-		if (has_part) {
-		    ksnprintf(partname, DRIVENAMELEN,
-			    "%s", devicename[driveno]);
-		} else {
-		    ksnprintf(partname, DRIVENAMELEN,
-			    "%s%c", devicename[driveno], part);
-		}
-		drive = check_drive(partname);	    /* try to open it */
-		if ((drive->lasterror != 0)		    /* didn't work, */
-		||(drive->state != drive_up))
-		    free_drive(drive);		    /* get rid of it */
-		else if (drive->flags & VF_CONFIGURED)  /* already read this config, */
-		    log(LOG_WARNING,
-			"vinum: already read config from %s\n", /* say so */
-			drive->label.name);
-		else {
-		    drivelist[gooddrives] = drive->driveno;	/* keep the drive index */
-		    drive->flags &= ~VF_NEWBORN;	    /* which is no longer newly born */
-		    gooddrives++;
 		}
 	    }
 	}

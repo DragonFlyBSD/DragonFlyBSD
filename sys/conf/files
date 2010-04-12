@@ -634,7 +634,7 @@ kern/imgact_resident.c	standard
 kern/imgact_gzip.c	optional gzip
 kern/imgact_shell.c	standard
 kern/inflate.c		optional gzip
-kern/init_main.c	standard
+kern/init_main.c	standard nowerror
 kern/init_sysent.c	standard
 kern/kern_checkpoint.c	standard
 kern/kern_sysref.c	standard
@@ -811,7 +811,6 @@ vfs/procfs/procfs_type.c	optional procfs
 vfs/procfs/procfs_vfsops.c	optional procfs
 vfs/procfs/procfs_vnops.c	optional procfs
 vfs/procfs/procfs_rlimit.c	optional procfs
-#vfs/specfs/spec_vnops.c	standard
 vfs/union/union_subr.c		optional union
 vfs/union/union_vfsops.c	optional union
 vfs/union/union_vnops.c		optional union
@@ -916,7 +915,7 @@ netproto/802_11/wlan/ieee80211_power.c      optional wlan
 netproto/802_11/wlan/ieee80211_proto.c      optional wlan
 netproto/802_11/wlan/ieee80211_radiotap.c   optional wlan
 netproto/802_11/wlan/ieee80211_ratectl.c    optional wlan
-netproto/802_11/wlan/ieee80211_ratectl_none.c optional wlan
+netproto/802_11/wlan/ieee80211_ratectl.c    optional wlan
 netproto/802_11/wlan/ieee80211_regdomain.c  optional wlan
 netproto/802_11/wlan/ieee80211_rssadapt.c   optional wlan_rssadapt
 netproto/802_11/wlan/ieee80211_scan.c       optional wlan
@@ -926,9 +925,6 @@ netproto/802_11/wlan/ieee80211_superg.c     optional wlan ieee80211_support_supe
 netproto/802_11/wlan/ieee80211_tdma.c       optional wlan ieee80211_support_tdma
 netproto/802_11/wlan/ieee80211_wds.c        optional wlan
 netproto/802_11/wlan_xauth/ieee80211_xauth.c optional wlan_xauth
-netproto/802_11/wlan_ratectl/onoe/ieee80211_ratectl_onoe.c	optional wlan_ratectl_onoe
-netproto/802_11/wlan_ratectl/amrr/ieee80211_ratectl_amrr.c	optional wlan_ratectl_amrr
-netproto/802_11/wlan_ratectl/sample/ieee80211_ratectl_sample.c	optional wlan_ratectl_sample
 netproto/atalk/aarp.c		optional netatalk
 netproto/atalk/at_control.c	optional netatalk
 netproto/atalk/at_proto.c	optional netatalk
@@ -1415,14 +1411,14 @@ vfs/ufs/ffs_vnops.c		optional ffs
 vfs/ufs/ffs_vnops.c		optional mfs
 vfs/ufs/ffs_rawread.c		optional directio
 vfs/mfs/mfs_vfsops.c		optional mfs
-vfs/ufs/ufs_bmap.c		standard
-vfs/ufs/ufs_ihash.c		standard
-vfs/ufs/ufs_inode.c		standard
-vfs/ufs/ufs_lookup.c		standard
-vfs/ufs/ufs_quota.c		standard
-vfs/ufs/ufs_vfsops.c		standard
-vfs/ufs/ufs_vnops.c		standard
-vfs/ufs/ufs_dirhash.c		standard
+vfs/ufs/ufs_bmap.c		optional ffs
+vfs/ufs/ufs_ihash.c		optional ffs
+vfs/ufs/ufs_inode.c		optional ffs
+vfs/ufs/ufs_lookup.c		optional ffs
+vfs/ufs/ufs_quota.c		optional ffs
+vfs/ufs/ufs_vfsops.c		optional ffs
+vfs/ufs/ufs_vnops.c		optional ffs
+vfs/ufs/ufs_dirhash.c		optional ffs
 vfs/userfs/userfs_vfsops.c	optional userfs
 vfs/userfs/userfs_vnops.c	optional userfs
 vfs/userfs/userfs_inode.c	optional userfs

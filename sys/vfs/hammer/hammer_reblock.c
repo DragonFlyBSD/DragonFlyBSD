@@ -234,6 +234,7 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 {
 	hammer_mount_t hmp;
 	hammer_off_t tmp_offset;
+	hammer_node_ondisk_t ondisk;
 	struct hammer_btree_leaf_elm leaf;
 	int error;
 	int bytes;
@@ -302,11 +303,28 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 			hammer_unlock_cursor(cursor);
 			hammer_io_direct_uncache(hmp, &leaf);
 			hammer_lock_cursor(cursor);
+
+			/*
+			 * elm may have become stale or invalid, reload it.
+			 * ondisk variable is temporary only.  Note that
+			 * cursor->node and thus cursor->node->ondisk may
+			 * also changed.
+			 */
+			ondisk = cursor->node->ondisk;
+			elm = &ondisk->elms[cursor->index];
 			if (cursor->flags & HAMMER_CURSOR_RETEST) {
-				kprintf("hammer: retest after uncache\n");
+				kprintf("hammer: debug: retest on "
+					"reblocker uncache\n");
 				error = EDEADLK;
-			} else {
-				KKASSERT(bcmp(&elm->leaf, &leaf, sizeof(leaf)) == 0);
+			} else if (ondisk->type != HAMMER_BTREE_TYPE_LEAF ||
+				   cursor->index >= ondisk->count) {
+				kprintf("hammer: debug: shifted on "
+					"reblocker uncache\n");
+				error = EDEADLK;
+			} else if (bcmp(&elm->leaf, &leaf, sizeof(leaf))) {
+				kprintf("hammer: debug: changed on "
+					"reblocker uncache\n");
+				error = EDEADLK;
 			}
 			if (error == 0)
 				error = hammer_cursor_upgrade(cursor);

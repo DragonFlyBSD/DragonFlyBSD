@@ -192,7 +192,7 @@ pmap_pinit(struct pmap *pmap)
 	 */
 	if (pmap->pm_pdir == NULL) {
 		pmap->pm_pdir =
-		    (pd_entry_t *)kmem_alloc_pageable(&kernel_map, PAGE_SIZE);
+		    (vpte_t *)kmem_alloc_pageable(&kernel_map, PAGE_SIZE);
 	}
 
 	/*
@@ -1706,7 +1706,7 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 				if (pbits & VPTE_A) {
 					m = PHYS_TO_VM_PAGE(pbits);
 					vm_page_flag_set(m, PG_REFERENCED);
-					atomic_clear_int(ptep, VPTE_A);
+					atomic_clear_long(ptep, VPTE_A);
 				}
 				if (pbits & VPTE_M) {
 					if (pmap_track_modified(pmap, i386_ptob(sindex))) {
@@ -1743,7 +1743,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	vm_paddr_t pa;
 	vpte_t *pte;
 	vm_paddr_t opa;
-	vm_offset_t origpte, newpte;
+	vpte_t origpte, newpte;
 	vm_page_t mpte;
 
 	if (pmap == NULL)
@@ -2153,9 +2153,9 @@ pmap_change_wiring(pmap_t pmap, vm_offset_t va, boolean_t wired)
 	 * wiring changes.
 	 */
 	if (wired)
-		atomic_set_int(pte, VPTE_WIRED);
+		atomic_set_long(pte, VPTE_WIRED);
 	else
-		atomic_clear_int(pte, VPTE_WIRED);
+		atomic_clear_long(pte, VPTE_WIRED);
 }
 
 /*
@@ -2229,7 +2229,7 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 			
 		if (srcptepaddr & VPTE_PS) {
 			if (dst_pmap->pm_pdir[ptepindex] == 0) {
-				dst_pmap->pm_pdir[ptepindex] = (pd_entry_t) srcptepaddr;
+				dst_pmap->pm_pdir[ptepindex] = (vpte_t)srcptepaddr;
 				dst_pmap->pm_stats.resident_count += NBPDR / PAGE_SIZE;
 			}
 			continue;
@@ -2517,7 +2517,7 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 		m = PHYS_TO_VM_PAGE(tpte);
 
 		KASSERT(m < &vm_page_array[vm_page_array_size],
-			("pmap_remove_pages: bad tpte %x", tpte));
+			("pmap_remove_pages: bad tpte %lx", tpte));
 
 		KKASSERT(pmap->pm_stats.resident_count > 0);
 		--pmap->pm_stats.resident_count;
@@ -2668,7 +2668,7 @@ pmap_clearbit(vm_page_t m, int bit)
 				 * handle the write fault without forwarding
 				 * the fault to us.
 				 */
-				atomic_clear_int(pte, VPTE_M);
+				atomic_clear_long(pte, VPTE_M);
 			} else if ((bit & (VPTE_W|VPTE_M)) == (VPTE_W|VPTE_M)) {
 				/*
 				 * We've been asked to clear W & M, I guess
@@ -2681,7 +2681,7 @@ pmap_clearbit(vm_page_t m, int bit)
 				 * We've been asked to clear bits that do
 				 * not interact with hardware.
 				 */
-				atomic_clear_int(pte, bit);
+				atomic_clear_long(pte, bit);
 			}
 		}
 	}
@@ -2754,9 +2754,9 @@ pmap_ts_referenced(vm_page_t m)
 
 			if (pte && (*pte & VPTE_A)) {
 #ifdef SMP
-				atomic_clear_int(pte, VPTE_A);
+				atomic_clear_long(pte, VPTE_A);
 #else
-				atomic_clear_int_nonlocked(pte, VPTE_A);
+				atomic_clear_long_nonlocked(pte, VPTE_A);
 #endif
 				rtval++;
 				if (rtval > 4) {
@@ -2891,7 +2891,7 @@ pmap_mincore(pmap_t pmap, vm_offset_t addr)
 	}
 
 	if ((pte = *ptep) != 0) {
-		vm_offset_t pa;
+		vm_paddr_t pa;
 
 		val = MINCORE_INCORE;
 		if ((pte & VPTE_MANAGED) == 0)
@@ -3010,8 +3010,8 @@ pads(pmap_t pm)
 
 	if (pm == &kernel_pmap)
 		return;
-	for (i = 0; i < 1024; i++)
-		if (pm->pm_pdir[i])
+	for (i = 0; i < 1024; i++) {
+		if (pm->pm_pdir[i]) {
 			for (j = 0; j < 1024; j++) {
 				va = (i << PDRSHIFT) + (j << PAGE_SHIFT);
 				if (pm == &kernel_pmap && va < KERNBASE)
@@ -3024,7 +3024,8 @@ pads(pmap_t pm)
 						(void *)va, (unsigned)*ptep);
 				}
 			};
-
+		}
+	}
 }
 
 void

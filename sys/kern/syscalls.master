@@ -136,7 +136,7 @@
 70	STD	BSD	{ int sstk(int incr); }
 71	COMPAT	BSD	{ int mmap(void *addr, int len, int prot, \
 			    int flags, int fd, long pos); }
-72	STD	BSD	{ int ovadvise(int anom); } vadvise ovadvise_args int
+72	COMPAT	BSD	{ int vadvise(int anom); } vadvise ovadvise_args int
 73	STD	BSD	{ int munmap(void *addr, size_t len); }
 74	STD	BSD	{ int mprotect(void *addr, size_t len, int prot); }
 75	STD	BSD	{ int madvise(void *addr, size_t len, int behav); }
@@ -361,7 +361,7 @@
 			    int msgflg); }
 227	STD	BSD	{ int msgrcv(int msqid, void *msgp, size_t msgsz, \
 			    long msgtyp, int msgflg); }
-228	STD	BSD	{ int shmat(int shmid, void *shmaddr, int shmflg); }
+228	STD	BSD	{ caddr_t shmat(int shmid, void *shmaddr, int shmflg); }
 229	STD	BSD	{ int shmctl(int shmid, int cmd, \
 			    struct shmid_ds *buf); }
 230	STD	BSD	{ int shmdt(void *shmaddr); }

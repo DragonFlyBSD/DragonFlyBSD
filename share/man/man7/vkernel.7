@@ -29,9 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.43 2008/09/02 22:41:19 thomas Exp $
-.\"
-.Dd March 27, 2009
+.Dd March 28, 2010
 .Dt VKERNEL 7
 .Os
 .Sh NAME
@@ -41,7 +39,8 @@
 .Nm vke
 .Nd virtual kernel architecture
 .Sh SYNOPSIS
-.Cd "platform vkernel"
+.Cd "platform vkernel   # for 32 bit vkernels"
+.Cd "platform vkernel64 # for 64 bit vkernels"
 .Cd "device vcd"
 .Cd "device vkd"
 .Cd "device vke"
@@ -281,6 +280,21 @@ default
 configuration file, for
 .Xr config 8 .
 .El
+.Sh CONFIGURATION FILES
+Your virtual kernel is a complete
+.Dx
+system, but you might not want to run all the services a normal kernel runs.
+Here is what a typical virtual kernel's
+.Pa /etc/rc.conf
+file looks like, with some additional possibilities commented out.
+.Bd -literal
+hostname="vkernel"
+network_interfaces="lo0 vke0"
+ifconfig_vke0="DHCP"
+sendmail_enable="NO"
+#syslog_enable="NO"
+blanktime="NO"
+.Ed
 .Sh EXAMPLES
 A couple of steps are necessary in order to prepare the system to build and
 run a virtual kernel.
@@ -396,25 +410,11 @@ cause the virtual kernel to exit.
 .Sh BUILDING THE WORLD UNDER A VKERNEL
 The virtual kernel platform does not have all the header files expected
 by a world build, so the easiest thing to do right now is to specify a
-pc32 target when building the world under a virtual kernel, like this:
+pc32 (in a 32 bit vkernel) or pc64 (in a 64 bit vkernel) target when
+building the world under a virtual kernel, like this:
 .Bd -literal
 vkernel# make MACHINE_PLATFORM=pc32 buildworld
 vkernel# make MACHINE_PLATFORM=pc32 installworld
-.Ed
-.Sh CONFIGURATION FILES
-Your virtual kernel is a complete
-.Dx
-system, but you might not want to run all the services a normal kernel runs.
-Here is what a typical virtual kernel's
-.Pa /etc/rc.conf
-file looks like, with some additional possibilities commented out.
-.Bd -literal
-hostname="vkernel"
-network_interfaces="lo0 vke0"
-ifconfig_vke0="DHCP"
-sendmail_enable="NO"
-#syslog_enable="NO"
-blanktime="NO"
 .Ed
 .Sh SEE ALSO
 .Xr vknet 1 ,

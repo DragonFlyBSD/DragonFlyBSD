@@ -696,6 +696,7 @@ vm_pageout_scan(int pass)
 	struct vm_pageout_scan_info info;
 	vm_page_t m, next;
 	struct vm_page marker;
+	struct vnode *vpfailed;		/* warning, allowed to be stale */
 	int maxscan, pcount;
 	int recycle_count;
 	int inactive_shortage, active_shortage;
@@ -760,6 +761,7 @@ vm_pageout_scan(int pass)
 	 */
 	crit_enter();
 rescan0:
+	vpfailed = NULL;
 	maxscan = vmstats.v_inactive_count;
 	for (m = TAILQ_FIRST(&vm_page_queues[PQ_INACTIVE].pl);
 	     m != NULL && maxscan-- > 0 && inactive_shortage > 0;
@@ -946,12 +948,23 @@ rescan0:
 			 * vm_wait while holding this vnode.  We skip the 
 			 * vnode if we can't get it in a reasonable amount
 			 * of time.
+			 *
+			 * vpfailed is used to (try to) avoid the case where
+			 * a large number of pages are associated with a
+			 * locked vnode, which could cause the pageout daemon
+			 * to stall for an excessive amount of time.
 			 */
-
 			if (object->type == OBJT_VNODE) {
-				vp = object->handle;
+				int flags;
 
-				if (vget(vp, LK_EXCLUSIVE|LK_NOOBJ|LK_TIMELOCK)) {
+				vp = object->handle;
+				flags = LK_EXCLUSIVE | LK_NOOBJ;
+				if (vp == vpfailed)
+					flags |= LK_NOWAIT;
+				else
+					flags |= LK_TIMELOCK;
+				if (vget(vp, flags) != 0) {
+					vpfailed = vp;
 					++pageout_lock_miss;
 					if (object->flags & OBJ_MIGHTBEDIRTY)
 						    vnodes_skipped++;
@@ -1483,7 +1496,7 @@ vm_pageout(void)
 	 *	 inactive queue becomes too small.  If the inactive queue
 	 *	 is large enough to satisfy page movement to free+cache
 	 *	 then it is repopulated more slowly from the active queue.
-	 *	 This allows a generate inactive_target default to be set.
+	 *	 This allows a general inactive_target default to be set.
 	 *
 	 *	 There is an issue here for processes which sit mostly idle
 	 *	 'overnight', such as sshd, tcsh, and X.  Any movement from
@@ -1491,8 +1504,11 @@ vm_pageout(void)
 	 *	 recycle eventually causing a lot of paging in the morning.
 	 *	 To reduce the incidence of this pages cycled out of the
 	 *	 buffer cache are moved directly to the inactive queue if
-	 *	 they were only used once or twice.  The vfs.vm_cycle_point
-	 *	 sysctl can be used to adjust this.
+	 *	 they were only used once or twice.
+	 *
+	 *	 The vfs.vm_cycle_point sysctl can be used to adjust this.
+	 *	 Increasing the value (up to 64) increases the number of
+	 *	 buffer recyclements which go directly to the inactive queue.
 	 */
 	if (vmstats.v_free_count > 2048) {
 		vmstats.v_cache_min = vmstats.v_free_target;
@@ -1501,7 +1517,7 @@ vm_pageout(void)
 		vmstats.v_cache_min = 0;
 		vmstats.v_cache_max = 0;
 	}
-	vmstats.v_inactive_target = vmstats.v_free_count / 2;
+	vmstats.v_inactive_target = vmstats.v_free_count / 4;
 
 	/* XXX does not really belong here */
 	if (vm_page_max_wired == 0)

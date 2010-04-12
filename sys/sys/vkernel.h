@@ -60,6 +60,9 @@
 #ifndef _MACHINE_VFRAME_H_
 #include <machine/vframe.h>
 #endif
+#ifndef _MACHINE_LIMITS_H_
+#include <machine/limits.h>
+#endif
 
 struct vmspace_rb_tree;
 struct vmspace_entry;
@@ -114,12 +117,26 @@ void vkernel_trap(struct lwp *lp, struct trapframe *frame);
 
 /*
  * KERNEL AND USER DEFINITIONS
+ *
+ * WARNING: vpte_t is 64 bits on a 64-bit box and 32 bits on a 32 bit box.
+ *	    A 2-layer page table is used on 32 bit boxes and a 4-layer
+ *	    page table is used on 64 bit boxes.
  */
+typedef u_long	vpte_t;
 
-typedef u_int32_t	vpte_t;
+#if LONG_BIT == 32
+#define VPTE_FRAME_END		32
+#define VPTE_PAGE_BITS		10
+#define VPTE_FRAME		0xFFFFF000L
+#elif LONG_BIT == 64
+#define VPTE_FRAME_END		48
+#define VPTE_PAGE_BITS		9
+#define VPTE_FRAME		0x000FFFFFFFFFF000L
+#else
+#error "LONG_BIT not defined"
+#endif
 
 #define VPTE_PAGE_ENTRIES	(PAGE_SIZE / sizeof(vpte_t))
-#define VPTE_PAGE_BITS		10
 #define VPTE_PAGE_MASK		((1 << VPTE_PAGE_BITS) - 1)
 #define VPTE_PAGETABLE_SIZE	PAGE_SIZE
 
@@ -134,8 +151,6 @@ typedef u_int32_t	vpte_t;
 #define VPTE_MANAGED	0x00000100	/* managed bit ?? */
 #define VPTE_G		0x00000200	/* global bit ?? */
 #define VPTE_WIRED	0x00000400	/* wired */
-
-#define VPTE_FRAME	0xFFFFF000
 
 #endif
 

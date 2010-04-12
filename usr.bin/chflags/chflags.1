@@ -77,7 +77,8 @@ option is specified, symbolic links on the command line are followed.
 If the
 .Ar file
 is a symbolic link,
-change the file flags of the link itself rather than the file to which it points.
+change the file flags of the link itself rather than the file to which
+it points.
 .It Fl L
 If the
 .Fl R
@@ -126,15 +127,19 @@ set the user append-only flag (owner or super-user only)
 set the user immutable flag (owner or super-user only)
 .It Cm uunlnk , uunlink
 set the user undeletable flag (owner or super-user only)
-.It Cm cache , ucache, snocache
-control the data swapcache (recursive, does not cross mounts)
+.It Cm cache , ucache
+control the data
+.Xr swapcache 8
+(recursive, does not cross mounts) (owner or super-user only)
+.It Cm noscache
+control the data
+.Xr swapcache 8
+(recursive, does not cross mounts) (super-user only)
 .El
 .Pp
-Putting the letters
+If a
 .Dq Cm no
-before or removing the letters
-.Dq Cm no
-from a keyword causes the flag to be cleared.
+prefix is added or removed from a keyword, the meaning is negated.
 For example:
 .Pp
 .Bl -tag -offset indent -width "nouchg" -compact
@@ -196,7 +201,9 @@ option is specified.
 In addition, these options override each other and the
 command's actions are determined by the last one specified.
 .Pp
-You can use "ls -lo" to see the flags of existing files.
+You can use
+.Dq Li "ls -lo"
+to see the flags of existing files.
 .Pp
 Note that the ability to change certain flags is dependent
 on the current kernel
@@ -207,12 +214,15 @@ See
 for more information on this setting.
 .Sh SWAPCACHE FLAGS
 The
-.Cm [u]cache
-bit may be set to enable swapcache data caching.
+.Cm cache
+bit may be set to enable
+.Xr swapcache 8
+data caching.
 The superuser flag,
 .Cm noscache
-may be used to disable swapcache data caching and overrides the
-user flag.
+may be used to disable
+.Xr swapcache 8
+data caching and overrides the user flag.
 .Pp
 The flag is recursive but does not cross mount points.
 Setting it on a top-level directories or mount point will
@@ -223,7 +233,7 @@ You may have to refresh the namecache with a dummy
 command after changing the flag in a top level directory.
 You do not have to recursive set the flag with
 .Nm
-.Op R
+.Fl R
 and, in fact, we do not recommend it under any circumstances.
 Filesystems which do not support flags generally have a
 .Cm cache
@@ -231,22 +241,36 @@ mount option to enable swapcache operation on the mount.
 .Pp
 If you intend to use swapcache data the
 .Cm vm.swapcache.use_chflags
-sysctl determines whether the chflags flags are used or not.
+sysctl determines whether the
+.Nm
+flags are used or not.
 If turned off and
 .Cm vm.swapcache.data_enable
 is turned on, data caching is turned on globally and the
 file flags are ignored.
-If use_chflags is turned on along with data_enable then only
-subtrees marked cacheable will be swapcached.
+If
+.Cm use_chflags
+is turned on along with
+.Cm data_enable
+then only subtrees marked cacheable will be swapcached.
 .Pp
-You would typically want to enable the cache on /usr, /home, and /bin
-and disable it for /usr/obj.  Alternatively if you want to cache
-NFS mounts (where chflags doesn't work), you can set the flag on
-some parent directory, possibly even the root ( "/" ) itself,
+You would typically want to enable the cache on
+.Pa /usr , /home ,
+and
+.Pa /bin
+and disable it for
+.Pa /usr/obj .
+Alternatively if you want to cache
+NFS mounts (where
+.Nm
+doesn't work), you can set the flag on
+some parent directory, possibly even the root
+.Pq Pa /
+itself,
 and then selectively disable it in places where you don't want it.
 .Pp
-This only applies to data caching.  Meta-data caching is universal when
-enabled.
+This only applies to data caching.
+Meta-data caching is universal when enabled.
 .Sh EXIT STATUS
 .Ex -std
 .Sh SEE ALSO

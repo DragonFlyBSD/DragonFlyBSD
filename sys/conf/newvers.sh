@@ -44,7 +44,7 @@ fi
 
 # Set the branch
 #
-BRANCH="DEVELOPMENT_2_5"
+BRANCH="DEVELOPMENT_2_7"
 
 TYPE="DragonFly"
 
@@ -139,3 +139,13 @@ char kern_ident[] = "${i}";
 EOF
 
 echo `expr ${v} + 1` > version
+
+if [ "${BRANCH}" = "DEVELOPMENT" ]; then
+    SBRANCH=DEV
+fi
+if [ "${BRANCH}" = "RELEASE" ]; then
+    SBRANCH=REL
+fi
+
+stamp=`date +%Y%m%d`
+echo DragonFly-${MACHINE}-${stamp}-${SBRANCH}-${GITREV} > vers.txt

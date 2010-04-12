@@ -452,10 +452,6 @@ ath_attach(u_int16_t devid, struct ath_softc *sc)
 		if_printf(ifp, "failed to allocate descriptors: %d\n", error);
 		goto bad;
 	}
-#ifdef __FreeBSD__
-	callout_init_mtx(&sc->sc_cal_ch, &sc->sc_mtx, 0);
-	callout_init_mtx(&sc->sc_wd_ch, &sc->sc_mtx, 0);
-#endif
 	callout_init(&sc->sc_cal_ch);
 	callout_init(&sc->sc_wd_ch);
 
@@ -5400,6 +5396,8 @@ ath_calibrate(void *arg)
 	HAL_BOOL longCal, isCalDone;
 	int nextcal;
 
+	ATH_LOCK(sc);
+
 	if (ic->ic_flags & IEEE80211_F_SCAN)	/* defer, off channel */
 		goto restart;
 	longCal = (ticks - sc->sc_lastlongcal >= ath_longcalinterval*hz);
@@ -5469,6 +5467,8 @@ restart:
 		    __func__);
 		/* NB: don't rearm timer */
 	}
+
+	ATH_UNLOCK(sc);
 }
 
 static void
@@ -6103,6 +6103,8 @@ ath_watchdog(void *arg)
 {
 	struct ath_softc *sc = arg;
 
+	ATH_LOCK(sc);
+
 	if (sc->sc_wd_timer != 0 && --sc->sc_wd_timer == 0) {
 		struct ifnet *ifp = sc->sc_ifp;
 		uint32_t hangs;
@@ -6118,6 +6120,8 @@ ath_watchdog(void *arg)
 		sc->sc_stats.ast_watchdog++;
 	}
 	callout_reset(&sc->sc_wd_ch, hz, ath_watchdog, sc);
+
+	ATH_UNLOCK(sc);
 }
 
 #ifdef ATH_DIAGAPI

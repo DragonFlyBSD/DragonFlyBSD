@@ -175,6 +175,7 @@ hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
 		 */
 		if (ip) {
 			redo->redo_objid = ip->obj_id;
+			redo->redo_localization = ip->obj_localization;
 			if ((ip->flags & HAMMER_INODE_RDIRTY) == 0) {
 				ip->redo_fifo_start = next_offset;
 				if (RB_INSERT(hammer_redo_rb_tree,
@@ -189,6 +190,7 @@ hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
 				ip->redo_fifo_next = next_offset;
 		} else {
 			redo->redo_objid = 0;
+			redo->redo_localization = 0;
 		}
 
 		/*
@@ -283,6 +285,16 @@ hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
 
 	if (buffer)
 		hammer_rel_buffer(buffer, 0);
+
+	/*
+	 * Make sure the nominal undo span contains at least one REDO_SYNC,
+	 * otherwise the REDO recovery will not be triggered.
+	 */
+	if ((hmp->flags & HAMMER_MOUNT_REDO_SYNC) == 0 &&
+	    flags != HAMMER_REDO_SYNC) {
+		hammer_generate_redo_sync(trans);
+	}
+
 	return(error);
 }
 
@@ -294,20 +306,34 @@ hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
  * The SYNC record contains the aggregate earliest UNDO/REDO FIFO offset
  * for all inodes with active REDOs.  This changes dynamically as inodes
  * get flushed.
+ *
+ * During recovery stage2 any new flush cycles must specify the original
+ * redo sync offset.  That way a crash will re-run the REDOs, at least
+ * up to the point where the UNDO FIFO does not overwrite the area.
  */
 void
 hammer_generate_redo_sync(hammer_transaction_t trans)
 {
 	hammer_mount_t hmp = trans->hmp;
 	hammer_inode_t ip;
+	hammer_off_t redo_fifo_start;
 
-	ip = RB_FIRST(hammer_redo_rb_tree, &hmp->rb_redo_root);
-	if (ip) {
+	if (hmp->flags & HAMMER_MOUNT_REDO_RECOVERY_RUN) {
+		ip = NULL;
+		redo_fifo_start = hmp->recover_stage2_offset;
+	} else {
+		ip = RB_FIRST(hammer_redo_rb_tree, &hmp->rb_redo_root);
+		if (ip)
+			redo_fifo_start = ip->redo_fifo_start;
+		else
+			redo_fifo_start = 0;
+	}
+	if (redo_fifo_start) {
 		if (hammer_debug_io & 0x0004) {
 			kprintf("SYNC IP %p %016jx\n",
-				ip, (uintmax_t)ip->redo_fifo_start);
+				ip, (intmax_t)redo_fifo_start);
 		}
-		hammer_generate_redo(trans, NULL, ip->redo_fifo_start,
+		hammer_generate_redo(trans, NULL, redo_fifo_start,
 				     HAMMER_REDO_SYNC, NULL, 0);
 		trans->hmp->flags |= HAMMER_MOUNT_REDO_SYNC;
 	}

@@ -368,6 +368,7 @@ out:
     return error;
 }
 
+
 linker_file_t
 linker_find_file_by_name(const char* filename)
 {
@@ -1073,6 +1074,51 @@ modlist_lookup2(const char *name, struct mod_depend *verinfo)
 	    bestmod = mod;
     }
     return (bestmod);
+}
+
+int
+linker_reference_module(const char *modname, struct mod_depend *verinfo,
+    linker_file_t *result)
+{
+    modlist_t mod;
+    int error;
+
+    lockmgr(&lock, LK_SHARED);
+    if ((mod = modlist_lookup2(modname, verinfo)) != NULL) {
+        *result = mod->container;
+        (*result)->refs++;
+        lockmgr(&lock, LK_RELEASE);
+        return (0);
+    }
+
+    error = linker_load_module(NULL, modname, NULL, verinfo, result);
+    lockmgr(&lock, LK_RELEASE);
+    return (error);
+}
+
+int
+linker_release_module(const char *modname, struct mod_depend *verinfo,
+    linker_file_t lf)
+{
+    modlist_t mod;
+    int error;
+
+    lockmgr(&lock, LK_SHARED);
+    if (lf == NULL) {
+        KASSERT(modname != NULL,
+            ("linker_release_module: no file or name"));
+        mod = modlist_lookup2(modname, verinfo);
+        if (mod == NULL) {
+            lockmgr(&lock, LK_RELEASE);
+            return (ESRCH);
+        }
+        lf = mod->container;
+    } else
+        KASSERT(modname == NULL && verinfo == NULL,
+            ("linker_release_module: both file and name"));
+    error = linker_file_unload(lf);
+    lockmgr(&lock, LK_RELEASE);
+    return (error);
 }
 
 static modlist_t

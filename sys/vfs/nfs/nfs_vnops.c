@@ -2701,10 +2701,13 @@ nfs_readdirplusrpc_uio(struct vnode *vp, struct uio *uiop)
 				    cache_put(&nch);
 				} else {
 rdfail:
+				    ;
+#if 0
 				    kprintf("Warning: NFS/rddirplus, "
 					    "UNABLE TO ENTER %*.*s\n",
 					nlc.nlc_namelen, nlc.nlc_namelen,
 					nlc.nlc_nameptr);
+#endif
 				}
 			    }
 			} else {

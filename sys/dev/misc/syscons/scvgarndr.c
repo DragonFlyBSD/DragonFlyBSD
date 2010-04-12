@@ -57,21 +57,26 @@ static vr_draw_mouse_t		vga_txtmouse;
 #endif
 
 #ifdef SC_PIXEL_MODE
-static vr_init_t		vga_rndrinit;
 static vr_draw_border_t		vga_pxlborder_direct;
+static vr_draw_border_t		vga_pxlborder_packed;
 static vr_draw_border_t		vga_pxlborder_planar;
 static vr_draw_t		vga_vgadraw_direct;
+static vr_draw_t		vga_vgadraw_packed;
 static vr_draw_t		vga_vgadraw_planar;
 static vr_set_cursor_t		vga_pxlcursor_shape;
 static vr_draw_cursor_t		vga_pxlcursor_direct;
+static vr_draw_cursor_t		vga_pxlcursor_packed;
 static vr_draw_cursor_t		vga_pxlcursor_planar;
 static vr_blink_cursor_t	vga_pxlblink_direct;
+static vr_blink_cursor_t	vga_pxlblink_packed;
 static vr_blink_cursor_t	vga_pxlblink_planar;
 #ifndef SC_NO_CUTPASTE
 static vr_draw_mouse_t		vga_pxlmouse_direct;
+static vr_draw_mouse_t		vga_pxlmouse_packed;
 static vr_draw_mouse_t		vga_pxlmouse_planar;
 #else
 #define	vga_pxlmouse_direct	(vr_draw_mouse_t *)vga_nop
+#define	vga_pxlmouse_packed	(vr_draw_mouse_t *)vga_nop
 #define	vga_pxlmouse_planar	(vr_draw_mouse_t *)vga_nop
 #endif
 #endif /* SC_PIXEL_MODE */
@@ -83,43 +88,57 @@ static vr_draw_border_t		vga_grborder;
 static void			vga_nop(scr_stat *scp, ...);
 
 static sc_rndr_sw_t txtrndrsw = {
-	(vr_init_t *)vga_nop,
 	vga_txtborder,
 	vga_txtdraw,	
 	vga_txtcursor_shape,
 	vga_txtcursor,
 	vga_txtblink,
-	(vr_set_mouse_t *)vga_nop,
 	vga_txtmouse,
 };
-RENDERER(vga, 0, txtrndrsw, vga_set);
+RENDERER(vga, V_INFO_MM_TEXT, txtrndrsw, vga_set);
 
 #ifdef SC_PIXEL_MODE
-static sc_rndr_sw_t vgarndrsw = {
-	vga_rndrinit,
-	(vr_draw_border_t *)vga_nop,
-	(vr_draw_t *)vga_nop,
+static sc_rndr_sw_t directrndrsw = {
+	vga_pxlborder_direct,
+	vga_vgadraw_direct,
 	vga_pxlcursor_shape,
-	(vr_draw_cursor_t *)vga_nop,
-	(vr_blink_cursor_t *)vga_nop,
-	(vr_set_mouse_t *)vga_nop,
-	(vr_draw_mouse_t *)vga_nop,
+	vga_pxlcursor_direct,
+	vga_pxlblink_direct,
+	vga_pxlmouse_direct,
 };
-RENDERER(vga, PIXEL_MODE, vgarndrsw, vga_set);
+RENDERER(vga, V_INFO_MM_DIRECT, directrndrsw, vga_set);
+
+static sc_rndr_sw_t packedrndrsw = {
+	vga_pxlborder_packed,
+	vga_vgadraw_packed,
+	vga_pxlcursor_shape,
+	vga_pxlcursor_packed,
+	vga_pxlblink_packed,
+	vga_pxlmouse_packed,
+};
+RENDERER(vga, V_INFO_MM_PACKED, packedrndrsw, vga_set);
+
+static sc_rndr_sw_t planarrndrsw = {
+	vga_pxlborder_planar,
+	vga_vgadraw_planar,
+	vga_pxlcursor_shape,
+	vga_pxlcursor_planar,
+	vga_pxlblink_planar,
+	vga_pxlmouse_planar,
+};
+RENDERER(vga, V_INFO_MM_PLANAR, planarrndrsw, vga_set);
 #endif /* SC_PIXEL_MODE */
 
 #ifndef SC_NO_MODE_CHANGE
 static sc_rndr_sw_t grrndrsw = {
-	(vr_init_t *)vga_nop,
 	vga_grborder,
 	(vr_draw_t *)vga_nop,
 	(vr_set_cursor_t *)vga_nop,
 	(vr_draw_cursor_t *)vga_nop,
 	(vr_blink_cursor_t *)vga_nop,
-	(vr_set_mouse_t *)vga_nop,
 	(vr_draw_mouse_t *)vga_nop,
 };
-RENDERER(vga, GRAPHICS_MODE, grrndrsw, vga_set);
+RENDERER(vga, V_INFO_MM_OTHER, grrndrsw, vga_set);
 #endif /* SC_NO_MODE_CHANGE */
 
 RENDERER_MODULE(vga, vga_set);
@@ -405,24 +424,6 @@ vga_txtmouse(scr_stat *scp, int x, int y, int on)
 /* pixel (raster text) mode renderer */
 
 static void
-vga_rndrinit(scr_stat *scp)
-{
-	if (scp->sc->adp->va_info.vi_mem_model == V_INFO_MM_PLANAR) {
-		scp->rndr->draw_border = vga_pxlborder_planar;
-		scp->rndr->draw = vga_vgadraw_planar;
-		scp->rndr->draw_cursor = vga_pxlcursor_planar;
-		scp->rndr->blink_cursor = vga_pxlblink_planar;
-		scp->rndr->draw_mouse = vga_pxlmouse_planar;
-	} else if (scp->sc->adp->va_info.vi_mem_model == V_INFO_MM_DIRECT) {
-		scp->rndr->draw_border = vga_pxlborder_direct;
-		scp->rndr->draw = vga_vgadraw_direct;
-		scp->rndr->draw_cursor = vga_pxlcursor_direct;
-		scp->rndr->blink_cursor = vga_pxlblink_direct;
-		scp->rndr->draw_mouse = vga_pxlmouse_direct;
-	}
-}
-
-static void
 vga_pxlborder_direct(scr_stat *scp, int color)
 {
 	int i, x, y;
@@ -438,8 +439,7 @@ vga_pxlborder_direct(scr_stat *scp, int color)
 
 	if (scp->yoff > 0) {
 		draw_pos = scp->sc->adp->va_window;
-		draw_end = draw_pos +
-		    line_width * scp->yoff * scp->font_size;
+		draw_end = draw_pos + line_width * scp->yoff * scp->font_size;
 
 		for (p = draw_pos; p < draw_end; p += 4)
 			writel(p, u32);
@@ -474,6 +474,60 @@ vga_pxlborder_direct(scr_stat *scp, int color)
 			    scp->xoff * 8 * pixel_size +
 			    scp->xsize * 8 * pixel_size;
 			draw_end = draw_pos + x * 8 * pixel_size;
+
+			for (p = draw_pos; p < draw_end; p += 4)
+				writel(p, u32);
+		}
+	}
+}
+
+static void
+vga_pxlborder_packed(scr_stat *scp, int color)
+{
+	int i, x, y;
+	int line_width;
+	uint32_t u32;
+	vm_offset_t draw_pos, draw_end, p;
+
+	line_width = scp->sc->adp->va_line_width;
+	u32 = (color << 24) + (color << 16) + (color << 8) + color;
+
+	if (scp->yoff > 0) {
+		draw_pos = scp->sc->adp->va_window;
+		draw_end = draw_pos + line_width * scp->yoff * scp->font_size;
+
+		for (p = draw_pos; p < draw_end; p += 4)
+			writel(p, u32);
+	}
+
+	y = (scp->yoff + scp->ysize) * scp->font_size;
+
+	if (scp->ypixel > y) {
+		draw_pos = scp->sc->adp->va_window + line_width * y;
+		draw_end = draw_pos + line_width * (scp->ypixel - y);
+
+		for (p = draw_pos; p < draw_end; p += 4)
+			writel(p, u32);
+	}
+
+	y = scp->yoff * scp->font_size;
+	x = scp->xpixel / 8 - scp->xoff - scp->xsize;
+
+	for (i = 0; i < scp->ysize * scp->font_size; ++i) {
+		if (scp->xoff > 0) {
+			draw_pos = scp->sc->adp->va_window +
+			    line_width * (y + i);
+			draw_end = draw_pos + scp->xoff * 8;
+
+			for (p = draw_pos; p < draw_end; p += 4)
+				writel(p, u32);
+		}
+
+		if (x > 0) {
+			draw_pos = scp->sc->adp->va_window +
+			    line_width * (y + i) + scp->xoff * 8 +
+			    scp->xsize * 8;
+			draw_end = draw_pos + x * 8;
 
 			for (p = draw_pos; p < draw_end; p += 4)
 				writel(p, u32);
@@ -573,6 +627,61 @@ vga_vgadraw_direct(scr_stat *scp, int from, int count, int flip)
 
 		if ((i % scp->xsize) == scp->xsize - 1)
 			draw_pos += scp->xoff * 16 * pixel_size +
+			     (scp->font_size - 1) * line_width;
+	}
+}
+
+static void
+vga_vgadraw_packed(scr_stat *scp, int from, int count, int flip)
+{
+	int line_width;
+	int a, i, j;
+	uint32_t fg, bg, u32;
+	unsigned char *char_data;
+	vm_offset_t draw_pos, p;
+
+	line_width = scp->sc->adp->va_line_width;
+
+	draw_pos = VIDEO_MEMORY_POS(scp, from, 8);
+
+	if (from + count > scp->xsize * scp->ysize)
+		count = scp->xsize * scp->ysize - from;
+
+	for (i = from; count-- > 0; ++i) {
+		a = sc_vtb_geta(&scp->vtb, i);
+
+		if (flip) {
+			fg = ((a & 0xf000) >> 4) >> 8;
+			bg = (a & 0x0f00) >> 8;
+		} else {
+			fg = (a & 0x0f00) >> 8;
+			bg = ((a & 0xf000) >> 4) >> 8;
+		}
+
+		p = draw_pos;
+		char_data = &(scp->font[sc_vtb_getc(&scp->vtb, i) *
+		    scp->font_size]);
+
+		for (j = 0; j < scp->font_size; ++j, ++char_data) {
+			u32 = ((*char_data & 1 ? fg : bg) << 24) +
+			      ((*char_data & 2 ? fg : bg) << 16) +
+			      ((*char_data & 4 ? fg : bg) << 8) +
+			      (*char_data & 8 ? fg : bg);
+			writel(p + 4, u32);
+
+			u32 = ((*char_data & 16 ? fg : bg) << 24) +
+			      ((*char_data & 32 ? fg : bg) << 16) +
+			      ((*char_data & 64 ? fg : bg) << 8) +
+			      (*char_data & 128 ? fg : bg);
+			writel(p, u32);
+
+			p += line_width;
+		}
+
+		draw_pos += 8;
+
+		if ((i % scp->xsize) == scp->xsize - 1)
+			draw_pos += scp->xoff * 16 +
 			     (scp->font_size - 1) * line_width;
 	}
 }
@@ -702,6 +811,52 @@ draw_pxlcursor_direct(scr_stat *scp, int at, int on, int flip)
 	}
 }
 
+static void
+draw_pxlcursor_packed(scr_stat *scp, int at, int on, int flip)
+{
+	int line_width, height;
+	int a, i;
+	uint32_t fg, bg, u32;
+	unsigned char *char_data;
+	vm_offset_t draw_pos;
+
+	line_width = scp->sc->adp->va_line_width;
+
+	draw_pos = VIDEO_MEMORY_POS(scp, at, 8) +
+	    (scp->font_size - scp->cursor_base - 1) * line_width;
+
+	a = sc_vtb_geta(&scp->vtb, at);
+
+	if (flip) {
+		fg = ((on) ? (a & 0x0f00) : ((a & 0xf000) >> 4)) >> 8;
+		bg = ((on) ? ((a & 0xf000) >> 4) : (a & 0x0f00)) >> 8;
+	} else {
+		fg = ((on) ? ((a & 0xf000) >> 4) : (a & 0x0f00)) >> 8;
+		bg = ((on) ? (a & 0x0f00) : ((a & 0xf000) >> 4)) >> 8;
+	}
+
+	char_data = &(scp->font[sc_vtb_getc(&scp->vtb, at) * scp->font_size +
+	    scp->font_size - scp->cursor_base - 1]);
+
+	height = imin(scp->cursor_height, scp->font_size);
+
+	for (i = 0; i < height; ++i, --char_data) {
+		u32 = ((*char_data & 1 ? fg : bg) << 24) +
+		      ((*char_data & 2 ? fg : bg) << 16) +
+		      ((*char_data & 4 ? fg : bg) << 8) +
+		      (*char_data & 8 ? fg : bg);
+		writel(draw_pos + 4, u32);
+
+		u32 = ((*char_data & 16 ? fg : bg) << 24) +
+		      ((*char_data & 32 ? fg : bg) << 16) +
+		      ((*char_data & 64 ? fg : bg) << 8) +
+		      (*char_data & 128 ? fg : bg);
+		writel(draw_pos, u32);
+
+		draw_pos -= line_width;
+	}
+}
+
 static void 
 draw_pxlcursor_planar(scr_stat *scp, int at, int on, int flip)
 {
@@ -782,6 +937,34 @@ vga_pxlcursor_direct(scr_stat *scp, int at, int blink, int on, int flip)
 }
 
 static void 
+vga_pxlcursor_packed(scr_stat *scp, int at, int blink, int on, int flip)
+{
+	if (scp->cursor_height <= 0)	/* the text cursor is disabled */
+		return;
+
+	if (on) {
+		if (!blink) {
+			scp->status |= VR_CURSOR_ON;
+			draw_pxlcursor_packed(scp, at, on, flip);
+		} else if (++pxlblinkrate & 4) {
+			pxlblinkrate = 0;
+			scp->status ^= VR_CURSOR_ON;
+			draw_pxlcursor_packed(scp, at,
+					      scp->status & VR_CURSOR_ON,
+					      flip);
+		}
+	} else {
+		if (scp->status & VR_CURSOR_ON)
+			draw_pxlcursor_packed(scp, at, on, flip);
+		scp->status &= ~VR_CURSOR_ON;
+	}
+	if (blink)
+		scp->status |= VR_CURSOR_BLINK;
+	else
+		scp->status &= ~VR_CURSOR_BLINK;
+}
+
+static void
 vga_pxlcursor_planar(scr_stat *scp, int at, int blink, int on, int flip)
 {
 	if (scp->cursor_height <= 0)	/* the text cursor is disabled */
@@ -819,6 +1002,18 @@ vga_pxlblink_direct(scr_stat *scp, int at, int flip)
 	pxlblinkrate = 0;
 	scp->status ^= VR_CURSOR_ON;
 	draw_pxlcursor_direct(scp, at, scp->status & VR_CURSOR_ON, flip);
+}
+
+static void
+vga_pxlblink_packed(scr_stat *scp, int at, int flip)
+{
+	if (!(scp->status & VR_CURSOR_BLINK))
+		return;
+	if (!(++pxlblinkrate & 4))
+		return;
+	pxlblinkrate = 0;
+	scp->status ^= VR_CURSOR_ON;
+	draw_pxlcursor_packed(scp, at, scp->status & VR_CURSOR_ON, flip);
 }
 
 static void
@@ -873,6 +1068,34 @@ draw_pxlmouse_direct(scr_stat *scp, int x, int y)
 					    scp->ega_palette[0]);
 				break;
 			}
+		}
+
+		draw_pos += line_width;
+	}
+}
+
+static void
+draw_pxlmouse_packed(scr_stat *scp, int x, int y)
+{
+	int line_width;
+	int xend, yend;
+	int i, j;
+	vm_offset_t draw_pos;
+
+	line_width = scp->sc->adp->va_line_width;
+
+	xend = imin(8 * (scp->xoff + scp->xsize), imin(x + 16, scp->xpixel));
+	yend = imin(scp->font_size * (scp->yoff + scp->ysize),
+	    imin(y + 16, scp->ypixel));
+
+	draw_pos = scp->sc->adp->va_window + y * line_width + x;
+
+	for (i = 0; i < (yend - y); i++) {
+		for (j = (xend - x - 1); j >= 0; j--) {
+			if (mouse_or_mask[i] & 1 << (15 - j))
+				writeb(draw_pos + j, 15);
+			else if (mouse_and_mask[i] & 1 << (15 - j))
+				writeb(draw_pos + j, 0);
 		}
 
 		draw_pos += line_width;
@@ -957,6 +1180,15 @@ vga_pxlmouse_direct(scr_stat *scp, int x, int y, int on)
 {
 	if (on)
 		draw_pxlmouse_direct(scp, x, y);
+	else
+		remove_pxlmouse(scp, x, y);
+}
+
+static void
+vga_pxlmouse_packed(scr_stat *scp, int x, int y, int on)
+{
+	if (on)
+		draw_pxlmouse_packed(scp, x, y);
 	else
 		remove_pxlmouse(scp, x, y);
 }

@@ -1,142 +1,130 @@
-/*
- * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
- * 
- * This code is derived from software contributed to The DragonFly Project
- * by Sepherosa Ziehau <sepherosa@gmail.com>
- * 
+/*-
+ * Copyright (c) 2010 Rui Paulo <rpaulo@FreeBSD.org>
+ * All rights reserved.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name of The DragonFly Project nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific, prior written permission.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
- * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/netproto/802_11/ieee80211_ratectl.h,v 1.7 2008/01/15 09:01:13 sephe Exp $
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: head/sys/net80211/ieee80211_ratectl.h 206398 2010-04-08 13:34:08Z rpaulo $
+ * $DragonFly$
  */
 
-#ifndef _NET80211_IEEE80211_RATECTL_H
-#define _NET80211_IEEE80211_RATECTL_H
-
-#ifdef _KERNEL
-
-struct ieee80211_ratectl_stats;
-
-struct ieee80211_ratectl_state {
-	void		*rc_st_ctx;
-	uint32_t	rc_st_flags;	   /* see IEEE80211_RATECTL_F_ */
-	u_int		rc_st_ratectl;	   /* see IEEE80211_RATECTL_ */
-	uint32_t	rc_st_ratectl_cap; /* see IEEE80211_RATECTL_CAP_ */
-	void		*(*rc_st_attach)(struct ieee80211vap *, u_int);
-	void		(*rc_st_stats)(struct ieee80211vap *,
-				       struct ieee80211_node *,
-				       struct ieee80211_ratectl_stats *);
+enum ieee80211_ratealgs {
+	IEEE80211_RATECTL_AMRR 		= 0,
+	IEEE80211_RATECTL_RSSADAPT	= 1,
+	IEEE80211_RATECTL_ONOE		= 2,
+	IEEE80211_RATECTL_SAMPLE	= 3,
+	IEEE80211_RATECTL_MAX
 };
 
-#define IEEE80211_RATECTL_F_RSDESC	0x1 /* Rate set must be descendant. */
-#define IEEE80211_RATECTL_F_MRR		0x2 /* Support multi-rate-retry. */
-
-struct ieee80211_ratectl_res {
-	int		rc_res_rateidx;
-	int		rc_res_tries;
-};
-
-#define IEEE80211_RATEIDX_MAX		5
-
-struct ieee80211_ratectl_stats {
-	int		stats_pkt_noretry;
-	int		stats_pkt_ok;
-	int		stats_pkt_err;
-	int		stats_retries;
-};
+#define	IEEE80211_RATECTL_TX_SUCCESS	0
+#define	IEEE80211_RATECTL_TX_FAILURE	1
 
 struct ieee80211_ratectl {
-	const char	*rc_name;
-	u_int		rc_ratectl;	/* see IEEE80211_RATECTL_ */
-
-	void		*(*rc_attach)(struct ieee80211vap *);
-	void		(*rc_detach)(void *);
-
-	void		(*rc_data_alloc)(struct ieee80211_node *);
-	void		(*rc_data_free)(struct ieee80211_node *);
-	void		(*rc_data_dup)(const struct ieee80211_node *,
-				       struct ieee80211_node *);
-
-	void		(*rc_newstate)(void *, enum ieee80211_state);
-	void		(*rc_tx_complete)(void *, struct ieee80211_node *, int,
-					  const struct ieee80211_ratectl_res[],
-					  int, int, int, int);
-	void		(*rc_newassoc)(void *, struct ieee80211_node *, int);
-	int		(*rc_findrate)(void *, struct ieee80211_node *, int,
-				       int[], int);
+	const char *ir_name;
+	int	(*ir_attach)(const struct ieee80211vap *);
+	void	(*ir_detach)(const struct ieee80211vap *);
+	void	(*ir_init)(struct ieee80211vap *);
+	void	(*ir_deinit)(struct ieee80211vap *);
+	void	(*ir_node_init)(struct ieee80211_node *);
+	void	(*ir_node_deinit)(struct ieee80211_node *);
+	int	(*ir_rate)(struct ieee80211_node *, void *, uint32_t);
+	void	(*ir_tx_complete)(const struct ieee80211vap *,
+	    			  const struct ieee80211_node *, int,
+	    			  void *, void *);
+	void	(*ir_tx_update)(const struct ieee80211vap *,
+	    			const struct ieee80211_node *,
+	    			void *, void *, void *);
+	void	(*ir_setinterval)(const struct ieee80211vap *, int);
 };
 
-#endif	/* _KERNEL */
+void	ieee80211_ratectl_register(int, const struct ieee80211_ratectl *);
+void	ieee80211_ratectl_unregister(int);
+void	ieee80211_ratectl_set(struct ieee80211vap *, int);
 
-#define IEEE80211_RATECTL_NONE		0
-#define IEEE80211_RATECTL_ONOE		1
-#define IEEE80211_RATECTL_AMRR		2
-#define IEEE80211_RATECTL_SAMPLE	3
-#define IEEE80211_RATECTL_MAX		4
+MALLOC_DECLARE(M_80211_RATECTL);
 
-#ifdef _KERNEL
+static void __inline
+ieee80211_ratectl_init(struct ieee80211vap *vap)
+{
+	vap->iv_rate->ir_init(vap);
+}
 
-#define IEEE80211_RATECTL_CAP(v)	(1 << (v))
+static void __inline
+ieee80211_ratectl_deinit(struct ieee80211vap *vap)
+{
+	vap->iv_rate->ir_deinit(vap);
+}
 
-#define _IEEE80211_RATECTL_CAP(n)	\
-	IEEE80211_RATECTL_CAP(IEEE80211_RATECTL_##n)
+static void __inline
+ieee80211_ratectl_node_init(struct ieee80211_node *ni)
+{
+	const struct ieee80211vap *vap = ni->ni_vap;
 
-#define IEEE80211_RATECTL_CAP_NONE	_IEEE80211_RATECTL_CAP(NONE)
-#define IEEE80211_RATECTL_CAP_ONOE	_IEEE80211_RATECTL_CAP(ONOE)
-#define IEEE80211_RATECTL_CAP_AMRR	_IEEE80211_RATECTL_CAP(AMRR)
-#define IEEE80211_RATECTL_CAP_SAMPLE	_IEEE80211_RATECTL_CAP(SAMPLE)
+	vap->iv_rate->ir_node_init(ni);
+}
 
-#define	IEEE80211_RS_RATE(rs, idx) \
-		((rs)->rs_rates[idx] & IEEE80211_RATE_VAL)
+static void __inline
+ieee80211_ratectl_node_deinit(struct ieee80211_node *ni)
+{
+	const struct ieee80211vap *vap = ni->ni_vap;
 
-extern const struct ieee80211_ratectl	ieee80211_ratectl_none;
+	if (ni->ni_rctls == NULL)	/* ratectl not setup */
+		return;
+	vap->iv_rate->ir_node_deinit(ni);
+}
 
-void	ieee80211_ratectl_attach(struct ieee80211vap *);
-void	ieee80211_ratectl_detach(struct ieee80211vap *);
+static int __inline
+ieee80211_ratectl_rate(struct ieee80211_node *ni, void *arg, uint32_t iarg)
+{
+	const struct ieee80211vap *vap = ni->ni_vap;
 
-void	ieee80211_ratectl_register(const struct ieee80211_ratectl *);
-void	ieee80211_ratectl_unregister(const struct ieee80211_ratectl *);
+	if (ni->ni_rctls == NULL)	/* ratectl not setup */
+		return 0;
+	return vap->iv_rate->ir_rate(ni, arg, iarg);
+}
 
-int	ieee80211_ratectl_change(struct ieee80211vap *, u_int);
+static void __inline
+ieee80211_ratectl_tx_complete(const struct ieee80211vap *vap,
+    const struct ieee80211_node *ni, int status, void *arg1, void *arg2)
+{
+	if (ni->ni_rctls == NULL)	/* ratectl not setup */
+		return;
+	vap->iv_rate->ir_tx_complete(vap, ni, status, arg1, arg2);
+}
 
-void	ieee80211_ratectl_data_alloc(struct ieee80211_node *);
-void	ieee80211_ratectl_data_dup(const struct ieee80211_node *,
-				   struct ieee80211_node *);
-void	ieee80211_ratectl_data_free(struct ieee80211_node *);
+static void __inline
+ieee80211_ratectl_tx_update(const struct ieee80211vap *vap,
+    const struct ieee80211_node *ni, void *arg1, void *arg2, void *arg3)
+{
+	if (vap->iv_rate->ir_tx_update == NULL)
+		return;
+	if (ni->ni_rctls == NULL)	/* ratectl not setup */
+		return;
+	vap->iv_rate->ir_tx_update(vap, ni, arg1, arg2, arg3);
+}
 
-void	ieee80211_ratectl_newstate(struct ieee80211vap *,
-				   enum ieee80211_state);
-void	ieee80211_ratectl_tx_complete(struct ieee80211_node *, int,
-				      const struct ieee80211_ratectl_res[],
-				      int, int, int, int);
-void	ieee80211_ratectl_newassoc(struct ieee80211_node *, int);
-int	ieee80211_ratectl_findrate(struct ieee80211_node *, int, int[], int);
-
-#endif	/* _KERNEL */
-
-#endif	/* !_NET80211_IEEE80211_RATECTL_H */
-
+static void __inline
+ieee80211_ratectl_setinterval(const struct ieee80211vap *vap, int msecs)
+{
+	if (vap->iv_rate->ir_setinterval == NULL)
+		return;
+	vap->iv_rate->ir_setinterval(vap, msecs);
+}

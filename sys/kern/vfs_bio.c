@@ -133,7 +133,7 @@ static int bd_request;		/* locked by needsbuffer_spin */
 static int bd_request_hw;	/* locked by needsbuffer_spin */
 static u_int bd_wake_ary[BD_WAKE_SIZE];
 static u_int bd_wake_index;
-static u_int vm_cycle_point = ACT_INIT + ACT_ADVANCE * 6;
+static u_int vm_cycle_point = 40; /* 23-36 will migrate more act->inact */
 static struct spinlock needsbuffer_spin;
 static int debug_commit;
 
@@ -3357,7 +3357,6 @@ _biowait(struct bio *bio, const char *wmesg, int to)
 				kprintf("tsleep error biowait %d\n", error);
 				return (error);
 			}
-			break;
 		}
 	}
 

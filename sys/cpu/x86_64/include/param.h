@@ -128,6 +128,11 @@
 #define PML4MASK	(NPML4-1)
 #define NPML4EPG	(PAGE_SIZE/(sizeof (pml4_entry_t)))
 
+/* for vkernel */
+#define SEG_SHIFT	21
+#define SEG_SIZE	(1<<SEG_SHIFT)	/* bytes per mmu segment (level 1) */
+#define SEG_MASK	(SEG_SIZE-1)
+
 #define DEV_BSHIFT	9		/* log2(DEV_BSIZE) */
 #define DEV_BSIZE	(1<<DEV_BSHIFT)
 #define DEV_BMASK	(DEV_BSIZE - 1)

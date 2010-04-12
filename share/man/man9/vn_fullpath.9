@@ -70,7 +70,7 @@
 .In sys/param.h
 .In sys/vnode.h
 .Ft int
-.Fn vn_fullpath "struct proc *p" "struct vnode *vp" "char **retbuf" "char **freebuf"
+.Fn vn_fullpath "struct proc *p" "struct vnode *vp" "char **retbuf" "char **freebuf" "int guess"
 .Sh DESCRIPTION
 The
 .Nm
@@ -110,6 +110,9 @@ constructed pathname.
 Auxiliary buffer that is used to by
 .Nm
 for temporary purposes.
+.It Fa guess
+If guess is not 0, the mountpoint will be guessed if it can't be determined when
+traversing the namecache entries upwards.
 .El
 .Pp
 Typical consumers will declare two character pointers: fullpath and
