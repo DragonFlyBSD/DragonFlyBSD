@@ -141,21 +141,21 @@ dsched_create(struct disk *dp, const char *head_name, int unit)
 	/* kprintf("dsched_create() for disk %s%d\n", head_name, unit); */
 	lockmgr(&dsched_lock, LK_EXCLUSIVE);
 
-	ksnprintf(tunable_key, sizeof(tunable_key), "scheduler_%s%d",
+	ksnprintf(tunable_key, sizeof(tunable_key), "dsched_pol_%s%d",
 	    head_name, unit);
 	if (TUNABLE_STR_FETCH(tunable_key, sched_policy,
 	    sizeof(sched_policy)) != 0) {
 		policy = dsched_find_policy(sched_policy);
 	}
 
-	ksnprintf(tunable_key, sizeof(tunable_key), "scheduler_%s*",
+	ksnprintf(tunable_key, sizeof(tunable_key), "dsched_pol_%s",
 	    head_name);
 	if (!policy && (TUNABLE_STR_FETCH(tunable_key, sched_policy,
 	    sizeof(sched_policy)) != 0)) {
 		policy = dsched_find_policy(sched_policy);
 	}
 
-	ksnprintf(tunable_key, sizeof(tunable_key), "scheduler_*");
+	ksnprintf(tunable_key, sizeof(tunable_key), "dsched_pol");
 	if (!policy && (TUNABLE_STR_FETCH(tunable_key, sched_policy,
 	    sizeof(sched_policy)) != 0)) {
 		policy = dsched_find_policy(sched_policy);
