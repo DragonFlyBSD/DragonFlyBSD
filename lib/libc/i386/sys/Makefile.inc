@@ -10,8 +10,8 @@ MDASM=	Ovfork.S brk.S cerror.S exect.S fork.S getcontext.S pipe.S ptrace.S \
 
 # Don't generate default code for these syscalls:
 NOASM=	__semctl.o break.o exit.o ftruncate.o getdomainname.o getlogin.o \
-	lseek.o mlockall.o mmap.o msgctl.o msgget.o msgrcv.o msgsnd.o \
-	munlockall.o openbsd_poll.o semconfig.o semget.o \
+	lseek.o mmap.o msgctl.o msgget.o msgrcv.o msgsnd.o \
+	openbsd_poll.o semconfig.o semget.o \
 	semop.o setdomainname.o shmat.o shmctl.o shmdt.o shmget.o sstk.o \
 	truncate.o uname.o vfork.o yield.o
 
