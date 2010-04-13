@@ -1,3 +1,4 @@
+/*	@(#)cmd7.c	8.1 (Berkeley) 6/6/93	*/
 /*	$NetBSD: cmd7.c,v 1.8 2006/05/02 22:30:25 christos Exp $	*/
 
 /*
@@ -31,15 +32,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)cmd7.c	8.1 (Berkeley) 6/6/93";
-#else
-__RCSID("$NetBSD: cmd7.c,v 1.8 2006/05/02 22:30:25 christos Exp $");
-#endif
-#endif /* not lint */
 
 #include <stdlib.h>
 #include <unistd.h>

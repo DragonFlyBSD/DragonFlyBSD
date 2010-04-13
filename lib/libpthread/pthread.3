@@ -29,9 +29,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man3/pthread.3,v 1.33 2009/04/01 08:08:25 trhodes Exp $
-.\" $DragonFly: src/share/man/man3/pthread.3,v 1.5 2007/09/14 19:47:03 swildner Exp $
 .\"
-.Dd July 10, 2009
+.Dd April 8, 2010
 .Dt PTHREAD 3
 .Os
 .Sh NAME
@@ -471,29 +470,92 @@ cancellation stack.
 The current
 .Dx
 POSIX thread implementation is built in the library
-.Fa libc_r
+.Sy libthread_xu
 which contains both thread-safe libc functions and the thread functions.
-This library replaces
-.Fa libc
-for threaded applications.
+Another thread library,
+.Sy libc_r ,
+is available for testing purposes.
+.Pp
+In
+.Dx ,
+it is possible to switch the threading library used by dynamically linked
+binaries at execution time by re-linking
+.Pa /usr/lib/libpthread.so.x
+to a different library in
+.Pa /usr/lib/thread .
+At link time,
+.Xr ld 1
+reads the
+.Sy SONAME
+of
+.Pa libpthread.so ,
+which is set to
+.Pa libpthread.so.0
+(or a higher major, if there were ABI changes).
+For normal libraries
+.Pa libfoo.so
+is usually a symlink to
+.Pa libfoo.so.3
+which also has its
+.Sy SONAME
+set to
+.Pa libfoo.so.3 ,
+so that if
+.Pa libfoo.so.4
+is installed, programs will still continue to use
+.Pa libfoo.so.3
+and not follow the symlink
+.Pa libfoo.so
+to the newer (and possibly incompatible)
+.Pa libfoo.so.4 .
+What we do for
+.Pa libpthread.so
+is approximately the opposite:
+.Pa libpthread.so
+is not a symlink but nevertheless has its
+.Sy SONAME
+set to
+.Pa libpthread.so.0 .
+.Pa libpthread.so.0 ,
+however, is a symlink to the threading library of the user's choice.
+The linker will use the default threading library which
+.Pa libpthread.so
+is linked to, but the runtime linker will instead follow the symlink.
+.Pp
+.Pa libc.so
+defines all pthread functions as weak symbols except for
+.Fn pthread_create
+(which is defined by libpthread.so.x to satisfy
+.Xr ld 1 ) .
+At execution time,
+.Xr rtld 1
+will resolve all these references to the strong symbols from the thread
+library.
 .Pp
 By default,
+.Sy libc_r
+is built as part of a 'make buildworld'.
+To disable the build of
 .Fa libc_r
-is built as part of a 'make world'.  To disable the build of
-.Fa libc_r
-you must supply the '-DNOLIBC_R' option to
-.Xr make 1 .
+you must supply the '-DNO_LIBC_R' option to
+.Xr make 1
+(or set it in
+.Xr make.conf ) .
+.Pp
+Another
+.Xr make.conf 5
+option,
+.Va THREAD_LIB ,
+can be used to override the system's default threading library.
 .Pp
 A
-.Fx
-and
 .Dx
 specific option exists in
 .Xr gcc 1
 to simplify the linking of threaded processes.
-.Fa gcc -pthread
+.Nm gcc Fl pthread
 links a threaded process against
-.Fa libc_r
+.Pa libthread.so
 instead of
 .Fa libc .
 .Sh SEE ALSO

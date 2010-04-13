@@ -328,10 +328,6 @@ addump(struct dev_dump_args *ap)
     cdev_t dev = ap->a_head.a_dev;
     struct ad_softc *adp = dev->si_drv1;
     struct ad_request request;
-    vm_paddr_t addr = 0;
-    long blkcnt;
-    int dumppages = MAXDUMPPGS;
-    int i;
 
     if (!adp)
 	return ENXIO;
@@ -340,49 +336,25 @@ addump(struct dev_dump_args *ap)
     adp->device->mode = ATA_PIO;
     ata_reinit(adp->device->channel);
 
-    blkcnt = howmany(PAGE_SIZE, ap->a_secsize);
-
-    while (ap->a_count > 0) {
-	caddr_t va = NULL;
-	DELAY(1000);
-
-	if ((ap->a_count / blkcnt) < dumppages)
-	    dumppages = ap->a_count / blkcnt;
-
-	for (i = 0; i < dumppages; ++i) {
-	    vm_paddr_t a = addr + (i * PAGE_SIZE);
-	    if (is_physical_memory(a))
-		va = pmap_kenter_temporary(trunc_page(a), i);
-	    else
-		va = pmap_kenter_temporary(trunc_page(0), i);
-	}
-
-	bzero(&request, sizeof(struct ad_request));
-	request.softc = adp;
-	request.blockaddr = ap->a_blkno;
-	request.bytecount = PAGE_SIZE * dumppages;
-	request.data = va;
-	callout_init(&request.callout);
-
-	while (request.bytecount > 0) {
-	    ad_transfer(&request);
-	    if (request.flags & ADR_F_ERROR)
-		return EIO;
-	    request.donecount += request.currentsize;
-	    request.bytecount -= request.currentsize;
-	    DELAY(20);
-	}
-
-	if (dumpstatus(addr, (off_t)ap->a_count * DEV_BSIZE) < 0)
-	    return EINTR;
-
-	ap->a_blkno += blkcnt * dumppages;
-	ap->a_count -= blkcnt * dumppages;
-	addr += PAGE_SIZE * dumppages;
+    /* set up request */
+    bzero(&request, sizeof(struct ad_request));
+    request.softc = adp;
+    request.blockaddr = ap->a_offset / DEV_BSIZE;
+    request.bytecount = ap->a_length;
+    request.data = ap->a_virtual;
+    callout_init(&request.callout);
+    while (request.bytecount > 0) {
+        ad_transfer(&request);
+        if (request.flags & ADR_F_ERROR)
+    	    return EIO;
+        request.donecount += request.currentsize;
+        request.bytecount -= request.currentsize;
+        DELAY(20);
     }
 
     if (ata_wait(adp->device, ATA_S_READY | ATA_S_DSC) < 0)
 	ata_prtdev(adp->device, "timeout waiting for final ready\n");
+
     return 0;
 }
 

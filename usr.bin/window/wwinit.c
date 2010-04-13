@@ -1,3 +1,4 @@
+/*	@(#)wwinit.c	8.2 (Berkeley) 4/28/95	*/
 /*	$NetBSD: wwinit.c,v 1.19 2009/04/14 08:50:06 lukem Exp $	*/
 
 /*
@@ -31,15 +32,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)wwinit.c	8.2 (Berkeley) 4/28/95";
-#else
-__RCSID("$NetBSD: wwinit.c,v 1.19 2009/04/14 08:50:06 lukem Exp $");
-#endif
-#endif /* not lint */
 
 #include <fcntl.h>
 #include <signal.h>

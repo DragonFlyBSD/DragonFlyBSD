@@ -1,3 +1,4 @@
+/*	@(#)wwspawn.c	8.1 (Berkeley) 6/6/93	*/
 /*	$NetBSD: wwspawn.c,v 1.10 2006/12/18 20:04:55 christos Exp $	*/
 
 /*
@@ -31,15 +32,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)wwspawn.c	8.1 (Berkeley) 6/6/93";
-#else
-__RCSID("$NetBSD: wwspawn.c,v 1.10 2006/12/18 20:04:55 christos Exp $");
-#endif
-#endif /* not lint */
 
 #include <signal.h>
 #include <unistd.h>

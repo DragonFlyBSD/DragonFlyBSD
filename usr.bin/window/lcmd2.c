@@ -1,3 +1,4 @@
+/*	@(#)lcmd2.c	8.1 (Berkeley) 6/6/93	*/
 /*	$NetBSD: lcmd2.c,v 1.15 2008/12/29 01:53:35 christos Exp $	*/
 
 /*
@@ -31,15 +32,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)lcmd2.c	8.1 (Berkeley) 6/6/93";
-#else
-__RCSID("$NetBSD: lcmd2.c,v 1.15 2008/12/29 01:53:35 christos Exp $");
-#endif
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/time.h>

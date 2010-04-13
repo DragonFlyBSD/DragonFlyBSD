@@ -36,6 +36,7 @@
 .Nd mount an efficient memory file system
 .Sh SYNOPSIS
 .Nm
+.Op Fl f Ar maxfilesize
 .Op Fl g Ar group
 .Op Fl m Ar mode
 .Op Fl n Ar nodes
@@ -61,6 +62,8 @@ described below.
 .Pp
 The following options are supported:
 .Bl -tag -width XoXoptions
+.It Fl f Ar maxfilesize
+Specifies the maximum file size of the file system.
 .It Fl g Ar group
 Specifies the group name or GID of the root inode of the file system.
 Defaults to the mount point's GID.
@@ -78,9 +81,11 @@ Options are specified with a
 flag followed by a comma-separated string of options.
 See the
 .Xr mount 8
+and
+.Xr tmpfs 5
 man page for possible options and their meanings.
 .It Fl s Ar size
-Specifies the total file system size in bytes.
+Specifies the total file system size.
 If zero is given (the default), the available amount of memory (including
 main memory and swap space) will be used.
 Note that four megabytes are always reserved for the system and cannot
@@ -118,13 +123,14 @@ group, with a restricted 0700 mode:
 .Pp
 .Ic "mount -t tmpfs -o -s20M -o -ujoe -o -gusers -o -m0700 tmpfs /mnt"
 .Pp
-See
-.Pa /usr/share/examples/fstab/fstab.ramdisk
-for some examples on how to add tmpfs entries to
-.Pa /etc/fstab .
+or
+.Pp
+.Ic "mount -t tmpfs -o size=20M,uid=joe,gid=users,mode=0700 tmpfs /mnt"
+.Pp
 .Sh SEE ALSO
 .Xr fstab 5 ,
-.Xr mount 8
+.Xr mount 8 ,
+.Xr tmpfs 5
 .Sh HISTORY
 The
 .Nm

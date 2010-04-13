@@ -5,7 +5,7 @@
 
 LIB=		z
 MAN=		zlib.3
-WARNS?=		3
+WARNS?=		2
 
 PATCHES!=	echo ${.CURDIR}/patches/*.patch
 CONTRIBDIR=	${.CURDIR}/../../contrib/zlib-1.2

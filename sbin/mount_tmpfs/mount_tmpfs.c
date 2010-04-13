@@ -58,8 +58,18 @@
 
 /* --------------------------------------------------------------------- */
 
+#define MOPT_TMPFSOPTS	\
+	{ "gid=",	0,	MNT_GID, 1},	\
+	{ "uid=",	0,	MNT_UID, 1},	\
+	{ "mode=",	0,	MNT_MODE, 1},	\
+	{ "inodes=",	0,	MNT_INODES, 1},	\
+	{ "size=",	0,	MNT_SIZE, 1},	\
+	{ "maxfilesize=",	0,	MNT_MAXFSIZE, 1}
+
+
 static const struct mntopt mopts[] = {
 	MOPT_STDOPTS,
+	MOPT_TMPFSOPTS,
 	MOPT_NULL
 };
 
@@ -68,6 +78,7 @@ static const struct mntopt mopts[] = {
 static gid_t	a_gid(char *);
 static uid_t	a_uid(char *);
 static mode_t	a_mask(char *);
+static int64_t a_number(char *s);
 static void	usage(void) __dead2;
 
 /* --------------------------------------------------------------------- */
@@ -82,14 +93,16 @@ mount_tmpfs_parseargs(int argc, char *argv[],
 	gid_t gid;
 	uid_t uid;
 	mode_t mode;
-	int64_t tmpnumber;
 	struct stat sb;
+	int extend_flags = 0;
+	char *ptr, *delim;
 
 	/* Set default values for mount point arguments. */
 	memset(args, 0, sizeof(*args));
 	args->ta_version = TMPFS_ARGS_VERSION;
 	args->ta_size_max = 0;
 	args->ta_nodes_max = 0;
+	args->ta_maxfsize_max = 0;
 	*mntflags = 0;
 
 	gidset = 0; gid = 0;
@@ -97,8 +110,12 @@ mount_tmpfs_parseargs(int argc, char *argv[],
 	modeset = 0; mode = 0;
 
 	optind = optreset = 1;
-	while ((ch = getopt(argc, argv, "g:m:n:o:s:u:")) != -1 ) {
+	while ((ch = getopt(argc, argv, "f:g:m:n:o:s:u:")) != -1 ) {
 		switch (ch) {
+		case 'f':
+			args->ta_maxfsize_max = a_number(optarg);
+			break;
+
 		case 'g':
 			gid = a_gid(optarg);
 			gidset = 1;
@@ -110,23 +127,96 @@ mount_tmpfs_parseargs(int argc, char *argv[],
 			break;
 
 		case 'n':
-			if (dehumanize_number(optarg, &tmpnumber) < 0) {
-				fprintf(stderr, "bad number for -n\n");
-				usage();
-			}
-			args->ta_nodes_max = tmpnumber;
+			args->ta_nodes_max = a_number(optarg);
 			break;
 
 		case 'o':
-			getmntopts(optarg, mopts, mntflags, 0);
+			getmntopts(optarg, mopts, mntflags, &extend_flags);
+			if (extend_flags & MNT_GID) {
+				ptr = strstr(optarg, "gid=");
+				if(ptr) {
+					delim = strstr(ptr, ",");
+					if (delim) {
+						*delim = '\0';
+						gid = a_gid(ptr + 4);
+						*delim = ',';
+					} else
+						gid = a_gid(ptr + 4);
+					gidset = 1;
+				}
+				extend_flags ^= MNT_GID;
+			}
+			if (extend_flags & MNT_UID) {
+				ptr = strstr(optarg, "uid=");
+				if(ptr) {
+					delim = strstr(ptr, ",");
+					if (delim) {
+						*delim = '\0';
+						uid = a_uid(ptr + 4);
+						*delim = ',';
+					} else
+						uid = a_uid(ptr + 4);
+					uidset = 1;
+				}
+				extend_flags ^= MNT_UID;
+			}
+			if (extend_flags & MNT_MODE) {
+				ptr = strstr(optarg, "mode=");
+				if(ptr) {
+					delim = strstr(ptr, ",");
+					if (delim) {
+						*delim = '\0';
+						mode = a_mask(ptr + 5);
+						*delim = ',';
+					} else
+						mode = a_mask(ptr + 5);
+					modeset = 1;
+				}
+				extend_flags ^= MNT_MODE;
+			}
+			if (extend_flags & MNT_INODES) {
+				ptr = strstr(optarg, "inodes=");
+				if(ptr) {
+					delim = strstr(ptr, ",");
+					if (delim) {
+						*delim = '\0';
+						args->ta_nodes_max = a_number(ptr + 7);
+						*delim = ',';
+					} else
+						args->ta_nodes_max = a_number(ptr + 7);
+				}
+				extend_flags ^= MNT_INODES;
+			}
+			if (extend_flags & MNT_SIZE) {
+				ptr = strstr(optarg, "size=");
+				if(ptr) {
+					delim = strstr(ptr, ",");
+					if (delim) {
+						*delim = '\0';
+						args->ta_size_max = a_number(ptr + 5);
+						*delim = ',';
+					} else
+						args->ta_size_max = a_number(ptr + 5);
+				}
+				extend_flags ^= MNT_SIZE;
+			}
+			if (extend_flags & MNT_MAXFSIZE) {
+				ptr = strstr(optarg, "maxfilesize=");
+				if(ptr) {
+					delim = strstr(ptr, ",");
+					if (delim) {
+						*delim = '\0';
+						args->ta_maxfsize_max = a_number(ptr + 12);
+						*delim = ',';
+					} else
+						args->ta_maxfsize_max = a_number(ptr + 12);
+				}
+				extend_flags ^= MNT_MAXFSIZE;
+			}
 			break;
 
 		case 's':
-			if (dehumanize_number(optarg, &tmpnumber) < 0) {
-				fprintf(stderr, "bad number for -s\n");
-				usage();
-			}
-			args->ta_size_max = tmpnumber;
+			args->ta_size_max = a_number(optarg);
 			break;
 
 		case 'u':
@@ -205,10 +295,20 @@ a_mask(char *s)
 	done = 0;
 	if (*s >= '0' && *s <= '7') {
 		done = 1;
-		rv = strtol(optarg, &ep, 8);
+		rv = strtol(s, &ep, 8);
 	}
 	if (!done || rv < 0 || *ep)
 		errx(EX_USAGE, "invalid file mode: %s", s);
+	return (rv);
+}
+
+static int64_t
+a_number(char *s)
+{
+	int64_t rv=0;
+
+	if (dehumanize_number(s, &rv) < 0 || rv < 0)
+		errx(EX_USAGE, "bad number for option: %s", s);
 	return (rv);
 }
 
@@ -217,7 +317,7 @@ usage(void)
 {
 	(void)fprintf(stderr,
 	    "Usage: %s [-g group] [-m mode] [-n nodes] [-o options] [-s size]\n"
-	    "           [-u user] tmpfs mountpoint\n", getprogname());
+	    "           [-u user] [-f maxfilesize]  tmpfs mountpoint\n", getprogname());
 	exit(1);
 }
 

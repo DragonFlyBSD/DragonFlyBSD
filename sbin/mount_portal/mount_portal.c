@@ -61,7 +61,7 @@
 
 struct mntopt mopts[] = {
 	MOPT_STDOPTS,
-	{ NULL }
+	{ NULL, 0, 0, 0 }
 };
 
 static void usage(void) __dead2;
@@ -69,13 +69,13 @@ static void usage(void) __dead2;
 static sig_atomic_t readcf;	/* Set when SIGHUP received */
 
 static void
-sighup(int sig)
+sighup(int sig __unused)
 {
 	readcf ++;
 }
 
 static void
-sigchld(int sig)
+sigchld(int sig __unused)
 {
 	pid_t pid;
 
@@ -205,7 +205,6 @@ main(int argc, char **argv)
 		int so2;
 		pid_t pid;
 		fd_set fdset;
-		int rc;
 
 		/*
 		 * Check whether we need to re-read the configuration file

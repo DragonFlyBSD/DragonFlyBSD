@@ -28,9 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/spinlock.9,v 1.7 2008/02/17 21:47:39 nant Exp $
-.\"
-.Dd February 17, 2008
+.Dd April 10, 2010
 .Os
 .Dt SPINLOCK 9
 .Sh NAME
@@ -237,6 +235,11 @@ in those structures for other purposes as long as the spinlock is not
 held when you issue the token or
 .Xr lockmgr 9
 operation.
+.Sh FILES
+The uncontended path of the spinlock implementation is in
+.Pa /sys/sys/spinlock2.h .
+The core of the spinlock implementation is in
+.Pa /sys/kern/kern_spinlock.c .
 .Sh SEE ALSO
 .Xr crit_enter 9 ,
 .Xr lockmgr 9 ,

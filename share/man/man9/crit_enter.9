@@ -28,9 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/crit_enter.9,v 1.5 2008/04/14 08:17:09 swildner Exp $
-.\"
-.Dd February 18, 2008
+.Dd April 10, 2010
 .Dt CRIT_ENTER 9
 .Os
 .Sh NAME
@@ -109,6 +107,9 @@ Identifiers must be string pointers but the debug code only checks the
 pointer address, it does not do a
 .Fn strcmp
 to validate the ID.
+.Sh FILES
+The critical section implementation is in
+.Pa /sys/sys/thread2.h .
 .Sh SEE ALSO
 .Xr serializer 9 ,
 .Xr spinlock 9

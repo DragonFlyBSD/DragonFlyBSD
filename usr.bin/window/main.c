@@ -1,3 +1,4 @@
+/*	@(#)main.c	8.2 (Berkeley) 4/2/94	*/
 /*	$NetBSD: main.c,v 1.15 2009/04/14 08:50:06 lukem Exp $	*/
 
 /*
@@ -31,20 +32,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
-#ifndef lint
-__COPYRIGHT("@(#) Copyright (c) 1983, 1993\
- The Regents of the University of California.  All rights reserved.");
-#endif /* not lint */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)main.c	8.2 (Berkeley) 4/2/94";
-#else
-__RCSID("$NetBSD: main.c,v 1.15 2009/04/14 08:50:06 lukem Exp $");
-#endif
-#endif /* not lint */
 
 #include <err.h>
 #include <paths.h>

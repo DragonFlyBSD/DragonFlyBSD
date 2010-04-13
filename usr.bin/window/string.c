@@ -1,3 +1,4 @@
+/*	@(#)string.c	8.1 (Berkeley) 6/6/93	*/
 /*	$NetBSD: string.c,v 1.10 2009/04/14 08:50:06 lukem Exp $	*/
 
 /*
@@ -31,15 +32,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)string.c	8.1 (Berkeley) 6/6/93";
-#else
-__RCSID("$NetBSD: string.c,v 1.10 2009/04/14 08:50:06 lukem Exp $");
-#endif
-#endif /* not lint */
 
 #include <stdio.h>
 #include <stdlib.h>

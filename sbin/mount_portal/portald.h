@@ -59,7 +59,7 @@ struct qelem {
 
 typedef struct provider provider;
 struct provider {
-	char *pr_match;
+	const char *pr_match;
 	int (*pr_func)(struct portal_cred *,
 				char *key, char **v, int so, int *fdp);
 };

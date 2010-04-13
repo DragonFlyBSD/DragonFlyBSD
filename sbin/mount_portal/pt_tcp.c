@@ -62,7 +62,8 @@
  * An unrecognized suffix is an error.
  */
 int
-portal_tcp(struct portal_cred *pcr, char *key, char **v, int kso, int *fdp)
+portal_tcp(struct portal_cred *pcr, char *key, char **v, int kso __unused,
+    int *fdp)
 {
 	char host[MAXHOSTNAMELEN];
 	char port[MAXHOSTNAMELEN];
@@ -78,7 +79,7 @@ portal_tcp(struct portal_cred *pcr, char *key, char **v, int kso, int *fdp)
 	struct sockaddr_in sain;
 
 	q = strchr(p, '/');
-	if (q == 0 || q - p >= sizeof(host))
+	if (q == 0 || (size_t)(q - p) >= sizeof(host))
 		return (EINVAL);
 	*q = '\0';
 	strcpy(host, p);

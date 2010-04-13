@@ -1,3 +1,4 @@
+/*	@(#)wwalloc.c	8.1 (Berkeley) 6/6/93	*/
 /*	$NetBSD: wwalloc.c,v 1.6 2003/08/07 11:17:36 agc Exp $	*/
 
 /*
@@ -31,15 +32,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)wwalloc.c	8.1 (Berkeley) 6/6/93";
-#else
-__RCSID("$NetBSD: wwalloc.c,v 1.6 2003/08/07 11:17:36 agc Exp $");
-#endif
-#endif /* not lint */
 
 #include <stdlib.h>
 #include "ww.h"
