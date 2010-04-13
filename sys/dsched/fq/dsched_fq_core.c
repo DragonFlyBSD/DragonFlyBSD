@@ -454,6 +454,10 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 
 		total_disk_time = (int)(1000000*((tv.tv_sec - old_tv.tv_sec)) +
 		    (tv.tv_usec - old_tv.tv_usec));
+
+		if (total_disk_time == 0)
+			total_disk_time = 1;
+
 		dsched_debug(LOG_INFO, "total_disk_time = %d\n", total_disk_time);
 
 		old_tv = tv;
