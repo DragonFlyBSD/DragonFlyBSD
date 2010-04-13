@@ -1,10 +1,9 @@
 # $NetBSD: Makefile,v 1.16 2001/01/14 15:37:22 minoura Exp $
 # $FreeBSD: src/etc/rc.d/Makefile,v 1.20 2003/06/29 05:15:57 mtm Exp $
-# $DragonFly: src/etc/rc.d/Makefile,v 1.31 2008/10/03 10:27:42 swildner Exp $
 
 .include <bsd.own.mk>
 
-# note: bgfsk, devfs, and lomac left out (from 5.0)
+# note: bgfsk and lomac left out (from 5.0)
 #
 FILES=	DAEMON LOGIN NETWORKING SERVERS abi accounting addswap adjkerntz \
 	amd apm apmd atm1 atm2 atm3 \
@@ -23,7 +22,8 @@ FILES=	DAEMON LOGIN NETWORKING SERVERS abi accounting addswap adjkerntz \
 	quota random rarpd rcconf resident rndcontrol root route6d routed \
 	routing rpcbind rtadvd rtsold rwho sysdb savecore sdpd securelevel \
 	sendmail sensorsd serial sppp sshd statd swap1 syscons sysctl syslogd \
-	timed ttys usbd varsym vinum virecover watchdogd wpa_supplicant \
+	timed ttys usbd varsym vinum vkernel virecover \
+	watchdogd wpa_supplicant \
 	ypbind yppasswdd ypserv ypset ypupdated ypxfrd
 
 FILESDIR=	/etc/rc.d

@@ -24,16 +24,12 @@ MACHINE_ARCH=	x86_64
 .makeenv MACHINE_ARCH
 .endif
 
-.if make(gui)
-KERNCONF ?= DFLYLIVE VKERNEL DFLYLIVE-SMP DFLYLIVE-SMP-NOAPIC
-.else
 # XXX makeshift fix to build the right kernel for the (target) architecture
 # We should configure this in the platform files somehow
 .if ${MACHINE_ARCH} == "i386"
 KERNCONF ?= GENERIC VKERNEL
 .else
 KERNCONF ?= X86_64_GENERIC VKERNEL64
-.endif
 .endif
 
 PKGSRC_PREFIX?=		/usr/pkg
@@ -210,14 +206,6 @@ buildworld1 buildworld2:
 		make -j ${MAKE_JOBS} -DWANT_INSTALLER ${.TARGET:C/build(.*)2/quick\1/:C/1//}
 
 buildkernel1 buildkernel2:
-.if make(gui)
-	cd ${.CURDIR}/..; \
-	for kernconf in ${KERNCONF}; do \
-		${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} \
-			make -j ${MAKE_JOBS} ${.TARGET:C/build(.*)2/quick\1/:C/1//} \
-			KERNCONF=$${kernconf} KERNCONFDIR=${.CURDIR}/gui/root; \
-	done
-.else
 	cd ${.CURDIR}/..; \
 	first=; \
 	for kernconf in ${KERNCONF}; do \
@@ -227,7 +215,6 @@ buildkernel1 buildkernel2:
 			$${first:+-DNO_MODULES}; \
 		first=done; \
 	done
-.endif
 
 # note that we do not want to mess with any /usr/obj directories not related
 # to buildworld, buildkernel, or nrelease, so we must supply the proper
@@ -247,22 +234,6 @@ buildiso:
 	( cd ${.CURDIR}/../etc; MAKEOBJDIRPREFIX=${NRLOBJDIR}/nrelease \
 		make -m ${.CURDIR}/../share/mk DESTDIR=${ISOROOT} distribution )
 	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
-.if make(gui)
-	if [ ! -d ${ISOROOT}/kernel.smp/boot ]; then mkdir -p ${ISOROOT}/kernel.smp/boot; fi
-	cd ${.CURDIR}/..; \
-	make installkernel DESTDIR=${ISOROOT} \
-	KERNCONF=DFLYLIVE DESTKERNNAME=kernel KERNCONFDIR=${.CURDIR}/gui/root; \
-	cd ${.CURDIR}/..; \
-	make installkernel DESTDIR=${ISOROOT} \
-	KERNCONF=VKERNEL DESTKERNNAME=kernel.VKERNEL -DNO_MODULES KERNCONFDIR=${.CURDIR}/gui/root; \
-	cd ${.CURDIR}/..; \
-	make installkernel DESTDIR=${ISOROOT}/kernel.smp \
-	KERNCONF=DFLYLIVE-SMP DESTKERNNAME=kernel KERNCONFDIR=${.CURDIR}/gui/root; \
-	cd ${.CURDIR}/..; \
-	make installkernel DESTDIR=${ISOROOT}/kernel.smp \
-	KERNCONF=DFLYLIVE-SMP-NOAPIC DESTKERNNAME=kernel.noapic \
-		KERNCONFDIR=${.CURDIR}/gui/root -DNO_MODULES;
-.else
 	cd ${.CURDIR}/..; \
 	first=; \
 	for kernconf in ${KERNCONF}; do \
@@ -272,7 +243,6 @@ buildiso:
 			$${first:+-DNO_MODULES}; \
 		first=done; \
 	done
-.endif
 	ln -s kernel ${ISOROOT}/boot/kernel.BOOTP
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.local.dist -p ${ISOROOT}/usr/local/
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var

@@ -61,9 +61,9 @@ permissions in octal format.
 .It Cm inodes
 maximum number of inodes.
 .It Cm size
-maximum size (in bytes) for the file system.
+maximum size for the file system.
 .It Cm maxfilesize
-maximum file size (in bytes).
+maximum file size of the file system.
 .El
 .Sh DESCRIPTION
 In the
@@ -99,6 +99,19 @@ By default
 allows up to 100% of swap space to be used.
 If this is not desirable then the size option should be used to limit
 its size.
+.El
+.Pp
+Every option that accepts a numerical value as its argument can take a
+trailing
+.Sq b
+to indicate bytes (the default), a trailing
+.Sq k
+to indicate kilobytes, a trailing
+.Sq M
+to indicate megabytes or a trailing
+.Sq G
+to indicate gigabytes.
+Note that both lowercase and uppercase forms of these letters are allowed.
 .Sh EXAMPLES
 To mount a
 .Nm

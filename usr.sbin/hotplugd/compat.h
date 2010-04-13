@@ -12,4 +12,4 @@ struct syslog_data {
 
 #define SYSLOG_DATA_INIT {-1, 0, 0, 0, (const char *)0, LOG_USER, 0xff}
 #define syslog_r(_a, _b, _c...) syslog(_a, _c)
-#define __dead
+#define __dead __dead2

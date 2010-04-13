@@ -29,9 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/serializer.9,v 1.5 2008/05/15 09:21:40 swildner Exp $
-.\"
-.Dd May 15, 2008
+.Dd April 10, 2010
 .Os
 .Dt SERIALIZER 9
 .Sh NAME
@@ -160,7 +158,11 @@ and
 .Fn lwkt_serialize_handler_try
 functions return 0 on success and 1 on failure.
 .Sh FILES
-.Pa sys/kern/lwkt_serialize.c
+The serializer itself is implemented in
+.Pa /sys/kern/lwkt_serialize.c .
+The header file
+.Pa /sys/sys/serialize.h
+describes the public interface and the structure of a serializer.
 .Sh SEE ALSO
 .Xr crit_enter 9 ,
 .Xr spinlock 9 ,

@@ -61,7 +61,7 @@ DPADD+= ${LIBCRYPTO}
 LDADD+= -lcrypto
 CFLAGS+= -I${DESTDIR}/usr/include/openssl -DHAVE_LIBCRYPTO -DHAVE_OPENSSL_EVP_H
 .endif
-WARNS?=	3
+WARNS?=	2
 
 version.c: ${TCPDUMP_DISTDIR}/VERSION
 	@rm -f $@

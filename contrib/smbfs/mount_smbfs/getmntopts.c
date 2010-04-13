@@ -51,11 +51,8 @@ static const char rcsid[] =
 int getmnt_silent = 0;
 
 void
-getmntopts(options, m0, flagp, altflagp)
-	const char *options;
-	const struct mntopt *m0;
-	int *flagp;
-	int *altflagp;
+getmntopts(const char *options, const struct mntopt *m0, int *flagp,
+    int *altflagp)
 {
 	const struct mntopt *m;
 	int negative, len;

@@ -1,3 +1,4 @@
+/*	@(#)wwpty.c	8.1 (Berkeley) 6/6/93	*/
 /*	$NetBSD: wwpty.c,v 1.8 2003/08/07 11:17:42 agc Exp $	*/
 
 /*
@@ -31,15 +32,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)wwpty.c	8.1 (Berkeley) 6/6/93";
-#else
-__RCSID("$NetBSD: wwpty.c,v 1.8 2003/08/07 11:17:42 agc Exp $");
-#endif
-#endif /* not lint */
 
 #if !defined(OLD_TTY) && !defined(TIOCPKT)
 #include <sys/ioctl.h>

@@ -25,9 +25,8 @@
 .\" DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/lock.9,v 1.11 2003/09/08 19:57:21 ru Exp $
-.\" $DragonFly: src/share/man/man9/lock.9,v 1.7 2007/12/02 22:31:31 swildner Exp $
 .\"
-.Dd June 29, 2006
+.Dd April 10, 2010
 .Dt LOCK 9
 .Os
 .Sh NAME
@@ -195,6 +194,11 @@ A shared lock is held.
 .It Li 0
 The lock is not held by anyone.
 .El
+.Sh FILES
+The lock manager itself is implemented within the file
+.Pa /sys/kern/kern_lock.c .
+Data structures and function prototypes for the lock manager are in
+.Pa /sys/sys/lock.h .
 .Sh ERRORS
 .Fn lockmgr
 fails if:
@@ -231,6 +235,12 @@ will be the result of trying.
 .Xr panic 9 ,
 .Xr tsleep 9 ,
 .Xr VOP_PRINT 9
+.Sh HISTORY
+The lock manager appeared in
+.Dx 1.0 .
+.Pp
+The lock manager API first appeared in
+.Bx 4.4 lite2 .
 .Sh AUTHORS
 This man page was written by
 .An Chad David Aq davidc@acns.ab.ca .

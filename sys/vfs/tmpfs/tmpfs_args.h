@@ -37,18 +37,26 @@
  * This structure is used to communicate mount parameters between userland
  * and kernel space.
  */
-#define TMPFS_ARGS_VERSION	1
+#define TMPFS_ARGS_VERSION	2
 struct tmpfs_args {
 	int			ta_version;
 
 	/* Size counters. */
 	ino_t			ta_nodes_max;
 	off_t			ta_size_max;
+	size_t			ta_maxfsize_max;
 
 	/* Root node attributes. */
 	uid_t			ta_root_uid;
 	gid_t			ta_root_gid;
 	mode_t			ta_root_mode;
 };
+
+#define MNT_GID		0x00000001
+#define MNT_UID		0x00000002
+#define MNT_MODE	0x00000004
+#define MNT_INODES	0x00000008
+#define MNT_SIZE	0x00000010
+#define MNT_MAXFSIZE	0x00000020
 
 #endif /* _VFS_TMPFS_TMPFS_ARGS_H_ */
