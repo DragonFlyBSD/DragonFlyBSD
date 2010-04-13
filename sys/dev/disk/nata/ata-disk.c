@@ -377,6 +377,7 @@ ad_dump(struct dev_dump_args *ap)
 	struct ata_device *atadev = device_get_softc(dev);
 	struct ata_request request;
 
+	ata_drop_requests(dev);
 	/*
 	 * 0 length means flush buffers and return
 	 */

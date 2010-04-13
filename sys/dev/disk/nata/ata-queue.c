@@ -56,6 +56,24 @@ ata_queue_init(struct ata_channel *ch)
     ch->transition = NULL;
 }
 
+/*
+ * Rudely drop all requests queued to the channel of specified device.
+ * XXX: The requests are leaked, use only in fatal case.
+ */
+void
+ata_drop_requests(device_t dev)
+{
+    struct ata_channel *ch = device_get_softc(device_get_parent(dev));
+    struct ata_request *request, *tmp;
+
+    spin_lock_wr(&ch->queue_mtx);
+    TAILQ_FOREACH_MUTABLE(request, &ch->ata_queue, chain, tmp) {
+	TAILQ_REMOVE(&ch->ata_queue, request, chain);
+	request->result = ENXIO;
+    }
+    spin_unlock_wr(&ch->queue_mtx);
+}
+
 void
 ata_queue_request(struct ata_request *request)
 {
