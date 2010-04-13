@@ -1025,7 +1025,7 @@ sys_mlock(struct mlock_args *uap)
 int
 sys_mlockall(struct mlockall_args *uap)
 {
-	return 0;
+	return (ENOSYS);
 }
 
 /*
@@ -1038,7 +1038,7 @@ sys_mlockall(struct mlockall_args *uap)
 int
 sys_munlockall(struct munlockall_args *uap)
 {
-	return 0;
+	return (ENOSYS);
 }
 
 /*
