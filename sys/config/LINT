@@ -1435,9 +1435,7 @@ device		wlan_ccmp	# 802.11 CCMP support
 device		wlan_tkip	# 802.11 TKIP support
 device		wlan_wep	# 802.11 WEP support
 device		wlan_xauth	# 802.11 WPA or 802.1x authentication for AP
-device		wlan_ratectl_onoe # 802.11 Onoe TX rate control algorithm
-device		wlan_ratectl_amrr # 802.11 AMRR TX rate control algorithm
-device		wlan_ratectl_sample # 802.11 Sample TX rate control algorithm
+device		wlan_amrr	# 802.11 AMRR TX rate control algorithm
 options 	WLCACHE		# enables the signal-strength cache
 options 	WLDEBUG		# enables verbose debugging output
 device		an		# Aironet Communications 4500/4800
@@ -1455,15 +1453,10 @@ device		iwl		# Intel PRO/Wireless 2100
 device		iwi		# Intel PRO/Wireless 2200BG/2915ABG
 device		wi		# WaveLAN/IEEE, PRISM-II, Spectrum24 802.11DS
 device		rtw		# RealTek 8180
-				# Requires wlan_ratectl_onoe and wlan_wep
 device		acx		# TI ACX100/ACX111.
-				# Requires wlan_ratectl_amrr and
-				# wlan_ratectl_onoe
 device wl0 at isa? port 0x300	# T1 speed ISA/radio lan
 device		xe		# Xircom PCMCIA
 device		ral		# Ralink Technology 802.11 wireless NIC
-				# Requires wlan_ratectl_onoe and
-				# wlan_ratectl_sample
 
 #
 # ATM related options
@@ -2617,7 +2610,7 @@ device		kue
 #   Billionton ThumbLAN USBKR2-100B
 device		rue
 
-# USB wireless NICs, requires wlan_ratectl_onoe
+# USB wireless NICs, requires wlan_amrr
 #
 # Ralink Technology RT2501USB/RT2601USB
 device		rum
