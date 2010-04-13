@@ -2,11 +2,14 @@
 #
 
 .if ${MACHINE_ARCH} == i386
-SUBDIR=linux ndis
+SUBDIR=linux
 .elif ${MACHINE_ARCH} == x86_64
 SUBDIR=
 .else
 .error Unknown MACHINE_ARCH.
 .endif
+
+# needs to be ported to new net80211 stack
+# SUBDIR= ndis
 
 .include <bsd.subdir.mk>
