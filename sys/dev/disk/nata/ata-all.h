@@ -565,6 +565,7 @@ int ata_limit_mode(device_t dev, int mode, int maxmode);
 /* ata-queue.c: */
 int ata_controlcmd(device_t dev, u_int8_t command, u_int16_t feature, u_int64_t lba, u_int16_t count);
 int ata_atapicmd(device_t dev, u_int8_t *ccb, caddr_t data, int count, int flags, int timeout);
+void ata_drop_requests(device_t dev);
 void ata_queue_init(struct ata_channel *ch);
 void ata_queue_request(struct ata_request *request);
 void ata_start(device_t dev);
