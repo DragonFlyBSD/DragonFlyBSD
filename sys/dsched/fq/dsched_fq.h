@@ -165,7 +165,7 @@ struct dsched_fq_mpriv {
 
 
 
-struct dsched_fq_priv	*fq_alloc_priv(struct disk *dp);
+struct dsched_fq_priv	*fq_alloc_priv(struct disk *dp, struct dsched_fq_mpriv *fqmp);
 struct dsched_fq_dpriv	*fq_alloc_dpriv(struct disk *dp);
 struct dsched_fq_mpriv	*fq_alloc_mpriv(struct proc *p);
 void	fq_balance_thread(struct dsched_fq_dpriv *dpriv);

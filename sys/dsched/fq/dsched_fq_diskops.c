@@ -115,17 +115,13 @@ fq_prepare(struct disk *dp)
 
 	FQ_GLOBAL_FQMP_LOCK();
 	TAILQ_FOREACH(fqmp, &dsched_fqmp_list, link) {
-		fqp = fq_alloc_priv(dp);
-
-		FQ_FQMP_LOCK(fqmp);
+		fqp = fq_alloc_priv(dp, fqmp);
 #if 0
 		fq_reference_priv(fqp);
 #endif
-		TAILQ_INSERT_TAIL(&fqmp->fq_priv_list, fqp, link);
-		FQ_FQMP_UNLOCK(fqmp);
 	}
-
 	FQ_GLOBAL_FQMP_UNLOCK();
+
 	lwkt_create((void (*)(void *))fq_dispatcher, dpriv, &td_core, NULL,
 	    0, 0, "fq_dispatch_%s", dp->d_cdev->si_name);
 	lwkt_create((void (*)(void *))fq_balance_thread, dpriv, &td_balance,

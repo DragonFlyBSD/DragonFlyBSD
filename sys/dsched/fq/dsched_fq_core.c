@@ -124,10 +124,10 @@ fq_dereference_dpriv(struct dsched_fq_dpriv *dpriv)
 	refcount = atomic_fetchadd_int(&dpriv->refcount, -1);
 
 
-	KKASSERT(refcount >= -3);
+	KKASSERT(refcount >= 0 || refcount <= -0x400);
 
 	if (refcount == 1) {
-		atomic_subtract_int(&dpriv->refcount, 3); /* mark as: in destruction */
+		atomic_subtract_int(&dpriv->refcount, 0x400); /* mark as: in destruction */
 #if 1
 		kprintf("dpriv (%p) destruction started, trace:\n", dpriv);
 		print_backtrace(4);
@@ -154,10 +154,10 @@ fq_dereference_priv(struct dsched_fq_priv *fqp)
 
 	refcount = atomic_fetchadd_int(&fqp->refcount, -1);
 
-	KKASSERT(refcount >= -3);
+	KKASSERT(refcount >= 0 || refcount <= -0x400);
 
 	if (refcount == 1) {
-		atomic_subtract_int(&fqp->refcount, 3); /* mark as: in destruction */
+		atomic_subtract_int(&fqp->refcount, 0x400); /* mark as: in destruction */
 #if 0
 		kprintf("fqp (%p) destruction started, trace:\n", fqp);
 		print_backtrace(8);
@@ -208,10 +208,10 @@ fq_dereference_mpriv(struct dsched_fq_mpriv *fqmp)
 
 	refcount = atomic_fetchadd_int(&fqmp->refcount, -1);
 
-	KKASSERT(refcount >= -3);
+	KKASSERT(refcount >= 0 || refcount <= -0x400);
 
 	if (refcount == 1) {
-		atomic_subtract_int(&fqmp->refcount, 3); /* mark as: in destruction */
+		atomic_subtract_int(&fqmp->refcount, 0x400); /* mark as: in destruction */
 #if 0
 		kprintf("fqmp (%p) destruction started, trace:\n", fqmp);
 		print_backtrace(8);
@@ -236,7 +236,7 @@ fq_dereference_mpriv(struct dsched_fq_mpriv *fqmp)
 
 
 struct dsched_fq_priv *
-fq_alloc_priv(struct disk *dp)
+fq_alloc_priv(struct disk *dp, struct dsched_fq_mpriv *fqmp)
 {
 	struct dsched_fq_priv	*fqp;
 #if 0
@@ -253,6 +253,17 @@ fq_alloc_priv(struct disk *dp)
 	fqp->dp = dp;
 
 	fqp->dpriv = dsched_get_disk_priv(dp);
+
+	if (fqmp) {
+		fqp->fqmp = fqmp;
+		fqp->p = fqmp->p;
+
+		/* Put the fqp in the fqmp list */
+		FQ_FQMP_LOCK(fqmp);
+		TAILQ_INSERT_TAIL(&fqmp->fq_priv_list, fqp, link);
+		FQ_FQMP_UNLOCK(fqmp);
+		fqp->flags |= FQP_LINKED_FQMP;
+	}
 
 	TAILQ_INIT(&fqp->queue);
 	TAILQ_INSERT_TAIL(&fqp->dpriv->fq_priv_list, fqp, dlink);
@@ -297,24 +308,19 @@ fq_alloc_mpriv(struct proc *p)
 	kprintf("fq_alloc_mpriv, new fqmp = %p\n", fqmp);
 #endif
 	FQ_FQMP_LOCKINIT(fqmp);
-	FQ_FQMP_LOCK(fqmp);
 	TAILQ_INIT(&fqmp->fq_priv_list);
+	fqmp->p = p;
 
 	while ((dp = dsched_disk_enumerate(dp, &dsched_fq_ops))) {
-		fqp = fq_alloc_priv(dp);
-		fqp->p = p;
+		fqp = fq_alloc_priv(dp, fqmp);
 #if 0
 		fq_reference_priv(fqp);
 #endif
-		fqp->fqmp = fqmp;
-		TAILQ_INSERT_TAIL(&fqmp->fq_priv_list, fqp, link);
-		fqp->flags |= FQP_LINKED_FQMP;
 	}
 
 	FQ_GLOBAL_FQMP_LOCK();
 	TAILQ_INSERT_TAIL(&dsched_fqmp_list, fqmp, link);
 	FQ_GLOBAL_FQMP_UNLOCK();
-	FQ_FQMP_UNLOCK(fqmp);
 
 	atomic_add_int(&fq_stats.fqmp_allocations, 1);
 	return fqmp;
@@ -337,14 +343,10 @@ fq_dispatcher(struct dsched_fq_dpriv *dpriv)
 	fqmp = dsched_get_thread_priv(curthread);
 	KKASSERT(fqmp != NULL);
 
-	fqp = fq_alloc_priv(dpriv->dp);
-	FQ_FQMP_LOCK(fqmp);
+	fqp = fq_alloc_priv(dpriv->dp, fqmp);
 #if 0
 	fq_reference_priv(fqp);
 #endif
-	TAILQ_INSERT_TAIL(&fqmp->fq_priv_list, fqp, link);
-	FQ_FQMP_UNLOCK(fqmp);
-
 
 	FQ_DPRIV_LOCK(dpriv);
 	for(;;) {
