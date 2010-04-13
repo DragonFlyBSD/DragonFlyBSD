@@ -309,7 +309,6 @@ a_number(char *s)
 
 	if (dehumanize_number(s, &rv) < 0 || rv < 0)
 		errx(EX_USAGE, "bad number for option: %s", s);
-	fprintf(stderr, "%ld", rv);
 	return (rv);
 }
 
