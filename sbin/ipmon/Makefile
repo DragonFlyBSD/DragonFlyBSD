@@ -12,6 +12,5 @@ CFLAGS+=-DUSE_INET6 -DIPL_NAME=\"/dev/ipl\"
 CFLAGS+= -I${.CURDIR}/../../sys/contrib/ipfilter
 CFLAGS+=-I${.CURDIR}/../../sys
 CFLAGS+=-I${.CURDIR}/../../contrib/ipfilter
-CFLAGS+=-D__FreeBSD__
 
 .include <bsd.prog.mk>

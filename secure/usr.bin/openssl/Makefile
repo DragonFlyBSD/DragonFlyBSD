@@ -15,7 +15,6 @@ NOLINT=		true
 .endif
 .include "../../lib/libcrypto/Makefile.inc"
 
-CFLAGS+= -D__FreeBSD__
 CFLAGS+= -DMONOLITH -I${.CURDIR}
 
 SRCS+=	app_rand.c apps.c asn1pars.c ca.c ciphers.c crl.c crl2p7.c \

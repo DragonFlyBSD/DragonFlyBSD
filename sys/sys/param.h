@@ -77,16 +77,6 @@
 #undef __DragonFly_version
 #define __DragonFly_version 200700	/* propagated to newvers */
 
-#ifdef __FreeBSD__
-/* 
- * __FreeBSD_version numbers for source compatibility.  This is temporary
- * along with the __FreeBSD__ define in gcc2.  Note that gcc3 does not 
- * define __FreeBSD__ by default, only __DragonFly__.
- */
-#undef __FreeBSD_version
-#define __FreeBSD_version 480101
-#endif
-
 #include <sys/_null.h>
 
 #ifndef LOCORE
