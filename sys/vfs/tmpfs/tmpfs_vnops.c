@@ -608,7 +608,7 @@ tmpfs_write (struct vop_write_args *ap)
 		}
 
 		if (bp->b_error) {
-			kprintf("tmpfs_write bwrite error %d\n", error);
+			kprintf("tmpfs_write bwrite error %d\n", bp->b_error);
 			break;
 		}
 	}
