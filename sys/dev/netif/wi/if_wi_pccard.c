@@ -157,7 +157,6 @@ wi_pccard_probe(device_t dev)
 {
 	const struct pccard_product *pp;
 	u_int32_t fcn = PCCARD_FUNCTION_UNSPEC;
-	int error;
 
 	/* Make sure we're a network driver */
 	fcn = pccard_get_function_number(dev);
