@@ -156,12 +156,6 @@ fq_teardown(struct disk *dp)
 	fq_dereference_dpriv(dpriv); /* from alloc */
 
 	dsched_set_disk_priv(dp, NULL);
-	/* XXX: get rid of dpriv, cancel all queued requests...
-	 *      but how do we get rid of all loose fqps?
-	 *    --> possibly same solution as devfs; tracking a list of
-	 *        orphans.
-	 * XXX XXX: this XXX is probably irrelevant by now :)
-	 */
 }
 
 
