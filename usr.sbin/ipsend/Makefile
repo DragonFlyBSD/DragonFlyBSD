@@ -19,7 +19,7 @@ CFLAGS+=-I. -I${.CURDIR}/../../contrib/ipfilter/ipsend \
 	-I${.CURDIR}/../../contrib/ipfilter
 
 #Define __FreeBSD__ as is needed when building with gcc3.
-CFLAGS+=-D__FreeBSD__
+CFLAGS+=-D__FreeBSD__ -D__FreeBSD_version=480101
 
 DPADD=	${LIBL}
 LDADD=	-ll

@@ -105,10 +105,6 @@ osreldate.h:	${.CURDIR}/../sys/conf/newvers.sh \
 	echo "#else" >> osreldate.h;				\
 	echo "#undef __DragonFly_version" >> osreldate.h;	\
 	echo "#define __DragonFly_version $$RELDATE" >> osreldate.h; \
-	echo "#ifdef __FreeBSD__" >> osreldate.h;		\
-	echo "#undef __FreeBSD_version" >> osreldate.h;	\
-	echo "#define __FreeBSD_version 480101" >> osreldate.h; \
-	echo "#endif" >> osreldate.h;				\
 	echo "#endif" >> osreldate.h
 
 .for i in ${LHDRS}
