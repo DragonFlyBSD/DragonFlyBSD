@@ -98,7 +98,7 @@ static struct tap_softc *tapcreate(int, cdev_t);
 static void		tapdestroy(struct tap_softc *);
 
 /* clone */
-static int		tap_clone_create(struct if_clone *, int);
+static int		tap_clone_create(struct if_clone *, int, caddr_t);
 static void		tap_clone_destroy(struct ifnet *);
 
 
@@ -283,7 +283,8 @@ tapfind(int unit)
  * Create a new tap instance via ifconfig.
  */
 static int
-tap_clone_create(struct if_clone *ifc __unused, int unit)
+tap_clone_create(struct if_clone *ifc __unused, int unit,
+    caddr_t param __unused)
 {
 	struct tap_softc *tp;
 	cdev_t dev;
