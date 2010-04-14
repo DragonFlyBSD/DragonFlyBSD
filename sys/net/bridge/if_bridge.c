@@ -359,7 +359,7 @@ extern	void (*bridge_dn_p)(struct mbuf *, struct ifnet *);
 
 static int	bridge_rtable_prune_period = BRIDGE_RTABLE_PRUNE_PERIOD;
 
-static int	bridge_clone_create(struct if_clone *, int);
+static int	bridge_clone_create(struct if_clone *, int, caddr_t);
 static void	bridge_clone_destroy(struct ifnet *);
 
 static int	bridge_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
@@ -631,7 +631,7 @@ DECLARE_MODULE(if_bridge, bridge_mod, SI_SUB_PSEUDO, SI_ORDER_ANY);
  *	Create a new bridge instance.
  */
 static int
-bridge_clone_create(struct if_clone *ifc, int unit)
+bridge_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 {
 	struct bridge_softc *sc;
 	struct ifnet *ifp;

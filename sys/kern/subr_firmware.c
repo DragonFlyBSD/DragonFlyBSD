@@ -22,11 +22,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
+ * $FreeBSD: src/sys/kern/subr_firmware.c,v 1.13.2.2 2010/02/11 18:34:06 mjacob Exp $
+ * $DragonFly$
  */
-
-/*
-__FBSDID("$FreeBSD: src/sys/kern/subr_firmware.c,v 1.13.2.2 2010/02/11 18:34:06 mjacob Exp $");
-*/
 
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -257,7 +256,9 @@ firmware_unregister(const char *imagename)
 static void
 loadimage(void *arg, int npending)
 {
+#ifdef notyet
 	struct thread *td = curthread;
+#endif
 	char *imagename = arg;
 	struct priv_fw *fp;
 	linker_file_t result;
@@ -377,6 +378,7 @@ firmware_put(const struct firmware *p, int flags)
 	lockmgr(&firmware_lock, LK_RELEASE);
 }
 
+#ifdef notyet
 /*
  * Setup directory state for the firmware_tq thread so we can do i/o.
  */
@@ -427,7 +429,6 @@ firmware_mountroot(void *arg)
 	} else
 		kprintf("%s: no memory for task!\n", __func__);
 }
-#if 0
 EVENTHANDLER_DECLARE(mountroot, firmware_mountroot);
 #endif
 
@@ -511,7 +512,7 @@ firmware_modevent(module_t mod, int type, void *unused)
 			 * Root is already mounted so we won't get an event;
 			 * simulate one here.
 			 */
-#if 0
+#ifdef notyet
 			firmware_mountroot(NULL);
 #endif
 		}

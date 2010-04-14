@@ -113,7 +113,7 @@ SRCS+=	ar9285.c
 #SRCS+=	amrr.c
 #.endif
 
-CFLAGS+=  -I. -I${HAL}
+CFLAGS+=  -I. -I${HAL} -DAH_SUPPORT_AR5416
 
 .if !defined(BUILDING_WITH_KERNEL)
 opt_ah.h:

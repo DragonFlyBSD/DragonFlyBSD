@@ -178,7 +178,7 @@ acl_add(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 	new = (struct acl *) kmalloc(sizeof(struct acl), M_80211_ACL, M_NOWAIT | M_ZERO);
 	if (new == NULL) {
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL,
-			"ACL: add %s failed, no memory\n", ether_sprintf(mac));
+			"ACL: add %6D failed, no memory\n", mac, ":");
 		/* XXX statistic */
 		return ENOMEM;
 	}
@@ -202,7 +202,7 @@ acl_add(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 	ACL_UNLOCK(as);
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL,
-		"ACL: add %s\n", ether_sprintf(mac));
+		"ACL: add %6D\n", mac, ":");
 	return 0;
 }
 
@@ -219,7 +219,7 @@ acl_remove(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 	ACL_UNLOCK(as);
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL,
-		"ACL: remove %s%s\n", ether_sprintf(mac),
+		"ACL: remove %6D%s\n", mac, ":",
 		acl == NULL ? ", not present" : "");
 
 	return (acl == NULL ? ENOENT : 0);

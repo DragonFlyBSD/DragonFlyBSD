@@ -87,7 +87,7 @@
 
 
 static void	pflog_clone_destroy(struct ifnet *);
-static int	pflog_clone_create(struct if_clone *, int);
+static int	pflog_clone_create(struct if_clone *, int, caddr_t);
 int	pflogoutput(struct ifnet *, struct mbuf *, struct sockaddr *,
 	    	       struct rtentry *);
 int	pflogioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
@@ -118,7 +118,7 @@ pflog_clone_destroy(struct ifnet *ifp)
 }
 
 static int
-pflog_clone_create(struct if_clone *ifc, int unit)
+pflog_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 {
 	struct pflog_softc *sc;
 

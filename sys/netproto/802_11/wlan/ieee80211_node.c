@@ -1884,7 +1884,7 @@ ieee80211_node_table_cleanup(struct ieee80211_node_table *nt)
 		int i;
 		for (i = 0; i < nt->nt_keyixmax; i++)
 			if (nt->nt_keyixmap[i] != NULL)
-				printf("%s: %s[%u] still active\n", __func__,
+				kprintf("%s: %s[%u] still active\n", __func__,
 					nt->nt_name, i);
 #endif
 		kfree(nt->nt_keyixmap, M_80211_NODE);

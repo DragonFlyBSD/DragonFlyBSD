@@ -88,7 +88,7 @@ int			pfsync_sync_ok;
 struct pfsyncstats	pfsyncstats;
 
 static void	pfsync_clone_destroy(struct ifnet *);
-static int	pfsync_clone_create(struct if_clone *, int);
+static int	pfsync_clone_create(struct if_clone *, int, caddr_t);
 void	pfsync_setmtu(struct pfsync_softc *, int);
 int	pfsync_insert_net_state(struct pfsync_state *);
 int	pfsyncoutput(struct ifnet *, struct mbuf *, struct sockaddr *,
@@ -126,7 +126,7 @@ pfsync_clone_destroy(struct ifnet *ifp)
 }
 
 static int
-pfsync_clone_create(struct if_clone *ifc, int unit)
+pfsync_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 {
 	struct pfsync_softc *sc;
 	struct ifnet *ifp;

@@ -156,7 +156,7 @@ DECLARE_MODULE(if_faith, faith_mod, SI_SUB_PSEUDO, SI_ORDER_ANY);
 MODULE_VERSION(if_faith, 1);
 
 int
-faith_clone_create(struct if_clone *ifc, int unit, caddr_t param)
+faith_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 {
 	struct faith_softc *sc;
 

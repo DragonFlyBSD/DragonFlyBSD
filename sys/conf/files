@@ -659,7 +659,7 @@ kern/kern_environment.c	standard
 kern/kern_event.c	standard
 kern/kern_exec.c	standard
 kern/kern_exit.c	standard
-kern/kern_firmware.c	standard
+kern/subr_firmware.c	standard
 kern/kern_fork.c	standard
 kern/kern_jail.c	standard
 kern/kern_kinfo.c	standard
@@ -887,7 +887,7 @@ net/rtsock.c		standard
 net/zlib.c		optional ppp_deflate
 net/zlib.c		optional ipsec
 netproto/802_11/wlan/ieee80211.c            optional wlan
-netproto/802_11/wlan_acl/ieee80211_acl.c    optional wlan wlan_acl
+netproto/802_11/wlan_acl/ieee80211_acl.c    optional wlan_acl
 netproto/802_11/wlan/ieee80211_action.c     optional wlan
 netproto/802_11/wlan/ieee80211_ageq.c       optional wlan
 netproto/802_11/wlan/ieee80211_adhoc.c      optional wlan

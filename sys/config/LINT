@@ -1449,11 +1449,11 @@ options		ATH_DEBUG	# turn on debugging output (see hw.ath.debug)
 options		ATH_DIAGAPI	# diagnostic interface to the HAL
 options		ATH_RXBUF=80	# number of RX buffers to allocate
 options		ATH_TXBUF=400	# number of TX buffers to allocate
-device		iwl		# Intel PRO/Wireless 2100
-device		iwi		# Intel PRO/Wireless 2200BG/2915ABG
+#device		iwl		# Intel PRO/Wireless 2100
+#device		iwi		# Intel PRO/Wireless 2200BG/2915ABG
 device		wi		# WaveLAN/IEEE, PRISM-II, Spectrum24 802.11DS
-device		rtw		# RealTek 8180
-device		acx		# TI ACX100/ACX111.
+#device		rtw		# RealTek 8180
+#device		acx		# TI ACX100/ACX111.
 device wl0 at isa? port 0x300	# T1 speed ISA/radio lan
 device		xe		# Xircom PCMCIA
 device		ral		# Ralink Technology 802.11 wireless NIC
@@ -2613,10 +2613,10 @@ device		rue
 # USB wireless NICs, requires wlan_amrr
 #
 # Ralink Technology RT2501USB/RT2601USB
-device		rum
+#device		rum
 #
 # Ralink Technology RT2500USB
-device		ural
+#device		ural
 
 # debugging options for the USB subsystem
 #
