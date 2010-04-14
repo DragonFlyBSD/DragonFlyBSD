@@ -698,12 +698,13 @@ hammer_recover_stage2(hammer_mount_t hmp, hammer_volume_t root_volume)
 		bytes -= head->head.hdr_size;
 	}
 	KKASSERT(error || bytes == 0);
+
+done:
 	if (buffer) {
 		hammer_rel_buffer(buffer, 0);
 		buffer = NULL;
 	}
 
-done:
 	/*
 	 * Cleanup rterm tree
 	 */
