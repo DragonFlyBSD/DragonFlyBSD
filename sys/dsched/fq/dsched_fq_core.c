@@ -62,7 +62,7 @@
 MALLOC_DECLARE(M_DSCHEDFQ);
 
 static int	dsched_fq_version_maj = 0;
-static int	dsched_fq_version_min = 7;
+static int	dsched_fq_version_min = 8;
 
 struct dsched_fq_stats	fq_stats;
 
