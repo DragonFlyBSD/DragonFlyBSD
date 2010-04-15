@@ -953,11 +953,7 @@ ath_rate_sysctlattach(struct ath_softc *sc, struct sample_softc *ssc)
 	struct sysctl_oid *tree;
 
 	ctx = &sc->sc_sysctl_ctx;
-	sysctl_ctx_init(ctx);
-	tree = SYSCTL_ADD_NODE(ctx, SYSCTL_STATIC_CHILDREN(_hw),
-			       OID_AUTO,
-			       device_get_nameunit(sc->sc_dev),
-			       CTLFLAG_RD, 0, "");
+	tree = sc->sc_sysctl_tree;
 	if (tree == NULL) {
 		device_printf(sc->sc_dev, "can't add sysctl node\n");
 		return;
