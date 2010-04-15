@@ -58,7 +58,7 @@ savecore_start()
 {
 	if [ X$dumpdev != X ]; then
 		echo "Checking for core dump..."
-		savecore ${savecore_flags} ${DUMPDIR}
+		savecore ${savecore_flags} ${DUMPDIR} ${dumpdev}
 		return ${RC_CONFIGURED}
 	fi
 }
