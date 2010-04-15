@@ -59,8 +59,6 @@
 #include <sys/taskqueue.h>
 #include <sys/priv.h>
 
-#include <machine/bus_at386.h>
- 
 #include <net/if.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>

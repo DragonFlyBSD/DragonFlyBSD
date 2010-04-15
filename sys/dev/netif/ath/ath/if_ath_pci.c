@@ -43,8 +43,6 @@
 #include <sys/lock.h>
 #include <sys/mutex.h>
 #include <sys/errno.h>
-
-#include <machine/bus_at386.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 

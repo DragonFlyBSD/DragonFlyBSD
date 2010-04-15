@@ -33,13 +33,11 @@
 /*
  * Atheros Hardware Access Layer (HAL) OS Dependent Definitions.
  */
-#include <sys/cdefs.h>
+#include <sys/bus.h>
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/endian.h>
 #include <sys/linker_set.h>
-
-#include <machine/bus_at386.h>
 
 /*
  * Bus i/o type definitions.

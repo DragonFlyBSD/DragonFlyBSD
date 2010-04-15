@@ -80,7 +80,6 @@
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
 
-#include <machine/bus_at386.h>
 #include <machine/atomic.h>
 #include <sys/rman.h>
 

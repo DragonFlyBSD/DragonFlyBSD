@@ -47,8 +47,6 @@
 #include <sys/systm.h>
 #include <sys/module.h>
 #include <sys/bus.h>
-
-#include <machine/bus_at386.h>
 #include <sys/rman.h>
 
 #include <net/if.h>
