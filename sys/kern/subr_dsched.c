@@ -133,7 +133,7 @@ dsched_debug(int level, char *fmt, ...)
 void
 dsched_create(struct disk *dp, const char *head_name, int unit)
 {
-	char tunable_key[SPECNAMELEN + 11];
+	char tunable_key[SPECNAMELEN + 48];
 	char sched_policy[DSCHED_POLICY_NAME_LENGTH];
 	struct dsched_policy *policy = NULL;
 
@@ -141,21 +141,21 @@ dsched_create(struct disk *dp, const char *head_name, int unit)
 	/* kprintf("dsched_create() for disk %s%d\n", head_name, unit); */
 	lockmgr(&dsched_lock, LK_EXCLUSIVE);
 
-	ksnprintf(tunable_key, sizeof(tunable_key), "dsched_pol_%s%d",
+	ksnprintf(tunable_key, sizeof(tunable_key), "kern.dsched.policy.%s%d",
 	    head_name, unit);
 	if (TUNABLE_STR_FETCH(tunable_key, sched_policy,
 	    sizeof(sched_policy)) != 0) {
 		policy = dsched_find_policy(sched_policy);
 	}
 
-	ksnprintf(tunable_key, sizeof(tunable_key), "dsched_pol_%s",
+	ksnprintf(tunable_key, sizeof(tunable_key), "kern.dsched.policy.%s",
 	    head_name);
 	if (!policy && (TUNABLE_STR_FETCH(tunable_key, sched_policy,
 	    sizeof(sched_policy)) != 0)) {
 		policy = dsched_find_policy(sched_policy);
 	}
 
-	ksnprintf(tunable_key, sizeof(tunable_key), "dsched_pol");
+	ksnprintf(tunable_key, sizeof(tunable_key), "kern.dsched.policy.default");
 	if (!policy && (TUNABLE_STR_FETCH(tunable_key, sched_policy,
 	    sizeof(sched_policy)) != 0)) {
 		policy = dsched_find_policy(sched_policy);
