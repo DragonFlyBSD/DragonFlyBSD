@@ -183,6 +183,17 @@ bioq_first(struct bio_queue_head *bioq)
 	return (TAILQ_FIRST(&bioq->queue));
 }
 
+static __inline struct bio *
+bioq_takefirst(struct bio_queue_head *bioq)
+{
+	struct bio *bp;
+
+	bp = TAILQ_FIRST(&bioq->queue);
+	if (bp != NULL)
+		bioq_remove(bioq, bp);
+	return (bp);
+}
+
 /*
  * Adjust buffer cache buffer's activity count.  This
  * works similarly to vm_page->act_count.
