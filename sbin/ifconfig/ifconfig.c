@@ -236,7 +236,7 @@ main(int argc, char *argv[])
 		argc--, argv++;
 
 		/* check and maybe load support for this interface */
-		ifmaybeload(name);
+		ifmaybeload(ifname);
 		ifindex = if_nametoindex(ifname);
 		if (ifindex == 0) {
 			/*
@@ -1043,11 +1043,12 @@ printb(const char *s, unsigned v, const char *bits)
 }
 
 void
-ifmaybeload(char *name)
+ifmaybeload(const char *name)
 {
 	struct module_stat mstat;
 	int fileid, modid;
-	char ifkind[35], *cp, *dp;
+	char ifkind[35], *dp;
+	const char *cp;
 
 	/* turn interface and unit into module name */
 	strcpy(ifkind, "if_");

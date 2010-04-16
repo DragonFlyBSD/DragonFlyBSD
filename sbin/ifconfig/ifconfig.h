@@ -150,7 +150,7 @@ void	setifcap(const char *, int value, int s, const struct afswtch *);
 void	Perror(const char *cmd);
 void	printb(const char *s, unsigned value, const char *bits);
 
-void	ifmaybeload(char *);
+void	ifmaybeload(const char *);
 
 typedef void clone_callback_func(int, struct ifreq *);
 void    clone_setdefcallback(const char *, clone_callback_func *);
