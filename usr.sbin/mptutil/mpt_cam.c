@@ -230,7 +230,7 @@ static int
 fetch_scsi_capacity(struct cam_device *dev, struct mpt_standalone_disk *disk)
 {
 	struct scsi_read_capacity_data rcap;
-	struct scsi_read_capacity_data_long rcaplong;
+	struct scsi_read_capacity_data_16 rcaplong;
 	union ccb *ccb;
 	int error;
 

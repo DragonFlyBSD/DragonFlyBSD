@@ -36,10 +36,12 @@
 #include <sys/cdefs.h>
 #include <sys/linker_set.h>
 
-#include <dev/mpt/mpilib/mpi_type.h>
-#include <dev/mpt/mpilib/mpi.h>
-#include <dev/mpt/mpilib/mpi_cnfg.h>
-#include <dev/mpt/mpilib/mpi_raid.h>
+#include <dev/disk/mpt/mpilib/mpi_type.h>
+#include <dev/disk/mpt/mpilib/mpi.h>
+#include <dev/disk/mpt/mpilib/mpi_cnfg.h>
+#include <dev/disk/mpt/mpilib/mpi_raid.h>
+
+#define	SPECNAMELEN 15 /* XXX: hidden under _KERNEL in <sys/conf.h> */
 
 #define	IOC_STATUS_SUCCESS(status)					\
 	(((status) & MPI_IOCSTATUS_MASK) == MPI_IOCSTATUS_SUCCESS)
