@@ -68,8 +68,8 @@ void	*memcpy(void * __restrict, const void * __restrict, size_t);
 #if __BSD_VISIBLE
 void	*memmem(const void *, size_t, const void *, size_t);
 #endif
-void	*memmove(void *, const void *, size_t);
 #if !defined(_KERNEL_VIRTUAL)
+void	*memmove(void *, const void *, size_t);
 void	*memset(void *, int, size_t);
 #endif
 #if __BSD_VISIBLE

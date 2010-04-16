@@ -56,9 +56,9 @@ int	 flsll(long long) __pure2;
 #if !defined(_KERNEL_VIRTUAL)
 char	*index(const char *, int) __pure;			/* LEGACY */
 char	*rindex(const char *, int) __pure;			/* LEGACY */
-#endif
 int	 strcasecmp(const char *, const char *) __pure;
 int	 strncasecmp(const char *, const char *, size_t) __pure;
+#endif
 __END_DECLS
 
 #endif /* _STRINGS_H_ */
