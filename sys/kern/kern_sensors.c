@@ -196,7 +196,7 @@ sensor_task_register(void *arg, void (*func)(void *), int period)
 	TAILQ_INSERT_HEAD(&tasklist, st, entry);
 
 	if (create_thread)
-		if (kthread_create(sensor_task_thread, NULL, NULL, 0, 0,
+		if (kthread_create(sensor_task_thread, NULL, NULL,
 		    "sensors") != 0)
 			panic("sensors kthread");
 	

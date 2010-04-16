@@ -60,9 +60,9 @@ int	resume_kproc (struct thread *);
 void	kproc_suspend_loop (void);
 void	shutdown_kproc (void *, int);
 int	kthread_create (void (*)(void *), void *, struct thread **,
-			const char *, ...);
+	    const char *, ...) __printflike(4, 5);
 int	kthread_create_stk (void (*)(void *), void *, struct thread **,
-			int, const char *, ...);
+	    int, const char *, ...) __printflike(5, 6);
 void	kthread_exit (void) __dead2;
 #endif /* _KERNEL */
 
