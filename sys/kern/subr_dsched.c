@@ -429,7 +429,7 @@ dsched_strategy_raw(struct disk *dp, struct bio *bp)
 	if(bp->bio_track != NULL) {
 		dsched_debug(LOG_INFO,
 		    "dsched_strategy_raw sees non-NULL bio_track!! "
-		    "bio: %x\n", (uint32_t)bp);
+		    "bio: %p\n", bp);
 		bp->bio_track = NULL;
 	}
 	dev_dstrategy(dp->d_rawdev, bp);
