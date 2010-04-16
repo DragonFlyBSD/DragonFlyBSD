@@ -39,7 +39,8 @@
 hammer_off_t
 blockmap_lookup(hammer_off_t zone_offset,
 		struct hammer_blockmap_layer1 *save_layer1,
-		struct hammer_blockmap_layer2 *save_layer2)
+		struct hammer_blockmap_layer2 *save_layer2,
+		int *errorp)
 {
 	struct volume_info *root_volume;
 	hammer_blockmap_t blockmap;
@@ -54,6 +55,8 @@ blockmap_lookup(hammer_off_t zone_offset,
 	int i;
 
 	zone = HAMMER_ZONE_DECODE(zone_offset);
+	if (errorp)
+		*errorp = 0;
 
 	assert(zone > HAMMER_ZONE_RAW_VOLUME_INDEX);
 	assert(zone < HAMMER_MAX_ZONES);
@@ -101,7 +104,12 @@ blockmap_lookup(hammer_off_t zone_offset,
 	if (save_layer2)
 		*save_layer2 = *layer2;
 
-	assert(layer2->zone == zone);
+	if (errorp) {
+		if (layer2->zone != zone)
+			*errorp = EDOM;
+	} else {
+		assert(layer2->zone == zone);
+	}
 
 	if (buffer)
 		rel_buffer(buffer);

@@ -298,6 +298,13 @@ This means the free byte count can legally go negative.
 This command needs the
 .Fl f
 flag.
+.\" ==== checkmap ====
+.It Cm checkmap
+Check the blockmap allocation count.
+.Nm
+will scan the B-Tree, collect allocation information, and
+construct a blockmap in-memory.  It will then check that blockmap
+against the on-disk blockmap.
 .\" ==== show ====
 .It Cm show Op Ar lo Ns Cm \&: Ns Ar objid
 Dump the B-Tree.

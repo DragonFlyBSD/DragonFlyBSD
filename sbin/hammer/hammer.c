@@ -459,6 +459,11 @@ main(int ac, char **av)
 		hammer_cmd_blockmap();
 		exit(0);
 	}
+	if (strcmp(av[0], "checkmap") == 0) {
+		hammer_parsedevs(blkdevs);
+		hammer_cmd_checkmap();
+		exit(0);
+	}
 	usage(1);
 	/* not reached */
 	return(0);

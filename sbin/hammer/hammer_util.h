@@ -129,7 +129,8 @@ void rel_buffer(struct buffer_info *buffer);
 
 hammer_off_t blockmap_lookup(hammer_off_t bmap_off,
 				struct hammer_blockmap_layer1 *layer1,
-				struct hammer_blockmap_layer2 *layer2);
+				struct hammer_blockmap_layer2 *layer2,
+				int *errorp);
 void format_blockmap(hammer_blockmap_t blockmap, hammer_off_t zone_base);
 void format_undomap(hammer_volume_ondisk_t ondisk);
 

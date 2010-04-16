@@ -385,21 +385,33 @@ print_bigblock_fill(hammer_off_t offset)
 	struct hammer_blockmap_layer1 layer1;
 	struct hammer_blockmap_layer2 layer2;
 	int fill;
+	int error;
 
-	blockmap_lookup(offset, &layer1, &layer2);
-	fill = layer2.bytes_free * 100 / HAMMER_LARGEBLOCK_SIZE;
-	fill = 100 - fill;
+	blockmap_lookup(offset, &layer1, &layer2, &error);
+	if (error) {
+		printf("z%d:%lld=BADZ",
+			HAMMER_ZONE_DECODE(offset),
+			(offset & ~HAMMER_OFF_ZONE_MASK) /
+			    HAMMER_LARGEBLOCK_SIZE
+		);
+	} else {
+		fill = layer2.bytes_free * 100 / HAMMER_LARGEBLOCK_SIZE;
+		fill = 100 - fill;
 
-	printf("z%d:%lld=%d%%",
-		HAMMER_ZONE_DECODE(offset),
-		(offset & ~HAMMER_OFF_ZONE_MASK) / HAMMER_LARGEBLOCK_SIZE,
-		fill
-	);
+		printf("z%d:%lld=%d%%",
+			HAMMER_ZONE_DECODE(offset),
+			(offset & ~HAMMER_OFF_ZONE_MASK) /
+			    HAMMER_LARGEBLOCK_SIZE,
+			fill
+		);
+	}
 }
 
 /*
  * Check the generic crc on a data element.  Inodes record types are
  * special in that some of their fields are not CRCed.
+ *
+ * Also check that the zone is valid.
  */
 static
 const char *
@@ -410,6 +422,7 @@ check_data_crc(hammer_btree_elm_t elm)
 	int32_t data_len;
 	int32_t len;
 	u_int32_t crc;
+	int error;
 	char *ptr;
 
 	data_offset = elm->leaf.data_offset;
@@ -419,7 +432,12 @@ check_data_crc(hammer_btree_elm_t elm)
 		return("Z");
 
 	crc = 0;
+	error = 0;
 	while (data_len) {
+		blockmap_lookup(data_offset, NULL, NULL, &error);
+		if (error)
+			break;
+
 		ptr = get_buffer_data(data_offset, &data_buffer, 0);
 		len = HAMMER_BUFSIZE - ((int)data_offset & HAMMER_BUFMASK);
 		if (len > data_len)
@@ -435,9 +453,11 @@ check_data_crc(hammer_btree_elm_t elm)
 	}
 	if (data_buffer)
 		rel_buffer(data_buffer);
+	if (error)
+		return("BO");		/* bad offset */
 	if (crc == elm->leaf.data_crc)
 		return("");
-	return("B");
+	return("BX");			/* bad crc */
 }
 
 static

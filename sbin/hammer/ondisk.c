@@ -203,7 +203,7 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 
 	zone = HAMMER_ZONE_DECODE(buf_offset);
 	if (zone > HAMMER_ZONE_RAW_BUFFER_INDEX) {
-		buf_offset = blockmap_lookup(buf_offset, NULL, NULL);
+		buf_offset = blockmap_lookup(buf_offset, NULL, NULL, NULL);
 	}
 	assert((buf_offset & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_RAW_BUFFER);
 	vol_no = HAMMER_VOL_DECODE(buf_offset);
