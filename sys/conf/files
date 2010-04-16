@@ -442,6 +442,10 @@ dev/raid/mlx/mlx_disk.c		optional mlx
 dev/raid/mlx/mlx_pci.c		optional mlx
 dev/raid/mlx/mlx.c		optional mlx
 dev/raid/mly/mly.c		optional mly
+bus/mmc/mmc.c			optional mmc
+bus/mmc/mmcbr_if.m		standard
+bus/mmc/mmcbus_if.m		standard
+dev/disk/mmcsd/mmcsd.c		optional mmcsd
 dev/disk/mpt/mpt.c		optional mpt
 dev/disk/mpt/mpt_cam.c		optional mpt
 dev/disk/mpt/mpt_debug.c	optional mpt
@@ -478,6 +482,7 @@ dev/serial/rp/rp_isa.c		optional nrp isa
 dev/serial/rp/rp_pci.c		optional nrp pci
 dev/netif/sbni/if_sbni_pci.c	optional sbni pci
 dev/netif/sbsh/if_sbsh.c	optional sbsh
+dev/disk/sdhci/sdhci.c		optional sdhci pci
 bus/smbus/smbus_if.m		optional smbus
 bus/smbus/smbconf.c		optional smbus
 bus/smbus/smbus.c		optional smbus

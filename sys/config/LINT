@@ -2033,6 +2033,17 @@ device		cbb
 options 	POWERFAIL_NMI	# make it beep instead of panicing
 
 #
+# MMC/SD
+#
+# mmc 		MMC/SD bus
+# mmcsd		MMC/SD memory card
+# sdhci		Generic PCI SD Host Controller
+#
+device		mmc
+device		mmcsd
+device		sdhci
+
+#
 # SMB bus
 #
 # System Management Bus support is provided by the 'smbus' device.
