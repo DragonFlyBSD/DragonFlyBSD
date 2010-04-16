@@ -498,9 +498,9 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 		}
 
 		dsched_debug(LOG_INFO, "%d procs competing for disk\n"
-		    "total_budget = %lld (lost bits = %d)\n"
-		    "incomplete tp = %d\n", n, total_budget, lost_bits,
-		    dpriv->incomplete_tp);
+		    "total_budget = %jd (lost bits = %d)\n"
+		    "incomplete tp = %d\n", n, (intmax_t)total_budget,
+		    lost_bits, dpriv->incomplete_tp);
 
 		if (n == 0)
 			continue;
@@ -569,8 +569,8 @@ fq_balance_self(struct dsched_fq_priv *fqp) {
 
 	if (used_budget > 0) {
 		dsched_debug(LOG_INFO,
-		    "info: used_budget = %lld, budget = %lld\n", used_budget,
-		    budget);
+		    "info: used_budget = %jd, budget = %jd\n",
+		    (intmax_t)used_budget, budget);
 	}
 
 	if ((used_budget > budget) && (dpriv->disk_busy >= 90)) {
