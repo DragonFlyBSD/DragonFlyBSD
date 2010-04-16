@@ -145,7 +145,7 @@ void	dsched_cancel_bio(struct bio *bp);
 void	dsched_strategy_raw(struct disk *dp, struct bio *bp);
 void	dsched_strategy_sync(struct disk *dp, struct bio *bp);
 void	dsched_strategy_async(struct disk *dp, struct bio *bp, biodone_t *done, void *priv);
-int	dsched_debug(int level, char *fmt, ...);
+int	dsched_debug(int level, char *fmt, ...) __printflike(2, 3);
 dsched_new_buf_t	dsched_new_buf;
 dsched_new_proc_t	dsched_new_proc;
 dsched_new_thread_t	dsched_new_thread;

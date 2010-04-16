@@ -327,7 +327,7 @@ extern void lwkt_init(void);
 extern struct thread *lwkt_alloc_thread(struct thread *, int, int, int);
 extern void lwkt_init_thread(struct thread *, void *, int, int,
 			     struct globaldata *);
-extern void lwkt_set_comm(thread_t, const char *, ...);
+extern void lwkt_set_comm(thread_t, const char *, ...) __printflike(2, 3);
 extern void lwkt_wait_free(struct thread *);
 extern void lwkt_free_thread(struct thread *);
 extern void lwkt_gdinit(struct globaldata *);
@@ -399,7 +399,8 @@ extern void crit_panic(void);
 extern struct lwp *lwkt_preempted_proc(void);
 
 extern int  lwkt_create (void (*func)(void *), void *, struct thread **,
-		         struct thread *, int, int, const char *, ...);
+		struct thread *, int, int,
+		const char *, ...) __printflike(7, 8);
 extern void lwkt_exit (void) __dead2;
 extern void lwkt_remove_tdallq (struct thread *);
 

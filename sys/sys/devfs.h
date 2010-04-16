@@ -341,7 +341,7 @@ int devfs_clone_bitmap_chk(struct devfs_bitmap *, int);
 /*
  * Prototypes
  */
-int devfs_debug(int level, char *fmt, ...);
+int devfs_debug(int level, char *fmt, ...) __printflike(2, 3);
 int devfs_allocv(struct vnode **, struct devfs_node *);
 struct devfs_node *devfs_allocp(devfs_nodetype, char *, struct devfs_node *,
 				struct mount *, cdev_t);
@@ -384,7 +384,7 @@ struct devfs_node *devfs_resolve_or_create_path(
 				struct devfs_node *, char *, int);
 int devfs_resolve_name_path(char *, char *, char **, char **);
 struct devfs_node *devfs_create_device_node(struct devfs_node *, cdev_t,
-				char *, char *, ...);
+		      char *, char *, ...) __printf0like(4, 5);
 
 int devfs_destroy_device_node(struct devfs_node *, cdev_t);
 int devfs_destroy_subnames(char *);
@@ -393,7 +393,7 @@ struct devfs_node *devfs_find_device_node_by_name(struct devfs_node *, char *);
 
 cdev_t devfs_new_cdev(struct dev_ops *, int, struct dev_ops *);
 
-cdev_t devfs_find_device_by_name(const char *, ...);
+cdev_t devfs_find_device_by_name(const char *, ...) __printflike(1, 2);
 cdev_t devfs_find_device_by_udev(udev_t);
 
 struct vnode *devfs_inode_to_vnode(struct mount *, ino_t);

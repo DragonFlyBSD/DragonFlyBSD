@@ -535,7 +535,7 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 		if (total_budget > dpriv->max_budget)
 			dpriv->max_budget = total_budget;
 
-		dsched_debug(4, "disk is %d\% busy\n", dpriv->disk_busy);
+		dsched_debug(4, "disk is %d%% busy\n", dpriv->disk_busy);
 		TAILQ_FOREACH(fqp, &dpriv->fq_priv_list, dlink) {
 			fqp->rebalance = 1;
 		}

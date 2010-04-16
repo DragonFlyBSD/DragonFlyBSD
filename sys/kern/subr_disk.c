@@ -853,10 +853,10 @@ diskioctl(struct dev_ioctl_args *ap)
 		return (ENXIO);
 
 	devfs_debug(DEVFS_DEBUG_DEBUG,
-		    "diskioctl: cmd is: %x (name: %s)\n",
+		    "diskioctl: cmd is: %lx (name: %s)\n",
 		    ap->a_cmd, dev->si_name);
 	devfs_debug(DEVFS_DEBUG_DEBUG,
-		    "diskioctl: &dp->d_slice is: %x, %x\n",
+		    "diskioctl: &dp->d_slice is: %p, %p\n",
 		    &dp->d_slice, dp->d_slice);
 
 	if (ap->a_cmd == DIOCGKERNELDUMP) {
