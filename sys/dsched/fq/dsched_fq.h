@@ -48,23 +48,27 @@
 #ifndef _SYS_SPINLOCK_H_
 #include <sys/spinlock.h>
 #endif
-/*
-#define	FQ_IOQ_INIT(x)		lockinit(&(x)->fq_lock, "fqioq", 0, LK_CANRECURSE)
-#define FQ_IOQ_LOCK(x)		lockmgr(&(x)->fq_lock, LK_EXCLUSIVE)
-#define	FQ_IOQ_UNLOCK(x)	lockmgr(&(x)->fq_lock, LK_RELEASE)
-*/
+
+#define	FQ_FQP_LOCKINIT(x)	lockinit(&(x)->lock, "fqpbioq", 0, LK_CANRECURSE)
+#define	FQ_FQP_LOCK(x)		fq_reference_priv((x)); \
+				lockmgr(&(x)->lock, LK_EXCLUSIVE)
+#define	FQ_FQP_UNLOCK(x)	lockmgr(&(x)->lock, LK_RELEASE); \
+				fq_dereference_priv((x));
 
 #define	FQ_FQMP_LOCKINIT(x)	spin_init(&(x)->lock)
+#if 0
 #define	FQ_FQP_LOCKINIT(x)	spin_init(&(x)->lock)
+#endif
 #define	FQ_DPRIV_LOCKINIT(x)	spin_init(&(x)->lock)
 #define	FQ_GLOBAL_FQMP_LOCKINIT(x)	spin_init(&fq_fqmp_lock)
 
 
 #define	FQ_FQMP_LOCK(x)		fq_reference_mpriv((x)); \
 				spin_lock_wr(&(x)->lock)
-
+#if 0
 #define	FQ_FQP_LOCK(x)		fq_reference_priv((x)); \
 				spin_lock_wr(&(x)->lock)
+#endif
 
 #define	FQ_DPRIV_LOCK(x)	fq_reference_dpriv((x)); \
 				spin_lock_wr(&(x)->lock)
@@ -75,8 +79,10 @@
 #define	FQ_FQMP_UNLOCK(x)	spin_unlock_wr(&(x)->lock); \
 				fq_dereference_mpriv((x))
 
+#if 0
 #define	FQ_FQP_UNLOCK(x)	spin_unlock_wr(&(x)->lock); \
 				fq_dereference_priv((x))
+#endif
 
 #define	FQ_DPRIV_UNLOCK(x)	spin_unlock_wr(&(x)->lock); \
 				fq_dereference_dpriv((x))
@@ -106,8 +112,8 @@ struct dsched_fq_priv {
 	TAILQ_ENTRY(dsched_fq_priv)	dlink;
 	TAILQ_HEAD(, bio)	queue;
 
-	struct	spinlock	lock;
-	struct	disk		*dp;
+	struct lock		lock;
+	struct disk		*dp;
 	struct dsched_fq_dpriv	*dpriv;
 	struct dsched_fq_mpriv	*fqmp;
 	struct proc		*p;
