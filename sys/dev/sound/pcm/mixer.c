@@ -684,7 +684,7 @@ mixer_ioctl(struct dev_ioctl_args *ap)
 	}
 
 	if (cmd == OSS_GETVERSION) {
-		arg = SOUND_VERSION;
+		*arg_i = SOUND_VERSION;
 		snd_mtxunlock(m->lock);
 		return 0;
 	}
