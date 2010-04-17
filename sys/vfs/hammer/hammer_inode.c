@@ -1892,6 +1892,19 @@ hammer_setup_parent_inodes_helper(hammer_record_t record, int depth,
 	if (pip->flush_state != HAMMER_FST_FLUSH)
 		hammer_flush_inode_core(pip, flg, HAMMER_FLUSH_RECURSION);
 	KKASSERT(pip->flush_state == HAMMER_FST_FLUSH);
+
+	/*
+	 * It is possible for a rename to create a loop in the recursion
+	 * and revisit a record.  This will result in the record being
+	 * placed in a flush state unexpectedly.  This check deals with
+	 * the case.
+	 */
+	if (record->flush_state == HAMMER_FST_FLUSH) {
+		if (record->type == HAMMER_MEM_RECORD_ADD)
+			return(1);
+		return(0);
+	}
+
 	KKASSERT(record->flush_state == HAMMER_FST_SETUP);
 
 #if 0
