@@ -683,6 +683,12 @@ mixer_ioctl(struct dev_ioctl_args *ap)
 		return EBADF;
 	}
 
+	if (cmd == OSS_GETVERSION) {
+		*arg_i = SOUND_VERSION;
+		snd_mtxunlock(m->lock);
+		return 0;
+	}
+
 	if ((cmd & MIXER_WRITE(0)) == MIXER_WRITE(0)) {
 		if (j == SOUND_MIXER_RECSRC)
 			ret = mixer_setrecsrc(m, *arg_i);

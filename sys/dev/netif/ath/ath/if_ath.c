@@ -372,6 +372,14 @@ ath_attach(u_int16_t devid, struct ath_softc *sc)
 	if_initname(ifp, device_get_name(sc->sc_dev),
 		device_get_unit(sc->sc_dev));
 
+	/* prepare sysctl tree for use in sub modules */
+	sysctl_ctx_init(&sc->sc_sysctl_ctx);
+	sc->sc_sysctl_tree = SYSCTL_ADD_NODE(&sc->sc_sysctl_ctx,
+		SYSCTL_STATIC_CHILDREN(_hw),
+		OID_AUTO,
+		device_get_nameunit(sc->sc_dev),
+		CTLFLAG_RD, 0, "");
+
 	ah = ath_hal_attach(devid, sc, sc->sc_st, sc->sc_sh, &status);
 	if (ah == NULL) {
 		if_printf(ifp, "unable to attach hardware; HAL status %u\n",
@@ -782,6 +790,10 @@ ath_detach(struct ath_softc *sc)
 	ath_desc_free(sc);
 	ath_tx_cleanup(sc);
 	ath_hal_detach(sc->sc_ah);	/* NB: sets chip in full sleep */
+	if (sc->sc_sysctl_tree) {
+		sysctl_ctx_free(&sc->sc_sysctl_ctx);
+		sc->sc_sysctl_tree = NULL;
+	}
 	if_free(ifp);
 
 	return 0;
@@ -6552,11 +6564,7 @@ ath_sysctlattach(struct ath_softc *sc)
 	struct ath_hal *ah = sc->sc_ah;
 
 	ctx = &sc->sc_sysctl_ctx;
-	sysctl_ctx_init(ctx);
-        tree = SYSCTL_ADD_NODE(ctx, SYSCTL_STATIC_CHILDREN(_hw),
-                               OID_AUTO,
-                               device_get_nameunit(sc->sc_dev),
-                               CTLFLAG_RD, 0, "");
+	tree = sc->sc_sysctl_tree;
         if (tree == NULL) {
 		device_printf(sc->sc_dev, "can't add sysctl node\n");
 		return;

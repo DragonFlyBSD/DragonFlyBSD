@@ -345,6 +345,7 @@ struct ath_softc {
 	u_int32_t		sc_avgtsfdeltap;/* TDMA slot adjust (+) */
 	u_int32_t		sc_avgtsfdeltam;/* TDMA slot adjust (-) */
 	struct sysctl_ctx_list	sc_sysctl_ctx;
+	struct sysctl_oid	*sc_sysctl_tree;
 };
 
 #define	ATH_LOCK_INIT(_sc) \

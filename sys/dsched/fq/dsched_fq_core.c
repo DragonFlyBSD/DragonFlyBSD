@@ -164,9 +164,6 @@ fq_dereference_priv(struct dsched_fq_priv *fqp)
 #endif
 		dpriv = fqp->dpriv;
 		KKASSERT(dpriv != NULL);
-
-		spin_lock_wr(&fqp->lock);
-
 		KKASSERT(fqp->qlength == 0);
 
 		if (fqp->flags & FQP_LINKED_DPRIV) {
@@ -189,8 +186,6 @@ fq_dereference_priv(struct dsched_fq_priv *fqp)
 
 			spin_unlock_wr(&fqmp->lock);
 		}
-
-		spin_unlock_wr(&fqp->lock);
 
 		objcache_put(fq_priv_cache, fqp);
 		atomic_subtract_int(&fq_stats.fqp_allocations, 1);
@@ -217,7 +212,6 @@ fq_dereference_mpriv(struct dsched_fq_mpriv *fqmp)
 		print_backtrace(8);
 #endif
 		FQ_GLOBAL_FQMP_LOCK();
-		spin_lock_wr(&fqmp->lock);
 
 		TAILQ_FOREACH_MUTABLE(fqp, &fqmp->fq_priv_list, link, fqp2) {
 			TAILQ_REMOVE(&fqmp->fq_priv_list, fqp, link);
@@ -226,7 +220,6 @@ fq_dereference_mpriv(struct dsched_fq_mpriv *fqmp)
 		}
 		TAILQ_REMOVE(&dsched_fqmp_list, fqmp, link);
 
-		spin_unlock_wr(&fqmp->lock);
 		FQ_GLOBAL_FQMP_UNLOCK();
 
 		objcache_put(fq_mpriv_cache, fqmp);
@@ -249,10 +242,13 @@ fq_alloc_priv(struct disk *dp, struct dsched_fq_mpriv *fqmp)
 	fq_reference_priv(fqp);
 
 	FQ_FQP_LOCKINIT(fqp);
-	FQ_FQP_LOCK(fqp);
 	fqp->dp = dp;
 
 	fqp->dpriv = dsched_get_disk_priv(dp);
+	TAILQ_INIT(&fqp->queue);
+
+	TAILQ_INSERT_TAIL(&fqp->dpriv->fq_priv_list, fqp, dlink);
+	fqp->flags |= FQP_LINKED_DPRIV;
 
 	if (fqmp) {
 		fqp->fqmp = fqmp;
@@ -265,12 +261,7 @@ fq_alloc_priv(struct disk *dp, struct dsched_fq_mpriv *fqmp)
 		fqp->flags |= FQP_LINKED_FQMP;
 	}
 
-	TAILQ_INIT(&fqp->queue);
-	TAILQ_INSERT_TAIL(&fqp->dpriv->fq_priv_list, fqp, dlink);
-	fqp->flags |= FQP_LINKED_DPRIV;
-
 	atomic_add_int(&fq_stats.fqp_allocations, 1);
-	FQ_FQP_UNLOCK(fqp);
 	return fqp;
 }
 
