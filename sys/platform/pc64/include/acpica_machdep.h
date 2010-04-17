@@ -63,11 +63,11 @@
 /* Section 5.2.9.1:  global lock acquire/release functions */
 extern int	acpi_acquire_global_lock(uint32_t *lock);
 extern int	acpi_release_global_lock(uint32_t *lock);
-#define ACPI_ACQUIRE_GLOBAL_LOCK(GLptr, Acq) \
-		((Acq) = acpi_acquire_global_lock(GLptr))
-#define ACPI_RELEASE_GLOBAL_LOCK(GLptr, Acq) \
-		((Acq) = acpi_release_global_lock(GLptr))
- 
+#define ACPI_ACQUIRE_GLOBAL_LOCK(FACSptr, Acq) \
+		((Acq) = acpi_acquire_global_lock(&(FACSptr)->GlobalLock))
+#define ACPI_RELEASE_GLOBAL_LOCK(FACSptr, Acq) \
+		((Acq) = acpi_release_global_lock(&(FACSptr)->GlobalLock))
+
 #endif /* _KERNEL */
 
 #define ACPI_MACHINE_WIDTH             64
