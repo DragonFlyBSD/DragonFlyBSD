@@ -76,7 +76,7 @@ LSUBDIRS=	bus/cam bus/cam/scsi \
 	dev/misc/lpt dev/misc/ppi \
 	dev/netif/wi \
 	dev/raid/ciss \
-	dev/video/bktr dev/video/meteor
+	dev/video/bktr dev/video/meteor libprop
 
 # For SHARED=symlinks, bus/cam and netproto/atm are symlinks, so cam/scsi
 # and netproto/atm/* are taken care of

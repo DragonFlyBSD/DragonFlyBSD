@@ -127,6 +127,7 @@ MAN=	accept_filter.9 \
 	physio.9 \
 	posix4.9 \
 	priv.9 \
+	prop_copyin_ioctl.9 \
 	resettodr.9 \
 	rman.9 \
 	rtalloc.9 \
@@ -653,6 +654,12 @@ MLINKS+=physio.9 physread.9 \
 MLINKS+=posix4.9 p1003_1b.9
 MLINKS+=priv.9 priv_check.9 \
 	priv.9 priv_check_cred.9
+MLINKS+=prop_copyin_ioctl.9 prop_array_copyin.9 \
+	prop_copyin_ioctl.9 prop_array_copyin_ioctl.9 \
+	prop_copyin_ioctl.9 prop_array_copyout_ioctl.9 \
+	prop_copyin_ioctl.9 prop_dictionary_copyin.9 \
+	prop_copyin_ioctl.9 prop_dictionary_copyin_ioctl.9 \
+	prop_copyin_ioctl.9 prop_dictionary_copyout_ioctl.9
 MLINKS+=rman.9 rman_activate_resource.9 \
 	rman.9 rman_deactivate_resource.9 \
 	rman.9 rman_fini.9 \
