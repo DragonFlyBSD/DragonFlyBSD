@@ -356,3 +356,28 @@ ath_hal_assert_failed(const char* filename, int lineno, const char *msg)
 	panic("ath_hal_assert");
 }
 #endif /* AH_ASSERT */
+
+/*
+ * Module glue.
+ */
+static int
+ath_hal_modevent(module_t mod, int type, void *unused)
+{
+	switch (type) {
+	case MOD_LOAD:
+		return 0;
+	case MOD_UNLOAD:
+		return 0;
+	}
+
+	return EINVAL;
+}
+
+static moduledata_t ath_hal_mod = {
+	"ath_hal",
+	ath_hal_modevent,
+	0
+};
+
+DECLARE_MODULE(ath_hal, ath_hal_mod, SI_SUB_DRIVERS, SI_ORDER_ANY);
+MODULE_VERSION(ath_hal, 1);

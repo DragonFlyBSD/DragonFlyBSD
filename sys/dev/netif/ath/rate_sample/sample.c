@@ -998,3 +998,30 @@ ath_rate_detach(struct ath_ratectrl *arc)
 	
 	kfree(ssc, M_DEVBUF);
 }
+
+/*
+ * Module glue.
+ */
+static int
+sample_modevent(module_t mod, int type, void *unused)
+{
+	switch (type) {
+	case MOD_LOAD:
+		if (bootverbose)
+			kprintf("ath_rate: <SampleRate bit-rate selection algorithm>\n");
+		return 0;
+	case MOD_UNLOAD:
+		return 0;
+	}
+	return EINVAL;
+}
+
+static moduledata_t sample_mod = {
+	"ath_rate",
+	sample_modevent,
+	0
+};
+DECLARE_MODULE(ath_rate, sample_mod, SI_SUB_DRIVERS, SI_ORDER_FIRST);
+MODULE_VERSION(ath_rate, 1);
+MODULE_DEPEND(ath_rate, ath_hal, 1, 1, 1);	/* Atheros HAL */
+MODULE_DEPEND(ath_rate, wlan, 1, 1, 1);
