@@ -154,7 +154,7 @@ ips_pci_attach(device_t dev)
 	sc->ips_ich.ich_func = ips_intrhook;
 	sc->ips_ich.ich_arg = sc;
 	sc->ips_ich.ich_desc = "ips";
-	lockinit(&sc->queue_lock, "ipslk", 0, 0);
+	lockinit(&sc->queue_lock, "ipslk", 0, LK_CANRECURSE);
 	bioq_init(&sc->bio_queue);
 	if (config_intrhook_establish(&sc->ips_ich) != 0) {
 		kprintf("IPS can't establish configuration hook\n");
