@@ -707,6 +707,7 @@ kern/lwkt_token.c	standard
 kern/lwkt_msgport.c	standard
 kern/lwkt_serialize.c	standard
 kern/lwkt_caps.c	standard
+kern/kern_dsched.c	standard
 kern/kern_sensors.c	standard
 kern/kern_spinlock.c	standard
 kern/kern_synch.c	standard
@@ -722,7 +723,6 @@ kern/subr_autoconf.c	standard
 kern/subr_bus.c		standard
 kern/subr_busdma.c	standard
 kern/subr_devstat.c	standard
-kern/subr_dsched.c	standard
 dsched/fq/dsched_fq_core.c	standard
 dsched/fq/dsched_fq_diskops.c	standard
 dsched/fq/dsched_fq_procops.c	standard

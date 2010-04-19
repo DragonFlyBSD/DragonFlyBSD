@@ -77,14 +77,13 @@ dsched_exit_proc_t	fq_exit_proc;
 dsched_exit_thread_t	fq_exit_thread;
 
 extern struct dsched_fq_stats	fq_stats;
-extern struct lock	fq_fqmp_lock;
-extern TAILQ_HEAD(, dsched_fq_mpriv)	dsched_fqmp_list;
+extern struct lock	fq_tdctx_lock;
+extern TAILQ_HEAD(, fq_thread_ctx)	dsched_tdctx_list;
 extern struct callout	fq_callout;
 
-struct dsched_ops dsched_fq_ops = {
-	.head = {
-		.name = "fq"
-	},
+struct dsched_policy dsched_fq_policy = {
+	.name = "fq",
+
 	.prepare = fq_prepare,
 	.teardown = fq_teardown,
 	.flush = fq_flush,
@@ -104,29 +103,29 @@ struct dsched_ops dsched_fq_ops = {
 static int
 fq_prepare(struct disk *dp)
 {
-	struct	dsched_fq_dpriv	*dpriv;
-	struct dsched_fq_mpriv	*fqmp;
-	struct dsched_fq_priv	*fqp;
+	struct	fq_disk_ctx	*diskctx;
+	struct fq_thread_ctx	*tdctx;
+	struct fq_thread_io	*tdio;
 	struct thread *td_core, *td_balance;
 
-	dpriv = fq_alloc_dpriv(dp);
-	fq_reference_dpriv(dpriv);
-	dsched_set_disk_priv(dp, dpriv);
+	diskctx = fq_disk_ctx_alloc(dp);
+	fq_disk_ctx_ref(diskctx);
+	dsched_set_disk_priv(dp, diskctx);
 
-	FQ_GLOBAL_FQMP_LOCK();
-	TAILQ_FOREACH(fqmp, &dsched_fqmp_list, link) {
-		fqp = fq_alloc_priv(dp, fqmp);
+	FQ_GLOBAL_THREAD_CTX_LOCK();
+	TAILQ_FOREACH(tdctx, &dsched_tdctx_list, link) {
+		tdio = fq_thread_io_alloc(dp, tdctx);
 #if 0
-		fq_reference_priv(fqp);
+		fq_thread_io_ref(tdio);
 #endif
 	}
-	FQ_GLOBAL_FQMP_UNLOCK();
+	FQ_GLOBAL_THREAD_CTX_UNLOCK();
 
-	lwkt_create((void (*)(void *))fq_dispatcher, dpriv, &td_core, NULL,
+	lwkt_create((void (*)(void *))fq_dispatcher, diskctx, &td_core, NULL,
 	    TDF_MPSAFE, -1, "fq_dispatch_%s", dp->d_cdev->si_name);
-	lwkt_create((void (*)(void *))fq_balance_thread, dpriv, &td_balance,
+	lwkt_create((void (*)(void *))fq_balance_thread, diskctx, &td_balance,
 	    NULL, TDF_MPSAFE, -1, "fq_balance_%s", dp->d_cdev->si_name);
-	dpriv->td_balance = td_balance;
+	diskctx->td_balance = td_balance;
 
 	return 0;
 }
@@ -136,44 +135,44 @@ fq_prepare(struct disk *dp)
 static void
 fq_teardown(struct disk *dp)
 {
-	struct dsched_fq_dpriv *dpriv;
+	struct fq_disk_ctx *diskctx;
 
-	dpriv = dsched_get_disk_priv(dp);
-	KKASSERT(dpriv != NULL);
+	diskctx = dsched_get_disk_priv(dp);
+	KKASSERT(diskctx != NULL);
 
 	/* Basically kill the dispatcher thread */
-	dpriv->die = 1;
-	wakeup(dpriv->td_balance);
-	wakeup(dpriv);
-	tsleep(dpriv, 0, "fq_dispatcher", hz/5); /* wait 200 ms */
-	wakeup(dpriv->td_balance);
-	wakeup(dpriv);
-	tsleep(dpriv, 0, "fq_dispatcher", hz/10); /* wait 100 ms */
-	wakeup(dpriv->td_balance);
-	wakeup(dpriv);
+	diskctx->die = 1;
+	wakeup(diskctx->td_balance);
+	wakeup(diskctx);
+	tsleep(diskctx, 0, "fq_dispatcher", hz/5); /* wait 200 ms */
+	wakeup(diskctx->td_balance);
+	wakeup(diskctx);
+	tsleep(diskctx, 0, "fq_dispatcher", hz/10); /* wait 100 ms */
+	wakeup(diskctx->td_balance);
+	wakeup(diskctx);
 
-	fq_dereference_dpriv(dpriv); /* from prepare */
-	fq_dereference_dpriv(dpriv); /* from alloc */
+	fq_disk_ctx_unref(diskctx); /* from prepare */
+	fq_disk_ctx_unref(diskctx); /* from alloc */
 
 	dsched_set_disk_priv(dp, NULL);
 }
 
 
-/* Must be called with locked dpriv */
+/* Must be called with locked diskctx */
 void
-fq_drain(struct dsched_fq_dpriv *dpriv, int mode)
+fq_drain(struct fq_disk_ctx *diskctx, int mode)
 {
-	struct dsched_fq_priv *fqp, *fqp2;
+	struct fq_thread_io *tdio, *tdio2;
 	struct bio *bio, *bio2;
 
-	TAILQ_FOREACH_MUTABLE(fqp, &dpriv->fq_priv_list, dlink, fqp2) {
-		if (fqp->qlength == 0)
+	TAILQ_FOREACH_MUTABLE(tdio, &diskctx->fq_tdio_list, dlink, tdio2) {
+		if (tdio->qlength == 0)
 			continue;
 
-		FQ_FQP_LOCK(fqp);
-		TAILQ_FOREACH_MUTABLE(bio, &fqp->queue, link, bio2) {
-			TAILQ_REMOVE(&fqp->queue, bio, link);
-			--fqp->qlength;
+		FQ_THREAD_IO_LOCK(tdio);
+		TAILQ_FOREACH_MUTABLE(bio, &tdio->queue, link, bio2) {
+			TAILQ_REMOVE(&tdio->queue, bio, link);
+			--tdio->qlength;
 			if (__predict_false(mode == FQ_DRAIN_CANCEL)) {
 				/* FQ_DRAIN_CANCEL */
 				dsched_cancel_bio(bio);
@@ -181,13 +180,13 @@ fq_drain(struct dsched_fq_dpriv *dpriv, int mode)
 
 				/* Release ref acquired on fq_queue */
 				/* XXX: possible failure point */
-				fq_dereference_priv(fqp);
+				fq_thread_io_unref(tdio);
 			} else {
 				/* FQ_DRAIN_FLUSH */
-				fq_dispatch(dpriv, bio, fqp);
+				fq_dispatch(diskctx, bio, tdio);
 			}
 		}
-		FQ_FQP_UNLOCK(fqp);
+		FQ_THREAD_IO_UNLOCK(tdio);
 	}
 	return;
 }
@@ -203,18 +202,18 @@ fq_flush(struct disk *dp, struct bio *bio)
 static void
 fq_cancel(struct disk *dp)
 {
-	struct dsched_fq_dpriv	*dpriv;
+	struct fq_disk_ctx	*diskctx;
 
-	dpriv = dsched_get_disk_priv(dp);
-	KKASSERT(dpriv != NULL);
+	diskctx = dsched_get_disk_priv(dp);
+	KKASSERT(diskctx != NULL);
 
 	/*
-	 * all bios not in flight are queued in their respective fqps.
-	 * good thing we have a list of fqps per disk dpriv.
+	 * all bios not in flight are queued in their respective tdios.
+	 * good thing we have a list of tdios per disk diskctx.
 	 */
-	FQ_DPRIV_LOCK(dpriv);
-	fq_drain(dpriv, FQ_DRAIN_CANCEL);
-	FQ_DPRIV_UNLOCK(dpriv);
+	FQ_DISK_CTX_LOCK(diskctx);
+	fq_drain(diskctx, FQ_DRAIN_CANCEL);
+	FQ_DISK_CTX_UNLOCK(diskctx);
 }
 
 
@@ -222,9 +221,9 @@ static int
 fq_queue(struct disk *dp, struct bio *obio)
 {
 	struct bio *bio, *bio2;
-	struct dsched_fq_mpriv	*fqmp;
-	struct dsched_fq_priv	*fqp;
-	struct dsched_fq_dpriv	*dpriv;
+	struct fq_thread_ctx	*tdctx;
+	struct fq_thread_io	*tdio;
+	struct fq_disk_ctx	*diskctx;
 	int found = 0;
 	int max_tp, transactions;
 
@@ -232,84 +231,83 @@ fq_queue(struct disk *dp, struct bio *obio)
 	if (__predict_false(obio->bio_buf->b_cmd == BUF_CMD_FLUSH))
 		return (EINVAL);
 
-	/* get fqmp and fqp */
-	fqmp = dsched_get_buf_priv(obio->bio_buf);
+	/* get tdctx and tdio */
+	tdctx = dsched_get_buf_priv(obio->bio_buf);
 
 	/*
-	 * XXX: hack. we don't want the assert because some null-fqmps are
+	 * XXX: hack. we don't want the assert because some null-tdctxs are
 	 * leaking through; just dispatch them. These come from the
 	 * mi_startup() mess, which does the initial root mount.
 	 */
 #if 0
-	KKASSERT(fqmp != NULL);
+	KKASSERT(tdctx != NULL);
 #endif
-	if (fqmp == NULL) {
+	if (tdctx == NULL) {
 		/* We don't handle this case, let dsched dispatch */
-		atomic_add_int(&fq_stats.no_fqmp, 1);
+		atomic_add_int(&fq_stats.no_tdctx, 1);
 		return (EINVAL);
 	}
 
 
-	FQ_FQMP_LOCK(fqmp);
+	FQ_THREAD_CTX_LOCK(tdctx);
 #if 0
-	kprintf("fq_queue, fqmp = %p\n", fqmp);
+	kprintf("fq_queue, tdctx = %p\n", tdctx);
 #endif
-	KKASSERT(!TAILQ_EMPTY(&fqmp->fq_priv_list));
-	TAILQ_FOREACH(fqp, &fqmp->fq_priv_list, link) {
-		if (fqp->dp == dp) {
-			fq_reference_priv(fqp);
+	KKASSERT(!TAILQ_EMPTY(&tdctx->fq_tdio_list));
+	TAILQ_FOREACH(tdio, &tdctx->fq_tdio_list, link) {
+		if (tdio->dp == dp) {
+			fq_thread_io_ref(tdio);
 			found = 1;
 			break;
 		}
 	}
-	FQ_FQMP_UNLOCK(fqmp);
+	FQ_THREAD_CTX_UNLOCK(tdctx);
 	dsched_clr_buf_priv(obio->bio_buf);
-	fq_dereference_mpriv(fqmp); /* acquired on new_buf */
-	atomic_subtract_int(&fq_stats.nbufs, 1);
+	fq_thread_ctx_unref(tdctx); /* acquired on new_buf */
 
 	KKASSERT(found == 1);
-	dpriv = dsched_get_disk_priv(dp);
+	diskctx = dsched_get_disk_priv(dp);
 
-	if (atomic_cmpset_int(&fqp->rebalance, 1, 0))
-		fq_balance_self(fqp);
+	if (atomic_cmpset_int(&tdio->rebalance, 1, 0))
+		fq_balance_self(tdio);
 
 	/* XXX: probably rather pointless doing this atomically */
-	max_tp = atomic_fetchadd_int(&fqp->max_tp, 0);
-	transactions = atomic_fetchadd_int(&fqp->issued, 0);
+	max_tp = atomic_fetchadd_int(&tdio->max_tp, 0);
+	transactions = atomic_fetchadd_int(&tdio->issued, 0);
 
 	/* | No rate limiting || Hasn't reached limit rate | */
 	if ((max_tp == 0) || (transactions < max_tp)) {
 		/*
 		 * Process pending bios from previous _queue() actions that
-		 * have been rate-limited and hence queued in the fqp.
+		 * have been rate-limited and hence queued in the tdio.
 		 */
-		KKASSERT(fqp->qlength >= 0);
+		KKASSERT(tdio->qlength >= 0);
 
-		if (fqp->qlength > 0) {
-			FQ_FQP_LOCK(fqp);
+		if (tdio->qlength > 0) {
+			FQ_THREAD_IO_LOCK(tdio);
 
-			TAILQ_FOREACH_MUTABLE(bio, &fqp->queue, link, bio2) {
+			TAILQ_FOREACH_MUTABLE(bio, &tdio->queue, link, bio2) {
 				/* Rebalance ourselves if required */
-				if (atomic_cmpset_int(&fqp->rebalance, 1, 0))
-					fq_balance_self(fqp);
-				if ((fqp->max_tp > 0) && (fqp->issued >= fqp->max_tp))
+				if (atomic_cmpset_int(&tdio->rebalance, 1, 0))
+					fq_balance_self(tdio);
+				if ((tdio->max_tp > 0) && (tdio->issued >= tdio->max_tp))
 					break;
-				TAILQ_REMOVE(&fqp->queue, bio, link);
-				--fqp->qlength;
+				TAILQ_REMOVE(&tdio->queue, bio, link);
+				--tdio->qlength;
 
 				/*
-				 * beware that we do have an fqp reference from the
+				 * beware that we do have an tdio reference from the
 				 * queueing
 				 */
-				fq_dispatch(dpriv, bio, fqp);
+				fq_dispatch(diskctx, bio, tdio);
 			}
-			FQ_FQP_UNLOCK(fqp);
+			FQ_THREAD_IO_UNLOCK(tdio);
 		}
 
 		/* Nothing is pending from previous IO, so just pass it down */
-		fq_reference_priv(fqp);
+		fq_thread_io_ref(tdio);
 
-		fq_dispatch(dpriv, obio, fqp);
+		fq_dispatch(diskctx, obio, tdio);
 	} else {
 		/*
 		 * This thread has exceeeded its fair share,
@@ -318,8 +316,8 @@ fq_queue(struct disk *dp, struct bio *obio)
 		 * we just queue requests instead of
 		 * despatching them.
 		 */
-		FQ_FQP_LOCK(fqp);
-		fq_reference_priv(fqp);
+		FQ_THREAD_IO_LOCK(tdio);
+		fq_thread_io_ref(tdio);
 
 		/*
 		 * Prioritize reads by inserting them at the front of the
@@ -330,15 +328,15 @@ fq_queue(struct disk *dp, struct bio *obio)
 		 *	actually been written yet.
 		 */
 		if (obio->bio_buf->b_cmd == BUF_CMD_READ)
-			TAILQ_INSERT_HEAD(&fqp->queue, obio, link);
+			TAILQ_INSERT_HEAD(&tdio->queue, obio, link);
 		else
-			TAILQ_INSERT_TAIL(&fqp->queue, obio, link);
+			TAILQ_INSERT_TAIL(&tdio->queue, obio, link);
 
-		++fqp->qlength;
-		FQ_FQP_UNLOCK(fqp);
+		++tdio->qlength;
+		FQ_THREAD_IO_UNLOCK(tdio);
 	}
 
-	fq_dereference_priv(fqp);
+	fq_thread_io_unref(tdio);
 	return 0;
 }
 
@@ -348,8 +346,8 @@ fq_completed(struct bio *bp)
 {
 	struct bio *obio;
 	int	delta;
-	struct dsched_fq_priv	*fqp;
-	struct dsched_fq_dpriv	*dpriv;
+	struct fq_thread_io	*tdio;
+	struct fq_disk_ctx	*diskctx;
 	struct disk	*dp;
 	int transactions, latency;
 
@@ -358,12 +356,12 @@ fq_completed(struct bio *bp)
 	getmicrotime(&tv);
 
 	dp = dsched_get_bio_dp(bp);
-	dpriv = dsched_get_disk_priv(dp);
-	fqp = dsched_get_bio_priv(bp);
-	KKASSERT(fqp != NULL);
-	KKASSERT(dpriv != NULL);
+	diskctx = dsched_get_disk_priv(dp);
+	tdio = dsched_get_bio_priv(bp);
+	KKASSERT(tdio != NULL);
+	KKASSERT(diskctx != NULL);
 
-	fq_reference_dpriv(dpriv);
+	fq_disk_ctx_ref(diskctx);
 
 	if (!(bp->bio_buf->b_flags & B_ERROR)) {
 		/*
@@ -376,14 +374,14 @@ fq_completed(struct bio *bp)
 			delta = 10000; /* default assume 10 ms */
 
 		/* This is the last in-flight request and the disk is not idle yet */
-		if ((dpriv->incomplete_tp <= 1) && (!dpriv->idle)) {
-			dpriv->idle = 1;	/* Mark disk as idle */
-			dpriv->start_idle = tv;	/* Save start idle time */
-			wakeup(dpriv);		/* Wake up fq_dispatcher */
+		if ((diskctx->incomplete_tp <= 1) && (!diskctx->idle)) {
+			diskctx->idle = 1;	/* Mark disk as idle */
+			diskctx->start_idle = tv;	/* Save start idle time */
+			wakeup(diskctx);		/* Wake up fq_dispatcher */
 		}
-		atomic_subtract_int(&dpriv->incomplete_tp, 1);
-		transactions = atomic_fetchadd_int(&fqp->transactions, 1);
-		latency = atomic_fetchadd_int(&fqp->avg_latency, 0);
+		atomic_subtract_int(&diskctx->incomplete_tp, 1);
+		transactions = atomic_fetchadd_int(&tdio->transactions, 1);
+		latency = atomic_fetchadd_int(&tdio->avg_latency, 0);
 
 		if (latency != 0) {
 			/* Moving averager, ((n-1)*avg_{n-1} + x) / n */
@@ -394,35 +392,35 @@ fq_completed(struct bio *bp)
 			latency = delta;
 		}
 
-		fqp->avg_latency = latency;
+		tdio->avg_latency = latency;
 
 		atomic_add_int(&fq_stats.transactions_completed, 1);
 	}
 
-	fq_dereference_dpriv(dpriv);
+	fq_disk_ctx_unref(diskctx);
 	/* decrease the ref count that was bumped for us on dispatch */
-	fq_dereference_priv(fqp);
+	fq_thread_io_unref(tdio);
 
 	obio = pop_bio(bp);
 	biodone(obio);
 }
 
 void
-fq_dispatch(struct dsched_fq_dpriv *dpriv, struct bio *bio,
-    struct dsched_fq_priv *fqp)
+fq_dispatch(struct fq_disk_ctx *diskctx, struct bio *bio,
+    struct fq_thread_io *tdio)
 {
 	struct timeval tv;
 
-	if (dpriv->idle) {
+	if (diskctx->idle) {
 		getmicrotime(&tv);
-		atomic_add_int(&dpriv->idle_time,
-		    (int)(1000000*((tv.tv_sec - dpriv->start_idle.tv_sec)) +
-		    (tv.tv_usec - dpriv->start_idle.tv_usec)));
-		dpriv->idle = 0;
+		atomic_add_int(&diskctx->idle_time,
+		    (int)(1000000*((tv.tv_sec - diskctx->start_idle.tv_sec)) +
+		    (tv.tv_usec - diskctx->start_idle.tv_usec)));
+		diskctx->idle = 0;
 	}
-	dsched_strategy_async(dpriv->dp, bio, fq_completed, fqp);
+	dsched_strategy_async(diskctx->dp, bio, fq_completed, tdio);
 
-	atomic_add_int(&fqp->issued, 1);
-	atomic_add_int(&dpriv->incomplete_tp, 1);
+	atomic_add_int(&tdio->issued, 1);
+	atomic_add_int(&diskctx->incomplete_tp, 1);
 	atomic_add_int(&fq_stats.transactions, 1);
 }

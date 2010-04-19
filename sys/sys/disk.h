@@ -129,7 +129,7 @@ struct disk {
 	struct disk_info	d_info;		/* info structure for media */
 	void			*d_dsched_priv1;/* I/O scheduler priv. data */
 	void			*d_dsched_priv2;/* I/O scheduler priv. data */
-	struct dsched_ops	*d_sched_ops;	/* I/O scheduler ops */
+	struct dsched_policy	*d_sched_policy;/* I/O scheduler policy */
 	LIST_ENTRY(disk)	d_list;
 };
 

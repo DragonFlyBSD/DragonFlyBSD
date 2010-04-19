@@ -91,12 +91,13 @@ typedef	void	dsched_exit_buf_t(struct buf *bp);
 typedef	void	dsched_exit_proc_t(struct proc *p);
 typedef	void	dsched_exit_thread_t(struct thread *td);
 
-struct dsched_ops {
-	struct {
-		char		name[DSCHED_POLICY_NAME_LENGTH];
-		uint64_t	uniq_id;
-		int		ref_count;
-	} head;
+
+struct dsched_policy {
+	char			name[DSCHED_POLICY_NAME_LENGTH];
+	uint64_t		uniq_id;
+	int			ref_count;
+
+	TAILQ_ENTRY(dsched_policy) link;
 
 	dsched_prepare_t	*prepare;
 	dsched_teardown_t	*teardown;
@@ -112,35 +113,19 @@ struct dsched_ops {
 	dsched_exit_thread_t	*exit_thread;
 };
 
-struct dsched_policy {
-	TAILQ_ENTRY(dsched_policy) link;
-
-	struct dsched_ops	*d_ops;
-};
-
-struct dsched_object
-{
-	struct disk	*dp;
-	struct bio	*bio;
-	int		pid;
-	struct thread	*thread;
-	struct proc	*proc;
-};
-
-TAILQ_HEAD(dschedq, dsched_object);
 TAILQ_HEAD(dsched_policy_head, dsched_policy);
 
-void	dsched_create(struct disk *dp, const char *head_name, int unit);
-void	dsched_destroy(struct disk *dp);
+void	dsched_disk_create_callback(struct disk *dp, const char *head_name, int unit);
+void	dsched_disk_destroy_callback(struct disk *dp);
 void	dsched_queue(struct disk *dp, struct bio *bio);
-int	dsched_register(struct dsched_ops *d_ops);
-int	dsched_unregister(struct dsched_ops *d_ops);
-int	dsched_switch(struct disk *dp, struct dsched_ops *new_ops);
-void	dsched_set_policy(struct disk *dp, struct dsched_ops *new_ops);
+int	dsched_register(struct dsched_policy *d_policy);
+int	dsched_unregister(struct dsched_policy *d_policy);
+int	dsched_switch(struct disk *dp, struct dsched_policy *new_policy);
+void	dsched_set_policy(struct disk *dp, struct dsched_policy *new_policy);
 struct dsched_policy *dsched_find_policy(char *search);
 struct disk	*dsched_find_disk(char *search);
 struct dsched_policy *dsched_policy_enumerate(struct dsched_policy *pol);
-struct disk	*dsched_disk_enumerate(struct disk *dp, struct dsched_ops *ops);
+struct disk	*dsched_disk_enumerate(struct disk *dp, struct dsched_policy *policy);
 void	dsched_cancel_bio(struct bio *bp);
 void	dsched_strategy_raw(struct disk *dp, struct bio *bp);
 void	dsched_strategy_sync(struct disk *dp, struct bio *bp);

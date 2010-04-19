@@ -531,7 +531,7 @@ disk_create(int unit, struct disk *dp, struct dev_ops *raw_ops)
 		    "disk_create (end): %s%d\n",
 			raw_ops->head.name, unit);
 
-	dsched_create(dp, raw_ops->head.name, unit);
+	dsched_disk_create_callback(dp, raw_ops->head.name, unit);
 	return (dp->d_rawdev);
 }
 
@@ -626,6 +626,7 @@ disk_setdiskinfo_sync(struct disk *disk, struct disk_info *info)
 void
 disk_destroy(struct disk *disk)
 {
+	dsched_disk_destroy_callback(disk);
 	disk_msg_send_sync(DISK_DISK_DESTROY, disk, NULL);
 	return;
 }

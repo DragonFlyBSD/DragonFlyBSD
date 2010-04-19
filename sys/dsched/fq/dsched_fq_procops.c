@@ -73,108 +73,106 @@ extern struct dsched_fq_stats	fq_stats;
 void
 fq_new_buf(struct buf *bp)
 {
-	struct dsched_fq_mpriv	*fqmp = NULL;
+	struct fq_thread_ctx	*tdctx = NULL;
 
 	if (curproc != NULL) {
-		fqmp = dsched_get_proc_priv(curproc);
+		tdctx = dsched_get_proc_priv(curproc);
 	} else {
 		/* This is a kernel thread, so no proc info is available */
-		fqmp = dsched_get_thread_priv(curthread);
+		tdctx = dsched_get_thread_priv(curthread);
 	}
 
 #if 0
 	/*
 	 * XXX: hack. we don't want this assert because we aren't catching all
-	 *	threads. mi_startup() is still getting away without an fqmp.
+	 *	threads. mi_startup() is still getting away without an tdctx.
 	 */
 
-	/* by now we should have an fqmp. if not, something bad is going on */
-	KKASSERT(fqmp != NULL);
+	/* by now we should have an tdctx. if not, something bad is going on */
+	KKASSERT(tdctx != NULL);
 #endif
 
-	if (fqmp) {
-		atomic_add_int(&fq_stats.nbufs, 1);
-		fq_reference_mpriv(fqmp);
+	if (tdctx) {
+		fq_thread_ctx_ref(tdctx);
 	}
-	dsched_set_buf_priv(bp, fqmp);
+	dsched_set_buf_priv(bp, tdctx);
 	
 }
 
 void
 fq_exit_buf(struct buf *bp)
 {
-	struct dsched_fq_mpriv	*fqmp;
+	struct fq_thread_ctx	*tdctx;
 
-	fqmp = dsched_get_buf_priv(bp);
-	if (fqmp != NULL) {
+	tdctx = dsched_get_buf_priv(bp);
+	if (tdctx != NULL) {
 		dsched_clr_buf_priv(bp);
-		fq_dereference_mpriv(fqmp);
-		atomic_subtract_int(&fq_stats.nbufs, 1);
+		fq_thread_ctx_unref(tdctx);
 	}
 }
 
 void
 fq_new_proc(struct proc *p)
 {
-	struct dsched_fq_mpriv	*fqmp;
+	struct fq_thread_ctx	*tdctx;
 
 	KKASSERT(p != NULL);
 
-	fqmp = fq_alloc_mpriv(p);
-	fq_reference_mpriv(fqmp);
-	dsched_set_proc_priv(p, fqmp);
+	tdctx = fq_thread_ctx_alloc(p);
+	fq_thread_ctx_ref(tdctx);
+	dsched_set_proc_priv(p, tdctx);
 	atomic_add_int(&fq_stats.nprocs, 1);
-	fqmp->p = p;
+	tdctx->p = p;
 }
 
 void
 fq_new_thread(struct thread *td)
 {
-	struct dsched_fq_mpriv	*fqmp;
+	struct fq_thread_ctx	*tdctx;
 
 	KKASSERT(td != NULL);
 
-	fqmp = fq_alloc_mpriv(NULL);
-	fq_reference_mpriv(fqmp);
-	dsched_set_thread_priv(td, fqmp);
+	tdctx = fq_thread_ctx_alloc(NULL);
+	fq_thread_ctx_ref(tdctx);
+	dsched_set_thread_priv(td, tdctx);
 	atomic_add_int(&fq_stats.nthreads, 1);
-	fqmp->td = td;
+	tdctx->td = td;
 }
 
 void
 fq_exit_proc(struct proc *p)
 {
-	struct dsched_fq_mpriv	*fqmp;
+	struct fq_thread_ctx	*tdctx;
 
 	KKASSERT(p != NULL);
 
-	fqmp = dsched_get_proc_priv(p);
-	KKASSERT(fqmp != NULL);
+	tdctx = dsched_get_proc_priv(p);
+	KKASSERT(tdctx != NULL);
 #if 0
-	kprintf("exit_proc: fqmp = %p\n", fqmp);
+	kprintf("exit_proc: tdctx = %p\n", tdctx);
 #endif
-	fqmp->dead = 0x1337;
+	tdctx->dead = 0x1337;
 	dsched_set_proc_priv(p, 0);
-	fq_dereference_mpriv(fqmp); /* one for alloc, */
-	fq_dereference_mpriv(fqmp); /* one for ref */
+	fq_thread_ctx_unref(tdctx); /* one for alloc, */
+	fq_thread_ctx_unref(tdctx); /* one for ref */
 	atomic_subtract_int(&fq_stats.nprocs, 1);
 }
 
 void
 fq_exit_thread(struct thread *td)
 {
-	struct dsched_fq_mpriv	*fqmp;
+	struct fq_thread_ctx	*tdctx;
 
 	KKASSERT(td != NULL);
 
-	fqmp = dsched_get_thread_priv(td);
-	KKASSERT(fqmp != NULL);
+	tdctx = dsched_get_thread_priv(td);
+	KKASSERT(tdctx != NULL);
 #if 0
-	kprintf("exit_thread: fqmp = %p\n", fqmp);
+	kprintf("exit_thread: tdctx = %p\n", tdctx);
 #endif
-	fqmp->dead = 0x1337;
+	tdctx->dead = 0x1337;
 	dsched_set_thread_priv(td, 0);
-	fq_dereference_mpriv(fqmp); /* one for alloc, */
-	fq_dereference_mpriv(fqmp); /* one for ref */
+	fq_thread_ctx_unref(tdctx); /* one for alloc, */
+	fq_thread_ctx_unref(tdctx); /* one for ref */
 	atomic_subtract_int(&fq_stats.nthreads, 1);
 }

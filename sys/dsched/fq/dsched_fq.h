@@ -49,66 +49,64 @@
 #include <sys/spinlock.h>
 #endif
 
-#define	FQ_FQP_LOCKINIT(x)	lockinit(&(x)->lock, "fqpbioq", 0, LK_CANRECURSE)
-#define	FQ_FQP_LOCK(x)		fq_reference_priv((x)); \
-				lockmgr(&(x)->lock, LK_EXCLUSIVE)
-#define	FQ_FQP_UNLOCK(x)	lockmgr(&(x)->lock, LK_RELEASE); \
-				fq_dereference_priv((x));
+#define	FQ_THREAD_IO_LOCKINIT(x)	lockinit(&(x)->lock, "tdiobioq", 0, LK_CANRECURSE)
+#define	FQ_THREAD_IO_LOCK(x)		fq_thread_io_ref((x)); \
+					lockmgr(&(x)->lock, LK_EXCLUSIVE)
+#define	FQ_THREAD_IO_UNLOCK(x)		lockmgr(&(x)->lock, LK_RELEASE); \
+					fq_thread_io_unref((x));
 
-#define	FQ_DPRIV_LOCKINIT(x)	lockinit(&(x)->lock, "fqpdiskq", 0, LK_CANRECURSE)
-#define	FQ_DPRIV_LOCK(x)	fq_reference_dpriv((x)); \
-				lockmgr(&(x)->lock, LK_EXCLUSIVE)
-#define	FQ_DPRIV_UNLOCK(x)	lockmgr(&(x)->lock, LK_RELEASE); \
-				fq_dereference_dpriv((x))
+#define	FQ_DISK_CTX_LOCKINIT(x)		lockinit(&(x)->lock, "tdiodiskq", 0, LK_CANRECURSE)
+#define	FQ_DISK_CTX_LOCK(x)		fq_disk_ctx_ref((x)); \
+					lockmgr(&(x)->lock, LK_EXCLUSIVE)
+#define	FQ_DISK_CTX_UNLOCK(x)		lockmgr(&(x)->lock, LK_RELEASE); \
+					fq_disk_ctx_unref((x))
+#define FQ_DISK_CTX_LOCK_ASSERT(x)	KKASSERT(lockstatus(&(x)->lock, curthread) == LK_EXCLUSIVE)
 
-#define	FQ_GLOBAL_FQMP_LOCKINIT(x)	lockinit(&fq_fqmp_lock, "fqmpglob", 0, LK_CANRECURSE)
-#define	FQ_GLOBAL_FQMP_LOCK(x)	lockmgr(&fq_fqmp_lock, LK_EXCLUSIVE)
-#define	FQ_GLOBAL_FQMP_UNLOCK(x)	lockmgr(&fq_fqmp_lock, LK_RELEASE)
+#define	FQ_GLOBAL_THREAD_CTX_LOCKINIT(x)	lockinit(&fq_tdctx_lock, "tdctxglob", 0, LK_CANRECURSE)
+#define	FQ_GLOBAL_THREAD_CTX_LOCK(x)		lockmgr(&fq_tdctx_lock, LK_EXCLUSIVE)
+#define	FQ_GLOBAL_THREAD_CTX_UNLOCK(x)	lockmgr(&fq_tdctx_lock, LK_RELEASE)
 
 
 
-#define	FQ_FQMP_LOCKINIT(x)	spin_init(&(x)->lock)
+#define	FQ_THREAD_CTX_LOCKINIT(x)	spin_init(&(x)->lock)
 #if 0
-#define	FQ_FQP_LOCKINIT(x)	spin_init(&(x)->lock)
+#define	FQ_THREAD_IO_LOCKINIT(x)	spin_init(&(x)->lock)
 #endif
 #if 0
-#define	FQ_DPRIV_LOCKINIT(x)	spin_init(&(x)->lock)
+#define	FQ_DISK_CTX_LOCKINIT(x)	spin_init(&(x)->lock)
 #endif
 #if 0
-#define	FQ_GLOBAL_FQMP_LOCKINIT(x)	spin_init(&fq_fqmp_lock)
+#define	FQ_GLOBAL_THREAD_CTX_LOCKINIT(x)	spin_init(&fq_tdctx_lock)
 #endif
 
-#define	FQ_FQMP_LOCK(x)		fq_reference_mpriv((x)); \
+#define	FQ_THREAD_CTX_LOCK(x)		fq_thread_ctx_ref((x)); \
 				spin_lock_wr(&(x)->lock)
 #if 0
-#define	FQ_FQP_LOCK(x)		fq_reference_priv((x)); \
-				spin_lock_wr(&(x)->lock)
-#endif
-#if 0
-#define	FQ_DPRIV_LOCK(x)	fq_reference_dpriv((x)); \
+#define	FQ_THREAD_IO_LOCK(x)		fq_thread_io_ref((x)); \
 				spin_lock_wr(&(x)->lock)
 #endif
 #if 0
-#define	FQ_GLOBAL_FQMP_LOCK(x)	spin_lock_wr(&fq_fqmp_lock)
-#endif
-
-#define	FQ_FQMP_UNLOCK(x)	spin_unlock_wr(&(x)->lock); \
-				fq_dereference_mpriv((x))
-
-#if 0
-#define	FQ_FQP_UNLOCK(x)	spin_unlock_wr(&(x)->lock); \
-				fq_dereference_priv((x))
+#define	FQ_DISK_CTX_LOCK(x)	fq_disk_ctx_ref((x)); \
+				spin_lock_wr(&(x)->lock)
 #endif
 #if 0
-#define	FQ_DPRIV_UNLOCK(x)	spin_unlock_wr(&(x)->lock); \
-				fq_dereference_dpriv((x))
-#endif
-#if 0
-#define	FQ_GLOBAL_FQMP_UNLOCK(x) spin_unlock_wr(&fq_fqmp_lock)
+#define	FQ_GLOBAL_THREAD_CTX_LOCK(x)	spin_lock_wr(&fq_tdctx_lock)
 #endif
 
-#define	FQ_REBALANCE_TIMEOUT	1	/* in seconds */
-#define FQ_TOTAL_DISK_TIME	1000000*FQ_REBALANCE_TIMEOUT	/* in useconds */
+#define	FQ_THREAD_CTX_UNLOCK(x)	spin_unlock_wr(&(x)->lock); \
+				fq_thread_ctx_unref((x))
+
+#if 0
+#define	FQ_THREAD_IO_UNLOCK(x)	spin_unlock_wr(&(x)->lock); \
+				fq_thread_io_unref((x))
+#endif
+#if 0
+#define	FQ_DISK_CTX_UNLOCK(x)	spin_unlock_wr(&(x)->lock); \
+				fq_disk_ctx_unref((x))
+#endif
+#if 0
+#define	FQ_GLOBAL_THREAD_CTX_UNLOCK(x) spin_unlock_wr(&fq_tdctx_lock)
+#endif
 
 #define FQ_PRIO_BIAS		5
 #define FQ_PRIO_MAX		10
@@ -122,97 +120,98 @@
 struct disk;
 struct proc;
 
-#define	FQP_LINKED_DPRIV	0x01
-#define	FQP_LINKED_FQMP		0x02
+#define	FQ_LINKED_DISK_CTX	0x01
+#define	FQ_LINKED_THREAD_CTX		0x02
 
-struct dsched_fq_priv {
-	TAILQ_ENTRY(dsched_fq_priv)	link;
-	TAILQ_ENTRY(dsched_fq_priv)	dlink;
-	TAILQ_HEAD(, bio)	queue;
+struct fq_thread_io {
+	TAILQ_ENTRY(fq_thread_io)	link;
+	TAILQ_ENTRY(fq_thread_io)	dlink;
+	TAILQ_HEAD(, bio)	queue;	/* IO queue (bio) */
 
 	struct lock		lock;
 	struct disk		*dp;
-	struct dsched_fq_dpriv	*dpriv;
-	struct dsched_fq_mpriv	*fqmp;
+	struct fq_disk_ctx	*diskctx;
+	struct fq_thread_ctx	*tdctx;
 	struct proc		*p;
 
-	int32_t	qlength;
+	int32_t	qlength;	/* IO queue length */
 	int32_t	flags;
 
 	int	refcount;
-	int32_t	transactions;
-	int32_t	avg_latency;
-	int32_t	s_transactions;
-	int32_t	s_avg_latency;
-	int32_t	max_tp;
-	int32_t	issued;
+	int32_t	transactions;	/* IOs completed so far during current interval */
+	int32_t	avg_latency;	/* avg latency for current interval IOs */
+	int32_t	interval_transactions;	/* IOs completed during last interval */
+	int32_t	interval_avg_latency;	/* avg latency for last interval IOs */
+	int32_t	max_tp;		/* rate limit of transactions per interval */
+	int32_t	issued;		/* IOs issued to disk (but not completed) */
 
-	int	rebalance;
+	int	rebalance;	/* thread needs to rebalance w/ fq_balance_self */
 };
 
-struct dsched_fq_dpriv {
-	struct thread	*td;
-	struct thread	*td_balance;
-	struct disk	*dp;
+struct fq_disk_ctx {
+	struct thread	*td;		/* dispatcher thread td */
+	struct thread	*td_balance;	/* balancer thread td */
+	struct disk	*dp;		/* back pointer to disk struct */
 	struct lock	lock;
 	int	refcount;
 
-	int	avg_rq_time;	/* XXX: unused */
-	int32_t	incomplete_tp;
-	int64_t	max_budget;
-	int	idle;
-	struct timeval start_idle;
-	int	idle_time;
-	int	die;
+	int	avg_rq_time;		/* XXX: not yet used */
+	int32_t	incomplete_tp;		/* IOs issued but not completed */
+	int	idle;			/* disk idle ? */
+	struct timeval start_idle;	/* disk idleness start time */
+	int	idle_time;		/* aggregate idle time in interval */
+	int	die;			/* flag to kill related threads */
 
-	int	prev_full;
-	int	last_full;
-	int	disk_busy;
-	int64_t	budgetpb[FQ_PRIO_MAX+1];
+	int	prev_full;		/* disk >90% busy during prev. to last
+					   interval? */
+	int	last_full;		/* disk >90% busy during last interval */
+	int	disk_busy;		/* disk >90% busy during cur. interval */
+	int64_t	budgetpb[FQ_PRIO_MAX+1];/* next interval budget for each thread
+					   in each prio */
 
-	/* list contains all fq_priv for this disk */
-	TAILQ_HEAD(, dsched_fq_priv)	fq_priv_list;
-	TAILQ_ENTRY(dsched_fq_dpriv)	link;
+	/* list contains all fq_thread_io for this disk */
+	TAILQ_HEAD(, fq_thread_io)	fq_tdio_list;	/* list of thread_io of disk */
+	TAILQ_ENTRY(fq_disk_ctx)	link;
 };
 
-struct dsched_fq_mpriv {
+struct fq_thread_ctx {
 	struct proc *p;
 	struct thread *td;
 	int dead;
 	struct spinlock	lock;
 	int	refcount;
-	TAILQ_HEAD(, dsched_fq_priv)	fq_priv_list;
-	TAILQ_ENTRY(dsched_fq_mpriv)	link;
+	TAILQ_HEAD(, fq_thread_io)	fq_tdio_list;	/* list of thread_io */
+	TAILQ_ENTRY(fq_thread_ctx)	link;
 };
 
 
 
 
 
-struct dsched_fq_priv	*fq_alloc_priv(struct disk *dp, struct dsched_fq_mpriv *fqmp);
-struct dsched_fq_dpriv	*fq_alloc_dpriv(struct disk *dp);
-struct dsched_fq_mpriv	*fq_alloc_mpriv(struct proc *p);
-void	fq_balance_thread(struct dsched_fq_dpriv *dpriv);
-void	fq_dispatcher(struct dsched_fq_dpriv *dpriv);
+struct fq_thread_io	*fq_thread_io_alloc(struct disk *dp, struct fq_thread_ctx *tdctx);
+struct fq_disk_ctx	*fq_disk_ctx_alloc(struct disk *dp);
+struct fq_thread_ctx	*fq_thread_ctx_alloc(struct proc *p);
+void	fq_balance_thread(struct fq_disk_ctx *diskctx);
+void	fq_dispatcher(struct fq_disk_ctx *diskctx);
 biodone_t	fq_completed;
 
-void	fq_reference_dpriv(struct dsched_fq_dpriv *dpriv);
-void	fq_reference_priv(struct dsched_fq_priv *fqp);
-void	fq_reference_mpriv(struct dsched_fq_mpriv *fqmp);
-void	fq_dereference_dpriv(struct dsched_fq_dpriv *dpriv);
-void	fq_dereference_priv(struct dsched_fq_priv *fqp);
-void	fq_dereference_mpriv(struct dsched_fq_mpriv *fqmp);
-void	fq_dispatch(struct dsched_fq_dpriv *dpriv, struct bio *bio,
-			struct dsched_fq_priv *fqp);
-void	fq_drain(struct dsched_fq_dpriv *dpriv, int mode);
-void	fq_balance_self(struct dsched_fq_priv *fqp);
+void	fq_disk_ctx_ref(struct fq_disk_ctx *diskctx);
+void	fq_thread_io_ref(struct fq_thread_io *tdio);
+void	fq_thread_ctx_ref(struct fq_thread_ctx *tdctx);
+void	fq_disk_ctx_unref(struct fq_disk_ctx *diskctx);
+void	fq_thread_io_unref(struct fq_thread_io *tdio);
+void	fq_thread_ctx_unref(struct fq_thread_ctx *tdctx);
+void	fq_dispatch(struct fq_disk_ctx *diskctx, struct bio *bio,
+			struct fq_thread_io *tdio);
+void	fq_drain(struct fq_disk_ctx *diskctx, int mode);
+void	fq_balance_self(struct fq_thread_io *tdio);
 #endif /* _KERNEL || _KERNEL_STRUCTURES */
 
 
 struct dsched_fq_stats {
-	int32_t	fqmp_allocations;
-	int32_t	fqp_allocations;
-	int32_t	dpriv_allocations;
+	int32_t	tdctx_allocations;
+	int32_t	tdio_allocations;
+	int32_t	diskctx_allocations;
 
 	int32_t	procs_limited;
 
@@ -220,12 +219,10 @@ struct dsched_fq_stats {
 	int32_t	transactions_completed;
 	int32_t	cancelled;
 
-	int32_t	no_fqmp;
+	int32_t	no_tdctx;
 
 	int32_t	nthreads;
 	int32_t	nprocs;
-
-	int32_t	nbufs;
 };
 
 #endif /* _DSCHED_FQ_H_ */

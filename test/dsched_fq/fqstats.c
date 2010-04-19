@@ -22,9 +22,9 @@ int main(void)
 		err(1, "sysctlbyname");
 
 	printf( "Allocations\n"
-		"FQMP:\t%d\n"
-		"FQP:\t%d\n"
-		"DPRIV:\t%d\n"
+		"thread_ctx:\t%d\n"
+		"thread_io:\t%d\n"
+		"disk_ctx:\t%d\n"
 		"---------------------------------------------\n"
 		"Procs/Threads tracked\n"
 		"procs:\t\t%d\n"
@@ -36,14 +36,14 @@ int main(void)
 		"Transactions\n"
 		"Issued:\t\t%d\n"
 		"Completed:\t%d\n"
-		"without FQMP:\t%d\n"
+		"without thread_ctx:\t%d\n"
 		"---------------------------------------------\n"
 		"Misc\n"
 		"FQMP refs for buf:\t%d\n",
 
-		fq_stats.fqmp_allocations,
-		fq_stats.fqp_allocations,
-		fq_stats.dpriv_allocations,
+		fq_stats.tdctx_allocations,
+		fq_stats.tdio_allocations,
+		fq_stats.diskctx_allocations,
 
 		fq_stats.nprocs,
 		fq_stats.nthreads,
@@ -52,8 +52,7 @@ int main(void)
 
 		fq_stats.transactions,
 		fq_stats.transactions_completed,
-		fq_stats.no_fqmp,
-		fq_stats.nbufs
+		fq_stats.no_tdctx
 		);
 
 

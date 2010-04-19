@@ -53,23 +53,18 @@
 #include <sys/fcntl.h>
 #include <machine/varargs.h>
 
-MALLOC_DEFINE(M_DSCHED, "dsched", "Disk Scheduler Framework allocations");
-
-static dsched_prepare_t	default_prepare;
+static dsched_prepare_t		default_prepare;
 static dsched_teardown_t	default_teardown;
-static dsched_flush_t	default_flush;
-static dsched_cancel_t	default_cancel;
-static dsched_queue_t	default_queue;
-#if 0
-static biodone_t	default_completed;
-#endif
+static dsched_flush_t		default_flush;
+static dsched_cancel_t		default_cancel;
+static dsched_queue_t		default_queue;
 
-dsched_new_buf_t	*default_new_buf;
-dsched_new_proc_t	*default_new_proc;
-dsched_new_thread_t	*default_new_thread;
-dsched_exit_buf_t	*default_exit_buf;
-dsched_exit_proc_t	*default_exit_proc;
-dsched_exit_thread_t	*default_exit_thread;
+static dsched_new_buf_t		*default_new_buf;
+static dsched_new_proc_t	*default_new_proc;
+static dsched_new_thread_t	*default_new_thread;
+static dsched_exit_buf_t	*default_exit_buf;
+static dsched_exit_proc_t	*default_exit_proc;
+static dsched_exit_thread_t	*default_exit_thread;
 
 static d_open_t      dsched_dev_open;
 static d_close_t     dsched_dev_close;
@@ -89,10 +84,9 @@ static cdev_t	dsched_dev;
 static struct dsched_policy_head dsched_policy_list =
 		TAILQ_HEAD_INITIALIZER(dsched_policy_list);
 
-static struct dsched_ops dsched_default_ops = {
-	.head = {
-		.name = "noop"
-	},
+static struct dsched_policy dsched_default_policy = {
+	.name = "noop",
+
 	.prepare = default_prepare,
 	.teardown = default_teardown,
 	.flush = default_flush,
@@ -131,14 +125,14 @@ dsched_debug(int level, char *fmt, ...)
  * none specified, the default policy is used.
  */
 void
-dsched_create(struct disk *dp, const char *head_name, int unit)
+dsched_disk_create_callback(struct disk *dp, const char *head_name, int unit)
 {
 	char tunable_key[SPECNAMELEN + 48];
 	char sched_policy[DSCHED_POLICY_NAME_LENGTH];
 	struct dsched_policy *policy = NULL;
 
 	/* Also look for serno stuff? */
-	/* kprintf("dsched_create() for disk %s%d\n", head_name, unit); */
+	/* kprintf("dsched_disk_create_callback() for disk %s%d\n", head_name, unit); */
 	lockmgr(&dsched_lock, LK_EXCLUSIVE);
 
 	ksnprintf(tunable_key, sizeof(tunable_key), "kern.dsched.policy.%s%d",
@@ -164,9 +158,9 @@ dsched_create(struct disk *dp, const char *head_name, int unit)
 	if (!policy) {
 		dsched_debug(0, "No policy for %s%d specified, "
 		    "or policy not found\n", head_name, unit);
-		dsched_set_policy(dp, &dsched_default_ops);
+		dsched_set_policy(dp, &dsched_default_policy);
 	} else {
-		dsched_set_policy(dp, policy->d_ops);
+		dsched_set_policy(dp, policy);
 	}
 
 	lockmgr(&dsched_lock, LK_RELEASE);
@@ -177,18 +171,18 @@ dsched_create(struct disk *dp, const char *head_name, int unit)
  * shuts down the scheduler core and cancels all remaining bios
  */
 void
-dsched_destroy(struct disk *dp)
+dsched_disk_destroy_callback(struct disk *dp)
 {
-	struct dsched_ops *old_ops;
+	struct dsched_policy *old_policy;
 
 	lockmgr(&dsched_lock, LK_EXCLUSIVE);
 
-	old_ops = dp->d_sched_ops;
-	dp->d_sched_ops = &dsched_default_ops;
-	old_ops->cancel_all(dp);
-	old_ops->teardown(dp);
-	atomic_subtract_int(&old_ops->head.ref_count, 1);
-	KKASSERT(old_ops->head.ref_count >= 0);
+	old_policy = dp->d_sched_policy;
+	dp->d_sched_policy = &dsched_default_policy;
+	old_policy->cancel_all(dp);
+	old_policy->teardown(dp);
+	atomic_subtract_int(&old_policy->ref_count, 1);
+	KKASSERT(old_policy->ref_count >= 0);
 
 	lockmgr(&dsched_lock, LK_RELEASE);
 }
@@ -198,11 +192,11 @@ void
 dsched_queue(struct disk *dp, struct bio *bio)
 {
 	int error = 0;
-	error = dp->d_sched_ops->bio_queue(dp, bio);
+	error = dp->d_sched_policy->bio_queue(dp, bio);
 
 	if (error) {
 		if (bio->bio_buf->b_cmd == BUF_CMD_FLUSH) {
-			dp->d_sched_ops->flush(dp, bio);
+			dp->d_sched_policy->flush(dp, bio);
 		}
 		dsched_strategy_raw(dp, bio);
 	}
@@ -214,20 +208,20 @@ dsched_queue(struct disk *dp, struct bio *bio)
  * registers the policy in the local policy list.
  */
 int
-dsched_register(struct dsched_ops *d_ops)
+dsched_register(struct dsched_policy *d_policy)
 {
 	struct dsched_policy *policy;
 	int error = 0;
 
 	lockmgr(&dsched_lock, LK_EXCLUSIVE);
 
-	policy = dsched_find_policy(d_ops->head.name);
+	policy = dsched_find_policy(d_policy->name);
 
 	if (!policy) {
-		if ((d_ops->new_buf != NULL) || (d_ops->new_proc != NULL) ||
-		    (d_ops->new_thread != NULL)) {
+		if ((d_policy->new_buf != NULL) || (d_policy->new_proc != NULL) ||
+		    (d_policy->new_thread != NULL)) {
 			/*
-			 * Policy ops has hooks for proc/thread/buf creation,
+			 * Policy policy has hooks for proc/thread/buf creation,
 			 * so check if there are already hooks for those present
 			 * and if so, stop right now.
 			 */
@@ -241,21 +235,19 @@ dsched_register(struct dsched_ops *d_ops)
 			}
 
 			/* If everything is fine, just register the hooks */
-			default_new_buf = d_ops->new_buf;
-			default_new_proc = d_ops->new_proc;
-			default_new_thread = d_ops->new_thread;
-			default_exit_buf = d_ops->exit_buf;
-			default_exit_proc = d_ops->exit_proc;
-			default_exit_thread = d_ops->exit_thread;
+			default_new_buf = d_policy->new_buf;
+			default_new_proc = d_policy->new_proc;
+			default_new_thread = d_policy->new_thread;
+			default_exit_buf = d_policy->exit_buf;
+			default_exit_proc = d_policy->exit_proc;
+			default_exit_thread = d_policy->exit_thread;
 		}
 
-		policy = kmalloc(sizeof(struct dsched_policy), M_DSCHED, M_WAITOK);
-		policy->d_ops = d_ops;
-		TAILQ_INSERT_TAIL(&dsched_policy_list, policy, link);
-		atomic_add_int(&policy->d_ops->head.ref_count, 1);
+		TAILQ_INSERT_TAIL(&dsched_policy_list, d_policy, link);
+		atomic_add_int(&d_policy->ref_count, 1);
 	} else {
 		dsched_debug(LOG_ERR, "Policy with name %s already registered!\n",
-		    d_ops->head.name);
+		    d_policy->name);
 		error = 1;
 	}
 
@@ -269,20 +261,19 @@ done:
  * unregisters the policy
  */
 int
-dsched_unregister(struct dsched_ops *d_ops)
+dsched_unregister(struct dsched_policy *d_policy)
 {
 	struct dsched_policy *policy;
 
 	lockmgr(&dsched_lock, LK_EXCLUSIVE);
-	policy = dsched_find_policy(d_ops->head.name);
+	policy = dsched_find_policy(d_policy->name);
 
 	if (policy) {
-		if (policy->d_ops->head.ref_count > 1)
+		if (policy->ref_count > 1)
 			return 1;
 		TAILQ_REMOVE(&dsched_policy_list, policy, link);
-		atomic_subtract_int(&policy->d_ops->head.ref_count, 1);
-		KKASSERT(policy->d_ops->head.ref_count >= 0);
-		kfree(policy, M_DSCHED);
+		atomic_subtract_int(&policy->ref_count, 1);
+		KKASSERT(policy->ref_count >= 0);
 	}
 	lockmgr(&dsched_lock, LK_RELEASE);
 	return 0;
@@ -294,26 +285,26 @@ dsched_unregister(struct dsched_ops *d_ops)
  * enabling the new one.
  */
 int
-dsched_switch(struct disk *dp, struct dsched_ops *new_ops)
+dsched_switch(struct disk *dp, struct dsched_policy *new_policy)
 {
-	struct dsched_ops *old_ops;
+	struct dsched_policy *old_policy;
 
 	/* If we are asked to set the same policy, do nothing */
-	if (dp->d_sched_ops == new_ops)
+	if (dp->d_sched_policy == new_policy)
 		return 0;
 
 	/* lock everything down, diskwise */
 	lockmgr(&dsched_lock, LK_EXCLUSIVE);
-	old_ops = dp->d_sched_ops;
+	old_policy = dp->d_sched_policy;
 
-	atomic_subtract_int(&dp->d_sched_ops->head.ref_count, 1);
-	KKASSERT(dp->d_sched_ops->head.ref_count >= 0);
+	atomic_subtract_int(&dp->d_sched_policy->ref_count, 1);
+	KKASSERT(dp->d_sched_policy->ref_count >= 0);
 
-	dp->d_sched_ops = &dsched_default_ops;
-	old_ops->teardown(dp);
+	dp->d_sched_policy = &dsched_default_policy;
+	old_policy->teardown(dp);
 
 	/* Bring everything back to life */
-	dsched_set_policy(dp, new_ops);
+	dsched_set_policy(dp, new_policy);
 		lockmgr(&dsched_lock, LK_RELEASE);
 	return 0;
 }
@@ -324,7 +315,7 @@ dsched_switch(struct disk *dp, struct dsched_ops *new_ops)
  * Also initializes the core for the policy
  */
 void
-dsched_set_policy(struct disk *dp, struct dsched_ops *new_ops)
+dsched_set_policy(struct disk *dp, struct dsched_policy *new_policy)
 {
 	int locked = 0;
 
@@ -334,11 +325,11 @@ dsched_set_policy(struct disk *dp, struct dsched_ops *new_ops)
 		locked = 1;
 	}
 
-	new_ops->prepare(dp);
-	dp->d_sched_ops = new_ops;
-	atomic_add_int(&new_ops->head.ref_count, 1);
+	new_policy->prepare(dp);
+	dp->d_sched_policy = new_policy;
+	atomic_add_int(&new_policy->ref_count, 1);
 	kprintf("disk scheduler: set policy of %s to %s\n", dp->d_cdev->si_name,
-	    new_ops->head.name);
+	    new_policy->name);
 
 	/* If we acquired the lock, we also get rid of it */
 	if (locked)
@@ -359,7 +350,7 @@ dsched_find_policy(char *search)
 	}
 
 	TAILQ_FOREACH(policy, &dsched_policy_list, link) {
-		if (!strcmp(policy->d_ops->head.name, search)) {
+		if (!strcmp(policy->name, search)) {
 			policy_found = policy;
 			break;
 		}
@@ -389,10 +380,10 @@ dsched_find_disk(char *search)
 }
 
 struct disk*
-dsched_disk_enumerate(struct disk *dp, struct dsched_ops *ops)
+dsched_disk_enumerate(struct disk *dp, struct dsched_policy *policy)
 {
 	while ((dp = disk_enumerate(dp))) {
-		if (dp->d_sched_ops == ops)
+		if (dp->d_sched_policy == policy)
 			return dp;
 	}
 
@@ -530,31 +521,31 @@ dsched_exit_thread(struct thread *td)
 		default_exit_thread(td);
 }
 
-int
+static int
 default_prepare(struct disk *dp)
 {
 	return 0;
 }
 
-void
+static void
 default_teardown(struct disk *dp)
 {
 
 }
 
-void
+static void
 default_flush(struct disk *dp, struct bio *bio)
 {
 
 }
 
-void
+static void
 default_cancel(struct disk *dp)
 {
 
 }
 
-int
+static int
 default_queue(struct disk *dp, struct bio *bio)
 {
 	dsched_strategy_raw(dp, bio);
@@ -563,17 +554,6 @@ default_queue(struct disk *dp, struct bio *bio)
 #endif
 	return 0;
 }
-
-#if 0
-void
-default_completed(struct bio *bp)
-{
-	struct bio *obio;
-
-	obio = pop_bio(bp);
-	biodone(obio);
-}
-#endif
 
 /*
  * dsched device stuff
@@ -592,8 +572,8 @@ dsched_dev_list_disks(struct dsched_ioctl *data)
 
 	strncpy(data->dev_name, dp->d_cdev->si_name, sizeof(data->dev_name));
 
-	if (dp->d_sched_ops) {
-		strncpy(data->pol_name, dp->d_sched_ops->head.name,
+	if (dp->d_sched_policy) {
+		strncpy(data->pol_name, dp->d_sched_policy->name,
 		    sizeof(data->pol_name));
 	} else {
 		strncpy(data->pol_name, "N/A (error)", 12);
@@ -611,10 +591,10 @@ dsched_dev_list_disk(struct dsched_ioctl *data)
 	while ((dp = disk_enumerate(dp))) {
 		if (!strncmp(dp->d_cdev->si_name, data->dev_name,
 		    sizeof(data->dev_name))) {
-			KKASSERT(dp->d_sched_ops != NULL);
+			KKASSERT(dp->d_sched_policy != NULL);
 
 			found = 1;
-			strncpy(data->pol_name, dp->d_sched_ops->head.name,
+			strncpy(data->pol_name, dp->d_sched_policy->name,
 			    sizeof(data->pol_name));
 			break;
 		}
@@ -636,7 +616,7 @@ dsched_dev_list_policies(struct dsched_ioctl *data)
 	if (pol == NULL)
 		return -1;
 
-	strncpy(data->pol_name, pol->d_ops->head.name, sizeof(data->pol_name));
+	strncpy(data->pol_name, pol->name, sizeof(data->pol_name));
 	return 0;
 }
 
@@ -652,7 +632,7 @@ dsched_dev_handle_switch(char *disk, char *policy)
 	if ((dp == NULL) || (pol == NULL))
 		return -1;
 
-	return (dsched_switch(dp, pol->d_ops));
+	return (dsched_switch(dp, pol));
 }
 
 static int
@@ -732,7 +712,7 @@ static void
 dsched_init(void)
 {
 	lockinit(&dsched_lock, "dsched lock", 0, 0);
-	dsched_register(&dsched_default_ops);
+	dsched_register(&dsched_default_policy);
 }
 
 static void
