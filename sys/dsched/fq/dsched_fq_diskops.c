@@ -77,7 +77,7 @@ dsched_exit_proc_t	fq_exit_proc;
 dsched_exit_thread_t	fq_exit_thread;
 
 extern struct dsched_fq_stats	fq_stats;
-extern struct spinlock	fq_fqmp_lock;
+extern struct lock	fq_fqmp_lock;
 extern TAILQ_HEAD(, dsched_fq_mpriv)	dsched_fqmp_list;
 extern struct callout	fq_callout;
 
@@ -123,9 +123,9 @@ fq_prepare(struct disk *dp)
 	FQ_GLOBAL_FQMP_UNLOCK();
 
 	lwkt_create((void (*)(void *))fq_dispatcher, dpriv, &td_core, NULL,
-	    0, 0, "fq_dispatch_%s", dp->d_cdev->si_name);
+	    TDF_MPSAFE, -1, "fq_dispatch_%s", dp->d_cdev->si_name);
 	lwkt_create((void (*)(void *))fq_balance_thread, dpriv, &td_balance,
-	    NULL, 0, 0, "fq_balance_%s", dp->d_cdev->si_name);
+	    NULL, TDF_MPSAFE, -1, "fq_balance_%s", dp->d_cdev->si_name);
 	dpriv->td_balance = td_balance;
 
 	return 0;

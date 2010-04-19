@@ -80,7 +80,7 @@ static struct objcache	*fq_priv_cache;
 TAILQ_HEAD(, dsched_fq_mpriv)	dsched_fqmp_list =
 		TAILQ_HEAD_INITIALIZER(dsched_fqmp_list);
 
-struct spinlock	fq_fqmp_lock;
+struct lock	fq_fqmp_lock;
 struct callout	fq_callout;
 
 extern struct dsched_ops dsched_fq_ops;
@@ -132,13 +132,13 @@ fq_dereference_dpriv(struct dsched_fq_dpriv *dpriv)
 		kprintf("dpriv (%p) destruction started, trace:\n", dpriv);
 		print_backtrace(4);
 #endif
-		spin_lock_wr(&dpriv->lock);
+		lockmgr(&dpriv->lock, LK_EXCLUSIVE);
 		TAILQ_FOREACH_MUTABLE(fqp, &dpriv->fq_priv_list, dlink, fqp2) {
 			TAILQ_REMOVE(&dpriv->fq_priv_list, fqp, dlink);
 			fqp->flags &= ~FQP_LINKED_DPRIV;
 			fq_dereference_priv(fqp);
 		}
-		spin_unlock_wr(&dpriv->lock);
+		lockmgr(&dpriv->lock, LK_RELEASE);
 
 		objcache_put(fq_dpriv_cache, dpriv);
 		atomic_subtract_int(&fq_stats.dpriv_allocations, 1);
@@ -167,12 +167,12 @@ fq_dereference_priv(struct dsched_fq_priv *fqp)
 		KKASSERT(fqp->qlength == 0);
 
 		if (fqp->flags & FQP_LINKED_DPRIV) {
-			spin_lock_wr(&dpriv->lock);
+			lockmgr(&dpriv->lock, LK_EXCLUSIVE);
 
 			TAILQ_REMOVE(&dpriv->fq_priv_list, fqp, dlink);
 			fqp->flags &= ~FQP_LINKED_DPRIV;
 
-			spin_unlock_wr(&dpriv->lock);
+			lockmgr(&dpriv->lock, LK_RELEASE);
 		}
 
 		if (fqp->flags & FQP_LINKED_FQMP) {
@@ -343,7 +343,7 @@ fq_dispatcher(struct dsched_fq_dpriv *dpriv)
 	for(;;) {
 		idle = 0;
 		/* sleep ~60 ms */
-		if ((ssleep(dpriv, &dpriv->lock, 0, "fq_dispatcher", hz/15) == 0)) {
+		if ((lksleep(dpriv, &dpriv->lock, 0, "fq_dispatcher", hz/15) == 0)) {
 			/*
 			 * We've been woken up; this either means that we are
 			 * supposed to die away nicely or that the disk is idle.
@@ -430,7 +430,7 @@ fq_balance_thread(struct dsched_fq_dpriv *dpriv)
 	FQ_DPRIV_LOCK(dpriv);
 	for (;;) {
 		/* sleep ~1s */
-		if ((ssleep(curthread, &dpriv->lock, 0, "fq_balancer", hz/2) == 0)) {
+		if ((lksleep(curthread, &dpriv->lock, 0, "fq_balancer", hz/2) == 0)) {
 			if (__predict_false(dpriv->die)) {
 				FQ_DPRIV_UNLOCK(dpriv);
 				lwkt_exit();

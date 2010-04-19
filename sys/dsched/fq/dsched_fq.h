@@ -55,13 +55,28 @@
 #define	FQ_FQP_UNLOCK(x)	lockmgr(&(x)->lock, LK_RELEASE); \
 				fq_dereference_priv((x));
 
+#define	FQ_DPRIV_LOCKINIT(x)	lockinit(&(x)->lock, "fqpdiskq", 0, LK_CANRECURSE)
+#define	FQ_DPRIV_LOCK(x)	fq_reference_dpriv((x)); \
+				lockmgr(&(x)->lock, LK_EXCLUSIVE)
+#define	FQ_DPRIV_UNLOCK(x)	lockmgr(&(x)->lock, LK_RELEASE); \
+				fq_dereference_dpriv((x))
+
+#define	FQ_GLOBAL_FQMP_LOCKINIT(x)	lockinit(&fq_fqmp_lock, "fqmpglob", 0, LK_CANRECURSE)
+#define	FQ_GLOBAL_FQMP_LOCK(x)	lockmgr(&fq_fqmp_lock, LK_EXCLUSIVE)
+#define	FQ_GLOBAL_FQMP_UNLOCK(x)	lockmgr(&fq_fqmp_lock, LK_RELEASE)
+
+
+
 #define	FQ_FQMP_LOCKINIT(x)	spin_init(&(x)->lock)
 #if 0
 #define	FQ_FQP_LOCKINIT(x)	spin_init(&(x)->lock)
 #endif
+#if 0
 #define	FQ_DPRIV_LOCKINIT(x)	spin_init(&(x)->lock)
+#endif
+#if 0
 #define	FQ_GLOBAL_FQMP_LOCKINIT(x)	spin_init(&fq_fqmp_lock)
-
+#endif
 
 #define	FQ_FQMP_LOCK(x)		fq_reference_mpriv((x)); \
 				spin_lock_wr(&(x)->lock)
@@ -69,12 +84,13 @@
 #define	FQ_FQP_LOCK(x)		fq_reference_priv((x)); \
 				spin_lock_wr(&(x)->lock)
 #endif
-
+#if 0
 #define	FQ_DPRIV_LOCK(x)	fq_reference_dpriv((x)); \
 				spin_lock_wr(&(x)->lock)
-
+#endif
+#if 0
 #define	FQ_GLOBAL_FQMP_LOCK(x)	spin_lock_wr(&fq_fqmp_lock)
-
+#endif
 
 #define	FQ_FQMP_UNLOCK(x)	spin_unlock_wr(&(x)->lock); \
 				fq_dereference_mpriv((x))
@@ -83,11 +99,13 @@
 #define	FQ_FQP_UNLOCK(x)	spin_unlock_wr(&(x)->lock); \
 				fq_dereference_priv((x))
 #endif
-
+#if 0
 #define	FQ_DPRIV_UNLOCK(x)	spin_unlock_wr(&(x)->lock); \
 				fq_dereference_dpriv((x))
-
+#endif
+#if 0
 #define	FQ_GLOBAL_FQMP_UNLOCK(x) spin_unlock_wr(&fq_fqmp_lock)
+#endif
 
 #define	FQ_REBALANCE_TIMEOUT	1	/* in seconds */
 #define FQ_TOTAL_DISK_TIME	1000000*FQ_REBALANCE_TIMEOUT	/* in useconds */
@@ -136,7 +154,7 @@ struct dsched_fq_dpriv {
 	struct thread	*td;
 	struct thread	*td_balance;
 	struct disk	*dp;
-	struct spinlock	lock;
+	struct lock	lock;
 	int	refcount;
 
 	int	avg_rq_time;	/* XXX: unused */
