@@ -130,6 +130,7 @@ retry:
 		/*
 		 * Internal or Leaf node
 		 */
+		KKASSERT(cursor.index < cursor.node->ondisk->count);
 		elm = &cursor.node->ondisk->elms[cursor.index];
 		reblock->key_cur.obj_id = elm->base.obj_id;
 		reblock->key_cur.localization = elm->base.localization;
@@ -144,6 +145,10 @@ retry:
 		 * If there is insufficient free space it may be due to
 		 * reserved bigblocks, which flushing might fix.
 		 *
+		 * We must force a retest in case the unlocked cursor is
+		 * moved to the end of the leaf, or moved to an internal
+		 * node.
+		 *
 		 * WARNING: See warnings in hammer_unlock_cursor() function.
 		 */
 		if (hammer_checkspace(trans->hmp, slop)) {
@@ -152,10 +157,11 @@ retry:
 				break;
 			}
 			hammer_unlock_cursor(&cursor);
+			cursor.flags |= HAMMER_CURSOR_RETEST;
 			hammer_flusher_wait(trans->hmp, seq);
 			hammer_lock_cursor(&cursor);
 			seq = hammer_flusher_async(trans->hmp, NULL);
-			continue;
+			goto skip;
 		}
 
 		/*
@@ -198,11 +204,10 @@ retry:
 			bwillwrite(HAMMER_XBUFSIZE);
 			hammer_lock_cursor(&cursor);
 		}
-
+skip:
 		if (error == 0) {
 			error = hammer_btree_iterate(&cursor);
 		}
-
 	}
 	if (error == ENOENT)
 		error = 0;
@@ -329,6 +334,7 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 			if (error == 0)
 				error = hammer_cursor_upgrade(cursor);
 			if (error == 0) {
+				KKASSERT(cursor->index < ondisk->count);
 				error = hammer_reblock_data(reblock,
 							    cursor, elm);
 			}
@@ -357,10 +363,13 @@ skip:
 		    bytes >= reblock->free_level) {
 			error = hammer_cursor_upgrade(cursor);
 			if (error == 0) {
-				if (cursor->parent)
+				if (cursor->parent) {
+					KKASSERT(cursor->parent_index <
+						 cursor->parent->ondisk->count);
 					elm = &cursor->parent->ondisk->elms[cursor->parent_index];
-				else
+				} else {
 					elm = NULL;
+				}
 				switch(cursor->node->ondisk->type) {
 				case HAMMER_BTREE_TYPE_LEAF:
 					error = hammer_reblock_leaf_node(
