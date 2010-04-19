@@ -56,6 +56,7 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/unistd.h>
+#include <sys/dsched.h>
 
 #include <machine/clock.h>
 #include <machine/cpu.h>
@@ -301,6 +302,7 @@ cpu_lwp_exit(void)
         }
 	td->td_gd->gd_cnt.v_swtch++;
 
+	dsched_exit_thread(td);
 	crit_enter_quick(td);
 	if (td->td_flags & TDF_TSLEEPQ)
 		tsleep_remove(td);

@@ -1476,6 +1476,7 @@ lwkt_exit(void)
     if (td->td_flags & TDF_TSLEEPQ)
 	tsleep_remove(td);
     biosched_done(td);
+    dsched_exit_thread(td);
     lwkt_deschedule_self(td);
     lwkt_remove_tdallq(td);
     if (td->td_flags & TDF_ALLOCATED_THREAD)
@@ -1488,7 +1489,6 @@ lwkt_remove_tdallq(thread_t td)
 {
     KKASSERT(td->td_gd == mycpu);
     TAILQ_REMOVE(&td->td_gd->gd_tdallq, td, td_allq);
-    dsched_exit_thread(td);
 }
 
 void
