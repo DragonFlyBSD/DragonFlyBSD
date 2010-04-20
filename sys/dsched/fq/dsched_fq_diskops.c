@@ -271,9 +271,8 @@ fq_queue(struct disk *dp, struct bio *obio)
 	if (atomic_cmpset_int(&tdio->rebalance, 1, 0))
 		fq_balance_self(tdio);
 
-	/* XXX: probably rather pointless doing this atomically */
-	max_tp = atomic_fetchadd_int(&tdio->max_tp, 0);
-	transactions = atomic_fetchadd_int(&tdio->issued, 0);
+	max_tp = tdio->max_tp;
+	transactions = tdio->issued;
 
 	/* | No rate limiting || Hasn't reached limit rate | */
 	if ((max_tp == 0) || (transactions < max_tp)) {
@@ -381,7 +380,7 @@ fq_completed(struct bio *bp)
 			wakeup(diskctx);		/* Wake up fq_dispatcher */
 		}
 		transactions = atomic_fetchadd_int(&tdio->transactions, 1);
-		latency = atomic_fetchadd_int(&tdio->avg_latency, 0);
+		latency = tdio->avg_latency;
 
 		if (latency != 0) {
 			/* Moving averager, ((n-1)*avg_{n-1} + x) / n */
