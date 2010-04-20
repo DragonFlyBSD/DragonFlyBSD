@@ -463,7 +463,8 @@ fq_balance_thread(struct fq_disk_ctx *diskctx)
 			tdio->interval_avg_latency = tdio->avg_latency;
 			tdio->interval_transactions = tdio->transactions;
 			if (tdio->interval_transactions > 0) {
-				product = tdio->interval_avg_latency * tdio->interval_transactions;
+				product = (int64_t)tdio->interval_avg_latency *
+				    tdio->interval_transactions;
 				product >>= lost_bits;
 				while(total_budget >= INT64_MAX - product) {
 					++lost_bits;
