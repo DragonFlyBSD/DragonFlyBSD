@@ -60,6 +60,7 @@
 #include <sys/conf.h>
 #include <sys/disk.h>
 #include <sys/device.h>
+#include <sys/devicestat.h>
 #include <sys/kernel.h>
 #include <sys/kthread.h>
 #include <sys/lock.h>
@@ -77,6 +78,7 @@ struct mmcsd_softc {
 	cdev_t dev_t;
 	struct lock sc_lock;
 	struct disk disk;
+	struct devstat device_stats;
 	int unit;
 	struct thread *td;
 	struct bio_queue_head bio_queue;
@@ -133,10 +135,17 @@ mmcsd_attach(device_t dev)
 	cdev_t dsk;
 	intmax_t mb;
 	char unit;
+	int sector_size;
 
 	sc = device_get_softc(dev);
 	sc->dev = dev;
 	MMCSD_LOCK_INIT(sc);
+
+	sector_size = mmc_get_sector_size(dev);
+	devstat_add_entry(&sc->device_stats, "mmcsd", device_get_unit(dev),
+	    sector_size, DEVSTAT_NO_ORDERED_TAGS,
+	    DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_OTHER,
+	    DEVSTAT_PRIORITY_DISK);
 
 	dsk = disk_create(sc->unit, &sc->disk, &mmcsd_ops);
 	dsk->si_drv1 = sc;
@@ -145,7 +154,7 @@ mmcsd_attach(device_t dev)
 	dsk->si_iosize_max = 4*1024*1024;	/* Maximum defined SD card AU size. */
 
 	bzero(&info, sizeof(info));
-	info.d_media_blksize = mmc_get_sector_size(dev);
+	info.d_media_blksize = sector_size;
 	info.d_media_blocks = mmc_get_media_size(dev);
 	disk_setdiskinfo(&sc->disk, &info);
 
@@ -214,6 +223,7 @@ mmcsd_detach(device_t dev)
 
 	/* kill disk */
 	disk_destroy(&sc->disk);
+	devstat_remove_entry(&sc->device_stats);
 
 	MMCSD_LOCK_DESTROY(sc);
 
@@ -277,6 +287,7 @@ mmcsd_strategy(struct dev_strategy_args *ap)
 	MMCSD_LOCK(sc);
 	if (sc->running > 0 || sc->suspend > 0) {
 		bioqdisksort(&sc->bio_queue, bio);
+		devstat_start_transaction(&sc->device_stats);
 		MMCSD_UNLOCK(sc);
 		wakeup(sc);
 	} else {
@@ -499,6 +510,8 @@ mmcsd_task(void *arg)
 			bp->bio_buf->b_error = EROFS;
 			bp->bio_buf->b_resid = bp->bio_buf->b_bcount;
 			bp->bio_buf->b_flags |= B_ERROR;
+			devstat_end_transaction_buf(&sc->device_stats,
+			    bp->bio_buf);
 			biodone(bp);
 			continue;
 		}
@@ -521,6 +534,7 @@ mmcsd_task(void *arg)
 			bp->bio_buf->b_resid = (end - block) * sz;
 			bp->bio_buf->b_flags |= B_ERROR;
 		}
+		devstat_end_transaction_buf(&sc->device_stats, bp->bio_buf);
 		biodone(bp);
 	}
 out:
