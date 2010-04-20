@@ -161,6 +161,7 @@ struct fq_disk_ctx {
 	struct timeval start_idle;	/* disk idleness start time */
 	int	idle_time;		/* aggregate idle time in interval */
 	int	die;			/* flag to kill related threads */
+	struct timeval start_interval;	/* current interval start time */
 
 	int	prev_full;		/* disk >90% busy during prev. to last
 					   interval? */

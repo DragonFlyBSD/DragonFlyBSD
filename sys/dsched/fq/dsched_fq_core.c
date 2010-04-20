@@ -417,16 +417,16 @@ void
 fq_balance_thread(struct fq_disk_ctx *diskctx)
 {
 	struct	fq_thread_io	*tdio, *tdio2;
-	static struct timeval old_tv;
-	struct timeval tv;
+	struct timeval tv, old_tv;
 	int64_t	total_budget, product;
 	int64_t budget[FQ_PRIO_MAX+1];
 	int	n, i, sum, total_disk_time;
 	int	lost_bits;
 
-	getmicrotime(&old_tv);
-
 	FQ_DISK_CTX_LOCK(diskctx);
+
+	getmicrotime(&diskctx->start_interval);
+
 	for (;;) {
 		/* sleep ~1s */
 		if ((lksleep(curthread, &diskctx->lock, 0, "fq_balancer", hz/2) == 0)) {
@@ -440,6 +440,7 @@ fq_balance_thread(struct fq_disk_ctx *diskctx)
 		total_budget = 0;
 		n = 0;
 
+		old_tv = diskctx->start_interval;
 		getmicrotime(&tv);
 
 		total_disk_time = (int)(1000000*((tv.tv_sec - old_tv.tv_sec)) +
@@ -450,7 +451,7 @@ fq_balance_thread(struct fq_disk_ctx *diskctx)
 
 		dsched_debug(LOG_INFO, "total_disk_time = %d\n", total_disk_time);
 
-		old_tv = tv;
+		diskctx->start_interval = tv;
 
 		diskctx->disk_busy = (100*(total_disk_time - diskctx->idle_time)) / total_disk_time;
 		if (diskctx->disk_busy < 0)
