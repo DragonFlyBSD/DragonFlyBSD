@@ -362,6 +362,7 @@ fq_completed(struct bio *bp)
 	KKASSERT(diskctx != NULL);
 
 	fq_disk_ctx_ref(diskctx);
+	atomic_subtract_int(&diskctx->incomplete_tp, 1);
 
 	if (!(bp->bio_buf->b_flags & B_ERROR)) {
 		/*
@@ -379,7 +380,6 @@ fq_completed(struct bio *bp)
 			diskctx->start_idle = tv;	/* Save start idle time */
 			wakeup(diskctx);		/* Wake up fq_dispatcher */
 		}
-		atomic_subtract_int(&diskctx->incomplete_tp, 1);
 		transactions = atomic_fetchadd_int(&tdio->transactions, 1);
 		latency = atomic_fetchadd_int(&tdio->avg_latency, 0);
 
