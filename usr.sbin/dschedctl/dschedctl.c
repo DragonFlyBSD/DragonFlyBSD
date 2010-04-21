@@ -149,7 +149,11 @@ int main(int argc, char *argv[])
 
 	if (argc == 1) {
 		dflag = 1;
-		disk_name = argv[0];
+		if (strncmp(argv[0], "/dev/", 5) == 0) {
+		  disk_name = argv[0] + 5;
+		} else {
+			disk_name = argv[0];
+		}
 	} else if (argc > 1) {
 		usage();
 		/* NOT REACHED */
