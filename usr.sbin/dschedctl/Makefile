@@ -1,4 +1,4 @@
 PROG=	dschedctl
-NOMAN=
+MAN=	dschedctl.8
 
 .include <bsd.prog.mk>
