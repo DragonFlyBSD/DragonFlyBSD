@@ -157,9 +157,7 @@ wlan_clone_destroy(struct ifnet *ifp)
 void
 ieee80211_vap_destroy(struct ieee80211vap *vap)
 {
-#ifdef __FreeBSD__
-	if_clone_destroyif(&wlan_cloner, vap->iv_ifp);
-#endif
+	if_clone_destroy(vap->iv_ifp->if_xname);
 }
 
 int
