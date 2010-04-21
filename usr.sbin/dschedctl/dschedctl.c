@@ -54,15 +54,17 @@
 #include <string.h>
 #include <unistd.h>
 
-#define DSCHED_FOREACH_DISK(dev_fd, diocp)	for ((diocp)->num_elem = 0;		\
-						    (ioctl((dev_fd),			\
-						    DSCHED_LIST_DISKS, (diocp)) != -1);	\
-						    ++(diocp)->num_elem)
+#define DSCHED_FOREACH_DISK(dev_fd, diocp)		\
+	for ((diocp)->num_elem = 0;			\
+	     (ioctl((dev_fd),				\
+		 DSCHED_LIST_DISKS, (diocp)) != -1);	\
+	     ++(diocp)->num_elem)
 
-#define DSCHED_FOREACH_POLICY(dev_fd, diocp)	for ((diocp)->num_elem = 0;		\
-						    (ioctl((dev_fd),			\
-						    DSCHED_LIST_POLICIES, (diocp)) != -1);	\
-						    ++(diocp)->num_elem)
+#define DSCHED_FOREACH_POLICY(dev_fd, diocp)		\
+	for ((diocp)->num_elem = 0;			\
+	     (ioctl((dev_fd),				\
+		 DSCHED_LIST_POLICIES, (diocp)) != -1);	\
+	     ++(diocp)->num_elem)
 
 static int dev_fd;
 static int verbose = 0;
@@ -71,15 +73,15 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-		"Usage: dschedctl <commands>\n"
-		"Valid commands are:\n"
-		" -l [disk]\n"
-		"\t Lists all disks and their policies, or just for [disk]\n"
-		" -p\n"
-		"\t Lists all available I/O scheduling policies\n"
-		" -s <policy> [disk]\n"
-		"\t Switches the policy of [disk] or otherwise all disks to <policy>\n"
-		);
+	    "Usage: dschedctl <commands>\n"
+	    "Valid commands are:\n"
+	    " -l [disk]\n"
+	    "\t Lists all disks and their policies, or just for [disk]\n"
+	    " -p\n"
+	    "\t Lists all available I/O scheduling policies\n"
+	    " -s <policy> [disk]\n"
+	    "\t Switches the policy of [disk] or otherwise all disks to "
+	    "<policy>\n");
 
 	exit(1);
 }
@@ -171,11 +173,13 @@ int main(int argc, char *argv[])
 			strncpy(dioc.dev_name, disk_name, DSCHED_NAME_LENGTH);
 			error = dsched_ioctl(DSCHED_LIST_DISK, &dioc);
 			if (!error) {
-				printf("%s\t=>\t%s\n", disk_name, dioc.pol_name);
+				printf("%s\t=>\t%s\n",
+				    disk_name, dioc.pol_name);
 			}
 		} else {
 			DSCHED_FOREACH_DISK(dev_fd, &dioc) {
-				printf("%s\t=>\t%s\n", dioc.dev_name, dioc.pol_name);
+				printf("%s\t=>\t%s\n",
+				    dioc.dev_name, dioc.pol_name);
 			}
 		}
 	}
@@ -191,10 +195,10 @@ int main(int argc, char *argv[])
 			error = dsched_set_disk_policy(disk_name, policy);
 		} else {
 			DSCHED_FOREACH_DISK(dev_fd, &dioc) {
-				error = dsched_set_disk_policy(dioc.dev_name, policy);
+				error = dsched_set_disk_policy(dioc.dev_name,
+				    policy);
 			}
 		}
-
 	}
 
 	close(dev_fd);
