@@ -95,7 +95,8 @@ dsched_ioctl(unsigned long cmd, struct dsched_ioctl *pdioc)
 	return 0;
 }
 
-static int dsched_set_disk_policy(char *disk_name, char *policy)
+static int
+dsched_set_disk_policy(char *disk_name, char *policy)
 {
 	struct dsched_ioctl	dioc;
 	int error;
@@ -113,7 +114,8 @@ static int dsched_set_disk_policy(char *disk_name, char *policy)
 	return error;
 }
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
 	struct dsched_ioctl	dioc;
 	char	*disk_name = NULL;
