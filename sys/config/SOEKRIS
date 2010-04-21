@@ -151,6 +151,7 @@ device		wlan_wep	# 802.11 WEP support
 device		wlan_amrr	# AMRR
 
 device		ath		# Atheros AR521x
+options 	AH_SUPPORT_AR5416
 device		ath_hal		# Atheros Hardware Access Layer
 device		ath_rate_sample # Atheros Sample TX rate control algorithm
 options	ATH_RXBUF=80	# number of RX buffers to allocate
