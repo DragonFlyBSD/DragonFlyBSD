@@ -36,10 +36,7 @@ int main(void)
 		"Transactions\n"
 		"Issued:\t\t%d\n"
 		"Completed:\t%d\n"
-		"without thread_ctx:\t%d\n"
-		"---------------------------------------------\n"
-		"Misc\n"
-		"FQMP refs for buf:\t%d\n",
+		"without thread_ctx:\t%d\n",
 
 		fq_stats.tdctx_allocations,
 		fq_stats.tdio_allocations,
