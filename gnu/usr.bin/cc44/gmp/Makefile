@@ -184,7 +184,7 @@ LO_OBJECTS=	${MPF_OBJECTS} ${MPZ_OBJECTS} ${MPQ_OBJECTS} ${MPN_OBJECTS} \
 ${source}: ${mapsource} mkdirs
 	cp ${.ALLSRC:Nmkdirs} ${.TARGET}
 CLEANFILES+=	${source}
-.ORDER: mkdir ${source}
+.ORDER: mkdirs ${source}
 .endif
 
 MPNSRC+=	${source}
