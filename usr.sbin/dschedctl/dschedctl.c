@@ -54,8 +54,18 @@
 #include <string.h>
 #include <unistd.h>
 
-static int dev_fd;
+#define DSCHED_FOREACH_DISK(dev_fd, diocp)	for ((diocp)->num_elem = 0;		\
+						    (ioctl((dev_fd),			\
+						    DSCHED_LIST_DISKS, (diocp)) != -1);	\
+						    ++(diocp)->num_elem)
 
+#define DSCHED_FOREACH_POLICY(dev_fd, diocp)	for ((diocp)->num_elem = 0;		\
+						    (ioctl((dev_fd),			\
+						    DSCHED_LIST_POLICIES, (diocp)) != -1);	\
+						    ++(diocp)->num_elem)
+
+static int dev_fd;
+static int verbose = 0;
 
 static void
 usage(void)
@@ -63,21 +73,16 @@ usage(void)
 	fprintf(stderr,
 		"Usage: dschedctl <commands>\n"
 		"Valid commands are:\n"
-		" -l [-d <disk>]\n"
-		"\t Lists all disks and their policies, or just for <disk>\n"
+		" -l [disk]\n"
+		"\t Lists all disks and their policies, or just for [disk]\n"
 		" -p\n"
 		"\t Lists all available I/O scheduling policies\n"
-		" -s <policy> -d <disk>\n"
-		"\t Switches the policy of the disk specified with -d to <policy>\n"
-		"\n"
-		"Valid options and its arguments are:\n"
-		" -d <disk>\n"
-		"\t Specifies the disk to be used (for -l and -s)\n"
+		" -s <policy> [disk]\n"
+		"\t Switches the policy of [disk] or otherwise all disks to <policy>\n"
 		);
 
 	exit(1);
 }
-
 
 static int
 dsched_ioctl(unsigned long cmd, struct dsched_ioctl *pdioc)
@@ -88,6 +93,23 @@ dsched_ioctl(unsigned long cmd, struct dsched_ioctl *pdioc)
 	return 0;
 }
 
+static int dsched_set_disk_policy(char *disk_name, char *policy)
+{
+	struct dsched_ioctl	dioc;
+	int error;
+
+	bzero(&dioc, sizeof(dioc));
+	strncpy(dioc.dev_name, disk_name, DSCHED_NAME_LENGTH);
+	strncpy(dioc.pol_name, policy, DSCHED_NAME_LENGTH);
+	error = dsched_ioctl(DSCHED_SET_DEVICE_POLICY, &dioc);
+
+	if ((!error) && verbose) {
+		printf("Switched scheduler policy of %s successfully to %s\n",
+		    disk_name, policy);
+	}
+
+	return error;
+}
 
 int main(int argc, char *argv[])
 {
@@ -95,14 +117,10 @@ int main(int argc, char *argv[])
 	char	*disk_name = NULL;
 	char	*policy = NULL;
 	int	dflag = 0, lflag = 0, pflag = 0, sflag = 0;
-	int	ch, error;
+	int	ch, error = 0;
 
-	while ((ch = getopt(argc, argv, "d:lps:")) != -1) {
+	while ((ch = getopt(argc, argv, "hlps:v")) != -1) {
 		switch (ch) {
-		case 'd':
-			dflag = 1;
-			disk_name = optarg;
-			break;
 		case 'l':
 			lflag = 1;
 			break;
@@ -112,6 +130,9 @@ int main(int argc, char *argv[])
 		case 's':
 			sflag = 1;
 			policy = optarg;
+			break;
+		case 'v':
+			verbose = 1;
 			break;
 		case 'h':
 		case '?':
@@ -124,13 +145,19 @@ int main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
+	if (argc == 1) {
+		dflag = 1;
+		disk_name = argv[0];
+	} else if (argc > 1) {
+		usage();
+		/* NOT REACHED */
+	}
+
 	/*
 	 * Check arguments:
 	 * - need to use at least one mode
-	 * - can not use -s without -d
 	 */
-	if (!(lflag || pflag || sflag) ||
-	    (sflag && (!dflag))) {
+	if (!(lflag || pflag || sflag)) {
 		usage();
 		/* NOT REACHED */
 	}
@@ -147,33 +174,30 @@ int main(int argc, char *argv[])
 				printf("%s\t=>\t%s\n", disk_name, dioc.pol_name);
 			}
 		} else {
-			dioc.num_elem = 0;
-			while(ioctl(dev_fd, DSCHED_LIST_DISKS, &dioc) != -1) {
-				++dioc.num_elem;
+			DSCHED_FOREACH_DISK(dev_fd, &dioc) {
 				printf("%s\t=>\t%s\n", dioc.dev_name, dioc.pol_name);
 			}
 		}
 	}
 
 	if (pflag) {
-		dioc.num_elem = 0;
-		while(ioctl(dev_fd, DSCHED_LIST_POLICIES, &dioc) != -1) {
-			++dioc.num_elem;
-			printf("\t>\t%s\n", dioc.pol_name);
+		DSCHED_FOREACH_POLICY(dev_fd, &dioc) {
+			printf("%s\n", dioc.pol_name);
 		}
 	}
 
 	if (sflag) {
-		strncpy(dioc.dev_name, disk_name, DSCHED_NAME_LENGTH);
-		strncpy(dioc.pol_name, policy, DSCHED_NAME_LENGTH);
-		error = dsched_ioctl(DSCHED_SET_DEVICE_POLICY, &dioc);
-		if (!error) {
-			printf("Switched scheduler policy of %s successfully to %s\n",
-			    disk_name, policy);
+		if (dflag) {
+			error = dsched_set_disk_policy(disk_name, policy);
+		} else {
+			DSCHED_FOREACH_DISK(dev_fd, &dioc) {
+				error = dsched_set_disk_policy(dioc.dev_name, policy);
+			}
 		}
+
 	}
 
 	close(dev_fd);
 
-	return 0;
+	return (error);
 }
