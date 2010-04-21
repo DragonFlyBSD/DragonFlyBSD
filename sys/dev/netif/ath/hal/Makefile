@@ -113,11 +113,6 @@ SRCS+=	ar9285.c
 #SRCS+=	amrr.c
 #.endif
 
-CFLAGS+=  -I. -I${HAL} -DAH_SUPPORT_AR5416
-
-.if !defined(BUILDING_WITH_KERNEL)
-opt_ah.h:
-	echo '#define AH_SUPPORT_AR5416 1' > opt_ah.h
-.endif
+CFLAGS+=  -I. -I${HAL}
 
 .include <bsd.kmod.mk>

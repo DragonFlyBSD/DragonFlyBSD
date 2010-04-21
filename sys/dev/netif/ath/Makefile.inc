@@ -3,3 +3,15 @@
 HAL	= ${.CURDIR}/../hal/ath_hal
 HALOSDEP= ${.CURDIR}/../hal
 CFLAGS	+= -I${HALOSDEP}
+
+opt_inet.h:
+	echo "#define INET	1" > ${.TARGET}
+	echo "#define INET6     1" >> ${.TARGET}
+
+opt_wlan.h:
+	echo "#define IEEE80211_DEBUG           1" > ${.TARGET}
+	echo "#define IEEE80211_SUPPORT_TDMA    1" >> ${.TARGET}
+	echo "#define IEEE80211_SUPPORT_MESH    1" >> ${.TARGET}
+
+opt_ah.h:
+	echo "#define AH_SUPPORT_AR5416 	1" > ${.TARGET}
