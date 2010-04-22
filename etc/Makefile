@@ -63,9 +63,6 @@ MTREE=	BSD.include.dist BSD.local.dist BSD.root.dist BSD.usr.dist \
 MTREE+=	BSD.sendmail.dist
 .endif
 
-NAMEDB=	PROTO.localhost.rev PROTO.localhost-v6.rev named.conf named.root \
-	make-localhost getroot README
-
 PPPCNF=	ppp.conf
 
 ETCMAIL=Makefile README mailer.conf access.sample virtusertable.sample \
@@ -301,8 +298,6 @@ distribution:
 	    ${LN} ${DESTDIR}/root/.profile ${DESTDIR}/.profile
 	cd ${.CURDIR}/mtree; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${MTREE} ${DESTDIR}/etc/mtree
-	cd ${.CURDIR}/namedb; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
-	    ${NAMEDB} ${DESTDIR}/etc/namedb
 	cd ${.CURDIR}/ppp; ${INSTALL} -o root -g ${BINGRP} -m 600 \
 	    ${PPPCNF} ${DESTDIR}/etc/ppp
 	cd ${.CURDIR}/mail; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
@@ -370,7 +365,6 @@ distrib-dirs:
 .if !defined(NO_SENDMAIL)
 	mtree -deU -f ${.CURDIR}/mtree/BSD.sendmail.dist -p ${DESTDIR}/
 .endif
-	cd ${DESTDIR}/etc/namedb; rm -f etc/namedb; ${LN} -s ".." etc/namedb
 	cd ${DESTDIR}/; test -e sys || (rm -f sys;  ${LN} -s usr/src/sys sys)
 	cd ${DESTDIR}/usr/share/man/en.ISO8859-1; ${LN} -sf ../man* .
 	cd ${DESTDIR}/usr/share/man; \

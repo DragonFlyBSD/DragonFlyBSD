@@ -1131,44 +1131,6 @@ is set to
 .Dq Li YES ,
 these are the flags to pass to
 .Xr inetd 8 .
-.It Va named_enable
-.Pq Vt bool
-If set to
-.Dq Li YES ,
-run the
-.Xr named 8
-daemon.
-.It Va named_program
-.Pq Vt str
-Path to
-.Xr named 8
-(default
-.Pa /usr/sbin/named ) .
-.It Va named_flags
-.Pq Vt str
-If
-.Va named_enable
-is set to
-.Dq Li YES ,
-these are the flags to pass to
-.Xr named 8 .
-.It Va named_pidfile
-.Pq Vt str
-This is the default path to the
-.Xr named 8
-daemon's PID file.
-Change it if you change the location in
-.Pa /etc/namedb/named.conf .
-.It Va named_chrootdir
-.Pq Vt str
-The root directory for a name server run in a
-.Xr chroot 8
-environment.
-If left empty
-.Xr named 8
-will not be run in a
-.Xr chroot 8
-environment.
 .It Va rwhod_enable
 .Pq Vt bool
 If set to

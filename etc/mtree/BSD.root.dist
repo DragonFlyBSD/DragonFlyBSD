@@ -31,16 +31,6 @@
         ..
         mtree
         ..
-        namedb
-            etc
-            ..
-            var
-                run     uname=bind gname=bind mode=0750
-                ..
-            ..
-            s           uname=bind gname=bind mode=0750
-            ..
-        ..
         periodic
             daily
             ..

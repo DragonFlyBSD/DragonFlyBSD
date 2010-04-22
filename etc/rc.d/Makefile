@@ -16,7 +16,7 @@ FILES=	DAEMON LOGIN NETWORKING SERVERS abi accounting addswap adjkerntz \
 	ldconfig local localdaemons lockd lpd \
 	mixer motd mountcritlocal mountcritremote \
 	mountd moused mroute6d mrouted msgs \
-	named netif netoptions newsyslog \
+	netif netoptions newsyslog \
 	network_ipv6 nfsclient nfsd nfsserver nisdomain nscd nsswitch \
 	dntpd othermta pf pflog ppp ppp-user pppoed pwcheck \
 	quota random rarpd rcconf resident rndcontrol root route6d routed \
