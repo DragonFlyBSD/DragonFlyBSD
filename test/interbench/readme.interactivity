@@ -1,0 +1,25 @@
+	Interactivity, what is it?
+
+There has been a lot of talk about what makes up a nice feeling desktop under
+linux. It comes down to two different but intimately related parameters which
+are not well defined. We often use the terms responsiveness and interactivity
+in the same sentence, but I'd like to separate the two. As there is no formal
+definition I prefer to define them as such:
+
+Responsiveness: The rate at which your workloads can proceed under different
+	load conditions.
+
+Interactivity: The scheduling latency and jitter present in tasks where the user
+	would notice a palpable deterioration under different load conditions.
+
+Responsiveness would allow you to continue using your machine without too much
+interruption to your work, whereas interactivity would allow you to play audio
+or video without any dropouts, or drag a gui window across the screen and have
+it render smoothly across the screen without jerks .
+
+Contest was a benchmark originally written by me to test system responsiveness,
+and interbench is a benchmark I wrote as a sequel to contest to test
+interactivity.
+
+Con Kolivas
+Mon Jul 11 17:29:21 2005
