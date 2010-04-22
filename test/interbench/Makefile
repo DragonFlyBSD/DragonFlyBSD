@@ -1,10 +1,18 @@
-CC=gcc
-CFLAGS=-W -Wall -g -O2 -s -pipe
-LDFLAGS=-lrt -lm
+TARGETS= hackbench.o interbench.o interbench
 
-interbench: interbench.o hackbench.o
-interbench.o: interbench.c
+CFLAGS= -W -Wall -g -O2 -s -pipe -Werror
+LDFLAGS= -lpthread -lrt -lm
+
+all:	$(TARGETS)
+
 hackbench.o: hackbench.c
+	$(CC) $(CFLAGS) hackbench.c -c
+
+interbench.o: interbench.c
+	$(CC) $(CFLAGS) interbench.c -c
+
+interbench: hackbench.o interbench.o
+	$(CC) $(CFLAGS) $(LDFLAGS) hackbench.o interbench.o -o interbench
 
 clean:
-	rm -f *.o interbench interbench.read interbench.write interbench.loops_per_ms *~
+	rm -f $(TARGETS) interbench.read interbench.write interbench.loops_per_ms *~

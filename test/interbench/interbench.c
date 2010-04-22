@@ -45,6 +45,9 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
+#include <sys/sysctl.h>
+#include <sys/vmmeter.h>
 #include "interbench.h"
 
 #define MAX_UNAME_LENGTH	100
@@ -172,13 +175,17 @@ void set_mlock(void)
 	int mlockflags;
 
 	mlockflags = MCL_CURRENT | MCL_FUTURE;
+#if 0
 	mlockall(mlockflags);	/* Is not critical if this fails */
+#endif
 }
 
 void set_munlock(void)
 {
+#if 0
 	if (munlockall() == -1)
 		terminal_error("munlockall");
+#endif
 }
 
 void set_thread_fifo(pthread_t pthread, int prio)
@@ -1039,7 +1046,7 @@ void show_latencies(struct thread *th)
 		average_latency = tbj->total_latency / tbj->nr_samples;
 		variance = (tbj->sum_latency_squared - (average_latency *
 			average_latency) / tbj->nr_samples) / (tbj->nr_samples - 1);
-		sd = sqrtl(variance);
+		sd = sqrt((double)variance);
 	} else {
 		average_latency = tbj->total_latency;
 		sd = 0.0;
@@ -1135,19 +1142,15 @@ write:
 
 void get_ram(void)
 {
-	FILE *meminfo;
-        char aux[256];
- 
-	if(!(meminfo = fopen("/proc/meminfo", "r")))
-		terminal_error("fopen");
+        struct vmstats vms;
+        size_t vms_size = sizeof(vms);
 
-	ud.ram = ud.swap = 0;
-	while( !feof(meminfo) && !fscanf(meminfo, "MemTotal: %lu kB", &ud.ram) )
-            fgets(aux,sizeof(aux),meminfo);
-	while( !feof(meminfo) && !fscanf(meminfo, "SwapTotal: %lu kB", &ud.swap) )
-            fgets(aux,sizeof(aux),meminfo);
-	if (fclose(meminfo) == -1)
-		terminal_error("fclose");
+        if (sysctlbyname("vm.vmstats", &vms, &vms_size, NULL, 0))
+                terminal_error("sysctlbyname: vm.vmstats");
+
+	ud.ram = vms.v_page_count * vms.v_page_size;
+	ud.ram /= 1024; /* linux size is in kB */
+	ud.swap = ud.ram; /* XXX: swap doesn't have to be the same as RAM */
 
 	if( !ud.ram || !ud.swap ) {
 		unsigned long i;
@@ -1401,7 +1404,7 @@ void usage(void)
 	fprintf(stderr, "interbench [-l <int>] [-L <int>] [-t <int] [-B <int>] [-N <int>]\n");
 	fprintf(stderr, "\t[-b] [-c] [-r] [-C <int> -I <int>] [-m <comment>]\n");
 	fprintf(stderr, "\t[-w <load type>] [-x <load type>] [-W <bench>] [-X <bench>]\n");
-	fprintf(stderr, "\t[-h\]\n\n");
+	fprintf(stderr, "\t[-h]\n\n");
 	fprintf(stderr, " -l\tUse <int> loops per sec (default: use saved benchmark)\n");
 	fprintf(stderr, " -L\tUse cpu load of <int> with burn load (default: 4)\n");
 	fprintf(stderr, " -t\tSeconds to run each benchmark (default: 30)\n");
