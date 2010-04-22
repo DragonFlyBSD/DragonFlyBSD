@@ -610,6 +610,7 @@ SYSCTL_DECL(_user);
 SYSCTL_DECL(_compat);
 SYSCTL_DECL(_lwkt);
 SYSCTL_DECL(_security);
+SYSCTL_DECL(_dsched);
 
 /*
  * Common second-level oids.

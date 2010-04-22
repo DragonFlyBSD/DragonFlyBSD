@@ -195,8 +195,6 @@ static moduledata_t name##_mod = {					\
 };									\
 DECLARE_MODULE(name, name##_mod, SI_SUB_PRE_DRIVERS, SI_ORDER_MIDDLE)
 
-SYSCTL_DECL(_dsched);
-
 void	dsched_disk_create_callback(struct disk *dp, const char *head_name, int unit);
 void	dsched_disk_destroy_callback(struct disk *dp);
 void	dsched_queue(struct disk *dp, struct bio *bio);
