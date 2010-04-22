@@ -309,6 +309,27 @@ struct tunable_int {
 	        tunable_int_init, &__tunable_int_ ## line)
 
 #define	TUNABLE_INT_FETCH(path, var)	kgetenv_int((path), (var))
+
+extern void tunable_long_init(void *);
+
+struct tunable_long {
+	const char *path;
+	long *var;
+};
+#define	TUNABLE_LONG(path, var)					\
+	_TUNABLE_LONG((path), (var), __LINE__)
+#define _TUNABLE_LONG(path, var, line)				\
+	__TUNABLE_LONG((path), (var), line)
+
+#define	__TUNABLE_LONG(path, var, line)				\
+	static struct tunable_long __tunable_long_ ## line = {	\
+		path,						\
+		var,						\
+	};							\
+	SYSINIT(__Tunable_init_ ## line, 			\
+		SI_BOOT1_TUNABLES, SI_ORDER_MIDDLE, 		\
+	        tunable_long_init, &__tunable_long_ ## line)
+
 #define	TUNABLE_LONG_FETCH(path, var)	kgetenv_long((path), (var))
 
 /* Backwards compatibility with the old deprecated TUNABLE_INT_DECL API */
