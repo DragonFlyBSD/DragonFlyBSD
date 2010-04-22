@@ -2883,6 +2883,9 @@ options		SCTP_STR_LOGGING
 options		SCTP_FR_LOGGING
 options		SCTP_MAP_LOGGING
 
+# DSCHED stuff
+options		DSCHED_FQ
+
 # Receive Side Scaling
 options		RSS
 options		RSS_DEBUG
