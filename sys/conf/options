@@ -631,9 +631,6 @@ EMX_RSS_DEBUG		opt_emx.h
 # jme driver
 JME_RSS_DEBUG		opt_jme.h
 
-# wi driver
-WI_SYMBOL_FIRMWARE	opt_wi.h
-
 # dcons options
 DCONS_BUF_SIZE		opt_dcons.h
 DCONS_POLL_HZ		opt_dcons.h

@@ -1426,9 +1426,10 @@ device sr
 device sn0 at isa? port 0x300 irq 10
 
 # Wlan support is mandatory for some wireless LAN devices.
-options 	IEEE80211_DEBUG
-options 	IEEE80211_SUPPORT_MESH
-options 	IEEE80211_SUPPORT_TDMA
+options 	IEEE80211_DEBUG		#enable debugging msgs
+options 	IEEE80211_AMPDU_AGE	#age frames in AMPDU reorder q's
+options 	IEEE80211_SUPPORT_MESH	#enable 802.11s D3.0 support
+options 	IEEE80211_SUPPORT_TDMA	#enable TDMA support
 device		wlan		# 802.11 support
 device		wlan_acl	# 802.11 MAC-based access control for AP
 device		wlan_ccmp	# 802.11 CCMP support
@@ -2792,6 +2793,8 @@ options 	FB_INSTALL_CDEV
 options 	FE_8BIT_SUPPORT
 options 	I4B_SMP_WORKAROUND
 options 	I586_PMC_GUPROF=0x70000
+#options	IEEE80211_DEBUG_REFCNT
+options		IEEE80211_SUPPORT_SUPERG
 options 	KBDIO_DEBUG=10
 options 	KBD_MAXRETRY=4
 options 	KBD_MAXWAIT=6
@@ -2816,9 +2819,19 @@ options 	SIMPLELOCK_DEBUG
 options 	SI_DEBUG
 options 	SLIP_IFF_OPTS
 options 	SOCKBUF_DEBUG
+options		TDMA_BINTVAL_DEFAULT=5
+options		TDMA_SLOTCNT_DEFAULT=2
+options		TDMA_SLOTLEN_DEFAULT=10*1000
+options		TDMA_TXRATE_11A_DEFAULT=2*24
+options		TDMA_TXRATE_11B_DEFAULT=2*11
+options		TDMA_TXRATE_11G_DEFAULT=2*24
+options		TDMA_TXRATE_11NA_DEFAULT="(4|IEEE80211_RATE_MCS)"
+options		TDMA_TXRATE_11NG_DEFAULT="(4|IEEE80211_RATE_MCS)"
+options		TDMA_TXRATE_HALF_DEFAULT=2*12
+options		TDMA_TXRATE_QUARTER_DEFAULT=2*6
+options		TDMA_TXRATE_TURBO_DEFAULT=2*24
 options 	TIMER_FREQ="((14318182+6)/12)"
 options 	VFS_BIO_DEBUG
-options 	WI_SYMBOL_FIRMWARE
 options 	XBONEHACK
 
 options	KTR
