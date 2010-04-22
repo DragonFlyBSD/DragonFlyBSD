@@ -433,6 +433,14 @@ tunable_long_init(void *data)
 }
 
 void
+tunable_ulong_init(void *data)
+{
+	struct tunable_ulong *d = (struct tunable_ulong *)data;
+
+	TUNABLE_ULONG_FETCH(d->path, d->var);
+}
+
+void
 tunable_quad_init(void *data)
 {
 	struct tunable_quad *d = (struct tunable_quad *)data;
