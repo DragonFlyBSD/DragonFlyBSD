@@ -121,7 +121,7 @@ main(int argc, char *argv[])
 	char	*disk_name = NULL;
 	char	*policy = NULL;
 	int	dflag = 0, lflag = 0, pflag = 0, sflag = 0;
-	int	ch, error = 0;
+	int	ch, error = 0, found;
 
 	while ((ch = getopt(argc, argv, "hlps:v")) != -1) {
 		switch (ch) {
@@ -195,6 +195,16 @@ main(int argc, char *argv[])
 	}
 
 	if (sflag) {
+		found = 0;
+		DSCHED_FOREACH_POLICY(dev_fd, &dioc) {
+			if (strcmp(policy, dioc.pol_name) == 0) {
+				found = 1;
+				break;
+			}
+		}
+		if (!found)
+			errx(1, "Policy '%s' not available", policy);
+
 		if (dflag) {
 			error = dsched_set_disk_policy(disk_name, policy);
 		} else {
