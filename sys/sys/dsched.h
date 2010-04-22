@@ -54,6 +54,9 @@
 #ifndef _SYS_MSGPORT_H_
 #include <sys/msgport.h>
 #endif
+#ifndef _SYS_SYSCTL_H_
+#include <sys/sysctl.h>
+#endif
 
 #define	DSCHED_POLICY_NAME_LENGTH	64
 
@@ -79,17 +82,58 @@
 #define	dsched_get_bio_stime(bio)	((bio)?((bio)->bio_caller_info3.lvalue):0)
 
 
-typedef int	dsched_prepare_t(struct disk *dp);
-typedef void	dsched_teardown_t(struct disk *dp);
-typedef void	dsched_flush_t(struct disk *dp, struct bio *bio);
-typedef void	dsched_cancel_t(struct disk *dp);
-typedef int	dsched_queue_t(struct disk *dp, struct bio *bio);
-typedef	void	dsched_new_buf_t(struct buf *bp);
-typedef	void	dsched_new_proc_t(struct proc *p);
-typedef	void	dsched_new_thread_t(struct thread *td);
-typedef	void	dsched_exit_buf_t(struct buf *bp);
-typedef	void	dsched_exit_proc_t(struct proc *p);
-typedef	void	dsched_exit_thread_t(struct thread *td);
+struct dsched_thread_ctx {
+	TAILQ_ENTRY(dsched_thread_ctx)	link;
+
+	TAILQ_HEAD(, dsched_thread_io)	tdio_list;	/* list of thread_io */
+	struct lock	lock;
+
+	int32_t		refcount;
+	
+	struct proc *p;
+	struct thread *td;	
+	int32_t	dead;
+};
+
+struct dsched_disk_ctx {
+	TAILQ_ENTRY(dsched_disk_ctx)	link;
+
+	TAILQ_HEAD(, dsched_thread_io)	tdio_list;	/* list of thread_io of disk */
+	struct lock	lock;
+
+	int32_t		refcount;
+
+	struct disk	*dp;		/* back pointer to disk struct */
+};
+
+struct dsched_thread_io {
+	TAILQ_ENTRY(dsched_thread_io)	link;
+	TAILQ_ENTRY(dsched_thread_io)	dlink;
+
+	TAILQ_HEAD(, bio)	queue;	/* IO queue (bio) */
+	struct lock		lock;
+	int32_t			qlength;/* IO queue length */
+
+	int32_t	refcount;
+
+	int32_t	flags;
+	
+	struct disk		*dp;
+	struct dsched_disk_ctx	*diskctx;
+	struct dsched_thread_ctx	*tdctx;
+	struct proc		*p;
+};
+
+typedef int	dsched_prepare_t(struct dsched_disk_ctx *diskctx);
+typedef void	dsched_teardown_t(struct dsched_disk_ctx *diskctx);
+typedef void	dsched_cancel_t(struct dsched_disk_ctx *diskctx);
+typedef int	dsched_queue_t(struct dsched_disk_ctx *diskctx,
+		    struct dsched_thread_io *tdio, struct bio *bio);
+
+typedef	void	dsched_new_tdio_t(struct dsched_thread_io *tdio);
+typedef	void	dsched_new_diskctx_t(struct dsched_disk_ctx *diskctx);
+typedef	void	dsched_destroy_tdio_t(struct dsched_thread_io *tdio);
+typedef	void	dsched_destroy_diskctx_t(struct dsched_disk_ctx *diskctx);
 
 
 struct dsched_policy {
@@ -101,19 +145,57 @@ struct dsched_policy {
 
 	dsched_prepare_t	*prepare;
 	dsched_teardown_t	*teardown;
-	dsched_flush_t		*flush;
 	dsched_cancel_t		*cancel_all;
 	dsched_queue_t		*bio_queue;
 
-	dsched_new_buf_t	*new_buf;
-	dsched_new_proc_t	*new_proc;
-	dsched_new_thread_t	*new_thread;
-	dsched_exit_buf_t	*exit_buf;
-	dsched_exit_proc_t	*exit_proc;
-	dsched_exit_thread_t	*exit_thread;
+	dsched_new_tdio_t	*new_tdio;
+	dsched_new_diskctx_t	*new_diskctx;
+	dsched_destroy_tdio_t	*destroy_tdio;
+	dsched_destroy_diskctx_t	*destroy_diskctx;
 };
 
 TAILQ_HEAD(dsched_policy_head, dsched_policy);
+
+
+#define	DSCHED_THREAD_IO_LOCKINIT(x)	lockinit(&(x)->lock, "tdiobioq", 0, LK_CANRECURSE)
+#define	DSCHED_THREAD_IO_LOCK(x)	dsched_thread_io_ref((x)); \
+					lockmgr(&(x)->lock, LK_EXCLUSIVE)
+#define	DSCHED_THREAD_IO_UNLOCK(x)	lockmgr(&(x)->lock, LK_RELEASE); \
+					dsched_thread_io_unref((x))
+
+#define	DSCHED_DISK_CTX_LOCKINIT(x)	lockinit(&(x)->lock, "tdiodiskq", 0, LK_CANRECURSE)
+#define	DSCHED_DISK_CTX_LOCK(x)		dsched_disk_ctx_ref((x)); \
+					lockmgr(&(x)->lock, LK_EXCLUSIVE)
+#define	DSCHED_DISK_CTX_UNLOCK(x)	lockmgr(&(x)->lock, LK_RELEASE); \
+					dsched_disk_ctx_unref((x))
+#define DSCHED_DISK_CTX_LOCK_ASSERT(x)	KKASSERT(lockstatus(&(x)->lock, curthread) == LK_EXCLUSIVE)
+
+#define	DSCHED_GLOBAL_THREAD_CTX_LOCKINIT(x)	lockinit(&dsched_tdctx_lock, "tdctxglob", 0, LK_CANRECURSE)
+#define	DSCHED_GLOBAL_THREAD_CTX_LOCK(x)	lockmgr(&dsched_tdctx_lock, LK_EXCLUSIVE)
+#define	DSCHED_GLOBAL_THREAD_CTX_UNLOCK(x)	lockmgr(&dsched_tdctx_lock, LK_RELEASE)
+
+#define	DSCHED_THREAD_CTX_LOCKINIT(x)	lockinit(&(x)->lock, "tdctx", 0, LK_CANRECURSE)
+#define	DSCHED_THREAD_CTX_LOCK(x)	dsched_thread_ctx_ref((x));	\
+					lockmgr(&(x)->lock, LK_EXCLUSIVE)
+#define DSCHED_THREAD_CTX_UNLOCK(x)	lockmgr(&(x)->lock, LK_RELEASE);\
+					dsched_thread_ctx_unref((x))
+
+#define	DSCHED_LINKED_DISK_CTX		0x01
+#define	DSCHED_LINKED_THREAD_CTX	0x02
+
+#define DSCHED_THREAD_CTX_MAX_SZ	sizeof(struct dsched_thread_ctx)
+#define DSCHED_THREAD_IO_MAX_SZ		256
+#define DSCHED_DISK_CTX_MAX_SZ		256
+
+#define DSCHED_POLICY_MODULE(name, evh)					\
+static moduledata_t name##_mod = {					\
+    #name,								\
+    evh,								\
+    NULL								\
+};									\
+DECLARE_MODULE(name, name##_mod, SI_SUB_PRE_DRIVERS, SI_ORDER_MIDDLE)
+
+SYSCTL_DECL(_dsched);
 
 void	dsched_disk_create_callback(struct disk *dp, const char *head_name, int unit);
 void	dsched_disk_destroy_callback(struct disk *dp);
@@ -131,6 +213,30 @@ void	dsched_strategy_raw(struct disk *dp, struct bio *bp);
 void	dsched_strategy_sync(struct disk *dp, struct bio *bp);
 void	dsched_strategy_async(struct disk *dp, struct bio *bp, biodone_t *done, void *priv);
 int	dsched_debug(int level, char *fmt, ...) __printflike(2, 3);
+
+void	policy_new(struct disk *dp, struct dsched_policy *pol);
+void	policy_destroy(struct disk *dp);
+
+void	dsched_disk_ctx_ref(struct dsched_disk_ctx *diskctx);
+void	dsched_thread_io_ref(struct dsched_thread_io *tdio);
+void	dsched_thread_ctx_ref(struct dsched_thread_ctx *tdctx);
+void	dsched_disk_ctx_unref(struct dsched_disk_ctx *diskctx);
+void	dsched_thread_io_unref(struct dsched_thread_io *tdio);
+void	dsched_thread_ctx_unref(struct dsched_thread_ctx *tdctx);
+
+struct dsched_thread_io *dsched_thread_io_alloc(struct disk *dp,
+	struct dsched_thread_ctx *tdctx, struct dsched_policy *pol);
+struct dsched_disk_ctx *dsched_disk_ctx_alloc(struct disk *dp,
+	struct dsched_policy *pol);
+struct dsched_thread_ctx *dsched_thread_ctx_alloc(struct proc *p);
+
+typedef	void	dsched_new_buf_t(struct buf *bp);
+typedef	void	dsched_new_proc_t(struct proc *p);
+typedef	void	dsched_new_thread_t(struct thread *td);
+typedef	void	dsched_exit_buf_t(struct buf *bp);
+typedef	void	dsched_exit_proc_t(struct proc *p);
+typedef	void	dsched_exit_thread_t(struct thread *td);
+
 dsched_new_buf_t	dsched_new_buf;
 dsched_new_proc_t	dsched_new_proc;
 dsched_new_thread_t	dsched_new_thread;
@@ -151,6 +257,17 @@ struct dsched_ioctl {
 	uint16_t	num_elem;
 	char		dev_name[DSCHED_NAME_LENGTH];
 	char		pol_name[DSCHED_NAME_LENGTH];
+};
+
+struct dsched_stats {
+	int32_t	tdctx_allocations;
+	int32_t	tdio_allocations;
+	int32_t	diskctx_allocations;
+
+	int32_t	no_tdctx;
+
+	int32_t	nthreads;
+	int32_t	nprocs;
 };
 
 #endif /* _SYS_DSCHED_H_ */

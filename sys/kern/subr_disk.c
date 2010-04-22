@@ -523,6 +523,8 @@ disk_create(int unit, struct disk *dp, struct dev_ops *raw_ops)
 
 	dp->d_cdev->si_disk = dp;
 
+	dsched_disk_create_callback(dp, raw_ops->head.name, unit);
+
 	lwkt_gettoken(&ilock, &disklist_token);
 	LIST_INSERT_HEAD(&disklist, dp, d_list);
 	lwkt_reltoken(&ilock);
@@ -531,7 +533,6 @@ disk_create(int unit, struct disk *dp, struct dev_ops *raw_ops)
 		    "disk_create (end): %s%d\n",
 			raw_ops->head.name, unit);
 
-	dsched_disk_create_callback(dp, raw_ops->head.name, unit);
 	return (dp->d_rawdev);
 }
 

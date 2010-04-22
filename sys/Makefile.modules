@@ -9,6 +9,7 @@ SUBDIR=bus
 .endif
 SUBDIR+=crypto emulation dev kern net netbt netgraph netproto vfs
 SUBDIR+=libiconv
+SUBDIR+=dsched
 .endif
 
 .include <bsd.subdir.mk>

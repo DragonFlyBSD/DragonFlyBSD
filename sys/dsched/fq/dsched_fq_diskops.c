@@ -41,90 +41,42 @@
 #include <sys/diskslice.h>
 #include <sys/disk.h>
 #include <machine/atomic.h>
-#include <sys/malloc.h>
 #include <sys/thread.h>
 #include <sys/thread2.h>
-#include <sys/sysctl.h>
-#include <sys/spinlock2.h>
-#include <machine/md_var.h>
 #include <sys/ctype.h>
-#include <sys/syslog.h>
-#include <sys/device.h>
-#include <sys/msgport.h>
-#include <sys/msgport2.h>
 #include <sys/buf2.h>
+#include <sys/syslog.h>
 #include <sys/dsched.h>
-#include <machine/varargs.h>
 #include <machine/param.h>
 
 #include <dsched/fq/dsched_fq.h>
 
-
-MALLOC_DEFINE(M_DSCHEDFQ, "dschedfq", "fq dsched allocs");
-
 static dsched_prepare_t		fq_prepare;
 static dsched_teardown_t	fq_teardown;
-static dsched_flush_t		fq_flush;
 static dsched_cancel_t		fq_cancel;
 static dsched_queue_t		fq_queue;
 
-/* These are in _procops */
-dsched_new_buf_t	fq_new_buf;
-dsched_new_proc_t	fq_new_proc;
-dsched_new_thread_t	fq_new_thread;
-dsched_exit_buf_t	fq_exit_buf;
-dsched_exit_proc_t	fq_exit_proc;
-dsched_exit_thread_t	fq_exit_thread;
-
 extern struct dsched_fq_stats	fq_stats;
-extern struct lock	fq_tdctx_lock;
-extern TAILQ_HEAD(, fq_thread_ctx)	dsched_tdctx_list;
-extern struct callout	fq_callout;
 
 struct dsched_policy dsched_fq_policy = {
 	.name = "fq",
 
 	.prepare = fq_prepare,
 	.teardown = fq_teardown,
-	.flush = fq_flush,
 	.cancel_all = fq_cancel,
-	.bio_queue = fq_queue,
-
-	.new_buf = fq_new_buf,
-	.new_proc = fq_new_proc,
-	.new_thread = fq_new_thread,
-	.exit_buf = fq_exit_buf,
-	.exit_proc = fq_exit_proc,
-	.exit_thread = fq_exit_thread,
+	.bio_queue = fq_queue
 };
 
-
-
 static int
-fq_prepare(struct disk *dp)
+fq_prepare(struct dsched_disk_ctx *ds_diskctx)
 {
-	struct	fq_disk_ctx	*diskctx;
-	struct fq_thread_ctx	*tdctx;
-	struct fq_thread_io	*tdio;
+	struct	fq_disk_ctx	*diskctx = (struct fq_disk_ctx *)ds_diskctx;
 	struct thread *td_core, *td_balance;
 
-	diskctx = fq_disk_ctx_alloc(dp);
-	fq_disk_ctx_ref(diskctx);
-	dsched_set_disk_priv(dp, diskctx);
-
-	FQ_GLOBAL_THREAD_CTX_LOCK();
-	TAILQ_FOREACH(tdctx, &dsched_tdctx_list, link) {
-		tdio = fq_thread_io_alloc(dp, tdctx);
-#if 0
-		fq_thread_io_ref(tdio);
-#endif
-	}
-	FQ_GLOBAL_THREAD_CTX_UNLOCK();
-
 	lwkt_create((void (*)(void *))fq_dispatcher, diskctx, &td_core, NULL,
-	    TDF_MPSAFE, -1, "fq_dispatch_%s", dp->d_cdev->si_name);
+	    TDF_MPSAFE, -1, "fq_dispatch_%s", ds_diskctx->dp->d_cdev->si_name);
 	lwkt_create((void (*)(void *))fq_balance_thread, diskctx, &td_balance,
-	    NULL, TDF_MPSAFE, -1, "fq_balance_%s", dp->d_cdev->si_name);
+	    NULL, TDF_MPSAFE, -1, "fq_balance_%s", ds_diskctx->dp->d_cdev->si_name);
 	diskctx->td_balance = td_balance;
 
 	return 0;
@@ -133,11 +85,9 @@ fq_prepare(struct disk *dp)
 
 
 static void
-fq_teardown(struct disk *dp)
+fq_teardown(struct dsched_disk_ctx *ds_diskctx)
 {
-	struct fq_disk_ctx *diskctx;
-
-	diskctx = dsched_get_disk_priv(dp);
+	struct fq_disk_ctx *diskctx = (struct fq_disk_ctx *)ds_diskctx;
 	KKASSERT(diskctx != NULL);
 
 	/* Basically kill the dispatcher thread */
@@ -150,11 +100,6 @@ fq_teardown(struct disk *dp)
 	tsleep(diskctx, 0, "fq_dispatcher", hz/10); /* wait 100 ms */
 	wakeup(diskctx->td_balance);
 	wakeup(diskctx);
-
-	fq_disk_ctx_unref(diskctx); /* from prepare */
-	fq_disk_ctx_unref(diskctx); /* from alloc */
-
-	dsched_set_disk_priv(dp, NULL);
 }
 
 
@@ -162,17 +107,19 @@ fq_teardown(struct disk *dp)
 void
 fq_drain(struct fq_disk_ctx *diskctx, int mode)
 {
-	struct fq_thread_io *tdio, *tdio2;
+	struct dsched_thread_io *ds_tdio, *ds_tdio2;
+	struct fq_thread_io *tdio;
 	struct bio *bio, *bio2;
 
-	TAILQ_FOREACH_MUTABLE(tdio, &diskctx->fq_tdio_list, dlink, tdio2) {
-		if (tdio->qlength == 0)
+	TAILQ_FOREACH_MUTABLE(ds_tdio, &diskctx->head.tdio_list, dlink, ds_tdio2) {
+		tdio = (struct fq_thread_io *)ds_tdio;
+		if (tdio->head.qlength == 0)
 			continue;
 
-		FQ_THREAD_IO_LOCK(tdio);
-		TAILQ_FOREACH_MUTABLE(bio, &tdio->queue, link, bio2) {
-			TAILQ_REMOVE(&tdio->queue, bio, link);
-			--tdio->qlength;
+		DSCHED_THREAD_IO_LOCK(&tdio->head);
+		TAILQ_FOREACH_MUTABLE(bio, &tdio->head.queue, link, bio2) {
+			TAILQ_REMOVE(&tdio->head.queue, bio, link);
+			--tdio->head.qlength;
 			if (__predict_false(mode == FQ_DRAIN_CANCEL)) {
 				/* FQ_DRAIN_CANCEL */
 				dsched_cancel_bio(bio);
@@ -180,93 +127,48 @@ fq_drain(struct fq_disk_ctx *diskctx, int mode)
 
 				/* Release ref acquired on fq_queue */
 				/* XXX: possible failure point */
-				fq_thread_io_unref(tdio);
+				dsched_thread_io_unref(&tdio->head);
 			} else {
 				/* FQ_DRAIN_FLUSH */
 				fq_dispatch(diskctx, bio, tdio);
 			}
 		}
-		FQ_THREAD_IO_UNLOCK(tdio);
+		DSCHED_THREAD_IO_UNLOCK(&tdio->head);
 	}
 	return;
 }
 
-
 static void
-fq_flush(struct disk *dp, struct bio *bio)
+fq_cancel(struct dsched_disk_ctx *ds_diskctx)
 {
-	/* we don't do anything here */
-}
+	struct fq_disk_ctx	*diskctx = (struct fq_disk_ctx *)ds_diskctx;
 
-
-static void
-fq_cancel(struct disk *dp)
-{
-	struct fq_disk_ctx	*diskctx;
-
-	diskctx = dsched_get_disk_priv(dp);
 	KKASSERT(diskctx != NULL);
 
 	/*
 	 * all bios not in flight are queued in their respective tdios.
 	 * good thing we have a list of tdios per disk diskctx.
 	 */
-	FQ_DISK_CTX_LOCK(diskctx);
+	DSCHED_DISK_CTX_LOCK(&diskctx->head);
 	fq_drain(diskctx, FQ_DRAIN_CANCEL);
-	FQ_DISK_CTX_UNLOCK(diskctx);
+	DSCHED_DISK_CTX_UNLOCK(&diskctx->head);
 }
 
 
 static int
-fq_queue(struct disk *dp, struct bio *obio)
+fq_queue(struct dsched_disk_ctx *ds_diskctx, struct dsched_thread_io *ds_tdio, struct bio *obio)
 {
 	struct bio *bio, *bio2;
-	struct fq_thread_ctx	*tdctx;
 	struct fq_thread_io	*tdio;
 	struct fq_disk_ctx	*diskctx;
-	int found = 0;
 	int max_tp, transactions;
 
 	/* We don't handle flushes, let dsched dispatch them */
 	if (__predict_false(obio->bio_buf->b_cmd == BUF_CMD_FLUSH))
 		return (EINVAL);
 
-	/* get tdctx and tdio */
-	tdctx = dsched_get_buf_priv(obio->bio_buf);
-
-	/*
-	 * XXX: hack. we don't want the assert because some null-tdctxs are
-	 * leaking through; just dispatch them. These come from the
-	 * mi_startup() mess, which does the initial root mount.
-	 */
-#if 0
-	KKASSERT(tdctx != NULL);
-#endif
-	if (tdctx == NULL) {
-		/* We don't handle this case, let dsched dispatch */
-		atomic_add_int(&fq_stats.no_tdctx, 1);
-		return (EINVAL);
-	}
-
-
-	FQ_THREAD_CTX_LOCK(tdctx);
-#if 0
-	kprintf("fq_queue, tdctx = %p\n", tdctx);
-#endif
-	KKASSERT(!TAILQ_EMPTY(&tdctx->fq_tdio_list));
-	TAILQ_FOREACH(tdio, &tdctx->fq_tdio_list, link) {
-		if (tdio->dp == dp) {
-			fq_thread_io_ref(tdio);
-			found = 1;
-			break;
-		}
-	}
-	FQ_THREAD_CTX_UNLOCK(tdctx);
-	dsched_clr_buf_priv(obio->bio_buf);
-	fq_thread_ctx_unref(tdctx); /* acquired on new_buf */
-
-	KKASSERT(found == 1);
-	diskctx = dsched_get_disk_priv(dp);
+	tdio = (struct fq_thread_io *)ds_tdio;
+	diskctx = (struct fq_disk_ctx *)ds_diskctx;
 
 	if (atomic_cmpset_int(&tdio->rebalance, 1, 0))
 		fq_balance_self(tdio);
@@ -280,19 +182,19 @@ fq_queue(struct disk *dp, struct bio *obio)
 		 * Process pending bios from previous _queue() actions that
 		 * have been rate-limited and hence queued in the tdio.
 		 */
-		KKASSERT(tdio->qlength >= 0);
+		KKASSERT(tdio->head.qlength >= 0);
 
-		if (tdio->qlength > 0) {
-			FQ_THREAD_IO_LOCK(tdio);
+		if (tdio->head.qlength > 0) {
+			DSCHED_THREAD_IO_LOCK(&tdio->head);
 
-			TAILQ_FOREACH_MUTABLE(bio, &tdio->queue, link, bio2) {
+			TAILQ_FOREACH_MUTABLE(bio, &tdio->head.queue, link, bio2) {
 				/* Rebalance ourselves if required */
 				if (atomic_cmpset_int(&tdio->rebalance, 1, 0))
 					fq_balance_self(tdio);
 				if ((tdio->max_tp > 0) && (tdio->issued >= tdio->max_tp))
 					break;
-				TAILQ_REMOVE(&tdio->queue, bio, link);
-				--tdio->qlength;
+				TAILQ_REMOVE(&tdio->head.queue, bio, link);
+				--tdio->head.qlength;
 
 				/*
 				 * beware that we do have an tdio reference from the
@@ -300,11 +202,11 @@ fq_queue(struct disk *dp, struct bio *obio)
 				 */
 				fq_dispatch(diskctx, bio, tdio);
 			}
-			FQ_THREAD_IO_UNLOCK(tdio);
+			DSCHED_THREAD_IO_UNLOCK(&tdio->head);
 		}
 
 		/* Nothing is pending from previous IO, so just pass it down */
-		fq_thread_io_ref(tdio);
+		dsched_thread_io_ref(&tdio->head);
 
 		fq_dispatch(diskctx, obio, tdio);
 	} else {
@@ -315,8 +217,8 @@ fq_queue(struct disk *dp, struct bio *obio)
 		 * we just queue requests instead of
 		 * despatching them.
 		 */
-		FQ_THREAD_IO_LOCK(tdio);
-		fq_thread_io_ref(tdio);
+		DSCHED_THREAD_IO_LOCK(&tdio->head);
+		dsched_thread_io_ref(&tdio->head);
 
 		/*
 		 * Prioritize reads by inserting them at the front of the
@@ -327,15 +229,14 @@ fq_queue(struct disk *dp, struct bio *obio)
 		 *	actually been written yet.
 		 */
 		if (obio->bio_buf->b_cmd == BUF_CMD_READ)
-			TAILQ_INSERT_HEAD(&tdio->queue, obio, link);
+			TAILQ_INSERT_HEAD(&tdio->head.queue, obio, link);
 		else
-			TAILQ_INSERT_TAIL(&tdio->queue, obio, link);
+			TAILQ_INSERT_TAIL(&tdio->head.queue, obio, link);
 
-		++tdio->qlength;
-		FQ_THREAD_IO_UNLOCK(tdio);
+		++tdio->head.qlength;
+		DSCHED_THREAD_IO_UNLOCK(&tdio->head);
 	}
 
-	fq_thread_io_unref(tdio);
 	return 0;
 }
 
@@ -360,7 +261,7 @@ fq_completed(struct bio *bp)
 	KKASSERT(tdio != NULL);
 	KKASSERT(diskctx != NULL);
 
-	fq_disk_ctx_ref(diskctx);
+	dsched_disk_ctx_ref(&diskctx->head);
 	atomic_subtract_int(&diskctx->incomplete_tp, 1);
 
 	if (!(bp->bio_buf->b_flags & B_ERROR)) {
@@ -396,9 +297,9 @@ fq_completed(struct bio *bp)
 		atomic_add_int(&fq_stats.transactions_completed, 1);
 	}
 
-	fq_disk_ctx_unref(diskctx);
+	dsched_disk_ctx_unref(&diskctx->head);
 	/* decrease the ref count that was bumped for us on dispatch */
-	fq_thread_io_unref(tdio);
+	dsched_thread_io_unref(&tdio->head);
 
 	obio = pop_bio(bp);
 	biodone(obio);
@@ -417,7 +318,7 @@ fq_dispatch(struct fq_disk_ctx *diskctx, struct bio *bio,
 		    (tv.tv_usec - diskctx->start_idle.tv_usec)));
 		diskctx->idle = 0;
 	}
-	dsched_strategy_async(diskctx->dp, bio, fq_completed, tdio);
+	dsched_strategy_async(diskctx->head.dp, bio, fq_completed, tdio);
 
 	atomic_add_int(&tdio->issued, 1);
 	atomic_add_int(&diskctx->incomplete_tp, 1);

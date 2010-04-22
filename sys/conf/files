@@ -723,9 +723,6 @@ kern/subr_autoconf.c	standard
 kern/subr_bus.c		standard
 kern/subr_busdma.c	standard
 kern/subr_devstat.c	standard
-dsched/fq/dsched_fq_core.c	standard
-dsched/fq/dsched_fq_diskops.c	standard
-dsched/fq/dsched_fq_procops.c	standard
 kern/subr_disk.c	standard
 kern/subr_disklabel32.c	standard
 kern/subr_disklabel64.c	standard
@@ -1783,6 +1780,10 @@ ${OSACPI_MI_DIR}/acpi_thinkpad/acpi_thinkpad.c	optional acpi_thinkpad acpi
 ${OSACPI_MI_DIR}/acpi_toshiba/acpi_toshiba.c	optional acpi_toshiba acpi
 ${OSACPI_MI_DIR}/acpi_video/acpi_video.c	optional acpi_video acpi
 ${OSACPI_MI_DIR}/aibs/atk0110.c			optional aibs acpi
+
+#dsched stuff
+dsched/fq/dsched_fq_core.c		optional dsched_fq
+dsched/fq/dsched_fq_diskops.c		optional dsched_fq
 
 # ACPICA code
 ${ACPICA_DIR}/debugger/dbcmds.c			optional acpi acpi_debug

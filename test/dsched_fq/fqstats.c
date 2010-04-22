@@ -18,38 +18,22 @@ int main(void)
 	struct dsched_fq_stats	fq_stats;
 	size_t n = sizeof(struct dsched_fq_stats);
 
-	if (sysctlbyname("kern.fq_stats", &fq_stats, &n, NULL, 0) != 0)
+	if (sysctlbyname("dsched.fq.stats", &fq_stats, &n, NULL, 0) != 0)
 		err(1, "sysctlbyname");
 
-	printf( "Allocations\n"
-		"thread_ctx:\t%d\n"
-		"thread_io:\t%d\n"
-		"disk_ctx:\t%d\n"
-		"---------------------------------------------\n"
-		"Procs/Threads tracked\n"
-		"procs:\t\t%d\n"
-		"threads:\t%d\n"
-		"---------------------------------------------\n"
-		"Proccesses\n"
+	printf( "Proccesses\n"
 		"Rate limited:\t%d\n"
 		"---------------------------------------------\n"
 		"Transactions\n"
 		"Issued:\t\t%d\n"
 		"Completed:\t%d\n"
-		"without thread_ctx:\t%d\n",
-
-		fq_stats.tdctx_allocations,
-		fq_stats.tdio_allocations,
-		fq_stats.diskctx_allocations,
-
-		fq_stats.nprocs,
-		fq_stats.nthreads,
+		"Cancelled:\t%d\n",
 
 		fq_stats.procs_limited,
 
 		fq_stats.transactions,
 		fq_stats.transactions_completed,
-		fq_stats.no_tdctx
+		fq_stats.cancelled
 		);
 
 
