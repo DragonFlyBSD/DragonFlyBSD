@@ -113,8 +113,7 @@ MODULE_DEPEND(wi, pci, 1, 1, 1);
 MODULE_DEPEND(wi, wlan, 1, 1, 1);
 
 static int
-wi_pci_probe(dev)
-	device_t	dev;
+wi_pci_probe(device_t dev)
 {
 	struct wi_softc		*sc;
 	int i;
