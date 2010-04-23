@@ -50,6 +50,7 @@ SUBDIR=	alias \
 	ee \
 	enigma \
 	env \
+	evtranalyze \
 	expand \
 	false \
 	fetch \
@@ -85,6 +86,7 @@ SUBDIR=	alias \
 	keylogout \
 	killall \
 	ktrace \
+	ktrdump \
 	kzip \
 	lam \
 	last \
@@ -256,10 +258,8 @@ SUBDIR+=vacation
 .if ${MACHINE_ARCH} == "i386"
 # Things that don't compile on x86_64 or are i386 specific:
 SUBDIR+=doscmd \
-	evtranalyze \
 	gcore \
 	gprof4 \
-	ktrdump \
 	ncplist \
 	ncplogin \
 	sasc \
