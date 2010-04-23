@@ -50,8 +50,6 @@ enum {
 
 struct hashtab;
 typedef struct evtr_variable_value {
-	TAILQ_ENTRY(evtr_variable_value) link;
-	int refs;
 	enum evtr_value_type {
 		EVTR_VAL_NIL,
 		EVTR_VAL_INT,
@@ -84,10 +82,9 @@ struct evtr_thread {
  * the user of the library
  */
 typedef struct evtr_event {
-	uint8_t type;
-	uint64_t ts;
+	uint8_t type;	/* EVTR_TYPE_* */
+	uint64_t ts;	/* timestamp. Must be nondecreasing */
 	union {
-		/* timestamp. Must be nondecreasing */
 		uint16_t ncpus;	/* EVTR_TYPE_SYSINFO */
 		struct evtr_cpuinfo { /* EVTR_TYPE_CPUINFO */
 			double freq;
