@@ -185,7 +185,7 @@ TAILQ_HEAD(dsched_policy_head, dsched_policy);
 
 #define DSCHED_THREAD_CTX_MAX_SZ	sizeof(struct dsched_thread_ctx)
 #define DSCHED_THREAD_IO_MAX_SZ		256
-#define DSCHED_DISK_CTX_MAX_SZ		256
+#define DSCHED_DISK_CTX_MAX_SZ		512
 
 #define DSCHED_POLICY_MODULE(name, evh)					\
 static moduledata_t name##_mod = {					\
