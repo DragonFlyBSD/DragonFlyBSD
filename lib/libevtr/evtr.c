@@ -442,7 +442,13 @@ static
 int
 thread_cmp(struct evtr_thread *a, struct evtr_thread *b)
 {
-	return (int)a->id - (int)b->id;
+	ptrdiff_t d;
+	d =  a->id - b->id;
+	if (d < 0)
+		return -1;
+	if (!d)
+		return 0;
+	return 1;
 }
 
 #define DEFINE_MAP_FIND(prefix, type)		\
@@ -1163,7 +1169,8 @@ const char *
 replace_strptr(void *_ctx, const char *s)
 {
 	struct replace_ctx *ctx = _ctx;
-	return (const char *)evtr_dump_string(ctx->evtr, ctx->ts, s, EVTR_NS_DSTR);
+	return (const char *)(uintptr_t)evtr_dump_string(ctx->evtr, ctx->ts, s,
+							 EVTR_NS_DSTR);
 }
 
 static
@@ -1174,15 +1181,15 @@ replace_strid(void *_ctx, const char *s)
 	const char *ret;
 
 	ret = string_map_find(&ctx->evtr->maps[EVTR_NS_DSTR - 1].root,
-			      (uint32_t)s);
+			      (int)(uintptr_t)s);
 	if (!ret) {
 		fprintf(stderr, "Unknown id for data string\n");
 		ctx->evtr->errmsg = "unknown id for data string";
 		ctx->evtr->err = !0;
 	}
 	validate_string(ret);
-	printd(DS, "replacing strid %d (ns %d) with string '%s' (or int %#x)\n", (int)s,
-	       EVTR_NS_DSTR, ret ? ret : "NULL", (int)ret);
+	printd(DS, "replacing strid %d (ns %d) with string '%s' (or int %#x)\n",
+	       (int)(uintptr_t)s, EVTR_NS_DSTR, ret ? ret : "NULL", (int)(uintptr_t)ret);
 	return ret;
 }
 
