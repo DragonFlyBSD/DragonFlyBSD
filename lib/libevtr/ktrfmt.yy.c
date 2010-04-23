@@ -582,8 +582,6 @@ extern int __ktrfmtwrap (void );
 #endif
 #endif
 
-    static void yyunput (int c,char *buf_ptr  );
-    
 #ifndef yytext_ptr
 static void yy_flex_strncpy (char *,yyconst char *,int );
 #endif
@@ -714,9 +712,9 @@ YY_DECL
     
         YYSTYPE * yylval;
     
-#line 47 "ktrfmt.l"
+#line 48 "ktrfmt.l"
 
-#line 720 "ktrfmt.yy.c"
+#line 718 "ktrfmt.yy.c"
 
     yylval = yylval_param;
 
@@ -803,12 +801,12 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 48 "ktrfmt.l"
+#line 49 "ktrfmt.l"
 { /* ignore */ }
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 49 "ktrfmt.l"
+#line 50 "ktrfmt.l"
 {
 	yylval->tok = tok_new();
 	yylval->tok->type = TOK_ID;
@@ -819,7 +817,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 56 "ktrfmt.l"
+#line 57 "ktrfmt.l"
 {
 	yylval->tok = tok_new();
 	yylval->tok->type = TOK_INT;
@@ -830,7 +828,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 63 "ktrfmt.l"
+#line 64 "ktrfmt.l"
 {
 	yylval = NULL;
 	printd(LEX, "TOK_EQ\n");
@@ -839,7 +837,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 68 "ktrfmt.l"
+#line 69 "ktrfmt.l"
 {
 	yylval = NULL;
 	printd(LEX, "TOK_LEFT_BRACK\n");
@@ -848,7 +846,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 73 "ktrfmt.l"
+#line 74 "ktrfmt.l"
 {
 	yylval = NULL;
 	printd(LEX, "TOK_RIGHT_BRACK\n");
@@ -857,10 +855,10 @@ YY_RULE_SETUP
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 79 "ktrfmt.l"
+#line 80 "ktrfmt.l"
 ECHO;
 	YY_BREAK
-#line 864 "ktrfmt.yy.c"
+#line 862 "ktrfmt.yy.c"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -1187,43 +1185,6 @@ static int yy_get_next_buffer (void)
 	yy_is_jam = (yy_current_state == 14);
 
 	return yy_is_jam ? 0 : yy_current_state;
-}
-
-    static void yyunput (int c, register char * yy_bp )
-{
-	register char *yy_cp;
-    
-    yy_cp = (yy_c_buf_p);
-
-	/* undo effects of setting up __ktrfmttext */
-	*yy_cp = (yy_hold_char);
-
-	if ( yy_cp < YY_CURRENT_BUFFER_LVALUE->yy_ch_buf + 2 )
-		{ /* need to shift things up to make room */
-		/* +2 for EOB chars. */
-		register int number_to_move = (yy_n_chars) + 2;
-		register char *dest = &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[
-					YY_CURRENT_BUFFER_LVALUE->yy_buf_size + 2];
-		register char *source =
-				&YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[number_to_move];
-
-		while ( source > YY_CURRENT_BUFFER_LVALUE->yy_ch_buf )
-			*--dest = *--source;
-
-		yy_cp += (int) (dest - source);
-		yy_bp += (int) (dest - source);
-		YY_CURRENT_BUFFER_LVALUE->yy_n_chars =
-			(yy_n_chars) = YY_CURRENT_BUFFER_LVALUE->yy_buf_size;
-
-		if ( yy_cp < YY_CURRENT_BUFFER_LVALUE->yy_ch_buf + 2 )
-			YY_FATAL_ERROR( "flex scanner push-back overflow" );
-		}
-
-	*--yy_cp = (char) c;
-
-	(yytext_ptr) = yy_bp;
-	(yy_hold_char) = *yy_cp;
-	(yy_c_buf_p) = yy_cp;
 }
 
 #ifndef YY_NO_INPUT
@@ -1858,6 +1819,6 @@ void __ktrfmtfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 79 "ktrfmt.l"
+#line 80 "ktrfmt.l"
 
 

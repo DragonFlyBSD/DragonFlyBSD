@@ -39,6 +39,7 @@ tok_free(struct token *tok)
 %option outfile="ktrfmt.yy.c"
 %option bison-bridge
 %option noyywrap
+%option nounput
 
 INT	[0-9]+
 WHITE	[ \t\r]
