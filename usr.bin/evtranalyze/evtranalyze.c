@@ -775,9 +775,9 @@ cmd_show(int argc, char **argv)
 		if (!last_ts)
 			last_ts = ev.ts;
 		if (freq < 0.0) {
-			printf("%s\t%llu cycles\t[%.3d]\t%s:%d",
+			printf("%s\t%ju cycles\t[%.3d]\t%s:%d",
 			       ev.td ? ev.td->comm : "unknown",
-			       ev.ts - last_ts, ev.cpu,
+			       (uintmax_t)(ev.ts - last_ts), ev.cpu,
 			       basename(ev.file), ev.line);
 		} else {
 			printf("%s\t%.3lf usecs\t[%.3d]\t%s:%d",
@@ -809,7 +809,6 @@ cmd_stats(int argc, char **argv)
 	struct evtr_filter filt;
 	struct cpu_table cputab;
 	double freq;
-	int ch;
 	uint64_t last_ts = 0;
 	enum evtr_value_type type = EVTR_VAL_INT;
 	uintmax_t sum, occurences;
@@ -835,15 +834,7 @@ cmd_stats(int argc, char **argv)
 	filt.var = NULL;
 	optind = 0;
 	optreset = 1;
-#if 0
-	while ((ch = getopt(argc, argv, "f:")) != -1) {
-		switch (ch) {
-		case 'f':
-			filt.fmt = optarg;
-			break;
-		}
-	}
-#endif
+
 	if (argc != 2)
 		err(2, "Need exactly one variable");
 	filt.var = argv[1];
