@@ -106,7 +106,7 @@ printd_set_flags(const char *str, unsigned int *flags)
 		}
 		if (!islower(*str))
 			err(2, "invalid debug flag %c\n", *str);
-		*flags |= *str - 'a';
+		*flags |= 1 << (*str - 'a');
 	}
 }
 

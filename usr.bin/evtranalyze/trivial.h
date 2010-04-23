@@ -2,7 +2,7 @@
 #define TRIVIAL_H
 
 #define DEFINE_DEBUG_FLAG(nam, chr)\
-	nam = chr - 'a'
+	nam = 1 << (chr - 'a')
 
 enum debug_flags {
 	DEFINE_DEBUG_FLAG(INTV, 'i'),
