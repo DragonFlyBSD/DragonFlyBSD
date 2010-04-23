@@ -144,21 +144,21 @@ dsched_disk_create_callback(struct disk *dp, const char *head_name, int unit)
 	/* kprintf("dsched_disk_create_callback() for disk %s%d\n", head_name, unit); */
 	lockmgr(&dsched_lock, LK_EXCLUSIVE);
 
-	ksnprintf(tunable_key, sizeof(tunable_key), "kern.dsched.policy.%s%d",
+	ksnprintf(tunable_key, sizeof(tunable_key), "dsched.policy.%s%d",
 	    head_name, unit);
 	if (TUNABLE_STR_FETCH(tunable_key, sched_policy,
 	    sizeof(sched_policy)) != 0) {
 		policy = dsched_find_policy(sched_policy);
 	}
 
-	ksnprintf(tunable_key, sizeof(tunable_key), "kern.dsched.policy.%s",
+	ksnprintf(tunable_key, sizeof(tunable_key), "dsched.policy.%s",
 	    head_name);
 	if (!policy && (TUNABLE_STR_FETCH(tunable_key, sched_policy,
 	    sizeof(sched_policy)) != 0)) {
 		policy = dsched_find_policy(sched_policy);
 	}
 
-	ksnprintf(tunable_key, sizeof(tunable_key), "kern.dsched.policy.default");
+	ksnprintf(tunable_key, sizeof(tunable_key), "dsched.policy.default");
 	if (!policy && (TUNABLE_STR_FETCH(tunable_key, sched_policy,
 	    sizeof(sched_policy)) != 0)) {
 		policy = dsched_find_policy(sched_policy);
@@ -170,6 +170,37 @@ dsched_disk_create_callback(struct disk *dp, const char *head_name, int unit)
 		dsched_set_policy(dp, &dsched_default_policy);
 	} else {
 		dsched_set_policy(dp, policy);
+	}
+
+	lockmgr(&dsched_lock, LK_RELEASE);
+}
+
+/*
+ * Called from disk_setdiskinfo (or rather _setdiskinfo). This will check if
+ * there's any policy associated with the serial number of the device.
+ */
+void
+dsched_disk_update_callback(struct disk *dp, struct disk_info *info)
+{
+	char tunable_key[SPECNAMELEN + 48];
+	char sched_policy[DSCHED_POLICY_NAME_LENGTH];
+	struct dsched_policy *policy = NULL;
+
+	if (info->d_serialno == NULL)
+		return;
+
+	lockmgr(&dsched_lock, LK_EXCLUSIVE);
+
+	ksnprintf(tunable_key, sizeof(tunable_key), "dsched.policy.%s",
+	    info->d_serialno);
+
+	if((TUNABLE_STR_FETCH(tunable_key, sched_policy,
+	    sizeof(sched_policy)) != 0)) {
+		policy = dsched_find_policy(sched_policy);	
+	}
+
+	if (policy) {
+		dsched_switch(dp, policy);	
 	}
 
 	lockmgr(&dsched_lock, LK_RELEASE);
@@ -1100,7 +1131,7 @@ dsched_init(void)
 
 	bzero(&dsched_stats, sizeof(struct dsched_stats));
 
-	lockinit(&dsched_lock, "dsched lock", 0, 0);
+	lockinit(&dsched_lock, "dsched lock", 0, LK_CANRECURSE);
 	DSCHED_GLOBAL_THREAD_CTX_LOCKINIT();
 
 	dsched_register(&dsched_default_policy);
@@ -1139,9 +1170,38 @@ SYSUNINIT(subr_dsched_dev_register, SI_SUB_DRIVERS, SI_ORDER_ANY, dsched_dev_uni
  * SYSCTL stuff
  */
 static int
-do_dsched_stats(SYSCTL_HANDLER_ARGS)
+sysctl_dsched_stats(SYSCTL_HANDLER_ARGS)
 {
 	return (sysctl_handle_opaque(oidp, &dsched_stats, sizeof(struct dsched_stats), req));
+}
+
+static int
+sysctl_dsched_list_policies(SYSCTL_HANDLER_ARGS)
+{
+	struct dsched_policy *pol = NULL;
+	int error, first = 1;
+
+	lockmgr(&dsched_lock, LK_EXCLUSIVE);
+
+	while ((pol = dsched_policy_enumerate(pol))) {
+		if (!first) {
+			error = SYSCTL_OUT(req, " ", 1);
+			if (error)
+				break;
+		} else {
+			first = 0;
+		}
+		error = SYSCTL_OUT(req, pol->name, strlen(pol->name));
+		if (error)
+			break;
+
+	}
+
+	lockmgr(&dsched_lock, LK_RELEASE);
+
+	error = SYSCTL_OUT(req, "", 1);
+	
+	return error;
 }
 
 SYSCTL_NODE(, OID_AUTO, dsched, CTLFLAG_RD, NULL,
@@ -1149,5 +1209,8 @@ SYSCTL_NODE(, OID_AUTO, dsched, CTLFLAG_RD, NULL,
 SYSCTL_INT(_dsched, OID_AUTO, debug, CTLFLAG_RW, &dsched_debug_enable,
     0, "Enable dsched debugging");
 SYSCTL_PROC(_dsched, OID_AUTO, stats, CTLTYPE_OPAQUE|CTLFLAG_RD,
-    0, sizeof(struct dsched_stats), do_dsched_stats, "dsched_stats",
+    0, sizeof(struct dsched_stats), sysctl_dsched_stats, "dsched_stats",
     "dsched statistics");
+SYSCTL_PROC(_dsched, OID_AUTO, policies, CTLTYPE_STRING|CTLFLAG_RD,
+    NULL, 0, sysctl_dsched_list_policies, "A", "names of available policies");
+

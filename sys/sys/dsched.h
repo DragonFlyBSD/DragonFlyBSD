@@ -57,6 +57,9 @@
 #ifndef _SYS_SYSCTL_H_
 #include <sys/sysctl.h>
 #endif
+#ifndef SYS_DISK_H_
+#include <sys/disk.h>
+#endif
 
 #define	DSCHED_POLICY_NAME_LENGTH	64
 
@@ -196,6 +199,7 @@ static moduledata_t name##_mod = {					\
 DECLARE_MODULE(name, name##_mod, SI_SUB_PRE_DRIVERS, SI_ORDER_MIDDLE)
 
 void	dsched_disk_create_callback(struct disk *dp, const char *head_name, int unit);
+void	dsched_disk_update_callback(struct disk *dp, struct disk_info *info);
 void	dsched_disk_destroy_callback(struct disk *dp);
 void	dsched_queue(struct disk *dp, struct bio *bio);
 int	dsched_register(struct dsched_policy *d_policy);

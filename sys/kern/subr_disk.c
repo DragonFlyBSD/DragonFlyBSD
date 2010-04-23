@@ -567,6 +567,8 @@ _setdiskinfo(struct disk *disk, struct disk_info *info)
 	if (oldserialno)
 		kfree(oldserialno, M_TEMP);
 
+	dsched_disk_update_callback(disk, info);
+
 	/*
 	 * The caller may set d_media_size or d_media_blocks and we
 	 * calculate the other.
