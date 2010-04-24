@@ -110,6 +110,7 @@ int	 scanc (u_int, const u_char *, const u_char *, int);
 int	 skpc (int, int, char *);
 void	 skrandom (u_long);
 char	*strcat (char * __restrict, const char * __restrict);
+char	*strchr(const char *, int);
 int	 strcmp (const char *, const char *);
 int	 strcasecmp (const char *, const char *);
 char	*strcpy (char * __restrict, const char * __restrict);
