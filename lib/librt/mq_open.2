@@ -59,7 +59,7 @@ is the bitwise-inclusive OR of values from the following list.
 Applications must specify exactly one of the first three values
 (access modes) below in the value of
 .Fa oflag :
-.Bl -tag -width It
+.Bl -tag -width ".Dv O_RDONLY"
 .It Dv O_RDONLY
 Open the message queue for receiving messages.
 The process can use the returned message queue descriptor with
@@ -85,7 +85,7 @@ or different processes for sending/receiving messages.
 .Pp
 Any combination of the remaining flags may be specified in the value of
 .Fa oflag :
-.Bl -tag -width It
+.Bl -tag -width ".Dv O_RDONLY"
 .It Dv O_CREAT
 Create a message queue.
 It requires two additional arguments:
