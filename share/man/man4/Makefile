@@ -12,7 +12,6 @@ MAN=	aac.4 \
 	acpi_thinkpad.4 \
 	acpi_toshiba.4 \
 	acpi_video.4 \
-	acx.4 \
 	adv.4 \
 	adw.4 \
 	ae.4 \
@@ -48,7 +47,6 @@ MAN=	aac.4 \
 	bpf.4 \
 	bridge.4 \
 	bt.4 \
-	bwi.4 \
 	cardbus.4 \
 	carp.4 \
 	ccd.4 \
@@ -120,8 +118,6 @@ MAN=	aac.4 \
 	isp.4 \
 	ispfw.4 \
 	it.4 \
-	iwi.4 \
-	iwl.4 \
 	jme.4 \
 	joy.4 \
 	kate.4 \
@@ -221,9 +217,7 @@ MAN=	aac.4 \
 	rndtest.4 \
 	route.4 \
 	rp.4 \
-	rtw.4 \
 	rue.4 \
-	rum.4 \
 	sa.4 \
 	sbc.4 \
 	sbp.4 \
@@ -320,7 +314,6 @@ MAN=	aac.4 \
 	ums.4 \
 	unix.4 \
 	uplcom.4 \
-	ural.4 \
 	urio.4 \
 	usb.4 \
 	uscanner.4 \
@@ -342,7 +335,6 @@ MAN=	aac.4 \
 	wlan.4 \
 	wlan_acl.4 \
 	wlan_ccmp.4 \
-	wlan_ratectl.4 \
 	wlan_tkip.4 \
 	wlan_wep.4 \
 	wlan_xauth.4 \
@@ -350,6 +342,15 @@ MAN=	aac.4 \
 	xl.4 \
 	xpt.4 \
 	zero.4
+
+# XXX re-add when adjusted to the new 802.11 framework
+#MAN+=	acx.4 \
+#	bwi.4 \
+#	iwi.4 \
+#	iwl.4 \
+#	rtw.4 \
+#	rum.4 \
+#	ural.4 \
 
 MLINKS=	acpi_thermal.4 acpi_tz.4
 MLINKS+=agp.4 agpgart.4
@@ -392,9 +393,6 @@ MLINKS+=splash.4 screensaver.4
 MLINKS+=syscons.4 sc.4
 MLINKS+=vga.4 vesa.4
 MLINKS+=vpo.4 imm.4
-MLINKS+=wlan_ratectl.4 wlan_ratectl_amrr.4 \
-	wlan_ratectl.4 wlan_ratectl_onoe.4 \
-	wlan_ratectl.4 wlan_ratectl_sample.4
 
 .if ${MACHINE_ARCH} == "i386"
 SUBDIR=	 man4.${MACHINE_ARCH}
