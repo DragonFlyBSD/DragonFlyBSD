@@ -32,8 +32,7 @@
  *
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)xstr.c	8.1 (Berkeley) 6/9/93
- * $FreeBSD: src/usr.bin/xstr/xstr.c,v 1.4.2.1 2002/11/16 01:01:21 tjr Exp $
- * $DragonFly: src/usr.bin/xstr/xstr.c,v 1.3 2005/07/26 20:17:31 liamfoy Exp $
+ * $FreeBSD: src/usr.bin/xstr/xstr.c,v 1.11 2008/05/13 09:42:03 kevlo Exp $
  */
 
 #include <sys/types.h>
@@ -91,6 +90,7 @@ int
 main(int argc, char *argv[])
 {
 	int c;
+	int fdesc;
 
 	while ((c = getopt(argc, argv, "-cv")) != -1)
 		switch (c) {
@@ -113,8 +113,16 @@ main(int argc, char *argv[])
 		signal(SIGINT, onintr);
 	if (cflg || (argc == 0 && !readstd))
 		inithash();
-	else
-		strings = mktemp(strdup(_PATH_TMP));
+	else {
+		strings = strdup(_PATH_TMP);
+		if (strings == NULL)
+			err(1, "strdup() failed");
+		fdesc = mkstemp(strings);
+		if (fdesc == -1)
+			err(1, "Unable to create temporary file");
+		close(fdesc);
+	}
+
 	while (readstd || argc > 0) {
 		if (freopen("x.c", "w", stdout) == NULL)
 			err(1, "x.c");
@@ -137,7 +145,7 @@ main(int argc, char *argv[])
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: xstr [-v] [-c] [-] [name ...]\n");
+	fprintf(stderr, "usage: xstr [-cv] [-] [file ...]\n");
 	exit (1);
 }
 
