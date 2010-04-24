@@ -67,7 +67,6 @@ SUBDIR= 802_11 \
 	mrouted \
 	mtest \
 	mtree \
-	ndiscvt \
 	ndp \
 	newsyslog \
 	ngctl \
@@ -139,6 +138,9 @@ SUBDIR= 802_11 \
 	ypserv \
 	ypset \
 	zic
+
+# XXX re-add when adjusted to the new 802.11 framework
+#MAN+=	ndiscvt \
 
 .if !defined(NO_IPFILTER)
 SUBDIR+=ipftest \

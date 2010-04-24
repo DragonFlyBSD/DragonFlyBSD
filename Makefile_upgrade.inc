@@ -1238,3 +1238,6 @@ TO_REMOVE+=/usr/share/man/man4/ural.4.gz
 TO_REMOVE+=/boot/modules/ndis.ko
 TO_REMOVE+=/usr/share/man/cat4/ndis.4.gz
 TO_REMOVE+=/usr/share/man/man4/ndis.4.gz
+TO_REMOVE+=/usr/sbin/ndiscvt
+TO_REMOVE+=/usr/share/man/cat8/ndiscvt.8.gz
+TO_REMOVE+=/usr/share/man/man8/ndiscvt.8.gz
