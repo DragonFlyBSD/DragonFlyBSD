@@ -24,6 +24,36 @@
         isa
         ..
     ..
+    c++
+        4.1
+            backward
+            ..
+            bits
+            ..
+            debug
+            ..
+            ext
+            ..
+            tr1
+            ..
+        ..
+        4.4
+            backward
+            ..
+            bits
+            ..
+            debug
+            ..
+            ext
+            ..
+            tr1
+            ..
+            tr1_impl
+            ..
+        ..
+    ..
+    cpu
+    ..
     crypto
     ..
     dev
@@ -56,97 +86,13 @@
             ..
         ..
     ..
-    netproto
-        802_11
-        ..
-        atalk
-        ..
-        atm
-            ipatm
-            ..
-            sigpvc
-            ..
-            spans
-            ..
-            uni
-            ..
-        ..
-        ipsec
-        ..
-        ipx
-        ..
-        key
-        ..
-        mpls
-        ..
-        natm
-        ..
-        ncp
-        ..
-        ns
-        ..
-        smb
-        ..
-    ..
     emulation
         posix4
         ..
         linux
         ..
     ..
-    vfs
-        hammer
-        ..
-        msdosfs
-        ..
-        nfs
-        ..
-        ntfs
-        ..
-        nwfs
-        ..
-        udf
-        ..
-        ufs
-        ..
-        mfs
-        ..
-        smbfs
-        ..
-        isofs
-            cd9660
-            ..
-        ..
-    ..
-    c++
-        4.1
-            backward
-            ..
-            bits
-            ..
-            debug
-            ..
-            ext
-            ..
-            tr1
-            ..
-        ..
-        4.4
-            backward
-            ..
-            bits
-            ..
-            debug
-            ..
-            ext
-            ..
-            tr1
-            ..
-            tr1_impl
-            ..
-        ..
-    ..
-    cpu
+    i4b_machine
     ..
     isc
     ..
@@ -155,8 +101,6 @@
     machine
         pc
         ..
-    ..
-    i4b_machine
     ..
     net
         altq
@@ -191,6 +135,8 @@
             include
             ..
         ..
+    ..
+    netbt
     ..
     netgraph
         UI
@@ -246,13 +192,41 @@
         vjc
         ..
     ..
-    kadm5
-    ..
-    netbt
-    ..
     netinet
     ..
     netinet6
+    ..
+    netproto
+        802_11
+        ..
+        atalk
+        ..
+        atm
+            ipatm
+            ..
+            sigpvc
+            ..
+            spans
+            ..
+            uni
+            ..
+        ..
+        ipsec
+        ..
+        ipx
+        ..
+        key
+        ..
+        mpls
+        ..
+        natm
+        ..
+        ncp
+        ..
+        ns
+        ..
+        smb
+        ..
     ..
     objc
     ..
@@ -271,6 +245,30 @@
     security
     ..
     sys
+    ..
+    vfs
+        hammer
+        ..
+        msdosfs
+        ..
+        nfs
+        ..
+        ntfs
+        ..
+        nwfs
+        ..
+        udf
+        ..
+        ufs
+        ..
+        mfs
+        ..
+        smbfs
+        ..
+        isofs
+            cd9660
+            ..
+        ..
     ..
     vm
     ..

@@ -1212,6 +1212,7 @@ TO_REMOVE+=/usr/share/man/cat4/wlan_ratectl_onoe.4.gz
 TO_REMOVE+=/usr/share/man/man4/wlan_ratectl_onoe.4.gz
 TO_REMOVE+=/usr/share/man/cat4/wlan_ratectl_sample.4.gz
 TO_REMOVE+=/usr/share/man/man4/wlan_ratectl_sample.4.gz
+TO_REMOVE+=/usr/include/kadm5
 
 # XXX Remove when adjusted to the new 802.11 framework
 TO_REMOVE+=/boot/modules/if_acx.ko
