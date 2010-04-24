@@ -2,7 +2,7 @@ LIB=evtr
 SHLIB_MAJOR=1
 
 SRCS=evtr.c ktrfmt.yy.c ktrfmt.tab.c
-INCS=evtr.h ktrfmt.tab.h
+INCS=evtr.h
 
 CFLAGS+= -W -Wall
 
