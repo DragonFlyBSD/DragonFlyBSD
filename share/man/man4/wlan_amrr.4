@@ -1,5 +1,5 @@
 .\"
-.\" Copyright (c) 2004 Sam Leffler
+.\" Copyright (c) 2007 Kevin Lo
 .\" All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
@@ -23,42 +23,35 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/wlan_ccmp.4,v 1.3 2005/01/13 11:09:58 ru Exp $
+.\" $FreeBSD: src/share/man/man4/wlan_amrr.4,v 1.3 2008/04/20 20:35:45 sam Exp $
 .\"
 .Dd April 14, 2010
-.Dt WLAN_CCMP 4
+.Dt WLAN_AMRR 4
 .Os
 .Sh NAME
-.Nm wlan_ccmp
-.Nd AES-CCMP crypto support for 802.11 devices
+.Nm wlan_amrr
+.Nd AMRR rate adaptation algorithm support for 802.11 devices
 .Sh SYNOPSIS
-.Cd "device wlan_ccmp"
+.Cd "device wlan_amrr"
 .Sh DESCRIPTION
 The
 .Nm
-module handles the AES-CCMP cryptographic requirements of the
-WPA and 802.11i protocols.
-It does encapsulation and decapsulation of CCMP-encoded 802.11 frames
-and optionally calculates the AES-CCMP cipher.
-The
-.Nm
-module is an 802.11 cryptographic plugin module for use by the
-.Xr wlan 4
-module.
-This module is automatically loaded if an AES-CCMP key is configured;
-typically by a WPA supplicant program such as wpa_supplicant,
-or a WPA authenticator program such as
-.Nm hostapd .
-Should the underlying network device not be capable of doing the AES-CCMP
-calculations in hardware, the
-.Nm
-module will do the work.
+module implements the Adaptive Multi-Rate Retry tx rate control
+algorithm for use by 802.11 device drivers.
 .Sh SEE ALSO
-.Xr wlan 4 ,
-.Xr wlan_tkip 4 ,
-.Xr wlan_wep 4
+.\".Xr bwi 4 ,
+.\".Xr iwn 4 ,
+.Xr ral 4 ,
+.\".Xr rum 4 ,
+.\".Xr ural 4 ,
+.Xr wlan 4
+.\".Xr wpi 4 ,
+.\".Xr zyd 4
 .Sh STANDARDS
-More information can be found in the IEEE 802.11, WPA, and 802.11i Standards.
+More information can be found in the paper describing the
+.Em AMRR
+algorithm at
+.Pa http://hal.inria.fr/inria-00070784/en/ .
 .Sh HISTORY
 The
 .Nm

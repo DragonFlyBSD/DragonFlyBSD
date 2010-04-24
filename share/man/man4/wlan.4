@@ -23,10 +23,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/wlan.4,v 1.8.2.1 2005/12/02 16:45:03 brueffer Exp $
-.\" $DragonFly: src/share/man/man4/wlan.4,v 1.8 2008/07/26 16:25:41 swildner Exp $
+.\" $FreeBSD: src/share/man/man4/wlan.4,v 1.23 2010/01/14 09:38:23 roam Exp $
 .\"
-.Dd May 14, 2006
+.Dd April 14, 2010
 .Dt WLAN 4
 .Os
 .Sh NAME
@@ -42,116 +41,131 @@ Where a device does not directly support 802.11 functionality
 this layer fills in.
 The
 .Nm
-is required for the
-.Xr acx 4 ,
-.Xr ath 4 ,
-.Xr bwi 4 ,
-.Xr iwi 4 ,
-.Xr iwl 4 ,
-.Xr ndis 4 ,
-.Xr ral 4 ,
-.Xr rtw 4 ,
-.Xr rum 4 ,
-.Xr ural 4 ,
-and
-.Xr wi 4
-drivers, with other drivers to follow.
+module is required by all native 802.11 drivers.
+.\" as well as the
+.\".Xr ndis 4
+.\"support.
 .Pp
-The
 .Nm
-module supports multi-mode devices capable of
+supports multi-mode devices capable of
 operating in both 2.4GHz and 5GHz bands and supports numerous
-802.11 protocols: 802.11a, 802.11b, and 802.11g.
+802.11 standards: 802.11a, 802.11b, 802.11g, 802.11n, and 802.11s (Draft 3.0).
 The WPA, 802.11i, and 802.1x security protocols are supported
 through a combination of in-kernel code and user-mode applications.
-The WME and WMM multi-media protocols are supported entirely within
+The WME/WMM multi-media protocols are supported entirely within
 the
 .Nm
 module but require a suitably capable hardware device.
+Likewise the 802.11h specification is supported only by suitably
+capable devices.
 .Pp
-The
+Drivers provide 802.11 functionality through
 .Nm
-module defines several mechanisms by which plugin modules may
-be used to extend functionality.
+interfaces that are created at runtime using interface cloning.
+This is done with the
+.Xr ifconfig 8
+.Cm create
+command or using the
+.Va wlans_IFX
+variable in
+.Xr rc.conf 5 .
+Some drivers support the creation of multiple
+.Nm
+interfaces that share the same underlying device;
+this is the way by which ``multi-bss support'' is provided but it
+can also be used to create WDS links and other interesting applications.
+.Pp
+There are several types of
+.Nm
+interfaces that may be created:
+.Bl -tag -width monitor
+.It Cm sta
+A client station in an infrastructure bss
+(i.e. one that associates to an access point).
+.It Cm hostap
+An access point in an infrastructure bss.
+.It Cm mesh
+A mesh station in an MBSS network.
+.It Cm adhoc
+A station in an IBSS network.
+.It Cm ahdemo
+A station operating in ``adhoc demo mode''.
+This is essentially an IBSS station that does not use management
+frames (e.g. no beacons are transmitted).
+An
+.Cm ahdemo
+interface is especially useful for applications that want to transmit
+and receive raw 802.11 packets.
+.It Cm monitor
+An interface used exclusively for capturing 802.11 frames.
+In particular this specified to have read-only properties
+which enables it to be operated on frequencies where one
+would otherwise not be allowed.
+.It Cm wds
+A station that passes 4-address 802.11 traffic for the purpose
+of tunneling traffic over a wireless link.
+Typically this station would share the same MAC address as a
+.Cm hostap
+interface.
+It may be possible to create
+.Cm wds
+interfaces without a companion
+.Cm hostap
+interface but that is not guaranteed; one may need to create a
+.Cm hostap
+interface that does not send beacon frames before
+.Cm wds
+interfaces may be created.
+.El
+.Pp
+Note that an interface's type cannot be changed once it is created.
+.Pp
+.Nm
+defines several mechanisms by which plugin modules may
+be used to extend its' functionality.
 Cryptographic support such as WEP, TKIP, and AES-CCMP are implemented
-as modules that are loaded on demand (if not statically configured
-into a system).
+as standalone modules (if not statically configured into a system)
+that register with
+.Nm .
 Similarly there is an authenticator framework for defining 802.11
 authentication services and a framework for integrating access
 control mechanisms specific to the 802.11 protocol.
-.Sh DEBUGGING
-If the associated interface is marked for debugging with, for example,
-.Pp
-.Dl "ifconfig wi0 debug"
-.Pp
-then messages describing the operation of the 802.11 protocol will
-be sent to the console.
-Complete debugging controls are available using:
-.Pp
-.Dl "sysctl net.wlan.X.debug=mask"
-.Pp
-where
-.Ar X
-is the number of the
-.Nm
-instance and mask is a bit-or of control bits that determine which
-debugging messages to enable.
-For example,
-.Pp
-.Dl "sysctl net.wlan.0.debug=0x00200000"
-.Pp
-enables debugging messages related to scanning for an access point,
-adhoc neighbor, or an unoccupied channel when operation as an access point.
-.\"The
-.\".Xr 80211debug
-.\"tool provides a more user-friendly mechanism for doing the same thing.
-.Pp
-Many drivers will also display the contents of each 802.11 frame
-sent and received when the interface is marked with
-both debugging and
-.Cm link2 ;
-e.g.,
-.Pp
-.Dl "ifconfig wi0 debug link2"
-.Pp
-Beware however that some management frames may be processed entirely within
-the device and not be received by the host.
-.Sh EXAMPLES
-Join an existing BSS network (i.e., connect to an access point):
-.Pp
-.Dl "ifconfig iface 192.168.0.20/24"
-.Pp
-Join a specific BSS network with network name
-.Dq Li my_net :
-.Pp
-.Dl "ifconfig iface 192.168.0.20/24 ssid my_net"
-.Pp
-Join a specific BSS network with 64 bit WEP encryption:
-.Bd -literal -offset indent
-ifconfig iface 192.168.0.20/24 ssid my_net wepmode on \e
-        wepkey 0x1234567890 weptxkey 1
-.Ed
-.Pp
-Join a specific BSS network with 128 bit WEP encryption:
-.Bd -literal -offset indent
-ifconfig iface 192.168.0.20/24 ssid my_net wepmode on \e
-        wepkey 0x01020304050607080910111213 weptxkey 1
-.Ed
-.Pp
-Join/create an 802.11b IBSS network:
-.Bd -literal -offset indent
-ifconfig iface 192.168.0.20/24 ssid my_net mediaopt adhoc
-.Ed
-.Pp
-To debug a network setup, you may wish to enable interface debugging:
-.Bd -literal -offset indent
-ifconfig iface down debug up
-.Ed
-.Pp
-To disable debugging, you may simply use:
-.Bd -literal -offset indent
-ifconfig iface down -debug up
-.Ed
+.\".Sh EXAMPLES
+.\"Join an existing BSS network (i.e., connect to an access point):
+.\".Pp
+.\".Dl "ifconfig iface 192.168.0.20/24"
+.\".Pp
+.\"Join a specific BSS network with network name
+.\".Dq Li my_net :
+.\".Pp
+.\".Dl "ifconfig iface 192.168.0.20/24 ssid my_net"
+.\".Pp
+.\"Join a specific BSS network with 64 bit WEP encryption:
+.\".Bd -literal -offset indent
+.\"ifconfig iface 192.168.0.20/24 ssid my_net wepmode on \e
+.\"        wepkey 0x1234567890 weptxkey 1
+.\".Ed
+.\".Pp
+.\"Join a specific BSS network with 128 bit WEP encryption:
+.\".Bd -literal -offset indent
+.\"ifconfig iface 192.168.0.20/24 ssid my_net wepmode on \e
+.\"        wepkey 0x01020304050607080910111213 weptxkey 1
+.\".Ed
+.\".Pp
+.\"Join/create an 802.11b IBSS network:
+.\".Bd -literal -offset indent
+.\"ifconfig iface 192.168.0.20/24 ssid my_net mediaopt adhoc
+.\".Ed
+.\".Pp
+.\"To debug a network setup, you may wish to enable interface debugging:
+.\".Bd -literal -offset indent
+.\"ifconfig iface down debug up
+.\".Ed
+.\".Pp
+.\"To disable debugging, you may simply use:
+.\".Bd -literal -offset indent
+.\"ifconfig iface down -debug up
+.\".Ed
 .\".Pp
 .\"Create an 802.11g host-based access point:
 .\".Bd -literal -offset indent
@@ -173,32 +187,76 @@ ifconfig iface down -debug up
 .\".Ed
 .\".Pp
 .\"This will give you the same functionality as an access point.
+.Sh DEBUGGING
+If the
+.Dv IEEE80211_DEBUG
+option is included in the kernel configuration,
+debugging controls are available using:
+.Pp
+.Dl "sysctl net.wlan.X.debug=mask"
+.Pp
+where
+.Ar X
+is the number of the
+.Nm
+instance and mask is a bit-or of control bits that determine which
+debugging messages to enable.
+For example,
+.Pp
+.Dl "sysctl net.wlan.0.debug=0x00200000"
+.Pp
+enables debugging messages related to scanning for an access point,
+adhoc neighbor, or an unoccupied channel when operation as an access point.
+The
+.Xr wlandebug 8
+tool provides a more user-friendly mechanism for doing the same thing.
+Note that
+.Pp
+.Dl "sysctl net.wlan.debug=mask"
+.Pp
+defines the initial value of the debugging flags for each cloned
+.Nm
+interface; this is useful to enable debug messages during interface creation.
 .Sh COMPATIBILITY
 The module name of
 .Nm
 was used to be compatible with
 .Nx .
+.Pp
+Mesh stations follow the 802.11s Draft 3.0 specification which is
+not ratified and subject to change.
+Beware that this specification is incompatible with earlier drafts;
+and stations implementing earlier drafts (e.g. Linux)
+may not interoperate.
 .Sh SEE ALSO
-.Xr acx 4 ,
+.\".Xr acx 4 ,
+.Xr an 4 ,
 .Xr ath 4 ,
-.Xr bwi 4 ,
-.Xr iwi 4 ,
-.Xr iwl 4 ,
-.Xr ndis 4 ,
+.\".Xr bwi 4 ,
+.\".Xr ipw 4 ,
+.\".Xr iwi 4 ,
+.\".Xr iwl 4 ,
+.\".Xr iwn 4 ,
+.\".Xr malo 4 ,
 .Xr netintro 4 ,
 .Xr ral 4 ,
-.Xr rtw 4 ,
-.Xr rum 4 ,
-.Xr ural 4 ,
+.\".Xr rtw 4 ,
+.\".Xr rum 4 ,
+.\".Xr uath 4 ,
+.\".Xr upgt 4 ,
+.\".Xr ural 4 ,
+.\".Xr urtw 4 ,
 .Xr wi 4 ,
 .Xr wlan_acl 4 ,
+.Xr wlan_amrr 4 ,
 .Xr wlan_ccmp 4 ,
-.Xr wlan_ratectl 4 ,
 .Xr wlan_tkip 4 ,
 .Xr wlan_wep 4 ,
 .Xr wlan_xauth 4
+.\".Xr wpi 4 ,
+.\".Xr zyd 4
 .Sh STANDARDS
-More information can be found in the IEEE 802.11 Standard.
+More information can be found in the IEEE 802.11 Standards.
 .Sh HISTORY
 The
 .Nm
@@ -213,7 +271,8 @@ software from which this work began.
 brought the code into
 .Fx
 and then rewrote it to support multi-mode devices,
-802.11g, WPA/802.11i, WME, and add the extensible frameworks
+802.11g, 802.11n, WPA/802.11i, WME, multi-bss, and
+add the extensible frameworks
 for cryptographic, authentication, and access control plugins.
 This manual page was written by
 .An Tom Rhodes Aq trhodes@FreeBSD.org .
