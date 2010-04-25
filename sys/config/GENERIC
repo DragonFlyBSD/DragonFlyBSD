@@ -72,9 +72,6 @@ device		isa
 device		eisa
 device		pci
 
-# Firmware assist module
-device		firmware	# firmware assist module
-
 # Floppy drives
 device		fdc0	at isa? port IO_FD1 irq 6 drq 2
 device		fd0	at fdc0 drive 0

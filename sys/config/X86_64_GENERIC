@@ -63,9 +63,6 @@ options 	INVARIANTS
 device		isa
 device		pci
 
-# Firmware assist module
-device		firmware	# firmware assist module
-
 # AHCI driver, this will override NATA for AHCI devices,
 # both drivers may be included.
 #
