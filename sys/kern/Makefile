@@ -5,7 +5,7 @@
 # Makefile for kernel tags files, init_sysent, etc.
 
 TAGARCH= i386 # luna68k news3400 pmax sparc tahoe vax
-SUBDIR= firmware libmchain
+SUBDIR= dsched firmware libmchain
 
 # Kernel tags:
 # Tags files are built in the top-level directory for each architecture,

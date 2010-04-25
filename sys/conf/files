@@ -1782,8 +1782,8 @@ ${OSACPI_MI_DIR}/acpi_video/acpi_video.c	optional acpi_video acpi
 ${OSACPI_MI_DIR}/aibs/atk0110.c			optional aibs acpi
 
 #dsched stuff
-dsched/fq/dsched_fq_core.c		optional dsched_fq
-dsched/fq/dsched_fq_diskops.c		optional dsched_fq
+kern/dsched/fq/fq_core.c		optional dsched_fq
+kern/dsched/fq/fq_diskops.c		optional dsched_fq
 
 # ACPICA code
 ${ACPICA_DIR}/debugger/dbcmds.c			optional acpi acpi_debug

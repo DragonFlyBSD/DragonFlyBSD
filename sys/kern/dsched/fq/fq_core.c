@@ -49,7 +49,7 @@
 #include <sys/dsched.h>
 #include <machine/param.h>
 
-#include <dsched/fq/dsched_fq.h>
+#include <kern/dsched/fq/fq.h>
 
 static int	dsched_fq_version_maj = 1;
 static int	dsched_fq_version_min = 0;

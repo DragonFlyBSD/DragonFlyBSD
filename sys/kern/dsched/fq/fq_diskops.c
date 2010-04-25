@@ -49,7 +49,7 @@
 #include <sys/dsched.h>
 #include <machine/param.h>
 
-#include <dsched/fq/dsched_fq.h>
+#include <kern/dsched/fq/fq.h>
 
 static dsched_prepare_t		fq_prepare;
 static dsched_teardown_t	fq_teardown;
