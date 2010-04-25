@@ -37,6 +37,6 @@ LDADD=	-lipx -lbsdxml -lsbuf
 
 MAN=	ifconfig.8
 
-WARNS=	0
+WARNS=	2
 
 .include <bsd.prog.mk>

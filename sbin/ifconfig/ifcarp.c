@@ -70,7 +70,6 @@ carp_status(int s)
 	struct carpreq carpr;
 	struct ifdrv ifd;
 	char devname[IFNAMSIZ];
-	int count, i;
 
 	memset((char *)&carpr, 0, sizeof(struct carpreq));
 	ifr.ifr_data = (caddr_t)&carpr;
@@ -188,7 +187,6 @@ getcarp_vhaddr(const char *val, int d, int s, const struct afswtch *afp)
 
 	struct ifdrv ifd;
 	struct ifcarpvhaddr *carpa;
-	char devname[IFNAMSIZ];
 	int count, i;
 
 	memset(&ifd, 0, sizeof(ifd));

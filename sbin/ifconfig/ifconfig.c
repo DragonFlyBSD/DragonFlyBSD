@@ -370,7 +370,6 @@ retry:
 
 	if (namesonly && need_nl > 0)
 		putchar('\n');
-end:
 	if (printname)
 		printf("%s\n", name);
 
@@ -458,7 +457,7 @@ cmd_lookup(const char *name, int iscreate)
 	const struct cmd *p;
 
 	for (p = cmds; p != NULL; p = p->c_next)
-		if (strcmp(name, p->c_name) == 0)
+		if (strcmp(name, p->c_name) == 0) {
 			if (iscreate) {
 				if (p->c_iscloneop)
 					return p;
@@ -466,7 +465,7 @@ cmd_lookup(const char *name, int iscreate)
 				if (!p->c_iscloneop)
 					return p;
 			}
-			return p;
+		}
 	return NULL;
 #undef N
 }
