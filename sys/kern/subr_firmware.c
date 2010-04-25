@@ -320,7 +320,7 @@ firmware_get(const char *imagename)
 	 * Image not present, try to load the module holding it.
 	 */
 	td = curthread;
-	if (priv_check(td, PRIV_FIRMWARE_LOAD) != 0 || securelevel > 0)
+	if (priv_check(td, PRIV_FIRMWARE_LOAD) != 0 || securelevel > 0) {
 		lockmgr(&firmware_lock, LK_RELEASE);
 		kprintf("%s: insufficient privileges to "
 		    "load firmware image %s\n", __func__, imagename);
