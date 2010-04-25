@@ -68,6 +68,8 @@ static int dsched_dev_list_disk(struct dsched_ioctl *data);
 static int dsched_dev_list_policies(struct dsched_ioctl *data);
 static int dsched_dev_handle_switch(char *disk, char *policy);
 
+static void dsched_sysctl_add_disk(struct dsched_disk_ctx *diskctx, char *name);
+
 static int	dsched_inited = 0;
 
 struct lock	dsched_lock;
@@ -172,6 +174,11 @@ dsched_disk_create_callback(struct disk *dp, const char *head_name, int unit)
 		dsched_set_policy(dp, policy);
 	}
 
+	ksnprintf(tunable_key, sizeof(tunable_key), "%s%d", head_name, unit);
+	dsched_sysctl_add_disk(
+	    (struct dsched_disk_ctx *)dsched_get_disk_priv(dp),
+	    tunable_key);
+
 	lockmgr(&dsched_lock, LK_RELEASE);
 }
 
@@ -203,6 +210,10 @@ dsched_disk_update_callback(struct disk *dp, struct disk_info *info)
 		dsched_switch(dp, policy);	
 	}
 
+	dsched_sysctl_add_disk(
+	    (struct dsched_disk_ctx *)dsched_get_disk_priv(dp),
+	    info->d_serialno);
+
 	lockmgr(&dsched_lock, LK_RELEASE);
 }
 
@@ -214,13 +225,20 @@ void
 dsched_disk_destroy_callback(struct disk *dp)
 {
 	struct dsched_policy *old_policy;
+	struct dsched_disk_ctx *diskctx;
 
 	lockmgr(&dsched_lock, LK_EXCLUSIVE);
+
+	diskctx = dsched_get_disk_priv(dp);
 
 	old_policy = dp->d_sched_policy;
 	dp->d_sched_policy = &dsched_default_policy;
 	old_policy->cancel_all(dsched_get_disk_priv(dp));
 	old_policy->teardown(dsched_get_disk_priv(dp));
+
+	if (diskctx->flags & DSCHED_SYSCTL_CTX_INITED)
+		sysctl_ctx_free(&diskctx->sysctl_ctx);
+
 	policy_destroy(dp);
 	atomic_subtract_int(&old_policy->ref_count, 1);
 	KKASSERT(old_policy->ref_count >= 0);
@@ -1204,8 +1222,46 @@ sysctl_dsched_list_policies(SYSCTL_HANDLER_ARGS)
 	return error;
 }
 
+static int
+sysctl_dsched_policy(SYSCTL_HANDLER_ARGS)
+{
+	char buf[DSCHED_POLICY_NAME_LENGTH];
+	struct dsched_disk_ctx *diskctx = arg1;
+	struct dsched_policy *pol = NULL;
+	int error;
+
+	if (diskctx == NULL) {
+		return 0;
+	}
+
+	lockmgr(&dsched_lock, LK_EXCLUSIVE);
+
+	pol = diskctx->dp->d_sched_policy;
+	memcpy(buf, pol->name, DSCHED_POLICY_NAME_LENGTH);
+
+	error = sysctl_handle_string(oidp, buf, DSCHED_POLICY_NAME_LENGTH, req);
+	if (error || req->newptr == NULL) {
+		lockmgr(&dsched_lock, LK_RELEASE);
+		return (error);
+	}
+
+	pol = dsched_find_policy(buf);
+	if (pol == NULL) {
+		lockmgr(&dsched_lock, LK_RELEASE);
+		return 0;
+	}
+
+	dsched_switch(diskctx->dp, pol);
+
+	lockmgr(&dsched_lock, LK_RELEASE);
+
+	return error;
+}
+
 SYSCTL_NODE(, OID_AUTO, dsched, CTLFLAG_RD, NULL,
     "Disk Scheduler Framework (dsched) magic");
+SYSCTL_NODE(_dsched, OID_AUTO, policy, CTLFLAG_RW, NULL,
+    "List of disks and their policies");
 SYSCTL_INT(_dsched, OID_AUTO, debug, CTLFLAG_RW, &dsched_debug_enable,
     0, "Enable dsched debugging");
 SYSCTL_PROC(_dsched, OID_AUTO, stats, CTLTYPE_OPAQUE|CTLFLAG_RD,
@@ -1214,3 +1270,15 @@ SYSCTL_PROC(_dsched, OID_AUTO, stats, CTLTYPE_OPAQUE|CTLFLAG_RD,
 SYSCTL_PROC(_dsched, OID_AUTO, policies, CTLTYPE_STRING|CTLFLAG_RD,
     NULL, 0, sysctl_dsched_list_policies, "A", "names of available policies");
 
+static void
+dsched_sysctl_add_disk(struct dsched_disk_ctx *diskctx, char *name)
+{
+	if (!(diskctx->flags & DSCHED_SYSCTL_CTX_INITED)) {
+		diskctx->flags |= DSCHED_SYSCTL_CTX_INITED;
+		sysctl_ctx_init(&diskctx->sysctl_ctx);
+	}
+
+	SYSCTL_ADD_PROC(&diskctx->sysctl_ctx, SYSCTL_STATIC_CHILDREN(_dsched_policy),
+	    OID_AUTO, name, CTLTYPE_STRING|CTLFLAG_RW,
+	    diskctx, 0, sysctl_dsched_policy, "A", "policy");
+}

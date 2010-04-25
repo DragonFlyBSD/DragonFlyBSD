@@ -105,8 +105,11 @@ struct dsched_disk_ctx {
 	struct lock	lock;
 
 	int32_t		refcount;
+	int32_t		flags;
 
 	struct disk	*dp;		/* back pointer to disk struct */
+
+	struct sysctl_ctx_list sysctl_ctx;
 };
 
 struct dsched_thread_io {
@@ -183,8 +186,11 @@ TAILQ_HEAD(dsched_policy_head, dsched_policy);
 #define DSCHED_THREAD_CTX_UNLOCK(x)	lockmgr(&(x)->lock, LK_RELEASE);\
 					dsched_thread_ctx_unref((x))
 
+/* flags for thread_io */
 #define	DSCHED_LINKED_DISK_CTX		0x01
 #define	DSCHED_LINKED_THREAD_CTX	0x02
+/* flags for disk_ctx */
+#define	DSCHED_SYSCTL_CTX_INITED	0x01
 
 #define DSCHED_THREAD_CTX_MAX_SZ	sizeof(struct dsched_thread_ctx)
 #define DSCHED_THREAD_IO_MAX_SZ		256
