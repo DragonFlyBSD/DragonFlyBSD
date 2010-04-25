@@ -688,7 +688,6 @@ mxge_validate_firmware(mxge_softc_t *sc, const mcp_gen_header_t *hdr)
 
 }
 
-#if 0
 static void *
 z_alloc(void *nil, u_int items, u_int size)
 {
@@ -703,12 +702,14 @@ z_free(void *nil, void *ptr)
 {
         kfree(ptr, M_TEMP);
 }
-#endif
+
 
 static int
 mxge_load_firmware_helper(mxge_softc_t *sc, uint32_t *limit)
 {
-	struct fw_image *fw;
+	z_stream zs;
+	char *inflate_buffer;
+	const struct firmware *fw;
 	const mcp_gen_header_t *hdr;
 	unsigned hdr_offset;
 	int status;
@@ -716,13 +717,15 @@ mxge_load_firmware_helper(mxge_softc_t *sc, uint32_t *limit)
 	char dummy;
 	size_t fw_len;
 
-	fw = firmware_image_load(sc->fw_name, NULL);
+	fw = firmware_get(sc->fw_name);
 	if (fw == NULL) {
 		device_printf(sc->dev, "Could not find firmware image %s\n",
 			      sc->fw_name);
 		return ENOENT;
 	}
-#if 0
+
+
+
 	/* setup zlib and decompress f/w */
 	bzero(&zs, sizeof (zs));
 	zs.zalloc = z_alloc;
@@ -749,26 +752,25 @@ mxge_load_firmware_helper(mxge_softc_t *sc, uint32_t *limit)
 		status = EIO;
 		goto abort_with_buffer;
 	}
-#endif
-	fw_len = fw->fw_imglen;
+
 	/* check id */
 	hdr_offset = htobe32(*(const uint32_t *)
-			     (fw->fw_image + MCP_HEADER_PTR_OFFSET));
+			     (inflate_buffer + MCP_HEADER_PTR_OFFSET));
 	if ((hdr_offset & 3) || hdr_offset + sizeof(*hdr) > fw_len) {
 		device_printf(sc->dev, "Bad firmware file");
 		status = EIO;
-		goto abort_with_fw;
+		goto abort_with_buffer;
 	}
-	hdr = (const void*)(fw->fw_image + hdr_offset); 
+	hdr = (const void*)(inflate_buffer + hdr_offset);
 
 	status = mxge_validate_firmware(sc, hdr);
 	if (status != 0)
-		goto abort_with_fw;
+		goto abort_with_buffer;
 
 	/* Copy the inflated firmware to NIC SRAM. */
 	for (i = 0; i < fw_len; i += 256) {
 		mxge_pio_copy(sc->sram + MXGE_FW_OFFSET + i,
-			      fw->fw_image + i,
+			      inflate_buffer + i,
 			      min(256U, (unsigned)(fw_len - i)));
 		wmb();
 		dummy = *sc->sram;
@@ -777,14 +779,12 @@ mxge_load_firmware_helper(mxge_softc_t *sc, uint32_t *limit)
 
 	*limit = fw_len;
 	status = 0;
-#if 0
 abort_with_buffer:
 	kfree(inflate_buffer, M_TEMP);
 abort_with_zs:
 	inflateEnd(&zs);
-#endif
 abort_with_fw:
-	firmware_image_unload(fw);
+	firmware_put(fw, FIRMWARE_UNLOAD);
 	return status;
 }
 

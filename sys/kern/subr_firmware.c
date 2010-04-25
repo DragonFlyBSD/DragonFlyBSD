@@ -38,7 +38,7 @@
 #include <sys/spinlock2.h>
 #include <sys/errno.h>
 #include <sys/linker.h>
-#include <sys/fbsd_firmware.h>
+#include <sys/firmware.h>
 #include <sys/priv.h>
 #include <sys/proc.h>
 #include <sys/module.h>
@@ -545,10 +545,10 @@ firmware_modevent(module_t mod, int type, void *unused)
 	return EINVAL;
 }
 
-static moduledata_t fbsd_firmware_mod = {
-	"fbsd_firmware",
+static moduledata_t firmware_mod = {
+	"firmware",
 	firmware_modevent,
 	NULL
 };
-DECLARE_MODULE(fbsd_firmware, fbsd_firmware_mod, SI_SUB_DRIVERS, SI_ORDER_FIRST);
-MODULE_VERSION(fbsd_firmware, 1);
+DECLARE_MODULE(firmware, firmware_mod, SI_SUB_DRIVERS, SI_ORDER_FIRST);
+MODULE_VERSION(firmware, 1);

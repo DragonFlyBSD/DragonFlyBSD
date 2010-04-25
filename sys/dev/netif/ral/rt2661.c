@@ -38,7 +38,7 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/endian.h>
-#include <sys/fbsd_firmware.h>
+#include <sys/firmware.h>
 #include <sys/rman.h>
 
 #include <net/bpf.h>

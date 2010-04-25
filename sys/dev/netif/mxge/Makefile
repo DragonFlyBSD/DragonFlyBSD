@@ -1,10 +1,9 @@
-KMOD=	if_mxge
-SRCS=	if_mxge.c
-SRCS+=	device_if.h bus_if.h pci_if.h opt_inet.h
+# $FreeBSD: src/sys/modules/mxge/Makefile,v 1.3 2008/01/15 20:34:48 gallatin Exp $
 
-.ifndef BUILDING_WITH_KERNEL
-opt_inet.h:
-	echo "#define INET 1" > ${.TARGET}
-.endif
+SUBDIR= mxge
+SUBDIR+=mxge_eth_z8e
+SUBDIR+=mxge_ethp_z8e
+SUBDIR+=mxge_rss_eth_z8e
+SUBDIR+=mxge_rss_ethp_z8e
 
-.include <bsd.kmod.mk>
+.include <bsd.subdir.mk>

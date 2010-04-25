@@ -664,7 +664,6 @@ kern/kern_environment.c	standard
 kern/kern_event.c	standard
 kern/kern_exec.c	standard
 kern/kern_exit.c	standard
-kern/subr_firmware.c	standard
 kern/kern_fork.c	standard
 kern/kern_jail.c	standard
 kern/kern_kinfo.c	standard
@@ -728,6 +727,7 @@ kern/subr_disklabel32.c	standard
 kern/subr_disklabel64.c	standard
 kern/subr_diskslice.c	standard
 kern/subr_eventhandler.c	standard
+kern/subr_firmware.c    optional firmware
 kern/subr_kcore.c	standard
 kern/subr_kobj.c	standard
 kern/subr_log.c		standard

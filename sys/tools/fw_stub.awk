@@ -126,7 +126,7 @@ printc("#include <sys/param.h>\
 #include <sys/kernel.h>\
 #include <sys/module.h>\
 #include <sys/linker.h>\
-#include <sys/fbsd_firmware.h>\
+#include <sys/firmware.h>\
 #include <sys/systm.h>\n");
 
 if (opt_l) {

@@ -1213,6 +1213,12 @@ TO_REMOVE+=/usr/share/man/man4/wlan_ratectl_onoe.4.gz
 TO_REMOVE+=/usr/share/man/cat4/wlan_ratectl_sample.4.gz
 TO_REMOVE+=/usr/share/man/man4/wlan_ratectl_sample.4.gz
 TO_REMOVE+=/usr/include/kadm5
+TO_REMOVE+=/usr/include/sys/fbsd_firmware.h
+TO_REMOVE+=/boot/modules/fbsd_firmware.ko
+TO_REMOVE+=/usr/share/man/cat9/firmware_image_load.9.gz
+TO_REMOVE+=/usr/share/man/man9/firmware_image_load.9.gz
+TO_REMOVE+=/usr/share/man/cat9/firmware_image_unload.9.gz
+TO_REMOVE+=/usr/share/man/man9/firmware_image_unload.9.gz
 
 # XXX Remove when adjusted to the new 802.11 framework
 TO_REMOVE+=/boot/modules/if_acx.ko

@@ -72,6 +72,9 @@ device		isa
 device		eisa
 device		pci
 
+# Firmware assist module
+device		firmware	# firmware assist module
+
 # Floppy drives
 device		fdc0	at isa? port IO_FD1 irq 6 drq 2
 device		fd0	at fdc0 drive 0
@@ -217,7 +220,6 @@ device		lpt		# Printer
 device		plip		# TCP/IP over parallel
 device		ppi		# Parallel port interface device
 #device		vpo		# Requires scbus and da
-
 
 # PCI Ethernet NICs.
 device		de		# DEC/Intel DC21x4x (``Tulip'')
