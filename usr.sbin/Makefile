@@ -130,6 +130,7 @@ SUBDIR= 802_11 \
 	vnconfig \
 	watch \
 	watchdogd \
+	wlandebug \
 	xten \
 	yp_mkdb \
 	ypbind \

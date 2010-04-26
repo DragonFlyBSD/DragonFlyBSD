@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2002-2004 Sam Leffler, Errno Consulting
+ * Copyright (c) 2002-2009 Sam Leffler, Errno Consulting
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -12,13 +12,6 @@
  *    similar to the "NO WARRANTY" disclaimer below ("Disclaimer") and any
  *    redistribution must be conditioned upon including a substantially
  *    similar Disclaimer requirement for further binary redistribution.
- * 3. Neither the names of the above-listed copyright holders nor the names
- *    of any contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * Alternatively, this software may be distributed under the terms of the
- * GNU General Public License ("GPL") version 2 as published by the Free
- * Software Foundation.
  *
  * NO WARRANTY
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
@@ -33,30 +26,64 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
- * $FreeBSD: src/tools/tools/net80211/wlandebug/wlandebug.c,v 1.3 2007/01/12 05:36:17 sam Exp $
- * $DragonFly: src/tools/tools/wlandebug/wlandebug.c,v 1.1 2007/03/04 13:15:48 sephe Exp $
+ * $FreeBSD: src/usr.sbin/wlandebug/wlandebug.c,v 1.11 2009/07/17 21:11:08 sam Exp $
  */
 
 /*
- * wlandebug -i interface [flags]
+ * wlandebug [-i interface] flags
+ * (default interface is wlan.0).
  */
-
 #include <sys/types.h>
-#include <netproto/802_11/ieee80211_var.h>
+#include <sys/sysctl.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <ctype.h>
 #include <getopt.h>
 #include <string.h>
+#include <err.h>
 
 #define	N(a)	(sizeof(a)/sizeof(a[0]))
 
 const char *progname;
 
+#define	IEEE80211_MSG_11N	0x80000000	/* 11n mode debug */
+#define	IEEE80211_MSG_DEBUG	0x40000000	/* IFF_DEBUG equivalent */
+#define	IEEE80211_MSG_DUMPPKTS	0x20000000	/* IFF_LINK2 equivalant */
+#define	IEEE80211_MSG_CRYPTO	0x10000000	/* crypto work */
+#define	IEEE80211_MSG_INPUT	0x08000000	/* input handling */
+#define	IEEE80211_MSG_XRATE	0x04000000	/* rate set handling */
+#define	IEEE80211_MSG_ELEMID	0x02000000	/* element id parsing */
+#define	IEEE80211_MSG_NODE	0x01000000	/* node handling */
+#define	IEEE80211_MSG_ASSOC	0x00800000	/* association handling */
+#define	IEEE80211_MSG_AUTH	0x00400000	/* authentication handling */
+#define	IEEE80211_MSG_SCAN	0x00200000	/* scanning */
+#define	IEEE80211_MSG_OUTPUT	0x00100000	/* output handling */
+#define	IEEE80211_MSG_STATE	0x00080000	/* state machine */
+#define	IEEE80211_MSG_POWER	0x00040000	/* power save handling */
+#define	IEEE80211_MSG_HWMP	0x00020000	/* hybrid mesh protocol */
+#define	IEEE80211_MSG_DOT1XSM	0x00010000	/* 802.1x state machine */
+#define	IEEE80211_MSG_RADIUS	0x00008000	/* 802.1x radius client */
+#define	IEEE80211_MSG_RADDUMP	0x00004000	/* dump 802.1x radius packets */
+#define	IEEE80211_MSG_MESH	0x00002000	/* mesh networking */
+#define	IEEE80211_MSG_WPA	0x00001000	/* WPA/RSN protocol */
+#define	IEEE80211_MSG_ACL	0x00000800	/* ACL handling */
+#define	IEEE80211_MSG_WME	0x00000400	/* WME protocol */
+#define	IEEE80211_MSG_SUPERG	0x00000200	/* Atheros SuperG protocol */
+#define	IEEE80211_MSG_DOTH	0x00000100	/* 802.11h support */
+#define	IEEE80211_MSG_INACT	0x00000080	/* inactivity handling */
+#define	IEEE80211_MSG_ROAM	0x00000040	/* sta-mode roaming */
+#define	IEEE80211_MSG_RATECTL	0x00000020	/* tx rate control */
+#define	IEEE80211_MSG_ACTION	0x00000010	/* action frame handling */
+#define	IEEE80211_MSG_WDS	0x00000008	/* WDS handling */
+#define	IEEE80211_MSG_IOCTL	0x00000004	/* ioctl handling */
+#define	IEEE80211_MSG_TDMA	0x00000002	/* TDMA handling */
+
 static struct {
 	const char	*name;
 	u_int		bit;
 } flags[] = {
+	{ "11n",	IEEE80211_MSG_11N },
 	{ "debug",	IEEE80211_MSG_DEBUG },
 	{ "dumppkts",	IEEE80211_MSG_DUMPPKTS },
 	{ "crypto",	IEEE80211_MSG_CRYPTO },
@@ -70,18 +97,23 @@ static struct {
 	{ "output",	IEEE80211_MSG_OUTPUT },
 	{ "state",	IEEE80211_MSG_STATE },
 	{ "power",	IEEE80211_MSG_POWER },
-	{ "dot1x",	IEEE80211_MSG_DOT1X },
+	{ "hwmp",	IEEE80211_MSG_HWMP },
 	{ "dot1xsm",	IEEE80211_MSG_DOT1XSM },
 	{ "radius",	IEEE80211_MSG_RADIUS },
 	{ "raddump",	IEEE80211_MSG_RADDUMP },
-	{ "radkeys",	IEEE80211_MSG_RADKEYS },
+	{ "mesh",	IEEE80211_MSG_MESH },
 	{ "wpa",	IEEE80211_MSG_WPA },
 	{ "acl",	IEEE80211_MSG_ACL },
 	{ "wme",	IEEE80211_MSG_WME },
 	{ "superg",	IEEE80211_MSG_SUPERG },
 	{ "doth",	IEEE80211_MSG_DOTH },
 	{ "inact",	IEEE80211_MSG_INACT },
-	{ "roam",	IEEE80211_MSG_ROAM }
+	{ "roam",	IEEE80211_MSG_ROAM },
+	{ "rate",	IEEE80211_MSG_RATECTL },
+	{ "action",	IEEE80211_MSG_ACTION },
+	{ "wds",	IEEE80211_MSG_WDS },
+	{ "ioctl",	IEEE80211_MSG_IOCTL },
+	{ "tdma",	IEEE80211_MSG_TDMA },
 };
 
 static u_int
@@ -95,63 +127,54 @@ getflag(const char *name, int len)
 	return 0;
 }
 
-static const char *
-getflagname(u_int flag)
-{
-	int i;
-
-	for (i = 0; i < N(flags); i++)
-		if (flags[i].bit == flag)
-			return flags[i].name;
-	return "???";
-}
-
 static void
 usage(void)
 {
 	int i;
 
-	fprintf(stderr, "usage: %s -i device [flags]\n", progname);
+	fprintf(stderr, "usage: %s [-d | -i device] [flags]\n", progname);
 	fprintf(stderr, "where flags are:\n");
 	for (i = 0; i < N(flags); i++)
 		printf("%s\n", flags[i].name);
 	exit(-1);
 }
 
+static void
+setoid(char oid[], size_t oidlen, const char *wlan)
+{
+	if (wlan)
+		snprintf(oid, oidlen, "net.wlan.%s.debug", wlan+4);
+	else
+		snprintf(oid, oidlen, "net.wlan.debug");
+}
+
 int
 main(int argc, char *argv[])
 {
-	const char *ifname = NULL;
 	const char *cp, *tp;
 	const char *sep;
-	int c, op, i, unit;
+	int op, i;
 	u_int32_t debug, ndebug;
-	size_t debuglen, parentlen;
-	char oid[256], parent[256];
+	size_t debuglen;
+	char oid[256];
 
 	progname = argv[0];
+	setoid(oid, sizeof(oid), "wlan0");
 	if (argc > 1) {
-		if (strcmp(argv[1], "-i") == 0) {
+		if (strcmp(argv[1], "-d") == 0) {
+			setoid(oid, sizeof(oid), NULL);
+			argc -= 1, argv += 1;
+		} else if (strcmp(argv[1], "-i") == 0) {
 			if (argc < 2)
 				errx(1, "missing interface name for -i option");
-			ifname = argv[2];
+			if (strncmp(argv[2], "wlan", 4) != 0)
+				errx(1, "expecting a wlan interface name");
+			setoid(oid, sizeof(oid), argv[2]);
 			argc -= 2, argv += 2;
-		}
+		} else if (strcmp(argv[1], "-?") == 0)
+			usage();
 	}
 
-	if (ifname == NULL)
-		usage();
-
-	for (unit = 0; unit < 10; unit++) {
-		snprintf(oid, sizeof(oid), "net.wlan.%d.%%parent", unit);
-		parentlen = sizeof(parent);
-		if (sysctlbyname(oid, parent, &parentlen, NULL, 0) >= 0 &&
-		    strncmp(parent, ifname, parentlen) == 0)
-			break;
-	}
-	if (unit == 10)
-		errx(1, "%s: cannot locate wlan sysctl node.", ifname);
-	snprintf(oid, sizeof(oid), "net.wlan.%d.debug", unit);
 	debuglen = sizeof(debug);
 	if (sysctlbyname(oid, &debug, &debuglen, NULL, 0) < 0)
 		err(1, "sysctl-get(%s)", oid);
@@ -178,11 +201,12 @@ main(int argc, char *argv[])
 				ndebug |= bit;
 			else {
 				if (bit == 0) {
-					if (isdigit(*cp))
+					int c = *cp;
+					if (isdigit(c))
 						bit = strtoul(cp, NULL, 0);
 					else
 						errx(1, "unknown flag %.*s",
-							tp-cp, cp);
+							(int)(tp-cp), cp);
 				}
 				ndebug = bit;
 			}

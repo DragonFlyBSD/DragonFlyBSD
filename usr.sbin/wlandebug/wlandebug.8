@@ -22,10 +22,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/tools/tools/net80211/wlandebug/wlandebug.8,v 1.2 2007/01/12 08:44:55 joel Exp $
-.\" $DragonFly: src/tools/tools/wlandebug/wlandebug.8,v 1.1 2007/03/04 13:15:48 sephe Exp $
+.\" $FreeBSD: src/usr.sbin/wlandebug/wlandebug.8,v 1.8 2009/07/17 21:11:08 sam Exp $
 .\"
-.Dd March 4, 2007
+.Dd April 26, 2010
 .Dt WLANDEBUG 8
 .Os
 .Sh NAME
@@ -33,7 +32,7 @@
 .Nd "set/query 802.11 wireless debugging messages"
 .Sh SYNOPSIS
 .Nm
-.Fl i Ar ifnet
+.Op Fl d | Fl i Ar ifnet
 .Op Fl flag|+flag Ar ...
 .Sh DESCRIPTION
 The
@@ -44,11 +43,13 @@ debugging messages in the
 module.
 Running
 .Nm
-with
-.Fl i Ar ifnet
-will display the current messages
-enabled for
-.Ar ifnet .
+without any options will display the current messages
+enabled for the specified network interface
+(by default, ``ath0').
+The default debugging level for new interfaces can be set
+by specifying the
+.Fl d
+option.
 When run as the super-user
 .Nm
 can be used to enable and/or disable debugging messages.
@@ -96,11 +97,8 @@ state machine operation.
 802.11 power save operation; in hostap mode this enables
 copious information about buffered frames for stations operating
 in power save mode.
-.It Ar dot1x
-802.1x operation; not presently meaningful as 802.1x protocol
-support is implemented in user mode by the
-.Xr hostapd 8
-program.
+.It Ar hwmp
+trace operation of Hybrid Wireless Mesh Protocol processing.
 .It Ar dot1xsm
 802.1x state machine operation; not presently meaningful as 802.1x protocol
 support is implemented in user mode by the
@@ -118,15 +116,10 @@ not presently meaningful as 802.1x protocol
 support is implemented in user mode by the
 .Xr hostapd 8
 program.
-.It Ar radkeys
-include key contents when dumping packets exchanged with the
-radius backend for 802.1x operation;
-not presently meaningful as 802.1x protocol
-support is implemented in user mode by the
-.Xr hostapd 8
-program.
+.It Ar mesh
+trace operation of 802.11s mesh protocol processing.
 .It Ar wpa
-trace operation of the WPA protocol; 
+trace operation of the WPA protocol;
 only partly meaningful as WPA protocol
 support is mostly implemented in user mode by the
 .Xr hostapd 8
@@ -149,16 +142,21 @@ show when stations associated to an access point are dropped due to
 inactivity.
 .It Ar roam
 trace station mode roaming between access points.
+.It Ar rate
+trace transmit rate control operation.
 .El
 .Sh EXAMPLES
 The following might be used to debug basic station mode operation:
 .Pp
-.Dl "wlandebug -i ral0 +scan+auth+assoc"
+.Dl "wlandebug -i ral0 scan+auth+assoc"
 .Pp
 it enables debug messages while scanning, authenticating to
 an access point, and associating to an access point.
 .Sh SEE ALSO
-.Xr ifconfig 8
+.Xr athdebug 8 ,
+.Xr athstats 8 ,
+.Xr ifconfig 8 ,
+.Xr wlanstats 8
 .Sh NOTES
 Different wireless drivers support different debugging messages.
 Drivers such as
