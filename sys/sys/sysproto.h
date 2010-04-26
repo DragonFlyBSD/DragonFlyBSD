@@ -1597,32 +1597,36 @@ struct	extattrctl_args {
 #endif
 	const char *	path;	char path_[PAD_(const char *)];
 	int	cmd;	char cmd_[PAD_(int)];
+	const char *	filename;	char filename_[PAD_(const char *)];
+	int	attrnamespace;	char attrnamespace_[PAD_(int)];
 	const char *	attrname;	char attrname_[PAD_(const char *)];
-	char *	arg;	char arg_[PAD_(char *)];
 };
 struct	extattr_set_file_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
 #endif
 	const char *	path;	char path_[PAD_(const char *)];
+	int	attrnamespace;	char attrnamespace_[PAD_(int)];
 	const char *	attrname;	char attrname_[PAD_(const char *)];
-	struct iovec *	iovp;	char iovp_[PAD_(struct iovec *)];
-	unsigned	iovcnt;	char iovcnt_[PAD_(unsigned)];
+	void *	data;	char data_[PAD_(void *)];
+	size_t	nbytes;	char nbytes_[PAD_(size_t)];
 };
 struct	extattr_get_file_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
 #endif
 	const char *	path;	char path_[PAD_(const char *)];
+	int	attrnamespace;	char attrnamespace_[PAD_(int)];
 	const char *	attrname;	char attrname_[PAD_(const char *)];
-	struct iovec *	iovp;	char iovp_[PAD_(struct iovec *)];
-	unsigned	iovcnt;	char iovcnt_[PAD_(unsigned)];
+	void *	data;	char data_[PAD_(void *)];
+	size_t	nbytes;	char nbytes_[PAD_(size_t)];
 };
 struct	extattr_delete_file_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
 #endif
 	const char *	path;	char path_[PAD_(const char *)];
+	int	attrnamespace;	char attrnamespace_[PAD_(int)];
 	const char *	attrname;	char attrname_[PAD_(const char *)];
 };
 struct	aio_waitcomplete_args {
