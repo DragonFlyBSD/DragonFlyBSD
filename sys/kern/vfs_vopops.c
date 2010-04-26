@@ -1099,8 +1099,8 @@ vop_aclcheck(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
  * MPSAFE
  */
 int
-vop_getextattr(struct vop_ops *ops, struct vnode *vp, char *name, 
-	struct uio *uio, struct ucred *cred)
+vop_getextattr(struct vop_ops *ops, struct vnode *vp, int attrnamespace,
+	       char *attrname, struct uio *uio, struct ucred *cred)
 {
 	struct vop_getextattr_args ap;
 	VFS_MPLOCK_DECLARE;
@@ -1109,7 +1109,8 @@ vop_getextattr(struct vop_ops *ops, struct vnode *vp, char *name,
 	ap.a_head.a_desc = &vop_getextattr_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
-	ap.a_name = name;
+	ap.a_attrnamespace = attrnamespace;
+	ap.a_attrname = attrname;
 	ap.a_uio = uio;
 	ap.a_cred = cred;
 
@@ -1123,8 +1124,8 @@ vop_getextattr(struct vop_ops *ops, struct vnode *vp, char *name,
  * MPSAFE
  */
 int
-vop_setextattr(struct vop_ops *ops, struct vnode *vp, char *name, 
-	struct uio *uio, struct ucred *cred)
+vop_setextattr(struct vop_ops *ops, struct vnode *vp, int attrnamespace,
+	       char *attrname, struct uio *uio, struct ucred *cred)
 {
 	struct vop_setextattr_args ap;
 	VFS_MPLOCK_DECLARE;
@@ -1133,7 +1134,8 @@ vop_setextattr(struct vop_ops *ops, struct vnode *vp, char *name,
 	ap.a_head.a_desc = &vop_setextattr_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
-	ap.a_name = name;
+	ap.a_attrnamespace = attrnamespace;
+	ap.a_attrname = attrname;
 	ap.a_uio = uio;
 	ap.a_cred = cred;
 

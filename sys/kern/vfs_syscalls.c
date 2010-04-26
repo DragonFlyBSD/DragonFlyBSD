@@ -4433,32 +4433,53 @@ int
 sys_extattrctl(struct extattrctl_args *uap)
 {
 	struct nlookupdata nd;
-	struct mount *mp;
 	struct vnode *vp;
+	char attrname[EXTATTR_MAXNAMELEN];
 	int error;
+	size_t size;
 
-	vp = NULL;
 	get_mplock();
-	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
-	if (error == 0)
-		error = nlookup(&nd);
-	if (error == 0) {
-		mp = nd.nl_nch.mount;
-		error = VFS_EXTATTRCTL(mp, uap->cmd, 
-				uap->attrname, uap->arg, 
-				nd.nl_cred);
+
+	attrname[0] = 0;
+	vp = NULL;
+	error = 0;
+
+	if (error == 0 && uap->filename) {
+		error = nlookup_init(&nd, uap->filename, UIO_USERSPACE,
+				     NLC_FOLLOW);
+		if (error == 0)
+			error = nlookup(&nd);
+		if (error == 0)
+			error = cache_vref(&nd.nl_nch, nd.nl_cred, &vp);
+		nlookup_done(&nd);
 	}
-	nlookup_done(&nd);
+
+	if (error == 0 && uap->attrname) {
+		error = copyinstr(uap->attrname, attrname, EXTATTR_MAXNAMELEN,
+				  &size);
+	}
+
+	if (error == 0) {
+		error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+		if (error == 0)
+			error = nlookup(&nd);
+		if (error == 0)
+			error = ncp_writechk(&nd.nl_nch);
+		if (error == 0) {
+			error = VFS_EXTATTRCTL(nd.nl_nch.mount, uap->cmd, vp,
+					       uap->attrnamespace,
+					       uap->attrname, nd.nl_cred);
+		}
+		nlookup_done(&nd);
+	}
+
 	rel_mplock();
 
 	return (error);
 }
 
 /*
- * Syscall to set a named extended attribute on a file or directory.
- * Accepts attribute name, and a uio structure pointing to the data to set.
- * The uio is consumed in the style of writev().  The real work happens
- * in VOP_SETEXTATTR().
+ * Syscall to get a named extended attribute on a file or directory.
  *
  * MPALMOSTSAFE
  */
@@ -4466,16 +4487,11 @@ int
 sys_extattr_set_file(struct extattr_set_file_args *uap)
 {
 	char attrname[EXTATTR_MAXNAMELEN];
-	struct iovec aiov[UIO_SMALLIOV];
-	struct iovec *needfree;
 	struct nlookupdata nd;
-	struct iovec *iov;
 	struct vnode *vp;
 	struct uio auio;
-	u_int iovlen;
-	u_int cnt;
+	struct iovec aiov;
 	int error;
-	int i;
 
 	error = copyin(uap->attrname, attrname, EXTATTR_MAXNAMELEN);
 	if (error)
@@ -4483,6 +4499,7 @@ sys_extattr_set_file(struct extattr_set_file_args *uap)
 
 	vp = NULL;
 	get_mplock();
+
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
@@ -4496,53 +4513,27 @@ sys_extattr_set_file(struct extattr_set_file_args *uap)
 		return (error);
 	}
 
-	needfree = NULL;
-	iovlen = uap->iovcnt * sizeof(struct iovec);
-	if (uap->iovcnt > UIO_SMALLIOV) {
-		if (uap->iovcnt > UIO_MAXIOV) {
-			error = EINVAL;
-			goto done;
-		}
-		MALLOC(iov, struct iovec *, iovlen, M_IOV, M_WAITOK);
-		needfree = iov;
-	} else {
-		iov = aiov;
-	}
-	auio.uio_iov = iov;
-	auio.uio_iovcnt = uap->iovcnt;
-	auio.uio_rw = UIO_WRITE;
-	auio.uio_segflg = UIO_USERSPACE;
-	auio.uio_td = nd.nl_td;
+	bzero(&auio, sizeof(auio));
+	aiov.iov_base = uap->data;
+	aiov.iov_len = uap->nbytes;
+	auio.uio_iov = &aiov;
+	auio.uio_iovcnt = 1;
 	auio.uio_offset = 0;
-	if ((error = copyin(uap->iovp, iov, iovlen)))
-		goto done;
-	auio.uio_resid = 0;
-	for (i = 0; i < uap->iovcnt; i++) {
-		if (iov->iov_len > LONG_MAX - auio.uio_resid) {
-			error = EINVAL;
-			goto done;
-		}
-		auio.uio_resid += iov->iov_len;
-		iov++;
-	}
-	cnt = auio.uio_resid;
-	error = VOP_SETEXTATTR(vp, attrname, &auio, nd.nl_cred);
-	cnt -= auio.uio_resid;
-	uap->sysmsg_result = cnt;
-done:
+	auio.uio_resid = uap->nbytes;
+	auio.uio_rw = UIO_WRITE;
+	auio.uio_td = curthread;
+
+	error = VOP_SETEXTATTR(vp, uap->attrnamespace, attrname,
+			       &auio, nd.nl_cred);
+
 	vput(vp);
 	nlookup_done(&nd);
 	rel_mplock();
-	if (needfree)
-		FREE(needfree, M_IOV);
 	return (error);
 }
 
 /*
  * Syscall to get a named extended attribute on a file or directory.
- * Accepts attribute name, and a uio structure pointing to a buffer for the
- * data.  The uio is consumed in the style of readv().  The real work
- * happens in VOP_GETEXTATTR();
  *
  * MPALMOSTSAFE
  */
@@ -4550,16 +4541,11 @@ int
 sys_extattr_get_file(struct extattr_get_file_args *uap)
 {
 	char attrname[EXTATTR_MAXNAMELEN];
-	struct iovec aiov[UIO_SMALLIOV];
-	struct iovec *needfree;
 	struct nlookupdata nd;
-	struct iovec *iov;
-	struct vnode *vp;
 	struct uio auio;
-	u_int iovlen;
-	u_int cnt;
+	struct iovec aiov;
+	struct vnode *vp;
 	int error;
-	int i;
 
 	error = copyin(uap->attrname, attrname, EXTATTR_MAXNAMELEN);
 	if (error)
@@ -4567,6 +4553,7 @@ sys_extattr_get_file(struct extattr_get_file_args *uap)
 
 	vp = NULL;
 	get_mplock();
+
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
@@ -4578,45 +4565,23 @@ sys_extattr_get_file(struct extattr_get_file_args *uap)
 		return (error);
 	}
 
-	iovlen = uap->iovcnt * sizeof (struct iovec);
-	needfree = NULL;
-	if (uap->iovcnt > UIO_SMALLIOV) {
-		if (uap->iovcnt > UIO_MAXIOV) {
-			error = EINVAL;
-			goto done;
-		}
-		MALLOC(iov, struct iovec *, iovlen, M_IOV, M_WAITOK);
-		needfree = iov;
-	} else {
-		iov = aiov;
-	}
-	auio.uio_iov = iov;
-	auio.uio_iovcnt = uap->iovcnt;
-	auio.uio_rw = UIO_READ;
-	auio.uio_segflg = UIO_USERSPACE;
-	auio.uio_td = nd.nl_td;
+	bzero(&auio, sizeof(auio));
+	aiov.iov_base = uap->data;
+	aiov.iov_len = uap->nbytes;
+	auio.uio_iov = &aiov;
+	auio.uio_iovcnt = 1;
 	auio.uio_offset = 0;
-	if ((error = copyin(uap->iovp, iov, iovlen)))
-		goto done;
-	auio.uio_resid = 0;
-	for (i = 0; i < uap->iovcnt; i++) {
-		if (iov->iov_len > LONG_MAX - auio.uio_resid) {
-			error = EINVAL;
-			goto done;
-		}
-		auio.uio_resid += iov->iov_len;
-		iov++;
-	}
-	cnt = auio.uio_resid;
-	error = VOP_GETEXTATTR(vp, attrname, &auio, nd.nl_cred);
-	cnt -= auio.uio_resid;
-	uap->sysmsg_result = cnt;
-done:
+	auio.uio_resid = uap->nbytes;
+	auio.uio_rw = UIO_READ;
+	auio.uio_td = curthread;
+
+	error = VOP_GETEXTATTR(vp, uap->attrnamespace, attrname,
+				&auio, nd.nl_cred);
+	uap->sysmsg_result = uap->nbytes - auio.uio_resid;
+
 	vput(vp);
 	nlookup_done(&nd);
 	rel_mplock();
-	if (needfree)
-		FREE(needfree, M_IOV);
 	return(error);
 }
 
@@ -4647,7 +4612,8 @@ sys_extattr_delete_file(struct extattr_delete_file_args *uap)
 	if (error == 0) {
 		error = cache_vget(&nd.nl_nch, nd.nl_cred, LK_EXCLUSIVE, &vp);
 		if (error == 0) {
-			error = VOP_SETEXTATTR(vp, attrname, NULL, nd.nl_cred);
+			error = VOP_SETEXTATTR(vp, uap->attrnamespace,
+					       attrname, NULL, nd.nl_cred);
 			vput(vp);
 		}
 	}

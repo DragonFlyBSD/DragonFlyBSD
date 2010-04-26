@@ -356,11 +356,11 @@ nullfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 }
 
 static int                        
-nullfs_extattrctl(struct mount *mp, int cmd, const char *attrname, caddr_t arg,
-		  struct ucred *cred)
+nullfs_extattrctl(struct mount *mp, int cmd, struct vnode *vp,
+		  int attrnamespace, const char *attrname, struct ucred *cred)
 {
-	return VFS_EXTATTRCTL(MOUNTTONULLMOUNT(mp)->nullm_vfs, cmd, attrname,
-	    arg, cred);
+	return VFS_EXTATTRCTL(MOUNTTONULLMOUNT(mp)->nullm_vfs, cmd,
+			      vp, attrnamespace, attrname, cred);
 }
 
 
