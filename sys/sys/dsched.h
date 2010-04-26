@@ -34,7 +34,7 @@
 #ifndef _SYS_DSCHED_H_
 #define	_SYS_DSCHED_H_
 
-#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+#if defined(_KERNEL)
 
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
@@ -252,7 +252,7 @@ dsched_exit_buf_t	dsched_exit_buf;
 dsched_exit_proc_t	dsched_exit_proc;
 dsched_exit_thread_t	dsched_exit_thread;
 
-#endif /* _KERNEL || _KERNEL_STRUCTURES */
+#endif /* _KERNEL */
 
 
 #define	DSCHED_NAME_LENGTH		64
