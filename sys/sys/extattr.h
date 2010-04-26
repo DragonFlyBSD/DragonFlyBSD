@@ -1,6 +1,8 @@
 /*-
- * Copyright (c) 1999 Robert N. M. Watson
+ * Copyright (c) 1999-2001 Robert N. M. Watson
  * All rights reserved.
+ *
+ * This software was developed by Robert Watson for the TrustedBSD Project.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,28 +25,44 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/sys/extattr.h,v 1.3 2000/01/19 06:07:34 rwatson Exp $
- * $DragonFly: src/sys/sys/extattr.h,v 1.3 2004/02/25 17:38:51 joerg Exp $
+ * $FreeBSD: src/sys/sys/extattr.h,v 1.19 2008/10/28 13:44:11 trasz Exp $
  */
 /*
- * Userland/kernel interface for Extended File System Attributes
- *
- * This code from the FreeBSD POSIX.1e implementation.  While the syscalls
- * are fully implemented, invoking the VFS vnops and VFS calls as necessary,
- * no file systems shipped with this version of FreeBSD implement these
- * calls.  Extensions to UFS/FFS to support extended attributes are
- * available from the POSIX.1e implementation page, or possibly in a more
- * recent version of FreeBSD.
- *
- * The POSIX.1e implementation page may be reached at:
- *   http://www.watson.org/fbsd-hardening/posix1e/
+ * Developed by the TrustedBSD Project.
+ * Support for extended filesystem attributes.
  */
 
 #ifndef _SYS_EXTATTR_H_
 #define	_SYS_EXTATTR_H_
+
+/*
+ * Defined name spaces for extended attributes.  Numeric constants are passed
+ * via system calls, but a user-friendly string is also defined.
+ */
+#define	EXTATTR_NAMESPACE_EMPTY		0x00000000
+#define	EXTATTR_NAMESPACE_EMPTY_STRING	"empty"
+#define	EXTATTR_NAMESPACE_USER		0x00000001
+#define	EXTATTR_NAMESPACE_USER_STRING	"user"
+#define	EXTATTR_NAMESPACE_SYSTEM	0x00000002
+#define	EXTATTR_NAMESPACE_SYSTEM_STRING	"system"
+
+/*
+ * The following macro is designed to initialize an array that maps
+ * extended-attribute namespace values to their names, e.g.:
+ *
+ * char *extattr_namespace_names[] = EXTATTR_NAMESPACE_NAMES;
+ */
+#define EXTATTR_NAMESPACE_NAMES { \
+	EXTATTR_NAMESPACE_EMPTY_STRING, \
+	EXTATTR_NAMESPACE_USER_STRING, \
+	EXTATTR_NAMESPACE_SYSTEM_STRING }
+
 #ifdef _KERNEL
 
 #define	EXTATTR_MAXNAMELEN	NAME_MAX
+struct thread;
+struct ucred;
+struct vnode;
 
 #else
 #include <sys/cdefs.h>
@@ -52,12 +70,31 @@
 struct iovec;
 
 __BEGIN_DECLS
-int	extattrctl(const char *, int, const char *, char *);
-int	extattr_delete_file(const char *, const char *);
-int	extattr_get_file(const char *, const char *,
-	    struct iovec *, unsigned);
-int	extattr_set_file(const char *, const char *,
-	    struct iovec *, unsigned);
+int	extattrctl(const char *_path, int _cmd, const char *_filename,
+	    int _attrnamespace, const char *_attrname);
+int	extattr_delete_fd(int _fd, int _attrnamespace, const char *_attrname);
+int	extattr_delete_file(const char *_path, int _attrnamespace,
+	    const char *_attrname);
+int	extattr_delete_link(const char *_path, int _attrnamespace,
+	    const char *_attrname);
+ssize_t	extattr_get_fd(int _fd, int _attrnamespace, const char *_attrname,
+	    void *_data, size_t _nbytes);
+ssize_t	extattr_get_file(const char *_path, int _attrnamespace,
+	    const char *_attrname, void *_data, size_t _nbytes);
+ssize_t	extattr_get_link(const char *_path, int _attrnamespace,
+	    const char *_attrname, void *_data, size_t _nbytes);
+ssize_t	extattr_list_fd(int _fd, int _attrnamespace, void *_data,
+	    size_t _nbytes);
+ssize_t	extattr_list_file(const char *_path, int _attrnamespace, void *_data,
+	    size_t _nbytes);
+ssize_t	extattr_list_link(const char *_path, int _attrnamespace, void *_data,
+	    size_t _nbytes);
+int	extattr_set_fd(int _fd, int _attrnamespace, const char *_attrname,
+	    const void *_data, size_t _nbytes);
+int	extattr_set_file(const char *_path, int _attrnamespace,
+	    const char *_attrname, const void *_data, size_t _nbytes);
+int	extattr_set_link(const char *_path, int _attrnamespace,
+	    const char *_attrname, const void *_data, size_t _nbytes);
 __END_DECLS
 
 #endif /* !_KERNEL */

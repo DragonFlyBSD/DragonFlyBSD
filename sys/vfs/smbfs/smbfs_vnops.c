@@ -835,7 +835,7 @@ smbfs_getextattr(struct vop_getextattr_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct ucred *cred = ap->a_cred;
 	struct uio *uio = ap->a_uio;
-	const char *name = ap->a_name;
+	const char *name = ap->a_attrname;
 	struct smbnode *np = VTOSMB(vp);
 	struct vattr vattr;
 	char buf[10];

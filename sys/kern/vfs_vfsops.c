@@ -294,14 +294,17 @@ vfs_uninit(struct vfsconf *vfc, struct vfsconf *vfsp)
  * MPSAFE
  */
 int
-vfs_extattrctl(struct mount *mp, int cmd, const char *attrname,
-	       caddr_t arg, struct ucred *cred)
+vfs_extattrctl(struct mount *mp, int cmd, struct vnode *vp,
+		 int attrnamespace, const char *attrname,
+		 struct ucred *cred)
 {
 	VFS_MPLOCK_DECLARE;
 	int error;
 
 	VFS_MPLOCK1(mp);
-	error = (mp->mnt_op->vfs_extattrctl)(mp, cmd, attrname, arg, cred);
+	error = (mp->mnt_op->vfs_extattrctl)(mp, cmd, vp,
+					     attrnamespace, attrname,
+					     cred);
 	VFS_MPUNLOCK(mp);
 	return (error);
 }

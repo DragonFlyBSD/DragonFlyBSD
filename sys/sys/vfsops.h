@@ -394,7 +394,8 @@ struct vop_aclcheck_args {
 struct vop_getextattr_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
-	char *a_name;
+	int a_attrnamespace;
+	char *a_attrname;
 	struct uio *a_uio;
 	struct ucred *a_cred;
 };
@@ -402,7 +403,8 @@ struct vop_getextattr_args {
 struct vop_setextattr_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
-	char *a_name;
+	int a_attrnamespace;
+	char *a_attrname;
 	struct uio *a_uio;
 	struct ucred *a_cred;
 };
@@ -806,10 +808,11 @@ int vop_setacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 		struct acl *aclp, struct ucred *cred);
 int vop_aclcheck(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 		struct acl *aclp, struct ucred *cred);
-int vop_getextattr(struct vop_ops *ops, struct vnode *vp, char *name, 
-		struct uio *uio, struct ucred *cred);
-int vop_setextattr(struct vop_ops *ops, struct vnode *vp, char *name, 
-		struct uio *uio, struct ucred *cred);
+
+int vop_getextattr(struct vop_ops *ops, struct vnode *vp, int attrnamespace,
+		char *attrname, struct uio *uio, struct ucred *cred);
+int vop_setextattr(struct vop_ops *ops, struct vnode *vp, int attrnamespace,
+		char *attrname, struct uio *uio, struct ucred *cred);
 int vop_mountctl(struct vop_ops *ops, struct vnode *vp, int op,
 		struct file *fp, const void *ctl, int ctllen,
 		void *buf, int buflen, int *res);
@@ -1036,10 +1039,10 @@ extern struct syslink_desc vop_nrename_desc;
 	vop_setacl(*(vp)->v_ops, vp, type, aclp, cred)
 #define VOP_ACLCHECK(vp, type, aclp, cred)		\
 	vop_aclcheck(*(vp)->v_ops, vp, type, aclp, cred)
-#define VOP_GETEXTATTR(vp, name, uio, cred)		\
-	vop_getextattr(*(vp)->v_ops, vp, name, uio, cred)
-#define VOP_SETEXTATTR(vp, name, uio, cred)		\
-	vop_setextattr(*(vp)->v_ops, vp, name, uio, cred)
+#define VOP_GETEXTATTR(vp, attrnamespace, attrname, uio, cred) \
+	vop_getextattr(*(vp)->v_ops, vp, attrnamespace, attrname, uio, cred)
+#define VOP_SETEXTATTR(vp, attrnamespace, attrname, uio, cred)	\
+	vop_setextattr(*(vp)->v_ops, vp, attrnamespace, attrname, uio, cred)
 #define VOP_MARKATIME(vp, cred)			\
 	vop_markatime(*(vp)->v_ops, vp, cred)
 /* no VOP_VFSSET() */

@@ -1036,7 +1036,8 @@ journal_setextattr(struct vop_setextattr_args *ap)
 #endif
 	    jrecord_write_cred(jrec, curthread, ap->a_cred);
 	    jrecord_write_vnode_ref(jrec, ap->a_vp);
-	    jrecord_leaf(jrec, JLEAF_ATTRNAME, ap->a_name, strlen(ap->a_name));
+	    jrecord_leaf(jrec, JLEAF_ATTRNAME, ap->a_attrname,
+			strlen(ap->a_attrname));
 	    save = jrecord_push(jrec, JTYPE_REDO);
 	    jrecord_write_uio(jrec, JLEAF_FILEDATA, ap->a_uio);
 	    jrecord_pop(jrec, save);

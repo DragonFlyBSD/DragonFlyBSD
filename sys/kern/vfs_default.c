@@ -1481,8 +1481,9 @@ vfs_stduninit(struct vfsconf *vfsp)
 }
 
 int
-vfs_stdextattrctl(struct mount *mp, int cmd, const char *attrname,
-	caddr_t arg, struct ucred *cred)
+vfs_stdextattrctl(struct mount *mp, int cmd, struct vnode *vp,
+		 int attrnamespace, const char *attrname,
+		 struct ucred *cred)
 {
 	return(EOPNOTSUPP);
 }

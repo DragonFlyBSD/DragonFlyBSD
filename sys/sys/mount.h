@@ -491,8 +491,9 @@ typedef int vfs_checkexp_t(struct mount *mp, struct sockaddr *nam,
 typedef int vfs_vptofh_t(struct vnode *vp, struct fid *fhp);
 typedef int vfs_init_t(struct vfsconf *);
 typedef int vfs_uninit_t(struct vfsconf *);
-typedef int vfs_extattrctl_t(struct mount *mp, int cmd,const char *attrname,
-	            caddr_t arg, struct ucred *cred);
+typedef int vfs_extattrctl_t(struct mount *mp, int cmd, struct vnode *vp,
+		    int attrnamespace, const char *attrname,
+		    struct ucred *cred);
 
 int vfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred);
 int vfs_start(struct mount *mp, int flags);
@@ -512,8 +513,9 @@ int vfs_checkexp(struct mount *mp, struct sockaddr *nam,
 int vfs_vptofh(struct vnode *vp, struct fid *fhp);
 int vfs_init(struct vfsconf *vfc);
 int vfs_uninit(struct vfsconf *vfc, struct vfsconf *vfsp);
-int vfs_extattrctl(struct mount *mp, int cmd,const char *attrname,
-				caddr_t arg, struct ucred *cred);
+int vfs_extattrctl(struct mount *mp, int cmd, struct vnode *vp,
+		    int attrnamespace, const char *attrname,
+		    struct ucred *cred);
 
 
 struct vfsops {
@@ -558,8 +560,8 @@ struct vfsops {
 	vfs_vptofh(VP, FIDP)
 #define VFS_CHECKEXP(MP, NAM, EXFLG, CRED)	\
 	vfs_checkexp(MP, NAM, EXFLG, CRED)
-#define VFS_EXTATTRCTL(MP, C, N, A, CRED)	\
-	vfs_extattrctl(MP, C, N, A, CRED)
+#define VFS_EXTATTRCTL(MP, C, FVP, NS, N, CRED)	\
+	vfs_extattrctl(MP, C, FVP, NS, N, CRED)
 
 #endif
 
