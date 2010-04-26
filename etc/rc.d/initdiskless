@@ -105,7 +105,7 @@ chkerr() {
 # Create a generic memory disk
 #
 mount_md() {
-	/sbin/mount_mfs -i 4096 -s $1 swap $2
+	/sbin/mount_tmpfs -s $1 tmpfs $2
 }
 
 # Create the memory filesystem if it has not already been created
@@ -113,9 +113,20 @@ mount_md() {
 create_md() {
 	if [ "x`eval echo \\$md_created_$1`" = "x" ]; then
 		if [ "x`eval echo \\$md_size_$1`" = "x" ]; then
-			md_size=4096
+			if [ "$1" = "etc" ]; then
+				md_size=12M
+			else
+				md_size=2M
+			fi
 		else
 			md_size=`eval echo \\$md_size_$1`
+
+			# for backwards compatibility...
+			# if it's a number, then treat it as number of sectors
+			#
+			if [ "$md_size" = "${md_size%%[!0-9]*}" ]; then
+				md_size=`expr $md_size '*' 512`
+			fi
 		fi
 		mount_md $md_size /$1
 		/bin/chmod 755 /$1
