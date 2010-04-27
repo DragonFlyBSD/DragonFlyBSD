@@ -82,7 +82,6 @@ MAN=	accept_filter.9 \
 	ieee80211.9 \
 	ieee80211_crypto.9 \
 	ieee80211_input.9 \
-	ieee80211_ioctl.9 \
 	ieee80211_node.9 \
 	ieee80211_output.9 \
 	ieee80211_proto.9 \
