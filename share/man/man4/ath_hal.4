@@ -27,42 +27,57 @@
 .\" THE POSSIBILITY OF SUCH DAMAGES.
 .\"
 .\" $FreeBSD: src/share/man/man4/ath_hal.4,v 1.13 2009/03/25 21:20:19 sam Exp $
-.\" $DragonFly: src/share/man/man4/ath_hal.4,v 1.2 2008/11/17 11:55:19 swildner Exp $
 .\"
-.Dd May 21, 2009
+.Dd April 27, 2010
 .Dt ATH_HAL 4
 .Os
 .Sh NAME
 .Nm ath_hal
 .Nd "Atheros Hardware Access Layer (HAL)"
 .Sh SYNOPSIS
-To compile this driver into the kernel,
-place the following line in your
-kernel configuration file:
-.Bd -ragged -offset indent
 .Cd "device ath_hal"
-.Ed
-.Pp
-Alternatively, to load the driver as a
-module at boot time, place the following line in
-.Xr loader.conf 5 :
-.Bd -literal -offset indent
-ath_hal_load="YES"
-.Ed
+.Cd "options AH_SUPPORT_AR5416"
+or
+.Cd "device ath_ar5210"
+.Cd "device ath_ar5211"
+.Cd "device ath_ar5212"
+.Cd "device ath_rf2413"
+.Cd "device ath_rf2417"
+.Cd "device ath_rf2425"
+.Cd "device ath_rf5111"
+.Cd "device ath_rf5112"
+.Cd "device ath_rf5413"
+.Cd "device ath_ar5416"
+.\".Cd "device ath_ar5312"
+.\".Cd "device ath_rf2136"
+.\".Cd "device ath_rf2137"
+.Cd "device ath_ar9160"
+.Cd "device ath_ar9280"
+.Cd "options AH_SUPPORT_AR5416"
 .Sh DESCRIPTION
-The
-.Nm
-module provides hardware support for wireless network adapters based on
+The hal provides hardware support for wireless network adapters based on
 the Atheros AR5210, AR5211, AR5212, AR5213, AR2413, AR2417, AR2425,
 AR5413, AR5416, AR5418, AR5424, AR9160, and AR9280 chips (and companion
 RF/baseband parts).
-This module is required by the
+This code is part of the
 .Xr ath 4
-driver.
-.Pp
-Devices supported by the
+driver but configured separately to allow fine-grained control
+over the set of chips supported.
+Selecting
 .Nm
-module come in either Cardbus or mini-PCI packages.
+enables support for all PCI and Cardbus devices.
+Note this includes AR5416, AR9160, and AR9280 devices and
+must be accompanied by the
+AH_SUPPORT_AR5416
+option to enable the extended hardware descriptor format used by
+AR5416 and later devices.
+.Pp
+Devices supported come in either Cardbus or mini-PCI packages.
+.Pp
+Historically this code has been released in a binary-only form
+and packaged as a separate module.
+With the release of source code for the hal this is no longer true
+and the code is tightly integrated with the driver.
 .Sh HARDWARE
 The following cards are among those supported by the
 .Nm
@@ -109,7 +124,6 @@ module:
 .El
 .Pp
 An up to date list can be found at
-.Pp
 .Pa http://customerproducts.atheros.com/customerproducts .
 .Sh SEE ALSO
 .Xr ath 4

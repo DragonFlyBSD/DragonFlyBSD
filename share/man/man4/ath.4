@@ -1,7 +1,7 @@
 .\"-
-.\" Copyright (c) 2002-2004 Sam Leffler, Errno Consulting
+.\" Copyright (c) 2002-2009 Sam Leffler, Errno Consulting
 .\" All rights reserved.
-.\""
+.\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
 .\" are met:
@@ -12,9 +12,6 @@
 .\"    similar to the "NO WARRANTY" disclaimer below ("Disclaimer") and any
 .\"    redistribution must be conditioned upon including a substantially
 .\"    similar Disclaimer requirement for further binary redistribution.
-.\" 3. Neither the names of the above-listed copyright holders nor the names
-.\"    of any contributors may be used to endorse or promote products derived
-.\"    from this software without specific prior written permission.
 .\"
 .\" NO WARRANTY
 .\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
@@ -29,10 +26,9 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" THE POSSIBILITY OF SUCH DAMAGES.
 .\"
-.\" $FreeBSD: /repoman/r/ncvs/src/share/man/man4/ath.4,v 1.40 2006/05/12 17:58:11 keramida Exp $
-.\" $DragonFly: src/share/man/man4/ath.4,v 1.11 2008/11/17 11:55:19 swildner Exp $
+.\" $FreeBSD: src/share/man/man4/ath.4,v 1.52 2010/03/21 17:53:54 sam Exp $
 .\"
-.Dd November 17, 2008
+.Dd April 27, 2010
 .Dt ATH 4
 .Os
 .Sh NAME
@@ -45,6 +41,7 @@ kernel configuration file:
 .Bd -ragged -offset indent
 .Cd "device ath"
 .Cd "device ath_hal"
+.Cd "options AH_SUPPORT_AR5416"
 .Cd "device ath_rate_sample"
 .Cd "device wlan"
 .Ed
@@ -59,14 +56,12 @@ if_ath_load="YES"
 The
 .Nm
 driver provides support for wireless network adapters based on
-the Atheros AR5210, AR5211, and AR5212 programming APIs.
-These APIs are used by a wide variety of chips; all chips with
+the Atheros AR5210, AR5211, AR5212, and AR5416 programming APIs.
+These APIs are used by a wide variety of chips; most all chips with
 a PCI and/or CardBus interface are supported.
-Chip-specific support is provided by the Atheros Hardware Access Layer
-(HAL), that is packaged separately.
 .Pp
 Supported features include 802.11 and 802.3 frames, power management, BSS,
-IBSS, and host-based access point operation modes.
+IBSS, MBSS, TDMA, and host-based access point operation modes.
 All host/device interaction is via DMA.
 .Pp
 The
@@ -82,42 +77,58 @@ speeds as above for 802.11a operation and
 1Mbps, 2Mbps, 5.5 Mbps and 11Mbps for 802.11b operation.
 AR5212-based devices support 802.11a, 802.11b, and 802.11g operation
 with transmit speeds appropriate to each.
+AR5416-class devices are capable of 802.11n operation
+but are supported only in legacy modes (802.11a, 11b, 11g).
 Most chips also support an Atheros Turbo Mode (TM) that operates in
 the 5Ghz frequency range with 2x the transmit speeds.
 Some chips also support Turbo mode in the 2.4Ghz range with 802.11g
 though this support is not presently available due to regulatory requirements.
 (Note that Turbo modes are, however,
 only interoperable with other Atheros-based devices.)
+AR5212-based devices also support half- (10MHz) and quarter-width (5MHz) channels.
 The actual transmit speed used is dependent on signal quality and the
 .Dq "rate control"
 algorithm employed by the driver.
 All chips support WEP encryption.
-The AR5212 has hardware support for the AES-CCM, TKIP, and Michael cryptographic
+AR5212 and AR5416 parts have hardware support for the
+AES-CCM, TKIP, and Michael cryptographic
 operations required for WPA.
 To enable encryption, use
 .Xr ifconfig 8
 as shown below.
 .Pp
-By default, the
-.Nm
-driver configures the card for BSS operation (aka infrastructure
-mode).
-This mode requires the use of an access point (base station).
-.Pp
-The
-.Nm
-driver also supports the standard IBSS point-to-point mode
-where stations can communicate amongst themselves without the
-aid of an access point.
-.Pp
-The driver may also be configured to operate in hostap mode.
-In this mode a host may function as an access point (base station).
-Access points are different than operating in IBSS mode.
-They operate in BSS mode.
-They allow for easier roaming and bridge all Ethernet traffic such
-that machines connected via an access point appear to be on the local
-Ethernet segment.
-.Pp
+The driver supports
+.Cm station ,
+.Cm adhoc ,
+.Cm adhoc-demo ,
+.Cm hostap ,
+.Cm mesh ,
+.Cm wds ,
+and
+.Cm monitor
+mode operation.
+Multiple
+.Cm hostap
+virtual interfaces may be configured for simultaneous
+use on cards that use a 5212 part.
+When multiple interfaces are configured each may have a separate
+mac address that is formed by setting the U/L bits in the mac
+address assigned to the underlying device.
+Any number of
+.Cm wds
+virtual interfaces may be configured together with
+.Cm hostap
+interfaces.
+Multiple
+.Cm station
+interfaces may be operated together with
+.Cm hostap
+interfaces to construct a wireless repeater device.
+The driver also support
+.Cm tdma
+operation when compiled with
+.Cd "options IEEE80211_SUPPORT_TDMA"
+(which also enables the required 802.11 support).
 For more information on configuring this device, see
 .Xr ifconfig 8 .
 .Pp
@@ -128,17 +139,59 @@ Wireless cards in Cardbus slots may be inserted and ejected on the fly.
 .Sh HARDWARE
 The
 .Nm
-driver supports all Atheros Cardbus or PCI cards,
+driver supports all Atheros Cardbus and PCI cards,
 except those that are based on the AR5005VL chipset.
 .Pp
 A list of cards that are supported can be found at
-.Pp
-.Pa http://customerproducts.atheros.com/customerproducts .
+.Pa http://customerproducts.atheros.com/customerproducts/default.asp .
 .Sh EXAMPLES
-Refer to the
-.Sx EXAMPLES
-section of
-.Xr wlan 4 .
+Join a specific BSS network with WEP encryption:
+.Bd -literal -offset indent
+ifconfig wlan0 create wlandev ath0
+ifconfig wlan0 inet 192.168.0.20 netmask 0xffffff00 ssid my_net \e
+	wepmode on wepkey 0x8736639624
+.Ed
+.Pp
+Join/create an 802.11b IBSS network with network name
+.Dq Li my_net :
+.Bd -literal -offset indent
+ifconfig wlan0 create wlandev ath0 wlanmode adhoc
+ifconfig wlan0 inet 192.168.0.22 netmask 0xffffff00 ssid my_net \e
+	mode 11b
+.Ed
+.Pp
+Create an 802.11g host-based access point:
+.Bd -literal -offset indent
+ifconfig wlan0 create wlandev ath0 wlanmode hostap
+ifconfig wlan0 inet 192.168.0.10 netmask 0xffffff00 ssid my_ap \e
+	mode 11g
+.Ed
+.Pp
+Create an 802.11a mesh station:
+.Bd -literal -offset indent
+ifconfig wlan0 create wlandev ath0 wlanmode mesh
+ifconfig wlan0 meshid my_mesh mode 11a inet 192.168.0.10/24
+.Ed
+.Pp
+Create two virtual 802.11a host-based access points, one with
+with WEP enabled and one with no security, and bridge them to
+the fxp0 (wired) device:
+.Bd -literal -offset indent
+ifconfig wlan0 create wlandev ath0 wlanmode hostap \e
+	ssid paying-customers wepmode on wepkey 0x1234567890 \e
+	mode 11a up
+ifconfig wlan1 create wlandev ath0 wlanmode hostap bssid \e
+	ssid freeloaders up
+ifconfig bridge0 create addm wlan0 addm wlan1 addm fxp0 up
+.Ed
+.Pp
+Create a master node in a two slot TDMA BSS configured to use
+2.5 millisecond slots.
+.Bd -literal -offset indent
+ifconfig wlan0 create wlandev ath0 wlanmode tdma \e
+	ssid tdma-test tmdaslot 0 tdmaslotlen 2500 \e
+	channel 36 up
+.Ed
 .Sh DIAGNOSTICS
 .Bl -diag
 .It "ath%d: unable to attach hardware; HAL status %u"
@@ -187,16 +240,9 @@ This should not happen.
 An invalid transmit rate was specified for an outgoing frame.
 The frame is discarded.
 This should not happen.
-.It "ath%d: ath_chan_set: unable to reset channel %u (%u Mhz)"
+.It "ath%d: ath_chan_set: unable to reset channel %u (%u MHz)"
 The Atheros Hardware Access Layer was unable to reset the hardware
 when switching channels during scanning.
-This should not happen.
-.It "ath%d: unable to allocate channel table"
-The driver was unable to allocate memory for the table used to hold
-the set of available channels.
-.It "ath%d: unable to collect channel list from hal"
-A problem occurred while querying the HAL to find the set of available
-channels for the device.
 This should not happen.
 .It "ath%d: failed to enable memory mapping"
 The driver was unable to enable memory-mapped I/O to the PCI device registers.
@@ -215,13 +261,16 @@ The driver was unable to install the device interrupt handler.
 This should not happen.
 .El
 .Sh SEE ALSO
-.Xr an 4 ,
-.Xr arp 4 ,
 .Xr ath_hal 4 ,
+.Xr cardbus 4 ,
 .Xr ifmedia 4 ,
-.Xr netintro 4 ,
-.Xr wi 4 ,
+.Xr intro 4 ,
+.Xr pcic 4 ,
 .Xr wlan 4 ,
+.Xr wlan_ccmp 4 ,
+.Xr wlan_tkip 4 ,
+.Xr wlan_wep 4 ,
+.Xr wlan_xauth 4 ,
 .Xr hostapd 8 ,
 .Xr ifconfig 8 ,
 .Xr wpa_supplicant 8
@@ -233,34 +282,12 @@ device driver first appeared in
 and was imported into
 .Dx 1.5 .
 .Sh CAVEATS
-Different regulatory domains have different default channels for adhoc
-mode.
-See
-.Xr ifconfig 8
-for information on how to change the channel.
-Different regulatory domains may not be able to communicate with each
-other with 802.11a as different regulatory domains do not necessarily
-have overlapping channels.
-.Pp
 Revision A1 of the D-LINK DWL-G520 and DWL-G650 are based on an
 Intersil PrismGT chip and are not supported by this driver.
-.Pp
-Revision v3 of the Netgear WG311 is based on a Marvell Libertas
-88W8335 and is not supported by this driver.
 .Sh BUGS
 There is no software retransmit; only hardware retransmit is used.
 .Pp
-The driver does not fully enable power-save operation of the chip;
-consequently power use is suboptimal.
-.Pp
-The driver honors the regulatory domain programmed into the EEPROM of a
-device and does not support overriding this setting.
-This is done to insure compliance with local regulatory agencies when
-operating as an access point.
-Unfortunately this also means that devices purchased for use in one locale
-may not be usable in another.
-Changes are planned to remove this restriction when operating in station mode.
+The driver does not fully enable power-save operation of the chip
+in station mode; consequently power use is suboptimal (e.g. on a laptop).
 .Pp
 WPA is not supported for 5210 parts.
-.Pp
-Atheros' SuperG functionality is not supported.
