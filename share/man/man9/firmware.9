@@ -127,7 +127,8 @@ tries to unregister the firmware image
 .Nm imagename
 from the system. The function is successful and returns 0
 if there are no pending references to the image, otherwise
-it does not unregister the image and returns EBUSY.
+it does not unregister the image and returns
+.Er EBUSY .
 .Pp
 .Fn firmware_get
 returns the requested firmware image.
@@ -252,8 +253,8 @@ IxNpeMicrocode.dat                      optional npe_fw                 \\
 .Pp
 Note that generating the firmware modules in this way requires
 the availability of the following tools:
-.Xr awk ,
-.Xr Make ,
+.Xr awk 1 ,
+.Xr make 1 ,
 the compiler and the linker.
 .Sh SEE ALSO
 .Xr module 9 ,
