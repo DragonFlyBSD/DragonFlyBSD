@@ -429,8 +429,6 @@ MLINKS+=ieee80211.9 ieee80211_chan2ieee.9 \
 	ieee80211.9 ieee80211_watchdog.9
 MLINKS+=ieee80211_crypto.9 ieee80211_crypto_encap.9
 MLINKS+=ieee80211_input.9 ieee80211_recv_mgmt.9
-MLINKS+=ieee80211_ioctl.9 ieee80211_cfgget.9 \
-	ieee80211_ioctl.9 ieee80211_cfgset.9
 MLINKS+=ieee80211_node.9 ieee80211_begin_scan.9 \
 	ieee80211_node.9 ieee80211_create_ibss.9 \
 	ieee80211_node.9 ieee80211_end_scan.9 \

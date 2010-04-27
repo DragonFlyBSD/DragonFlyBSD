@@ -1219,6 +1219,12 @@ TO_REMOVE+=/usr/share/man/cat9/firmware_image_load.9.gz
 TO_REMOVE+=/usr/share/man/man9/firmware_image_load.9.gz
 TO_REMOVE+=/usr/share/man/cat9/firmware_image_unload.9.gz
 TO_REMOVE+=/usr/share/man/man9/firmware_image_unload.9.gz
+TO_REMOVE+=/usr/share/man/cat9/ieee80211_cfgget.9.gz
+TO_REMOVE+=/usr/share/man/man9/ieee80211_cfgget.9.gz
+TO_REMOVE+=/usr/share/man/cat9/ieee80211_cfgset.9.gz
+TO_REMOVE+=/usr/share/man/man9/ieee80211_cfgset.9.gz
+TO_REMOVE+=/usr/share/man/cat9/ieee80211_ioctl.9.gz
+TO_REMOVE+=/usr/share/man/man9/ieee80211_ioctl.9.gz
 
 # XXX Remove when adjusted to the new 802.11 framework
 TO_REMOVE+=/boot/modules/if_acx.ko
