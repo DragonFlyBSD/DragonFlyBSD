@@ -42,17 +42,14 @@ static int ipsd_probe(device_t dev);
 static int ipsd_attach(device_t dev);
 static int ipsd_detach(device_t dev);
 
-#if 0
-static int ipsd_dump(void *arg, void *virtual, vm_offset_t physical, off_t offset, size_t length);
 static void ipsd_dump_map_sg(void *arg, bus_dma_segment_t *segs, int nsegs,
 			     int error);
 static void ipsd_dump_block_complete(ips_command_t *command);
-#endif
 
 static d_open_t ipsd_open;
 static d_close_t ipsd_close;
 static d_strategy_t ipsd_strategy;
-static d_dump_t ipsd_dump_helper;
+static d_dump_t ipsd_dump;
 
 static struct dev_ops ipsd_ops = {
 	{ "ipsd", IPSD_CDEV_MAJOR, D_DISK },
@@ -61,7 +58,7 @@ static struct dev_ops ipsd_ops = {
 	.d_strategy =	ipsd_strategy,
 	.d_read	=	physread,
 	.d_write =	physwrite,
-	.d_dump	=	ipsd_dump_helper,
+	.d_dump	=	ipsd_dump,
 };
 
 static device_method_t ipsd_methods[] = {
@@ -219,57 +216,18 @@ ipsd_detach(device_t dev)
 	return 0;
 }
 
-static int
-ipsd_dump_helper(struct dev_dump_args *ap)
-{
-	kprintf("dump support for IPS not yet working, will not dump\n");
-	return (ENODEV);
-
-#if 0
-	long blkcnt;
-	caddr_t va;
-	vm_offset_t addr, a;
-	int dumppages = MAXDUMPPGS;
-	int i;
-
-	addr = 0;
-	blkcnt = howmany(PAGE_SIZE, secsize);
-	while (count > 0) {
-		va = NULL;
-		if (count / blkcnt < dumppages)
-			dumppages = count / blkcnt;
-		for (i = 0; i < dumppages; i++) {
-			a = addr + (i * PAGE_SIZE);
-			if (!is_physical_memory(a))
-				a = 0;
-			va = pmap_kenter_temporary(trunc_page(a), i);
-		}
-
-		ipsd_dump(dev, va, 0, blkno, PAGE_SIZE * dumppages);
-		if (dumpstatus(addr, (off_t)count * DEV_BSIZE) < 0)
-			return (EINTR);
-		blkno += blkcnt * dumppages;
-		count -= blkcnt * dumppages;
-		addr += PAGE_SIZE * dumppages;
-	}
-	return (0);
-#endif
-}
-
-#if 0
 
 static int
-ipsd_dump(void *arg, void *virtual, vm_offset_t physical, off_t offset,
-          size_t length)
+ipsd_dump(struct dev_dump_args *ap)
 {
-	cdev_t dev = arg;
+	cdev_t dev = ap->a_head.a_dev;
 	ips_softc_t *sc;
 	ips_command_t *command;
 	ips_io_cmd *command_struct;
 	ipsdisk_softc_t *dsc;
 	off_t off;
 	uint8_t *va;
-	int len;
+	size_t len;
 	int error = 0;
 
 	dsc = dev->si_drv1;
@@ -289,9 +247,10 @@ ipsd_dump(void *arg, void *virtual, vm_offset_t physical, off_t offset,
 	command_struct->id = command->id;
 	command_struct->drivenum = sc->drives[dsc->disk_number].drivenum;
 
-	off = offset;
-	va = virtual;
+	off = ap->a_offset;
+	va = ap->a_virtual;
 
+	size_t length = ap->a_length;
 	while (length > 0) {
 		len = length > IPS_MAX_IO_SIZE ? IPS_MAX_IO_SIZE : length;
 		command_struct->lba = off / IPS_BLKSIZE;
@@ -376,5 +335,3 @@ ipsd_dump_block_complete(ips_command_t *command)
 	    BUS_DMASYNC_POSTWRITE);
 	bus_dmamap_unload(command->data_dmatag, command->data_dmamap);
 }
-
-#endif
