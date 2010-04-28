@@ -156,10 +156,6 @@ ips_io_request_callback(void *cmdptr, bus_dma_segment_t *segments, int segnum,
 		bus_dmamap_sync(command->data_dmatag, command->data_dmamap,
 				BUS_DMASYNC_PREWRITE);
 	}
-	/*
-	 * the cast to long long below is necessary because our b_pblkno
-	 * is 32bit wide whereas it's 64bit on FreeBSD-CURRENT.
-	 */
 	PRINTF(10, "ips test: command id: %d segments: %d "
 		"pblkno: %lld length: %d, ds_len: %d\n", command->id, segnum,
 		bio->bio_offset / IPS_BLKSIZE,
