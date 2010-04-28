@@ -80,12 +80,19 @@ MAN=	accept_filter.9 \
 	firmware.9 \
 	hash.9 \
 	ieee80211.9 \
+	ieee80211_amrr.9 \
+	ieee80211_beacon.9 \
+	ieee80211_bmiss.9 \
 	ieee80211_crypto.9 \
+	ieee80211_ddb.9 \
 	ieee80211_input.9 \
 	ieee80211_node.9 \
 	ieee80211_output.9 \
 	ieee80211_proto.9 \
 	ieee80211_radiotap.9 \
+	ieee80211_regdomain.9 \
+	ieee80211_scan.9 \
+	ieee80211_vap.9 \
 	ifnet.9 \
 	inittodr.9 \
 	intro.9 \
@@ -413,47 +420,83 @@ MLINKS+=ioctl.9 _IOR.9 \
 	ioctl.9 _IOW.9 \
 	ioctl.9 _IOWR.9 \
 	ioctl.9 _IO.9
-MLINKS+=ieee80211.9 ieee80211_chan2ieee.9 \
-	ieee80211.9 ieee80211_chan2mode.9 \
-	ieee80211.9 ieee80211_ieee2mhz.9 \
-	ieee80211.9 ieee80211_ifattach.9 \
-	ieee80211.9 ieee80211_ifdetach.9 \
-	ieee80211.9 ieee80211_media2rate.9 \
-	ieee80211.9 ieee80211_media_change.9 \
-	ieee80211.9 ieee80211_media_init.9 \
-	ieee80211.9 ieee80211_media_status.9 \
-	ieee80211.9 ieee80211_mhz2ieee.9 \
-	ieee80211.9 ieee80211_rate2media.9 \
-	ieee80211.9 ieee80211_setmode.9 \
-	ieee80211.9 ieee80211_watchdog.9
-MLINKS+=ieee80211_crypto.9 ieee80211_crypto_encap.9
-MLINKS+=ieee80211_input.9 ieee80211_recv_mgmt.9
-MLINKS+=ieee80211_node.9 ieee80211_begin_scan.9 \
-	ieee80211_node.9 ieee80211_create_ibss.9 \
-	ieee80211_node.9 ieee80211_end_scan.9 \
-	ieee80211_node.9 ieee80211_find_node.9 \
+MLINKS+=ieee80211.9 ieee80211_ifattach.9 \
+	ieee80211.9 ieee80211_ifdetach.9
+MLINKS+=ieee80211_amrr.9 ieee80211_amrr_choose.9 \
+	ieee80211_amrr.9 ieee80211_amrr_cleanup.9 \
+	ieee80211_amrr.9 ieee80211_amrr_init.9 \
+	ieee80211_amrr.9 ieee80211_amrr_node_init.9 \
+	ieee80211_amrr.9 ieee80211_amrr_setinterval.9 \
+	ieee80211_amrr.9 ieee80211_amrr_tx_complete.9 \
+	ieee80211_amrr.9 ieee80211_amrr_tx_update.9
+MLINKS+=ieee80211_beacon.9 ieee80211_beacon_alloc.9 \
+	ieee80211_beacon.9 ieee80211_beacon_notify.9 \
+	ieee80211_beacon.9 ieee80211_beacon_update.9
+MLINKS+=ieee80211_bmiss.9 ieee80211_beacon_miss.9
+MLINKS+=ieee80211_crypto.9 ieee80211_crypto_available.9 \
+	ieee80211_crypto.9 ieee80211_crypto_decap.9 \
+	ieee80211_crypto.9 ieee80211_crypto_delglobalkeys.9 \
+	ieee80211_crypto.9 ieee80211_crypto_delkey.9 \
+	ieee80211_crypto.9 ieee80211_crypto_demic.9 \
+	ieee80211_crypto.9 ieee80211_crypto_encap.9 \
+	ieee80211_crypto.9 ieee80211_crypto_enmic.9 \
+	ieee80211_crypto.9 ieee80211_crypto_newkey.9 \
+	ieee80211_crypto.9 ieee80211_crypto_register.9 \
+	ieee80211_crypto.9 ieee80211_crypto_reload_keys.9 \
+	ieee80211_crypto.9 ieee80211_crypto_setkey.9 \
+	ieee80211_crypto.9 ieee80211_crypto_unregister.9 \
+	ieee80211_crypto.9 ieee80211_key_update_begin.9 \
+	ieee80211_crypto.9 ieee80211_key_update_end.9 \
+	ieee80211_crypto.9 ieee80211_notify_michael_failure.9 \
+	ieee80211_crypto.9 ieee80211_notify_replay_failure.9
+MLINKS+=ieee80211_input.9 ieee80211_input_all.9
+MLINKS+=ieee80211_node.9 ieee80211_dump_node.9 \
+	ieee80211_node.9 ieee80211_dump_nodes.9 \
 	ieee80211_node.9 ieee80211_find_rxnode.9 \
-	ieee80211_node.9 ieee80211_find_txnode.9 \
+	ieee80211_node.9 ieee80211_find_rxnode_withkey.9 \
 	ieee80211_node.9 ieee80211_free_node.9 \
 	ieee80211_node.9 ieee80211_iterate_nodes.9 \
-	ieee80211_node.9 ieee80211_next_scan.9
-#	ieee80211_node.9 ieee80211_alloc_node.9 \
-#	ieee80211_node.9 ieee80211_dup_bss.9 \
-#	ieee80211_node.9 ieee80211_free_allnodes.9 \
-#	ieee80211_node.9 ieee80211_node_attach.9 \
-#	ieee80211_node.9 ieee80211_node_detach.9 \
-#	ieee80211_node.9 ieee80211_node_lateattach.9
-MLINKS+=ieee80211_output.9 ieee80211_add_rates.9 \
-	ieee80211_output.9 ieee80211_add_ssid.9 \
-	ieee80211_output.9 ieee80211_add_xrates.9 \
-	ieee80211_output.9 ieee80211_encap.9 \
-	ieee80211_output.9 ieee80211_send_mgmt.9
-MLINKS+=ieee80211_proto.9 ieee80211_dump_pkt.9 \
-	ieee80211_proto.9 ieee80211_fix_rate.9 \
-	ieee80211_proto.9 ieee80211_print_essid.9 \
-	ieee80211_proto.9 ieee80211_proto_attach.9 \
-	ieee80211_proto.9 ieee80211_proto_detach.9
-MLINKS+=ieee80211_radiotap.9 radiotap.9
+	ieee80211_node.9 ieee80211_ref_node.9 \
+	ieee80211_node.9 ieee80211_unref_node.9
+MLINKS+=ieee80211_output.9 ieee80211_process_callback.9 \
+	ieee80211_output.9 M_SEQNO_GET.9 \
+	ieee80211_output.9 M_WME_GETAC.9
+MLINKS+=ieee80211_proto.9 ieee80211_new_state.9 \
+	ieee80211_proto.9 ieee80211_resume_all.9 \
+	ieee80211_proto.9 ieee80211_start_all.9 \
+	ieee80211_proto.9 ieee80211_stop_all.9 \
+	ieee80211_proto.9 ieee80211_suspend_all.9 \
+	ieee80211_proto.9 ieee80211_wait_for_parent.9
+MLINKS+=ieee80211_radiotap.9 ieee80211_radiotap_active.9 \
+	ieee80211_radiotap.9 ieee80211_radiotap_active_vap.9 \
+	ieee80211_radiotap.9 ieee80211_radiotap_attach.9 \
+	ieee80211_radiotap.9 ieee80211_radiotap_tx.9 \
+	ieee80211_radiotap.9 radiotap.9
+MLINKS+=ieee80211_regdomain.9 ieee80211_alloc_countryie.9 \
+	ieee80211_regdomain.9 ieee80211_init_channels.9 \
+	ieee80211_regdomain.9 ieee80211_sort_channels.9
+MLINKS+=ieee80211_scan.9 ieee80211_add_scan.9 \
+	ieee80211_scan.9 ieee80211_bg_scan.9 \
+	ieee80211_scan.9 ieee80211_cancel_scan.9 \
+	ieee80211_scan.9 ieee80211_cancel_scan_any.9 \
+	ieee80211_scan.9 ieee80211_check_scan.9 \
+	ieee80211_scan.9 ieee80211_check_scan_current.9 \
+	ieee80211_scan.9 ieee80211_probe_curchan.9 \
+	ieee80211_scan.9 ieee80211_scan_assoc_fail.9 \
+	ieee80211_scan.9 ieee80211_scan_done.9 \
+	ieee80211_scan.9 ieee80211_scan_dump_channels.9 \
+	ieee80211_scan.9 ieee80211_scan_flush.9 \
+	ieee80211_scan.9 ieee80211_scan_iterate.9 \
+	ieee80211_scan.9 ieee80211_scanner_get.9 \
+	ieee80211_scan.9 ieee80211_scanner_register.9 \
+	ieee80211_scan.9 ieee80211_scanner_unregister.9 \
+	ieee80211_scan.9 ieee80211_scanner_unregister_all.9 \
+	ieee80211_scan.9 ieee80211_scan_next.9 \
+	ieee80211_scan.9 ieee80211_scan_timeout.9 \
+	ieee80211_scan.9 ieee80211_start_scan.9
+MLINKS+=ieee80211_vap.9 ieee80211_vap_attach.9 \
+	ieee80211_vap.9 ieee80211_vap_detach.9 \
+	ieee80211_vap.9 ieee80211_vap_setup.9
 MLINKS+=ifnet.9 ifaddr.9 \
 	ifnet.9 if_data.9 \
 	ifnet.9 ifqueue.9
