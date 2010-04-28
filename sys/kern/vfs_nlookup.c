@@ -471,12 +471,13 @@ nlookup(struct nlookupdata *nd)
 	    /*
 	     * Fast-track termination.  There is no parent directory of
 	     * the root in the same mount from the point of view of
-	     * the caller so return EPERM if NLC_REFDVP is specified.
-	     * e.g. 'rmdir /' is not allowed.
+	     * the caller so return EACCES if NLC_REFDVP is specified,
+	     * and EEXIST if NLC_CREATE is also specified.
+	     * e.g. 'rmdir /' or 'mkdir /' are not allowed.
 	     */
 	    if (*ptr == 0) {
 		if (nd->nl_flags & NLC_REFDVP)
-			error = EPERM;
+			error = (nd->nl_flags & NLC_CREATE) ? EEXIST : EACCES;
 		else
 			error = 0;
 		break;
