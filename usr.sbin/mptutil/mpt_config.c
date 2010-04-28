@@ -26,10 +26,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/mptutil/mpt_config.c,v 1.1 2009/08/14 13:13:12 scottl Exp $
  */
-
-#include <sys/cdefs.h>
-__RCSID("$FreeBSD: src/usr.sbin/mptutil/mpt_config.c,v 1.1 2009/08/14 13:13:12 scottl Exp $");
 
 #include <sys/param.h>
 #include <sys/errno.h>
@@ -132,7 +131,7 @@ mpt_lock_physdisk(struct mpt_standalone_disk *disk)
 
 static int
 mpt_lookup_standalone_disk(const char *name, struct mpt_standalone_disk *disks,
-    int ndisks, int *index)
+    int ndisks, int *idx)
 {
 	char *cp;
 	long bus, id;
@@ -150,7 +149,7 @@ mpt_lookup_standalone_disk(const char *name, struct mpt_standalone_disk *disks,
 			for (i = 0; i < ndisks; i++) {
 				if (disks[i].bus == (U8)bus &&
 				    disks[i].target == (U8)id) {
-					*index = i;
+					*idx = i;
 					return (0);
 				}
 			}
@@ -162,7 +161,7 @@ mpt_lookup_standalone_disk(const char *name, struct mpt_standalone_disk *disks,
 	if (name[0] == 'd' && name[1] == 'a') {
 		for (i = 0; i < ndisks; i++) {
 			if (strcmp(name, disks[i].devname) == 0) {
-				*index = i;
+				*idx = i;
 				return (0);
 			}
 		}
@@ -224,7 +223,7 @@ mpt_delete_physdisk(int fd, U8 PhysDiskNum)
  * implement it by deleting each array and disk by hand.
  */
 static int
-clear_config(int ac, char **av)
+clear_config(int ac __unused, char **av __unused)
 {
 	CONFIG_PAGE_IOC_2 *ioc2;
 	CONFIG_PAGE_IOC_2_RAID_VOL *vol;

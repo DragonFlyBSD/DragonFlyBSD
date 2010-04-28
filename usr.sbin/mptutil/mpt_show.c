@@ -26,10 +26,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/mptutil/mpt_show.c,v 1.2 2010/02/19 14:31:01 jhb Exp $
  */
-
-#include <sys/cdefs.h>
-__RCSID("$FreeBSD: src/usr.sbin/mptutil/mpt_show.c,v 1.2 2010/02/19 14:31:01 jhb Exp $");
 
 #include <sys/param.h>
 #include <sys/errno.h>
@@ -73,7 +72,7 @@ display_stripe_map(const char *label, U32 StripeMap)
 }
 
 static int
-show_adapter(int ac, char **av)
+show_adapter(int ac, char **av __unused)
 {
 	CONFIG_PAGE_MANUFACTURING_0 *man0;
 	CONFIG_PAGE_IOC_2 *ioc2;
@@ -272,7 +271,7 @@ print_spare_pools(U8 HotSparePool)
 }
 
 static int
-show_config(int ac, char **av)
+show_config(int ac, char **av __unused)
 {
 	CONFIG_PAGE_IOC_2 *ioc2;
 	CONFIG_PAGE_IOC_2_RAID_VOL *vol;
@@ -375,7 +374,7 @@ show_config(int ac, char **av)
 MPT_COMMAND(show, config, show_config);
 
 static int
-show_volumes(int ac, char **av)
+show_volumes(int ac, char **av __unused)
 {
 	CONFIG_PAGE_IOC_2 *ioc2;
 	CONFIG_PAGE_IOC_2_RAID_VOL *vol;
@@ -462,7 +461,7 @@ show_volumes(int ac, char **av)
 MPT_COMMAND(show, volumes, show_volumes);
 
 static int
-show_drives(int ac, char **av)
+show_drives(int ac, char **av __unused)
 {
 	struct mpt_drive_list *list;
 	struct mpt_standalone_disk *sdisks;

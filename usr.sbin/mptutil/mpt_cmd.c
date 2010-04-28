@@ -26,10 +26,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/mptutil/mpt_cmd.c,v 1.1 2009/08/14 13:13:12 scottl Exp $
  */
-
-#include <sys/cdefs.h>
-__RCSID("$FreeBSD: src/usr.sbin/mptutil/mpt_cmd.c,v 1.1 2009/08/14 13:13:12 scottl Exp $");
 
 #include <sys/param.h>
 #include <sys/errno.h>
@@ -501,7 +500,7 @@ mpt_write_config_page(int fd, void *buf, U16 *IOCStatus)
 int
 mpt_raid_action(int fd, U8 Action, U8 VolumeBus, U8 VolumeID, U8 PhysDiskNum,
     U32 ActionDataWord, void *buf, int len, RAID_VOL0_STATUS *VolumeStatus,
-    U32 *ActionData, int datalen, U16 *IOCStatus, U16 *ActionStatus, int write)
+    U32 *ActionData, int datalen, U16 *IOCStatus, U16 *ActionStatus, int write_act)
 {
 	struct mpt_raid_action raid_act;
 
@@ -520,7 +519,7 @@ mpt_raid_action(int fd, U8 Action, U8 VolumeBus, U8 VolumeID, U8 PhysDiskNum,
 	if (buf != NULL && len != 0) {
 		raid_act.buf = buf;
 		raid_act.len = len;
-		raid_act.write = write;
+		raid_act.write = write_act;
 	}
 
 	if (ioctl(fd, MPTIO_RAID_ACTION, &raid_act) < 0)

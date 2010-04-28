@@ -26,10 +26,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/mptutil/mpt_cam.c,v 1.2 2010/02/19 15:16:00 jhb Exp $
  */
-
-#include <sys/cdefs.h>
-__RCSID("$FreeBSD: src/usr.sbin/mptutil/mpt_cam.c,v 1.2 2010/02/19 15:16:00 jhb Exp $");
 
 #include <sys/param.h>
 #include <err.h>

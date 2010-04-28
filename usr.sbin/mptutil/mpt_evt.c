@@ -26,10 +26,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/mptutil/mpt_evt.c,v 1.1 2009/08/14 13:13:12 scottl Exp $
  */
-
-#include <sys/cdefs.h>
-__RCSID("$FreeBSD: src/usr.sbin/mptutil/mpt_evt.c,v 1.1 2009/08/14 13:13:12 scottl Exp $");
 
 #include <sys/param.h>
 #include <sys/errno.h>
@@ -55,7 +54,7 @@ mpt_get_events(int fd, U16 *IOCStatus)
  *  ID     Time   Type Log Data
  */
 static void
-mpt_print_event(MPI_LOG_0_ENTRY *entry, int verbose)
+mpt_print_event(MPI_LOG_0_ENTRY *entry, int verbose __unused)
 {
 	int i;
 
