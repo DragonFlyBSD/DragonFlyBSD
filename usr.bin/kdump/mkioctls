@@ -1,7 +1,8 @@
-set -e
-
+#!/bin/sh
+#
 # $FreeBSD: src/usr.bin/kdump/mkioctls,v 1.15.2.5 2002/11/15 18:22:31 ru Exp $
-# $DragonFly: src/usr.bin/kdump/mkioctls,v 1.9 2008/01/05 13:36:37 corecode Exp $
+
+set -e
 
 if [ "x$1" = "x-s" ]; then
 	use_switch=1
@@ -19,13 +20,12 @@ LC_ALL=C; export LC_ALL
 
 # Build a list of headers that have ioctls in them.
 # XXX should we use an ANSI cpp?
-# XXX netipx conflicts with netns (leave out netns).
-# XXX leave out cam/, isa/ pccard/, pci/, and usb/ because they
-#     are fake softlinks and handled by bus/
+# XXX leave out cam/, fs/, netatalk/, netatm/, netnatm/, netsmb/, nwfs/,
+#     and ufs/ because they are fake softlinks
 ioctl_includes=`
 	cd $1
 	find -s * -name '*.h' -follow |
-		egrep -v '^(netns/)|^(cam/)|^(isa/)|^(pccard/)|^(pci/)|^(usb/)|^(netproto/natm/)' |
+		egrep -v '^(cam/)|^(fs/)|^(netatalk/)|^(netatm/)|^(netnatm/)|^(netsmb/)|^(nwfs/)|^(ufs/)' |
 		xargs egrep -l \
 '^#[ 	]*define[ 	]+[A-Za-z_][A-Za-z0-9_]*[ 	]+_IO[^a-z0-9_]' |
 		awk '{printf("#include <%s>\\\\n", $1)}'
@@ -38,17 +38,8 @@ BEGIN {
 	print "/* XXX obnoxious prerequisites. */"
 	print "#define COMPAT_43"
 	print "#define _KERNEL_STRUCTURES"
-	print "#include <sys/param.h>"
-	print "#include <sys/devicestat.h>"
-	print "#include <sys/disklabel.h>"
-	print "#include <sys/diskslice.h>"
-	print "#include <sys/socket.h>"
-	print "#include <sys/time.h>"
 	print "#include <sys/tty.h>"
-	print "#include <net/ethernet.h>"
-	print "#include <net/if.h>"
 	print "#include <net/if_arp.h>"
-	print "#include <net/if_var.h>"
 	print "#include <net/route.h>"
 	print "#include <netatm/atm.h>"
 	print "#include <netatm/atm_if.h>"
@@ -56,20 +47,17 @@ BEGIN {
 	print "#include <netatm/atm_sys.h>"
 	print "#include <netinet/in.h>"
 	print "#include <net/ip_mroute/ip_mroute.h>"
-	print "#include <netinet6/in6_var.h>"
 	print "#include <netinet6/nd6.h>"
 	print "#include <netinet6/ip6_mroute.h>"
 	print "#include <stdio.h>"
 	print "#include <cam/cam.h>"
 	print ""
 	print ioctl_includes
-	print ""
 	print "const char *ioctlname(u_long);"
 	print ""
 	print "const char *"
 	print "ioctlname(u_long val)"
 	print "{"
-	print ""
 	if (use_switch)
 		print "\tswitch(val) {"
 }
