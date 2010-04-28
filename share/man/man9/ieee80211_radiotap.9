@@ -34,7 +34,7 @@
 .Nm ieee80211_radiotap
 .Nd 802.11 device packet capture support
 .Sh SYNOPSIS
-.In net80211/ieee80211_var.h
+.In netproto/802_11/ieee80211_var.h
 .\"
 .Pp
 .Ft void
@@ -230,9 +230,9 @@ unsigned IEEE channel number, and a signed 8-bit value that
 holds the maximum regulatory transmit power cap in .5 dBm
 (8 bytes total).
 Channel flags are defined in:
-.In net80211/_ieee80211.h
+.In netproto/802_11/_ieee80211.h
 (only a subset are found in
-.In net80211/ieee80211_radiotap.h ).
+.In netproto/802_11/ieee80211_radiotap.h ).
 This property supersedes
 .Dv IEEE80211_RADIOTAP_CHANNEL
 and is the only way to completely express all
