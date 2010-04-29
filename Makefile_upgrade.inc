@@ -1299,6 +1299,8 @@ TO_REMOVE+=/usr/share/man/cat9/ieee80211_amrr_tx_update.9.gz
 TO_REMOVE+=/usr/share/man/man9/ieee80211_amrr_tx_update.9.gz
 TO_REMOVE+=/usr/share/man/cat9/ieee80211_cancel_scan_any.9.gz
 TO_REMOVE+=/usr/share/man/man9/ieee80211_cancel_scan_any.9.gz
+TO_REMOVE+=/usr/share/man/cat9/ieee80211_wait_for_parent.9.gz
+TO_REMOVE+=/usr/share/man/man9/ieee80211_wait_for_parent.9.gz
 
 # XXX Remove when adjusted to the new 802.11 framework
 TO_REMOVE+=/boot/modules/if_acx.ko

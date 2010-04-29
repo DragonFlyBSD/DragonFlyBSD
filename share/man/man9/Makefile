@@ -466,7 +466,7 @@ MLINKS+=ieee80211_proto.9 ieee80211_new_state.9 \
 	ieee80211_proto.9 ieee80211_start_all.9 \
 	ieee80211_proto.9 ieee80211_stop_all.9 \
 	ieee80211_proto.9 ieee80211_suspend_all.9 \
-	ieee80211_proto.9 ieee80211_wait_for_parent.9
+	ieee80211_proto.9 ieee80211_waitfor_parent.9
 MLINKS+=ieee80211_radiotap.9 ieee80211_radiotap_active.9 \
 	ieee80211_radiotap.9 ieee80211_radiotap_active_vap.9 \
 	ieee80211_radiotap.9 ieee80211_radiotap_attach.9 \
