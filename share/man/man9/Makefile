@@ -477,8 +477,8 @@ MLINKS+=ieee80211_regdomain.9 ieee80211_alloc_countryie.9 \
 	ieee80211_regdomain.9 ieee80211_sort_channels.9
 MLINKS+=ieee80211_scan.9 ieee80211_add_scan.9 \
 	ieee80211_scan.9 ieee80211_bg_scan.9 \
+	ieee80211_scan.9 ieee80211_cancel_anyscan.9 \
 	ieee80211_scan.9 ieee80211_cancel_scan.9 \
-	ieee80211_scan.9 ieee80211_cancel_scan_any.9 \
 	ieee80211_scan.9 ieee80211_check_scan.9 \
 	ieee80211_scan.9 ieee80211_check_scan_current.9 \
 	ieee80211_scan.9 ieee80211_probe_curchan.9 \
