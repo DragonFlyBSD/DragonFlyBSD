@@ -47,6 +47,7 @@ MAN=	acct.5 \
 	procfs.5 \
 	protocols.5 \
 	rc.conf.5 \
+	regdomain.5 \
 	remote.5 \
 	resident.conf.5 \
 	resolver.5 \
