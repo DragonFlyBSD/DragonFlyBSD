@@ -320,12 +320,12 @@ on a channel.
 .It Dv ic_recv_action
 Process a received Action frame.
 The default method points to
-.Xr ieee80211_recv_action 9
+.Fn ieee80211_recv_action
 which provides a mechanism for setting up handlers for each Action frame class.
 .It Dv ic_send_action
 Transmit an Action frame.
 The default method points to
-.Xr ieee80211_send_action 9
+.Fn ieee80211_send_action
 which provides a mechanism for setting up handlers for each Action frame class.
 .It Dv ic_ampdu_enable
 Check if transmit A-MPDU should be enabled for the specified station and AC.
@@ -378,7 +378,7 @@ all associated vaps and ifnet structures are reclaimed or inaccessible
 to user applications so it is safe to teardown driver state without
 worry about being re-entered.
 The driver is responsible for calling
-.Xr if_free 9
+.Fn if_free
 on the ifnet it allocated for the physical device.
 .Sh DRIVER CAPABILITIES
 Driver/device capabilities are specified using several sets of flags
