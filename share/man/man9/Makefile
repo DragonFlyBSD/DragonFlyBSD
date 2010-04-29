@@ -80,7 +80,6 @@ MAN=	accept_filter.9 \
 	firmware.9 \
 	hash.9 \
 	ieee80211.9 \
-	ieee80211_amrr.9 \
 	ieee80211_beacon.9 \
 	ieee80211_bmiss.9 \
 	ieee80211_crypto.9 \
@@ -199,6 +198,7 @@ MAN=	accept_filter.9 \
 	vrele.9 \
 	vslock.9 \
 	zone.9
+#	ieee80211_amrr.9 \
 
 MLINKS+=accept_filter.9 accept_filt_add.9 \
 	accept_filter.9 accept_filt_del.9 \
@@ -422,13 +422,13 @@ MLINKS+=ioctl.9 _IOR.9 \
 	ioctl.9 _IO.9
 MLINKS+=ieee80211.9 ieee80211_ifattach.9 \
 	ieee80211.9 ieee80211_ifdetach.9
-MLINKS+=ieee80211_amrr.9 ieee80211_amrr_choose.9 \
-	ieee80211_amrr.9 ieee80211_amrr_cleanup.9 \
-	ieee80211_amrr.9 ieee80211_amrr_init.9 \
-	ieee80211_amrr.9 ieee80211_amrr_node_init.9 \
-	ieee80211_amrr.9 ieee80211_amrr_setinterval.9 \
-	ieee80211_amrr.9 ieee80211_amrr_tx_complete.9 \
-	ieee80211_amrr.9 ieee80211_amrr_tx_update.9
+#MLINKS+=ieee80211_amrr.9 ieee80211_amrr_choose.9 \
+#	ieee80211_amrr.9 ieee80211_amrr_cleanup.9 \
+#	ieee80211_amrr.9 ieee80211_amrr_init.9 \
+#	ieee80211_amrr.9 ieee80211_amrr_node_init.9 \
+#	ieee80211_amrr.9 ieee80211_amrr_setinterval.9 \
+#	ieee80211_amrr.9 ieee80211_amrr_tx_complete.9 \
+#	ieee80211_amrr.9 ieee80211_amrr_tx_update.9
 MLINKS+=ieee80211_beacon.9 ieee80211_beacon_alloc.9 \
 	ieee80211_beacon.9 ieee80211_beacon_notify.9 \
 	ieee80211_beacon.9 ieee80211_beacon_update.9

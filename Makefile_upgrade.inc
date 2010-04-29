@@ -1281,6 +1281,22 @@ TO_REMOVE+=/usr/share/man/cat9/ieee80211_setmode.9.gz
 TO_REMOVE+=/usr/share/man/man9/ieee80211_setmode.9.gz
 TO_REMOVE+=/usr/share/man/cat9/ieee80211_watchdog.9.gz
 TO_REMOVE+=/usr/share/man/man9/ieee80211_watchdog.9.gz
+TO_REMOVE+=/usr/share/man/cat9/ieee80211_amrr.9.gz
+TO_REMOVE+=/usr/share/man/man9/ieee80211_amrr.9.gz
+TO_REMOVE+=/usr/share/man/cat9/ieee80211_amrr_choose.9.gz
+TO_REMOVE+=/usr/share/man/man9/ieee80211_amrr_choose.9.gz
+TO_REMOVE+=/usr/share/man/cat9/ieee80211_amrr_cleanup.9.gz
+TO_REMOVE+=/usr/share/man/man9/ieee80211_amrr_cleanup.9.gz
+TO_REMOVE+=/usr/share/man/cat9/ieee80211_amrr_init.9.gz
+TO_REMOVE+=/usr/share/man/man9/ieee80211_amrr_init.9.gz
+TO_REMOVE+=/usr/share/man/cat9/ieee80211_amrr_node_init.9.gz
+TO_REMOVE+=/usr/share/man/man9/ieee80211_amrr_node_init.9.gz
+TO_REMOVE+=/usr/share/man/cat9/ieee80211_amrr_setinterval.9.gz
+TO_REMOVE+=/usr/share/man/man9/ieee80211_amrr_setinterval.9.gz
+TO_REMOVE+=/usr/share/man/cat9/ieee80211_amrr_tx_complete.9.gz
+TO_REMOVE+=/usr/share/man/man9/ieee80211_amrr_tx_complete.9.gz
+TO_REMOVE+=/usr/share/man/cat9/ieee80211_amrr_tx_update.9.gz
+TO_REMOVE+=/usr/share/man/man9/ieee80211_amrr_tx_update.9.gz
 
 # XXX Remove when adjusted to the new 802.11 framework
 TO_REMOVE+=/boot/modules/if_acx.ko
