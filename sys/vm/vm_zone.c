@@ -325,10 +325,18 @@ zdestroy(vm_zone_t z)
 	 */
 	if (z->zflags & ZONE_INTERRUPT) {
 		/*
+		 * Pages mapped via pmap_kenter() must be removed from the
+		 * kernel_pmap() before calling kmem_free() to avoid issues
+		 * with kernel_pmap.pm_stats.resident_count.
+		 */
+		pmap_qremove(z->zkva, z->zpagemax);
+
+		/*
 		 * Free the mapping.
 		 */
 		kmem_free(&kernel_map, z->zkva, z->zpagemax*PAGE_SIZE);
 		atomic_subtract_int(&zone_kmem_kvaspace, z->zpagemax*PAGE_SIZE);
+
 		/*
 		 * Free the backing object and physical pages.
 		 */
