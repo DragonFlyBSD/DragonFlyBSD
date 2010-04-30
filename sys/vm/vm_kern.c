@@ -233,6 +233,11 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
  *	with kmem_alloc, and return the physical pages
  *	associated with that region.
  *
+ *	WARNING!  If the caller entered pages into the region using
+ *	pmap_kenter() it must remove the pages using pmap_kremove[_quick]()
+ *	before freeing the underlying kmem, otherwise resident_count will
+ *	be mistabulated.
+ *
  *	This routine may not block on kernel maps.
  */
 void

@@ -95,6 +95,12 @@ lwbuf_cache_ctor(void *obj, void *pdata, int ocflags)
     return (TRUE);
 }
 
+/*
+ * Destructor for lwb.  Note that we must remove any pmap entries
+ * created with pmap_kenter() to prevent them from being misinterpreted
+ * as managed pages which would cause kernel_pmap.pm_stats.resident_count
+ * to get out of whack.
+ */
 static void
 lwbuf_cache_dtor(void *obj, void *pdata)
 {
@@ -102,6 +108,7 @@ lwbuf_cache_dtor(void *obj, void *pdata)
 
     KKASSERT(lwb->kva != 0);
     get_mplock();
+    pmap_kremove_quick(lwb->kva);
     kmem_free(&kernel_map, lwb->kva, PAGE_SIZE);
     rel_mplock();
     lwb->kva = 0;
