@@ -322,8 +322,10 @@ makedirs(const char *filename, bool striplast)
 
 	if (striplast) {
 		char	*s = strrchr(tmpbuf, '/');
-		if (s == NULL)
+		if (s == NULL) {
+			free(tmpbuf);
 			return;	/* nothing to be done */
+		}
 		*s = '\0';
 	}
 	if (mkpath(tmpbuf) != 0)
