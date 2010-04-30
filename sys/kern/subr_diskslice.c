@@ -389,6 +389,8 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 	slice = dkslice(dev);
 	part = dkpart(dev);
 	ssp = *sspp;
+	if (ssp == NULL)
+		return (EINVAL);
 	if (slice >= ssp->dss_nslices)
 		return (EINVAL);
 	sp = &ssp->dss_slices[slice];
