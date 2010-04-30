@@ -198,16 +198,7 @@ The location is also displayed in hex at the beginning of each line.
 .It Li i
 display as an instruction
 .It Li I
-display as an instruction with possible alternate formats depending on the
-machine:
-.Bl -tag -width MIPS -compact
-.It Tn VAX
-don't assume that each external label is a procedure entry mask
-.It Tn i386
-don't round to the next long word boundary
-.It Tn MIPS
-print register contents
-.El
+display as an instruction; on i386, don't round to the next long word boundary.
 .El
 .It Cm xf
 Examine forward:
