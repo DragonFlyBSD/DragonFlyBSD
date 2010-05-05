@@ -122,7 +122,7 @@ double cp_time_total;
 int num_devices;
 struct device_selection *dev_select;
 int maxshowdevs;
-int dflag = 0, Iflag = 0, Cflag = 0, Tflag = 0, oflag = 0, Kflag = 0;
+int dflag = 0, Dflag=0, Iflag = 0, Cflag = 0, Tflag = 0, oflag = 0, Kflag = 0;
 
 /* local function declarations */
 static void usage(void);
@@ -164,7 +164,7 @@ main(int argc, char **argv)
 	matches = NULL;
 	maxshowdevs = 3;
 
-	while ((c = getopt(argc, argv, "c:CdhIKM:n:N:ot:Tw:")) != -1) {
+	while ((c = getopt(argc, argv, "c:CdDhIKM:n:N:ot:Tw:")) != -1) {
 		switch(c) {
 			case 'c':
 				cflag++;
@@ -177,6 +177,9 @@ main(int argc, char **argv)
 				break;
 			case 'd':
 				dflag++;
+				break;
+			case 'D':
+				Dflag++;
 				break;
 			case 'h':
 				hflag++;
@@ -502,9 +505,14 @@ phdr(__unused int signo)
 					    cur.dinfo->devices[di].device_name,
 					    cur.dinfo->devices[di].unit_number);
 			else
-				printf("%15.6s%d ",
-					    cur.dinfo->devices[di].device_name,
-					    cur.dinfo->devices[di].unit_number);
+				if (Dflag > 0)
+					printf("%19.6s%d            ",
+						    cur.dinfo->devices[di].device_name,
+						    cur.dinfo->devices[di].unit_number);
+				else
+					printf("%15.6s%d ",
+						    cur.dinfo->devices[di].device_name,
+						    cur.dinfo->devices[di].unit_number);
 			printed++;
 		}
 	}
@@ -525,8 +533,12 @@ phdr(__unused int signo)
 				else
 					printf(" blk xfr msps ");
 			} else {
-				if (Iflag == 0)
-					printf("  KB/t tps   MB/s ");
+				if (Iflag == 0) {
+					if (Dflag > 0)
+						printf("   KB/t rtps  MBr/s wtps  MBw/s ");
+					else
+						printf("  KB/t tps   MB/s ");
+				}
 				else
 					printf("  KB/t xfrs   MB ");
 			}
@@ -544,8 +556,11 @@ static void
 devstats(int perf_select)
 {
 	int dn;
+	long double kb_per_transfer;
 	long double transfers_per_second;
-	long double kb_per_transfer, mb_per_second;
+	long double transfers_per_secondr, transfers_per_secondw;
+	long double mb_per_second;
+	long double mb_per_secondr, mb_per_secondw;
 	u_int64_t total_bytes, total_transfers, total_blocks;
 	long double busy_seconds;
 	long double total_mb;
@@ -570,8 +585,22 @@ devstats(int perf_select)
 				  &last.dinfo->devices[di], busy_seconds,
 				  &total_bytes, &total_transfers,
 				  &total_blocks, &kb_per_transfer,
-				  &transfers_per_second, &mb_per_second, 
+				  &transfers_per_second, &mb_per_second,
 				  &blocks_per_second, &ms_per_transaction)!= 0)
+			errx(1, "%s", devstat_errbuf);
+		if (compute_stats_read(&cur.dinfo->devices[di],
+				&last.dinfo->devices[di], busy_seconds,
+				NULL, NULL,
+				NULL, NULL,
+				&transfers_per_secondr, &mb_per_secondr,
+				NULL, NULL)!= 0)
+			errx(1, "%s", devstat_errbuf);
+		if (compute_stats_write(&cur.dinfo->devices[di],
+				&last.dinfo->devices[di], busy_seconds,
+				NULL, NULL,
+				NULL, NULL,
+				&transfers_per_secondw, &mb_per_secondw,
+				NULL, NULL)!= 0)
 			errx(1, "%s", devstat_errbuf);
 
 		if (perf_select != 0) {
@@ -603,11 +632,20 @@ devstats(int perf_select)
 				       msdig,
 				       ms_per_transaction);
 		} else {
-			if (Iflag == 0)
-				printf(" %5.2Lf %4.0Lf %5.2Lf ",
-				       kb_per_transfer,
-				       transfers_per_second,
-				       mb_per_second);
+			if (Iflag == 0) 
+				if (Dflag > 0) {
+					printf(" %5.2Lf %4.0Lf %6.2Lf %4.0Lf %6.2Lf  ",
+					       kb_per_transfer,
+					       transfers_per_secondr,
+					       mb_per_secondr,
+					       transfers_per_secondw,
+					       mb_per_secondw);
+				} else {
+					printf(" %5.2Lf %4.0Lf %5.2Lf ",
+					       kb_per_transfer,
+					       transfers_per_second,
+					       mb_per_second);
+				}
 			else {
 				total_mb = total_bytes;
 				total_mb /= 1024 * 1024;
