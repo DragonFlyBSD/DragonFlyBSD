@@ -1397,4 +1397,3 @@ TO_REMOVE+=/usr/share/man/cat8/named.reload.8.gz
 TO_REMOVE+=/usr/share/man/cat8/named.restart.8.gz
 TO_REMOVE+=/usr/share/man/cat8/rndc-confgen.8.gz
 TO_REMOVE+=/usr/share/man/cat8/rndc.8.gz
->>>>>>> BIND-Removal: Add removals to make upgrade.
