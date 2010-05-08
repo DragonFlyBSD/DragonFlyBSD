@@ -66,7 +66,7 @@ MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 \
 	caps_sys_setgen.2 \
 	sys_checkpoint.2 chdir.2 chflags.2 \
 	chmod.2 chown.2 chroot.2 clock_gettime.2 close.2 closefrom.2 \
-	connect.2 dup.2 execve.2 extexit.2 \
+	connect.2 dup.2 execve.2 extattr.2 extexit.2 \
 	fcntl.2 fhopen.2 flock.2 fork.2 fsync.2 \
 	getdirentries.2 getdtablesize.2 \
 	getfh.2 getfsstat.2 getgid.2 getgroups.2 getitimer.2 getlogin.2 \
@@ -108,6 +108,9 @@ MLINKS+=chmod.2 fchmod.2 chmod.2 lchmod.2 chmod.2 fchmodat.2
 MLINKS+=chown.2 fchown.2 chown.2 lchown.2 chown.2 fchownat.2
 MLINKS+=clock_gettime.2 clock_getres.2 clock_gettime.2 clock_settime.2
 MLINKS+=dup.2 dup2.2
+MLINKS+=extattr.2 extattr_delete_file.2 \
+	extattr.2 extattr_get_file.2 \
+	extattr.2 extattr_set_file.2
 MLINKS+=fhopen.2 fhstat.2 fhopen.2 fhstatfs.2 fhopen.2 fhstatvfs.2
 MLINKS+=getdirentries.2 _DIRENT_DIRSIZ.2 \
 	getdirentries.2 _DIRENT_NEXT.2 \
