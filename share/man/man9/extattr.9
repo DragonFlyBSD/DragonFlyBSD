@@ -24,11 +24,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\"       $FreeBSD: src/share/man/man9/extattr.9,v 1.1.2.4 2001/12/17 11:30:18 ru Exp $
-.\"       $DragonFly: src/share/man/man9/extattr.9,v 1.2 2003/06/17 04:37:01 dillon Exp $
 .\"
-.Dd December 23, 1999
-.Os
+.Dd May 8, 2010
 .Dt EXTATTR 9
+.Os
 .Sh NAME
 .Nm extattr
 .Nd virtual file system named extended attributes
@@ -38,24 +37,28 @@
 .In sys/extattr.h
 .Sh DESCRIPTION
 Named extended attributes allow additional meta-data to be associated
-with vnodes representing files and directories.  The semantics of this
-additional data is that of a "name=value" pair, where a name may
-be defined or undefined, and if defined, associated with zero or more
-bytes of arbitrary binary data.  Reads of this data may return specific
-contiguous regions of the meta-data, in the style of
+with vnodes representing files and directories.
+The semantics of this additional data is that of a "name=value" pair, where
+a name may be defined or undefined, and if defined, associated with zero or
+more bytes of arbitrary binary data.
+.Pp
+Reads of extended attribute data may return specific contiguous regions of
+the meta-data, in the style of
 .Xr VOP_READ 9 ,
 but writes will replace the entire current "value" associated with
-a given name.  As there are a plethora of file systems with differing
-extended attributes, availability and functionality of these functions
-may be limited, and they should be used with awareness of the underlying
-semantics of the supporting file system.  Authorization schemes for
-extended attribute data may also vary by file system, as well as
-maximum attribute size, and whether or not any or specific new attributes
-may be defined.
+a given name.
+As there are a plethora of file systems with differing extended attributes,
+availability and functionality of these functions may be limited, and they
+should be used with awareness of the underlying semantics of the supporting
+file system.
+Authorization schemes for extended attribute data may also vary by file
+system, as well as maximum attribute size, and whether or not any or
+specific new attributes may be defined.
 .Pp
 Extended attributes are named using a null-terminated character string.
-Depending on file system semantics, this name may or may not be
-case-sensitive.  Appropriate vnode extended attribute calls are:
+Depending on underlying file system semantics, this name may or may not be
+case-sensitive.
+Appropriate vnode extended attribute calls are:
 .Xr VOP_GETEXTATTR 9
 and
 .Xr VOP_SETEXTATTR 9 .
@@ -64,5 +67,5 @@ and
 .Xr VOP_GETEXTATTR 9 ,
 .Xr VOP_SETEXTATTR 9
 .Sh AUTHORS
-This man page was written by
+This manual page was written by
 .An Robert Watson .
