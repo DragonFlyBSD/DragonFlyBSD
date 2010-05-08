@@ -1335,6 +1335,7 @@ TO_REMOVE+=/boot/modules/wlan_ratectl_onoe.ko
 TO_REMOVE+=/boot/modules/wlan_ratectl_sample.ko
 TO_REMOVE+=/usr/include/dev/netif/wi/spectrum24t_cf.h
 TO_REMOVE+=/usr/include/netproto/802_11/if_wavelan_ieee.h
+TO_REMOVE+=/etc/rc.d/named
 TO_REMOVE+=/usr/bin/dig
 TO_REMOVE+=/usr/bin/dnssec-keygen
 TO_REMOVE+=/usr/bin/dnssec-signzone
