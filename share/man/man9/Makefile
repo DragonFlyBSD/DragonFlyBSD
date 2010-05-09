@@ -121,6 +121,8 @@ MAN=	accept_filter.9 \
 	panic.9 \
 	pci.9 \
 	pfil.9 \
+	pfind.9 \
+	pgfind.9 \
 	physio.9 \
 	posix4.9 \
 	priv.9 \
@@ -619,6 +621,7 @@ MLINKS+=pfil.9 pfil_add_hook.9 \
 	pfil.9 pfil_hook_get.9 \
 	pfil.9 pfil_remove_hook.9 \
 	pfil.9 pfil_run_hooks.9
+MLINKS+=pfind.9 zpfind.9
 MLINKS+=physio.9 physread.9 \
 	physio.9 physwrite.9
 MLINKS+=posix4.9 p1003_1b.9
