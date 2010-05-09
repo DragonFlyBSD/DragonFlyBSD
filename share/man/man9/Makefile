@@ -116,6 +116,7 @@ MAN=	accept_filter.9 \
 	module.9 \
 	MODULE_DEPEND.9 \
 	MODULE_VERSION.9 \
+	mutex.9 \
 	nlookup.9 \
 	objcache.9 \
 	panic.9 \
@@ -580,6 +581,30 @@ MLINKS+=microtime.9 getmicrotime.9 \
 MLINKS+=microuptime.9 getmicrouptime.9 \
 	microuptime.9 getnanouptime.9 \
 	microuptime.9 nanouptime.9
+MLINKS+=mutex.9 mtx_downgrade.9 \
+	mutex.9 mtx_drop.9 \
+	mutex.9 mtx_hold.9 \
+	mutex.9 mtx_init.9 \
+	mutex.9 mtx_islocked.9 \
+	mutex.9 mtx_islocked_ex.9 \
+	mutex.9 mtx_lock_ex.9 \
+	mutex.9 mtx_lock_ex_quick.9 \
+	mutex.9 mtx_lock_ex_try.9 \
+	mutex.9 mtx_lockrefs.9 \
+	mutex.9 mtx_lock_sh.9 \
+	mutex.9 mtx_lock_sh_quick.9 \
+	mutex.9 mtx_lock_sh_try.9 \
+	mutex.9 mtx_notlocked.9 \
+	mutex.9 mtx_notlocked_ex.9 \
+	mutex.9 mtx_notowner.9 \
+	mutex.9 mtx_owner.9 \
+	mutex.9 mtx_spinlock_ex.9 \
+	mutex.9 mtx_spinlock_sh.9 \
+	mutex.9 mtx_uninit.9 \
+	mutex.9 mtx_unlock.9 \
+	mutex.9 mtx_unlock_ex.9 \
+	mutex.9 mtx_unlock_sh.9 \
+	mutex.9 mtx_upgrade_try.9
 MLINKS+=nlookup.9 naccess.9 \
 	nlookup.9 naccess_va.9 \
 	nlookup.9 nlookup_done.9 \
