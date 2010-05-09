@@ -2,7 +2,7 @@
 # Device		Mountpoint	FStype	Options		Dump	Pass#
 /dev/acd0a		/		cd9660	ro,noauto	0	0
 swap			/root		mfs	rw,-C,-s=8192	0	0
-swap			/var		mfs	rw,-C,-s=8192	0	0
+swap			/var		mfs	rw,-C,-s=12288	0	0
 swap			/tmp		mfs	rw,-C,-s=8192	0	0
 swap			/etc		mfs	rw,-C,-s=24576	0	0
 swap			/usr/pkg/etc	mfs	rw,-C,-s=8192	0	0
