@@ -1472,6 +1472,19 @@ will be ignored.
 This mode is primarily designed
 for testing and should not be used on a production system.
 .El
+.Sh RESTORING FROM A SNAPSHOT BACKUP
+You restore a snapshot by copying it over to live, but there is a caveat.
+The mtime and atime fields for files accessed via a snapshot is locked
+to the ctime in order to keep the snapshot consistent, because neither
+mtime nor atime changes roll any history.
+.Pp
+In order to avoid unnecessary copying it is recommended that you use
+.Nm cpdup
+.Fl VV
+.Fl v
+when doing the copyback.  Also make sure you traverse the snapshot softlink
+by appending a ".", as in "<snapshotpath>/.", and you match up the directory
+properly.
 .Sh EXIT STATUS
 .Ex -std
 .Sh ENVIRONMENT
