@@ -6,6 +6,8 @@
 # targes may be specified which set make variables which enhance
 # the build in various ways.
 #
+# img is now the default (produces both the .iso and .img)
+#
 gui installer img:
 
 #########################################################################
@@ -393,7 +395,6 @@ mkiso:
 
 
 mkimg:
-.if make(img)
 	if [ ! -d ${IMGMNT} ]; then mkdir -p ${IMGMNT}; fi
 	-if [ -f ${ISODIR}/vn.which ]; then umount ${IMGMNT}; 		\
 	    vnconfig -u `cat ${ISODIR}/vn.which`; fi
@@ -436,7 +437,6 @@ mkimg:
 	rm -f ${ISODIR}/vn.which
 	rmdir ${IMGMNT}
 	@echo "STEP: done"
-.endif
 
 clean:
 	-umount ${ISOROOT}/usr/pkgsrc/distfiles > /dev/null 2>&1
