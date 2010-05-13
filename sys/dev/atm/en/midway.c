@@ -1777,7 +1777,7 @@ en_txdma(struct en_softc *sc, int chan)
 {
   struct mbuf *tmp;
   struct atm_pseudohdr *ap;
-  struct en_launch launch;
+  struct en_launch launch = { .tbd1 = 0 };
   int datalen = 0, dtqneed, len, ncells;
   u_int8_t *cp;
   struct ifnet *ifp;

@@ -335,7 +335,7 @@ dev/netif/ig_hal/e1000_manage.c	optional ig_hal
 dev/netif/ig_hal/e1000_nvm.c	optional ig_hal
 dev/netif/ig_hal/e1000_osdep.c	optional ig_hal
 dev/netif/ig_hal/e1000_phy.c	optional ig_hal
-dev/atm/en/midway.c		optional nowerror en
+dev/atm/en/midway.c		optional en
 dev/netif/et/if_et.c		optional et
 dev/netif/ex/if_ex.c		optional ex
 dev/netif/ex/if_ex_isa.c	optional ex isa

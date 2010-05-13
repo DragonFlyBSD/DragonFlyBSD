@@ -98,8 +98,8 @@ dev/crypto/glxsb/glxsb.c		optional	glxsb
 dev/crypto/glxsb/glxsb_hash.c		optional	glxsb
 dev/netif/ed/if_ed_isa.c		optional	ed isa
 bus/eisa/eisaconf.c			optional	eisa
-dev/video/fb/fb.c			optional nowerror	fb
-dev/video/fb/fb.c			optional nowerror	vga
+dev/video/fb/fb.c			optional	fb
+dev/video/fb/fb.c			optional	vga
 dev/video/fb/splash.c			optional	splash
 dev/video/fb/vga.c			optional	vga
 dev/netif/fe/if_fe_isa.c		optional	fe isa

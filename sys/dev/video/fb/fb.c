@@ -351,6 +351,7 @@ fbattach(device_t dev)
 #define FB_UNIT(dev)	minor(dev)
 #define FB_MKMINOR(unit) (u)
 
+#if 0
 static d_default_t	fboperate;
 static d_open_t		fbopen;
 
@@ -361,6 +362,7 @@ static struct dev_ops fb_ops = {
 	.d_default =	fboperate,
 	.d_open =	fbopen
 };
+#endif
 
 static void
 vfbattach(void *arg)
@@ -418,6 +420,7 @@ fb_detach(cdev_t dev, video_adapter_t *adp)
 	return 0;
 }
 
+#if 0
 static int
 fbopen(struct dev_open_args *ap)
 {
@@ -446,6 +449,7 @@ fboperate(struct dev_generic_args *ap)
 	ap->a_dev = fdev;
 	return dev_doperate(ap);
 }
+#endif
 
 /*
  * Generic frame buffer cdev driver functions
