@@ -816,6 +816,10 @@ static struct umass_devdescr_t umass_devdescrs[] = {
 	  .proto  = UMASS_PROTO_RBC | UMASS_PROTO_CBI,
 	  .quirks = NO_QUIRKS
 	},
+	{ .vendor = 0x054c, .product = 0x02f7, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_RBC | UMASS_PROTO_CBI,
+	  .quirks = NO_QUIRKS
+	},
 	/* Sony Handycam   */
 	{ .vendor = 0x054c, .product = 0x002e, .release = WILDCARD_ID,
 	  .proto  = UMASS_PROTO_RBC | UMASS_PROTO_CBI,
