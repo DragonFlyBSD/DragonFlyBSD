@@ -3165,7 +3165,7 @@ print_driver_short(driver_t *driver, int indent)
 	if (!driver)
 		return;
 
-	indentprintf(("driver %s: softc size = %d\n",
+	indentprintf(("driver %s: softc size = %zu\n",
 		      driver->name, driver->size));
 }
 
