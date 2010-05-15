@@ -171,19 +171,22 @@ typedef	u_int32_t	u4;   /* unsigned four bytes, 32 bits */
 #define	SIZE		(1 << ALPHA)
 #define MASK		(SIZE - 1)
 #define	ind(x)		((x) & (SIZE - 1))
-#define	barrel(a)	(((a) << 19) ^ ((a) >> 13))  /* beta=32,shift=19 */
+#define	barrel(a)	(((a) << 20) ^ ((a) >> 12))  /* beta=32,shift=20 */
  
 static void IBAA
 (
 	u4 *m,		/* Memory: array of SIZE ALPHA-bit terms */
 	u4 *r,		/* Results: the sequence, same size as m */
 	u4 *aa,		/* Accumulator: a single value */
-	u4 *bb		/* the previous result */
+	u4 *bb,		/* the previous result */
+	u4 *counter	/* counter */
 )
 {
 	u4 a, b, x, y, i;
  
-	a = *aa; b = *bb;
+	a = *aa;
+	b = *bb + *counter;
+	++*counter;
 	for (i = 0; i < SIZE; ++i) {
 		x = m[i];  
 		a = barrel(a) + m[ind(i + (SIZE / 2))];	/* set a */
@@ -200,6 +203,7 @@ static u4	IBAA_memory[SIZE];
 static u4	IBAA_results[SIZE];
 static u4	IBAA_aa;
 static u4	IBAA_bb;
+static u4	IBAA_counter;
 
 static volatile int IBAA_byte_index;
 
@@ -221,6 +225,7 @@ IBAA_Init(void)
 		IBAA_memory[i] = i;
 	}
 	IBAA_aa = IBAA_bb = 0;
+	IBAA_counter = 0;
 	IBAA_byte_index = sizeof(IBAA_results);	/* force IBAA_Call() */
 }
 
@@ -230,7 +235,7 @@ IBAA_Init(void)
 static void
 IBAA_Call (void)
 {
-	IBAA(IBAA_memory, IBAA_results, &IBAA_aa, &IBAA_bb);
+	IBAA(IBAA_memory, IBAA_results, &IBAA_aa, &IBAA_bb, &IBAA_counter);
 	IBAA_byte_index = 0;
 }
 
