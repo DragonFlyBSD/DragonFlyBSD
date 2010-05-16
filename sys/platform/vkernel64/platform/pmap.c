@@ -2823,7 +2823,7 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 		 */
 		if (save_generation != pmap->pm_generation) {
 			kprintf("Warning: pmap_remove_pages race-A avoided\n");
-			pv = TAILQ_FIRST(&pmap->pm_pvlist);
+			npv = TAILQ_FIRST(&pmap->pm_pvlist);
 		}
 	}
 	crit_exit();
