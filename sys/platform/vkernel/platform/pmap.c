@@ -38,7 +38,6 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.31 2008/08/25 17:01:40 dillon Exp $
  */
 /*
  * NOTE: PMAP_INVAL_ADD: In pc32 this function is called prior to adjusting
@@ -2483,15 +2482,7 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 	vpte_t *pte, tpte;
 	pv_entry_t pv, npv;
 	vm_page_t m;
-	int iscurrentpmap;
 	int32_t save_generation;
-	struct lwp *lp;
-
-	lp = curthread->td_lwp;
-	if (lp && pmap == vmspace_pmap(lp->lwp_vmspace))
-		iscurrentpmap = 1;
-	else
-		iscurrentpmap = 0;
 
 	crit_enter();
 	for (pv = TAILQ_FIRST(&pmap->pm_pvlist); pv; pv = npv) {

@@ -1942,20 +1942,16 @@ ptrace_single_step(struct lwp *lp)
 int
 fill_regs(struct lwp *lp, struct reg *regs)
 {
-	struct pcb *pcb;
 	struct trapframe *tp;
 
 	tp = lp->lwp_md.md_regs;
 	bcopy(&tp->tf_rdi, &regs->r_rdi, sizeof(*regs));
-
-	pcb = lp->lwp_thread->td_pcb;
 	return (0);
 }
 
 int
 set_regs(struct lwp *lp, struct reg *regs)
 {
-	struct pcb *pcb;
 	struct trapframe *tp;
 
 	tp = lp->lwp_md.md_regs;
@@ -1963,7 +1959,6 @@ set_regs(struct lwp *lp, struct reg *regs)
 	    !CS_SECURE(regs->r_cs))
 		return (EINVAL);
 	bcopy(&regs->r_rdi, &tp->tf_rdi, sizeof(*regs));
-	pcb = lp->lwp_thread->td_pcb;
 	return (0);
 }
 

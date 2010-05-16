@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/platform/vkernel/platform/copyio.c,v 1.9 2008/05/09 07:24:47 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -203,9 +201,8 @@ int
 fubyte(const void *base)
 {
 	unsigned char c;
-	int error;
 
-	if ((error = copyin(base, &c, 1)) == 0)
+	if (copyin(base, &c, 1) == 0)
 		return((int)c);
 	return(-1);
 }
@@ -217,9 +214,8 @@ int
 subyte (void *base, int byte)
 {
 	unsigned char c = byte;
-	int error;
 
-	if ((error = copyout(&c, base, 1)) == 0)
+	if (copyout(&c, base, 1) == 0)
 		return(0);
 	return(-1);
 }
@@ -231,9 +227,8 @@ long
 fuword(const void *base)
 {
 	long v;
-	int error;
 
-	if ((error = copyin(base, &v, sizeof(v))) == 0)
+	if (copyin(base, &v, sizeof(v)) == 0)
 		return((long)v);
 	return(-1);
 }
@@ -244,9 +239,7 @@ fuword(const void *base)
 int
 suword(void *base, long word)
 {
-	int error;
-
-	if ((error = copyout(&word, base, sizeof(word))) == 0)
+	if (copyout(&word, base, sizeof(word)) == 0)
 		return(0);
 	return(-1);
 }
@@ -258,9 +251,8 @@ int
 fusword(void *base)
 {
 	unsigned short sword;
-	int error;
 
-	if ((error = copyin(base, &sword, sizeof(sword))) == 0)
+	if (copyin(base, &sword, sizeof(sword)) == 0)
 		return((int)sword);
 	return(-1);
 }
@@ -272,10 +264,8 @@ int
 susword (void *base, int word)
 {
 	unsigned short sword = word;
-	int error;
 
-	if ((error = copyout(&sword, base, sizeof(sword))) == 0)
+	if (copyout(&sword, base, sizeof(sword)) == 0)
 		return(0);
 	return(-1);
 }
-

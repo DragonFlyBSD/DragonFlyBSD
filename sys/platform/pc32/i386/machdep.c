@@ -36,7 +36,6 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.135 2008/08/02 01:14:43 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -2176,7 +2175,6 @@ ptrace_single_step(struct lwp *lp)
 int
 fill_regs(struct lwp *lp, struct reg *regs)
 {
-	struct pcb *pcb;
 	struct trapframe *tp;
 
 	tp = lp->lwp_md.md_regs;
@@ -2196,14 +2194,12 @@ fill_regs(struct lwp *lp, struct reg *regs)
 	regs->r_eflags = tp->tf_eflags;
 	regs->r_esp = tp->tf_esp;
 	regs->r_ss = tp->tf_ss;
-	pcb = lp->lwp_thread->td_pcb;
 	return (0);
 }
 
 int
 set_regs(struct lwp *lp, struct reg *regs)
 {
-	struct pcb *pcb;
 	struct trapframe *tp;
 
 	tp = lp->lwp_md.md_regs;
@@ -2226,7 +2222,6 @@ set_regs(struct lwp *lp, struct reg *regs)
 	tp->tf_eflags = regs->r_eflags;
 	tp->tf_esp = regs->r_esp;
 	tp->tf_ss = regs->r_ss;
-	pcb = lp->lwp_thread->td_pcb;
 	return (0);
 }
 

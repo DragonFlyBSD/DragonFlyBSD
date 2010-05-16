@@ -441,7 +441,6 @@ pxe_setup_nfsdiskless(void)
 		kprintf("PXE: no hardware address\n");
 		return;
 	}
-	ifp = TAILQ_FIRST(&ifnet);
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
 		struct ifaddr_container *ifac;
 

@@ -877,7 +877,6 @@ void
 inittodr(time_t base)
 {
 	unsigned long	sec, days;
-	int		yd;
 	int		year, month;
 	int		y, m;
 	struct timespec ts;
@@ -918,7 +917,6 @@ inittodr(time_t base)
 	if ((month > 2) && LEAPYEAR(year))
 		days ++;
 	days += readrtc(RTC_DAY) - 1;
-	yd = days;
 	for (y = 1970; y < year; y++)
 		days += DAYSPERYEAR + LEAPYEAR(y);
 	sec = ((( days * 24 +

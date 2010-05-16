@@ -36,7 +36,6 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/autoconf.c,v 1.3 2008/08/29 17:07:10 dillon Exp $
  */
 
 /*
@@ -499,7 +498,6 @@ pxe_setup_nfsdiskless(void)
 		return;
 	}
 	ifa = NULL;
-	ifp = TAILQ_FIRST(&ifnet);
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
 		struct ifaddr_container *ifac;
 

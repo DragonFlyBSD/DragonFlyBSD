@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/nexus.c,v 1.26.2.10 2003/02/22 13:16:45 imp Exp $
- * $DragonFly: src/sys/platform/pc32/i386/nexus.c,v 1.29 2006/12/23 00:27:03 swildner Exp $
  */
 
 /*
@@ -505,7 +504,6 @@ nexus_setup_intr(device_t bus, device_t child, struct resource *irq,
 		 int flags, void (*ihand)(void *), void *arg,
 		 void **cookiep, lwkt_serialize_t serializer)
 {
-	driver_t	*driver;
 	int	error, icflags;
 
 	/* somebody tried to setup an irq that failed to allocate! */
@@ -516,8 +514,6 @@ nexus_setup_intr(device_t bus, device_t child, struct resource *irq,
 	icflags = flags;
 	if ((irq->r_flags & RF_SHAREABLE) == 0)
 		icflags |= INTR_EXCL;
-
-	driver = device_get_driver(child);
 
 	/*
 	 * We depend here on rman_activate_resource() being idempotent.

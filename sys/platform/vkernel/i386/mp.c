@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/platform/vkernel/i386/mp.c,v 1.8 2008/05/07 17:19:46 dillon Exp $
  */
 
 
@@ -405,7 +403,6 @@ start_all_aps(u_int boot_addr)
 	for (x = 1; x <= mp_naps; x++)
 	{
 		/* Allocate space for the CPU's private space. */
-		va = (vm_offset_t)&CPU_prvspace[x];
 		for (i = 0; i < sizeof(struct mdglobaldata); i += PAGE_SIZE) {
 			va =(vm_offset_t)&CPU_prvspace[x].mdglobaldata + i;
 			m = vm_page_alloc(&kernel_object, va, VM_ALLOC_SYSTEM);

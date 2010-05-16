@@ -2755,18 +2755,10 @@ pmap_page_exists_quick(pmap_t pmap, vm_page_t m)
 void
 pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 {
-	struct lwp *lp;
 	pt_entry_t *pte, tpte;
 	pv_entry_t pv, npv;
 	vm_page_t m;
-	int iscurrentpmap;
 	int save_generation;
-
-	lp = curthread->td_lwp;
-	if (lp && pmap == vmspace_pmap(lp->lwp_vmspace))
-		iscurrentpmap = 1;
-	else
-		iscurrentpmap = 0;
 
 	crit_enter();
 	for (pv = TAILQ_FIRST(&pmap->pm_pvlist); pv; pv = npv) {

@@ -35,7 +35,6 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.55 2008/08/02 01:14:43 dillon Exp $
  */
 
 /*
@@ -875,7 +874,6 @@ void
 inittodr(time_t base)
 {
 	unsigned long	sec, days;
-	int		yd;
 	int		year, month;
 	int		y, m;
 	struct timespec ts;
@@ -916,7 +914,6 @@ inittodr(time_t base)
 	if ((month > 2) && LEAPYEAR(year))
 		days ++;
 	days += readrtc(RTC_DAY) - 1;
-	yd = days;
 	for (y = 1970; y < year; y++)
 		days += DAYSPERYEAR + LEAPYEAR(y);
 	sec = ((( days * 24 +
