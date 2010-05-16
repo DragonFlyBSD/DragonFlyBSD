@@ -36,11 +36,10 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.35 2008/09/09 04:06:19 dillon Exp $
  */
 
 /*
- * AMD64 Trap and System call handling
+ * x86_64 Trap and System call handling
  */
 
 #include "use_isa.h"
@@ -939,7 +938,7 @@ nogo:
 	}
 
 	/*
-	 * NOTE: on amd64 we have a tf_addr field in the trapframe, no
+	 * NOTE: on x86_64 we have a tf_addr field in the trapframe, no
 	 * kludge is needed to pass the fault address to signal handlers.
 	 */
 	struct proc *p = td->td_proc;
@@ -1215,7 +1214,7 @@ syscall2(struct trapframe *frame)
 	narg = callp->sy_narg & SYF_ARGMASK;
 
 	/*
-	 * On amd64 we get up to six arguments in registers. The rest are
+	 * On x86_64 we get up to six arguments in registers. The rest are
 	 * on the stack. The first six members of 'struct trapframe' happen
 	 * to be the registers used to pass arguments, in exactly the right
 	 * order.

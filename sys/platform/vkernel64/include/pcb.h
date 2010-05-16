@@ -37,14 +37,13 @@
  *
  *	from: @(#)pcb.h	5.10 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pcb.h,v 1.32.2.1 2001/08/15 01:23:52 peter Exp $
- * $DragonFly: src/sys/platform/vkernel/include/pcb.h,v 1.3 2007/01/09 23:34:05 dillon Exp $
  */
 
 #ifndef _MACHINE_PCB_H_
 #define _MACHINE_PCB_H_
 
 /*
- * AMD64 process control block
+ * x86_64 process control block
  */
 #include <machine/npx.h>
 

@@ -37,7 +37,6 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.29 2008/06/06 13:19:25 swildner Exp $
  */
 
 #include "use_ether.h"
@@ -382,7 +381,7 @@ cpu_sanitize_frame(struct trapframe *frame)
 
 /*
  * Sanitize the tls so loading the descriptor does not blow up
- * on us.  For AMD64 we don't have to do anything.
+ * on us.  For x86_64 we don't have to do anything.
  */
 int
 cpu_sanitize_tls(struct savetls *tls)

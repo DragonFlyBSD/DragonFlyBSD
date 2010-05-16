@@ -31,7 +31,6 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/platform/pc64/amd64/tls.c,v 1.4 2008/08/29 17:07:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -58,7 +57,7 @@
 #include <machine/pcb.h>
 
 /*
- * set a TLS descriptor.  For AMD64 descriptor 0 identifies %fs and
+ * set a TLS descriptor.  For x86_64 descriptor 0 identifies %fs and
  * descriptor 1 identifies %gs, and 0 is returned in sysmsg_result.
  *
  * Returns the value userland needs to load into %gs representing the
@@ -100,7 +99,7 @@ sys_set_tls_area(struct set_tls_area_args *uap)
 		return (EINVAL);
 
 	/*
-	 * For AMD64 we can only adjust FSBASE and GSBASE
+	 * For x86_64 we can only adjust FSBASE and GSBASE
 	 */
 	curthread->td_tls.info[i] = info;
 	set_user_TLS();

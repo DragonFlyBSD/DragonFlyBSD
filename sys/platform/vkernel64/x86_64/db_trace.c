@@ -55,7 +55,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_trace.c,v 1.35.2.3 2002/02/21 22:31:25 silby Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/db_trace.c,v 1.3 2008/08/29 17:07:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -134,8 +133,8 @@ struct db_variable *db_eregs = db_regs + sizeof(db_regs)/sizeof(db_regs[0]);
  */
 #define	INKERNEL(va)	(((vm_offset_t)(va)) >= USRSTACK)
 
-struct amd64_frame {
-	struct amd64_frame	*f_frame;
+struct x86_64_frame {
+	struct x86_64_frame	*f_frame;
 	long			f_retaddr;
 	long			f_arg0;
 };
@@ -145,16 +144,16 @@ struct amd64_frame {
 #define	INTERRUPT	2
 #define	SYSCALL		3
 
-static void	db_nextframe(struct amd64_frame **, db_addr_t *);
-static int	db_numargs(struct amd64_frame *);
+static void	db_nextframe(struct x86_64_frame **, db_addr_t *);
+static int	db_numargs(struct x86_64_frame *);
 static void	db_print_stack_entry(const char *, int, char **, long *, db_addr_t);
 static void	dl_symbol_values(long callpc, const char **name);
 
 
 static char	*watchtype_str(int type);
-static int	kamd64_set_watch(int watchnum, unsigned int watchaddr,
+static int	kx86_64_set_watch(int watchnum, unsigned int watchaddr,
                                int size, int access, struct dbreg * d);
-static int	kamd64_clr_watch(int watchnum, struct dbreg * d);
+static int	kx86_64_clr_watch(int watchnum, struct dbreg * d);
 int		db_md_set_watchpoint(db_expr_t addr, db_expr_t size);
 int		db_md_clr_watchpoint(db_expr_t addr, db_expr_t size);
 void		db_md_list_watchpoints(void);
@@ -164,7 +163,7 @@ void		db_md_list_watchpoints(void);
  * Figure out how many arguments were passed into the frame at "fp".
  */
 static int
-db_numargs(struct amd64_frame *fp)
+db_numargs(struct x86_64_frame *fp)
 {
 #if 1
 	return (0);	/* regparm, needs dwarf2 info */
@@ -219,7 +218,7 @@ db_print_stack_entry(const char *name, int narg, char **argnp, long *argp,
  * Figure out the next frame up in the call stack.
  */
 static void
-db_nextframe(struct amd64_frame **fp, db_addr_t *ip)
+db_nextframe(struct x86_64_frame **fp, db_addr_t *ip)
 {
 	struct trapframe *tf;
 	int frame_type;
@@ -258,7 +257,7 @@ db_nextframe(struct amd64_frame **fp, db_addr_t *ip)
 	 */
 	if (frame_type == NORMAL) {
 		*ip = (db_addr_t) rip;
-		*fp = (struct amd64_frame *) rbp;
+		*fp = (struct x86_64_frame *) rbp;
 		return;
 	}
 
@@ -309,14 +308,14 @@ db_nextframe(struct amd64_frame **fp, db_addr_t *ip)
 	}
 
 	*ip = (db_addr_t) rip;
-	*fp = (struct amd64_frame *) rbp;
+	*fp = (struct x86_64_frame *) rbp;
 }
 
 void
 db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 		   char *modif)
 {
-	struct amd64_frame *frame;
+	struct x86_64_frame *frame;
 	long *argp;
 	db_addr_t callpc;
 	boolean_t first;
@@ -326,20 +325,20 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 		count = 1024;
 
 	if (!have_addr) {
-		frame = (struct amd64_frame *)BP_REGS(&ddb_regs);
+		frame = (struct x86_64_frame *)BP_REGS(&ddb_regs);
 		if (frame == NULL)
-			frame = (struct amd64_frame *)(SP_REGS(&ddb_regs) - 8);
+			frame = (struct x86_64_frame *)(SP_REGS(&ddb_regs) - 8);
 		callpc = PC_REGS(&ddb_regs);
 	} else {
 		/*
 		 * Look for something that might be a frame pointer, just as
 		 * a convenience.
 		 */
-		frame = (struct amd64_frame *)addr;
+		frame = (struct x86_64_frame *)addr;
 		for (i = 0; i < 4096; i += 8) {
-			struct amd64_frame *check;
+			struct x86_64_frame *check;
 
-			check = (struct amd64_frame *)db_get_value((long)((char *)&frame->f_frame + i), 8, FALSE);
+			check = (struct x86_64_frame *)db_get_value((long)((char *)&frame->f_frame + i), 8, FALSE);
 			if ((char *)check - (char *)frame >= 0 &&
 			    (char *)check - (char *)frame < 4096
 			) {
@@ -358,7 +357,7 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 
 	first = TRUE;
 	while (count--) {
-		struct amd64_frame *actframe;
+		struct x86_64_frame *actframe;
 		int		narg;
 		const char *	name;
 		db_expr_t	offset;
@@ -389,11 +388,11 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 				instr = db_get_value(callpc, 4, FALSE);
 				if ((instr & 0xffffffff) == 0xe5894855) {
 					/* pushq %rbp; movq %rsp, %rbp */
-					actframe = (struct amd64_frame *)
+					actframe = (struct x86_64_frame *)
 					    (SP_REGS(&ddb_regs) - 8);
 				} else if ((instr & 0xffffff) == 0xe58948) {
 					/* movq %rsp, %rbp */
-					actframe = (struct amd64_frame *)
+					actframe = (struct x86_64_frame *)
 					    SP_REGS(&ddb_regs);
 					if (ddb_regs.tf_rbp == 0) {
 						/* Fake caller's frame better. */
@@ -401,11 +400,11 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 					}
 				} else if ((instr & 0xff) == 0xc3) {
 					/* ret */
-					actframe = (struct amd64_frame *)
+					actframe = (struct x86_64_frame *)
 					    (SP_REGS(&ddb_regs) - 8);
 				} else if (offset == 0) {
 					/* Probably a symbol in assembler code. */
-					actframe = (struct amd64_frame *)
+					actframe = (struct x86_64_frame *)
 					    (SP_REGS(&ddb_regs) - 8);
 				}
 			} else if (name != NULL &&
@@ -474,7 +473,7 @@ DB_DRX_FUNC(dr6)
 DB_DRX_FUNC(dr7)
 
 static int
-kamd64_set_watch(int watchnum, unsigned int watchaddr, int size, int access,
+kx86_64_set_watch(int watchnum, unsigned int watchaddr, int size, int access,
 	       struct dbreg *d)
 {
 	int i;
@@ -537,7 +536,7 @@ kamd64_set_watch(int watchnum, unsigned int watchaddr, int size, int access,
 
 
 int
-kamd64_clr_watch(int watchnum, struct dbreg *d)
+kx86_64_clr_watch(int watchnum, struct dbreg *d)
 {
 	if (watchnum < 0 || watchnum >= 4)
 		return(-1);
@@ -577,7 +576,7 @@ db_md_set_watchpoint(db_expr_t addr, db_expr_t size)
 				wsize = size;
 			if (wsize == 3)
 				wsize++;
-			kamd64_set_watch(i, addr, wsize, DBREG_DR7_WRONLY, &d);
+			kx86_64_set_watch(i, addr, wsize, DBREG_DR7_WRONLY, &d);
 			addr += wsize;
 			size -= wsize;
 		}
@@ -600,7 +599,7 @@ db_md_clr_watchpoint(db_expr_t addr, db_expr_t size)
 		if (d.dr[7] & (3 << (i * 2))) {
 			if ((DBREG_DRX((&d), i) >= addr) &&
 			    (DBREG_DRX((&d), i) < addr + size))
-				kamd64_clr_watch(i, &d);
+				kx86_64_clr_watch(i, &d);
 		}
 	}
 

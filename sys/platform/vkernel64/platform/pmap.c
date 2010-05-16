@@ -42,7 +42,6 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/pmap.c,v 1.3 2008/08/29 17:07:10 dillon Exp $
  */
 
 /*
@@ -922,7 +921,7 @@ pmap_init_thread(thread_t td)
 	/* enforce pcb placement */
 	td->td_pcb = (struct pcb *)(td->td_kstack + td->td_kstack_size) - 1;
 	td->td_savefpu = &td->td_pcb->pcb_save;
-	td->td_sp = (char *)td->td_pcb - 16; /* JG is -16 needed on amd64? */
+	td->td_sp = (char *)td->td_pcb - 16; /* JG is -16 needed on x86_64? */
 }
 
 /*

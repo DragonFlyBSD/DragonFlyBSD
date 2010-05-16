@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/pcb_ext.h,v 1.4 1999/12/29 04:33:04 peter Exp $
- * $DragonFly: src/sys/platform/pc64/include/pcb_ext.h,v 1.3 2008/08/29 17:07:17 dillon Exp $
  */
 
 #ifndef _MACHINE_PCB_EXT_H_
@@ -47,7 +46,7 @@
 
 struct pcb_ext {
 	struct 	user_segment_descriptor ext_tssd;	/* tss descriptor */
-	struct 	x86_64tss	ext_tss;	/* per-process amd64tss */
+	struct 	x86_64tss	ext_tss;	/* per-process x86_64tss */
 	caddr_t	ext_iomap;		/* i/o permission bitmap */
 };
 

@@ -67,7 +67,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/swtch.s,v 1.3 2008/08/29 17:07:10 dillon Exp $
  */
 
 //#include "use_npx.h"
@@ -470,7 +469,7 @@ ENTRY(cpu_heavy_restore)
 	movq	%dr7,%rax                /* load dr7 so as not to disturb */
 	/* JG correct value? */
 	andq    $0x0000fc00,%rax         /*   reserved bits               */
-	/* JG we've got more registers on amd64 */
+	/* JG we've got more registers on x86_64 */
 	pushq   %rbx
 	movq    PCB_DR7(%rdx),%rbx
 	/* JG correct value? */
@@ -617,7 +616,7 @@ ENTRY(cpu_kthread_restore)
  */
 ENTRY(cpu_lwkt_switch)
 	pushq	%rbp	/* JG note: GDB hacked to locate ebp relative to td_sp */
-	/* JG we've got more registers on AMD64 */
+	/* JG we've got more registers on x86_64 */
 	pushq	%rbx
 	movq	PCPU(curthread),%rbx
 	pushq	%r12

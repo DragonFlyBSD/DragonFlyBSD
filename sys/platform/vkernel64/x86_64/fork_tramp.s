@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/fork_tramp.s,v 1.3 2007/01/22 19:37:04 corecode Exp $
  */
 
 #include <machine/asmacros.h>
@@ -90,7 +89,7 @@ ENTRY(fork_trampoline)
 	xorl	%eax, %eax
 	call	panic
 pmsg4:  .asciz	"fork_trampoline mpcount %d after calling %p"
-	/* JG what's the purpose of this alignment and is it enough on amd64? */
+	/* JG what's the purpose of this alignment and is it enough on x86_64? */
 	.p2align 2
 1:
 #endif
