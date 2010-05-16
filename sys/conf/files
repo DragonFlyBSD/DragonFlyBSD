@@ -1321,7 +1321,7 @@ dev/video/cxm/cxm.c		optional cxm pci
 dev/video/cxm/cxm_dec_fw.c	optional cxm pci
 dev/video/cxm/cxm_eeprom.c	optional cxm pci
 dev/video/cxm/cxm_enc_fw.c	optional cxm pci
-dev/video/cxm/cxm_i2c.c		optional cxm pci smbus
+dev/video/cxm/cxm_i2c.c		optional cxm pci
 dev/video/cxm/cxm_ir.c		optional cxm pci
 dev/video/cxm/cxm_msp34xxx.c	optional cxm pci
 dev/video/cxm/cxm_saa7115.c	optional cxm pci
