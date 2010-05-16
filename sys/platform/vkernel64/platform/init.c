@@ -919,7 +919,8 @@ netif_open_tap(const char *netif, int *tap_unit, int s)
 			printf("TAP UNIT %d\n", *tap_unit);
 			if (netif_set_tapflags(*tap_unit, IFF_UP, s) == 0)
 				failed = 0;
-			failed = 0;
+			else
+				failed = 1;
 		} else {
 			failed = 1;
 		}
