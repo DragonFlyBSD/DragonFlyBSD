@@ -24,6 +24,8 @@ cpu/x86_64/misc/in_cksum2.s		optional	inet
 cpu/x86_64/misc/ktr.c			optional	ktr
 cpu/x86_64/misc/db_disasm.c		optional	ddb
 cpu/x86_64/misc/x86_64-gdbstub.c	optional	ddb
+cpu/x86_64/misc/bzeront.s		standard
+
 #
 # DOS mbr and gpt
 kern/subr_diskmbr.c			standard

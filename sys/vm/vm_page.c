@@ -87,10 +87,12 @@
 #include <vm/vm_pageout.h>
 #include <vm/vm_pager.h>
 #include <vm/vm_extern.h>
-#include <vm/vm_page2.h>
 #include <vm/swap_pager.h>
 
 #include <machine/md_var.h>
+
+#include <vm/vm_page2.h>
+#include <sys/mplock2.h>
 
 static void vm_page_queue_init(void);
 static void vm_page_free_wakeup(void);
@@ -391,6 +393,7 @@ vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 	/*
 	 * Insert it into the object.
 	 */
+	ASSERT_MP_LOCK_HELD(curthread);
 	vm_page_rb_tree_RB_INSERT(&object->rb_memq, m);
 	object->generation++;
 
@@ -444,6 +447,7 @@ vm_page_remove(vm_page_t m)
 	/*
 	 * Remove the page from the object and update the object.
 	 */
+	ASSERT_MP_LOCK_HELD(curthread);
 	vm_page_rb_tree_RB_REMOVE(&object->rb_memq, m);
 	object->resident_page_count--;
 	object->generation++;
@@ -475,6 +479,7 @@ vm_page_lookup(vm_object_t object, vm_pindex_t pindex)
 	/*
 	 * Search the hash table for this object/offset pair
 	 */
+	ASSERT_MP_LOCK_HELD(curthread);
 	crit_enter();
 	m = vm_page_rb_tree_RB_LOOKUP(&object->rb_memq, pindex);
 	crit_exit();
@@ -1056,6 +1061,36 @@ vm_page_free_toq(vm_page_t m)
 	vm_page_wakeup(m);
 	vm_page_free_wakeup();
 	crit_exit();
+}
+
+/*
+ * vm_page_free_fromq_fast()
+ *
+ * Remove a non-zero page from one of the free queues; the page is removed for
+ * zeroing, so do not issue a wakeup.
+ *
+ * MPUNSAFE
+ */
+vm_page_t
+vm_page_free_fromq_fast(void)
+{
+	static int qi;
+	vm_page_t m;
+	int i;
+
+	crit_enter();
+	for (i = 0; i < PQ_L2_SIZE; ++i) {
+		m = vm_page_list_find(PQ_FREE, qi, FALSE);
+		qi = (qi + PQ_PRIME2) & PQ_L2_MASK;
+		if (m && (m->flags & PG_ZERO) == 0) {
+			vm_page_unqueue_nowakeup(m);
+			vm_page_busy(m);
+			break;
+		}
+		m = NULL;
+	}
+	crit_exit();
+	return (m);
 }
 
 /*
@@ -1742,6 +1777,7 @@ vm_page_event_internal(vm_page_t m, vm_page_event_t event)
 		}
 	}
 }
+
 
 #include "opt_ddb.h"
 #ifdef DDB

@@ -296,6 +296,7 @@ struct thread {
  * rollup flag will be set in mycpu->gd_reqflags.
  */
 #define TDPRI_IDLE_THREAD	0	/* the idle thread */
+#define TDPRI_IDLE_WORK		1	/* idle work (page zero, etc) */
 #define TDPRI_USER_SCHEDULER	2	/* user scheduler helper */
 #define TDPRI_USER_IDLE		4	/* user scheduler idle */
 #define TDPRI_USER_NORM		6	/* user scheduler normal */

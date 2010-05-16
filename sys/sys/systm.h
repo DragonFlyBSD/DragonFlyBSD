@@ -224,6 +224,7 @@ void	bcopyi (const void *from, void *to, size_t len);
 void	bcopy (volatile const void *from, volatile void *to, size_t len);
 void	ovbcopy (const void *from, void *to, size_t len);
 void	bzero (volatile void *buf, size_t len);
+void	bzeront (volatile void *buf, size_t len);
 void	*memcpy (void *to, const void *from, size_t len);
 
 int	copystr (const void *kfaddr, void *kdaddr, size_t len,

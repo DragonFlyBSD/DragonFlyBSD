@@ -514,6 +514,7 @@ int vm_page_bits (int, int);
 vm_page_t vm_page_list_find(int basequeue, int index, boolean_t prefer_zero);
 void vm_page_zero_invalid(vm_page_t m, boolean_t setvalid);
 void vm_page_free_toq(vm_page_t m);
+vm_page_t vm_page_free_fromq_fast(void);
 vm_offset_t vm_contig_pg_kmap(int, u_long, vm_map_t, int);
 void vm_contig_pg_free(int, u_long);
 void vm_page_event_internal(vm_page_t, vm_page_event_t);
