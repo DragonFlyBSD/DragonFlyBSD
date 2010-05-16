@@ -512,6 +512,7 @@ kx86_64_set_watch(int watchnum, unsigned int watchaddr, int size, int access,
 		break;
 	case 4:
 		mask = 0x03 << 2;
+		break;
 	case 8:
 		mask = 0x02 << 2;
 		break;
