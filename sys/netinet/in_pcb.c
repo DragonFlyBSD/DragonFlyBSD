@@ -131,14 +131,9 @@ int ipport_lastauto = IPPORT_USERRESERVED;	/* 5000 */
 int ipport_hifirstauto = IPPORT_HIFIRSTAUTO;	/* 49152 */
 int ipport_hilastauto = IPPORT_HILASTAUTO;	/* 65535 */
 
-static __inline void
-RANGECHK(int var, int min, int max)
-{
-	if (var < min)
-		var = min;
-	else if (var > max)
-		var = max;
-}
+#define RANGECHK(var, min, max) \
+	if ((var) < (min)) { (var) = (min); } \
+	else if ((var) > (max)) { (var) = (max); }
 
 static int
 sysctl_net_ipport_check(SYSCTL_HANDLER_ARGS)
@@ -158,6 +153,8 @@ sysctl_net_ipport_check(SYSCTL_HANDLER_ARGS)
 	}
 	return (error);
 }
+
+#undef RANGECHK
 
 SYSCTL_NODE(_net_inet_ip, IPPROTO_IP, portrange, CTLFLAG_RW, 0, "IP Ports");
 
