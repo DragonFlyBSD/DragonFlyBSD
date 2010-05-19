@@ -225,8 +225,8 @@ uuid_loadcache(const char *path)
 			uuid_urbtree_RB_INSERT(&uuid_urbroot, node);
 			uuid_nrbtree_RB_INSERT(&uuid_nrbroot, node);
 		} else {
-			free(node);
 			free(node->name);
+			free(node);
 		}
 	}
 	fclose(fp);
