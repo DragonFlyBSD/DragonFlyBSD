@@ -431,6 +431,11 @@ link_elf_load_file(const char* filename, linker_file_t* result)
     int symcnt;
     int strcnt;
 
+    /* XXX Hack for firmware loading where p == NULL */
+    if (p == NULL) {
+	p = &proc0;
+    }
+
     KKASSERT(p != NULL);
     if (p->p_ucred == NULL) {
 	kprintf("link_elf_load_file: cannot load '%s' from filesystem"
