@@ -547,6 +547,7 @@ dev/netif/vx/if_vx_pci.c		optional vx pci
 dev/netif/wi/if_wi.c			optional wi
 dev/netif/wi/if_wi_pccard.c		optional wi pccard
 dev/netif/wi/if_wi_pci.c		optional wi pci
+dev/netif/wpi/if_wpi.c			optional wpi
 dev/netif/rtw/rtw.c			optional rtw
 dev/netif/rtw/rtwphy.c			optional rtw
 dev/netif/rtw/rtwphyio.c		optional rtw
