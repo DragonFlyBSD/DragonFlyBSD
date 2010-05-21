@@ -692,7 +692,6 @@ static int
 acpi_sysres_attach(device_t dev)
 {
     device_t bus;
-    device_t gparent;
     struct resource_list_entry *bus_rle, *dev_rle;
     struct resource_list *bus_rl, *dev_rl;
     int done, type;
@@ -705,7 +704,6 @@ acpi_sysres_attach(device_t dev)
      * the rman pool.
      */
     bus = device_get_parent(dev);
-    gparent = device_get_parent(bus);
     dev_rl = BUS_GET_RESOURCE_LIST(bus, dev);
     bus_rl = BUS_GET_RESOURCE_LIST(device_get_parent(bus), bus);
     if(bus_rl)
