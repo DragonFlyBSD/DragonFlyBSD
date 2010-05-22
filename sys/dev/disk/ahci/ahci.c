@@ -2922,6 +2922,7 @@ ahci_port_read_ncq_error(struct ahci_port *ap, int target)
 {
 	struct ata_log_page_10h	*log;
 	struct ahci_ccb		*ccb;
+	struct ahci_ccb		*ccb2;
 	struct ahci_cmd_hdr	*cmd_slot;
 	struct ata_fis_h2d	*fis;
 	int			err_slot;
@@ -2986,19 +2987,19 @@ ahci_port_read_ncq_error(struct ahci_port *ap, int target)
 		/* Copy back the log record as a D2H register FIS. */
 		err_slot = log->err_regs.type & ATA_LOG_10H_TYPE_TAG_MASK;
 
-		ccb = &ap->ap_ccbs[err_slot];
-		if (ccb->ccb_xa.state == ATA_S_ONCHIP) {
+		ccb2 = &ap->ap_ccbs[err_slot];
+		if (ccb2->ccb_xa.state == ATA_S_ONCHIP) {
 			kprintf("%s: read NCQ error page slot=%d\n",
-				ATANAME(ap, ccb->ccb_xa.at),
+				ATANAME(ap, ccb2->ccb_xa.at),
 				err_slot);
-			memcpy(&ccb->ccb_xa.rfis, &log->err_regs,
+			memcpy(&ccb2->ccb_xa.rfis, &log->err_regs,
 				sizeof(struct ata_fis_d2h));
-			ccb->ccb_xa.rfis.type = ATA_FIS_TYPE_D2H;
-			ccb->ccb_xa.rfis.flags = 0;
+			ccb2->ccb_xa.rfis.type = ATA_FIS_TYPE_D2H;
+			ccb2->ccb_xa.rfis.flags = 0;
 		} else {
 			kprintf("%s: read NCQ error page slot=%d, "
 				"slot does not match any cmds\n",
-				ATANAME(ccb->ccb_port, ccb->ccb_xa.at),
+				ATANAME(ccb2->ccb_port, ccb2->ccb_xa.at),
 				err_slot);
 			err_slot = -1;
 		}
