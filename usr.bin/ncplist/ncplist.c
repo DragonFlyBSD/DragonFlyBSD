@@ -30,10 +30,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ncplist/ncplist.c,v 1.1 1999/10/20 11:31:02 bp Exp $
- * $DragonFly: src/usr.bin/ncplist/ncplist.c,v 1.3 2008/07/10 18:29:52 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/time.h>
+#include <grp.h>
+#include <pwd.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -47,13 +48,16 @@ static struct ncp_conn_stat conndesc;
 
 static void help(void);
 static void show_connlist(void);
-static void show_serverlist(char *server);
-static void show_userlist(char *server);
-static void list_volumes(char *server);
-static void str_trim_right(char *s, char c);
+static void show_queuelist(char *, char *);
+static void show_serverlist(char *);
+static void show_userlist(char *);
+static void list_bindery(char *, char *, char*);
+static void list_volumes(char *);
+static int ncp_get_connid(char *, int);
+static void str_trim_right(char *, char);
 
 
-int
+static int
 ncp_get_connid(char *server, int justattach) {
 	int connid, error;
 	struct ncp_conn_loginfo li;
@@ -111,7 +115,7 @@ str_trim_right(char *s, char c) {
 		s[len] = '\0';
 }
 
-void
+static void
 show_connlist(void) {
 	void *p;
 	int cnt;
@@ -221,7 +225,7 @@ show_userlist(char *server) {
 	return;
 }
 
-void
+static void
 show_queuelist(char *server, char *patt) {
 	struct ncp_bindery_object q;
 	int found = 0, connid;
@@ -300,7 +304,7 @@ static struct ncp_bind_type btypes[] = {
 	{0, NULL}
 };
 
-void
+static void
 list_bindery(char *server, char *type, char *patt) {
 	struct ncp_bindery_object q;
 	int i, found = 0, connid;
