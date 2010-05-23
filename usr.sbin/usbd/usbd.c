@@ -1,7 +1,6 @@
 /*
  * $NetBSD: usbd.c,v 1.4 1998/12/09 00:57:19 augustss Exp $
  * $FreeBSD: src/usr.sbin/usbd/usbd.c,v 1.29 2003/10/25 22:03:10 jmg Exp $
- * $DragonFly: src/usr.sbin/usbd/usbd.c,v 1.7 2005/12/05 01:23:23 swildner Exp $
  */
 
 /*
@@ -99,7 +98,7 @@
 
 extern char *__progname;	/* name of program */
 
-char *configfile = CONFIGFILE;	/* name of configuration file */
+const char *configfile = CONFIGFILE; /* name of configuration file */
 
 char *devs[MAXUSBDEV];		/* device names */
 int fds[MAXUSBDEV];		/* file descriptors for USBDEV\d+ */
@@ -111,7 +110,7 @@ int verbose = 0;		/* print message on what it is doing */
 
 typedef struct event_name_s {
 	int	type;		/* event number (from usb.h) */
-	char	*name;
+	const char *name;
 } event_name_t;
 
 event_name_t event_names[] = {
@@ -169,21 +168,33 @@ typedef struct action_match_s {
  */
 typedef int (*config_field_fn)(action_t *action, char *args, char **trail);
 
-int set_device_field(action_t *action, char *args, char **trail);
-int set_vendor_field(action_t *action, char *args, char **trail);
-int set_product_field(action_t *action, char *args, char **trail);
-int set_release_field(action_t *action, char *args, char **trail);
-int set_class_field(action_t *action, char *args, char **trail);
-int set_subclass_field(action_t *action, char *args, char **trail);
-int set_protocol_field(action_t *action, char *args, char **trail);
-int set_devname_field(action_t *action, char *args, char **trail);
-int set_attach_field(action_t *action, char *args, char **trail);
-int set_detach_field(action_t *action, char *args, char **trail);
+static void execute_command(char *);
+static int  find_action(struct usb_device_info *, action_match_t *);
+static int get_integer(char *, int *, char **);
+static int get_string(char *, char **, char **);
+static int match_devname(action_t *, struct usb_device_info *);
+static void print_action(action_t *, int);
+static void print_actions(void);
+static void print_event(struct usb_event *);
+static void process_event_queue(int);
+static void read_configuration(void);
+static int set_attach_field(action_t *, char *, char **);
+static int set_class_field(action_t *, char *, char **);
+static int set_detach_field(action_t *, char *, char **);
+static int set_device_field(action_t *, char *, char **);
+static int set_devname_field(action_t *, char *, char **);
+static int set_product_field(action_t *, char *, char **);
+static int set_protocol_field(action_t *, char *, char **);
+static int set_release_field(action_t *, char *, char **);
+static int set_subclass_field(action_t *, char *, char **);
+static int set_vendor_field(action_t *, char *, char **);
+static void usage(void);
+
 
 /* the list of fields supported in an entry */
 typedef struct config_field_s {
 	int	event;
-	char 	*name;
+	const char *name;
 	config_field_fn	function;
 } config_field_t;
 
@@ -204,15 +215,7 @@ config_field_t config_fields[] = {
 	{0, NULL, NULL}		/* NULL is EOL marker, not the 0 */
 };
 
-
-/* prototypes for some functions */
-void print_event(struct usb_event *event);
-void print_action(action_t *action, int i);
-void print_actions(void);
-int  find_action(struct usb_device_info *devinfo, action_match_t *action_match);
-
-
-void
+static void
 usage(void)
 {
 	fprintf(stderr, "usage: %s [-d] [-v] [-t timeout] [-e] [-f dev]\n"
@@ -223,7 +226,7 @@ usage(void)
 
 
 /* generic helper functions for the functions to set the fields of actions */
-int
+static int
 get_string(char *src, char **rdst, char **rsrc)
 {
 	/* Takes the first string from src, taking quoting into account.
@@ -245,7 +248,7 @@ get_string(char *src, char **rdst, char **rsrc)
 	 */
 
 	char *dst;		/* destination string */
-	int i;			/* index into src */
+	size_t i;		/* index into src */
 	int j;			/* index into dst */
 	int quoted = 0;		/* 1 for single, 2 for double quoted */
 
@@ -303,7 +306,7 @@ get_string(char *src, char **rdst, char **rsrc)
 	}
 }
 
-int
+static int
 get_integer(char *src, int *dst, char **rsrc)
 {
 	char *endptr;
@@ -338,42 +341,49 @@ get_integer(char *src, int *dst, char **rsrc)
 }
 
 /* functions to set the fields of the actions appropriately */
-int
+static int
 set_device_field(action_t *action, char *args, char **trail)
 {
 	return(get_string(args, &action->name, trail));
 }
-int
+
+static int
 set_vendor_field(action_t *action, char *args, char **trail)
 {
 	return(get_integer(args, &action->vendor, trail));
 }
-int
+
+static int
 set_product_field(action_t *action, char *args, char **trail)
 {
 	return(get_integer(args, &action->product, trail));
 }
-int
+
+static int
 set_release_field(action_t *action, char *args, char **trail)
 {
 	return(get_integer(args, &action->release, trail));
 }
-int
+
+static int
 set_class_field(action_t *action, char *args, char **trail)
 {
 	return(get_integer(args, &action->class, trail));
 }
-int
+
+static int
 set_subclass_field(action_t *action, char *args, char **trail)
 {
 	return(get_integer(args, &action->subclass, trail));
 }
-int
+
+static int
 set_protocol_field(action_t *action, char *args, char **trail)
 {
 	return(get_integer(args, &action->protocol, trail));
 }
-int
+
+static int
 set_devname_field(action_t *action, char *args, char **trail)
 {
 	int match = get_string(args, &action->devname, trail);
@@ -406,19 +416,20 @@ set_devname_field(action_t *action, char *args, char **trail)
 
 	return(match);
 }
-int
+
+static int
 set_attach_field(action_t *action, char *args, char **trail)
 {
 	return(get_string(args, &action->attach, trail));
 }
-int
+
+static int
 set_detach_field(action_t *action, char *args, char **trail)
 {
 	return(get_string(args, &action->detach, trail));
 }
 
-
-void
+static void
 read_configuration(void)
 {
 	FILE *file;		/* file descriptor */
@@ -563,7 +574,7 @@ read_configuration(void)
 }
 
 
-void
+static void
 print_event(struct usb_event *event)
 {
 	int i;
@@ -608,17 +619,17 @@ print_event(struct usb_event *event)
 		}
 	} else if (event->ue_type == USB_EVENT_CTRLR_ATTACH ||
 	    event->ue_type == USB_EVENT_CTRLR_DETACH) {
-		printf(" bus=%d", &event->u.ue_ctrlr.ue_bus);
+		printf(" bus=%d", event->u.ue_ctrlr.ue_bus);
 	} else if (event->ue_type == USB_EVENT_DRIVER_ATTACH ||
 	    event->ue_type == USB_EVENT_DRIVER_DETACH) {
 		printf(" cookie=%u devname=%s",
-		    &event->u.ue_driver.ue_cookie.cookie,
-		    &event->u.ue_driver.ue_devname);
+		    event->u.ue_driver.ue_cookie.cookie,
+		    event->u.ue_driver.ue_devname);
 	}
 	printf("\n");
 }
 
-void
+static void
 print_action(action_t *action, int i)
 {
 	if (action == NULL)
@@ -664,7 +675,7 @@ print_action(action_t *action, int i)
 			action->detach);
 }
 
-void
+static void
 print_actions(void)
 {
 	int i = 0;
@@ -677,7 +688,7 @@ print_actions(void)
 }
 
 
-int
+static int
 match_devname(action_t *action, struct usb_device_info *devinfo)
 {
 	int i;
@@ -702,11 +713,11 @@ match_devname(action_t *action, struct usb_device_info *devinfo)
 }
 
 
-int
+static int
 find_action(struct usb_device_info *devinfo, action_match_t *action_match)
 {
 	action_t *action;
-	char *devname = NULL;
+	char *_devname = NULL;
 	int match = -1;
 
 	STAILQ_FOREACH(action, &actions, next) {
@@ -731,23 +742,23 @@ find_action(struct usb_device_info *devinfo, action_match_t *action_match)
 			 * one devname for that device, use that.
 			 */
 			if (match >= 0)
-				devname = devinfo->udi_devnames[match];
+				_devname = devinfo->udi_devnames[match];
 			else if (devinfo->udi_devnames[0][0] != '\0' &&
 				 devinfo->udi_devnames[1][0] == '\0')
 				/* if we have exactly 1 device name */
-				devname = devinfo->udi_devnames[0];
+				_devname = devinfo->udi_devnames[0];
 
 			if (verbose) {
 				printf("%s: Found action '%s' for %s, %s",
 					__progname, action->name,
 					devinfo->udi_product, devinfo->udi_vendor);
-				if (devname)
-					printf(" at %s", devname);
+				if (_devname)
+					printf(" at %s", _devname);
 				printf("\n");
 			}
 
 			action_match->action = action;
-			action_match->devname = devname;
+			action_match->devname = _devname;
 
 			return(1);
 		}
@@ -756,7 +767,7 @@ find_action(struct usb_device_info *devinfo, action_match_t *action_match)
 	return(0);
 }
 
-void
+static void
 execute_command(char *cmd)
 {
 	pid_t pid;
@@ -841,8 +852,8 @@ execute_command(char *cmd)
 	}
 }
 
-void
-process_event_queue(int fd)
+static void
+process_event_queue(int fdesc)
 {
 	struct usb_event event;
 	int error;
@@ -850,7 +861,7 @@ process_event_queue(int fd)
 	action_match_t action_match;
 
 	for (;;) {
-		len = read(fd, &event, sizeof(event));
+		len = read(fdesc, &event, sizeof(event));
 		if (len == -1) {
 			if (errno == EWOULDBLOCK) {
 				/* no more events */
