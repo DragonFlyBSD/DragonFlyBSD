@@ -599,7 +599,7 @@ static
 uintptr_t
 hashfunc_pointer(uintptr_t p)
 {
-	return p;
+	return p % NR_BUCKETS;
 }
 
 struct hashtab *
