@@ -1,3 +1,5 @@
+/*	$OpenBSD: lm78.c,v 1.20 2007/06/25 22:50:18 cnst Exp $	*/
+
 /*
  * Copyright (c) 2005, 2006 Mark Kettenis
  * Copyright (c) 2006, 2007 Constantine A. Murenin
@@ -13,8 +15,6 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * $OpenBSD: lm78.c,v 1.18 2007/05/26 22:47:39 cnst Exp $
  */
 
 #include <sys/param.h>
@@ -514,6 +514,10 @@ wb_match(struct lm_softc *sc)
 	case WB_CHIPID_W83627THF:
 		cdesc = "W83627THF";
 		lm_setup_sensors(sc, w83637hf_sensors);
+		break;
+	case WB_CHIPID_W83627EHF_A:
+		cdesc = "W83627EHF-A";
+		lm_setup_sensors(sc, w83627ehf_sensors);
 		break;
 	case WB_CHIPID_W83627EHF:
 		cdesc = "W83627EHF";

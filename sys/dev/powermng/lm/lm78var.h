@@ -1,3 +1,5 @@
+/*	$OpenBSD: lm78var.h,v 1.14 2007/06/25 22:50:18 cnst Exp $	*/
+
 /*
  * Copyright (c) 2005, 2006 Mark Kettenis
  *
@@ -12,9 +14,6 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * $OpenBSD: lm78var.h,v 1.12 2007/05/25 02:26:43 cnst Exp $
- * $DragonFly: src/sys/dev/powermng/lm/lm78var.h,v 1.1 2007/10/02 13:37:38 hasso Exp $
  */
 
 /*
@@ -112,6 +111,7 @@
 #define WB_CHIPID_W83791SD	0x72
 #define WB_CHIPID_W83792D	0x7a
 #define WB_CHIPID_W83637HF	0x80
+#define WB_CHIPID_W83627EHF_A	0x88 /* early version, only for ASUS MBs */
 #define WB_CHIPID_W83627THF	0x90
 #define WB_CHIPID_W83627EHF	0xa1
 #define WB_CHIPID_W83627DHG	0xc1
