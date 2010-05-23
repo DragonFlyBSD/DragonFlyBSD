@@ -852,8 +852,8 @@ cmd_stats(int argc, char **argv)
 			printf("ignoring assignment of wrong type %d (expected %d)\n",
 			       ev.stmt.val->type, type);
 		} else {
-			printf("STMT: var \"%s\" = %jx\n",
-			       ev.stmt.var->name, ev.stmt.val->num);
+			printf("var \"%s\" = %jx\n",
+			       filt.var, ev.stmt.val->num);
 			sum += ev.stmt.val->num;
 			++occurences;
 		}
