@@ -28,7 +28,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/sa/pdb.c,v 1.7 1999/08/28 01:19:53 peter Exp $
- * $DragonFly: src/usr.sbin/sa/pdb.c,v 1.4 2005/12/05 02:40:28 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -305,7 +304,8 @@ check_junk(struct cmdinfo *cip)
 	char *cp;
 	size_t len;
 
-	fprintf(stderr, "%s (%qu) -- ", cip->ci_comm, cip->ci_calls);
+	fprintf(stderr, "%s (%ju) -- ", cip->ci_comm,
+	    (uintmax_t)cip->ci_calls);
 	cp = fgetln(stdin, &len);
 
 	return (cp && (cp[0] == 'y' || cp[0] == 'Y')) ? 1 : 0;
@@ -336,7 +336,7 @@ print_ci(const struct cmdinfo *cip, const struct cmdinfo *totalcip)
 	} else
 		uflow = 0;
 
-	printf("%8qu ", cip->ci_calls);
+	printf("%8ju ", (uintmax_t)cip->ci_calls);
 	if (cflag) {
 		if (cip != totalcip)
 			printf(" %4.2f%%  ",
@@ -393,19 +393,20 @@ print_ci(const struct cmdinfo *cip, const struct cmdinfo *totalcip)
 		}
 	}
 
-	if (tflag)
+	if (tflag) {
 		if (!uflow)
 			printf("%8.2fre/cp ", cip->ci_etime / (double) (cip->ci_utime + cip->ci_stime));
 		else
 			printf("*ignore*      ");
+	}
 
 	if (Dflag)
-		printf("%10qutio ", cip->ci_io);
+		printf("%10jutio ", (uintmax_t)cip->ci_io);
 	else
 		printf("%8.0favio ", cip->ci_io / c);
 
 	if (Kflag)
-		printf("%10quk*sec ", cip->ci_mem);
+		printf("%10juk*sec ", (uintmax_t)cip->ci_mem);
 	else
 		printf("%8.0fk ", cip->ci_mem / t);
 

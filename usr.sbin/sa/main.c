@@ -29,7 +29,6 @@
  *
  * @(#) Copyright (c) 1994 Christopher G. Demetriou All rights reserved.
  * $FreeBSD: src/usr.sbin/sa/main.c,v 1.8.2.2 2001/07/19 05:20:49 kris Exp $
- * $DragonFly: src/usr.sbin/sa/main.c,v 1.5 2005/12/05 02:40:28 swildner Exp $
  */
 
 /*
@@ -63,9 +62,9 @@ static void	usage	(void);
 
 int aflag, bflag, cflag, dflag, Dflag, fflag, iflag, jflag, kflag;
 int Kflag, lflag, mflag, qflag, rflag, sflag, tflag, uflag, vflag;
-int cutoff = 1;
+u_quad_t cutoff = 1;
 
-static char	*dfltargv[] = { _PATH_ACCT };
+static char	*dfltargv[] = { NULL };
 static int	dfltargc = (sizeof dfltargv/sizeof(char *));
 
 /* default to comparing by sum of user + system time */
@@ -75,7 +74,10 @@ int
 main(int argc, char **argv)
 {
 	char ch;
+	char pathacct[] = _PATH_ACCT;
 	int error = 0;
+
+	dfltargv[0] = pathacct;
 
 	while ((ch = getopt(argc, argv, "abcdDfijkKlmnqrstuv:")) != -1)
 		switch (ch) {
@@ -230,7 +232,7 @@ main(int argc, char **argv)
 			 * but we want every accounting record intact.
 			 */
 			if (ftruncate(fd, 0) == -1) {
-				warn("couldn't truncate %s", argv);
+				warn("couldn't truncate %s", argv[0]);
 				error = 1;
 			}
 
@@ -257,7 +259,7 @@ main(int argc, char **argv)
 		 * close the opened accounting file
 		 */
 		if (close(fd) == -1) {
-			warn("close %s", argv);
+			warn("close %s", argv[0]);
 			error = 1;
 		}
 	}
@@ -315,14 +317,14 @@ acct_load(char *pn, int wr)
 		rv = read(fd, &ac, sizeof(struct acct));
 		if (rv == -1)
 			warn("error reading %s", pn);
-		else if (rv > 0 && rv < sizeof(struct acct))
+		else if (rv > 0 && rv < (int)sizeof(struct acct))
 			warnx("short read of accounting data in %s", pn);
 		if (rv != sizeof(struct acct))
 			break;
 
 		/* decode it */
 		ci.ci_calls = 1;
-		for (i = 0; i < sizeof ac.ac_comm && ac.ac_comm[i] != '\0';
+		for (i = 0; i < (int)sizeof ac.ac_comm && ac.ac_comm[i] != '\0';
 		    i++) {
 			char c = ac.ac_comm[i];
 
@@ -349,10 +351,11 @@ acct_load(char *pn, int wr)
 			if (sflag || (mflag && !qflag))
 				usracct_add(&ci);
 		} else if (!qflag)
-			printf("%6lu %12.2f cpu %12quk mem %12qu io %s\n",
+			printf("%6lu %12.2f cpu %12juk mem %12ju io %s\n",
 			    ci.ci_uid,
 			    (ci.ci_utime + ci.ci_stime) / (double) AHZ,
-			    ci.ci_mem, ci.ci_io, ci.ci_comm);
+			    (uintmax_t)ci.ci_mem, (uintmax_t)ci.ci_io,
+			    ci.ci_comm);
 	}
 
 	/* finally, return the file descriptor for possible truncation */
