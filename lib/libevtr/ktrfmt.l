@@ -12,6 +12,7 @@ enum {
 
 static struct token tokens[NR_TOKENS];
 static int curr_tok;
+static struct symtab *strtab;
 
 struct token *
 tok_new(void)
@@ -33,6 +34,24 @@ tok_free(struct token *tok)
 	--curr_tok;
 }
 
+/*
+ * We keep track of strings we've seen before so string comparison
+ * can be done w/ a simple pointer comparison
+ */
+static
+char *
+newstr(const char *s)
+{
+	void *r;
+	if (!strtab)
+		strtab = symtab_new();	/* XXX: oom */
+	if ((r = symtab_find(strtab, s)))
+		return r;
+	r = strdup(s);
+	symtab_insert(strtab, r, r);
+	return r;
+}
+
 %}
 
 %option prefix="__ktrfmt"
@@ -47,11 +66,21 @@ ID	[a-zA-Z_$][a-zA-Z0-9_]*
 
 %%
 {WHITE}+ { /* ignore */ }
+\"(\\\"|[^"\n])+\" {
+	size_t len;
+	yylval->tok = tok_new();
+	yylval->tok->type = TOK_STR;
+	len = strlen(yytext);
+	yytext[len - 1] = '\0';	/* kill trailing quote */
+	yylval->tok->str = newstr(yytext + 1);
+	printd(LEX, "TOK_STR\n");
+	return TOK_STR;
+	}
 {ID} {
 	yylval->tok = tok_new();
 	yylval->tok->type = TOK_ID;
 	printd(LEX, "tok %p TOK_ID %p:%s\n", yylval->tok, yytext, yytext);
-	yylval->tok->str = strdup(yytext);
+	yylval->tok->str = strdup(yytext);	/* XXX: oom */
 	return TOK_ID;
 	}
 {INT} {

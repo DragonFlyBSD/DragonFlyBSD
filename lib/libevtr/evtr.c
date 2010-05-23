@@ -692,7 +692,6 @@ strhash_insert(struct hashtab_str *strtab, const char *str, uint16_t *id)
 	return 0;
 }
 
-static
 struct symtab *
 symtab_new(void)
 {
@@ -704,7 +703,6 @@ symtab_new(void)
 	return symtab;
 }
 
-static
 void
 symtab_destroy(struct symtab *symtab)
 {

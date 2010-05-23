@@ -104,8 +104,8 @@ constant: TOK_INT {
 	| TOK_STR {
 	evtr_var_t var;
 	var = evtr_var_new(uniq_varname());
-	var->val.type = EVTR_VAL_INT;
-	var->val.str = strdup($1->str);
+	var->val.type = EVTR_VAL_STR;
+	var->val.str = $1->str;
 	if (!var->val.str) {
 		fprintf(stderr, "oom\n");
 		YYABORT;
@@ -132,52 +132,66 @@ primary_expr: TOK_ID {
 	$$ = $1;
   }
 ;
-postfix_expr: TOK_ID TOK_LEFT_BRACK postfix_expr TOK_RIGHT_BRACK {
+postfix_expr: primary_expr TOK_LEFT_BRACK postfix_expr TOK_RIGHT_BRACK {
 	evtr_var_t hsh, var;
 	evtr_variable_value_t val;
-	hsh = symtab_find(ctx->symtab, $1->str);
+	uintptr_t ret, key;
+	hsh = symtab_find(ctx->symtab, $1->name);
+#if 0
 	if (!hsh) {
-		printd(PARSE, "creating hash: %s\n", $1->str);
-		hsh = evtr_var_new($1->str);
+		printd(PARSE, "creating hash: %s\n", $1->name);
+		hsh = evtr_var_new($1->name);
 		hsh->val.type = EVTR_VAL_HASH;
 		hsh->val.hashtab = hash_new();
 		symtab_insert(ctx->symtab, $1->str, hsh);
 	}
-	if (hsh->val.type != EVTR_VAL_HASH) {
-		printd(PARSE, "variable %s does not contain a hash\n", hsh->name);
+#endif
+	if (hsh->val.type == EVTR_VAL_NIL) {
+		/* it's probably the first time we see this "variable" */
+		printd(PARSE, "creating hash for %s\n", hsh->name);
+		hsh->val.type = EVTR_VAL_HASH;
+		hsh->val.hashtab = hash_new();
+	} else if (hsh->val.type != EVTR_VAL_HASH) {
+		printd(PARSE, "trying to use type %d as hash\n", hsh->val.type);
 		YYABORT;
 	}
 	val = &$3->val;
 	if (val->type == EVTR_VAL_INT) {
-		uintptr_t ret;
-		uintptr_t key = val->num;
-		printd(PARSE, "looking up %s[%jd] in %p\n", $1->str, val->num, hsh->val.hashtab);
-		/* XXX: should definitely be using uintptr_t for keys/values */
-		if (hash_find(hsh->val.hashtab, key, &ret)) {
-			printd(PARSE, "didn't find it\n");
-			var = evtr_var_new(uniq_varname());
-			if (var) {
-				printd(PARSE, "inserting it as %s\n", var->name);
-				if (!hash_insert(hsh->val.hashtab, key, (uintptr_t)var)) {
-					fprintf(stderr, "can't insert tmp "
-						"variable into hash\n");
-					YYABORT;
-				}
+		key = val->num;
+		printd(PARSE, "looking up %s[%jd] in %p\n", hsh->name, val->num, hsh->val.hashtab);
+	} else if (val->type == EVTR_VAL_STR) {
+		key = (uintptr_t)val->str;
+		printd(PARSE, "looking up %s[\"%s\"] in %p\n", hsh->name, val->str, hsh->val.hashtab);
+	} else {
+		fprintf(stderr, "trying to index hash w/ non-supported value\n");
+		YYABORT;
+	}
+
+      	if (hash_find(hsh->val.hashtab, key, &ret)) {
+		printd(PARSE, "didn't find it\n");
+		var = evtr_var_new(uniq_varname());
+		if (var) {
+			printd(PARSE, "inserting it as %s\n", var->name);
+			if (!hash_insert(hsh->val.hashtab, key, (uintptr_t)var)) {
+				fprintf(stderr, "can't insert tmp "
+					"variable into hash\n");
+				YYABORT;
 			}
 		} else {
-			var = (struct evtr_variable *)ret;
+			/* XXX: oom */
 		}
 	} else {
-		fprintf(stderr, "trying to index hash w/ non-integral value\n");
-		YYABORT;
+		var = (struct evtr_variable *)ret;
 	}
 	if (!var) {
 		fprintf(stderr, "no var!\n");
 		YYABORT;
 		/* XXX */
 	}
-	tok_free($1);
 	$$ = var;
+ }
+| primary_expr TOK_DOT TOK_ID {
+	/* XXX */
  }
             | primary_expr {
 	$$ = $1;
