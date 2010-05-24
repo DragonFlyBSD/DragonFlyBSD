@@ -3,7 +3,7 @@
 
 PROG=	ktrdump
 DPADD=	${LIBKVM} ${LIBEVTR}
-LDADD=	-lkvm -levtr
+LDADD=	-lkvm -levtr -ldevinfo
 MAN=	ktrdump.8
 
 .include <bsd.prog.mk>

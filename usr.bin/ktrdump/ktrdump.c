@@ -37,6 +37,7 @@
 #include <sys/queue.h>
 
 #include <ctype.h>
+#include <devinfo.h>
 #include <err.h>
 #include <fcntl.h>
 #include <kvm.h>
@@ -118,6 +119,7 @@ static int ktr_version;
 static void usage(void);
 static int earliest_ts(struct ktr_buffer *);
 static void dump_machine_info(evtr_t);
+static void dump_device_info(evtr_t);
 static void print_header(FILE *, int);
 static void print_entry(FILE *, int, int, struct ktr_entry *, u_int64_t *);
 static void print_callback(void *, int, int, struct ktr_entry *, uint64_t *);
@@ -279,6 +281,7 @@ main(int ac, char **av)
 
 	if (dflag) {
 		dump_machine_info((evtr_t)ctx);
+		dump_device_info((evtr_t)ctx);
 	}
 	ktr_kbuf = calloc(ncpus, sizeof(*ktr_kbuf));
 	ktr_idx = calloc(ncpus, sizeof(*ktr_idx));
@@ -321,6 +324,52 @@ main(int ac, char **av)
 	if (dflag)
 		evtr_close(ctx);
 	return (0);
+}
+
+static
+int
+dump_devinfo(struct devinfo_dev *dev, void *arg)
+{
+	struct evtr_event ev;
+	evtr_t evtr = (evtr_t)arg;
+	char *fmt = "#devicenames[\"%s\"] = %#lx";
+	char fmtdatabuf[sizeof(char *) + sizeof(devinfo_handle_t)];
+	char *fmtdata = fmtdatabuf;
+
+	if (!dev->dd_name[0])
+		return 0;
+	ev.type = EVTR_TYPE_PROBE;
+	ev.ts = 0;
+	ev.line = 0;
+	ev.file = NULL;
+	ev.cpu = -1;
+	ev.func = NULL;
+	ev.fmt = fmt;
+	((char **)fmtdata)[0] = &dev->dd_name[0];
+	fmtdata += sizeof(char *);
+	((devinfo_handle_t *)fmtdata)[0] = dev->dd_handle;
+	ev.fmtdata = fmtdatabuf;
+	ev.fmtdatalen = sizeof(fmtdatabuf);
+
+	if (evtr_dump_event(evtr, &ev)) {
+		err(1, evtr_errmsg(evtr));
+	}
+
+	return devinfo_foreach_device_child(dev, dump_devinfo, evtr);
+}
+
+static
+void
+dump_device_info(evtr_t evtr)
+{
+	struct devinfo_dev *root;
+	if (devinfo_init())
+		return;
+	if (!(root = devinfo_handle_to_device(DEVINFO_ROOT_DEVICE))) {
+		warn("can't find root device");
+		return;
+	}
+	devinfo_foreach_device_child(root, dump_devinfo, evtr);
 }
 
 static
