@@ -1168,23 +1168,14 @@ tmpfs_chmod(struct vnode *vp, mode_t mode, struct ucred *cred)
 int
 tmpfs_chown(struct vnode *vp, uid_t uid, gid_t gid, struct ucred *cred)
 {
-	int error;
+	mode_t cur_mode;
+	uid_t cur_uid;
+	gid_t cur_gid;
 	struct tmpfs_node *node;
-	uid_t ouid;
-	gid_t ogid;
-	int fmode, mode;
+	int error;
 
 	KKASSERT(vn_islocked(vp));
-
 	node = VP_TO_TMPFS_NODE(vp);
-
-	/* Assign default values if they are unknown. */
-	KKASSERT(uid != VNOVAL || gid != VNOVAL);
-	if (uid == VNOVAL)
-		uid = node->tn_uid;
-	if (gid == VNOVAL)
-		gid = node->tn_gid;
-	KKASSERT(uid != VNOVAL && gid != VNOVAL);
 
 	/* Disallow this operation if the file system is mounted read-only. */
 	if (vp->v_mount->mnt_flag & MNT_RDONLY)
@@ -1194,56 +1185,26 @@ tmpfs_chown(struct vnode *vp, uid_t uid, gid_t gid, struct ucred *cred)
 	if (node->tn_flags & (IMMUTABLE | APPEND))
 		return EPERM;
 
-	fmode = FFLAGS(node->tn_flags);
-	mode = 0;
-	if (((fmode & (FREAD | FWRITE)) == 0) || (fmode & O_CREAT))
-		return EINVAL;
-	if (fmode & (FWRITE | O_TRUNC)) {
-		if (vp->v_type == VDIR) {
-			return EISDIR;
+	cur_uid = node->tn_uid;
+	cur_gid = node->tn_gid;
+	cur_mode = node->tn_mode;
+	error = vop_helper_chown(vp, uid, gid, cred,
+				 &cur_uid, &cur_gid, &cur_mode);
+
+	if (error == 0) {
+		TMPFS_NODE_LOCK(node);
+		if (cur_uid != node->tn_uid ||
+		    cur_gid != node->tn_gid ||
+		    cur_mode != node->tn_mode) {
+			node->tn_uid = uid;
+			node->tn_gid = gid;
+			node->tn_mode = cur_mode;
+			node->tn_status |= TMPFS_NODE_CHANGED;
 		}
-		error = vn_writechk(vp, NULL);
-		if (error)
-			return (error);
-
-		mode |= VWRITE;
-	}
-	if (fmode & FREAD)
-		mode |= VREAD;
-	if (mode) {
-		error = VOP_ACCESS(vp, mode, cred);
-		if (error)
-			return (error);
+		TMPFS_NODE_UNLOCK(node);
 	}
 
-	/*
-	 * To change the owner of a file, or change the group of a file to a
-	 * group of which we are not a member, the caller must have
-	 * privilege.
-	 */
-	if ((uid != node->tn_uid ||
-	    (gid != node->tn_gid && !groupmember(gid, cred))) &&
-	    (error = priv_check_cred(cred, PRIV_VFS_CHOWN, 0)))
-		return (error);
-
-	ogid = node->tn_gid;
-	ouid = node->tn_uid;
-
-	TMPFS_NODE_LOCK(node);
-	node->tn_uid = uid;
-	node->tn_gid = gid;
-
-	node->tn_status |= TMPFS_NODE_CHANGED;
-
-	if ((node->tn_mode & (S_ISUID | S_ISGID)) && (ouid != uid || ogid != gid)) {
-		if (priv_check_cred(cred, PRIV_VFS_RETAINSUGID, 0))
-			node->tn_mode &= ~(S_ISUID | S_ISGID);
-	}
-	TMPFS_NODE_UNLOCK(node);
-
-	KKASSERT(vn_islocked(vp));
-
-	return 0;
+	return error;
 }
 
 /* --------------------------------------------------------------------- */
