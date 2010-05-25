@@ -41,8 +41,9 @@ int symtab_insert(struct symtab *, const char *, struct evtr_variable *);
 void symtab_destroy(struct symtab *);
 
 
-int parse_string(evtr_event_t, struct symtab *, const char *);
-int parse_var(const char *, struct symtab *, struct evtr_variable **);
+int parse_string(evtr_event_t, struct symtab *, const char *, char *, size_t);
+int parse_var(const char *, struct symtab *, struct evtr_variable **,
+	      char *, size_t);
 
 struct hashtab;
 struct hashentry;

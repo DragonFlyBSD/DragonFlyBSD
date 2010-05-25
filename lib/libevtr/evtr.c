@@ -76,6 +76,7 @@ enum {
 	EVTR_NS_DSTR,
 	EVTR_NS_MAX,
 	NR_BUCKETS = 1021,	/* prime */
+	PARSE_ERR_BUFSIZE = 256,
 	REC_ALIGN = 8,
 	REC_BOUNDARY = 1 << 14,
 	FILTF_ID = 0x10,
@@ -232,6 +233,7 @@ struct evtr_query {
 	TAILQ_HEAD(, event_filter_unresolved) unresolved_filtq;
 	int err;
 	const char *errmsg;
+	char parse_err_buf[PARSE_ERR_BUFSIZE];
 	int flags;
 	struct evtr_event pending_event;
 };
@@ -749,7 +751,12 @@ evtr_filter_match(evtr_query_t q, evtr_filter_t f, evtr_event_t ev)
 		struct evtr_variable *var;
 		/* resolve var */
 		/* XXX: no need to do that *every* time */
-		parse_var(f->var, q->symtab, &var);
+		parse_var(f->var, q->symtab, &var, &q->parse_err_buf[0],
+			  PARSE_ERR_BUFSIZE);
+		/*
+		 * Ignore errors, they're expected since the
+		 * variable might not be instantiated yet
+		 */
 		if (var != ev->stmt.var)
 			return 0;
 	}
@@ -790,7 +797,12 @@ parse_callback(evtr_event_t ev, void *d)
 	 * EVTR_TYPE_STMT event.
 	 */
 	memcpy(&q->pending_event, ev, sizeof(ev));
-	parse_string(&q->pending_event, q->symtab, &ev->fmt[1]);
+	parse_string(&q->pending_event, q->symtab, &ev->fmt[1],
+		     &q->parse_err_buf[0], PARSE_ERR_BUFSIZE);
+	if (q->parse_err_buf[0]) {	/* parse error */
+		q->errmsg = &q->parse_err_buf[0];
+		return;
+	}
 	if (!evtr_match_filters(q, &q->pending_event))
 		return;
 	/*

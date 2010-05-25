@@ -56,7 +56,7 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 63 "ktrfmt.y"
+#line 146 "ktrfmt.y"
 
 	struct token *tok;
 	struct evtr_variable *var;

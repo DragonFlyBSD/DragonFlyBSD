@@ -7,9 +7,10 @@
 #include "internal.h"
 
 enum {
-	NR_TOKENS = 8,
+	NR_TOKENS = 18,
 };
 
+/* XXX: need to switch to reentrant lexer */
 static struct token tokens[NR_TOKENS];
 static int curr_tok;
 static struct symtab *strtab;
@@ -30,7 +31,6 @@ void
 tok_free(struct token *tok)
 {
 	assert(&tokens[curr_tok] == tok);
-	free(tok->str);
 	--curr_tok;
 }
 
@@ -44,10 +44,11 @@ newstr(const char *s)
 {
 	void *r;
 	if (!strtab)
-		strtab = symtab_new();	/* XXX: oom */
+		strtab = symtab_new();
 	if ((r = symtab_find(strtab, s)))
 		return r;
-	r = strdup(s);
+	if (!(r = strdup(s)))
+		return r;
 	symtab_insert(strtab, r, r);
 	return r;
 }
@@ -63,6 +64,7 @@ newstr(const char *s)
 INT	[0-9]+
 WHITE	[ \t\r]
 ID	[a-zA-Z_$][a-zA-Z0-9_]*
+HEX	0x[0-9a-fA-F]+
 
 %%
 {WHITE}+ { /* ignore */ }
@@ -71,22 +73,32 @@ ID	[a-zA-Z_$][a-zA-Z0-9_]*
 	yylval->tok = tok_new();
 	yylval->tok->type = TOK_STR;
 	len = strlen(yytext);
+	assert(yytext[len - 1] == '"');
 	yytext[len - 1] = '\0';	/* kill trailing quote */
-	yylval->tok->str = newstr(yytext + 1);
-	printd(LEX, "TOK_STR\n");
+	printd(LEX, "newstr(\"%s\")\n", yytext + 1);
+	yylval->tok->str = newstr(yytext + 1);	/* parser detects oom */
+	yytext[len - 1] = '"';	/* restore quote */
+	printd(LEX, "TOK_STR: \"%s\"\n", yylval->tok->str);
 	return TOK_STR;
 	}
 {ID} {
 	yylval->tok = tok_new();
 	yylval->tok->type = TOK_ID;
 	printd(LEX, "tok %p TOK_ID %p:%s\n", yylval->tok, yytext, yytext);
-	yylval->tok->str = strdup(yytext);	/* XXX: oom */
+	yylval->tok->str = newstr(yytext);	/* parser detects oom */
 	return TOK_ID;
 	}
 {INT} {
 	yylval->tok = tok_new();
 	yylval->tok->type = TOK_INT;
-	yylval->tok->str = strdup(yytext);
+	yylval->tok->str = strdup(yytext);	/* parser detects oom */
+	printd(LEX, "TOK_INT\n");
+	return TOK_INT;
+	}
+{HEX} {
+	yylval->tok = tok_new();
+	yylval->tok->type = TOK_INT;
+	yylval->tok->str = strdup(yytext);	/* parser detects oom */
 	printd(LEX, "TOK_INT\n");
 	return TOK_INT;
 	}
@@ -94,6 +106,11 @@ ID	[a-zA-Z_$][a-zA-Z0-9_]*
 	yylval = NULL;
 	printd(LEX, "TOK_EQ\n");
 	return TOK_EQ;
+	}
+"." {
+	yylval = NULL;
+	printd(LEX, "TOK_DOT\n");
+	return TOK_DOT;
 	}
 "[" {
 	yylval = NULL;
