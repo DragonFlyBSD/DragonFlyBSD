@@ -163,7 +163,6 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 	vm_prot_t prot, maxprot;
 	void *handle;
 	int flags, error;
-	int disablexworkaround;
 	off_t pos;
 	vm_object_t obj;
 
@@ -332,20 +331,7 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 			/*
 			 * cdevs does not provide private mappings of any kind.
 			 */
-			/*
-			 * However, for XIG X server to continue to work,
-			 * we should allow the superuser to do it anyway.
-			 * We only allow it at securelevel < 1.
-			 * (Because the XIG X server writes directly to video
-			 * memory via /dev/mem, it should never work at any
-			 * other securelevel.
-			 * XXX this will have to go
-			 */
-			if (securelevel >= 1)
-				disablexworkaround = 1;
-			else
-				disablexworkaround = priv_check(td, PRIV_ROOT);
-			if (vp->v_type == VCHR && disablexworkaround &&
+			if (vp->v_type == VCHR &&
 			    (flags & (MAP_PRIVATE|MAP_COPY))) {
 				error = EINVAL;
 				goto done;
