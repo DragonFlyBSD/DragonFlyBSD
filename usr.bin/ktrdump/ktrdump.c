@@ -332,7 +332,7 @@ dump_devinfo(struct devinfo_dev *dev, void *arg)
 {
 	struct evtr_event ev;
 	evtr_t evtr = (evtr_t)arg;
-	char *fmt = "#devicenames[\"%s\"] = %#lx";
+	const char *fmt = "#devicenames[\"%s\"] = %#lx";
 	char fmtdatabuf[sizeof(char *) + sizeof(devinfo_handle_t)];
 	char *fmtdata = fmtdatabuf;
 
