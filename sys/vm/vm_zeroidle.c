@@ -35,8 +35,6 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c	1.16.1.1 89/06/23$
  * from FreeBSD: .../i386/vm_machdep.c,v 1.165 2001/07/04 23:27:04 dillon
- *
- * $Id: vm_zeroidle.c,v 1.3 2010/05/12 04:50:45 sv5679 Exp $
  */
 
 #include <sys/param.h>
@@ -66,7 +64,6 @@
 
 /* Maximum number of pages per second to zero */
 #define NPAGES_RUN	(20000)
-
 
 static int idlezero_enable = 0;
 TUNABLE_INT("vm.idlezero_enable", &idlezero_enable);
@@ -99,17 +96,30 @@ static int zero_state;
  * Otherwise we might get 'flutter' during disk I/O / IPC or
  * fast sleeps. We also do not want to be continuously zeroing
  * pages because doing so may flush our L1 and L2 caches too much.
+ *
+ * Returns non-zero if pages should be zerod.
  */
 static int
 vm_page_zero_check(void)
 {
 	if (idlezero_enable == 0)
 		return (0);
-	if (zero_state && vm_page_zero_count >= ZIDLE_LO(vmstats.v_free_count))
-		return (0);
-	if (vm_page_zero_count >= ZIDLE_HI(vmstats.v_free_count))
-		return (0);
-	return (1);
+	if (zero_state == 0) {
+		/*
+		 * Wait for the count to fall to LO before starting
+		 * to zero pages.
+		 */
+		if (vm_page_zero_count <= ZIDLE_LO(vmstats.v_free_count))
+			zero_state = 1;
+	} else {
+		/*
+		 * Once we are zeroing pages wait for the count to
+		 * increase to HI before we stop zeroing pages.
+		 */
+		if (vm_page_zero_count >= ZIDLE_HI(vmstats.v_free_count))
+			zero_state = 0;
+	}
+	return (zero_state);
 }
 
 static void
