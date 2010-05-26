@@ -361,9 +361,7 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 			 * we're at securelevel < 1, to allow the XIG X server
 			 * to continue to work.
 			 */
-
-			if ((flags & MAP_SHARED) != 0 ||
-			    (vp->v_type == VCHR && disablexworkaround)) {
+			if ((flags & MAP_SHARED) != 0 || vp->v_type == VCHR) {
 				if ((fp->f_flag & FWRITE) != 0) {
 					struct vattr va;
 					if ((error = VOP_GETATTR(vp, &va))) {
