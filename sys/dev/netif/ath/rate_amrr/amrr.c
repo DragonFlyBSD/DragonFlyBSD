@@ -454,7 +454,7 @@ ath_ratectl(void *arg)
 	struct ieee80211com *ic = &sc->sc_ic;
 	int interval;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	if (ifp->if_flags & IFF_RUNNING) {
 		sc->sc_stats.ast_rate_calls++;
@@ -469,7 +469,7 @@ ath_ratectl(void *arg)
 		interval /= 2;
 	callout_reset(&asc->timer, (interval * hz) / 1000, ath_ratectl, ifp);
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 }
 
 static void
