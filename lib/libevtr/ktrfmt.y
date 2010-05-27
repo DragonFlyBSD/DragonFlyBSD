@@ -5,6 +5,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/queue.h>
 
 #include "evtr.h"
 #include "tok.h"
@@ -151,6 +152,7 @@ index_hash(struct ktrfmt_parse_ctx *ctx, const char *hashname,
 }
 
 %token<tok> TOK_ID
+%token<tok> TOK_CTOR
 %token<tok> TOK_INT
 %token<tok> TOK_STR
 
@@ -160,6 +162,8 @@ index_hash(struct ktrfmt_parse_ctx *ctx, const char *hashname,
 %token<na> TOK_DOT
 
 %type<var> constant
+%type<var> ctor_args
+%type<var> construct_expr
 %type<var> primary_expr
 %type<var> postfix_expr
 %type<var> unary_expr
@@ -203,7 +207,56 @@ constant: TOK_INT {
 	tok_free($1);
 	}
 	;
-
+ctor_args: constant {
+	evtr_var_t ctor;
+	ctor = evtr_var_new(uniq_varname());
+	ctor->val.type = EVTR_VAL_CTOR;
+	ctor->val.ctor.name = NULL;
+	TAILQ_INIT(&ctor->val.ctor.args);
+	TAILQ_INSERT_HEAD(&ctor->val.ctor.args, &$1->val, link);
+	$$ = ctor;
+ }
+| constant ctor_args {
+	TAILQ_INSERT_HEAD(&$2->val.ctor.args, &$1->val, link);
+	$$ = $2;
+ }
+;
+construct_expr: TOK_CTOR {
+	evtr_var_t var;
+	if (!$1->str)
+		parse_err("out of memory");
+	printd(PARSE, "TOK_CTOR\n");
+	printd(PARSE, "tok: %p, str = %p\n", $1, $1->str);
+	var = evtr_var_new(uniq_varname());
+	var->val.type = EVTR_VAL_CTOR;
+	var->val.ctor.name = $1->str;
+	TAILQ_INIT(&var->val.ctor.args);
+	tok_free($1);
+	$$ = var;
+ }
+| TOK_CTOR ctor_args {
+	evtr_variable_value_t val;
+	if (!$1->str)
+		parse_err("out of memory");
+	printd(PARSE, "TOK_CTOR\n");
+	printd(PARSE, "tok: %p, str = %p\n", $1, $1->str);
+	$2->val.ctor.name = $1->str;
+	$$ = $2;
+	printd(PARSE, "CTOR: %s\n", $1->str);
+	TAILQ_FOREACH(val, &$2->val.ctor.args, link) {
+		switch (val->type) {
+		case EVTR_VAL_INT:
+			printd(PARSE, "\t%jd\n", val->num);
+			break;
+		case EVTR_VAL_STR:
+			printd(PARSE, "\t\"%s\"\n", val->str);
+			break;
+		default:
+			;
+		}
+	}
+ }
+;
 primary_expr: TOK_ID {
 	evtr_var_t var;
 	if (!$1->str)
@@ -255,6 +308,13 @@ unary_expr: postfix_expr {
  }
 ;
 assign_expr: unary_expr TOK_EQ constant {
+	$1->val = $3->val;
+	ctx->ev->type = EVTR_TYPE_STMT;
+	ctx->ev->stmt.var = $1;
+	ctx->ev->stmt.val = &$3->val;
+	ctx->ev->stmt.op = EVTR_OP_SET;
+ }
+| unary_expr TOK_EQ construct_expr {
 	$1->val = $3->val;
 	ctx->ev->type = EVTR_TYPE_STMT;
 	ctx->ev->stmt.var = $1;

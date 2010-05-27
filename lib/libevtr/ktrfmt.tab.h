@@ -40,12 +40,13 @@
       know about them.  */
    enum yytokentype {
      TOK_ID = 258,
-     TOK_INT = 259,
-     TOK_STR = 260,
-     TOK_EQ = 261,
-     TOK_LEFT_BRACK = 262,
-     TOK_RIGHT_BRACK = 263,
-     TOK_DOT = 264
+     TOK_CTOR = 259,
+     TOK_INT = 260,
+     TOK_STR = 261,
+     TOK_EQ = 262,
+     TOK_LEFT_BRACK = 263,
+     TOK_RIGHT_BRACK = 264,
+     TOK_DOT = 265
    };
 #endif
 
@@ -56,7 +57,7 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 146 "ktrfmt.y"
+#line 147 "ktrfmt.y"
 
 	struct token *tok;
 	struct evtr_variable *var;
@@ -66,7 +67,7 @@ typedef union YYSTYPE
 
 
 /* Line 1676 of yacc.c  */
-#line 70 "ktrfmt.tab.h"
+#line 71 "ktrfmt.tab.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */

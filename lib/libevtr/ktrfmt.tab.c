@@ -84,6 +84,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/queue.h>
 
 #include "evtr.h"
 #include "tok.h"
@@ -216,7 +217,7 @@ index_hash(struct ktrfmt_parse_ctx *ctx, const char *hashname,
 
 
 /* Line 189 of yacc.c  */
-#line 220 "ktrfmt.tab.c"
+#line 221 "ktrfmt.tab.c"
 
 /* Enabling traces.  */
 #ifndef YYDEBUG
@@ -244,12 +245,13 @@ index_hash(struct ktrfmt_parse_ctx *ctx, const char *hashname,
       know about them.  */
    enum yytokentype {
      TOK_ID = 258,
-     TOK_INT = 259,
-     TOK_STR = 260,
-     TOK_EQ = 261,
-     TOK_LEFT_BRACK = 262,
-     TOK_RIGHT_BRACK = 263,
-     TOK_DOT = 264
+     TOK_CTOR = 259,
+     TOK_INT = 260,
+     TOK_STR = 261,
+     TOK_EQ = 262,
+     TOK_LEFT_BRACK = 263,
+     TOK_RIGHT_BRACK = 264,
+     TOK_DOT = 265
    };
 #endif
 
@@ -260,7 +262,7 @@ typedef union YYSTYPE
 {
 
 /* Line 214 of yacc.c  */
-#line 146 "ktrfmt.y"
+#line 147 "ktrfmt.y"
 
 	struct token *tok;
 	struct evtr_variable *var;
@@ -270,7 +272,7 @@ typedef union YYSTYPE
 
 
 /* Line 214 of yacc.c  */
-#line 274 "ktrfmt.tab.c"
+#line 276 "ktrfmt.tab.c"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
@@ -282,7 +284,7 @@ typedef union YYSTYPE
 
 
 /* Line 264 of yacc.c  */
-#line 286 "ktrfmt.tab.c"
+#line 288 "ktrfmt.tab.c"
 
 #ifdef short
 # undef short
@@ -497,20 +499,20 @@ union yyalloc
 /* YYFINAL -- State number of the termination state.  */
 #define YYFINAL  12
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   14
+#define YYLAST   20
 
 /* YYNTOKENS -- Number of terminals.  */
-#define YYNTOKENS  10
+#define YYNTOKENS  11
 /* YYNNTS -- Number of nonterminals.  */
-#define YYNNTS  9
+#define YYNNTS  11
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  14
+#define YYNRULES  19
 /* YYNRULES -- Number of states.  */
-#define YYNSTATES  20
+#define YYNSTATES  25
 
 /* YYTRANSLATE(YYLEX) -- Bison symbol number corresponding to YYLEX.  */
 #define YYUNDEFTOK  2
-#define YYMAXUTOK   264
+#define YYMAXUTOK   265
 
 #define YYTRANSLATE(YYX)						\
   ((unsigned int) (YYX) <= YYMAXUTOK ? yytranslate[YYX] : YYUNDEFTOK)
@@ -544,7 +546,7 @@ static const yytype_uint8 yytranslate[] =
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     1,     2,     3,     4,
-       5,     6,     7,     8,     9
+       5,     6,     7,     8,     9,    10
 };
 
 #if YYDEBUG
@@ -552,24 +554,25 @@ static const yytype_uint8 yytranslate[] =
    YYRHS.  */
 static const yytype_uint8 yyprhs[] =
 {
-       0,     0,     3,     5,     7,     9,    11,    13,    15,    17,
-      22,    26,    28,    30,    34
+       0,     0,     3,     5,     7,     9,    11,    13,    15,    18,
+      20,    23,    25,    27,    32,    36,    38,    40,    44,    48
 };
 
 /* YYRHS -- A `-1'-separated list of the rules' RHS.  */
 static const yytype_int8 yyrhs[] =
 {
-      11,     0,    -1,    12,    -1,    16,    -1,    18,    -1,     4,
-      -1,     5,    -1,     3,    -1,    13,    -1,    15,     7,    15,
-       8,    -1,    15,     9,     3,    -1,    14,    -1,    15,    -1,
-      16,     6,    13,    -1,    17,    -1
+      12,     0,    -1,    13,    -1,    19,    -1,    21,    -1,     5,
+      -1,     6,    -1,    14,    -1,    14,    15,    -1,     4,    -1,
+       4,    15,    -1,     3,    -1,    14,    -1,    18,     8,    18,
+       9,    -1,    18,    10,     3,    -1,    17,    -1,    18,    -1,
+      19,     7,    14,    -1,    19,     7,    16,    -1,    20,    -1
 };
 
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,   171,   171,   173,   176,   178,   192,   207,   225,   229,
-     236,   249,   253,   257,   265
+       0,   175,   175,   177,   180,   182,   196,   210,   219,   224,
+     237,   260,   278,   282,   289,   302,   306,   310,   317,   325
 };
 #endif
 
@@ -578,10 +581,10 @@ static const yytype_uint16 yyrline[] =
    First, the terminals, then, starting at YYNTOKENS, nonterminals.  */
 static const char *const yytname[] =
 {
-  "$end", "error", "$undefined", "TOK_ID", "TOK_INT", "TOK_STR", "TOK_EQ",
-  "TOK_LEFT_BRACK", "TOK_RIGHT_BRACK", "TOK_DOT", "$accept", "input",
-  "stmt", "constant", "primary_expr", "postfix_expr", "unary_expr",
-  "assign_expr", "expr", 0
+  "$end", "error", "$undefined", "TOK_ID", "TOK_CTOR", "TOK_INT",
+  "TOK_STR", "TOK_EQ", "TOK_LEFT_BRACK", "TOK_RIGHT_BRACK", "TOK_DOT",
+  "$accept", "input", "stmt", "constant", "ctor_args", "construct_expr",
+  "primary_expr", "postfix_expr", "unary_expr", "assign_expr", "expr", 0
 };
 #endif
 
@@ -590,22 +593,23 @@ static const char *const yytname[] =
    token YYLEX-NUM.  */
 static const yytype_uint16 yytoknum[] =
 {
-       0,   256,   257,   258,   259,   260,   261,   262,   263,   264
+       0,   256,   257,   258,   259,   260,   261,   262,   263,   264,
+     265
 };
 # endif
 
 /* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
 static const yytype_uint8 yyr1[] =
 {
-       0,    10,    11,    12,    12,    13,    13,    14,    14,    15,
-      15,    15,    16,    17,    18
+       0,    11,    12,    13,    13,    14,    14,    15,    15,    16,
+      16,    17,    17,    18,    18,    18,    19,    20,    20,    21
 };
 
 /* YYR2[YYN] -- Number of symbols composing right hand side of rule YYN.  */
 static const yytype_uint8 yyr2[] =
 {
-       0,     2,     1,     1,     1,     1,     1,     1,     1,     4,
-       3,     1,     1,     3,     1
+       0,     2,     1,     1,     1,     1,     1,     1,     2,     1,
+       2,     1,     1,     4,     3,     1,     1,     3,     3,     1
 };
 
 /* YYDEFACT[STATE-NAME] -- Default rule to reduce with in state
@@ -613,29 +617,33 @@ static const yytype_uint8 yyr2[] =
    means the default is an error.  */
 static const yytype_uint8 yydefact[] =
 {
-       0,     7,     5,     6,     0,     2,     8,    11,    12,     3,
-      14,     4,     1,     0,     0,     0,     0,    10,    13,     9
+       0,    11,     5,     6,     0,     2,    12,    15,    16,     3,
+      19,     4,     1,     0,     0,     0,     0,    14,     9,    17,
+      18,    13,     7,    10,     8
 };
 
 /* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int8 yydefgoto[] =
 {
-      -1,     4,     5,     6,     7,     8,     9,    10,    11
+      -1,     4,     5,     6,    23,    20,     7,     8,     9,    10,
+      11
 };
 
 /* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
    STATE-NUM.  */
-#define YYPACT_NINF -5
+#define YYPACT_NINF -17
 static const yytype_int8 yypact[] =
 {
-      -3,    -5,    -5,    -5,     7,    -5,    -5,    -5,    -1,     6,
-      -5,    -5,    -5,    -3,     8,     5,    -4,    -5,    -5,    -5
+      -1,   -17,   -17,   -17,     1,   -17,   -17,   -17,     6,     8,
+     -17,   -17,   -17,    -1,    16,     4,     3,   -17,    12,   -17,
+     -17,   -17,    12,   -17,   -17
 };
 
 /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
-      -5,    -5,    -5,    -2,    -5,     1,    -5,    -5,    -5
+     -17,   -17,   -17,   -15,   -16,   -17,   -17,     7,   -17,   -17,
+     -17
 };
 
 /* YYTABLE[YYPACT[STATE-NUM]].  What to do in state STATE-NUM.  If
@@ -645,22 +653,25 @@ static const yytype_int8 yypgoto[] =
 #define YYTABLE_NINF -1
 static const yytype_uint8 yytable[] =
 {
-       1,     2,     3,    13,    19,    14,    13,    12,    14,     2,
-       3,    17,    15,    18,    16
+      19,    12,     1,    22,     2,     3,    24,    22,    18,     2,
+       3,    13,    21,    14,    13,    15,    14,     2,     3,    17,
+      16
 };
 
 static const yytype_uint8 yycheck[] =
 {
-       3,     4,     5,     7,     8,     9,     7,     0,     9,     4,
-       5,     3,     6,    15,    13
+      15,     0,     3,    18,     5,     6,    22,    22,     4,     5,
+       6,     8,     9,    10,     8,     7,    10,     5,     6,     3,
+      13
 };
 
 /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
    symbol of state STATE-NUM.  */
 static const yytype_uint8 yystos[] =
 {
-       0,     3,     4,     5,    11,    12,    13,    14,    15,    16,
-      17,    18,     0,     7,     9,     6,    15,     3,    13,     8
+       0,     3,     5,     6,    12,    13,    14,    17,    18,    19,
+      20,    21,     0,     8,    10,     7,    18,     3,     4,    14,
+      16,     9,    14,    15,    15
 };
 
 #define yyerrok		(yyerrstatus = 0)
@@ -1479,7 +1490,7 @@ yyreduce:
         case 3:
 
 /* Line 1455 of yacc.c  */
-#line 173 "ktrfmt.y"
+#line 177 "ktrfmt.y"
     {
 	ctx->var = (yyvsp[(1) - (1)].var);
  ;}
@@ -1488,7 +1499,7 @@ yyreduce:
   case 5:
 
 /* Line 1455 of yacc.c  */
-#line 178 "ktrfmt.y"
+#line 182 "ktrfmt.y"
     {
 	evtr_var_t var;
 	if (!(yyvsp[(1) - (1)].tok)->str)
@@ -1508,7 +1519,7 @@ yyreduce:
   case 6:
 
 /* Line 1455 of yacc.c  */
-#line 192 "ktrfmt.y"
+#line 196 "ktrfmt.y"
     {
 	evtr_var_t var;
 	if (!(yyvsp[(1) - (1)].tok)->str)
@@ -1527,7 +1538,79 @@ yyreduce:
   case 7:
 
 /* Line 1455 of yacc.c  */
-#line 207 "ktrfmt.y"
+#line 210 "ktrfmt.y"
+    {
+	evtr_var_t ctor;
+	ctor = evtr_var_new(uniq_varname());
+	ctor->val.type = EVTR_VAL_CTOR;
+	ctor->val.ctor.name = NULL;
+	TAILQ_INIT(&ctor->val.ctor.args);
+	TAILQ_INSERT_HEAD(&ctor->val.ctor.args, &(yyvsp[(1) - (1)].var)->val, link);
+	(yyval.var) = ctor;
+ ;}
+    break;
+
+  case 8:
+
+/* Line 1455 of yacc.c  */
+#line 219 "ktrfmt.y"
+    {
+	TAILQ_INSERT_HEAD(&(yyvsp[(2) - (2)].var)->val.ctor.args, &(yyvsp[(1) - (2)].var)->val, link);
+	(yyval.var) = (yyvsp[(2) - (2)].var);
+ ;}
+    break;
+
+  case 9:
+
+/* Line 1455 of yacc.c  */
+#line 224 "ktrfmt.y"
+    {
+	evtr_var_t var;
+	if (!(yyvsp[(1) - (1)].tok)->str)
+		parse_err("out of memory");
+	printd(PARSE, "TOK_CTOR\n");
+	printd(PARSE, "tok: %p, str = %p\n", (yyvsp[(1) - (1)].tok), (yyvsp[(1) - (1)].tok)->str);
+	var = evtr_var_new(uniq_varname());
+	var->val.type = EVTR_VAL_CTOR;
+	var->val.ctor.name = (yyvsp[(1) - (1)].tok)->str;
+	TAILQ_INIT(&var->val.ctor.args);
+	tok_free((yyvsp[(1) - (1)].tok));
+	(yyval.var) = var;
+ ;}
+    break;
+
+  case 10:
+
+/* Line 1455 of yacc.c  */
+#line 237 "ktrfmt.y"
+    {
+	evtr_variable_value_t val;
+	if (!(yyvsp[(1) - (2)].tok)->str)
+		parse_err("out of memory");
+	printd(PARSE, "TOK_CTOR\n");
+	printd(PARSE, "tok: %p, str = %p\n", (yyvsp[(1) - (2)].tok), (yyvsp[(1) - (2)].tok)->str);
+	(yyvsp[(2) - (2)].var)->val.ctor.name = (yyvsp[(1) - (2)].tok)->str;
+	(yyval.var) = (yyvsp[(2) - (2)].var);
+	printd(PARSE, "CTOR: %s\n", (yyvsp[(1) - (2)].tok)->str);
+	TAILQ_FOREACH(val, &(yyvsp[(2) - (2)].var)->val.ctor.args, link) {
+		switch (val->type) {
+		case EVTR_VAL_INT:
+			printd(PARSE, "\t%jd\n", val->num);
+			break;
+		case EVTR_VAL_STR:
+			printd(PARSE, "\t\"%s\"\n", val->str);
+			break;
+		default:
+			;
+		}
+	}
+ ;}
+    break;
+
+  case 11:
+
+/* Line 1455 of yacc.c  */
+#line 260 "ktrfmt.y"
     {
 	evtr_var_t var;
 	if (!(yyvsp[(1) - (1)].tok)->str)
@@ -1548,19 +1631,19 @@ yyreduce:
  ;}
     break;
 
-  case 8:
+  case 12:
 
 /* Line 1455 of yacc.c  */
-#line 225 "ktrfmt.y"
+#line 278 "ktrfmt.y"
     {
 	(yyval.var) = (yyvsp[(1) - (1)].var);
   ;}
     break;
 
-  case 9:
+  case 13:
 
 /* Line 1455 of yacc.c  */
-#line 229 "ktrfmt.y"
+#line 282 "ktrfmt.y"
     {
 	evtr_var_t var;
 
@@ -1570,10 +1653,10 @@ yyreduce:
  ;}
     break;
 
-  case 10:
+  case 14:
 
 /* Line 1455 of yacc.c  */
-#line 236 "ktrfmt.y"
+#line 289 "ktrfmt.y"
     {
 	evtr_var_t var, tmp;
 	if (!(yyvsp[(3) - (3)].tok)->str)
@@ -1589,28 +1672,28 @@ yyreduce:
  ;}
     break;
 
-  case 11:
+  case 15:
 
 /* Line 1455 of yacc.c  */
-#line 249 "ktrfmt.y"
+#line 302 "ktrfmt.y"
     {
 	(yyval.var) = (yyvsp[(1) - (1)].var);
  ;}
     break;
 
-  case 12:
+  case 16:
 
 /* Line 1455 of yacc.c  */
-#line 253 "ktrfmt.y"
+#line 306 "ktrfmt.y"
     {
 	(yyval.var) = (yyvsp[(1) - (1)].var);
  ;}
     break;
 
-  case 13:
+  case 17:
 
 /* Line 1455 of yacc.c  */
-#line 257 "ktrfmt.y"
+#line 310 "ktrfmt.y"
     {
 	(yyvsp[(1) - (3)].var)->val = (yyvsp[(3) - (3)].var)->val;
 	ctx->ev->type = EVTR_TYPE_STMT;
@@ -1620,10 +1703,23 @@ yyreduce:
  ;}
     break;
 
-  case 14:
+  case 18:
 
 /* Line 1455 of yacc.c  */
-#line 265 "ktrfmt.y"
+#line 317 "ktrfmt.y"
+    {
+	(yyvsp[(1) - (3)].var)->val = (yyvsp[(3) - (3)].var)->val;
+	ctx->ev->type = EVTR_TYPE_STMT;
+	ctx->ev->stmt.var = (yyvsp[(1) - (3)].var);
+	ctx->ev->stmt.val = &(yyvsp[(3) - (3)].var)->val;
+	ctx->ev->stmt.op = EVTR_OP_SET;
+ ;}
+    break;
+
+  case 19:
+
+/* Line 1455 of yacc.c  */
+#line 325 "ktrfmt.y"
     {
 	(yyval.na) = (yyvsp[(1) - (1)].na);
  ;}
@@ -1632,7 +1728,7 @@ yyreduce:
 
 
 /* Line 1455 of yacc.c  */
-#line 1636 "ktrfmt.tab.c"
+#line 1732 "ktrfmt.tab.c"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -1844,7 +1940,7 @@ yyreturn:
 
 
 /* Line 1675 of yacc.c  */
-#line 270 "ktrfmt.y"
+#line 330 "ktrfmt.y"
 
 
 void * __ktrfmt_scan_string(const char *);

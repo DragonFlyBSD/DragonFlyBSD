@@ -55,13 +55,19 @@ typedef struct evtr_variable_value {
 		EVTR_VAL_INT,
 		EVTR_VAL_STR,
 		EVTR_VAL_HASH,
+		EVTR_VAL_CTOR,
 	} type;
 	union {
 		uintmax_t num;
 		const char *str;
 		struct hashtab *hashtab;
 		const struct symtab *symtab;
+		struct {
+			const char *name;
+			TAILQ_HEAD(, evtr_variable_value) args;
+		} ctor;
 	};
+	TAILQ_ENTRY(evtr_variable_value) link;
 } *evtr_variable_value_t;
 
 typedef struct evtr_variable {
