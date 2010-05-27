@@ -181,7 +181,7 @@ AcpiOsSleep(ACPI_INTEGER Milliseconds)
 	}
 	if (timo)
 	    DELAY(timo * 1000);
-    } else if (timo > 1000) {
+    } else if (timo > 0) {
 	tsleep(&dummy, 0, "acpislp", timo);
     } else {
 	DELAY(Milliseconds * 1000);
