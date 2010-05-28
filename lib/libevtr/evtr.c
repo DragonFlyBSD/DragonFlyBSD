@@ -796,7 +796,7 @@ parse_callback(evtr_event_t ev, void *d)
 	 * the parser to convert it into a synthesized
 	 * EVTR_TYPE_STMT event.
 	 */
-	memcpy(&q->pending_event, ev, sizeof(ev));
+	memcpy(&q->pending_event, ev, sizeof(*ev));
 	parse_string(&q->pending_event, q->symtab, &ev->fmt[1],
 		     &q->parse_err_buf[0], PARSE_ERR_BUFSIZE);
 	if (q->parse_err_buf[0]) {	/* parse error */
