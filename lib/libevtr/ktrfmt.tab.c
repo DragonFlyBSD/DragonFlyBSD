@@ -572,7 +572,7 @@ static const yytype_int8 yyrhs[] =
 static const yytype_uint16 yyrline[] =
 {
        0,   175,   175,   177,   180,   182,   196,   210,   219,   224,
-     237,   260,   278,   282,   289,   302,   306,   310,   317,   325
+     237,   262,   280,   284,   291,   304,   308,   312,   319,   327
 };
 #endif
 
@@ -1600,6 +1600,8 @@ yyreduce:
 		case EVTR_VAL_STR:
 			printd(PARSE, "\t\"%s\"\n", val->str);
 			break;
+		case EVTR_VAL_NIL:
+			assert(!"can't get here");
 		default:
 			;
 		}
@@ -1610,7 +1612,7 @@ yyreduce:
   case 11:
 
 /* Line 1455 of yacc.c  */
-#line 260 "ktrfmt.y"
+#line 262 "ktrfmt.y"
     {
 	evtr_var_t var;
 	if (!(yyvsp[(1) - (1)].tok)->str)
@@ -1634,7 +1636,7 @@ yyreduce:
   case 12:
 
 /* Line 1455 of yacc.c  */
-#line 278 "ktrfmt.y"
+#line 280 "ktrfmt.y"
     {
 	(yyval.var) = (yyvsp[(1) - (1)].var);
   ;}
@@ -1643,7 +1645,7 @@ yyreduce:
   case 13:
 
 /* Line 1455 of yacc.c  */
-#line 282 "ktrfmt.y"
+#line 284 "ktrfmt.y"
     {
 	evtr_var_t var;
 
@@ -1656,7 +1658,7 @@ yyreduce:
   case 14:
 
 /* Line 1455 of yacc.c  */
-#line 289 "ktrfmt.y"
+#line 291 "ktrfmt.y"
     {
 	evtr_var_t var, tmp;
 	if (!(yyvsp[(3) - (3)].tok)->str)
@@ -1675,7 +1677,7 @@ yyreduce:
   case 15:
 
 /* Line 1455 of yacc.c  */
-#line 302 "ktrfmt.y"
+#line 304 "ktrfmt.y"
     {
 	(yyval.var) = (yyvsp[(1) - (1)].var);
  ;}
@@ -1684,7 +1686,7 @@ yyreduce:
   case 16:
 
 /* Line 1455 of yacc.c  */
-#line 306 "ktrfmt.y"
+#line 308 "ktrfmt.y"
     {
 	(yyval.var) = (yyvsp[(1) - (1)].var);
  ;}
@@ -1693,7 +1695,7 @@ yyreduce:
   case 17:
 
 /* Line 1455 of yacc.c  */
-#line 310 "ktrfmt.y"
+#line 312 "ktrfmt.y"
     {
 	(yyvsp[(1) - (3)].var)->val = (yyvsp[(3) - (3)].var)->val;
 	ctx->ev->type = EVTR_TYPE_STMT;
@@ -1706,7 +1708,7 @@ yyreduce:
   case 18:
 
 /* Line 1455 of yacc.c  */
-#line 317 "ktrfmt.y"
+#line 319 "ktrfmt.y"
     {
 	(yyvsp[(1) - (3)].var)->val = (yyvsp[(3) - (3)].var)->val;
 	ctx->ev->type = EVTR_TYPE_STMT;
@@ -1719,7 +1721,7 @@ yyreduce:
   case 19:
 
 /* Line 1455 of yacc.c  */
-#line 325 "ktrfmt.y"
+#line 327 "ktrfmt.y"
     {
 	(yyval.na) = (yyvsp[(1) - (1)].na);
  ;}
@@ -1728,7 +1730,7 @@ yyreduce:
 
 
 /* Line 1455 of yacc.c  */
-#line 1732 "ktrfmt.tab.c"
+#line 1734 "ktrfmt.tab.c"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -1940,7 +1942,7 @@ yyreturn:
 
 
 /* Line 1675 of yacc.c  */
-#line 330 "ktrfmt.y"
+#line 332 "ktrfmt.y"
 
 
 void * __ktrfmt_scan_string(const char *);

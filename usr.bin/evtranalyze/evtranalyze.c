@@ -47,6 +47,7 @@
 
 enum {
 	NR_TOP_THREADS = 5,
+	NR_BUCKETS = 1021,
 };
 
 struct rows {
@@ -108,6 +109,264 @@ printd_set_flags(const char *str, unsigned int *flags)
 			err(2, "invalid debug flag %c\n", *str);
 		*flags |= 1 << (*str - 'a');
 	}
+}
+
+struct hashentry {
+	uintptr_t key;
+	uintptr_t val;
+	struct hashentry *next;
+};
+
+struct hashtab {
+	struct hashentry *buckets[NR_BUCKETS];
+	uintptr_t (*hashfunc)(uintptr_t);
+	uintptr_t (*cmpfunc)(uintptr_t, uintptr_t);
+};
+
+int
+ehash_find(const struct hashtab *tab, uintptr_t key, uintptr_t *val)
+{
+	struct hashentry *ent;
+
+	for(ent = tab->buckets[tab->hashfunc(key)];
+	    ent && tab->cmpfunc(ent->key, key);
+	    ent = ent->next);
+
+	if (!ent)
+		return !0;
+	*val = ent->val;
+	return 0;
+}
+
+struct hashentry *
+ehash_insert(struct hashtab *tab, uintptr_t key, uintptr_t val)
+{
+	struct hashentry *ent;
+	int hsh;
+
+	if (!(ent = malloc(sizeof(*ent)))) {
+		fprintf(stderr, "out of memory\n");
+		return NULL;
+	}
+	hsh = tab->hashfunc(key);
+	ent->next = tab->buckets[hsh];
+	ent->key = key;
+	ent->val = val;
+	tab->buckets[hsh] = ent;
+	return ent;
+}
+static
+int
+ehash_delete(struct hashtab *tab, uintptr_t key)
+{
+	struct hashentry *ent, *prev;
+
+	prev = NULL;
+	for(ent = tab->buckets[tab->hashfunc(key)];
+	    ent && tab->cmpfunc(ent->key, key);
+	    prev = ent, ent = ent->next);
+	if (!ent)
+		return !0;
+	if (prev)
+		prev->next = ent->next;
+	else
+		tab->buckets[tab->hashfunc(key)] = ent->next;
+	free(ent);
+	return 0;
+}
+
+static
+uintptr_t
+cmpfunc_pointer(uintptr_t a, uintptr_t b)
+{
+	return b - a;
+}
+
+static
+uintptr_t
+hashfunc_pointer(uintptr_t p)
+{
+	return p % NR_BUCKETS;
+}
+
+static
+uintptr_t
+hashfunc_string(uintptr_t p)
+{
+	const char *str = (char *)p;
+        unsigned long hash = 5381;
+        int c;
+
+        while ((c = *str++))
+            hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+	return hash  % NR_BUCKETS;
+}
+
+struct hashtab *
+ehash_new(void)
+{
+	struct hashtab *tab;
+	if (!(tab = calloc(sizeof(struct hashtab), 1)))
+		return tab;
+	tab->hashfunc = &hashfunc_pointer;
+	tab->cmpfunc = &cmpfunc_pointer;
+	return tab;
+}
+
+/* returns 0 if equal */
+static
+int
+cmp_vals(evtr_variable_value_t a, evtr_variable_value_t b)
+{
+	if (a->type != b->type)
+		return !0;
+	switch (a->type) {
+	case EVTR_VAL_NIL:
+		return 0;
+	case EVTR_VAL_INT:
+		return !(a->num == b->num);
+	case EVTR_VAL_STR:
+		return strcmp(a->str, b->str);
+	case EVTR_VAL_HASH:
+		return !0;	/* come on! */
+	case EVTR_VAL_CTOR:
+		err(3, "not implemented");
+	}
+	err(3, "can't get here");
+}
+
+static
+uintptr_t
+cmpfunc_ctor(uintptr_t _a, uintptr_t _b)
+{
+	evtr_variable_value_t vala, valb;
+	vala = (evtr_variable_value_t)_a;
+	valb = (evtr_variable_value_t)_b;
+	if (strcmp(vala->ctor.name, valb->ctor.name))
+		return !0;
+	vala = TAILQ_FIRST(&vala->ctor.args);
+	valb = TAILQ_FIRST(&valb->ctor.args);
+	for (;;) {
+		if (!vala && !valb)
+			return 0;
+		if ((vala && !valb) || (valb && !vala))
+			return !0;
+		if (cmp_vals(vala, valb))
+			return !0;
+		vala = TAILQ_NEXT(vala, link);
+		valb = TAILQ_NEXT(valb, link);
+	}
+}
+
+static
+uintptr_t
+hashfunc_ctor(uintptr_t _p)
+{
+	evtr_variable_value_t val, ctor_val = (evtr_variable_value_t)_p;
+	char buf[1024], *p = &buf[0];
+	size_t len;
+
+	p = buf;
+	assert(ctor_val->type == EVTR_VAL_CTOR);
+	len = strlcpy(buf, ctor_val->ctor.name, sizeof(buf));
+	if (len >= sizeof(buf))
+		goto done;
+
+	TAILQ_FOREACH(val, &ctor_val->ctor.args, link) {
+		switch (val->type) {
+		case EVTR_VAL_NIL:
+			assert(!"can't happen");
+			break;
+		case EVTR_VAL_INT:
+			len += snprintf(p + len, sizeof(buf) - len - 1,
+					"%jd", val->num);
+			break;
+		case EVTR_VAL_STR:
+			len = strlcat(p, val->str, sizeof(buf));
+			break;
+		case EVTR_VAL_HASH:
+			break;	/* come on! */
+		case EVTR_VAL_CTOR:
+			err(3, "not implemented");
+		}
+		if (len >= (sizeof(buf) - 1))
+			break;
+	}
+done:
+	buf[sizeof(buf) - 1] = '\0';
+	return hashfunc_string((uintptr_t)buf);
+}
+
+typedef struct vector {
+	uintmax_t *vals;
+	int used;
+	int allocated;
+} *vector_t;
+
+vector_t
+vector_new(void)
+{
+	vector_t v;
+	if (!(v = malloc(sizeof(*v))))
+		return v;
+	v->allocated = 2;
+	if (!(v->vals = malloc(v->allocated * sizeof(v->vals[0])))) {
+		free(v);
+		return NULL;
+	}
+	v->allocated = 
+	v->used = 0;
+	return v;
+}
+
+static
+void
+vector_push(vector_t v, uintmax_t val)
+{
+	uintmax_t *tmp;
+	if (v->used == v->allocated) {
+		tmp = realloc(v->vals, 2 * v->allocated * sizeof(v->vals[0]));
+		if (!tmp)
+			err(1, "out of memory");
+		v->vals = tmp;
+		v->allocated *= 2;
+	}
+	v->vals[v->used++] = val;
+}
+
+static
+void
+vector_destroy(vector_t v)
+{
+	free(v->vals);
+	free(v);
+}
+
+static
+int
+vector_nelems(vector_t v)
+{
+	return v->used;
+}
+
+#define vector_foreach(v, val, i)					\
+	for (i = 0, val = v->vals[0]; i < v->used; val = v->vals[++i])
+
+static
+double
+stddev(vector_t v, double avg)
+{
+	uintmax_t val;
+	int i;
+	double diff, sqr_sum = 0.0;
+
+	if (vector_nelems(v) < 2)
+		return 1 / 0.0;
+	vector_foreach(v, val, i) {
+		diff = val - avg;
+		sqr_sum += diff * diff;
+	}
+	return sqrt(sqr_sum / (vector_nelems(v) - 1));
 }
 
 static
@@ -800,6 +1059,212 @@ cmd_show(int argc, char **argv)
 	return 0;
 }
 
+struct stats_ops {
+	const char *statscmd;
+	void *(*prepare)(int, char **);
+	void (*each_event)(void *, evtr_event_t);
+	void (*report)(void *);
+};
+
+struct stats_integer_ctx {
+	const char *varname;
+	uintmax_t sum;
+	uintmax_t occurences;
+};
+
+static
+void *
+stats_integer_prepare(int argc, char **argv)
+{
+	struct stats_integer_ctx *ctx;
+
+	if (argc != 2)
+		err(2, "Need exactly one variable");
+	if (!(ctx = malloc(sizeof(*ctx))))
+		return ctx;
+	ctx->varname = argv[1];
+	ctx->sum = ctx->occurences = 0;
+	return ctx;
+}
+
+static
+void
+stats_integer_each(void *_ctx, evtr_event_t ev)
+{
+	struct stats_integer_ctx *ctx = _ctx;
+	if (EVTR_VAL_INT != ev->stmt.val->type) {
+		fprintf(stderr, "event at %jd (cpu %d) does not treat %s as an"
+			"integer variable; ignored\n", ev->ts, ev->cpu,
+			ctx->varname);
+		return;
+	}
+	ctx->sum += ev->stmt.val->num;
+	++ctx->occurences;
+}
+
+static
+void
+stats_integer_report(void *_ctx)
+{
+	struct stats_integer_ctx *ctx = _ctx;
+	printf("median for variable %s is %lf\n", ctx->varname,
+	       (double)ctx->sum / ctx->occurences);
+	free(ctx);
+}
+
+struct stats_completion_ctx {
+	const char *varname;
+	const char *ctor;
+	const char *dtor;
+	struct hashtab *ctors;
+	uintmax_t historical_dtors;
+	uintmax_t uncompleted_events;
+	uintmax_t begun_events;
+	uintmax_t completed_events;
+	uintmax_t completed_duration_sum;
+	vector_t durations;
+};
+
+struct ctor_data {
+	evtr_variable_value_t val;
+	uintmax_t ts;
+};
+
+static
+struct ctor_data *
+ctor_data_new(evtr_event_t ev)
+{
+	struct ctor_data *cd;
+
+	if (!(cd = malloc(sizeof(*cd))))
+		return cd;
+	cd->val = ev->stmt.val;
+	cd->ts = ev->ts;
+	return cd;
+}
+
+static
+void *
+stats_completion_prepare(int argc, char **argv)
+{
+	struct stats_completion_ctx *ctx;
+
+	if (argc != 4)
+		err(2, "need a variable, a constructor and a destructor");
+	if (!(ctx = calloc(1, sizeof(*ctx))))
+		return ctx;
+	if (!(ctx->ctors = ehash_new()))
+		goto free_ctx;
+	ctx->ctors->hashfunc = &hashfunc_ctor;
+	ctx->ctors->cmpfunc = &cmpfunc_ctor;
+	if (!(ctx->durations = vector_new()))
+		goto free_ctors;
+	ctx->varname = argv[1];
+	ctx->ctor = argv[2];
+	ctx->dtor = argv[3];
+	return ctx;
+free_ctors:
+	;	/* XXX */
+free_ctx:
+	free(ctx);
+	return NULL;
+}
+
+static
+void
+stats_completion_each(void *_ctx, evtr_event_t ev)
+{
+	struct stats_completion_ctx *ctx = _ctx;
+	struct ctor_data *cd;
+
+	if (ev->stmt.val->type != EVTR_VAL_CTOR) {
+		fprintf(stderr, "event at %jd (cpu %d) does not assign to %s "
+			"with a data constructor; ignored\n", ev->ts, ev->cpu,
+			ctx->varname);
+		return;
+	}
+	if (!strcmp(ev->stmt.val->ctor.name, ctx->ctor)) {
+		uintptr_t v;
+		if (!ehash_find(ctx->ctors, (uintptr_t)ev->stmt.val, &v)) {
+			/* XXX:better diagnostic */
+			fprintf(stderr, "duplicate ctor\n");
+			err(3, "giving up");
+		}
+		if (!(cd = ctor_data_new(ev)))
+			err(1, "out of memory");
+		v = (uintptr_t)cd;
+		if (!ehash_insert(ctx->ctors, (uintptr_t)ev->stmt.val, v))
+			err(1, "out of memory");
+		++ctx->begun_events;
+	} else if (!strcmp(ev->stmt.val->ctor.name, ctx->dtor)) {
+		uintptr_t v;
+		const char *tmp = ev->stmt.val->ctor.name;
+		ev->stmt.val->ctor.name = ctx->ctor;
+		if (ehash_find(ctx->ctors, (uintptr_t)ev->stmt.val, &v)) {
+			++ctx->historical_dtors;
+			ev->stmt.val->ctor.name = tmp;
+			return;
+		}
+		cd = (struct ctor_data *)v;
+		if (cd->ts >= ev->ts) {
+			/* XXX:better diagnostic */
+			fprintf(stderr, "destructor preceds constructor;"
+				" ignored\n");
+			ev->stmt.val->ctor.name = tmp;
+			return;
+		}
+		vector_push(ctx->durations, ev->ts - cd->ts);
+		++ctx->completed_events;
+		ctx->completed_duration_sum += ev->ts - cd->ts;
+		if (ehash_delete(ctx->ctors, (uintptr_t)ev->stmt.val))
+			err(3, "ctor disappeared from hash!");
+		ev->stmt.val->ctor.name = tmp;
+	} else {
+		fprintf(stderr, "event at %jd (cpu %d) assigns to %s "
+			"with an unexpected data constructor; ignored\n",
+			ev->ts, ev->cpu, ctx->varname);
+		return;
+	}
+}
+
+static
+void
+stats_completion_report(void *_ctx)
+{
+	struct stats_completion_ctx *ctx = _ctx;
+	double avg;
+
+	printf("Events completed without having started:\t%jd\n",
+	       ctx->historical_dtors);
+	printf("Events started but didn't complete:\t%jd\n",
+	       ctx->begun_events - ctx->completed_events);
+	avg = (double)ctx->completed_duration_sum / ctx->completed_events;
+	printf("Average event duration:\t%lf (stddev %lf)\n", avg,
+	       stddev(ctx->durations, avg));
+	       
+	vector_destroy(ctx->durations);
+	/* XXX: hash */
+	free(ctx);
+}
+
+static struct stats_ops cmd_stat_ops[] = {
+	{
+		.statscmd = "integer",
+		.prepare = &stats_integer_prepare,
+		.each_event = &stats_integer_each,
+		.report = &stats_integer_report,
+	},
+	{
+		.statscmd = "completion",
+		.prepare = &stats_completion_prepare,
+		.each_event = &stats_completion_each,
+		.report = &stats_completion_report,
+	},
+	{
+		.statscmd = NULL,
+	},
+};
+
 static
 int
 cmd_stats(int argc, char **argv)
@@ -810,9 +1275,18 @@ cmd_stats(int argc, char **argv)
 	struct cpu_table cputab;
 	double freq;
 	uint64_t last_ts = 0;
-	enum evtr_value_type type = EVTR_VAL_INT;
-	uintmax_t sum, occurences;
+	struct stats_ops *statsops = &cmd_stat_ops[0];
+	void *statctx;
 
+	for (; statsops->statscmd; ++statsops) {
+		if (!strcmp(statsops->statscmd, argv[1]))
+			break;
+	}
+	if (!statsops->statscmd)
+		err(2, "No such stats type: %s", argv[1]);
+
+	--argc;
+	++argv;
 	cputab_init(&cputab);
 	/*
 	 * Assume all cores run on the same frequency
@@ -835,35 +1309,28 @@ cmd_stats(int argc, char **argv)
 	optind = 0;
 	optreset = 1;
 
-	if (argc != 2)
-		err(2, "Need exactly one variable");
+	if (argc < 2)
+		err(2, "Need a variable");
 	filt.var = argv[1];
 	q = evtr_query_init(evtr, &filt, 1);
 	if (!q)
-		err(1, "Can't initialize query\n");
-	sum = occurences = 0;
+		err(1, "Can't initialize query");
+	if (!(statctx = statsops->prepare(argc, argv)))
+		err(1, "Can't allocate stats context");
 	while(!evtr_query_next(q, &ev)) {
 
 		if (!last_ts)
 			last_ts = ev.ts;
 
 		assert(ev.type == EVTR_TYPE_STMT);
-		if (type != ev.stmt.val->type) {
-			printf("ignoring assignment of wrong type %d (expected %d)\n",
-			       ev.stmt.val->type, type);
-		} else {
-			printf("var \"%s\" = %jx\n",
-			       filt.var, ev.stmt.val->num);
-			sum += ev.stmt.val->num;
-			++occurences;
-		}
+		statsops->each_event(statctx, &ev);
 		last_ts = ev.ts;
 	}
 	if (evtr_query_error(q)) {
 		err(1, evtr_query_errmsg(q));
 	}
-	printf("median for variable %s is %lf\n", argv[1], (double)sum / occurences);
 	evtr_query_destroy(q);
+	statsops->report(statctx);
 	return 0;
 }
 

@@ -251,6 +251,8 @@ construct_expr: TOK_CTOR {
 		case EVTR_VAL_STR:
 			printd(PARSE, "\t\"%s\"\n", val->str);
 			break;
+		case EVTR_VAL_NIL:
+			assert(!"can't get here");
 		default:
 			;
 		}
