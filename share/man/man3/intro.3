@@ -31,9 +31,8 @@
 .\"
 .\"     @(#)intro.3	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man3/intro.3,v 1.9.2.4 2001/08/17 13:08:36 ru Exp $
-.\" $DragonFly: src/share/man/man3/intro.3,v 1.3 2006/11/17 23:01:21 swildner Exp $
 .\"
-.Dd June 5, 1993
+.Dd May 29, 2010
 .Dt INTRO 3
 .Os
 .Sh NAME
@@ -139,14 +138,14 @@ The library for
 .Xr yacc 1 .
 .El
 .Sh FILES
-.Bl -tag -width /usr/lib/libm_p.a -compact
+.Bl -tag -width /usr/lib/profile/libc.a -compact
 .It Pa /usr/lib/libc.a
 the C library
-.It Pa /usr/lib/libc_p.a
+.It Pa /usr/lib/profile/libc.a
 the C library compiled for profiling
 .It Pa /usr/lib/libm.a
 the math library
-.It Pa /usr/lib/libm_p.a
+.It Pa /usr/lib/profile/libm.a
 the math library compiled for profiling
 .El
 .Sh SEE ALSO

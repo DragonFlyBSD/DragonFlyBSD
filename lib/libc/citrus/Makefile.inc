@@ -1,5 +1,3 @@
-# $DragonFly: src/lib/libc/citrus/Makefile.inc,v 1.1 2005/03/11 23:33:53 joerg Exp $
-
 .PATH: ${.CURDIR}/../libc/citrus
 
 .include "../../i18n_module/Makefile.shlib"
@@ -13,7 +11,8 @@ SRCS+=	citrus_iconv.c citrus_lookup.c citrus_mapper.c citrus_memstream.c
 SRCS+=	citrus_mmap.c citrus_module.c citrus_none.c citrus_stdenc.c
 SRCS+=  citrus_prop.c
 
-# Add the locale modules to compile-in in the static libc.a (and libc_p.a)
+# Add the locale modules to compile-in in the static libc.a
+# (and profile/libc.a).
 # If a new locale module is added, the includes and the table in
 # citrus_module.c must be updated.
 # A new module must have the file name citrus_xxx.c where xxx is the lower
