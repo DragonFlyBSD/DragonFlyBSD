@@ -123,7 +123,7 @@ struct hashtab {
 	uintptr_t (*cmpfunc)(uintptr_t, uintptr_t);
 };
 
-int
+static int
 ehash_find(const struct hashtab *tab, uintptr_t key, uintptr_t *val)
 {
 	struct hashentry *ent;
@@ -138,7 +138,7 @@ ehash_find(const struct hashtab *tab, uintptr_t key, uintptr_t *val)
 	return 0;
 }
 
-struct hashentry *
+static struct hashentry *
 ehash_insert(struct hashtab *tab, uintptr_t key, uintptr_t val)
 {
 	struct hashentry *ent;
@@ -202,7 +202,7 @@ hashfunc_string(uintptr_t p)
 	return hash  % NR_BUCKETS;
 }
 
-struct hashtab *
+static struct hashtab *
 ehash_new(void)
 {
 	struct hashtab *tab;
@@ -303,7 +303,7 @@ typedef struct vector {
 	int allocated;
 } *vector_t;
 
-vector_t
+static vector_t
 vector_new(void)
 {
 	vector_t v;
