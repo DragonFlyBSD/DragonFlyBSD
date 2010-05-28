@@ -134,17 +134,17 @@ is built with the --enable-threads configure-time option.}		\
 #define LIBGCC_SPEC "%{shared: -lgcc_pic} %{!shared: -lgcc}"
 
 #define PRE_LIB_SPEC "							\
-  %{pg: -L"PREFIX2"/lib/gcc41/profiling 				\
-    %{!static: -rpath /usr/lib/gcc41/profiling 				\
-      -rpath-link "PREFIX2"/lib/gcc41/profiling}}			\
+  %{pg: -L"PREFIX2"/lib/gcc41/profile 				\
+    %{!static: -rpath /usr/lib/gcc41/profile 				\
+      -rpath-link "PREFIX2"/lib/gcc41/profile}}			\
   %{g: -L"PREFIX2"/lib/gcc41/debug 					\
     %{!static: -rpath /usr/lib/gcc41/debug				\
       -rpath-link "PREFIX2"/lib/gcc41/debug}}				\
   -L"PREFIX2"/lib/gcc41							\
   %{!static: -rpath /usr/lib/gcc41  -rpath-link "PREFIX2"/lib/gcc41} 	\
-  %{pg: -L"PREFIX2"/lib/profiling 					\
-    %{!static: -rpath /usr/lib/profiling				\
-      -rpath-link "PREFIX2"/lib/profiling}} 				\
+  %{pg: -L"PREFIX2"/lib/profile 					\
+    %{!static: -rpath /usr/lib/profile				\
+      -rpath-link "PREFIX2"/lib/profile}} 				\
   %{g: -L"PREFIX2"/lib/debug 						\
     %{!static: -rpath /usr/lib/debug -rpath-link "PREFIX2"/lib/debug}} 	\
   %{!static: -rpath /usr/lib -rpath-link "PREFIX2"/lib} 		\
