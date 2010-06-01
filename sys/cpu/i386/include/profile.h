@@ -92,7 +92,19 @@
 void \
 mcount(void) \
 { \
+	register int c asm("ecx"); \
+	register int d asm("edx"); \
+	register int a asm("eax"); \
 	uintfptr_t selfpc, frompc; \
+	/* \
+	 * mcount can't trash any registers, but _mcount \
+	 * follows the i386 abi and considers eax, ecx and \
+	 * edx caller-saved. We're the caller, so save them \
+	 * here. \
+	 */ \
+	asm("push %%ecx" : : "r" (c) : "memory"); \
+	asm("push %%edx" : : "r" (d): "memory"); \
+	asm("push %%eax" : : "r" (a) : "memory"); \
 	/* \
 	 * Find the return address for mcount, \
 	 * and the return address for mcount's caller. \
@@ -109,6 +121,10 @@ mcount(void) \
 	asm("movl (%%ebp),%0" : "=r" (frompc)); \
 	frompc = ((uintfptr_t *)frompc)[1]; \
 	_mcount(frompc, selfpc); \
+	/* restore the registers that _mcount possibly trashed */	\
+	asm volatile ("pop %%eax" : "=r" (a) : ); \
+	asm volatile ("pop %%edx" : "=r" (d) : ); \
+	asm volatile ("pop %%ecx" : "=r" (c) : ); \
 }
 
 typedef	unsigned int	uintfptr_t;
