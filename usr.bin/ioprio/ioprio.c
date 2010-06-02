@@ -54,15 +54,17 @@ static void	usage(void);
 int
 main(int argc, char **argv)
 {
-	int ioprio = DEFPRIO;
+	long ioprio = DEFPRIO;
 	int ch;
+	char *ep;
 
 	while ((ch = getopt(argc, argv, "n:")) != -1) {
 		switch (ch) {
 		case 'n':
 			errno = 0;
-			ioprio = atoi(optarg);
-			if (ioprio < INT_MIN || ioprio > INT_MAX)
+			ioprio = strtol(optarg, &ep, 10);
+			if (ep == optarg || *ep != '\0' || errno ||
+			    ioprio < INT_MIN || ioprio > INT_MAX)
 				errx(1, "%s: invalid ioprio value", optarg);
 			break;
 		default:
@@ -76,7 +78,7 @@ main(int argc, char **argv)
 		usage();
 
 	errno = 0;
-	if (ioprio_set(PRIO_PROCESS, 0, ioprio))
+	if (ioprio_set(PRIO_PROCESS, 0, (int)ioprio))
 		warn("ioprio_set");
 	execvp(*argv, argv);
 	err(errno == ENOENT || errno == ENOTDIR ? 127 : 126, "%s", *argv);
