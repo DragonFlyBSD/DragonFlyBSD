@@ -4501,6 +4501,97 @@ scan_all_buffers(int (*callback)(struct buf *, void *), void *info)
 }
 
 /*
+ * nestiobuf_iodone: biodone callback for nested buffers and propagate
+ * completion to the master buffer.
+ */
+static void
+nestiobuf_iodone(struct bio *bio)
+{
+	struct bio *mbio;
+	struct buf *mbp, *bp;
+	int error;
+	int donebytes;
+
+	bp = bio->bio_buf;
+	mbio = bio->bio_caller_info1.ptr;
+	mbp = mbio->bio_buf;
+
+	KKASSERT(bp->b_bcount <= bp->b_bufsize);
+	KKASSERT(mbp != bp);
+
+	error = bp->b_error;
+	if (bp->b_error == 0 &&
+	    (bp->b_bcount < bp->b_bufsize || bp->b_resid > 0)) {
+		/*
+		 * Not all got transfered, raise an error. We have no way to
+		 * propagate these conditions to mbp.
+		 */
+		error = EIO;
+	}
+
+	donebytes = bp->b_bufsize;
+
+	relpbuf(bp, NULL);
+	nestiobuf_done(mbio, donebytes, error);
+}
+
+void
+nestiobuf_done(struct bio *mbio, int donebytes, int error)
+{
+	struct buf *mbp;
+
+	mbp = mbio->bio_buf;	
+
+	/* If this buf didn't do anything, we are done. */
+	if (donebytes == 0)
+		return;
+
+	KKASSERT(mbp->b_resid >= donebytes);
+
+	/* If an error occured, propagate it to the master buffer */
+	if (error)
+		mbp->b_error = error;
+
+	/*
+	 * Decrement the master buf b_resid according to our donebytes, and
+	 * also check if this is the last missing bit for the whole nestio
+	 * mess to complete. If so, call biodone() on the master buf mbp.
+	 */
+	if (atomic_fetchadd_int(&mbp->b_resid, -donebytes) == donebytes) {
+		biodone(mbio);
+	}
+}
+
+/*
+ * nestiobuf_setup: setup a "nested" buffer.
+ *
+ * => 'mbp' is a "master" buffer which is being divided into sub pieces.
+ * => 'bp' should be a buffer allocated by getiobuf.
+ * => 'offset' is a byte offset in the master buffer.
+ * => 'size' is a size in bytes of this nested buffer.
+ */
+void
+nestiobuf_setup(struct bio *bio, struct buf *bp, int offset, size_t size)
+{
+	struct buf *mbp = bio->bio_buf;
+	struct vnode *vp = mbp->b_vp;
+
+	KKASSERT(mbp->b_bcount >= offset + size);
+
+	/* kernel needs to own the lock for it to be released in biodone */
+	BUF_KERNPROC(bp);
+	bp->b_vp = vp;
+	bp->b_cmd = mbp->b_cmd;
+	bp->b_bio1.bio_done = nestiobuf_iodone;
+	bp->b_data = (char *)mbp->b_data + offset;
+	bp->b_resid = bp->b_bcount = size;
+	bp->b_bufsize = bp->b_bcount;
+
+	bp->b_bio1.bio_track = NULL;
+	bp->b_bio1.bio_caller_info1.ptr = bio;
+}
+
+/*
  * print out statistics from the current status of the buffer pool
  * this can be toggeled by the system control option debug.syncprt
  */

@@ -451,7 +451,8 @@ struct	buf *trypbuf (int *);
 void	bio_ops_sync(struct mount *mp);
 void	vm_hold_free_pages(struct buf *bp, vm_offset_t from, vm_offset_t to);
 void	vm_hold_load_pages(struct buf *bp, vm_offset_t from, vm_offset_t to);
-
+void	nestiobuf_done(struct bio *mbio, int donebytes, int error);
+void	nestiobuf_setup(struct bio *bio, struct buf *bp, int offset, size_t size);
 #endif	/* _KERNEL */
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */
 #endif	/* !_SYS_BUF_H_ */
