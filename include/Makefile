@@ -73,6 +73,7 @@ LSUBDIRS=	bus/cam bus/cam/scsi \
 	netproto/atm/uni netproto/802_11 netproto/mpls \
 	vfs/isofs/cd9660 net/i4b/include \
 	dev/disk/mpt/mpilib \
+	dev/disk/dm \
 	dev/misc/lpt dev/misc/ppi \
 	dev/netif/wi \
 	dev/raid/ciss \
