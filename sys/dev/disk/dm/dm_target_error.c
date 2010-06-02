@@ -102,7 +102,7 @@ int
 dm_target_error_init(dm_dev_t * dmv, void **target_config, char *argv)
 {
 
-	printf("Error target init function called!!\n");
+	kprintf("Error target init function called!!\n");
 
 	*target_config = NULL;
 
@@ -121,12 +121,12 @@ int
 dm_target_error_strategy(dm_table_entry_t * table_en, struct buf * bp)
 {
 
-	printf("Error target read function called!!\n");
+	kprintf("Error target read function called!!\n");
 
 	bp->b_error = EIO;
 	bp->b_resid = 0;
 
-	biodone(bp);
+	biodone(&bp->b_bio1);
 
 	return 0;
 }

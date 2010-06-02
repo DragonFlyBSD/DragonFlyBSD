@@ -32,9 +32,11 @@
 #include <sys/types.h>
 #include <sys/param.h>
 
-#include <sys/kmem.h>
+#include <sys/malloc.h>
 
 #include "dm.h"
+
+MALLOC_DECLARE(M_DM);
 
 /*
  * There are two types of users of this interface:
@@ -67,7 +69,7 @@ dm_table_busy(dm_table_head_t * head, uint8_t table_id)
 
 	id = 0;
 
-	mutex_enter(&head->table_mtx);
+	lockmgr(&head->table_mtx, LK_EXCLUSIVE);
 
 	if (table_id == DM_TABLE_ACTIVE)
 		id = head->cur_active_table;
@@ -76,7 +78,7 @@ dm_table_busy(dm_table_head_t * head, uint8_t table_id)
 
 	head->io_cnt++;
 
-	mutex_exit(&head->table_mtx);
+	lockmgr(&head->table_mtx, LK_RELEASE);
 	return id;
 }
 /*
@@ -85,14 +87,14 @@ dm_table_busy(dm_table_head_t * head, uint8_t table_id)
 static void
 dm_table_unbusy(dm_table_head_t * head)
 {
-	KASSERT(head->io_cnt != 0);
+	KKASSERT(head->io_cnt != 0);
 
-	mutex_enter(&head->table_mtx);
+	lockmgr(&head->table_mtx, LK_EXCLUSIVE);
 
 	if (--head->io_cnt == 0)
 		cv_broadcast(&head->table_cv);
 
-	mutex_exit(&head->table_mtx);
+	lockmgr(&head->table_mtx, LK_RELEASE);
 }
 /*
  * Return current active table to caller, increment io_cnt reference counter.
@@ -120,14 +122,14 @@ dm_table_release(dm_table_head_t * head, uint8_t table_id)
 void
 dm_table_switch_tables(dm_table_head_t * head)
 {
-	mutex_enter(&head->table_mtx);
+	lockmgr(&head->table_mtx, LK_EXCLUSIVE);
 
 	while (head->io_cnt != 0)
 		cv_wait(&head->table_cv, &head->table_mtx);
 
 	head->cur_active_table = 1 - head->cur_active_table;
 
-	mutex_exit(&head->table_mtx);
+	lockmgr(&head->table_mtx, LK_RELEASE);
 }
 /*
  * Destroy all table data. This function can run when there are no
@@ -142,7 +144,7 @@ dm_table_destroy(dm_table_head_t * head, uint8_t table_id)
 	dm_table_entry_t *table_en;
 	uint8_t id;
 
-	mutex_enter(&head->table_mtx);
+	lockmgr(&head->table_mtx, LK_EXCLUSIVE);
 
 	aprint_debug("dm_Table_destroy called with %d--%d\n", table_id, head->io_cnt);
 
@@ -166,10 +168,10 @@ dm_table_destroy(dm_table_head_t * head, uint8_t table_id)
 
 		SLIST_REMOVE_HEAD(tbl, next);
 
-		kmem_free(table_en, sizeof(*table_en));
+		kfree(table_en, M_DM);
 	}
 
-	mutex_exit(&head->table_mtx);
+	lockmgr(&head->table_mtx, LK_RELEASE);
 
 	return 0;
 }
@@ -195,8 +197,11 @@ dm_table_size(dm_table_head_t * head)
 	 * Find out what tables I want to select.
 	 * if length => rawblkno then we should used that table.
 	 */
-	SLIST_FOREACH(table_en, tbl, next)
-	    length += table_en->length;
+	SLIST_FOREACH(table_en, tbl, next) {
+		kprintf("dm_table SLIST_FOREACH... curlen = %llu\n", length);
+		length += table_en->length;
+		kprintf("dm_table SLIST_FOREACH... curlen = %llu\n", length);
+	}
 
 	dm_table_unbusy(head);
 
@@ -245,7 +250,7 @@ dm_table_head_init(dm_table_head_t * head)
 	SLIST_INIT(&head->tables[0]);
 	SLIST_INIT(&head->tables[1]);
 
-	mutex_init(&head->table_mtx, MUTEX_DEFAULT, IPL_NONE);
+	lockinit(&head->table_mtx, "dmtbl", 0, LK_CANRECURSE);
 	cv_init(&head->table_cv, "dm_io");
 }
 /*
@@ -254,12 +259,14 @@ dm_table_head_init(dm_table_head_t * head)
 void
 dm_table_head_destroy(dm_table_head_t * head)
 {
-	KASSERT(!mutex_owned(&head->table_mtx));
-	KASSERT(!cv_has_waiters(&head->table_cv));
+	KKASSERT(lockcount(&head->table_mtx) == 0);
+#if 0
+	KKASSERT(!cv_has_waiters(&head->table_cv));
+#endif
 	/* tables doens't exists when I call this routine, therefore it
 	 * doesn't make sense to have io_cnt != 0 */
-	KASSERT(head->io_cnt == 0);
+	KKASSERT(head->io_cnt == 0);
 
 	cv_destroy(&head->table_cv);
-	mutex_destroy(&head->table_mtx);
+	lockuninit(&head->table_mtx);
 }

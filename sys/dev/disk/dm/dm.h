@@ -36,17 +36,19 @@
 #ifdef _KERNEL
 
 #include <sys/errno.h>
+#include <sys/systm.h>
+#include <sys/kernel.h>
 
-#include <sys/atomic.h>
+#include <cpu/inttypes.h>
+#include <cpu/atomic.h>
 #include <sys/condvar.h>
-#include <sys/mutex.h>
-#include <sys/rwlock.h>
+#include <sys/lock.h>
 #include <sys/queue.h>
 
 #include <sys/device.h>
 #include <sys/disklabel.h>
 
-#include <prop/proplib.h>
+#include <libprop/proplib.h>
 
 #define DM_MAX_TYPE_NAME 16
 #define DM_NAME_LEN 128
@@ -68,6 +70,8 @@
  * A device mapper table is a list of physical ranges plus the mapping target
  * applied to them.
  */
+struct buf;
+struct bio;
 
 typedef struct dm_table_entry {
 	struct dm_dev *dm_dev;		/* backlink */
@@ -88,8 +92,8 @@ typedef struct dm_table_head {
 	int cur_active_table; 
 	struct dm_table tables[2];
 
-	kmutex_t   table_mtx;
-	kcondvar_t table_cv; /*IO waiting cv */
+	struct lock   table_mtx;
+	struct cv table_cv; /*IO waiting cv */
 
 	uint32_t io_cnt;
 } dm_table_head_t;
@@ -115,18 +119,18 @@ typedef struct dm_pdev {
  * This structure is called for every device-mapper device.
  * It points to SLIST of device tables and mirrored, snapshoted etc. devices.
  */
-TAILQ_HEAD(dm_dev_head, dm_dev) dm_devs;
+TAILQ_HEAD(dm_dev_head, dm_dev);
 				
 typedef struct dm_dev {
 	char name[DM_NAME_LEN];
 	char uuid[DM_UUID_LEN];
 
-	device_t devt; /* pointer to autoconf device_t structure */
+	cdev_t devt; /* pointer to autoconf device_t structure */
 	uint64_t minor;
 	uint32_t flags; /* store communication protocol flags */
 
-	kmutex_t dev_mtx; /* mutex for generall device lock */
-	kcondvar_t dev_cv; /* cv for between ioctl synchronisation */
+	struct lock dev_mtx; /* mutex for generall device lock */
+	struct cv dev_cv; /* cv for between ioctl synchronisation */
 	
 	uint32_t event_nr;
 	uint32_t ref_cnt;
@@ -138,7 +142,7 @@ typedef struct dm_dev {
 	struct dm_dev_head upcalls;
 	
 	struct disk *diskp;
-	kmutex_t diskp_mtx;
+	struct lock diskp_mtx;
 	
 	TAILQ_ENTRY(dm_dev) next_upcall; /* LIST of mirrored, snapshoted devices. */
 
@@ -248,7 +252,10 @@ struct cmd_function {
 };
 
 /* device-mapper */
+void dmsetdiskinfo(struct disk *, dm_table_head_t *);
+prop_dictionary_t dmgetdiskinfo(struct disk *);
 void dmgetproperties(struct disk *, dm_table_head_t *);
+int dm_detach(dm_dev_t *);
 
 /* dm_ioctl.c */
 int dm_dev_create_ioctl(prop_dictionary_t);
@@ -360,7 +367,7 @@ void dm_table_head_destroy(dm_table_head_t *);
 dm_dev_t* dm_dev_alloc(void);
 void dm_dev_busy(dm_dev_t *);
 int dm_dev_destroy(void);
-dm_dev_t* dm_dev_detach(device_t);
+void disable_dev(dm_dev_t *);
 int dm_dev_free(dm_dev_t *);
 int dm_dev_init(void);
 int dm_dev_insert(dm_dev_t *);
@@ -375,6 +382,10 @@ int dm_pdev_decr(dm_pdev_t *);
 int dm_pdev_destroy(void);
 int dm_pdev_init(void);
 dm_pdev_t* dm_pdev_insert(const char *);
+
+/* XXX: temporary hacks */
+#define aprint_debug	kprintf
+#define aprint_normal	kprintf
 
 #endif /*_KERNEL*/
 

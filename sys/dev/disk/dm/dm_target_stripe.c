@@ -36,10 +36,11 @@
 #include <sys/param.h>
 
 #include <sys/buf.h>
-#include <sys/kmem.h>
+#include <sys/malloc.h>
 #include <sys/vnode.h>
 
 #include "dm.h"
+MALLOC_DEFINE(M_DMSTRIPE, "dm_stripe", "Device Mapper Target Stripe");
 
 #ifdef DM_TARGET_MODULE
 /*
@@ -51,8 +52,6 @@
  */
 #include <sys/kernel.h>
 #include <sys/module.h>
-
-MODULE(MODULE_CLASS_MISC, dm_target_stripe, NULL);
 
 static int
 dm_target_stripe_modcmd(modcmd_t cmd, void *arg)
@@ -127,16 +126,16 @@ dm_target_stripe_init(dm_dev_t * dmv, void **target_config, char *params)
 			ap++;
 	}
 
-	printf("Stripe target init function called!!\n");
+	kprintf("Stripe target init function called!!\n");
 
-	printf("Stripe target chunk size %s number of stripes %s\n", argv[1], argv[0]);
-	printf("Stripe target device name %s -- offset %s\n", argv[2], argv[3]);
-	printf("Stripe target device name %s -- offset %s\n", argv[4], argv[5]);
+	kprintf("Stripe target chunk size %s number of stripes %s\n", argv[1], argv[0]);
+	kprintf("Stripe target device name %s -- offset %s\n", argv[2], argv[3]);
+	kprintf("Stripe target device name %s -- offset %s\n", argv[4], argv[5]);
 
 	if (atoi(argv[0]) > MAX_STRIPES)
 		return ENOTSUP;
 
-	if ((tsc = kmem_alloc(sizeof(dm_target_stripe_config_t), KM_NOSLEEP))
+	if ((tsc = kmalloc(sizeof(dm_target_stripe_config_t), M_DMSTRIPE, M_NOWAIT))
 	    == NULL)
 		return ENOMEM;
 
@@ -171,10 +170,10 @@ dm_target_stripe_status(void *target_config)
 
 	tsc = target_config;
 
-	if ((params = kmem_alloc(DM_MAX_PARAMS_SIZE, KM_SLEEP)) == NULL)
+	if ((params = kmalloc(DM_MAX_PARAMS_SIZE, M_DMSTRIPE, M_WAITOK)) == NULL)
 		return NULL;
 
-	snprintf(params, DM_MAX_PARAMS_SIZE, "%d %" PRIu64 " %s %" PRIu64 " %s %" PRIu64,
+	ksnprintf(params, DM_MAX_PARAMS_SIZE, "%d %" PRIu64 " %s %" PRIu64 " %s %" PRIu64,
 	    tsc->stripe_num, tsc->stripe_chunksize,
 	    tsc->stripe_devs[0].pdev->name, tsc->stripe_devs[0].offset,
 	    tsc->stripe_devs[1].pdev->name, tsc->stripe_devs[1].offset);
@@ -186,6 +185,7 @@ int
 dm_target_stripe_strategy(dm_table_entry_t * table_en, struct buf * bp)
 {
 	dm_target_stripe_config_t *tsc;
+	struct bio *bio = &bp->b_bio1;
 	struct buf *nestbuf;
 	uint64_t blkno, blkoff;
 	uint64_t stripe, stripe_blknr;
@@ -196,13 +196,13 @@ dm_target_stripe_strategy(dm_table_entry_t * table_en, struct buf * bp)
 	if (tsc == NULL)
 		return 0;
 
-/*	printf("Stripe target read function called %" PRIu64 "!!\n",
+/*	kprintf("Stripe target read function called %" PRIu64 "!!\n",
 	tlc->offset);*/
 
 	/* calculate extent of request */
-	KASSERT(bp->b_resid % DEV_BSIZE == 0);
+	KKASSERT(bp->b_resid % DEV_BSIZE == 0);
 
-	blkno = bp->b_blkno;
+	blkno = bp->b_bio1.bio_offset/DEV_BSIZE;
 	blkoff = 0;
 	num_blks = bp->b_resid / DEV_BSIZE;
 	for (;;) {
@@ -219,13 +219,16 @@ dm_target_stripe_strategy(dm_table_entry_t * table_en, struct buf * bp)
 
 		/* issue this piece on stripe `stripe' */
 		issue_blks = MIN(stripe_rest, num_blks);
-		nestbuf = getiobuf(NULL, true);
+		nestbuf = getpbuf(NULL);
 
-		nestiobuf_setup(bp, nestbuf, blkoff, issue_blks * DEV_BSIZE);
-		nestbuf->b_blkno = stripe_blknr * tsc->stripe_chunksize + stripe_off;
-		nestbuf->b_blkno += tsc->stripe_devs[stripe_devnr].offset;
+		nestiobuf_setup(bio, nestbuf, blkoff, issue_blks * DEV_BSIZE);
 
-		VOP_STRATEGY(tsc->stripe_devs[stripe_devnr].pdev->pdev_vnode, nestbuf);
+		/* I need number of bytes. */
+		nestbuf->b_bio1.bio_offset = stripe_blknr * tsc->stripe_chunksize + stripe_off;
+		nestbuf->b_bio1.bio_offset += tsc->stripe_devs[stripe_devnr].offset;
+		nestbuf->b_bio1.bio_offset *= DEV_BSIZE;
+
+		vn_strategy(tsc->stripe_devs[stripe_devnr].pdev->pdev_vnode, &nestbuf->b_bio1);
 
 		blkno += issue_blks;
 		blkoff += issue_blks * DEV_BSIZE;
@@ -254,7 +257,7 @@ dm_target_stripe_destroy(dm_table_entry_t * table_en)
 	/* Unbusy target so we can unload it */
 	dm_target_unbusy(table_en->target);
 
-	kmem_free(tsc, sizeof(dm_target_stripe_config_t));
+	kfree(tsc, M_DMSTRIPE);
 
 	table_en->target_config = NULL;
 
@@ -274,15 +277,15 @@ dm_target_stripe_deps(dm_table_entry_t * table_en, prop_array_t prop_array)
 
 	tsc = table_en->target_config;
 
-	if ((error = VOP_GETATTR(tsc->stripe_devs[0].pdev->pdev_vnode, &va, curlwp->l_cred)) != 0)
+	if ((error = VOP_GETATTR(tsc->stripe_devs[0].pdev->pdev_vnode, &va)) != 0)
 		return error;
 
-	prop_array_add_uint64(prop_array, (uint64_t) va.va_rdev);
+	prop_array_add_uint64(prop_array, (uint64_t) makeudev(va.va_rmajor, va.va_rminor));
 
-	if ((error = VOP_GETATTR(tsc->stripe_devs[1].pdev->pdev_vnode, &va, curlwp->l_cred)) != 0)
+	if ((error = VOP_GETATTR(tsc->stripe_devs[1].pdev->pdev_vnode, &va)) != 0)
 		return error;
 
-	prop_array_add_uint64(prop_array, (uint64_t) va.va_rdev);
+	prop_array_add_uint64(prop_array, (uint64_t) makeudev(va.va_rmajor, va.va_rminor));
 
 	return 0;
 }

@@ -32,7 +32,7 @@
 #include <sys/types.h>
 #include <sys/param.h>
 
-#include <sys/kmem.h>
+#include <sys/malloc.h>
 #include <sys/module.h>
 
 
@@ -46,7 +46,9 @@ TAILQ_HEAD(dm_target_head, dm_target);
 static struct dm_target_head dm_target_list =
 TAILQ_HEAD_INITIALIZER(dm_target_list);
 
-kmutex_t dm_target_mutex;
+MALLOC_DECLARE(M_DM);
+
+struct lock dm_target_mutex;
 
 /*
  * Called indirectly from dm_table_load_ioctl to mark target as used.
@@ -54,7 +56,7 @@ kmutex_t dm_target_mutex;
 void
 dm_target_busy(dm_target_t * target)
 {
-	atomic_inc_32(&target->ref_cnt);
+	atomic_add_int(&target->ref_cnt, 1);
 }
 /*
  * Release reference counter on target.
@@ -62,8 +64,8 @@ dm_target_busy(dm_target_t * target)
 void
 dm_target_unbusy(dm_target_t * target)
 {
-	KASSERT(target->ref_cnt > 0);
-	atomic_dec_32(&target->ref_cnt);
+	KKASSERT(target->ref_cnt > 0);
+	atomic_subtract_int(&target->ref_cnt, 1);
 }
 /*
  * Try to autoload target module if it was not found in current
@@ -72,29 +74,32 @@ dm_target_unbusy(dm_target_t * target)
 dm_target_t *
 dm_target_autoload(const char *dm_target_name)
 {
+#if 0
 	char name[30];
 	u_int gen;
 	dm_target_t *dmt;
 
-	snprintf(name, sizeof(name), "dm_target_%s", dm_target_name);
+	ksnprintf(name, sizeof(name), "dm_target_%s", dm_target_name);
 	name[29] = '\0';
 
 	do {
 		gen = module_gen;
 
 		/* Try to autoload target module */
-		mutex_enter(&module_lock);
+		lockmgr(&module_lock, LK_EXCLUSIVE);
 		(void) module_autoload(name, MODULE_CLASS_MISC);
-		mutex_exit(&module_lock);
+		lockmgr(&module_lock, LK_RELEASE);
 	} while (gen != module_gen);
 
-	mutex_enter(&dm_target_mutex);
+	lockmgr(&dm_target_mutex, LK_EXCLUSIVE);
 	dmt = dm_target_lookup_name(dm_target_name);
 	if (dmt != NULL)
 		dm_target_busy(dmt);
-	mutex_exit(&dm_target_mutex);
+	lockmgr(&dm_target_mutex, LK_RELEASE);
 
 	return dmt;
+#endif
+	return NULL;
 }
 /*
  * Lookup for target in global target list.
@@ -109,13 +114,13 @@ dm_target_lookup(const char *dm_target_name)
 	if (dm_target_name == NULL)
 		return NULL;
 
-	mutex_enter(&dm_target_mutex);
+	lockmgr(&dm_target_mutex, LK_EXCLUSIVE);
 
 	dmt = dm_target_lookup_name(dm_target_name);
 	if (dmt != NULL)
 		dm_target_busy(dmt);
 
-	mutex_exit(&dm_target_mutex);
+	lockmgr(&dm_target_mutex, LK_RELEASE);
 
 	return dmt;
 }
@@ -152,16 +157,17 @@ dm_target_insert(dm_target_t * dm_target)
 {
 	dm_target_t *dmt;
 
-	mutex_enter(&dm_target_mutex);
+	lockmgr(&dm_target_mutex, LK_EXCLUSIVE);
 
 	dmt = dm_target_lookup_name(dm_target->name);
 	if (dmt != NULL) {
-		mutex_exit(&dm_target_mutex);
+		kprintf("uhoh, target_insert EEXIST\n");
+		lockmgr(&dm_target_mutex, LK_RELEASE);
 		return EEXIST;
 	}
 	TAILQ_INSERT_TAIL(&dm_target_list, dm_target, dm_target_next);
 
-	mutex_exit(&dm_target_mutex);
+	lockmgr(&dm_target_mutex, LK_RELEASE);
 
 	return 0;
 }
@@ -175,25 +181,25 @@ dm_target_rem(char *dm_target_name)
 {
 	dm_target_t *dmt;
 
-	KASSERT(dm_target_name != NULL);
+	KKASSERT(dm_target_name != NULL);
 
-	mutex_enter(&dm_target_mutex);
+	lockmgr(&dm_target_mutex, LK_EXCLUSIVE);
 
 	dmt = dm_target_lookup_name(dm_target_name);
 	if (dmt == NULL) {
-		mutex_exit(&dm_target_mutex);
+		lockmgr(&dm_target_mutex, LK_RELEASE);
 		return ENOENT;
 	}
 	if (dmt->ref_cnt > 0) {
-		mutex_exit(&dm_target_mutex);
+		lockmgr(&dm_target_mutex, LK_RELEASE);
 		return EBUSY;
 	}
 	TAILQ_REMOVE(&dm_target_list,
 	    dmt, dm_target_next);
 
-	mutex_exit(&dm_target_mutex);
+	lockmgr(&dm_target_mutex, LK_RELEASE);
 
-	(void) kmem_free(dmt, sizeof(dm_target_t));
+	(void) kfree(dmt, M_DM);
 
 	return 0;
 }
@@ -207,7 +213,7 @@ dm_target_destroy(void)
 {
 	dm_target_t *dm_target;
 
-	mutex_enter(&dm_target_mutex);
+	lockmgr(&dm_target_mutex, LK_EXCLUSIVE);
 	while (TAILQ_FIRST(&dm_target_list) != NULL) {
 
 		dm_target = TAILQ_FIRST(&dm_target_list);
@@ -215,11 +221,11 @@ dm_target_destroy(void)
 		TAILQ_REMOVE(&dm_target_list, TAILQ_FIRST(&dm_target_list),
 		    dm_target_next);
 
-		(void) kmem_free(dm_target, sizeof(dm_target_t));
+		(void) kfree(dm_target, M_DM);
 	}
-	mutex_exit(&dm_target_mutex);
+	lockmgr(&dm_target_mutex, LK_RELEASE);
 
-	mutex_destroy(&dm_target_mutex);
+	lockuninit(&dm_target_mutex);
 
 	return 0;
 }
@@ -229,7 +235,7 @@ dm_target_destroy(void)
 dm_target_t *
 dm_target_alloc(const char *name)
 {
-	return kmem_zalloc(sizeof(dm_target_t), KM_SLEEP);
+	return kmalloc(sizeof(dm_target_t), M_DM, M_WAITOK | M_ZERO);
 }
 /*
  * Return prop_array of dm_target dictionaries.
@@ -245,7 +251,7 @@ dm_target_prop_list(void)
 
 	target_array = prop_array_create();
 
-	mutex_enter(&dm_target_mutex);
+	lockmgr(&dm_target_mutex, LK_EXCLUSIVE);
 
 	TAILQ_FOREACH(dm_target, &dm_target_list, dm_target_next) {
 
@@ -264,7 +270,7 @@ dm_target_prop_list(void)
 		prop_object_release(target_dict);
 	}
 
-	mutex_exit(&dm_target_mutex);
+	lockmgr(&dm_target_mutex, LK_RELEASE);
 
 	return target_array;
 }
@@ -277,7 +283,7 @@ dm_target_init(void)
 
 	r = 0;
 
-	mutex_init(&dm_target_mutex, MUTEX_DEFAULT, IPL_NONE);
+	lockinit(&dm_target_mutex, "dmtrgt", 0, LK_CANRECURSE);
 
 	dmt = dm_target_alloc("linear");
 	dmt3 = dm_target_alloc("striped");
@@ -307,34 +313,6 @@ dm_target_init(void)
 	dmt3->upcall = &dm_target_stripe_upcall;
 
 	r = dm_target_insert(dmt3);
-
-#ifdef notyet
-	dmt5->version[0] = 1;
-	dmt5->version[1] = 0;
-	dmt5->version[2] = 5;
-	strlcpy(dmt5->name, "snapshot", DM_MAX_TYPE_NAME);
-	dmt5->init = &dm_target_snapshot_init;
-	dmt5->status = &dm_target_snapshot_status;
-	dmt5->strategy = &dm_target_snapshot_strategy;
-	dmt5->deps = &dm_target_snapshot_deps;
-	dmt5->destroy = &dm_target_snapshot_destroy;
-	dmt5->upcall = &dm_target_snapshot_upcall;
-
-	r = dm_target_insert(dmt5);
-
-	dmt6->version[0] = 1;
-	dmt6->version[1] = 0;
-	dmt6->version[2] = 5;
-	strlcpy(dmt6->name, "snapshot-origin", DM_MAX_TYPE_NAME);
-	dmt6->init = &dm_target_snapshot_orig_init;
-	dmt6->status = &dm_target_snapshot_orig_status;
-	dmt6->strategy = &dm_target_snapshot_orig_strategy;
-	dmt6->deps = &dm_target_snapshot_orig_deps;
-	dmt6->destroy = &dm_target_snapshot_orig_destroy;
-	dmt6->upcall = &dm_target_snapshot_orig_upcall;
-
-	r = dm_target_insert(dmt6);
-#endif
 
 	return r;
 }

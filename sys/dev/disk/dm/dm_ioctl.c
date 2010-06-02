@@ -47,7 +47,7 @@
  * To access table entries dm_table_* routines must be used.
  *
  * dm_table_get_entry will increment table users reference
- * counter. It will return active or inactive table depedns
+ * counter. It will return active or inactive table depends
  * on uint8_t argument.
  *
  * dm_table_release must be called for every table_entry from
@@ -84,19 +84,19 @@
 #include <sys/device.h>
 #include <sys/disk.h>
 #include <sys/disklabel.h>
-#include <sys/kmem.h>
+#include <sys/malloc.h>
 #include <sys/malloc.h>
 #include <sys/vnode.h>
-
-#include <machine/int_fmtio.h>
 
 #include "netbsd-dm.h"
 #include "dm.h"
 
+MALLOC_DECLARE(M_DM);
 static uint64_t sc_minor_num;
-extern const struct dkdriver dmdkdriver;
+extern struct dev_ops dm_ops;
 uint64_t dm_dev_counter;
 
+#if 0
 /* Generic cf_data for device-mapper driver */
 static struct cfdata dm_cfdata = {
 	.cf_name = "dm",
@@ -104,6 +104,8 @@ static struct cfdata dm_cfdata = {
 	.cf_fstate = FSTATE_STAR,
 	.cf_unit = 0
 };
+#endif
+
 #define DM_REMOVE_FLAG(flag, name) do {					\
 		prop_dictionary_get_uint32(dm_dict,DM_IOCTL_FLAGS,&flag); \
 		flag &= ~name;						\
@@ -201,7 +203,6 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
 	dm_dev_t *dmv;
 	const char *name, *uuid;
 	int r, flags;
-	device_t devt;
 
 	r = 0;
 	flags = 0;
@@ -221,10 +222,12 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
 		dm_dev_unbusy(dmv);
 		return EEXIST;
 	}
+#if 0
 	if ((devt = config_attach_pseudo(&dm_cfdata)) == NULL) {
 		aprint_error("Unable to attach pseudo device dm/%s\n", name);
 		return (ENOMEM);
 	}
+#endif
 	if ((dmv = dm_dev_alloc()) == NULL)
 		return ENOMEM;
 
@@ -236,17 +239,16 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
 	if (name)
 		strlcpy(dmv->name, name, DM_NAME_LEN);
 
-	dmv->minor = atomic_inc_64_nv(&sc_minor_num);
+	dmv->minor = ++sc_minor_num; /* XXX: was atomic 64 */
 	dmv->flags = 0;		/* device flags are set when needed */
 	dmv->ref_cnt = 0;
 	dmv->event_nr = 0;
 	dmv->dev_type = 0;
-	dmv->devt = devt;
 
 	dm_table_head_init(&dmv->table_head);
 
-	mutex_init(&dmv->dev_mtx, MUTEX_DEFAULT, IPL_NONE);
-	mutex_init(&dmv->diskp_mtx, MUTEX_DEFAULT, IPL_NONE);
+	lockinit(&dmv->dev_mtx, "dmdev", 0, LK_CANRECURSE);
+	lockinit(&dmv->diskp_mtx, "dmdisk", 0, LK_CANRECURSE);
 	cv_init(&dmv->dev_cv, "dm_dev");
 
 	if (flags & DM_READONLY_FLAG)
@@ -254,10 +256,14 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
 
 	prop_dictionary_set_uint32(dm_dict, DM_IOCTL_MINOR, dmv->minor);
 
+	aprint_debug("Creating device dm/%s\n", name);
+	dmv->devt = make_dev(&dm_ops, dmv->minor, UID_ROOT, GID_OPERATOR, 0640, "mapper/%s", dmv->name);
+#if 0
 	disk_init(dmv->diskp, dmv->name, &dmdkdriver);
 	disk_attach(dmv->diskp);
 
 	dmv->diskp->dk_info = NULL;
+#endif
 
 	if ((r = dm_dev_insert(dmv)) != 0)
 		dm_dev_free(dmv);
@@ -266,7 +272,7 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
 	DM_REMOVE_FLAG(flags, DM_INACTIVE_PRESENT_FLAG);
 
 	/* Increment device counter After creating device */
-	atomic_inc_64(&dm_dev_counter);
+	++dm_dev_counter; /* XXX: was atomic 64 */
 
 	return r;
 }
@@ -375,7 +381,6 @@ dm_dev_remove_ioctl(prop_dictionary_t dm_dict)
 	dm_dev_t *dmv;
 	const char *name, *uuid;
 	uint32_t flags, minor;
-	device_t devt;
 
 	flags = 0;
 	name = NULL;
@@ -397,7 +402,6 @@ dm_dev_remove_ioctl(prop_dictionary_t dm_dict)
 		DM_REMOVE_FLAG(flags, DM_EXISTS_FLAG);
 		return ENOENT;
 	}
-	devt = dmv->devt;
 
 	dm_dev_unbusy(dmv);
 
@@ -405,7 +409,7 @@ dm_dev_remove_ioctl(prop_dictionary_t dm_dict)
 	 * This will call dm_detach routine which will actually removes
 	 * device.
 	 */
-	return config_detach(devt, DETACH_QUIET);
+	return dm_detach(dmv);
 }
 /*
  * Return actual state of device to libdevmapper.
@@ -485,7 +489,7 @@ dm_dev_suspend_ioctl(prop_dictionary_t dm_dict)
 		DM_REMOVE_FLAG(flags, DM_EXISTS_FLAG);
 		return ENOENT;
 	}
-	atomic_or_32(&dmv->flags, DM_SUSPEND_FLAG);
+	atomic_set_int(&dmv->flags, DM_SUSPEND_FLAG);
 
 	dm_dbg_print_flags(dmv->flags);
 
@@ -530,14 +534,14 @@ dm_dev_resume_ioctl(prop_dictionary_t dm_dict)
 		DM_REMOVE_FLAG(flags, DM_EXISTS_FLAG);
 		return ENOENT;
 	}
-	atomic_and_32(&dmv->flags, ~(DM_SUSPEND_FLAG | DM_INACTIVE_PRESENT_FLAG));
-	atomic_or_32(&dmv->flags, DM_ACTIVE_PRESENT_FLAG);
+	atomic_clear_int(&dmv->flags, (DM_SUSPEND_FLAG | DM_INACTIVE_PRESENT_FLAG));
+	atomic_set_int(&dmv->flags, DM_ACTIVE_PRESENT_FLAG);
 
 	dm_table_switch_tables(&dmv->table_head);
 
 	DM_ADD_FLAG(flags, DM_EXISTS_FLAG);
 
-	dmgetproperties(dmv->diskp, &dmv->table_head);
+	dmsetdiskinfo(dmv->diskp, &dmv->table_head);
 
 	prop_dictionary_set_uint32(dm_dict, DM_IOCTL_OPEN, dmv->table_head.io_cnt);
 	prop_dictionary_set_uint32(dm_dict, DM_IOCTL_FLAGS, flags);
@@ -589,7 +593,7 @@ dm_table_clear_ioctl(prop_dictionary_t dm_dict)
 	/* Select unused table */
 	dm_table_destroy(&dmv->table_head, DM_TABLE_INACTIVE);
 
-	atomic_and_32(&dmv->flags, ~DM_INACTIVE_PRESENT_FLAG);
+	atomic_clear_int(&dmv->flags, DM_INACTIVE_PRESENT_FLAG);
 
 	dm_dev_unbusy(dmv);
 
@@ -735,9 +739,9 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 	prop_dictionary_set_uint32(dm_dict, DM_IOCTL_MINOR, dmv->minor);
 
 	while ((target_dict = prop_object_iterator_next(iter)) != NULL) {
-
 		prop_dictionary_get_cstring_nocopy(target_dict,
 		    DM_TABLE_TYPE, &type);
+		kprintf("heyhohoho: %s\n", type);
 		/*
 		 * If we want to deny table with 2 or more different
 		 * target we should do it here
@@ -746,18 +750,22 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 		    ((target = dm_target_autoload(type)) == NULL)) {
 			dm_table_release(&dmv->table_head, DM_TABLE_INACTIVE);
 			dm_dev_unbusy(dmv);
+			kprintf("heyhohoho ENOENT\n");
 			return ENOENT;
 		}
-		if ((table_en = kmem_alloc(sizeof(dm_table_entry_t),
-			    KM_SLEEP)) == NULL) {
+		if ((table_en = kmalloc(sizeof(dm_table_entry_t),
+			    M_DM, M_WAITOK)) == NULL) {
 			dm_table_release(&dmv->table_head, DM_TABLE_INACTIVE);
 			dm_dev_unbusy(dmv);
+			kprintf("heyhohoho ENOMEM\n");
 			return ENOMEM;
 		}
 		prop_dictionary_get_uint64(target_dict, DM_TABLE_START,
 		    &table_en->start);
 		prop_dictionary_get_uint64(target_dict, DM_TABLE_LENGTH,
 		    &table_en->length);
+
+		kprintf("dm_ioctl.c... table_en->start = %llu, table_en->length = %llu\n", table_en->start, table_en->length);
 
 		table_en->target = target;
 		table_en->dm_dev = dmv;
@@ -784,24 +792,24 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 		 * therfore I have to pass it to target init
 		 * routine and parse parameters there.
 		 */
-
+		kprintf("DM: str passed in is: %s", str);
 		if ((ret = target->init(dmv, &table_en->target_config,
 			    str)) != 0) {
 
 			dm_table_release(&dmv->table_head, DM_TABLE_INACTIVE);
 			dm_table_destroy(&dmv->table_head, DM_TABLE_INACTIVE);
-			free(str, M_TEMP);
+			kfree(str, M_TEMP);
 
 			dm_dev_unbusy(dmv);
 			return ret;
 		}
 		last_table = table_en;
-		free(str, M_TEMP);
+		kfree(str, M_TEMP);
 	}
 	prop_object_iterator_release(iter);
 
 	DM_ADD_FLAG(flags, DM_INACTIVE_PRESENT_FLAG);
-	atomic_or_32(&dmv->flags, DM_INACTIVE_PRESENT_FLAG);
+	atomic_set_int(&dmv->flags, DM_INACTIVE_PRESENT_FLAG);
 
 	dm_table_release(&dmv->table_head, DM_TABLE_INACTIVE);
 	dm_dev_unbusy(dmv);
@@ -923,7 +931,7 @@ dm_table_status_ioctl(prop_dictionary_t dm_dict)
 				prop_dictionary_set_cstring(target_dict,
 				    DM_TABLE_PARAMS, params);
 
-				kmem_free(params, DM_MAX_PARAMS_SIZE);
+				kfree(params, M_DM);
 			}
 		}
 		prop_array_add(cmd_array, target_dict);

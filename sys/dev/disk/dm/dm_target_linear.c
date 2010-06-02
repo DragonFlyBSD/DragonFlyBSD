@@ -36,14 +36,14 @@
 
 #include <sys/types.h>
 #include <sys/param.h>
+#include <sys/ctype.h>
 
 #include <sys/buf.h>
-#include <sys/kmem.h>
+#include <sys/malloc.h>
 #include <sys/vnode.h>
 
-#include <machine/int_fmtio.h>
-
 #include "dm.h"
+MALLOC_DEFINE(M_DMLINEAR, "dm_linear", "Device Mapper Target Linear");
 
 /*
  * Allocate target specific config data, and link them to table.
@@ -77,11 +77,15 @@ dm_target_linear_init(dm_dev_t * dmv, void **target_config, char *params)
 	aprint_debug("Linear target init function called %s--%s!!\n",
 	    argv[0], argv[1]);
 
+	/* XXX: temp hack */
+	if (argv[0] == NULL)
+		return EINVAL;
+
 	/* Insert dmp to global pdev list */
 	if ((dmp = dm_pdev_insert(argv[0])) == NULL)
 		return ENOENT;
 
-	if ((tlc = kmem_alloc(sizeof(dm_target_linear_config_t), KM_SLEEP))
+	if ((tlc = kmalloc(sizeof(dm_target_linear_config_t), M_DMLINEAR, M_WAITOK))
 	    == NULL)
 		return ENOMEM;
 
@@ -111,11 +115,11 @@ dm_target_linear_status(void *target_config)
 
 	aprint_debug("Linear target status function called\n");
 
-	if ((params = kmem_alloc(DM_MAX_PARAMS_SIZE, KM_NOSLEEP)) == NULL)
+	if ((params = kmalloc(DM_MAX_PARAMS_SIZE, M_DMLINEAR, M_WAITOK)) == NULL)
 		return NULL;
 
 	aprint_normal("%s %" PRIu64, tlc->pdev->name, tlc->offset);
-	snprintf(params, DM_MAX_PARAMS_SIZE, "%s %" PRIu64,
+	ksnprintf(params, DM_MAX_PARAMS_SIZE, "%s %" PRIu64,
 	    tlc->pdev->name, tlc->offset);
 
 	return params;
@@ -133,9 +137,12 @@ dm_target_linear_strategy(dm_table_entry_t * table_en, struct buf * bp)
 /*	printf("Linear target read function called %" PRIu64 "!!\n",
 	tlc->offset);*/
 
+#if 0
 	bp->b_blkno += tlc->offset;
+#endif
+	bp->b_bio1.bio_offset += tlc->offset * DEV_BSIZE;
 
-	VOP_STRATEGY(tlc->pdev->pdev_vnode, bp);
+	vn_strategy(tlc->pdev->pdev_vnode, &bp->b_bio1);
 
 	return 0;
 
@@ -164,7 +171,7 @@ dm_target_linear_destroy(dm_table_entry_t * table_en)
 	/* Unbusy target so we can unload it */
 	dm_target_unbusy(table_en->target);
 
-	kmem_free(table_en->target_config, sizeof(dm_target_linear_config_t));
+	kfree(table_en->target_config, M_DMLINEAR);
 
 	table_en->target_config = NULL;
 
@@ -184,10 +191,11 @@ dm_target_linear_deps(dm_table_entry_t * table_en, prop_array_t prop_array)
 
 	tlc = table_en->target_config;
 
-	if ((error = VOP_GETATTR(tlc->pdev->pdev_vnode, &va, curlwp->l_cred)) != 0)
+	if ((error = VOP_GETATTR(tlc->pdev->pdev_vnode, &va)) != 0)
 		return error;
 
-	prop_array_add_uint64(prop_array, (uint64_t) va.va_rdev);
+	prop_array_add_uint64(prop_array,
+	    (uint64_t) makeudev(va.va_rmajor, va.va_rminor));
 
 	return 0;
 }

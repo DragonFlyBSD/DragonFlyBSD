@@ -106,7 +106,7 @@ int
 dm_target_zero_init(dm_dev_t * dmv, void **target_config, char *argv)
 {
 
-	printf("Zero target init function called!!\n");
+	kprintf("Zero target init function called!!\n");
 
 	dmv->dev_type = DM_ZERO_DEV;
 
@@ -135,7 +135,7 @@ dm_target_zero_strategy(dm_table_entry_t * table_en, struct buf * bp)
 	bp->b_resid = 0;	/* nestiobuf_done wants b_resid = 0 to be sure
 				 * that there is no other io to done  */
 
-	biodone(bp);
+	biodone(&bp->b_bio1);
 
 	return 0;
 }

@@ -39,78 +39,62 @@
 #include <sys/buf.h>
 #include <sys/conf.h>
 #include <sys/device.h>
-#include <sys/dkio.h>
 #include <sys/disk.h>
 #include <sys/disklabel.h>
-#include <sys/ioctl.h>
+#include <sys/dtype.h>
 #include <sys/ioccom.h>
-#include <sys/kmem.h>
+#include <sys/malloc.h>
+#include <sys/module.h>
 
 #include "netbsd-dm.h"
 #include "dm.h"
 
-static dev_type_open(dmopen);
-static dev_type_close(dmclose);
-static dev_type_read(dmread);
-static dev_type_write(dmwrite);
-static dev_type_ioctl(dmioctl);
-static dev_type_strategy(dmstrategy);
-static dev_type_size(dmsize);
+static	d_ioctl_t	dmioctl;
+static	d_open_t	dmopen;
+static	d_close_t	dmclose;
+static	d_psize_t	dmsize;
+static	d_strategy_t	dmstrategy;
 
 /* attach and detach routines */
 void dmattach(int);
-#ifdef _MODULE
+static int dm_modcmd(module_t mod, int cmd, void *unused);
 static int dmdestroy(void);
-#endif
 
 static void dm_doinit(void);
 
 static int dm_cmd_to_fun(prop_dictionary_t);
-static int disk_ioctl_switch(dev_t, u_long, void *);
+static int disk_ioctl_switch(cdev_t, u_long, void *);
 static int dm_ioctl_switch(u_long);
+#if 0
 static void dmminphys(struct buf *);
-
-/* CF attach/detach functions used for power management */
-static int dm_detach(device_t, int);
-static void dm_attach(device_t, device_t, void *);
-static int dm_match(device_t, cfdata_t, void *);
+#endif
 
 /* ***Variable-definitions*** */
-const struct bdevsw dm_bdevsw = {
-	.d_open = dmopen,
-	.d_close = dmclose,
-	.d_strategy = dmstrategy,
-	.d_ioctl = dmioctl,
-	.d_dump = nodump,
-	.d_psize = dmsize,
-	.d_flag = D_DISK | D_MPSAFE
+struct dev_ops dm_ops = {
+	{ "dm", 0, D_DISK |
+	    D_MPSAFE_READ | D_MPSAFE_WRITE | D_MPSAFE_IOCTL },
+	.d_open		= dmopen,
+	.d_close	= dmclose,
+	.d_read 	= physread,
+	.d_write 	= physwrite,
+	.d_ioctl	= dmioctl,
+	.d_strategy	= dmstrategy,
+	.d_psize	= dmsize,
+/* D_DISK */
 };
 
-const struct cdevsw dm_cdevsw = {
-	.d_open = dmopen,
-	.d_close = dmclose,
-	.d_read = dmread,
-	.d_write = dmwrite,
-	.d_ioctl = dmioctl,
-	.d_stop = nostop,
-	.d_tty = notty,
-	.d_poll = nopoll,
-	.d_mmap = nommap,
-	.d_kqfilter = nokqfilter,
-	.d_flag = D_DISK | D_MPSAFE
-};
-
-const struct dkdriver dmdkdriver = {
-	.d_strategy = dmstrategy
-};
-
-CFATTACH_DECL3_NEW(dm, 0,
-     dm_match, dm_attach, dm_detach, NULL, NULL, NULL,
-     DVF_DETACH_SHUTDOWN);
-
-extern struct cfdriver dm_cd;
+MALLOC_DEFINE(M_DM, "dm", "Device Mapper allocations");
 
 extern uint64_t dm_dev_counter;
+
+static cdev_t dmcdev;
+
+static moduledata_t dm_mod = {
+    "dm",
+    dm_modcmd,
+    NULL
+};
+DECLARE_MODULE(dm, dm_mod, SI_SUB_RAID, SI_ORDER_ANY);
 
 /*
  * This array is used to translate cmd to function pointer.
@@ -140,17 +124,9 @@ struct cmd_function cmd_fn[] = {
 		{NULL, NULL}	
 };
 
-#ifdef _MODULE
-#include <sys/module.h>
-
-/* Autoconf defines */
-CFDRIVER_DECL(dm, DV_DISK, NULL);
-
-MODULE(MODULE_CLASS_DRIVER, dm, NULL);
-
 /* New module handle routine */
 static int
-dm_modcmd(modcmd_t cmd, void *arg)
+dm_modcmd(module_t mod, int cmd, void *unused)
 {
 	int error, bmajor, cmajor;
 
@@ -159,31 +135,13 @@ dm_modcmd(modcmd_t cmd, void *arg)
 	cmajor = -1;
 
 	switch (cmd) {
-	case MODULE_CMD_INIT:
-		error = config_cfdriver_attach(&dm_cd);
-		if (error)
-			break;
-
-		error = config_cfattach_attach(dm_cd.cd_name, &dm_ca);
-		if (error) {
-			aprint_error("%s: unable to register cfattach\n",
-			    dm_cd.cd_name);
-			return error;
-		}
-
-		error = devsw_attach(dm_cd.cd_name, &dm_bdevsw, &bmajor,
-		    &dm_cdevsw, &cmajor);
-		if (error) {
-			config_cfattach_detach(dm_cd.cd_name, &dm_ca);
-			config_cfdriver_detach(&dm_cd);
-			break;
-		}
-
+	case MOD_LOAD:
 		dm_doinit();
-
+		kprintf("Device Mapper version %d.%d.%d loaded",
+		    DM_VERSION_MAJOR, DM_VERSION_MINOR, DM_VERSION_PATCHLEVEL);
 		break;
 
-	case MODULE_CMD_FINI:
+	case MOD_UNLOAD:
 		/*
 		 * Disable unloading of dm module if there are any devices
 		 * defined in driver. This is probably too strong we need
@@ -196,48 +154,15 @@ dm_modcmd(modcmd_t cmd, void *arg)
 		error = dmdestroy();
 		if (error)
 			break;
-
-		config_cfdriver_detach(&dm_cd);
-
-		devsw_detach(&dm_bdevsw, &dm_cdevsw);
+		kprintf("Device Mapper unloaded");
 		break;
-	case MODULE_CMD_STAT:
-		return ENOTTY;
 
 	default:
-		return ENOTTY;
+		break;
 	}
 
 	return error;
 }
-#endif /* _MODULE */
-
-/*
- * dm_match:
- *
- *	Autoconfiguration match function for pseudo-device glue.
- */
-static int
-dm_match(device_t parent, cfdata_t match,
-    void *aux)
-{
-
-	/* Pseudo-device; always present. */
-	return (1);
-}
-
-/*
- * dm_attach:
- *
- *	Autoconfiguration attach function for pseudo-device glue.
- */
-static void
-dm_attach(device_t parent, device_t self,
-    void *aux)
-{
-	return;
-}
-
 
 /*
  * dm_detach:
@@ -246,14 +171,10 @@ dm_attach(device_t parent, device_t self,
  * This routine is called by dm_ioctl::dm_dev_remove_ioctl and by autoconf to
  * remove devices created in device-mapper. 
  */
-static int
-dm_detach(device_t self, int flags)
+int
+dm_detach(dm_dev_t *dmv)
 {
-	dm_dev_t *dmv;
-
-	/* Detach device from global device list */
-	if ((dmv = dm_dev_detach(self)) == NULL)
-		return ENOENT;
+	disable_dev(dmv);
 
 	/* Destroy active table first.  */
 	dm_table_destroy(&dmv->table_head, DM_TABLE_ACTIVE);
@@ -263,15 +184,13 @@ dm_detach(device_t self, int flags)
 	
 	dm_table_head_destroy(&dmv->table_head);
 
-	/* Destroy disk device structure */
-	disk_detach(dmv->diskp);
-	disk_destroy(dmv->diskp);
+	destroy_dev(dmv->devt);
 
 	/* Destroy device */
 	(void)dm_dev_free(dmv);
 
 	/* Decrement device counter After removing device */
-	atomic_dec_64(&dm_dev_counter);
+	--dm_dev_counter; /* XXX: was atomic 64 */
 
 	return 0;
 }
@@ -282,33 +201,14 @@ dm_doinit(void)
 	dm_target_init();
 	dm_dev_init();
 	dm_pdev_init();
+	dmcdev = make_dev(&dm_ops, 0, UID_ROOT, GID_OPERATOR, 0640, "mapper/control");
 }
 
-/* attach routine */
-void
-dmattach(int n)
-{
-	int error;
-
-	error = config_cfattach_attach(dm_cd.cd_name, &dm_ca);
-	if (error) {
-		aprint_error("%s: unable to register cfattach\n",
-		    dm_cd.cd_name);
-	} else {
-		dm_doinit();
-	}
-}
-
-#ifdef _MODULE
 /* Destroy routine */
 static int
 dmdestroy(void)
 {
-	int error;
-
-	error = config_cfattach_detach(dm_cd.cd_name, &dm_ca);
-	if (error)
-		return error;
+	destroy_dev(dmcdev);
 	
 	dm_dev_destroy();
 	dm_pdev_destroy();
@@ -316,28 +216,33 @@ dmdestroy(void)
 
 	return 0;
 }
-#endif /* _MODULE */
 
 static int
-dmopen(dev_t dev, int flags, int mode, struct lwp *l)
+dmopen(struct dev_open_args *ap)
 {
 
-	aprint_debug("dm open routine called %" PRIu32 "\n", minor(dev));
+	aprint_debug("dm open routine called %" PRIu32 "\n",
+	    minor(ap->a_head.a_dev));
 	return 0;
 }
 
 static int
-dmclose(dev_t dev, int flags, int mode, struct lwp *l)
+dmclose(struct dev_close_args *ap)
 {
 
-	aprint_debug("dm close routine called %" PRIu32 "\n", minor(dev));
+	aprint_debug("dm close routine called %" PRIu32 "\n",
+	    minor(ap->a_head.a_dev));
 	return 0;
 }
 
 
 static int
-dmioctl(dev_t dev, const u_long cmd, void *data, int flag, struct lwp *l)
+dmioctl(struct dev_ioctl_args *ap)
 {
+	cdev_t dev = ap->a_head.a_dev;
+	u_long cmd = ap->a_cmd;
+	void *data = ap->a_data;
+
 	int r;
 	prop_dictionary_t dm_dict_in;
 
@@ -345,7 +250,7 @@ dmioctl(dev_t dev, const u_long cmd, void *data, int flag, struct lwp *l)
 
 	aprint_debug("dmioctl called\n");
 	
-	KASSERT(data != NULL);
+	KKASSERT(data != NULL);
 	
 	if (( r = disk_ioctl_switch(dev, cmd, data)) == ENOTTY) {
 		struct plistref *pref = (struct plistref *) data;
@@ -423,54 +328,41 @@ dm_ioctl_switch(u_long cmd)
   */
 
 static int
-disk_ioctl_switch(dev_t dev, u_long cmd, void *data)
+disk_ioctl_switch(cdev_t dev, u_long cmd, void *data)
 {
 	dm_dev_t *dmv;
 
 	/* disk ioctls make sense only on block devices */
 	if (minor(dev) == 0)
 		return ENOTTY;
-	
+
 	switch(cmd) {
-	case DIOCGWEDGEINFO:
+	case DIOCGPART:
 	{
-		struct dkwedge_info *dkw = (void *) data;
+		struct partinfo *dpart;
+		u_int64_t size;
+		dpart = (void *)data;
+		bzero(dpart, sizeof(*dpart));
 
+		kprintf("foobar DIOCGPART dm\n");
 		if ((dmv = dm_dev_lookup(NULL, NULL, minor(dev))) == NULL)
 			return ENODEV;
-
-		aprint_debug("DIOCGWEDGEINFO ioctl called\n");
-
-		strlcpy(dkw->dkw_devname, dmv->name, 16);
-		strlcpy(dkw->dkw_wname, dmv->name, DM_NAME_LEN);
-		strlcpy(dkw->dkw_parent, dmv->name, 16);
-
-		dkw->dkw_offset = 0;
-		dkw->dkw_size = dm_table_size(&dmv->table_head);
-		strcpy(dkw->dkw_ptype, DKW_PTYPE_FFS);
-
-		dm_dev_unbusy(dmv);
-		break;
-	}
-
-	case DIOCGDISKINFO:
-	{
-		struct plistref *pref = (struct plistref *) data;
-
-		if ((dmv = dm_dev_lookup(NULL, NULL, minor(dev))) == NULL)
-			return ENODEV;
-
-		if (dmv->diskp->dk_info == NULL) {
+		if (dmv->diskp->d_info.d_media_blksize == 0) {
 			dm_dev_unbusy(dmv);
 			return ENOTSUP;
-		} else
-			prop_dictionary_copyout_ioctl(pref, cmd,
-			    dmv->diskp->dk_info);
-
+		} else {
+			size = dm_table_size(&dmv->table_head);
+			kprintf("fooi, size = %"PRIu64" ...\n", size);
+			dpart->media_offset  = 0;
+			dpart->media_size    = size * DEV_BSIZE;
+			dpart->media_blocks  = size;
+			dpart->media_blksize = DEV_BSIZE;
+			dpart->fstype = FS_BSDFFS;
+		}
 		dm_dev_unbusy(dmv);
 		break;
 	}
-	
+
 	default:
 		aprint_debug("unknown disk_ioctl called\n");
 		return ENOTTY;
@@ -483,9 +375,13 @@ disk_ioctl_switch(dev_t dev, u_long cmd, void *data)
 /*
  * Do all IO operations on dm logical devices.
  */
-static void
-dmstrategy(struct buf *bp)
+static int
+dmstrategy(struct dev_strategy_args *ap)
 {
+	cdev_t dev = ap->a_head.a_dev;
+	struct bio *bio = ap->a_bio;
+	struct buf *bp = bio->bio_buf;
+
 	dm_dev_t *dmv;
 	dm_table_t  *tbl;
 	dm_table_entry_t *table_en;
@@ -497,7 +393,7 @@ dmstrategy(struct buf *bp)
 	uint64_t table_start, table_end;
 	uint64_t start, end;
 
-	buf_start = bp->b_blkno * DEV_BSIZE;
+	buf_start = bio->bio_offset;
 	buf_len = bp->b_bcount;
 
 	tbl = NULL; 
@@ -506,28 +402,20 @@ dmstrategy(struct buf *bp)
 	dev_type = 0;
 	issued_len = 0;
 
-	if ((dmv = dm_dev_lookup(NULL, NULL, minor(bp->b_dev))) == NULL) {
+	if ((dmv = dm_dev_lookup(NULL, NULL, minor(dev))) == NULL) {
 		bp->b_error = EIO;
 		bp->b_resid = bp->b_bcount;
-		biodone(bp);
-		return;
+		biodone(bio);
+		return 0;
 	} 
 
-	if (bounds_check_with_mediasize(bp, DEV_BSIZE,
+	if (bounds_check_with_mediasize(bio, DEV_BSIZE,
 	    dm_table_size(&dmv->table_head)) <= 0) {
 		dm_dev_unbusy(dmv);
 		bp->b_resid = bp->b_bcount;
-		biodone(bp);
-		return;
+		biodone(bio);
+		return 0;
 	}
-
-	/*
-	 * disk(9) is part of device structure and it can't be used without
-	 * mutual exclusion, use diskp_mtx until it will be fixed.
-	 */
-	mutex_enter(&dmv->diskp_mtx);
-	disk_busy(dmv->diskp);
-	mutex_exit(&dmv->diskp_mtx);
 
 	/* Select active table */
 	tbl = dm_table_get_entry(&dmv->table_head, DM_TABLE_ACTIVE);
@@ -566,51 +454,33 @@ dmstrategy(struct buf *bp)
 
 		if (start < end) {
 			/* create nested buffer  */
-			nestbuf = getiobuf(NULL, true);
+			nestbuf = getpbuf(NULL);
 
-			nestiobuf_setup(bp, nestbuf, start - buf_start,
+			nestiobuf_setup(bio, nestbuf, start - buf_start,
 			    (end - start));
 
 			issued_len += end - start;
 
-			/* I need number of blocks. */
-			nestbuf->b_blkno = (start - table_start) / DEV_BSIZE;
+			/* I need number of bytes. */
+			nestbuf->b_bio1.bio_offset = (start - table_start);
 
 			table_en->target->strategy(table_en, nestbuf);
 		}
 	}
 
 	if (issued_len < buf_len)
-		nestiobuf_done(bp, buf_len - issued_len, EINVAL);
-
-	mutex_enter(&dmv->diskp_mtx);
-	disk_unbusy(dmv->diskp, buf_len, bp != NULL ? bp->b_flags & B_READ : 0);
-	mutex_exit(&dmv->diskp_mtx);
+		nestiobuf_done(bio, buf_len - issued_len, EINVAL);
 
 	dm_table_release(&dmv->table_head, DM_TABLE_ACTIVE);
 	dm_dev_unbusy(dmv);
 
-	return;
-}
-
-
-static int
-dmread(dev_t dev, struct uio *uio, int flag)
-{
-
-	return (physio(dmstrategy, NULL, dev, B_READ, dmminphys, uio));
+	return 0;
 }
 
 static int
-dmwrite(dev_t dev, struct uio *uio, int flag)
+dmsize(struct dev_psize_args *ap)
 {
-
-	return (physio(dmstrategy, NULL, dev, B_WRITE, dmminphys, uio));
-}
-
-static int
-dmsize(dev_t dev)
-{
+	cdev_t dev = ap->a_head.a_dev;
 	dm_dev_t *dmv;
 	uint64_t size;
 
@@ -625,16 +495,64 @@ dmsize(dev_t dev)
   	return size;
 }
 
+#if 0
 static void
 dmminphys(struct buf *bp)
 {
 
 	bp->b_bcount = MIN(bp->b_bcount, MAXPHYS);
 }
+#endif
+
+void
+dmsetdiskinfo(struct disk *disk, dm_table_head_t *head)
+{
+	struct disk_info info;
+	int dmp_size;
+
+	dmp_size = dm_table_size(head);
+
+	bzero(&info, sizeof(struct disk_info));
+	info.d_media_blksize = DEV_BSIZE;
+	info.d_media_blocks = dmp_size;
+	info.d_media_size = dmp_size * DEV_BSIZE;
+	info.d_dsflags = DSO_MBRQUIET; /* XXX */
+	info.d_secpertrack = 32;
+	info.d_nheads = 64;
+	info.d_secpercyl = info.d_secpertrack * info.d_nheads;
+	info.d_ncylinders = dmp_size / 2048;
+	bcopy(&info, &disk->d_info, sizeof(disk->d_info));
+}
+
+prop_dictionary_t
+dmgetdiskinfo(struct disk *disk)
+{
+	prop_dictionary_t disk_info, geom;
+	struct disk_info *pinfo;
+
+	pinfo = &disk->d_info;
+
+	disk_info = prop_dictionary_create();
+	geom = prop_dictionary_create();
+
+	prop_dictionary_set_cstring_nocopy(disk_info, "type", "ESDI");
+	prop_dictionary_set_uint64(geom, "sectors-per-unit", pinfo->d_media_blocks);
+	prop_dictionary_set_uint32(geom, "sector-size",
+	    DEV_BSIZE /* XXX 512? */);
+	prop_dictionary_set_uint32(geom, "sectors-per-track", 32);
+	prop_dictionary_set_uint32(geom, "tracks-per-cylinder", 64);
+	prop_dictionary_set_uint32(geom, "cylinders-per-unit",
+	    pinfo->d_media_blocks / 2048);
+	prop_dictionary_set(disk_info, "geometry", geom);
+	prop_object_release(geom);
+
+	return disk_info;
+}
 
 void
 dmgetproperties(struct disk *disk, dm_table_head_t *head)
 {
+#if 0
 	prop_dictionary_t disk_info, odisk_info, geom;
 	int dmp_size;
 
@@ -657,4 +575,5 @@ dmgetproperties(struct disk *disk, dm_table_head_t *head)
 
 	if (odisk_info != NULL)
 		prop_object_release(odisk_info);
+#endif
 }	

@@ -34,9 +34,8 @@
 
 #include <sys/disk.h>
 #include <sys/disklabel.h>
-#include <sys/ioctl.h>
 #include <sys/ioccom.h>
-#include <sys/kmem.h>
+#include <sys/malloc.h>
 
 #include "netbsd-dm.h"
 #include "dm.h"
@@ -45,21 +44,23 @@ static dm_dev_t *dm_dev_lookup_name(const char *);
 static dm_dev_t *dm_dev_lookup_uuid(const char *);
 static dm_dev_t *dm_dev_lookup_minor(int);
 
+MALLOC_DECLARE(M_DM);
+
 static struct dm_dev_head dm_dev_list =
 TAILQ_HEAD_INITIALIZER(dm_dev_list);
 
-kmutex_t dm_dev_mutex;
+struct lock dm_dev_mutex;
 
 /* dm_dev_mutex must be holdby caller before using disable_dev. */
-__inline static void
+void
 disable_dev(dm_dev_t * dmv)
 {
 	TAILQ_REMOVE(&dm_dev_list, dmv, next_devlist);
-	mutex_enter(&dmv->dev_mtx);
-	mutex_exit(&dm_dev_mutex);
+	lockmgr(&dmv->dev_mtx, LK_EXCLUSIVE);
+	lockmgr(&dm_dev_mutex, LK_RELEASE);
 	while (dmv->ref_cnt != 0)
 		cv_wait(&dmv->dev_cv, &dmv->dev_mtx);
-	mutex_exit(&dmv->dev_mtx);
+	lockmgr(&dmv->dev_mtx, LK_RELEASE);
 }
 /*
  * Generic function used to lookup dm_dev_t. Calling with dm_dev_name
@@ -72,29 +73,29 @@ dm_dev_lookup(const char *dm_dev_name, const char *dm_dev_uuid,
 	dm_dev_t *dmv;
 
 	dmv = NULL;
-	mutex_enter(&dm_dev_mutex);
+	lockmgr(&dm_dev_mutex, LK_EXCLUSIVE);
 
-	/* KASSERT(dm_dev_name != NULL && dm_dev_uuid != NULL && dm_dev_minor
+	/* KKASSERT(dm_dev_name != NULL && dm_dev_uuid != NULL && dm_dev_minor
 	 * > 0); */
 	if (dm_dev_minor > 0)
 		if ((dmv = dm_dev_lookup_minor(dm_dev_minor)) != NULL) {
 			dm_dev_busy(dmv);
-			mutex_exit(&dm_dev_mutex);
+			lockmgr(&dm_dev_mutex, LK_RELEASE);
 			return dmv;
 		}
 	if (dm_dev_name != NULL)
 		if ((dmv = dm_dev_lookup_name(dm_dev_name)) != NULL) {
 			dm_dev_busy(dmv);
-			mutex_exit(&dm_dev_mutex);
+			lockmgr(&dm_dev_mutex, LK_RELEASE);
 			return dmv;
 		}
 	if (dm_dev_uuid != NULL)
 		if ((dmv = dm_dev_lookup_uuid(dm_dev_uuid)) != NULL) {
 			dm_dev_busy(dmv);
-			mutex_exit(&dm_dev_mutex);
+			lockmgr(&dm_dev_mutex, LK_RELEASE);
 			return dmv;
 		}
-	mutex_exit(&dm_dev_mutex);
+	lockmgr(&dm_dev_mutex, LK_RELEASE);
 	return NULL;
 }
 
@@ -180,8 +181,8 @@ dm_dev_insert(dm_dev_t * dev)
 	dmv = NULL;
 	r = 0;
 
-	KASSERT(dev != NULL);
-	mutex_enter(&dm_dev_mutex);
+	KKASSERT(dev != NULL);
+	lockmgr(&dm_dev_mutex, LK_EXCLUSIVE);
 	if (((dmv = dm_dev_lookup_uuid(dev->uuid)) == NULL) &&
 	    ((dmv = dm_dev_lookup_name(dev->name)) == NULL) &&
 	    ((dmv = dm_dev_lookup_minor(dev->minor)) == NULL)) {
@@ -191,7 +192,7 @@ dm_dev_insert(dm_dev_t * dev)
 	} else
 		r = EEXIST;
 
-	mutex_exit(&dm_dev_mutex);
+	lockmgr(&dm_dev_mutex, LK_RELEASE);
 	return r;
 }
 #ifdef notyet
@@ -203,19 +204,20 @@ dm_dev_test_minor(int dm_dev_minor)
 {
 	dm_dev_t *dmv;
 
-	mutex_enter(&dm_dev_mutex);
+	lockmgr(&dm_dev_mutex, LK_EXCLUSIVE);
 	TAILQ_FOREACH(dmv, &dm_dev_list, next_devlist) {
 		if (dm_dev_minor == dmv->minor) {
-			mutex_exit(&dm_dev_mutex);
+			lockmgr(&dm_dev_mutex, LK_RELEASE);
 			return 1;
 		}
 	}
-	mutex_exit(&dm_dev_mutex);
+	lockmgr(&dm_dev_mutex, LK_RELEASE);
 
 	return 0;
 }
 #endif
 
+#if 0
 /*
  * dm_dev_lookup_devt look for selected device_t. We keep this routine
  * outside of dm_dev_lookup because it is a temporally solution.
@@ -225,19 +227,22 @@ dm_dev_test_minor(int dm_dev_minor)
 dm_dev_t *
 dm_dev_detach(device_t devt)
 {
-	dm_dev_t *dmv;
+       dm_dev_t *dmv;
 
-	mutex_enter(&dm_dev_mutex);
-	TAILQ_FOREACH(dmv, &dm_dev_list, next_devlist) {
-		if (devt == dmv->devt) {
-			disable_dev(dmv);
-			return dmv;
-		}
-	}
-	mutex_exit(&dm_dev_mutex);
+       lockmgr(&dm_dev_mutex, LK_EXCLUSIVE);
+       TAILQ_FOREACH(dmv, &dm_dev_list, next_devlist) {
+               if (devt == dmv->devt) {
+                       disable_dev(dmv);
+                       lockmgr(&dm_dev_mutex, LK_RELEASE);
+                       return dmv;
+               }
+       }
+       lockmgr(&dm_dev_mutex, LK_RELEASE);
 
-	return NULL;
+       return NULL;
 }
+#endif
+
 /*
  * Remove device selected with dm_dev from global list of devices.
  */
@@ -248,7 +253,7 @@ dm_dev_rem(const char *dm_dev_name, const char *dm_dev_uuid,
 	dm_dev_t *dmv;
 	dmv = NULL;
 
-	mutex_enter(&dm_dev_mutex);
+	lockmgr(&dm_dev_mutex, LK_EXCLUSIVE);
 
 	if (dm_dev_minor > 0)
 		if ((dmv = dm_dev_lookup_minor(dm_dev_minor)) != NULL) {
@@ -265,7 +270,7 @@ dm_dev_rem(const char *dm_dev_name, const char *dm_dev_uuid,
 			disable_dev(dmv);
 			return dmv;
 		}
-	mutex_exit(&dm_dev_mutex);
+	lockmgr(&dm_dev_mutex, LK_RELEASE);
 
 	return NULL;
 }
@@ -277,7 +282,7 @@ int
 dm_dev_destroy(void)
 {
 	dm_dev_t *dmv;
-	mutex_enter(&dm_dev_mutex);
+	lockmgr(&dm_dev_mutex, LK_EXCLUSIVE);
 
 	while (TAILQ_FIRST(&dm_dev_list) != NULL) {
 
@@ -286,7 +291,7 @@ dm_dev_destroy(void)
 		TAILQ_REMOVE(&dm_dev_list, TAILQ_FIRST(&dm_dev_list),
 		    next_devlist);
 
-		mutex_enter(&dmv->dev_mtx);
+		lockmgr(&dmv->dev_mtx, LK_EXCLUSIVE);
 
 		while (dmv->ref_cnt != 0)
 			cv_wait(&dmv->dev_cv, &dmv->dev_mtx);
@@ -299,15 +304,15 @@ dm_dev_destroy(void)
 
 		dm_table_head_destroy(&dmv->table_head);
 
-		mutex_exit(&dmv->dev_mtx);
-		mutex_destroy(&dmv->dev_mtx);
+		lockmgr(&dmv->dev_mtx, LK_RELEASE);
+		lockuninit(&dmv->dev_mtx);
 		cv_destroy(&dmv->dev_cv);
 
-		(void) kmem_free(dmv, sizeof(dm_dev_t));
+		(void) kfree(dmv, M_DM);
 	}
-	mutex_exit(&dm_dev_mutex);
+	lockmgr(&dm_dev_mutex, LK_RELEASE);
 
-	mutex_destroy(&dm_dev_mutex);
+	lockuninit(&dm_dev_mutex);
 	return 0;
 }
 /*
@@ -318,10 +323,10 @@ dm_dev_alloc(void)
 {
 	dm_dev_t *dmv;
 
-	dmv = kmem_zalloc(sizeof(dm_dev_t), KM_SLEEP);
+	dmv = kmalloc(sizeof(dm_dev_t), M_DM, M_WAITOK | M_ZERO);
 
 	if (dmv != NULL)
-		dmv->diskp = kmem_zalloc(sizeof(struct disk), KM_SLEEP);
+		dmv->diskp = kmalloc(sizeof(struct disk), M_DM, M_WAITOK | M_ZERO);
 
 	return dmv;
 }
@@ -331,16 +336,16 @@ dm_dev_alloc(void)
 int
 dm_dev_free(dm_dev_t * dmv)
 {
-	KASSERT(dmv != NULL);
+	KKASSERT(dmv != NULL);
 
-	mutex_destroy(&dmv->dev_mtx);
-	mutex_destroy(&dmv->diskp_mtx);
+	lockuninit(&dmv->dev_mtx);
+	lockuninit(&dmv->diskp_mtx);
 	cv_destroy(&dmv->dev_cv);
 
 	if (dmv->diskp != NULL)
-		(void) kmem_free(dmv->diskp, sizeof(struct disk));
+		(void) kfree(dmv->diskp, M_DM);
 
-	(void) kmem_free(dmv, sizeof(dm_dev_t));
+	(void) kfree(dmv, M_DM);
 
 	return 0;
 }
@@ -348,20 +353,20 @@ dm_dev_free(dm_dev_t * dmv)
 void
 dm_dev_busy(dm_dev_t * dmv)
 {
-	mutex_enter(&dmv->dev_mtx);
+	lockmgr(&dmv->dev_mtx, LK_EXCLUSIVE);
 	dmv->ref_cnt++;
-	mutex_exit(&dmv->dev_mtx);
+	lockmgr(&dmv->dev_mtx, LK_RELEASE);
 }
 
 void
 dm_dev_unbusy(dm_dev_t * dmv)
 {
-	KASSERT(dmv->ref_cnt != 0);
+	KKASSERT(dmv->ref_cnt != 0);
 
-	mutex_enter(&dmv->dev_mtx);
+	lockmgr(&dmv->dev_mtx, LK_EXCLUSIVE);
 	if (--dmv->ref_cnt == 0)
 		cv_broadcast(&dmv->dev_cv);
-	mutex_exit(&dmv->dev_mtx);
+	lockmgr(&dmv->dev_mtx, LK_RELEASE);
 }
 /*
  * Return prop_array of dm_targer_list dictionaries.
@@ -375,7 +380,7 @@ dm_dev_prop_list(void)
 
 	dev_array = prop_array_create();
 
-	mutex_enter(&dm_dev_mutex);
+	lockmgr(&dm_dev_mutex, LK_EXCLUSIVE);
 
 	TAILQ_FOREACH(dmv, &dm_dev_list, next_devlist) {
 		dev_dict = prop_dictionary_create();
@@ -387,7 +392,7 @@ dm_dev_prop_list(void)
 		prop_object_release(dev_dict);
 	}
 
-	mutex_exit(&dm_dev_mutex);
+	lockmgr(&dm_dev_mutex, LK_RELEASE);
 	return dev_array;
 }
 /*
@@ -397,6 +402,6 @@ int
 dm_dev_init(void)
 {
 	TAILQ_INIT(&dm_dev_list);	/* initialize global dev list */
-	mutex_init(&dm_dev_mutex, MUTEX_DEFAULT, IPL_NONE);
+	lockinit(&dm_dev_mutex, "dmdevlist", 0, LK_CANRECURSE);
 	return 0;
 }

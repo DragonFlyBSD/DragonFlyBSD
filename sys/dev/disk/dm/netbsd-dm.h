@@ -32,7 +32,7 @@
 #ifndef __NETBSD_DM_H__
 #define __NETBSD_DM_H__
 
-#include <prop/proplib.h>
+#include <libprop/proplib.h>
 
 #define DM_CMD_LEN 16
 
