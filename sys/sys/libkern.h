@@ -120,6 +120,7 @@ size_t	 strlen (const char *);
 int	 strncmp (const char *, const char *, size_t);
 int	 strncasecmp (const char *, const char *, size_t);
 char	*strncpy (char * __restrict, const char * __restrict, size_t);
+char	*strsep(char **, const char *);
 int	_kfnmatch(const char *, const char *, int, int);
 
 /*
