@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)nice.c	8.2 (Berkeley) 4/16/94
  * $FreeBSD: src/usr.bin/nice/nice.c,v 1.4.2.1 2002/06/18 08:40:28 tjr Exp $
- * $DragonFly: src/usr.bin/nice/nice.c,v 1.6 2005/10/09 15:09:02 liamfoy Exp $
  */
 
 #include <sys/time.h>
@@ -48,31 +47,25 @@
 #include <string.h>
 #include <unistd.h>
 
-#define	DEFNICE	4
+#define	DEFPRIO	4
 
 static void	usage(void);
 
 int
 main(int argc, char **argv)
 {
-	long niceness = DEFNICE;
+	long ioprio = DEFPRIO;
 	int ch;
 	char *ep;
-
-	/* Obsolescent syntax: -number, --number */
-	if (argc >= 2 && argv[1][0] == '-' && (argv[1][1] == '-' ||
-	    isdigit(argv[1][1])) && strcmp(argv[1], "--") != 0)
-		if (asprintf(&argv[1], "-n%s", argv[1] + 1) < 0)
-			err(1, "asprintf");
 
 	while ((ch = getopt(argc, argv, "n:")) != -1) {
 		switch (ch) {
 		case 'n':
 			errno = 0;
-			niceness = strtol(optarg, &ep, 10);
+			ioprio = strtol(optarg, &ep, 10);
 			if (ep == optarg || *ep != '\0' || errno ||
-			    niceness < INT_MIN || niceness > INT_MAX)
-				errx(1, "%s: invalid ionice value", optarg);
+			    ioprio < INT_MIN || ioprio > INT_MAX)
+				errx(1, "%s: invalid ioprio value", optarg);
 			break;
 		default:
 			usage();
@@ -85,10 +78,10 @@ main(int argc, char **argv)
 		usage();
 
 	errno = 0;
-	niceness += ioprio_get(PRIO_PROCESS, 0);
+	ioprio += ioprio_get(PRIO_PROCESS, 0);
 	if (errno)
 		warn("ioprio_get");
-	else if (ioprio_set(PRIO_PROCESS, 0, (int)niceness))
+	else if (ioprio_set(PRIO_PROCESS, 0, (int)ioprio))
 		warn("ioprio_set");
 	execvp(*argv, argv);
 	err(errno == ENOENT || errno == ENOTDIR ? 127 : 126, "%s", *argv);
@@ -98,6 +91,6 @@ static void
 usage(void)
 {
 
-	fprintf(stderr, "usage: ionice [-n incr] utility [arguments]\n");
+	fprintf(stderr, "usage: ioprio [-n increment] utility [argument ...]\n");
 	exit(1);
 }

@@ -75,7 +75,7 @@ SUBDIR=	alias \
 	iconv \
 	id \
 	indent \
-	ionice \
+	ioprio \
 	ipcrm \
 	ipcs \
 	join \
