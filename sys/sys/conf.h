@@ -58,7 +58,7 @@
 #include <sys/sysref.h>
 #endif
 
-#define SPECNAMELEN	15
+#define SPECNAMELEN	63
 
 struct tty;
 struct disk;
