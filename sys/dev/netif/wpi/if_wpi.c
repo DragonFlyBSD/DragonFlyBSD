@@ -87,9 +87,6 @@ __FBSDID("$FreeBSD: src/sys/dev/wpi/if_wpi.c,v 1.27.2.2 2010/02/14 09:34:27 gavi
 #include <net/bpf.h>
 #include <net/if.h>
 #include <net/if_arp.h>
-/*
-#include <net/altq/if_altq.h>
-*/
 #include <net/ifq_var.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -109,8 +106,6 @@ __FBSDID("$FreeBSD: src/sys/dev/wpi/if_wpi.c,v 1.27.2.2 2010/02/14 09:34:27 gavi
 
 /* XXX: move elsewhere */
 #define abs(x) (((x) < 0) ? -(x) : (x))
-
-struct mbuf *(*tbr_dequeue_ptr)(struct ifaltq *, int) = NULL;
 
 #include "if_wpireg.h"
 #include "if_wpivar.h"
@@ -745,7 +740,7 @@ wpi_attach(device_t dev)
 	 * Hook our interrupt after all initialization is complete.
 	 */
 	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE,
-	    wpi_intr, sc, &sc->sc_ih, NULL);
+	    wpi_intr, sc, &sc->sc_ih, ifp->if_serializer);
 	if (error != 0) {
 		device_printf(dev, "could not set up interrupt\n");
 		goto fail;
@@ -1020,7 +1015,7 @@ wpi_alloc_rx_ring(struct wpi_softc *sc, struct wpi_rx_ring *ring)
 
         error = bus_dma_tag_create(ring->data_dmat, 1, 0,
 	    BUS_SPACE_MAXADDR_32BIT,
-            BUS_SPACE_MAXADDR, NULL, NULL, MJUMPAGESIZE, 1,
+            BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES, 1,
             MCLBYTES, BUS_DMA_NOWAIT, &ring->data_dmat);
         if (error != 0) {
                 device_printf(sc->sc_dev,
