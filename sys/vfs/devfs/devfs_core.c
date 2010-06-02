@@ -513,7 +513,8 @@ static void *
 devfs_gc_dirs_callback(struct devfs_node *node, void *unused)
 {
 	if (node->node_type == Pdir) {
-		if (node->nchildren == 2) {
+		if ((node->nchildren == 2) &&
+		    !(node->flags & DEVFS_USER_CREATED)) {
 			devfs_unlinkp(node);
 			devfs_freep(node);
 		}

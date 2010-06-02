@@ -83,7 +83,9 @@ static int devfs_print(struct vop_print_args *);
 
 static int devfs_nresolve(struct vop_nresolve_args *);
 static int devfs_nlookupdotdot(struct vop_nlookupdotdot_args *);
+static int devfs_nmkdir(struct vop_nmkdir_args *);
 static int devfs_nsymlink(struct vop_nsymlink_args *);
+static int devfs_nrmdir(struct vop_nrmdir_args *);
 static int devfs_nremove(struct vop_nremove_args *);
 
 static int devfs_spec_open(struct vop_open_args *);
@@ -133,11 +135,11 @@ struct vop_ops devfs_vnode_norm_vops = {
 	.vop_nresolve =		devfs_nresolve,
 	.vop_nlookupdotdot =	devfs_nlookupdotdot,
 	.vop_nlink =		DEVFS_BADOP,
-	.vop_nmkdir =		DEVFS_BADOP,
+	.vop_nmkdir =		devfs_nmkdir,
 	.vop_nmknod =		DEVFS_BADOP,
 	.vop_nremove =		devfs_nremove,
 	.vop_nrename =		DEVFS_BADOP,
-	.vop_nrmdir =		DEVFS_BADOP,
+	.vop_nrmdir =		devfs_nrmdir,
 	.vop_nsymlink =		devfs_nsymlink,
 	.vop_open =			vop_stdopen,
 	.vop_pathconf =		vop_stdpathconf,
@@ -674,6 +676,32 @@ devfs_print(struct vop_print_args *ap)
 	return (0);
 }
 
+static int
+devfs_nmkdir(struct vop_nmkdir_args *ap)
+{
+	struct devfs_node *dnode = DEVFS_NODE(ap->a_dvp);
+	struct devfs_node *node;
+
+	if (!devfs_node_is_accessible(dnode))
+		return ENOENT;
+
+	if ((dnode->node_type != Proot) && (dnode->node_type != Pdir))
+		goto out;
+
+	lockmgr(&devfs_lock, LK_EXCLUSIVE);
+	devfs_allocvp(ap->a_dvp->v_mount, ap->a_vpp, Pdir,
+		      ap->a_nch->ncp->nc_name, dnode, NULL);
+
+	if (*ap->a_vpp) {
+		node = DEVFS_NODE(*ap->a_vpp);
+		node->flags |= DEVFS_USER_CREATED;
+		cache_setunresolved(ap->a_nch);
+		cache_setvp(ap->a_nch, *ap->a_vpp);
+	}
+	lockmgr(&devfs_lock, LK_RELEASE);
+out:
+	return ((*ap->a_vpp == NULL) ? ENOTDIR : 0);
+}
 
 static int
 devfs_nsymlink(struct vop_nsymlink_args *ap)
@@ -710,6 +738,58 @@ out:
 	return ((*ap->a_vpp == NULL) ? ENOTDIR : 0);
 }
 
+static int
+devfs_nrmdir(struct vop_nrmdir_args *ap)
+{
+	struct devfs_node *dnode = DEVFS_NODE(ap->a_dvp);
+	struct devfs_node *node;
+	struct namecache *ncp;
+	int error = ENOENT;
+
+	ncp = ap->a_nch->ncp;
+
+	if (!devfs_node_is_accessible(dnode))
+		return ENOENT;
+
+	lockmgr(&devfs_lock, LK_EXCLUSIVE);
+
+	if ((dnode->node_type != Proot) && (dnode->node_type != Pdir))
+		goto out;
+
+	TAILQ_FOREACH(node, DEVFS_DENODE_HEAD(dnode), link) {
+		if (ncp->nc_nlen != node->d_dir.d_namlen)
+			continue;
+		if (memcmp(ncp->nc_name, node->d_dir.d_name, ncp->nc_nlen))
+			continue;
+
+		/*
+		 * only allow removal of user created dirs
+		 */
+		if ((node->flags & DEVFS_USER_CREATED) == 0) {
+			error = EPERM;
+			goto out;
+		} else if (node->node_type != Pdir) {
+			error = ENOTDIR;
+			goto out;
+		} else if (node->nchildren > 2) {
+			error = ENOTEMPTY;
+			goto out;
+		} else {
+			if (node->v_node)
+				cache_inval_vp(node->v_node, CINV_DESTROY);
+			devfs_unlinkp(node);
+			error = 0;
+			break;
+		}
+	}
+
+	cache_setunresolved(ap->a_nch);
+	cache_setvp(ap->a_nch, NULL);
+
+out:
+	lockmgr(&devfs_lock, LK_RELEASE);
+	return error;
+}
 
 static int
 devfs_nremove(struct vop_nremove_args *ap)
@@ -740,6 +820,9 @@ devfs_nremove(struct vop_nremove_args *ap)
 		 */
 		if ((node->flags & DEVFS_USER_CREATED) == 0) {
 			error = EPERM;
+			goto out;
+		} else if (node->node_type == Pdir) {
+			error = EISDIR;
 			goto out;
 		} else {
 			if (node->v_node)
