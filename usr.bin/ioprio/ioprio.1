@@ -34,20 +34,19 @@
 .Os
 .Sh NAME
 .Nm ioprio
-.Nd execute a utility at an altered I/O scheduling priority
+.Nd execute a utility at a specified I/O scheduling priority
 .Sh SYNOPSIS
 .Nm
-.Op Fl n Ar increment
+.Op Fl n Ar priority
 .Ar utility
 .Op Ar argument ...
 .Sh DESCRIPTION
 The
 .Nm
 utility runs
-.Ar utility at an altered I/O scheduling priority, by incrementing its
-.Dq ioprio
-value by the specified
-.Ar increment ,
+.Ar utility
+at a certain I/O scheduling priority, specified by
+.Ar priority ,
 or a default value of 4.
 .Sh SEE ALSO
 .Xr ioprio_set 2
