@@ -205,7 +205,8 @@ struct wpi_softc {
 	char			domain[4];	/*reglatory domain XXX */
 };
 #define WPI_LOCK_INIT(_sc) \
-	lockinit(&(_sc)->sc_lock, device_get_nameunit((_sc)->sc_dev), \
+	lockinit(&(_sc)->sc_lock, \
+	    __DECONST(char *, device_get_nameunit((_sc)->sc_dev)), \
             0, LK_CANRECURSE)
 #define WPI_LOCK(_sc)		lockmgr(&(_sc)->sc_lock, LK_EXCLUSIVE)
 #define WPI_UNLOCK(_sc)		lockmgr(&(_sc)->sc_lock, LK_RELEASE)

@@ -1458,6 +1458,7 @@ device		wi		# WaveLAN/IEEE, PRISM-II, Spectrum24 802.11DS
 device wl0 at isa? port 0x300	# T1 speed ISA/radio lan
 device		xe		# Xircom PCMCIA
 device		ral		# Ralink Technology 802.11 wireless NIC
+device		wpi
 
 #
 # ATM related options
