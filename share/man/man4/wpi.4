@@ -79,7 +79,6 @@ firmware license
 .El
 .Sh EXAMPLES
 Join an existing BSS network (i.e., connect to an access point):
-.Pp
 .Bd -literal -offset indent
 ifconfig wlan0 create wlandev wpi0 inet 192.168.0.20 \e
     netmask 0xffffff00
@@ -107,14 +106,14 @@ ifconfig wlan0 create wlandev wpi0 wlanmode adhoc ssid my_net \e
 The driver failed to load the firmware image using the
 .Xr firmware 9
 subsystem.
-Verify the 
-.Xr wpifw
+Verify the
+.Nm wpifw
 firmware module is installed.
 .It "wpi%d: fatal firmware error"
 An unknown error has occurred in the uploaded firmware, you may have to
 unload/reload the driver to continue.
 .It "wpi%d: Radio transmitter is switched off"
-The hardware switch controlling the radio is currently turned off. 
+The hardware switch controlling the radio is currently turned off.
 Data transmission is not possible in this state.
 .El
 .Sh BUGS
@@ -122,14 +121,15 @@ Not all the error messages are documented here.
 .Pp
 Background scanning is not currently supported.
 .Sh SEE ALSO
-.Xr wpifw 4 ,
+.\".Xr wpifw 4 ,
+.Xr ifmedia 4 ,
 .Xr pci 4 ,
 .Xr wlan 4 ,
 .Xr wlan_ccmp 4 ,
 .Xr wlan_tkip 4 ,
 .Xr wlan_wep 4 ,
 .Xr ifconfig 8 ,
-.Xr wpa_supplicant 8 .
+.Xr wpa_supplicant 8
 .Sh AUTHORS
 .An -nosplit
 The original
@@ -138,8 +138,8 @@ driver was written for
 .Ox
 by
 .An Damien Bergamini Aq damien.bergamini@free.fr .
-.An Benjamin Close Aq benjsc@FreeBSD.org 
-ported 
+.An Benjamin Close Aq benjsc@FreeBSD.org
+ported
 .Nm
 to
 .Fx .
