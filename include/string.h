@@ -78,9 +78,7 @@ char	*strcasestr(const char *, const char *) __pure;
 #endif
 #if !defined(_KERNEL_VIRTUAL)
 char	*strcat(char * __restrict, const char * __restrict);
-#endif
 char	*strchr(const char *, int) __pure;
-#if !defined(_KERNEL_VIRTUAL)
 int	 strcmp(const char *, const char *) __pure;
 #endif
 int	 strcoll(const char *, const char *);
@@ -118,7 +116,9 @@ char	*strnstr(const char *, const char *, size_t) __pure;
 char	*strpbrk(const char *, const char *) __pure;
 char	*strrchr(const char *, int) __pure;
 #if __BSD_VISIBLE
+#if !defined(_KERNEL_VIRTUAL)
 char	*strsep(char **, const char *);
+#endif
 char	*strsignal(int);
 #endif
 size_t	 strspn(const char *, const char *) __pure;
