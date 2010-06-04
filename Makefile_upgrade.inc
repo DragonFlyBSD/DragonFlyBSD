@@ -1348,6 +1348,8 @@ TO_REMOVE+=/usr/share/man/cat8/named.reload.8.gz
 TO_REMOVE+=/usr/share/man/cat8/named.restart.8.gz
 TO_REMOVE+=/usr/share/man/cat8/rndc-confgen.8.gz
 TO_REMOVE+=/usr/share/man/cat8/rndc.8.gz
+TO_REMOVE+=/usr/share/man/cat3/prop_dictionary_mutable.3.gz
+TO_REMOVE+=/usr/share/man/man3/prop_dictionary_mutable.3.gz
 
 # XXX Remove when adjusted to the new 802.11 framework
 TO_REMOVE+=/boot/modules/if_acx.ko

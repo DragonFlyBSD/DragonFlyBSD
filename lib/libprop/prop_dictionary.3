@@ -41,7 +41,7 @@
 .Nm prop_dictionary_iterator ,
 .Nm prop_dictionary_all_keys ,
 .Nm prop_dictionary_make_immutable ,
-.Nm prop_dictionary_mutable ,
+.\".Nm prop_dictionary_mutable ,
 .Nm prop_dictionary_get ,
 .Nm prop_dictionary_set ,
 .Nm prop_dictionary_remove ,
@@ -85,8 +85,8 @@
 .\"
 .Ft void
 .Fn prop_dictionary_make_immutable "prop_dictionary_t dict"
-.Ft bool
-.Fn prop_dictionary_mutable "prop_dictionary_t dict"
+.\".Ft bool
+.\".Fn prop_dictionary_mutable "prop_dictionary_t dict"
 .\"
 .Ft prop_object_t
 .Fn prop_dictionary_get "prop_dictionary_t dict" "const char *key"
@@ -207,10 +207,10 @@ on failure.
 Make
 .Fa dict
 immutable.
-.It Fn prop_dictionary_mutable "prop_dictionary_t dict"
-Returns
-.Dv true
-if the dictionary is mutable.
+.\".It Fn prop_dictionary_mutable "prop_dictionary_t dict"
+.\"Returns
+.\".Dv true
+.\"if the dictionary is mutable.
 .It Fn prop_dictionary_get "prop_dictionary_t dict" "const char *key"
 Return the object stored in the dictionary with the key
 .Fa key .
