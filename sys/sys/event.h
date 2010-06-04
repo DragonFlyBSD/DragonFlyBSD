@@ -173,9 +173,11 @@ struct thread;
 struct filedesc;
 struct kevent_args;
 
-typedef int	(*k_copyout_fn)(void *arg, struct kevent *kevp, int count);
-typedef int	(*k_copyin_fn)(void *arg, struct kevent *kevp, int count);
-int kern_kevent(int fd, int nchanges, int nevents, struct kevent_args *uap,
+typedef int	(*k_copyout_fn)(void *arg, struct kevent *kevp, int count,
+    int *res);
+typedef int	(*k_copyin_fn)(void *arg, struct kevent *kevp, int max,
+    int *events);
+int kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
     k_copyin_fn kevent_copyin, k_copyout_fn kevent_copyout,
     struct timespec *tsp);
 
@@ -185,6 +187,7 @@ extern void	knote_fdclose(struct file *fp, struct filedesc *fdp, int fd);
 extern void	kqueue_init(struct kqueue *kq, struct filedesc *fdp);
 extern void	kqueue_terminate(struct kqueue *kq);
 extern int 	kqueue_register(struct kqueue *kq, struct kevent *kev);
+extern void	kqueue_wakeup(struct kqueue *kq);
 
 #endif 	/* _KERNEL */
 

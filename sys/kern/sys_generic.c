@@ -45,6 +45,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/sysproto.h>
+#include <sys/event.h>
 #include <sys/filedesc.h>
 #include <sys/filio.h>
 #include <sys/fcntl.h>
@@ -79,11 +80,27 @@ static MALLOC_DEFINE(M_IOCTLMAP, "ioctlmap", "mapped ioctl handler buffer");
 static MALLOC_DEFINE(M_SELECT, "select", "select() buffer");
 MALLOC_DEFINE(M_IOV, "iov", "large iov's");
 
+typedef struct kfd_set {
+        fd_mask	fds_bits[0];
+} kfd_set;
+
+enum select_copyin_states {
+    COPYIN_READ, COPYIN_WRITE, COPYIN_EXCEPT, COPYIN_DONE };
+
+struct select_kevent_copyin_args {
+	kfd_set		*read_set;
+	kfd_set		*write_set;
+	kfd_set		*except_set;
+	int		active_set;	/* One of select_copyin_states */
+	struct lwp	*lwp;		/* Pointer to our lwp */
+	int		num_fds;	/* Number of file descriptors (syscall arg) */
+	int		proc_fds;	/* Processed fd's (wraps) */
+	int		error;		/* Returned to userland */
+};
+
 static int 	doselect(int nd, fd_set *in, fd_set *ou, fd_set *ex,
-			struct timeval *tv, int *res);
+			struct timespec *ts, int *res);
 static int	pollscan (struct proc *, struct pollfd *, u_int, int *);
-static int	selscan (struct proc *, fd_mask **, fd_mask **,
-			int, int *);
 static int	dofileread(int, struct file *, struct uio *, int, size_t *);
 static int	dofilewrite(int, struct file *, struct uio *, int, size_t *);
 
@@ -760,13 +777,13 @@ SYSCTL_INT(_kern, OID_AUTO, nselcoll, CTLFLAG_RD, &nselcoll, 0, "");
 /*
  * Select system call.
  *
- * MPALMOSTSAFE
+ * MPSAFE
  */
 int
 sys_select(struct select_args *uap)
 {
 	struct timeval ktv;
-	struct timeval *ktvp;
+	struct timespec *ktsp, kts;
 	int error;
 
 	/*
@@ -776,21 +793,17 @@ sys_select(struct select_args *uap)
 		error = copyin(uap->tv, &ktv, sizeof (ktv));
 		if (error)
 			return (error);
-		error = itimerfix(&ktv);
-		if (error)
-			return (error);
-		ktvp = &ktv;
+		TIMEVAL_TO_TIMESPEC(&ktv, &kts);
+		ktsp = &kts;
 	} else {
-		ktvp = NULL;
+		ktsp = NULL;
 	}
 
 	/*
 	 * Do real work.
 	 */
-	get_mplock();
-	error = doselect(uap->nd, uap->in, uap->ou, uap->ex, ktvp,
+	error = doselect(uap->nd, uap->in, uap->ou, uap->ex, ktsp,
 			&uap->sysmsg_result);
-	rel_mplock();
 
 	return (error);
 }
@@ -806,28 +819,20 @@ sys_pselect(struct pselect_args *uap)
 {
 	struct thread *td = curthread;
 	struct lwp *lp = td->td_lwp;
-	struct timespec kts;
-	struct timeval ktv;
-	struct timeval *ktvp;
+	struct timespec *ktsp, kts;
 	sigset_t sigmask;
 	int error;
 
 	/*
-	 * Get timeout if any and convert it.
-	 * Round up during conversion to avoid timeout going off early.
+	 * Get timeout if any.
 	 */
 	if (uap->ts != NULL) {
 		error = copyin(uap->ts, &kts, sizeof (kts));
 		if (error)
 			return (error);
-		ktv.tv_sec = kts.tv_sec;
-		ktv.tv_usec = (kts.tv_nsec + 999) / 1000;
-		error = itimerfix(&ktv);
-		if (error)
-			return (error);
-		ktvp = &ktv;
+		ktsp = &kts;
 	} else {
-		ktvp = NULL;
+		ktsp = NULL;
 	}
 
 	/*
@@ -848,7 +853,7 @@ sys_pselect(struct pselect_args *uap)
 	/*
 	 * Do real job.
 	 */
-	error = doselect(uap->nd, uap->in, uap->ou, uap->ex, ktvp,
+	error = doselect(uap->nd, uap->in, uap->ou, uap->ex, ktsp,
 			&uap->sysmsg_result);
 
 	if (uap->sigmask != NULL) {
@@ -874,173 +879,205 @@ sys_pselect(struct pselect_args *uap)
 	return (error);
 }
 
+static int
+select_copyin(void *arg, struct kevent *kevp, int max, int *events)
+{
+	struct select_kevent_copyin_args *skap = NULL;
+	struct kevent kev;
+	int fd;
+	kfd_set *fdp = NULL;
+	short filter = 0;
+	u_int fflags = 0;
+
+	skap = (struct select_kevent_copyin_args *)arg;
+
+	while (skap->active_set < COPYIN_DONE) {
+		switch (skap->active_set) {
+		case COPYIN_READ:
+			fdp = skap->read_set;
+			filter = EVFILT_READ;
+			fflags = 0;
+			break;
+		case COPYIN_WRITE:
+			fdp = skap->write_set;
+			filter = EVFILT_WRITE;
+			fflags = 0;
+			break;
+		case COPYIN_EXCEPT:
+			fdp = skap->except_set;
+			filter = EVFILT_READ;
+			fflags = NOTE_OOB;
+			break;
+		}
+
+		if (fdp == NULL) {
+			skap->active_set++;
+			continue;
+		}
+
+		for (fd = skap->proc_fds; fd < skap->num_fds; ++fd) {
+			if (FD_ISSET(fd, fdp)) {
+				EV_SET(&kev, fd, filter,
+				    EV_ADD|EV_ENABLE|EV_CLEAR, fflags,
+				    0,
+				    (void *)((skap->active_set << 28) |
+					skap->lwp->lwp_kqueue_serial));
+				FD_CLR(fd, fdp);
+				memcpy(kevp + *events, &kev, sizeof(*kevp));
+				(*events)++;
+			}
+
+			skap->proc_fds++;
+			if (skap->proc_fds == skap->num_fds)
+				break;
+
+			if (*events == max)
+				return (0);
+		}
+
+		skap->active_set++;
+		skap->proc_fds = 0;
+	}
+
+	return (0);
+}
+
+static int
+select_copyout(void *arg, struct kevent *kevp, int count, int *res)
+{
+	struct select_kevent_copyin_args *skap;
+	struct kevent kev;
+	int serial, i = 0;
+
+	skap = (struct select_kevent_copyin_args *)arg;
+
+	if (kevp[0].flags & EV_ERROR) {
+		skap->error = kevp[0].data;
+		return (0);
+	}
+
+	for (i = 0; i < count; ++i) {
+		serial = (u_int)kevp[i].udata & ~(0xF << 28);
+		if (serial != skap->lwp->lwp_kqueue_serial) {
+kprintf("select serial mismatch\n");
+			memcpy(&kev, &kevp[i], sizeof(kev));
+			kev.flags = EV_DISABLE|EV_DELETE;
+			(void)kqueue_register(&skap->lwp->lwp_kqueue, &kev);
+			continue;
+		}
+
+		switch (((u_int)kevp[i].udata >> 28) & ~(0x0FFFFFFF)) {
+		case COPYIN_READ:
+			FD_SET(kevp[i].ident, skap->read_set);
+			break;
+		case COPYIN_WRITE:
+			FD_SET(kevp[i].ident, skap->write_set);
+			break;
+		case COPYIN_EXCEPT:
+			FD_SET(kevp[i].ident, skap->except_set);
+			break;
+		}
+
+		(*res)++;
+	}
+
+	return (0);
+}
+
 /*
  * Common code for sys_select() and sys_pselect().
  *
- * in, out and ex are userland pointers.  tv must point to validated
+ * in, out and ex are userland pointers.  ts must point to validated
  * kernel-side timeout value or NULL for infinite timeout.  res must
  * point to syscall return value.
  */
 static int
-doselect(int nd, fd_set *in, fd_set *ou, fd_set *ex, struct timeval *tv,
-		int *res)
+doselect(int nd, fd_set *read, fd_set *write, fd_set *except,
+    struct timespec *ts, int *res)
 {
-	struct lwp *lp = curthread->td_lwp;
 	struct proc *p = curproc;
-
-	/*
-	 * The magic 2048 here is chosen to be just enough for FD_SETSIZE
-	 * infds with the new FD_SETSIZE of 1024, and more than enough for
-	 * FD_SETSIZE infds, outfds and exceptfds with the old FD_SETSIZE
-	 * of 256.
-	 */
-	fd_mask s_selbits[howmany(2048, NFDBITS)];
-	fd_mask *ibits[3], *obits[3], *selbits, *sbp;
-	struct timeval atv, rtv, ttv;
-	int ncoll, error, timo;
-	u_int nbufbytes, ncpbytes, nfdbits;
+	struct select_kevent_copyin_args *kap, ka;
+	int bytes, error;
 
 	if (nd < 0)
 		return (EINVAL);
 	if (nd > p->p_fd->fd_nfiles)
 		nd = p->p_fd->fd_nfiles;   /* forgiving; slightly wrong */
 
-	/*
-	 * Allocate just enough bits for the non-null fd_sets.  Use the
-	 * preallocated auto buffer if possible.
-	 */
-	nfdbits = roundup(nd, NFDBITS);
-	ncpbytes = nfdbits / NBBY;
-	nbufbytes = 0;
-	if (in != NULL)
-		nbufbytes += 2 * ncpbytes;
-	if (ou != NULL)
-		nbufbytes += 2 * ncpbytes;
-	if (ex != NULL)
-		nbufbytes += 2 * ncpbytes;
-	if (nbufbytes <= sizeof s_selbits)
-		selbits = &s_selbits[0];
-	else
-		selbits = kmalloc(nbufbytes, M_SELECT, M_WAITOK);
+	kap = &ka;
+	kap->lwp = curthread->td_lwp;
+	kap->num_fds = nd;
+	kap->proc_fds = 0;
+	kap->error = 0;
+	bytes = howmany(nd, NFDBITS);
 
-	/*
-	 * Assign pointers into the bit buffers and fetch the input bits.
-	 * Put the output buffers together so that they can be bzeroed
-	 * together.
-	 */
-	sbp = selbits;
-#define	getbits(name, x) \
-	do {								\
-		if (name == NULL)					\
-			ibits[x] = NULL;				\
-		else {							\
-			ibits[x] = sbp + nbufbytes / 2 / sizeof *sbp;	\
-			obits[x] = sbp;					\
-			sbp += ncpbytes / sizeof *sbp;			\
-			error = copyin(name, ibits[x], ncpbytes);	\
-			if (error != 0)					\
-				goto done;				\
-		}							\
+#define getbits(name)								\
+	do {									\
+		if (name != NULL) {						\
+			kap->name##_set = kmalloc(bytes, M_SELECT, M_WAITOK);	\
+			error = copyin(name, kap->name##_set, bytes);		\
+			if (error != 0)						\
+				goto done;					\
+		} else {							\
+			kap->name##_set = NULL;					\
+		}								\
 	} while (0)
-	getbits(in, 0);
-	getbits(ou, 1);
-	getbits(ex, 2);
-#undef	getbits
-	if (nbufbytes != 0)
-		bzero(selbits, nbufbytes / 2);
+	getbits(read);
+	getbits(write);
+	getbits(except);
+#undef getbits
 
-	if (tv != NULL) {
-		atv = *tv;
-		getmicrouptime(&rtv);
-		timevaladd(&atv, &rtv);
-	} else {
-		atv.tv_sec = 0;
-		atv.tv_usec = 0;
-	}
-	timo = 0;
-retry:
-	ncoll = nselcoll;
-	lp->lwp_flag |= LWP_SELECT;
-	error = selscan(p, ibits, obits, nd, res);
-	if (error || *res)
-		goto done;
-	if (atv.tv_sec || atv.tv_usec) {
-		getmicrouptime(&rtv);
-		if (timevalcmp(&rtv, &atv, >=))
-			goto done;
-		ttv = atv;
-		timevalsub(&ttv, &rtv);
-		timo = ttv.tv_sec > 24 * 60 * 60 ?
-		    24 * 60 * 60 * hz : tvtohz_high(&ttv);
-	}
-	crit_enter();
-	tsleep_interlock(&selwait, PCATCH);
-	if ((lp->lwp_flag & LWP_SELECT) == 0 || nselcoll != ncoll) {
-		crit_exit();
-		goto retry;
-	}
-	lp->lwp_flag &= ~LWP_SELECT;
-	error = tsleep(&selwait, PCATCH | PINTERLOCKED, "select", timo);
-	crit_exit();
+	if (kap->read_set != NULL)
+		kap->active_set = COPYIN_READ;
+	else if (kap->write_set != NULL)
+		kap->active_set = COPYIN_WRITE;
+	else if (kap->except_set != NULL)
+		kap->active_set = COPYIN_EXCEPT;
+	else
+		nd = 0;	/* copyin/out functions will never be called */
 
-	if (error == 0)
-		goto retry;
-done:
-	lp->lwp_flag &= ~LWP_SELECT;
-	/* select is not restarted after signals... */
-	if (error == ERESTART)
-		error = EINTR;
-	if (error == EWOULDBLOCK)
-		error = 0;
-#define	putbits(name, x) \
-	if (name && (error2 = copyout(obits[x], name, ncpbytes))) \
-		error = error2;
+//restart:
+	error = kern_kevent(&kap->lwp->lwp_kqueue, nd, res, kap,
+	    select_copyin, select_copyout, ts);
 	if (error == 0) {
-		int error2;
-
-		putbits(in, 0);
-		putbits(ou, 1);
-		putbits(ex, 2);
+#define putbits(name)								\
+	do {									\
+		if (kap->name##_set != NULL) {					\
+			error = copyout(kap->name##_set, name, bytes);		\
+			if (error != 0)						\
+				goto done;					\
+		}								\
+	} while (0)
+		putbits(read);
+		putbits(write);
+		putbits(except);
 #undef putbits
 	}
-	if (selbits != &s_selbits[0])
-		kfree(selbits, M_SELECT);
-	return (error);
-}
 
-static int
-selscan(struct proc *p, fd_mask **ibits, fd_mask **obits, int nfd, int *res)
-{
-	int msk, i, fd;
-	fd_mask bits;
-	struct file *fp;
-	int n = 0;
-	/* Note: backend also returns POLLHUP/POLLERR if appropriate. */
-	static int flag[3] = { POLLRDNORM, POLLWRNORM, POLLRDBAND };
+	if (kap->error)
+		error = kap->error;
 
-	for (msk = 0; msk < 3; msk++) {
-		if (ibits[msk] == NULL)
-			continue;
-		for (i = 0; i < nfd; i += NFDBITS) {
-			bits = ibits[msk][i/NFDBITS];
-			/* ffs(int mask) not portable, fd_mask is long */
-			for (fd = i; bits && fd < nfd; fd++, bits >>= 1) {
-				if (!(bits & 1))
-					continue;
-				fp = holdfp(p->p_fd, fd, -1);
-				if (fp == NULL)
-					return (EBADF);
-				if (fo_poll(fp, flag[msk], fp->f_cred)) {
-					obits[msk][(fd)/NFDBITS] |=
-					    ((fd_mask)1 << ((fd) % NFDBITS));
-					n++;
-				}
-				fdrop(fp);
-			}
-		}
+done:
+	if (nd) {
+		if (kap->read_set != NULL)
+			kfree(kap->read_set, M_SELECT);
+		if (kap->write_set != NULL)
+			kfree(kap->write_set, M_SELECT);
+		if (kap->except_set != NULL)
+			kfree(kap->except_set, M_SELECT);
 	}
-	*res = n;
-	return (0);
+
+	if (error)
+		*res = -1;
+
+	/* No results but nothing to return, spurious wakeup? */
+//	if (!error && *res == 0) {
+//		nd = 0;
+//		goto restart;
+//	}
+
+	kap->lwp->lwp_kqueue_serial++;
+	return (error);
 }
 
 /*
@@ -1264,5 +1301,7 @@ selwakeup(struct selinfo *sip)
 			setrunnable(lp);
 	}
 	crit_exit();
+
+	kqueue_wakeup(&lp->lwp_kqueue);
 }
 
