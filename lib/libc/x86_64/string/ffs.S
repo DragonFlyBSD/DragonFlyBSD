@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1993 Winning Strategies, Inc.
+ * Copyright (c) 2010 The DragonFly Project
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -10,10 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *      This product includes software developed by Winning Strategies, Inc.
- * 4. The name of the author may not be used to endorse or promote products
+ * 3. The name of the author may not be used to endorse or promote products
  *    derived from this software withough specific prior written permission
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
@@ -26,34 +23,18 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: src/lib/libc/i386/string/ffs.S,v 1.5 1999/08/27 23:59:30 peter Exp $
- * $DragonFly: src/lib/libc/i386/string/ffs.S,v 1.3 2003/12/06 03:11:35 drhodus Exp $
  */
 
-#include "DEFS.h"
+#include <machine/asm.h>
 
 /*
  * ffs(value)
- *	finds the first bit set in value and returns the index of 
- *	that bit.  Bits are numbered starting from 1, starting at the
- *	rightmost bit.  A return value of 0 means that the argument
- *	was zero.
- *
- * Written by:
- *	J.T. Conklin (jtc@wimsey.com), Winning Strategies, Inc.
+ * 	Finds the lowest set bit in a word. Bits are numbered from 1;
+ *	a return of 0 indicates that the word was 0.
  */
-
-#ifdef FFSL
-ENTRY(ffsl)
-#else
 ENTRY(ffs)
-#endif
-	bsfl	4(%esp),%eax
-	jz	L1	 		/* ZF is set if all bits are 0 */
-	incl	%eax			/* bits numbered from 1, not 0 */
-	ret
-
-	.align 2
-L1:	xorl	%eax,%eax		/* clear result */
+	movl	$-1, %ecx
+	bsfl	%edi,%eax
+	cmovzl	%ecx, %eax
+	addl	$1, %eax
 	ret
