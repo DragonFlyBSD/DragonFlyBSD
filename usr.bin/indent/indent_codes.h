@@ -34,7 +34,6 @@
  *
  *	@(#)indent_codes.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/indent/indent_codes.h,v 1.2 2000/12/09 09:52:51 obrien Exp $
- * $DragonFly: src/usr.bin/indent/indent_codes.h,v 1.2 2003/06/17 04:29:27 dillon Exp $
  */
 
 #define newline		1

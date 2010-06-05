@@ -36,8 +36,7 @@
  * @(#) Copyright (c) 1976 Board of Trustees of the University of Illinois.
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)indent.c	5.17 (Berkeley) 6/7/93
- * $FreeBSD: src/usr.bin/indent/indent.c,v 1.25 2006/09/13 05:06:12 charnier Exp $
- * $DragonFly: src/usr.bin/indent/indent.c,v 1.4 2007/05/13 18:33:58 swildner Exp $
+ * $FreeBSD: src/usr.bin/indent/indent.c,v 1.26 2010/03/31 16:55:47 avg Exp $
  */
 
 #include <sys/param.h>
@@ -71,7 +70,7 @@ main(int argc, char **argv)
     int         force_nl;	/* when true, code must be broken */
     int         hd_type = 0;	/* used to store type of stmt for if (...),
 				 * for (...), etc */
-    int i;			/* local loop counter */
+    int		i;		/* local loop counter */
     int         scase;		/* set to true when we see a case, so we will
 				 * know what to do with the following colon */
     int         sp_sw;		/* when true, we are in the expression of
@@ -665,7 +664,7 @@ check_type:
 		ps.want_blank = true;
 		break;
 	    }
-	    if (ps.in_decl) {
+	    if (ps.in_or_st) {
 		*e_code++ = ':';
 		ps.want_blank = false;
 		break;
@@ -756,8 +755,8 @@ check_type:
 		    ps.i_l_follow = 0;
 		    if (function_brace_split) {	/* dump the line prior to the
 						 * brace ... */
-		    dump_line();
-		    ps.want_blank = false;
+			dump_line();
+			ps.want_blank = false;
 		    } else	/* add a space between the decl and brace */
 			ps.want_blank = true;
 		}
@@ -906,7 +905,7 @@ check_type:
 
 	    if (ps.ind_level == 0 || ps.dec_nest > 0) {
 		/* global variable or struct member in local variable */
-	    dec_ind = ps.decl_indent > 0 ? ps.decl_indent : i;
+		dec_ind = ps.decl_indent > 0 ? ps.decl_indent : i;
 		tabs_to_var = (use_tabs ? ps.decl_indent > 0 : 0);
 	    } else {
 		/* local variable */

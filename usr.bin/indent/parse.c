@@ -34,7 +34,6 @@
  *
  * @(#)parse.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/indent/parse.c,v 1.10 2003/06/15 09:28:17 charnier Exp $
- * $DragonFly: src/usr.bin/indent/parse.c,v 1.3 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <stdio.h>

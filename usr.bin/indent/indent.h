@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/indent/indent.h,v 1.2 2002/03/30 17:10:20 dwmalone Exp $
- * $DragonFly: src/usr.bin/indent/indent.h,v 1.2 2003/06/17 04:29:27 dillon Exp $
  */
 
 void	addkey(char *, int);

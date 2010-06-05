@@ -34,7 +34,6 @@
  *
  * @(#)io.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/indent/io.c,v 1.15 2005/11/13 20:37:25 dwmalone Exp $
- * $DragonFly: src/usr.bin/indent/io.c,v 1.3 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <ctype.h>
@@ -468,12 +467,12 @@ pad_output(int current, int target)
 	    return (current);	/* line is already long enough */
 	curr = current;
         if (use_tabs) {
-	while ((tcur = ((curr - 1) & tabmask) + tabsize + 1) <= target) {
-	    putc('\t', output);
-	    curr = tcur;
-	}
+            while ((tcur = ((curr - 1) & tabmask) + tabsize + 1) <= target) {
+                putc('\t', output);
+                curr = tcur;
+            }
         }
-	while (curr++ < target)
+        while (curr++ < target)
 	    putc(' ', output);	/* pad with final blanks */
     }
     return (target);

@@ -33,8 +33,7 @@
  * SUCH DAMAGE.
  *
  * @(#)args.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/indent/args.c,v 1.15 2004/09/19 20:34:30 das Exp $
- * $DragonFly: src/usr.bin/indent/args.c,v 1.3 2005/04/10 20:55:38 drhodus Exp $
+ * $FreeBSD: src/usr.bin/indent/args.c,v 1.16 2010/03/31 17:05:30 avg Exp $
  */
 
 /*
@@ -152,6 +151,7 @@ struct pro {
     {"sc", PRO_BOOL, true, ON, &star_comment_cont},
     {"sob", PRO_BOOL, false, ON, &swallow_optional_blanklines},
     {"st", PRO_SPECIAL, 0, STDIN, 0},
+    {"ta", PRO_BOOL, false, ON, &auto_typedefs},
     {"troff", PRO_BOOL, false, ON, &troff},
     {"ut", PRO_BOOL, true, ON, &use_tabs},
     {"v", PRO_BOOL, false, ON, &verbose},
@@ -186,7 +186,7 @@ static void
 scan_profile(FILE *f)
 {
     int		comment, i;
-    char *p;
+    char	*p;
     char        buf[BUFSIZ];
 
     while (1) {

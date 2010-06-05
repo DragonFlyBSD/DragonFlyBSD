@@ -33,8 +33,7 @@
  * SUCH DAMAGE.
  *
  * @(#)lexi.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/indent/lexi.c,v 1.19 2005/11/20 13:48:15 dds Exp $
- * $DragonFly: src/usr.bin/indent/lexi.c,v 1.3 2005/04/10 20:55:38 drhodus Exp $
+ * $FreeBSD: src/usr.bin/indent/lexi.c,v 1.21 2010/04/15 21:41:07 avg Exp $
  */
 
 /*
@@ -245,6 +244,18 @@ lexi(void)
 	last_code = ident;	/* Remember that this is the code we will
 				 * return */
 
+	if (auto_typedefs) {
+	    const char *q = s_token;
+	    size_t q_len = strlen(q);
+	    /* Check if we have an "_t" in the end */
+	    if (q_len > 2 &&
+	        (strcmp(q + q_len - 2, "_t") == 0)) {
+	        ps.its_a_keyword = true;
+		ps.last_u_d = true;
+	        goto found_auto_typedef;
+	    }
+	}
+
 	/*
 	 * This loop will check if the token is a keyword.
 	 */
@@ -281,6 +292,7 @@ lexi(void)
 		/* FALLTHROUGH */
 
 	    case 4:		/* one of the declaration keywords */
+	    found_auto_typedef:
 		if (ps.p_l_follow) {
 		    ps.cast_mask |= (1 << ps.p_l_follow) & ~ps.sizeof_mask;
 		    break;	/* inside parens: cast, param list or sizeof */

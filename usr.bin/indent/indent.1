@@ -32,10 +32,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)indent.1	8.1 (Berkeley) 7/1/93
-.\" $FreeBSD: src/usr.bin/indent/indent.1,v 1.27 2005/07/31 03:30:45 keramida Exp $
-.\" $DragonFly: src/usr.bin/indent/indent.1,v 1.3 2006/03/26 22:56:57 swildner Exp $
+.\" $FreeBSD: src/usr.bin/indent/indent.1,v 1.28 2010/03/31 17:05:30 avg Exp $
 .\"
-.Dd December 5, 2009
+.Dd May 6, 2010
 .Dt INDENT 1
 .Os
 .Sh NAME
@@ -81,6 +80,7 @@
 .Op Fl sob | Fl nsob
 .Ek
 .Op Fl \&st
+.Op Fl \&ta
 .Op Fl troff
 .Op Fl ut | Fl nut
 .Op Fl v | Fl \&nv
@@ -98,9 +98,9 @@ according to the switches.
 The switches which can be specified are described below.
 They may appear before or after the file names.
 .Pp
-.Sy NOTE  :
+.Sy NOTE :
 If you only specify an
-.Ar input-file  ,
+.Ar input-file ,
 the formatting is
 done `in-place', that is, the formatted file is written back into
 .Ar input-file
@@ -119,7 +119,7 @@ If
 is specified,
 .Nm
 checks to make sure that it is different from
-.Ar input-file  .
+.Ar input-file .
 .Pp
 The options listed below control the formatting style imposed by
 .Nm .
@@ -130,7 +130,7 @@ If
 is specified, a blank line is forced after every block of
 declarations.
 Default:
-.Fl nbad  .
+.Fl nbad .
 .It Fl bap , nbap
 If
 .Fl bap
@@ -150,7 +150,7 @@ is specified, then a newline is forced after each comma in a declaration.
 .Fl nbc
 turns off this option.
 Default:
-.Fl \&nbc  .
+.Fl \&nbc .
 .It Fl \&br , \&bl
 Specifying
 .Fl \&bl
@@ -193,15 +193,15 @@ Rather than like this:
 .Pp
 This only affects block comments, not comments to the right of code.
 The default is
-.Fl cdb  .
+.Fl cdb .
 .It Fl ce , nce
 Enables (disables) forcing of `else's to cuddle up to the immediately preceding
 `}'.
 The default is
-.Fl \&ce  .
+.Fl \&ce .
 .It Fl \&ci Ns Ar n
 Sets the continuation indent to be
-.Ar n  .
+.Ar n .
 Continuation
 lines will be indented that far from the beginning of the first line of the
 statement.
@@ -211,7 +211,7 @@ indicate the nesting, unless
 is in effect or the continuation indent is exactly half of the main indent.
 .Fl \&ci
 defaults to the same value as
-.Fl i  .
+.Fl i .
 .It Fl cli Ns Ar n
 Causes case labels to be indented
 .Ar n
@@ -221,7 +221,7 @@ statement.
 .Fl cli0.5
 causes case labels to be indented half a tab stop.
 The default is
-.Fl cli0  .
+.Fl cli0 .
 .It Fl d Ns Ar n
 Controls the placement of comments which are not to the right of code.
 For example,
@@ -236,14 +236,14 @@ Specifies the indentation, in character positions,
 of global variable names and all struct/union member names
 relative to the beginning of their type declaration.
 The default is
-.Fl di16  .
+.Fl di16 .
 .It Fl dj , ndj
 .Fl \&dj
 left justifies declarations.
 .Fl ndj
 indents declarations the same as code.
 The default is
-.Fl ndj  .
+.Fl ndj .
 .It Fl \&ei , nei
 Enables (disables) special
 .Ic else-if
@@ -270,7 +270,7 @@ In such cases,
 .Fl nfc1
 should be used.
 The default is
-.Fl fc1  .
+.Fl fc1 .
 .It Fl fcb , nfcb
 Enables (disables) the formatting of block comments (ones that begin
 with `/*\\n').
@@ -282,7 +282,7 @@ In such cases,
 should be used.
 Block comments are then handled like box comments.
 The default is
-.Fl fcb  .
+.Fl fcb .
 .It Fl i Ns Ar n
 The number of spaces for one indentation level.
 The default is 8.
@@ -290,7 +290,7 @@ The default is 8.
 Enables (disables) the indentation of parameter declarations from the left
 margin.
 The default is
-.Fl \&ip  .
+.Fl \&ip .
 .It Fl l Ns Ar n
 Maximum length of an output line.
 The default is 78.
@@ -340,30 +340,33 @@ If true
 .Pq Fl pcs
 all procedure calls will have a space inserted between the name and the `('.
 The default is
-.Fl npcs  .
+.Fl npcs .
 .It Fl psl , npsl
 If true
 .Pq Fl psl
 the names of procedures being defined are placed in
 column 1 \- their types, if any, will be left on the previous lines.
 The default is
-.Fl psl  .
+.Fl psl .
 .It Fl \&sc , nsc
 Enables (disables) the placement of asterisks (`*'s) at the left edge of all
 comments.
 The default is
-.Fl sc  .
+.Fl sc .
 .It Fl sob , nsob
 If
 .Fl sob
 is specified, indent will swallow optional blank lines.
 You can use this to get rid of blank lines after declarations.
 Default:
-.Fl nsob  .
+.Fl nsob .
 .It Fl \&st
 Causes
 .Nm
 to take its input from stdin and put its output to stdout.
+.It Fl ta
+Automatically add all identifiers ending in "_t" to the list
+of type keywords.
 .It Fl T Ns Ar typename
 Adds
 .Ar typename
@@ -411,7 +414,7 @@ When in verbose mode,
 reports when it splits one line of input into two or more lines of output,
 and gives some size statistics at completion.
 The default is
-.Fl \&nv  .
+.Fl \&nv .
 .El
 .Pp
 You may set up your own `profile' of defaults to

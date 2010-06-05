@@ -33,8 +33,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)indent_globs.h	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/indent/indent_globs.h,v 1.11 2005/11/13 20:37:25 dwmalone Exp $
- * $DragonFly: src/usr.bin/indent/indent_globs.h,v 1.3 2005/04/10 20:55:38 drhodus Exp $
+ * $FreeBSD: src/usr.bin/indent/indent_globs.h,v 1.12 2010/03/31 17:05:30 avg Exp $
  */
 
 #define BACKSLASH '\\'
@@ -205,6 +204,8 @@ int	    function_brace_split;	/* split function declaration and
 					 * brace onto separate lines */
 int	    use_tabs;			/* set true to use tabs for spacing,
 					 * false uses all spaces */
+int	    auto_typedefs;		/* set true to recognize identifiers
+					 * ending in "_t" like typedefs */
 
 /* -troff font state information */
 
