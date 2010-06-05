@@ -87,6 +87,9 @@ enum zeroidle_state {
 	STATE_RELEASE_PAGE
 };
 
+#define DEFAULT_SLEEP_TIME	(hz / 10)
+#define LONG_SLEEP_TIME		(hz * 10)
+
 static int zero_state;
 
 /*
@@ -122,6 +125,20 @@ vm_page_zero_check(void)
 	return (zero_state);
 }
 
+/*
+ * vm_pagezero should sleep for a longer time when idlezero is disabled or
+ * when there is an excess of zeroed pages.
+ */
+static int
+vm_page_zero_time(void)
+{
+	if (idlezero_enable == 0)
+		return (LONG_SLEEP_TIME);
+	if (vm_page_zero_count >= ZIDLE_HI(vmstats.v_free_count))
+		return (LONG_SLEEP_TIME);
+	return (DEFAULT_SLEEP_TIME);
+}
+
 static void
 vm_pagezero(void __unused *arg)
 {
@@ -130,6 +147,7 @@ vm_pagezero(void __unused *arg)
 	enum zeroidle_state state = STATE_IDLE;
 	char *pg = NULL;
 	int npages = 0;
+	int sleep_time;	
 	int i = 0;
 
 	/*
@@ -142,6 +160,7 @@ vm_pagezero(void __unused *arg)
 	rel_mplock();
 	lwkt_setpri_self(TDPRI_IDLE_WORK);
 	lwkt_setcpu_self(globaldata_find(ncpus - 1));
+	sleep_time = DEFAULT_SLEEP_TIME;
 
 	/*
 	 * Loop forever
@@ -152,9 +171,10 @@ vm_pagezero(void __unused *arg)
 			/*
 			 * Wait for work.
 			 */
-			tsleep(&zero_state, 0, "pgzero", hz / 10);
+			tsleep(&zero_state, 0, "pgzero", sleep_time);
 			if (vm_page_zero_check())
 				npages = idlezero_rate / 10;
+			sleep_time = vm_page_zero_time();
 			if (npages)
 				state = STATE_GET_PAGE;	/* Fallthrough */
 			break;
@@ -208,7 +228,8 @@ vm_pagezero(void __unused *arg)
 			}
 			break;
 		}
-		lwkt_switch();
+		if (lwkt_check_resched(curthread))
+			lwkt_switch();
 	}
 }
 
