@@ -91,6 +91,20 @@ mtx_lock_ex_link(mtx_t mtx, struct mtx_link *link,
 }
 
 /*
+ * Short-form exclusive-lock a mutex, block until acquired.  Recursion is
+ * allowed.  This is equivalent to mtx_lock_ex(mtx, "mtxex", 0, 0).
+ */
+static __inline void
+mtx_lock(mtx_t mtx)
+{
+	if (atomic_cmpset_int(&mtx->mtx_lock, 0, MTX_EXCLUSIVE | 1) == 0) {
+		_mtx_lock_ex(mtx, "mtxex", 0, 0);
+		return;
+	}
+	mtx->mtx_owner = curthread;
+}
+
+/*
  * Exclusive-lock a mutex, block until acquired.  Recursion is allowed.
  *
  * Returns 0 on success, or the tsleep() return code on failure.
@@ -134,6 +148,17 @@ mtx_lock_sh_quick(mtx_t mtx, const char *ident)
 	if (atomic_cmpset_int(&mtx->mtx_lock, 0, 1) == 0)
 		return(_mtx_lock_sh_quick(mtx, ident));
 	return(0);
+}
+
+/*
+ * Short-form exclusive-lock a mutex, spin until acquired.  Recursion is
+ * allowed.  This form is identical to mtx_spinlock_ex().
+ */
+static __inline void
+mtx_spinlock(mtx_t mtx)
+{
+	if (atomic_cmpset_int(&mtx->mtx_lock, 0, MTX_EXCLUSIVE | 1) == 0)
+		_mtx_spinlock_ex(mtx);
 }
 
 /*
@@ -217,6 +242,14 @@ mtx_upgrade_try(mtx_t mtx)
 
 /*
  * Optimized unlock cases.
+ *
+ * NOTE: mtx_unlock() handles any type of mutex: exclusive, shared, and
+ *	 both blocking and spin methods.
+ *
+ *	 The mtx_unlock_ex/sh() forms are optimized for exclusive or shared
+ *	 mutexes and produce less code, but it is ok for code to just use
+ *	 mtx_unlock() and, in fact, if code uses the short-form mtx_lock()
+ *	 or mtx_spinlock() to lock it should also use mtx_unlock() to unlock.
  */
 static __inline void
 mtx_unlock(mtx_t mtx)
