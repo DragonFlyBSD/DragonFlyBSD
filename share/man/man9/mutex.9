@@ -195,7 +195,7 @@ If the lock is already shared, this call is a no-op.
 .Pp
 The
 .Fn mtx_upgrade_try
-function attemts to convert a shared lock to an exclusive one.
+function attempts to convert a shared lock to an exclusive one.
 The mutex must be held by the caller in the shared state.
 If the upgrade is successful, this function returns 0; otherwise, it returns
 .Er EDEADLK .
