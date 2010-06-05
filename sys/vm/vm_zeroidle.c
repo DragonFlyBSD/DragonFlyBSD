@@ -72,6 +72,7 @@ SYSCTL_INT(_vm, OID_AUTO, idlezero_enable, CTLFLAG_RW, &idlezero_enable, 0,
 static int idlezero_rate = NPAGES_RUN;
 SYSCTL_INT(_vm, OID_AUTO, idlezero_rate, CTLFLAG_RW, &idlezero_rate, 0,
 	   "Maximum pages per second to zero");
+int bzeront_avail = 0;
 static int idlezero_nocache = 0;
 SYSCTL_INT(_vm, OID_AUTO, idlezero_nocache, CTLFLAG_RW, &idlezero_nocache, 0,
 	   "Maximum pages per second to zero");
@@ -238,6 +239,8 @@ pagezero_start(void __unused *arg)
 {
 	int error;
 	struct thread *td;
+
+	idlezero_nocache = bzeront_avail;
 
 	error = kthread_create(vm_pagezero, NULL, &td, "pagezero");
 	if (error)
