@@ -69,7 +69,7 @@ hpfs_hphashinit(void)
 	lockinit (&hpfs_hphash_lock, "hpfs_hphashlock", 0, 0);
 	hpfs_hphashtbl = HASHINIT(desiredvnodes, M_HPFSHASH, M_WAITOK,
 	    &hpfs_hphash);
-	lwkt_token_init(&hpfs_hphash_token);
+	lwkt_token_init(&hpfs_hphash_token, 1);
 }
 
 /*
@@ -78,12 +78,10 @@ hpfs_hphashinit(void)
 int
 hpfs_hphash_uninit(struct vfsconf *vfc)
 {
-	lwkt_tokref ilock;
-
-	lwkt_gettoken(&ilock, &hpfs_hphash_token);
+	lwkt_gettoken(&hpfs_hphash_token);
 	if (hpfs_hphashtbl)
 		kfree(hpfs_hphashtbl, M_HPFSHASH);
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&hpfs_hphash_token);
 
 	return 0;
 }
@@ -96,14 +94,13 @@ struct hpfsnode *
 hpfs_hphashlookup(cdev_t dev, lsn_t ino)
 {
 	struct hpfsnode *hp;
-	lwkt_tokref ilock;
 
-	lwkt_gettoken(&ilock, &hpfs_hphash_token);
+	lwkt_gettoken(&hpfs_hphash_token);
 	for (hp = HPNOHASH(dev, ino)->lh_first; hp; hp = hp->h_hash.le_next) {
 		if (ino == hp->h_no && dev == hp->h_dev)
 			break;
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&hpfs_hphash_token);
 
 	return (hp);
 }
@@ -112,10 +109,9 @@ struct vnode *
 hpfs_hphashvget(cdev_t dev, lsn_t ino)
 {
 	struct hpfsnode *hp;
-	lwkt_tokref ilock;
 	struct vnode *vp;
 
-	lwkt_gettoken(&ilock, &hpfs_hphash_token);
+	lwkt_gettoken(&hpfs_hphash_token);
 loop:
 	for (hp = HPNOHASH(dev, ino)->lh_first; hp; hp = hp->h_hash.le_next) {
 		if (ino != hp->h_no || dev != hp->h_dev)
@@ -140,10 +136,10 @@ loop:
 		/*
 		 * Or if the vget fails (due to a race)
 		 */
-		lwkt_reltoken(&ilock);
+		lwkt_reltoken(&hpfs_hphash_token);
 		return (vp);
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&hpfs_hphash_token);
 	return (NULLVP);
 }
 
@@ -154,13 +150,12 @@ void
 hpfs_hphashins(struct hpfsnode *hp)
 {
 	struct hphashhead *hpp;
-	lwkt_tokref ilock;
 
-	lwkt_gettoken(&ilock, &hpfs_hphash_token);
+	lwkt_gettoken(&hpfs_hphash_token);
 	hpp = HPNOHASH(hp->h_dev, hp->h_no);
 	hp->h_flag |= H_HASHED;
 	LIST_INSERT_HEAD(hpp, hp, h_hash);
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&hpfs_hphash_token);
 }
 
 /*
@@ -169,9 +164,7 @@ hpfs_hphashins(struct hpfsnode *hp)
 void
 hpfs_hphashrem(struct hpfsnode *hp)
 {
-	lwkt_tokref ilock;
-
-	lwkt_gettoken(&ilock, &hpfs_hphash_token);
+	lwkt_gettoken(&hpfs_hphash_token);
 	if (hp->h_flag & H_HASHED) {
 		hp->h_flag &= ~H_HASHED;
 		LIST_REMOVE(hp, h_hash);
@@ -180,5 +173,5 @@ hpfs_hphashrem(struct hpfsnode *hp)
 		hp->h_hash.le_prev = NULL;
 #endif
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&hpfs_hphash_token);
 }

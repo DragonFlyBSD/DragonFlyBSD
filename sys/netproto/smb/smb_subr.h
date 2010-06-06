@@ -140,7 +140,6 @@ extern smb_unichar smb_unieol;
 struct mbchain;
 struct proc;
 struct thread;
-struct lwkt_tokref;
 struct smb_vc;
 struct smb_rq;
 

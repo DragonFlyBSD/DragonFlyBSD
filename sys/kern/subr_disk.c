@@ -357,7 +357,6 @@ disk_msg_core(void *arg)
 {
 	struct disk	*dp;
 	struct diskslice *sp;
-	lwkt_tokref ilock;
 	disk_msg_t msg;
 	int run;
 
@@ -383,9 +382,9 @@ disk_msg_core(void *arg)
 					dp->d_cdev->si_name);
 			devfs_destroy_subnames(dp->d_cdev->si_name);
 			devfs_destroy_dev(dp->d_cdev);
-			lwkt_gettoken(&ilock, &disklist_token);
+			lwkt_gettoken(&disklist_token);
 			LIST_REMOVE(dp, d_list);
-			lwkt_reltoken(&ilock);
+			lwkt_reltoken(&disklist_token);
 			if (dp->d_info.d_serialno) {
 				kfree(dp->d_info.d_serialno, M_TEMP);
 				dp->d_info.d_serialno = NULL;
@@ -500,7 +499,6 @@ disk_msg_send_sync(uint32_t cmd, void *load, void *load2)
 cdev_t
 disk_create(int unit, struct disk *dp, struct dev_ops *raw_ops)
 {
-	lwkt_tokref ilock;
 	cdev_t rawdev;
 
 	disk_debug(1,
@@ -525,13 +523,11 @@ disk_create(int unit, struct disk *dp, struct dev_ops *raw_ops)
 
 	dsched_disk_create_callback(dp, raw_ops->head.name, unit);
 
-	lwkt_gettoken(&ilock, &disklist_token);
+	lwkt_gettoken(&disklist_token);
 	LIST_INSERT_HEAD(&disklist, dp, d_list);
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&disklist_token);
 
-	disk_debug(1,
-		    "disk_create (end): %s%d\n",
-			raw_ops->head.name, unit);
+	disk_debug(1, "disk_create (end): %s%d\n", raw_ops->head.name, unit);
 
 	return (dp->d_rawdev);
 }
@@ -705,14 +701,13 @@ struct disk *
 disk_enumerate(struct disk *disk)
 {
 	struct disk *dp;
-	lwkt_tokref ilock;
 
-	lwkt_gettoken(&ilock, &disklist_token);
+	lwkt_gettoken(&disklist_token);
 	if (!disk)
 		dp = (LIST_FIRST(&disklist));
 	else
 		dp = (LIST_NEXT(disk, d_list));
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&disklist_token);
 
 	return dp;
 }
@@ -1195,7 +1190,7 @@ disk_init(void)
 					 objcache_malloc_free,
 					 &disk_msg_malloc_args);
 
-	lwkt_token_init(&disklist_token);
+	lwkt_token_init(&disklist_token, 1);
 
 	/*
 	 * Initialize the reply-only port which acts as a message drain

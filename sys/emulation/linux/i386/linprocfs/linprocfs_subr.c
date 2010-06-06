@@ -92,10 +92,9 @@ linprocfs_allocvp(struct mount *mp, struct vnode **vpp, long pid,
 	struct pfsnode *pfs;
 	struct vnode *vp;
 	struct pfsnode **pp;
-	lwkt_tokref ilock;
 	int error;
 
-	lwkt_gettoken(&ilock, &pfs_token);
+	lwkt_gettoken(&pfs_token);
 loop:
 	for (pfs = pfshead[pid & PFSHMASK]; pfs; pfs = pfs->pfs_next) {
 		vp = PFSTOV(pfs);
@@ -105,7 +104,7 @@ loop:
 			if (vget(vp, LK_EXCLUSIVE|LK_SLEEPFAIL))
 				goto loop;
 			*vpp = vp;
-			lwkt_reltoken(&ilock);
+			lwkt_reltoken(&pfs_token);
 			return (0);
 		}
 	}
@@ -231,7 +230,7 @@ out:
 		pfsvplock &= ~PROCFS_WANT;
 		wakeup((caddr_t) &pfsvplock);
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&pfs_token);
 
 	return (error);
 }
@@ -241,16 +240,15 @@ linprocfs_freevp(struct vnode *vp)
 {
 	struct pfsnode **pfspp;
 	struct pfsnode *pfs = VTOPFS(vp);
-	lwkt_tokref ilock;
 
-	lwkt_gettoken(&ilock, &pfs_token);
+	lwkt_gettoken(&pfs_token);
 	pfspp = &pfshead[pfs->pfs_pid & PFSHMASK]; 
 	while (*pfspp != pfs) {
 		KKASSERT(*pfspp != NULL);
 		pfspp = &(*pfspp)->pfs_next;
 	}
 	*pfspp = pfs->pfs_next;
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&pfs_token);
 	FREE(vp->v_data, M_TEMP);
 	vp->v_data = NULL;
 	return (0);
@@ -405,13 +403,12 @@ vfs_findname(vfs_namemap_t *nm, char *buf, int buflen)
 void
 linprocfs_init(void)
 {
-	lwkt_token_init(&pfs_token);
+	lwkt_token_init(&pfs_token, 1);
 } 
 
 void
 linprocfs_exit(struct thread *td)
 {
-	lwkt_tokref ilock;
 	struct pfsnode *pfs;
 	struct vnode *vp;
 	pid_t pid;
@@ -422,7 +419,7 @@ linprocfs_exit(struct thread *td)
 	/*
 	 * Remove all the procfs vnodes associated with an exiting process.
 	 */
-	lwkt_gettoken(&ilock, &pfs_token);
+	lwkt_gettoken(&pfs_token);
 restart:
 	for (pfs = pfshead[pid & PFSHMASK]; pfs; pfs = pfs->pfs_next) {
 		if (pfs->pfs_pid == pid) {
@@ -433,7 +430,7 @@ restart:
 			goto restart;
 		}
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&pfs_token);
 	lwkt_token_uninit(&pfs_token);
 }
 

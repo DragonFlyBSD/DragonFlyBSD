@@ -66,7 +66,7 @@ static int kobj_next_id = 1;
 static void
 kobj_init_token(void *arg)
 {
-	lwkt_token_init(&kobj_token);
+	lwkt_token_init(&kobj_token, 1);
 }
 
 SYSINIT(kobj, SI_BOOT1_LOCK, SI_ORDER_ANY, kobj_init_token, NULL);
@@ -220,9 +220,7 @@ kobj_class_free(kobj_class_t cls)
 void
 kobj_class_instantiate(kobj_class_t cls)
 {
-	lwkt_tokref ilock;
-
-	lwkt_gettoken(&ilock, &kobj_token);
+	lwkt_gettoken(&kobj_token);
 	crit_enter();
 
 	if (!cls->ops)
@@ -230,15 +228,13 @@ kobj_class_instantiate(kobj_class_t cls)
 	cls->refs++;
 
 	crit_exit();
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&kobj_token);
 }
 
 void
 kobj_class_uninstantiate(kobj_class_t cls)
 {
-	lwkt_tokref ilock;
-
-	lwkt_gettoken(&ilock, &kobj_token);
+	lwkt_gettoken(&kobj_token);
 	crit_enter();
 
 	cls->refs--;
@@ -246,7 +242,7 @@ kobj_class_uninstantiate(kobj_class_t cls)
 		kobj_class_free(cls);
 
 	crit_exit();
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&kobj_token);
 }
 
 kobj_t

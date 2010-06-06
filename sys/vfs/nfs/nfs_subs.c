@@ -1432,13 +1432,11 @@ static int
 nfs_clearcommit_callback(struct mount *mp, struct vnode *vp,
 			 void *data __unused)
 {
-	lwkt_tokref vlock;
-
 	vhold(vp);
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 	RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL,
 		nfs_clearcommit_bp, NULL);
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 	vdrop(vp);
 	return(0);
 }

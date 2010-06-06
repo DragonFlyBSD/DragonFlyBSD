@@ -135,9 +135,9 @@ static TAILQ_HEAD(,bio_ops) bio_ops_list = TAILQ_HEAD_INITIALIZER(bio_ops_list);
 void
 vfs_mount_init(void)
 {
-	lwkt_token_init(&mountlist_token);
-	lwkt_token_init(&mntvnode_token);
-	lwkt_token_init(&mntid_token);
+	lwkt_token_init(&mountlist_token, 1);
+	lwkt_token_init(&mntvnode_token, 1);
+	lwkt_token_init(&mntid_token, 1);
 	TAILQ_INIT(&mountscan_list);
 	TAILQ_INIT(&mntvnodescan_list);
 	mount_init(&dummymount);
@@ -320,7 +320,7 @@ void
 mount_init(struct mount *mp)
 {
 	lockinit(&mp->mnt_lock, "vfslock", 0, 0);
-	lwkt_token_init(&mp->mnt_token);
+	lwkt_token_init(&mp->mnt_token, 1);
 
 	TAILQ_INIT(&mp->mnt_nvnodelist);
 	TAILQ_INIT(&mp->mnt_reservedvnlist);
@@ -337,16 +337,15 @@ struct mount *
 vfs_getvfs(fsid_t *fsid)
 {
 	struct mount *mp;
-	lwkt_tokref ilock;
 
-	lwkt_gettoken(&ilock, &mountlist_token);
+	lwkt_gettoken(&mountlist_token);
 	TAILQ_FOREACH(mp, &mountlist, mnt_list) {
 		if (mp->mnt_stat.f_fsid.val[0] == fsid->val[0] &&
 		    mp->mnt_stat.f_fsid.val[1] == fsid->val[1]) {
 			break;
 		}
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&mountlist_token);
 	return (mp);
 }
 
@@ -366,11 +365,10 @@ void
 vfs_getnewfsid(struct mount *mp)
 {
 	static u_int16_t mntid_base;
-	lwkt_tokref ilock;
 	fsid_t tfsid;
 	int mtype;
 
-	lwkt_gettoken(&ilock, &mntid_token);
+	lwkt_gettoken(&mntid_token);
 	mtype = mp->mnt_vfc->vfc_typenum;
 	tfsid.val[1] = mtype;
 	mtype = (mtype & 0xFF) << 24;
@@ -383,7 +381,7 @@ vfs_getnewfsid(struct mount *mp)
 	}
 	mp->mnt_stat.f_fsid.val[0] = tfsid.val[0];
 	mp->mnt_stat.f_fsid.val[1] = tfsid.val[1];
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&mntid_token);
 }
 
 /*
@@ -564,7 +562,6 @@ vlrureclaim(struct mount *mp, void *data)
 {
 	struct vnlru_info *info = data;
 	struct vnode *vp;
-	lwkt_tokref ilock;
 	int done;
 	int trigger;
 	int usevnodes;
@@ -590,7 +587,7 @@ vlrureclaim(struct mount *mp, void *data)
 	trigger = vmstats.v_page_count * (trigger_mult + 2) / usevnodes;
 
 	done = 0;
-	lwkt_gettoken(&ilock, &mntvnode_token);
+	lwkt_gettoken(&mntvnode_token);
 	count = mp->mnt_nvnodelistsize / 10 + 1;
 
 	while (count && mp->mnt_syncer) {
@@ -666,7 +663,7 @@ vlrureclaim(struct mount *mp, void *data)
 		++done;
 		--count;
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&mntvnode_token);
 	return (done);
 }
 
@@ -775,14 +772,12 @@ vnlru_proc(void)
 void
 mountlist_insert(struct mount *mp, int how)
 {
-	lwkt_tokref ilock;
-
-	lwkt_gettoken(&ilock, &mountlist_token);
+	lwkt_gettoken(&mountlist_token);
 	if (how == MNTINS_FIRST)
 	    TAILQ_INSERT_HEAD(&mountlist, mp, mnt_list);
 	else
 	    TAILQ_INSERT_TAIL(&mountlist, mp, mnt_list);
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&mountlist_token);
 }
 
 /*
@@ -795,12 +790,11 @@ mountlist_insert(struct mount *mp, int how)
 int
 mountlist_interlock(int (*callback)(struct mount *), struct mount *mp)
 {
-	lwkt_tokref ilock;
 	int error;
 
-	lwkt_gettoken(&ilock, &mountlist_token);
+	lwkt_gettoken(&mountlist_token);
 	error = callback(mp);
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&mountlist_token);
 	return (error);
 }
 
@@ -830,9 +824,8 @@ void
 mountlist_remove(struct mount *mp)
 {
 	struct mountscan_info *msi;
-	lwkt_tokref ilock;
 
-	lwkt_gettoken(&ilock, &mountlist_token);
+	lwkt_gettoken(&mountlist_token);
 	TAILQ_FOREACH(msi, &mountscan_list, msi_entry) {
 		if (msi->msi_node == mp) {
 			if (msi->msi_how & MNTSCAN_FORWARD)
@@ -842,7 +835,7 @@ mountlist_remove(struct mount *mp)
 		}
 	}
 	TAILQ_REMOVE(&mountlist, mp, mnt_list);
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&mountlist_token);
 }
 
 /*
@@ -868,13 +861,12 @@ int
 mountlist_scan(int (*callback)(struct mount *, void *), void *data, int how)
 {
 	struct mountscan_info info;
-	lwkt_tokref ilock;
 	struct mount *mp;
 	thread_t td;
 	int count;
 	int res;
 
-	lwkt_gettoken(&ilock, &mountlist_token);
+	lwkt_gettoken(&mountlist_token);
 
 	info.msi_how = how;
 	info.msi_node = NULL;	/* paranoia */
@@ -921,7 +913,7 @@ mountlist_scan(int (*callback)(struct mount *, void *), void *data, int how)
 		}
 	}
 	TAILQ_REMOVE(&mountscan_list, &info, msi_entry);
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&mountlist_token);
 	return(res);
 }
 
@@ -944,9 +936,7 @@ SYSINIT(vnlru, SI_SUB_KTHREAD_UPDATE, SI_ORDER_FIRST, kproc_start, &vnlru_kp)
 void
 insmntque(struct vnode *vp, struct mount *mp)
 {
-	lwkt_tokref ilock;
-
-	lwkt_gettoken(&ilock, &mntvnode_token);
+	lwkt_gettoken(&mntvnode_token);
 	/*
 	 * Delete from old mount point vnode list, if on one.
 	 */
@@ -961,7 +951,7 @@ insmntque(struct vnode *vp, struct mount *mp)
 	 * The 'end' of the LRU list is the vnode prior to mp->mnt_syncer.
 	 */
 	if ((vp->v_mount = mp) == NULL) {
-		lwkt_reltoken(&ilock);
+		lwkt_reltoken(&mntvnode_token);
 		return;
 	}
 	if (mp->mnt_syncer) {
@@ -970,7 +960,7 @@ insmntque(struct vnode *vp, struct mount *mp)
 		TAILQ_INSERT_TAIL(&mp->mnt_nvnodelist, vp, v_nmntvnodes);
 	}
 	mp->mnt_nvnodelistsize++;
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&mntvnode_token);
 }
 
 
@@ -1001,14 +991,13 @@ vmntvnodescan(
     void *data
 ) {
 	struct vmntvnodescan_info info;
-	lwkt_tokref ilock;
 	struct vnode *vp;
 	int r = 0;
 	int maxcount = 1000000;
 	int stopcount = 0;
 	int count = 0;
 
-	lwkt_gettoken(&ilock, &mntvnode_token);
+	lwkt_gettoken(&mntvnode_token);
 
 	/*
 	 * If asked to do one pass stop after iterating available vnodes.
@@ -1127,7 +1116,7 @@ next:
 			info.vp = TAILQ_NEXT(vp, v_nmntvnodes);
 	}
 	TAILQ_REMOVE(&mntvnodescan_list, &info, entry);
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&mntvnode_token);
 	return(r);
 }
 
@@ -1315,14 +1304,13 @@ struct mount *
 mount_get_by_nc(struct namecache *ncp)
 {
 	struct mount *mp = NULL;
-	lwkt_tokref ilock;
 
-	lwkt_gettoken(&ilock, &mountlist_token);
+	lwkt_gettoken(&mountlist_token);
 	TAILQ_FOREACH(mp, &mountlist, mnt_list) {
 		if (ncp == mp->mnt_ncmountpt.ncp)
 			break;
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&mountlist_token);
 	return (mp);
 }
 

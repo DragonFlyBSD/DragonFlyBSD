@@ -404,8 +404,8 @@ pipe_create(struct pipe **cpipep)
 	vfs_timestamp(&cpipe->pipe_ctime);
 	cpipe->pipe_atime = cpipe->pipe_ctime;
 	cpipe->pipe_mtime = cpipe->pipe_ctime;
-	lwkt_token_init(&cpipe->pipe_rlock);
-	lwkt_token_init(&cpipe->pipe_wlock);
+	lwkt_token_init(&cpipe->pipe_rlock, 1);
+	lwkt_token_init(&cpipe->pipe_wlock, 1);
 	return (0);
 }
 
@@ -423,8 +423,6 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	u_int nsize;	/* total bytes to read */
 	u_int rindex;	/* contiguous bytes available */
 	int notify_writer;
-	lwkt_tokref rlock;
-	lwkt_tokref wlock;
 	int mpsave;
 	int bigread;
 	int bigcount;
@@ -437,7 +435,7 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	 */
 	pipe_get_mplock(&mpsave);
 	rpipe = (struct pipe *)fp->f_data;
-	lwkt_gettoken(&rlock, &rpipe->pipe_rlock);
+	lwkt_gettoken(&rpipe->pipe_rlock);
 
 	if (fflags & O_FBLOCKING)
 		nbio = 0;
@@ -457,7 +455,7 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	error = pipe_start_uio(rpipe, &rpipe->pipe_rip);
 	if (error) {
 		pipe_rel_mplock(&mpsave);
-		lwkt_reltoken(&rlock);
+		lwkt_reltoken(&rpipe->pipe_rlock);
 		return (error);
 	}
 	notify_writer = 0;
@@ -524,14 +522,14 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		 * wlock are held.
 		 */
 		if (rpipe->pipe_state & PIPE_WANTW) {
-			lwkt_gettoken(&wlock, &rpipe->pipe_wlock);
+			lwkt_gettoken(&rpipe->pipe_wlock);
 			if (rpipe->pipe_state & PIPE_WANTW) {
 				notify_writer = 0;
 				rpipe->pipe_state &= ~PIPE_WANTW;
-				lwkt_reltoken(&wlock);
+				lwkt_reltoken(&rpipe->pipe_wlock);
 				wakeup(rpipe);
 			} else {
-				lwkt_reltoken(&wlock);
+				lwkt_reltoken(&rpipe->pipe_wlock);
 			}
 		}
 
@@ -593,10 +591,10 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		/*
 		 * Last chance, interlock with WANTR.
 		 */
-		lwkt_gettoken(&wlock, &rpipe->pipe_wlock);
+		lwkt_gettoken(&rpipe->pipe_wlock);
 		size = rpipe->pipe_buffer.windex - rpipe->pipe_buffer.rindex;
 		if (size) {
-			lwkt_reltoken(&wlock);
+			lwkt_reltoken(&rpipe->pipe_wlock);
 			continue;
 		}
 
@@ -605,7 +603,7 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		 * tokens already held.
 		 */
 		if (rpipe->pipe_state & PIPE_REOF) {
-			lwkt_reltoken(&wlock);
+			lwkt_reltoken(&rpipe->pipe_wlock);
 			break;
 		}
 
@@ -637,7 +635,7 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		 */
 		rpipe->pipe_state |= PIPE_WANTR;
 		tsleep_interlock(rpipe, PCATCH);
-		lwkt_reltoken(&wlock);
+		lwkt_reltoken(&rpipe->pipe_wlock);
 		error = tsleep(rpipe, PCATCH | PINTERLOCKED, "piperd", 0);
 		++pipe_rblocked_count;
 		if (error)
@@ -661,23 +659,23 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	 */
 	if (notify_writer) {
 		if (rpipe->pipe_state & PIPE_WANTW) {
-			lwkt_gettoken(&wlock, &rpipe->pipe_wlock);
+			lwkt_gettoken(&rpipe->pipe_wlock);
 			if (rpipe->pipe_state & PIPE_WANTW) {
 				rpipe->pipe_state &= ~PIPE_WANTW;
-				lwkt_reltoken(&wlock);
+				lwkt_reltoken(&rpipe->pipe_wlock);
 				wakeup(rpipe);
 			} else {
-				lwkt_reltoken(&wlock);
+				lwkt_reltoken(&rpipe->pipe_wlock);
 			}
 		}
 		if (pipeseltest(rpipe)) {
-			lwkt_gettoken(&wlock, &rpipe->pipe_wlock);
+			lwkt_gettoken(&rpipe->pipe_wlock);
 			pipeselwakeup(rpipe);
-			lwkt_reltoken(&wlock);
+			lwkt_reltoken(&rpipe->pipe_wlock);
 		}
 	}
 	/*size = rpipe->pipe_buffer.windex - rpipe->pipe_buffer.rindex;*/
-	lwkt_reltoken(&rlock);
+	lwkt_reltoken(&rpipe->pipe_rlock);
 
 	pipe_rel_mplock(&mpsave);
 	return (error);
@@ -693,8 +691,6 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	int orig_resid;
 	int nbio;
 	struct pipe *wpipe, *rpipe;
-	lwkt_tokref rlock;
-	lwkt_tokref wlock;
 	u_int windex;
 	u_int space;
 	u_int wcount;
@@ -709,10 +705,10 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	 */
 	rpipe = (struct pipe *) fp->f_data;
 	wpipe = rpipe->pipe_peer;
-	lwkt_gettoken(&wlock, &wpipe->pipe_wlock);
+	lwkt_gettoken(&wpipe->pipe_wlock);
 	if (wpipe->pipe_state & PIPE_WEOF) {
 		pipe_rel_mplock(&mpsave);
-		lwkt_reltoken(&wlock);
+		lwkt_reltoken(&wpipe->pipe_wlock);
 		return (EPIPE);
 	}
 
@@ -721,7 +717,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	 */
 	if (uio->uio_resid == 0) {
 		pipe_rel_mplock(&mpsave);
-		lwkt_reltoken(&wlock);
+		lwkt_reltoken(&wpipe->pipe_wlock);
 		return(0);
 	}
 
@@ -731,7 +727,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	error = pipe_start_uio(wpipe, &wpipe->pipe_wip);
 	if (error) {
 		pipe_rel_mplock(&mpsave);
-		lwkt_reltoken(&wlock);
+		lwkt_reltoken(&wpipe->pipe_wlock);
 		return (error);
 	}
 
@@ -755,7 +751,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		/* 
 		 * Recheck after lock.
 		 */
-		lwkt_gettoken(&rlock, &wpipe->pipe_rlock);
+		lwkt_gettoken(&wpipe->pipe_rlock);
 		if ((wpipe->pipe_buffer.size <= PIPE_SIZE) &&
 		    (pipe_nbig < pipe_maxbig) &&
 		    (wpipe->pipe_buffer.rindex == wpipe->pipe_buffer.windex)) {
@@ -765,7 +761,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 			else
 				atomic_subtract_int(&pipe_nbig, 1);
 		}
-		lwkt_reltoken(&rlock);
+		lwkt_reltoken(&wpipe->pipe_rlock);
 	}
 
 	orig_resid = uio->uio_resid;
@@ -880,7 +876,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		 * These are token locks so we do not have to worry about
 		 * deadlocks.
 		 */
-		lwkt_gettoken(&rlock, &wpipe->pipe_rlock);
+		lwkt_gettoken(&wpipe->pipe_rlock);
 
 		/*
 		 * If the "read-side" has been blocked, wake it up now
@@ -896,7 +892,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		 * don't block on non-blocking I/O
 		 */
 		if (nbio) {
-			lwkt_reltoken(&rlock);
+			lwkt_reltoken(&wpipe->pipe_rlock);
 			error = EAGAIN;
 			break;
 		}
@@ -917,7 +913,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		 * tokens already held.
 		 */
 		if (wpipe->pipe_state & PIPE_WEOF) {
-			lwkt_reltoken(&rlock);
+			lwkt_reltoken(&wpipe->pipe_rlock);
 			error = EPIPE;
 			break;
 		}
@@ -934,7 +930,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 				error = tsleep(wpipe, PCATCH, "pipewr", 0);
 			++pipe_wblocked_count;
 		}
-		lwkt_reltoken(&rlock);
+		lwkt_reltoken(&wpipe->pipe_rlock);
 
 		/*
 		 * Break out if we errored or the read side wants us to go
@@ -957,19 +953,19 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	 */
 	if (wpipe->pipe_buffer.windex != wpipe->pipe_buffer.rindex) {
 		if (wpipe->pipe_state & PIPE_WANTR) {
-			lwkt_gettoken(&rlock, &wpipe->pipe_rlock);
+			lwkt_gettoken(&wpipe->pipe_rlock);
 			if (wpipe->pipe_state & PIPE_WANTR) {
 				wpipe->pipe_state &= ~PIPE_WANTR;
-				lwkt_reltoken(&rlock);
+				lwkt_reltoken(&wpipe->pipe_rlock);
 				wakeup(wpipe);
 			} else {
-				lwkt_reltoken(&rlock);
+				lwkt_reltoken(&wpipe->pipe_rlock);
 			}
 		}
 		if (pipeseltest(wpipe)) {
-			lwkt_gettoken(&rlock, &wpipe->pipe_rlock);
+			lwkt_gettoken(&wpipe->pipe_rlock);
 			pipeselwakeup(wpipe);
-			lwkt_reltoken(&rlock);
+			lwkt_reltoken(&wpipe->pipe_rlock);
 		}
 	}
 
@@ -990,7 +986,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	 * wake up select/poll.
 	 */
 	/*space = wpipe->pipe_buffer.windex - wpipe->pipe_buffer.rindex;*/
-	lwkt_reltoken(&wlock);
+	lwkt_reltoken(&wpipe->pipe_wlock);
 	pipe_rel_mplock(&mpsave);
 	return (error);
 }
@@ -1005,16 +1001,14 @@ pipe_ioctl(struct file *fp, u_long cmd, caddr_t data,
 	   struct ucred *cred, struct sysmsg *msg)
 {
 	struct pipe *mpipe;
-	lwkt_tokref rlock;
-	lwkt_tokref wlock;
 	int error;
 	int mpsave;
 
 	pipe_get_mplock(&mpsave);
 	mpipe = (struct pipe *)fp->f_data;
 
-	lwkt_gettoken(&rlock, &mpipe->pipe_rlock);
-	lwkt_gettoken(&wlock, &mpipe->pipe_wlock);
+	lwkt_gettoken(&mpipe->pipe_rlock);
+	lwkt_gettoken(&mpipe->pipe_wlock);
 
 	switch (cmd) {
 	case FIOASYNC:
@@ -1055,8 +1049,8 @@ pipe_ioctl(struct file *fp, u_long cmd, caddr_t data,
 		error = ENOTTY;
 		break;
 	}
-	lwkt_reltoken(&rlock);
-	lwkt_reltoken(&wlock);
+	lwkt_reltoken(&mpipe->pipe_wlock);
+	lwkt_reltoken(&mpipe->pipe_rlock);
 	pipe_rel_mplock(&mpsave);
 
 	return (error);
@@ -1106,10 +1100,6 @@ pipe_poll_events(struct pipe *rpipe, struct pipe *wpipe, int events)
 int
 pipe_poll(struct file *fp, int events, struct ucred *cred)
 {
-	lwkt_tokref rpipe_rlock;
-	lwkt_tokref rpipe_wlock;
-	lwkt_tokref wpipe_rlock;
-	lwkt_tokref wpipe_wlock;
 	struct pipe *rpipe;
 	struct pipe *wpipe;
 	int revents = 0;
@@ -1122,12 +1112,12 @@ pipe_poll(struct file *fp, int events, struct ucred *cred)
 	revents = pipe_poll_events(rpipe, wpipe, events);
 	if (revents == 0) {
 		if (events & (POLLIN | POLLRDNORM)) {
-			lwkt_gettoken(&rpipe_rlock, &rpipe->pipe_rlock);
-			lwkt_gettoken(&rpipe_wlock, &rpipe->pipe_wlock);
+			lwkt_gettoken(&rpipe->pipe_rlock);
+			lwkt_gettoken(&rpipe->pipe_wlock);
 		}
 		if (events & (POLLOUT | POLLWRNORM)) {
-			lwkt_gettoken(&wpipe_rlock, &wpipe->pipe_rlock);
-			lwkt_gettoken(&wpipe_wlock, &wpipe->pipe_wlock);
+			lwkt_gettoken(&wpipe->pipe_rlock);
+			lwkt_gettoken(&wpipe->pipe_wlock);
 		}
 		revents = pipe_poll_events(rpipe, wpipe, events);
 		if (revents == 0) {
@@ -1141,13 +1131,13 @@ pipe_poll(struct file *fp, int events, struct ucred *cred)
 				wpipe->pipe_state |= PIPE_SEL;
 			}
 		}
-		if (events & (POLLIN | POLLRDNORM)) {
-			lwkt_reltoken(&rpipe_rlock);
-			lwkt_reltoken(&rpipe_wlock);
-		}
 		if (events & (POLLOUT | POLLWRNORM)) {
-			lwkt_reltoken(&wpipe_rlock);
-			lwkt_reltoken(&wpipe_wlock);
+			lwkt_reltoken(&wpipe->pipe_wlock);
+			lwkt_reltoken(&wpipe->pipe_rlock);
+		}
+		if (events & (POLLIN | POLLRDNORM)) {
+			lwkt_reltoken(&rpipe->pipe_wlock);
+			lwkt_reltoken(&rpipe->pipe_rlock);
 		}
 	}
 	pipe_rel_mplock(&mpsave);
@@ -1212,10 +1202,6 @@ pipe_shutdown(struct file *fp, int how)
 	struct pipe *rpipe;
 	struct pipe *wpipe;
 	int error = EPIPE;
-	lwkt_tokref rpipe_rlock;
-	lwkt_tokref rpipe_wlock;
-	lwkt_tokref wpipe_rlock;
-	lwkt_tokref wpipe_wlock;
 	int mpsave;
 
 	pipe_get_mplock(&mpsave);
@@ -1226,10 +1212,10 @@ pipe_shutdown(struct file *fp, int how)
 	 * We modify pipe_state on both pipes, which means we need
 	 * all four tokens!
 	 */
-	lwkt_gettoken(&rpipe_rlock, &rpipe->pipe_rlock);
-	lwkt_gettoken(&rpipe_wlock, &rpipe->pipe_wlock);
-	lwkt_gettoken(&wpipe_rlock, &wpipe->pipe_rlock);
-	lwkt_gettoken(&wpipe_wlock, &wpipe->pipe_wlock);
+	lwkt_gettoken(&rpipe->pipe_rlock);
+	lwkt_gettoken(&rpipe->pipe_wlock);
+	lwkt_gettoken(&wpipe->pipe_rlock);
+	lwkt_gettoken(&wpipe->pipe_wlock);
 
 	switch(how) {
 	case SHUT_RDWR:
@@ -1265,10 +1251,10 @@ pipe_shutdown(struct file *fp, int how)
 	pipeselwakeup(rpipe);
 	pipeselwakeup(wpipe);
 
-	lwkt_reltoken(&rpipe_rlock);
-	lwkt_reltoken(&rpipe_wlock);
-	lwkt_reltoken(&wpipe_rlock);
-	lwkt_reltoken(&wpipe_wlock);
+	lwkt_reltoken(&wpipe->pipe_wlock);
+	lwkt_reltoken(&wpipe->pipe_rlock);
+	lwkt_reltoken(&rpipe->pipe_wlock);
+	lwkt_reltoken(&rpipe->pipe_rlock);
 
 	pipe_rel_mplock(&mpsave);
 	return (error);
@@ -1297,10 +1283,6 @@ pipeclose(struct pipe *cpipe)
 {
 	globaldata_t gd;
 	struct pipe *ppipe;
-	lwkt_tokref cpipe_rlock;
-	lwkt_tokref cpipe_wlock;
-	lwkt_tokref ppipe_rlock;
-	lwkt_tokref ppipe_wlock;
 
 	if (cpipe == NULL)
 		return;
@@ -1313,8 +1295,8 @@ pipeclose(struct pipe *cpipe)
 	 */
 	if (cpipe->pipe_slock)
 		lockmgr(cpipe->pipe_slock, LK_EXCLUSIVE);
-	lwkt_gettoken(&cpipe_rlock, &cpipe->pipe_rlock);
-	lwkt_gettoken(&cpipe_wlock, &cpipe->pipe_wlock);
+	lwkt_gettoken(&cpipe->pipe_rlock);
+	lwkt_gettoken(&cpipe->pipe_wlock);
 
 	/*
 	 * Set our state, wakeup anyone waiting in select, and
@@ -1331,8 +1313,8 @@ pipeclose(struct pipe *cpipe)
 	 * Disconnect from peer.
 	 */
 	if ((ppipe = cpipe->pipe_peer) != NULL) {
-		lwkt_gettoken(&ppipe_rlock, &ppipe->pipe_rlock);
-		lwkt_gettoken(&ppipe_wlock, &ppipe->pipe_wlock);
+		lwkt_gettoken(&ppipe->pipe_rlock);
+		lwkt_gettoken(&ppipe->pipe_wlock);
 		ppipe->pipe_state |= PIPE_REOF | PIPE_WEOF;
 		pipeselwakeup(ppipe);
 		if (ppipe->pipe_state & (PIPE_WANTR | PIPE_WANTW)) {
@@ -1344,8 +1326,8 @@ pipeclose(struct pipe *cpipe)
 			KNOTE(&ppipe->pipe_sel.si_note, 0);
 			rel_mplock();
 		}
-		lwkt_reltoken(&ppipe_rlock);
-		lwkt_reltoken(&ppipe_wlock);
+		lwkt_reltoken(&ppipe->pipe_wlock);
+		lwkt_reltoken(&ppipe->pipe_rlock);
 	}
 
 	/*
@@ -1361,8 +1343,8 @@ pipeclose(struct pipe *cpipe)
 		ppipe = NULL;
 	}
 
-	lwkt_reltoken(&cpipe_rlock);
-	lwkt_reltoken(&cpipe_wlock);
+	lwkt_reltoken(&cpipe->pipe_wlock);
+	lwkt_reltoken(&cpipe->pipe_rlock);
 	if (cpipe->pipe_slock)
 		lockmgr(cpipe->pipe_slock, LK_RELEASE);
 

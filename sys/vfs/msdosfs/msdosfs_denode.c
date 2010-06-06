@@ -122,7 +122,7 @@ msdosfs_init(struct vfsconf *vfsp)
 	dehashtbl = kmalloc(sizeof(void *) * dehash, M_MSDOSFSMNT,
 			   M_WAITOK|M_ZERO);
 	--dehash;
-	lwkt_token_init(&dehash_token);
+	lwkt_token_init(&dehash_token, 1);
 	return (0);
 }
 
@@ -139,10 +139,9 @@ static struct denode *
 msdosfs_hashget(cdev_t dev, u_long dirclust, u_long diroff)
 {
 	struct denode *dep;
-	lwkt_tokref ilock;
 	struct vnode *vp;
 
-	lwkt_gettoken(&ilock, &dehash_token);
+	lwkt_gettoken(&dehash_token);
 loop:
 	for (dep = DEHASH(dev, dirclust, diroff); dep; dep = dep->de_next) {
 		if (dirclust != dep->de_dirclust
@@ -171,10 +170,10 @@ loop:
 			vput(vp);
 			goto loop;
 		}
-		lwkt_reltoken(&ilock);
+		lwkt_reltoken(&dehash_token);
 		return (dep);
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&dehash_token);
 	return (NULL);
 }
 
@@ -187,23 +186,22 @@ int
 msdosfs_hashins(struct denode *dep)
 {
 	struct denode **depp, *deq;
-	lwkt_tokref ilock;
 
-	lwkt_gettoken(&ilock, &dehash_token);
+	lwkt_gettoken(&dehash_token);
 	depp = &DEHASH(dep->de_dev, dep->de_dirclust, dep->de_diroffset);
 	while ((deq = *depp) != NULL) {
 		if (deq->de_dev == dep->de_dev &&
 		    deq->de_dirclust == dep->de_dirclust &&
 		    deq->de_diroffset == dep->de_diroffset &&
 		    deq->de_refcnt > 0) {
-			lwkt_reltoken(&ilock);
+			lwkt_reltoken(&dehash_token);
 			return(EBUSY);
 		}
 		depp = &deq->de_next;
 	}
 	dep->de_next = NULL;
 	*depp = dep;
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&dehash_token);
 	return(0);
 }
 
@@ -212,9 +210,8 @@ void
 msdosfs_hashrem(struct denode *dep)
 {
 	struct denode **depp, *deq;
-	lwkt_tokref ilock;
 
-	lwkt_gettoken(&ilock, &dehash_token);
+	lwkt_gettoken(&dehash_token);
 	depp = &DEHASH(dep->de_dev, dep->de_dirclust, dep->de_diroffset);
 	while ((deq = *depp) != NULL) {
 		if (dep == deq)
@@ -224,22 +221,21 @@ msdosfs_hashrem(struct denode *dep)
 	KKASSERT(dep == deq);
 	*depp = dep->de_next;
 	dep->de_next = NULL;
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&dehash_token);
 }
 
 void
 msdosfs_reinsert(struct denode *ip, u_long new_dirclust, u_long new_diroffset)
 {
-	lwkt_tokref ilock;
 	int error;
 
-	lwkt_gettoken(&ilock, &dehash_token);
+	lwkt_gettoken(&dehash_token);
 	msdosfs_hashrem(ip);
 	ip->de_dirclust = new_dirclust;
 	ip->de_diroffset = new_diroffset;
 	error = msdosfs_hashins(ip);
 	KASSERT(!error, ("msdosfs_reinsert: insertion failed %d", error));
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&dehash_token);
 }
 
 /*

@@ -744,6 +744,7 @@ int
 vop_inactive(struct vop_ops *ops, struct vnode *vp)
 {
 	struct vop_inactive_args ap;
+	struct mount *mp;
 	VFS_MPLOCK_DECLARE;
 	int error;
 
@@ -751,9 +752,14 @@ vop_inactive(struct vop_ops *ops, struct vnode *vp)
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 
-	VFS_MPLOCK_FLAG(vp->v_mount, MNTK_IN_MPSAFE);
+	/*
+	 * WARNING!  Deactivation of the vnode can cause it to be recycled,
+	 *	     clearing vp->v_mount.
+	 */
+	mp = vp->v_mount;
+	VFS_MPLOCK_FLAG(mp, MNTK_IN_MPSAFE);
 	DO_OPS(ops, error, &ap, vop_inactive);
-	VFS_MPUNLOCK(vp->v_mount);
+	VFS_MPUNLOCK(mp);
 	return(error);
 }
 
@@ -764,6 +770,7 @@ int
 vop_reclaim(struct vop_ops *ops, struct vnode *vp)
 {
 	struct vop_reclaim_args ap;
+	struct mount *mp;
 	VFS_MPLOCK_DECLARE;
 	int error;
 
@@ -771,9 +778,13 @@ vop_reclaim(struct vop_ops *ops, struct vnode *vp)
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 
-	VFS_MPLOCK1(vp->v_mount);
+	/*
+	 * WARNING!  Reclamation of the vnode will clear vp->v_mount.
+	 */
+	mp = vp->v_mount;
+	VFS_MPLOCK1(mp);
 	DO_OPS(ops, error, &ap, vop_reclaim);
-	VFS_MPUNLOCK(vp->v_mount);
+	VFS_MPUNLOCK(mp);
 	return(error);
 }
 

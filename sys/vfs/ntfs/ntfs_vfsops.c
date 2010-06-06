@@ -161,7 +161,6 @@ ntfs_mountroot(void)
 	struct vnode *rootvp;
 	struct thread *td = curthread;	/* XXX */
 	struct ntfs_args args;
-	lwkt_tokref ilock;
 	int error;
 
 	if (root_device->dv_class != DV_DISK)

@@ -93,15 +93,14 @@ udf_hashlookup(struct udf_mnt *udfmp, ino_t id, struct vnode **vpp)
 	struct udf_node *node;
 	struct udf_hash_lh *lh;
 	struct vnode *vp;
-	lwkt_tokref hashlock;
 
 	*vpp = NULL;
 
-	lwkt_gettoken(&hashlock, &udfmp->hash_token);
+	lwkt_gettoken(&udfmp->hash_token);
 loop:
 	lh = &udfmp->hashtbl[id % udfmp->hashsz];
 	if (lh == NULL) {
-		lwkt_reltoken(&hashlock);
+		lwkt_reltoken(&udfmp->hash_token);
 		return(ENOENT);
 	}
 	LIST_FOREACH(node, lh, le) {
@@ -123,12 +122,12 @@ loop:
 			vput(vp);
 			goto loop;
 		}
-		lwkt_reltoken(&hashlock);
+		lwkt_reltoken(&udfmp->hash_token);
 		*vpp = vp;
 		return(0);
 	}
 
-	lwkt_reltoken(&hashlock);
+	lwkt_reltoken(&udfmp->hash_token);
 	return(0);
 }
 
@@ -137,14 +136,13 @@ udf_hashins(struct udf_node *node)
 {
 	struct udf_mnt *udfmp;
 	struct udf_hash_lh *lh;
-	lwkt_tokref hashlock;
 
 	udfmp = node->udfmp;
 
-	lwkt_gettoken(&hashlock, &udfmp->hash_token);
+	lwkt_gettoken(&udfmp->hash_token);
 	lh = &udfmp->hashtbl[node->hash_id % udfmp->hashsz];
 	LIST_INSERT_HEAD(lh, node, le);
-	lwkt_reltoken(&hashlock);
+	lwkt_reltoken(&udfmp->hash_token);
 
 	return(0);
 }
@@ -154,16 +152,15 @@ udf_hashrem(struct udf_node *node)
 {
 	struct udf_mnt *udfmp;
 	struct udf_hash_lh *lh;
-	lwkt_tokref hashlock;
 
 	udfmp = node->udfmp;
 
-	lwkt_gettoken(&hashlock, &udfmp->hash_token);
+	lwkt_gettoken(&udfmp->hash_token);
 	lh = &udfmp->hashtbl[node->hash_id % udfmp->hashsz];
 	if (lh == NULL)
 		panic("hash entry is NULL, node->hash_id= %"PRId64"\n", node->hash_id);
 	LIST_REMOVE(node, le);
-	lwkt_reltoken(&hashlock);
+	lwkt_reltoken(&udfmp->hash_token);
 
 	return(0);
 }

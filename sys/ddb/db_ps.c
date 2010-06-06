@@ -201,10 +201,10 @@ db_dump_td_tokens(thread_t td)
 	lwkt_tokref_t ref;
 	lwkt_token_t tok;
 
-	if (td->td_toks == NULL)
+	if (TD_TOKS_NOT_HELD(td))
 		return;
 	db_printf("    TOKENS:");
-	for (ref = td->td_toks; ref; ref = ref->tr_next) {
+	for (ref = &td->td_toks_base; ref < td->td_toks_stop; ++ref) {
 		tok = ref->tr_tok;
 
 		db_printf(" %p[tok=%p", ref, ref->tr_tok);

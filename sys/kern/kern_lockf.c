@@ -191,7 +191,7 @@ lf_advlock(struct vop_advlock_args *ap, struct lockf *lock, u_quad_t size)
 	struct proc *owner;
 	off_t start, end;
 	int type, flags, error;
-	lwkt_tokref ilock;
+	lwkt_token_t token;
 
 	/*
 	 * Convert the flock structure into a start and end.
@@ -236,7 +236,7 @@ lf_advlock(struct vop_advlock_args *ap, struct lockf *lock, u_quad_t size)
 	/*
 	 * Do the requested operation.
 	 */
-	lwkt_getpooltoken(&ilock, lock);
+	token = lwkt_getpooltoken(lock);
 
 	if (lock->init_done == 0) {
 		TAILQ_INIT(&lock->lf_range);
@@ -273,7 +273,7 @@ lf_advlock(struct vop_advlock_args *ap, struct lockf *lock, u_quad_t size)
 		error = EINVAL;
 		break;
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(token);
 	return(error);
 }
 

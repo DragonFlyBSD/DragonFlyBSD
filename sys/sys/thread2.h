@@ -196,18 +196,6 @@ crit_test(thread_t td)
 }
 
 /*
- * Initialize a tokref_t.  We only need to initialize the token pointer
- * and the magic number.  We do not have to initialize tr_next, tr_gdreqnext,
- * or tr_reqgd.
- */
-static __inline void
-lwkt_tokref_init(lwkt_tokref_t ref, lwkt_token_t tok, thread_t td)
-{
-    ref->tr_tok = tok;
-    ref->tr_owner = td;
-}
-
-/*
  * Return whether any threads are runnable, whether they meet mp_lock
  * requirements or not.
  */

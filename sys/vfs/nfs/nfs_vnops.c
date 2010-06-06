@@ -3102,7 +3102,6 @@ nfs_flush(struct vnode *vp, int waitfor, struct thread *td, int commit)
 	struct nfsnode *np = VTONFS(vp);
 	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
 	struct nfs_flush_info info;
-	lwkt_tokref vlock;
 	int error;
 
 	bzero(&info, sizeof(info));
@@ -3111,7 +3110,7 @@ nfs_flush(struct vnode *vp, int waitfor, struct thread *td, int commit)
 	info.waitfor = waitfor;
 	info.slpflag = (nmp->nm_flag & NFSMNT_INT) ? PCATCH : 0;
 	info.loops = 0;
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 
 	do {
 		/*
@@ -3187,7 +3186,7 @@ nfs_flush(struct vnode *vp, int waitfor, struct thread *td, int commit)
 		error = np->n_error;
 		np->n_flag &= ~NWRITEERR;
 	}
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 	return (error);
 }
 

@@ -87,7 +87,7 @@ cd9660_init(struct vfsconf *vfsp)
 	isohashtbl = kmalloc(sizeof(void *) * isohash,
 			    M_ISOFSMNT, M_WAITOK|M_ZERO);
 	--isohash;
-	lwkt_token_init(&cd9660_ihash_token);
+	lwkt_token_init(&cd9660_ihash_token, 1);
 	return (0);
 }
 
@@ -109,10 +109,9 @@ struct vnode *
 cd9660_ihashget(cdev_t dev, ino_t inum)
 {
 	struct iso_node *ip;
-	lwkt_tokref ilock;
 	struct vnode *vp;
 
-	lwkt_gettoken(&ilock, &cd9660_ihash_token);
+	lwkt_gettoken(&cd9660_ihash_token);
 loop:
 	for (ip = isohashtbl[INOHASH(dev, inum)]; ip; ip = ip->i_next) {
 		if (inum != ip->i_number || dev != ip->i_dev)
@@ -131,10 +130,10 @@ loop:
 		if (ip == NULL || ITOV(ip) != vp) {
 			goto loop;
 		}
-		lwkt_reltoken(&ilock);
+		lwkt_reltoken(&cd9660_ihash_token);
 		return (vp);
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&cd9660_ihash_token);
 	return (NULL);
 }
 
@@ -146,20 +145,19 @@ int
 cd9660_ihashins(struct iso_node *ip)
 {
 	struct iso_node **ipp, *iq;
-	lwkt_tokref ilock;
 
-	lwkt_gettoken(&ilock, &cd9660_ihash_token);
+	lwkt_gettoken(&cd9660_ihash_token);
 	ipp = &isohashtbl[INOHASH(ip->i_dev, ip->i_number)];
 	while ((iq = *ipp) != NULL) {
 		if (iq->i_dev == ip->i_dev && iq->i_number == ip->i_number) {
-			lwkt_reltoken(&ilock);
+			lwkt_reltoken(&cd9660_ihash_token);
 			return(EBUSY);
 		}
 		ipp = &iq->i_next;
 	}
 	ip->i_next = NULL;
 	*ipp = ip;
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&cd9660_ihash_token);
 	return(0);
 }
 
@@ -170,9 +168,8 @@ static void
 cd9660_ihashrem(struct iso_node *ip)
 {
 	struct iso_node **ipp, *iq;
-	lwkt_tokref ilock;
 
-	lwkt_gettoken(&ilock, &cd9660_ihash_token);
+	lwkt_gettoken(&cd9660_ihash_token);
 	ipp = &isohashtbl[INOHASH(ip->i_dev, ip->i_number)];
 	while ((iq = *ipp) != NULL) {
 		if (ip == iq)
@@ -182,7 +179,7 @@ cd9660_ihashrem(struct iso_node *ip)
 	KKASSERT(ip == iq);
 	*ipp = ip->i_next;
 	ip->i_next = NULL;
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&cd9660_ihash_token);
 }
 
 /*

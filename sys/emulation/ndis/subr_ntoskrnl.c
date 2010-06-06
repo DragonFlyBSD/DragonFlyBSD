@@ -184,7 +184,7 @@ static MALLOC_DEFINE(M_NDIS, "ndis", "ndis emulation");
 int
 ntoskrnl_libinit(void)
 {
-	lwkt_token_init(&ntoskrnl_dispatchtoken);
+	lwkt_token_init(&ntoskrnl_dispatchtoken, 1);
 	ntoskrnl_init_lock(&ntoskrnl_global);
 	TAILQ_INIT(&ntoskrnl_reflist);
 	return(0);
@@ -309,11 +309,10 @@ ntoskrnl_wakeup(void *arg)
 	wait_block		*w;
 	list_entry		*e;
 	struct thread		*td;
-	struct lwkt_tokref	tokref;
 
 	obj = arg;
 
-	lwkt_gettoken(&tokref, &ntoskrnl_dispatchtoken);
+	lwkt_gettoken(&ntoskrnl_dispatchtoken);
 	obj->dh_sigstate = TRUE;
 	e = obj->dh_waitlisthead.nle_flink;
 	while (e != &obj->dh_waitlisthead) {
@@ -328,9 +327,7 @@ ntoskrnl_wakeup(void *arg)
 			break;
 		e = e->nle_flink;
 	}
-	lwkt_reltoken(&tokref);
-
-	return;
+	lwkt_reltoken(&ntoskrnl_dispatchtoken);
 }
 
 static void 
@@ -408,12 +405,11 @@ ntoskrnl_waitforobj(nt_dispatch_header *obj, uint32_t reason,
 	int			error = 0;
 	int			ticks;
 	uint64_t		curtime;
-	struct lwkt_tokref	tokref;
 
 	if (obj == NULL)
 		return(STATUS_INVALID_PARAMETER);
 
-	lwkt_gettoken(&tokref, &ntoskrnl_dispatchtoken);
+	lwkt_gettoken(&ntoskrnl_dispatchtoken);
 
 	/*
 	 * See if the object is a mutex. If so, and we already own
@@ -432,13 +428,13 @@ ntoskrnl_waitforobj(nt_dispatch_header *obj, uint32_t reason,
 			obj->dh_sigstate = FALSE;
 			km->km_acquirecnt++;
 			km->km_ownerthread = curthread->td_proc;
-			lwkt_reltoken(&tokref);
+			lwkt_reltoken(&ntoskrnl_dispatchtoken);
 			return (STATUS_SUCCESS);
 		}
 	} else if (obj->dh_sigstate == TRUE) {
 		if (obj->dh_type == EVENT_TYPE_SYNC)
 			obj->dh_sigstate = FALSE;
-		lwkt_reltoken(&tokref);
+		lwkt_reltoken(&ntoskrnl_dispatchtoken);
 		return (STATUS_SUCCESS);
 	}
 
@@ -473,7 +469,7 @@ ntoskrnl_waitforobj(nt_dispatch_header *obj, uint32_t reason,
 		}
 	}
 
-	lwkt_reltoken(&tokref);
+	lwkt_reltoken(&ntoskrnl_dispatchtoken);
 
 	ticks = 1 + tv.tv_sec * hz + tv.tv_usec * hz / 1000000;
 	error = ndis_thsuspend(td, duetime == NULL ? 0 : ticks);
@@ -484,7 +480,7 @@ ntoskrnl_waitforobj(nt_dispatch_header *obj, uint32_t reason,
 
 	if (error == EWOULDBLOCK) {
 		REMOVE_LIST_ENTRY((&w.wb_waitlist));
-		lwkt_reltoken(&tokref);
+		lwkt_reltoken(&ntoskrnl_dispatchtoken);
 		return(STATUS_TIMEOUT);
 	}
 
@@ -507,7 +503,7 @@ ntoskrnl_waitforobj(nt_dispatch_header *obj, uint32_t reason,
 		obj->dh_sigstate = FALSE;
 	REMOVE_LIST_ENTRY((&w.wb_waitlist));
 
-	lwkt_reltoken(&tokref);
+	lwkt_reltoken(&ntoskrnl_dispatchtoken);
 
 	return(STATUS_SUCCESS);
 }
@@ -526,14 +522,13 @@ ntoskrnl_waitforobjs(uint32_t cnt, nt_dispatch_header *obj[],
 	int			i, wcnt = 0, widx = 0, error = 0;
 	uint64_t		curtime;
 	struct timespec		t1, t2;
-	struct lwkt_tokref	tokref;
 
 	if (cnt > MAX_WAIT_OBJECTS)
 		return(STATUS_INVALID_PARAMETER);
 	if (cnt > THREAD_WAIT_OBJECTS && wb_array == NULL)
 		return(STATUS_INVALID_PARAMETER);
 
-	lwkt_gettoken(&tokref, &ntoskrnl_dispatchtoken);
+	lwkt_gettoken(&ntoskrnl_dispatchtoken);
 
 	if (wb_array == NULL)
 		w = &_wb_array[0];
@@ -554,7 +549,7 @@ ntoskrnl_waitforobjs(uint32_t cnt, nt_dispatch_header *obj[],
 				km->km_acquirecnt++;
 				km->km_ownerthread = curthread->td_proc;
 				if (wtype == WAITTYPE_ANY) {
-					lwkt_reltoken(&tokref);
+					lwkt_reltoken(&ntoskrnl_dispatchtoken);
 					return (STATUS_WAIT_0 + i);
 				}
 			}
@@ -562,7 +557,7 @@ ntoskrnl_waitforobjs(uint32_t cnt, nt_dispatch_header *obj[],
 			if (obj[i]->dh_type == EVENT_TYPE_SYNC)
 				obj[i]->dh_sigstate = FALSE;
 			if (wtype == WAITTYPE_ANY) {
-				lwkt_reltoken(&tokref);
+				lwkt_reltoken(&ntoskrnl_dispatchtoken);
 				return (STATUS_WAIT_0 + i);
 			}
 		}
@@ -602,7 +597,7 @@ ntoskrnl_waitforobjs(uint32_t cnt, nt_dispatch_header *obj[],
 
 	while (wcnt) {
 		nanotime(&t1);
-		lwkt_reltoken(&tokref);
+		lwkt_reltoken(&ntoskrnl_dispatchtoken);
 
 		if (duetime) {
 			ticks = 1 + tv.tv_sec * hz + tv.tv_usec * hz / 1000000;
@@ -611,7 +606,7 @@ ntoskrnl_waitforobjs(uint32_t cnt, nt_dispatch_header *obj[],
 			error = ndis_thsuspend(td, 0);
 		}
 
-		lwkt_gettoken(&tokref, &ntoskrnl_dispatchtoken);
+		lwkt_gettoken(&ntoskrnl_dispatchtoken);
 		nanotime(&t2);
 
 		for (i = 0; i < cnt; i++) {
@@ -647,16 +642,16 @@ ntoskrnl_waitforobjs(uint32_t cnt, nt_dispatch_header *obj[],
 	}
 
 	if (error == EWOULDBLOCK) {
-		lwkt_reltoken(&tokref);
+		lwkt_reltoken(&ntoskrnl_dispatchtoken);
 		return(STATUS_TIMEOUT);
 	}
 
 	if (wtype == WAITTYPE_ANY && wcnt) {
-		lwkt_reltoken(&tokref);
+		lwkt_reltoken(&ntoskrnl_dispatchtoken);
 		return(STATUS_WAIT_0 + widx);
 	}
 
-	lwkt_reltoken(&tokref);
+	lwkt_reltoken(&ntoskrnl_dispatchtoken);
 
 	return(STATUS_SUCCESS);
 }
@@ -1270,20 +1265,19 @@ ntoskrnl_init_mutex(kmutant *kmutex, uint32_t level)
 __stdcall static uint32_t
 ntoskrnl_release_mutex(kmutant *kmutex, uint8_t kwait)
 {
-	struct lwkt_tokref	tokref;
-
-	lwkt_gettoken(&tokref, &ntoskrnl_dispatchtoken);
+	lwkt_gettoken(&ntoskrnl_dispatchtoken);
 	if (kmutex->km_ownerthread != curthread->td_proc) {
-		lwkt_reltoken(&tokref);
+		lwkt_reltoken(&ntoskrnl_dispatchtoken);
 		return(STATUS_MUTANT_NOT_OWNED);
 	}
 	kmutex->km_acquirecnt--;
 	if (kmutex->km_acquirecnt == 0) {
 		kmutex->km_ownerthread = NULL;
-		lwkt_reltoken(&tokref);
+		lwkt_reltoken(&ntoskrnl_dispatchtoken);
 		ntoskrnl_wakeup(&kmutex->km_header);
-	} else
-		lwkt_reltoken(&tokref);
+	} else {
+		lwkt_reltoken(&ntoskrnl_dispatchtoken);
+	}
 
 	return(kmutex->km_acquirecnt);
 }
@@ -1308,12 +1302,11 @@ __stdcall uint32_t
 ntoskrnl_reset_event(nt_kevent *kevent)
 {
 	uint32_t		prevstate;
-	struct lwkt_tokref	tokref;
 
-	lwkt_gettoken(&tokref, &ntoskrnl_dispatchtoken);
+	lwkt_gettoken(&ntoskrnl_dispatchtoken);
 	prevstate = kevent->k_header.dh_sigstate;
 	kevent->k_header.dh_sigstate = FALSE;
-	lwkt_reltoken(&tokref);
+	lwkt_reltoken(&ntoskrnl_dispatchtoken);
 
 	return(prevstate);
 }

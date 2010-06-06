@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003-2010 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -356,6 +356,7 @@ lwkt_init_thread(thread_t td, void *stack, int stksize, int flags,
     td->td_flags = flags;
     td->td_gd = gd;
     td->td_pri = TDPRI_KERN_DAEMON + TDPRI_CRIT;
+    td->td_toks_stop = &td->td_toks_base;
 #ifdef SMP
     if ((flags & TDF_MPSAFE) == 0)
 	td->td_mpcount = 1;
@@ -520,7 +521,7 @@ lwkt_switch(void)
 	    td->td_release(td);
 
     crit_enter_gd(gd);
-    if (td->td_toks)
+    if (TD_TOKS_HELD(td))
 	    lwkt_relalltokens(td);
 
     /*
@@ -635,7 +636,7 @@ again:
 	     * cause the core MP lock to be released. 
 	     */
 	    if ((ntd->td_mpcount && mpheld == 0 && !cpu_try_mplock()) ||
-		(ntd->td_toks && lwkt_getalltokens(ntd) == 0)
+		(TD_TOKS_HELD(ntd) && lwkt_getalltokens(ntd) == 0)
 	    ) {
 		u_int32_t rqmask = gd->gd_runqmask;
 
@@ -653,7 +654,7 @@ again:
 			 * failure, but the variable is only needed for
 			 * the loop.
 			 */
-			if (ntd->td_toks && !lwkt_getalltokens(ntd)) {
+			if (TD_TOKS_HELD(ntd) && !lwkt_getalltokens(ntd)) {
 			    /* spinning due to token contention */
 #ifdef	INVARIANTS
 			    ++token_contention_count;
@@ -872,7 +873,7 @@ lwkt_preempt(thread_t ntd, int critpri)
 	need_lwkt_resched();
 	return;
     }
-    if (ntd->td_toks) {
+    if (TD_TOKS_HELD(ntd)) {
 	++preempt_miss;
 	need_lwkt_resched();
 	return;

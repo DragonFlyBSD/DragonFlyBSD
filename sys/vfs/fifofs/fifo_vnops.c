@@ -165,10 +165,9 @@ fifo_open(struct vop_open_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct fifoinfo *fip;
 	struct socket *rso, *wso;
-	lwkt_tokref	vlock;
 	int error;
 
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 	if ((fip = vp->v_fifoinfo) == NULL) {
 		MALLOC(fip, struct fifoinfo *, sizeof(*fip), M_FIFOINFO, M_WAITOK);
 		vp->v_fifoinfo = fip;
@@ -258,13 +257,13 @@ fifo_open(struct vop_open_args *ap)
 	}
 	vsetflags(vp, VNOTSEEKABLE);
 	error = vop_stdopen(ap);
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 	return (error);
 bad:
 	vop_stdopen(ap);	/* bump opencount/writecount as appropriate */
 	VOP_CLOSE(vp, ap->a_mode);
 done:
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 	return (error);
 }
 
@@ -279,9 +278,9 @@ static int
 fifo_read(struct vop_read_args *ap)
 {
 	struct uio *uio = ap->a_uio;
-	struct socket *rso = ap->a_vp->v_fifoinfo->fi_readsock;
+	struct vnode *vp = ap->a_vp;
+	struct socket *rso = vp->v_fifoinfo->fi_readsock;
 	int error, startresid;
-	lwkt_tokref vlock;
 	int flags;
 
 #ifdef DIAGNOSTIC
@@ -295,11 +294,11 @@ fifo_read(struct vop_read_args *ap)
 	else
 		flags = 0;
 	startresid = uio->uio_resid;
-	vn_unlock(ap->a_vp);
-	lwkt_gettoken(&vlock, &ap->a_vp->v_token);
+	vn_unlock(vp);
+	lwkt_gettoken(&vp->v_token);
 	error = soreceive(rso, NULL, uio, NULL, NULL, &flags);
-	lwkt_reltoken(&vlock);
-	vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY);
+	lwkt_reltoken(&vp->v_token);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	return (error);
 }
 
@@ -313,9 +312,9 @@ fifo_read(struct vop_read_args *ap)
 static int
 fifo_write(struct vop_write_args *ap)
 {
-	struct socket *wso = ap->a_vp->v_fifoinfo->fi_writesock;
 	struct thread *td = ap->a_uio->uio_td;
-	lwkt_tokref vlock;
+	struct vnode *vp = ap->a_vp;
+	struct socket *wso = vp->v_fifoinfo->fi_writesock;
 	int error;
 	int flags;
 
@@ -327,11 +326,11 @@ fifo_write(struct vop_write_args *ap)
 		flags = MSG_FNONBLOCKING;
 	else
 		flags = 0;
-	vn_unlock(ap->a_vp);
-	lwkt_gettoken(&vlock, &ap->a_vp->v_token);
+	vn_unlock(vp);
+	lwkt_gettoken(&vp->v_token);
 	error = sosend(wso, NULL, ap->a_uio, 0, NULL, flags, td);
-	lwkt_reltoken(&vlock);
-	vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY);
+	lwkt_reltoken(&vp->v_token);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	return (error);
 }
 
@@ -346,24 +345,24 @@ static int
 fifo_ioctl(struct vop_ioctl_args *ap)
 {
 	struct file filetmp;	/* Local */
-	lwkt_tokref vlock;
+	struct vnode *vp = ap->a_vp;
 	int error;
 
 	if (ap->a_fflag & FREAD) {
-		filetmp.f_data = ap->a_vp->v_fifoinfo->fi_readsock;
-		lwkt_gettoken(&vlock, &ap->a_vp->v_token);
+		filetmp.f_data = vp->v_fifoinfo->fi_readsock;
+		lwkt_gettoken(&vp->v_token);
 		error = soo_ioctl(&filetmp, ap->a_command, ap->a_data,
 				  ap->a_cred, ap->a_sysmsg);
-		lwkt_reltoken(&vlock);
+		lwkt_reltoken(&vp->v_token);
 		if (error)
 			return (error);
 	}
 	if (ap->a_fflag & FWRITE) {
-		filetmp.f_data = ap->a_vp->v_fifoinfo->fi_writesock;
-		lwkt_gettoken(&vlock, &ap->a_vp->v_token);
+		filetmp.f_data = vp->v_fifoinfo->fi_writesock;
+		lwkt_gettoken(&vp->v_token);
 		error = soo_ioctl(&filetmp, ap->a_command, ap->a_data,
 				  ap->a_cred, ap->a_sysmsg);
-		lwkt_reltoken(&vlock);
+		lwkt_reltoken(&vp->v_token);
 		if (error)
 			return (error);
 	}
@@ -381,9 +380,8 @@ fifo_kqfilter(struct vop_kqfilter_args *ap)
 	struct fifoinfo *fi = vp->v_fifoinfo;
 	struct socket *so;
 	struct signalsockbuf *ssb;
-	lwkt_tokref vlock;
 
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 
 	switch (ap->a_kn->kn_filter) {
 	case EVFILT_READ:
@@ -397,14 +395,14 @@ fifo_kqfilter(struct vop_kqfilter_args *ap)
 		ssb = &so->so_snd;
 		break;
 	default:
-		lwkt_reltoken(&vlock);
+		lwkt_reltoken(&vp->v_token);
 		return (1);
 	}
 
 	ap->a_kn->kn_hook = (caddr_t)vp;
 	ssb_insert_knote(ssb, ap->a_kn);
 
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 	return (0);
 }
 
@@ -413,11 +411,10 @@ filt_fifordetach(struct knote *kn)
 {
 	struct vnode *vp = (void *)kn->kn_hook;
 	struct socket *so = vp->v_fifoinfo->fi_readsock;
-	lwkt_tokref vlock;
 
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 	ssb_remove_knote(&so->so_rcv, kn);
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 }
 
 static int
@@ -425,17 +422,16 @@ filt_fiforead(struct knote *kn, long hint)
 {
 	struct vnode *vp = (void *)kn->kn_hook;
 	struct socket *so = vp->v_fifoinfo->fi_readsock;
-	lwkt_tokref vlock;
 
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 	kn->kn_data = so->so_rcv.ssb_cc;
 	if (so->so_state & SS_CANTRCVMORE) {
 		kn->kn_flags |= EV_EOF;
-		lwkt_reltoken(&vlock);
+		lwkt_reltoken(&vp->v_token);
 		return (1);
 	}
 	kn->kn_flags &= ~EV_EOF;
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 	return (kn->kn_data > 0);
 }
 
@@ -444,11 +440,10 @@ filt_fifowdetach(struct knote *kn)
 {
 	struct vnode *vp = (void *)kn->kn_hook;
 	struct socket *so = vp->v_fifoinfo->fi_writesock;
-	lwkt_tokref vlock;
 
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 	ssb_remove_knote(&so->so_snd, kn);
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 }
 
 static int
@@ -456,17 +451,16 @@ filt_fifowrite(struct knote *kn, long hint)
 {
 	struct vnode *vp = (void *)kn->kn_hook;
 	struct socket *so = vp->v_fifoinfo->fi_writesock;
-	lwkt_tokref vlock;
 
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 	kn->kn_data = ssb_space(&so->so_snd);
 	if (so->so_state & SS_CANTSENDMORE) {
 		kn->kn_flags |= EV_EOF;
-		lwkt_reltoken(&vlock);
+		lwkt_reltoken(&vp->v_token);
 		return (1);
 	}
 	kn->kn_flags &= ~EV_EOF;
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 	return (kn->kn_data >= so->so_snd.ssb_lowat);
 }
 
@@ -477,11 +471,11 @@ filt_fifowrite(struct knote *kn, long hint)
 static int
 fifo_poll(struct vop_poll_args *ap)
 {
+	struct vnode *vp = ap->a_vp;
 	struct file filetmp;
 	int events, revents = 0;
-	lwkt_tokref vlock;
 
-	lwkt_gettoken(&vlock, &ap->a_vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 	events = ap->a_events &
 		(POLLIN | POLLINIGNEOF | POLLPRI | POLLRDNORM | POLLRDBAND);
 	if (events) {
@@ -498,7 +492,7 @@ fifo_poll(struct vop_poll_args *ap)
 			events |= POLLINIGNEOF;
 		}
 		
-		filetmp.f_data = ap->a_vp->v_fifoinfo->fi_readsock;
+		filetmp.f_data = vp->v_fifoinfo->fi_readsock;
 		if (filetmp.f_data)
 			revents |= soo_poll(&filetmp, events, ap->a_cred);
 
@@ -511,11 +505,11 @@ fifo_poll(struct vop_poll_args *ap)
 	}
 	events = ap->a_events & (POLLOUT | POLLWRNORM | POLLWRBAND);
 	if (events) {
-		filetmp.f_data = ap->a_vp->v_fifoinfo->fi_writesock;
+		filetmp.f_data = vp->v_fifoinfo->fi_writesock;
 		if (filetmp.f_data)
 			revents |= soo_poll(&filetmp, events, ap->a_cred);
 	}
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 	return (revents);
 }
 
@@ -558,9 +552,8 @@ fifo_close(struct vop_close_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct fifoinfo *fip;
 	int error1, error2;
-	lwkt_tokref vlock;
 
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 	fip = vp->v_fifoinfo;
 	if (ap->a_fflag & FREAD) {
 		fip->fi_readers--;
@@ -574,7 +567,7 @@ fifo_close(struct vop_close_args *ap)
 	}
 	if (vp->v_sysref.refcnt > 1) {
 		vop_stdclose(ap);
-		lwkt_reltoken(&vlock);
+		lwkt_reltoken(&vp->v_token);
 		return (0);
 	}
 	error1 = soclose(fip->fi_readsock, FNONBLOCK);
@@ -586,7 +579,7 @@ fifo_close(struct vop_close_args *ap)
 	} else {
 		vop_stdclose(ap);
 	}
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 	return (error2);
 }
 

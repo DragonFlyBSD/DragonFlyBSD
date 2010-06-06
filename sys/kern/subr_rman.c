@@ -87,12 +87,11 @@ int
 rman_init(struct rman *rm)
 {
 	static int once;
-	lwkt_tokref ilock;
 
 	if (once == 0) {
 		once = 1;
 		TAILQ_INIT(&rman_head);
-		lwkt_token_init(&rman_tok);
+		lwkt_token_init(&rman_tok, 1);
 	}
 
 	if (rm->rm_type == RMAN_UNINIT)
@@ -104,11 +103,11 @@ rman_init(struct rman *rm)
 	rm->rm_slock = kmalloc(sizeof *rm->rm_slock, M_RMAN, M_NOWAIT);
 	if (rm->rm_slock == NULL)
 		return ENOMEM;
-	lwkt_token_init(rm->rm_slock);
+	lwkt_token_init(rm->rm_slock, 1);
 
-	lwkt_gettoken(&ilock, &rman_tok);
+	lwkt_gettoken(&rman_tok);
 	TAILQ_INSERT_TAIL(&rman_head, rm, rm_link);
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&rman_tok);
 	return 0;
 }
 
@@ -120,7 +119,6 @@ int
 rman_manage_region(struct rman *rm, u_long start, u_long end)
 {
 	struct resource *r, *s;
-	lwkt_tokref ilock;
 
 	DPRINTF(("rman_manage_region: <%s> request: start %#lx, end %#lx\n",
 	    rm->rm_descr, start, end));
@@ -134,7 +132,7 @@ rman_manage_region(struct rman *rm, u_long start, u_long end)
 	r->r_dev = 0;
 	r->r_rm = rm;
 
-	lwkt_gettoken(&ilock, rm->rm_slock);
+	lwkt_gettoken(rm->rm_slock);
 	for (s = TAILQ_FIRST(&rm->rm_list);
 	     s && s->r_end < r->r_start;
 	     s = TAILQ_NEXT(s, r_link))
@@ -145,7 +143,7 @@ rman_manage_region(struct rman *rm, u_long start, u_long end)
 	else
 		TAILQ_INSERT_BEFORE(s, r, r_link);
 
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(rm->rm_slock);
 	return 0;
 }
 
@@ -153,12 +151,11 @@ int
 rman_fini(struct rman *rm)
 {
 	struct resource *r;
-	lwkt_tokref ilock;
 
-	lwkt_gettoken(&ilock, rm->rm_slock);
+	lwkt_gettoken(rm->rm_slock);
 	TAILQ_FOREACH(r, &rm->rm_list, r_link) {
 		if (r->r_flags & RF_ALLOCATED) {
-			lwkt_reltoken(&ilock);
+			lwkt_reltoken(rm->rm_slock);
 			return EBUSY;
 		}
 	}
@@ -172,11 +169,12 @@ rman_fini(struct rman *rm)
 		TAILQ_REMOVE(&rm->rm_list, r, r_link);
 		kfree(r, M_RMAN);
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(rm->rm_slock);
+
 	/* XXX what's the point of this if we are going to free the struct? */
-	lwkt_gettoken(&ilock, &rman_tok);
+	lwkt_gettoken(&rman_tok);
 	TAILQ_REMOVE(&rman_head, rm, rm_link);
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&rman_tok);
 	kfree(rm->rm_slock, M_RMAN);
 
 	return 0;
@@ -189,7 +187,6 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 	u_int	want_activate;
 	struct	resource *r, *s, *rv;
 	u_long	rstart, rend;
-	lwkt_tokref ilock;
 
 	rv = 0;
 
@@ -200,7 +197,7 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 	want_activate = (flags & RF_ACTIVE);
 	flags &= ~RF_ACTIVE;
 
-	lwkt_gettoken(&ilock, rm->rm_slock);
+	lwkt_gettoken(rm->rm_slock);
 
 	for (r = TAILQ_FIRST(&rm->rm_list);
 	     r && r->r_end < start;
@@ -379,7 +376,7 @@ out:
 			rv = 0;
 		}
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(rm->rm_slock);
 	return (rv);
 }
 
@@ -423,13 +420,12 @@ rman_activate_resource(struct resource *r)
 {
 	int rv;
 	struct resource *whohas;
-	lwkt_tokref ilock;
 	struct rman *rm;
 
 	rm = r->r_rm;
-	lwkt_gettoken(&ilock, rm->rm_slock);
+	lwkt_gettoken(rm->rm_slock);
 	rv = int_rman_activate_resource(rm, r, &whohas);
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(rm->rm_slock);
 	return rv;
 }
 
@@ -437,7 +433,7 @@ rman_activate_resource(struct resource *r)
 
 /* XXX */
 int
-rman_await_resource(struct resource *r, lwkt_tokref_t ilock, int slpflags, int timo)
+rman_await_resource(struct resource *r, int slpflags, int timo)
 {
 	int	rv;
 	struct	resource *whohas;
@@ -445,7 +441,7 @@ rman_await_resource(struct resource *r, lwkt_tokref_t ilock, int slpflags, int t
 
 	rm = r->r_rm;
 	for (;;) {
-		lwkt_gettoken(ilock, rm->rm_slock);
+		lwkt_gettoken(rm->rm_slock);
 		rv = int_rman_activate_resource(rm, r, &whohas);
 		if (rv != EBUSY)
 			return (rv);	/* returns with ilock held */
@@ -462,7 +458,7 @@ rman_await_resource(struct resource *r, lwkt_tokref_t ilock, int slpflags, int t
 		whohas->r_flags |= RF_WANTED;
 		rv = tsleep(r->r_sharehead, slpflags, "rmwait", timo);
 		if (rv) {
-			lwkt_reltoken(ilock);
+			lwkt_reltoken(rm->rm_slock);
 			crit_exit();
 			return rv;
 		}
@@ -489,13 +485,12 @@ int_rman_deactivate_resource(struct resource *r)
 int
 rman_deactivate_resource(struct resource *r)
 {
-	lwkt_tokref ilock;
 	struct rman *rm;
 
 	rm = r->r_rm;
-	lwkt_gettoken(&ilock, rm->rm_slock);
+	lwkt_gettoken(rm->rm_slock);
 	int_rman_deactivate_resource(r);
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(rm->rm_slock);
 	return 0;
 }
 
@@ -589,12 +584,11 @@ int
 rman_release_resource(struct resource *r)
 {
 	struct	rman *rm = r->r_rm;
-	lwkt_tokref ilock;
 	int	rv;
 
-	lwkt_gettoken(&ilock, rm->rm_slock);
+	lwkt_gettoken(rm->rm_slock);
 	rv = int_rman_release_resource(rm, r);
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(rm->rm_slock);
 	return (rv);
 }
 

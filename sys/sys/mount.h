@@ -330,7 +330,7 @@ struct mount {
 /*
  * VFS MPLOCK helper.
  */
-#define VFS_MPLOCK_DECLARE	struct lwkt_tokref xlock; int xlock_mpsafe
+#define VFS_MPLOCK_DECLARE	int xlock_mpsafe
 
 #define VFS_MPLOCK1(mp)		VFS_MPLOCK_FLAG(mp, MNTK_MPSAFE)
 
@@ -338,7 +338,7 @@ struct mount {
 		do {							\
 			if (xlock_mpsafe) {				\
 				get_mplock();	/* TEMPORARY */		\
-				lwkt_gettoken(&xlock, &mp->mnt_token);	\
+				lwkt_gettoken(&mp->mnt_token);		\
 				xlock_mpsafe = 0;			\
 			}						\
 		} while(0)
@@ -349,7 +349,7 @@ struct mount {
 				xlock_mpsafe = 1;			\
 			} else {					\
 				get_mplock();	/* TEMPORARY */		\
-				lwkt_gettoken(&xlock, &mp->mnt_token);	\
+				lwkt_gettoken(&mp->mnt_token);		\
 				xlock_mpsafe = 0;			\
 			}						\
 		} while(0)
@@ -357,7 +357,7 @@ struct mount {
 #define VFS_MPUNLOCK(mp)						\
 		do {							\
 			if (xlock_mpsafe == 0) {			\
-				lwkt_reltoken(&xlock);			\
+				lwkt_reltoken(&mp->mnt_token);		\
 				rel_mplock();	/* TEMPORARY */		\
 			}						\
 		} while(0)

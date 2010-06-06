@@ -1816,7 +1816,6 @@ softdep_setup_freeblocks(struct inode *ip, off_t length)
 	struct freeblks *freeblks;
 	struct inodedep *inodedep;
 	struct allocdirect *adp;
-	lwkt_tokref vlock;
 	struct vnode *vp;
 	struct buf *bp;
 	struct fs *fs;
@@ -1901,12 +1900,12 @@ softdep_setup_freeblocks(struct inode *ip, off_t length)
 
 	info.fs = fs;
 	info.ip = ip;
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 	do {
 		count = RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL, 
 				softdep_setup_freeblocks_bp, &info);
 	} while (count != 0);
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 
 	if (inodedep_lookup(fs, ip->i_number, 0, &inodedep) != 0)
 		(void)free_inodedep(inodedep);
@@ -4209,15 +4208,13 @@ static int softdep_fsync_mountdev_bp(struct buf *bp, void *data);
 void
 softdep_fsync_mountdev(struct vnode *vp)
 {
-	lwkt_tokref vlock;
-
 	if (!vn_isdisk(vp, NULL))
 		panic("softdep_fsync_mountdev: vnode not a disk");
 	ACQUIRE_LOCK(&lk);
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 	RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL, 
 		softdep_fsync_mountdev_bp, vp);
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 	drain_output(vp, 1);
 	FREE_LOCK(&lk);
 }
@@ -4271,7 +4268,6 @@ int
 softdep_sync_metadata(struct vnode *vp, struct thread *td)
 {
 	struct softdep_sync_metadata_info info;
-	lwkt_tokref vlock;
 	int error, waitfor;
 
 	/*
@@ -4320,10 +4316,10 @@ top:
 
 	info.vp = vp;
 	info.waitfor = waitfor;
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 	error = RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL, 
 			softdep_sync_metadata_bp, &info);
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 	if (error < 0) {
 		FREE_LOCK(&lk);
 		return(-error);	/* error code */

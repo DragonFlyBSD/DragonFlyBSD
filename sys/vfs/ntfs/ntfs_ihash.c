@@ -70,7 +70,7 @@ ntfs_nthashinit(void)
 	lockinit(&ntfs_hashlock, "ntfs_nthashlock", 0, 0);
 	ntfs_nthashtbl = HASHINIT(desiredvnodes, M_NTFSNTHASH, M_WAITOK,
 	    &ntfs_nthash);
-	lwkt_token_init(&ntfs_nthash_slock);
+	lwkt_token_init(&ntfs_nthash_slock, 1);
 }
 
 /*
@@ -79,12 +79,10 @@ ntfs_nthashinit(void)
 int
 ntfs_nthash_uninit(struct vfsconf *vfc)
 {
-	lwkt_tokref ilock;
-
-	lwkt_gettoken(&ilock, &ntfs_nthash_slock);
+	lwkt_gettoken(&ntfs_nthash_slock);
 	if (ntfs_nthashtbl)
 		kfree(ntfs_nthashtbl, M_NTFSNTHASH);
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&ntfs_nthash_slock);
 
 	return 0;
 }
@@ -97,14 +95,13 @@ struct ntnode *
 ntfs_nthashlookup(cdev_t dev, ino_t inum)
 {
 	struct ntnode *ip;
-	lwkt_tokref ilock;
 
-	lwkt_gettoken(&ilock, &ntfs_nthash_slock);
+	lwkt_gettoken(&ntfs_nthash_slock);
 	for (ip = NTNOHASH(dev, inum)->lh_first; ip; ip = ip->i_hash.le_next) {
 		if (inum == ip->i_number && dev == ip->i_dev)
 			break;
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&ntfs_nthash_slock);
 
 	return (ip);
 }
@@ -116,13 +113,12 @@ void
 ntfs_nthashins(struct ntnode *ip)
 {
 	struct nthashhead *ipp;
-	lwkt_tokref ilock;
 
-	lwkt_gettoken(&ilock, &ntfs_nthash_slock);
+	lwkt_gettoken(&ntfs_nthash_slock);
 	ipp = NTNOHASH(ip->i_dev, ip->i_number);
 	LIST_INSERT_HEAD(ipp, ip, i_hash);
 	ip->i_flag |= IN_HASHED;
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&ntfs_nthash_slock);
 }
 
 /*
@@ -131,9 +127,7 @@ ntfs_nthashins(struct ntnode *ip)
 void
 ntfs_nthashrem(struct ntnode *ip)
 {
-	lwkt_tokref ilock;
-
-	lwkt_gettoken(&ilock, &ntfs_nthash_slock);
+	lwkt_gettoken(&ntfs_nthash_slock);
 	if (ip->i_flag & IN_HASHED) {
 		ip->i_flag &= ~IN_HASHED;
 		LIST_REMOVE(ip, i_hash);
@@ -142,5 +136,5 @@ ntfs_nthashrem(struct ntnode *ip)
 		ip->i_hash.le_prev = NULL;
 #endif
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&ntfs_nthash_slock);
 }

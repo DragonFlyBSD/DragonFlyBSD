@@ -127,7 +127,6 @@ nvtruncbuf(struct vnode *vp, off_t length, int blksize, int boff)
 	off_t truncloffset;
 	off_t truncboffset;
 	const char *filename;
-	lwkt_tokref vlock;
 	struct buf *bp;
 	int count;
 	int error;
@@ -146,7 +145,7 @@ nvtruncbuf(struct vnode *vp, off_t length, int blksize, int boff)
 	else
 		truncloffset = length;
 
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 	do {
 		count = RB_SCAN(buf_rb_tree, &vp->v_rbclean_tree,
 				nvtruncbuf_bp_trunc_cmp,
@@ -235,7 +234,7 @@ nvtruncbuf(struct vnode *vp, off_t length, int blksize, int boff)
 		}
 	} while(count);
 
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 
 	return (error);
 }

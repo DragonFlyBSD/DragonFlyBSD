@@ -197,7 +197,6 @@ ndis_runq(void *arg)
 {
 	struct ndis_req		*r = NULL, *die = NULL;
 	struct ndisproc		*p;
-	struct lwkt_tokref	tokref;
 
 	p = arg;
 
@@ -208,19 +207,19 @@ ndis_runq(void *arg)
 
 		/* Look for any jobs on the work queue. */
 
-		lwkt_gettoken(&tokref, &ndis_thr_token);
+		lwkt_gettoken(&ndis_thr_token);
 		p->np_state = NDIS_PSTATE_RUNNING;
 		while(STAILQ_FIRST(p->np_q) != NULL) {
 			r = STAILQ_FIRST(p->np_q);
 			STAILQ_REMOVE_HEAD(p->np_q, link);
-			lwkt_reltoken(&tokref);
+			lwkt_reltoken(&ndis_thr_token);
 
 			/* Do the work. */
 
 			if (r->nr_func != NULL)
 				(*r->nr_func)(r->nr_arg);
 
-			lwkt_gettoken(&tokref, &ndis_thr_token);
+			lwkt_gettoken(&ndis_thr_token);
 			STAILQ_INSERT_HEAD(&ndis_free, r, link);
 
 			/* Check for a shutdown request */
@@ -229,7 +228,7 @@ ndis_runq(void *arg)
 				die = r;
 		}
 		p->np_state = NDIS_PSTATE_SLEEPING;
-		lwkt_reltoken(&tokref);
+		lwkt_reltoken(&ndis_thr_token);
 
 		/* Bail if we were told to shut down. */
 
@@ -247,7 +246,7 @@ ndis_create_kthreads(void)
 	struct ndis_req		*r;
 	int			i, error = 0;
 
-	lwkt_token_init(&ndis_thr_token);
+	lwkt_token_init(&ndis_thr_token, 1);
 
 	STAILQ_INIT(&ndis_ttodo);
 	STAILQ_INIT(&ndis_itodo);
@@ -313,7 +312,6 @@ ndis_stop_thread(int t)
 	struct ndis_req		*r;
 	struct ndisqhead	*q;
 	thread_t		td;
-	struct lwkt_tokref	tokref;
 
 	if (t == NDIS_TASKQUEUE) {
 		q = &ndis_ttodo;
@@ -325,14 +323,14 @@ ndis_stop_thread(int t)
 
 	/* Create and post a special 'exit' job. */
 
-	lwkt_gettoken(&tokref, &ndis_thr_token);
+	lwkt_gettoken(&ndis_thr_token);
 	r = STAILQ_FIRST(&ndis_free);
 	STAILQ_REMOVE_HEAD(&ndis_free, link);
 	r->nr_func = NULL;
 	r->nr_arg = NULL;
 	r->nr_exit = TRUE;
 	STAILQ_INSERT_TAIL(q, r, link);
-	lwkt_reltoken(&tokref);
+	lwkt_reltoken(&ndis_thr_token);
 
 	ndis_thresume(td);
 
@@ -342,14 +340,12 @@ ndis_stop_thread(int t)
 
 	/* Now empty the job list. */
 
-	lwkt_gettoken(&tokref, &ndis_thr_token);
+	lwkt_gettoken(&ndis_thr_token);
 	while ((r = STAILQ_FIRST(q)) != NULL) {
 		STAILQ_REMOVE_HEAD(q, link);
 		STAILQ_INSERT_HEAD(&ndis_free, r, link);
 	}
-	lwkt_reltoken(&tokref);
-
-	return;
+	lwkt_reltoken(&ndis_thr_token);
 }
 
 static int
@@ -357,14 +353,13 @@ ndis_enlarge_thrqueue(int cnt)
 {
 	struct ndis_req		*r;
 	int			i;
-	struct lwkt_tokref	tokref;
 
 	for (i = 0; i < cnt; i++) {
 		r = kmalloc(sizeof(struct ndis_req), M_DEVBUF, M_WAITOK);
-		lwkt_gettoken(&tokref, &ndis_thr_token);
+		lwkt_gettoken(&ndis_thr_token);
 		STAILQ_INSERT_HEAD(&ndis_free, r, link);
 		ndis_jobs++;
-		lwkt_reltoken(&tokref);
+		lwkt_reltoken(&ndis_thr_token);
 	}
 
 	return(0);
@@ -375,18 +370,17 @@ ndis_shrink_thrqueue(int cnt)
 {
 	struct ndis_req		*r;
 	int			i;
-	struct lwkt_tokref	tokref;
 
 	for (i = 0; i < cnt; i++) {
-		lwkt_gettoken(&tokref, &ndis_thr_token);
+		lwkt_gettoken(&ndis_thr_token);
 		r = STAILQ_FIRST(&ndis_free);
 		if (r == NULL) {
-			lwkt_reltoken(&tokref);
+			lwkt_reltoken(&ndis_thr_token);
 			return(ENOMEM);
 		}
 		STAILQ_REMOVE_HEAD(&ndis_free, link);
 		ndis_jobs--;
-		lwkt_reltoken(&tokref);
+		lwkt_reltoken(&ndis_thr_token);
 		kfree(r, M_DEVBUF);
 	}
 
@@ -399,7 +393,6 @@ ndis_unsched(void (*func)(void *), void *arg, int t)
 	struct ndis_req		*r;
 	struct ndisqhead	*q;
 	thread_t		td;
-	struct lwkt_tokref	tokref;
 
 	if (t == NDIS_TASKQUEUE) {
 		q = &ndis_ttodo;
@@ -409,17 +402,17 @@ ndis_unsched(void (*func)(void *), void *arg, int t)
 		td = ndis_iproc.np_td;
 	}
 
-	lwkt_gettoken(&tokref, &ndis_thr_token);
+	lwkt_gettoken(&ndis_thr_token);
 	STAILQ_FOREACH(r, q, link) {
 		if (r->nr_func == func && r->nr_arg == arg) {
 			STAILQ_REMOVE(q, r, ndis_req, link);
 			STAILQ_INSERT_HEAD(&ndis_free, r, link);
-			lwkt_reltoken(&tokref);
+			lwkt_reltoken(&ndis_thr_token);
 			return(0);
 		}
 	}
 
-	lwkt_reltoken(&tokref);
+	lwkt_reltoken(&ndis_thr_token);
 
 	return(ENOENT);
 }
@@ -431,7 +424,6 @@ ndis_sched(void (*func)(void *), void *arg, int t)
 	struct ndisqhead	*q;
 	thread_t		td;
 	int			s;
-	struct lwkt_tokref	tokref;
 
 	if (t == NDIS_TASKQUEUE) {
 		q = &ndis_ttodo;
@@ -441,20 +433,20 @@ ndis_sched(void (*func)(void *), void *arg, int t)
 		td = ndis_iproc.np_td;
 	}
 
-	lwkt_gettoken(&tokref, &ndis_thr_token);
+	lwkt_gettoken(&ndis_thr_token);
 	/*
 	 * Check to see if an instance of this job is already
 	 * pending. If so, don't bother queuing it again.
 	 */
 	STAILQ_FOREACH(r, q, link) {
 		if (r->nr_func == func && r->nr_arg == arg) {
-			lwkt_reltoken(&tokref);
+			lwkt_reltoken(&ndis_thr_token);
 			return(0);
 		}
 	}
 	r = STAILQ_FIRST(&ndis_free);
 	if (r == NULL) {
-		lwkt_reltoken(&tokref);
+		lwkt_reltoken(&ndis_thr_token);
 		return(EAGAIN);
 	}
 	STAILQ_REMOVE_HEAD(&ndis_free, link);
@@ -466,7 +458,7 @@ ndis_sched(void (*func)(void *), void *arg, int t)
 		s = ndis_tproc.np_state;
 	else
 		s = ndis_iproc.np_state;
-	lwkt_reltoken(&tokref);
+	lwkt_reltoken(&ndis_thr_token);
 
 	/*
 	 * Post the job, but only if the thread is actually blocked

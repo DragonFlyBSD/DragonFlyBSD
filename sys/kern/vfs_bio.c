@@ -2630,7 +2630,6 @@ inmem(struct vnode *vp, off_t loffset)
 struct buf *
 findblk(struct vnode *vp, off_t loffset, int flags)
 {
-	lwkt_tokref vlock;
 	struct buf *bp;
 	int lkflags;
 
@@ -2639,9 +2638,9 @@ findblk(struct vnode *vp, off_t loffset, int flags)
 		lkflags |= LK_NOWAIT;
 
 	for (;;) {
-		lwkt_gettoken(&vlock, &vp->v_token);
+		lwkt_gettoken(&vp->v_token);
 		bp = buf_rb_hash_RB_LOOKUP(&vp->v_rbhash_tree, loffset);
-		lwkt_reltoken(&vlock);
+		lwkt_reltoken(&vp->v_token);
 		if (bp == NULL || (flags & FINDBLK_TEST))
 			break;
 		if (BUF_LOCK(bp, lkflags)) {

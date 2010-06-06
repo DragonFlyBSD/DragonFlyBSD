@@ -112,7 +112,6 @@ struct	resource {
 };
 
 struct lwkt_token;
-struct lwkt_tokref;
 
 struct	rman {
 	struct	resource_head 	rm_list;
@@ -126,7 +125,9 @@ struct	rman {
 TAILQ_HEAD(rman_head, rman);
 
 int	rman_activate_resource(struct resource *r);
-int	rman_await_resource(struct resource *r, struct lwkt_tokref *ilock, int slpflags, int timo);
+#if 0
+int	rman_await_resource(struct resource *r, int slpflags, int timo);
+#endif
 int	rman_deactivate_resource(struct resource *r);
 int	rman_fini(struct rman *rm);
 int	rman_init(struct rman *rm);

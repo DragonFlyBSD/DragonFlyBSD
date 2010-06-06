@@ -89,12 +89,11 @@ ffs_rawread_sync(struct vnode *vp)
 {
 	int error;
 	int upgraded;
-	lwkt_tokref vlock;
 
 	/*
 	 * Check for dirty mmap, pending writes and dirty buffers
 	 */
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 	if (bio_track_active(&vp->v_track_write) ||
 	    !RB_EMPTY(&vp->v_rbdirty_tree) ||
 	    (vp->v_flag & VOBJDIRTY) != 0) {
@@ -136,7 +135,7 @@ ffs_rawread_sync(struct vnode *vp)
 		error = 0;
 	}
 done:
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 	return error;
 }
 

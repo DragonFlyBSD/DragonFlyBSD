@@ -192,7 +192,7 @@ vfs_subr_init(void)
 		     KvaSize / factor2);
 	desiredvnodes = imax(desiredvnodes, maxproc * 8);
 
-	lwkt_token_init(&spechash_token);
+	lwkt_token_init(&spechash_token, 1);
 }
 
 /*
@@ -287,10 +287,9 @@ vinvalbuf(struct vnode *vp, int flags, int slpflag, int slptimeo)
 {
 	struct vinvalbuf_bp_info info;
 	vm_object_t object;
-	lwkt_tokref vlock;
 	int error;
 
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 
 	/*
 	 * If we are being asked to save, call fsync to ensure that the inode
@@ -363,7 +362,7 @@ vinvalbuf(struct vnode *vp, int flags, int slpflag, int slptimeo)
 		panic("vinvalbuf: flush failed, buffers still present");
 	error = 0;
 done:
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 	return (error);
 }
 
@@ -445,7 +444,6 @@ vtruncbuf(struct vnode *vp, off_t length, int blksize)
 {
 	off_t truncloffset;
 	const char *filename;
-	lwkt_tokref vlock;
 	int count;
 
 	/*
@@ -458,7 +456,7 @@ vtruncbuf(struct vnode *vp, off_t length, int blksize)
 	else
 		truncloffset = length;
 
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 	do {
 		count = RB_SCAN(buf_rb_tree, &vp->v_rbclean_tree, 
 				vtruncbuf_bp_trunc_cmp,
@@ -518,7 +516,7 @@ vtruncbuf(struct vnode *vp, off_t length, int blksize)
 		}
 	} while(count);
 
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 
 	return (0);
 }
@@ -631,7 +629,6 @@ vfsync(struct vnode *vp, int waitfor, int passes,
 	int (*waitoutput)(struct vnode *, struct thread *))
 {
 	struct vfsync_info info;
-	lwkt_tokref vlock;
 	int error;
 
 	bzero(&info, sizeof(info));
@@ -639,7 +636,7 @@ vfsync(struct vnode *vp, int waitfor, int passes,
 	if ((info.checkdef = checkdef) == NULL)
 		info.syncdeps = 1;
 
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 
 	switch(waitfor) {
 	case MNT_LAZY:
@@ -705,7 +702,7 @@ vfsync(struct vnode *vp, int waitfor, int passes,
 		}
 		break;
 	}
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 	return(error);
 }
 
@@ -829,17 +826,15 @@ vfsync_bp(struct buf *bp, void *data)
 int
 bgetvp(struct vnode *vp, struct buf *bp)
 {
-	lwkt_tokref vlock;
-
 	KASSERT(bp->b_vp == NULL, ("bgetvp: not free"));
 	KKASSERT((bp->b_flags & (B_HASHED|B_DELWRI|B_VNCLEAN|B_VNDIRTY)) == 0);
 
 	/*
 	 * Insert onto list for new vnode.
 	 */
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 	if (buf_rb_hash_RB_INSERT(&vp->v_rbhash_tree, bp)) {
-		lwkt_reltoken(&vlock);
+		lwkt_reltoken(&vp->v_token);
 		return (EEXIST);
 	}
 	bp->b_vp = vp;
@@ -848,7 +843,7 @@ bgetvp(struct vnode *vp, struct buf *bp)
 	if (buf_rb_tree_RB_INSERT(&vp->v_rbclean_tree, bp))
 		panic("reassignbuf: dup lblk/clean vp %p bp %p", vp, bp);
 	vhold(vp);
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 	return(0);
 }
 
@@ -859,7 +854,6 @@ void
 brelvp(struct buf *bp)
 {
 	struct vnode *vp;
-	lwkt_tokref vlock;
 
 	KASSERT(bp->b_vp != NULL, ("brelvp: NULL"));
 
@@ -867,7 +861,7 @@ brelvp(struct buf *bp)
 	 * Delete from old vnode list, if on one.
 	 */
 	vp = bp->b_vp;
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 	if (bp->b_flags & (B_VNDIRTY | B_VNCLEAN)) {
 		if (bp->b_flags & B_VNDIRTY)
 			buf_rb_tree_RB_REMOVE(&vp->v_rbdirty_tree, bp);
@@ -884,7 +878,7 @@ brelvp(struct buf *bp)
 		LIST_REMOVE(vp, v_synclist);
 	}
 	bp->b_vp = NULL;
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 
 	vdrop(vp);
 }
@@ -899,7 +893,6 @@ void
 reassignbuf(struct buf *bp)
 {
 	struct vnode *vp = bp->b_vp;
-	lwkt_tokref vlock;
 	int delay;
 
 	KKASSERT(vp != NULL);
@@ -912,7 +905,7 @@ reassignbuf(struct buf *bp)
 	if (bp->b_flags & B_PAGING)
 		panic("cannot reassign paging buffer");
 
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 	if (bp->b_flags & B_DELWRI) {
 		/*
 		 * Move to the dirty list, add the vnode to the worklist
@@ -968,7 +961,7 @@ reassignbuf(struct buf *bp)
 			LIST_REMOVE(vp, v_synclist);
 		}
 	}
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 }
 
 /*
@@ -1009,32 +1002,29 @@ bdevvp(cdev_t dev, struct vnode **vpp)
 int
 v_associate_rdev(struct vnode *vp, cdev_t dev)
 {
-	lwkt_tokref ilock;
-
 	if (dev == NULL)
 		return(ENXIO);
 	if (dev_is_good(dev) == 0)
 		return(ENXIO);
 	KKASSERT(vp->v_rdev == NULL);
 	vp->v_rdev = reference_dev(dev);
-	lwkt_gettoken(&ilock, &spechash_token);
+	lwkt_gettoken(&spechash_token);
 	SLIST_INSERT_HEAD(&dev->si_hlist, vp, v_cdevnext);
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&spechash_token);
 	return(0);
 }
 
 void
 v_release_rdev(struct vnode *vp)
 {
-	lwkt_tokref ilock;
 	cdev_t dev;
 
 	if ((dev = vp->v_rdev) != NULL) {
-		lwkt_gettoken(&ilock, &spechash_token);
+		lwkt_gettoken(&spechash_token);
 		SLIST_REMOVE(&dev->si_hlist, vp, vnode, v_cdevnext);
 		vp->v_rdev = NULL;
 		release_dev(dev);
-		lwkt_reltoken(&ilock);
+		lwkt_reltoken(&spechash_token);
 	}
 }
 
@@ -1201,7 +1191,6 @@ vrevoke(struct vnode *vp, struct ucred *cred)
 {
 	struct vnode *vq;
 	struct vnode *vqn;
-	lwkt_tokref ilock;
 	cdev_t dev;
 	int error;
 
@@ -1226,7 +1215,7 @@ vrevoke(struct vnode *vp, struct ucred *cred)
 		return(0);
 	}
 	reference_dev(dev);
-	lwkt_gettoken(&ilock, &spechash_token);
+	lwkt_gettoken(&spechash_token);
 
 	vqn = SLIST_FIRST(&dev->si_hlist);
 	if (vqn)
@@ -1239,7 +1228,7 @@ vrevoke(struct vnode *vp, struct ucred *cred)
 		/*v_release_rdev(vq);*/
 		vrele(vq);
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&spechash_token);
 	dev_drevoke(dev);
 	release_dev(dev);
 	return (0);
@@ -1352,19 +1341,18 @@ vgone_vxlocked(struct vnode *vp)
 int
 vfinddev(cdev_t dev, enum vtype type, struct vnode **vpp)
 {
-	lwkt_tokref ilock;
 	struct vnode *vp;
 
-	lwkt_gettoken(&ilock, &spechash_token);
+	lwkt_gettoken(&spechash_token);
 	SLIST_FOREACH(vp, &dev->si_hlist, v_cdevnext) {
 		if (type == vp->v_type) {
 			*vpp = vp;
 			vref(vp);
-			lwkt_reltoken(&ilock);
+			lwkt_reltoken(&spechash_token);
 			return (1);
 		}
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&spechash_token);
 	return (0);
 }
 
@@ -1377,16 +1365,15 @@ vfinddev(cdev_t dev, enum vtype type, struct vnode **vpp)
 int
 count_dev(cdev_t dev)
 {
-	lwkt_tokref ilock;
 	struct vnode *vp;
 	int count = 0;
 
 	if (SLIST_FIRST(&dev->si_hlist)) {
-		lwkt_gettoken(&ilock, &spechash_token);
+		lwkt_gettoken(&spechash_token);
 		SLIST_FOREACH(vp, &dev->si_hlist, v_cdevnext) {
 			count += vp->v_opencount;
 		}
-		lwkt_reltoken(&ilock);
+		lwkt_reltoken(&spechash_token);
 	}
 	return(count);
 }
@@ -2135,11 +2122,9 @@ vfs_msync_scan2(struct mount *mp, struct vnode *vp, void *data)
 int
 vn_pollrecord(struct vnode *vp, int events)
 {
-	lwkt_tokref vlock;
-
 	KKASSERT(curthread->td_proc != NULL);
 
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 	if (vp->v_pollinfo.vpi_revents & events) {
 		/*
 		 * This leaves events we are not interested
@@ -2151,12 +2136,12 @@ vn_pollrecord(struct vnode *vp, int events)
 		events &= vp->v_pollinfo.vpi_revents;
 		vp->v_pollinfo.vpi_revents &= ~events;
 
-		lwkt_reltoken(&vlock);
+		lwkt_reltoken(&vp->v_token);
 		return events;
 	}
 	vp->v_pollinfo.vpi_events |= events;
 	selrecord(curthread, &vp->v_pollinfo.vpi_selinfo);
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 	return 0;
 }
 
@@ -2169,9 +2154,7 @@ vn_pollrecord(struct vnode *vp, int events)
 void
 vn_pollevent(struct vnode *vp, int events)
 {
-	lwkt_tokref vlock;
-
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 	if (vp->v_pollinfo.vpi_events & events) {
 		/*
 		 * We clear vpi_events so that we don't
@@ -2188,7 +2171,7 @@ vn_pollevent(struct vnode *vp, int events)
 		vp->v_pollinfo.vpi_revents |= events;
 		selwakeup(&vp->v_pollinfo.vpi_selinfo);
 	}
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 }
 
 /*
@@ -2199,14 +2182,12 @@ vn_pollevent(struct vnode *vp, int events)
 void
 vn_pollgone(struct vnode *vp)
 {
-	lwkt_tokref vlock;
-
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 	if (vp->v_pollinfo.vpi_events) {
 		vp->v_pollinfo.vpi_events = 0;
 		selwakeup(&vp->v_pollinfo.vpi_selinfo);
 	}
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 }
 
 /*

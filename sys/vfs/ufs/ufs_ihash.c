@@ -68,18 +68,16 @@ ufs_ihashinit(void)
 		ihash <<= 1;
 	ihashtbl = kmalloc(sizeof(void *) * ihash, M_UFSIHASH, M_WAITOK|M_ZERO);
 	--ihash;
-	lwkt_token_init(&ufs_ihash_token);
+	lwkt_token_init(&ufs_ihash_token, 1);
 }
 
 int
 ufs_uninit(struct vfsconf *vfc)
 {
-    lwkt_tokref ilock;
-    
-    lwkt_gettoken(&ilock, &ufs_ihash_token);
+    lwkt_gettoken(&ufs_ihash_token);
     if (ihashtbl)
 		kfree(ihashtbl, M_UFSIHASH);
-    lwkt_reltoken(&ilock);
+    lwkt_reltoken(&ufs_ihash_token);
 
     return (0);
 }
@@ -91,14 +89,13 @@ struct vnode *
 ufs_ihashlookup(cdev_t dev, ino_t inum)
 {
 	struct inode *ip;
-	lwkt_tokref ilock;
 
-	lwkt_gettoken(&ilock, &ufs_ihash_token);
+	lwkt_gettoken(&ufs_ihash_token);
 	for (ip = *INOHASH(dev, inum); ip; ip = ip->i_next) {
 		if (inum == ip->i_number && dev == ip->i_dev)
 			break;
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&ufs_ihash_token);
 	if (ip)
 		return (ITOV(ip));
 	return (NULLVP);
@@ -116,11 +113,10 @@ ufs_ihashlookup(cdev_t dev, ino_t inum)
 struct vnode *
 ufs_ihashget(cdev_t dev, ino_t inum)
 {
-	lwkt_tokref ilock;
 	struct inode *ip;
 	struct vnode *vp;
 
-	lwkt_gettoken(&ilock, &ufs_ihash_token);
+	lwkt_gettoken(&ufs_ihash_token);
 loop:
 	for (ip = *INOHASH(dev, inum); ip; ip = ip->i_next) {
 		if (inum != ip->i_number || dev != ip->i_dev)
@@ -140,10 +136,10 @@ loop:
 			vput(vp);
 			goto loop;
 		}
-		lwkt_reltoken(&ilock);
+		lwkt_reltoken(&ufs_ihash_token);
 		return (vp);
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&ufs_ihash_token);
 	return (NULL);
 }
 
@@ -155,15 +151,14 @@ loop:
 int
 ufs_ihashcheck(cdev_t dev, ino_t inum)
 {
-	lwkt_tokref ilock;
 	struct inode *ip;
 
-	lwkt_gettoken(&ilock, &ufs_ihash_token);
+	lwkt_gettoken(&ufs_ihash_token);
 	for (ip = *INOHASH(dev, inum); ip; ip = ip->i_next) {
 		if (inum == ip->i_number && dev == ip->i_dev)
 			break;
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&ufs_ihash_token);
 	return(ip ? 1 : 0);
 }
 
@@ -175,14 +170,13 @@ ufs_ihashins(struct inode *ip)
 {
 	struct inode **ipp;
 	struct inode *iq;
-	lwkt_tokref ilock;
 
 	KKASSERT((ip->i_flag & IN_HASHED) == 0);
-	lwkt_gettoken(&ilock, &ufs_ihash_token);
+	lwkt_gettoken(&ufs_ihash_token);
 	ipp = INOHASH(ip->i_dev, ip->i_number);
 	while ((iq = *ipp) != NULL) {
 		if (ip->i_dev == iq->i_dev && ip->i_number == iq->i_number) {
-			lwkt_reltoken(&ilock);
+			lwkt_reltoken(&ufs_ihash_token);
 			return(EBUSY);
 		}
 		ipp = &iq->i_next;
@@ -190,7 +184,7 @@ ufs_ihashins(struct inode *ip)
 	ip->i_next = NULL;
 	*ipp = ip;
 	ip->i_flag |= IN_HASHED;
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&ufs_ihash_token);
 	return(0);
 }
 
@@ -200,11 +194,10 @@ ufs_ihashins(struct inode *ip)
 void
 ufs_ihashrem(struct inode *ip)
 {
-	lwkt_tokref ilock;
 	struct inode **ipp;
 	struct inode *iq;
 
-	lwkt_gettoken(&ilock, &ufs_ihash_token);
+	lwkt_gettoken(&ufs_ihash_token);
 	if (ip->i_flag & IN_HASHED) {
 		ipp = INOHASH(ip->i_dev, ip->i_number);
 		while ((iq = *ipp) != NULL) {
@@ -217,6 +210,6 @@ ufs_ihashrem(struct inode *ip)
 		ip->i_next = NULL;
 		ip->i_flag &= ~IN_HASHED;
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&ufs_ihash_token);
 }
 

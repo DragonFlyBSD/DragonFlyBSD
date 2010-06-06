@@ -120,7 +120,7 @@ vfs_sync_init(void)
 	syncer_workitem_pending = hashinit(syncer_maxdelay, M_DEVBUF,
 					    &syncer_mask);
 	syncer_maxdelay = syncer_mask + 1;
-	lwkt_token_init(&syncer_token);
+	lwkt_token_init(&syncer_token, 1);
 }
 
 /*
@@ -157,10 +157,9 @@ vfs_sync_init(void)
 void
 vn_syncer_add_to_worklist(struct vnode *vp, int delay)
 {
-	lwkt_tokref ilock;
 	int slot;
 
-	lwkt_gettoken(&ilock, &syncer_token);
+	lwkt_gettoken(&syncer_token);
 
 	if (vp->v_flag & VONWORKLST)
 		LIST_REMOVE(vp, v_synclist);
@@ -171,7 +170,7 @@ vn_syncer_add_to_worklist(struct vnode *vp, int delay)
 	LIST_INSERT_HEAD(&syncer_workitem_pending[slot], vp, v_synclist);
 	vsetflags(vp, VONWORKLST);
 
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&syncer_token);
 }
 
 struct  thread *updatethread;
@@ -192,8 +191,6 @@ sched_sync(void)
 	struct thread *td = curthread;
 	struct synclist *slp;
 	struct vnode *vp;
-	lwkt_tokref ilock;
-	lwkt_tokref vlock;
 	long starttime;
 
 	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc, td,
@@ -203,7 +200,7 @@ sched_sync(void)
 		kproc_suspend_loop();
 
 		starttime = time_second;
-		lwkt_gettoken(&ilock, &syncer_token);
+		lwkt_gettoken(&syncer_token);
 
 		/*
 		 * Push files whose dirty time has expired.  Be careful
@@ -232,7 +229,7 @@ sched_sync(void)
 			 * here.
 			 */
 			if (LIST_FIRST(slp) == vp) {
-				lwkt_gettoken(&vlock, &vp->v_token);
+				lwkt_gettoken(&vp->v_token);
 				if (LIST_FIRST(slp) == vp) {
 					if (RB_EMPTY(&vp->v_rbdirty_tree) &&
 					    !vn_isdisk(vp, NULL)) {
@@ -242,10 +239,10 @@ sched_sync(void)
 					}
 					vn_syncer_add_to_worklist(vp, syncdelay);
 				}
-				lwkt_reltoken(&vlock);
+				lwkt_reltoken(&vp->v_token);
 			}
 		}
-		lwkt_reltoken(&ilock);
+		lwkt_reltoken(&syncer_token);
 
 		/*
 		 * Do sync processing for each mount.
@@ -451,15 +448,14 @@ static int
 sync_reclaim(struct vop_reclaim_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
-	lwkt_tokref ilock;
 
-	lwkt_gettoken(&ilock, &syncer_token);
+	lwkt_gettoken(&syncer_token);
 	KKASSERT(vp->v_mount->mnt_syncer != vp);
 	if (vp->v_flag & VONWORKLST) {
 		LIST_REMOVE(vp, v_synclist);
 		vclrflags(vp, VONWORKLST);
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&syncer_token);
 
 	return (0);
 }

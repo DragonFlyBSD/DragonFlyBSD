@@ -206,7 +206,6 @@ ext2_fsync(struct vop_fsync_args *ap)
 {
 	struct ext2_fsync_bp_info info;
 	struct vnode *vp = ap->a_vp;
-	lwkt_tokref vlock;
 	int count;
 
 	/* 
@@ -218,7 +217,7 @@ ext2_fsync(struct vop_fsync_args *ap)
 	 */
 	ext2_discard_prealloc(VTOI(vp));
 
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 	info.vp = vp;
 loop:
 	info.waitfor = ap->a_waitfor;
@@ -236,7 +235,7 @@ loop:
 		}
 #endif
 	}
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 	return (EXT2_UPDATE(ap->a_vp, ap->a_waitfor == MNT_WAIT));
 }
 
@@ -1942,7 +1941,6 @@ ext2_kqfilter(struct vop_kqfilter_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct knote *kn = ap->a_kn;
-	lwkt_tokref vlock;
 
 	switch (kn->kn_filter) {
 	case EVFILT_READ:
@@ -1960,9 +1958,9 @@ ext2_kqfilter(struct vop_kqfilter_args *ap)
 
 	kn->kn_hook = (caddr_t)vp;
 
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 	SLIST_INSERT_HEAD(&vp->v_pollinfo.vpi_selinfo.si_note, kn, kn_selnext);
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 
 	return (0);
 }
@@ -1971,12 +1969,11 @@ static void
 filt_ext2detach(struct knote *kn)
 {
 	struct vnode *vp = (struct vnode *)kn->kn_hook;
-	lwkt_tokref vlock;
 
-	lwkt_gettoken(&vlock, &vp->v_token);
+	lwkt_gettoken(&vp->v_token);
 	SLIST_REMOVE(&vp->v_pollinfo.vpi_selinfo.si_note,
 	    kn, knote, kn_selnext);
-	lwkt_reltoken(&vlock);
+	lwkt_reltoken(&vp->v_token);
 }
 
 /*ARGSUSED*/
