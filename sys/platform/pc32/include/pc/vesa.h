@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/pc/vesa.h,v 1.7 1999/12/29 04:33:12 peter Exp $
- * $DragonFly: src/sys/platform/pc32/include/pc/vesa.h,v 1.5 2007/09/15 13:18:40 swildner Exp $
  */
 
 #ifndef _MACHINE_PC_VESA_H
@@ -52,7 +51,6 @@ struct vesa_mode  {
 	/* mandatory fields */
 	uint16_t	v_modeattr;
 #define V_MODESUPP	(1<<0)	/* VESA mode attributes */
-#define V_MODEOPTINFO	(1<<1)
 #define V_MODEBIOSOUT	(1<<2)
 #define V_MODECOLOR	(1<<3)
 #define V_MODEGRAPHICS	(1<<4)
