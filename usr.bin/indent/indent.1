@@ -34,7 +34,7 @@
 .\"	@(#)indent.1	8.1 (Berkeley) 7/1/93
 .\" $FreeBSD: src/usr.bin/indent/indent.1,v 1.28 2010/03/31 17:05:30 avg Exp $
 .\"
-.Dd May 6, 2010
+.Dd May 7, 2010
 .Dt INDENT 1
 .Os
 .Sh NAME
@@ -51,6 +51,7 @@
 .Op Fl \&bc | Fl nbc
 .Op Fl \&bl
 .Op Fl \&br
+.Op Fl bs | Fl nbs
 .Op Fl c Ns Ar n
 .Op Fl \&cd Ns Ar n
 .Bk -words
@@ -171,6 +172,15 @@ if (...) {
 }
 .Ed
 .Pp
+.It Fl bs , nbs
+If
+.Fl bs
+is specified, then a space is inserted after
+.Ic sizeof .
+.Fl nbs
+turns off this option.
+Default:
+.Fl nbs .
 .It Fl c Ns Ar n
 The column in which comments on code start.
 The default is 33.
