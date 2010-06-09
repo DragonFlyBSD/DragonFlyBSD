@@ -1055,40 +1055,6 @@ pmap_qenter(vm_offset_t va, vm_page_t *m, int count)
 #endif
 }
 
-void
-pmap_qenter2(vm_offset_t va, vm_page_t *m, int count, cpumask_t *mask)
-{
-	vm_offset_t end_va;
-	cpumask_t cmask = mycpu->gd_cpumask;
-
-	end_va = va + count * PAGE_SIZE;
-
-	while (va < end_va) {
-		pt_entry_t *pte;
-		pt_entry_t pteval;
-
-		/*
-		 * Install the new PTE.  If the pte changed from the prior
-		 * mapping we must reset the cpu mask and invalidate the page.
-		 * If the pte is the same but we have not seen it on the
-		 * current cpu, invlpg the existing mapping.  Otherwise the
-		 * entry is optimal and no invalidation is required.
-		 */
-		pte = vtopte(va);
-		pteval = VM_PAGE_TO_PHYS(*m) | PG_A | PG_RW | PG_V | pgeflag;
-		if (*pte != pteval) {
-			*mask = 0;
-			*pte = pteval;
-			cpu_invlpg((void *)va);
-		} else if ((*mask & cmask) == 0) {
-			cpu_invlpg((void *)va);
-		}
-		va += PAGE_SIZE;
-		m++;
-	}
-	*mask |= cmask;
-}
-
 /*
  * This routine jerks page mappings from the
  * kernel -- it is meant only for temporary mappings.
@@ -3811,48 +3777,3 @@ pmap_addr_hint(vm_object_t obj, vm_offset_t addr, vm_size_t size)
 	addr = (addr + (NBPDR - 1)) & ~(NBPDR - 1);
 	return addr;
 }
-
-
-#if defined(DEBUG)
-
-static void	pads (pmap_t pm);
-void		pmap_pvdump (vm_paddr_t pa);
-
-/* print address space of pmap*/
-static
-void
-pads(pmap_t pm)
-{
-	vm_offset_t va;
-	unsigned i, j;
-	pt_entry_t *ptep;
-
-	if (pm == &kernel_pmap)
-		return;
-	crit_enter();
-	for (i = 0; i < NPDEPG; i++) {
-		;
-	}
-	crit_exit();
-
-}
-
-void
-pmap_pvdump(vm_paddr_t pa)
-{
-	pv_entry_t pv;
-	vm_page_t m;
-
-	kprintf("pa %08llx", (long long)pa);
-	m = PHYS_TO_VM_PAGE(pa);
-	TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
-#ifdef used_to_be
-		kprintf(" -> pmap %p, va %x, flags %x",
-		    (void *)pv->pv_pmap, pv->pv_va, pv->pv_flags);
-#endif
-		kprintf(" -> pmap %p, va %x", (void *)pv->pv_pmap, pv->pv_va);
-		pads(pv->pv_pmap);
-	}
-	kprintf(" ");
-}
-#endif

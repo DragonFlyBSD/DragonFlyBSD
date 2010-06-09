@@ -836,40 +836,6 @@ pmap_qenter(vm_offset_t va, vm_page_t *m, int count)
 }
 
 /*
- * Map a set of VM pages to kernel virtual memory.  If a mapping changes
- * clear the supplied mask.  The caller handles any SMP interactions.
- * The mask is used to provide the caller with hints on what SMP interactions
- * might be needed.
- */
-void
-pmap_qenter2(vm_offset_t va, vm_page_t *m, int count, cpumask_t *mask)
-{
-	vm_offset_t end_va;
-	cpumask_t cmask = mycpu->gd_cpumask;
-
-	end_va = va + count * PAGE_SIZE;
-	KKASSERT(va >= KvaStart && end_va < KvaEnd);
-
-	while (va < end_va) {
-		pt_entry_t *pte;
-		pt_entry_t pteval;
-
-		pte = vtopte(va);
-		pteval = VM_PAGE_TO_PHYS(*m) | VPTE_R | VPTE_W | VPTE_V;
-		if (*pte != pteval) {
-			*mask = 0;
-			pmap_inval_pte_quick(pte, &kernel_pmap, va);
-			*pte = pteval;
-		} else if ((*mask & cmask) == 0) {
-			pmap_kenter_sync_quick(va);
-		}
-		va += PAGE_SIZE;
-		m++;
-	}
-	*mask |= cmask;
-}
-
-/*
  * Undo the effects of pmap_qenter*().
  */
 void
@@ -3218,60 +3184,3 @@ pmap_addr_hint(vm_object_t obj, vm_offset_t addr, vm_size_t size)
 	addr = (addr + (NBPDR - 1)) & ~(NBPDR - 1);
 	return addr;
 }
-
-
-#if defined(DEBUG)
-
-static void	pads (pmap_t pm);
-void		pmap_pvdump (vm_paddr_t pa);
-
-/* print address space of pmap*/
-static void
-pads(pmap_t pm)
-{
-	vm_offset_t va;
-	unsigned i, j;
-	pt_entry_t *ptep;
-
-	if (pm == &kernel_pmap)
-		return;
-	crit_enter();
-	for (i = 0; i < NPDEPG; i++) {
-#if JGPMAP32
-		if (pm->pm_pdir[i]) {
-			for (j = 0; j < NPTEPG; j++) {
-				va = (i << PDRSHIFT) + (j << PAGE_SHIFT);
-				if (pm == &kernel_pmap && va < KERNBASE)
-					continue;
-				if (pm != &kernel_pmap && va > UPT_MAX_ADDRESS)
-					continue;
-				ptep = pmap_pte_quick(pm, va);
-				if (pmap_pte_v(ptep))
-					kprintf("%lx:%lx ", va, *ptep);
-			};
-		}
-#endif
-	}
-	crit_exit();
-
-}
-
-void
-pmap_pvdump(vm_paddr_t pa)
-{
-	pv_entry_t pv;
-	vm_page_t m;
-
-	kprintf("pa %08llx", (long long)pa);
-	m = PHYS_TO_VM_PAGE(pa);
-	TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
-#ifdef used_to_be
-		kprintf(" -> pmap %p, va %x, flags %x",
-		    (void *)pv->pv_pmap, pv->pv_va, pv->pv_flags);
-#endif
-		kprintf(" -> pmap %p, va %lx", (void *)pv->pv_pmap, pv->pv_va);
-		pads(pv->pv_pmap);
-	}
-	kprintf(" ");
-}
-#endif

@@ -261,9 +261,6 @@ void	pmap_bootstrap (vm_paddr_t *);
 void	*pmap_mapdev (vm_paddr_t, vm_size_t);
 void	*pmap_mapdev_uncacheable(vm_paddr_t, vm_size_t);
 void	pmap_unmapdev (vm_offset_t, vm_size_t);
-#if JG
-pt_entry_t *pmap_pte (pmap_t, vm_offset_t) __pure2;
-#endif
 struct vm_page *pmap_use_pt (pmap_t, vm_offset_t);
 #ifdef SMP
 void	pmap_set_opt (void);
