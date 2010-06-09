@@ -192,6 +192,11 @@ _lwkt_token_pool_lookup(void *ptr)
 /*
  * Initialize a tokref_t prior to making it visible in the thread's
  * token array.
+ *
+ * As an optimization we set the MPSAFE flag if the thread is already
+ * holding the MP lock.  This bypasses unncessary calls to get_mplock() and
+ * rel_mplock() on tokens which are not normally MPSAFE when the thread
+ * is already holding the MP lock.
  */
 static __inline
 void
@@ -200,6 +205,8 @@ _lwkt_tokref_init(lwkt_tokref_t ref, lwkt_token_t tok, thread_t td)
 	ref->tr_tok = tok;
 	ref->tr_owner = td;
 	ref->tr_flags = tok->t_flags;
+	if (td->td_mpcount)
+		ref->tr_flags |= LWKT_TOKEN_MPSAFE;
 }
 
 /*
