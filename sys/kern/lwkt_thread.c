@@ -640,6 +640,8 @@ again:
 	    ) {
 		u_int32_t rqmask = gd->gd_runqmask;
 
+		cpu_pause();
+
 		mpheld = MP_LOCK_HELD();
 		ntd = NULL;
 		while (rqmask) {
