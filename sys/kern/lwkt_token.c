@@ -115,6 +115,68 @@ SYSCTL_INT(_lwkt, OID_AUTO, token_debug, CTLFLAG_RW, &token_debug, 0, "");
 #endif
 
 /*
+ * Global tokens.  These replace the MP lock for major subsystem locking.
+ * These tokens are initially used to lockup both global and individual
+ * operations.
+ *
+ * Once individual structures get their own locks these tokens are used
+ * only to protect global lists & other variables and to interlock
+ * allocations and teardowns and such.
+ *
+ * The UP initializer causes token acquisition to also acquire the MP lock
+ * for maximum compatibility.  The feature may be enabled and disabled at
+ * any time, the MP state is copied to the tokref when the token is acquired
+ * and will not race against sysctl changes.
+ */
+struct lwkt_token pmap_token = LWKT_TOKEN_UP_INITIALIZER;
+struct lwkt_token dev_token = LWKT_TOKEN_UP_INITIALIZER;
+struct lwkt_token vm_page_token = LWKT_TOKEN_UP_INITIALIZER;
+struct lwkt_token vm_object_token = LWKT_TOKEN_UP_INITIALIZER;
+struct lwkt_token vm_map_token = LWKT_TOKEN_UP_INITIALIZER;
+struct lwkt_token proc_token = LWKT_TOKEN_UP_INITIALIZER;
+struct lwkt_token tty_token = LWKT_TOKEN_UP_INITIALIZER;
+struct lwkt_token vnode_token = LWKT_TOKEN_UP_INITIALIZER;
+
+SYSCTL_INT(_lwkt, OID_AUTO, pmap_mpsafe,
+	   CTLFLAG_RW, &pmap_token.t_flags, 0, "");
+SYSCTL_INT(_lwkt, OID_AUTO, dev_mpsafe,
+	   CTLFLAG_RW, &dev_token.t_flags, 0, "");
+SYSCTL_INT(_lwkt, OID_AUTO, vm_page_mpsafe,
+	   CTLFLAG_RW, &vm_page_token.t_flags, 0, "");
+SYSCTL_INT(_lwkt, OID_AUTO, vm_object_mpsafe,
+	   CTLFLAG_RW, &vm_object_token.t_flags, 0, "");
+SYSCTL_INT(_lwkt, OID_AUTO, vm_map_mpsafe,
+	   CTLFLAG_RW, &vm_map_token.t_flags, 0, "");
+SYSCTL_INT(_lwkt, OID_AUTO, proc_mpsafe,
+	   CTLFLAG_RW, &proc_token.t_flags, 0, "");
+SYSCTL_INT(_lwkt, OID_AUTO, tty_mpsafe,
+	   CTLFLAG_RW, &tty_token.t_flags, 0, "");
+SYSCTL_INT(_lwkt, OID_AUTO, vnode_mpsafe,
+	   CTLFLAG_RW, &vnode_token.t_flags, 0, "");
+
+/*
+ * The collision count is bumped every time the LWKT scheduler fails
+ * to acquire needed tokens in addition to a normal lwkt_gettoken()
+ * stall.
+ */
+SYSCTL_LONG(_lwkt, OID_AUTO, pmap_collisions,
+	    CTLFLAG_RW, &pmap_token.t_collisions, 0, "");
+SYSCTL_LONG(_lwkt, OID_AUTO, dev_collisions,
+	    CTLFLAG_RW, &dev_token.t_collisions, 0, "");
+SYSCTL_LONG(_lwkt, OID_AUTO, vm_page_collisions,
+	    CTLFLAG_RW, &vm_page_token.t_collisions, 0, "");
+SYSCTL_LONG(_lwkt, OID_AUTO, vm_object_collisions,
+	    CTLFLAG_RW, &vm_object_token.t_collisions, 0, "");
+SYSCTL_LONG(_lwkt, OID_AUTO, vm_map_collisions,
+	    CTLFLAG_RW, &vm_map_token.t_collisions, 0, "");
+SYSCTL_LONG(_lwkt, OID_AUTO, proc_collisions,
+	    CTLFLAG_RW, &proc_token.t_collisions, 0, "");
+SYSCTL_LONG(_lwkt, OID_AUTO, tty_collisions,
+	    CTLFLAG_RW, &tty_token.t_collisions, 0, "");
+SYSCTL_LONG(_lwkt, OID_AUTO, vnode_collisions,
+	    CTLFLAG_RW, &vnode_token.t_collisions, 0, "");
+
+/*
  * Return a pool token given an address
  */
 static __inline
@@ -149,7 +211,9 @@ _lwkt_tokref_init(lwkt_tokref_t ref, lwkt_token_t tok, thread_t td)
  * tokens that the thread had acquired prior to going to sleep.
  *
  * The scheduler is responsible for maintaining the MP lock count, so
- * we don't need to deal with tr_flags here.
+ * we don't need to deal with tr_flags here.  We also do not do any
+ * logging here.  The logging done by lwkt_gettoken() is plenty good
+ * enough to get a feel for it.
  *
  * Called from a critical section.
  */
@@ -195,6 +259,7 @@ lwkt_getalltokens(thread_t td)
 			 * Otherwise we failed to acquire all the tokens.
 			 * Undo and return.
 			 */
+			atomic_add_long(&tok->t_collisions, 1);
 			lwkt_relalltokens(td);
 			return(FALSE);
 		}
@@ -333,6 +398,7 @@ _lwkt_gettokref(lwkt_tokref_t ref, thread_t td)
 		 * return tr_tok->t_ref should be assigned to this specific
 		 * ref.
 		 */
+		atomic_add_long(&ref->tr_tok->t_collisions, 1);
 		logtoken(fail, ref);
 		lwkt_yield();
 		logtoken(succ, ref);

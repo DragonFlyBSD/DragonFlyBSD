@@ -103,6 +103,7 @@ struct intrframe;
 typedef struct lwkt_token {
     struct lwkt_tokref	*t_ref;		/* Owning ref or NULL */
     intptr_t		t_flags;	/* MP lock required */
+    long		t_collisions;	/* Collision counter */
 } lwkt_token;
 
 #define LWKT_TOKEN_MPSAFE	0x0001
@@ -112,16 +113,18 @@ typedef struct lwkt_token {
  *	UP - Not MPSAFE (full MP lock will also be acquired)
  *	MP - Is MPSAFE  (only the token will be acquired)
  */
-#define LWKT_TOKEN_UP_INITIALIZER(head)	\
+#define LWKT_TOKEN_UP_INITIALIZER	\
 {					\
 	.t_ref = NULL,			\
-	.t_flags = 0			\
+	.t_flags = 0,			\
+	.t_collisions = 0		\
 }
 
-#define LWKT_TOKEN_MP_INITIALIZER(head)	\
+#define LWKT_TOKEN_MP_INITIALIZER	\
 {					\
 	.t_ref = NULL,			\
-	.t_flags = LWKT_TOKEN_MPSAFE	\
+	.t_flags = LWKT_TOKEN_MPSAFE,	\
+	.t_collisions = 0		\
 }
 
 #define ASSERT_LWKT_TOKEN_HELD(tok) \
@@ -338,14 +341,29 @@ struct thread {
 #define TDPRI_MASK		31
 #define TDPRI_CRIT		32	/* high bits of td_pri used for crit */
 
-#ifdef _KERNEL
 #define LWKT_THREAD_STACK	(UPAGES * PAGE_SIZE)
-#endif
 
 #define CACHE_NTHREADS		6
 
 #define IN_CRITICAL_SECT(td)	((td)->td_pri >= TDPRI_CRIT)
 
+#ifdef _KERNEL
+
+/*
+ * Global tokens
+ */
+extern struct lwkt_token pmap_token;
+extern struct lwkt_token dev_token;
+extern struct lwkt_token vm_page_token;
+extern struct lwkt_token vm_object_token;
+extern struct lwkt_token vm_map_token;
+extern struct lwkt_token proc_token;
+extern struct lwkt_token tty_token;
+extern struct lwkt_token vnode_token;
+
+/*
+ * Procedures
+ */
 extern void lwkt_init(void);
 extern struct thread *lwkt_alloc_thread(struct thread *, int, int, int);
 extern void lwkt_init_thread(struct thread *, void *, int, int,
@@ -402,9 +420,7 @@ extern int  lwkt_send_ipiq3_mask(cpumask_t, ipifunc3_t, void *, int);
 extern void lwkt_wait_ipiq(struct globaldata *, int);
 extern int  lwkt_seq_ipiq(struct globaldata *);
 extern void lwkt_process_ipiq(void);
-#ifdef _KERNEL
 extern void lwkt_process_ipiq_frame(struct intrframe *);
-#endif
 extern void lwkt_smp_stopped(void);
 extern void lwkt_synchronize_ipiqs(const char *);
 
@@ -424,6 +440,8 @@ extern int  lwkt_create (void (*func)(void *), void *, struct thread **,
 		const char *, ...) __printflike(7, 8);
 extern void lwkt_exit (void) __dead2;
 extern void lwkt_remove_tdallq (struct thread *);
+
+#endif
 
 #endif
 
