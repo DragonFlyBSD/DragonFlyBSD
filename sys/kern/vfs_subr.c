@@ -1146,6 +1146,8 @@ vclean_vxlocked(struct vnode *vp, int flags)
 	 * If the vnode has an object, destroy it.
 	 */
 	if ((object = vp->v_object) != NULL) {
+		lwkt_gettoken(&vm_token);
+		KKASSERT(object == vp->v_object);
 		if (object->ref_count == 0) {
 			if ((object->flags & OBJ_DEAD) == 0)
 				vm_object_terminate(object);
@@ -1153,6 +1155,7 @@ vclean_vxlocked(struct vnode *vp, int flags)
 			vm_pager_deallocate(object);
 		}
 		vclrflags(vp, VOBJBUF);
+		lwkt_reltoken(&vm_token);
 	}
 	KKASSERT((vp->v_flag & VOBJBUF) == 0);
 

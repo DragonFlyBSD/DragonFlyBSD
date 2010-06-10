@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -139,10 +141,18 @@ static int object_hash_rand;
 #define VM_OBJECTS_INIT 256
 static struct vm_object vm_objects_init[VM_OBJECTS_INIT];
 
+/*
+ * Initialize a freshly allocated object
+ *
+ * Used only by vm_object_allocate() and zinitna().
+ *
+ * No requirements.
+ */
 void
 _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 {
 	int incr;
+
 	RB_INIT(&object->rb_memq);
 	LIST_INIT(&object->shadow_head);
 
@@ -177,16 +187,18 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 	RB_INIT(&object->swblock_root);
 
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 	TAILQ_INSERT_TAIL(&vm_object_list, object, object_list);
 	vm_object_count++;
 	object_hash_rand = object->hash_rand;
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 }
 
 /*
- *	vm_object_init:
+ * Initialize the VM objects module.
  *
- *	Initialize the VM objects module.
+ * Called from the low level boot code only.
  */
 void
 vm_object_init(void)
@@ -208,11 +220,10 @@ vm_object_init2(void)
 }
 
 /*
- *	vm_object_allocate:
+ * Allocate and return a new object of the specified type and size.
  *
- *	Returns a new object with the given size.
+ * No requirements.
  */
-
 vm_object_t
 vm_object_allocate(objtype_t type, vm_pindex_t size)
 {
@@ -225,11 +236,11 @@ vm_object_allocate(objtype_t type, vm_pindex_t size)
 	return (result);
 }
 
-
 /*
- *	vm_object_reference:
+ * Add an additional reference to a vm_object.
  *
- *	Gets another reference to the given object.
+ * Object passed by caller must be stable or caller must already
+ * hold vm_token to avoid races.
  */
 void
 vm_object_reference(vm_object_t object)
@@ -237,13 +248,20 @@ vm_object_reference(vm_object_t object)
 	if (object == NULL)
 		return;
 
+	lwkt_gettoken(&vm_token);
 	object->ref_count++;
 	if (object->type == OBJT_VNODE) {
 		vref(object->handle);
 		/* XXX what if the vnode is being destroyed? */
 	}
+	lwkt_reltoken(&vm_token);
 }
 
+/*
+ * Dereference an object and its underlying vnode.
+ *
+ * The caller must hold vm_token.
+ */
 static void
 vm_object_vndeallocate(vm_object_t object)
 {
@@ -266,32 +284,32 @@ vm_object_vndeallocate(vm_object_t object)
 }
 
 /*
- *	vm_object_deallocate:
+ * Release a reference to the specified object, gained either through a
+ * vm_object_allocate or a vm_object_reference call.  When all references
+ * are gone, storage associated with this object may be relinquished.
  *
- *	Release a reference to the specified object,
- *	gained either through a vm_object_allocate
- *	or a vm_object_reference call.  When all references
- *	are gone, storage associated with this object
- *	may be relinquished.
- *
- *	No object may be locked.
+ * The object must not be locked.
  */
 void
 vm_object_deallocate(vm_object_t object)
 {
 	vm_object_t temp;
 
+	lwkt_gettoken(&vm_token);
+
 	while (object != NULL) {
 		if (object->type == OBJT_VNODE) {
 			vm_object_vndeallocate(object);
-			return;
+			break;
 		}
 
 		if (object->ref_count == 0) {
-			panic("vm_object_deallocate: object deallocated too many times: %d", object->type);
-		} else if (object->ref_count > 2) {
+			panic("vm_object_deallocate: object deallocated "
+			      "too many times: %d", object->type);
+		}
+		if (object->ref_count > 2) {
 			object->ref_count--;
-			return;
+			break;
 		}
 
 		/*
@@ -301,8 +319,9 @@ vm_object_deallocate(vm_object_t object)
 		if ((object->ref_count == 2) && (object->shadow_count == 0)) {
 			vm_object_set_flag(object, OBJ_ONEMAPPING);
 			object->ref_count--;
-			return;
-		} else if ((object->ref_count == 2) && (object->shadow_count == 1)) {
+			break;
+		}
+		if ((object->ref_count == 2) && (object->shadow_count == 1)) {
 			object->ref_count--;
 			if ((object->handle == NULL) &&
 			    (object->type == OBJT_DEFAULT ||
@@ -311,9 +330,11 @@ vm_object_deallocate(vm_object_t object)
 
 				robject = LIST_FIRST(&object->shadow_head);
 				KASSERT(robject != NULL,
-				    ("vm_object_deallocate: ref_count: %d, shadow_count: %d",
-					 object->ref_count,
-					 object->shadow_count));
+					("vm_object_deallocate: ref_count: "
+					"%d, shadow_count: %d",
+					object->ref_count,
+					object->shadow_count));
+
 				if ((robject->handle == NULL) &&
 				    (robject->type == OBJT_DEFAULT ||
 				     robject->type == OBJT_SWAP)) {
@@ -339,15 +360,19 @@ vm_object_deallocate(vm_object_t object)
 					continue;
 				}
 			}
-
-			return;
-
-		} else {
-			object->ref_count--;
-			if (object->ref_count != 0)
-				return;
+			break;
 		}
 
+		/*
+		 * Normal dereferencing path
+		 */
+		object->ref_count--;
+		if (object->ref_count != 0)
+			break;
+
+		/*
+		 * Termination path
+		 */
 doterm:
 
 		temp = object->backing_object;
@@ -367,14 +392,16 @@ doterm:
 			vm_object_terminate(object);
 		object = temp;
 	}
+	lwkt_reltoken(&vm_token);
 }
 
 /*
- *	vm_object_terminate actually destroys the specified object, freeing
- *	up all previously used resources.
+ * Destroy the specified object, freeing up related resources.
  *
- *	The object must be locked.
- *	This routine may block.
+ * The object must have zero references.
+ *
+ * The caller must be holding vm_token and properly interlock with
+ * OBJ_DEAD.
  */
 static int vm_object_terminate_callback(vm_page_t p, void *data);
 
@@ -384,6 +411,7 @@ vm_object_terminate(vm_object_t object)
 	/*
 	 * Make sure no one uses us.
 	 */
+	ASSERT_LWKT_TOKEN_HELD(&vm_token);
 	vm_object_set_flag(object, OBJ_DEAD);
 
 	/*
@@ -452,6 +480,9 @@ vm_object_terminate(vm_object_t object)
 	zfree(obj_zone, object);
 }
 
+/*
+ * The caller must hold vm_token.
+ */
 static int
 vm_object_terminate_callback(vm_page_t p, void *data __unused)
 {
@@ -474,43 +505,51 @@ vm_object_terminate_callback(vm_page_t p, void *data __unused)
 /*
  * The object is dead but still has an object<->pager association.  Sleep
  * and return.  The caller typically retests the association in a loop.
+ *
+ * No requirement.
  */
 void
 vm_object_dead_sleep(vm_object_t object, const char *wmesg)
 {
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 	if (object->handle) {
 		vm_object_set_flag(object, OBJ_DEADWNT);
 		tsleep(object, 0, wmesg, 0);
 	}
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 }
 
 /*
  * Wakeup anyone waiting for the object<->pager disassociation on
  * a dead object.
+ *
+ * No requirement.
  */
 void
 vm_object_dead_wakeup(vm_object_t object)
 {
+	lwkt_gettoken(&vm_token);
 	if (object->flags & OBJ_DEADWNT) {
 		vm_object_clear_flag(object, OBJ_DEADWNT);
 		wakeup(object);
 	}
+	lwkt_reltoken(&vm_token);
 }
 
 /*
- *	vm_object_page_clean
+ * Clean all dirty pages in the specified range of object.  Leaves page
+ * on whatever queue it is currently on.   If NOSYNC is set then do not
+ * write out pages with PG_NOSYNC set (originally comes from MAP_NOSYNC),
+ * leaving the object dirty.
  *
- *	Clean all dirty pages in the specified range of object.  Leaves page 
- * 	on whatever queue it is currently on.   If NOSYNC is set then do not
- *	write out pages with PG_NOSYNC set (originally comes from MAP_NOSYNC),
- *	leaving the object dirty.
+ * When stuffing pages asynchronously, allow clustering.  XXX we need a
+ * synchronous clustering mode implementation.
  *
- *	When stuffing pages asynchronously, allow clustering.  XXX we need a
- *	synchronous clustering mode implementation.
+ * Odd semantics: if start == end, we clean everything.
  *
- *	Odd semantics: if start == end, we clean everything.
+ * The object must be locked? XXX
  */
 static int vm_object_page_clean_pass1(struct vm_page *p, void *data);
 static int vm_object_page_clean_pass2(struct vm_page *p, void *data);
@@ -525,9 +564,12 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	int pagerflags;
 	int curgeneration;
 
+	lwkt_gettoken(&vm_token);
 	if (object->type != OBJT_VNODE ||
-		(object->flags & OBJ_MIGHTBEDIRTY) == 0)
+	    (object->flags & OBJ_MIGHTBEDIRTY) == 0) {
+		lwkt_reltoken(&vm_token);
 		return;
+	}
 
 	pagerflags = (flags & (OBJPC_SYNC | OBJPC_INVAL)) ? 
 			VM_PAGER_PUT_SYNC : VM_PAGER_CLUSTER_OK;
@@ -588,8 +630,12 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 
 	vm_object_clear_flag(object, OBJ_CLEANING);
 	crit_exit();
+	lwkt_reltoken(&vm_token);
 }
 
+/*
+ * The caller must hold vm_token.
+ */
 static 
 int
 vm_object_page_clean_pass1(struct vm_page *p, void *data)
@@ -604,6 +650,9 @@ vm_object_page_clean_pass1(struct vm_page *p, void *data)
 	return(0);
 }
 
+/*
+ * The caller must hold vm_token.
+ */
 static 
 int
 vm_object_page_clean_pass2(struct vm_page *p, void *data)
@@ -661,15 +710,10 @@ vm_object_page_clean_pass2(struct vm_page *p, void *data)
 }
 
 /*
- * This routine must be called within a critical section to properly avoid
- * an interrupt unbusy/free race that can occur prior to the busy check.
+ * Collect the specified page and nearby pages and flush them out.
+ * The number of pages flushed is returned.
  *
- * Using the object generation number here to detect page ripout is not
- * the best idea in the world. XXX
- *
- * NOTE: we operate under the assumption that a page found to not be busy
- * will not be ripped out from under us by an interrupt.  XXX we should
- * recode this to explicitly busy the pages.
+ * The caller must hold vm_token.
  */
 static int
 vm_object_page_collect_flush(vm_object_t object, vm_page_t p, int pagerflags)
@@ -782,36 +826,6 @@ vm_object_page_collect_flush(vm_object_t object, vm_page_t p, int pagerflags)
 	return(maxf + 1);
 }
 
-#ifdef not_used
-/* XXX I cannot tell if this should be an exported symbol */
-/*
- *	vm_object_deactivate_pages
- *
- *	Deactivate all pages in the specified object.  (Keep its pages
- *	in memory even though it is no longer referenced.)
- *
- *	The object must be locked.
- */
-static int vm_object_deactivate_pages_callback(vm_page_t p, void *data);
-
-static void
-vm_object_deactivate_pages(vm_object_t object)
-{
-	crit_enter();
-	vm_page_rb_tree_RB_SCAN(&object->rb_memq, NULL,
-				vm_object_deactivate_pages_callback, NULL);
-	crit_exit();
-}
-
-static int
-vm_object_deactivate_pages_callback(vm_page_t p, void *data __unused)
-{
-	vm_page_deactivate(p);
-	return(0);
-}
-
-#endif
-
 /*
  * Same as vm_object_pmap_copy, except range checking really
  * works, and is meant for small sections of an object.
@@ -837,22 +851,22 @@ vm_object_pmap_copy_1(vm_object_t object, vm_pindex_t start, vm_pindex_t end)
 	 * an interrupt unbusy/free, and our protect call.
 	 */
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 	for (idx = start; idx < end; idx++) {
 		p = vm_page_lookup(object, idx);
 		if (p == NULL)
 			continue;
 		vm_page_protect(p, VM_PROT_READ);
 	}
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 }
 
 /*
- *	vm_object_pmap_remove:
+ * Removes all physical pages in the specified object range from all
+ * physical maps.
  *
- *	Removes all physical pages in the specified
- *	object range from all physical maps.
- *
- *	The object must *not* be locked.
+ * The object must *not* be locked.
  */
 
 static int vm_object_pmap_remove_callback(vm_page_t p, void *data);
@@ -866,14 +880,20 @@ vm_object_pmap_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end)
 		return;
 	info.start_pindex = start;
 	info.end_pindex = end - 1;
+
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 	vm_page_rb_tree_RB_SCAN(&object->rb_memq, rb_vm_page_scancmp,
 				vm_object_pmap_remove_callback, &info);
 	if (start == 0 && end == object->size)
 		vm_object_clear_flag(object, OBJ_WRITEABLE);
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 }
 
+/*
+ * The caller must hold vm_token.
+ */
 static int
 vm_object_pmap_remove_callback(vm_page_t p, void *data __unused)
 {
@@ -882,25 +902,24 @@ vm_object_pmap_remove_callback(vm_page_t p, void *data __unused)
 }
 
 /*
- *	vm_object_madvise:
+ * Implements the madvise function at the object/page level.
  *
- *	Implements the madvise function at the object/page level.
+ * MADV_WILLNEED	(any object)
  *
- *	MADV_WILLNEED	(any object)
+ *	Activate the specified pages if they are resident.
  *
- *	    Activate the specified pages if they are resident.
+ * MADV_DONTNEED	(any object)
  *
- *	MADV_DONTNEED	(any object)
+ *	Deactivate the specified pages if they are resident.
  *
- *	    Deactivate the specified pages if they are resident.
+ * MADV_FREE	(OBJT_DEFAULT/OBJT_SWAP objects, OBJ_ONEMAPPING only)
  *
- *	MADV_FREE	(OBJT_DEFAULT/OBJT_SWAP objects,
- *			 OBJ_ONEMAPPING only)
+ *	Deactivate and clean the specified pages if they are
+ *	resident.  This permits the process to reuse the pages
+ *	without faulting or the kernel to reclaim the pages
+ *	without I/O.
  *
- *	    Deactivate and clean the specified pages if they are
- *	    resident.  This permits the process to reuse the pages
- *	    without faulting or the kernel to reclaim the pages
- *	    without I/O.
+ * No requirements.
  */
 void
 vm_object_madvise(vm_object_t object, vm_pindex_t pindex, int count, int advise)
@@ -914,10 +933,11 @@ vm_object_madvise(vm_object_t object, vm_pindex_t pindex, int count, int advise)
 
 	end = pindex + count;
 
+	lwkt_gettoken(&vm_token);
+
 	/*
 	 * Locate and adjust resident pages
 	 */
-
 	for (; pindex < end; pindex += 1) {
 relookup:
 		tobject = object;
@@ -1016,23 +1036,20 @@ shadowlookup:
 				swap_pager_freespace(tobject, tpindex, 1);
 		}
 	}	
+	lwkt_reltoken(&vm_token);
 }
 
 /*
- *	vm_object_shadow:
+ * Create a new object which is backed by the specified existing object
+ * range.  The source object reference is deallocated.
  *
- *	Create a new object which is backed by the
- *	specified existing object range.  The source
- *	object reference is deallocated.
+ * The new object and offset into that object are returned in the source
+ * parameters.
  *
- *	The new object and offset into that object
- *	are returned in the source parameters.
+ * No other requirements.
  */
-
 void
-vm_object_shadow(vm_object_t *object,	/* IN/OUT */
-		 vm_ooffset_t *offset,	/* IN/OUT */
-		 vm_size_t length)
+vm_object_shadow(vm_object_t *object, vm_ooffset_t *offset, vm_size_t length)
 {
 	vm_object_t source;
 	vm_object_t result;
@@ -1042,13 +1059,16 @@ vm_object_shadow(vm_object_t *object,	/* IN/OUT */
 	/*
 	 * Don't create the new object if the old object isn't shared.
 	 */
+	lwkt_gettoken(&vm_token);
 
 	if (source != NULL &&
 	    source->ref_count == 1 &&
 	    source->handle == NULL &&
 	    (source->type == OBJT_DEFAULT ||
-	     source->type == OBJT_SWAP))
+	     source->type == OBJT_SWAP)) {
+		lwkt_reltoken(&vm_token);
 		return;
+	}
 
 	/*
 	 * Allocate a new object with the given length
@@ -1079,13 +1099,12 @@ vm_object_shadow(vm_object_t *object,	/* IN/OUT */
 	 * Store the offset into the source object, and fix up the offset into
 	 * the new object.
 	 */
-
 	result->backing_object_offset = *offset;
+	lwkt_reltoken(&vm_token);
 
 	/*
 	 * Return the new things
 	 */
-
 	*offset = 0;
 	*object = result;
 }
@@ -1096,17 +1115,15 @@ vm_object_shadow(vm_object_t *object,	/* IN/OUT */
 
 static int vm_object_backing_scan_callback(vm_page_t p, void *data);
 
+/*
+ * The caller must hold vm_token.
+ */
 static __inline int
 vm_object_backing_scan(vm_object_t object, int op)
 {
 	struct rb_vm_page_scan_info info;
 	vm_object_t backing_object;
 
-	/*
-	 * spl protection is required to avoid races between the memq/lookup,
-	 * an interrupt doing an unbusy/free, and our busy check.  Amoung
-	 * other things.
-	 */
 	crit_enter();
 
 	backing_object = object->backing_object;
@@ -1155,6 +1172,9 @@ vm_object_backing_scan(vm_object_t object, int op)
 	return(info.error);
 }
 
+/*
+ * The caller must hold vm_token.
+ */
 static int
 vm_object_backing_scan_callback(vm_page_t p, void *data)
 {
@@ -1299,9 +1319,11 @@ vm_object_backing_scan_callback(vm_page_t p, void *data)
 }
 
 /*
- * this version of collapse allows the operation to occur earlier and
+ * This version of collapse allows the operation to occur earlier and
  * when paging_in_progress is true for an object...  This is not a complete
  * operation, but should plug 99.9% of the rest of the leaks.
+ *
+ * The caller must hold vm_token.
  */
 static void
 vm_object_qcollapse(vm_object_t object)
@@ -1319,15 +1341,14 @@ vm_object_qcollapse(vm_object_t object)
 }
 
 /*
- *	vm_object_collapse:
- *
- *	Collapse an object with the object backing it.
- *	Pages in the backing object are moved into the
- *	parent, and the backing object is deallocated.
+ * Collapse an object with the object backing it.  Pages in the backing
+ * object are moved into the parent, and the backing object is deallocated.
  */
 void
 vm_object_collapse(vm_object_t object)
 {
+	lwkt_gettoken(&vm_token);
+
 	while (TRUE) {
 		vm_object_t backing_object;
 
@@ -1448,11 +1469,8 @@ vm_object_collapse(vm_object_t object)
 			KASSERT(backing_object->ref_count == 1, ("backing_object %p was somehow re-referenced during collapse!", backing_object));
 			KASSERT(RB_EMPTY(&backing_object->rb_memq), ("backing_object %p somehow has left over pages during collapse!", backing_object));
 			crit_enter();
-			TAILQ_REMOVE(
-			    &vm_object_list, 
-			    backing_object,
-			    object_list
-			);
+			TAILQ_REMOVE(&vm_object_list, backing_object,
+				     object_list);
 			vm_object_count--;
 			crit_exit();
 
@@ -1509,13 +1527,14 @@ vm_object_collapse(vm_object_t object)
 		 * Try again with this object's new backing object.
 		 */
 	}
+	lwkt_reltoken(&vm_token);
 }
 
 /*
- *	vm_object_page_remove: [internal]
+ * Removes all physical pages in the specified object range from the
+ * object's list of pages.
  *
- *	Removes all physical pages in the specified
- *	object range from the object's list of pages.
+ * No requirements.
  */
 static int vm_object_page_remove_callback(vm_page_t p, void *data);
 
@@ -1529,8 +1548,10 @@ vm_object_page_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	/*
 	 * Degenerate cases and assertions
 	 */
+	lwkt_gettoken(&vm_token);
 	if (object == NULL ||
 	    (object->resident_page_count == 0 && object->swblock_count == 0)) {
+		lwkt_reltoken(&vm_token);
 		return;
 	}
 	KASSERT(object->type != OBJT_PHYS, 
@@ -1582,8 +1603,12 @@ vm_object_page_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	 */
 	vm_object_pip_wakeup(object);
 	crit_exit();
+	lwkt_reltoken(&vm_token);
 }
 
+/*
+ * The caller must hold vm_token.
+ */
 static int
 vm_object_page_remove_callback(vm_page_t p, void *data)
 {
@@ -1638,26 +1663,24 @@ vm_object_page_remove_callback(vm_page_t p, void *data)
 }
 
 /*
- *	Routine:	vm_object_coalesce
- *	Function:	Coalesces two objects backing up adjoining
- *			regions of memory into a single object.
+ * Coalesces two objects backing up adjoining regions of memory into a
+ * single object.
  *
- *	returns TRUE if objects were combined.
+ * returns TRUE if objects were combined.
  *
- *	NOTE:	Only works at the moment if the second object is NULL -
- *		if it's not, which object do we lock first?
+ * NOTE: Only works at the moment if the second object is NULL -
+ *	 if it's not, which object do we lock first?
  *
- *	Parameters:
- *		prev_object	First object to coalesce
- *		prev_offset	Offset into prev_object
- *		next_object	Second object into coalesce
- *		next_offset	Offset into next_object
+ * Parameters:
+ *	prev_object	First object to coalesce
+ *	prev_offset	Offset into prev_object
+ *	next_object	Second object into coalesce
+ *	next_offset	Offset into next_object
  *
- *		prev_size	Size of reference to prev_object
- *		next_size	Size of reference to next_object
+ *	prev_size	Size of reference to prev_object
+ *	next_size	Size of reference to next_object
  *
- *	Conditions:
- *	The object must *not* be locked.
+ * The object must not be locked.
  */
 boolean_t
 vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
@@ -1674,6 +1697,8 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
 		return (FALSE);
 	}
 
+	lwkt_gettoken(&vm_token);
+
 	/*
 	 * Try to collapse the object first
 	 */
@@ -1686,6 +1711,7 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
 	 */
 
 	if (prev_object->backing_object != NULL) {
+		lwkt_reltoken(&vm_token);
 		return (FALSE);
 	}
 
@@ -1695,6 +1721,7 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
 
 	if ((prev_object->ref_count > 1) &&
 	    (prev_object->size != next_pindex)) {
+		lwkt_reltoken(&vm_token);
 		return (FALSE);
 	}
 
@@ -1717,14 +1744,21 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
 	if (next_pindex + next_size > prev_object->size)
 		prev_object->size = next_pindex + next_size;
 
+	lwkt_reltoken(&vm_token);
 	return (TRUE);
 }
 
+/*
+ * Make the object writable and flag is being possibly dirty.
+ *
+ * No requirements.
+ */
 void
 vm_object_set_writeable_dirty(vm_object_t object)
 {
 	struct vnode *vp;
 
+	lwkt_gettoken(&vm_token);
 	vm_object_set_flag(object, OBJ_WRITEABLE|OBJ_MIGHTBEDIRTY);
 	if (object->type == OBJT_VNODE &&
 	    (vp = (struct vnode *)object->handle) != NULL) {
@@ -1732,9 +1766,8 @@ vm_object_set_writeable_dirty(vm_object_t object)
 			vsetflags(vp, VOBJDIRTY);
 		}
 	}
+	lwkt_reltoken(&vm_token);
 }
-
-
 
 #include "opt_ddb.h"
 #ifdef DDB
@@ -1748,6 +1781,9 @@ static int	_vm_object_in_map (vm_map_t map, vm_object_t object,
 				       vm_map_entry_t entry);
 static int	vm_object_in_map (vm_object_t object);
 
+/*
+ * The caller must hold vm_token.
+ */
 static int
 _vm_object_in_map(vm_map_t map, vm_object_t object, vm_map_entry_t entry)
 {
@@ -1803,6 +1839,9 @@ struct vm_object_in_map_info {
 	int rv;
 };
 
+/*
+ * Debugging only
+ */
 static int
 vm_object_in_map(vm_object_t object)
 {
@@ -1823,6 +1862,9 @@ vm_object_in_map(vm_object_t object)
 	return 0;
 }
 
+/*
+ * Debugging only
+ */
 static int
 vm_object_in_map_callback(struct proc *p, void *data)
 {
@@ -1869,7 +1911,7 @@ DB_SHOW_COMMAND(vmochk, vm_object_check)
 }
 
 /*
- *	vm_object_print:	[ debug ]
+ * Debugging only
  */
 DB_SHOW_COMMAND(object, vm_object_print_static)
 {
@@ -1926,7 +1968,11 @@ DB_SHOW_COMMAND(object, vm_object_print_static)
 /* XXX. */
 #undef count
 
-/* XXX need this non-static entry for calling from vm_map_print. */
+/*
+ * XXX need this non-static entry for calling from vm_map_print.
+ *
+ * Debugging only
+ */
 void
 vm_object_print(/* db_expr_t */ long addr,
 		boolean_t have_addr,
@@ -1936,6 +1982,9 @@ vm_object_print(/* db_expr_t */ long addr,
 	vm_object_print_static(addr, have_addr, count, modif);
 }
 
+/*
+ * Debugging only
+ */
 DB_SHOW_COMMAND(vmopag, vm_object_print_pages)
 {
 	vm_object_t object;
