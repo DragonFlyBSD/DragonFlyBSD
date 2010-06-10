@@ -589,13 +589,17 @@ test_m_maps_pv(vm_page_t m, pv_entry_t pv)
 {
 	pv_entry_t spv;
 
+	crit_enter();
 #ifdef PMAP_DEBUG
 	KKASSERT(pv->pv_m == m);
 #endif
 	TAILQ_FOREACH(spv, &m->md.pv_list, pv_list) {
-		if (pv == spv)
+		if (pv == spv) {
+			crit_exit();
 			return;
+		}
 	}
+	crit_exit();
 	panic("test_m_maps_pv: failed m %p pv %p\n", m, pv);
 }
 
@@ -1239,11 +1243,13 @@ pmap_puninit(pmap_t pmap)
 void
 pmap_pinit2(struct pmap *pmap)
 {
+	crit_enter();
 	lwkt_gettoken(&vm_token);
 	TAILQ_INSERT_TAIL(&pmap_list, pmap, pm_pmnode);
 	/* XXX copies current process, does not fill in MPPTDI */
 	bcopy(PTD + KPTDI, pmap->pm_pdir + KPTDI, nkpt * PTESIZE);
 	lwkt_reltoken(&vm_token);
+	crit_exit();
 }
 
 /*
@@ -1483,10 +1489,13 @@ pmap_release(struct pmap *pmap)
 	
 	info.pmap = pmap;
 	info.object = object;
+	crit_enter();
 	lwkt_gettoken(&vm_token);
 	TAILQ_REMOVE(&pmap_list, pmap, pm_pmnode);
+	crit_exit();
 
 	do {
+		crit_enter();
 		info.error = 0;
 		info.mpte = NULL;
 		info.limit = object->generation;
@@ -1497,6 +1506,7 @@ pmap_release(struct pmap *pmap)
 			if (!pmap_release_free_page(pmap, info.mpte))
 				info.error = 1;
 		}
+		crit_exit();
 	} while (info.error);
 	pmap->pm_cached = 0;
 	lwkt_reltoken(&vm_token);
@@ -1538,6 +1548,7 @@ pmap_growkernel(vm_offset_t addr)
 	vm_page_t nkpg;
 	pd_entry_t newpdir;
 
+	crit_enter();
 	lwkt_gettoken(&vm_token);
 	if (kernel_vm_end == 0) {
 		kernel_vm_end = KERNBASE;
@@ -1583,6 +1594,7 @@ pmap_growkernel(vm_offset_t addr)
 				~(PAGE_SIZE * NPTEPG - 1);
 	}
 	lwkt_reltoken(&vm_token);
+	crit_exit();
 }
 
 /*
@@ -1711,6 +1723,7 @@ pmap_remove_entry(struct pmap *pmap, vm_page_t m,
 	pv_entry_t pv;
 	int rtval;
 
+	crit_enter();
 	ASSERT_LWKT_TOKEN_HELD(&vm_token);
 	if (m->md.pv_list_count < pmap->pm_stats.resident_count) {
 		TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
@@ -1738,6 +1751,7 @@ pmap_remove_entry(struct pmap *pmap, vm_page_t m,
 	++pmap->pm_generation;
 	rtval = pmap_unuse_pt(pmap, va, pv->pv_ptem, info);
 	free_pv_entry(pv);
+	crit_exit();
 	return rtval;
 }
 
@@ -1751,6 +1765,7 @@ pmap_insert_entry(pmap_t pmap, vm_offset_t va, vm_page_t mpte, vm_page_t m)
 {
 	pv_entry_t pv;
 
+	crit_enter();
 	pv = get_pv_entry();
 #ifdef PMAP_DEBUG
 	KKASSERT(pv->pv_m == NULL);
@@ -1764,6 +1779,8 @@ pmap_insert_entry(pmap_t pmap, vm_offset_t va, vm_page_t mpte, vm_page_t m)
 	TAILQ_INSERT_TAIL(&m->md.pv_list, pv, pv_list);
 	++pmap->pm_generation;
 	m->md.pv_list_count++;
+
+	crit_exit();
 }
 
 /*
@@ -2514,10 +2531,12 @@ pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
 	info.addr = addr;
 	info.pmap = pmap;
 
+	crit_enter();
 	lwkt_gettoken(&vm_token);
 	vm_page_rb_tree_RB_SCAN(&object->rb_memq, rb_vm_page_scancmp,
 				pmap_object_init_pt_callback, &info);
 	lwkt_reltoken(&vm_token);
+	crit_exit();
 }
 
 /*
@@ -2800,6 +2819,7 @@ pmap_page_exists_quick(pmap_t pmap, vm_page_t m)
 	if (!pmap_initialized || (m->flags & PG_FICTITIOUS))
 		return FALSE;
 
+	crit_enter();
 	lwkt_gettoken(&vm_token);
 	TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
 		if (pv->pv_pmap == pmap) {
@@ -2811,6 +2831,7 @@ pmap_page_exists_quick(pmap_t pmap, vm_page_t m)
 			break;
 	}
 	lwkt_reltoken(&vm_token);
+	crit_exit();
 	return (FALSE);
 }
 
@@ -2935,6 +2956,7 @@ pmap_testbit(vm_page_t m, int bit)
 	if (TAILQ_FIRST(&m->md.pv_list) == NULL)
 		return FALSE;
 
+	crit_enter();
 	TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
 		/*
 		 * if the bit being tested is the modified bit, then
@@ -2954,9 +2976,12 @@ pmap_testbit(vm_page_t m, int bit)
 		}
 #endif
 		pte = pmap_pte_quick(pv->pv_pmap, pv->pv_va);
-		if (*pte & bit)
+		if (*pte & bit) {
+			crit_exit();
 			return TRUE;
+		}
 	}
+	crit_exit();
 	return (FALSE);
 }
 
@@ -3102,6 +3127,7 @@ pmap_ts_referenced(vm_page_t m)
 	if (!pmap_initialized || (m->flags & PG_FICTITIOUS))
 		return (rtval);
 
+	crit_enter();
 	lwkt_gettoken(&vm_token);
 
 	if ((pv = TAILQ_FIRST(&m->md.pv_list)) != NULL) {
@@ -3136,6 +3162,7 @@ pmap_ts_referenced(vm_page_t m)
 	}
 
 	lwkt_reltoken(&vm_token);
+	crit_exit();
 
 	return (rtval);
 }
