@@ -14,14 +14,11 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * $FreeBSD: src/sys/dev/wpi/if_wpi.c,v 1.27.2.2 2010/02/14 09:34:27 gavin Exp $
  */
 
 #define VERSION "20071127"
-
-
-/*
-__FBSDID("$FreeBSD: src/sys/dev/wpi/if_wpi.c,v 1.27.2.2 2010/02/14 09:34:27 gavin Exp $");
-*/
 
 /*
  * Driver for Intel PRO/Wireless 3945ABG 802.11 network adapters.

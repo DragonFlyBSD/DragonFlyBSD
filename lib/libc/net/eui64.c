@@ -66,13 +66,8 @@
  * Center for Telecommunications Research
  * Columbia University, New York City
  *
- * $DragonFly: src/lib/libc/net/eui64.c,v 1.1 2004/09/23 06:33:04 simokawa Exp $
+ * $FreeBSD: src/lib/libc/net/eui64.c,v 1.2 2004/06/01 19:30:13 brooks Exp $
  */
-
-#include <sys/cdefs.h>
-#ifdef __FBSDID__
-__FBSDID("$FreeBSD: src/lib/libc/net/eui64.c,v 1.2 2004/06/01 19:30:13 brooks Exp $");
-#endif
 
 #include <stdio.h>
 #include <paths.h>
