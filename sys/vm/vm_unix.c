@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 1988 University of Utah.
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -56,12 +58,14 @@
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 
-#include <sys/mplock2.h>
+#include <sys/thread.h>
 
 /*
+ * sys_obreak backs the C library sbrk call
+ *
  * obreak_args(char *nsize)
  *
- * MPALMOSTSAFE
+ * No requirements.
  */
 int
 sys_obreak(struct obreak_args *uap)
@@ -73,7 +77,7 @@ sys_obreak(struct obreak_args *uap)
 	int error;
 
 	error = 0;
-	get_mplock();
+	lwkt_gettoken(&vm_token);
 
 	base = round_page((vm_offset_t) vm->vm_daddr);
 	new = round_page((vm_offset_t)uap->nsize);
@@ -130,6 +134,6 @@ sys_obreak(struct obreak_args *uap)
 		vm->vm_dsize -= btoc(old - new);
 	}
 done:
-	rel_mplock();
+	lwkt_reltoken(&vm_token);
 	return (error);
 }
