@@ -41,8 +41,6 @@
 
 #include <machine/stdarg.h>
 
-#include <net/ethernet.h>		/* XXX for ether_sprintf */
-
 #include <dev/netif/ath/hal/ath_hal/ah.h>
 
 /*

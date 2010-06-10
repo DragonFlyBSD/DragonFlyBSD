@@ -27,7 +27,6 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: head/sys/dev/ath/if_ath.c 203751 2010-02-10 11:12:39Z rpaulo $");
- * $DragonFly$
  */
 
 /*
@@ -64,7 +63,6 @@
 #include <net/if_media.h>
 #include <net/if_types.h>
 #include <net/if_arp.h>
-#include <net/ethernet.h>
 #include <net/if_llc.h>
 #include <net/ifq_var.h>
 
@@ -325,7 +323,6 @@ TUNABLE_INT("hw.ath.debug", &ath_debug);
 	if (sc->sc_debug & (m))					\
 		kprintf(fmt, __VA_ARGS__);			\
 } while (0)
-#define ether_sprintf(x)	"<dummy>"
 #define	KEYPRINTF(sc, ix, hk, mac) do {				\
 	if (sc->sc_debug & ATH_DEBUG_KEYCACHE)			\
 		ath_keyprint(sc, __func__, ix, hk, mac);	\
@@ -1939,7 +1936,7 @@ ath_keyprint(struct ath_softc *sc, const char *tag, u_int ix,
 	kprintf("%s: [%02u] %-7s ", tag, ix, ciphers[hk->kv_type]);
 	for (i = 0, n = hk->kv_len; i < n; i++)
 		kprintf("%02x", hk->kv_val[i]);
-	kprintf(" mac %s", ether_sprintf(mac));
+	kprintf(" mac %6D", mac, ":");
 	if (hk->kv_type == HAL_CIPHER_TKIP) {
 		kprintf(" %s ", sc->sc_splitmic ? "mic" : "rxmic");
 		for (i = 0; i < sizeof(hk->kv_mic); i++)
@@ -5497,8 +5494,8 @@ ath_scan_start(struct ieee80211com *ic)
 	ath_hal_setrxfilter(ah, rfilt);
 	ath_hal_setassocid(ah, ifp->if_broadcastaddr, 0);
 
-	DPRINTF(sc, ATH_DEBUG_STATE, "%s: RX filter 0x%x bssid %s aid 0\n",
-		 __func__, rfilt, ether_sprintf(ifp->if_broadcastaddr));
+	DPRINTF(sc, ATH_DEBUG_STATE, "%s: RX filter 0x%x bssid %6D aid 0\n",
+		 __func__, rfilt, ifp->if_broadcastaddr, ":");
 }
 
 static void
@@ -5516,8 +5513,8 @@ ath_scan_end(struct ieee80211com *ic)
 
 	ath_hal_process_noisefloor(ah);
 
-	DPRINTF(sc, ATH_DEBUG_STATE, "%s: RX filter 0x%x bssid %s aid 0x%x\n",
-		 __func__, rfilt, ether_sprintf(sc->sc_curbssid),
+	DPRINTF(sc, ATH_DEBUG_STATE, "%s: RX filter 0x%x bssid %6D aid 0x%x\n",
+		 __func__, rfilt, sc->sc_curbssid, ":",
 		 sc->sc_curaid);
 }
 
@@ -5608,8 +5605,8 @@ ath_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 		IEEE80211_ADDR_COPY(sc->sc_curbssid, ni->ni_bssid);
 		ath_hal_setassocid(ah, sc->sc_curbssid, sc->sc_curaid);
 	}
-	DPRINTF(sc, ATH_DEBUG_STATE, "%s: RX filter 0x%x bssid %s aid 0x%x\n",
-	   __func__, rfilt, ether_sprintf(sc->sc_curbssid), sc->sc_curaid);
+	DPRINTF(sc, ATH_DEBUG_STATE, "%s: RX filter 0x%x bssid %6D aid 0x%x\n",
+	   __func__, rfilt, sc->sc_curbssid, ":", sc->sc_curaid);
 	ath_hal_setrxfilter(ah, rfilt);
 
 	/* XXX is this to restore keycache on resume? */
@@ -5632,9 +5629,9 @@ ath_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 		ni = vap->iv_bss;
 
 		DPRINTF(sc, ATH_DEBUG_STATE,
-		    "%s(RUN): iv_flags 0x%08x bintvl %d bssid %s "
+		    "%s(RUN): iv_flags 0x%08x bintvl %d bssid %6D "
 		    "capinfo 0x%04x chan %d\n", __func__,
-		    vap->iv_flags, ni->ni_intval, ether_sprintf(ni->ni_bssid),
+		    vap->iv_flags, ni->ni_intval, ni->ni_bssid, ":",
 		    ni->ni_capinfo, ieee80211_chan2ieee(ic, ic->ic_curchan));
 
 		switch (vap->iv_opmode) {
