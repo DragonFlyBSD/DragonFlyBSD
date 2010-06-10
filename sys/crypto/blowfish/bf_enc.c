@@ -76,9 +76,7 @@ to modify the code.
 
 /* XXX "data" is host endian */
 void
-BF_encrypt(data, key)
-	BF_LONG *data;
-	BF_KEY *key;
+BF_encrypt(BF_LONG *data, BF_KEY *key)
 {
 	BF_LONG l, r, *p, *s;
 
@@ -118,9 +116,7 @@ BF_encrypt(data, key)
 
 /* XXX "data" is host endian */
 void
-BF_decrypt(data, key)
-	BF_LONG *data;
-	BF_KEY *key;
+BF_decrypt(BF_LONG *data, BF_KEY *key)
 {
 	BF_LONG l, r, *p, *s;
 
