@@ -88,7 +88,7 @@ static struct old_isa_driver old_drivers[] = {
 	{ 0, &gscdriver },
 #endif
 #if NCY > 0
-	{ INTR_FAST, &cydriver },
+	{ 0, &cydriver },
 #endif
 #if NDGB > 0
 	{ 0, &dgbdriver },

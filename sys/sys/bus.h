@@ -103,8 +103,11 @@ struct u_device {
 /*
  * Interrupt features mask.  Note that DragonFly no longer implements
  * INTR_TYPE_* flags.
+ *
+ * NOTE: INTR_FAST is no longer supported, all device interrupts are threaded
+ *	 now.  Only clock interrupts are 'fast'.
  */
-#define	INTR_FAST	0x0080
+#define	INTR_CLOCK	0x0080	/* (was INTR_FAST) */
 #define	INTR_EXCL	0x0100
 #define	INTR_MPSAFE	0x0200
 #define	INTR_NOENTROPY	0x0400

@@ -236,17 +236,9 @@ puc_pci_attach(device_t dev)
 
 	sc->irqres = res;
 	sc->irqrid = rid;
-#ifdef PUC_FASTINTR
 	irq_setup = BUS_SETUP_INTR(device_get_parent(dev), dev, res,
-				   INTR_FAST, puc_intr, sc,
+				   0, puc_intr, sc,
 				   &sc->intr_cookie, NULL);
-#else
-	irq_setup = ENXIO;
-#endif
-	if (irq_setup != 0)
-		irq_setup = BUS_SETUP_INTR(device_get_parent(dev), dev, res,
-					   0, puc_intr, sc,
-					   &sc->intr_cookie, NULL);
 	if (irq_setup != 0)
 		return (ENXIO);
 

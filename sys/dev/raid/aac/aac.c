@@ -317,9 +317,8 @@ aac_attach(struct aac_softc *sc)
 			return (EINVAL);
 		}
 	} else {
-		if (bus_setup_intr(sc->aac_dev, sc->aac_irq,
-				   INTR_FAST, aac_fast_intr,
-				   sc, &sc->aac_intr, NULL)) {
+		if (bus_setup_intr(sc->aac_dev, sc->aac_irq, 0,
+				   aac_fast_intr, sc, &sc->aac_intr, NULL)) {
 			device_printf(sc->aac_dev,
 				      "can't set up FAST interrupt\n");
 			if (bus_setup_intr(sc->aac_dev, sc->aac_irq,

@@ -270,7 +270,7 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
      */
     if ((intr_flags & INTR_MPSAFE) == 0)
 	info->i_mplock_required = 1;
-    if (intr_flags & INTR_FAST)
+    if (intr_flags & INTR_CLOCK)
 	++info->i_fast;
     else
 	++info->i_slow;
@@ -363,7 +363,7 @@ unregister_int(void *id)
 	intrec_t rec0;
 
 	*list = rec->next;
-	if (rec->intr_flags & INTR_FAST)
+	if (rec->intr_flags & INTR_CLOCK)
 	    --info->i_fast;
 	else
 	    --info->i_slow;
@@ -672,7 +672,7 @@ ithread_fast_handler(struct intrframe *frame)
     for (rec = *list; rec; rec = next_rec) {
 	next_rec = rec->next;	/* rec may be invalid after call */
 
-	if (rec->intr_flags & INTR_FAST) {
+	if (rec->intr_flags & INTR_CLOCK) {
 #ifdef SMP
 	    if ((rec->intr_flags & INTR_MPSAFE) == 0 && got_mplock == 0) {
 		if (try_mplock() == 0) {

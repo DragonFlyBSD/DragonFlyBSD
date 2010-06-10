@@ -1198,16 +1198,9 @@ determined_type: ;
 	com->irqres = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0ul, ~0ul, 1,
 	    RF_ACTIVE);
 	if (com->irqres) {
-		ret = BUS_SETUP_INTR(device_get_parent(dev), dev, com->irqres,
-				     INTR_FAST, siointr, com,
+		ret = BUS_SETUP_INTR(device_get_parent(dev), dev,
+				     com->irqres, 0, siointr, com,
 				     &com->cookie, NULL);
-		if (ret) {
-			ret = BUS_SETUP_INTR(device_get_parent(dev), dev,
-					     com->irqres, 0, siointr, com,
-					     &com->cookie, NULL);
-			if (ret == 0)
-				device_printf(dev, "unable to activate interrupt in fast mode - using normal mode\n");
-		}
 		if (ret)
 			device_printf(dev, "could not activate interrupt\n");
 #if defined(DDB) && (defined(BREAK_TO_DEBUGGER) || \

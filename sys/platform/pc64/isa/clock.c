@@ -1060,7 +1060,7 @@ i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 
 	clkdesc = register_int(apic_8254_intr, clkintr, NULL, "clk",
 			       NULL,
-			       INTR_EXCL | INTR_FAST | 
+			       INTR_EXCL | INTR_CLOCK |
 			       INTR_NOPOLL | INTR_MPSAFE | 
 			       INTR_NOENTROPY);
 	machintr_intren(apic_8254_intr);
@@ -1068,7 +1068,7 @@ i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 #else /* APIC_IO */
 
 	register_int(0, clkintr, NULL, "clk", NULL,
-		     INTR_EXCL | INTR_FAST | 
+		     INTR_EXCL | INTR_CLOCK |
 		     INTR_NOPOLL | INTR_MPSAFE |
 		     INTR_NOENTROPY);
 	machintr_intren(ICU_IRQ0);
@@ -1090,7 +1090,7 @@ i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 #endif /* APIC_IO */
 
 		register_int(8, (inthand2_t *)rtcintr, NULL, "rtc", NULL,
-			     INTR_EXCL | INTR_FAST | INTR_NOPOLL |
+			     INTR_EXCL | INTR_CLOCK | INTR_NOPOLL |
 			     INTR_NOENTROPY);
 		machintr_intren(8);
 
@@ -1149,7 +1149,7 @@ i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 			setup_8254_mixed_mode();
 			register_int(apic_8254_intr, clkintr, NULL, "clk",
 				     NULL,
-				     INTR_EXCL | INTR_FAST | 
+				     INTR_EXCL | INTR_CLOCK |
 				     INTR_NOPOLL | INTR_MPSAFE |
 				     INTR_NOENTROPY);
 			machintr_intren(apic_8254_intr);

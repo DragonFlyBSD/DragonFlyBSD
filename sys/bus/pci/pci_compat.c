@@ -129,8 +129,8 @@ pci_map_int_right(pcici_t cfg, pci_inthand_t *handler, void *arg, u_int intflags
 		int resflags = RF_SHAREABLE|RF_ACTIVE;
 		void *ih;
 
-		if (intflags & INTR_FAST)
-			flags |= INTR_FAST;
+		if (intflags & INTR_CLOCK)
+			flags |= INTR_CLOCK;
 		if (intflags & INTR_EXCL)
 			resflags &= ~RF_SHAREABLE;
 

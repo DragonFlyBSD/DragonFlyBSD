@@ -350,14 +350,6 @@ cbb_setup_intr(device_t dev, device_t child, struct resource *irq,
 	struct cbb_softc *sc = device_get_softc(dev);
 	int err;
 
-	/*
-	 * Well, this is no longer strictly true.  You can have multiple
-	 * FAST ISRs, but can't mix fast and slow, so we have to assume
-	 * least common denominator until the base system supports mixing
-	 * and matching better.
-	 */
-	if ((flags & INTR_FAST) != 0)
-		return (EINVAL);
 	ih = kmalloc(sizeof(struct cbb_intrhand), M_DEVBUF, M_NOWAIT);
 	if (ih == NULL)
 		return (ENOMEM);
