@@ -130,9 +130,8 @@ SYSCTL_INT(_lwkt, OID_AUTO, token_debug, CTLFLAG_RW, &token_debug, 0, "");
  */
 struct lwkt_token pmap_token = LWKT_TOKEN_UP_INITIALIZER;
 struct lwkt_token dev_token = LWKT_TOKEN_UP_INITIALIZER;
-struct lwkt_token vm_page_token = LWKT_TOKEN_UP_INITIALIZER;
-struct lwkt_token vm_object_token = LWKT_TOKEN_UP_INITIALIZER;
-struct lwkt_token vm_map_token = LWKT_TOKEN_UP_INITIALIZER;
+struct lwkt_token vm_token = LWKT_TOKEN_UP_INITIALIZER;
+struct lwkt_token kvm_token = LWKT_TOKEN_UP_INITIALIZER;
 struct lwkt_token proc_token = LWKT_TOKEN_UP_INITIALIZER;
 struct lwkt_token tty_token = LWKT_TOKEN_UP_INITIALIZER;
 struct lwkt_token vnode_token = LWKT_TOKEN_UP_INITIALIZER;
@@ -141,12 +140,10 @@ SYSCTL_INT(_lwkt, OID_AUTO, pmap_mpsafe,
 	   CTLFLAG_RW, &pmap_token.t_flags, 0, "");
 SYSCTL_INT(_lwkt, OID_AUTO, dev_mpsafe,
 	   CTLFLAG_RW, &dev_token.t_flags, 0, "");
-SYSCTL_INT(_lwkt, OID_AUTO, vm_page_mpsafe,
-	   CTLFLAG_RW, &vm_page_token.t_flags, 0, "");
-SYSCTL_INT(_lwkt, OID_AUTO, vm_object_mpsafe,
-	   CTLFLAG_RW, &vm_object_token.t_flags, 0, "");
-SYSCTL_INT(_lwkt, OID_AUTO, vm_map_mpsafe,
-	   CTLFLAG_RW, &vm_map_token.t_flags, 0, "");
+SYSCTL_INT(_lwkt, OID_AUTO, vm_mpsafe,
+	   CTLFLAG_RW, &vm_token.t_flags, 0, "");
+SYSCTL_INT(_lwkt, OID_AUTO, kvm_mpsafe,
+	   CTLFLAG_RW, &kvm_token.t_flags, 0, "");
 SYSCTL_INT(_lwkt, OID_AUTO, proc_mpsafe,
 	   CTLFLAG_RW, &proc_token.t_flags, 0, "");
 SYSCTL_INT(_lwkt, OID_AUTO, tty_mpsafe,
@@ -163,12 +160,10 @@ SYSCTL_LONG(_lwkt, OID_AUTO, pmap_collisions,
 	    CTLFLAG_RW, &pmap_token.t_collisions, 0, "");
 SYSCTL_LONG(_lwkt, OID_AUTO, dev_collisions,
 	    CTLFLAG_RW, &dev_token.t_collisions, 0, "");
-SYSCTL_LONG(_lwkt, OID_AUTO, vm_page_collisions,
-	    CTLFLAG_RW, &vm_page_token.t_collisions, 0, "");
-SYSCTL_LONG(_lwkt, OID_AUTO, vm_object_collisions,
-	    CTLFLAG_RW, &vm_object_token.t_collisions, 0, "");
-SYSCTL_LONG(_lwkt, OID_AUTO, vm_map_collisions,
-	    CTLFLAG_RW, &vm_map_token.t_collisions, 0, "");
+SYSCTL_LONG(_lwkt, OID_AUTO, vm_collisions,
+	    CTLFLAG_RW, &vm_token.t_collisions, 0, "");
+SYSCTL_LONG(_lwkt, OID_AUTO, kvm_collisions,
+	    CTLFLAG_RW, &kvm_token.t_collisions, 0, "");
 SYSCTL_LONG(_lwkt, OID_AUTO, proc_collisions,
 	    CTLFLAG_RW, &proc_token.t_collisions, 0, "");
 SYSCTL_LONG(_lwkt, OID_AUTO, tty_collisions,

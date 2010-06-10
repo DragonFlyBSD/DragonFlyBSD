@@ -354,9 +354,8 @@ struct thread {
  */
 extern struct lwkt_token pmap_token;
 extern struct lwkt_token dev_token;
-extern struct lwkt_token vm_page_token;
-extern struct lwkt_token vm_object_token;
-extern struct lwkt_token vm_map_token;
+extern struct lwkt_token vm_token;
+extern struct lwkt_token kvm_token;
 extern struct lwkt_token proc_token;
 extern struct lwkt_token tty_token;
 extern struct lwkt_token vnode_token;
