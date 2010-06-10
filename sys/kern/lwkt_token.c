@@ -200,7 +200,9 @@ _lwkt_tokref_init(lwkt_tokref_t ref, lwkt_token_t tok, thread_t td)
 	ref->tr_tok = tok;
 	ref->tr_owner = td;
 	ref->tr_flags = tok->t_flags;
+#ifdef SMP
 	if (td->td_mpcount)
+#endif
 		ref->tr_flags |= LWKT_TOKEN_MPSAFE;
 }
 
