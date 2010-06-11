@@ -94,8 +94,6 @@
 #include <bus/pci/pcivar.h>
 #include "pucvar.h"
 
-#include <opt_puc.h>
-
 struct puc_softc {
 	const struct puc_device_description *sc_desc;
 

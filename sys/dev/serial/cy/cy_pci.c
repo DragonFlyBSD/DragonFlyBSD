@@ -32,8 +32,6 @@
  * Cyclades Y PCI serial interface driver
  */
 
-#include "opt_cy_pci_fastintr.h"
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>

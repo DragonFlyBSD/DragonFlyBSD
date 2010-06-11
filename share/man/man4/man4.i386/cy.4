@@ -45,7 +45,6 @@
 .Nm cy
 .Nd Cyclades Cyclom-Y serial driver
 .Sh SYNOPSIS
-.Cd "options CY_PCI_FASTINTR"
 .Cd "device cy0 at isa? irq 10 iomem 0xd4000 iosiz 0x2000"
 .Cd "device cy1 at isa? irq 11 iomem 0xd6000 iosiz 0x2000"
 .Pp
@@ -144,17 +143,6 @@ be locked for devices that support more than one setting.  The
 CLOCAL flag on callin ports should be locked off for logins
 to avoid certain security holes, but this needs to be done by
 getty if the callin port is used for anything else.
-.Ss Kernel Configuration Options
-The
-.Em CY_PCI_FASTINTR
-option should be used to avoid suboptimal interrupt handling for
-PCI Cyclades boards.
-The PCI BIOS must be configured with the
-.Nm
-interrupt not shared with any other active device
-for this option to work.
-This option is not the default because it is currently harmful in
-certain cases where it does not work.
 .Sh FILES
 .\" XXX more cloning: s/d/c/g and add a ? for the card number.
 .Bl -tag -width /dev/ttyic?? -compact
