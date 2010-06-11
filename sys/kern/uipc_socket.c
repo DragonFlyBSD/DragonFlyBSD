@@ -1698,6 +1698,7 @@ sohasoutofband(struct socket *so)
 	if (so->so_sigio != NULL)
 		pgsigio(so->so_sigio, SIGURG, 0);
 	selwakeup(&so->so_rcv.ssb_sel);
+	KNOTE(&so->so_rcv.ssb_sel.si_note, NOTE_OOB);
 }
 
 int
@@ -1789,6 +1790,11 @@ filt_soread(struct knote *kn, long hint)
 {
 	struct socket *so = (struct socket *)kn->kn_fp->f_data;
 
+	if ((so->so_oobmark || (so->so_state & SS_RCVATMARK)) &&
+	    kn->kn_sfflags & NOTE_OOB) {
+		kn->kn_fflags |= NOTE_OOB;
+		return (1);
+	}
 	kn->kn_data = so->so_rcv.ssb_cc;
 	if (so->so_state & SS_CANTRCVMORE) {
 		kn->kn_flags |= EV_EOF; 

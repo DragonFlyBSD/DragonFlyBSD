@@ -84,6 +84,7 @@ struct kevent {
  * data/hint flags for EVFILT_{READ|WRITE}, shared with userspace
  */
 #define NOTE_LOWAT	0x0001			/* low water mark */
+#define NOTE_OOB	0x0002			/* OOB data on a socket */
 
 /*
  * data/hint flags for EVFILT_VNODE, shared with userspace
