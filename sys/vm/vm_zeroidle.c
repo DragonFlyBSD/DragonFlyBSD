@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 1994 John Dyson
  * Copyright (c) 2001 Matt Dillon
  * Copyright (c) 2010 The DragonFly Project
@@ -183,11 +185,11 @@ vm_pagezero(void __unused *arg)
 			/*
 			 * Acquire page to zero
 			 */
-			if (try_mplock() == 0) {
+			if (lwkt_trytoken(&vm_token) == 0) {
 				state = STATE_IDLE;
 			} else if (--npages == 0) {
 				state = STATE_IDLE;
-				rel_mplock();
+				lwkt_reltoken(&vm_token);
 			} else {
 				m = vm_page_free_fromq_fast();
 				if (m == NULL) {
@@ -198,7 +200,7 @@ vm_pagezero(void __unused *arg)
 					pg = (char *)lwbuf_kva(buf);
 					i = 0;
 				}
-				rel_mplock();
+				lwkt_reltoken(&vm_token);
 			}
 			break;
 		case STATE_ZERO_PAGE:
@@ -219,13 +221,13 @@ vm_pagezero(void __unused *arg)
 				state = STATE_RELEASE_PAGE;
 			break;
 		case STATE_RELEASE_PAGE:
-			if (try_mplock()) {
+			if (lwkt_trytoken(&vm_token)) {
 				lwbuf_free(buf);
 				vm_page_flag_set(m, PG_ZERO);
 				vm_page_free_toq(m);
 				state = STATE_GET_PAGE;
 				++idlezero_count;
-				rel_mplock();
+				lwkt_reltoken(&vm_token);
 			}
 			break;
 		}
