@@ -1594,7 +1594,7 @@ ieee80211_ioctl_setchanlist(struct ieee80211vap *vap, struct ieee80211req *ireq)
 		return ENOMEM;
 	error = copyin(ireq->i_data, list, ireq->i_len);
 	if (error) {
-		free(list, M_TEMP);
+		kfree(list, M_TEMP);
 		return error;
 	}
 	nchan = 0;
@@ -1613,7 +1613,7 @@ ieee80211_ioctl_setchanlist(struct ieee80211vap *vap, struct ieee80211req *ireq)
 		}
 	}
 	if (nchan == 0) {
-		free(list, M_TEMP);
+		kfree(list, M_TEMP);
 		return EINVAL;
 	}
 	if (ic->ic_bsschan != IEEE80211_CHAN_ANYC &&	/* XXX */
