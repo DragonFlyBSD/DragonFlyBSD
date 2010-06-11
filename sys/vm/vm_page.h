@@ -419,10 +419,12 @@ vm_page_busy(vm_page_t m)
 static __inline void
 vm_page_flash(vm_page_t m)
 {
+	lwkt_gettoken(&vm_token);
 	if (m->flags & PG_WANTED) {
 		vm_page_flag_clear(m, PG_WANTED);
 		wakeup(m);
 	}
+	lwkt_reltoken(&vm_token);
 }
 
 /*
@@ -651,7 +653,7 @@ static __inline int
 vm_page_sleep_busy(vm_page_t m, int also_m_busy, const char *msg)
 {
 	if ((m->flags & PG_BUSY) || (also_m_busy && m->busy))  {
-		crit_enter();
+		lwkt_gettoken(&vm_token);
 		if ((m->flags & PG_BUSY) || (also_m_busy && m->busy)) {
 			/*
 			 * Page is busy. Wait and retry.
@@ -659,7 +661,7 @@ vm_page_sleep_busy(vm_page_t m, int also_m_busy, const char *msg)
 			vm_page_flag_set(m, PG_WANTED | PG_REFERENCED);
 			tsleep(m, 0, msg, 0);
 		}
-		crit_exit();
+		lwkt_reltoken(&vm_token);
 		return(TRUE);
 		/* not reached */
 	}

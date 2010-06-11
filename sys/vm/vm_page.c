@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 1991 Regents of the University of California.
  * All rights reserved.
  *
@@ -422,11 +424,11 @@ vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
  * The underlying pmap entry (if any) is NOT removed here.
  * This routine may not block.
  *
- * The page must be BUSY and will remain BUSY on return.  No spl needs to be
- * held on call to this routine.
+ * The page must be BUSY and will remain BUSY on return.
+ * No other requirements.
  *
- * note: FreeBSD side effect was to unbusy the page on return.  We leave
- * it busy.
+ * NOTE: FreeBSD side effect was to unbusy the page on return.  We leave
+ *	 it busy.
  */
 void
 vm_page_remove(vm_page_t m)
@@ -434,7 +436,9 @@ vm_page_remove(vm_page_t m)
 	vm_object_t object;
 
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 	if (m->object == NULL) {
+		lwkt_reltoken(&vm_token);
 		crit_exit();
 		return;
 	}
@@ -453,6 +457,7 @@ vm_page_remove(vm_page_t m)
 	object->generation++;
 	m->object = NULL;
 
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 }
 
@@ -481,7 +486,9 @@ vm_page_lookup(vm_object_t object, vm_pindex_t pindex)
 	 */
 	ASSERT_MP_LOCK_HELD(curthread);
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 	m = vm_page_rb_tree_RB_LOOKUP(&object->rb_memq, pindex);
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 	KKASSERT(m == NULL || (m->object == object && m->pindex == pindex));
 	return(m);
@@ -514,12 +521,14 @@ void
 vm_page_rename(vm_page_t m, vm_object_t new_object, vm_pindex_t new_pindex)
 {
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 	vm_page_remove(m);
 	vm_page_insert(m, new_object, new_pindex);
 	if (m->queue - m->pc == PQ_CACHE)
 		vm_page_deactivate(m);
 	vm_page_dirty(m);
 	vm_page_wakeup(m);
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 }
 
@@ -725,6 +734,7 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 		page_req |= VM_ALLOC_SYSTEM;
 
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 loop:
 	if (vmstats.v_free_count > vmstats.v_free_reserved ||
 	    ((page_req & VM_ALLOC_INTERRUPT) && vmstats.v_free_count > 0) ||
@@ -770,6 +780,7 @@ loop:
 		/*
 		 * On failure return NULL
 		 */
+		lwkt_reltoken(&vm_token);
 		crit_exit();
 #if defined(DIAGNOSTIC)
 		if (vmstats.v_cache_count > 0)
@@ -782,6 +793,7 @@ loop:
 		/*
 		 * No pages available, wakeup the pageout daemon and give up.
 		 */
+		lwkt_reltoken(&vm_token);
 		crit_exit();
 		vm_pageout_deficit++;
 		pagedaemon_wakeup();
@@ -831,6 +843,7 @@ loop:
 	 */
 	pagedaemon_wakeup();
 
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 
 	/*
@@ -869,6 +882,7 @@ void
 vm_wait(int timo)
 {
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 	if (curthread == pagethread) {
 		vm_pageout_pages_needed = 1;
 		tsleep(&vm_pageout_pages_needed, 0, "VMWait", timo);
@@ -879,6 +893,7 @@ vm_wait(int timo)
 		}
 		tsleep(&vmstats.v_free_count, 0, "vmwait", timo);
 	}
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 }
 
@@ -892,11 +907,13 @@ void
 vm_waitpfault(void)
 {
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 	if (vm_pages_needed == 0) {
 		vm_pages_needed = 1;
 		wakeup(&vm_pages_needed);
 	}
 	tsleep(&vmstats.v_free_count, 0, "pfault", 0);
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 }
 
@@ -911,6 +928,7 @@ void
 vm_page_activate(vm_page_t m)
 {
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 	if (m->queue != PQ_ACTIVE) {
 		if ((m->queue - m->pc) == PQ_CACHE)
 			mycpu->gd_cnt.v_reactivated++;
@@ -930,6 +948,7 @@ vm_page_activate(vm_page_t m)
 		if (m->act_count < ACT_INIT)
 			m->act_count = ACT_INIT;
 	}
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 }
 
@@ -985,6 +1004,7 @@ vm_page_free_toq(vm_page_t m)
 	struct vpgqueues *pq;
 
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 	mycpu->gd_cnt.v_tfree++;
 
 	KKASSERT((m->flags & PG_MAPPED) == 0);
@@ -1015,6 +1035,7 @@ vm_page_free_toq(vm_page_t m)
 	 */
 	if ((m->flags & PG_FICTITIOUS) != 0) {
 		vm_page_wakeup(m);
+		lwkt_reltoken(&vm_token);
 		crit_exit();
 		return;
 	}
@@ -1060,6 +1081,7 @@ vm_page_free_toq(vm_page_t m)
 	}
 	vm_page_wakeup(m);
 	vm_page_free_wakeup();
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 }
 
@@ -1079,6 +1101,7 @@ vm_page_free_fromq_fast(void)
 	int i;
 
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 	for (i = 0; i < PQ_L2_SIZE; ++i) {
 		m = vm_page_list_find(PQ_FREE, qi, FALSE);
 		qi = (qi + PQ_PRIME2) & PQ_L2_MASK;
@@ -1089,6 +1112,7 @@ vm_page_free_fromq_fast(void)
 		}
 		m = NULL;
 	}
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 	return (m);
 }
@@ -1141,6 +1165,7 @@ vm_page_wire(vm_page_t m)
 	 * pages because they are always wired.
 	 */
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 	if ((m->flags & PG_FICTITIOUS) == 0) {
 		if (m->wire_count == 0) {
 			if ((m->flags & PG_UNMANAGED) == 0)
@@ -1151,6 +1176,7 @@ vm_page_wire(vm_page_t m)
 		KASSERT(m->wire_count != 0,
 			("vm_page_wire: wire_count overflow m=%p", m));
 	}
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 }
 
@@ -1183,6 +1209,7 @@ void
 vm_page_unwire(vm_page_t m, int activate)
 {
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 	if (m->flags & PG_FICTITIOUS) {
 		/* do nothing */
 	} else if (m->wire_count <= 0) {
@@ -1209,6 +1236,7 @@ vm_page_unwire(vm_page_t m, int activate)
 			}
 		}
 	}
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 }
 
@@ -1255,7 +1283,9 @@ void
 vm_page_deactivate(vm_page_t m)
 {
     crit_enter();
+    lwkt_gettoken(&vm_token);
     _vm_page_deactivate(m, 0);
+    lwkt_reltoken(&vm_token);
     crit_exit();
 }
 
@@ -1268,17 +1298,21 @@ int
 vm_page_try_to_cache(vm_page_t m)
 {
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 	if (m->dirty || m->hold_count || m->busy || m->wire_count ||
 	    (m->flags & (PG_BUSY|PG_UNMANAGED))) {
+		lwkt_reltoken(&vm_token);
 		crit_exit();
 		return(0);
 	}
 	vm_page_test_dirty(m);
 	if (m->dirty) {
+		lwkt_reltoken(&vm_token);
 		crit_exit();
 		return(0);
 	}
 	vm_page_cache(m);
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 	return(1);
 }
@@ -1291,19 +1325,23 @@ int
 vm_page_try_to_free(vm_page_t m)
 {
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 	if (m->dirty || m->hold_count || m->busy || m->wire_count ||
 	    (m->flags & (PG_BUSY|PG_UNMANAGED))) {
+		lwkt_reltoken(&vm_token);
 		crit_exit();
 		return(0);
 	}
 	vm_page_test_dirty(m);
 	if (m->dirty) {
+		lwkt_reltoken(&vm_token);
 		crit_exit();
 		return(0);
 	}
 	vm_page_busy(m);
 	vm_page_protect(m, VM_PROT_NONE);
 	vm_page_free(m);
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 	return(1);
 }
@@ -1402,12 +1440,14 @@ vm_page_dontneed(vm_page_t m)
 	 * occassionally leave the page alone
 	 */
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 	if ((dnw & 0x01F0) == 0 ||
 	    m->queue == PQ_INACTIVE || 
 	    m->queue - m->pc == PQ_CACHE
 	) {
 		if (m->act_count >= ACT_INIT)
 			--m->act_count;
+		lwkt_reltoken(&vm_token);
 		crit_exit();
 		return;
 	}
@@ -1429,6 +1469,7 @@ vm_page_dontneed(vm_page_t m)
 		head = 1;
 	}
 	_vm_page_deactivate(m, head);
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 }
 
@@ -1458,6 +1499,7 @@ vm_page_grab(vm_object_t object, vm_pindex_t pindex, int allocflags)
 	KKASSERT(allocflags &
 		(VM_ALLOC_NORMAL|VM_ALLOC_INTERRUPT|VM_ALLOC_SYSTEM));
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 retrylookup:
 	if ((m = vm_page_lookup(object, pindex)) != NULL) {
 		if (m->busy || (m->flags & PG_BUSY)) {
@@ -1486,6 +1528,7 @@ retrylookup:
 		goto retrylookup;
 	}
 done:
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 	return(m);
 }
