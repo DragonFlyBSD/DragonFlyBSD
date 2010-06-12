@@ -526,7 +526,7 @@ get_process_info(struct system_info *si, struct process_select *sel,
 	return ((caddr_t) & handle);
 }
 
-char fmt[128];			/* static area where result is built */
+char fmt[MAX_COLS];		/* static area where result is built */
 
 char *
 format_next_process(caddr_t xhandle, char *(*get_userid) (int))
