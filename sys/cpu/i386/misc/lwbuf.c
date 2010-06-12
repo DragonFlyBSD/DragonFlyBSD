@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 2010 by The DragonFly Project and Samuel J. Greear.
  * All rights reserved.
  *
@@ -51,8 +53,7 @@
 #include <machine/globaldata.h>
 #include <machine/atomic.h>
 #include <machine/param.h>
-
-#include <sys/mplock2.h>
+#include <sys/thread.h>
 
 static void lwbuf_init(void *);
 SYSINIT(sock_lwb, SI_BOOT2_MACHDEP, SI_ORDER_ANY, lwbuf_init, NULL);
@@ -85,9 +86,7 @@ lwbuf_cache_ctor(void *obj, void *pdata, int ocflags)
 
     lwb->m = NULL;
     lwb->cpumask = 0;
-    get_mplock();
     lwb->kva = kmem_alloc_nofault(&kernel_map, PAGE_SIZE, PAGE_SIZE);
-    rel_mplock();
     if (lwb->kva == 0)
         return (FALSE);
     atomic_add_int(&lwbuf_kva_bytes, PAGE_SIZE);
@@ -107,10 +106,10 @@ lwbuf_cache_dtor(void *obj, void *pdata)
     struct lwbuf *lwb = (struct lwbuf *)obj;
 
     KKASSERT(lwb->kva != 0);
-    get_mplock();
+    lwkt_gettoken(&pmap_token);
     pmap_kremove_quick(lwb->kva);
+    lwkt_reltoken(&pmap_token);
     kmem_free(&kernel_map, lwb->kva, PAGE_SIZE);
-    rel_mplock();
     lwb->kva = 0;
     atomic_add_int(&lwbuf_kva_bytes, -PAGE_SIZE);
 }
