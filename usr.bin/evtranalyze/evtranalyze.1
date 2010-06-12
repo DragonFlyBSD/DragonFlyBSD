@@ -1,5 +1,5 @@
 .\"-
-.\" Copyright (c) 2009 Aggelos Economopoulos
+.\" Copyright (c) 2009-10 Aggelos Economopoulos
 .\" All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"
-.Dd February 8, 2009
+.Dd June 13, 2010
 .Dt EVTRANALYZE 1
 .Os
 .Sh NAME
@@ -53,16 +53,69 @@ The subcommands are:
 .\" ==== show ====
 .It Cm show
 Lists the individual events, one per line.
+The timestamps are relative to the previous event.
 The flags it accepts are:
 .Bl -tag -width indent-two
 .It Fl f Ar fmt
 Limits the displayed events to those matching
 .Ar fmt .
 .El
+.\" ==== stats ====
+.It Cm stats
+Prints out statistics about the specified variable.
+It needs at least two additional parameters.
+The first one specifies the expected variable type.
+The second specifies the variable name.
+Currently, the supported variable types are
+.Ar integer
+and
+.Ar completion .
+The first is for 'continuous' values and will be treated as a floating
+point value.
+The second is for events that appear in pairs of data constructors with
+matching arguments.
+For example,
+.Dq BeginEvent 4 2
+and
+.Dq EndEvent 4 2 .
+If the variable takes values of
+.Ar completion
+type, then there must be two more arguments: one specifying the
+.Dq opening
+constructor and another specifying the
+.Dq closing
+constructor.
+So in our example those would be BeginEvent and EndEvent, in that order.
+The command will display appropriate statistics for the chosen value type
+(if the variable is assigned values of different types, those assignments
+will be ignored).
+The user can specify additional flags immediatelly after the expected
+variable type. Those are:
+.Bl -tag -width indent-two
+.It Fl p Ar basename
+Generates SVG plots of potentially interesting variable properties.
+For integer variables, it will plot the value of the variable versus time.
+For completion variables, it will generate a histogram of the time elapsed
+between matching Begin and End events.
+Currently, this will only work if the ploticus program is installed as
+.Pa /usr/pkg/bin/pl .
+The svg files will all start with
+.Ar basename .
+In addition,
+.Nm
+will leave behind the data files used to generate the plots (with the
+suffix
+.Pa .data
+replaced for
+.Pa .svg )
+.
+These files can be used to create new plots with a program of the user's
+choosing.
 .\" ==== svg ====
 .It Cm svg
-Generates an svg file (by default "output.svg") in the current directory,
-displaying the stream events.
+Generates an svg file (by default
+.Pa output.svg )
+in the current directory, displaying the stream events.
 The flags it accepts are:
 .Bl -tag -width indent-two
 .It Fl i Ar interval
@@ -80,10 +133,45 @@ since the first event in the stream.
 .It Fl o Ar path
 Specifies an alternate output file.
 .El
-.\" ==== svg ====
+.\" ==== summary ====
 .It Cm summary
 Displays summary information about the event stream.
 .El
+.El
+.Sh EXAMPLES
+Firstly, one can generate an event trace as described in
+.Xr ktrdump 8 .
+Assume that our trace is in
+.Pa trace.evtr .
+Then
+.Bd -literal -offset indent
+evtranalyze -f trace.evtr summary
+.Ed
+.Pp
+will display summary information for the number of events encountered
+on each processor.
+.Bd -literal -offset indent
+evtranalyze -f trace.evtr show
+.Ed
+.Pp
+will display those events in chronological order, merging event traces
+from all system cpus.
+.Bd -literal -offset indent
+evtranalyze -f trace.evtr stats integer varname
+.Ed
+.Pp
+will display statistics about the integer variable
+.Ar varname ,
+while
+.Bd -literal -offset indent
+evtranalyze -f trace.evtr stats completion -p test varname Open Close
+.Ed
+.Pp
+displays statistics for completion events (matching Open/Close constructors)
+on the variable
+.Ar varname
+and in addition generates appropriate plots in files named
+.Sq Pa test*.svg .
 .Sh SEE ALSO
 .Xr ktrdump 8
 .Sh HISTORY
