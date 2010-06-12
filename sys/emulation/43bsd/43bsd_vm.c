@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * 43BSD_VM.C		- 4.3BSD compatibility virtual memory syscalls
  *
  * Copyright (c) 1988 University of Utah.
@@ -50,11 +52,11 @@
 #include <sys/mman.h>
 #include <sys/proc.h>
 
+#include <sys/thread.h>
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
 
 /*
- * MPSAFE
+ * No requirements
  */
 int
 sys_ovadvise(struct ovadvise_args *uap)
@@ -63,7 +65,7 @@ sys_ovadvise(struct ovadvise_args *uap)
 }
 
 /*
- * MPSAFE
+ * No requirements
  */
 int
 sys_ogetpagesize(struct getpagesize_args *uap)
@@ -73,7 +75,7 @@ sys_ogetpagesize(struct getpagesize_args *uap)
 }
 
 /*
- * MPSAFE
+ * No requirements
  */
 int
 sys_ommap(struct ommap_args *uap)
@@ -111,11 +113,11 @@ sys_ommap(struct ommap_args *uap)
 	if (uap->flags & OMAP_INHERIT)
 		flags |= MAP_INHERIT;
 
-	get_mplock();
+	lwkt_gettoken(&vm_token);
 	error = kern_mmap(curproc->p_vmspace, uap->addr, uap->len,
 			  prot, flags, uap->fd, uap->pos,
 			  &uap->sysmsg_resultp);
-	rel_mplock();
+	lwkt_reltoken(&vm_token);
 
 	return (error);
 }

@@ -251,7 +251,7 @@ done:
  * but operates on the vmspace's memory map.  Most callers use this to create
  * a MAP_VPAGETABLE mapping.
  *
- * MPALMOSTSAFE
+ * No requirements.
  */
 int
 sys_vmspace_mmap(struct vmspace_mmap_args *uap)
@@ -260,7 +260,12 @@ sys_vmspace_mmap(struct vmspace_mmap_args *uap)
 	struct vmspace_entry *ve;
 	int error;
 
-	get_mplock();
+	/*
+	 * We hold the vmspace token to serialize calls to vkernel_find_vmspace
+	 * and the vm token to serialize calls to kern_mmap.
+	 */
+	lwkt_gettoken(&vm_token);
+	lwkt_gettoken(&vmspace_token);
 	if ((vkp = curproc->p_vkernel) == NULL) {
 		error = EINVAL;
 		goto done;
@@ -273,7 +278,8 @@ sys_vmspace_mmap(struct vmspace_mmap_args *uap)
 			  uap->prot, uap->flags,
 			  uap->fd, uap->offset, &uap->sysmsg_resultp);
 done:
-	rel_mplock();
+	lwkt_reltoken(&vmspace_token);
+	lwkt_reltoken(&vm_token);
 	return (error);
 }
 
