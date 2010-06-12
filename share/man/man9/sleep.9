@@ -117,7 +117,7 @@ the process is being asleep.
 All processes sleeping on a single
 .Fa ident
 are woken up later by
-.Nm wakeup ,
+.Fn wakeup ,
 often called from inside an interrupt routine, to indicate that the
 resource the process/thread was blocking on is available now.
 .Pp
@@ -159,7 +159,7 @@ tsleep(..., PINTERLOCK)
 .Ed
 .Pp
 For example, to implement
-.Nm ssleep :
+.Fn ssleep :
 .Bd -literal
 spin_lock_wr(&important_lock);
 if (important_condition == 0) {
@@ -283,20 +283,20 @@ was set in
 The sleep/wakeup process synchronization mechanism is very old.
 It appeared in a very early version of Unix.
 .Pp
-.Nm Tsleep
+.Fn tsleep
 appeared in
 .Bx 4.4 .
 .Pp
-.Nm ssleep
+.Fn ssleep
 appeared in
 .Dx 1.6 ,
-.Nm zsleep
+.Fn zsleep
 in
 .Dx 2.0 ,
 and
-.Nm lksleep
+.Fn lksleep
 and
-.Nm mtxsleep
+.Fn mtxsleep
 in
 .Dx 2.3 .
 .Sh AUTHORS
