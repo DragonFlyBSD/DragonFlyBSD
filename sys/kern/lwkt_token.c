@@ -520,8 +520,8 @@ lwkt_token_pool_lookup(void *ptr)
 }
 
 /*
- * Initialize the owner and release-to cpu to the current cpu
- * and reset the generation count.
+ * Initialize a token.  If mpsafe is 0, the MP lock is acquired before
+ * acquiring the token and released after releasing the token.
  */
 void
 lwkt_token_init(lwkt_token_t tok, int mpsafe)

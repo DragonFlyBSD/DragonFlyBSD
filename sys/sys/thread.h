@@ -95,9 +95,9 @@ struct intrframe;
  * interrupts as well as other cpus.  This means that your token can only
  * be (temporarily) lost if you *explicitly* block.
  *
- * Tokens are managed through a helper reference structure, lwkt_tokref,
- * which is typically declared on the caller's stack.  Multiple tokref's
- * may reference the same token.
+ * Tokens are managed through a helper reference structure, lwkt_tokref.  Each
+ * thread has a stack of tokref's to keep track of acquired tokens.  Multiple
+ * tokref's may reference the same token.
  */
 
 typedef struct lwkt_token {
