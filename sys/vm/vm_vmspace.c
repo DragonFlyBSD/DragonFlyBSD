@@ -338,7 +338,7 @@ sys_vmspace_munmap(struct vmspace_munmap_args *uap)
 		goto done;
 	}
 	map = &ve->vmspace->vm_map;
-	if (!vm_map_check_protection(map, addr, tmpaddr, VM_PROT_NONE)) {
+	if (!vm_map_check_protection(map, addr, tmpaddr, VM_PROT_NONE, FALSE)) {
 		error = EINVAL;
 		goto done;
 	}

@@ -547,7 +547,8 @@ sys_munmap(struct munmap_args *uap)
 	/*
 	 * Make sure entire range is allocated.
 	 */
-	if (!vm_map_check_protection(map, addr, addr + size, VM_PROT_NONE)) {
+	if (!vm_map_check_protection(map, addr, addr + size,
+				     VM_PROT_NONE, FALSE)) {
 		rel_mplock();
 		return (EINVAL);
 	}

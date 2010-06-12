@@ -141,9 +141,8 @@ kernacc(c_caddr_t addr, int len, int rw)
 	prot = rw;
 	saddr = trunc_page((vm_offset_t)addr);
 	eaddr = round_page((vm_offset_t)addr + len);
-	vm_map_lock_read(&kernel_map);
-	rv = vm_map_check_protection(&kernel_map, saddr, eaddr, prot);
-	vm_map_unlock_read(&kernel_map);
+	rv = vm_map_check_protection(&kernel_map, saddr, eaddr, prot, FALSE);
+
 	return (rv == TRUE);
 }
 
@@ -178,8 +177,9 @@ useracc(c_caddr_t addr, int len, int rw)
 	 * the map hint unnecessarily.
 	 */
 	save_hint = map->hint;
-	rv = vm_map_check_protection(map,
-	    trunc_page((vm_offset_t)addr), round_page((vm_offset_t)addr + len), prot);
+	rv = vm_map_check_protection(map, trunc_page((vm_offset_t)addr),
+				     round_page((vm_offset_t)addr + len),
+				     prot, TRUE);
 	map->hint = save_hint;
 	vm_map_unlock_read(map);
 	

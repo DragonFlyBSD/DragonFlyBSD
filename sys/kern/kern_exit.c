@@ -412,7 +412,7 @@ exit1(int rv)
 	 * by vmspace_exit() (which decrements exitingcnt) cleans up the
 	 * remainder.
 	 */
-	++vm->vm_exitingcnt;
+	vmspace_exitbump(vm);
 	sysref_put(&vm->vm_sysref);
 
 	if (SESS_LEADER(p)) {

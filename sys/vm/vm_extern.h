@@ -108,6 +108,7 @@ struct vmspace *vmspace_fork (struct vmspace *);
 void vmspace_exec (struct proc *, struct vmspace *);
 void vmspace_unshare (struct proc *);
 void vmspace_exitfree (struct proc *);
+void vmspace_exitbump (struct vmspace *);
 void vslock (caddr_t, u_int);
 void vsunlock (caddr_t, u_int);
 void vm_object_print (/* db_expr_t */ long, boolean_t, /* db_expr_t */ long,

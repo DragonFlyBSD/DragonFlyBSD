@@ -297,6 +297,8 @@ struct vmresident {
  *		as unbraced elements in a higher level statement.
  */
 
+#define ASSERT_VM_MAP_LOCKED(map)	KKASSERT(lockowned(&(map)->lock))
+
 #ifdef DIAGNOSTIC
 /* #define MAP_LOCK_DIAGNOSTIC 1 */
 #ifdef MAP_LOCK_DIAGNOSTIC
@@ -428,7 +430,8 @@ vmspace_resident_count(struct vmspace *vmspace)
 
 extern struct sysref_class vmspace_sysref_class;
 
-boolean_t vm_map_check_protection (vm_map_t, vm_offset_t, vm_offset_t, vm_prot_t);
+boolean_t vm_map_check_protection (vm_map_t, vm_offset_t, vm_offset_t,
+		vm_prot_t, boolean_t);
 struct pmap;
 struct globaldata;
 void vm_map_entry_allocate_object(vm_map_entry_t);

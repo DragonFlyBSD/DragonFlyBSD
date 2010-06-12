@@ -134,7 +134,7 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum) {
 	 */
 
 	if (vm_map_check_protection (map, pageno, pageno + PAGE_SIZE,
-		VM_PROT_WRITE) == FALSE) {
+				     VM_PROT_WRITE, FALSE) == FALSE) {
 		/*
 		 * If the page was not writable, we make it so.
 		 * XXX It is possible a page may *not* be read/executable,

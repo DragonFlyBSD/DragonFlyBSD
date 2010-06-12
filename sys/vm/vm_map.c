@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -98,29 +100,22 @@
 #include <sys/sysref2.h>
 
 /*
- *	Virtual memory maps provide for the mapping, protection,
- *	and sharing of virtual memory objects.  In addition,
- *	this module provides for an efficient virtual copy of
- *	memory from one map to another.
+ * Virtual memory maps provide for the mapping, protection, and sharing
+ * of virtual memory objects.  In addition, this module provides for an
+ * efficient virtual copy of memory from one map to another.
  *
- *	Synchronization is required prior to most operations.
+ * Synchronization is required prior to most operations.
  *
- *	Maps consist of an ordered doubly-linked list of simple
- *	entries; a single hint is used to speed up lookups.
+ * Maps consist of an ordered doubly-linked list of simple entries.
+ * A hint and a RB tree is used to speed-up lookups.
  *
- *	Since portions of maps are specified by start/end addresses,
- *	which may not align with existing map entries, all
- *	routines merely "clip" entries to these start/end values.
- *	[That is, an entry is split into two, bordering at a
- *	start or end value.]  Note that these clippings may not
- *	always be necessary (as the two resulting entries are then
- *	not changed); however, the clipping is done for convenience.
+ * Callers looking to modify maps specify start/end addresses which cause
+ * the related map entry to be clipped if necessary, and then later
+ * recombined if the pieces remained compatible.
  *
- *	As mentioned above, virtual copy operations are performed
- *	by copying VM object references from one map to
- *	another, and then marking both regions as copy-on-write.
+ * Virtual copy operations are performed by copying VM object references
+ * from one map to another, and then marking both regions as copy-on-write.
  */
-
 static void vmspace_terminate(struct vmspace *vm);
 static void vmspace_lock(struct vmspace *vm);
 static void vmspace_unlock(struct vmspace *vm);
@@ -167,19 +162,19 @@ static void vm_map_split (vm_map_entry_t);
 static void vm_map_unclip_range (vm_map_t map, vm_map_entry_t start_entry, vm_offset_t start, vm_offset_t end, int *count, int flags);
 
 /*
- *	vm_map_startup:
+ * Initialize the vm_map module.  Must be called before any other vm_map
+ * routines.
  *
- *	Initialize the vm_map module.  Must be called before
- *	any other vm_map routines.
+ * Map and entry structures are allocated from the general purpose
+ * memory pool with some exceptions:
  *
- *	Map and entry structures are allocated from the general
- *	purpose memory pool with some exceptions:
- *
- *	- The kernel map and kmem submap are allocated statically.
- *	- Kernel map entries are allocated out of a static pool.
+ *	- The kernel map is allocated statically.
+ *	- Initial kernel map entries are allocated out of a static pool.
  *
  *	These restrictions are necessary since malloc() uses the
  *	maps and requires map entries.
+ *
+ * Called from the low level boot code only.
  */
 void
 vm_map_startup(void)
@@ -193,7 +188,9 @@ vm_map_startup(void)
 }
 
 /*
- *	vm_init2 - called prior to any vmspace allocations
+ * Called prior to any vmspace allocations.
+ *
+ * Called from the low level boot code only.
  */
 void
 vm_init2(void) 
@@ -208,6 +205,8 @@ vm_init2(void)
 
 /*
  * Red black tree functions
+ *
+ * The caller must hold the related map lock.
  */
 static int rb_vm_map_compare(vm_map_entry_t a, vm_map_entry_t b);
 RB_GENERATE(vm_map_rb_tree, vm_map_entry, rb_entry, rb_vm_map_compare);
@@ -230,12 +229,15 @@ rb_vm_map_compare(vm_map_entry_t a, vm_map_entry_t b)
  * intact (particularly the pmap), so portions must be zerod.
  *
  * The structure is not considered activated until we call sysref_activate().
+ *
+ * No requirements.
  */
 struct vmspace *
 vmspace_alloc(vm_offset_t min, vm_offset_t max)
 {
 	struct vmspace *vm;
 
+	lwkt_gettoken(&vmspace_token);
 	vm = sysref_alloc(&vmspace_sysref_class);
 	bzero(&vm->vm_startcopy,
 	      (char *)&vm->vm_endcopy - (char *)&vm->vm_startcopy);
@@ -246,6 +248,8 @@ vmspace_alloc(vm_offset_t min, vm_offset_t max)
 	vm->vm_exitingcnt = 0;
 	cpu_vmspace_alloc(vm);
 	sysref_activate(&vm->vm_sysref);
+	lwkt_reltoken(&vmspace_token);
+
 	return (vm);
 }
 
@@ -253,6 +257,8 @@ vmspace_alloc(vm_offset_t min, vm_offset_t max)
  * dtor function - Some elements of the pmap are retained in the
  * free-cached vmspaces to improve performance.  We have to clean them up
  * here before returning the vmspace to the memory pool.
+ *
+ * No requirements.
  */
 static void
 vmspace_dtor(void *obj, void *private)
@@ -273,6 +279,8 @@ vmspace_dtor(void *obj, void *private)
  *
  * sysref will not scrap the object until we call sysref_put() once more
  * after the last ref has been dropped.
+ *
+ * Interlocked by the sysref API.
  */
 static void
 vmspace_terminate(struct vmspace *vm)
@@ -283,13 +291,14 @@ vmspace_terminate(struct vmspace *vm)
 	 * If exitingcnt is non-zero we can't get rid of the entire vmspace
 	 * yet, but we can scrap user memory.
 	 */
+	lwkt_gettoken(&vmspace_token);
 	if (vm->vm_exitingcnt) {
 		shmexit(vm);
 		pmap_remove_pages(vmspace_pmap(vm), VM_MIN_USER_ADDRESS,
 				  VM_MAX_USER_ADDRESS);
 		vm_map_remove(&vm->vm_map, VM_MIN_USER_ADDRESS,
 			      VM_MAX_USER_ADDRESS);
-
+		lwkt_reltoken(&vmspace_token);
 		return;
 	}
 	cpu_vmspace_free(vm);
@@ -316,8 +325,12 @@ vmspace_terminate(struct vmspace *vm)
 
 	pmap_release(vmspace_pmap(vm));
 	sysref_put(&vm->vm_sysref);
+	lwkt_reltoken(&vmspace_token);
 }
 
+/*
+ * vmspaces are not currently locked.
+ */
 static void
 vmspace_lock(struct vmspace *vm __unused)
 {
@@ -329,28 +342,47 @@ vmspace_unlock(struct vmspace *vm __unused)
 }
 
 /*
+ * This is called during exit indicating that the vmspace is no
+ * longer in used by an exiting process, but the process has not yet
+ * been cleaned up.
+ *
+ * No requirements.
+ */
+void
+vmspace_exitbump(struct vmspace *vm)
+{
+	lwkt_gettoken(&vmspace_token);
+	++vm->vm_exitingcnt;
+	lwkt_reltoken(&vmspace_token);
+}
+
+/*
  * This is called in the wait*() handling code.  The vmspace can be terminated
  * after the last wait is finished using it.
+ *
+ * No requirements.
  */
 void
 vmspace_exitfree(struct proc *p)
 {
 	struct vmspace *vm;
 
+	lwkt_gettoken(&vmspace_token);
 	vm = p->p_vmspace;
 	p->p_vmspace = NULL;
 
 	if (--vm->vm_exitingcnt == 0 && sysref_isinactive(&vm->vm_sysref))
 		vmspace_terminate(vm);
+	lwkt_reltoken(&vmspace_token);
 }
 
 /*
- * vmspace_swap_count()
+ * Swap useage is determined by taking the proportional swap used by
+ * VM objects backing the VM map.  To make up for fractional losses,
+ * if the VM object has any swap use at all the associated map entries
+ * count for at least 1 swap page.
  *
- *	Swap useage is determined by taking the proportional swap used by
- *	VM objects backing the VM map.  To make up for fractional losses,
- *	if the VM object has any swap use at all the associated map entries
- *	count for at least 1 swap page.
+ * No requirements.
  */
 int
 vmspace_swap_count(struct vmspace *vmspace)
@@ -361,6 +393,7 @@ vmspace_swap_count(struct vmspace *vmspace)
 	int count = 0;
 	int n;
 
+	lwkt_gettoken(&vmspace_token);
 	for (cur = map->header.next; cur != &map->header; cur = cur->next) {
 		switch(cur->maptype) {
 		case VM_MAPTYPE_NORMAL:
@@ -377,15 +410,16 @@ vmspace_swap_count(struct vmspace *vmspace)
 			break;
 		}
 	}
+	lwkt_reltoken(&vmspace_token);
 	return(count);
 }
 
 /*
- * vmspace_anonymous_count()
+ * Calculate the approximate number of anonymous pages in use by
+ * this vmspace.  To make up for fractional losses, we count each
+ * VM object as having at least 1 anonymous page.
  *
- *	Calculate the approximate number of anonymous pages in use by
- *	this vmspace.  To make up for fractional losses, we count each
- *	VM object as having at least 1 anonymous page.
+ * No requirements.
  */
 int
 vmspace_anonymous_count(struct vmspace *vmspace)
@@ -395,6 +429,7 @@ vmspace_anonymous_count(struct vmspace *vmspace)
 	vm_object_t object;
 	int count = 0;
 
+	lwkt_gettoken(&vmspace_token);
 	for (cur = map->header.next; cur != &map->header; cur = cur->next) {
 		switch(cur->maptype) {
 		case VM_MAPTYPE_NORMAL:
@@ -411,18 +446,15 @@ vmspace_anonymous_count(struct vmspace *vmspace)
 			break;
 		}
 	}
+	lwkt_reltoken(&vmspace_token);
 	return(count);
 }
 
-
-
-
 /*
- *	vm_map_create:
+ * Creates and returns a new empty VM map with the given physical map
+ * structure, and having the given lower and upper address bounds.
  *
- *	Creates and returns a new empty VM map with
- *	the given physical map structure, and having
- *	the given lower and upper address bounds.
+ * No requirements.
  */
 vm_map_t
 vm_map_create(vm_map_t result, pmap_t pmap, vm_offset_t min, vm_offset_t max)
@@ -434,9 +466,10 @@ vm_map_create(vm_map_t result, pmap_t pmap, vm_offset_t min, vm_offset_t max)
 }
 
 /*
- * Initialize an existing vm_map structure
- * such as that in the vmspace structure.
- * The pmap is set elsewhere.
+ * Initialize an existing vm_map structure such as that in the vmspace
+ * structure.  The pmap is initialized elsewhere.
+ *
+ * No requirements.
  */
 void
 vm_map_init(struct vm_map *map, vm_offset_t min, vm_offset_t max, pmap_t pmap)
@@ -469,6 +502,9 @@ vm_map_init(struct vm_map *map, vm_offset_t min, vm_offset_t max, pmap_t pmap)
  * If the map segment is governed by a virtual page table then it is
  * possible to address offsets beyond the mapped area.  Just allocate
  * a maximally sized object for this case.
+ *
+ * The vm_map must be exclusively locked.
+ * No other requirements.
  */
 static
 void
@@ -494,6 +530,9 @@ vm_map_entry_shadow(vm_map_entry_t entry)
  * If the map segment is governed by a virtual page table then it is
  * possible to address offsets beyond the mapped area.  Just allocate
  * a maximally sized object for this case.
+ *
+ * The vm_map must be exclusively locked.
+ * No other requirements.
  */
 void 
 vm_map_entry_allocate_object(vm_map_entry_t entry)
@@ -511,19 +550,16 @@ vm_map_entry_allocate_object(vm_map_entry_t entry)
 }
 
 /*
- *      vm_map_entry_reserve_cpu_init:
+ * Set an initial negative count so the first attempt to reserve
+ * space preloads a bunch of vm_map_entry's for this cpu.  Also
+ * pre-allocate 2 vm_map_entries which will be needed by zalloc() to
+ * map a new page for vm_map_entry structures.  SMP systems are
+ * particularly sensitive.
  *
- *	Set an initial negative count so the first attempt to reserve
- *	space preloads a bunch of vm_map_entry's for this cpu.  Also
- *	pre-allocate 2 vm_map_entries which will be needed by zalloc() to
- *	map a new page for vm_map_entry structures.  SMP systems are
- *	particularly sensitive.
+ * This routine is called in early boot so we cannot just call
+ * vm_map_entry_reserve().
  *
- *	This routine is called in early boot so we cannot just call
- *	vm_map_entry_reserve().
- *
- *	May be called for a gd other then mycpu, but may only be called
- *	during early boot.
+ * Called from the low level boot code only (for each cpu)
  */
 void
 vm_map_entry_reserve_cpu_init(globaldata_t gd)
@@ -540,11 +576,11 @@ vm_map_entry_reserve_cpu_init(globaldata_t gd)
 }
 
 /*
- *	vm_map_entry_reserve:
+ * Reserves vm_map_entry structures so code later on can manipulate
+ * map_entry structures within a locked map without blocking trying
+ * to allocate a new vm_map_entry.
  *
- *	Reserves vm_map_entry structures so code later on can manipulate
- *	map_entry structures within a locked map without blocking trying
- *	to allocate a new vm_map_entry.
+ * No requirements.
  */
 int
 vm_map_entry_reserve(int count)
@@ -552,12 +588,11 @@ vm_map_entry_reserve(int count)
 	struct globaldata *gd = mycpu;
 	vm_map_entry_t entry;
 
-	crit_enter();
-
 	/*
 	 * Make sure we have enough structures in gd_vme_base to handle
 	 * the reservation request.
 	 */
+	crit_enter();
 	while (gd->gd_vme_avail < count) {
 		entry = zalloc(mapentzone);
 		entry->next = gd->gd_vme_base;
@@ -566,15 +601,16 @@ vm_map_entry_reserve(int count)
 	}
 	gd->gd_vme_avail -= count;
 	crit_exit();
+
 	return(count);
 }
 
 /*
- *	vm_map_entry_release:
+ * Releases previously reserved vm_map_entry structures that were not
+ * used.  If we have too much junk in our per-cpu cache clean some of
+ * it out.
  *
- *	Releases previously reserved vm_map_entry structures that were not
- *	used.  If we have too much junk in our per-cpu cache clean some of
- *	it out.
+ * No requirements.
  */
 void
 vm_map_entry_release(int count)
@@ -597,20 +633,20 @@ vm_map_entry_release(int count)
 }
 
 /*
- *	vm_map_entry_kreserve:
+ * Reserve map entry structures for use in kernel_map itself.  These
+ * entries have *ALREADY* been reserved on a per-cpu basis when the map
+ * was inited.  This function is used by zalloc() to avoid a recursion
+ * when zalloc() itself needs to allocate additional kernel memory.
  *
- *	Reserve map entry structures for use in kernel_map itself.  These
- *	entries have *ALREADY* been reserved on a per-cpu basis when the map
- *	was inited.  This function is used by zalloc() to avoid a recursion
- *	when zalloc() itself needs to allocate additional kernel memory.
+ * This function works like the normal reserve but does not load the
+ * vm_map_entry cache (because that would result in an infinite
+ * recursion).  Note that gd_vme_avail may go negative.  This is expected.
  *
- *	This function works like the normal reserve but does not load the
- *	vm_map_entry cache (because that would result in an infinite
- *	recursion).  Note that gd_vme_avail may go negative.  This is expected.
+ * Any caller of this function must be sure to renormalize after
+ * potentially eating entries to ensure that the reserve supply
+ * remains intact.
  *
- *	Any caller of this function must be sure to renormalize after 
- *	potentially eating entries to ensure that the reserve supply
- *	remains intact.
+ * No requirements.
  */
 int
 vm_map_entry_kreserve(int count)
@@ -620,16 +656,18 @@ vm_map_entry_kreserve(int count)
 	crit_enter();
 	gd->gd_vme_avail -= count;
 	crit_exit();
-	KASSERT(gd->gd_vme_base != NULL, ("no reserved entries left, gd_vme_avail = %d\n", gd->gd_vme_avail));
+	KASSERT(gd->gd_vme_base != NULL,
+		("no reserved entries left, gd_vme_avail = %d\n",
+		gd->gd_vme_avail));
 	return(count);
 }
 
 /*
- *	vm_map_entry_krelease:
+ * Release previously reserved map entries for kernel_map.  We do not
+ * attempt to clean up like the normal release function as this would
+ * cause an unnecessary (but probably not fatal) deep procedure call.
  *
- *	Release previously reserved map entries for kernel_map.  We do not
- *	attempt to clean up like the normal release function as this would
- *	cause an unnecessary (but probably not fatal) deep procedure call.
+ * No requirements.
  */
 void
 vm_map_entry_krelease(int count)
@@ -642,13 +680,12 @@ vm_map_entry_krelease(int count)
 }
 
 /*
- *	vm_map_entry_create:	[ internal use only ]
+ * Allocates a VM map entry for insertion.  No entry fields are filled in.
  *
- *	Allocates a VM map entry for insertion.  No entry fields are filled 
- *	in.
+ * The entries should have previously been reserved.  The reservation count
+ * is tracked in (*countp).
  *
- *	This routine may be called from an interrupt thread but not a FAST
- *	interrupt.  This routine may recurse the map lock.
+ * No requirements.
  */
 static vm_map_entry_t
 vm_map_entry_create(vm_map_t map, int *countp)
@@ -663,14 +700,14 @@ vm_map_entry_create(vm_map_t map, int *countp)
 	KASSERT(entry != NULL, ("gd_vme_base NULL! count %d", *countp));
 	gd->gd_vme_base = entry->next;
 	crit_exit();
+
 	return(entry);
 }
 
 /*
- *	vm_map_entry_dispose:	[ internal use only ]
+ * Dispose of a vm_map_entry that is no longer being referenced.
  *
- *	Dispose of a vm_map_entry that is no longer being referenced.  This
- *	function may be called from an interrupt.
+ * No requirements.
  */
 static void
 vm_map_entry_dispose(vm_map_t map, vm_map_entry_t entry, int *countp)
@@ -689,15 +726,24 @@ vm_map_entry_dispose(vm_map_t map, vm_map_entry_t entry, int *countp)
 
 
 /*
- *	vm_map_entry_{un,}link:
+ * Insert/remove entries from maps.
  *
- *	Insert/remove entries from maps.
+ * The related map must be exclusively locked.
+ * No other requirements.
+ *
+ * NOTE! We currently acquire the vmspace_token only to avoid races
+ *	 against the pageout daemon's calls to vmspace_*_count(), which
+ *	 are unable to safely lock the vm_map without potentially
+ *	 deadlocking.
  */
 static __inline void
 vm_map_entry_link(vm_map_t map,
 		  vm_map_entry_t after_where,
 		  vm_map_entry_t entry)
 {
+	ASSERT_VM_MAP_LOCKED(map);
+
+	lwkt_gettoken(&vmspace_token);
 	map->nentries++;
 	entry->prev = after_where;
 	entry->next = after_where->next;
@@ -705,6 +751,7 @@ vm_map_entry_link(vm_map_t map,
 	after_where->next = entry;
 	if (vm_map_rb_tree_RB_INSERT(&map->rb_root, entry))
 		panic("vm_map_entry_link: dup addr map %p ent %p", map, entry);
+	lwkt_reltoken(&vmspace_token);
 }
 
 static __inline void
@@ -714,33 +761,39 @@ vm_map_entry_unlink(vm_map_t map,
 	vm_map_entry_t prev;
 	vm_map_entry_t next;
 
-	if (entry->eflags & MAP_ENTRY_IN_TRANSITION)
-		panic("vm_map_entry_unlink: attempt to mess with locked entry! %p", entry);
+	ASSERT_VM_MAP_LOCKED(map);
+
+	if (entry->eflags & MAP_ENTRY_IN_TRANSITION) {
+		panic("vm_map_entry_unlink: attempt to mess with "
+		      "locked entry! %p", entry);
+	}
+	lwkt_gettoken(&vmspace_token);
 	prev = entry->prev;
 	next = entry->next;
 	next->prev = prev;
 	prev->next = next;
 	vm_map_rb_tree_RB_REMOVE(&map->rb_root, entry);
 	map->nentries--;
+	lwkt_reltoken(&vmspace_token);
 }
 
 /*
- *	vm_map_lookup_entry:	[ internal use only ]
+ * Finds the map entry containing (or immediately preceding) the specified
+ * address in the given map.  The entry is returned in (*entry).
  *
- *	Finds the map entry containing (or
- *	immediately preceding) the specified address
- *	in the given map; the entry is returned
- *	in the "entry" parameter.  The boolean
- *	result indicates whether the address is
- *	actually contained in the map.
+ * The boolean result indicates whether the address is actually contained
+ * in the map.
+ *
+ * The related map must be locked.
+ * No other requirements.
  */
 boolean_t
-vm_map_lookup_entry(vm_map_t map, vm_offset_t address,
-    vm_map_entry_t *entry /* OUT */)
+vm_map_lookup_entry(vm_map_t map, vm_offset_t address, vm_map_entry_t *entry)
 {
 	vm_map_entry_t tmp;
 	vm_map_entry_t last;
 
+	ASSERT_VM_MAP_LOCKED(map);
 #if 0
 	/*
 	 * XXX TEMPORARILY DISABLED.  For some reason our attempt to revive
@@ -790,18 +843,14 @@ vm_map_lookup_entry(vm_map_t map, vm_offset_t address,
 }
 
 /*
- *	vm_map_insert:
+ * Inserts the given whole VM object into the target map at the specified
+ * address range.  The object's size should match that of the address range.
  *
- *	Inserts the given whole VM object into the target
- *	map at the specified address range.  The object's
- *	size should match that of the address range.
+ * The map must be exclusively locked.
+ * The caller must have reserved sufficient vm_map_entry structures.
  *
- *	Requires that the map be locked, and leaves it so.  Requires that
- *	sufficient vm_map_entry structures have been reserved and tracks
- *	the use via countp.
- *
- *	If object is non-NULL, ref count must be bumped by caller
- *	prior to making call to account for the new entry.
+ * If object is non-NULL, ref count must be bumped by caller
+ * prior to making call to account for the new entry.
  */
 int
 vm_map_insert(vm_map_t map, int *countp,
@@ -816,10 +865,11 @@ vm_map_insert(vm_map_t map, int *countp,
 	vm_map_entry_t temp_entry;
 	vm_eflags_t protoeflags;
 
+	ASSERT_VM_MAP_LOCKED(map);
+
 	/*
 	 * Check that the start and end points are not bogus.
 	 */
-
 	if ((start < map->min_offset) || (end > map->max_offset) ||
 	    (start >= end))
 		return (KERN_INVALID_ADDRESS);
@@ -828,7 +878,6 @@ vm_map_insert(vm_map_t map, int *countp,
 	 * Find the entry prior to the proposed starting address; if it's part
 	 * of an existing entry, this range is bogus.
 	 */
-
 	if (vm_map_lookup_entry(map, start, &temp_entry))
 		return (KERN_NO_SPACE);
 
@@ -977,7 +1026,7 @@ vm_map_insert(vm_map_t map, int *countp,
 
 /*
  * Find sufficient space for `length' bytes in the given map, starting at
- * `start'.  The map must be locked.  Returns 0 on success, 1 on no space.
+ * `start'.  Returns 0 on success, 1 on no space.
  *
  * This function will returned an arbitrarily aligned pointer.  If no
  * particular alignment is required you should pass align as 1.  Note that
@@ -986,6 +1035,9 @@ vm_map_insert(vm_map_t map, int *countp,
  * argument.
  *
  * 'align' should be a power of 2 but is not required to be.
+ *
+ * The map must be exclusively locked.
+ * No other requirements.
  */
 int
 vm_map_findspace(vm_map_t map, vm_offset_t start, vm_size_t length,
@@ -1090,13 +1142,14 @@ retry:
 }
 
 /*
- *	vm_map_find finds an unallocated region in the target address
- *	map with the given length.  The search is defined to be
- *	first-fit from the specified address; the region found is
- *	returned in the same parameter.
+ * vm_map_find finds an unallocated region in the target address map with
+ * the given length.  The search is defined to be first-fit from the
+ * specified address; the region found is returned in the same parameter.
  *
- *	If object is non-NULL, ref count must be bumped by caller
- *	prior to making call to account for the new entry.
+ * If object is non-NULL, ref count must be bumped by caller
+ * prior to making call to account for the new entry.
+ *
+ * No requirements.  This function will lock the map temporarily.
  */
 int
 vm_map_find(vm_map_t map, vm_object_t object, vm_ooffset_t offset,
@@ -1134,17 +1187,15 @@ vm_map_find(vm_map_t map, vm_object_t object, vm_ooffset_t offset,
 }
 
 /*
- *	vm_map_simplify_entry:
+ * Simplify the given map entry by merging with either neighbor.  This
+ * routine also has the ability to merge with both neighbors.
  *
- *	Simplify the given map entry by merging with either neighbor.  This
- *	routine also has the ability to merge with both neighbors.
+ * This routine guarentees that the passed entry remains valid (though
+ * possibly extended).  When merging, this routine may delete one or
+ * both neighbors.  No action is taken on entries which have their
+ * in-transition flag set.
  *
- *	The map must be locked.
- *
- *	This routine guarentees that the passed entry remains valid (though
- *	possibly extended).  When merging, this routine may delete one or
- *	both neighbors.  No action is taken on entries which have their
- *	in-transition flag set.
+ * The map must be exclusively locked.
  */
 void
 vm_map_simplify_entry(vm_map_t map, vm_map_entry_t entry, int *countp)
@@ -1211,25 +1262,25 @@ vm_map_simplify_entry(vm_map_t map, vm_map_entry_t entry, int *countp)
 	        }
 	}
 }
+
 /*
- *	vm_map_clip_start:	[ internal use only ]
- *
- *	Asserts that the given entry begins at or after
- *	the specified address; if necessary,
- *	it splits the entry into two.
+ * Asserts that the given entry begins at or after the specified address.
+ * If necessary, it splits the entry into two.
  */
-#define vm_map_clip_start(map, entry, startaddr, countp) \
-{ \
-	if (startaddr > entry->start) \
-		_vm_map_clip_start(map, entry, startaddr, countp); \
+#define vm_map_clip_start(map, entry, startaddr, countp)		\
+{									\
+	if (startaddr > entry->start)					\
+		_vm_map_clip_start(map, entry, startaddr, countp);	\
 }
 
 /*
- *	This routine is called only when it is known that
- *	the entry must be split.
+ * This routine is called only when it is known that the entry must be split.
+ *
+ * The map must be exclusively locked.
  */
 static void
-_vm_map_clip_start(vm_map_t map, vm_map_entry_t entry, vm_offset_t start, int *countp)
+_vm_map_clip_start(vm_map_t map, vm_map_entry_t entry, vm_offset_t start,
+		   int *countp)
 {
 	vm_map_entry_t new_entry;
 
@@ -1272,25 +1323,25 @@ _vm_map_clip_start(vm_map_t map, vm_map_entry_t entry, vm_offset_t start, int *c
 }
 
 /*
- *	vm_map_clip_end:	[ internal use only ]
+ * Asserts that the given entry ends at or before the specified address.
+ * If necessary, it splits the entry into two.
  *
- *	Asserts that the given entry ends at or before
- *	the specified address; if necessary,
- *	it splits the entry into two.
+ * The map must be exclusively locked.
  */
-
-#define vm_map_clip_end(map, entry, endaddr, countp) \
-{ \
-	if (endaddr < entry->end) \
-		_vm_map_clip_end(map, entry, endaddr, countp); \
+#define vm_map_clip_end(map, entry, endaddr, countp)		\
+{								\
+	if (endaddr < entry->end)				\
+		_vm_map_clip_end(map, entry, endaddr, countp);	\
 }
 
 /*
- *	This routine is called only when it is known that
- *	the entry must be split.
+ * This routine is called only when it is known that the entry must be split.
+ *
+ * The map must be exclusively locked.
  */
 static void
-_vm_map_clip_end(vm_map_t map, vm_map_entry_t entry, vm_offset_t end, int *countp)
+_vm_map_clip_end(vm_map_t map, vm_map_entry_t entry, vm_offset_t end,
+		 int *countp)
 {
 	vm_map_entry_t new_entry;
 
@@ -1329,26 +1380,22 @@ _vm_map_clip_end(vm_map_t map, vm_map_entry_t entry, vm_offset_t end, int *count
 }
 
 /*
- *	VM_MAP_RANGE_CHECK:	[ internal use only ]
- *
- *	Asserts that the starting and ending region
- *	addresses fall within the valid range of the map.
+ * Asserts that the starting and ending region addresses fall within the
+ * valid range for the map.
  */
-#define	VM_MAP_RANGE_CHECK(map, start, end)		\
-		{					\
-		if (start < vm_map_min(map))		\
-			start = vm_map_min(map);	\
-		if (end > vm_map_max(map))		\
-			end = vm_map_max(map);		\
-		if (start > end)			\
-			start = end;			\
-		}
+#define	VM_MAP_RANGE_CHECK(map, start, end)	\
+{						\
+	if (start < vm_map_min(map))		\
+		start = vm_map_min(map);	\
+	if (end > vm_map_max(map))		\
+		end = vm_map_max(map);		\
+	if (start > end)			\
+		start = end;			\
+}
 
 /*
- *	vm_map_transition_wait:	[ kernel use only ]
- *
- *	Used to block when an in-transition collison occurs.  The map
- *	is unlocked for the sleep and relocked before the return.
+ * Used to block when an in-transition collison occurs.  The map
+ * is unlocked for the sleep and relocked before the return.
  */
 static
 void
@@ -1360,14 +1407,11 @@ vm_map_transition_wait(vm_map_t map)
 }
 
 /*
- * CLIP_CHECK_BACK
- * CLIP_CHECK_FWD
- *
- *	When we do blocking operations with the map lock held it is
- *	possible that a clip might have occured on our in-transit entry,
- *	requiring an adjustment to the entry in our loop.  These macros
- *	help the pageable and clip_range code deal with the case.  The
- *	conditional costs virtually nothing if no clipping has occured.
+ * When we do blocking operations with the map lock held it is
+ * possible that a clip might have occured on our in-transit entry,
+ * requiring an adjustment to the entry in our loop.  These macros
+ * help the pageable and clip_range code deal with the case.  The
+ * conditional costs virtually nothing if no clipping has occured.
  */
 
 #define CLIP_CHECK_BACK(entry, save_start)		\
@@ -1388,29 +1432,27 @@ vm_map_transition_wait(vm_map_t map)
 
 
 /*
- *	vm_map_clip_range:	[ kernel use only ]
+ * Clip the specified range and return the base entry.  The
+ * range may cover several entries starting at the returned base
+ * and the first and last entry in the covering sequence will be
+ * properly clipped to the requested start and end address.
  *
- *	Clip the specified range and return the base entry.  The
- *	range may cover several entries starting at the returned base
- *	and the first and last entry in the covering sequence will be
- *	properly clipped to the requested start and end address.
+ * If no holes are allowed you should pass the MAP_CLIP_NO_HOLES
+ * flag.
  *
- *	If no holes are allowed you should pass the MAP_CLIP_NO_HOLES
- *	flag.  
+ * The MAP_ENTRY_IN_TRANSITION flag will be set for the entries
+ * covered by the requested range.
  *
- *	The MAP_ENTRY_IN_TRANSITION flag will be set for the entries
- *	covered by the requested range.
- *
- *	The map must be exclusively locked on entry and will remain locked
- *	on return. If no range exists or the range contains holes and you
- *	specified that no holes were allowed, NULL will be returned.  This
- *	routine may temporarily unlock the map in order avoid a deadlock when
- *	sleeping.
+ * The map must be exclusively locked on entry and will remain locked
+ * on return. If no range exists or the range contains holes and you
+ * specified that no holes were allowed, NULL will be returned.  This
+ * routine may temporarily unlock the map in order avoid a deadlock when
+ * sleeping.
  */
 static
 vm_map_entry_t
 vm_map_clip_range(vm_map_t map, vm_offset_t start, vm_offset_t end, 
-	int *countp, int flags)
+		  int *countp, int flags)
 {
 	vm_map_entry_t start_entry;
 	vm_map_entry_t entry;
@@ -1435,6 +1477,7 @@ again:
 		 */
 		goto again;
 	}
+
 	/*
 	 * Since we hold an exclusive map lock we do not have to restart
 	 * after clipping, even though clipping may block in zalloc.
@@ -1494,33 +1537,27 @@ again:
 }
 
 /*
- *	vm_map_unclip_range:	[ kernel use only ]
+ * Undo the effect of vm_map_clip_range().  You should pass the same
+ * flags and the same range that you passed to vm_map_clip_range().
+ * This code will clear the in-transition flag on the entries and
+ * wake up anyone waiting.  This code will also simplify the sequence
+ * and attempt to merge it with entries before and after the sequence.
  *
- *	Undo the effect of vm_map_clip_range().  You should pass the same
- *	flags and the same range that you passed to vm_map_clip_range().
- *	This code will clear the in-transition flag on the entries and
- *	wake up anyone waiting.  This code will also simplify the sequence 
- *	and attempt to merge it with entries before and after the sequence.
+ * The map must be locked on entry and will remain locked on return.
  *
- *	The map must be locked on entry and will remain locked on return.
- *
- *	Note that you should also pass the start_entry returned by 
- *	vm_map_clip_range().  However, if you block between the two calls
- *	with the map unlocked please be aware that the start_entry may
- *	have been clipped and you may need to scan it backwards to find
- *	the entry corresponding with the original start address.  You are
- *	responsible for this, vm_map_unclip_range() expects the correct
- *	start_entry to be passed to it and will KASSERT otherwise.
+ * Note that you should also pass the start_entry returned by
+ * vm_map_clip_range().  However, if you block between the two calls
+ * with the map unlocked please be aware that the start_entry may
+ * have been clipped and you may need to scan it backwards to find
+ * the entry corresponding with the original start address.  You are
+ * responsible for this, vm_map_unclip_range() expects the correct
+ * start_entry to be passed to it and will KASSERT otherwise.
  */
 static
 void
-vm_map_unclip_range(
-	vm_map_t map,
-	vm_map_entry_t start_entry,
-	vm_offset_t start,
-	vm_offset_t end,
-	int *countp,
-	int flags)
+vm_map_unclip_range(vm_map_t map, vm_map_entry_t start_entry,
+		    vm_offset_t start, vm_offset_t end,
+		    int *countp, int flags)
 {
 	vm_map_entry_t entry;
 
@@ -1528,8 +1565,11 @@ vm_map_unclip_range(
 
 	KASSERT(entry->start == start, ("unclip_range: illegal base entry"));
 	while (entry != &map->header && entry->start < end) {
-		KASSERT(entry->eflags & MAP_ENTRY_IN_TRANSITION, ("in-transition flag not set during unclip on: %p", entry));
-		KASSERT(entry->end <= end, ("unclip_range: tail wasn't clipped"));
+		KASSERT(entry->eflags & MAP_ENTRY_IN_TRANSITION,
+			("in-transition flag not set during unclip on: %p",
+			entry));
+		KASSERT(entry->end <= end,
+			("unclip_range: tail wasn't clipped"));
 		entry->eflags &= ~MAP_ENTRY_IN_TRANSITION;
 		if (entry->eflags & MAP_ENTRY_NEEDS_WAKEUP) {
 			entry->eflags &= ~MAP_ENTRY_NEEDS_WAKEUP;
@@ -1549,22 +1589,15 @@ vm_map_unclip_range(
 }
 
 /*
- *	vm_map_submap:		[ kernel use only ]
+ * Mark the given range as handled by a subordinate map.
  *
- *	Mark the given range as handled by a subordinate map.
+ * This range must have been created with vm_map_find(), and no other
+ * operations may have been performed on this range prior to calling
+ * vm_map_submap().
  *
- *	This range must have been created with vm_map_find,
- *	and no other operations may have been performed on this
- *	range prior to calling vm_map_submap.
+ * Submappings cannot be removed.
  *
- *	Only a limited number of operations can be performed
- *	within this rage after calling vm_map_submap:
- *		vm_fault
- *	[Don't try vm_map_copy!]
- *
- *	To remove a submapping, one must first remove the
- *	range from the superior map, and then destroy the
- *	submap (if desired).  [Better yet, don't try it.]
+ * No requirements.
  */
 int
 vm_map_submap(vm_map_t map, vm_offset_t start, vm_offset_t end, vm_map_t submap)
@@ -1600,8 +1633,6 @@ vm_map_submap(vm_map_t map, vm_offset_t start, vm_offset_t end, vm_map_t submap)
 }
 
 /*
- * vm_map_protect:
- *
  * Sets the protection of the specified address region in the target map. 
  * If "set_max" is specified, the maximum protection is to be set;
  * otherwise, only the current protection is affected.
@@ -1611,6 +1642,8 @@ vm_map_submap(vm_map_t map, vm_offset_t start, vm_offset_t end, vm_map_t submap)
  * on a virtual page table our protection basically controls how COW occurs
  * on the backing object, whereas the virtual page table abstraction itself
  * is an abstraction for userland.
+ *
+ * No requirements.
  */
 int
 vm_map_protect(vm_map_t map, vm_offset_t start, vm_offset_t end,
@@ -1695,14 +1728,14 @@ vm_map_protect(vm_map_t map, vm_offset_t start, vm_offset_t end,
 }
 
 /*
- *	vm_map_madvise:
+ * This routine traverses a processes map handling the madvise
+ * system call.  Advisories are classified as either those effecting
+ * the vm_map_entry structure, or those effecting the underlying
+ * objects.
  *
- * 	This routine traverses a processes map handling the madvise
- *	system call.  Advisories are classified as either those effecting
- *	the vm_map_entry structure, or those effecting the underlying 
- *	objects.
+ * The <value> argument is used for extended madvise calls.
  *
- *	The <value> argument is used for extended madvise calls.
+ * No requirements.
  */
 int
 vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end,
@@ -1905,12 +1938,9 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end,
 
 
 /*
- *	vm_map_inherit:
- *
- *	Sets the inheritance of the specified address
- *	range in the target map.  Inheritance
- *	affects how the map will be shared with
- *	child maps at the time of vm_map_fork.
+ * Sets the inheritance of the specified address range in the target map.
+ * Inheritance affects how the map will be shared with child maps at the
+ * time of vm_map_fork.
  */
 int
 vm_map_inherit(vm_map_t map, vm_offset_t start, vm_offset_t end,
@@ -1959,7 +1989,7 @@ vm_map_inherit(vm_map_t map, vm_offset_t start, vm_offset_t end,
  */
 int
 vm_map_unwire(vm_map_t map, vm_offset_t start, vm_offset_t real_end,
-    boolean_t new_pageable)
+	      boolean_t new_pageable)
 {
 	vm_map_entry_t entry;
 	vm_map_entry_t start_entry;
@@ -1972,7 +2002,8 @@ vm_map_unwire(vm_map_t map, vm_offset_t start, vm_offset_t real_end,
 	VM_MAP_RANGE_CHECK(map, start, real_end);
 	end = real_end;
 
-	start_entry = vm_map_clip_range(map, start, end, &count, MAP_CLIP_NO_HOLES);
+	start_entry = vm_map_clip_range(map, start, end, &count,
+					MAP_CLIP_NO_HOLES);
 	if (start_entry == NULL) {
 		vm_map_unlock(map);
 		vm_map_entry_release(count);
@@ -2005,8 +2036,10 @@ vm_map_unwire(vm_map_t map, vm_offset_t start, vm_offset_t real_end,
 			 * page.
 			 */
 			if (entry->maptype != VM_MAPTYPE_SUBMAP) {
-				int copyflag = entry->eflags & MAP_ENTRY_NEEDS_COPY;
-				if (copyflag && ((entry->protection & VM_PROT_WRITE) != 0)) {
+				int copyflag = entry->eflags &
+					       MAP_ENTRY_NEEDS_COPY;
+				if (copyflag && ((entry->protection &
+						  VM_PROT_WRITE) != 0)) {
 					vm_map_entry_shadow(entry);
 				} else if (entry->object.vm_object == NULL &&
 					   !map->system_map) {
@@ -2119,18 +2152,17 @@ done:
 }
 
 /*
- *	vm_map_wire:
+ * Sets the pageability of the specified address range in the target map.
+ * Regions specified as not pageable require locked-down physical
+ * memory and physical page maps.
  *
- *	Sets the pageability of the specified address
- *	range in the target map.  Regions specified
- *	as not pageable require locked-down physical
- *	memory and physical page maps.
+ * The map must not be locked, but a reference must remain to the map
+ * throughout the call.
  *
- *	The map must not be locked, but a reference
- *	must remain to the map throughout the call.
+ * This function may be called via the zalloc path and must properly
+ * reserve map entries for kernel_map.
  *
- *	This function may be called via the zalloc path and must properly
- *	reserve map entries for kernel_map.
+ * No requirements.
  */
 int
 vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
@@ -2149,7 +2181,8 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 	VM_MAP_RANGE_CHECK(map, start, real_end);
 	end = real_end;
 
-	start_entry = vm_map_clip_range(map, start, end, &count, MAP_CLIP_NO_HOLES);
+	start_entry = vm_map_clip_range(map, start, end, &count,
+					MAP_CLIP_NO_HOLES);
 	if (start_entry == NULL) {
 		vm_map_unlock(map);
 		rv = KERN_INVALID_ADDRESS;
@@ -2180,7 +2213,6 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 		 * copy-on-write status of the entries we modify here cannot
 		 * change.
 		 */
-
 		entry = start_entry;
 		while ((entry != &map->header) && (entry->start < end)) {
 			/*
@@ -2201,9 +2233,10 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 			 * maps because we won't hold the lock on the sub map.
 			 */
 			if (entry->maptype != VM_MAPTYPE_SUBMAP) {
-				int copyflag = entry->eflags & MAP_ENTRY_NEEDS_COPY;
-				if (copyflag &&
-				    ((entry->protection & VM_PROT_WRITE) != 0)) {
+				int copyflag = entry->eflags &
+					       MAP_ENTRY_NEEDS_COPY;
+				if (copyflag && ((entry->protection &
+						  VM_PROT_WRITE) != 0)) {
 					vm_map_entry_shadow(entry);
 				} else if (entry->object.vm_object == NULL &&
 					   !map->system_map) {
@@ -2222,21 +2255,20 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 		/*
 		 * HACK HACK HACK HACK
 		 *
-		 * Unlock the map to avoid deadlocks.  The in-transit flag
-		 * protects us from most changes but note that
-		 * clipping may still occur.  To prevent clipping from
-		 * occuring after the unlock, except for when we are
-		 * blocking in vm_fault_wire, we must run in a critical
-		 * section, otherwise our accesses to entry->start and 
-		 * entry->end could be corrupted.  We have to enter the
-		 * critical section prior to unlocking so start_entry does
-		 * not change out from under us at the very beginning of the
-		 * loop.
+		 * vm_fault_wire() temporarily unlocks the map to avoid
+		 * deadlocks.  The in-transition flag from vm_map_clip_range
+		 * call should protect us from changes while the map is
+		 * unlocked.  T
+		 *
+		 * NOTE: Previously this comment stated that clipping might
+		 *	 still occur while the entry is unlocked, but from
+		 *	 what I can tell it actually cannot.
+		 *
+		 *	 It is unclear whether the CLIP_CHECK_*() calls
+		 *	 are still needed but we keep them in anyway.
 		 *
 		 * HACK HACK HACK HACK
 		 */
-
-		crit_enter();
 
 		entry = start_entry;
 		while (entry != &map->header && entry->start < end) {
@@ -2267,7 +2299,6 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 			CLIP_CHECK_FWD(entry, save_end);
 			entry = entry->next;
 		}
-		crit_exit();
 
 		/*
 		 * If a failure occured undo everything by falling through
@@ -2315,8 +2346,8 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 		}
 	}
 done:
-	vm_map_unclip_range(map, start_entry, start, real_end, &count,
-		MAP_CLIP_NO_HOLES);
+	vm_map_unclip_range(map, start_entry, start, real_end,
+			    &count, MAP_CLIP_NO_HOLES);
 	map->timestamp++;
 	vm_map_unlock(map);
 failure:
@@ -2328,30 +2359,32 @@ failure:
 }
 
 /*
- * vm_map_set_wired_quick()
+ * Mark a newly allocated address range as wired but do not fault in
+ * the pages.  The caller is expected to load the pages into the object.
  *
- *	Mark a newly allocated address range as wired but do not fault in
- *	the pages.  The caller is expected to load the pages into the object.
- *
- *	The map must be locked on entry and will remain locked on return.
+ * The map must be locked on entry and will remain locked on return.
+ * No other requirements.
  */
 void
-vm_map_set_wired_quick(vm_map_t map, vm_offset_t addr, vm_size_t size, int *countp)
+vm_map_set_wired_quick(vm_map_t map, vm_offset_t addr, vm_size_t size,
+		       int *countp)
 {
 	vm_map_entry_t scan;
 	vm_map_entry_t entry;
 
-	entry = vm_map_clip_range(map, addr, addr + size, countp, MAP_CLIP_NO_HOLES);
-	for (scan = entry; scan != &map->header && scan->start < addr + size; scan = scan->next) {
+	entry = vm_map_clip_range(map, addr, addr + size,
+				  countp, MAP_CLIP_NO_HOLES);
+	for (scan = entry;
+	     scan != &map->header && scan->start < addr + size;
+	     scan = scan->next) {
 	    KKASSERT(entry->wired_count == 0);
 	    entry->wired_count = 1;                                              
 	}
-	vm_map_unclip_range(map, entry, addr, addr + size, countp, MAP_CLIP_NO_HOLES);
+	vm_map_unclip_range(map, entry, addr, addr + size,
+			    countp, MAP_CLIP_NO_HOLES);
 }
 
 /*
- * vm_map_clean
- *
  * Push any dirty cached pages in the address range to their pager.
  * If syncio is TRUE, dirty pages are written synchronously.
  * If invalidate is TRUE, any cached pages are freed as well.
@@ -2359,6 +2392,8 @@ vm_map_set_wired_quick(vm_map_t map, vm_offset_t addr, vm_size_t size, int *coun
  * This routine is called by sys_msync()
  *
  * Returns an error if any part of the specified range is not mapped.
+ *
+ * No requirements.
  */
 int
 vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
@@ -2394,10 +2429,14 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
 
 	if (invalidate)
 		pmap_remove(vm_map_pmap(map), start, end);
+
 	/*
 	 * Make a second pass, cleaning/uncaching pages from the indicated
 	 * objects as we go.
+	 *
+	 * Hold vm_token to avoid blocking in vm_object_reference()
 	 */
+	lwkt_gettoken(&vm_token);
 	for (current = entry; current->start < end; current = current->next) {
 		offset = current->offset + (start - current->start);
 		size = (end <= current->end ? end : current->end) - start;
@@ -2496,18 +2535,16 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
 		}
 		start += size;
 	}
-
 	vm_map_unlock_read(map);
+	lwkt_reltoken(&vm_token);
+
 	return (KERN_SUCCESS);
 }
 
 /*
- *	vm_map_entry_unwire:	[ internal use only ]
+ * Make the region specified by this entry pageable.
  *
- *	Make the region specified by this entry pageable.
- *
- *	The map in question should be locked.
- *	[This is the reason for this routine's existence.]
+ * The vm_map must be exclusively locked.
  */
 static void 
 vm_map_entry_unwire(vm_map_t map, vm_map_entry_t entry)
@@ -2518,9 +2555,9 @@ vm_map_entry_unwire(vm_map_t map, vm_map_entry_t entry)
 }
 
 /*
- *	vm_map_entry_delete:	[ internal use only ]
+ * Deallocate the given entry from the target map.
  *
- *	Deallocate the given entry from the target map.
+ * The vm_map must be exclusively locked.
  */
 static void
 vm_map_entry_delete(vm_map_t map, vm_map_entry_t entry, int *countp)
@@ -2541,10 +2578,9 @@ vm_map_entry_delete(vm_map_t map, vm_map_entry_t entry, int *countp)
 }
 
 /*
- *	vm_map_delete:	[ internal use only ]
+ * Deallocates the given address range from the target map.
  *
- *	Deallocates the given address range from the target
- *	map.
+ * The vm_map must be exclusively locked.
  */
 int
 vm_map_delete(vm_map_t map, vm_offset_t start, vm_offset_t end, int *countp)
@@ -2553,6 +2589,7 @@ vm_map_delete(vm_map_t map, vm_offset_t start, vm_offset_t end, int *countp)
 	vm_map_entry_t entry;
 	vm_map_entry_t first_entry;
 
+	ASSERT_VM_MAP_LOCKED(map);
 again:
 	/*
 	 * Find the start of the region, and clip it.  Set entry to point
@@ -2589,7 +2626,6 @@ again:
 	/*
 	 * Step through all entries in this region
 	 */
-
 	while ((entry != &map->header) && (entry->start < end)) {
 		vm_map_entry_t next;
 		vm_offset_t s, e;
@@ -2630,18 +2666,28 @@ again:
 
 		offidxend = offidxstart + count;
 
+		/*
+		 * Hold vm_token when manipulating vm_objects.
+		 */
+		lwkt_gettoken(&vm_token);
 		if (object == &kernel_object) {
-			vm_object_page_remove(object, offidxstart, offidxend, FALSE);
+			vm_object_page_remove(object, offidxstart,
+					      offidxend, FALSE);
 		} else {
 			pmap_remove(map->pmap, s, e);
 			if (object != NULL &&
 			    object->ref_count != 1 &&
-			    (object->flags & (OBJ_NOSPLIT|OBJ_ONEMAPPING)) == OBJ_ONEMAPPING &&
-			    (object->type == OBJT_DEFAULT || object->type == OBJT_SWAP)) {
+			    (object->flags & (OBJ_NOSPLIT|OBJ_ONEMAPPING)) ==
+			     OBJ_ONEMAPPING &&
+			    (object->type == OBJT_DEFAULT ||
+			     object->type == OBJT_SWAP)) {
 				vm_object_collapse(object);
-				vm_object_page_remove(object, offidxstart, offidxend, FALSE);
+				vm_object_page_remove(object, offidxstart,
+						      offidxend, FALSE);
 				if (object->type == OBJT_SWAP) {
-					swap_pager_freespace(object, offidxstart, count);
+					swap_pager_freespace(object,
+							     offidxstart,
+							     count);
 				}
 				if (offidxend >= object->size &&
 				    offidxstart < object->size) {
@@ -2649,6 +2695,7 @@ again:
 				}
 			}
 		}
+		lwkt_reltoken(&vm_token);
 
 		/*
 		 * Delete the entry (which may delete the object) only after
@@ -2663,10 +2710,10 @@ again:
 }
 
 /*
- *	vm_map_remove:
+ * Remove the given address range from the target map.
+ * This is the exported form of vm_map_delete.
  *
- *	Remove the given address range from the target map.
- *	This is the exported form of vm_map_delete.
+ * No requirements.
  */
 int
 vm_map_remove(vm_map_t map, vm_offset_t start, vm_offset_t end)
@@ -2685,54 +2732,67 @@ vm_map_remove(vm_map_t map, vm_offset_t start, vm_offset_t end)
 }
 
 /*
- *	vm_map_check_protection:
+ * Assert that the target map allows the specified privilege on the
+ * entire address region given.  The entire region must be allocated.
  *
- *	Assert that the target map allows the specified
- *	privilege on the entire address region given.
- *	The entire region must be allocated.
+ * The caller must specify whether the vm_map is already locked or not.
  */
 boolean_t
 vm_map_check_protection(vm_map_t map, vm_offset_t start, vm_offset_t end,
-			vm_prot_t protection)
+			vm_prot_t protection, boolean_t have_lock)
 {
 	vm_map_entry_t entry;
 	vm_map_entry_t tmp_entry;
+	boolean_t result;
+
+	if (have_lock == FALSE)
+		vm_map_lock_read(map);
 
 	if (!vm_map_lookup_entry(map, start, &tmp_entry)) {
+		if (have_lock == FALSE)
+			vm_map_unlock_read(map);
 		return (FALSE);
 	}
 	entry = tmp_entry;
 
+	result = TRUE;
 	while (start < end) {
 		if (entry == &map->header) {
-			return (FALSE);
+			result = FALSE;
+			break;
 		}
 		/*
 		 * No holes allowed!
 		 */
 
 		if (start < entry->start) {
-			return (FALSE);
+			result = FALSE;
+			break;
 		}
 		/*
 		 * Check protection associated with entry.
 		 */
 
 		if ((entry->protection & protection) != protection) {
-			return (FALSE);
+			result = FALSE;
+			break;
 		}
 		/* go to next entry */
 
 		start = entry->end;
 		entry = entry->next;
 	}
-	return (TRUE);
+	if (have_lock == FALSE)
+		vm_map_unlock_read(map);
+	return (result);
 }
 
 /*
  * Split the pages in a map entry into a new object.  This affords
  * easier removal of unused pages, and keeps object inheritance from
  * being a negative impact on memory usage.
+ *
+ * The vm_map must be exclusively locked.
  */
 static void
 vm_map_split(vm_map_entry_t entry)
@@ -2775,6 +2835,11 @@ vm_map_split(vm_map_entry_t entry)
 	if (new_object == NULL)
 		return;
 
+	/*
+	 * vm_token required when manipulating vm_objects.
+	 */
+	lwkt_gettoken(&vm_token);
+
 	source = orig_object->backing_object;
 	if (source != NULL) {
 		vm_object_reference(source);	/* Referenced by new_object */
@@ -2791,11 +2856,6 @@ vm_map_split(vm_map_entry_t entry)
 	for (idx = 0; idx < size; idx++) {
 		vm_page_t m;
 
-		/*
-		 * A critical section is required to avoid a race between
-		 * the lookup and an interrupt/unbusy/free and our busy
-		 * check.
-		 */
 		crit_enter();
 	retry:
 		m = vm_page_lookup(orig_object, offidxstart + idx);
@@ -2844,13 +2904,14 @@ vm_map_split(vm_map_entry_t entry)
 	entry->object.vm_object = new_object;
 	entry->offset = 0LL;
 	vm_object_deallocate(orig_object);
+	lwkt_reltoken(&vm_token);
 }
 
 /*
- *	vm_map_copy_entry:
+ * Copies the contents of the source entry to the destination
+ * entry.  The entries *must* be aligned properly.
  *
- *	Copies the contents of the source entry to the destination
- *	entry.  The entries *must* be aligned properly.
+ * The vm_map must be exclusively locked.
  */
 static void
 vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
@@ -2863,6 +2924,7 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 	if (src_entry->maptype == VM_MAPTYPE_SUBMAP)
 		return;
 
+	lwkt_gettoken(&vm_token);
 	if (src_entry->wired_count == 0) {
 		/*
 		 * If the source entry is marked needs_copy, it is already
@@ -2910,6 +2972,7 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 		 */
 		vm_fault_copy_entry(dst_map, src_map, dst_entry, src_entry);
 	}
+	lwkt_reltoken(&vm_token);
 }
 
 /*
@@ -2920,6 +2983,7 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
  * values on the regions in that map.
  *
  * The source map must not be locked.
+ * No requirements.
  */
 struct vmspace *
 vmspace_fork(struct vmspace *vm1)
@@ -2932,6 +2996,8 @@ vmspace_fork(struct vmspace *vm1)
 	vm_object_t object;
 	int count;
 
+	lwkt_gettoken(&vm_token);
+	lwkt_gettoken(&vmspace_token);
 	vm_map_lock(old_map);
 	old_map->infork = 1;
 
@@ -2943,6 +3009,8 @@ vmspace_fork(struct vmspace *vm1)
 	    (caddr_t)&vm1->vm_endcopy - (caddr_t)&vm1->vm_startcopy);
 	new_map = &vm2->vm_map;	/* XXX */
 	new_map->timestamp = 1;
+
+	vm_map_lock(new_map);
 
 	count = 0;
 	old_entry = old_map->header.next;
@@ -2961,7 +3029,6 @@ vmspace_fork(struct vmspace *vm1)
 		switch (old_entry->inheritance) {
 		case VM_INHERIT_NONE:
 			break;
-
 		case VM_INHERIT_SHARE:
 			/*
 			 * Clone the entry, creating the shared object if
@@ -3002,18 +3069,16 @@ vmspace_fork(struct vmspace *vm1)
 			 */
 
 			vm_map_entry_link(new_map, new_map->header.prev,
-			    new_entry);
+					  new_entry);
 
 			/*
 			 * Update the physical map
 			 */
-
 			pmap_copy(new_map->pmap, old_map->pmap,
 			    new_entry->start,
 			    (old_entry->end - old_entry->start),
 			    old_entry->start);
 			break;
-
 		case VM_INHERIT_COPY:
 			/*
 			 * Clone the entry and link into the map.
@@ -3024,9 +3089,9 @@ vmspace_fork(struct vmspace *vm1)
 			new_entry->wired_count = 0;
 			new_entry->object.vm_object = NULL;
 			vm_map_entry_link(new_map, new_map->header.prev,
-			    new_entry);
+					  new_entry);
 			vm_map_copy_entry(old_map, new_map, old_entry,
-			    new_entry);
+					  new_entry);
 			break;
 		}
 		old_entry = old_entry->next;
@@ -3035,11 +3100,19 @@ vmspace_fork(struct vmspace *vm1)
 	new_map->size = old_map->size;
 	old_map->infork = 0;
 	vm_map_unlock(old_map);
+	vm_map_unlock(new_map);
 	vm_map_entry_release(count);
+	lwkt_reltoken(&vmspace_token);
+	lwkt_reltoken(&vm_token);
 
 	return (vm2);
 }
 
+/*
+ * Create an auto-grow stack entry
+ *
+ * No requirements.
+ */
 int
 vm_map_stack (vm_map_t map, vm_offset_t addrbos, vm_size_t max_ssize,
 	      int flags, vm_prot_t prot, vm_prot_t max, int cow)
@@ -3142,11 +3215,14 @@ vm_map_stack (vm_map_t map, vm_offset_t addrbos, vm_size_t max_ssize,
 	return (rv);
 }
 
-/* Attempts to grow a vm stack entry.  Returns KERN_SUCCESS if the
+/*
+ * Attempts to grow a vm stack entry.  Returns KERN_SUCCESS if the
  * desired address is already mapped, or if we successfully grow
  * the stack.  Also returns KERN_SUCCESS if addr is outside the
  * stack range (this is strange, but preserves compatibility with
  * the grow function in vm_machdep.c).
+ *
+ * No requirements.
  */
 int
 vm_map_growstack (struct proc *p, vm_offset_t addr)
@@ -3304,6 +3380,8 @@ done:
 /*
  * Unshare the specified VM space for exec.  If other processes are
  * mapped to it, then create a new one.  The new vmspace is null.
+ *
+ * No requirements.
  */
 void
 vmspace_exec(struct proc *p, struct vmspace *vmcopy) 
@@ -3317,13 +3395,14 @@ vmspace_exec(struct proc *p, struct vmspace *vmcopy)
 	 * we create a new vmspace.  Note that exitingcnt and upcalls
 	 * are not copied to the new vmspace.
 	 */
+	lwkt_gettoken(&vmspace_token);
 	if (vmcopy)  {
-	    newvmspace = vmspace_fork(vmcopy);
+		newvmspace = vmspace_fork(vmcopy);
 	} else {
-	    newvmspace = vmspace_alloc(map->min_offset, map->max_offset);
-	    bcopy(&oldvmspace->vm_startcopy, &newvmspace->vm_startcopy,
-		(caddr_t)&oldvmspace->vm_endcopy - 
-		    (caddr_t)&oldvmspace->vm_startcopy);
+		newvmspace = vmspace_alloc(map->min_offset, map->max_offset);
+		bcopy(&oldvmspace->vm_startcopy, &newvmspace->vm_startcopy,
+		      (caddr_t)&oldvmspace->vm_endcopy -
+		       (caddr_t)&oldvmspace->vm_startcopy);
 	}
 
 	/*
@@ -3334,6 +3413,7 @@ vmspace_exec(struct proc *p, struct vmspace *vmcopy)
 	pmap_pinit2(vmspace_pmap(newvmspace));
 	pmap_replacevm(p, newvmspace, 0);
 	sysref_put(&oldvmspace->vm_sysref);
+	lwkt_reltoken(&vmspace_token);
 }
 
 /*
@@ -3343,42 +3423,38 @@ vmspace_exec(struct proc *p, struct vmspace *vmcopy)
  * The exitingcnt test is not strictly necessary but has been
  * included for code sanity (to make the code a bit more deterministic).
  */
-
 void
 vmspace_unshare(struct proc *p) 
 {
 	struct vmspace *oldvmspace = p->p_vmspace;
 	struct vmspace *newvmspace;
 
+	lwkt_gettoken(&vmspace_token);
 	if (oldvmspace->vm_sysref.refcnt == 1 && oldvmspace->vm_exitingcnt == 0)
 		return;
 	newvmspace = vmspace_fork(oldvmspace);
 	pmap_pinit2(vmspace_pmap(newvmspace));
 	pmap_replacevm(p, newvmspace, 0);
 	sysref_put(&oldvmspace->vm_sysref);
+	lwkt_reltoken(&vmspace_token);
 }
 
 /*
- *	vm_map_lookup:
+ * Finds the VM object, offset, and protection for a given virtual address
+ * in the specified map, assuming a page fault of the type specified.
  *
- *	Finds the VM object, offset, and
- *	protection for a given virtual address in the
- *	specified map, assuming a page fault of the
- *	type specified.
+ * Leaves the map in question locked for read; return values are guaranteed
+ * until a vm_map_lookup_done call is performed.  Note that the map argument
+ * is in/out; the returned map must be used in the call to vm_map_lookup_done.
  *
- *	Leaves the map in question locked for read; return
- *	values are guaranteed until a vm_map_lookup_done
- *	call is performed.  Note that the map argument
- *	is in/out; the returned map must be used in
- *	the call to vm_map_lookup_done.
+ * A handle (out_entry) is returned for use in vm_map_lookup_done, to make
+ * that fast.
  *
- *	A handle (out_entry) is returned for use in
- *	vm_map_lookup_done, to make that fast.
+ * If a lookup is requested with "write protection" specified, the map may
+ * be changed to perform virtual copying operations, although the data
+ * referenced will remain the same.
  *
- *	If a lookup is requested with "write protection"
- *	specified, the map may be changed to perform virtual
- *	copying operations, although the data referenced will
- *	remain the same.
+ * No requirements.
  */
 int
 vm_map_lookup(vm_map_t *var_map,		/* IN/OUT */
@@ -3564,12 +3640,11 @@ done:
 }
 
 /*
- *	vm_map_lookup_done:
+ * Releases locks acquired by a vm_map_lookup()
+ * (according to the handle returned by that lookup).
  *
- *	Releases locks acquired by a vm_map_lookup
- *	(according to the handle returned by that lookup).
+ * No other requirements.
  */
-
 void
 vm_map_lookup_done(vm_map_t map, vm_map_entry_t entry, int count)
 {
@@ -3588,7 +3663,7 @@ vm_map_lookup_done(vm_map_t map, vm_map_entry_t entry, int count)
 #include <ddb/ddb.h>
 
 /*
- *	vm_map_print:	[ debug ]
+ * Debugging only
  */
 DB_SHOW_COMMAND(map, vm_map_print)
 {
@@ -3667,7 +3742,9 @@ DB_SHOW_COMMAND(map, vm_map_print)
 		nlines = 0;
 }
 
-
+/*
+ * Debugging only
+ */
 DB_SHOW_COMMAND(procvm, procvm)
 {
 	struct proc *p;
