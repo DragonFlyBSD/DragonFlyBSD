@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 1988 University of Utah.
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -1090,7 +1092,7 @@ sys_munlock(struct munlock_args *uap)
  * Currently used by mmap, exec, and sys5 shared memory.
  * Handle is either a vnode pointer or NULL for MAP_ANON.
  * 
- * Requires that the MP lock is held by the caller
+ * No requirements; kern_mmap path holds the vm_token
  */
 int
 vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
@@ -1115,6 +1117,8 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		return (EINVAL);
 	size = objsize;
 
+	lwkt_gettoken(&vm_token);
+	
 	/*
 	 * XXX messy code, fixme
 	 *
@@ -1125,6 +1129,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		esize = map->size + size;	/* workaround gcc4 opt */
 		if (esize < map->size ||
 		    esize > p->p_rlimit[RLIMIT_VMEM].rlim_cur) {
+			lwkt_reltoken(&vm_token);
 			return(ENOMEM);
 		}
 	}
@@ -1140,18 +1145,24 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	 * NOTE: Overflow checks require discrete statements or GCC4
 	 * will optimize it out.
 	 */
-	if (foff & PAGE_MASK)
+	if (foff & PAGE_MASK) {
+		lwkt_reltoken(&vm_token);
 		return (EINVAL);
+	}
 
 	if ((flags & (MAP_FIXED | MAP_TRYFIXED)) == 0) {
 		fitit = TRUE;
 		*addr = round_page(*addr);
 	} else {
-		if (*addr != trunc_page(*addr))
+		if (*addr != trunc_page(*addr)) {
+			lwkt_reltoken(&vm_token);
 			return (EINVAL);
+		}
 		eaddr = *addr + size;
-		if (eaddr < *addr)
+		if (eaddr < *addr) {
+			lwkt_reltoken(&vm_token);
 			return (EINVAL);
+		}
 		fitit = FALSE;
 		if ((flags & MAP_TRYFIXED) == 0)
 			vm_map_remove(map, *addr, *addr + size);
@@ -1170,8 +1181,10 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 			 */
 			object = default_pager_alloc(handle, objsize,
 						     prot, foff);
-			if (object == NULL)
+			if (object == NULL) {
+				lwkt_reltoken(&vm_token);
 				return(ENOMEM);
+			}
 			docow = MAP_PREFAULT_PARTIAL;
 		} else {
 			/*
@@ -1192,8 +1205,10 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 			 */
 			handle = (void *)(intptr_t)vp->v_rdev;
 			object = dev_pager_alloc(handle, objsize, prot, foff);
-			if (object == NULL)
+			if (object == NULL) {
+				lwkt_reltoken(&vm_token);
 				return(EINVAL);
+			}
 			docow = MAP_PREFAULT_PARTIAL;
 			flags &= ~(MAP_PRIVATE|MAP_COPY);
 			flags |= MAP_SHARED;
@@ -1207,11 +1222,14 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 			int error;
 
 			error = VOP_GETATTR(vp, &vat);
-			if (error)
+			if (error) {
+				lwkt_reltoken(&vm_token);
 				return (error);
+			}
 			docow = MAP_PREFAULT_PARTIAL;
 			object = vnode_pager_reference(vp);
 			if (object == NULL && vp->v_type == VREG) {
+				lwkt_reltoken(&vm_token);
 				kprintf("Warning: cannot mmap vnode %p, no "
 					"object\n", vp);
 				return(EINVAL);
@@ -1299,6 +1317,8 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	if (vp != NULL)
 		vn_mark_atime(vp, td);
 out:
+	lwkt_reltoken(&vm_token);
+	
 	switch (rv) {
 	case KERN_SUCCESS:
 		return (0);
