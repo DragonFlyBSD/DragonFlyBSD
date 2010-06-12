@@ -224,7 +224,7 @@ cdev_t	kgetdiskbyname(const char *name);
 int	dev_is_good(cdev_t dev);
 
 /*
- * XXX: This included for when DEVFS resurfaces 
+ * XXX: This included for when DEVFS resurfaces
  */
 
 #define		UID_ROOT	0
