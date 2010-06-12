@@ -187,7 +187,7 @@ isc_sendPDU(isc_session_t *sp, pduq_t *pq)
           mh->m_pkthdr.len += sizeof(int);
           *mp = me;
      }
-     if((error = sosend(sp->soc, NULL, NULL, mh, 0, 0, sp->td)) != 0) {
+     if((error = sosend(sp->soc, NULL, NULL, mh, 0, 0, curthread)) != 0) {
 	  sdebug(3, "error=%d", error);
 	  return error;
      }
@@ -209,7 +209,7 @@ isc_sendPDU(isc_session_t *sp, pduq_t *pq)
      bzero(uio, sizeof(struct uio));
      uio->uio_rw = UIO_WRITE;
      uio->uio_segflg = UIO_SYSSPACE;
-     uio->uio_td = sp->td;
+     uio->uio_td = curthread;
      uio->uio_iov = iv = pq->iov;
 
      iv->iov_base = &pp->ipdu;
@@ -253,7 +253,7 @@ isc_sendPDU(isc_session_t *sp, pduq_t *pq)
 	    sp, sp->soc, uio, sp->td);
      do {
 	  len = uio->uio_resid;
-	  error = sosend(sp->soc, NULL, uio, 0, 0, 0, sp->td);
+	  error = sosend(sp->soc, NULL, uio, 0, 0, 0, curthread);
 	  if(uio->uio_resid == 0 || error || len == uio->uio_resid) {
 	       if(uio->uio_resid) {
 		    sdebug(2, "uio->uio_resid=%d uio->uio_iovcnt=%d error=%d len=%d",
@@ -580,6 +580,7 @@ isc_soc(void *vp)
 
      debug_called(8);
 
+     sp->td = curthread;
      if(sp->cam_path)
 	  ic_release(sp);
 
