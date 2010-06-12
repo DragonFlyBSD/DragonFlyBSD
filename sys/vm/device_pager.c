@@ -1,5 +1,5 @@
 /*
- * (MPASFE)
+ * (MPSAFE)
  *
  * Copyright (c) 1990 University of Utah.
  * Copyright (c) 1991, 1993

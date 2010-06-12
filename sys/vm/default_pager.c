@@ -1,5 +1,5 @@
 /*
- * (MPASFE)
+ * (MPSAFE)
  *
  * Copyright (c) 1995, David Greenman
  * All rights reserved.

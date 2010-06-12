@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -92,10 +94,10 @@ struct vm_map clean_map;
 struct vm_map buffer_map;
 
 /*
- *	kmem_alloc_pageable:
+ * Allocate pageable memory to the kernel's address map.  "map" must
+ * be kernel_map or a submap of kernel_map.
  *
- *	Allocate pageable memory to the kernel's address map.
- *	"map" must be kernel_map or a submap of kernel_map.
+ * No requirements.
  */
 vm_offset_t
 kmem_alloc_pageable(vm_map_t map, vm_size_t size)
@@ -117,9 +119,9 @@ kmem_alloc_pageable(vm_map_t map, vm_size_t size)
 }
 
 /*
- *	kmem_alloc_nofault:
+ * Same as kmem_alloc_pageable, except that it create a nofault entry.
  *
- *	Same as kmem_alloc_pageable, except that it create a nofault entry.
+ * No requirements.
  */
 vm_offset_t
 kmem_alloc_nofault(vm_map_t map, vm_size_t size, vm_size_t align)
@@ -141,8 +143,9 @@ kmem_alloc_nofault(vm_map_t map, vm_size_t size, vm_size_t align)
 }
 
 /*
- *	Allocate wired-down memory in the kernel's address map
- *	or a submap.
+ * Allocate wired-down memory in the kernel's address map or a submap.
+ *
+ * No requirements.
  */
 vm_offset_t
 kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
@@ -205,6 +208,7 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 	 * race with page-out.  vm_map_wire will wire the pages.
 	 */
 
+	lwkt_gettoken(&vm_token);
 	for (i = 0; i < size; i += PAGE_SIZE) {
 		vm_page_t mem;
 
@@ -216,29 +220,25 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 		vm_page_flag_clear(mem, PG_ZERO);
 		vm_page_wakeup(mem);
 	}
+	lwkt_reltoken(&vm_token);
 
 	/*
 	 * And finally, mark the data as non-pageable.
 	 */
-
-	vm_map_wire(map, (vm_offset_t) addr, addr + size, kmflags);
+	vm_map_wire(map, (vm_offset_t)addr, addr + size, kmflags);
 
 	return (addr);
 }
 
 /*
- *	kmem_free:
+ * Release a region of kernel virtual memory allocated with kmem_alloc,
+ * and return the physical pages associated with that region.
  *
- *	Release a region of kernel virtual memory allocated
- *	with kmem_alloc, and return the physical pages
- *	associated with that region.
+ * WARNING!  If the caller entered pages into the region using pmap_kenter()
+ * it must remove the pages using pmap_kremove[_quick]() before freeing the
+ * underlying kmem, otherwise resident_count will be mistabulated.
  *
- *	WARNING!  If the caller entered pages into the region using
- *	pmap_kenter() it must remove the pages using pmap_kremove[_quick]()
- *	before freeing the underlying kmem, otherwise resident_count will
- *	be mistabulated.
- *
- *	This routine may not block on kernel maps.
+ * No requirements.
  */
 void
 kmem_free(vm_map_t map, vm_offset_t addr, vm_size_t size)
@@ -247,17 +247,17 @@ kmem_free(vm_map_t map, vm_offset_t addr, vm_size_t size)
 }
 
 /*
- *	kmem_suballoc:
- *
- *	Used to break a system map into smaller maps, usually to reduce
- *	contention and to provide large KVA spaces for subsystems like the
- *	buffer cache.
+ * Used to break a system map into smaller maps, usually to reduce
+ * contention and to provide large KVA spaces for subsystems like the
+ * buffer cache.
  *
  *	parent		Map to take range from
  *	result	
  *	size		Size of range to find
  *	min, max	Returned endpoints of map
  *	pageable	Can the region be paged
+ *
+ * No requirements.
  */
 void
 kmem_suballoc(vm_map_t parent, vm_map_t result,
@@ -267,6 +267,7 @@ kmem_suballoc(vm_map_t parent, vm_map_t result,
 
 	size = round_page(size);
 
+	lwkt_gettoken(&vm_token);
 	*min = (vm_offset_t) vm_map_min(parent);
 	ret = vm_map_find(parent, NULL, (vm_offset_t) 0,
 			  min, size, PAGE_SIZE,
@@ -282,17 +283,15 @@ kmem_suballoc(vm_map_t parent, vm_map_t result,
 	vm_map_init(result, *min, *max, vm_map_pmap(parent));
 	if ((ret = vm_map_submap(parent, *min, *max, result)) != KERN_SUCCESS)
 		panic("kmem_suballoc: unable to change range to submap");
+	lwkt_reltoken(&vm_token);
 }
 
 /*
- *	kmem_alloc_wait:
+ * Allocates pageable memory from a sub-map of the kernel.  If the submap
+ * has no room, the caller sleeps waiting for more memory in the submap.
  *
- *	Allocates pageable memory from a sub-map of the kernel.  If the submap
- *	has no room, the caller sleeps waiting for more memory in the submap.
- *
- *	This routine may block.
+ * No requirements.
  */
-
 vm_offset_t
 kmem_alloc_wait(vm_map_t map, vm_size_t size)
 {
@@ -330,14 +329,15 @@ kmem_alloc_wait(vm_map_t map, vm_size_t size)
 		      0);
 	vm_map_unlock(map);
 	vm_map_entry_release(count);
+
 	return (addr);
 }
 
 /*
- *	kmem_free_wakeup:
+ * Returns memory to a submap of the kernel, and wakes up any processes
+ * waiting for memory in that map.
  *
- *	Returns memory to a submap of the kernel, and wakes up any processes
- *	waiting for memory in that map.
+ * No requirements.
  */
 void
 kmem_free_wakeup(vm_map_t map, vm_offset_t addr, vm_size_t size)
@@ -353,20 +353,19 @@ kmem_free_wakeup(vm_map_t map, vm_offset_t addr, vm_size_t size)
 }
 
 /*
- * 	kmem_init:
+ * Create the kernel_map and insert mappings to cover areas already
+ * allocated or reserved thus far.  That is, the area (KvaStart,start)
+ * and (end,KvaEnd) must be marked as allocated.
  *
- *	Create the kernel_map and insert mappings to cover areas already
- *	allocated or reserved thus far.  That is, the area (KvaStart,start)
- *	and (end,KvaEnd) must be marked as allocated.
+ * virtual2_start/end is a cutout Between KvaStart and start,
+ * for x86_64 due to the location of KERNBASE (at -2G).
  *
- *	virtual2_start/end is a cutout Between KvaStart and start,
- *	for x86_64 due to the location of KERNBASE (at -2G).
+ * We could use a min_offset of 0 instead of KvaStart, but since the
+ * min_offset is not used for any calculations other then a bounds check
+ * it does not effect readability.  KvaStart is more appropriate.
  *
- *	We could use a min_offset of 0 instead of KvaStart, but since the
- *	min_offset is not used for any calculations other then a bounds check
- *	it does not effect readability.  KvaStart is more appropriate.
- *
- *	Depend on the zalloc bootstrap cache to get our vm_map_entry_t.
+ * Depend on the zalloc bootstrap cache to get our vm_map_entry_t.
+ * Called from the low level boot code only.
  */
 void
 kmem_init(vm_offset_t start, vm_offset_t end)
@@ -411,6 +410,9 @@ kmem_init(vm_offset_t start, vm_offset_t end)
 	vm_map_entry_release(count);
 }
 
+/*
+ * No requirements.
+ */
 static int
 kvm_size(SYSCTL_HANDLER_ARGS)
 {
@@ -421,6 +423,9 @@ kvm_size(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_vm, OID_AUTO, kvm_size, CTLTYPE_LONG|CTLFLAG_RD,
     0, 0, kvm_size, "IU", "Size of KVM");
  
+/*
+ * No requirements.
+ */
 static int
 kvm_free(SYSCTL_HANDLER_ARGS)
 {

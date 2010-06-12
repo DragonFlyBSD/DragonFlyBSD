@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 1991 Regents of the University of California.
  * All rights reserved.
  * Copyright (c) 1994 John S. Dyson
@@ -221,6 +223,9 @@ static void vm_pageout_page_stats(void);
 
 /*
  * Update vm_load to slow down faulting processes.
+ *
+ * SMP races ok.
+ * No requirements.
  */
 void
 vm_fault_ratecheck(void)
@@ -243,8 +248,9 @@ vm_fault_ratecheck(void)
  * We set the busy bit to cause potential page faults on this page to
  * block.  Note the careful timing, however, the busy bit isn't set till
  * late and we cannot do anything that will mess with the page.
+ *
+ * The caller must hold vm_token.
  */
-
 static int
 vm_pageout_clean(vm_page_t m)
 {
@@ -380,6 +386,8 @@ more:
  *	reference count all in here rather then in the parent.  If we want
  *	the parent to do more sophisticated things we may have to change
  *	the ordering.
+ *
+ * The caller must hold vm_token.
  */
 int
 vm_pageout_flush(vm_page_t *mc, int count, int flags)
@@ -388,6 +396,8 @@ vm_pageout_flush(vm_page_t *mc, int count, int flags)
 	int pageout_status[count];
 	int numpagedout = 0;
 	int i;
+
+	ASSERT_LWKT_TOKEN_HELD(&vm_token);
 
 	/*
 	 * Initiate I/O.  Bump the vm_page_t->busy counter.
@@ -485,13 +495,14 @@ vm_pageout_flush(vm_page_t *mc, int count, int flags)
  *	deactivate all of the pages in the object and its
  *	backing_objects.
  *
- *	The object and map must be locked.
+ * The map must be locked.
+ * The caller must hold vm_token.
  */
 static int vm_pageout_object_deactivate_pages_callback(vm_page_t, void *);
 
 static void
 vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
-	vm_pindex_t desired, int map_remove_only)
+				   vm_pindex_t desired, int map_remove_only)
 {
 	struct rb_vm_page_scan_info info;
 	int remove_mode;
@@ -526,7 +537,10 @@ vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
 		object = object->backing_object;
 	}
 }
-					
+
+/*
+ * The caller must hold vm_token.
+ */
 static int
 vm_pageout_object_deactivate_pages_callback(vm_page_t p, void *data)
 {
@@ -584,8 +598,10 @@ vm_pageout_object_deactivate_pages_callback(vm_page_t p, void *data)
 }
 
 /*
- * deactivate some number of pages in a map, try to do it fairly, but
+ * Deactivate some number of pages in a map, try to do it fairly, but
  * that is really hard to do.
+ *
+ * The caller must hold vm_token.
  */
 static void
 vm_pageout_map_deactivate_pages(vm_map_t map, vm_pindex_t desired)
@@ -664,8 +680,10 @@ vm_pageout_map_deactivate_pages(vm_map_t map, vm_pindex_t desired)
  * Don't try to be fancy - being fancy can lead to vnode deadlocks.   We
  * only do it for OBJT_DEFAULT and OBJT_SWAP objects which we know can
  * be trivially freed.
+ *
+ * The caller must hold vm_token.
  */
-void
+static void
 vm_pageout_page_free(vm_page_t m) 
 {
 	vm_object_t object = m->object;
@@ -690,6 +708,9 @@ struct vm_pageout_scan_info {
 
 static int vm_pageout_scan_callback(struct proc *p, void *data);
 
+/*
+ * The caller must hold vm_token.
+ */
 static int
 vm_pageout_scan(int pass)
 {
@@ -1284,6 +1305,9 @@ rescan0:
 	return(inactive_shortage);
 }
 
+/*
+ * The caller must hold vm_token and proc_token.
+ */
 static int
 vm_pageout_scan_callback(struct proc *p, void *data)
 {
@@ -1334,6 +1358,8 @@ vm_pageout_scan_callback(struct proc *p, void *data)
  * so that during long periods of time where there is no paging,
  * that some statistic accumulation still occurs.  This code
  * helps the situation where paging just starts to occur.
+ *
+ * The caller must hold vm_token.
  */
 static void
 vm_pageout_page_stats(void)
@@ -1423,6 +1449,9 @@ vm_pageout_page_stats(void)
 	crit_exit();
 }
 
+/*
+ * The caller must hold vm_token.
+ */
 static int
 vm_pageout_free_page_calc(vm_size_t count)
 {
@@ -1449,12 +1478,19 @@ vm_pageout_free_page_calc(vm_size_t count)
 
 /*
  * vm_pageout is the high level pageout daemon.
+ *
+ * No requirements.
  */
 static void
 vm_pageout(void)
 {
 	int pass;
 	int inactive_shortage;
+
+	/*
+	 * Permanently hold vm_token.
+	 */
+	lwkt_gettoken(&vm_token);
 
 	/*
 	 * Initialize some paging parameters.
@@ -1632,6 +1668,9 @@ vm_pageout(void)
  *
  * If the pagedaemon is already active bump vm_pages_needed as a hint
  * that there are even more requests pending.
+ *
+ * SMP races ok?
+ * No requirements.
  */
 void
 pagedaemon_wakeup(void)
@@ -1647,6 +1686,11 @@ pagedaemon_wakeup(void)
 }
 
 #if !defined(NO_SWAPPING)
+
+/*
+ * SMP races ok?
+ * No requirements.
+ */
 static void
 vm_req_vmdaemon(void)
 {
@@ -1660,9 +1704,17 @@ vm_req_vmdaemon(void)
 
 static int vm_daemon_callback(struct proc *p, void *data __unused);
 
+/*
+ * No requirements.
+ */
 static void
 vm_daemon(void)
 {
+	/*
+	 * Permanently hold vm_token.
+	 */
+	lwkt_gettoken(&vm_token);
+
 	while (TRUE) {
 		tsleep(&vm_daemon_needed, 0, "psleep", 0);
 		if (vm_pageout_req_swapout) {
@@ -1677,6 +1729,9 @@ vm_daemon(void)
 	}
 }
 
+/*
+ * Caller must hold vm_token and proc_token.
+ */
 static int
 vm_daemon_callback(struct proc *p, void *data __unused)
 {

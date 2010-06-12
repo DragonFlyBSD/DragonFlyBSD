@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 1982, 1986, 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -60,6 +62,7 @@
 
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
+#include <sys/mutex2.h>
 
 /*
  * Indirect driver for multi-controller paging.
@@ -71,6 +74,7 @@
 static struct swdevt should_be_malloced[NSWAPDEV];
 struct swdevt *swdevt = should_be_malloced;	/* exported to pstat/systat */
 static swblk_t nswap;		/* first block after the interleaved devs */
+static struct mtx swap_mtx = MTX_INITIALIZER;
 int nswdev = NSWAPDEV;				/* exported to pstat/systat */
 int vm_swap_size;
 int vm_swap_max;
@@ -79,16 +83,13 @@ static int swapdev_strategy (struct vop_strategy_args *ap);
 struct vnode *swapdev_vp;
 
 /*
- *	swapdev_strategy:
+ * (struct vnode *a_vp, struct bio *b_bio)
  *
- *	vn_strategy() for swapdev_vp.
- *	Perform swap strategy interleave device selection.
+ * vn_strategy() for swapdev_vp.  Perform swap strategy interleave device
+ * selection.
  *
- *	The bp is expected to be locked and on call.
- *
- *	(struct vnode *a_vp, struct bio *b_bio)
+ * No requirements.
  */
-
 static int
 swapdev_strategy(struct vop_strategy_args *ap)
 {
@@ -174,7 +175,7 @@ VNODEOP_SET(swapdev_vnode_vops);
  * which must be in the swdevsw.  Return EBUSY
  * if already swapping on this device.
  *
- * MPALMOSTSAFE
+ * No requirements.
  */
 int
 sys_swapon(struct swapon_args *uap)
@@ -192,6 +193,7 @@ sys_swapon(struct swapon_args *uap)
 	if (error)
 		return (error);
 
+	mtx_lock(&swap_mtx);
 	get_mplock();
 	vp = NULL;
 	error = nlookup_init(&nd, uap->name, UIO_USERSPACE, NLC_FOLLOW);
@@ -202,6 +204,7 @@ sys_swapon(struct swapon_args *uap)
 	nlookup_done(&nd);
 	if (error) {
 		rel_mplock();
+		mtx_unlock(&swap_mtx);
 		return (error);
 	}
 
@@ -218,6 +221,7 @@ sys_swapon(struct swapon_args *uap)
 	if (error)
 		vrele(vp);
 	rel_mplock();
+	mtx_unlock(&swap_mtx);
 
 	return (error);
 }
@@ -249,6 +253,8 @@ swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 
 	cred = td->td_ucred;
 
+	mtx_lock(&swap_mtx);
+
 	if (!swapdev_vp) {
 		error = getspecialvnode(VT_NON, NULL, &swapdev_vnode_vops_p,
 				    &swapdev_vp, 0, 0);
@@ -259,19 +265,24 @@ swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 	}
 
 	for (sp = swdevt, index = 0 ; index < nswdev; index++, sp++) {
-		if (sp->sw_vp == vp)
+		if (sp->sw_vp == vp) {
+			mtx_unlock(&swap_mtx);
 			return EBUSY;
+		}
 		if (!sp->sw_vp)
 			goto found;
 
 	}
+	mtx_unlock(&swap_mtx);
 	return EINVAL;
     found:
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_OPEN(vp, FREAD | FWRITE, cred, NULL);
 	vn_unlock(vp);
-	if (error)
+	if (error) {
+		mtx_unlock(&swap_mtx);
 		return (error);
+	}
 
 	/*
 	 * v_rdev is not valid until after the VOP_OPEN() call.  dev_psize()
@@ -286,12 +297,14 @@ swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 		dpsize = dev_dpsize(dev);
 		if (dpsize == -1) {
 			VOP_CLOSE(vp, FREAD | FWRITE);
+			mtx_unlock(&swap_mtx);
 			return (ENXIO);
 		}
 		nblks = (u_quad_t)dpsize;
 	}
 	if (nblks == 0) {
 		VOP_CLOSE(vp, FREAD | FWRITE);
+		mtx_unlock(&swap_mtx);
 		return (ENXIO);
 	}
 
@@ -317,6 +330,7 @@ swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 		kprintf("exceeded maximum of %d blocks per swap unit\n",
 			(int)BLIST_MAXBLKS / nswdev);
 		VOP_CLOSE(vp, FREAD | FWRITE);
+		mtx_unlock(&swap_mtx);
 		return (ENXIO);
 	}
 
@@ -350,5 +364,6 @@ swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 	}
 	swap_pager_newswap();
 
+	mtx_unlock(&swap_mtx);
 	return (0);
 }

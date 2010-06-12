@@ -115,9 +115,6 @@ MALLOC_DEFINE(M_MQBUF, "mqueues", "Buffers to message queues");
 struct objcache_malloc_args mqueue_malloc_args = {
 	sizeof(struct mqueue), M_MQBUF };
 
-/* Spinlock around the process list */
-extern struct spinlock allproc_spin;
-
 /*
  * Initialize POSIX message queue subsystem.
  */
@@ -872,10 +869,10 @@ error:
 		mqueue_freemsg(msg, size);
 	} else if (notify) {
 		/* Send the notify, if needed */
-		spin_lock_wr(&allproc_spin);
+		lwkt_gettoken(&proc_token);
 		/*kpsignal(notify, &ksi, NULL);*/
 		ksignal(notify, mq->mq_sig_notify.sigev_signo);
-		spin_unlock_wr(&allproc_spin);
+		lwkt_reltoken(&proc_token);
 	}
 
 	return error;

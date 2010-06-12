@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -105,12 +107,18 @@ static void dead_pager_putpages (vm_object_t, vm_page_t *, int, int, int *);
 static boolean_t dead_pager_haspage (vm_object_t, vm_pindex_t);
 static void dead_pager_dealloc (vm_object_t);
 
+/*
+ * No requirements.
+ */
 static int
 dead_pager_getpage(vm_object_t obj, vm_page_t *mpp, int seqaccess)
 {
 	return VM_PAGER_FAIL;
 }
 
+/*
+ * No requirements.
+ */
 static void
 dead_pager_putpages(vm_object_t object, vm_page_t *m, int count, int flags,
 		    int *rtvals)
@@ -122,12 +130,18 @@ dead_pager_putpages(vm_object_t object, vm_page_t *m, int count, int flags,
 	}
 }
 
+/*
+ * No requirements.
+ */
 static int
 dead_pager_haspage(vm_object_t object, vm_pindex_t pindex)
 {
 	return FALSE;
 }
 
+/*
+ * No requirements.
+ */
 static void
 dead_pager_dealloc(vm_object_t object)
 {
@@ -171,16 +185,21 @@ static vm_offset_t swapbkva;		/* swap buffers kva */
 static TAILQ_HEAD(swqueue, buf) bswlist;
 static struct spinlock bswspin = SPINLOCK_INITIALIZER(&bswspin);
 
+/*
+ * Initialize the swap buffer list.
+ *
+ * Called from the low level boot code only.
+ */
 static void
 vm_pager_init(void *arg __unused)
 {
-	/*
-	 * Initialize the swap buffer list.
-	 */
 	TAILQ_INIT(&bswlist);
 }
 SYSINIT(vm_mem, SI_BOOT1_VM, SI_ORDER_SECOND, vm_pager_init, NULL)
 
+/*
+ * Called from the low level boot code only.
+ */
 void
 vm_pager_bufferinit(void)
 {
@@ -212,6 +231,9 @@ vm_pager_bufferinit(void)
 	cluster_pbuf_freecnt = nswbuf / 2;
 }
 
+/*
+ * No requirements.
+ */
 void
 vm_pager_deallocate(vm_object_t object)
 {
@@ -248,6 +270,8 @@ vm_pager_sync(void)
 
 /*
  * Initialize a physical buffer.
+ *
+ * No requirements.
  */
 static void
 initpbuf(struct buf *bp)
@@ -279,7 +303,7 @@ initpbuf(struct buf *bp)
  *	NOTE: pfreecnt can be NULL, but this 'feature' will be removed
  *	relatively soon when the rest of the subsystems get smart about it. XXX
  *
- * MPSAFE
+ * No requirements.
  */
 struct buf *
 getpbuf(int *pfreecnt)
@@ -318,7 +342,7 @@ getpbuf(int *pfreecnt)
  *	Note that there is no NULL hack here - all subsystems using this
  *	call understand how to use pfreecnt.
  *
- * MPSAFE
+ * No requirements.
  */
 struct buf *
 trypbuf(int *pfreecnt)
@@ -347,7 +371,7 @@ trypbuf(int *pfreecnt)
  *	NOTE: pfreecnt can be NULL, but this 'feature' will be removed
  *	relatively soon when the rest of the subsystems get smart about it. XXX
  *
- * MPSAFE
+ * No requirements.
  */
 void
 relpbuf(struct buf *bp, int *pfreecnt)
@@ -378,4 +402,3 @@ relpbuf(struct buf *bp, int *pfreecnt)
 	if (wake_freecnt)
 		wakeup(pfreecnt);
 }
-

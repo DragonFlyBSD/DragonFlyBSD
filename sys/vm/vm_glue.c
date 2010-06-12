@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -114,6 +116,9 @@ static int scheduler_notify;
 
 static void swapout (struct proc *);
 
+/*
+ * No requirements.
+ */
 int
 kernacc(c_caddr_t addr, int len, int rw)
 {
@@ -146,6 +151,9 @@ kernacc(c_caddr_t addr, int len, int rw)
 	return (rv == TRUE);
 }
 
+/*
+ * No requirements.
+ */
 int
 useracc(c_caddr_t addr, int len, int rw)
 {
@@ -186,6 +194,9 @@ useracc(c_caddr_t addr, int len, int rw)
 	return (rv == TRUE);
 }
 
+/*
+ * No requirements.
+ */
 void
 vslock(caddr_t addr, u_int len)
 {
@@ -196,6 +207,9 @@ vslock(caddr_t addr, u_int len)
 	}
 }
 
+/*
+ * No requirements.
+ */
 void
 vsunlock(caddr_t addr, u_int len)
 {
@@ -214,6 +228,8 @@ vsunlock(caddr_t addr, u_int len)
  * machine-dependent layer to fill those in and make the new process
  * ready to run.  The new process is set up so that it returns directly
  * to user mode to avoid stack copying and relocation problems.
+ *
+ * No requirements.
  */
 void
 vm_fork(struct proc *p1, struct proc *p2, int flags)
@@ -258,6 +274,8 @@ vm_fork(struct proc *p1, struct proc *p2, int flags)
  * Called after process has been wait(2)'ed apon and is being reaped.
  * The idea is to reclaim resources that we could not reclaim while  
  * the process was still executing.
+ *
+ * No requirements.
  */
 void
 vm_waitproc(struct proc *p)
@@ -268,6 +286,8 @@ vm_waitproc(struct proc *p)
 
 /*
  * Set default limits for VM system.  Call during proc0's initialization.
+ *
+ * Called from the low level boot code only.
  */
 void
 vm_init_limits(struct proc *p)
@@ -295,6 +315,8 @@ vm_init_limits(struct proc *p)
  * Faultin the specified process.  Note that the process can be in any
  * state.  Just clear P_SWAPPEDOUT and call wakeup in case the process is
  * sleeping.
+ *
+ * No requirements.
  */
 void
 faultin(struct proc *p)
@@ -305,13 +327,14 @@ faultin(struct proc *p)
 		 * mode but cannot until P_SWAPPEDOUT gets cleared.
 		 */
 		crit_enter();
+		lwkt_gettoken(&proc_token);
 		p->p_flag &= ~(P_SWAPPEDOUT | P_SWAPWAIT);
 #ifdef INVARIANTS
 		if (swap_debug)
 			kprintf("swapping in %d (%s)\n", p->p_pid, p->p_comm);
 #endif
 		wakeup(p);
-
+		lwkt_reltoken(&proc_token);
 		crit_exit();
 	}
 }
@@ -324,7 +347,6 @@ faultin(struct proc *p)
  * is enough space for them.  Of course, if a process waits for a long
  * time, it will be swapped in anyway.
  */
-
 struct scheduler_info {
 	struct proc *pp;
 	int ppri;
@@ -376,13 +398,18 @@ loop:
 	 * XXX we need a heuristic to get a measure of system stress and
 	 * then adjust our stagger wakeup delay accordingly.
 	 */
+	lwkt_gettoken(&proc_token);
 	faultin(p);
 	p->p_swtime = 0;
 	PRELE(p);
+	lwkt_reltoken(&proc_token);
 	tsleep(&proc0, 0, "swapin", hz / 10);
 	goto loop;
 }
 
+/*
+ * The caller must hold proc_token.
+ */
 static int
 scheduler_callback(struct proc *p, void *data)
 {
@@ -428,6 +455,10 @@ scheduler_callback(struct proc *p, void *data)
 	return(0);
 }
 
+/*
+ * SMP races ok.
+ * No requirements.
+ */
 void
 swapin_request(void)
 {
@@ -473,12 +504,20 @@ SYSCTL_INT(_vm, OID_AUTO, swap_idle_threshold2,
 
 static int swapout_procs_callback(struct proc *p, void *data);
 
+/*
+ * No requirements.
+ */
 void
 swapout_procs(int action)
 {
+	lwkt_gettoken(&vmspace_token);
 	allproc_scan(swapout_procs_callback, &action);
+	lwkt_reltoken(&vmspace_token);
 }
 
+/*
+ * The caller must hold proc_token and vmspace_token.
+ */
 static int
 swapout_procs_callback(struct proc *p, void *data)
 {
@@ -546,6 +585,9 @@ swapout_procs_callback(struct proc *p, void *data)
 	return(0);
 }
 
+/*
+ * The caller must hold proc_token and vmspace_token.
+ */
 static void
 swapout(struct proc *p)
 {

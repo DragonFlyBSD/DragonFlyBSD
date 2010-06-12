@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 2003, 2004 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
@@ -136,13 +138,15 @@
  * 	Otherwise if the object is of any other type, the generic
  * 	pageout (daemon) flush routine is invoked.
  *
- * We must be in a critical section.
+ * The caller must hold vm_token.
  */
 static int
 vm_contig_pg_clean(int queue)
 {
 	vm_object_t object;
 	vm_page_t m, m_tmp, next;
+
+	ASSERT_LWKT_TOKEN_HELD(&vm_token);
 
 	for (m = TAILQ_FIRST(&vm_page_queues[queue].pl); m != NULL; m = next) {
 		KASSERT(m->queue == queue,
@@ -180,6 +184,8 @@ vm_contig_pg_clean(int queue)
  * Attempt to flush (count) pages from the given page queue.   This may or
  * may not succeed.  Take up to <count> passes and delay 1/20 of a second
  * between each pass.
+ *
+ * The caller must hold vm_token.
  */
 static void
 vm_contig_pg_flush(int queue, int count) 
@@ -199,10 +205,12 @@ vm_contig_pg_flush(int queue, int count)
  *
  * Malloc()'s data structures have been used for collection of
  * statistics and for allocations of less than a page.
+ *
+ * The caller must hold vm_token.
  */
 static int
 vm_contig_pg_alloc(unsigned long size, vm_paddr_t low, vm_paddr_t high,
-	unsigned long alignment, unsigned long boundary, int mflags)
+		   unsigned long alignment, unsigned long boundary, int mflags)
 {
 	int i, start, pass;
 	vm_offset_t phys;
@@ -357,6 +365,9 @@ again:
  * Remove pages previously allocated by vm_contig_pg_alloc, and
  * assume all references to the pages have been removed, and that
  * it is OK to add them back to the free list.
+ *
+ * Caller must ensure no races on the page range in question.
+ * No other requirements.
  */
 void
 vm_contig_pg_free(int start, u_long size)
@@ -369,11 +380,13 @@ vm_contig_pg_free(int start, u_long size)
 	if (size == 0)
 		panic("vm_contig_pg_free: size must not be 0");
 
+	lwkt_gettoken(&vm_token);
 	for (i = start; i < (start + size / PAGE_SIZE); i++) {
 		m = &pga[i];
 		vm_page_busy(m);
 		vm_page_free(m);
 	}
+	lwkt_reltoken(&vm_token);
 }
 
 /*
@@ -382,6 +395,8 @@ vm_contig_pg_free(int start, u_long size)
  * Map previously allocated (vm_contig_pg_alloc) range of pages from
  * vm_page_array[] into the KVA.  Once mapped, the pages are part of
  * the Kernel, and are to free'ed with kmem_free(&kernel_map, addr, size).
+ *
+ * No requirements.
  */
 vm_offset_t
 vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
@@ -395,6 +410,7 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 		panic("vm_contig_pg_kmap: size must not be 0");
 
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 
 	/*
 	 * We've found a contiguous chunk that meets our requirements.
@@ -412,6 +428,7 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 		 */
 		vm_map_unlock(map);
 		vm_map_entry_release(count);
+		lwkt_reltoken(&vm_token);
 		crit_exit();
 		return (0);
 	}
@@ -440,10 +457,14 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
  	}
 	vm_map_wire(map, addr, addr + size, 0);
 
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 	return (addr);
 }
 
+/*
+ * No requirements.
+ */
 void *
 contigmalloc(
 	unsigned long size,	/* should be size_t here and for malloc() */
@@ -458,6 +479,9 @@ contigmalloc(
 			boundary, &kernel_map);
 }
 
+/*
+ * No requirements.
+ */
 void *
 contigmalloc_map(
 	unsigned long size,	/* should be size_t here and for malloc() */
@@ -472,28 +496,37 @@ contigmalloc_map(
 	int index;
 	void *rv;
 
+	lwkt_gettoken(&vm_token);
 	index = vm_contig_pg_alloc(size, low, high, alignment, boundary, flags);
 	if (index < 0) {
 		kprintf("contigmalloc_map: failed size %lu low=%llx "
 			"high=%llx align=%lu boundary=%lu flags=%08x\n",
 			size, (long long)low, (long long)high,
 			alignment, boundary, flags);
+		lwkt_reltoken(&vm_token);
 		return NULL;
 	}
 
 	rv = (void *)vm_contig_pg_kmap(index, size, map, flags);
-	if (!rv)
+	if (rv == NULL)
 		vm_contig_pg_free(index, size);
+	lwkt_reltoken(&vm_token);
 	
 	return rv;
 }
 
+/*
+ * No requirements.
+ */
 void
 contigfree(void *addr, unsigned long size, struct malloc_type *type)
 {
 	kmem_free(&kernel_map, (vm_offset_t)addr, size);
 }
 
+/*
+ * No requirements.
+ */
 vm_offset_t
 vm_page_alloc_contig(
 	vm_offset_t size,

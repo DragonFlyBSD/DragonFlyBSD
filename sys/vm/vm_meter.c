@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 1982, 1986, 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -78,6 +80,9 @@ SYSCTL_STRUCT(_vm, VM_LOADAVG, loadavg, CTLFLAG_RD,
 
 static int do_vmtotal_callback(struct proc *p, void *data);
 
+/*
+ * No requirements.
+ */
 static int
 do_vmtotal(SYSCTL_HANDLER_ARGS)
 {
@@ -107,6 +112,7 @@ do_vmtotal(SYSCTL_HANDLER_ARGS)
 	/*
 	 * Calculate object memory usage statistics.
 	 */
+	lwkt_gettoken(&vm_token);
 	for (object = TAILQ_FIRST(&vm_object_list);
 	    object != NULL;
 	    object = TAILQ_NEXT(object, object_list)) {
@@ -135,9 +141,13 @@ do_vmtotal(SYSCTL_HANDLER_ARGS)
 		}
 	}
 	totalp->t_free = vmstats.v_free_count + vmstats.v_cache_count;
+	lwkt_reltoken(&vm_token);
 	return (sysctl_handle_opaque(oidp, totalp, sizeof total, req));
 }
 
+/*
+ * The caller must hold proc_token.
+ */
 static int
 do_vmtotal_callback(struct proc *p, void *data)
 {
@@ -179,13 +189,17 @@ do_vmtotal_callback(struct proc *p, void *data)
 			return (0);
 		}
 	}
+
 	/*
 	 * Note active objects.
 	 */
 	paging = 0;
+	lwkt_gettoken(&vm_token);
 	if (p->p_vmspace) {
-		for (map = &p->p_vmspace->vm_map, entry = map->header.next;
-		    entry != &map->header; entry = entry->next) {
+		map = &p->p_vmspace->vm_map;
+		vm_map_lock_read(map);
+		for (entry = map->header.next;
+		     entry != &map->header; entry = entry->next) {
 			if (entry->maptype != VM_MAPTYPE_NORMAL &&
 			    entry->maptype != VM_MAPTYPE_VPAGETABLE) {
 				continue;
@@ -195,13 +209,17 @@ do_vmtotal_callback(struct proc *p, void *data)
 			vm_object_set_flag(entry->object.vm_object, OBJ_ACTIVE);
 			paging |= entry->object.vm_object->paging_in_progress;
 		}
+		vm_map_unlock_read(map);
 	}
+	lwkt_reltoken(&vm_token);
 	if (paging)
 		totalp->t_pw++;
 	return(0);
 }
 
-
+/*
+ * No requirements.
+ */
 static int
 do_vmstats(SYSCTL_HANDLER_ARGS)
 {
@@ -209,6 +227,9 @@ do_vmstats(SYSCTL_HANDLER_ARGS)
 	return (sysctl_handle_opaque(oidp, &vms, sizeof(vms), req));
 }
 
+/*
+ * No requirements.
+ */
 static int
 do_vmmeter(SYSCTL_HANDLER_ARGS)
 {
@@ -242,6 +263,8 @@ do_vmmeter(SYSCTL_HANDLER_ARGS)
  *	structure.
  *
  * (sysctl_oid *oidp, void *arg1, int arg2, struct sysctl_req *req)
+ *
+ * No requirements.
  */
 static int
 vcnt(SYSCTL_HANDLER_ARGS)
@@ -257,6 +280,9 @@ vcnt(SYSCTL_HANDLER_ARGS)
 	return(SYSCTL_OUT(req, &count, sizeof(int)));
 }
 
+/*
+ * No requirements.
+ */
 static int
 vcnt_intr(SYSCTL_HANDLER_ARGS)
 {
@@ -402,6 +428,9 @@ SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
 SYSCTL_INT(_vm_stats_misc, OID_AUTO,
 	zero_page_count, CTLFLAG_RD, &vm_page_zero_count, 0, "");
 
+/*
+ * No requirements.
+ */
 static int
 do_vmmeter_pcpu(SYSCTL_HANDLER_ARGS)
 {
@@ -420,6 +449,9 @@ do_vmmeter_pcpu(SYSCTL_HANDLER_ARGS)
 	return (sysctl_handle_opaque(oidp, &vmm, sizeof(vmm), req));
 }
 
+/*
+ * Called from the low level boot code only.
+ */
 static void
 vmmeter_init(void *dummy __unused)
 {
