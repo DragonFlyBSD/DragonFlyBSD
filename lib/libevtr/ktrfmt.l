@@ -16,6 +16,7 @@ static struct token tokens[NR_TOKENS];
 static int curr_tok;
 static struct symtab *strtab;
 
+static
 struct token *
 tok_new(void)
 {
