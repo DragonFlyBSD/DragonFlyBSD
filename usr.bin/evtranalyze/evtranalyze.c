@@ -43,6 +43,7 @@
 #include <evtr.h>
 #include "xml.h"
 #include "svg.h"
+#include "plotter.h"
 #include "trivial.h"
 
 enum {
@@ -1061,29 +1062,69 @@ cmd_show(int argc, char **argv)
 
 struct stats_ops {
 	const char *statscmd;
-	void *(*prepare)(int, char **);
+	void *(*prepare)(int, char **, struct evtr_filter *);
 	void (*each_event)(void *, evtr_event_t);
 	void (*report)(void *);
 };
 
 struct stats_integer_ctx {
 	const char *varname;
+	struct {
+		int plot;
+		const char *path;
+	} opts;
+	void *plotter_ctx;
+	struct plotter *plotter;
+	plotid_t time_plot;
 	uintmax_t sum;
 	uintmax_t occurences;
 };
 
 static
 void *
-stats_integer_prepare(int argc, char **argv)
+stats_integer_prepare(int argc, char **argv, struct evtr_filter *filt)
 {
 	struct stats_integer_ctx *ctx;
+	int ch;
 
-	if (argc != 2)
-		err(2, "Need exactly one variable");
-	if (!(ctx = malloc(sizeof(*ctx))))
+	if (!(ctx = calloc(1, sizeof(*ctx))))
 		return ctx;
-	ctx->varname = argv[1];
+ 
+	optind = 0;
+	optreset = 1;
+	while ((ch = getopt(argc, argv, "p:")) != -1) {
+		switch (ch) {
+		case 'p':
+			ctx->opts.plot = !0;
+			ctx->opts.path = optarg;
+			break;
+		default:
+			usage();
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc != 1)
+		err(2, "Need exactly one variable");
+	ctx->varname = argv[0];
 	ctx->sum = ctx->occurences = 0;
+	filt->flags = 0;
+	filt->cpu = -1;
+	filt->ev_type = EVTR_TYPE_STMT;
+	filt->var = ctx->varname;
+	if (!ctx->opts.plot)
+		return ctx;
+
+	if (!(ctx->plotter = plotter_factory()))
+		err(1, "can't allocate plotter");
+	if (!(ctx->plotter_ctx = ctx->plotter->plot_init(ctx->opts.path)))
+		err(1, "can't allocate plotter context");
+
+	if ((ctx->time_plot = ctx->plotter->plot_new(ctx->plotter_ctx,
+							  PLOT_TYPE_LINE,
+							  ctx->varname)) < 0)
+		err(1, "can't create histogram");
 	return ctx;
 }
 
@@ -1098,6 +1139,9 @@ stats_integer_each(void *_ctx, evtr_event_t ev)
 			ctx->varname);
 		return;
 	}
+	if (ctx->plotter)
+		ctx->plotter->plot_line(ctx->plotter_ctx, ctx->time_plot,
+					(double)ev->ts, (double)ev->stmt.val->num);
 	ctx->sum += ev->stmt.val->num;
 	++ctx->occurences;
 }
@@ -1109,10 +1153,20 @@ stats_integer_report(void *_ctx)
 	struct stats_integer_ctx *ctx = _ctx;
 	printf("median for variable %s is %lf\n", ctx->varname,
 	       (double)ctx->sum / ctx->occurences);
+	if (ctx->plotter)
+		ctx->plotter->plot_finish(ctx->plotter_ctx);
+
 	free(ctx);
 }
 
 struct stats_completion_ctx {
+	struct stats_completion_options {
+		int plot;
+		const char *path;
+	} opts;
+	struct plotter *plotter;
+	void *plotter_ctx;
+	plotid_t durations_plot;
 	const char *varname;
 	const char *ctor;
 	const char *dtor;
@@ -1145,23 +1199,57 @@ ctor_data_new(evtr_event_t ev)
 
 static
 void *
-stats_completion_prepare(int argc, char **argv)
+stats_completion_prepare(int argc, char **argv, struct evtr_filter *filt)
 {
 	struct stats_completion_ctx *ctx;
+	int ch;
 
-	if (argc != 4)
-		err(2, "need a variable, a constructor and a destructor");
 	if (!(ctx = calloc(1, sizeof(*ctx))))
 		return ctx;
+
+	optind = 0;
+	optreset = 1;
+	while ((ch = getopt(argc, argv, "p:")) != -1) {
+		switch (ch) {
+		case 'p':
+			ctx->opts.plot = !0;
+			ctx->opts.path = optarg;
+			break;
+		default:
+			usage();
+		}
+	}
+	argc -= optind;
+	argv += optind;
+	if (argc != 3)
+		err(2, "need a variable, a constructor and a destructor");
 	if (!(ctx->ctors = ehash_new()))
 		goto free_ctx;
 	ctx->ctors->hashfunc = &hashfunc_ctor;
 	ctx->ctors->cmpfunc = &cmpfunc_ctor;
 	if (!(ctx->durations = vector_new()))
 		goto free_ctors;
-	ctx->varname = argv[1];
-	ctx->ctor = argv[2];
-	ctx->dtor = argv[3];
+	ctx->varname = argv[0];
+	ctx->ctor = argv[1];
+	ctx->dtor = argv[2];
+
+	filt->flags = 0;
+	filt->cpu = -1;
+	filt->ev_type = EVTR_TYPE_STMT;
+	filt->var = ctx->varname;
+
+	if (!ctx->opts.plot)
+		return ctx;
+
+	if (!(ctx->plotter = plotter_factory()))
+		err(1, "can't allocate plotter");
+	if (!(ctx->plotter_ctx = ctx->plotter->plot_init(ctx->opts.path)))
+		err(1, "can't allocate plotter context");
+
+	if ((ctx->durations_plot = ctx->plotter->plot_new(ctx->plotter_ctx,
+							  PLOT_TYPE_HIST,
+							  ctx->varname)) < 0)
+		err(1, "can't create histogram");
 	return ctx;
 free_ctors:
 	;	/* XXX */
@@ -1213,6 +1301,10 @@ stats_completion_each(void *_ctx, evtr_event_t ev)
 			ev->stmt.val->ctor.name = tmp;
 			return;
 		}
+		if (ctx->plotter)
+			ctx->plotter->plot_histogram(ctx->plotter_ctx,
+						     ctx->durations_plot,
+						     (double)(ev->ts - cd->ts));
 		vector_push(ctx->durations, ev->ts - cd->ts);
 		++ctx->completed_events;
 		ctx->completed_duration_sum += ev->ts - cd->ts;
@@ -1241,7 +1333,9 @@ stats_completion_report(void *_ctx)
 	avg = (double)ctx->completed_duration_sum / ctx->completed_events;
 	printf("Average event duration:\t%lf (stddev %lf)\n", avg,
 	       stddev(ctx->durations, avg));
-	       
+
+	if (ctx->plotter)
+		ctx->plotter->plot_finish(ctx->plotter_ctx);
 	vector_destroy(ctx->durations);
 	/* XXX: hash */
 	free(ctx);
@@ -1302,21 +1396,12 @@ cmd_stats(int argc, char **argv)
 	freq = cputab.cpus[0].freq;
 	freq /= 1000000;	/* we want to print out usecs */
 	printd(MISC, "using freq = %lf\n", freq);
-	filt.flags = 0;
-	filt.cpu = -1;
-	filt.ev_type = EVTR_TYPE_STMT;
-	filt.var = NULL;
-	optind = 0;
-	optreset = 1;
 
-	if (argc < 2)
-		err(2, "Need a variable");
-	filt.var = argv[1];
+	if (!(statctx = statsops->prepare(argc, argv, &filt)))
+		err(1, "Can't allocate stats context");
 	q = evtr_query_init(evtr, &filt, 1);
 	if (!q)
 		err(1, "Can't initialize query");
-	if (!(statctx = statsops->prepare(argc, argv)))
-		err(1, "Can't allocate stats context");
 	while(!evtr_query_next(q, &ev)) {
 
 		if (!last_ts)
@@ -1388,7 +1473,6 @@ cmd_summary(int argc, char **argv)
 	return 0;
 }
 
-	
 
 int
 main(int argc, char **argv)

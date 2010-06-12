@@ -8,6 +8,7 @@ enum debug_flags {
 	DEFINE_DEBUG_FLAG(INTV, 'i'),
 	DEFINE_DEBUG_FLAG(SVG, 's'),
 	DEFINE_DEBUG_FLAG(MISC, 'm'),
+	DEFINE_DEBUG_FLAG(PLOT, 'p'),
 };
 
 #define printd(subsys, ...)				\
