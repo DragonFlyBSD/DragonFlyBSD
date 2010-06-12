@@ -74,6 +74,9 @@ struct mtx {
 
 typedef struct mtx *mtx_t;
 
+#define MTX_INITIALIZER	{ .mtx_lock = 0, .mtx_refs = 0, \
+			  .mtx_owner = NULL, .mtx_link = NULL }
+
 #define MTX_EXCLUSIVE	0x80000000
 #define MTX_SHWANTED	0x40000000
 #define MTX_EXWANTED	0x20000000
