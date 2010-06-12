@@ -2,6 +2,7 @@
 
 #include <assert.h>
 //#define YYSTYPE struct token
+#include <stdlib.h>
 #include "ktrfmt.tab.h"
 #include "tok.h"
 #include "internal.h"
@@ -22,7 +23,7 @@ tok_new(void)
 	if (curr_tok == NR_TOKENS) {
 		/* can't happen */
 		fprintf(stderr, "Reached max number of tokens\n");
-		exit(2);
+		abort();
 	}
 	return &tokens[curr_tok];
 }

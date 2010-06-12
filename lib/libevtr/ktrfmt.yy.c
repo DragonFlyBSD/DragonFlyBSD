@@ -502,6 +502,7 @@ char *__ktrfmttext;
 
 #include <assert.h>
 //#define YYSTYPE struct token
+#include <stdlib.h>
 #include "ktrfmt.tab.h"
 #include "tok.h"
 #include "internal.h"
@@ -522,7 +523,7 @@ tok_new(void)
 	if (curr_tok == NR_TOKENS) {
 		/* can't happen */
 		fprintf(stderr, "Reached max number of tokens\n");
-		exit(2);
+		abort();
 	}
 	return &tokens[curr_tok];
 }
@@ -553,7 +554,7 @@ newstr(const char *s)
 	return r;
 }
 
-#line 557 "ktrfmt.yy.c"
+#line 558 "ktrfmt.yy.c"
 
 #define INITIAL 0
 
@@ -746,9 +747,9 @@ YY_DECL
     
         YYSTYPE * yylval;
     
-#line 70 "ktrfmt.l"
+#line 71 "ktrfmt.l"
 
-#line 752 "ktrfmt.yy.c"
+#line 753 "ktrfmt.yy.c"
 
     yylval = yylval_param;
 
@@ -835,12 +836,12 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 71 "ktrfmt.l"
+#line 72 "ktrfmt.l"
 { /* ignore */ }
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 72 "ktrfmt.l"
+#line 73 "ktrfmt.l"
 {
 	size_t len;
 	yylval->tok = tok_new();
@@ -857,7 +858,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 85 "ktrfmt.l"
+#line 86 "ktrfmt.l"
 {
 	yylval->tok = tok_new();
 	yylval->tok->type = TOK_ID;
@@ -868,7 +869,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 92 "ktrfmt.l"
+#line 93 "ktrfmt.l"
 {
 	yylval->tok = tok_new();
 	yylval->tok->type = TOK_CTOR;
@@ -879,7 +880,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 99 "ktrfmt.l"
+#line 100 "ktrfmt.l"
 {
 	yylval->tok = tok_new();
 	yylval->tok->type = TOK_INT;
@@ -890,7 +891,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 106 "ktrfmt.l"
+#line 107 "ktrfmt.l"
 {
 	yylval->tok = tok_new();
 	yylval->tok->type = TOK_INT;
@@ -901,7 +902,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 113 "ktrfmt.l"
+#line 114 "ktrfmt.l"
 {
 	yylval = NULL;
 	printd(LEX, "TOK_EQ\n");
@@ -910,7 +911,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 118 "ktrfmt.l"
+#line 119 "ktrfmt.l"
 {
 	yylval = NULL;
 	printd(LEX, "TOK_DOT\n");
@@ -919,7 +920,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 123 "ktrfmt.l"
+#line 124 "ktrfmt.l"
 {
 	yylval = NULL;
 	printd(LEX, "TOK_LEFT_BRACK\n");
@@ -928,7 +929,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 128 "ktrfmt.l"
+#line 129 "ktrfmt.l"
 {
 	yylval = NULL;
 	printd(LEX, "TOK_RIGHT_BRACK\n");
@@ -937,10 +938,10 @@ YY_RULE_SETUP
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 134 "ktrfmt.l"
+#line 135 "ktrfmt.l"
 ECHO;
 	YY_BREAK
-#line 944 "ktrfmt.yy.c"
+#line 945 "ktrfmt.yy.c"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -1901,6 +1902,6 @@ void __ktrfmtfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 134 "ktrfmt.l"
+#line 135 "ktrfmt.l"
 
 
