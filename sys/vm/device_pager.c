@@ -1,4 +1,6 @@
 /*
+ * (MPASFE)
+ *
  * Copyright (c) 1990 University of Utah.
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -37,7 +39,6 @@
  *
  *	@(#)device_pager.c	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/vm/device_pager.c,v 1.46.2.1 2000/08/02 21:54:37 peter Exp $
- * $DragonFly: src/sys/vm/device_pager.c,v 1.13 2008/01/21 10:25:18 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -49,6 +50,7 @@
 #include <sys/queue.h>
 #include <sys/malloc.h>
 #include <sys/thread2.h>
+#include <sys/mutex2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>
@@ -65,12 +67,11 @@ static boolean_t dev_pager_haspage (vm_object_t, vm_pindex_t);
 /* list of device pager objects */
 static TAILQ_HEAD(, vm_page) dev_freepages_list =
 		TAILQ_HEAD_INITIALIZER(dev_freepages_list);
-static MALLOC_DEFINE(M_FICTITIOUS_PAGES, "device-mapped pages", "Device mapped pages");
+static MALLOC_DEFINE(M_FICTITIOUS_PAGES, "device-mapped pages",
+		"Device mapped pages");
 
 static vm_page_t dev_pager_getfake (vm_paddr_t);
 static void dev_pager_putfake (vm_page_t);
-
-static int dev_pager_alloc_lock, dev_pager_alloc_lock_want;
 
 struct pagerops devicepagerops = {
 	dev_pager_dealloc,
@@ -79,6 +80,11 @@ struct pagerops devicepagerops = {
 	dev_pager_haspage
 };
 
+static struct mtx dev_pager_mtx = MTX_INITIALIZER;
+
+/*
+ * No requirements.
+ */
 vm_object_t
 dev_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
 {
@@ -113,25 +119,16 @@ dev_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
 	}
 
 	/*
-	 * Lock to prevent object creation race condition.
-	 */
-	while (dev_pager_alloc_lock) {
-		dev_pager_alloc_lock_want++;
-		tsleep(&dev_pager_alloc_lock, 0, "dvpall", 0);
-		dev_pager_alloc_lock_want--;
-	}
-	dev_pager_alloc_lock = 1;
-
-	/*
 	 * Look up pager, creating as necessary.
 	 */
+	mtx_lock(&dev_pager_mtx);
 	object = dev->si_object;
 	if (object == NULL) {
 		/*
 		 * Allocate object and associate it with the pager.
 		 */
 		object = vm_object_allocate(OBJT_DEVICE,
-			OFF_TO_IDX(foff + size));
+					    OFF_TO_IDX(foff + size));
 		object->handle = handle;
 		TAILQ_INIT(&object->un_pager.devp.devp_pglist);
 		dev->si_object = object;
@@ -143,19 +140,21 @@ dev_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
 		if (OFF_TO_IDX(foff + size) > object->size)
 			object->size = OFF_TO_IDX(foff + size);
 	}
-
-	dev_pager_alloc_lock = 0;
-	if (dev_pager_alloc_lock_want)
-		wakeup(&dev_pager_alloc_lock);
+	mtx_unlock(&dev_pager_mtx);
 
 	return (object);
 }
 
+/*
+ * No requirements.
+ */
 static void
 dev_pager_dealloc(vm_object_t object)
 {
 	vm_page_t m;
 	cdev_t dev;
+
+	mtx_lock(&dev_pager_mtx);
 
 	if ((dev = object->handle) != NULL) {
 		KKASSERT(dev->si_object);
@@ -170,8 +169,12 @@ dev_pager_dealloc(vm_object_t object)
 		TAILQ_REMOVE(&object->un_pager.devp.devp_pglist, m, pageq);
 		dev_pager_putfake(m);
 	}
+	mtx_unlock(&dev_pager_mtx);
 }
 
+/*
+ * No requirements.
+ */
 static int
 dev_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 {
@@ -180,6 +183,8 @@ dev_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	vm_page_t page;
 	cdev_t dev;
 	int prot;
+
+	mtx_lock(&dev_pager_mtx);
 
 	page = *mpp;
 	dev = object->handle;
@@ -203,15 +208,20 @@ dev_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 		 * and free up all the original pages.
 		 */
 		page = dev_pager_getfake(paddr);
-		TAILQ_INSERT_TAIL(&object->un_pager.devp.devp_pglist, page, pageq);
+		TAILQ_INSERT_TAIL(&object->un_pager.devp.devp_pglist,
+				  page, pageq);
 		crit_enter();
 		vm_page_free(*mpp);
 		vm_page_insert(page, object, offset);
 		crit_exit();
 	}
+	mtx_unlock(&dev_pager_mtx);
 	return (VM_PAGER_OK);
 }
 
+/*
+ * No requirements.
+ */
 static void
 dev_pager_putpages(vm_object_t object, vm_page_t *m,
 		   int count, boolean_t sync, int *rtvals)
@@ -219,12 +229,18 @@ dev_pager_putpages(vm_object_t object, vm_page_t *m,
 	panic("dev_pager_putpage called");
 }
 
+/*
+ * No requirements.
+ */
 static boolean_t
 dev_pager_haspage(vm_object_t object, vm_pindex_t pindex)
 {
 	return (TRUE);
 }
 
+/*
+ * The caller must hold dev_pager_mtx
+ */
 static vm_page_t
 dev_pager_getfake(vm_paddr_t paddr)
 {
@@ -254,6 +270,8 @@ dev_pager_getfake(vm_paddr_t paddr)
 /*
  * Synthesized VM pages must be structurally stable for lockless lookups to
  * work properly.
+ *
+ * The caller must hold dev_pager_mtx
  */
 static void
 dev_pager_putfake(vm_page_t m)

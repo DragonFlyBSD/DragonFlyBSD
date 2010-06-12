@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 2000 Peter Wemm
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,9 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/vm/phys_pager.c,v 1.3.2.3 2000/12/17 02:05:41 alfred Exp $
- * $DragonFly: src/sys/vm/phys_pager.c,v 1.5 2006/03/27 01:54:18 dillon Exp $
  */
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/linker_set.h>
@@ -41,6 +41,9 @@
 
 #include <sys/thread2.h>
 
+/*
+ * No requirements.
+ */
 vm_object_t
 phys_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
 {
@@ -55,49 +58,14 @@ phys_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
 	size = round_page64(size);
 
 	KKASSERT(handle == NULL);
-#if 0
-	if (handle != NULL) {
-		/*
-		 * Lock to prevent object creation race condition.
-		 */
-		while (phys_pager_alloc_lock) {
-			phys_pager_alloc_lock_want++;
-			tsleep(&phys_pager_alloc_lock, 0, "ppall", 0);
-			phys_pager_alloc_lock_want--;
-		}
-		phys_pager_alloc_lock = 1;
-	
-		/*
-		 * Look up pager, creating as necessary.
-		 */
-		object = vm_pager_object_lookup(&phys_pager_object_list, handle);
-		if (object == NULL) {
-			/*
-			 * Allocate object and associate it with the pager.
-			 */
-			object = vm_object_allocate(OBJT_PHYS,
-				OFF_TO_IDX(foff + size));
-			object->handle = handle;
-			TAILQ_INSERT_TAIL(&phys_pager_object_list, object,
-			    pager_object_list);
-		} else {
-			/*
-			 * Gain a reference to the object.
-			 */
-			vm_object_reference(object);
-			if (OFF_TO_IDX(foff + size) > object->size)
-				object->size = OFF_TO_IDX(foff + size);
-		}
-		phys_pager_alloc_lock = 0;
-		if (phys_pager_alloc_lock_want)
-			wakeup(&phys_pager_alloc_lock);
-	} else { ... }
-#endif
 	object = vm_object_allocate(OBJT_PHYS, OFF_TO_IDX(foff + size));
 
 	return (object);
 }
 
+/*
+ * No requirements.
+ */
 static void
 phys_pager_dealloc(vm_object_t object)
 {
@@ -105,6 +73,9 @@ phys_pager_dealloc(vm_object_t object)
 	KKASSERT(object->swblock_count == 0);
 }
 
+/*
+ * No requirements.
+ */
 static int
 phys_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 {
@@ -123,6 +94,9 @@ phys_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	return (VM_PAGER_OK);
 }
 
+/*
+ * No requirements.
+ */
 static void
 phys_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 		    boolean_t sync, int *rtvals)
@@ -142,6 +116,9 @@ phys_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 #define PHYSCLUSTER 1024
 #endif
 
+/*
+ * No requirements.
+ */
 static boolean_t
 phys_pager_haspage(vm_object_t object, vm_pindex_t pindex)
 {

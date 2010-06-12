@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 2010 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
@@ -144,6 +146,8 @@ SYSCTL_QUAD(_vm_swapcache, OID_AUTO, write_count,
 
 /*
  * vm_swapcached is the high level pageout daemon.
+ *
+ * No requirements.
  */
 static void
 vm_swapcached(void)
@@ -158,6 +162,7 @@ vm_swapcached(void)
 	 */
 	curthread->td_flags |= TDF_SYSTHREAD;
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 
 	/*
 	 * Initialize our marker for the inactive scan (SWAPC_WRITING)
@@ -241,9 +246,13 @@ vm_swapcached(void)
 	}
 	TAILQ_REMOVE(INACTIVE_LIST, &page_marker, pageq);
 	TAILQ_REMOVE(&vm_object_list, &object_marker, object_list);
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 }
 
+/*
+ * The caller must hold vm_token.
+ */
 static void
 vm_swapcache_writing(vm_page_t marker)
 {
@@ -381,6 +390,8 @@ vm_swapcache_writing(vm_page_t marker)
  * should be sufficient.
  *
  * Returns a count of pages we might have flushed (minimum 1)
+ *
+ * The caller must hold vm_token.
  */
 static
 int
@@ -463,6 +474,8 @@ vm_swapcached_flush(vm_page_t m, int isblkdev)
  * Does not test m->queue, PG_MARKER, or PG_SWAPPED.
  *
  * Returns 0 on success, 1 on failure
+ *
+ * The caller must hold vm_token.
  */
 static int
 vm_swapcache_test(vm_page_t m)
@@ -491,6 +504,8 @@ vm_swapcache_test(vm_page_t m)
 
 /*
  * Cleaning pass
+ *
+ * The caller must hold vm_token.
  */
 static
 void
@@ -507,6 +522,7 @@ vm_swapcache_cleaning(vm_object_t marker)
 	/*
 	 * Look for vnode objects
 	 */
+	lwkt_gettoken(&vm_token);
 	while ((object = TAILQ_NEXT(object, object_list)) != NULL && count--) {
 		if (object->type != OBJT_VNODE)
 			continue;
@@ -565,4 +581,5 @@ vm_swapcache_cleaning(vm_object_t marker)
 	else
 		TAILQ_INSERT_HEAD(&vm_object_list, marker, object_list);
 	marker->backing_object = object;
+	lwkt_reltoken(&vm_token);
 }

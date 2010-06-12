@@ -1,4 +1,6 @@
 /*
+ * (MPASFE)
+ *
  * Copyright (c) 1995, David Greenman
  * All rights reserved.
  *
@@ -37,7 +39,6 @@
  * is maintained whenever a resident page also has swap backing store.
  *
  * $FreeBSD: src/sys/vm/default_pager.c,v 1.23 1999/11/07 20:03:53 alc Exp $
- * $DragonFly: src/sys/vm/default_pager.c,v 1.5 2006/03/27 01:54:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -87,7 +88,6 @@ default_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
  * the swapblk in the underlying vm_page's when we free the vm_page or
  * garbage collect the vm_page cache list.
  */
-
 static void
 default_pager_dealloc(vm_object_t object)
 {
@@ -102,7 +102,6 @@ default_pager_dealloc(vm_object_t object)
  * OBJT_SWAP at the time a swap-backed vm_page_t is freed, we will never
  * see a vm_page with assigned swap here.
  */
-
 static int
 default_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 {
@@ -115,12 +114,11 @@ default_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
  * object will be converted when the written-out vm_page_t is moved from the
  * cache to the free list.
  */
-
 static void
-default_pager_putpages(vm_object_t object, vm_page_t *m, int c, boolean_t sync,
-    int *rtvals)
+default_pager_putpages(vm_object_t object, vm_page_t *mpp, int count,
+		       boolean_t sync, int *rtvals)
 {
-	swap_pager_putpages(object, m, c, sync, rtvals);
+	swap_pager_putpages(object, mpp, count, sync, rtvals);
 }
 
 /*
@@ -135,7 +133,6 @@ default_pager_putpages(vm_object_t object, vm_page_t *m, int c, boolean_t sync,
  * deal with it since it must already deal with it plus deal with swap
  * meta-data structures.
  */
-
 static boolean_t
 default_pager_haspage(vm_object_t object, vm_pindex_t pindex)
 {
