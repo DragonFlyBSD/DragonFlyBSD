@@ -454,7 +454,7 @@ le_multi_filter(struct le_softc *sc)
 
     sc->le_flags |= IFF_MULTICAST;
 
-    LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+    TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 	    if (ifma->ifma_addr->sa_family != AF_LINK)
 		    continue;
 

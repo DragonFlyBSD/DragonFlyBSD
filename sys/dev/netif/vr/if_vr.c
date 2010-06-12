@@ -539,7 +539,7 @@ vr_setmulti(struct vr_softc *sc)
 	CSR_WRITE_4(sc, VR_MAR1, 0);
 
 	/* Now program new ones. */
-	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		int h;
 
 		if (ifma->ifma_addr->sa_family != AF_LINK)

@@ -1044,7 +1044,7 @@ ti_setmulti(struct ti_softc *sc)
 	}
 
 	/* Now program new ones. */
-	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		mc = kmalloc(sizeof(struct ti_mc_entry), M_DEVBUF, M_INTWAIT);

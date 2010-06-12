@@ -905,15 +905,7 @@ tl_setmulti(struct tl_softc *sc)
 		hashes[1] = 0xFFFFFFFF;
 	} else {
 		i = 1;
-		/* First find the tail of the list. */
-		for (ifma = ifp->if_multiaddrs.lh_first; ifma != NULL;
-					ifma = ifma->ifma_link.le_next) {
-			if (ifma->ifma_link.le_next == NULL)
-				break;
-		}
-		/* Now traverse the list backwards. */
-		for (; ifma != NULL && ifma != (void *)&ifp->if_multiaddrs;
-			ifma = (struct ifmultiaddr *)ifma->ifma_link.le_prev) {
+		TAILQ_FOREACH_REVERSE(ifma, &ifp->if_multiaddrs, ifmultihead, ifma_link) {
 			if (ifma->ifma_addr->sa_family != AF_LINK)
 				continue;
 			/*

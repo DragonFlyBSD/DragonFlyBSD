@@ -1840,7 +1840,7 @@ em_set_multi(struct adapter *adapter)
 		msec_delay(5);
 	}
 
-	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 

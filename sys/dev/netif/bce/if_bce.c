@@ -4913,7 +4913,7 @@ bce_set_rx_mode(struct bce_softc *sc)
 		/* Accept one or more multicast(s). */
 		DBPRINT(sc, BCE_INFO, "Enabling selective multicast mode.\n");
 
-		LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+		TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 			if (ifma->ifma_addr->sa_family != AF_LINK)
 				continue;
 			h = ether_crc32_le(

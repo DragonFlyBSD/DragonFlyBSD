@@ -1164,7 +1164,7 @@ bge_setmulti(struct bge_softc *sc)
 		CSR_WRITE_4(sc, BGE_MAR0 + (i * 4), 0);
 
 	/* Now program new ones. */
-	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		h = ether_crc32_le(

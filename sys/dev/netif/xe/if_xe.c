@@ -1316,7 +1316,7 @@ xe_set_multicast(struct xe_softc *scp) {
 
   /* Iterate over multicast address list */
   count = 0;
-  LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+  TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
     if (ifma->ifma_addr->sa_family != AF_LINK)
       continue;
 

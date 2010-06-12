@@ -590,7 +590,7 @@ sln_set_multi(struct sln_softc *sc)
 	uint32_t crc = 0;
 	uint32_t mc_g[2] = {0, 0};
 	struct ifmultiaddr *ifma;
-	int i, j;
+	int j;
 
 	if (ifp->if_flags & IFF_PROMISC) {
 		kprintf("Promisc mode is enabled\n");
@@ -607,9 +607,7 @@ sln_set_multi(struct sln_softc *sc)
 		/* first, zero all the existing hash bits */
 		mc_g[0] = mc_g[1] = 0;
 
-		for (i = 0, ifma = (ifp->if_multiaddrs.lh_first);
-		     ifma != NULL && (i < ifma->ifma_refcount);
-		     i++, ifma = (ifma->ifma_link.le_next)) {
+		TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 			j = 0;
 
 			if ((ifma->ifma_addr->sa_family) != AF_LINK)

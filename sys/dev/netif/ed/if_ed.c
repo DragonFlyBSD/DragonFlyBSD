@@ -3457,7 +3457,7 @@ ds_getmcaf(struct ed_softc *sc, u_int32_t *mcaf)
 	mcaf[0] = 0;
 	mcaf[1] = 0;
 
-	LIST_FOREACH(ifma, &sc->arpcom.ac_if.if_multiaddrs, ifma_link) {
+	TAILQ_FOREACH(ifma, &sc->arpcom.ac_if.if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		index = ds_mchash(LLADDR((struct sockaddr_dl *)ifma->ifma_addr))

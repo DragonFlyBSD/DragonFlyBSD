@@ -1496,7 +1496,7 @@ emx_set_multi(struct emx_softc *sc)
 	uint8_t  mta[512]; /* Largest MTS is 4096 bits */
 	int mcnt = 0;
 
-	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 
