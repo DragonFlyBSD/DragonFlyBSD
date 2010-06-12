@@ -3214,7 +3214,7 @@ ieee80211_ioctl_updatemulti(struct ieee80211com *ic)
 		struct ifnet *ifp = vap->iv_ifp;
 		struct ifmultiaddr *ifma;
 
-		LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+		TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 			if (ifma->ifma_addr->sa_family != AF_LINK)
 				continue;
 			(void) if_addmulti(parent, ifma->ifma_addr, NULL);

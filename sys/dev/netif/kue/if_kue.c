@@ -323,12 +323,7 @@ kue_setmulti(struct kue_softc *sc)
 
 	sc->kue_rxfilt &= ~KUE_RXFILT_ALLMULTI;
 
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
-#else
-	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
-#endif
-	{
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		/*

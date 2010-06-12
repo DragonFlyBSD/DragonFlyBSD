@@ -1360,7 +1360,7 @@ et_setmulti(struct et_softc *sc)
 	}
 
 	count = 0;
-	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		uint32_t *hp, h;
 
 		if (ifma->ifma_addr->sa_family != AF_LINK)

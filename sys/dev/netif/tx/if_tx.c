@@ -1195,7 +1195,7 @@ epic_set_mc_table(epic_softc_t *sc)
 	filter[2] = 0;
 	filter[3] = 0;
 
-	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		h = (ether_crc32_be(

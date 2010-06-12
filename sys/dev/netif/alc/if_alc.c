@@ -3507,7 +3507,7 @@ alc_rxfilter(struct alc_softc *sc)
 	/* XXX */
 	if_maddr_rlock(ifp);
 #endif
-	LIST_FOREACH(ifma, &sc->alc_ifp->if_multiaddrs, ifma_link) {
+	TAILQ_FOREACH(ifma, &sc->alc_ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		crc = ether_crc32_be(LLADDR((struct sockaddr_dl *)

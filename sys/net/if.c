@@ -541,7 +541,7 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 		TAILQ_INIT(&ifp->if_addrheads[i]);
 
 	TAILQ_INIT(&ifp->if_prefixhead);
-	LIST_INIT(&ifp->if_multiaddrs);
+	TAILQ_INIT(&ifp->if_multiaddrs);
 	getmicrotime(&ifp->if_lastchange);
 	if (ifindex2ifnet == NULL || if_index >= if_indexlim) {
 		unsigned int n;
@@ -1830,7 +1830,7 @@ if_addmulti(
 	 * If the matching multicast address already exists
 	 * then don't add a new one, just add a reference
 	 */
-	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (sa_equal(sa, ifma->ifma_addr)) {
 			ifma->ifma_refcount++;
 			if (retifma)
@@ -1870,13 +1870,13 @@ if_addmulti(
 	 * interrupt time; lock them out.
 	 */
 	crit_enter();
-	LIST_INSERT_HEAD(&ifp->if_multiaddrs, ifma, ifma_link);
+	TAILQ_INSERT_HEAD(&ifp->if_multiaddrs, ifma, ifma_link);
 	crit_exit();
 	if (retifma)
 		*retifma = ifma;
 
 	if (llsa != 0) {
-		LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+		TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 			if (sa_equal(ifma->ifma_addr, llsa))
 				break;
 		}
@@ -1892,7 +1892,7 @@ if_addmulti(
 			ifma->ifma_ifp = ifp;
 			ifma->ifma_refcount = 1;
 			crit_enter();
-			LIST_INSERT_HEAD(&ifp->if_multiaddrs, ifma, ifma_link);
+			TAILQ_INSERT_HEAD(&ifp->if_multiaddrs, ifma, ifma_link);
 			crit_exit();
 		}
 	}
@@ -1919,7 +1919,7 @@ if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
 {
 	struct ifmultiaddr *ifma;
 
-	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
 		if (sa_equal(sa, ifma->ifma_addr))
 			break;
 	if (ifma == 0)
@@ -1933,7 +1933,7 @@ if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
 	rt_newmaddrmsg(RTM_DELMADDR, ifma);
 	sa = ifma->ifma_lladdr;
 	crit_enter();
-	LIST_REMOVE(ifma, ifma_link);
+	TAILQ_REMOVE(&ifp->if_multiaddrs, ifma, ifma_link);
 	/*
 	 * Make sure the interface driver is notified
 	 * in the case of a link layer mcast group being left.
@@ -1960,7 +1960,7 @@ if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
 	 * in the record for the link-layer address.  (So we don't complain
 	 * in that case.)
 	 */
-	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
 		if (sa_equal(sa, ifma->ifma_addr))
 			break;
 	if (ifma == 0)
@@ -1973,7 +1973,7 @@ if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
 
 	crit_enter();
 	ifnet_serialize_all(ifp);
-	LIST_REMOVE(ifma, ifma_link);
+	TAILQ_REMOVE(&ifp->if_multiaddrs, ifma, ifma_link);
 	ifp->if_ioctl(ifp, SIOCDELMULTI, 0, NULL);
 	ifnet_deserialize_all(ifp);
 	crit_exit();
@@ -1994,7 +1994,7 @@ if_delallmulti(struct ifnet *ifp)
 	struct ifmultiaddr *ifma;
 	struct ifmultiaddr *next;
 
-	LIST_FOREACH_MUTABLE(ifma, &ifp->if_multiaddrs, ifma_link, next)
+	TAILQ_FOREACH_MUTABLE(ifma, &ifp->if_multiaddrs, ifma_link, next)
 		if_delmulti(ifp, ifma->ifma_addr);
 }
 
@@ -2068,7 +2068,7 @@ ifmaof_ifpforaddr(struct sockaddr *sa, struct ifnet *ifp)
 {
 	struct ifmultiaddr *ifma;
 
-	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
 		if (sa_equal(ifma->ifma_addr, sa))
 			break;
 

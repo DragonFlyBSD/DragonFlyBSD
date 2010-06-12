@@ -2106,7 +2106,7 @@ nfe_setmulti(struct nfe_softc *sc)
 	bcopy(etherbroadcastaddr, addr, ETHER_ADDR_LEN);
 	bcopy(etherbroadcastaddr, mask, ETHER_ADDR_LEN);
 
-	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		caddr_t maddr;
 
 		if (ifma->ifma_addr->sa_family != AF_LINK)

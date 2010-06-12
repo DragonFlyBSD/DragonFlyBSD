@@ -551,7 +551,7 @@ wb_setmulti(struct wb_softc *sc)
 	CSR_WRITE_4(sc, WB_MAR1, 0);
 
 	/* now program new ones */
-	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		h = ~ether_crc32_be(LLADDR((struct sockaddr_dl *)

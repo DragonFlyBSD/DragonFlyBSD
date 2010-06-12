@@ -223,8 +223,8 @@ if6_addrlist(struct ifaddr_container *ifac)
 
 		KREAD(ifap0, &ifa, struct ifaddr);
 		KREAD(ifa.ifa_ifp, &ifnet, struct ifnet);
-		if (ifnet.if_multiaddrs.lh_first)
-			ifmp = ifnet.if_multiaddrs.lh_first;
+		if (TAILQ_FIRST(&ifnet.if_multiaddrs))
+			ifmp = TAILQ_FIRST(&ifnet.if_multiaddrs);
 		while (ifmp) {
 			KREAD(ifmp, &ifm, struct ifmultiaddr);
 			if (ifm.ifma_addr == NULL)
@@ -240,7 +240,7 @@ if6_addrlist(struct ifaddr_container *ifac)
 			       ether_ntoa((struct ether_addr *)LLADDR(&sdl)),
 			       ifm.ifma_refcount);
 		    nextmulti:
-			ifmp = ifm.ifma_link.le_next;
+			ifmp = TAILQ_NEXT(&ifm, ifma_link);
 		}
 	}
 #ifdef N_IN6_MK

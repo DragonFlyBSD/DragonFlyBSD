@@ -1075,7 +1075,7 @@ dc_setfilt_21143(struct dc_softc *sc)
 		DC_CLRBIT(sc, DC_NETCFG, DC_NETCFG_RX_ALLMULTI);
 
 	crc_mask = dc_crc_mask(sc);
-	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		h = ether_crc32_le(
@@ -1153,7 +1153,7 @@ dc_setfilt_admtek(struct dc_softc *sc)
 		crc_mask = dc_crc_mask(sc);
 	else
 		crc_mask = 0x3f;
-	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		if (DC_IS_CENTAUR(sc)) {
@@ -1230,7 +1230,7 @@ dc_setfilt_asix(struct dc_softc *sc)
 		return;
 
 	/* now program new ones */
-	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		h = ether_crc32_be(
@@ -1290,7 +1290,7 @@ dc_setfilt_xircom(struct dc_softc *sc)
 	else
 		DC_CLRBIT(sc, DC_NETCFG, DC_NETCFG_RX_ALLMULTI);
 
-	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		h = dc_mchash_xircom(sc,

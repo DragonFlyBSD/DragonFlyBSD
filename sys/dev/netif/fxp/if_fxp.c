@@ -2118,7 +2118,7 @@ fxp_mc_addrs(struct fxp_softc *sc)
 
 	nmcasts = 0;
 	if ((sc->flags & FXP_FLAG_ALL_MCAST) == 0) {
-		LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+		TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 			if (ifma->ifma_addr->sa_family != AF_LINK)
 				continue;
 			if (nmcasts >= MAXMCADDR) {

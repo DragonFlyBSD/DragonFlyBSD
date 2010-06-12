@@ -256,7 +256,7 @@ vlan_setmulti(struct ifvlan *ifv, struct ifnet *ifp_p)
 	sdl.sdl_type = IFT_ETHER;
 	sdl.sdl_alen = ETHER_ADDR_LEN;
 
-	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		int error;
 
 		if (ifma->ifma_addr->sa_family != AF_LINK)

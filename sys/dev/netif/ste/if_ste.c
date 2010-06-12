@@ -553,7 +553,7 @@ ste_setmulti(struct ste_softc *sc)
 	CSR_WRITE_2(sc, STE_MAR3, 0);
 
 	/* now program new ones */
-	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		h = ether_crc32_be(

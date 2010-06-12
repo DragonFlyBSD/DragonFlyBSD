@@ -791,7 +791,7 @@ sis_setmulti_ns(struct sis_softc *sc)
 		CSR_WRITE_4(sc, SIS_RXFILT_DATA, 0);
 	}
 
-	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		h = sis_mchash(sc,
@@ -838,7 +838,7 @@ sis_setmulti_sis(struct sis_softc *sc)
 		for (i = 0; i < n; i++)
 			hashes[i] = 0;
 		i = 0;
-		LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+		TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 			if (ifma->ifma_addr->sa_family != AF_LINK)
 				continue;
 			h = sis_mchash(sc,

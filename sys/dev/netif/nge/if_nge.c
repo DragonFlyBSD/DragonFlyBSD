@@ -648,7 +648,7 @@ nge_setmulti(struct nge_softc *sc)
 	 * that needs to be updated, and the lower 4 bits represent
 	 * which bit within that byte needs to be set.
 	 */
-	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		h = ether_crc32_be(LLADDR((struct sockaddr_dl *)

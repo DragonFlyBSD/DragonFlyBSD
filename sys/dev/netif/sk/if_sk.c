@@ -604,13 +604,8 @@ sk_setmulti(struct sk_if_softc *sc_if)
 	} else {
 		i = 1;
 		/* First find the tail of the list. */
-		LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
-			if (ifma->ifma_link.le_next == NULL)
-				break;
-		}
-		/* Now traverse the list backwards. */
-		for (; ifma != NULL && ifma != (void *)&ifp->if_multiaddrs;
-			ifma = (struct ifmultiaddr *)ifma->ifma_link.le_prev) {
+		TAILQ_FOREACH_REVERSE(ifma, &ifp->if_multiaddrs, ifmultihead,
+		    ifma_link) {
 			caddr_t maddr;
 
 			if (ifma->ifma_addr->sa_family != AF_LINK)

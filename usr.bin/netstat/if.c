@@ -422,7 +422,7 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *))
 			/*
 			 * Print family's multicast addresses
 			 */
-			u_long multiaddr;
+			struct ifmultiaddr *multiaddr;
 			struct ifmultiaddr ifma;
 			union {
 				struct sockaddr sa;
@@ -434,12 +434,11 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *))
 			} msa;
 			const char *fmt;
 
-			for(multiaddr = (u_long)ifnet.if_multiaddrs.lh_first;
-			    multiaddr;
-			    multiaddr = (u_long)ifma.ifma_link.le_next) {
-				if (kread(multiaddr, (char *)&ifma,
+			TAILQ_FOREACH(multiaddr, &ifnet.if_multiaddrs, ifma_link) {
+				if (kread((u_long)multiaddr, (char *)&ifma,
 					  sizeof ifma))
 					break;
+				multiaddr = &ifma;
 				if (kread((u_long)ifma.ifma_addr, (char *)&msa,
 					  sizeof msa))
 					break;

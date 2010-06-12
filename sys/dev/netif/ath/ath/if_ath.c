@@ -2464,7 +2464,7 @@ ath_update_mcast(struct ifnet *ifp)
 #ifdef __FreeBSD__
 		if_maddr_rlock(ifp);	/* XXX need some fiddling to remove? */
 #endif
-		LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+		TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 			caddr_t dl;
 			u_int32_t val;
 			u_int8_t pos;
