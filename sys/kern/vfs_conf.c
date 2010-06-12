@@ -456,12 +456,17 @@ end:
 }
 
 
-static void vfs_mountroot_ask_callback(cdev_t);
+static void
+vfs_mountroot_ask_callback(cdev_t dev, void *arg __unused)
+{
+	if (dev_is_good(dev) && (dev_dflags(dev) & D_DISK))
+		kprintf(" \"%s\" ", dev->si_name);
+}
+
 
 /*
  * Spin prompting on the console for a suitable root filesystem
  */
-
 static int
 vfs_mountroot_ask(void)
 {
@@ -483,7 +488,7 @@ vfs_mountroot_ask(void)
 		} else if (name[0] == '?') {
 			kprintf("Possibly valid devices for root FS:\n");
 			//enumerate all disk devices
-			devfs_scan_callback(vfs_mountroot_ask_callback);
+			devfs_scan_callback(vfs_mountroot_ask_callback, NULL);
 			kprintf("\n");
 			continue;
 		} else if (strcmp(name, "panic") == 0) {
@@ -495,14 +500,6 @@ vfs_mountroot_ask(void)
 		}
 	}
 	return(1);
-}
-
-
-static void
-vfs_mountroot_ask_callback(cdev_t dev)
-{
-	if (dev_is_good(dev) && (dev_dflags(dev) & D_DISK))
-		kprintf(" \"%s\" ", dev->si_name);
 }
 
 

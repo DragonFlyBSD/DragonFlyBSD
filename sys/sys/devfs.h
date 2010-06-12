@@ -173,6 +173,7 @@ typedef struct devfs_msg {
 		} __m_chandler;
 		struct {
 			void *load;
+			void *load2;
 		} __m_gen;
 		struct {
 			void *resp;
@@ -218,6 +219,7 @@ typedef struct devfs_msg {
 #define mdv_chandler	__m_u.__m_chandler
 #define mdv_mnt		__m_u.__m_mnt.mnt
 #define mdv_load	__m_u.__m_gen.load
+#define mdv_load2	__m_u.__m_gen.load2
 #define mdv_response	__m_u.__m_resp.resp
 #define mdv_dev		__m_u.__m_dev
 #define mdv_link	__m_u.__m_link
@@ -242,7 +244,7 @@ TAILQ_HEAD(devfs_chandler_head, devfs_clone_handler);
 TAILQ_HEAD(devfs_alias_head, devfs_alias);
 TAILQ_HEAD(devfs_dev_ops_head, devfs_dev_ops);
 
-typedef void (devfs_scan_t)(cdev_t);
+typedef void (devfs_scan_t)(cdev_t, void *);
 typedef void* (devfs_iterate_callback_t)(struct devfs_node *, void *);
 
 #define DEVFS_NODE(x)		((struct devfs_node *)((x)->v_data))
@@ -411,7 +413,7 @@ int devfs_alias_create(char *, struct devfs_node *, int);
 int devfs_apply_rules(char *);
 int devfs_reset_rules(char *);
 
-int devfs_scan_callback(devfs_scan_t *);
+int devfs_scan_callback(devfs_scan_t *, void *);
 
 int devfs_clr_subnames_flag(char *, uint32_t);
 int devfs_destroy_subnames_without_flag(char *, uint32_t);

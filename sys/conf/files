@@ -691,6 +691,7 @@ kern/kern_mpipe.c	standard
 kern/kern_shutdown.c	standard
 kern/kern_sig.c		standard
 kern/kern_memio.c	standard
+kern/kern_udev.c	standard
 kern/kern_upcall.c	standard
 kern/kern_sfbuf.c	standard
 kern/kern_mplock.c	standard

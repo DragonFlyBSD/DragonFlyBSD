@@ -1,0 +1,7 @@
+DEBUG_FLAGS=-g
+PROG=	devattr_test
+SRCS=	devattr_test.c
+LDADD=	-lprop -L. -ldevattr
+NOMAN=
+
+.include <bsd.prog.mk>

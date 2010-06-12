@@ -49,6 +49,7 @@
 #include <sys/devfs.h>
 #include <sys/devfs_rules.h>
 #include <sys/hotplug.h>
+#include <sys/udev.h>
 
 MALLOC_DEFINE(M_DEVFS, "devfs", "Device File System (devfs) allocations");
 DEVFS_DECLARE_CLONE_BITMAP(ops_id);
@@ -127,7 +128,7 @@ static int devfs_find_device_by_udev_worker(devfs_msg_t);
 
 static int devfs_apply_reset_rules_caller(char *, int);
 
-static int devfs_scan_callback_worker(devfs_scan_t *);
+static int devfs_scan_callback_worker(devfs_scan_t *, void *);
 
 static struct devfs_node *devfs_resolve_or_create_dir(struct devfs_node *,
 		char *, size_t, int);
@@ -857,7 +858,7 @@ devfs_reset_rules(char *mntto)
  * It just sends a message with the relevant details to the devfs core.
  */
 int
-devfs_scan_callback(devfs_scan_t *callback)
+devfs_scan_callback(devfs_scan_t *callback, void *arg)
 {
 	devfs_msg_t msg;
 
@@ -865,6 +866,7 @@ devfs_scan_callback(devfs_scan_t *callback)
 
 	msg = devfs_msg_get();
 	msg->mdv_load = callback;
+	msg->mdv_load2 = arg;
 	msg = devfs_msg_send_sync(DEVFS_SCAN_CALLBACK, msg);
 	devfs_msg_put(msg);
 
@@ -1140,7 +1142,8 @@ devfs_msg_exec(devfs_msg_t msg)
 		devfs_apply_reset_rules_caller(msg->mdv_name, 0);
 		break;
 	case DEVFS_SCAN_CALLBACK:
-		devfs_scan_callback_worker((devfs_scan_t *)msg->mdv_load);
+		devfs_scan_callback_worker((devfs_scan_t *)msg->mdv_load,
+			msg->mdv_load2);
 		break;
 	case DEVFS_CLR_SUBNAMES_FLAG:
 		devfs_clr_subnames_flag_worker(msg->mdv_flags.name,
@@ -1190,6 +1193,8 @@ devfs_create_dev_worker(cdev_t dev, uid_t uid, gid_t gid, int perms)
 	devfs_link_dev(dev);
 	devfs_propagate_dev(dev, 1);
 
+	udev_event_attach(dev, NULL, 0);
+
 	return 0;
 }
 
@@ -1208,6 +1213,9 @@ devfs_destroy_dev_worker(cdev_t dev)
 
 	error = devfs_unlink_dev(dev);
 	devfs_propagate_dev(dev, 0);
+
+	udev_event_detach(dev, NULL, 0);
+
 	if (error == 0)
 		release_dev(dev);	/* link ref */
 	release_dev(dev);
@@ -1450,6 +1458,7 @@ devfs_make_alias_worker(struct devfs_alias *alias)
 		 */
 		TAILQ_INSERT_TAIL(&devfs_alias_list, alias, link);
 		devfs_alias_propagate(alias);
+		udev_event_attach(alias->dev_target, alias->name, 1);
 	} else {
 		devfs_debug(DEVFS_DEBUG_WARNING,
 			    "Warning: duplicate devfs_make_alias for %s\n",
@@ -1488,6 +1497,7 @@ devfs_alias_remove(cdev_t dev)
 	TAILQ_FOREACH_MUTABLE(alias, &devfs_alias_list, link, alias2) {
 		if (alias->dev_target == dev) {
 			TAILQ_REMOVE(&devfs_alias_list, alias, link);
+			udev_event_detach(alias->dev_target, alias->name, 1);
 			kfree(alias, M_DEVFS);
 		}
 	}
@@ -1646,12 +1656,12 @@ devfs_apply_reset_rules_caller(char *mountto, int apply)
  * every dev node in the devfs dev list.
  */
 static int
-devfs_scan_callback_worker(devfs_scan_t *callback)
+devfs_scan_callback_worker(devfs_scan_t *callback, void *arg)
 {
 	cdev_t dev, dev1;
 
 	TAILQ_FOREACH_MUTABLE(dev, &devfs_dev_list, link, dev1) {
-		callback(dev);
+		callback(dev, arg);
 	}
 
 	return 0;
