@@ -173,16 +173,15 @@ make:
 		make obj && make depend && make all && make install
 
 #
-# Handle the upgrade of /etc
+# Handle the upgrade of /etc, post-installworld updating of static files
+# and removing obsolete files.
 #
 
 preupgrade:
 	@cd ${.CURDIR}/etc; make -m ${.CURDIR}/share/mk preupgrade
 
-upgrade:	upgrade_etc
-
-#
-# Handle post-installworld updating of static files (e.g. like /etc/rc)
-#
-upgrade_etc:
+upgrade:
 	@cd ${.CURDIR}/etc; make -m ${.CURDIR}/share/mk upgrade_etc
+.if !defined(NOMAN) && !defined(NO_MAKEDB_RUN)
+	cd ${.CURDIR}/share/man; make makedb
+.endif
