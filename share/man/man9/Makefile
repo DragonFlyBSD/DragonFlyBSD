@@ -791,13 +791,11 @@ MLINKS+=time.9 boottime.9 \
 	time.9 time_second.9
 MLINKS+=token.9 lwkt_getpooltoken.9 \
 	token.9 lwkt_gettoken.9 \
-	token.9 lwkt_gettokref.9 \
 	token.9 lwkt_reltoken.9 \
 	token.9 lwkt_token_init.9 \
 	token.9 lwkt_token_pool_lookup.9 \
 	token.9 lwkt_token_uninit.9 \
-	token.9 lwkt_trytoken.9 \
-	token.9 lwkt_trytokref.9
+	token.9 lwkt_trytoken.9
 MLINKS+=tvtohz.9 tvtohz_high.9 \
 	tvtohz.9 tvtohz_low.9
 MLINKS+=uio.9 uiomove.9

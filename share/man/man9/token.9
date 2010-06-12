@@ -39,8 +39,6 @@
 .Nm lwkt_token_uninit ,
 .Nm lwkt_gettoken ,
 .Nm lwkt_trytoken ,
-.Nm lwkt_gettokref ,
-.Nm lwkt_trytokref ,
 .Nm lwkt_reltoken ,
 .Nm lwkt_token_pool_lookup ,
 .Nm lwkt_getpooltoken
@@ -48,23 +46,19 @@
 .Sh SYNOPSIS
 .In sys/thread.h
 .Ft void
-.Fn lwkt_token_init "struct lwkt_token *tok"
+.Fn lwkt_token_init "struct lwkt_token *tok" "int mpsafe"
 .Ft void
 .Fn lwkt_token_uninit "struct lwkt_token *tok"
 .Ft void
-.Fn lwkt_gettoken "lwkt_tokref *ref" "struct lwkt_token *tok"
+.Fn lwkt_gettoken "struct lwkt_token *tok"
 .Ft int
-.Fn lwkt_trytoken "lwkt_tokref *ref" "struct lwkt_token *tok"
+.Fn lwkt_trytoken "struct lwkt_token *tok"
 .Ft void
-.Fn lwkt_gettokref "lwkt_tokref *ref"
-.Ft int
-.Fn lwkt_trytokref "lwkt_tokref *ref"
-.Ft void
-.Fn lwkt_reltoken "lwkt_tokref *ref"
+.Fn lwkt_reltoken "struct lwkt_token *tok"
 .Ft struct lwkt_token *
 .Fn lwkt_token_pool_lookup "void *ptr"
-.Ft void
-.Fn lwkt_getpooltoken "lwkt_tokref *ref" "void *ptr"
+.Ft struct lwkt_token *
+.Fn lwkt_getpooltoken "void *ptr"
 .Sh DESCRIPTION
 .Pp
 A soft token is a lock which is only held while a thread is running.
@@ -72,9 +66,6 @@ If a thread explicitly blocks, all its tokens are released, and reacquired
 when the thread resumes.
 While a thread blocks, the conditions protected by a soft token
 may change and may need to be reevaluated on wakeup.
-.Pp
-Tokens are manipulated via token references,
-.Vt lwkt_tokref .
 .Pp
 Tokens may be taken recursively.
 However, tokens must be released in the reverse order they were acquired.
@@ -87,6 +78,10 @@ is implemented by a set of statically allocated tokens and a hash function.
 The
 .Fn lwkt_token_init
 function is called to initialize a token.
+If
+.Fa mpsafe
+is 0 the MP lock is taken before acquiring the token and released after
+releasing the token.
 The
 .Fn lwkt_token_uninit
 function is called to de-initialize one.
@@ -94,22 +89,15 @@ Before using a token, it must be initialized.
 .Pp
 The
 .Fn lwkt_gettoken
-function attemps to acquire a token; if it is successful, it initializes the
-token reference ref to reference the token.
+function attempts to acquire a token.
 If it is unsuccessful, the calling thread blocks.
 The
 .Fn lwkt_trytoken
-does the same thing; however, if it cannot acquire the token, it returns a
-non-zero number instead of blocking.
-The
-.Fn lwkt_gettokref
-and
-.Fn lwkt_trytokref
-functions behave similarly, but they attempt to acquire a token referenced by
-ref rather than one passed by address; use when reacquiring a token.
+does the same thing; however, if it cannot acquire the token, it returns 0
+instead of blocking.
 The
 .Fn lwkt_reltoken
-function releases a soft token and is called with a token reference.
+function releases a previously acquired soft token.
 .Pp
 The
 .Fn lwkt_token_pool_lookup
@@ -136,7 +124,7 @@ struct protected_data pdata;
 void
 init(void)
 {
-	lwkt_token_init(&pdata.tok);
+	lwkt_token_init(&pdata.tok ,1);
 	pdata.data = 0;
 }
 
@@ -146,13 +134,12 @@ init(void)
 void
 kthread1(void)
 {
-	lwkt_tokref pdat_tref;
 	int local;
 
 	/*
-	 * Get the soft token. pdat_tref will function as a handle
+	 * Get the soft token.
 	 */
-	lwkt_gettoken(&pdat_tref, &pdata.tok);
+	lwkt_gettoken(&pdata.tok);
 	for (;;) {
 		local = pdata.data++;
 		tsleep(pdata, 0, "sleep", 0);
@@ -167,15 +154,9 @@ kthread1(void)
 			break;
 	}
 	/*
-	 * Release the token. Release via the token reference.
+	 * Release the token.
 	 */
-	lwkt_reltoken(&pdat_tref);
-
-	/*
-	 * Retake the token via the tokref; release afterwards
-	 */
-	lwkt_gettokref(&pdat_tref);
-	lwkt_reltoken(&pdat_tref);
+	lwkt_reltoken(&pdata.tok);
 }
 .Ed
 .Pp
@@ -194,12 +175,12 @@ struct dynamic_data {
 void
 kfunction(struct dynamic_data *dynptr)
 {
-	lwkt_tokref ddata_ref;
+	struct lwkt_token *tok;
 
 	/*
 	 * Get a token from the associated with the address of dynptr
 	 */
-	lwkt_getpooltoken(&ddata_ref, dynptr);
+	tok = lwkt_getpooltoken(dynptr);
 	dynptr->ref--;
 	if (dynptr->ref == 0)
 		free(dynptr);
@@ -207,7 +188,7 @@ kfunction(struct dynamic_data *dynptr)
 	/*
 	 * Release the token via its reference, as above
 	 */
-	lwkt_reltoken(dynptr);
+	lwkt_reltoken(tok);
 }
 .Ed
 .Sh NOTES
