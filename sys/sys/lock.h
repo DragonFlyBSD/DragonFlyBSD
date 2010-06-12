@@ -206,6 +206,7 @@ void	lockmgr_clrexclusive_interlocked(struct lock *);
 void	lockmgr_kernproc (struct lock *);
 void	lockmgr_printinfo (struct lock *);
 int	lockstatus (struct lock *, struct thread *);
+int	lockowned (struct lock *);
 int	lockcount (struct lock *);
 int	lockcountnb (struct lock *);
 

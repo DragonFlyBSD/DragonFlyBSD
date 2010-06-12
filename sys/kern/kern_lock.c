@@ -562,6 +562,20 @@ lockstatus(struct lock *lkp, struct thread *td)
 }
 
 /*
+ * Return non-zero if the caller owns the lock shared or exclusive.
+ * We can only guess re: shared locks.
+ */
+int
+lockowned(struct lock *lkp)
+{
+	thread_t td = curthread;
+
+	if (lkp->lk_exclusivecount)
+		return(lkp->lk_lockholder == td);
+	return(lkp->lk_sharecount != 0);
+}
+
+/*
  * Determine the number of holders of a lock.
  *
  * The non-blocking version can usually be used for assertions.
