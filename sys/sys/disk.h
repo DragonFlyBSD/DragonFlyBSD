@@ -141,6 +141,7 @@ struct disk {
 
 #ifdef _KERNEL
 cdev_t disk_create (int unit, struct disk *disk, struct dev_ops *raw_ops);
+cdev_t disk_create_named(const char *name, int unit, struct disk *dp, struct dev_ops *raw_ops);
 cdev_t disk_locate (const char *devname);
 void disk_destroy (struct disk *disk);
 void disk_setdiskinfo (struct disk *disk, struct disk_info *info);
@@ -154,6 +155,8 @@ void disk_unprobe(struct disk *disk);
 void disk_msg_send(uint32_t cmd, void *load, void *load2);
 void disk_msg_send_sync(uint32_t cmd, void *load, void *load2);
 void disk_config(void *);
+
+int bounds_check_with_mediasize(struct bio *bio, int secsize, uint64_t mediasize);
 
 typedef struct disk_msg {
 	struct lwkt_msg hdr;
