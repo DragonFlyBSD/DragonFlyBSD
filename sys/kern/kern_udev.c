@@ -384,7 +384,7 @@ udev_event_insert(int ev_type, prop_dictionary_t dict)
 }
 
 static struct udev_event_kernel *
-udev_event_remove()
+udev_event_remove(void)
 {
 	struct udev_event_kernel *ev;
 
