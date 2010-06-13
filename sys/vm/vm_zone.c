@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 1997, 1998 John S. Dyson
  * All rights reserved.
  *
@@ -50,6 +52,8 @@ static void *zget(vm_zone_t z);
 /*
  * Return an item from the specified zone.   This function is non-blocking for
  * ZONE_INTERRUPT zones.
+ *
+ * No requirements.
  */
 void *
 zalloc(vm_zone_t z)
@@ -88,11 +92,12 @@ zalloc(vm_zone_t z)
 
 /*
  * Free an item to the specified zone.   
+ *
+ * No requirements.
  */
 void
 zfree(vm_zone_t z, void *item)
 {
-
 	spin_lock_wr(&z->zlock);
 	((void **) item)[0] = z->zitems;
 #ifdef INVARIANTS
@@ -147,6 +152,7 @@ static int zone_kmem_pages, zone_kern_pages, zone_kmem_kvaspace;
  * by the nentries argument.  The size of the memory allocatable is
  * unlimited if ZONE_INTERRUPT is not set.
  *
+ * No requirements.
  */
 int
 zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
@@ -174,7 +180,9 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 		z->znalloc = 0;
 		z->zitems = NULL;
 
+		lwkt_gettoken(&vm_token);
 		LIST_INSERT_HEAD(&zlist, z, zlink);
+		lwkt_reltoken(&vm_token);
 	}
 
 	z->zkmvec = NULL;
@@ -244,6 +252,8 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
  * in certain tricky startup conditions in the VM system -- then
  * zbootinit and zinitna can be used.  Zinit is the standard zone
  * initialization call.
+ *
+ * No requirements.
  */
 vm_zone_t
 zinit(char *name, int size, int nentries, int flags, int zalloc)
@@ -270,6 +280,8 @@ zinit(char *name, int size, int nentries, int flags, int zalloc)
 /*
  * Initialize a zone before the system is fully up.  This routine should
  * only be called before full VM startup.
+ *
+ * Called from the low level boot code only.
  */
 void
 zbootinit(vm_zone_t z, char *name, int size, void *item, int nitems)
@@ -302,11 +314,15 @@ zbootinit(vm_zone_t z, char *name, int size, void *item, int nitems)
 	z->zmax = nitems;
 	z->ztotal = nitems;
 
+	lwkt_gettoken(&vm_token);
 	LIST_INSERT_HEAD(&zlist, z, zlink);
+	lwkt_reltoken(&vm_token);
 }
 
 /*
  * Release all resources owned by zone created with zinit().
+ *
+ * No requirements.
  */
 void
 zdestroy(vm_zone_t z)
@@ -318,7 +334,9 @@ zdestroy(vm_zone_t z)
 	if ((z->zflags & ZONE_DESTROYABLE) == 0)
 		panic("zdestroy: undestroyable zone");
 
+	lwkt_gettoken(&vm_token);
 	LIST_REMOVE(z, zlink);
+	lwkt_reltoken(&vm_token);
 
 	/*
 	 * Release virtual mappings, physical memory and update sysctl stats.
@@ -369,6 +387,8 @@ zdestroy(vm_zone_t z)
 
 /*
  * Internal zone routine.  Not to be called from external (non vm_zone) code.
+ *
+ * No requirements.
  */
 static void *
 zget(vm_zone_t z)
@@ -388,6 +408,7 @@ zget(vm_zone_t z)
 		 * simply populate an existing mapping.
 		 */
 		get_mplock();
+		lwkt_gettoken(&vm_token);
 		savezpc = z->zpagecount;
 		nbytes = z->zpagecount * PAGE_SIZE;
 		nbytes -= nbytes % z->zsize;
@@ -420,6 +441,7 @@ zget(vm_zone_t z)
 			vmstats.v_wire_count++;
 		}
 		nitems = ((z->zpagecount * PAGE_SIZE) - nbytes) / z->zsize;
+		lwkt_reltoken(&vm_token);
 		rel_mplock();
 	} else if (z->zflags & ZONE_SPECIAL) {
 		/*
@@ -513,6 +535,9 @@ zget(vm_zone_t z)
 	return item;
 }
 
+/*
+ * No requirements.
+ */
 static int
 sysctl_vm_zone(SYSCTL_HANDLER_ARGS)
 {
@@ -527,6 +552,7 @@ sysctl_vm_zone(SYSCTL_HANDLER_ARGS)
 	if (error)
 		return (error);
 
+	lwkt_gettoken(&vm_token);
 	LIST_FOREACH(curzone, &zlist, zlink) {
 		int i;
 		int len;
@@ -559,12 +585,17 @@ sysctl_vm_zone(SYSCTL_HANDLER_ARGS)
 		error = SYSCTL_OUT(req, tmpbuf, len);
 
 		if (error)
-			return (error);
+			break;
 	}
-	return (0);
+	lwkt_reltoken(&vm_token);
+	return (error);
 }
 
 #if defined(INVARIANTS)
+
+/*
+ * Debugging only.
+ */
 void
 zerror(int error)
 {
