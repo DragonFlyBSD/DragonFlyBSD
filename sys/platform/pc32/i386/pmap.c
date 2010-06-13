@@ -3297,7 +3297,13 @@ pmap_unmapdev(vm_offset_t va, vm_size_t size)
 }
 
 /*
- * perform the pmap work for mincore
+ * Perform the pmap work for mincore
+ *
+ * The caller must hold vm_token if the caller wishes a stable result,
+ * and even in that case some bits can change due to third party accesses
+ * to the pmap.
+ *
+ * No requirements.
  */
 int
 pmap_mincore(pmap_t pmap, vm_offset_t addr)
@@ -3305,47 +3311,49 @@ pmap_mincore(pmap_t pmap, vm_offset_t addr)
 	unsigned *ptep, pte;
 	vm_page_t m;
 	int val = 0;
-	
-	ptep = pmap_pte(pmap, addr);
-	if (ptep == 0) {
-		return 0;
-	}
 
-	if ((pte = *ptep) != 0) {
+	lwkt_gettoken(&vm_token);
+	ptep = pmap_pte(pmap, addr);
+
+	if (ptep && (pte = *ptep) != 0) {
 		vm_offset_t pa;
 
 		val = MINCORE_INCORE;
 		if ((pte & PG_MANAGED) == 0)
-			return val;
+			goto done;
 
 		pa = pte & PG_FRAME;
 
 		m = PHYS_TO_VM_PAGE(pa);
 
-		/*
-		 * Modified by us
-		 */
-		if (pte & PG_M)
+		if (pte & PG_M) {
+			/*
+			 * Modified by us
+			 */
 			val |= MINCORE_MODIFIED|MINCORE_MODIFIED_OTHER;
-		/*
-		 * Modified by someone
-		 */
-		else if (m->dirty || pmap_is_modified(m))
+		} else if (m->dirty || pmap_is_modified(m)) {
+			/*
+			 * Modified by someone else
+			 */
 			val |= MINCORE_MODIFIED_OTHER;
-		/*
-		 * Referenced by us
-		 */
-		if (pte & PG_A)
-			val |= MINCORE_REFERENCED|MINCORE_REFERENCED_OTHER;
+		}
 
-		/*
-		 * Referenced by someone
-		 */
-		else if ((m->flags & PG_REFERENCED) || pmap_ts_referenced(m)) {
+		if (pte & PG_A) {
+			/*
+			 * Referenced by us
+			 */
+			val |= MINCORE_REFERENCED|MINCORE_REFERENCED_OTHER;
+		} else if ((m->flags & PG_REFERENCED) ||
+			   pmap_ts_referenced(m)) {
+			/*
+			 * Referenced by someone else
+			 */
 			val |= MINCORE_REFERENCED_OTHER;
 			vm_page_flag_set(m, PG_REFERENCED);
 		}
 	} 
+done:
+	lwkt_reltoken(&vm_token);
 	return val;
 }
 
@@ -3353,12 +3361,11 @@ pmap_mincore(pmap_t pmap, vm_offset_t addr)
  * Replace p->p_vmspace with a new one.  If adjrefs is non-zero the new
  * vmspace will be ref'd and the old one will be deref'd.
  *
- * The vmspace for all lwps associated with the process will be adjusted
- * and cr3 will be reloaded if any lwp is the current lwp.
+ * cr3 will be reloaded if any lwp is the current lwp.
  *
  * Only called with new VM spaces.
- *
- * No requirements.
+ * The process must have only a single thread.
+ * No other requirements.
  */
 void
 pmap_replacevm(struct proc *p, struct vmspace *newvm, int adjrefs)
