@@ -5,6 +5,7 @@ WARNS?=	6
 DEBUG_FLAGS=-g
 
 LDADD+=	-lprop
+DPADD+=	${LIBPROP}
 
 NOMAN=
 

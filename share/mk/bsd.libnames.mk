@@ -87,6 +87,7 @@ LIBPC?=		${DESTDIR}${LIBDIR}/libpc.a	# XXX doesn't exist
 LIBPCAP?=	${DESTDIR}${LIBDIR}/libpcap.a
 LIBPERL?=	${DESTDIR}${LIBDIR}/libperl.a
 LIBPLOT?=	${DESTDIR}${LIBDIR}/libplot.a	# XXX doesn't exist
+LIBPROP?=	${DESTDIR}${LIBDIR}/libprop.a
 LIBRADIUS?=	${DESTDIR}${LIBDIR}/libradius.a
 LIBREADLINE?=	${DESTDIR}${LIBDIR}/libreadline.a
 LIBRESOLV?=	${DESTDIR}${LIBDIR}/libresolv.a	# XXX doesn't exist
