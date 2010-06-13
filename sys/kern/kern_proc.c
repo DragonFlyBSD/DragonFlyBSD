@@ -689,7 +689,7 @@ DB_SHOW_COMMAND(pgrpdump, pgrpdump)
 #endif /* DDB */
 
 /*
- * Locate a process on the zombie list.  Return a held process or NULL.
+ * Locate a process on the zombie list.  Return a process or NULL.
  *
  * The caller must hold proc_token if a stable result is desired.
  * No other requirements.
