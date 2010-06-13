@@ -197,8 +197,10 @@ pgfind(pid_t pgid)
 
 	lwkt_gettoken(&proc_token);
 	LIST_FOREACH(pgrp, PGRPHASH(pgid), pg_hash) {
-		if (pgrp->pg_id == pgid)
+		if (pgrp->pg_id == pgid) {
+			lwkt_reltoken(&proc_token);
 			return (pgrp);
+		}
 	}
 	lwkt_reltoken(&proc_token);
 	return (NULL);
@@ -699,8 +701,10 @@ zpfind(pid_t pid)
 
 	lwkt_gettoken(&proc_token);
 	LIST_FOREACH(p, &zombproc, p_list) {
-		if (p->p_pid == pid)
+		if (p->p_pid == pid) {
+			lwkt_reltoken(&proc_token);
 			return (p);
+		}
 	}
 	lwkt_reltoken(&proc_token);
 	return (NULL);
