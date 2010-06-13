@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
@@ -30,8 +32,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.14 2007/08/15 03:15:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,6 +40,7 @@
 #include <sys/sysproto.h>
 #include <sys/kern_syscall.h>
 #include <sys/mman.h>
+#include <sys/thread.h>
 #include <sys/proc.h>
 #include <sys/malloc.h>
 #include <sys/sysctl.h>
@@ -51,7 +52,6 @@
 
 #include <machine/vmparam.h>
 
-#include <sys/spinlock2.h>
 #include <sys/sysref2.h>
 #include <sys/mplock2.h>
 
@@ -73,13 +73,14 @@ static MALLOC_DEFINE(M_VKERNEL, "vkernel", "VKernel structures");
  * VMSPACE with vmspace_mmap() and MAP_VPAGETABLE section(s) controlled
  * with vmspace_mcontrol().
  *
- * MPALMOSTSAFE
+ * No requirements.
  */
 int
 sys_vmspace_create(struct vmspace_create_args *uap)
 {
 	struct vmspace_entry *ve;
 	struct vkernel_proc *vkp;
+	struct proc *p = curproc;
 	int error;
 
 	if (vkernel_enable == 0)
@@ -88,42 +89,51 @@ sys_vmspace_create(struct vmspace_create_args *uap)
 	/*
 	 * Create a virtual kernel side-structure for the process if one
 	 * does not exist.
+	 *
+	 * Implement a simple resolution for SMP races.
 	 */
-	get_mplock();
-	if ((vkp = curproc->p_vkernel) == NULL) {
+	if ((vkp = p->p_vkernel) == NULL) {
 		vkp = kmalloc(sizeof(*vkp), M_VKERNEL, M_WAITOK|M_ZERO);
-		vkp->refs = 1;
-		spin_init(&vkp->spin);
-		RB_INIT(&vkp->root);
-		curproc->p_vkernel = vkp;
+		lwkt_gettoken(&proc_token);
+		if (p->p_vkernel == NULL) {
+			vkp->refs = 1;
+			lwkt_token_init(&vkp->token, 1);
+			RB_INIT(&vkp->root);
+			p->p_vkernel = vkp;
+		} else {
+			kfree(vkp, M_VKERNEL);
+			vkp = p->p_vkernel;
+		}
+		lwkt_reltoken(&proc_token);
 	}
 
+	get_mplock();
+
 	/*
-	 * Create a new VMSPACE
-	 *
-	 * XXX race if kmalloc blocks
+	 * Create a new VMSPACE, disallow conflicting ids
 	 */
-	if (vkernel_find_vmspace(vkp, uap->id)) {
-		error = EEXIST;
-		goto done;
-	}
 	ve = kmalloc(sizeof(struct vmspace_entry), M_VKERNEL, M_WAITOK|M_ZERO);
 	ve->vmspace = vmspace_alloc(VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
 	ve->id = uap->id;
 	pmap_pinit2(vmspace_pmap(ve->vmspace));
-	RB_INSERT(vmspace_rb_tree, &vkp->root, ve);
-	error = 0;
-done:
+
+	lwkt_gettoken(&vkp->token);
+	if (RB_INSERT(vmspace_rb_tree, &vkp->root, ve)) {
+		sysref_put(&ve->vmspace->vm_sysref);
+		kfree(ve, M_VKERNEL);
+		error = EEXIST;
+	} else {
+		error = 0;
+	}
+	lwkt_reltoken(&vkp->token);
 	rel_mplock();
 	return (error);
 }
 
 /*
- * vmspace_destroy (void *id)
+ * Destroy a VMSPACE given its identifier.
  *
- * Destroy a VMSPACE.
- *
- * MPALMOSTSAFE
+ * No requirements.
  */
 int
 sys_vmspace_destroy(struct vmspace_destroy_args *uap)
@@ -135,19 +145,22 @@ sys_vmspace_destroy(struct vmspace_destroy_args *uap)
 	get_mplock();
 	if ((vkp = curproc->p_vkernel) == NULL) {
 		error = EINVAL;
-		goto done;
+		goto done3;
 	}
+	lwkt_gettoken(&vkp->token);
 	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL) {
 		error = ENOENT;
-		goto done;
+		goto done2;
 	}
 	if (ve->refs) {
 		error = EBUSY;
-		goto done;
+		goto done2;
 	}
 	vmspace_entry_delete(ve, vkp);
 	error = 0;
-done:
+done2:
+	lwkt_reltoken(&vkp->token);
+done3:
 	rel_mplock();
 	return(error);
 }
@@ -160,7 +173,7 @@ done:
  * number of microseconds or if a page fault, signal, trap, or system call
  * occurs.  The context is updated as appropriate.
  *
- * MPALMOSTSAFE
+ * No requirements.
  */
 int
 sys_vmspace_ctl(struct vmspace_ctl_args *uap)
@@ -176,11 +189,11 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 	lp = curthread->td_lwp;
 	p = lp->lwp_proc;
 
+	if ((vkp = p->p_vkernel) == NULL)
+		return (EINVAL);
+
 	get_mplock();
-	if ((vkp = p->p_vkernel) == NULL) {
-		error = EINVAL;
-		goto done;
-	}
+	lwkt_gettoken(&vkp->token);
 	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL) {
 		error = ENOENT;
 		goto done;
@@ -215,14 +228,18 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 		bcopy(&curthread->td_tls, &vklp->save_vextframe.vx_tls,
 		      sizeof(vklp->save_vextframe.vx_tls));
 		error = copyin(uap->tframe, uap->sysmsg_frame, framesz);
-		if (error == 0)
-			error = copyin(&uap->vframe->vx_tls, &curthread->td_tls, sizeof(struct savetls));
+		if (error == 0) {
+			error = copyin(&uap->vframe->vx_tls,
+				       &curthread->td_tls,
+				       sizeof(struct savetls));
+		}
 		if (error == 0)
 			error = cpu_sanitize_frame(uap->sysmsg_frame);
 		if (error == 0)
 			error = cpu_sanitize_tls(&curthread->td_tls);
 		if (error) {
-			bcopy(&vklp->save_trapframe, uap->sysmsg_frame, framesz);
+			bcopy(&vklp->save_trapframe, uap->sysmsg_frame,
+			      framesz);
 			bcopy(&vklp->save_vextframe.vx_tls, &curthread->td_tls,
 			      sizeof(vklp->save_vextframe.vx_tls));
 			set_user_TLS();
@@ -240,6 +257,7 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 		break;
 	}
 done:
+	lwkt_reltoken(&vkp->token);
 	rel_mplock();
 	return(error);
 }
@@ -268,16 +286,24 @@ sys_vmspace_mmap(struct vmspace_mmap_args *uap)
 	lwkt_gettoken(&vmspace_token);
 	if ((vkp = curproc->p_vkernel) == NULL) {
 		error = EINVAL;
-		goto done;
+		goto done3;
 	}
-	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL) {
+
+	/*
+	 * NOTE: kern_mmap() can block so we need to temporarily ref ve->refs.
+	 */
+	lwkt_gettoken(&vkp->token);
+	if ((ve = vkernel_find_vmspace(vkp, uap->id)) != NULL) {
+		atomic_add_int(&ve->refs, 1);
+		error = kern_mmap(ve->vmspace, uap->addr, uap->len,
+				  uap->prot, uap->flags,
+				  uap->fd, uap->offset, &uap->sysmsg_resultp);
+		atomic_subtract_int(&ve->refs, 1);
+	} else {
 		error = ENOENT;
-		goto done;
 	}
-	error = kern_mmap(ve->vmspace, uap->addr, uap->len,
-			  uap->prot, uap->flags,
-			  uap->fd, uap->offset, &uap->sysmsg_resultp);
-done:
+	lwkt_reltoken(&vkp->token);
+done3:
 	lwkt_reltoken(&vmspace_token);
 	lwkt_reltoken(&vm_token);
 	return (error);
@@ -288,7 +314,7 @@ done:
  *
  * unmap memory within a VMSPACE.
  *
- * MPALMOSTSAFE
+ * No requirements.
  */
 int
 sys_vmspace_munmap(struct vmspace_munmap_args *uap)
@@ -304,12 +330,19 @@ sys_vmspace_munmap(struct vmspace_munmap_args *uap)
 	get_mplock();
 	if ((vkp = curproc->p_vkernel) == NULL) {
 		error = EINVAL;
-		goto done;
+		goto done3;
 	}
+	lwkt_gettoken(&vkp->token);
 	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL) {
 		error = ENOENT;
-		goto done;
+		goto done2;
 	}
+
+	/*
+	 * NOTE: kern_munmap() can block so we need to temporarily
+	 *	 ref ve->refs.
+	 */
+	atomic_add_int(&ve->refs, 1);
 
 	/*
 	 * Copied from sys_munmap()
@@ -323,34 +356,38 @@ sys_vmspace_munmap(struct vmspace_munmap_args *uap)
 	size = (vm_size_t)round_page(size);
 	if (size < uap->len) {		/* wrap */
 		error = EINVAL;
-		goto done;
+		goto done1;
 	}
 	tmpaddr = addr + size;		/* workaround gcc4 opt */
 	if (tmpaddr < addr) {		/* wrap */
 		error = EINVAL;
-		goto done;
+		goto done1;
 	}
 	if (size == 0) {
 		error = 0;
-		goto done;
+		goto done1;
 	}
 
 	if (VM_MAX_USER_ADDRESS > 0 && tmpaddr > VM_MAX_USER_ADDRESS) {
 		error = EINVAL;
-		goto done;
+		goto done1;
 	}
 	if (VM_MIN_USER_ADDRESS > 0 && addr < VM_MIN_USER_ADDRESS) {
 		error = EINVAL;
-		goto done;
+		goto done1;
 	}
 	map = &ve->vmspace->vm_map;
 	if (!vm_map_check_protection(map, addr, tmpaddr, VM_PROT_NONE, FALSE)) {
 		error = EINVAL;
-		goto done;
+		goto done1;
 	}
 	vm_map_remove(map, addr, addr + size);
 	error = 0;
-done:
+done1:
+	atomic_subtract_int(&ve->refs, 1);
+done2:
+	lwkt_reltoken(&vkp->token);
+done3:
 	rel_mplock();
 	return (error);
 }
@@ -364,8 +401,7 @@ done:
  * the caller must resolve in order to proceed.
  *
  * (not implemented yet)
- *
- * MPALMOSTSAFE
+ * No requirements.
  */
 int
 sys_vmspace_pread(struct vmspace_pread_args *uap)
@@ -377,14 +413,17 @@ sys_vmspace_pread(struct vmspace_pread_args *uap)
 	get_mplock();
 	if ((vkp = curproc->p_vkernel) == NULL) {
 		error = EINVAL;
-		goto done;
+		goto done3;
 	}
+	lwkt_gettoken(&vkp->token);
 	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL) {
 		error = ENOENT;
-		goto done;
+		goto done2;
 	}
 	error = EINVAL;
-done:
+done2:
+	lwkt_reltoken(&vkp->token);
+done3:
 	rel_mplock();
 	return (error);
 }
@@ -398,8 +437,7 @@ done:
  * the caller must resolve in order to proceed.
  *
  * (not implemented yet)
- *
- * MPALMOSTSAFE
+ * No requirements.
  */
 int
 sys_vmspace_pwrite(struct vmspace_pwrite_args *uap)
@@ -411,14 +449,17 @@ sys_vmspace_pwrite(struct vmspace_pwrite_args *uap)
 	get_mplock();
 	if ((vkp = curproc->p_vkernel) == NULL) {
 		error = EINVAL;
-		goto done;
+		goto done3;
 	}
+	lwkt_gettoken(&vkp->token);
 	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL) {
 		error = ENOENT;
-		goto done;
+		goto done2;
 	}
 	error = EINVAL;
-done:
+done2:
+	lwkt_reltoken(&vkp->token);
+done3:
 	rel_mplock();
 	return (error);
 }
@@ -428,7 +469,7 @@ done:
  *
  * madvise/mcontrol support for a vmspace.
  *
- * MPALMOSTSAFE
+ * No requirements.
  */
 int
 sys_vmspace_mcontrol(struct vmspace_mcontrol_args *uap)
@@ -442,32 +483,39 @@ sys_vmspace_mcontrol(struct vmspace_mcontrol_args *uap)
 	get_mplock();
 	if ((vkp = curproc->p_vkernel) == NULL) {
 		error = EINVAL;
-		goto done;
+		goto done3;
 	}
+	lwkt_gettoken(&vkp->token);
 	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL) {
 		error = ENOENT;
-		goto done;
+		goto done2;
 	}
+
+	/*
+	 * NOTE: kern_madvise() can block so we need to temporarily
+	 *	 ref ve->refs.
+	 */
+	atomic_add_int(&ve->refs, 1);
 
 	/*
 	 * This code is basically copied from sys_mcontrol()
 	 */
 	if (uap->behav < 0 || uap->behav > MADV_CONTROL_END) {
 		error = EINVAL;
-		goto done;
+		goto done1;
 	}
 
 	if (tmpaddr < (vm_offset_t)uap->addr) {
 		error = EINVAL;
-		goto done;
+		goto done1;
 	}
 	if (VM_MAX_USER_ADDRESS > 0 && tmpaddr > VM_MAX_USER_ADDRESS) {
 		error = EINVAL;
-		goto done;
+		goto done1;
 	}
         if (VM_MIN_USER_ADDRESS > 0 && uap->addr < VM_MIN_USER_ADDRESS) {
 		error = EINVAL;
-		goto done;
+		goto done1;
 	}
 
 	start = trunc_page((vm_offset_t) uap->addr);
@@ -475,7 +523,11 @@ sys_vmspace_mcontrol(struct vmspace_mcontrol_args *uap)
 
 	error = vm_map_madvise(&ve->vmspace->vm_map, start, end,
 				uap->behav, uap->value);
-done:
+done1:
+	atomic_subtract_int(&ve->refs, 1);
+done2:
+	lwkt_reltoken(&vkp->token);
+done3:
 	rel_mplock();
 	return (error);
 }
@@ -486,7 +538,12 @@ done:
 static int rb_vmspace_compare(struct vmspace_entry *, struct vmspace_entry *);
 RB_GENERATE(vmspace_rb_tree, vmspace_entry, rb_entry, rb_vmspace_compare);
    
-/* a->start is address, and the only field has to be initialized */
+/*
+ * a->start is address, and the only field has to be initialized.
+ * The caller must hold vkp->token.
+ *
+ * The caller must hold vkp->token.
+ */
 static int
 rb_vmspace_compare(struct vmspace_entry *a, struct vmspace_entry *b)
 {
@@ -497,6 +554,9 @@ rb_vmspace_compare(struct vmspace_entry *a, struct vmspace_entry *b)
         return(0);
 }
 
+/*
+ * The caller must hold vkp->token.
+ */
 static
 int
 rb_vmspace_delete(struct vmspace_entry *ve, void *data)
@@ -511,6 +571,11 @@ rb_vmspace_delete(struct vmspace_entry *ve, void *data)
 /*
  * Remove a vmspace_entry from the RB tree and destroy it.  We have to clean
  * up the pmap, the vm_map, then destroy the vmspace.
+ *
+ * This function must remove the ve immediately before it might potentially
+ * block.
+ *
+ * The caller must hold vkp->token.
  */
 static
 void
@@ -526,7 +591,13 @@ vmspace_entry_delete(struct vmspace_entry *ve, struct vkernel_proc *vkp)
 	kfree(ve, M_VKERNEL);
 }
 
-
+/*
+ * Locate the ve for (id), return the ve or NULL.  If found this function
+ * will bump ve->refs which prevents the ve from being immediately destroyed
+ * (but it can still be removed).
+ *
+ * The caller must hold vkp->token.
+ */
 static
 struct vmspace_entry *
 vkernel_find_vmspace(struct vkernel_proc *vkp, void *id)
@@ -542,6 +613,8 @@ vkernel_find_vmspace(struct vkernel_proc *vkp, void *id)
 /*
  * Manage vkernel refs, used by the kernel when fork()ing or exit()ing
  * a vkernel process.
+ *
+ * No requirements.
  */
 void
 vkernel_inherit(struct proc *p1, struct proc *p2)
@@ -554,14 +627,17 @@ vkernel_inherit(struct proc *p1, struct proc *p2)
 	p2->p_vkernel = vkp;
 }
 
+/*
+ * No requirements.
+ */
 void
 vkernel_exit(struct proc *p)
 {
 	struct vkernel_proc *vkp;
 	struct lwp *lp;
-	int freeme = 0;
 
 	vkp = p->p_vkernel;
+
 	/*
 	 * Restore the original VM context if we are killed while running
 	 * a different one.
@@ -579,18 +655,19 @@ vkernel_exit(struct proc *p)
 	 */
 	p->p_vkernel = NULL;
 	KKASSERT(vkp->refs > 0);
-	spin_lock_wr(&vkp->spin);
-	if (--vkp->refs == 0)	
-		freeme = 1;
-	spin_unlock_wr(&vkp->spin);
 
-	if (freeme) {
+	if (atomic_fetchadd_int(&vkp->refs, -1) == 1) {
+		lwkt_gettoken(&vkp->token);
 		RB_SCAN(vmspace_rb_tree, &vkp->root, NULL,
 			rb_vmspace_delete, vkp);
+		lwkt_reltoken(&vkp->token);
 		kfree(vkp, M_VKERNEL);
 	}
 }
 
+/*
+ * No requirements.
+ */
 void
 vkernel_lwp_exit(struct lwp *lp)
 {
@@ -615,6 +692,8 @@ vkernel_lwp_exit(struct lwp *lp)
 /*
  * A VM space under virtual kernel control trapped out or made a system call
  * or otherwise needs to return control to the virtual kernel context.
+ *
+ * No requirements.
  */
 void
 vkernel_trap(struct lwp *lp, struct trapframe *frame)
@@ -639,6 +718,7 @@ vkernel_trap(struct lwp *lp, struct trapframe *frame)
 	pmap_setlwpvm(lp, p->p_vmspace);
 	KKASSERT(ve->refs > 0);
 	atomic_subtract_int(&ve->refs, 1);
+	/* ve is invalid once we kill our ref */
 
 	/*
 	 * Copy the emulated process frame to the virtual kernel process.
@@ -655,4 +735,3 @@ vkernel_trap(struct lwp *lp, struct trapframe *frame)
 	set_user_TLS();
 	cpu_vkernel_trap(frame, error);
 }
-

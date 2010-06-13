@@ -54,6 +54,9 @@
 #ifndef _SYS_SPINLOCK_H_
 #include <sys/spinlock.h>
 #endif
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>
+#endif
 #ifndef _MACHINE_FRAME_H_
 #include <machine/frame.h>
 #endif
@@ -83,7 +86,7 @@ struct vkernel_lwp {
 
 struct vkernel_proc {
 	RB_HEAD(vmspace_rb_tree, vmspace_entry) root;
-	struct spinlock spin;
+	struct lwkt_token token;
 	int refs;
 };
 
@@ -94,6 +97,8 @@ struct vmspace_entry {
 	int refs;				/* current LWP assignments */
 	RB_ENTRY(vmspace_entry) rb_entry;
 };
+
+#define VKE_DELETED	0x0001
 
 #ifdef _KERNEL
 
