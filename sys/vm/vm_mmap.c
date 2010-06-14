@@ -150,7 +150,7 @@ sys_sstk(struct sstk_args *uap)
  * is maintained as long as you do not write directly to the underlying
  * character device.
  *
- * Requires caller to hold vm_token.
+ * No requirements; sys_mmap path holds the vm_token
  */
 int
 kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
@@ -170,7 +170,6 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 	vm_object_t obj;
 
 	KKASSERT(p);
-	ASSERT_LWKT_TOKEN_HELD(&vm_token);
 
 	addr = (vm_offset_t) uaddr;
 	size = ulen;
@@ -389,6 +388,9 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 		}
 	}
 
+	/* Token serializes access to vm_map.nentries against vm_mmap */
+	lwkt_gettoken(&vm_token);
+
 	/*
 	 * Do not allow more then a certain number of vm_map_entry structures
 	 * per process.  Scale with the number of rforks sharing the map
@@ -397,6 +399,7 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 	if (max_proc_mmap && 
 	    vms->vm_map.nentries >= max_proc_mmap * vms->vm_sysref.refcnt) {
 		error = ENOMEM;
+		lwkt_reltoken(&vm_token);
 		goto done;
 	}
 
@@ -404,9 +407,12 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 			flags, handle, pos);
 	if (error == 0)
 		*res = (void *)(addr + pageoff);
+
+	lwkt_reltoken(&vm_token);
 done:
 	if (fp)
 		fdrop(fp);
+
 	return (error);
 }
 
@@ -420,11 +426,9 @@ sys_mmap(struct mmap_args *uap)
 {
 	int error;
 
-	lwkt_gettoken(&vm_token);
 	error = kern_mmap(curproc->p_vmspace, uap->addr, uap->len,
 			  uap->prot, uap->flags,
 			  uap->fd, uap->pos, &uap->sysmsg_resultp);
-	lwkt_reltoken(&vm_token);
 
 	return (error);
 }
@@ -464,8 +468,15 @@ sys_msync(struct msync_args *uap)
 	if ((flags & (MS_ASYNC|MS_INVALIDATE)) == (MS_ASYNC|MS_INVALIDATE))
 		return (EINVAL);
 
-	lwkt_gettoken(&vm_token);
 	map = &p->p_vmspace->vm_map;
+
+	/*
+	 * vm_token serializes extracting the address range for size == 0
+	 * msyncs with the vm_map_clean call; if the token were not held
+	 * across the two calls, an intervening munmap/mmap pair, for example,
+	 * could cause msync to occur on a wrong region.
+	 */
+	lwkt_gettoken(&vm_token);
 
 	/*
 	 * XXX Gak!  If size is zero we are supposed to sync "all modified
@@ -552,8 +563,11 @@ sys_munmap(struct munmap_args *uap)
 	if (VM_MIN_USER_ADDRESS > 0 && addr < VM_MIN_USER_ADDRESS)
 		return (EINVAL);
 
-	lwkt_gettoken(&vm_token);
 	map = &p->p_vmspace->vm_map;
+
+	/* vm_token serializes between the map check and the actual unmap */
+	lwkt_gettoken(&vm_token);
+
 	/*
 	 * Make sure entire range is allocated.
 	 */
@@ -571,7 +585,7 @@ sys_munmap(struct munmap_args *uap)
 /*
  * mprotect_args(const void *addr, size_t len, int prot)
  *
- * MPALMOSTSAFE
+ * No requirements.
  */
 int
 sys_mprotect(struct mprotect_args *uap)
@@ -601,7 +615,6 @@ sys_mprotect(struct mprotect_args *uap)
 	if (tmpaddr < addr)		/* wrap */
 		return(EINVAL);
 
-	lwkt_gettoken(&vm_token);
 	switch (vm_map_protect(&p->p_vmspace->vm_map, addr, addr + size,
 			       prot, FALSE)) {
 	case KERN_SUCCESS:
@@ -614,7 +627,6 @@ sys_mprotect(struct mprotect_args *uap)
 		error = EINVAL;
 		break;
 	}
-	lwkt_reltoken(&vm_token);
 	return (error);
 }
 
@@ -649,8 +661,6 @@ sys_minherit(struct minherit_args *uap)
 	if (tmpaddr < addr)		/* wrap */
 		return(EINVAL);
 
-	lwkt_gettoken(&vm_token);
-
 	switch (vm_map_inherit(&p->p_vmspace->vm_map, addr,
 			       addr + size, inherit)) {
 	case KERN_SUCCESS:
@@ -663,7 +673,6 @@ sys_minherit(struct minherit_args *uap)
 		error = EINVAL;
 		break;
 	}
-	lwkt_reltoken(&vm_token);
 	return (error);
 }
 
@@ -705,10 +714,8 @@ sys_madvise(struct madvise_args *uap)
 	start = trunc_page((vm_offset_t)uap->addr);
 	end = round_page(tmpaddr);
 
-	lwkt_gettoken(&vm_token);
 	error = vm_map_madvise(&p->p_vmspace->vm_map, start, end,
 			       uap->behav, 0);
-	lwkt_reltoken(&vm_token);
 	return (error);
 }
 
@@ -750,10 +757,8 @@ sys_mcontrol(struct mcontrol_args *uap)
 	start = trunc_page((vm_offset_t)uap->addr);
 	end = round_page(tmpaddr);
 	
-	lwkt_gettoken(&vm_token);
 	error = vm_map_madvise(&p->p_vmspace->vm_map, start, end,
 			       uap->behav, uap->value);
-	lwkt_reltoken(&vm_token);
 	return (error);
 }
 
@@ -1001,22 +1006,22 @@ sys_mlock(struct mlock_args *uap)
 	if (atop(size) + vmstats.v_wire_count > vm_page_max_wired)
 		return (EAGAIN);
 
-	lwkt_gettoken(&vm_token);
+	/* 
+	 * We do not need to synchronize against other threads updating ucred;
+	 * they update p->ucred, which is synchronized into td_ucred ourselves.
+	 */
 #ifdef pmap_wired_count
 	if (size + ptoa(pmap_wired_count(vm_map_pmap(&p->p_vmspace->vm_map))) >
 	    p->p_rlimit[RLIMIT_MEMLOCK].rlim_cur) {
-		lwkt_reltoken(&vm_token);
 		return (ENOMEM);
 	}
 #else
 	error = priv_check_cred(td->td_ucred, PRIV_ROOT, 0);
 	if (error) {
-		lwkt_reltoken(&vm_token);
 		return (error);
 	}
 #endif
 	error = vm_map_unwire(&p->p_vmspace->vm_map, addr, addr + size, FALSE);
-	lwkt_reltoken(&vm_token);
 	return (error == KERN_SUCCESS ? 0 : ENOMEM);
 }
 
@@ -1081,9 +1086,7 @@ sys_munlock(struct munlock_args *uap)
 		return (error);
 #endif
 
-	lwkt_gettoken(&vm_token);
 	error = vm_map_unwire(&p->p_vmspace->vm_map, addr, addr + size, TRUE);
-	lwkt_reltoken(&vm_token);
 	return (error == KERN_SUCCESS ? 0 : ENOMEM);
 }
 
