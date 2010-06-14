@@ -164,6 +164,7 @@ ral_pci_attach(device_t dev)
 {
 	struct ral_pci_softc *psc = device_get_softc(dev);
 	struct rt2560_softc *sc = &psc->u.sc_rt2560;
+	struct ifnet *ifp = psc->u.sc_rt2560.sc_ifp;
 	int error;
 
 	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
@@ -206,7 +207,7 @@ ral_pci_attach(device_t dev)
 	 * Hook our interrupt after all initialization is complete.
 	 */
 	error = bus_setup_intr(dev, psc->irq, INTR_MPSAFE,
-	    psc->sc_opns->intr, psc, &psc->sc_ih, NULL);
+	    psc->sc_opns->intr, psc, &psc->sc_ih, ifp->if_serializer);
 	if (error != 0) {
 		device_printf(dev, "could not set up interrupt\n");
 		return error;
