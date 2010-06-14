@@ -60,6 +60,7 @@
 #include <sys/sysctl.h>
 #include <sys/devfs.h>
 #include <sys/pioctl.h>
+#include <vfs/fifofs/fifo.h>
 
 #include <machine/limits.h>
 
@@ -1390,7 +1391,10 @@ devfs_specf_kqfilter(struct file *fp, struct knote *kn)
 
 done:
 	rel_mplock();
-	return (error);
+	if (error)
+		return (-1);
+
+	return (0);
 }
 
 
@@ -1685,7 +1689,7 @@ devfs_spec_kqfilter(struct vop_kqfilter_args *ap)
 	cdev_t dev;
 
 	if ((dev = vp->v_rdev) == NULL)
-		return (EBADF);		/* device was revoked */
+		return (1);		/* device was revoked (EBADF) */
 	node = DEVFS_NODE(vp);
 
 #if 0
@@ -1693,7 +1697,7 @@ devfs_spec_kqfilter(struct vop_kqfilter_args *ap)
 		nanotime(&node->atime);
 #endif
 
-	return (dev_dkqfilter(dev, ap->a_kn));
+	return (!dev_dkqfilter(dev, ap->a_kn));
 }
 
 /*
