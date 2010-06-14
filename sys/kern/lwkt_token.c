@@ -528,6 +528,7 @@ lwkt_token_init(lwkt_token_t tok, int mpsafe)
 {
 	tok->t_ref = NULL;
 	tok->t_flags = mpsafe ? LWKT_TOKEN_MPSAFE : 0;
+	tok->t_collisions = 0;
 }
 
 void
