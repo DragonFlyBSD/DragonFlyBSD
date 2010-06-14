@@ -73,7 +73,7 @@ handle_new_connection(int s)
 	struct client_info *cli_info;
 	struct sockaddr_un addr;
 	int fd;
-	size_t saddr_len = sizeof(struct sockaddr_un);
+	socklen_t saddr_len = sizeof(struct sockaddr_un);
 
 	fd = accept(s, (struct sockaddr *)&addr, &saddr_len);
 	if (fd < 0) {
