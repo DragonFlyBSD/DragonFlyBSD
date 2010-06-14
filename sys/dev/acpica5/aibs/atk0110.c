@@ -224,7 +224,7 @@ aibs_attach_sif(struct aibs_softc *sc, enum sensor_type st)
 		ACPI_OBJECT	*oi;
 
 		/* acpica5 automatically evaluates the referenced package */
-		if(o[0].Type != ACPI_TYPE_PACKAGE) {
+		if (o[0].Type != ACPI_TYPE_PACKAGE) {
 			device_printf(sc->sc_dev,
 			    "%s: %i: not a package: %i type\n",
 			    name, i, o[0].Type);
