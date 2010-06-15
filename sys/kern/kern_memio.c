@@ -75,16 +75,18 @@ static	d_write_t	mmwrite;
 static	d_ioctl_t	mmioctl;
 static	d_mmap_t	memmmap;
 static	d_poll_t	mmpoll;
+static	d_kqfilter_t	mmkqfilter;
 
 #define CDEV_MAJOR 2
 static struct dev_ops mem_ops = {
-	{ "mem", CDEV_MAJOR, D_MEM | D_MPSAFE_READ | D_MPSAFE_WRITE },
+	{ "mem", CDEV_MAJOR, D_MEM | D_MPSAFE_READ | D_MPSAFE_WRITE | D_KQFILTER },
 	.d_open =	mmopen,
 	.d_close =	mmclose,
 	.d_read =	mmread,
 	.d_write =	mmwrite,
 	.d_ioctl =	mmioctl,
 	.d_poll =	mmpoll,
+	.d_kqfilter =	mmkqfilter,
 	.d_mmap =	memmmap,
 };
 
@@ -543,6 +545,47 @@ mmpoll(struct dev_poll_args *ap)
 		break;
 	}
 	ap->a_events = revents;
+	return (0);
+}
+
+static int
+mm_filter_read(struct knote *kn, long hint)
+{
+	return (1);
+}
+
+static void
+dummy_filter_detach(struct knote *kn) {}
+
+static struct filterops random_read_filtops =
+        { 1, NULL, dummy_filter_detach, random_filter_read };
+
+static struct filterops mm_read_filtops =
+        { 1, NULL, dummy_filter_detach, mm_filter_read };
+
+int
+mmkqfilter(struct dev_kqfilter_args *ap)
+{
+	struct knote *kn = ap->a_kn;
+	cdev_t dev = ap->a_head.a_dev;
+
+	ap->a_result = 0;
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		switch (minor(dev)) {
+		case 3:
+			kn->kn_fop = &random_read_filtops;
+			break;
+		default:
+			kn->kn_fop = &mm_read_filtops;
+			break;
+		}
+		break;
+	default:
+		ap->a_result = 1;
+		return (0);
+	}
+
 	return (0);
 }
 
