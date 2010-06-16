@@ -45,6 +45,7 @@
 #include "opt_hw_wdog.h"
 #include "opt_panic.h"
 #include "opt_show_busybufs.h"
+#include "use_gpio.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
