@@ -826,7 +826,7 @@ init_machclk(void)
 	 * if the clock frequency (of Pentium TSC or Alpha PCC) is
 	 * accessible, just use it.
 	 */
-#if _RDTSC_SUPPORTED
+#ifdef _RDTSC_SUPPORTED_
 	if (cpu_feature & CPUID_TSC)
 		machclk_freq = (uint64_t)tsc_frequency;
 #endif
