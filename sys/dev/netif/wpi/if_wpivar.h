@@ -135,8 +135,9 @@ struct wpi_vap {
 #define	WPI_VAP(vap)	((struct wpi_vap *)(vap))
 
 struct wpi_softc {
-	device_t		sc_dev;
+	struct arpcom		arpcom;
 	struct ifnet		*sc_ifp;
+	device_t		sc_dev;
 	struct lock		sc_lock;
 
 	struct fw_image 	*sc_fw_image;
