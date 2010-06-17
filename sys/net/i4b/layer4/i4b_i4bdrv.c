@@ -445,12 +445,6 @@ i4bioctl(struct dev_ioctl_args *ap)
 					break;
 #endif
 
-#if NIBC > 0
-				case BDRV_IBC:
-					dlt = ibc_ret_linktab(mdrsp->driver_unit);
-					break;
-#endif
-
 #if NI4BING > 0
 				case BDRV_ING:
 					dlt = ing_ret_linktab(mdrsp->driver_unit);
