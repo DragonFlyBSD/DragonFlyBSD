@@ -719,6 +719,9 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 {
 	vm_page_t m = NULL;
 
+	crit_enter();
+	lwkt_gettoken(&vm_token);
+	
 	KKASSERT(object != NULL);
 	KASSERT(!vm_page_lookup(object, pindex),
 		("vm_page_alloc: page already allocated"));
@@ -733,8 +736,6 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 	if (curthread->td_flags & TDF_SYSTHREAD)
 		page_req |= VM_ALLOC_SYSTEM;
 
-	crit_enter();
-	lwkt_gettoken(&vm_token);
 loop:
 	if (vmstats.v_free_count > vmstats.v_free_reserved ||
 	    ((page_req & VM_ALLOC_INTERRUPT) && vmstats.v_free_count > 0) ||
