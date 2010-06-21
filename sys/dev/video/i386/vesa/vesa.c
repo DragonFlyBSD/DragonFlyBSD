@@ -777,7 +777,7 @@ vesa_bios_init(void)
 		return (1);
 
 	dpms_states = vesa_probe_dpms();
-	if (dpms_states != 0 && bootverbose)
+	if (dpms_states > 0 && bootverbose)
 		kprintf("VESA: DPMS support (states:0x%x)\n", dpms_states);
 
 	return (0);
@@ -825,7 +825,7 @@ vesa_probe_dpms(void)
 
 	err = vm86_intcall(0x10, &vmf);
 	if ((err != 0) || (vmf.vmf_ax != 0x4f))
-		return -1;	/* no support */
+		return 0;	/* no support */
 
 	return (vmf.vmf_ebx >> 8);
 }
