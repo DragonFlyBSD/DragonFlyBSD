@@ -2038,7 +2038,7 @@ mxge_encap(struct mxge_slice_state *ss, struct mbuf *m)
 	if (__predict_false(err == EFBIG)) {
 		/* Too many segments in the chain.  Try
 		   to defrag */
-		m_tmp = m_defrag(m, M_NOWAIT);
+		m_tmp = m_defrag(m, MB_DONTWAIT);
 		if (m_tmp == NULL) {
 			goto drop;
 		}

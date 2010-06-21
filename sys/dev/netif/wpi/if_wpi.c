@@ -2002,7 +2002,7 @@ wpi_tx_data(struct wpi_softc *sc, struct mbuf *m0, struct ieee80211_node *ni,
 	}
 	if (error != 0) {
 		/* XXX use m_collapse */
-		mnew = m_defrag(m0, M_NOWAIT);
+		mnew = m_defrag(m0, MB_DONTWAIT);
 		if (mnew == NULL) {
 			device_printf(sc->sc_dev,
 			    "could not defragment mbuf\n");
