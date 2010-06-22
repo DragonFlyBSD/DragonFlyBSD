@@ -388,15 +388,8 @@ set_rootvnode(void *arg, int npending)
 	struct proc *p = td->td_proc;
 
 
-	kprintf("JAT: arg = %p, p = %p\n", arg, p);
-#if 0
-	kprintf("JAT: arg = %p, p = %p, p_fd = %p, fd_spin = %p\n",
-		arg, p, p->p_fd, &p->p_fd->fd_spin);
-#endif
-
 #if 0
 	spin_lock_wr(&p->p_fd->fd_spin);
-	kprintf("JAT: after spin_lock_wr\n");
 	if (p->p_fd->fd_cdir == NULL) {
 		p->p_fd->fd_cdir = rootvnode;
 		vref(rootvnode);
@@ -406,7 +399,6 @@ set_rootvnode(void *arg, int npending)
 		vref(rootvnode);
 	}
 	spin_unlock_wr(&p->p_fd->fd_spin);
-	kprintf("JAT: after spin_unlock_wr\n");
 
 	kfree(arg, M_TEMP);
 #endif
