@@ -84,6 +84,9 @@ static __inline int64_t i64min(int64_t a, int64_t b) { return (a < b ? a : b); }
 static __inline size_t szmax(size_t a, size_t b) { return (a > b ? a : b); }
 static __inline size_t szmin(size_t a, size_t b) { return (a < b ? a : b); }
 
+static __inline int abs(int a) { return (a < 0 ? -a : a); }
+static __inline long labs(long a) { return (a < 0 ? -a : a); }
+static __inline quad_t qabs(quad_t a) { return (a < 0 ? -a : a); }
 
 /* Prototypes for non-quad routines. */
 u_int32_t karc4random (void);
