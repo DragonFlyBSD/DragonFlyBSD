@@ -480,7 +480,7 @@ kevent_copyout(void *arg, struct kevent *kevp, int count, int *res)
 
 	kap = (struct kevent_copyin_args *)arg;
 
-	error = copyout(kevp, kap->ka->eventlist, count * sizeof *kevp);
+	error = copyout(kevp, kap->ka->eventlist, count * sizeof(*kevp));
 	if (error == 0) {
 		kap->ka->eventlist += count;
 		*res += count;
@@ -519,8 +519,8 @@ kevent_copyin(void *arg, struct kevent *kevp, int max, int *events)
  */
 int
 kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
-    k_copyin_fn kevent_copyinfn, k_copyout_fn kevent_copyoutfn,
-    struct timespec *tsp_in)
+	    k_copyin_fn kevent_copyinfn, k_copyout_fn kevent_copyoutfn,
+	    struct timespec *tsp_in)
 {
 	struct kevent *kevp;
 	struct timespec ts;
@@ -578,6 +578,10 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 	 *
 	 * Collect as many events as we can.  The timeout on successive
 	 * loops is disabled (kqueue_scan() becomes non-blocking).
+	 *
+	 * The loop stops if an error occurs or all events have been
+	 * scanned.  The copyoutfn function does not have to increment
+	 * (*res) in order for the loop to continue.
 	 */
 	total = 0;
 	error = 0;
@@ -589,11 +593,18 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 			break;
 		error = kevent_copyoutfn(uap, kev, i, res);
 		total += i;
-		if (error || i != n)
+		if (error || i < n)
 			break;
-		tsp = &ts;		/* successive loops non-blocking */
-		tsp->tv_sec = 0;
-		tsp->tv_nsec = 0;
+
+		/*
+		 * successive loops are non-blocking only if (*res)
+		 * is non-zero.
+		 */
+		if (*res) {
+			tsp = &ts;
+			tsp->tv_sec = 0;
+			tsp->tv_nsec = 0;
+		}
 	}
 
 done:
@@ -639,7 +650,7 @@ sys_kevent(struct kevent_args *uap)
 	kap->pchanges = 0;
 
 	error = kern_kevent(kq, uap->nevents, &uap->sysmsg_result, kap,
-	    kevent_copyin, kevent_copyout, tsp);
+			    kevent_copyin, kevent_copyout, tsp);
 
 	fdrop(fp);
 

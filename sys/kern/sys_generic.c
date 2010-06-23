@@ -81,7 +81,7 @@ static MALLOC_DEFINE(M_SELECT, "select", "select() buffer");
 MALLOC_DEFINE(M_IOV, "iov", "large iov's");
 
 typedef struct kfd_set {
-        fd_mask	fds_bits[0];
+        fd_mask	fds_bits[2];
 } kfd_set;
 
 enum select_copyin_states {
@@ -99,7 +99,7 @@ struct select_kevent_copyin_args {
 };
 
 static int 	doselect(int nd, fd_set *in, fd_set *ou, fd_set *ex,
-			struct timespec *ts, int *res);
+			 struct timespec *ts, int *res);
 static int	pollscan (struct proc *, struct pollfd *, u_int, int *);
 static int	dofileread(int, struct file *, struct uio *, int, size_t *);
 static int	dofilewrite(int, struct file *, struct uio *, int, size_t *);
@@ -803,7 +803,7 @@ sys_select(struct select_args *uap)
 	 * Do real work.
 	 */
 	error = doselect(uap->nd, uap->in, uap->ou, uap->ex, ktsp,
-			&uap->sysmsg_result);
+			 &uap->sysmsg_result);
 
 	return (error);
 }
@@ -854,7 +854,7 @@ sys_pselect(struct pselect_args *uap)
 	 * Do real job.
 	 */
 	error = doselect(uap->nd, uap->in, uap->ou, uap->ex, ktsp,
-			&uap->sysmsg_result);
+			 &uap->sysmsg_result);
 
 	if (uap->sigmask != NULL) {
 		/* doselect() responsible for turning ERESTART into EINTR */
@@ -880,10 +880,10 @@ sys_pselect(struct pselect_args *uap)
 }
 
 static int
-select_copyin(void *arg, struct kevent *kevp, int max, int *events)
+select_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
 {
 	struct select_kevent_copyin_args *skap = NULL;
-	struct kevent kev;
+	struct kevent *kev;
 	int fd;
 	kfd_set *fdp = NULL;
 	short filter = 0;
@@ -891,50 +891,71 @@ select_copyin(void *arg, struct kevent *kevp, int max, int *events)
 
 	skap = (struct select_kevent_copyin_args *)arg;
 
+	if (*events == maxevents)
+		return (0);
+
 	while (skap->active_set < COPYIN_DONE) {
 		switch (skap->active_set) {
 		case COPYIN_READ:
+			/*
+			 * Register descriptors for the read filter
+			 */
 			fdp = skap->read_set;
 			filter = EVFILT_READ;
 			fflags = 0;
-			break;
+			if (fdp)
+				break;
+			++skap->active_set;
+			skap->proc_fds = 0;
+			/* fall through */
 		case COPYIN_WRITE:
+			/*
+			 * Register descriptors for the write filter
+			 */
 			fdp = skap->write_set;
 			filter = EVFILT_WRITE;
 			fflags = 0;
-			break;
+			if (fdp)
+				break;
+			++skap->active_set;
+			skap->proc_fds = 0;
+			/* fall through */
 		case COPYIN_EXCEPT:
+			/*
+			 * Register descriptors for the exception filter
+			 */
 			fdp = skap->except_set;
 			filter = EVFILT_READ;
 			fflags = NOTE_OOB;
-			break;
-		}
-
-		if (fdp == NULL) {
-			skap->active_set++;
-			continue;
-		}
-
-		for (fd = skap->proc_fds; fd < skap->num_fds; ++fd) {
-			if (FD_ISSET(fd, fdp)) {
-				EV_SET(&kev, fd, filter,
-				    EV_ADD|EV_ENABLE|EV_CLEAR, fflags,
-				    0,
-				    (void *)((skap->active_set << 28) |
-					skap->lwp->lwp_kqueue_serial));
-				FD_CLR(fd, fdp);
-				memcpy(kevp + *events, &kev, sizeof(*kevp));
-				(*events)++;
-			}
-
-			skap->proc_fds++;
-			if (skap->proc_fds == skap->num_fds)
+			if (fdp)
 				break;
+			++skap->active_set;
+			skap->proc_fds = 0;
+			/* fall through */
+		case COPYIN_DONE:
+			/*
+			 * Nothing left to register
+			 */
+			return(0);
+			/* NOT REACHED */
+		}
 
-			if (*events == max)
+		while (skap->proc_fds < skap->num_fds) {
+			fd = skap->proc_fds;
+			if (FD_ISSET(fd, fdp)) {
+				kev = &kevp[*events];
+				EV_SET(kev, fd, filter,
+				       EV_ADD|EV_ENABLE,
+				       fflags, 0,
+				       (void *)((skap->active_set << 28) |
+				       skap->lwp->lwp_kqueue_serial));
+				FD_CLR(fd, fdp);
+				++*events;
+			}
+			++skap->proc_fds;
+			if (*events == maxevents)
 				return (0);
 		}
-
 		skap->active_set++;
 		skap->proc_fds = 0;
 	}
@@ -959,14 +980,13 @@ select_copyout(void *arg, struct kevent *kevp, int count, int *res)
 	for (i = 0; i < count; ++i) {
 		serial = (u_int)kevp[i].udata & ~(0xF << 28);
 		if (serial != skap->lwp->lwp_kqueue_serial) {
-kprintf("select serial mismatch\n");
-			memcpy(&kev, &kevp[i], sizeof(kev));
+			kev = kevp[i];
 			kev.flags = EV_DISABLE|EV_DELETE;
-			(void)kqueue_register(&skap->lwp->lwp_kqueue, &kev);
+			kqueue_register(&skap->lwp->lwp_kqueue, &kev);
 			continue;
 		}
 
-		switch (((u_int)kevp[i].udata >> 28) & ~(0x0FFFFFFF)) {
+		switch (((u_int)kevp[i].udata >> 28) & 0xF) {
 		case COPYIN_READ:
 			FD_SET(kevp[i].ident, skap->read_set);
 			break;
@@ -978,10 +998,48 @@ kprintf("select serial mismatch\n");
 			break;
 		}
 
-		(*res)++;
+		++*res;
 	}
 
 	return (0);
+}
+
+/*
+ * Copy select bits in from userland.  Allocate kernel memory if the
+ * set is large.
+ */
+static int
+getbits(int bytes, fd_set *in_set, kfd_set **out_set, kfd_set *tmp_set)
+{
+	int error;
+
+	if (in_set) {
+		if (bytes < sizeof(*tmp_set))
+			*out_set = tmp_set;
+		else
+			*out_set = kmalloc(bytes, M_SELECT, M_WAITOK);
+		error = copyin(in_set, *out_set, bytes);
+	} else {
+		*out_set = NULL;
+		error = 0;
+	}
+	return (error);
+}
+
+/*
+ * Copy returned select bits back out to userland.
+ */
+static int
+putbits(int bytes, kfd_set *in_set, fd_set *out_set)
+{
+	int error;
+
+	if (in_set) {
+		error = copyout(in_set, out_set, bytes);
+	} else {
+		error = 0;
+	}
+	return (error);
 }
 
 /*
@@ -993,12 +1051,16 @@ kprintf("select serial mismatch\n");
  */
 static int
 doselect(int nd, fd_set *read, fd_set *write, fd_set *except,
-    struct timespec *ts, int *res)
+	 struct timespec *ts, int *res)
 {
 	struct proc *p = curproc;
 	struct select_kevent_copyin_args *kap, ka;
 	int bytes, error;
+	kfd_set read_tmp;
+	kfd_set write_tmp;
+	kfd_set except_tmp;
 
+	*res = 0;
 	if (nd < 0)
 		return (EINVAL);
 	if (nd > p->p_fd->fd_nfiles)
@@ -1009,74 +1071,57 @@ doselect(int nd, fd_set *read, fd_set *write, fd_set *except,
 	kap->num_fds = nd;
 	kap->proc_fds = 0;
 	kap->error = 0;
-	bytes = howmany(nd, NFDBITS);
+	kap->active_set = COPYIN_READ;
 
-#define getbits(name)								\
-	do {									\
-		if (name != NULL) {						\
-			kap->name##_set = kmalloc(bytes, M_SELECT, M_WAITOK);	\
-			error = copyin(name, kap->name##_set, bytes);		\
-			if (error != 0)						\
-				goto done;					\
-		} else {							\
-			kap->name##_set = NULL;					\
-		}								\
-	} while (0)
-	getbits(read);
-	getbits(write);
-	getbits(except);
-#undef getbits
+	/*
+	 * Calculate bytes based on the number of __fd_mask[] array entries
+	 * multiplied by the size of __fd_mask.
+	 */
+	bytes = howmany(nd, __NFDBITS) * sizeof(__fd_mask);
 
-	if (kap->read_set != NULL)
-		kap->active_set = COPYIN_READ;
-	else if (kap->write_set != NULL)
-		kap->active_set = COPYIN_WRITE;
-	else if (kap->except_set != NULL)
-		kap->active_set = COPYIN_EXCEPT;
-	else
-		nd = 0;	/* copyin/out functions will never be called */
+	error = getbits(bytes, read, &kap->read_set, &read_tmp);
+	if (error == 0)
+		error = getbits(bytes, write, &kap->write_set, &write_tmp);
+	if (error == 0)
+		error = getbits(bytes, except, &kap->except_set, &except_tmp);
+	if (error)
+		goto done;
 
-//restart:
-	error = kern_kevent(&kap->lwp->lwp_kqueue, nd, res, kap,
-	    select_copyin, select_copyout, ts);
-	if (error == 0) {
-#define putbits(name)								\
-	do {									\
-		if (kap->name##_set != NULL) {					\
-			error = copyout(kap->name##_set, name, bytes);		\
-			if (error != 0)						\
-				goto done;					\
-		}								\
-	} while (0)
-		putbits(read);
-		putbits(write);
-		putbits(except);
-#undef putbits
-	}
+	/*
+	 * NOTE: Make sure the max events passed to kern_kevent() is
+	 *	 effectively unlimited.  (nd * 3) accomplishes this.
+	 *
+	 *	 (*res) continues to increment as returned events are
+	 *	 loaded in.
+	 */
+	error = kern_kevent(&kap->lwp->lwp_kqueue, nd * 3, res, kap,
+			    select_copyin, select_copyout, ts);
+	if (error == 0)
+		error = putbits(bytes, kap->read_set, read);
+	if (error == 0)
+		error = putbits(bytes, kap->write_set, write);
+	if (error == 0)
+		error = putbits(bytes, kap->except_set, except);
 
+	/*
+	 * Cumulative error from individual events (EBADFD?)
+	 */
 	if (kap->error)
 		error = kap->error;
 
+	/*
+	 * Clean up.
+	 */
 done:
-	if (nd) {
-		if (kap->read_set != NULL)
-			kfree(kap->read_set, M_SELECT);
-		if (kap->write_set != NULL)
-			kfree(kap->write_set, M_SELECT);
-		if (kap->except_set != NULL)
-			kfree(kap->except_set, M_SELECT);
-	}
+	if (kap->read_set && kap->read_set != &read_tmp)
+		kfree(kap->read_set, M_SELECT);
+	if (kap->write_set && kap->write_set != &write_tmp)
+		kfree(kap->write_set, M_SELECT);
+	if (kap->except_set && kap->except_set != &except_tmp)
+		kfree(kap->except_set, M_SELECT);
 
-	if (error)
-		*res = -1;
-
-	/* No results but nothing to return, spurious wakeup? */
-//	if (!error && *res == 0) {
-//		nd = 0;
-//		goto restart;
-//	}
-
-	kap->lwp->lwp_kqueue_serial++;
+	kap->lwp->lwp_kqueue_serial = (kap->lwp->lwp_kqueue_serial + 1) &
+				      0x0FFFFFFF;
 	return (error);
 }
 
