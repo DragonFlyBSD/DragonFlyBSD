@@ -116,6 +116,8 @@ static struct filterops soread_filtops =
 	{ 1, NULL, filt_sordetach, filt_soread };
 static struct filterops sowrite_filtops = 
 	{ 1, NULL, filt_sowdetach, filt_sowrite };
+static struct filterops soexcept_filtops =
+	{ 1, NULL, filt_sordetach, filt_soread };
 
 MALLOC_DEFINE(M_SOCKET, "socket", "socket struct");
 MALLOC_DEFINE(M_SONAME, "soname", "socket name");
@@ -1761,6 +1763,10 @@ sokqfilter(struct file *fp, struct knote *kn)
 		kn->kn_fop = &sowrite_filtops;
 		ssb = &so->so_snd;
 		break;
+	case EVFILT_EXCEPT:
+		kn->kn_fop = &soexcept_filtops;
+		ssb = &so->so_rcv;
+		break;
 	default:
 		return (1);
 	}
@@ -1790,10 +1796,12 @@ filt_soread(struct knote *kn, long hint)
 {
 	struct socket *so = (struct socket *)kn->kn_fp->f_data;
 
-	if ((so->so_oobmark || (so->so_state & SS_RCVATMARK)) &&
-	    kn->kn_sfflags & NOTE_OOB) {
-		kn->kn_fflags |= NOTE_OOB;
-		return (1);
+	if (kn->kn_sfflags & NOTE_OOB) {
+		if ((so->so_oobmark || (so->so_state & SS_RCVATMARK))) {
+			kn->kn_fflags |= NOTE_OOB;
+			return (1);
+		}
+		return (0);
 	}
 	kn->kn_data = so->so_rcv.ssb_cc;
 	if (so->so_state & SS_CANTRCVMORE) {

@@ -925,7 +925,7 @@ select_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
 			 * Register descriptors for the exception filter
 			 */
 			fdp = skap->except_set;
-			filter = EVFILT_READ;
+			filter = EVFILT_EXCEPT;
 			fflags = NOTE_OOB;
 			if (fdp)
 				break;
@@ -947,8 +947,7 @@ select_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
 				EV_SET(kev, fd, filter,
 				       EV_ADD|EV_ENABLE,
 				       fflags, 0,
-				       (void *)((skap->active_set << 28) |
-				       skap->lwp->lwp_kqueue_serial));
+				       (void *)skap->lwp->lwp_kqueue_serial);
 				FD_CLR(fd, fdp);
 				++*events;
 			}
@@ -968,7 +967,7 @@ select_copyout(void *arg, struct kevent *kevp, int count, int *res)
 {
 	struct select_kevent_copyin_args *skap;
 	struct kevent kev;
-	int serial, i = 0;
+	int i = 0;
 
 	skap = (struct select_kevent_copyin_args *)arg;
 
@@ -978,22 +977,21 @@ select_copyout(void *arg, struct kevent *kevp, int count, int *res)
 	}
 
 	for (i = 0; i < count; ++i) {
-		serial = (u_int)kevp[i].udata & ~(0xF << 28);
-		if (serial != skap->lwp->lwp_kqueue_serial) {
+		if ((u_int)kevp[i].udata != skap->lwp->lwp_kqueue_serial) {
 			kev = kevp[i];
 			kev.flags = EV_DISABLE|EV_DELETE;
 			kqueue_register(&skap->lwp->lwp_kqueue, &kev);
 			continue;
 		}
 
-		switch (((u_int)kevp[i].udata >> 28) & 0xF) {
-		case COPYIN_READ:
+		switch (kevp[i].filter) {
+		case EVFILT_READ:
 			FD_SET(kevp[i].ident, skap->read_set);
 			break;
-		case COPYIN_WRITE:
+		case EVFILT_WRITE:
 			FD_SET(kevp[i].ident, skap->write_set);
 			break;
-		case COPYIN_EXCEPT:
+		case EVFILT_EXCEPT:
 			FD_SET(kevp[i].ident, skap->except_set);
 			break;
 		}
@@ -1120,8 +1118,8 @@ done:
 	if (kap->except_set && kap->except_set != &except_tmp)
 		kfree(kap->except_set, M_SELECT);
 
-	kap->lwp->lwp_kqueue_serial = (kap->lwp->lwp_kqueue_serial + 1) &
-				      0x0FFFFFFF;
+	kap->lwp->lwp_kqueue_serial++;
+
 	return (error);
 }
 

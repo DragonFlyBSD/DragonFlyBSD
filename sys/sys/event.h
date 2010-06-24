@@ -41,8 +41,9 @@
 #define EVFILT_PROC		(-5)	/* attached to struct proc */
 #define EVFILT_SIGNAL		(-6)	/* attached to struct proc */
 #define EVFILT_TIMER		(-7)	/* timers */
+#define EVFILT_EXCEPT		(-8)	/* exceptional conditions */
 
-#define EVFILT_SYSCOUNT		7
+#define EVFILT_SYSCOUNT		8
 
 #define EV_SET(kevp_, a, b, c, d, e, f) do {	\
 	struct kevent *kevp = (kevp_);		\
@@ -84,6 +85,10 @@ struct kevent {
  * data/hint flags for EVFILT_{READ|WRITE}, shared with userspace
  */
 #define NOTE_LOWAT	0x0001			/* low water mark */
+
+/*
+ * data/hint flags for EVFILT_EXCEPT, shared with userspace
+ */
 #define NOTE_OOB	0x0002			/* OOB data on a socket */
 
 /*
