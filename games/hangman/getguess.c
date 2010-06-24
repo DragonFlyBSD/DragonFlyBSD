@@ -42,7 +42,7 @@ void
 getguess(void)
 {
 	int i;
-	int ch;
+	int ch, uch;
 	bool correct;
 
 	leaveok(stdscr, FALSE);
@@ -70,9 +70,13 @@ getguess(void)
 
 	Guessed[ch - 'a'] = TRUE;
 	correct = FALSE;
+	uch = toupper(ch);
 	for (i = 0; Word[i] != '\0'; i++) {
 		if (Word[i] == ch) {
 			Known[i] = ch;
+			correct = TRUE;
+		} else if (Word[i] == uch) {
+			Known[i] = uch;
 			correct = TRUE;
 		}
 	}
