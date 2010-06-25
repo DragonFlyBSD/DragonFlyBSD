@@ -98,9 +98,18 @@ struct select_kevent_copyin_args {
 	int		error;		/* Returned to userland */
 };
 
+struct poll_kevent_copyin_args {
+	struct lwp	*lwp;
+	struct pollfd	*fds;
+	int		nfds;
+	int		pfds;
+	int		error;
+};
+
 static int 	doselect(int nd, fd_set *in, fd_set *ou, fd_set *ex,
 			 struct timespec *ts, int *res);
-static int	pollscan (struct proc *, struct pollfd *, u_int, int *);
+static int	dopoll(int nfds, struct pollfd *fds, struct timespec *ts,
+		       int *res);
 static int	dofileread(int, struct file *, struct uio *, int, size_t *);
 static int	dofilewrite(int, struct file *, struct uio *, int, size_t *);
 
@@ -1126,133 +1135,161 @@ done:
 /*
  * Poll system call.
  *
- * MPALMOSTSAFE
+ * MPSAFE
  */
 int
 sys_poll(struct poll_args *uap)
 {
-	struct pollfd *bits;
-	struct pollfd smallbits[32];
-	struct timeval atv, rtv, ttv;
-	int ncoll, error = 0, timo;
-	u_int nfds;
-	size_t ni;
-	struct lwp *lp = curthread->td_lwp;
-	struct proc *p = curproc;
+	struct timespec ts, *tsp;
+	int error;
 
-	nfds = uap->nfds;
-	/*
-	 * This is kinda bogus.  We have fd limits, but that is not
-	 * really related to the size of the pollfd array.  Make sure
-	 * we let the process use at least FD_SETSIZE entries and at
-	 * least enough for the current limits.  We want to be reasonably
-	 * safe, but not overly restrictive.
-	 */
-	if (nfds > p->p_rlimit[RLIMIT_NOFILE].rlim_cur && nfds > FD_SETSIZE)
-		return (EINVAL);
-	ni = nfds * sizeof(struct pollfd);
-	if (ni > sizeof(smallbits))
-		bits = kmalloc(ni, M_TEMP, M_WAITOK);
-	else
-		bits = smallbits;
-	error = copyin(uap->fds, bits, ni);
-	if (error)
-		goto done2;
 	if (uap->timeout != INFTIM) {
-		atv.tv_sec = uap->timeout / 1000;
-		atv.tv_usec = (uap->timeout % 1000) * 1000;
-		if (itimerfix(&atv)) {
-			error = EINVAL;
-			goto done2;
-		}
-		getmicrouptime(&rtv);
-		timevaladd(&atv, &rtv);
+		ts.tv_sec = uap->timeout / 1000;
+		ts.tv_nsec = (uap->timeout % 1000) * 1000 * 1000;
+		tsp = &ts;
 	} else {
-		atv.tv_sec = 0;
-		atv.tv_usec = 0;
+		tsp = NULL;
 	}
-	timo = 0;
-	get_mplock();
-retry:
-	ncoll = nselcoll;
-	lp->lwp_flag |= LWP_SELECT;
-	error = pollscan(p, bits, nfds, &uap->sysmsg_result);
-	if (error || uap->sysmsg_result)
-		goto done1;
-	if (atv.tv_sec || atv.tv_usec) {
-		getmicrouptime(&rtv);
-		if (timevalcmp(&rtv, &atv, >=))
-			goto done1;
-		ttv = atv;
-		timevalsub(&ttv, &rtv);
-		timo = ttv.tv_sec > 24 * 60 * 60 ?
-		    24 * 60 * 60 * hz : tvtohz_high(&ttv);
-	} 
-	crit_enter();
-	tsleep_interlock(&selwait, PCATCH);
-	if ((lp->lwp_flag & LWP_SELECT) == 0 || nselcoll != ncoll) {
-		crit_exit();
-		goto retry;
-	}
-	lp->lwp_flag &= ~LWP_SELECT;
-	error = tsleep(&selwait, PCATCH | PINTERLOCKED, "poll", timo);
-	crit_exit();
 
-	if (error == 0)
-		goto retry;
-done1:
-	rel_mplock();
-done2:
-	lp->lwp_flag &= ~LWP_SELECT;
-	/* poll is not restarted after signals... */
-	if (error == ERESTART)
-		error = EINTR;
-	if (error == EWOULDBLOCK)
-		error = 0;
-	if (error == 0) {
-		error = copyout(bits, uap->fds, ni);
-		if (error)
-			goto out;
-	}
-out:
-	if (ni > sizeof(smallbits))
-		kfree(bits, M_TEMP);
+	error = dopoll(uap->nfds, uap->fds, tsp, &uap->sysmsg_result);
+
 	return (error);
 }
 
 static int
-pollscan(struct proc *p, struct pollfd *fds, u_int nfd, int *res)
+poll_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
 {
-	int i;
-	struct file *fp;
-	int n = 0;
+	struct poll_kevent_copyin_args *pkap;
+	struct pollfd *pfd;
+	struct kevent *kev;
+	int kev_count;
 
-	for (i = 0; i < nfd; i++, fds++) {
-		if (fds->fd >= p->p_fd->fd_nfiles) {
-			fds->revents = POLLNVAL;
-			n++;
-		} else if (fds->fd < 0) {
-			fds->revents = 0;
-		} else {
-			fp = holdfp(p->p_fd, fds->fd, -1);
-			if (fp == NULL) {
-				fds->revents = POLLNVAL;
-				n++;
-			} else {
-				/*
-				 * Note: backend also returns POLLHUP and
-				 * POLLERR if appropriate.
-				 */
-				fds->revents = fo_poll(fp, fds->events,
-							fp->f_cred);
-				if (fds->revents != 0)
-					n++;
-				fdrop(fp);
+	pkap = (struct poll_kevent_copyin_args *)arg;
+
+	while (pkap->pfds < pkap->nfds) {
+		pfd = &pkap->fds[pkap->pfds];
+
+		/* Clear return events */
+		pfd->revents = 0;
+
+		kev_count = 0;
+		if (pfd->events & (POLLIN | POLLRDNORM))
+			kev_count++;
+		if (pfd->events & (POLLOUT | POLLWRNORM))
+			kev_count++;
+		if (pfd->events & (POLLPRI | POLLRDBAND))
+			kev_count++;
+
+		if (*events + kev_count > maxevents)
+			return (0);
+
+		kev = &kevp[*events];
+		if (pfd->events & (POLLIN | POLLRDNORM))
+			EV_SET(kev++, pfd->fd, EVFILT_READ, EV_ADD|EV_ENABLE,
+			       0, 0, (void *)pkap->pfds);
+		if (pfd->events & (POLLOUT | POLLWRNORM))
+			EV_SET(kev++, pfd->fd, EVFILT_WRITE, EV_ADD|EV_ENABLE,
+			       0, 0, (void *)pkap->pfds);
+		if (pfd->events & (POLLPRI | POLLRDBAND))
+			EV_SET(kev++, pfd->fd, EVFILT_EXCEPT, EV_ADD|EV_ENABLE,
+			       NOTE_OOB, 0, (void *)pkap->pfds);
+
+		++pkap->pfds;
+		(*events) += kev_count;
+	}
+
+	return (0);
+}
+
+static int
+poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
+{
+	struct poll_kevent_copyin_args *pkap;
+	struct pollfd *pfd;
+	struct kevent kev;
+	int i;
+
+	pkap = (struct poll_kevent_copyin_args *)arg;
+
+	for (i = 0; i < count; ++i) {
+		if ((int)kevp[i].udata < pkap->nfds) {
+			pfd = &pkap->fds[(int)kevp[i].udata];
+			if (kevp[i].ident == pfd->fd) {
+				switch (kevp[i].filter) {
+				case EVFILT_READ:
+					pfd->revents |= (POLLIN | POLLRDNORM);
+					break;
+				case EVFILT_WRITE:
+					pfd->revents |= (POLLOUT | POLLWRNORM);
+					break;
+				case EVFILT_EXCEPT:
+					pfd->revents |= (POLLPRI | POLLRDBAND);
+					break;
+				}
+
+				if (kevp[i].flags & EV_ERROR) {
+					/* Bad file descriptor */
+					if (kevp[i].data == EBADF)
+						pfd->revents |= POLLNVAL;
+					else
+						pfd->revents |= POLLERR;
+				}
+
+				if (kevp[i].flags & EV_EOF)
+					pfd->revents |= POLLHUP;
+
+				++*res;
+
+				continue;
 			}
 		}
+
+		/* Remove descriptor not in pollfd set from kq */
+		kev = kevp[i];
+		kev.flags = EV_DISABLE|EV_DELETE;
+		kqueue_register(&pkap->lwp->lwp_kqueue, &kev);
 	}
-	*res = n;
+
 	return (0);
+}
+
+static int
+dopoll(int nfds, struct pollfd *fds, struct timespec *ts, int *res)
+{
+	struct proc *p = curproc;
+	struct poll_kevent_copyin_args ka;
+	struct pollfd sfds[64];
+	int bytes = sizeof(struct pollfd) * nfds;
+	int error;
+
+        *res = 0;
+        if (nfds < 0)
+                return (EINVAL);
+        if (nfds > p->p_fd->fd_nfiles)
+                nfds = p->p_fd->fd_nfiles;   /* forgiving; slightly wrong */
+
+	ka.lwp = curthread->td_lwp;
+	ka.nfds = nfds;
+	ka.pfds = 0;
+	ka.error = 0;
+
+	if (ka.nfds < 64)
+		ka.fds = sfds;
+	else
+		ka.fds = kmalloc(bytes, M_SELECT, M_WAITOK);
+
+	error = copyin(&ka.fds, fds, bytes);
+	if (error == 0)
+		error = kern_kevent(&ka.lwp->lwp_kqueue, ka.nfds, res, &ka,
+				    poll_copyin, poll_copyout, ts);
+
+	if (error == 0)
+		error = copyout(fds, &ka.fds, bytes);
+
+	if (ka.fds != sfds)
+		kfree(ka.fds, M_SELECT);
+
+	return (error);
 }
 
 /*
