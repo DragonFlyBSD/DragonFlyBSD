@@ -1,5 +1,4 @@
 /* $NetBSD: citrus_ues.c,v 1.1 2006/11/13 15:16:31 tnozaki Exp $ */
-/* $DragonFly: src/lib/libc/citrus/modules/citrus_ues.c,v 1.1 2008/04/10 10:21:02 hasso Exp $ */
 
 /*-
  * Copyright (c)2006 Citrus Project,
@@ -362,6 +361,7 @@ e2big:
 	return E2BIG;
 }
 
+static __inline int
 /*ARGSUSED*/
 _citrus_UES_stdenc_wctocs(_UESEncodingInfo * __restrict ei,
 	_csid_t * __restrict csid, _index_t * __restrict idx, wchar_t wc)
