@@ -48,6 +48,7 @@ eachres_whoami(bp_whoami_res *resultp, struct sockaddr_in *raddr)
   return(0);
 }
 
+bool_t
 eachres_getfile(bp_getfile_res *resultp, struct sockaddr_in *raddr)
 {
   struct hostent *he;
