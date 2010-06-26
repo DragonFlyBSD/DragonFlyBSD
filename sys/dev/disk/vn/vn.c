@@ -476,6 +476,7 @@ vnioctl(struct dev_ioctl_args *ap)
 		if (dkunit(dev) >= VN_PREALLOCATED_UNITS) {
 			devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(vn), dkunit(dev));
 			disk_destroy(&vn->sc_disk);
+			SLIST_REMOVE(&vn_list, vn, vn_softc, sc_list);
 		}
 
 		break;
