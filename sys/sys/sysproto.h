@@ -2295,6 +2295,12 @@ struct	ioprio_get_args {
 	int	which;	char which_[PAD_(int)];
 	int	who;	char who_[PAD_(int)];
 };
+struct	chroot_kernel_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	char *	path;	char path_[PAD_(char *)];
+};
 
 #ifdef COMPAT_43
 
@@ -2903,6 +2909,7 @@ int	sys_mq_timedsend (struct mq_timedsend_args *);
 int	sys_mq_timedreceive (struct mq_timedreceive_args *);
 int	sys_ioprio_set (struct ioprio_set_args *);
 int	sys_ioprio_get (struct ioprio_get_args *);
+int	sys_chroot_kernel (struct chroot_kernel_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_

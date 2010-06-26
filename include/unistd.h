@@ -469,6 +469,7 @@ void	 sync(void);
 #if (__XSI_VISIBLE && __XSI_VISIBLE <= 500) || __BSD_VISIBLE
 int	 brk(const void *);
 int	 chroot(const char *);
+int	 chroot_kernel(const char *);
 int	 getdtablesize(void);
 int	 getpagesize(void) __pure2;
 char	*getpass(const char *);

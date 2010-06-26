@@ -300,4 +300,5 @@ MIASM =  \
 	mq_timedsend.o \
 	mq_timedreceive.o \
 	ioprio_set.o \
-	ioprio_get.o
+	ioprio_get.o \
+	chroot_kernel.o

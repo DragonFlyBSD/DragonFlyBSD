@@ -1752,6 +1752,48 @@ sys_chroot(struct chroot_args *uap)
 	return(error);
 }
 
+int
+sys_chroot_kernel(struct chroot_kernel_args *uap)
+{
+	struct thread *td = curthread;
+	struct nlookupdata nd;
+	struct nchandle *nch;
+	struct vnode *vp;
+	int error;
+
+	get_mplock();
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error)
+		goto error_nond;
+
+	error = nlookup(&nd);
+	if (error)
+		goto error_out;
+
+	nch = &nd.nl_nch;
+
+	error = priv_check_cred(td->td_ucred, PRIV_VFS_CHROOT, 0);
+	if (error)
+		goto error_out;
+
+	if ((vp = nch->ncp->nc_vp) == NULL) {
+		error = ENOENT;
+		goto error_out;
+	}
+
+	if ((error = cache_vref(nch, nd.nl_cred, &vp)) != 0)
+		goto error_out;
+
+	kprintf("chroot_kernel: set new rootnch/rootvnode to %s\n", uap->path);
+	vfs_cache_setroot(vp, cache_hold(nch));
+
+error_out:
+	nlookup_done(&nd);
+error_nond:
+	rel_mplock();
+	return(error);
+}
+
 /*
  * Common routine for chroot and chdir.  Given a locked, referenced vnode,
  * determine whether it is legal to chdir to the vnode.  The vnode's state

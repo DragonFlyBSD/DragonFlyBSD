@@ -361,4 +361,5 @@
 #define	SYS_mq_timedreceive	519
 #define	SYS_ioprio_set	520
 #define	SYS_ioprio_get	521
-#define	SYS_MAXSYSCALL	522
+#define	SYS_chroot_kernel	522
+#define	SYS_MAXSYSCALL	523
