@@ -450,8 +450,6 @@ udev_event_attach(cdev_t dev, char *name, int alias)
 
 	KKASSERT(dev != NULL);
 
-	reference_dev(dev);
-
 	error = udev_init_dict(dev);
 	if (error)
 		goto error_out;
@@ -476,7 +474,6 @@ udev_event_attach(cdev_t dev, char *name, int alias)
 	}
 
 error_out:
-	release_dev(dev);
 	return error;
 }
 
@@ -486,8 +483,6 @@ udev_event_detach(cdev_t dev, char *name, int alias)
 	prop_dictionary_t	dict;
 
 	KKASSERT(dev != NULL);
-
-	reference_dev(dev);
 
 	if (alias) {
 		dict = prop_dictionary_copy(dev->si_dict);
@@ -509,8 +504,6 @@ udev_event_detach(cdev_t dev, char *name, int alias)
 
 error_out:
 	udev_destroy_dict(dev);
-
-	release_dev(dev);
 
 	return 0;
 }
