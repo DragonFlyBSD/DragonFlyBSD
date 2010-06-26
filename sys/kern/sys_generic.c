@@ -1070,8 +1070,8 @@ doselect(int nd, fd_set *read, fd_set *write, fd_set *except,
 	*res = 0;
 	if (nd < 0)
 		return (EINVAL);
-	if (nd > p->p_fd->fd_nfiles)
-		nd = p->p_fd->fd_nfiles;   /* forgiving; slightly wrong */
+	if (nd > p->p_fd->fd_nfiles)		/* limit kmalloc */
+		nd = p->p_fd->fd_nfiles;
 
 	kap = &ka;
 	kap->lwp = curthread->td_lwp;
@@ -1101,7 +1101,7 @@ doselect(int nd, fd_set *read, fd_set *write, fd_set *except,
 	 *	 (*res) continues to increment as returned events are
 	 *	 loaded in.
 	 */
-	error = kern_kevent(&kap->lwp->lwp_kqueue, nd * 3, res, kap,
+	error = kern_kevent(&kap->lwp->lwp_kqueue, 0x7FFFFFFF, res, kap,
 			    select_copyin, select_copyout, ts);
 	if (error == 0)
 		error = putbits(bytes, kap->read_set, read);
@@ -1256,17 +1256,21 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 static int
 dopoll(int nfds, struct pollfd *fds, struct timespec *ts, int *res)
 {
-	struct proc *p = curproc;
 	struct poll_kevent_copyin_args ka;
 	struct pollfd sfds[64];
-	int bytes = sizeof(struct pollfd) * nfds;
+	int bytes;
 	int error;
 
         *res = 0;
         if (nfds < 0)
                 return (EINVAL);
-        if (nfds > p->p_fd->fd_nfiles)
-                nfds = p->p_fd->fd_nfiles;   /* forgiving; slightly wrong */
+
+	/*
+	 * This is a bit arbitrary but we need to limit internal kmallocs.
+	 */
+        if (nfds > maxfilesperproc * 2)
+                nfds = maxfilesperproc * 2;
+	bytes = sizeof(struct pollfd) * nfds;
 
 	ka.lwp = curthread->td_lwp;
 	ka.nfds = nfds;
@@ -1278,13 +1282,13 @@ dopoll(int nfds, struct pollfd *fds, struct timespec *ts, int *res)
 	else
 		ka.fds = kmalloc(bytes, M_SELECT, M_WAITOK);
 
-	error = copyin(&ka.fds, fds, bytes);
+	error = copyin(fds, ka.fds, bytes);
 	if (error == 0)
 		error = kern_kevent(&ka.lwp->lwp_kqueue, ka.nfds, res, &ka,
 				    poll_copyin, poll_copyout, ts);
 
 	if (error == 0)
-		error = copyout(fds, &ka.fds, bytes);
+		error = copyout(ka.fds, fds, bytes);
 
 	if (ka.fds != sfds)
 		kfree(ka.fds, M_SELECT);

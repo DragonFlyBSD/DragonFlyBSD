@@ -580,9 +580,13 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 	 * Collect as many events as we can.  The timeout on successive
 	 * loops is disabled (kqueue_scan() becomes non-blocking).
 	 *
-	 * The loop stops if an error occurs or all events have been
-	 * scanned.  The copyoutfn function does not have to increment
-	 * (*res) in order for the loop to continue.
+	 * The loop stops if an error occurs, all events have been
+	 * scanned, or fewer than the maximum number of events is found.
+	 *
+	 * The copyoutfn function does not have to increment (*res) in
+	 * order for the loop to continue.
+	 *
+	 * NOTE: doselect() usually passes 0x7FFFFFFF for nevents.
 	 */
 	total = 0;
 	error = 0;
@@ -594,7 +598,16 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 			break;
 		error = kevent_copyoutfn(uap, kev, i, res);
 		total += i;
-		if (error || i < n)
+		if (error)
+			break;
+
+		/*
+		 * Normally when fewer events are returned than requested
+		 * we can stop.  However, if only spurious events were
+		 * collected the copyout will not bump (*res) and we have
+		 * to continue.
+		 */
+		if (i < n && *res)
 			break;
 
 		/*
@@ -608,8 +621,13 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 		}
 	}
 
+	/*
+	 * Clean up.  Timeouts do not return EWOULDBLOCK.
+	 */
 done:
 	rel_mplock();
+	if (error == EWOULDBLOCK)
+		error = 0;
 	return (error);
 }
 
@@ -800,6 +818,7 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 	int total;
 
 	total = 0;
+	*errorp = 0;
 again:
 	crit_enter();
 	if (kq->kq_count == 0) {
@@ -830,8 +849,6 @@ again:
 		/* don't restart after signals... */
 		if (*errorp == ERESTART)
 			*errorp = EINTR;
-		else if (*errorp == EWOULDBLOCK)
-			*errorp = 0;
 		goto done;
 	}
 
