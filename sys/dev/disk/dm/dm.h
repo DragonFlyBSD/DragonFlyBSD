@@ -160,7 +160,7 @@ typedef struct dm_dev {
 #define DM_SPARE_DEV           (1 << 7)
 /* Set this device type only during dev remove ioctl. */
 #define DM_DELETING_DEV        (1 << 8) 
-
+#define DM_CRYPTO_DEV		(1 << 9)
 
 /* for zero, error : dm_target->target_config == NULL */
 				
@@ -314,6 +314,14 @@ int dm_target_linear_strategy(dm_table_entry_t *, struct buf *);
 int dm_target_linear_deps(dm_table_entry_t *, prop_array_t);
 int dm_target_linear_destroy(dm_table_entry_t *);
 int dm_target_linear_upcall(dm_table_entry_t *, struct buf *);
+
+/* dm_target_crypt.c */
+int dm_target_crypt_init(dm_dev_t *, void**, char *);
+char * dm_target_crypt_status(void *);
+int dm_target_crypt_strategy(dm_table_entry_t *, struct buf *);
+int dm_target_crypt_deps(dm_table_entry_t *, prop_array_t);
+int dm_target_crypt_destroy(dm_table_entry_t *);
+int dm_target_crypt_upcall(dm_table_entry_t *, struct buf *);
 
 /* Generic function used to convert char to string */
 uint64_t atoi(const char *); 
