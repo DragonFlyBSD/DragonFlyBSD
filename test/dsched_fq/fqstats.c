@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../../sys/dsched/fq/dsched_fq.h"
+#include "../../sys/kern/dsched/fq/fq.h"
 
 
 int main(void)

@@ -1,11 +1,5 @@
-TARGETS= dschedstats
+PROG=	dschedstats
+SRCS=	dsched_stats.c
+NOMAN=
 
-CFLAGS= -O -g
-
-all:	$(TARGETS)
-
-dschedstats: dsched_stats.c
-	$(CC) $(CFLAGS) dsched_stats.c -o ${.TARGET}
-
-clean:
-	rm -f $(TARGETS)
+.include <bsd.prog.mk>
