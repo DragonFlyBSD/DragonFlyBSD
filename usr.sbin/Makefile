@@ -76,6 +76,7 @@ SUBDIR= 802_11 \
 	pfctl \
 	pflogd \
 	pnpinfo \
+	powerd \
 	ppp \
 	pppctl \
 	pppd \
