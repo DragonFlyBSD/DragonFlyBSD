@@ -43,6 +43,8 @@
 #define EVFILT_TIMER		(-7)	/* timers */
 #define EVFILT_EXCEPT		(-8)	/* exceptional conditions */
 
+#define EVFILT_MARKER		0xF	/* placemarker for tailq */
+
 #define EVFILT_SYSCOUNT		8
 
 #define EV_SET(kevp_, a, b, c, d, e, f) do {	\
@@ -140,8 +142,12 @@ MALLOC_DECLARE(M_KQUEUE);
 
 struct filterops {
 	int	f_isfd;		/* true if ident == filedescriptor */
+
+	/* f_attach returns 0 on success or valid error code on failure */
 	int	(*f_attach)	(struct knote *kn);
 	void	(*f_detach)	(struct knote *kn);
+
+        /* f_event returns boolean truth */
 	int	(*f_event)	(struct knote *kn, long hint);
 };
 

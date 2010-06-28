@@ -65,8 +65,9 @@ struct kevent_copyin_args {
 	int			pchanges;
 };
 
+static int	kqueue_sleep(struct kqueue *kq, struct timespec *tsp);
 static int	kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
-		    struct timespec *tsp, int *errorp);
+		    struct knote *marker);
 static int 	kqueue_read(struct file *fp, struct uio *uio,
 		    struct ucred *cred, int flags);
 static int	kqueue_write(struct file *fp, struct uio *uio,
@@ -524,10 +525,10 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 	    struct timespec *tsp_in)
 {
 	struct kevent *kevp;
-	struct timespec ts;
 	struct timespec *tsp;
 	int i, n, total, error, nerrors = 0;
 	struct kevent kev[KQ_NEVENTS];
+	struct knote marker;
 
 	tsp = tsp_in;
 	*res = 0;
@@ -577,11 +578,12 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 	/*
 	 * Loop as required.
 	 *
-	 * Collect as many events as we can.  The timeout on successive
-	 * loops is disabled (kqueue_scan() becomes non-blocking).
+	 * Collect as many events as we can. Sleeping on successive
+	 * loops is disabled if copyoutfn has incremented (*res).
 	 *
 	 * The loop stops if an error occurs, all events have been
-	 * scanned, or fewer than the maximum number of events is found.
+	 * scanned (the marker has been reached), or fewer than the
+	 * maximum number of events is found.
 	 *
 	 * The copyoutfn function does not have to increment (*res) in
 	 * order for the loop to continue.
@@ -590,16 +592,37 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 	 */
 	total = 0;
 	error = 0;
+	marker.kn_filter = EVFILT_MARKER;
+	crit_enter();
+	TAILQ_INSERT_TAIL(&kq->kq_knpend, &marker, kn_tqe);
+	crit_exit();
 	while ((n = nevents - total) > 0) {
 		if (n > KQ_NEVENTS)
 			n = KQ_NEVENTS;
-		i = kqueue_scan(kq, kev, n, tsp, &error);
-		if (i == 0)
-			break;
-		error = kevent_copyoutfn(uap, kev, i, res);
-		total += i;
-		if (error)
-			break;
+
+		if (kq->kq_count == 0 && *res == 0) {
+			error = kqueue_sleep(kq, tsp);
+
+			if (error)
+				break;
+
+			/*
+			 * Move the marker to the end of the list
+			 * after a sleep.
+			 */
+			crit_enter();
+			TAILQ_REMOVE(&kq->kq_knpend, &marker, kn_tqe);
+			TAILQ_INSERT_TAIL(&kq->kq_knpend, &marker, kn_tqe);
+			crit_exit();
+		}
+
+		i = kqueue_scan(kq, kev, n, &marker);
+		if (i) {
+			error = kevent_copyoutfn(uap, kev, i, res);
+			total += i;
+			if (error)
+				break;
+		}
 
 		/*
 		 * Normally when fewer events are returned than requested
@@ -609,25 +632,17 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 		 */
 		if (i < n && *res)
 			break;
-
-		/*
-		 * successive loops are non-blocking only if (*res)
-		 * is non-zero.
-		 */
-		if (*res) {
-			tsp = &ts;
-			tsp->tv_sec = 0;
-			tsp->tv_nsec = 0;
-		}
 	}
+	crit_enter();
+	TAILQ_REMOVE(&kq->kq_knpend, &marker, kn_tqe);
+	crit_exit();
 
-	/*
-	 * Clean up.  Timeouts do not return EWOULDBLOCK.
-	 */
-done:
-	rel_mplock();
+	/* Timeouts do not return EWOULDBLOCK. */
 	if (error == EWOULDBLOCK)
 		error = 0;
+
+done:
+	rel_mplock();
 	return (error);
 }
 
@@ -806,62 +821,71 @@ done:
 }
 
 /*
- * Scan the kqueue, blocking if necessary until the target time is reached.
+ * Block as necessary until the target time is reached.
  * If tsp is NULL we block indefinitely.  If tsp->ts_secs/nsecs are both
  * 0 we do not block at all.
  */
 static int
-kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
-	    struct timespec *tsp, int *errorp)
+kqueue_sleep(struct kqueue *kq, struct timespec *tsp)
 {
-	struct knote *kn, marker;
-	int total;
+	int error = 0;
 
-	total = 0;
-	*errorp = 0;
-again:
 	crit_enter();
-	if (kq->kq_count == 0) {
-		if (tsp == NULL) {
-			kq->kq_state |= KQ_SLEEP;
-			*errorp = tsleep(kq, PCATCH, "kqread", 0);
-		} else if (tsp->tv_sec == 0 && tsp->tv_nsec == 0) {
-			*errorp = EWOULDBLOCK;
-		} else {
-			struct timespec ats;
-			struct timespec atx = *tsp;
-			int timeout;
+	if (tsp == NULL) {
+		kq->kq_state |= KQ_SLEEP;
+		error = tsleep(kq, PCATCH, "kqread", 0);
+	} else if (tsp->tv_sec == 0 && tsp->tv_nsec == 0) {
+		error = EWOULDBLOCK;
+	} else {
+		struct timespec ats;
+		struct timespec atx = *tsp;
+		int timeout;
 
-			nanouptime(&ats);
-			timespecsub(&atx, &ats);
-			if (ats.tv_sec < 0) {
-				*errorp = EWOULDBLOCK;
-			} else {
-				timeout = atx.tv_sec > 24 * 60 * 60 ?
-					24 * 60 * 60 * hz : tstohz_high(&atx);
-				kq->kq_state |= KQ_SLEEP;
-				*errorp = tsleep(kq, PCATCH, "kqread", timeout);
-			}
+		nanouptime(&ats);
+		timespecsub(&atx, &ats);
+		if (ats.tv_sec < 0) {
+			error = EWOULDBLOCK;
+		} else {
+			timeout = atx.tv_sec > 24 * 60 * 60 ?
+				24 * 60 * 60 * hz : tstohz_high(&atx);
+			kq->kq_state |= KQ_SLEEP;
+			error = tsleep(kq, PCATCH, "kqread", timeout);
 		}
-		crit_exit();
-		if (*errorp == 0)
-			goto again;
-		/* don't restart after signals... */
-		if (*errorp == ERESTART)
-			*errorp = EINTR;
-		goto done;
 	}
+	crit_exit();
+
+	/* don't restart after signals... */
+	if (error == ERESTART)
+		return (EINTR);
+
+	return (error);
+}
+
+/*
+ * Scan the kqueue, return the number of active events placed in kevp up
+ * to count.
+ *
+ * Continuous mode events may get recycled, do not continue scanning past
+ * marker unless no events have been collected.
+ */
+static int
+kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
+            struct knote *marker)
+{
+        struct knote *kn;
+        int total;
+
+        total = 0;
+        crit_enter();
 
 	/*
-	 * Collect events.  Continuous mode events may get recycled
-	 * past the marker so we stop when we hit it unless no events
-	 * have been collected.
+	 * Collect events.
 	 */
-	TAILQ_INSERT_TAIL(&kq->kq_knpend, &marker, kn_tqe);
 	while (count) {
 		kn = TAILQ_FIRST(&kq->kq_knpend);
-		if (kn == &marker)
-			break;
+		if (kn->kn_filter == EVFILT_MARKER)
+			goto done;
+
 		TAILQ_REMOVE(&kq->kq_knpend, kn, kn_tqe);
 		if (kn->kn_status & KN_DISABLED) {
 			kn->kn_status &= ~KN_QUEUED;
@@ -897,11 +921,9 @@ again:
 			TAILQ_INSERT_TAIL(&kq->kq_knpend, kn, kn_tqe);
 		}
 	}
-	TAILQ_REMOVE(&kq->kq_knpend, &marker, kn_tqe);
-	crit_exit();
-	if (total == 0)
-		goto again;
+
 done:
+	crit_exit();
 	return (total);
 }
 
