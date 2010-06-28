@@ -161,7 +161,7 @@ getcputime(void)
 {
 	static struct kinfo_cputime ocpu_time[64];
 	static struct kinfo_cputime ncpu_time[64];
-	int slen;
+	size_t slen;
 	int ncpu;
 	int cpu;
 	uint64_t delta;
