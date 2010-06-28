@@ -78,6 +78,8 @@ static int tunoutput (struct ifnet *, struct mbuf *, struct sockaddr *,
 static int tunifioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
 static int tuninit (struct ifnet *);
 static void tunstart(struct ifnet *);
+static void tun_filter_detach(struct knote *);
+static int tun_filter_read(struct knote *, long);
 
 static	d_open_t	tunopen;
 static	d_close_t	tunclose;
@@ -85,6 +87,7 @@ static	d_read_t	tunread;
 static	d_write_t	tunwrite;
 static	d_ioctl_t	tunioctl;
 static	d_poll_t	tunpoll;
+static	d_kqfilter_t	tunkqfilter;
 
 static d_clone_t tunclone;
 DEVFS_DECLARE_CLONE_BITMAP(tun);
@@ -97,13 +100,14 @@ DEVFS_DECLARE_CLONE_BITMAP(tun);
 
 #define CDEV_MAJOR 52
 static struct dev_ops tun_ops = {
-	{ "tun", CDEV_MAJOR, 0 },
+	{ "tun", CDEV_MAJOR, D_KQFILTER },
 	.d_open =	tunopen,
 	.d_close =	tunclose,
 	.d_read =	tunread,
 	.d_write =	tunwrite,
 	.d_ioctl =	tunioctl,
 	.d_poll =	tunpoll,
+	.d_kqfilter =	tunkqfilter
 };
 
 static void
@@ -729,6 +733,67 @@ tunpoll(struct dev_poll_args *ap)
 	ifnet_deserialize_all(ifp);
 	ap->a_events = revents;
 	return(0);
+}
+
+static struct filterops tun_read_filtops =
+	{ 1, NULL, tun_filter_detach, tun_filter_read };
+
+static int
+tunkqfilter(struct dev_kqfilter_args *ap)
+{
+	cdev_t dev = ap->a_head.a_dev;
+	struct tun_softc *tp = dev->si_drv1;
+	struct knote *kn = ap->a_kn;
+	struct klist *klist;
+
+	ap->a_result = 0;
+	ifnet_serialize_all(&tp->tun_if);
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &tun_read_filtops;
+		kn->kn_hook = (caddr_t)&tp;
+		break;
+	default:
+		ap->a_result = 1;
+		ifnet_deserialize_all(&tp->tun_if);
+		return (0);
+	}
+
+	klist = &tp->tun_rsel.si_note;
+	crit_enter();
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+	crit_exit();
+
+	ifnet_deserialize_all(&tp->tun_if);
+
+	return (0);
+}
+
+static void
+tun_filter_detach(struct knote *kn)
+{
+	struct tun_softc *tp = (struct tun_softc *)kn->kn_hook;
+	struct klist *klist;
+
+	klist = &tp->tun_rsel.si_note;
+	crit_enter();
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+static int
+tun_filter_read(struct knote *kn, long hint)
+{
+	struct tun_softc *tp = (struct tun_softc *)kn->kn_hook;
+	int ready = 0;
+
+	ifnet_serialize_all(&tp->tun_if);
+	if (!ifq_is_empty(&tp->tun_if.if_snd))
+		ready = 1;
+	ifnet_deserialize_all(&tp->tun_if);
+
+	return (ready);
 }
 
 /*
