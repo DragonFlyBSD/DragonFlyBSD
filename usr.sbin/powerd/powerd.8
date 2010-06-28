@@ -6,20 +6,29 @@
 .Os
 .Sh NAME
 .Nm powerd
-.Nd simple acpi-based cpu/power control
+.Nd simple ACPI based CPU/power control
 .Sh SYNOPSIS
 .Nm
 .Op Fl d
 .Sh DESCRIPTION
 The
 .Nm
-daemon monitors the cpu load and automatically adjusts the cpu
+daemon monitors the CPU load and automatically adjusts the CPU
 frequency up or down.
 .Pp
-All cpus will be set to their maximum frequency when the 1-second
-machine load exceeds 25% of one cpu.  All cpus will be set to their
-minimum frequency when the 10-second machine load drops below 12% of
-one cpu.
+All CPUs will be set to their maximum frequency when the 1 second
+machine load exceeds 25% of one CPU.  All CPUs will be set to their
+minimum frequency when the 10 second machine load drops below 12% of
+one CPU.
+.Pp
+The options are as follows:
+.Bl -tag -width Fl
+.It Fl d
+Debug option.
+Causes
+.Nm
+to not go to the background and prints some debug output to
+.Va stdout .
 .Sh DIAGNOSTICS
 The
 .Nm
@@ -31,6 +40,6 @@ present.
 The
 .Nm
 command first appeared in
-.Dx 2.8
+.Dx 2.7 .
 .Sh BUGS
 I'm shocked I tell you, shocked that there might be bugs in this program!
