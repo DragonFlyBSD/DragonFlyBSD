@@ -1172,6 +1172,12 @@ poll_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
 		/* Clear return events */
 		pfd->revents = 0;
 
+		/* Do not check if fd is equal to -1 */
+		if (pfd->fd == -1) {
+			++pkap->pfds;
+			continue;
+		}
+
 		kev_count = 0;
 		if (pfd->events & (POLLIN | POLLRDNORM))
 			kev_count++;
@@ -1215,6 +1221,23 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 		if ((int)kevp[i].udata < pkap->nfds) {
 			pfd = &pkap->fds[(int)kevp[i].udata];
 			if (kevp[i].ident == pfd->fd) {
+				if (kevp[i].flags & EV_ERROR) {
+					/* Bad file descriptor */
+					if (kevp[i].data == EBADF)
+						pfd->revents |= POLLNVAL;
+					else
+						pfd->revents |= POLLERR;
+
+					++*res;
+					continue;
+				}
+
+				if (kevp[i].flags & EV_EOF) {
+					pfd->revents |= POLLHUP;
+					++*res;
+					continue;
+				}
+
 				switch (kevp[i].filter) {
 				case EVFILT_READ:
 					pfd->revents |= (POLLIN | POLLRDNORM);
@@ -1227,19 +1250,7 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 					break;
 				}
 
-				if (kevp[i].flags & EV_ERROR) {
-					/* Bad file descriptor */
-					if (kevp[i].data == EBADF)
-						pfd->revents |= POLLNVAL;
-					else
-						pfd->revents |= POLLERR;
-				}
-
-				if (kevp[i].flags & EV_EOF)
-					pfd->revents |= POLLHUP;
-
 				++*res;
-
 				continue;
 			}
 		}
