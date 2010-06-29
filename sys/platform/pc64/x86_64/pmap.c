@@ -3754,8 +3754,6 @@ pmap_interlock_wait(struct vmspace *vm)
 	struct pmap *pmap = &vm->vm_pmap;
 
 	if (pmap->pm_active & CPUMASK_LOCK) {
-		kprintf("Warning: pmap_interlock %p %08x\n",
-			pmap, pmap->pm_active);
 		while (pmap->pm_active & CPUMASK_LOCK) {
 			cpu_pause();
 			cpu_ccfence();
