@@ -872,19 +872,30 @@ static int
 kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
             struct knote *marker)
 {
-        struct knote *kn;
+        struct knote *kn, local_marker;
         int total;
 
         total = 0;
+	local_marker.kn_filter = EVFILT_MARKER;
         crit_enter();
 
 	/*
 	 * Collect events.
 	 */
+	TAILQ_INSERT_HEAD(&kq->kq_knpend, &local_marker, kn_tqe);
 	while (count) {
-		kn = TAILQ_FIRST(&kq->kq_knpend);
-		if (kn->kn_filter == EVFILT_MARKER)
-			goto done;
+		kn = TAILQ_NEXT(&local_marker, kn_tqe);
+		if (kn->kn_filter == EVFILT_MARKER) {
+			/* Marker reached, we are done */
+			if (kn == marker)
+				break;
+
+			/* Move local marker past some other threads marker */
+			kn = TAILQ_NEXT(kn, kn_tqe);
+			TAILQ_REMOVE(&kq->kq_knpend, &local_marker, kn_tqe);
+			TAILQ_INSERT_BEFORE(kn, &local_marker, kn_tqe);
+			continue;
+		}
 
 		TAILQ_REMOVE(&kq->kq_knpend, kn, kn_tqe);
 		if (kn->kn_status & KN_DISABLED) {
@@ -921,8 +932,8 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 			TAILQ_INSERT_TAIL(&kq->kq_knpend, kn, kn_tqe);
 		}
 	}
+	TAILQ_REMOVE(&kq->kq_knpend, &local_marker, kn_tqe);
 
-done:
 	crit_exit();
 	return (total);
 }
