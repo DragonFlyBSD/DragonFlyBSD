@@ -45,6 +45,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <syslog.h>
 
 #define STATE_UNKNOWN	0
 #define STATE_LOW	1
@@ -109,8 +110,10 @@ main(int ac, char **av)
 	/*
 	 * Demonize and set pid
 	 */
-	if (DebugOpt == 0)
+	if (DebugOpt == 0) {
 		daemon(0, 0);
+		openlog("powerd", LOG_CONS | LOG_PID, LOG_DAEMON);
+	}
 
 	if (PowerFd >= 0) {
 		ftruncate(PowerFd, 0);
@@ -237,6 +240,9 @@ acpi_setcpufreq(int ostate, int nstate)
 			if (DebugOpt) {
 				printf("dom%d set frequency %d\n",
 				       dom, desired);
+			} else {
+				syslog(LOG_INFO, "dom%d set frequency %d\n",
+				    dom, desired);
 			}
 			sysctlbyname(sysid, NULL, NULL,
 				     &desired, sizeof(desired));

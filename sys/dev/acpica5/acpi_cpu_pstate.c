@@ -1016,11 +1016,6 @@ acpi_pst_set_pstate(struct acpi_pst_softc *sc, const struct acpi_pstate *pstate)
 
 	KKASSERT(acpi_pst_md != NULL);
 
-	if (bootverbose) {
-		device_printf(sc->pst_dev, "set pstate, freq %d\n",
-			      pstate->st_freq);
-	}
-
 	netmsg_init(&msg.nmsg, NULL, &curthread->td_msgport,
 		    MSGF_MPSAFE | MSGF_PRIORITY,
 		    acpi_pst_set_pstate_handler);
