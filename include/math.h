@@ -86,7 +86,11 @@ extern const union __float_u __infinityf;
 #endif
 
 extern const union __long_double_u __infinityl;
+#ifdef __MATH_BUILTIN_CONSTANTS
+#define	HUGE_VALL	__builtin_huge_vall()
+#else
 #define	HUGE_VALL	__infinityl.__val
+#endif
 
 /* 7.12#4 INFINITY */
 #ifdef __MATH_BUILTIN_CONSTANTS
