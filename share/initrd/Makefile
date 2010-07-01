@@ -11,6 +11,7 @@ FILES=		${ETC_FILES}
 
 .for file in ${ETC_FILES}
 FILESDIR_${file}=${SHAREDIR}/initrd/etc
+FILESMODE_${file}=555
 .endfor
 
 .include <bsd.prog.mk>
