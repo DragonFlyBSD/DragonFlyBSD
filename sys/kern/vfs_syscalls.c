@@ -633,6 +633,21 @@ dounmount_interlock(struct mount *mp)
 	return(0);
 }
 
+static int
+unmount_allproc_cb(struct proc *p, void *arg)
+{
+	struct mount *mp;
+
+	if (p->p_textnch.ncp == NULL)
+		return 0;
+
+	mp = (struct mount *)arg;
+	if (p->p_textnch.mount == mp)
+		cache_drop(&p->p_textnch);
+
+	return 0;
+}
+
 int
 dounmount(struct mount *mp, int flags)
 {
@@ -680,6 +695,11 @@ dounmount(struct mount *mp, int flags)
 		cache_lock(&mp->mnt_ncmountpt);
 		cache_inval(&mp->mnt_ncmountpt, CINV_DESTROY|CINV_CHILDREN);
 		cache_unlock(&mp->mnt_ncmountpt);
+
+		if ((ncp = mp->mnt_ncmountpt.ncp) != NULL &&
+		    (ncp->nc_refs != 1 || TAILQ_FIRST(&ncp->nc_list))) {
+			allproc_scan(&unmount_allproc_cb, mp);
+		}
 
 		if ((ncp = mp->mnt_ncmountpt.ncp) != NULL &&
 		    (ncp->nc_refs != 1 || TAILQ_FIRST(&ncp->nc_list))) {
