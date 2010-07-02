@@ -47,6 +47,7 @@ static device_t	acpi_dev;
  */
 
 #include <sys/selinfo.h>
+#include <sys/event.h>
 
 #include <machine/apm_bios.h>
 #include <machine/pc/bios.h>
@@ -67,15 +68,17 @@ static d_close_t apmclose;
 static d_write_t apmwrite;
 static d_ioctl_t apmioctl;
 static d_poll_t apmpoll;
+static d_kqfilter_t apmkqfilter;
 
 #define CDEV_MAJOR 39
 static struct dev_ops apm_ops = {
-	{ "apm", CDEV_MAJOR, 0 },
+	{ "apm", CDEV_MAJOR, D_KQFILTER },
         .d_open = apmopen,
         .d_close = apmclose,
 	.d_write = apmwrite,
         .d_ioctl = apmioctl,
-	.d_poll = apmpoll
+	.d_poll = apmpoll,
+	.d_kqfilter = apmkqfilter
 };
 
 static int
@@ -298,6 +301,31 @@ static int
 apmpoll(struct dev_poll_args *ap)
 {
 	ap->a_events = 0;
+	return (0);
+}
+
+static void apmfilter_detach(struct knote *);
+static int apmfilter(struct knote *, long);
+
+static struct filterops apmfilterops =
+	{ 1, NULL, apmfilter_detach, apmfilter };
+
+static int
+apmkqfilter(struct dev_kqfilter_args *ap)
+{
+	struct knote *kn = ap->a_kn;
+
+	kn->kn_fop = &apmfilterops;
+	ap->a_result = 0;
+	return (0);
+}
+
+static void
+apmfilter_detach(struct knote *kn) {}
+
+static int
+apmfilter(struct knote *kn, long hint)
+{
 	return (0);
 }
 
