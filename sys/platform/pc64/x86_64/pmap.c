@@ -843,12 +843,9 @@ pmap_track_modified(vm_offset_t va)
 }
 
 /*
- * pmap_extract:
+ * Extract the physical page address associated with the map/VA pair.
  *
- *	Extract the physical page address associated with the map/VA pair.
- *
- *	This function may not be called from an interrupt if the pmap is
- *	not kernel_pmap.
+ * The caller must hold vm_token if non-blocking operation is desired.
  */
 vm_paddr_t 
 pmap_extract(pmap_t pmap, vm_offset_t va)
@@ -857,6 +854,7 @@ pmap_extract(pmap_t pmap, vm_offset_t va)
 	pt_entry_t *pte;
 	pd_entry_t pde, *pdep;
 
+	lwkt_gettoken(&vm_token);
 	rtval = 0;
 	pdep = pmap_pde(pmap, va);
 	if (pdep != NULL) {
@@ -870,14 +868,12 @@ pmap_extract(pmap_t pmap, vm_offset_t va)
 			}
 		}
 	}
+	lwkt_reltoken(&vm_token);
 	return rtval;
 }
 
 /*
- *	Routine:	pmap_kextract
- *	Function:
- *		Extract the physical page address associated
- *		kernel virtual address.
+ * Extract the physical page address associated kernel virtual address.
  */
 vm_paddr_t
 pmap_kextract(vm_offset_t va)
@@ -1367,6 +1363,7 @@ pmap_puninit(pmap_t pmap)
 	vm_page_t p;
 
 	KKASSERT(pmap->pm_active == 0);
+	lwkt_gettoken(&vm_token);
 	if ((p = pmap->pm_pdirm) != NULL) {
 		KKASSERT(pmap->pm_pml4 != NULL);
 		KKASSERT(pmap->pm_pml4 != (void *)(PTOV_OFFSET + KPML4phys));
@@ -1387,6 +1384,7 @@ pmap_puninit(pmap_t pmap)
 		vm_object_deallocate(pmap->pm_pteobj);
 		pmap->pm_pteobj = NULL;
 	}
+	lwkt_reltoken(&vm_token);
 }
 
 /*
@@ -1399,8 +1397,10 @@ void
 pmap_pinit2(struct pmap *pmap)
 {
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 	TAILQ_INSERT_TAIL(&pmap_list, pmap, pm_pmnode);
 	/* XXX copies current process, does not fill in MPPTDI */
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 }
 
@@ -1767,6 +1767,7 @@ pmap_release(struct pmap *pmap)
 	info.pmap = pmap;
 	info.object = object;
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 	TAILQ_REMOVE(&pmap_list, pmap, pm_pmnode);
 	crit_exit();
 
@@ -1784,6 +1785,7 @@ pmap_release(struct pmap *pmap)
 		}
 		crit_exit();
 	} while (info.error);
+	lwkt_reltoken(&vm_token);
 }
 
 static
@@ -1820,6 +1822,7 @@ pmap_growkernel(vm_offset_t addr)
 	pdp_entry_t newpdp;
 
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 	if (kernel_vm_end == 0) {
 		kernel_vm_end = VM_MIN_KERNEL_ADDRESS;
 		nkpt = 0;
@@ -1885,6 +1888,7 @@ pmap_growkernel(vm_offset_t addr)
 			break;                       
 		}
 	}
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 }
 
@@ -1901,11 +1905,13 @@ pmap_destroy(pmap_t pmap)
 	if (pmap == NULL)
 		return;
 
+	lwkt_gettoken(&vm_token);
 	count = --pmap->pm_count;
 	if (count == 0) {
 		pmap_release(pmap);
 		panic("destroying a pmap is not yet implemented");
 	}
+	lwkt_reltoken(&vm_token);
 }
 
 /*
@@ -1915,7 +1921,9 @@ void
 pmap_reference(pmap_t pmap)
 {
 	if (pmap != NULL) {
+		lwkt_gettoken(&vm_token);
 		pmap->pm_count++;
+		lwkt_reltoken(&vm_token);
 	}
 }
 
@@ -1967,7 +1975,7 @@ pmap_collect(void)
 
 	if (pmap_pagedaemon_waken == 0)
 		return;
-
+	lwkt_gettoken(&vm_token);
 	if (warningdone < 5) {
 		kprintf("pmap_collect: collecting pv entries -- suggest increasing PMAP_SHPGPERPROC\n");
 		warningdone++;
@@ -1981,6 +1989,7 @@ pmap_collect(void)
 		pmap_remove_all(m);
 	}
 	pmap_pagedaemon_waken = 0;
+	lwkt_reltoken(&vm_token);
 }
 	
 
@@ -2146,8 +2155,11 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 	if (pmap == NULL)
 		return;
 
-	if (pmap->pm_stats.resident_count == 0)
+	lwkt_gettoken(&vm_token);
+	if (pmap->pm_stats.resident_count == 0) {
+		lwkt_reltoken(&vm_token);
 		return;
+	}
 
 	pmap_inval_init(&info);
 
@@ -2161,6 +2173,7 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 		if (pde && (*pde & PG_PS) == 0) {
 			pmap_remove_page(pmap, sva, &info);
 			pmap_inval_done(&info);
+			lwkt_reltoken(&vm_token);
 			return;
 		}
 	}
@@ -2230,6 +2243,7 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 		}
 	}
 	pmap_inval_done(&info);
+	lwkt_reltoken(&vm_token);
 }
 
 /*
@@ -2252,6 +2266,7 @@ pmap_remove_all(vm_page_t m)
 	if (!pmap_initialized || (m->flags & PG_FICTITIOUS))
 		return;
 
+	lwkt_gettoken(&vm_token);
 	pmap_inval_init(&info);
 	crit_enter();
 	while ((pv = TAILQ_FIRST(&m->md.pv_list)) != NULL) {
@@ -2294,6 +2309,7 @@ pmap_remove_all(vm_page_t m)
 	crit_exit();
 	KKASSERT((m->flags & (PG_MAPPED|PG_WRITEABLE)) == 0);
 	pmap_inval_done(&info);
+	lwkt_reltoken(&vm_token);
 }
 
 /*
@@ -2328,6 +2344,7 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 	if (prot & VM_PROT_WRITE)
 		return;
 
+	lwkt_gettoken(&vm_token);
 	pmap_inval_init(&info);
 
 	for (; sva < eva; sva = va_next) {
@@ -2421,6 +2438,7 @@ again:
 		}
 	}
 	pmap_inval_done(&info);
+	lwkt_reltoken(&vm_token);
 }
 
 /*
@@ -2469,6 +2487,8 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		db_print_backtrace();
 #endif
 	}
+
+	lwkt_gettoken(&vm_token);
 
 	/*
 	 * In the case that a page table page is not
@@ -2602,6 +2622,7 @@ validate:
 	}
 	KKASSERT((newpte & PG_MANAGED) == 0 || (m->flags & PG_MAPPED));
 	pmap_inval_done(&info);
+	lwkt_reltoken(&vm_token);
 }
 
 /*
@@ -2621,6 +2642,7 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 	pd_entry_t *ptepa;
 	pmap_inval_info info;
 
+	lwkt_gettoken(&vm_token);
 	pmap_inval_init(&info);
 
 	if (va < UPT_MAX_ADDRESS && pmap == &kernel_pmap) {
@@ -2693,6 +2715,7 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 		pa = VM_PAGE_TO_PHYS(m);
 		KKASSERT(((*pte ^ pa) & PG_FRAME) == 0);
 		pmap_inval_done(&info);
+		lwkt_reltoken(&vm_token);
 		return;
 	}
 
@@ -2720,6 +2743,7 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 		*pte = pa | PG_V | PG_U | PG_MANAGED;
 /*	pmap_inval_add(&info, pmap, va); shouldn't be needed inval->valid */
 	pmap_inval_done(&info);
+	lwkt_reltoken(&vm_token);
 }
 
 /*
@@ -2798,8 +2822,10 @@ pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
 	info.pmap = pmap;
 
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 	vm_page_rb_tree_RB_SCAN(&object->rb_memq, rb_vm_page_scancmp,
 				pmap_object_init_pt_callback, &info);
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 }
 
@@ -2842,16 +2868,18 @@ pmap_prefault_ok(pmap_t pmap, vm_offset_t addr)
 {
 	pt_entry_t *pte;
 	pd_entry_t *pde;
+	int ret;
 
+	lwkt_gettoken(&vm_token);
 	pde = pmap_pde(pmap, addr);
-	if (pde == NULL || *pde == 0)
-		return(0);
-
-	pte = vtopte(addr);
-	if (*pte)
-		return(0);
-
-	return(1);
+	if (pde == NULL || *pde == 0) {
+		ret = 0;
+	} else {
+		pte = vtopte(addr);
+		ret = (*pte) ? 0 : 1;
+	}
+	lwkt_reltoken(&vm_token);
+	return(ret);
 }
 
 /*
@@ -2869,6 +2897,7 @@ pmap_change_wiring(pmap_t pmap, vm_offset_t va, boolean_t wired)
 	if (pmap == NULL)
 		return;
 
+	lwkt_gettoken(&vm_token);
 	pte = pmap_pte(pmap, va);
 
 	if (wired && !pmap_pte_w(pte))
@@ -2894,6 +2923,7 @@ pmap_change_wiring(pmap_t pmap, vm_offset_t va, boolean_t wired)
 	else
 		atomic_clear_long_nonlocked(pte, PG_W);
 #endif
+	lwkt_reltoken(&vm_token);
 }
 
 
@@ -3156,9 +3186,11 @@ pmap_page_exists_quick(pmap_t pmap, vm_page_t m)
 		return FALSE;
 
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 
 	TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
 		if (pv->pv_pmap == pmap) {
+			lwkt_reltoken(&vm_token);
 			crit_exit();
 			return TRUE;
 		}
@@ -3166,6 +3198,7 @@ pmap_page_exists_quick(pmap_t pmap, vm_page_t m)
 		if (loops >= 16)
 			break;
 	}
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 	return (FALSE);
 }
@@ -3195,6 +3228,7 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 	else
 		iscurrentpmap = 0;
 
+	lwkt_gettoken(&vm_token);
 	pmap_inval_init(&info);
 	for (pv = TAILQ_FIRST(&pmap->pm_pvlist); pv; pv = npv) {
 		if (pv->pv_va >= eva || pv->pv_va < sva) {
@@ -3259,6 +3293,7 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 		}
 	}
 	pmap_inval_done(&info);
+	lwkt_reltoken(&vm_token);
 }
 
 /*
@@ -3405,12 +3440,14 @@ pmap_page_protect(vm_page_t m, vm_prot_t prot)
 {
 	/* JG NX support? */
 	if ((prot & VM_PROT_WRITE) == 0) {
+		lwkt_gettoken(&vm_token);
 		if (prot & (VM_PROT_READ | VM_PROT_EXECUTE)) {
 			pmap_clearbit(m, PG_RW);
 			vm_page_flag_clear(m, PG_WRITEABLE);
 		} else {
 			pmap_remove_all(m);
 		}
+		lwkt_reltoken(&vm_token);
 	}
 }
 
@@ -3443,6 +3480,7 @@ pmap_ts_referenced(vm_page_t m)
 		return (rtval);
 
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 
 	if ((pv = TAILQ_FIRST(&m->md.pv_list)) != NULL) {
 
@@ -3474,6 +3512,7 @@ pmap_ts_referenced(vm_page_t m)
 			}
 		} while ((pv = pvn) != NULL && pv != pvf);
 	}
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 
 	return (rtval);
@@ -3488,7 +3527,12 @@ pmap_ts_referenced(vm_page_t m)
 boolean_t
 pmap_is_modified(vm_page_t m)
 {
-	return pmap_testbit(m, PG_M);
+	boolean_t res;
+
+	lwkt_gettoken(&vm_token);
+	res = pmap_testbit(m, PG_M);
+	lwkt_reltoken(&vm_token);
+	return (res);
 }
 
 /*
@@ -3497,7 +3541,9 @@ pmap_is_modified(vm_page_t m)
 void
 pmap_clear_modify(vm_page_t m)
 {
+	lwkt_gettoken(&vm_token);
 	pmap_clearbit(m, PG_M);
+	lwkt_reltoken(&vm_token);
 }
 
 /*
@@ -3508,7 +3554,9 @@ pmap_clear_modify(vm_page_t m)
 void
 pmap_clear_reference(vm_page_t m)
 {
+	lwkt_gettoken(&vm_token);
 	pmap_clearbit(m, PG_A);
+	lwkt_reltoken(&vm_token);
 }
 
 /*
@@ -3630,17 +3678,15 @@ pmap_mincore(pmap_t pmap, vm_offset_t addr)
 	vm_page_t m;
 	int val = 0;
 	
+	lwkt_gettoken(&vm_token);
 	ptep = pmap_pte(pmap, addr);
-	if (ptep == 0) {
-		return 0;
-	}
 
-	if ((pte = *ptep) != 0) {
+	if (ptep && (pte = *ptep) != 0) {
 		vm_offset_t pa;
 
 		val = MINCORE_INCORE;
 		if ((pte & PG_MANAGED) == 0)
-			return val;
+			goto done;
 
 		pa = pte & PG_FRAME;
 
@@ -3670,6 +3716,8 @@ pmap_mincore(pmap_t pmap, vm_offset_t addr)
 			vm_page_flag_set(m, PG_REFERENCED);
 		}
 	} 
+done:
+	lwkt_reltoken(&vm_token);
 	return val;
 }
 
