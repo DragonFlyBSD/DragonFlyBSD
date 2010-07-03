@@ -201,8 +201,8 @@ int	kvasnrprintf (char **, size_t, int, const char *,
 int     kvsprintf (char *buf, const char *,
 			__va_list) __printflike(2, 0);
 int	ttyprintf (struct tty *, const char *, ...) __printflike(2, 3);
-int	ksscanf (const char *, char const *, ...);
-int	kvsscanf (const char *, char const *, __va_list);
+int	ksscanf (const char *, char const *, ...) __scanflike(2, 3);
+int	kvsscanf (const char *, char const *, __va_list) __scanflike(2, 0);
 void	kvasfree(char **);
 
 long	strtol (const char *, char **, int);

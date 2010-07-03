@@ -251,12 +251,13 @@ extern void	mallocstats(void);
 struct		disklabel32;
 extern char	*getdisklabel32(const char *, struct disklabel32 *);
 
-extern int	printf(const char *, ...);
-extern void	vprintf(const char *, __va_list);
-extern int	sprintf(char *, const char *, ...);
-extern void	vsprintf(char *, const char *, __va_list);
-int		snprintf(char *, size_t, const char *, ...);
-int		vsnprintf(char *, size_t, const char *, __va_list);
+extern int	printf(const char *, ...) __printflike(1, 2);
+extern void	vprintf(const char *, __va_list) __printflike(1, 0);
+extern int	sprintf(char *, const char *, ...) __printflike(2, 3);
+extern void	vsprintf(char *, const char *, __va_list) __printflike(2, 0);
+int		snprintf(char *, size_t, const char *, ...) __printflike(3, 4);
+int		vsnprintf(char *, size_t, const char *, __va_list)
+		    __printflike(3, 0);
 
 extern void	twiddle(void);
 
@@ -379,7 +380,7 @@ extern int		ischar(void);
 extern void		putchar(int);
 extern int		devopen(struct open_file *, const char *, const char **);
 extern int		devclose(struct open_file *);
-extern void		panic(const char *, ...) __dead2;
+extern void		panic(const char *, ...) __dead2 __printflike(1, 2);
 extern struct fs_ops	*file_system[];
 extern struct devsw	*devsw[];
 
