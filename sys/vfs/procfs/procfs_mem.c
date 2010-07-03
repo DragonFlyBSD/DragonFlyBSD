@@ -150,9 +150,7 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 		/*
 		 * release the page and we are done
 		 */
-		crit_enter();
 		vm_page_unhold(m);
-		crit_exit();
 	} while (error == 0 && uio->uio_resid > 0);
 
 	kmem_free(&kernel_map, kva, PAGE_SIZE);

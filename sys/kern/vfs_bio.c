@@ -1680,6 +1680,7 @@ vfs_vmio_release(struct buf *bp)
 	int i;
 	vm_page_t m;
 
+	lwkt_gettoken(&vm_token);
 	crit_enter();
 	for (i = 0; i < bp->b_xio.xio_npages; i++) {
 		m = bp->b_xio.xio_pages[i];
@@ -1743,6 +1744,7 @@ vfs_vmio_release(struct buf *bp)
 		}
 	}
 	crit_exit();
+	lwkt_reltoken(&vm_token);
 	pmap_qremove(trunc_page((vm_offset_t) bp->b_data), bp->b_xio.xio_npages);
 	if (bp->b_bufsize) {
 		bufspacewakeup();
@@ -4360,8 +4362,10 @@ vm_hold_free_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
 
 	from = round_page(from);
 	to = round_page(to);
-	newnpages = index = (from - trunc_page((vm_offset_t)bp->b_data)) >> PAGE_SHIFT;
+	index = (from - trunc_page((vm_offset_t)bp->b_data)) >> PAGE_SHIFT;
+	newnpages = index;
 
+	lwkt_gettoken(&vm_token);
 	for (pg = from; pg < to; pg += PAGE_SIZE, index++) {
 		p = bp->b_xio.xio_pages[index];
 		if (p && (index < bp->b_xio.xio_npages)) {
@@ -4379,6 +4383,7 @@ vm_hold_free_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
 		}
 	}
 	bp->b_xio.xio_npages = newnpages;
+	lwkt_reltoken(&vm_token);
 }
 
 /*

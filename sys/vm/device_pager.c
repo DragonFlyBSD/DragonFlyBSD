@@ -210,10 +210,12 @@ dev_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 		page = dev_pager_getfake(paddr);
 		TAILQ_INSERT_TAIL(&object->un_pager.devp.devp_pglist,
 				  page, pageq);
+		lwkt_gettoken(&vm_token);
 		crit_enter();
 		vm_page_free(*mpp);
 		vm_page_insert(page, object, offset);
 		crit_exit();
+		lwkt_reltoken(&vm_token);
 	}
 	mtx_unlock(&dev_pager_mtx);
 	return (VM_PAGER_OK);

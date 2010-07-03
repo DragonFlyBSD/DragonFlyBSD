@@ -346,6 +346,8 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 	if (nsize == vp->v_filesize)
 		return;
 
+	lwkt_gettoken(&vm_token);
+
 	/*
 	 * Has changed size.  Adjust the VM object's size and v_filesize
 	 * before we start scanning pages to prevent new pages from being
@@ -437,6 +439,7 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 	} else {
 		vp->v_filesize = nsize;
 	}
+	lwkt_reltoken(&vm_token);
 }
 
 /*
@@ -597,6 +600,7 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *mpp, int bytecount,
 	/*
 	 * Severe hack to avoid deadlocks with the buffer cache
 	 */
+	lwkt_gettoken(&vm_token);
 	for (i = 0; i < count; ++i) {
 		vm_page_t mt = mpp[i];
 
@@ -605,6 +609,7 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *mpp, int bytecount,
 		vm_page_busy(mt);
 		vm_page_io_finish(mt);
 	}
+	lwkt_reltoken(&vm_token);
 
 	/*
 	 * Calculate the actual number of bytes read and clean up the
