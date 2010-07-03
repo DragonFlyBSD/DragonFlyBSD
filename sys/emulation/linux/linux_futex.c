@@ -708,8 +708,9 @@ sys_linux_get_robust_list(struct linux_get_robust_list_args *args)
 	if (ldebug(get_robust_list))
 		kprintf(ARGS(get_robust_list, ""));
 #endif
-	EMUL_LOCK();
+
 	if (args->pid == 0) {
+		EMUL_LOCK();
 		em = emuldata_get(curproc);
 		KKASSERT(em != NULL);
 		if (em->robust_futexes == NULL) {
@@ -718,27 +719,28 @@ sys_linux_get_robust_list(struct linux_get_robust_list_args *args)
 		} else {
 			head = em->robust_futexes;
 		}
+		EMUL_UNLOCK();
 	} else {
 		struct proc *p;
 
 		p = pfind(args->pid);
 		if (p == NULL) {
-			EMUL_UNLOCK();
 			return (ESRCH);
 		}
 
+		EMUL_LOCK();
 		em = emuldata_get(p);
+		head = em->robust_futexes;
+		EMUL_UNLOCK();
 		/* XXX: ptrace? p_candebug?*/
 		if (priv_check(curthread, PRIV_CRED_SETUID) ||
 		    priv_check(curthread, PRIV_CRED_SETEUID)/* ||
 		    p_candebug(curproc, p) */) {
-			EMUL_UNLOCK();
 			return (EPERM);
 		}
-		head = em->robust_futexes;
+		
 
 	}
-	EMUL_UNLOCK();
 
 	error = copyout(&len, args->len, sizeof(l_size_t));
 	if (error)

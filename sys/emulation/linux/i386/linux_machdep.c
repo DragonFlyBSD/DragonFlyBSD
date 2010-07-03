@@ -398,19 +398,15 @@ sys_linux_exit_group(struct linux_exit_group_args *args)
 	int rval;
 
 	rval = args->rval;
-
-	get_mplock();
-
 	EMUL_LOCK();
 
 	em = emuldata_get(curproc);
 
 	if (em->s->refs == 1) {
+		EMUL_UNLOCK();
+		get_mplock();
 		exit1(W_EXITCODE(rval, 0));
 		/* notreached */
-
-		EMUL_UNLOCK();
-
 		rel_mplock();
 		return (0);
 	}
@@ -421,7 +417,7 @@ sys_linux_exit_group(struct linux_exit_group_args *args)
 
 	LIST_REMOVE(em, threads);
 	LIST_INSERT_HEAD(&em->s->threads, em, threads);
-	
+
 	while ((e = LIST_NEXT(em, threads)) != NULL) {
 		LIST_REMOVE(em, threads);
 		LIST_INSERT_AFTER(e, em, threads);
@@ -432,9 +428,8 @@ sys_linux_exit_group(struct linux_exit_group_args *args)
 		}
 	}
 
-
 	EMUL_UNLOCK();
-
+	get_mplock();
 	exit1(W_EXITCODE(rval, 0));
 	rel_mplock();
 	/* notreached */

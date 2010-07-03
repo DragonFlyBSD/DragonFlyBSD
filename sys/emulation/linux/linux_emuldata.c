@@ -191,6 +191,9 @@ emuldata_exit(void *unused, struct proc *p)
 		return;
 	}
 
+	LIST_REMOVE(em, threads);
+	p->p_emuldata = NULL;
+
 	/*
 	 * Members of the thread groups others than the leader should
 	 * exit quietely: no zombie stage, no signal. We do that by
@@ -204,6 +207,20 @@ emuldata_exit(void *unused, struct proc *p)
 		wakeup((caddr_t) initproc); /* kern_exit seems to do this */
 		proc_reparent(p, initproc); /* XXX: might be dangerous */
 	}
+
+	if ((em->s->group_pid == p->p_pid) &&
+	    (em->s->flags & LINUX_LES_INEXITGROUP)) {
+		p->p_xstat = em->s->xstat;
+	}
+
+	if (atomic_fetchadd_int(&em->s->refs, -1) == 1) {
+		kfree(em->s, M_LINUX);
+		em->s = NULL;
+	}
+	if (em->s)
+		KKASSERT(em->s->refs >= 0);
+
+	EMUL_UNLOCK();
 
 	if (em->clear_tid != NULL) {
 		int tid = 0;
@@ -219,23 +236,6 @@ emuldata_exit(void *unused, struct proc *p)
 			kprintf("emuldata_exit futex stuff failed miserably\n");
 	}
 
-	LIST_REMOVE(em, threads);
-
-	p->p_emuldata = NULL;
-
-	if ((em->s->group_pid == p->p_pid) &&
-	    (em->s->flags & LINUX_LES_INEXITGROUP)) {
-		p->p_xstat = em->s->xstat;
-	}
-
-	if (atomic_fetchadd_int(&em->s->refs, -1) == 1) {
-		kfree(em->s, M_LINUX);
-		em->s = NULL;
-	}
-	if (em->s)
-		KKASSERT(em->s->refs >= 0);
-
-	EMUL_UNLOCK();
 	kfree(em, M_LINUX);
 }
 

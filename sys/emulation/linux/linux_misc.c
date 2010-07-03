@@ -1660,7 +1660,7 @@ sys_linux_getpid(struct linux_getpid_args *args)
 	struct linux_emuldata *em;
 	struct proc *p = curproc;
 
-	get_mplock();
+
 	EMUL_LOCK();
 	em = emuldata_get(p);
 	if (em == NULL) /* this should never happen */
@@ -1668,7 +1668,7 @@ sys_linux_getpid(struct linux_getpid_args *args)
 	else
 		args->sysmsg_result = em->s->group_pid;
 	EMUL_UNLOCK();
-	rel_mplock();
+
 	return (0);
 }
 
@@ -1681,27 +1681,30 @@ sys_linux_getppid(struct linux_getppid_args *args)
 	struct linux_emuldata *em;
 	struct proc *parent;
 	struct proc *p;
+	pid_t group_pid;
 
-	get_mplock();
 	EMUL_LOCK();
 	em = emuldata_get(curproc);
 	KKASSERT(em != NULL);
+	group_pid = em->s->group_pid;
+	EMUL_UNLOCK();
 
-	p = pfind(em->s->group_pid);
+	p = pfind(group_pid);
 	/* We are not allowed to fail */
 	if (p == NULL)
 		goto out;
 
 	parent = p->p_pptr;
 	if (parent->p_sysent == &elf_linux_sysvec) {
+		EMUL_LOCK();
 		em = emuldata_get(parent);
 		args->sysmsg_result = em->s->group_pid;
+		EMUL_UNLOCK();
 	} else {
 		args->sysmsg_result = parent->p_pid;
 	}
+
 out:
-	EMUL_UNLOCK();
-	rel_mplock();
 	return (0);
 }
 

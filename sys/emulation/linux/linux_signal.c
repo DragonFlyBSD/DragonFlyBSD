@@ -423,7 +423,6 @@ linux_do_tkill(l_int tgid, l_int pid, l_int sig)
 	if (sig > 0 && sig <= LINUX_SIGTBLSZ)
 		sig = linux_to_bsd_signal[_SIG_IDX(sig)];
 
-	get_mplock();
 	lwkt_gettoken(&proc_token);
 	if ((p = pfind(pid)) == NULL) {
 		if ((p = zpfind(pid)) == NULL) {
@@ -448,13 +447,15 @@ linux_do_tkill(l_int tgid, l_int pid, l_int sig)
 		goto done1;
 	}
 	EMUL_UNLOCK();
-	
+
+	get_mplock();
 	error = kern_kill(sig, pid, -1);
+	rel_mplock();
+
 done1:
 	PRELE(p);
 done2:
 	lwkt_reltoken(&proc_token);
-	rel_mplock();
 
 	return (error);
 }
