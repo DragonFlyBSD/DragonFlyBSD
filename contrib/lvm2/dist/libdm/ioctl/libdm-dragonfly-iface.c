@@ -17,6 +17,7 @@
  * Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#undef _XOPEN_SOURCE
 #include "dmlib.h"
 #include "libdm-targets.h"
 #include "libdm-common.h"
@@ -25,13 +26,13 @@
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <sys/sysctl.h>
-
+#include <sys/stat.h>
+#include <stdlib.h>
 #include <fcntl.h>
 #include <dirent.h>
 #include <limits.h>
 
-#include "/usr/src/sys/dev/disk/dm/netbsd-dm.h"
-
+#include <netbsd-dm.h>
 #include <dm-ioctl.h>
 
 #ifdef RUMP_ACTION
