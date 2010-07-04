@@ -50,11 +50,11 @@ make_hier() {
 
 copy_tools() {
 	for tool in ${BIN_TOOLS}; do
-		cp /bin/${tool} ${BUILD_DIR}/bin
+		objcopy -S /bin/${tool} ${BUILD_DIR}/bin/${tool}
 	done
 
 	for tool in ${SBIN_TOOLS}; do
-		cp /sbin/${tool} ${BUILD_DIR}/sbin
+		objcopy -S /sbin/${tool} ${BUILD_DIR}/sbin/${tool}
 	done
 
 	echo "Copied essential tools"
@@ -67,7 +67,7 @@ copy_content() {
 }
 
 print_info() {
-	tree ${BUILD_DIR}
+#	tree ${BUILD_DIR}
 	df -h | head -n 1
 	df -h | grep $VN_DEV
 }
