@@ -41,222 +41,15 @@
 #include <sys/bio.h>
 #include <sys/buf.h>
 #include <sys/malloc.h>
+#include <sys/md5.h>
 #include <sys/vnode.h>
 #include <crypto/sha1.h>
 #include <crypto/sha2/sha2.h>
 #include <opencrypto/cryptodev.h>
+#include <opencrypto/rmd160.h>
 
 #include "dm.h"
 MALLOC_DEFINE(M_DMCRYPT, "dm_crypt", "Device Mapper Target Crypt");
-
-/*-
- * HMAC-SHA-224/256/384/512 implementation
- * Last update: 06/15/2005
- * Issue date:  06/15/2005
- *
- * Copyright (C) 2005 Olivier Gay <olivier.gay@a3.epfl.ch>
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the project nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE PROJECT AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE PROJECT OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- */
-
-typedef struct {
-    SHA512_CTX ctx_inside;
-    SHA512_CTX ctx_outside;
-
-    /* for hmac_reinit */
-    SHA512_CTX ctx_inside_reinit;
-    SHA512_CTX ctx_outside_reinit;
-
-    unsigned char block_ipad[SHA512_BLOCK_LENGTH];
-    unsigned char block_opad[SHA512_BLOCK_LENGTH];
-} hmac_sha512_ctx;
-
-/* HMAC-SHA-512 functions */
-static void
-hmac_sha512_init(hmac_sha512_ctx *ctx, unsigned char *key,
-                      unsigned int key_size)
-{
-    unsigned int fill;
-    unsigned int num;
-
-    unsigned char *key_used;
-    unsigned char key_temp[SHA512_DIGEST_LENGTH];
-    int i;
-
-    if (key_size == SHA512_BLOCK_LENGTH) {
-        key_used = key;
-        num = SHA512_BLOCK_LENGTH;
-    } else {
-        if (key_size > SHA512_BLOCK_LENGTH){
-            key_used = key_temp;
-            num = SHA512_DIGEST_LENGTH;
-            SHA512_Data(key, key_size, key_used);
-        } else { /* key_size > SHA512_BLOCK_LENGTH */
-            key_used = key;
-            num = key_size;
-        }
-        fill = SHA512_BLOCK_LENGTH - num;
-
-        memset(ctx->block_ipad + num, 0x36, fill);
-        memset(ctx->block_opad + num, 0x5c, fill);
-    }
-
-    for (i = 0; i < num; i++) {
-        ctx->block_ipad[i] = key_used[i] ^ 0x36;
-        ctx->block_opad[i] = key_used[i] ^ 0x5c;
-    }
-
-    SHA512_Init(&ctx->ctx_inside);
-    SHA512_Update(&ctx->ctx_inside, ctx->block_ipad, SHA512_BLOCK_LENGTH);
-
-    SHA512_Init(&ctx->ctx_outside);
-    SHA512_Update(&ctx->ctx_outside, ctx->block_opad,
-                  SHA512_BLOCK_LENGTH);
-
-    /* for hmac_reinit */
-    memcpy(&ctx->ctx_inside_reinit, &ctx->ctx_inside,
-           sizeof(SHA512_CTX));
-    memcpy(&ctx->ctx_outside_reinit, &ctx->ctx_outside,
-           sizeof(SHA512_CTX));
-}
-
-#if 0
-static void
-hmac_sha512_reinit(hmac_sha512_ctx *ctx)
-{
-    memcpy(&ctx->ctx_inside, &ctx->ctx_inside_reinit,
-           sizeof(SHA512_CTX));
-    memcpy(&ctx->ctx_outside, &ctx->ctx_outside_reinit,
-           sizeof(SHA512_CTX));
-}
-#endif
-
-static void
-hmac_sha512_update(hmac_sha512_ctx *ctx, unsigned char *message,
-                        unsigned int message_len)
-{
-    SHA512_Update(&ctx->ctx_inside, message, message_len);
-}
-
-static void
-hmac_sha512_final(hmac_sha512_ctx *ctx, unsigned char *mac,
-                       unsigned int mac_size)
-{
-    unsigned char digest_inside[SHA512_DIGEST_LENGTH];
-    unsigned char mac_temp[SHA512_DIGEST_LENGTH];
-
-    SHA512_Final(digest_inside, &ctx->ctx_inside);
-    SHA512_Update(&ctx->ctx_outside, digest_inside, SHA512_DIGEST_LENGTH);
-    SHA512_Final(mac_temp, &ctx->ctx_outside);
-    memcpy(mac, mac_temp, mac_size);
-}
-
-static void
-hmac_sha512(unsigned char *key, unsigned int key_size,
-          unsigned char *message, unsigned int message_len,
-          unsigned char *mac, unsigned mac_size)
-{
-    hmac_sha512_ctx ctx;
-
-    hmac_sha512_init(&ctx, key, key_size);
-    hmac_sha512_update(&ctx, message, message_len);
-    hmac_sha512_final(&ctx, mac, mac_size);
-}
-
-/*-
- * pkcs5_pbkdf2 function
- * Copyright (c) 2008 Damien Bergamini <damien.bergamini@free.fr>
- *
- * Permission to use, copy, modify, and distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
- * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
- * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
- * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- */
-
-/*
- * Password-Based Key Derivation Function 2 (PKCS #5 v2.0).
- * Code based on IEEE Std 802.11-2007, Annex H.4.2.
- */
-static int
-pkcs5_pbkdf2(const char *pass, size_t pass_len, const char *salt, size_t salt_len,
-    u_int8_t *key, size_t key_len, u_int rounds)
-{
-	u_int8_t *asalt, obuf[SHA512_DIGEST_LENGTH];
-	u_int8_t d1[SHA512_DIGEST_LENGTH], d2[SHA512_DIGEST_LENGTH];
-	u_int i, j;
-	u_int count;
-	size_t r;
-
-	if (rounds < 1 || key_len == 0)
-		return -1;
-	if (salt_len == 0 || salt_len > SIZE_MAX - 1)
-		return -1;
-	if ((asalt = kmalloc(salt_len + 4, M_TEMP, M_WAITOK)) == NULL)
-		return -1; /* XXX: this is not possible */
-
-	memcpy(asalt, salt, salt_len);
-
-	for (count = 1; key_len > 0; count++) {
-		asalt[salt_len + 0] = (count >> 24) & 0xff;
-		asalt[salt_len + 1] = (count >> 16) & 0xff;
-		asalt[salt_len + 2] = (count >> 8) & 0xff;
-		asalt[salt_len + 3] = count & 0xff;
-		hmac_sha512(__DECONST(char *, pass), pass_len, asalt, salt_len + 4, d1, sizeof(d1));
-		memcpy(obuf, d1, sizeof(obuf));
-
-		for (i = 1; i < rounds; i++) {
-			hmac_sha512(__DECONST(char *, pass), pass_len, d1, sizeof(d1), d2, sizeof(d2));
-			memcpy(d1, d2, sizeof(d1));
-			for (j = 0; j < sizeof(obuf); j++)
-				obuf[j] ^= d1[j];
-		}
-
-		r = MIN(key_len, SHA512_DIGEST_LENGTH);
-		memcpy(key, obuf, r);
-		key += r;
-		key_len -= r;
-	};
-	bzero(asalt, salt_len + 4);
-	kfree(asalt, M_TEMP);
-	bzero(d1, sizeof(d1));
-	bzero(d2, sizeof(d2));
-	bzero(obuf, sizeof(obuf));
-
-	return 0;
-}
-
-
-/* ---------------------------------------------------------------------- */
 
 struct target_crypt_config;
 typedef void ivgen_t(struct target_crypt_config *, u_int8_t *, size_t, off_t);
@@ -264,16 +57,24 @@ typedef void ivgen_t(struct target_crypt_config *, u_int8_t *, size_t, off_t);
 typedef struct target_crypt_config {
 	size_t	params_len;
 	dm_pdev_t *pdev;
+	char 	*status_str;
 	int	crypto_alg;
 	int	crypto_klen;
 	u_int8_t	crypto_key[512>>3];
 	u_int8_t	crypto_keyhash[SHA512_DIGEST_LENGTH];
 	u_int64_t	crypto_sid;
+	u_int64_t	block_offset;
+	u_int64_t	iv_offset;
 	SHA512_CTX	essivsha512_ctx;
 	struct cryptoini	crypto_session;
 	ivgen_t	*crypto_ivgen;
 	/* XXX: uuid */
 } dm_target_crypt_config_t;
+
+struct dmtc_helper {
+	caddr_t	free_addr;
+	caddr_t	orig_buf;
+};
 
 static void dm_target_crypt_work(dm_target_crypt_config_t *priv, struct bio *bio);
 static void dm_target_crypt_read_done(struct bio *bio);
@@ -282,33 +83,76 @@ static int dm_target_crypt_crypto_done_read(struct cryptop *crp);
 static int dm_target_crypt_crypto_done_write(struct cryptop *crp);
 
 
-static void
-essiv_hash_mkey(dm_target_crypt_config_t *priv)
-{
-	SHA1_CTX	ctxsha1;
-	SHA256_CTX	ctx256;
-	SHA384_CTX	ctx384;
-	SHA512_CTX	ctx512;
 
-	if (priv->crypto_klen <= 128) {
-		SHA1Init(&ctxsha1);
-		SHA1Update(&ctxsha1, priv->crypto_key, priv->crypto_klen>>3);
-		SHA1Final(priv->crypto_keyhash, &ctxsha1);
-	} else if (priv->crypto_klen <= 256) {
-		SHA256_Init(&ctx256);
-		SHA256_Update(&ctx256, priv->crypto_key, priv->crypto_klen>>3);
-		SHA256_Final(priv->crypto_keyhash, &ctx256);
-	} else if (priv->crypto_klen <= 384) {
-		SHA384_Init(&ctx384);
-		SHA384_Update(&ctx384, priv->crypto_key, priv->crypto_klen>>3);
-		SHA384_Final(priv->crypto_keyhash, &ctx384);
-	} else if (priv->crypto_klen <= 512) {
-		SHA512_Init(&ctx512);
-		SHA512_Update(&ctx512, priv->crypto_key, priv->crypto_klen>>3);
-		SHA512_Final(priv->crypto_keyhash, &ctx512);
+static int
+essiv_hash_mkey(dm_target_crypt_config_t *priv, char *iv_hash)
+{
+	unsigned int klen;
+
+	klen = (priv->crypto_klen >> 3);
+
+	if (iv_hash == NULL)
+		return EINVAL;
+
+	if (!strcmp(iv_hash, "sha1")) {
+		SHA1_CTX ctx;
+
+		if (klen != SHA1_RESULTLEN)
+			return EINVAL;
+
+		SHA1Init(&ctx);
+		SHA1Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
+		SHA1Final(priv->crypto_keyhash, &ctx);
+	} else if (!strcmp(iv_hash, "sha256")) {
+		SHA256_CTX ctx;
+
+		if (klen != SHA256_DIGEST_LENGTH)
+			return EINVAL;
+
+		SHA256_Init(&ctx);
+		SHA256_Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
+		SHA256_Final(priv->crypto_keyhash, &ctx);
+	} else if (!strcmp(iv_hash, "sha384")) {
+		SHA384_CTX ctx;
+
+		if (klen != SHA384_DIGEST_LENGTH)
+			return EINVAL;
+
+		SHA384_Init(&ctx);
+		SHA384_Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
+		SHA384_Final(priv->crypto_keyhash, &ctx);
+	} else if (!strcmp(iv_hash, "sha512")) {
+		SHA512_CTX ctx;
+
+		if (klen != SHA512_DIGEST_LENGTH)
+			return EINVAL;
+
+		SHA512_Init(&ctx);
+		SHA512_Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
+		SHA512_Final(priv->crypto_keyhash, &ctx);
+	} else if (!strcmp(iv_hash, "md5")) {
+		MD5_CTX ctx;
+
+		if (klen != MD5_DIGEST_LENGTH)
+			return EINVAL;
+
+		MD5Init(&ctx);
+		MD5Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
+		MD5Final(priv->crypto_keyhash, &ctx);
+	} else if (!strcmp(iv_hash, "rmd160") || !strcmp(iv_hash, "ripemd160")) {
+		RMD160_CTX ctx;
+
+		if (klen != (160/8))
+			return EINVAL;
+
+		RMD160Init(&ctx);
+		RMD160Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
+		RMD160Final(priv->crypto_keyhash, &ctx);
 	} else {
-		panic("Unexpected crypto_klen = %d", priv->crypto_klen);
+		return EINVAL;
 	}
+
+	return 0;
 }
 
 static int
@@ -328,6 +172,13 @@ essiv_ivgen_done(struct cryptop *crp)
 }
 
 static void
+plain_ivgen(dm_target_crypt_config_t *priv, u_int8_t *iv, size_t iv_len, off_t sector)
+{
+	bzero(iv, iv_len);
+	*((off_t *)iv) = sector + priv->iv_offset;
+}
+
+static void
 essiv_ivgen(dm_target_crypt_config_t *priv, u_int8_t *iv, size_t iv_len, off_t sector)
 {
 	struct cryptodesc crd;
@@ -336,7 +187,7 @@ essiv_ivgen(dm_target_crypt_config_t *priv, u_int8_t *iv, size_t iv_len, off_t s
 
 	id = 0;
 	bzero(iv, iv_len);
-	*((off_t *)iv) = sector;
+	*((off_t *)iv) = sector + priv->iv_offset;
 	crp.crp_buf = (caddr_t)iv;
 
 	crp.crp_sid = priv->crypto_sid;
@@ -374,9 +225,9 @@ essiv_ivgen(dm_target_crypt_config_t *priv, u_int8_t *iv, size_t iv_len, off_t s
 		tsleep((void *)&error, 0, "essivgen", 0);
 }
 
-
+#if 0
 static void
-alt_ivgen(dm_target_crypt_config_t *priv, u_int8_t *iv, size_t iv_len, off_t sector)
+geli_ivgen(dm_target_crypt_config_t *priv, u_int8_t *iv, size_t iv_len, off_t sector)
 {
 
 	SHA512_CTX	ctx512;
@@ -388,11 +239,7 @@ alt_ivgen(dm_target_crypt_config_t *priv, u_int8_t *iv, size_t iv_len, off_t sec
 
 	memcpy(iv, md, iv_len);
 }
-
-struct dmtc_helper {
-	caddr_t	free_addr;
-	caddr_t	orig_buf;
-};
+#endif
 
 static void
 dm_target_crypt_work(dm_target_crypt_config_t *priv, struct bio *bio)
@@ -456,11 +303,7 @@ dm_target_crypt_work(dm_target_crypt_config_t *priv, struct bio *bio)
 		crd->crd_alg = priv->crypto_alg;
 		crd->crd_key = (caddr_t)priv->crypto_key;
 		crd->crd_klen = priv->crypto_klen;
-#if 0
-		bzero(crd->crd_iv, EALG_MAX_BLOCK_LEN);
-		alt_ivgen(priv, crd->crd_iv, sizeof(crd->crd_iv), isector + i);
-		essiv_ivgen(priv, crd->crd_iv, sizeof(crd->crd_iv), isector + i);
-#endif
+
 		priv->crypto_ivgen(priv, crd->crd_iv, sizeof(crd->crd_iv), isector + i);
 
 		crd->crd_skip = 0;
@@ -642,14 +485,38 @@ dm_target_crypt_modcmd(modcmd_t cmd, void *arg)
  * Accepted format:
  * <device>	<crypto algorithm>[-<keysize>]	<iv generator>	<passphrase>
  * /dev/foo	aes-256				essiv		foobar
+ * cryptsetup actually passes us this:
+ * aes-cbc-essiv:sha256 7997f8af... 0 /dev/ad0s0a 8
  */
+
+static int
+hex2key(char *hex, size_t hex_length, u_int8_t *key)
+{
+	char hex_buf[3];
+	size_t key_idx;
+
+	key_idx = 0;
+	bzero(hex_buf, sizeof(hex_buf));
+
+	for (; hex_length > 0; hex_length -= 2) {
+		hex_buf[0] = *hex++;
+		hex_buf[1] = *hex++;
+		key[key_idx++] = (u_int8_t)strtoul(hex_buf, NULL, 16);
+	}
+
+	return 0;
+}
+
 int
 dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 {
 	dm_target_crypt_config_t *priv;
 	size_t len;
 	char **ap, *args[5];
+	char *crypto_alg, *crypto_mode, *iv_mode, *iv_opt, *key, *dev;
+	char *status_str;
 	int argc, klen, error;
+	uint64_t iv_offset, block_offset;
 
 	if (params == NULL)
 		return EINVAL;
@@ -657,11 +524,12 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 	len = strlen(params) + 1;
 	argc = 0;
 
+	status_str = kstrdup(params, M_DMCRYPT);
 	/*
 	 * Parse a string, containing tokens delimited by white space,
 	 * into an argument vector
 	 */
-	for (ap = args; ap < &args[4] &&
+	for (ap = args; ap < &args[5] &&
 	    (*ap = strsep(&params, " \t")) != NULL;) {
 		if (**ap != '\0') {
 			argc++;
@@ -670,65 +538,98 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 	}
 
 	kprintf("\nCrypto target init function called, argc = %d!!\n", argc);
-	if (argc < 4) {
-		kprintf("not enough arguments for target crypt\n");
+	if (argc != 5) {
+		kprintf("not enough arguments for target crypt, need exactly 5\n");
+		kfree(status_str, M_DMCRYPT);
 		return ENOMEM; /* XXX */
 	}
 
-	kprintf("Crypto target - device name %s -- algorithm %s\n\n", args[0], args[1]);
+	crypto_alg = strsep(&args[0], "-");
+	crypto_mode = strsep(&args[0], "-");
+	iv_opt = strsep(&args[0], "-");
+	iv_mode = strsep(&iv_opt, ":");
+	key = args[1];
+	iv_offset = strtouq(args[2], NULL, 0);
+	dev = args[3];
+	block_offset = strtouq(args[4], NULL, 0);
+	/* bits / 8 = bytes, 1 byte = 2 hexa chars, so << 2 */
+	klen = strlen(key) << 2;
+
+	kprintf("crypto target - dev=%s, crypto_alg=%s, crypto_mode=%s, "
+		"iv_mode=%s, iv_opt=%s, key=%s, iv_offset=%ju, block_offset=%ju\n",
+		dev, crypto_alg, crypto_mode, iv_mode, iv_opt, key, iv_offset,
+		block_offset);
 
 	if ((priv = kmalloc(sizeof(dm_target_crypt_config_t), M_DMCRYPT, M_NOWAIT))
 	    == NULL) {
 		kprintf("kmalloc in dm_target_crypt_init failed, M_NOWAIT to blame\n");
+		kfree(status_str, M_DMCRYPT);
 		return ENOMEM;
 	}
 
 	/* Insert dmp to global pdev list */
-	if ((priv->pdev = dm_pdev_insert(args[0])) == NULL) {
+	if ((priv->pdev = dm_pdev_insert(dev)) == NULL) {
 		kprintf("dm_pdev_insert failed\n");
+		kfree(status_str, M_DMCRYPT);
 		return ENOENT;
 	}
 
-	if (!strncmp(args[1], "aes-", 4)) {
+	if (strcmp(crypto_mode, "cbc") != 0) {
+		kprintf("dm_target_crypt: only support 'cbc' chaining mode, invalid mode '%s'\n", crypto_mode);		
+		goto notsup;
+	}
+
+	if (!strcmp(crypto_alg, "aes")) {
 		priv->crypto_alg = CRYPTO_AES_CBC;
-		klen = atoi(args[1]+4);
 		if (klen != 128 && klen != 192 && klen != 256)
 			goto notsup;
 		priv->crypto_klen = klen;
 
-	} else if (!strncmp(args[1], "blowfish-", 9)) {
+	} else if (!strcmp(crypto_alg, "blowfish")) {
 		priv->crypto_alg = CRYPTO_BLF_CBC;
-		klen = atoi(args[1]+9);
 		if (klen < 128 || klen > 448 || (klen % 8) != 0)
 			goto notsup;
 		priv->crypto_klen = klen;
 
-	} else if (!strcmp(args[1], "3DES")) {
+	} else if (!strcmp(crypto_alg, "3des") || !strncmp(crypto_alg, "des3", 4)) {
 		priv->crypto_alg = CRYPTO_3DES_CBC;
+		if (klen != 168)
+			goto notsup;
 		priv->crypto_klen = 168;
 
-	} else if (!strncmp(args[1], "camellia-", 9)) {
+	} else if (!strcmp(crypto_alg, "camellia")) {
 		priv->crypto_alg = CRYPTO_CAMELLIA_CBC;
-		klen = atoi(args[1]+9);
 		if (klen != 128 && klen != 192 && klen != 256)
 			goto notsup;
 		priv->crypto_klen = klen;
 
-	} else if (!strcmp(args[1], "skipjack")) {
+	} else if (!strcmp(crypto_alg, "skipjack")) {
 		priv->crypto_alg = CRYPTO_SKIPJACK_CBC;
+		if (klen != 80)
+			goto notsup;
 		priv->crypto_klen = 80;
 
-	} else if (!strcmp(args[1], "CAST-128")) {
+	} else if (!strcmp(crypto_alg, "cast5")) {
 		priv->crypto_alg = CRYPTO_CAST_CBC;
+		if (klen != 128)
+			goto notsup;
 		priv->crypto_klen = 128;
 
-	} else if (!strcmp(args[1], "null")) {
+	} else if (!strcmp(crypto_alg, "null")) {
 		priv->crypto_alg = CRYPTO_NULL_CBC;
+		if (klen != 128)
+			goto notsup;
 		priv->crypto_klen = 128;
+
+	} else {
+		kprintf("Unsupported crypto algorithm: %s\n", crypto_alg);
+		goto notsup;
 	}
 
 	/* Save length of param string */
 	priv->params_len = len;
+	priv->block_offset = block_offset;
+	priv->iv_offset = iv_offset;
 
 	*target_config = priv;
 
@@ -737,23 +638,27 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 	priv->crypto_session.cri_alg = priv->crypto_alg;
 	priv->crypto_session.cri_klen = priv->crypto_klen;
 	priv->crypto_session.cri_mlen = 0;
-	error = pkcs5_pbkdf2(args[3], strlen(args[3]),
-			     "This is the salt", 16, /* XXX !!!!!!!!!!!!! */
-			     (u_int8_t *)priv->crypto_key, priv->crypto_klen >> 3,
-			     1000);
-	if (error)
-		panic("dm_target_crypt: pkcs5_pbkdf2 returned error!");
+
+	error = hex2key(key, priv->crypto_klen >> 3, (u_int8_t *)priv->crypto_key);
+	if (error) {
+		kprintf("hex2key failed!!\n");
+		goto notsup;
+	}
 
 	kprintf("priv->crypto_klen >> 3 = %d\n", priv->crypto_klen >> 3);
 
 
-	if (!strcmp(args[2], "essiv")) {
-		essiv_hash_mkey(priv);
+	if (!strcmp(iv_mode, "essiv")) {
+		error = essiv_hash_mkey(priv, iv_opt);
+		if (error) {
+			kprintf("essiv_hash_mkey returned error!\n");
+			goto notsup;		
+		}
 		priv->crypto_ivgen = essiv_ivgen;
+	} else if (!strcmp(iv_mode, "plain")) {
+		priv->crypto_ivgen = plain_ivgen;
 	} else {
-		SHA512_Init(&priv->essivsha512_ctx);
-		SHA512_Update(&priv->essivsha512_ctx, (u_int8_t*)priv->crypto_key, priv->crypto_klen >> 3);
-		priv->crypto_ivgen = alt_ivgen;
+		kprintf("dm_target_crypt: only support iv_mode='essiv' and 'plain', iv_mode='%s' unsupported\n", iv_mode);
 	}
 
 	priv->crypto_session.cri_key = (u_int8_t *)priv->crypto_key;
@@ -764,14 +669,15 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 				  CRYPTOCAP_F_SOFTWARE | CRYPTOCAP_F_HARDWARE);
 	if (error) {
 		kprintf("Error during crypto_newsession, error = %d\n", error);
-		return error;
+		goto notsup;
 	}
 
-	/* XXX: eventually support some on-disk metadata */
+	priv->status_str = status_str;
 	return 0;
 
 notsup:
 	kprintf("returning ENOTSUP from crypt_init thingie... notsup label\n");
+	kfree(status_str, M_DMCRYPT);
 	return ENOTSUP;
 }
 
@@ -819,7 +725,7 @@ dm_target_crypt_strategy(dm_table_entry_t * table_en, struct buf * bp)
 	switch (bp->b_cmd) {
 	case BUF_CMD_READ:
 		bio = push_bio(&bp->b_bio1);
-		bio->bio_offset = bp->b_bio1.bio_offset;
+		bio->bio_offset = bp->b_bio1.bio_offset + priv->block_offset*DEV_BSIZE;
 		bio->bio_caller_info1.ptr = priv;
 		bio->bio_done = dm_target_crypt_read_done;
 		vn_strategy(priv->pdev->pdev_vnode, bio);
@@ -827,7 +733,7 @@ dm_target_crypt_strategy(dm_table_entry_t * table_en, struct buf * bp)
 
 	case BUF_CMD_WRITE:
 		bio = push_bio(&bp->b_bio1);
-		bio->bio_offset = bp->b_bio1.bio_offset;
+		bio->bio_offset = bp->b_bio1.bio_offset + priv->block_offset*DEV_BSIZE;
 		bio->bio_caller_info1.ptr = priv;
 		bio->bio_done = dm_target_crypt_write_done;
 		dm_target_crypt_work(priv, bio);
@@ -856,6 +762,7 @@ dm_target_crypt_destroy(dm_table_entry_t * table_en)
 	/* Unbusy target so we can unload it */
 	dm_target_unbusy(table_en->target);
 
+	kfree(priv->status_str, M_DMCRYPT);
 	kfree(priv, M_DMCRYPT);
 
 	table_en->target_config = NULL;
