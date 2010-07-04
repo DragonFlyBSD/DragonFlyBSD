@@ -1,0 +1,598 @@
+2010-05-30  Milan Broz  <mbroz@redhat.com>
+	* Version 1.1.2.
+
+2010-05-27  Milan Broz  <mbroz@redhat.com>
+	* Fix luksFormat/luksOpen reading passphrase from stdin and "-" keyfile.
+	* Support --key-file/-d option for luksFormat.
+	* Fix description of --key-file and add --verbose and --debug options to man page.
+	* Add verbose log level and move unlocking message there.
+	* Remove device even if underlying device disappeared.
+	* Fix (deprecated) reload device command to accept new device argument.
+
+2010-05-23  Milan Broz  <mbroz@redhat.com>
+	* Fix luksClose operation for stacked DM devices.
+	* Version 1.1.1.
+
+2010-05-03  Milan Broz  <mbroz@redhat.com>
+	* Fix automatic dm-crypt module loading.
+	* Escape hyphens in man page.
+	* Version 1.1.1-rc2.
+
+2010-04-30  Milan Broz  <mbroz@redhat.com>
+	* Try to use pkgconfig for device mapper library.
+	* Detect old dm-crypt module and disable LUKS suspend/resume.
+	* Fix apitest to work on older systems.
+	* Allow no hash specification in plain device constructor.
+	* Fix luksOpen reading of passphrase on stdin (if "-" keyfile specified).
+	* Fix isLuks to initialise crypto backend (blkid instead is suggested anyway).
+	* Version 1.1.1-rc1.
+
+2010-04-12  Milan Broz  <mbroz@redhat.com>
+	* Fix package config to use proper package version.
+	* Avoid class C++ keyword in library header.
+	* Detect and use devmapper udev support if available (disable by --disable-udev).
+
+2010-04-06  Milan Broz  <mbroz@redhat.com>
+	* Prefer some device paths in status display.
+	* Support device topology detectionfor data alignment.
+
+2010-02-25  Milan Broz  <mbroz@redhat.com>
+	* Do not verify unlocking passphrase in luksAddKey command.
+	* Properly initialise crypto backend in header backup/restore commands.
+
+2010-01-17  Milan Broz  <mbroz@redhat.com>
+	* If gcrypt compiled with capabilities, document workaround for cryptsetup (see lib/gcrypt.c).
+	* Version 1.1.0.
+
+2010-01-10  Milan Broz  <mbroz@redhat.com>
+	* Fix initialisation of gcrypt duting luksFormat.
+	* Convert hash name to lower case in header (fix sha1 backward comatible header)
+	* Check for minimum required gcrypt version.
+
+2009-12-30  Milan Broz  <mbroz@redhat.com>
+	* Fix key slot iteration count calculation (small -i value was the same as default).
+	* The slot and key digest iteration minimun is now 1000.
+	* The key digest iteration # is calculated from iteration time (approx 1/8 of that).
+	* Version 1.1.0-rc4.
+
+2009-12-11  Milan Broz  <mbroz@redhat.com>
+	* Fix error handling during reading passhrase.
+
+2009-12-01  Milan Broz  <mbroz@redhat.com>
+	* Allow changes of default compiled-in cipher parameters through configure.
+	* Switch default key size for LUKS to 256bits.
+	* Switch default plain mode to aes-cbc-essiv:sha256 (default is backward incompatible!).
+
+2009-11-14  Milan Broz  <mbroz@redhat.com>
+	* Add CRYPT_ prefix to enum defined in libcryptsetup.h.
+	* Fix status call to fail when running as non-root user.
+	* Check in configure if selinux libraries are required in static version.
+	* Add temporary debug code to find processes locking internal device.
+	* Simplify build system, use autopoint and clean gettext processing.
+	* Use proper NLS macros and detection (so the message translation works again).
+	* Version 1.1.0-rc3.
+
+2009-09-30  Milan Broz  <mbroz@redhat.com>
+	* Fix exported symbols and versions in libcryptsetup.
+	* Do not use internal lib functions in cryptsetup.
+	* Add crypt_log to library.
+	* Fix crypt_remove_device (remove, luksClose) implementation.
+	* Move dm backend initialisation to library calls.
+	* Move duplicate Command failed message to verbose level (error is printed always).
+	* Add some password and used algorithms notes to man page.
+	* Version 1.1.0-rc2.
+
+2009-09-28  Milan Broz  <mbroz@redhat.com>
+	* Add luksHeaderBackup and luksHeaderRestore commands.
+	* Fail passphrase read if piped input no longer exists.
+	* Version 1.1.0-rc1.
+
+2009-09-15  Milan Broz  <mbroz@redhat.com>
+	* Initialize crypto library before LUKS header load.
+	* Fix manpage to not require --size which expands to device size by default.
+
+2009-09-10  Milan Broz  <mbroz@redhat.com>
+	* Clean up Makefiles and configure script.
+	* Version 1.1.0-test0.
+
+2009-09-08  Milan Broz  <mbroz@redhat.com>
+	* Use dm-uuid for all crypt devices, contains device type and name now.
+	* Try to read first sector from device to properly check that device is ready.
+
+2009-09-02  Milan Broz  <mbroz@redhat.com>
+	* Add luksSuspend (freeze device and wipe key) and luksResume (with provided passphrase).
+
+2009-08-30  Milan Broz  <mbroz@redhat.com>
+	* Require device device-mapper to build and do not use backend wrapper for dm calls.
+	* Move memory locking and dm initialization to command layer.
+	* Increase priority of process if memory is locked.
+	* Add log macros and make logging modre consitent.
+	* Move command successful messages to verbose level.
+	* Introduce --debug parameter.
+	* Move device utils code and provide context parameter (for log).
+	* Keyfile now must be provided by path, only stdin file descriptor is used (api only).
+	* Do not call isatty() on closed keyfile descriptor.
+	* Run performance check for PBKDF2 from LUKS code, do not mix hash algoritms results.
+	* Add ability to provide pre-generated master key and UUID in LUKS header format.
+	* Add LUKS function to verify master key digest.
+	* Move key slot manuipulation function into LUKS specific code.
+	* Replace global options struct with separate parameters in helper functions.
+	* Add new libcryptsetup API (documented in libcryptsetup.h).
+	* Implement old API calls using new functions.
+	* Remove old API code helper functions.
+	* Add --master-key-file option for luksFormat and luksAddKey.
+
+2009-08-17  Milan Broz  <mbroz@redhat.com>
+	* Fix PBKDF2 speed calculation for large passhrases.
+	* Allow using passphrase provided in options struct for LuksOpen.
+	* Allow restrict keys size in LuksOpen.
+
+2009-07-30  Milan Broz  <mbroz@redhat.com>
+	* Fix errors when compiled with LUKS_DEBUG.
+	* Print error when getline fails.
+	* Remove po/cryptsetup-luks.pot, it's autogenerated.
+	* Return ENOENT for empty keyslots, EINVAL will be used later for other type of error.
+	* Switch PBKDF2 from internal SHA1 to libgcrypt, make hash algorithm not hardcoded to SHA1 here.
+	* Add required parameters for changing hash used in LUKS key setup scheme.
+	* Do not export simple XOR helper now used only inside AF functions.
+	* Completely remove internal SHA1 implementanion code, not needed anymore.
+	* Enable hash algorithm selection for LUKS through -h luksFormat option.
+
+2009-07-28  Milan Broz  <mbroz@redhat.com>
+	* Pad luks header to 512 sector size.
+	* Rework read/write blockwise to not split operation to many pieces.
+	* Use posix_memalign if available.
+
+2009-07-22  Milan Broz  <mbroz@redhat.com>
+	* Fix segfault if provided slot in luksKillslot is invalid.
+	* Remove unneeded timeout when remove of temporary device succeeded.
+
+2009-07-22  Milan Broz  <mbroz@redhat.com>
+	* version 1.0.7
+
+2009-07-16  Milan Broz  <mbroz@redhat.com>
+	* Allow removal of last slot in luksRemoveKey and luksKillSlot.
+
+2009-07-11  Milan Broz  <mbroz@redhat.com>
+
+	* Add --disable-selinux option and fix static build if selinux is required.
+	* Reject unsupported --offset and --skip options for luksFormat and update man page.
+
+2009-06-22  Milan Broz  <mbroz@redhat.com>
+
+	* Summary of changes in subversion for 1.0.7-rc1:
+	* Various man page fixes.
+	* Set UUID in device-mapper for LUKS devices.
+	* Retain readahead of underlying device.
+	* Display device name when asking for password.
+	* Check device size when loading LUKS header. Remove misleading error message later.
+	* Add error hint if dm-crypt mapping failed.
+	* Use better error messages if device doesn't exist or is already used by other mapping.
+	* Fix make distcheck.
+	* Check if all slots are full during luksAddKey.
+	* Fix segfault in set_error.
+	* Code cleanups, remove precompiled pot files, remove unnecessary files from po directory
+	* Fix uninitialized return value variable in setup.c.
+	* Code cleanups. (thanks to Ivan Stankovic)
+	* Fix wrong output for remaining key at key deletion.
+	* Allow deletion of key slot while other keys have the same key information.
+	* Add missing AM_PROG_CC_C_O to configure.in
+	* Remove duplicate sentence in man page.
+	* Wipe start of device (possible fs signature) before LUKS-formatting.
+	* Do not process configure.in in hidden directories.
+	* Return more descriptive error in case of IO or header format error.
+	* Use remapping to error target instead of calling udevsettle for temporary crypt device.
+	* Check device mapper communication and warn user if device-mapper support missing in kernel.
+	* Fix signal handler to properly close device.
+	* write_lseek_blockwise: declare innerCount outside the if block.
+	* add -Wall to the default CFLAGS. fix some signedness issues.
+	* Error handling improvement.
+	* Add non-exclusive override to interface definition.
+	* Refactor key slot selection into keyslot_from_option.
+
+2007-05-01  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* lib/backends.c, man/cryptsetup.8: Apply patch from Ludwig Nussel
+	<ludwig.nussel@suse.de>, for old SuSE compat hashing.
+
+2007-04-16  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* Summary of changes in subversion:
+	Fix segfault for key size > 32 bytes.
+	Kick ancient header version conversion. 
+	Fix http://bugs.debian.org/403075
+	No passwort retrying for I/O errors.
+	Fix hang on "-i 0".
+	Fix parenthesization error that prevented --tries from working
+	correctly.
+
+2006-11-28  gettextize  <bug-gnu-gettext@gnu.org>
+
+	* m4/gettext.m4: Upgrade to gettext-0.15.
+	* m4/glibc2.m4: New file, from gettext-0.15.
+	* m4/intmax.m4: New file, from gettext-0.15.
+	* m4/inttypes-h.m4: New file, from gettext-0.15.
+	* m4/inttypes-pri.m4: Upgrade to gettext-0.15.
+	* m4/lib-link.m4: Upgrade to gettext-0.15.
+	* m4/lib-prefix.m4: Upgrade to gettext-0.15.
+	* m4/lock.m4: New file, from gettext-0.15.
+	* m4/longdouble.m4: New file, from gettext-0.15.
+	* m4/longlong.m4: New file, from gettext-0.15.
+	* m4/nls.m4: Upgrade to gettext-0.15.
+	* m4/po.m4: Upgrade to gettext-0.15.
+	* m4/printf-posix.m4: New file, from gettext-0.15.
+	* m4/signed.m4: New file, from gettext-0.15.
+	* m4/size_max.m4: New file, from gettext-0.15.
+	* m4/visibility.m4: New file, from gettext-0.15.
+	* m4/wchar_t.m4: New file, from gettext-0.15.
+	* m4/wint_t.m4: New file, from gettext-0.15.
+	* m4/xsize.m4: New file, from gettext-0.15.
+	* m4/Makefile.am: New file.
+	* configure.in (AC_OUTPUT): Add m4/Makefile.
+	(AM_GNU_GETTEXT_VERSION): Bump to 0.15.
+
+2006-10-22  David H‰rdeman  <david@hardeman.nu>
+
+	* Allow hashing of keys passed through stdin.
+
+2006-10-13  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* configure.in: 1.0.4 release
+
+2006-10-13  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* man/cryptsetup.8: Document --tries switch; patch by Jonas
+	Meurer.
+
+2006-10-13  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* lib/setup.c: Added terminal timeout rewrite as forwarded by
+	Jonas Meurer
+
+2006-10-04  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* Merged patch from Marc Merlin <marc@merlins.org> to allow user
+	selection of key slot.
+
+2006-09-26  gettextize  <bug-gnu-gettext@gnu.org>
+
+	* m4/codeset.m4: Upgrade to gettext-0.14.4.
+	* m4/gettext.m4: Upgrade to gettext-0.14.4.
+	* m4/glibc2.m4: New file, from gettext-0.14.4.
+	* m4/glibc21.m4: Upgrade to gettext-0.14.4.
+	* m4/iconv.m4: Upgrade to gettext-0.14.4.
+	* m4/intdiv0.m4: Upgrade to gettext-0.14.4.
+	* m4/intmax.m4: New file, from gettext-0.14.4.
+	* m4/inttypes.m4: Upgrade to gettext-0.14.4.
+	* m4/inttypes_h.m4: Upgrade to gettext-0.14.4.
+	* m4/inttypes-pri.m4: Upgrade to gettext-0.14.4.
+	* m4/isc-posix.m4: Upgrade to gettext-0.14.4.
+	* m4/lcmessage.m4: Upgrade to gettext-0.14.4.
+	* m4/lib-ld.m4: Upgrade to gettext-0.14.4.
+	* m4/lib-link.m4: Upgrade to gettext-0.14.4.
+	* m4/lib-prefix.m4: Upgrade to gettext-0.14.4.
+	* m4/longdouble.m4: New file, from gettext-0.14.4.
+	* m4/longlong.m4: New file, from gettext-0.14.4.
+	* m4/nls.m4: Upgrade to gettext-0.14.4.
+	* m4/po.m4: Upgrade to gettext-0.14.4.
+	* m4/printf-posix.m4: New file, from gettext-0.14.4.
+	* m4/progtest.m4: Upgrade to gettext-0.14.4.
+	* m4/signed.m4: New file, from gettext-0.14.4.
+	* m4/size_max.m4: New file, from gettext-0.14.4.
+	* m4/stdint_h.m4: Upgrade to gettext-0.14.4.
+	* m4/uintmax_t.m4: Upgrade to gettext-0.14.4.
+	* m4/ulonglong.m4: Upgrade to gettext-0.14.4.
+	* m4/wchar_t.m4: New file, from gettext-0.14.4.
+	* m4/wint_t.m4: New file, from gettext-0.14.4.
+	* m4/xsize.m4: New file, from gettext-0.14.4.
+	* Makefile.am (ACLOCAL_AMFLAGS): New variable.
+	* configure.in (AM_GNU_GETTEXT_VERSION): Bump to 0.14.4.
+
+2006-08-04  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* configure.in: 1.0.4-rc2
+
+2006-08-04  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* luks/Makefile.am: Add a few regression tests 
+
+2006-08-04  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* lib/setup.c (get_key): Applied patch from David H‰rdeman
+	<david@2gen.com> for reading binary keys from stdin using
+	the "-" as key file.
+
+2006-08-04  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* lib/setup.c (__crypt_luks_add_key): For checking options struct
+	(optionsCheck) filter out CRYPT_FLAG_VERIFY and
+	CRYPT_FLAG_VERIFY_IF_POSSIBLE, so that in no case password verification is done
+	for password retrieval.
+
+2006-08-04  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* configure.in: Merge Patch from http://bugs.gentoo.org/show_bug.cgi?id=132126 for sepol
+
+2006-07-23  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* Applied patches from David H‰rdeman <david@2gen.com> to fix 64
+	bit compiler warning issues.
+
+2006-05-19  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* Applied patches from Jonas Meurer
+	  - fix terminal status after timeout
+	  - add remark for --tries to manpage
+	  - allow more than 32 chars from standard input.
+	  - exit status fix for cryptsetup status.
+
+2006-05-06  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* src/cryptsetup.c (yesDialog): Fix getline problem for 64-bit archs. 
+
+2006-04-05  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* configure.in: Release 1.0.3.
+
+	* Applied patch by Johannes Weiﬂl for more meaningful exit codes
+	and password retries
+
+2006-03-30  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* lib/setup.c (__crypt_create_device): (char *) -> (const char *)
+
+2006-03-30  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* Apply alignPayload patch from Peter Palfrader <weasel@debian.org>
+
+2006-03-15  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* configure.in: 1.0.3-rc3. Most unplease release ever. 
+	* lib/setup.c (__crypt_create_device): More verbose error message.
+
+2006-02-26  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* lib/setup.c: Revert to 1.0.1 key reading.
+
+2006-02-25  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* man/cryptsetup.8: merge patch from Jonas Meurer
+
+2006-02-25  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* configure.in: 1.0.3-rc2
+
+2006-02-25  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* lib/libdevmapper.c (dm_create_device): Remove dup check here.
+	* lib/setup.c (__crypt_luks_open): Adopt same dup check as regular
+	create command.
+
+2006-02-22  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* configure.in: Spin 1.0.3-rc1
+
+2006-02-22  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* src/cryptsetup.c (action_create): Change defaulting.
+	(action_luksFormat): Change defaulting.
+
+	* lib/setup.c (parse_into_name_and_mode): Revert that default
+	change. This is FORBIDDEN here, as it will change cryptsetup
+	entire default. This is BAD in a non-LUKS world.
+
+2006-02-21  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* luks/keyencryption.c (setup_mapping): Add proper size restriction to mapping.	
+	(LUKS_endec_template): Add more verbose error message.
+
+2006-02-21  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* lib/libdevmapper.c (dm_query_device): Incorporate patch from
+	Bastian Blank
+	http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=344313
+
+2006-02-21  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* src/cryptsetup.c: Rename show_error -> show_status.
+
+2006-02-20  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* lib/libdevmapper.c (dm_create_device): Prevent existing mapping
+	from being removed when a mapping with the same name is added
+
+	* Add timeout patch from Jonas Meurer 
+
+	* src/cryptsetup.c: Remove conditional error printing to enable
+	printing the no-error msg (Command successful). Verify passphrase
+	for LUKS volumes.
+	(main): Add no-verify-passphrase
+
+	* lib/setup.c (parse_into_name_and_mode): Change default mode complition to essiv:sha256.
+
+2006-01-04  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* src/cryptsetup.c (help): Merge patch from Gentoo: change gettext(..) to _(..).
+
+2005-12-06  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* man/cryptsetup.8: Correct "seconds" to "microseconds" in the explaination for -i.
+
+2005-11-09  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* src/cryptsetup.c (main): Add version string.
+
+2005-11-08  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* lib/backends.c: compile fix. 
+
+2005-09-11  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* lib/setup.c (get_key): Fixed another incompatibility from my
+	get_key rewrite with original cryptsetup.
+
+2005-09-11  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* Merged changes from Florian Knauf's fk02 branch.
+
+2005-09-08  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* lib/setup.c (get_key): Fixed another incompatiblity with
+	original cryptsetup.
+
+2005-08-20  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* Checked in a patch from Michael Gebetsroither <gebi@sbox.tugraz.at>
+	  to silent all confirmation dialogs.
+
+2005-06-23  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* src/cryptsetup.c (help): print PACKAGE_STRING
+
+2005-06-20  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* luks/keymanage.c (LUKS_set_key): Security check against header manipulation
+
+	* src/cryptsetup.c (action_luksDelKey): Safety check in luksDelKey
+
+	* luks/keymanage.c: Changed disk layout generation to align key material to 4k boundaries.
+	(LUKS_is_last_keyslot): Added LUKS_is_last_keyslot function.
+
+        * Applied patch from Bill Nottingham fixing a lot of prototypes.
+
+	* src/cryptsetup.c (action_luksOpen): Add support for -r flag.
+
+	* configure.in: Version bump 1.0.1
+
+2005-06-16  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* lib/setup.c (__crypt_luks_open): Remove mem leaking of dmCipherSpec.
+	(get_key): Fix missing zero termination for read string. 
+
+2005-06-12  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* luks/keyencryption.c (setup_mapping): Added CRYPT_FLAG_READONLY in case of O_RDONLY mode
+
+2005-06-11  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* configure.in: Version bump 1.0.1-pre
+
+2005-06-09  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* lib/utils.c: Added write_llseek_blocksize method to support sector wiping on sector_size != 512 
+	media
+
+2005-05-23  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* lib/setup.c (crypt_luksDelKey): Added missing return statement
+	(setup_leave): Added missing return statement
+
+	* luks/keyencryption.c (clear_mapping): Added missing return statement
+
+2005-05-19  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* lib/utils.c (write_blockwise, read_blockwise): Changed to soft bsize instead of SECTOR_SIZE
+
+	* luks/keymanage.c (wipe): Changed open mode to O_DIRECT | O_SYNC, and changed write 
+	to use the blockwise write helper
+
+2005-04-21  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* man/cryptsetup.8: Corrected an error, thanks to Dick Middleton.
+
+2005-04-09  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* luks/sha/hmac.c: Add 64 bit bug fix courtesy to 
+	Oliver Paukstadt <pstadt@sourcentral.org>.
+
+	* luks/pbkdf.c, luks/keyencryption.c, luks/keymanage.c, luks/af.c: Added a license 
+	disclaimer and remove option for "any future GPL versions".
+
+2005-03-25  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* configure.in: man page Makefile. Version bump 1.0.
+
+	* man/cryptsetup.8: finalize man page and move to section 8.
+
+	* src/cryptsetup.c (action_luksFormat): Add "are you sure" for interactive sessions.
+
+	* lib/setup.c (crypt_luksDump), src/cryptsetup.c: add LUKS dump command
+
+2005-03-24  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* src/cryptsetup.c, luks/Makefile.am (test), lib/setup.c (setup_enter): 
+	rename luksInit to luksFormat
+
+2005-03-12  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* man/cryptsetup.1: Add man page.
+
+	* lib/setup.c: Remove unneccessary LUKS_write_phdr call, so the
+	phdr is written after passphrase reading, so the user can change
+	his mind, and not have a partial written LUKS header on it's disk.
+
+2005-02-09  Clemens Fruhwirth  <clemens@endorphin.org>
+
+	* luks/keymanage.c (LUKS_write_phdr): converted argument phdr to
+	pointer, and make a copy of phdr for conversion
+
+	* configure.in: Version dump.
+
+	* luks/keyencryption.c: Convert to read|write_blockwise.
+
+	* luks/keymanage.c: Convert to read|write_blockwise.
+
+	* lib/utils.c: Add read|write_blockwise functions, to use in
+	O_DIRECT file accesses. 
+
+2004-03-11 Thursday 15:52   Christophe Saout <christophe@saout.de>
+
+	* lib/blockdev.h: BLKGETSIZE64 really uses size_t as third
+	  argument, the rest is wrong.
+
+2004-03-10 Wednesday 17:50   Christophe Saout <christophe@saout.de>
+
+	* lib/: libcryptsetup.h, libdevmapper.c: Small fixes.
+
+2004-03-09 Tuesday 21:41   Christophe Saout <christophe@saout.de>
+
+	* lib/internal.h, lib/libcryptsetup.h, lib/libdevmapper.c,
+	  lib/setup.c, po/de.po, src/cryptsetup.c: Added internal flags to
+	  keep track of malloc'ed return values in struct crypt_options and
+	  add a function to free the memory. Also add a readonly flag to
+	  libcryptsetup.
+
+2004-03-09 Tuesday 16:03   Christophe Saout <christophe@saout.de>
+
+	* ChangeLog, configure.in, setup-gettext, lib/Makefile.am,
+	  lib/backends.c, lib/blockdev.h, lib/gcrypt.c, lib/internal.h,
+	  lib/libcryptsetup.h, lib/libdevmapper.c, lib/setup.c,
+	  lib/utils.c, po/de.po, src/Makefile.am, src/cryptsetup.c: More
+	  reorganization work.
+
+2004-03-08 Monday 01:38   Christophe Saout <christophe@saout.de>
+
+	* ChangeLog, Makefile.am, acinclude.m4, configure.in,
+	  lib/Makefile.am, lib/backends.c, lib/blockdev.h, lib/gcrypt.c,
+	  lib/libdevmapper.c, lib/setup.c, lib/utils.c, po/de.po,
+	  src/Makefile.am: BLKGETSIZE64 fixes and started modularity
+	  enhancements
+
+2004-03-04 Thursday 21:06   Christophe Saout <christophe@saout.de>
+
+	* Makefile.am, po/de.po, src/cryptsetup.c, src/cryptsetup.h: First
+	  backward compatible working version.
+
+2004-03-04 Thursday 00:42   Christophe Saout <christophe@saout.de>
+
+	* NEWS, AUTHORS, ChangeLog, Makefile.am, README, autogen.sh,
+	  configure.in, setup-gettext, po/ChangeLog, po/LINGUAS,
+	  po/POTFILES.in, po/de.po, src/cryptsetup.c, src/cryptsetup.h,
+	  src/Makefile.am (utags: initial): Initial checkin.
+
+2004-03-04 Thursday 00:42   Christophe Saout <christophe@saout.de>
+
+	* NEWS, AUTHORS, ChangeLog, Makefile.am, README, autogen.sh,
+	  configure.in, setup-gettext, po/ChangeLog, po/LINGUAS,
+	  po/POTFILES.in, po/de.po, src/cryptsetup.c, src/cryptsetup.h,
+	  src/Makefile.am: Initial revision
