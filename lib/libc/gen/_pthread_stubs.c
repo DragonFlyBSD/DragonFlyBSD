@@ -29,6 +29,7 @@
 
 #include <sys/cdefs.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 /*
  * Weak symbols: All libc internal usage of these functions should
@@ -123,7 +124,7 @@ WR(stub_zero, pthread_mutexattr_setprioceiling);
 WR(stub_zero, pthread_mutexattr_setprotocol);
 WR(stub_zero, pthread_mutexattr_setpshared);
 WR(stub_zero, pthread_mutexattr_settype);
-WR(stub_zero, pthread_once);
+WR(stub_once, pthread_once);
 WR(stub_zero, pthread_resume_all_np);
 WR(stub_zero, pthread_resume_np);
 WR(stub_zero, pthread_rwlock_destroy);
@@ -176,6 +177,17 @@ WR(stub_zero, sem_wait);
 static int __used
 stub_zero(void)
 {
+	return (0);
+}
+
+static int __used
+stub_once(pthread_once_t *o, void (*r)(void))
+{
+	if (o->state != PTHREAD_DONE_INIT) {
+		(*r)();
+		o->state = PTHREAD_DONE_INIT;
+	}
+
 	return (0);
 }
 
