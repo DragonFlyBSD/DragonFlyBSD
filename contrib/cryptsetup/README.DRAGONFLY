@@ -1,0 +1,15 @@
+
+		cryptsetup-1.1.2 AS USED BY DRAGONFLY
+
+    No files have been moved or modified from their extracted position.
+    
+    ON THE VENDOR BRANCH (vendor/cryptsetup), DO NOT CREATE OR EDIT ANY FILES
+    IN THIS DIRECTORY HIERARCHY!  THIS HIERARCHY REPRESENTS AN EXACT COPY,
+    MINUS UNNEEDED FILES, OF THE TOP DISTRIBUTION.
+
+    All modifications are made in the master or release branches!
+
+    The file README.DELETED contains a list of deleted files.
+
+
+    SHA1 (cryptsetup-1.1.2.tar.bz2) = 270580572c413facee359b29e5886ff2b4e6de1c
