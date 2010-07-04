@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/i386_module.c,v 1.12 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/i386_module.c,v 1.3 2003/11/10 06:08:36 dillon Exp $
  */
 
 /*
@@ -62,6 +61,18 @@ i386_autoload(void)
 	error = mod_load("acpi", NULL, 0, NULL);
 	if (error != 0)
 	    printf("ACPI autoload failed - %s\n", strerror(error));
+    }
+
+    disabled = 0;
+    rv = getenv("hint.ehci.0.disabled");
+    if (rv != NULL && strncmp(rv, "0", 1) != 0) {
+	disabled = 1;
+    }
+
+    if (getenv("ehci_load") && (!disabled)) {
+	error = mod_load("ehci", NULL, 0, NULL);
+	if (error != 0)
+	    printf("EHCI autoload failed - %s\n", strerror(error));
     }
 
     return(0);

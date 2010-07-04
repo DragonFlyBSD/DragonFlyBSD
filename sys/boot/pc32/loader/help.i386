@@ -13,8 +13,6 @@
 	pass information to the ACPI module.  These should not be 
 	overridden, or system behaviour will be undefined.
 
-	$DragonFly: src/sys/boot/pc32/loader/help.i386,v 1.3 2008/02/19 21:41:07 thomas Exp $
-
 ################################################################################
 # Treboot DReboot the system
 
