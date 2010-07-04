@@ -348,9 +348,11 @@
         info
         ..
         initrd
+            bin
+            ..
             etc
             ..
-            bin
+            sbin
             ..
         ..
         installer
