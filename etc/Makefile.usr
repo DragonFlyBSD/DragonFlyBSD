@@ -1,8 +1,6 @@
-# Makefile.pkgsrc - installed as /usr/pkgsrc/Makefile
+# Makefile.usr - installed as /usr/Makefile
 #
-# Provides simple targets to download and maintain /usr/pkgsrc.
-#
-# $DragonFly: src/etc/Makefile.usr,v 1.8 2008/09/03 10:38:55 hasso Exp $
+# Provides simple targets to download and maintain /usr/src, /usr/pkgsrc etc.
 
 help all:
 	@echo "HELP:"
@@ -55,12 +53,12 @@ pkgsrc-create:
 	cd ${.CURDIR}/pkgsrc && \
 		git remote add origin git://git.dragonflybsd.org/pkgsrc.git
 	cd ${.CURDIR}/pkgsrc && git fetch origin
-	cd ${.CURDIR}/pkgsrc && git branch vendor origin/vendor
-	cd ${.CURDIR}/pkgsrc && git checkout vendor
+	cd ${.CURDIR}/pkgsrc && git branch master origin/master
+	cd ${.CURDIR}/pkgsrc && git checkout master
 	cd ${.CURDIR}/pkgsrc && git pull
 
 pkgsrc-checkout:
-	cd ${.CURDIR}/pkgsrc && git checkout vendor
+	cd ${.CURDIR}/pkgsrc && git checkout master
 
 pkgsrc-update:
 	cd ${.CURDIR}/pkgsrc && git pull
