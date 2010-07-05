@@ -48,6 +48,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/selinfo.h>
 #include <sys/uio.h>
 #include <sys/thread2.h>
@@ -185,16 +186,21 @@ static d_close_t	ascclose;
 static d_read_t		ascread;
 static d_ioctl_t	ascioctl;
 static d_poll_t		ascpoll;
+static d_kqfilter_t	asckqfilter;
+
+static void ascfilter_detach(struct knote *kn);
+static int ascfilter(struct knote *kn, long hint);
 
 #define CDEV_MAJOR 71
 
 static struct dev_ops asc_ops = {
-	{ "asc", CDEV_MAJOR, 0 },
+	{ "asc", CDEV_MAJOR, D_KQFILTER },
 	.d_open =	ascopen,
 	.d_close =	ascclose,
 	.d_read =	ascread,
 	.d_ioctl =	ascioctl,
 	.d_poll =	ascpoll,
+	.d_kqfilter =	asckqfilter
 };
 
 #define STATIC static
@@ -868,4 +874,66 @@ ascpoll(struct dev_poll_args *ap)
     crit_exit();
     ap->a_events = revents;
     return (0);
+}
+
+static struct filterops ascfiltops =
+    { 1, NULL, ascfilter_detach, ascfilter };
+
+STATIC int
+asckqfilter(struct dev_kqfilter_args *ap)
+{
+    cdev_t dev = ap->a_head.a_dev;
+    int unit = UNIT(minor(dev));
+    struct asc_unit *scu = unittab + unit;
+    struct knote *kn = ap->a_kn;
+    struct klist *klist;
+
+    ap->a_result = 0;
+
+    switch (kn->kn_filter) {
+    case EVFILT_READ:
+        kn->kn_fop = &ascfiltops;
+        kn->kn_hook = (caddr_t)scu;
+        break;
+    default:
+        ap->a_result = 1;
+        return (0);
+    }
+
+    crit_enter();
+    klist = &scu->selp.si_note;
+    SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+    crit_exit();
+
+    return (0);
+}
+
+STATIC void
+ascfilter_detach(struct knote *kn)
+{
+    struct asc_unit *scu = (struct asc_unit *)kn->kn_hook;
+    struct klist *klist;
+
+    crit_enter();
+    klist = &scu->selp.si_note;
+    SLIST_REMOVE(klist, kn, knote, kn_selnext);
+    crit_exit();
+}
+
+STATIC int
+ascfilter(struct knote *kn, long hint)
+{
+    struct asc_unit *scu = (struct asc_unit *)kn->kn_hook;
+    int ready = 0;
+
+    crit_enter();
+    if (scu->sbuf.count >0)
+        ready = 1;
+    else {
+        if (!(scu->flags & DMA_ACTIVE))
+            dma_restart(scu);
+    }
+    crit_exit();
+
+    return (ready);
 }
