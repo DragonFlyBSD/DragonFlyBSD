@@ -45,6 +45,7 @@
 #include <sys/proc.h>
 #include <sys/tty.h>
 #include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/vnode.h>
 #include <sys/uio.h>
 #include <sys/thread.h>
@@ -495,17 +496,22 @@ static d_read_t		genkbdread;
 static d_write_t	genkbdwrite;
 static d_ioctl_t	genkbdioctl;
 static d_poll_t		genkbdpoll;
+static d_kqfilter_t	genkbdkqfilter;
+
+static void genkbdfiltdetach(struct knote *);
+static int genkbdfilter(struct knote *, long);
 
 #define CDEV_MAJOR	112
 
 static struct dev_ops kbd_ops = {
-	{ "kbd", CDEV_MAJOR, 0 },
+	{ "kbd", CDEV_MAJOR, D_KQFILTER },
 	.d_open =	genkbdopen,
 	.d_close =	genkbdclose,
 	.d_read =	genkbdread,
 	.d_write =	genkbdwrite,
 	.d_ioctl =	genkbdioctl,
 	.d_poll =	genkbdpoll,
+	.d_kqfilter =	genkbdkqfilter
 };
 
 /*
@@ -765,6 +771,75 @@ genkbdpoll(struct dev_poll_args *ap)
 	crit_exit();
 	ap->a_events = revents;
 	return (0);
+}
+
+static struct filterops genkbdfiltops =
+	{ 1, NULL, genkbdfiltdetach, genkbdfilter };
+
+static int
+genkbdkqfilter(struct dev_kqfilter_args *ap)
+{
+	cdev_t dev = ap->a_head.a_dev;
+	struct knote *kn = ap->a_kn;
+	genkbd_softc_t sc;
+	struct klist *klist;
+
+	ap->a_result = 0;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &genkbdfiltops;
+		kn->kn_hook = (caddr_t)dev;
+		break;
+	default:
+		ap->a_result = 1;
+		return (0);
+	}
+
+	crit_enter();
+	sc = dev->si_drv1;
+	klist = &sc->gkb_rsel.si_note;
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+	crit_exit();
+
+	return (0);
+}
+
+static void
+genkbdfiltdetach(struct knote *kn)
+{
+	cdev_t dev = (cdev_t)kn->kn_hook;
+	genkbd_softc_t sc;
+	struct klist *klist;
+
+	crit_enter();
+	sc = dev->si_drv1;
+	klist = &sc->gkb_rsel.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+static int
+genkbdfilter(struct knote *kn, long hint)
+{
+	cdev_t dev = (cdev_t)kn->kn_hook;
+	keyboard_t *kbd;
+	genkbd_softc_t sc;
+	int ready = 0;
+
+	crit_enter();
+	sc = dev->si_drv1;
+        kbd = kbd_get_keyboard(KBD_INDEX(dev));
+	if ((sc == NULL) || (kbd == NULL) || !KBD_IS_VALID(kbd)) {
+		kn->kn_flags |= EV_EOF;	/* the keyboard has gone */
+		ready = 1;
+	} else {
+		if (sc->gkb_q_length > 0)
+                        ready = 1;
+        }
+	crit_exit();
+
+	return (ready);
 }
 
 static int
