@@ -38,6 +38,7 @@
 #include <sys/signalvar.h>
 #include <sys/sysent.h>
 #include <sys/sysproto.h>
+#include <sys/file.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -172,9 +173,13 @@ linux_kev_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
 int
 sys_linux_epoll_ctl(struct linux_epoll_ctl_args *args)
 {
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
         struct kevent_args k_args;
         struct kevent kev;
+	struct kqueue *kq;
         struct linux_epoll_event le;
+	struct file *fp = NULL;
         int error;
 
         error = copyin(args->event, &le, sizeof(le));
@@ -207,7 +212,17 @@ sys_linux_epoll_ctl(struct linux_epoll_ctl_args *args)
         }
         linux_epoll_to_kevent(args->fd, &le, &kev);
 
-	error = kern_kevent(args->epfd, 0, &k_args.sysmsg_result, &k_args,
+	fp = holdfp(p->p_fd, args->epfd, -1);
+	if (fp == NULL)
+		return (EBADF);
+	if (fp->f_type != DTYPE_KQUEUE) {
+		fdrop(fp);
+		return (EBADF);
+	}
+
+	kq = (struct kqueue *)fp->f_data;
+
+	error = kern_kevent(kq, 0, &k_args.sysmsg_result, &k_args,
 	    linux_kev_copyin, linux_kev_copyout, NULL);
         /* Check if there was an error during registration. */
         if (error == 0 && k_args.sysmsg_result != 0) {
@@ -215,6 +230,7 @@ sys_linux_epoll_ctl(struct linux_epoll_ctl_args *args)
                 error = le.data;
         }
 
+	fdrop(fp);
         return (error);
 }
 
@@ -223,7 +239,11 @@ sys_linux_epoll_ctl(struct linux_epoll_ctl_args *args)
 int
 sys_linux_epoll_wait(struct linux_epoll_wait_args *args)
 {
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
         struct timespec ts;
+	struct kqueue *kq;
+	struct file *fp = NULL;
         struct kevent_args k_args;
         int error;
 
@@ -243,9 +263,20 @@ sys_linux_epoll_wait(struct linux_epoll_wait_args *args)
         k_args.nevents = args->maxevents;
         k_args.timeout = &ts;
 
-	error = kern_kevent(args->epfd, args->maxevents, &args->sysmsg_result,
+	fp = holdfp(p->p_fd, args->epfd, -1);
+	if (fp == NULL)
+		return (EBADF);
+	if (fp->f_type != DTYPE_KQUEUE) {
+		fdrop(fp);
+		return (EBADF);
+	}
+
+	kq = (struct kqueue *)fp->f_data;
+
+	error = kern_kevent(kq, args->maxevents, &args->sysmsg_result,
 	    &k_args, linux_kev_copyin, linux_kev_copyout, &ts);
 
+	fdrop(fp);
         /* translation? */
         return (error);
 }
