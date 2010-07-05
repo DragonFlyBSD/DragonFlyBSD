@@ -29,6 +29,7 @@
 #include <sys/lock.h>
 #include <sys/selinfo.h>
 #include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/uio.h>
 #include <sys/thread.h>
 #include <sys/thread2.h>
@@ -42,13 +43,18 @@ static d_open_t		hotplugopen;
 static d_close_t	hotplugclose;
 static d_read_t		hotplugread;
 static d_poll_t		hotplugpoll;
+static d_kqfilter_t	hotplugkqfilter;
+
+static void hotplugfiltdetach(struct knote *);
+static int hotplugfilt(struct knote *, long);
 
 static struct dev_ops hotplug_ops = {
-	{ "hotplug", CDEV_MAJOR, 0 },
+	{ "hotplug", CDEV_MAJOR, D_KQFILTER },
 	.d_open =	hotplugopen,
 	.d_close =	hotplugclose,
 	.d_read =	hotplugread,
 	.d_poll =	hotplugpoll,
+	.d_kqfilter =	hotplugkqfilter
 };
 
 struct hotplug_event_info {
@@ -117,6 +123,62 @@ hotplugpoll(struct dev_poll_args *ap)
 
 	ap->a_events = revents;
 	return (0);
+}
+
+static struct filterops hotplugfiltops =
+	{ 1, NULL, hotplugfiltdetach, hotplugfilt };
+
+static int
+hotplugkqfilter(struct dev_kqfilter_args *ap)
+{
+	struct knote *kn = ap->a_kn;
+	struct klist *klist;
+
+	ap->a_result = 0;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &hotplugfiltops;
+		break;
+	default:
+		ap->a_result = 1;
+		return (0);
+	}
+
+	lockmgr(&hpsc.lock, LK_EXCLUSIVE);
+	crit_enter();
+	klist = &hpsc.sel.si_note;
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+	crit_exit();
+	lockmgr(&hpsc.lock, LK_RELEASE);
+
+	return (0);
+}
+
+static void
+hotplugfiltdetach(struct knote *kn)
+{
+	struct klist *klist;
+
+	lockmgr(&hpsc.lock, LK_EXCLUSIVE);
+	crit_enter();
+	klist = &hpsc.sel.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+	lockmgr(&hpsc.lock, LK_RELEASE);
+}
+
+static int
+hotplugfilt(struct knote *kn, long hint)
+{
+	int ready = 0;
+
+	lockmgr(&hpsc.lock, LK_EXCLUSIVE);
+	if (!TAILQ_EMPTY(&hpsc.queue))
+		ready = 1;
+	lockmgr(&hpsc.lock, LK_RELEASE);
+
+	return (ready);
 }
 
 int
