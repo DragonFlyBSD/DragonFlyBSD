@@ -46,6 +46,7 @@
 #include <sys/mman.h>
 #include <sys/module.h>
 #include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/proc.h>
 #include <sys/signalvar.h>
 #include <sys/thread2.h>
@@ -122,16 +123,21 @@ static	d_close_t	cxm_close;
 static	d_read_t	cxm_read;
 static	d_ioctl_t	cxm_ioctl;
 static	d_poll_t	cxm_poll;
+static	d_kqfilter_t	cxm_kqfilter;
+
+static void cxm_filter_detach(struct knote *);
+static int cxm_filter(struct knote *, long);
 
 #define CDEV_MAJOR 93
 
 static struct dev_ops cxm_ops = {
-	{ "cxm", CDEV_MAJOR, 0 },
+	{ "cxm", CDEV_MAJOR, D_KQFILTER },
 	.d_open =	cxm_open,
 	.d_close =	cxm_close,
 	.d_read =	cxm_read,
 	.d_ioctl =	cxm_ioctl,
-	.d_poll =	cxm_poll
+	.d_poll =	cxm_poll,
+	.d_kqfilter =	cxm_kqfilter
 };
 
 MODULE_DEPEND(cxm, cxm_iic, 1, 1, 1);
@@ -2934,4 +2940,71 @@ cxm_poll(struct dev_poll_args *ap)
 	crit_exit();
 
 	return revents;
+}
+
+static struct filterops cxm_filterops =
+	{ 1, NULL, cxm_filter_detach, cxm_filter };
+
+static int
+cxm_kqfilter(struct dev_kqfilter_args *ap)
+{
+	cdev_t dev = ap->a_head.a_dev;
+	struct knote *kn = ap->a_kn;
+	struct cxm_softc *sc;
+	struct klist *klist;
+	int unit;
+
+	ap->a_result = 0;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		unit = UNIT(minor(dev));
+		/* Get the device data */
+		sc = (struct cxm_softc *)devclass_get_softc(cxm_devclass, unit);
+		kn->kn_fop = &cxm_filterops;
+		kn->kn_hook = (caddr_t)sc;
+		break;
+	default:
+		ap->a_result = 1;
+		return (0);
+	}
+
+	crit_enter();
+	klist = &sc->enc_sel.si_note;
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+	crit_exit();
+
+	return (0);
+}
+
+static void
+cxm_filter_detach(struct knote *kn)
+{
+	struct cxm_softc *sc = (struct cxm_softc *)kn->kn_hook;
+	struct klist *klist;
+
+	crit_enter();
+	klist = &sc->enc_sel.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+static int
+cxm_filter(struct knote *kn, long hint)
+{
+	struct cxm_softc *sc = (struct cxm_softc *)kn->kn_hook;
+	int ready = 0;
+
+	if (sc == NULL) {
+		/* the device is no longer valid/functioning */
+		kn->kn_flags |= EV_EOF;
+		return (1);
+	}
+
+	crit_enter();
+	if (sc->enc_pool.read != sc->enc_pool.write)
+		ready = 1;
+	crit_exit();
+
+	return (ready);
 }
