@@ -24,6 +24,7 @@
 #include <sys/tty.h>
 #include <sys/conf.h>
 #include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/kernel.h>
 #include <sys/queue.h>
 #include <sys/snoop.h>
@@ -40,8 +41,12 @@ static	d_read_t	snpread;
 static	d_write_t	snpwrite;
 static	d_ioctl_t	snpioctl;
 static	d_poll_t	snppoll;
+static	d_kqfilter_t	snpkqfilter;
 static d_clone_t	snpclone;
 DEVFS_DECLARE_CLONE_BITMAP(snp);
+
+static void snpfilter_detach(struct knote *);
+static int snpfilter(struct knote *, long);
 
 #if NSNP <= 1
 #define SNP_PREALLOCATED_UNITS	4
@@ -51,13 +56,14 @@ DEVFS_DECLARE_CLONE_BITMAP(snp);
 
 #define CDEV_MAJOR 53
 static struct dev_ops snp_ops = {
-	{ "snp", CDEV_MAJOR, 0 },
+	{ "snp", CDEV_MAJOR, D_KQFILTER },
 	.d_open =	snpopen,
 	.d_close =	snpclose,
 	.d_read =	snpread,
 	.d_write =	snpwrite,
 	.d_ioctl =	snpioctl,
 	.d_poll =	snppoll,
+	.d_kqfilter =	snpkqfilter
 };
 
 static struct linesw snpdisc = {
@@ -580,6 +586,66 @@ snppoll(struct dev_poll_args *ap)
 	}
 	ap->a_events = revents;
 	return (0);
+}
+
+static struct filterops snpfiltops =
+        { 1, NULL, snpfilter_detach, snpfilter };
+
+static int
+snpkqfilter(struct dev_kqfilter_args *ap)
+{
+	cdev_t dev = ap->a_head.a_dev;
+	struct snoop *snp = dev->si_drv1;
+	struct knote *kn = ap->a_kn;
+	struct klist *klist;
+
+	ap->a_result = 0;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &snpfiltops;
+		kn->kn_hook = (caddr_t)snp;
+		break;
+	default:
+		ap->a_result = 1;
+		return (0);
+	}
+
+	crit_enter();
+	klist = &snp->snp_sel.si_note;
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+	crit_exit();
+
+	return (0);
+}
+
+static void
+snpfilter_detach(struct knote *kn)
+{
+	struct snoop *snp = (struct snoop *)kn->kn_hook;
+	struct klist *klist;
+
+	crit_enter();
+	klist = &snp->snp_sel.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+static int
+snpfilter(struct knote *kn, long hint)
+{
+	struct snoop *snp = (struct snoop *)kn->kn_hook;
+	int ready = 0;
+
+	/*
+	 * If snoop is down, we don't want to poll forever so we return 1.
+	 * Caller should see if we down via FIONREAD ioctl().  The last should
+	 * return -1 to indicate down state.
+	 */
+	if (snp->snp_flags & SNOOP_DOWN || snp->snp_len > 0)
+		ready = 1;
+
+	return (ready);
 }
 
 static int
