@@ -45,6 +45,8 @@
 #include "vinumhdr.h"
 #include <sys/sysproto.h>				    /* for sync(2) */
 #include <sys/devicestat.h>
+#include <sys/poll.h>
+#include <sys/event.h>
 #ifdef VINUMDEBUG
 #include <sys/reboot.h>
 int debug = 0;
@@ -56,13 +58,14 @@ extern struct mc malloced[];
 
 struct dev_ops vinum_ops =
 {
-	{ "vinum", VINUM_CDEV_MAJOR, D_DISK },
+	{ "vinum", VINUM_CDEV_MAJOR, D_DISK | D_KQFILTER },
 	.d_open =	vinumopen,
 	.d_close =	vinumclose,
 	.d_read =	physread,
 	.d_write =	physwrite,
 	.d_ioctl =	vinumioctl,
 	.d_poll =	vinumpoll,
+	.d_kqfilter =	vinumkqfilter,
 	.d_strategy =	vinumstrategy,
 	.d_dump =	vinumdump,
 	.d_psize =	vinumsize,
@@ -577,6 +580,37 @@ vinumpoll(struct dev_poll_args *ap)
 {
     ap->a_events = seltrue(ap->a_head.a_dev, ap->a_events);
     return(0);
+}
+
+void
+vinumfilt_detach(struct knote *kn) {}
+
+int
+vinumfilt(struct knote *kn, long hint)
+{
+    cdev_t dev = (cdev_t)kn->kn_hook;
+
+    if (seltrue(dev, POLLIN | POLLRDNORM))
+        return (1);
+
+    return (0);
+}
+
+struct filterops vinumfiltops =
+    { 1, NULL, vinumfilt_detach, vinumfilt };
+
+int
+vinumkqfilter(struct dev_kqfilter_args *ap)
+{
+    if (ap->a_kn->kn_filter == EVFILT_READ) {
+        ap->a_kn->kn_fop = &vinumfiltops;
+        ap->a_kn->kn_hook = (caddr_t)ap->a_head.a_dev;
+        ap->a_result = 0;
+    } else {
+        ap->a_result = 1;
+    }
+
+    return (0);
 }
 
 /* Local Variables: */
