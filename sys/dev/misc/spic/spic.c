@@ -57,6 +57,7 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/tty.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
@@ -86,14 +87,19 @@ static d_close_t	spicclose;
 static d_read_t		spicread;
 static d_ioctl_t	spicioctl;
 static d_poll_t		spicpoll;
+static d_kqfilter_t	spickqfilter;
+
+static void spicfilt_detach(struct knote *);
+static int spicfilt(struct knote *, long);
 
 static struct dev_ops spic_ops = {
-	{ "spic", CDEV_MAJOR, 0 },
+	{ "spic", CDEV_MAJOR, D_KQFILTER },
         .d_open =	spicopen,
         .d_close =	spicclose,
         .d_read =	spicread,
         .d_ioctl =	spicioctl,
         .d_poll =	spicpoll,
+	.d_kqfilter =	spickqfilter
 };
 
 #define SCBUFLEN 128
@@ -538,6 +544,62 @@ spicpoll(struct dev_poll_args *ap)
 	return(0);
 }
 
+static struct filterops spicfiltops =
+	{ 1, NULL, spicfilt_detach, spicfilt };
+
+static int
+spickqfilter(struct dev_kqfilter_args *ap)
+{
+	struct knote *kn = ap->a_kn;
+	struct klist *klist;
+	struct spic_softc *sc;
+
+	ap->a_result = 0;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		sc = devclass_get_softc(spic_devclass, 0);
+		kn->kn_fop = &spicfiltops;
+		kn->kn_hook = (caddr_t)sc;
+		break;
+	default:
+		ap->a_result = 1;
+		return (0);
+	}
+
+	crit_enter();
+	klist = &sc->sc_rsel.si_note;
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+	crit_exit();
+
+	return (0);
+}
+
+static void
+spicfilt_detach(struct knote *kn)
+{
+	struct spic_softc *sc = (struct spic_softc *)kn->kn_hook;
+	struct klist *klist;
+
+	crit_enter();
+	klist = &sc->sc_rsel.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+static int
+spicfilt(struct knote *kn, long hint)
+{
+	struct spic_softc *sc = (struct spic_softc *)kn->kn_hook;
+	int ready = 0;
+
+	crit_enter();
+	if (sc->sc_count)
+		ready = 1;
+	crit_exit();
+
+	return (ready);
+}
 
 static device_method_t spic_methods[] = {
 	DEVMETHOD(device_probe,		spic_probe),
