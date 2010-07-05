@@ -30,6 +30,7 @@
 #include <sys/bus.h>
 #include <sys/selinfo.h>
 #include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/fcntl.h>
 #include <sys/uio.h>
 #include <sys/signalvar.h>
@@ -83,15 +84,20 @@ static d_close_t apmclose;
 static d_write_t apmwrite;
 static d_ioctl_t apmioctl;
 static d_poll_t apmpoll;
+static d_kqfilter_t apmkqfilter;
+
+static void apmfilter_detach(struct knote *);
+static int apmfilter(struct knote *, long);
 
 #define CDEV_MAJOR 39
 static struct dev_ops apm_ops = {
-	{ "apm", CDEV_MAJOR, 0 },
+	{ "apm", CDEV_MAJOR, D_KQFILTER },
 	.d_open =	apmopen,
 	.d_close =	apmclose,
 	.d_write =	apmwrite,
 	.d_ioctl =	apmioctl,
 	.d_poll =	apmpoll,
+	.d_kqfilter =	apmkqfilter
 };
 
 static int apm_suspend_delay = 1;
@@ -1351,6 +1357,60 @@ apmpoll(struct dev_poll_args *ap)
 	}
 	ap->a_events = revents;
 	return (0);
+}
+
+static struct filterops apmfiltops =
+	{ 1, NULL, apmfilter_detach, apmfilter };
+
+static int
+apmkqfilter(struct dev_kqfilter_args *ap)
+{
+	struct apm_softc *sc = &apm_softc;
+	struct knote *kn = ap->a_kn;
+	struct klist *klist;
+
+	ap->a_result = 0;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &apmfiltops;
+		kn->kn_hook = (caddr_t)sc;
+		break;
+	default:
+		ap->a_result = 1;
+		return (0);
+	}
+
+	crit_enter();
+	klist = &sc->sc_rsel.si_note;
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+	crit_exit();
+
+	return (0);
+}
+
+static void
+apmfilter_detach(struct knote *kn)
+{
+	struct apm_softc *sc = (struct apm_softc *)kn->kn_hook;
+	struct klist *klist;
+
+	crit_enter();
+	klist = &sc->sc_rsel.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+static int
+apmfilter(struct knote *kn, long hint)
+{
+	struct apm_softc *sc = (struct apm_softc *)kn->kn_hook;
+	int ready = 0;
+
+	if (sc->event_count)
+		ready = 1;
+
+	return (ready);
 }
 
 /*
