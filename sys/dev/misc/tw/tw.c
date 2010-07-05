@@ -150,6 +150,7 @@
 #include <sys/syslog.h>
 #include <sys/selinfo.h>
 #include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/thread2.h>
 
 #ifdef HIRESTIME
@@ -215,6 +216,10 @@ static	d_close_t	twclose;
 static	d_read_t	twread;
 static	d_write_t	twwrite;
 static	d_poll_t	twpoll;
+static	d_kqfilter_t	twkqfilter;
+
+static void twfilter_detach(struct knote *);
+static int twfilter(struct knote *, long);
 
 #define CDEV_MAJOR 19
 static struct dev_ops tw_ops = {
@@ -224,6 +229,7 @@ static struct dev_ops tw_ops = {
 	.d_read =	twread,
 	.d_write =	twwrite,
 	.d_poll =	twpoll,
+	.d_kqfilter = 	twkqfilter
 };
 
 /*
@@ -540,6 +546,64 @@ twpoll(struct dev_poll_args *ap)
   crit_exit();
   ap->a_events = revents;
   return(0);
+}
+
+static struct filterops twfiltops =
+	{ 1, NULL, twfilter_detach, twfilter };
+
+static int
+twkqfilter(struct dev_kqfilter_args *ap)
+{
+  cdev_t dev = ap->a_head.a_dev;
+  struct knote *kn = ap->a_kn;
+  struct klist *klist;
+  struct tw_sc *sc;
+
+  ap->a_result = 0;
+
+  switch (kn->kn_filter) {
+  case EVFILT_READ:
+    sc = &tw_sc[TWUNIT(dev)];
+    kn->kn_fop = &twfiltops;
+    kn->kn_hook = (caddr_t)sc;
+    break;
+  default:
+    ap->a_result = 1;
+    return (0);
+  }
+
+  crit_enter();
+  klist = &sc->sc_selp.si_note;
+  SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+  crit_exit();
+
+  return (0);
+}
+
+static void
+twfilter_detach(struct knote *kn)
+{
+  struct tw_sc *sc = (struct tw_sc *)kn->kn_hook;
+  struct klist *klist;
+
+  crit_enter();
+  klist = &sc->sc_selp.si_note;
+  SLIST_REMOVE(klist, kn, knote, kn_selnext);
+  crit_exit();
+}
+
+static int
+twfilter(struct knote *kn, long hint)
+{
+  struct tw_sc *sc = (struct tw_sc *)kn->kn_hook;
+  int ready = 0;
+
+  crit_enter();
+  if(sc->sc_nextin != sc->sc_nextout)
+    ready = 1;
+  crit_exit();
+
+  return (ready);
 }
 
 /*
