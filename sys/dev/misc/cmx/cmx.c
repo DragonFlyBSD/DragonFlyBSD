@@ -45,6 +45,7 @@
 #include <sys/sockio.h>
 #include <sys/mbuf.h>
 #include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
 #include <sys/uio.h>
@@ -131,18 +132,24 @@ static d_close_t	cmx_close;
 static d_read_t		cmx_read;
 static d_write_t	cmx_write;
 static d_poll_t		cmx_poll;
+static d_kqfilter_t	cmx_kqfilter;
 #ifdef CMX_INTR
 static void		cmx_intr(void *arg);
 #endif
 
+static void cmx_filter_detach(struct knote *);
+static int cmx_filter_read(struct knote *, long);
+static int cmx_filter_write(struct knote *, long);
+
 #define CDEV_MAJOR	185
 static struct dev_ops cmx_ops = {
-	{ "cmx", CDEV_MAJOR, 0 },
+	{ "cmx", CDEV_MAJOR, D_KQFILTER },
 	.d_open =	cmx_open,
 	.d_close =	cmx_close,
 	.d_read =	cmx_read,
 	.d_write =	cmx_write,
 	.d_poll =	cmx_poll,
+	.d_kqfilter =	cmx_kqfilter
 };
 
 /*
@@ -685,6 +692,96 @@ cmx_poll(struct dev_poll_args *ap)
 	DEBUG_printf(sc->dev, "success (revents=%b)\n", revents, POLLBITS);
 
 	return revents;
+}
+
+static struct filterops cmx_read_filterops =
+	{ 1, NULL, cmx_filter_detach, cmx_filter_read };
+static struct filterops cmx_write_filterops =
+	{ 1, NULL, cmx_filter_detach, cmx_filter_write };
+
+/*
+ * Kevent handler.  Writing is always possible, reading is only possible
+ * if BSR_BULK_IN_FULL is set.  Will start the cmx_tick callout and
+ * set sc->polling.
+ */
+static int
+cmx_kqfilter(struct dev_kqfilter_args *ap)
+{
+	cdev_t dev = ap->a_head.a_dev;
+	struct knote *kn = ap->a_kn;
+	struct cmx_softc *sc;
+	struct klist *klist;
+
+	ap->a_result = 0;
+
+	sc = devclass_get_softc(cmx_devclass, minor(dev));
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &cmx_read_filterops;
+		kn->kn_hook = (caddr_t)sc;
+		break;
+	case EVFILT_WRITE:
+		kn->kn_fop = &cmx_write_filterops;
+		kn->kn_hook = (caddr_t)sc;
+		break;
+	default:
+		ap->a_result = 1;
+		return (0);
+	}
+
+	crit_enter();
+	klist = &sc->sel.si_note;
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+	crit_exit();
+
+	return (0);
+}
+
+static void
+cmx_filter_detach(struct knote *kn)
+{
+	struct cmx_softc *sc = (struct cmx_softc *)kn->kn_hook;
+	struct klist *klist;
+
+	crit_enter();
+	klist = &sc->sel.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+static int
+cmx_filter_read(struct knote *kn, long hint)
+{
+	struct cmx_softc *sc = (struct cmx_softc *)kn->kn_hook;
+	int ready = 0;
+        uint8_t bsr = 0;
+
+        if (sc == NULL || sc->dying) {
+		kn->kn_flags |= EV_EOF;
+                return (1);
+	}
+
+        bsr = cmx_read_BSR(sc);
+	if (cmx_test(bsr, BSR_BULK_IN_FULL, 1)) {
+		ready = 1;
+	} else {
+		CMX_LOCK(sc);
+		if (!sc->polling) {
+			sc->polling = 1;
+			callout_reset(&sc->ch, POLL_TICKS,
+				      cmx_tick, sc);
+		}
+		CMX_UNLOCK(sc);
+	}
+
+	return (ready);
+}
+
+static int
+cmx_filter_write(struct knote *kn, long hint)
+{
+	return (1);
 }
 
 #ifdef CMX_INTR
