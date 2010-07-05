@@ -752,7 +752,7 @@ tunkqfilter(struct dev_kqfilter_args *ap)
 	switch (kn->kn_filter) {
 	case EVFILT_READ:
 		kn->kn_fop = &tun_read_filtops;
-		kn->kn_hook = (caddr_t)&tp;
+		kn->kn_hook = (caddr_t)tp;
 		break;
 	default:
 		ap->a_result = 1;

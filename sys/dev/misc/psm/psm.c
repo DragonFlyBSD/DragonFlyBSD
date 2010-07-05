@@ -2421,6 +2421,7 @@ psmkqfilter(struct dev_kqfilter_args *ap)
 	case EVFILT_READ:
 		kn->kn_fop = &psmfiltops;
 		kn->kn_hook = (caddr_t)sc;
+		break;
 	default:
 		ap->a_result = 1;
 		return (0);
