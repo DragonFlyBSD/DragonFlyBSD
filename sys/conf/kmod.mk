@@ -348,7 +348,7 @@ assym.s: @/kern/genassym.sh
 .if exists(@)
 genassym.o: @/platform/${MACHINE_PLATFORM}/${MACHINE_ARCH}/genassym.c          
 .endif
-genassym.o: @ @/platform/${MACHINE_PLATFORM}/${MACHINE_ARCH}/genassym.c ${FORWARD_HEADERS_COOKIE}          
+genassym.o: @ ${SRCS:Mopt_*.h}
 	${CC} -c ${CFLAGS:N-fno-common:N-mcmodel=small} ${WERROR} \
 	@/platform/${MACHINE_PLATFORM}/${MACHINE_ARCH}/genassym.c
 .endif
