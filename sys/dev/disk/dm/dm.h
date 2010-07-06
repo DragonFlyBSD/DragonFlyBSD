@@ -392,7 +392,7 @@ int dm_pdev_init(void);
 dm_pdev_t* dm_pdev_insert(const char *);
 
 /* XXX: temporary hacks */
-#define aprint_debug	kprintf
+#define aprint_debug	while(0) kprintf
 #define aprint_normal	kprintf
 
 #endif /*_KERNEL*/

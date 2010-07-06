@@ -137,7 +137,7 @@ dm_modcmd(module_t mod, int cmd, void *unused)
 	switch (cmd) {
 	case MOD_LOAD:
 		dm_doinit();
-		kprintf("Device Mapper version %d.%d.%d loaded",
+		kprintf("Device Mapper version %d.%d.%d loaded\n",
 		    DM_VERSION_MAJOR, DM_VERSION_MINOR, DM_VERSION_PATCHLEVEL);
 		break;
 
@@ -154,7 +154,7 @@ dm_modcmd(module_t mod, int cmd, void *unused)
 		error = dmdestroy();
 		if (error)
 			break;
-		kprintf("Device Mapper unloaded");
+		kprintf("Device Mapper unloaded\n");
 		break;
 
 	default:
@@ -344,7 +344,6 @@ disk_ioctl_switch(cdev_t dev, u_long cmd, void *data)
 		dpart = (void *)data;
 		bzero(dpart, sizeof(*dpart));
 
-		kprintf("foobar DIOCGPART dm\n");
 		if ((dmv = dm_dev_lookup(NULL, NULL, minor(dev))) == NULL)
 			return ENODEV;
 		if (dmv->diskp->d_info.d_media_blksize == 0) {

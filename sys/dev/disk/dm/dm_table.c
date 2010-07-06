@@ -198,9 +198,7 @@ dm_table_size(dm_table_head_t * head)
 	 * if length => rawblkno then we should used that table.
 	 */
 	SLIST_FOREACH(table_en, tbl, next) {
-		kprintf("dm_table SLIST_FOREACH... curlen = %llu\n", length);
 		length += table_en->length;
-		kprintf("dm_table SLIST_FOREACH... curlen = %llu\n", length);
 	}
 
 	dm_table_unbusy(head);

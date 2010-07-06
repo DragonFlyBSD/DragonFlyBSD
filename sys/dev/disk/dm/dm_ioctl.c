@@ -741,7 +741,6 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 	while ((target_dict = prop_object_iterator_next(iter)) != NULL) {
 		prop_dictionary_get_cstring_nocopy(target_dict,
 		    DM_TABLE_TYPE, &type);
-		kprintf("heyhohoho: %s\n", type);
 		/*
 		 * If we want to deny table with 2 or more different
 		 * target we should do it here
@@ -750,14 +749,12 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 		    ((target = dm_target_autoload(type)) == NULL)) {
 			dm_table_release(&dmv->table_head, DM_TABLE_INACTIVE);
 			dm_dev_unbusy(dmv);
-			kprintf("heyhohoho ENOENT\n");
 			return ENOENT;
 		}
 		if ((table_en = kmalloc(sizeof(dm_table_entry_t),
 			    M_DM, M_WAITOK)) == NULL) {
 			dm_table_release(&dmv->table_head, DM_TABLE_INACTIVE);
 			dm_dev_unbusy(dmv);
-			kprintf("heyhohoho ENOMEM\n");
 			return ENOMEM;
 		}
 		prop_dictionary_get_uint64(target_dict, DM_TABLE_START,
@@ -765,7 +762,10 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 		prop_dictionary_get_uint64(target_dict, DM_TABLE_LENGTH,
 		    &table_en->length);
 
-		kprintf("dm_ioctl.c... table_en->start = %llu, table_en->length = %llu\n", table_en->start, table_en->length);
+		aprint_debug("dm_ioctl.c... table_en->start = %ju, "
+			     "table_en->length = %ju\n",
+			     (uintmax_t)table_en->start,
+			     (uintmax_t)table_en->length);
 
 		table_en->target = target;
 		table_en->dm_dev = dmv;

@@ -163,7 +163,7 @@ essiv_ivgen_done(struct cryptop *crp)
 		return crypto_dispatch(crp);
 
 	if (crp->crp_etype != 0) {
-		kprintf("essiv_ivgen_done, crp->crp_etype = %d\n", crp->crp_etype);
+		kprintf("dm_target_crypt: essiv_ivgen_done, crp->crp_etype = %d\n", crp->crp_etype);
 	}
 
 	atomic_add_int((int *)crp->crp_opaque, 1);
@@ -215,7 +215,7 @@ essiv_ivgen(dm_target_crypt_config_t *priv, u_int8_t *iv, size_t iv_len, off_t s
 
 	error = crypto_dispatch(&crp);
 	if (error)
-		kprintf("essiv_ivgen, error = %d\n", error);
+		kprintf("dm_target_crypt: essiv_ivgen, error = %d\n", error);
 
 	/*
 	 * id is modified in the callback, so that if crypto_dispatch finishes
@@ -277,8 +277,9 @@ dm_target_crypt_work(dm_target_crypt_config_t *priv, struct bio *bio)
 
 	ptr = space;
 	bio->bio_caller_info3.value = sectors;
+#if 0
 	kprintf("Write? %d, bytes = %d (b_bcount), sectors = %d (bio = %p, b_cmd = %d)\n", write, bytes, sectors, bio, bio->bio_buf->b_cmd);
-
+#endif
 	for (i = 0; i < sectors; i++) {
 		crp = (struct cryptop *)ptr;
 		ptr += sizeof(*crp);
@@ -326,7 +327,6 @@ dm_target_crypt_read_done(struct bio *bio)
 	dm_target_crypt_config_t *priv;
 
 	priv = bio->bio_caller_info1.ptr;
-	kprintf("dm_target_crypt_read_done %p\n", bio);
 
 	dm_target_crypt_work(priv, bio);
 }
@@ -337,7 +337,6 @@ dm_target_crypt_write_done(struct bio *bio)
 	struct dmtc_helper *dmtc;
 	struct bio *obio;
 
-	kprintf("dm_target_crypt_write_done %p\n", bio);
 	dmtc = bio->bio_caller_info2.ptr;
 	bio->bio_buf->b_data = dmtc->orig_buf;
 	kfree(dmtc->free_addr, M_DMCRYPT);
@@ -362,12 +361,11 @@ dm_target_crypt_crypto_done_read(struct cryptop *crp)
 	kprintf("dm_target_crypt_crypto_done_read %p, n = %d\n", bio, n);
 #endif
 	if (crp->crp_etype != 0) {
-		kprintf("dm_target_crypt_crypto_done_read crp_etype = %d\n", crp->crp_etype);
+		kprintf("dm_target_crypt: dm_target_crypt_crypto_done_read crp_etype = %d\n", crp->crp_etype);
 		/* XXX: Print something out */
 		bio->bio_buf->b_error = crp->crp_etype;	
 	}
 	if (n == 1) {
-		kprintf("dm_target_crypt_crypt_done_read: n == 1\n");
 		kfree(bio->bio_caller_info2.ptr, M_DMCRYPT);
 		/* This is the last chunk of the read */
 		obio = pop_bio(bio);
@@ -396,12 +394,11 @@ dm_target_crypt_crypto_done_write(struct cryptop *crp)
 	kprintf("dm_target_crypt_crypto_done_write %p, n = %d\n", bio, n);
 #endif
 	if (crp->crp_etype != 0) {
-		kprintf("dm_target_crypt_crypto_done_write crp_etype = %d\n", crp->crp_etype);
+		kprintf("dm_target_crypt: dm_target_crypt_crypto_done_write crp_etype = %d\n", crp->crp_etype);
 		/* XXX: Print something out */
 		bio->bio_buf->b_error = crp->crp_etype;	
 	}
 	if (n == 1) {
-		kprintf("dm_target_crypt_crypt_done_write: n == 1\n");
 		/* This is the last chunk of the write */
 		if (bio->bio_buf->b_error != 0) {
 			/* XXX */
@@ -482,9 +479,6 @@ dm_target_crypt_modcmd(modcmd_t cmd, void *arg)
 
 /*
  * Init function called from dm_table_load_ioctl.
- * Accepted format:
- * <device>	<crypto algorithm>[-<keysize>]	<iv generator>	<passphrase>
- * /dev/foo	aes-256				essiv		foobar
  * cryptsetup actually passes us this:
  * aes-cbc-essiv:sha256 7997f8af... 0 /dev/ad0s0a 8
  */
@@ -537,9 +531,8 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 		}
 	}
 
-	kprintf("\nCrypto target init function called, argc = %d!!\n", argc);
 	if (argc != 5) {
-		kprintf("not enough arguments for target crypt, need exactly 5\n");
+		kprintf("dm_target_crypt: not enough arguments, need exactly 5\n");
 		kfree(status_str, M_DMCRYPT);
 		return ENOMEM; /* XXX */
 	}
@@ -555,21 +548,21 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 	/* bits / 8 = bytes, 1 byte = 2 hexa chars, so << 2 */
 	klen = strlen(key) << 2;
 
-	kprintf("crypto target - dev=%s, crypto_alg=%s, crypto_mode=%s, "
+	kprintf("dm_target_crypt: dev=%s, crypto_alg=%s, crypto_mode=%s, "
 		"iv_mode=%s, iv_opt=%s, key=%s, iv_offset=%ju, block_offset=%ju\n",
 		dev, crypto_alg, crypto_mode, iv_mode, iv_opt, key, iv_offset,
 		block_offset);
 
 	if ((priv = kmalloc(sizeof(dm_target_crypt_config_t), M_DMCRYPT, M_NOWAIT))
 	    == NULL) {
-		kprintf("kmalloc in dm_target_crypt_init failed, M_NOWAIT to blame\n");
+		kprintf("dm_target_crypt: could not allocate memory\n");
 		kfree(status_str, M_DMCRYPT);
 		return ENOMEM;
 	}
 
 	/* Insert dmp to global pdev list */
 	if ((priv->pdev = dm_pdev_insert(dev)) == NULL) {
-		kprintf("dm_pdev_insert failed\n");
+		kprintf("dm_target_crypt: dm_pdev_insert failed\n");
 		kfree(status_str, M_DMCRYPT);
 		return ENOENT;
 	}
@@ -622,7 +615,7 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 		priv->crypto_klen = 128;
 
 	} else {
-		kprintf("Unsupported crypto algorithm: %s\n", crypto_alg);
+		kprintf("dm_target_crypt: Unsupported crypto algorithm: %s\n", crypto_alg);
 		goto notsup;
 	}
 
@@ -641,17 +634,15 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 
 	error = hex2key(key, priv->crypto_klen >> 3, (u_int8_t *)priv->crypto_key);
 	if (error) {
-		kprintf("hex2key failed!!\n");
+		kprintf("dm_target_crypt: hex2key failed, invalid key format\n");
 		goto notsup;
 	}
-
-	kprintf("priv->crypto_klen >> 3 = %d\n", priv->crypto_klen >> 3);
 
 
 	if (!strcmp(iv_mode, "essiv")) {
 		error = essiv_hash_mkey(priv, iv_opt);
 		if (error) {
-			kprintf("essiv_hash_mkey returned error!\n");
+			kprintf("dm_target_crypt: essiv_hash_mkey failed\n");
 			goto notsup;		
 		}
 		priv->crypto_ivgen = essiv_ivgen;
@@ -668,7 +659,7 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 				  &priv->crypto_session,
 				  CRYPTOCAP_F_SOFTWARE | CRYPTOCAP_F_HARDWARE);
 	if (error) {
-		kprintf("Error during crypto_newsession, error = %d\n", error);
+		kprintf("dm_target_crypt: Error during crypto_newsession, error = %d\n", error);
 		goto notsup;
 	}
 
@@ -676,7 +667,7 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 	return 0;
 
 notsup:
-	kprintf("returning ENOTSUP from crypt_init thingie... notsup label\n");
+	kprintf("dm_target_crypt: ENOTSUP\n");
 	kfree(status_str, M_DMCRYPT);
 	return ENOTSUP;
 }
@@ -694,7 +685,7 @@ dm_target_crypt_status(void *target_config)
 		return NULL;
 
 	ksnprintf(params, DM_MAX_PARAMS_SIZE, "%s",
-	    priv->pdev->name);
+	    priv->status_str);
 
 	return params;
 }
