@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 1991 Regents of the University of California.
  * Copyright (c) 1994 John S. Dyson
  * Copyright (c) 1994 David Greenman
