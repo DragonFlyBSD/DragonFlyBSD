@@ -3,7 +3,7 @@
 BUILD_DIR="/tmp/initrd"
 INITRD_SIZE="15m"
 BIN_TOOLS="echo ln ls mv rm rmdir sh"
-SBIN_TOOLS="mount mount_devfs mount_hammer mount_nfs mount_null mount_procfs mount_tmpfs umount iscontrol"
+SBIN_TOOLS="mount mount_devfs mount_hammer mount_nfs mount_null mount_procfs mount_tmpfs umount iscontrol cryptsetup lvm"
 INITRD_DIRS="bin boot dev etc mnt proc sbin tmp var new_root"
 CONTENT_DIRS="/usr/share/initrd"
 
