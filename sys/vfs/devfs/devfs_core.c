@@ -460,7 +460,6 @@ devfs_unlinkp(struct devfs_node *node)
 	if (parent)	{
 		TAILQ_REMOVE(DEVFS_DENODE_HEAD(parent), node, link);
 		parent->nchildren--;
-		KKASSERT((parent->nchildren >= 0));
 		node->flags &= ~DEVFS_NODE_LINKED;
 	}
 	/* hotplug handler */
