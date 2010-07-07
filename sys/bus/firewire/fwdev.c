@@ -50,6 +50,7 @@
 #include <sys/malloc.h>
 #include <sys/conf.h>
 #include <sys/poll.h>
+#include <sys/event.h>
 
 #include <sys/bus.h>
 #include <sys/ctype.h>
@@ -77,20 +78,26 @@ static	d_open_t	fw_open;
 static	d_close_t	fw_close;
 static	d_ioctl_t	fw_ioctl;
 static	d_poll_t	fw_poll;
+static	d_kqfilter_t	fw_kqfilter;
 static	d_read_t	fw_read;	/* for Isochronous packet */
 static	d_write_t	fw_write;
 static	d_mmap_t	fw_mmap;
 static	d_strategy_t	fw_strategy;
 
+static void fwfilt_detach(struct knote *);
+static int fwfilt_read(struct knote *, long);
+static int fwfilt_write(struct knote *, long);
+
 struct dev_ops firewire_ops = 
 {
-	{ "fw", CDEV_MAJOR, D_MEM },
+	{ "fw", CDEV_MAJOR, D_MEM | D_KQFILTER },
 	.d_open =	fw_open,
 	.d_close =	fw_close,
 	.d_read =	fw_read,
 	.d_write =	fw_write,
 	.d_ioctl =	fw_ioctl,
 	.d_poll =	fw_poll,
+	.d_kqfilter =	fw_kqfilter,
 	.d_mmap =	fw_mmap,
 	.d_strategy =	fw_strategy,
 };
@@ -738,6 +745,87 @@ fw_poll(struct dev_poll_args *ap)
 	}
 	ap->a_events = revents;
 	return(0);
+}
+
+static struct filterops fw_read_filterops =
+	{ 1, NULL, fwfilt_detach, fwfilt_read };
+static struct filterops fw_write_filterops =
+	{ 1, NULL, fwfilt_detach, fwfilt_write };
+
+static int
+fw_kqfilter(struct dev_kqfilter_args *ap)
+{
+	cdev_t dev = ap->a_head.a_dev;
+	struct firewire_softc *sc;
+	struct fw_xferq *ir;
+	struct knote *kn = ap->a_kn;
+	int unit = DEV2UNIT(dev);
+	struct klist *klist;
+
+	/*
+	 * XXX Implement filters for mem?
+	 */
+	if (DEV_FWMEM(dev)) {
+		ap->a_result = 1;
+		return (0);
+	}
+
+	sc = devclass_get_softc(firewire_devclass, unit);
+	ir = ((struct fw_drv1 *)dev->si_drv1)->ir;
+
+	ap->a_result = 0;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &fw_read_filterops;
+		kn->kn_hook = (caddr_t)ir;
+		break;
+	case EVFILT_WRITE:
+		kn->kn_fop = &fw_write_filterops;
+		kn->kn_hook = (caddr_t)ir;
+		break;
+	default:
+		ap->a_result = 1;
+		return (0);
+	}
+
+	crit_enter();
+	klist = &ir->rsel.si_note;
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+	crit_exit();
+
+	return (0);
+}
+
+static void
+fwfilt_detach(struct knote *kn)
+{
+	struct fw_xferq *ir = (struct fw_xferq *)kn->kn_hook;
+	struct klist *klist;
+
+	crit_enter();
+	klist = &ir->rsel.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+static int
+fwfilt_read(struct knote *kn, long hint)
+{
+	struct fw_xferq *ir = (struct fw_xferq *)kn->kn_hook;
+	int ready = 0;
+
+	if (STAILQ_FIRST(&ir->q) != NULL)
+		ready = 1;
+
+	return (ready);
+}
+
+static int
+fwfilt_write(struct knote *kn, long hint)
+{
+	/* XXX should be fixed */
+	return (1);
 }
 
 static int
