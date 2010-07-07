@@ -24,7 +24,6 @@
 \ SUCH DAMAGE.
 \
 \ $FreeBSD: src/sys/boot/forth/beastie.4th,v 1.7 2003/10/28 17:18:42 scottl Exp $
-\ $DragonFly: src/sys/boot/forth/beastie.4th,v 1.9 2008/09/02 17:21:15 dillon Exp $
 
 marker task-beastie.4th
 
@@ -233,6 +232,9 @@ set-current
 				s" 1" s" hint.acpi.0.disabled" setenv
 				s" 1" s" loader.acpi_disabled_by_user" setenv
 			then
+			s" ehci_load" unsetenv
+			s" 1" s" hint.ehci.0.disabled" setenv
+			s" 1" s" loader.ehci_disabled_by_user" setenv
 			s" 0" s" hw.ata.ata_dma" setenv
 			s" 0" s" hw.ata.atapi_dma" setenv
 			s" 0" s" hw.ata.wc" setenv

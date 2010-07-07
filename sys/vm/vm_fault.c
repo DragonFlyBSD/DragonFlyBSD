@@ -636,6 +636,7 @@ RetryFault:
 	 * (so we don't want to lose the fact that the page will be dirtied
 	 * if a write fault was specified).
 	 */
+	lwkt_gettoken(&vm_token);
 	vm_page_hold(fs.m);
 	vm_page_flag_clear(fs.m, PG_ZERO);
 	if (fault_type & VM_PROT_WRITE)
@@ -653,7 +654,6 @@ RetryFault:
 	 * Unbusy the page by activating it.  It remains held and will not
 	 * be reclaimed.
 	 */
-	lwkt_gettoken(&vm_token);
 	vm_page_activate(fs.m);
 
 	if (curthread->td_lwp) {

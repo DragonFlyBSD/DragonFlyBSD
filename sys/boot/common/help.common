@@ -19,6 +19,11 @@
 	unset acpi_load
 	set hint.acpi.0.disabled="1"
 
+	If needed, disable the use of EHCI with:
+
+	unset ehci_load
+	set hint.ehci.0.disabled="1"
+
 ################################################################################
 # Tautoboot DBoot after a delay
 
@@ -51,6 +56,17 @@
 		echo Current device is $currdev
 
 	will print the current device.
+
+################################################################################
+# TEHCI DControl EHCI module behaviour
+
+	$ehci_load
+
+	If the ehci_load variable is set, the EHCI module will be loaded.
+	The use of EHCI can be disabled with:
+
+	unset ehci_load
+	set hint.ehci.0.disabled="1"
 
 ################################################################################
 # Tload DLoad a kernel or module

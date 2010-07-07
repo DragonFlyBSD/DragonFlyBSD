@@ -43,6 +43,7 @@ SUBDIR=	adjkerntz \
 	kldunload \
 	ldconfig \
 	md5 \
+	mkinitrd \
 	mknod \
 	mountctl \
 	mount \

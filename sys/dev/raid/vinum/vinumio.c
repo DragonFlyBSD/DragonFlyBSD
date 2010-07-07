@@ -699,11 +699,10 @@ vinum_scandisk(char *devicename[], int drives)
 
     /* Open all drives and find which was modified most recently */
     for (driveno = 0; driveno < drives; driveno++) {
-	char part;					    /* UNIX partition */
+	char part, has_part = 0;			    /* UNIX partition */
 	int slice;
 	int founddrive;					    /* flag when we find a vinum drive */
 	int has_slice = -1;
-	int has_part = 0;
 	char *tmp;
 
 	founddrive = 0;					    /* no vinum drive found yet on this spindle */

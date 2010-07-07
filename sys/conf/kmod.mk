@@ -333,6 +333,26 @@ ${_src}: @/tools/makeobjops.awk @/${_srcsrc}
 #.endif
 #.endfor
 
+.if !empty(SRCS:Massym.s)
+CLEANFILES+=	assym.s genassym.o
+assym.s: genassym.o
+.if defined(BUILDING_WITH_KERNEL)
+genassym.o: opt_global.h
+.endif
+.if !exists(@)
+assym.s: @
+.else
+assym.s: @/kern/genassym.sh
+.endif
+	sh @/kern/genassym.sh genassym.o > ${.TARGET}
+.if exists(@)
+genassym.o: @/platform/${MACHINE_PLATFORM}/${MACHINE_ARCH}/genassym.c          
+.endif
+genassym.o: @ ${SRCS:Mopt_*.h}
+	${CC} -c ${CFLAGS:N-fno-common:N-mcmodel=small} ${WERROR} \
+	@/platform/${MACHINE_PLATFORM}/${MACHINE_ARCH}/genassym.c
+.endif
+
 regress:
 
 .include <bsd.dep.mk>

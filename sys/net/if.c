@@ -728,10 +728,12 @@ if_detach(struct ifnet *ifp)
 #endif
 	if_down(ifp);
 
+#ifdef ALTQ
 	if (ifq_is_enabled(&ifp->if_snd))
 		altq_disable(&ifp->if_snd);
 	if (ifq_is_attached(&ifp->if_snd))
 		altq_detach(&ifp->if_snd);
+#endif
 
 	/*
 	 * Clean up all addresses.

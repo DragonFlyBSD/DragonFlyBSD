@@ -139,8 +139,7 @@ static struct kinfo_cputime *cp_time, *cp_old;
 
 int process_states[6];
 char *procstatenames[] = {
-	"", " starting, ", " running, ", " sleeping, ", " stopped, ",
-	" zombie, ",
+	" running, ", " idle, ", " active, ", " stopped, ", " zombie, ",
 	NULL
 };
 
@@ -502,7 +501,9 @@ get_process_info(struct system_info *si, struct process_select *sel,
 		if ((show_threads && (LP(pp, pid) == -1)) ||
 		    (show_system || ((PP(pp, flags) & P_SYSTEM) == 0))) {
 			total_procs++;
-			process_states[(unsigned char)PP(pp, stat)]++;
+			if (LP(pp, stat) == LSRUN)
+				process_states[0]++;
+			process_states[PP(pp, stat)]++;
 			if ((show_threads && (LP(pp, pid) == -1)) ||
 			    (show_idle || (LP(pp, pctcpu) != 0) ||
 			    (LP(pp, stat) == LSRUN)) &&

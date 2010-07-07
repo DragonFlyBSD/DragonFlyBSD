@@ -29,16 +29,38 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd June 7, 2010
+.Dd July 4, 2010
 .Dt STANDARDS 7
 .Os
 .Sh NAME
 .Nm standards
 .Nd standards supported by DragonFly
 .Sh SYNOPSIS
+.Fd "#define _XOPEN_SOURCE 600"
+.Pp
 .In sys/cdefs.h
 .Sh DESCRIPTION
-.Ss POSIX Standards
+A number of
+.Dq feature test macros ,
+namely
+.Dv _POSIX_C_SOURCE
+and
+.Dv _XOPEN_SOURCE ,
+can be used by applications to indicate desired sets of features (beyond
+those specified by the C standard) in the programming environment supplied by
+.Dx .
+These macros determine which prototypes are exposed by header files and so on.
+.Pp
+If neither
+.Dv _POSIX_C_SOURCE
+and
+.Dv _XOPEN_SOURCE
+are set, the programming environment defaults to
+.St -susv3 .
+In addition, a number of
+.Bx
+specific prototypes, definitions etc.\& are made visible.
+.Ss POSIX Standards (_POSIX_C_SOURCE)
 The value of the
 .Dv _POSIX_C_SOURCE
 macro determines which
@@ -101,7 +123,7 @@ is equivalent to defining
 .Dv _POSIX_C_SOURCE
 to
 .Li 198808 .
-.Ss X/Open CAE Specifications
+.Ss X/Open CAE Specifications (_XOPEN_SOURCE)
 The value of the
 .Dv _XOPEN_SOURCE
 macro determines which X/Open CAE specification the programming

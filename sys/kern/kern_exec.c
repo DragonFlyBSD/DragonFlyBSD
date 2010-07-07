@@ -607,6 +607,7 @@ exec_map_page(struct image_params *imgp, vm_pindex_t pageno,
 	 */
 	m = vm_page_grab(object, pageno, VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
 	crit_enter();
+	lwkt_gettoken(&vm_token);
 	while ((m->valid & VM_PAGE_BITS_ALL) != VM_PAGE_BITS_ALL) {
 		ma = m;
 
@@ -625,12 +626,14 @@ exec_map_page(struct image_params *imgp, vm_pindex_t pageno,
 				vm_page_protect(m, VM_PROT_NONE);
 				vnode_pager_freepage(m);
 			}
+			lwkt_reltoken(&vm_token);
 			crit_exit();
 			return EIO;
 		}
 	}
-	vm_page_hold(m);
+	vm_page_hold(m);	/* requires vm_token to be held */
 	vm_page_wakeup(m);	/* unbusy the page */
+	lwkt_reltoken(&vm_token);
 	crit_exit();
 
 	*plwb = lwbuf_alloc(m);

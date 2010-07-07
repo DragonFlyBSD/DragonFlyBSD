@@ -35,10 +35,6 @@
 #include <sys/lock.h>
 #endif
 
-#ifndef _SYS_MPLOCK2_H
-#include <sys/mplock2.h>
-#endif
-
 #ifndef _COMMON_LINUX_EMULDATA_H
 #define _COMMON_LINUX_EMULDATA_H
 
@@ -91,13 +87,8 @@ struct linux_emuldata {
 #define	EMUL_LOCKINIT(x)	lockinit(&emul_lock, "tux_emul", 0, LK_CANRECURSE)
 #define	EMUL_LOCKUNINIT(x)	lockuninit(&emul_lock)
 
-#if 0
 #define EMUL_LOCK(x)	lockmgr(&emul_lock, LK_EXCLUSIVE)
 #define	EMUL_UNLOCK(x)	lockmgr(&emul_lock, LK_RELEASE)
-#endif
-
-#define EMUL_LOCK(x)	get_mplock()
-#define	EMUL_UNLOCK(x)	rel_mplock()
 
 extern struct lock emul_lock;
 

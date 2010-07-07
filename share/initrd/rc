@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# echo "Starting shell from md boot"
+# exec sh
+
+echo "Mounting new root"
+/sbin/mount -t hammer /dev/da0s1d /new_root
+
+echo "Mounting devfs on new root"
+#/sbin/mount_devfs /new_root/dev
+/sbin/mount_null /dev /new_root/dev

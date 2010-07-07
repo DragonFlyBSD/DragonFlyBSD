@@ -351,25 +351,50 @@ rb_vm_page_compare(struct vm_page *p1, struct vm_page *p2)
 }
 
 /*
+ * Holding a page keeps it from being reused.  Other parts of the system
+ * can still disassociate the page from its current object and free it, or
+ * perform read or write I/O on it and/or otherwise manipulate the page,
+ * but if the page is held the VM system will leave the page and its data
+ * intact and not reuse the page for other purposes until the last hold
+ * reference is released.  (see vm_page_wire() if you want to prevent the
+ * page from being disassociated from its object too).
+ *
+ * The caller must hold vm_token.
+ *
+ * The caller must still validate the contents of the page and, if necessary,
+ * wait for any pending I/O (e.g. vm_page_sleep_busy() loop) to complete
+ * before manipulating the page.
+ */
+void
+vm_page_hold(vm_page_t m)
+{
+	ASSERT_LWKT_TOKEN_HELD(&vm_token);
+	++m->hold_count;
+}
+
+/*
  * The opposite of vm_page_hold().  A page can be freed while being held,
  * which places it on the PQ_HOLD queue.  We must call vm_page_free_toq()
  * in this case to actually free it once the hold count drops to 0.
  *
- * This routine must be called at splvm().
+ * The caller must hold vm_token if non-blocking operation is desired,
+ * but otherwise does not need to.
  */
 void
-vm_page_unhold(vm_page_t mem)
+vm_page_unhold(vm_page_t m)
 {
-	--mem->hold_count;
-	KASSERT(mem->hold_count >= 0, ("vm_page_unhold: hold count < 0!!!"));
-	if (mem->hold_count == 0 && mem->queue == PQ_HOLD) {
-		vm_page_busy(mem);
-		vm_page_free_toq(mem);
+	lwkt_gettoken(&vm_token);
+	--m->hold_count;
+	KASSERT(m->hold_count >= 0, ("vm_page_unhold: hold count < 0!!!"));
+	if (m->hold_count == 0 && m->queue == PQ_HOLD) {
+		vm_page_busy(m);
+		vm_page_free_toq(m);
 	}
+	lwkt_reltoken(&vm_token);
 }
 
 /*
- * Inserts the given mem entry into the object and object list.
+ * Inserts the given vm_page into the object and object list.
  *
  * The pagetables are not updated but will presumably fault the page
  * in if necessary, or if a kernel page the caller will at some point
@@ -377,12 +402,14 @@ vm_page_unhold(vm_page_t mem)
  * here so we *can't* do this anyway.
  *
  * This routine may not block.
+ * This routine must be called with the vm_token held.
  * This routine must be called with a critical section held.
  */
 void
 vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 {
 	ASSERT_IN_CRIT_SECTION();
+	ASSERT_LWKT_TOKEN_HELD(&vm_token);
 	if (m->object != NULL)
 		panic("vm_page_insert: already inserted");
 
@@ -465,16 +492,7 @@ vm_page_remove(vm_page_t m)
  * Locate and return the page at (object, pindex), or NULL if the
  * page could not be found.
  *
- * This routine will operate properly without spl protection, but
- * the returned page could be in flux if it is busy.  Because an
- * interrupt can race a caller's busy check (unbusying and freeing the
- * page we return before the caller is able to check the busy bit),
- * the caller should generally call this routine with a critical
- * section held.
- *
- * Callers may call this routine without spl protection if they know
- * 'for sure' that the page will not be ripped out from under them
- * by an interrupt.
+ * The caller must hold vm_token if non-blocking operation is desired.
  */
 vm_page_t
 vm_page_lookup(vm_object_t object, vm_pindex_t pindex)
@@ -537,7 +555,7 @@ vm_page_rename(vm_page_t m, vm_object_t new_object, vm_pindex_t new_pindex)
  * is being moved between queues or otherwise is to remain BUSYied by the
  * caller.
  *
- * This routine must be called at splhigh().
+ * The caller must hold vm_token
  * This routine may not block.
  */
 void
@@ -546,6 +564,7 @@ vm_page_unqueue_nowakeup(vm_page_t m)
 	int queue = m->queue;
 	struct vpgqueues *pq;
 
+	ASSERT_LWKT_TOKEN_HELD(&vm_token);
 	if (queue != PQ_NONE) {
 		pq = &vm_page_queues[queue];
 		m->queue = PQ_NONE;
@@ -559,7 +578,7 @@ vm_page_unqueue_nowakeup(vm_page_t m)
  * vm_page_unqueue() - Remove a page from its queue, wakeup the pagedemon
  * if necessary.
  *
- * This routine must be called at splhigh().
+ * The caller must hold vm_token
  * This routine may not block.
  */
 void
@@ -568,6 +587,7 @@ vm_page_unqueue(vm_page_t m)
 	int queue = m->queue;
 	struct vpgqueues *pq;
 
+	ASSERT_LWKT_TOKEN_HELD(&vm_token);
 	if (queue != PQ_NONE) {
 		m->queue = PQ_NONE;
 		pq = &vm_page_queues[queue];
@@ -589,7 +609,7 @@ vm_page_unqueue(vm_page_t m)
  * caches.  We need this optimization because cpu caches tend to be
  * physical caches, while object spaces tend to be virtual.
  *
- * This routine must be called at splvm().
+ * Must be called with vm_token held.
  * This routine may not block.
  *
  * Note that this routine is carefully inlined.  A non-inlined version
@@ -636,6 +656,10 @@ _vm_page_list_find2(int basequeue, int index)
 	return(m);
 }
 
+/*
+ * Must be called with vm_token held if the caller desired non-blocking
+ * operation and a stable result.
+ */
 vm_page_t
 vm_page_list_find(int basequeue, int index, boolean_t prefer_zero)
 {
@@ -647,14 +671,15 @@ vm_page_list_find(int basequeue, int index, boolean_t prefer_zero)
  * might be found, but not applicable, they are deactivated.  This
  * keeps us from using potentially busy cached pages.
  *
- * This routine must be called with a critical section held.
  * This routine may not block.
+ * Must be called with vm_token held.
  */
 vm_page_t
 vm_page_select_cache(vm_object_t object, vm_pindex_t pindex)
 {
 	vm_page_t m;
 
+	ASSERT_LWKT_TOKEN_HELD(&vm_token);
 	while (TRUE) {
 		m = _vm_page_list_find(
 		    PQ_CACHE,
@@ -1137,11 +1162,13 @@ vm_page_free_fromq_fast(void)
  * mappings.
  *
  * Must be called with a critical section held.
+ * Must be called with vm_token held.
  */
 void
 vm_page_unmanage(vm_page_t m)
 {
 	ASSERT_IN_CRIT_SECTION();
+	ASSERT_LWKT_TOKEN_HELD(&vm_token);
 	if ((m->flags & PG_UNMANAGED) == 0) {
 		if (m->wire_count == 0)
 			vm_page_unqueue(m);
@@ -1251,6 +1278,7 @@ vm_page_unwire(vm_page_t m, int activate)
  * except without unmapping it from the process address space.
  *
  * This routine may not block.
+ * The caller must hold vm_token.
  */
 static __inline void
 _vm_page_deactivate(vm_page_t m, int athead)
@@ -1280,20 +1308,26 @@ _vm_page_deactivate(vm_page_t m, int athead)
 	}
 }
 
+/*
+ * Attempt to deactivate a page.
+ *
+ * No requirements.
+ */
 void
 vm_page_deactivate(vm_page_t m)
 {
-    crit_enter();
-    lwkt_gettoken(&vm_token);
-    _vm_page_deactivate(m, 0);
-    lwkt_reltoken(&vm_token);
-    crit_exit();
+	crit_enter();
+	lwkt_gettoken(&vm_token);
+	_vm_page_deactivate(m, 0);
+	lwkt_reltoken(&vm_token);
+	crit_exit();
 }
 
 /*
- * vm_page_try_to_cache:
- *
+ * Attempt to move a page to PQ_CACHE.
  * Returns 0 on failure, 1 on success
+ *
+ * No requirements.
  */
 int
 vm_page_try_to_cache(vm_page_t m)
@@ -1321,6 +1355,8 @@ vm_page_try_to_cache(vm_page_t m)
 /*
  * Attempt to free the page.  If we cannot free it, we do nothing.
  * 1 is returned on success, 0 on failure.
+ *
+ * No requirements.
  */
 int
 vm_page_try_to_free(vm_page_t m)
@@ -1352,12 +1388,14 @@ vm_page_try_to_free(vm_page_t m)
  *
  * Put the specified page onto the page cache queue (if appropriate).
  *
+ * The caller must hold vm_token.
  * This routine may not block.
  */
 void
 vm_page_cache(vm_page_t m)
 {
 	ASSERT_IN_CRIT_SECTION();
+	ASSERT_LWKT_TOKEN_HELD(&vm_token);
 
 	if ((m->flags & (PG_BUSY|PG_UNMANAGED)) || m->busy ||
 			m->wire_count || m->hold_count) {
@@ -1427,6 +1465,8 @@ vm_page_cache(vm_page_t m)
  * system to balance the queues, potentially recovering other unrelated
  * space from active.  The idea is to not force this to happen too
  * often.
+ *
+ * No requirements.
  */
 void
 vm_page_dontneed(vm_page_t m)
@@ -1490,6 +1530,8 @@ vm_page_dontneed(vm_page_t m)
  * This routine may be called from mainline code without spl protection and
  * be guarenteed a busied page associated with the object at the specified
  * index.
+ *
+ * No requirements.
  */
 vm_page_t
 vm_page_grab(vm_object_t object, vm_pindex_t pindex, int allocflags)
@@ -1539,8 +1581,11 @@ done:
  * a page.  May not block.
  *
  * Inputs are required to range within a page.
+ *
+ * No requirements.
+ * Non blocking.
  */
-__inline int
+int
 vm_page_bits(int base, int size)
 {
 	int first_bit;
@@ -1629,6 +1674,9 @@ _vm_page_zero_valid(vm_page_t m, int base, int size)
  * We set valid bits inclusive of any overlap, but we can only
  * clear dirty bits for DEV_BSIZE chunks that are fully within
  * the range.
+ *
+ * Page must be busied?
+ * No other requirements.
  */
 void
 vm_page_set_valid(vm_page_t m, int base, int size)
@@ -1644,6 +1692,9 @@ vm_page_set_valid(vm_page_t m, int base, int size)
  * NOTE: This function does not clear the pmap modified bit.
  *	 Also note that e.g. NFS may use a byte-granular base
  *	 and size.
+ *
+ * Page must be busied?
+ * No other requirements.
  */
 void
 vm_page_set_validclean(vm_page_t m, int base, int size)
@@ -1662,6 +1713,9 @@ vm_page_set_validclean(vm_page_t m, int base, int size)
 
 /*
  * Set valid & dirty.  Used by buwrite()
+ *
+ * Page must be busied?
+ * No other requirements.
  */
 void
 vm_page_set_validdirty(vm_page_t m, int base, int size)
@@ -1681,6 +1735,9 @@ vm_page_set_validdirty(vm_page_t m, int base, int size)
  * NOTE: This function does not clear the pmap modified bit.
  *	 Also note that e.g. NFS may use a byte-granular base
  *	 and size.
+ *
+ * Page must be busied?
+ * No other requirements.
  */
 void
 vm_page_clear_dirty(vm_page_t m, int base, int size)
@@ -1697,6 +1754,9 @@ vm_page_clear_dirty(vm_page_t m, int base, int size)
  *
  * Also make sure the related object and vnode reflect the fact that the
  * object may now contain a dirty page.
+ *
+ * Page must be busied?
+ * No other requirements.
  */
 void
 vm_page_dirty(vm_page_t m)
@@ -1717,7 +1777,9 @@ vm_page_dirty(vm_page_t m)
  * Invalidates DEV_BSIZE'd chunks within a page.  Both the
  * valid and dirty bits for the effected areas are cleared.
  *
- * May not block.
+ * Page must be busied?
+ * Does not block.
+ * No other requirements.
  */
 void
 vm_page_set_invalid(vm_page_t m, int base, int size)
@@ -1738,6 +1800,9 @@ vm_page_set_invalid(vm_page_t m, int base, int size)
  *
  * Pages are most often semi-valid when the end of a file is mapped 
  * into memory and the file's size is not page aligned.
+ *
+ * Page must be busied?
+ * No other requirements.
  */
 void
 vm_page_zero_invalid(vm_page_t m, boolean_t setvalid)
@@ -1780,7 +1845,8 @@ vm_page_zero_invalid(vm_page_t m, boolean_t setvalid)
  * will return FALSE in the degenerate case where the page is entirely
  * invalid, and TRUE otherwise.
  *
- * May not block.
+ * Does not block.
+ * No other requirements.
  */
 int
 vm_page_is_valid(vm_page_t m, int base, int size)
@@ -1795,6 +1861,9 @@ vm_page_is_valid(vm_page_t m, int base, int size)
 
 /*
  * update dirty bits from pmap/mmu.  May not block.
+ *
+ * Caller must hold vm_token if non-blocking operation desired.
+ * No other requirements.
  */
 void
 vm_page_test_dirty(vm_page_t m)

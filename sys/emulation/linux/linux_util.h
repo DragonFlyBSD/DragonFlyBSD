@@ -40,8 +40,6 @@
 #ifndef	_LINUX_UTIL_H_
 #define	_LINUX_UTIL_H_
 
-#include "opt_global.h"
-
 #include <vm/vm.h>
 #include <vm/vm_param.h>
 #include <vm/pmap.h>

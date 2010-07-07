@@ -436,6 +436,7 @@ nvnode_pager_setsize(struct vnode *vp, off_t length, int blksize, int boff)
 		 * invalidated.
 		 */
 		pi = OFF_TO_IDX(length + PAGE_MASK);
+		lwkt_gettoken(&vm_token);
 		while (pi < nobjsize) {
 			do {
 				m = vm_page_lookup(object, pi);
@@ -447,6 +448,7 @@ nvnode_pager_setsize(struct vnode *vp, off_t length, int blksize, int boff)
 			}
 			++pi;
 		}
+		lwkt_reltoken(&vm_token);
 	} else {
 		/*
 		 * File has expanded.

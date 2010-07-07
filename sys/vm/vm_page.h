@@ -405,6 +405,7 @@ vm_page_flag_clear(vm_page_t m, unsigned int bits)
 static __inline void
 vm_page_busy(vm_page_t m)
 {
+	ASSERT_LWKT_TOKEN_HELD(&vm_token);
 	KASSERT((m->flags & PG_BUSY) == 0, 
 		("vm_page_busy: page already busy!!!"));
 	vm_page_flag_set(m, PG_BUSY);
@@ -484,7 +485,8 @@ vm_page_io_finish(vm_page_t m)
 #define	VM_ALLOC_QUICK		0x10	/* like NORMAL but do not use cache */
 #define	VM_ALLOC_RETRY		0x80	/* indefinite block (vm_page_grab()) */
 
-void vm_page_unhold(vm_page_t mem);
+void vm_page_hold(vm_page_t);
+void vm_page_unhold(vm_page_t);
 void vm_page_activate (vm_page_t);
 vm_page_t vm_page_alloc (struct vm_object *, vm_pindex_t, int);
 vm_page_t vm_page_grab (struct vm_object *, vm_pindex_t, int);
@@ -521,27 +523,6 @@ vm_offset_t vm_contig_pg_kmap(int, u_long, vm_map_t, int);
 void vm_contig_pg_free(int, u_long);
 void vm_page_event_internal(vm_page_t, vm_page_event_t);
 void vm_page_dirty(vm_page_t m);
-
-/*
- * Holding a page keeps it from being reused.  Other parts of the system
- * can still disassociate the page from its current object and free it, or
- * perform read or write I/O on it and/or otherwise manipulate the page,
- * but if the page is held the VM system will leave the page and its data
- * intact and not reuse the page for other purposes until the last hold
- * reference is released.  (see vm_page_wire() if you want to prevent the
- * page from being disassociated from its object too).
- *
- * This routine must be called while at splvm() or better.
- *
- * The caller must still validate the contents of the page and, if necessary,
- * wait for any pending I/O (e.g. vm_page_sleep_busy() loop) to complete
- * before manipulating the page.
- */
-static __inline void
-vm_page_hold(vm_page_t mem)
-{
-	mem->hold_count++;
-}
 
 /*
  * Reduce the protection of a page.  This routine never raises the 

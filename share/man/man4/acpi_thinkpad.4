@@ -159,15 +159,15 @@ Access IBM Button
 .Sh SYSCTL VARIABLES
 The following sysctls are currently implemented:
 .Bl -tag -width indent
-.It Va dev.acpi_thinkpad.0.initialmask
+.It Va hw.acpi.thinkpad.initialmask
 (read-only)
 Bitmask of ACPI events before the
 .Nm
 driver was loaded.
-.It Va dev.acpi_thinkpad.0.availmask
+.It Va hw.acpi.thinkpad.availmask
 (read-only)
 Bitmask of all supported ACPI events.
-.It Va dev.acpi_thinkpad.0.events
+.It Va hw.acpi.thinkpad.events
 Enable ACPI events and set the
 .Va eventmask
 to
@@ -175,7 +175,7 @@ to
 Without the
 .Nm
 driver being loaded, only the Fn+F4 button generates an ACPI event.
-.It Va dev.acpi_thinkpad.0.eventmask
+.It Va hw.acpi.thinkpad.eventmask
 Sets the ACPI events which are reported to
 .Xr devd 8 .
 Fn+F3, Fn+F4 and Fn+F12 always generate ACPI events, regardless which value
@@ -236,7 +236,7 @@ Mute
 .It Li 8388608
 Access IBM Button
 .El
-.It Va dev.acpi_thinkpad.0.hotkey
+.It Va hw.acpi.thinkpad.hotkey
 (read-only)
 Status of several buttons.
 Every time a button is pressed, the respecting bit is toggled.
@@ -268,27 +268,27 @@ Brightness Up/Down Button
 .It Li 2048
 Volume Up/Down/Mute Button
 .El
-.It Va dev.acpi_thinkpad.0.lcd_brightness
+.It Va hw.acpi.thinkpad.lcd_brightness
 Current brightness level of the display.
-.It Va dev.acpi_thinkpad.0.volume
+.It Va hw.acpi.thinkpad.volume
 Speaker volume.
-.It Va dev.acpi_thinkpad.0.mute
+.It Va hw.acpi.thinkpad.mute
 Indicates, whether the speakers are muted or not.
-.It Va dev.acpi_thinkpad.0.thinklight
+.It Va hw.acpi.thinkpad.thinklight
 Indicates, whether the ThinkLight keyboard light is activated or not.
-.It Va dev.acpi_thinkpad.0.bluetooth
+.It Va hw.acpi.thinkpad.bluetooth
 Toggle Bluetooth chip activity.
-.It Va dev.acpi_thinkpad.0.wlan
+.It Va hw.acpi.thinkpad.wlan
 (read-only)
 Indicates whether the WLAN chip is active or not.
-.It Va dev.acpi_thinkpad.0.fan
+.It Va hw.acpi.thinkpad.fan
 Indicates whether the fan is in automatic (1) or manual (0) mode.
 Default is automatic mode.
 This sysctl should be used with extreme precaution, since disabling automatic
 fan control might overheat the ThinkPad and lead to permanent damage if the
 .Va fan_level
 is not set accordingly.
-.It Va dev.acpi_thinkpad.0.fan_level
+.It Va hw.acpi.thinkpad.fan_level
 Indicates at what speed the fan should run when being in manual mode.
 Values are ranging from 0 (off) to 7 (max).
 The resulting speed differs from model to model.
@@ -304,12 +304,12 @@ off
 .It Li 6, 7
 ~4300 RPM
 .El
-.It Va dev.acpi_ibm.0.fan_speed
+.It Va hw.acpi.thinkpad.fan_speed
 (read-only)
 Fan speed in rounds per minute.
 A few older ThinkPads report the fan speed in levels ranging from 0 (off)
 to 7 (max).
-.It Va dev.acpi_ibm.0.thermal
+.It Va hw.acpi.thinkpad.thermal
 (read-only)
 Shows the readings of up to eight different temperature sensors.
 Most ThinkPads include six or more temperature sensors but
@@ -393,25 +393,25 @@ DISPLAY_PIPE=/tmp/acpi_${OEM}_display
 
 case ${NOTIFY} in
         0x05)
-                LEVEL=`sysctl -n dev.acpi_${OEM}.0.bluetooth`
+                LEVEL=`sysctl -n hw.acpi.${OEM}.bluetooth`
                 if [ "$LEVEL" = "1" ]
                 then
-                        sysctl dev.acpi_${OEM}.0.bluetooth=0
+                        sysctl hw.acpi.${OEM}.bluetooth=0
                         MESSAGE="bluetooth disabled"
                 else
-                        sysctl dev.acpi_${OEM}.0.bluetooth=1
+                        sysctl hw.acpi.${OEM}.bluetooth=1
                         MESSAGE="bluetooth enabled"
                 fi
                 ;;
         0x10|0x11)
-                LEVEL=`sysctl -n dev.acpi_${OEM}.0.lcd_brightness`
+                LEVEL=`sysctl -n hw.acpi.${OEM}.lcd_brightness`
                 PERCENT=`${ECHO} "${BC_PRECOMMANDS} ; \\
                          ${LEVEL} / ${MAX_LCD_BRIGHTNESS} * 100" |\\
                          ${CALC} | ${CUT} -d . -f 1`
                 MESSAGE="brightness level ${PERCENT}%"
                 ;;
         0x12)
-                LEVEL=`sysctl -n dev.acpi_${OEM}.0.thinklight`
+                LEVEL=`sysctl -n hw.acpi.${OEM}.thinklight`
                 if [ "$LEVEL" = "1" ]
                 then
                         MESSAGE="thinklight enabled"
@@ -420,14 +420,14 @@ case ${NOTIFY} in
                 fi
                 ;;
         0x15|0x16)
-                LEVEL=`sysctl -n dev.acpi_${OEM}.0.volume`
+                LEVEL=`sysctl -n hw.acpi.${OEM}.volume`
                 PERCENT=`${ECHO} "${BC_PRECOMMANDS} ; \\
                         ${LEVEL} / ${MAX_VOLUME} * 100" | \\
                          ${CALC} | ${CUT} -d . -f 1`
                 MESSAGE="volume level ${PERCENT}%"
                 ;;
         0x17)
-                LEVEL=`sysctl -n dev.acpi_${OEM}.0.mute`
+                LEVEL=`sysctl -n hw.acpi.${OEM}.mute`
                 if [ "$LEVEL" = "1" ]
                 then
                         MESSAGE="volume muted"

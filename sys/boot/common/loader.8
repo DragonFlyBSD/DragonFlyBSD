@@ -26,7 +26,7 @@
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
-.Dd November 26, 2009
+.Dd July 4, 2010
 .Dt LOADER 8
 .Os
 .Sh NAME
@@ -388,6 +388,8 @@ Defines the current console.
 .It Va currdev
 Selects the default device.
 Syntax for devices is odd.
+.It Va ehci_load
+Unset this to disable automatic loading of the EHCI module.
 .It Va init_path
 Sets the list of binaries which the kernel will try to run as the initial
 process.

@@ -34,9 +34,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man4/ehci.4,v 1.3 2006/12/10 02:16:26 sephe Exp $
-.\"
-.Dd November 26, 2006
+.Dd July 4, 2010
 .Dt EHCI 4
 .Os
 .Sh NAME
@@ -63,6 +61,18 @@ USB controllers.
 The handling of this is totally automatic, but can be noticed since
 USB 1.x and USB 2.0 devices plugged in to the same connector appear
 to connect to different USB busses.
+.Pp
+The
+.Nm
+driver is automatically loaded upon boot.
+To disable this behavior temporarily, the
+.Va ehci_load
+variable can be unset at the loader prompt (see
+.Xr loader 8 ) .
+To disable it permanently, the
+.Va hint.ehci.0.disabled
+tunable can be set to 1 in
+.Pa /boot/loader.conf .
 .Sh SEE ALSO
 .Xr cardbus 4 ,
 .Xr ohci 4 ,

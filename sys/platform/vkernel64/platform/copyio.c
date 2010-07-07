@@ -148,8 +148,8 @@ copyin(const void *udaddr, void *kaddr, size_t len)
 		len -= n;
 		udaddr = (const char *)udaddr + n;
 		kaddr = (char *)kaddr + n;
-		vm_page_unhold(m);
 		lwbuf_free(lwb);
+		vm_page_unhold(m);
 	}
 	rel_mplock();
 	return (error);
@@ -187,8 +187,8 @@ copyout(const void *kaddr, void *udaddr, size_t len)
 		udaddr = (char *)udaddr + n;
 		kaddr = (const char *)kaddr + n;
 		vm_page_dirty(m);
-		vm_page_unhold(m);
 		lwbuf_free(lwb);
+		vm_page_unhold(m);
 	}
 	rel_mplock();
 	return (error);

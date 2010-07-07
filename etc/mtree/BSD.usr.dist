@@ -347,6 +347,14 @@
         ..
         info
         ..
+        initrd
+            bin
+            ..
+            etc
+            ..
+            sbin
+            ..
+        ..
         installer
         ..
         isdn

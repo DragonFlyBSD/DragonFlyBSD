@@ -1212,6 +1212,7 @@ pmap_puninit(pmap_t pmap)
 	vm_page_t p;
 
 	KKASSERT(pmap->pm_active == 0);
+	lwkt_gettoken(&vm_token);
 	if ((p = pmap->pm_pdirm) != NULL) {
 		KKASSERT(pmap->pm_pdir != NULL);
 		pmap_kremove((vm_offset_t)pmap->pm_pdir);
@@ -1222,6 +1223,7 @@ pmap_puninit(pmap_t pmap)
 		vm_page_free_zero(p);
 		pmap->pm_pdirm = NULL;
 	}
+	lwkt_reltoken(&vm_token);
 	if (pmap->pm_pdir) {
 		kmem_free(&kernel_map, (vm_offset_t)pmap->pm_pdir, PAGE_SIZE);
 		pmap->pm_pdir = NULL;
@@ -2048,9 +2050,7 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 		return;
 
 	if ((prot & VM_PROT_READ) == VM_PROT_NONE) {
-		lwkt_gettoken(&vm_token);
 		pmap_remove(pmap, sva, eva);
-		lwkt_reltoken(&vm_token);
 		return;
 	}
 
@@ -2823,6 +2823,7 @@ pmap_page_exists_quick(pmap_t pmap, vm_page_t m)
 	lwkt_gettoken(&vm_token);
 	TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
 		if (pv->pv_pmap == pmap) {
+			lwkt_reltoken(&vm_token);
 			crit_exit();
 			return TRUE;
 		}

@@ -135,7 +135,7 @@ preupgrade:
 
 upgrade_etc:	preupgrade remove-obsolete-files
 	# files that should be dirs (not possible with Makefile_upgrade.inc)
-.for f in usr/include/dev/misc/ppi
+.for f in usr/include/dev/misc/ppi usr/share/initrd/sbin
 	[ -d ${DESTDIR}/${f} ] || rm -f ${DESTDIR}/${f}
 .endfor
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these files

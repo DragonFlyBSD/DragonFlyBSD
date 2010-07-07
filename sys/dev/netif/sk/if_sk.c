@@ -1145,7 +1145,7 @@ sk_attach(device_t dev)
 	struct sk_softc *sc = device_get_softc(device_get_parent(dev));
 	struct sk_if_softc *sc_if = device_get_softc(dev);
 	struct ifnet *ifp = &sc_if->arpcom.ac_if;
-	int i, error;
+	int i, error, if_attached = 0;
 
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
@@ -1273,6 +1273,16 @@ sk_attach(device_t dev)
 	sc_if->sk_use_jumbo = 0;
 
 	/*
+	 * Call MI attach routines.
+	 *
+	 * NOTE:
+	 * This must be done before following sk_init_xxx(), in which
+	 * if_multiaddrs will be used.
+	 */
+	ether_ifattach(ifp, sc_if->arpcom.ac_enaddr, &sc->sk_serializer);
+	if_attached = 1;
+
+	/*
 	 * Do miibus setup.
 	 */
 	switch (sc->sk_type) {
@@ -1301,14 +1311,11 @@ sk_attach(device_t dev)
 
 	callout_init(&sc_if->sk_tick_timer);
 
-	/*
-	 * Call MI attach routines.
-	 */
-	ether_ifattach(ifp, sc_if->arpcom.ac_enaddr, &sc->sk_serializer);
-
 	DPRINTFN(2, ("sk_attach: end\n"));
 	return 0;
 fail:
+	if (if_attached)
+		ether_ifdetach(ifp);
 	sk_detach(dev);
 	sc->sk_if[sc_if->sk_port] = NULL;
 	return error;

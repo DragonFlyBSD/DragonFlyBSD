@@ -12,6 +12,7 @@ SRCS=	linux_dummy.c linux_emuldata.c linux_epoll.c \
 	linux_socket.c \
 	linux_stats.c linux_sysctl.c linux_sysent.c linux_sysvec.c \
 	linux_util.c opt_compat.h opt_global.h opt_vmpage.h
+SRCS+=	opt_nfs.h assym.s
 OBJS=	linux_support.o linux_locore.o
 
 SUBDIR= i386/linprocfs
@@ -22,6 +23,7 @@ SRCS+=	linux_ptrace.c linux_uid16.c imgact_linux.c opt_cpu.h
 CLEANFILES=	linux_assym.h linux_genassym.o
 
 linux_assym.h: linux_genassym.o
+
 .if exists(@)
 linux_assym.h: @/kern/genassym.sh
 .endif
@@ -31,7 +33,7 @@ linux_locore.o: linux_locore.s linux_assym.h
 	${CC} -c -x assembler-with-cpp -DLOCORE ${CFLAGS} \
 	    ${.IMPSRC} -o ${.TARGET}
 
-linux_support.o: linux_support.s linux_assym.h
+linux_support.o: linux_support.s linux_assym.h assym.s
 	${CC} -c -x assembler-with-cpp -DLOCORE ${CFLAGS} \
 	    ${.IMPSRC} -o ${.TARGET}
 

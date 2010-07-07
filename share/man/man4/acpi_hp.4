@@ -100,63 +100,63 @@ as described below.
 The following sysctls are currently implemented:
 .Ss WLAN:
 .Bl -tag -width indent
-.It Va dev.acpi_hp.0.wlan_enabled
+.It Va hw.acpi.hp.wlan_enabled
 Toggle WLAN chip activity.
-.It Va dev.acpi_hp.0.wlan_radio
+.It Va hw.acpi.hp.wlan_radio
 (read-only)
 WLAN radio status (controlled by hardware switch)
-.It Va dev.acpi_hp.0.wlan_on_air
+.It Va hw.acpi.hp.wlan_on_air
 (read-only)
 WLAN on air (chip enabled, hardware switch enabled + enabled in BIOS)
-.It Va dev.acpi_hp.0.wlan_enabled_if_radio_on
+.It Va hw.acpi.hp.wlan_enabled_if_radio_on
 If set to 1, the WLAN chip will be enabled if the radio is turned on
-.It Va dev.acpi_hp.0.wlan_disable_if_radio_off
+.It Va hw.acpi.hp.wlan_disable_if_radio_off
 If set to 1, the WLAN chip will be disabled if the radio is turned off
 .El
 .Ss Bluetooth:
 .Bl -tag -width indent
-.It Va dev.acpi_hp.0.bt_enabled
+.It Va hw.acpi.hp.bt_enabled
 Toggle Bluetooth chip activity.
-.It Va dev.acpi_hp.0.bt_radio
+.It Va hw.acpi.hp.bt_radio
 (read-only)
 Bluetooth radio status (controlled by hardware switch)
-.It Va dev.acpi_hp.0.bt_on_air
+.It Va hw.acpi.hp.bt_on_air
 (read-only)
 Bluetooth on air (chip enabled, hardware switch enabled + enabled in BIOS)
-.It Va dev.acpi_hp.0.bt_enabled_if_radio_on
+.It Va hw.acpi.hp.bt_enabled_if_radio_on
 If set to 1, the Bluetooth chip will be enabled if the radio is turned on
-.It Va dev.acpi_hp.0.bt_disable_if_radio_off
+.It Va hw.acpi.hp.bt_disable_if_radio_off
 If set to 1, the Bluetooth chip will be disabled if the radio is turned off
 .El
 .Ss WWAN:
 .Bl -tag -width indent
-.It Va dev.acpi_hp.0.wwan_enabled
+.It Va hw.acpi.hp.wwan_enabled
 Toggle WWAN chip activity.
-.It Va dev.acpi_hp.0.wwan_radio
+.It Va hw.acpi.hp.wwan_radio
 (read-only)
 WWAN radio status (controlled by hardware switch)
-.It Va dev.acpi_hp.0.wwan_on_air
+.It Va hw.acpi.hp.wwan_on_air
 (read-only)
 WWAN on air (chip enabled, hardware switch enabled + enabled in BIOS)
-.It Va dev.acpi_hp.0.wwan_enabled_if_radio_on
+.It Va hw.acpi.hp.wwan_enabled_if_radio_on
 If set to 1, the WWAN chip will be enabled if the radio is turned on
-.It Va dev.acpi_hp.0.wwan_disable_if_radio_off
+.It Va hw.acpi.hp.wwan_disable_if_radio_off
 If set to 1, the WWAN chip will be disabled if the radio is turned off
 .El
 .Ss Misc:
 .Bl -tag -width indent
-.It Va dev.acpi_hp.0.als_enabled
+.It Va hw.acpi.hp.als_enabled
 Toggle ambient light sensor (ALS)
-.It Va dev.acpi_hp.0.display
+.It Va hw.acpi.hp.display
 (read-only)
 Display status (bitmask)
-.It Va dev.acpi_hp.0.hdd_temperature
+.It Va hw.acpi.hp.hdd_temperature
 (read-only)
 HDD temperature
-.It Va dev.acpi_hp.0.is_docked
+.It Va hw.acpi.hp.is_docked
 (read-only)
 Docking station status (1 if docked)
-.It Va dev.acpi_hp.0.cmi_detail
+.It Va hw.acpi.hp.cmi_detail
 Bitmask to control detail level in /dev/hpcmi output (values can be ORed).
 .Bl -tag -width "0x01" -offset indent -compact
 .It Li 0x01
@@ -169,7 +169,7 @@ Show additional flags of BIOS setting (ReadOnly etc.)
 Query highest BIOS entry instance.
 This is broken on many HP models and therefore disabled by default.
 .El
-.It Va dev.acpi_hp.0.verbose
+.It Va hw.acpi.hp.verbose
 (read-only)
 Set verbosity level
 .El
@@ -217,12 +217,12 @@ notify 0 {
 .Pp
 Enable the ambient light sensor:
 .Bd -literal -offset indent
-sysctl dev.acpi_hp.0.als_enabled=1
+sysctl hw.acpi.hp.als_enabled=1
 .Ed
 .Pp
 Enable Bluetooth:
 .Bd -literal -offset indent
-sysctl dev.acpi_hp.0.bt_enabled=1
+sysctl hw.acpi.hp.bt_enabled=1
 .Ed
 .Pp
 Get BIOS settings:
@@ -242,7 +242,7 @@ Express Card Slot                          Disable
 .Pp
 Set maximum detail level for /dev/hpcmi output:
 .Bd -literal -offset indent
-sysctl dev.acpi_hp.0.cmi_detail=7
+sysctl hw.acpi.hp.cmi_detail=7
 .Ed
 .Sh SEE ALSO
 .Xr acpi 4 ,
