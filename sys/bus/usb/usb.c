@@ -70,6 +70,7 @@
 #include <sys/conf.h>
 #include <sys/device.h>
 #include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/select.h>
 #include <sys/vnode.h>
 #include <sys/signalvar.h>
@@ -148,14 +149,19 @@ d_close_t usbclose;
 d_read_t usbread;
 d_ioctl_t usbioctl;
 d_poll_t usbpoll;
+d_kqfilter_t usbkqfilter;
+
+static void usbfilt_detach(struct knote *);
+static int usbfilt(struct knote *, long);
 
 struct dev_ops usb_ops = {
-	{ "usb", USB_CDEV_MAJOR, 0 },
+	{ "usb", USB_CDEV_MAJOR, D_KQFILTER },
 	.d_open =	usbopen,
 	.d_close =	usbclose,
 	.d_read =	usbread,
 	.d_ioctl =	usbioctl,
 	.d_poll =	usbpoll,
+	.d_kqfilter = 	usbkqfilter
 };
 
 static void	usb_discover(device_t);
@@ -716,6 +722,64 @@ usbpoll(struct dev_poll_args *ap)
 		ap->a_events = 0;
 		return (0);	/* select/poll never wakes up - back compat */
 	}
+}
+
+static struct filterops usbfiltops =
+	{ 1, NULL, usbfilt_detach, usbfilt };
+
+int
+usbkqfilter(struct dev_kqfilter_args *ap)
+{
+	cdev_t dev = ap->a_head.a_dev;
+	struct knote *kn = ap->a_kn;
+	struct klist *klist;
+
+	ap->a_result = 0;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &usbfiltops;
+		kn->kn_hook = (caddr_t)dev;
+		break;
+	default:
+		ap->a_result = 1;
+		return (0);
+	}
+
+	crit_enter();
+	klist = &usb_selevent.si_note;
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+	crit_exit();
+
+	return (0);
+}
+
+static void
+usbfilt_detach(struct knote *kn)
+{
+	struct klist *klist;
+
+	crit_enter();
+	klist = &usb_selevent.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+static int
+usbfilt(struct knote *kn, long hint)
+{
+	cdev_t dev = (cdev_t)kn->kn_hook;
+	int unit = USBUNIT(dev);
+	int ready = 0;
+
+	if (unit == USB_DEV_MINOR) {
+		crit_enter();
+		if (usb_nevents > 0)
+			ready = 1;
+		crit_exit();
+	}
+
+	return (ready);
 }
 
 /* Explore device tree from the root. */
