@@ -64,11 +64,9 @@
 #include <net/altq/altq.h>
 
 /* machine dependent clock related includes */
-#if defined(__i386__)
 #include <machine/clock.h>		/* for tsc_frequency */
 #include <machine/md_var.h>		/* for cpu_feature */
 #include <machine/specialreg.h>		/* for CPUID_TSC */
-#endif /* __i386__ */
 
 /*
  * internal function prototypes
