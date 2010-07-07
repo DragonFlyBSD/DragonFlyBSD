@@ -44,6 +44,7 @@
 #include <sys/systm.h>
 
 #include <sys/poll.h>
+#include <sys/event.h>
 
 #include <sys/conf.h>
 #include <sys/uio.h>
@@ -141,20 +142,26 @@ PDEVSTATIC d_close_t	i4btelclose;
 PDEVSTATIC d_read_t	i4btelread;
 PDEVSTATIC d_write_t	i4btelwrite;
 PDEVSTATIC d_ioctl_t	i4btelioctl;
+PDEVSTATIC d_kqfilter_t	i4btelkqfilter;
 
 PDEVSTATIC d_poll_t i4btelpoll;
 #define POLLFIELD i4btelpoll
 
+PDEVSTATIC void i4btelfilt_detach(struct knote *);
+PDEVSTATIC int i4btelfilt_read(struct knote *, long);
+PDEVSTATIC int i4btelfilt_write(struct knote *, long);
+
 #define CDEV_MAJOR 56
 
 static struct dev_ops i4btel_ops = {
-	{ "i4btel", CDEV_MAJOR, 0 },
+	{ "i4btel", CDEV_MAJOR, D_KQFILTER },
 	.d_open =	i4btelopen,
 	.d_close =	i4btelclose,
 	.d_read =	i4btelread,
 	.d_write =	i4btelwrite,
 	.d_ioctl =	i4btelioctl,
 	.d_poll =	POLLFIELD,
+	.d_kqfilter = 	i4btelkqfilter
 };
 
 PDEVSTATIC void i4btelattach(void *);
@@ -760,6 +767,143 @@ i4btelpoll(struct dev_poll_args *ap)
 	crit_exit();
 	ap->a_events = revents;
 	return (0);
+}
+
+PDEVSTATIC struct filterops i4btelfiltops_read =
+	{ 1, NULL, i4btelfilt_detach, i4btelfilt_read };
+PDEVSTATIC struct filterops i4btelfiltops_write =
+	{ 1, NULL, i4btelfilt_detach, i4btelfilt_write };
+
+PDEVSTATIC int
+i4btelkqfilter(struct dev_kqfilter_args *ap)
+{
+	cdev_t dev = ap->a_head.a_dev;
+	struct knote *kn = ap->a_kn;
+	int unit = UNIT(dev);
+	int func = FUNC(dev);
+	tel_sc_t *sc = &tel_sc[unit][func];
+	struct klist *klist;
+
+	ap->a_result = 0;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &i4btelfiltops_read;
+		kn->kn_hook = (caddr_t)dev;
+		break;
+	case EVFILT_WRITE:
+		kn->kn_fop = &i4btelfiltops_write;
+		kn->kn_hook = (caddr_t)dev;
+		break;
+	default:
+		ap->a_result = 1;
+		return (0);
+	}
+
+	crit_enter();
+	klist = &sc->selp.si_note;
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+	crit_exit();
+
+	return (0);
+}
+
+PDEVSTATIC void
+i4btelfilt_detach(struct knote *kn)
+{
+	cdev_t dev = (cdev_t)kn->kn_hook;
+	int unit = UNIT(dev);
+	int func = FUNC(dev);
+	tel_sc_t *sc = &tel_sc[unit][func];
+	struct klist *klist;
+
+	crit_enter();
+	klist = &sc->selp.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+PDEVSTATIC int
+i4btelfilt_read(struct knote *kn, long hint)
+{
+	cdev_t dev = (cdev_t)kn->kn_hook;
+	int unit = UNIT(dev);
+	int func = FUNC(dev);
+	tel_sc_t *sc = &tel_sc[unit][func];
+	int ready = 0;
+
+	crit_enter();
+
+	if (!(sc->devstate & ST_ISOPEN)) {
+                NDBGL4(L4_TELDBG, "i4btel%d, !ST_ISOPEN", unit);
+                crit_exit();
+                return (0);
+        }
+
+	switch (func) {
+	case FUNCTEL:
+		/* reads are OK if we have any data */
+		if ((sc->devstate & ST_CONNECTED)   &&
+		   (sc->isdn_linktab != NULL)      &&
+		   (!IF_QEMPTY(sc->isdn_linktab->rx_queue)))
+		{
+			NDBGL4(L4_TELDBG, "i4btel%d, filt readable", unit);
+			ready = 1;
+		}
+
+		break;
+	case FUNCDIAL:
+		NDBGL4(L4_TELDBG, "i4bteld%d, filt readable, result = %d", unit, sc->result);
+		if(sc->result != 0)
+			ready = 1;
+		break;
+	}
+
+	crit_exit();
+
+	return (ready);
+}
+
+PDEVSTATIC int
+i4btelfilt_write(struct knote *kn, long hint)
+{
+	cdev_t dev = (cdev_t)kn->kn_hook;
+	int unit = UNIT(dev);
+	int func = FUNC(dev);
+	tel_sc_t *sc = &tel_sc[unit][func];
+	int ready = 0;
+
+	crit_enter();
+
+	if (!(sc->devstate & ST_ISOPEN)) {
+		NDBGL4(L4_TELDBG, "i4btel%d, !ST_ISOPEN", unit);
+		crit_exit();
+		return (0);
+	}
+
+	switch (func) {
+	case FUNCTEL:
+		/*
+		 * Writes are OK if we are connected and the
+		 * transmit queue can take them
+		 */
+		if ((sc->devstate & ST_CONNECTED)   &&
+		   (sc->isdn_linktab != NULL)      &&
+		   (!IF_QFULL(sc->isdn_linktab->tx_queue)))
+		{
+                        NDBGL4(L4_TELDBG, "i4btel%d, filt writable", unit);
+                        ready = 1;
+		}
+		break;
+	case FUNCDIAL:
+		NDBGL4(L4_TELDBG, "i4bteld%d, filt writable", unit);
+		ready = 1;
+		break;
+	}
+
+	crit_exit();
+
+	return (ready);
 }
 
 /*===========================================================================*

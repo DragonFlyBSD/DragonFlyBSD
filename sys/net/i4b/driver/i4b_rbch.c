@@ -61,6 +61,7 @@
 #include "../layer4/i4b_l4.h"
 
 #include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/filio.h>
 
 static drvr_link_t rbch_drvr_linktab[NI4BRBCH];
@@ -118,6 +119,11 @@ PDEVSTATIC d_close_t i4brbchclose;
 PDEVSTATIC d_read_t i4brbchread;
 PDEVSTATIC d_write_t i4brbchwrite;
 PDEVSTATIC d_ioctl_t i4brbchioctl;
+PDEVSTATIC d_kqfilter_t i4brbchkqfilter;
+
+PDEVSTATIC void i4brbchkfilt_detach(struct knote *);
+PDEVSTATIC int i4brbchkfilt_read(struct knote *, long);
+PDEVSTATIC int i4brbchkfilt_write(struct knote *, long);
 
 PDEVSTATIC d_poll_t i4brbchpoll;
 #define POLLFIELD	i4brbchpoll
@@ -125,13 +131,14 @@ PDEVSTATIC d_poll_t i4brbchpoll;
 #define CDEV_MAJOR 57
 
 static struct dev_ops i4brbch_ops = {
-	{ "i4brbch", CDEV_MAJOR, 0 },
+	{ "i4brbch", CDEV_MAJOR, D_KQFILTER },
 	.d_open =	i4brbchopen,
 	.d_close =	i4brbchclose,
 	.d_read =	i4brbchread,
 	.d_write =	i4brbchwrite,
 	.d_ioctl =	i4brbchioctl,
 	.d_poll =	POLLFIELD,
+	.d_kqfilter =	i4brbchkqfilter
 };
 
 static void i4brbchattach(void *);
@@ -580,6 +587,124 @@ i4brbchpoll(struct dev_poll_args *ap)
 	crit_exit();
 	ap->a_events = revents;
 	return (0);
+}
+
+static struct filterops i4brbchkfiltops_read =
+	{ 1, NULL, i4brbchkfilt_detach, i4brbchkfilt_read };
+static struct filterops i4brbchkfiltops_write =
+	{ 1, NULL, i4brbchkfilt_detach, i4brbchkfilt_write };
+
+PDEVSTATIC int
+i4brbchkqfilter(struct dev_kqfilter_args *ap)
+{
+	cdev_t dev = ap->a_head.a_dev;
+	int unit = minor(dev);
+	struct rbch_softc *sc = &rbch_softc[unit];
+	struct knote *kn = ap->a_kn;
+	struct klist *klist;
+
+	ap->a_result = 0;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &i4brbchkfiltops_read;
+		kn->kn_hook = (caddr_t)dev;
+		break;
+	case EVFILT_WRITE:
+		kn->kn_fop = &i4brbchkfiltops_write;
+		kn->kn_hook = (caddr_t)dev;
+		break;
+	default:
+		ap->a_result = 1;
+		return (0);
+	}
+
+	crit_enter();
+	klist = &sc->selp.si_note;
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+	crit_exit();
+
+	return (0);
+}
+
+PDEVSTATIC void
+i4brbchkfilt_detach(struct knote *kn)
+{
+	cdev_t dev = (cdev_t)kn->kn_hook;
+	int unit = minor(dev);
+	struct rbch_softc *sc = &rbch_softc[unit];
+	struct klist *klist;
+
+	crit_enter();
+	klist = &sc->selp.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+PDEVSTATIC int
+i4brbchkfilt_read(struct knote *kn, long hint)
+{
+	cdev_t dev = (cdev_t)kn->kn_hook;
+	int unit = minor(dev);
+	struct rbch_softc *sc = &rbch_softc[unit];
+	int ready = 0;
+
+	crit_enter();
+
+	if (!(sc->sc_devstate & ST_ISOPEN)) {
+		crit_exit();
+		kn->kn_flags |= EV_ERROR;
+		kn->kn_data = EBADF;
+		return (0);
+	}
+
+	if (sc->sc_devstate & ST_CONNECTED) {
+		struct ifqueue *iqp;
+
+		if(sc->sc_bprot == BPROT_RHDLC)
+			iqp = &sc->sc_hdlcq;
+		else
+			iqp = isdn_linktab[unit]->rx_queue;
+
+		if(!IF_QEMPTY(iqp))
+			ready = 1;
+	}
+
+	crit_exit();
+
+	return (ready);
+}
+
+PDEVSTATIC int
+i4brbchkfilt_write(struct knote *kn, long hint)
+{
+	cdev_t dev = (cdev_t)kn->kn_hook;
+	int unit = minor(dev);
+	struct rbch_softc *sc = &rbch_softc[unit];
+	int ready = 0;
+
+	crit_enter();
+
+	if (!(sc->sc_devstate & ST_ISOPEN)) {
+		crit_exit();
+		kn->kn_flags |= EV_ERROR;
+		kn->kn_data = EBADF;
+		return (0);
+	}
+
+	/*
+	 * Writes are OK if we are connected and the
+	 * transmit queue can take them
+	 */
+	if ((sc->sc_devstate & ST_CONNECTED) &&
+	   !IF_QFULL(isdn_linktab[unit]->tx_queue))
+	{
+		ready = 1;
+	}
+
+	crit_exit();
+
+	return (ready);
 }
 
 #if I4BRBCHACCT
