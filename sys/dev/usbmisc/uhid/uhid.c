@@ -64,6 +64,7 @@
 #include <sys/proc.h>
 #include <sys/vnode.h>
 #include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
 
@@ -132,17 +133,23 @@ d_read_t	uhidread;
 d_write_t	uhidwrite;
 d_ioctl_t	uhidioctl;
 d_poll_t	uhidpoll;
+d_kqfilter_t	uhidkqfilter;
+
+static void uhidfilt_detach(struct knote *);
+static int uhidfilt_read(struct knote *, long);
+static int uhidfilt_write(struct knote *, long);
 
 #define		UHID_CDEV_MAJOR 122
 
 static struct dev_ops uhid_ops = {
-	{ "uhid", UHID_CDEV_MAJOR, 0 },
+	{ "uhid", UHID_CDEV_MAJOR, D_KQFILTER },
 	.d_open =	uhidopen,
 	.d_close =	uhidclose,
 	.d_read =	uhidread,
 	.d_write =	uhidwrite,
 	.d_ioctl =	uhidioctl,
 	.d_poll =	uhidpoll,
+	.d_kqfilter =	uhidkqfilter
 };
 
 static void uhid_intr(usbd_xfer_handle, usbd_private_handle,
@@ -689,6 +696,88 @@ uhidpoll(struct dev_poll_args *ap)
 	crit_exit();
 	ap->a_events = revents;
 	return (0);
+}
+
+static struct filterops uhidfiltops_read =
+	{ 1, NULL, uhidfilt_detach, uhidfilt_read };
+static struct filterops uhidfiltops_write =
+	{ 1, NULL, uhidfilt_detach, uhidfilt_write };
+
+int
+uhidkqfilter(struct dev_kqfilter_args *ap)
+{
+	cdev_t dev = ap->a_head.a_dev;
+	struct knote *kn = ap->a_kn;
+	struct uhid_softc *sc;
+	struct klist *klist;
+
+	sc = devclass_get_softc(uhid_devclass, UHIDUNIT(dev));
+
+	if (sc->sc_dying) {
+		ap->a_result = 1;
+		return (0);
+	}
+
+	ap->a_result = 0;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &uhidfiltops_read;
+		kn->kn_hook = (caddr_t)sc;
+		break;
+	case EVFILT_WRITE:
+		kn->kn_fop = &uhidfiltops_write;
+		kn->kn_hook = (caddr_t)sc;
+		break;
+	default:
+		ap->a_result = 1;
+		return (0);
+	}
+
+	crit_enter();
+	klist = &sc->sc_rsel.si_note;
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+	crit_exit();
+
+	return (0);
+}
+
+static void
+uhidfilt_detach(struct knote *kn)
+{
+	cdev_t dev = (cdev_t)kn->kn_hook;
+	struct uhid_softc *sc;
+	struct klist *klist;
+
+	sc = devclass_get_softc(uhid_devclass, UHIDUNIT(dev));
+
+	crit_enter();
+	klist = &sc->sc_rsel.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+static int
+uhidfilt_read(struct knote *kn, long hint)
+{
+	cdev_t dev = (cdev_t)kn->kn_hook;
+	struct uhid_softc *sc;
+	int ready = 0;
+
+	sc = devclass_get_softc(uhid_devclass, UHIDUNIT(dev));
+
+	crit_enter();
+	if (sc->sc_q.c_cc > 0)
+		ready = 1;
+	crit_exit();
+
+	return (ready);
+}
+
+static int
+uhidfilt_write(struct knote *kn, long hint)
+{
+	return (1);
 }
 
 DRIVER_MODULE(uhid, uhub, uhid_driver, uhid_devclass, usbd_driver_load, 0);

@@ -64,6 +64,7 @@
 #include <sys/select.h>
 #include <sys/vnode.h>
 #include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
 
@@ -140,17 +141,23 @@ d_read_t  ugenread;
 d_write_t ugenwrite;
 d_ioctl_t ugenioctl;
 d_poll_t  ugenpoll;
+d_kqfilter_t ugenkqfilter;
+
+static void ugen_filt_detach(struct knote *);
+static int ugen_filt_read(struct knote *, long);
+static int ugen_filt_write(struct knote *, long);
 
 #define UGEN_CDEV_MAJOR	114
 
 static struct dev_ops ugen_ops = {
-	{ "ugen", UGEN_CDEV_MAJOR, 0 },
+	{ "ugen", UGEN_CDEV_MAJOR, D_KQFILTER },
 	.d_open =	ugenopen,
 	.d_close =	ugenclose,
 	.d_read =	ugenread,
 	.d_write =	ugenwrite,
 	.d_ioctl =	ugenioctl,
 	.d_poll =	ugenpoll,
+	.d_kqfilter = 	ugenkqfilter
 };
 
 static void ugenintr(usbd_xfer_handle xfer, usbd_private_handle addr,
@@ -1499,6 +1506,148 @@ ugenpoll(struct dev_poll_args *ap)
 	crit_exit();
 	ap->a_events = revents;
 	return (0);
+}
+
+static struct filterops ugen_filtops_read =
+	{ 1, NULL, ugen_filt_detach, ugen_filt_read };
+static struct filterops ugen_filtops_write =
+	{ 1, NULL, ugen_filt_detach, ugen_filt_write };
+
+int
+ugenkqfilter(struct dev_kqfilter_args *ap)
+{
+	cdev_t dev = ap->a_head.a_dev;
+	struct knote *kn = ap->a_kn;
+	struct klist *klist;
+        struct ugen_softc *sc;
+        struct ugen_endpoint *sce;
+
+        sc = devclass_get_softc(ugen_devclass, UGENUNIT(dev));
+
+	ap->a_result = 1;
+
+	if (sc->sc_dying)
+		return (0);
+
+        /* Do not allow filter on a control endpoint */
+        if (UGENENDPOINT(dev) == USB_CONTROL_ENDPOINT)
+		return (0);
+
+	ap->a_result = 0;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		sce = &sc->sc_endpoints[UGENENDPOINT(dev)][IN];
+		kn->kn_fop = &ugen_filtops_read;
+		kn->kn_hook = (caddr_t)dev;
+		break;
+	case EVFILT_WRITE:
+		sce = &sc->sc_endpoints[UGENENDPOINT(dev)][OUT];
+		kn->kn_fop = &ugen_filtops_write;
+		kn->kn_hook = (caddr_t)dev;
+		break;
+	default:
+		ap->a_result = 1;
+		return (0);
+	}
+
+	if (sce->edesc != NULL || sce->pipeh != NULL) {
+		crit_enter();
+		klist = &sce->rsel.si_note;
+		SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+		crit_exit();
+	}
+
+	return (0);
+}
+
+static void
+ugen_filt_detach(struct knote *kn)
+{
+	cdev_t dev = (cdev_t)kn->kn_hook;
+        struct ugen_softc *sc;
+        struct ugen_endpoint *sce;
+	struct klist *klist;
+
+        sc = devclass_get_softc(ugen_devclass, UGENUNIT(dev));
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		sce = &sc->sc_endpoints[UGENENDPOINT(dev)][IN];
+		break;
+	case EVFILT_WRITE:
+		sce = &sc->sc_endpoints[UGENENDPOINT(dev)][OUT];
+		break;
+	default:
+		return;
+	}
+
+	if (sce->edesc != NULL || sce->pipeh != NULL) {
+		crit_enter();
+		klist = &sce->rsel.si_note;
+		SLIST_REMOVE(klist, kn, knote, kn_selnext);
+		crit_exit();
+	}
+}
+
+static int
+ugen_filt_read(struct knote *kn, long hint)
+{
+	cdev_t dev = (cdev_t)kn->kn_hook;
+	struct ugen_softc *sc;
+	struct ugen_endpoint *sce;
+	int ready = 0;
+
+	sc = devclass_get_softc(ugen_devclass, UGENUNIT(dev));
+	sce = &sc->sc_endpoints[UGENENDPOINT(dev)][IN];
+
+	switch (sce->edesc->bmAttributes & UE_XFERTYPE) {
+	case UE_INTERRUPT:
+		if (sce->q.c_cc > 0)
+			ready = 1;
+		break;
+	case UE_ISOCHRONOUS:
+		if (sce->cur != sce->fill)
+			ready = 1;
+		break;
+	case UE_BULK:
+		ready = 1;
+		break;
+	default:
+		break;
+	}
+
+	return (ready);
+}
+
+static int
+ugen_filt_write(struct knote *kn, long hint)
+{
+	cdev_t dev = (cdev_t)kn->kn_hook;
+	struct ugen_softc *sc;
+	struct ugen_endpoint *sce;
+	int ready = 0;
+
+	sc = devclass_get_softc(ugen_devclass, UGENUNIT(dev));
+	sce = &sc->sc_endpoints[UGENENDPOINT(dev)][OUT];
+
+	switch (sce->edesc->bmAttributes & UE_XFERTYPE) {
+	case UE_INTERRUPT:
+		if (sce->q.c_cc > 0)
+			ready = 1;
+		break;
+	case UE_ISOCHRONOUS:
+		if (sce->cur != sce->fill)
+			ready = 1;
+		break;
+	case UE_BULK:
+		ready = 1;
+		break;
+	default:
+		break;
+	}
+
+	return (ready);
 }
 
 DRIVER_MODULE(ugen, uhub, ugen_driver, ugen_devclass, usbd_driver_load, 0);

@@ -56,6 +56,7 @@
 #include <sys/select.h>
 #include <sys/vnode.h>
 #include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
 
@@ -141,16 +142,21 @@ static d_close_t ums_close;
 static d_read_t  ums_read;
 static d_ioctl_t ums_ioctl;
 static d_poll_t  ums_poll;
+static d_kqfilter_t ums_kqfilter;
+
+static void ums_filt_detach(struct knote *);
+static int ums_filt(struct knote *, long);
 
 #define UMS_CDEV_MAJOR	111
 
 static struct dev_ops ums_ops = {
-	{ "ums", UMS_CDEV_MAJOR, 0 },
+	{ "ums", UMS_CDEV_MAJOR, D_KQFILTER },
 	.d_open =	ums_open,
 	.d_close =	ums_close,
 	.d_read =	ums_read,
 	.d_ioctl =	ums_ioctl,
 	.d_poll =	ums_poll,
+	.d_kqfilter =	ums_kqfilter
 };
 
 static device_probe_t ums_match;
@@ -695,6 +701,64 @@ ums_poll(struct dev_poll_args *ap)
 	crit_exit();
 	ap->a_events = revents;
 	return (0);
+}
+
+static struct filterops ums_filtops =
+	{ 1, NULL, ums_filt_detach, ums_filt };
+
+static int
+ums_kqfilter(struct dev_kqfilter_args *ap)
+{
+	cdev_t dev = ap->a_head.a_dev;
+	struct knote *kn = ap->a_kn;
+	struct ums_softc *sc;
+	struct klist *klist;
+
+	ap->a_result = 0;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		sc = devclass_get_softc(ums_devclass, UMSUNIT(dev));
+		kn->kn_fop = &ums_filtops;
+		kn->kn_hook = (caddr_t)sc;
+		break;
+	default:
+		ap->a_result = 1;
+		return (0);
+	}
+
+	crit_enter();
+	klist = &sc->rsel.si_note;
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+	crit_exit();
+
+	return (0);
+}
+
+static void
+ums_filt_detach(struct knote *kn)
+{
+	struct ums_softc *sc = (struct ums_softc *)kn->kn_hook;
+	struct klist *klist;
+
+	crit_enter();
+	klist = &sc->rsel.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+static int
+ums_filt(struct knote *kn, long hint)
+{
+	struct ums_softc *sc = (struct ums_softc *)kn->kn_hook;
+	int ready = 0;
+
+	crit_enter();
+	if (sc->qcount)
+		ready = 1;
+	crit_exit();
+
+	return (ready);
 }
 
 int
