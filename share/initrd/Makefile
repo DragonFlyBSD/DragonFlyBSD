@@ -6,7 +6,7 @@
 #add ${VAR_FILES} to FILES=
 #add a for loop for ${VAR_FILES}
 
-ETC_FILES=	rc
+ETC_FILES=	rc rc.lvm2 rcmount_crypt
 FILES=		${ETC_FILES}
 
 .for file in ${ETC_FILES}

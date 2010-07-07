@@ -1,0 +1,23 @@
+#!/bin/sh
+
+if [ ! -x /sbin/lvm ]; then
+	return 1;
+fi
+
+echo "Configuring LVM volumes"
+
+if [ ! -d /tmp/lvm2 ]; then
+	mkdir -p /tmp/lvm2
+fi
+
+export LVM_SYSTEM_DIR=/tmp/lvm2
+
+# Scan for volume groups
+/sbin/lvm vgscan --mknodes --ignorelockingfailure &> /dev/null
+
+# Change volume availability to yes
+/sbin/lvm vgchange --ignorelockingfailure -a y > /dev/null
+
+# Get a list of volumes and display it
+LV_LIST=$( /sbin/lvm vgdisplay -C -o vg_name --noheadings 2> /dev/null )
+echo " Activated Volume Groups: $LV_LIST"
