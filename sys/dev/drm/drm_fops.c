@@ -113,3 +113,35 @@ int drm_poll(struct dev_poll_args *ap)
 {
 	return 0;
 }
+
+static int
+drmfilt(struct knote *kn, long hint)
+{
+	return (0);
+}
+
+static void
+drmfilt_detach(struct knote *kn) {}
+
+static struct filterops drmfiltops =
+        { 1, NULL, drmfilt_detach, drmfilt };
+
+int
+drm_kqfilter(struct dev_kqfilter_args *ap)
+{
+	struct knote *kn = ap->a_kn;
+
+	ap->a_result = 0;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+	case EVFILT_WRITE:
+		kn->kn_fop = &drmfiltops;
+		break;
+	default:
+		ap->a_result = 1;
+		return (0);
+	}
+
+	return (0);
+}
