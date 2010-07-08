@@ -1,12 +1,12 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <stdio.h>
+#include <string.h>
 #include <dirent.h>
 #include <errno.h>
 #include <libdevmapper.h>
 #include <fcntl.h>
-#include <linux/fs.h>
-#include <uuid/uuid.h>
+#include <uuid.h>
 
 #include "internal.h"
 #include "luks.h"
@@ -28,8 +28,6 @@ static struct crypt_device *_context = NULL;
 /* Compatibility for old device-mapper without udev support */
 #ifndef HAVE_DM_TASK_SET_COOKIE
 #define CRYPT_TEMP_UDEV_FLAGS	0
-static int dm_task_set_cookie(struct dm_task *dmt, uint32_t *cookie, uint16_t flags) { return 0; }
-static int dm_udev_wait(uint32_t cookie) { return 0; };
 #else
 #define CRYPT_TEMP_UDEV_FLAGS	DM_UDEV_DISABLE_SUBSYSTEM_RULES_FLAG | \
 				DM_UDEV_DISABLE_DISK_RULES_FLAG | \
@@ -232,7 +230,8 @@ static int _dev_read_ahead(const char *dev, uint32_t *read_ahead)
 	if ((fd = open(dev, O_RDONLY)) < 0)
 		return 0;
 
-	r = ioctl(fd, BLKRAGET, &read_ahead_long) ? 0 : 1;
+	r = 0;
+	//r = ioctl(fd, BLKRAGET, &read_ahead_long) ? 0 : 1;
 	close(fd);
 
 	if (r)
@@ -386,14 +385,19 @@ static void dm_prepare_uuid(const char *name, const char *type, const char *uuid
 	char *ptr, uuid2[UUID_LEN] = {0};
 	uuid_t uu;
 	int i = 0;
+	uint32_t ret;
 
 	/* Remove '-' chars */
-	if (uuid && !uuid_parse(uuid, uu)) {
+	uuid_from_string(uuid, &uu, ret);
+	if (uuid && ret != uuid_s_ok) {
+		printf("crap happened in uuid_from_string(%s), err = %d\n", uuid, ret);	
 		for (ptr = uuid2, i = 0; i < UUID_LEN; i++)
 			if (uuid[i] != '-') {
 				*ptr = uuid[i];
 				ptr++;
 			}
+	} else {
+		printf("went well in uuid_from_string(%s), err = %d\n", uuid, ret);	
 	}
 
 	i = snprintf(buf, buflen, DM_UUID_PREFIX "%s%s%s%s%s",

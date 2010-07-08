@@ -4,7 +4,6 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <errno.h>
-#include <linux/fs.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -14,6 +13,8 @@
 #include <termios.h>
 #include <sys/mman.h>
 #include <sys/resource.h>
+#include <cpu/param.h>
+#include <sys/diskslice.h>
 
 #include "libcryptsetup.h"
 #include "internal.h"
@@ -156,10 +157,13 @@ static void *aligned_malloc(void **base, int size, int alignment)
 static int sector_size(int fd) 
 {
 	int bsize;
+	return DEV_BSIZE;
+#if 0
 	if (ioctl(fd,BLKSSZGET, &bsize) < 0)
 		return -EINVAL;
 	else
 		return bsize;
+#endif
 }
 
 int sector_size_for_device(const char *device)
@@ -548,6 +552,7 @@ int device_ready(struct crypt_device *cd, const char *device, int mode)
 
 int get_device_infos(const char *device, struct device_infos *infos, struct crypt_device *cd)
 {
+	struct partinfo pinfo;
 	uint64_t size;
 	unsigned long size_small;
 	int readonly = 0;
@@ -570,19 +575,6 @@ int get_device_infos(const char *device, struct device_infos *infos, struct cryp
 		return -1;
 	}
 
-#ifdef BLKROGET
-	/* If the device can be opened read-write, i.e. readonly is still 0, then
-	 * check whether BKROGET says that it is read-only. E.g. read-only loop
-	 * devices may be openend read-write but are read-only according to BLKROGET
-	 */
-	if (readonly == 0 && ioctl(fd, BLKROGET, &readonly) < 0) {
-		log_err(cd, _("BLKROGET failed on device %s.\n"), device);
-		goto out;
-	}
-#else
-#error BLKROGET not available
-#endif
-
 #ifdef BLKGETSIZE64
 	if (ioctl(fd, BLKGETSIZE64, &size) >= 0) {
 		size >>= SECTOR_SHIFT;
@@ -598,7 +590,11 @@ int get_device_infos(const char *device, struct device_infos *infos, struct cryp
 		goto out;
 	}
 #else
-#	error Need at least the BLKGETSIZE ioctl!
+	if (ioctl(fd, DIOCGPART, &pinfo) >= 0) {
+		size = pinfo.media_blocks;
+		ret = 0;
+		goto out;	
+	}
 #endif
 
 	log_err(cd, _("BLKGETSIZE failed on device %s.\n"), device);

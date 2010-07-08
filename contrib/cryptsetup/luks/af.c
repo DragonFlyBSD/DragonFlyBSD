@@ -25,7 +25,7 @@
 #include <string.h>
 #include <netinet/in.h>
 #include <errno.h>
-#include <gcrypt.h>
+#include <openssl/evp.h>
 #include "random.h"
 
 static void XORblock(char const *src1, char const *src2, char *dst, size_t n)
@@ -36,19 +36,18 @@ static void XORblock(char const *src1, char const *src2, char *dst, size_t n)
 		dst[j] = src1[j] ^ src2[j];
 }
 
-static int hash_buf(char *src, char *dst, uint32_t iv, int len, int hash_id)
+static int hash_buf(char *src, char *dst, uint32_t iv, int len, const EVP_MD *hash_id)
 {
-	gcry_md_hd_t hd;
+	EVP_MD_CTX mdctx;
 	unsigned char *digest;
 
 	iv = htonl(iv);
-	if (gcry_md_open(&hd, hash_id, 0))
-		return 1;
-	gcry_md_write(hd, (unsigned char *)&iv, sizeof(iv));
-	gcry_md_write(hd, src, len);
-	digest = gcry_md_read(hd, hash_id);
-	memcpy(dst, digest, len);
-	gcry_md_close(hd);
+
+	EVP_DigestInit(&mdctx, hash_id);
+	EVP_DigestUpdate(&mdctx, (unsigned char *)&iv, sizeof(iv));
+	EVP_DigestUpdate(&mdctx, src, len);
+	EVP_DigestFinal(&mdctx, dst, NULL);
+
 	return 0;
 }
 
@@ -56,9 +55,9 @@ static int hash_buf(char *src, char *dst, uint32_t iv, int len, int hash_id)
  * the help of hash function.
  */
 
-static int diffuse(char *src, char *dst, size_t size, int hash_id)
+static int diffuse(char *src, char *dst, size_t size, const EVP_MD *hash_id)
 {
-	unsigned int digest_size = gcry_md_get_algo_dlen(hash_id);
+	unsigned int digest_size = EVP_MD_size(hash_id);
 	unsigned int i, blocks, padding;
 
 	blocks = size / digest_size;
@@ -90,9 +89,10 @@ int AF_split(char *src, char *dst, size_t blocksize, unsigned int blocknumbers, 
 	unsigned int i;
 	char *bufblock;
 	int r = -EINVAL;
-	int hash_id;
+	const EVP_MD *hash_id;
 
-	if (!(hash_id = gcry_md_map_name(hash)))
+	OpenSSL_add_all_digests();
+	if (!(hash_id = EVP_get_digestbyname(hash)))
 		return -EINVAL;
 
 	if((bufblock = calloc(blocksize, 1)) == NULL) return -ENOMEM;
@@ -119,9 +119,10 @@ int AF_merge(char *src, char *dst, size_t blocksize, unsigned int blocknumbers, 
 	unsigned int i;
 	char *bufblock;
 	int r = -EINVAL;
-	int hash_id;
+	const EVP_MD *hash_id;
 
-	if (!(hash_id = gcry_md_map_name(hash)))
+	OpenSSL_add_all_digests();
+	if (!(hash_id = EVP_get_digestbyname(hash)))
 		return -EINVAL;
 
 	if((bufblock = calloc(blocksize, 1)) == NULL) return -ENOMEM;

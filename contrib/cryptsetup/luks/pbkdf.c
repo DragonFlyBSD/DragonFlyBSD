@@ -25,14 +25,15 @@
 #include <netinet/in.h>
 #include <errno.h>
 #include <signal.h>
-#include <alloca.h>
 #include <sys/time.h>
-#include <gcrypt.h>
+#include <string.h>
+#include <strings.h>
+#include <stdlib.h>
+#include <openssl/evp.h>
+#include <openssl/hmac.h>
 
 static volatile uint64_t __PBKDF2_global_j = 0;
 static volatile uint64_t __PBKDF2_performance = 0;
-
-int init_crypto(void);
 
 /*
  * 5.2 PBKDF2
@@ -68,10 +69,11 @@ static int pkcs5_pbkdf2(const char *hash,
 			unsigned int c, unsigned int dkLen,
 			char *DK, int perfcheck)
 {
-	gcry_md_hd_t prf;
 	char U[MAX_PRF_BLOCK_LEN];
 	char T[MAX_PRF_BLOCK_LEN];
-	int PRF, i, k, rc = -EINVAL;
+	const EVP_MD *PRF;
+	HMAC_CTX ctx;
+	int i, k, rc = -EINVAL;
 	unsigned int u, hLen, l, r;
 	unsigned char *p;
 	size_t tmplen = Slen + 4;
@@ -81,14 +83,14 @@ static int pkcs5_pbkdf2(const char *hash,
 	if (tmp == NULL)
 		return -ENOMEM;
 
-	if (init_crypto())
-		return -ENOSYS;
-
-	PRF = gcry_md_map_name(hash);
-	if (PRF == 0)
+	OpenSSL_add_all_digests();
+	PRF = EVP_get_digestbyname(hash);
+	if (PRF == NULL) {
+		printf("pkcs5_pbkdf2: invalid hash %s\n", hash);
 		return -EINVAL;
+	}
 
-	hLen = gcry_md_get_algo_dlen(PRF);
+	hLen = EVP_MD_size(PRF);
 	if (hLen == 0 || hLen > MAX_PRF_BLOCK_LEN)
 		return -EINVAL;
 
@@ -167,36 +169,24 @@ static int pkcs5_pbkdf2(const char *hash,
 	 *  into a small set of values.
 	 *
 	 */
-
-	if(gcry_md_open(&prf, PRF, GCRY_MD_FLAG_HMAC))
-		return -EINVAL;
-
-	if (gcry_md_setkey(prf, P, Plen))
-		goto out;
+	HMAC_CTX_init(&ctx);
 
 	for (i = 1; (uint) i <= l; i++) {
 		memset(T, 0, hLen);
 
 		for (u = 1; u <= c ; u++) {
-			gcry_md_reset(prf);
-
 			if (u == 1) {
 				memcpy(tmp, S, Slen);
 				tmp[Slen + 0] = (i & 0xff000000) >> 24;
 				tmp[Slen + 1] = (i & 0x00ff0000) >> 16;
 				tmp[Slen + 2] = (i & 0x0000ff00) >> 8;
 				tmp[Slen + 3] = (i & 0x000000ff) >> 0;
-
-				gcry_md_write(prf, tmp, tmplen);
+				HMAC_Init_ex(&ctx, P, Plen, PRF, NULL);
+				HMAC_Update(&ctx, tmp, tmplen);				
+				HMAC_Final(&ctx, U, NULL);
 			} else {
-				gcry_md_write(prf, U, hLen);
+				HMAC(PRF, P, Plen, U, hLen, U, NULL);
 			}
-
-			p = gcry_md_read(prf, PRF);
-			if (p == NULL)
-				goto out;
-
-			memcpy(U, p, hLen);
 
 			for (k = 0; (uint) k < hLen; k++)
 				T[k] ^= U[k];
@@ -214,7 +204,7 @@ static int pkcs5_pbkdf2(const char *hash,
 	}
 	rc = 0;
 out:
-	gcry_md_close(prf);
+	HMAC_CTX_cleanup(&ctx);
 	return rc;
 }
 
@@ -229,13 +219,15 @@ int PBKDF2_HMAC(const char *hash,
 
 int PBKDF2_HMAC_ready(const char *hash)
 {
-	int hash_id = gcry_md_map_name(hash);
+	const EVP_MD *md;
 
-	if (!hash_id)
+	OpenSSL_add_all_digests();
+	md = EVP_get_digestbyname(hash);
+	if (md == NULL)
 		return -EINVAL;
-
+	
 	/* Used hash must have at least 160 bits */
-	if (gcry_md_get_algo_dlen(hash_id) < 20)
+	if (EVP_MD_size(md) < 20)
 		return -EINVAL;
 
 	return 1;
@@ -253,22 +245,28 @@ int PBKDF2_performance_check(const char *hash, uint64_t *iter)
 	char buf;
 	struct itimerval it;
 
-	if (__PBKDF2_global_j)
+	if (__PBKDF2_global_j) {
+		printf("foo1\n");	
 		return -EBUSY;
+	}
 
-	if (!PBKDF2_HMAC_ready(hash))
+	if (!PBKDF2_HMAC_ready(hash)) {
+		printf("foo2\n");
 		return -EINVAL;
+	}
 
 	signal(SIGVTALRM,sigvtalarm);
 	it.it_interval.tv_usec = 0;
 	it.it_interval.tv_sec = 0;
 	it.it_value.tv_usec = 0;
 	it.it_value.tv_sec =  1;
-	if (setitimer (ITIMER_VIRTUAL, &it, NULL) < 0)
+	if (setitimer (ITIMER_VIRTUAL, &it, NULL) < 0) {
+		printf("foo3\n");
 		return -EINVAL;
+	}
 
 	r = pkcs5_pbkdf2(hash, "foo", 3, "bar", 3, ~(0U), 1, &buf, 1);
-
+	printf("foo4: %d\n", r);
 	*iter = __PBKDF2_performance;
 	__PBKDF2_global_j = 0;
 	__PBKDF2_performance = 0;

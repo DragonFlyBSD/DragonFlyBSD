@@ -20,7 +20,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
-#include <linux/fs.h>
 #include <netinet/in.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -34,7 +33,7 @@
 #include "af.h"
 #include "pbkdf.h"
 #include "random.h"
-#include <uuid/uuid.h>
+#include <uuid.h>
 #include <../lib/internal.h>
 
 #define div_round_up(a,b) ({           \
@@ -432,6 +431,7 @@ int LUKS_generate_phdr(struct luks_phdr *header,
 	unsigned int i=0;
 	unsigned int blocksPerStripeSet = div_round_up(mk->keyLength*stripes,SECTOR_SIZE);
 	int r;
+	uint32_t ret;
 	char luksMagic[] = LUKS_MAGIC;
 	uuid_t partitionUuid;
 	int currentSector;
@@ -492,13 +492,14 @@ int LUKS_generate_phdr(struct luks_phdr *header,
 	/* alignOffset - offset from natural device alignment provided by topology info */
 	header->payloadOffset = currentSector + alignOffset;
 
-	if (uuid && !uuid_parse(uuid, partitionUuid)) {
+	uuid_from_string(uuid, &partitionUuid, &ret);
+	if (uuid && ret != uuid_s_ok) {
 		log_err(ctx, _("Wrong UUID format provided, generating new one.\n"));
 		uuid = NULL;
 	}
 	if (!uuid)
-		uuid_generate(partitionUuid);
-        uuid_unparse(partitionUuid, header->uuid);
+		uuid_create(&partitionUuid, &ret);
+	uuid_to_string(&partitionUuid, &header->uuid, &ret);
 
 	log_dbg("Data offset %d, UUID %s, digest iterations %" PRIu32,
 		header->payloadOffset, header->uuid, header->mkDigestIterations);

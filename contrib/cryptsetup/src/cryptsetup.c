@@ -8,11 +8,11 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <getopt.h>
 
 #include <libcryptsetup.h>
-#include <popt.h>
 
-#include "../config.h"
+#include "config.h"
 
 #include "cryptsetup.h"
 
@@ -175,7 +175,8 @@ static int _yesDialog(const char *msg, void *usrptr)
 
 static void show_status(int errcode)
 {
-	char error[256], *error_;
+	char error[256];
+	int ret;
 
 	if(!opt_verbose)
 		return;
@@ -188,11 +189,7 @@ static void show_status(int errcode)
 	crypt_get_error(error, sizeof(error));
 
 	if (!error[0]) {
-		error_ = strerror_r(-errcode, error, sizeof(error));
-		if (error_ != error) {
-			strncpy(error, error_, sizeof(error));
-			error[sizeof(error) - 1] = '\0';
-		}
+		ret = strerror_r(-errcode, error, sizeof(error));
 	}
 
 	log_err(_("Command failed with code %i"), -errcode);
@@ -622,46 +619,76 @@ out:
 	return r;
 }
 
-static void usage(poptContext popt_context, int exitcode,
-                  const char *error, const char *more)
+static void usage(const char *msg)
 {
-	poptPrintUsage(popt_context, stderr, 0);
-	if (error)
-		log_err("%s: %s\n", more, error);
-	exit(exitcode);
+	log_err("Usage: cryptsetup [-?vyrq] [-?|--help] [--usage] [-v|--verbose]\n"
+	    "        [--debug] [-c|--cipher=STRING] [-h|--hash=STRING]\n"
+	    "        [-y|--verify-passphrase] [-d|--key-file=STRING]\n"
+	    "        [--master-key-file=STRING] [-s|--key-size=BITS] [-S|--key-slot=INT]\n"
+            "        [-b|--size=SECTORS] [-o|--offset=SECTORS] [-p|--skip=SECTORS]\n"
+            "        [-r|--readonly] [-i|--iter-time=msecs] [-q|--batch-mode] [--version]\n"
+            "        [-t|--timeout=secs] [-T|--tries=INT] [--align-payload=SECTORS]\n"
+            "        [--non-exclusive] [--header-backup-file=STRING] [OPTION...]\n"
+            "        <action> <action-specific>]\n");
+
+	if (msg)
+		log_err("%s\n", msg);
+
+	exit(1);
 }
 
-static void help(poptContext popt_context, enum poptCallbackReason reason,
-                 struct poptOption *key, const char * arg, void *data)
+static void help()
 {
-	if (key->shortName == '?') {
-		struct action_type *action;
+	struct action_type *action;
 
-		log_std("%s\n",PACKAGE_STRING);
+	log_std("%s\n",PACKAGE_STRING);
+	log_std("Usage: cryptsetup [OPTION...] <action> <action-specific>]\n"
+	    "  -v, --verbose                       Shows more detailed error messages\n"
+	    "      --debug                         Show debug messages\n"
+	    "  -c, --cipher=STRING                 The cipher used to encrypt the disk (see /proc/crypto)\n"
+	    "  -h, --hash=STRING                   The hash used to create the encryption key from the passphrase\n"
+	    "  -y, --verify-passphrase             Verifies the passphrase by asking for it twice\n"
+	    "  -d, --key-file=STRING               Read the key from a file (can be /dev/random)\n"
+	    "      --master-key-file=STRING        Read the volume (master) key from file.\n"
+	    "  -s, --key-size=BITS                 The size of the encryption key\n"
+	    "  -S, --key-slot=INT                  Slot number for new key (default is first free)\n"
+	    "  -b, --size=SECTORS                  The size of the device\n"
+	    "  -o, --offset=SECTORS                The start offset in the backend device\n"
+	    "  -p, --skip=SECTORS                  How many sectors of the encrypted data to skip at the beginning\n"
+	    "  -r, --readonly                      Create a readonly mapping\n"
+	    "  -i, --iter-time=msecs               PBKDF2 iteration time for LUKS (in ms)\n"
+	    "  -q, --batch-mode                    Do not ask for confirmation\n"
+	    "      --version                       Print package version\n"
+	    "  -t, --timeout=secs                  Timeout for interactive passphrase prompt (in seconds)\n"
+	    "  -T, --tries=INT                     How often the input of the passphrase can be retried\n"
+	    "      --align-payload=SECTORS         Align payload at <n> sector boundaries - for luksFormat\n"
+	    "      --non-exclusive                 (Obsoleted, see man page.)\n"
+	    "      --header-backup-file=STRING     File with LUKS header and keyslots backup.\n"
+	    "\n"
+	    "Help options:\n"
+	    "  -?, --help                          Show this help message\n"
+	    "      --usage                         Display brief usage\n" );
 
-		poptPrintHelp(popt_context, stdout, 0);
+	log_std(_("\n"
+		 "<action> is one of:\n"));
 
-		log_std(_("\n"
-			 "<action> is one of:\n"));
-
-		for(action = action_types; action->type; action++)
-			log_std("\t%s %s - %s\n", action->type, _(action->arg_desc), _(action->desc));
+	for(action = action_types; action->type; action++)
+		log_std("\t%s %s - %s\n", action->type, _(action->arg_desc), _(action->desc));
 		
-		log_std(_("\n"
-			 "<name> is the device to create under %s\n"
-			 "<device> is the encrypted device\n"
-			 "<key slot> is the LUKS key slot number to modify\n"
-			 "<key file> optional key file for the new key for luksAddKey action\n"),
-			crypt_get_dir());
+	log_std(_("\n"
+		 "<name> is the device to create under %s\n"
+		 "<device> is the encrypted device\n"
+		 "<key slot> is the LUKS key slot number to modify\n"
+		 "<key file> optional key file for the new key for luksAddKey action\n"),
+		crypt_get_dir());
 
-		log_std(_("\nDefault compiled-in device cipher parameters:\n"
-			 "\tplain: %s, Key: %d bits, Password hashing: %s\n"
-			 "\tLUKS1: %s, Key: %d bits, LUKS header hashing: %s\n"),
-			 DEFAULT_CIPHER(PLAIN), DEFAULT_PLAIN_KEYBITS, DEFAULT_PLAIN_HASH,
-			 DEFAULT_CIPHER(LUKS1), DEFAULT_LUKS1_KEYBITS, DEFAULT_LUKS1_HASH);
-		exit(0);
-	} else
-		usage(popt_context, 0, NULL, NULL);
+	log_std(_("\nDefault compiled-in device cipher parameters:\n"
+		 "\tplain: %s, Key: %d bits, Password hashing: %s\n"
+		 "\tLUKS1: %s, Key: %d bits, LUKS header hashing: %s\n"),
+		 DEFAULT_CIPHER(PLAIN), DEFAULT_PLAIN_KEYBITS, DEFAULT_PLAIN_HASH,
+		 DEFAULT_CIPHER(LUKS1), DEFAULT_LUKS1_KEYBITS, DEFAULT_LUKS1_HASH);
+	exit(0);
+
 }
 
 void set_debug_level(int level);
@@ -698,39 +725,31 @@ static int run_action(struct action_type *action)
 
 int main(int argc, char **argv)
 {
-	static char *popt_tmp;
-	static struct poptOption popt_help_options[] = {
-		{ NULL,    '\0', POPT_ARG_CALLBACK, help, 0, NULL,                         NULL },
-		{ "help",  '?',  POPT_ARG_NONE,     NULL, 0, N_("Show this help message"), NULL },
-		{ "usage", '\0', POPT_ARG_NONE,     NULL, 0, N_("Display brief usage"),    NULL },
-		POPT_TABLEEND
+	static struct option options[] = {
+		{ "help",  	       no_argument, 		NULL, '?' },
+		{ "usage", 	       no_argument, 		NULL, 'u' },
+		{ "verbose",           no_argument, 		NULL, 'v' },
+		{ "debug",             no_argument, 		&opt_debug, 1 },
+		{ "cipher",            required_argument, 	NULL, 'c' },
+		{ "hash",              required_argument, 	NULL, 'h' },
+		{ "verify-passphrase", no_argument, 		NULL, 'y' },
+		{ "key-file",          required_argument, 	NULL, 'd' },
+		{ "master-key-file",   required_argument, 	NULL, 'm' },
+		{ "key-size",          required_argument, 	NULL, 's' },
+		{ "key-slot",          required_argument, 	NULL, 'S' },
+		{ "size",              required_argument, 	NULL, 'b' },
+		{ "offset",            required_argument, 	NULL, 'o' },
+		{ "skip",              required_argument,	NULL, 'p' },
+		{ "readonly",          no_argument, 		NULL, 'r' },
+		{ "iter-time",         required_argument,	NULL, 'i' },
+		{ "batch-mode",        no_argument,		NULL, 'q' },
+		{ "version",           no_argument, 		&opt_version_mode, 1 },
+		{ "timeout",           required_argument, 	NULL, 't' },
+		{ "tries",             required_argument, 	NULL, 'T' },
+		{ "align-payload",     required_argument, 	NULL, 'a' },
+		{ "header-backup-file",required_argument, 	NULL, 'x' },
+		{ NULL,			0,			NULL, 0 }
 	};
-	static struct poptOption popt_options[] = {
-		{ NULL,                '\0', POPT_ARG_INCLUDE_TABLE, popt_help_options, 0, N_("Help options:"), NULL },
-		{ "verbose",           'v',  POPT_ARG_NONE, &opt_verbose,               0, N_("Shows more detailed error messages"), NULL },
-		{ "debug",             '\0', POPT_ARG_NONE, &opt_debug,                 0, N_("Show debug messages"), NULL },
-		{ "cipher",            'c',  POPT_ARG_STRING, &opt_cipher,              0, N_("The cipher used to encrypt the disk (see /proc/crypto)"), NULL },
-		{ "hash",              'h',  POPT_ARG_STRING, &opt_hash,                0, N_("The hash used to create the encryption key from the passphrase"), NULL },
-		{ "verify-passphrase", 'y',  POPT_ARG_NONE, &opt_verify_passphrase,     0, N_("Verifies the passphrase by asking for it twice"), NULL },
-		{ "key-file",          'd',  POPT_ARG_STRING, &opt_key_file,            0, N_("Read the key from a file (can be /dev/random)"), NULL },
-		{ "master-key-file",  '\0',  POPT_ARG_STRING, &opt_master_key_file,     0, N_("Read the volume (master) key from file."), NULL },
-		{ "key-size",          's',  POPT_ARG_INT, &opt_key_size,               0, N_("The size of the encryption key"), N_("BITS") },
-		{ "key-slot",          'S',  POPT_ARG_INT, &opt_key_slot,               0, N_("Slot number for new key (default is first free)"), NULL },
-		{ "size",              'b',  POPT_ARG_STRING, &popt_tmp,                1, N_("The size of the device"), N_("SECTORS") },
-		{ "offset",            'o',  POPT_ARG_STRING, &popt_tmp,                2, N_("The start offset in the backend device"), N_("SECTORS") },
-		{ "skip",              'p',  POPT_ARG_STRING, &popt_tmp,                3, N_("How many sectors of the encrypted data to skip at the beginning"), N_("SECTORS") },
-		{ "readonly",          'r',  POPT_ARG_NONE, &opt_readonly,              0, N_("Create a readonly mapping"), NULL },
-		{ "iter-time",         'i',  POPT_ARG_INT, &opt_iteration_time,         0, N_("PBKDF2 iteration time for LUKS (in ms)"), N_("msecs") },
-		{ "batch-mode",        'q',  POPT_ARG_NONE, &opt_batch_mode,            0, N_("Do not ask for confirmation"), NULL },
-		{ "version",           '\0', POPT_ARG_NONE, &opt_version_mode,          0, N_("Print package version"), NULL },
-		{ "timeout",           't',  POPT_ARG_INT, &opt_timeout,                0, N_("Timeout for interactive passphrase prompt (in seconds)"), N_("secs") },
-		{ "tries",             'T',  POPT_ARG_INT, &opt_tries,                  0, N_("How often the input of the passphrase can be retried"), NULL },
-		{ "align-payload",     '\0', POPT_ARG_INT, &opt_align_payload,          0, N_("Align payload at <n> sector boundaries - for luksFormat"), N_("SECTORS") },
-		{ "non-exclusive",     '\0', POPT_ARG_NONE, &opt_non_exclusive,         0, N_("(Obsoleted, see man page.)"), NULL },
-		{ "header-backup-file",'\0', POPT_ARG_STRING, &opt_header_backup_file,  0, N_("File with LUKS header and keyslots backup."), NULL },
-		POPT_TABLEEND
-	};
-	poptContext popt_context;
 	struct action_type *action;
 	char *aname;
 	int r;
@@ -742,73 +761,106 @@ int main(int argc, char **argv)
 	bindtextdomain(PACKAGE, LOCALEDIR);
 	textdomain(PACKAGE);
 
-	popt_context = poptGetContext(PACKAGE, argc, (const char **)argv,
-	                              popt_options, 0);
-	poptSetOtherOptionHelp(popt_context,
-	                       N_("[OPTION...] <action> <action-specific>]"));
-
-	while((r = poptGetNextOpt(popt_context)) > 0) {
-		unsigned long long ull_value;
-		char *endp;
-
-		ull_value = strtoull(popt_tmp, &endp, 0);
-		if (*endp || !*popt_tmp)
-			r = POPT_ERROR_BADNUMBER;
-
-		switch(r) {
-			case 1:
-				opt_size = ull_value;
-				break;
-			case 2:
-				opt_offset = ull_value;
-				break;
-			case 3:
-				opt_skip = ull_value;
-				break;
-		}
-
-		if (r < 0)
+	while((r = getopt_long(argc, argv, "?vc:h:yd:m:s:S:b:o:p:ri:qt:T:", options, NULL)) != -1)
+	{
+		switch (r) {
+		case 'u':
+			usage(NULL);
 			break;
-	}
-
-	if (r < -1)
-		usage(popt_context, 1, poptStrerror(r),
-		      poptBadOption(popt_context, POPT_BADOPTION_NOALIAS));
-	if (opt_version_mode) {
-		log_std("%s %s\n", PACKAGE_NAME, PACKAGE_VERSION);
-		exit(0);
+		case 'v':
+			opt_verbose = 1;
+			break;
+		case 'c':
+			opt_cipher = optarg;
+			break;
+		case 'h':
+			opt_hash = optarg;
+			break;
+		case 'y':
+			opt_verify_passphrase = 1;
+			break;
+		case 'd':
+			opt_key_file = optarg;
+			break;
+		case 'm':
+			opt_master_key_file = optarg;
+			break;
+		case 's':
+			opt_key_size = atoi(optarg);
+			break;
+		case 'S':
+			opt_key_slot = atoi(optarg);
+			break;
+		case 'b':
+			opt_size = strtoull(optarg, NULL, 0);
+			break;
+		case 'o':
+			opt_offset = strtoull(optarg, NULL, 0);
+			break;
+		case 'p':
+			opt_skip = strtoull(optarg, NULL, 0);
+			break;
+		case 'r':
+			opt_readonly = 1;
+			break;
+		case 'i':
+			opt_iteration_time = atoi(optarg);
+			break;
+		case 'q':
+			opt_batch_mode = 1;
+			break;
+		case 't':
+			opt_timeout = atoi(optarg);
+			break;
+		case 'T':
+			opt_tries = atoi(optarg);
+			break;
+		case 'a':
+			opt_align_payload = atoi(optarg);
+			break;
+		case 'x':
+			opt_header_backup_file = optarg;
+			break;
+		case '?':
+			help();
+			break;
+		case 0:
+			if (opt_version_mode) {
+				log_std("%s %s\n", PACKAGE_NAME, PACKAGE_VERSION);
+				exit(0);
+			}
+			break;
+		}
 	}
 
 	if (opt_key_size % 8)
-		usage(popt_context, 1,
-		      _("Key size must be a multiple of 8 bits"),
-		      poptGetInvocationName(popt_context));
+		usage(_("Key size must be a multiple of 8 bits"));
 
-	if (!(aname = (char *)poptGetArg(popt_context)))
-		usage(popt_context, 1, _("Argument <action> missing."),
-		      poptGetInvocationName(popt_context));
+	argc -= optind;
+	argv += optind;
+
+	if (argc == 0) {
+		usage(_("Argument <action> missing."));
+		/* NOTREACHED */	
+	}
+
+	aname = argv[0];
 	for(action = action_types; action->type; action++)
 		if (strcmp(action->type, aname) == 0)
 			break;
-	if (!action->type)
-		usage(popt_context, 1, _("Unknown action."),
-		      poptGetInvocationName(popt_context));
+	if (!action->type) {
+		usage( _("Unknown action."));
+		/* NOTREACHED */
+	}
 
-	action_argc = 0;
-	action_argv = poptGetArgs(popt_context);
-	/* Make return values of poptGetArgs more consistent in case of remaining argc = 0 */
-	if(!action_argv) 
-		action_argv = null_action_argv;
-
-	/* Count args, somewhat unnice, change? */
-	while(action_argv[action_argc] != NULL)
-		action_argc++;
+	action_argc = argc-1;
+	action_argv = &argv[1];
 
 	if(action_argc < action->required_action_argc) {
 		char buf[128];
 		snprintf(buf, 128,_("%s: requires %s as arguments"), action->type, action->arg_desc);
-		usage(popt_context, 1, buf,
-		      poptGetInvocationName(popt_context));
+		usage(buf);
+		/* NOTREACHED */
 	}
 
 	if (opt_debug) {
