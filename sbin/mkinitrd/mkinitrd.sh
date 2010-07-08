@@ -67,7 +67,7 @@ copy_content() {
 }
 
 print_info() {
-#	tree ${BUILD_DIR}
+	lt ${BUILD_DIR}
 	df -h | head -n 1
 	df -h | grep $VN_DEV
 }
