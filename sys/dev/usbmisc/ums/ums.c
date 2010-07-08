@@ -120,7 +120,6 @@ struct ums_softc {
 
 	int		state;
 #	  define	UMS_ASLEEP	0x01	/* readFromDevice is waiting */
-#	  define	UMS_SELECT	0x02	/* select is waiting */
 	struct selinfo	rsel;		/* process waiting in select */
 };
 
@@ -385,10 +384,8 @@ ums_detach(device_t self)
 		sc->state &= ~UMS_ASLEEP;
 		wakeup(sc);
 	}
-	if (sc->state & UMS_SELECT) {
-		sc->state &= ~UMS_SELECT;
-		selwakeup(&sc->rsel);
-	}
+	selwakeup(&sc->rsel);
+
 	dev_ops_remove_minor(&ums_ops, /*-1, */device_get_unit(self));
 
 	return 0;
@@ -519,10 +516,7 @@ ums_add_to_queue(struct ums_softc *sc, int dx, int dy, int dz, int buttons)
 		sc->state &= ~UMS_ASLEEP;
 		wakeup(sc);
 	}
-	if (sc->state & UMS_SELECT) {
-		sc->state &= ~UMS_SELECT;
-		selwakeup(&sc->rsel);
-	}
+	selwakeup(&sc->rsel);
 }
 
 static int
@@ -694,7 +688,7 @@ ums_poll(struct dev_poll_args *ap)
 		if (sc->qcount) {
 			revents = ap->a_events & (POLLIN | POLLRDNORM);
 		} else {
-			sc->state |= UMS_SELECT;
+			/* sc->state |= UMS_SELECT; */
 			selrecord(curthread, &sc->rsel);
 		}
 	}
