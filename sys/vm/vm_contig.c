@@ -153,6 +153,9 @@ vm_contig_pg_clean(int queue)
 			("vm_contig_clean: page %p's queue is not %d", 
 			m, queue));
 		next = TAILQ_NEXT(m, pageq);
+
+		if (m->flags & PG_MARKER)
+			continue;
 		
 		if (vm_page_sleep_busy(m, TRUE, "vpctw0"))
 			return (TRUE);
