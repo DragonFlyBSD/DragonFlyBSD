@@ -92,6 +92,8 @@ static void _release_memory(void)
 	free(_malloc_mem);
 }
 
+#undef MCL_CURRENT /* XXX: please implement m{,un}lockall */
+
 /* Stop memory getting swapped out */
 static void _lock_mem(void)
 {

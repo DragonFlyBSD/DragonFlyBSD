@@ -17,7 +17,6 @@
 
 #include "dmlib.h"
 
-#include <sys/file.h>
 #include <fcntl.h>
 #include <dirent.h>
 

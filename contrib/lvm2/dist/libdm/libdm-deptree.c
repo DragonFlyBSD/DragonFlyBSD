@@ -1946,7 +1946,7 @@ int dm_tree_node_add_target_area(struct dm_tree_node *node,
 			log_error("Device %s not found.", dev_name);
 			return 0;
 		}
-#ifndef __NetBSD__
+#if !defined(__NetBSD__) && !defined(__DragonFly__)
         	if (!S_ISBLK(info.st_mode)) {
 			log_error("Device %s is not a block device.", dev_name);
 			return 0;

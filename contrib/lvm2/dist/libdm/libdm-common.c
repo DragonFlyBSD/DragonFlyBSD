@@ -47,7 +47,7 @@
 #  include <selinux/selinux.h>
 #endif
 
-#ifdef __NetBSD__
+#if defined(__NetBSD__) || defined(__DragonFly__)
 #include "libdm-netbsd.h"
 #endif
 
@@ -455,6 +455,10 @@ static int _add_dev_node(const char *dev_name, uint32_t major, uint32_t minor,
 		log_error("Unable to make device node for '%s'", raw_devname);
 		return 0;
 	}
+#elif defined(__DragonFly__)
+	_build_dev_path(path, sizeof(path), dev_name);
+	log_error("Skipping all sanity checks here");
+	return 1;
 #endif
 	
 	_build_dev_path(path, sizeof(path), dev_name);

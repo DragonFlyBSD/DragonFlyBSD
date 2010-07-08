@@ -221,7 +221,7 @@ static int _process_config(struct cmd_context *cmd)
 #ifdef DEVMAPPER_SUPPORT
 	dm_set_dev_dir(cmd->dev_dir);
 #endif
-#ifndef __NetBSD__
+#if !defined(__NetBSD__) && !defined(__DragonFly__)
 	/* proc dir */
 	if (dm_snprintf(cmd->proc_dir, sizeof(cmd->proc_dir), "%s",
 			 find_config_tree_str(cmd, "global/proc",

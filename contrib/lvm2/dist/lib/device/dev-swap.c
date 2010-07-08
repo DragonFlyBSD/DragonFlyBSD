@@ -88,7 +88,7 @@ int dev_is_swap(struct device *dev, uint64_t *signature)
 
 #else
 
-#ifdef __NetBSD__
+#if defined(__NetBSD__) || defined(__DragonFly__)
 int dev_is_swap(struct device *dev, uint64_t *signature)
 {
 	return 0;

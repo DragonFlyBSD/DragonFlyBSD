@@ -42,6 +42,9 @@
 #  include <sys/disk.h>
 #  include <sys/disklabel.h>
 #  include <sys/param.h>
+#elif __DragonFly__
+#  include <sys/diskslice.h>
+#  include <sys/param.h>
 #else
 #  include <sys/disk.h>
 #  define BLKBSZGET DKIOCGETBLOCKSIZE
@@ -133,6 +136,8 @@ static int _get_block_size(struct device *dev, unsigned int *size)
 	const char *name = dev_name(dev);
 #ifdef __NetBSD__
 	struct disklabel	lab;
+#elif __DragonFly__
+	struct partinfo		pinfo;
 #endif
 
 	if ((dev->block_size == -1)) {
@@ -141,6 +146,11 @@ static int _get_block_size(struct device *dev, unsigned int *size)
 			dev->block_size = DEV_BSIZE;
 		} else
 			dev->block_size = lab.d_secsize;
+#elif __DragonFly__
+		if (ioctl(dev_fd(dev), DIOCGPART, &pinfo) < 0) {
+			dev->block_size = DEV_BSIZE;
+		} else
+			dev->block_size = pinfo.media_blksize;
 #else
 		if (ioctl(dev_fd(dev), BLKBSZGET, &dev->block_size) < 0) {
 			log_sys_error("ioctl BLKBSZGET", name);
@@ -259,6 +269,8 @@ static int _dev_get_size_dev(const struct device *dev, uint64_t *size)
 #ifdef __NetBSD__
 	struct disklabel	lab;
 	struct dkwedge_info     dkw;
+#elif __DragonFly__
+	struct partinfo		pinfo;
 #endif
 
 	if ((fd = open(name, O_RDONLY)) < 0) {
@@ -286,6 +298,26 @@ static int _dev_get_size_dev(const struct device *dev, uint64_t *size)
 	} else 
 		if (lab.d_secsize)
 			*size /= lab.d_secsize;
+#elif __DragonFly__
+	if ((*size = lseek (fd, 0, SEEK_END)) < 0) {
+		log_sys_error("lseek SEEK_END", name);
+		close(fd);
+		return 0;
+	}
+
+	if (ioctl(fd, DIOCGPART, &pinfo) < 0) {
+		log_debug("ioctl DIOCGPART", name);
+		close(fd);
+		return 0;
+	} else {
+#if 0
+		/* XXX: we could also get the size this way, instead of lseek */
+		if (pinfo.media_blocks)
+			*size = pinfo.media_blocks;
+#endif
+		if (pinfo.media_blksize)
+			*size /= pinfo.media_blksize;
+	}
 #else
 	if (ioctl(fd, BLKGETSIZE64, size) < 0) {
 		log_sys_error("ioctl BLKGETSIZE64", name);

@@ -445,6 +445,35 @@ static int _insert(const char *path, int rec)
 			log_debug("%s: Not a known raw device", path);
 			return_0;
 		}
+#elif defined(__DragonFly__)
+		/*
+		 * This never happens, but oh well...
+		 */
+		if (S_ISBLK(info.st_mode)) {
+			log_debug("%s: Not a raw device", path);
+			return_0;
+		}
+
+		/*
+		 * We avoid adding devctl to the cache because reading from it
+		 * locks lvm up. devctl doesn't seem to be caught later in the
+		 * filter because it has major number 0, and lvm seems to assume
+		 * dm also has major 0.
+		 */
+		if (!strcmp(path, "/dev/devctl")) {
+			log_debug("%s: It's devctl, no interest");
+			return_0;
+		}
+
+		if (!strncmp(path, "/dev/md", strlen("/dev/md"))) {
+			log_debug("%s: Not adding malloc disks");
+			return_0;
+		}
+
+		if (!strncmp(path, "/dev/fd0", strlen("/dev/fd0"))) {
+			log_debug("%s: Not adding floppy disks");
+			return_0;
+		}
 #else
 		if (!S_ISBLK(info.st_mode))
 			log_debug("%s: Not a block device", path);

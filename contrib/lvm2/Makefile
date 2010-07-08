@@ -2,7 +2,7 @@
 
 .include "lvm2tools.mk"
 
-SUBDIR+=	lib .WAIT
+SUBDIR+=	lib
 
 SUBDIR+=	sbin
 
