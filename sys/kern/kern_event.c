@@ -238,7 +238,7 @@ filt_procattach(struct knote *kn)
 	/*
 	 * Immediately activate any exit notes if the target process is a
 	 * zombie.  This is necessary to handle the case where the target
-	 * process, e.g. a child, dies before the kevent is registered.
+	 * process, e.g. a child, dies before the kevent is negistered.
 	 */
 	if (immediate && filt_proc(kn, NOTE_EXIT))
 		KNOTE_ACTIVATE(kn);
@@ -527,6 +527,7 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 	struct kevent *kevp;
 	struct timespec *tsp;
 	int i, n, total, error, nerrors = 0;
+	int lres;
 	struct kevent kev[KQ_NEVENTS];
 	struct knote marker;
 
@@ -545,13 +546,28 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 			kevp = &kev[i];
 			kevp->flags &= ~EV_SYSFLAGS;
 			error = kqueue_register(kq, kevp);
+
+			/*
+			 * If a registration returns an error we
+			 * immediately post the error.  The kevent()
+			 * call itself will fail with the error if
+			 * no space is available for posting.
+			 *
+			 * Such errors normally bypass the timeout/blocking
+			 * code.  However, if the copyoutfn function refuses
+			 * to post the error (see sys_poll()), then we
+			 * ignore it too.
+			 */
 			if (error) {
 				if (nevents != 0) {
 					kevp->flags = EV_ERROR;
 					kevp->data = error;
+					lres = *res;
 					kevent_copyoutfn(uap, kevp, 1, res);
-					nevents--;
-					nerrors++;
+					if (lres != *res) {
+						nevents--;
+						nerrors++;
+					}
 				} else {
 					goto done;
 				}

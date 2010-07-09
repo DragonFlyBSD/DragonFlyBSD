@@ -782,6 +782,8 @@ mapped_ioctl_unregister_handler(struct ioctl_map_handler *he)
 static int	nselcoll;	/* Select collisions since boot */
 int	selwait;
 SYSCTL_INT(_kern, OID_AUTO, nselcoll, CTLFLAG_RD, &nselcoll, 0, "");
+static int	nseldebug;
+SYSCTL_INT(_kern, OID_AUTO, nseldebug, CTLFLAG_RW, &nseldebug, 0, "");
 
 /*
  * Select system call.
@@ -1189,16 +1191,32 @@ poll_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
 		if (*events + kev_count > maxevents)
 			return (0);
 
+		/*
+		 * NOTE: A combined serial number and poll array index is
+		 * stored in kev->udata.
+		 */
 		kev = &kevp[*events];
-		if (pfd->events & (POLLIN | POLLRDNORM))
+		if (pfd->events & (POLLIN | POLLRDNORM)) {
 			EV_SET(kev++, pfd->fd, EVFILT_READ, EV_ADD|EV_ENABLE,
-			       0, 0, (void *)pkap->pfds);
-		if (pfd->events & (POLLOUT | POLLWRNORM))
+			       0, 0, (void *)(pkap->lwp->lwp_kqueue_serial +
+					      pkap->pfds));
+		}
+		if (pfd->events & (POLLOUT | POLLWRNORM)) {
 			EV_SET(kev++, pfd->fd, EVFILT_WRITE, EV_ADD|EV_ENABLE,
-			       0, 0, (void *)pkap->pfds);
-		if (pfd->events & (POLLPRI | POLLRDBAND))
+			       0, 0, (void *)(pkap->lwp->lwp_kqueue_serial +
+					      pkap->pfds));
+		}
+		if (pfd->events & (POLLPRI | POLLRDBAND)) {
 			EV_SET(kev++, pfd->fd, EVFILT_EXCEPT, EV_ADD|EV_ENABLE,
-			       NOTE_OOB, 0, (void *)pkap->pfds);
+			       NOTE_OOB, 0,
+			       (void *)(pkap->lwp->lwp_kqueue_serial +
+					pkap->pfds));
+		}
+
+		if (nseldebug) {
+			kprintf("poll index %d fd %d events %08x\n",
+				pkap->pfds, pfd->fd, pfd->events);
+		}
 
 		++pkap->pfds;
 		(*events) += kev_count;
@@ -1214,51 +1232,90 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 	struct pollfd *pfd;
 	struct kevent kev;
 	int i;
+	u_int pi;
 
 	pkap = (struct poll_kevent_copyin_args *)arg;
 
 	for (i = 0; i < count; ++i) {
-		if ((int)kevp[i].udata < pkap->nfds) {
-			pfd = &pkap->fds[(int)kevp[i].udata];
-			if (kevp[i].ident == pfd->fd) {
-				if (kevp[i].flags & EV_ERROR) {
-					/* Bad file descriptor */
-					if (kevp[i].data == EBADF)
-						pfd->revents |= POLLNVAL;
-					else
+		/*
+		 * Extract the poll array index and delete spurious events.
+		 * We can easily tell if the serial number is incorrect
+		 * by checking whether the extracted index is out of range.
+		 */
+		pi = (u_int)kevp[i].udata - (u_int)pkap->lwp->lwp_kqueue_serial;
+
+		if (pi >= pkap->nfds) {
+			kev = kevp[i];
+			kev.flags = EV_DISABLE|EV_DELETE;
+			kqueue_register(&pkap->lwp->lwp_kqueue, &kev);
+			if (nseldebug)
+				kprintf("poll index %d out of range\n", pi);
+			continue;
+		}
+		pfd = &pkap->fds[pi];
+		if (kevp[i].ident == pfd->fd) {
+			if (kevp[i].flags & EV_ERROR) {
+				switch(kevp[i].data) {
+				case EPERM:
+				case EOPNOTSUPP:
+					/*
+					 * Operation not supported.  Poll
+					 * does not return an error for
+					 * POLLPRI (OOB/urgent data) when
+					 * it is not supported by the device.
+					 */
+					if (kevp[i].filter != EVFILT_EXCEPT) {
 						pfd->revents |= POLLERR;
-
+						++*res;
+					}
+					break;
+				case EBADF:
+					/* Bad file descriptor */
+					pfd->revents |= POLLNVAL;
 					++*res;
-					continue;
-				}
-
-				if (kevp[i].flags & EV_EOF) {
-					pfd->revents |= POLLHUP;
+					break;
+				default:
+					pfd->revents |= POLLERR;
 					++*res;
-					continue;
-				}
-
-				switch (kevp[i].filter) {
-				case EVFILT_READ:
-					pfd->revents |= (POLLIN | POLLRDNORM);
-					break;
-				case EVFILT_WRITE:
-					pfd->revents |= (POLLOUT | POLLWRNORM);
-					break;
-				case EVFILT_EXCEPT:
-					pfd->revents |= (POLLPRI | POLLRDBAND);
 					break;
 				}
+				if (nseldebug)
+					kprintf("poll index %d fd %d filter %d error %d\n",
+						pi, pfd->fd,
+						kevp[i].filter, kevp[i].data);
+				continue;
+			}
 
+			if (kevp[i].flags & EV_EOF) {
+				pfd->revents |= POLLHUP;
 				++*res;
 				continue;
 			}
-		}
 
-		/* Remove descriptor not in pollfd set from kq */
-		kev = kevp[i];
-		kev.flags = EV_DISABLE|EV_DELETE;
-		kqueue_register(&pkap->lwp->lwp_kqueue, &kev);
+			switch (kevp[i].filter) {
+			case EVFILT_READ:
+				pfd->revents |= (POLLIN | POLLRDNORM);
+				break;
+			case EVFILT_WRITE:
+				pfd->revents |= (POLLOUT | POLLWRNORM);
+				break;
+			case EVFILT_EXCEPT:
+				pfd->revents |= (POLLPRI | POLLRDBAND);
+				break;
+			}
+
+			if (nseldebug) {
+				kprintf("poll index %d fd %d revents %08x\n",
+					pi, pfd->fd, pfd->revents);
+			}
+
+			++*res;
+			continue;
+		} else {
+			if (nseldebug)
+				kprintf("poll index %d mismatch %d/%d\n",
+					pi, kevp[i].ident, pfd->fd);
+		}
 	}
 
 	return (0);
@@ -1303,6 +1360,8 @@ dopoll(int nfds, struct pollfd *fds, struct timespec *ts, int *res)
 
 	if (ka.fds != sfds)
 		kfree(ka.fds, M_SELECT);
+
+	ka.lwp->lwp_kqueue_serial += nfds;
 
 	return (error);
 }
