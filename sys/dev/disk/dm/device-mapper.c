@@ -108,7 +108,7 @@ DECLARE_MODULE(dm, dm_mod, SI_SUB_RAID, SI_ORDER_ANY);
  * ioctl to kernel but will do another things in userspace.
  *
  */
-struct cmd_function cmd_fn[] = {
+static struct cmd_function cmd_fn[] = {
 		{ .cmd = "version", .fn = dm_get_version_ioctl},
 		{ .cmd = "targets", .fn = dm_list_versions_ioctl},
 		{ .cmd = "create",  .fn = dm_dev_create_ioctl},

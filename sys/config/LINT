@@ -924,6 +924,9 @@ device		sg			#Passthrough device (linux scsi generic)
 device		pt			#SCSI processor type
 device		ses			#SCSI SES/SAF-TE driver
 
+# Options for device mapper
+device		dm
+
 # Options for iSCSI
 device	        iscsi_initiator
 options		ISCSI_INITIATOR_DEBUG=8
