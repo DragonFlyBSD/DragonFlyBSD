@@ -42,8 +42,7 @@
 
 /* Digests a string and prints the result.
  */
-static void MDString (string)
-char *string;
+static void MDString (char *string)
 {
   char buf[33];
 
@@ -53,7 +52,7 @@ char *string;
 
 /* Digests a reference suite of strings and prints the results.
  */
-main()
+int main(void)
 {
   printf ("MD%d test suite:\n", MD);
 

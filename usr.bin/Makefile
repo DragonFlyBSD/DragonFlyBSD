@@ -109,6 +109,7 @@ SUBDIR=	alias \
 	look \
 	lorder \
 	lsvfs \
+	lt \
 	m4 \
 	mail \
 	make \

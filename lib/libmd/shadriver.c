@@ -29,18 +29,20 @@
 #include <string.h>
 #include "sha.h"
 #include "sha256.h"
+#include "sha512.h"
 #if SHA == 1
 #define SHA_Data SHA1_Data
 #elif SHA == 256
 #define SHA_Data SHA256_Data
+#elif SHA == 512
+#define SHA_Data SHA512_Data
 #endif
 
 /* Digests a string and prints the result.
  */
-static void SHAString (string)
-char *string;
+static void SHAString (char *string)
 {
-  char buf[2*32+1];
+  char buf[2*64+1];
 
   printf ("SHA-%d (\"%s\") = %s\n", 
 	SHA, string, SHA_Data(string,strlen(string),buf));
@@ -48,7 +50,7 @@ char *string;
 
 /* Digests a reference suite of strings and prints the results.
  */
-main()
+int main(void)
 {
   printf ("SHA-%d test suite:\n", SHA);
 

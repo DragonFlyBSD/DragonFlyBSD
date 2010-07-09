@@ -24,8 +24,7 @@
 
 /* Digests a string and prints the result.
  */
-static void RIPEMD160String (string)
-char *string;
+static void RIPEMD160String (char *string)
 {
   char buf[2*20+1];
 
@@ -35,7 +34,7 @@ char *string;
 
 /* Digests a reference suite of strings and prints the results.
  */
-main()
+int main(void)
 {
   printf ("RIPEMD160 test suite:\n");
 
