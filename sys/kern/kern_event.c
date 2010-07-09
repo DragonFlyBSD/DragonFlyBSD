@@ -616,22 +616,28 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 		if (n > KQ_NEVENTS)
 			n = KQ_NEVENTS;
 
+		/*
+		 * If no events are pending sleep until timeout (if any)
+		 * or an event occurs.
+		 *
+		 * After the sleep completes the marker is moved to the
+		 * end of the list, making any received events available
+		 * to our scan.
+		 */
 		if (kq->kq_count == 0 && *res == 0) {
 			error = kqueue_sleep(kq, tsp);
 
 			if (error)
 				break;
-
-			/*
-			 * Move the marker to the end of the list
-			 * after a sleep.
-			 */
 			crit_enter();
 			TAILQ_REMOVE(&kq->kq_knpend, &marker, kn_tqe);
 			TAILQ_INSERT_TAIL(&kq->kq_knpend, &marker, kn_tqe);
 			crit_exit();
 		}
 
+		/*
+		 * Process all received events
+		 */
 		i = kqueue_scan(kq, kev, n, &marker);
 		if (i) {
 			error = kevent_copyoutfn(uap, kev, i, res);
@@ -648,6 +654,26 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 		 */
 		if (i < n && *res)
 			break;
+
+		/*
+		 * Deal with an edge case where spurious events can cause
+		 * a loop to occur without moving the marker.  This can
+		 * prevent kqueue_scan() from picking up new events which
+		 * race us.  We must be sure to move the marker for this
+		 * case.
+		 *
+		 * NOTE: We do not want to move the marker if events
+		 *	 were scanned because normal kqueue operations
+		 *	 may reactivate events.  Moving the marker in
+		 *	 that case could result in duplicates for the
+		 *	 same event.
+		 */
+		if (i == 0) {
+			crit_enter();
+			TAILQ_REMOVE(&kq->kq_knpend, &marker, kn_tqe);
+			TAILQ_INSERT_TAIL(&kq->kq_knpend, &marker, kn_tqe);
+			crit_exit();
+		}
 	}
 	crit_enter();
 	TAILQ_REMOVE(&kq->kq_knpend, &marker, kn_tqe);
