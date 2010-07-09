@@ -315,7 +315,7 @@ devkqfilter(struct dev_kqfilter_args *ap)
 		kn->kn_fop = &dev_filtops;
 		break;
 	default:
-		ap->a_result = 1;
+		ap->a_result = EOPNOTSUPP;
 		lockmgr(&devsoftc.lock, LK_RELEASE);
 		return (0);
 	}

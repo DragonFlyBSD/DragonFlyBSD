@@ -766,7 +766,7 @@ fw_kqfilter(struct dev_kqfilter_args *ap)
 	 * XXX Implement filters for mem?
 	 */
 	if (DEV_FWMEM(dev)) {
-		ap->a_result = 1;
+		ap->a_result = EOPNOTSUPP;
 		return (0);
 	}
 
@@ -785,7 +785,7 @@ fw_kqfilter(struct dev_kqfilter_args *ap)
 		kn->kn_hook = (caddr_t)ir;
 		break;
 	default:
-		ap->a_result = 1;
+		ap->a_result = EOPNOTSUPP;
 		return (0);
 	}
 

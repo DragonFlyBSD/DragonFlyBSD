@@ -103,16 +103,16 @@ linux_kevent_to_epoll(struct kevent *kevent, struct linux_epoll_event *event)
                 return;
         }
         switch (kevent->filter) {
-                case EVFILT_READ:
-                        if (kevent->data > 0)
-                                event->events = LINUX_EPOLLIN;
-                        event->data = kevent->ident;
-                break;
-                case EVFILT_WRITE:
-                        if (kevent->data > 0)
-                                event->events = LINUX_EPOLLOUT;
-                        event->data = kevent->ident;
-                break;
+	case EVFILT_READ:
+		if (kevent->data > 0)
+			event->events = LINUX_EPOLLIN;
+		event->data = kevent->ident;
+		break;
+	case EVFILT_WRITE:
+		if (kevent->data > 0)
+			event->events = LINUX_EPOLLOUT;
+		event->data = kevent->ident;
+		break;
         }
 }
 

@@ -1768,7 +1768,7 @@ sokqfilter(struct file *fp, struct knote *kn)
 		ssb = &so->so_rcv;
 		break;
 	default:
-		return (1);
+		return (EOPNOTSUPP);
 	}
 
 	crit_enter();

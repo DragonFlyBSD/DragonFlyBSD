@@ -1256,7 +1256,6 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 		if (kevp[i].ident == pfd->fd) {
 			if (kevp[i].flags & EV_ERROR) {
 				switch(kevp[i].data) {
-				case EPERM:
 				case EOPNOTSUPP:
 					/*
 					 * Operation not supported.  Poll

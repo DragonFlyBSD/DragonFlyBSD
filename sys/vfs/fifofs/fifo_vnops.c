@@ -396,7 +396,7 @@ fifo_kqfilter(struct vop_kqfilter_args *ap)
 		break;
 	default:
 		lwkt_reltoken(&vp->v_token);
-		return (1);
+		return (EOPNOTSUPP);
 	}
 
 	ap->a_kn->kn_hook = (caddr_t)vp;

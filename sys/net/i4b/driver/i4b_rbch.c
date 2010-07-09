@@ -615,7 +615,7 @@ i4brbchkqfilter(struct dev_kqfilter_args *ap)
 		kn->kn_hook = (caddr_t)dev;
 		break;
 	default:
-		ap->a_result = 1;
+		ap->a_result = EOPNOTSUPP;
 		return (0);
 	}
 

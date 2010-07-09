@@ -574,7 +574,7 @@ udev_dev_kqfilter(struct dev_kqfilter_args *ap)
 		kn->kn_fop = &udev_dev_read_filtops;
 		break;
 	default:
-		ap->a_result = 1;
+		ap->a_result = EOPNOTSUPP;
 	        lockmgr(&udevctx.lock, LK_RELEASE);
 		return (0);
 	}

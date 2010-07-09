@@ -1397,7 +1397,7 @@ pipe_kqfilter(struct file *fp, struct knote *kn)
 		break;
 	default:
 		rel_mplock();
-		return (EPERM);
+		return (EOPNOTSUPP);
 	}
 	kn->kn_hook = (caddr_t)cpipe;
 

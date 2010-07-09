@@ -607,7 +607,7 @@ vinumkqfilter(struct dev_kqfilter_args *ap)
         ap->a_kn->kn_hook = (caddr_t)ap->a_head.a_dev;
         ap->a_result = 0;
     } else {
-        ap->a_result = 1;
+        ap->a_result = EOPNOTSUPP;
     }
 
     return (0);

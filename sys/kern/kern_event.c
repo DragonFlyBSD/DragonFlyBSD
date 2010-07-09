@@ -171,7 +171,7 @@ kqueue_kqfilter(struct file *fp, struct knote *kn)
 	get_mplock();
 	if (kn->kn_filter != EVFILT_READ) {
 		rel_mplock();
-		return (1);
+		return (EOPNOTSUPP);
 	}
 
 	kn->kn_fop = &kqread_filtops;

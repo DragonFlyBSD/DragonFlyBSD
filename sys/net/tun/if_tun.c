@@ -755,8 +755,8 @@ tunkqfilter(struct dev_kqfilter_args *ap)
 		kn->kn_hook = (caddr_t)tp;
 		break;
 	default:
-		ap->a_result = 1;
 		ifnet_deserialize_all(&tp->tun_if);
+		ap->a_result = EOPNOTSUPP;
 		return (0);
 	}
 

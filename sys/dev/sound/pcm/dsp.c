@@ -1131,7 +1131,7 @@ dsp_kqfilter(struct dev_kqfilter_args *ap)
 	struct snd_dbuf *bs;
 
 	getchns(i_dev, &rdch, &wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
-	ap->a_result = 1;
+
 	switch (kn->kn_filter) {
 	case EVFILT_READ:
 		if (rdch) {
@@ -1148,6 +1148,9 @@ dsp_kqfilter(struct dev_kqfilter_args *ap)
 			bs = wrch->bufsoft;
 			ap->a_result = 0;
 		}
+		break;
+	default:
+		ap->a_result = EOPNOTSUPP;
 		break;
 	}
 

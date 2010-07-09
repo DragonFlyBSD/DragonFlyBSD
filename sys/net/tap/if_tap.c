@@ -1018,7 +1018,7 @@ tapkqfilter(struct dev_kqfilter_args *ap)
 	case EVFILT_WRITE:
 		/* fall through */
 	default:
-		ap->a_result = 1;
+		ap->a_result = EOPNOTSUPP;
 		rel_mplock();
 		return(0);
 	}
