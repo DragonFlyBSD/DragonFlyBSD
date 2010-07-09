@@ -391,8 +391,10 @@ int dm_pdev_destroy(void);
 int dm_pdev_init(void);
 dm_pdev_t* dm_pdev_insert(const char *);
 
-/* XXX: temporary hacks */
-#define aprint_debug	while(0) kprintf
+extern int dm_debug_level;
+
+#define aprint_debug(format, ...)	\
+    do { if (dm_debug_level) kprintf(format, ## __VA_ARGS__); } while(0)
 #define aprint_normal	kprintf
 
 #endif /*_KERNEL*/

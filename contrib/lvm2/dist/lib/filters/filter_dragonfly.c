@@ -76,7 +76,7 @@ static int _passes_lvm_type_device_filter(struct dev_filter *f __attribute((unus
 {
 	const char *name = dev_name(dev);
 	int fd, type;
-	int ret = 0;
+	int ret = LVM_FAILURE;
 	uint64_t size;
 
 	log_debug("Checking: %s", name);
@@ -106,12 +106,18 @@ static int _passes_lvm_type_device_filter(struct dev_filter *f __attribute((unus
 		return LVM_FAILURE;
 	}
 
+	/* Check it's accessible */
+	if (!dev_open_flags(dev, O_RDONLY, 0, 1)) {
+		log_debug("%s: Skipping: open failed", name);
+		return LVM_FAILURE;
+	}
+
 	/* Check it's not too small */
 	if (!dev_get_size(dev, &size)) {
-	       	log_debug("%s: Skipping: dev_get_size failed", name);
+		log_debug("%s: Skipping: dev_get_size failed", name);
 		goto out;
 	}
-	
+
 	if (size < PV_MIN_SIZE) {
 		log_debug("%s: Skipping: Too small to hold a PV", name);
 		goto out;
@@ -121,12 +127,6 @@ static int _passes_lvm_type_device_filter(struct dev_filter *f __attribute((unus
 		log_debug("%s: Skipping: Partition table signature found",
 			  name);
 		goto out;
-	}
-
-	/* Check it's accessible */
-	if (!dev_open_flags(dev, O_RDONLY, 0, 1)) {
-		log_debug("%s: Skipping: open failed", name);
-		return LVM_FAILURE;
 	}
 
 	ret = LVM_SUCCESS;

@@ -45,6 +45,7 @@
 #include <sys/ioccom.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
+#include <sys/sysctl.h>
 
 #include "netbsd-dm.h"
 #include "dm.h"
@@ -84,6 +85,8 @@ struct dev_ops dm_ops = {
 };
 
 MALLOC_DEFINE(M_DM, "dm", "Device Mapper allocations");
+
+int dm_debug_level = 0;
 
 extern uint64_t dm_dev_counter;
 
@@ -351,7 +354,6 @@ disk_ioctl_switch(cdev_t dev, u_long cmd, void *data)
 			return ENOTSUP;
 		} else {
 			size = dm_table_size(&dmv->table_head);
-			kprintf("fooi, size = %"PRIu64" ...\n", size);
 			dpart->media_offset  = 0;
 			dpart->media_size    = size * DEV_BSIZE;
 			dpart->media_blocks  = size;
@@ -575,4 +577,9 @@ dmgetproperties(struct disk *disk, dm_table_head_t *head)
 	if (odisk_info != NULL)
 		prop_object_release(odisk_info);
 #endif
-}	
+}
+
+TUNABLE_INT("debug.dm_debug", &dm_debug_level);
+SYSCTL_INT(_debug, OID_AUTO, dm_debug, CTLFLAG_RW, &dm_debug_level,
+	       0, "Eanble device mapper debugging");
+

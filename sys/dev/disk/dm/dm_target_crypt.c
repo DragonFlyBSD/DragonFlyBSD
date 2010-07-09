@@ -57,7 +57,7 @@ typedef void ivgen_t(struct target_crypt_config *, u_int8_t *, size_t, off_t);
 typedef struct target_crypt_config {
 	size_t	params_len;
 	dm_pdev_t *pdev;
-	char 	*status_str;
+	char	*status_str;
 	int	crypto_alg;
 	int	crypto_klen;
 	u_int8_t	crypto_key[512>>3];
@@ -68,7 +68,6 @@ typedef struct target_crypt_config {
 	SHA512_CTX	essivsha512_ctx;
 	struct cryptoini	crypto_session;
 	ivgen_t	*crypto_ivgen;
-	/* XXX: uuid */
 } dm_target_crypt_config_t;
 
 struct dmtc_helper {
@@ -355,15 +354,14 @@ dm_target_crypt_crypto_done_read(struct cryptop *crp)
 
 	bio = (struct bio *)crp->crp_opaque;
 	KKASSERT(bio != NULL);
-	
+
 	n = atomic_fetchadd_int(&bio->bio_caller_info3.value, -1);
 #if 0
 	kprintf("dm_target_crypt_crypto_done_read %p, n = %d\n", bio, n);
 #endif
 	if (crp->crp_etype != 0) {
 		kprintf("dm_target_crypt: dm_target_crypt_crypto_done_read crp_etype = %d\n", crp->crp_etype);
-		/* XXX: Print something out */
-		bio->bio_buf->b_error = crp->crp_etype;	
+		bio->bio_buf->b_error = crp->crp_etype;
 	}
 	if (n == 1) {
 		kfree(bio->bio_caller_info2.ptr, M_DMCRYPT);
@@ -388,15 +386,14 @@ dm_target_crypt_crypto_done_write(struct cryptop *crp)
 
 	bio = (struct bio *)crp->crp_opaque;
 	KKASSERT(bio != NULL);
-	
+
 	n = atomic_fetchadd_int(&bio->bio_caller_info3.value, -1);
 #if 0
 	kprintf("dm_target_crypt_crypto_done_write %p, n = %d\n", bio, n);
 #endif
 	if (crp->crp_etype != 0) {
 		kprintf("dm_target_crypt: dm_target_crypt_crypto_done_write crp_etype = %d\n", crp->crp_etype);
-		/* XXX: Print something out */
-		bio->bio_buf->b_error = crp->crp_etype;	
+		bio->bio_buf->b_error = crp->crp_etype;
 	}
 	if (n == 1) {
 		/* This is the last chunk of the write */
@@ -568,7 +565,7 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 	}
 
 	if (strcmp(crypto_mode, "cbc") != 0) {
-		kprintf("dm_target_crypt: only support 'cbc' chaining mode, invalid mode '%s'\n", crypto_mode);		
+		kprintf("dm_target_crypt: only support 'cbc' chaining mode, invalid mode '%s'\n", crypto_mode);
 		goto notsup;
 	}
 
@@ -643,7 +640,7 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 		error = essiv_hash_mkey(priv, iv_opt);
 		if (error) {
 			kprintf("dm_target_crypt: essiv_hash_mkey failed\n");
-			goto notsup;		
+			goto notsup;
 		}
 		priv->crypto_ivgen = essiv_ivgen;
 	} else if (!strcmp(iv_mode, "plain")) {
@@ -731,7 +728,7 @@ dm_target_crypt_strategy(dm_table_entry_t * table_en, struct buf * bp)
 		break;
 
 	default:
-		vn_strategy(priv->pdev->pdev_vnode, &bp->b_bio1);		
+		vn_strategy(priv->pdev->pdev_vnode, &bp->b_bio1);
 	}
 
 	return 0;

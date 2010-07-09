@@ -431,7 +431,7 @@ static int _insert(const char *path, int rec)
 
 	} else {
 		/* add a device */
-#ifdef __NetBSD__		
+#ifdef __NetBSD__
 		/*
 		 * In NetBSD we have two different types of devices
 		 * raw and block. I can insert only  existing
@@ -465,13 +465,29 @@ static int _insert(const char *path, int rec)
 			return_0;
 		}
 
+		if (!strncmp(path, "/dev/tun", strlen("/dev/tun"))) {
+			log_debug("%s: Not adding tun devices");
+			return_0;
+		}
+
+		if (!strncmp(path, "/dev/cd", strlen("/dev/cd")) ||
+		    !strncmp(path, "/dev/acd", strlen("/dev/acd"))) {
+			log_debug("%s: Not adding CD drives");
+			return_0;
+		}
+
+		if (!strcmp(path, "/dev/vn")) {
+			log_debug("%s: Not adding vn autoclone dev");
+			return_0;
+		}
+
 		if (!strncmp(path, "/dev/md", strlen("/dev/md"))) {
 			log_debug("%s: Not adding malloc disks");
 			return_0;
 		}
 
-		if (!strncmp(path, "/dev/fd0", strlen("/dev/fd0"))) {
-			log_debug("%s: Not adding floppy disks");
+		if (!strncmp(path, "/dev/fd", strlen("/dev/fd"))) {
+			log_debug("%s: Not adding floppy disks or fds");
 			return_0;
 		}
 #else

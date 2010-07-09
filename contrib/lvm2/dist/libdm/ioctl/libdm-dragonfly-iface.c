@@ -423,9 +423,6 @@ int dm_format_dev(char *buf, int bufsize, uint32_t dev_major,
 	size_t val_len,i;
 
 	dev = MKDEV(dev_major,dev_minor);
-
-	log_error("dangerous zone...\n");
-
 	mode |= S_IFCHR;
 
 	name = devname(dev,mode);
@@ -595,7 +592,7 @@ struct target *create_target(uint64_t start, uint64_t len, const char *type,
 			     const char *params)
 {
 	struct target *t = dm_malloc(sizeof(*t));
-	log_error("params is at create_target: %s", params);
+	log_verbose("params is at create_target: %s", params);
 	if (!t) {
 		log_error("create_target: malloc(%" PRIsize_t ") failed",
 			  sizeof(*t));
@@ -655,12 +652,10 @@ static int _flatten(struct dm_task *dmt, prop_dictionary_t dm_dict)
 		strlcpy(type,t->type,DM_MAX_TYPE_NAME);
 
 		prop_dictionary_set_cstring(target_spec,DM_TABLE_TYPE,type);
-		log_error("t->params: %s\n", t->params);
 		prop_dictionary_set_cstring(target_spec,DM_TABLE_PARAMS,t->params);
 
 		prop_dictionary_get_cstring(target_spec,
 		    DM_TABLE_PARAMS, (char **) &str);
-		log_error("t->params from dict: %s\n", str);
 
 		prop_array_set(cmd_array,count,target_spec);
 
@@ -848,7 +843,7 @@ static int _create_and_load_v4(struct dm_task *dmt)
 	struct dm_task *task;
 	int r;
 
-	printf("create and load called \n");
+	log_verbose("create and load called");
 	
 	/* Use new task struct to create the device */
 	if (!(task = dm_task_create(DM_DEVICE_CREATE))) {
@@ -1159,7 +1154,7 @@ int dm_task_run(struct dm_task *dmt)
 
 	switch (dmt->type) {
 	case DM_DEVICE_CREATE:
-		printf("create dmt->dev_name = %s\n", dmt->dev_name);
+		log_verbose("create dmt->dev_name = %s", dmt->dev_name);
 		/* XXX: ideally kernel takes care of this */
 #if 0
 		add_dev_node(dmt->dev_name, MAJOR(dmi->dev), MINOR(dmi->dev),
@@ -1168,7 +1163,7 @@ int dm_task_run(struct dm_task *dmt)
 		break;
 
 	case DM_DEVICE_REMOVE:
-		printf("remove dmt->dev_name = %s\n", dmt->dev_name);
+		log_verbose("remove dmt->dev_name = %s", dmt->dev_name);
 		/* XXX: ideally kernel takes care of this */
 #if 0
 		/* FIXME Kernel needs to fill in dmi->name */
@@ -1179,7 +1174,7 @@ int dm_task_run(struct dm_task *dmt)
 
 	case DM_DEVICE_RENAME:
 		/* FIXME Kernel needs to fill in dmi->name */
-		printf("rename dmt->dev_name = %s\n", dmt->dev_name);
+		log_verbose("rename dmt->dev_name = %s", dmt->dev_name);
 		 _dm_rename_kern(dmt);
 #if 0
 		if (dmt->dev_name)
@@ -1194,7 +1189,7 @@ int dm_task_run(struct dm_task *dmt)
 		break;
 	
 	case DM_DEVICE_MKNODES:
-		printf("mknodes dmt->dev_name = %s\n", dmt->dev_name);
+		log_verbose("mknodes dmt->dev_name = %s", dmt->dev_name);
 #if 0
 		if (dmi->flags & DM_EXISTS_FLAG)
 			add_dev_node(dmi->name, MAJOR(dmi->dev),

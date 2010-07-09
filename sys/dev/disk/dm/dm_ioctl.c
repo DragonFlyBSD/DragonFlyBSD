@@ -792,7 +792,7 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 		 * therfore I have to pass it to target init
 		 * routine and parse parameters there.
 		 */
-		kprintf("DM: str passed in is: %s", str);
+		aprint_debug("DM: str passed in is: %s", str);
 		if ((ret = target->init(dmv, &table_en->target_config,
 			    str)) != 0) {
 
