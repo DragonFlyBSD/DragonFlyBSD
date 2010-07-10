@@ -1,0 +1,12 @@
+#!/bin/sh
+# PROVIDE: udevd
+# REQUIRE: syslogd
+
+. /etc/rc.subr
+
+name="udevd"
+rcvar=`set_rcvar`
+command="/sbin/${name}"
+
+load_rc_config $name
+run_rc_command "$1"

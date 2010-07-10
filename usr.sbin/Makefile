@@ -123,7 +123,6 @@ SUBDIR= 802_11 \
 	traceroute6 \
 	trpt \
 	tzsetup \
-	udevd \
 	usbd \
 	usbdevs \
 	vidcontrol \

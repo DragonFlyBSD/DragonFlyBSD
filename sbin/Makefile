@@ -91,6 +91,7 @@ SUBDIR=	adjkerntz \
 	swapon \
 	sysctl \
 	tunefs \
+	udevd \
 	umount \
 	vinum
 

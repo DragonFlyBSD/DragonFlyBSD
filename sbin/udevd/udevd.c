@@ -321,16 +321,16 @@ int main(int argc __unused, char *argv[] __unused)
 		err(1, "%s", UDEV_DEVICE_PATH);
 	unblock_descriptor(udevfd);
 
-	//if (daemon(0, 0) == -1)
-	//	err(1, "daemon");
+	s = init_local_server(LISTEN_SOCKET_FILE, SOCK_STREAM, 0);
+	if (s < 0)
+		err(1, "init_local_server");
+
+	if (daemon(0, 0) == -1)
+		err(1, "daemon");
 
 	syslog(LOG_ERR, "udevd started");
 
 	pdev_array_entry_insert(udev_getdevs(udevfd));
-
-	s = init_local_server(LISTEN_SOCKET_FILE, SOCK_STREAM, 0);
-	if (s < 0)
-		err(1, "init_local_server");
 
 	memset(fds, 0 , sizeof(fds));
 	fds[UDEV_DEVICE_FD_IDX].fd = udevfd;
