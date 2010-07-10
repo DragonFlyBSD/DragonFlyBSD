@@ -1,5 +1,6 @@
 LIB=	devattr
 SRCS=	devattr.c devattr_device.c devattr_enumerate.c devattr_monitor.c
+INCS=	devattr.h
 
 WARNS?=	6
 
