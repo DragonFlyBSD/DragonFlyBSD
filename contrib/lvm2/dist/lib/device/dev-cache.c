@@ -404,6 +404,10 @@ static int _insert_file(const char *path)
 	return 1;
 }
 
+#if defined(__DragonFly__)
+int dragonfly_check_dev(int major, const char *path);
+#endif
+
 static int _insert(const char *path, int rec)
 {
 	struct stat info;
@@ -449,47 +453,11 @@ static int _insert(const char *path, int rec)
 		/*
 		 * This never happens, but oh well...
 		 */
-		if (S_ISBLK(info.st_mode)) {
-			log_debug("%s: Not a raw device", path);
+		if (dragonfly_check_dev(MAJOR(info.st_rdev),path) < 0) {
+			log_debug("%s: Device not added to cache", path);
 			return_0;
 		}
 
-		/*
-		 * We avoid adding devctl to the cache because reading from it
-		 * locks lvm up. devctl doesn't seem to be caught later in the
-		 * filter because it has major number 0, and lvm seems to assume
-		 * dm also has major 0.
-		 */
-		if (!strcmp(path, "/dev/devctl")) {
-			log_debug("%s: It's devctl, no interest");
-			return_0;
-		}
-
-		if (!strncmp(path, "/dev/tun", strlen("/dev/tun"))) {
-			log_debug("%s: Not adding tun devices");
-			return_0;
-		}
-
-		if (!strncmp(path, "/dev/cd", strlen("/dev/cd")) ||
-		    !strncmp(path, "/dev/acd", strlen("/dev/acd"))) {
-			log_debug("%s: Not adding CD drives");
-			return_0;
-		}
-
-		if (!strcmp(path, "/dev/vn")) {
-			log_debug("%s: Not adding vn autoclone dev");
-			return_0;
-		}
-
-		if (!strncmp(path, "/dev/md", strlen("/dev/md"))) {
-			log_debug("%s: Not adding malloc disks");
-			return_0;
-		}
-
-		if (!strncmp(path, "/dev/fd", strlen("/dev/fd"))) {
-			log_debug("%s: Not adding floppy disks or fds");
-			return_0;
-		}
 #else
 		if (!S_ISBLK(info.st_mode))
 			log_debug("%s: Not a block device", path);

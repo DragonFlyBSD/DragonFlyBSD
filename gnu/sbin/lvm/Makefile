@@ -137,7 +137,7 @@ DPADD+=         ${.CURDIR}/../../lib/liblvm/liblvm.a
 LDADD+=         -L${.CURDIR}/../../lib/libdevmapper -ldevmapper
 DPADD+=         ${.CURDIR}/../../lib/libdevmapper/libdevmapper.a
 
-LDADD+=		-lprop -ledit -ltermcap
+LDADD+=		-lprop -ledit -ltermcap -ldevattr
 
 .PATH:	${LVM2_DISTDIR}/tools
 

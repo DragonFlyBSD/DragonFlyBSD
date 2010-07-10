@@ -35,9 +35,9 @@ SRCS+=		activate.c lvmcache.c toolcontext.c config.c btree.c \
 		import-extents.c layout.c lvm1-label.c vg_number.c \
 		disk_rep.c format_pool.c import_export.c pool_label.c \
 		filter_dragonfly.c snapshot.c mirrored.c dev_manager.c fs.c \
-		lvm-globals.c
+		lvm-globals.c dev.c
 
-LDADD+=		-lprop
+LDADD+=		-lprop -ldevattr
 
 .PATH:	${LVM2_DISTDIR}/lib/
 .PATH:	${LVM2_DISTDIR}/lib/activate
@@ -66,7 +66,7 @@ LDADD+=		-lprop
 .PATH:	${LVM2_DISTDIR}/lib/unknown
 .PATH:	${LVM2_DISTDIR}/lib/uuid
 .PATH:	${LVM2_DISTDIR}/lib/zero
-.PATH:	${LVM2_DISTDIR}/lib/netbsd
+.PATH:	${LVM2_DISTDIR}/lib/dragonfly
 
 .include <bsd.lib.mk>
 #.include <bsd.subdir.mk>
