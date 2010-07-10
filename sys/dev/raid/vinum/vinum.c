@@ -45,6 +45,7 @@
 #include "vinumhdr.h"
 #include <sys/sysproto.h>				    /* for sync(2) */
 #include <sys/devicestat.h>
+#include <sys/udev.h>
 #ifdef VINUMDEBUG
 #include <sys/reboot.h>
 int debug = 0;
@@ -151,6 +152,8 @@ vinumattach(void *dummy)
 	    ) {
 		rootdev = make_dev(&vinum_ops, i, UID_ROOT, GID_OPERATOR,
 				0640, VINUM_BASE "vinumroot");
+		udev_dict_set_cstr(rootdev, "subsystem", "raid");
+		udev_dict_set_cstr(rootdev, "disk-type", "raid");
 		log(LOG_INFO, "vinum: using volume %s for root device\n", cp);
 		break;
 	    }

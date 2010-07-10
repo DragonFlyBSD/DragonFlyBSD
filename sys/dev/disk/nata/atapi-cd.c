@@ -46,6 +46,7 @@
 #include <sys/proc.h>
 #include <sys/priv.h>
 #include <sys/systm.h>
+#include <sys/udev.h>
 
 #include "ata-all.h"
 #include "atapi-cd.h"
@@ -143,6 +144,7 @@ acd_attach(device_t dev)
 		      DEVSTAT_PRIORITY_CD);
 
     cdev = disk_create(device_get_unit(dev), &cdp->disk, &acd_ops);
+    disk_setdisktype(&cdp->disk, "optical");
 #if 0
     cdev = make_dev(&acd_ops, dkmakeminor(device_get_unit(dev), 0, 0),
 		      UID_ROOT, GID_OPERATOR, 0644, "acd%d",

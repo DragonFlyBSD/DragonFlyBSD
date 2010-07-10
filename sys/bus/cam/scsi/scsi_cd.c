@@ -66,6 +66,7 @@
 #include <sys/taskqueue.h>
 #include <sys/proc.h>
 #include <sys/camlib.h>
+#include <sys/udev.h>
 
 #include <sys/buf2.h>
 #include <sys/thread2.h>
@@ -756,6 +757,7 @@ cdregister(struct cam_periph *periph, void *arg)
 			  DEVSTAT_TYPE_CDROM | DEVSTAT_TYPE_IF_SCSI,
 			  DEVSTAT_PRIORITY_CD);
 	disk_create(periph->unit_number, &softc->disk, &cd_ops);
+	disk_setdisktype(&softc->disk, "optical");
 	softc->disk.d_rawdev->si_iosize_max = MAXPHYS;
 	softc->disk.d_info.d_dsflags = DSO_ONESLICE | DSO_COMPATLABEL |
 					DSO_COMPATPARTA;

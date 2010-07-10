@@ -42,6 +42,7 @@
 #include <sys/module.h>
 #include <sys/nata.h>
 #include <sys/systm.h>
+#include <sys/udev.h>
 
 #include "ata-all.h"
 #include "atapi-fd.h"
@@ -107,6 +108,7 @@ afd_attach(device_t dev)
 		      DEVSTAT_NO_ORDERED_TAGS, DEVSTAT_TYPE_DIRECT |
 		      DEVSTAT_TYPE_IF_IDE, DEVSTAT_PRIORITY_WFD);
     cdev = disk_create(device_get_unit(dev), &fdp->disk, &afd_ops);
+    disk_setdisktype(&fdp->disk, "floppy");
     cdev->si_drv1 = dev;
     if (ch->dma)
 	cdev->si_iosize_max = ch->dma->max_iosize;

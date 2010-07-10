@@ -130,6 +130,7 @@ struct disk {
 	void			*d_dsched_priv1;/* I/O scheduler priv. data */
 	void			*d_dsched_priv2;/* I/O scheduler priv. data */
 	struct dsched_policy	*d_sched_policy;/* I/O scheduler policy */
+	const char		*d_disktype;	/* Disk type information */
 	LIST_ENTRY(disk)	d_list;
 };
 
@@ -145,6 +146,7 @@ cdev_t disk_create_named(const char *name, int unit, struct disk *dp, struct dev
 cdev_t disk_locate (const char *devname);
 void disk_destroy (struct disk *disk);
 void disk_setdiskinfo (struct disk *disk, struct disk_info *info);
+int disk_setdisktype(struct disk *disk, const char *type);
 void disk_setdiskinfo_sync(struct disk *disk, struct disk_info *info);
 int disk_dumpcheck (cdev_t dev, u_int64_t *count, u_int64_t *blkno, u_int *secsize);
 int disk_dumpconf(cdev_t dev, u_int onoff);

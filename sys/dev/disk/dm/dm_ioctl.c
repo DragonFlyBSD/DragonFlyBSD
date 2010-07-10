@@ -258,6 +258,7 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
 
 	aprint_debug("Creating device dm/%s\n", name);
 	dmv->devt = make_dev(&dm_ops, dmv->minor, UID_ROOT, GID_OPERATOR, 0640, "mapper/%s", dmv->name);
+	udev_dict_set_cstr(dmv->devt, "subsystem", "disk");
 #if 0
 	disk_init(dmv->diskp, dmv->name, &dmdkdriver);
 	disk_attach(dmv->diskp);

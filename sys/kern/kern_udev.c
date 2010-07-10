@@ -106,7 +106,7 @@ static struct dev_ops udev_dev_ops = {
 	.d_ioctl = udev_dev_ioctl
 };
 
-struct cmd_function cmd_fn[] = {
+static struct cmd_function cmd_fn[] = {
 		{ .cmd = "getdevs", .fn = udev_getdevs_ioctl},
 		{NULL, NULL}
 };
@@ -119,8 +119,9 @@ _udev_dict_set_cstr(prop_dictionary_t dict, const char *key, char *str)
 	KKASSERT(dict != NULL);
 
 	ps = prop_string_create_cstring(str);
-	if (ps == NULL)
+	if (ps == NULL) {
 		return ENOMEM;
+	}
 
 	if (prop_dictionary_set(dict, key, ps) == false) {
 		prop_object_release(ps);
@@ -210,6 +211,8 @@ udev_init_dict_event(cdev_t dev, const char *key)
 	if ((error = _udev_dict_set_cstr(dict, "key", __DECONST(char *, key))))
 		goto error_out;
 
+	return dict;
+
 error_out:
 	prop_object_release(dict);
 	return NULL;
@@ -223,10 +226,17 @@ udev_dict_set_cstr(cdev_t dev, const char *key, char *str)
 
 	KKASSERT(dev != NULL);
 
+	if (dev->si_dict == NULL) {
+		error = udev_init_dict(dev);
+		if (error)
+			return -1;
+	}
+
 	/* Queue a key update event */
 	dict = udev_init_dict_event(dev, key);
 	if (dict == NULL)
 		return ENOMEM;
+
 	if ((error = _udev_dict_set_cstr(dict, "value", str))) {
 		prop_object_release(dict);
 		return error;
@@ -234,7 +244,8 @@ udev_dict_set_cstr(cdev_t dev, const char *key, char *str)
 	udev_event_insert(UDEV_EV_KEY_UPDATE, dict);
 	prop_object_release(dict);
 
-	return _udev_dict_set_cstr(dev->si_dict, key, str);
+	error = _udev_dict_set_cstr(dev->si_dict, key, str);
+	return error;
 }
 
 int
@@ -244,6 +255,12 @@ udev_dict_set_int(cdev_t dev, const char *key, int64_t val)
 	int error;
 
 	KKASSERT(dev != NULL);
+
+	if (dev->si_dict == NULL) {
+		error = udev_init_dict(dev);
+		if (error)
+			return -1;
+	}
 
 	/* Queue a key update event */
 	dict = udev_init_dict_event(dev, key);
@@ -266,6 +283,12 @@ udev_dict_set_uint(cdev_t dev, const char *key, uint64_t val)
 	int error;
 
 	KKASSERT(dev != NULL);
+
+	if (dev->si_dict == NULL) {
+		error = udev_init_dict(dev);
+		if (error)
+			return -1;
+	}
 
 	/* Queue a key update event */
 	dict = udev_init_dict_event(dev, key);
@@ -308,6 +331,16 @@ udev_init_dict(cdev_t dev)
 	kptr = (uint64_t)(uintptr_t)dev;
 
 	KKASSERT(dev != NULL);
+
+	if (dev->si_dict != NULL) {
+#if 0
+		log(LOG_DEBUG,
+		    "udev_init_dict: new dict for %s, but has dict already (%p)!\n",
+		    dev->si_name, dev->si_dict);
+#endif
+		return 0;
+	}
+
 	dict = prop_dictionary_create();
 	if (dict == NULL) {
 		log(LOG_DEBUG, "udev_init_dict: prop_dictionary_create() failed\n");
@@ -333,6 +366,11 @@ udev_init_dict(cdev_t dev)
 		goto error_out;
 	if ((error = _udev_dict_set_int(dict, "minor", dev->si_uminor)))
 		goto error_out;
+	if (dev->si_ops->head.name != NULL) {
+		if ((error = _udev_dict_set_cstr(dict, "driver",
+		    __DECONST(char *, dev->si_ops->head.name))))
+			goto error_out;
+	}
 
 	dev->si_dict = dict;
 	return 0;
@@ -450,9 +488,7 @@ udev_event_attach(cdev_t dev, char *name, int alias)
 
 	KKASSERT(dev != NULL);
 
-	error = udev_init_dict(dev);
-	if (error)
-		goto error_out;
+	error = ENOMEM;
 
 	if (alias) {
 		dict = prop_dictionary_copy(dev->si_dict);
@@ -469,6 +505,10 @@ udev_event_attach(cdev_t dev, char *name, int alias)
 		udev_event_insert(UDEV_EVENT_ATTACH, dict);
 		prop_object_release(dict);
 	} else {
+		error = udev_init_dict(dev);
+		if (error)
+			goto error_out;
+
 		_udev_dict_set_int(dev->si_dict, "alias", 0);
 		udev_event_insert(UDEV_EVENT_ATTACH, dev->si_dict);
 	}
@@ -626,14 +666,12 @@ udev_dev_ioctl(struct dev_ioctl_args *ap)
 		}
 
 		if (cmd_fn[i].cmd != NULL) {
-			log(LOG_DEBUG, "udev: ioctl %s called\n", cmd_fn[i].cmd);
 			error = cmd_fn[i].fn(pref, ap->a_cmd, dict);
 		} else {
 			error = EINVAL;
 		}
 
 		//prop_object_release(po);
-		kprintf("foo\n");
 		prop_object_release(dict);
 		break;
 	default:
@@ -696,7 +734,6 @@ udev_getdevs_ioctl(struct plistref *pref, u_long cmd, prop_dictionary_t dict)
 
 	error = prop_dictionary_copyout_ioctl(pref, cmd, odict);
 
-	/* XXX: need to release ctx.cdevs? */
 	prop_object_release(odict);
 	return error;
 }

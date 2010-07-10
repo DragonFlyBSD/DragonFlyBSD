@@ -57,6 +57,7 @@
 #include <sys/mutex.h>
 #include <sys/mutex2.h>
 #include <sys/devfs.h>
+#include <sys/udev.h>
 
 #include <bus/cam/cam.h>
 #include <dev/disk/iscsi/initiator/iscsi.h>
@@ -641,8 +642,9 @@ i_create_session(struct cdev *dev, int *ndev)
      debug(8, "n is %d", n);
      sp->dev = make_dev(&iscsi_ops, n, UID_ROOT, GID_WHEEL, 0600, "iscsi%d", n);
      devfs_config();
-
      reference_dev(sp->dev);
+     udev_dict_set_cstr(sp->dev, "subsystem", "disk");
+     udev_dict_set_cstr(sp->dev, "disk-type", "network");
 
      *ndev = sp->sid = n;
      sp->isc = sc;

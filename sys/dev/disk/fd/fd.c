@@ -1015,6 +1015,7 @@ fd_attach(device_t dev)
 	fd = device_get_softc(dev);
 
 	disk_create(fd->fdu, &fd->disk, &fd_ops);
+	disk_setdisktype(&fd->disk, "floppy");
 
 	/*
 	 * Make special raw floppy devices with preset types to
