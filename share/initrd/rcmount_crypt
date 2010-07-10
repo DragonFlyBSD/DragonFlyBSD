@@ -22,7 +22,7 @@ if [ "$?" -ne "0" ]; then
 fi
 
 # Mount, as is expected, onto /new_root
-mount -t $FSTYPE /dev/mapper/$VOLUME /new_root
+mount -o ro -t $FSTYPE /dev/mapper/$VOLUME /new_root
 if [ "$?" -ne "0" ]; then
 	return 3;
 fi

@@ -6,12 +6,16 @@
 /sbin/mount_tmpfs tmpfs /tmp
 /sbin/mount_tmpfs tmpfs /var
 mkdir /var/tmp
+mkdir /var/run
 
 rescue_shell() {
 	echo "Starting recovery shell!"
 	exec sh
 	exit 0
 }
+
+# Start udevd
+/sbin/udevd
 
 for rcs in /etc/rc.*; do
 	if [ -x $rcs ]; then
@@ -36,7 +40,7 @@ if [ "$TYPE" = "local" ]; then
 	FSTYPE=$2
 	MOUNTFROM=$3
 	echo "executing /sbin/mount -t $FSTYPE $4 $MOUNTFROM /new_root"
-	/sbin/mount -t $FSTYPE $4 $MOUNTFROM /new_root
+	/sbin/mount -o ro -t $FSTYPE $4 $MOUNTFROM /new_root
 	if [ "$?" -ne "0" ]; then
 		rescue_shell
 	fi
@@ -51,6 +55,11 @@ else
 	fi
 fi
 
+# Stop udevd
+read UDEVD_PID < /var/run/udevd.pid
+kill $UDEVD_PID
+
+# Clean up
 rm -rf /var/*
 rm -rf /tmp/*
 /sbin/umount /var
