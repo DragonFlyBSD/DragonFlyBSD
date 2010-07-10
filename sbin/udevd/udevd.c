@@ -287,6 +287,13 @@ out:
 	return pa;
 }
 
+static void
+killed(int sig __unused)
+{
+	syslog(LOG_ERR, "udevd stopped");
+	unlink("/var/run/udevd.pid");
+}
+
 int
 ignore_signal(int signum)
 {
@@ -301,10 +308,25 @@ ignore_signal(int signum)
 	return ret;
 }
 
+static int
+set_killed_signal(void)
+{
+	struct sigaction act;
+	int ret;
+
+	act.sa_handler = killed;
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = 0;
+
+	ret = sigaction(SIGTERM, &act, NULL);
+	return ret;	
+}
+
 int main(int argc __unused, char *argv[] __unused)
 {
 	int error __unused, i, r, s;
 	struct pollfd fds[NFDS];
+	FILE *pidf;
 
 	TAILQ_INIT(&pdev_array_list);
 	TAILQ_INIT(&udev_monitor_list);
@@ -325,8 +347,17 @@ int main(int argc __unused, char *argv[] __unused)
 	if (s < 0)
 		err(1, "init_local_server");
 
+	pidf = fopen("/var/run/udevd.pid", "w");
+	if (pidf == NULL)
+		err(1, "pidfile");
+
+	set_killed_signal();
+
 	if (daemon(0, 0) == -1)
 		err(1, "daemon");
+
+	fprintf(pidf, "%ld\n", (long)getpid());
+	fclose(pidf);
 
 	syslog(LOG_ERR, "udevd started");
 
