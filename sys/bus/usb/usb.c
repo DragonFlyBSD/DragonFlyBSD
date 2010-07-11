@@ -69,7 +69,6 @@
 #include <sys/proc.h>
 #include <sys/conf.h>
 #include <sys/device.h>
-#include <sys/poll.h>
 #include <sys/event.h>
 #include <sys/select.h>
 #include <sys/vnode.h>
@@ -148,7 +147,6 @@ d_open_t  usbopen;
 d_close_t usbclose;
 d_read_t usbread;
 d_ioctl_t usbioctl;
-d_poll_t usbpoll;
 d_kqfilter_t usbkqfilter;
 
 static void usbfilt_detach(struct knote *);
@@ -160,7 +158,6 @@ struct dev_ops usb_ops = {
 	.d_close =	usbclose,
 	.d_read =	usbread,
 	.d_ioctl =	usbioctl,
-	.d_poll =	usbpoll,
 	.d_kqfilter = 	usbkqfilter
 };
 
@@ -697,31 +694,6 @@ usbioctl(struct dev_ioctl_args *ap)
 		return (EINVAL);
 	}
 	return (0);
-}
-
-int
-usbpoll(struct dev_poll_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	int revents, mask;
-	int unit = USBUNIT(dev);
-
-	if (unit == USB_DEV_MINOR) {
-		revents = 0;
-		mask = POLLIN | POLLRDNORM;
-
-		crit_enter();
-		if (ap->a_events & mask && usb_nevents > 0)
-			revents |= ap->a_events & mask;
-		if (revents == 0 && ap->a_events & mask)
-			selrecord(curthread, &usb_selevent);
-		crit_exit();
-		ap->a_events = revents;
-		return (0);
-	} else {
-		ap->a_events = 0;
-		return (0);	/* select/poll never wakes up - back compat */
-	}
 }
 
 static struct filterops usbfiltops =

@@ -45,7 +45,6 @@
 #include <sys/kernel.h>
 #include <sys/kthread.h>
 #include <sys/sysctl.h>
-#include <sys/poll.h>
 #include <sys/event.h>
 
 #include <sys/bus.h>
@@ -213,7 +212,6 @@ static char	*aac_describe_code(struct aac_code_lookup *table,
 static d_open_t		aac_open;
 static d_close_t	aac_close;
 static d_ioctl_t	aac_ioctl;
-static d_poll_t		aac_poll;
 static d_kqfilter_t	aac_kqfilter;
 static void		aac_filter_detach(struct knote *kn);
 static int		aac_filter(struct knote *kn, long hint);
@@ -235,7 +233,6 @@ static struct dev_ops aac_ops = {
 	.d_open =	aac_open,
 	.d_close =	aac_close,
 	.d_ioctl =	aac_ioctl,
-	.d_poll =	aac_poll,
 	.d_kqfilter =	aac_kqfilter
 };
 
@@ -3062,31 +3059,6 @@ aac_ioctl(struct dev_ioctl_args *ap)
 		break;
 	}
 	return(error);
-}
-
-static int
-aac_poll(struct dev_poll_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	struct aac_softc *sc;
-	int revents;
-
-	sc = dev->si_drv1;
-	revents = 0;
-
-	AAC_LOCK_ACQUIRE(&sc->aac_aifq_lock);
-	if ((ap->a_events & (POLLRDNORM | POLLIN)) != 0) {
-		if (sc->aac_aifq_tail != sc->aac_aifq_head)
-			revents |= ap->a_events & (POLLIN | POLLRDNORM);
-	}
-	AAC_LOCK_RELEASE(&sc->aac_aifq_lock);
-
-	if (revents == 0) {
-		if (ap->a_events & (POLLIN | POLLRDNORM))
-			selrecord(curthread, &sc->rcv_select);
-	}
-	ap->a_events = revents;
-	return (0);
 }
 
 static struct filterops aac_filterops =

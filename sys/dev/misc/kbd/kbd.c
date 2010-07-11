@@ -44,7 +44,6 @@
 #include <sys/conf.h>
 #include <sys/proc.h>
 #include <sys/tty.h>
-#include <sys/poll.h>
 #include <sys/event.h>
 #include <sys/vnode.h>
 #include <sys/uio.h>
@@ -495,7 +494,6 @@ static d_close_t	genkbdclose;
 static d_read_t		genkbdread;
 static d_write_t	genkbdwrite;
 static d_ioctl_t	genkbdioctl;
-static d_poll_t		genkbdpoll;
 static d_kqfilter_t	genkbdkqfilter;
 
 static void genkbdfiltdetach(struct knote *);
@@ -510,7 +508,6 @@ static struct dev_ops kbd_ops = {
 	.d_read =	genkbdread,
 	.d_write =	genkbdwrite,
 	.d_ioctl =	genkbdioctl,
-	.d_poll =	genkbdpoll,
 	.d_kqfilter =	genkbdkqfilter
 };
 
@@ -746,31 +743,6 @@ genkbdioctl(struct dev_ioctl_args *ap)
 	if (error == ENOIOCTL)
 		error = ENODEV;
 	return error;
-}
-
-static int
-genkbdpoll(struct dev_poll_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	keyboard_t *kbd;
-	genkbd_softc_t sc;
-	int revents;
-
-	revents = 0;
-	crit_enter();
-	sc = dev->si_drv1;
-	kbd = kbd_get_keyboard(KBD_INDEX(dev));
-	if ((sc == NULL) || (kbd == NULL) || !KBD_IS_VALID(kbd)) {
-		revents =  POLLHUP;	/* the keyboard has gone */
-	} else if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		if (sc->gkb_q_length > 0)
-			revents = ap->a_events & (POLLIN | POLLRDNORM);
-		else
-			selrecord(curthread, &sc->gkb_rsel);
-	}
-	crit_exit();
-	ap->a_events = revents;
-	return (0);
 }
 
 static struct filterops genkbdfiltops =

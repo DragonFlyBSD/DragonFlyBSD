@@ -35,7 +35,6 @@
 #include <sys/sockio.h>
 #include <sys/thread2.h>
 #include <sys/ttycom.h>
-#include <sys/poll.h>
 #include <sys/signalvar.h>
 #include <sys/filedesc.h>
 #include <sys/kernel.h>
@@ -87,7 +86,6 @@ static	d_close_t	tunclose;
 static	d_read_t	tunread;
 static	d_write_t	tunwrite;
 static	d_ioctl_t	tunioctl;
-static	d_poll_t	tunpoll;
 static	d_kqfilter_t	tunkqfilter;
 
 static d_clone_t tunclone;
@@ -107,7 +105,6 @@ static struct dev_ops tun_ops = {
 	.d_read =	tunread,
 	.d_write =	tunwrite,
 	.d_ioctl =	tunioctl,
-	.d_poll =	tunpoll,
 	.d_kqfilter =	tunkqfilter
 };
 
@@ -700,40 +697,6 @@ tunwrite(struct dev_write_args *ap)
 
 	netisr_dispatch(isr, top);
 	return (0);
-}
-
-/*
- * tunpoll - the poll interface, this is only useful on reads
- * really. The write detect always returns true, write never blocks
- * anyway, it either accepts the packet or drops it.
- */
-static	int
-tunpoll(struct dev_poll_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	struct tun_softc *tp = dev->si_drv1;
-	struct ifnet	*ifp = &tp->tun_if;
-	int		revents = 0;
-
-	TUNDEBUG(ifp, "tunpoll\n");
-
-	ifnet_serialize_all(ifp);
-
-	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		if (!ifq_is_empty(&ifp->if_snd)) {
-			TUNDEBUG(ifp, "tunpoll q=%d\n", ifp->if_snd.ifq_len);
-			revents |= ap->a_events & (POLLIN | POLLRDNORM);
-		} else {
-			TUNDEBUG(ifp, "tunpoll waiting\n");
-			selrecord(curthread, &tp->tun_rsel);
-		}
-	}
-	if (ap->a_events & (POLLOUT | POLLWRNORM))
-		revents |= ap->a_events & (POLLOUT | POLLWRNORM);
-
-	ifnet_deserialize_all(ifp);
-	ap->a_events = revents;
-	return(0);
 }
 
 static struct filterops tun_read_filtops =

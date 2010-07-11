@@ -756,7 +756,6 @@ static struct dev_ops stl_ops = {
 	.d_read =	ttyread,
 	.d_write =	ttywrite,
 	.d_ioctl =	stlioctl,
-	.d_poll =	ttypoll,
 	.d_kqfilter =	ttykqfilter,
 	.d_revoke =	ttyrevoke
 };

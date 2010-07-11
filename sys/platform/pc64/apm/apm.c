@@ -29,7 +29,6 @@
 #include <sys/reboot.h>
 #include <sys/bus.h>
 #include <sys/selinfo.h>
-#include <sys/poll.h>
 #include <sys/event.h>
 #include <sys/fcntl.h>
 #include <sys/uio.h>
@@ -83,11 +82,11 @@ static d_open_t apmopen;
 static d_close_t apmclose;
 static d_write_t apmwrite;
 static d_ioctl_t apmioctl;
-static d_poll_t apmpoll;
 static d_kqfilter_t apmkqfilter;
 
 static void apmfilter_detach(struct knote *);
-static int apmfilter(struct knote *, long);
+static int apmfilter_read(struct knote *, long);
+static int apmfilter_write(struct knote *, long);
 
 #define CDEV_MAJOR 39
 static struct dev_ops apm_ops = {
@@ -96,7 +95,6 @@ static struct dev_ops apm_ops = {
 	.d_close =	apmclose,
 	.d_write =	apmwrite,
 	.d_ioctl =	apmioctl,
-	.d_poll =	apmpoll,
 	.d_kqfilter =	apmkqfilter
 };
 
@@ -1342,25 +1340,10 @@ apmwrite(struct dev_write_args *ap)
 	return uio->uio_resid;
 }
 
-static int
-apmpoll(struct dev_poll_args *ap)
-{
-	struct apm_softc *sc = &apm_softc;
-	int revents = 0;
-
-	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		if (sc->event_count) {
-			revents |= ap->a_events & (POLLIN | POLLRDNORM);
-		} else {
-			selrecord(curthread, &sc->sc_rsel);
-		}
-	}
-	ap->a_events = revents;
-	return (0);
-}
-
-static struct filterops apmfiltops =
-	{ 1, NULL, apmfilter_detach, apmfilter };
+static struct filterops apmfiltops_read =
+	{ 1, NULL, apmfilter_detach, apmfilter_read };
+static struct filterops apmfiltops_write =
+	{ 1, NULL, apmfilter_detach, apmfilter_write };
 
 static int
 apmkqfilter(struct dev_kqfilter_args *ap)
@@ -1373,7 +1356,11 @@ apmkqfilter(struct dev_kqfilter_args *ap)
 
 	switch (kn->kn_filter) {
 	case EVFILT_READ:
-		kn->kn_fop = &apmfiltops;
+		kn->kn_fop = &apmfiltops_read;
+		kn->kn_hook = (caddr_t)sc;
+		break;
+	case EVFILT_WRITE:
+		kn->kn_fop = &apmfiltops_write;
 		kn->kn_hook = (caddr_t)sc;
 		break;
 	default:
@@ -1402,7 +1389,7 @@ apmfilter_detach(struct knote *kn)
 }
 
 static int
-apmfilter(struct knote *kn, long hint)
+apmfilter_read(struct knote *kn, long hint)
 {
 	struct apm_softc *sc = (struct apm_softc *)kn->kn_hook;
 	int ready = 0;
@@ -1411,6 +1398,13 @@ apmfilter(struct knote *kn, long hint)
 		ready = 1;
 
 	return (ready);
+}
+
+static int
+apmfilter_write(struct knote *kn, long hint)
+{
+	/* write()'s are always OK */
+	return (1);
 }
 
 /*

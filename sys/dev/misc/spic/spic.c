@@ -56,7 +56,6 @@
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
-#include <sys/poll.h>
 #include <sys/event.h>
 #include <sys/tty.h>
 #include <sys/conf.h>
@@ -86,7 +85,6 @@ static d_open_t		spicopen;
 static d_close_t	spicclose;
 static d_read_t		spicread;
 static d_ioctl_t	spicioctl;
-static d_poll_t		spicpoll;
 static d_kqfilter_t	spickqfilter;
 
 static void spicfilt_detach(struct knote *);
@@ -98,7 +96,6 @@ static struct dev_ops spic_ops = {
         .d_close =	spicclose,
         .d_read =	spicread,
         .d_ioctl =	spicioctl,
-        .d_poll =	spicpoll,
 	.d_kqfilter =	spickqfilter
 };
 
@@ -522,26 +519,6 @@ spicioctl(struct dev_ioctl_args *ap)
 	sc = devclass_get_softc(spic_devclass, 0);
 
 	return EIO;
-}
-
-static int
-spicpoll(struct dev_poll_args *ap)
-{
-	struct spic_softc *sc;
-	int revents = 0;
-
-	sc = devclass_get_softc(spic_devclass, 0);
-	crit_enter();
-	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		if (sc->sc_count) {
-			revents |= ap->a_events & (POLLIN | POLLRDNORM);
-		} else {
-			selrecord(curthread, &sc->sc_rsel);
-		}
-	}
-	crit_exit();
-	ap->a_events = revents;
-	return(0);
 }
 
 static struct filterops spicfiltops =

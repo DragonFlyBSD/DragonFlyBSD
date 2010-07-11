@@ -52,7 +52,6 @@
 #include <sys/tty.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
-#include <sys/poll.h>
 #include <sys/kernel.h>
 #include <sys/vnode.h>
 #include <sys/signalvar.h>
@@ -85,7 +84,6 @@ static	d_open_t	ptcopen;
 static	d_close_t	ptcclose;
 static	d_read_t	ptcread;
 static	d_write_t	ptcwrite;
-static	d_poll_t	ptcpoll;
 static	d_kqfilter_t	ptckqfilter;
 
 #ifdef UNIX98_PTYS
@@ -102,7 +100,6 @@ static struct dev_ops pts98_ops = {
 	.d_read =	ptsread,
 	.d_write =	ptswrite,
 	.d_ioctl =	ptyioctl,
-	.d_poll =	ttypoll,
 	.d_kqfilter =	ttykqfilter,
 	.d_revoke =	ttyrevoke
 };
@@ -114,7 +111,6 @@ static struct dev_ops ptc98_ops = {
 	.d_read =	ptcread,
 	.d_write =	ptcwrite,
 	.d_ioctl =	ptyioctl,
-	.d_poll =	ptcpoll,
 	.d_kqfilter =	ptckqfilter,
 	.d_revoke =	ttyrevoke
 };
@@ -128,7 +124,6 @@ static struct dev_ops pts_ops = {
 	.d_read =	ptsread,
 	.d_write =	ptswrite,
 	.d_ioctl =	ptyioctl,
-	.d_poll =	ttypoll,
 	.d_kqfilter =	ttykqfilter,
 	.d_revoke =	ttyrevoke
 };
@@ -141,7 +136,6 @@ static struct dev_ops ptc_ops = {
 	.d_read =	ptcread,
 	.d_write =	ptcwrite,
 	.d_ioctl =	ptyioctl,
-	.d_poll =	ptcpoll,
 	.d_kqfilter =	ptckqfilter,
 	.d_revoke =	ttyrevoke
 };
@@ -653,56 +647,6 @@ ptsstop(struct tty *tp, int flush)
 	if (flush & FWRITE)
 		flag |= FREAD;
 	ptcwakeup(tp, flag);
-}
-
-static	int
-ptcpoll(struct dev_poll_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	struct tty *tp = dev->si_tty;
-	struct pt_ioctl *pti = dev->si_drv1;
-	int revents = 0;
-
-	if ((tp->t_state & TS_CONNECTED) == 0) {
-		ap->a_events = seltrue(dev, ap->a_events) | POLLHUP;
-		return(0);
-	}
-
-	/*
-	 * Need to block timeouts (ttrstart).
-	 */
-	crit_enter();
-
-	if (ap->a_events & (POLLIN | POLLRDNORM))
-		if ((tp->t_state & TS_ISOPEN) &&
-		    ((tp->t_outq.c_cc && (tp->t_state & TS_TTSTOP) == 0) ||
-		     ((pti->pt_flags & PF_PKT) && pti->pt_send) ||
-		     ((pti->pt_flags & PF_UCNTL) && pti->pt_ucntl)))
-			revents |= ap->a_events & (POLLIN | POLLRDNORM);
-
-	if (ap->a_events & (POLLOUT | POLLWRNORM))
-		if (tp->t_state & TS_ISOPEN &&
-		    ((pti->pt_flags & PF_REMOTE) ?
-		     (tp->t_canq.c_cc == 0) : 
-		     ((tp->t_rawq.c_cc + tp->t_canq.c_cc < TTYHOG - 2) ||
-		      (tp->t_canq.c_cc == 0 && (tp->t_lflag & ICANON)))))
-			revents |= ap->a_events & (POLLOUT | POLLWRNORM);
-
-	if (ap->a_events & POLLHUP)
-		if ((tp->t_state & TS_CARR_ON) == 0)
-			revents |= POLLHUP;
-
-	if (revents == 0) {
-		if (ap->a_events & (POLLIN | POLLRDNORM))
-			selrecord(curthread, &pti->pt_selr);
-
-		if (ap->a_events & (POLLOUT | POLLWRNORM)) 
-			selrecord(curthread, &pti->pt_selw);
-	}
-	crit_exit();
-
-	ap->a_events = revents;
-	return (0);
 }
 
 /*

@@ -44,7 +44,6 @@
 #include <sys/kernel.h>
 #include <sys/sockio.h>
 #include <sys/mbuf.h>
-#include <sys/poll.h>
 #include <sys/event.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
@@ -131,7 +130,6 @@ static d_open_t		cmx_open;
 static d_close_t	cmx_close;
 static d_read_t		cmx_read;
 static d_write_t	cmx_write;
-static d_poll_t		cmx_poll;
 static d_kqfilter_t	cmx_kqfilter;
 #ifdef CMX_INTR
 static void		cmx_intr(void *arg);
@@ -148,7 +146,6 @@ static struct dev_ops cmx_ops = {
 	.d_close =	cmx_close,
 	.d_read =	cmx_read,
 	.d_write =	cmx_write,
-	.d_poll =	cmx_poll,
 	.d_kqfilter =	cmx_kqfilter
 };
 
@@ -647,51 +644,6 @@ cmx_write(struct dev_write_args *ap)
 
 	DEBUG_printf(sc->dev, "success\n");
 	return 0;
-}
-
-/*
- * Poll handler.  Writing is always possible, reading is only possible
- * if BSR_BULK_IN_FULL is set.  Will start the cmx_tick callout and
- * set sc->polling.
- */
-static int
-cmx_poll(struct dev_poll_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	struct cmx_softc *sc;
-	int revents = 0;
-	uint8_t bsr = 0;
-
-	sc = devclass_get_softc(cmx_devclass, minor(dev));
-	if (sc == NULL || sc->dying)
-		return ENXIO;
-
-	bsr = cmx_read_BSR(sc);
-	DEBUG_printf(sc->dev, "called (events=%b BSR=%b)\n",
-			ap->a_events, POLLBITS, bsr, BSRBITS);
-
-	revents = ap->a_events & (POLLOUT | POLLWRNORM);
-	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		if (cmx_test(bsr, BSR_BULK_IN_FULL, 1)) {
-			revents |= ap->a_events & (POLLIN | POLLRDNORM);
-		} else {
-			selrecord(curthread, &sc->sel);
-			CMX_LOCK(sc);
-			if (!sc->polling) {
-				DEBUG_printf(sc->dev, "enabling polling\n");
-				sc->polling = 1;
-				callout_reset(&sc->ch, POLL_TICKS,
-						cmx_tick, sc);
-			} else {
-				DEBUG_printf(sc->dev, "already polling\n");
-			}
-			CMX_UNLOCK(sc);
-		}
-	}
-
-	DEBUG_printf(sc->dev, "success (revents=%b)\n", revents, POLLBITS);
-
-	return revents;
 }
 
 static struct filterops cmx_read_filterops =

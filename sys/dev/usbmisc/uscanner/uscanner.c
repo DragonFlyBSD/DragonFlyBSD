@@ -60,7 +60,6 @@
 #include <sys/file.h>
 #include <sys/select.h>
 #include <sys/proc.h>
-#include <sys/poll.h>
 #include <sys/event.h>
 #include <sys/conf.h>
 #include <sys/sysctl.h>
@@ -255,7 +254,6 @@ d_open_t  uscanneropen;
 d_close_t uscannerclose;
 d_read_t  uscannerread;
 d_write_t uscannerwrite;
-d_poll_t  uscannerpoll;
 d_kqfilter_t uscannerkqfilter;
 
 #define USCANNER_CDEV_MAJOR	156
@@ -266,7 +264,6 @@ static struct dev_ops uscanner_ops = {
 	.d_close =	uscannerclose,
 	.d_read =	uscannerread,
 	.d_write =	uscannerwrite,
-	.d_poll =	uscannerpoll,
 	.d_kqfilter =	uscannerkqfilter
 };
 
@@ -645,30 +642,6 @@ uscanner_detach(device_t self)
 	usbd_add_drv_event(USB_EVENT_DRIVER_DETACH, sc->sc_udev,
 			   sc->sc_dev);
 
-	return (0);
-}
-
-int
-uscannerpoll(struct dev_poll_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	struct uscanner_softc *sc;
-	int revents = 0;
-
-	sc = devclass_get_softc(uscanner_devclass, USCANNERUNIT(dev));
-
-	if (sc->sc_dying)
-		return (EIO);
-
-	/*
-	 * We have no easy way of determining if a read will
-	 * yield any data or a write will happen.
-	 * Pretend they will.
-	 */
-	revents |= ap->a_events &
-		   (POLLIN | POLLRDNORM | POLLOUT | POLLWRNORM);
-
-	ap->a_events = revents;
 	return (0);
 }
 

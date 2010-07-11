@@ -80,7 +80,6 @@
 #include <sys/select.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
-#include <sys/poll.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
 
@@ -127,7 +126,6 @@ static struct dev_ops ucom_ops = {
 	.d_read =	ucomread,
 	.d_write =	ucomwrite,
 	.d_ioctl =	ucomioctl,
-	.d_poll =	ttypoll,
 	.d_kqfilter =	ttykqfilter,
 	.d_revoke =	ttyrevoke
 };

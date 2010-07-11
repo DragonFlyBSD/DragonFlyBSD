@@ -98,7 +98,6 @@ static struct dev_ops rc_ops = {
 	.d_read =	ttyread,
 	.d_write =	ttywrite,
 	.d_ioctl =	rcioctl,
-	.d_poll =	ttypoll,
 	.d_kqfilter =	ttykqfilter,
 	.d_revoke =	ttyrevoke
 };

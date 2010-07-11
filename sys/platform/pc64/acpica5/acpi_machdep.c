@@ -63,7 +63,6 @@ static d_open_t apmopen;
 static d_close_t apmclose;
 static d_write_t apmwrite;
 static d_ioctl_t apmioctl;
-static d_poll_t apmpoll;
 static d_kqfilter_t apmkqfilter;
 
 #define CDEV_MAJOR 39
@@ -73,7 +72,6 @@ static struct dev_ops apm_ops = {
         .d_close = apmclose,
 	.d_write = apmwrite,
         .d_ioctl = apmioctl,
-	.d_poll = apmpoll,
 	.d_kqfilter = apmkqfilter
 };
 
@@ -291,13 +289,6 @@ static int
 apmwrite(struct dev_write_args *ap)
 {
 	return (ap->a_uio->uio_resid);
-}
-
-static int
-apmpoll(struct dev_poll_args *ap)
-{
-	ap->a_events = 0;
-	return (0);
 }
 
 static void apmfilter_detach(struct knote *);

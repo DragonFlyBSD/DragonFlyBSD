@@ -43,7 +43,6 @@ static d_close_t dsp_close;
 static d_read_t dsp_read;
 static d_write_t dsp_write;
 static d_ioctl_t dsp_ioctl;
-static d_poll_t dsp_poll;
 static d_kqfilter_t dsp_kqfilter;
 static d_mmap_t dsp_mmap;
 
@@ -59,7 +58,6 @@ struct dev_ops dsp_cdevsw = {
 	.d_read =	dsp_read,
 	.d_write =	dsp_write,
 	.d_ioctl =	dsp_ioctl,
-	.d_poll =	dsp_poll,
 	.d_kqfilter =	dsp_kqfilter,
 	.d_mmap =	dsp_mmap,
 };
@@ -1086,34 +1084,6 @@ dsp_ioctl(struct dev_ioctl_args *ap)
     	}
 	relchns(i_dev, rdch, wrch, 0);
     	return ret;
-}
-
-static int
-dsp_poll(struct dev_poll_args *ap)
-{
-	struct cdev *i_dev = ap->a_head.a_dev;
-	int events = ap->a_events;
-	struct thread *td = curthread;
-	struct pcm_channel *wrch = NULL, *rdch = NULL;
-	int ret, e;
-
-	ret = 0;
-	getchns(i_dev, &rdch, &wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
-
-	if (wrch) {
-		e = (events & (POLLOUT | POLLWRNORM));
-		if (e)
-			ret |= chn_poll(wrch, e, td);
-	}
-	if (rdch) {
-		e = (events & (POLLIN | POLLRDNORM));
-		if (e)
-			ret |= chn_poll(rdch, e, td);
-	}
-	relchns(i_dev, rdch, wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
-
-	ap->a_events = ret;
-	return (0);
 }
 
 static struct filterops dsp_read_filtops =

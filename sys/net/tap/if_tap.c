@@ -46,7 +46,6 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
-#include <sys/poll.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
 #include <sys/signalvar.h>
@@ -117,7 +116,6 @@ static d_close_t	tapclose;
 static d_read_t		tapread;
 static d_write_t	tapwrite;
 static d_ioctl_t	tapioctl;
-static d_poll_t		tappoll;
 static d_kqfilter_t	tapkqfilter;
 
 static struct dev_ops	tap_ops = {
@@ -127,7 +125,6 @@ static struct dev_ops	tap_ops = {
 	.d_read =	tapread,
 	.d_write =	tapwrite,
 	.d_ioctl =	tapioctl,
-	.d_poll =	tappoll,
 	.d_kqfilter =	tapkqfilter
 };
 
@@ -938,50 +935,6 @@ tapwrite(struct dev_write_args *ap)
 	ifp->if_ipackets ++; /* ibytes are counted in ether_input */
 	ifnet_deserialize_all(ifp);
 
-	return (0);
-}
-
-/*
- * tappoll
- *
- * The poll interface, this is only useful on reads really. The write
- * detect always returns true, write never blocks anyway, it either
- * accepts the packet or drops it
- *
- * Called from the fileops interface with nothing held.
- *
- * MPSAFE
- */
-static int
-tappoll(struct dev_poll_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	struct tap_softc	*tp = dev->si_drv1;
-	struct ifnet		*ifp = &tp->tap_if;
-	int		 	 revents = 0;
-
-	TAPDEBUG(ifp, "polling, minor = %#x\n", minor(tp->tap_dev));
-
-	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		if (!IF_QEMPTY(&tp->tap_devq)) {
-			TAPDEBUG(ifp,
-				 "has data in queue. minor = %#x\n",
-				 minor(tp->tap_dev));
-
-			revents |= (ap->a_events & (POLLIN | POLLRDNORM));
-		} else {
-			TAPDEBUG(ifp, "waiting for data, minor = %#x\n",
-				 minor(tp->tap_dev));
-
-			get_mplock();
-			selrecord(curthread, &tp->tap_rsel);
-			rel_mplock();
-		}
-	}
-
-	if (ap->a_events & (POLLOUT | POLLWRNORM))
-		revents |= (ap->a_events & (POLLOUT | POLLWRNORM));
-	ap->a_events = revents;
 	return (0);
 }
 

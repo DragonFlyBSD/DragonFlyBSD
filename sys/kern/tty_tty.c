@@ -49,15 +49,14 @@
 #include <sys/ttycom.h>
 #include <sys/vnode.h>
 #include <sys/kernel.h>
+#include <sys/poll.h> /* XXX: poll args used in KQ filters */
 #include <sys/event.h>
-#include <sys/poll.h>
 
 static	d_open_t	cttyopen;
 static	d_close_t	cttyclose;
 static	d_read_t	cttyread;
 static	d_write_t	cttywrite;
 static	d_ioctl_t	cttyioctl;
-static	d_poll_t	cttypoll;
 static	d_kqfilter_t	cttykqfilter;
 
 static void cttyfilt_detach(struct knote *);
@@ -73,7 +72,6 @@ struct dev_ops ctty_ops = {
 	.d_read =	cttyread,
 	.d_write =	cttywrite,
 	.d_ioctl =	cttyioctl,
-	.d_poll =	cttypoll,
 	.d_kqfilter =	cttykqfilter
 };
 
@@ -240,26 +238,6 @@ cttyioctl(struct dev_ioctl_args *ap)
 	}
 	return (VOP_IOCTL(ttyvp, ap->a_cmd, ap->a_data, ap->a_fflag,
 			  ap->a_cred, ap->a_sysmsg));
-}
-
-/*ARGSUSED*/
-static	int
-cttypoll(struct dev_poll_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	struct vnode *ttyvp;
-	struct proc *p = curproc;
-
-	KKASSERT(p);
-	ttyvp = cttyvp(p);
-	/*
-	 * try operation to get EOF/failure 
-	 */
-	if (ttyvp == NULL)
-		ap->a_events = seltrue(dev, ap->a_events);
-	else
-		ap->a_events = VOP_POLL(ttyvp, ap->a_events, p->p_ucred);
-	return(0);
 }
 
 static struct filterops cttyfiltops_read =

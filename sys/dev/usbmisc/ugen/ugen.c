@@ -63,7 +63,6 @@
 #include <sys/file.h>
 #include <sys/select.h>
 #include <sys/vnode.h>
-#include <sys/poll.h>
 #include <sys/event.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
@@ -140,7 +139,6 @@ d_close_t ugenclose;
 d_read_t  ugenread;
 d_write_t ugenwrite;
 d_ioctl_t ugenioctl;
-d_poll_t  ugenpoll;
 d_kqfilter_t ugenkqfilter;
 
 static void ugen_filt_detach(struct knote *);
@@ -156,7 +154,6 @@ static struct dev_ops ugen_ops = {
 	.d_read =	ugenread,
 	.d_write =	ugenwrite,
 	.d_ioctl =	ugenioctl,
-	.d_poll =	ugenpoll,
 	.d_kqfilter = 	ugenkqfilter
 };
 
@@ -1427,85 +1424,6 @@ ugenioctl(struct dev_ioctl_args *ap)
 	if (--sc->sc_refcnt < 0)
 		usb_detach_wakeup(sc->sc_dev);
 	return (error);
-}
-
-int
-ugenpoll(struct dev_poll_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	struct ugen_softc *sc;
-	struct ugen_endpoint *sce_in, *sce_out;
-	usb_endpoint_descriptor_t *edesc;
-	int revents = 0;
-
-	sc = devclass_get_softc(ugen_devclass, UGENUNIT(dev));
-
-	if (sc->sc_dying) {
-		return ((ap->a_events & (POLLIN | POLLOUT | POLLRDNORM |
-			POLLWRNORM)) | POLLHUP);
-	}
-
-	/* Do not allow to poll a control endpoint */
-	if (UGENENDPOINT(dev) == USB_CONTROL_ENDPOINT) {
-		return (ap->a_events & (POLLIN | POLLOUT | POLLRDNORM |
-			POLLWRNORM));
-	}
-
-	sce_in = &sc->sc_endpoints[UGENENDPOINT(dev)][IN];
-	sce_out = &sc->sc_endpoints[UGENENDPOINT(dev)][OUT];
-	edesc = (sce_in->edesc != NULL) ? sce_in->edesc : sce_out->edesc;
-	KASSERT(edesc != NULL, ("ugenpoll: NULL edesc"));
-
-	if (sce_in->edesc == NULL || sce_in->pipeh == NULL)
-		sce_in = NULL;
-	if (sce_out->edesc == NULL || sce_out->pipeh == NULL)
-		sce_out = NULL;
-
-	crit_enter();
-	switch (edesc->bmAttributes & UE_XFERTYPE) {
-	case UE_INTERRUPT:
-		if (sce_in != NULL && (ap->a_events & (POLLIN | POLLRDNORM))) {
-			if (sce_in->q.c_cc > 0)
-				revents |= ap->a_events & (POLLIN | POLLRDNORM);
-			else
-				selrecord(curthread, &sce_in->rsel);
-		}
-		if (sce_out != NULL && (ap->a_events & (POLLOUT | POLLWRNORM))) {
-			if (sce_out->q.c_cc > 0)
-				revents |= ap->a_events & (POLLOUT | POLLWRNORM);
-			else
-				selrecord(curthread, &sce_out->rsel);
-		}
-		break;
-	case UE_ISOCHRONOUS:
-		if (sce_in != NULL && (ap->a_events & (POLLIN | POLLRDNORM))) {
-			if (sce_in->cur != sce_in->fill)
-				revents |= ap->a_events & (POLLIN | POLLRDNORM);
-			else
-				selrecord(curthread, &sce_in->rsel);
-		}
-		if (sce_out != NULL && (ap->a_events & (POLLOUT | POLLWRNORM))) {
-			if (sce_out->cur != sce_out->fill)
-				revents |= ap->a_events & (POLLOUT | POLLWRNORM);
-			else
-				selrecord(curthread, &sce_out->rsel);
-		}
-		break;
-	case UE_BULK:
-		/*
-		 * We have no easy way of determining if a read will
-		 * yield any data or a write will happen.
-		 * Pretend they will.
-		 */
-		revents |= ap->a_events &
-			   (POLLIN | POLLRDNORM | POLLOUT | POLLWRNORM);
-		break;
-	default:
-		break;
-	}
-	crit_exit();
-	ap->a_events = revents;
-	return (0);
 }
 
 static struct filterops ugen_filtops_read =

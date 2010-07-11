@@ -86,7 +86,6 @@
 #include <sys/fcntl.h>
 #include <sys/conf.h>
 #include <sys/dkstat.h>
-#include <sys/poll.h>
 #include <sys/kernel.h>
 #include <sys/vnode.h>
 #include <sys/signalvar.h>
@@ -1154,42 +1153,6 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 		return (ENOIOCTL);
 #endif
 	}
-	return (0);
-}
-
-int
-ttypoll(struct dev_poll_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	int events = ap->a_events;
-	int revents = 0;
-	struct tty *tp;
-
-	tp = dev->si_tty;
-	/* XXX used to return ENXIO, but that means true! */
-	if (tp == NULL) {
-		ap->a_events = (events & (POLLIN | POLLOUT | POLLRDNORM |
-				POLLWRNORM)) | POLLHUP;
-		return(0);
-	}
-
-	crit_enter();
-	if (events & (POLLIN | POLLRDNORM)) {
-		if (ttnread(tp) > 0 || ISSET(tp->t_state, TS_ZOMBIE))
-			revents |= events & (POLLIN | POLLRDNORM);
-		else
-			selrecord(curthread, &tp->t_rsel);
-	}
-	if (events & (POLLOUT | POLLWRNORM)) {
-		if ((tp->t_outq.c_cc <= tp->t_olowat &&
-		     ISSET(tp->t_state, TS_CONNECTED))
-		    || ISSET(tp->t_state, TS_ZOMBIE))
-			revents |= events & (POLLOUT | POLLWRNORM);
-		else
-			selrecord(curthread, &tp->t_wsel);
-	}
-	crit_exit();
-	ap->a_events = revents;
 	return (0);
 }
 

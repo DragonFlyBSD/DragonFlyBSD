@@ -74,7 +74,6 @@ static	d_read_t	mmread;
 static	d_write_t	mmwrite;
 static	d_ioctl_t	mmioctl;
 static	d_mmap_t	memmmap;
-static	d_poll_t	mmpoll;
 static	d_kqfilter_t	mmkqfilter;
 
 #define CDEV_MAJOR 2
@@ -85,7 +84,6 @@ static struct dev_ops mem_ops = {
 	.d_read =	mmread,
 	.d_write =	mmwrite,
 	.d_ioctl =	mmioctl,
-	.d_poll =	mmpoll,
 	.d_kqfilter =	mmkqfilter,
 	.d_mmap =	memmmap,
 };
@@ -527,25 +525,6 @@ random_ioctl(cdev_t dev, u_long cmd, caddr_t data, int flags, struct ucred *cred
 		break;
 	}
 	return (error);
-}
-
-int
-mmpoll(struct dev_poll_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	int revents;
-
-	switch (minor(dev)) {
-	case 3:		/* /dev/random */
-		revents = random_poll(dev, ap->a_events);
-		break;
-	case 4:		/* /dev/urandom */
-	default:
-		revents = seltrue(dev, ap->a_events);
-		break;
-	}
-	ap->a_events = revents;
-	return (0);
 }
 
 static int

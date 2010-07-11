@@ -63,7 +63,6 @@
 #include <sys/select.h>
 #include <sys/proc.h>
 #include <sys/vnode.h>
-#include <sys/poll.h>
 #include <sys/event.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
@@ -132,7 +131,6 @@ d_close_t	uhidclose;
 d_read_t	uhidread;
 d_write_t	uhidwrite;
 d_ioctl_t	uhidioctl;
-d_poll_t	uhidpoll;
 d_kqfilter_t	uhidkqfilter;
 
 static void uhidfilt_detach(struct knote *);
@@ -148,7 +146,6 @@ static struct dev_ops uhid_ops = {
 	.d_read =	uhidread,
 	.d_write =	uhidwrite,
 	.d_ioctl =	uhidioctl,
-	.d_poll =	uhidpoll,
 	.d_kqfilter =	uhidkqfilter
 };
 
@@ -670,32 +667,6 @@ uhidioctl(struct dev_ioctl_args *ap)
 	if (--sc->sc_refcnt < 0)
 		usb_detach_wakeup(sc->sc_dev);
 	return (error);
-}
-
-int
-uhidpoll(struct dev_poll_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	struct uhid_softc *sc;
-	int revents = 0;
-
-	sc = devclass_get_softc(uhid_devclass, UHIDUNIT(dev));
-
-	if (sc->sc_dying)
-		return (EIO);
-
-	crit_enter();
-	if (ap->a_events & (POLLOUT | POLLWRNORM))
-		revents |= ap->a_events & (POLLOUT | POLLWRNORM);
-	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		if (sc->sc_q.c_cc > 0)
-			revents |= ap->a_events & (POLLIN | POLLRDNORM);
-		else
-			selrecord(curthread, &sc->sc_rsel);
-	}
-	crit_exit();
-	ap->a_events = revents;
-	return (0);
 }
 
 static struct filterops uhidfiltops_read =

@@ -49,7 +49,6 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/conf.h>
-#include <sys/poll.h>
 #include <sys/event.h>
 
 #include <sys/bus.h>
@@ -77,7 +76,6 @@
 static	d_open_t	fw_open;
 static	d_close_t	fw_close;
 static	d_ioctl_t	fw_ioctl;
-static	d_poll_t	fw_poll;
 static	d_kqfilter_t	fw_kqfilter;
 static	d_read_t	fw_read;	/* for Isochronous packet */
 static	d_write_t	fw_write;
@@ -96,7 +94,6 @@ struct dev_ops firewire_ops =
 	.d_read =	fw_read,
 	.d_write =	fw_write,
 	.d_ioctl =	fw_ioctl,
-	.d_poll =	fw_poll,
 	.d_kqfilter =	fw_kqfilter,
 	.d_mmap =	fw_mmap,
 	.d_strategy =	fw_strategy,
@@ -714,37 +711,6 @@ out:
 		break;
 	}
 	return err;
-}
-int
-fw_poll(struct dev_poll_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	struct firewire_softc *sc;
-	struct fw_xferq *ir;
-	int revents;
-	int tmp;
-	int unit = DEV2UNIT(dev);
-
-	if (DEV_FWMEM(dev))
-		return fwmem_poll(ap);
-
-	sc = devclass_get_softc(firewire_devclass, unit);
-	ir = ((struct fw_drv1 *)dev->si_drv1)->ir;
-	revents = 0;
-	tmp = POLLIN | POLLRDNORM;
-	if (ap->a_events & tmp) {
-		if (STAILQ_FIRST(&ir->q) != NULL)
-			revents |= tmp;
-		else
-			selrecord(curthread, &ir->rsel);
-	}
-	tmp = POLLOUT | POLLWRNORM;
-	if (ap->a_events & tmp) {
-		/* XXX should be fixed */	
-		revents |= tmp;
-	}
-	ap->a_events = revents;
-	return(0);
 }
 
 static struct filterops fw_read_filterops =

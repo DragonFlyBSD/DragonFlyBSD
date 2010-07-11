@@ -71,7 +71,6 @@
 #include <sys/bus.h>
 #include <sys/conf.h>
 #include <sys/device.h>
-#include <sys/poll.h>
 #include <sys/event.h>
 #include <sys/syslog.h>
 #include <sys/malloc.h>
@@ -242,7 +241,6 @@ static d_open_t psmopen;
 static d_close_t psmclose;
 static d_read_t psmread;
 static d_ioctl_t psmioctl;
-static d_poll_t psmpoll;
 static d_kqfilter_t psmkqfilter;
 
 static int enable_aux_dev (KBDC);
@@ -351,7 +349,6 @@ static struct dev_ops psm_ops = {
 	.d_close =	psmclose,
 	.d_read =	psmread,
 	.d_ioctl =	psmioctl,
-	.d_poll =	psmpoll,
 	.d_kqfilter =	psmkqfilter
 };
 
@@ -2382,26 +2379,6 @@ psmintr(void *arg)
     	}
         selwakeup(&sc->rsel);
     }
-}
-
-static int
-psmpoll(struct dev_poll_args *ap)
-{
-    cdev_t dev = ap->a_head.a_dev;
-    struct psm_softc *sc = PSM_SOFTC(PSM_UNIT(dev));
-    int revents = 0;
-
-    /* Return true if a mouse event available */
-    crit_enter();
-    if (ap->a_events & (POLLIN | POLLRDNORM)) {
-	if (sc->queue.count > 0)
-	    revents |= ap->a_events & (POLLIN | POLLRDNORM);
-	else
-	    selrecord(curthread, &sc->rsel);
-    }
-    crit_exit();
-    ap->a_events = revents;
-    return (0);
 }
 
 static struct filterops psmfiltops =

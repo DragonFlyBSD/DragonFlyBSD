@@ -390,7 +390,6 @@ static struct dev_ops sio_ops = {
 	.d_read =	ttyread,
 	.d_write =	siowrite,
 	.d_ioctl =	sioioctl,
-	.d_poll =	ttypoll,
 	.d_kqfilter =	ttykqfilter,
 	.d_revoke =	ttyrevoke
 };

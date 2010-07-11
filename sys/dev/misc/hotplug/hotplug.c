@@ -28,7 +28,6 @@
 #include <sys/device.h>
 #include <sys/lock.h>
 #include <sys/selinfo.h>
-#include <sys/poll.h>
 #include <sys/event.h>
 #include <sys/uio.h>
 #include <sys/thread.h>
@@ -42,7 +41,6 @@
 static d_open_t		hotplugopen;
 static d_close_t	hotplugclose;
 static d_read_t		hotplugread;
-static d_poll_t		hotplugpoll;
 static d_kqfilter_t	hotplugkqfilter;
 
 static void hotplugfiltdetach(struct knote *);
@@ -53,7 +51,6 @@ static struct dev_ops hotplug_ops = {
 	.d_open =	hotplugopen,
 	.d_close =	hotplugclose,
 	.d_read =	hotplugread,
-	.d_poll =	hotplugpoll,
 	.d_kqfilter =	hotplugkqfilter
 };
 
@@ -105,24 +102,6 @@ hotplugclose(struct dev_close_args *ap)
 	wakeup(&hpsc);
 	lockmgr(&hpsc.lock, LK_RELEASE);
 	return 0;
-}
-
-static int
-hotplugpoll(struct dev_poll_args *ap)
-{
-	int	revents = 0;
-
-	lockmgr(&hpsc.lock, LK_EXCLUSIVE);
-	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		if (!TAILQ_EMPTY(&hpsc.queue))
-			revents = ap->a_events & (POLLIN | POLLRDNORM);
-		else
-			selrecord(curthread, &hpsc.sel);
-	}
-	lockmgr(&hpsc.lock, LK_RELEASE);
-
-	ap->a_events = revents;
-	return (0);
 }
 
 static struct filterops hotplugfiltops =

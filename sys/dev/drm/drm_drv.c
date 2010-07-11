@@ -124,7 +124,6 @@ static struct dev_ops drm_cdevsw = {
 	.d_close =	drm_close,
 	.d_read =       drm_read,
 	.d_ioctl =      drm_ioctl,
-	.d_poll =       drm_poll,
 	.d_kqfilter =	drm_kqfilter,
 	.d_mmap =       drm_mmap
 };

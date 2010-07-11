@@ -43,7 +43,6 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 
-#include <sys/poll.h>
 #include <sys/event.h>
 
 #include <sys/conf.h>
@@ -144,9 +143,6 @@ PDEVSTATIC d_write_t	i4btelwrite;
 PDEVSTATIC d_ioctl_t	i4btelioctl;
 PDEVSTATIC d_kqfilter_t	i4btelkqfilter;
 
-PDEVSTATIC d_poll_t i4btelpoll;
-#define POLLFIELD i4btelpoll
-
 PDEVSTATIC void i4btelfilt_detach(struct knote *);
 PDEVSTATIC int i4btelfilt_read(struct knote *, long);
 PDEVSTATIC int i4btelfilt_write(struct knote *, long);
@@ -160,7 +156,6 @@ static struct dev_ops i4btel_ops = {
 	.d_read =	i4btelread,
 	.d_write =	i4btelwrite,
 	.d_ioctl =	i4btelioctl,
-	.d_poll =	POLLFIELD,
 	.d_kqfilter = 	i4btelkqfilter
 };
 
@@ -690,85 +685,6 @@ tel_tone(tel_sc_t *sc)
 /*---------------------------------------------------------------------------*
  *	device driver poll
  *---------------------------------------------------------------------------*/
-PDEVSTATIC int
-i4btelpoll(struct dev_poll_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	int revents = 0;	/* Events we found */
-	int unit = UNIT(dev);
-	int func = FUNC(dev);	
-
-	tel_sc_t *sc = &tel_sc[unit][func];
-	
-	crit_enter();
-
-	if(!(sc->devstate & ST_ISOPEN))
-	{
-		NDBGL4(L4_TELDBG, "i4btel%d, !ST_ISOPEN", unit);
-		crit_exit();
-		ap->a_events = 0;
-		return(0);
-	}
-
-	if(func == FUNCTEL)
-	{
-		/*
-		 * Writes are OK if we are connected and the
-	         * transmit queue can take them
-		 */
-		 
-		if((ap->a_events & (POLLOUT|POLLWRNORM))	&&
-			(sc->devstate & ST_CONNECTED)	&&
-			(sc->isdn_linktab != NULL)	&&
-			(!IF_QFULL(sc->isdn_linktab->tx_queue)))
-		{
-			NDBGL4(L4_TELDBG, "i4btel%d, POLLOUT", unit);
-			revents |= (ap->a_events & (POLLOUT|POLLWRNORM));
-		}
-		
-		/* ... while reads are OK if we have any data */
-	
-		if((ap->a_events & (POLLIN|POLLRDNORM))	&&
-			(sc->devstate & ST_CONNECTED)	&&
-			(sc->isdn_linktab != NULL)	&&
-			(!IF_QEMPTY(sc->isdn_linktab->rx_queue)))
-		{
-			NDBGL4(L4_TELDBG, "i4btel%d, POLLIN", unit);
-			revents |= (ap->a_events & (POLLIN|POLLRDNORM));
-		}
-			
-		if(revents == 0)
-		{
-			NDBGL4(L4_TELDBG, "i4btel%d, selrecord", unit);
-			selrecord(curthread, &sc->selp);
-		}
-	}
-	else if(func == FUNCDIAL)
-	{
-		if(ap->a_events & (POLLOUT|POLLWRNORM))
-		{
-			NDBGL4(L4_TELDBG, "i4bteld%d,  POLLOUT", unit);
-			revents |= (ap->a_events & (POLLOUT|POLLWRNORM));
-		}
-
-		if(ap->a_events & (POLLIN|POLLRDNORM))
-		{
-			NDBGL4(L4_TELDBG, "i4bteld%d,  POLLIN, result = %d", unit, sc->result);
-			if(sc->result != 0)
-				revents |= (ap->a_events & (POLLIN|POLLRDNORM));
-		}
-			
-		if(revents == 0)
-		{
-			NDBGL4(L4_TELDBG, "i4bteld%d,  selrecord", unit);
-			selrecord(curthread, &sc->selp);
-		}
-	}
-	crit_exit();
-	ap->a_events = revents;
-	return (0);
-}
-
 PDEVSTATIC struct filterops i4btelfiltops_read =
 	{ 1, NULL, i4btelfilt_detach, i4btelfilt_read };
 PDEVSTATIC struct filterops i4btelfiltops_write =

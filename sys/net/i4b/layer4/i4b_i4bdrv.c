@@ -72,7 +72,6 @@
 
 #include "i4b_l4.h"
 
-#include <sys/poll.h>
 #include <sys/event.h>
 
 struct selinfo select_rd_info;
@@ -93,9 +92,6 @@ PDEVSTATIC void i4bkqfilt_detach(struct knote *);
 PDEVSTATIC int i4bkqfilt_read(struct knote *, long);
 PDEVSTATIC int i4bkqfilt_write(struct knote *, long);
 
-PDEVSTATIC	d_poll_t	i4bpoll;
-#define POLLFIELD		i4bpoll
-
 #define CDEV_MAJOR 60
 
 static struct dev_ops i4b_ops = {
@@ -104,7 +100,6 @@ static struct dev_ops i4b_ops = {
 	.d_close =	i4bclose,
 	.d_read =	i4bread,
 	.d_ioctl =	i4bioctl,
-	.d_poll =	POLLFIELD,
 	.d_kqfilter =	i4bkqfilter
 };
 
@@ -733,36 +728,8 @@ diag_done:
 }
 
 /*---------------------------------------------------------------------------*
- *	i4bpoll - device driver poll routine
+ *	i4bkqfilter - device driver poll routine
  *---------------------------------------------------------------------------*/
-PDEVSTATIC int
-i4bpoll(struct dev_poll_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	int revents;
-
-	if (minor(dev))
-		return(ENODEV);
-
-	revents = 0;
-
-	if (ap->a_events & (POLLIN|POLLRDNORM)) {
-		crit_enter();
-		if (!IF_QEMPTY(&i4b_rdqueue)) {
-			revents |= POLLIN | POLLRDNORM;
-		} else {
-			selrecord(curthread, &select_rd_info);
-		}
-		crit_exit();
-		return(0);
-	}
-	if (ap->a_events & (POLLOUT|POLLWRNORM)) {
-		revents |= ap->a_events & (POLLOUT | POLLWRNORM);
-	}
-	ap->a_events = revents;
-	return(0);
-}
-
 static struct filterops i4bkqfiltops_read =
 	{ 1, NULL, i4bkqfilt_detach, i4bkqfilt_read };
 static struct filterops i4bkqfiltops_write =

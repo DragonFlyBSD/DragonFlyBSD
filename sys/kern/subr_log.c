@@ -50,7 +50,6 @@
 #include <sys/msgbuf.h>
 #include <sys/signalvar.h>
 #include <sys/kernel.h>
-#include <sys/poll.h>
 #include <sys/event.h>
 #include <sys/filedesc.h>
 #include <sys/sysctl.h>
@@ -63,7 +62,6 @@ static	d_open_t	logopen;
 static	d_close_t	logclose;
 static	d_read_t	logread;
 static	d_ioctl_t	logioctl;
-static	d_poll_t	logpoll;
 static	d_kqfilter_t	logkqfilter;
 
 static	void logtimeout(void *arg);
@@ -77,7 +75,6 @@ static struct dev_ops log_ops = {
 	.d_close =	logclose,
 	.d_read =	logread,
 	.d_ioctl =	logioctl,
-	.d_poll =	logpoll,
 	.d_kqfilter =	logkqfilter
 };
 
@@ -163,24 +160,6 @@ logread(struct dev_read_args *ap)
 			mbp->msg_bufr = 0;
 	}
 	return (error);
-}
-
-/*ARGSUSED*/
-static	int
-logpoll(struct dev_poll_args *ap)
-{
-	int revents = 0;
-
-	crit_enter();
-	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		if (msgbufp->msg_bufr != msgbufp->msg_bufx)
-			revents |= ap->a_events & (POLLIN | POLLRDNORM);
-		else
-			selrecord(curthread, &logsoftc.sc_selp);
-	}
-	crit_exit();
-	ap->a_events = revents;
-	return (0);
 }
 
 static struct filterops logread_filtops =

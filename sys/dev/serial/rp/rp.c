@@ -578,7 +578,6 @@ struct dev_ops rp_ops = {
 	.d_read =	ttyread,
 	.d_write =	rpwrite,
 	.d_ioctl =	rpioctl,
-	.d_poll =	ttypoll,
 	.d_kqfilter =	ttykqfilter,
 	.d_revoke =	ttyrevoke
 };

@@ -40,7 +40,6 @@
 #include <sys/fcntl.h>
 #include <sys/malloc.h>
 #include <sys/file.h>		/* Must come after sys/malloc.h */
-#include <sys/poll.h>
 #include <sys/proc.h>
 #include <sys/select.h>
 #include <sys/socket.h>
@@ -68,7 +67,6 @@ static d_close_t nsmb_dev_close;
 static d_read_t	 nsmb_dev_read;
 static d_write_t nsmb_dev_write;
 static d_ioctl_t nsmb_dev_ioctl;
-static d_poll_t	 nsmb_dev_poll;
 static d_clone_t nsmbclone;
 DEVFS_DECLARE_CLONE_BITMAP(nsmb);
 
@@ -96,7 +94,6 @@ static struct dev_ops nsmb_ops = {
 	.d_read =	nsmb_dev_read,
 	.d_write =	nsmb_dev_write,
 	.d_ioctl = 	nsmb_dev_ioctl,
-	.d_poll =	nsmb_dev_poll,
 };
 
 
@@ -328,12 +325,6 @@ static int
 nsmb_dev_write(struct dev_write_args *ap)
 {
 	return EACCES;
-}
-
-static int
-nsmb_dev_poll(struct dev_poll_args *ap)
-{
-	return ENODEV;
 }
 
 static int

@@ -109,11 +109,6 @@ int drm_read(struct dev_read_args *ap)
 	return 0;
 }
 
-int drm_poll(struct dev_poll_args *ap)
-{
-	return 0;
-}
-
 static int
 drmfilt(struct knote *kn, long hint)
 {

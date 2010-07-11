@@ -149,7 +149,6 @@
 #include <sys/uio.h>
 #include <sys/syslog.h>
 #include <sys/selinfo.h>
-#include <sys/poll.h>
 #include <sys/event.h>
 #include <sys/thread2.h>
 
@@ -215,11 +214,11 @@ static	d_open_t	twopen;
 static	d_close_t	twclose;
 static	d_read_t	twread;
 static	d_write_t	twwrite;
-static	d_poll_t	twpoll;
 static	d_kqfilter_t	twkqfilter;
 
 static void twfilter_detach(struct knote *);
-static int twfilter(struct knote *, long);
+static int twfilter_read(struct knote *, long);
+static int twfilter_write(struct knote *, long);
 
 #define CDEV_MAJOR 19
 static struct dev_ops tw_ops = {
@@ -228,7 +227,6 @@ static struct dev_ops tw_ops = {
 	.d_close =	twclose,
 	.d_read =	twread,
 	.d_write =	twwrite,
-	.d_poll =	twpoll,
 	.d_kqfilter = 	twkqfilter
 };
 
@@ -527,29 +525,10 @@ twwrite(struct dev_write_args *ap)
  * Determine if there is data available for reading
  */
 
-int
-twpoll(struct dev_poll_args *ap)
-{
-  cdev_t dev = ap->a_head.a_dev;
-  struct tw_sc *sc;
-  int revents = 0;
-
-  sc = &tw_sc[TWUNIT(dev)];
-  crit_enter();
-  /* XXX is this correct?  the original code didn't test select rw mode!! */
-  if (ap->a_events & (POLLIN | POLLRDNORM)) {
-    if(sc->sc_nextin != sc->sc_nextout)
-      revents |= ap->a_events & (POLLIN | POLLRDNORM);
-    else
-      selrecord(curthread, &sc->sc_selp);
-  }
-  crit_exit();
-  ap->a_events = revents;
-  return(0);
-}
-
-static struct filterops twfiltops =
-	{ 1, NULL, twfilter_detach, twfilter };
+static struct filterops twfiltops_read =
+	{ 1, NULL, twfilter_detach, twfilter_read };
+static struct filterops twfiltops_write =
+	{ 1, NULL, twfilter_detach, twfilter_write };
 
 static int
 twkqfilter(struct dev_kqfilter_args *ap)
@@ -564,7 +543,12 @@ twkqfilter(struct dev_kqfilter_args *ap)
   switch (kn->kn_filter) {
   case EVFILT_READ:
     sc = &tw_sc[TWUNIT(dev)];
-    kn->kn_fop = &twfiltops;
+    kn->kn_fop = &twfiltops_read;
+    kn->kn_hook = (caddr_t)sc;
+    break;
+  case EVFILT_WRITE:
+    sc = &tw_sc[TWUNIT(dev)];
+    kn->kn_fop = &twfiltops_write;
     kn->kn_hook = (caddr_t)sc;
     break;
   default:
@@ -593,7 +577,7 @@ twfilter_detach(struct knote *kn)
 }
 
 static int
-twfilter(struct knote *kn, long hint)
+twfilter_read(struct knote *kn, long hint)
 {
   struct tw_sc *sc = (struct tw_sc *)kn->kn_hook;
   int ready = 0;
@@ -604,6 +588,13 @@ twfilter(struct knote *kn, long hint)
   crit_exit();
 
   return (ready);
+}
+
+static int
+twfilter_write(struct knote *kn, long hint)
+{
+  /* write() is always OK */
+  return (1);
 }
 
 /*

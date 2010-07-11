@@ -60,7 +60,6 @@
 #include "../include/i4b_l3l4.h"
 #include "../layer4/i4b_l4.h"
 
-#include <sys/poll.h>
 #include <sys/event.h>
 #include <sys/filio.h>
 
@@ -125,9 +124,6 @@ PDEVSTATIC void i4brbchkfilt_detach(struct knote *);
 PDEVSTATIC int i4brbchkfilt_read(struct knote *, long);
 PDEVSTATIC int i4brbchkfilt_write(struct knote *, long);
 
-PDEVSTATIC d_poll_t i4brbchpoll;
-#define POLLFIELD	i4brbchpoll
-
 #define CDEV_MAJOR 57
 
 static struct dev_ops i4brbch_ops = {
@@ -137,7 +133,6 @@ static struct dev_ops i4brbch_ops = {
 	.d_read =	i4brbchread,
 	.d_write =	i4brbchwrite,
 	.d_ioctl =	i4brbchioctl,
-	.d_poll =	POLLFIELD,
 	.d_kqfilter =	i4brbchkqfilter
 };
 
@@ -536,59 +531,6 @@ i4brbchioctl(struct dev_ioctl_args *ap)
 /*---------------------------------------------------------------------------*
  *	device driver poll
  *---------------------------------------------------------------------------*/
-PDEVSTATIC int
-i4brbchpoll(struct dev_poll_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	int revents = 0;	/* Events we found */
-	int unit = minor(dev);
-	struct rbch_softc *sc = &rbch_softc[unit];
-	
-	/* We can't check for anything but IN or OUT */
-	crit_enter();
-
-	if(!(sc->sc_devstate & ST_ISOPEN))
-	{
-		crit_exit();
-		return(POLLNVAL);
-	}
-
-	/*
-	 * Writes are OK if we are connected and the
-         * transmit queue can take them
-	 */
-	 
-	if((ap->a_events & (POLLOUT|POLLWRNORM)) &&
-	   (sc->sc_devstate & ST_CONNECTED) &&
-	   !IF_QFULL(isdn_linktab[unit]->tx_queue))
-	{
-		revents |= (ap->a_events & (POLLOUT|POLLWRNORM));
-	}
-	
-	/* ... while reads are OK if we have any data */
-
-	if((ap->a_events & (POLLIN|POLLRDNORM)) &&
-	   (sc->sc_devstate & ST_CONNECTED))
-	{
-		struct ifqueue *iqp;
-
-		if(sc->sc_bprot == BPROT_RHDLC)
-			iqp = &sc->sc_hdlcq;
-		else
-			iqp = isdn_linktab[unit]->rx_queue;	
-
-		if(!IF_QEMPTY(iqp))
-			revents |= (ap->a_events & (POLLIN|POLLRDNORM));
-	}
-		
-	if(revents == 0)
-		selrecord(curthread, &sc->selp);
-
-	crit_exit();
-	ap->a_events = revents;
-	return (0);
-}
-
 static struct filterops i4brbchkfiltops_read =
 	{ 1, NULL, i4brbchkfilt_detach, i4brbchkfilt_read };
 static struct filterops i4brbchkfiltops_write =

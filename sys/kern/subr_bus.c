@@ -46,7 +46,6 @@
 #include <sys/selinfo.h>
 #include <sys/uio.h>
 #include <sys/filio.h>
-#include <sys/poll.h>
 #include <sys/event.h>
 #include <sys/signalvar.h>
 
@@ -143,7 +142,6 @@ static d_open_t		devopen;
 static d_close_t	devclose;
 static d_read_t		devread;
 static d_ioctl_t	devioctl;
-static d_poll_t		devpoll;
 static d_kqfilter_t	devkqfilter;
 
 static struct dev_ops devctl_ops = {
@@ -152,7 +150,6 @@ static struct dev_ops devctl_ops = {
 	.d_close =	devclose,
 	.d_read =	devread,
 	.d_ioctl =	devioctl,
-	.d_poll =	devpoll,
 	.d_kqfilter =	devkqfilter
 };
 
@@ -275,24 +272,6 @@ devioctl(struct dev_ioctl_args *ap)
 		break;
 	}
 	return (ENOTTY);
-}
-
-static	int
-devpoll(struct dev_poll_args *ap)
-{
-	int	revents = 0;
-
-	lockmgr(&devsoftc.lock, LK_EXCLUSIVE);
-	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		if (!TAILQ_EMPTY(&devsoftc.devq))
-			revents = ap->a_events & (POLLIN | POLLRDNORM);
-		else
-			selrecord(curthread, &devsoftc.sel);
-	}
-	lockmgr(&devsoftc.lock, LK_RELEASE);
-
-	ap->a_events = revents;
-	return (0);
 }
 
 static void dev_filter_detach(struct knote *);

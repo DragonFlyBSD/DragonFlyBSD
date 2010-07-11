@@ -46,7 +46,6 @@
 #include <sys/buf.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
-#include <sys/poll.h>
 #include <sys/event.h>
 #include <sys/selinfo.h>
 #include <sys/uio.h>
@@ -186,7 +185,6 @@ static d_open_t		ascopen;
 static d_close_t	ascclose;
 static d_read_t		ascread;
 static d_ioctl_t	ascioctl;
-static d_poll_t		ascpoll;
 static d_kqfilter_t	asckqfilter;
 
 static void ascfilter_detach(struct knote *kn);
@@ -200,7 +198,6 @@ static struct dev_ops asc_ops = {
 	.d_close =	ascclose,
 	.d_read =	ascread,
 	.d_ioctl =	ascioctl,
-	.d_poll =	ascpoll,
 	.d_kqfilter =	asckqfilter
 };
 
@@ -850,31 +847,6 @@ ascioctl(struct dev_ioctl_args *ap)
   default: return ENOTTY;
   }
   return SUCCESS;
-}
-
-STATIC int
-ascpoll(struct dev_poll_args *ap)
-{
-    cdev_t dev = ap->a_head.a_dev;
-    int unit = UNIT(minor(dev));
-    struct asc_unit *scu = unittab + unit;
-    int revents = 0;
-
-    crit_enter();
-
-    if (ap->a_events & (POLLIN | POLLRDNORM)) {
-	if (scu->sbuf.count >0)
-	    revents |= ap->a_events & (POLLIN | POLLRDNORM);
-	else {
-	    if (!(scu->flags & DMA_ACTIVE))
-		dma_restart(scu);
-
-	    selrecord(curthread, &scu->selp);
-	}
-    }
-    crit_exit();
-    ap->a_events = revents;
-    return (0);
 }
 
 static struct filterops ascfiltops =

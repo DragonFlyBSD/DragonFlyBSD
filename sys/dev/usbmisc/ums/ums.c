@@ -55,7 +55,6 @@
 #include <sys/file.h>
 #include <sys/select.h>
 #include <sys/vnode.h>
-#include <sys/poll.h>
 #include <sys/event.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
@@ -140,7 +139,6 @@ static d_open_t  ums_open;
 static d_close_t ums_close;
 static d_read_t  ums_read;
 static d_ioctl_t ums_ioctl;
-static d_poll_t  ums_poll;
 static d_kqfilter_t ums_kqfilter;
 
 static void ums_filt_detach(struct knote *);
@@ -154,7 +152,6 @@ static struct dev_ops ums_ops = {
 	.d_close =	ums_close,
 	.d_read =	ums_read,
 	.d_ioctl =	ums_ioctl,
-	.d_poll =	ums_poll,
 	.d_kqfilter =	ums_kqfilter
 };
 
@@ -669,34 +666,6 @@ ums_read(struct dev_read_args *ap)
 	crit_exit();
 
 	return 0;
-}
-
-static int
-ums_poll(struct dev_poll_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	struct ums_softc *sc;
-	int revents = 0;
-
-	sc = devclass_get_softc(ums_devclass, UMSUNIT(dev));
-
-	if (!sc) {
-		ap->a_events = 0;
-		return 0;
-	}
-
-	crit_enter();
-	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		if (sc->qcount) {
-			revents = ap->a_events & (POLLIN | POLLRDNORM);
-		} else {
-			/* sc->state |= UMS_SELECT; */
-			selrecord(curthread, &sc->rsel);
-		}
-	}
-	crit_exit();
-	ap->a_events = revents;
-	return (0);
 }
 
 static struct filterops ums_filtops =

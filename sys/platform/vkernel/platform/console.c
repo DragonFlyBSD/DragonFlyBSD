@@ -88,7 +88,6 @@ static struct dev_ops vcons_ops = {
 	.d_read =	ttyread,
 	.d_write =	ttywrite,
 	.d_ioctl =	vcons_ioctl,
-	.d_poll =	ttypoll,
 	.d_kqfilter =	ttykqfilter,
 };
 

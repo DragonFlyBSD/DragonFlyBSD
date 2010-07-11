@@ -57,7 +57,6 @@
 #include <sys/ttycom.h>
 #include <sys/filedesc.h>
 
-#include <sys/poll.h>
 #include <sys/event.h>
 
 #include <sys/socket.h>
@@ -138,7 +137,6 @@ static d_close_t	bpfclose;
 static d_read_t		bpfread;
 static d_write_t	bpfwrite;
 static d_ioctl_t	bpfioctl;
-static d_poll_t		bpfpoll;
 static d_kqfilter_t	bpfkqfilter;
 
 #define CDEV_MAJOR 23
@@ -149,7 +147,6 @@ static struct dev_ops bpf_ops = {
 	.d_read =	bpfread,
 	.d_write =	bpfwrite,
 	.d_ioctl =	bpfioctl,
-	.d_poll =	bpfpoll,
 	.d_kqfilter =	bpfkqfilter
 };
 
@@ -1069,51 +1066,6 @@ bpf_setif(struct bpf_d *d, struct ifreq *ifr)
 
 	/* Not found. */
 	return(ENXIO);
-}
-
-/*
- * Support for select() and poll() system calls
- *
- * Return true iff the specific operation will not block indefinitely.
- * Otherwise, return false but make a note that a selwakeup() must be done.
- */
-static int
-bpfpoll(struct dev_poll_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	struct bpf_d *d;
-	int revents;
-
-	d = dev->si_drv1;
-	if (d->bd_bif == NULL)
-		return(ENXIO);
-
-	revents = ap->a_events & (POLLOUT | POLLWRNORM);
-	crit_enter();
-	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		/*
-		 * An imitation of the FIONREAD ioctl code.
-		 * XXX not quite.  An exact imitation:
-		 *	if (d->b_slen != 0 ||
-		 *	    (d->bd_hbuf != NULL && d->bd_hlen != 0)
-		 */
-		if (d->bd_hlen != 0 ||
-		    ((d->bd_immediate || d->bd_state == BPF_TIMED_OUT) &&
-		    d->bd_slen != 0)) {
-			revents |= ap->a_events & (POLLIN | POLLRDNORM);
-		} else {
-			selrecord(curthread, &d->bd_sel);
-			/* Start the read timeout if necessary. */
-			if (d->bd_rtout > 0 && d->bd_state == BPF_IDLE) {
-				callout_reset(&d->bd_callout, d->bd_rtout,
-				    bpf_timed_out, d);
-				d->bd_state = BPF_WAITING;
-			}
-		}
-	}
-	crit_exit();
-	ap->a_events = revents;
-	return(0);
 }
 
 static struct filterops bpf_read_filtops =

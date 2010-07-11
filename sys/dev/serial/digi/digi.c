@@ -153,7 +153,6 @@ static struct dev_ops digi_ops = {
 	.d_read =	digiread,
 	.d_write =	digiwrite,
 	.d_ioctl =	digiioctl,
-	.d_poll =	ttypoll,
 	.d_kqfilter =	ttykqfilter,
 	.d_revoke =	ttyrevoke
 };

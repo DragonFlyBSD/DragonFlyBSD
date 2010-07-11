@@ -60,7 +60,6 @@
 #include <sys/signalvar.h>
 #include <sys/malloc.h>
 #include <sys/mman.h>
-#include <sys/poll.h>
 #include <sys/select.h>
 #include <sys/event.h>
 #include <sys/bus.h>
@@ -164,7 +163,6 @@ static	d_read_t	bktr_read;
 static	d_write_t	bktr_write;
 static	d_ioctl_t	bktr_ioctl;
 static	d_mmap_t	bktr_mmap;
-static	d_poll_t	bktr_poll;
 static	d_kqfilter_t	bktr_kqfilter;
 
 static void bktr_filter_detach(struct knote *);
@@ -178,7 +176,6 @@ static struct dev_ops bktr_ops = {
 	.d_read =	bktr_read,
 	.d_write =	bktr_write,
 	.d_ioctl =	bktr_ioctl,
-	.d_poll =	bktr_poll,
 	.d_kqfilter =	bktr_kqfilter,
 	.d_mmap =	bktr_mmap,
 };
@@ -722,45 +719,6 @@ bktr_mmap(struct dev_mmap_args *ap)
 
 	ap->a_result = atop(vtophys(bktr->bigbuf) + ap->a_offset);
 	return(0);
-}
-
-static int
-bktr_poll(struct dev_poll_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	int		unit;
-	bktr_ptr_t	bktr;
-	int revents = 0; 
-
-	unit = UNIT(minor(dev));
-
-	/* Get the device data */
-	bktr = (struct bktr_softc*)devclass_get_softc(bktr_devclass, unit);
-	if (bktr == NULL) {
-		/* the device is no longer valid/functioning */
-		return (ENXIO);
-	}
-
-	LOCK_VBI(bktr);
-	crit_enter();
-
-	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-
-		switch ( FUNCTION( minor(dev) ) ) {
-		case VBI_DEV:
-			if(bktr->vbisize == 0)
-				selrecord(curthread, &bktr->vbi_select);
-			else
-				revents |= ap->a_events & (POLLIN | POLLRDNORM);
-			break;
-		}
-	}
-
-	crit_exit();
-	UNLOCK_VBI(bktr);
-
-	ap->a_events = revents;
-	return (0);
 }
 
 static struct filterops bktr_filterops =

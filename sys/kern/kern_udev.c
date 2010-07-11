@@ -37,7 +37,6 @@
 #include <sys/proc.h>
 #include <sys/buf.h>
 #include <sys/conf.h>
-#include <sys/poll.h>
 #include <sys/event.h>
 #include <sys/ioccom.h>
 #include <sys/malloc.h>
@@ -57,7 +56,6 @@ static cdev_t		udev_dev;
 static d_open_t		udev_dev_open;
 static d_close_t	udev_dev_close;
 static d_read_t		udev_dev_read;
-static d_poll_t		udev_dev_poll;
 static d_kqfilter_t	udev_dev_kqfilter;
 static d_ioctl_t	udev_dev_ioctl;
 
@@ -108,7 +106,6 @@ static struct dev_ops udev_dev_ops = {
 	.d_open = udev_dev_open,
 	.d_close = udev_dev_close,
 	.d_read = udev_dev_read,
-	.d_poll = udev_dev_poll,
 	.d_kqfilter = udev_dev_kqfilter,
 	.d_ioctl = udev_dev_ioctl
 };
@@ -537,24 +534,6 @@ udev_dev_close(struct dev_close_args *ap)
 	wakeup(&udevctx);
 
 	return 0;
-}
-
-static int
-udev_dev_poll(struct dev_poll_args *ap)
-{
-	int revents = 0;
-
-        lockmgr(&udevctx.lock, LK_EXCLUSIVE);
-        if (ap->a_events & (POLLIN | POLLRDNORM)) {
-                if (!TAILQ_EMPTY(&udevctx.ev_queue))
-                        revents = ap->a_events & (POLLIN | POLLRDNORM);
-                else
-                        selrecord(curthread, &udevctx.sel);
-        }
-        lockmgr(&udevctx.lock, LK_RELEASE);
-
-        ap->a_events = revents;
-        return 0;
 }
 
 static struct filterops udev_dev_read_filtops =

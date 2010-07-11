@@ -58,7 +58,6 @@ static struct dev_ops sm_ops = {
 	.d_close =	smclose,
 	.d_read =	ttyread,
 	.d_ioctl =	smioctl,
-	.d_poll =	ttypoll,
 	.d_kqfilter =	ttykqfilter,
 	.d_revoke =	ttyrevoke
 };

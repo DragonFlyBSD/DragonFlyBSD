@@ -45,7 +45,6 @@
 #include <sys/kernel.h>
 #include <sys/mman.h>
 #include <sys/module.h>
-#include <sys/poll.h>
 #include <sys/event.h>
 #include <sys/proc.h>
 #include <sys/signalvar.h>
@@ -122,7 +121,6 @@ static	d_open_t	cxm_open;
 static	d_close_t	cxm_close;
 static	d_read_t	cxm_read;
 static	d_ioctl_t	cxm_ioctl;
-static	d_poll_t	cxm_poll;
 static	d_kqfilter_t	cxm_kqfilter;
 
 static void cxm_filter_detach(struct knote *);
@@ -136,7 +134,6 @@ static struct dev_ops cxm_ops = {
 	.d_close =	cxm_close,
 	.d_read =	cxm_read,
 	.d_ioctl =	cxm_ioctl,
-	.d_poll =	cxm_poll,
 	.d_kqfilter =	cxm_kqfilter
 };
 
@@ -2908,38 +2905,6 @@ cxm_ioctl(struct dev_ioctl_args *ap)
 	}
 
 	return 0;
-}
-
-
-int
-cxm_poll(struct dev_poll_args *ap)
-{
-	cdev_t		dev = ap->a_head.a_dev;
-	int		revents;
-	int		unit;
-	struct cxm_softc *sc;
-
-	unit = UNIT(minor(dev));
-
-	/* Get the device data */
-	sc = (struct cxm_softc*)devclass_get_softc(cxm_devclass, unit);
-	if (sc == NULL) {
-		/* the device is no longer valid/functioning */
-		return POLLHUP;
-	}
-
-	revents = 0;
-
-	crit_enter();
-	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		if (sc->enc_pool.read == sc->enc_pool.write)
-			selrecord(curthread, &sc->enc_sel);
-		else
-			revents = ap->a_events & (POLLIN | POLLRDNORM);
-	}
-	crit_exit();
-
-	return revents;
 }
 
 static struct filterops cxm_filterops =

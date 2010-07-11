@@ -100,7 +100,6 @@ static struct dev_ops dcons_ops = {
 	.d_read =	ttyread,
 	.d_write =	ttywrite,
 	.d_ioctl =	dcons_ioctl,
-	.d_poll =	ttypoll,
 	.d_kqfilter =	ttykqfilter,
 	.d_revoke =	ttyrevoke
 };

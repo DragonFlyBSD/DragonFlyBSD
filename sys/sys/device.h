@@ -112,14 +112,6 @@ struct dev_ioctl_args {
 };
 
 /*
- * int d_poll(cdev_t dev, int events)
- */
-struct dev_poll_args {
-	struct dev_generic_args a_head;
-	int		a_events;
-};
-
-/*
  * int d_mmap(cdev_t dev, vm_offset_t offset, int nprot)
  */
 struct dev_mmap_args {
@@ -198,7 +190,6 @@ typedef int d_close_t (struct dev_close_args *ap);
 typedef int d_read_t (struct dev_read_args *ap);
 typedef int d_write_t (struct dev_write_args *ap);
 typedef int d_ioctl_t (struct dev_ioctl_args *ap);
-typedef int d_poll_t (struct dev_poll_args *ap);
 typedef int d_mmap_t (struct dev_mmap_args *ap);
 typedef int d_strategy_t (struct dev_strategy_args *ap);
 typedef int d_dump_t (struct dev_dump_args *ap);
@@ -229,7 +220,6 @@ struct dev_ops {
 	d_read_t	*d_read;
 	d_write_t	*d_write;
 	d_ioctl_t	*d_ioctl;
-	d_poll_t	*d_poll;
 	d_mmap_t	*d_mmap;
 	d_strategy_t	*d_strategy;
 	d_dump_t	*d_dump;
@@ -274,7 +264,6 @@ union dev_args_union {
 	struct dev_read_args	du_read;
 	struct dev_write_args	du_write;
 	struct dev_ioctl_args	du_ioctl;
-	struct dev_poll_args	du_poll;
 	struct dev_mmap_args	du_mmap;
 	struct dev_strategy_args du_strategy;
 	struct dev_dump_args	du_dump;
@@ -320,7 +309,6 @@ int dev_ddump(cdev_t dev, void *virtual, vm_offset_t physical, off_t offset,
 int64_t dev_dpsize(cdev_t dev);
 int dev_dread(cdev_t dev, struct uio *uio, int ioflag);
 int dev_dwrite(cdev_t dev, struct uio *uio, int ioflag);
-int dev_dpoll(cdev_t dev, int events);
 int dev_dkqfilter(cdev_t dev, struct knote *kn);
 int dev_dmmap(cdev_t dev, vm_offset_t offset, int nprot);
 int dev_dclone(cdev_t dev);
@@ -339,7 +327,6 @@ d_close_t	noclose;
 d_read_t	noread;
 d_write_t	nowrite;
 d_ioctl_t	noioctl;
-d_poll_t	nopoll;
 d_mmap_t	nommap;
 d_strategy_t	nostrategy;
 d_dump_t	nodump;
@@ -359,7 +346,6 @@ extern struct syslink_desc dev_write_desc;
 extern struct syslink_desc dev_ioctl_desc;
 extern struct syslink_desc dev_dump_desc;
 extern struct syslink_desc dev_psize_desc;
-extern struct syslink_desc dev_poll_desc;
 extern struct syslink_desc dev_mmap_desc;
 extern struct syslink_desc dev_strategu_desc;
 extern struct syslink_desc dev_kqfilter_desc;

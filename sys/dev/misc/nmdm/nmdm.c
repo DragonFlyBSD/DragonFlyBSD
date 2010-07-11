@@ -49,7 +49,6 @@
 #include <sys/tty.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
-#include <sys/poll.h>
 #include <sys/kernel.h>
 #include <sys/vnode.h>
 #include <sys/signalvar.h>
@@ -76,7 +75,6 @@ static struct dev_ops nmdm_ops = {
 	.d_read =	nmdmread,
 	.d_write =	nmdmwrite,
 	.d_ioctl =	nmdmioctl,
-	.d_poll =	ttypoll,
 	.d_kqfilter = 	ttykqfilter,
 	.d_revoke =	ttyrevoke
 };
