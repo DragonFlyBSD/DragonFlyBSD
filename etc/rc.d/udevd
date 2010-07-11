@@ -1,6 +1,5 @@
 #!/bin/sh
 # PROVIDE: udevd
-# REQUIRE: syslogd
 
 . /etc/rc.subr
 

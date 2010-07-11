@@ -13,7 +13,7 @@ FILES=	DAEMON LOGIN NETWORKING SERVERS abi accounting addswap adjkerntz \
 	inetd initdiskless initrandom ip6fw ipfilter ipfs ipfw ipmon \
 	ipnat ipsec ipxrouted isdnd jail \
 	keyserv \
-	ldconfig local localdaemons lockd lpd \
+	ldconfig local localdaemons lockd lpd lvm \
 	mixer motd mountcritlocal mountcritremote \
 	mountd moused mroute6d mrouted msgs \
 	netif netoptions newsyslog \
