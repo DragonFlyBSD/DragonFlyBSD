@@ -3,9 +3,6 @@
  *
  * If you haven't read the README file, now might be a good time.
  *
- * This file is edited by configure, so you shouldn't have to.
- * If that doesn't work, edit this file to match your site.
- *
  * Sorry it's so long, but there are lots of things you might want to
  * customize for your site.
  *
@@ -13,7 +10,7 @@
  *
  * You may distribute under the terms of the GNU General Public
  * License as specified in the file COPYING that comes with the man
- * distribution.  
+ * distribution.
  *
  * John W. Eaton
  * jwe@che.utexas.edu
@@ -21,14 +18,6 @@
  * The University of Texas at Austin
  * Austin, Texas  78712
  */
-
-/*
- * This is the size of a number of internal buffers.  It should
- * probably not be less than 512.
- */
-#ifndef BUFSIZ
-#define BUFSIZ 1024
-#endif
 
 /*
  * This should be at least the size of the longest path.
@@ -45,16 +34,6 @@
 #endif
 
 /*
- * This is the name of the group that owns the preformatted man pages.
- * If you are running man as a setgid program, you should make sure
- * that all of the preformatted man pages and the directories that
- * they live in are readable and writeable and owned by this group.
- */
-#ifdef SECURE_MAN_UID
-#define MAN_USER ""
-#endif
-
-/*
  * It's probably best to define absolute paths to all of these.  If
  * you don't, you'll be depending on the user's path to be correct
  * when system () is called.  This can result in weird behavior that's
@@ -64,64 +43,62 @@
  * nroff installed.
  */
 #ifndef APROPOS
-#define APROPOS "%apropos%"
+#define APROPOS "/usr/bin/apropos"
 #endif
 
 #ifndef WHATIS
-#define WHATIS "%whatis%"
+#define WHATIS "/usr/bin/whatis"
 #endif
 
 #ifndef PAGER
-#define PAGER "%pager%"
+#define PAGER "more -s"
 #endif
 
-#ifdef HAS_TROFF
 #ifndef TROFF
-#define TROFF "%troff%"
-#endif
+#define TROFF "/usr/bin/groff -S -man"
 #endif
 
 #ifndef NROFF
-#define NROFF "%nroff%"
+#define NROFF "/usr/bin/groff -S -Wall -mtty-char -man"
 #endif
 
 #ifndef EQN
-#define EQN "%eqn%"
+#define EQN "/usr/bin/eqn"
 #endif
 
 #ifndef NEQN
-#define NEQN "%neqn%"
+#define NEQN "/usr/bin/eqn"
 #endif
 
 #ifndef TBL
-#define TBL "%tbl%"
+#define TBL "/usr/bin/tbl"
 #endif
 
 #ifndef COL
-#define COL "%col%"
+#define COL "/usr/bin/col"
 #endif
 
 #ifndef VGRIND
-#define VGRIND "%vgrind%"
+#define VGRIND "/usr/bin/vgrind"
 #endif
 
 #ifndef REFER
-#define REFER "%refer%"
+#define REFER "/usr/bin/refer"
 #endif
 
 #ifndef GRAP
-#define GRAP "%grap%"
+#define GRAP ""
 #endif
 
 #ifndef PIC
-#define PIC "%pic%"
+#define PIC "/usr/bin/pic"
 #endif
 
 /*
  * Define the absolute path to the configuration file.
  */
 #ifndef MAN_MAIN
-  static char config_file[] = "%manpath_config_file%" ;
+  static char config_file[] = "/etc/manpath.config" ;
 #endif
 
 /*
@@ -135,7 +112,7 @@
 /* .Y files */
 #define YCAT ""
 /* .Z files */
-#define ZCAT "%zcat%"
+#define ZCAT "/usr/bin/zcat -q"
 
 /*
  * This is the standard program to use on this system for compressing
@@ -144,10 +121,8 @@
  * from the standard input and write compressed output to the standard
  * output.  These won't actually be used unless compression is enabled.
  */
-#ifdef DO_COMPRESS
-#define COMPRESSOR "%compress%"
-#define COMPRESS_EXT "%compext%"
-#endif
+#define COMPRESSOR "/usr/bin/gzip -c"
+#define COMPRESS_EXT ".gz"
 
 /*
  * Define the standard manual sections.  For example, if your man
@@ -168,7 +143,7 @@
  * the normal order?  If anyone knows, please tell me!
  */
 #ifndef MANPATH_MAIN
-  static char *std_sections[] = 
+  static const char *std_sections[] =
     {
        "1", "1aout", "8", "2", "3", "n", "4", "5", "6", "7", "9", "l", NULL
     };
@@ -202,9 +177,5 @@
  * you should use 666 and make the cat* directories mode 777.
  */
 #ifndef CATMODE
-#ifdef SECURE_MAN_UID
-#define CATMODE S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH
-#else
 #define CATMODE S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH
-#endif
 #endif

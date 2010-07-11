@@ -18,105 +18,40 @@
 /* To whomever it may concern: I have never seen the code which most
    Unix programs use to perform this function.  I wrote this from scratch
    based on specifications for the pattern matching.  --RMS.  */
-/* 
- * $DragonFly: src/gnu/usr.bin/man/man/glob.c,v 1.2 2004/02/03 19:22:59 dillon Exp $
- */
 
 #ifdef SHELL
 #include "config.h"
 #endif /* SHELL */
 
 #include <sys/types.h>
-
-#if defined (USGr3) && !defined (DIRENT)
-#define DIRENT
-#endif /* USGr3 */
-#if defined (Xenix) && !defined (SYSNDIR)
-#define SYSNDIR
-#endif /* Xenix */
-
-#if defined (POSIX) || defined (DIRENT) || defined (__GNU_LIBRARY__)
 #include <dirent.h>
-#define direct dirent
-#define D_NAMLEN(d) strlen((d)->d_name)
-#else /* not POSIX or DIRENT or __GNU_LIBRARY__ */
-#define D_NAMLEN(d) ((d)->d_namlen)
-#ifdef USG
-#if defined (SYSNDIR)
-#include <sys/ndir.h>
-#else /* SYSNDIR */
-#include "ndir.h"
-#endif /* not SYSNDIR */
-#else /* not USG */
-#include <sys/dir.h>
-#endif /* USG */
-#endif /* POSIX or DIRENT or __GNU_LIBRARY__ */
-
-#if defined (_POSIX_SOURCE)
-/* Posix does not require that the d_ino field be present, and some
-   systems do not provide it. */
-#define REAL_DIR_ENTRY(dp) 1
-#else
-#define REAL_DIR_ENTRY(dp) (dp->d_ino != 0)
-#endif /* _POSIX_SOURCE */
-
-#if defined (STDC_HEADERS) || defined (__GNU_LIBRARY__)
 #include <stdlib.h>
 #include <string.h>
-#define STDC_STRINGS
-#else /* STDC_HEADERS or __GNU_LIBRARY__ */
 
-#if defined (USG)
-#include <string.h>
-#ifndef POSIX
-#include <memory.h>
-#endif /* POSIX */
-#define STDC_STRINGS
-#else /* not USG */
-#ifdef NeXT
-#include <string.h>
-#else /* NeXT */
-#include <strings.h>
-#endif /* NeXT */
-/* Declaring bcopy causes errors on systems whose declarations are different.
-   If the declaration is omitted, everything works fine.  */
-#endif /* not USG */
+#define direct dirent
+#define D_NAMLEN(d) strlen((d)->d_name)
+#define REAL_DIR_ENTRY(dp) (dp->d_ino != 0)
 
-extern char *malloc ();
-extern char *realloc ();
-extern void free ();
-
-#ifndef NULL
-#define NULL 0
-#endif
-#endif	/* Not STDC_HEADERS or __GNU_LIBRARY__.  */
-
-#ifdef STDC_STRINGS
 #define bcopy(s, d, n) memcpy ((d), (s), (n))
 #define index strchr
 #define rindex strrchr
-#endif /* STDC_STRINGS */
 
 #ifndef	alloca
-#ifdef __GNUC__
 #define alloca __builtin_alloca
-#else /* Not GCC.  */
-#ifdef sparc
-#include <alloca.h>
-#else /* Not sparc.  */
-extern char *alloca ();
-#endif /* sparc.  */
-#endif /* GCC.  */
 #endif
+
+int glob_pattern_p (char *);
+int glob_match (char *, char *, int);
+char **glob_vector (char *, const char *);
+char **glob_filename (char *);
 
 /* Nonzero if '*' and '?' do not match an initial '.' for glob_filename.  */
 int noglob_dot_filenames = 1;
 
-static int glob_match_after_star ();
+static int glob_match_after_star (char *, char *);
 
-#ifdef __DragonFly__
-static int collate_range_cmp (a, b)
-	int a, b;
+static int
+collate_range_cmp (int a, int b)
 {
 	int r;
 	static char s[2][2];
@@ -129,16 +64,14 @@ static int collate_range_cmp (a, b)
 		r = (unsigned char)a - (unsigned char)b;
 	return r;
 }
-#endif
 
 /* Return nonzero if PATTERN has any special globbing chars in it.  */
 
 int
-glob_pattern_p (pattern)
-     char *pattern;
+glob_pattern_p (char *pattern)
 {
-  register char *p = pattern;
-  register char c;
+  char *p = pattern;
+  char c;
   int open = 0;
 
   while ((c = *p++) != '\0')
@@ -186,12 +119,10 @@ glob_pattern_p (pattern)
    `*' and `?' do not match `.' at the beginning of TEXT.  */
 
 int
-glob_match (pattern, text, dot_special)
-     char *pattern, *text;
-     int dot_special;
+glob_match (char *pattern, char *text, int dot_special)
 {
-  register char *p = pattern, *t = text;
-  register char c;
+  char *p = pattern, *t = text;
+  char c;
 
   while ((c = *p++) != '\0')
     switch (c)
@@ -215,7 +146,7 @@ glob_match (pattern, text, dot_special)
 
       case '[':
 	{
-	  register char c1 = *t++;
+	  char c1 = *t++;
 	  int invert;
 	  char *cp1 = p;
 
@@ -230,7 +161,7 @@ glob_match (pattern, text, dot_special)
 	  c = *p++;
 	  while (1)
 	    {
-	      register char cstart = c, cend = c;
+	      char cstart = c, cend = c;
 
 	      if (c == '\\')
 		{
@@ -259,13 +190,9 @@ glob_match (pattern, text, dot_special)
 		    return 0;
 		  c = *p++;
 		}
-#ifdef __DragonFly__
 	      if (   collate_range_cmp (c1, cstart) >= 0
 		  && collate_range_cmp (c1, cend) <= 0
 		 )
-#else
-	      if (c1 >= cstart && c1 <= cend)
-#endif
 		goto match;
 	      if (c == ']')
 		break;
@@ -303,11 +230,10 @@ glob_match (pattern, text, dot_special)
 /* Like glob_match, but match PATTERN against any final segment of TEXT.  */
 
 static int
-glob_match_after_star (pattern, text)
-     char *pattern, *text;
+glob_match_after_star (char *pattern, char *text)
 {
-  register char *p = pattern, *t = text;
-  register char c, c1;
+  char *p = pattern, *t = text;
+  char c, c1;
 
   while ((c = *p++) == '?' || c == '*')
     if (c == '?' && *t++ == '\0')
@@ -349,9 +275,7 @@ glob_match_after_star (pattern, text)
    Look in errno for more information.  */
 
 char **
-glob_vector (pat, dir)
-     char *pat;
-     char *dir;
+glob_vector (char *pat, const char *dir)
 {
   struct globval
   {
@@ -360,17 +284,14 @@ glob_vector (pat, dir)
   };
 
   DIR *d;
-  register struct direct *dp;
+  struct direct *dp;
   struct globval *lastlink;
-  register struct globval *nextlink;
-  register char *nextname;
+  struct globval *nextlink;
+  char *nextname;
   unsigned int count;
   int lose;
-  register char **name_vector;
-  register unsigned int i;
-#ifdef ALLOCA_MISSING
-  struct globval *templink;
-#endif
+  char **name_vector;
+  unsigned int i;
 
   d = opendir (dir);
   if (d == NULL)
@@ -404,11 +325,7 @@ glob_vector (pat, dir)
       if (REAL_DIR_ENTRY (dp)
 	  && glob_match (pat, dp->d_name, noglob_dot_filenames))
 	{
-#ifdef ALLOCA_MISSING
-	  nextlink = (struct globval *) malloc (sizeof (struct globval));
-#else
 	  nextlink = (struct globval *) alloca (sizeof (struct globval));
-#endif
 	  nextlink->next = lastlink;
 	  i = D_NAMLEN (dp) + 1;
 	  nextname = (char *) malloc (i);
@@ -441,13 +358,7 @@ glob_vector (pat, dir)
       while (lastlink)
 	{
 	  free (lastlink->name);
-#ifdef ALLOCA_MISSING
-	  templink = lastlink->next;
-	  free ((char *) lastlink);
-	  lastlink = templink;
-#else
 	  lastlink = lastlink->next;
-#endif
 	}
       return NULL;
     }
@@ -456,13 +367,7 @@ glob_vector (pat, dir)
   for (i = 0; i < count; ++i)
     {
       name_vector[i] = lastlink->name;
-#ifdef ALLOCA_MISSING
-      templink = lastlink->next;
-      free ((char *) lastlink);
-      lastlink = templink;
-#else
       lastlink = lastlink->next;
-#endif
     }
 
   name_vector[count] = NULL;
@@ -474,10 +379,9 @@ glob_vector (pat, dir)
    Return NULL if out of memory.  */
 
 static char **
-glob_dir_to_array (dir, array)
-     char *dir, **array;
+glob_dir_to_array (char *dir, char **array)
 {
-  register unsigned int i, l;
+  unsigned int i, l;
   int add_slash = 0;
   char **result;
 
@@ -524,8 +428,7 @@ glob_dir_to_array (dir, array)
    do not match an initial period if noglob_dot_filenames is nonzero.  */
 
 char **
-glob_filename (pathname)
-     char *pathname;
+glob_filename (char *pathname)
 {
   char **result;
   unsigned int result_size;
@@ -544,17 +447,13 @@ glob_filename (pathname)
   if (filename == NULL)
     {
       filename = pathname;
-      directory_name = "";
+      directory_name = NULL;
       directory_len = 0;
     }
   else
     {
       directory_len = (filename - pathname) + 1;
-#ifdef ALLOCA_MISSING
-      directory_name = (char *) malloc (directory_len + 1);
-#else
       directory_name = (char *) alloca (directory_len + 1);
-#endif
       bcopy (pathname, directory_name, directory_len);
       directory_name[directory_len] = '\0';
       ++filename;
@@ -565,15 +464,12 @@ glob_filename (pathname)
   if (glob_pattern_p (directory_name))
     {
       char **directories;
-      register unsigned int i;
+      unsigned int i;
 
       if (directory_name[directory_len - 1] == '/')
 	directory_name[directory_len - 1] = '\0';
 
       directories = glob_filename (directory_name);
-#ifdef ALLOCA_MISSING
-      free ((char *) directory_name);
-#endif
       if (directories == NULL)
 	goto memory_error;
       else if (directories == (char **) -1)
@@ -598,7 +494,7 @@ glob_filename (pathname)
 	  else
 	    {
 	      char **array = glob_dir_to_array (directories[i], temp_results);
-	      register unsigned int l;
+	      unsigned int l;
 
 	      l = 0;
 	      while (array[l] != NULL)
@@ -632,17 +528,11 @@ glob_filename (pathname)
 	  result[0] = (char *) malloc (directory_len + 1);
 	  if (result[0] == NULL)
 	    {
-#ifdef ALLOCA_MISSING
-	      free ((char *) directory_name);
-#endif
 	      goto memory_error;
 	    }
 	  bcopy (directory_name, result[0], directory_len + 1);
 	  result[1] = NULL;
 	}
-#ifdef ALLOCA_MISSING
-      free ((char *) directory_name);
-#endif
       return result;
     }
   else
@@ -655,16 +545,10 @@ glob_filename (pathname)
 
       if (temp_results == NULL || temp_results == (char **) -1)
 	{
-#ifdef NO_ALLOCA
-	  free ((char *) directory_name);
-#endif
 	  return temp_results;
 	}
 
       temp_results = glob_dir_to_array (directory_name, temp_results);
-#ifdef NO_ALLOCA
-      free ((char *) directory_name);
-#endif
       return temp_results;
     }
 
@@ -673,7 +557,7 @@ glob_filename (pathname)
  memory_error:
   if (result != NULL)
     {
-      register unsigned int i;
+      unsigned int i;
       for (i = 0; result[i] != NULL; ++i)
 	free (result[i]);
       free ((char *) result);
@@ -691,9 +575,8 @@ glob_filename (pathname)
 
 #ifdef TEST
 
-main (argc, argv)
-     int argc;
-     char **argv;
+int
+main (int argc, char **argv)
 {
   char **value;
   int i, optind;

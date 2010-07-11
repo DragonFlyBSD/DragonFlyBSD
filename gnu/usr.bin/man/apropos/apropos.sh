@@ -16,7 +16,6 @@
 # Austin, Texas  78712
 #
 # $FreeBSD: src/gnu/usr.bin/man/apropos/apropos.sh,v 1.12.2.2 2002/08/11 11:20:54 ru Exp $
-# $DragonFly: src/gnu/usr.bin/man/apropos/apropos.sh,v 1.2 2003/06/17 04:25:46 dillon Exp $
 
 
 PATH=/bin:/usr/bin:$PATH
@@ -40,7 +39,7 @@ case "$0" in
 esac
 
 # test manpath
-manpath=`%bindir%/manpath -q | tr : '\040'`
+manpath=`/usr/bin/manpath -q | tr : '\040'`
 case X"$manpath" in X) 
 	echo "`basename $0`: manpath is null, use \"/usr/share/man\"" >&2
 	manpath=/usr/share/man
@@ -50,11 +49,11 @@ esac
 
 # reset $PAGER if $PAGER is empty
 case X"$PAGER" in X) 
-	PAGER="%pager%"
+	PAGER="more -s"
 	;; 
 esac
 
-man_locales=`%bindir%/manpath -qL`
+man_locales=`/usr/bin/manpath -qL`
 
 # search for existing */whatis databases
 mandir=''

@@ -15,21 +15,13 @@
  */
 
 #include <stdio.h>
-#include "gripes.h"
-
-#ifdef STDC_HEADERS
 #include <stdlib.h>
-#else
-extern int fprintf ();
-extern int fflush ();
-extern int exit ();
-#endif
+#include "gripes.h"
 
 extern char *prognam;
 
 void
-gripe_no_name (section)
-     char *section;
+gripe_no_name (char *section)
 {
   if (section)
     fprintf (stderr, "What manual page do you want from section %s?\n",
@@ -41,8 +33,7 @@ gripe_no_name (section)
 }
 
 void
-gripe_reading_man_file (name)
-     char *name;
+gripe_reading_man_file (char *name)
 {
   fprintf (stderr, "Read access denied for file %s\n", name);
 
@@ -50,9 +41,7 @@ gripe_reading_man_file (name)
 }
 
 void
-gripe_converting_name (name, to_cat)
-     char *name;
-     int to_cat;
+gripe_converting_name (char *name, int to_cat)
 {
   if (to_cat)
     fprintf (stderr, "Error converting %s to cat name\n", name);
@@ -65,8 +54,7 @@ gripe_converting_name (name, to_cat)
 }
 
 void
-gripe_system_command (status)
-     int status;
+gripe_system_command (int status)
 {
   fprintf (stderr, "Error executing formatting or display command.\n");
   fprintf (stderr, "system command exited with status %d\n", status);
@@ -75,8 +63,7 @@ gripe_system_command (status)
 }
 
 void
-gripe_not_found (name, section)
-     char *name, *section;
+gripe_not_found (char *name, char *section)
 {
   if (section)
     fprintf (stderr, "No entry for %s in section %s of the manual\n",
@@ -88,8 +75,7 @@ gripe_not_found (name, section)
 }
 
 void
-gripe_incompatible (s)
-     char *s;
+gripe_incompatible (const char *s)
 {
   fprintf (stderr, "%s: incompatible options %s\n", prognam, s);
 
@@ -99,8 +85,7 @@ gripe_incompatible (s)
 }
 
 void
-gripe_getting_mp_config (file)
-     char *file;
+gripe_getting_mp_config (char *file)
 {
   fprintf (stderr, "%s: unable to find the file %s\n", prognam, file);
 
@@ -110,8 +95,7 @@ gripe_getting_mp_config (file)
 }
 
 void
-gripe_reading_mp_config (file)
-     char *file;
+gripe_reading_mp_config (char *file)
 {
   fprintf (stderr, "%s: unable to make sense of the file %s\n", prognam, file);
 
@@ -121,8 +105,7 @@ gripe_reading_mp_config (file)
 }
 
 void
-gripe_invalid_section (section)
-     char *section;
+gripe_invalid_section (char *section)
 {
   fprintf (stderr, "%s: invalid section (%s) selected\n", prognam, section);
 
@@ -132,7 +115,7 @@ gripe_invalid_section (section)
 }
 
 void
-gripe_manpath ()
+gripe_manpath (void)
 {
   fprintf (stderr, "%s: manpath is null\n", prognam);
 
@@ -142,9 +125,7 @@ gripe_manpath ()
 }
 
 void
-gripe_alloc (bytes, object)
-     int bytes;
-     char *object;
+gripe_alloc (int bytes, const char *object)
 {
   fprintf (stderr, "%s: can't malloc %d bytes for %s\n",
 	   prognam, bytes, object);
@@ -155,8 +136,7 @@ gripe_alloc (bytes, object)
 }
 
 void
-gripe_roff_command_from_file (file)
-     char *file;
+gripe_roff_command_from_file (char *file)
 {
   fprintf (stderr, "Error parsing *roff command from file %s\n", file);
 
@@ -164,7 +144,7 @@ gripe_roff_command_from_file (file)
 }
 
 void
-gripe_roff_command_from_env ()
+gripe_roff_command_from_env (void)
 {
   fprintf (stderr, "Error parsing MANROFFSEQ.  Using system defaults.\n");
 
@@ -172,7 +152,7 @@ gripe_roff_command_from_env ()
 }
 
 void
-gripe_roff_command_from_command_line ()
+gripe_roff_command_from_command_line (void)
 {
   fprintf (stderr, "Error parsing *roff command from command line.\n");
 
