@@ -81,7 +81,6 @@ static int	fdesc_open (struct vop_open_args *ap);
 static int	fdesc_print (struct vop_print_args *ap);
 static int	fdesc_readdir (struct vop_readdir_args *ap);
 static int	fdesc_reclaim (struct vop_reclaim_args *ap);
-static int	fdesc_poll (struct vop_poll_args *ap);
 static int	fdesc_setattr (struct vop_setattr_args *ap);
 
 /*
@@ -485,15 +484,6 @@ done:
 }
 
 /*
- * fdesc_poll(struct vnode *a_vp, int a_events, struct ucred *a_cred)
- */
-static int
-fdesc_poll(struct vop_poll_args *ap)
-{
-	return seltrue(0, ap->a_events);
-}
-
-/*
  * fdesc_inactive(struct vnode *a_vp)
  */
 static int
@@ -546,7 +536,6 @@ struct vop_ops fdesc_vnode_vops = {
 	.vop_old_lookup =	fdesc_lookup,
 	.vop_open =		fdesc_open,
 	.vop_pathconf =		vop_stdpathconf,
-	.vop_poll =		fdesc_poll,
 	.vop_print =		fdesc_print,
 	.vop_readdir =		fdesc_readdir,
 	.vop_reclaim =		fdesc_reclaim,

@@ -2149,10 +2149,7 @@ vn_pollrecord(struct vnode *vp, int events)
 }
 
 /*
- * Note the occurrence of an event.  If the VN_POLLEVENT macro is used,
- * it is possible for us to miss an event due to race conditions, but
- * that condition is expected to be rare, so for the moment it is the
- * preferred interface.
+ * Note the occurrence of an event.
  */
 void
 vn_pollevent(struct vnode *vp, int events)

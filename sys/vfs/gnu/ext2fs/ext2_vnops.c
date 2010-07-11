@@ -2043,7 +2043,6 @@ struct vop_ops ext2_vnode_vops = {
 	.vop_mmap =		ext2_mmap,
 	.vop_open =		ext2_open,
 	.vop_pathconf =		ext2_pathconf,
-	.vop_poll =		vop_stdpoll,
 	.vop_kqfilter =		ext2_kqfilter,
 	.vop_print =		ext2_print,
 	.vop_readdir =		ext2_readdir,

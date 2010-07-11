@@ -277,12 +277,6 @@ struct vnode {
 #define	v_fifoinfo	v_un.vu_fifoinfo
 #define	v_spinlock	v_lock.lk_spinlock
 
-#define	VN_POLLEVENT(vp, events)				\
-	do {							\
-		if ((vp)->v_pollinfo.vpi_events & (events))	\
-			vn_pollevent((vp), (events));		\
-	} while (0)
-
 /*
  * Vnode flags.
  */
@@ -561,9 +555,7 @@ int	vop_stdputpages(struct vop_putpages_args *ap);
 int	vop_stdmarkatime(struct vop_markatime_args *ap);
 int	vop_stdnoread(struct vop_read_args *ap);
 int	vop_stdnowrite(struct vop_write_args *ap);
-int	vop_nopoll (struct vop_poll_args *ap);
 int	vop_stdpathconf (struct vop_pathconf_args *ap);
-int	vop_stdpoll (struct vop_poll_args *ap);
 int	vop_eopnotsupp (struct vop_generic_args *ap);
 int	vop_ebadf (struct vop_generic_args *ap);
 int	vop_einval (struct vop_generic_args *ap);

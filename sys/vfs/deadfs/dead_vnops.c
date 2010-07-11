@@ -42,7 +42,6 @@
 #include <sys/vnode.h>
 #include <sys/fcntl.h>
 #include <sys/buf.h>
-#include <sys/poll.h>
 
 /*
  * Prototypes for dead operations on vnodes.
@@ -53,7 +52,6 @@ static int	dead_ioctl (struct vop_ioctl_args *);
 static int	dead_lookup (struct vop_old_lookup_args *);
 static int	dead_open (struct vop_open_args *);
 static int	dead_close (struct vop_close_args *);
-static int	dead_poll (struct vop_poll_args *);
 static int	dead_print (struct vop_print_args *);
 static int	dead_read (struct vop_read_args *);
 static int	dead_write (struct vop_write_args *);
@@ -75,7 +73,6 @@ struct vop_ops dead_vnode_vops = {
 	.vop_open =		dead_open,
 	.vop_close =		dead_close,
 	.vop_pathconf =		(void *)vop_ebadf,	/* per pathconf(2) */
-	.vop_poll =		dead_poll,
 	.vop_print =		dead_print,
 	.vop_read =		dead_read,
 	.vop_readdir =		(void *)vop_ebadf,
@@ -215,15 +212,4 @@ dead_badop(void)
 {
 	panic("dead_badop called");
 	/* NOTREACHED */
-}
-
-/*
- * Trivial poll routine that always returns POLLHUP.
- * This is necessary so that a process which is polling a file
- * gets notified when that file is revoke()d.
- */
-static int
-dead_poll(struct vop_poll_args *ap)
-{
-	return (POLLHUP);
 }
