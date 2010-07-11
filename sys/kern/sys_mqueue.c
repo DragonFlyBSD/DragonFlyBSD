@@ -55,7 +55,6 @@
 #include <sys/mplock2.h>
 #include <sys/mqueue.h>
 #include <sys/objcache.h>
-#include <sys/poll.h>
 #include <sys/proc.h>
 #include <sys/queue.h>
 #include <sys/select.h>
@@ -87,7 +86,6 @@ static LIST_HEAD(, mqueue)	mqueue_head =
 typedef struct	file file_t;	/* XXX: Should we put this in sys/types.h ? */
 
 /* Function prototypes */
-static int	mq_poll_fop(file_t *, int, struct ucred *cred);
 static int	mq_stat_fop(file_t *, struct stat *, struct ucred *cred);
 static int	mq_close_fop(file_t *);
 
@@ -100,7 +98,6 @@ static struct fileops mqops = {
 	.fo_read = badfo_readwrite,
 	.fo_write = badfo_readwrite,
 	.fo_ioctl = badfo_ioctl,
-	.fo_poll = mq_poll_fop,
 	.fo_stat = mq_stat_fop,
 	.fo_close = mq_close_fop,
 	.fo_kqfilter = badfo_kqfilter,
@@ -311,34 +308,6 @@ mq_stat_fop(file_t *fp, struct stat *st, struct ucred *cred)
 	lockmgr(&mq->mq_mtx, LK_RELEASE);
 
 	return 0;
-}
-
-static int
-mq_poll_fop(file_t *fp, int events, struct ucred *cred)
-{
-	struct mqueue *mq = fp->f_data;
-	struct mq_attr *mqattr;
-	int revents = 0;
-
-	lockmgr(&mq->mq_mtx, LK_EXCLUSIVE);
-	mqattr = &mq->mq_attrib;
-	if (events & (POLLIN | POLLRDNORM)) {
-		/* Ready for receiving, if there are messages in the queue */
-		if (mqattr->mq_curmsgs)
-			revents |= (POLLIN | POLLRDNORM);
-		else
-			selrecord(curthread, &mq->mq_rsel);
-	}
-	if (events & (POLLOUT | POLLWRNORM)) {
-		/* Ready for sending, if the message queue is not full */
-		if (mqattr->mq_curmsgs < mqattr->mq_maxmsg)
-			revents |= (POLLOUT | POLLWRNORM);
-		else
-			selrecord(curthread, &mq->mq_wsel);
-	}
-	lockmgr(&mq->mq_mtx, LK_RELEASE);
-
-	return revents;
 }
 
 static int

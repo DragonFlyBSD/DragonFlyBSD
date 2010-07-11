@@ -60,7 +60,6 @@ struct	fileops socketops = {
 	.fo_read = soo_read,
 	.fo_write = soo_write,
 	.fo_ioctl = soo_ioctl,
-	.fo_poll = soo_poll,
 	.fo_kqfilter = sokqfilter,
 	.fo_stat = soo_stat,
 	.fo_close = soo_close,
@@ -183,22 +182,6 @@ soo_ioctl(struct file *fp, u_long cmd, caddr_t data,
 			error = so_pru_control(so, cmd, data, NULL);
 		break;
 	}
-	rel_mplock();
-	return (error);
-}
-
-/*
- * MPALMOSTSAFE - acquires mplock
- */
-int
-soo_poll(struct file *fp, int events, struct ucred *cred)
-{
-	struct socket *so;
-	int error;
-
-	get_mplock();
-	so = (struct socket *)fp->f_data;
-	error = so_pru_sopoll(so, events, cred);
 	rel_mplock();
 	return (error);
 }

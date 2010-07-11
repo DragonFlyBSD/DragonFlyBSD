@@ -36,7 +36,6 @@
 #include <sys/filio.h>
 #include <sys/ttycom.h>
 #include <sys/stat.h>
-#include <sys/poll.h>
 #include <sys/select.h>
 #include <sys/signalvar.h>
 #include <sys/sysproto.h>
@@ -76,7 +75,6 @@ static int pipe_write (struct file *fp, struct uio *uio,
 		struct ucred *cred, int flags);
 static int pipe_close (struct file *fp);
 static int pipe_shutdown (struct file *fp, int how);
-static int pipe_poll (struct file *fp, int events, struct ucred *cred);
 static int pipe_kqfilter (struct file *fp, struct knote *kn);
 static int pipe_stat (struct file *fp, struct stat *sb, struct ucred *cred);
 static int pipe_ioctl (struct file *fp, u_long cmd, caddr_t data,
@@ -86,7 +84,6 @@ static struct fileops pipeops = {
 	.fo_read = pipe_read, 
 	.fo_write = pipe_write,
 	.fo_ioctl = pipe_ioctl,
-	.fo_poll = pipe_poll,
 	.fo_kqfilter = pipe_kqfilter,
 	.fo_stat = pipe_stat,
 	.fo_close = pipe_close,
@@ -1054,94 +1051,6 @@ pipe_ioctl(struct file *fp, u_long cmd, caddr_t data,
 	pipe_rel_mplock(&mpsave);
 
 	return (error);
-}
-
-/*
- * MPALMOSTSAFE - acquires mplock
- *
- * poll for events (helper)
- */
-static int
-pipe_poll_events(struct pipe *rpipe, struct pipe *wpipe, int events)
-{
-	int revents = 0;
-	u_int space;
-
-	if (events & (POLLIN | POLLRDNORM)) {
-		if ((rpipe->pipe_buffer.windex != rpipe->pipe_buffer.rindex) ||
-		    (rpipe->pipe_state & PIPE_REOF)) {
-			revents |= events & (POLLIN | POLLRDNORM);
-		}
-	}
-
-	if (events & (POLLOUT | POLLWRNORM)) {
-		if (wpipe == NULL || (wpipe->pipe_state & PIPE_WEOF)) {
-			revents |= events & (POLLOUT | POLLWRNORM);
-		} else {
-			space = wpipe->pipe_buffer.windex -
-				wpipe->pipe_buffer.rindex;
-			space = wpipe->pipe_buffer.size - space;
-			if (space >= PIPE_BUF)
-				revents |= events & (POLLOUT | POLLWRNORM);
-		}
-	}
-
-	if ((rpipe->pipe_state & PIPE_REOF) ||
-	    (wpipe == NULL) ||
-	    (wpipe->pipe_state & PIPE_WEOF)) {
-		revents |= POLLHUP;
-	}
-	return (revents);
-}
-
-/*
- * Poll for events from file pointer.
- */
-int
-pipe_poll(struct file *fp, int events, struct ucred *cred)
-{
-	struct pipe *rpipe;
-	struct pipe *wpipe;
-	int revents = 0;
-	int mpsave;
-
-	pipe_get_mplock(&mpsave);
-	rpipe = (struct pipe *)fp->f_data;
-	wpipe = rpipe->pipe_peer;
-
-	revents = pipe_poll_events(rpipe, wpipe, events);
-	if (revents == 0) {
-		if (events & (POLLIN | POLLRDNORM)) {
-			lwkt_gettoken(&rpipe->pipe_rlock);
-			lwkt_gettoken(&rpipe->pipe_wlock);
-		}
-		if (events & (POLLOUT | POLLWRNORM)) {
-			lwkt_gettoken(&wpipe->pipe_rlock);
-			lwkt_gettoken(&wpipe->pipe_wlock);
-		}
-		revents = pipe_poll_events(rpipe, wpipe, events);
-		if (revents == 0) {
-			if (events & (POLLIN | POLLRDNORM)) {
-				selrecord(curthread, &rpipe->pipe_sel);
-				rpipe->pipe_state |= PIPE_SEL;
-			}
-
-			if (events & (POLLOUT | POLLWRNORM)) {
-				selrecord(curthread, &wpipe->pipe_sel);
-				wpipe->pipe_state |= PIPE_SEL;
-			}
-		}
-		if (events & (POLLOUT | POLLWRNORM)) {
-			lwkt_reltoken(&wpipe->pipe_wlock);
-			lwkt_reltoken(&wpipe->pipe_rlock);
-		}
-		if (events & (POLLIN | POLLRDNORM)) {
-			lwkt_reltoken(&rpipe->pipe_wlock);
-			lwkt_reltoken(&rpipe->pipe_rlock);
-		}
-	}
-	pipe_rel_mplock(&mpsave);
-	return (revents);
 }
 
 /*

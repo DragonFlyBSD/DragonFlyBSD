@@ -40,7 +40,6 @@
 #include <sys/queue.h>
 #include <sys/event.h>
 #include <sys/eventvar.h>
-#include <sys/poll.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
@@ -74,7 +73,6 @@ static int	kqueue_write(struct file *fp, struct uio *uio,
 		    struct ucred *cred, int flags);
 static int	kqueue_ioctl(struct file *fp, u_long com, caddr_t data,
 		    struct ucred *cred, struct sysmsg *msg);
-static int 	kqueue_poll(struct file *fp, int events, struct ucred *cred);
 static int 	kqueue_kqfilter(struct file *fp, struct knote *kn);
 static int 	kqueue_stat(struct file *fp, struct stat *st,
 		    struct ucred *cred);
@@ -87,7 +85,6 @@ static struct fileops kqueueops = {
 	.fo_read = kqueue_read,
 	.fo_write = kqueue_write,
 	.fo_ioctl = kqueue_ioctl,
-	.fo_poll = kqueue_poll,
 	.fo_kqfilter = kqueue_kqfilter,
 	.fo_stat = kqueue_stat,
 	.fo_close = kqueue_close,
@@ -1031,30 +1028,6 @@ kqueue_ioctl(struct file *fp, u_long com, caddr_t data,
 	}
 	rel_mplock();
 	return (error);
-}
-
-/*
- * MPALMOSTSAFE - acquires mplock
- */
-static int
-kqueue_poll(struct file *fp, int events, struct ucred *cred)
-{
-	struct kqueue *kq = (struct kqueue *)fp->f_data;
-	int revents = 0;
-
-	get_mplock();
-	crit_enter();
-        if (events & (POLLIN | POLLRDNORM)) {
-                if (kq->kq_count) {
-                        revents |= events & (POLLIN | POLLRDNORM);
-		} else {
-                        selrecord(curthread, &kq->kq_sel);
-			kq->kq_state |= KQ_SEL;
-		}
-	}
-	crit_exit();
-	rel_mplock();
-	return (revents);
 }
 
 /*

@@ -231,14 +231,12 @@ static int slfileop_stat(struct file *fp, struct stat *sb, struct ucred *cred);
 static int slfileop_shutdown(struct file *fp, int how);
 static int slfileop_ioctl(struct file *fp, u_long cmd, caddr_t data,
 			 struct ucred *cred, struct sysmsg *msg);
-static int slfileop_poll(struct file *fp, int events, struct ucred *cred);
 static int slfileop_kqfilter(struct file *fp, struct knote *kn);
 
 static struct fileops syslinkops = {
     .fo_read =		slfileop_read,
     .fo_write =		slfileop_write,
     .fo_ioctl =		slfileop_ioctl,
-    .fo_poll =		slfileop_poll,
     .fo_kqfilter =	slfileop_kqfilter,
     .fo_stat =		slfileop_stat,
     .fo_close =		slfileop_close,
@@ -988,13 +986,6 @@ slfileop_ioctl (struct file *fp, u_long cmd, caddr_t data,
 		struct ucred *cred, struct sysmsg *msg)
 {
 	return(EINVAL);
-}
-
-static
-int
-slfileop_poll (struct file *fp, int events, struct ucred *cred)
-{
-	return(0);
 }
 
 static
