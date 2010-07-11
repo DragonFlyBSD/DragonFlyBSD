@@ -991,9 +991,12 @@ tappoll(struct dev_poll_args *ap)
  * MPSAFE
  */
 static int filt_tapread(struct knote *kn, long hint);
+static int filt_tapwrite(struct knote *kn, long hint);
 static void filt_tapdetach(struct knote *kn);
 static struct filterops tapread_filtops =
 	{ 1, NULL, filt_tapdetach, filt_tapread };
+static struct filterops tapwrite_filtops =
+	{ 1, NULL, filt_tapdetach, filt_tapwrite };
 
 static int
 tapkqfilter(struct dev_kqfilter_args *ap)
@@ -1006,17 +1009,19 @@ tapkqfilter(struct dev_kqfilter_args *ap)
 
 	get_mplock();
 	tp = dev->si_drv1;
+	list = &tp->tap_rsel.si_note;
 	ifp = &tp->tap_if;
 	ap->a_result =0;
 
 	switch(kn->kn_filter) {
 	case EVFILT_READ:
-		list = &tp->tap_rsel.si_note;
 		kn->kn_fop = &tapread_filtops;
 		kn->kn_hook = (void *)tp;
 		break;
 	case EVFILT_WRITE:
-		/* fall through */
+		kn->kn_fop = &tapwrite_filtops;
+		kn->kn_hook = (void *)tp;
+		break;
 	default:
 		ap->a_result = EOPNOTSUPP;
 		rel_mplock();
@@ -1038,6 +1043,13 @@ filt_tapread(struct knote *kn, long hint)
 		return(1);
 	else
 		return(0);
+}
+
+static int
+filt_tapwrite(struct knote *kn, long hint)
+{
+	/* Always ready for a write */
+	return (1);
 }
 
 static void

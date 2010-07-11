@@ -80,6 +80,7 @@ static int tuninit (struct ifnet *);
 static void tunstart(struct ifnet *);
 static void tun_filter_detach(struct knote *);
 static int tun_filter_read(struct knote *, long);
+static int tun_filter_write(struct knote *, long);
 
 static	d_open_t	tunopen;
 static	d_close_t	tunclose;
@@ -737,6 +738,8 @@ tunpoll(struct dev_poll_args *ap)
 
 static struct filterops tun_read_filtops =
 	{ 1, NULL, tun_filter_detach, tun_filter_read };
+static struct filterops tun_write_filtops =
+	{ 1, NULL, tun_filter_detach, tun_filter_write };
 
 static int
 tunkqfilter(struct dev_kqfilter_args *ap)
@@ -752,6 +755,10 @@ tunkqfilter(struct dev_kqfilter_args *ap)
 	switch (kn->kn_filter) {
 	case EVFILT_READ:
 		kn->kn_fop = &tun_read_filtops;
+		kn->kn_hook = (caddr_t)tp;
+		break;
+	case EVFILT_WRITE:
+		kn->kn_fop = &tun_write_filtops;
 		kn->kn_hook = (caddr_t)tp;
 		break;
 	default:
@@ -780,6 +787,13 @@ tun_filter_detach(struct knote *kn)
 	crit_enter();
 	SLIST_REMOVE(klist, kn, knote, kn_selnext);
 	crit_exit();
+}
+
+static int
+tun_filter_write(struct knote *kn, long hint)
+{
+	/* Always ready for a write */
+	return (1);
 }
 
 static int
