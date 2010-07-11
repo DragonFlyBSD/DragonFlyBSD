@@ -1128,7 +1128,7 @@ dsp_kqfilter(struct dev_kqfilter_args *ap)
 	struct klist *klist;
 	struct cdev *i_dev = ap->a_head.a_dev;
 	struct pcm_channel *wrch = NULL, *rdch = NULL;
-	struct snd_dbuf *bs;
+	struct snd_dbuf *bs = NULL;
 
 	getchns(i_dev, &rdch, &wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
 
