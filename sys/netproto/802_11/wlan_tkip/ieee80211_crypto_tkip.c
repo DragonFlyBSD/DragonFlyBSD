@@ -113,7 +113,7 @@ tkip_attach(struct ieee80211vap *vap, struct ieee80211_key *k)
 	struct tkip_ctx *ctx;
 
 	ctx = (struct tkip_ctx *) kmalloc(sizeof(struct tkip_ctx),
-		M_80211_CRYPTO, M_NOWAIT | M_ZERO);
+		M_80211_CRYPTO, M_INTWAIT | M_ZERO);
 	if (ctx == NULL) {
 		vap->iv_stats.is_crypto_nomem++;
 		return NULL;

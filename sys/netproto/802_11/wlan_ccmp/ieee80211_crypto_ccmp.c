@@ -98,7 +98,7 @@ ccmp_attach(struct ieee80211vap *vap, struct ieee80211_key *k)
 	struct ccmp_ctx *ctx;
 
 	ctx = (struct ccmp_ctx *) kmalloc(sizeof(struct ccmp_ctx),
-		M_80211_CRYPTO, M_NOWAIT | M_ZERO);
+		M_80211_CRYPTO, M_INTWAIT | M_ZERO);
 	if (ctx == NULL) {
 		vap->iv_stats.is_crypto_nomem++;
 		return NULL;
