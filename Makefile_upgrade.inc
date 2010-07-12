@@ -1355,6 +1355,7 @@ TO_REMOVE+=/usr/share/man/cat9/lwkt_gettokref.9.gz
 TO_REMOVE+=/usr/share/man/man9/lwkt_gettokref.9.gz
 TO_REMOVE+=/usr/share/man/cat9/lwkt_trytokref.9.gz
 TO_REMOVE+=/usr/share/man/man9/lwkt_trytokref.9.gz
+TO_REMOVE+=/usr/sbin/udevd
 
 # XXX Remove when adjusted to the new 802.11 framework
 TO_REMOVE+=/boot/modules/if_acx.ko
