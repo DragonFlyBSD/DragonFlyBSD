@@ -363,22 +363,6 @@ so_pru_sockaddr(struct socket *so, struct sockaddr **nam)
 }
 
 int
-so_pru_sopoll(struct socket *so, int events, struct ucred *cred)
-{
-	int error;
-	struct netmsg_pru_sopoll msg;
-
-	netmsg_init(&msg.nm_netmsg, so, &curthread->td_msgport,
-		    0, netmsg_pru_sopoll);
-	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_sopoll;
-	msg.nm_events = events;
-	msg.nm_cred = cred;
-	msg.nm_td = curthread;
-	error = lwkt_domsg(so->so_port, &msg.nm_netmsg.nm_lmsg, 0);
-	return (error);
-}
-
-int
 so_pru_ctloutput(struct socket *so, struct sockopt *sopt)
 {
 	struct netmsg_pru_ctloutput msg;
@@ -588,16 +572,6 @@ netmsg_pru_sockaddr(netmsg_t msg)
 	struct netmsg_pru_sockaddr *nm = (void *)msg;
 
 	lwkt_replymsg(&msg->nm_lmsg, nm->nm_prufn(msg->nm_so, nm->nm_nam));
-}
-
-void
-netmsg_pru_sopoll(netmsg_t msg)
-{
-	struct netmsg_pru_sopoll *nm = (void *)msg;
-	int error;
-
-	error = nm->nm_prufn(msg->nm_so, nm->nm_events, nm->nm_cred, nm->nm_td);
-	lwkt_replymsg(&msg->nm_lmsg, error);
 }
 
 void

@@ -81,7 +81,6 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/event.h>
-#include <sys/poll.h>
 #include <sys/proc.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
@@ -1701,48 +1700,6 @@ sohasoutofband(struct socket *so)
 		pgsigio(so->so_sigio, SIGURG, 0);
 	selwakeup(&so->so_rcv.ssb_sel);
 	KNOTE(&so->so_rcv.ssb_sel.si_note, NOTE_OOB);
-}
-
-int
-sopoll(struct socket *so, int events, struct ucred *cred, struct thread *td)
-{
-	int revents = 0;
-
-	crit_enter();
-
-	if (events & (POLLIN | POLLRDNORM))
-		if (soreadable(so))
-			revents |= events & (POLLIN | POLLRDNORM);
-
-	if (events & POLLINIGNEOF)
-		if (so->so_rcv.ssb_cc >= so->so_rcv.ssb_lowat ||
-			!TAILQ_EMPTY(&so->so_comp) || so->so_error)
-			revents |= POLLINIGNEOF;
-
-	if (events & (POLLOUT | POLLWRNORM))
-		if (sowriteable(so))
-			revents |= events & (POLLOUT | POLLWRNORM);
-
-	if (events & (POLLPRI | POLLRDBAND))
-		if (so->so_oobmark || (so->so_state & SS_RCVATMARK))
-			revents |= events & (POLLPRI | POLLRDBAND);
-
-	if (revents == 0) {
-		if (events &
-			(POLLIN | POLLINIGNEOF | POLLPRI | POLLRDNORM |
-			 POLLRDBAND)) {
-			selrecord(td, &so->so_rcv.ssb_sel);
-			so->so_rcv.ssb_flags |= SSB_SEL;
-		}
-
-		if (events & (POLLOUT | POLLWRNORM)) {
-			selrecord(td, &so->so_snd.ssb_sel);
-			so->so_snd.ssb_flags |= SSB_SEL;
-		}
-	}
-
-	crit_exit();
-	return (revents);
 }
 
 int

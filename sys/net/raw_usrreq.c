@@ -310,7 +310,5 @@ struct pr_usrreqs raw_usrreqs = {
 	.pru_shutdown = raw_ushutdown,
 	.pru_sockaddr = raw_usockaddr,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
-

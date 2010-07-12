@@ -61,6 +61,7 @@
 #include <sys/poll.h>
 #include <sys/queue.h>
 #include <sys/resourcevar.h>
+#include <sys/socketops.h>
 #include <sys/sysctl.h>
 #include <sys/sysent.h>
 #include <sys/buf.h>
@@ -1361,6 +1362,51 @@ dopoll(int nfds, struct pollfd *fds, struct timespec *ts, int *res)
 		kfree(ka.fds, M_SELECT);
 
 	ka.lwp->lwp_kqueue_serial += nfds;
+
+	return (error);
+}
+
+static int
+socket_wait_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
+{
+	return (0);
+}
+
+static int
+socket_wait_copyout(void *arg, struct kevent *kevp, int count, int *res)
+{
+	++*res;
+	return (0);
+}
+
+extern	struct fileops socketops;
+int
+socket_wait(struct socket *so, struct timespec *ts, int *res)
+{
+	struct file *fp;
+	struct filedesc fd;
+	struct kqueue kq;
+	struct kevent kev;
+	int error;
+
+	if ((error = falloc(NULL, &fp, NULL)) != 0)
+		return (error);
+
+	fp->f_ops = &socketops;
+	fp->f_data = so;
+	fsetfd(&fd, fp, 0);
+
+	kqueue_init(&kq, &fd);
+
+	EV_SET(&kev, 0, EVFILT_READ, EV_ADD|EV_ENABLE, 0, 0, NULL);
+	if ((error = kqueue_register(&kq, &kev)) != 0) {
+		fdrop(fp);
+		return (error);
+	}
+
+	error = kern_kevent(&kq, 1, res, NULL, socket_wait_copyin,
+			    socket_wait_copyout, ts);
+	fdrop(fp);
 
 	return (error);
 }

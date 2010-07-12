@@ -1643,8 +1643,7 @@ struct pr_usrreqs sctp6_usrreqs = {
 	.pru_shutdown = sctp_shutdown,
 	.pru_sockaddr = sctp6_in6getaddr,
 	.pru_sosend = sctp_sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 #else

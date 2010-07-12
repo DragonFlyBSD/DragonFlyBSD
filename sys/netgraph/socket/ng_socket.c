@@ -892,8 +892,7 @@ static struct pr_usrreqs ngc_usrreqs = {
 	.pru_shutdown = NULL,
 	.pru_sockaddr = ng_setsockaddr,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 static struct pr_usrreqs ngd_usrreqs = {
@@ -915,8 +914,7 @@ static struct pr_usrreqs ngd_usrreqs = {
 	.pru_shutdown = NULL,
 	.pru_sockaddr = ng_setsockaddr,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 /*

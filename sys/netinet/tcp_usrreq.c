@@ -831,8 +831,7 @@ struct pr_usrreqs tcp_usrreqs = {
 	.pru_shutdown = tcp_usr_shutdown,
 	.pru_sockaddr = in_setsockaddr,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 #ifdef INET6
@@ -855,8 +854,7 @@ struct pr_usrreqs tcp6_usrreqs = {
 	.pru_shutdown = tcp_usr_shutdown,
 	.pru_sockaddr = in6_mapped_sockaddr,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 #endif /* INET6 */
 

@@ -114,7 +114,6 @@ net_init_domain(struct domain *dp)
 		PRU_NOTSUPP(pu, sockaddr);
 		PRU_NOTSUPP(pu, sosend);
 		PRU_NOTSUPP(pu, soreceive);
-		PRU_NOTSUPP(pu, sopoll);
 		PRU_NOTSUPP(pu, ctloutput);
 
 		if (pr->pr_init)

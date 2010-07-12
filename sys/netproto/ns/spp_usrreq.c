@@ -1641,8 +1641,7 @@ struct pr_usrreqs spp_usrreqs = {
 	.pru_shutdown = spp_shutdown,
 	.pru_sockaddr = spp_sockaddr,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 struct pr_usrreqs spp_usrreqs_sp = {
@@ -1664,8 +1663,7 @@ struct pr_usrreqs spp_usrreqs_sp = {
 	.pru_shutdown = spp_shutdown,
 	.pru_sockaddr = spp_sockaddr,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 /*

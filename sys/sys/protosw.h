@@ -161,7 +161,7 @@ struct protosw {
 #define	PRU_SOCKADDR		15	/* fetch socket's address */
 #define	PRU_PEERADDR		16	/* fetch peer's address */
 #define	PRU_CONNECT2		17	/* connect two sockets */
-#define PRU_SOPOLL		18
+#define PRU_RESERVED1		18	/* formerly PRU_SOPOLL */
 /* begin for protocols internal use */
 #define	PRU_FASTTIMO		19	/* 200ms timeout */
 #define	PRU_SLOWTIMO		20	/* 500ms timeout */
@@ -179,7 +179,7 @@ const char *prurequests[] = {
 	"CONNECT",	"ACCEPT",	"DISCONNECT",	"SHUTDOWN",
 	"RCVD",		"SEND",		"ABORT",	"CONTROL",
 	"SENSE",	"RCVOOB",	"SENDOOB",	"SOCKADDR",
-	"PEERADDR",	"CONNECT2",	"SOPOLL",
+	"PEERADDR",	"CONNECT2",	"",
 	"FASTTIMO",	"SLOWTIMO",	"PROTORCV",	"PROTOSEND",
 	"SEND_EOF",	"PREDICATE"
 };
@@ -253,8 +253,6 @@ struct pr_usrreqs {
 				      struct uio *uio,
 				      struct sockbuf *sio,
 				      struct mbuf **controlp, int *flagsp);
-	int	(*pru_sopoll) (struct socket *so, int events,
-				     struct ucred *cred, struct thread *td);
 	int	(*pru_ctloutput) (struct socket *so, struct sockopt *sopt);
 };
 
@@ -292,9 +290,6 @@ typedef int (*pru_soreceive_fn_t) (struct socket *so, struct sockaddr **paddr,
 					struct sockbuf *sio,
 					struct mbuf **controlp,
 					int *flagsp);
-typedef int (*pru_sopoll_fn_t) (struct socket *so, int events,
-					struct ucred *cred,
-					struct thread *td);
 typedef	int	(*pru_ctloutput_fn_t) (struct socket *so, struct sockopt *sopt);
 typedef	void (*pru_ctlinput_fn_t) (int cmd, struct sockaddr *arg, void *extra);
 
@@ -322,8 +317,6 @@ int	pru_soreceive_notsupp(struct socket *so,
 				struct uio *uio,
 				struct sockbuf *sio,
 				struct mbuf **controlp, int *flagsp);
-int	pru_sopoll_notsupp(struct socket *so, int events,
-				struct ucred *cred, struct thread *td);
 int	pru_ctloutput_notsupp(struct socket *so, struct sockopt *sopt);
 int	pru_sense_null (struct socket *so, struct stat *sb);
 

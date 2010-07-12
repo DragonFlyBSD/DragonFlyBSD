@@ -191,8 +191,9 @@ ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 	struct thread *td = conn->td;
 	struct ncp_rqhdr *rq;
 	struct ncp_rphdr *rp=NULL;
-	struct timeval tv;
+	struct timespec ts;
 	struct mbuf *m, *mreply = NULL;
+	int res;
 	
 	conn->nc_rq = rqp;
 	rqp->conn = conn;
@@ -214,8 +215,11 @@ ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 	crit_enter();
 	while (1/*so->so_rcv.sb_cc*/) {
 		struct sockbuf sio;
+		ts.tv_sec = 0;
+		ts.tv_nsec = 0;
 
-		if (ncp_poll(so, POLLIN) == 0)
+		error = socket_wait(so, &ts, &res);
+		if (error || !res)
 			break;
 		if (ncp_sock_recv(so, &sio) != 0)	
 			break;
@@ -259,15 +263,15 @@ ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 			error = ncp_sock_send(so, rqp->rq, rqp);
 			if (error) break;
 		}
-		tv.tv_sec = conn->li.timeout;
-		tv.tv_usec = 0;
-		error = ncp_sock_rselect(so, td, &tv, POLLIN);
+		ts.tv_sec = conn->li.timeout;
+		ts.tv_nsec = 0;
+		error = socket_wait(so, &ts, &res);
 		if (error == EWOULDBLOCK )	/* timeout expired */
 			continue;
 		error = ncp_chkintr(conn, td);
 		if (error == EINTR) 		/* we dont restart */
 			break;
-		if (error) break;
+		if (error || !res) break;
 		/*
 		 * At this point it is possible to get more than one
 		 * reply from server. In general, last reply should be for
@@ -280,7 +284,11 @@ ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 			struct sockbuf sio;
 
 			error = 0;
-			if (ncp_poll(so,POLLIN) == 0) break;
+			ts.tv_sec = 0;
+			ts.tv_nsec = 0;
+			error = socket_wait(so, &ts, &res);
+			if (error || !res)
+				break;
 			error = ncp_sock_recv(so, &sio);
 			if (error) break; 		/* must be more checks !!! */
 

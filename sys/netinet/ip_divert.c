@@ -573,8 +573,7 @@ struct pr_usrreqs div_usrreqs = {
 	.pru_shutdown = div_shutdown,
 	.pru_sockaddr = in_setsockaddr,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 static struct mbuf *

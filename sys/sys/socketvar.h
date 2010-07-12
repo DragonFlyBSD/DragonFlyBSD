@@ -366,6 +366,7 @@ struct	socket *soalloc (int waitok);
 int	sobind (struct socket *so, struct sockaddr *nam, struct thread *td);
 void	socantrcvmore (struct socket *so);
 void	socantsendmore (struct socket *so);
+int	socket_wait (struct socket *so, struct timespec *ts, int *res);
 int	soclose (struct socket *so, int fflags);
 int	soconnect (struct socket *so, struct sockaddr *nam, struct thread *td);
 int	soconnect2 (struct socket *so1, struct socket *so2);
@@ -397,8 +398,6 @@ void	soopt_to_mbuf (struct sockopt *sopt, struct mbuf *m);
 int	soopt_mcopyout (struct sockopt *sopt, struct mbuf *m);
 int	soopt_from_mbuf (struct sockopt *sopt, struct mbuf *m);
 
-int	sopoll (struct socket *so, int events, struct ucred *cred,
-		    struct thread *td);
 int	soreceive (struct socket *so, struct sockaddr **paddr,
 		       struct uio *uio, struct sockbuf *sio,
 		       struct mbuf **controlp, int *flagsp);

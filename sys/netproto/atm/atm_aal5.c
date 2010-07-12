@@ -95,8 +95,7 @@ struct pr_usrreqs	atm_aal5_usrreqs = {
 	.pru_shutdown = atm_aal5_shutdown,
 	.pru_sockaddr = atm_aal5_sockaddr,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 /*

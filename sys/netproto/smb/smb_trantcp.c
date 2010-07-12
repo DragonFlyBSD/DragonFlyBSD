@@ -94,60 +94,6 @@ nb_setsockopt_int(struct socket *so, int level, int name, int val)
 	return sosetopt(so, &sopt);
 }
 
-static __inline int
-nb_poll(struct nbpcb *nbp, int events, struct thread *td)
-{
-	return so_pru_sopoll(nbp->nbp_tso, events, NULL);
-}
-
-static int
-nbssn_rselect(struct nbpcb *nbp, struct timeval *tv, int events, struct thread *td)
-{
-	struct lwp *lp = td->td_lwp;
-	struct timeval atv, rtv, ttv;
-	int timo, error;
-
-	if (tv) {
-		atv = *tv;
-		if (itimerfix(&atv)) {
-			error = EINVAL;
-			goto done;
-		}
-		getmicrouptime(&rtv);
-		timevaladd(&atv, &rtv);
-	}
-	timo = 0;
-	KKASSERT(lp);
-retry:
-	lp->lwp_flag |= LWP_SELECT;
-	error = nb_poll(nbp, events, td);
-	if (error) {
-		error = 0;
-		goto done;
-	}
-	if (tv) {
-		getmicrouptime(&rtv);
-		if (timevalcmp(&rtv, &atv, >=))
-			goto done;
-		ttv = atv;
-		timevalsub(&ttv, &rtv);
-		timo = tvtohz_high(&ttv);
-	}
-	crit_enter();
-	if ((lp->lwp_flag & LWP_SELECT) == 0) {
-		crit_exit();
-		goto retry;
-	}
-	lp->lwp_flag &= ~LWP_SELECT;
-	error = tsleep((caddr_t)&selwait, 0, "nbsel", timo);
-	crit_exit();
-done:
-	lp->lwp_flag &= ~LWP_SELECT;
-	if (error == ERESTART)
-		return 0;
-	return error;
-}
-
 static int
 nb_intr(struct nbpcb *nbp, struct thread *td)
 {
@@ -257,11 +203,10 @@ nbssn_rq_request(struct nbpcb *nbp, struct thread *td)
 	struct mbchain mb, *mbp = &mb;
 	struct mdchain md, *mdp = &md;
 	struct mbuf *m0;
-	struct timeval tv;
 	struct sockaddr_in sin;
 	u_short port;
 	u_int8_t rpcode;
-	int error, rplen;
+	int error, rplen, res;
 
 	error = mb_init(mbp);
 	if (error)
@@ -278,8 +223,7 @@ nbssn_rq_request(struct nbpcb *nbp, struct thread *td)
 	mb_done(mbp);
 	if (error)
 		return error;
-	TIMESPEC_TO_TIMEVAL(&tv, &nbp->nbp_timo);
-	error = nbssn_rselect(nbp, &tv, POLLIN, td);
+	error = socket_wait(nbp->nbp_tso, &nbp->nbp_timo, &res);
 	if (error == EWOULDBLOCK) {	/* Timeout */
 		NBDEBUG("initial request timeout\n");
 		return ETIMEDOUT;

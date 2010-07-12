@@ -191,14 +191,6 @@ struct netmsg_pru_soreceive {
     int			*nm_flagsp;
 };
 
-struct netmsg_pru_sopoll {
-    struct netmsg	nm_netmsg;
-    pru_sopoll_fn_t	nm_prufn;
-    int			nm_events;
-    struct ucred	*nm_cred;
-    struct thread	*nm_td;
-};
-
 struct netmsg_pru_ctloutput {
     struct netmsg	nm_netmsg;
     pru_ctloutput_fn_t	nm_prufn;

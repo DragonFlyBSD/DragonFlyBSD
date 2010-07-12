@@ -597,13 +597,6 @@ pru_soreceive_notsupp(struct socket *so, struct sockaddr **paddr,
 }
 
 int
-pru_sopoll_notsupp(struct socket *so, int events,
-		   struct ucred *cred, struct thread *td)
-{
-	return (EOPNOTSUPP);
-}
-
-int
 pru_ctloutput_notsupp(struct socket *so, struct sockopt *sopt)
 {
 	return (EOPNOTSUPP);

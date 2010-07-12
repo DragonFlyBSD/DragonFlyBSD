@@ -109,8 +109,7 @@ struct	pr_usrreqs ipx_usrreqs = {
 	.pru_shutdown = ipx_shutdown,
 	.pru_sockaddr = ipx_sockaddr,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 struct	pr_usrreqs ripx_usrreqs = {
@@ -132,8 +131,7 @@ struct	pr_usrreqs ripx_usrreqs = {
 	.pru_shutdown = ipx_shutdown,
 	.pru_sockaddr = ipx_sockaddr,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 /*
