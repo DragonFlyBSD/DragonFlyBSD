@@ -46,13 +46,6 @@ struct	ifaltq {
 	int	ifq_maxlen;
 	int	ifq_drops;
 
-        /* driver owned queue (used for bulk dequeue and prepend) UNLOCKED */
-        struct  mbuf *ifq_drv_head;
-        struct  mbuf *ifq_drv_tail;
-        int     ifq_drv_len;
-        int     ifq_drv_maxlen;
-
-
 	/* alternate queueing related fields */
 	int	altq_type;		/* discipline type */
 	int	altq_flags;		/* flags (e.g. ready, in-use) */
