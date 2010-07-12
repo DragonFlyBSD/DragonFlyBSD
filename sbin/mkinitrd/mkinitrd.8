@@ -82,6 +82,45 @@ initrd.img_load="YES"
 initrd.img_type="md_image"
 vfs.root.mountfrom="ufs:md0s0"
 .Ed
+.Pp
+The format for vfs.root.realroot in
+.Pa /boot/loader.conf
+that allows the user to specify what system to mount as the
+new root in the initrd is specified in its general form below:
+.Bd -literal -offset indent
+vfs.root.realroot="<type>:[arg1[:arg2[:argN]]]
+.Ed
+.Pp
+Currently, two types of real root are supported,
+.Pa local
+and
+.Pa crypt .
+The
+.Pa local
+type allows to mount any local file system that does not require any
+special setup apart from the initial discovery and calling the
+.Pa mount
+program. The general format is as follows:
+.Bd -literal -offset indent
+vfs.root.realroot="local:<FS TYPE>:<DEVICE PATH>[:<OPTIONS>]
+.Ed
+.Pp
+The
+.Pa crypt
+type allows to mount volumes supported by cryptsetup. The device will
+be set up by prompting the user for his key, and this volume will then
+be mounted as the new root.
+.Bd -literal -offset indent
+vfs.root.realroot="crypt:<FS TYPE>:<DEVICE PATH>:<VOLUME NAME>[:<OPTIONS>]
+.Ed
+
+.Sh EXAMPLES
+.Bd -literal -offset indent
+vfs.root.realroot="local:ufs:/dev/vg00/lv0[:OPTIONS]
+.Ed
+.Bd -literal -offset indent
+vfs.root.realroot="crypt:ufs:/dev/ad0s0a:secvolume[:OPTIONS]
+.Ed
 .Sh SEE ALSO
 .Xr md 4 ,
 .Xr loader.conf 5

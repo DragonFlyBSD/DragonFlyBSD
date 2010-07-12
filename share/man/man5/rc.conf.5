@@ -2649,6 +2649,11 @@ to be used within a jail.
 If set to
 .Dq Li YES ,
 allow applications within a jail to use System V IPC.
+.It Va lvm_enable
+.Pq Vt bool
+If set to
+.Dq Li YES
+LVM volumes will be discovered and configured on boot.
 .It Va newsyslog_enable
 .Pq Vt bool
 If set to
@@ -2798,6 +2803,11 @@ If set, start a watchdog timer in the background which will terminate
 if
 .Xr shutdown 8
 has not completed within the specified time (in seconds).
+.It Va udevd_enable
+.Pq Vt bool
+If set to
+.Dq Li YES ,
+the udevd daemon will be started on boot.
 .It Va vkernel_enable
 .Pq Vt bool
 If set to

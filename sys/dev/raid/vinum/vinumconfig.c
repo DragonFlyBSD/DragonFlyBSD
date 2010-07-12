@@ -52,6 +52,7 @@
 
 #define STATIC static
 
+#include <sys/udev.h>
 #include "vinumhdr.h"
 #include "request.h"
 
@@ -740,6 +741,8 @@ made_sd(struct sd *sd)
 	sd->sd_dev = make_dev(&vinum_ops, VINUM_SD(sd->sdno),
 			      UID_ROOT, GID_OPERATOR, 0640,
 			      VINUM_BASE "sd/%s", sd->name);
+	udev_dict_set_cstr(sd->sd_dev, "subsystem", "raid");
+	udev_dict_set_cstr(sd->sd_dev, "disk-type", "raid");
 #if 0
 	if (sd->plexno >= 0 && PLEX[sd->plexno].volno >= 0) {
 		make_dev_alias(sd->sd_dev, "vol/%s.plex/%s",
@@ -762,6 +765,8 @@ made_vol(struct volume *vol)
 				VINUMDEV(vol->volno, 0, 0, VINUM_VOLUME_TYPE),
 				UID_ROOT, GID_OPERATOR, 0640,
 				VINUM_BASE "vol/%s", vol->name);
+	udev_dict_set_cstr(vol->vol_dev, "subsystem", "raid");
+	udev_dict_set_cstr(vol->vol_dev, "disk-type", "raid");
     }
     if (vol->vol_dev && vol->state == volume_unallocated) {
 	destroy_dev(vol->vol_dev);
@@ -776,6 +781,8 @@ made_plex(struct plex *plex)
 	plex->plex_dev = make_dev(&vinum_ops, VINUM_PLEX(plex->plexno),
 				UID_ROOT, GID_OPERATOR, 0640,
 				VINUM_BASE "plex/%s", plex->name);
+	udev_dict_set_cstr(plex->plex_dev, "subsystem", "raid");
+	udev_dict_set_cstr(plex->plex_dev, "disk-type", "raid");
 	if (plex->volno >= 0) {
 		make_dev_alias(plex->plex_dev, "vol/%s.plex/%s",
 				plex->name, VOL[plex->volno].name);

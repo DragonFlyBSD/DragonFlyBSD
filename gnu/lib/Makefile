@@ -5,5 +5,6 @@ SUBDIR= libdialog libregex gcc41
 .if !defined(NO_GCC44)
 SUBDIR+= gcc44
 .endif
+SUBDIR+= libdevmapper liblvm
 
 .include <bsd.subdir.mk>

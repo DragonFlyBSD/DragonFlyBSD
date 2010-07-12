@@ -14,7 +14,6 @@
  * Austin, Texas  78712
  *
  * $FreeBSD: src/gnu/usr.bin/man/man/man.c,v 1.37.2.10 2003/02/14 15:38:51 ru Exp $
- * $DragonFly: src/gnu/usr.bin/man/man/man.c,v 1.9 2008/07/10 18:29:51 swildner Exp $
  */
 
 #define MAN_MAIN
@@ -25,59 +24,50 @@
 #include <ctype.h>
 #include <errno.h>
 #include <libgen.h>
-#ifdef __DragonFly__
 #include <locale.h>
 #include <langinfo.h>
-#endif
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <signal.h>
-#if HAVE_LIBZ > 0
+#include <unistd.h>
 #include <zlib.h>
-#endif
+
 #include "config.h"
 #include "gripes.h"
+#include "util.h"
 #include "version.h"
 
-#ifdef POSIX
-#include <unistd.h>
-#else
-#ifndef R_OK
-#define R_OK 4
-#endif
-#endif
+extern char **glob_filename (char *);
+extern char *manpath (int);
 
-#ifdef SECURE_MAN_UID
-extern uid_t getuid ();
-extern int setuid ();
-#endif
-
-#ifdef STDC_HEADERS
-#include <stdlib.h>
-#else
-extern char *malloc ();
-extern char *getenv ();
-extern void free ();
-extern int system ();
-extern int strcmp ();
-extern int strncmp ();
-extern int exit ();
-extern int fflush ();
-extern int printf ();
-extern int fprintf ();
-extern FILE *fopen ();
-extern int fclose ();
-extern char *sprintf ();
-#endif
-
-extern char **glob_filename ();
-extern int is_newer ();
-extern int is_directory ();
-extern int do_system_command ();
+char *is_section (char *);
+char **get_section_list (void);
+void man_getopt (int, char **);
+void do_apropos (char *);
+void do_whatis (char *);
+int man (char *);
+void usage (void);
+char **add_dir_to_mpath_list (char **, char *);
+char *convert_name (char *, int);
+char **glob_for_file (char *, char *, char *, char *, int);
+char **make_name (char *, char *, char *, char *, int);
+const char *get_expander (char *);
+int display_cat_file (char *);
+char *ultimate_source (char *, char *);
+void add_directive (int *, const char *, char *, char *, int);
+int parse_roff_directive (const char *, char *, char *, int);
+char *make_roff_command (char *);
+void cleantmp(int);
+void set_sigs(void);
+void restore_sigs(void);
+int make_cat_file (char *, char *, char *, int);
+int format_and_display (char *, char *, char *);
+int try_section (char *, char *, char *, char *, int);
 
 char *prognam;
 static char *pager;
-static char *machine;
+static const char *machine;
 static char *manp;
 static char *manpathlist[MAXDIRS];
 static char *shortsec;
@@ -90,72 +80,46 @@ static int whatis;
 static int findall;
 static int print_where;
 
-#ifdef __DragonFly__
-static char *locale, *locale_opts, *locale_nroff, *locale_codeset;
+static char *locale, *locale_codeset;
+static const char *locale_nroff, *locale_opts;
 static char locale_terr[3], locale_lang[3];
 static char *man_locale;
 static int use_man_locale;
 static int use_original;
 struct ltable {
-	char *lcode;
-	char *nroff;
+	const char *lcode;
+	const char *nroff;
 };
 static struct ltable ltable[] = {
 	{"KOI8-R", "koi8-r"},
 	{"ISO8859-1", "latin1"},
 	{"ISO8859-15", "latin1"},
-	{NULL}
+	{NULL, NULL}
 };
-#endif
 
 static int troff = 0;
 
 int debug;
 
-#ifdef HAS_TROFF
-#ifdef __DragonFly__
 static char args[] = "M:P:S:adfhkm:op:tw?";
-#else
-static char args[] = "M:P:S:adfhkm:p:tw?";
-#endif
-#else
-#ifdef __DragonFly__
-static char args[] = "M:P:S:adfhkm:op:w?";
-#else
-static char args[] = "M:P:S:adfhkm:p:w?";
-#endif
-#endif
 
-#ifdef SETREUID
 uid_t ruid;
 uid_t euid;
 gid_t rgid;
 gid_t egid;
-#endif
 
 int
-main (argc, argv)
-     int argc;
-     char **argv;
+main (int argc, char **argv)
 {
   int status = 0;
   char *nextarg;
   char *tmp;
-  extern char *mkprogname ();
-  char *is_section ();
-  char **get_section_list ();
-  void man_getopt ();
-  void do_apropos ();
-  void do_whatis ();
-  int man ();
 
   prognam = mkprogname (argv[0]);
   longsec = NULL;
 
   unsetenv("IFS");
-#ifdef __DragonFly__
   (void) setlocale(LC_ALL, "");
-#endif
   man_getopt (argc, argv);
 
   if (optind == argc)
@@ -165,20 +129,18 @@ main (argc, argv)
 
   if (optind == argc - 1)
     {
-      tmp = is_section (argv[optind], manp);
+      tmp = is_section (argv[optind]);
 
       if (tmp != NULL)
 	gripe_no_name (tmp);
     }
 
-#ifdef SETREUID
   ruid = getuid();
   rgid = getgid();
   euid = geteuid();
   egid = getegid();
   setreuid(-1, ruid);
   setregid(-1, rgid);
-#endif
 
   while (optind < argc)
     {
@@ -188,7 +150,7 @@ main (argc, argv)
        * See if this argument is a valid section name.  If not,
        * is_section returns NULL.
        */
-      tmp = is_section (nextarg, manp);
+      tmp = is_section (nextarg);
 
       if (tmp != NULL)
 	{
@@ -221,31 +183,13 @@ main (argc, argv)
 }
 
 void
-usage ()
+usage (void)
 {
   static char usage_string[1024] = "%s, version %s\n\n";
 
-#ifdef HAS_TROFF
-#ifdef __DragonFly__
   static char s1[] =
     "usage: %s [-adfhkotw] [section] [-M path] [-P pager] [-S list]\n\
            [-m machine] [-p string] name ...\n\n";
-#else
-  static char s1[] =
-    "usage: %s [-adfhktw] [section] [-M path] [-P pager] [-S list]\n\
-           [-m machine] [-p string] name ...\n\n";
-#endif
-#else
-#ifdef __DragonFly__
-  static char s1[] =
-    "usage: %s [-adfhkow] [section] [-M path] [-P pager] [-S list]\n\
-           [-m machine] [-p string] name ...\n\n";
-#else
-  static char s1[] =
-    "usage: %s [-adfhkw] [section] [-M path] [-P pager] [-S list]\n\
-           [-m machine] [-p string] name ...\n\n";
-#endif
-#endif
 
 static char s2[] = "  a : find all matching entries\n\
   d : print gobs of debugging information\n\
@@ -253,13 +197,9 @@ static char s2[] = "  a : find all matching entries\n\
   h : print this help message\n\
   k : same as apropos(1)\n";
 
-#ifdef __DragonFly__
   static char s3[] = "  o : use original, non-localized manpages\n";
-#endif
 
-#ifdef HAS_TROFF
   static char s4[] = "  t : use troff to format pages for printing\n";
-#endif
 
   static char s5[] = "  w : print location of man page(s) that would be displayed\n\n\
   M path    : set search path for manual pages to `path'\n\
@@ -273,13 +213,9 @@ static char s2[] = "  a : find all matching entries\n\
 
   strcat (usage_string, s1);
   strcat (usage_string, s2);
-#ifdef __DragonFly__
   strcat (usage_string, s3);
-#endif
 
-#ifdef HAS_TROFF
   strcat (usage_string, s4);
-#endif
 
   strcat (usage_string, s5);
 
@@ -290,9 +226,7 @@ static char s2[] = "  a : find all matching entries\n\
 }
 
 char **
-add_dir_to_mpath_list (mp, p)
-     char **mp;
-     char *p;
+add_dir_to_mpath_list (char **mp, char *p)
 {
   int status;
 
@@ -320,16 +254,12 @@ add_dir_to_mpath_list (mp, p)
  * Get options from the command line and user environment.
  */
 void
-man_getopt (argc, argv)
-     register int argc;
-     register char **argv;
+man_getopt (int argc, char **argv)
 {
-  register int c;
-  register char *p;
-  register char *end;
-  register char **mp;
-  extern void downcase ();
-  extern char *manpath ();
+  int c;
+  char *p;
+  char *end;
+  char **mp;
 
   while ((c = getopt (argc, argv, args)) != -1)
     {
@@ -373,15 +303,12 @@ man_getopt (argc, argv)
 	case 'm':
 	  machine = optarg;
 	  break;
-#ifdef __DragonFly__
 	case 'o':
 	  use_original++;
 	  break;
-#endif
 	case 'p':
 	  roff_directive = strdup (optarg);
 	  break;
-#ifdef HAS_TROFF
 	case 't':
 	  if (apropos)
 	    gripe_incompatible ("-t and -k");
@@ -391,7 +318,6 @@ man_getopt (argc, argv)
 	    gripe_incompatible ("-t and -w");
 	  troff++;
 	  break;
-#endif
 	case 'w':
 	  if (apropos)
 	    gripe_incompatible ("-w and -k");
@@ -409,7 +335,6 @@ man_getopt (argc, argv)
 	}
     }
 
-#ifdef __DragonFly__
   /* "" intentionally used to catch error */
   if ((locale = setlocale(LC_CTYPE, "")) != NULL)
 	locale_codeset = nl_langinfo(CODESET);
@@ -468,7 +393,6 @@ man_getopt (argc, argv)
 		}
 	}
   }
-#endif /* __DragonFly__ */
 
   if (pager == NULL || *pager == '\0')
     if ((pager = getenv ("PAGER")) == NULL || *pager == '\0')
@@ -524,11 +448,9 @@ man_getopt (argc, argv)
  * named directories like .../man3f.  Yuk.
  */
 char *
-is_section (name, path)
-     char *name;
-     char *path;
+is_section (char *name)
 {
-  register char **vs;
+  char **vs;
   char *temp, *end, *loc;
   char **plist;
   int x;
@@ -580,11 +502,10 @@ is_section (name, path)
  * Handle the apropos option.  Cheat by using another program.
  */
 void
-do_apropos (name)
-     register char *name;
+do_apropos (char *name)
 {
-  register int len;
-  register char *command;
+  int len;
+  char *command;
 
   len = strlen (APROPOS) + strlen (name) + 4;
 
@@ -602,11 +523,10 @@ do_apropos (name)
  * Handle the whatis option.  Cheat by using another program.
  */
 void
-do_whatis (name)
-     register char *name;
+do_whatis (char *name)
 {
-  register int len;
-  register char *command;
+  int len;
+  char *command;
 
   len = strlen (WHATIS) + strlen (name) + 4;
 
@@ -625,15 +545,12 @@ do_whatis (name)
  * or a name of the form ...man/cat1/name.1 to ...man/man1/name.1
  */
 char *
-convert_name (name, to_cat)
-     register char *name;
-     register int to_cat;
+convert_name (char *name, int to_cat)
 {
-  register char *to_name;
-  register char *t1;
-  register char *t2 = NULL;
+  char *to_name;
+  char *t1;
+  char *t2 = NULL;
 
-#ifdef DO_COMPRESS
   if (to_cat)
     {
       int olen = strlen(name);
@@ -651,9 +568,6 @@ convert_name (name, to_cat)
     }
   else
     to_name = strdup (name);
-#else
-  to_name = strdup (name);
-#endif
 
   t1 = strrchr (to_name, '/');
   if (t1 != NULL)
@@ -703,25 +617,20 @@ convert_name (name, to_cat)
  * Note that globbing is only done when the section is unspecified.
  */
 char **
-glob_for_file (path, section, longsec, name, cat)
-     char *path;
-     char *section;
-     char *longsec;
-     char *name;
-     int cat;
+glob_for_file (char *path, char *section, char *_longsec, char *name, int cat)
 {
   char pathname[FILENAME_MAX];
   char **gf;
 
-  if (longsec == NULL)
-    longsec = section;
+  if (_longsec == NULL)
+    _longsec = section;
 
   if (cat)
     snprintf (pathname, sizeof(pathname), "%s/cat%s/%s.%s*", path, section,
-       name, longsec);
+       name, _longsec);
   else
     snprintf (pathname, sizeof(pathname), "%s/man%s/%s.%s*", path, section,
-       name, longsec);
+       name, _longsec);
 
   if (debug)
     fprintf (stderr, "globbing %s\n", pathname);
@@ -729,7 +638,7 @@ glob_for_file (path, section, longsec, name, cat)
   gf = glob_filename (pathname);
 
   if ((gf == (char **) -1 || *gf == NULL) && isdigit ((unsigned char)*section)
-      && strlen (longsec) == 1)
+      && strlen (_longsec) == 1)
     {
       if (cat)
 	snprintf (pathname, sizeof(pathname), "%s/cat%s/%s.%c*", path, section, name, *section);
@@ -739,7 +648,7 @@ glob_for_file (path, section, longsec, name, cat)
       gf = glob_filename (pathname);
     }
   if ((gf == (char **) -1 || *gf == NULL) && isdigit ((unsigned char)*section)
-      && strlen (longsec) == 1)
+      && strlen (_longsec) == 1)
     {
       if (cat)
 	snprintf (pathname, sizeof(pathname), "%s/cat%s/%s.0*", path, section, name);
@@ -757,21 +666,16 @@ glob_for_file (path, section, longsec, name, cat)
  * globbing.
  */
 char **
-make_name (path, section, longsec, name, cat)
-     char *path;
-     char *section;
-     char *longsec;
-     char *name;
-     int cat;
+make_name (char *path, char *section, char *_longsec, char *name, int cat)
 {
-  register int i = 0;
+  int i = 0;
   static char *names[3];
   char buf[FILENAME_MAX];
 
   if (cat)
-    snprintf (buf, sizeof(buf), "%s/cat%s/%s.%s", path, section, name, longsec);
+    snprintf (buf, sizeof(buf), "%s/cat%s/%s.%s", path, section, name, _longsec);
   else
-    snprintf (buf, sizeof(buf), "%s/man%s/%s.%s", path, section, name, longsec);
+    snprintf (buf, sizeof(buf), "%s/man%s/%s.%s", path, section, name, _longsec);
 
   if (access (buf, R_OK) == 0)
     names[i++] = strdup (buf);
@@ -797,9 +701,8 @@ make_name (path, section, longsec, name, cat)
   return &names[0];
 }
 
-char *
-get_expander (file)
-     char *file;
+const char *
+get_expander (char *file)
 {
   char *end = file + (strlen (file) - 1);
 
@@ -826,17 +729,16 @@ get_expander (file)
  * Simply display the preformatted page.
  */
 int
-display_cat_file (file)
-     register char *file;
+display_cat_file (char *file)
 {
-  register int found;
+  int found;
   char command[FILENAME_MAX];
 
   found = 0;
 
   if (access (file, R_OK) == 0)
     {
-      char *expander = get_expander (file);
+      const char *expander = get_expander (file);
 
       if (expander != NULL)
 	snprintf (command, sizeof(command), "%s %s | %s", expander, file, pager);
@@ -857,9 +759,7 @@ display_cat_file (file)
  * the input file name is returned.
  */
 char *
-ultimate_source (name, path)
-     char *name;
-     char *path;
+ultimate_source (char *name, char *path)
 {
   static  char buf[BUFSIZ];
   static  char ult[FILENAME_MAX];
@@ -909,12 +809,7 @@ ultimate_source (name, path)
 }
 
 void
-add_directive (first, d, file, buf, bufsize)
-     int *first;
-     char *d;
-     char *file;
-     char *buf;
-     int bufsize;
+add_directive (int *first, const char *d, char *file, char *buf, int bufsize)
 {
   if (strcmp (d, "") != 0)
     {
@@ -932,14 +827,10 @@ add_directive (first, d, file, buf, bufsize)
 }
 
 int
-parse_roff_directive (cp, file, buf, bufsize)
-  char *cp;
-  char *file;
-  char *buf;
-  int bufsize;
+parse_roff_directive (const char *cp, char *file, char *buf, int bufsize)
 {
   char c;
-  char *exp;
+  const char *exp;
   int first = 1;
   int preproc_found = 0;
   int use_col = 0;
@@ -960,15 +851,11 @@ parse_roff_directive (cp, file, buf, bufsize)
 	  if (troff)
 	    add_directive (&first, EQN, file, buf, bufsize);
 	  else {
-#ifdef __DragonFly__
 	    char lbuf[FILENAME_MAX];
 
 	    snprintf(lbuf, sizeof(lbuf), "%s -T%s", NEQN,
 		     locale_opts == NULL ? "ascii" : locale_opts);
 	    add_directive (&first, lbuf, file, buf, bufsize);
-#else
-	    add_directive (&first, NEQN, file, buf, bufsize);
-#endif
 	  }
 
 	  break;
@@ -1033,13 +920,10 @@ parse_roff_directive (cp, file, buf, bufsize)
 
  done:
 
-#ifdef HAS_TROFF
   if (troff)
     add_directive (&first, TROFF, file, buf, bufsize);
   else
-#endif
     {
-#ifdef __DragonFly__
       char lbuf[FILENAME_MAX];
 
       snprintf(lbuf, sizeof(lbuf), "%s -T%s%s%s", NROFF,
@@ -1047,9 +931,6 @@ parse_roff_directive (cp, file, buf, bufsize)
 	       use_man_locale ? " -dlocale=" : "",
 	       use_man_locale ? man_locale : "");
 	    add_directive (&first, lbuf, file, buf, bufsize);
-#else
-      add_directive (&first, NROFF " -Tascii", file, buf, bufsize);
-#endif
     }
   if (use_col && !troff)
       add_directive (&first, COL, file, buf, bufsize);
@@ -1061,14 +942,9 @@ parse_roff_directive (cp, file, buf, bufsize)
 }
 
 char *
-make_roff_command (file)
-     char *file;
+make_roff_command (char *file)
 {
-#if HAVE_LIBZ > 0
   gzFile fp;
-#else
-  FILE *fp;
-#endif
   char line [BUFSIZ];
   static char buf [BUFSIZ];
   int status;
@@ -1085,23 +961,14 @@ make_roff_command (file)
 	return buf;
 
       if (status == -1)
-	gripe_roff_command_from_command_line (file);
+	gripe_roff_command_from_command_line ();
     }
 
-#if HAVE_LIBZ > 0
   if ((fp = gzopen (file, "r")) != NULL)
-#else
-  if ((fp = fopen (file, "r")) != NULL)
-#endif
     {
       cp = line;
-#if HAVE_LIBZ > 0
       gzgets (fp, line, BUFSIZ);
       gzclose(fp);
-#else
-      fgets (line, BUFSIZ, fp);
-      fclose(fp);
-#endif
       if (*cp++ == '\'' && *cp++ == '\\' && *cp++ == '"' && *cp++ == ' ')
 	{
 	  if (debug)
@@ -1153,14 +1020,15 @@ make_roff_command (file)
 sig_t ohup, oint, oquit, oterm;
 static char temp[FILENAME_MAX];
 
-void cleantmp()
+void
+cleantmp(int signo __unused)
 {
 	unlink(temp);
 	exit(1);
 }
 
 void
-set_sigs()
+set_sigs(void)
 {
   ohup = signal(SIGHUP, cleantmp);
   oint = signal(SIGINT, cleantmp);
@@ -1169,7 +1037,7 @@ set_sigs()
 }
 
 void
-restore_sigs()
+restore_sigs(void)
 {
   signal(SIGHUP, ohup);
   signal(SIGINT, oint);
@@ -1182,10 +1050,7 @@ restore_sigs()
  * 1 for success and 0 for failure.
  */
 int
-make_cat_file (path, man_file, cat_file, manid)
-     register char *path;
-     register char *man_file;
-     register char *cat_file;
+make_cat_file (char *path, char *man_file, char *cat_file, int manid)
 {
   int s, f;
   FILE *fp, *pp;
@@ -1210,48 +1075,36 @@ make_cat_file (path, man_file, cat_file, manid)
       } else if (debug)
 	fprintf (stderr, "mode of %s is now %o\n", temp, CATMODE);
 
-#ifdef DO_COMPRESS
       snprintf (command, sizeof(command), "(cd %s ; %s | %s)", path,
 		roff_command, COMPRESSOR);
-#else
-      snprintf (command, sizeof(command), "(cd %s ; %s)", path,
-		roff_command);
-#endif
       fprintf (stderr, "Formatting page, please wait...");
       fflush(stderr);
 
       if (debug)
 	fprintf (stderr, "\ntrying command: %s\n", command);
       else {
-
-#ifdef SETREUID
 	if (manid) {
 	  setreuid(-1, ruid);
 	  setregid(-1, rgid);
 	}
-#endif
 	if ((pp = popen(command, "r")) == NULL) {
 	  s = errno;
 	  fprintf(stderr, "Failed.\n");
 	  errno = s;
 	  perror("popen");
-#ifdef SETREUID
 	  if (manid) {
 	    setreuid(-1, euid);
 	    setregid(-1, egid);
 	  }
-#endif
 	  unlink(temp);
 	  restore_sigs();
 	  fclose(fp);
 	  return 0;
 	}
-#ifdef SETREUID
 	if (manid) {
 	  setreuid(-1, euid);
 	  setregid(-1, egid);
 	}
-#endif
 
 	f = 0;
 	while ((s = getc(pp)) != EOF) {
@@ -1344,13 +1197,10 @@ make_cat_file (path, man_file, cat_file, manid)
  * file at this point.
  */
 int
-format_and_display (path, man_file, cat_file)
-     register char *path;
-     register char *man_file;
-     register char *cat_file;
+format_and_display (char *path, char *man_file, char *cat_file)
 {
   int status;
-  register int found;
+  int found;
   char *roff_command;
   char command[FILENAME_MAX];
 
@@ -1391,14 +1241,9 @@ format_and_display (path, man_file, cat_file)
 	  else
 	    {
 
-#ifdef SETREUID
 	      setreuid(-1, euid);
 	      setregid(-1, egid);
 	      found = make_cat_file (path, man_file, cat_file, 1);
-#else
-	      found = make_cat_file (path, man_file, cat_file, 0);
-#endif
-#ifdef SETREUID
 	      setreuid(-1, ruid);
 	      setregid(-1, rgid);
 
@@ -1411,26 +1256,6 @@ format_and_display (path, man_file, cat_file)
 		     of reading private man pages is avoided.  */
 		  found = make_cat_file (path, man_file, cat_file, 0);
 	        }
-#endif
-#ifdef SECURE_MAN_UID
-	      if (!found)
-		{
-		  /*
-		   * Try again as real user.  Note that for private
-		   * man pages, we won't even get this far unless the
-		   * effective user can read the real user's man page
-		   * source.  Also, if we are trying to find all the
-		   * man pages, this will probably make it impossible
-		   * to make cat files in the system directories if
-		   * the real user's man directories are searched
-		   * first, because there's no way to undo this (is
-		   * there?).  Yikes, am I missing something obvious?
-		   */
-		  setuid (getuid ());
-
-		  found = make_cat_file (path, man_file, cat_file, 0);
-		}
-#endif
 	      if (found)
 		{
 		  /*
@@ -1481,18 +1306,13 @@ format_and_display:
  * section.
  */
 int
-try_section (path, section, longsec, name, glob)
-     char *path;
-     char *section;
-     char *longsec;
-     char *name;
-     int glob;
+try_section (char *path, char *section, char *_longsec, char *name, int glob)
 {
-  register int found = 0;
-  register int to_cat;
-  register int cat;
-  register char **names;
-  register char **np;
+  int found = 0;
+  int to_cat;
+  int cat;
+  char **names;
+  char **np;
   static int arch_search;
   char buf[FILENAME_MAX];
 
@@ -1503,7 +1323,7 @@ try_section (path, section, longsec, name, glob)
 	{
 	  snprintf(buf, sizeof(buf), "%s/%s", machine, name);
 	  arch_search++;
-	  found = try_section (path, section, longsec, buf, glob);
+	  found = try_section (path, section, _longsec, buf, glob);
 	  arch_search--;
 	  if (found && !findall)   /* only do this architecture... */
 	    return found;
@@ -1524,9 +1344,9 @@ try_section (path, section, longsec, name, glob)
    */
   cat = 0;
   if (glob)
-    names = glob_for_file (path, section, longsec, name, cat);
+    names = glob_for_file (path, section, _longsec, name, cat);
   else
-    names = make_name (path, section, longsec, name, cat);
+    names = make_name (path, section, _longsec, name, cat);
 
   if (names == (char **) -1 || *names == NULL)
     /*
@@ -1539,9 +1359,9 @@ try_section (path, section, longsec, name, glob)
 	{
 	  cat = 1;
 	  if (glob)
-	    names = glob_for_file (path, section, longsec, name, cat);
+	    names = glob_for_file (path, section, _longsec, name, cat);
 	  else
-	    names = make_name (path, section, longsec, name, cat);
+	    names = make_name (path, section, _longsec, name, cat);
 
 	  if (names != (char **) -1 && *names != NULL)
 	    {
@@ -1565,8 +1385,8 @@ try_section (path, section, longsec, name, glob)
     {
       for (np = names; *np != NULL; np++)
 	{
-	  register char *cat_file = NULL;
-	  register char *man_file;
+	  char *cat_file = NULL;
+	  char *man_file;
 
 	  man_file = ultimate_source (*np, path);
 
@@ -1602,17 +1422,14 @@ try_section (path, section, longsec, name, glob)
  *
  */
 int
-man (name)
-     char *name;
+man (char *name)
 {
-  register int found;
-  register int glob;
-  register char **mp;
-  register char **sp;
-#ifdef __DragonFly__
+  int found;
+  int glob;
+  char **mp;
+  char **sp;
   int l_found;
   char buf[PATH_MAX];
-#endif
 
   found = 0;
 
@@ -1642,7 +1459,6 @@ man (name)
 
 	  glob = 1;
 
-#ifdef __DragonFly__
 	  l_found = 0;
 	  if (locale != NULL) {
 	    locale_opts = locale_nroff;
@@ -1672,12 +1488,9 @@ man (name)
 	    use_man_locale = 0;
 	  }
 	  if (!l_found) {
-#endif
 	  found += try_section (*mp, shortsec, longsec, name, glob);
-#ifdef __DragonFly__
 	  } else
 	    found += l_found;
-#endif
 
 	  if (found && !findall)   /* i.e. only do this section... */
 	    return found;
@@ -1694,7 +1507,6 @@ man (name)
 
 	      glob = 1;
 
-#ifdef __DragonFly__
 	      l_found = 0;
 	      if (locale != NULL) {
 		locale_opts = locale_nroff;
@@ -1724,12 +1536,9 @@ man (name)
 		use_man_locale = 0;
 	      }
 	      if (!l_found) {
-#endif
 	      found += try_section (*mp, *sp, longsec, name, glob);
-#ifdef __DragonFly__
 	      } else
 		found += l_found;
-#endif
 
 	      if (found && !findall)   /* i.e. only do this section... */
 		return found;
@@ -1740,7 +1549,7 @@ man (name)
 }
 
 char **
-get_section_list ()
+get_section_list (void)
 {
   int i;
   char *p;
@@ -1752,7 +1561,7 @@ get_section_list ()
     {
       if ((p = getenv ("MANSECT")) == NULL)
 	{
-	  return std_sections;
+	  return __DECONST(char **, std_sections);
 	}
       else
 	{

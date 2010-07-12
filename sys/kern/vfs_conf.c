@@ -63,6 +63,7 @@
 #include <sys/thread2.h>
 #include <sys/nlookup.h>
 #include <sys/devfs.h>
+#include <sys/sysctl.h>
 
 #include "opt_ddb.h"
 #ifdef DDB
@@ -630,3 +631,26 @@ DB_SHOW_COMMAND(disk, db_getdiskbyname)
 		db_printf("No disk device matched.\n");
 }
 #endif
+
+static int
+vfs_sysctl_real_root(SYSCTL_HANDLER_ARGS)
+{
+	char *real_root;
+	size_t len;
+	int error;
+
+	real_root = kgetenv("vfs.root.realroot");
+
+	if (real_root == NULL)
+		real_root = "";
+
+	len = strlen(real_root) + 1;
+
+	error = sysctl_handle_string(oidp, real_root, len, req);
+
+	return error;
+}
+
+SYSCTL_PROC(_vfs, OID_AUTO, real_root,
+	    CTLTYPE_STRING | CTLFLAG_RD, 0, 0, vfs_sysctl_real_root,
+	    "A", "Real root mount string");

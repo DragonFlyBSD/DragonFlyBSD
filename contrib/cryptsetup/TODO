@@ -1,0 +1,12 @@
+For 1.02
+
+* Add LUKS key copy cmd: luksKeyCopy
+* Add option to supply a master key directly. For LUKS commands: luksFormat, luksOpen and luksAddKey.
+
+For 2.0
+
+* LUKS header version bump:
+  * Add LUKS partition footer. 
+    * change luks_write_phdr stuff.
+    * change luks_read_phdr stuff
+  * change hashing according to conversation with Sarah.

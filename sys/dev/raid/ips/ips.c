@@ -32,6 +32,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/thread2.h>
+#include <sys/udev.h>
 #include <machine/clock.h>
 
 static d_open_t ips_open;
@@ -454,6 +455,8 @@ ips_adapter_init(ips_softc_t *sc)
 		       UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR,
 		       "ips%d", device_get_unit(sc->dev));
 	dev->si_drv1 = sc;
+	udev_dict_set_cstr(dev, "subsystem", "raid");
+	udev_dict_set_cstr(dev, "disk-type", "raid");
 	ips_diskdev_init(sc);
 	callout_reset(&sc->timer, 10 * hz, ips_timeout, sc);
 	return 0;

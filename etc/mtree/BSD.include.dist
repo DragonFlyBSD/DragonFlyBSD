@@ -64,6 +64,8 @@
                 mpilib
                 ..
             ..
+	    dm
+	    ..
         ..
         misc
             lpt

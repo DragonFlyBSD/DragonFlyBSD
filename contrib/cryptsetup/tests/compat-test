@@ -1,0 +1,164 @@
+#!/bin/bash
+
+CRYPTSETUP=../src/cryptsetup
+
+LOOPDEV=/dev/loop5
+DEV_NAME=dummy
+DEV_NAME2=dummy2
+ORIG_IMG=luks-test-orig
+IMG=luks-test
+IMG1=luks-test1
+KEY1=key1
+
+LUKS_HEADER="S0-5 S6-7 S8-39 S40-71 S72-103 S104-107 S108-111 R112-131 R132-163 S164-167 S168-207 A0-591"
+KEY_SLOT0="S208-211 S212-215 R216-247 S248-251 S251-255"
+KEY_MATERIAL0="R4096-68096"
+KEY_MATERIAL0_EXT="R4096-68096"
+
+KEY_SLOT1="S256-259 S260-263 R264-295 S296-299 S300-303"
+KEY_MATERIAL1="R69632-133632"
+KEY_MATERIAL1_EXT="S69632-133632"
+
+function remove_mapping()
+{
+	[ -b /dev/mapper/$DEV_NAME2 ] && dmsetup remove $DEV_NAME2
+	[ -b /dev/mapper/$DEV_NAME ] && dmsetup remove $DEV_NAME
+	losetup -d $LOOPDEV >/dev/null 2>&1
+	rm -f $ORIG_IMG $IMG $IMG1 $KEY1 >/dev/null 2>&1
+}
+
+function fail()
+{
+	remove_mapping
+	echo "FAILED"
+	exit 2
+}
+
+function prepare()
+{
+	if [ $(id -u) != 0 ]; then
+		echo "WARNING: You must be root to run this test, test skipped."
+		exit 0
+	fi
+
+	[ -b /dev/mapper/$DEV_NAME ] && dmsetup remove $DEV_NAME
+
+	if [ ! -e $KEY1 ]; then
+		dd if=/dev/urandom of=$KEY1 count=1 bs=32 >/dev/null 2>&1
+	fi
+
+	if [ ! -e $IMG ]; then
+		bzip2 -cd compatimage.img.bz2 > $IMG
+		losetup -d $LOOPDEV >/dev/null 2>&1
+		losetup $LOOPDEV $IMG
+	fi
+
+	cp $IMG $ORIG_IMG
+
+	[ -n "$1" ] && echo "CASE: $1"
+}
+
+function check()
+{
+	sync
+	./fileDiffer.py $IMG $ORIG_IMG $1|| fail
+}
+
+function check_exists()
+{
+	[ -b /dev/mapper/$DEV_NAME ] || fail
+	check $1
+}
+
+# LUKS tests
+
+prepare	"[1] open - compat image - acceptance check"
+echo "compatkey" | $CRYPTSETUP luksOpen $LOOPDEV $DEV_NAME || fail
+check_exists
+
+prepare "[2] open - compat image - denial check"
+echo "wrongkey" | $CRYPTSETUP luksOpen $LOOPDEV $DEV_NAME && fail
+check
+
+# All headers items and first key material section must change
+prepare "[3] format"
+echo "key0" | $CRYPTSETUP -i 1000 -c aes-cbc-essiv:sha256 -s 128 luksFormat $LOOPDEV || fail
+check "$LUKS_HEADER $KEY_SLOT0 $KEY_MATERIAL0"
+
+prepare "[4] format using hash sha512"
+echo "key0" | $CRYPTSETUP -i 1000 -h sha512 -c aes-cbc-essiv:sha256 -s 128 luksFormat $LOOPDEV || fail
+check "$LUKS_HEADER $KEY_SLOT0 $KEY_MATERIAL0"
+
+prepare "[5] open"
+echo "key0" | $CRYPTSETUP luksOpen $LOOPDEV $DEV_NAME || fail
+check_exists
+
+# Key Slot 1 and key material section 1 must change, the rest must not.
+prepare "[6] add key"
+echo -e "key0\nkey1" | $CRYPTSETUP luksAddKey $LOOPDEV || fail
+check "$KEY_SLOT1 $KEY_MATERIAL1"
+echo "key1" | $CRYPTSETUP luksOpen $LOOPDEV $DEV_NAME || fail
+
+# Unsuccessful Key Delete - nothing may change
+prepare "[7] unsuccessful delete"
+echo "invalid" | $CRYPTSETUP luksDelKey $LOOPDEV 1 && fail
+check
+
+# Delete Key Test
+# Key Slot 1 and key material section 1 must change, the rest must not
+prepare "[8] successful delete"
+$CRYPTSETUP -q luksDelKey $LOOPDEV 1 || fail
+check "$KEY_SLOT1 $KEY_MATERIAL1_EXT"
+echo "key1" | $CRYPTSETUP luksOpen $LOOPDEV $DEV_NAME && fail
+echo "key0" | $CRYPTSETUP luksOpen $LOOPDEV $DEV_NAME || fail
+
+# Key Slot 1 and key material section 1 must change, the rest must not
+prepare "[9] add key test for key files"
+echo "key0" | $CRYPTSETUP luksAddKey $LOOPDEV $KEY1 || fail
+check "$KEY_SLOT1 $KEY_MATERIAL1"
+$CRYPTSETUP -d $KEY1 luksOpen $LOOPDEV $DEV_NAME || fail
+
+# Key Slot 1 and key material section 1 must change, the rest must not
+prepare "[10] delete key test with key1 as remaining key"
+$CRYPTSETUP -d $KEY1 luksDelKey $LOOPDEV 0 || fail
+check "$KEY_SLOT0 $KEY_MATERIAL0_EXT"
+echo "key0" | $CRYPTSETUP luksOpen $LOOPDEV $DEV_NAME && fail
+$CRYPTSETUP luksOpen -d $KEY1 $LOOPDEV $DEV_NAME || fail
+
+# Delete last slot
+prepare "[11] delete last key"
+echo "key0" | $CRYPTSETUP luksFormat $LOOPDEV || fail
+echo "key0" | $CRYPTSETUP luksKillSlot $LOOPDEV 0 || fail
+echo "key0" | $CRYPTSETUP luksOpen $LOOPDEV $DEV_NAME && fail
+
+# Format test for ESSIV, and some other parameters.
+prepare "[12] parameter variation test"
+$CRYPTSETUP -q -i 1000 -c aes-cbc-essiv:sha256 -s 128 luksFormat $LOOPDEV $KEY1 || fail
+check "$LUKS_HEADER $KEY_SLOT0 $KEY_MATERIAL0"
+$CRYPTSETUP -d $KEY1 luksOpen $LOOPDEV $DEV_NAME || fail
+
+prepare	"[13] open/close - stacked devices"
+echo "key0" | $CRYPTSETUP -q luksFormat $LOOPDEV || fail
+echo "key0" | $CRYPTSETUP -q luksOpen $LOOPDEV $DEV_NAME || fail
+echo "key0" | $CRYPTSETUP -q luksFormat /dev/mapper/$DEV_NAME || fail
+echo "key0" | $CRYPTSETUP -q luksOpen /dev/mapper/$DEV_NAME $DEV_NAME2 || fail
+$CRYPTSETUP -q luksClose  $DEV_NAME2 || fail
+$CRYPTSETUP -q luksClose  $DEV_NAME || fail
+
+prepare	"[14] format/open - passphrase on stdin & new line"
+# stdin defined by "-" must take even newline
+echo -n $'foo\nbar' | $CRYPTSETUP -q luksFormat $LOOPDEV - || fail
+echo -n $'foo\nbar' | $CRYPTSETUP -q --key-file=- luksOpen $LOOPDEV $DEV_NAME || fail
+$CRYPTSETUP -q luksClose  $DEV_NAME || fail
+echo -n $'foo\nbar' | $CRYPTSETUP -q luksOpen $LOOPDEV $DEV_NAME && fail
+# now also try --key-file
+echo -n $'foo\nbar' | $CRYPTSETUP -q luksFormat $LOOPDEV --key-file=- || fail
+echo -n $'foo\nbar' | $CRYPTSETUP -q --key-file=- luksOpen $LOOPDEV $DEV_NAME || fail
+$CRYPTSETUP -q luksClose  $DEV_NAME || fail
+# process newline if from stdin
+echo -n $'foo\nbar' | $CRYPTSETUP -q luksFormat $LOOPDEV || fail
+echo 'foo' | $CRYPTSETUP -q luksOpen $LOOPDEV $DEV_NAME || fail
+$CRYPTSETUP -q luksClose  $DEV_NAME || fail
+
+remove_mapping
+exit 0

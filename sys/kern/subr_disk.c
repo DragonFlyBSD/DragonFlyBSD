@@ -109,6 +109,7 @@
 #include <sys/dsched.h>
 #include <sys/queue.h>
 #include <sys/lock.h>
+#include <sys/udev.h>
 
 static MALLOC_DEFINE(M_DISK, "disk", "disk data");
 static int disk_debug_enable = 0;
@@ -216,6 +217,12 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 						UID_ROOT, GID_OPERATOR, 0640,
 						"%s%c", dev->si_name, 'a'+ i);
 					ndev->si_disk = dp;
+					udev_dict_set_cstr(ndev, "subsystem", "disk");
+					/* Inherit parent's disk type */
+					if (dp->d_disktype) {
+						udev_dict_set_cstr(ndev, "disk-type", 
+						    __DECONST(char *, dp->d_disktype));
+					}
 					if (dp->d_info.d_serialno) {
 						make_dev_alias(ndev,
 						    "serno/%s.s%d%c",
@@ -322,6 +329,12 @@ disk_probe(struct disk *dp, int reprobe)
 					dkmakewholeslice(dkunit(dev), i),
 					UID_ROOT, GID_OPERATOR, 0640,
 					"%ss%d", dev->si_name, sno);
+			udev_dict_set_cstr(ndev, "subsystem", "disk");
+			/* Inherit parent's disk type */
+			if (dp->d_disktype) {
+				udev_dict_set_cstr(ndev, "disk-type", 
+				    __DECONST(char *, dp->d_disktype));
+			}
 			if (dp->d_info.d_serialno) {
 				make_dev_alias(ndev, "serno/%s.s%d",
 					       dp->d_info.d_serialno, sno);
@@ -525,7 +538,7 @@ disk_create_named(const char *name, int unit, struct disk *dp, struct dev_ops *r
 			    dkmakewholedisk(unit),
 			    UID_ROOT, GID_OPERATOR, 0640,
 			    "%s%d", name, unit);
-
+	udev_dict_set_cstr(dp->d_cdev, "subsystem", "disk");
 	dp->d_cdev->si_disk = dp;
 
 	dsched_disk_create_callback(dp, name, unit);
@@ -537,6 +550,15 @@ disk_create_named(const char *name, int unit, struct disk *dp, struct dev_ops *r
 	disk_debug(1, "disk_create (end): %s%d\n", name, unit);
 
 	return (dp->d_rawdev);
+}
+
+int
+disk_setdisktype(struct disk *disk, const char *type)
+{
+	KKASSERT(disk != NULL);
+
+	disk->d_disktype = type;
+	return udev_dict_set_cstr(disk->d_cdev, "disk-type", __DECONST(char *, type));
 }
 
 static void

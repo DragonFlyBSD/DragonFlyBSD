@@ -27,6 +27,7 @@
 #include <sys/buf2.h>
 #include <sys/thread2.h>
 #include <sys/queue.h>
+#include <sys/udev.h>
 
 #ifndef MD_NSECT
 #define MD_NSECT (10000 * 2)
@@ -404,6 +405,7 @@ mdcreate(unsigned length)
 	sc->dev = disk_create(sc->unit, &sc->disk, &md_ops);
 	sc->dev->si_drv1 = sc;
 	sc->dev->si_iosize_max = DFLTPHYS;
+	disk_setdisktype(&sc->disk, "memory");
 
 	bzero(&info, sizeof(info));
 	info.d_media_blksize = DEV_BSIZE;	/* mandatory */

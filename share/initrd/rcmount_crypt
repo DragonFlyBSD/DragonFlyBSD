@@ -1,0 +1,28 @@
+#!/bin/sh
+
+if [ ! -x /sbin/cryptsetup ]; then
+	return 1;
+fi
+
+FSTYPE=$2
+MOUNTFROM=$3
+VOLUME=$4
+OPTIONS=$5
+
+# Check if the volume is really a luks volume
+/sbin/cryptsetup isLuks $MOUNTFROM
+if [ "$?" -ne "0" ]; then
+	return 1;
+fi
+
+# Open crypto volume
+/sbin/cryptsetup $OPTIONS luksOpen $MOUNTFROM $VOLUME
+if [ "$?" -ne "0" ]; then
+	return 2;
+fi
+
+# Mount, as is expected, onto /new_root
+mount -o ro -t $FSTYPE /dev/mapper/$VOLUME /new_root
+if [ "$?" -ne "0" ]; then
+	return 3;
+fi

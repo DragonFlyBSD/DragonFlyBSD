@@ -40,6 +40,7 @@
 .ds doc-str-Lb-libcam           Common Access Method User Library (libcam, \-lcam)
 .ds doc-str-Lb-libcaps          CAPS IPC Library (libcaps, \-lcaps)
 .ds doc-str-Lb-libcipher        FreeSec Crypt Library (libcipher, \-lcipher)
+.ds doc-str-Lb-libdevattr	Device attribute and event library (libdevattr \-ldevattr)
 .ds doc-str-Lb-libdevinfo       Device and Resource Information Utility Library (libdevinfo, \-ldevinfo)
 .ds doc-str-Lb-libdevstat       Device Statistics Library (libdevstat, \-ldevstat)
 .ds doc-str-Lb-libfetch         File Transfer Library (libfetch, \-lfetch)

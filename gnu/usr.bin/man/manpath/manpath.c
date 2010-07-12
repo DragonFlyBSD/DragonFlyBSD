@@ -14,45 +14,34 @@
  * Austin, Texas  78712
  *
  * $FreeBSD: src/gnu/usr.bin/man/manpath/manpath.c,v 1.11.2.2 2003/02/15 05:33:06 kris Exp $
- * $DragonFly: src/gnu/usr.bin/man/manpath/manpath.c,v 1.5 2008/07/10 18:29:51 swildner Exp $
  */
 
 #define MANPATH_MAIN
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "config.h"
 #include "manpath.h"
 #include "gripes.h"
-
-#ifdef STDC_HEADERS
-#include <stdlib.h>
-#else
-extern int fprintf ();
-extern int strcmp ();
-extern int strncmp ();
-extern char *memcpy ();
-extern char *getenv();
-extern char *malloc();
-extern void free ();
-extern int exit ();
-#endif
-
-extern char *strdup ();
-extern int is_directory ();
+#include "util.h"
 
 #ifndef MAIN
 extern int debug;
 #endif
 
-#ifdef MAIN
+int  get_dirlist (void);
+char *def_path (int);
+char *get_manpath (int, char *);
+void add_dir_to_list (char **, char *, int);
+char *has_subdirs (char *);
+const char *manpath (int);
+void usage (void);
 
-#ifndef STDC_HEADERS
-extern char *strcpy ();
-extern int fflush ();
-#endif
+#ifdef MAIN
 
 char *prognam;
 int debug;
@@ -63,17 +52,11 @@ char *man_locales;
  * Examine user's PATH and print a reasonable MANPATH.
  */
 int
-main(argc, argv)
-     int argc;
-     char **argv;
+main(int argc, char **argv)
 {
   int c;
   int quiet;
-  char *mp;
-  extern int getopt ();
-  extern char *mkprogname ();
-  void usage ();
-  char *manpath ();
+  const char *mp;
 
   quiet = 1;
 
@@ -109,7 +92,7 @@ main(argc, argv)
 }
 
 void
-usage ()
+usage (void)
 {
   fprintf (stderr, "usage: %s [-dLq]\n", prognam);
   exit (1);
@@ -134,16 +117,12 @@ usage ()
  * Also search for a `man' directory next to the directory on the path.
  * Example: $HOME/bin will look for $HOME/man
  */
-char *
-manpath (perrs)
-     register int perrs;
+const char *
+manpath (int perrs)
 {
-  register int len;
-  register char *manpathlist;
-  register char *path;
-  int  get_dirlist ();
-  char *def_path ();
-  char *get_manpath ();
+  int len;
+  char *manpathlist;
+  char *path;
 
   if (get_dirlist ())
       gripe_reading_mp_config (config_file);
@@ -204,7 +183,7 @@ manpath (perrs)
  * This is ugly.
  */
 int
-get_dirlist ()
+get_dirlist (void)
 {
   int i;
   char *bp;
@@ -334,12 +313,11 @@ get_dirlist ()
  * and optional (if they exist) manpaths only.
  */
 char *
-def_path (perrs)
-     int perrs;
+def_path (int perrs)
 {
-  register int len;
-  register char *manpathlist, *p;
-  register DIRLIST *dlp;
+  int len;
+  char *manpathlist, *p;
+  DIRLIST *dlp;
 
   len = 0;
   dlp = list;
@@ -399,20 +377,16 @@ def_path (perrs)
  * to the manpath.
  */
 char *
-get_manpath (perrs, path)
-     register int perrs;
-     register char *path;
+get_manpath (int perrs, char *path)
 {
-  register int len;
-  register char *tmppath;
-  register char *t;
-  register char *p;
-  register char **lp;
-  register char *end;
-  register char *manpathlist;
-  register DIRLIST *dlp;
-  void add_dir_to_list ();
-  char *has_subdirs ();
+  int len;
+  char *tmppath;
+  char *t;
+  char *p;
+  char **lp;
+  char *end;
+  char *manpathlist;
+  DIRLIST *dlp;
   int fnd = 0;
 
   tmppath = strdup (path);
@@ -529,12 +503,8 @@ get_manpath (perrs, path)
  * Add a directory to the manpath list if it isn't already there.
  */
 void
-add_dir_to_list (lp, dir, perrs)
-     char **lp;
-     char *dir;
-     int perrs;
+add_dir_to_list (char **lp, char *dir, int perrs)
 {
-  extern char *strdup ();
   int status;
 
   while (*lp != NULL)
@@ -574,11 +544,10 @@ add_dir_to_list (lp, dir, perrs)
  * subdirectories.
  */
 char *
-has_subdirs (p)
-     register char *p;
+has_subdirs (char *p)
 {
   int len;
-  register char *t;
+  char *t;
 
   len = strlen (p);
 

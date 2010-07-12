@@ -124,7 +124,6 @@ runcom(char **argv_orig)
 
 		setctty(_PATH_CONSOLE);
 
-		printf("Child talking, about to call /etc/rc\n");
 		argv[0] = "sh";
 		argv[1] = _PATH_RUNCOM;
 		argv[2] = "autoboot" ;

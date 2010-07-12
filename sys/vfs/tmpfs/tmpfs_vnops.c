@@ -56,6 +56,7 @@
 #include <vm/vm_object.h>
 #include <vm/vm_page.h>
 #include <vm/vm_pager.h>
+#include <vm/swap_pager.h>
 
 #include <vfs/fifofs/fifo.h>
 #include <vfs/tmpfs/tmpfs_vnops.h>
@@ -598,13 +599,22 @@ tmpfs_write (struct vop_write_args *ap)
 		 * XXX unfortunately this catches msync() system calls too
 		 * for the moment.
 		 */
-		if (ap->a_ioflag & IO_SYNC) {
-			bwrite(bp);
-		} else if ((ap->a_ioflag & IO_ASYNC) ||
-			 (uio->uio_segflg == UIO_NOCOPY)) {
-			bawrite(bp);
-		} else {
+		if (vm_swap_size == 0) {
+			/*
+			 * if swap isn't configured yet, force a buwrite() to
+			 * avoid problems further down the line, due to flushing
+			 * to swap.
+			 */
 			buwrite(bp);
+		} else {
+			if (ap->a_ioflag & IO_SYNC) {
+				bwrite(bp);
+			} else if ((ap->a_ioflag & IO_ASYNC) ||
+				 (uio->uio_segflg == UIO_NOCOPY)) {
+				bawrite(bp);
+			} else {
+				buwrite(bp);
+			}
 		}
 
 		if (bp->b_error) {

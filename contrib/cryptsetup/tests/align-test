@@ -1,0 +1,102 @@
+#!/bin/bash
+
+CRYPTSETUP="../src/cryptsetup"
+DEV=""
+
+cleanup() {
+	udevadm settle 2>/dev/null 2>&1
+	rmmod scsi_debug 2>/dev/null
+	sleep 2
+}
+
+fail()
+{
+	[ -n "$1" ] && echo "$1"
+	cleanup
+	exit 100
+}
+
+add_device() {
+	modprobe scsi_debug $@
+	if [ $? -ne 0 ] ; then
+		echo "This kernel seems to not support proper scsi_debug module, test skipped."
+		exit 0
+	fi
+
+	sleep 2
+	DEV=$(grep scsi_debug /sys/block/*/device/model | cut -f4 -d /)
+
+	if [ ! -e /sys/block/$DEV/alignment_offset ] ; then
+		echo "This kernel seems to not support topology info, test skipped."
+		cleanup
+		exit 0
+	fi
+
+	DEV="/dev/$DEV"
+	[ -b $DEV ] || fail "Cannot find $DEV."
+}
+
+
+format() # key_bits expected [forced]
+{
+	if [ -z "$3" ] ; then
+		echo -n "Formatting using topology info ($1 bits key)...."
+		echo xxx| $CRYPTSETUP luksFormat $DEV -q -s $1
+	else
+		echo -n "Formatting using forced offset $3 ($1 bits key)..."
+		echo xxx| $CRYPTSETUP luksFormat $DEV -q -s $1 --align-payload=$2
+	fi
+
+	ALIGN=$($CRYPTSETUP luksDump $DEV |grep "Payload offset" | sed -e s/.*\\t//)
+	#echo "ALIGN = $ALIGN"
+
+	if [ $ALIGN -ne $2 ] ; then
+		echo "FAIL"
+		echo "Expected alignment differs: expected $2 != detected $ALIGN"
+		fail
+	fi
+	echo "PASSED"
+}
+
+if [ $(id -u) != 0 ]; then
+	echo "WARNING: You must be root to run this test, test skipped."
+	exit 0
+fi
+
+modprobe --dry-run scsi_debug || exit 0
+cleanup
+
+echo "# Create desktop-class 4K drive"
+echo "# (logical_block_size=512, physical_block_size=4096, alignment_offset=0)"
+add_device dev_size_mb=16 sector_size=512 physblk_exp=3 num_tgts=1
+format 256 2112
+format 128 1088
+format 256 8192 8192
+format 128 8192 8192
+cleanup
+
+echo "# Create desktop-class 4K drive w/ 63-sector DOS partition compensation"
+echo "# (logical_block_size=512, physical_block_size=4096, alignment_offset=3584)"
+add_device dev_size_mb=16 sector_size=512 physblk_exp=3 lowest_aligned=7 num_tgts=1
+format 256 2119
+format 128 1095
+cleanup
+
+echo "# Create enterprise-class 4K drive"
+echo "# (logical_block_size=4096, physical_block_size=4096, alignment_offset=0)"
+add_device dev_size_mb=16 sector_size=4096 num_tgts=1
+format 256 2560
+format 128 1536 
+cleanup
+
+echo "# Create classic 512b drive and stack dm-linear"
+echo "# (logical_block_size=512, physical_block_size=512, alignment_offset=0)"
+add_device dev_size_mb=16 sector_size=512 num_tgts=1
+DEV2=$DEV
+DEV=/dev/mapper/luks0xbabe
+dmsetup create luks0xbabe --table "0 32768 linear $DEV2 0"
+format 256 2112
+format 128 1088
+format 128 8192 8192
+dmsetup remove luks0xbabe
+cleanup

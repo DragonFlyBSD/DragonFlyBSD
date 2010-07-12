@@ -15,30 +15,23 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 
-#ifdef STDC_HEADERS
-#include <stdlib.h>
-#else
-extern int fprintf ();
-extern int tolower ();
-#endif
-
-extern char *strdup ();
-extern int system ();
-
 #include "gripes.h"
+#include "util.h"
+
+extern int debug;
 
 /*
  * Extract last element of a name like /foo/bar/baz.
  */
 char *
-mkprogname (s)
-     register char *s;
+mkprogname (char *s)
 {
   char *t;
 
@@ -52,10 +45,9 @@ mkprogname (s)
 }
 
 void
-downcase (s)
-     unsigned char *s;
+downcase (unsigned char *s)
 {
-  register unsigned char c;
+  unsigned char c;
   while ((c = *s) != '\0')
     {
       if (isalpha (c))
@@ -76,15 +68,13 @@ downcase (s)
  *   stat on a and b fails  returns   -3
  */
 int
-is_newer (fa, fb)
-  register char *fa;
-  register char *fb;
+is_newer (char *fa, char *fb)
 {
   struct stat fa_sb;
   struct stat fb_sb;
-  register int fa_stat;
-  register int fb_stat;
-  register int status = 0;
+  int fa_stat;
+  int fb_stat;
+  int status = 0;
 
   fa_stat = stat (fa, &fa_sb);
   if (fa_stat != 0)
@@ -104,11 +94,10 @@ is_newer (fa, fb)
  * Is path a directory?
  */
 int
-is_directory (path)
-     char *path;
+is_directory (char *path)
 {
   struct stat sb;
-  register int status;
+  int status;
 
   status = stat (path, &sb);
 
@@ -124,11 +113,9 @@ is_directory (path)
  * (handy for counting successes :-).
  */
 int
-do_system_command (command)
-     char *command;
+do_system_command (char *command)
 {
   int status = 0;
-  extern int debug;
 
   /*
    * If we're debugging, don't really execute the command -- you never
