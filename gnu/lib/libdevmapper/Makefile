@@ -2,15 +2,16 @@
 
 LVM2_DIR=	${.CURDIR}/../../../contrib/lvm2
 
-LIBDM_SRCDIR=	${LVM2_DIR}/lib/libdevmapper
 LIBDM_DISTDIR=	${LVM2_DIR}/dist/libdm
 LVM2_DISTDIR=	${LVM2_DIR}/dist
+
 LIB=		devmapper
+SHLIB_MAJOR?=	0
 
 CFLAGS+=	-D_XOPEN_SOURCE=600
 CFLAGS+=	-I${LIBDM_DISTDIR} -I${LIBDM_DISTDIR}/misc -I${LIBDM_DISTDIR}/mm \
 		-I${LIBDM_DISTDIR}/datastruct -I${LIBDM_DISTDIR}/ioctl \
-		-I${LVM2_DISTDIR}/include -I${LIBDM_SRCDIR} \
+		-I${LVM2_DISTDIR}/include \
 		-I${.CURDIR}/../../../sys/dev/disk/dm
 
 

@@ -3,6 +3,7 @@
 LVM2_DIR=	${.CURDIR}/../../../contrib/lvm2
 
 LIB=		lvm
+SHLIB_MAJOR?=	0
 
 LVM2_DISTDIR=	${LVM2_DIR}/dist
 
