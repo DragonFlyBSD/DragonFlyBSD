@@ -85,7 +85,7 @@
 #include <sys/disk.h>
 #include <sys/disklabel.h>
 #include <sys/malloc.h>
-#include <sys/malloc.h>
+#include <sys/udev.h>
 #include <sys/vnode.h>
 
 #include "netbsd-dm.h"
