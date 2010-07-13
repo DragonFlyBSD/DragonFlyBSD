@@ -655,8 +655,6 @@ chn_poll(struct pcm_channel *c, int ev, struct thread *td)
 	ret = 0;
 	if (chn_polltrigger(c) && chn_pollreset(c))
 		ret = ev;
-	else
-		selrecord(td, sndbuf_getsel(bs));
 	return ret;
 }
 
