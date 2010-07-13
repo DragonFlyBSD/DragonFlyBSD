@@ -1169,7 +1169,7 @@ vclean_vxlocked(struct vnode *vp, int flags)
 	 * Done with purge, notify sleepers of the grim news.
 	 */
 	vp->v_ops = &dead_vnode_vops_p;
-	vn_pollgone(vp);
+	vn_gone(vp);
 	vp->v_tag = VT_NON;
 
 	/*
@@ -2115,78 +2115,13 @@ vfs_msync_scan2(struct mount *mp, struct vnode *vp, void *data)
 }
 
 /*
- * Record a process's interest in events which might happen to
- * a vnode.  Because poll uses the historic select-style interface
- * internally, this routine serves as both the ``check for any
- * pending events'' and the ``record my interest in future events''
- * functions.  (These are done together, while the lock is held,
- * to avoid race conditions.)
- */
-int
-vn_pollrecord(struct vnode *vp, int events)
-{
-	KKASSERT(curthread->td_proc != NULL);
-
-	lwkt_gettoken(&vp->v_token);
-	if (vp->v_pollinfo.vpi_revents & events) {
-		/*
-		 * This leaves events we are not interested
-		 * in available for the other process which
-		 * which presumably had requested them
-		 * (otherwise they would never have been
-		 * recorded).
-		 */
-		events &= vp->v_pollinfo.vpi_revents;
-		vp->v_pollinfo.vpi_revents &= ~events;
-
-		lwkt_reltoken(&vp->v_token);
-		return events;
-	}
-	vp->v_pollinfo.vpi_events |= events;
-	selrecord(curthread, &vp->v_pollinfo.vpi_selinfo);
-	lwkt_reltoken(&vp->v_token);
-	return 0;
-}
-
-/*
- * Note the occurrence of an event.
+ * Wake up anyone interested in vp because it is being revoked.
  */
 void
-vn_pollevent(struct vnode *vp, int events)
+vn_gone(struct vnode *vp)
 {
 	lwkt_gettoken(&vp->v_token);
-	if (vp->v_pollinfo.vpi_events & events) {
-		/*
-		 * We clear vpi_events so that we don't
-		 * call selwakeup() twice if two events are
-		 * posted before the polling process(es) is
-		 * awakened.  This also ensures that we take at
-		 * most one selwakeup() if the polling process
-		 * is no longer interested.  However, it does
-		 * mean that only one event can be noticed at
-		 * a time.  (Perhaps we should only clear those
-		 * event bits which we note?) XXX
-		 */
-		vp->v_pollinfo.vpi_events = 0;	/* &= ~events ??? */
-		vp->v_pollinfo.vpi_revents |= events;
-		selwakeup(&vp->v_pollinfo.vpi_selinfo);
-	}
-	lwkt_reltoken(&vp->v_token);
-}
-
-/*
- * Wake up anyone polling on vp because it is being revoked.
- * This depends on dead_poll() returning POLLHUP for correct
- * behavior.
- */
-void
-vn_pollgone(struct vnode *vp)
-{
-	lwkt_gettoken(&vp->v_token);
-	if (vp->v_pollinfo.vpi_events) {
-		vp->v_pollinfo.vpi_events = 0;
-		selwakeup(&vp->v_pollinfo.vpi_selinfo);
-	}
+	KNOTE(&vp->v_pollinfo.vpi_selinfo.si_note, NOTE_REVOKE);
 	lwkt_reltoken(&vp->v_token);
 }
 

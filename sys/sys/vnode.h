@@ -257,8 +257,6 @@ struct vnode {
 	struct namecache_list v_namecache;	/* (S) associated nc entries */
 	struct	{
 		struct	selinfo vpi_selinfo;	/* identity of poller(s) */
-		short	vpi_events;		/* what they are looking for */
-		short	vpi_revents;		/* what has happened */
 	} v_pollinfo;
 	struct vmresident *v_resident;		/* optional vmresident */
 	struct vrangehead v_range;		/* range lock */
@@ -514,6 +512,7 @@ int	vmaxiosize (struct vnode *vp);
 void	vn_strategy(struct vnode *vp, struct bio *bio);
 int	vn_cache_strategy(struct vnode *vp, struct bio *bio);
 int	vn_close (struct vnode *vp, int flags);
+void	vn_gone (struct vnode *vp);
 int	vn_isdisk (struct vnode *vp, int *errp);
 int	vn_lock (struct vnode *vp, int flags);
 int	vn_islocked (struct vnode *vp);
@@ -531,9 +530,6 @@ void	vn_setspecops (struct file *fp);
 int	vn_fullpath (struct proc *p, struct vnode *vn, char **retbuf, char **freebuf, int guess);
 int	vn_open (struct nlookupdata *ndp, struct file *fp, int fmode, int cmode);
 int	vn_opendisk (const char *devname, int fmode, struct vnode **vpp);
-void	vn_pollevent (struct vnode *vp, int events);
-void	vn_pollgone (struct vnode *vp);
-int	vn_pollrecord (struct vnode *vp, int events);
 int 	vn_rdwr (enum uio_rw rw, struct vnode *vp, caddr_t base,
 	    int len, off_t offset, enum uio_seg segflg, int ioflg,
 	    struct ucred *cred, int *aresid);
