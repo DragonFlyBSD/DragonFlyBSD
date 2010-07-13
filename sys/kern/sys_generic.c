@@ -1437,32 +1437,6 @@ seltrue(cdev_t dev, int events)
 }
 
 /*
- * Record a select request.  A global wait must be used since a process/thread
- * might go away after recording its request.
- */
-void
-selrecord(struct thread *selector, struct selinfo *sip)
-{
-	struct proc *p;
-	struct lwp *lp = NULL;
-
-	if (selector->td_lwp == NULL)
-		panic("selrecord: thread needs a process");
-
-	if (sip->si_pid == selector->td_proc->p_pid &&
-	    sip->si_tid == selector->td_lwp->lwp_tid)
-		return;
-	if (sip->si_pid && (p = pfind(sip->si_pid)))
-		lp = lwp_rb_tree_RB_LOOKUP(&p->p_lwp_tree, sip->si_tid);
-	if (lp != NULL && lp->lwp_wchan == (caddr_t)&selwait) {
-		sip->si_flags |= SI_COLL;
-	} else {
-		sip->si_pid = selector->td_proc->p_pid;
-		sip->si_tid = selector->td_lwp->lwp_tid;
-	}
-}
-
-/*
  * Do a wakeup when a selectable event occurs.
  */
 void

@@ -61,7 +61,6 @@ struct selinfo {
 
 struct thread;
 
-void	selrecord (struct thread *selector, struct selinfo *);
 void	selwakeup (struct selinfo *);
 
 #endif
