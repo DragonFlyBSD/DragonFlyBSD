@@ -100,7 +100,7 @@ acl_attach(struct ieee80211vap *vap)
 	struct aclstate *as;
 
 	as = (struct aclstate *) kmalloc(sizeof(struct aclstate),
-		M_80211_ACL, M_NOWAIT | M_ZERO);
+		M_80211_ACL, M_INTWAIT | M_ZERO);
 	if (as == NULL)
 		return 0;
 	ACL_LOCK_INIT(as, "acl");
@@ -175,7 +175,7 @@ acl_add(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 	struct acl *acl, *new;
 	int hash;
 
-	new = (struct acl *) kmalloc(sizeof(struct acl), M_80211_ACL, M_NOWAIT | M_ZERO);
+	new = (struct acl *) kmalloc(sizeof(struct acl), M_80211_ACL, M_INTWAIT | M_ZERO);
 	if (new == NULL) {
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL,
 			"ACL: add %6D failed, no memory\n", mac, ":");
@@ -302,7 +302,7 @@ acl_getioctl(struct ieee80211vap *vap, struct ieee80211req *ireq)
 			return 0;		/* NB: must not error */
 		}
 		ap = (struct ieee80211req_maclist *) kmalloc(space,
-		    M_TEMP, M_NOWAIT);
+		    M_TEMP, M_INTWAIT);
 		if (ap == NULL)
 			return ENOMEM;
 		i = 0;

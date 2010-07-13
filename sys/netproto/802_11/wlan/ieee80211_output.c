@@ -884,6 +884,7 @@ ieee80211_mbuf_adjust(struct ieee80211vap *vap, int hdrsize,
 	struct ieee80211_key *key, struct mbuf *m)
 {
 #define	TO_BE_RECLAIMED	(sizeof(struct ether_header) - sizeof(struct llc))
+	struct mbuf *mnew = NULL;
 	int needed_space = vap->iv_ic->ic_headroom + hdrsize;
 
 	if (key != NULL) {
@@ -896,17 +897,17 @@ ieee80211_mbuf_adjust(struct ieee80211vap *vap, int hdrsize,
 		 * a writable mbuf chain.
 		 * XXX handle SWMIC specially
 		 */
-#ifdef __FreeBSD__
 		if (key->wk_flags & (IEEE80211_KEY_SWENCRYPT|IEEE80211_KEY_SWENMIC)) {
-			m = m_unshare(m, MB_DONTWAIT);
+			mnew = m_dup(m, MB_DONTWAIT);
 			if (m == NULL) {
 				IEEE80211_DPRINTF(vap, IEEE80211_MSG_OUTPUT,
 				    "%s: cannot get writable mbuf\n", __func__);
 				vap->iv_stats.is_tx_nobuf++; /* XXX new stat */
 				return NULL;
 			}
+			m_freem(m);
+			m = mnew;
 		}
-#endif
 	}
 	/*
 	 * We know we are called just before stripping an Ethernet

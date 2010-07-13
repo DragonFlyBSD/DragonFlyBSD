@@ -709,7 +709,6 @@ wpi_attach(device_t dev)
 	ifp->if_ioctl = wpi_ioctl;
 	ifp->if_start = wpi_start;
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
-	ifp->if_snd.ifq_drv_maxlen = IFQ_MAXLEN;
 	ifq_set_ready(&ifp->if_snd);
 
 	ieee80211_ifattach(ic, macaddr);
@@ -819,7 +818,7 @@ wpi_vap_create(struct ieee80211com *ic,
 	if (!TAILQ_EMPTY(&ic->ic_vaps))		/* only one at a time */
 		return NULL;
 	wvp = (struct wpi_vap *) kmalloc(sizeof(struct wpi_vap),
-	    M_80211_VAP, M_NOWAIT | M_ZERO);
+	    M_80211_VAP, M_INTWAIT | M_ZERO);
 	if (wvp == NULL)
 		return NULL;
 	vap = &wvp->vap;
@@ -1036,7 +1035,7 @@ wpi_alloc_rx_ring(struct wpi_softc *sc, struct wpi_rx_ring *ring)
 			    __func__, error);
 			goto fail;
 		}
-		m = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
+		m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (m == NULL) {
 			device_printf(sc->sc_dev,
 			   "%s: could not allocate rx mbuf\n", __func__);
@@ -1142,7 +1141,7 @@ wpi_alloc_tx_ring(struct wpi_softc *sc, struct wpi_tx_ring *ring, int count,
 	}
 
 	ring->data = kmalloc(count * sizeof (struct wpi_tx_data), M_DEVBUF,
-	    M_NOWAIT | M_ZERO);
+	    M_INTWAIT | M_ZERO);
 	if (ring->data == NULL) {
 		device_printf(sc->sc_dev,
 		    "could not allocate tx data slots\n");
@@ -1286,7 +1285,7 @@ wpi_node_alloc(struct ieee80211vap *vap __unused,
 {
 	struct wpi_node *wn;
 
-	wn = kmalloc(sizeof (struct wpi_node), M_80211_NODE, M_NOWAIT | M_ZERO);
+	wn = kmalloc(sizeof (struct wpi_node), M_80211_NODE, M_INTWAIT | M_ZERO);
 
 	return &wn->ni;
 }
@@ -1528,7 +1527,7 @@ wpi_rx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc,
 	}
 
 	/* XXX don't need mbuf, just dma buffer */
-	mnew = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
+	mnew = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (mnew == NULL) {
 		DPRINTFN(WPI_DEBUG_RX, ("%s: no mbuf to restock ring\n",
 		    __func__));
@@ -2090,7 +2089,7 @@ wpi_start_locked(struct ifnet *ifp)
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
-		ni = (struct ieee80211_node *) m->m_pkthdr.rcvif;
+		ni = ieee80211_ref_node(m->m_pkthdr.rcvif);
 		if (wpi_tx_data(sc, m, ni, ac) != 0) {
 			ieee80211_free_node(ni);
 			ifp->if_oerrors++;
@@ -2462,7 +2461,7 @@ static int
 wpi_auth(struct wpi_softc *sc, struct ieee80211vap *vap)
 {
 	struct ieee80211com *ic = vap->iv_ic;
-	struct ieee80211_node *ni = vap->iv_bss;
+	struct ieee80211_node *ni;
 	struct wpi_node_info node;
 	int error;
 
@@ -2470,6 +2469,7 @@ wpi_auth(struct wpi_softc *sc, struct ieee80211vap *vap)
 	/* update adapter's configuration */
 	sc->config.associd = 0;
 	sc->config.filter &= ~htole32(WPI_FILTER_BSS);
+	ni = ieee80211_ref_node(vap->iv_bss);
 	IEEE80211_ADDR_COPY(sc->config.bssid, ni->ni_bssid);
 	sc->config.chan = ieee80211_chan2ieee(ic, ni->ni_chan);
 	if (IEEE80211_IS_CHAN_2GHZ(ni->ni_chan)) {
@@ -2494,18 +2494,21 @@ wpi_auth(struct wpi_softc *sc, struct ieee80211vap *vap)
 		sizeof (struct wpi_config), 1);
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not configure\n");
+		ieee80211_free_node(ni);
 		return error;
 	}
 
 	/* configuration has changed, set Tx power accordingly */
 	if ((error = wpi_set_txpower(sc, ni->ni_chan, 1)) != 0) {
 		device_printf(sc->sc_dev, "could not set Tx power\n");
+		ieee80211_free_node(ni);
 		return error;
 	}
 
 	/* add default node */
 	memset(&node, 0, sizeof node);
 	IEEE80211_ADDR_COPY(node.bssid, ni->ni_bssid);
+	ieee80211_free_node(ni);
 	node.id = WPI_ID_BSS;
 	node.rate = (ic->ic_curmode == IEEE80211_MODE_11A) ?
 	    wpi_plcp_signal(12) : wpi_plcp_signal(2);
@@ -2522,7 +2525,7 @@ static int
 wpi_run(struct wpi_softc *sc, struct ieee80211vap *vap)
 {
 	struct ieee80211com *ic = vap->iv_ic;
-	struct ieee80211_node *ni = vap->iv_bss;
+	struct ieee80211_node *ni;
 	int error;
 
 	if (vap->iv_opmode == IEEE80211_M_MONITOR) {
@@ -2531,6 +2534,7 @@ wpi_run(struct wpi_softc *sc, struct ieee80211vap *vap)
 		return 0;
 	}
 
+	ni = ieee80211_ref_node(vap->iv_bss);
 	wpi_enable_tsf(sc, ni);
 
 	/* update adapter's configuration */
@@ -2552,10 +2556,12 @@ wpi_run(struct wpi_softc *sc, struct ieee80211vap *vap)
 		    wpi_config), 1);
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not update configuration\n");
+		ieee80211_free_node(ni);
 		return error;
 	}
 
 	error = wpi_set_txpower(sc, ni->ni_chan, 1);
+	ieee80211_free_node(ni);
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could set txpower\n");
 		return error;
@@ -2601,7 +2607,7 @@ wpi_scan(struct wpi_softc *sc)
 	desc = &ring->desc[ring->cur];
 	data = &ring->data[ring->cur];
 
-	data->m = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
+	data->m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (data->m == NULL) {
 		device_printf(sc->sc_dev,
 		    "could not allocate mbuf for scan command\n");

@@ -419,7 +419,7 @@ rt2661_vap_create(struct ieee80211com *ic,
 		return NULL;
 	}
 	rvp = (struct rt2661_vap *) kmalloc(sizeof(struct rt2661_vap),
-	    M_80211_VAP, M_NOWAIT | M_ZERO);
+	    M_80211_VAP, M_INTWAIT | M_ZERO);
 	if (rvp == NULL)
 		return NULL;
 	vap = &rvp->ral_vap;
@@ -522,7 +522,7 @@ rt2661_alloc_tx_ring(struct rt2661_softc *sc, struct rt2661_tx_ring *ring,
 	}
 
 	ring->data = kmalloc(count * sizeof (struct rt2661_tx_data), M_DEVBUF,
-	    M_NOWAIT | M_ZERO);
+	    M_INTWAIT | M_ZERO);
 	if (ring->data == NULL) {
 		device_printf(sc->sc_dev, "could not allocate soft data\n");
 		error = ENOMEM;
@@ -663,7 +663,7 @@ rt2661_alloc_rx_ring(struct rt2661_softc *sc, struct rt2661_rx_ring *ring,
 	}
 
 	ring->data = kmalloc(count * sizeof (struct rt2661_rx_data), M_DEVBUF,
-	    M_NOWAIT | M_ZERO);
+	    M_INTWAIT | M_ZERO);
 	if (ring->data == NULL) {
 		device_printf(sc->sc_dev, "could not allocate soft data\n");
 		error = ENOMEM;
