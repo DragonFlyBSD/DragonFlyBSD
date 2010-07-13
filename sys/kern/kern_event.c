@@ -401,7 +401,9 @@ kqueue_init(struct kqueue *kq, struct filedesc *fdp)
 {
 	TAILQ_INIT(&kq->kq_knpend);
 	TAILQ_INIT(&kq->kq_knlist);
+	kq->kq_count = 0;
 	kq->kq_fdp = fdp;
+	SLIST_INIT(&kq->kq_sel.si_note);
 }
 
 /*

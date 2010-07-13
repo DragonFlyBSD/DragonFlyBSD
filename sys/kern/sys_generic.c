@@ -73,6 +73,7 @@
 
 #include <sys/file2.h>
 #include <sys/mplock2.h>
+#include <sys/spinlock2.h>
 
 #include <machine/limits.h>
 
@@ -1383,22 +1384,23 @@ extern	struct fileops socketops;
 int
 socket_wait(struct socket *so, struct timespec *ts, int *res)
 {
+	struct thread *td = curthread;
 	struct file *fp;
-	struct filedesc fd;
 	struct kqueue kq;
 	struct kevent kev;
-	int error;
+	int error, fd;
 
-	if ((error = falloc(NULL, &fp, NULL)) != 0)
+	if ((error = falloc(td->td_lwp, &fp, &fd)) != 0)
 		return (error);
 
+	fp->f_type = DTYPE_SOCKET;
+	fp->f_flag = FREAD | FWRITE;
 	fp->f_ops = &socketops;
 	fp->f_data = so;
-	fsetfd(&fd, fp, 0);
+	fsetfd(td->td_lwp->lwp_proc->p_fd, fp, fd);
 
-	kqueue_init(&kq, &fd);
-
-	EV_SET(&kev, 0, EVFILT_READ, EV_ADD|EV_ENABLE, 0, 0, NULL);
+	kqueue_init(&kq, td->td_lwp->lwp_proc->p_fd);
+	EV_SET(&kev, fd, EVFILT_READ, EV_ADD|EV_ENABLE, 0, 0, NULL);
 	if ((error = kqueue_register(&kq, &kev)) != 0) {
 		fdrop(fp);
 		return (error);
@@ -1406,6 +1408,10 @@ socket_wait(struct socket *so, struct timespec *ts, int *res)
 
 	error = kern_kevent(&kq, 1, res, NULL, socket_wait_copyin,
 			    socket_wait_copyout, ts);
+
+	EV_SET(&kev, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+	kqueue_register(&kq, &kev);
+	fp->f_ops = &badfileops;
 	fdrop(fp);
 
 	return (error);
