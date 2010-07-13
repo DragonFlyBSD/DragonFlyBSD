@@ -72,8 +72,7 @@
 .Fn udev_enumerate_get_list_entry "struct udev_enumerate *udev_enum"
 .Ft struct udev_list_entry *
 .Fn udev_list_entry_get_next "struct udev_list_entry *list_entry"
-.Ft this is a macro....
-.Fn udev_list_entry_foreach
+.Fn udev_list_entry_foreach "struct udev_list_entry *list_entry" "struct udev_list_entry *first_entry"
 .Ft prop_dictionary_t
 .Fn udev_list_entry_get_dictionary "struct udev_list_entry *list_entry"
 .Ft struct udev_device *
