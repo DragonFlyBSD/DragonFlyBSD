@@ -884,7 +884,7 @@ _prebuild_libs+= lib/libcom_err lib/libcrypt lib/libmd \
 		lib/libncurses/libncurses lib/libopie lib/libradius \
 		lib/libsbuf lib/libtacplus lib/libm \
 		lib/libpam lib/libypclnt lib/lib${THREAD_LIB} \
-		lib/libpthread lib/libprop
+		lib/libpthread lib/libprop lib/libdevattr
 
 lib/libopie__L lib/libradius__L lib/libtacplus__L: lib/libmd__L
 
