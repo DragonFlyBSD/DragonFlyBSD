@@ -713,10 +713,7 @@ common_bktr_intr( void *arg )
           	     	wakeup(VBI_SLEEP);
 		}
 
-		/* If someone has a select() on /dev/vbi, inform them */
-		if (bktr->vbi_select.si_pid) {
-			selwakeup(&bktr->vbi_select);
-		}
+		/* Inform anyone who is polling */
 		KNOTE(&bktr->vbi_select.si_note, 0);
 
 	}

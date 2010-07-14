@@ -914,7 +914,6 @@ ugen_detach(device_t self)
 			sce = &sc->sc_endpoints[i][dir];
 			if (sce && sce->pipeh)
 				usbd_abort_pipe(sce->pipeh);
-			selwakeup(&sce->rsel);
 			KNOTE(&sce->rsel.si_note, 0);
 		}
 	}
@@ -969,7 +968,6 @@ ugenintr(usbd_xfer_handle xfer, usbd_private_handle addr, usbd_status status)
 		DPRINTFN(5, ("ugen_intr: waking %p\n", sce));
 		wakeup(sce);
 	}
-	selwakeup(&sce->rsel);
 	KNOTE(&sce->rsel.si_note, 0);
 }
 
@@ -1030,7 +1028,6 @@ ugen_isoc_rintr(usbd_xfer_handle xfer, usbd_private_handle addr,
 		DPRINTFN(5, ("ugen_isoc_rintr: waking %p\n", sce));
 		wakeup(sce);
 	}
-	selwakeup(&sce->rsel);
 	KNOTE(&sce->rsel.si_note, 0);
 }
 

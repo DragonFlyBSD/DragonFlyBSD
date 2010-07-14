@@ -836,7 +836,6 @@ genkbd_event(keyboard_t *kbd, int event, void *arg)
 			sc->gkb_flags &= ~KB_ASLEEP;
 			wakeup((caddr_t)sc);
 		}
-		selwakeup(&sc->gkb_rsel);
 		KNOTE(&sc->gkb_rsel.si_note, 0);
 		return 0;
 	default:
@@ -907,7 +906,6 @@ genkbd_event(keyboard_t *kbd, int event, void *arg)
 			sc->gkb_flags &= ~KB_ASLEEP;
 			wakeup((caddr_t)sc);
 		}
-		selwakeup(&sc->gkb_rsel);
 		KNOTE(&sc->gkb_rsel.si_note, 0);
 	}
 

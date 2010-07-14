@@ -218,7 +218,6 @@ tunclose(struct dev_close_args *ap)
 	if_purgeaddrs_nolink(ifp);
 
 	funsetown(tp->tun_sigio);
-	selwakeup(&tp->tun_rsel);
 	KNOTE(&tp->tun_rsel.si_note, 0);
 
 	TUNDEBUG(ifp, "closed\n");
@@ -398,7 +397,6 @@ tunoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 		get_mplock();
 		if (tp->tun_flags & TUN_ASYNC && tp->tun_sigio)
 			pgsigio(tp->tun_sigio, SIGIO, 0);
-		selwakeup(&tp->tun_rsel);
 		KNOTE(&tp->tun_rsel.si_note, 0);
 		rel_mplock();
 	}
@@ -798,7 +796,6 @@ tunstart(struct ifnet *ifp)
 		}
 		if (tp->tun_flags & TUN_ASYNC && tp->tun_sigio)
 			pgsigio(tp->tun_sigio, SIGIO, 0);
-		selwakeup(&tp->tun_rsel);
 		KNOTE(&tp->tun_rsel.si_note, 0);
 	}
 }

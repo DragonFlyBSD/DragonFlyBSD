@@ -637,7 +637,6 @@ mq_receive1(struct lwp *l, mqd_t mqdes, void *msg_ptr, size_t msg_len,
 
 	/* Ready for sending now */
 	get_mplock();
-	selwakeup(&mq->mq_wsel);
 	KNOTE(&mq->mq_wsel.si_note, 0);
 	rel_mplock();
 error:
@@ -829,7 +828,6 @@ mq_send1(struct lwp *l, mqd_t mqdes, const char *msg_ptr, size_t msg_len,
 
 	/* Ready for receiving now */
 	get_mplock();
-	selwakeup(&mq->mq_rsel);
 	KNOTE(&mq->mq_rsel.si_note, 0);
 	rel_mplock();
 error:
@@ -1055,8 +1053,6 @@ sys_mq_unlink(struct mq_unlink_args *uap)
 	wakeup(&mq->mq_recv_cv);
 
 	get_mplock();
-	selwakeup(&mq->mq_rsel);
-	selwakeup(&mq->mq_wsel);
 	KNOTE(&mq->mq_rsel.si_note, 0);
 	KNOTE(&mq->mq_wsel.si_note, 0);
 	rel_mplock();

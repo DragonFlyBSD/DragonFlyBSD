@@ -170,12 +170,6 @@ pipeseltest(struct pipe *cpipe)
 static __inline void
 pipeselwakeup(struct pipe *cpipe)
 {
-	if (cpipe->pipe_state & PIPE_SEL) {
-		get_mplock();
-		cpipe->pipe_state &= ~PIPE_SEL;
-		selwakeup(&cpipe->pipe_sel);
-		rel_mplock();
-	}
 	if ((cpipe->pipe_state & PIPE_ASYNC) && cpipe->pipe_sigio) {
 		get_mplock();
 		pgsigio(cpipe->pipe_sigio, SIGIO, 0);

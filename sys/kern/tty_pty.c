@@ -435,15 +435,11 @@ ptsstart(struct tty *tp)
 static void
 ptcwakeup(struct tty *tp, int flag)
 {
-	struct pt_ioctl *pti = tp->t_dev->si_drv1;
-
 	if (flag & FREAD) {
-		selwakeup(&pti->pt_selr);
 		wakeup(TSA_PTC_READ(tp));
 		KNOTE(&tp->t_rsel.si_note, 0);
 	}
 	if (flag & FWRITE) {
-		selwakeup(&pti->pt_selw);
 		wakeup(TSA_PTC_WRITE(tp));
 		KNOTE(&tp->t_wsel.si_note, 0);
 	}

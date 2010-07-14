@@ -3379,7 +3379,6 @@ aac_handle_aif(struct aac_softc *sc, struct aac_fib *fib)
 			wakeup(sc->aac_aifq);
 		/* token may have been lost */
 		/* Wakeup any poll()ers */
-		selwakeup(&sc->rcv_select);
 		KNOTE(&sc->rcv_select.si_note, 0);
 		/* token may have been lost */
 	}

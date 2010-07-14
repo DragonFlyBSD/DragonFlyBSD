@@ -143,7 +143,9 @@ chn_wakeup(struct pcm_channel *c)
 		/*if (SEL_WAITING(sndbuf_getsel(bs)) && chn_polltrigger(c))*/
 		if (sndbuf_getsel(bs)->si_pid && chn_polltrigger(c)) {
 			/*
-			 * We would call selwakeup() here, but as we
+			 * XXX
+			 *
+			 * We would call KNOTE() here, but as we
 			 * are in interrupt context, we'd have to
 			 * acquire the MP lock before.
 			 * Instead, we'll queue a task in a software
@@ -151,7 +153,7 @@ chn_wakeup(struct pcm_channel *c)
 			 * held.
 			 *
 			 * buffer.c:sndbuf_seltask will then call
-			 * selwakeup() from safer context.
+			 * KNOTE() from safer context.
 			 */
 			taskqueue_enqueue(taskqueue_swi, &bs->seltask);
 		}

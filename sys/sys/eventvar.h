@@ -67,7 +67,6 @@ struct kqueue {
 	struct		klist *kq_knhash;       /* hash table for knotes */
 };
 
-#define KQ_SEL		0x01
 #define KQ_SLEEP	0x02
 #define KQ_ASYNC	0x04
 

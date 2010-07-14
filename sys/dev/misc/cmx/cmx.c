@@ -281,7 +281,6 @@ cmx_detach(device_t dev)
 		callout_stop(&sc->ch);
 		sc->polling = 0;
 		CMX_UNLOCK(sc);
-		selwakeup(&sc->sel);
 		KNOTE(&sc->sel.si_note, 0);
 	} else {
 		CMX_UNLOCK(sc);
@@ -405,7 +404,6 @@ cmx_tick(void *xsc)
 		DEBUG_printf(sc->dev, "BSR=%b\n", bsr, BSRBITS);
 		if (cmx_test(bsr, BSR_BULK_IN_FULL, 1)) {
 			sc->polling = 0;
-			selwakeup(&sc->sel);
 			KNOTE(&sc->sel.si_note, 0);
 		} else {
 			callout_reset(&sc->ch, POLL_TICKS, cmx_tick, sc);
@@ -464,7 +462,6 @@ cmx_close(struct dev_close_args *ap)
 		callout_stop(&sc->ch);
 		sc->polling = 0;
 		CMX_UNLOCK(sc);
-		selwakeup(&sc->sel);
 		KNOTE(&sc->sel.si_note, 0);
 		CMX_LOCK(sc);
 	}
@@ -506,7 +503,6 @@ cmx_read(struct dev_read_args *ap)
 		callout_stop(&sc->ch);
 		sc->polling = 0;
 		CMX_UNLOCK(sc);
-		selwakeup(&sc->sel);
 		KNOTE(&sc->sel.si_note, 0);
 	} else {
 		CMX_UNLOCK(sc);

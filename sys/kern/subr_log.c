@@ -223,7 +223,6 @@ logtimeout(void *arg)
 		return;
 	}
 	msgbuftrigger = 0;
-	selwakeup(&logsoftc.sc_selp);
 	KNOTE(&logsoftc.sc_selp.si_note, 0);
 	if ((logsoftc.sc_state & LOG_ASYNC) && logsoftc.sc_sigio != NULL)
 		pgsigio(logsoftc.sc_sigio, SIGIO, 0);

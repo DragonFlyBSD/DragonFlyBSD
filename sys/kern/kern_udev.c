@@ -422,7 +422,6 @@ udev_event_insert(int ev_type, prop_dictionary_t dict)
 	lockmgr(&udevctx.lock, LK_RELEASE);
 
 	wakeup(&udevctx);
-	selwakeup(&udevctx.sel);
 	KNOTE(&udevctx.sel.si_note, 0);
 }
 

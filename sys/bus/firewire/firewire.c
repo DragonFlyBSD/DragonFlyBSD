@@ -1950,12 +1950,6 @@ fw_rcv(struct fw_rcv_buf *rb)
 		STAILQ_INSERT_TAIL(&xferq->q, rb->xfer, link);
 		crit_exit();
 		sc = device_get_softc(rb->fc->bdev);
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-		if (&xferq->rsel.si_pid != 0)
-#else
-		if (SEL_WAITING(&xferq->rsel))
-#endif
-			selwakeuppri(&xferq->rsel, FWPRI);
 		KNOTE(&xferq->rsel.si_note, 0);
 		if (xferq->flag & FWXFERQ_WAKEUP) {
 			xferq->flag &= ~FWXFERQ_WAKEUP;

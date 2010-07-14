@@ -882,7 +882,6 @@ twputpkt(struct tw_sc *sc, u_char *p)
     sc->sc_state &= ~TWS_WANT;
     wakeup((caddr_t)(&sc->sc_buf));
   }
-  selwakeup(&sc->sc_selp);
   KNOTE(&sc->sc_selp.si_note, 0);
   return(0);
 }

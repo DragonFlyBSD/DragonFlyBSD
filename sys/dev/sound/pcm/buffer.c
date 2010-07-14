@@ -34,12 +34,14 @@
 SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.11 2008/01/06 16:55:51 swildner Exp $");
 
 /*
+ * XXX
+ *
  * sndbuf_seltask is a taskqueue callback routine, called from
  * taskqueue_swi, which runs under the MP lock.
  *
- * The only purpose is to be able to selwakeup() from a sound
+ * The only purpose is to be able to KNOTE() from a sound
  * interrupt, which is running without MP lock held and thus
- * can't call selwakeup() directly.
+ * can't call KNOTE() directly.
  */
 static void
 sndbuf_seltask(void *context, int pending)
@@ -47,7 +49,6 @@ sndbuf_seltask(void *context, int pending)
 	struct snd_dbuf *b = context;
 	struct selinfo *si = sndbuf_getsel(b);
 
-	selwakeup(si);
 	KNOTE(&si->si_note, 0);
 }
 

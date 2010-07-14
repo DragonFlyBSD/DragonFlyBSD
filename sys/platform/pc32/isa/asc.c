@@ -520,11 +520,6 @@ ascintr(void *arg)
 	if (scu->sbuf.size - scu->sbuf.count >= scu->linesize) {
 	    dma_restart(scu);
 	}
-	if (scu->selp.si_pid) {
-	    selwakeup(&scu->selp);
-	    scu->selp.si_pid=(pid_t)0;
-	    scu->selp.si_flags = 0;
-	}
 	KNOTE(&scu->selp.si_note, 0);
     }
 }

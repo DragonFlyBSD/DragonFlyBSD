@@ -59,10 +59,6 @@ struct selinfo {
 
 #define SEL_WAITING(sel)	(sel->si_pid != 0 || (sel->si_flags & SI_COLL) != 0)
 
-struct thread;
-
-void	selwakeup (struct selinfo *);
-
 #endif
 
 #endif /* !_SYS_SELINFO_H_ */

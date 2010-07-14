@@ -1670,7 +1670,6 @@ static void stli_start(struct tty *tp)
 			tp->t_state &= ~TS_ASLEEP;
 			wakeup(&tp->t_outq);
 		}
-		selwakeup(&tp->t_wsel);
 		KNOTE(&tp->t_wsel.si_note, 0);
 	}
 #endif

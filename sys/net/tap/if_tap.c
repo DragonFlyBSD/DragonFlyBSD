@@ -428,7 +428,6 @@ tapclose(struct dev_close_args *ap)
 
 	funsetown(tp->tap_sigio);
 	tp->tap_sigio = NULL;
-	selwakeup(&tp->tap_rsel);
 	KNOTE(&tp->tap_rsel.si_note, 0);
 
 	tp->tap_flags &= ~TAP_OPEN;
@@ -653,13 +652,6 @@ tapifstart(struct ifnet *ifp)
 			pgsigio(tp->tap_sigio, SIGIO, 0);
 			rel_mplock();
 		}
-
-		/*
-		 * selwakeup is not MPSAFE.  tapifstart is.
-		 */
-		get_mplock();
-		selwakeup(&tp->tap_rsel);
-		rel_mplock();
 	}
 
 	ifp->if_flags &= ~IFF_OACTIVE;

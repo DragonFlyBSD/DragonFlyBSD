@@ -1698,7 +1698,6 @@ sohasoutofband(struct socket *so)
 {
 	if (so->so_sigio != NULL)
 		pgsigio(so->so_sigio, SIGURG, 0);
-	selwakeup(&so->so_rcv.ssb_sel);
 	KNOTE(&so->so_rcv.ssb_sel.si_note, NOTE_OOB);
 }
 

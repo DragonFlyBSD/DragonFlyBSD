@@ -381,7 +381,6 @@ ums_detach(device_t self)
 		sc->state &= ~UMS_ASLEEP;
 		wakeup(sc);
 	}
-	selwakeup(&sc->rsel);
 	KNOTE(&sc->rsel.si_note, 0);
 
 	dev_ops_remove_minor(&ums_ops, /*-1, */device_get_unit(self));
@@ -514,7 +513,6 @@ ums_add_to_queue(struct ums_softc *sc, int dx, int dy, int dz, int buttons)
 		sc->state &= ~UMS_ASLEEP;
 		wakeup(sc);
 	}
-	selwakeup(&sc->rsel);
 	KNOTE(&sc->rsel.si_note, 0);
 }
 

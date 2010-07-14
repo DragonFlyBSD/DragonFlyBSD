@@ -1119,7 +1119,6 @@ notify_user(struct targ_softc *softc)
 	 * Notify users sleeping via poll(), kqueue(), and
 	 * blocking read().
 	 */
-	selwakeup(&softc->read_select);
 	KNOTE(&softc->read_select.si_note, 0);
 	wakeup(&softc->user_ccb_queue);
 }

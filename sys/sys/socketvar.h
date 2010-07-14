@@ -76,7 +76,6 @@ struct signalsockbuf {
 #define	SSB_LOCK	0x01		/* lock on data queue */
 #define	SSB_WANT	0x02		/* someone is waiting to lock */
 #define	SSB_WAIT	0x04		/* someone is waiting for data/space */
-#define	SSB_SEL		0x08		/* someone is selecting */
 #define	SSB_ASYNC	0x10		/* ASYNC I/O, need signals */
 #define	SSB_UPCALL	0x20		/* someone wants an upcall */
 #define	SSB_NOINTR	0x40		/* operations not interruptible */
@@ -215,7 +214,7 @@ struct	xsocket {
  */
 #define	ssb_notify(ssb)					\
 	(((ssb)->ssb_flags &				\
-	(SSB_WAIT | SSB_SEL | SSB_ASYNC | SSB_UPCALL |	\
+	(SSB_WAIT | SSB_ASYNC | SSB_UPCALL |		\
 	SSB_AIO | SSB_KNOTE | SSB_MEVENT)))
 
 /* do we have to send all at once on a socket? */

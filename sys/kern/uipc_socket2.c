@@ -336,8 +336,6 @@ sowakeup(struct socket *so, struct signalsockbuf *ssb)
 {
 	struct selinfo *selinfo = &ssb->ssb_sel;
 
-	selwakeup(selinfo);
-	ssb->ssb_flags &= ~SSB_SEL;
 	if (ssb->ssb_flags & SSB_WAIT) {
 		if ((ssb == &so->so_snd && ssb_space(ssb) >= ssb->ssb_lowat) ||
 		    (ssb == &so->so_rcv && ssb->ssb_cc >= ssb->ssb_lowat) ||

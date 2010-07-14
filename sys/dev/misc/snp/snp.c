@@ -365,8 +365,6 @@ snp_in(struct snoop *snp, char *buf, int n)
 		snp->snp_flags &= ~SNOOP_RWAIT;
 		wakeup((caddr_t)snp);
 	}
-	selwakeup(&snp->snp_sel);
-	snp->snp_sel.si_pid = 0;
 	KNOTE(&snp->snp_sel.si_note, 0);
 
 	return (n);
@@ -439,8 +437,6 @@ snp_detach(struct snoop *snp)
 	snp->snp_target = NULL;
 
 detach_notty:
-	selwakeup(&snp->snp_sel);
-	snp->snp_sel.si_pid = 0;
 	KNOTE(&snp->snp_sel.si_note, 0);
 	if ((snp->snp_flags & SNOOP_OPEN) == 0) 
 		kfree(snp, M_SNP);

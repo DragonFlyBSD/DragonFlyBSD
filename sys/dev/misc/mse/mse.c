@@ -757,7 +757,6 @@ mseintr(void *arg)
 			sc->sc_flags &= ~MSESC_WANT;
 			wakeup((caddr_t)sc);
 		}
-		selwakeup(&sc->sc_selp);
 		KNOTE(&sc->sc_selp.si_note, 0);
 	}
 }

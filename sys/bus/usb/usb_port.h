@@ -81,8 +81,6 @@
 #define	PROC_UNLOCK(p)
 #define uio_procp uio_td
 
-#define selwakeuppri(p, pri)	selwakeup(p)
-
 typedef struct thread *usb_proc_ptr;
 
 #define	config_pending_incr()
