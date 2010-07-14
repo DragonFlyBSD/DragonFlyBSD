@@ -45,8 +45,10 @@ static void
 sndbuf_seltask(void *context, int pending)
 {
 	struct snd_dbuf *b = context;
+	struct selinfo *si = sndbuf_getsel(b);
 
-	selwakeup(sndbuf_getsel(b));
+	selwakeup(si);
+	KNOTE(&si->si_note, 0);
 }
 
 struct snd_dbuf *

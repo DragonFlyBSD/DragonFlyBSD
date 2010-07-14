@@ -525,6 +525,7 @@ ascintr(void *arg)
 	    scu->selp.si_pid=(pid_t)0;
 	    scu->selp.si_flags = 0;
 	}
+	KNOTE(&scu->selp.si_note, 0);
     }
 }
 

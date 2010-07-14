@@ -429,6 +429,7 @@ tapclose(struct dev_close_args *ap)
 	funsetown(tp->tap_sigio);
 	tp->tap_sigio = NULL;
 	selwakeup(&tp->tap_rsel);
+	KNOTE(&tp->tap_rsel.si_note, 0);
 
 	tp->tap_flags &= ~TAP_OPEN;
 	funsetown(tp->tap_sigtd);

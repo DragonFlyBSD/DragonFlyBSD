@@ -830,6 +830,7 @@ i4bputqueue(struct mbuf *m)
 	}
 
 	selwakeup(&select_rd_info);
+	KNOTE(&select_rd_info.si_note, 0);
 }
 
 /*---------------------------------------------------------------------------*
@@ -865,6 +866,7 @@ i4bputqueue_hipri(struct mbuf *m)
 	}
 
 	selwakeup(&select_rd_info);
+	KNOTE(&select_rd_info.si_note, 0);
 }
 
 #endif /* NI4B > 0 */

@@ -443,10 +443,12 @@ wakeup_other(struct tty *tp, int flag)
 	if (flag & FREAD) {
 		selwakeup(&otherpart->nm_tty.t_rsel);
 		wakeup(TSA_PTC_READ((&otherpart->nm_tty)));
+		KNOTE(&otherpart->nm_tty.t_rsel.si_note, 0);
 	}
 	if (flag & FWRITE) {
 		selwakeup(&otherpart->nm_tty.t_wsel);
 		wakeup(TSA_PTC_WRITE((&otherpart->nm_tty)));
+		KNOTE(&otherpart->nm_tty.t_wsel.si_note, 0);
 	}
 }
 

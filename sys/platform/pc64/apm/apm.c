@@ -905,6 +905,7 @@ apm_record_event(struct apm_softc *sc, u_int event_type)
 	evp->type = event_type;
 	evp->index = ++apm_evindex;
 	selwakeup(&sc->sc_rsel);
+	KNOTE(&sc->sc_rsel.si_note, 0);
 	return (sc->sc_flags & SCFLAG_OCTL) ? 0 : 1; /* user may handle */
 }
 

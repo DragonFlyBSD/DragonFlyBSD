@@ -334,6 +334,7 @@ uhid_intr(usbd_xfer_handle xfer, usbd_private_handle addr, usbd_status status)
 		wakeup(&sc->sc_q);
 	}
 	selwakeup(&sc->sc_rsel);
+	KNOTE(&sc->sc_rsel.si_note, 0);
 	if (sc->sc_async != NULL) {
 		DPRINTFN(3, ("uhid_intr: sending SIGIO %p\n", sc->sc_async));
 		ksignal(sc->sc_async, SIGIO);

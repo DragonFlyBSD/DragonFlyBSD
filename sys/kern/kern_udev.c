@@ -423,6 +423,7 @@ udev_event_insert(int ev_type, prop_dictionary_t dict)
 
 	wakeup(&udevctx);
 	selwakeup(&udevctx.sel);
+	KNOTE(&udevctx.sel.si_note, 0);
 }
 
 static struct udev_event_kernel *

@@ -439,6 +439,7 @@ spictimeout(void *arg)
 			wakeup((caddr_t) sc);
 		}
 		selwakeup(&sc->sc_rsel);
+		KNOTE(&sc->sc_rsel.si_note, 0);
 	}
 	spic_call2(sc, 0x81, 0xff); /* Clear event */
 

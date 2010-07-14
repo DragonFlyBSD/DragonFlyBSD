@@ -522,6 +522,7 @@ bpf_wakeup(struct bpf_d *d)
 
 	get_mplock();
 	selwakeup(&d->bd_sel);
+	KNOTE(&d->bd_sel.si_note, 0);
 	rel_mplock();
 	/* XXX */
 	d->bd_sel.si_pid = 0;

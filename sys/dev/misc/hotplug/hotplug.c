@@ -222,6 +222,7 @@ hotplug_put_event(struct hotplug_event *he)
 	wakeup(&hpsc);
 	lockmgr(&hpsc.lock, LK_RELEASE);
 	selwakeup(&hpsc.sel);
+	KNOTE(&hpsc.sel.si_note, 0);
 	return (0);
 }
 

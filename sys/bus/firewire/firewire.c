@@ -1956,6 +1956,7 @@ fw_rcv(struct fw_rcv_buf *rb)
 		if (SEL_WAITING(&xferq->rsel))
 #endif
 			selwakeuppri(&xferq->rsel, FWPRI);
+		KNOTE(&xferq->rsel.si_note, 0);
 		if (xferq->flag & FWXFERQ_WAKEUP) {
 			xferq->flag &= ~FWXFERQ_WAKEUP;
 			wakeup((caddr_t)xferq);

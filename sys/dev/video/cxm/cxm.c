@@ -1371,6 +1371,7 @@ cxm_encoder_dma_done(struct cxm_softc *sc)
 
 	/* wakeup anyone polling for data */
 	selwakeup(&sc->enc_sel);
+	KNOTE(&sc->enc_sel.si_note, 0);
 }
 
 

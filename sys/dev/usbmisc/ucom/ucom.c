@@ -875,6 +875,7 @@ ucomstart(struct tty *tp)
 			wakeup(TSA_OLOWAT(tp));
 		}
 		selwakeup(&tp->t_wsel);
+		KNOTE(&tp->t_wsel.si_note, 0);
 		if (tp->t_outq.c_cc == 0) {
 			if (ISSET(tp->t_state, TS_BUSY | TS_SO_OCOMPLETE) ==
 			    TS_SO_OCOMPLETE && tp->t_outq.c_cc == 0) {

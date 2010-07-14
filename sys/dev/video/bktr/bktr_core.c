@@ -717,7 +717,7 @@ common_bktr_intr( void *arg )
 		if (bktr->vbi_select.si_pid) {
 			selwakeup(&bktr->vbi_select);
 		}
-
+		KNOTE(&bktr->vbi_select.si_note, 0);
 
 	}
 	UNLOCK_VBI(bktr);

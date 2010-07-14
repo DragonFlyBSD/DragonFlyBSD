@@ -871,6 +871,7 @@ usb_add_event(int type, struct usb_event *uep)
 	usb_nevents++;
 	wakeup(&usb_events);
 	selwakeup(&usb_selevent);
+	KNOTE(&usb_selevent.si_note, 0);
 	if (usb_async_proc != NULL) {
 		ksignal(usb_async_proc, SIGIO);
 	}

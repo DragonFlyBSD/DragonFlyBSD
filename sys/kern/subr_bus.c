@@ -368,6 +368,7 @@ devctl_queue_data(char *data)
 	lockmgr(&devsoftc.lock, LK_RELEASE);
 	get_mplock();	/* XXX */
 	selwakeup(&devsoftc.sel);
+	KNOTE(&devsoftc.sel.si_note, 0);
 	rel_mplock();	/* XXX */
 	p = devsoftc.async_proc;
 	if (p != NULL)

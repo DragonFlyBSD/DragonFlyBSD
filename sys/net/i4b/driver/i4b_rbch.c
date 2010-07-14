@@ -813,6 +813,7 @@ rbch_rx_data_rdy(int unit)
 		NDBGL4(L4_RBCHDBG, "unit %d, NO wakeup", unit);
 	}
 	selwakeup(&rbch_softc[unit].selp);
+	KNOTE(&rbch_softc[unit].selp.si_note, 0);
 }
 
 /*---------------------------------------------------------------------------*
@@ -834,6 +835,7 @@ rbch_tx_queue_empty(int unit)
 		NDBGL4(L4_RBCHDBG, "unit %d, NO wakeup", unit);
 	}
 	selwakeup(&rbch_softc[unit].selp);
+	KNOTE(&rbch_softc[unit].selp.si_note, 0);
 }
 
 /*---------------------------------------------------------------------------*
@@ -846,6 +848,7 @@ rbch_activity(int unit, int rxtx)
 	if (rbch_softc[unit].sc_cd)
 		rbch_softc[unit].sc_cd->last_active_time = SECOND;
 	selwakeup(&rbch_softc[unit].selp);
+	KNOTE(&rbch_softc[unit].selp.si_note, 0);
 }
 
 /*---------------------------------------------------------------------------*

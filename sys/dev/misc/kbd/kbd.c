@@ -837,6 +837,7 @@ genkbd_event(keyboard_t *kbd, int event, void *arg)
 			wakeup((caddr_t)sc);
 		}
 		selwakeup(&sc->gkb_rsel);
+		KNOTE(&sc->gkb_rsel.si_note, 0);
 		return 0;
 	default:
 		return EINVAL;
@@ -907,6 +908,7 @@ genkbd_event(keyboard_t *kbd, int event, void *arg)
 			wakeup((caddr_t)sc);
 		}
 		selwakeup(&sc->gkb_rsel);
+		KNOTE(&sc->gkb_rsel.si_note, 0);
 	}
 
 	return 0;

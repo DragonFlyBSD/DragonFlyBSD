@@ -2378,6 +2378,7 @@ psmintr(void *arg)
             wakeup((caddr_t) sc);
     	}
         selwakeup(&sc->rsel);
+	KNOTE(&sc->rsel.si_note, 0);
     }
 }
 
