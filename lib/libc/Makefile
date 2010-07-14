@@ -14,7 +14,7 @@ AINC=	-I${.OBJDIR} -I${.CURDIR}/${MACHINE_ARCH}
 CLEANFILES+=tags
 PRECIOUSLIB=	yes
 
-.if ${CCVER} != "clang"
+.if ${CCVER} != "clang" && ${CCVER} != "clangsvn"
 DPADD+=	${LIBGCC}
 LDADD+=	-lgcc
 .endif

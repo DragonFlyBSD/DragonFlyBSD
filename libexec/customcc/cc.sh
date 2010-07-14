@@ -25,6 +25,16 @@ if [ "${CCVER}" = "clang" ]; then
 	elif [ "${CNAME}" = "cc" -o "${CNAME}" = "gcc" ]; then
 		exec ${CDIR}/../gcc41/cc $oldargs
 	fi
+elif [ "${CCVER}" = "clangsvn" ]; then
+	if [ "${CNAME}" = "cpp" ]; then
+		exec ${CDIR}/../gcc41/cpp "$@"
+	else
+		INCOPT="-nobuiltininc -nostdinc \
+		    -isysroot @@INCPREFIX@@ \
+		    -isystem /usr/include \
+		    -isystem /usr/libdata/gcc41 \
+		    -isystem /usr/include/c++/4.1"
+	fi
 fi
 
 . /etc/defaults/compilers.conf
