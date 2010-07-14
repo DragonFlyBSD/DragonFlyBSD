@@ -69,6 +69,8 @@ kthread_create(void (*func)(void *), void *arg,
     kvsnprintf(td->td_comm, sizeof(td->td_comm), fmt, ap);
     __va_end(ap);
 
+    td->td_ucred = crhold(proc0.p_ucred);
+
     /*
      * Schedule the thread to run
      */
