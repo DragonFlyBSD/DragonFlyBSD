@@ -162,6 +162,7 @@ static void
 amrr_node_deinit(struct ieee80211_node *ni)
 {
 	kfree(ni->ni_rctls, M_80211_RATECTL);
+	ni->ni_rctls = NULL;
 }
 
 static int
