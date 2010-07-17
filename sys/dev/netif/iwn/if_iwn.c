@@ -23,8 +23,7 @@
  * adapters.
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
+/* $FreeBSD$ */
 
 #include <sys/param.h>
 #include <sys/sockio.h>
@@ -42,17 +41,19 @@ __FBSDID("$FreeBSD$");
 #include <sys/module.h>
 #include <sys/queue.h>
 #include <sys/taskqueue.h>
+#include <sys/libkern.h>
 
-#include <machine/bus.h>
-#include <machine/resource.h>
+#include <sys/bus.h>
+#include <sys/resource.h>
 #include <machine/clock.h>
 
-#include <dev/pci/pcireg.h>
-#include <dev/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 #include <net/bpf.h>
 #include <net/if.h>
 #include <net/if_arp.h>
+#include <net/ifq_var.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
@@ -64,13 +65,13 @@ __FBSDID("$FreeBSD$");
 #include <netinet/if_ether.h>
 #include <netinet/ip.h>
 
-#include <net80211/ieee80211_var.h>
-#include <net80211/ieee80211_radiotap.h>
-#include <net80211/ieee80211_regdomain.h>
-#include <net80211/ieee80211_ratectl.h>
+#include <netproto/802_11/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_radiotap.h>
+#include <netproto/802_11/ieee80211_regdomain.h>
+#include <netproto/802_11/ieee80211_ratectl.h>
 
-#include <dev/iwn/if_iwnreg.h>
-#include <dev/iwn/if_iwnvar.h>
+#include "if_iwnreg.h"
+#include "if_iwnvar.h"
 
 static int	iwn_probe(device_t);
 static int	iwn_attach(device_t);
@@ -166,7 +167,7 @@ static int	iwn_raw_xmit(struct ieee80211_node *, struct mbuf *,
 static void	iwn_start(struct ifnet *);
 static void	iwn_start_locked(struct ifnet *);
 static void	iwn_watchdog(struct iwn_softc *sc);
-static int	iwn_ioctl(struct ifnet *, u_long, caddr_t);
+static int	iwn_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static int	iwn_cmd(struct iwn_softc *, int, const void *, int, int);
 static int	iwn4965_add_node(struct iwn_softc *, struct iwn_node_info *,
 		    int);
@@ -285,7 +286,7 @@ enum {
 
 #define DPRINTF(sc, m, fmt, ...) do {			\
 	if (sc->sc_debug & (m))				\
-		printf(fmt, __VA_ARGS__);		\
+		kprintf(fmt, __VA_ARGS__);		\
 } while (0)
 
 static const char *iwn_intr_str(uint8_t);
@@ -409,6 +410,32 @@ iwn_attach(device_t dev)
 	uint8_t macaddr[IEEE80211_ADDR_LEN];
 
 	sc->sc_dev = dev;
+	sc->sc_dmat = NULL;
+
+	if (bus_dma_tag_create(sc->sc_dmat,
+			1, 0,
+			BUS_SPACE_MAXADDR_32BIT,
+			BUS_SPACE_MAXADDR,
+			NULL, NULL,
+			BUS_SPACE_MAXSIZE,
+			IWN_MAX_SCATTER,
+			BUS_SPACE_MAXSIZE,
+			BUS_DMA_ALLOCNOW,
+			&sc->sc_dmat)) {
+		device_printf(dev, "cannot allocate DMA tag\n");
+		error = ENOMEM;
+		goto fail;
+	}
+
+
+
+	/* prepare sysctl tree for use in sub modules */
+	sysctl_ctx_init(&sc->sc_sysctl_ctx);
+	sc->sc_sysctl_tree = SYSCTL_ADD_NODE(&sc->sc_sysctl_ctx,
+		SYSCTL_STATIC_CHILDREN(_hw),
+		OID_AUTO,
+		device_get_nameunit(sc->sc_dev),
+		CTLFLAG_RD, 0, "");
 
 	/*
 	 * Get the offset of the PCI Express Capability Structure in PCI
@@ -459,7 +486,7 @@ iwn_attach(device_t dev)
 	}
 
 	IWN_LOCK_INIT(sc);
-	callout_init_mtx(&sc->sc_timer_to, &sc->sc_mtx, 0);
+	callout_init(&sc->sc_timer_to);
 	TASK_INIT(&sc->sc_reinit_task, 0, iwn_hw_reset, sc );
 	TASK_INIT(&sc->sc_radioon_task, 0, iwn_radio_on, sc );
 	TASK_INIT(&sc->sc_radiooff_task, 0, iwn_radio_off, sc );
@@ -627,9 +654,8 @@ iwn_attach(device_t dev)
 	ifp->if_init = iwn_init;
 	ifp->if_ioctl = iwn_ioctl;
 	ifp->if_start = iwn_start;
-	IFQ_SET_MAXLEN(&ifp->if_snd, ifqmaxlen);
-	ifp->if_snd.ifq_drv_maxlen = ifqmaxlen;
-	IFQ_SET_READY(&ifp->if_snd);
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+	ifq_set_ready(&ifp->if_snd);
 
 	ieee80211_ifattach(ic, macaddr);
 	ic->ic_vap_create = iwn_vap_create;
@@ -658,8 +684,8 @@ iwn_attach(device_t dev)
 	/*
 	 * Hook our interrupt after all initialization is complete.
 	 */
-	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET | INTR_MPSAFE,
-	    NULL, iwn_intr, sc, &sc->sc_ih);
+	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE,
+	    iwn_intr, sc, &sc->sc_ih, ifp->if_serializer);
 	if (error != 0) {
 		device_printf(dev, "could not set up interrupt, error %d\n",
 		    error);
@@ -774,8 +800,8 @@ iwn_vap_create(struct ieee80211com *ic,
 
 	if (!TAILQ_EMPTY(&ic->ic_vaps))		/* only one at a time */
 		return NULL;
-	ivp = (struct iwn_vap *) malloc(sizeof(struct iwn_vap),
-	    M_80211_VAP, M_NOWAIT | M_ZERO);
+	ivp = (struct iwn_vap *) kmalloc(sizeof(struct iwn_vap),
+	    M_80211_VAP, M_INTWAIT | M_ZERO);
 	if (ivp == NULL)
 		return NULL;
 	vap = &ivp->iv_vap;
@@ -799,7 +825,7 @@ iwn_vap_delete(struct ieee80211vap *vap)
 
 	ieee80211_ratectl_deinit(vap);
 	ieee80211_vap_detach(vap);
-	free(ivp, M_80211_VAP);
+	kfree(ivp, M_80211_VAP);
 }
 
 static int
@@ -818,7 +844,7 @@ iwn_cleanup(device_t dev)
 		ieee80211_draintask(ic, &sc->sc_radiooff_task);
 
 		iwn_stop(sc);
-		callout_drain(&sc->sc_timer_to);
+		callout_stop(&sc->sc_timer_to);
 		ieee80211_ifdetach(ic);
 	}
 
@@ -853,7 +879,10 @@ iwn_cleanup(device_t dev)
 static int
 iwn_detach(device_t dev)
 {
+	struct iwn_softc *sc = (struct iwn_softc *)device_get_softc(dev);
+
 	iwn_cleanup(dev);
+	bus_dma_tag_destroy(sc->sc_dmat);
 	return 0;
 }
 
@@ -1108,9 +1137,9 @@ iwn_dma_contig_alloc(struct iwn_softc *sc, struct iwn_dma_info *dma,
 	dma->size = size;
 	dma->tag = NULL;
 
-	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), alignment,
+	error = bus_dma_tag_create(sc->sc_dmat, alignment,
 	    0, BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL, size,
-	    1, size, flags, NULL, NULL, &dma->tag);
+	    1, size, flags, &dma->tag);
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "%s: bus_dma_tag_create failed, error %d\n",
@@ -1231,10 +1260,10 @@ iwn_alloc_rx_ring(struct iwn_softc *sc, struct iwn_rx_ring *ring)
 		goto fail;
 	}
 
-	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,
+	error = bus_dma_tag_create(sc->sc_dmat, 1, 0,
 	    BUS_SPACE_MAXADDR_32BIT,
-	    BUS_SPACE_MAXADDR, NULL, NULL, MJUMPAGESIZE, 1,
-	    MJUMPAGESIZE, BUS_DMA_NOWAIT, NULL, NULL, &ring->data_dmat);
+	    BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES, 1,
+	    MCLBYTES, BUS_DMA_NOWAIT, &ring->data_dmat);
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "%s: bus_dma_tag_create_failed, error %d\n",
@@ -1268,7 +1297,7 @@ iwn_alloc_rx_ring(struct iwn_softc *sc, struct iwn_rx_ring *ring)
 			goto fail;
 		}
 
-		data->m = m_getjcl(M_DONTWAIT, MT_DATA, M_PKTHDR, MJUMPAGESIZE);
+		data->m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (data->m == NULL) {
 			device_printf(sc->sc_dev,
 			    "%s: could not allocate rx mbuf\n", __func__);
@@ -1278,7 +1307,7 @@ iwn_alloc_rx_ring(struct iwn_softc *sc, struct iwn_rx_ring *ring)
 
 		/* Map page. */
 		error = bus_dmamap_load(ring->data_dmat, data->map,
-		    mtod(data->m, caddr_t), MJUMPAGESIZE,
+		    mtod(data->m, caddr_t), MCLBYTES,
 		    iwn_dma_map_addr, &paddr, BUS_DMA_NOWAIT);
 		if (error != 0 && error != EFBIG) {
 			device_printf(sc->sc_dev,
@@ -1387,10 +1416,10 @@ iwn_alloc_tx_ring(struct iwn_softc *sc, struct iwn_tx_ring *ring, int qid)
 		goto fail;
 	}
 
-	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,
+	error = bus_dma_tag_create(sc->sc_dmat, 1, 0,
 	    BUS_SPACE_MAXADDR_32BIT,
 	    BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES, IWN_MAX_SCATTER - 1,
-	    MCLBYTES, BUS_DMA_NOWAIT, NULL, NULL, &ring->data_dmat);
+	    MCLBYTES, BUS_DMA_NOWAIT, &ring->data_dmat);
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "%s: bus_dma_tag_create_failed, error %d\n",
@@ -1608,12 +1637,12 @@ iwn4965_print_power_group(struct iwn_softc *sc, int i)
 	struct iwn4965_eeprom_chan_samples *chans = band->chans;
 	int j, c;
 
-	printf("===band %d===\n", i);
-	printf("chan lo=%d, chan hi=%d\n", band->lo, band->hi);
-	printf("chan1 num=%d\n", chans[0].num);
+	kprintf("===band %d===\n", i);
+	kprintf("chan lo=%d, chan hi=%d\n", band->lo, band->hi);
+	kprintf("chan1 num=%d\n", chans[0].num);
 	for (c = 0; c < 2; c++) {
 		for (j = 0; j < IWN_NSAMPLES; j++) {
-			printf("chain %d, sample %d: temp=%d gain=%d "
+			kprintf("chain %d, sample %d: temp=%d gain=%d "
 			    "power=%d pa_det=%d\n", c, j,
 			    chans[0].samples[c][j].temp,
 			    chans[0].samples[c][j].gain,
@@ -1621,10 +1650,10 @@ iwn4965_print_power_group(struct iwn_softc *sc, int i)
 			    chans[0].samples[c][j].pa_det);
 		}
 	}
-	printf("chan2 num=%d\n", chans[1].num);
+	kprintf("chan2 num=%d\n", chans[1].num);
 	for (c = 0; c < 2; c++) {
 		for (j = 0; j < IWN_NSAMPLES; j++) {
-			printf("chain %d, sample %d: temp=%d gain=%d "
+			kprintf("chain %d, sample %d: temp=%d gain=%d "
 			    "power=%d pa_det=%d\n", c, j,
 			    chans[1].samples[c][j].temp,
 			    chans[1].samples[c][j].gain,
@@ -1887,13 +1916,17 @@ iwn_read_eeprom_enhinfo(struct iwn_softc *sc)
 static struct ieee80211_node *
 iwn_node_alloc(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 {
-	return malloc(sizeof (struct iwn_node), M_80211_NODE,M_NOWAIT | M_ZERO);
+	return kmalloc(sizeof (struct iwn_node), M_80211_NODE,M_INTWAIT | M_ZERO);
 }
 
 static void
 iwn_newassoc(struct ieee80211_node *ni, int isnew)
 {
 	/* XXX move */
+	//if (!isnew) {
+		ieee80211_ratectl_node_deinit(ni);
+	//}
+
 	ieee80211_ratectl_node_init(ni);
 }
 
@@ -2062,7 +2095,7 @@ iwn_rx_done(struct iwn_softc *sc, struct iwn_rx_desc *desc,
 	}
 
 	/* XXX don't need mbuf, just dma buffer */
-	m1 = m_getjcl(M_DONTWAIT, MT_DATA, M_PKTHDR, MJUMPAGESIZE);
+	m1 = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m1 == NULL) {
 		DPRINTF(sc, IWN_DEBUG_ANY, "%s: no mbuf to restock ring\n",
 		    __func__);
@@ -2072,7 +2105,7 @@ iwn_rx_done(struct iwn_softc *sc, struct iwn_rx_desc *desc,
 	bus_dmamap_unload(ring->data_dmat, data->map);
 
 	error = bus_dmamap_load(ring->data_dmat, data->map,
-	    mtod(m1, caddr_t), MJUMPAGESIZE,
+	    mtod(m1, caddr_t), MCLBYTES,
 	    iwn_dma_map_addr, &paddr, BUS_DMA_NOWAIT);
 	if (error != 0 && error != EFBIG) {
 		device_printf(sc->sc_dev,
@@ -2202,8 +2235,8 @@ iwn5000_rx_calib_results(struct iwn_softc *sc, struct iwn_rx_desc *desc,
 
 	/* Save calibration result. */
 	if (sc->calibcmd[idx].buf != NULL)
-		free(sc->calibcmd[idx].buf, M_DEVBUF);
-	sc->calibcmd[idx].buf = malloc(len, M_DEVBUF, M_NOWAIT);
+		kfree(sc->calibcmd[idx].buf, M_DEVBUF);
+	sc->calibcmd[idx].buf = kmalloc(len, M_DEVBUF, M_INTWAIT);
 	if (sc->calibcmd[idx].buf == NULL) {
 		DPRINTF(sc, IWN_DEBUG_CALIBRATE,
 		    "not enough memory for calibration result %d\n",
@@ -2380,8 +2413,8 @@ iwn_tx_done(struct iwn_softc *sc, struct iwn_rx_desc *desc, int ackfailcnt,
 	if (--ring->queued < IWN_TX_RING_LOMARK) {
 		sc->qfullmsk &= ~(1 << ring->qid);
 		if (sc->qfullmsk == 0 &&
-		    (ifp->if_drv_flags & IFF_DRV_OACTIVE)) {
-			ifp->if_drv_flags &= ~IFF_DRV_OACTIVE;
+		    (ifp->if_flags & IFF_OACTIVE)) {
+			ifp->if_flags &= ~IFF_OACTIVE;
 			iwn_start_locked(ifp);
 		}
 	}
@@ -2646,12 +2679,12 @@ iwn_fatal_intr(struct iwn_softc *sc)
 	if (sc->errptr < IWN_FW_DATA_BASE ||
 	    sc->errptr + sizeof (dump) >
 	    IWN_FW_DATA_BASE + hal->fw_data_maxsz) {
-		printf("%s: bad firmware error log address 0x%08x\n",
+		kprintf("%s: bad firmware error log address 0x%08x\n",
 		    __func__, sc->errptr);
 		return;
 	}
 	if (iwn_nic_lock(sc) != 0) {
-		printf("%s: could not read firmware error log\n",
+		kprintf("%s: could not read firmware error log\n",
 		    __func__);
 		return;
 	}
@@ -2661,33 +2694,33 @@ iwn_fatal_intr(struct iwn_softc *sc)
 	iwn_nic_unlock(sc);
 
 	if (dump.valid == 0) {
-		printf("%s: firmware error log is empty\n",
+		kprintf("%s: firmware error log is empty\n",
 		    __func__);
 		return;
 	}
-	printf("firmware error log:\n");
-	printf("  error type      = \"%s\" (0x%08X)\n",
+	kprintf("firmware error log:\n");
+	kprintf("  error type      = \"%s\" (0x%08X)\n",
 	    (dump.id < nitems(iwn_fw_errmsg)) ?
 		iwn_fw_errmsg[dump.id] : "UNKNOWN",
 	    dump.id);
-	printf("  program counter = 0x%08X\n", dump.pc);
-	printf("  source line     = 0x%08X\n", dump.src_line);
-	printf("  error data      = 0x%08X%08X\n",
+	kprintf("  program counter = 0x%08X\n", dump.pc);
+	kprintf("  source line     = 0x%08X\n", dump.src_line);
+	kprintf("  error data      = 0x%08X%08X\n",
 	    dump.error_data[0], dump.error_data[1]);
-	printf("  branch link     = 0x%08X%08X\n",
+	kprintf("  branch link     = 0x%08X%08X\n",
 	    dump.branch_link[0], dump.branch_link[1]);
-	printf("  interrupt link  = 0x%08X%08X\n",
+	kprintf("  interrupt link  = 0x%08X%08X\n",
 	    dump.interrupt_link[0], dump.interrupt_link[1]);
-	printf("  time            = %u\n", dump.time[0]);
+	kprintf("  time            = %u\n", dump.time[0]);
 
 	/* Dump driver status (TX and RX rings) while we're here. */
-	printf("driver status:\n");
+	kprintf("driver status:\n");
 	for (i = 0; i < hal->ntxqs; i++) {
 		struct iwn_tx_ring *ring = &sc->txq[i];
-		printf("  tx ring %2d: qid=%-2d cur=%-3d queued=%-3d\n",
+		kprintf("  tx ring %2d: qid=%-2d cur=%-3d queued=%-3d\n",
 		    i, ring->qid, ring->cur, ring->queued);
 	}
-	printf("  rx ring: cur=%d\n", sc->rxq.cur);
+	kprintf("  rx ring: cur=%d\n", sc->rxq.cur);
 }
 
 static void
@@ -2696,8 +2729,6 @@ iwn_intr(void *arg)
 	struct iwn_softc *sc = arg;
 	struct ifnet *ifp = sc->sc_ifp;
 	uint32_t r1, r2, tmp;
-
-	IWN_LOCK(sc);
 
 	/* Disable interrupts. */
 	IWN_WRITE(sc, IWN_INT_MASK, 0);
@@ -2781,7 +2812,6 @@ done:
 	if (ifp->if_flags & IFF_UP)
 		IWN_WRITE(sc, IWN_INT_MASK, sc->int_mask);
 
-	IWN_UNLOCK(sc);
 }
 
 /*
@@ -2892,7 +2922,8 @@ iwn_tx_data(struct iwn_softc *sc, struct mbuf *m, struct ieee80211_node *ni,
 		rate = tp->ucastrate;
 	else {
 		/* XXX pass pktlen */
-		(void) ieee80211_ratectl_rate(ni, NULL, 0);
+		ieee80211_ratectl_rate(ni, NULL, 0);
+
 		rate = ni->ni_txrate;
 	}
 	ridx = iwn_plcp_signal(rate);
@@ -3024,11 +3055,11 @@ iwn_tx_data(struct iwn_softc *sc, struct mbuf *m, struct ieee80211_node *ni,
 	tx->flags = htole32(flags);
 
 	if (m->m_len > 0) {
-		error = bus_dmamap_load_mbuf_sg(ring->data_dmat, data->map,
-		    m, segs, &nsegs, BUS_DMA_NOWAIT);
+		error = bus_dmamap_load_mbuf_segment(ring->data_dmat, data->map,
+		    m, segs, IWN_MAX_SCATTER - 1, &nsegs, BUS_DMA_NOWAIT);
 		if (error == EFBIG) {
 			/* too many fragments, linearize */
-			mnew = m_collapse(m, M_DONTWAIT, IWN_MAX_SCATTER);
+			mnew = m_defrag(m, MB_DONTWAIT);
 			if (mnew == NULL) {
 				device_printf(sc->sc_dev,
 				    "%s: could not defrag mbuf\n", __func__);
@@ -3036,12 +3067,12 @@ iwn_tx_data(struct iwn_softc *sc, struct mbuf *m, struct ieee80211_node *ni,
 				return ENOBUFS;
 			}
 			m = mnew;
-			error = bus_dmamap_load_mbuf_sg(ring->data_dmat,
-			    data->map, m, segs, &nsegs, BUS_DMA_NOWAIT);
+			error = bus_dmamap_load_mbuf_segment(ring->data_dmat,
+			    data->map, m, segs, IWN_MAX_SCATTER - 1, &nsegs, BUS_DMA_NOWAIT);
 		}
 		if (error != 0) {
 			device_printf(sc->sc_dev,
-			    "%s: bus_dmamap_load_mbuf_sg failed, error %d\n",
+			    "%s: bus_dmamap_load_mbuf_segment failed, error %d\n",
 			    __func__, error);
 			m_freem(m);
 			return error;
@@ -3219,11 +3250,11 @@ iwn_tx_data_raw(struct iwn_softc *sc, struct mbuf *m,
 	tx->flags = htole32(flags);
 
 	if (m->m_len > 0) {
-		error = bus_dmamap_load_mbuf_sg(ring->data_dmat, data->map,
-		    m, segs, &nsegs, BUS_DMA_NOWAIT);
+		error = bus_dmamap_load_mbuf_segment(ring->data_dmat, data->map,
+		    m, segs, IWN_MAX_SCATTER - 1, &nsegs, BUS_DMA_NOWAIT);
 		if (error == EFBIG) {
 			/* Too many fragments, linearize. */
-			mnew = m_collapse(m, M_DONTWAIT, IWN_MAX_SCATTER);
+			mnew = m_defrag(m, MB_DONTWAIT);
 			if (mnew == NULL) {
 				device_printf(sc->sc_dev,
 				    "%s: could not defrag mbuf\n", __func__);
@@ -3231,12 +3262,12 @@ iwn_tx_data_raw(struct iwn_softc *sc, struct mbuf *m,
 				return ENOBUFS;
 			}
 			m = mnew;
-			error = bus_dmamap_load_mbuf_sg(ring->data_dmat,
-			    data->map, m, segs, &nsegs, BUS_DMA_NOWAIT);
+			error = bus_dmamap_load_mbuf_segment(ring->data_dmat,
+			    data->map, m, segs, IWN_MAX_SCATTER - 1, &nsegs, BUS_DMA_NOWAIT);
 		}
 		if (error != 0) {
 			device_printf(sc->sc_dev,
-			    "%s: bus_dmamap_load_mbuf_sg failed, error %d\n",
+			    "%s: bus_dmamap_load_mbuf_segment failed, error %d\n",
 			    __func__, error);
 			m_freem(m);
 			return error;
@@ -3294,7 +3325,7 @@ iwn_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 	struct iwn_tx_ring *txq;
 	int error = 0;
 
-	if ((ifp->if_drv_flags & IFF_DRV_RUNNING) == 0) {
+	if ((ifp->if_flags & IFF_RUNNING) == 0) {
 		ieee80211_free_node(ni);
 		m_freem(m);
 		return ENETDOWN;
@@ -3333,9 +3364,9 @@ iwn_start(struct ifnet *ifp)
 {
 	struct iwn_softc *sc = ifp->if_softc;
 
-	IWN_LOCK(sc);
+	IWN_LOCK_ASSERT(sc);
+
 	iwn_start_locked(ifp);
-	IWN_UNLOCK(sc);
 }
 
 static void
@@ -3351,10 +3382,10 @@ iwn_start_locked(struct ifnet *ifp)
 
 	for (;;) {
 		if (sc->qfullmsk != 0) {
-			ifp->if_drv_flags |= IFF_DRV_OACTIVE;
+			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
-		IFQ_DRV_DEQUEUE(&ifp->if_snd, m);
+		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL)
 			break;
 		ni = (struct ieee80211_node *)m->m_pkthdr.rcvif;
@@ -3382,7 +3413,7 @@ iwn_watchdog(struct iwn_softc *sc)
 }
 
 static int
-iwn_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
+iwn_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 {
 	struct iwn_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = ifp->if_l2com;
@@ -3394,7 +3425,7 @@ iwn_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 	case SIOCSIFFLAGS:
 		IWN_LOCK(sc);
 		if (ifp->if_flags & IFF_UP) {
-			if (!(ifp->if_drv_flags & IFF_DRV_RUNNING)) {
+			if (!(ifp->if_flags & IFF_RUNNING)) {
 				iwn_init_locked(sc);
 				if (IWN_READ(sc, IWN_GP_CNTRL) & IWN_GP_CNTRL_RFKILL)
 					startall = 1;
@@ -3402,7 +3433,7 @@ iwn_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 					stop = 1;
 			}
 		} else {
-			if (ifp->if_drv_flags & IFF_DRV_RUNNING)
+			if (ifp->if_flags & IFF_RUNNING)
 				iwn_stop_locked(sc);
 		}
 		IWN_UNLOCK(sc);
@@ -3448,7 +3479,7 @@ iwn_cmd(struct iwn_softc *sc, int code, const void *buf, int size, int async)
 		/* Command is too large to fit in a descriptor. */
 		if (totlen > MCLBYTES)
 			return EINVAL;
-		m = m_getjcl(M_DONTWAIT, MT_DATA, M_PKTHDR, MJUMPAGESIZE);
+		m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (m == NULL)
 			return ENOMEM;
 		cmd = mtod(m, struct iwn_tx_cmd *);
@@ -3497,7 +3528,7 @@ iwn_cmd(struct iwn_softc *sc, int code, const void *buf, int size, int async)
 	ring->cur = (ring->cur + 1) % IWN_TX_RING_COUNT;
 	IWN_WRITE(sc, IWN_HBUS_TARG_WRPTR, ring->qid << 8 | ring->cur);
 
-	return async ? 0 : msleep(desc, &sc->sc_mtx, PCATCH, "iwncmd", hz);
+	return async ? 0 : zsleep(desc, sc->sc_ifp->if_serializer, 0, "iwncmd", hz);
 }
 
 static int
@@ -3608,13 +3639,13 @@ iwn_set_link_quality(struct iwn_softc *sc, uint8_t id, int async)
 	}
 #ifdef IWN_DEBUG
 	if (sc->sc_debug & IWN_DEBUG_STATE) {
-		printf("%s: set link quality for node %d, mimo %d ssmask %d\n",
+		kprintf("%s: set link quality for node %d, mimo %d ssmask %d\n",
 		    __func__, id, linkq.mimo, linkq.antmsk_1stream);
-		printf("%s:", __func__);
+		kprintf("%s:", __func__);
 		for (i = 0; i < IWN_MAX_TX_RETRIES; i++)
-			printf(" %d:%x", linkq.retry[i].plcp,
+			kprintf(" %d:%x", linkq.retry[i].plcp,
 			    linkq.retry[i].rflags);
-		printf("\n");
+		kprintf("\n");
 	}
 #endif
 	return iwn_cmd(sc, IWN_CMD_LINK_QUALITY, &linkq, sizeof linkq, async);
@@ -4610,7 +4641,7 @@ iwn_scan(struct iwn_softc *sc)
 	uint16_t rxchain;
 	uint8_t *buf, *frm, txant;
 
-	buf = malloc(IWN_SCAN_MAXSZ, M_DEVBUF, M_NOWAIT | M_ZERO);
+	buf = kmalloc(IWN_SCAN_MAXSZ, M_DEVBUF, M_INTWAIT | M_ZERO);
 	if (buf == NULL) {
 		device_printf(sc->sc_dev,
 		    "%s: could not allocate buffer for scan command\n",
@@ -4760,7 +4791,7 @@ iwn_scan(struct iwn_softc *sc)
 	DPRINTF(sc, IWN_DEBUG_STATE, "sending scan command nchan=%d\n",
 	    hdr->nchan);
 	error = iwn_cmd(sc, IWN_CMD_SCAN, buf, buflen, 1);
-	free(buf, M_DEVBUF);
+	kfree(buf, M_DEVBUF);
 	return error;
 }
 
@@ -5220,7 +5251,7 @@ iwn5000_query_calibration(struct iwn_softc *sc)
 
 	/* Wait at most two seconds for calibration to complete. */
 	if (!(sc->sc_flags & IWN_FLAG_CALIB_DONE))
-		error = msleep(sc, &sc->sc_mtx, PCATCH, "iwninit", 2 * hz);
+		error = zsleep(sc, sc->sc_ifp->if_serializer, 0, "iwninit", 2 * hz);
 	return error;
 }
 
@@ -5520,7 +5551,7 @@ iwn4965_load_firmware(struct iwn_softc *sc)
 	IWN_WRITE(sc, IWN_RESET, 0);
 
 	/* Wait at most one second for first alive notification. */
-	error = msleep(sc, &sc->sc_mtx, PCATCH, "iwninit", hz);
+	error = zsleep(sc, sc->sc_ifp->if_serializer, 0, "iwninit", hz);
 	if (error) {
 		device_printf(sc->sc_dev,
 		    "%s: timeout waiting for adapter to initialize, error %d\n",
@@ -5590,7 +5621,7 @@ iwn5000_load_firmware_section(struct iwn_softc *sc, uint32_t dst,
 	iwn_nic_unlock(sc);
 
 	/* Wait at most five seconds for FH DMA transfer to complete. */
-	return msleep(sc, &sc->sc_mtx, PCATCH, "iwninit", hz);
+	return zsleep(sc, sc->sc_ifp->if_serializer, 0, "iwninit", hz);
 }
 
 static int
@@ -6014,7 +6045,7 @@ iwn_hw_init(struct iwn_softc *sc)
 		return error;
 	}
 	/* Wait at most one second for firmware alive notification. */
-	error = msleep(sc, &sc->sc_mtx, PCATCH, "iwninit", hz);
+	error = zsleep(sc, sc->sc_ifp->if_serializer, 0, "iwninit", hz);
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "%s: timeout waiting for adapter to initialize, error %d\n",
@@ -6138,8 +6169,8 @@ iwn_init_locked(struct iwn_softc *sc)
 		goto fail;
 	}
 
-	ifp->if_drv_flags &= ~IFF_DRV_OACTIVE;
-	ifp->if_drv_flags |= IFF_DRV_RUNNING;
+	ifp->if_flags &= ~IFF_OACTIVE;
+	ifp->if_flags |= IFF_RUNNING;
 
 	return;
 
@@ -6158,7 +6189,7 @@ iwn_init(void *arg)
 	iwn_init_locked(sc);
 	IWN_UNLOCK(sc);
 
-	if (ifp->if_drv_flags & IFF_DRV_RUNNING)
+	if (ifp->if_flags & IFF_RUNNING)
 		ieee80211_start_all(ic);
 }
 
@@ -6171,7 +6202,7 @@ iwn_stop_locked(struct iwn_softc *sc)
 
 	sc->sc_tx_timer = 0;
 	callout_stop(&sc->sc_timer_to);
-	ifp->if_drv_flags &= ~(IFF_DRV_RUNNING | IFF_DRV_OACTIVE);
+	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 
 	/* Power OFF hardware. */
 	iwn_hw_stop(sc);
@@ -6354,8 +6385,15 @@ iwn_radio_off(void *arg0, int pending)
 static void
 iwn_sysctlattach(struct iwn_softc *sc)
 {
-	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(sc->sc_dev);
-	struct sysctl_oid *tree = device_get_sysctl_tree(sc->sc_dev);
+	struct sysctl_ctx_list *ctx;
+	struct sysctl_oid *tree;
+
+	ctx = &sc->sc_sysctl_ctx;
+	tree = sc->sc_sysctl_tree;
+	if (tree == NULL) {
+		device_printf(sc->sc_dev, "can't add sysctl node\n");
+		return;
+	}
 
 #ifdef IWN_DEBUG
 	sc->sc_debug = 0;
@@ -6402,7 +6440,7 @@ iwn_resume(device_t dev)
 		iwn_init(sc);
 		if (vap != NULL)
 			ieee80211_init(vap);
-		if (ifp->if_drv_flags & IFF_DRV_RUNNING)
+		if (ifp->if_flags & IFF_RUNNING)
 			iwn_start(ifp);
 	}
 	return 0;
@@ -6475,3 +6513,4 @@ DRIVER_MODULE(iwn, pci, iwn_driver, iwn_devclass, 0, 0);
 MODULE_DEPEND(iwn, pci, 1, 1, 1);
 MODULE_DEPEND(iwn, firmware, 1, 1, 1);
 MODULE_DEPEND(iwn, wlan, 1, 1, 1);
+MODULE_DEPEND(iwn, wlan_amrr, 1, 1, 1);

@@ -19,6 +19,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <netproto/802_11/ieee80211_amrr.h>
+
 struct iwn_rx_radiotap_header {
 	struct ieee80211_radiotap_header wr_ihdr;
 	uint64_t	wr_tsft;
@@ -80,6 +82,15 @@ struct iwn_tx_ring {
 	int			cur;
 };
 
+struct iwn_amrr {
+	struct	ieee80211_node ni;	/* must be the first */
+	int	txcnt;
+	int	retrycnt;
+	int	success;
+	int	success_threshold;
+	int	recovery;
+};
+
 struct iwn_softc;
 
 struct iwn_rx_data {
@@ -102,6 +113,7 @@ struct iwn_node {
 	uint16_t			disable_tid;
 	uint8_t				id;
 	uint8_t				ridx[IEEE80211_RATE_MAXSIZE];
+	struct	ieee80211_amrr_node	amn;
 };
 
 struct iwn_calib_state {
@@ -196,15 +208,18 @@ struct iwn_vap {
 
 	int			(*iv_newstate)(struct ieee80211vap *,
 				    enum ieee80211_state, int);
+	struct ieee80211_amrr	iv_amrr;
 };
 #define	IWN_VAP(_vap)	((struct iwn_vap *)(_vap))
 
 struct iwn_softc {
+	struct arpcom           arpcom;
 	struct ifnet		*sc_ifp;
 	int			sc_debug;
 
 	/* Locks */
 	struct mtx		sc_mtx;
+	struct lock		sc_lock;
 
 	/* Bus */
 	device_t 		sc_dev;
@@ -212,6 +227,7 @@ struct iwn_softc {
 	int			irq_rid;
 	struct resource 	*mem;
 	struct resource		*irq;
+	bus_dma_tag_t		sc_dmat;
 
 	u_int			sc_flags;
 #define IWN_FLAG_HAS_5GHZ	(1 << 0)
@@ -303,12 +319,24 @@ struct iwn_softc {
 
 	struct iwn_rx_radiotap_header sc_rxtap;
 	struct iwn_tx_radiotap_header sc_txtap;
+
+	struct sysctl_ctx_list	sc_sysctl_ctx;
+	struct sysctl_oid	*sc_sysctl_tree;
 };
 
+#define IWN_LOCK_INIT(_sc)
+#define IWN_LOCK(_sc)			lwkt_serialize_enter((_sc)->sc_ifp->if_serializer)
+#define IWN_LOCK_ASSERT(_sc)		ASSERT_SERIALIZED((_sc)->sc_ifp->if_serializer)
+#define IWN_UNLOCK(_sc)			lwkt_serialize_exit((_sc)->sc_ifp->if_serializer)
+#define IWN_LOCK_DESTROY(_sc)
+
+#if 0
 #define IWN_LOCK_INIT(_sc) \
-	mtx_init(&(_sc)->sc_mtx, device_get_nameunit((_sc)->sc_dev), \
-	     MTX_NETWORK_LOCK, MTX_DEF)
-#define IWN_LOCK(_sc)			mtx_lock(&(_sc)->sc_mtx)
-#define IWN_LOCK_ASSERT(_sc)		mtx_assert(&(_sc)->sc_mtx, MA_OWNED)
-#define IWN_UNLOCK(_sc)			mtx_unlock(&(_sc)->sc_mtx)
-#define IWN_LOCK_DESTROY(_sc)		mtx_destroy(&(_sc)->sc_mtx)
+	lockinit(&(_sc)->sc_lock, \
+		__DECONST(char *, device_get_nameunit((_sc)->sc_dev)), \
+		0, LK_CANRECURSE)
+#define IWN_LOCK(_sc)			lockmgr(&(_sc)->sc_lock, LK_EXCLUSIVE)
+#define IWN_LOCK_ASSERT(_sc)		KKASSERT(lockstatus(&(sc)->sc_lock, curthred)  != 0)
+#define IWN_UNLOCK(_sc)			lockmgr(&(_sc)->sc_lock, LK_RELEASE)
+#define IWN_LOCK_DESTROY(_sc)		lockuninit(&(_sc)->sc_lock)
+#endif
