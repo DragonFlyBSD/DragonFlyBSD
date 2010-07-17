@@ -28,7 +28,7 @@
 .\"     From: @(#)ifconfig.8	8.3 (Berkeley) 1/5/94
 .\" $FreeBSD: src/sbin/ifconfig/ifconfig.8,v 1.124 2006/10/10 09:44:08 ru Exp $
 .\"
-.Dd March 2, 2010
+.Dd July 17, 2010
 .Dt IFCONFIG 8
 .Os
 .Sh NAME
@@ -1341,6 +1341,19 @@ power save but some drivers do not.
 Use
 .Fl powersave
 to disable powersave operation when operating as a client.
+.It Cm powersavemode Ar mode
+Set powersave mode.
+The set of valid modes is
+.Cm off
+(same as
+.Fl powersave ) ,
+.Cm on
+(same as
+.Cm powersave ) ,
+and
+.Cm cam
+(same as
+.Cm powersave ) .
 .It Cm powersavesleep Ar sleep
 Set the desired max powersave sleep time in TU's (1024 usecs).
 By default the max powersave sleep time is 100 TU's.
