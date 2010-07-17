@@ -54,6 +54,7 @@
 #include <syslog.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <assert.h>
 
 #include <libprop/proplib.h>
 #include <sys/udev.h>
@@ -100,14 +101,16 @@ client_thread(void *arg)
 	char	*xml;
 	int	r, n, error;
 
+	r = pthread_detach(pthread_self());
+	assert(r == 0);
+
 	r = ignore_signal(SIGPIPE);
 	if (r != 0)
 		err(1, "could not ignore_signal SIGPIPE");
 
 	cli = (struct client_info *)arg;
-	xml = malloc(12*1024*1024); /* generous 12 MB */
 	for (;;) {
-		n = read_xml(cli->fd, xml, 12*1024*1024);
+		n = read_xml(cli->fd, &xml);
 		if (n == 0)
 			goto cli_disconnect;
 		else if (n < 0)
@@ -116,6 +119,8 @@ client_thread(void *arg)
 		xml[n+1] = '\0';
 
 		dict = prop_dictionary_internalize(xml);
+		free(xml);
+
 		if (dict == NULL) {
 			syslog(LOG_ERR, "internalization of received XML failed");
 			goto error_out;
@@ -150,7 +155,6 @@ error_out:
 
 cli_disconnect:
 	close(cli->fd);
-	free(xml);
 	cli->fd = -1;
 	free(cli);
 	return NULL;
@@ -205,6 +209,7 @@ client_cmd_getdevs(struct client_info *cli, prop_dictionary_t cli_dict)
 			}
 		}
 
+		prop_object_iterator_release(iter);
 		udev_monitor_free(udm);
 	} else {
 		pa = pae->pdev_array;

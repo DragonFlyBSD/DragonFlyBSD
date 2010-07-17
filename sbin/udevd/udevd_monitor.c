@@ -148,6 +148,11 @@ udev_monitor_free(struct udev_monitor *udm)
 
 	while ((evf = TAILQ_FIRST(&udm->ev_filt)) != NULL) {
 		TAILQ_REMOVE(&udm->ev_filt, evf, link);
+		free(evf->key);
+		if (evf->type == EVENT_FILTER_TYPE_WILDCARD)
+			free(evf->wildcard_match);
+		else if (evf->type == EVENT_FILTER_TYPE_REGEX)
+			regfree(&evf->regex_match);
 		free(evf);
 	}
 
@@ -162,9 +167,11 @@ client_cmd_monitor(struct client_info *cli, prop_dictionary_t dict)
 	prop_object_t	po;
 	struct udev_monitor	*udm;
 	struct udev_monitor_event	*udm_ev;
+	struct timespec abstime;
+	struct pollfd fds[1];
 	char *xml;
 	ssize_t r;
-	int ok = 1;
+	int ret, ok, dummy;
 
 	pa = NULL;
 	po = prop_dictionary_get(dict, "filters");
@@ -176,13 +183,30 @@ client_cmd_monitor(struct client_info *cli, prop_dictionary_t dict)
 	if (udm == NULL)
 		return 1;
 
+	ok = 1;
+	fds[0].fd = cli->fd;
+	fds[0].events = POLLRDNORM;
+
 	MONITOR_LOCK();
 	TAILQ_INSERT_TAIL(&udev_monitor_list, udm, link);
 	MONITOR_UNLOCK();
 
 	pthread_mutex_lock(&udm->q_lock);
 	while (ok) {
-		pthread_cond_wait(&udm->cond, &udm->q_lock);
+		clock_gettime(CLOCK_REALTIME,&abstime);
+		abstime.tv_sec += 2;
+		ret = pthread_cond_timedwait(&udm->cond, &udm->q_lock, &abstime);
+
+		if (ret == EINVAL) {
+			syslog(LOG_ERR, "pthread_cond_timedwait error: EINVAL");
+			goto end_nofree;
+		}
+
+		if ((ret = poll(fds, 1, 0)) > 0) {
+			ret = recv(fds[0].fd, &dummy, sizeof(dummy), MSG_DONTWAIT);
+			if ((ret == 0) || ((ret < 0) && (errno != EAGAIN)))
+				goto end_nofree;
+		}
 
 		udm_ev = TAILQ_FIRST(&udm->ev_queue);
 		if (udm_ev == NULL)
@@ -205,10 +229,12 @@ client_cmd_monitor(struct client_info *cli, prop_dictionary_t dict)
 		free(xml);
 		continue;
 end:
+		free(xml);
+end_nofree:
 		pthread_mutex_unlock(&udm->q_lock);
 		close(cli->fd);
 		ok = 0;
-		free(xml);
+		
 	}
 
 	MONITOR_LOCK();
@@ -236,6 +262,7 @@ _parse_filter_prop(struct udev_monitor *udm, prop_array_t pa)
 
 	while ((dict = prop_object_iterator_next(iter)) != NULL) {
 		evf = malloc(sizeof(struct event_filter));
+		bzero(evf, sizeof(struct event_filter));
 		if (evf == NULL)
 			goto error_alloc;
 
@@ -325,7 +352,6 @@ match_filter(struct event_filter *evf, prop_dictionary_t ev_dict)
 
 	prop_object_retain(ev_dict);
 
-	assert(prop_dictionary_externalize(ev_dict) != NULL);
 	if ((po = prop_dictionary_get(ev_dict, evf->key)) == NULL)
 		goto no_match;
 

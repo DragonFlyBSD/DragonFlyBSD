@@ -93,13 +93,14 @@ struct cmd_function {
 int	init_local_server(const char *sockfile, int socktype, int nonblock);
 int	block_descriptor(int s);
 int	unblock_descriptor(int s);
-int	read_xml(int s, char *buf, size_t buf_sz);
+int	read_xml(int s, char **buf);
 int	send_xml(int s, char *xml);
 
 /* From udevd_pdev.c */
 void	pdev_array_entry_ref(struct pdev_array_entry *pae);
 void	pdev_array_entry_unref(struct pdev_array_entry *pae);
 void	pdev_array_entry_insert(prop_array_t pa);
+void	pdev_array_clean(void);
 struct pdev_array_entry *pdev_array_entry_get(int64_t generation);
 struct pdev_array_entry *pdev_array_entry_get_last(void);
 

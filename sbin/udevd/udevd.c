@@ -214,7 +214,7 @@ again:
 		if (pa == NULL)
 			goto out;
 		prop_array_remove(pa, idx);
-		//pdev_array_entry_insert(pa);
+		pdev_array_entry_insert(pa);
 		break;
 
 	case UDEV_EV_KEY_UPDATE:
@@ -292,6 +292,7 @@ killed(int sig __unused)
 {
 	syslog(LOG_ERR, "udevd stopped");
 	unlink("/var/run/udevd.pid");
+	pdev_array_clean();
 }
 
 int

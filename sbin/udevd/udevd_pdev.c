@@ -106,6 +106,18 @@ pdev_array_entry_insert(prop_array_t pa)
 		pdev_array_entry_unref(opae);
 }
 
+void
+pdev_array_clean(void)
+{
+	struct pdev_array_entry *pae;
+
+	while ((pae = TAILQ_LAST(&pdev_array_list, pdev_array_list_head)) != NULL) {
+		TAILQ_REMOVE(&pdev_array_list, pae, link);
+		prop_object_release(pae->pdev_array);
+		free(pae);
+	}
+}
+
 struct pdev_array_entry *
 pdev_array_entry_get(int64_t generation)
 {
