@@ -57,6 +57,7 @@
 
 #include <libprop/proplib.h>
 #include <sys/udev.h>
+#define LIBDEVATTR_INTERNAL
 #include "devattr.h"
 
 struct udev {
@@ -160,23 +161,30 @@ send_xml(int s, char *xml)
 }
 
 int
-read_xml(int s, char *buf, size_t buf_sz)
+read_xml(int s, char **buf)
 {
+	char *xml;
 	size_t sz;
 	int n, r;
 
+	*buf = NULL;
+
 	n = recv(s, &sz, sizeof(sz), MSG_WAITALL);
-	if (n <= 0)
+	if ((n <= 0) || (sz > 12*1024*1024)) /* Arbitrary limit */
 		return n;
 
+	xml = malloc(sz+2);
 	r = 0;
-	while ((r < (ssize_t)sz) && (r < (ssize_t)buf_sz)) {
-		n = recv(s, buf+r, sz-r, MSG_WAITALL);
-		if (n <= 0)
+	while (r < (ssize_t)sz) {
+		n = recv(s, xml+r, sz-r, MSG_WAITALL);
+		if (n <= 0) {
+			free(xml);
 			return n;
+		}
 		r += n;
 	}
 
+	*buf = xml;
 	return r;
 }
 
@@ -306,11 +314,8 @@ udevd_request_devs(int s, prop_array_t filters)
 	if (n <= 0)
 		return NULL;
 
-	xml = malloc(12*1024*1024); /* generous 12 MB */
-	if ((n = read_xml(s, xml, 12*1024*1024)) <= 0) {
-		free(xml);
+	if ((n = read_xml(s, &xml)) <= 0)
 		return NULL;
-	}
 
 	xml[n+1] = '\0';
 	pa = prop_array_internalize(xml);

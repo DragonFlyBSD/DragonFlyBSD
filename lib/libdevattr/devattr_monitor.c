@@ -57,6 +57,7 @@
 
 #include <libprop/proplib.h>
 #include <sys/udev.h>
+#define LIBDEVATTR_INTERNAL
 #include "devattr.h"
 
 struct udev_monitor {
@@ -142,14 +143,8 @@ udev_monitor_receive_device(struct udev_monitor *udev_monitor)
 	char *xml;
 	int n;
 
-	xml = malloc(12*1024*1024);
-	if (xml == NULL)
+	if ((n = read_xml(udev_monitor->socket, &xml)) <= 0)
 		return NULL;
-
-	if ((n = read_xml(udev_monitor->socket, xml, 12*1024*1024)) <= 0) {
-		free(xml);
-		return NULL;
-	}
 
 	xml[n+1] = '\0';
 	dict = prop_dictionary_internalize(xml);

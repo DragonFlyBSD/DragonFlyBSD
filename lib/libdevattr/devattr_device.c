@@ -58,6 +58,7 @@
 
 #include <libprop/proplib.h>
 #include <sys/udev.h>
+#define LIBDEVATTR_INTERNAL
 #include "devattr.h"
 
 struct udev_device {

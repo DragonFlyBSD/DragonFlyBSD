@@ -47,7 +47,9 @@ void udev_unref(struct udev *udev_ctx);
 const char *udev_get_dev_path(struct udev *udev_ctx);
 void *udev_get_userdata(struct udev *udev_ctx);
 void udev_set_userdata(struct udev *udev_ctx, void *userdata);
+#ifdef LIBDEVATTR_INTERNAL
 int udev_get_fd(struct udev *udev_ctx);
+#endif
 
 struct udev_device *udev_device_new_from_dictionary(struct udev *udev_ctx, prop_dictionary_t dict);
 struct udev_device *udev_device_ref(struct udev_device *udev_device);
@@ -80,11 +82,13 @@ prop_array_t udev_enumerate_get_array(struct udev_enumerate *udev_enum);
 struct udev_list_entry *udev_list_entry_get_next(struct udev_list_entry *list_entry);
 prop_dictionary_t udev_list_entry_get_dictionary(struct udev_list_entry *list_entry);
 struct udev_device *udev_list_entry_get_device(struct udev_list_entry *list_entry);
+#ifdef LIBDEVATTR_INTERNAL
 int _udev_enumerate_filter_add_match_gen(struct udev_enumerate *udev_enum,
 				     int type,
 				     int neg,
 				     const char *key,
 				     char *expr);
+#endif
 int udev_enumerate_add_match_subsystem(struct udev_enumerate *udev_enum,
 						const char *subsystem);
 int udev_enumerate_add_nomatch_subsystem(struct udev_enumerate *udev_enum,
@@ -129,6 +133,7 @@ int udev_monitor_filter_add_match_regex(struct udev_monitor *udev_monitor,
 int udev_monitor_filter_add_nomatch_regex(struct udev_monitor *udev_monitor,
 			      	     const char *key,
 			      	     char *expr);
+#ifdef LIBDEVATTR_INTERNAL
 int _udev_monitor_filter_add_match_gen(struct udev_monitor *udev_monitor,
 				   int type,
 				   int neg,
@@ -139,9 +144,11 @@ int _udev_filter_add_match_gen(prop_array_t filters,
 				   int neg,
 				   const char *key,
 				   char *expr);
+#endif
 
+#ifdef LIBDEVATTR_INTERNAL
 int send_xml(int s, char *xml);
-int read_xml(int s, char *buf, size_t buf_sz);
+int read_xml(int s, char **buf);
 int _udev_dict_set_cstr(prop_dictionary_t dict, const char *key, char *str);
 int _udev_dict_set_int(prop_dictionary_t dict, const char *key, int64_t val);
 int _udev_dict_set_uint(prop_dictionary_t dict, const char *key, uint64_t val);
@@ -149,3 +156,4 @@ int conn_local_server(const char *sockfile, int socktype, int nonblock,
 		  int *retsock);
 prop_dictionary_t udevd_get_command_dict(char *command);
 prop_array_t udevd_request_devs(int s, prop_array_t filters);
+#endif
