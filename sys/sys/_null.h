@@ -28,12 +28,7 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/sys/_null.h,v 1.1 2008/06/05 17:49:53 swildner Exp $
  */
-
-#ifndef _SYS__NULL_H_
-#define _SYS__NULL_H_
 
 #ifndef NULL
 #ifndef __cplusplus
@@ -44,5 +39,3 @@
 #define NULL	0
 #endif
 #endif
-
-#endif /* _SYS__NULL_H_ */
