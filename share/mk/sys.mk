@@ -36,6 +36,8 @@ NXRANLIB	?=	${NXENV} ${RANLIB}
 AS		?=	as
 AFLAGS		?=
 
+AWK		?=	awk
+
 .if defined(%POSIX)
 CC		?=	c89
 .else
