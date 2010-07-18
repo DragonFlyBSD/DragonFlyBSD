@@ -7,4 +7,6 @@
 # To generate postscript versions of troff documents, use:
 #  make PRINTERDEVICE=ps
 
+SUBDIR=	legal
+
 .include <bsd.subdir.mk>
