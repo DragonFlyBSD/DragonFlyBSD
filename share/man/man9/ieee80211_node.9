@@ -167,15 +167,15 @@ The driver method must allocate a structure that is an extension
 of the
 .Vt ieee80211_node
 structure.
-.\"For example the
-.\".Xr iwi 4
-.\"driver defines a private node structure as:
-.\".Bd -literal -offset indent
-.\"struct iwi_node {
-.\"        struct ieee80211_node   in_node;
-.\"	int                     in_station;
-.\"};
-.\".Ed
+For example the
+.Xr iwi 4
+driver defines a private node structure as:
+.Bd -literal -offset indent
+struct iwi_node {
+        struct ieee80211_node   in_node;
+	int                     in_station;
+};
+.Ed
 .Pp
 and then provides a private allocation routine that does this:
 .Bd -literal -offset indent

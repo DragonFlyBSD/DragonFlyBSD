@@ -1,5 +1,3 @@
-# $DragonFly: src/sys/dev/netif/iwi/Makefile,v 1.3 2005/06/27 11:28:54 corecode Exp $
-#
 KMOD    = if_iwi
 SRCS    = if_iwi.c \
           device_if.h \
@@ -7,7 +5,7 @@ SRCS    = if_iwi.c \
           pci_if.h \
           opt_inet.h
 
-#WARNS?=6
+SUBDIR	= fw
 
 .if !defined(BUILDING_WITH_KERNEL)
 opt_inet.h:

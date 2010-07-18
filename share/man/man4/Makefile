@@ -118,6 +118,7 @@ MAN=	aac.4 \
 	isp.4 \
 	ispfw.4 \
 	it.4 \
+	iwi.4 \
 	jme.4 \
 	joy.4 \
 	kate.4 \
@@ -348,7 +349,6 @@ MAN=	aac.4 \
 # XXX re-add when adjusted to the new 802.11 framework
 #MAN+=	acx.4 \
 #	bwi.4 \
-#	iwi.4 \
 #	iwl.4 \
 #	rtw.4 \
 #	rum.4 \

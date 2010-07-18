@@ -1449,7 +1449,7 @@ options		ATH_DIAGAPI	# diagnostic interface to the HAL
 options		ATH_RXBUF=80	# number of RX buffers to allocate
 options		ATH_TXBUF=400	# number of TX buffers to allocate
 #device		iwl		# Intel PRO/Wireless 2100
-#device		iwi		# Intel PRO/Wireless 2200BG/2915ABG
+device		iwi		# Intel PRO/Wireless 2200BG/2915ABG
 device		wi		# WaveLAN/IEEE, PRISM-II, Spectrum24 802.11DS
 #device		rtw		# RealTek 8180
 #device		acx		# TI ACX100/ACX111.
