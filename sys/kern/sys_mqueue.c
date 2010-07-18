@@ -58,6 +58,7 @@
 #include <sys/proc.h>
 #include <sys/queue.h>
 #include <sys/select.h>
+#include <sys/event.h>
 #include <sys/serialize.h>
 #include <sys/signal.h>
 #include <sys/signalvar.h>
@@ -88,6 +89,11 @@ typedef struct	file file_t;	/* XXX: Should we put this in sys/types.h ? */
 /* Function prototypes */
 static int	mq_stat_fop(file_t *, struct stat *, struct ucred *cred);
 static int	mq_close_fop(file_t *);
+static int	mq_kqfilter_fop(struct file *fp, struct knote *kn);
+static void	mqfilter_read_detach(struct knote *kn);
+static void	mqfilter_write_detach(struct knote *kn);
+static int	mqfilter_read(struct knote *kn, long hint);
+static int	mqfilter_write(struct knote *kn, long hint);
 
 /* Some time-related utility functions */
 static int	itimespecfix(struct timespec *ts);
@@ -100,7 +106,7 @@ static struct fileops mqops = {
 	.fo_ioctl = badfo_ioctl,
 	.fo_stat = mq_stat_fop,
 	.fo_close = mq_close_fop,
-	.fo_kqfilter = badfo_kqfilter,
+	.fo_kqfilter = mq_kqfilter_fop,
 	.fo_shutdown = badfo_shutdown
 };
 
@@ -308,6 +314,103 @@ mq_stat_fop(file_t *fp, struct stat *st, struct ucred *cred)
 	lockmgr(&mq->mq_mtx, LK_RELEASE);
 
 	return 0;
+}
+
+static struct filterops mqfiltops_read =
+	{ 1, NULL, mqfilter_read_detach, mqfilter_read };
+static struct filterops mqfiltops_write =
+	{ 1, NULL, mqfilter_write_detach, mqfilter_write };
+
+static int
+mq_kqfilter_fop(struct file *fp, struct knote *kn)
+{
+	struct mqueue *mq = fp->f_data;
+	struct klist *klist;
+
+	lockmgr(&mq->mq_mtx, LK_EXCLUSIVE);
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &mqfiltops_read;
+		kn->kn_hook = (caddr_t)mq;
+		klist = &mq->mq_rsel.si_note;
+		break;
+	case EVFILT_WRITE:
+		kn->kn_fop = &mqfiltops_write;
+		kn->kn_hook = (caddr_t)mq;
+		klist = &mq->mq_wsel.si_note;
+		break;
+	default:
+		lockmgr(&mq->mq_mtx, LK_RELEASE);
+		return (EOPNOTSUPP);
+	}
+
+	crit_enter();
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+	crit_exit();
+	lockmgr(&mq->mq_mtx, LK_RELEASE);
+
+	return (0);
+}
+
+static void
+mqfilter_read_detach(struct knote *kn)
+{
+	struct mqueue *mq = (struct mqueue *)kn->kn_hook;
+
+	lockmgr(&mq->mq_mtx, LK_EXCLUSIVE);
+	crit_enter();
+	struct klist *klist = &mq->mq_rsel.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+	lockmgr(&mq->mq_mtx, LK_RELEASE);
+}
+
+static void
+mqfilter_write_detach(struct knote *kn)
+{
+	struct mqueue *mq = (struct mqueue *)kn->kn_hook;
+
+	lockmgr(&mq->mq_mtx, LK_EXCLUSIVE);
+	crit_enter();
+	struct klist *klist = &mq->mq_rsel.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+	lockmgr(&mq->mq_mtx, LK_RELEASE);
+}
+
+static int
+mqfilter_read(struct knote *kn, long hint)
+{
+	struct mqueue *mq = (struct mqueue *)kn->kn_hook;
+	struct mq_attr *mqattr;
+	int ready = 0;
+
+	lockmgr(&mq->mq_mtx, LK_EXCLUSIVE);
+	mqattr = &mq->mq_attrib;
+	/* Ready for receiving, if there are messages in the queue */
+	if (mqattr->mq_curmsgs)
+		ready = 1;
+	lockmgr(&mq->mq_mtx, LK_RELEASE);
+
+	return (ready);
+}
+
+static int
+mqfilter_write(struct knote *kn, long hint)
+{
+	struct mqueue *mq = (struct mqueue *)kn->kn_hook;
+	struct mq_attr *mqattr;
+	int ready = 0;
+
+	lockmgr(&mq->mq_mtx, LK_EXCLUSIVE);
+	mqattr = &mq->mq_attrib;
+	/* Ready for sending, if the message queue is not full */
+	if (mqattr->mq_curmsgs < mqattr->mq_maxmsg)
+		ready = 1;
+	lockmgr(&mq->mq_mtx, LK_RELEASE);
+
+	return (ready);
 }
 
 static int
