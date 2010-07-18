@@ -1995,6 +1995,7 @@ device		emx		# Intel Pro/1000 (8257{1,2,3,4})
 device		ig_hal		# Intel Pro/1000 hardware abstraction layer
 device		et		# Agere ET1310 10/100/1000 Ethernet
 device		lge		# Level 1 LXT1001 (``Mercury'')
+device		mxge		# Myricom Myri-10G 10GbE NIC
 device		nfe		# nVidia nForce2/3 MCP04/51/55 CK804
 device		nge		# NatSemi DP83820 and DP83821
 device		sk		# SysKonnect GEnesis, LinkSys EG1023, D-Link
