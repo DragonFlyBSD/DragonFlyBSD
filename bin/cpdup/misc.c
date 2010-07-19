@@ -1,7 +1,5 @@
 /*
  * MISC.C
- *
- * $DragonFly: src/bin/cpdup/misc.c,v 1.16 2008/09/15 20:13:16 thomas Exp $
  */
 
 #include "cpdup.h"
@@ -195,13 +193,14 @@ fatal(const char *ctl, ...)
 	     "                copy if md5 check fails\n"
 #endif
 	     "    -H path     hardlink from path to target instead of copying\n"
+	     "    -R          read-only slave mode for ssh remotes\n"
 	     "                source to target, if source matches path.\n"
 	     "    -V          verify file contents even if they appear\n"
 	     "                to be the same.\n"
 	     "    -VV         same as -V but ignore mtime entirely\n"
 	     "    -x          use .cpignore as exclusion file\n"
 	     "    -X file     specify exclusion file\n"
-	     " Version 1.16.3 by Matt Dillon and Dima Ruban\n"
+	     " Version 1.17 by Matt Dillon, Dima Ruban, & Oliver Fromme\n"
 	);
 	exit(0);
     } else {
