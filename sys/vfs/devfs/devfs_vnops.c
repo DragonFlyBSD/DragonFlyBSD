@@ -60,6 +60,7 @@
 #include <sys/sysctl.h>
 #include <sys/devfs.h>
 #include <sys/pioctl.h>
+#include <vfs/fifofs/fifo.h>
 
 #include <machine/limits.h>
 
@@ -95,7 +96,6 @@ static int devfs_spec_fsync(struct vop_fsync_args *);
 static int devfs_spec_read(struct vop_read_args *);
 static int devfs_spec_write(struct vop_write_args *);
 static int devfs_spec_ioctl(struct vop_ioctl_args *);
-static int devfs_spec_poll(struct vop_poll_args *);
 static int devfs_spec_kqfilter(struct vop_kqfilter_args *);
 static int devfs_spec_strategy(struct vop_strategy_args *);
 static void devfs_spec_strategy_done(struct bio *);
@@ -111,7 +111,6 @@ static int devfs_specf_read(struct file *, struct uio *, struct ucred *, int);
 static int devfs_specf_write(struct file *, struct uio *, struct ucred *, int);
 static int devfs_specf_stat(struct file *, struct stat *, struct ucred *);
 static int devfs_specf_kqfilter(struct file *, struct knote *);
-static int devfs_specf_poll(struct file *, int, struct ucred *);
 static int devfs_specf_ioctl(struct file *, u_long, caddr_t,
 				struct ucred *, struct sysmsg *);
 static __inline int sequential_heuristic(struct uio *, struct file *);
@@ -170,7 +169,6 @@ struct vop_ops devfs_vnode_dev_vops = {
 	.vop_open =			devfs_spec_open,
 	.vop_pathconf =		vop_stdpathconf,
 	.vop_print =		devfs_print,
-	.vop_poll =			devfs_spec_poll,
 	.vop_kqfilter =		devfs_spec_kqfilter,
 	.vop_read =			devfs_spec_read,
 	.vop_readdir =		DEVFS_BADOP,
@@ -188,7 +186,6 @@ struct fileops devfs_dev_fileops = {
 	.fo_read = devfs_specf_read,
 	.fo_write = devfs_specf_write,
 	.fo_ioctl = devfs_specf_ioctl,
-	.fo_poll = devfs_specf_poll,
 	.fo_kqfilter = devfs_specf_kqfilter,
 	.fo_stat = devfs_specf_stat,
 	.fo_close = devfs_specf_close,
@@ -1393,43 +1390,6 @@ done:
 	return (error);
 }
 
-
-static int
-devfs_specf_poll(struct file *fp, int events, struct ucred *cred)
-{
-	struct devfs_node *node;
-	struct vnode *vp;
-	int error;
-	cdev_t dev;
-
-	get_mplock();
-
-	vp = (struct vnode *)fp->f_data;
-	if (vp == NULL || vp->v_type == VBAD) {
-		error = EBADF;
-		goto done;
-	}
-	node = DEVFS_NODE(vp);
-
-	if ((dev = vp->v_rdev) == NULL) {
-		error = EBADF;
-		goto done;
-	}
-	reference_dev(dev);
-	error = dev_dpoll(dev, events);
-
-	release_dev(dev);
-
-#if 0
-	if (node)
-		nanotime(&node->atime);
-#endif
-done:
-	rel_mplock();
-	return (error);
-}
-
-
 /*
  * MPALMOSTSAFE - acquires mplock
  */
@@ -1651,29 +1611,6 @@ devfs_spec_ioctl(struct vop_ioctl_args *ap)
 }
 
 /*
- * spec_poll(struct vnode *a_vp, int a_events, struct ucred *a_cred)
- */
-/* ARGSUSED */
-static int
-devfs_spec_poll(struct vop_poll_args *ap)
-{
-	struct vnode *vp = ap->a_vp;
-	struct devfs_node *node;
-	cdev_t dev;
-
-	if ((dev = vp->v_rdev) == NULL)
-		return (EBADF);		/* device was revoked */
-	node = DEVFS_NODE(vp);
-
-#if 0
-	if (node)
-		nanotime(&node->atime);
-#endif
-
-	return (dev_dpoll(dev, ap->a_events));
-}
-
-/*
  * spec_kqfilter(struct vnode *a_vp, struct knote *a_kn)
  */
 /* ARGSUSED */
@@ -1685,7 +1622,7 @@ devfs_spec_kqfilter(struct vop_kqfilter_args *ap)
 	cdev_t dev;
 
 	if ((dev = vp->v_rdev) == NULL)
-		return (EBADF);		/* device was revoked */
+		return (EBADF);		/* device was revoked (EBADF) */
 	node = DEVFS_NODE(vp);
 
 #if 0

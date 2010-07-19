@@ -86,7 +86,6 @@
 #include <sys/fcntl.h>
 #include <sys/conf.h>
 #include <sys/dkstat.h>
-#include <sys/poll.h>
 #include <sys/kernel.h>
 #include <sys/vnode.h>
 #include <sys/signalvar.h>
@@ -1157,42 +1156,6 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 	return (0);
 }
 
-int
-ttypoll(struct dev_poll_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	int events = ap->a_events;
-	int revents = 0;
-	struct tty *tp;
-
-	tp = dev->si_tty;
-	/* XXX used to return ENXIO, but that means true! */
-	if (tp == NULL) {
-		ap->a_events = (events & (POLLIN | POLLOUT | POLLRDNORM |
-				POLLWRNORM)) | POLLHUP;
-		return(0);
-	}
-
-	crit_enter();
-	if (events & (POLLIN | POLLRDNORM)) {
-		if (ttnread(tp) > 0 || ISSET(tp->t_state, TS_ZOMBIE))
-			revents |= events & (POLLIN | POLLRDNORM);
-		else
-			selrecord(curthread, &tp->t_rsel);
-	}
-	if (events & (POLLOUT | POLLWRNORM)) {
-		if ((tp->t_outq.c_cc <= tp->t_olowat &&
-		     ISSET(tp->t_state, TS_CONNECTED))
-		    || ISSET(tp->t_state, TS_ZOMBIE))
-			revents |= events & (POLLOUT | POLLWRNORM);
-		else
-			selrecord(curthread, &tp->t_wsel);
-	}
-	crit_exit();
-	ap->a_events = revents;
-	return (0);
-}
-
 static struct filterops ttyread_filtops =
 	{ 1, NULL, filt_ttyrdetach, filt_ttyread };
 static struct filterops ttywrite_filtops =
@@ -1217,7 +1180,7 @@ ttykqfilter(struct dev_kqfilter_args *ap)
 		kn->kn_fop = &ttywrite_filtops;
 		break;
 	default:
-		ap->a_result = 1;
+		ap->a_result = EOPNOTSUPP;
 		return (0);
 	}
 
@@ -2252,8 +2215,6 @@ void
 ttwakeup(struct tty *tp)
 {
 
-	if (tp->t_rsel.si_pid != 0)
-		selwakeup(&tp->t_rsel);
 	if (ISSET(tp->t_state, TS_ASYNC) && tp->t_sigio != NULL)
 		pgsigio(tp->t_sigio, SIGIO, (tp->t_session != NULL));
 	wakeup(TSA_HUP_OR_INPUT(tp));
@@ -2267,8 +2228,6 @@ void
 ttwwakeup(struct tty *tp)
 {
 
-	if (tp->t_wsel.si_pid != 0 && tp->t_outq.c_cc <= tp->t_olowat)
-		selwakeup(&tp->t_wsel);
 	if (ISSET(tp->t_state, TS_ASYNC) && tp->t_sigio != NULL)
 		pgsigio(tp->t_sigio, SIGIO, (tp->t_session != NULL));
 	if (ISSET(tp->t_state, TS_BUSY | TS_SO_OCOMPLETE) ==

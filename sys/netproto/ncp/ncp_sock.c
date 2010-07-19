@@ -182,64 +182,6 @@ ncp_sock_send(struct socket *so, struct mbuf *top, struct ncp_rq *rqp)
 	return error;
 }
 
-int
-ncp_poll(struct socket *so, int events)
-{
-    return (so_pru_sopoll(so, events, NULL));
-}
-
-int
-ncp_sock_rselect(struct socket *so, struct thread *td,
-	struct timeval *tv, int events)
-{
-	struct timeval atv,rtv,ttv;
-	struct lwp *lp = td->td_lwp;
-	int timo,error=0;
-
-	KKASSERT(lp);
-
-	if (tv) {
-		atv=*tv;
-		if (itimerfix(&atv)) {
-			error = EINVAL;
-			goto done;
-		}
-		getmicrouptime(&rtv);
-		timevaladd(&atv, &rtv);
-	}
-	timo = 0;
-retry:
-	lp->lwp_flag |= LWP_SELECT;
-	error = ncp_poll(so, events);
-	if (error) {
-		error = 0;
-		goto done;
-	}
-	if (tv) {
-		getmicrouptime(&rtv);
-		if (timevalcmp(&rtv, &atv, >=))
-			goto done;
-		ttv=atv;
-		timevalsub(&ttv, &rtv);
-		timo = tvtohz_high(&ttv);
-	}
-	crit_enter();
-	if ((lp->lwp_flag & LWP_SELECT) == 0) {
-		crit_exit();
-		goto retry;
-	}
-	lp->lwp_flag &= ~LWP_SELECT;
-	error = tsleep((caddr_t)&selwait, 0, "ncpslt", timo);
-	crit_exit();
-done:
-	lp->lwp_flag &= ~LWP_SELECT;
-	if (error == ERESTART) {
-/*		kprintf("Signal: %x", CURSIG(p));*/
-		error = 0;
-	}
-	return (error);
-}
-
 #ifdef IPX
 /* 
  * Connect to specified server via IPX

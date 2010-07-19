@@ -90,7 +90,6 @@ static	int cryptof_rw(struct file *fp, struct uio *uio,
 		    struct ucred *cred, int flags);
 static	int cryptof_ioctl(struct file *, u_long, caddr_t,
 		    struct ucred *, struct sysmsg *);
-static	int cryptof_poll(struct file *, int, struct ucred *);
 static	int cryptof_kqfilter(struct file *, struct knote *);
 static	int cryptof_stat(struct file *, struct stat *, struct ucred *);
 static	int cryptof_close(struct file *);
@@ -99,7 +98,6 @@ static struct fileops cryptofops = {
     .fo_read = cryptof_rw,
     .fo_write = cryptof_rw,
     .fo_ioctl = cryptof_ioctl,
-    .fo_poll = cryptof_poll,
     .fo_kqfilter = cryptof_kqfilter,
     .fo_stat = cryptof_stat,
     .fo_close = cryptof_close,
@@ -666,15 +664,6 @@ cryptodev_find(struct crypt_find_op *find)
 		if (find->crid == -1)
 			return (ENOENT);
 	}
-	return (0);
-}
-
-/*
- * MPSAFE
- */
-static int
-cryptof_poll(struct file *fp, int events, struct ucred *active_cred)
-{
 	return (0);
 }
 

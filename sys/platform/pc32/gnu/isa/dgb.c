@@ -227,7 +227,6 @@ static struct cdevsw dgb_cdevsw = {
 	/* read */	ttyread,
 	/* write */	ttywrite,
 	/* ioctl */	dgbioctl,
-	/* poll */	ttypoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
 	/* dump */	nodump,

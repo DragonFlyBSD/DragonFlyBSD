@@ -127,8 +127,7 @@ struct	pr_usrreqs spx_usrreqs = {
 	.pru_shutdown = spx_shutdown,
 	.pru_sockaddr = ipx_sockaddr,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 struct	pr_usrreqs spx_usrreq_sps = {
@@ -150,8 +149,7 @@ struct	pr_usrreqs spx_usrreq_sps = {
 	.pru_shutdown = spx_shutdown,
 	.pru_sockaddr = ipx_sockaddr,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 static MALLOC_DEFINE(M_SPX_Q, "ipx_spx_q", "IPX Packet Management");

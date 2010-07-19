@@ -97,7 +97,6 @@
 static int	nfsfifo_read (struct vop_read_args *);
 static int	nfsfifo_write (struct vop_write_args *);
 static int	nfsfifo_close (struct vop_close_args *);
-#define nfs_poll vop_nopoll
 static int	nfs_setattrrpc (struct vnode *,struct vattr *,struct ucred *,struct thread *);
 static	int	nfs_lookup (struct vop_old_lookup_args *);
 static	int	nfs_create (struct vop_old_create_args *);
@@ -149,7 +148,6 @@ struct vop_ops nfsv2_vnode_vops = {
 	.vop_old_mknod =	nfs_mknod,
 	.vop_mmap =		nfs_mmap,
 	.vop_open =		nfs_open,
-	.vop_poll =		nfs_poll,
 	.vop_print =		nfs_print,
 	.vop_read =		nfs_read,
 	.vop_readdir =		nfs_readdir,

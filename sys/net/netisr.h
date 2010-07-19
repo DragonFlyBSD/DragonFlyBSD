@@ -183,7 +183,6 @@ void netmsg_pru_sense(netmsg_t);
 void netmsg_pru_shutdown(netmsg_t);
 void netmsg_pru_sockaddr(netmsg_t);
 
-void netmsg_pru_sopoll(netmsg_t);
 void netmsg_pru_ctloutput(netmsg_t);
 void netmsg_pru_ctlinput(netmsg_t);
 

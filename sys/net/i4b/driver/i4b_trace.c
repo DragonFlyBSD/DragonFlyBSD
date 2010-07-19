@@ -73,9 +73,6 @@ static d_close_t i4btrcclose;
 static d_read_t i4btrcread;
 static d_ioctl_t i4btrcioctl;
 
-static d_poll_t i4btrcpoll;
-#define POLLFIELD i4btrcpoll
-
 #define CDEV_MAJOR 59
 
 static struct dev_ops i4btrc_ops = {
@@ -84,7 +81,6 @@ static struct dev_ops i4btrc_ops = {
         .d_close =	i4btrcclose,
         .d_read =	i4btrcread,
         .d_ioctl =	i4btrcioctl,
-        .d_poll =	POLLFIELD,
 };
 
 /*---------------------------------------------------------------------------*
@@ -335,15 +331,6 @@ i4btrcread(struct dev_read_args *ap)
 	crit_exit();
 	
 	return(error);
-}
-
-/*---------------------------------------------------------------------------*
- *	poll device
- *---------------------------------------------------------------------------*/
-PDEVSTATIC int
-i4btrcpoll(struct dev_poll_args *ap)
-{
-	return(ENODEV);
 }
 
 /*---------------------------------------------------------------------------*

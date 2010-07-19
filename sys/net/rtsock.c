@@ -325,8 +325,7 @@ static struct pr_usrreqs route_usrreqs = {
 	.pru_shutdown = rts_shutdown,
 	.pru_sockaddr = rts_sockaddr,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 static __inline sa_family_t

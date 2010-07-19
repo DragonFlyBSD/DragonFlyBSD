@@ -248,7 +248,6 @@ static struct dev_ops dgm_ops = {
 	.d_read =	ttyread,
 	.d_write =	ttywrite,
 	.d_ioctl =	dgmioctl,
-	.d_poll =	ttypoll,
 	.d_kqfilter =	ttykqfilter,
 	.d_revoke =	ttyrevoke
 };
@@ -1394,14 +1393,13 @@ dgmpoll(void *unit_c)
 						if (!(tp->t_state & TS_BUSY)) {
 							hidewin(sc);
 #ifndef TS_ASLEEP	/* post 2.0.5 FreeBSD */
-					                ttwwakeup(tp);
+					                ttwwakeup(tp); /* Issues KNOTE() */
 #else
 					                if (tp->t_outq.c_cc <= tp->t_lowat) {
 						                if (tp->t_state & TS_ASLEEP) {
 							                tp->t_state &= ~TS_ASLEEP;
 							                wakeup(TSA_OLOWAT(tp));
 						                }
-						                /* selwakeup(&tp->t_wsel); */
 					                }
 #endif
 					                setwin(sc, 0);
@@ -2022,14 +2020,13 @@ dgmstart(struct tty *tp)
 
 	while (tp->t_outq.c_cc != 0) {
 #ifndef TS_ASLEEP	/* post 2.0.5 FreeBSD */
-		ttwwakeup(tp);
+		ttwwakeup(tp); /* Issues KNOTE() */
 #else
 		if (tp->t_outq.c_cc <= tp->t_lowat) {
 			if (tp->t_state & TS_ASLEEP) {
 				tp->t_state &= ~TS_ASLEEP;
 				wakeup(TSA_OLOWAT(tp));
 			}
-			/*selwakeup(&tp->t_wsel);*/
 		}
 #endif
 		crit_enter();

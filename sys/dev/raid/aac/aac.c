@@ -45,7 +45,7 @@
 #include <sys/kernel.h>
 #include <sys/kthread.h>
 #include <sys/sysctl.h>
-#include <sys/poll.h>
+#include <sys/event.h>
 
 #include <sys/bus.h>
 #include <sys/conf.h>
@@ -212,7 +212,9 @@ static char	*aac_describe_code(struct aac_code_lookup *table,
 static d_open_t		aac_open;
 static d_close_t	aac_close;
 static d_ioctl_t	aac_ioctl;
-static d_poll_t		aac_poll;
+static d_kqfilter_t	aac_kqfilter;
+static void		aac_filter_detach(struct knote *kn);
+static int		aac_filter(struct knote *kn, long hint);
 static int		aac_ioctl_sendfib(struct aac_softc *sc, caddr_t ufib) __unused;
 static void		aac_handle_aif(struct aac_softc *sc,
 					   struct aac_fib *fib);
@@ -227,11 +229,11 @@ static void		aac_ioctl_event(struct aac_softc *sc,
 #define AAC_CDEV_MAJOR	150
 
 static struct dev_ops aac_ops = {
-	{ "aac", AAC_CDEV_MAJOR, 0 },
+	{ "aac", AAC_CDEV_MAJOR, D_KQFILTER },
 	.d_open =	aac_open,
 	.d_close =	aac_close,
 	.d_ioctl =	aac_ioctl,
-	.d_poll =	aac_poll,
+	.d_kqfilter =	aac_kqfilter
 };
 
 DECLARE_DUMMY_MODULE(aac);
@@ -3059,30 +3061,63 @@ aac_ioctl(struct dev_ioctl_args *ap)
 	return(error);
 }
 
+static struct filterops aac_filterops =
+	{ 1, NULL, aac_filter_detach, aac_filter };
+
 static int
-aac_poll(struct dev_poll_args *ap)
+aac_kqfilter(struct dev_kqfilter_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	struct aac_softc *sc;
-	int revents;
+	struct aac_softc *sc = dev->si_drv1;
+	struct knote *kn = ap->a_kn;
+	struct klist *klist;
 
-	sc = dev->si_drv1;
-	revents = 0;
+	ap->a_result = 0;
 
-	AAC_LOCK_ACQUIRE(&sc->aac_aifq_lock);
-	if ((ap->a_events & (POLLRDNORM | POLLIN)) != 0) {
-		if (sc->aac_aifq_tail != sc->aac_aifq_head)
-			revents |= ap->a_events & (POLLIN | POLLRDNORM);
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &aac_filterops;
+		kn->kn_hook = (caddr_t)sc;
+		break;
+	default:
+		ap->a_result = EOPNOTSUPP;
+		return (0);
 	}
-	AAC_LOCK_RELEASE(&sc->aac_aifq_lock);
 
-	if (revents == 0) {
-		if (ap->a_events & (POLLIN | POLLRDNORM))
-			selrecord(curthread, &sc->rcv_select);
-	}
-	ap->a_events = revents;
+	crit_enter();
+	klist = &sc->rcv_select.si_note;
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+	crit_exit();
+
 	return (0);
 }
+
+static void
+aac_filter_detach(struct knote *kn)
+{
+	struct aac_softc *sc = (struct aac_softc *)kn->kn_hook;
+	struct klist *klist;
+
+	crit_enter();
+	klist = &sc->rcv_select.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+static int
+aac_filter(struct knote *kn, long hint)
+{
+	struct aac_softc *sc = (struct aac_softc *)kn->kn_hook;
+	int ready = 0;
+
+	AAC_LOCK_ACQUIRE(&sc->aac_aifq_lock);
+	if (sc->aac_aifq_tail != sc->aac_aifq_head)
+		ready = 1;
+	AAC_LOCK_RELEASE(&sc->aac_aifq_lock);
+
+	return (ready);
+}
+
 
 static void
 aac_ioctl_event(struct aac_softc *sc, struct aac_event *event, void *arg)
@@ -3344,7 +3379,7 @@ aac_handle_aif(struct aac_softc *sc, struct aac_fib *fib)
 			wakeup(sc->aac_aifq);
 		/* token may have been lost */
 		/* Wakeup any poll()ers */
-		selwakeup(&sc->rcv_select);
+		KNOTE(&sc->rcv_select.si_note, 0);
 		/* token may have been lost */
 	}
 	AAC_LOCK_RELEASE(&sc->aac_aifq_lock);

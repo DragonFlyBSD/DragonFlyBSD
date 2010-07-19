@@ -48,7 +48,6 @@
 #include <sys/fcntl.h>
 #include <sys/file.h>
 #include <sys/event.h>
-#include <sys/poll.h>
 #include <sys/un.h>
 
 #include <sys/thread2.h>
@@ -74,7 +73,6 @@ static int	fifo_close (struct vop_close_args *);
 static int	fifo_read (struct vop_read_args *);
 static int	fifo_write (struct vop_write_args *);
 static int	fifo_ioctl (struct vop_ioctl_args *);
-static int	fifo_poll (struct vop_poll_args *);
 static int	fifo_kqfilter (struct vop_kqfilter_args *);
 static int	fifo_inactive (struct  vop_inactive_args *);
 static int	fifo_bmap (struct vop_bmap_args *);
@@ -108,7 +106,6 @@ struct vop_ops fifo_vnode_vops = {
 	.vop_old_mknod =	(void *)fifo_badop,
 	.vop_open =		fifo_open,
 	.vop_pathconf =		fifo_pathconf,
-	.vop_poll =		fifo_poll,
 	.vop_print =		fifo_print,
 	.vop_read =		fifo_read,
 	.vop_readdir =		(void *)fifo_badop,
@@ -396,7 +393,7 @@ fifo_kqfilter(struct vop_kqfilter_args *ap)
 		break;
 	default:
 		lwkt_reltoken(&vp->v_token);
-		return (1);
+		return (EOPNOTSUPP);
 	}
 
 	ap->a_kn->kn_hook = (caddr_t)vp;
@@ -462,55 +459,6 @@ filt_fifowrite(struct knote *kn, long hint)
 	kn->kn_flags &= ~EV_EOF;
 	lwkt_reltoken(&vp->v_token);
 	return (kn->kn_data >= so->so_snd.ssb_lowat);
-}
-
-/*
- * fifo_poll(struct vnode *a_vp, int a_events, struct ucred *a_cred)
- */
-/* ARGSUSED */
-static int
-fifo_poll(struct vop_poll_args *ap)
-{
-	struct vnode *vp = ap->a_vp;
-	struct file filetmp;
-	int events, revents = 0;
-
-	lwkt_gettoken(&vp->v_token);
-	events = ap->a_events &
-		(POLLIN | POLLINIGNEOF | POLLPRI | POLLRDNORM | POLLRDBAND);
-	if (events) {
-		/*
-		 * If POLLIN or POLLRDNORM is requested and POLLINIGNEOF is
-		 * not, then convert the first two to the last one.  This
-		 * tells the socket poll function to ignore EOF so that we
-		 * block if there is no writer (and no data).  Callers can
-		 * set POLLINIGNEOF to get non-blocking behavior.
-		 */
-		if (events & (POLLIN | POLLRDNORM) &&
-			!(events & POLLINIGNEOF)) {
-			events &= ~(POLLIN | POLLRDNORM);
-			events |= POLLINIGNEOF;
-		}
-		
-		filetmp.f_data = vp->v_fifoinfo->fi_readsock;
-		if (filetmp.f_data)
-			revents |= soo_poll(&filetmp, events, ap->a_cred);
-
-		/* Reverse the above conversion. */
-		if ((revents & POLLINIGNEOF) &&
-			!(ap->a_events & POLLINIGNEOF)) {
-			revents |= (ap->a_events & (POLLIN | POLLRDNORM));
-			revents &= ~POLLINIGNEOF;
-		}
-	}
-	events = ap->a_events & (POLLOUT | POLLWRNORM | POLLWRBAND);
-	if (events) {
-		filetmp.f_data = vp->v_fifoinfo->fi_writesock;
-		if (filetmp.f_data)
-			revents |= soo_poll(&filetmp, events, ap->a_cred);
-	}
-	lwkt_reltoken(&vp->v_token);
-	return (revents);
 }
 
 /*

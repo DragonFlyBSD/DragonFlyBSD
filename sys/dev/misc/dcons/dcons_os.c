@@ -94,13 +94,13 @@ static d_close_t	dcons_close;
 static d_ioctl_t	dcons_ioctl;
 
 static struct dev_ops dcons_ops = {
-	{ "dcons", CDEV_MAJOR, D_TTY },
+	{ "dcons", CDEV_MAJOR, D_TTY | D_KQFILTER },
 	.d_open =	dcons_open,
 	.d_close =	dcons_close,
 	.d_read =	ttyread,
 	.d_write =	ttywrite,
 	.d_ioctl =	dcons_ioctl,
-	.d_poll =	ttypoll,
+	.d_kqfilter =	ttykqfilter,
 	.d_revoke =	ttyrevoke
 };
 

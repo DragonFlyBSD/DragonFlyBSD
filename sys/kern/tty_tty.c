@@ -49,24 +49,30 @@
 #include <sys/ttycom.h>
 #include <sys/vnode.h>
 #include <sys/kernel.h>
+#include <sys/poll.h> /* XXX: poll args used in KQ filters */
+#include <sys/event.h>
 
 static	d_open_t	cttyopen;
 static	d_close_t	cttyclose;
 static	d_read_t	cttyread;
 static	d_write_t	cttywrite;
 static	d_ioctl_t	cttyioctl;
-static	d_poll_t	cttypoll;
+static	d_kqfilter_t	cttykqfilter;
+
+static void cttyfilt_detach(struct knote *);
+static int cttyfilt_read(struct knote *, long);
+static int cttyfilt_write(struct knote *, long);
 
 #define	CDEV_MAJOR	1
 /* Don't make this static, since fdesc_vnops uses it. */
 struct dev_ops ctty_ops = {
-	{ "ctty", CDEV_MAJOR, D_TTY },
+	{ "ctty", CDEV_MAJOR, D_TTY | D_KQFILTER },
 	.d_open =	cttyopen,
 	.d_close =	cttyclose,
 	.d_read =	cttyread,
 	.d_write =	cttywrite,
 	.d_ioctl =	cttyioctl,
-	.d_poll =	cttypoll,
+	.d_kqfilter =	cttykqfilter
 };
 
 #define cttyvp(p) ((p)->p_flag & P_CONTROLT ? (p)->p_session->s_ttyvp : NULL)
@@ -234,24 +240,67 @@ cttyioctl(struct dev_ioctl_args *ap)
 			  ap->a_cred, ap->a_sysmsg));
 }
 
-/*ARGSUSED*/
-static	int
-cttypoll(struct dev_poll_args *ap)
+static struct filterops cttyfiltops_read =
+	{ 1, NULL, cttyfilt_detach, cttyfilt_read };
+static struct filterops cttyfiltops_write =
+	{ 1, NULL, cttyfilt_detach, cttyfilt_write };
+
+static int
+cttykqfilter(struct dev_kqfilter_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	struct vnode *ttyvp;
 	struct proc *p = curproc;
+	struct knote *kn = ap->a_kn;
+	struct vnode *ttyvp;
 
 	KKASSERT(p);
 	ttyvp = cttyvp(p);
-	/*
-	 * try operation to get EOF/failure 
-	 */
-	if (ttyvp == NULL)
-		ap->a_events = seltrue(dev, ap->a_events);
-	else
-		ap->a_events = VOP_POLL(ttyvp, ap->a_events, p->p_ucred);
-	return(0);
+
+	if (ttyvp != NULL)
+		return (VOP_KQFILTER(ttyvp, kn));
+
+	ap->a_result = 0;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &cttyfiltops_read;
+		kn->kn_hook = (caddr_t)dev;
+		break;
+	case EVFILT_WRITE:
+		kn->kn_fop = &cttyfiltops_write;
+		kn->kn_hook = (caddr_t)dev;
+		break;
+	default:
+		ap->a_result = EOPNOTSUPP;
+		return (0);
+	}
+
+	return (0);
+}
+
+static void
+cttyfilt_detach(struct knote *kn) {}
+
+static int
+cttyfilt_read(struct knote *kn, long hint)
+{
+	cdev_t dev = (cdev_t)kn->kn_hook;
+
+	if (seltrue(dev, POLLIN | POLLRDNORM))
+		return (1);
+
+	return (0);
+}
+
+static int
+cttyfilt_write(struct knote *kn, long hint)
+{
+	cdev_t dev = (cdev_t)kn->kn_hook;
+
+	if (seltrue(dev, POLLOUT | POLLWRNORM))
+		return (1);
+
+	return (0);
 }
 
 static void

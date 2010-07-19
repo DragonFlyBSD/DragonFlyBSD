@@ -82,13 +82,13 @@ static d_close_t        vcons_close;
 static d_ioctl_t        vcons_ioctl;
 
 static struct dev_ops vcons_ops = {
-	{ "vcons", CDEV_MAJOR, D_TTY },
+	{ "vcons", CDEV_MAJOR, D_TTY | D_KQFILTER },
 	.d_open =	vcons_open,
 	.d_close =	vcons_close,
 	.d_read =	ttyread,
 	.d_write =	ttywrite,
 	.d_ioctl =	vcons_ioctl,
-	.d_poll =	ttypoll,
+	.d_kqfilter =	ttykqfilter
 };
 
 static int

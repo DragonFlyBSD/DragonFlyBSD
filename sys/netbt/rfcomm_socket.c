@@ -457,6 +457,5 @@ struct pr_usrreqs rfcomm_usrreqs = {
         .pru_shutdown = rfcomm_sshutdown,
         .pru_sockaddr = rfcomm_ssockaddr,
         .pru_sosend = sosend,
-        .pru_soreceive = soreceive,
-        .pru_sopoll = sopoll
+        .pru_soreceive = soreceive
 };

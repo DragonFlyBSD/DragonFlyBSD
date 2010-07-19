@@ -51,7 +51,7 @@
 #include <sys/device.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
-#include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/selinfo.h>
 #include <sys/uio.h>
 #include <sys/rman.h>
@@ -134,7 +134,10 @@ static	d_open_t	mseopen;
 static	d_close_t	mseclose;
 static	d_read_t	mseread;
 static  d_ioctl_t	mseioctl;
-static	d_poll_t	msepoll;
+static	d_kqfilter_t	msekqfilter;
+
+static void msefilter_detach(struct knote *);
+static int msefilter(struct knote *, long);
 
 #define CDEV_MAJOR 27
 static struct dev_ops mse_ops = {
@@ -143,7 +146,7 @@ static struct dev_ops mse_ops = {
 	.d_close =	mseclose,
 	.d_read =	mseread,
 	.d_ioctl =	mseioctl,
-	.d_poll =	msepoll,
+	.d_kqfilter =	msekqfilter
 };
 
 static	void		mseintr (void *);
@@ -605,33 +608,64 @@ mseioctl(struct dev_ioctl_args *ap)
 	return (err);
 }
 
-/*
- * msepoll: check for mouse input to be processed.
- */
-static	int
-msepoll(struct dev_poll_args *ap)
+static struct filterops msefiltops =
+	{ 1, NULL, msefilter_detach, msefilter };
+
+static int
+msekqfilter(struct dev_kqfilter_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	mse_softc_t *sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
-	int revents = 0;
+	struct knote *kn = ap->a_kn;
+	struct klist *klist;
+
+	ap->a_result = 0;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &msefiltops;
+		kn->kn_hook = (caddr_t)sc;
+		break;
+	default:
+		ap->a_result = EOPNOTSUPP;
+		return (0);
+	}
 
 	crit_enter();
-	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		if (sc->sc_bytesread != sc->mode.packetsize ||
-		    sc->sc_deltax != 0 || sc->sc_deltay != 0 ||
-		    (sc->sc_obuttons ^ sc->sc_buttons) != 0)
-			revents |= ap->a_events & (POLLIN | POLLRDNORM);
-		else {
-			/*
-			 * Since this is an exclusive open device, any previous
-			 * proc pointer is trash now, so we can just assign it.
-			 */
-			selrecord(curthread, &sc->sc_selp);
-		}
-	}
+	klist = &sc->sc_selp.si_note;
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
 	crit_exit();
-	ap->a_events = revents;
+
 	return (0);
+}
+
+static void
+msefilter_detach(struct knote *kn)
+{
+	mse_softc_t *sc = (mse_softc_t *)kn->kn_hook;
+	struct klist *klist;
+
+	crit_enter();
+	klist = &sc->sc_selp.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+static int
+msefilter(struct knote *kn, long hint)
+{
+	mse_softc_t *sc = (mse_softc_t *)kn->kn_hook;
+	int ready = 0;
+
+	crit_enter();
+	if (sc->sc_bytesread != sc->mode.packetsize ||
+	    sc->sc_deltax != 0 || sc->sc_deltay != 0 ||
+	    (sc->sc_obuttons ^ sc->sc_buttons) != 0)
+		ready = 1;
+
+	crit_exit();
+
+	return (ready);
 }
 
 /*
@@ -723,7 +757,7 @@ mseintr(void *arg)
 			sc->sc_flags &= ~MSESC_WANT;
 			wakeup((caddr_t)sc);
 		}
-		selwakeup(&sc->sc_selp);
+		KNOTE(&sc->sc_selp.si_note, 0);
 	}
 }
 

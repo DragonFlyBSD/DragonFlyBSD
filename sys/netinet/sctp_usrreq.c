@@ -4350,8 +4350,7 @@ struct pr_usrreqs sctp_usrreqs = {
 	.pru_shutdown = sctp_shutdown,
 	.pru_sockaddr = sctp_ingetaddr,
 	.pru_sosend = sctp_sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 #else

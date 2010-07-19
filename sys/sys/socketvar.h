@@ -76,7 +76,6 @@ struct signalsockbuf {
 #define	SSB_LOCK	0x01		/* lock on data queue */
 #define	SSB_WANT	0x02		/* someone is waiting to lock */
 #define	SSB_WAIT	0x04		/* someone is waiting for data/space */
-#define	SSB_SEL		0x08		/* someone is selecting */
 #define	SSB_ASYNC	0x10		/* ASYNC I/O, need signals */
 #define	SSB_UPCALL	0x20		/* someone wants an upcall */
 #define	SSB_NOINTR	0x40		/* operations not interruptible */
@@ -215,7 +214,7 @@ struct	xsocket {
  */
 #define	ssb_notify(ssb)					\
 	(((ssb)->ssb_flags &				\
-	(SSB_WAIT | SSB_SEL | SSB_ASYNC | SSB_UPCALL |	\
+	(SSB_WAIT | SSB_ASYNC | SSB_UPCALL |		\
 	SSB_AIO | SSB_KNOTE | SSB_MEVENT)))
 
 /* do we have to send all at once on a socket? */
@@ -342,7 +341,6 @@ int	soo_close (struct file *fp);
 int	soo_shutdown (struct file *fp, int how);
 int	soo_ioctl (struct file *fp, u_long cmd, caddr_t data,
 			struct ucred *cred, struct sysmsg *msg);
-int	soo_poll (struct file *fp, int events, struct ucred *cred);
 int	soo_stat (struct file *fp, struct stat *ub, struct ucred *cred);
 int	sokqfilter (struct file *fp, struct knote *kn);
 
@@ -367,6 +365,7 @@ struct	socket *soalloc (int waitok);
 int	sobind (struct socket *so, struct sockaddr *nam, struct thread *td);
 void	socantrcvmore (struct socket *so);
 void	socantsendmore (struct socket *so);
+int	socket_wait (struct socket *so, struct timespec *ts, int *res);
 int	soclose (struct socket *so, int fflags);
 int	soconnect (struct socket *so, struct sockaddr *nam, struct thread *td);
 int	soconnect2 (struct socket *so1, struct socket *so2);
@@ -398,8 +397,6 @@ void	soopt_to_mbuf (struct sockopt *sopt, struct mbuf *m);
 int	soopt_mcopyout (struct sockopt *sopt, struct mbuf *m);
 int	soopt_from_mbuf (struct sockopt *sopt, struct mbuf *m);
 
-int	sopoll (struct socket *so, int events, struct ucred *cred,
-		    struct thread *td);
 int	soreceive (struct socket *so, struct sockaddr **paddr,
 		       struct uio *uio, struct sockbuf *sio,
 		       struct mbuf **controlp, int *flagsp);

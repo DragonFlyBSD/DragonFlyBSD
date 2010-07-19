@@ -29,6 +29,7 @@
 
 #include <sys/param.h>
 #include <sys/queue.h>
+#include <sys/event.h>
 
 #include <dev/sound/pcm/dsp.h>
 #include <dev/sound/pcm/sound.h>
@@ -42,8 +43,12 @@ static d_close_t dsp_close;
 static d_read_t dsp_read;
 static d_write_t dsp_write;
 static d_ioctl_t dsp_ioctl;
-static d_poll_t dsp_poll;
+static d_kqfilter_t dsp_kqfilter;
 static d_mmap_t dsp_mmap;
+
+static void dsp_filter_detach(struct knote *);
+static int dsp_filter_read(struct knote *, long);
+static int dsp_filter_write(struct knote *, long);
 
 struct dev_ops dsp_cdevsw = {
 	{ "dsp", SND_CDEV_MAJOR, 0},
@@ -53,7 +58,7 @@ struct dev_ops dsp_cdevsw = {
 	.d_read =	dsp_read,
 	.d_write =	dsp_write,
 	.d_ioctl =	dsp_ioctl,
-	.d_poll =	dsp_poll,
+	.d_kqfilter =	dsp_kqfilter,
 	.d_mmap =	dsp_mmap,
 };
 
@@ -1081,32 +1086,97 @@ dsp_ioctl(struct dev_ioctl_args *ap)
     	return ret;
 }
 
-static int
-dsp_poll(struct dev_poll_args *ap)
-{
-	struct cdev *i_dev = ap->a_head.a_dev;
-	int events = ap->a_events;
-	struct thread *td = curthread;
-	struct pcm_channel *wrch = NULL, *rdch = NULL;
-	int ret, e;
+static struct filterops dsp_read_filtops =
+	{ 1, NULL, dsp_filter_detach, dsp_filter_read };
+static struct filterops dsp_write_filtops =
+	{ 1, NULL, dsp_filter_detach, dsp_filter_write };
 
-	ret = 0;
+static int
+dsp_kqfilter(struct dev_kqfilter_args *ap)
+{
+	struct knote *kn = ap->a_kn;
+	struct klist *klist;
+	struct cdev *i_dev = ap->a_head.a_dev;
+	struct pcm_channel *wrch = NULL, *rdch = NULL;
+	struct snd_dbuf *bs = NULL;
+
 	getchns(i_dev, &rdch, &wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
 
-	if (wrch) {
-		e = (events & (POLLOUT | POLLWRNORM));
-		if (e)
-			ret |= chn_poll(wrch, e, td);
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		if (rdch) {
+			kn->kn_fop = &dsp_read_filtops;
+			kn->kn_hook = (caddr_t)rdch;
+			bs = rdch->bufsoft;
+			ap->a_result = 0;
+		}
+		break;
+	case EVFILT_WRITE:
+		if (wrch) {
+			kn->kn_fop = &dsp_write_filtops;
+			kn->kn_hook = (caddr_t)wrch;
+			bs = wrch->bufsoft;
+			ap->a_result = 0;
+		}
+		break;
+	default:
+		ap->a_result = EOPNOTSUPP;
+		break;
 	}
-	if (rdch) {
-		e = (events & (POLLIN | POLLRDNORM));
-		if (e)
-			ret |= chn_poll(rdch, e, td);
+
+	if (ap->a_result == 0) {
+		crit_enter();
+		klist = &sndbuf_getsel(bs)->si_note;
+		SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+		crit_exit();
 	}
+
 	relchns(i_dev, rdch, wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
 
-	ap->a_events = ret;
 	return (0);
+}
+
+static void
+dsp_filter_detach(struct knote *kn)
+{
+	struct pcm_channel *ch = (struct pcm_channel *)kn->kn_hook;
+	struct snd_dbuf *bs = ch->bufsoft;
+	struct klist *klist;
+
+	CHN_LOCK(ch);
+	crit_enter();
+	klist = &sndbuf_getsel(bs)->si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+	CHN_UNLOCK(ch);
+}
+
+static int
+dsp_filter_read(struct knote *kn, long hint)
+{
+	struct pcm_channel *rdch = (struct pcm_channel *)kn->kn_hook;
+	struct thread *td = curthread;
+	int ready;
+
+	CHN_LOCK(rdch);
+	ready = chn_poll(rdch, 1, td);
+	CHN_UNLOCK(rdch);
+
+	return (ready);
+}
+
+static int
+dsp_filter_write(struct knote *kn, long hint)
+{
+	struct pcm_channel *wrch = (struct pcm_channel *)kn->kn_hook;
+	struct thread *td = curthread;
+	int ready;
+
+	CHN_LOCK(wrch);
+	ready = chn_poll(wrch, 1, td);
+	CHN_UNLOCK(wrch);
+
+	return (ready);
 }
 
 static int

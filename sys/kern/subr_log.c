@@ -50,7 +50,7 @@
 #include <sys/msgbuf.h>
 #include <sys/signalvar.h>
 #include <sys/kernel.h>
-#include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/filedesc.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
@@ -62,18 +62,20 @@ static	d_open_t	logopen;
 static	d_close_t	logclose;
 static	d_read_t	logread;
 static	d_ioctl_t	logioctl;
-static	d_poll_t	logpoll;
+static	d_kqfilter_t	logkqfilter;
 
 static	void logtimeout(void *arg);
+static	void logfiltdetach(struct knote *kn);
+static	int  logfiltread(struct knote *kn, long hint);
 
 #define CDEV_MAJOR 7
 static struct dev_ops log_ops = {
-	{ "log", CDEV_MAJOR, 0 },
+	{ "log", CDEV_MAJOR, D_KQFILTER },
 	.d_open =	logopen,
 	.d_close =	logclose,
 	.d_read =	logread,
 	.d_ioctl =	logioctl,
-	.d_poll =	logpoll,
+	.d_kqfilter =	logkqfilter
 };
 
 static struct logsoftc {
@@ -160,22 +162,53 @@ logread(struct dev_read_args *ap)
 	return (error);
 }
 
-/*ARGSUSED*/
-static	int
-logpoll(struct dev_poll_args *ap)
+static struct filterops logread_filtops =
+	{ 1, NULL, logfiltdetach, logfiltread };
+
+static int
+logkqfilter(struct dev_kqfilter_args *ap)
 {
-	int revents = 0;
+	struct knote *kn = ap->a_kn;
+	struct klist *klist = &logsoftc.sc_selp.si_note;
+
+	ap->a_result = 0;
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &logread_filtops;
+		break;
+	default:
+		ap->a_result = EOPNOTSUPP;
+		return (0);
+	}
 
 	crit_enter();
-	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		if (msgbufp->msg_bufr != msgbufp->msg_bufx)
-			revents |= ap->a_events & (POLLIN | POLLRDNORM);
-		else
-			selrecord(curthread, &logsoftc.sc_selp);
-	}
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
 	crit_exit();
-	ap->a_events = revents;
+
 	return (0);
+}
+
+static void
+logfiltdetach(struct knote *kn)
+{
+	struct klist *klist = &logsoftc.sc_selp.si_note;
+
+	crit_enter();
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+static int
+logfiltread(struct knote *kn, long hint)
+{
+	int ret = 0;
+
+	crit_enter();
+	if (msgbufp->msg_bufr != msgbufp->msg_bufx)
+		ret = 1;
+	crit_exit();
+
+	return (ret);
 }
 
 static void
@@ -190,7 +223,7 @@ logtimeout(void *arg)
 		return;
 	}
 	msgbuftrigger = 0;
-	selwakeup(&logsoftc.sc_selp);
+	KNOTE(&logsoftc.sc_selp.si_note, 0);
 	if ((logsoftc.sc_state & LOG_ASYNC) && logsoftc.sc_sigio != NULL)
 		pgsigio(logsoftc.sc_sigio, SIGIO, 0);
 	if (logsoftc.sc_state & LOG_RDWAIT) {

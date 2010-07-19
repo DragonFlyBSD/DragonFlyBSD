@@ -63,7 +63,7 @@
 #include <sys/select.h>
 #include <sys/proc.h>
 #include <sys/vnode.h>
-#include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
 
@@ -131,18 +131,22 @@ d_close_t	uhidclose;
 d_read_t	uhidread;
 d_write_t	uhidwrite;
 d_ioctl_t	uhidioctl;
-d_poll_t	uhidpoll;
+d_kqfilter_t	uhidkqfilter;
+
+static void uhidfilt_detach(struct knote *);
+static int uhidfilt_read(struct knote *, long);
+static int uhidfilt_write(struct knote *, long);
 
 #define		UHID_CDEV_MAJOR 122
 
 static struct dev_ops uhid_ops = {
-	{ "uhid", UHID_CDEV_MAJOR, 0 },
+	{ "uhid", UHID_CDEV_MAJOR, D_KQFILTER },
 	.d_open =	uhidopen,
 	.d_close =	uhidclose,
 	.d_read =	uhidread,
 	.d_write =	uhidwrite,
 	.d_ioctl =	uhidioctl,
-	.d_poll =	uhidpoll,
+	.d_kqfilter =	uhidkqfilter
 };
 
 static void uhid_intr(usbd_xfer_handle, usbd_private_handle,
@@ -329,7 +333,7 @@ uhid_intr(usbd_xfer_handle xfer, usbd_private_handle addr, usbd_status status)
 		DPRINTFN(5, ("uhid_intr: waking %p\n", &sc->sc_q));
 		wakeup(&sc->sc_q);
 	}
-	selwakeup(&sc->sc_rsel);
+	KNOTE(&sc->sc_rsel.si_note, 0);
 	if (sc->sc_async != NULL) {
 		DPRINTFN(3, ("uhid_intr: sending SIGIO %p\n", sc->sc_async));
 		ksignal(sc->sc_async, SIGIO);
@@ -665,30 +669,86 @@ uhidioctl(struct dev_ioctl_args *ap)
 	return (error);
 }
 
+static struct filterops uhidfiltops_read =
+	{ 1, NULL, uhidfilt_detach, uhidfilt_read };
+static struct filterops uhidfiltops_write =
+	{ 1, NULL, uhidfilt_detach, uhidfilt_write };
+
 int
-uhidpoll(struct dev_poll_args *ap)
+uhidkqfilter(struct dev_kqfilter_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
+	struct knote *kn = ap->a_kn;
 	struct uhid_softc *sc;
-	int revents = 0;
+	struct klist *klist;
 
 	sc = devclass_get_softc(uhid_devclass, UHIDUNIT(dev));
 
-	if (sc->sc_dying)
-		return (EIO);
+	if (sc->sc_dying) {
+		ap->a_result = 1;
+		return (0);
+	}
+
+	ap->a_result = 0;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &uhidfiltops_read;
+		kn->kn_hook = (caddr_t)sc;
+		break;
+	case EVFILT_WRITE:
+		kn->kn_fop = &uhidfiltops_write;
+		kn->kn_hook = (caddr_t)sc;
+		break;
+	default:
+		ap->a_result = EOPNOTSUPP;
+		return (0);
+	}
 
 	crit_enter();
-	if (ap->a_events & (POLLOUT | POLLWRNORM))
-		revents |= ap->a_events & (POLLOUT | POLLWRNORM);
-	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		if (sc->sc_q.c_cc > 0)
-			revents |= ap->a_events & (POLLIN | POLLRDNORM);
-		else
-			selrecord(curthread, &sc->sc_rsel);
-	}
+	klist = &sc->sc_rsel.si_note;
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
 	crit_exit();
-	ap->a_events = revents;
+
 	return (0);
+}
+
+static void
+uhidfilt_detach(struct knote *kn)
+{
+	cdev_t dev = (cdev_t)kn->kn_hook;
+	struct uhid_softc *sc;
+	struct klist *klist;
+
+	sc = devclass_get_softc(uhid_devclass, UHIDUNIT(dev));
+
+	crit_enter();
+	klist = &sc->sc_rsel.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+static int
+uhidfilt_read(struct knote *kn, long hint)
+{
+	cdev_t dev = (cdev_t)kn->kn_hook;
+	struct uhid_softc *sc;
+	int ready = 0;
+
+	sc = devclass_get_softc(uhid_devclass, UHIDUNIT(dev));
+
+	crit_enter();
+	if (sc->sc_q.c_cc > 0)
+		ready = 1;
+	crit_exit();
+
+	return (ready);
+}
+
+static int
+uhidfilt_write(struct knote *kn, long hint)
+{
+	return (1);
 }
 
 DRIVER_MODULE(uhid, uhub, uhid_driver, uhid_devclass, usbd_driver_load, 0);

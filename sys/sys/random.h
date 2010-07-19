@@ -95,7 +95,9 @@ u_int read_random_unlimited(void *buf, u_int size);
 u_int write_random(const char *buf, u_int nbytes);
 #endif
 struct thread;
+struct knote;
 int random_poll(cdev_t dev, int events);
+int random_filter_read(struct knote *kn, long hint);
 
 #endif /* _KERNEL */
 

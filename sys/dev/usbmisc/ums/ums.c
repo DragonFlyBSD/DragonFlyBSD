@@ -55,7 +55,7 @@
 #include <sys/file.h>
 #include <sys/select.h>
 #include <sys/vnode.h>
-#include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
 
@@ -119,7 +119,6 @@ struct ums_softc {
 
 	int		state;
 #	  define	UMS_ASLEEP	0x01	/* readFromDevice is waiting */
-#	  define	UMS_SELECT	0x02	/* select is waiting */
 	struct selinfo	rsel;		/* process waiting in select */
 };
 
@@ -140,17 +139,20 @@ static d_open_t  ums_open;
 static d_close_t ums_close;
 static d_read_t  ums_read;
 static d_ioctl_t ums_ioctl;
-static d_poll_t  ums_poll;
+static d_kqfilter_t ums_kqfilter;
+
+static void ums_filt_detach(struct knote *);
+static int ums_filt(struct knote *, long);
 
 #define UMS_CDEV_MAJOR	111
 
 static struct dev_ops ums_ops = {
-	{ "ums", UMS_CDEV_MAJOR, 0 },
+	{ "ums", UMS_CDEV_MAJOR, D_KQFILTER },
 	.d_open =	ums_open,
 	.d_close =	ums_close,
 	.d_read =	ums_read,
 	.d_ioctl =	ums_ioctl,
-	.d_poll =	ums_poll,
+	.d_kqfilter =	ums_kqfilter
 };
 
 static device_probe_t ums_match;
@@ -379,10 +381,8 @@ ums_detach(device_t self)
 		sc->state &= ~UMS_ASLEEP;
 		wakeup(sc);
 	}
-	if (sc->state & UMS_SELECT) {
-		sc->state &= ~UMS_SELECT;
-		selwakeup(&sc->rsel);
-	}
+	KNOTE(&sc->rsel.si_note, 0);
+
 	dev_ops_remove_minor(&ums_ops, /*-1, */device_get_unit(self));
 
 	return 0;
@@ -513,10 +513,7 @@ ums_add_to_queue(struct ums_softc *sc, int dx, int dy, int dz, int buttons)
 		sc->state &= ~UMS_ASLEEP;
 		wakeup(sc);
 	}
-	if (sc->state & UMS_SELECT) {
-		sc->state &= ~UMS_SELECT;
-		selwakeup(&sc->rsel);
-	}
+	KNOTE(&sc->rsel.si_note, 0);
 }
 
 static int
@@ -669,32 +666,62 @@ ums_read(struct dev_read_args *ap)
 	return 0;
 }
 
+static struct filterops ums_filtops =
+	{ 1, NULL, ums_filt_detach, ums_filt };
+
 static int
-ums_poll(struct dev_poll_args *ap)
+ums_kqfilter(struct dev_kqfilter_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
+	struct knote *kn = ap->a_kn;
 	struct ums_softc *sc;
-	int revents = 0;
+	struct klist *klist;
 
-	sc = devclass_get_softc(ums_devclass, UMSUNIT(dev));
+	ap->a_result = 0;
 
-	if (!sc) {
-		ap->a_events = 0;
-		return 0;
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		sc = devclass_get_softc(ums_devclass, UMSUNIT(dev));
+		kn->kn_fop = &ums_filtops;
+		kn->kn_hook = (caddr_t)sc;
+		break;
+	default:
+		ap->a_result = EOPNOTSUPP;
+		return (0);
 	}
 
 	crit_enter();
-	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		if (sc->qcount) {
-			revents = ap->a_events & (POLLIN | POLLRDNORM);
-		} else {
-			sc->state |= UMS_SELECT;
-			selrecord(curthread, &sc->rsel);
-		}
-	}
+	klist = &sc->rsel.si_note;
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
 	crit_exit();
-	ap->a_events = revents;
+
 	return (0);
+}
+
+static void
+ums_filt_detach(struct knote *kn)
+{
+	struct ums_softc *sc = (struct ums_softc *)kn->kn_hook;
+	struct klist *klist;
+
+	crit_enter();
+	klist = &sc->rsel.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+static int
+ums_filt(struct knote *kn, long hint)
+{
+	struct ums_softc *sc = (struct ums_softc *)kn->kn_hook;
+	int ready = 0;
+
+	crit_enter();
+	if (sc->qcount)
+		ready = 1;
+	crit_exit();
+
+	return (ready);
 }
 
 int

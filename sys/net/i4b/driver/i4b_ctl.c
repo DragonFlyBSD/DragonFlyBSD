@@ -66,9 +66,6 @@ static	d_open_t	i4bctlopen;
 static	d_close_t	i4bctlclose;
 static	d_ioctl_t	i4bctlioctl;
 
-static d_poll_t		i4bctlpoll;
-#define POLLFIELD	i4bctlpoll
-
 #define CDEV_MAJOR 55
 
 static struct dev_ops i4bctl_ops = {
@@ -76,7 +73,6 @@ static struct dev_ops i4bctl_ops = {
 	.d_open =      i4bctlopen,
 	.d_close =     i4bctlclose,
 	.d_ioctl =     i4bctlioctl,
-	.d_poll =      POLLFIELD,
 };
 
 static void i4bctlattach(void *);
@@ -214,15 +210,6 @@ i4bctlioctl(struct dev_ioctl_args *ap)
 	}
 	return(error);
 #endif /* DO_I4B_DEBUG */
-}
-
-/*---------------------------------------------------------------------------*
- *	i4bctlpoll - device driver poll routine
- *---------------------------------------------------------------------------*/
-static int
-i4bctlpoll (struct dev_poll_args *ap)
-{
-	return (ENODEV);
 }
 
 #endif /* NI4BCTL > 0 */

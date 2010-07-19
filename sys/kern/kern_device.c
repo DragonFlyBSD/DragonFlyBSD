@@ -69,7 +69,6 @@ DEVOP_DESC_INIT(write);
 DEVOP_DESC_INIT(ioctl);
 DEVOP_DESC_INIT(dump);
 DEVOP_DESC_INIT(psize);
-DEVOP_DESC_INIT(poll);
 DEVOP_DESC_INIT(mmap);
 DEVOP_DESC_INIT(strategy);
 DEVOP_DESC_INIT(kqfilter);
@@ -89,7 +88,6 @@ struct dev_ops default_dev_ops = {
 	.d_read = noread,
 	.d_write = nowrite,
 	.d_ioctl = noioctl,
-	.d_poll = nopoll,
 	.d_mmap = nommap,
 	.d_strategy = nostrategy,
 	.d_dump = nodump,
@@ -173,21 +171,6 @@ dev_dioctl(cdev_t dev, u_long cmd, caddr_t data, int fflag, struct ucred *cred,
 	ap.a_cred = cred;
 	ap.a_sysmsg = msg;
 	return(dev->si_ops->d_ioctl(&ap));
-}
-
-int
-dev_dpoll(cdev_t dev, int events)
-{
-	struct dev_poll_args ap;
-	int error;
-
-	ap.a_head.a_desc = &dev_poll_desc;
-	ap.a_head.a_dev = dev;
-	ap.a_events = events;
-	error = dev->si_ops->d_poll(&ap);
-	if (error == 0)
-		return(ap.a_events);
-	return (seltrue(dev, events));
 }
 
 int
@@ -551,13 +534,6 @@ int
 nommap(struct dev_mmap_args *ap)
 {
 	return (ENODEV);
-}
-
-int
-nopoll(struct dev_poll_args *ap)
-{
-	ap->a_events = 0;
-	return(0);
 }
 
 int

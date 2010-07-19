@@ -437,8 +437,7 @@ struct pr_usrreqs natm_usrreqs = {
 	.pru_shutdown = natm_usr_shutdown,
 	.pru_sockaddr = natm_usr_sockaddr,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 #else  /* !FREEBSD_USRREQS */

@@ -2145,7 +2145,7 @@ ufs_kqfilter(struct vop_kqfilter_args *ap)
 		kn->kn_fop = &ufsvnode_filtops;
 		break;
 	default:
-		return (1);
+		return (EOPNOTSUPP);
 	}
 
 	kn->kn_hook = (caddr_t)vp;
@@ -2236,7 +2236,6 @@ static struct vop_ops ufs_vnode_vops = {
 	.vop_mmap =		ufs_mmap,
 	.vop_open =		vop_stdopen,
 	.vop_pathconf =		vop_stdpathconf,
-	.vop_poll =		vop_stdpoll,
 	.vop_kqfilter =		ufs_kqfilter,
 	.vop_print =		ufs_print,
 	.vop_readdir =		ufs_readdir,

@@ -394,6 +394,8 @@ kthread_create2(void (*func)(void *), void *arg,
 	kvsnprintf(p2->p_comm, sizeof(p2->p_comm), fmt, ap);
 	__va_end(ap);
 
+	lp2->lwp_thread->td_ucred = crhold(proc0.p_ucred);
+
 	/* call the processes' main()... */
 	cpu_set_fork_handler(lp2,
 			     (void (*)(void *, struct trapframe *))func, arg);

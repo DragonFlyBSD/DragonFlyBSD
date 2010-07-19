@@ -790,7 +790,6 @@ struct pr_usrreqs udp6_usrreqs = {
 	.pru_shutdown = udp_shutdown,
 	.pru_sockaddr = in6_mapped_sockaddr,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 

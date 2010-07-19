@@ -128,6 +128,7 @@
 #include <sys/kernel.h>
 #include <sys/systm.h>
 #include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/random.h>
 #include <sys/systimer.h>
 #include <sys/time.h>
@@ -519,6 +520,15 @@ random_poll(cdev_t dev, int events)
 		revents |= events & (POLLOUT | POLLWRNORM);
 
 	return (revents);
+}
+
+/*
+ * Kqueue filter (always succeeds)
+ */
+int
+random_filter_read(struct knote *kn, long hint)
+{
+	return (1);
 }
 
 /*

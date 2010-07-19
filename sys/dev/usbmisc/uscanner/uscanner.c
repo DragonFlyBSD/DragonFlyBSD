@@ -60,7 +60,7 @@
 #include <sys/file.h>
 #include <sys/select.h>
 #include <sys/proc.h>
-#include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/conf.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
@@ -254,17 +254,17 @@ d_open_t  uscanneropen;
 d_close_t uscannerclose;
 d_read_t  uscannerread;
 d_write_t uscannerwrite;
-d_poll_t  uscannerpoll;
+d_kqfilter_t uscannerkqfilter;
 
 #define USCANNER_CDEV_MAJOR	156
 
 static struct dev_ops uscanner_ops = {
-	{ "uscanner", USCANNER_CDEV_MAJOR, 0 },
+	{ "uscanner", USCANNER_CDEV_MAJOR, D_KQFILTER },
 	.d_open =	uscanneropen,
 	.d_close =	uscannerclose,
 	.d_read =	uscannerread,
 	.d_write =	uscannerwrite,
-	.d_poll =	uscannerpoll,
+	.d_kqfilter =	uscannerkqfilter
 };
 
 static int uscanner_do_read(struct uscanner_softc *, struct uio *, int);
@@ -645,27 +645,36 @@ uscanner_detach(device_t self)
 	return (0);
 }
 
-int
-uscannerpoll(struct dev_poll_args *ap)
+static void
+uscannerfilt_detach(struct knote *kn) {}
+
+static int
+uscannerfilt(struct knote *kn, long hint)
 {
-	cdev_t dev = ap->a_head.a_dev;
-	struct uscanner_softc *sc;
-	int revents = 0;
-
-	sc = devclass_get_softc(uscanner_devclass, USCANNERUNIT(dev));
-
-	if (sc->sc_dying)
-		return (EIO);
-
 	/*
 	 * We have no easy way of determining if a read will
 	 * yield any data or a write will happen.
 	 * Pretend they will.
 	 */
-	revents |= ap->a_events &
-		   (POLLIN | POLLRDNORM | POLLOUT | POLLWRNORM);
+	return (1);
+}
 
-	ap->a_events = revents;
+static struct filterops uscannerfiltops =
+	{ 1, NULL, uscannerfilt_detach, uscannerfilt };
+
+int
+uscannerkqfilter(struct dev_kqfilter_args *ap)
+{
+/* XXX
+	cdev_t dev = ap->a_head.a_dev;
+	struct uscanner_softc *sc = devclass_get_softc(uscanner_devclass, USCANNERUNIT(dev));
+
+	if (sc->sc_dying)
+		return (EIO);
+*/
+
+	ap->a_result = 0;
+	ap->a_kn->kn_fop = &uscannerfiltops;
 	return (0);
 }
 

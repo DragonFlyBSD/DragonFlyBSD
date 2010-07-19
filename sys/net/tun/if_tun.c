@@ -35,7 +35,6 @@
 #include <sys/sockio.h>
 #include <sys/thread2.h>
 #include <sys/ttycom.h>
-#include <sys/poll.h>
 #include <sys/signalvar.h>
 #include <sys/filedesc.h>
 #include <sys/kernel.h>
@@ -78,13 +77,16 @@ static int tunoutput (struct ifnet *, struct mbuf *, struct sockaddr *,
 static int tunifioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
 static int tuninit (struct ifnet *);
 static void tunstart(struct ifnet *);
+static void tun_filter_detach(struct knote *);
+static int tun_filter_read(struct knote *, long);
+static int tun_filter_write(struct knote *, long);
 
 static	d_open_t	tunopen;
 static	d_close_t	tunclose;
 static	d_read_t	tunread;
 static	d_write_t	tunwrite;
 static	d_ioctl_t	tunioctl;
-static	d_poll_t	tunpoll;
+static	d_kqfilter_t	tunkqfilter;
 
 static d_clone_t tunclone;
 DEVFS_DECLARE_CLONE_BITMAP(tun);
@@ -97,13 +99,13 @@ DEVFS_DECLARE_CLONE_BITMAP(tun);
 
 #define CDEV_MAJOR 52
 static struct dev_ops tun_ops = {
-	{ "tun", CDEV_MAJOR, 0 },
+	{ "tun", CDEV_MAJOR, D_KQFILTER },
 	.d_open =	tunopen,
 	.d_close =	tunclose,
 	.d_read =	tunread,
 	.d_write =	tunwrite,
 	.d_ioctl =	tunioctl,
-	.d_poll =	tunpoll,
+	.d_kqfilter =	tunkqfilter
 };
 
 static void
@@ -216,7 +218,7 @@ tunclose(struct dev_close_args *ap)
 	if_purgeaddrs_nolink(ifp);
 
 	funsetown(tp->tun_sigio);
-	selwakeup(&tp->tun_rsel);
+	KNOTE(&tp->tun_rsel.si_note, 0);
 
 	TUNDEBUG(ifp, "closed\n");
 #if 0
@@ -395,7 +397,7 @@ tunoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 		get_mplock();
 		if (tp->tun_flags & TUN_ASYNC && tp->tun_sigio)
 			pgsigio(tp->tun_sigio, SIGIO, 0);
-		selwakeup(&tp->tun_rsel);
+		KNOTE(&tp->tun_rsel.si_note, 0);
 		rel_mplock();
 	}
 	return (error);
@@ -697,38 +699,78 @@ tunwrite(struct dev_write_args *ap)
 	return (0);
 }
 
-/*
- * tunpoll - the poll interface, this is only useful on reads
- * really. The write detect always returns true, write never blocks
- * anyway, it either accepts the packet or drops it.
- */
-static	int
-tunpoll(struct dev_poll_args *ap)
+static struct filterops tun_read_filtops =
+	{ 1, NULL, tun_filter_detach, tun_filter_read };
+static struct filterops tun_write_filtops =
+	{ 1, NULL, tun_filter_detach, tun_filter_write };
+
+static int
+tunkqfilter(struct dev_kqfilter_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct tun_softc *tp = dev->si_drv1;
-	struct ifnet	*ifp = &tp->tun_if;
-	int		revents = 0;
+	struct knote *kn = ap->a_kn;
+	struct klist *klist;
 
-	TUNDEBUG(ifp, "tunpoll\n");
+	ap->a_result = 0;
+	ifnet_serialize_all(&tp->tun_if);
 
-	ifnet_serialize_all(ifp);
-
-	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		if (!ifq_is_empty(&ifp->if_snd)) {
-			TUNDEBUG(ifp, "tunpoll q=%d\n", ifp->if_snd.ifq_len);
-			revents |= ap->a_events & (POLLIN | POLLRDNORM);
-		} else {
-			TUNDEBUG(ifp, "tunpoll waiting\n");
-			selrecord(curthread, &tp->tun_rsel);
-		}
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &tun_read_filtops;
+		kn->kn_hook = (caddr_t)tp;
+		break;
+	case EVFILT_WRITE:
+		kn->kn_fop = &tun_write_filtops;
+		kn->kn_hook = (caddr_t)tp;
+		break;
+	default:
+		ifnet_deserialize_all(&tp->tun_if);
+		ap->a_result = EOPNOTSUPP;
+		return (0);
 	}
-	if (ap->a_events & (POLLOUT | POLLWRNORM))
-		revents |= ap->a_events & (POLLOUT | POLLWRNORM);
 
-	ifnet_deserialize_all(ifp);
-	ap->a_events = revents;
-	return(0);
+	klist = &tp->tun_rsel.si_note;
+	crit_enter();
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+	crit_exit();
+
+	ifnet_deserialize_all(&tp->tun_if);
+
+	return (0);
+}
+
+static void
+tun_filter_detach(struct knote *kn)
+{
+	struct tun_softc *tp = (struct tun_softc *)kn->kn_hook;
+	struct klist *klist;
+
+	klist = &tp->tun_rsel.si_note;
+	crit_enter();
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+static int
+tun_filter_write(struct knote *kn, long hint)
+{
+	/* Always ready for a write */
+	return (1);
+}
+
+static int
+tun_filter_read(struct knote *kn, long hint)
+{
+	struct tun_softc *tp = (struct tun_softc *)kn->kn_hook;
+	int ready = 0;
+
+	ifnet_serialize_all(&tp->tun_if);
+	if (!ifq_is_empty(&tp->tun_if.if_snd))
+		ready = 1;
+	ifnet_deserialize_all(&tp->tun_if);
+
+	return (ready);
 }
 
 /*
@@ -754,6 +796,6 @@ tunstart(struct ifnet *ifp)
 		}
 		if (tp->tun_flags & TUN_ASYNC && tp->tun_sigio)
 			pgsigio(tp->tun_sigio, SIGIO, 0);
-		selwakeup(&tp->tun_rsel);
+		KNOTE(&tp->tun_rsel.si_note, 0);
 	}
 }

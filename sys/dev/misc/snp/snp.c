@@ -23,7 +23,7 @@
 #include <sys/malloc.h>
 #include <sys/tty.h>
 #include <sys/conf.h>
-#include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/kernel.h>
 #include <sys/queue.h>
 #include <sys/snoop.h>
@@ -39,9 +39,13 @@ static	d_close_t	snpclose;
 static	d_read_t	snpread;
 static	d_write_t	snpwrite;
 static	d_ioctl_t	snpioctl;
-static	d_poll_t	snppoll;
+static	d_kqfilter_t	snpkqfilter;
 static d_clone_t	snpclone;
 DEVFS_DECLARE_CLONE_BITMAP(snp);
+
+static void snpfilter_detach(struct knote *);
+static int snpfilter_rd(struct knote *, long);
+static int snpfilter_wr(struct knote *, long);
 
 #if NSNP <= 1
 #define SNP_PREALLOCATED_UNITS	4
@@ -51,13 +55,13 @@ DEVFS_DECLARE_CLONE_BITMAP(snp);
 
 #define CDEV_MAJOR 53
 static struct dev_ops snp_ops = {
-	{ "snp", CDEV_MAJOR, 0 },
+	{ "snp", CDEV_MAJOR, D_KQFILTER },
 	.d_open =	snpopen,
 	.d_close =	snpclose,
 	.d_read =	snpread,
 	.d_write =	snpwrite,
 	.d_ioctl =	snpioctl,
-	.d_poll =	snppoll,
+	.d_kqfilter =	snpkqfilter
 };
 
 static struct linesw snpdisc = {
@@ -361,8 +365,7 @@ snp_in(struct snoop *snp, char *buf, int n)
 		snp->snp_flags &= ~SNOOP_RWAIT;
 		wakeup((caddr_t)snp);
 	}
-	selwakeup(&snp->snp_sel);
-	snp->snp_sel.si_pid = 0;
+	KNOTE(&snp->snp_sel.si_note, 0);
 
 	return (n);
 }
@@ -434,8 +437,7 @@ snp_detach(struct snoop *snp)
 	snp->snp_target = NULL;
 
 detach_notty:
-	selwakeup(&snp->snp_sel);
-	snp->snp_sel.si_pid = 0;
+	KNOTE(&snp->snp_sel.si_note, 0);
 	if ((snp->snp_flags & SNOOP_OPEN) == 0) 
 		kfree(snp, M_SNP);
 
@@ -558,28 +560,77 @@ snpioctl(struct dev_ioctl_args *ap)
 	return (0);
 }
 
+static struct filterops snpfiltops_rd =
+        { 1, NULL, snpfilter_detach, snpfilter_rd };
+static struct filterops snpfiltops_wr =
+        { 1, NULL, snpfilter_detach, snpfilter_wr };
+
 static int
-snppoll(struct dev_poll_args *ap)
+snpkqfilter(struct dev_kqfilter_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	struct snoop *snp;
-	int revents;
+	struct snoop *snp = dev->si_drv1;
+	struct knote *kn = ap->a_kn;
+	struct klist *klist;
 
-	snp = dev->si_drv1;
-	revents = 0;
+	ap->a_result = 0;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &snpfiltops_rd;
+		kn->kn_hook = (caddr_t)snp;
+		break;
+	case EVFILT_WRITE:
+		kn->kn_fop = &snpfiltops_wr;
+		kn->kn_hook = (caddr_t)snp;
+		break;
+	default:
+		ap->a_result = EOPNOTSUPP;
+		return (0);
+	}
+
+	crit_enter();
+	klist = &snp->snp_sel.si_note;
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+	crit_exit();
+
+	return (0);
+}
+
+static void
+snpfilter_detach(struct knote *kn)
+{
+	struct snoop *snp = (struct snoop *)kn->kn_hook;
+	struct klist *klist;
+
+	crit_enter();
+	klist = &snp->snp_sel.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+static int
+snpfilter_rd(struct knote *kn, long hint)
+{
+	struct snoop *snp = (struct snoop *)kn->kn_hook;
+	int ready = 0;
+
 	/*
-	 * If snoop is down, we don't want to poll() forever so we return 1.
+	 * If snoop is down, we don't want to poll forever so we return 1.
 	 * Caller should see if we down via FIONREAD ioctl().  The last should
 	 * return -1 to indicate down state.
 	 */
-	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		if (snp->snp_flags & SNOOP_DOWN || snp->snp_len > 0)
-			revents |= ap->a_events & (POLLIN | POLLRDNORM);
-		else
-			selrecord(curthread, &snp->snp_sel);
-	}
-	ap->a_events = revents;
-	return (0);
+	if (snp->snp_flags & SNOOP_DOWN || snp->snp_len > 0)
+		ready = 1;
+
+	return (ready);
+}
+
+static int
+snpfilter_wr(struct knote *kn, long hint)
+{
+	/* Writing is always OK */
+	return (1);
 }
 
 static int

@@ -468,8 +468,7 @@ struct pr_usrreqs uipc_usrreqs = {
 	.pru_shutdown = uipc_shutdown,
 	.pru_sockaddr = uipc_sockaddr,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 int

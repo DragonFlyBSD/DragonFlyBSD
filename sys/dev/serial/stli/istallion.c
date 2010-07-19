@@ -639,7 +639,6 @@ static struct dev_ops stli_ops = {
 	.d_read =	stliread,
 	.d_write =	stliwrite,
 	.d_ioctl =	stliioctl,
-	.d_poll =	ttypoll,
 	.d_kqfilter =	ttykqfilter,
 	.d_revoke =	ttyrevoke
 };
@@ -1671,7 +1670,7 @@ static void stli_start(struct tty *tp)
 			tp->t_state &= ~TS_ASLEEP;
 			wakeup(&tp->t_outq);
 		}
-		selwakeup(&tp->t_wsel);
+		KNOTE(&tp->t_wsel.si_note, 0);
 	}
 #endif
 

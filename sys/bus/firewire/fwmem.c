@@ -427,11 +427,7 @@ fwmem_ioctl(struct dev_ioctl_args *ap)
 	}
 	return(err);
 }
-int
-fwmem_poll(struct dev_poll_args *ap)
-{  
-	return EINVAL;
-}
+
 int
 fwmem_mmap(struct dev_mmap_args *ap)
 {  

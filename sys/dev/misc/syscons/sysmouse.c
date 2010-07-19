@@ -53,12 +53,12 @@ static d_close_t	smclose;
 static d_ioctl_t	smioctl;
 
 static struct dev_ops sm_ops = {
-	{ "sysmouse", CDEV_MAJOR, D_TTY },
+	{ "sysmouse", CDEV_MAJOR, D_TTY | D_KQFILTER },
 	.d_open =	smopen,
 	.d_close =	smclose,
 	.d_read =	ttyread,
 	.d_ioctl =	smioctl,
-	.d_poll =	ttypoll,
+	.d_kqfilter =	ttykqfilter,
 	.d_revoke =	ttyrevoke
 };
 

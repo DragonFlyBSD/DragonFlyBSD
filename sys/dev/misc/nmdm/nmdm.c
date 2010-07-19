@@ -49,7 +49,6 @@
 #include <sys/tty.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
-#include <sys/poll.h>
 #include <sys/kernel.h>
 #include <sys/vnode.h>
 #include <sys/signalvar.h>
@@ -70,13 +69,13 @@ static	d_ioctl_t	nmdmioctl;
 
 #define	CDEV_MAJOR	18
 static struct dev_ops nmdm_ops = {
-	{ "pts", CDEV_MAJOR, D_TTY },
+	{ "pts", CDEV_MAJOR, D_TTY | D_KQFILTER },
 	.d_open =	nmdmopen,
 	.d_close =	nmdmclose,
 	.d_read =	nmdmread,
 	.d_write =	nmdmwrite,
 	.d_ioctl =	nmdmioctl,
-	.d_poll =	ttypoll,
+	.d_kqfilter = 	ttykqfilter,
 	.d_revoke =	ttyrevoke
 };
 
@@ -442,12 +441,12 @@ wakeup_other(struct tty *tp, int flag)
 
 	GETPARTS(tp, ourpart, otherpart);
 	if (flag & FREAD) {
-		selwakeup(&otherpart->nm_tty.t_rsel);
 		wakeup(TSA_PTC_READ((&otherpart->nm_tty)));
+		KNOTE(&otherpart->nm_tty.t_rsel.si_note, 0);
 	}
 	if (flag & FWRITE) {
-		selwakeup(&otherpart->nm_tty.t_wsel);
 		wakeup(TSA_PTC_WRITE((&otherpart->nm_tty)));
+		KNOTE(&otherpart->nm_tty.t_wsel.si_note, 0);
 	}
 }
 

@@ -57,7 +57,7 @@
 #include <sys/ttycom.h>
 #include <sys/filedesc.h>
 
-#include <sys/poll.h>
+#include <sys/event.h>
 
 #include <sys/socket.h>
 #include <sys/vnode.h>
@@ -128,6 +128,8 @@ static int	bpf_setf(struct bpf_d *, struct bpf_program *, u_long cmd);
 static int	bpf_getdltlist(struct bpf_d *, struct bpf_dltlist *);
 static int	bpf_setdlt(struct bpf_d *, u_int);
 static void	bpf_drvinit(void *unused);
+static void	bpf_filter_detach(struct knote *kn);
+static int	bpf_filter_read(struct knote *kn, long hint);
 
 static d_open_t		bpfopen;
 static d_clone_t	bpfclone;
@@ -135,17 +137,17 @@ static d_close_t	bpfclose;
 static d_read_t		bpfread;
 static d_write_t	bpfwrite;
 static d_ioctl_t	bpfioctl;
-static d_poll_t		bpfpoll;
+static d_kqfilter_t	bpfkqfilter;
 
 #define CDEV_MAJOR 23
 static struct dev_ops bpf_ops = {
-	{ "bpf", CDEV_MAJOR, 0 },
+	{ "bpf", CDEV_MAJOR, D_KQFILTER },
 	.d_open =	bpfopen,
 	.d_close =	bpfclose,
 	.d_read =	bpfread,
 	.d_write =	bpfwrite,
 	.d_ioctl =	bpfioctl,
-	.d_poll =	bpfpoll,
+	.d_kqfilter =	bpfkqfilter
 };
 
 
@@ -519,10 +521,8 @@ bpf_wakeup(struct bpf_d *d)
 		pgsigio(d->bd_sigio, d->bd_sig, 0);
 
 	get_mplock();
-	selwakeup(&d->bd_sel);
+	KNOTE(&d->bd_sel.si_note, 0);
 	rel_mplock();
-	/* XXX */
-	d->bd_sel.si_pid = 0;
 }
 
 static void
@@ -1066,50 +1066,80 @@ bpf_setif(struct bpf_d *d, struct ifreq *ifr)
 	return(ENXIO);
 }
 
-/*
- * Support for select() and poll() system calls
- *
- * Return true iff the specific operation will not block indefinitely.
- * Otherwise, return false but make a note that a selwakeup() must be done.
- */
+static struct filterops bpf_read_filtops =
+	{ 1, NULL, bpf_filter_detach, bpf_filter_read };
+
 static int
-bpfpoll(struct dev_poll_args *ap)
+bpfkqfilter(struct dev_kqfilter_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
+	struct knote *kn = ap->a_kn;
+	struct klist *klist;
 	struct bpf_d *d;
-	int revents;
 
 	d = dev->si_drv1;
-	if (d->bd_bif == NULL)
-		return(ENXIO);
+	if (d->bd_bif == NULL) {
+		ap->a_result = 1;
+		return (0);
+	}
 
-	revents = ap->a_events & (POLLOUT | POLLWRNORM);
+	ap->a_result = 0;
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &bpf_read_filtops;
+		kn->kn_hook = (caddr_t)d;
+		break;
+	default:
+		ap->a_result = EOPNOTSUPP;
+		return (0);
+	}
+
 	crit_enter();
-	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		/*
-		 * An imitation of the FIONREAD ioctl code.
-		 * XXX not quite.  An exact imitation:
-		 *	if (d->b_slen != 0 ||
-		 *	    (d->bd_hbuf != NULL && d->bd_hlen != 0)
-		 */
-		if (d->bd_hlen != 0 ||
-		    ((d->bd_immediate || d->bd_state == BPF_TIMED_OUT) &&
-		    d->bd_slen != 0)) {
-			revents |= ap->a_events & (POLLIN | POLLRDNORM);
-		} else {
-			selrecord(curthread, &d->bd_sel);
-			/* Start the read timeout if necessary. */
-			if (d->bd_rtout > 0 && d->bd_state == BPF_IDLE) {
-				callout_reset(&d->bd_callout, d->bd_rtout,
-				    bpf_timed_out, d);
-				d->bd_state = BPF_WAITING;
-			}
+	klist = &d->bd_sel.si_note;
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+	crit_exit();
+
+	return (0);
+}
+
+static void
+bpf_filter_detach(struct knote *kn)
+{
+	struct klist *klist;
+	struct bpf_d *d;
+
+	crit_enter();
+	d = (struct bpf_d *)kn->kn_hook;
+	klist = &d->bd_sel.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+static int
+bpf_filter_read(struct knote *kn, long hint)
+{
+	struct bpf_d *d;
+	int ready = 0;
+
+	crit_enter();
+	d = (struct bpf_d *)kn->kn_hook;
+	if (d->bd_hlen != 0 ||
+	    ((d->bd_immediate || d->bd_state == BPF_TIMED_OUT) &&
+	    d->bd_slen != 0)) {
+		ready = 1;
+	} else {
+		/* Start the read timeout if necessary. */
+		if (d->bd_rtout > 0 && d->bd_state == BPF_IDLE) {
+			callout_reset(&d->bd_callout, d->bd_rtout,
+			    bpf_timed_out, d);
+			d->bd_state = BPF_WAITING;
 		}
 	}
 	crit_exit();
-	ap->a_events = revents;
-	return(0);
+
+	return (ready);
 }
+
 
 /*
  * Process the packet pkt of length pktlen.  The packet is parsed

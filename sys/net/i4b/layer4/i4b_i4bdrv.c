@@ -72,13 +72,12 @@
 
 #include "i4b_l4.h"
 
-#include <sys/poll.h>
+#include <sys/event.h>
 
 struct selinfo select_rd_info;
 
 static struct ifqueue i4b_rdqueue;
 static int openflag = 0;
-static int selflag = 0;
 static int readflag = 0;
 
 #define PDEVSTATIC	static
@@ -87,19 +86,21 @@ PDEVSTATIC	d_open_t	i4bopen;
 PDEVSTATIC	d_close_t	i4bclose;
 PDEVSTATIC	d_read_t	i4bread;
 PDEVSTATIC	d_ioctl_t	i4bioctl;
+PDEVSTATIC	d_kqfilter_t	i4bkqfilter;
 
-PDEVSTATIC	d_poll_t	i4bpoll;
-#define POLLFIELD		i4bpoll
+PDEVSTATIC void i4bkqfilt_detach(struct knote *);
+PDEVSTATIC int i4bkqfilt_read(struct knote *, long);
+PDEVSTATIC int i4bkqfilt_write(struct knote *, long);
 
 #define CDEV_MAJOR 60
 
 static struct dev_ops i4b_ops = {
-	{ "i4b", CDEV_MAJOR, 0 },
+	{ "i4b", CDEV_MAJOR, D_KQFILTER },
 	.d_open =	i4bopen,
 	.d_close =	i4bclose,
 	.d_read =	i4bread,
 	.d_ioctl =	i4bioctl,
-	.d_poll =	POLLFIELD,
+	.d_kqfilter =	i4bkqfilter
 };
 
 PDEVSTATIC void i4battach(void *);
@@ -727,35 +728,73 @@ diag_done:
 }
 
 /*---------------------------------------------------------------------------*
- *	i4bpoll - device driver poll routine
+ *	i4bkqfilter - device driver poll routine
  *---------------------------------------------------------------------------*/
+static struct filterops i4bkqfiltops_read =
+	{ 1, NULL, i4bkqfilt_detach, i4bkqfilt_read };
+static struct filterops i4bkqfiltops_write =
+	{ 1, NULL, i4bkqfilt_detach, i4bkqfilt_write };
+
 PDEVSTATIC int
-i4bpoll(struct dev_poll_args *ap)
+i4bkqfilter(struct dev_kqfilter_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	int revents;
+	struct knote *kn = ap->a_kn;
+	struct klist *klist;
 
 	if (minor(dev))
-		return(ENODEV);
+		return (1);
 
-	revents = 0;
+	ap->a_result = 0;
 
-	if (ap->a_events & (POLLIN|POLLRDNORM)) {
-		crit_enter();
-		if (!IF_QEMPTY(&i4b_rdqueue)) {
-			revents |= POLLIN | POLLRDNORM;
-		} else {
-			selrecord(curthread, &select_rd_info);
-			selflag = 1;
-		}
-		crit_exit();
-		return(0);
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &i4bkqfiltops_read;
+		break;
+	case EVFILT_WRITE:
+		kn->kn_fop = &i4bkqfiltops_write;
+		break;
+	default:
+		ap->a_result = EOPNOTSUPP;
+		return (0);
 	}
-	if (ap->a_events & (POLLOUT|POLLWRNORM)) {
-		revents |= ap->a_events & (POLLOUT | POLLWRNORM);
-	}
-	ap->a_events = revents;
-	return(0);
+
+	crit_enter();
+	klist = &select_rd_info.si_note;
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+	crit_exit();
+
+	return (0);
+}
+
+PDEVSTATIC void
+i4bkqfilt_detach(struct knote *kn)
+{
+	struct klist *klist;
+
+	crit_enter();
+	klist = &select_rd_info.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+PDEVSTATIC int
+i4bkqfilt_read(struct knote *kn, long hint)
+{
+	int ready = 0;
+
+	crit_enter();
+	if (!IF_QEMPTY(&i4b_rdqueue))
+		ready = 1;
+	crit_exit();
+
+	return (ready);
+}
+
+PDEVSTATIC int
+i4bkqfilt_write(struct knote *kn, long hint)
+{
+	return (1);
 }
 
 /*---------------------------------------------------------------------------*
@@ -790,11 +829,7 @@ i4bputqueue(struct mbuf *m)
 		wakeup((caddr_t) &i4b_rdqueue);
 	}
 
-	if(selflag)
-	{
-		selflag = 0;
-		selwakeup(&select_rd_info);
-	}
+	KNOTE(&select_rd_info.si_note, 0);
 }
 
 /*---------------------------------------------------------------------------*
@@ -829,11 +864,7 @@ i4bputqueue_hipri(struct mbuf *m)
 		wakeup((caddr_t) &i4b_rdqueue);
 	}
 
-	if(selflag)
-	{
-		selflag = 0;
-		selwakeup(&select_rd_info);
-	}
+	KNOTE(&select_rd_info.si_note, 0);
 }
 
 #endif /* NI4B > 0 */

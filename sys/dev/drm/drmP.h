@@ -56,7 +56,7 @@ struct drm_file;
 #include <sys/sysctl.h>
 #include <sys/bus.h>
 #include <sys/signalvar.h>
-#include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/tree.h>
 #include <sys/taskqueue.h>
 #include <vm/vm.h>
@@ -730,7 +730,7 @@ d_ioctl_t drm_ioctl;
 d_open_t drm_open;
 d_close_t drm_close;
 d_read_t drm_read;
-d_poll_t drm_poll;
+d_kqfilter_t drm_kqfilter;
 d_mmap_t drm_mmap;
 extern drm_local_map_t	*drm_getsarea(struct drm_device *dev);
 

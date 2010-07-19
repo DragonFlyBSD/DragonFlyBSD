@@ -46,7 +46,6 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
-#include <sys/poll.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
 #include <sys/signalvar.h>
@@ -117,7 +116,6 @@ static d_close_t	tapclose;
 static d_read_t		tapread;
 static d_write_t	tapwrite;
 static d_ioctl_t	tapioctl;
-static d_poll_t		tappoll;
 static d_kqfilter_t	tapkqfilter;
 
 static struct dev_ops	tap_ops = {
@@ -127,7 +125,6 @@ static struct dev_ops	tap_ops = {
 	.d_read =	tapread,
 	.d_write =	tapwrite,
 	.d_ioctl =	tapioctl,
-	.d_poll =	tappoll,
 	.d_kqfilter =	tapkqfilter
 };
 
@@ -431,7 +428,7 @@ tapclose(struct dev_close_args *ap)
 
 	funsetown(tp->tap_sigio);
 	tp->tap_sigio = NULL;
-	selwakeup(&tp->tap_rsel);
+	KNOTE(&tp->tap_rsel.si_note, 0);
 
 	tp->tap_flags &= ~TAP_OPEN;
 	funsetown(tp->tap_sigtd);
@@ -655,13 +652,6 @@ tapifstart(struct ifnet *ifp)
 			pgsigio(tp->tap_sigio, SIGIO, 0);
 			rel_mplock();
 		}
-
-		/*
-		 * selwakeup is not MPSAFE.  tapifstart is.
-		 */
-		get_mplock();
-		selwakeup(&tp->tap_rsel);
-		rel_mplock();
 	}
 
 	ifp->if_flags &= ~IFF_OACTIVE;
@@ -942,58 +932,17 @@ tapwrite(struct dev_write_args *ap)
 }
 
 /*
- * tappoll
- *
- * The poll interface, this is only useful on reads really. The write
- * detect always returns true, write never blocks anyway, it either
- * accepts the packet or drops it
- *
- * Called from the fileops interface with nothing held.
- *
- * MPSAFE
- */
-static int
-tappoll(struct dev_poll_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	struct tap_softc	*tp = dev->si_drv1;
-	struct ifnet		*ifp = &tp->tap_if;
-	int		 	 revents = 0;
-
-	TAPDEBUG(ifp, "polling, minor = %#x\n", minor(tp->tap_dev));
-
-	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		if (!IF_QEMPTY(&tp->tap_devq)) {
-			TAPDEBUG(ifp,
-				 "has data in queue. minor = %#x\n",
-				 minor(tp->tap_dev));
-
-			revents |= (ap->a_events & (POLLIN | POLLRDNORM));
-		} else {
-			TAPDEBUG(ifp, "waiting for data, minor = %#x\n",
-				 minor(tp->tap_dev));
-
-			get_mplock();
-			selrecord(curthread, &tp->tap_rsel);
-			rel_mplock();
-		}
-	}
-
-	if (ap->a_events & (POLLOUT | POLLWRNORM))
-		revents |= (ap->a_events & (POLLOUT | POLLWRNORM));
-	ap->a_events = revents;
-	return (0);
-}
-
-/*
  * tapkqfilter - called from the fileops interface with nothing held
  *
  * MPSAFE
  */
 static int filt_tapread(struct knote *kn, long hint);
+static int filt_tapwrite(struct knote *kn, long hint);
 static void filt_tapdetach(struct knote *kn);
 static struct filterops tapread_filtops =
 	{ 1, NULL, filt_tapdetach, filt_tapread };
+static struct filterops tapwrite_filtops =
+	{ 1, NULL, filt_tapdetach, filt_tapwrite };
 
 static int
 tapkqfilter(struct dev_kqfilter_args *ap)
@@ -1006,19 +955,21 @@ tapkqfilter(struct dev_kqfilter_args *ap)
 
 	get_mplock();
 	tp = dev->si_drv1;
+	list = &tp->tap_rsel.si_note;
 	ifp = &tp->tap_if;
 	ap->a_result =0;
 
 	switch(kn->kn_filter) {
 	case EVFILT_READ:
-		list = &tp->tap_rsel.si_note;
 		kn->kn_fop = &tapread_filtops;
 		kn->kn_hook = (void *)tp;
 		break;
 	case EVFILT_WRITE:
-		/* fall through */
+		kn->kn_fop = &tapwrite_filtops;
+		kn->kn_hook = (void *)tp;
+		break;
 	default:
-		ap->a_result = 1;
+		ap->a_result = EOPNOTSUPP;
 		rel_mplock();
 		return(0);
 	}
@@ -1038,6 +989,13 @@ filt_tapread(struct knote *kn, long hint)
 		return(1);
 	else
 		return(0);
+}
+
+static int
+filt_tapwrite(struct knote *kn, long hint)
+{
+	/* Always ready for a write */
+	return (1);
 }
 
 static void

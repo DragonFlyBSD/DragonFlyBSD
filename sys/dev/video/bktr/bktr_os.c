@@ -60,8 +60,8 @@
 #include <sys/signalvar.h>
 #include <sys/malloc.h>
 #include <sys/mman.h>
-#include <sys/poll.h>
 #include <sys/select.h>
+#include <sys/event.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
@@ -163,7 +163,10 @@ static	d_read_t	bktr_read;
 static	d_write_t	bktr_write;
 static	d_ioctl_t	bktr_ioctl;
 static	d_mmap_t	bktr_mmap;
-static	d_poll_t	bktr_poll;
+static	d_kqfilter_t	bktr_kqfilter;
+
+static void bktr_filter_detach(struct knote *);
+static int bktr_filter(struct knote *, long);
 
 #define CDEV_MAJOR 92 
 static struct dev_ops bktr_ops = {
@@ -173,7 +176,7 @@ static struct dev_ops bktr_ops = {
 	.d_read =	bktr_read,
 	.d_write =	bktr_write,
 	.d_ioctl =	bktr_ioctl,
-	.d_poll =	bktr_poll,
+	.d_kqfilter =	bktr_kqfilter,
 	.d_mmap =	bktr_mmap,
 };
 
@@ -718,41 +721,75 @@ bktr_mmap(struct dev_mmap_args *ap)
 	return(0);
 }
 
+static struct filterops bktr_filterops =
+	{ 1, NULL, bktr_filter_detach, bktr_filter };
+
 static int
-bktr_poll(struct dev_poll_args *ap)
+bktr_kqfilter(struct dev_kqfilter_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	int		unit;
-	bktr_ptr_t	bktr;
-	int revents = 0; 
+	struct knote *kn = ap->a_kn;
+	struct klist *klist;
+	bktr_ptr_t bktr;
+	int unit;
 
-	unit = UNIT(minor(dev));
+	ap->a_result = 0;
 
-	/* Get the device data */
-	bktr = (struct bktr_softc*)devclass_get_softc(bktr_devclass, unit);
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		if (FUNCTION(minor(dev)) == VBI_DEV) {
+			unit = UNIT(minor(dev));
+			/* Get the device data */
+			bktr = (struct bktr_softc *)
+			    devclass_get_softc(bktr_devclass, unit);
+			kn->kn_fop = &bktr_filterops;
+			kn->kn_hook = (caddr_t)bktr;
+			break;
+		}
+		/* fall through */
+	default:
+		ap->a_result = EOPNOTSUPP;
+		return (0);
+	}
+
+	crit_enter();
+	klist = &bktr->vbi_select.si_note;
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+	crit_exit();
+
+	return (0);
+}
+
+static void
+bktr_filter_detach(struct knote *kn)
+{
+	bktr_ptr_t bktr = (bktr_ptr_t)kn->kn_hook;
+	struct klist *klist;
+
+	crit_enter();
+	klist = &bktr->vbi_select.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+static int
+bktr_filter(struct knote *kn, long hint)
+{
+	bktr_ptr_t bktr = (bktr_ptr_t)kn->kn_hook;
+	int ready = 0;
+
 	if (bktr == NULL) {
 		/* the device is no longer valid/functioning */
-		return (ENXIO);
+		kn->kn_flags |= EV_EOF;
+		return (1);
 	}
 
 	LOCK_VBI(bktr);
 	crit_enter();
-
-	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-
-		switch ( FUNCTION( minor(dev) ) ) {
-		case VBI_DEV:
-			if(bktr->vbisize == 0)
-				selrecord(curthread, &bktr->vbi_select);
-			else
-				revents |= ap->a_events & (POLLIN | POLLRDNORM);
-			break;
-		}
-	}
-
+	if (bktr->vbisize != 0)
+		ready = 1;
 	crit_exit();
 	UNLOCK_VBI(bktr);
 
-	ap->a_events = revents;
-	return (0);
+	return (ready);
 }

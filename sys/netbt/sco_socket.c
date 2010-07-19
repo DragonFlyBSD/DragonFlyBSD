@@ -426,6 +426,5 @@ struct pr_usrreqs sco_usrreqs = {
         .pru_shutdown = sco_sshutdown,
         .pru_sockaddr = sco_ssockaddr,
         .pru_sosend = sosend,
-        .pru_soreceive = soreceive,
-        .pru_sopoll = sopoll
+        .pru_soreceive = soreceive
 };

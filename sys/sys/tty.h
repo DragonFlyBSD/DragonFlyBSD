@@ -281,7 +281,6 @@ int	 ttylclose (struct tty *tp, int flag);
 struct tty *ttymalloc (struct tty *tp);
 int	 ttymodem (struct tty *tp, int flag);
 int	 ttyopen (cdev_t device, struct tty *tp);
-int	 ttypoll (struct dev_poll_args *);
 int	 ttykqfilter (struct dev_kqfilter_args *);
 int	 ttyread (struct dev_read_args *);
 void	 ttyregister (struct tty *tp);

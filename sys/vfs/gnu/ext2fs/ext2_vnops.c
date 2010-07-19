@@ -1953,7 +1953,7 @@ ext2_kqfilter(struct vop_kqfilter_args *ap)
 		kn->kn_fop = &ext2vnode_filtops;
 		break;
 	default:
-		return (1);
+		return (EOPNOTSUPP);
 	}
 
 	kn->kn_hook = (caddr_t)vp;
@@ -2043,7 +2043,6 @@ struct vop_ops ext2_vnode_vops = {
 	.vop_mmap =		ext2_mmap,
 	.vop_open =		ext2_open,
 	.vop_pathconf =		ext2_pathconf,
-	.vop_poll =		vop_stdpoll,
 	.vop_kqfilter =		ext2_kqfilter,
 	.vop_print =		ext2_print,
 	.vop_readdir =		ext2_readdir,

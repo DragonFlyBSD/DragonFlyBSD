@@ -52,7 +52,6 @@
 #include <sys/tty.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
-#include <sys/poll.h>
 #include <sys/kernel.h>
 #include <sys/vnode.h>
 #include <sys/signalvar.h>
@@ -71,6 +70,10 @@ static void ptsstart (struct tty *tp);
 static void ptsstop (struct tty *tp, int rw);
 static void ptcwakeup (struct tty *tp, int flag);
 static void ptyinit (int n);
+static int  filt_ptcread (struct knote *kn, long hint);
+static void filt_ptcrdetach (struct knote *kn);
+static int  filt_ptcwrite (struct knote *kn, long hint);
+static void filt_ptcwdetach (struct knote *kn);
 
 static	d_open_t	ptsopen;
 static	d_close_t	ptsclose;
@@ -81,7 +84,7 @@ static	d_open_t	ptcopen;
 static	d_close_t	ptcclose;
 static	d_read_t	ptcread;
 static	d_write_t	ptcwrite;
-static	d_poll_t	ptcpoll;
+static	d_kqfilter_t	ptckqfilter;
 
 #ifdef UNIX98_PTYS
 DEVFS_DECLARE_CLONE_BITMAP(pty);
@@ -97,7 +100,6 @@ static struct dev_ops pts98_ops = {
 	.d_read =	ptsread,
 	.d_write =	ptswrite,
 	.d_ioctl =	ptyioctl,
-	.d_poll =	ttypoll,
 	.d_kqfilter =	ttykqfilter,
 	.d_revoke =	ttyrevoke
 };
@@ -109,8 +111,7 @@ static struct dev_ops ptc98_ops = {
 	.d_read =	ptcread,
 	.d_write =	ptcwrite,
 	.d_ioctl =	ptyioctl,
-	.d_poll =	ptcpoll,
-	.d_kqfilter =	ttykqfilter,
+	.d_kqfilter =	ptckqfilter,
 	.d_revoke =	ttyrevoke
 };
 #endif
@@ -123,7 +124,6 @@ static struct dev_ops pts_ops = {
 	.d_read =	ptsread,
 	.d_write =	ptswrite,
 	.d_ioctl =	ptyioctl,
-	.d_poll =	ttypoll,
 	.d_kqfilter =	ttykqfilter,
 	.d_revoke =	ttyrevoke
 };
@@ -136,8 +136,7 @@ static struct dev_ops ptc_ops = {
 	.d_read =	ptcread,
 	.d_write =	ptcwrite,
 	.d_ioctl =	ptyioctl,
-	.d_poll =	ptcpoll,
-	.d_kqfilter =	ttykqfilter,
+	.d_kqfilter =	ptckqfilter,
 	.d_revoke =	ttyrevoke
 };
 
@@ -436,15 +435,13 @@ ptsstart(struct tty *tp)
 static void
 ptcwakeup(struct tty *tp, int flag)
 {
-	struct pt_ioctl *pti = tp->t_dev->si_drv1;
-
 	if (flag & FREAD) {
-		selwakeup(&pti->pt_selr);
 		wakeup(TSA_PTC_READ(tp));
+		KNOTE(&tp->t_rsel.si_note, 0);
 	}
 	if (flag & FWRITE) {
-		selwakeup(&pti->pt_selw);
 		wakeup(TSA_PTC_WRITE(tp));
+		KNOTE(&tp->t_wsel.si_note, 0);
 	}
 }
 
@@ -648,56 +645,104 @@ ptsstop(struct tty *tp, int flush)
 	ptcwakeup(tp, flag);
 }
 
+/*
+ * kqueue ops for pseudo-terminals.
+ */
+static struct filterops ptcread_filtops =
+	{ 1, NULL, filt_ptcrdetach, filt_ptcread };
+static struct filterops ptcwrite_filtops =
+	{ 1, NULL, filt_ptcwdetach, filt_ptcwrite };
+
 static	int
-ptcpoll(struct dev_poll_args *ap)
+ptckqfilter(struct dev_kqfilter_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
+	struct knote *kn = ap->a_kn;
 	struct tty *tp = dev->si_tty;
-	struct pt_ioctl *pti = dev->si_drv1;
-	int revents = 0;
+	struct klist *klist;
 
-	if ((tp->t_state & TS_CONNECTED) == 0) {
-		ap->a_events = seltrue(dev, ap->a_events) | POLLHUP;
-		return(0);
+	ap->a_result = 0;
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		klist = &tp->t_rsel.si_note;
+		kn->kn_fop = &ptcread_filtops;
+		break;
+	case EVFILT_WRITE:
+		klist = &tp->t_wsel.si_note;
+		kn->kn_fop = &ptcwrite_filtops;
+		break;
+	default:
+		ap->a_result = EOPNOTSUPP;
+		return (0);
 	}
 
-	/*
-	 * Need to block timeouts (ttrstart).
-	 */
+	kn->kn_hook = (caddr_t)dev;
+
 	crit_enter();
-
-	if (ap->a_events & (POLLIN | POLLRDNORM))
-		if ((tp->t_state & TS_ISOPEN) &&
-		    ((tp->t_outq.c_cc && (tp->t_state & TS_TTSTOP) == 0) ||
-		     ((pti->pt_flags & PF_PKT) && pti->pt_send) ||
-		     ((pti->pt_flags & PF_UCNTL) && pti->pt_ucntl)))
-			revents |= ap->a_events & (POLLIN | POLLRDNORM);
-
-	if (ap->a_events & (POLLOUT | POLLWRNORM))
-		if (tp->t_state & TS_ISOPEN &&
-		    ((pti->pt_flags & PF_REMOTE) ?
-		     (tp->t_canq.c_cc == 0) : 
-		     ((tp->t_rawq.c_cc + tp->t_canq.c_cc < TTYHOG - 2) ||
-		      (tp->t_canq.c_cc == 0 && (tp->t_lflag & ICANON)))))
-			revents |= ap->a_events & (POLLOUT | POLLWRNORM);
-
-	if (ap->a_events & POLLHUP)
-		if ((tp->t_state & TS_CARR_ON) == 0)
-			revents |= POLLHUP;
-
-	if (revents == 0) {
-		if (ap->a_events & (POLLIN | POLLRDNORM))
-			selrecord(curthread, &pti->pt_selr);
-
-		if (ap->a_events & (POLLOUT | POLLWRNORM)) 
-			selrecord(curthread, &pti->pt_selw);
-	}
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
 	crit_exit();
 
-	ap->a_events = revents;
 	return (0);
 }
 
+static int
+filt_ptcread (struct knote *kn, long hint)
+{
+	struct tty *tp = ((cdev_t)kn->kn_hook)->si_tty;
+	struct pt_ioctl *pti = ((cdev_t)kn->kn_hook)->si_drv1;
+
+	if ((tp->t_state & TS_ISOPEN) &&
+	    ((tp->t_outq.c_cc && (tp->t_state & TS_TTSTOP) == 0) ||
+	     ((pti->pt_flags & PF_PKT) && pti->pt_send) ||
+	     ((pti->pt_flags & PF_UCNTL) && pti->pt_ucntl))) {
+		kn->kn_data = tp->t_outq.c_cc;
+		return(1);
+	} else {
+		return(0);
+	}
+}
+
+static int
+filt_ptcwrite (struct knote *kn, long hint)
+{
+	struct tty *tp = ((cdev_t)kn->kn_hook)->si_tty;
+	struct pt_ioctl *pti = ((cdev_t)kn->kn_hook)->si_drv1;
+
+	if (tp->t_state & TS_ISOPEN &&
+	    ((pti->pt_flags & PF_REMOTE) ?
+	     (tp->t_canq.c_cc == 0) :
+	     ((tp->t_rawq.c_cc + tp->t_canq.c_cc < TTYHOG - 2) ||
+	      (tp->t_canq.c_cc == 0 && (tp->t_lflag & ICANON))))) {
+		kn->kn_data = tp->t_canq.c_cc + tp->t_rawq.c_cc;
+		return(1);
+	} else {
+		return(0);
+	}
+}
+
+static void
+filt_ptcrdetach (struct knote *kn)
+{
+	struct tty *tp = ((cdev_t)kn->kn_hook)->si_tty;
+
+	crit_enter();
+	SLIST_REMOVE(&tp->t_rsel.si_note, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+static void
+filt_ptcwdetach (struct knote *kn)
+{
+	struct tty *tp = ((cdev_t)kn->kn_hook)->si_tty;
+
+	crit_enter();
+	SLIST_REMOVE(&tp->t_wsel.si_note, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+/*
+ * I/O ops
+ */
 static	int
 ptcwrite(struct dev_write_args *ap)
 {

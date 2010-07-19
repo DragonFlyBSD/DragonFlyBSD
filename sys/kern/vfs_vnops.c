@@ -65,7 +65,6 @@ static int vn_ioctl (struct file *fp, u_long com, caddr_t data,
 		struct ucred *cred, struct sysmsg *msg);
 static int vn_read (struct file *fp, struct uio *uio, 
 		struct ucred *cred, int flags);
-static int vn_poll (struct file *fp, int events, struct ucred *cred);
 static int vn_kqfilter (struct file *fp, struct knote *kn);
 static int vn_statfile (struct file *fp, struct stat *sb, struct ucred *cred);
 static int vn_write (struct file *fp, struct uio *uio, 
@@ -75,7 +74,6 @@ struct fileops vnode_fileops = {
 	.fo_read = vn_read,
 	.fo_write = vn_write,
 	.fo_ioctl = vn_ioctl,
-	.fo_poll = vn_poll,
 	.fo_kqfilter = vn_kqfilter,
 	.fo_stat = vn_statfile,
 	.fo_close = vn_closefile,
@@ -962,18 +960,6 @@ vn_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred,
 		}
 		break;
 	}
-	return (error);
-}
-
-/*
- * MPSAFE
- */
-static int
-vn_poll(struct file *fp, int events, struct ucred *cred)
-{
-	int error;
-
-	error = VOP_POLL(((struct vnode *)fp->f_data), events, cred);
 	return (error);
 }
 

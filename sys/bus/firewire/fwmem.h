@@ -53,6 +53,5 @@ d_close_t	fwmem_close;
 d_ioctl_t	fwmem_ioctl;
 d_read_t	fwmem_read;
 d_write_t	fwmem_write;
-d_poll_t	fwmem_poll;
 d_mmap_t	fwmem_mmap;
 d_strategy_t	fwmem_strategy;

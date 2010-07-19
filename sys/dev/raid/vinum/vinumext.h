@@ -138,7 +138,11 @@ d_strategy_t vinumstrategy;
 d_ioctl_t vinumioctl;
 d_dump_t vinumdump;
 d_psize_t vinumsize;
-d_poll_t vinumpoll;
+d_kqfilter_t vinumkqfilter;
+
+int vinumfilt_rd(struct knote *, long);
+int vinumfilt_wr(struct knote *, long);
+void vinumfilt_detach(struct knote *);
 
 int vinumstart(cdev_t dev, struct bio *bio, int reviveok);
 int launch_requests(struct request *rq, int reviveok);

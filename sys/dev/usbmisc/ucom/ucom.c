@@ -80,7 +80,6 @@
 #include <sys/select.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
-#include <sys/poll.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
 
@@ -127,7 +126,6 @@ static struct dev_ops ucom_ops = {
 	.d_read =	ucomread,
 	.d_write =	ucomwrite,
 	.d_ioctl =	ucomioctl,
-	.d_poll =	ttypoll,
 	.d_kqfilter =	ttykqfilter,
 	.d_revoke =	ttyrevoke
 };
@@ -876,7 +874,7 @@ ucomstart(struct tty *tp)
 			CLR(tp->t_state, TS_SO_OLOWAT);
 			wakeup(TSA_OLOWAT(tp));
 		}
-		selwakeup(&tp->t_wsel);
+		KNOTE(&tp->t_wsel.si_note, 0);
 		if (tp->t_outq.c_cc == 0) {
 			if (ISSET(tp->t_state, TS_BUSY | TS_SO_OCOMPLETE) ==
 			    TS_SO_OCOMPLETE && tp->t_outq.c_cc == 0) {

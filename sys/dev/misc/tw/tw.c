@@ -149,7 +149,7 @@
 #include <sys/uio.h>
 #include <sys/syslog.h>
 #include <sys/selinfo.h>
-#include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/thread2.h>
 
 #ifdef HIRESTIME
@@ -214,7 +214,11 @@ static	d_open_t	twopen;
 static	d_close_t	twclose;
 static	d_read_t	twread;
 static	d_write_t	twwrite;
-static	d_poll_t	twpoll;
+static	d_kqfilter_t	twkqfilter;
+
+static void twfilter_detach(struct knote *);
+static int twfilter_read(struct knote *, long);
+static int twfilter_write(struct knote *, long);
 
 #define CDEV_MAJOR 19
 static struct dev_ops tw_ops = {
@@ -223,7 +227,7 @@ static struct dev_ops tw_ops = {
 	.d_close =	twclose,
 	.d_read =	twread,
 	.d_write =	twwrite,
-	.d_poll =	twpoll,
+	.d_kqfilter = 	twkqfilter
 };
 
 /*
@@ -521,25 +525,76 @@ twwrite(struct dev_write_args *ap)
  * Determine if there is data available for reading
  */
 
-int
-twpoll(struct dev_poll_args *ap)
+static struct filterops twfiltops_read =
+	{ 1, NULL, twfilter_detach, twfilter_read };
+static struct filterops twfiltops_write =
+	{ 1, NULL, twfilter_detach, twfilter_write };
+
+static int
+twkqfilter(struct dev_kqfilter_args *ap)
 {
   cdev_t dev = ap->a_head.a_dev;
+  struct knote *kn = ap->a_kn;
+  struct klist *klist;
   struct tw_sc *sc;
-  int revents = 0;
 
-  sc = &tw_sc[TWUNIT(dev)];
-  crit_enter();
-  /* XXX is this correct?  the original code didn't test select rw mode!! */
-  if (ap->a_events & (POLLIN | POLLRDNORM)) {
-    if(sc->sc_nextin != sc->sc_nextout)
-      revents |= ap->a_events & (POLLIN | POLLRDNORM);
-    else
-      selrecord(curthread, &sc->sc_selp);
+  ap->a_result = 0;
+
+  switch (kn->kn_filter) {
+  case EVFILT_READ:
+    sc = &tw_sc[TWUNIT(dev)];
+    kn->kn_fop = &twfiltops_read;
+    kn->kn_hook = (caddr_t)sc;
+    break;
+  case EVFILT_WRITE:
+    sc = &tw_sc[TWUNIT(dev)];
+    kn->kn_fop = &twfiltops_write;
+    kn->kn_hook = (caddr_t)sc;
+    break;
+  default:
+    ap->a_result = EOPNOTSUPP;
+    return (0);
   }
+
+  crit_enter();
+  klist = &sc->sc_selp.si_note;
+  SLIST_INSERT_HEAD(klist, kn, kn_selnext);
   crit_exit();
-  ap->a_events = revents;
-  return(0);
+
+  return (0);
+}
+
+static void
+twfilter_detach(struct knote *kn)
+{
+  struct tw_sc *sc = (struct tw_sc *)kn->kn_hook;
+  struct klist *klist;
+
+  crit_enter();
+  klist = &sc->sc_selp.si_note;
+  SLIST_REMOVE(klist, kn, knote, kn_selnext);
+  crit_exit();
+}
+
+static int
+twfilter_read(struct knote *kn, long hint)
+{
+  struct tw_sc *sc = (struct tw_sc *)kn->kn_hook;
+  int ready = 0;
+
+  crit_enter();
+  if(sc->sc_nextin != sc->sc_nextout)
+    ready = 1;
+  crit_exit();
+
+  return (ready);
+}
+
+static int
+twfilter_write(struct knote *kn, long hint)
+{
+  /* write() is always OK */
+  return (1);
 }
 
 /*
@@ -827,7 +882,7 @@ twputpkt(struct tw_sc *sc, u_char *p)
     sc->sc_state &= ~TWS_WANT;
     wakeup((caddr_t)(&sc->sc_buf));
   }
-  selwakeup(&sc->sc_selp);
+  KNOTE(&sc->sc_selp.si_note, 0);
   return(0);
 }
 

@@ -29,7 +29,7 @@
 #include <sys/reboot.h>
 #include <sys/bus.h>
 #include <sys/selinfo.h>
-#include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/fcntl.h>
 #include <sys/uio.h>
 #include <sys/signalvar.h>
@@ -82,16 +82,20 @@ static d_open_t apmopen;
 static d_close_t apmclose;
 static d_write_t apmwrite;
 static d_ioctl_t apmioctl;
-static d_poll_t apmpoll;
+static d_kqfilter_t apmkqfilter;
+
+static void apmfilter_detach(struct knote *);
+static int apmfilter_read(struct knote *, long);
+static int apmfilter_write(struct knote *, long);
 
 #define CDEV_MAJOR 39
 static struct dev_ops apm_ops = {
-	{ "apm", CDEV_MAJOR, 0 },
+	{ "apm", CDEV_MAJOR, D_KQFILTER },
 	.d_open =	apmopen,
 	.d_close =	apmclose,
 	.d_write =	apmwrite,
 	.d_ioctl =	apmioctl,
-	.d_poll =	apmpoll,
+	.d_kqfilter = 	apmkqfilter
 };
 
 static int apm_suspend_delay = 1;
@@ -900,7 +904,7 @@ apm_record_event(struct apm_softc *sc, u_int event_type)
 	sc->event_ptr %= APM_NEVENTS;
 	evp->type = event_type;
 	evp->index = ++apm_evindex;
-	selwakeup(&sc->sc_rsel);
+	KNOTE(&sc->sc_rsel.si_note, 0);
 	return (sc->sc_flags & SCFLAG_OCTL) ? 0 : 1; /* user may handle */
 }
 
@@ -1336,21 +1340,71 @@ apmwrite(struct dev_write_args *ap)
 	return uio->uio_resid;
 }
 
+static struct filterops apmfiltops_read =
+	{ 1, NULL, apmfilter_detach, apmfilter_read };
+static struct filterops apmfiltops_write =
+	{ 1, NULL, apmfilter_detach, apmfilter_write };
+
 static int
-apmpoll(struct dev_poll_args *ap)
+apmkqfilter(struct dev_kqfilter_args *ap)
 {
 	struct apm_softc *sc = &apm_softc;
-	int revents = 0;
+	struct knote *kn = ap->a_kn;
+	struct klist *klist;
 
-	if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		if (sc->event_count) {
-			revents |= ap->a_events & (POLLIN | POLLRDNORM);
-		} else {
-			selrecord(curthread, &sc->sc_rsel);
-		}
+	ap->a_result = 0;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &apmfiltops_read;
+		kn->kn_hook = (caddr_t)sc;
+		break;
+	case EVFILT_WRITE:
+		kn->kn_fop = &apmfiltops_write;
+		kn->kn_hook = (caddr_t)sc;
+		break;
+	default:
+		ap->a_result = EOPNOTSUPP;
+		return (0);
 	}
-	ap->a_events = revents;
+
+	crit_enter();
+	klist = &sc->sc_rsel.si_note;
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+	crit_exit();
+
 	return (0);
+}
+
+static void
+apmfilter_detach(struct knote *kn)
+{
+	struct apm_softc *sc = (struct apm_softc *)kn->kn_hook;
+	struct klist *klist;
+
+	crit_enter();
+	klist = &sc->sc_rsel.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+}
+
+static int
+apmfilter_read(struct knote *kn, long hint)
+{
+	struct apm_softc *sc = (struct apm_softc *)kn->kn_hook;
+	int ready = 0;
+
+	if (sc->event_count)
+		ready = 1;
+
+	return (ready);
+}
+
+static int
+apmfilter_write(struct knote *kn, long hint)
+{
+	/* write()'s are always OK */
+	return (1);
 }
 
 /*

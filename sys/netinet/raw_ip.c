@@ -673,6 +673,5 @@ struct pr_usrreqs rip_usrreqs = {
 	.pru_shutdown = rip_shutdown,
 	.pru_sockaddr = in_setsockaddr,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };

@@ -982,6 +982,5 @@ struct pr_usrreqs hci_usrreqs = {
         .pru_shutdown = hci_sshutdown,
         .pru_sockaddr = hci_ssockaddr,
         .pru_sosend = sosend,
-        .pru_soreceive = soreceive,
-        .pru_sopoll = sopoll
+        .pru_soreceive = soreceive
 };

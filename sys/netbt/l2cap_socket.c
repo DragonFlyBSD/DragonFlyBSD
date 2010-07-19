@@ -456,6 +456,5 @@ struct pr_usrreqs l2cap_usrreqs = {
         .pru_shutdown = l2cap_sshutdown,
         .pru_sockaddr = l2cap_ssockaddr,
         .pru_sosend = sosend,
-        .pru_soreceive = soreceive,
-        .pru_sopoll = sopoll
+        .pru_soreceive = soreceive
 };

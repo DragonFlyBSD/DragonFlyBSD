@@ -218,6 +218,7 @@ struct lwp {
 	struct thread	*lwp_thread;	/* backpointer to proc's thread */
 	struct upcall	*lwp_upcall;	/* REGISTERED USERLAND POINTER! */
 	struct kqueue	lwp_kqueue;	/* for select/poll */
+	u_int		lwp_kqueue_serial;
 };
 
 struct	proc {

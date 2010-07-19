@@ -66,7 +66,6 @@ static d_close_t cnclose;
 static d_read_t cnread;
 static d_write_t cnwrite;
 static d_ioctl_t cnioctl;
-static d_poll_t cnpoll;
 static d_kqfilter_t cnkqfilter;
 
 static int cnintercept(struct dev_generic_args *ap);
@@ -79,7 +78,6 @@ static struct dev_ops cn_ops = {
 	.d_read =	cnread,
 	.d_write =	cnwrite,
 	.d_ioctl =	cnioctl,
-	.d_poll =	cnpoll,
 	.d_kqfilter =	cnkqfilter,
 };
 
@@ -445,15 +443,6 @@ cnioctl(struct dev_ioctl_args *ap)
 		constty = NULL;
 		return (0);
 	}
-	ap->a_head.a_dev = cn_tab->cn_dev;
-	return (dev_doperate(&ap->a_head));
-}
-
-static int
-cnpoll(struct dev_poll_args *ap)
-{
-	if ((cn_tab == NULL) || cn_mute || cn_fwd_ops == NULL)
-		return (1);
 	ap->a_head.a_dev = cn_tab->cn_dev;
 	return (dev_doperate(&ap->a_head));
 }

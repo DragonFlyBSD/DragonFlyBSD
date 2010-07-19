@@ -38,6 +38,7 @@
 #include <sys/signalvar.h>
 #include <sys/sysent.h>
 #include <sys/sysproto.h>
+#include <sys/file.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -102,16 +103,16 @@ linux_kevent_to_epoll(struct kevent *kevent, struct linux_epoll_event *event)
                 return;
         }
         switch (kevent->filter) {
-                case EVFILT_READ:
-                        if (kevent->data > 0)
-                                event->events = LINUX_EPOLLIN;
-                        event->data = kevent->ident;
-                break;
-                case EVFILT_WRITE:
-                        if (kevent->data > 0)
-                                event->events = LINUX_EPOLLOUT;
-                        event->data = kevent->ident;
-                break;
+	case EVFILT_READ:
+		if (kevent->data > 0)
+			event->events = LINUX_EPOLLIN;
+		event->data = kevent->ident;
+		break;
+	case EVFILT_WRITE:
+		if (kevent->data > 0)
+			event->events = LINUX_EPOLLOUT;
+		event->data = kevent->ident;
+		break;
         }
 }
 
@@ -122,7 +123,7 @@ linux_kevent_to_epoll(struct kevent *kevent, struct linux_epoll_event *event)
  * of the filter.
  */
 static int
-linux_kev_copyout(void *arg, struct kevent *kevp, int count)
+linux_kev_copyout(void *arg, struct kevent *kevp, int count, int *res)
 {
         struct kevent_args *uap;
         struct linux_epoll_event *eep;
@@ -137,11 +138,13 @@ linux_kev_copyout(void *arg, struct kevent *kevp, int count)
         }
 
         error = copyout(eep, uap->eventlist, count * sizeof(*eep));
-        if (error)
+        if (error == 0) {
                 uap->eventlist = (struct kevent *)((char *)uap->eventlist + count * sizeof(*eep));
+		*res += count;
+	}
 
         kfree(eep, M_TEMP);
-        return (0);
+        return (error);
 }
 
 /*
@@ -149,15 +152,16 @@ linux_kev_copyout(void *arg, struct kevent *kevp, int count)
  * converted filters to the kevent internal memory.
  */
 static int
-linux_kev_copyin(void *arg, struct kevent *kevp, int count)
+linux_kev_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
 {
         struct kevent_args *uap;
 
         uap = (struct kevent_args*) arg;
 
-        memcpy(kevp, uap->changelist, count * sizeof(*kevp));
+        memcpy(kevp, uap->changelist, maxevents * sizeof(*kevp));
 
-        uap->changelist += count;
+        uap->changelist += maxevents;
+	*events = maxevents;
 
         return (0);
 }
@@ -169,9 +173,13 @@ linux_kev_copyin(void *arg, struct kevent *kevp, int count)
 int
 sys_linux_epoll_ctl(struct linux_epoll_ctl_args *args)
 {
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
         struct kevent_args k_args;
         struct kevent kev;
+	struct kqueue *kq;
         struct linux_epoll_event le;
+	struct file *fp = NULL;
         int error;
 
         error = copyin(args->event, &le, sizeof(le));
@@ -204,14 +212,25 @@ sys_linux_epoll_ctl(struct linux_epoll_ctl_args *args)
         }
         linux_epoll_to_kevent(args->fd, &le, &kev);
 
-	error = kern_kevent(args->epfd, 1, 0, &k_args, linux_kev_copyin,
-	    linux_kev_copyout, NULL);
+	fp = holdfp(p->p_fd, args->epfd, -1);
+	if (fp == NULL)
+		return (EBADF);
+	if (fp->f_type != DTYPE_KQUEUE) {
+		fdrop(fp);
+		return (EBADF);
+	}
+
+	kq = (struct kqueue *)fp->f_data;
+
+	error = kern_kevent(kq, 0, &k_args.sysmsg_result, &k_args,
+	    linux_kev_copyin, linux_kev_copyout, NULL);
         /* Check if there was an error during registration. */
         if (error == 0 && k_args.sysmsg_result != 0) {
                 /* The copyout callback stored the error there. */
                 error = le.data;
         }
 
+	fdrop(fp);
         return (error);
 }
 
@@ -220,13 +239,17 @@ sys_linux_epoll_ctl(struct linux_epoll_ctl_args *args)
 int
 sys_linux_epoll_wait(struct linux_epoll_wait_args *args)
 {
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
         struct timespec ts;
+	struct kqueue *kq;
+	struct file *fp = NULL;
         struct kevent_args k_args;
         int error;
 
-        /* Convert from miliseconds to timespec. */
-        ts.tv_sec = args->timeout / 1000000;
-        ts.tv_nsec = (args->timeout % 1000000) * 1000;
+        /* Convert from milliseconds to timespec. */
+        ts.tv_sec = args->timeout / 1000;
+        ts.tv_nsec = (args->timeout % 1000) * 1000 * 1000;
 
         k_args.fd = args->epfd;
         k_args.changelist = NULL;
@@ -240,9 +263,20 @@ sys_linux_epoll_wait(struct linux_epoll_wait_args *args)
         k_args.nevents = args->maxevents;
         k_args.timeout = &ts;
 
-	error = kern_kevent(args->epfd, 0, args->maxevents, &k_args,
-	    linux_kev_copyin, linux_kev_copyout, &ts);
+	fp = holdfp(p->p_fd, args->epfd, -1);
+	if (fp == NULL)
+		return (EBADF);
+	if (fp->f_type != DTYPE_KQUEUE) {
+		fdrop(fp);
+		return (EBADF);
+	}
 
+	kq = (struct kqueue *)fp->f_data;
+
+	error = kern_kevent(kq, args->maxevents, &args->sysmsg_result,
+	    &k_args, linux_kev_copyin, linux_kev_copyout, &ts);
+
+	fdrop(fp);
         /* translation? */
         return (error);
 }

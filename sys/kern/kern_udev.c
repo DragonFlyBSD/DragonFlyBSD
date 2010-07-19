@@ -37,7 +37,7 @@
 #include <sys/proc.h>
 #include <sys/buf.h>
 #include <sys/conf.h>
-#include <sys/poll.h>
+#include <sys/event.h>
 #include <sys/ioccom.h>
 #include <sys/malloc.h>
 #include <sys/ctype.h>
@@ -45,6 +45,8 @@
 #include <sys/udev.h>
 #include <sys/devfs.h>
 #include <libprop/proplib.h>
+
+#include <sys/thread2.h>
 
 MALLOC_DEFINE(M_UDEV, "udev", "udev allocs");
 
@@ -54,7 +56,7 @@ static cdev_t		udev_dev;
 static d_open_t		udev_dev_open;
 static d_close_t	udev_dev_close;
 static d_read_t		udev_dev_read;
-static d_poll_t		udev_dev_poll;
+static d_kqfilter_t	udev_dev_kqfilter;
 static d_ioctl_t	udev_dev_ioctl;
 
 static int _udev_dict_set_cstr(prop_dictionary_t, const char *, char *);
@@ -70,6 +72,8 @@ static void udev_event_free(struct udev_event_kernel *);
 static char *udev_event_externalize(struct udev_event_kernel *);
 static void udev_getdevs_scan_callback(cdev_t, void *);
 static int udev_getdevs_ioctl(struct plistref *, u_long, prop_dictionary_t);
+static void udev_dev_filter_detach(struct knote *);
+static int udev_dev_filter_read(struct knote *, long);
 
 struct cmd_function {
 	const char *cmd;
@@ -98,11 +102,11 @@ struct udev_softc {
 } udevctx;
 
 static struct dev_ops udev_dev_ops = {
-	{ "udev", 0, 0 },
+	{ "udev", 0, D_KQFILTER },
 	.d_open = udev_dev_open,
 	.d_close = udev_dev_close,
 	.d_read = udev_dev_read,
-	.d_poll = udev_dev_poll,
+	.d_kqfilter = udev_dev_kqfilter,
 	.d_ioctl = udev_dev_ioctl
 };
 
@@ -418,7 +422,7 @@ udev_event_insert(int ev_type, prop_dictionary_t dict)
 	lockmgr(&udevctx.lock, LK_RELEASE);
 
 	wakeup(&udevctx);
-	selwakeup(&udevctx.sel);
+	KNOTE(&udevctx.sel.si_note, 0);
 }
 
 static struct udev_event_kernel *
@@ -572,22 +576,62 @@ udev_dev_close(struct dev_close_args *ap)
 	return 0;
 }
 
-static int
-udev_dev_poll(struct dev_poll_args *ap)
-{
-	int revents = 0;
+static struct filterops udev_dev_read_filtops =
+	{ 1, NULL, udev_dev_filter_detach, udev_dev_filter_read };
 
-        lockmgr(&udevctx.lock, LK_EXCLUSIVE);
-        if (ap->a_events & (POLLIN | POLLRDNORM)) {
-                if (!TAILQ_EMPTY(&udevctx.ev_queue))
-                        revents = ap->a_events & (POLLIN | POLLRDNORM);
-                else
-                        selrecord(curthread, &udevctx.sel);
-        }
+static int
+udev_dev_kqfilter(struct dev_kqfilter_args *ap)
+{
+	struct knote *kn = ap->a_kn;
+	struct klist *klist;
+
+	ap->a_result = 0;
+	lockmgr(&udevctx.lock, LK_EXCLUSIVE);
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &udev_dev_read_filtops;
+		break;
+	default:
+		ap->a_result = EOPNOTSUPP;
+	        lockmgr(&udevctx.lock, LK_RELEASE);
+		return (0);
+	}
+
+	crit_enter();
+	klist = &udevctx.sel.si_note;
+	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
+	crit_exit();
+
         lockmgr(&udevctx.lock, LK_RELEASE);
 
-        ap->a_events = revents;
-        return 0;
+	return (0);
+}
+
+static void
+udev_dev_filter_detach(struct knote *kn)
+{
+	struct klist *klist;
+
+	lockmgr(&udevctx.lock, LK_EXCLUSIVE);
+	crit_enter();
+	klist = &udevctx.sel.si_note;
+	SLIST_REMOVE(klist, kn, knote, kn_selnext);
+	crit_exit();
+	lockmgr(&udevctx.lock, LK_RELEASE);
+}
+
+static int
+udev_dev_filter_read(struct knote *kn, long hint)
+{
+	int ready = 0;
+
+	lockmgr(&udevctx.lock, LK_EXCLUSIVE);
+	if (!TAILQ_EMPTY(&udevctx.ev_queue))
+		ready = 1;
+	lockmgr(&udevctx.lock, LK_RELEASE);
+
+	return (ready);
 }
 
 static int

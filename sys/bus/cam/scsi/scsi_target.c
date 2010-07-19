@@ -36,7 +36,6 @@
 #include <sys/conf.h>
 #include <sys/device.h>
 #include <sys/malloc.h>
-#include <sys/poll.h>
 #include <sys/vnode.h>
 #include <sys/devicestat.h>
 #include <sys/thread2.h>
@@ -98,15 +97,17 @@ static d_close_t	targclose;
 static d_read_t		targread;
 static d_write_t	targwrite;
 static d_ioctl_t	targioctl;
-static d_poll_t		targpoll;
 static d_kqfilter_t	targkqfilter;
 static d_clone_t	targclone;
 DEVFS_DECLARE_CLONE_BITMAP(targ);
 
-static void		targreadfiltdetach(struct knote *kn);
+static void		targfiltdetach(struct knote *kn);
 static int		targreadfilt(struct knote *kn, long hint);
+static int		targwritefilt(struct knote *kn, long hint);
 static struct filterops targread_filtops =
-	{ 1, NULL, targreadfiltdetach, targreadfilt };
+	{ 1, NULL, targfiltdetach, targreadfilt };
+static struct filterops targwrite_filtops =
+	{ 1, NULL, targfiltdetach, targwritefilt };
 
 #define TARG_CDEV_MAJOR 65
 static struct dev_ops targ_ops = {
@@ -116,7 +117,6 @@ static struct dev_ops targ_ops = {
 	.d_read = targread,
 	.d_write = targwrite,
 	.d_ioctl = targioctl,
-	.d_poll = targpoll,
 	.d_kqfilter = targkqfilter
 };
 
@@ -321,33 +321,6 @@ targioctl(struct dev_ioctl_args *ap)
 	return (targcamstatus(status));
 }
 
-/* Writes are always ready, reads wait for user_ccb_queue or abort_queue */
-static int
-targpoll(struct dev_poll_args *ap)
-{
-	struct targ_softc *softc;
-	int	revents;
-
-	softc = (struct targ_softc *)ap->a_head.a_dev->si_drv1;
-
-	/* Poll for write() is always ok. */
-	revents = ap->a_events & (POLLOUT | POLLWRNORM);
-	if ((ap->a_events & (POLLIN | POLLRDNORM)) != 0) {
-		/* Poll for read() depends on user and abort queues. */
-		cam_periph_lock(softc->periph);
-		if (!TAILQ_EMPTY(&softc->user_ccb_queue) ||
-		    !TAILQ_EMPTY(&softc->abort_queue)) {
-			revents |= ap->a_events & (POLLIN | POLLRDNORM);
-		}
-		cam_periph_unlock(softc->periph);
-		/* Only sleep if the user didn't poll for write. */
-		if (revents == 0)
-			selrecord(curthread, &softc->read_select);
-	}
-	ap->a_events = revents;
-	return (0);
-}
-
 static int
 targkqfilter(struct dev_kqfilter_args *ap)
 {
@@ -355,8 +328,22 @@ targkqfilter(struct dev_kqfilter_args *ap)
 	struct  targ_softc *softc;
 
 	softc = (struct targ_softc *)ap->a_head.a_dev->si_drv1;
-	kn->kn_hook = (caddr_t)softc;
-	kn->kn_fop = &targread_filtops;
+
+	ap->a_result = 0;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_hook = (caddr_t)softc;
+		kn->kn_fop = &targread_filtops;
+		break;
+	case EVFILT_WRITE:
+		kn->kn_hook = (caddr_t)softc;
+		kn->kn_fop = &targwrite_filtops;
+	default:
+		ap->a_result = EOPNOTSUPP;
+		return (0);
+	}
+
 	crit_enter();
 	SLIST_INSERT_HEAD(&softc->read_select.si_note, kn, kn_selnext);
 	crit_exit();
@@ -364,7 +351,7 @@ targkqfilter(struct dev_kqfilter_args *ap)
 }
 
 static void
-targreadfiltdetach(struct knote *kn)
+targfiltdetach(struct knote *kn)
 {
 	struct  targ_softc *softc;
 
@@ -387,6 +374,13 @@ targreadfilt(struct knote *kn, long hint)
 		 !TAILQ_EMPTY(&softc->abort_queue);
 	cam_periph_unlock(softc->periph);
 	return (retval);
+}
+
+/* write() is always ok */
+static int
+targwritefilt(struct knote *kn, long hint)
+{
+	return (1);
 }
 
 /* Send the HBA the enable/disable message */
@@ -1125,7 +1119,6 @@ notify_user(struct targ_softc *softc)
 	 * Notify users sleeping via poll(), kqueue(), and
 	 * blocking read().
 	 */
-	selwakeup(&softc->read_select);
 	KNOTE(&softc->read_select.si_note, 0);
 	wakeup(&softc->user_ccb_queue);
 }

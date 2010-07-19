@@ -278,6 +278,13 @@ For sockets, the low water mark and socket error handling is
 identical to the
 .Dv EVFILT_READ
 case.
+.It Dv EVFILT_EXCEPT
+Takes a descriptor as the identifier, and returns whenever one of the
+specified exceptional conditions has occurred on the descriptor. Conditions
+are specified in
+.Va fflags .
+Currently, a filter can monitor the reception of out-of-band data with
+.Dv NOTE_OOB .
 .It Dv EVFILT_AIO
 The sigevent portion of the AIO request is filled in, with
 .Va sigev_notify_kqueue

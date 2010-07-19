@@ -55,7 +55,6 @@
 #include <sys/vnode.h>
 #include <sys/namei.h>
 #include <sys/nlookup.h>
-#include <sys/poll.h>
 #include <sys/mountctl.h>
 
 #include <machine/limits.h>
@@ -85,7 +84,6 @@ struct vop_ops default_vnode_vops = {
 	.vop_open		= vop_stdopen,
 	.vop_close		= vop_stdclose,
 	.vop_pathconf		= vop_stdpathconf,
-	.vop_poll		= vop_nopoll,
 	.vop_readlink		= (void *)vop_einval,
 	.vop_reallocblks	= (void *)vop_eopnotsupp,
 	.vop_strategy		= vop_nostrategy,
@@ -1213,36 +1211,6 @@ vop_stdclose(struct vop_close_args *ap)
 	}
 	--vp->v_opencount;
 	return (0);
-}
-
-/*
- * Return true for select/poll.
- */
-int
-vop_nopoll(struct vop_poll_args *ap)
-{
-	/*
-	 * Return true for read/write.  If the user asked for something
-	 * special, return POLLNVAL, so that clients have a way of
-	 * determining reliably whether or not the extended
-	 * functionality is present without hard-coding knowledge
-	 * of specific filesystem implementations.
-	 */
-	if (ap->a_events & ~POLLSTANDARD)
-		return (POLLNVAL);
-
-	return (ap->a_events & (POLLIN | POLLOUT | POLLRDNORM | POLLWRNORM));
-}
-
-/*
- * Implement poll for local filesystems that support it.
- */
-int
-vop_stdpoll(struct vop_poll_args *ap)
-{
-	if (ap->a_events & ~POLLSTANDARD)
-		return (vn_pollrecord(ap->a_vp, ap->a_events));
-	return (ap->a_events & (POLLIN | POLLOUT | POLLRDNORM | POLLWRNORM));
 }
 
 /*

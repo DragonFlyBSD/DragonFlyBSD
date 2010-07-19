@@ -45,6 +45,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/sysproto.h>
+#include <sys/event.h>
 #include <sys/filedesc.h>
 #include <sys/filio.h>
 #include <sys/fcntl.h>
@@ -60,6 +61,7 @@
 #include <sys/poll.h>
 #include <sys/queue.h>
 #include <sys/resourcevar.h>
+#include <sys/socketops.h>
 #include <sys/sysctl.h>
 #include <sys/sysent.h>
 #include <sys/buf.h>
@@ -71,6 +73,7 @@
 
 #include <sys/file2.h>
 #include <sys/mplock2.h>
+#include <sys/spinlock2.h>
 
 #include <machine/limits.h>
 
@@ -79,11 +82,36 @@ static MALLOC_DEFINE(M_IOCTLMAP, "ioctlmap", "mapped ioctl handler buffer");
 static MALLOC_DEFINE(M_SELECT, "select", "select() buffer");
 MALLOC_DEFINE(M_IOV, "iov", "large iov's");
 
+typedef struct kfd_set {
+        fd_mask	fds_bits[2];
+} kfd_set;
+
+enum select_copyin_states {
+    COPYIN_READ, COPYIN_WRITE, COPYIN_EXCEPT, COPYIN_DONE };
+
+struct select_kevent_copyin_args {
+	kfd_set		*read_set;
+	kfd_set		*write_set;
+	kfd_set		*except_set;
+	int		active_set;	/* One of select_copyin_states */
+	struct lwp	*lwp;		/* Pointer to our lwp */
+	int		num_fds;	/* Number of file descriptors (syscall arg) */
+	int		proc_fds;	/* Processed fd's (wraps) */
+	int		error;		/* Returned to userland */
+};
+
+struct poll_kevent_copyin_args {
+	struct lwp	*lwp;
+	struct pollfd	*fds;
+	int		nfds;
+	int		pfds;
+	int		error;
+};
+
 static int 	doselect(int nd, fd_set *in, fd_set *ou, fd_set *ex,
-			struct timeval *tv, int *res);
-static int	pollscan (struct proc *, struct pollfd *, u_int, int *);
-static int	selscan (struct proc *, fd_mask **, fd_mask **,
-			int, int *);
+			 struct timespec *ts, int *res);
+static int	dopoll(int nfds, struct pollfd *fds, struct timespec *ts,
+		       int *res);
 static int	dofileread(int, struct file *, struct uio *, int, size_t *);
 static int	dofilewrite(int, struct file *, struct uio *, int, size_t *);
 
@@ -756,17 +784,19 @@ mapped_ioctl_unregister_handler(struct ioctl_map_handler *he)
 static int	nselcoll;	/* Select collisions since boot */
 int	selwait;
 SYSCTL_INT(_kern, OID_AUTO, nselcoll, CTLFLAG_RD, &nselcoll, 0, "");
+static int	nseldebug;
+SYSCTL_INT(_kern, OID_AUTO, nseldebug, CTLFLAG_RW, &nseldebug, 0, "");
 
 /*
  * Select system call.
  *
- * MPALMOSTSAFE
+ * MPSAFE
  */
 int
 sys_select(struct select_args *uap)
 {
 	struct timeval ktv;
-	struct timeval *ktvp;
+	struct timespec *ktsp, kts;
 	int error;
 
 	/*
@@ -776,21 +806,17 @@ sys_select(struct select_args *uap)
 		error = copyin(uap->tv, &ktv, sizeof (ktv));
 		if (error)
 			return (error);
-		error = itimerfix(&ktv);
-		if (error)
-			return (error);
-		ktvp = &ktv;
+		TIMEVAL_TO_TIMESPEC(&ktv, &kts);
+		ktsp = &kts;
 	} else {
-		ktvp = NULL;
+		ktsp = NULL;
 	}
 
 	/*
 	 * Do real work.
 	 */
-	get_mplock();
-	error = doselect(uap->nd, uap->in, uap->ou, uap->ex, ktvp,
-			&uap->sysmsg_result);
-	rel_mplock();
+	error = doselect(uap->nd, uap->in, uap->ou, uap->ex, ktsp,
+			 &uap->sysmsg_result);
 
 	return (error);
 }
@@ -806,28 +832,20 @@ sys_pselect(struct pselect_args *uap)
 {
 	struct thread *td = curthread;
 	struct lwp *lp = td->td_lwp;
-	struct timespec kts;
-	struct timeval ktv;
-	struct timeval *ktvp;
+	struct timespec *ktsp, kts;
 	sigset_t sigmask;
 	int error;
 
 	/*
-	 * Get timeout if any and convert it.
-	 * Round up during conversion to avoid timeout going off early.
+	 * Get timeout if any.
 	 */
 	if (uap->ts != NULL) {
 		error = copyin(uap->ts, &kts, sizeof (kts));
 		if (error)
 			return (error);
-		ktv.tv_sec = kts.tv_sec;
-		ktv.tv_usec = (kts.tv_nsec + 999) / 1000;
-		error = itimerfix(&ktv);
-		if (error)
-			return (error);
-		ktvp = &ktv;
+		ktsp = &kts;
 	} else {
-		ktvp = NULL;
+		ktsp = NULL;
 	}
 
 	/*
@@ -848,8 +866,8 @@ sys_pselect(struct pselect_args *uap)
 	/*
 	 * Do real job.
 	 */
-	error = doselect(uap->nd, uap->in, uap->ou, uap->ex, ktvp,
-			&uap->sysmsg_result);
+	error = doselect(uap->nd, uap->in, uap->ou, uap->ex, ktsp,
+			 &uap->sysmsg_result);
 
 	if (uap->sigmask != NULL) {
 		/* doselect() responsible for turning ERESTART into EINTR */
@@ -874,305 +892,536 @@ sys_pselect(struct pselect_args *uap)
 	return (error);
 }
 
+static int
+select_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
+{
+	struct select_kevent_copyin_args *skap = NULL;
+	struct kevent *kev;
+	int fd;
+	kfd_set *fdp = NULL;
+	short filter = 0;
+	u_int fflags = 0;
+
+	skap = (struct select_kevent_copyin_args *)arg;
+
+	if (*events == maxevents)
+		return (0);
+
+	while (skap->active_set < COPYIN_DONE) {
+		switch (skap->active_set) {
+		case COPYIN_READ:
+			/*
+			 * Register descriptors for the read filter
+			 */
+			fdp = skap->read_set;
+			filter = EVFILT_READ;
+			fflags = 0;
+			if (fdp)
+				break;
+			++skap->active_set;
+			skap->proc_fds = 0;
+			/* fall through */
+		case COPYIN_WRITE:
+			/*
+			 * Register descriptors for the write filter
+			 */
+			fdp = skap->write_set;
+			filter = EVFILT_WRITE;
+			fflags = 0;
+			if (fdp)
+				break;
+			++skap->active_set;
+			skap->proc_fds = 0;
+			/* fall through */
+		case COPYIN_EXCEPT:
+			/*
+			 * Register descriptors for the exception filter
+			 */
+			fdp = skap->except_set;
+			filter = EVFILT_EXCEPT;
+			fflags = NOTE_OOB;
+			if (fdp)
+				break;
+			++skap->active_set;
+			skap->proc_fds = 0;
+			/* fall through */
+		case COPYIN_DONE:
+			/*
+			 * Nothing left to register
+			 */
+			return(0);
+			/* NOT REACHED */
+		}
+
+		while (skap->proc_fds < skap->num_fds) {
+			fd = skap->proc_fds;
+			if (FD_ISSET(fd, fdp)) {
+				kev = &kevp[*events];
+				EV_SET(kev, fd, filter,
+				       EV_ADD|EV_ENABLE,
+				       fflags, 0,
+				       (void *)(uintptr_t)
+					skap->lwp->lwp_kqueue_serial);
+				FD_CLR(fd, fdp);
+				++*events;
+			}
+			++skap->proc_fds;
+			if (*events == maxevents)
+				return (0);
+		}
+		skap->active_set++;
+		skap->proc_fds = 0;
+	}
+
+	return (0);
+}
+
+static int
+select_copyout(void *arg, struct kevent *kevp, int count, int *res)
+{
+	struct select_kevent_copyin_args *skap;
+	struct kevent kev;
+	int i = 0;
+
+	skap = (struct select_kevent_copyin_args *)arg;
+
+	if (kevp[0].flags & EV_ERROR) {
+		skap->error = kevp[0].data;
+		return (0);
+	}
+
+	for (i = 0; i < count; ++i) {
+		if ((u_int)(uintptr_t)kevp[i].udata !=
+		    skap->lwp->lwp_kqueue_serial) {
+			kev = kevp[i];
+			kev.flags = EV_DISABLE|EV_DELETE;
+			kqueue_register(&skap->lwp->lwp_kqueue, &kev);
+			continue;
+		}
+
+		switch (kevp[i].filter) {
+		case EVFILT_READ:
+			FD_SET(kevp[i].ident, skap->read_set);
+			break;
+		case EVFILT_WRITE:
+			FD_SET(kevp[i].ident, skap->write_set);
+			break;
+		case EVFILT_EXCEPT:
+			FD_SET(kevp[i].ident, skap->except_set);
+			break;
+		}
+
+		++*res;
+	}
+
+	return (0);
+}
+
+/*
+ * Copy select bits in from userland.  Allocate kernel memory if the
+ * set is large.
+ */
+static int
+getbits(int bytes, fd_set *in_set, kfd_set **out_set, kfd_set *tmp_set)
+{
+	int error;
+
+	if (in_set) {
+		if (bytes < sizeof(*tmp_set))
+			*out_set = tmp_set;
+		else
+			*out_set = kmalloc(bytes, M_SELECT, M_WAITOK);
+		error = copyin(in_set, *out_set, bytes);
+	} else {
+		*out_set = NULL;
+		error = 0;
+	}
+	return (error);
+}
+
+/*
+ * Copy returned select bits back out to userland.
+ */
+static int
+putbits(int bytes, kfd_set *in_set, fd_set *out_set)
+{
+	int error;
+
+	if (in_set) {
+		error = copyout(in_set, out_set, bytes);
+	} else {
+		error = 0;
+	}
+	return (error);
+}
+
 /*
  * Common code for sys_select() and sys_pselect().
  *
- * in, out and ex are userland pointers.  tv must point to validated
+ * in, out and ex are userland pointers.  ts must point to validated
  * kernel-side timeout value or NULL for infinite timeout.  res must
  * point to syscall return value.
  */
 static int
-doselect(int nd, fd_set *in, fd_set *ou, fd_set *ex, struct timeval *tv,
-		int *res)
+doselect(int nd, fd_set *read, fd_set *write, fd_set *except,
+	 struct timespec *ts, int *res)
 {
-	struct lwp *lp = curthread->td_lwp;
 	struct proc *p = curproc;
+	struct select_kevent_copyin_args *kap, ka;
+	int bytes, error;
+	kfd_set read_tmp;
+	kfd_set write_tmp;
+	kfd_set except_tmp;
 
-	/*
-	 * The magic 2048 here is chosen to be just enough for FD_SETSIZE
-	 * infds with the new FD_SETSIZE of 1024, and more than enough for
-	 * FD_SETSIZE infds, outfds and exceptfds with the old FD_SETSIZE
-	 * of 256.
-	 */
-	fd_mask s_selbits[howmany(2048, NFDBITS)];
-	fd_mask *ibits[3], *obits[3], *selbits, *sbp;
-	struct timeval atv, rtv, ttv;
-	int ncoll, error, timo;
-	u_int nbufbytes, ncpbytes, nfdbits;
-
+	*res = 0;
 	if (nd < 0)
 		return (EINVAL);
-	if (nd > p->p_fd->fd_nfiles)
-		nd = p->p_fd->fd_nfiles;   /* forgiving; slightly wrong */
+	if (nd > p->p_fd->fd_nfiles)		/* limit kmalloc */
+		nd = p->p_fd->fd_nfiles;
+
+	kap = &ka;
+	kap->lwp = curthread->td_lwp;
+	kap->num_fds = nd;
+	kap->proc_fds = 0;
+	kap->error = 0;
+	kap->active_set = COPYIN_READ;
 
 	/*
-	 * Allocate just enough bits for the non-null fd_sets.  Use the
-	 * preallocated auto buffer if possible.
+	 * Calculate bytes based on the number of __fd_mask[] array entries
+	 * multiplied by the size of __fd_mask.
 	 */
-	nfdbits = roundup(nd, NFDBITS);
-	ncpbytes = nfdbits / NBBY;
-	nbufbytes = 0;
-	if (in != NULL)
-		nbufbytes += 2 * ncpbytes;
-	if (ou != NULL)
-		nbufbytes += 2 * ncpbytes;
-	if (ex != NULL)
-		nbufbytes += 2 * ncpbytes;
-	if (nbufbytes <= sizeof s_selbits)
-		selbits = &s_selbits[0];
-	else
-		selbits = kmalloc(nbufbytes, M_SELECT, M_WAITOK);
+	bytes = howmany(nd, __NFDBITS) * sizeof(__fd_mask);
 
-	/*
-	 * Assign pointers into the bit buffers and fetch the input bits.
-	 * Put the output buffers together so that they can be bzeroed
-	 * together.
-	 */
-	sbp = selbits;
-#define	getbits(name, x) \
-	do {								\
-		if (name == NULL)					\
-			ibits[x] = NULL;				\
-		else {							\
-			ibits[x] = sbp + nbufbytes / 2 / sizeof *sbp;	\
-			obits[x] = sbp;					\
-			sbp += ncpbytes / sizeof *sbp;			\
-			error = copyin(name, ibits[x], ncpbytes);	\
-			if (error != 0)					\
-				goto done;				\
-		}							\
-	} while (0)
-	getbits(in, 0);
-	getbits(ou, 1);
-	getbits(ex, 2);
-#undef	getbits
-	if (nbufbytes != 0)
-		bzero(selbits, nbufbytes / 2);
-
-	if (tv != NULL) {
-		atv = *tv;
-		getmicrouptime(&rtv);
-		timevaladd(&atv, &rtv);
-	} else {
-		atv.tv_sec = 0;
-		atv.tv_usec = 0;
-	}
-	timo = 0;
-retry:
-	ncoll = nselcoll;
-	lp->lwp_flag |= LWP_SELECT;
-	error = selscan(p, ibits, obits, nd, res);
-	if (error || *res)
-		goto done;
-	if (atv.tv_sec || atv.tv_usec) {
-		getmicrouptime(&rtv);
-		if (timevalcmp(&rtv, &atv, >=))
-			goto done;
-		ttv = atv;
-		timevalsub(&ttv, &rtv);
-		timo = ttv.tv_sec > 24 * 60 * 60 ?
-		    24 * 60 * 60 * hz : tvtohz_high(&ttv);
-	}
-	crit_enter();
-	tsleep_interlock(&selwait, PCATCH);
-	if ((lp->lwp_flag & LWP_SELECT) == 0 || nselcoll != ncoll) {
-		crit_exit();
-		goto retry;
-	}
-	lp->lwp_flag &= ~LWP_SELECT;
-	error = tsleep(&selwait, PCATCH | PINTERLOCKED, "select", timo);
-	crit_exit();
-
+	error = getbits(bytes, read, &kap->read_set, &read_tmp);
 	if (error == 0)
-		goto retry;
+		error = getbits(bytes, write, &kap->write_set, &write_tmp);
+	if (error == 0)
+		error = getbits(bytes, except, &kap->except_set, &except_tmp);
+	if (error)
+		goto done;
+
+	/*
+	 * NOTE: Make sure the max events passed to kern_kevent() is
+	 *	 effectively unlimited.  (nd * 3) accomplishes this.
+	 *
+	 *	 (*res) continues to increment as returned events are
+	 *	 loaded in.
+	 */
+	error = kern_kevent(&kap->lwp->lwp_kqueue, 0x7FFFFFFF, res, kap,
+			    select_copyin, select_copyout, ts);
+	if (error == 0)
+		error = putbits(bytes, kap->read_set, read);
+	if (error == 0)
+		error = putbits(bytes, kap->write_set, write);
+	if (error == 0)
+		error = putbits(bytes, kap->except_set, except);
+
+	/*
+	 * Cumulative error from individual events (EBADFD?)
+	 */
+	if (kap->error)
+		error = kap->error;
+
+	/*
+	 * Clean up.
+	 */
 done:
-	lp->lwp_flag &= ~LWP_SELECT;
-	/* select is not restarted after signals... */
-	if (error == ERESTART)
-		error = EINTR;
-	if (error == EWOULDBLOCK)
-		error = 0;
-#define	putbits(name, x) \
-	if (name && (error2 = copyout(obits[x], name, ncpbytes))) \
-		error = error2;
-	if (error == 0) {
-		int error2;
+	if (kap->read_set && kap->read_set != &read_tmp)
+		kfree(kap->read_set, M_SELECT);
+	if (kap->write_set && kap->write_set != &write_tmp)
+		kfree(kap->write_set, M_SELECT);
+	if (kap->except_set && kap->except_set != &except_tmp)
+		kfree(kap->except_set, M_SELECT);
 
-		putbits(in, 0);
-		putbits(ou, 1);
-		putbits(ex, 2);
-#undef putbits
-	}
-	if (selbits != &s_selbits[0])
-		kfree(selbits, M_SELECT);
+	kap->lwp->lwp_kqueue_serial++;
+
 	return (error);
-}
-
-static int
-selscan(struct proc *p, fd_mask **ibits, fd_mask **obits, int nfd, int *res)
-{
-	int msk, i, fd;
-	fd_mask bits;
-	struct file *fp;
-	int n = 0;
-	/* Note: backend also returns POLLHUP/POLLERR if appropriate. */
-	static int flag[3] = { POLLRDNORM, POLLWRNORM, POLLRDBAND };
-
-	for (msk = 0; msk < 3; msk++) {
-		if (ibits[msk] == NULL)
-			continue;
-		for (i = 0; i < nfd; i += NFDBITS) {
-			bits = ibits[msk][i/NFDBITS];
-			/* ffs(int mask) not portable, fd_mask is long */
-			for (fd = i; bits && fd < nfd; fd++, bits >>= 1) {
-				if (!(bits & 1))
-					continue;
-				fp = holdfp(p->p_fd, fd, -1);
-				if (fp == NULL)
-					return (EBADF);
-				if (fo_poll(fp, flag[msk], fp->f_cred)) {
-					obits[msk][(fd)/NFDBITS] |=
-					    ((fd_mask)1 << ((fd) % NFDBITS));
-					n++;
-				}
-				fdrop(fp);
-			}
-		}
-	}
-	*res = n;
-	return (0);
 }
 
 /*
  * Poll system call.
  *
- * MPALMOSTSAFE
+ * MPSAFE
  */
 int
 sys_poll(struct poll_args *uap)
 {
-	struct pollfd *bits;
-	struct pollfd smallbits[32];
-	struct timeval atv, rtv, ttv;
-	int ncoll, error = 0, timo;
-	u_int nfds;
-	size_t ni;
-	struct lwp *lp = curthread->td_lwp;
-	struct proc *p = curproc;
+	struct timespec ts, *tsp;
+	int error;
 
-	nfds = uap->nfds;
-	/*
-	 * This is kinda bogus.  We have fd limits, but that is not
-	 * really related to the size of the pollfd array.  Make sure
-	 * we let the process use at least FD_SETSIZE entries and at
-	 * least enough for the current limits.  We want to be reasonably
-	 * safe, but not overly restrictive.
-	 */
-	if (nfds > p->p_rlimit[RLIMIT_NOFILE].rlim_cur && nfds > FD_SETSIZE)
-		return (EINVAL);
-	ni = nfds * sizeof(struct pollfd);
-	if (ni > sizeof(smallbits))
-		bits = kmalloc(ni, M_TEMP, M_WAITOK);
-	else
-		bits = smallbits;
-	error = copyin(uap->fds, bits, ni);
-	if (error)
-		goto done2;
 	if (uap->timeout != INFTIM) {
-		atv.tv_sec = uap->timeout / 1000;
-		atv.tv_usec = (uap->timeout % 1000) * 1000;
-		if (itimerfix(&atv)) {
-			error = EINVAL;
-			goto done2;
-		}
-		getmicrouptime(&rtv);
-		timevaladd(&atv, &rtv);
+		ts.tv_sec = uap->timeout / 1000;
+		ts.tv_nsec = (uap->timeout % 1000) * 1000 * 1000;
+		tsp = &ts;
 	} else {
-		atv.tv_sec = 0;
-		atv.tv_usec = 0;
+		tsp = NULL;
 	}
-	timo = 0;
-	get_mplock();
-retry:
-	ncoll = nselcoll;
-	lp->lwp_flag |= LWP_SELECT;
-	error = pollscan(p, bits, nfds, &uap->sysmsg_result);
-	if (error || uap->sysmsg_result)
-		goto done1;
-	if (atv.tv_sec || atv.tv_usec) {
-		getmicrouptime(&rtv);
-		if (timevalcmp(&rtv, &atv, >=))
-			goto done1;
-		ttv = atv;
-		timevalsub(&ttv, &rtv);
-		timo = ttv.tv_sec > 24 * 60 * 60 ?
-		    24 * 60 * 60 * hz : tvtohz_high(&ttv);
-	} 
-	crit_enter();
-	tsleep_interlock(&selwait, PCATCH);
-	if ((lp->lwp_flag & LWP_SELECT) == 0 || nselcoll != ncoll) {
-		crit_exit();
-		goto retry;
-	}
-	lp->lwp_flag &= ~LWP_SELECT;
-	error = tsleep(&selwait, PCATCH | PINTERLOCKED, "poll", timo);
-	crit_exit();
 
-	if (error == 0)
-		goto retry;
-done1:
-	rel_mplock();
-done2:
-	lp->lwp_flag &= ~LWP_SELECT;
-	/* poll is not restarted after signals... */
-	if (error == ERESTART)
-		error = EINTR;
-	if (error == EWOULDBLOCK)
-		error = 0;
-	if (error == 0) {
-		error = copyout(bits, uap->fds, ni);
-		if (error)
-			goto out;
-	}
-out:
-	if (ni > sizeof(smallbits))
-		kfree(bits, M_TEMP);
+	error = dopoll(uap->nfds, uap->fds, tsp, &uap->sysmsg_result);
+
 	return (error);
 }
 
 static int
-pollscan(struct proc *p, struct pollfd *fds, u_int nfd, int *res)
+poll_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
 {
-	int i;
-	struct file *fp;
-	int n = 0;
+	struct poll_kevent_copyin_args *pkap;
+	struct pollfd *pfd;
+	struct kevent *kev;
+	int kev_count;
 
-	for (i = 0; i < nfd; i++, fds++) {
-		if (fds->fd >= p->p_fd->fd_nfiles) {
-			fds->revents = POLLNVAL;
-			n++;
-		} else if (fds->fd < 0) {
-			fds->revents = 0;
+	pkap = (struct poll_kevent_copyin_args *)arg;
+
+	while (pkap->pfds < pkap->nfds) {
+		pfd = &pkap->fds[pkap->pfds];
+
+		/* Clear return events */
+		pfd->revents = 0;
+
+		/* Do not check if fd is equal to -1 */
+		if (pfd->fd == -1) {
+			++pkap->pfds;
+			continue;
+		}
+
+		kev_count = 0;
+		if (pfd->events & (POLLIN | POLLRDNORM))
+			kev_count++;
+		if (pfd->events & (POLLOUT | POLLWRNORM))
+			kev_count++;
+		if (pfd->events & (POLLPRI | POLLRDBAND))
+			kev_count++;
+
+		if (*events + kev_count > maxevents)
+			return (0);
+
+		/*
+		 * NOTE: A combined serial number and poll array index is
+		 * stored in kev->udata.
+		 */
+		kev = &kevp[*events];
+		if (pfd->events & (POLLIN | POLLRDNORM)) {
+			EV_SET(kev++, pfd->fd, EVFILT_READ, EV_ADD|EV_ENABLE,
+			       0, 0, (void *)(uintptr_t)
+				(pkap->lwp->lwp_kqueue_serial + pkap->pfds));
+		}
+		if (pfd->events & (POLLOUT | POLLWRNORM)) {
+			EV_SET(kev++, pfd->fd, EVFILT_WRITE, EV_ADD|EV_ENABLE,
+			       0, 0, (void *)(uintptr_t)
+				(pkap->lwp->lwp_kqueue_serial + pkap->pfds));
+		}
+		if (pfd->events & (POLLPRI | POLLRDBAND)) {
+			EV_SET(kev++, pfd->fd, EVFILT_EXCEPT, EV_ADD|EV_ENABLE,
+			       NOTE_OOB, 0,
+			       (void *)(uintptr_t)
+				(pkap->lwp->lwp_kqueue_serial + pkap->pfds));
+		}
+
+		if (nseldebug) {
+			kprintf("poll index %d fd %d events %08x\n",
+				pkap->pfds, pfd->fd, pfd->events);
+		}
+
+		++pkap->pfds;
+		(*events) += kev_count;
+	}
+
+	return (0);
+}
+
+static int
+poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
+{
+	struct poll_kevent_copyin_args *pkap;
+	struct pollfd *pfd;
+	struct kevent kev;
+	int i;
+	u_int pi;
+
+	pkap = (struct poll_kevent_copyin_args *)arg;
+
+	for (i = 0; i < count; ++i) {
+		/*
+		 * Extract the poll array index and delete spurious events.
+		 * We can easily tell if the serial number is incorrect
+		 * by checking whether the extracted index is out of range.
+		 */
+		pi = (u_int)(uintptr_t)kevp[i].udata -
+		     (u_int)pkap->lwp->lwp_kqueue_serial;
+
+		if (pi >= pkap->nfds) {
+			kev = kevp[i];
+			kev.flags = EV_DISABLE|EV_DELETE;
+			kqueue_register(&pkap->lwp->lwp_kqueue, &kev);
+			if (nseldebug)
+				kprintf("poll index %d out of range\n", pi);
+			continue;
+		}
+		pfd = &pkap->fds[pi];
+		if (kevp[i].ident == pfd->fd) {
+			if (kevp[i].flags & EV_ERROR) {
+				switch(kevp[i].data) {
+				case EOPNOTSUPP:
+					/*
+					 * Operation not supported.  Poll
+					 * does not return an error for
+					 * POLLPRI (OOB/urgent data) when
+					 * it is not supported by the device.
+					 */
+					if (kevp[i].filter != EVFILT_EXCEPT) {
+						pfd->revents |= POLLERR;
+						++*res;
+					}
+					break;
+				case EBADF:
+					/* Bad file descriptor */
+					pfd->revents |= POLLNVAL;
+					++*res;
+					break;
+				default:
+					pfd->revents |= POLLERR;
+					++*res;
+					break;
+				}
+				if (nseldebug) {
+					kprintf("poll index %d fd %d "
+						"filter %d error %d\n",
+						pi, pfd->fd,
+						kevp[i].filter,
+						(u_int)kevp[i].data);
+				}
+				continue;
+			}
+
+			if (kevp[i].flags & EV_EOF) {
+				pfd->revents |= POLLHUP;
+				++*res;
+				continue;
+			}
+
+			switch (kevp[i].filter) {
+			case EVFILT_READ:
+				pfd->revents |= (POLLIN | POLLRDNORM);
+				break;
+			case EVFILT_WRITE:
+				pfd->revents |= (POLLOUT | POLLWRNORM);
+				break;
+			case EVFILT_EXCEPT:
+				pfd->revents |= (POLLPRI | POLLRDBAND);
+				break;
+			}
+
+			if (nseldebug) {
+				kprintf("poll index %d fd %d revents %08x\n",
+					pi, pfd->fd, pfd->revents);
+			}
+
+			++*res;
+			continue;
 		} else {
-			fp = holdfp(p->p_fd, fds->fd, -1);
-			if (fp == NULL) {
-				fds->revents = POLLNVAL;
-				n++;
-			} else {
-				/*
-				 * Note: backend also returns POLLHUP and
-				 * POLLERR if appropriate.
-				 */
-				fds->revents = fo_poll(fp, fds->events,
-							fp->f_cred);
-				if (fds->revents != 0)
-					n++;
-				fdrop(fp);
+			if (nseldebug) {
+				kprintf("poll index %d mismatch %d/%d\n",
+					pi, (u_int)kevp[i].ident, pfd->fd);
 			}
 		}
 	}
-	*res = n;
+
 	return (0);
+}
+
+static int
+dopoll(int nfds, struct pollfd *fds, struct timespec *ts, int *res)
+{
+	struct poll_kevent_copyin_args ka;
+	struct pollfd sfds[64];
+	int bytes;
+	int error;
+
+        *res = 0;
+        if (nfds < 0)
+                return (EINVAL);
+
+	/*
+	 * This is a bit arbitrary but we need to limit internal kmallocs.
+	 */
+        if (nfds > maxfilesperproc * 2)
+                nfds = maxfilesperproc * 2;
+	bytes = sizeof(struct pollfd) * nfds;
+
+	ka.lwp = curthread->td_lwp;
+	ka.nfds = nfds;
+	ka.pfds = 0;
+	ka.error = 0;
+
+	if (ka.nfds < 64)
+		ka.fds = sfds;
+	else
+		ka.fds = kmalloc(bytes, M_SELECT, M_WAITOK);
+
+	error = copyin(fds, ka.fds, bytes);
+	if (error == 0)
+		error = kern_kevent(&ka.lwp->lwp_kqueue, ka.nfds, res, &ka,
+				    poll_copyin, poll_copyout, ts);
+
+	if (error == 0)
+		error = copyout(ka.fds, fds, bytes);
+
+	if (ka.fds != sfds)
+		kfree(ka.fds, M_SELECT);
+
+	ka.lwp->lwp_kqueue_serial += nfds;
+
+	return (error);
+}
+
+static int
+socket_wait_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
+{
+	return (0);
+}
+
+static int
+socket_wait_copyout(void *arg, struct kevent *kevp, int count, int *res)
+{
+	++*res;
+	return (0);
+}
+
+extern	struct fileops socketops;
+int
+socket_wait(struct socket *so, struct timespec *ts, int *res)
+{
+	struct thread *td = curthread;
+	struct file *fp;
+	struct kqueue kq;
+	struct kevent kev;
+	int error, fd;
+
+	if ((error = falloc(td->td_lwp, &fp, &fd)) != 0)
+		return (error);
+
+	fp->f_type = DTYPE_SOCKET;
+	fp->f_flag = FREAD | FWRITE;
+	fp->f_ops = &socketops;
+	fp->f_data = so;
+	fsetfd(td->td_lwp->lwp_proc->p_fd, fp, fd);
+
+	kqueue_init(&kq, td->td_lwp->lwp_proc->p_fd);
+	EV_SET(&kev, fd, EVFILT_READ, EV_ADD|EV_ENABLE, 0, 0, NULL);
+	if ((error = kqueue_register(&kq, &kev)) != 0) {
+		fdrop(fp);
+		return (error);
+	}
+
+	error = kern_kevent(&kq, 1, res, NULL, socket_wait_copyin,
+			    socket_wait_copyout, ts);
+
+	EV_SET(&kev, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+	kqueue_register(&kq, &kev);
+	fp->f_ops = &badfileops;
+	fdrop(fp);
+
+	return (error);
 }
 
 /*
@@ -1193,76 +1442,3 @@ seltrue(cdev_t dev, int events)
 {
 	return (events & (POLLIN | POLLOUT | POLLRDNORM | POLLWRNORM));
 }
-
-/*
- * Record a select request.  A global wait must be used since a process/thread
- * might go away after recording its request.
- */
-void
-selrecord(struct thread *selector, struct selinfo *sip)
-{
-	struct proc *p;
-	struct lwp *lp = NULL;
-
-	if (selector->td_lwp == NULL)
-		panic("selrecord: thread needs a process");
-
-	if (sip->si_pid == selector->td_proc->p_pid &&
-	    sip->si_tid == selector->td_lwp->lwp_tid)
-		return;
-	if (sip->si_pid && (p = pfind(sip->si_pid)))
-		lp = lwp_rb_tree_RB_LOOKUP(&p->p_lwp_tree, sip->si_tid);
-	if (lp != NULL && lp->lwp_wchan == (caddr_t)&selwait) {
-		sip->si_flags |= SI_COLL;
-	} else {
-		sip->si_pid = selector->td_proc->p_pid;
-		sip->si_tid = selector->td_lwp->lwp_tid;
-	}
-}
-
-/*
- * Do a wakeup when a selectable event occurs.
- */
-void
-selwakeup(struct selinfo *sip)
-{
-	struct proc *p;
-	struct lwp *lp = NULL;
-
-	if (sip->si_pid == 0)
-		return;
-	if (sip->si_flags & SI_COLL) {
-		nselcoll++;
-		sip->si_flags &= ~SI_COLL;
-		wakeup((caddr_t)&selwait);	/* YYY fixable */
-	}
-	p = pfind(sip->si_pid);
-	sip->si_pid = 0;
-	if (p == NULL)
-		return;
-	lp = lwp_rb_tree_RB_LOOKUP(&p->p_lwp_tree, sip->si_tid);
-	if (lp == NULL)
-		return;
-
-	/*
-	 * This is a temporary hack until the code can be rewritten.
-	 * Check LWP_SELECT before assuming we can setrunnable().
-	 * Otherwise we might catch the lwp before it actually goes to
-	 * sleep.
-	 */
-	crit_enter();
-	if (lp->lwp_flag & LWP_SELECT) {
-		lp->lwp_flag &= ~LWP_SELECT;
-	} else if (lp->lwp_wchan == (caddr_t)&selwait) {
-		/*
-		 * Flag the process to break the tsleep when
-		 * setrunnable is called, but only call setrunnable
-		 * here if the process is not in a stopped state.
-		 */
-		lp->lwp_flag |= LWP_BREAKTSLEEP;
-		if (p->p_stat != SSTOP)
-			setrunnable(lp);
-	}
-	crit_exit();
-}
-

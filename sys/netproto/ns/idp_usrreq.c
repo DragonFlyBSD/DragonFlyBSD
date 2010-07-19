@@ -605,8 +605,7 @@ struct pr_usrreqs idp_usrreqs = {
 	.pru_shutdown = idp_shutdown,
 	.pru_sockaddr = idp_sockaddr,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 struct pr_usrreqs idp_raw_usrreqs = {
@@ -628,7 +627,6 @@ struct pr_usrreqs idp_raw_usrreqs = {
 	.pru_shutdown = idp_shutdown,
 	.pru_sockaddr = idp_sockaddr,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 

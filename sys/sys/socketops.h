@@ -95,7 +95,6 @@ int so_pru_send (struct socket *so, int flags, struct mbuf *m,
 int so_pru_sense (struct socket *so, struct stat *sb);
 int so_pru_shutdown (struct socket *so);
 int so_pru_sockaddr (struct socket *so, struct sockaddr **nam);
-int so_pru_sopoll (struct socket *so, int events, struct ucred *cred);
 int so_pru_ctloutput(struct socket *so, struct sockopt *sopt);
 void so_pru_ctlinput(struct protosw *pr, int cmd,
 		struct sockaddr *arg, void *extra);

@@ -549,8 +549,7 @@ struct pr_usrreqs key_usrreqs = {
 	.pru_shutdown = key_shutdown,
 	.pru_sockaddr = key_sockaddr,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 /* sysctl */

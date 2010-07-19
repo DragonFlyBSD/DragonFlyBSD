@@ -750,6 +750,5 @@ struct pr_usrreqs rip6_usrreqs = {
 	.pru_shutdown = rip6_shutdown,
 	.pru_sockaddr = in6_setsockaddr,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
