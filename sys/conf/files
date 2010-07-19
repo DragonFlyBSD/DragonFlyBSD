@@ -1035,6 +1035,7 @@ netproto/802_11/wlan/ieee80211_ageq.c       optional wlan
 netproto/802_11/wlan/ieee80211_adhoc.c      optional wlan
 netproto/802_11/wlan/ieee80211_ageq.c       optional wlan
 netproto/802_11/wlan/ieee80211_amrr.c       optional wlan_amrr
+netproto/802_11/wlan/ieee80211_amrr.c       optional wlan
 netproto/802_11/wlan/ieee80211_crypto.c     optional wlan
 netproto/802_11/wlan_ccmp/ieee80211_crypto_ccmp.c optional wlan_ccmp
 netproto/802_11/wlan/ieee80211_crypto_none.c optional wlan
