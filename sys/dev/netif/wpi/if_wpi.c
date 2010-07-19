@@ -321,50 +321,25 @@ wpi_load_firmware(struct wpi_softc *sc)
 	const struct firmware *fp;
 	struct wpi_dma_info *dma = &sc->fw_dma;
 	const struct wpi_firmware_hdr *hdr;
-#if 0
-	struct ifnet *ifp;
-#endif
 	const uint8_t *itext, *idata, *rtext, *rdata, *btext;
 	uint32_t itextsz, idatasz, rtextsz, rdatasz, btextsz;
 	int error;
 
-#if 0
-	ifp = sc->sc_ifp;
-#endif
 	DPRINTFN(WPI_DEBUG_FIRMWARE,
 	    ("Attempting Loading Firmware from wpi_fw module\n"));
 
 	WPI_UNLOCK(sc);
-
-#if 0
-	lwkt_serialize_exit(ifp->if_serializer);
-#endif
-
-#if 0
-	if ((img = firmware_image_load("", dma->tag)) == NULL) {
-		error = ENOENT;
-		lwkt_serialize_enter(ifp->if_serializer);
-		goto fail;
-	}
-#endif
-
 
 	if (sc->fw_fp == NULL && (sc->fw_fp = firmware_get("wpifw")) == NULL) {
 		device_printf(sc->sc_dev,
 		    "could not load firmware image 'wpifw_fw'\n");
 		error = ENOENT;
 		WPI_LOCK(sc);
-#if 0
-		lwkt_serialize_enter(ifp->if_serializer);
-#endif
 		goto fail;
 	}
 
 	fp = sc->fw_fp;
 
-#if 0
-	lwkt_serialize_enter(ifp->if_serializer);
-#endif
 	WPI_LOCK(sc);
 
 
@@ -377,8 +352,6 @@ wpi_load_firmware(struct wpi_softc *sc)
 	    error = ENXIO;
 	    goto fail;
 	}
-#if 0
-#endif
 
 	if (fp->datasize < sizeof (struct wpi_firmware_hdr)) {
 		device_printf(sc->sc_dev,
@@ -495,9 +468,6 @@ wpi_load_firmware(struct wpi_softc *sc)
 
 	DPRINTFN(WPI_DEBUG_FIRMWARE,
 	    ("Firmware loaded to driver successfully\n"));
-/*
-	sc->sc_fw_image = img;
-*/
 	return error;
 fail:
 	wpi_unload_firmware(sc);
@@ -515,16 +485,7 @@ wpi_unload_firmware(struct wpi_softc *sc)
 
 	if (sc->fw_fp) {
 		WPI_UNLOCK(sc);
-#if 0
-		lwkt_serialize_exit(ifp->if_serializer);
-#endif
 		firmware_put(sc->fw_fp, FIRMWARE_UNLOAD);
-#if 0
-		firmware_image_unload(sc->sc_fw_image);
-#endif
-#if 0
-		lwkt_serialize_enter(ifp->if_serializer);
-#endif
 		WPI_LOCK(sc);
 		sc->fw_fp = NULL;
 	}
