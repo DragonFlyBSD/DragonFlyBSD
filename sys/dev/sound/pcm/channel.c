@@ -648,7 +648,6 @@ chn_sync(struct pcm_channel *c, int threshold)
 int
 chn_poll(struct pcm_channel *c, int ev, struct thread *td)
 {
-	struct snd_dbuf *bs = c->bufsoft;
 	int ret;
 
 	CHN_LOCKASSERT(c);
