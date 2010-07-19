@@ -106,10 +106,8 @@ fsmid_cache(const char *dpath, int ddirlen)
 
 	    nlen = 0;
 
-	    if (pnode == NULL || node == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	    }
+	    if (pnode == NULL || node == NULL)
+		fatal("out of memory");
 
 	    bzero(node, sizeof(FSMIDNode));
 	    node->fid_Code = strtoull(fextract(fi, -1, &c, ' '), NULL, 16);
@@ -153,10 +151,8 @@ fsmid_lookup(const char *sfile)
 	}
     }
     if (node == NULL) {
-	if ((node = *pnode = malloc(sizeof(FSMIDNode))) == NULL) {
-		fprintf(stderr,"out of memory\n");
-		exit(EXIT_FAILURE);
-	}
+	if ((node = *pnode = malloc(sizeof(FSMIDNode))) == NULL)
+	    fatal("out of memory");
 	bzero(node, sizeof(FSMIDNode));
 	node->fid_Name = strdup(sfile);
 	FSMIDDCacheDirty = 1;

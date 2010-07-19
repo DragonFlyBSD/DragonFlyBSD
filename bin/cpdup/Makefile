@@ -6,6 +6,7 @@ SRCS=	cpdup.c hcproto.c hclink.c misc.c fsmid.c
 
 .if defined(.FreeBSD)
 CFLAGS += -D_ST_FLAGS_PRESENT_=1
+WARNS?=	6
 .endif
 
 .if !defined(NOMD5)

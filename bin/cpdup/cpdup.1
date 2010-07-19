@@ -29,6 +29,7 @@
 .Op Fl V
 .Op Fl VV
 .Op Fl S
+.Op Fl R
 .Op Fl k
 .Op Fl K Ar file
 .Op Fl X Ar file
@@ -193,6 +194,11 @@ This places
 .Nm
 into slave mode and is used to initiate the slave protocol on a remote
 machine.
+This option is not intended to be used by humans.
+.It Fl R
+Place the slave into read-only mode.
+Can only be used when the source is remote.
+Useful for unattended backups via SSH keys.
 .It Fl k
 Generate and maintain a FSMID checkfile called
 .Pa \& .FSMID.CHECK
@@ -243,6 +249,7 @@ specified.
 .Nm
 can mirror directory structures across machines and can also do third-party
 copies.
+This also works between machines that use different byte order.
 .Xr ssh 1
 sessions are used and
 .Nm
@@ -298,11 +305,16 @@ to maintain these hard links.  If this occurs,
 will be forced to copy the file instead of link it, and thus not be able
 to make a perfect copy of the filesystem.
 .Pp
-Currently the remote protocol uses host byte order.  Therefore,
-.Nm
-cannot talk to machines that use a byte order
-different from the local machine.
-.Pp
 When so-called sparse files (i.e. files with "holes") are copied,
 the holes will be filled in the target files, so they occupy
 more physical disk space than the source files.
+.Pp
+For compatibility reasons, the slave protocol is not as efficient
+for writing remote files as it is for reading them.
+Therefore it is recommended to run
+.Nm
+on the target machine when making remote copies,
+so the source machine is remote.
+If you do it the other way,
+.Nm
+will run somewhat slower.

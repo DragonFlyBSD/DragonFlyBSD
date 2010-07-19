@@ -10,7 +10,8 @@
 #include "hclink.h"
 #include "hcproto.h"
 
-static int hc_decode_stat(struct stat *, struct HCHead *);
+static int hc_decode_stat(hctransaction_t trans, struct stat *, struct HCHead *);
+static int hc_decode_stat_item(struct stat *st, struct HCLeaf *item);
 static int rc_encode_stat(hctransaction_t trans, struct stat *);
 
 static int rc_hello(hctransaction_t trans, struct HCHead *);
@@ -19,9 +20,11 @@ static int rc_lstat(hctransaction_t trans, struct HCHead *);
 static int rc_opendir(hctransaction_t trans, struct HCHead *);
 static int rc_readdir(hctransaction_t trans, struct HCHead *);
 static int rc_closedir(hctransaction_t trans, struct HCHead *);
+static int rc_scandir(hctransaction_t trans, struct HCHead *);
 static int rc_open(hctransaction_t trans, struct HCHead *);
 static int rc_close(hctransaction_t trans, struct HCHead *);
 static int rc_read(hctransaction_t trans, struct HCHead *);
+static int rc_readfile(hctransaction_t trans, struct HCHead *);
 static int rc_write(hctransaction_t trans, struct HCHead *);
 static int rc_remove(hctransaction_t trans, struct HCHead *);
 static int rc_mkdir(hctransaction_t trans, struct HCHead *);
@@ -73,6 +76,8 @@ struct HCDesc HCDispatchTable[] = {
     { HC_UTIMES,	rc_utimes },
     { HC_GETEUID,	rc_geteuid },
     { HC_GETGROUPS,	rc_getgroups },
+    { HC_SCANDIR,	rc_scandir },
+    { HC_READFILE,	rc_readfile },
 };
 
 static int chown_warning;
@@ -101,9 +106,9 @@ silentwarning(int *didwarn, const char *ctl, ...)
 }
 
 int
-hc_connect(struct HostConf *hc)
+hc_connect(struct HostConf *hc, int readonly)
 {
-    if (hcc_connect(hc) < 0) {
+    if (hcc_connect(hc, readonly) < 0) {
 	fprintf(stderr, "Unable to connect to %s\n", hc->host);
 	return(-1);
     }
@@ -132,13 +137,15 @@ hc_hello(struct HostConf *hc)
 
     bzero(hostbuf, sizeof(hostbuf));
     if (gethostname(hostbuf, sizeof(hostbuf) - 1) < 0)
-        return(-1);
+	return(-1);
     if (hostbuf[0] == 0)
 	hostbuf[0] = '?';
 
     trans = hcc_start_command(hc, HC_HELLO);
     hcc_leaf_string(trans, LC_HELLOSTR, hostbuf);
     hcc_leaf_int32(trans, LC_VERSION, HCPROTO_VERSION);
+    if (UseCpFile)
+	hcc_leaf_string(trans, LC_PATH1, UseCpFile);
     if ((head = hcc_finish_command(trans)) == NULL) {
 	fprintf(stderr, "Connected to %s but remote failed to complete hello\n",
 		hc->host);
@@ -152,7 +159,7 @@ hc_hello(struct HostConf *hc)
     }
 
     error = -1;
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
+    FOR_EACH_ITEM(item, trans, head) {
 	switch(item->leafid) {
 	case LC_HELLOSTR:
 	    if (QuietOpt == 0)
@@ -168,6 +175,9 @@ hc_hello(struct HostConf *hc)
 	fprintf(stderr, "Remote cpdup at %s has an incompatible version\n",
 		hc->host);
 	error = -1;
+    } else if (hc->version < HCPROTO_VERSION && QuietOpt == 0) {
+	fprintf(stderr, "WARNING: Remote cpdup at %s has a lower version, "
+		"expect reduced speed\n", hc->host);
     }
     if (error < 0)
 	fprintf(stderr, "Handshake failed with %s\n", hc->host);
@@ -175,13 +185,18 @@ hc_hello(struct HostConf *hc)
 }
 
 static int
-rc_hello(hctransaction_t trans, struct HCHead *head __unused)
+rc_hello(hctransaction_t trans, struct HCHead *head)
 {
+    struct HCLeaf *item;
     char hostbuf[256];
+
+    FOR_EACH_ITEM(item, trans, head)
+	if (item->leafid == LC_PATH1)
+	    UseCpFile = strdup(HCC_STRING(item));
 
     bzero(hostbuf, sizeof(hostbuf));
     if (gethostname(hostbuf, sizeof(hostbuf) - 1) < 0)
-        return(-1);
+	return(-1);
     if (hostbuf[0] == 0)
 	hostbuf[0] = '?';
 
@@ -208,7 +223,7 @@ hc_stat(struct HostConf *hc, const char *path, struct stat *st)
 	return(-1);
     if (head->error)
 	return(-1);
-    return(hc_decode_stat(st, head));
+    return(hc_decode_stat(trans, st, head));
 }
 
 int
@@ -226,67 +241,73 @@ hc_lstat(struct HostConf *hc, const char *path, struct stat *st)
 	return(-1);
     if (head->error)
 	return(-1);
-    return(hc_decode_stat(st, head));
+    return(hc_decode_stat(trans, st, head));
 }
 
 static int
-hc_decode_stat(struct stat *st, struct HCHead *head)
+hc_decode_stat(hctransaction_t trans, struct stat *st, struct HCHead *head)
 {
     struct HCLeaf *item;
 
     bzero(st, sizeof(*st));
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
-	switch(item->leafid) {
-	case LC_DEV:
-		st->st_dev = HCC_INT32(item);
-		break;
-	case LC_INO:
-		st->st_ino = HCC_INT64(item);
-		break;
-	case LC_MODE:
-		st->st_mode = HCC_INT32(item);
-		break;
-	case LC_NLINK:
-		st->st_nlink = HCC_INT32(item);
-		break;
-	case LC_UID:
-		st->st_uid = HCC_INT32(item);
-		break;
-	case LC_GID:
-		st->st_gid = HCC_INT32(item);
-		break;
-	case LC_RDEV:
-		st->st_rdev = HCC_INT32(item);
-		break;
-	case LC_ATIME:
-		st->st_atime = (time_t)HCC_INT64(item);
-		break;
-	case LC_MTIME:
-		st->st_mtime = (time_t)HCC_INT64(item);
-		break;
-	case LC_CTIME:
-		st->st_ctime = (time_t)HCC_INT64(item);
-		break;
-	case LC_FILESIZE:
-		st->st_size = HCC_INT64(item);
-		break;
-	case LC_FILEBLKS:
-		st->st_blocks = HCC_INT64(item);
-		break;
-	case LC_BLKSIZE:
-		st->st_blksize = HCC_INT32(item);
-		break;
+    FOR_EACH_ITEM(item, trans, head)
+	hc_decode_stat_item(st, item);
+    return(0);
+}
+
+static int
+hc_decode_stat_item(struct stat *st, struct HCLeaf *item)
+{
+    switch(item->leafid) {
+    case LC_DEV:
+	st->st_dev = HCC_INT32(item);
+	break;
+    case LC_INO:
+	st->st_ino = HCC_INT64(item);
+	break;
+    case LC_MODE:
+	st->st_mode = HCC_INT32(item);
+	break;
+    case LC_NLINK:
+	st->st_nlink = HCC_INT32(item);
+	break;
+    case LC_UID:
+	st->st_uid = HCC_INT32(item);
+	break;
+    case LC_GID:
+	st->st_gid = HCC_INT32(item);
+	break;
+    case LC_RDEV:
+	st->st_rdev = HCC_INT32(item);
+	break;
+    case LC_ATIME:
+	st->st_atime = (time_t)HCC_INT64(item);
+	break;
+    case LC_MTIME:
+	st->st_mtime = (time_t)HCC_INT64(item);
+	break;
+    case LC_CTIME:
+	st->st_ctime = (time_t)HCC_INT64(item);
+	break;
+    case LC_FILESIZE:
+	st->st_size = HCC_INT64(item);
+	break;
+    case LC_FILEBLKS:
+	st->st_blocks = HCC_INT64(item);
+	break;
+    case LC_BLKSIZE:
+	st->st_blksize = HCC_INT32(item);
+	break;
 #ifdef _ST_FSMID_PRESENT_
-	case LC_FSMID:
-		st->st_fsmid = HCC_INT64(item);
-		break;
+    case LC_FSMID:
+	st->st_fsmid = HCC_INT64(item);
+	break;
 #endif
 #ifdef _ST_FLAGS_PRESENT_
-	case LC_FILEFLAGS:
-		st->st_flags = (u_int32_t)HCC_INT64(item);
-		break;
+    case LC_FILEFLAGS:
+	st->st_flags = (uint32_t)HCC_INT64(item);
+	break;
 #endif
-	}
     }
     return(0);
 }
@@ -298,13 +319,9 @@ rc_stat(hctransaction_t trans, struct HCHead *head)
     struct stat st;
     const char *path = NULL;
 
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
-	switch(item->leafid) {
-	case LC_PATH1:
+    FOR_EACH_ITEM(item, trans, head)
+	if (item->leafid == LC_PATH1)
 	    path = HCC_STRING(item);
-	    break;
-	}
-    }
     if (path == NULL)
 	return(-2);
     if (stat(path, &st) < 0)
@@ -319,13 +336,9 @@ rc_lstat(hctransaction_t trans, struct HCHead *head)
     struct stat st;
     const char *path = NULL;
 
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
-	switch(item->leafid) {
-	case LC_PATH1:
+    FOR_EACH_ITEM(item, trans, head)
+	if (item->leafid == LC_PATH1)
 	    path = HCC_STRING(item);
-	    break;
-	}
-    }
     if (path == NULL)
 	return(-2);
     if (lstat(path, &st) < 0)
@@ -333,6 +346,13 @@ rc_lstat(hctransaction_t trans, struct HCHead *head)
     return (rc_encode_stat(trans, &st));
 }
 
+/*
+ * Encode all entries of a stat structure.
+ *
+ * CAUTION:  If you add any more entries here, be sure to
+ *           increase the STAT_MAX_NUM_ENTRIES value!
+ */
+#define STAT_MAX_NUM_ENTRIES 18
 static int
 rc_encode_stat(hctransaction_t trans, struct stat *st)
 {
@@ -366,35 +386,40 @@ hc_opendir(struct HostConf *hc, const char *path)
 {
     hctransaction_t trans;
     struct HCHead *head;
-    struct HCLeaf *item;
-    struct dirent *den;
-    intptr_t desc = 0;
 
     if (hc == NULL || hc->host == NULL)
 	return(opendir(path));
 
-    trans = hcc_start_command(hc, HC_OPENDIR);
-    hcc_leaf_string(trans, LC_PATH1, path);
-    if ((head = hcc_finish_command(trans)) == NULL)
-	return(NULL);
-    if (head->error)
-	return(NULL);
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
-	switch(item->leafid) {
-	case LC_DESCRIPTOR:
-	    desc = HCC_INT32(item);
-	    break;
-	}
-    }
-    if (hcc_get_descriptor(hc, desc, HC_DESC_DIR)) {
+    if (hc->version <= 3) { /* compatibility: HC_SCANDIR not supported */
+	struct HCLeaf *item;
+	struct HCDirEntry *den;
+	intptr_t desc = 0;
+
+	trans = hcc_start_command(hc, HC_OPENDIR);
+	hcc_leaf_string(trans, LC_PATH1, path);
+	if ((head = hcc_finish_command(trans)) == NULL)
+	    return (NULL);
+	if (head->error)
+	    return (NULL);
+	FOR_EACH_ITEM(item, trans, head)
+	    if (item->leafid == LC_DESCRIPTOR)
+		desc = HCC_INT32(item);
+	if (hcc_get_descriptor(hc, desc, HC_DESC_DIR)) {
 	    fprintf(stderr, "hc_opendir: remote reused active descriptor %jd\n",
 		(intmax_t)desc);
-	return(NULL);
+	    return (NULL);
+	}
+	den = malloc(sizeof(*den));
+	hcc_set_descriptor(hc, desc, den, HC_DESC_DIR);
+	return ((void *)desc);
     }
-    den = malloc(sizeof(*den));
-    bzero(den, sizeof(*den));
-    hcc_set_descriptor(hc, desc, den, HC_DESC_DIR);
-    return((void *)desc);
+
+    /* hc->version >= 4: use HC_SCANDIR */
+    trans = hcc_start_command(hc, HC_SCANDIR);
+    hcc_leaf_string(trans, LC_PATH1, path);
+    if ((head = hcc_finish_command(trans)) == NULL || head->error)
+	return (NULL);
+    return ((void *)head);
 }
 
 static int
@@ -405,13 +430,9 @@ rc_opendir(hctransaction_t trans, struct HCHead *head)
     DIR *dir;
     int desc;
 
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
-	switch(item->leafid) {
-	case LC_PATH1:
+    FOR_EACH_ITEM(item, trans, head)
+	if (item->leafid == LC_PATH1)
 	    path = HCC_STRING(item);
-	    break;
-	}
-    }
     if (path == NULL)
 	return(-2);
     if ((dir = opendir(path)) == NULL) {
@@ -426,48 +447,63 @@ rc_opendir(hctransaction_t trans, struct HCHead *head)
 /*
  * READDIR
  */
-struct dirent *
-hc_readdir(struct HostConf *hc, DIR *dir)
+struct HCDirEntry *
+hc_readdir(struct HostConf *hc, DIR *dir, struct stat **statpp)
 {
-    hctransaction_t trans;
+    int stat_ok = 0;
     struct HCHead *head;
     struct HCLeaf *item;
-    struct dirent *den;
+    static struct HCDirEntry denbuf;
 
-    if (hc == NULL || hc->host == NULL)
-	return(readdir(dir));
+    *statpp = NULL;
+    if (hc == NULL || hc->host == NULL) {
+	struct dirent *sysden;
 
-    trans = hcc_start_command(hc, HC_READDIR);
-    hcc_leaf_int32(trans, LC_DESCRIPTOR, (intptr_t)dir);
-    if ((head = hcc_finish_command(trans)) == NULL)
-	return(NULL);
-    if (head->error)
-	return(NULL);	/* XXX errno */
-    den = hcc_get_descriptor(hc, (intptr_t)dir, HC_DESC_DIR);
-    if (den == NULL)
-	return(NULL);	/* XXX errno */
-    if (den->d_name)
+	if ((sysden = readdir(dir)) == NULL)
+	    return (NULL);
+	strlcpy(denbuf.d_name, sysden->d_name, MAXNAMLEN + 1);
+	return (&denbuf);
+    }
+
+    if (hc->version <= 3) { /* compatibility: HC_SCANDIR not supported */
+	hctransaction_t trans;
+	struct HCDirEntry *den;
+
+	trans = hcc_start_command(hc, HC_READDIR);
+	hcc_leaf_int32(trans, LC_DESCRIPTOR, (intptr_t)dir);
+	if ((head = hcc_finish_command(trans)) == NULL)
+	    return (NULL);
+	if (head->error)
+	    return (NULL);	/* XXX errno */
+	den = hcc_get_descriptor(hc, (intptr_t)dir, HC_DESC_DIR);
+	if (den == NULL)
+	    return (NULL);	/* XXX errno */
 	den->d_name[0] = 0;
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
-	switch(item->leafid) {
-	case LC_PATH1:
-	    snprintf(den->d_name, sizeof(den->d_name), "%s", HCC_STRING(item));
+	FOR_EACH_ITEM(item, trans, head)
+	    if (item->leafid == LC_PATH1)
+		strlcpy(den->d_name, HCC_STRING(item), MAXNAMLEN + 1);
+	return (den->d_name[0] ? den : NULL);
+    }
+
+    /* hc->version >= 4: using HC_SCANDIR */
+    denbuf.d_name[0] = 0;
+    head = (void *)dir;
+    *statpp = malloc(sizeof(struct stat));
+    bzero(*statpp, sizeof(struct stat));
+    while ((item = hcc_nextchaineditem(hc, head)) != NULL) {
+	if (item->leafid == LC_PATH1) {  /* this must be the last item */
+	    strlcpy(denbuf.d_name, HCC_STRING(item), MAXNAMLEN + 1);
 	    break;
-	case LC_INO:
-	    den->d_fileno = HCC_INT64(item);
-	    break;
-	case LC_TYPE:
-	    den->d_type = HCC_INT32(item);
-	    break;
+	} else {
+	    stat_ok = 1;
+	    hc_decode_stat_item(*statpp, item);
 	}
     }
-    if (den->d_name[0]) {
-#ifdef _DIRENT_HAVE_D_NAMLEN
-	den->d_namlen = strlen(den->d_name);
-#endif
-	return(den);
+    if (!stat_ok) {
+	free(*statpp);
+	*statpp = NULL;
     }
-    return(NULL);	/* XXX errno */
+    return (denbuf.d_name[0] ? &denbuf : NULL);
 }
 
 static int
@@ -477,20 +513,13 @@ rc_readdir(hctransaction_t trans, struct HCHead *head)
     struct dirent *den;
     DIR *dir = NULL;
 
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
-	switch(item->leafid) {
-	case LC_DESCRIPTOR:
+    FOR_EACH_ITEM(item, trans, head)
+	if (item->leafid == LC_DESCRIPTOR)
 	    dir = hcc_get_descriptor(trans->hc, HCC_INT32(item), HC_DESC_DIR);
-	    break;
-	}
-    }
     if (dir == NULL)
 	return(-2);
-    if ((den = readdir(dir)) != NULL) {
+    if ((den = readdir(dir)) != NULL)
 	hcc_leaf_string(trans, LC_PATH1, den->d_name);
-	hcc_leaf_int64(trans, LC_INO, den->d_fileno);
-	hcc_leaf_int32(trans, LC_TYPE, den->d_type);
-    }
     return(0);
 }
 
@@ -502,28 +531,39 @@ rc_readdir(hctransaction_t trans, struct HCHead *head)
 int
 hc_closedir(struct HostConf *hc, DIR *dir)
 {
-    hctransaction_t trans;
     struct HCHead *head;
-    struct dirent *den;
 
     if (hc == NULL || hc->host == NULL)
 	return(closedir(dir));
-    den = hcc_get_descriptor(hc, (intptr_t)dir, HC_DESC_DIR);
-    if (den) {
-	free(den);
-	hcc_set_descriptor(hc, (intptr_t)dir, NULL, HC_DESC_DIR);
 
-	trans = hcc_start_command(hc, HC_CLOSEDIR);
-	hcc_leaf_int32(trans, LC_DESCRIPTOR, (intptr_t)dir);
-	if ((head = hcc_finish_command(trans)) == NULL)
+    if (hc->version <= 3) { /* compatibility: HC_SCANDIR not supported */
+	hctransaction_t trans;
+	struct dirent *den;
+
+	if ((den = hcc_get_descriptor(hc, (intptr_t)dir, HC_DESC_DIR)) != NULL) {
+	    free(den);
+	    hcc_set_descriptor(hc, (intptr_t)dir, NULL, HC_DESC_DIR);
+	    trans = hcc_start_command(hc, HC_CLOSEDIR);
+	    hcc_leaf_int32(trans, LC_DESCRIPTOR, (intptr_t)dir);
+	    if ((head = hcc_finish_command(trans)) == NULL)
+		return (-1);
+	    if (head->error)
+		return (-1);		/* XXX errno */
+	    return (0);
+	} else {
+	    /* errno */
 	    return(-1);
-	if (head->error)
-	    return(-1);		/* XXX errno */
-	return(0);
-    } else {
-	/* errno */
-	return(-1);
+	}
     }
+
+    /* hc->version >= 4: using HC_SCANDIR */
+    head = (void *)dir;
+    /* skip any remaining items if the directory is closed prematurely */
+    while (hcc_nextchaineditem(hc, head) != NULL)
+	/*nothing*/ ;
+    if (head->error)
+	return (-1);
+    return (0);
 }
 
 static int
@@ -532,18 +572,62 @@ rc_closedir(hctransaction_t trans, struct HCHead *head)
     struct HCLeaf *item;
     DIR *dir = NULL;
 
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
-	switch(item->leafid) {
-	case LC_DESCRIPTOR:
+    FOR_EACH_ITEM(item, trans, head)
+	if (item->leafid == LC_DESCRIPTOR) {
 	    dir = hcc_get_descriptor(trans->hc, HCC_INT32(item), HC_DESC_DIR);
 	    if (dir != NULL)
 		    hcc_set_descriptor(trans->hc, HCC_INT32(item), NULL, HC_DESC_DIR);
-	    break;
 	}
-    }
     if (dir == NULL)
 	return(-2);
     return(closedir(dir));
+}
+
+/*
+ * SCANDIR
+ */
+static int
+rc_scandir(hctransaction_t trans, struct HCHead *head)
+{
+    struct HCLeaf *item;
+    const char *path = NULL;
+    struct dirent *den;
+    DIR *dir;
+    char *fpath;
+    struct stat st;
+
+    FOR_EACH_ITEM(item, trans, head)
+	if (item->leafid == LC_PATH1)
+	    path = HCC_STRING(item);
+    if (path == NULL)
+	return (-2);
+    if ((dir = opendir(path)) == NULL)
+	return (-1);
+    while ((den = readdir(dir)) != NULL) {
+	if (den->d_name[0] == '.' && (den->d_name[1] == '\0' ||
+		(den->d_name[1] == '.' && den->d_name[2] == '\0')))
+	    continue;	/* skip "." and ".." */
+	/*
+	 * Check if there's enough space left in the current packet.
+	 * We have at most STAT_MAX_NUM_ENTRIES pieces of data, of which
+	 * one is a string, so we use strlen() + 1 (terminating zero).
+	 * The remaining ones are numbers; we assume sizeof(int64_t) so
+	 * we're on the safe side.
+	 */
+	if (!hcc_check_space(trans, head, STAT_MAX_NUM_ENTRIES,
+		(STAT_MAX_NUM_ENTRIES - 1) * sizeof(int64_t) +
+		strlen(den->d_name) + 1)) {
+	    closedir(dir);
+	    return (-1);
+	}
+	fpath = mprintf("%s/%s", path, den->d_name);
+	if (lstat(fpath, &st) == 0)
+	    rc_encode_stat(trans, &st);
+	/* The name must be the last item! */
+	hcc_leaf_string(trans, LC_PATH1, den->d_name);
+	free(fpath);
+    }
+    return (closedir(dir));
 }
 
 /*
@@ -566,6 +650,15 @@ hc_open(struct HostConf *hc, const char *path, int flags, mode_t mode)
 	return(open(path, flags, mode));
     }
 
+    if ((flags & (O_WRONLY | O_RDWR)) == 0 && hc->version >= 4) {
+	trans = hcc_start_command(hc, HC_READFILE);
+	hcc_leaf_string(trans, LC_PATH1, path);
+	if ((head = hcc_finish_command(trans)) == NULL || head->error)
+	    return (-1);
+	head->magic = 0; /* used to indicate offset within buffer */
+	return (1); /* dummy */
+    }
+
     nflags = flags & XO_NATIVEMASK;
     if (flags & O_CREAT)
 	nflags |= XO_CREAT;
@@ -583,15 +676,11 @@ hc_open(struct HostConf *hc, const char *path, int flags, mode_t mode)
 	return(-1);
     if (head->error)
 	return(-1);
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
-	switch(item->leafid) {
-	case LC_DESCRIPTOR:
+    FOR_EACH_ITEM(item, trans, head)
+	if (item->leafid == LC_DESCRIPTOR)
 	    desc = HCC_INT32(item);
-	    break;
-	}
-    }
     if (hcc_get_descriptor(hc, desc, HC_DESC_FD)) {
-	fprintf(stderr, "hc_opendir: remote reused active descriptor %d\n",
+	fprintf(stderr, "hc_open: remote reused active descriptor %d\n",
 		desc);
 	return(-1);
     }
@@ -613,7 +702,7 @@ rc_open(hctransaction_t trans, struct HCHead *head)
     int *fdp;
     int fd;
 
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
+    FOR_EACH_ITEM(item, trans, head) {
 	switch(item->leafid) {
 	case LC_PATH1:
 	    path = HCC_STRING(item);
@@ -637,13 +726,19 @@ rc_open(hctransaction_t trans, struct HCHead *head)
     if (nflags & XO_TRUNC)
 	flags |= O_TRUNC;
 
+    if (ReadOnlyOpt) {
+	if (flags & (O_WRONLY | O_RDWR | O_CREAT | O_TRUNC)) {
+	    head->error = EACCES;
+	    return (0);
+	}
+	flags |= O_RDONLY;
+    }
+
 #ifdef O_LARGEFILE
     flags |= O_LARGEFILE;
 #endif
-    if ((fd = open(path, flags, mode)) < 0) {
-	head->error = errno;
-	return(0);
-    }
+    if ((fd = open(path, flags, mode)) < 0)
+	return(-1);
     fdp = malloc(sizeof(int));
     *fdp = fd;
     desc = hcc_alloc_descriptor(trans->hc, fdp, HC_DESC_FD);
@@ -663,6 +758,16 @@ hc_close(struct HostConf *hc, int fd)
 
     if (hc == NULL || hc->host == NULL)
 	return(close(fd));
+
+    if (fd == 1 && hc->version >= 4) {	/* using HC_READFILE */
+	head = (void *)hc->trans.rbuf;
+	/* skip any remaining items if the file is closed prematurely */
+	while (hcc_nextchaineditem(hc, head) != NULL)
+	    /*nothing*/ ;
+	if (head->error)
+	    return (-1);
+	return (0);
+    }
 
     fdp = hcc_get_descriptor(hc, fd, HC_DESC_FD);
     if (fdp) {
@@ -689,13 +794,9 @@ rc_close(hctransaction_t trans, struct HCHead *head)
     int fd;
     int desc = -1;
 
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
-	switch(item->leafid) {
-	case LC_DESCRIPTOR:
+    FOR_EACH_ITEM(item, trans, head)
+	if (item->leafid == LC_DESCRIPTOR)
 	    desc = HCC_INT32(item);
-	    break;
-	}
-    }
     if (desc < 0)
 	return(-2);
     if ((fdp = hcc_get_descriptor(trans->hc, desc, HC_DESC_FD)) == NULL)
@@ -722,18 +823,44 @@ hc_read(struct HostConf *hc, int fd, void *buf, size_t bytes)
     struct HCHead *head;
     struct HCLeaf *item;
     int *fdp;
-    int r;
+    int offset;
+    int r = 0;
+    int x = 0;
 
     if (hc == NULL || hc->host == NULL)
 	return(read(fd, buf, bytes));
 
+    if (fd == 1 && hc->version >= 4) {	/* using HC_READFILE */
+	head = (void *)hc->trans.rbuf;
+	while (bytes) {
+	    if ((offset = head->magic) != 0)
+		item = hcc_currentchaineditem(hc, head);
+	    else
+		item = hcc_nextchaineditem(hc, head);
+	    if (item == NULL)
+		return (r);
+	    if (item->leafid != LC_DATA)
+		return (-1);
+	    x = item->bytes - sizeof(*item) - offset;
+	    if (x > (int)bytes) {
+		x = (int)bytes;
+		head->magic += x;  /* leave bytes in the buffer */
+	    }
+	    else
+		head->magic = 0;  /* all bytes used up */
+	    bcopy((char *)HCC_BINARYDATA(item) + offset, buf, x);
+	    buf = (char *)buf + x;
+	    bytes -= (size_t)x;
+	    r += x;
+	}
+	return (r);
+    }
+
     fdp = hcc_get_descriptor(hc, fd, HC_DESC_FD);
     if (fdp) {
-	r = 0;
 	while (bytes) {
 	    size_t limit = getiolimit();
 	    int n = (bytes > limit) ? limit : bytes;
-	    int x = 0;
 
 	    trans = hcc_start_command(hc, HC_READ);
 	    hcc_leaf_int32(trans, LC_DESCRIPTOR, fd);
@@ -742,9 +869,8 @@ hc_read(struct HostConf *hc, int fd, void *buf, size_t bytes)
 		return(-1);
 	    if (head->error)
 		return(-1);
-	    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
-		switch(item->leafid) {
-		case LC_DATA:
+	    FOR_EACH_ITEM(item, trans, head)
+		if (item->leafid == LC_DATA) {
 		    x = item->bytes - sizeof(*item);
 		    if (x > (int)bytes)
 			x = (int)bytes;
@@ -752,9 +878,7 @@ hc_read(struct HostConf *hc, int fd, void *buf, size_t bytes)
 		    buf = (char *)buf + x;
 		    bytes -= (size_t)x;
 		    r += x;
-		    break;
 		}
-	    }
 	    if (x < n)
 		break;
 	}
@@ -773,7 +897,7 @@ rc_read(hctransaction_t trans, struct HCHead *head)
     int bytes = -1;
     int n;
 
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
+    FOR_EACH_ITEM(item, trans, head) {
 	switch(item->leafid) {
 	case LC_DESCRIPTOR:
 	    fdp = hcc_get_descriptor(trans->hc, HCC_INT32(item), HC_DESC_FD);
@@ -788,12 +912,45 @@ rc_read(hctransaction_t trans, struct HCHead *head)
     if (bytes < 0 || bytes > 32768)
 	return(-2);
     n = read(*fdp, buf, bytes);
-    if (n < 0) {
-	head->error = errno;
-	return(0);
-    }
+    if (n < 0)
+	return(-1);
     hcc_leaf_data(trans, LC_DATA, buf, n);
     return(0);
+}
+
+/*
+ * READFILE
+ */
+static int
+rc_readfile(hctransaction_t trans, struct HCHead *head)
+{
+    struct HCLeaf *item;
+    const char *path = NULL;
+    char buf[32768];
+    int n;
+    int fd;
+
+    FOR_EACH_ITEM(item, trans, head)
+	if (item->leafid == LC_PATH1)
+	    path = HCC_STRING(item);
+    if (path == NULL)
+	return (-2);
+    if ((fd = open(path, O_RDONLY)) < 0)
+	return(-1);
+    while ((n = read(fd, buf, 32768)) >= 0) {
+	if (!hcc_check_space(trans, head, 1, n)) {
+	    close(fd);
+	    return (-1);
+	}
+	hcc_leaf_data(trans, LC_DATA, buf, n);
+	if (n == 0)
+		break;
+    }
+    if (n < 0) {
+	close(fd);
+	return (-1);
+    }
+    return (close(fd));
 }
 
 /*
@@ -826,13 +983,9 @@ hc_write(struct HostConf *hc, int fd, const void *buf, size_t bytes)
 		return(-1);
 	    if (head->error)
 		return(-1);
-	    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
-		switch(item->leafid) {
-		case LC_BYTES:
+	    FOR_EACH_ITEM(item, trans, head)
+		if (item->leafid == LC_BYTES)
 		    x = HCC_INT32(item);
-		    break;
-		}
-	    }
 	    if (x < 0 || x > n)
 		return(-1);
 	    r += x;
@@ -855,7 +1008,7 @@ rc_write(hctransaction_t trans, struct HCHead *head)
     void *buf = NULL;
     int n = -1;
 
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
+    FOR_EACH_ITEM(item, trans, head) {
 	switch(item->leafid) {
 	case LC_DESCRIPTOR:
 	    fdp = hcc_get_descriptor(trans->hc, HCC_INT32(item), HC_DESC_FD);
@@ -866,16 +1019,18 @@ rc_write(hctransaction_t trans, struct HCHead *head)
 	    break;
 	}
     }
+    if (ReadOnlyOpt) {
+	head->error = EACCES;
+	return (0);
+    }
     if (fdp == NULL)
 	return(-2);
     if (n < 0 || n > 32768)
 	return(-2);
     n = write(*fdp, buf, n);
-    if (n < 0) {
-	head->error = errno;
-    } else {
-	hcc_leaf_int32(trans, LC_BYTES, n);
-    }
+    if (n < 0)
+	return (-1);
+    hcc_leaf_int32(trans, LC_BYTES, n);
     return(0);
 }
 
@@ -908,20 +1063,20 @@ hc_remove(struct HostConf *hc, const char *path)
 }
 
 static int
-rc_remove(hctransaction_t trans __unused, struct HCHead *head)
+rc_remove(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *path = NULL;
 
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
-	switch(item->leafid) {
-	case LC_PATH1:
+    FOR_EACH_ITEM(item, trans, head)
+	if (item->leafid == LC_PATH1)
 	    path = HCC_STRING(item);
-	    break;
-	}
-    }
     if (path == NULL)
 	return(-2);
+    if (ReadOnlyOpt) {
+	head->error = EACCES;
+	return (0);
+    }
     return(remove(path));
 }
 
@@ -929,7 +1084,7 @@ rc_remove(hctransaction_t trans __unused, struct HCHead *head)
  * MKDIR
  */
 int
-hc_mkdir(struct HostConf *hc __unused, const char *path, mode_t mode)
+hc_mkdir(struct HostConf *hc, const char *path, mode_t mode)
 {
     hctransaction_t trans;
     struct HCHead *head;
@@ -948,13 +1103,13 @@ hc_mkdir(struct HostConf *hc __unused, const char *path, mode_t mode)
 }
 
 static int
-rc_mkdir(hctransaction_t trans __unused, struct HCHead *head)
+rc_mkdir(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *path = NULL;
     mode_t mode = 0777;
 
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
+    FOR_EACH_ITEM(item, trans, head) {
 	switch(item->leafid) {
 	case LC_PATH1:
 	    path = HCC_STRING(item);
@@ -964,8 +1119,12 @@ rc_mkdir(hctransaction_t trans __unused, struct HCHead *head)
 	    break;
 	}
     }
+    if (ReadOnlyOpt) {
+	head->error = EACCES;
+	return (0);
+    }
     if (path == NULL)
-	return(-1);
+	return(-2);
     return(mkdir(path, mode));
 }
 
@@ -991,20 +1150,20 @@ hc_rmdir(struct HostConf *hc, const char *path)
 }
 
 static int
-rc_rmdir(hctransaction_t trans __unused, struct HCHead *head)
+rc_rmdir(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *path = NULL;
 
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
-	switch(item->leafid) {
-	case LC_PATH1:
+    FOR_EACH_ITEM(item, trans, head)
+	if (item->leafid == LC_PATH1)
 	    path = HCC_STRING(item);
-	    break;
-	}
+    if (ReadOnlyOpt) {
+	head->error = EACCES;
+	return (0);
     }
     if (path == NULL)
-	return(-1);
+	return(-2);
     return(rmdir(path));
 }
 
@@ -1042,7 +1201,7 @@ hc_chown(struct HostConf *hc, const char *path, uid_t owner, gid_t group)
 }
 
 static int
-rc_chown(hctransaction_t trans __unused, struct HCHead *head)
+rc_chown(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *path = NULL;
@@ -1050,7 +1209,7 @@ rc_chown(hctransaction_t trans __unused, struct HCHead *head)
     gid_t gid = (gid_t)-1;
     int rc;
 
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
+    FOR_EACH_ITEM(item, trans, head) {
 	switch(item->leafid) {
 	case LC_PATH1:
 	    path = HCC_STRING(item);
@@ -1063,8 +1222,12 @@ rc_chown(hctransaction_t trans __unused, struct HCHead *head)
 	    break;
 	}
     }
+    if (ReadOnlyOpt) {
+	head->error = EACCES;
+	return (0);
+    }
     if (path == NULL)
-	return(-1);
+	return(-2);
     rc = chown(path, uid, gid);
     if (rc < 0)
 	rc = silentwarning(&chown_warning, "file ownership may differ\n");
@@ -1103,7 +1266,7 @@ hc_lchown(struct HostConf *hc, const char *path, uid_t owner, gid_t group)
 }
 
 static int
-rc_lchown(hctransaction_t trans __unused, struct HCHead *head)
+rc_lchown(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *path = NULL;
@@ -1111,7 +1274,7 @@ rc_lchown(hctransaction_t trans __unused, struct HCHead *head)
     gid_t gid = (gid_t)-1;
     int rc;
 
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
+    FOR_EACH_ITEM(item, trans, head) {
 	switch(item->leafid) {
 	case LC_PATH1:
 	    path = HCC_STRING(item);
@@ -1124,8 +1287,12 @@ rc_lchown(hctransaction_t trans __unused, struct HCHead *head)
 	    break;
 	}
     }
+    if (ReadOnlyOpt) {
+	head->error = EACCES;
+	return (0);
+    }
     if (path == NULL)
-	return(-1);
+	return(-2);
     rc = lchown(path, uid, gid);
     if (rc < 0)
 	rc = silentwarning(&chown_warning, "file ownership may differ\n");
@@ -1155,13 +1322,13 @@ hc_chmod(struct HostConf *hc, const char *path, mode_t mode)
 }
 
 static int
-rc_chmod(hctransaction_t trans __unused, struct HCHead *head)
+rc_chmod(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *path = NULL;
     mode_t mode = 0666;
 
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
+    FOR_EACH_ITEM(item, trans, head) {
 	switch(item->leafid) {
 	case LC_PATH1:
 	    path = HCC_STRING(item);
@@ -1171,8 +1338,12 @@ rc_chmod(hctransaction_t trans __unused, struct HCHead *head)
 	    break;
 	}
     }
+    if (ReadOnlyOpt) {
+	head->error = EACCES;
+	return (0);
+    }
     if (path == NULL)
-	return(-1);
+	return(-2);
     return(chmod(path, mode));
 }
 
@@ -1206,14 +1377,14 @@ hc_mknod(struct HostConf *hc, const char *path, mode_t mode, dev_t rdev)
 }
 
 static int
-rc_mknod(hctransaction_t trans __unused, struct HCHead *head)
+rc_mknod(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *path = NULL;
     mode_t mode = 0666;
     dev_t rdev = 0;
 
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
+    FOR_EACH_ITEM(item, trans, head) {
 	switch(item->leafid) {
 	case LC_PATH1:
 	    path = HCC_STRING(item);
@@ -1226,8 +1397,12 @@ rc_mknod(hctransaction_t trans __unused, struct HCHead *head)
 	    break;
 	}
     }
+    if (ReadOnlyOpt) {
+	head->error = EACCES;
+	return (0);
+    }
     if (path == NULL)
-	return(-1);
+	return(-2);
     return(mknod(path, mode, rdev));
 }
 
@@ -1254,13 +1429,13 @@ hc_link(struct HostConf *hc, const char *name1, const char *name2)
 }
 
 static int
-rc_link(hctransaction_t trans __unused, struct HCHead *head)
+rc_link(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *name1 = NULL;
     const char *name2 = NULL;
 
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
+    FOR_EACH_ITEM(item, trans, head) {
 	switch(item->leafid) {
 	case LC_PATH1:
 	    name1 = HCC_STRING(item);
@@ -1269,6 +1444,10 @@ rc_link(hctransaction_t trans __unused, struct HCHead *head)
 	    name2 = HCC_STRING(item);
 	    break;
 	}
+    }
+    if (ReadOnlyOpt) {
+	head->error = EACCES;
+	return (-0);
     }
     if (name1 == NULL || name2 == NULL)
 	return(-2);
@@ -1306,14 +1485,14 @@ hc_chflags(struct HostConf *hc, const char *path, u_long flags)
 }
 
 static int
-rc_chflags(hctransaction_t trans __unused, struct HCHead *head)
+rc_chflags(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *path = NULL;
     u_long flags = 0;
     int rc;
 
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
+    FOR_EACH_ITEM(item, trans, head) {
 	switch(item->leafid) {
 	case LC_PATH1:
 	    path = HCC_STRING(item);
@@ -1322,6 +1501,10 @@ rc_chflags(hctransaction_t trans __unused, struct HCHead *head)
 	    flags = (u_long)HCC_INT64(item);
 	    break;
 	}
+    }
+    if (ReadOnlyOpt) {
+	head->error = EACCES;
+	return (0);
     }
     if (path == NULL)
 	return(-2);
@@ -1354,18 +1537,15 @@ hc_readlink(struct HostConf *hc, const char *path, char *buf, int bufsiz)
 	return(-1);
 
     r = 0;
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
-	switch(item->leafid) {
-	case LC_DATA:
+    FOR_EACH_ITEM(item, trans, head)
+	if (item->leafid == LC_DATA) {
 	    r = item->bytes - sizeof(*item);
 	    if (r < 0)
 		r = 0;
 	    if (r > bufsiz)
 		r = bufsiz;
 	    bcopy(HCC_BINARYDATA(item), buf, r);
-	    break;
 	}
-    }
     return(r);
 }
 
@@ -1377,13 +1557,9 @@ rc_readlink(hctransaction_t trans, struct HCHead *head)
     char buf[1024];
     int r;
 
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
-	switch(item->leafid) {
-	case LC_PATH1:
+    FOR_EACH_ITEM(item, trans, head)
+	if (item->leafid == LC_PATH1)
 	    path = HCC_STRING(item);
-	    break;
-	}
-    }
     if (path == NULL)
 	return(-2);
     r = readlink(path, buf, sizeof(buf));
@@ -1413,14 +1589,10 @@ hc_umask(struct HostConf *hc, mode_t numask)
     if (head->error)
 	return((mode_t)-1);
 
-    numask = ~0666;
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
-	switch(item->leafid) {
-	case LC_MODE:
+    numask = (mode_t) ~0666U;
+    FOR_EACH_ITEM(item, trans, head)
+	if (item->leafid == LC_MODE)
 	    numask = HCC_INT32(item);
-	    break;
-	}
-    }
     return(numask);
 }
 
@@ -1428,15 +1600,11 @@ static int
 rc_umask(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
-    mode_t numask = ~0666;
+    mode_t numask = (mode_t) ~0666U;
 
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
-	switch(item->leafid) {
-	case LC_MODE:
+    FOR_EACH_ITEM(item, trans, head)
+	if (item->leafid == LC_MODE)
 	    numask = HCC_INT32(item);
-	    break;
-	}
-    }
     numask = umask(numask);
     hcc_leaf_int32(trans, LC_MODE, numask);
     return(0);
@@ -1465,13 +1633,13 @@ hc_symlink(struct HostConf *hc, const char *name1, const char *name2)
 }
 
 static int
-rc_symlink(hctransaction_t trans __unused, struct HCHead *head)
+rc_symlink(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *name1 = NULL;
     const char *name2 = NULL;
 
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
+    FOR_EACH_ITEM(item, trans, head) {
 	switch(item->leafid) {
 	case LC_PATH1:
 	    name1 = HCC_STRING(item);
@@ -1480,6 +1648,10 @@ rc_symlink(hctransaction_t trans __unused, struct HCHead *head)
 	    name2 = HCC_STRING(item);
 	    break;
 	}
+    }
+    if (ReadOnlyOpt) {
+	head->error = EACCES;
+	return (0);
     }
     if (name1 == NULL || name2 == NULL)
 	return(-2);
@@ -1509,13 +1681,13 @@ hc_rename(struct HostConf *hc, const char *name1, const char *name2)
 }
 
 static int
-rc_rename(hctransaction_t trans __unused, struct HCHead *head)
+rc_rename(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     const char *name1 = NULL;
     const char *name2 = NULL;
 
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
+    FOR_EACH_ITEM(item, trans, head) {
 	switch(item->leafid) {
 	case LC_PATH1:
 	    name1 = HCC_STRING(item);
@@ -1524,6 +1696,10 @@ rc_rename(hctransaction_t trans __unused, struct HCHead *head)
 	    name2 = HCC_STRING(item);
 	    break;
 	}
+    }
+    if (ReadOnlyOpt) {
+	head->error = EACCES;
+	return (0);
     }
     if (name1 == NULL || name2 == NULL)
 	return(-2);
@@ -1554,7 +1730,7 @@ hc_utimes(struct HostConf *hc, const char *path, const struct timeval *times)
 }
 
 static int
-rc_utimes(hctransaction_t trans __unused, struct HCHead *head)
+rc_utimes(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     struct timeval times[2];
@@ -1563,7 +1739,7 @@ rc_utimes(hctransaction_t trans __unused, struct HCHead *head)
     bzero(times, sizeof(times));
     path = NULL;
 
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
+    FOR_EACH_ITEM(item, trans, head) {
 	switch(item->leafid) {
 	case LC_PATH1:
 	    path = HCC_STRING(item);
@@ -1575,6 +1751,10 @@ rc_utimes(hctransaction_t trans __unused, struct HCHead *head)
 	    times[1].tv_sec = HCC_INT64(item);
 	    break;
 	}
+    }
+    if (ReadOnlyOpt) {
+	head->error = EACCES;
+	return (0);
     }
     if (path == NULL)
 	return(-2);
@@ -1600,10 +1780,9 @@ hc_geteuid(struct HostConf *hc)
     trans = hcc_start_command(hc, HC_GETEUID);
     if ((head = hcc_finish_command(trans)) == NULL || head->error)
 	return(0);
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
+    FOR_EACH_ITEM(item, trans, head)
 	if (item->leafid == LC_UID)
 	    return (HCC_INT32(item));
-    }
     return(0); /* shouldn't happen */
 }
 
@@ -1655,7 +1834,7 @@ hc_getgroups(struct HostConf *hc, gid_t **gidlist)
     trans = hcc_start_command(hc, HC_GETGROUPS);
     if ((head = hcc_finish_command(trans)) == NULL || head->error)
 	return(-1);
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
+    FOR_EACH_ITEM(item, trans, head) {
 	switch(item->leafid) {
 	case LC_COUNT:
 	    count = HCC_INT32(item);

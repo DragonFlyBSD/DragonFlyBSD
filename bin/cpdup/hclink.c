@@ -10,11 +10,11 @@
 #include "hclink.h"
 #include "hcproto.h"
 
-static struct HCHead *hcc_read_command(struct HostConf *hc, hctransaction_t trans);
 static void hcc_start_reply(hctransaction_t trans, struct HCHead *rhead);
+static int hcc_finish_reply(hctransaction_t trans, struct HCHead *head);
 
 int
-hcc_connect(struct HostConf *hc)
+hcc_connect(struct HostConf *hc, int readonly)
 {
     int fdin[2];
     int fdout[2];
@@ -52,7 +52,7 @@ hcc_connect(struct HostConf *hc)
 	av[n++] = "-T";
 	av[n++] = hc->host;
 	av[n++] = "cpdup";
-	av[n++] = "-S";
+	av[n++] = (readonly ? "-RS" : "-S");
 	av[n++] = NULL;
 
 	execv("/usr/bin/ssh", (void *)av);
@@ -84,10 +84,8 @@ hcc_slave(int fdin, int fdout, struct HCDesc *descs, int count)
 {
     struct HostConf hcslave;
     struct HCHead *head;
-    struct HCHead *whead;
     struct HCTransaction trans;
     int (*dispatch[256])(hctransaction_t, struct HCHead *);
-    int aligned_bytes;
     int i;
     int r;
 
@@ -140,17 +138,7 @@ hcc_slave(int fdin, int fdout, struct HCDesc *descs, int count)
 		break;
 	}
 
-	/*
-	 * Write out the reply
-	 */
-	whead = (void *)trans.wbuf;
-	whead->bytes = trans.windex;
-	whead->error = head->error;
-	aligned_bytes = HCC_ALIGN(trans.windex);
-#ifdef DEBUG
-	hcc_debug_dump(whead);
-#endif
-	if (write(hcslave.fdout, whead, aligned_bytes) != aligned_bytes)
+	if (!hcc_finish_reply(&trans, head))
 	    break;
     }
     return(0);
@@ -159,17 +147,14 @@ hcc_slave(int fdin, int fdout, struct HCDesc *descs, int count)
 /*
  * This reads a command from fdin, fixes up the byte ordering, and returns
  * a pointer to HCHead.
- *
- * The MasterMutex may or may not be held.  When threaded this command
- * is serialized by a reader thread.
  */
-static
 struct HCHead *
 hcc_read_command(struct HostConf *hc, hctransaction_t trans)
 {
     hctransaction_t fill;
     struct HCHead tmp;
     int aligned_bytes;
+    int need_swap;
     int n;
     int r;
 
@@ -181,17 +166,25 @@ hcc_read_command(struct HostConf *hc, hctransaction_t trans)
 	n += r;
     }
 
-    assert(tmp.bytes >= (int)sizeof(tmp) && tmp.bytes < 65536);
-    assert(tmp.magic == HCMAGIC);
-
-    if (trans) {
-	fill = trans;
-    } else {
-	fprintf(stderr, "cpdup hlink protocol error with %s (%04x)\n",
-		hc->host, tmp.id);
-	exit(1);
+    if (tmp.magic == HCMAGIC)
+	need_swap = 0;
+    else {
+	tmp.magic = hc_bswap32(tmp.magic);
+	if (tmp.magic != HCMAGIC)
+	    fatal("magic mismatch with %s (%04x)", hc->host, tmp.id);
+	need_swap = 1;
+	tmp.bytes = hc_bswap32(tmp.bytes);
+	tmp.cmd   = hc_bswap16(tmp.cmd);
+	tmp.id    = hc_bswap16(tmp.id);
+	tmp.error = hc_bswap32(tmp.error);
     }
 
+    assert(tmp.bytes >= (int)sizeof(tmp) && tmp.bytes < HC_BUFSIZE);
+
+    if (!(fill = trans))
+	fatal("cpdup hlink protocol error with %s (%04x)", hc->host, tmp.id);
+
+    fill->swap = need_swap;
     bcopy(&tmp, fill->rbuf, n);
     aligned_bytes = HCC_ALIGN(tmp.bytes);
 
@@ -202,25 +195,12 @@ hcc_read_command(struct HostConf *hc, hctransaction_t trans)
 	n += r;
     }
 #ifdef DEBUG
-    hcc_debug_dump(head);
+    hcc_debug_dump(trans, head);
 #endif
     fill->state = HCT_REPLIED;
     return((void *)fill->rbuf);
 fail:
     return(NULL);
-}
-
-static
-hctransaction_t
-hcc_get_trans(struct HostConf *hc)
-{
-    return(&hc->trans);
-}
-
-void
-hcc_free_trans(struct HostConf *hc __unused)
-{
-    /* nop */
 }
 
 /*
@@ -232,7 +212,7 @@ hcc_start_command(struct HostConf *hc, int16_t cmd)
     struct HCHead *whead;
     hctransaction_t trans;
 
-    trans = hcc_get_trans(hc);
+    trans = &hc->trans;
 
     whead = (void *)trans->wbuf;
     whead->magic = HCMAGIC;
@@ -279,6 +259,7 @@ hcc_finish_command(hctransaction_t trans)
     whead = (void *)trans->wbuf;
     whead->bytes = trans->windex;
     aligned_bytes = HCC_ALIGN(trans->windex);
+    trans->windex = 0;	/* initialize for hcc_nextchaineditem() */
 
     trans->state = HCT_SENT;
 
@@ -290,8 +271,7 @@ hcc_finish_command(hctransaction_t trans)
 #endif
 	if (whead->cmd < 0x0010)
 		return(NULL);
-	fprintf(stderr, "cpdup lost connection to %s\n", hc->host);
-	exit(1);
+	fatal("cpdup lost connection to %s", hc->host);
     }
 
     wcmd = whead->cmd;
@@ -309,8 +289,7 @@ hcc_finish_command(hctransaction_t trans)
 #endif
 	if (wcmd < 0x0010)
 		return(NULL);
-	fprintf(stderr, "cpdup lost connection to %s\n", hc->host);
-	exit(1);
+	fatal("cpdup lost connection to %s", hc->host);
     }
     trans->state = HCT_DONE;
 
@@ -324,6 +303,22 @@ hcc_finish_command(hctransaction_t trans)
     return (rhead);
 }
 
+int
+hcc_finish_reply(hctransaction_t trans, struct HCHead *head)
+{
+    struct HCHead *whead;
+    int aligned_bytes;
+
+    whead = (void *)trans->wbuf;
+    whead->bytes = trans->windex;
+    whead->error = head->error;
+    aligned_bytes = HCC_ALIGN(trans->windex);
+#ifdef DEBUG
+    hcc_debug_dump(trans, whead);
+#endif
+    return (write(trans->hc->fdout, whead, aligned_bytes) == aligned_bytes);
+}
+
 void
 hcc_leaf_string(hctransaction_t trans, int16_t leafid, const char *str)
 {
@@ -331,7 +326,7 @@ hcc_leaf_string(hctransaction_t trans, int16_t leafid, const char *str)
     int bytes = strlen(str) + 1;
 
     item = (void *)(trans->wbuf + trans->windex);
-    assert(trans->windex + sizeof(*item) + bytes < 65536);
+    assert(trans->windex + sizeof(*item) + bytes < HC_BUFSIZE);
     item->leafid = leafid;
     item->reserved = 0;
     item->bytes = sizeof(*item) + bytes;
@@ -345,7 +340,7 @@ hcc_leaf_data(hctransaction_t trans, int16_t leafid, const void *ptr, int bytes)
     struct HCLeaf *item;
 
     item = (void *)(trans->wbuf + trans->windex);
-    assert(trans->windex + sizeof(*item) + bytes < 65536);
+    assert(trans->windex + sizeof(*item) + bytes < HC_BUFSIZE);
     item->leafid = leafid;
     item->reserved = 0;
     item->bytes = sizeof(*item) + bytes;
@@ -359,7 +354,7 @@ hcc_leaf_int32(hctransaction_t trans, int16_t leafid, int32_t value)
     struct HCLeaf *item;
 
     item = (void *)(trans->wbuf + trans->windex);
-    assert(trans->windex + sizeof(*item) + sizeof(value) < 65536);
+    assert(trans->windex + sizeof(*item) + sizeof(value) < HC_BUFSIZE);
     item->leafid = leafid;
     item->reserved = 0;
     item->bytes = sizeof(*item) + sizeof(value);
@@ -373,7 +368,7 @@ hcc_leaf_int64(hctransaction_t trans, int16_t leafid, int64_t value)
     struct HCLeaf *item;
 
     item = (void *)(trans->wbuf + trans->windex);
-    assert(trans->windex + sizeof(*item) + sizeof(value) < 65536);
+    assert(trans->windex + sizeof(*item) + sizeof(value) < HC_BUFSIZE);
     item->leafid = leafid;
     item->reserved = 0;
     item->bytes = sizeof(*item) + sizeof(value);
@@ -381,7 +376,30 @@ hcc_leaf_int64(hctransaction_t trans, int16_t leafid, int64_t value)
     trans->windex = HCC_ALIGN(trans->windex + item->bytes);
 }
 
+/*
+ * Check if there's enough space left in the write buffer for <n>
+ * leaves with a total of <size> data bytes.
+ * If not, the current packet will be sent with the HCF_CONTINUE flag,
+ * then the transaction is initialized for another reply packet.
+ *
+ * Returns success status (boolean).
+ */
 int
+hcc_check_space(hctransaction_t trans, struct HCHead *head, int n, int size)
+{
+    size = HCC_ALIGN(size) + n * sizeof(struct HCLeaf);
+    if (size > HC_BUFSIZE - trans->windex) {
+	struct HCHead *whead = (void *)trans->wbuf;
+
+	whead->cmd |= HCF_CONTINUE;
+	if (!hcc_finish_reply(trans, head))
+	    return (0);
+	hcc_start_reply(trans, head);
+    }
+    return (1);
+}
+
+intptr_t
 hcc_alloc_descriptor(struct HostConf *hc, void *ptr, int type)
 {
     struct HCHostDesc *hd;
@@ -394,7 +412,8 @@ hcc_alloc_descriptor(struct HostConf *hc, void *ptr, int type)
     if ((hd = hc->hostdescs) != NULL) {
 	hnew->desc = hd->desc + 1;
     } else {
-	hnew->desc = 1;
+	/* start at 2 because 1 has a special meaning in hc_open() */
+	hnew->desc = 2;
     }
     hnew->next = hd;
     hc->hostdescs = hnew;
@@ -402,7 +421,7 @@ hcc_alloc_descriptor(struct HostConf *hc, void *ptr, int type)
 }
 
 void *
-hcc_get_descriptor(struct HostConf *hc, int desc, int type)
+hcc_get_descriptor(struct HostConf *hc, intptr_t desc, int type)
 {
     struct HCHostDesc *hd;
 
@@ -414,7 +433,7 @@ hcc_get_descriptor(struct HostConf *hc, int desc, int type)
 }
 
 void
-hcc_set_descriptor(struct HostConf *hc, int desc, void *ptr, int type)
+hcc_set_descriptor(struct HostConf *hc, intptr_t desc, void *ptr, int type)
 {
     struct HCHostDesc *hd;
     struct HCHostDesc **hdp;
@@ -442,59 +461,91 @@ hcc_set_descriptor(struct HostConf *hc, int desc, void *ptr, int type)
 }
 
 struct HCLeaf *
-hcc_firstitem(struct HCHead *head)
+hcc_nextitem(hctransaction_t trans, struct HCHead *head, struct HCLeaf *item)
 {
-    struct HCLeaf *item;
     int offset;
 
-    offset = sizeof(*head);
+    if (item == NULL)
+	item = (void *)(head + 1);
+    else
+	item = (void *)((char *)item + HCC_ALIGN(item->bytes));
+    offset = (char *)item - (char *)head;
     if (offset == head->bytes)
 	return(NULL);
+    if (trans->swap) {
+	int64_t *i64ptr;
+	int32_t *i32ptr;
+
+	item->leafid = hc_bswap16(item->leafid);
+	item->bytes  = hc_bswap32(item->bytes);
+	switch (item->leafid & LCF_TYPEMASK) {
+	    case LCF_INT32:
+		i32ptr = (void *)(item + 1);
+		*i32ptr = hc_bswap32(*i32ptr);
+		break;
+	    case LCF_INT64:
+		i64ptr = (void *)(item + 1);
+		*i64ptr = hc_bswap64(*i64ptr);
+		break;
+	}
+    }
     assert(head->bytes >= offset + (int)sizeof(*item));
-    item = (void *)(head + 1);
     assert(head->bytes >= offset + item->bytes);
-    assert(item->bytes >= (int)sizeof(*item) && item->bytes < 65536 - offset);
+    assert(item->bytes >= (int)sizeof(*item) && item->bytes < HC_BUFSIZE);
     return (item);
 }
 
 struct HCLeaf *
-hcc_nextitem(struct HCHead *head, struct HCLeaf *item)
+hcc_nextchaineditem(struct HostConf *hc, struct HCHead *head)
 {
-    int offset;
+    hctransaction_t trans = &hc->trans;
+    struct HCLeaf *item = hcc_currentchaineditem(hc, head);
 
-    item = (void *)((char *)item + HCC_ALIGN(item->bytes));
-    offset = (char *)item - (char *)head;
-    if (offset == head->bytes)
-	return(NULL);
-    assert(head->bytes >= offset + (int)sizeof(*item));
-    assert(head->bytes >= offset + item->bytes);
-    assert(item->bytes >= (int)sizeof(*item) && item->bytes < 65536 - offset);
+    while ((item = hcc_nextitem(trans, head, item)) == NULL) {
+	if (!(head->cmd & HCF_CONTINUE))
+	    return (NULL);
+	head = hcc_read_command(hc, trans);
+	if (trans->state != HCT_REPLIED || head->id != trans->id)
+	    return (NULL);
+    }
+    trans->windex = (char *)item - (char *)head;
     return (item);
+}
+
+struct HCLeaf *
+hcc_currentchaineditem(struct HostConf *hc, struct HCHead *head)
+{
+    hctransaction_t trans = &hc->trans;
+
+    if (trans->windex == 0)
+	return (NULL);
+    else
+	return ((void *) ((char *)head + trans->windex));
 }
 
 #ifdef DEBUG
 
 void
-hcc_debug_dump(struct HCHead *head)
+hcc_debug_dump(hctransaction_t trans, struct HCHead *head)
 {
     struct HCLeaf *item;
     int aligned_bytes = HCC_ALIGN(head->bytes);
 
-    fprintf(stderr, "DUMP %04x (%d)", (u_int16_t)head->cmd, aligned_bytes);
+    fprintf(stderr, "DUMP %04x (%d)", (uint16_t)head->cmd, aligned_bytes);
     if (head->cmd & HCF_REPLY)
 	fprintf(stderr, " error %d", head->error);
     fprintf(stderr, "\n");
-    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
+    FOR_EACH_ITEM(item, trans, head) {
 	fprintf(stderr, "    ITEM %04x DATA ", item->leafid);
 	switch(item->leafid & LCF_TYPEMASK) {
 	case LCF_INT32:
-	    fprintf(stderr, "int32 %d\n", *(int32_t *)(item + 1));
+	    fprintf(stderr, "int32 %d\n", HCC_INT32(item));
 	    break;
 	case LCF_INT64:
-	    fprintf(stderr, "int64 %lld\n", *(int64_t *)(item + 1));
+	    fprintf(stderr, "int64 %lld\n", HCC_INT64(item));
 	    break;
 	case LCF_STRING:
-	    fprintf(stderr, "\"%s\"\n", (char *)(item + 1));
+	    fprintf(stderr, "\"%s\"\n", HCC_STRING(item));
 	    break;
 	case LCF_BINARY:
 	    fprintf(stderr, "(binary)\n");

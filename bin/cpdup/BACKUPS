@@ -271,6 +271,7 @@ $DragonFly: src/bin/cpdup/BACKUPS,v 1.4 2007/05/17 08:19:00 swildner Exp $
 
     If your OpenSSH version is too old to recognize that setting, you
     should update to a more recent version immediately.
+    Restart sshd for the settings to take effect.
 
     On the backup machine, create a special backup key for root:
 
@@ -305,6 +306,25 @@ $DragonFly: src/bin/cpdup/BACKUPS,v 1.4 2007/05/17 08:19:00 swildner Exp $
     If you have done all of the above correctly, then the root user on the
     backup machine will be able to log into the client boxes as root and
     execute "/usr/local/bin/cpdup -S", but nothing else.
+
+    To further improve security, you can place the slave cpdup on the client
+    machine into read-only mode by adding the -R option.  In this case, the
+    line from the authorized_keys file should begin as follows:
+
+	command="/usr/local/bin/cpdup -RS",from="<BAKHOST>",etc...
+
+    If you do that, your backup server can only pull backups from the client
+    machine, but it won't be able to change anything on it.  That is, you
+    cannot use the client machine as a remote target.  So, if an attacker
+    manages to be able to execute commands on your backup machine, he won't
+    be able to do any harm to your clients.  This also protects against
+    human errors, e.g. accidentally swapping source and destination.
+
+    By the way, it doesn't really matter much whether you specify the -R
+    option when running cpdup on the backup machine.  If you do it, then
+    the -R option will be passed to the slave, but the command="..." entry
+    from the authorized_keys file overides it anyway, so the slave always
+    runs with the -R option.
 
     When using cpdup on the backup machine, make sure that the right key is
     used by passing the -i option to the ssh command:

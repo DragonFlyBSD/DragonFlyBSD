@@ -28,11 +28,22 @@
 #include <md5.h>
 #endif
 
+/* Solaris needs <strings.h> for bzero(), bcopy() and bcmp(). */
+#include <strings.h>
+
+#ifdef __sun
+#include "compat_sun.h"
+#endif
+
 void logstd(const char *ctl, ...);
 void logerr(const char *ctl, ...);
 char *mprintf(const char *ctl, ...);
 void fatal(const char *ctl, ...);
 char *fextract(FILE *fi, int n, int *pc, int skip);
+
+int16_t hc_bswap16(int16_t var);
+int32_t hc_bswap32(int32_t var);
+int64_t hc_bswap64(int64_t var);
 
 int fsmid_check(int64_t fsmid, const char *dpath);
 void fsmid_flush(void);
@@ -41,12 +52,14 @@ int md5_check(const char *spath, const char *dpath);
 void md5_flush(void);
 #endif
 
+extern const char *UseCpFile;
 extern const char *MD5CacheFile;
 extern const char *FSMIDCacheFile;
 
 extern int QuietOpt;
 extern int SummaryOpt;
 extern int CompressOpt;
+extern int ReadOnlyOpt;
 extern int DstRootPrivs;
 
 extern int ssh_argc;

@@ -260,7 +260,7 @@ doMD5File(const char *filename, char *buf, int is_target)
     if (SummaryOpt) {
 	struct stat st;
 	if (stat(filename, &st) == 0) {
-	    u_int64_t size = st.st_size;
+	    uint64_t size = st.st_size;
 	    if (is_target)
 		    CountTargetReadBytes += size;
 	    else
