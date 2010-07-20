@@ -1,18 +1,11 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/6/93
-# $FreeBSD: src/secure/usr.bin/bdes/Makefile,v 1.10 1999/08/28 01:30:30 peter Exp $
-# $DragonFly: src/secure/usr.bin/bdes/Makefile,v 1.2 2003/06/17 04:27:48 dillon Exp $
+# $FreeBSD: src/secure/usr.bin/bdes/Makefile,v 1.14 2004/02/23 20:25:27 johan Exp $
 
 PROG=	bdes
-SRCS=	bdes.c
-WARNS?=	1
 
-.if exists(${.OBJDIR}/../../lib/libcipher)
-LDFLAGS+= -L${.OBJDIR}/../../lib/libcipher
-.else
-LDFLAGS+= -L${.CURDIR}/../../lib/libcipher
-.endif
+WARNS?=	2
 
-LDADD+= -lcipher
-DPADD+= libcipher.a
+DPADD=	${LIBCRYPTO}
+LDADD=	-lcrypto
 
 .include <bsd.prog.mk>
