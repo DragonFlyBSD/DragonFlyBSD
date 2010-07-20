@@ -324,19 +324,19 @@ struct iwn_softc {
 	struct sysctl_oid	*sc_sysctl_tree;
 };
 
+#if 0
 #define IWN_LOCK_INIT(_sc)
 #define IWN_LOCK(_sc)			lwkt_serialize_enter((_sc)->sc_ifp->if_serializer)
 #define IWN_LOCK_ASSERT(_sc)		ASSERT_SERIALIZED((_sc)->sc_ifp->if_serializer)
 #define IWN_UNLOCK(_sc)			lwkt_serialize_exit((_sc)->sc_ifp->if_serializer)
 #define IWN_LOCK_DESTROY(_sc)
+#endif
 
-#if 0
 #define IWN_LOCK_INIT(_sc) \
 	lockinit(&(_sc)->sc_lock, \
 		__DECONST(char *, device_get_nameunit((_sc)->sc_dev)), \
 		0, LK_CANRECURSE)
 #define IWN_LOCK(_sc)			lockmgr(&(_sc)->sc_lock, LK_EXCLUSIVE)
-#define IWN_LOCK_ASSERT(_sc)		KKASSERT(lockstatus(&(sc)->sc_lock, curthred)  != 0)
+#define IWN_LOCK_ASSERT(_sc)		KKASSERT(lockstatus(&(sc)->sc_lock, curthread)  != 0)
 #define IWN_UNLOCK(_sc)			lockmgr(&(_sc)->sc_lock, LK_RELEASE)
 #define IWN_LOCK_DESTROY(_sc)		lockuninit(&(_sc)->sc_lock)
-#endif

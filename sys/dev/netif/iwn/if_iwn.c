@@ -685,7 +685,7 @@ iwn_attach(device_t dev)
 	 * Hook our interrupt after all initialization is complete.
 	 */
 	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE,
-	    iwn_intr, sc, &sc->sc_ih, ifp->if_serializer);
+	    iwn_intr, sc, &sc->sc_ih, NULL);
 	if (error != 0) {
 		device_printf(dev, "could not set up interrupt, error %d\n",
 		    error);
@@ -2005,7 +2005,7 @@ iwn_timer_timeout(void *arg)
 	struct iwn_softc *sc = arg;
 	uint32_t flags = 0;
 
-	IWN_LOCK(sc);
+	IWN_LOCK_ASSERT(sc);
 
 	if (sc->calib_cnt && --sc->calib_cnt == 0) {
 		DPRINTF(sc, IWN_DEBUG_CALIBRATE, "%s\n",
@@ -2016,7 +2016,6 @@ iwn_timer_timeout(void *arg)
 	}
 	iwn_watchdog(sc);		/* NB: piggyback tx watchdog */
 	callout_reset(&sc->sc_timer_to, hz, iwn_timer_timeout, sc);
-	IWN_UNLOCK(sc);
 }
 
 static void
@@ -2731,6 +2730,8 @@ iwn_intr(void *arg)
 	struct ifnet *ifp = sc->sc_ifp;
 	uint32_t r1, r2, tmp;
 
+	IWN_LOCK(sc);
+
 	/* Disable interrupts. */
 	IWN_WRITE(sc, IWN_INT_MASK, 0);
 
@@ -2812,6 +2813,8 @@ done:
 	/* Re-enable interrupts. */
 	if (ifp->if_flags & IFF_UP)
 		IWN_WRITE(sc, IWN_INT_MASK, sc->int_mask);
+
+	IWN_UNLOCK(sc);
 
 }
 
@@ -3365,9 +3368,9 @@ iwn_start(struct ifnet *ifp)
 {
 	struct iwn_softc *sc = ifp->if_softc;
 
-	IWN_LOCK_ASSERT(sc);
-
+	IWN_LOCK(sc);
 	iwn_start_locked(ifp);
+	IWN_UNLOCK(sc);
 }
 
 static void
@@ -3529,7 +3532,7 @@ iwn_cmd(struct iwn_softc *sc, int code, const void *buf, int size, int async)
 	ring->cur = (ring->cur + 1) % IWN_TX_RING_COUNT;
 	IWN_WRITE(sc, IWN_HBUS_TARG_WRPTR, ring->qid << 8 | ring->cur);
 
-	return async ? 0 : zsleep(desc, sc->sc_ifp->if_serializer, 0, "iwncmd", hz);
+	return async ? 0 : lksleep(desc, &sc->sc_lock, 0, "iwncmd", hz);
 }
 
 static int
@@ -5252,7 +5255,7 @@ iwn5000_query_calibration(struct iwn_softc *sc)
 
 	/* Wait at most two seconds for calibration to complete. */
 	if (!(sc->sc_flags & IWN_FLAG_CALIB_DONE))
-		error = zsleep(sc, sc->sc_ifp->if_serializer, 0, "iwninit", 2 * hz);
+		error = lksleep(sc, &sc->sc_lock, 0, "iwninit", 2 * hz);
 	return error;
 }
 
@@ -5552,7 +5555,7 @@ iwn4965_load_firmware(struct iwn_softc *sc)
 	IWN_WRITE(sc, IWN_RESET, 0);
 
 	/* Wait at most one second for first alive notification. */
-	error = zsleep(sc, sc->sc_ifp->if_serializer, 0, "iwninit", hz);
+	error = lksleep(sc, &sc->sc_lock, 0, "iwninit", hz);
 	if (error) {
 		device_printf(sc->sc_dev,
 		    "%s: timeout waiting for adapter to initialize, error %d\n",
@@ -5622,7 +5625,7 @@ iwn5000_load_firmware_section(struct iwn_softc *sc, uint32_t dst,
 	iwn_nic_unlock(sc);
 
 	/* Wait at most five seconds for FH DMA transfer to complete. */
-	return zsleep(sc, sc->sc_ifp->if_serializer, 0, "iwninit", hz);
+	return lksleep(sc, &sc->sc_lock, 0, "iwninit", hz);
 }
 
 static int
@@ -6046,7 +6049,7 @@ iwn_hw_init(struct iwn_softc *sc)
 		return error;
 	}
 	/* Wait at most one second for firmware alive notification. */
-	error = zsleep(sc, sc->sc_ifp->if_serializer, 0, "iwninit", hz);
+	error = lksleep(sc, &sc->sc_lock, 0, "iwninit", hz);
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "%s: timeout waiting for adapter to initialize, error %d\n",
