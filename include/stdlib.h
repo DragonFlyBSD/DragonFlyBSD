@@ -75,7 +75,9 @@ extern int __mb_cur_max;
 __BEGIN_DECLS
 void	 abort(void) __dead2;
 /* void	 abort2(const char *, int, void **) __dead2; */
+#if !defined(_KERNEL_VIRTUAL)
 int	 abs(int) __pure2;
+#endif
 int	 atexit(void (*)(void));
 double	 atof(const char *);
 int	 atoi(const char *);
@@ -87,7 +89,9 @@ div_t	 div(int, int) __pure2;
 void	 exit(int) __dead2;
 void	 free(void *);
 char	*getenv(const char *);
+#if !defined(_KERNEL_VIRTUAL)
 long	 labs(long) __pure2;
+#endif
 ldiv_t	 ldiv(long, long) __pure2;
 void	*malloc(size_t);
 int	 posix_memalign(void **, size_t, size_t);
