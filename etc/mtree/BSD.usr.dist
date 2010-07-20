@@ -1,5 +1,4 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.54 2008/07/09 07:21:03 swildner Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -108,6 +107,12 @@
         doc
             legal
                 intel_iwi
+                ..
+                intel_iwn
+                ..
+                intel_wpi
+                ..
+                ralink_ral
                 ..
             ..
         ..

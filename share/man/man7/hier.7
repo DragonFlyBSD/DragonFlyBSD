@@ -31,9 +31,8 @@
 .\"
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
-.\" $DragonFly: src/share/man/man7/hier.7,v 1.26 2008/09/06 14:24:44 swildner Exp $
 .\"
-.Dd August 6, 2009
+.Dd July 20, 2010
 .Dt HIER 7
 .Os
 .Sh NAME
@@ -83,10 +82,10 @@ see
 .It Pa dma/
 .Xr dma 8
 configuration files
-.It Pa firmware/
-Firmware image files;
-see
-.Xr firmware 9
+.\".It Pa firmware/
+.\"Firmware image files;
+.\"see
+.\".Xr firmware 9
 .It Pa isdn/
 isdn4bsd configuration files;
 see
@@ -431,6 +430,13 @@ common words
 reference databases;
 see
 .Xr refer 1
+.El
+.Pp
+.It Pa doc/
+miscellaneous documentation
+.Bl -tag -width Fl -compact
+.It Pa legal/
+License files for vendor supplied firmwares
 .El
 .Pp
 .It Pa examples/

@@ -1,5 +1,4 @@
 # $FreeBSD: src/COPYRIGHT,v 1.4 1999/09/05 21:33:47 obrien Exp $
-# $DragonFly: src/COPYRIGHT,v 1.11 2007/12/31 23:53:32 swildner Exp $
 #	@(#)COPYRIGHT	8.2 (Berkeley) 3/21/94
 
 Authors of new code wishing specific recognition are encouraged to use the
@@ -44,6 +43,11 @@ AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 SUCH DAMAGE.
+
+--
+
+Additional license files for vendor supplied firmwares can be found in
+/usr/share/legal.
 
 --
 
