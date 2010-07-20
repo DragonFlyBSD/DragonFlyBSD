@@ -292,6 +292,12 @@ dev_dpsize(cdev_t dev)
 	return(-1);
 }
 
+/*
+ * Pass-thru to the device kqfilter.
+ *
+ * NOTE: We explicitly preset a_result to 0 so d_kqfilter() functions
+ *	 which return 0 do not have to bother setting a_result.
+ */
 int
 dev_dkqfilter(cdev_t dev, struct knote *kn)
 {
@@ -301,6 +307,7 @@ dev_dkqfilter(cdev_t dev, struct knote *kn)
 	ap.a_head.a_desc = &dev_kqfilter_desc;
 	ap.a_head.a_dev = dev;
 	ap.a_kn = kn;
+	ap.a_result = 0;
 	error = dev->si_ops->d_kqfilter(&ap);
 	if (error == 0)
 		return(ap.a_result);
