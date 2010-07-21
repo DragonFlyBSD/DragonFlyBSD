@@ -29,6 +29,6 @@ FILES=	DAEMON LOGIN NETWORKING SERVERS abi accounting addswap adjkerntz \
 FILESDIR=	/etc/rc.d
 FILESMODE=	${BINMODE}
 
-NOPROG= noprog
+NOOBJ=
 
 .include <bsd.prog.mk>
