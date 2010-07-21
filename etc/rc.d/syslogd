@@ -2,7 +2,6 @@
 #
 # $NetBSD: syslogd,v 1.12 2002/03/22 04:34:00 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/syslogd,v 1.4 2002/10/01 13:29:44 ru Exp $
-# $DragonFly: src/etc/rc.d/syslogd,v 1.6 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: syslogd
@@ -22,7 +21,6 @@ _sockfile="/var/run/syslogd.sockets"
 
 pidfile="/var/run/syslog.pid"
 evalargs="rc_flags=\"\`set_socketlist\` \$rc_flags\""
-altlog_proglist="named"
 
 syslogd_precmd()
 {
@@ -37,14 +35,19 @@ syslogd_precmd()
 	#
 	( umask 022 ; > $_sockfile )
 
-	#	If running named(8) chrooted, added appropriate
+	#	Find /etc/rc.d scripts with "chrootdir" rcorder(8) keyword,
+	#	and if $${app}_chrootdir is a directory, add appropriate
 	#	syslog socket to list of sockets to watch.
 	#
-	for _l in $altlog_proglist; do
+	for _lr in $(rcorder -k chrootdir /etc/rc.d/*); do
+	    (
+		_l=${_lr##*/}
+		load_rc_config ${_l}
 		eval _ldir=\$${_l}_chrootdir
-		if checkyesno `set_rcvar $_l` && [ -n "$_ldir" ]; then
+		if checkyesno $_l && [ -n "$_ldir" ]; then
 			echo "${_ldir}/var/run/log" >> $_sockfile
 		fi
+	    )
 	done
 
 	#	If other sockets have been provided, change run_rc_command()'s
