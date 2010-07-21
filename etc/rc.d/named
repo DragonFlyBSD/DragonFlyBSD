@@ -1,0 +1,12 @@
+#!/bin/sh
+
+# PROVIDE: named
+# REQUIRE: SERVERS
+# BEFORE:  DAEMON
+
+#	This is a dummy dependency for named which is no longer in base
+#	but is needed as a provider by the rpcbind rc script. The real
+#	functionality is in the pkgsrc rc script, if installed.
+
+. /etc/rc.subr
+dummy_rc_command "$1"

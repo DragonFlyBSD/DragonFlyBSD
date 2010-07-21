@@ -1,5 +1,3 @@
-# $DragonFly: src/Makefile_upgrade.inc,v 1.36 2008/11/24 17:40:02 hasso Exp $
-#
 # Append all obsolete files to this file
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
 
@@ -1297,7 +1295,6 @@ TO_REMOVE+=/usr/share/man/cat9/ieee80211_cancel_scan_any.9.gz
 TO_REMOVE+=/usr/share/man/man9/ieee80211_cancel_scan_any.9.gz
 TO_REMOVE+=/usr/share/man/cat9/ieee80211_wait_for_parent.9.gz
 TO_REMOVE+=/usr/share/man/man9/ieee80211_wait_for_parent.9.gz
-TO_REMOVE+=/etc/rc.d/named
 TO_REMOVE+=/usr/bin/dig
 TO_REMOVE+=/usr/bin/dnssec-keygen
 TO_REMOVE+=/usr/bin/dnssec-signzone
