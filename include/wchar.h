@@ -1,5 +1,4 @@
 /*	$NetBSD: src/include/wchar.h,v 1.20 2004/05/08 21:57:05 kleink Exp $	*/
-/*	$DragonFly: src/include/wchar.h,v 1.12 2008/06/05 17:53:10 swildner Exp $ */
 
 /*-
  * Copyright (c)1999 Citrus Project,
@@ -73,9 +72,11 @@
 #include <stdio.h> /* for FILE* */
 #include <sys/_null.h>
 
+#ifndef __cplusplus
 #ifndef _WCHAR_T_DECLARED
 #define	_WCHAR_T_DECLARED
 typedef	__wchar_t	wchar_t;
+#endif
 #endif
 
 #ifndef WCHAR_MIN
