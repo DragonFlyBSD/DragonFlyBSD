@@ -21,7 +21,7 @@ BROKEN_KEYBOARD_RESET	opt_reset.h
 # they are handled like options for static file systems
 # (see src/sys/conf/options), except for broken debugging options.
 COMPAT_LINUX		opt_dontuse.h
-LINPROCFS	#Linux compatible procfs
+LINPROCFS		opt_dontuse.h	#Linux compatible procfs
 
 # i386 SMP options
 APIC_IO			opt_global.h
