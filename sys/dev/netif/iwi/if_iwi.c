@@ -1994,7 +1994,7 @@ iwi_watchdog(void *arg)
 	struct ifnet *ifp = sc->sc_ifp;
 	struct ieee80211com *ic = ifp->if_l2com;
 
-	IWI_LOCK_ASSERT(sc);
+	IWI_LOCK(sc);
 
 	if (sc->sc_tx_timer > 0) {
 		if (--sc->sc_tx_timer == 0) {
@@ -2022,6 +2022,7 @@ iwi_watchdog(void *arg)
 		}
 	}
 	callout_reset(&sc->sc_wdtimer, hz, iwi_watchdog, sc);
+	IWI_UNLOCK(sc);
 }
 
 static int
