@@ -636,11 +636,13 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 
 		/*
 		 * Process all received events
+		 * Account for all non-spurious events in our total
 		 */
 		i = kqueue_scan(kq, kev, n, &marker);
 		if (i) {
+			lres = *res;
 			error = kevent_copyoutfn(uap, kev, i, res);
-			total += i;
+			total += *res - lres;
 			if (error)
 				break;
 		}

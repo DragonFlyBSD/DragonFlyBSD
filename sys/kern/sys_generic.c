@@ -1218,8 +1218,9 @@ poll_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
 		}
 
 		if (nseldebug) {
-			kprintf("poll index %d fd %d events %08x\n",
-				pkap->pfds, pfd->fd, pfd->events);
+			kprintf("poll index %d/%d fd %d events %08x serial %d\n",
+				pkap->pfds, pkap->nfds-1, pfd->fd, pfd->events,
+				pkap->lwp->lwp_kqueue_serial);
 		}
 
 		++pkap->pfds;
@@ -1254,7 +1255,8 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 			kev.flags = EV_DISABLE|EV_DELETE;
 			kqueue_register(&pkap->lwp->lwp_kqueue, &kev);
 			if (nseldebug)
-				kprintf("poll index %d out of range\n", pi);
+				kprintf("poll index %d out of range against serial %d\n",
+					pi, pkap->lwp->lwp_kqueue_serial);
 			continue;
 		}
 		pfd = &pkap->fds[pi];
@@ -1312,8 +1314,8 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 			}
 
 			if (nseldebug) {
-				kprintf("poll index %d fd %d revents %08x\n",
-					pi, pfd->fd, pfd->revents);
+				kprintf("poll index %d/%d fd %d revents %08x\n",
+					pi, pkap->nfds, pfd->fd, pfd->revents);
 			}
 
 			++*res;
