@@ -68,7 +68,6 @@
 .\"
 .\" $FreeBSD: /repoman/r/ncvs/src/share/man/man9/bus_dma.9,v 1.7 2003/07/27 14:05:29 mux Exp $
 .\" $NetBSD: bus_dma.9,v 1.25 2002/10/14 13:43:16 wiz Exp $
-.\" $DragonFly: src/share/man/man9/bus_dma.9,v 1.8 2007/04/09 21:20:37 swildner Exp $
 .\"
 .Dd March 17, 2004
 .Dt BUS_DMA 9
@@ -92,7 +91,7 @@
 .Nm bus_dmamem_free
 .Nd Bus and Machine Independent DMA Mapping Interface
 .Sh SYNOPSIS
-.In machine/bus.h
+.In sys/bus.h
 .Ft int
 .Fn bus_dma_tag_create "bus_dma_tag_t parent" "bus_size_t alignment" \
 "bus_size_t boundary" "bus_addr_t lowaddr" "bus_addr_t highaddr" \

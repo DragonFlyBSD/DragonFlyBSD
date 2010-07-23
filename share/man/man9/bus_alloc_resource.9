@@ -25,7 +25,6 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/bus_alloc_resource.9,v 1.2.2.10 2004/03/17 17:54:24 njl Exp $
-.\" $DragonFly: src/share/man/man9/bus_alloc_resource.9,v 1.5 2004/07/16 10:38:01 joerg Exp $
 .\"
 .Dd May 18, 2000
 .Dt BUS_ALLOC_RESOURCE 9
@@ -38,9 +37,8 @@
 .In sys/param.h
 .In sys/bus.h
 .Pp
-.In machine/bus.h
 .In sys/rman.h
-.In machine/resource.h
+.In sys/resource.h
 .Ft struct resource *
 .Fn bus_alloc_resource "device_t dev" "int type" "int *rid" "u_long start" "u_long end" "u_long count" "u_int flags"
 .Ft struct resource *
