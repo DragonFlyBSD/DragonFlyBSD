@@ -2005,7 +2005,7 @@ iwn_timer_timeout(void *arg)
 	struct iwn_softc *sc = arg;
 	uint32_t flags = 0;
 
-	IWN_LOCK_ASSERT(sc);
+	IWN_LOCK(sc);
 
 	if (sc->calib_cnt && --sc->calib_cnt == 0) {
 		DPRINTF(sc, IWN_DEBUG_CALIBRATE, "%s\n",
@@ -2016,6 +2016,7 @@ iwn_timer_timeout(void *arg)
 	}
 	iwn_watchdog(sc);		/* NB: piggyback tx watchdog */
 	callout_reset(&sc->sc_timer_to, hz, iwn_timer_timeout, sc);
+	IWN_UNLOCK(sc);
 }
 
 static void
