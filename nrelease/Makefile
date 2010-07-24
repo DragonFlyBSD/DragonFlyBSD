@@ -261,7 +261,7 @@ srcs:
 	cd ${ISOROOT}/usr && make src-create
 .else
 	rm -f ${ISOROOT}/usr/src-sys.tgz
-	cd ${.CURDIR}/.. && tar --exclude .git --exclude CVS -s '/^\./src/' \
+	cd ${.CURDIR}/.. && tar --exclude .git -s '/^\./src/' \
 		-czf ${ISOROOT}/usr/src-sys.tgz ./Makefile ./Makefile.inc1 ./sys
 .endif
 .endif
