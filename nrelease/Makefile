@@ -256,25 +256,9 @@ buildiso:
 #
 srcs:
 .if !defined(WITHOUT_SRCS)
-	rm -f ${ISOROOT}/usr/pkgsrc-git.tgz
-	rm -f ${ISOROOT}/usr/pkgsrc
-	mkdir -p ${ISOROOT}/usr/pkgsrc
-	cd ${ISOROOT}/usr/pkgsrc && git init
-	cd ${ISOROOT}/usr/pkgsrc && \
-		git remote add origin git://git.dragonflybsd.org/pkgsrc.git
-	cd ${ISOROOT}/usr/pkgsrc && git fetch origin
-	cd ${ISOROOT}/usr/pkgsrc && git branch vendor origin/vendor
-	cd ${ISOROOT}/usr/pkgsrc && git gc
+	cd ${ISOROOT}/usr && make pkgsrc-create
 .if make(gui)
-	rm -f ${ISOROOT}/usr/src-git.tgz
-	rm -rf ${ISOROOT}/usr/src
-	mkdir -p ${ISOROOT}/usr/src
-	cd ${ISOROOT}/usr/src && git init
-	cd ${ISOROOT}/usr/src && \
-		git remote add origin git://git.dragonflybsd.org/dragonfly.git
-	cd ${ISOROOT}/usr/src && git fetch origin
-	cd ${ISOROOT}/usr/src && git branch master origin/master
-	cd ${ISOROOT}/usr/src && git gc
+	cd ${ISOROOT}/usr && make src-create
 .else
 	rm -f ${ISOROOT}/usr/src-sys.tgz
 	cd ${.CURDIR}/.. && tar --exclude .git --exclude CVS -s '/^\./src/' \
@@ -287,7 +271,7 @@ srcs:
 #
 customizeiso:
 	# Copy the rootskels.  Allow sources to be owned by someone other
-	# then root (as is common when checked out via git).
+	# than root (as is common when checked out via git).
 	#
 .for ROOTSKEL in ${ROOTSKELS}
 	cpdup -X cpignore -o ${ROOTSKEL} ${ISOROOT}
