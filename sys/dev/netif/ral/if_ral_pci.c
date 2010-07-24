@@ -164,7 +164,7 @@ ral_pci_attach(device_t dev)
 {
 	struct ral_pci_softc *psc = device_get_softc(dev);
 	struct rt2560_softc *sc = &psc->u.sc_rt2560;
-	struct ifnet *ifp = sc->sc_ifp;
+	struct ifnet *ifp;
 	int error;
 
 	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
@@ -202,6 +202,7 @@ ral_pci_attach(device_t dev)
 	error = (*psc->sc_opns->attach)(dev, pci_get_device(dev));
 	if (error != 0)
 		return error;
+	ifp = sc->sc_ifp;
 
 	/*
 	 * Hook our interrupt after all initialization is complete.
