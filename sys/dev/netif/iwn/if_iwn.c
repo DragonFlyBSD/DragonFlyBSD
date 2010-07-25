@@ -3377,7 +3377,9 @@ iwn_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 static void
 iwn_start(struct ifnet *ifp)
 {
-	struct iwn_softc *sc = ifp->if_softc;
+	struct iwn_softc *sc;
+
+	sc = ifp->if_softc;
 
 	IWN_LOCK(sc);
 	iwn_start_locked(ifp);
