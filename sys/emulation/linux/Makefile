@@ -1,7 +1,6 @@
 # $FreeBSD: src/sys/modules/linux/Makefile,v 1.34.2.12 2003/01/02 20:41:34 kan Exp $
-# $DragonFly: src/sys/emulation/linux/Makefile,v 1.10 2006/11/07 06:43:24 dillon Exp $
 
-.PATH: ${.CURDIR}/../../emulation/linux ${.CURDIR}/../../emulation/linux/${MACHINE_ARCH}
+.PATH: ${.CURDIR}/${MACHINE_ARCH}
 
 ARCH=	arch_linux
 KMOD=	linux
@@ -15,7 +14,7 @@ SRCS=	linux_dummy.c linux_emuldata.c linux_epoll.c \
 SRCS+=	opt_nfs.h assym.s
 OBJS=	linux_support.o linux_locore.o
 
-SUBDIR= i386/linprocfs
+SUBDIR= ${MACHINE_ARCH}
 .if ${MACHINE_ARCH} == "i386"
 SRCS+=	linux_ptrace.c linux_uid16.c imgact_linux.c opt_cpu.h
 .endif
