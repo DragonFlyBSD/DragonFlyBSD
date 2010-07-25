@@ -3532,7 +3532,7 @@ iwn_cmd(struct iwn_softc *sc, int code, const void *buf, int size, int async)
 	ring->cur = (ring->cur + 1) % IWN_TX_RING_COUNT;
 	IWN_WRITE(sc, IWN_HBUS_TARG_WRPTR, ring->qid << 8 | ring->cur);
 
-	return async ? 0 : lksleep(desc, &sc->sc_lock, 0, "iwncmd", hz);
+	return async ? 0 : tsleep(desc, 0, "iwncmd", hz);
 }
 
 static int
@@ -5256,7 +5256,7 @@ iwn5000_query_calibration(struct iwn_softc *sc)
 
 	/* Wait at most two seconds for calibration to complete. */
 	if (!(sc->sc_flags & IWN_FLAG_CALIB_DONE))
-		error = lksleep(sc, &sc->sc_lock, 0, "iwninit", 2 * hz);
+		error = tsleep(sc, 0, "iwninit", 2 * hz);
 	return error;
 }
 
@@ -5556,7 +5556,7 @@ iwn4965_load_firmware(struct iwn_softc *sc)
 	IWN_WRITE(sc, IWN_RESET, 0);
 
 	/* Wait at most one second for first alive notification. */
-	error = lksleep(sc, &sc->sc_lock, 0, "iwninit", hz);
+	error = tsleep(sc, 0, "iwninit", hz);
 	if (error) {
 		device_printf(sc->sc_dev,
 		    "%s: timeout waiting for adapter to initialize, error %d\n",
@@ -5626,7 +5626,7 @@ iwn5000_load_firmware_section(struct iwn_softc *sc, uint32_t dst,
 	iwn_nic_unlock(sc);
 
 	/* Wait at most five seconds for FH DMA transfer to complete. */
-	return lksleep(sc, &sc->sc_lock, 0, "iwninit", hz);
+	return tsleep(sc, 0, "iwninit", hz);
 }
 
 static int
@@ -6050,7 +6050,7 @@ iwn_hw_init(struct iwn_softc *sc)
 		return error;
 	}
 	/* Wait at most one second for firmware alive notification. */
-	error = lksleep(sc, &sc->sc_lock, 0, "iwninit", hz);
+	error = tsleep(sc, 0, "iwninit", hz);
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "%s: timeout waiting for adapter to initialize, error %d\n",

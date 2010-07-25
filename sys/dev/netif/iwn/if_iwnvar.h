@@ -330,7 +330,6 @@ struct iwn_softc {
 #define IWN_LOCK_ASSERT(_sc)		ASSERT_SERIALIZED((_sc)->sc_ifp->if_serializer)
 #define IWN_UNLOCK(_sc)			lwkt_serialize_exit((_sc)->sc_ifp->if_serializer)
 #define IWN_LOCK_DESTROY(_sc)
-#endif
 
 #define IWN_LOCK_INIT(_sc) \
 	lockinit(&(_sc)->sc_lock, \
@@ -340,3 +339,10 @@ struct iwn_softc {
 #define IWN_LOCK_ASSERT(_sc)		KKASSERT(lockstatus(&(sc)->sc_lock, curthread)  != 0)
 #define IWN_UNLOCK(_sc)			lockmgr(&(_sc)->sc_lock, LK_RELEASE)
 #define IWN_LOCK_DESTROY(_sc)		lockuninit(&(_sc)->sc_lock)
+#endif
+
+#define IWN_LOCK_INIT(_sc)
+#define IWN_LOCK(_sc) lwkt_gettoken(&wlan_token)
+#define IWN_UNLOCK(_sc) lwkt_reltoken(&wlan_token)
+#define IWN_LOCK_DESTROY(_sc)
+#define IWN_LOCK_ASSERT(_sc) ASSERT_LWKT_TOKEN_HELD(&wlan_token)
