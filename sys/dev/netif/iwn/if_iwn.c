@@ -854,8 +854,10 @@ iwn_cleanup(device_t dev)
 			iwn_free_tx_ring(sc, &sc->txq[i]);
 	iwn_free_sched(sc);
 	iwn_free_kw(sc);
-	if (sc->ict != NULL)
+	if (sc->ict != NULL) {
 		iwn_free_ict(sc);
+		sc->ict = NULL;
+	}
 	iwn_free_fwmem(sc);
 
 	if (sc->irq != NULL) {
@@ -863,13 +865,18 @@ iwn_cleanup(device_t dev)
 		bus_release_resource(dev, SYS_RES_IRQ, sc->irq_rid, sc->irq);
 		if (sc->irq_rid == 1)
 			pci_release_msi(dev);
+		sc->irq = NULL;
 	}
 
-	if (sc->mem != NULL)
+	if (sc->mem != NULL) {
 		bus_release_resource(dev, SYS_RES_MEMORY, sc->mem_rid, sc->mem);
+		sc->mem = NULL;
+	}
 
-	if (ifp != NULL)
+	if (ifp != NULL) {
 		if_free(ifp);
+		sc->sc_ifp = NULL;
+	}
 
 	IWN_LOCK_DESTROY(sc);
 	return 0;
@@ -1178,8 +1185,9 @@ iwn_dma_contig_free(struct iwn_dma_info *dma)
 				    BUS_DMASYNC_POSTREAD|BUS_DMASYNC_POSTWRITE);
 				bus_dmamap_unload(dma->tag, dma->map);
 			}
-			bus_dmamem_free(dma->tag, &dma->vaddr, dma->map);
+			bus_dmamap_destroy(dma->tag, dma->map);
 		}
+		bus_dmamem_free(dma->tag, dma->vaddr, dma->map);
 		bus_dma_tag_destroy(dma->tag);
 	}
 }
