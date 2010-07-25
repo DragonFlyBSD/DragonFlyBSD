@@ -847,6 +847,9 @@ iwn_cleanup(device_t dev)
 		ieee80211_ifdetach(ic);
 	}
 
+	/* cleanup sysctl nodes */
+	sysctl_ctx_free(&sc->sc_sysctl_ctx);
+
 	/* Free DMA resources. */
 	iwn_free_rx_ring(sc, &sc->rxq);
 	if (sc->sc_hal != NULL)
