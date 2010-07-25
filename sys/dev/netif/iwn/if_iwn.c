@@ -311,7 +311,6 @@ static const struct iwn_ident iwn_ident_table [] = {
 	{ 0x8086, 0x423D, "Intel(R) PRO/Wireless 5150" },
 	{ 0x8086, 0x4235, "Intel(R) PRO/Wireless 5300" },
 	{ 0x8086, 0x4236, "Intel(R) PRO/Wireless 5300" },
-	{ 0x8086, 0x4236, "Intel(R) PRO/Wireless 5350" },
 	{ 0x8086, 0x423A, "Intel(R) PRO/Wireless 5350" },
 	{ 0x8086, 0x423B, "Intel(R) PRO/Wireless 5350" },
 	{ 0x8086, 0x0083, "Intel(R) PRO/Wireless 1000" },
@@ -3043,7 +3042,7 @@ iwn_tx_data(struct iwn_softc *sc, struct mbuf *m, struct ieee80211_node *ni,
 		txant = IWN_LSB(sc->txchainmask);
 		tx->rflags |= IWN_RFLAG_ANT(txant);
 	} else {
-		tx->linkq = 0;
+		tx->linkq = IWN_RIDX_OFDM54 - ridx;
 		flags |= IWN_TX_LINKQ;	/* enable MRR */
 	}
 
@@ -4155,10 +4154,11 @@ iwn_collect_noise(struct iwn_softc *sc,
 	val = MAX(calib->rssi[2], val);
 
 	/* Determine which antennas are connected. */
-	sc->chainmask = 0;
+	sc->chainmask = sc->rxchainmask;
 	for (i = 0; i < 3; i++)
-		if (val - calib->rssi[i] <= 15 * 20)
-			sc->chainmask |= 1 << i;
+		if (val - calib->rssi[i] > 15 * 20)
+			sc->chainmask &= ~(1 << i);
+
 	/* If none of the TX antennas are connected, keep at least one. */
 	if ((sc->chainmask & sc->txchainmask) == 0)
 		sc->chainmask |= IWN_LSB(sc->txchainmask);
