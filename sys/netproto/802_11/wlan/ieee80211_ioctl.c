@@ -2298,6 +2298,7 @@ ieee80211_ioctl_setappie(struct ieee80211vap *vap,
 	int error;
 	uint8_t fc0;
 
+	ic = vap->iv_ic;
 	fc0 = ireq->i_val & 0xff;
 	if ((fc0 & IEEE80211_FC0_TYPE_MASK) != IEEE80211_FC0_TYPE_MGT)
 		return EINVAL;

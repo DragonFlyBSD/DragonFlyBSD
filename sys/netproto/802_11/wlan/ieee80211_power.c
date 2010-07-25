@@ -285,6 +285,7 @@ ieee80211_set_tim(struct ieee80211_node *ni, int set)
 	uint16_t aid;
 	int changed;
 
+	ic = ni->ni_ic;
 	KASSERT(vap->iv_opmode == IEEE80211_M_HOSTAP ||
 		vap->iv_opmode == IEEE80211_M_IBSS,
 		("operating mode %u", vap->iv_opmode));

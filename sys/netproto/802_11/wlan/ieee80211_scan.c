@@ -453,6 +453,7 @@ ieee80211_start_scan(struct ieee80211vap *vap, int flags,
 	const struct ieee80211_scanner *scan;
 	int result;
 
+	ic = vap->iv_ic;
 	scan = ieee80211_scanner_get(vap->iv_opmode);
 	if (scan == NULL) {
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_SCAN,
@@ -831,6 +832,7 @@ scan_mindwell(struct ieee80211_scan_state *ss)
 {
 	struct ieee80211com *ic = ss->ss_ic;
 
+	ic = ss->ss_ic;
 	IEEE80211_LOCK(ic);
 	scan_signal(ss);
 	IEEE80211_UNLOCK(ic);

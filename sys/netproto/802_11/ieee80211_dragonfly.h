@@ -46,6 +46,7 @@ typedef struct {
 	char		name[16];		/* e.g. "ath0_com_lock" */
 	struct lock	lock;
 } ieee80211_com_lock_t;
+/*
 #define	IEEE80211_LOCK_INIT(_ic, _name) do {				\
 	ieee80211_com_lock_t *cl = &(_ic)->ic_comlock;			\
 	ksnprintf(cl->name, sizeof(cl->name), "%s_com_lock", _name);	\
@@ -58,6 +59,13 @@ typedef struct {
 #define	IEEE80211_UNLOCK(_ic)	   lockmgr(IEEE80211_LOCK_OBJ(_ic), LK_RELEASE)
 #define	IEEE80211_LOCK_ASSERT(_ic) \
     	KKASSERT(lockstatus(IEEE80211_LOCK_OBJ(_ic), curthread) != 0)
+*/
+#define IEEE80211_LOCK_INIT(_ic, _name)
+#define IEEE80211_LOCK_OBJ(_ic) (NULL)
+#define IEEE80211_LOCK_DESTROY(_ic)
+#define IEEE80211_LOCK(_ic) lwkt_gettoken(&wlan_token)
+#define IEEE80211_UNLOCK(_ic) lwkt_reltoken(&wlan_token)
+#define IEEE80211_LOCK_ASSERT(_ic) ASSERT_LWKT_TOKEN_HELD(&wlan_token)
 
 /*
  * Node locking definitions.
