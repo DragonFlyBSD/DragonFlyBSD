@@ -1303,6 +1303,7 @@ catchpacket(struct bpf_d *d, u_char *pkt, u_int pktlen, u_int snaplen,
 	struct bpf_hdr *hp;
 	int totlen, curlen;
 	int hdrlen = d->bd_bif->bif_hdrlen;
+	int wakeup = 0;
 	/*
 	 * Figure out how many bytes to move.  If the packet is
 	 * greater or equal to the snapshot length, transfer that
@@ -1332,7 +1333,7 @@ catchpacket(struct bpf_d *d, u_char *pkt, u_int pktlen, u_int snaplen,
 			return;
 		}
 		ROTATE_BUFFERS(d);
-		bpf_wakeup(d);
+		wakeup = 1;
 		curlen = 0;
 	} else if (d->bd_immediate || d->bd_state == BPF_TIMED_OUT) {
 		/*
@@ -1340,7 +1341,7 @@ catchpacket(struct bpf_d *d, u_char *pkt, u_int pktlen, u_int snaplen,
 		 * already expired during a select call.  A packet
 		 * arrived, so the reader should be woken up.
 		 */
-		bpf_wakeup(d);
+		wakeup = 1;
 	}
 
 	/*
@@ -1355,6 +1356,9 @@ catchpacket(struct bpf_d *d, u_char *pkt, u_int pktlen, u_int snaplen,
 	 */
 	(*cpfn)(pkt, (u_char *)hp + hdrlen, (hp->bh_caplen = totlen - hdrlen));
 	d->bd_slen = curlen + totlen;
+
+	if (wakeup)
+		bpf_wakeup(d);
 }
 
 /*
