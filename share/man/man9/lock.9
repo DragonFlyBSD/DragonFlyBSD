@@ -26,7 +26,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/lock.9,v 1.11 2003/09/08 19:57:21 ru Exp $
 .\"
-.Dd April 10, 2010
+.Dd July 26, 2010
 .Dt LOCK 9
 .Os
 .Sh NAME
@@ -41,6 +41,8 @@
 .In sys/lock.h
 .Ft void
 .Fn lockinit "struct lock *lkp" "char *wmesg" "int timo" "int flags"
+.Ft void
+.Fn lockuninit "struct lock *lkp"
 .Ft int
 .Fn lockcount "struct lock *lkp"
 .Ft int
@@ -82,6 +84,11 @@ Use
 during a sleep; otherwise, 0 is used.
 .El
 .El
+.Pp
+The
+.Fn lockuninit
+function destroys a lock that was previously initialized using
+.Fn lockinit .
 .Pp
 The
 .Fn lockcount
