@@ -83,7 +83,6 @@ struct pipebuf {
 #define PIPE_ASYNC	0x0004	/* Async? I/O */
 #define PIPE_WANTR	0x0008	/* Reader wants some characters */
 #define PIPE_WANTW	0x0010	/* Writer wants space to put characters */
-#define PIPE_SEL	0x0020	/* Pipe has a select active */
 #define PIPE_REOF	0x0040	/* Pipe is in EOF condition (read EOF) */
 #define PIPE_WEOF	0x0080	/* Pipe is in EOF condition (write shutdown) */
 #define PIPE_CLOSED	0x1000	/* Pipe has been closed */

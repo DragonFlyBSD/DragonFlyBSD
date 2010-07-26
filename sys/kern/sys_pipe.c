@@ -159,14 +159,6 @@ static int pipe_create (struct pipe **cpipep);
 static __inline void pipeselwakeup (struct pipe *cpipe);
 static int pipespace (struct pipe *cpipe, int size);
 
-static __inline int
-pipeseltest(struct pipe *cpipe)
-{
-	return ((cpipe->pipe_state & PIPE_SEL) ||
-		((cpipe->pipe_state & PIPE_ASYNC) && cpipe->pipe_sigio) ||
-		SLIST_FIRST(&cpipe->pipe_sel.si_note));
-}
-
 static __inline void
 pipeselwakeup(struct pipe *cpipe)
 {
@@ -438,7 +430,7 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		nbio = 0;
 
 	/*
-	 * Reads are serialized.  Note howeverthat pipe_buffer.buffer and
+	 * Reads are serialized.  Note however that pipe_buffer.buffer and
 	 * pipe_buffer.size can change out from under us when the number
 	 * of bytes in the buffer are zero due to the write-side doing a
 	 * pipespace().
@@ -659,11 +651,9 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 				lwkt_reltoken(&rpipe->pipe_wlock);
 			}
 		}
-		if (pipeseltest(rpipe)) {
-			lwkt_gettoken(&rpipe->pipe_wlock);
-			pipeselwakeup(rpipe);
-			lwkt_reltoken(&rpipe->pipe_wlock);
-		}
+		lwkt_gettoken(&rpipe->pipe_wlock);
+		pipeselwakeup(rpipe);
+		lwkt_reltoken(&rpipe->pipe_wlock);
 	}
 	/*size = rpipe->pipe_buffer.windex - rpipe->pipe_buffer.rindex;*/
 	lwkt_reltoken(&rpipe->pipe_rlock);
@@ -953,11 +943,9 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 				lwkt_reltoken(&wpipe->pipe_rlock);
 			}
 		}
-		if (pipeseltest(wpipe)) {
-			lwkt_gettoken(&wpipe->pipe_rlock);
-			pipeselwakeup(wpipe);
-			lwkt_reltoken(&wpipe->pipe_rlock);
-		}
+		lwkt_gettoken(&wpipe->pipe_rlock);
+		pipeselwakeup(wpipe);
+		lwkt_reltoken(&wpipe->pipe_rlock);
 	}
 
 	/*
@@ -1282,7 +1270,6 @@ pipe_kqfilter(struct file *fp, struct knote *kn)
 {
 	struct pipe *cpipe;
 
-	get_mplock();
 	cpipe = (struct pipe *)kn->kn_fp->f_data;
 
 	switch (kn->kn_filter) {
@@ -1291,21 +1278,21 @@ pipe_kqfilter(struct file *fp, struct knote *kn)
 		break;
 	case EVFILT_WRITE:
 		kn->kn_fop = &pipe_wfiltops;
-		cpipe = cpipe->pipe_peer;
-		if (cpipe == NULL) {
+		if (cpipe->pipe_peer == NULL) {
 			/* other end of pipe has been closed */
 			rel_mplock();
 			return (EPIPE);
 		}
 		break;
 	default:
-		rel_mplock();
 		return (EOPNOTSUPP);
 	}
 	kn->kn_hook = (caddr_t)cpipe;
 
+	crit_enter();
 	SLIST_INSERT_HEAD(&cpipe->pipe_sel.si_note, kn, kn_selnext);
-	rel_mplock();
+	crit_exit();
+
 	return (0);
 }
 
@@ -1314,7 +1301,9 @@ filt_pipedetach(struct knote *kn)
 {
 	struct pipe *cpipe = (struct pipe *)kn->kn_hook;
 
+	crit_enter();
 	SLIST_REMOVE(&cpipe->pipe_sel.si_note, kn, knote, kn_selnext);
+	crit_exit();
 }
 
 /*ARGSUSED*/
@@ -1323,13 +1312,13 @@ filt_piperead(struct knote *kn, long hint)
 {
 	struct pipe *rpipe = (struct pipe *)kn->kn_fp->f_data;
 
-	kn->kn_data = rpipe->pipe_buffer.windex - rpipe->pipe_buffer.rindex;
-
 	/* XXX RACE */
+	kn->kn_data = rpipe->pipe_buffer.windex - rpipe->pipe_buffer.rindex;
 	if (rpipe->pipe_state & PIPE_REOF) {
 		kn->kn_flags |= EV_EOF; 
 		return (1);
 	}
+
 	return (kn->kn_data > 0);
 }
 
@@ -1337,8 +1326,7 @@ filt_piperead(struct knote *kn, long hint)
 static int
 filt_pipewrite(struct knote *kn, long hint)
 {
-	struct pipe *rpipe = (struct pipe *)kn->kn_fp->f_data;
-	struct pipe *wpipe = rpipe->pipe_peer;
+	struct pipe *wpipe = (struct pipe *)kn->kn_fp->f_data;
 	u_int32_t space;
 
 	/* XXX RACE */
@@ -1350,6 +1338,7 @@ filt_pipewrite(struct knote *kn, long hint)
 	space = wpipe->pipe_buffer.windex -
 		wpipe->pipe_buffer.rindex;
 	space = wpipe->pipe_buffer.size - space;
+
 	kn->kn_data = space;
 	return (kn->kn_data >= PIPE_BUF);
 }
