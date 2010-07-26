@@ -558,17 +558,13 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 			 * ignore it too.
 			 */
 			if (error) {
-				if (nevents != 0) {
-					kevp->flags = EV_ERROR;
-					kevp->data = error;
-					lres = *res;
-					kevent_copyoutfn(uap, kevp, 1, res);
-					if (lres != *res) {
-						nevents--;
-						nerrors++;
-					}
-				} else {
-					goto done;
+				kevp->flags = EV_ERROR;
+				kevp->data = error;
+				lres = *res;
+				kevent_copyoutfn(uap, kevp, 1, res);
+				if (lres != *res) {
+					nevents--;
+					nerrors++;
 				}
 			}
 		}

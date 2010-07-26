@@ -1261,6 +1261,11 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 		}
 		pfd = &pkap->fds[pi];
 		if (kevp[i].ident == pfd->fd) {
+			/*
+			 * A single descriptor may generate an error against
+			 * more than one filter, make sure to set the appropriate
+			 * flags but do not increment (*res) more than once.
+			 */
 			if (kevp[i].flags & EV_ERROR) {
 				switch(kevp[i].data) {
 				case EOPNOTSUPP:
@@ -1271,18 +1276,21 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 					 * it is not supported by the device.
 					 */
 					if (kevp[i].filter != EVFILT_EXCEPT) {
+						if (pfd->revents == 0)
+							++*res;
 						pfd->revents |= POLLERR;
-						++*res;
 					}
 					break;
 				case EBADF:
 					/* Bad file descriptor */
+					if (pfd->revents == 0)
+						++*res;
 					pfd->revents |= POLLNVAL;
-					++*res;
 					break;
 				default:
+					if (pfd->revents == 0)
+						++*res;
 					pfd->revents |= POLLERR;
-					++*res;
 					break;
 				}
 				if (nseldebug) {
@@ -1296,8 +1304,9 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 			}
 
 			if (kevp[i].flags & EV_EOF) {
+				if (pfd->revents == 0)
+					++*res;
 				pfd->revents |= POLLHUP;
-				++*res;
 				continue;
 			}
 
@@ -1362,7 +1371,7 @@ dopoll(int nfds, struct pollfd *fds, struct timespec *ts, int *res)
 
 	error = copyin(fds, ka.fds, bytes);
 	if (error == 0)
-		error = kern_kevent(&ka.lwp->lwp_kqueue, ka.nfds, res, &ka,
+		error = kern_kevent(&ka.lwp->lwp_kqueue, 0x7FFFFFFF, res, &ka,
 				    poll_copyin, poll_copyout, ts);
 
 	if (error == 0)
