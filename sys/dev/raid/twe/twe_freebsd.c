@@ -358,7 +358,8 @@ twe_free(struct twe_softc *sc)
     if (sc->twe_io != NULL)
 	bus_release_resource(sc->twe_dev, SYS_RES_IOPORT, TWE_IO_CONFIG_REG, sc->twe_io);
 
-	dev_ops_remove_minor(&twe_ops, device_get_unit(sc->twe_dev));
+    dev_ops_remove_minor(&twe_ops, device_get_unit(sc->twe_dev));
+
     /* destroy control device */
     if (sc->twe_dev_t != (cdev_t)NULL)
 	destroy_dev(sc->twe_dev_t);
