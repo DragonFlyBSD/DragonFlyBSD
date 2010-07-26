@@ -32,8 +32,7 @@ elif [ "${CCVER}" = "clangsvn" ]; then
 		INCOPT="-nobuiltininc -nostdinc \
 		    -isysroot @@INCPREFIX@@ \
 		    -isystem /usr/include \
-		    -isystem /usr/libdata/gcc41 \
-		    -isystem /usr/include/c++/4.1"
+		    -isystem /usr/include/c++/4.4"
 	fi
 fi
 
