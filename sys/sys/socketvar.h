@@ -380,6 +380,8 @@ void	soisconnected (struct socket *so);
 void	soisconnecting (struct socket *so);
 void	soisdisconnected (struct socket *so);
 void	soisdisconnecting (struct socket *so);
+void	soisreconnected (struct socket *so);
+void	soisreconnecting (struct socket *so);
 void	sosetport (struct socket *so, struct lwkt_port *port);
 int	solisten (struct socket *so, int backlog, struct thread *td);
 struct socket *sonewconn (struct socket *head, int connstatus);

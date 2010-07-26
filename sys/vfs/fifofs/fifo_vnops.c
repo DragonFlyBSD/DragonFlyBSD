@@ -198,7 +198,7 @@ fifo_open(struct vop_open_args *ap)
 	if (ap->a_mode & FREAD) {
 		fip->fi_readers++;
 		if (fip->fi_readers == 1) {
-			fip->fi_writesock->so_state &= ~SS_CANTSENDMORE;
+			soisreconnected(fip->fi_writesock);
 			if (fip->fi_writers > 0) {
 				wakeup((caddr_t)&fip->fi_writers);
 				sowwakeup(fip->fi_writesock);
@@ -208,7 +208,7 @@ fifo_open(struct vop_open_args *ap)
 	if (ap->a_mode & FWRITE) {
 		fip->fi_writers++;
 		if (fip->fi_writers == 1) {
-			fip->fi_readsock->so_state &= ~SS_CANTRCVMORE;
+			soisreconnected(fip->fi_readsock);
 			if (fip->fi_readers > 0) {
 				wakeup((caddr_t)&fip->fi_readers);
 				sorwakeup(fip->fi_writesock);
@@ -422,7 +422,7 @@ filt_fiforead(struct knote *kn, long hint)
 
 	lwkt_gettoken(&vp->v_token);
 	kn->kn_data = so->so_rcv.ssb_cc;
-	if (so->so_state & SS_CANTRCVMORE) {
+	if (so->so_state & SS_ISDISCONNECTED) {
 		kn->kn_flags |= EV_EOF;
 		lwkt_reltoken(&vp->v_token);
 		return (1);
@@ -451,7 +451,7 @@ filt_fifowrite(struct knote *kn, long hint)
 
 	lwkt_gettoken(&vp->v_token);
 	kn->kn_data = ssb_space(&so->so_snd);
-	if (so->so_state & SS_CANTSENDMORE) {
+	if (so->so_state & SS_ISDISCONNECTED) {
 		kn->kn_flags |= EV_EOF;
 		lwkt_reltoken(&vp->v_token);
 		return (1);
@@ -506,12 +506,12 @@ fifo_close(struct vop_close_args *ap)
 	if (ap->a_fflag & FREAD) {
 		fip->fi_readers--;
 		if (fip->fi_readers == 0)
-			socantsendmore(fip->fi_writesock);
+			soisdisconnected(fip->fi_writesock);
 	}
 	if (ap->a_fflag & FWRITE) {
 		fip->fi_writers--;
 		if (fip->fi_writers == 0)
-			socantrcvmore(fip->fi_readsock);
+			soisdisconnected(fip->fi_readsock);
 	}
 	if (vp->v_sysref.refcnt > 1) {
 		vop_stdclose(ap);

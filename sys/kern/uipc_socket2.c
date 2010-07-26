@@ -217,6 +217,21 @@ soisdisconnected(struct socket *so)
 	sorwakeup(so);
 }
 
+void
+soisreconnecting(struct socket *so)
+{
+        so->so_state &= ~(SS_ISDISCONNECTING|SS_ISDISCONNECTED|SS_CANTRCVMORE|
+			SS_CANTSENDMORE);
+	so->so_state |= SS_ISCONNECTING;
+}
+
+void
+soisreconnected(struct socket *so)
+{
+	so->so_state &= ~(SS_ISDISCONNECTED|SS_CANTRCVMORE|SS_CANTSENDMORE);
+	soisconnected(so);
+}
+
 /*
  * Set or change the message port a socket receives commands on.
  *
