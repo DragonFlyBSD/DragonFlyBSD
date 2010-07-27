@@ -752,7 +752,6 @@ dev/netif/wi/if_wi.c			optional wi
 dev/netif/wi/if_wi_pccard.c		optional wi pccard
 dev/netif/wi/if_wi_pci.c		optional wi pci
 dev/netif/wpi/if_wpi.c			optional wpi
-netproto/802_11/wlan/ieee80211_amrr.c       optional wpi
 wpifw.c			optional wpifw					\
 	dependency	"$S/contrib/dev/wpi/iwlwifi-3945-2.14.4.fw.uu"					\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk wpi.fw:wpifw:2144 -mwpifw -c${.TARGET}" \
