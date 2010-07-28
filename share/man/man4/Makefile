@@ -68,6 +68,7 @@ MAN=	aac.4 \
 	devctl.4 \
 	disc.4 \
 	divert.4 \
+	dm.4 \
 	dpt.4 \
 	drm.4 \
 	dummynet.4 \
