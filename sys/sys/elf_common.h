@@ -124,7 +124,7 @@ typedef struct {
 #define ET_CORE		4	/* Core file. */
 #define ET_LOOS		0xfe00	/* OS-specific range start. */
 #define ET_HIOS		0xfeff	/* OS-specific range end. */
-#define ET_LIPROC	0xff00	/* Processor-specific range start. */
+#define ET_LOPROC	0xff00	/* Processor-specific range start. */
 #define ET_HIPROC	0xffff	/* Processor-specific range end. */
 
 /* Values for e_machine. */
