@@ -52,7 +52,7 @@ struct cmx_softc {
 
 	struct lock mtx;		/* per-unit lock */
 	struct callout ch;		/* callout handle */
-	struct selinfo sel;		/* select/poll queue handle */
+	struct kqinfo kq;		/* select/poll/kq queue handle */
 
 	int open;			/* is chardev open? */
 	int polling;			/* are we polling? */

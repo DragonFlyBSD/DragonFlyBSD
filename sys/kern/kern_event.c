@@ -36,7 +36,6 @@
 #include <sys/file.h>
 #include <sys/lock.h>
 #include <sys/fcntl.h>
-#include <sys/select.h>
 #include <sys/queue.h>
 #include <sys/event.h>
 #include <sys/eventvar.h>
@@ -46,6 +45,7 @@
 #include <sys/stat.h>
 #include <sys/sysctl.h>
 #include <sys/sysproto.h>
+#include <sys/thread.h>
 #include <sys/uio.h>
 #include <sys/signalvar.h>
 #include <sys/filio.h>
@@ -56,6 +56,11 @@
 #include <sys/mplock2.h>
 
 #include <vm/vm_zone.h>
+
+/*
+ * Global token for kqueue subsystem
+ */
+struct lwkt_token kq_token = LWKT_TOKEN_UP_INITIALIZER;
 
 MALLOC_DEFINE(M_KQUEUE, "kqueue", "memory for kqueue system");
 
@@ -77,6 +82,7 @@ static int 	kqueue_kqfilter(struct file *fp, struct knote *kn);
 static int 	kqueue_stat(struct file *fp, struct stat *st,
 		    struct ucred *cred);
 static int 	kqueue_close(struct file *fp);
+static void	kqueue_wakeup(struct kqueue *kq);
 
 /*
  * MPSAFE
@@ -158,22 +164,18 @@ filt_fileattach(struct knote *kn)
 }
 
 /*
- * MPALMOSTSAFE - acquires mplock
+ * MPSAFE
  */
 static int
 kqueue_kqfilter(struct file *fp, struct knote *kn)
 {
 	struct kqueue *kq = (struct kqueue *)kn->kn_fp->f_data;
 
-	get_mplock();
-	if (kn->kn_filter != EVFILT_READ) {
-		rel_mplock();
+	if (kn->kn_filter != EVFILT_READ)
 		return (EOPNOTSUPP);
-	}
 
 	kn->kn_fop = &kqread_filtops;
-	SLIST_INSERT_HEAD(&kq->kq_sel.si_note, kn, kn_selnext);
-	rel_mplock();
+	knote_insert(&kq->kq_kqinfo.ki_note, kn);
 	return (0);
 }
 
@@ -182,7 +184,7 @@ filt_kqdetach(struct knote *kn)
 {
 	struct kqueue *kq = (struct kqueue *)kn->kn_fp->f_data;
 
-	SLIST_REMOVE(&kq->kq_sel.si_note, kn, knote, kn_selnext);
+	knote_remove(&kq->kq_kqinfo.ki_note, kn);
 }
 
 /*ARGSUSED*/
@@ -229,8 +231,7 @@ filt_procattach(struct knote *kn)
 		kn->kn_flags &= ~EV_FLAG1;
 	}
 
-	/* XXX lock the proc here while adding to the list? */
-	SLIST_INSERT_HEAD(&p->p_klist, kn, kn_selnext);
+	knote_insert(&p->p_klist, kn);
 
 	/*
 	 * Immediately activate any exit notes if the target process is a
@@ -259,9 +260,9 @@ filt_procdetach(struct knote *kn)
 
 	if (kn->kn_status & KN_DETACHED)
 		return;
-	/* XXX locking?  this might modify another process. */
+	/* XXX locking? take proc_token here? */
 	p = kn->kn_ptr.p_proc;
-	SLIST_REMOVE(&p->p_klist, kn, knote, kn_selnext);
+	knote_remove(&p->p_klist, kn);
 }
 
 static int
@@ -288,7 +289,7 @@ filt_proc(struct knote *kn, long hint)
 	if (event == NOTE_EXIT) {
 		struct proc *p = kn->kn_ptr.p_proc;
 		if ((kn->kn_status & KN_DETACHED) == 0) {
-			SLIST_REMOVE(&p->p_klist, kn, knote, kn_selnext);
+			knote_remove(&p->p_klist, kn);
 			kn->kn_status |= KN_DETACHED;
 			kn->kn_data = p->p_xstat;
 			kn->kn_ptr.p_proc = NULL;
@@ -403,7 +404,7 @@ kqueue_init(struct kqueue *kq, struct filedesc *fdp)
 	TAILQ_INIT(&kq->kq_knlist);
 	kq->kq_count = 0;
 	kq->kq_fdp = fdp;
-	SLIST_INIT(&kq->kq_sel.si_note);
+	SLIST_INIT(&kq->kq_kqinfo.ki_note);
 }
 
 /*
@@ -516,7 +517,7 @@ kevent_copyin(void *arg, struct kevent *kevp, int max, int *events)
 }
 
 /*
- * MPALMOSTSAFE
+ * MPSAFE
  */
 int
 kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
@@ -533,7 +534,7 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 	tsp = tsp_in;
 	*res = 0;
 
-	get_mplock();
+	lwkt_gettoken(&kq_token);
 	for ( ;; ) {
 		n = 0;
 		error = kevent_copyinfn(uap, kev, KQ_NEVENTS, &n);
@@ -604,9 +605,7 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 	total = 0;
 	error = 0;
 	marker.kn_filter = EVFILT_MARKER;
-	crit_enter();
 	TAILQ_INSERT_TAIL(&kq->kq_knpend, &marker, kn_tqe);
-	crit_exit();
 	while ((n = nevents - total) > 0) {
 		if (n > KQ_NEVENTS)
 			n = KQ_NEVENTS;
@@ -621,13 +620,11 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 		 */
 		if (kq->kq_count == 0 && *res == 0) {
 			error = kqueue_sleep(kq, tsp);
-
 			if (error)
 				break;
-			crit_enter();
+
 			TAILQ_REMOVE(&kq->kq_knpend, &marker, kn_tqe);
 			TAILQ_INSERT_TAIL(&kq->kq_knpend, &marker, kn_tqe);
-			crit_exit();
 		}
 
 		/*
@@ -666,22 +663,18 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 		 *	 same event.
 		 */
 		if (i == 0) {
-			crit_enter();
 			TAILQ_REMOVE(&kq->kq_knpend, &marker, kn_tqe);
 			TAILQ_INSERT_TAIL(&kq->kq_knpend, &marker, kn_tqe);
-			crit_exit();
 		}
 	}
-	crit_enter();
 	TAILQ_REMOVE(&kq->kq_knpend, &marker, kn_tqe);
-	crit_exit();
 
 	/* Timeouts do not return EWOULDBLOCK. */
 	if (error == EWOULDBLOCK)
 		error = 0;
 
 done:
-	rel_mplock();
+	lwkt_reltoken(&kq_token);
 	return (error);
 }
 
@@ -827,10 +820,8 @@ kqueue_register(struct kqueue *kq, struct kevent *kev)
 			kn->kn_kevent.udata = kev->udata;
 		}
 
-		crit_enter();
 		if (kn->kn_fop->f_event(kn, 0))
 			KNOTE_ACTIVATE(kn);
-		crit_exit();
 	} else if (kev->flags & EV_DELETE) {
 		kn->kn_fop->f_detach(kn);
 		knote_drop(kn);
@@ -839,18 +830,14 @@ kqueue_register(struct kqueue *kq, struct kevent *kev)
 
 	if ((kev->flags & EV_DISABLE) &&
 	    ((kn->kn_status & KN_DISABLED) == 0)) {
-		crit_enter();
 		kn->kn_status |= KN_DISABLED;
-		crit_exit();
 	}
 
 	if ((kev->flags & EV_ENABLE) && (kn->kn_status & KN_DISABLED)) {
-		crit_enter();
 		kn->kn_status &= ~KN_DISABLED;
 		if ((kn->kn_status & KN_ACTIVE) &&
 		    ((kn->kn_status & KN_QUEUED) == 0))
 			knote_enqueue(kn);
-		crit_exit();
 	}
 
 done:
@@ -869,7 +856,6 @@ kqueue_sleep(struct kqueue *kq, struct timespec *tsp)
 {
 	int error = 0;
 
-	crit_enter();
 	if (tsp == NULL) {
 		kq->kq_state |= KQ_SLEEP;
 		error = tsleep(kq, PCATCH, "kqread", 0);
@@ -891,7 +877,6 @@ kqueue_sleep(struct kqueue *kq, struct timespec *tsp)
 			error = tsleep(kq, PCATCH, "kqread", timeout);
 		}
 	}
-	crit_exit();
 
 	/* don't restart after signals... */
 	if (error == ERESTART)
@@ -916,7 +901,6 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 
         total = 0;
 	local_marker.kn_filter = EVFILT_MARKER;
-        crit_enter();
 
 	/*
 	 * Collect events.
@@ -958,10 +942,8 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 		if (kn->kn_flags & EV_ONESHOT) {
 			kn->kn_status &= ~KN_QUEUED;
 			kq->kq_count--;
-			crit_exit();
 			kn->kn_fop->f_detach(kn);
 			knote_drop(kn);
-			crit_enter();
 		} else if (kn->kn_flags & EV_CLEAR) {
 			kn->kn_data = 0;
 			kn->kn_fflags = 0;
@@ -973,7 +955,6 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 	}
 	TAILQ_REMOVE(&kq->kq_knpend, &local_marker, kn_tqe);
 
-	crit_exit();
 	return (total);
 }
 
@@ -1008,7 +989,7 @@ kqueue_ioctl(struct file *fp, u_long com, caddr_t data,
 	struct kqueue *kq;
 	int error;
 
-	get_mplock();
+	lwkt_gettoken(&kq_token);
 	kq = (struct kqueue *)fp->f_data;
 
 	switch(com) {
@@ -1026,7 +1007,7 @@ kqueue_ioctl(struct file *fp, u_long com, caddr_t data,
 		error = ENOTTY;
 		break;
 	}
-	rel_mplock();
+	lwkt_reltoken(&kq_token);
 	return (error);
 }
 
@@ -1046,33 +1027,33 @@ kqueue_stat(struct file *fp, struct stat *st, struct ucred *cred)
 }
 
 /*
- * MPALMOSTSAFE - acquires mplock
+ * MPSAFE
  */
 static int
 kqueue_close(struct file *fp)
 {
 	struct kqueue *kq = (struct kqueue *)fp->f_data;
 
-	get_mplock();
+	lwkt_gettoken(&kq_token);
 
 	kqueue_terminate(kq);
 
 	fp->f_data = NULL;
 	funsetown(kq->kq_sigio);
-	rel_mplock();
+	lwkt_reltoken(&kq_token);
 
 	kfree(kq, M_KQUEUE);
 	return (0);
 }
 
-void
+static void
 kqueue_wakeup(struct kqueue *kq)
 {
 	if (kq->kq_state & KQ_SLEEP) {
 		kq->kq_state &= ~KQ_SLEEP;
 		wakeup(kq);
 	}
-	KNOTE(&kq->kq_sel.si_note, 0);
+	KNOTE(&kq->kq_kqinfo.ki_note, 0);
 }
 
 /*
@@ -1083,23 +1064,49 @@ knote(struct klist *list, long hint)
 {
 	struct knote *kn;
 
-	SLIST_FOREACH(kn, list, kn_selnext)
+	lwkt_gettoken(&kq_token);
+	SLIST_FOREACH(kn, list, kn_next)
 		if (kn->kn_fop->f_event(kn, hint))
 			KNOTE_ACTIVATE(kn);
+	lwkt_reltoken(&kq_token);
+}
+
+/*
+ * insert knote at head of klist
+ *
+ * Requires: kq_token
+ */
+void
+knote_insert(struct klist *klist, struct knote *kn)
+{
+	SLIST_INSERT_HEAD(klist, kn, kn_next);
+}
+
+/*
+ * remove knote from a klist
+ *
+ * Requires: kq_token
+ */
+void
+knote_remove(struct klist *klist, struct knote *kn)
+{
+	SLIST_REMOVE(klist, kn, knote, kn_next);
 }
 
 /*
  * remove all knotes from a specified klist
  */
 void
-knote_remove(struct klist *list)
+knote_empty(struct klist *list)
 {
 	struct knote *kn;
 
+	lwkt_gettoken(&kq_token);
 	while ((kn = SLIST_FIRST(list)) != NULL) {
 		kn->kn_fop->f_detach(kn);
 		knote_drop(kn);
 	}
+	lwkt_reltoken(&kq_token);
 }
 
 /*
@@ -1110,6 +1117,7 @@ knote_fdclose(struct file *fp, struct filedesc *fdp, int fd)
 {
 	struct knote *kn;
 
+	lwkt_gettoken(&kq_token);
 restart:
 	SLIST_FOREACH(kn, &fp->f_klist, kn_link) {
 		if (kn->kn_kq->kq_fdp == fdp && kn->kn_id == fd) {
@@ -1118,6 +1126,7 @@ restart:
 			goto restart;
 		}
 	}
+	lwkt_reltoken(&kq_token);
 }
 
 static void
@@ -1140,10 +1149,6 @@ knote_attach(struct knote *kn)
 	kn->kn_status = 0;
 }
 
-/*
- * should be called outside of a critical section, since we don't want to
- * hold a critical section while calling fdrop and free.
- */
 static void
 knote_drop(struct knote *kn)
 {
@@ -1172,7 +1177,6 @@ knote_enqueue(struct knote *kn)
 {
 	struct kqueue *kq = kn->kn_kq;
 
-	crit_enter();
 	KASSERT((kn->kn_status & KN_QUEUED) == 0, ("knote already queued"));
 
 	TAILQ_INSERT_TAIL(&kq->kq_knpend, kn, kn_tqe);
@@ -1184,7 +1188,7 @@ knote_enqueue(struct knote *kn)
 	 */
 	if (kq->kq_sigio && (kq->kq_state & KQ_ASYNC) && kq->kq_count == 1)
 		pgsigio(kq->kq_sigio, SIGIO, 0);
-	crit_exit();
+
 	kqueue_wakeup(kq);
 }
 
@@ -1194,12 +1198,10 @@ knote_dequeue(struct knote *kn)
 	struct kqueue *kq = kn->kn_kq;
 
 	KASSERT(kn->kn_status & KN_QUEUED, ("knote not queued"));
-	crit_enter();
 
 	TAILQ_REMOVE(&kq->kq_knpend, kn, kn_tqe);
 	kn->kn_status &= ~KN_QUEUED;
 	kq->kq_count--;
-	crit_exit();
 }
 
 static void

@@ -141,7 +141,7 @@ chn_wakeup(struct pcm_channel *c)
 	CHN_LOCKASSERT(c);
 	if (SLIST_EMPTY(&c->children)) {
 		/*if (SEL_WAITING(sndbuf_getsel(bs)) && chn_polltrigger(c))*/
-		if (sndbuf_getsel(bs)->si_pid && chn_polltrigger(c)) {
+		if (SLIST_FIRST(&sndbuf_getkq(bs)->ki_note) && chn_polltrigger(c)) {
 			/*
 			 * XXX
 			 *
@@ -152,10 +152,10 @@ chn_wakeup(struct pcm_channel *c)
 			 * interrupt, which will run with the MP lock
 			 * held.
 			 *
-			 * buffer.c:sndbuf_seltask will then call
+			 * buffer.c:sndbuf_kqtask will then call
 			 * KNOTE() from safer context.
 			 */
-			taskqueue_enqueue(taskqueue_swi, &bs->seltask);
+			taskqueue_enqueue(taskqueue_swi, &bs->kqtask);
 		}
 	} else {
 		SLIST_FOREACH(pce, &c->children, link) {

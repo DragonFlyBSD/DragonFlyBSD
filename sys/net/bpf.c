@@ -521,7 +521,7 @@ bpf_wakeup(struct bpf_d *d)
 		pgsigio(d->bd_sigio, d->bd_sig, 0);
 
 	get_mplock();
-	KNOTE(&d->bd_sel.si_note, 0);
+	KNOTE(&d->bd_kq.ki_note, 0);
 	rel_mplock();
 }
 
@@ -1094,10 +1094,8 @@ bpfkqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	crit_enter();
-	klist = &d->bd_sel.si_note;
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	klist = &d->bd_kq.ki_note;
+	knote_insert(klist, kn);
 
 	return (0);
 }
@@ -1108,11 +1106,9 @@ bpf_filter_detach(struct knote *kn)
 	struct klist *klist;
 	struct bpf_d *d;
 
-	crit_enter();
 	d = (struct bpf_d *)kn->kn_hook;
-	klist = &d->bd_sel.si_note;
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	klist = &d->bd_kq.ki_note;
+	knote_remove(klist, kn);
 }
 
 static int

@@ -108,7 +108,7 @@ typedef struct {
 #define ST_WRWAITEMPTY	0x08		/* userland write waiting */
 #define ST_TONE		0x10		/* tone generator */
 
-	struct selinfo		selp;		/* select / poll */
+	struct kqinfo		kqp;		/* select / poll / kevent */
 
 	struct i4b_tel_tones	tones;
 	int			toneidx;
@@ -716,10 +716,8 @@ i4btelkqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	crit_enter();
-	klist = &sc->selp.si_note;
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	klist = &sc->kqp.ki_note;
+	knote_insert(klist, kn);
 
 	return (0);
 }
@@ -731,12 +729,9 @@ i4btelfilt_detach(struct knote *kn)
 	int unit = UNIT(dev);
 	int func = FUNC(dev);
 	tel_sc_t *sc = &tel_sc[unit][func];
-	struct klist *klist;
+	struct klist *klist = &sc->kqp.ki_note;
 
-	crit_enter();
-	klist = &sc->selp.si_note;
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	knote_remove(klist, kn);
 }
 
 PDEVSTATIC int
@@ -853,7 +848,7 @@ tel_connect(int unit, void *cdp)
 			sc->devstate &= ~ST_RDWAITDATA;
 			wakeup((caddr_t) &sc->result);
 		}
-		KNOTE(&sc->selp.si_note, 0);
+		KNOTE(&sc->kqp.ki_note, 0);
 	}
 }
 
@@ -896,7 +891,7 @@ tel_disconnect(int unit, void *cdp)
 			sc->devstate &= ~ST_RDWAITDATA;
 			wakeup((caddr_t) &sc->result);
 		}
-		KNOTE(&sc->selp.si_note, 0);
+		KNOTE(&sc->kqp.ki_note, 0);
 
 		if (sc->devstate & ST_TONE) {
 			sc->devstate &= ~ST_TONE;
@@ -924,7 +919,7 @@ tel_dialresponse(int unit, int status, cause_t cause)
 			sc->devstate &= ~ST_RDWAITDATA;
 			wakeup((caddr_t) &sc->result);
 		}
-		KNOTE(&sc->selp.si_note, 0);
+		KNOTE(&sc->kqp.ki_note, 0);
 	}
 }
 	
@@ -951,7 +946,7 @@ tel_rx_data_rdy(int unit)
 		sc->devstate &= ~ST_RDWAITDATA;
 		wakeup((caddr_t) &sc->isdn_linktab->rx_queue);
 	}
-	KNOTE(&sc->selp.si_note, 0);
+	KNOTE(&sc->kqp.ki_note, 0);
 }
 
 /*---------------------------------------------------------------------------*
@@ -972,7 +967,7 @@ tel_tx_queue_empty(int unit)
 	if(sc->devstate & ST_TONE) {
 		tel_tone(sc);
 	} else {
-		KNOTE(&sc->selp.si_note, 0);
+		KNOTE(&sc->kqp.ki_note, 0);
 	}
 }
 

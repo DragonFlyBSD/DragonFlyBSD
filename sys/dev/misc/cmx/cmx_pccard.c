@@ -32,8 +32,8 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
-#include <sys/selinfo.h>
 #include <sys/lock.h>
+#include <sys/event.h>
 
 #include <sys/module.h>
 #include <sys/bus.h>

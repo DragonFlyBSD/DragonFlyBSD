@@ -28,7 +28,6 @@
 #include <sys/time.h>
 #include <sys/reboot.h>
 #include <sys/bus.h>
-#include <sys/selinfo.h>
 #include <sys/event.h>
 #include <sys/fcntl.h>
 #include <sys/uio.h>
@@ -904,7 +903,7 @@ apm_record_event(struct apm_softc *sc, u_int event_type)
 	sc->event_ptr %= APM_NEVENTS;
 	evp->type = event_type;
 	evp->index = ++apm_evindex;
-	KNOTE(&sc->sc_rsel.si_note, 0);
+	KNOTE(&sc->sc_rkq.ki_note, 0);
 	return (sc->sc_flags & SCFLAG_OCTL) ? 0 : 1; /* user may handle */
 }
 
@@ -1368,10 +1367,8 @@ apmkqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	crit_enter();
-	klist = &sc->sc_rsel.si_note;
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	klist = &sc->sc_rkq.ki_note;
+	knote_insert(klist, kn);
 
 	return (0);
 }
@@ -1382,10 +1379,8 @@ apmfilter_detach(struct knote *kn)
 	struct apm_softc *sc = (struct apm_softc *)kn->kn_hook;
 	struct klist *klist;
 
-	crit_enter();
-	klist = &sc->sc_rsel.si_note;
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	klist = &sc->sc_rkq.ki_note;
+	knote_remove(klist, kn);
 }
 
 static int

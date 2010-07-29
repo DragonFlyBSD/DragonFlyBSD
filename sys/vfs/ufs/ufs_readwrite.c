@@ -52,7 +52,7 @@
 #include "opt_directio.h"
 
 #define VN_KNOTE(vp, b) \
-	KNOTE((struct klist *)&vp->v_pollinfo.vpi_selinfo.si_note, (b))
+	KNOTE((struct klist *)&vp->v_pollinfo.vpi_kqinfo.ki_note, (b))
 
 #ifdef DIRECTIO
 extern int ffs_rawread(struct vnode *vp, struct uio *uio, int *workdone);

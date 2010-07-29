@@ -36,7 +36,7 @@ SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.11 2008/01/06 1
 /*
  * XXX
  *
- * sndbuf_seltask is a taskqueue callback routine, called from
+ * sndbuf_kqtask is a taskqueue callback routine, called from
  * taskqueue_swi, which runs under the MP lock.
  *
  * The only purpose is to be able to KNOTE() from a sound
@@ -44,12 +44,12 @@ SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.11 2008/01/06 1
  * can't call KNOTE() directly.
  */
 static void
-sndbuf_seltask(void *context, int pending)
+sndbuf_kqtask(void *context, int pending)
 {
 	struct snd_dbuf *b = context;
-	struct selinfo *si = sndbuf_getsel(b);
+	struct kqinfo *ki = sndbuf_getkq(b);
 
-	KNOTE(&si->si_note, 0);
+	KNOTE(&ki->ki_note, 0);
 }
 
 struct snd_dbuf *
@@ -61,7 +61,7 @@ sndbuf_create(device_t dev, char *drv, char *desc, struct pcm_channel *channel)
 	ksnprintf(b->name, SNDBUF_NAMELEN, "%s:%s", drv, desc);
 	b->dev = dev;
 	b->channel = channel;
-	TASK_INIT(&b->seltask, 0, sndbuf_seltask, b);
+	TASK_INIT(&b->kqtask, 0, sndbuf_kqtask, b);
 
 	return b;
 }
@@ -408,10 +408,10 @@ sndbuf_setrun(struct snd_dbuf *b, int go)
 	b->dl = go? b->blksz : 0;
 }
 
-struct selinfo *
-sndbuf_getsel(struct snd_dbuf *b)
+struct kqinfo *
+sndbuf_getkq(struct snd_dbuf *b)
 {
-	return &b->sel;
+	return &b->kq;
 }
 
 /************************************************************/

@@ -57,7 +57,6 @@
 #include <sys/objcache.h>
 #include <sys/proc.h>
 #include <sys/queue.h>
-#include <sys/select.h>
 #include <sys/event.h>
 #include <sys/serialize.h>
 #include <sys/signal.h>
@@ -333,21 +332,19 @@ mq_kqfilter_fop(struct file *fp, struct knote *kn)
 	case EVFILT_READ:
 		kn->kn_fop = &mqfiltops_read;
 		kn->kn_hook = (caddr_t)mq;
-		klist = &mq->mq_rsel.si_note;
+		klist = &mq->mq_rkq.ki_note;
 		break;
 	case EVFILT_WRITE:
 		kn->kn_fop = &mqfiltops_write;
 		kn->kn_hook = (caddr_t)mq;
-		klist = &mq->mq_wsel.si_note;
+		klist = &mq->mq_wkq.ki_note;
 		break;
 	default:
 		lockmgr(&mq->mq_mtx, LK_RELEASE);
 		return (EOPNOTSUPP);
 	}
 
-	crit_enter();
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	knote_insert(klist, kn);
 	lockmgr(&mq->mq_mtx, LK_RELEASE);
 
 	return (0);
@@ -359,10 +356,8 @@ mqfilter_read_detach(struct knote *kn)
 	struct mqueue *mq = (struct mqueue *)kn->kn_hook;
 
 	lockmgr(&mq->mq_mtx, LK_EXCLUSIVE);
-	crit_enter();
-	struct klist *klist = &mq->mq_rsel.si_note;
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	struct klist *klist = &mq->mq_rkq.ki_note;
+	knote_remove(klist, kn);
 	lockmgr(&mq->mq_mtx, LK_RELEASE);
 }
 
@@ -372,10 +367,8 @@ mqfilter_write_detach(struct knote *kn)
 	struct mqueue *mq = (struct mqueue *)kn->kn_hook;
 
 	lockmgr(&mq->mq_mtx, LK_EXCLUSIVE);
-	crit_enter();
-	struct klist *klist = &mq->mq_rsel.si_note;
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	struct klist *klist = &mq->mq_wkq.ki_note;
+	knote_remove(klist, kn);
 	lockmgr(&mq->mq_mtx, LK_RELEASE);
 }
 
@@ -739,9 +732,7 @@ mq_receive1(struct lwp *l, mqd_t mqdes, void *msg_ptr, size_t msg_len,
 	wakeup_one(&mq->mq_recv_cv);
 
 	/* Ready for sending now */
-	get_mplock();
-	KNOTE(&mq->mq_wsel.si_note, 0);
-	rel_mplock();
+	KNOTE(&mq->mq_wkq.ki_note, 0);
 error:
 	lockmgr(&mq->mq_mtx, LK_RELEASE);
 	fdrop(fp);
@@ -930,9 +921,7 @@ mq_send1(struct lwp *l, mqd_t mqdes, const char *msg_ptr, size_t msg_len,
 	wakeup_one(&mq->mq_send_cv);
 
 	/* Ready for receiving now */
-	get_mplock();
-	KNOTE(&mq->mq_rsel.si_note, 0);
-	rel_mplock();
+	KNOTE(&mq->mq_rkq.ki_note, 0);
 error:
 	lockmgr(&mq->mq_mtx, LK_RELEASE);
 	fdrop(fp);
@@ -1155,10 +1144,8 @@ sys_mq_unlink(struct mq_unlink_args *uap)
 	wakeup(&mq->mq_send_cv);
 	wakeup(&mq->mq_recv_cv);
 
-	get_mplock();
-	KNOTE(&mq->mq_rsel.si_note, 0);
-	KNOTE(&mq->mq_wsel.si_note, 0);
-	rel_mplock();
+	KNOTE(&mq->mq_rkq.ki_note, 0);
+	KNOTE(&mq->mq_wkq.ki_note, 0);
 
 	refcnt = mq->mq_refcnt;
 	if (refcnt == 0)

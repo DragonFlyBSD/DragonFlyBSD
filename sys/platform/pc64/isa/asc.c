@@ -48,7 +48,6 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/event.h>
-#include <sys/selinfo.h>
 #include <sys/uio.h>
 #include <sys/thread2.h>
 
@@ -154,7 +153,7 @@ struct asc_unit {
   int     btime;          /* timeout of buffer in seconds/hz */
   struct  _sbuf sbuf;
   long	  icnt;		/* interrupt count XXX for debugging */
-  struct selinfo selp;
+  struct  kqinfo kqp;
   int     height;         /* height, for pnm modes */
   size_t  bcount;         /* bytes to read, for pnm modes */
 };
@@ -470,8 +469,6 @@ ascattach(struct isa_device *isdp)
 /*  lprintf("asc%d.attach: ok\n", unit); */
   scu->flags &= ~FLAG_DEBUG;
 
-    scu->selp.si_flags=0;
-    scu->selp.si_pid=(pid_t)0;
 #define ASC_UID 0
 #define ASC_GID 13
   make_dev(&asc_ops, unit<<6, ASC_UID, ASC_GID, 0666, "asc%d", unit);
@@ -519,7 +516,7 @@ ascintr(void *arg)
 	if (scu->sbuf.size - scu->sbuf.count >= scu->linesize) {
 	    dma_restart(scu);
 	}
-	KNOTE(&scu->selp.si_note, 0);
+	KNOTE(&scu->kqp.ki_note, 0);
     }
 }
 
@@ -868,10 +865,8 @@ asckqfilter(struct dev_kqfilter_args *ap)
         return (0);
     }
 
-    crit_enter();
-    klist = &scu->selp.si_note;
-    SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-    crit_exit();
+    klist = &scu->kqp.ki_note;
+    knote_insert(klist, kn);
 
     return (0);
 }
@@ -882,10 +877,8 @@ ascfilter_detach(struct knote *kn)
     struct asc_unit *scu = (struct asc_unit *)kn->kn_hook;
     struct klist *klist;
 
-    crit_enter();
-    klist = &scu->selp.si_note;
-    SLIST_REMOVE(klist, kn, knote, kn_selnext);
-    crit_exit();
+    klist = &scu->kqp.ki_note;
+    knote_remove(klist, kn);
 }
 
 STATIC int

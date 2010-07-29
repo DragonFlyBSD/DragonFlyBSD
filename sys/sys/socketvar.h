@@ -44,8 +44,8 @@
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>			/* for TAILQ macros */
 #endif
-#ifndef _SYS_SELINFO_H_
-#include <sys/selinfo.h>		/* for struct selinfo */
+#ifndef _SYS_EVENT_H_
+#include <sys/event.h>			/* for struct kqinfo */
 #endif
 #ifndef _SYS_SOCKBUF_H_
 #include <sys/sockbuf.h>
@@ -61,7 +61,7 @@ struct accept_filter;
  */
 struct signalsockbuf {
 	struct sockbuf sb;
-	struct selinfo ssb_sel;	/* process selecting read/write */
+	struct kqinfo ssb_kq;	/* process selecting read/write */
 	short	ssb_flags;	/* flags, see below */
 	short	ssb_timeo;	/* timeout for read/write */
 	long	ssb_lowat;	/* low water mark */
@@ -262,14 +262,18 @@ ssb_space(struct signalsockbuf *ssb)
 	((ssb_space(ssb) <= 0) ? 0 : sbappendcontrol(&(ssb)->sb, m, control))
 
 #define ssb_insert_knote(ssb, kn) {					\
-        SLIST_INSERT_HEAD(&(ssb)->ssb_sel.si_note, kn, kn_selnext);	\
+	lwkt_gettoken(&kq_token);					\
+        SLIST_INSERT_HEAD(&(ssb)->ssb_kq.ki_note, kn, kn_next);		\
+	lwkt_reltoken(&kq_token);					\
 	(ssb)->ssb_flags |= SSB_KNOTE;					\
 }
 
 #define ssb_remove_knote(ssb, kn) {					\
-        SLIST_REMOVE(&(ssb)->ssb_sel.si_note, kn, knote, kn_selnext);	\
-	if (SLIST_EMPTY(&(ssb)->ssb_sel.si_note))			\
+	lwkt_gettoken(&kq_token);					\
+        SLIST_REMOVE(&(ssb)->ssb_kq.ki_note, kn, knote, kn_next);	\
+	if (SLIST_EMPTY(&(ssb)->ssb_kq.ki_note))			\
 		(ssb)->ssb_flags &= ~SSB_KNOTE;				\
+	lwkt_reltoken(&kq_token);					\
 }
 
 #define	sorwakeup(so)	do { \

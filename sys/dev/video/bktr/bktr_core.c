@@ -714,7 +714,7 @@ common_bktr_intr( void *arg )
 		}
 
 		/* Inform anyone who is polling */
-		KNOTE(&bktr->vbi_select.si_note, 0);
+		KNOTE(&bktr->vbi_kq.ki_note, 0);
 
 	}
 	UNLOCK_VBI(bktr);

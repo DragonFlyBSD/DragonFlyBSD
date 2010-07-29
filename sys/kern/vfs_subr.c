@@ -2121,7 +2121,7 @@ void
 vn_gone(struct vnode *vp)
 {
 	lwkt_gettoken(&vp->v_token);
-	KNOTE(&vp->v_pollinfo.vpi_selinfo.si_note, NOTE_REVOKE);
+	KNOTE(&vp->v_pollinfo.vpi_kqinfo.ki_note, NOTE_REVOKE);
 	lwkt_reltoken(&vp->v_token);
 }
 

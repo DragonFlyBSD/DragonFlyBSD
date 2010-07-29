@@ -33,6 +33,9 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#ifndef _NET_NETISR_H_
+#include <net/netisr.h>			/* struct notifymsglist */
+#endif
 
 #define EVFILT_READ		(-1)
 #define EVFILT_WRITE		(-2)
@@ -128,6 +131,11 @@ SLIST_HEAD(klist, knote);
 
 #ifdef _KERNEL
 
+/*
+ * Global token for kqueue subsystem
+ */
+extern struct lwkt_token kq_token;
+
 #ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_KQUEUE);
 #endif
@@ -154,7 +162,7 @@ struct filterops {
 struct knote {
 	SLIST_ENTRY(knote)	kn_link;	/* for fd */
 	TAILQ_ENTRY(knote)	kn_kqlink;	/* for kq_knlist */
-	SLIST_ENTRY(knote)	kn_selnext;	/* for struct selinfo */
+	SLIST_ENTRY(knote)	kn_next;	/* for struct kqinfo */
 	TAILQ_ENTRY(knote)	kn_tqe;		/* for kq_head */
 	struct			kqueue *kn_kq;	/* which queue we are on */
 	struct 			kevent kn_kevent;
@@ -180,6 +188,15 @@ struct knote {
 #define kn_fp		kn_ptr.p_fp
 };
 
+/*
+ * Used to maintain information about processes that wish to be
+ * notified when I/O becomes possible.
+ */
+struct kqinfo {
+	struct	klist ki_note;		/* kernel note list */
+	struct	notifymsglist ki_mlist;	/* list of pending predicate messages */
+};
+
 struct proc;
 struct thread;
 struct filedesc;
@@ -194,12 +211,13 @@ int kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
     struct timespec *tsp);
 
 extern void	knote(struct klist *list, long hint);
-extern void	knote_remove(struct klist *list);
+extern void	knote_insert(struct klist *klist, struct knote *kn);
+extern void	knote_remove(struct klist *klist, struct knote *kn);
+extern void	knote_empty(struct klist *list);
 extern void	knote_fdclose(struct file *fp, struct filedesc *fdp, int fd);
 extern void	kqueue_init(struct kqueue *kq, struct filedesc *fdp);
 extern void	kqueue_terminate(struct kqueue *kq);
 extern int 	kqueue_register(struct kqueue *kq, struct kevent *kev);
-extern void	kqueue_wakeup(struct kqueue *kq);
 
 #endif 	/* _KERNEL */
 

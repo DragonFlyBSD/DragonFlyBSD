@@ -442,11 +442,11 @@ wakeup_other(struct tty *tp, int flag)
 	GETPARTS(tp, ourpart, otherpart);
 	if (flag & FREAD) {
 		wakeup(TSA_PTC_READ((&otherpart->nm_tty)));
-		KNOTE(&otherpart->nm_tty.t_rsel.si_note, 0);
+		KNOTE(&otherpart->nm_tty.t_rkq.ki_note, 0);
 	}
 	if (flag & FWRITE) {
 		wakeup(TSA_PTC_WRITE((&otherpart->nm_tty)));
-		KNOTE(&otherpart->nm_tty.t_wsel.si_note, 0);
+		KNOTE(&otherpart->nm_tty.t_wkq.ki_note, 0);
 	}
 }
 

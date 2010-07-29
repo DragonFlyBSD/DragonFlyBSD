@@ -2200,7 +2200,7 @@ filt_sigattach(struct knote *kn)
 	kn->kn_flags |= EV_CLEAR;		/* automatically set */
 
 	/* XXX lock the proc here while adding to the list? */
-	SLIST_INSERT_HEAD(&p->p_klist, kn, kn_selnext);
+	knote_insert(&p->p_klist, kn);
 
 	return (0);
 }
@@ -2210,7 +2210,7 @@ filt_sigdetach(struct knote *kn)
 {
 	struct proc *p = kn->kn_ptr.p_proc;
 
-	SLIST_REMOVE(&p->p_klist, kn, knote, kn_selnext);
+	knote_remove(&p->p_klist, kn);
 }
 
 /*

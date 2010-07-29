@@ -311,7 +311,7 @@ kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res)
 	fflag = lfp->f_flag;
 
 	/* connection has been removed from the listen queue */
-	KNOTE(&head->so_rcv.ssb_sel.si_note, 0);
+	KNOTE(&head->so_rcv.ssb_kq.ki_note, 0);
 
 	so->so_state &= ~SS_COMP;
 	so->so_head = NULL;

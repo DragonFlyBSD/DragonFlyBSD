@@ -27,7 +27,6 @@
 #include <sys/sysctl.h>
 #include <sys/device.h>
 #include <sys/lock.h>
-#include <sys/selinfo.h>
 #include <sys/event.h>
 #include <sys/uio.h>
 #include <sys/thread.h>
@@ -68,7 +67,7 @@ static struct hotplug_softc
 	int opened;
 	int qcount;
 	struct hpq queue;
-	struct selinfo sel;
+	struct kqinfo kq;
 	void (*old_devfs_node_added)(struct hotplug_device *hpdev);
 	void (*old_devfs_node_removed)(struct hotplug_device *hpdev);
 } hpsc;
@@ -125,10 +124,8 @@ hotplugkqfilter(struct dev_kqfilter_args *ap)
 	}
 
 	lockmgr(&hpsc.lock, LK_EXCLUSIVE);
-	crit_enter();
-	klist = &hpsc.sel.si_note;
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	klist = &hpsc.kq.ki_note;
+	knote_insert(klist, kn);
 	lockmgr(&hpsc.lock, LK_RELEASE);
 
 	return (0);
@@ -140,10 +137,8 @@ hotplugfiltdetach(struct knote *kn)
 	struct klist *klist;
 
 	lockmgr(&hpsc.lock, LK_EXCLUSIVE);
-	crit_enter();
-	klist = &hpsc.sel.si_note;
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	klist = &hpsc.kq.ki_note;
+	knote_remove(klist, kn);
 	lockmgr(&hpsc.lock, LK_RELEASE);
 }
 
@@ -221,7 +216,7 @@ hotplug_put_event(struct hotplug_event *he)
 	hpsc.qcount++;
 	wakeup(&hpsc);
 	lockmgr(&hpsc.lock, LK_RELEASE);
-	KNOTE(&hpsc.sel.si_note, 0);
+	KNOTE(&hpsc.kq.ki_note, 0);
 	return (0);
 }
 

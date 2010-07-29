@@ -428,7 +428,7 @@ tapclose(struct dev_close_args *ap)
 
 	funsetown(tp->tap_sigio);
 	tp->tap_sigio = NULL;
-	KNOTE(&tp->tap_rsel.si_note, 0);
+	KNOTE(&tp->tap_rkq.ki_note, 0);
 
 	tp->tap_flags &= ~TAP_OPEN;
 	funsetown(tp->tap_sigtd);
@@ -643,9 +643,7 @@ tapifstart(struct ifnet *ifp)
 			wakeup((caddr_t)tp);
 		}
 
-		get_mplock();
-		KNOTE(&tp->tap_rsel.si_note, 0);
-		rel_mplock();
+		KNOTE(&tp->tap_rkq.ki_note, 0);
 
 		if ((tp->tap_flags & TAP_ASYNC) && (tp->tap_sigio != NULL)) {
 			get_mplock();
@@ -953,9 +951,8 @@ tapkqfilter(struct dev_kqfilter_args *ap)
 	struct klist *list;
 	struct ifnet *ifp;
 
-	get_mplock();
 	tp = dev->si_drv1;
-	list = &tp->tap_rsel.si_note;
+	list = &tp->tap_rkq.ki_note;
 	ifp = &tp->tap_if;
 	ap->a_result =0;
 
@@ -973,10 +970,8 @@ tapkqfilter(struct dev_kqfilter_args *ap)
 		rel_mplock();
 		return(0);
 	}
-	crit_enter();
-	SLIST_INSERT_HEAD(list, kn, kn_selnext);
-	crit_exit();
-	rel_mplock();
+
+	knote_insert(list, kn);
 	return(0);
 }
 
@@ -1003,7 +998,7 @@ filt_tapdetach(struct knote *kn)
 {
 	struct tap_softc *tp = (void *)kn->kn_hook;
 
-	SLIST_REMOVE(&tp->tap_rsel.si_note, kn, knote, kn_selnext);
+	knote_remove(&tp->tap_rkq.ki_note, kn);
 }
 
 static void

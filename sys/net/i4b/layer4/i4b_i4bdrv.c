@@ -55,7 +55,6 @@
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/thread2.h>
-#include <sys/selinfo.h>
 
 #include <net/if.h>
 
@@ -74,7 +73,7 @@
 
 #include <sys/event.h>
 
-struct selinfo select_rd_info;
+struct kqinfo kq_rd_info;
 
 static struct ifqueue i4b_rdqueue;
 static int openflag = 0;
@@ -759,10 +758,8 @@ i4bkqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	crit_enter();
-	klist = &select_rd_info.si_note;
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	klist = &kq_rd_info.ki_note;
+	knote_insert(klist, kn);
 
 	return (0);
 }
@@ -770,12 +767,9 @@ i4bkqfilter(struct dev_kqfilter_args *ap)
 PDEVSTATIC void
 i4bkqfilt_detach(struct knote *kn)
 {
-	struct klist *klist;
+	struct klist *klist = &kq_rd_info.ki_note;
 
-	crit_enter();
-	klist = &select_rd_info.si_note;
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	knote_remove(klist, kn);
 }
 
 PDEVSTATIC int
@@ -829,7 +823,7 @@ i4bputqueue(struct mbuf *m)
 		wakeup((caddr_t) &i4b_rdqueue);
 	}
 
-	KNOTE(&select_rd_info.si_note, 0);
+	KNOTE(&kq_rd_info.ki_note, 0);
 }
 
 /*---------------------------------------------------------------------------*
@@ -864,7 +858,7 @@ i4bputqueue_hipri(struct mbuf *m)
 		wakeup((caddr_t) &i4b_rdqueue);
 	}
 
-	KNOTE(&select_rd_info.si_note, 0);
+	KNOTE(&kq_rd_info.ki_note, 0);
 }
 
 #endif /* NI4B > 0 */

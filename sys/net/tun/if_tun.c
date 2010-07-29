@@ -218,7 +218,7 @@ tunclose(struct dev_close_args *ap)
 	if_purgeaddrs_nolink(ifp);
 
 	funsetown(tp->tun_sigio);
-	KNOTE(&tp->tun_rsel.si_note, 0);
+	KNOTE(&tp->tun_rkq.ki_note, 0);
 
 	TUNDEBUG(ifp, "closed\n");
 #if 0
@@ -397,8 +397,8 @@ tunoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 		get_mplock();
 		if (tp->tun_flags & TUN_ASYNC && tp->tun_sigio)
 			pgsigio(tp->tun_sigio, SIGIO, 0);
-		KNOTE(&tp->tun_rsel.si_note, 0);
 		rel_mplock();
+		KNOTE(&tp->tun_rkq.ki_note, 0);
 	}
 	return (error);
 }
@@ -730,11 +730,8 @@ tunkqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	klist = &tp->tun_rsel.si_note;
-	crit_enter();
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
-
+	klist = &tp->tun_rkq.ki_note;
+	knote_insert(klist, kn);
 	ifnet_deserialize_all(&tp->tun_if);
 
 	return (0);
@@ -744,12 +741,9 @@ static void
 tun_filter_detach(struct knote *kn)
 {
 	struct tun_softc *tp = (struct tun_softc *)kn->kn_hook;
-	struct klist *klist;
+	struct klist *klist = &tp->tun_rkq.ki_note;
 
-	klist = &tp->tun_rsel.si_note;
-	crit_enter();
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	knote_remove(klist, kn);
 }
 
 static int
@@ -796,6 +790,6 @@ tunstart(struct ifnet *ifp)
 		}
 		if (tp->tun_flags & TUN_ASYNC && tp->tun_sigio)
 			pgsigio(tp->tun_sigio, SIGIO, 0);
-		KNOTE(&tp->tun_rsel.si_note, 0);
+		KNOTE(&tp->tun_rkq.ki_note, 0);
 	}
 }

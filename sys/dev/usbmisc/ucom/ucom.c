@@ -77,7 +77,6 @@
 #include <sys/tty.h>
 #include <sys/clist.h>
 #include <sys/file.h>
-#include <sys/select.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
 #include <sys/sysctl.h>
@@ -874,7 +873,7 @@ ucomstart(struct tty *tp)
 			CLR(tp->t_state, TS_SO_OLOWAT);
 			wakeup(TSA_OLOWAT(tp));
 		}
-		KNOTE(&tp->t_wsel.si_note, 0);
+		KNOTE(&tp->t_wkq.ki_note, 0);
 		if (tp->t_outq.c_cc == 0) {
 			if (ISSET(tp->t_state, TS_BUSY | TS_SO_OCOMPLETE) ==
 			    TS_SO_OCOMPLETE && tp->t_outq.c_cc == 0) {

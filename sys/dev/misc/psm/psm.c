@@ -75,7 +75,6 @@
 #include <sys/syslog.h>
 #include <sys/malloc.h>
 #include <sys/rman.h>
-#include <sys/selinfo.h>
 #include <sys/thread2.h>
 #include <sys/time.h>
 #include <sys/uio.h>
@@ -152,7 +151,7 @@ typedef struct ringbuf {
 /* driver control block */
 struct psm_softc {		/* Driver status information */
     int		  unit;
-    struct selinfo rsel;	/* Process selecting for Input */
+    struct kqinfo rkq;		/* Processes with registered kevents */
     unsigned char state;	/* Mouse driver state */
     int           config;	/* driver configuration flags */
     int           flags;	/* other flags */
@@ -1310,8 +1309,6 @@ psmopen(struct dev_open_args *ap)
 #endif
 
     /* Initialize state */
-    sc->rsel.si_flags = 0;
-    sc->rsel.si_pid = 0;
     sc->mode.level = sc->dflt_mode.level;
     sc->mode.protocol = sc->dflt_mode.protocol;
     sc->watchdog = FALSE;
@@ -2377,7 +2374,7 @@ psmintr(void *arg)
             sc->state &= ~PSM_ASLP;
             wakeup((caddr_t) sc);
     	}
-	KNOTE(&sc->rsel.si_note, 0);
+	KNOTE(&sc->rkq.ki_note, 0);
     }
 }
 
@@ -2404,10 +2401,8 @@ psmkqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	crit_enter();
-	klist = &sc->rsel.si_note;
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	klist = &sc->rkq.ki_note;
+	knote_insert(klist, kn);
 
 	return (0);
 }
@@ -2418,10 +2413,8 @@ psmfilter_detach(struct knote *kn)
 	struct psm_softc *sc = (struct psm_softc *)kn->kn_hook;
 	struct klist *klist;
 
-	crit_enter();
-	klist = &sc->rsel.si_note;
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	klist = &sc->rkq.ki_note;
+	knote_remove(klist, kn);
 }
 
 static int

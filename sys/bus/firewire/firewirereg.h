@@ -44,8 +44,8 @@ typedef	struct thread fw_proc;
 typedef	struct proc fw_proc;
 #endif
 
-#include <sys/selinfo.h>
 #include <sys/uio.h>
+#include <sys/event.h>
 
 struct dev_ioctl_args;
 
@@ -205,7 +205,7 @@ struct fw_xferq {
 	STAILQ_HEAD(, fw_bulkxfer) stfree;
 	STAILQ_HEAD(, fw_bulkxfer) stdma;
 	struct fw_bulkxfer *stproc;
-	struct selinfo rsel;
+	struct kqinfo rkq;
 	caddr_t sc;
 	void (*hand) (struct fw_xferq *);
 };

@@ -81,7 +81,7 @@ struct snoop {
 	u_long			 snp_blen;	/* Used length. */
 	caddr_t			 snp_buf;	/* Allocation pointer. */
 	int			 snp_flags;	/* Flags. */
-	struct selinfo		 snp_sel;	/* Select info. */
+	struct kqinfo		 snp_kq;	/* Kqueue info. */
 	int			 snp_olddisc;	/* Old line discipline. */
 };
 
@@ -365,7 +365,7 @@ snp_in(struct snoop *snp, char *buf, int n)
 		snp->snp_flags &= ~SNOOP_RWAIT;
 		wakeup((caddr_t)snp);
 	}
-	KNOTE(&snp->snp_sel.si_note, 0);
+	KNOTE(&snp->snp_kq.ki_note, 0);
 
 	return (n);
 }
@@ -437,7 +437,7 @@ snp_detach(struct snoop *snp)
 	snp->snp_target = NULL;
 
 detach_notty:
-	KNOTE(&snp->snp_sel.si_note, 0);
+	KNOTE(&snp->snp_kq.ki_note, 0);
 	if ((snp->snp_flags & SNOOP_OPEN) == 0) 
 		kfree(snp, M_SNP);
 
@@ -589,10 +589,8 @@ snpkqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	crit_enter();
-	klist = &snp->snp_sel.si_note;
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	klist = &snp->snp_kq.ki_note;
+	knote_insert(klist, kn);
 
 	return (0);
 }
@@ -603,10 +601,8 @@ snpfilter_detach(struct knote *kn)
 	struct snoop *snp = (struct snoop *)kn->kn_hook;
 	struct klist *klist;
 
-	crit_enter();
-	klist = &snp->snp_sel.si_note;
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	klist = &snp->snp_kq.ki_note;
+	knote_insert(klist, kn);
 }
 
 static int

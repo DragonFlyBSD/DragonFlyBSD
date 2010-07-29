@@ -351,7 +351,7 @@ aio_free_entry(struct aiocblist *aiocbe)
 
 	/* aiocbe is going away, we need to destroy any knotes */
 	/* XXX lwp knote wants a thread, but only cares about the process */
-	knote_remove(&aiocbe->klist);
+	knote_empty(&aiocbe->klist);
 
 	if ((ki->kaio_flags & KAIO_WAKEUP) || ((ki->kaio_flags & KAIO_RUNDOWN)
 	    && ((ki->kaio_buffer_count == 0) && (ki->kaio_queue_count == 0)))) {
@@ -2203,7 +2203,7 @@ filt_aioattach(struct knote *kn)
 		return (EPERM);
 	kn->kn_flags &= ~EV_FLAG1;
 
-	SLIST_INSERT_HEAD(&aiocbe->klist, kn, kn_selnext);
+	knote_insert(&aiocbe->klist, kn);
 
 	return (0);
 }
@@ -2214,7 +2214,7 @@ filt_aiodetach(struct knote *kn)
 {
 	struct aiocblist *aiocbe = (struct aiocblist *)kn->kn_sdata;
 
-	SLIST_REMOVE(&aiocbe->klist, kn, knote, kn_selnext);
+	knote_remove(&aiocbe->klist, kn);
 }
 
 /* kqueue filter function */

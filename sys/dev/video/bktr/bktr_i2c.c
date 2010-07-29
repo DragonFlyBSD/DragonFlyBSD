@@ -42,7 +42,6 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/uio.h>
-#include <sys/selinfo.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>

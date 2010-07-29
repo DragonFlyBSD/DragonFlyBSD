@@ -49,7 +49,7 @@ struct mq_attr {
 #include <sys/lock.h>
 #include <sys/types.h>
 #include <sys/queue.h>
-#include <sys/selinfo.h>
+#include <sys/event.h>
 #include <sys/types.h>
 
 /*
@@ -80,8 +80,8 @@ struct mqueue {
 	int			mq_recv_cv;
 	struct mq_attr		mq_attrib;
 	/* Notification */
-	struct selinfo		mq_rsel;
-	struct selinfo		mq_wsel;
+	struct kqinfo		mq_rkq;
+	struct kqinfo		mq_wkq;
 	struct sigevent		mq_sig_notify;
 	struct proc *		mq_notify_proc;
 	/* Permissions */

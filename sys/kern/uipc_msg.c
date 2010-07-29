@@ -621,7 +621,9 @@ netmsg_so_notify(netmsg_t netmsg)
 		lwkt_replymsg(&msg->nm_netmsg.nm_lmsg,
 			      msg->nm_netmsg.nm_lmsg.ms_error);
 	} else {
-		TAILQ_INSERT_TAIL(&ssb->ssb_sel.si_mlist, msg, nm_list);
+		lwkt_gettoken(&kq_token);
+		TAILQ_INSERT_TAIL(&ssb->ssb_kq.ki_mlist, msg, nm_list);
+		lwkt_reltoken(&kq_token);
 		ssb->ssb_flags |= SSB_MEVENT;
 	}
 }
@@ -683,7 +685,9 @@ netmsg_so_notify_abort(netmsg_t netmsg)
 		ssb = (msg->nm_etype & NM_REVENT) ?
 				&msg->nm_so->so_rcv :
 				&msg->nm_so->so_snd;
-		TAILQ_REMOVE(&ssb->ssb_sel.si_mlist, msg, nm_list);
+		lwkt_gettoken(&kq_token);
+		TAILQ_REMOVE(&ssb->ssb_kq.ki_mlist, msg, nm_list);
+		lwkt_reltoken(&kq_token);
 		lwkt_replymsg(&msg->nm_netmsg.nm_lmsg, EINTR);
 	}
 

@@ -46,8 +46,8 @@
 #ifndef _SYS_LOCK_H_
 #include <sys/lock.h>
 #endif
-#ifndef _SYS_SELINFO_H_
-#include <sys/selinfo.h>
+#ifndef _SYS_EVENT_H_
+#include <sys/event.h>
 #endif
 #ifndef _SYS_BIOTRACK_H_
 #include <sys/biotrack.h>
@@ -256,7 +256,7 @@ struct vnode {
 	void	*v_data;			/* private data for fs */
 	struct namecache_list v_namecache;	/* (S) associated nc entries */
 	struct	{
-		struct	selinfo vpi_selinfo;	/* identity of poller(s) */
+		struct	kqinfo vpi_kqinfo;	/* identity of poller(s) */
 	} v_pollinfo;
 	struct vmresident *v_resident;		/* optional vmresident */
 	struct vrangehead v_range;		/* range lock */

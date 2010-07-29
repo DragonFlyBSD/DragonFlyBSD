@@ -48,7 +48,7 @@
 #include <sys/poll.h>
 #include <sys/proc.h>
 #include <sys/queue.h>
-#include <sys/selinfo.h>
+#include <sys/event.h>
 #include <sys/systm.h>
 #include <sys/taskqueue.h>
 #include <sys/uio.h>

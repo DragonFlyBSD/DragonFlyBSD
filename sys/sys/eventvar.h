@@ -42,9 +42,6 @@
 #ifndef _SYS_EVENT_H_
 #include <sys/event.h>
 #endif
-#ifndef _SYS_SELINFO_H_
-#include <sys/selinfo.h>
-#endif
 #ifndef _SYS_FILEDESC_H_
 #include <sys/filedesc.h>
 #endif
@@ -60,7 +57,7 @@ struct kqueue {
 	struct kqlist	kq_knlist;
 	int		kq_count;		/* number of pending events */
 	struct		sigio *kq_sigio;
-	struct		selinfo kq_sel;	
+	struct		kqinfo kq_kqinfo;	
 	struct		filedesc *kq_fdp;
 	int		kq_state;
 	u_long		kq_knhashmask;          /* size of knhash */

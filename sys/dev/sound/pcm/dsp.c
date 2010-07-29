@@ -1125,10 +1125,8 @@ dsp_kqfilter(struct dev_kqfilter_args *ap)
 	}
 
 	if (ap->a_result == 0) {
-		crit_enter();
-		klist = &sndbuf_getsel(bs)->si_note;
-		SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-		crit_exit();
+		klist = &sndbuf_getkq(bs)->ki_note;
+		knote_insert(klist, kn);
 	}
 
 	relchns(i_dev, rdch, wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
@@ -1144,10 +1142,8 @@ dsp_filter_detach(struct knote *kn)
 	struct klist *klist;
 
 	CHN_LOCK(ch);
-	crit_enter();
-	klist = &sndbuf_getsel(bs)->si_note;
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	klist = &sndbuf_getkq(bs)->ki_note;
+	knote_remove(klist, kn);
 	CHN_UNLOCK(ch);
 }
 

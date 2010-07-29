@@ -145,7 +145,7 @@ static struct dev_ops ptc_ops = {
 struct	pt_ioctl {
 	int	pt_flags;
 	int	pt_flags2;
-	struct	selinfo pt_selr, pt_selw;
+	struct	kqinfo pt_kqr, pt_kqw;
 	u_char	pt_send;
 	u_char	pt_ucntl;
 	struct tty pt_tty;
@@ -439,11 +439,11 @@ ptcwakeup(struct tty *tp, int flag)
 {
 	if (flag & FREAD) {
 		wakeup(TSA_PTC_READ(tp));
-		KNOTE(&tp->t_rsel.si_note, 0);
+		KNOTE(&tp->t_rkq.ki_note, 0);
 	}
 	if (flag & FWRITE) {
 		wakeup(TSA_PTC_WRITE(tp));
-		KNOTE(&tp->t_wsel.si_note, 0);
+		KNOTE(&tp->t_wkq.ki_note, 0);
 	}
 }
 
@@ -666,11 +666,11 @@ ptckqfilter(struct dev_kqfilter_args *ap)
 	ap->a_result = 0;
 	switch (kn->kn_filter) {
 	case EVFILT_READ:
-		klist = &tp->t_rsel.si_note;
+		klist = &tp->t_rkq.ki_note;
 		kn->kn_fop = &ptcread_filtops;
 		break;
 	case EVFILT_WRITE:
-		klist = &tp->t_wsel.si_note;
+		klist = &tp->t_wkq.ki_note;
 		kn->kn_fop = &ptcwrite_filtops;
 		break;
 	default:
@@ -679,11 +679,7 @@ ptckqfilter(struct dev_kqfilter_args *ap)
 	}
 
 	kn->kn_hook = (caddr_t)dev;
-
-	crit_enter();
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
-
+	knote_insert(klist, kn);
 	return (0);
 }
 
@@ -737,9 +733,7 @@ filt_ptcrdetach (struct knote *kn)
 {
 	struct tty *tp = ((cdev_t)kn->kn_hook)->si_tty;
 
-	crit_enter();
-	SLIST_REMOVE(&tp->t_rsel.si_note, kn, knote, kn_selnext);
-	crit_exit();
+	knote_remove(&tp->t_rkq.ki_note, kn);
 }
 
 static void
@@ -747,9 +741,7 @@ filt_ptcwdetach (struct knote *kn)
 {
 	struct tty *tp = ((cdev_t)kn->kn_hook)->si_tty;
 
-	crit_enter();
-	SLIST_REMOVE(&tp->t_wsel.si_note, kn, knote, kn_selnext);
-	crit_exit();
+	knote_remove(&tp->t_wkq.ki_note, kn);
 }
 
 /*

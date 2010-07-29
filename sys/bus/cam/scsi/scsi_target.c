@@ -88,7 +88,7 @@ struct targ_softc {
 	struct cam_periph	*periph;
 	struct cam_path		*path;
 	targ_state		 state;
-	struct selinfo		 read_select;
+	struct kqinfo		 read_kq;
 	struct devstat		 device_stats;
 };
 
@@ -344,9 +344,7 @@ targkqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	crit_enter();
-	SLIST_INSERT_HEAD(&softc->read_select.si_note, kn, kn_selnext);
-	crit_exit();
+	knote_insert(&softc->read_kq.ki_note, kn);
 	return (0);
 }
 
@@ -356,9 +354,7 @@ targfiltdetach(struct knote *kn)
 	struct  targ_softc *softc;
 
 	softc = (struct targ_softc *)kn->kn_hook;
-	crit_enter();
-	SLIST_REMOVE(&softc->read_select.si_note, kn, knote, kn_selnext);
-	crit_exit();
+	knote_remove(&softc->read_kq.ki_note, kn);
 }
 
 /* Notify the user's kqueue when the user queue or abort queue gets a CCB */
@@ -1119,7 +1115,7 @@ notify_user(struct targ_softc *softc)
 	 * Notify users sleeping via poll(), kqueue(), and
 	 * blocking read().
 	 */
-	KNOTE(&softc->read_select.si_note, 0);
+	KNOTE(&softc->read_kq.ki_note, 0);
 	wakeup(&softc->user_ccb_queue);
 }
 

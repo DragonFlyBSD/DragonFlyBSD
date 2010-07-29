@@ -46,7 +46,6 @@ static device_t	acpi_dev;
  * APM driver emulation 
  */
 
-#include <sys/selinfo.h>
 #include <sys/event.h>
 
 #include <machine/apm_bios.h>

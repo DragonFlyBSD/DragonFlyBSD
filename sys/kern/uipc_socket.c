@@ -152,8 +152,8 @@ soalloc(int waitok)
 	if (so) {
 		/* XXX race condition for reentrant kernel */
 		TAILQ_INIT(&so->so_aiojobq);
-		TAILQ_INIT(&so->so_rcv.ssb_sel.si_mlist);
-		TAILQ_INIT(&so->so_snd.ssb_sel.si_mlist);
+		TAILQ_INIT(&so->so_rcv.ssb_kq.ki_mlist);
+		TAILQ_INIT(&so->so_snd.ssb_kq.ki_mlist);
 	}
 	return so;
 }
@@ -1187,7 +1187,7 @@ sorflush(struct socket *so)
 	asb = *ssb;
 	bzero((caddr_t)ssb, sizeof (*ssb));
 	if (asb.ssb_flags & SSB_KNOTE) {
-		ssb->ssb_sel.si_note = asb.ssb_sel.si_note;
+		ssb->ssb_kq.ki_note = asb.ssb_kq.ki_note;
 		ssb->ssb_flags = SSB_KNOTE;
 	}
 	crit_exit();
@@ -1698,7 +1698,7 @@ sohasoutofband(struct socket *so)
 {
 	if (so->so_sigio != NULL)
 		pgsigio(so->so_sigio, SIGURG, 0);
-	KNOTE(&so->so_rcv.ssb_sel.si_note, NOTE_OOB);
+	KNOTE(&so->so_rcv.ssb_kq.ki_note, NOTE_OOB);
 }
 
 int
@@ -1727,10 +1727,8 @@ sokqfilter(struct file *fp, struct knote *kn)
 		return (EOPNOTSUPP);
 	}
 
-	crit_enter();
-	SLIST_INSERT_HEAD(&ssb->ssb_sel.si_note, kn, kn_selnext);
+	knote_insert(&ssb->ssb_kq.ki_note, kn);
 	ssb->ssb_flags |= SSB_KNOTE;
-	crit_exit();
 	return (0);
 }
 
@@ -1739,11 +1737,9 @@ filt_sordetach(struct knote *kn)
 {
 	struct socket *so = (struct socket *)kn->kn_fp->f_data;
 
-	crit_enter();
-	SLIST_REMOVE(&so->so_rcv.ssb_sel.si_note, kn, knote, kn_selnext);
-	if (SLIST_EMPTY(&so->so_rcv.ssb_sel.si_note))
+	knote_remove(&so->so_rcv.ssb_kq.ki_note, kn);
+	if (SLIST_EMPTY(&so->so_rcv.ssb_kq.ki_note))
 		so->so_rcv.ssb_flags &= ~SSB_KNOTE;
-	crit_exit();
 }
 
 /*ARGSUSED*/
@@ -1778,11 +1774,9 @@ filt_sowdetach(struct knote *kn)
 {
 	struct socket *so = (struct socket *)kn->kn_fp->f_data;
 
-	crit_enter();
-	SLIST_REMOVE(&so->so_snd.ssb_sel.si_note, kn, knote, kn_selnext);
-	if (SLIST_EMPTY(&so->so_snd.ssb_sel.si_note))
+	knote_remove(&so->so_snd.ssb_kq.ki_note, kn);
+	if (SLIST_EMPTY(&so->so_snd.ssb_kq.ki_note))
 		so->so_snd.ssb_flags &= ~SSB_KNOTE;
-	crit_exit();
 }
 
 /*ARGSUSED*/

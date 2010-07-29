@@ -60,12 +60,10 @@
 #include <sys/signalvar.h>
 #include <sys/malloc.h>
 #include <sys/mman.h>
-#include <sys/select.h>
 #include <sys/event.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
-#include <sys/selinfo.h>
 
 #include <vm/vm.h>
 #include <vm/vm_kern.h>
@@ -752,10 +750,8 @@ bktr_kqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	crit_enter();
-	klist = &bktr->vbi_select.si_note;
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	klist = &bktr->vbi_kq.ki_note;
+	knote_insert(klist, kn);
 
 	return (0);
 }
@@ -766,10 +762,8 @@ bktr_filter_detach(struct knote *kn)
 	bktr_ptr_t bktr = (bktr_ptr_t)kn->kn_hook;
 	struct klist *klist;
 
-	crit_enter();
-	klist = &bktr->vbi_select.si_note;
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	klist = &bktr->vbi_kq.ki_note;
+	knote_insert(klist, kn);
 }
 
 static int

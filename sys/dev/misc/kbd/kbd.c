@@ -62,7 +62,7 @@
 struct genkbd_softc {
 	int		gkb_flags;	/* flag/status bits */
 #define KB_ASLEEP	(1 << 0)
-	struct selinfo	gkb_rsel;
+	struct kqinfo	gkb_rkq;
 	char		gkb_q[KB_QSIZE];		/* input queue */
 	unsigned int	gkb_q_start;
 	unsigned int	gkb_q_length;
@@ -768,11 +768,9 @@ genkbdkqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	crit_enter();
 	sc = dev->si_drv1;
-	klist = &sc->gkb_rsel.si_note;
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	klist = &sc->gkb_rkq.ki_note;
+	knote_insert(klist, kn);
 
 	return (0);
 }
@@ -784,11 +782,9 @@ genkbdfiltdetach(struct knote *kn)
 	genkbd_softc_t sc;
 	struct klist *klist;
 
-	crit_enter();
 	sc = dev->si_drv1;
-	klist = &sc->gkb_rsel.si_note;
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	klist = &sc->gkb_rkq.ki_note;
+	knote_remove(klist, kn);
 }
 
 static int
@@ -836,7 +832,7 @@ genkbd_event(keyboard_t *kbd, int event, void *arg)
 			sc->gkb_flags &= ~KB_ASLEEP;
 			wakeup((caddr_t)sc);
 		}
-		KNOTE(&sc->gkb_rsel.si_note, 0);
+		KNOTE(&sc->gkb_rkq.ki_note, 0);
 		return 0;
 	default:
 		return EINVAL;
@@ -906,7 +902,7 @@ genkbd_event(keyboard_t *kbd, int event, void *arg)
 			sc->gkb_flags &= ~KB_ASLEEP;
 			wakeup((caddr_t)sc);
 		}
-		KNOTE(&sc->gkb_rsel.si_note, 0);
+		KNOTE(&sc->gkb_rkq.ki_note, 0);
 	}
 
 	return 0;

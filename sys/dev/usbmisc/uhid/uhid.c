@@ -60,7 +60,6 @@
 #include <sys/bus.h>
 #include <sys/conf.h>
 #include <sys/tty.h>
-#include <sys/select.h>
 #include <sys/proc.h>
 #include <sys/vnode.h>
 #include <sys/event.h>
@@ -110,7 +109,7 @@ struct uhid_softc {
 	int sc_repdesc_size;
 
 	struct clist sc_q;
-	struct selinfo sc_rsel;
+	struct kqinfo sc_rkq;
 	struct proc *sc_async;	/* process that wants SIGIO */
 	u_char sc_state;	/* driver state */
 #define	UHID_OPEN	0x01	/* device is open */
@@ -333,7 +332,7 @@ uhid_intr(usbd_xfer_handle xfer, usbd_private_handle addr, usbd_status status)
 		DPRINTFN(5, ("uhid_intr: waking %p\n", &sc->sc_q));
 		wakeup(&sc->sc_q);
 	}
-	KNOTE(&sc->sc_rsel.si_note, 0);
+	KNOTE(&sc->sc_rkq.ki_note, 0);
 	if (sc->sc_async != NULL) {
 		DPRINTFN(3, ("uhid_intr: sending SIGIO %p\n", sc->sc_async));
 		ksignal(sc->sc_async, SIGIO);
@@ -705,10 +704,8 @@ uhidkqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	crit_enter();
-	klist = &sc->sc_rsel.si_note;
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	klist = &sc->sc_rkq.ki_note;
+	knote_insert(klist, kn);
 
 	return (0);
 }
@@ -722,10 +719,8 @@ uhidfilt_detach(struct knote *kn)
 
 	sc = devclass_get_softc(uhid_devclass, UHIDUNIT(dev));
 
-	crit_enter();
-	klist = &sc->sc_rsel.si_note;
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	klist = &sc->sc_rkq.ki_note;
+	knote_remove(klist, kn);
 }
 
 static int

@@ -3084,10 +3084,8 @@ aac_kqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	crit_enter();
-	klist = &sc->rcv_select.si_note;
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	klist = &sc->rcv_kq.ki_note;
+	knote_insert(klist, kn);
 
 	return (0);
 }
@@ -3098,10 +3096,8 @@ aac_filter_detach(struct knote *kn)
 	struct aac_softc *sc = (struct aac_softc *)kn->kn_hook;
 	struct klist *klist;
 
-	crit_enter();
-	klist = &sc->rcv_select.si_note;
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	klist = &sc->rcv_kq.ki_note;
+	knote_remove(klist, kn);
 }
 
 static int
@@ -3379,7 +3375,7 @@ aac_handle_aif(struct aac_softc *sc, struct aac_fib *fib)
 			wakeup(sc->aac_aifq);
 		/* token may have been lost */
 		/* Wakeup any poll()ers */
-		KNOTE(&sc->rcv_select.si_note, 0);
+		KNOTE(&sc->rcv_kq.ki_note, 0);
 		/* token may have been lost */
 	}
 	AAC_LOCK_RELEASE(&sc->aac_aifq_lock);

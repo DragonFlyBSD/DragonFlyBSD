@@ -47,8 +47,8 @@ struct tun_softc {
 	pid_t	tun_pid;		/* PID of process to open */
 	struct	ifnet tun_if;		/* the interface */
 	struct  sigio *tun_sigio;	/* information for async I/O */
-	struct	selinfo	tun_rsel;	/* read select */
-	struct	selinfo	tun_wsel;	/* write select (not used) */
+	struct	kqinfo	tun_rkq;	/* read select/poll/kq */
+	struct	kqinfo	tun_wkq;	/* write select/poll/kq (not used) */
 };
 
 #endif /* !_NET_IF_TUNVAR_H_ */

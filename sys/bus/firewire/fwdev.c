@@ -755,10 +755,8 @@ fw_kqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	crit_enter();
-	klist = &ir->rsel.si_note;
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	klist = &ir->rkq.ki_note;
+	knote_insert(klist, kn);
 
 	return (0);
 }
@@ -767,12 +765,9 @@ static void
 fwfilt_detach(struct knote *kn)
 {
 	struct fw_xferq *ir = (struct fw_xferq *)kn->kn_hook;
-	struct klist *klist;
+	struct klist *klist = &ir->rkq.ki_note;
 
-	crit_enter();
-	klist = &ir->rsel.si_note;
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	knote_remove(klist, kn);
 }
 
 static int

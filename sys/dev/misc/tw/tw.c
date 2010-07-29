@@ -148,7 +148,6 @@
 #include <sys/kernel.h>
 #include <sys/uio.h>
 #include <sys/syslog.h>
-#include <sys/selinfo.h>
 #include <sys/event.h>
 #include <sys/thread2.h>
 
@@ -245,7 +244,7 @@ static struct dev_ops tw_ops = {
 static struct tw_sc {
   u_int sc_port;		/* I/O Port */
   u_int sc_state;		/* Current software control state */
-  struct selinfo sc_selp;	/* Information for select() */
+  struct kqinfo sc_kqp;		/* Information for select()/poll()/kq() */
   u_char sc_xphase;		/* Current state of sync (for transmitter) */
   u_char sc_rphase;		/* Current state of sync (for receiver) */
   u_char sc_flags;		/* Flags for current reception */
@@ -556,10 +555,8 @@ twkqfilter(struct dev_kqfilter_args *ap)
     return (0);
   }
 
-  crit_enter();
-  klist = &sc->sc_selp.si_note;
-  SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-  crit_exit();
+  klist = &sc->sc_kqp.ki_note;
+  knote_insert(klist, kn);
 
   return (0);
 }
@@ -570,10 +567,8 @@ twfilter_detach(struct knote *kn)
   struct tw_sc *sc = (struct tw_sc *)kn->kn_hook;
   struct klist *klist;
 
-  crit_enter();
-  klist = &sc->sc_selp.si_note;
-  SLIST_REMOVE(klist, kn, knote, kn_selnext);
-  crit_exit();
+  klist = &sc->sc_kqp.ki_note;
+  knote_remove(klist, kn);
 }
 
 static int
@@ -882,7 +877,7 @@ twputpkt(struct tw_sc *sc, u_char *p)
     sc->sc_state &= ~TWS_WANT;
     wakeup((caddr_t)(&sc->sc_buf));
   }
-  KNOTE(&sc->sc_selp.si_note, 0);
+  KNOTE(&sc->sc_kqp.ki_note, 0);
   return(0);
 }
 

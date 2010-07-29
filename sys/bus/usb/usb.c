@@ -70,7 +70,6 @@
 #include <sys/conf.h>
 #include <sys/device.h>
 #include <sys/event.h>
-#include <sys/select.h>
 #include <sys/vnode.h>
 #include <sys/signalvar.h>
 #include <sys/sysctl.h>
@@ -181,7 +180,7 @@ struct usb_event_q {
 static TAILQ_HEAD(, usb_event_q) usb_events =
 	TAILQ_HEAD_INITIALIZER(usb_events);
 static int usb_nevents = 0;
-static struct selinfo usb_selevent;
+static struct kqinfo usb_kqevent;
 static struct proc *usb_async_proc;  /* process that wants USB SIGIO */
 static int usb_dev_open = 0;
 static void usb_add_event(int, struct usb_event *);
@@ -718,10 +717,8 @@ usbkqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	crit_enter();
-	klist = &usb_selevent.si_note;
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	klist = &usb_kqevent.ki_note;
+	knote_insert(klist, kn);
 
 	return (0);
 }
@@ -731,10 +728,8 @@ usbfilt_detach(struct knote *kn)
 {
 	struct klist *klist;
 
-	crit_enter();
-	klist = &usb_selevent.si_note;
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	klist = &usb_kqevent.ki_note;
+	knote_remove(klist, kn);
 }
 
 static int
@@ -870,7 +865,7 @@ usb_add_event(int type, struct usb_event *uep)
 	TAILQ_INSERT_TAIL(&usb_events, ueq, next);
 	usb_nevents++;
 	wakeup(&usb_events);
-	KNOTE(&usb_selevent.si_note, 0);
+	KNOTE(&usb_kqevent.ki_note, 0);
 	if (usb_async_proc != NULL) {
 		ksignal(usb_async_proc, SIGIO);
 	}

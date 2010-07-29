@@ -52,7 +52,6 @@
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/event.h>
-#include <sys/selinfo.h>
 #include <sys/uio.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>
@@ -73,7 +72,7 @@
 typedef struct mse_softc {
 	int		sc_flags;
 	int		sc_mousetype;
-	struct selinfo	sc_selp;
+	struct kqinfo	sc_kqp;
 	struct resource	*sc_port;
 	struct resource	*sc_intr;
 	bus_space_tag_t	sc_iot;
@@ -631,10 +630,8 @@ msekqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	crit_enter();
-	klist = &sc->sc_selp.si_note;
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	klist = &sc->sc_kqp.ki_note;
+	knote_insert(klist, kn);
 
 	return (0);
 }
@@ -645,10 +642,8 @@ msefilter_detach(struct knote *kn)
 	mse_softc_t *sc = (mse_softc_t *)kn->kn_hook;
 	struct klist *klist;
 
-	crit_enter();
-	klist = &sc->sc_selp.si_note;
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	klist = &sc->sc_kqp.ki_note;
+	knote_remove(klist, kn);
 }
 
 static int
@@ -757,7 +752,7 @@ mseintr(void *arg)
 			sc->sc_flags &= ~MSESC_WANT;
 			wakeup((caddr_t)sc);
 		}
-		KNOTE(&sc->sc_selp.si_note, 0);
+		KNOTE(&sc->sc_kqp.ki_note, 0);
 	}
 }
 

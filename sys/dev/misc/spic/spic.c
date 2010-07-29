@@ -111,7 +111,7 @@ struct spic_softc {
 	int sc_buttonlast;
 	struct callout	sc_timeout_ch;
 	device_t sc_dev;
-	struct selinfo sc_rsel;
+	struct kqinfo sc_rkq;
 	u_char sc_buf[SCBUFLEN];
 	int sc_count;
 	int sc_model;
@@ -438,7 +438,7 @@ spictimeout(void *arg)
 			sc->sc_sleeping = 0;
 			wakeup((caddr_t) sc);
 		}
-		KNOTE(&sc->sc_rsel.si_note, 0);
+		KNOTE(&sc->sc_rkq.ki_note, 0);
 	}
 	spic_call2(sc, 0x81, 0xff); /* Clear event */
 
@@ -544,10 +544,8 @@ spickqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	crit_enter();
-	klist = &sc->sc_rsel.si_note;
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	klist = &sc->sc_rkq.ki_note;
+	knote_insert(klist, kn);
 
 	return (0);
 }
@@ -556,12 +554,9 @@ static void
 spicfilt_detach(struct knote *kn)
 {
 	struct spic_softc *sc = (struct spic_softc *)kn->kn_hook;
-	struct klist *klist;
+	struct klist *klist = &sc->sc_rkq.ki_note;
 
-	crit_enter();
-	klist = &sc->sc_rsel.si_note;
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	knote_remove(klist, kn);
 }
 
 static int

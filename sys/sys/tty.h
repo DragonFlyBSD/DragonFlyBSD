@@ -46,8 +46,8 @@
 #ifndef _SYS_TERMIOS_H_
 #include <sys/termios.h>
 #endif
-#ifndef _SYS_SELINFO_H_
-#include <sys/selinfo.h>
+#ifndef _SYS_EVENT_H_
+#include <sys/event.h>
 #endif
 #ifdef _KERNEL
 #include <sys/device.h>
@@ -94,8 +94,8 @@ struct tty {
 	struct	pgrp *t_pgrp;		/* Foreground process group. */
 	struct	session *t_session;	/* Enclosing session. */
 	struct  sigio *t_sigio;		/* Information for async I/O. */
-	struct	selinfo t_rsel;		/* Tty read/oob select. */
-	struct	selinfo t_wsel;		/* Tty write select. */
+	struct	kqinfo t_rkq;		/* Tty read/oob kq. */
+	struct	kqinfo t_wkq;		/* Tty write kq. */
 	struct	termios t_termios;	/* Termios state. */
 	struct	winsize t_winsize;	/* Window size. */
 					/* Start output. */

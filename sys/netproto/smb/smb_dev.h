@@ -171,7 +171,7 @@ struct smb_dev {
 	int		sd_seq;
 /*	struct ifqueue	sd_rdqueue;
 	struct ifqueue	sd_wrqueue;
-	struct selinfo	sd_pollinfo;
+	struct kqinfo	sd_pollinfo;
 	struct smbrqh	sd_rqlist;
 	struct smbrqh	sd_rplist;
 	struct ucred 	*sd_owner;*/

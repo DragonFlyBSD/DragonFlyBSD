@@ -80,7 +80,7 @@ static struct dev_ops log_ops = {
 
 static struct logsoftc {
 	int	sc_state;		/* see above for possibilities */
-	struct	selinfo sc_selp;	/* process waiting on select call */
+	struct	kqinfo	sc_kqp;		/* processes waiting on I/O */
 	struct  sigio *sc_sigio;	/* information for async I/O */
 	struct	callout sc_callout;	/* callout to wakeup syslog  */
 } logsoftc;
@@ -169,7 +169,7 @@ static int
 logkqfilter(struct dev_kqfilter_args *ap)
 {
 	struct knote *kn = ap->a_kn;
-	struct klist *klist = &logsoftc.sc_selp.si_note;
+	struct klist *klist = &logsoftc.sc_kqp.ki_note;
 
 	ap->a_result = 0;
 	switch (kn->kn_filter) {
@@ -181,9 +181,7 @@ logkqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	crit_enter();
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	knote_insert(klist, kn);
 
 	return (0);
 }
@@ -191,11 +189,9 @@ logkqfilter(struct dev_kqfilter_args *ap)
 static void
 logfiltdetach(struct knote *kn)
 {
-	struct klist *klist = &logsoftc.sc_selp.si_note;
+	struct klist *klist = &logsoftc.sc_kqp.ki_note;
 
-	crit_enter();
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	knote_remove(klist, kn);
 }
 
 static int
@@ -223,7 +219,7 @@ logtimeout(void *arg)
 		return;
 	}
 	msgbuftrigger = 0;
-	KNOTE(&logsoftc.sc_selp.si_note, 0);
+	KNOTE(&logsoftc.sc_kqp.ki_note, 0);
 	if ((logsoftc.sc_state & LOG_ASYNC) && logsoftc.sc_sigio != NULL)
 		pgsigio(logsoftc.sc_sigio, SIGIO, 0);
 	if (logsoftc.sc_state & LOG_RDWAIT) {

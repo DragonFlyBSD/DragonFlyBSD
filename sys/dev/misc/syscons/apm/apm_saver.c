@@ -35,12 +35,12 @@
 #include <sys/module.h>
 #include <sys/consio.h>
 #include <sys/fbio.h>
+#include <sys/event.h>
 
 #include <dev/video/fb/fbreg.h>
 #include <dev/video/fb/splashreg.h>
 #include "../syscons.h"
 
-#include <sys/selinfo.h>
 #include <machine/apm_bios.h>
 #include <machine/pc/bios.h>
 #include <machine_base/apm/apm.h>

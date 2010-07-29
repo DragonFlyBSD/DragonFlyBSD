@@ -53,7 +53,6 @@
 #include <sys/conf.h>
 #include <sys/tty.h>
 #include <sys/file.h>
-#include <sys/select.h>
 #include <sys/vnode.h>
 #include <sys/event.h>
 #include <sys/sysctl.h>
@@ -119,7 +118,7 @@ struct ums_softc {
 
 	int		state;
 #	  define	UMS_ASLEEP	0x01	/* readFromDevice is waiting */
-	struct selinfo	rsel;		/* process waiting in select */
+	struct kqinfo	rkq;		/* process waiting in select/poll/kq */
 };
 
 #define MOUSE_FLAGS_MASK (HIO_CONST|HIO_RELATIVE)
@@ -381,7 +380,7 @@ ums_detach(device_t self)
 		sc->state &= ~UMS_ASLEEP;
 		wakeup(sc);
 	}
-	KNOTE(&sc->rsel.si_note, 0);
+	KNOTE(&sc->rkq.ki_note, 0);
 
 	dev_ops_remove_minor(&ums_ops, /*-1, */device_get_unit(self));
 
@@ -513,7 +512,7 @@ ums_add_to_queue(struct ums_softc *sc, int dx, int dy, int dz, int buttons)
 		sc->state &= ~UMS_ASLEEP;
 		wakeup(sc);
 	}
-	KNOTE(&sc->rsel.si_note, 0);
+	KNOTE(&sc->rkq.ki_note, 0);
 }
 
 static int
@@ -690,10 +689,8 @@ ums_kqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	crit_enter();
-	klist = &sc->rsel.si_note;
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	klist = &sc->rkq.ki_note;
+	knote_insert(klist, kn);
 
 	return (0);
 }
@@ -704,10 +701,8 @@ ums_filt_detach(struct knote *kn)
 	struct ums_softc *sc = (struct ums_softc *)kn->kn_hook;
 	struct klist *klist;
 
-	crit_enter();
-	klist = &sc->rsel.si_note;
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	klist = &sc->rkq.ki_note;
+	knote_remove(klist, kn);
 }
 
 static int

@@ -36,7 +36,7 @@
  * Header file for the Conexant MPEG-2 Codec driver.
  */
 
-#include <sys/selinfo.h>
+#include <sys/event.h>
 
 #include <bus/pci/pcidevs.h>
 
@@ -230,7 +230,7 @@ struct cxm_softc {
 	struct cxm_buffer_pool	enc_pool;
 	struct cxm_sg_list enc_sg;
 
-	struct selinfo	enc_sel;
+	struct kqinfo	enc_kq;
 
 	struct proc	*enc_proc;
 	int		enc_signal;

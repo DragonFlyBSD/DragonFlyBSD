@@ -54,7 +54,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
-#include <sys/selinfo.h>
+#include <sys/event.h>
 
 #include <bus/pci/pcivar.h>
 

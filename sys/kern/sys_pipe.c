@@ -36,7 +36,6 @@
 #include <sys/filio.h>
 #include <sys/ttycom.h>
 #include <sys/stat.h>
-#include <sys/select.h>
 #include <sys/signalvar.h>
 #include <sys/sysproto.h>
 #include <sys/pipe.h>
@@ -156,22 +155,19 @@ SYSCTL_INT(_kern_pipe, OID_AUTO, bkmem_alloc,
 static void pipeclose (struct pipe *cpipe);
 static void pipe_free_kmem (struct pipe *cpipe);
 static int pipe_create (struct pipe **cpipep);
-static __inline void pipeselwakeup (struct pipe *cpipe);
+static __inline void pipewakeup (struct pipe *cpipe);
 static int pipespace (struct pipe *cpipe, int size);
 
 static __inline void
-pipeselwakeup(struct pipe *cpipe)
+pipewakeup(struct pipe *cpipe)
 {
 	if ((cpipe->pipe_state & PIPE_ASYNC) && cpipe->pipe_sigio) {
 		get_mplock();
 		pgsigio(cpipe->pipe_sigio, SIGIO, 0);
 		rel_mplock();
 	}
-	if (SLIST_FIRST(&cpipe->pipe_sel.si_note)) {
-		get_mplock();
-		KNOTE(&cpipe->pipe_sel.si_note, 0);
-		rel_mplock();
-	}
+	if (SLIST_FIRST(&cpipe->pipe_kq.ki_note))
+		KNOTE(&cpipe->pipe_kq.ki_note, 0);
 }
 
 /*
@@ -652,7 +648,7 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 			}
 		}
 		lwkt_gettoken(&rpipe->pipe_wlock);
-		pipeselwakeup(rpipe);
+		pipewakeup(rpipe);
 		lwkt_reltoken(&rpipe->pipe_wlock);
 	}
 	/*size = rpipe->pipe_buffer.windex - rpipe->pipe_buffer.rindex;*/
@@ -901,12 +897,12 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 
 		/*
 		 * We have no more space and have something to offer,
-		 * wake up select/poll.
+		 * wake up select/poll/kq.
 		 */
 		if (space == 0) {
 			wpipe->pipe_state |= PIPE_WANTW;
 			++wpipe->pipe_wantwcnt;
-			pipeselwakeup(wpipe);
+			pipewakeup(wpipe);
 			if (wpipe->pipe_state & PIPE_WANTW)
 				error = tsleep(wpipe, PCATCH, "pipewr", 0);
 			++pipe_wblocked_count;
@@ -944,7 +940,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 			}
 		}
 		lwkt_gettoken(&wpipe->pipe_rlock);
-		pipeselwakeup(wpipe);
+		pipewakeup(wpipe);
 		lwkt_reltoken(&wpipe->pipe_rlock);
 	}
 
@@ -962,7 +958,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 
 	/*
 	 * We have something to offer,
-	 * wake up select/poll.
+	 * wake up select/poll/kq.
 	 */
 	/*space = wpipe->pipe_buffer.windex - wpipe->pipe_buffer.rindex;*/
 	lwkt_reltoken(&wpipe->pipe_wlock);
@@ -1139,8 +1135,8 @@ pipe_shutdown(struct file *fp, int how)
 		error = 0;
 		break;
 	}
-	pipeselwakeup(rpipe);
-	pipeselwakeup(wpipe);
+	pipewakeup(rpipe);
+	pipewakeup(wpipe);
 
 	lwkt_reltoken(&wpipe->pipe_wlock);
 	lwkt_reltoken(&wpipe->pipe_rlock);
@@ -1190,11 +1186,11 @@ pipeclose(struct pipe *cpipe)
 	lwkt_gettoken(&cpipe->pipe_wlock);
 
 	/*
-	 * Set our state, wakeup anyone waiting in select, and
+	 * Set our state, wakeup anyone waiting in select/poll/kq, and
 	 * wakeup anyone blocked on our pipe.
 	 */
 	cpipe->pipe_state |= PIPE_CLOSED | PIPE_REOF | PIPE_WEOF;
-	pipeselwakeup(cpipe);
+	pipewakeup(cpipe);
 	if (cpipe->pipe_state & (PIPE_WANTR | PIPE_WANTW)) {
 		cpipe->pipe_state &= ~(PIPE_WANTR | PIPE_WANTW);
 		wakeup(cpipe);
@@ -1207,16 +1203,13 @@ pipeclose(struct pipe *cpipe)
 		lwkt_gettoken(&ppipe->pipe_rlock);
 		lwkt_gettoken(&ppipe->pipe_wlock);
 		ppipe->pipe_state |= PIPE_REOF | PIPE_WEOF;
-		pipeselwakeup(ppipe);
+		pipewakeup(ppipe);
 		if (ppipe->pipe_state & (PIPE_WANTR | PIPE_WANTW)) {
 			ppipe->pipe_state &= ~(PIPE_WANTR | PIPE_WANTW);
 			wakeup(ppipe);
 		}
-		if (SLIST_FIRST(&ppipe->pipe_sel.si_note)) {
-			get_mplock();
-			KNOTE(&ppipe->pipe_sel.si_note, 0);
-			rel_mplock();
-		}
+		if (SLIST_FIRST(&ppipe->pipe_kq.ki_note))
+			KNOTE(&ppipe->pipe_kq.ki_note, 0);
 		lwkt_reltoken(&ppipe->pipe_wlock);
 		lwkt_reltoken(&ppipe->pipe_rlock);
 	}
@@ -1289,9 +1282,7 @@ pipe_kqfilter(struct file *fp, struct knote *kn)
 	}
 	kn->kn_hook = (caddr_t)cpipe;
 
-	crit_enter();
-	SLIST_INSERT_HEAD(&cpipe->pipe_sel.si_note, kn, kn_selnext);
-	crit_exit();
+	knote_insert(&cpipe->pipe_kq.ki_note, kn);
 
 	return (0);
 }
@@ -1301,9 +1292,7 @@ filt_pipedetach(struct knote *kn)
 {
 	struct pipe *cpipe = (struct pipe *)kn->kn_hook;
 
-	crit_enter();
-	SLIST_REMOVE(&cpipe->pipe_sel.si_note, kn, knote, kn_selnext);
-	crit_exit();
+	knote_remove(&cpipe->pipe_kq.ki_note, kn);
 }
 
 /*ARGSUSED*/

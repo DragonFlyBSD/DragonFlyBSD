@@ -48,7 +48,6 @@
 #include <sys/conf.h>
 #include <sys/fcntl.h>
 #include <sys/uio.h>
-#include <sys/selinfo.h>
 #include <sys/types.h>
 #include <sys/lock.h>
 #include <sys/device.h>
@@ -281,7 +280,7 @@ cmx_detach(device_t dev)
 		callout_stop(&sc->ch);
 		sc->polling = 0;
 		CMX_UNLOCK(sc);
-		KNOTE(&sc->sel.si_note, 0);
+		KNOTE(&sc->kq.ki_note, 0);
 	} else {
 		CMX_UNLOCK(sc);
 	}
@@ -389,7 +388,7 @@ cmx_timeout_by_cmd(uint8_t cmd)
 /*
  * Periodical callout routine, polling the reader for data
  * availability.  If the reader signals data ready for reading,
- * wakes up the processes which are waiting in select()/poll().
+ * wakes up the processes which are waiting in select()/poll()/kevent().
  * Otherwise, reschedules itself with a delay of POLL_TICKS.
  */
 static void
@@ -404,7 +403,7 @@ cmx_tick(void *xsc)
 		DEBUG_printf(sc->dev, "BSR=%b\n", bsr, BSRBITS);
 		if (cmx_test(bsr, BSR_BULK_IN_FULL, 1)) {
 			sc->polling = 0;
-			KNOTE(&sc->sel.si_note, 0);
+			KNOTE(&sc->kq.ki_note, 0);
 		} else {
 			callout_reset(&sc->ch, POLL_TICKS, cmx_tick, sc);
 		}
@@ -462,7 +461,7 @@ cmx_close(struct dev_close_args *ap)
 		callout_stop(&sc->ch);
 		sc->polling = 0;
 		CMX_UNLOCK(sc);
-		KNOTE(&sc->sel.si_note, 0);
+		KNOTE(&sc->kq.ki_note, 0);
 		CMX_LOCK(sc);
 	}
 	sc->open = 0;
@@ -503,7 +502,7 @@ cmx_read(struct dev_read_args *ap)
 		callout_stop(&sc->ch);
 		sc->polling = 0;
 		CMX_UNLOCK(sc);
-		KNOTE(&sc->sel.si_note, 0);
+		KNOTE(&sc->kq.ki_note, 0);
 	} else {
 		CMX_UNLOCK(sc);
 	}
@@ -682,10 +681,8 @@ cmx_kqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	crit_enter();
-	klist = &sc->sel.si_note;
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	klist = &sc->kq.ki_note;
+	knote_insert(klist, kn);
 
 	return (0);
 }
@@ -694,12 +691,9 @@ static void
 cmx_filter_detach(struct knote *kn)
 {
 	struct cmx_softc *sc = (struct cmx_softc *)kn->kn_hook;
-	struct klist *klist;
+	struct klist *klist = &sc->kq.ki_note;
 
-	crit_enter();
-	klist = &sc->sel.si_note;
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	knote_remove(klist, kn);
 }
 
 static int

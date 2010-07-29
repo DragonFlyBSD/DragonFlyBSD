@@ -34,7 +34,7 @@
 #include <sys/buf2.h>
 #include <sys/eventhandler.h>
 #include <sys/lock.h>
-#include <sys/selinfo.h>
+#include <sys/event.h>
 #include <sys/taskqueue.h>
 #include <sys/thread2.h>
 
@@ -373,7 +373,7 @@ struct aac_softc
 	struct aac_aif_command	aac_aifq[AAC_AIFQ_LENGTH];
 	int			aac_aifq_head;
 	int			aac_aifq_tail;
-	struct selinfo		rcv_select;
+	struct kqinfo		rcv_kq;
 	struct thread		*aifthread;
 	int			aifflags;
 #define AAC_AIFFLAGS_RUNNING	(1 << 0)

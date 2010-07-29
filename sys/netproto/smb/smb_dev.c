@@ -41,7 +41,6 @@
 #include <sys/malloc.h>
 #include <sys/file.h>		/* Must come after sys/malloc.h */
 #include <sys/proc.h>
-#include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
@@ -125,7 +124,7 @@ nsmb_dev_open(struct dev_open_args *ap)
 /*
 	STAILQ_INIT(&sdp->sd_rqlist);
 	STAILQ_INIT(&sdp->sd_rplist);
-	bzero(&sdp->sd_pollinfo, sizeof(struct selinfo));
+	bzero(&sdp->sd_pollinfo, sizeof(struct kqinfo));
 */
 	crit_enter();
 	sdp->sd_level = -1;

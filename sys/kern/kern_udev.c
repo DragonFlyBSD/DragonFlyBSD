@@ -94,7 +94,7 @@ struct udev_softc {
 	int opened;
 	int initiated;
 
-	struct selinfo sel;
+	struct kqinfo kq;
 
 	int qlen;
 	struct lock lock;
@@ -422,7 +422,7 @@ udev_event_insert(int ev_type, prop_dictionary_t dict)
 	lockmgr(&udevctx.lock, LK_RELEASE);
 
 	wakeup(&udevctx);
-	KNOTE(&udevctx.sel.si_note, 0);
+	KNOTE(&udevctx.kq.ki_note, 0);
 }
 
 static struct udev_event_kernel *
@@ -598,10 +598,8 @@ udev_dev_kqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	crit_enter();
-	klist = &udevctx.sel.si_note;
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	klist = &udevctx.kq.ki_note;
+	knote_insert(klist, kn);
 
         lockmgr(&udevctx.lock, LK_RELEASE);
 
@@ -614,10 +612,8 @@ udev_dev_filter_detach(struct knote *kn)
 	struct klist *klist;
 
 	lockmgr(&udevctx.lock, LK_EXCLUSIVE);
-	crit_enter();
-	klist = &udevctx.sel.si_note;
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	klist = &udevctx.kq.ki_note;
+	knote_remove(klist, kn);
 	lockmgr(&udevctx.lock, LK_RELEASE);
 }
 

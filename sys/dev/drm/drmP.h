@@ -81,7 +81,6 @@ struct drm_file;
 #include <sys/spinlock2.h>
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
-#include <sys/selinfo.h>
 #include <sys/bus.h>
 
 #include "dev/drm/drm.h"

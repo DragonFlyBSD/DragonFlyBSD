@@ -148,7 +148,7 @@ union _qcvt {
 	(q) = tmp.qcvt; \
 }
 #define VN_KNOTE(vp, b) \
-	KNOTE(&vp->v_pollinfo.vpi_selinfo.si_note, (b))
+	KNOTE(&vp->v_pollinfo.vpi_kqinfo.ki_note, (b))
 
 #define OFSFMT(vp)		((vp)->v_mount->mnt_maxsymlinklen <= 0)
 
@@ -1958,8 +1958,9 @@ ext2_kqfilter(struct vop_kqfilter_args *ap)
 
 	kn->kn_hook = (caddr_t)vp;
 
+	/* XXX: kq token actually protects the list */
 	lwkt_gettoken(&vp->v_token);
-	SLIST_INSERT_HEAD(&vp->v_pollinfo.vpi_selinfo.si_note, kn, kn_selnext);
+	knote_insert(&vp->v_pollinfo.vpi_kqinfo.ki_note, kn);
 	lwkt_reltoken(&vp->v_token);
 
 	return (0);
@@ -1971,8 +1972,7 @@ filt_ext2detach(struct knote *kn)
 	struct vnode *vp = (struct vnode *)kn->kn_hook;
 
 	lwkt_gettoken(&vp->v_token);
-	SLIST_REMOVE(&vp->v_pollinfo.vpi_selinfo.si_note,
-	    kn, knote, kn_selnext);
+	knote_remove(&vp->v_pollinfo.vpi_kqinfo.ki_note, kn);
 	lwkt_reltoken(&vp->v_token);
 }
 

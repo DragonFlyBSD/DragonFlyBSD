@@ -50,7 +50,6 @@
 #include <sys/signalvar.h>
 #include <sys/thread2.h>
 #include <sys/vnode.h>
-#include <sys/select.h>
 #include <sys/resource.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
@@ -1370,7 +1369,7 @@ cxm_encoder_dma_done(struct cxm_softc *sc)
 	wakeup(&sc->enc_pool.read);
 
 	/* wakeup anyone polling for data */
-	KNOTE(&sc->enc_sel.si_note, 0);
+	KNOTE(&sc->enc_kq.ki_note, 0);
 }
 
 
@@ -2934,10 +2933,8 @@ cxm_kqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	crit_enter();
-	klist = &sc->enc_sel.si_note;
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	klist = &sc->enc_kq.ki_note;
+	knote_insert(klist, kn);
 
 	return (0);
 }
@@ -2946,12 +2943,9 @@ static void
 cxm_filter_detach(struct knote *kn)
 {
 	struct cxm_softc *sc = (struct cxm_softc *)kn->kn_hook;
-	struct klist *klist;
+	struct klist *klist = &sc->enc_kq.ki_note;
 
-	crit_enter();
-	klist = &sc->enc_sel.si_note;
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	knote_remove(klist, kn);
 }
 
 static int

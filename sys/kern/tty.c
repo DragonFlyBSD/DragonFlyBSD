@@ -1172,11 +1172,11 @@ ttykqfilter(struct dev_kqfilter_args *ap)
 	ap->a_result = 0;
 	switch (kn->kn_filter) {
 	case EVFILT_READ:
-		klist = &tp->t_rsel.si_note;
+		klist = &tp->t_rkq.ki_note;
 		kn->kn_fop = &ttyread_filtops;
 		break;
 	case EVFILT_WRITE:
-		klist = &tp->t_wsel.si_note;
+		klist = &tp->t_wkq.ki_note;
 		kn->kn_fop = &ttywrite_filtops;
 		break;
 	default:
@@ -1185,10 +1185,7 @@ ttykqfilter(struct dev_kqfilter_args *ap)
 	}
 
 	kn->kn_hook = (caddr_t)dev;
-
-	crit_enter();
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	knote_insert(klist, kn);
 
 	return (0);
 }
@@ -1198,9 +1195,7 @@ filt_ttyrdetach(struct knote *kn)
 {
 	struct tty *tp = ((cdev_t)kn->kn_hook)->si_tty;
 
-	crit_enter();
-	SLIST_REMOVE(&tp->t_rsel.si_note, kn, knote, kn_selnext);
-	crit_exit();
+	knote_remove(&tp->t_rkq.ki_note, kn);
 }
 
 static int
@@ -1221,9 +1216,7 @@ filt_ttywdetach(struct knote *kn)
 {
 	struct tty *tp = ((cdev_t)kn->kn_hook)->si_tty;
 
-	crit_enter();
-	SLIST_REMOVE(&tp->t_wsel.si_note, kn, knote, kn_selnext);
-	crit_exit();
+	knote_remove(&tp->t_wkq.ki_note, kn);
 }
 
 static int
@@ -2218,7 +2211,7 @@ ttwakeup(struct tty *tp)
 	if (ISSET(tp->t_state, TS_ASYNC) && tp->t_sigio != NULL)
 		pgsigio(tp->t_sigio, SIGIO, (tp->t_session != NULL));
 	wakeup(TSA_HUP_OR_INPUT(tp));
-	KNOTE(&tp->t_rsel.si_note, 0);
+	KNOTE(&tp->t_rkq.ki_note, 0);
 }
 
 /*
@@ -2240,7 +2233,7 @@ ttwwakeup(struct tty *tp)
 		CLR(tp->t_state, TS_SO_OLOWAT);
 		wakeup(TSA_OLOWAT(tp));
 	}
-	KNOTE(&tp->t_wsel.si_note, 0);
+	KNOTE(&tp->t_wkq.ki_note, 0);
 }
 
 /*

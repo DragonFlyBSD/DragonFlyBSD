@@ -45,7 +45,7 @@
 #define _NET_BPFDESC_H_
 
 #include <sys/callout.h>
-#include <sys/selinfo.h>
+#include <sys/event.h>
 
 /*
  * Descriptor associated with each open bpf file.
@@ -90,7 +90,7 @@ struct bpf_d {
 	struct proc *	bd_selproc;	/* process that last selected us */
 #else
 	u_char		bd_pad;		/* explicit alignment */
-	struct selinfo	bd_sel;		/* bsd select info */
+	struct kqinfo	bd_kq;		/* bsd kqueue info */
 #endif
 	struct callout	bd_callout;	/* for BPF timeouts with select */
 	int		bd_locked;	/* true if descriptor is locked */

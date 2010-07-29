@@ -61,7 +61,6 @@
 #include <sys/filio.h>
 #include <sys/tty.h>
 #include <sys/file.h>
-#include <sys/select.h>
 #include <sys/vnode.h>
 #include <sys/event.h>
 #include <sys/sysctl.h>
@@ -107,7 +106,7 @@ struct ugen_endpoint {
 #define UGEN_SHORT_OK	0x04	/* short xfers are OK */
 	usbd_pipe_handle pipeh;
 	struct clist q;
-	struct selinfo rsel;
+	struct kqinfo rkq;
 	u_char *ibuf;		/* start of buffer (circular for isoc) */
 	u_char *fill;		/* location for input (isoc) */
 	u_char *limit;		/* end of circular buffer (isoc) */
@@ -914,7 +913,7 @@ ugen_detach(device_t self)
 			sce = &sc->sc_endpoints[i][dir];
 			if (sce && sce->pipeh)
 				usbd_abort_pipe(sce->pipeh);
-			KNOTE(&sce->rsel.si_note, 0);
+			KNOTE(&sce->rkq.ki_note, 0);
 		}
 	}
 	crit_enter();
@@ -968,7 +967,7 @@ ugenintr(usbd_xfer_handle xfer, usbd_private_handle addr, usbd_status status)
 		DPRINTFN(5, ("ugen_intr: waking %p\n", sce));
 		wakeup(sce);
 	}
-	KNOTE(&sce->rsel.si_note, 0);
+	KNOTE(&sce->rkq.ki_note, 0);
 }
 
 static void
@@ -1028,7 +1027,7 @@ ugen_isoc_rintr(usbd_xfer_handle xfer, usbd_private_handle addr,
 		DPRINTFN(5, ("ugen_isoc_rintr: waking %p\n", sce));
 		wakeup(sce);
 	}
-	KNOTE(&sce->rsel.si_note, 0);
+	KNOTE(&sce->rkq.ki_note, 0);
 }
 
 static usbd_status
@@ -1470,10 +1469,8 @@ ugenkqfilter(struct dev_kqfilter_args *ap)
 	}
 
 	if (sce->edesc != NULL || sce->pipeh != NULL) {
-		crit_enter();
-		klist = &sce->rsel.si_note;
-		SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-		crit_exit();
+		klist = &sce->rkq.ki_note;
+		knote_insert(klist, kn);
 	}
 
 	return (0);
@@ -1501,10 +1498,8 @@ ugen_filt_detach(struct knote *kn)
 	}
 
 	if (sce->edesc != NULL || sce->pipeh != NULL) {
-		crit_enter();
-		klist = &sce->rsel.si_note;
-		SLIST_REMOVE(klist, kn, knote, kn_selnext);
-		crit_exit();
+		klist = &sce->rkq.ki_note;
+		knote_remove(klist, kn);
 	}
 }
 

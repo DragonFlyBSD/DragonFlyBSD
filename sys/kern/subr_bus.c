@@ -43,7 +43,6 @@
 #include <sys/device.h>
 #include <sys/lock.h>
 #include <sys/conf.h>
-#include <sys/selinfo.h>
 #include <sys/uio.h>
 #include <sys/filio.h>
 #include <sys/event.h>
@@ -166,7 +165,7 @@ static struct dev_softc
 	int	inuse;
 	int	nonblock;
 	struct lock lock;
-	struct selinfo sel;
+	struct kqinfo kq;
 	struct devq devq;
 	struct proc *async_proc;
 } devsoftc;
@@ -299,10 +298,8 @@ devkqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	crit_enter();
-	klist = &devsoftc.sel.si_note;
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	klist = &devsoftc.kq.ki_note;
+	knote_insert(klist, kn);
 
 	lockmgr(&devsoftc.lock, LK_RELEASE);
 
@@ -315,10 +312,8 @@ dev_filter_detach(struct knote *kn)
 	struct klist *klist;
 
 	lockmgr(&devsoftc.lock, LK_EXCLUSIVE);
-	crit_enter();
-	klist = &devsoftc.sel.si_note;
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	klist = &devsoftc.kq.ki_note;
+	knote_remove(klist, kn);
 	lockmgr(&devsoftc.lock, LK_RELEASE);
 }
 
@@ -367,7 +362,7 @@ devctl_queue_data(char *data)
 	wakeup(&devsoftc);
 	lockmgr(&devsoftc.lock, LK_RELEASE);
 	get_mplock();	/* XXX */
-	KNOTE(&devsoftc.sel.si_note, 0);
+	KNOTE(&devsoftc.kq.ki_note, 0);
 	rel_mplock();	/* XXX */
 	p = devsoftc.async_proc;
 	if (p != NULL)

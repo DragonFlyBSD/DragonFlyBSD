@@ -61,7 +61,7 @@ struct tap_softc {
 
 	struct sigio	*tap_sigtd;		/* track process owning tap */
 	struct sigio	*tap_sigio;		/* information for async I/O */
-	struct selinfo	 tap_rsel;		/* read select               */
+	struct kqinfo	 tap_rkq;		/* read select/poll/kq       */
 	struct ifqueue	 tap_devq;
 	int		 tap_unit;
 

@@ -90,7 +90,7 @@ static struct rbch_softc {
 	struct ifqueue sc_hdlcq;	/* hdlc read queue	*/
 #define I4BRBCHMAXQLEN	10
 
-	struct selinfo selp;		/* select / poll	*/
+	struct kqinfo kqp;		/* select / poll / kevent */
 
 #if I4BRBCHACCT
 	struct callout	sc_timeout;
@@ -561,10 +561,8 @@ i4brbchkqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	crit_enter();
-	klist = &sc->selp.si_note;
-	SLIST_INSERT_HEAD(klist, kn, kn_selnext);
-	crit_exit();
+	klist = &sc->kqp.ki_note;
+	knote_insert(klist, kn);
 
 	return (0);
 }
@@ -577,10 +575,8 @@ i4brbchkfilt_detach(struct knote *kn)
 	struct rbch_softc *sc = &rbch_softc[unit];
 	struct klist *klist;
 
-	crit_enter();
-	klist = &sc->selp.si_note;
-	SLIST_REMOVE(klist, kn, knote, kn_selnext);
-	crit_exit();
+	klist = &sc->kqp.ki_note;
+	knote_remove(klist, kn);
 }
 
 PDEVSTATIC int
@@ -812,7 +808,7 @@ rbch_rx_data_rdy(int unit)
 	{
 		NDBGL4(L4_RBCHDBG, "unit %d, NO wakeup", unit);
 	}
-	KNOTE(&rbch_softc[unit].selp.si_note, 0);
+	KNOTE(&rbch_softc[unit].kqp.ki_note, 0);
 }
 
 /*---------------------------------------------------------------------------*
@@ -833,7 +829,7 @@ rbch_tx_queue_empty(int unit)
 	{
 		NDBGL4(L4_RBCHDBG, "unit %d, NO wakeup", unit);
 	}
-	KNOTE(&rbch_softc[unit].selp.si_note, 0);
+	KNOTE(&rbch_softc[unit].kqp.ki_note, 0);
 }
 
 /*---------------------------------------------------------------------------*
@@ -845,7 +841,7 @@ rbch_activity(int unit, int rxtx)
 {
 	if (rbch_softc[unit].sc_cd)
 		rbch_softc[unit].sc_cd->last_active_time = SECOND;
-	KNOTE(&rbch_softc[unit].selp.si_note, 0);
+	KNOTE(&rbch_softc[unit].kqp.ki_note, 0);
 }
 
 /*---------------------------------------------------------------------------*
