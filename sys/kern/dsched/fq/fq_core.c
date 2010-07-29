@@ -65,7 +65,6 @@ extern struct dsched_policy dsched_fq_policy;
 void
 fq_dispatcher(struct fq_disk_ctx *diskctx)
 {
-	struct dsched_thread_ctx *tdctx;
 	struct dsched_thread_io	*ds_tdio, *ds_tdio2;
 	struct fq_thread_io	*tdio;
 	struct bio *bio, *bio2;
@@ -76,10 +75,8 @@ fq_dispatcher(struct fq_disk_ctx *diskctx)
 	 * since it isn't assigned one during fq_prepare, as the disk
 	 * is not set up yet.
 	 */
-	tdctx = dsched_get_thread_priv(curthread);
-	KKASSERT(tdctx != NULL);
-
-	tdio = (struct fq_thread_io *)dsched_thread_io_alloc(diskctx->head.dp, tdctx, &dsched_fq_policy);
+	tdio = (struct fq_thread_io *)dsched_new_policy_thread_tdio(&diskctx->head,
+	    &dsched_fq_policy);
 
 	DSCHED_DISK_CTX_LOCK(&diskctx->head);
 	for(;;) {

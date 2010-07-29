@@ -232,6 +232,8 @@ void	dsched_disk_ctx_unref(struct dsched_disk_ctx *diskctx);
 void	dsched_thread_io_unref(struct dsched_thread_io *tdio);
 void	dsched_thread_ctx_unref(struct dsched_thread_ctx *tdctx);
 
+struct dsched_thread_io *dsched_new_policy_thread_tdio(struct dsched_disk_ctx *diskctx,
+	struct dsched_policy *pol);
 struct dsched_thread_io *dsched_thread_io_alloc(struct disk *dp,
 	struct dsched_thread_ctx *tdctx, struct dsched_policy *pol);
 struct dsched_disk_ctx *dsched_disk_ctx_alloc(struct disk *dp,

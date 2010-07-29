@@ -936,6 +936,19 @@ dsched_exit_thread(struct thread *td)
 	atomic_subtract_int(&dsched_stats.nthreads, 1);
 }
 
+struct dsched_thread_io *
+dsched_new_policy_thread_tdio(struct dsched_disk_ctx *diskctx,
+    struct dsched_policy *pol) {
+	struct dsched_thread_ctx *tdctx;
+	struct dsched_thread_io *tdio;
+
+	tdctx = dsched_get_thread_priv(curthread);
+	KKASSERT(tdctx != NULL);
+
+	tdio = dsched_thread_io_alloc(diskctx->dp, tdctx, pol);
+	return tdio;
+}
+
 /* DEFAULT NOOP POLICY */
 
 static int
