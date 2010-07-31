@@ -362,4 +362,5 @@
 #define	SYS_ioprio_set	520
 #define	SYS_ioprio_get	521
 #define	SYS_chroot_kernel	522
-#define	SYS_MAXSYSCALL	523
+#define	SYS_renameat	523
+#define	SYS_MAXSYSCALL	524

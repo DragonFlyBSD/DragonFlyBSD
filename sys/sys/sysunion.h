@@ -409,4 +409,5 @@ union sysunion {
 	struct	ioprio_set_args ioprio_set;
 	struct	ioprio_get_args ioprio_get;
 	struct	chroot_kernel_args chroot_kernel;
+	struct	renameat_args renameat;
 };

@@ -35,7 +35,6 @@
  *
  *	@(#)stdio.h	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/include/stdio.h,v 1.78 2009/03/25 08:07:52 das Exp $
- * $DragonFly: src/include/stdio.h,v 1.14 2008/06/05 17:53:10 swildner Exp $
  */
 
 #ifndef	_STDIO_H_
@@ -298,7 +297,7 @@ char	*tempnam(const char *, const char *);
 #if __BSD_VISIBLE || __POSIX_VISIBLE >= 200809
 ssize_t	 getdelim(char ** __restrict, size_t * __restrict, int,
 		  FILE * __restrict);
-/* int	 renameat(int, const char *, int, const char *); */
+int	 renameat(int, const char *, int, const char *);
 int	 vdprintf(int, const char * __restrict, __va_list);
 
 /*

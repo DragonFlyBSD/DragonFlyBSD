@@ -732,3 +732,5 @@
 520	STD	BSD	{ int ioprio_set(int which, int who, int prio); }
 521	STD	BSD	{ int ioprio_get(int which, int who); }
 522	STD	BSD	{ int chroot_kernel(char *path); }
+523	STD	POSIX	{ int renameat(int oldfd, char *old, int newfd, \
+				  char *new); }

@@ -37,7 +37,6 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.135 2008/11/11 00:55:49 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -3796,6 +3795,37 @@ sys_rename(struct rename_args *uap)
 		nlookup_done(&tond);
 	}
 	nlookup_done(&fromnd);
+	rel_mplock();
+	return (error);
+}
+
+/*
+ * renameat_args(int oldfd, char *old, int newfd, char *new)
+ *
+ * Rename files using paths relative to the directories associated with
+ * oldfd and newfd.  Source and destination must either both be directories,
+ * or both not be directories.  If target is a directory, it must be empty.
+ *
+ * MPALMOSTSAFE
+ */
+int
+sys_renameat(struct renameat_args *uap)
+{
+	struct nlookupdata oldnd, newnd;
+	struct file *oldfp, *newfp;
+	int error;
+
+	get_mplock();
+	error = nlookup_init_at(&oldnd, &oldfp, uap->oldfd, uap->old,
+	    UIO_USERSPACE, 0);
+	if (error == 0) {
+		error = nlookup_init_at(&newnd, &newfp, uap->newfd, uap->new,
+		    UIO_USERSPACE, 0);
+		if (error == 0)
+			error = kern_rename(&oldnd, &newnd);
+		nlookup_done(&newnd);
+	}
+	nlookup_done(&oldnd);
 	rel_mplock();
 	return (error);
 }

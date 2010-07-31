@@ -2301,6 +2301,15 @@ struct	chroot_kernel_args {
 #endif
 	char *	path;	char path_[PAD_(char *)];
 };
+struct	renameat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	int	oldfd;	char oldfd_[PAD_(int)];
+	char *	old;	char old_[PAD_(char *)];
+	int	newfd;	char newfd_[PAD_(int)];
+	char *	new;	char new_[PAD_(char *)];
+};
 
 #ifdef COMPAT_43
 
@@ -2910,6 +2919,7 @@ int	sys_mq_timedreceive (struct mq_timedreceive_args *);
 int	sys_ioprio_set (struct ioprio_set_args *);
 int	sys_ioprio_get (struct ioprio_get_args *);
 int	sys_chroot_kernel (struct chroot_kernel_args *);
+int	sys_renameat (struct renameat_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_

@@ -556,4 +556,5 @@ struct sysent sysent[] = {
 	{ AS(ioprio_set_args), (sy_call_t *)sys_ioprio_set },	/* 520 = ioprio_set */
 	{ AS(ioprio_get_args), (sy_call_t *)sys_ioprio_get },	/* 521 = ioprio_get */
 	{ AS(chroot_kernel_args), (sy_call_t *)sys_chroot_kernel },	/* 522 = chroot_kernel */
+	{ AS(renameat_args), (sy_call_t *)sys_renameat },	/* 523 = renameat */
 };

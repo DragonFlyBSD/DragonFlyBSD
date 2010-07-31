@@ -530,4 +530,5 @@ const char *syscallnames[] = {
 	"ioprio_set",			/* 520 = ioprio_set */
 	"ioprio_get",			/* 521 = ioprio_get */
 	"chroot_kernel",			/* 522 = chroot_kernel */
+	"renameat",			/* 523 = renameat */
 };
