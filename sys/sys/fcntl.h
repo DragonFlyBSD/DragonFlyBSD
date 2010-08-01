@@ -242,7 +242,9 @@ union fcntl_dat {
 
 __BEGIN_DECLS
 int	open (const char *, int, ...);
+#if __BSD_VISIBLE || __POSIX_VISIBLE >= 200809
 int	openat (int, const char *, int, ...);
+#endif
 int	creat (const char *, mode_t);
 int	fcntl (int, int, ...);
 #ifndef _POSIX_SOURCE

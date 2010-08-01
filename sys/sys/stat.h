@@ -213,9 +213,13 @@ struct stat {
 
 __BEGIN_DECLS
 int	chmod (const char *, mode_t);
+#if __BSD_VISIBLE || __POSIX_VISIBLE >= 200809
 int	fchmodat (int, const char *, mode_t, int);
+#endif
 int	fstat (int, struct stat *);
+#if __BSD_VISIBLE || __POSIX_VISIBLE >= 200809
 int	fstatat (int, const char *, struct stat *, int);
+#endif
 int	mkdir (const char *, mode_t);
 int	mkfifo (const char *, mode_t);
 #if !defined(_MKNOD_DECLARED) && __XSI_VISIBLE
