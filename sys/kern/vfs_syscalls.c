@@ -3823,9 +3823,9 @@ sys_renameat(struct renameat_args *uap)
 		    UIO_USERSPACE, 0);
 		if (error == 0)
 			error = kern_rename(&oldnd, &newnd);
-		nlookup_done(&newnd);
+		nlookup_done_at(&newnd, newfp);
 	}
-	nlookup_done(&oldnd);
+	nlookup_done_at(&oldnd, oldfp);
 	rel_mplock();
 	return (error);
 }
