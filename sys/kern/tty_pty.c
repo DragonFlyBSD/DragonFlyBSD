@@ -320,7 +320,8 @@ ptsclose(struct dev_close_args *ap)
 	tp = dev->si_tty;
 	err = (*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
 	ptsstop(tp, FREAD|FWRITE);
-	(void) ttyclose(tp);
+	(void) ttyclose(tp); /* clears t_state */
+	tp->t_state |= TS_ZOMBIE;
 
 #ifdef UNIX98_PTYS
 	/*
@@ -691,6 +692,11 @@ filt_ptcread (struct knote *kn, long hint)
 	struct tty *tp = ((cdev_t)kn->kn_hook)->si_tty;
 	struct pt_ioctl *pti = ((cdev_t)kn->kn_hook)->si_drv1;
 
+	if (tp->t_state & TS_ZOMBIE) {
+		kn->kn_flags |= EV_EOF;
+		return (1);
+	}
+
 	if ((tp->t_state & TS_ISOPEN) &&
 	    ((tp->t_outq.c_cc && (tp->t_state & TS_TTSTOP) == 0) ||
 	     ((pti->pt_flags & PF_PKT) && pti->pt_send) ||
@@ -707,6 +713,11 @@ filt_ptcwrite (struct knote *kn, long hint)
 {
 	struct tty *tp = ((cdev_t)kn->kn_hook)->si_tty;
 	struct pt_ioctl *pti = ((cdev_t)kn->kn_hook)->si_drv1;
+
+	if (tp->t_state & TS_ZOMBIE) {
+		kn->kn_flags |= EV_EOF;
+		return (1);
+	}
 
 	if (tp->t_state & TS_ISOPEN &&
 	    ((pti->pt_flags & PF_REMOTE) ?
