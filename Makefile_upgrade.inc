@@ -1355,6 +1355,9 @@ TO_REMOVE+=/usr/share/man/man9/lwkt_trytokref.9.gz
 TO_REMOVE+=/usr/sbin/udevd
 TO_REMOVE+=/usr/share/zoneinfo/Pacific/Ponape
 TO_REMOVE+=/usr/share/zoneinfo/Pacific/Truk
+TO_REMOVE+=/usr/sbin/dschedctl
+TO_REMOVE+=/usr/share/man/cat8/dschedctl.8.gz
+TO_REMOVE+=/usr/share/man/man8/dschedctl.8.gz
 
 # XXX Remove when adjusted to the new 802.11 framework
 TO_REMOVE+=/boot/modules/if_acx.ko

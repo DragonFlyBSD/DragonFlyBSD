@@ -34,7 +34,6 @@ SUBDIR= 802_11 \
 	devinfo \
 	dev_mkdb \
 	dntpd \
-	dschedctl \
 	edquota \
 	faithd \
 	fdcontrol \
