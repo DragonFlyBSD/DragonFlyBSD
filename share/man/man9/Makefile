@@ -611,7 +611,9 @@ MLINKS+=mutex.9 mtx_downgrade.9 \
 MLINKS+=nlookup.9 naccess.9 \
 	nlookup.9 naccess_va.9 \
 	nlookup.9 nlookup_done.9 \
+	nlookup.9 nlookup_done_at.9 \
 	nlookup.9 nlookup_init.9 \
+	nlookup.9 nlookup_init_at.9 \
 	nlookup.9 nlookup_init_raw.9 \
 	nlookup.9 nlookup_init_root.9 \
 	nlookup.9 nlookup_mp.9 \
