@@ -105,6 +105,7 @@ MLINKS+=chdir.2 fchdir.2
 MLINKS+=chflags.2 fchflags.2 chflags.2 lchflags.2
 MLINKS+=chmod.2 fchmod.2 chmod.2 lchmod.2 chmod.2 fchmodat.2
 MLINKS+=chown.2 fchown.2 chown.2 lchown.2 chown.2 fchownat.2
+MLINKS+=chroot.2 chroot_kernel.2
 MLINKS+=clock_gettime.2 clock_getres.2 clock_gettime.2 clock_settime.2
 MLINKS+=dup.2 dup2.2
 MLINKS+=extattr.2 extattr_delete_file.2 \

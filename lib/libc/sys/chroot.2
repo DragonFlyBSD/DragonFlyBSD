@@ -31,9 +31,8 @@
 .\"
 .\"     @(#)chroot.2	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/sys/chroot.2,v 1.7.2.8 2002/12/11 14:06:37 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/chroot.2,v 1.3 2007/07/14 21:48:15 swildner Exp $
 .\"
-.Dd June 4, 1993
+.Dd August 1, 2010
 .Dt CHROOT 2
 .Os
 .Sh NAME
@@ -45,6 +44,8 @@
 .In unistd.h
 .Ft int
 .Fn chroot "const char *dirname"
+.Ft int
+.Fn chroot_kernel "const char *dirname"
 .Sh DESCRIPTION
 .Fa Dirname
 is the address of the pathname of a directory, terminated by an ASCII NUL.
@@ -99,6 +100,16 @@ Upon successful completion, a value of 0 is returned.  Otherwise,
 a value of -1 is returned and
 .Va errno
 is set to indicate an error.
+.Pp
+The
+.Fn chroot_kernel
+system call adjusts the kernel's internal namecache and root vnode
+references to
+.Fa dirname .
+If used in conjunction with
+.Fn chroot
+during early boot, it allows for changing the root mount to any
+mount point available at that time.
 .Sh ERRORS
 .Fn Chroot
 will fail and the root directory will be unchanged if:
