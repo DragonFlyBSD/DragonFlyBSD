@@ -54,27 +54,18 @@
 
 MALLOC_DEFINE(M_DSCHED, "dsched", "dsched allocs");
 
-static dsched_prepare_t		default_prepare;
-static dsched_teardown_t	default_teardown;
-static dsched_cancel_t		default_cancel;
-static dsched_queue_t		default_queue;
-
-static d_open_t      dsched_dev_open;
-static d_close_t     dsched_dev_close;
-static d_ioctl_t     dsched_dev_ioctl;
-
-static int dsched_dev_list_disks(struct dsched_ioctl *data);
-static int dsched_dev_list_disk(struct dsched_ioctl *data);
-static int dsched_dev_list_policies(struct dsched_ioctl *data);
-static int dsched_dev_handle_switch(char *disk, char *policy);
+static dsched_prepare_t		noop_prepare;
+static dsched_teardown_t	noop_teardown;
+static dsched_cancel_t		noop_cancel;
+static dsched_queue_t		noop_queue;
 
 static void dsched_sysctl_add_disk(struct dsched_disk_ctx *diskctx, char *name);
 
 static int	dsched_inited = 0;
+static int	default_set = 0;
 
 struct lock	dsched_lock;
 static int	dsched_debug_enable = 0;
-static cdev_t	dsched_dev;
 
 struct dsched_stats	dsched_stats;
 
@@ -97,21 +88,16 @@ struct lock	dsched_tdctx_lock;
 static struct dsched_policy_head dsched_policy_list =
 		TAILQ_HEAD_INITIALIZER(dsched_policy_list);
 
-static struct dsched_policy dsched_default_policy = {
+static struct dsched_policy dsched_noop_policy = {
 	.name = "noop",
 
-	.prepare = default_prepare,
-	.teardown = default_teardown,
-	.cancel_all = default_cancel,
-	.bio_queue = default_queue
+	.prepare = noop_prepare,
+	.teardown = noop_teardown,
+	.cancel_all = noop_cancel,
+	.bio_queue = noop_queue
 };
 
-static struct dev_ops dsched_dev_ops = {
-	{ "dsched", 0, 0 },
-	.d_open = dsched_dev_open,
-	.d_close = dsched_dev_close,
-	.d_ioctl = dsched_dev_ioctl
-};
+static struct dsched_policy *default_policy = &dsched_noop_policy;
 
 /*
  * dsched_debug() is a SYSCTL and TUNABLE controlled debug output function
@@ -161,15 +147,17 @@ dsched_disk_create_callback(struct disk *dp, const char *head_name, int unit)
 	}
 
 	ksnprintf(tunable_key, sizeof(tunable_key), "dsched.policy.default");
-	if (!policy && (TUNABLE_STR_FETCH(tunable_key, sched_policy,
+	if (!policy && !default_set && (TUNABLE_STR_FETCH(tunable_key, sched_policy,
 	    sizeof(sched_policy)) != 0)) {
 		policy = dsched_find_policy(sched_policy);
 	}
 
 	if (!policy) {
-		dsched_debug(0, "No policy for %s%d specified, "
-		    "or policy not found\n", head_name, unit);
-		dsched_set_policy(dp, &dsched_default_policy);
+		if (!default_set) {
+			dsched_debug(0, "No policy for %s%d specified, "
+			    "or policy not found\n", head_name, unit);
+		}
+		dsched_set_policy(dp, default_policy);
 	} else {
 		dsched_set_policy(dp, policy);
 	}
@@ -232,7 +220,7 @@ dsched_disk_destroy_callback(struct disk *dp)
 	diskctx = dsched_get_disk_priv(dp);
 
 	old_policy = dp->d_sched_policy;
-	dp->d_sched_policy = &dsched_default_policy;
+	dp->d_sched_policy = &dsched_noop_policy;
 	old_policy->cancel_all(dsched_get_disk_priv(dp));
 	old_policy->teardown(dsched_get_disk_priv(dp));
 
@@ -365,7 +353,7 @@ dsched_switch(struct disk *dp, struct dsched_policy *new_policy)
 	atomic_subtract_int(&old_policy->ref_count, 1);
 	KKASSERT(old_policy->ref_count >= 0);
 
-	dp->d_sched_policy = &dsched_default_policy;
+	dp->d_sched_policy = &dsched_noop_policy;
 	old_policy->teardown(dsched_get_disk_priv(dp));
 	policy_destroy(dp);
 
@@ -952,193 +940,37 @@ dsched_new_policy_thread_tdio(struct dsched_disk_ctx *diskctx,
 /* DEFAULT NOOP POLICY */
 
 static int
-default_prepare(struct dsched_disk_ctx *diskctx)
+noop_prepare(struct dsched_disk_ctx *diskctx)
 {
 	return 0;
 }
 
 static void
-default_teardown(struct dsched_disk_ctx *diskctx)
+noop_teardown(struct dsched_disk_ctx *diskctx)
 {
 
 }
 
 static void
-default_cancel(struct dsched_disk_ctx *diskctx)
+noop_cancel(struct dsched_disk_ctx *diskctx)
 {
 
 }
 
 static int
-default_queue(struct dsched_disk_ctx *diskctx, struct dsched_thread_io *tdio,
+noop_queue(struct dsched_disk_ctx *diskctx, struct dsched_thread_io *tdio,
     struct bio *bio)
 {
 	dsched_strategy_raw(diskctx->dp, bio);
 #if 0
-	dsched_strategy_async(diskctx->dp, bio, default_completed, NULL);
+	dsched_strategy_async(diskctx->dp, bio, noop_completed, NULL);
 #endif
 	return 0;
 }
 
-
-/*
- * dsched device stuff
- */
-
-static int
-dsched_dev_list_disks(struct dsched_ioctl *data)
-{
-	struct disk *dp = NULL;
-	uint32_t i;
-
-	for (i = 0; (i <= data->num_elem) && (dp = disk_enumerate(dp)); i++);
-
-	if (dp == NULL)
-		return -1;
-
-	strncpy(data->dev_name, dp->d_cdev->si_name, sizeof(data->dev_name));
-
-	if (dp->d_sched_policy) {
-		strncpy(data->pol_name, dp->d_sched_policy->name,
-		    sizeof(data->pol_name));
-	} else {
-		strncpy(data->pol_name, "N/A (error)", 12);
-	}
-
-	return 0;
-}
-
-static int
-dsched_dev_list_disk(struct dsched_ioctl *data)
-{
-	struct disk *dp = NULL;
-	int found = 0;
-
-	while ((dp = disk_enumerate(dp))) {
-		if (!strncmp(dp->d_cdev->si_name, data->dev_name,
-		    sizeof(data->dev_name))) {
-			KKASSERT(dp->d_sched_policy != NULL);
-
-			found = 1;
-			strncpy(data->pol_name, dp->d_sched_policy->name,
-			    sizeof(data->pol_name));
-			break;
-		}
-	}
-	if (!found)
-		return -1;
-
-	return 0;
-}
-
-static int
-dsched_dev_list_policies(struct dsched_ioctl *data)
-{
-	struct dsched_policy *pol = NULL;
-	uint32_t i;
-
-	for (i = 0; (i <= data->num_elem) && (pol = dsched_policy_enumerate(pol)); i++);
-
-	if (pol == NULL)
-		return -1;
-
-	strncpy(data->pol_name, pol->name, sizeof(data->pol_name));
-	return 0;
-}
-
-static int
-dsched_dev_handle_switch(char *disk, char *policy)
-{
-	struct disk *dp;
-	struct dsched_policy *pol;
-
-	dp = dsched_find_disk(disk);
-	pol = dsched_find_policy(policy);
-
-	if ((dp == NULL) || (pol == NULL))
-		return -1;
-
-	return (dsched_switch(dp, pol));
-}
-
-static int
-dsched_dev_open(struct dev_open_args *ap)
-{
-	/*
-	 * Only allow read-write access.
-	 */
-	if (((ap->a_oflags & FWRITE) == 0) || ((ap->a_oflags & FREAD) == 0))
-		return(EPERM);
-
-	/*
-	 * We don't allow nonblocking access.
-	 */
-	if ((ap->a_oflags & O_NONBLOCK) != 0) {
-		kprintf("dsched_dev: can't do nonblocking access\n");
-		return(ENODEV);
-	}
-
-	return 0;
-}
-
-static int
-dsched_dev_close(struct dev_close_args *ap)
-{
-	return 0;
-}
-
-static int
-dsched_dev_ioctl(struct dev_ioctl_args *ap)
-{
-	int error;
-	struct dsched_ioctl *data;
-
-	error = 0;
-	data = (struct dsched_ioctl *)ap->a_data;
-
-	switch(ap->a_cmd) {
-	case DSCHED_SET_DEVICE_POLICY:
-		if (dsched_dev_handle_switch(data->dev_name, data->pol_name))
-			error = ENOENT; /* No such file or directory */
-		break;
-
-	case DSCHED_LIST_DISK:
-		if (dsched_dev_list_disk(data) != 0) {
-			error = EINVAL; /* Invalid argument */
-		}
-		break;
-
-	case DSCHED_LIST_DISKS:
-		if (dsched_dev_list_disks(data) != 0) {
-			error = EINVAL; /* Invalid argument */
-		}
-		break;
-
-	case DSCHED_LIST_POLICIES:
-		if (dsched_dev_list_policies(data) != 0) {
-			error = EINVAL; /* Invalid argument */
-		}
-		break;
-
-
-	default:
-		error = ENOTTY; /* Inappropriate ioctl for device */
-		break;
-	}
-
-	return(error);
-}
-
-
-
-
-
-
 /*
  * SYSINIT stuff
  */
-
-
 static void
 dsched_init(void)
 {
@@ -1165,7 +997,7 @@ dsched_init(void)
 	lockinit(&dsched_lock, "dsched lock", 0, LK_CANRECURSE);
 	DSCHED_GLOBAL_THREAD_CTX_LOCKINIT();
 
-	dsched_register(&dsched_default_policy);
+	dsched_register(&dsched_noop_policy);
 
 	dsched_inited = 1;
 }
@@ -1175,27 +1007,8 @@ dsched_uninit(void)
 {
 }
 
-static void
-dsched_dev_init(void)
-{
-	dsched_dev = make_dev(&dsched_dev_ops,
-            0,
-            UID_ROOT,
-            GID_WHEEL,
-            0600,
-            "dsched");
-}
-
-static void
-dsched_dev_uninit(void)
-{
-	destroy_dev(dsched_dev);
-}
-
 SYSINIT(subr_dsched_register, SI_SUB_CREATE_INIT-1, SI_ORDER_FIRST, dsched_init, NULL);
 SYSUNINIT(subr_dsched_register, SI_SUB_CREATE_INIT-1, SI_ORDER_ANY, dsched_uninit, NULL);
-SYSINIT(subr_dsched_dev_register, SI_SUB_DRIVERS, SI_ORDER_ANY, dsched_dev_init, NULL);
-SYSUNINIT(subr_dsched_dev_register, SI_SUB_DRIVERS, SI_ORDER_ANY, dsched_dev_uninit, NULL);
 
 /*
  * SYSCTL stuff
@@ -1231,7 +1044,7 @@ sysctl_dsched_list_policies(SYSCTL_HANDLER_ARGS)
 	lockmgr(&dsched_lock, LK_RELEASE);
 
 	error = SYSCTL_OUT(req, "", 1);
-	
+
 	return error;
 }
 
@@ -1271,6 +1084,38 @@ sysctl_dsched_policy(SYSCTL_HANDLER_ARGS)
 	return error;
 }
 
+static int
+sysctl_dsched_default_policy(SYSCTL_HANDLER_ARGS)
+{
+	char buf[DSCHED_POLICY_NAME_LENGTH];
+	struct dsched_policy *pol = NULL;
+	int error;
+
+	lockmgr(&dsched_lock, LK_EXCLUSIVE);
+
+	pol = default_policy;
+	memcpy(buf, pol->name, DSCHED_POLICY_NAME_LENGTH);
+
+	error = sysctl_handle_string(oidp, buf, DSCHED_POLICY_NAME_LENGTH, req);
+	if (error || req->newptr == NULL) {
+		lockmgr(&dsched_lock, LK_RELEASE);
+		return (error);
+	}
+
+	pol = dsched_find_policy(buf);
+	if (pol == NULL) {
+		lockmgr(&dsched_lock, LK_RELEASE);
+		return 0;
+	}
+
+	default_set = 1;
+	default_policy = pol;
+
+	lockmgr(&dsched_lock, LK_RELEASE);
+
+	return error;
+}
+
 SYSCTL_NODE(, OID_AUTO, dsched, CTLFLAG_RD, NULL,
     "Disk Scheduler Framework (dsched) magic");
 SYSCTL_NODE(_dsched, OID_AUTO, policy, CTLFLAG_RW, NULL,
@@ -1282,6 +1127,8 @@ SYSCTL_PROC(_dsched, OID_AUTO, stats, CTLTYPE_OPAQUE|CTLFLAG_RD,
     "dsched statistics");
 SYSCTL_PROC(_dsched, OID_AUTO, policies, CTLTYPE_STRING|CTLFLAG_RD,
     NULL, 0, sysctl_dsched_list_policies, "A", "names of available policies");
+SYSCTL_PROC(_dsched_policy, OID_AUTO, default, CTLTYPE_STRING|CTLFLAG_RW,
+    NULL, 0, sysctl_dsched_default_policy, "A", "default dsched policy");
 
 static void
 dsched_sysctl_add_disk(struct dsched_disk_ctx *diskctx, char *name)
