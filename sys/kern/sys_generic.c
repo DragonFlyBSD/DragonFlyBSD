@@ -964,6 +964,10 @@ select_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
 					skap->lwp->lwp_kqueue_serial);
 				FD_CLR(fd, fdp);
 				++*events;
+
+				if (nseldebug)
+					kprintf("select fd %d filter %d serial %d\n",
+						fd, filter, skap->lwp->lwp_kqueue_serial);
 			}
 			++skap->proc_fds;
 			if (*events == maxevents)
@@ -985,17 +989,52 @@ select_copyout(void *arg, struct kevent *kevp, int count, int *res)
 
 	skap = (struct select_kevent_copyin_args *)arg;
 
-	if (kevp[0].flags & EV_ERROR) {
-		skap->error = kevp[0].data;
-		return (0);
-	}
-
 	for (i = 0; i < count; ++i) {
+		/*
+		 * Filter out and delete spurious events
+		 */
 		if ((u_int)(uintptr_t)kevp[i].udata !=
 		    skap->lwp->lwp_kqueue_serial) {
 			kev = kevp[i];
 			kev.flags = EV_DISABLE|EV_DELETE;
 			kqueue_register(&skap->lwp->lwp_kqueue, &kev);
+			if (nseldebug)
+				kprintf("select fd %d mismatched serial %d\n",
+					kevp[i].ident, skap->lwp->lwp_kqueue_serial);
+			continue;
+		}
+
+		/*
+		 * Handle errors
+		 */
+		if (kevp[i].flags & EV_ERROR) {
+			switch(kevp[i].data) {
+			case EBADF:
+				/*
+				 * A bad file descriptor is considered a
+				 * fatal error for select, bail out.
+				 */
+				skap->error = EBADF;
+				*res = 0;
+				return (1);
+				break;
+			default:
+				/*
+				 * Select silently swallows any unknown errors
+				 * for descriptors in the read or write sets.
+				 */
+				if (kevp[i].filter != EVFILT_READ &&
+				    kevp[i].filter != EVFILT_WRITE) {
+					skap->error = kevp[i].data;
+					*res = 0;
+					return (1);
+				}
+				break;
+			}
+			if (nseldebug)
+				kprintf("select fd %d filter %d error %d\n",
+					kevp[i].ident, kevp[i].filter,
+					(u_int)kevp[i].data);
 			continue;
 		}
 
@@ -1117,7 +1156,8 @@ doselect(int nd, fd_set *read, fd_set *write, fd_set *except,
 		error = putbits(bytes, kap->except_set, except);
 
 	/*
-	 * Cumulative error from individual events (EBADFD?)
+	 * An error from an individual event that should be passed
+	 * back to userland (EBADF)
 	 */
 	if (kap->error)
 		error = kap->error;
@@ -1133,7 +1173,7 @@ done:
 	if (kap->except_set && kap->except_set != &except_tmp)
 		kfree(kap->except_set, M_SELECT);
 
-	kap->lwp->lwp_kqueue_serial++;
+	kap->lwp->lwp_kqueue_serial += kap->num_fds;
 
 	return (error);
 }
@@ -1268,19 +1308,6 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 			 */
 			if (kevp[i].flags & EV_ERROR) {
 				switch(kevp[i].data) {
-				case EOPNOTSUPP:
-					/*
-					 * Operation not supported.  Poll
-					 * does not return an error for
-					 * POLLPRI (OOB/urgent data) when
-					 * it is not supported by the device.
-					 */
-					if (kevp[i].filter != EVFILT_EXCEPT) {
-						if (pfd->revents == 0)
-							++*res;
-						pfd->revents |= POLLERR;
-					}
-					break;
 				case EBADF:
 					/* Bad file descriptor */
 					if (pfd->revents == 0)
@@ -1288,9 +1315,17 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 					pfd->revents |= POLLNVAL;
 					break;
 				default:
-					if (pfd->revents == 0)
-						++*res;
-					pfd->revents |= POLLERR;
+					/*
+					 * Poll silently swallows any unknown
+					 * errors except in the case of POLLPRI
+					 * (OOB/urgent data).
+					 */
+					if (kevp[i].filter != EVFILT_READ &&
+					    kevp[i].filter != EVFILT_WRITE) {
+						if (pfd->revents == 0)
+							++*res;
+						pfd->revents |= POLLERR;
+					}
 					break;
 				}
 				if (nseldebug) {
