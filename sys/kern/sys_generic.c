@@ -999,8 +999,9 @@ select_copyout(void *arg, struct kevent *kevp, int count, int *res)
 			kev.flags = EV_DISABLE|EV_DELETE;
 			kqueue_register(&skap->lwp->lwp_kqueue, &kev);
 			if (nseldebug)
-				kprintf("select fd %d mismatched serial %d\n",
-					kevp[i].ident, skap->lwp->lwp_kqueue_serial);
+				kprintf("select fd %ju mismatched serial %d\n",
+					(uintmax_t)kevp[i].ident,
+					skap->lwp->lwp_kqueue_serial);
 			continue;
 		}
 
@@ -1032,9 +1033,10 @@ select_copyout(void *arg, struct kevent *kevp, int count, int *res)
 				break;
 			}
 			if (nseldebug)
-				kprintf("select fd %d filter %d error %d\n",
-					kevp[i].ident, kevp[i].filter,
-					(u_int)kevp[i].data);
+				kprintf("select fd %ju filter %d error %jd\n",
+					(uintmax_t)kevp[i].ident,
+					kevp[i].filter,
+					(intmax_t)kevp[i].data);
 			continue;
 		}
 
@@ -1330,10 +1332,10 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 				}
 				if (nseldebug) {
 					kprintf("poll index %d fd %d "
-						"filter %d error %d\n",
+						"filter %d error %jd\n",
 						pi, pfd->fd,
 						kevp[i].filter,
-						(u_int)kevp[i].data);
+						(intmax_t)kevp[i].data);
 				}
 				continue;
 			}
@@ -1366,8 +1368,8 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 			continue;
 		} else {
 			if (nseldebug) {
-				kprintf("poll index %d mismatch %d/%d\n",
-					pi, (u_int)kevp[i].ident, pfd->fd);
+				kprintf("poll index %d mismatch %ju/%d\n",
+					pi, (uintmax_t)kevp[i].ident, pfd->fd);
 			}
 		}
 	}
