@@ -665,7 +665,7 @@ linker_file_lookup_symbol(linker_file_t file, const char* name, int deps, caddr_
 #ifdef _KERNEL_VIRTUAL
     *raddr = dlsym(RTLD_NEXT, name);
     if (*raddr != NULL) {
-	KLD_DPF(SYM, ("linker_file_lookup_symbol: found dlsym=%x\n", *raddr));
+	KLD_DPF(SYM, ("linker_file_lookup_symbol: found dlsym=%p\n", *raddr));
 	return 0;
     }
 #endif
