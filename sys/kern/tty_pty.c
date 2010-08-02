@@ -288,6 +288,7 @@ ptsopen(struct dev_open_args *ap)
 		if (error)
 			return (error);
 	}
+	tp->t_state &= ~TS_ZOMBIE;
 	error = (*linesw[tp->t_line].l_open)(dev, tp);
 	if (error == 0)
 		ptcwakeup(tp, FREAD|FWRITE);
