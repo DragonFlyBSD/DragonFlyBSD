@@ -5846,9 +5846,9 @@ bce_add_sysctls(struct bce_softc *sc)
 		(void *)sc, 0,
 		bce_sysctl_reg_read, "I", "Register read");
 
-	SYSCTL_ADD_PROC(ctx, children, OID_AUTO, 
-		"phy_read", CTLTYPE_INT | CTLFLAG_RW, 
-		(void *)sc, 0, 
+	SYSCTL_ADD_PROC(ctx, children, OID_AUTO,
+		"phy_read", CTLTYPE_INT | CTLFLAG_RW,
+		(void *)sc, 0,
 		bce_sysctl_phy_read, "I", "PHY register read");
 
 #endif
