@@ -35,11 +35,12 @@
 .\" $FreeBSD: src/share/man/man9/store.9,v 1.7.2.4 2001/12/17 11:30:19 ru Exp $
 .\" $DragonFly: src/share/man/man9/store.9,v 1.4 2007/04/07 19:29:52 swildner Exp $
 .\"
-.Dd January 7, 1996
+.Dd August 2, 2010
 .Dt STORE 9
 .Os
 .Sh NAME
 .Nm store ,
+.Nm casuword ,
 .Nm subyte ,
 .Nm susword ,
 .Nm suword
@@ -49,6 +50,8 @@
 .In sys/time.h
 .In sys/systm.h
 .In sys/resourcevar.h
+.Ft u_long
+.Fn casuword "u_long *base" "u_long oldval" "u_long newval"
 .Ft int
 .Fn subyte "void *base" "int byte"
 .Ft int
@@ -63,7 +66,19 @@ functions are designed to copy small amounts of data to user-space.
 The
 .Nm
 routines provide the following functionality:
-.Bl -tag -width ".Fn susword"
+.Bl -tag -width ".Fn casuword"
+.It Fn casuword
+Compares
+.Fa oldval
+with the word at
+.Fa base ,
+and if equal,
+.Fa base
+is set to
+.Fa newval .
+The old value at
+.Fa base
+is then returned.
 .It Fn subyte
 Stores a byte of data to the user-space address
 .Fa base .

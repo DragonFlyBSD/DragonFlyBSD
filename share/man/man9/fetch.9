@@ -40,7 +40,6 @@
 .Os
 .Sh NAME
 .Nm fetch ,
-.Nm casuword ,
 .Nm fubyte ,
 .Nm fusword ,
 .Nm fuword
@@ -50,8 +49,6 @@
 .In sys/time.h
 .In sys/systm.h
 .In sys/resourcevar.h
-.Ft u_long
-.Fn casuword "u_long *base" "u_long oldval" "u_long newval"
 .Ft int
 .Fn fubyte "const void *base"
 .Ft int
@@ -66,19 +63,7 @@ functions are designed to copy small amounts of data from user-space.
 The
 .Nm
 routines provide the following functionality:
-.Bl -tag -width ".Fn casuword"
-.It Fn casuword
-Compares
-.Fa oldval
-with the word at
-.Fa base ,
-and if equal,
-.Fa base
-is set to
-.Fa newval .
-The old value at
-.Fa base
-is then returned.
+.Bl -tag -width ".Fn fusword"
 .It Fn fubyte
 Fetches a byte of data from the user-space address
 .Fa base .
