@@ -85,9 +85,9 @@ static void	filt_fifowdetach(struct knote *kn);
 static int	filt_fifowrite(struct knote *kn, long hint);
 
 static struct filterops fiforead_filtops =
-	{ 1, NULL, filt_fifordetach, filt_fiforead };
+	{ FILTEROP_ISFD, NULL, filt_fifordetach, filt_fiforead };
 static struct filterops fifowrite_filtops =
-	{ 1, NULL, filt_fifowdetach, filt_fifowrite };
+	{ FILTEROP_ISFD, NULL, filt_fifowdetach, filt_fifowrite };
   
 struct vop_ops fifo_vnode_vops = {
 	.vop_default =		vop_defaultop,

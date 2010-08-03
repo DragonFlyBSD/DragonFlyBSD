@@ -2379,7 +2379,7 @@ psmintr(void *arg)
 }
 
 static struct filterops psmfiltops =
-	{ 1, NULL, psmfilter_detach, psmfilter };
+	{ FILTEROP_ISFD, NULL, psmfilter_detach, psmfilter };
 
 static int
 psmkqfilter(struct dev_kqfilter_args *ap)

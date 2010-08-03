@@ -730,9 +730,9 @@ diag_done:
  *	i4bkqfilter - device driver poll routine
  *---------------------------------------------------------------------------*/
 static struct filterops i4bkqfiltops_read =
-	{ 1, NULL, i4bkqfilt_detach, i4bkqfilt_read };
+	{ FILTEROP_ISFD, NULL, i4bkqfilt_detach, i4bkqfilt_read };
 static struct filterops i4bkqfiltops_write =
-	{ 1, NULL, i4bkqfilt_detach, i4bkqfilt_write };
+	{ FILTEROP_ISFD, NULL, i4bkqfilt_detach, i4bkqfilt_write };
 
 PDEVSTATIC int
 i4bkqfilter(struct dev_kqfilter_args *ap)

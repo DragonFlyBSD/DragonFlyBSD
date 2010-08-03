@@ -2907,7 +2907,7 @@ cxm_ioctl(struct dev_ioctl_args *ap)
 }
 
 static struct filterops cxm_filterops =
-	{ 1, NULL, cxm_filter_detach, cxm_filter };
+	{ FILTEROP_ISFD, NULL, cxm_filter_detach, cxm_filter };
 
 static int
 cxm_kqfilter(struct dev_kqfilter_args *ap)

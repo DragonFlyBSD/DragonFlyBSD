@@ -608,7 +608,7 @@ mseioctl(struct dev_ioctl_args *ap)
 }
 
 static struct filterops msefiltops =
-	{ 1, NULL, msefilter_detach, msefilter };
+	{ FILTEROP_ISFD, NULL, msefilter_detach, msefilter };
 
 static int
 msekqfilter(struct dev_kqfilter_args *ap)

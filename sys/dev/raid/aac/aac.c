@@ -3062,7 +3062,7 @@ aac_ioctl(struct dev_ioctl_args *ap)
 }
 
 static struct filterops aac_filterops =
-	{ 1, NULL, aac_filter_detach, aac_filter };
+	{ FILTEROP_ISFD, NULL, aac_filter_detach, aac_filter };
 
 static int
 aac_kqfilter(struct dev_kqfilter_args *ap)

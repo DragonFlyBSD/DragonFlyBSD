@@ -241,9 +241,9 @@ cttyioctl(struct dev_ioctl_args *ap)
 }
 
 static struct filterops cttyfiltops_read =
-	{ 1, NULL, cttyfilt_detach, cttyfilt_read };
+	{ FILTEROP_ISFD, NULL, cttyfilt_detach, cttyfilt_read };
 static struct filterops cttyfiltops_write =
-	{ 1, NULL, cttyfilt_detach, cttyfilt_write };
+	{ FILTEROP_ISFD, NULL, cttyfilt_detach, cttyfilt_write };
 
 static int
 cttykqfilter(struct dev_kqfilter_args *ap)

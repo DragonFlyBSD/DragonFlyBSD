@@ -525,9 +525,9 @@ twwrite(struct dev_write_args *ap)
  */
 
 static struct filterops twfiltops_read =
-	{ 1, NULL, twfilter_detach, twfilter_read };
+	{ FILTEROP_ISFD, NULL, twfilter_detach, twfilter_read };
 static struct filterops twfiltops_write =
-	{ 1, NULL, twfilter_detach, twfilter_write };
+	{ FILTEROP_ISFD, NULL, twfilter_detach, twfilter_write };
 
 static int
 twkqfilter(struct dev_kqfilter_args *ap)

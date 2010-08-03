@@ -686,9 +686,9 @@ tel_tone(tel_sc_t *sc)
  *	device driver poll
  *---------------------------------------------------------------------------*/
 PDEVSTATIC struct filterops i4btelfiltops_read =
-	{ 1, NULL, i4btelfilt_detach, i4btelfilt_read };
+	{ FILTEROP_ISFD, NULL, i4btelfilt_detach, i4btelfilt_read };
 PDEVSTATIC struct filterops i4btelfiltops_write =
-	{ 1, NULL, i4btelfilt_detach, i4btelfilt_write };
+	{ FILTEROP_ISFD, NULL, i4btelfilt_detach, i4btelfilt_write };
 
 PDEVSTATIC int
 i4btelkqfilter(struct dev_kqfilter_args *ap)

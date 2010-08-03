@@ -1067,7 +1067,7 @@ bpf_setif(struct bpf_d *d, struct ifreq *ifr)
 }
 
 static struct filterops bpf_read_filtops =
-	{ 1, NULL, bpf_filter_detach, bpf_filter_read };
+	{ FILTEROP_ISFD, NULL, bpf_filter_detach, bpf_filter_read };
 
 static int
 bpfkqfilter(struct dev_kqfilter_args *ap)

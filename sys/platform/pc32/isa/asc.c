@@ -843,7 +843,7 @@ ascioctl(struct dev_ioctl_args *ap)
 }
 
 static struct filterops ascfiltops =
-    { 1, NULL, ascfilter_detach, ascfilter };
+    { FILTEROP_ISFD, NULL, ascfilter_detach, ascfilter };
 
 STATIC int
 asckqfilter(struct dev_kqfilter_args *ap)

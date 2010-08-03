@@ -316,9 +316,9 @@ mq_stat_fop(file_t *fp, struct stat *st, struct ucred *cred)
 }
 
 static struct filterops mqfiltops_read =
-	{ 1, NULL, mqfilter_read_detach, mqfilter_read };
+	{ FILTEROP_ISFD, NULL, mqfilter_read_detach, mqfilter_read };
 static struct filterops mqfiltops_write =
-	{ 1, NULL, mqfilter_write_detach, mqfilter_write };
+	{ FILTEROP_ISFD, NULL, mqfilter_write_detach, mqfilter_write };
 
 static int
 mq_kqfilter_fop(struct file *fp, struct knote *kn)

@@ -720,7 +720,7 @@ bktr_mmap(struct dev_mmap_args *ap)
 }
 
 static struct filterops bktr_filterops =
-	{ 1, NULL, bktr_filter_detach, bktr_filter };
+	{ FILTEROP_ISFD, NULL, bktr_filter_detach, bktr_filter };
 
 static int
 bktr_kqfilter(struct dev_kqfilter_args *ap)

@@ -537,10 +537,10 @@ static void
 dummy_filter_detach(struct knote *kn) {}
 
 static struct filterops random_read_filtops =
-        { 1, NULL, dummy_filter_detach, random_filter_read };
+        { FILTEROP_ISFD, NULL, dummy_filter_detach, random_filter_read };
 
 static struct filterops mm_read_filtops =
-        { 1, NULL, dummy_filter_detach, mm_filter_read };
+        { FILTEROP_ISFD, NULL, dummy_filter_detach, mm_filter_read };
 
 int
 mmkqfilter(struct dev_kqfilter_args *ap)

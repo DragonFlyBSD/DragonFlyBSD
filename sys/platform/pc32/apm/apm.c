@@ -1340,9 +1340,9 @@ apmwrite(struct dev_write_args *ap)
 }
 
 static struct filterops apmfiltops_read =
-	{ 1, NULL, apmfilter_detach, apmfilter_read };
+	{ FILTEROP_ISFD, NULL, apmfilter_detach, apmfilter_read };
 static struct filterops apmfiltops_write =
-	{ 1, NULL, apmfilter_detach, apmfilter_write };
+	{ FILTEROP_ISFD, NULL, apmfilter_detach, apmfilter_write };
 
 static int
 apmkqfilter(struct dev_kqfilter_args *ap)

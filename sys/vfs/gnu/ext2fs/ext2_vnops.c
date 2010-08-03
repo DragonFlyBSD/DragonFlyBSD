@@ -1927,11 +1927,11 @@ ext2_vinit(struct mount *mntp, struct vnode **vpp)
 }
 
 static struct filterops ext2read_filtops = 
-	{ 1, NULL, filt_ext2detach, filt_ext2read };
+	{ FILTEROP_ISFD, NULL, filt_ext2detach, filt_ext2read };
 static struct filterops ext2write_filtops = 
-	{ 1, NULL, filt_ext2detach, filt_ext2write };
+	{ FILTEROP_ISFD, NULL, filt_ext2detach, filt_ext2write };
 static struct filterops ext2vnode_filtops = 
-	{ 1, NULL, filt_ext2detach, filt_ext2vnode };
+	{ FILTEROP_ISFD, NULL, filt_ext2detach, filt_ext2vnode };
 
 /*
  * ext2_kqfilter(struct vnode *a_vp, struct knote *a_kn)

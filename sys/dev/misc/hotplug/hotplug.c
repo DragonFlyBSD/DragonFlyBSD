@@ -104,7 +104,7 @@ hotplugclose(struct dev_close_args *ap)
 }
 
 static struct filterops hotplugfiltops =
-	{ 1, NULL, hotplugfiltdetach, hotplugfilt };
+	{ FILTEROP_ISFD, NULL, hotplugfiltdetach, hotplugfilt };
 
 static int
 hotplugkqfilter(struct dev_kqfilter_args *ap)

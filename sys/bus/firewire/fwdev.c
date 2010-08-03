@@ -714,9 +714,9 @@ out:
 }
 
 static struct filterops fw_read_filterops =
-	{ 1, NULL, fwfilt_detach, fwfilt_read };
+	{ FILTEROP_ISFD, NULL, fwfilt_detach, fwfilt_read };
 static struct filterops fw_write_filterops =
-	{ 1, NULL, fwfilt_detach, fwfilt_write };
+	{ FILTEROP_ISFD, NULL, fwfilt_detach, fwfilt_write };
 
 static int
 fw_kqfilter(struct dev_kqfilter_args *ap)

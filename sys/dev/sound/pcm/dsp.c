@@ -1087,9 +1087,9 @@ dsp_ioctl(struct dev_ioctl_args *ap)
 }
 
 static struct filterops dsp_read_filtops =
-	{ 1, NULL, dsp_filter_detach, dsp_filter_read };
+	{ FILTEROP_ISFD, NULL, dsp_filter_detach, dsp_filter_read };
 static struct filterops dsp_write_filtops =
-	{ 1, NULL, dsp_filter_detach, dsp_filter_write };
+	{ FILTEROP_ISFD, NULL, dsp_filter_detach, dsp_filter_write };
 
 static int
 dsp_kqfilter(struct dev_kqfilter_args *ap)

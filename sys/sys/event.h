@@ -92,7 +92,8 @@ struct kevent {
 #define NOTE_LOWAT	0x0001			/* low water mark */
 
 /*
- * data/hint flags for EVFILT_EXCEPT, shared with userspace
+ * data/hint flags for EVFILT_EXCEPT, shared with userspace and with
+ * EVFILT_{READ|WRITE}
  */
 #define NOTE_OOB	0x0002			/* OOB data on a socket */
 
@@ -148,8 +149,11 @@ MALLOC_DECLARE(M_KQUEUE);
  */
 #define NOTE_SIGNAL	0x08000000
 
+#define FILTEROP_ISFD	0x0001		/* if ident == filedescriptor */
+#define FILTEROP_MPSAFE	0x0002
+
 struct filterops {
-	int	f_isfd;		/* true if ident == filedescriptor */
+	u_short	f_flags;
 
 	/* f_attach returns 0 on success or valid error code on failure */
 	int	(*f_attach)	(struct knote *kn);

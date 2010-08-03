@@ -94,9 +94,9 @@ static int	filt_piperead(struct knote *kn, long hint);
 static int	filt_pipewrite(struct knote *kn, long hint);
 
 static struct filterops pipe_rfiltops =
-	{ 1, NULL, filt_pipedetach, filt_piperead };
+	{ FILTEROP_ISFD, NULL, filt_pipedetach, filt_piperead };
 static struct filterops pipe_wfiltops =
-	{ 1, NULL, filt_pipedetach, filt_pipewrite };
+	{ FILTEROP_ISFD, NULL, filt_pipedetach, filt_pipewrite };
 
 MALLOC_DEFINE(M_PIPE, "pipe", "pipe structures");
 

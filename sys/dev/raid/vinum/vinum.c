@@ -599,9 +599,9 @@ vinumfilt_wr(struct knote *kn, long hint)
 }
 
 struct filterops vinumfiltops_rd =
-    { 1, NULL, vinumfilt_detach, vinumfilt_rd };
+    { FILTEROP_ISFD, NULL, vinumfilt_detach, vinumfilt_rd };
 struct filterops vinumfiltops_wr =
-    { 1, NULL, vinumfilt_detach, vinumfilt_wr };
+    { FILTEROP_ISFD, NULL, vinumfilt_detach, vinumfilt_wr };
 
 int
 vinumkqfilter(struct dev_kqfilter_args *ap)

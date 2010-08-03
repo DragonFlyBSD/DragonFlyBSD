@@ -666,7 +666,7 @@ ums_read(struct dev_read_args *ap)
 }
 
 static struct filterops ums_filtops =
-	{ 1, NULL, ums_filt_detach, ums_filt };
+	{ FILTEROP_ISFD, NULL, ums_filt_detach, ums_filt };
 
 static int
 ums_kqfilter(struct dev_kqfilter_args *ap)

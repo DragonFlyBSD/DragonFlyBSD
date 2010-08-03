@@ -660,7 +660,7 @@ uscannerfilt(struct knote *kn, long hint)
 }
 
 static struct filterops uscannerfiltops =
-	{ 1, NULL, uscannerfilt_detach, uscannerfilt };
+	{ FILTEROP_ISFD, NULL, uscannerfilt_detach, uscannerfilt };
 
 int
 uscannerkqfilter(struct dev_kqfilter_args *ap)

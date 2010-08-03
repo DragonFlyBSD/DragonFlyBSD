@@ -1426,9 +1426,9 @@ ugenioctl(struct dev_ioctl_args *ap)
 }
 
 static struct filterops ugen_filtops_read =
-	{ 1, NULL, ugen_filt_detach, ugen_filt_read };
+	{ FILTEROP_ISFD, NULL, ugen_filt_detach, ugen_filt_read };
 static struct filterops ugen_filtops_write =
-	{ 1, NULL, ugen_filt_detach, ugen_filt_write };
+	{ FILTEROP_ISFD, NULL, ugen_filt_detach, ugen_filt_write };
 
 int
 ugenkqfilter(struct dev_kqfilter_args *ap)

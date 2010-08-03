@@ -746,7 +746,7 @@ genkbdioctl(struct dev_ioctl_args *ap)
 }
 
 static struct filterops genkbdfiltops =
-	{ 1, NULL, genkbdfiltdetach, genkbdfilter };
+	{ FILTEROP_ISFD, NULL, genkbdfiltdetach, genkbdfilter };
 
 static int
 genkbdkqfilter(struct dev_kqfilter_args *ap)

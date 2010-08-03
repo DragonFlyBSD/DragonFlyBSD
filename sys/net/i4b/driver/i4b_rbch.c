@@ -532,9 +532,9 @@ i4brbchioctl(struct dev_ioctl_args *ap)
  *	device driver poll
  *---------------------------------------------------------------------------*/
 static struct filterops i4brbchkfiltops_read =
-	{ 1, NULL, i4brbchkfilt_detach, i4brbchkfilt_read };
+	{ FILTEROP_ISFD, NULL, i4brbchkfilt_detach, i4brbchkfilt_read };
 static struct filterops i4brbchkfiltops_write =
-	{ 1, NULL, i4brbchkfilt_detach, i4brbchkfilt_write };
+	{ FILTEROP_ISFD, NULL, i4brbchkfilt_detach, i4brbchkfilt_write };
 
 PDEVSTATIC int
 i4brbchkqfilter(struct dev_kqfilter_args *ap)

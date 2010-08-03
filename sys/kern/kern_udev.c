@@ -577,7 +577,7 @@ udev_dev_close(struct dev_close_args *ap)
 }
 
 static struct filterops udev_dev_read_filtops =
-	{ 1, NULL, udev_dev_filter_detach, udev_dev_filter_read };
+	{ FILTEROP_ISFD, NULL, udev_dev_filter_detach, udev_dev_filter_read };
 
 static int
 udev_dev_kqfilter(struct dev_kqfilter_args *ap)

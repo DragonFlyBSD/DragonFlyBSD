@@ -696,7 +696,7 @@ usbioctl(struct dev_ioctl_args *ap)
 }
 
 static struct filterops usbfiltops =
-	{ 1, NULL, usbfilt_detach, usbfilt };
+	{ FILTEROP_ISFD, NULL, usbfilt_detach, usbfilt };
 
 int
 usbkqfilter(struct dev_kqfilter_args *ap)

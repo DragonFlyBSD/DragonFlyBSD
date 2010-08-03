@@ -646,9 +646,9 @@ cmx_write(struct dev_write_args *ap)
 }
 
 static struct filterops cmx_read_filterops =
-	{ 1, NULL, cmx_filter_detach, cmx_filter_read };
+	{ FILTEROP_ISFD, NULL, cmx_filter_detach, cmx_filter_read };
 static struct filterops cmx_write_filterops =
-	{ 1, NULL, cmx_filter_detach, cmx_filter_write };
+	{ FILTEROP_ISFD, NULL, cmx_filter_detach, cmx_filter_write };
 
 /*
  * Kevent handler.  Writing is always possible, reading is only possible

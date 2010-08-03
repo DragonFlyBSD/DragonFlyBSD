@@ -3348,11 +3348,11 @@ static int filt_hammerwrite(struct knote *kn, long hint);
 static int filt_hammervnode(struct knote *kn, long hint);
 
 static struct filterops hammerread_filtops =
-	{ 1, NULL, filt_hammerdetach, filt_hammerread };
+	{ FILTEROP_ISFD, NULL, filt_hammerdetach, filt_hammerread };
 static struct filterops hammerwrite_filtops =
-	{ 1, NULL, filt_hammerdetach, filt_hammerwrite };
+	{ FILTEROP_ISFD, NULL, filt_hammerdetach, filt_hammerwrite };
 static struct filterops hammervnode_filtops =
-	{ 1, NULL, filt_hammerdetach, filt_hammervnode };
+	{ FILTEROP_ISFD, NULL, filt_hammerdetach, filt_hammervnode };
 
 static
 int

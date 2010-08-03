@@ -700,9 +700,9 @@ tunwrite(struct dev_write_args *ap)
 }
 
 static struct filterops tun_read_filtops =
-	{ 1, NULL, tun_filter_detach, tun_filter_read };
+	{ FILTEROP_ISFD, NULL, tun_filter_detach, tun_filter_read };
 static struct filterops tun_write_filtops =
-	{ 1, NULL, tun_filter_detach, tun_filter_write };
+	{ FILTEROP_ISFD, NULL, tun_filter_detach, tun_filter_write };
 
 static int
 tunkqfilter(struct dev_kqfilter_args *ap)

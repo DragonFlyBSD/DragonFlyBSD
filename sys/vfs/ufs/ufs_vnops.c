@@ -2119,11 +2119,11 @@ ufs_missingop(struct vop_generic_args *ap)
 }
 
 static struct filterops ufsread_filtops = 
-	{ 1, NULL, filt_ufsdetach, filt_ufsread };
+	{ FILTEROP_ISFD, NULL, filt_ufsdetach, filt_ufsread };
 static struct filterops ufswrite_filtops = 
-	{ 1, NULL, filt_ufsdetach, filt_ufswrite };
+	{ FILTEROP_ISFD, NULL, filt_ufsdetach, filt_ufswrite };
 static struct filterops ufsvnode_filtops = 
-	{ 1, NULL, filt_ufsdetach, filt_ufsvnode };
+	{ FILTEROP_ISFD, NULL, filt_ufsdetach, filt_ufsvnode };
 
 /*
  * ufs_kqfilter(struct vnode *a_vp, struct knote *a_kn)

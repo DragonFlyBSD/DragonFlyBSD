@@ -298,7 +298,7 @@ static void apmfilter_detach(struct knote *);
 static int apmfilter(struct knote *, long);
 
 static struct filterops apmfilterops =
-	{ 1, NULL, apmfilter_detach, apmfilter };
+	{ FILTEROP_ISFD, NULL, apmfilter_detach, apmfilter };
 
 static int
 apmkqfilter(struct dev_kqfilter_args *ap)

@@ -669,9 +669,9 @@ uhidioctl(struct dev_ioctl_args *ap)
 }
 
 static struct filterops uhidfiltops_read =
-	{ 1, NULL, uhidfilt_detach, uhidfilt_read };
+	{ FILTEROP_ISFD, NULL, uhidfilt_detach, uhidfilt_read };
 static struct filterops uhidfiltops_write =
-	{ 1, NULL, uhidfilt_detach, uhidfilt_write };
+	{ FILTEROP_ISFD, NULL, uhidfilt_detach, uhidfilt_write };
 
 int
 uhidkqfilter(struct dev_kqfilter_args *ap)

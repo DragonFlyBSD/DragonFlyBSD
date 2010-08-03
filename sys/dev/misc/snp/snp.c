@@ -561,9 +561,9 @@ snpioctl(struct dev_ioctl_args *ap)
 }
 
 static struct filterops snpfiltops_rd =
-        { 1, NULL, snpfilter_detach, snpfilter_rd };
+        { FILTEROP_ISFD, NULL, snpfilter_detach, snpfilter_rd };
 static struct filterops snpfiltops_wr =
-        { 1, NULL, snpfilter_detach, snpfilter_wr };
+        { FILTEROP_ISFD, NULL, snpfilter_detach, snpfilter_wr };
 
 static int
 snpkqfilter(struct dev_kqfilter_args *ap)

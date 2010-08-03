@@ -938,9 +938,9 @@ static int filt_tapread(struct knote *kn, long hint);
 static int filt_tapwrite(struct knote *kn, long hint);
 static void filt_tapdetach(struct knote *kn);
 static struct filterops tapread_filtops =
-	{ 1, NULL, filt_tapdetach, filt_tapread };
+	{ FILTEROP_ISFD, NULL, filt_tapdetach, filt_tapread };
 static struct filterops tapwrite_filtops =
-	{ 1, NULL, filt_tapdetach, filt_tapwrite };
+	{ FILTEROP_ISFD, NULL, filt_tapdetach, filt_tapwrite };
 
 static int
 tapkqfilter(struct dev_kqfilter_args *ap)

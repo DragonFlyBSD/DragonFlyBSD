@@ -119,7 +119,7 @@ static void
 drmfilt_detach(struct knote *kn) {}
 
 static struct filterops drmfiltops =
-        { 1, NULL, drmfilt_detach, drmfilt };
+        { FILTEROP_ISFD, NULL, drmfilt_detach, drmfilt };
 
 int
 drm_kqfilter(struct dev_kqfilter_args *ap)

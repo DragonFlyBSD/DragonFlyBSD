@@ -277,7 +277,7 @@ static void dev_filter_detach(struct knote *);
 static int dev_filter_read(struct knote *, long);
 
 static struct filterops dev_filtops =
-	{ 1, NULL, dev_filter_detach, dev_filter_read };
+	{ FILTEROP_ISFD, NULL, dev_filter_detach, dev_filter_read };
 
 static int
 devkqfilter(struct dev_kqfilter_args *ap)

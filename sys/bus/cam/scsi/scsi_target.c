@@ -105,9 +105,9 @@ static void		targfiltdetach(struct knote *kn);
 static int		targreadfilt(struct knote *kn, long hint);
 static int		targwritefilt(struct knote *kn, long hint);
 static struct filterops targread_filtops =
-	{ 1, NULL, targfiltdetach, targreadfilt };
+	{ FILTEROP_ISFD, NULL, targfiltdetach, targreadfilt };
 static struct filterops targwrite_filtops =
-	{ 1, NULL, targfiltdetach, targwritefilt };
+	{ FILTEROP_ISFD, NULL, targfiltdetach, targwritefilt };
 
 #define TARG_CDEV_MAJOR 65
 static struct dev_ops targ_ops = {

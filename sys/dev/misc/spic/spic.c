@@ -522,7 +522,7 @@ spicioctl(struct dev_ioctl_args *ap)
 }
 
 static struct filterops spicfiltops =
-	{ 1, NULL, spicfilt_detach, spicfilt };
+	{ FILTEROP_ISFD, NULL, spicfilt_detach, spicfilt };
 
 static int
 spickqfilter(struct dev_kqfilter_args *ap)

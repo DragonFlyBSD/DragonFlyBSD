@@ -163,7 +163,7 @@ logread(struct dev_read_args *ap)
 }
 
 static struct filterops logread_filtops =
-	{ 1, NULL, logfiltdetach, logfiltread };
+	{ FILTEROP_ISFD, NULL, logfiltdetach, logfiltread };
 
 static int
 logkqfilter(struct dev_kqfilter_args *ap)
