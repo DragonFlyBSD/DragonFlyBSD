@@ -392,7 +392,9 @@ cs5536_attach(device_t self)
 #define BIOS_OEM_MAXLEN 80
 	static u_char bios_oem[BIOS_OEM_MAXLEN] = "\0";
 	static int attached = 0;
+#if NGPIO > 0
 	int i;
+#endif
 #if 0 /* Watchdog stuff */
 	EVENTHANDLER_REGISTER(watchdog_list, cs5536_watchdog, NULL, 0);
 #endif
