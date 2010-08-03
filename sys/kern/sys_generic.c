@@ -1321,9 +1321,15 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 					 * Poll silently swallows any unknown
 					 * errors except in the case of POLLPRI
 					 * (OOB/urgent data).
+					 *
+					 * ALWAYS filter out EOPNOTSUPP errors
+					 * from filters, common applications
+					 * set POLLPRI|POLLRDBAND and most
+					 * filters do not support EVFILT_EXCEPT.
 					 */
 					if (kevp[i].filter != EVFILT_READ &&
-					    kevp[i].filter != EVFILT_WRITE) {
+					    kevp[i].filter != EVFILT_WRITE &&
+					    kevp[i].data != EOPNOTSUPP) {
 						if (pfd->revents == 0)
 							++*res;
 						pfd->revents |= POLLERR;
