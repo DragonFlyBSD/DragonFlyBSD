@@ -30,7 +30,7 @@
 .Os
 .Sh NAME
 .Nm iwn
-.Nd Intel Wireless WiFi Link 4965/1000/5000/5150/5300/6000/6050 
+.Nd Intel Wireless WiFi Link 4965/1000/5000/5150/5300/6000/6050
 IEEE 802.11n driver
 .Sh SYNOPSIS
 To compile this driver into the kernel,
@@ -76,7 +76,7 @@ The
 .Nm
 driver provides support for
 .Tn Intel
-Wireless WiFi Link 4965, 1000, 5000 and 6000 series of 
+Wireless WiFi Link 4965, 1000, 5000 and 6000 series of
 PCI-Express network adapters.
 .Nm
 supports
@@ -94,7 +94,6 @@ This driver requires the firmware built with the
 module to work.
 .Sh EXAMPLES
 Join an existing BSS network (i.e., connect to an access point):
-.Pp
 .Bd -literal -offset indent
 ifconfig wlan create wlandev iwn0 inet 192.168.0.20 \e
     netmask 0xffffff00
@@ -132,7 +131,7 @@ This should not happen.
 The driver failed to load the firmware image using the
 .Xr firmware 9
 subsystem.
-Verify the 
+Verify the
 .Xr iwnfw 4
 firmware module is present.
 .It "iwn%d: could not load boot firmware"
