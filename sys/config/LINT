@@ -1255,9 +1255,8 @@ device		amr		# AMI MegaRAID
 # 3ware ATA RAID
 #
 device		twe		# 3ware ATA RAID
-device		twa		# 3ware SATA RAID
+device		twa		# 3ware 9000 series PATA/SATA RAID
 options 	TWA_DEBUG=10	# enable debug messages
-options 	TWA_FLASH_FIRMWARE
 
 #
 # Promise Supertrack SX6000

@@ -160,7 +160,7 @@ device		ips		# IBM ServeRAID
 device		amr		# AMI MegaRAID
 device		mlx		# Mylex DAC960 family
 device		twe		# 3ware Escalade 7000/8000's
-device		twa		# 3ware Escalade 9000's
+device		twa		# 3ware 9000 series PATA/SATA RAID
 device		pst		# Promise Supertrack
 
 # atkbdc0 controls both the keyboard and the PS/2 mouse

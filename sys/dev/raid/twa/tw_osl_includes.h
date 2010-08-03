@@ -1,5 +1,6 @@
-/*-
- * Copyright (c) 2003-04 3ware, Inc.
+/*
+ * Copyright (c) 2004-07 Applied Micro Circuits Corporation.
+ * Copyright (c) 2004-05 Vinod Kashyap.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,14 +24,25 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa_includes.h,v 1.4 2006/10/25 20:56:01 dillon Exp $
+ *	$FreeBSD: src/sys/dev/twa/tw_osl_includes.h,v 1.5 2007/05/09 04:16:32 scottl Exp $
  */
 
 /*
- * 3ware driver for 9000 series storage controllers.
+ * AMCC'S 3ware driver for 9000 series storage controllers.
  *
  * Author: Vinod Kashyap
+ * Modifications by: Adam Radford
+ */
+
+
+
+#ifndef TW_OSL_INCLUDES_H
+
+#define TW_OSL_INCLUDES_H
+
+
+/*
+ * All header files needed by the OS Layer.
  */
 
 
@@ -38,25 +50,32 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
+#include <sys/device.h>
+#include <sys/module.h>
 #include <sys/sysctl.h>
 #include <sys/bus.h>
 #include <sys/conf.h>
-#include <sys/device.h>
 #include <sys/disk.h>
+#include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/devicestat.h>
-#include <sys/rman.h>
-#include <sys/thread2.h>
+#include <sys/taskqueue.h>
+#include <sys/time.h>
 
 #include <machine/clock.h>
+#include <stdarg.h>
 
 #include <vm/vm.h>
+
+#include <sys/rman.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-#include "opt_twa.h"
-#include "twa_reg.h"
-#include "twa_ioctl.h"
-#include "twa.h"
-#include "twa_externs.h"
+#include <dev/raid/twa/tw_osl_share.h>
+#include <dev/raid/twa/tw_cl_share.h>
+#include <dev/raid/twa/tw_osl_externs.h>
+
+
+
+#endif /* TW_OSL_INCLUDES_H */
