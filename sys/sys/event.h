@@ -36,6 +36,9 @@
 #ifndef _NET_NETISR_H_
 #include <net/netisr.h>			/* struct notifymsglist */
 #endif
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+#include <sys/queue.h>
+#endif
 
 #define EVFILT_READ		(-1)
 #define EVFILT_WRITE		(-2)
@@ -122,13 +125,21 @@ struct kevent {
 #define	NOTE_TRACKERR	0x00000002		/* could not track child */
 #define	NOTE_CHILD	0x00000004		/* am a child process */
 
-/*
- * This is currently visible to userland to work around broken
- * programs which pull in <sys/proc.h> or <sys/select.h>.
- */
-#include <sys/queue.h> 
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
 struct knote;
 SLIST_HEAD(klist, knote);
+
+/*
+ * Used to maintain information about processes that wish to be
+ * notified when I/O becomes possible.
+ */
+struct kqinfo {
+	struct	klist ki_note;		/* kernel note list */
+	struct	notifymsglist ki_mlist;	/* list of pending predicate messages */
+};
+
+#endif
 
 #ifdef _KERNEL
 
@@ -190,15 +201,6 @@ struct knote {
 #define kn_fflags	kn_kevent.fflags
 #define kn_data		kn_kevent.data
 #define kn_fp		kn_ptr.p_fp
-};
-
-/*
- * Used to maintain information about processes that wish to be
- * notified when I/O becomes possible.
- */
-struct kqinfo {
-	struct	klist ki_note;		/* kernel note list */
-	struct	notifymsglist ki_mlist;	/* list of pending predicate messages */
 };
 
 struct proc;
