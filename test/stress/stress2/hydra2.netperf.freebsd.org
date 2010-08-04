@@ -1,0 +1,13 @@
+# $FreeBSD$
+
+# Configuration needed for the hydra1 test box
+
+export RUNDIR=/m2/stressX
+
+export BLASTHOST=192.168.5.105	# orangutan
+
+export DISKIMAGE=/m2/tmp/diskimage	# Location of 1G disk image
+export MNTPOINT=/mnt		# Disk image mount point
+export TESTUSER=test		# Name of non root test user
+export MDSTART=5		# Start of free md units
+INCARNATIONS=125

@@ -1,0 +1,59 @@
+$FreeBSD$
+
+This is the FreeBSD kernel stress test suite. The purpose is to crash the
+computer, by stressing selected parts of the kernel, thus exposing inadequate
+error handling.
+
+Do not run the syscall test as root.
+
+To build and use:
+
+make
+sh ./run.sh
+
+The "run.sh" script accepts an optional configuration file in order to test specific areas.
+For example:
+
+./run.sh vfs.sh
+
+
+To run all of the different test scenarios type:
+
+./run.sh -a
+
+You may have to tune the stress test to make sure that your test box run low
+on resources.  For example:
+
+INCARNATIONS=125 ./run.sh
+
+The following sub-directories exists:
+
+./doc		Documentation
+./include	Include file for building the test programs in ./testcases
+./lib		Common support files for the test programs
+./misc		Various test scenarios. Mostly regression tests
+./testcases	Test programs
+./tools		Supplementary tools used in stress testing
+
+The name stress2 indicates that this is the second generation of the Kernel Stress Test Suite.
+The first version (stress) was based mostly on scripts.
+
+
+20090120: des@ pointed out it would be nice to be able to set the
+	random seed in order to be able to reproduce errors in time.
+	A test of this show that the occurrence of panics are still
+	non-deterministic even with a fixed seed. The known broken
+	unionfs was used to test this:
+	http://people.freebsd.org/~pho/stress/log/marcus006.txt.
+	First panic occurred after 29 loops and the second after 8
+	with a seed of "123".
+
+	The randomness that is provided by lack of synchronization
+	with timer interrupt, disk block layout and disk access
+	latencies caused by platter and heads speed changes, disk
+	firmware internal operations, and so on are _much_ bigger
+	then the undeterminism caused by the non-repeatable random
+	seed.
+
+	Anyway, I have always view the this issue as only a slight
+	inconvenience.
