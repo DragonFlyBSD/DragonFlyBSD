@@ -40,6 +40,7 @@
 #include <sys/malloc.h>
 #include <sys/systm.h>
 #include <sys/module.h>
+#include <sys/event.h>
 #include <sys/bus.h>
 #include <sys/uio.h>
 
