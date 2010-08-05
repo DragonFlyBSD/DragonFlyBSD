@@ -147,7 +147,7 @@ doarcs(void)
 	    /*
 	     *	topologically order things
 	     *	if any node is unnumbered,
-	     *	    number it and any of its descendents.
+	     *	    number it and any of its descendants.
 	     */
 	for ( dfn_init() , parentp = nl ; parentp < npe ; parentp++ ) {
 	    if ( parentp -> toporder == DFN_NAN ) {

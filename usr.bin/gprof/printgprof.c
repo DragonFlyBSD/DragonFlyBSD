@@ -169,7 +169,7 @@ gprofheader(void)
     printf( "%6.6s %5.5s %7.7s %11.11s %7.7s/%-7.7s     %-8.8s\n" ,
 	"" , "" , "" , "" , "called" , "total" , "parents");
     printf( "%-6.6s %5.5s %7.7s %11.11s %7.7s+%-7.7s %-8.8s\t%5.5s\n" ,
-	"index" , "%time" , "self" , "descendents" ,
+	"index" , "%time" , "self" , "descendants" ,
 	"called" , "self" , "name" , "index" );
     printf( "%6.6s %5.5s %7.7s %11.11s %7.7s/%-7.7s     %-8.8s\n" ,
 	"" , "" , "" , "" , "called" , "total" , "children");

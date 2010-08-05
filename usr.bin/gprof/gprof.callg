@@ -2,7 +2,7 @@
 
 
 call graph profile:
-          The sum of self and descendents is the major sort
+          The sum of self and descendants is the major sort
           for this listing.
 
           function entries:
@@ -12,13 +12,13 @@ index     the index of the function in the call graph
 
 %time     the percentage of the total time of the program
           accounted for by this function and its
-          descendents.
+          descendants.
 
 self      the number of seconds spent in this function
           itself.
 
-descendents
-          the number of seconds spent in the descendents of
+descendants
+          the number of seconds spent in the descendants of
           this function on behalf of this function.
 
 called    the number of times this function is called (other
@@ -40,7 +40,7 @@ index     the index of the function in the call graph
 self*     the number of seconds of this function's self time
           which is due to calls from this parent.
 
-descendents*
+descendants*
           the number of seconds of this function's
           descendent time which is due to calls from this
           parent.
