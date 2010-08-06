@@ -1085,6 +1085,8 @@ struct ieee80211_duration {
 				 IEEE80211_DUR_DS_SLOW_PLCPHDR + \
 				 IEEE80211_DUR_DIFS)
 
+#ifdef _KERNEL
 extern lwkt_token wlan_token;
+#endif
 
 #endif /* _NET80211_IEEE80211_H_ */
