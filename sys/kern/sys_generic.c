@@ -1023,9 +1023,14 @@ select_copyout(void *arg, struct kevent *kevp, int count, int *res)
 				/*
 				 * Select silently swallows any unknown errors
 				 * for descriptors in the read or write sets.
+				 *
+				 * ALWAYS filter out EOPNOTSUPP errors from
+				 * filters (at least until all filters support
+				 * EVFILT_EXCEPT)
 				 */
 				if (kevp[i].filter != EVFILT_READ &&
-				    kevp[i].filter != EVFILT_WRITE) {
+				    kevp[i].filter != EVFILT_WRITE &&
+				    kevp[i].data != EOPNOTSUPP) {
 					skap->error = kevp[i].data;
 					*res = 0;
 					return (1);
