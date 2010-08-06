@@ -1355,13 +1355,22 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 
 			switch (kevp[i].filter) {
 			case EVFILT_READ:
-				pfd->revents |= (POLLIN | POLLRDNORM);
+				if (pfd->events & POLLIN)
+					pfd->revents |= POLLIN;
+				if (pfd->events & POLLRDNORM)
+					pfd->revents |= POLLRDNORM;
 				break;
 			case EVFILT_WRITE:
-				pfd->revents |= (POLLOUT | POLLWRNORM);
+				if (pfd->events & POLLOUT)
+					pfd->revents |= POLLOUT;
+				if (pfd->events & POLLWRNORM)
+					pfd->revents |= POLLWRNORM;
 				break;
 			case EVFILT_EXCEPT:
-				pfd->revents |= (POLLPRI | POLLRDBAND);
+				if (pfd->events & POLLPRI)
+					pfd->revents |= POLLPRI;
+				if (pfd->events & POLLRDBAND)
+					pfd->revents |= POLLRDBAND;
 				break;
 			}
 
