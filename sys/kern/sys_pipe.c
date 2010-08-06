@@ -1326,15 +1326,16 @@ filt_pipewrite(struct knote *kn, long hint)
 	struct pipe *wpipe = rpipe->pipe_peer;
 	int ready = 0;
 
+	kn->kn_data = 0;
+	if (wpipe == NULL) {
+		kn->kn_flags |= EV_EOF;
+		return (1);
+	}
+
 	lwkt_gettoken(&wpipe->pipe_rlock);
 	lwkt_gettoken(&wpipe->pipe_wlock);
 
-	kn->kn_data = wpipe->pipe_buffer.size -
-		      wpipe->pipe_buffer.windex -
-		      wpipe->pipe_buffer.rindex;
-
-	if ((wpipe == NULL) || (wpipe->pipe_state & PIPE_WEOF)) {
-		kn->kn_data = 0;
+	if (wpipe->pipe_state & PIPE_WEOF) {
 		kn->kn_flags |= EV_EOF; 
 		ready = 1;
 	}
