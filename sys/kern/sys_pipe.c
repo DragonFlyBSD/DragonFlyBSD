@@ -166,8 +166,7 @@ pipewakeup(struct pipe *cpipe)
 		pgsigio(cpipe->pipe_sigio, SIGIO, 0);
 		rel_mplock();
 	}
-	if (SLIST_FIRST(&cpipe->pipe_kq.ki_note))
-		KNOTE(&cpipe->pipe_kq.ki_note, 0);
+	KNOTE(&cpipe->pipe_kq.ki_note, 0);
 }
 
 /*
@@ -1273,7 +1272,6 @@ pipe_kqfilter(struct file *fp, struct knote *kn)
 		kn->kn_fop = &pipe_wfiltops;
 		if (cpipe->pipe_peer == NULL) {
 			/* other end of pipe has been closed */
-			rel_mplock();
 			return (EPIPE);
 		}
 		break;
@@ -1300,34 +1298,57 @@ static int
 filt_piperead(struct knote *kn, long hint)
 {
 	struct pipe *rpipe = (struct pipe *)kn->kn_fp->f_data;
+	int ready = 0;
 
-	/* XXX RACE */
+	lwkt_gettoken(&rpipe->pipe_rlock);
+	lwkt_gettoken(&rpipe->pipe_wlock);
+
 	kn->kn_data = rpipe->pipe_buffer.windex - rpipe->pipe_buffer.rindex;
 	if (rpipe->pipe_state & PIPE_REOF) {
 		kn->kn_flags |= EV_EOF; 
-		return (1);
+		ready = 1;
 	}
 
-	return (kn->kn_data > 0);
+	lwkt_reltoken(&rpipe->pipe_wlock);
+	lwkt_reltoken(&rpipe->pipe_rlock);
+
+	if (!ready)
+		ready = kn->kn_data > 0;
+
+	return (ready);
 }
 
 /*ARGSUSED*/
 static int
 filt_pipewrite(struct knote *kn, long hint)
 {
-	struct pipe *wpipe = (struct pipe *)kn->kn_fp->f_data;
-	u_int32_t space;
+	struct pipe *rpipe = (struct pipe *)kn->kn_fp->f_data;
+	struct pipe *wpipe = rpipe->pipe_peer;
+	int ready = 0;
 
-	/* XXX RACE */
+	lwkt_gettoken(&wpipe->pipe_rlock);
+	lwkt_gettoken(&wpipe->pipe_wlock);
+
+	kn->kn_data = wpipe->pipe_buffer.size -
+		      wpipe->pipe_buffer.windex -
+		      wpipe->pipe_buffer.rindex;
+
 	if ((wpipe == NULL) || (wpipe->pipe_state & PIPE_WEOF)) {
 		kn->kn_data = 0;
 		kn->kn_flags |= EV_EOF; 
-		return (1);
+		ready = 1;
 	}
-	space = wpipe->pipe_buffer.windex -
-		wpipe->pipe_buffer.rindex;
-	space = wpipe->pipe_buffer.size - space;
 
-	kn->kn_data = space;
-	return (kn->kn_data >= PIPE_BUF);
+	if (!ready)
+		kn->kn_data = wpipe->pipe_buffer.size -
+			      (wpipe->pipe_buffer.windex -
+			       wpipe->pipe_buffer.rindex);
+
+	lwkt_reltoken(&wpipe->pipe_wlock);
+	lwkt_reltoken(&wpipe->pipe_rlock);
+
+	if (!ready)
+		ready = kn->kn_data >= PIPE_BUF;
+
+	return (ready);
 }
