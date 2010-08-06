@@ -363,4 +363,9 @@
 #define	SYS_ioprio_get	521
 #define	SYS_chroot_kernel	522
 #define	SYS_renameat	523
-#define	SYS_MAXSYSCALL	524
+#define	SYS_mkdirat	524
+#define	SYS_mkfifoat	525
+#define	SYS_mknodat	526
+#define	SYS_readlinkat	527
+#define	SYS_symlinkat	528
+#define	SYS_MAXSYSCALL	529

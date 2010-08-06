@@ -9,10 +9,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -30,14 +26,14 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)readlink.2	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/sys/readlink.2,v 1.7.2.4 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/readlink.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $FreeBSD: src/lib/libc/sys/readlink.2,v 1.17 2008/04/16 13:03:12 kib Exp $
 .\"
-.Dd June 4, 1993
+.Dd August 6, 2010
 .Dt READLINK 2
 .Os
 .Sh NAME
-.Nm readlink
+.Nm readlink ,
+.Nm readlinkat
 .Nd read value of a symbolic link
 .Sh LIBRARY
 .Lb libc
@@ -45,8 +41,12 @@
 .In unistd.h
 .Ft int
 .Fn readlink "const char *path" "char *buf" "int bufsiz"
+.Ft ssize_t
+.Fn readlinkat "int fd" "const char *restrict path" "char *restrict buf" "size_t bufsize"
 .Sh DESCRIPTION
-.Fn Readlink
+The
+.Fn readlink
+system call
 places the contents of the symbolic link
 .Fa path
 in the buffer
@@ -55,17 +55,40 @@ which has size
 .Fa bufsiz .
 The
 .Fn readlink
-function does not append a
+system call does not append a
 .Dv NUL
 character to
 .Fa buf .
+.Pp
+The
+.Fn readlinkat
+system call is equivalent to
+.Fn readlink
+except in the case where
+.Fa path
+specifies a relative path.
+In this case the symbolic link whose content is read relative to the
+directory associated with the file descriptor
+.Fa fd
+instead of the current working directory.
+If
+.Fn readlinkat
+is passed the special value
+.Dv AT_FDCWD
+in the
+.Fa fd
+parameter, the current working directory is used and the behavior is
+identical to a call to
+.Fn readlink .
 .Sh RETURN VALUES
-The call returns the count of characters placed in the buffer
-if it succeeds, or a -1 if an error occurs, placing the error
+The calls return the count of characters placed in the buffer
+if it succeeds, or a \-1 if an error occurs, placing the error
 code in the global variable
 .Va errno .
 .Sh ERRORS
-.Fn Readlink
+The
+.Fn readlink
+system call
 will fail if:
 .Bl -tag -width Er
 .It Bq Er ENOTDIR
@@ -84,16 +107,50 @@ The named file is not a symbolic link.
 .It Bq Er EIO
 An I/O error occurred while reading from the file system.
 .It Bq Er EFAULT
-.Fa Buf
+The
+.Fa buf
+argument
 extends outside the process's allocated address space.
+.El
+.Pp
+In addition to the errors returned by the
+.Fn readlink ,
+the
+.Fn readlinkat
+may fail if:
+.Bl -tag -width Er
+.It Bq Er EBADF
+The
+.Fa path
+argument does not specify an absolute path and the
+.Fa fd
+argument is neither
+.Dv AT_FDCWD
+nor a valid file descriptor open for searching.
+.It Bq Er ENOTDIR
+The
+.Fa path
+argument is not an absolute path and
+.Fa fd
+is neither
+.Dv AT_FDCWD
+nor a file descriptor associated with a directory.
 .El
 .Sh SEE ALSO
 .Xr lstat 2 ,
 .Xr stat 2 ,
 .Xr symlink 2 ,
 .Xr symlink 7
+.Sh STANDARDS
+The
+.Fn readlinkat
+system call follows The Open Group Extended API Set 2 specification.
 .Sh HISTORY
 The
 .Fn readlink
-function call appeared in
+system call appeared in
 .Bx 4.2 .
+The
+.Fn readlinkat
+system call appeared in
+.Dx 2.7 .

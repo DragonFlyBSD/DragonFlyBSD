@@ -302,4 +302,9 @@ MIASM =  \
 	ioprio_set.o \
 	ioprio_get.o \
 	chroot_kernel.o \
-	renameat.o
+	renameat.o \
+	mkdirat.o \
+	mkfifoat.o \
+	mknodat.o \
+	readlinkat.o \
+	symlinkat.o

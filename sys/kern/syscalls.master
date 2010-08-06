@@ -734,3 +734,10 @@
 522	STD	BSD	{ int chroot_kernel(char *path); }
 523	STD	POSIX	{ int renameat(int oldfd, char *old, int newfd, \
 				  char *new); }
+524	STD	POSIX	{ int mkdirat(int fd, char *path, mode_t mode); }
+525	STD	POSIX	{ int mkfifoat(int fd, char *path, mode_t mode); }
+526	STD	POSIX	{ int mknodat(int fd, char *path, mode_t mode, \
+				  dev_t dev); }
+527	STD	POSIX	{ int readlinkat(int fd, char *path, char *buf, \
+				  size_t bufsize); }
+528	STD	POSIX	{ int symlinkat(char *path1, int fd, char *path2); }

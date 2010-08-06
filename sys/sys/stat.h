@@ -217,9 +217,6 @@ int	chmod (const char *, mode_t);
 int	fchmodat (int, const char *, mode_t, int);
 #endif
 int	fstat (int, struct stat *);
-#if __BSD_VISIBLE || __POSIX_VISIBLE >= 200809
-int	fstatat (int, const char *, struct stat *, int);
-#endif
 int	mkdir (const char *, mode_t);
 int	mkfifo (const char *, mode_t);
 #if !defined(_MKNOD_DECLARED) && __XSI_VISIBLE
@@ -228,6 +225,14 @@ int	mknod(const char *, mode_t, dev_t);
 #endif
 int	stat (const char *, struct stat *);
 mode_t	umask (mode_t);
+#if __BSD_VISIBLE || __POSIX_VISIBLE >= 200809
+int	fstatat(int, const char *, struct stat *, int);
+int	mkdirat(int, const char *, mode_t);
+int	mkfifoat(int, const char *, mode_t);
+#endif
+#if __BSD_VISIBLE || __XSI_VISIBLE >= 700
+int	mknodat(int, const char *, mode_t, dev_t);
+#endif
 
 #ifndef _POSIX_SOURCE
 int	chflags (const char *, u_long);

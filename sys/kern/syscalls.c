@@ -531,4 +531,9 @@ const char *syscallnames[] = {
 	"ioprio_get",			/* 521 = ioprio_get */
 	"chroot_kernel",			/* 522 = chroot_kernel */
 	"renameat",			/* 523 = renameat */
+	"mkdirat",			/* 524 = mkdirat */
+	"mkfifoat",			/* 525 = mkfifoat */
+	"mknodat",			/* 526 = mknodat */
+	"readlinkat",			/* 527 = readlinkat */
+	"symlinkat",			/* 528 = symlinkat */
 };

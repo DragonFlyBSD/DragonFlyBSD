@@ -2310,6 +2310,48 @@ struct	renameat_args {
 	int	newfd;	char newfd_[PAD_(int)];
 	char *	new;	char new_[PAD_(char *)];
 };
+struct	mkdirat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	int	fd;	char fd_[PAD_(int)];
+	char *	path;	char path_[PAD_(char *)];
+	mode_t	mode;	char mode_[PAD_(mode_t)];
+};
+struct	mkfifoat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	int	fd;	char fd_[PAD_(int)];
+	char *	path;	char path_[PAD_(char *)];
+	mode_t	mode;	char mode_[PAD_(mode_t)];
+};
+struct	mknodat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	int	fd;	char fd_[PAD_(int)];
+	char *	path;	char path_[PAD_(char *)];
+	mode_t	mode;	char mode_[PAD_(mode_t)];
+	dev_t	dev;	char dev_[PAD_(dev_t)];
+};
+struct	readlinkat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	int	fd;	char fd_[PAD_(int)];
+	char *	path;	char path_[PAD_(char *)];
+	char *	buf;	char buf_[PAD_(char *)];
+	size_t	bufsize;	char bufsize_[PAD_(size_t)];
+};
+struct	symlinkat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	char *	path1;	char path1_[PAD_(char *)];
+	int	fd;	char fd_[PAD_(int)];
+	char *	path2;	char path2_[PAD_(char *)];
+};
 
 #ifdef COMPAT_43
 
@@ -2920,6 +2962,11 @@ int	sys_ioprio_set (struct ioprio_set_args *);
 int	sys_ioprio_get (struct ioprio_get_args *);
 int	sys_chroot_kernel (struct chroot_kernel_args *);
 int	sys_renameat (struct renameat_args *);
+int	sys_mkdirat (struct mkdirat_args *);
+int	sys_mkfifoat (struct mkfifoat_args *);
+int	sys_mknodat (struct mknodat_args *);
+int	sys_readlinkat (struct readlinkat_args *);
+int	sys_symlinkat (struct symlinkat_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_

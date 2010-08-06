@@ -2108,6 +2108,32 @@ sys_mknod(struct mknod_args *uap)
 	return (error);
 }
 
+/*
+ * mknodat_args(int fd, char *path, mode_t mode, dev_t dev)
+ *
+ * Create a special file.  The path is relative to the directory associated
+ * with fd.
+ *
+ * MPALMOSTSAFE
+ */
+int
+sys_mknodat(struct mknodat_args *uap)
+{
+	struct nlookupdata nd;
+	struct file *fp;
+	int error;
+
+	get_mplock();
+	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, UIO_USERSPACE, 0);
+	if (error == 0) {
+		error = kern_mknod(&nd, uap->mode,
+				   umajor(uap->dev), uminor(uap->dev));
+	}
+	nlookup_done_at(&nd, fp);
+	rel_mplock();
+	return (error);
+}
+
 int
 kern_mkfifo(struct nlookupdata *nd, int mode)
 {
@@ -2155,6 +2181,30 @@ sys_mkfifo(struct mkfifo_args *uap)
 	if (error == 0)
 		error = kern_mkfifo(&nd, uap->mode);
 	nlookup_done(&nd);
+	rel_mplock();
+	return (error);
+}
+
+/*
+ * mkfifoat_args(int fd, char *path, mode_t mode)
+ *
+ * Create a named pipe.  The path is relative to the directory associated
+ * with fd.
+ *
+ * MPALMOSTSAFE
+ */
+int
+sys_mkfifoat(struct mkfifoat_args *uap)
+{
+	struct nlookupdata nd;
+	struct file *fp;
+	int error;
+
+	get_mplock();
+	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, UIO_USERSPACE, 0);
+	if (error == 0)
+		error = kern_mkfifo(&nd, uap->mode);
+	nlookup_done_at(&nd, fp);
 	rel_mplock();
 	return (error);
 }
@@ -2354,6 +2404,41 @@ sys_symlink(struct symlink_args *uap)
 		rel_mplock();
 	}
 	objcache_put(namei_oc, path);
+	return (error);
+}
+
+/*
+ * symlinkat_args(char *path1, int fd, char *path2)
+ *
+ * Make a symbolic link.  The path2 argument is relative to the directory
+ * associated with fd.
+ *
+ * MPALMOSTSAFE
+ */
+int
+sys_symlinkat(struct symlinkat_args *uap)
+{
+	struct thread *td = curthread;
+	struct nlookupdata nd;
+	struct file *fp;
+	char *path1;
+	int error;
+	int mode;
+
+	path1 = objcache_get(namei_oc, M_WAITOK);
+	error = copyinstr(uap->path1, path1, MAXPATHLEN, NULL);
+	if (error == 0) {
+		get_mplock();
+		error = nlookup_init_at(&nd, &fp, uap->fd, uap->path2,
+		    UIO_USERSPACE, 0);
+		if (error == 0) {
+			mode = ACCESSPERMS & ~td->td_proc->p_fd->fd_cmask;
+			error = kern_symlink(&nd, path1, mode);
+		}
+		nlookup_done_at(&nd, fp);
+		rel_mplock();
+	}
+	objcache_put(namei_oc, path1);
 	return (error);
 }
 
@@ -2858,6 +2943,32 @@ sys_readlink(struct readlink_args *uap)
 					&uap->sysmsg_result);
 	}
 	nlookup_done(&nd);
+	rel_mplock();
+	return (error);
+}
+
+/*
+ * readlinkat_args(int fd, char *path, char *buf, size_t bufsize)
+ *
+ * Return target name of a symbolic link.  The path is relative to the
+ * directory associated with fd.
+ *
+ * MPALMOSTSAFE
+ */
+int
+sys_readlinkat(struct readlinkat_args *uap)
+{
+	struct nlookupdata nd;
+	struct file *fp;
+	int error;
+
+	get_mplock();
+	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, UIO_USERSPACE, 0);
+	if (error == 0) {
+		error = kern_readlink(&nd, uap->buf, uap->bufsize,
+					&uap->sysmsg_result);
+	}
+	nlookup_done_at(&nd, fp);
 	rel_mplock();
 	return (error);
 }
@@ -3877,6 +3988,30 @@ sys_mkdir(struct mkdir_args *uap)
 	if (error == 0)
 		error = kern_mkdir(&nd, uap->mode);
 	nlookup_done(&nd);
+	rel_mplock();
+	return (error);
+}
+
+/*
+ * mkdirat_args(int fd, char *path, mode_t mode)
+ *
+ * Make a directory file.  The path is relative to the directory associated
+ * with fd.
+ *
+ * MPALMOSTSAFE
+ */
+int
+sys_mkdirat(struct mkdirat_args *uap)
+{
+	struct nlookupdata nd;
+	struct file *fp;
+	int error;
+
+	get_mplock();
+	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, UIO_USERSPACE, 0);
+	if (error == 0)
+		error = kern_mkdir(&nd, uap->mode);
+	nlookup_done_at(&nd, fp);
 	rel_mplock();
 	return (error);
 }

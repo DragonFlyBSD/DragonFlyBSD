@@ -410,4 +410,9 @@ union sysunion {
 	struct	ioprio_get_args ioprio_get;
 	struct	chroot_kernel_args chroot_kernel;
 	struct	renameat_args renameat;
+	struct	mkdirat_args mkdirat;
+	struct	mkfifoat_args mkfifoat;
+	struct	mknodat_args mknodat;
+	struct	readlinkat_args readlinkat;
+	struct	symlinkat_args symlinkat;
 };

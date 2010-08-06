@@ -557,4 +557,9 @@ struct sysent sysent[] = {
 	{ AS(ioprio_get_args), (sy_call_t *)sys_ioprio_get },	/* 521 = ioprio_get */
 	{ AS(chroot_kernel_args), (sy_call_t *)sys_chroot_kernel },	/* 522 = chroot_kernel */
 	{ AS(renameat_args), (sy_call_t *)sys_renameat },	/* 523 = renameat */
+	{ AS(mkdirat_args), (sy_call_t *)sys_mkdirat },	/* 524 = mkdirat */
+	{ AS(mkfifoat_args), (sy_call_t *)sys_mkfifoat },	/* 525 = mkfifoat */
+	{ AS(mknodat_args), (sy_call_t *)sys_mknodat },	/* 526 = mknodat */
+	{ AS(readlinkat_args), (sy_call_t *)sys_readlinkat },	/* 527 = readlinkat */
+	{ AS(symlinkat_args), (sy_call_t *)sys_symlinkat },	/* 528 = symlinkat */
 };

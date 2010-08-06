@@ -9,10 +9,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -30,14 +26,14 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)mknod.2	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/sys/mknod.2,v 1.9.2.3 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/mknod.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $FreeBSD: src/lib/libc/sys/mknod.2,v 1.18 2008/04/16 13:03:12 kib Exp $
 .\"
-.Dd August 9, 2009
+.Dd August 6, 2010
 .Dt MKNOD 2
 .Os
 .Sh NAME
-.Nm mknod
+.Nm mknod ,
+.Nm mknodat
 .Nd make a special file node
 .Sh LIBRARY
 .Lb libc
@@ -45,8 +41,10 @@
 .In sys/stat.h
 .Ft int
 .Fn mknod "const char *path" "mode_t mode" "dev_t dev"
+.Ft int
+.Fn mknodat "int fd" "const char *path" "mode_t mode" "dev_t dev"
 .Sh DESCRIPTION
-The filesystem node
+The file system node
 .Fa path
 is created with the file type and access permissions specified in
 .Fa mode .
@@ -62,12 +60,37 @@ Otherwise,
 .Fa dev
 is ignored.
 .Pp
-.Fn Mknod
+The
+.Fn mknod
+system call
 requires super-user privileges.
+.Pp
+The
+.Fn mknodat
+system call is equivalent to
+.Fn mknod
+except in the case where
+.Fa path
+specifies a relative path.
+In this case the newly created device node is created relative to the
+directory associated with the file descriptor
+.Fa fd
+instead of the current working directory.
+If
+.Fn mknodat
+is passed the special value
+.Dv AT_FDCWD
+in the
+.Fa fd
+parameter, the current working directory is used and the behavior is
+identical to a call to
+.Fn mknod .
 .Sh RETURN VALUES
 .Rv -std mknod
 .Sh ERRORS
-.Fn Mknod
+The
+.Fn mknod
+system call
 will fail and the file will be not created if:
 .Bl -tag -width Er
 .It Bq Er ENOTDIR
@@ -105,7 +128,9 @@ The named file resides on a read-only file system.
 .It Bq Er EEXIST
 The named file exists.
 .It Bq Er EFAULT
-.Fa Path
+The
+.Fa path
+argument
 points outside the process's allocated address space.
 .It Bq Er EINVAL
 Creating anything else than a block or character special
@@ -113,13 +138,45 @@ file (or a
 .Em whiteout )
 is not supported.
 .El
+.Pp
+In addition to the errors returned by the
+.Fn mknod ,
+the
+.Fn mknodat
+may fail if:
+.Bl -tag -width Er
+.It Bq Er EBADF
+The
+.Fa path
+argument does not specify an absolute path and the
+.Fa fd
+argument is neither
+.Dv AT_FDCWD
+nor a valid file descriptor open for searching.
+.It Bq Er ENOTDIR
+The
+.Fa path
+argument is not an absolute path and
+.Fa fd
+is neither
+.Dv AT_FDCWD
+nor a file descriptor associated with a directory.
+.El
 .Sh SEE ALSO
 .Xr chmod 2 ,
 .Xr mkfifo 2 ,
 .Xr stat 2 ,
 .Xr umask 2
+.Sh STANDARDS
+The
+.Fn mknodat
+system call follows The Open Group Extended API Set 2 specification.
 .Sh HISTORY
-A
+The
 .Fn mknod
-function call appeared in
+function appeared in
 .At v6 .
+The
+.Fn mknodat
+system call appeared in
+.Dx 2.7 .
