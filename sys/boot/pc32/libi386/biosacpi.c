@@ -30,6 +30,8 @@
 #include <stand.h>
 #include <machine/stdarg.h>
 #include <bootstrap.h>
+#include <btxv86.h>
+#include "libi386.h"
 
 #include "acdragonfly.h"
 #include "acconfig.h"
@@ -93,7 +95,7 @@ biosacpi_find_rsdp(void)
     uint16_t		*addr;
 
     /* EBDA is the 1 KB addressed by the 16 bit pointer at 0x40E. */
-    addr = (uint16_t *)0x40E;
+    addr = (uint16_t *)PTOV(0x40E);
     if ((rsdp = biosacpi_search_rsdp((char *)(*addr << 4), 0x400)) != NULL)
 	return (rsdp);
 
@@ -113,7 +115,7 @@ biosacpi_search_rsdp(char *base, int length)
 
     /* search on 16-byte boundaries */
     for (ofs = 0; ofs < length; ofs += 16) {
-	rsdp = (ACPI_TABLE_RSDP *)(base + ofs);
+	rsdp = (ACPI_TABLE_RSDP *)PTOV(base + ofs);
 
 	/* compare signature, validate checksum */
 	if (!strncmp(rsdp->Signature, ACPI_SIG_RSDP, strlen(ACPI_SIG_RSDP))) {
