@@ -535,7 +535,7 @@ iwn6050.fw			optional iwnfw		\
 	dependency	"$S/contrib/dev/iwn/iwlwifi-6050-9.201.4.1.fw.uu"					\
 	compile-with	"uudecode -o ${.TARGET} $S/contrib/dev/iwn/iwlwifi-6050-9.201.4.1.fw.uu" \
 	no-obj no-implicit-rule						\
-	clean		"iwn6000.fw"
+	clean		"iwn6050.fw"
 dev/netif/iwl/if_iwl.c	optional iwl
 dev/netif/iwl/iwl2100.c	optional iwl
 dev/netif/jme/if_jme.c	optional jme
