@@ -1,5 +1,4 @@
-/*	$OpenBSD: privsep.c,v 1.8 2004/03/14 19:17:05 otto Exp $	*/
-/*	$DragonFly: src/usr.sbin/pflogd/privsep.c,v 1.1 2004/09/21 21:25:28 joerg Exp $ */
+/*	$OpenBSD: privsep.c,v 1.16 2006/10/25 20:55:04 moritz Exp $	*/
 
 /*
  * Copyright (c) 2003 Can Erkin Acar
@@ -17,7 +16,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/socket.h>
@@ -29,6 +27,7 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <pwd.h>
 #include <signal.h>
 #include <stdio.h>
@@ -42,6 +41,7 @@
 
 enum cmd_types {
 	PRIV_SET_SNAPLEN,	/* set the snaplength */
+	PRIV_MOVE_LOG,		/* move logfile away */
 	PRIV_OPEN_LOG		/* open logfile for appending */
 };
 
@@ -56,10 +56,8 @@ static int  may_read(int, void *, size_t);
 static void must_read(int, void *, size_t);
 static void must_write(int, void *, size_t);
 static int  set_snaplen(int snap);
+static int  move_log(const char *name);
 
-/* bpf filter expression common to parent and child */
-extern char *filter;
-extern char *errbuf;
 extern char *filename;
 extern pcap_t *hpcap;
 
@@ -68,7 +66,7 @@ int
 priv_init(void)
 {
 	int i, fd, socks[2], cmd;
-	int snaplen, ret;
+	int snaplen, ret, olderrno;
 	struct passwd *pw;
 
 	for (i = 1; i < NSIG; i++)
@@ -97,26 +95,24 @@ priv_init(void)
 			err(1, "unable to chdir");
 
 		gidset[0] = pw->pw_gid;
+		if (setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) == -1)
+			err(1, "setresgid() failed");
 		if (setgroups(1, gidset) == -1)
 			err(1, "setgroups() failed");
-		if (setegid(pw->pw_gid) == -1)
-			err(1, "setegid() failed");
-		if (setgid(pw->pw_gid) == -1)
-			err(1, "setgid() failed");
-		if (seteuid(pw->pw_uid) == -1)
-			err(1, "seteuid() failed");
-		if (setuid(pw->pw_uid) == -1)
-			err(1, "setuid() failed");
+		if (setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid) == -1)
+			err(1, "setresuid() failed");
 		close(socks[0]);
 		priv_fd = socks[1];
 		return 0;
 	}
 
 	/* Father */
-	/* Pass ALRM/TERM/HUP through to child, and accept CHLD */
+	/* Pass ALRM/TERM/HUP/INT/QUIT through to child, and accept CHLD */
 	signal(SIGALRM, sig_pass_to_chld);
 	signal(SIGTERM, sig_pass_to_chld);
 	signal(SIGHUP,  sig_pass_to_chld);
+	signal(SIGINT,  sig_pass_to_chld);
+	signal(SIGQUIT,  sig_pass_to_chld);
 	signal(SIGCHLD, sig_chld);
 
 	setproctitle("[priv]");
@@ -148,12 +144,21 @@ priv_init(void)
 			fd = open(filename,
 			    O_RDWR|O_CREAT|O_APPEND|O_NONBLOCK|O_NOFOLLOW,
 			    0600);
+			olderrno = errno;
+			send_fd(socks[0], fd);
 			if (fd < 0)
 				logmsg(LOG_NOTICE,
 				    "[priv]: failed to open %s: %s",
-				    filename, strerror(errno));
-			send_fd(socks[0], fd);
-			close(fd);
+				    filename, strerror(olderrno));
+			else
+				close(fd);
+			break;
+
+		case PRIV_MOVE_LOG:
+			logmsg(LOG_DEBUG,
+			    "[priv]: msg PRIV_MOVE_LOG received");
+			ret = move_log(filename);
+			must_write(socks[0], &ret, sizeof(int));
 			break;
 
 		default:
@@ -179,6 +184,47 @@ set_snaplen(int snap)
 	return 0;
 }
 
+static int
+move_log(const char *name)
+{
+	char ren[PATH_MAX];
+	u_int32_t len;
+
+	for (;;) {
+		int fd;
+
+		len = snprintf(ren, sizeof(ren), "%s.bad.%08x",
+		    name, arc4random());
+		if (len >= sizeof(ren)) {
+			logmsg(LOG_ERR, "[priv] new name too long");
+			return (1);
+		}
+
+		/* lock destinanion */
+		fd = open(ren, O_CREAT|O_EXCL, 0);
+		if (fd >= 0) {
+			close(fd);
+			break;
+		}
+		/* if file exists, try another name */
+		if (errno != EEXIST && errno != EINTR) {
+			logmsg(LOG_ERR, "[priv] failed to create new name: %s",
+			    strerror(errno));
+			return (1);			
+		}
+	}
+
+	if (rename(name, ren)) {
+		logmsg(LOG_ERR, "[priv] failed to rename %s to %s: %s",
+		    name, ren, strerror(errno));
+		return (1);
+	}
+
+	logmsg(LOG_NOTICE,
+	       "[priv]: log file %s moved to %s", name, ren);
+
+	return (0);
+}
 
 /*
  * send the snaplength to privileged process
@@ -212,13 +258,28 @@ priv_open_log(void)
 	int cmd, fd;
 
 	if (priv_fd < 0)
-		errx(1, "%s: called from privileged portion\n", __func__);
+		errx(1, "%s: called from privileged portion", __func__);
 
 	cmd = PRIV_OPEN_LOG;
 	must_write(priv_fd, &cmd, sizeof(int));
 	fd = receive_fd(priv_fd);
 
 	return (fd);
+}
+/* Move-away and reopen log-file */
+int
+priv_move_log(void)
+{
+	int cmd, ret;
+
+	if (priv_fd < 0)
+		errx(1, "%s: called from privileged portion\n", __func__);
+
+	cmd = PRIV_MOVE_LOG;
+	must_write(priv_fd, &cmd, sizeof(int));
+	must_read(priv_fd, &ret, sizeof(int));
+
+	return (ret);
 }
 
 /* If priv parent gets a TERM or HUP, pass it through to child instead */

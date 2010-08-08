@@ -1,5 +1,4 @@
-/*	$OpenBSD: pflogd.c,v 1.27 2004/02/13 19:01:57 otto Exp $	*/
-/*	$DragonFly: src/usr.sbin/pflogd/pflogd.c,v 1.2 2004/12/18 22:48:04 swildner Exp $ */
+/*	$OpenBSD: pflogd.c,v 1.37 2006/10/26 13:34:47 jmc Exp $	*/
 
 /*
  * Copyright (c) 2001 Theo de Raadt
@@ -77,7 +76,7 @@ void  dump_packet_nobuf(u_char *, const struct pcap_pkthdr *, const u_char *);
 int   flush_buffer(FILE *);
 int   init_pcap(void);
 void  purge_buffer(void);
-int   reset_dump(void);
+int   reset_dump(int);
 int   scan_dump(FILE *, off_t);
 int   set_snaplen(int);
 void  set_suspended(int);
@@ -85,6 +84,8 @@ void  sig_alrm(int);
 void  sig_close(int);
 void  sig_hup(int);
 void  usage(void);
+
+static int try_reset_dump(int);
 
 /* buffer must always be greater than snaplen */
 static int    bufpkt = 0;	/* number of packets in buffer */
@@ -104,8 +105,9 @@ set_suspended(int s)
 		return;
 
 	suspended = s;
-	setproctitle("[%s] -s %d -f %s",
-            suspended ? "suspended" : "running", cur_snaplen, filename);
+	setproctitle("[%s] -s %d -i %s -f %s",
+	    suspended ? "suspended" : "running",
+	    cur_snaplen, interface, filename);
 }
 
 char *
@@ -151,8 +153,9 @@ logmsg(int pri, const char *message, ...)
 void
 usage(void)
 {
-	fprintf(stderr, "usage: pflogd [-Dx] [-d delay] [-f filename] ");
-	fprintf(stderr, "[-s snaplen] [expression]\n");
+	fprintf(stderr, "usage: pflogd [-Dx] [-d delay] [-f filename]");
+	fprintf(stderr, " [-i interface] [-s snaplen]\n");
+	fprintf(stderr, "              [expression]\n");
 	exit(1);
 }
 
@@ -237,7 +240,25 @@ set_snaplen(int snap)
 }
 
 int
-reset_dump(void)
+reset_dump(int nomove)
+{
+	int ret;
+
+	for (;;) {
+		ret = try_reset_dump(nomove);
+		if (ret <= 0)
+			break;
+	}
+
+	return (ret);
+}
+
+/*
+ * tries to (re)open log file, nomove flag is used with -x switch
+ * returns 0: success, 1: retry (log moved), -1: error
+ */
+int
+try_reset_dump(int nomove)
 {
 	struct pcap_file_header hdr;
 	struct stat st;
@@ -259,23 +280,26 @@ reset_dump(void)
 	 */
 	fd = priv_open_log();
 	if (fd < 0)
-		return (1);
+		return (-1);
 
 	fp = fdopen(fd, "a+");
 
 	if (fp == NULL) {
 		logmsg(LOG_ERR, "Error: %s: %s", filename, strerror(errno));
-		return (1);
+		close(fd);
+		return (-1);
 	}
 	if (fstat(fileno(fp), &st) == -1) {
 		logmsg(LOG_ERR, "Error: %s: %s", filename, strerror(errno));
-		return (1);
+		fclose(fp);
+		return (-1);
 	}
 
 	/* set FILE unbuffered, we do our own buffering */
 	if (setvbuf(fp, NULL, _IONBF, 0)) {
 		logmsg(LOG_ERR, "Failed to set output buffers");
-		return (1);
+		fclose(fp);
+		return (-1);
 	}
 
 #define TCPDUMP_MAGIC 0xa1b2c3d4
@@ -283,10 +307,9 @@ reset_dump(void)
 	if (st.st_size == 0) {
 		if (snaplen != cur_snaplen) {
 			logmsg(LOG_NOTICE, "Using snaplen %d", snaplen);
-			if (set_snaplen(snaplen)) {
+			if (set_snaplen(snaplen))
 				logmsg(LOG_WARNING,
 				    "Failed, using old settings");
-			}
 		}
 		hdr.magic = TCPDUMP_MAGIC;
 		hdr.version_major = PCAP_VERSION_MAJOR;
@@ -298,11 +321,15 @@ reset_dump(void)
 
 		if (fwrite((char *)&hdr, sizeof(hdr), 1, fp) != 1) {
 			fclose(fp);
-			return (1);
+			return (-1);
 		}
 	} else if (scan_dump(fp, st.st_size)) {
-		/* XXX move file and continue? */
 		fclose(fp);
+		if (nomove || priv_move_log()) {
+			logmsg(LOG_ERR,
+			    "Invalid/incompatible log file, move it away");
+			return (-1);
+		}
 		return (1);
 	}
 
@@ -341,7 +368,6 @@ scan_dump(FILE *fp, off_t size)
 	    hdr.version_minor != PCAP_VERSION_MINOR ||
 	    (int)hdr.linktype != hpcap->linktype ||
 	    hdr.snaplen > PFLOGD_MAXSNAPLEN) {
-		logmsg(LOG_ERR, "Invalid/incompatible log file, move it away");
 		return (1);
 	}
 
@@ -395,8 +421,9 @@ dump_packet_nobuf(u_char *user, const struct pcap_pkthdr *h, const u_char *sp)
 	}
 
 	if (fwrite(h, sizeof(*h), 1, f) != 1) {
-		/* try to undo header to prevent corruption */
 		off_t pos = ftello(f);
+
+		/* try to undo header to prevent corruption */
 		if ((size_t)pos < sizeof(*h) ||
 		    ftruncate(fileno(f), pos - sizeof(*h))) {
 			logmsg(LOG_ERR, "Write failed, corrupted logfile!");
@@ -494,7 +521,7 @@ dump_packet(u_char *user, const struct pcap_pkthdr *h, const u_char *sp)
 		return;
 	}
 
- append:	
+ append:
 	memcpy(bufpos, h, sizeof(*h));
 	memcpy(bufpos + sizeof(*h), sp, h->caplen);
 
@@ -511,6 +538,7 @@ main(int argc, char **argv)
 	struct pcap_stat pstat;
 	int ch, np, Xflag = 0;
 	pcap_handler phandler = dump_packet;
+	const char *errstr = NULL;
 
 	/* Neither FreeBSD nor DFly have this; Max seems to think this may
 	 * be a paranoid check. Comment it out:
@@ -523,18 +551,22 @@ main(int argc, char **argv)
 			Debug = 1;
 			break;
 		case 'd':
-			delay = atoi(optarg);
-			if (delay < 5 || delay > 60*60)
+			delay = strtonum(optarg, 5, 60*60, &errstr);
+			if (errstr)
 				usage();
 			break;
 		case 'f':
 			filename = optarg;
 			break;
+		case 'i':
+			interface = optarg;
+			break;
 		case 's':
-			snaplen = atoi(optarg);
+			snaplen = strtonum(optarg, 0, PFLOGD_MAXSNAPLEN,
+			    &errstr);
 			if (snaplen <= 0)
 				snaplen = DEF_SNAPLEN;
-			if (snaplen > PFLOGD_MAXSNAPLEN)
+			if (errstr)
 				snaplen = PFLOGD_MAXSNAPLEN;
 			break;
 		case 'x':
@@ -600,7 +632,7 @@ main(int argc, char **argv)
 		bufpkt = 0;
 	}
 
-	if (reset_dump()) {
+	if (reset_dump(Xflag) < 0) {
 		if (Xflag)
 			return (1);
 
@@ -611,14 +643,14 @@ main(int argc, char **argv)
 
 	while (1) {
 		np = pcap_dispatch(hpcap, PCAP_NUM_PKTS,
-		    dump_packet, (u_char *)dpcap);
+		    phandler, (u_char *)dpcap);
 		if (np < 0)
 			logmsg(LOG_NOTICE, "%s", pcap_geterr(hpcap));
 
 		if (gotsig_close)
 			break;
 		if (gotsig_hup) {
-			if (reset_dump()) {
+			if (reset_dump(0)) {
 				logmsg(LOG_ERR,
 				    "Logging suspended: open error");
 				set_suspended(1);
@@ -629,6 +661,8 @@ main(int argc, char **argv)
 		if (gotsig_alrm) {
 			if (dpcap)
 				flush_buffer(dpcap);
+			else 
+				gotsig_hup = 1;
 			gotsig_alrm = 0;
 			alarm(delay);
 		}

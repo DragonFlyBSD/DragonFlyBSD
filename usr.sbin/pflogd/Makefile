@@ -3,6 +3,7 @@
 
 LDADD+= -lpcap -lutil
 DPAPP+=	${LIBPCAP} ${LIBUTIL}
+CFLAGS+= -DHAVE_SNPRINTF
 
 PROG=	pflogd
 SRCS=	pflogd.c privsep.c privsep_fdpass.c
