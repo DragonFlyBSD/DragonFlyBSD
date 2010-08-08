@@ -118,6 +118,8 @@
 #define SIOCIFDESTROY	 _IOW('i', 121, struct ifreq)	/* destroy clone if */
 #define SIOCIFGCLONERS	_IOWR('i', 120, struct if_clonereq) /* get cloners */
 
+#define	SIOCGIFGMEMB	_IOWR('i', 138, struct ifgroupreq) /* get members */
+
 #define SIOCSIFPOLLCPU	 _IOW('i', 125, struct ifreq)	/* set polling(4) cpu */
 #define SIOCGIFPOLLCPU	_IOWR('i', 126, struct ifreq)	/* set polling(4) cpu */
 

@@ -66,8 +66,8 @@
 
 /*
  * FAIRQ - take traffic classified by keep state (hashed into
- * mbuf->m_pkthdr.altq_state_hash) and bucketize it.  Fairly extract
- * the first packet from each bucket in a round-robin fashion.
+ *	   pf->state_hash) and bucketize it.  Fairly extract
+ *	   the first packet from each bucket in a round-robin fashion.
  *
  * TODO - better overall qlimit support (right now it is per-bucket).
  *	- NOTE: red etc is per bucket, not overall.
@@ -123,7 +123,7 @@ static int	fairq_class_destroy(struct fairq_class *);
 static int	fairq_enqueue(struct ifaltq *, struct mbuf *, struct altq_pktattr *);
 static struct mbuf *fairq_dequeue(struct ifaltq *, struct mbuf *, int);
 
-static int	fairq_addq(struct fairq_class *, struct mbuf *);
+static int	fairq_addq(struct fairq_class *, struct mbuf *, struct pf_mtag *);
 static struct mbuf *fairq_getq(struct fairq_class *, uint64_t);
 static struct mbuf *fairq_pollq(struct fairq_class *, uint64_t, int *);
 static fairq_bucket_t *fairq_selectq(struct fairq_class *, int);
@@ -498,6 +498,7 @@ fairq_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 {
 	struct fairq_if *pif = (struct fairq_if *)ifq->altq_disc;
 	struct fairq_class *cl;
+	struct pf_mtag *pf;
 	int error;
 	int len;
 
@@ -512,8 +513,8 @@ fairq_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 		goto done;
 	}
 
-	if (m->m_pkthdr.fw_flags & ALTQ_MBUF_TAGGED)
-		cl = clh_to_clp(pif, m->m_pkthdr.altq_qid);
+	if ((pf = altq_find_pftag(m)) != NULL)
+		cl = clh_to_clp(pif, pf->qid);
 	else
 		cl = NULL;
 	if (cl == NULL) {
@@ -527,7 +528,7 @@ fairq_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 	cl->cl_flags |= FARF_HAS_PACKETS;
 	cl->cl_pktattr = NULL;
 	len = m_pktlen(m);
-	if (fairq_addq(cl, m) != 0) {
+	if (fairq_addq(cl, m, pf) != 0) {
 		/* drop occurred.  mbuf was freed in fairq_addq. */
 		PKTCNTR_ADD(&cl->cl_dropcnt, len);
 		error = ENOBUFS;
@@ -626,7 +627,7 @@ fairq_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
 }
 
 static int
-fairq_addq(struct fairq_class *cl, struct mbuf *m)
+fairq_addq(struct fairq_class *cl, struct mbuf *m, struct pf_mtag *pf)
 {
 	fairq_bucket_t *b;
 	u_int hindex;
@@ -636,13 +637,13 @@ fairq_addq(struct fairq_class *cl, struct mbuf *m)
 	 * If the packet doesn't have any keep state put it on the end of
 	 * our queue.  XXX this can result in out of order delivery.
 	 */
-	if ((m->m_pkthdr.fw_flags & ALTQ_MBUF_STATE_HASHED) == 0) {
+	if (pf == NULL || (pf->flags & PF_TAG_STATE_HASHED) == 0) {
 		if (cl->cl_head)
 			b = cl->cl_head->prev;
 		else
 			b = &cl->cl_buckets[0];
 	} else {
-		hindex = m->m_pkthdr.altq_state_hash & cl->cl_nbucket_mask;
+		hindex = pf->state_hash & cl->cl_nbucket_mask;
 		b = &cl->cl_buckets[hindex];
 	}
 

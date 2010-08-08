@@ -36,3 +36,4 @@
 #define PATH_DEVFILE		"/dev/pf"
 #define PATH_PIDFILE		"/var/authpf"
 #define PATH_AUTHPF_SHELL	"/usr/sbin/authpf"
+#define PATH_PFCTL		"/usr/sbin/pfctl"

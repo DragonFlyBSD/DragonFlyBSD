@@ -250,6 +250,7 @@
 #define	IFT_PVC		0xf1
 #define	IFT_FAITH	0xf2
 #define	IFT_STF		0xf3
+#define	IFT_ENC		0xf4
 #define	IFT_PFLOG	0xf5		/* Packet filter logging */
 #define	IFT_PFSYNC	0xf6		/* Packet filter state syncing */
 #define	IFT_CARP	0xf8		/* Common Address Redundancy Protocol */

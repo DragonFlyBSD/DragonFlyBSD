@@ -1,7 +1,7 @@
 /* $FreeBSD: src/sys/contrib/pf/net/if_pflog.h,v 1.4 2004/06/16 23:24:00 mlaier Exp $ */
 /* $OpenBSD: if_pflog.h,v 1.10 2004/03/19 04:52:04 frantzen Exp $ */
 /* $DragonFly: src/sys/net/pf/if_pflog.h,v 1.1 2004/09/19 22:32:47 joerg Exp $ */
-
+/* $OpenBSD: if_pflog.h,v 1.14 2006/10/25 11:27:01 henning Exp $ */
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
  *
@@ -32,15 +32,15 @@
 #ifndef _NET_IF_PFLOG_H_
 #define _NET_IF_PFLOG_H_
 
+#define	PFLOGIFS_MAX	16
+
 struct pflog_softc {
-	struct ifnet	sc_if;  /* the interface */
-	LIST_ENTRY(pflog_softc) sc_next;
+	struct ifnet		sc_if;  /* the interface */
+	int			sc_unit;
+	LIST_ENTRY(pflog_softc) sc_list;
 };
 
-/* XXX keep in sync with pfvar.h */
-#ifndef PF_RULESET_NAME_SIZE
-#define PF_RULESET_NAME_SIZE	 16
-#endif
+#define PFLOG_RULESET_NAME_SIZE	16
 
 struct pfloghdr {
 	u_int8_t	length;
@@ -48,9 +48,13 @@ struct pfloghdr {
 	u_int8_t	action;
 	u_int8_t	reason;
 	char		ifname[IFNAMSIZ];
-	char		ruleset[PF_RULESET_NAME_SIZE];
+	char		ruleset[PFLOG_RULESET_NAME_SIZE];
 	u_int32_t	rulenr;
 	u_int32_t	subrulenr;
+	uid_t		uid;
+	pid_t		pid;
+	uid_t		rule_uid;
+	pid_t		rule_pid;
 	u_int8_t	dir;
 	u_int8_t	pad[3];
 };
@@ -75,9 +79,9 @@ struct old_pfloghdr {
 #include "use_pflog.h"
 
 #if NPFLOG > 0
-#define	PFLOG_PACKET(i,x,a,b,c,d,e,f,g) pflog_packet(i,a,b,c,d,e,f,g)
+#define	PFLOG_PACKET(i,x,a,b,c,d,e,f,g,h) pflog_packet(i,a,b,c,d,e,f,g,h)
 #else
-#define	PFLOG_PACKET(i,x,a,b,c,d,e,f,g)	((void)0)
+#define	PFLOG_PACKET(i,x,a,b,c,d,e,f,g,h) ((void)0)
 #endif /* NPFLOG > 0 */
 #endif /* _KERNEL */
 #endif /* _NET_IF_PFLOG_H_ */

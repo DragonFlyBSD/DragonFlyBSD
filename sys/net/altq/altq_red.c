@@ -419,14 +419,16 @@ drop_early(int fp_len, int fp_probd, int count)
 int
 mark_ecn(struct mbuf *m, struct altq_pktattr *pktattr, int flags)
 {
+	struct pf_mtag *pf;
 	struct mbuf *m0;
 	void *hdr;
 	int  af;
 
-	if ((m->m_pkthdr.fw_flags & ALTQ_MBUF_TAGGED) == 0)
+	pf = altq_find_pftag(m);
+	if (pf == NULL)
 		return (0);
-	af = m->m_pkthdr.ecn_af;
-	hdr = m->m_pkthdr.header;
+	af = pf->af;
+	hdr = pf->hdr;
 
 	if (af != AF_INET && af != AF_INET6)
 		return (0);

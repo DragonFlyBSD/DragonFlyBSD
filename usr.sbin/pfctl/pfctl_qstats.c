@@ -1,5 +1,4 @@
-/*	$OpenBSD: pfctl_qstats.c,v 1.29 2004/03/15 15:25:44 dhartmei Exp $ */
-/*	$DragonFly: src/usr.sbin/pfctl/pfctl_qstats.c,v 1.3 2008/04/06 18:58:14 dillon Exp $ */
+/*	$OpenBSD: pfctl_qstats.c,v 1.30 2004/04/27 21:47:32 kjc Exp $ */
 
 /*
  * Copyright (c) Henning Brauer <henning@openbsd.org>

@@ -64,8 +64,10 @@ extern int pfaltq_running;
 struct ifnet;
 struct mbuf;
 struct pf_altq;
+struct pf_mtag;
 
 void	*altq_lookup(const char *, int);
+struct pf_mtag *altq_find_pftag(struct mbuf *m);
 uint8_t	read_dsfield(struct mbuf *, struct altq_pktattr *);
 void	write_dsfield(struct mbuf *, struct altq_pktattr *, uint8_t);
 int	tbr_set(struct ifaltq *, struct tb_profile *);

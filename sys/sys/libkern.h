@@ -113,7 +113,6 @@ int	 scanc (u_int, const u_char *, const u_char *, int);
 int	 skpc (int, int, char *);
 void	 skrandom (u_long);
 char	*strcat (char * __restrict, const char * __restrict);
-char	*strchr(const char *, int);
 int	 strcmp (const char *, const char *);
 int	 strcasecmp (const char *, const char *);
 char	*strcpy (char * __restrict, const char * __restrict);
@@ -143,6 +142,18 @@ static __inline int
 memcmp(const void *b1, const void *b2, size_t len)
 {
 	return (bcmp(b1, b2, len));
+}
+
+static __inline char *
+strchr(const char *p, int ch)
+{
+	return (index(p, ch));
+}
+
+static __inline char *
+strrchr(const char *p, int ch)
+{
+	return (rindex(p, ch));
 }
 
 /* kfnmatch() return values. */

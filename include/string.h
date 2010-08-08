@@ -114,7 +114,9 @@ size_t	 strnlen(const char *, size_t) __pure;
 char	*strnstr(const char *, const char *, size_t) __pure;
 #endif
 char	*strpbrk(const char *, const char *) __pure;
+#if !defined(_KERNEL_VIRTUAL)
 char	*strrchr(const char *, int) __pure;
+#endif
 #if __BSD_VISIBLE
 #if !defined(_KERNEL_VIRTUAL)
 char	*strsep(char **, const char *);

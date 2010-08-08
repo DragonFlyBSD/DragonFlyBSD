@@ -1,5 +1,4 @@
-/*	$OpenBSD: pf_print_state.c,v 1.39 2004/02/10 17:48:08 henning Exp $	*/
-/*	$DragonFly: src/usr.sbin/pfctl/pf_print_state.c,v 1.3 2008/04/11 18:21:49 dillon Exp $ */
+/*	$OpenBSD: pf_print_state.c,v 1.44 2007/03/01 17:20:53 deraadt Exp $	*/
 
 /*
  * Copyright (c) 2001 Daniel Hartmeier
@@ -32,8 +31,8 @@
  */
 
 #include <sys/types.h>
-#include <sys/endian.h>
 #include <sys/socket.h>
+#include <sys/endian.h>
 #include <net/if.h>
 #define TCPSTATES
 #include <netinet/tcp_fsm.h>
@@ -98,6 +97,12 @@ print_addr(struct pf_addr_wrap *addr, sa_family_t af, int verbose)
 	case PF_ADDR_NOROUTE:
 		printf("no-route");
 		return;
+	case PF_ADDR_URPFFAILED:
+		printf("urpf-failed");
+		return;
+	case PF_ADDR_RTLABEL:
+		printf("route \"%s\"", addr->v.rtlabelname);
+		return;
 	default:
 		printf("?");
 		return;
@@ -116,19 +121,19 @@ print_addr(struct pf_addr_wrap *addr, sa_family_t af, int verbose)
 void
 print_name(struct pf_addr *addr, sa_family_t af)
 {
-	char hostname[NI_MAXHOST];
+	char his_host[NI_MAXHOST];
 
-	strlcpy(hostname, "?", sizeof(hostname));
+	strlcpy(his_host, "?", sizeof(his_host));
 	switch (af) {
 	case AF_INET: {
-		struct sockaddr_in loc_sin;
+		struct sockaddr_in sin;
 
-		memset(&loc_sin, 0, sizeof(loc_sin));
-		loc_sin.sin_len = sizeof(loc_sin);
-		loc_sin.sin_family = AF_INET;
-		loc_sin.sin_addr = addr->v4;
-		getnameinfo((struct sockaddr *)&loc_sin, loc_sin.sin_len,
-		    hostname, sizeof(hostname), NULL, 0, NI_NOFQDN);
+		memset(&sin, 0, sizeof(sin));
+		sin.sin_len = sizeof(sin);
+		sin.sin_family = AF_INET;
+		sin.sin_addr = addr->v4;
+		getnameinfo((struct sockaddr *)&sin, sin.sin_len,
+		    his_host, sizeof(his_host), NULL, 0, NI_NOFQDN);
 		break;
 	}
 	case AF_INET6: {
@@ -139,11 +144,11 @@ print_name(struct pf_addr *addr, sa_family_t af)
 		sin6.sin6_family = AF_INET6;
 		sin6.sin6_addr = addr->v6;
 		getnameinfo((struct sockaddr *)&sin6, sin6.sin6_len,
-		    hostname, sizeof(hostname), NULL, 0, NI_NOFQDN);
+		    his_host, sizeof(his_host), NULL, 0, NI_NOFQDN);
 		break;
 	}
 	}
-	printf("%s", hostname);
+	printf("%s", his_host);
 }
 
 void
@@ -273,11 +278,11 @@ print_state(struct pf_state *s, int opts)
 		min = s->expire % 60;
 		s->expire /= 60;
 		printf(", expires in %.2u:%.2u:%.2u", s->expire, min, sec);
-		printf(", %u:%u pkts, %u:%u bytes",
+		printf(", %llu:%llu pkts, %llu:%llu bytes",
 		    s->packets[0], s->packets[1], s->bytes[0], s->bytes[1]);
-		if (s->anchor.nr != (uint32_t)(-1))
+		if (s->anchor.nr != (unsigned)-1)
 			printf(", anchor %u", s->anchor.nr);
-		if (s->rule.nr != (uint32_t)(-1))
+		if (s->rule.nr != (unsigned)-1)
 			printf(", rule %u", s->rule.nr);
 		if (s->src_node != NULL)
 			printf(", source-track");
@@ -286,19 +291,9 @@ print_state(struct pf_state *s, int opts)
 		printf("\n");
 	}
 	if (opts & PF_OPT_VERBOSE2) {
-		printf("   id: %016llx creatorid: %08x",
-		    (unsigned long long)be64toh(s->id), ntohl(s->creatorid));
-
-		printf(" synchronization: ");
-		if ((s->sync_flags & PFSTATE_GOT_SYN_MASK) ==
-		    PFSTATE_GOT_SYN_MASK) {
-			printf("good");
-		} else if (s->sync_flags & PFSTATE_GOT_SYN_MASK) {
-			printf("incomplete");
-		} else {
-			printf("indeterminate");
-		}
-		printf("\n");
+		printf("   id: %016llx creatorid: %08x%s\n",
+		   (unsigned long long)be64toh(s->id), ntohl(s->creatorid),
+		    ((s->sync_flags & PFSTATE_NOSYNC) ? " (no-sync)" : ""));
 	}
 }
 

@@ -1249,6 +1249,28 @@ bpf_mtap(struct bpf_if *bp, struct mbuf *m)
 	rel_mplock();
 }
 
+/*
+ * Incoming linkage from device drivers, where we have a mbuf chain
+ * but need to prepend some arbitrary header from a linear buffer.
+ *
+ * Con up a minimal dummy header to pacify bpf.  Allocate (only) a
+ * struct m_hdr on the stack.  This is safe as bpf only reads from the
+ * fields in this header that we initialize, and will not try to free
+ * it or keep a pointer to it.
+ */
+void
+bpf_mtap_hdr(struct bpf_if *arg, caddr_t data, u_int dlen, struct mbuf *m, u_int direction)
+{
+	struct m_hdr mh;
+
+	mh.mh_flags = 0;
+	mh.mh_next = m;
+	mh.mh_len = dlen;
+	mh.mh_data = data;
+
+	return bpf_mtap(arg, (struct mbuf *) &mh);
+}
+
 void
 bpf_mtap_family(struct bpf_if *bp, struct mbuf *m, sa_family_t family)
 {

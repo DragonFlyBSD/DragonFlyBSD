@@ -1,5 +1,4 @@
-/*	$OpenBSD: pfctl_osfp.c,v 1.8 2004/02/27 10:42:00 henning Exp $ */
-/*	$DragonFly: src/usr.sbin/pfctl/pfctl_osfp.c,v 1.1 2004/09/21 21:25:28 joerg Exp $ */
+/*	$OpenBSD: pfctl_osfp.c,v 1.15 2006/12/13 05:10:15 itojun Exp $ */
 
 /*
  * Copyright (c) 2003 Mike Frantzen <frantzen@openbsd.org>
@@ -23,6 +22,10 @@
 
 #include <net/if.h>
 #include <net/pf/pfvar.h>
+
+#include <netinet/in_systm.h>
+#include <netinet/ip.h>
+#include <netinet/ip6.h>
 
 #include <ctype.h>
 #include <err.h>
@@ -98,8 +101,8 @@ pfctl_file_fingerprints(int dev, int opts, const char *fp_filename)
 
 	pfctl_flush_my_fingerprints(&classes);
 
-	if ((in = fopen(fp_filename, "r")) == NULL) {
-		warn("fopen(%s)", fp_filename);
+	if ((in = pfctl_fopen(fp_filename, "r")) == NULL) {
+		warn("%s", fp_filename);
 		return (1);
 	}
 	class = version = subtype = desc = tcpopts = NULL;
@@ -241,6 +244,10 @@ pfctl_file_fingerprints(int dev, int opts, const char *fp_filename)
 		    sizeof(fp.fp_os.fp_subtype_nm));
 
 		add_fingerprint(dev, opts, &fp);
+
+		fp.fp_flags |= (PF_OSFP_DF | PF_OSFP_INET6);
+		fp.fp_psize += sizeof(struct ip6_hdr) - sizeof(struct ip);
+		add_fingerprint(dev, opts, &fp);
 	}
 
 	if (class)
@@ -251,6 +258,8 @@ pfctl_file_fingerprints(int dev, int opts, const char *fp_filename)
 		free(subtype);
 	if (desc)
 		free(desc);
+	if (tcpopts)
+		free(tcpopts);
 
 	fclose(in);
 
@@ -277,9 +286,9 @@ pfctl_flush_my_fingerprints(struct name_list *list)
 	while ((nm = LIST_FIRST(list)) != NULL) {
 		LIST_REMOVE(nm, nm_entry);
 		pfctl_flush_my_fingerprints(&nm->nm_sublist);
-		fingerprint_count--;
 		free(nm);
 	}
+	fingerprint_count = 0;
 	class_count = 0;
 }
 
@@ -349,7 +358,7 @@ pfctl_get_fingerprint(const char *name)
 
 		if ((wr_name = strdup(name)) == NULL)
 			err(1, "malloc");
-		if ((ptr = index(wr_name, ' ')) == NULL) {
+		if ((ptr = strchr(wr_name, ' ')) == NULL) {
 			free(wr_name);
 			return (PF_OSFP_NOMATCH);
 		}
@@ -509,9 +518,9 @@ found:
 		strlcat(buf, " ", len);
 		strlcat(buf, version_name, len);
 		if (subtype_name) {
-			if (index(version_name, ' '))
+			if (strchr(version_name, ' '))
 				strlcat(buf, " ", len);
-			else if (index(version_name, '.') &&
+			else if (strchr(version_name, '.') &&
 			    isdigit(*subtype_name))
 				strlcat(buf, ".", len);
 			else
@@ -626,7 +635,7 @@ add_fingerprint(int dev, int opts, struct pf_osfp_ioctl *fp)
 	fingerprint_count++;
 
 #ifdef FAKE_PF_KERNEL
-	/* Linked to the sys/net/pf/pf_osfp.c.  Call pf_osfp_add() */
+	/* Linked to the sys/net/pf_osfp.c.  Call pf_osfp_add() */
 	if ((errno = pf_osfp_add(fp)))
 #else
 	if ((opts & PF_OPT_NOACTION) == 0 && ioctl(dev, DIOCOSFPADD, fp))
@@ -703,9 +712,8 @@ fingerprint_name_entry(struct name_list *list, char *name)
 		nm_entry = calloc(1, sizeof(*nm_entry));
 		if (nm_entry == NULL)
 			err(1, "calloc");
-			LIST_INIT(&nm_entry->nm_sublist);
-			strlcpy(nm_entry->nm_name, name,
-			    sizeof(nm_entry->nm_name));
+		LIST_INIT(&nm_entry->nm_sublist);
+		strlcpy(nm_entry->nm_name, name, sizeof(nm_entry->nm_name));
 	}
 	LIST_INSERT_HEAD(list, nm_entry, nm_entry);
 	return (nm_entry);
@@ -764,7 +772,6 @@ sort_name_list(int opts, struct name_list *nml)
 			LIST_INSERT_AFTER(nmlast, nm, nm_entry);
 		nmlast = nm;
 	}
-	return;
 }
 
 /* parse the next integer in a formatted config file line */

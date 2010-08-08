@@ -233,6 +233,8 @@ struct ifnet {
 		(struct ifnet *, struct sockaddr **, struct sockaddr *);
 	int	(*if_start_cpuid)	/* cpuid to run if_start */
 		(struct ifnet *);
+	TAILQ_HEAD(, ifg_list) if_groups; /* linked list of groups per if */
+					/* protected by if_addr_mtx */
 #ifdef DEVICE_POLLING
 	void	(*if_poll)		/* IFF_POLLING support */
 		(struct ifnet *, enum poll_cmd, int);
@@ -272,6 +274,7 @@ struct ifnet {
 	struct lwkt_serialize if_default_serializer; /* if not supplied */
 	int	if_cpuid;
 	struct netmsg *if_start_nmsg; /* percpu messages to schedule if_start */
+	void	*if_pf_kif; /* pf interface abstraction */
 };
 typedef void if_init_f_t (void *);
 
@@ -598,6 +601,38 @@ EVENTHANDLER_DECLARE(ifnet_attach_event, ifnet_attach_event_handler_t);
 /* interface detach event */
 typedef void (*ifnet_detach_event_handler_t)(void *, struct ifnet *);
 EVENTHANDLER_DECLARE(ifnet_detach_event, ifnet_detach_event_handler_t);
+
+/*
+ * interface groups
+ */
+struct ifg_group {
+	char				 ifg_group[IFNAMSIZ];
+	u_int				 ifg_refcnt;
+	void				*ifg_pf_kif;
+	TAILQ_HEAD(, ifg_member)	 ifg_members;
+	TAILQ_ENTRY(ifg_group)		 ifg_next;
+};
+
+struct ifg_member {
+	TAILQ_ENTRY(ifg_member)	 ifgm_next;
+	struct ifnet		*ifgm_ifp;
+};
+
+struct ifg_list {
+	struct ifg_group	*ifgl_group;
+	TAILQ_ENTRY(ifg_list)	 ifgl_next;
+};
+
+/* group attach event */
+typedef void (*group_attach_event_handler_t)(void *, struct ifg_group *);
+EVENTHANDLER_DECLARE(group_attach_event, group_attach_event_handler_t);
+/* group detach event */
+typedef void (*group_detach_event_handler_t)(void *, struct ifg_group *);
+EVENTHANDLER_DECLARE(group_detach_event, group_detach_event_handler_t);
+/* group change event */
+typedef void (*group_change_event_handler_t)(void *, const char *);
+EVENTHANDLER_DECLARE(group_change_event, group_change_event_handler_t);
+
 
 #ifdef INVARIANTS
 #define ASSERT_IFAC_VALID(ifac)	do { \

@@ -1849,7 +1849,6 @@ libkern/rindex.c			standard
 libkern/scanc.c				standard
 libkern/skpc.c				standard
 libkern/strcat.c			standard
-libkern/strchr.c			standard
 libkern/strcmp.c			standard
 libkern/strcasecmp.c			standard
 libkern/fnmatch.c			standard

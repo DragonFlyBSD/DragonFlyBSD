@@ -877,3 +877,15 @@ read_machclk(void)
 	}
 	return (val);
 }
+
+struct pf_mtag *
+altq_find_pftag(struct mbuf *m)
+{
+	struct m_tag *mtag;
+
+	mtag = m_tag_find(m, PF_MBUF_TAGGED, NULL);
+	if (mtag)
+		return((struct pf_mtag *)(mtag + 1));
+	return(NULL);
+}
+

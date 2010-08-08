@@ -1,5 +1,4 @@
-/*	$OpenBSD: pfctl_parser.h,v 1.74 2004/02/10 22:26:56 dhartmei Exp $ */
-/*	$DragonFly: src/usr.sbin/pfctl/pfctl_parser.h,v 1.3 2008/04/11 18:21:49 dillon Exp $ */
+/*	$OpenBSD: pfctl_parser.h,v 1.86 2006/10/31 23:46:25 mcbride Exp $ */
 
 /*
  * Copyright (c) 2001 Daniel Hartmeier
@@ -47,11 +46,17 @@
 #define PF_OPT_DUMMYACTION	0x0100
 #define PF_OPT_DEBUG		0x0200
 #define PF_OPT_SHOWALL		0x0400
+#define PF_OPT_OPTIMIZE		0x0800
+#define PF_OPT_MERGE		0x2000
+#define PF_OPT_RECURSE		0x4000
 
 #define PF_TH_ALL		0xFF
 
 #define PF_NAT_PROXY_PORT_LOW	50001
 #define PF_NAT_PROXY_PORT_HIGH	65535
+
+#define PF_OPTIMIZE_BASIC	0x0001
+#define PF_OPTIMIZE_PROFILE	0x0002
 
 #define FCNT_NAMES { \
 	"searches", \
@@ -60,24 +65,45 @@
 	NULL \
 }
 
+struct pfr_buffer;	/* forward definition */
+
+
 struct pfctl {
 	int dev;
 	int opts;
+	int optimize;
 	int loadopt;
-	u_int32_t tticket;		/* table ticket */
+	int asd;			/* anchor stack depth */
+	int bn;				/* brace number */
+	int brace;
 	int tdirty;			/* kernel dirty */
-	u_int32_t rule_nr;
+#define PFCTL_ANCHOR_STACK_DEPTH 64
+	struct pf_anchor *astack[PFCTL_ANCHOR_STACK_DEPTH];
 	struct pfioc_pooladdr paddr;
 	struct pfioc_altq *paltq;
 	struct pfioc_queue *pqueue;
 	struct pfr_buffer *trans;
-	const char *anchor;
+	struct pf_anchor *anchor, *alast;
 	const char *ruleset;
+
+	/* 'set foo' options */
+	u_int32_t	 timeout[PFTM_MAX];
+	u_int32_t	 limit[PF_LIMIT_MAX];
+	u_int32_t	 debug;
+	u_int32_t	 hostid;
+	char		*ifname;
+
+	u_int8_t	 timeout_set[PFTM_MAX];
+	u_int8_t	 limit_set[PF_LIMIT_MAX];
+	u_int8_t	 debug_set;
+	u_int8_t	 hostid_set;
+	u_int8_t	 ifname_set;
 };
 
 struct node_if {
 	char			 ifname[IFNAMSIZ];
 	u_int8_t		 not;
+	u_int8_t		 dynamic; /* antispoof */
 	u_int			 ifa_flags;
 	struct node_if		*next;
 	struct node_if		*tail;
@@ -95,10 +121,6 @@ struct node_host {
 	struct node_host	*next;
 	struct node_host	*tail;
 };
-/* special flags used by ifa_exists */
-#define PF_IFA_FLAG_GROUP	0x10000
-#define PF_IFA_FLAG_DYNAMIC	0x20000
-#define PF_IFA_FLAG_CLONABLE	0x40000
 
 struct node_os {
 	char			*os;
@@ -187,13 +209,36 @@ struct node_tinit {	/* table initializer */
 	char				*file;
 };
 
-struct pfr_buffer;	/* forward definition */
 
-int	pfctl_rules(int, char *, int, char *, char *, struct pfr_buffer *);
+/* optimizer created tables */
+struct pf_opt_tbl {
+	char			 pt_name[PF_TABLE_NAME_SIZE];
+	int			 pt_rulecount;
+	int			 pt_generated;
+	struct node_tinithead	 pt_nodes;
+	struct pfr_buffer	*pt_buf;
+};
+#define PF_OPT_TABLE_PREFIX	"__automatic_"
 
-int	pfctl_add_rule(struct pfctl *, struct pf_rule *);
+/* optimizer pf_rule container */
+struct pf_opt_rule {
+	struct pf_rule		 por_rule;
+	struct pf_opt_tbl	*por_src_tbl;
+	struct pf_opt_tbl	*por_dst_tbl;
+	u_int64_t		 por_profile_count;
+	TAILQ_ENTRY(pf_opt_rule) por_entry;
+	TAILQ_ENTRY(pf_opt_rule) por_skip_entry[PF_SKIP_COUNT];
+};
+
+TAILQ_HEAD(pf_opt_queue, pf_opt_rule);
+
+int	pfctl_rules(int, char *, FILE *, int, int, char *, struct pfr_buffer *);
+int	pfctl_optimize_ruleset(struct pfctl *, struct pf_ruleset *);
+
+int	pfctl_add_rule(struct pfctl *, struct pf_rule *, const char *);
 int	pfctl_add_altq(struct pfctl *, struct pf_altq *);
 int	pfctl_add_pool(struct pfctl *, struct pf_pool *, sa_family_t);
+void	pfctl_move_pool(struct pf_pool *, struct pf_pool *);
 void	pfctl_clear_pool(struct pf_pool *);
 
 int	pfctl_set_timeout(struct pfctl *, const char *, int, int);
@@ -202,14 +247,15 @@ int	pfctl_set_limit(struct pfctl *, const char *, unsigned int);
 int	pfctl_set_logif(struct pfctl *, char *);
 int	pfctl_set_hostid(struct pfctl *, u_int32_t);
 int	pfctl_set_debug(struct pfctl *, char *);
+int	pfctl_set_interface_flags(struct pfctl *, char *, int, int);
 
 int	parse_rules(FILE *, struct pfctl *);
 int	parse_flags(const char *);
-int	pfctl_load_anchors(int, int, struct pfr_buffer *);
+int	pfctl_load_anchors(int, struct pfctl *, struct pfr_buffer *);
 
 void	print_pool(struct pf_pool *, u_int16_t, u_int16_t, sa_family_t, int);
 void	print_src_node(struct pf_src_node *, int);
-void	print_rule(struct pf_rule *, int);
+void	print_rule(struct pf_rule *, const char *, int);
 void	print_tabledef(const char *, int, int, struct node_tinithead *);
 void	print_status(struct pf_status *, int);
 
@@ -223,8 +269,8 @@ void	 print_altq(const struct pf_altq *, unsigned, struct node_queue_bw *,
 void	 print_queue(const struct pf_altq *, unsigned, struct node_queue_bw *,
 	    int, struct node_queue_opt *);
 
-int	pfctl_define_table(char *, int, int, const char *, const char *,
-	    struct pfr_buffer *, u_int32_t);
+int	pfctl_define_table(char *, int, int, const char *, struct pfr_buffer *,
+	    u_int32_t);
 
 void		 pfctl_clear_fingerprints(int, int);
 int		 pfctl_file_fingerprints(int, int, const char *);
@@ -266,7 +312,7 @@ extern const struct pf_timeout pf_timeouts[];
 void			 set_ipmask(struct node_host *, u_int8_t);
 int			 check_netmask(struct node_host *, sa_family_t);
 void			 ifa_load(void);
-struct node_host	*ifa_exists(const char *, int);
+struct node_host	*ifa_exists(const char *);
 struct node_host	*ifa_lookup(const char *, int);
 struct node_host	*host(const char *);
 
