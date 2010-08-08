@@ -421,7 +421,8 @@ varsymfind(int mask, const char *name, int namelen)
     } else {
 	sym = NULL;
     }
-    lockmgr(&vss->vx_lock, LK_RELEASE);
+    if (vss)
+	lockmgr(&vss->vx_lock, LK_RELEASE);
     return sym;
 }
 
