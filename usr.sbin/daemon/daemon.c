@@ -60,6 +60,7 @@ main(int argc, char *argv[])
 			break;
 		case 'p':
 			pidfile = optarg;
+			break;
 		case '?':
 		default:
 			usage();
