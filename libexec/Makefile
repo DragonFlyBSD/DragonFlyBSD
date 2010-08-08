@@ -10,7 +10,6 @@ SUBDIR=	atrun \
 	dma \
 	fingerd \
 	ftpd \
-	ftp-proxy \
 	getty \
 	makekey \
 	makewhatis.local \

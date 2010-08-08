@@ -39,6 +39,7 @@ SUBDIR= 802_11 \
 	fdcontrol \
 	fdformat \
 	fdwrite \
+	ftp-proxy \
 	fwcontrol \
 	gifconfig \
 	hotplugd \
