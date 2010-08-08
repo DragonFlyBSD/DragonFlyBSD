@@ -2951,7 +2951,7 @@ static u_long numcwdfound; STATNODE(CTLFLAG_RD, numcwdfound, &numcwdfound);
 int
 sys___getcwd(struct __getcwd_args *uap)
 {
-	int buflen;
+	u_int buflen;
 	int error;
 	char *buf;
 	char *bp;

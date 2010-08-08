@@ -886,10 +886,10 @@ sys_caps_sys_get(struct caps_sys_get_args *uap)
 	} else {
 	    error = caps_process_msg(caps, msg, uap);
 	}
+	caps_drop(caps);
     } else {
 	error = EINVAL;
     }
-    caps_drop(caps);
     rel_mplock();
     return(error);
 }
@@ -936,10 +936,10 @@ sys_caps_sys_wait(struct caps_sys_wait_args *uap)
 				    (struct caps_sys_get_args *)uap);
 	    }
 	}
+	caps_drop(caps);
     } else {
 	error = EINVAL;
     }
-    caps_drop(caps);
     rel_mplock();
     return(error);
 }
