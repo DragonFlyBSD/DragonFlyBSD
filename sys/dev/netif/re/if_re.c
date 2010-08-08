@@ -704,8 +704,8 @@ re_setmulti(struct re_softc *sc)
 	 * order for those devices.
 	 */
 	if (sc->re_caps & RE_C_PCIE) {
-		CSR_WRITE_4(sc, RE_MAR0, bswap32(hashes[0]));
-		CSR_WRITE_4(sc, RE_MAR4, bswap32(hashes[1]));
+		CSR_WRITE_4(sc, RE_MAR0, bswap32(hashes[1]));
+		CSR_WRITE_4(sc, RE_MAR4, bswap32(hashes[0]));
 	} else {
 		CSR_WRITE_4(sc, RE_MAR0, hashes[0]);
 		CSR_WRITE_4(sc, RE_MAR4, hashes[1]);
