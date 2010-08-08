@@ -278,8 +278,9 @@ print_state(struct pf_state *s, int opts)
 		min = s->expire % 60;
 		s->expire /= 60;
 		printf(", expires in %.2u:%.2u:%.2u", s->expire, min, sec);
-		printf(", %llu:%llu pkts, %llu:%llu bytes",
-		    s->packets[0], s->packets[1], s->bytes[0], s->bytes[1]);
+		printf(", %ju:%ju pkts, %ju:%ju bytes",
+		    (uintmax_t)s->packets[0], (uintmax_t)s->packets[1],
+		    (uintmax_t)s->bytes[0], (uintmax_t)s->bytes[1]);
 		if (s->anchor.nr != (unsigned)-1)
 			printf(", anchor %u", s->anchor.nr);
 		if (s->rule.nr != (unsigned)-1)

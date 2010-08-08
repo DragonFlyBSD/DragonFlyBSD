@@ -594,8 +594,8 @@ print_status(struct pf_status *s, int opts)
 	if (opts & PF_OPT_VERBOSE) {
 		printf("Limit Counters\n");
 		for (i = 0; i < LCNT_MAX; i++) {
-			printf("  %-25s %14lld ", pf_lcounters[i],
-				    s->lcounters[i]);
+			printf("  %-25s %14ju ", pf_lcounters[i],
+				    (uintmax_t)s->lcounters[i]);
 			if (runtime > 0)
 				printf("%14.1f/s\n",
 				    (double)s->lcounters[i] / (double)runtime);
@@ -639,9 +639,9 @@ print_src_node(struct pf_src_node *sn, int opts)
 			printf(", expires in %.2u:%.2u:%.2u",
 			    sn->expire, min, sec);
 		}
-		printf(", %llu pkts, %llu bytes",
-		    sn->packets[0] + sn->packets[1],
-		    sn->bytes[0] + sn->bytes[1]);
+		printf(", %ju pkts, %ju bytes",
+		    (uintmax_t)sn->packets[0] + sn->packets[1],
+		    (uintmax_t)sn->bytes[0] + sn->bytes[1]);
 		switch (sn->ruletype) {
 		case PF_NAT:
 			if (sn->rule.nr != (uint32_t)(-1))
