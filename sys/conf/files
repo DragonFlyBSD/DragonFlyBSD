@@ -1084,6 +1084,7 @@ net/pf/pf_if.c			optional pf
 net/pf/pf_subr.c		optional pf
 net/pf/pf_ioctl.c		optional pf
 net/pf/pf_norm.c		optional pf
+net/pf/pf_ruleset.c		optional pf
 net/pf/pf_table.c		optional pf
 net/pf/pf_osfp.c		optional pf
 net/ppp_layer/slcompress.c	optional ppp
