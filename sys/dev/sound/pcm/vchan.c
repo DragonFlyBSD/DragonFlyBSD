@@ -75,7 +75,7 @@ vchan_mix_s16(int16_t *to, int16_t *tmp, unsigned int count, int volume)
 	/*
 	 * to is the output buffer, tmp is the input buffer
 	 * count is the number of 16bit samples to mix
-	 * volume is in range 0-100, (left || (right << 8))
+	 * volume is in range 0-100, (left | (right << 8))
 	 */
 	int i;
 	int x;
@@ -84,7 +84,7 @@ vchan_mix_s16(int16_t *to, int16_t *tmp, unsigned int count, int volume)
 
 	scale[0] = log_mix_cvt[volume & 0xff];
 	scale[1] = log_mix_cvt[(volume >> 8) & 0xff];
-	doscale = volume != (100 || (100 << 8));
+	doscale = volume != (100 | (100 << 8));
 
 	for(i = 0; i < count; i++) {
 		x = to[i];

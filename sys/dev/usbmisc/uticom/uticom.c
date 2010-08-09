@@ -954,7 +954,7 @@ static int uticom_download_fw(struct uticom_softc *sc, unsigned int pipeno,
 	memcpy(obuf, buffer, buffer_size);
 
 	usbd_setup_xfer(oxfer, pipe, (usbd_private_handle)sc, obuf, buffer_size,
-			USBD_NO_COPY || USBD_SYNCHRONOUS, USBD_NO_TIMEOUT, 0);
+			USBD_NO_COPY | USBD_SYNCHRONOUS, USBD_NO_TIMEOUT, 0);
 	err = usbd_sync_transfer(oxfer);
 
 	if (err != USBD_NORMAL_COMPLETION)

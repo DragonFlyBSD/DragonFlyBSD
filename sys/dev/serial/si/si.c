@@ -856,7 +856,7 @@ sihardclose(struct si_port *pp)
 	if (tp->t_cflag & HUPCL ||
 	    (!pp->sp_active_out &&
 	     !(ccbp->hi_ip & IP_DCD) &&
-	     !(pp->sp_iin.c_cflag && CLOCAL)) ||
+	     !(pp->sp_iin.c_cflag & CLOCAL)) ||
 	    !(tp->t_state & TS_ISOPEN)) {
 
 		(void) si_modem(pp, BIC, TIOCM_DTR|TIOCM_RTS);
