@@ -213,9 +213,9 @@ When the resolver is called to add a hostname to a table,
 .Em all
 resulting IPv4 and IPv6 addresses are placed into the table.
 IP addresses can also be entered in a table by specifying a valid interface
-name, a valid interface group or the
+name or the
 .Em self
-keyword, in which case all addresses assigned to the interface(s) will be
+keyword, in which case all addresses assigned to the interface will be
 added to the table.
 .Sh OPTIONS
 .Xr pf 4
@@ -506,7 +506,7 @@ The
 .Ar state-policy
 option sets the default behaviour for states:
 .Pp
-.Bl -tag -width group-bound -compact
+.Bl -tag -width if-bound -compact
 .It Ar if-bound
 States are bound to interface.
 .It Ar floating
@@ -939,7 +939,7 @@ The value must not exceed the interface bandwidth.
 If
 .Ar bandwidth
 is not specified, the interface bandwidth is used
-but take note that some interfaces do not know their bandwidth,
+(but take note that some interfaces do not know their bandwidth,
 or can adapt their bandwidth rates).
 .Pp
 When used with
@@ -1402,40 +1402,6 @@ For example,
 .Bd -literal -offset indent
 pass out inet proto icmp all icmp-type echoreq
 .Ed
-.It Ar pass
-The packet is passed;
-state is created state unless the
-.Ar no state
-option is specified.
-.El
-.Pp
-By default
-.Xr pf 4
-filters packets statefully; the first time a packet matches a
-.Ar pass
-rule, a state entry is created; for subsequent packets the filter checks
-whether the packet matches any state.
-If it does, the packet is passed without evaluation of any rules.
-After the connection is closed or times out, the state entry is automatically
-removed.
-.Pp
-This has several advantages.
-For TCP connections, comparing a packet to a state involves checking
-its sequence numbers, as well as TCP timestamps if a
-.Ar scrub reassemble tcp
-rule applies to the connection.
-If these values are outside the narrow windows of expected
-values, the packet is dropped.
-This prevents spoofing attacks, such as when an attacker sends packets with
-a fake source address/port but does not know the connection's sequence
-numbers.
-Similarly,
-.Xr pf 4
-knows how to match ICMP replies to states.
-For example,
-.Bd -literal -offset indent
-pass out inet proto icmp all icmp-type echoreq
-.Ed
 .Pp
 allows echo requests (such as those created by
 .Xr ping 8 )
@@ -1540,12 +1506,7 @@ is considered the last matching rule, and evaluation of subsequent rules
 is skipped.
 .It Ar on Aq Ar interface
 This rule applies only to packets coming in on, or going out through, this
-particular interface or interface group.
-For more information on interface groups,
-see the
-.Ic group
-keyword in
-.Xr ifconfig 8 .
+particular interface.
 .It Aq Ar af
 This rule applies only to packets of this address family.
 Supported values are
@@ -2313,7 +2274,6 @@ block quick from \*(Ltbad_hosts\*(Gt
 pass in on $ext_if proto tcp to $webserver port www keep state \e
 	(max-src-conn-rate 100/10, overload \*(Ltbad_hosts\*(Gt flush global)
 .Ed
-.El
 .Sh OPERATING SYSTEM FINGERPRINTING
 Passive OS Fingerprinting is a mechanism to inspect nuances of a TCP
 connection's initial SYN packet and guess at the host's operating system.
@@ -2332,7 +2292,7 @@ for the
 firewall itself.
 The version of the oldest available
 .Ox
-release on the main ftp site
+release on the main FTP site
 would be 2.6 and the fingerprint would be written
 .Pp
 .Dl \&"OpenBSD 2.6\&"
@@ -2952,12 +2912,12 @@ Syntax for
 .Nm
 in BNF:
 .Bd -literal
-line           =  option | pf-rule | nat-rule | binat-rule | rdr-rule |
+line           = option | pf-rule | nat-rule | binat-rule | rdr-rule |
                  antispoof-rule | altq-rule | queue-rule | trans-anchors |
 		 anchor-rule | anchor-close | load-anchor | table-rule
 
 option         = "set" ( [ "timeout" ( timeout | "{" timeout-list "}" ) ] |
-		 [ "ruleset-optimization" [ "none" | "basic" | "profile" ]] |
+		 [ "ruleset-optimization" [ "none" | "basic" | "profile" ] ] |
                  [ "optimization" [ "default" | "normal" |
                  "high-latency" | "satellite" |
                  "aggressive" | "conservative" ] ]
@@ -2984,7 +2944,7 @@ filteropt      = user | group | flags | icmp-type | icmp6-type | tos |
                  keep | "fragment" | "no-df" | "min-ttl" number |
                  "max-mss" number | "random-id" | "reassemble tcp" |
                  fragmentation | "allow-opts" |
-                 "label" string | "tag" string | [ ! ] "tagged" string
+                 "label" string | "tag" string | [ ! ] "tagged" string |
                  "queue" ( string | "(" string [ [ "," ] string ] ")" ) |
 		 "probability" number"%"
 
@@ -3071,7 +3031,7 @@ hosts          = "all" |
 ipspec         = "any" | host | "{" host-list "}"
 host           = [ "!" ] ( address [ "/" mask-bits ] | "\*(Lt" string "\*(Gt" )
 redirhost      = address [ "/" mask-bits ]
-routehost      = interface-name [ address [ "/" mask-bits ] ]
+routehost      = "(" interface-name [ address [ "/" mask-bits ] ] ")"
 address        = interface-name | "(" interface-name ")" | hostname |
                  ipv4-dotted-quad | ipv6-coloned-hex
 host-list      = host [ [ "," ] host-list ]
@@ -3080,7 +3040,7 @@ routehost-list = routehost [ [ "," ] routehost-list ]
 
 port           = "port" ( unary-op | binary-op | "{" op-list "}" )
 portspec       = "port" ( number | name ) [ ":" ( "*" | number | name ) ]
-os             = "os"  ( os-name | "{" os-list "}" )
+os             = "os" ( os-name | "{" os-list "}" )
 user           = "user" ( unary-op | binary-op | "{" op-list "}" )
 group          = "group" ( unary-op | binary-op | "{" op-list "}" )
 
@@ -3092,7 +3052,7 @@ op-list        = ( unary-op | binary-op ) [ [ "," ] op-list ]
 os-name        = operating-system-name
 os-list        = os-name [ [ "," ] os-list ]
 
-flags          = "flags" ( [ flag-set ] "/"  flag-set | "any" )
+flags          = "flags" ( [ flag-set ] "/" flag-set | "any" )
 flag-set       = [ "F" ] [ "S" ] [ "R" ] [ "P" ] [ "A" ] [ "U" ] [ "E" ]
                  [ "W" ]
 
@@ -3109,7 +3069,7 @@ state-opts     = state-opt [ [ "," ] state-opts ]
 state-opt      = "max" number | "no-sync" | timeout |
                  "source-track" [ "rule" | "global" ] |
 		 "max-src-nodes" number | "max-src-states" number |
-		   "max-src-conn" number |
+		 "max-src-conn" number |
                  "max-src-conn-rate" number "/" number |
                  "overload" "\*(Lt" string "\*(Gt" [ "flush" ] |
                  "if-bound" | "floating" |
@@ -3161,7 +3121,7 @@ sc-spec        = bandwidth-spec |
                  "(" bandwidth-spec number bandwidth-spec ")"
 .Ed
 .Sh FILES
-.Bl -tag -width "/etc/protocols" -compact
+.Bl -tag -width ".Pa /usr/share/examples/pf" -compact
 .It Pa /etc/hosts
 Host name database.
 .It Pa /etc/pf.conf
