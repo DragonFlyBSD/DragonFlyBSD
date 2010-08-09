@@ -67,7 +67,7 @@
 /* Maximum number of pages per second to zero */
 #define NPAGES_RUN	(20000)
 
-static int idlezero_enable = 0;
+static int idlezero_enable = 1;
 TUNABLE_INT("vm.idlezero_enable", &idlezero_enable);
 SYSCTL_INT(_vm, OID_AUTO, idlezero_enable, CTLFLAG_RW, &idlezero_enable, 0,
 	   "Allow the kernel to use idle CPU cycles to zero pages");
