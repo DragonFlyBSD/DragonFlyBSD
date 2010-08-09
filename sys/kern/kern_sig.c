@@ -993,10 +993,6 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 
 	KKASSERT(lp == NULL || lp->lwp_proc == p);
 
-	crit_enter();
-	KNOTE(&p->p_klist, NOTE_SIGNAL | sig);
-	crit_exit();
-
 	prop = sigprop(sig);
 
 	/*
@@ -1821,6 +1817,8 @@ postsig(int sig)
 	int code;
 
 	KASSERT(sig != 0, ("postsig"));
+
+	KNOTE(&p->p_klist, NOTE_SIGNAL | sig);
 
 	/*
 	 * If we are a virtual kernel running an emulated user process
