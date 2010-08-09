@@ -29,6 +29,22 @@
 #ifndef _NET_IF_PFSYNC_H_
 #define _NET_IF_PFSYNC_H_
 
+#include <sys/ioccom.h>
+
+/*
+ * pfvar.h is required to get struct pf_addr.  Also kdump and other utilities
+ * blindly include header files to try to get all the ioctl constants and
+ * buildworld will fail without this.  We need a better way XXX
+ */
+#ifndef _NET_PFVAR_H_
+#include "pfvar.h"
+#endif
+
+/* Reserved SPI numbers */
+#define	SPI_LOCAL_USE		0
+#define	SPI_RESERVED_MIN	1
+#define	SPI_RESERVED_MAX	255
+
 
 #define PFSYNC_ID_LEN	sizeof(u_int64_t)
 
@@ -87,16 +103,6 @@ struct pfsync_state {
 
 #define PFSYNC_FLAG_COMPRESS 	0x01
 #define PFSYNC_FLAG_STALE	0x02
-
-struct pfsync_tdb {
-	u_int32_t	spi;
-	union sockaddr_union dst;
-	u_int32_t	rpl;
-	u_int64_t	cur_bytes;
-	u_int8_t	sproto;
-	u_int8_t	updates;
-	u_int8_t	pad[2];
-} __packed;
 
 struct pfsync_state_upd {
 	u_int32_t		id[2];
@@ -164,10 +170,10 @@ struct pfsync_softc {
 	struct ifnet		*sc_sync_ifp;
 
 	struct ip_moptions	 sc_imo;
-	struct timeout		 sc_tmo;
-	struct timeout		 sc_tdb_tmo;
-	struct timeout		 sc_bulk_tmo;
-	struct timeout		 sc_bulkfail_tmo;
+	struct callout		 sc_tmo;
+	struct callout		 sc_tdb_tmo;
+	struct callout		 sc_bulk_tmo;
+	struct callout		 sc_bulkfail_tmo;
 	struct in_addr		 sc_sync_peer;
 	struct in_addr		 sc_sendaddr;
 	struct mbuf		*sc_mbuf;	/* current cumulative mbuf */
@@ -183,6 +189,7 @@ struct pfsync_softc {
 	int			 sc_bulk_tries;
 	int			 sc_maxcount;	/* number of states in mtu */
 	int			 sc_maxupdates;	/* number of updates/state */
+	LIST_ENTRY(pfsync_softc) sc_next;
 };
 
 extern struct pfsync_softc	*pfsyncif;
@@ -249,6 +256,8 @@ struct pfsyncreq {
 	int		 pfsyncr_maxupdates;
 	int		 pfsyncr_authlevel;
 };
+#define SIOCSETPFSYNC	_IOW('i', 247, struct ifreq)
+#define SIOCGETPFSYNC	_IOWR('i', 248, struct ifreq)
 
 
 #define pf_state_peer_hton(s,d) do {		\
@@ -330,7 +339,6 @@ int pfsync_pack_state(u_int8_t, struct pf_state *, int);
 		pfsync_pack_state(PFSYNC_ACT_DEL, (st),		\
 		    PFSYNC_FLAG_COMPRESS);			\
 } while (0)
-int pfsync_update_tdb(struct tdb *, int);
 #endif
 
 #endif /* _NET_IF_PFSYNC_H_ */
