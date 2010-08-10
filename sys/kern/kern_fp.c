@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/kern/kern_fp.c,v 1.20 2007/01/12 06:06:57 dillon Exp $
  */
 
 /*
@@ -407,7 +405,6 @@ fp_mmap(void *addr_arg, size_t size, int prot, int flags, struct file *fp,
     vm_object_t obj;
     struct vmspace *vms = p->p_vmspace;
     struct vnode *vp;
-    int disablexworkaround;
 
     prot &= VM_PROT_ALL;
 
@@ -500,20 +497,7 @@ fp_mmap(void *addr_arg, size_t size, int prot, int flags, struct file *fp,
 	/*
 	 * cdevs does not provide private mappings of any kind.
 	 */
-	/*
-	 * However, for XIG X server to continue to work,
-	 * we should allow the superuser to do it anyway.
-	 * We only allow it at securelevel < 1.
-	 * (Because the XIG X server writes directly to video
-	 * memory via /dev/mem, it should never work at any
-	 * other securelevel.
-	 * XXX this will have to go
-	 */
-	if (securelevel >= 1)
-	    disablexworkaround = 1;
-	else
-	    disablexworkaround = priv_check(td, PRIV_ROOT);
-	if (vp->v_type == VCHR && disablexworkaround &&
+	if (vp->v_type == VCHR && 
 	    (flags & (MAP_PRIVATE|MAP_COPY))) {
 		error = EINVAL;
 		goto done;
@@ -539,13 +523,11 @@ fp_mmap(void *addr_arg, size_t size, int prot, int flags, struct file *fp,
 	 * MAP_SHARED or via the implicit sharing of character
 	 * device mappings), and we are trying to get write
 	 * permission although we opened it without asking
-	 * for it, bail out.  Check for superuser, only if
-	 * we're at securelevel < 1, to allow the XIG X server
-	 * to continue to work.
+	 * for it, bail out.  
 	 */
 
 	if ((flags & MAP_SHARED) != 0 ||
-	    (vp->v_type == VCHR && disablexworkaround)
+	    (vp->v_type == VCHR)
 	) {
 	    if ((fp->f_flag & FWRITE) != 0) {
 		struct vattr va;
