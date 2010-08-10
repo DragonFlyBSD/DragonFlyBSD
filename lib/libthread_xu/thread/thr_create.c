@@ -196,7 +196,7 @@ _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
 		new_thread->tlflags |= TLFLAGS_DETACHED;
 		_thr_ref_delete_unlocked(curthread, new_thread);
 		THREAD_LIST_UNLOCK(curthread);
-		(*thread) = 0;
+		(*thread) = NULL;
 		ret = EAGAIN;
 	} else if (locked) {
 		_thr_report_creation(curthread, new_thread);
