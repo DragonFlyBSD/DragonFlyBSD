@@ -31,7 +31,7 @@
 .Nm pfctl
 .Nd "control the packet filter (PF) and network address translation (NAT) device"
 .Sh SYNOPSIS
-.Nm pfctl
+.Nm
 .Bk -words
 .Op Fl AdeghmNnOqRrvz
 .Op Fl a Ar anchor
@@ -83,7 +83,7 @@ When the variable
 is set to
 .Dv YES
 in
-.Xr rc.conf.local 8 ,
+.Xr rc.conf 5 ,
 the rule file specified with the variable
 .Va pf_rules
 is loaded automatically by the
@@ -667,11 +667,11 @@ Passive operating system fingerprint database.
 .Xr pf 4 ,
 .Xr pf.conf 5 ,
 .Xr pf.os 5 ,
+.Xr rc.conf 5 ,
 .Xr sysctl.conf 5 ,
 .Xr authpf 8 ,
 .Xr ftp-proxy 8 ,
 .Xr rc 8 ,
-.Xr rc.conf 8 ,
 .Xr sysctl 8
 .Sh HISTORY
 The

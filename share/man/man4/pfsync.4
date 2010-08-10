@@ -1,4 +1,4 @@
-\"	$OpenBSD: pfsync.4,v 1.24 2006/10/23 07:05:49 jmc Exp $
+.\"	$OpenBSD: pfsync.4,v 1.24 2006/10/23 07:05:49 jmc Exp $
 .\"
 .\" Copyright (c) 2002 Michael Shalayeff
 .\" Copyright (c) 2003-2004 Ryan McBride
@@ -211,6 +211,7 @@ The following must also be added to
 net.inet.carp.preempt=1
 .Ed
 .Sh SEE ALSO
+.Xr tcpdump 1 ,
 .Xr bpf 4 ,
 .Xr carp 4 ,
 .Xr inet 4 ,
@@ -220,9 +221,8 @@ net.inet.carp.preempt=1
 .Xr pf 4 ,
 .Xr pf.conf 5 ,
 .Xr protocols 5 ,
-.Xr ifconfig 8 ,
-.Xr ifstated 8 ,
-.Xr tcpdump 1
+.Xr ifconfig 8
+.\".Xr ifstated 8 ,
 .Sh HISTORY
 The
 .Nm
