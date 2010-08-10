@@ -1359,6 +1359,7 @@ TO_REMOVE+=/usr/sbin/dschedctl
 TO_REMOVE+=/usr/share/man/cat8/dschedctl.8.gz
 TO_REMOVE+=/usr/share/man/man8/dschedctl.8.gz
 TO_REMOVE+=/usr/include/sys/selinfo.h
+TO_REMOVE+=/usr/libexec/ftp-proxy
 
 # XXX Remove when adjusted to the new 802.11 framework
 TO_REMOVE+=/boot/modules/if_acx.ko
