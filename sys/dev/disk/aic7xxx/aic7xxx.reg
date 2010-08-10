@@ -38,7 +38,6 @@
  * POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.reg,v 1.46 2003/12/17 00:02:09 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.reg,v 1.3 2007/07/06 00:01:16 pavalos Exp $
  */
 VERSION = "$Id: //depot/aic7xxx/aic7xxx/aic7xxx.reg#40 $"
 
@@ -1449,6 +1448,7 @@ scratch_ram {
 		mask	EXIT_MSG_LOOP		0x08
 		mask	CONT_MSG_LOOP		0x04
 		mask	CONT_TARG_SESSION	0x02
+		mask	SPARE			0x01
 		alias	RETURN_1
 	}
 	ARG_2 {
