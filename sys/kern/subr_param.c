@@ -46,7 +46,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-
+#include <vm/pmap.h>
 #include <machine/vmparam.h>
 
 /*
@@ -77,7 +77,9 @@ int	maxproc;			/* maximum # of processes */
 int	maxprocperuid;			/* max # of procs per user */
 int	maxfiles;			/* system wide open files limit */
 int	maxfilesrootres;		/* descriptors reserved for root use */
+int	minfilesperproc;		/* per-proc min open files (safety) */
 int	maxfilesperproc;		/* per-proc open files limit */
+int	maxfilesperuser;		/* per-user open files limit */
 int	maxposixlocksperuid;		/* max # POSIX locks per uid */
 int	ncallout;			/* maximum # of timer events */
 int	mbuf_wait = 32;			/* mbuf sleep time in ticks */
@@ -160,6 +162,7 @@ init_param2(int physpages)
 	 */
 	maxproc = NPROC;
 	TUNABLE_INT_FETCH("kern.maxproc", &maxproc);
+
 	/*
 	 * Limit maxproc so that kmap entries cannot be exhausted by
 	 * processes.
@@ -168,9 +171,35 @@ init_param2(int physpages)
 		maxproc = physpages / 12;
 	maxfiles = MAXFILES;
 	TUNABLE_INT_FETCH("kern.maxfiles", &maxfiles);
-	maxprocperuid = (maxproc * 9) / 10;
-	maxfilesperproc = (maxfiles * 9) / 10;
+	if (maxfiles < 128)
+		maxfiles = 128;
+
+	/*
+	 * Limit file descriptors so no single user can exhaust the
+	 * system.
+	 *
+	 * WARNING: Do not set minfilesperproc too high or the user
+	 *	    can exhaust the system with a combination of fork()
+	 *	    and open().  Actual worst case is:
+	 *
+	 *	    (minfilesperproc * maxprocperuid) + maxfilesperuser
+	 */
+	maxprocperuid = maxproc / 4;
+	if (maxprocperuid < 128)
+		maxprocperuid = maxproc / 2;
+	minfilesperproc = 8;
+	maxfilesperproc = maxfiles / 4;
+	maxfilesperuser = maxfilesperproc * 2;
 	maxfilesrootres = maxfiles / 20;
+
+	/*
+	 * Severe hack to try to prevent pipe() descriptors from
+	 * blowing away kernel memory.
+	 */
+	if (KvaSize <= (vm_offset_t)(1536LL * 1024 * 1024) &&
+	    maxfilesperuser > 20000) {
+		maxfilesperuser = 20000;
+	}
 
 	maxposixlocksperuid = MAXPOSIXLOCKSPERUID;
 	TUNABLE_INT_FETCH("kern.maxposixlocksperuid", &maxposixlocksperuid);

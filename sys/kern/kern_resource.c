@@ -880,19 +880,19 @@ static struct uidinfo *
 uicreate(uid_t uid)
 {
 	struct	uidinfo *uip, *tmp;
+
 	/*
 	 * Allocate space and check for a race
 	 */
-	MALLOC(uip, struct uidinfo *, sizeof(*uip), M_UIDINFO, M_WAITOK);
+	uip = kmalloc(sizeof(*uip), M_UIDINFO, M_WAITOK|M_ZERO);
+
 	/*
 	 * Initialize structure and enter it into the hash table
 	 */
 	spin_init(&uip->ui_lock);
 	uip->ui_uid = uid;
-	uip->ui_proccnt = 0;
-	uip->ui_sbsize = 0;
 	uip->ui_ref = 1;	/* we're returning a ref */
-	uip->ui_posixlocks = 0;
+	uip->ui_krate.freq = 1;	/* descriptor limit warnings */
 	varsymset_init(&uip->ui_varsymset, NULL);
 
 	/*

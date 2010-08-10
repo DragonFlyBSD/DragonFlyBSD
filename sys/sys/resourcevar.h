@@ -100,6 +100,8 @@ struct uidinfo {
 	uid_t	ui_uid;			/* uid */
 	int	ui_ref;			/* reference count */
 	int	ui_posixlocks;		/* number of POSIX locks */
+	int	ui_openfiles;		/* number of open files */
+	struct krate ui_krate;		/* kprintf warnings */
 	struct varsymset ui_varsymset;	/* variant symlinks */
 };
 

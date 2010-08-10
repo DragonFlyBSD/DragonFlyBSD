@@ -166,7 +166,9 @@ extern struct fileops specvnode_fileops;
 extern struct fileops badfileops;
 extern int maxfiles;		/* kernel limit on number of open files */
 extern int maxfilesrootres;	/* descriptors reserved for root use */
+extern int minfilesperproc;	/* minimum (safety) open files per proc */
 extern int maxfilesperproc;	/* per process limit on number of open files */
+extern int maxfilesperuser;	/* per user limit on number of open files */
 
 /* Commonly used fileops */
 int badfo_readwrite(struct file *fp, struct uio *uio,

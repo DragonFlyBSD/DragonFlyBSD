@@ -166,11 +166,21 @@ sys_getdtablesize(struct getdtablesize_args *uap)
 {
 	struct proc *p = curproc;
 	struct plimit *limit = p->p_limit;
+	int dtsize;
 
 	spin_lock_rd(&limit->p_spin);
-	uap->sysmsg_result = 
-	    min((int)limit->pl_rlimit[RLIMIT_NOFILE].rlim_cur, maxfilesperproc);
+	if (limit->pl_rlimit[RLIMIT_NOFILE].rlim_cur > INT_MAX)
+		dtsize = INT_MAX;
+	else
+		dtsize = (int)limit->pl_rlimit[RLIMIT_NOFILE].rlim_cur;
 	spin_unlock_rd(&limit->p_spin);
+	if (dtsize > maxfilesperproc)
+		dtsize = maxfilesperproc;
+	if (dtsize < minfilesperproc)
+		dtsize = minfilesperproc;
+	if (p->p_ucred->cr_uid && dtsize > maxfilesperuser)
+		dtsize = maxfilesperuser;
+	uap->sysmsg_result = dtsize;
 	return (0);
 }
 
@@ -461,19 +471,29 @@ kern_dup(enum dup_type type, int old, int new, int *res)
 	struct file *delfp;
 	int oldflags;
 	int holdleaders;
+	int dtsize;
 	int error, newfd;
 
 	/*
 	 * Verify that we have a valid descriptor to dup from and
 	 * possibly to dup to.
+	 *
+	 * NOTE: maxfilesperuser is not applicable to dup()
 	 */
 retry:
-	spin_lock_wr(&fdp->fd_spin);
-	if (new < 0 || new > p->p_rlimit[RLIMIT_NOFILE].rlim_cur ||
-	    new >= maxfilesperproc) {
-		spin_unlock_wr(&fdp->fd_spin);
+	if (p->p_rlimit[RLIMIT_NOFILE].rlim_cur > INT_MAX)
+		dtsize = INT_MAX;
+	else
+		dtsize = (int)p->p_rlimit[RLIMIT_NOFILE].rlim_cur;
+	if (dtsize > maxfilesperproc)
+		dtsize = maxfilesperproc;
+	if (dtsize < minfilesperproc)
+		dtsize = minfilesperproc;
+
+	if (new < 0 || new > dtsize)
 		return (EINVAL);
-	}
+
+	spin_lock_wr(&fdp->fd_spin);
 	if ((unsigned)old >= fdp->fd_nfiles || fdp->fd_files[old].fp == NULL) {
 		spin_unlock_wr(&fdp->fd_spin);
 		return (EBADF);
@@ -967,7 +987,8 @@ sys_fpathconf(struct fpathconf_args *uap)
 }
 
 static int fdexpand;
-SYSCTL_INT(_debug, OID_AUTO, fdexpand, CTLFLAG_RD, &fdexpand, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, fdexpand, CTLFLAG_RD, &fdexpand,
+	   0, "");
 
 /*
  * Grow the file table so it can hold through descriptor (want).
@@ -1079,13 +1100,46 @@ int
 fdalloc(struct proc *p, int want, int *result)
 {
 	struct filedesc *fdp = p->p_fd;
+	struct uidinfo *uip;
 	int fd, rsize, rsum, node, lim;
 
+	/*
+	 * Check dtable size limit
+	 */
 	spin_lock_rd(&p->p_limit->p_spin);
-	lim = min((int)p->p_rlimit[RLIMIT_NOFILE].rlim_cur, maxfilesperproc);
+	if (p->p_rlimit[RLIMIT_NOFILE].rlim_cur > INT_MAX)
+		lim = INT_MAX;
+	else
+		lim = (int)p->p_rlimit[RLIMIT_NOFILE].rlim_cur;
 	spin_unlock_rd(&p->p_limit->p_spin);
+	if (lim > maxfilesperproc)
+		lim = maxfilesperproc;
+	if (lim < minfilesperproc)
+		lim = minfilesperproc;
 	if (want >= lim)
 		return (EMFILE);
+
+	/*
+	 * Check that the user has not run out of descriptors (non-root only).
+	 * As a safety measure the dtable is allowed to have at least
+	 * minfilesperproc open fds regardless of the maxfilesperuser limit.
+	 */
+	if (p->p_ucred->cr_uid && fdp->fd_nfiles >= minfilesperproc) {
+		uip = p->p_ucred->cr_uidinfo;
+		if (uip->ui_openfiles > maxfilesperuser) {
+			krateprintf(&uip->ui_krate,
+				    "Warning: user %d pid %d (%s) ran out of "
+				    "file descriptors (%d/%d)\n",
+				    p->p_ucred->cr_uid, (int)p->p_pid,
+				    p->p_comm,
+				    uip->ui_openfiles, maxfilesperuser);
+			return(ENFILE);
+		}
+	}
+
+	/*
+	 * Grow the dtable if necessary
+	 */
 	spin_lock_wr(&fdp->fd_spin);
 	if (want >= fdp->fd_nfiles)
 		fdgrow_locked(fdp, want);
@@ -1173,8 +1227,15 @@ fdavail(struct proc *p, int n)
 	int i, lim, last;
 
 	spin_lock_rd(&p->p_limit->p_spin);
-	lim = min((int)p->p_rlimit[RLIMIT_NOFILE].rlim_cur, maxfilesperproc);
+	if (p->p_rlimit[RLIMIT_NOFILE].rlim_cur > INT_MAX)
+		lim = INT_MAX;
+	else
+		lim = (int)p->p_rlimit[RLIMIT_NOFILE].rlim_cur;
 	spin_unlock_rd(&p->p_limit->p_spin);
+	if (lim > maxfilesperproc)
+		lim = maxfilesperproc;
+	if (lim < minfilesperproc)
+		lim = minfilesperproc;
 
 	spin_lock_rd(&fdp->fd_spin);
 	if ((i = lim - fdp->fd_nfiles) > 0 && (n -= i) <= 0) {
@@ -1407,7 +1468,7 @@ falloc(struct lwp *lp, struct file **resultfp, int *resultfd)
 	fp->f_count = 1;
 	fp->f_ops = &badfileops;
 	fp->f_seqcount = 1;
-	fp->f_cred = crhold(cred);
+	fsetcred(fp, cred);
 	spin_lock_wr(&filehead_spin);
 	nfiles++;
 	LIST_INSERT_HEAD(&filehead, fp, f_list);
@@ -1564,12 +1625,31 @@ fclrfdflags(struct filedesc *fdp, int fd, int rem_flags)
 	return (error);
 }
 
+/*
+ * Set/Change/Clear the creds for a fp and synchronize the uidinfo.
+ */
 void
-fsetcred(struct file *fp, struct ucred *cr)
+fsetcred(struct file *fp, struct ucred *ncr)
 {
-	crhold(cr);
-	crfree(fp->f_cred);
-	fp->f_cred = cr;
+	struct ucred *ocr;
+	struct uidinfo *uip;
+
+	ocr = fp->f_cred;
+	if (ocr == NULL || ncr == NULL || ocr->cr_uidinfo != ncr->cr_uidinfo) {
+		if (ocr) {
+			uip = ocr->cr_uidinfo;
+			atomic_add_int(&uip->ui_openfiles, -1);
+		}
+		if (ncr) {
+			uip = ncr->cr_uidinfo;
+			atomic_add_int(&uip->ui_openfiles, 1);
+		}
+	}
+	if (ncr)
+		crhold(ncr);
+	fp->f_cred = ncr;
+	if (ocr)
+		crfree(ocr);
 }
 
 /*
@@ -1584,7 +1664,7 @@ ffree(struct file *fp)
 	LIST_REMOVE(fp, f_list);
 	nfiles--;
 	spin_unlock_wr(&filehead_spin);
-	crfree(fp->f_cred);
+	fsetcred(fp, NULL);
 	if (fp->f_nchandle.ncp)
 	    cache_drop(&fp->f_nchandle);
 	kfree(fp, M_FILE);
@@ -2654,8 +2734,12 @@ sysctl_kern_file_callback(struct proc *p, void *data)
 SYSCTL_PROC(_kern, KERN_FILE, file, CTLTYPE_OPAQUE|CTLFLAG_RD,
     0, 0, sysctl_kern_file, "S,file", "Entire file table");
 
+SYSCTL_INT(_kern, OID_AUTO, minfilesperproc, CTLFLAG_RW,
+    &minfilesperproc, 0, "Minimum files allowed open per process");
 SYSCTL_INT(_kern, KERN_MAXFILESPERPROC, maxfilesperproc, CTLFLAG_RW, 
     &maxfilesperproc, 0, "Maximum files allowed open per process");
+SYSCTL_INT(_kern, OID_AUTO, maxfilesperuser, CTLFLAG_RW,
+    &maxfilesperuser, 0, "Maximum files allowed open per user");
 
 SYSCTL_INT(_kern, KERN_MAXFILES, maxfiles, CTLFLAG_RW, 
     &maxfiles, 0, "Maximum number of files");
