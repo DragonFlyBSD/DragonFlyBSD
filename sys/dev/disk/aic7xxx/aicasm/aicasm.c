@@ -40,7 +40,6 @@
  * $Id: //depot/aic7xxx/aic7xxx/aicasm/aicasm.c#23 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aicasm/aicasm.c,v 1.36 2003/12/17 00:01:11 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aicasm/aicasm.c,v 1.5 2007/07/05 05:46:33 pavalos Exp $
  */
 #include <sys/types.h>
 #include <sys/mman.h>
@@ -637,6 +636,8 @@ output_listing(char *ifilename)
 		}
 		instrptr++;
 	}
+	free(func_values);
+
 	/* Dump the remainder of the file */
 	while(fgets(buf, sizeof(buf), ifile) != NULL)
 		fprintf(listfile, "             %s", buf);
