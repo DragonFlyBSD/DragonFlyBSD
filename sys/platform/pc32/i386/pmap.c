@@ -175,7 +175,7 @@ static struct pv_entry *pvinit;
 static int dreadful_invltlb;
 
 SYSCTL_INT(_vm, OID_AUTO, dreadful_invltlb,
-	   CTLFLAG_RW, &dreadful_invltlb, 0, "");
+	   CTLFLAG_RW, &dreadful_invltlb, 0, "Debugging sysctl to force invltlb on pmap operations");
 
 /*
  * All those kernel PT submaps that BSD is so fond of

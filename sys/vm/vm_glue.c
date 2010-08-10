@@ -480,7 +480,7 @@ swapin_request(void)
  */
 static int swap_idle_threshold1 = 15;
 SYSCTL_INT(_vm, OID_AUTO, swap_idle_threshold1,
-	CTLFLAG_RW, &swap_idle_threshold1, 0, "");
+	CTLFLAG_RW, &swap_idle_threshold1, 0, "Guaranteed process resident time (sec)");
 
 /*
  * Swap_idle_threshold2 is the time that a process can be idle before
@@ -489,7 +489,7 @@ SYSCTL_INT(_vm, OID_AUTO, swap_idle_threshold1,
  */
 static int swap_idle_threshold2 = 60;
 SYSCTL_INT(_vm, OID_AUTO, swap_idle_threshold2,
-	CTLFLAG_RW, &swap_idle_threshold2, 0, "");
+	CTLFLAG_RW, &swap_idle_threshold2, 0, "Time (sec) a process can idle before being swapped");
 
 /*
  * Swapout is driven by the pageout daemon.  Very simple, we find eligible
