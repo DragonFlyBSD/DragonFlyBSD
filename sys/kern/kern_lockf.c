@@ -220,6 +220,8 @@ lf_advlock(struct vop_advlock_args *ap, struct lockf *lock, u_quad_t size)
 	if (fl->l_len == 0) {
 		flags |= F_NOEND;
 		end = LLONG_MAX;
+	} else if (fl->l_len < 0) {
+		return(EINVAL);
 	} else {
 		end = start + fl->l_len - 1;
 		if (end < start)
@@ -291,6 +293,7 @@ lf_setlock(struct lockf *lock, struct proc *owner, int type, int flags,
 	struct lockf_range *new_range2;
 	int wakeup_needed;
 	int double_clip;
+	int unlock_override;
 	int error = 0;
 	int count;
 	struct lockf_range_list deadlist;
@@ -387,11 +390,12 @@ restart:
 		 * Handle existing locks of flock-style like POSIX locks.
 		 */
 		if (flags & F_POSIX) {
-			TAILQ_FOREACH(brange, &lock->lf_blocked, lf_link)
+			TAILQ_FOREACH(brange, &lock->lf_blocked, lf_link) {
 				if (brange->lf_owner == range->lf_owner) {
 					error = EDEADLK;
 					goto do_cleanup;
 				}
+			}
 		}
 		
 		/*
@@ -452,14 +456,25 @@ restart:
 	}
 
 	/*
-	 * This is a special case that we need to check for in a couple
-	 * of places.
+	 * double_clip - Calculate a special case where TWO locks may have
+	 *		 to be added due to the new lock breaking up an
+	 *		 existing incompatible lock in the middle.
+	 *
+	 * unlock_override - Calculate a special case where NO locks
+	 *		 need to be created.  This occurs when an unlock
+	 *		 does not clip any locks at the front and rear.
+	 *
+	 * WARNING!  closef() and fdrop() assume that an F_UNLCK of the
+	 *	     entire range will always succeed so the unlock_override
+	 *	     case is mandatory.
 	 */
-	if (first_match == last_match && first_match->lf_start < start &&
-	    last_match->lf_end > end) {
-		double_clip = 1;
-	} else {
-		double_clip = 0;
+	double_clip = 0;
+	unlock_override = 0;
+	if (first_match->lf_start < start) {
+		if (first_match == last_match && last_match->lf_end > end)
+			double_clip = 1;
+	} else if (type == F_UNLCK && last_match->lf_end <= end) {
+		unlock_override = 1;
 	}
 
 	/*
@@ -479,7 +494,7 @@ restart:
 	 * worse case properly here.
 	 */
 	count = 0;
-	if (flags & F_POSIX) {
+	if ((flags & F_POSIX) && !unlock_override) {
 		if (!lf_match(first_match, type, flags) &&
 		    !lf_match(last_match, type, flags)
 		) {
