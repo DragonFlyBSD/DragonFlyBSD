@@ -677,11 +677,11 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map,
 		goto done;
 	}
 
-	memp = NULL;
 	if (size > sizeof (ubuf.stkbuf)) {
 		memp = kmalloc(size, M_IOCTLOPS, M_WAITOK);
 		data = memp;
 	} else {
+		memp = NULL;
 		data = ubuf.stkbuf;
 	}
 	if ((com & IOC_IN) != 0) {
@@ -1137,6 +1137,10 @@ doselect(int nd, fd_set *read, fd_set *write, fd_set *except,
 	 * multiplied by the size of __fd_mask.
 	 */
 	bytes = howmany(nd, __NFDBITS) * sizeof(__fd_mask);
+
+	/* kap->read_set = NULL; not needed */
+	kap->write_set = NULL;
+	kap->except_set = NULL;
 
 	error = getbits(bytes, read, &kap->read_set, &read_tmp);
 	if (error == 0)
