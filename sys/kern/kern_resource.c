@@ -892,7 +892,6 @@ uicreate(uid_t uid)
 	spin_init(&uip->ui_lock);
 	uip->ui_uid = uid;
 	uip->ui_ref = 1;	/* we're returning a ref */
-	uip->ui_krate.freq = 1;	/* descriptor limit warnings */
 	varsymset_init(&uip->ui_varsymset, NULL);
 
 	/*

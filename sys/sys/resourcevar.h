@@ -69,6 +69,15 @@ struct uprof {			/* profile arguments */
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 /*
+ * For krateprintf()
+ */
+struct krate {
+	int freq;
+	int ticks;
+	int count;
+};
+
+/*
  * Kernel shareable process resource limits.  Because this structure
  * is moderately large but changes infrequently, it is normally
  * shared copy-on-write after forks.
@@ -103,7 +112,6 @@ struct uidinfo {
 	int	ui_ref;			/* reference count */
 	int	ui_posixlocks;		/* number of POSIX locks */
 	int	ui_openfiles;		/* number of open files */
-	struct krate ui_krate;		/* kprintf warnings */
 	struct varsymset ui_varsymset;	/* variant symlinks */
 };
 

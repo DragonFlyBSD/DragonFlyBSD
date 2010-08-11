@@ -119,6 +119,8 @@ static MALLOC_DEFINE(M_FILEDESC_TO_LEADER, "file desc to leader",
 MALLOC_DEFINE(M_FILE, "file", "Open file structure");
 static MALLOC_DEFINE(M_SIGIO, "sigio", "sigio structures");
 
+static struct krate krate_uidinfo = { .freq = 1 };
+
 static	 d_open_t  fdopen;
 #define NUMFDESC 64
 
@@ -1127,7 +1129,7 @@ fdalloc(struct proc *p, int want, int *result)
 	if (p->p_ucred->cr_uid && fdp->fd_nfiles >= minfilesperproc) {
 		uip = p->p_ucred->cr_uidinfo;
 		if (uip->ui_openfiles > maxfilesperuser) {
-			krateprintf(&uip->ui_krate,
+			krateprintf(&krate_uidinfo,
 				    "Warning: user %d pid %d (%s) ran out of "
 				    "file descriptors (%d/%d)\n",
 				    p->p_ucred->cr_uid, (int)p->p_pid,
