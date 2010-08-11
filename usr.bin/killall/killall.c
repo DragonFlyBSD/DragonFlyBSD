@@ -28,10 +28,9 @@
  * $DragonFly: src/usr.bin/killall/killall.c,v 1.9 2007/02/01 10:33:26 corecode Exp $
  */
 
-#include <sys/cdefs.h>
+#include <sys/user.h>
 #include <sys/param.h>
 #include <sys/stat.h>
-#include <sys/user.h>
 #include <sys/sysctl.h>
 #include <fcntl.h>
 #include <dirent.h>

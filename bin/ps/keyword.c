@@ -35,13 +35,13 @@
  * $DragonFly: src/bin/ps/keyword.c,v 1.30 2007/11/25 18:10:06 swildner Exp $
  */
 
+#include <sys/user.h>
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/queue.h>
 #include <sys/resource.h>
 #include <sys/sysctl.h>
 #include <sys/ucred.h>
-#include <sys/user.h>
 
 #include <err.h>
 #include <errno.h>

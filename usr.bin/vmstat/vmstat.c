@@ -36,11 +36,9 @@
  * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.23 2008/02/19 18:19:15 thomas Exp $
  */
 
-#define _KERNEL_STRUCTURES
-
+#include <sys/user.h>
 #include <sys/param.h>
 #include <sys/time.h>
-#include <sys/user.h>
 #include <sys/uio.h>
 #include <sys/namei.h>
 #include <sys/malloc.h>

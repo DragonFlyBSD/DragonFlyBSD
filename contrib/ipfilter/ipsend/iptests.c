@@ -6,6 +6,8 @@
 #if defined(__sgi) && (IRIX > 602)
 # include <sys/ptimers.h>
 #endif
+#include <sys/user.h>
+#include <sys/proc.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -26,8 +28,6 @@
 #undef  KERNEL
 #if !defined(solaris) && !defined(linux) && !defined(__sgi)
 # include <nlist.h>
-# include <sys/user.h>
-# include <sys/proc.h>
 #endif
 #if !defined(ultrix) && !defined(hpux) && !defined(linux) && !defined(__sgi)
 # include <kvm.h>

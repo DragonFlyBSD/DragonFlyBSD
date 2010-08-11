@@ -35,11 +35,9 @@
  * $DragonFly: src/usr.bin/ktrace/subr.c,v 1.6 2005/06/01 03:05:40 swildner Exp $
  */
 
-#define _KERNEL_STRUCTURES
-
+#include <sys/user.h>
 #include <sys/param.h>
 #include <sys/file.h>
-#include <sys/user.h>
 #include <sys/time.h>
 #include <sys/ktrace.h>
 

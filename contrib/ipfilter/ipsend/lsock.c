@@ -10,6 +10,7 @@ static const char rcsid[] = "@(#)$Id: lsock.c,v 2.1.4.3 2002/12/06 11:40:36 darr
 #if defined(__sgi) && (IRIX > 602)
 # include <sys/ptimers.h>
 #endif
+#include <sys/user.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
@@ -39,7 +40,6 @@ static const char rcsid[] = "@(#)$Id: lsock.c,v 2.1.4.3 2002/12/06 11:40:36 darr
 #include <linux/sched.h>
 #include <linux/netdevice.h>
 #include <nlist.h>
-#include <sys/user.h>
 #include <sys/socket.h>
 #include <math.h>
 #include <netinet/in.h>

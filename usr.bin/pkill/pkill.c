@@ -37,10 +37,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/user.h>
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/sysctl.h>
-#include <sys/user.h>
 #include <sys/queue.h>
 #include <sys/stat.h>
 #include <sys/fcntl.h>

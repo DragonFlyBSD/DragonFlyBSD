@@ -27,11 +27,9 @@
  * $DragonFly: src/usr.bin/pctrack/pctrack.c,v 1.2 2008/09/02 11:50:46 matthias Exp $
  */
 
-#include <sys/cdefs.h>
-
+#include <sys/kinfo.h>
 #include <sys/types.h>
 #include <sys/ktr.h>
-#include <sys/kinfo.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/queue.h>

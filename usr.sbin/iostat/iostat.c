@@ -100,6 +100,7 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/user.h>
 #include <sys/param.h>
 #include <sys/errno.h>
 

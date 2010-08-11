@@ -63,7 +63,7 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/param.h>
+#include <sys/user.h>
 
 #include <err.h>
 #include <devstat.h>

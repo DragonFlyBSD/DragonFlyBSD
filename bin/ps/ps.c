@@ -36,8 +36,8 @@
  * $DragonFly: src/bin/ps/ps.c,v 1.25 2008/01/10 14:18:39 matthias Exp $
  */
 
-#include <sys/param.h>
 #include <sys/user.h>
+#include <sys/param.h>
 #include <sys/time.h>
 #include <sys/queue.h>
 #include <sys/resource.h>

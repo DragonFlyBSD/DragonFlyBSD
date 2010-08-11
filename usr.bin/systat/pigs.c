@@ -39,10 +39,9 @@
  * Pigs display from Bill Reeves at Lucasfilm
  */
 
-#define _KERNEL_STRUCTURES
+#include <sys/user.h>
 #include <sys/param.h>
 #include <sys/time.h>
-#include <sys/user.h>
 #include <sys/sysctl.h>
 
 #include <curses.h>

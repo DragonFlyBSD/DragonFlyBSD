@@ -36,7 +36,7 @@
  * $DragonFly: src/usr.bin/time/time.c,v 1.11 2005/03/04 16:54:37 liamfoy Exp $
  */
 
-#include <sys/param.h>
+#include <sys/user.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/signal.h>

@@ -35,9 +35,9 @@
  * $DragonFly: src/usr.bin/w/proc_compare.c,v 1.9 2007/02/18 16:15:24 corecode Exp $
  */
 
+#include <sys/user.h>
 #include <sys/param.h>
 #include <sys/time.h>
-#include <sys/user.h>
 
 #include "extern.h"
 

@@ -39,11 +39,10 @@
  * Cursed vmstat -- from Robert Elz.
  */
 
-#define _KERNEL_STRUCTURES
+#include <sys/user.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/time.h>
-#include <sys/user.h>
 #include <sys/uio.h>
 #include <sys/namei.h>
 #include <sys/sysctl.h>

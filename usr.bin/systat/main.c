@@ -36,6 +36,7 @@
  * $DragonFly: src/usr.bin/systat/main.c,v 1.7 2008/11/10 04:59:45 swildner Exp $
  */
 
+#include <sys/user.h>
 #include <sys/param.h>
 #include <sys/time.h>
 

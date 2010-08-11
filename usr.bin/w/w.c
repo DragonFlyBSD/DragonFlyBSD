@@ -42,11 +42,11 @@
  * This program is similar to the systat command on Tenex/Tops 10/20
  *
  */
+#include <sys/user.h>
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/sysctl.h>
-#include <sys/user.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/tty.h>

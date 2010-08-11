@@ -38,8 +38,8 @@
  * Copyright (c) 1984 by Sun Microsystems, Inc.
  */
 
-#include <sys/param.h>
 #include <sys/kinfo.h>
+#include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
 #include <sys/time.h>

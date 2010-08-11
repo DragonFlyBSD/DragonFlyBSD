@@ -34,7 +34,6 @@
  * $DragonFly: src/usr.bin/systat/extern.h,v 1.8 2008/11/10 04:59:45 swildner Exp $
  */
 
-#include <sys/cdefs.h>
 #include <fcntl.h>
 #include <kvm.h>
 

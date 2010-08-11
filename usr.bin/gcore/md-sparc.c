@@ -39,11 +39,11 @@
  * $DragonFly: src/usr.bin/gcore/md-sparc.c,v 1.5 2005/04/10 20:55:38 drhodus Exp $
  */
 
+#include <sys/user.h>
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/file.h>
 #include <sys/stat.h>
-#include <sys/user.h>
 #include <sys/sysctl.h>
 #include <machine/vmparam.h>
 

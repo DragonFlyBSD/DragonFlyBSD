@@ -31,11 +31,11 @@
  *
  */
 
+#include <sys/user.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/param.h>
-#include <sys/user.h>
 #include <net/if.h>
 #include <netinet/in.h>
 #include <netinet/in_systm.h>

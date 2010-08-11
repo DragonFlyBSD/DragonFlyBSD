@@ -23,8 +23,9 @@
  * $DragonFly: src/usr.bin/top/machine.c,v 1.26 2008/10/16 01:52:33 swildner Exp $
  */
 
-#include <sys/time.h>
+#include <sys/user.h>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <sys/signal.h>
 #include <sys/param.h>
 
@@ -38,8 +39,6 @@
 #include <sys/errno.h>
 #include <sys/sysctl.h>
 #include <sys/file.h>
-#include <sys/time.h>
-#include <sys/user.h>
 #include <sys/vmmeter.h>
 #include <sys/resource.h>
 #include <sys/rtprio.h>

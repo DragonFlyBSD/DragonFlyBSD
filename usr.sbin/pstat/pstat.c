@@ -36,8 +36,8 @@
  * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.22 2008/03/04 18:10:44 swildner Exp $
  */
 
-#define _KERNEL_STRUCTURES
-
+#include <sys/user.h>
+#include <sys/kinfo.h>
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/vnode.h>
@@ -60,8 +60,6 @@
 #include <sys/conf.h>
 #include <sys/blist.h>
 
-#include <sys/kinfo.h>
-#include <sys/user.h>
 #include <sys/sysctl.h>
 
 #include <err.h>

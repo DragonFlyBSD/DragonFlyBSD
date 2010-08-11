@@ -36,11 +36,9 @@
  * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.26 2008/05/03 04:13:12 dillon Exp $
  */
 
-#define	_KERNEL_STRUCTURES
-
+#include <sys/user.h>
 #include <sys/param.h>
 #include <sys/time.h>
-#include <sys/user.h>
 #include <sys/stat.h>
 #include <sys/vnode.h>
 #include <sys/socket.h>

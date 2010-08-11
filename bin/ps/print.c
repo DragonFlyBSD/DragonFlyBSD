@@ -35,13 +35,13 @@
  * $DragonFly: src/bin/ps/print.c,v 1.34 2008/11/10 14:56:33 swildner Exp $
  */
 
+#include <sys/user.h>
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
 
 #include <sys/ucred.h>
-#include <sys/user.h>
 #include <sys/sysctl.h>
 #include <sys/rtprio.h>
 #include <vm/vm.h>

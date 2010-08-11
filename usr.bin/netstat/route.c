@@ -35,6 +35,7 @@
  * $DragonFly: src/usr.bin/netstat/route.c,v 1.13 2008/07/07 22:02:10 nant Exp $
  */
 
+#include <sys/kinfo.h>
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/time.h>

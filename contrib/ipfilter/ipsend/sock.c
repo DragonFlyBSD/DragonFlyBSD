@@ -5,6 +5,8 @@
  *
  * See the IPFILTER.LICENCE file for details on licencing.
  */
+#include <sys/user.h>
+
 #if defined(__sgi) && (IRIX > 602)
 # include <sys/ptimers.h>
 #endif
@@ -36,7 +38,6 @@
 #undef  _KERNEL
 #undef  KERNEL
 #include <nlist.h>
-#include <sys/user.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/proc.h>
