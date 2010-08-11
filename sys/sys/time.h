@@ -178,7 +178,7 @@ struct clockinfo {
 #define TIMER_ABSTIME	0x1	/* absolute timer */
 #endif
 
-#ifdef _KERNEL
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 /*
  * For krateprintf()
@@ -192,6 +192,7 @@ struct krate {
 #endif
 
 #ifdef _KERNEL
+
 extern time_t	time_second;
 extern int64_t	ntp_tick_permanent;
 extern int64_t	ntp_tick_acc;

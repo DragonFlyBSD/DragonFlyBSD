@@ -23,14 +23,12 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-
 /*
  * AMD64 machine dependent routines for kvm and minidumps.
  */
 
+#include <sys/user.h>	   /* MUST BE FIRST */
 #include <sys/param.h>
-#include <sys/user.h>
 #include <sys/proc.h>
 #include <sys/stat.h>
 #include <sys/mman.h>

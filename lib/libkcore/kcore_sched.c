@@ -34,6 +34,7 @@
  * $DragonFly: src/lib/libkcore/kcore_sched.c,v 1.5 2006/08/03 16:40:46 swildner Exp $
  */
 
+#include <sys/kinfo.h>
 #include <sys/param.h>
 
 #include <assert.h>

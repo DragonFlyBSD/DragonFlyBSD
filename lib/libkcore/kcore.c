@@ -34,6 +34,7 @@
  * $DragonFly: src/lib/libkcore/kcore.c,v 1.6 2005/02/03 17:28:40 joerg Exp $
  */
 
+#include <sys/kinfo.h>
 #include <sys/param.h>
 #include <sys/fcntl.h>
 

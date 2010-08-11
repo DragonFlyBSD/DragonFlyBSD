@@ -66,6 +66,8 @@ struct uprof {			/* profile arguments */
 	u_long	pr_ticks;	/* temp storage for ticks until AST */
 };
 
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
 /*
  * Kernel shareable process resource limits.  Because this structure
  * is moderately large but changes infrequently, it is normally
@@ -104,6 +106,8 @@ struct uidinfo {
 	struct krate ui_krate;		/* kprintf warnings */
 	struct varsymset ui_varsymset;	/* variant symlinks */
 };
+
+#endif
 
 #ifdef _KERNEL
 

@@ -34,6 +34,7 @@
  * $DragonFly: src/lib/libkinfo/kinfo_sched.c,v 1.3 2005/04/27 16:16:30 hmp Exp $
  */
 
+#include <sys/kinfo.h>
 #include <sys/param.h>
 #include <sys/sysctl.h>
 

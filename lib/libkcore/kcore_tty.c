@@ -34,6 +34,7 @@
  * $DragonFly: src/lib/libkcore/kcore_tty.c,v 1.1 2004/12/22 11:01:49 joerg Exp $
  */
 
+#include <sys/kinfo.h>
 #include <sys/param.h>
 
 #include <err.h>

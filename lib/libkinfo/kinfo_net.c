@@ -34,6 +34,7 @@
  * $DragonFly: src/lib/libkinfo/kinfo_net.c,v 1.1 2005/05/01 04:05:35 hmp Exp $
  */
 
+#include <sys/kinfo.h>
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>

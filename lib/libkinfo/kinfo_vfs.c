@@ -34,6 +34,7 @@
  * $DragonFly: src/lib/libkinfo/kinfo_vfs.c,v 1.4 2005/01/31 16:51:09 joerg Exp $
  */
 
+#include <sys/kinfo.h>
 #include <sys/param.h>
 #include <sys/sysctl.h>
 

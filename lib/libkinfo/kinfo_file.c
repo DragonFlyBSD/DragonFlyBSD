@@ -34,6 +34,7 @@
  * $DragonFly: src/lib/libkinfo/kinfo_file.c,v 1.4 2004/12/21 15:07:42 joerg Exp $
  */
 
+#include <sys/kinfo.h>
 #include <sys/param.h>
 #include <sys/sysctl.h>
 

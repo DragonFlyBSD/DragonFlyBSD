@@ -37,6 +37,10 @@
 #ifndef _SYS_KINFO_H_
 #define _SYS_KINFO_H_
 
+#ifndef _KERNEL_STRUCTURES
+#define _KERNEL_STRUCTURES
+#endif
+
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
@@ -45,9 +49,6 @@
 #endif
 #include <sys/resource.h>
 #include <sys/rtprio.h>
-#ifndef _KERNEL_STRUCTURES
-#define _KERNEL_STRUCTURES
-#endif
 #include <sys/proc.h>
 
 struct kinfo_file {

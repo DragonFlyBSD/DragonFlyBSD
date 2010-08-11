@@ -34,6 +34,7 @@
  * $DragonFly: src/lib/libkinfo/kinfo_pcpu.c,v 1.3 2005/05/01 04:05:35 hmp Exp $
  */
 
+#include <sys/kinfo.h>
 #include <sys/param.h>
 #include <sys/socket.h>
 
