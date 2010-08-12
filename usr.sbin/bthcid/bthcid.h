@@ -45,15 +45,20 @@ int		 init_control		(const char *, mode_t);
 int		 send_client_request	(bdaddr_t *, bdaddr_t *, int);
 uint8_t		*lookup_pin		(bdaddr_t *, bdaddr_t *);
 uint8_t		*lookup_pin_conf	(bdaddr_t *, bdaddr_t *);
+void		process_control		(int);
+void		process_client		(int, void *);
+void		process_item		(void *);
 
 /* hci.c */
-int		 init_hci		(bdaddr_t *);
-int		 send_pin_code_reply	(int, struct sockaddr_bt *, bdaddr_t *, uint8_t *);
+int		init_hci		(bdaddr_t *);
+void		process_hci		(int);
+int		send_pin_code_reply	(int, struct sockaddr_bt *, bdaddr_t *, uint8_t *);
 
 #define BTHCID_BUFFER_SIZE	512
 #define BTHCID_IDENT		"bthcid"
 #define BTHCID_PIDFILE		"/var/run/" BTHCID_IDENT ".pid"
 #define BTHCID_KEYSFILE		"/var/db/"  BTHCID_IDENT ".keys"
+#define BTHCID_KQ_EVENTS	64
 
 struct link_key
 {
@@ -67,6 +72,7 @@ typedef struct link_key		link_key_t;
 typedef struct link_key *	link_key_p;
 
 extern const char		*config_file;
+extern int			hci_kq;
 
 #if __config_debug__
 void		dump_config	(void);

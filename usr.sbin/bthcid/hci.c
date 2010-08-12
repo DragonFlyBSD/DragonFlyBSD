@@ -57,19 +57,15 @@
 
 #include <sys/ioctl.h>
 #include <sys/time.h>
+#include <sys/event.h>
+#include <sys/types.h>
 #include <bluetooth.h>
 #include <errno.h>
-#include <event.h>
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
 
 #include "bthcid.h"
-
-static struct event	hci_ev;
-
-static void process_hci
-		(int, short, void *);
 
 static int process_pin_code_request_event
 		(int, struct sockaddr_bt *, bdaddr_t *);
@@ -91,6 +87,8 @@ init_hci(bdaddr_t *bdaddr)
 {
 	struct sockaddr_bt	sa;
 	struct hci_filter	filter;
+	struct kevent		change;
+	struct timespec		timeout = { 0, 0 };
 	int			hci;
 
 	hci = socket(PF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
@@ -117,18 +115,18 @@ init_hci(bdaddr_t *bdaddr)
 		return -1;
 	}
 
-	event_set(&hci_ev, hci, EV_READ | EV_PERSIST, process_hci, NULL);
-	if (event_add(&hci_ev, NULL) < 0) {
+	EV_SET(&change, hci, EVFILT_READ, EV_ADD, 0, 0, NULL);
+	if (kevent(hci_kq, &change, 1, NULL, 0, &timeout) == -1) {
 		close(hci);
 		return -1;
 	}
 
-	return 0;
+	return hci;
 }
 
 /* Process an HCI event */
-static void
-process_hci(int sock, short ev __unused, void *arg __unused)
+void
+process_hci(int sock)
 {
 	char			 buffer[HCI_EVENT_PKT_SIZE];
 	hci_event_hdr_t		*event = (hci_event_hdr_t *)buffer;

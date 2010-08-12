@@ -33,11 +33,12 @@
 #include <sys/ioctl.h>
 #include <sys/queue.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/event.h>
 #include <sys/time.h>
 #include <sys/un.h>
 #include <bluetooth.h>
 #include <errno.h>
-#include <event.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
@@ -51,7 +52,6 @@
  * receive PIN requests.
  */
 struct client {
-	struct event		ev;
 	int			fd;		/* client descriptor */
 	LIST_ENTRY(client)	next;
 };
@@ -61,7 +61,6 @@ struct client {
  * request. The event is used to expire the item.
  */
 struct item {
-	struct event	 ev;
 	bdaddr_t	 laddr;			/* local device BDADDR */
 	bdaddr_t	 raddr;			/* remote device BDADDR */
 	uint8_t		 pin[HCI_PIN_SIZE];	/* PIN */
@@ -69,14 +68,8 @@ struct item {
 	LIST_ENTRY(item) next;
 };
 
-static struct event		control_ev;
-
 static LIST_HEAD(,client)	client_list;
 static LIST_HEAD(,item)		item_list;
-
-static void process_control	(int, short, void *);
-static void process_client	(int, short, void *);
-static void process_item	(int, short, void *);
 
 #define PIN_REQUEST_TIMEOUT	30	/* Request is valid */
 #define PIN_TIMEOUT		300	/* PIN is valid */
@@ -85,6 +78,8 @@ int
 init_control(const char *name, mode_t mode)
 {
 	struct sockaddr_un	un;
+	struct kevent		change;
+	struct timespec		timeout = { 0, 0 };
 	int			ctl;
 
 	LIST_INIT(&client_list);
@@ -121,22 +116,24 @@ init_control(const char *name, mode_t mode)
 		return -1;
 	}
 
-	event_set(&control_ev, ctl, EV_READ | EV_PERSIST, process_control, NULL);
-	if (event_add(&control_ev, NULL) < 0) {
+	EV_SET(&change, ctl, EVFILT_READ, EV_ADD, 0, 0, NULL);
+	if (kevent(hci_kq, &change, 1, NULL, 0, &timeout) == -1) {
 		close(ctl);
 		unlink(name);
 		return -1;
 	}
 
-	return 0;
+	return ctl;
 }
 
 /* Process control socket event */
-static void
-process_control(int sock, short ev __unused, void *arg __unused)
+void
+process_control(int sock)
 {
 	struct sockaddr_un	un;
 	socklen_t		n;
+	struct kevent		change;
+	struct timespec		timeout = { 0, 0 };
 	int			fd;
 	struct client		*cl;
 
@@ -164,8 +161,8 @@ process_control(int sock, short ev __unused, void *arg __unused)
 	memset(cl, 0, sizeof(struct client));
 	cl->fd = fd;
 
-	event_set(&cl->ev, fd, EV_READ | EV_PERSIST, process_client, cl);
-	if (event_add(&cl->ev, NULL) < 0) {
+	EV_SET(&change, cl->fd, EVFILT_READ, EV_ADD, 0, 0, cl);
+	if (kevent(hci_kq, &change, 1, NULL, 0, &timeout) == -1) {
 		syslog(LOG_ERR, "Could not add client event");
 		free(cl);
 		close(fd);
@@ -177,14 +174,15 @@ process_control(int sock, short ev __unused, void *arg __unused)
 }
 
 /* Process client response packet */
-static void
-process_client(int sock, short ev __unused, void *arg)
+void
+process_client(int sock, void *arg)
 {
 	bthcid_pin_response_t	 rp;
-	struct timeval		 tv;
 	struct sockaddr_bt	 sa;
 	struct client		*cl = arg;
 	struct item		*item;
+	struct kevent		change;
+	struct timespec		timeout = { 0, 0 };
 	int			 n;
 
 	n = recv(sock, &rp, sizeof(rp), 0);
@@ -207,7 +205,8 @@ process_client(int sock, short ev __unused, void *arg)
 		    || bdaddr_same(&rp.raddr, &item->raddr) == 0)
 			continue;
 
-		evtimer_del(&item->ev);
+		EV_SET(&change, sock, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
+		kevent(hci_kq, &change, 1, NULL, 0, &timeout);
 		if (item->hci != -1) {
 			memset(&sa, 0, sizeof(sa));
 			sa.bt_len = sizeof(sa);
@@ -231,7 +230,6 @@ process_client(int sock, short ev __unused, void *arg)
 	memset(item, 0, sizeof(struct item));
 	bdaddr_copy(&item->laddr, &rp.laddr);
 	bdaddr_copy(&item->raddr, &rp.raddr);
-	evtimer_set(&item->ev, process_item, item);
 	LIST_INSERT_HEAD(&item_list, item, next);
 
 newpin:
@@ -240,10 +238,8 @@ newpin:
 	memcpy(item->pin, rp.pin, HCI_PIN_SIZE);
 	item->hci = -1;
 
-	tv.tv_sec = PIN_TIMEOUT;
-	tv.tv_usec = 0;
-
-	if (evtimer_add(&item->ev, &tv) < 0) {
+	EV_SET(&change, sock, EVFILT_TIMER, EV_ADD, 0, PIN_TIMEOUT * 1000, NULL);
+	if (kevent(hci_kq, &change, 1, NULL, 0, &timeout) == -1) {
 		syslog(LOG_ERR, "Cannot add event timer for item");
 		LIST_REMOVE(item, next);
 		free(item);
@@ -257,8 +253,9 @@ send_client_request(bdaddr_t *laddr, bdaddr_t *raddr, int hci)
 	bthcid_pin_request_t	 cp;
 	struct client		*cl;
 	struct item		*item;
-	int			 n = 0;
-	struct timeval		 tv;
+	struct kevent		change;
+	struct timespec		timeout = { 0, 0 };
+	int			n = 0;
 
 	memset(&cp, 0, sizeof(cp));
 	bdaddr_copy(&cp.laddr, laddr);
@@ -288,12 +285,8 @@ send_client_request(bdaddr_t *laddr, bdaddr_t *raddr, int hci)
 	bdaddr_copy(&item->laddr, laddr);
 	bdaddr_copy(&item->raddr, raddr);
 	item->hci = hci;
-	evtimer_set(&item->ev, process_item, item);
-
-	tv.tv_sec = cp.time;
-	tv.tv_usec = 0;
-
-	if (evtimer_add(&item->ev, &tv) < 0) {
+	EV_SET(&change, item->hci, EVFILT_TIMER, EV_ADD, 0, cp.time * 1000, item);
+	if (kevent(hci_kq, &change, 1, NULL, 0, &timeout) == -1) {
 		syslog(LOG_ERR, "Cannot add request timer");
 		free(item);
 		return 0;
@@ -304,14 +297,17 @@ send_client_request(bdaddr_t *laddr, bdaddr_t *raddr, int hci)
 }
 
 /* Process item event (by expiring it) */
-static void
-process_item(int fd __unused, short ev __unused, void *arg)
+void
+process_item(void *arg)
 {
 	struct item *item = arg;
+	struct kevent change;
+	struct timespec timeout = { 0, 0 };
 
 	syslog(LOG_DEBUG, "PIN for %s expired", bt_ntoa(&item->raddr, NULL));
 	LIST_REMOVE(item, next);
-	evtimer_del(&item->ev);
+	EV_SET(&change, item->hci, EVFILT_TIMER, EV_DELETE, 0, 0, 0);
+	kevent(hci_kq, &change, 1, NULL, 0, &timeout);
 	free(item);
 }
 
@@ -321,6 +317,8 @@ lookup_pin(bdaddr_t *laddr, bdaddr_t *raddr)
 {
 	static uint8_t pin[HCI_PIN_SIZE];
 	struct item *item;
+	struct kevent change;
+	struct timespec timeout = { 0, 0 };
 
 	LIST_FOREACH(item, &item_list, next) {
 		if (bdaddr_same(raddr, &item->raddr) == 0)
@@ -337,7 +335,8 @@ lookup_pin(bdaddr_t *laddr, bdaddr_t *raddr)
 		memcpy(pin, item->pin, sizeof(pin));
 
 		LIST_REMOVE(item, next);
-		evtimer_del(&item->ev);
+		EV_SET(&change, item->hci, EVFILT_TIMER, EV_DELETE, 0, 0, 0);
+		kevent(hci_kq, &change, 1, NULL, 0, &timeout);
 		free(item);
 
 		return pin;

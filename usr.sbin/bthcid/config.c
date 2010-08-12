@@ -33,7 +33,6 @@
 #include <sys/time.h>
 #include <bluetooth.h>
 #include <errno.h>
-#include <event.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
