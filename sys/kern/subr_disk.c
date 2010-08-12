@@ -619,6 +619,10 @@ _setdiskinfo(struct disk *disk, struct disk_info *info)
 		disk->d_cdev->si_bsize_phys = disk->d_rawdev->si_bsize_phys;
 		disk->d_cdev->si_bsize_best = disk->d_rawdev->si_bsize_best;
 	}
+
+	/* Add the serial number to the udev_dictionary */
+	if (info->d_serialno)
+		udev_dict_set_cstr(disk->d_cdev, "serno", info->d_serialno);
 }
 
 /*
