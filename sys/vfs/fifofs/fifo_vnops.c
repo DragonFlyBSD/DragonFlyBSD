@@ -422,7 +422,7 @@ filt_fiforead(struct knote *kn, long hint)
 
 	lwkt_gettoken(&vp->v_token);
 	kn->kn_data = so->so_rcv.ssb_cc;
-	if (so->so_state & SS_ISDISCONNECTED) {
+	if ((so->so_state & SS_ISDISCONNECTED) && kn->kn_data == 0) {
 		kn->kn_flags |= EV_EOF;
 		lwkt_reltoken(&vp->v_token);
 		return (1);

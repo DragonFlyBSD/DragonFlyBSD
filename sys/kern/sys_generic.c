@@ -1287,6 +1287,7 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 	struct poll_kevent_copyin_args *pkap;
 	struct pollfd *pfd;
 	struct kevent kev;
+	int count_res;
 	int i;
 	u_int pi;
 
@@ -1314,14 +1315,16 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 		if (kevp[i].ident == pfd->fd) {
 			/*
 			 * A single descriptor may generate an error against
-			 * more than one filter, make sure to set the appropriate
-			 * flags but do not increment (*res) more than once.
+			 * more than one filter, make sure to set the
+			 * appropriate flags but do not increment (*res)
+			 * more than once.
 			 */
+			count_res = (pfd->revents == 0);
 			if (kevp[i].flags & EV_ERROR) {
 				switch(kevp[i].data) {
 				case EBADF:
 					/* Bad file descriptor */
-					if (pfd->revents == 0)
+					if (count_res)
 						++*res;
 					pfd->revents |= POLLNVAL;
 					break;
@@ -1339,7 +1342,7 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 					if (kevp[i].filter != EVFILT_READ &&
 					    kevp[i].filter != EVFILT_WRITE &&
 					    kevp[i].data != EOPNOTSUPP) {
-						if (pfd->revents == 0)
+						if (count_res == 0)
 							++*res;
 						pfd->revents |= POLLERR;
 					}
@@ -1355,12 +1358,8 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 				continue;
 			}
 
-			if (kevp[i].flags & EV_EOF) {
-				if (pfd->revents == 0)
-					++*res;
+			if (kevp[i].flags & EV_EOF)
 				pfd->revents |= POLLHUP;
-				continue;
-			}
 
 			switch (kevp[i].filter) {
 			case EVFILT_READ:
@@ -1388,8 +1387,8 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 					pi, pkap->nfds, pfd->fd, pfd->revents);
 			}
 
-			++*res;
-			continue;
+			if (count_res && pfd->revents)
+				++*res;
 		} else {
 			if (nseldebug) {
 				kprintf("poll index %d mismatch %ju/%d\n",

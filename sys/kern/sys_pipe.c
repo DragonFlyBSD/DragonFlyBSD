@@ -1304,7 +1304,11 @@ filt_piperead(struct knote *kn, long hint)
 	lwkt_gettoken(&rpipe->pipe_wlock);
 
 	kn->kn_data = rpipe->pipe_buffer.windex - rpipe->pipe_buffer.rindex;
-	if (rpipe->pipe_state & PIPE_REOF) {
+
+	/*
+	 * Only set EOF if all data has been exhausted
+	 */
+	if ((rpipe->pipe_state & PIPE_REOF) && kn->kn_data == 0) {
 		kn->kn_flags |= EV_EOF; 
 		ready = 1;
 	}
