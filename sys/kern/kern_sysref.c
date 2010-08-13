@@ -153,6 +153,8 @@ sysref_alloc(struct sysref_class *srclass)
 	 */
 	data = objcache_get(srclass->oc, M_WAITOK);
 	sr = (struct sysref *)(data + srclass->offset);
+	KKASSERT(sr->flags & SRF_PUTAWAY);
+	sr->flags &= ~SRF_PUTAWAY;
 
 	/*
 	 * Refcnt isn't touched while it is zero.  The objcache ctor
@@ -216,7 +218,7 @@ sysref_ctor(void *data, void *privdata, int ocflags)
 	sr->sysid = gd->gd_sysid_alloc;
 	KKASSERT(((int)sr->sysid & ncpus_fit_mask) == gd->gd_cpuid);
 	/* sr->refcnt= 0; already zero */
-	sr->flags = SRF_ALLOCATED;
+	sr->flags = SRF_ALLOCATED | SRF_PUTAWAY;
 	sr->srclass = srclass;
 
 	sa = &sysref_array[gd->gd_cpuid];
@@ -299,6 +301,8 @@ _sysref_put(struct sysref *sr)
 	int count;
 	void *data;
 
+	KKASSERT((sr->flags & SRF_PUTAWAY) == 0);
+
 	for (;;) {
 		count = sr->refcnt;
 		if (count > 1) {
@@ -341,6 +345,7 @@ _sysref_put(struct sysref *sr)
 			KKASSERT(count == -0x40000000);
 			if (atomic_cmpset_int(&sr->refcnt, count, 0)) {
 				KKASSERT(sr->flags & SRF_ALLOCATED);
+				sr->flags |= SRF_PUTAWAY;
 				data = (char *)sr - sr->srclass->offset;
 				if (sr->flags & SRF_SYSIDUSED)
 					objcache_dtor(sr->srclass->oc, data);

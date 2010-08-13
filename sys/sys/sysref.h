@@ -116,6 +116,7 @@ struct sysref {
 
 #define SRF_SYSIDUSED	0x0001		/* sysid was used for access */
 #define SRF_ALLOCATED	0x0002		/* sysref_alloc used to allocate */
+#define SRF_PUTAWAY	0x0004		/* in objcache */
 
 RB_HEAD(sysref_rb_tree, sysref);
 RB_PROTOTYPE2(sysref_rb_tree, sysref, rbnode, rb_sysref_compare, sysid_t);
