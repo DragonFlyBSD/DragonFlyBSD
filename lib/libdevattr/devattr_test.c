@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <err.h>
 #include "devattr.h"
 
 int main(void)
@@ -15,8 +16,16 @@ int main(void)
 
 	printf("1\n");
 	udev = udev_new();
+	if(udev == NULL) {
+		perror("udev_new");
+		exit(1);
+	}
 	printf("2\n");
 	udev_enum = udev_enumerate_new(udev);
+	if(udev == NULL) {
+		perror("udev_enumerate_new");
+		exit(1);
+	}
 	printf("3\n");
 
 	ret = udev_enumerate_add_match_expr(udev_enum, "name", "da*");
