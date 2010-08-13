@@ -1358,23 +1358,46 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 				continue;
 			}
 
-			if (kevp[i].flags & EV_EOF)
-				pfd->revents |= POLLHUP;
-
 			switch (kevp[i].filter) {
 			case EVFILT_READ:
+#if 0
+				/*
+				 * EOF on the read side can indicate a
+				 * half-closed situation and not necessarily
+				 * a disconnect, so depend on the user
+				 * issuing a read() and getting 0 bytes back.
+				 */
+				if (kevp[i].flags & EV_EOF)
+					pfd->revents |= POLLHUP;
+#endif
 				if (pfd->events & POLLIN)
 					pfd->revents |= POLLIN;
 				if (pfd->events & POLLRDNORM)
 					pfd->revents |= POLLRDNORM;
 				break;
 			case EVFILT_WRITE:
-				if (pfd->events & POLLOUT)
-					pfd->revents |= POLLOUT;
-				if (pfd->events & POLLWRNORM)
-					pfd->revents |= POLLWRNORM;
+				/*
+				 * As per the OpenGroup POLLHUP is mutually
+				 * exclusive with the writability flags.  I
+				 * consider this a bit broken but...
+				 *
+				 * In this case a disconnect is implied even
+				 * for a half-closed (write side) situation.
+				 */
+				if (kevp[i].flags & EV_EOF) {
+					pfd->revents |= POLLHUP;
+				} else {
+					if (pfd->events & POLLOUT)
+						pfd->revents |= POLLOUT;
+					if (pfd->events & POLLWRNORM)
+						pfd->revents |= POLLWRNORM;
+				}
 				break;
 			case EVFILT_EXCEPT:
+				/*
+				 * EV_EOF should never be tagged for this
+				 * filter.
+				 */
 				if (pfd->events & POLLPRI)
 					pfd->revents |= POLLPRI;
 				if (pfd->events & POLLRDBAND)
