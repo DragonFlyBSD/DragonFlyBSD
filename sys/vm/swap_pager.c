@@ -260,18 +260,18 @@ static void	swp_pager_async_iodone (struct bio *bio);
  */
 
 static __inline void	swp_pager_freeswapspace(vm_object_t object,
-						daddr_t blk, int npages);
-static __inline daddr_t	swp_pager_getswapspace(vm_object_t object, int npages);
+						swblk_t blk, int npages);
+static __inline swblk_t	swp_pager_getswapspace(vm_object_t object, int npages);
 
 /*
  * Metadata functions
  */
 
 static void swp_pager_meta_convert(vm_object_t);
-static void swp_pager_meta_build(vm_object_t, vm_pindex_t, daddr_t);
+static void swp_pager_meta_build(vm_object_t, vm_pindex_t, swblk_t);
 static void swp_pager_meta_free(vm_object_t, vm_pindex_t, vm_pindex_t);
 static void swp_pager_meta_free_all(vm_object_t);
-static daddr_t swp_pager_meta_ctl(vm_object_t, vm_pindex_t, int);
+static swblk_t swp_pager_meta_ctl(vm_object_t, vm_pindex_t, int);
 
 /*
  * SWP_SIZECHECK() -	update swap_pager_full indication
@@ -474,10 +474,10 @@ swap_pager_dealloc(vm_object_t object)
  * NOTE: vm_token must be held to avoid races with bitmap frees from
  *	 vm_page_remove() via swap_pager_page_removed().
  */
-static __inline daddr_t
+static __inline swblk_t
 swp_pager_getswapspace(vm_object_t object, int npages)
 {
-	daddr_t blk;
+	swblk_t blk;
 
 	ASSERT_LWKT_TOKEN_HELD(&vm_token);
 
@@ -514,7 +514,7 @@ swp_pager_getswapspace(vm_object_t object, int npages)
  */
 
 static __inline void
-swp_pager_freeswapspace(vm_object_t object, daddr_t blk, int npages)
+swp_pager_freeswapspace(vm_object_t object, swblk_t blk, int npages)
 {
 	blist_free(swapblist, blk, npages);
 	vm_swap_size += npages;
@@ -667,7 +667,7 @@ int
 swap_pager_reserve(vm_object_t object, vm_pindex_t start, vm_size_t size)
 {
 	int n = 0;
-	daddr_t blk = SWAPBLK_NONE;
+	swblk_t blk = SWAPBLK_NONE;
 	vm_pindex_t beg = start;	/* save start index */
 
 	crit_enter();
@@ -741,7 +741,7 @@ swap_pager_copy(vm_object_t srcobject, vm_object_t dstobject,
 	 * transfer source to destination.
 	 */
 	for (i = 0; i < dstobject->size; ++i) {
-		daddr_t dstaddr;
+		swblk_t dstaddr;
 
 		/*
 		 * Locate (without changing) the swapblk on the destination,
@@ -756,7 +756,7 @@ swap_pager_copy(vm_object_t srcobject, vm_object_t dstobject,
 			 * Destination has no swapblk and is not resident,
 			 * copy source.
 			 */
-			daddr_t srcaddr;
+			swblk_t srcaddr;
 
 			srcaddr = swp_pager_meta_ctl(srcobject,
 						     base_index + i, SWM_POP);
@@ -810,7 +810,7 @@ swap_pager_copy(vm_object_t srcobject, vm_object_t dstobject,
 boolean_t
 swap_pager_haspage(vm_object_t object, vm_pindex_t pindex)
 {
-	daddr_t blk0;
+	swblk_t blk0;
 
 	/*
 	 * do we have good backing store at the requested index ?
@@ -966,7 +966,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 	crit_enter();
 	lwkt_gettoken(&vm_token);
 	while (count > 0) {
-		daddr_t blk;
+		swblk_t blk;
 
 		/*
 		 * Obtain block.  If block not found and writing, allocate a
@@ -1190,7 +1190,7 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	vm_page_t mreq;
 	vm_page_t m;
 	vm_offset_t kva;
-	daddr_t blk;
+	swblk_t blk;
 	int i;
 	int j;
 	int raonly;
@@ -1268,7 +1268,7 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	for (i = 1; swap_burst_read &&
 		    i < XIO_INTERNAL_PAGES &&
 		    mreq->pindex + i < object->size; ++i) {
-		daddr_t iblk;
+		swblk_t iblk;
 
 		iblk = swp_pager_meta_ctl(object, mreq->pindex + i, 0);
 		if (iblk != blk + i)
@@ -1512,7 +1512,7 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 	for (i = 0; i < count; i += n) {
 		struct buf *bp;
 		struct bio *bio;
-		daddr_t blk;
+		swblk_t blk;
 		int j;
 
 		/*
@@ -1953,7 +1953,7 @@ swp_pager_meta_convert(vm_object_t object)
  * The caller must hold vm_token.
  */
 static void
-swp_pager_meta_build(vm_object_t object, vm_pindex_t index, daddr_t swapblk)
+swp_pager_meta_build(vm_object_t object, vm_pindex_t index, swblk_t swapblk)
 {
 	struct swblock *swap;
 	struct swblock *oswap;
@@ -2085,7 +2085,7 @@ swp_pager_meta_free_callback(struct swblock *swap, void *data)
 	 * if (swap) runs out of blocks and could be freed.
 	 */
 	while (index <= eindex) {
-		daddr_t v = swap->swb_pages[index];
+		swblk_t v = swap->swb_pages[index];
 
 		if (v != SWAPBLK_NONE) {
 			swp_pager_freeswapspace(object, v, 1);
@@ -2120,7 +2120,7 @@ swp_pager_meta_free_all(vm_object_t object)
 	while ((swap = RB_ROOT(&object->swblock_root)) != NULL) {
 		swp_pager_remove(object, swap);
 		for (i = 0; i < SWAP_META_PAGES; ++i) {
-			daddr_t v = swap->swb_pages[i];
+			swblk_t v = swap->swb_pages[i];
 			if (v != SWAPBLK_NONE) {
 				--swap->swb_count;
 				swp_pager_freeswapspace(object, v, 1);
@@ -2156,11 +2156,11 @@ swp_pager_meta_free_all(vm_object_t object)
  *
  * The caller must hold vm_token.
  */
-static daddr_t
+static swblk_t
 swp_pager_meta_ctl(vm_object_t object, vm_pindex_t index, int flags)
 {
 	struct swblock *swap;
-	daddr_t r1;
+	swblk_t r1;
 
 	if (object->swblock_count == 0)
 		return(SWAPBLK_NONE);

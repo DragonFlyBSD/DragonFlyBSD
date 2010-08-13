@@ -193,13 +193,6 @@ typedef struct vm_page *vm_page_t;
 #endif
 
 /*
- * note: currently use SWAPBLK_NONE as an absolute value rather then 
- * a flag bit.
- */
-#define SWAPBLK_MASK	((daddr_t)((u_daddr_t)-1 >> 1))		/* mask */
-#define SWAPBLK_NONE	((daddr_t)((u_daddr_t)SWAPBLK_MASK + 1))/* flag */
-
-/*
  * Page coloring parameters.  We default to a middle of the road optimization.
  * Larger selections would not really hurt us but if a machine does not have
  * a lot of memory it could cause vm_page_alloc() to eat more cpu cycles 

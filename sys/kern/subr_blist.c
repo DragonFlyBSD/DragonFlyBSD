@@ -105,11 +105,6 @@
 #include <sys/kernel.h>
 #include <sys/blist.h>
 #include <sys/malloc.h>
-#include <vm/vm.h>
-#include <vm/vm_object.h>
-#include <vm/vm_kern.h>
-#include <vm/vm_extern.h>
-#include <vm/vm_page.h>
 
 #else
 
@@ -897,6 +892,7 @@ main(int ac, char **av)
 		case 'r':
 			if (sscanf(buf + 1, "%d", &count) == 1) {
 				blist_resize(&bl, count, 1);
+				size = count;
 			} else {
 				kprintf("?\n");
 			}

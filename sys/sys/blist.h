@@ -68,6 +68,13 @@ typedef int32_t		swblk_t;
 typedef u_int32_t	u_swblk_t;
 
 /*
+ * note: currently use SWAPBLK_NONE as an absolute value rather then
+ * a flag bit.
+ */
+#define SWAPBLK_MASK	((swblk_t)((u_swblk_t)-1 >> 1))         /* mask */
+#define SWAPBLK_NONE	((swblk_t)((u_swblk_t)SWAPBLK_MASK + 1))/* flag */
+
+/*
  * blmeta and bl_bitmap_t MUST be a power of 2 in size.
  */
 
