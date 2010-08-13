@@ -115,7 +115,7 @@ struct tty {
 	int	t_olowat;		/* Low water mark for output. */
 	speed_t	t_ospeedwat;		/* t_ospeed override for watermarks. */
 	int	t_gen;			/* Generation number. */
-	SLIST_ENTRY(tty) t_list;	/* Global chain of ttys for pstat(8) */
+	TAILQ_ENTRY(tty) t_list;	/* Global chain of ttys for pstat(8) */
 };
 
 #define	t_cc		t_termios.c_cc
@@ -185,6 +185,8 @@ struct tty {
 #define	TS_CTS_OFLOW	0x400000	/* For CCTS_OFLOW. */
 #define	TS_DSR_OFLOW	0x800000	/* For CDSR_OFLOW. */
 #endif
+#define TS_REGISTERED	0x1000000	/* ttyregister sanity check */
+#define TS_MARKER	0x2000000	/* sysctl iteration marker */
 
 /* Character type information. */
 #define	ORDINARY	0
@@ -274,7 +276,6 @@ int	 ttyclose (struct tty *tp);
 void	 ttyclearsession (struct tty *tp);
 void	 ttyclosesession (struct session *, int);
 void	 ttyflush (struct tty *tp, int rw);
-void	 ttyfree (struct tty *tp);
 void	 ttyinfo (struct tty *tp);
 int	 ttyinput (int c, struct tty *tp);
 int	 ttylclose (struct tty *tp, int flag);
@@ -284,6 +285,7 @@ int	 ttyopen (cdev_t device, struct tty *tp);
 int	 ttykqfilter (struct dev_kqfilter_args *);
 int	 ttyread (struct dev_read_args *);
 void	 ttyregister (struct tty *tp);
+void	 ttyunregister (struct tty *tp);
 int	 ttysleep (struct tty *tp, void *chan, int slpflags, char *wmesg,
 	    int timeout);
 int	 ttyrevoke (struct dev_revoke_args *);

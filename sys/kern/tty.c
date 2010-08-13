@@ -210,7 +210,7 @@ uint64_t tk_rawcc;
 /*
  * list of struct tty where pstat(8) can pick it up with sysctl
  */
-static SLIST_HEAD(, tty) tty_list;
+static TAILQ_HEAD(, tty) tty_list = TAILQ_HEAD_INITIALIZER(tty_list);
 
 /*
  * Initial open of tty, or (re)entry to standard tty line discipline.
@@ -257,7 +257,7 @@ ttyclose(struct tty *tp)
 	tp->t_gen++;
 	tp->t_line = TTYDISC;
 	ttyclearsession(tp);
-	tp->t_state = 0;
+	tp->t_state &= TS_REGISTERED;	/* clear all bits except */
 	crit_exit();
 	return (0);
 }
@@ -2576,42 +2576,49 @@ ttymalloc(struct tty *tp)
         return (tp);
 }
 
-#if 0
-/*
- * Free a tty struct.  Clists in the struct should have been freed by
- * ttyclose().
- *
- * XXX not yet usable: since we support a half-closed state and do not
- * ref count the tty reference from the session, it is possible for a 
- * session to hold a ref on the tty.  See TTY_DO_FULL_CLOSE.
- */
 void
-ttyfree(struct tty *tp)
+ttyunregister(struct tty *tp)
 {
-        kfree(tp, M_TTYS);
+	KKASSERT(ISSET(tp->t_state, TS_REGISTERED));
+	CLR(tp->t_state, TS_REGISTERED);
+	TAILQ_REMOVE(&tty_list, tp, t_list);
 }
-#endif /* 0 */
 
 void
 ttyregister(struct tty *tp)
 {
-	SLIST_INSERT_HEAD(&tty_list, tp, t_list);
+	KKASSERT(!ISSET(tp->t_state, TS_REGISTERED));
+	SET(tp->t_state, TS_REGISTERED);
+	TAILQ_INSERT_HEAD(&tty_list, tp, t_list);
 }
 
 static int
 sysctl_kern_ttys(SYSCTL_HANDLER_ARGS)
 {
 	int error;
-	struct tty *tp, t;
-	SLIST_FOREACH(tp, &tty_list, t_list) {
+	struct tty *tp;
+	struct tty t;
+	struct tty marker;
+
+	bzero(&marker, sizeof(marker));
+	marker.t_state = TS_MARKER;
+	error = 0;
+
+	TAILQ_INSERT_HEAD(&tty_list, &marker, t_list);
+	while ((tp = TAILQ_NEXT(&marker, t_list)) != NULL) {
+		TAILQ_REMOVE(&tty_list, &marker, t_list);
+		TAILQ_INSERT_AFTER(&tty_list, tp, &marker, t_list);
+		if (tp->t_state & TS_MARKER)
+			continue;
 		t = *tp;
 		if (t.t_dev)
 			t.t_dev = (cdev_t)(uintptr_t)dev2udev(t.t_dev);
 		error = SYSCTL_OUT(req, (caddr_t)&t, sizeof(t));
 		if (error)
-			return (error);
+			break;
 	}
-	return (0);
+	TAILQ_REMOVE(&tty_list, &marker, t_list);
+	return (error);
 }
 
 SYSCTL_PROC(_kern, OID_AUTO, ttys, CTLTYPE_OPAQUE|CTLFLAG_RD,

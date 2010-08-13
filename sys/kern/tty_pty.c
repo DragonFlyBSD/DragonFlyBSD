@@ -317,8 +317,10 @@ ptsclose(struct dev_close_args *ap)
 	struct tty *tp;
 	struct pt_ioctl *pti = dev->si_drv1;
 	int err;
+	int uminor_no;
 
 	tp = dev->si_tty;
+	uminor_no = dev->si_uminor;
 	err = (*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
 	ptsstop(tp, FREAD|FWRITE);
 	(void) ttyclose(tp); /* clears t_state */
@@ -339,9 +341,13 @@ ptsclose(struct dev_close_args *ap)
 		ptydebug(1, "master open? %s\n",
 		    (pti->pt_flags2 & PF_MOPEN)?"yes":"no");
 
-		if (!(pti->pt_flags2 & PF_SOPEN) && !(pti->pt_flags2 & PF_MOPEN)) {
-			devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(pty), dev->si_uminor);
+		if (!(pti->pt_flags2 & PF_SOPEN) &&
+		    !(pti->pt_flags2 & PF_MOPEN)) {
 			destroy_dev(dev);
+			devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(pty),
+					       uminor_no);
+			ttyunregister(&pti->pt_tty);
+			kfree(pti, M_PTY);
 		}
 	}
 #endif
@@ -503,8 +509,10 @@ ptcclose(struct dev_close_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
 	struct pt_ioctl *pti = dev->si_drv1;
+	int uminor_no;
 
 	tp = dev->si_tty;
+	uminor_no = dev->si_uminor;
 	(void)(*linesw[tp->t_line].l_modem)(tp, 0);
 
 #ifdef UNIX98_PTYS
@@ -556,7 +564,10 @@ ptcclose(struct dev_close_args *ap)
 		if (!(pti->pt_flags2 & PF_SOPEN)) {
 			ptydebug(1, "ptcclose: slaves are not open\n");
 			destroy_dev(pti->devs);
-			devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(pty), dev->si_uminor);
+			devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(pty),
+					       uminor_no);
+			ttyunregister(&pti->pt_tty);
+			kfree(pti, M_PTY);
 		}
 	}
 #endif
