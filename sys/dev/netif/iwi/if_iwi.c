@@ -905,7 +905,7 @@ iwi_node_free(struct ieee80211_node *ni)
 	if (in->in_station != -1) {
 		DPRINTF(("%s mac %6D station %u\n", __func__,
 		    ni->ni_macaddr, ":", in->in_station));
-		devfs_clone_bitmap_rst(&sc->sc_unr, in->in_station);
+		devfs_clone_bitmap_put(&sc->sc_unr, in->in_station);
 	}
 
 	sc->sc_node_free(ni);

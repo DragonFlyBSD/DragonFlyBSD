@@ -318,7 +318,6 @@ typedef void* (devfs_iterate_callback_t)(struct devfs_node *, void *);
 #define DEVFS_CLONE_BITMAP(name)	devfs_ ## name ## _clone_bitmap
 #define DEVFS_DECLARE_CLONE_BITMAP(name) \
 				struct devfs_bitmap DEVFS_CLONE_BITMAP(name)
-#define devfs_clone_bitmap_put		devfs_clone_bitmap_rst
 
 struct devfs_bitmap {
 	int		chunks;
@@ -336,9 +335,9 @@ void devfs_clone_bitmap_uninit(struct devfs_bitmap *);
 void devfs_clone_bitmap_resize(struct devfs_bitmap *, int);
 int devfs_clone_bitmap_fff(struct devfs_bitmap *);
 void devfs_clone_bitmap_set(struct devfs_bitmap *, int);
-void devfs_clone_bitmap_rst(struct devfs_bitmap *, int);
 int devfs_clone_bitmap_get(struct devfs_bitmap *, int);
 int devfs_clone_bitmap_chk(struct devfs_bitmap *, int);
+void devfs_clone_bitmap_put(struct devfs_bitmap *, int);
 
 /*
  * Prototypes

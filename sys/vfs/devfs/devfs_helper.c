@@ -134,11 +134,17 @@ devfs_clone_bitmap_set(struct devfs_bitmap *bitmap, int unit)
 	bitmap->bitmap[chunk] &= ~(1<<unit);
 }
 
-
+/*
+ * Deallocate a unit number.  We must synchronize any destroy_dev()'s
+ * the device called before we clear the bitmap bit to avoid races
+ * against a new clone.
+ */
 void
-devfs_clone_bitmap_rst(struct devfs_bitmap *bitmap, int unit)
+devfs_clone_bitmap_put(struct devfs_bitmap *bitmap, int unit)
 {
 	int chunk;
+
+	devfs_config();
 
 	chunk = unit / (sizeof(u_long) * 8);
 	unit -= chunk * (sizeof(u_long) * 8);
@@ -148,7 +154,9 @@ devfs_clone_bitmap_rst(struct devfs_bitmap *bitmap, int unit)
 	bitmap->bitmap[chunk] |= (1 << unit);
 }
 
-
+/*
+ * Allocate a unit number for a device
+ */
 int
 devfs_clone_bitmap_get(struct devfs_bitmap *bitmap, int limit)
 {

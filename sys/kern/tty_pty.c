@@ -145,6 +145,8 @@ static struct dev_ops ptc_ops = {
 struct	pt_ioctl {
 	int	pt_flags;
 	int	pt_flags2;
+	int	pt_refs;	/* Structural references interlock S/MOPEN */
+	int	pt_uminor;
 	struct	kqinfo pt_kqr, pt_kqw;
 	u_char	pt_send;
 	u_char	pt_ucntl;
@@ -162,6 +164,7 @@ struct	pt_ioctl {
 #define	PF_UNIX98	0x01
 #define	PF_SOPEN	0x02
 #define	PF_MOPEN	0x04
+#define PF_TERMINATED	0x08
 
 static int
 ptydebug(int level, char *fmt, ...)
@@ -207,6 +210,7 @@ ptyinit(int n)
 	devs->si_flags |= SI_OVERRIDE;	/* uid, gid, perms from dev */
 	devc->si_flags |= SI_OVERRIDE;	/* uid, gid, perms from dev */
 	pt->pt_tty.t_dev = devs;
+	pt->pt_uminor = n;
 	ttyregister(&pt->pt_tty);
 }
 
@@ -233,10 +237,13 @@ ptyclone(struct dev_clone_args *ap)
 
 	pt = kmalloc(sizeof(*pt), M_PTY, M_WAITOK | M_ZERO);
 
-	pt->devc = ap->a_dev = make_only_dev(&ptc98_ops, unit, ap->a_cred->cr_ruid,
-	    0, 0600, "ptm/%d", unit);
-	pt->devs = make_dev(&pts98_ops, unit, ap->a_cred->cr_ruid, GID_TTY, 0620,
-	    "pts/%d", unit);
+	pt->devc = make_only_dev(&ptc98_ops, unit,
+				 ap->a_cred->cr_ruid,
+				 0, 0600, "ptm/%d", unit);
+	pt->devs = make_dev(&pts98_ops, unit,
+			    ap->a_cred->cr_ruid,
+			    GID_TTY, 0620, "pts/%d", unit);
+	ap->a_dev = pt->devc;
 
 	pt->devs->si_flags |= SI_OVERRIDE;	/* uid, gid, perms from dev */
 	pt->devc->si_flags |= SI_OVERRIDE;	/* uid, gid, perms from dev */
@@ -245,12 +252,79 @@ ptyclone(struct dev_clone_args *ap)
 	pt->devs->si_tty = pt->devc->si_tty = &pt->pt_tty;
 	pt->pt_tty.t_dev = pt->devs;
 	pt->pt_flags2 |= PF_UNIX98;
+	pt->pt_uminor = unit;
 
 	ttyregister(&pt->pt_tty);
 
 	return 0;
 }
 #endif
+
+/*
+ * pti_hold() prevents the pti from being destroyed due to a termination
+ * while a pt*open() is blocked.
+ *
+ * This function returns non-zero if we cannot hold due to a termination
+ * interlock.
+ */
+static int
+pti_hold(struct pt_ioctl *pti)
+{
+	if (pti->pt_flags2 & PF_TERMINATED)
+		return(ENXIO);
+	++pti->pt_refs;
+	return(0);
+}
+
+/*
+ * pti_done() releases the reference and checks to see if both sides have
+ * been closed on a unix98 pty, allowing us to destroy the device and
+ * release resources.
+ *
+ * We do not release resources on non-unix98 ptys.  Those are left
+ * statically allocated.
+ */
+static void
+pti_done(struct pt_ioctl *pti)
+{
+	if (--pti->pt_refs == 0) {
+#ifdef UNIX98_PTYS
+		cdev_t dev;
+		int uminor_no;
+
+		/*
+		 * Only unix09 ptys are freed up
+		 */
+		if ((pti->pt_flags2 & PF_UNIX98) == 0)
+			return;
+
+		/*
+		 * Interlock open attempts against termination by setting
+		 * PF_TERMINATED.  This allows us to block while cleaning
+		 * out the device infrastructure.
+		 */
+		if ((pti->pt_flags2 & (PF_SOPEN|PF_MOPEN)) == 0) {
+			pti->pt_flags2 |= PF_TERMINATED;
+			uminor_no = pti->pt_uminor;
+
+			if ((dev = pti->devs) != NULL) {
+				dev->si_drv1 = NULL;
+				pti->devs = NULL;
+				destroy_dev(dev);
+			}
+			if ((dev = pti->devc) != NULL) {
+				dev->si_drv1 = NULL;
+				pti->devc = NULL;
+				destroy_dev(dev);
+			}
+			ttyunregister(&pti->pt_tty);
+			devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(pty),
+					       uminor_no);
+			kfree(pti, M_PTY);
+		}
+#endif
+	}
+}
 
 /*ARGSUSED*/
 static	int
@@ -261,11 +335,16 @@ ptsopen(struct dev_open_args *ap)
 	int error;
 	struct pt_ioctl *pti;
 
-	if (!dev->si_drv1)
-		ptyinit(minor(dev));
-	if (!dev->si_drv1)
+	/*
+	 * The pti will already be assigned by the clone code or
+	 * pre-created if a non-unix 98 pty.  If si_drv1 is NULL
+	 * we are somehow racing a unix98 termination.
+	 */
+	if (dev->si_drv1 == NULL)
 		return(ENXIO);
 	pti = dev->si_drv1;
+	if (pti_hold(pti))
+		return(ENXIO);
 	tp = dev->si_tty;
 	if ((tp->t_state & TS_ISOPEN) == 0) {
 		ttychars(tp);		/* Set up default chars */
@@ -275,8 +354,10 @@ ptsopen(struct dev_open_args *ap)
 		tp->t_cflag = TTYDEF_CFLAG;
 		tp->t_ispeed = tp->t_ospeed = TTYDEF_SPEED;
 	} else if ((tp->t_state & TS_XCLUDE) && priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) {
+		pti_done(pti);
 		return (EBUSY);
 	} else if (pti->pt_prison != ap->a_cred->cr_prison) {
+		pti_done(pti);
 		return (EBUSY);
 	}
 	if (tp->t_oproc)			/* Ctrlr still around. */
@@ -285,8 +366,10 @@ ptsopen(struct dev_open_args *ap)
 		if (ap->a_oflags & FNONBLOCK)
 			break;
 		error = ttysleep(tp, TSA_CARR_ON(tp), PCATCH, "ptsopn", 0);
-		if (error)
+		if (error) {
+			pti_done(pti);
 			return (error);
+		}
 	}
 	tp->t_state &= ~TS_ZOMBIE;
 	error = (*linesw[tp->t_line].l_open)(dev, tp);
@@ -302,10 +385,11 @@ ptsopen(struct dev_open_args *ap)
 	ptydebug(1, "ptsopen=%s | unix98? %s\n", dev->si_name,
 	    (pti->pt_flags2 & PF_UNIX98)?"yes":"no");
 
-	if ((!error) && (pti->pt_flags2 & PF_UNIX98)) {
+	if (error == 0 && (pti->pt_flags2 & PF_UNIX98)) {
 		pti->pt_flags2 |= PF_SOPEN;
 	}
 #endif
+	pti_done(pti);
 
 	return (error);
 }
@@ -317,10 +401,10 @@ ptsclose(struct dev_close_args *ap)
 	struct tty *tp;
 	struct pt_ioctl *pti = dev->si_drv1;
 	int err;
-	int uminor_no;
 
+	if (pti_hold(pti))
+		panic("ptsclose on terminated pti");
 	tp = dev->si_tty;
-	uminor_no = dev->si_uminor;
 	err = (*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
 	ptsstop(tp, FREAD|FWRITE);
 	(void) ttyclose(tp); /* clears t_state */
@@ -340,18 +424,9 @@ ptsclose(struct dev_close_args *ap)
 		KKASSERT((pti->pt_flags2 & PF_SOPEN) == 0);
 		ptydebug(1, "master open? %s\n",
 		    (pti->pt_flags2 & PF_MOPEN)?"yes":"no");
-
-		if (!(pti->pt_flags2 & PF_SOPEN) &&
-		    !(pti->pt_flags2 & PF_MOPEN)) {
-			destroy_dev(dev);
-			devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(pty),
-					       uminor_no);
-			ttyunregister(&pti->pt_tty);
-			kfree(pti, M_PTY);
-		}
 	}
 #endif
-
+	pti_done(pti);
 	return (err);
 }
 
@@ -460,16 +535,25 @@ ptcopen(struct dev_open_args *ap)
 	struct tty *tp;
 	struct pt_ioctl *pti;
 
-	if (!dev->si_drv1)
-		ptyinit(minor(dev));
-	if (!dev->si_drv1)
+	/*
+	 * The pti will already be assigned by the clone code or
+	 * pre-created if a non-unix 98 pty.  If si_drv1 is NULL
+	 * we are somehow racing a unix98 termination.
+	 */
+	if (dev->si_drv1 == NULL)
 		return(ENXIO);	
 	pti = dev->si_drv1;
-	if (pti->pt_prison && pti->pt_prison != ap->a_cred->cr_prison)
+	if (pti_hold(pti))
+		return(ENXIO);
+	if (pti->pt_prison && pti->pt_prison != ap->a_cred->cr_prison) {
+		pti_done(pti);
 		return(EBUSY);
+	}
 	tp = dev->si_tty;
-	if (tp->t_oproc)
+	if (tp->t_oproc) {
+		pti_done(pti);
 		return (EIO);
+	}
 	tp->t_oproc = ptsstart;
 	tp->t_stop = ptsstop;
 	(void)(*linesw[tp->t_line].l_modem)(tp, 1);
@@ -499,6 +583,7 @@ ptcopen(struct dev_open_args *ap)
 		pti->pt_flags2 |= PF_MOPEN;
 	}
 #endif
+	pti_done(pti);
 
 	return (0);
 }
@@ -509,20 +594,12 @@ ptcclose(struct dev_close_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
 	struct pt_ioctl *pti = dev->si_drv1;
-	int uminor_no;
+
+	if (pti_hold(pti))
+		panic("ptcclose on terminated pti");
 
 	tp = dev->si_tty;
-	uminor_no = dev->si_uminor;
 	(void)(*linesw[tp->t_line].l_modem)(tp, 0);
-
-#ifdef UNIX98_PTYS
-	/*
-	 * Unix98 pty stuff.
-	 * On close of the master, we unset the corresponding flag in the common
-	 * struct asap.
-	 */
-	pti->pt_flags2 &= ~PF_MOPEN;
-#endif
 
 	/*
 	 * XXX MDMBUF makes no sense for ptys but would inhibit the above
@@ -539,7 +616,15 @@ ptcclose(struct dev_close_args *ap)
 	}
 	tp->t_oproc = 0;		/* mark closed */
 
-	pti = dev->si_drv1;
+#ifdef UNIX98_PTYS
+	/*
+	 * Unix98 pty stuff.
+	 * On close of the master, we unset the corresponding flag in the common
+	 * struct asap.
+	 */
+	pti->pt_flags2 &= ~PF_MOPEN;
+#endif
+
 	pti->pt_prison = NULL;
 	pti->devs->si_uid = 0;
 	pti->devs->si_gid = 0;
@@ -548,30 +633,7 @@ ptcclose(struct dev_close_args *ap)
 	pti->devc->si_gid = 0;
 	pti->devc->si_perms = 0666;
 
-#ifdef UNIX98_PTYS
-	/*
-	 * Unix98 pty stuff.
-	 * On close of the master, we destroy the master and, if no slaves are open,
-	 * we destroy the slave device and unset the unit.
-	 */
-	ptydebug(1, "ptcclose=%s (master) | unix98? %s\n", dev->si_name,
-	    (pti->pt_flags2 & PF_UNIX98)?"yes":"no");
-	if (pti->pt_flags2 & PF_UNIX98) {
-		KKASSERT((pti->pt_flags2 & PF_MOPEN) == 0);
-		destroy_dev(dev);
-		pti->devc = NULL;
-
-		if (!(pti->pt_flags2 & PF_SOPEN)) {
-			ptydebug(1, "ptcclose: slaves are not open\n");
-			destroy_dev(pti->devs);
-			devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(pty),
-					       uminor_no);
-			ttyunregister(&pti->pt_tty);
-			kfree(pti, M_PTY);
-		}
-	}
-#endif
-
+	pti_done(pti);
 	return (0);
 }
 
