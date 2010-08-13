@@ -67,6 +67,7 @@ static __inline
 void
 sysref_get(struct sysref *sr)
 {
+	KKASSERT((sr->flags & SRF_PUTAWAY) == 0);
 	atomic_add_int(&sr->refcnt, 1);
 }
 
@@ -81,6 +82,7 @@ sysref_put(struct sysref *sr)
 {
 	int count = sr->refcnt;
 
+	KKASSERT((sr->flags & SRF_PUTAWAY) == 0);
 	if (count <= 1 || atomic_cmpset_int(&sr->refcnt, count, count - 1) == 0)
 		_sysref_put(sr);
 }
