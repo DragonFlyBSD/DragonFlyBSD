@@ -332,12 +332,14 @@ again:
 	}
 	KKASSERT(layer2->zone == zone);
 
+	/*
+	 * NOTE: bytes_free can legally go negative due to de-dup.
+	 */
 	layer2->bytes_free -= bytes;
 	KKASSERT(layer2->append_off <= offset);
 	layer2->append_off = offset + bytes;
 	layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
 	hammer_modify_buffer_done(buffer2);
-	KKASSERT(layer2->bytes_free >= 0);
 
 	/*
 	 * We hold the blockmap lock and should be the only ones
@@ -825,6 +827,9 @@ hammer_blockmap_free(hammer_transaction_t trans,
 
 	/*
 	 * Free space previously allocated via blockmap_alloc().
+	 *
+	 * NOTE: bytes_free can be and remain negative due to de-dup ops
+	 *	 but can never become larger than HAMMER_LARGEBLOCK_SIZE.
 	 */
 	KKASSERT(layer2->zone == zone);
 	layer2->bytes_free += bytes;
@@ -1013,8 +1018,14 @@ failed:
 }
 
 /*
- * Return the number of free bytes in the big-block containing the
- * specified blockmap offset.
+ * Return the approximate number of free bytes in the big-block
+ * containing the specified blockmap offset.
+ *
+ * WARNING: A negative number can be returned if data de-dup exists,
+ *	    and the result will also not represent he actual number
+ *	    of free bytes in this case.
+ *
+ *	    This code is used only by the reblocker.
  */
 int
 hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t zone_offset,
@@ -1028,7 +1039,7 @@ hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t zone_offset,
 	hammer_buffer_t buffer = NULL;
 	hammer_off_t layer1_offset;
 	hammer_off_t layer2_offset;
-	int bytes;
+	int32_t bytes;
 	int zone;
 
 	zone = HAMMER_ZONE_DECODE(zone_offset);

@@ -287,12 +287,20 @@ typedef struct hammer_blockmap_layer1 *hammer_blockmap_layer1_t;
 #define HAMMER_LAYER1_CRCSIZE	\
 	offsetof(struct hammer_blockmap_layer1, layer1_crc)
 
+/*
+ * layer2 entry for 8MB bigblock.
+ *
+ * NOTE: bytes_free is signed and can legally go negative if/when data
+ *	 de-dup occurs.  This field will never go higher than
+ *	 HAMMER_LARGEBLOCK_SIZE.  If exactly HAMMER_LARGEBLOCK_SIZE
+ *	 the big-block is completely free.
+ */
 struct hammer_blockmap_layer2 {
 	u_int8_t	zone;		/* typed allocation zone */
 	u_int8_t	unused01;
 	u_int16_t	unused02;
 	u_int32_t	append_off;	/* allocatable space index */
-	u_int32_t	bytes_free;	/* bytes free within this bigblock */
+	int32_t		bytes_free;	/* bytes free within this bigblock */
 	hammer_crc_t	entry_crc;
 };
 
