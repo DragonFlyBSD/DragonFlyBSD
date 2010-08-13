@@ -18,6 +18,7 @@
 
 #include <sys/queue.h>
 #include <sys/types.h>
+#include <sys/event.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
@@ -29,7 +30,6 @@
 
 #include <err.h>
 #include <errno.h>
-#include <event.h>
 #include <fcntl.h>
 #include <netdb.h>
 #include <pwd.h>
@@ -62,14 +62,20 @@
 
 enum { CMD_NONE = 0, CMD_PORT, CMD_EPRT, CMD_PASV, CMD_EPSV };
 
+struct cbuf {
+	char			*buffer;
+	size_t			 buffer_size;
+	size_t			 buffer_offset;
+};
+
 struct session {
 	u_int32_t		 id;
 	struct sockaddr_storage  client_ss;
 	struct sockaddr_storage  proxy_ss;
 	struct sockaddr_storage  server_ss;
 	struct sockaddr_storage  orig_server_ss;
-	struct bufferevent	*client_bufev;
-	struct bufferevent	*server_bufev;
+	struct cbuf		 client;
+	struct cbuf		 server;
 	int			 client_fd;
 	int			 server_fd;
 	char			 cbuf[MAX_LINE];
@@ -84,25 +90,26 @@ struct session {
 
 LIST_HEAD(, session) sessions = LIST_HEAD_INITIALIZER(sessions);
 
-void	client_error(struct bufferevent *, short, void *);
-int	client_parse(struct session *s);
-int	client_parse_anon(struct session *s);
-int	client_parse_cmd(struct session *s);
-void	client_read(struct bufferevent *, void *);
+void	buffer_data(struct session *, struct cbuf *, char *, size_t);
+int	client_parse(struct session *);
+int	client_parse_anon(struct session *);
+int	client_parse_cmd(struct session *);
+void	client_read(struct session *);
+void	client_write(struct session *);
 int	drop_privs(void);
 void	end_session(struct session *);
 int	exit_daemon(void);
 int	getline(char *, size_t *);
-void	handle_connection(const int, short, void *);
-void	handle_signal(int, short, void *);
+void	handle_connection(const int);
+void	handle_signal(int);
 struct session * init_session(void);
 void	logmsg(int, const char *, ...);
 u_int16_t parse_port(int);
 u_int16_t pick_proxy_port(void);
 void	proxy_reply(int, struct sockaddr *, u_int16_t);
-void	server_error(struct bufferevent *, short, void *);
-int	server_parse(struct session *s);
-void	server_read(struct bufferevent *, void *);
+int	server_parse(struct session *);
+void	server_read(struct session *);
+void	server_write(struct session *);
 const char *sock_ntop(struct sockaddr *);
 void	usage(void);
 
@@ -110,6 +117,10 @@ char linebuf[MAX_LINE + 1];
 size_t linelen;
 
 char ntop_buf[NTOP_BUFS][INET6_ADDRSTRLEN];
+
+#define KQ_NEVENTS	64
+struct kevent changes[KQ_NEVENTS];
+int nchanges;
 
 struct sockaddr_storage fixed_server_ss, fixed_proxy_ss;
 char *fixed_server, *fixed_server_port, *fixed_proxy, *listen_ip, *listen_port,
@@ -119,21 +130,21 @@ int anonymous_only, daemonize, id_count, ipv6_mode, loglevel, max_sessions,
 extern char *__progname;
 
 void
-client_error(struct bufferevent *bufev, short what, void *arg)
+buffer_data(struct session *s, struct cbuf *cb, char *buf, size_t len)
 {
-	struct session *s = arg;
+	if (len < 1)
+		return;
 
-	if (what & EVBUFFER_EOF)
-		logmsg(LOG_INFO, "#%d client close", s->id);
-	else if (what == (EVBUFFER_ERROR | EVBUFFER_READ))
-		logmsg(LOG_ERR, "#%d client reset connection", s->id);
-	else if (what & EVBUFFER_TIMEOUT)
-		logmsg(LOG_ERR, "#%d client timeout", s->id);
-	else if (what & EVBUFFER_WRITE)
-		logmsg(LOG_ERR, "#%d client write error: %d", s->id, what);
-	else
-		logmsg(LOG_ERR, "#%d abnormal client error: %d", s->id, what);
+	if (cb->buffer == NULL)
+		if ((cb->buffer = malloc(MAX_LINE)) == NULL)
+			goto error;
 
+	memcpy(cb->buffer, buf, len);
+	cb->buffer_size = len;
+	return;
+
+error:
+	logmsg(LOG_ERR, "#%d could not allocate memory for buffer", s->id);
 	end_session(s);
 }
 
@@ -161,6 +172,8 @@ client_parse(struct session *s)
 int
 client_parse_anon(struct session *s)
 {
+	size_t written;
+
 	if (strcasecmp("USER ftp\r\n", linebuf) != 0 &&
 	    strcasecmp("USER anonymous\r\n", linebuf) != 0) {
 		snprintf(linebuf, sizeof linebuf,
@@ -169,7 +182,19 @@ client_parse_anon(struct session *s)
 
 		/* Talk back to the client ourself. */
 		linelen = strlen(linebuf);
-		bufferevent_write(s->client_bufev, linebuf, linelen);
+		written = write(s->client_fd, linebuf, linelen);
+		if (written == -1) {
+			logmsg(LOG_ERR, "#%d write failed", s->id);
+			return (0); /* Session will be ended for us */
+		} else if (written < linelen) {
+			EV_SET(&changes[nchanges++], s->server_fd,
+			       EVFILT_READ, EV_DISABLE, 0, 0, s);
+			EV_SET(&changes[nchanges++], s->client_fd,
+			       EVFILT_WRITE, EV_ADD, 0, 0, s);
+			buffer_data(s, &s->client, linebuf + written,
+				    linelen - written);
+			return (1);
+		}
 
 		/* Clear buffer so it's not sent to the server. */
 		linebuf[0] = '\0';
@@ -214,17 +239,15 @@ client_parse_cmd(struct session *s)
 }
 
 void
-client_read(struct bufferevent *bufev, void *arg)
+client_read(struct session *s)
 {
-	struct session	*s = arg;
-	size_t		 buf_avail, read;
+	size_t		 buf_avail, bread, bwritten;
 	int		 n;
 
 	do {
 		buf_avail = sizeof s->cbuf - s->cbuf_valid;
-		read = bufferevent_read(bufev, s->cbuf + s->cbuf_valid,
-		    buf_avail);
-		s->cbuf_valid += read;
+		bread = read(s->client_fd, s->cbuf + s->cbuf_valid, buf_avail);
+		s->cbuf_valid += bread;
 
 		while ((n = getline(s->cbuf, &s->cbuf_valid)) > 0) {
 			logmsg(LOG_DEBUG, "#%d client: %s", s->id, linebuf);
@@ -232,7 +255,17 @@ client_read(struct bufferevent *bufev, void *arg)
 				end_session(s);
 				return;
 			}
-			bufferevent_write(s->server_bufev, linebuf, linelen);
+			bwritten = write(s->server_fd, linebuf, linelen);
+			if (bwritten == -1) {
+			} else if (bwritten < linelen) {
+				EV_SET(&changes[nchanges++], s->client_fd,
+				       EVFILT_READ, EV_DISABLE, 0, 0, s);
+				EV_SET(&changes[nchanges++], s->server_fd,
+				       EVFILT_WRITE, EV_ADD, 0, 0, s);
+				buffer_data(s, &s->server, linebuf + bwritten,
+					    linelen - bwritten);
+				return;
+			}
 		}
 
 		if (n == -1) {
@@ -241,7 +274,29 @@ client_read(struct bufferevent *bufev, void *arg)
 			end_session(s);
 			return;
 		}
-	} while (read == buf_avail);
+	} while (bread == buf_avail);
+}
+
+void
+client_write(struct session *s)
+{
+	size_t written;
+
+	written = write(s->client_fd, s->client.buffer + s->client.buffer_offset,
+			s->client.buffer_size - s->client.buffer_offset);
+	if (written == -1) {
+		logmsg(LOG_ERR, "#%d write failed", s->id);
+		end_session(s);
+	} else if (written == (s->client.buffer_size - s->client.buffer_offset)) {
+		free(s->client.buffer);
+		s->client.buffer = NULL;
+		s->client.buffer_size = 0;
+		s->client.buffer_offset = 0;
+		EV_SET(&changes[nchanges++], s->server_fd,
+		       EVFILT_READ, EV_ENABLE, 0, 0, s);
+	} else {
+		s->client.buffer_offset += written;
+	}
 }
 
 int
@@ -275,10 +330,10 @@ end_session(struct session *s)
 	if (s->server_fd != -1)
 		close(s->server_fd);
 
-	if (s->client_bufev)
-		bufferevent_free(s->client_bufev);
-	if (s->server_bufev)
-		bufferevent_free(s->server_bufev);
+	if (s->client.buffer)
+		free(s->client.buffer);
+	if (s->server.buffer)
+		free(s->server.buffer);
 
 	/* Remove rulesets by commiting empty ones. */
 	err = 0;
@@ -353,7 +408,7 @@ getline(char *buf, size_t *valid)
 }
 
 void
-handle_connection(const int listen_fd, short event, void *ev)
+handle_connection(const int listen_fd)
 {
 	struct sockaddr_storage tmp_ss;
 	struct sockaddr *client_sa, *server_sa, *fixed_server_sa;
@@ -472,26 +527,8 @@ handle_connection(const int listen_fd, short event, void *ev)
 	setsockopt(s->server_fd, SOL_SOCKET, SO_KEEPALIVE, (void *)&on,
 	    sizeof on);
 
-	/*
-	 * Setup buffered events.
-	 */
-	s->client_bufev = bufferevent_new(s->client_fd, &client_read, NULL,
-	    &client_error, s);
-	if (s->client_bufev == NULL) {
-		logmsg(LOG_CRIT, "#%d bufferevent_new client failed", s->id);
-		goto fail;
-	}
-	bufferevent_settimeout(s->client_bufev, timeout, 0);
-	bufferevent_enable(s->client_bufev, EV_READ | EV_TIMEOUT);
-
-	s->server_bufev = bufferevent_new(s->server_fd, &server_read, NULL,
-	    &server_error, s);
-	if (s->server_bufev == NULL) {
-		logmsg(LOG_CRIT, "#%d bufferevent_new server failed", s->id);
-		goto fail;
-	}
-	bufferevent_settimeout(s->server_bufev, CONNECT_TIMEOUT, 0);
-	bufferevent_enable(s->server_bufev, EV_READ | EV_TIMEOUT);
+	EV_SET(&changes[nchanges++], s->client_fd, EVFILT_READ, EV_ADD, 0, 0, s);
+	EV_SET(&changes[nchanges++], s->server_fd, EVFILT_READ, EV_ADD, 0, 0, s);
 
 	return;
 
@@ -500,10 +537,10 @@ handle_connection(const int listen_fd, short event, void *ev)
 }
 
 void
-handle_signal(int sig, short event, void *arg)
+handle_signal(int sig)
 {
 	/*
-	 * Signal handler rules don't apply, libevent decouples for us.
+	 * Signal handler rules don't apply.
 	 */
 
 	logmsg(LOG_ERR, "%s exiting on signal %d", __progname, sig);
@@ -528,8 +565,12 @@ init_session(void)
 	s->cbuf_valid = 0;
 	s->sbuf[0] = '\0';
 	s->sbuf_valid = 0;
-	s->client_bufev = NULL;
-	s->server_bufev = NULL;
+	s->client.buffer = NULL;
+	s->client.buffer_size = 0;
+	s->client.buffer_offset = 0;
+	s->server.buffer = NULL;
+	s->server.buffer_size = 0;
+	s->server.buffer_offset = 0;
 	s->cmd = CMD_NONE;
 	s->port = 0;
 
@@ -570,8 +611,7 @@ main(int argc, char *argv[])
 {
 	struct rlimit rlp;
 	struct addrinfo hints, *res;
-	struct event ev, ev_sighup, ev_sigint, ev_sigterm;
-	int ch, error, listenfd, on;
+	int kq, ch, error, listenfd, on;
 	const char *errstr;
 
 	/* Defaults. */
@@ -593,6 +633,7 @@ main(int argc, char *argv[])
 	/* Other initialization. */
 	id_count	= 1;
 	session_count	= 0;
+	nchanges	= 0;
 
 	while ((ch = getopt(argc, argv, "6Aa:b:D:dm:P:p:q:R:rt:v")) != -1) {
 		switch (ch) {
@@ -734,26 +775,69 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 	
-	event_init();
+	if ((kq = kqueue()) == -1) {
+		logmsg(LOG_ERR, "cannot create new kqueue(2): %s", strerror(errno));
+		exit(1);
+	}
 
 	/* Setup signal handler. */
 	signal(SIGPIPE, SIG_IGN);
-	signal_set(&ev_sighup, SIGHUP, handle_signal, NULL);
-	signal_set(&ev_sigint, SIGINT, handle_signal, NULL);
-	signal_set(&ev_sigterm, SIGTERM, handle_signal, NULL);
-	signal_add(&ev_sighup, NULL);
-	signal_add(&ev_sigint, NULL);
-	signal_add(&ev_sigterm, NULL);
+	EV_SET(&changes[nchanges++], SIGHUP, EVFILT_SIGNAL, EV_ADD, 0, 0, NULL);
+	EV_SET(&changes[nchanges++], SIGINT, EVFILT_SIGNAL, EV_ADD, 0, 0, NULL);
+	EV_SET(&changes[nchanges++], SIGTERM, EVFILT_SIGNAL, EV_ADD, 0, 0, NULL);
 
-	event_set(&ev, listenfd, EV_READ | EV_PERSIST, handle_connection, &ev);
-	event_add(&ev, NULL);
+	EV_SET(&changes[nchanges++], listenfd, EVFILT_READ, EV_ADD, 0, 0, NULL);
 
 	logmsg(LOG_NOTICE, "listening on %s port %s", listen_ip, listen_port);
 
 	/*  Vroom, vroom.  */
-	event_dispatch();
+	for ( ; ; ) {
+		int i, nevents;
+		struct kevent events[KQ_NEVENTS], *event;
+		struct session *s;
 
-	logmsg(LOG_ERR, "event_dispatch error: %s", strerror(errno));
+		nevents = kevent(kq, &changes[0], nchanges, &events[0],
+				 KQ_NEVENTS, NULL);
+		if (nevents == -1) {
+			logmsg(LOG_ERR, "cannot create new kqueue(2): %s", strerror(errno));
+			exit(1);
+		}
+		nchanges = 0;
+
+		for (i = 0; i < nevents; ++i) {
+			event = &events[i];
+
+			if (event->filter == EVFILT_SIGNAL) {
+				handle_signal(event->ident);
+				continue;
+			}
+
+			if (event->ident == listenfd) {
+				/* Handle new connection */
+				handle_connection(event->ident);
+			} else {
+				/* Process existing connection */
+				s = (struct session *)event->udata;
+
+				if (event->ident == s->client_fd) {
+					if (event->filter == EVFILT_READ)
+						client_read(s);
+					else
+						client_write(s);
+				} else {
+					if (event->filter == EVFILT_READ)
+						server_read(s);
+					else
+						server_write(s);
+				}
+			}
+
+			/* The next loop might overflow changes */
+			if (nchanges > KQ_NEVENTS - 4)
+				break;
+		}
+	}
+
 	exit_daemon();
 
 	/* NOTREACHED */
@@ -863,25 +947,6 @@ proxy_reply(int cmd, struct sockaddr *sa, u_int16_t port)
 			if (linebuf[i] == '.')
 				linebuf[i] = ',';
 	}
-}
-
-void
-server_error(struct bufferevent *bufev, short what, void *arg)
-{
-	struct session *s = arg;
-
-	if (what & EVBUFFER_EOF)
-		logmsg(LOG_INFO, "#%d server close", s->id);
-	else if (what == (EVBUFFER_ERROR | EVBUFFER_READ))
-		logmsg(LOG_ERR, "#%d server refused connection", s->id);
-	else if (what & EVBUFFER_WRITE)
-		logmsg(LOG_ERR, "#%d server write error: %d", s->id, what);
-	else if (what & EVBUFFER_TIMEOUT)
-		logmsg(LOG_NOTICE, "#%d server timeout", s->id);
-	else
-		logmsg(LOG_ERR, "#%d abnormal server error: %d", s->id, what);
-
-	end_session(s);
 }
 
 int
@@ -1024,19 +1089,15 @@ server_parse(struct session *s)
 }
 	
 void
-server_read(struct bufferevent *bufev, void *arg)
+server_read(struct session *s)
 {
-	struct session	*s = arg;
-	size_t		 buf_avail, read;
+	size_t		 buf_avail, bread, bwritten;
 	int		 n;
-
-	bufferevent_settimeout(bufev, timeout, 0);
 
 	do {
 		buf_avail = sizeof s->sbuf - s->sbuf_valid;
-		read = bufferevent_read(bufev, s->sbuf + s->sbuf_valid,
-		    buf_avail);
-		s->sbuf_valid += read;
+		bread = read(s->server_fd, s->sbuf + s->sbuf_valid, buf_avail);
+		s->sbuf_valid += bread;
 
 		while ((n = getline(s->sbuf, &s->sbuf_valid)) > 0) {
 			logmsg(LOG_DEBUG, "#%d server: %s", s->id, linebuf);
@@ -1044,7 +1105,20 @@ server_read(struct bufferevent *bufev, void *arg)
 				end_session(s);
 				return;
 			}
-			bufferevent_write(s->client_bufev, linebuf, linelen);
+			bwritten = write(s->client_fd, linebuf, linelen);
+			if (bwritten == -1) {
+				logmsg(LOG_ERR, "#%d write failed", s->id);
+				end_session(s);
+				return;
+			} else if (bwritten < linelen) {
+				EV_SET(&changes[nchanges++], s->server_fd,
+				       EVFILT_READ, EV_DISABLE, 0, 0, s);
+				EV_SET(&changes[nchanges++], s->client_fd,
+				       EVFILT_WRITE, EV_ADD, 0, 0, s);
+				buffer_data(s, &s->client, linebuf + bwritten,
+					    linelen - bwritten);
+				return;
+			}
 		}
 
 		if (n == -1) {
@@ -1053,7 +1127,29 @@ server_read(struct bufferevent *bufev, void *arg)
 			end_session(s);
 			return;
 		}
-	} while (read == buf_avail);
+	} while (bread == buf_avail);
+}
+
+void
+server_write(struct session *s)
+{
+	size_t written;
+
+	written = write(s->server_fd, s->server.buffer + s->server.buffer_offset,
+			s->server.buffer_size - s->server.buffer_offset);
+	if (written == -1) {
+		logmsg(LOG_ERR, "#%d write failed", s->id);
+		end_session(s);
+	} else if (written == (s->server.buffer_size - s->server.buffer_offset)) {
+		free(s->server.buffer);
+		s->server.buffer = NULL;
+		s->server.buffer_size = 0;
+		s->server.buffer_offset = 0;
+		EV_SET(&changes[nchanges++], s->client_fd,
+		       EVFILT_READ, EV_ENABLE, 0, 0, s);
+	} else {
+		s->server.buffer_offset += written;
+	}
 }
 
 const char *
