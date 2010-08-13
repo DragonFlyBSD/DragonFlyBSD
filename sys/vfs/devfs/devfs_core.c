@@ -388,8 +388,37 @@ devfs_freep(struct devfs_node *node)
 	KKASSERT(node);
 	KKASSERT(((node->flags & DEVFS_NODE_LINKED) == 0) ||
 		 (node->node_type == Proot));
-	KKASSERT((node->flags & DEVFS_DESTROYED) == 0);
 
+	/*
+	 * Protect against double frees
+	 */
+	KKASSERT((node->flags & DEVFS_DESTROYED) == 0);
+	node->flags |= DEVFS_DESTROYED;
+
+	/*
+	 * Avoid deadlocks between devfs_lock and the vnode lock when
+	 * disassociating the vnode (stress2 pty vs ls -la /dev/pts).
+	 *
+	 * This also prevents the vnode reclaim code from double-freeing
+	 * the node.  The vget() is required to safely modified the vp
+	 * and cycle the refs to terminate an inactive vp.
+	 */
+	lockmgr(&devfs_lock, LK_RELEASE);
+
+	while ((vp = node->v_node) != NULL) {
+		if (vget(vp, LK_EXCLUSIVE | LK_RETRY) != 0)
+			break;
+		v_release_rdev(vp);
+		vp->v_data = NULL;
+		node->v_node = NULL;
+		cache_inval_vp(vp, CINV_DESTROY);
+		vput(vp);
+	}
+	lockmgr(&devfs_lock, LK_EXCLUSIVE);
+
+	/*
+	 * Remaining cleanup
+	 */
 	atomic_subtract_long(&(DEVFS_MNTDATA(node->mp)->leak_count), 1);
 	if (node->symlink_name)	{
 		kfree(node->symlink_name, M_DEVFS);
@@ -402,31 +431,11 @@ devfs_freep(struct devfs_node *node)
 	if (node->flags & DEVFS_ORPHANED)
 		devfs_tracer_del_orphan(node);
 
-	/*
-	 * Disassociate the vnode from the node.  This also prevents the
-	 * vnode's reclaim code from double-freeing the node.
-	 *
-	 * The vget is needed to safely modify the vp.  It also serves
-	 * to cycle the refs and terminate the vnode if it happens to
-	 * be inactive, otherwise namecache references may not get cleared.
-	 */
-	while ((vp = node->v_node) != NULL) {
-		if (vget(vp, LK_EXCLUSIVE | LK_RETRY) != 0)
-			break;
-		v_release_rdev(vp);
-		vp->v_data = NULL;
-		node->v_node = NULL;
-		cache_inval_vp(vp, CINV_DESTROY);
-		vput(vp);
-	}
 	if (node->d_dir.d_name) {
 		kfree(node->d_dir.d_name, M_DEVFS);
 		node->d_dir.d_name = NULL;
 	}
-	node->flags |= DEVFS_DESTROYED;
-
 	--DEVFS_MNTDATA(node->mp)->file_count;
-
 	objcache_put(devfs_node_cache, node);
 
 	return 0;
@@ -2289,14 +2298,21 @@ devfs_release_ops(struct dev_ops *ops)
 	}
 }
 
+/*
+ * Wait for asynchronous messages to complete in the devfs helper
+ * thread, then return.  Do nothing if the helper thread is dead
+ * (during reboot).
+ */
 void
 devfs_config(void)
 {
 	devfs_msg_t msg;
 
-	msg = devfs_msg_get();
-	msg = devfs_msg_send_sync(DEVFS_SYNC, msg);
-	devfs_msg_put(msg);
+	if (devfs_run) {
+		msg = devfs_msg_get();
+		msg = devfs_msg_send_sync(DEVFS_SYNC, msg);
+		devfs_msg_put(msg);
+	}
 }
 
 /*
