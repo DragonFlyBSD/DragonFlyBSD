@@ -975,18 +975,23 @@ devfs_spec_open(struct vop_open_args *ap)
 		nanotime(&node->atime);
 #endif
 
+	/*
+	 * If we replaced the vp the vop_stdopen() call will have loaded
+	 * it into fp->f_data and vref()d the vp, giving us two refs.  So
+	 * instead of just unlocking it here we have to vput() it.
+	 */
 	if (orig_vp)
-		vn_unlock(vp);
+		vput(vp);
 
 	/* Ugly pty magic, to make pty devices appear once they are opened */
 	if (node && (node->flags & DEVFS_PTY) == DEVFS_PTY)
 		node->flags &= ~DEVFS_INVISIBLE;
 
 	if (ap->a_fp) {
-		ap->a_fp->f_type = DTYPE_VNODE;
-		ap->a_fp->f_flag = ap->a_mode & FMASK;
+		KKASSERT(ap->a_fp->f_type == DTYPE_VNODE);
+		KKASSERT(ap->a_fp->f_flag == (ap->a_mode & FMASK));
 		ap->a_fp->f_ops = &devfs_dev_fileops;
-		ap->a_fp->f_data = vp;
+		KKASSERT(ap->a_fp->f_data == (void *)vp);
 	}
 
 	return 0;
