@@ -35,6 +35,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <kvm.h>
@@ -56,20 +57,21 @@ static int64_t
 inodes(void)
 {
 	char path[MAXPATHLEN+1];
-	struct statfs buf;
+	struct statfs sbuf;
+	struct statvfs buf;
 
 	if (op->inodes != 0)
 		return (op->inodes);
 	if (getcwd(path, sizeof(path)) == NULL)
 		err(1, "getcwd()");
 
-	if (statfs(path, &buf) < 0)
+	if (statvfs(path, &buf) < 0)
 		err(1, "statfs(%s)", path);
-	if (!strcmp(buf.f_fstypename, "msdosfs"))
+	if (!strcmp(sbuf.f_fstypename, "msdosfs"))
 			buf.f_ffree = 9999;
-	flags = buf.f_flags & MNT_VISFLAGMASK;
+	flags = sbuf.f_flags & MNT_VISFLAGMASK;
 	if (op->verbose > 2)
-		printf("Free inodes on %s (%s): %jd\n", path, buf.f_mntonname,
+		printf("Free inodes on %s (%s): %jd\n", path, sbuf.f_mntonname,
 		    (intmax_t)buf.f_ffree);
 	return (buf.f_ffree);
 }
@@ -78,7 +80,7 @@ static int64_t
 df(void)
 {
 	char path[MAXPATHLEN+1];
-	struct statfs buf;
+	struct statvfs buf;
 
 	if (op->kblocks != 0)
 		return (op->kblocks * (uint64_t)1024);
@@ -86,8 +88,9 @@ df(void)
 	if (getcwd(path, sizeof(path)) == NULL)
 		err(1, "getcwd()");
 
-	if (statfs(path, &buf) < 0)
+	if (statvfs(path, &buf) < 0)
 		err(1, "statfs(%s)", path);
+
 	if (buf.f_bavail > buf.f_blocks || buf.f_bavail < 0) {
 		warnx("Corrupt statfs(%s). f_bavail = %jd!", path,
 		    (intmax_t)buf.f_bavail);
@@ -110,7 +113,7 @@ swap(void)
 	 * Please remove the #error line above this comment and modify the
 	 * line below it with the amount of free swap you have (in bytes).
 	 */
-	int64_t sz = 1073741824; /* EDIT HERE! */
+	int64_t sz = 4294967296LL; /* EDIT HERE! */
 
 	if (op->verbose > 2)
 		printf("Total free swap space %jd Mb\n",
