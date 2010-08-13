@@ -2301,14 +2301,14 @@ devfs_release_ops(struct dev_ops *ops)
 /*
  * Wait for asynchronous messages to complete in the devfs helper
  * thread, then return.  Do nothing if the helper thread is dead
- * (during reboot).
+ * or we are being indirectly called from the helper thread itself.
  */
 void
 devfs_config(void)
 {
 	devfs_msg_t msg;
 
-	if (devfs_run) {
+	if (devfs_run && curthread != td_core) {
 		msg = devfs_msg_get();
 		msg = devfs_msg_send_sync(DEVFS_SYNC, msg);
 		devfs_msg_put(msg);
@@ -2355,7 +2355,8 @@ devfs_init(void)
 	lwkt_create(devfs_msg_core, /*args*/NULL, &td_core, NULL,
 		    0, 0, "devfs_msg_core");
 
-	tsleep(td_core/*devfs_id*/, 0, "devfsc", 0);
+	while (devfs_run == 0)
+		tsleep(td_core, 0, "devfsc", 0);
 
 	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_init finished\n");
 }
@@ -2370,9 +2371,9 @@ devfs_uninit(void)
 	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_uninit() called\n");
 
 	devfs_msg_send(DEVFS_TERMINATE_CORE, NULL);
-
-	tsleep(td_core/*devfs_id*/, 0, "devfsc", 0);
-	tsleep(td_core/*devfs_id*/, 0, "devfsc", 10000);
+	while (devfs_run)
+		tsleep(td_core, 0, "devfsc", hz*10);
+	tsleep(td_core, 0, "devfsc", hz);
 
 	devfs_clone_bitmap_uninit(&DEVFS_CLONE_BITMAP(ops_id));
 

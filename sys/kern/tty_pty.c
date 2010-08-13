@@ -508,9 +508,11 @@ ptsstart(struct tty *tp)
 
 	if (tp->t_state & TS_TTSTOP)
 		return;
-	if (pti->pt_flags & PF_STOPPED) {
-		pti->pt_flags &= ~PF_STOPPED;
-		pti->pt_send = TIOCPKT_START;
+	if (pti) {
+		if (pti->pt_flags & PF_STOPPED) {
+			pti->pt_flags &= ~PF_STOPPED;
+			pti->pt_send = TIOCPKT_START;
+		}
 	}
 	ptcwakeup(tp, FREAD);
 }
@@ -705,13 +707,16 @@ ptsstop(struct tty *tp, int flush)
 	int flag;
 
 	/* note: FLUSHREAD and FLUSHWRITE already ok */
-	if (flush == 0) {
-		flush = TIOCPKT_STOP;
-		pti->pt_flags |= PF_STOPPED;
-	} else
-		pti->pt_flags &= ~PF_STOPPED;
-	pti->pt_send |= flush;
-	/* change of perspective */
+	if (pti) {
+		if (flush == 0) {
+			flush = TIOCPKT_STOP;
+			pti->pt_flags |= PF_STOPPED;
+		} else {
+			pti->pt_flags &= ~PF_STOPPED;
+		}
+		pti->pt_send |= flush;
+		/* change of perspective */
+	}
 	flag = 0;
 	if (flush & FREAD)
 		flag |= FWRITE;
