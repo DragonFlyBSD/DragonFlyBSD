@@ -186,7 +186,7 @@ devfs_allocp(devfs_nodetype devfsnodetype, char *name,
 	node = objcache_get(devfs_node_cache, M_WAITOK);
 	bzero(node, sizeof(*node));
 
-	atomic_add_long(&(DEVFS_MNTDATA(mp)->leak_count), 1);
+	atomic_add_long(&DEVFS_MNTDATA(mp)->leak_count, 1);
 
 	node->d_dev = NULL;
 	node->nchildren = 1;
@@ -278,7 +278,7 @@ devfs_allocp(devfs_nodetype devfsnodetype, char *name,
 		++mp->mnt_namecache_gen;
 	}
 
-	++DEVFS_MNTDATA(mp)->file_count;
+	atomic_add_long(&DEVFS_MNTDATA(mp)->file_count, 1);
 
 	return node;
 }
@@ -379,11 +379,15 @@ devfs_allocvp(struct mount *mp, struct vnode **vpp, devfs_nodetype devfsnodetype
  * and device.
  *
  * The cdev_t itself remains intact.
+ *
+ * The core lock is not necessarily held on call and must be temporarily
+ * released if it is to avoid a deadlock.
  */
 int
 devfs_freep(struct devfs_node *node)
 {
 	struct vnode *vp;
+	int relock;
 
 	KKASSERT(node);
 	KKASSERT(((node->flags & DEVFS_NODE_LINKED) == 0) ||
@@ -403,7 +407,12 @@ devfs_freep(struct devfs_node *node)
 	 * the node.  The vget() is required to safely modified the vp
 	 * and cycle the refs to terminate an inactive vp.
 	 */
-	lockmgr(&devfs_lock, LK_RELEASE);
+	if (lockstatus(&devfs_lock, curthread) == LK_EXCLUSIVE) {
+		lockmgr(&devfs_lock, LK_RELEASE);
+		relock = 1;
+	} else {
+		relock = 0;
+	}
 
 	while ((vp = node->v_node) != NULL) {
 		if (vget(vp, LK_EXCLUSIVE | LK_RETRY) != 0)
@@ -414,12 +423,11 @@ devfs_freep(struct devfs_node *node)
 		cache_inval_vp(vp, CINV_DESTROY);
 		vput(vp);
 	}
-	lockmgr(&devfs_lock, LK_EXCLUSIVE);
 
 	/*
 	 * Remaining cleanup
 	 */
-	atomic_subtract_long(&(DEVFS_MNTDATA(node->mp)->leak_count), 1);
+	atomic_subtract_long(&DEVFS_MNTDATA(node->mp)->leak_count, 1);
 	if (node->symlink_name)	{
 		kfree(node->symlink_name, M_DEVFS);
 		node->symlink_name = NULL;
@@ -435,8 +443,11 @@ devfs_freep(struct devfs_node *node)
 		kfree(node->d_dir.d_name, M_DEVFS);
 		node->d_dir.d_name = NULL;
 	}
-	--DEVFS_MNTDATA(node->mp)->file_count;
+	atomic_subtract_long(&DEVFS_MNTDATA(node->mp)->file_count, 1);
 	objcache_put(devfs_node_cache, node);
+
+	if (relock)
+		lockmgr(&devfs_lock, LK_EXCLUSIVE);
 
 	return 0;
 }
