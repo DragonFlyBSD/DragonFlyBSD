@@ -2136,8 +2136,17 @@ struct ifnet *
 if_alloc(uint8_t type)
 {
         struct ifnet *ifp;
+	size_t size;
 
-	ifp = kmalloc(sizeof(struct ifnet), M_IFNET, M_WAITOK|M_ZERO);
+	/*
+	 * XXX temporary hack until arpcom is setup in if_l2com
+	 */
+	if (type == IFT_ETHER)
+		size = sizeof(struct arpcom);
+	else
+		size = sizeof(struct ifnet);
+
+	ifp = kmalloc(size, M_IFNET, M_WAITOK|M_ZERO);
 
 	ifp->if_type = type;
 
