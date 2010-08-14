@@ -56,6 +56,7 @@
 #include <sys/vnode.h>
 #include <sys/event.h>
 #include <sys/sysctl.h>
+#include <sys/devfs.h>
 #include <sys/thread2.h>
 
 #include <bus/usb/usb.h>
@@ -88,6 +89,7 @@ SYSCTL_INT(_hw_usb_ums, OID_AUTO, debug, CTLFLAG_RW,
 
 struct ums_softc {
 	device_t sc_dev;		/* base device */
+	cdev_t	 sc_cdev;
 	usbd_interface_handle sc_iface;	/* interface */
 	usbd_pipe_handle sc_intrpipe;	/* interrupt pipe */
 	int sc_ep_addr;
@@ -341,9 +343,10 @@ ums_attach(device_t self)
 	sc->status.button = sc->status.obutton = 0;
 	sc->status.dx = sc->status.dy = sc->status.dz = 0;
 
-	make_dev(&ums_ops, device_get_unit(self),
-		 UID_ROOT, GID_OPERATOR,
-		 0644, "ums%d", device_get_unit(self));
+	sc->sc_cdev = make_dev(&ums_ops, device_get_unit(self),
+		 	       UID_ROOT, GID_OPERATOR,
+		 	       0644, "ums%d", device_get_unit(self));
+	reference_dev(sc->sc_cdev);
 
 	if (usbd_get_quirks(uaa->device)->uq_flags & UQ_SPUR_BUT_UP) {
 		DPRINTF(("%s: Spurious button up events\n",
@@ -380,9 +383,11 @@ ums_detach(device_t self)
 		sc->state &= ~UMS_ASLEEP;
 		wakeup(sc);
 	}
-	KNOTE(&sc->rkq.ki_note, 0);
 
 	dev_ops_remove_minor(&ums_ops, /*-1, */device_get_unit(self));
+	devfs_assume_knotes(sc->sc_cdev, &sc->rkq);
+	release_dev(sc->sc_cdev);
+        sc->sc_cdev = NULL;
 
 	return 0;
 }

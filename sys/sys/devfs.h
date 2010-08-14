@@ -393,6 +393,7 @@ int devfs_destroy_dev_by_ops(struct dev_ops *, int);
 struct devfs_node *devfs_find_device_node_by_name(struct devfs_node *, char *);
 
 cdev_t devfs_new_cdev(struct dev_ops *, int, struct dev_ops *);
+void devfs_assume_knotes(cdev_t dev, struct kqinfo *kqi);
 
 cdev_t devfs_find_device_by_name(const char *, ...) __printflike(1, 2);
 cdev_t devfs_find_device_by_udev(udev_t);

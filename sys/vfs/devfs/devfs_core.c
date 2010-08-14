@@ -2219,6 +2219,57 @@ devfs_cdev_unlock(cdev_t dev)
 {
 }
 
+static int
+devfs_detached_filter_eof(struct knote *kn, long hint)
+{
+	kn->kn_flags |= EV_EOF;
+	return (1);
+}
+
+static void
+devfs_detached_filter_detach(struct knote *kn)
+{
+	cdev_t dev = (cdev_t)kn->kn_hook;
+
+	knote_remove(&dev->si_kqinfo.ki_note, kn);
+}
+
+static struct filterops devfs_detached_filterops =
+	{ FILTEROP_ISFD, NULL,
+	  devfs_detached_filter_detach,
+	  devfs_detached_filter_eof };
+
+/*
+ * Delegates knote filter handling responsibility to devfs
+ *
+ * Any device that implements kqfilter event handling and could be detached
+ * or shut down out from under the kevent subsystem must allow devfs to
+ * assume responsibility for any knotes it may hold.
+ */
+void
+devfs_assume_knotes(cdev_t dev, struct kqinfo *kqi)
+{
+	struct knote *kn;
+
+	lwkt_gettoken(&kq_token);
+
+	while (!SLIST_EMPTY(&kqi->ki_note)) {
+		kn = SLIST_FIRST(&kqi->ki_note);
+                knote_remove(&kqi->ki_note, kn);
+		kn->kn_fop = &devfs_detached_filterops;
+		kn->kn_hook = (caddr_t)dev;
+		knote_insert(&dev->si_kqinfo.ki_note, kn);
+        }
+
+	/*
+	 * These should probably be activated individually, but doing so
+	 * would require refactoring kq's public in-kernel interface.
+	 */
+	KNOTE(&dev->si_kqinfo.ki_note, 0);
+
+	lwkt_reltoken(&kq_token);
+}
+
 /*
  * Links a given cdev into the dev list.
  */
