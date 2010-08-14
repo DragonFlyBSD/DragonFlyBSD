@@ -217,7 +217,7 @@ dm_target_snapshot_init(dm_dev_t * dmv, void **target_config, char *params)
 		if ((dmp_cow = dm_pdev_insert(argv[1])) == NULL)
 			return ENOENT;
 	}
-	tsc->tsc_chunk_size = atoi(argv[3]);
+	tsc->tsc_chunk_size = atoi64(argv[3]);
 
 	tsc->tsc_snap_dev = dmp_snap;
 	tsc->tsc_cow_dev = dmp_cow;
@@ -262,14 +262,14 @@ dm_target_snapshot_status(void *target_config)
 	/* length of names + count of chars + spaces and null char */
 	prm_len = strlen(tsc->tsc_snap_dev->name) + cow_len + count + 5;
 
-	if ((params = kmem_alloc(prm_len, KM_NOSLEEP)) == NULL)
-		return NULL;
+	/* target expects use of M_DM */
+	params = kmalloc(prm_len, M_DM, M_WAITOK);
 
 	printf("%s %s %s %" PRIu64 "\n", tsc->tsc_snap_dev->name,
 	    tsc->tsc_cow_dev->name, tsc->tsc_persistent_dev ? "p" : "n",
 	    tsc->tsc_chunk_size);
 
-	snprintf(params, prm_len, "%s %s %s %" PRIu64, tsc->tsc_snap_dev->name,
+	ksnprintf(params, prm_len, "%s %s %s %" PRIu64, tsc->tsc_snap_dev->name,
 	    tsc->tsc_persistent_dev ? tsc->tsc_cow_dev->name : "",
 	    tsc->tsc_persistent_dev ? "p" : "n",
 	    tsc->tsc_chunk_size);

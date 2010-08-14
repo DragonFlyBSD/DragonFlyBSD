@@ -175,12 +175,13 @@ typedef struct target_linear_config {
 } dm_target_linear_config_t;
 
 /* for stripe : */
+
+#define MAX_STRIPES 32
+
 typedef struct target_stripe_config {
-#define MAX_STRIPES 2
 	struct target_linear_config stripe_devs[MAX_STRIPES];
-	uint8_t stripe_num;
+	int stripe_num;
 	uint64_t stripe_chunksize;
-	size_t params_len;
 } dm_target_stripe_config_t;
 
 /* for mirror : */
@@ -324,7 +325,7 @@ int dm_target_crypt_destroy(dm_table_entry_t *);
 int dm_target_crypt_upcall(dm_table_entry_t *, struct buf *);
 
 /* Generic function used to convert char to string */
-uint64_t atoi(const char *); 
+uint64_t atoi64(const char *);
 
 /* dm_target_mirror.c */
 int dm_target_mirror_init(dm_dev_t *, void**, char *);
@@ -392,6 +393,7 @@ int dm_pdev_init(void);
 dm_pdev_t* dm_pdev_insert(const char *);
 
 extern int dm_debug_level;
+MALLOC_DECLARE(M_DM);
 
 #define aprint_debug(format, ...)	\
     do { if (dm_debug_level) kprintf(format, ## __VA_ARGS__); } while(0)

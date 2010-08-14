@@ -41,8 +41,6 @@
 
 #include "dm.h"
 
-MALLOC_DECLARE(M_DM);
-
 SLIST_HEAD(dm_pdevs, dm_pdev) dm_pdev_list;
 
 	struct lock dm_pdev_mutex;

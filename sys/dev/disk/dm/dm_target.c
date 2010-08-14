@@ -46,8 +46,6 @@ TAILQ_HEAD(dm_target_head, dm_target);
 static struct dm_target_head dm_target_list =
 TAILQ_HEAD_INITIALIZER(dm_target_list);
 
-MALLOC_DECLARE(M_DM);
-
 struct lock dm_target_mutex;
 
 /*

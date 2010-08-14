@@ -91,7 +91,6 @@
 #include "netbsd-dm.h"
 #include "dm.h"
 
-MALLOC_DECLARE(M_DM);
 static uint64_t sc_minor_num;
 extern struct dev_ops dm_ops;
 uint64_t dm_dev_counter;

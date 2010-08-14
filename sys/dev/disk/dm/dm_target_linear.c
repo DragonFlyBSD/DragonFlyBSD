@@ -93,7 +93,7 @@ dm_target_linear_init(dm_dev_t * dmv, void **target_config, char *params)
 	tlc->offset = 0;	/* default settings */
 
 	/* Check user input if it is not leave offset as 0. */
-	tlc->offset = atoi(argv[1]);
+	tlc->offset = atoi64(argv[1]);
 
 	*target_config = tlc;
 
@@ -115,8 +115,8 @@ dm_target_linear_status(void *target_config)
 
 	aprint_debug("Linear target status function called\n");
 
-	if ((params = kmalloc(DM_MAX_PARAMS_SIZE, M_DMLINEAR, M_WAITOK)) == NULL)
-		return NULL;
+	/* target expects use of M_DM */
+	params = kmalloc(DM_MAX_PARAMS_SIZE, M_DM, M_WAITOK);
 
 	aprint_normal("%s %" PRIu64, tlc->pdev->name, tlc->offset);
 	ksnprintf(params, DM_MAX_PARAMS_SIZE, "%s %" PRIu64,
@@ -213,7 +213,7 @@ dm_target_linear_upcall(dm_table_entry_t * table_en, struct buf * bp)
  * Transform char s to uint64_t offset number.
  */
 uint64_t
-atoi(const char *s)
+atoi64(const char *s)
 {
 	uint64_t n;
 	n = 0;

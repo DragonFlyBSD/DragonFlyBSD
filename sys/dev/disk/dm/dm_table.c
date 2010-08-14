@@ -36,8 +36,6 @@
 
 #include "dm.h"
 
-MALLOC_DECLARE(M_DM);
-
 /*
  * There are two types of users of this interface:
  *

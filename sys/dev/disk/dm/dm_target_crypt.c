@@ -551,8 +551,8 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 		dev, crypto_alg, crypto_mode, iv_mode, iv_opt, key, iv_offset,
 		block_offset);
 
-	if ((priv = kmalloc(sizeof(dm_target_crypt_config_t), M_DMCRYPT, M_NOWAIT))
-	    == NULL) {
+	priv = kmalloc(sizeof(dm_target_crypt_config_t), M_DMCRYPT, M_WAITOK);
+	if (priv == NULL) {
 		kprintf("dm_target_crypt: could not allocate memory\n");
 		kfree(status_str, M_DMCRYPT);
 		return ENOMEM;
@@ -679,8 +679,8 @@ dm_target_crypt_status(void *target_config)
 
 	priv = target_config;
 
-	if ((params = kmalloc(DM_MAX_PARAMS_SIZE, M_DMCRYPT, M_WAITOK)) == NULL)
-		return NULL;
+	/* caller expects use of M_DM */
+	params = kmalloc(DM_MAX_PARAMS_SIZE, M_DM, M_WAITOK);
 
 	ksnprintf(params, DM_MAX_PARAMS_SIZE, "%s",
 	    priv->status_str);

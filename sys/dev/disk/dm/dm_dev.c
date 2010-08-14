@@ -44,8 +44,6 @@ static dm_dev_t *dm_dev_lookup_name(const char *);
 static dm_dev_t *dm_dev_lookup_uuid(const char *);
 static dm_dev_t *dm_dev_lookup_minor(int);
 
-MALLOC_DECLARE(M_DM);
-
 static struct dm_dev_head dm_dev_list =
 TAILQ_HEAD_INITIALIZER(dm_dev_list);
 
