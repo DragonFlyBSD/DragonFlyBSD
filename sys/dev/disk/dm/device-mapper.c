@@ -382,6 +382,7 @@ dmstrategy(struct dev_strategy_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
+	int bypass;
 
 	dm_dev_t *dmv;
 	dm_table_t  *tbl;
@@ -410,8 +411,27 @@ dmstrategy(struct dev_strategy_args *ap)
 		return 0;
 	} 
 
-	if (bounds_check_with_mediasize(bio, DEV_BSIZE,
-	    dm_table_size(&dmv->table_head)) <= 0) {
+	switch(bp->b_cmd) {
+	case BUF_CMD_READ:
+	case BUF_CMD_WRITE:
+	case BUF_CMD_FREEBLKS:
+		bypass = 0;
+		break;
+	case BUF_CMD_FLUSH:
+		bypass = 1;
+		KKASSERT(buf_len == 0);
+		break;
+	default:
+		dm_dev_unbusy(dmv);
+		bp->b_error = EIO;
+		bp->b_resid = bp->b_bcount;
+		biodone(bio);
+		return 0;
+	}
+
+	if (bypass == 0 &&
+	    bounds_check_with_mediasize(bio, DEV_BSIZE,
+					dm_table_size(&dmv->table_head)) <= 0) {
 		dm_dev_unbusy(dmv);
 		bp->b_resid = bp->b_bcount;
 		biodone(bio);
@@ -421,25 +441,22 @@ dmstrategy(struct dev_strategy_args *ap)
 	/* Select active table */
 	tbl = dm_table_get_entry(&dmv->table_head, DM_TABLE_ACTIVE);
 
-	 /* Nested buffers count down to zero therefore I have
-	    to set bp->b_resid to maximal value. */
-	bp->b_resid = bp->b_bcount;
+	nestiobuf_init(bio);
 
 	/*
 	 * Find out what tables I want to select.
 	 */
-	SLIST_FOREACH(table_en, tbl, next)
-	{
-		/* I need need number of bytes not blocks. */
-		table_start = table_en->start * DEV_BSIZE;
+	SLIST_FOREACH(table_en, tbl, next) {
 		/*
-		 * I have to sub 1 from table_en->length to prevent
-		 * off by one error
+		 * I need need number of bytes not blocks.
 		 */
-		table_end = table_start + (table_en->length)* DEV_BSIZE;
+		table_start = table_en->start * DEV_BSIZE;
+		table_end = table_start + (table_en->length) * DEV_BSIZE;
 
+		/*
+		 * Calculate the start and end
+		 */
 		start = MAX(table_start, buf_start);
-
 		end = MIN(table_end, buf_start + buf_len);
 
 		aprint_debug("----------------------------------------\n");
@@ -453,25 +470,26 @@ dmstrategy(struct dev_strategy_args *ap)
                     PRIu64"\n", start, end);
 		aprint_debug("\n----------------------------------------\n");
 
-		if (start < end) {
-			/* create nested buffer  */
+		if (bypass) {
 			nestbuf = getpbuf(NULL);
 
-			nestiobuf_setup(bio, nestbuf, start - buf_start,
-			    (end - start));
-
+			nestiobuf_add(bio, nestbuf, 0, 0);
+			nestbuf->b_bio1.bio_offset = 0;
+			table_en->target->strategy(table_en, nestbuf);
+		} else if (start < end) {
+			nestbuf = getpbuf(NULL);
+			nestiobuf_add(bio, nestbuf,
+				      start - buf_start, (end - start));
 			issued_len += end - start;
 
-			/* I need number of bytes. */
 			nestbuf->b_bio1.bio_offset = (start - table_start);
-
 			table_en->target->strategy(table_en, nestbuf);
 		}
 	}
 
 	if (issued_len < buf_len)
-		nestiobuf_done(bio, buf_len - issued_len, EINVAL);
-
+		nestiobuf_error(bio, EINVAL);
+	nestiobuf_start(bio);
 	dm_table_release(&dmv->table_head, DM_TABLE_ACTIVE);
 	dm_dev_unbusy(dmv);
 

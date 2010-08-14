@@ -232,9 +232,9 @@ dm_target_stripe_strategy(dm_table_entry_t *table_en, struct buf *bp)
 	struct bio *bio = &bp->b_bio1;
 	struct buf *nestbuf;
 	uint64_t blkno, blkoff;
-	uint64_t stripe, stripe_blknr;
+	uint64_t stripe, blknr;
 	uint32_t stripe_off, stripe_rest, num_blks, issue_blks;
-	int stripe_devnr;
+	int devnr;
 
 	tsc = table_en->target_config;
 	if (tsc == NULL)
@@ -243,46 +243,71 @@ dm_target_stripe_strategy(dm_table_entry_t *table_en, struct buf *bp)
 	/* calculate extent of request */
 	KKASSERT(bp->b_resid % DEV_BSIZE == 0);
 
-	blkno = bp->b_bio1.bio_offset / DEV_BSIZE;
-	blkoff = 0;
-	num_blks = bp->b_resid / DEV_BSIZE;
+	switch(bp->b_cmd) {
+	case BUF_CMD_READ:
+	case BUF_CMD_WRITE:
+	case BUF_CMD_FREEBLKS:
+		/*
+		 * Loop through to individual operations
+		 */
+		blkno = bp->b_bio1.bio_offset / DEV_BSIZE;
+		blkoff = 0;
+		num_blks = bp->b_resid / DEV_BSIZE;
+		nestiobuf_init(bio);
 
-	for (;;) {
-		/* blockno to strip piece nr */
-		stripe = blkno / tsc->stripe_chunksize;
-		stripe_off = blkno % tsc->stripe_chunksize;
+		while (num_blks > 0) {
+			/* blockno to strip piece nr */
+			stripe = blkno / tsc->stripe_chunksize;
+			stripe_off = blkno % tsc->stripe_chunksize;
 
-		/* where we are inside the strip */
-		stripe_devnr = stripe % tsc->stripe_num;
-		stripe_blknr = stripe / tsc->stripe_num;
+			/* where we are inside the strip */
+			devnr = stripe % tsc->stripe_num;
+			blknr = stripe / tsc->stripe_num;
 
-		/* how much is left before we hit a boundary */
-		stripe_rest = tsc->stripe_chunksize - stripe_off;
+			/* how much is left before we hit a boundary */
+			stripe_rest = tsc->stripe_chunksize - stripe_off;
 
-		/* issue this piece on stripe `stripe' */
-		issue_blks = MIN(stripe_rest, num_blks);
-		nestbuf = getpbuf(NULL);
+			/* issue this piece on stripe `stripe' */
+			issue_blks = MIN(stripe_rest, num_blks);
+			nestbuf = getpbuf(NULL);
 
-		nestiobuf_setup(bio, nestbuf, blkoff, issue_blks * DEV_BSIZE);
+			nestiobuf_add(bio, nestbuf, blkoff,
+					issue_blks * DEV_BSIZE);
 
-		/* I need number of bytes. */
-		nestbuf->b_bio1.bio_offset =
-			stripe_blknr * tsc->stripe_chunksize + stripe_off;
-		nestbuf->b_bio1.bio_offset +=
-			tsc->stripe_devs[stripe_devnr].offset;
-		nestbuf->b_bio1.bio_offset *= DEV_BSIZE;
+			/* I need number of bytes. */
+			nestbuf->b_bio1.bio_offset =
+				blknr * tsc->stripe_chunksize + stripe_off;
+			nestbuf->b_bio1.bio_offset +=
+				tsc->stripe_devs[devnr].offset;
+			nestbuf->b_bio1.bio_offset *= DEV_BSIZE;
 
-		vn_strategy(tsc->stripe_devs[stripe_devnr].pdev->pdev_vnode,
-			    &nestbuf->b_bio1);
+			vn_strategy(tsc->stripe_devs[devnr].pdev->pdev_vnode,
+				    &nestbuf->b_bio1);
 
-		blkno += issue_blks;
-		blkoff += issue_blks * DEV_BSIZE;
-		num_blks -= issue_blks;
+			blkno += issue_blks;
+			blkoff += issue_blks * DEV_BSIZE;
+			num_blks -= issue_blks;
+		}
+		nestiobuf_start(bio);
+		break;
+	case BUF_CMD_FLUSH:
+		nestiobuf_init(bio);
+		for (devnr = 0; devnr < tsc->stripe_num; ++devnr) {
+			nestbuf = getpbuf(NULL);
 
-		if (num_blks <= 0)
-			break;
+			nestiobuf_add(bio, nestbuf, 0, 0);
+			nestbuf->b_bio1.bio_offset = 0;
+			vn_strategy(tsc->stripe_devs[devnr].pdev->pdev_vnode,
+				    &nestbuf->b_bio1);
+		}
+		nestiobuf_start(bio);
+		break;
+	default:
+		bp->b_flags |= B_ERROR;
+		bp->b_error = EIO;
+		biodone(bio);
+		break;
 	}
-
 	return 0;
 }
 
