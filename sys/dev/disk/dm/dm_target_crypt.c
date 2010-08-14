@@ -741,29 +741,30 @@ dm_target_crypt_destroy(dm_table_entry_t * table_en)
 {
 	dm_target_crypt_config_t *priv;
 
+	/*
+	 * Disconnect the crypt config before unbusying the target.
+	 */
 	priv = table_en->target_config;
-
 	if (priv == NULL)
 		return 0;
-
+	table_en->target_config = NULL;
 	dm_pdev_decr(priv->pdev);
 
-	/* Unbusy target so we can unload it */
 	dm_target_unbusy(table_en->target);
 
 	/*
+	 * Clean up the crypt config
+	 *
 	 * Overwrite the private information before freeing memory to
 	 * avoid leaking it.
 	 */
 	memset(priv->status_str, 0xFF, strlen(priv->status_str));
 	bzero(priv->status_str, strlen(priv->status_str));
+	kfree(priv->status_str, M_DMCRYPT);
+
 	memset(priv, 0xFF, sizeof(dm_target_crypt_config_t));
 	bzero(priv, sizeof(dm_target_crypt_config_t));
-
-	kfree(priv->status_str, M_DMCRYPT);
 	kfree(priv, M_DMCRYPT);
-
-	table_en->target_config = NULL;
 
 	return 0;
 }
