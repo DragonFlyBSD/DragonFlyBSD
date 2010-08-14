@@ -172,7 +172,7 @@ main(int argc, char *argv[])
 			}
 
 			syslog(LOG_DEBUG, "Unknown event for descriptor %d",
-				event->ident);
+			    (int)event->ident);
 		}
 	}
 
