@@ -1399,6 +1399,7 @@ brelse(struct buf *bp)
 						bp->b_xio.xio_pages[j] = mtmp;
 					}
 				}
+				bp->b_flags &= ~B_HASBOGUS;
 
 				if ((bp->b_flags & B_INVAL) == 0) {
 					pmap_qenter(trunc_page((vm_offset_t)bp->b_data),
@@ -3704,6 +3705,7 @@ bpdone(struct buf *bp, int elseit)
 			foff = (foff + PAGE_SIZE) & ~(off_t)PAGE_MASK;
 			iosize -= resid;
 		}
+		bp->b_flags &= ~B_HASBOGUS;
 		if (obj)
 			vm_object_pip_wakeupn(obj, 0);
 		rel_mplock();
@@ -3839,6 +3841,7 @@ vfs_unbusy_pages(struct buf *bp)
 			vm_page_flag_clear(m, PG_ZERO);
 			vm_page_io_finish(m);
 		}
+		bp->b_flags &= ~B_HASBOGUS;
 		vm_object_pip_wakeupn(obj, 0);
 	}
 }
@@ -3962,6 +3965,7 @@ retry:
 				 * this also covers the dirty case.
 				 */
 				bp->b_xio.xio_pages[i] = bogus_page;
+				bp->b_flags |= B_HASBOGUS;
 				bogus++;
 			} else if (m->valid & m->dirty) {
 				/*

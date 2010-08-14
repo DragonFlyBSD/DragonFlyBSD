@@ -293,7 +293,7 @@ struct buf {
 #define	B_HASHED 	0x00000040 	/* Indexed via v_rbhash_tree */
 #define	B_DELWRI	0x00000080	/* Delay I/O until buffer reused. */
 #define	B_BNOCLIP	0x00000100	/* EOF clipping b_bcount not allowed */
-#define	B_UNUSED9	0x00000200
+#define	B_HASBOGUS	0x00000200	/* Contains bogus pages */
 #define	B_EINTR		0x00000400	/* I/O was interrupted */
 #define	B_ERROR		0x00000800	/* I/O error occurred. */
 #define	B_UNUSED12	0x00001000	/* Unused */
