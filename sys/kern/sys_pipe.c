@@ -155,13 +155,12 @@ SYSCTL_INT(_kern_pipe, OID_AUTO, bkmem_alloc,
 static void pipeclose (struct pipe *cpipe);
 static void pipe_free_kmem (struct pipe *cpipe);
 static int pipe_create (struct pipe **cpipep);
-static __inline void pipewakeup (struct pipe *cpipe);
 static int pipespace (struct pipe *cpipe, int size);
 
 static __inline void
-pipewakeup(struct pipe *cpipe)
+pipewakeup(struct pipe *cpipe, int dosigio)
 {
-	if ((cpipe->pipe_state & PIPE_ASYNC) && cpipe->pipe_sigio) {
+	if (dosigio && (cpipe->pipe_state & PIPE_ASYNC) && cpipe->pipe_sigio) {
 		get_mplock();
 		pgsigio(cpipe->pipe_sigio, SIGIO, 0);
 		rel_mplock();
@@ -394,6 +393,7 @@ static int
 pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 {
 	struct pipe *rpipe;
+	struct pipe *wpipe;
 	int error;
 	size_t nread = 0;
 	int nbio;
@@ -413,6 +413,7 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	 */
 	pipe_get_mplock(&mpsave);
 	rpipe = (struct pipe *)fp->f_data;
+	wpipe = rpipe->pipe_peer;
 	lwkt_gettoken(&rpipe->pipe_rlock);
 
 	if (fflags & O_FBLOCKING)
@@ -502,7 +503,6 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		if (rpipe->pipe_state & PIPE_WANTW) {
 			lwkt_gettoken(&rpipe->pipe_wlock);
 			if (rpipe->pipe_state & PIPE_WANTW) {
-				notify_writer = 0;
 				rpipe->pipe_state &= ~PIPE_WANTW;
 				lwkt_reltoken(&rpipe->pipe_wlock);
 				wakeup(rpipe);
@@ -636,6 +636,9 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	 * while holding just rlock.
 	 */
 	if (notify_writer) {
+		/*
+		 * Synchronous blocking is done on the pipe involved
+		 */
 		if (rpipe->pipe_state & PIPE_WANTW) {
 			lwkt_gettoken(&rpipe->pipe_wlock);
 			if (rpipe->pipe_state & PIPE_WANTW) {
@@ -646,9 +649,16 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 				lwkt_reltoken(&rpipe->pipe_wlock);
 			}
 		}
-		lwkt_gettoken(&rpipe->pipe_wlock);
-		pipewakeup(rpipe);
-		lwkt_reltoken(&rpipe->pipe_wlock);
+
+		/*
+		 * But we may also have to deal with a kqueue which is
+		 * stored on the same pipe as its descriptor, so a
+		 * EVFILT_WRITE event waiting for our side to drain will
+		 * be on the other side.
+		 */
+		lwkt_gettoken(&wpipe->pipe_wlock);
+		pipewakeup(wpipe, 0);
+		lwkt_reltoken(&wpipe->pipe_wlock);
 	}
 	/*size = rpipe->pipe_buffer.windex - rpipe->pipe_buffer.rindex;*/
 	lwkt_reltoken(&rpipe->pipe_rlock);
@@ -666,7 +676,8 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	int error;
 	int orig_resid;
 	int nbio;
-	struct pipe *wpipe, *rpipe;
+	struct pipe *wpipe;
+	struct pipe *rpipe;
 	u_int windex;
 	u_int space;
 	u_int wcount;
@@ -901,7 +912,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		if (space == 0) {
 			wpipe->pipe_state |= PIPE_WANTW;
 			++wpipe->pipe_wantwcnt;
-			pipewakeup(wpipe);
+			pipewakeup(wpipe, 1);
 			if (wpipe->pipe_state & PIPE_WANTW)
 				error = tsleep(wpipe, PCATCH, "pipewr", 0);
 			++pipe_wblocked_count;
@@ -939,7 +950,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 			}
 		}
 		lwkt_gettoken(&wpipe->pipe_rlock);
-		pipewakeup(wpipe);
+		pipewakeup(wpipe, 1);
 		lwkt_reltoken(&wpipe->pipe_rlock);
 	}
 
@@ -1134,8 +1145,8 @@ pipe_shutdown(struct file *fp, int how)
 		error = 0;
 		break;
 	}
-	pipewakeup(rpipe);
-	pipewakeup(wpipe);
+	pipewakeup(rpipe, 1);
+	pipewakeup(wpipe, 1);
 
 	lwkt_reltoken(&wpipe->pipe_wlock);
 	lwkt_reltoken(&wpipe->pipe_rlock);
@@ -1189,7 +1200,7 @@ pipeclose(struct pipe *cpipe)
 	 * wakeup anyone blocked on our pipe.
 	 */
 	cpipe->pipe_state |= PIPE_CLOSED | PIPE_REOF | PIPE_WEOF;
-	pipewakeup(cpipe);
+	pipewakeup(cpipe, 1);
 	if (cpipe->pipe_state & (PIPE_WANTR | PIPE_WANTW)) {
 		cpipe->pipe_state &= ~(PIPE_WANTR | PIPE_WANTW);
 		wakeup(cpipe);
@@ -1202,7 +1213,7 @@ pipeclose(struct pipe *cpipe)
 		lwkt_gettoken(&ppipe->pipe_rlock);
 		lwkt_gettoken(&ppipe->pipe_wlock);
 		ppipe->pipe_state |= PIPE_REOF | PIPE_WEOF;
-		pipewakeup(ppipe);
+		pipewakeup(ppipe, 1);
 		if (ppipe->pipe_state & (PIPE_WANTR | PIPE_WANTW)) {
 			ppipe->pipe_state &= ~(PIPE_WANTR | PIPE_WANTW);
 			wakeup(ppipe);
