@@ -4,6 +4,7 @@
 
 #include <sys/param.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 
 #include <sys/sysctl.h>
 
@@ -29,12 +30,21 @@ dragonfly_check_dev(int major, const char *path)
 	struct udev_list_entry *udev_le, *udev_le_first;
 	struct udev_monitor *udev_monitor;
 	struct udev_device *udev_dev;
+	struct stat sb;
 	const char *subsystem;
 	const char *driver;
 	const char *type;
 	int ret, result;
 
 	result = LVM_FAILURE;
+
+	/*
+	 * We do the stat & devname dance to get around paths that are
+	 * symlinks. udev will only find devices by their real name or
+	 * devfs alias.
+	 */
+	stat(path, &sb);
+	path = devname(sb.st_rdev, S_IFCHR);
 
 	if (!strncmp(path, "/dev/", strlen("/dev/"))) {
 		path += strlen("/dev/");

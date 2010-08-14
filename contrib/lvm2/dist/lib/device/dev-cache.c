@@ -450,9 +450,6 @@ static int _insert(const char *path, int rec)
 			return_0;
 		}
 #elif defined(__DragonFly__)
-		/*
-		 * This never happens, but oh well...
-		 */
 		if (dragonfly_check_dev(MAJOR(info.st_rdev),path) < 0) {
 			log_debug("%s: Device not added to cache", path);
 			return_0;
