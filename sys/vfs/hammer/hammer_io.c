@@ -76,6 +76,53 @@ hammer_io_init(hammer_io_t io, hammer_volume_t volume, enum hammer_io_type type)
 }
 
 /*
+ * Determine if an io can be clustered for the storage cdev.  We have to
+ * be careful to avoid creating overlapping buffers.
+ *
+ * (1) Any clustering is limited to within a largeblock, since going into
+ *     an adjacent largeblock will change the zone.
+ *
+ * (2) The large-data zone can contain mixed buffer sizes.  Other zones
+ *     contain only HAMMER_BUFSIZE sized buffer sizes (16K).
+ */
+static int
+hammer_io_clusterable(hammer_io_t io, hammer_off_t *limitp)
+{
+	hammer_buffer_t buffer;
+	hammer_off_t eoz;
+
+	/*
+	 * Can't cluster non hammer_buffer_t's
+	 */
+	if (io->type != HAMMER_STRUCTURE_DATA_BUFFER &&
+	    io->type != HAMMER_STRUCTURE_META_BUFFER &&
+	    io->type != HAMMER_STRUCTURE_UNDO_BUFFER) {
+		return(0);
+	}
+
+	/*
+	 * We cannot cluster the large-data zone.  This primarily targets
+	 * the reblocker.  The normal file handling code will still cluster
+	 * file reads via file vnodes.
+	 */
+	buffer = (void *)io;
+	if ((buffer->zoneX_offset & HAMMER_OFF_ZONE_MASK) ==
+	    HAMMER_ZONE_LARGE_DATA) {
+		return(0);
+	}
+
+	/*
+	 * Do not allow the cluster operation to cross a largeblock
+	 * boundary.
+	 */
+	eoz = (io->offset + HAMMER_LARGEBLOCK_SIZE64 - 1) &
+		~HAMMER_LARGEBLOCK_MASK64;
+	if (*limitp > eoz)
+		*limitp = eoz;
+	return(1);
+}
+
+/*
  * Helper routine to disassociate a buffer cache buffer from an I/O
  * structure.  The buffer is unlocked and marked appropriate for reclamation.
  *
@@ -246,7 +293,8 @@ hammer_io_read(struct vnode *devvp, struct hammer_io *io, hammer_off_t limit)
 
 	if ((bp = io->bp) == NULL) {
 		hammer_count_io_running_read += io->bytes;
-		if (hammer_cluster_enable) {
+		if (hammer_cluster_enable &&
+		    hammer_io_clusterable(io, &limit)) {
 			error = cluster_read(devvp, limit,
 					     io->offset, io->bytes,
 					     HAMMER_CLUSTER_SIZE,
