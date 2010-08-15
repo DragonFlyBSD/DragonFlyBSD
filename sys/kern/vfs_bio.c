@@ -4553,7 +4553,7 @@ nestiobuf_done(struct bio *mbio, int donebytes, int error)
 
 	mbp = mbio->bio_buf;	
 
-	KKASSERT((int)mbio->bio_driver_info > 0);
+	KKASSERT((int)(intptr_t)mbio->bio_driver_info > 0);
 
 	/*
 	 * If an error occured, propagate it to the master buffer.
