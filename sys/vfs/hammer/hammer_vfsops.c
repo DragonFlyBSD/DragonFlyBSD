@@ -101,6 +101,7 @@ int hammer_count_io_running_read;
 int hammer_count_io_running_write;
 int hammer_count_io_locked;
 int hammer_limit_dirtybufspace;		/* per-mount */
+int hammer_limit_running_io;		/* per-mount */
 int hammer_limit_recs;			/* as a whole XXX */
 int hammer_limit_inode_recs = 1024;	/* per inode */
 int hammer_limit_reclaim = HAMMER_RECLAIM_WAIT;
@@ -143,6 +144,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, cluster_enable, CTLFLAG_RW,
 
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_dirtybufspace, CTLFLAG_RW,
 	   &hammer_limit_dirtybufspace, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_running_io, CTLFLAG_RW,
+	   &hammer_limit_running_io, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_recs, CTLFLAG_RW,
 	   &hammer_limit_recs, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_inode_recs, CTLFLAG_RW,
@@ -303,6 +306,19 @@ hammer_vfs_init(struct vfsconf *conf)
 		if (hammer_limit_dirtybufspace < 100)
 			hammer_limit_dirtybufspace = 100;
 	}
+
+	/*
+	 * Set reasonable limits to maintain an I/O pipeline.  This is
+	 * used by the flush code which explicitly initiates I/O, and
+	 * is per-mount.
+	 *
+	 * The system-driven buffer cache uses vfs.lorunningspace and
+	 * vfs.hirunningspace globally.
+	 */
+	if (hammer_limit_running_io == 0)
+		hammer_limit_running_io = hammer_limit_dirtybufspace;
+	if (hammer_limit_running_io > 10 * 1024 * 1024)
+		hammer_limit_running_io = 10 * 1024 * 1024;
 	return(0);
 }
 

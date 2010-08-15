@@ -859,7 +859,8 @@ struct hammer_mount {
 	struct hammer_io_list meta_list;	/* dirty meta bufs    */
 	struct hammer_io_list lose_list;	/* loose buffers      */
 	int	locked_dirty_space;		/* meta/volu count    */
-	int	io_running_space;
+	int	io_running_space;		/* track I/O in progress */
+	int	io_running_wakeup;
 	int	objid_cache_count;
 	int	error;				/* critical I/O error */
 	struct krate	krate;			/* rate limited kprintf */
@@ -982,6 +983,7 @@ extern int hammer_count_io_running_read;
 extern int hammer_count_io_running_write;
 extern int hammer_count_io_locked;
 extern int hammer_limit_dirtybufspace;
+extern int hammer_limit_running_io;
 extern int hammer_limit_recs;
 extern int hammer_limit_inode_recs;
 extern int hammer_limit_reclaim;
@@ -1349,6 +1351,7 @@ void hammer_io_clear_modlist(struct hammer_io *io);
 void hammer_io_flush_sync(hammer_mount_t hmp);
 void hammer_io_clear_error(struct hammer_io *io);
 void hammer_io_notmeta(hammer_buffer_t buffer);
+void hammer_io_limit_backlog(hammer_mount_t hmp);
 
 void hammer_modify_volume(hammer_transaction_t trans, hammer_volume_t volume,
 			void *base, int len);

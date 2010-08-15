@@ -615,6 +615,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 		hammer_io_done_interlock(io);
 		hammer_rel_buffer((hammer_buffer_t)io, 0);
 		++count;
+		hammer_io_limit_backlog(hmp);
 	}
 
 	/*
@@ -754,6 +755,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 		hammer_io_flush(io, 0);
 		hammer_rel_buffer((hammer_buffer_t)io, 0);
 		++count;
+		hammer_io_limit_backlog(hmp);
 	}
 
 	/*

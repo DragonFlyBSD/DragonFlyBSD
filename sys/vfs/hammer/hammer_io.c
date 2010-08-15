@@ -945,6 +945,7 @@ static void
 hammer_io_complete(struct buf *bp)
 {
 	union hammer_io_structure *iou = (void *)LIST_FIRST(&bp->b_dep);
+	struct hammer_mount *hmp = iou->io.hmp;
 	struct hammer_io *ionext;
 
 	KKASSERT(iou->io.released == 1);
@@ -967,7 +968,7 @@ hammer_io_complete(struct buf *bp)
 		 * away.
 		 */
 		if (bp->b_flags & B_ERROR) {
-			hammer_critical_error(iou->io.hmp, NULL, bp->b_error,
+			hammer_critical_error(hmp, NULL, bp->b_error,
 					      "while flushing meta-data");
 			switch(iou->io.type) {
 			case HAMMER_STRUCTURE_UNDO_BUFFER:
@@ -988,19 +989,24 @@ hammer_io_complete(struct buf *bp)
 		}
 		hammer_stats_disk_write += iou->io.bytes;
 		hammer_count_io_running_write -= iou->io.bytes;
-		iou->io.hmp->io_running_space -= iou->io.bytes;
-		KKASSERT(iou->io.hmp->io_running_space >= 0);
+		hmp->io_running_space -= iou->io.bytes;
+		if (hmp->io_running_wakeup &&
+		    hmp->io_running_space < hammer_limit_running_io / 2) {
+		    hmp->io_running_wakeup = 0;
+		    wakeup(&hmp->io_running_wakeup);
+		}
+		KKASSERT(hmp->io_running_space >= 0);
 		iou->io.running = 0;
 
 		/*
 		 * Remove from iorun list and wakeup any multi-io waiter(s).
 		 */
-		if (TAILQ_FIRST(&iou->io.hmp->iorun_list) == &iou->io) {
+		if (TAILQ_FIRST(&hmp->iorun_list) == &iou->io) {
 			ionext = TAILQ_NEXT(&iou->io, iorun_entry);
 			if (ionext && ionext->type == HAMMER_STRUCTURE_DUMMY)
 				wakeup(ionext);
 		}
-		TAILQ_REMOVE(&iou->io.hmp->iorun_list, &iou->io, iorun_entry);
+		TAILQ_REMOVE(&hmp->iorun_list, &iou->io, iorun_entry);
 	} else {
 		hammer_stats_disk_read += iou->io.bytes;
 	}
@@ -1623,4 +1629,16 @@ hammer_io_flush_sync(hammer_mount_t hmp)
 		biowait(&bp->b_bio1, "hmrFLS");
 		relpbuf(bp, NULL);
 	}
+}
+
+/*
+ * Limit the amount of backlog which we allow to build up
+ */
+void
+hammer_io_limit_backlog(hammer_mount_t hmp)
+{
+        while (hmp->io_running_space > hammer_limit_running_io) {
+                hmp->io_running_wakeup = 1;
+                tsleep(&hmp->io_running_wakeup, 0, "hmiolm", hz / 10);
+        }
 }
