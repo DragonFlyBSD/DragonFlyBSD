@@ -472,12 +472,15 @@ dmstrategy(struct dev_strategy_args *ap)
 
 		if (bypass) {
 			nestbuf = getpbuf(NULL);
+			nestbuf->b_flags |= bio->bio_buf->b_flags & B_HASBOGUS;
 
 			nestiobuf_add(bio, nestbuf, 0, 0);
 			nestbuf->b_bio1.bio_offset = 0;
 			table_en->target->strategy(table_en, nestbuf);
 		} else if (start < end) {
 			nestbuf = getpbuf(NULL);
+			nestbuf->b_flags |= bio->bio_buf->b_flags & B_HASBOGUS;
+
 			nestiobuf_add(bio, nestbuf,
 				      start - buf_start, (end - start));
 			issued_len += end - start;

@@ -270,6 +270,7 @@ dm_target_stripe_strategy(dm_table_entry_t *table_en, struct buf *bp)
 			/* issue this piece on stripe `stripe' */
 			issue_blks = MIN(stripe_rest, num_blks);
 			nestbuf = getpbuf(NULL);
+			nestbuf->b_flags |= bio->bio_buf->b_flags & B_HASBOGUS;
 
 			nestiobuf_add(bio, nestbuf, blkoff,
 					issue_blks * DEV_BSIZE);
@@ -294,6 +295,7 @@ dm_target_stripe_strategy(dm_table_entry_t *table_en, struct buf *bp)
 		nestiobuf_init(bio);
 		for (devnr = 0; devnr < tsc->stripe_num; ++devnr) {
 			nestbuf = getpbuf(NULL);
+			nestbuf->b_flags |= bio->bio_buf->b_flags & B_HASBOGUS;
 
 			nestiobuf_add(bio, nestbuf, 0, 0);
 			nestbuf->b_bio1.bio_offset = 0;
