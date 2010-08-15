@@ -48,6 +48,7 @@
 #include <crypto/sha2/sha2.h>
 #include <opencrypto/cryptodev.h>
 #include <opencrypto/rmd160.h>
+#include <machine/cpufunc.h>
 
 #include "dm.h"
 MALLOC_DEFINE(M_DMCRYPT, "dm_crypt", "Device Mapper Target Crypt");
@@ -196,6 +197,8 @@ essiv_ivgen(dm_target_crypt_config_t *priv, u_int8_t *iv,
 
 	id = 0;
 	bzero(iv, iv_len);
+	bzero(&crd, sizeof(crd));
+	bzero(&crp, sizeof(crp));
 	*((off_t *)iv) = htole64(sector + priv->iv_offset);
 	crp.crp_buf = (caddr_t)iv;
 
@@ -688,28 +691,37 @@ dmtc_crypto_read_start(dm_target_crypt_config_t *priv, struct bio *bio)
 	 *	 b_bcount.
 	 */
 	bytes = bio->bio_buf->b_bcount;
-	isector = bio->bio_offset / DEV_BSIZE;	/* Initial sector */
+	isector = (int)(bio->bio_offset / DEV_BSIZE);	/* ivgen salt base? */
 	sectors = bytes / DEV_BSIZE;		/* Number of sectors */
 	sz = sectors * (sizeof(*crp) + sizeof(*crd));
 
 	/*
 	 * For reads with bogus page we can't decrypt in place as stuff
 	 * can get ripped out from under us.
+	 *
+	 * XXX actually it looks like we can, and in any case the initial
+	 * read already completed and threw crypted data into the buffer
+	 * cache buffer.  Disable for now.
 	 */
+#if 0
 	if (bio->bio_buf->b_flags & B_HASBOGUS) {
 		space = kmalloc(sizeof(struct dmtc_helper) + sz + bytes,
 				M_DMCRYPT, M_WAITOK);
 		dmtc = (struct dmtc_helper *)space;
 		dmtc->free_addr = space;
 		space += sizeof(struct dmtc_helper);
-		memcpy(space + sz, bio->bio_buf->b_data, bytes);
+		dmtc->orig_buf = NULL;
 		dmtc->data_buf = space + sz;
-	} else {
+		memcpy(dmtc->data_buf, bio->bio_buf->b_data, bytes);
+	} else
+#endif
+	{
 		space = kmalloc(sizeof(struct dmtc_helper) + sz,
 				M_DMCRYPT, M_WAITOK);
 		dmtc = (struct dmtc_helper *)space;
 		dmtc->free_addr = space;
 		space += sizeof(struct dmtc_helper);
+		dmtc->orig_buf = NULL;
 		dmtc->data_buf = bio->bio_buf->b_data;
 	}
 	bio->bio_caller_info2.ptr = dmtc;
@@ -718,8 +730,10 @@ dmtc_crypto_read_start(dm_target_crypt_config_t *priv, struct bio *bio)
 	/*
 	 * Load crypto descriptors (crp/crd loop)
 	 */
+	bzero(space, sz);
 	ptr = space;
 	bio->bio_caller_info3.value = sectors;
+	cpu_sfence();
 #if 0
 	kprintf("Read, bytes = %d (b_bcount), "
 		"sectors = %d (bio = %p, b_cmd = %d)\n",
@@ -747,8 +761,14 @@ dmtc_crypto_read_start(dm_target_crypt_config_t *priv, struct bio *bio)
 		crd->crd_key = (caddr_t)priv->crypto_key;
 		crd->crd_klen = priv->crypto_klen;
 
+		/*
+		 * Note: last argument is used to generate salt(?) and is
+		 *	 a 64 bit value, but the original code passed an
+		 *	 int.  Changing it now will break pre-existing
+		 *	 crypt volumes.
+		 */
 		priv->crypto_ivgen(priv, crd->crd_iv, sizeof(crd->crd_iv),
-				   isector + i);
+				   (int)(isector + i));
 
 		crd->crd_skip = 0;
 		crd->crd_len = DEV_BSIZE /* XXX */;
@@ -778,11 +798,6 @@ dmtc_crypto_cb_read_done(struct cryptop *crp)
 	bio = (struct bio *)crp->crp_opaque;
 	KKASSERT(bio != NULL);
 
-	n = atomic_fetchadd_int(&bio->bio_caller_info3.value, -1);
-#if 0
-	kprintf("dmtc_crypto_cb_read_done %p, n = %d\n", bio, n);
-#endif
-
 	/*
 	 * Cumulative error
 	 */
@@ -797,18 +812,28 @@ dmtc_crypto_cb_read_done(struct cryptop *crp)
 	 * On the last chunk of the decryption we do any required copybacks
 	 * and complete the I/O.
 	 */
+	n = atomic_fetchadd_int(&bio->bio_caller_info3.value, -1);
+#if 0
+	kprintf("dmtc_crypto_cb_read_done %p, n = %d\n", bio, n);
+#endif
+
 	if (n == 1) {
 		/*
 		 * For the B_HASBOGUS case we didn't decrypt in place,
 		 * so we need to copy stuff back into the buf.
+		 *
+		 * (disabled for now).
 		 */
 		dmtc = bio->bio_caller_info2.ptr;
 		if (bio->bio_buf->b_error) {
 			bio->bio_buf->b_flags |= B_ERROR;
-		} else if (bio->bio_buf->b_flags & B_HASBOGUS) {
+		}
+#if 0
+		else if (bio->bio_buf->b_flags & B_HASBOGUS) {
 			memcpy(bio->bio_buf->b_data, dmtc->data_buf,
 			       bio->bio_buf->b_bcount);
 		}
+#endif
 		kfree(dmtc->free_addr, M_DMCRYPT);
 		obio = pop_bio(bio);
 		biodone(obio);
@@ -837,7 +862,7 @@ dmtc_crypto_write_start(dm_target_crypt_config_t *priv, struct bio *bio)
 	 */
 	bytes = bio->bio_buf->b_bcount;
 
-	isector = bio->bio_offset / DEV_BSIZE;	/* Initial sector */
+	isector = (int)(bio->bio_offset / DEV_BSIZE);	/* ivgen salt base? */
 	sectors = bytes / DEV_BSIZE;		/* Number of sectors */
 	sz = sectors * (sizeof(*crp) + sizeof(*crd));
 
@@ -860,8 +885,10 @@ dmtc_crypto_write_start(dm_target_crypt_config_t *priv, struct bio *bio)
 	/*
 	 * Load crypto descriptors (crp/crd loop)
 	 */
+	bzero(space, sz);
 	ptr = space;
 	bio->bio_caller_info3.value = sectors;
+	cpu_sfence();
 #if 0
 	kprintf("Write, bytes = %d (b_bcount), "
 		"sectors = %d (bio = %p, b_cmd = %d)\n",
@@ -889,8 +916,14 @@ dmtc_crypto_write_start(dm_target_crypt_config_t *priv, struct bio *bio)
 		crd->crd_key = (caddr_t)priv->crypto_key;
 		crd->crd_klen = priv->crypto_klen;
 
+		/*
+		 * Note: last argument is used to generate salt(?) and is
+		 *	 a 64 bit value, but the original code passed an
+		 *	 int.  Changing it now will break pre-existing
+		 *	 crypt volumes.
+		 */
 		priv->crypto_ivgen(priv, crd->crd_iv, sizeof(crd->crd_iv),
-				   isector + i);
+				   (int)(isector + i));
 
 		crd->crd_skip = 0;
 		crd->crd_len = DEV_BSIZE /* XXX */;
@@ -920,11 +953,6 @@ dmtc_crypto_cb_write_done(struct cryptop *crp)
 	bio = (struct bio *)crp->crp_opaque;
 	KKASSERT(bio != NULL);
 
-	n = atomic_fetchadd_int(&bio->bio_caller_info3.value, -1);
-#if 0
-	kprintf("dmtc_crypto_cb_write_done %p, n = %d\n", bio, n);
-#endif
-
 	/*
 	 * Cumulative error
 	 */
@@ -938,6 +966,11 @@ dmtc_crypto_cb_write_done(struct cryptop *crp)
 	/*
 	 * On the last chunk of the encryption we issue the write
 	 */
+	n = atomic_fetchadd_int(&bio->bio_caller_info3.value, -1);
+#if 0
+	kprintf("dmtc_crypto_cb_write_done %p, n = %d\n", bio, n);
+#endif
+
 	if (n == 1) {
 		dmtc = bio->bio_caller_info2.ptr;
 		priv = (dm_target_crypt_config_t *)bio->bio_caller_info1.ptr;
