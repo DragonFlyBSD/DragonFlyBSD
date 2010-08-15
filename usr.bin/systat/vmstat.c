@@ -480,9 +480,9 @@ showkre(void)
 	}
 
 	putint(ucount(), STATROW, STATCOL, 3, 'D');
-	putfloat(avenrun[0], STATROW, STATCOL + 17, 6, 2, 0);
-	putfloat(avenrun[1], STATROW, STATCOL + 23, 6, 2, 0);
-	putfloat(avenrun[2], STATROW, STATCOL + 29, 6, 2, 0);
+	putfloat(avenrun[0], STATROW, STATCOL + 18, 6, 2, 0);
+	putfloat(avenrun[1], STATROW, STATCOL + 25, 6, 2, 0);
+	putfloat(avenrun[2], STATROW, STATCOL + 32, 6, 2, 0);
 	mvaddstr(STATROW, STATCOL + 53, buf);
 #define pgtokb(pg)	((pg) * vms.v_page_size / 1024)
 	putint(pgtokb(total.t_arm), MEMROW + 2, MEMCOL + 3, 8, 'K');
