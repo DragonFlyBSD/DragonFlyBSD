@@ -2950,7 +2950,7 @@ loop:
 		bp->b_bio2.bio_offset = NOOFFSET;
 		/* bp->b_bio2.bio_next = NULL; */
 
-		if (bgetvp(vp, bp)) {
+		if (bgetvp(vp, bp, size)) {
 			bp->b_flags |= B_INVAL;
 			brelse(bp);
 			goto loop;

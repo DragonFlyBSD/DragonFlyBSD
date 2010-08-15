@@ -117,6 +117,9 @@ SYSCTL_INT(_vfs, OID_AUTO, reassignbufsortbad, CTLFLAG_RW,
 static int reassignbufmethod = 1;
 SYSCTL_INT(_vfs, OID_AUTO, reassignbufmethod, CTLFLAG_RW,
 		&reassignbufmethod, 0, "");
+static int check_buf_overlap = 2;	/* invasive check */
+SYSCTL_INT(_vfs, OID_AUTO, check_buf_overlap, CTLFLAG_RW,
+		&check_buf_overlap, 0, "");
 
 int	nfs_mount_type = -1;
 static struct lwkt_token spechash_token;
@@ -824,7 +827,7 @@ vfsync_bp(struct buf *bp, void *data)
  * MPSAFE
  */
 int
-bgetvp(struct vnode *vp, struct buf *bp)
+bgetvp(struct vnode *vp, struct buf *bp, int testsize)
 {
 	KASSERT(bp->b_vp == NULL, ("bgetvp: not free"));
 	KKASSERT((bp->b_flags & (B_HASHED|B_DELWRI|B_VNCLEAN|B_VNDIRTY)) == 0);
@@ -836,6 +839,40 @@ bgetvp(struct vnode *vp, struct buf *bp)
 	if (buf_rb_hash_RB_INSERT(&vp->v_rbhash_tree, bp)) {
 		lwkt_reltoken(&vp->v_token);
 		return (EEXIST);
+	}
+
+	/*
+	 * Diagnostics (mainly for HAMMER debugging).  Check for
+	 * overlapping buffers.
+	 */
+	if (check_buf_overlap) {
+		struct buf *bx;
+		bx = buf_rb_hash_RB_PREV(bp);
+		if (bx) {
+			if (bx->b_loffset + bx->b_bufsize > bp->b_loffset) {
+				kprintf("bgetvp: overlapl %016jx/%d %016jx "
+					"bx %p bp %p\n",
+					(intmax_t)bx->b_loffset,
+					bx->b_bufsize,
+					(intmax_t)bp->b_loffset,
+					bx, bp);
+				if (check_buf_overlap > 1)
+					panic("bgetvp - overlapping buffer");
+			}
+		}
+		bx = buf_rb_hash_RB_NEXT(bp);
+		if (bx) {
+			if (bp->b_loffset + testsize > bx->b_loffset) {
+				kprintf("bgetvp: overlapr %016jx/%d %016jx "
+					"bp %p bx %p\n",
+					(intmax_t)bp->b_loffset,
+					testsize,
+					(intmax_t)bx->b_loffset,
+					bp, bx);
+				if (check_buf_overlap > 1)
+					panic("bgetvp - overlapping buffer");
+			}
+		}
 	}
 	bp->b_vp = vp;
 	bp->b_flags |= B_HASHED;

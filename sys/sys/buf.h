@@ -443,7 +443,7 @@ int	vmapbuf (struct buf *, caddr_t, int);
 void	vunmapbuf (struct buf *);
 void	relpbuf (struct buf *, int *);
 void	brelvp (struct buf *);
-int	bgetvp (struct vnode *, struct buf *);
+int	bgetvp (struct vnode *, struct buf *, int);
 int	allocbuf (struct buf *bp, int size);
 int	scan_all_buffers (int (*)(struct buf *, void *), void *);
 void	reassignbuf (struct buf *);
