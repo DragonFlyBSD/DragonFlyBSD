@@ -424,7 +424,9 @@ sys_linux_exit_group(struct linux_exit_group_args *args)
 		if ((e->flags & EMUL_DIDKILL) == 0) {
 			e->flags |= EMUL_DIDKILL;
 			KKASSERT(pfind(e->proc->p_pid) == e->proc);
+			get_mplock();
 			ksignal(e->proc, SIGKILL);
+			rel_mplock();
 		}
 	}
 
