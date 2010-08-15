@@ -498,8 +498,13 @@ dsched_strategy_sync(struct disk *dp, struct bio *bio)
 	nbp->b_bcount = bp->b_bcount;
 	nbp->b_resid = bp->b_resid;
 	nbp->b_data = bp->b_data;
+#if 0
+	/*
+	 * Buffers undergoing device I/O do not need a kvabase/size.
+	 */
 	nbp->b_kvabase = bp->b_kvabase;
 	nbp->b_kvasize = bp->b_kvasize;
+#endif
 	nbp->b_dirtyend = bp->b_dirtyend;
 
 	nbio->bio_done = biodone_sync;
@@ -514,6 +519,10 @@ dsched_strategy_sync(struct disk *dp, struct bio *bio)
 	bp->b_resid = nbp->b_resid;
 	bp->b_error = nbp->b_error;
 	biodone(bio);
+#if 0
+	nbp->b_kvabase = NULL;
+	nbp->b_kvasize = 0;
+#endif
 	relpbuf(nbp, NULL);
 }
 

@@ -912,7 +912,7 @@ aio_qphysio(struct proc *p, struct aiocblist *aiocbe)
 		lj->lioj_buffer_count++;
 
 	/* Create and build a buffer header for a transfer. */
-	bp = getpbuf(NULL);
+	bp = getpbuf_kva(NULL);
 	BUF_KERNPROC(bp);
 
 	/*

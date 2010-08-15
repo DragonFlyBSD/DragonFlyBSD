@@ -1313,7 +1313,7 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	/*
 	 * map our page(s) into kva for input
 	 */
-	bp = getpbuf(&nsw_rcount);
+	bp = getpbuf_kva(&nsw_rcount);
 	bio = &bp->b_bio1;
 	kva = (vm_offset_t) bp->b_kvabase;
 	bcopy(marray, bp->b_xio.xio_pages, i * sizeof(vm_page_t));
@@ -1561,9 +1561,9 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 		 * request and assign the swap space.
 		 */
 		if (sync == TRUE)
-			bp = getpbuf(&nsw_wcount_sync);
+			bp = getpbuf_kva(&nsw_wcount_sync);
 		else
-			bp = getpbuf(&nsw_wcount_async);
+			bp = getpbuf_kva(&nsw_wcount_async);
 		bio = &bp->b_bio1;
 
 		pmap_qenter((vm_offset_t)bp->b_data, &m[i], n);

@@ -380,7 +380,7 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset, off_t doffset,
 		return tbp;
 	}
 
-	bp = trypbuf(&cluster_pbuf_freecnt);
+	bp = trypbuf_kva(&cluster_pbuf_freecnt);
 	if (bp == NULL) {
 		return tbp;
 	}
@@ -828,7 +828,7 @@ cluster_wbuild(struct vnode *vp, int blksize, off_t start_loffset, int bytes)
 		    (tbp->b_bcount != tbp->b_bufsize) ||
 		    (tbp->b_bcount != blksize) ||
 		    (bytes == blksize) ||
-		    ((bp = getpbuf(&cluster_pbuf_freecnt)) == NULL)) {
+		    ((bp = getpbuf_kva(&cluster_pbuf_freecnt)) == NULL)) {
 			totalwritten += tbp->b_bufsize;
 			bawrite(tbp);
 			start_loffset += blksize;

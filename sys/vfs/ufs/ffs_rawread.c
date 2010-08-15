@@ -249,7 +249,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 		
 		if (bp == NULL) { /* Setup first read */
 			/* XXX: Leave some bufs for swap */
-			bp = getpbuf(&ffsrawbufcnt);
+			bp = getpbuf_kva(&ffsrawbufcnt);
 			error = ffs_rawread_readahead(vp, udata, offset, resid,
 						      bp, &baseticks);
 			if (error != 0)
@@ -258,7 +258,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 			if (resid > bp->b_bufsize) { /* Setup fist readahead */
 				/* XXX: Leave bufs for swap */
 				if (rawreadahead != 0) 
-					nbp = trypbuf(&ffsrawbufcnt);
+					nbp = trypbuf_kva(&ffsrawbufcnt);
 				else
 					nbp = NULL;
 				if (nbp != NULL) {

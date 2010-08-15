@@ -790,6 +790,7 @@ bfreekva(struct buf *bp)
 		vm_map_unlock(&buffer_map);
 		vm_map_entry_release(count);
 		bp->b_kvasize = 0;
+		bp->b_kvabase = NULL;
 		bufspacewakeup();
 		rel_mplock();
 	}
@@ -4413,6 +4414,7 @@ vmapbuf(struct buf *bp, caddr_t udata, int bytes)
 	 */
 	KKASSERT(bp->b_cmd != BUF_CMD_DONE);
 	KKASSERT(bp->b_flags & B_PAGING);
+	KKASSERT(bp->b_kvabase);
 
 	if (bytes < 0)
 		return (-1);

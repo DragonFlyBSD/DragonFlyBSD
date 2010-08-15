@@ -701,7 +701,7 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 		/*
 		 * Get the buffer.
 		 */
-		bp = getpbuf(NULL);
+		bp = getpbuf_kva(NULL);
 
 		/* save the original user pointer */
 		mapinfo->saved_ptrs[i] = *data_ptrs[i];

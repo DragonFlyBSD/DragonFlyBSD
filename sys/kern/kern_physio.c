@@ -44,7 +44,7 @@ physio(cdev_t dev, struct uio *uio, int ioflag)
 	caddr_t ubase;
 	struct buf *bp;
 
-	bp = getpbuf(NULL);
+	bp = getpbuf_kva(NULL);
 	saflags = bp->b_flags;
 	error = 0;
 

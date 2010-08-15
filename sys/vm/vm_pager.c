@@ -81,10 +81,12 @@
 #include <sys/malloc.h>
 #include <sys/dsched.h>
 #include <sys/proc.h>
+#include <sys/sysctl.h>
 #include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
+#include <vm/vm_kern.h>
 #include <vm/vm_object.h>
 #include <vm/vm_page.h>
 #include <vm/vm_pager.h>
@@ -177,13 +179,24 @@ int npagers = sizeof(pagertab) / sizeof(pagertab[0]);
  */
 #define PAGER_MAP_SIZE	(8 * 1024 * 1024)
 
+TAILQ_HEAD(swqueue, buf);
+
 int pager_map_size = PAGER_MAP_SIZE;
 struct vm_map pager_map;
 
-static int bswneeded;
+static int bswneeded_raw;
+static int bswneeded_kva;
+static int nswbuf_raw;
+static struct buf *swbuf_raw;
 static vm_offset_t swapbkva;		/* swap buffers kva */
-static TAILQ_HEAD(swqueue, buf) bswlist;
+static struct swqueue bswlist_raw;	/* without kva */
+static struct swqueue bswlist_kva;	/* with kva */
 static struct spinlock bswspin = SPINLOCK_INITIALIZER(&bswspin);
+static int pbuf_raw_count;
+static int pbuf_kva_count;
+
+SYSCTL_INT(_vfs, OID_AUTO, pbuf_raw_count, CTLFLAG_RD, &pbuf_raw_count, 0, "");
+SYSCTL_INT(_vfs, OID_AUTO, pbuf_kva_count, CTLFLAG_RD, &pbuf_kva_count, 0, "");
 
 /*
  * Initialize the swap buffer list.
@@ -193,7 +206,8 @@ static struct spinlock bswspin = SPINLOCK_INITIALIZER(&bswspin);
 static void
 vm_pager_init(void *arg __unused)
 {
-	TAILQ_INIT(&bswlist);
+	TAILQ_INIT(&bswlist_raw);
+	TAILQ_INIT(&bswlist_kva);
 }
 SYSINIT(vm_mem, SI_BOOT1_VM, SI_ORDER_SECOND, vm_pager_init, NULL)
 
@@ -214,15 +228,32 @@ vm_pager_bufferinit(void)
 		panic("Not enough pager_map VM space for physical buffers");
 
 	/*
-	 * Initial pbuf setup.
+	 * Initial pbuf setup.  These pbufs have KVA reservations.
 	 */
 	bp = swbuf;
 	for (i = 0; i < nswbuf; ++i, ++bp) {
 		bp->b_kvabase = (caddr_t)((intptr_t)i * MAXPHYS) + swapbkva;
 		bp->b_kvasize = MAXPHYS;
-		TAILQ_INSERT_HEAD(&bswlist, bp, b_freelist);
 		BUF_LOCKINIT(bp);
 		buf_dep_init(bp);
+		TAILQ_INSERT_HEAD(&bswlist_kva, bp, b_freelist);
+		++pbuf_kva_count;
+	}
+
+	/*
+	 * Initial pbuf setup.  These pbufs do not have KVA reservations,
+	 * so we can have a lot more of them.  These are typically used
+	 * to massage low level buf/bio requests.
+	 */
+	nswbuf_raw = nbuf * 2;
+	swbuf_raw = (void *)kmem_alloc(&kernel_map,
+				round_page(nswbuf_raw * sizeof(struct buf)));
+	bp = swbuf_raw;
+	for (i = 0; i < nswbuf_raw; ++i, ++bp) {
+		BUF_LOCKINIT(bp);
+		buf_dep_init(bp);
+		TAILQ_INSERT_HEAD(&bswlist_raw, bp, b_freelist);
+		++pbuf_raw_count;
 	}
 
 	/*
@@ -276,8 +307,8 @@ vm_pager_sync(void)
 static void
 initpbuf(struct buf *bp)
 {
-	bp->b_qindex = 0; /* BQUEUE_NONE */
-	bp->b_data = bp->b_kvabase;
+	bp->b_qindex = 0;		/* BQUEUE_NONE */
+	bp->b_data = bp->b_kvabase;	/* NULL if pbuf sans kva */
 	bp->b_flags = B_PAGING;
 	bp->b_cmd = BUF_CMD_DONE;
 	bp->b_error = 0;
@@ -303,6 +334,11 @@ initpbuf(struct buf *bp)
  *	NOTE: pfreecnt can be NULL, but this 'feature' will be removed
  *	relatively soon when the rest of the subsystems get smart about it. XXX
  *
+ *	Physical buffers can be with or without KVA space reserved.  There
+ *	are severe limitations on the ones with KVA reserved, and fewer
+ *	limitations on the ones without.  getpbuf() gets one without,
+ *	getpbuf_kva() gets one with.
+ *
  * No requirements.
  */
 struct buf *
@@ -319,13 +355,14 @@ getpbuf(int *pfreecnt)
 		}
 
 		/* get a bp from the swap buffer header pool */
-		if ((bp = TAILQ_FIRST(&bswlist)) != NULL)
+		if ((bp = TAILQ_FIRST(&bswlist_raw)) != NULL)
 			break;
-		bswneeded = 1;
-		ssleep(&bswneeded, &bswspin, 0, "wswbuf1", 0);
+		bswneeded_raw = 1;
+		ssleep(&bswneeded_raw, &bswspin, 0, "wswbuf1", 0);
 		/* loop in case someone else grabbed one */
 	}
-	TAILQ_REMOVE(&bswlist, bp, b_freelist);
+	TAILQ_REMOVE(&bswlist_raw, bp, b_freelist);
+	--pbuf_raw_count;
 	if (pfreecnt)
 		--*pfreecnt;
 
@@ -333,7 +370,41 @@ getpbuf(int *pfreecnt)
 
 	initpbuf(bp);
 	KKASSERT(dsched_is_clear_buf_priv(bp));
-	return bp;
+
+	return (bp);
+}
+
+struct buf *
+getpbuf_kva(int *pfreecnt)
+{
+	struct buf *bp;
+
+	spin_lock_wr(&bswspin);
+
+	for (;;) {
+		if (pfreecnt) {
+			while (*pfreecnt == 0)
+				ssleep(pfreecnt, &bswspin, 0, "wswbuf0", 0);
+		}
+
+		/* get a bp from the swap buffer header pool */
+		if ((bp = TAILQ_FIRST(&bswlist_kva)) != NULL)
+			break;
+		bswneeded_kva = 1;
+		ssleep(&bswneeded_kva, &bswspin, 0, "wswbuf1", 0);
+		/* loop in case someone else grabbed one */
+	}
+	TAILQ_REMOVE(&bswlist_kva, bp, b_freelist);
+	--pbuf_kva_count;
+	if (pfreecnt)
+		--*pfreecnt;
+
+	spin_unlock_wr(&bswspin);
+
+	initpbuf(bp);
+	KKASSERT(dsched_is_clear_buf_priv(bp));
+
+	return (bp);
 }
 
 /*
@@ -351,11 +422,34 @@ trypbuf(int *pfreecnt)
 
 	spin_lock_wr(&bswspin);
 
-	if (*pfreecnt == 0 || (bp = TAILQ_FIRST(&bswlist)) == NULL) {
+	if (*pfreecnt == 0 || (bp = TAILQ_FIRST(&bswlist_raw)) == NULL) {
 		spin_unlock_wr(&bswspin);
 		return NULL;
 	}
-	TAILQ_REMOVE(&bswlist, bp, b_freelist);
+	TAILQ_REMOVE(&bswlist_raw, bp, b_freelist);
+	--pbuf_raw_count;
+	--*pfreecnt;
+
+	spin_unlock_wr(&bswspin);
+
+	initpbuf(bp);
+
+	return bp;
+}
+
+struct buf *
+trypbuf_kva(int *pfreecnt)
+{
+	struct buf *bp;
+
+	spin_lock_wr(&bswspin);
+
+	if (*pfreecnt == 0 || (bp = TAILQ_FIRST(&bswlist_kva)) == NULL) {
+		spin_unlock_wr(&bswspin);
+		return NULL;
+	}
+	TAILQ_REMOVE(&bswlist_kva, bp, b_freelist);
+	--pbuf_kva_count;
 	--*pfreecnt;
 
 	spin_unlock_wr(&bswspin);
@@ -376,7 +470,8 @@ trypbuf(int *pfreecnt)
 void
 relpbuf(struct buf *bp, int *pfreecnt)
 {
-	int wake_bsw = 0;
+	int wake_bsw_kva = 0;
+	int wake_bsw_raw = 0;
 	int wake_freecnt = 0;
 
 	KKASSERT(bp->b_flags & B_PAGING);
@@ -385,10 +480,20 @@ relpbuf(struct buf *bp, int *pfreecnt)
 	spin_lock_wr(&bswspin);
 
 	BUF_UNLOCK(bp);
-	TAILQ_INSERT_HEAD(&bswlist, bp, b_freelist);
-	if (bswneeded) {
-		bswneeded = 0;
-		wake_bsw = 1;
+	if (bp->b_kvabase) {
+		TAILQ_INSERT_HEAD(&bswlist_kva, bp, b_freelist);
+		++pbuf_kva_count;
+	} else {
+		TAILQ_INSERT_HEAD(&bswlist_raw, bp, b_freelist);
+		++pbuf_raw_count;
+	}
+	if (bswneeded_kva) {
+		bswneeded_kva = 0;
+		wake_bsw_kva = 1;
+	}
+	if (bswneeded_raw) {
+		bswneeded_raw = 0;
+		wake_bsw_raw = 1;
 	}
 	if (pfreecnt) {
 		if (++*pfreecnt == 1)
@@ -397,8 +502,10 @@ relpbuf(struct buf *bp, int *pfreecnt)
 
 	spin_unlock_wr(&bswspin);
 
-	if (wake_bsw)
-		wakeup(&bswneeded);
+	if (wake_bsw_kva)
+		wakeup(&bswneeded_kva);
+	if (wake_bsw_raw)
+		wakeup(&bswneeded_raw);
 	if (wake_freecnt)
 		wakeup(pfreecnt);
 }
