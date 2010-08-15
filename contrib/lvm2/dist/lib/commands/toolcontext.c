@@ -845,7 +845,7 @@ int lvm_register_segtype(struct segtype_library *seglib,
 	return 1;
 }
 
-#ifdef __NetBSD__
+#if defined(__NetBSD__) || defined(__DragonFly__)
 #include <dlfcn.h>
 #endif
 
