@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1998 Nicolas Souchu
+ * Copyright (c) 1998, 2001 Nicolas Souchu
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/iicbus/iicbb.c,v 1.6.2.2 2002/04/19 05:52:12 nsouch Exp $
+ * $FreeBSD: src/sys/dev/iicbus/iicbb.c,v 1.21 2009/02/10 22:50:23 imp Exp $
  * $DragonFly: src/sys/bus/iicbus/iicbb.c,v 1.5 2006/12/22 23:12:16 swildner Exp $
  *
  */
@@ -34,7 +34,7 @@
  * Example:
  *
  *	iicbus
- *	 /  \ 
+ *	 /  \
  *    iicbb pcf
  *     |  \
  *   bti2c lpbb
@@ -42,7 +42,6 @@
  * From Linux I2C generic interface
  * (c) 1998 Gerd Knorr <kraxel@cs.tu-berlin.de>
  *
- * TODO: port Peter's generic bit-banging code <dufault@hda.com>
  */
 
 #include <sys/param.h>
@@ -50,15 +49,10 @@
 #include <sys/systm.h>
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <sys/conf.h>
-#include <sys/buf.h>
 #include <sys/uio.h>
-#include <sys/malloc.h>
 
-#include <machine/clock.h>
-
-#include "iiconf.h"
-#include "iicbus.h"
+#include <bus/iicbus/iiconf.h>
+#include <bus/iicbus/iicbus.h>
 
 #include <bus/smbus/smbconf.h>
 
@@ -100,17 +94,18 @@ static device_method_t iicbb_methods[] = {
 	DEVMETHOD(iicbus_write,		iicbb_write),
 	DEVMETHOD(iicbus_read,		iicbb_read),
 	DEVMETHOD(iicbus_reset,		iicbb_reset),
+	DEVMETHOD(iicbus_transfer,	iicbus_transfer_gen),
 
 	{ 0, 0 }
 };
 
-static driver_t iicbb_driver = {
+driver_t iicbb_driver = {
 	"iicbb",
 	iicbb_methods,
 	sizeof(struct iicbb_softc),
 };
 
-static devclass_t iicbb_devclass;
+devclass_t iicbb_devclass;
 
 static int
 iicbb_probe(device_t dev)
@@ -157,7 +152,7 @@ iicbb_detach(device_t dev)
 }
 
 static void
-iicbb_child_detached(device_t dev, device_t child)
+iicbb_child_detached( device_t dev, device_t child )
 {
 	struct iicbb_softc *sc = (struct iicbb_softc *)device_get_softc(dev);
 
@@ -189,16 +184,53 @@ iicbb_print_child(device_t bus, device_t dev)
 	return (retval);
 }
 
-#define I2C_SET(dev,ctrl,data) \
-	IICBB_SETLINES(device_get_parent(dev), ctrl, data)
+#define IIC_DELAY	10
 
-#define I2C_GET(dev) (IICBB_GETDATALINE(device_get_parent(dev)))
+#define I2C_SETSDA(dev,val) do {			\
+	IICBB_SETSDA(device_get_parent(dev), val);	\
+	DELAY(IIC_DELAY);				\
+	} while (0)
+
+#define I2C_SETSCL(dev,val) do {			\
+	iicbb_setscl(dev, val, 100);			\
+	} while (0)
+
+#define I2C_SET(dev,ctrl,data) do {			\
+	I2C_SETSCL(dev, ctrl);				\
+	I2C_SETSDA(dev, data);				\
+	} while (0)
+
+#define I2C_GETSDA(dev) (IICBB_GETSDA(device_get_parent(dev)))
+
+#define I2C_GETSCL(dev) (IICBB_GETSCL(device_get_parent(dev)))
 
 static int i2c_debug = 0;
-#define I2C_DEBUG(x) if (i2c_debug) (x)
+#define I2C_DEBUG(x)	do {					\
+				if (i2c_debug) (x);		\
+			} while (0)
+
+#define I2C_LOG(format,args...)	do {				\
+					kprintf(format, args);	\
+				} while (0)
 
 static void
-iicbb_one(device_t dev)
+iicbb_setscl(device_t dev, int val, int timeout)
+{
+	int k = 0;
+
+	IICBB_SETSCL(device_get_parent(dev), val);
+	DELAY(IIC_DELAY);
+
+	while (val && !I2C_GETSCL(dev) && k++ < timeout) {
+		IICBB_SETSCL(device_get_parent(dev), val);
+		DELAY(IIC_DELAY);
+	}
+
+	return;
+}
+
+static void
+iicbb_one(device_t dev, int timeout)
 {
 	I2C_SET(dev,0,1);
 	I2C_SET(dev,1,1);
@@ -207,7 +239,7 @@ iicbb_one(device_t dev)
 }
 
 static void
-iicbb_zero(device_t dev)
+iicbb_zero(device_t dev, int timeout)
 {
 	I2C_SET(dev,0,0);
 	I2C_SET(dev,1,0);
@@ -233,17 +265,17 @@ static int
 iicbb_ack(device_t dev, int timeout)
 {
 	int noack;
-	int k = timeout/10;
-    
+	int k = 0;
+
 	I2C_SET(dev,0,1);
 	I2C_SET(dev,1,1);
-
 	do {
-		noack = I2C_GET(dev);
+		noack = I2C_GETSDA(dev);
 		if (!noack)
 			break;
-		DELAY(10);		/* XXX wait 10us */
-	} while (k--);
+		DELAY(10);
+		k += 10;
+	} while (k < timeout);
 
 	I2C_SET(dev,0,1);
 	I2C_DEBUG(kprintf("%c ",noack?'-':'+'));
@@ -252,32 +284,40 @@ iicbb_ack(device_t dev, int timeout)
 }
 
 static void
-iicbb_sendbyte(device_t dev, u_char data)
+iicbb_sendbyte(device_t dev, u_char data, int timeout)
 {
 	int i;
-    
-	I2C_SET(dev,0,0);
-	for (i=7; i>=0; i--)
-		(data&(1<<i)) ? iicbb_one(dev) : iicbb_zero(dev);
+
+	for (i=7; i>=0; i--) {
+		if (data&(1<<i)) {
+			iicbb_one(dev, timeout);
+		} else {
+			iicbb_zero(dev, timeout);
+		}
+	}
 	I2C_DEBUG(kprintf("w%02x",(int)data));
 	return;
 }
 
 static u_char
-iicbb_readbyte(device_t dev, int last)
+iicbb_readbyte(device_t dev, int last, int timeout)
 {
 	int i;
 	unsigned char data=0;
-    
+
 	I2C_SET(dev,0,1);
-	for (i=7; i>=0; i--) 
+	for (i=7; i>=0; i--)
 	{
 		I2C_SET(dev,1,1);
-		if (I2C_GET(dev))
+		if (I2C_GETSDA(dev))
 			data |= (1<<i);
 		I2C_SET(dev,0,1);
 	}
-	last ? iicbb_one(dev) : iicbb_zero(dev);
+	if (last) {
+		iicbb_one(dev, timeout);
+	} else {
+		iicbb_zero(dev, timeout);
+	}
 	I2C_DEBUG(kprintf("r%02x%c ",(int)data,last?'-':'+'));
 	return data;
 }
@@ -301,13 +341,12 @@ iicbb_start(device_t dev, u_char slave, int timeout)
 
 	I2C_DEBUG(kprintf("<"));
 
-	I2C_SET(dev,0,1);
 	I2C_SET(dev,1,1);
 	I2C_SET(dev,1,0);
 	I2C_SET(dev,0,0);
 
 	/* send address */
-	iicbb_sendbyte(dev, slave);
+	iicbb_sendbyte(dev, slave, timeout);
 
 	/* check for ack */
 	if (iicbb_ack(dev, timeout)) {
@@ -340,7 +379,7 @@ iicbb_write(device_t dev, const char *buf, int len, int *sent, int timeout)
 	bytes = 0;
 	while (len) {
 		/* send byte */
-		iicbb_sendbyte(dev,(u_char)*buf++);
+		iicbb_sendbyte(dev,(u_char)*buf++, timeout);
 
 		/* check for ack */
 		if (iicbb_ack(dev, timeout)) {
@@ -364,7 +403,7 @@ iicbb_read(device_t dev, char * buf, int len, int *read, int last, int delay)
 	bytes = 0;
 	while (len) {
 		/* XXX should insert delay here */
-		*buf++ = (char)iicbb_readbyte(dev, (len == 1) ? last : 0);
+		*buf++ = (char)iicbb_readbyte(dev, (len == 1) ? last : 0, delay);
 
 		bytes ++;
 		len --;
@@ -378,3 +417,6 @@ DRIVER_MODULE(iicbb, bti2c, iicbb_driver, iicbb_devclass, 0, 0);
 DRIVER_MODULE(iicbb, cxm_iic, iicbb_driver, iicbb_devclass, 0, 0);
 DRIVER_MODULE(iicbb, lpbb, iicbb_driver, iicbb_devclass, 0, 0);
 DRIVER_MODULE(iicbb, viapm, iicbb_driver, iicbb_devclass, 0, 0);
+
+MODULE_DEPEND(iicbb, iicbus, IICBUS_MINVER, IICBUS_PREFVER, IICBUS_MAXVER);
+MODULE_VERSION(iicbb, IICBB_MODVER);

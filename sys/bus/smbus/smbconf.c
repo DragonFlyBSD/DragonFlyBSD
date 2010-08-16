@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1998 Nicolas Souchu
+ * Copyright (c) 1998, 2001 Nicolas Souchu
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,14 +23,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/smbus/smbconf.c,v 1.9 1999/12/03 08:41:08 mdodd Exp $
+ * $FreeBSD: src/sys/dev/smbus/smbconf.c,v 1.13.10.1 2006/09/22 19:19:16 jhb Exp $
  * $DragonFly: src/sys/bus/smbus/smbconf.c,v 1.5 2005/06/02 20:40:38 dillon Exp $
  *
  */
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/kernel.h>
-#include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/thread2.h>
@@ -50,8 +48,6 @@ smbus_intr(device_t bus, u_char devaddr, char low, char high, int error)
 	/* call owner's intr routine */
 	if (sc->owner)
 		SMBUS_INTR(sc->owner, devaddr, low, high, error);
-
-	return;
 }
 
 /*
@@ -67,35 +63,20 @@ smbus_error(int smb_error)
 	if (smb_error == SMB_ENOERR)
 		return (0);
 	
-	if (smb_error & (SMB_ENOTSUPP)) {
+	if (smb_error & (SMB_ENOTSUPP))
 		error = ENODEV;
-	} else if (smb_error & (SMB_ENOACK)) {
+	else if (smb_error & (SMB_ENOACK))
 		error = ENXIO;
-	} else if (smb_error & (SMB_ETIMEOUT)) {
+	else if (smb_error & (SMB_ETIMEOUT))
 		error = EWOULDBLOCK;
-	} else if (smb_error & (SMB_EBUSY)) {
+	else if (smb_error & (SMB_EBUSY))
 		error = EBUSY;
-	} else {
+	else if (smb_error & (SMB_EABORT | SMB_EBUSERR | SMB_ECOLLI))
+		error = EIO;
+	else
 		error = EINVAL;
-	}
 
 	return (error);
-}
-
-/*
- * smbus_alloc_bus()
- *
- * Allocate a new bus connected to the given parent device
- */
-device_t
-smbus_alloc_bus(device_t parent)
-{
-	device_t child;
-
-	/* add the bus to the parent */
-	child = device_add_child(parent, "smbus", -1);
-
-	return (child);
 }
 
 static int
@@ -113,7 +94,7 @@ smbus_poll(struct smbus_softc *sc, int how)
 		break;
 
 	default:
-		return (EWOULDBLOCK);
+		error = EWOULDBLOCK;
 		break;
 	}
 
@@ -130,18 +111,19 @@ smbus_poll(struct smbus_softc *sc, int how)
 int
 smbus_request_bus(device_t bus, device_t dev, int how)
 {
-	struct smbus_softc *sc = (struct smbus_softc *)device_get_softc(bus);
-	int error = 0;
+	struct smbus_softc *sc = device_get_softc(bus);
+	device_t parent;
+	int error;
 
 	/* first, ask the underlying layers if the request is ok */
+	parent = device_get_parent(bus);
 	do {
-		error = SMBUS_CALLBACK(device_get_parent(bus),
-						SMB_REQUEST_BUS, (caddr_t)&how);
+		error = SMBUS_CALLBACK(parent, SMB_REQUEST_BUS, &how);
 		if (error)
 			error = smbus_poll(sc, how);
 	} while (error == EWOULDBLOCK);
 
-	while (!error) {
+	while (error == 0) {
 		crit_enter();
 		if (sc->owner && sc->owner != dev) {
 			crit_exit();
@@ -149,13 +131,11 @@ smbus_request_bus(device_t bus, device_t dev, int how)
 		} else {
 			sc->owner = dev;
 			crit_exit();
-			return (0);
 		}
 
 		/* free any allocated resource */
 		if (error)
-			SMBUS_CALLBACK(device_get_parent(bus), SMB_RELEASE_BUS,
-					(caddr_t)&how);
+			SMBUS_CALLBACK(parent, SMB_RELEASE_BUS, &how);
 	}
 
 	return (error);
@@ -179,31 +159,18 @@ smbus_release_bus(device_t bus, device_t dev)
 		return (error);
 
 	crit_enter();
-	if (sc->owner != dev) {
-		crit_exit();
-		return (EACCES);
+	if (sc->owner == dev) {
+		sc->owner = NULL;
+
+		/* wakeup waiting processes */
+		wakeup(sc);
+	} else {
+		error = EACCES;
 	}
-	sc->owner = 0;
 	crit_exit();
 
 	/* wakeup waiting processes */
 	wakeup(sc);
 
-	return (0);
-}
-
-/*
- * smbus_get_addr()
- *
- * Get the I2C 7 bits address of the device
- */
-u_char
-smbus_get_addr(device_t dev)
-{
-	uintptr_t addr;
-	device_t parent = device_get_parent(dev);
-
-	BUS_READ_IVAR(parent, dev, SMBUS_IVAR_ADDR, &addr);
-
-	return ((u_char)addr);
+	return (error);
 }

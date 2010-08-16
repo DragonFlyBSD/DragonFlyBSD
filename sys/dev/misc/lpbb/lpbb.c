@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1998 Nicolas Souchu, Marc Bouget
+ * Copyright (c) 1998, 2001 Nicolas Souchu, Marc Bouget
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ppbus/lpbb.c,v 1.11.2.1 2000/05/24 00:20:57 n_hibma Exp $
+ * $FreeBSD: src/sys/dev/ppbus/lpbb.c,v 1.18.8.1 2006/07/19 16:31:12 kib Exp $
  * $DragonFly: src/sys/dev/misc/lpbb/lpbb.c,v 1.4 2005/10/28 03:25:45 dillon Exp $
  *
  */
@@ -41,8 +41,6 @@
 #include <sys/bus.h>
 #include <sys/uio.h>
 
-#include <machine/clock.h>
-
 #include <bus/ppbus/ppbconf.h>
 #include "ppbus_if.h"
 #include <bus/ppbus/ppbio.h>
@@ -53,6 +51,17 @@
 #include "iicbb_if.h"
 
 static int lpbb_detect(device_t dev);
+
+static void
+lpbb_identify(driver_t *driver, device_t parent)
+{
+
+	device_t dev;
+
+	dev = device_find_child(parent, "lpbb", 0);
+	if (!dev)
+		BUS_ADD_CHILD(parent, parent, 0, "lpbb", -1);
+}
 
 static int
 lpbb_probe(device_t dev)
@@ -70,18 +79,11 @@ lpbb_probe(device_t dev)
 static int
 lpbb_attach(device_t dev)
 {
-	device_t bitbang, iicbus;
+	device_t bitbang;
 	
 	/* add generic bit-banging code */
 	bitbang = device_add_child(dev, "iicbb", -1);
-
-	/* add the iicbus to the tree */
-	iicbus = iicbus_alloc_bus(bitbang);
-
 	device_probe_and_attach(bitbang);
-
-	/* XXX should be in iicbb_attach! */
-	device_probe_and_attach(iicbus);
 
 	return (0);
 }
@@ -119,24 +121,34 @@ lpbb_callback(device_t dev, int index, caddr_t *data)
 #define ALIM    0x20
 #define I2CKEY  0x50
 
-static int getSDA(device_t ppbus)
+static int
+lpbb_getscl(device_t dev)
 {
-	if((ppb_rstr(ppbus)&SDA_in)==SDA_in)
-		return 1;                   
-	else                                
-		return 0;                   
+	return ((ppb_rstr(device_get_parent(dev)) & SCL_in) == SCL_in);
 }
 
-static void setSDA(device_t ppbus, char val)
+static int
+lpbb_getsda(device_t dev)
 {
+	return ((ppb_rstr(device_get_parent(dev)) & SDA_in) == SDA_in);
+}
+
+static void
+lpbb_setsda(device_t dev, char val)
+{
+	device_t ppbus = device_get_parent(dev);
+
 	if(val==0)
 		ppb_wdtr(ppbus, (u_char)SDA_out);
 	else                            
 		ppb_wdtr(ppbus, (u_char)~SDA_out);
 }
 
-static void setSCL(device_t ppbus, unsigned char val)
+static void
+lpbb_setscl(device_t dev, unsigned char val)
 {
+	device_t ppbus = device_get_parent(dev);
+
 	if(val==0)
 		ppb_wctr(ppbus, (u_char)(ppb_rctr(ppbus)&~SCL_out));
 	else                                               
@@ -153,8 +165,8 @@ static int lpbb_detect(device_t dev)
 	}
 
 	/* reset bus */
-	setSDA(ppbus, 1);
-	setSCL(ppbus, 1);
+	lpbb_setsda(dev, 1);
+	lpbb_setscl(dev, 1);
 
 	if ((ppb_rstr(ppbus) & I2CKEY) ||
 		((ppb_rstr(ppbus) & ALIM) != ALIM)) {
@@ -173,40 +185,25 @@ lpbb_reset(device_t dev, u_char speed, u_char addr, u_char * oldaddr)
 {
 	device_t ppbus = device_get_parent(dev);
 
+	if (ppb_request_bus(ppbus, dev, PPB_DONTWAIT)) {
+		device_printf(dev, "can't allocate ppbus\n");
+		return (0);
+	}
+
 	/* reset bus */
-	setSDA(ppbus, 1);
-	setSCL(ppbus, 1);
+	lpbb_setsda(dev, 1);
+	lpbb_setscl(dev, 1);
+
+	ppb_release_bus(ppbus, dev);
 
 	return (IIC_ENOADDR);
 }
 
-static void
-lpbb_setlines(device_t dev, int ctrl, int data)
-{
-	device_t ppbus = device_get_parent(dev);
-
-	setSCL(ppbus, ctrl);
-	setSDA(ppbus, data);
-}
-
-static int
-lpbb_getdataline(device_t dev)
-{
-	device_t ppbus = device_get_parent(dev);
-
-	return (getSDA(ppbus));
-}
-
-/*
- * Because lpbb is a static device that always exists under any attached
- * ppbus device, and not scanned by the ppbus device, we need an identify
- * function to install the device.
- */
 static devclass_t lpbb_devclass;
 
 static device_method_t lpbb_methods[] = {
 	/* device interface */
-	DEVMETHOD(device_identify,	bus_generic_identify),
+	DEVMETHOD(device_identify,	lpbb_identify),
 	DEVMETHOD(device_probe,		lpbb_probe),
 	DEVMETHOD(device_attach,	lpbb_attach),
 
@@ -215,8 +212,10 @@ static device_method_t lpbb_methods[] = {
 
 	/* iicbb interface */
 	DEVMETHOD(iicbb_callback,	lpbb_callback),
-	DEVMETHOD(iicbb_setlines,	lpbb_setlines),
-	DEVMETHOD(iicbb_getdataline,	lpbb_getdataline),
+	DEVMETHOD(iicbb_setsda,		lpbb_setsda),
+	DEVMETHOD(iicbb_setscl,		lpbb_setscl),
+	DEVMETHOD(iicbb_getsda,		lpbb_getsda),
+	DEVMETHOD(iicbb_getscl,		lpbb_getscl),
 	DEVMETHOD(iicbb_reset,		lpbb_reset),
 
 	{ 0, 0 }
@@ -229,3 +228,6 @@ static driver_t lpbb_driver = {
 };
 
 DRIVER_MODULE(lpbb, ppbus, lpbb_driver, lpbb_devclass, 0, 0);
+MODULE_DEPEND(lpbb, ppbus, 1, 1, 1);
+MODULE_DEPEND(lpbb, iicbb, IICBB_MINVER, IICBB_PREFVER, IICBB_MAXVER);
+MODULE_VERSION(lpbb, 1);

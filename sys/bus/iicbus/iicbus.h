@@ -23,20 +23,45 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/iicbus/iicbus.h,v 1.4 1999/08/28 00:41:58 peter Exp $
+ * $FreeBSD: src/sys/dev/iicbus/iicbus.h,v 1.8 2008/08/04 21:03:06 jhb Exp $
  * $DragonFly: src/sys/bus/iicbus/iicbus.h,v 1.3 2006/09/30 20:03:44 swildner Exp $
  *
  */
 #ifndef __IICBUS_H
 #define __IICBUS_H
 
-struct iicbus_softc {
+#define IICBUS_IVAR(d) (struct iicbus_ivar *) device_get_ivars(d)
+#define IICBUS_SOFTC(d) (struct iicbus_softc *) device_get_softc(d)
 
+struct iicbus_softc
+{
+	device_t dev;		/* Myself */
 	device_t owner;		/* iicbus owner device structure */
 	u_char started;		/* address of the 'started' slave
 				 * 0 if no start condition succeeded */
 };
 
+struct iicbus_ivar
+{
+	uint32_t	addr;
+};
+
+enum {
+	IICBUS_IVAR_ADDR		/* Address or base address */
+};
+
+#define IICBUS_ACCESSOR(A, B, T)					\
+	__BUS_ACCESSOR(iicbus, A, IICBUS, B, T)
+
+IICBUS_ACCESSOR(addr,		ADDR,		uint32_t)
+
+#define	IICBUS_LOCK(sc)
+#define	IICBUS_UNLOCK(sc)
+#define	IICBUS_ASSERT_LOCKED(sc)
+
 extern int iicbus_generic_intr(device_t dev, int event, char *buf);
+
+extern driver_t iicbus_driver;
+extern devclass_t iicbus_devclass;
 
 #endif

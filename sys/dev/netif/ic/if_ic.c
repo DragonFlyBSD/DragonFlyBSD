@@ -69,6 +69,8 @@
 
 #include "iicbus_if.h"
 
+#define PCF_MASTER_ADDRESS 0xaa
+
 #define ICHDRLEN	sizeof(uint32_t)
 #define ICMTU		1500		/* default mtu */
 
@@ -134,7 +136,7 @@ icattach(device_t dev)
 	struct ic_softc *sc = (struct ic_softc *)device_get_softc(dev);
 	struct ifnet *ifp = &sc->ic_if;
 
-	sc->ic_addr = iicbus_get_addr(dev);
+	sc->ic_addr = PCF_MASTER_ADDRESS;	/* XXX only PCF masters */
 
 	ifp->if_softc = sc;
 	if_initname(ifp, "ic", device_get_unit(dev));
@@ -407,6 +409,6 @@ error:
 	return(0);
 }
 
-DECLARE_DUMMY_MODULE(if_ic);
 DRIVER_MODULE(if_ic, iicbus, ic_driver, ic_devclass, 0, 0);
-
+MODULE_DEPEND(if_ic, iicbus, IICBUS_MINVER, IICBUS_PREFVER, IICBUS_MAXVER);
+MODULE_VERSION(if_ic, 1);

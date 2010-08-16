@@ -1,10 +1,9 @@
-
-/*
+/*-
  * ichsmb_reg.h
  *
  * Copyright (c) 2000 Whistle Communications, Inc.
  * All rights reserved.
- * 
+ *
  * Subject to the following obligations and disclaimer of warranty, use and
  * redistribution of this software, in source or object code forms, with or
  * without modifications are expressly permitted by Whistle Communications;
@@ -15,7 +14,7 @@
  *    Communications, Inc. trademarks, including the mark "WHISTLE
  *    COMMUNICATIONS" on advertising, endorsements, or otherwise except as
  *    such appears in the above copyright notice or in the software.
- * 
+ *
  * THIS SOFTWARE IS BEING PROVIDED BY WHISTLE COMMUNICATIONS "AS IS", AND
  * TO THE MAXIMUM EXTENT PERMITTED BY LAW, WHISTLE COMMUNICATIONS MAKES NO
  * REPRESENTATIONS OR WARRANTIES, EXPRESS OR IMPLIED, REGARDING THIS SOFTWARE,
@@ -36,8 +35,7 @@
  *
  * Author: Archie Cobbs <archie@freebsd.org>
  *
- * $FreeBSD: src/sys/dev/ichsmb/ichsmb_reg.h,v 1.1.2.1 2000/10/09 00:52:43 archie Exp $
- * $DragonFly: src/sys/dev/powermng/ichsmb/ichsmb_reg.h,v 1.2 2003/06/17 04:28:27 dillon Exp $
+ * $FreeBSD: src/sys/dev/ichsmb/ichsmb_reg.h,v 1.2 2005/01/06 01:42:45 imp Exp $
  */
 
 #ifndef _DEV_ICHSMB_ICHSMB_REG_H_

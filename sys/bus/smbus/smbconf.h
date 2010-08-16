@@ -23,13 +23,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/smbus/smbconf.h,v 1.7 2002/03/23 15:47:28 nsouch Exp $
+ * $FreeBSD: src/sys/dev/smbus/smbconf.h,v 1.7.14.1 2006/09/22 19:19:16 jhb Exp $
  * $DragonFly: src/sys/bus/smbus/smbconf.h,v 1.4 2003/11/14 21:46:18 daver Exp $
  */
 #ifndef __SMBONF_H
 #define __SMBONF_H
 
 #include <sys/queue.h>
+
+#define SMBPRI (PZERO+8)		/* XXX sleep/wakeup queue priority */
 
 #define n(flags) (~(flags) & (flags))
 
@@ -58,6 +60,7 @@
 #define SMB_EABORT	0x10
 #define SMB_ETIMEOUT	0x20
 #define SMB_EBUSY	0x40
+#define	SMB_EINVAL	0x100
 
 /*
  * How Quick command is executed
@@ -68,16 +71,18 @@
 /*
  * ivars codes
  */
-#define SMBUS_IVAR_ADDR	0x1	/* I2C address of the device */
+#define SMBUS_IVAR_ADDR	0x1	/* slave address of the device */
 
-extern int smbus_request_bus(device_t, device_t, int);
-extern int smbus_release_bus(device_t, device_t);
-extern device_t smbus_alloc_bus(device_t);
-extern int smbus_error(int error);
+int	smbus_request_bus(device_t, device_t, int);
+int	smbus_release_bus(device_t, device_t);
+int	smbus_error(int error);
 
-extern void smbus_intr(device_t, u_char, char low, char high, int error);
+void	smbus_intr(device_t, u_char, char low, char high, int error);
 
-extern u_char smbus_get_addr(device_t);
+u_char	smbus_get_addr(device_t);
+
+extern driver_t smbus_driver;
+extern devclass_t smbus_devclass;
 
 #define smbus_quick(bus,slave,how) \
 	(SMBUS_QUICK(device_get_parent(bus), slave, how))
@@ -100,9 +105,9 @@ extern u_char smbus_get_addr(device_t);
 #define smbus_bread(bus,slave,cmd,count,buf) \
 	(SMBUS_BREAD(device_get_parent(bus), slave, cmd, count, buf))
 
-#define SMBUS_MODVER   1
-#define SMBUS_MINVER   1
-#define SMBUS_MAXVER   1
-#define SMBUS_PREFVER  SMBUS_MODVER
+#define SMBUS_MODVER	1
+#define SMBUS_MINVER	1
+#define SMBUS_MAXVER	1
+#define SMBUS_PREFVER	SMBUS_MODVER
 
 #endif

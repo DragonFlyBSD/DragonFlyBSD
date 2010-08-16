@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/smbus/smbus.h,v 1.2 1999/08/28 00:42:30 peter Exp $
+ * $FreeBSD: src/sys/dev/smbus/smbus.h,v 1.2.34.2 2006/09/22 19:19:16 jhb Exp $
  * $DragonFly: src/sys/bus/smbus/smbus.h,v 1.3 2006/09/30 20:03:44 swildner Exp $
  *
  */
@@ -31,10 +31,9 @@
 #define __SMBUS_H
 
 struct smbus_softc {
-
 	device_t owner;		/* smbus owner device structure */
 };
 
-extern void smbus_generic_intr(device_t dev, u_char devaddr, char low, char high);
+void	smbus_generic_intr(device_t dev, u_char devaddr, char low, char high);
 
 #endif

@@ -1,4 +1,4 @@
-#
+#-
 # Copyright (c) 1998 Nicolas Souchu
 # All rights reserved.
 #
@@ -23,7 +23,7 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: src/sys/dev/smbus/smbus_if.m,v 1.5 1999/08/28 00:42:30 peter Exp $
+# $FreeBSD: src/sys/dev/smbus/smbus_if.m,v 1.7.2.1 2006/09/22 19:19:16 jhb Exp $
 # $DragonFly: src/sys/bus/smbus/smbus_if.m,v 1.3 2003/11/17 00:54:39 asmodai Exp $
 #
 
@@ -48,7 +48,7 @@ METHOD void intr {
 METHOD int callback {
 	device_t dev;
 	int index;
-	caddr_t data;
+	void *data;
 };
 
 #
@@ -147,6 +147,6 @@ METHOD int bread {
 	device_t dev;
 	u_char slave;
 	char cmd;
-	u_char count;
+	u_char *count;
 	char *buf;
 };

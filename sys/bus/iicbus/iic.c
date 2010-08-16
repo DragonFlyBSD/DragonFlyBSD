@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1998 Nicolas Souchu
+ * Copyright (c) 1998, 2001 Nicolas Souchu
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,27 +23,24 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/iicbus/iic.c,v 1.18 1999/11/18 05:43:32 peter Exp $
+ * $FreeBSD: src/sys/dev/iicbus/iic.c,v 1.43 2009/01/26 13:53:39 raj Exp $
  * $DragonFly: src/sys/bus/iicbus/iic.c,v 1.10 2006/09/10 01:26:32 dillon Exp $
  *
  */
 #include <sys/param.h>
-#include <sys/kernel.h>
-#include <sys/systm.h>
-#include <sys/module.h>
+#include <sys/buf.h>
 #include <sys/bus.h>
 #include <sys/conf.h>
-#include <sys/buf.h>
-#include <sys/uio.h>
-#include <sys/malloc.h>
 #include <sys/fcntl.h>
+#include <sys/kernel.h>
+#include <sys/malloc.h>
+#include <sys/module.h>
+#include <sys/systm.h>
+#include <sys/uio.h>
 
-#include <machine/clock.h>
-
-#include "iiconf.h"
-#include "iicbus.h"
-
-#include <machine/iic.h>
+#include <bus/iicbus/iiconf.h>
+#include <bus/iicbus/iicbus.h>
+#include <bus/iicbus/iic.h>
 
 #include "iicbus_if.h"
 
@@ -51,28 +48,32 @@
 
 struct iic_softc {
 
-	u_char sc_addr;			/* address on iicbus */
+	device_t sc_dev;
+	u_char sc_addr;			/* 7 bit address on iicbus */
 	int sc_count;			/* >0 if device opened */
 
 	char sc_buffer[BUFSIZE];	/* output buffer */
 	char sc_inbuf[BUFSIZE];		/* input buffer */
+
+	cdev_t sc_devnode;
 };
 
-#define IIC_SOFTC(unit) \
-	((struct iic_softc *)devclass_get_softc(iic_devclass, (unit)))
-
-#define IIC_DEVICE(unit) \
-	(devclass_get_device(iic_devclass, (unit)))
+#define	IIC_LOCK(sc)
+#define	IIC_UNLOCK(sc)
 
 static int iic_probe(device_t);
 static int iic_attach(device_t);
+static int iic_detach(device_t);
+static void iic_identify(driver_t *driver, device_t parent);
 
 static devclass_t iic_devclass;
 
 static device_method_t iic_methods[] = {
 	/* device interface */
+	DEVMETHOD(device_identify,	iic_identify),
 	DEVMETHOD(device_probe,		iic_probe),
 	DEVMETHOD(device_attach,	iic_attach),
+	DEVMETHOD(device_detach,	iic_detach),
 
 	/* iicbus interface */
 	DEVMETHOD(iicbus_intr,		iicbus_generic_intr),
@@ -92,9 +93,8 @@ static	d_write_t	iicwrite;
 static	d_read_t	iicread;
 static	d_ioctl_t	iicioctl;
 
-#define CDEV_MAJOR 105
 static struct dev_ops iic_ops = {
-	{ "iic", CDEV_MAJOR, 0 },
+	{ "iic", 0, 0 },
 	.d_open =	iicopen,
 	.d_close =	iicclose,
 	.d_read =	iicread,
@@ -102,46 +102,67 @@ static struct dev_ops iic_ops = {
 	.d_ioctl =	iicioctl,
 };
 
-/*
- * iicprobe()
- */
+static void
+iic_identify(driver_t *driver, device_t parent)
+{
+
+	if (device_find_child(parent, "iic", -1) == NULL)
+		BUS_ADD_CHILD(parent, parent, 0, "iic", -1);
+}
+
 static int
 iic_probe(device_t dev)
 {
-	struct iic_softc *sc = (struct iic_softc *)device_get_softc(dev);
+	if (iicbus_get_addr(dev) > 0)
+		return (ENXIO);
 
-	sc->sc_addr = iicbus_get_addr(dev);
-
-	/* XXX detect chip with start/stop conditions */
+	device_set_desc(dev, "I2C generic I/O");
 
 	return (0);
 }
 	
-/*
- * iicattach()
- */
 static int
 iic_attach(device_t dev)
 {
-	make_dev(&iic_ops, device_get_unit(dev),	/* XXX cleanup */
+	struct iic_softc *sc = (struct iic_softc *)device_get_softc(dev);
+
+	sc->sc_devnode = make_dev(&iic_ops, device_get_unit(dev),
 			UID_ROOT, GID_WHEEL,
 			0600, "iic%d", device_get_unit(dev));
+	if (sc->sc_devnode == NULL) {
+		device_printf(dev, "failed to create character device\n");
+		return (ENXIO);
+	}
+	sc->sc_devnode->si_drv1 = sc;
+
 	return (0);
 }
 
 static int
-iicopen (struct dev_open_args *ap)
+iic_detach(device_t dev)
+{
+	struct iic_softc *sc = (struct iic_softc *)device_get_softc(dev);
+
+	if (sc->sc_devnode)
+		dev_ops_remove_minor(&iic_ops, device_get_unit(dev));
+
+	return (0);
+}
+
+static int
+iicopen(struct dev_open_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	struct iic_softc *sc = IIC_SOFTC(minor(dev));
+	struct iic_softc *sc = dev->si_drv1;
 
-	if (!sc)
-		return (EINVAL);
-
-	if (sc->sc_count > 0)
+	IIC_LOCK(sc);
+	if (sc->sc_count > 0) {
+		IIC_UNLOCK(sc);
 		return (EBUSY);
+	}
 
 	sc->sc_count++;
+	IIC_UNLOCK(sc);
 
 	return (0);
 }
@@ -150,18 +171,20 @@ static int
 iicclose(struct dev_close_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	struct iic_softc *sc = IIC_SOFTC(minor(dev));
+	struct iic_softc *sc = dev->si_drv1;
 
-	if (!sc)
+	IIC_LOCK(sc);
+	if (!sc->sc_count) {
+		/* XXX: I don't think this can happen. */
+		IIC_UNLOCK(sc);
 		return (EINVAL);
-
-	if (!sc->sc_count)
-		return (EINVAL);
+	}
 
 	sc->sc_count--;
 
 	if (sc->sc_count < 0)
 		panic("%s: iic_count < 0!", __func__);
+	IIC_UNLOCK(sc);
 
 	return (0);
 }
@@ -171,18 +194,28 @@ iicwrite(struct dev_write_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
-	device_t iicdev = IIC_DEVICE(minor(dev));
-	struct iic_softc *sc = IIC_SOFTC(minor(dev));
+	struct iic_softc *sc = dev->si_drv1;
+	device_t iicdev = sc->sc_dev;
 	int sent, error, count;
 
-	if (!sc || !iicdev)
+	IIC_LOCK(sc);
+	if (!sc->sc_addr) {
+		IIC_UNLOCK(sc);
 		return (EINVAL);
+	}
 
-	if (sc->sc_count == 0)
+	if (sc->sc_count == 0) {
+		/* XXX: I don't think this can happen. */
+		IIC_UNLOCK(sc);
 		return (EINVAL);
+	}
 
-	if ((error = iicbus_request_bus(device_get_parent(iicdev), iicdev, IIC_DONTWAIT)))
+	error = iicbus_request_bus(device_get_parent(iicdev), iicdev,
+	    IIC_DONTWAIT);
+	if (error) {
+		IIC_UNLOCK(sc);
 		return (error);
+	}
 
 	count = (int)szmin(uio->uio_resid, BUFSIZE);
 	uiomove(sc->sc_buffer, (size_t)count, uio);
@@ -191,8 +224,9 @@ iicwrite(struct dev_write_args *ap)
 					sc->sc_buffer, count, &sent);
 
 	iicbus_release_bus(device_get_parent(iicdev), iicdev);
+	IIC_UNLOCK(sc);
 
-	return(error);
+	return (error);
 }
 
 static int
@@ -200,56 +234,86 @@ iicread(struct dev_read_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
-	device_t iicdev = IIC_DEVICE(minor(dev));
-	struct iic_softc *sc = IIC_SOFTC(minor(dev));
+	struct iic_softc *sc = dev->si_drv1;
+	device_t iicdev = sc->sc_dev;
 	int len, error = 0;
 	int bufsize;
 
-	if (!sc || !iicdev)
+	IIC_LOCK(sc);
+	if (!sc->sc_addr) {
+		IIC_UNLOCK(sc);
 		return (EINVAL);
+	}
 
-	if (sc->sc_count == 0)
+	if (sc->sc_count == 0) {
+		/* XXX: I don't think this can happen. */
+		IIC_UNLOCK(sc);
 		return (EINVAL);
+	}
 
-	if ((error = iicbus_request_bus(device_get_parent(iicdev), iicdev, IIC_DONTWAIT)))
+	error = iicbus_request_bus(device_get_parent(iicdev), iicdev,
+	    IIC_DONTWAIT);
+	if (error) {
+		IIC_UNLOCK(sc);
 		return (error);
+	}
 
 	/* max amount of data to read */
 	len = (int)szmin(uio->uio_resid, BUFSIZE);
 
-	if ((error = iicbus_block_read(device_get_parent(iicdev), sc->sc_addr,
-					sc->sc_inbuf, len, &bufsize)))
+	error = iicbus_block_read(device_get_parent(iicdev), sc->sc_addr,
+	    sc->sc_inbuf, len, &bufsize);
+	if (error) {
+		IIC_UNLOCK(sc);
 		return (error);
+	}
 
 	if (bufsize > uio->uio_resid)
 		panic("%s: too much data read!", __func__);
 
 	iicbus_release_bus(device_get_parent(iicdev), iicdev);
 
-	return (uiomove(sc->sc_inbuf, (size_t)bufsize, uio));
+	error = uiomove(sc->sc_inbuf, (size_t)bufsize, uio);
+	IIC_UNLOCK(sc);
+	return (error);
 }
 
 static int
 iicioctl(struct dev_ioctl_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	device_t iicdev = IIC_DEVICE(minor(dev));
-	struct iic_softc *sc = IIC_SOFTC(minor(dev));
+	u_long cmd = ap->a_cmd;
+	caddr_t data = ap->a_data;
+	int flags = ap->a_fflag;
+	struct iic_softc *sc = dev->si_drv1;
+	device_t iicdev = sc->sc_dev;
 	device_t parent = device_get_parent(iicdev);
-	struct iiccmd *s = (struct iiccmd *)ap->a_data;
-	int error, count;
-
-	if (!sc)
-		return (EINVAL);
+	struct iiccmd *s = (struct iiccmd *)data;
+	struct iic_rdwr_data *d = (struct iic_rdwr_data *)data;
+	struct iic_msg *m;
+	int error, count, i;
+	char *buf = NULL;
+	void **usrbufs = NULL;
 
 	if ((error = iicbus_request_bus(device_get_parent(iicdev), iicdev,
-			(ap->a_fflag & O_NONBLOCK) ? IIC_DONTWAIT :
+			(flags & O_NONBLOCK) ? IIC_DONTWAIT :
 						(IIC_WAIT | IIC_INTR))))
 		return (error);
 
-	switch (ap->a_cmd) {
+	switch (cmd) {
 	case I2CSTART:
+		IIC_LOCK(sc);
 		error = iicbus_start(parent, s->slave, 0);
+
+		/*
+		 * Implicitly set the chip addr to the slave addr passed as
+		 * parameter. Consequently, start/stop shall be called before
+		 * the read or the write of a block.
+		 */
+		if (!error)
+			sc->sc_addr = s->slave;
+		IIC_UNLOCK(sc);
+
 		break;
 
 	case I2CSTOP:
@@ -257,24 +321,73 @@ iicioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case I2CRSTCARD:
-		error = iicbus_reset(parent, 0, 0, NULL);
+		error = iicbus_reset(parent, IIC_UNKNOWN, 0, NULL);
 		break;
 
 	case I2CWRITE:
-		error = iicbus_write(parent, s->buf, s->count, &count, 0);
+		if (s->count <= 0) {
+			error = EINVAL;
+			break;
+		}
+		buf = kmalloc((unsigned long)s->count, M_TEMP, M_WAITOK);
+		error = copyin(s->buf, buf, s->count);
+		if (error)
+			break;
+		error = iicbus_write(parent, buf, s->count, &count, 10);
 		break;
 
 	case I2CREAD:
-		error = iicbus_read(parent, s->buf, s->count, &count, s->last, 0);
+		if (s->count <= 0) {
+			error = EINVAL;
+			break;
+		}
+		buf = kmalloc((unsigned long)s->count, M_TEMP, M_WAITOK);
+		error = iicbus_read(parent, buf, s->count, &count, s->last, 10);
+		if (error)
+			break;
+		error = copyout(buf, s->buf, s->count);
+		break;
+
+	case I2CRDWR:
+		buf = kmalloc(sizeof(*d->msgs) * d->nmsgs, M_TEMP, M_WAITOK);
+		usrbufs = kmalloc(sizeof(void *) * d->nmsgs, M_TEMP, M_ZERO | M_WAITOK);
+		error = copyin(d->msgs, buf, sizeof(*d->msgs) * d->nmsgs);
+		if (error)
+			break;
+		/* Alloc kernel buffers for userland data, copyin write data */
+		for (i = 0; i < d->nmsgs; i++) {
+			m = &((struct iic_msg *)buf)[i];
+			usrbufs[i] = m->buf;
+			m->buf = kmalloc(m->len, M_TEMP, M_WAITOK);
+			if (!(m->flags & IIC_M_RD))
+				copyin(usrbufs[i], m->buf, m->len);
+		}
+		error = iicbus_transfer(parent, (struct iic_msg *)buf, d->nmsgs);
+		/* Copyout all read segments, free up kernel buffers */
+		for (i = 0; i < d->nmsgs; i++) {
+			m = &((struct iic_msg *)buf)[i];
+			if (m->flags & IIC_M_RD)
+				copyout(m->buf, usrbufs[i], m->len);
+			kfree(m->buf, M_TEMP);
+		}
+		kfree(usrbufs, M_TEMP);
+		break;
+
+	case I2CRPTSTART:
+		error = iicbus_repeated_start(parent, s->slave, 0);
 		break;
 
 	default:
-		error = ENODEV;
+		error = ENOTTY;
 	}
 
 	iicbus_release_bus(device_get_parent(iicdev), iicdev);
 
+	if (buf != NULL)
+		kfree(buf, M_TEMP);
 	return (error);
 }
 
 DRIVER_MODULE(iic, iicbus, iic_driver, iic_devclass, 0, 0);
+MODULE_DEPEND(iic, iicbus, IICBUS_MINVER, IICBUS_PREFVER, IICBUS_MAXVER);
+MODULE_VERSION(iic, 1);

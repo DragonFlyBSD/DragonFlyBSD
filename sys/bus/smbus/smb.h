@@ -23,31 +23,49 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/i386/include/iic.h,v 1.3 1999/08/28 00:44:16 peter Exp $
- * $DragonFly: src/sys/platform/pc32/include/iic.h,v 1.4 2006/05/20 02:42:06 dillon Exp $
+ * $FreeBSD: src/sys/dev/smbus/smb.h,v 1.4.8.1 2006/09/22 19:19:16 jhb Exp $
+ * $DragonFly: src/sys/platform/pc32/include/smb.h,v 1.4 2006/05/20 02:42:06 dillon Exp $
  *
  */
-#ifndef _MACHINE_IIC_H_
-#define _MACHINE_IIC_H_
+#ifndef __SMB_H
+#define __SMB_H
 
-#ifndef _SYS_TYPES_H_
-#include <sys/types.h>
-#endif
-#ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
-#endif
 
-struct iiccmd {
+struct smbcmd {
+	char cmd;
+	int count;
 	u_char slave;
-	size_t count;
-	size_t last;
-	char *buf;
+	union {
+		char byte;
+		short word;
+
+		char *byte_ptr;
+		short *word_ptr;
+
+		struct {
+			short sdata;
+			short *rdata;
+		} process;
+	} data;
 };
 
-#define I2CSTART	_IOW('i', 1, struct iiccmd)	/* start condition */
-#define I2CSTOP		_IO('i', 2)			/* stop condition */
-#define I2CRSTCARD	_IOW('i', 3, struct iiccmd)	/* reset the card */
-#define I2CWRITE	_IOW('i', 4, struct iiccmd)	/* send data */
-#define I2CREAD		_IOW('i', 5, struct iiccmd)	/* receive data */
+/*
+ * SMBus spec 2.0 says block transfers may be at most 32 bytes.
+ */
+#define SMB_MAXBLOCKSIZE	32
+
+#define SMB_QUICK_WRITE	_IOW('i', 1, struct smbcmd)
+#define SMB_QUICK_READ	_IOW('i', 2, struct smbcmd)
+#define SMB_SENDB	_IOW('i', 3, struct smbcmd)
+#define SMB_RECVB	_IOWR('i', 4, struct smbcmd)
+#define SMB_WRITEB	_IOW('i', 5, struct smbcmd)
+#define SMB_WRITEW	_IOW('i', 6, struct smbcmd)
+#define SMB_READB	_IOW('i', 7, struct smbcmd)
+#define SMB_READW	_IOW('i', 8, struct smbcmd)
+#define SMB_PCALL	_IOW('i', 9, struct smbcmd)
+#define SMB_BWRITE	_IOW('i', 10, struct smbcmd)
+#define SMB_OLD_BREAD	_IOW('i', 11, struct smbcmd)
+#define SMB_BREAD	_IOWR('i', 11, struct smbcmd)
 
 #endif

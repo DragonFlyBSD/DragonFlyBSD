@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/i386/isa/pcf.c,v 1.14 2000/01/14 00:18:05 nsouch Exp $
- * $DragonFly: src/sys/bus/iicbus/i386/pcf.c,v 1.11 2008/08/02 01:14:38 dillon Exp $
+ * $FreeBSD: src/sys/dev/pcf/pcf.c,v 1.21 2003/06/20 07:22:54 jmg Exp $
  *
  */
 #include <sys/param.h>
@@ -32,9 +31,7 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <sys/malloc.h>
 
-#include <machine/clock.h>
 #include <sys/rman.h>
 
 #include <bus/isa/isareg.h>
@@ -86,7 +83,7 @@ struct pcf_softc {
 
 	device_t iicbus;		/* the corresponding iicbus */
 
-  	int rid_irq, rid_ioport;
+	int rid_irq, rid_ioport;
 	struct resource *res_irq, *res_ioport;
 	void *intr_cookie;
 };
@@ -139,6 +136,7 @@ pcf_probe(device_t pcfdev)
 {
 	struct pcf_softc *pcf = DEVTOSOFTC(pcfdev);
 	device_t parent = device_get_parent(pcfdev);
+	uintptr_t base;
 
 	device_set_desc(pcfdev, "PCF8584 I2C bus controller");
 
@@ -149,13 +147,14 @@ pcf_probe(device_t pcfdev)
 
 	/* IO port is mandatory */
 	pcf->res_ioport = bus_alloc_resource(pcfdev, SYS_RES_IOPORT,
-					     &pcf->rid_ioport, 0ul, ~0ul, 
+					     &pcf->rid_ioport, 0ul, ~0ul,
 					     IO_PCFSIZE, RF_ACTIVE);
 	if (pcf->res_ioport == 0) {
 		device_printf(pcfdev, "cannot reserve I/O port range\n");
 		goto error;
 	}
-	BUS_READ_IVAR(parent, pcfdev, ISA_IVAR_PORT, &pcf->pcf_base);
+	BUS_READ_IVAR(parent, pcfdev, ISA_IVAR_PORT, &base);
+	pcf->pcf_base = base;
 
 	pcf->pcf_flags = device_get_flags(pcfdev);
 
@@ -191,17 +190,17 @@ pcf_attach(device_t pcfdev)
 
 	if (pcf->res_irq) {
 		/* default to the tty mask for registration */	/* XXX */
-		error = BUS_SETUP_INTR(parent, pcfdev, pcf->res_irq, 
+		error = BUS_SETUP_INTR(parent, pcfdev, pcf->res_irq,
 					0, pcfintr, pcfdev,
 					&pcf->intr_cookie, NULL);
 		if (error)
 			return (error);
 	}
 
-	pcf->iicbus = iicbus_alloc_bus(pcfdev);
+	pcf->iicbus = device_add_child(pcfdev, "iicbus", -1);
 
 	/* probe and attach the iicbus */
-	device_probe_and_attach(pcf->iicbus);
+	bus_generic_attach(pcfdev);
 
 	return (0);
 }
@@ -292,7 +291,7 @@ pcf_stop(device_t pcfdev)
 
 	/*
 	 * Send STOP condition iff the START condition was previously sent.
-	 * STOP is sent only once even if a iicbus_stop() is called after
+	 * STOP is sent only once even if an iicbus_stop() is called after
 	 * an iicbus_read()... see pcf_read(): the pcf needs to send the stop
 	 * before the last char is read.
 	 */
@@ -403,7 +402,7 @@ pcfintr(void *arg)
 		device_printf(pcfdev, "spurious interrupt, status=0x%x\n", status & 0xff);
 
 		goto error;
-	}	
+	}
 
 	if (status & LAB)
 		device_printf(pcfdev, "bus arbitration lost!\n");
@@ -435,9 +434,9 @@ pcfintr(void *arg)
 			/* get data from upper code */
 			iicbus_intr(pcf->iicbus, INTR_TRANSMIT, &data);
 
-			PCF_SET_S0(pcf, data);	
-			break;	
-		
+			PCF_SET_S0(pcf, data);
+			break;
+
 		case SLAVE_RECEIVER:
 			if (status & AAS) {
 				addr = PCF_GET_S0(pcf);
@@ -508,7 +507,7 @@ pcf_rst_card(device_t pcfdev, u_char speed, u_char addr, u_char *oldaddr)
 		pcf->pcf_addr = PCF_DEFAULT_ADDR;
 	else
 		pcf->pcf_addr = addr;
-	
+
 	PCF_SET_S1(pcf, PIN);				/* initialize S1 */
 
 	/* own address S'O<>0 */

@@ -228,7 +228,6 @@ dev/serial/stli/istallion.c		optional nowerror	stli
 dev/misc/labpc/labpc.c			optional	labpc
 dev/misc/mse/mse.c			optional	mse
 platform/pc32/isa/npx.c			mandatory	npx
-bus/iicbus/i386/pcf.c			optional	pcf
 bus/pci/i386/legacy.c			optional	pci
 bus/pci/i386/pci_bus.c			optional	pci
 bus/pci/i386/pci_cfgreg.c		optional	pci

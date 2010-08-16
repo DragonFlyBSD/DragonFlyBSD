@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1998 Nicolas Souchu
+ * Copyright (c) 1998, 2001 Nicolas Souchu
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,26 +23,24 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/smbus/smb.c,v 1.20 1999/11/18 05:44:56 peter Exp $
+ * $FreeBSD: src/sys/dev/smbus/smb.c,v 1.34.8.2 2006/09/22 19:19:16 jhb Exp $
  * $DragonFly: src/sys/bus/smbus/smb.c,v 1.9 2006/09/10 01:26:33 dillon Exp $
  *
  */
+
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
+#include <sys/device.h>
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/conf.h>
-#include <sys/buf.h>
 #include <sys/uio.h>
-#include <sys/malloc.h>
 #include <sys/fcntl.h>
-
-#include <machine/clock.h>
 
 #include "smbconf.h"
 #include "smbus.h"
-#include <machine/smb.h>
+#include "smb.h"
 
 #include "smbus_if.h"
 
@@ -50,13 +48,8 @@
 
 struct smb_softc {
 
-	int sc_addr;			/* address on smbus */
 	int sc_count;			/* >0 if device opened */
-
-	char *sc_cp;			/* output buffer pointer */
-
-	char sc_buffer[BUFSIZE];	/* output buffer */
-	char sc_inbuf[BUFSIZE];		/* input buffer */
+	cdev_t sc_devnode;
 };
 
 #define IIC_SOFTC(unit) \
@@ -65,15 +58,19 @@ struct smb_softc {
 #define IIC_DEVICE(unit) \
 	(devclass_get_device(smb_devclass, (unit)))
 
+static void smb_identify(driver_t *driver, device_t parent);
 static int smb_probe(device_t);
 static int smb_attach(device_t);
+static int smb_detach(device_t);
 
 static devclass_t smb_devclass;
 
 static device_method_t smb_methods[] = {
 	/* device interface */
+	DEVMETHOD(device_identify,	smb_identify),
 	DEVMETHOD(device_probe,		smb_probe),
 	DEVMETHOD(device_attach,	smb_attach),
+	DEVMETHOD(device_detach,	smb_detach),
 
 	/* smbus interface */
 	DEVMETHOD(smbus_intr,		smbus_generic_intr),
@@ -89,8 +86,6 @@ static driver_t smb_driver = {
 
 static	d_open_t	smbopen;
 static	d_close_t	smbclose;
-static	d_write_t	smbwrite;
-static	d_read_t	smbread;
 static	d_ioctl_t	smbioctl;
 
 #define CDEV_MAJOR 106
@@ -98,35 +93,49 @@ static struct dev_ops smb_ops = {
 	{ "smb", CDEV_MAJOR, 0 },
 	.d_open =	smbopen,
 	.d_close =	smbclose,
-	.d_read =	smbread,
-	.d_write =	smbwrite,
 	.d_ioctl =	smbioctl,
 };
 
-/*
- * smbprobe()
- */
+static void
+smb_identify(driver_t *driver, device_t parent)
+{
+	if (device_find_child(parent, "smb", -1) == NULL)
+		BUS_ADD_CHILD(parent, parent, 0, "smb", -1);
+}
+
 static int
 smb_probe(device_t dev)
 {
-	struct smb_softc *sc = (struct smb_softc *)device_get_softc(dev);
-
-	sc->sc_addr = smbus_get_addr(dev);
-
-	/* XXX detect chip with start/stop conditions */
+	device_set_desc(dev, "SMBus generic I/O");
 
 	return (0);
 }
-	
-/*
- * smbattach()
- */
+
 static int
 smb_attach(device_t dev)
 {
-	make_dev(&smb_ops, device_get_unit(dev),
-		 UID_ROOT, GID_WHEEL,
-		 0600, "smb%d", device_get_unit(dev));
+	struct smb_softc *sc = (struct smb_softc *)device_get_softc(dev);
+
+	if (!sc)
+		return (ENOMEM);
+
+	bzero(sc, sizeof(struct smb_softc *));
+
+	sc->sc_devnode = make_dev(&smb_ops, device_get_unit(dev),
+			UID_ROOT, GID_WHEEL,
+			0600, "smb%d", device_get_unit(dev));
+
+	return (0);
+}
+
+static int
+smb_detach(device_t dev)
+{
+	struct smb_softc *sc = (struct smb_softc *)device_get_softc(dev);
+
+	if (sc->sc_devnode)
+		dev_ops_remove_minor(&smb_ops, device_get_unit(dev));
+
 	return (0);
 }
 
@@ -136,10 +145,10 @@ smbopen (struct dev_open_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct smb_softc *sc = IIC_SOFTC(minor(dev));
 
-	if (!sc)
-		return (EINVAL);
+	if (sc == NULL)
+		return (ENXIO);
 
-	if (sc->sc_count)
+	if (sc->sc_count != 0)
 		return (EBUSY);
 
 	sc->sc_count++;
@@ -153,17 +162,19 @@ smbclose(struct dev_close_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct smb_softc *sc = IIC_SOFTC(minor(dev));
 
-	if (!sc)
-		return (EINVAL);
+	if (sc == NULL)
+		return (ENXIO);
 
-	if (!sc->sc_count)
-		return (EINVAL);
+	if (sc->sc_count == 0)
+		/* This is not supposed to happen. */
+		return (0);
 
 	sc->sc_count--;
 
 	return (0);
 }
 
+#if 0
 static int
 smbwrite(struct dev_write_args *ap)
 {
@@ -175,22 +186,30 @@ smbread(struct dev_read_args *ap)
 {
 	return (EINVAL);
 }
+#endif
 
 static int
 smbioctl(struct dev_ioctl_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	device_t smbdev = IIC_DEVICE(minor(dev));
-	struct smb_softc *sc = IIC_SOFTC(minor(dev));
-	device_t parent = device_get_parent(smbdev);
-
-	int error = 0;
+	char buf[SMB_MAXBLOCKSIZE];
+	device_t parent;
 	struct smbcmd *s = (struct smbcmd *)ap->a_data;
+	struct smb_softc *sc = IIC_SOFTC(minor(dev));
+	device_t smbdev = IIC_DEVICE(minor(dev));
+	int error;
+	short w;
+	u_char count;
+	char c;
 
-	if (!sc || !s)
+	if (sc == NULL)
+		return (ENXIO);
+	if (s == NULL)
 		return (EINVAL);
 
-	/* allocate the bus */
+	parent = device_get_parent(smbdev);
+
+	/* Allocate the bus. */
 	if ((error = smbus_request_bus(parent, smbdev,
 			(ap->a_fflag & O_NONBLOCK) ? SMB_DONTWAIT : (SMB_WAIT | SMB_INTR))))
 		return (error);
@@ -223,43 +242,74 @@ smbioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case SMB_READB:
-		if (s->data.byte_ptr)
+		if (s->data.byte_ptr) {
 			error = smbus_error(smbus_readb(parent, s->slave,
-						s->cmd, s->data.byte_ptr));
+						s->cmd, &c));
+			if (error)
+				break;
+			error = copyout(&c, s->data.byte_ptr,
+					sizeof(*(s->data.byte_ptr)));
+		}
 		break;
 
 	case SMB_READW:
-		if (s->data.word_ptr)
+		if (s->data.word_ptr) {
 			error = smbus_error(smbus_readw(parent, s->slave,
-						s->cmd, s->data.word_ptr));
+						s->cmd, &w));
+			if (error == 0) {
+				error = copyout(&w, s->data.word_ptr,
+						sizeof(*(s->data.word_ptr)));
+			}
+		}
 		break;
 
 	case SMB_PCALL:
-		if (s->data.process.rdata)
+		if (s->data.process.rdata) {
 			error = smbus_error(smbus_pcall(parent, s->slave, s->cmd,
-				s->data.process.sdata, s->data.process.rdata));
+				s->data.process.sdata, &w));
+			if (error)
+				break;
+			error = copyout(&w, s->data.process.rdata,
+					sizeof(*(s->data.process.rdata)));
+		}
+
 		break;
 
 	case SMB_BWRITE:
-		if (s->count && s->data.byte_ptr)
+		if (s->count && s->data.byte_ptr) {
+			if (s->count > SMB_MAXBLOCKSIZE)
+				s->count = SMB_MAXBLOCKSIZE;
+			error = copyin(s->data.byte_ptr, buf, s->count);
+			if (error)
+				break;
 			error = smbus_error(smbus_bwrite(parent, s->slave,
-						s->cmd, s->count, s->data.byte_ptr));
+						s->cmd, s->count, buf));
+		}
 		break;
 
+	case SMB_OLD_BREAD:
 	case SMB_BREAD:
-		if (s->count && s->data.byte_ptr)
+		if (s->count && s->data.byte_ptr) {
+			count = min(s->count, SMB_MAXBLOCKSIZE);
 			error = smbus_error(smbus_bread(parent, s->slave,
-						s->cmd, s->count, s->data.byte_ptr));
+						s->cmd, &count, buf));
+			if (error)
+				break;
+			error = copyout(buf, s->data.byte_ptr,
+			    min(count, s->count));
+			s->count = count;
+		}
 		break;
-		
+
 	default:
-		error = ENODEV;
+		error = ENOTTY;
 	}
 
-	/* release the bus */
 	smbus_release_bus(parent, smbdev);
 
 	return (error);
 }
 
 DRIVER_MODULE(smb, smbus, smb_driver, smb_devclass, 0, 0);
+MODULE_DEPEND(smb, smbus, SMBUS_MINVER, SMBUS_PREFVER, SMBUS_MAXVER);
+MODULE_VERSION(smb, 1);

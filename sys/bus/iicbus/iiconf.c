@@ -23,20 +23,19 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/iicbus/iiconf.c,v 1.10 1999/12/03 08:41:02 mdodd Exp $
+ * $FreeBSD: src/sys/dev/iicbus/iiconf.c,v 1.19 2008/08/23 07:38:00 imp Exp $
  * $DragonFly: src/sys/bus/iicbus/iiconf.c,v 1.5 2005/06/02 20:40:36 dillon Exp $
  *
  */
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/thread2.h>
 
-#include "iiconf.h"
-#include "iicbus.h"
+#include <bus/iicbus/iiconf.h>
+#include <bus/iicbus/iicbus.h>
 #include "iicbus_if.h"
 
 /*
@@ -54,33 +53,17 @@ iicbus_intr(device_t bus, int event, char *buf)
 	return;
 }
 
-/*
- * iicbus_alloc_bus()
- *
- * Allocate a new bus connected to the given parent device
- */
-device_t
-iicbus_alloc_bus(device_t parent)
-{
-	device_t child;
-
-	/* add the bus to the parent */
-	child = device_add_child(parent, "iicbus", -1);
-
-	return (child);
-}
-
 static int
 iicbus_poll(struct iicbus_softc *sc, int how)
 {
 	int error;
 
 	switch (how) {
-	case (IIC_WAIT | IIC_INTR):
+	case IIC_WAIT | IIC_INTR:
 		error = tsleep(sc, PCATCH, "iicreq", 0);
 		break;
 
-	case (IIC_WAIT | IIC_NOINTR):
+	case IIC_WAIT | IIC_NOINTR:
 		error = tsleep(sc, 0, "iicreq", 0);
 		break;
 
@@ -155,7 +138,7 @@ iicbus_release_bus(device_t bus, device_t dev)
 		crit_exit();
 		return (EACCES);
 	}
-	sc->owner = 0;
+	sc->owner = NULL;
 	crit_exit();
 
 	/* wakeup waiting processes */
@@ -349,18 +332,49 @@ iicbus_block_read(device_t bus, u_char slave, char *buf, int len, int *read)
 }
 
 /*
- * iicbus_get_addr()
+ * iicbus_transfer()
  *
- * Get the I2C 7 bits address of the device
+ * Do an aribtrary number of transfers on the iicbus.  We pass these
+ * raw requests to the bridge driver.  If the bridge driver supports
+ * them directly, then it manages all the details.  If not, it can use
+ * the helper function iicbus_transfer_gen() which will do the
+ * transfers at a low level.
+ *
+ * Pointers passed in as part of iic_msg must be kernel pointers.
+ * Callers that have user addresses to manage must do so on their own.
  */
-u_char
-iicbus_get_addr(device_t dev)
+int
+iicbus_transfer(device_t bus, struct iic_msg *msgs, uint32_t nmsgs)
 {
-	uintptr_t addr;
-	device_t parent = device_get_parent(dev);
-
-	BUS_READ_IVAR(parent, dev, IICBUS_IVAR_ADDR, &addr);
-
-	return ((u_char)addr);
+	return (IICBUS_TRANSFER(device_get_parent(bus), msgs, nmsgs));
 }
 
+/*
+ * Generic version of iicbus_transfer that calls the appropriate
+ * routines to accomplish this.  See note above about acceptable
+ * buffer addresses.
+ */
+int
+iicbus_transfer_gen(device_t dev, struct iic_msg *msgs, uint32_t nmsgs)
+{
+	int i, error, lenread, lenwrote, nkid;
+	device_t *children, bus;
+
+	if ((error = device_get_children(dev, &children, &nkid)) != 0)
+		return (error);
+	if (nkid != 1) {
+		kfree(children, M_TEMP);
+		return (EIO);
+	}
+	bus = children[0];
+	kfree(children, M_TEMP);
+	for (i = 0, error = 0; i < nmsgs && error == 0; i++) {
+		if (msgs[i].flags & IIC_M_RD)
+			error = iicbus_block_read(bus, msgs[i].slave,
+			    msgs[i].buf, msgs[i].len, &lenread);
+		else
+			error = iicbus_block_write(bus, msgs[i].slave,
+			    msgs[i].buf, msgs[i].len, &lenwrote);
+	}
+	return (error);
+}

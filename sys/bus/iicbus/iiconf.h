@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1998 Nicolas Souchu
+ * Copyright (c) 1998, 2001 Nicolas Souchu
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,15 +23,17 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/iicbus/iiconf.h,v 1.7 2002/03/23 15:47:17 nsouch Exp $
+ * $FreeBSD: src/sys/dev/iicbus/iiconf.h,v 1.11 2006/12/05 06:19:36 imp Exp $
  * $DragonFly: src/sys/bus/iicbus/iiconf.h,v 1.4 2003/11/14 21:46:17 daver Exp $
  */
 #ifndef __IICONF_H
 #define __IICONF_H
 
 #include <sys/queue.h>
+#include <bus/iicbus/iic.h>
 
-#define n(flags) (~(flags) & (flags))
+
+#define IICPRI (PZERO+8)		/* XXX sleep/wakeup queue priority */
 
 #define LSB 0x1
 
@@ -91,14 +93,8 @@
 #define IIC_ENOTSUPP	0x8	/* request not supported */
 #define IIC_ENOADDR	0x9	/* no address assigned to the interface */
 
-/*
- * ivars codes
- */
-#define IICBUS_IVAR_ADDR	0x1	/* I2C address of the device */
-
 extern int iicbus_request_bus(device_t, device_t, int);
 extern int iicbus_release_bus(device_t, device_t);
-extern device_t iicbus_alloc_bus(device_t);
 
 extern void iicbus_intr(device_t, int, char *);
 
@@ -124,16 +120,21 @@ extern int iicbus_read_byte(device_t, char *, int);
 extern int iicbus_block_write(device_t, u_char, char *, int, int *);
 extern int iicbus_block_read(device_t, u_char, char *, int, int *);
 
-extern u_char iicbus_get_addr(device_t);
+/* vectors of iic operations to pass to bridge */
+int iicbus_transfer(device_t bus, struct iic_msg *msgs, uint32_t nmsgs);
+int iicbus_transfer_gen(device_t bus, struct iic_msg *msgs, uint32_t nmsgs);
 
-#define IICBUS_MODVER  1
-#define IICBUS_MINVER  1
-#define IICBUS_MAXVER  1
-#define IICBUS_PREFVER IICBUS_MODVER
+#define IICBUS_MODVER	1
+#define IICBUS_MINVER	1
+#define IICBUS_MAXVER	1
+#define IICBUS_PREFVER	IICBUS_MODVER
 
-#define IICBB_MODVER   1
-#define IICBB_MINVER   1
-#define IICBB_MAXVER   1
-#define IICBB_PREFVER  IICBB_MODVER
+extern driver_t iicbb_driver;
+extern devclass_t iicbb_devclass;
+
+#define IICBB_MODVER	1
+#define IICBB_MINVER	1
+#define IICBB_MAXVER	1
+#define IICBB_PREFVER	IICBB_MODVER
 
 #endif

@@ -672,6 +672,7 @@ dev/misc/lpt/lpt.c		optional lpt
 dev/misc/pcfclock/pcfclock.c	optional pcfclock
 dev/misc/cmx/cmx.c		optional cmx
 dev/misc/cmx/cmx_pccard.c	optional cmx pccard
+bus/iicbus/pcf/pcf.c	optional pcf
 bus/ppbus/ppb_base.c	optional ppbus
 bus/ppbus/ppb_1284.c	optional ppbus
 bus/ppbus/ppb_msq.c	optional ppbus
@@ -1599,9 +1600,10 @@ dev/netif/vge/if_vge.c		optional vge
 dev/netif/vr/if_vr.c		optional vr
 dev/netif/wb/if_wb.c		optional wb
 dev/netif/xl/if_xl.c		optional xl
-dev/powermng/i386/intpm/intpm.c	optional intpm
-dev/powermng/i386/amdpm/amdpm.c	optional amdpm
-dev/powermng/i386/viapm/viapm.c	optional viapm
+dev/powermng/alpm/alpm.c	optional alpm
+dev/powermng/amdpm/amdpm.c	optional amdpm
+dev/powermng/intpm/intpm.c	optional intpm
+dev/powermng/viapm/viapm.c	optional viapm
 dev/video/meteor/meteor.c	optional meteor pci
 dev/disk/ncr/ncr.c		optional ncr
 dev/disk/sym/sym_hipd.c		optional sym				\
@@ -1618,7 +1620,6 @@ bus/pci/pci_user.c		optional pci
 bus/pci/pcib_if.m		optional pci
 bus/pci/vga_pci.c		optional pci
 bus/pci/pci_compat.c		optional pci compat_oldpci
-dev/powermng/i386/alpm/alpm.c	optional alpm
 kern/kern_posix4_mib.c		standard
 kern/kern_p1003_1b.c		standard
 kern/kern_sched.c		optional _kposix_priority_scheduling

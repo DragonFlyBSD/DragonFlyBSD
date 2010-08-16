@@ -23,48 +23,44 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/i386/include/smb.h,v 1.3 1999/08/28 00:44:24 peter Exp $
- * $DragonFly: src/sys/platform/pc32/include/smb.h,v 1.4 2006/05/20 02:42:06 dillon Exp $
+ * $FreeBSD: src/sys/dev/iicbus/iic.h,v 1.6 2009/01/26 13:53:39 raj Exp $
+ * $DragonFly: src/sys/platform/pc32/include/iic.h,v 1.4 2006/05/20 02:42:06 dillon Exp $
  *
  */
-#ifndef _MACHINE_SMB_H_
-#define _MACHINE_SMB_H_
+#ifndef __IIC_H
+#define __IIC_H
 
-#ifndef _SYS_TYPES_H_
-#include <sys/types.h>
-#endif
-#ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
-#endif
 
-struct smbcmd {
-	char cmd;
-	int count;
-	u_char slave;
-	union {
-		char byte;
-		short word;
-
-		char *byte_ptr;
-		short *word_ptr;
-
-		struct {
-			short sdata;
-			short *rdata;
-		} process;
-	} data;
+/* Designed to be compatible with linux's struct i2c_msg */
+struct iic_msg
+{
+	uint16_t	slave;
+	uint16_t	flags;
+#define	IIC_M_WR	0	/* Fake flag for write */
+#define	IIC_M_RD	0x0001	/* read vs write */
+	uint16_t	len;	/* msg legnth */
+	uint8_t *	buf;
 };
 
-#define SMB_QUICK_WRITE	_IOW('i', 1, struct smbcmd)
-#define SMB_QUICK_READ	_IOW('i', 2, struct smbcmd)
-#define SMB_SENDB	_IOW('i', 3, struct smbcmd)
-#define SMB_RECVB	_IOW('i', 4, struct smbcmd)
-#define SMB_WRITEB	_IOW('i', 5, struct smbcmd)
-#define SMB_WRITEW	_IOW('i', 6, struct smbcmd)
-#define SMB_READB	_IOW('i', 7, struct smbcmd)
-#define SMB_READW	_IOW('i', 8, struct smbcmd)
-#define SMB_PCALL	_IOW('i', 9, struct smbcmd)
-#define SMB_BWRITE	_IOW('i', 10, struct smbcmd)
-#define SMB_BREAD	_IOW('i', 11, struct smbcmd)
+struct iiccmd {
+	u_char slave;
+	size_t count;
+	size_t last;
+	char *buf;
+};
+
+struct iic_rdwr_data {
+	struct iic_msg *msgs;
+	uint32_t nmsgs;
+};
+
+#define I2CSTART	_IOW('i', 1, struct iiccmd)	/* start condition */
+#define I2CSTOP		_IO('i', 2)			/* stop condition */
+#define I2CRSTCARD	_IOW('i', 3, struct iiccmd)	/* reset the card */
+#define I2CWRITE	_IOW('i', 4, struct iiccmd)	/* send data */
+#define I2CREAD		_IOW('i', 5, struct iiccmd)	/* receive data */
+#define I2CRDWR		_IOW('i', 6, struct iic_rdwr_data)	/* General read/write interface */
+#define I2CRPTSTART	_IOW('i', 7, struct iiccmd)	/* repeated start */
 
 #endif

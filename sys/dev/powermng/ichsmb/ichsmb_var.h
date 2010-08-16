@@ -1,10 +1,9 @@
-
-/*
+/*-
  * ichsmb_var.h
  *
  * Copyright (c) 2000 Whistle Communications, Inc.
  * All rights reserved.
- * 
+ *
  * Subject to the following obligations and disclaimer of warranty, use and
  * redistribution of this software, in source or object code forms, with or
  * without modifications are expressly permitted by Whistle Communications;
@@ -15,7 +14,7 @@
  *    Communications, Inc. trademarks, including the mark "WHISTLE
  *    COMMUNICATIONS" on advertising, endorsements, or otherwise except as
  *    such appears in the above copyright notice or in the software.
- * 
+ *
  * THIS SOFTWARE IS BEING PROVIDED BY WHISTLE COMMUNICATIONS "AS IS", AND
  * TO THE MAXIMUM EXTENT PERMITTED BY LAW, WHISTLE COMMUNICATIONS MAKES NO
  * REPRESENTATIONS OR WARRANTIES, EXPRESS OR IMPLIED, REGARDING THIS SOFTWARE,
@@ -36,8 +35,7 @@
  *
  * Author: Archie Cobbs <archie@freebsd.org>
  *
- * $FreeBSD: src/sys/dev/ichsmb/ichsmb_var.h,v 1.1.2.1 2000/10/09 00:52:43 archie Exp $
- * $DragonFly: src/sys/dev/powermng/ichsmb/ichsmb_var.h,v 1.2 2003/06/17 04:28:27 dillon Exp $
+ * $FreeBSD: src/sys/dev/ichsmb/ichsmb_var.h,v 1.5 2008/06/06 18:29:56 jhb Exp $
  */
 
 #ifndef _DEV_ICHSMB_ICHSMB_VAR_H
@@ -50,10 +48,9 @@ struct ichsmb_softc {
 
 	/* Device/bus stuff */
 	device_t		dev;		/* this device */
+	device_t		smb;		/* smb device */
 	struct resource		*io_res;        /* i/o port resource */
 	int			io_rid;         /* i/o port bus id */
-	bus_space_tag_t		io_bst;		/* bus space tag */
-	bus_space_handle_t	io_bsh;		/* bus space handle */
 	struct resource		*irq_res;       /* interrupt resource */
 	int			irq_rid;        /* interrupt bus id */
 	void			*irq_handle;    /* handle for interrupt code */
@@ -65,27 +62,29 @@ struct ichsmb_softc {
 	int			block_index;	/* index for block read/write */
 	u_char			block_write;	/* 0=read, 1=write */
 	u_char			block_data[32];	/* block read/write data */
+	struct lock		mutex;		/* device mutex */
 };
 typedef struct ichsmb_softc *sc_p;
 
 /* SMBus methods */
-extern smbus_callback_t	ichsmb_callback;	
-extern smbus_quick_t	ichsmb_quick;	
-extern smbus_sendb_t	ichsmb_sendb;	
-extern smbus_recvb_t	ichsmb_recvb;	
-extern smbus_writeb_t	ichsmb_writeb;	
-extern smbus_writew_t	ichsmb_writew;	
-extern smbus_readb_t	ichsmb_readb;	
-extern smbus_readw_t	ichsmb_readw;	
-extern smbus_pcall_t	ichsmb_pcall;	
-extern smbus_bwrite_t	ichsmb_bwrite;	
-extern smbus_bread_t	ichsmb_bread;	
+extern smbus_callback_t	ichsmb_callback;
+extern smbus_quick_t	ichsmb_quick;
+extern smbus_sendb_t	ichsmb_sendb;
+extern smbus_recvb_t	ichsmb_recvb;
+extern smbus_writeb_t	ichsmb_writeb;
+extern smbus_writew_t	ichsmb_writew;
+extern smbus_readb_t	ichsmb_readb;
+extern smbus_readw_t	ichsmb_readw;
+extern smbus_pcall_t	ichsmb_pcall;
+extern smbus_bwrite_t	ichsmb_bwrite;
+extern smbus_bread_t	ichsmb_bread;
 
 /* Other functions */
 extern void	ichsmb_device_intr(void *cookie);
 extern void	ichsmb_release_resources(sc_p sc);
 extern int	ichsmb_probe(device_t dev);
 extern int	ichsmb_attach(device_t dev);
+extern int	ichsmb_detach(device_t dev);
 
 #endif /* _DEV_ICHSMB_ICHSMB_VAR_H */
 

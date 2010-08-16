@@ -65,13 +65,10 @@ static void	cxm_iic_child_detached(device_t dev, device_t child);
 
 static int	cxm_iic_callback(device_t, int, caddr_t *);
 static int	cxm_iic_reset(device_t, u_char, u_char, u_char *);
-#if 0
 static int	cxm_iic_getscl(device_t);
-#endif
 static int	cxm_iic_getsda(device_t);
 static void	cxm_iic_setscl(device_t, int);
 static void	cxm_iic_setsda(device_t, int);
-static void	cxm_iic_setlines(device_t, int, int);
 
 static device_method_t cxm_iic_methods[] = {
 	/* Device interface */
@@ -87,8 +84,10 @@ static device_method_t cxm_iic_methods[] = {
 	/* iicbb interface */
 	DEVMETHOD(iicbb_callback,       cxm_iic_callback),
 	DEVMETHOD(iicbb_reset,          cxm_iic_reset),
-	DEVMETHOD(iicbb_getdataline,    cxm_iic_getsda),
-	DEVMETHOD(iicbb_setlines,       cxm_iic_setlines),
+	DEVMETHOD(iicbb_getscl,         cxm_iic_getscl),
+	DEVMETHOD(iicbb_getsda,         cxm_iic_getsda),
+	DEVMETHOD(iicbb_setscl,         cxm_iic_setscl),
+	DEVMETHOD(iicbb_setsda,         cxm_iic_setsda),
 
 	{ 0, 0 }
 };
@@ -101,8 +100,9 @@ static driver_t cxm_iic_driver = {
 
 static devclass_t cxm_iic_devclass;
 
-MODULE_VERSION(cxm_iic, 1);
 DRIVER_MODULE(cxm_iic, cxm, cxm_iic_driver, cxm_iic_devclass, 0, 0);
+MODULE_VERSION(cxm_iic, 1);
+MODULE_DEPEND(cxm_iic, iicbb, IICBB_MINVER, IICBB_PREFVER, IICBB_MAXVER);
 
 
 /*
@@ -300,7 +300,6 @@ cxm_iic_reset(device_t dev, u_char speed, u_char addr, u_char * oldaddr)
 }
 
 
-#if 0
 static int
 cxm_iic_getscl(device_t dev)
 {
@@ -312,7 +311,6 @@ cxm_iic_getscl(device_t dev)
 	/* Get sda */
 	return CSR_READ_1(sc, CXM_REG_I2C_GETSCL);
 }
-#endif
 
 
 static int
@@ -367,16 +365,4 @@ cxm_iic_setsda(device_t dev, int val)
 	 */
 
 	CSR_READ_4(sc, CXM_REG_I2C_SETSDA);
-}
-
-
-static void
-cxm_iic_setlines(device_t dev, int ctrl, int data)
-{
-
-	cxm_iic_setscl(dev, ctrl);
-	cxm_iic_setsda(dev, data);
-
-	/* Wait for 10 usec */
-	DELAY(10);
 }
