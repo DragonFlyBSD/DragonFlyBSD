@@ -407,8 +407,8 @@ hammer_vop_read(struct vop_read_args *ap)
 			}
 			error = cluster_read(ap->a_vp,
 					     file_limit, base_offset,
-					     blksize, MAXPHYS,
-					     seqcount, &bp);
+					     blksize, uio->uio_resid,
+					     seqcount * BKVASIZE, &bp);
 		} else {
 			error = bread(ap->a_vp, base_offset, blksize, &bp);
 		}

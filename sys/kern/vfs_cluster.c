@@ -58,6 +58,7 @@
 
 #include <machine/limits.h>
 
+#define CLUSTERDEBUG
 #if defined(CLUSTERDEBUG)
 #include <sys/sysctl.h>
 static int	rcluster= 0;
@@ -78,57 +79,84 @@ static void cluster_setram (struct buf *);
 
 static int write_behind = 1;
 SYSCTL_INT(_vfs, OID_AUTO, write_behind, CTLFLAG_RW, &write_behind, 0, "");
+static int max_readahead = 2 * 1024 * 1024;
+SYSCTL_INT(_vfs, OID_AUTO, max_readahead, CTLFLAG_RW, &max_readahead, 0, "");
 
 extern vm_page_t	bogus_page;
 
 extern int cluster_pbuf_freecnt;
 
 /*
- * Maximum number of blocks for read-ahead.
- */
-#define MAXRA 32
-
-/*
  * This replaces bread.
+ *
+ * filesize	- read-ahead @ blksize will not cross this boundary
+ * loffset	- loffset for returned *bpp
+ * blksize	- blocksize for returned *bpp and read-ahead bps
+ * minreq	- minimum (not a hard minimum) in bytes, typically reflects
+ *		  a higher level uio resid.
+ * maxreq	- maximum (sequential heuristic) in bytes (highet typ ~2MB)
+ * bpp		- return buffer (*bpp) for (loffset,blksize)
  */
 int
 cluster_read(struct vnode *vp, off_t filesize, off_t loffset, 
-	     int blksize, size_t resid, int seqcount, struct buf **bpp)
+	     int blksize, size_t minreq, size_t maxreq, struct buf **bpp)
 {
 	struct buf *bp, *rbp, *reqbp;
 	off_t origoffset;
 	off_t doffset;
 	int error;
 	int i;
-	int maxra, racluster;
-	int totread;
+	int maxra;
+	int maxrbuild;
 
 	error = 0;
-	totread = (resid > INT_MAX) ? INT_MAX : (int)resid;
 
 	/*
-	 * racluster - calculate maximum cluster IO size (limited by
-	 *	       backing block device).
+	 * Calculate the desired read-ahead in blksize'd blocks (maxra).
+	 * To do this we calculate maxreq.
 	 *
-	 * Try to limit the amount of read-ahead by a few ad-hoc parameters.
-	 * This needs work!!!
+	 * maxreq typically starts out as a sequential heuristic.  If the
+	 * high level uio/resid is bigger (minreq), we pop maxreq up to
+	 * minreq.  This represents the case where random I/O is being
+	 * performed by the userland is issuing big read()'s.
 	 *
-	 * NOTE!  The BMAP operations may involve synchronous I/O so we
-	 *	  really want several cluster IOs in progress to absorb
-	 *	  the time lag.
+	 * Then we limit maxreq to max_readahead to ensure it is a reasonable
+	 * value.
+	 *
+	 * Finally we must ensure that loffset + maxreq does not cross the
+	 * boundary (filesize) for the current blocksize.  If we allowed it
+	 * to cross we could end up with buffers past the boundary with the
+	 * wrong block size (HAMMER large-data areas use mixed block sizes).
 	 */
-	racluster = vmaxiosize(vp) / blksize;
-	maxra = 2 * racluster + (totread / blksize);
-	if (maxra > MAXRA)
-		maxra = MAXRA;
-	if (maxra > nbuf / 8)
-		maxra = nbuf / 8;
+	if (maxreq < minreq)
+		maxreq = minreq;
+	if (maxreq > max_readahead) {
+		maxreq = max_readahead;
+		if (maxreq > 16 * 1024 * 1024)
+			maxreq = 16 * 1024 * 1024;
+	}
+	if (maxreq < blksize)
+		maxreq = blksize;
+	if (loffset + maxreq > filesize) {
+		if (loffset > filesize)
+			maxreq = 0;
+		else
+			maxreq = filesize - loffset;
+	}
+
+	maxra = (int)(maxreq / blksize);
 
 	/*
 	 * Get the requested block.
 	 */
 	*bpp = reqbp = bp = getblk(vp, loffset, blksize, 0, 0);
 	origoffset = loffset;
+
+	/*
+	 * Calculate the maximum cluster size for a single I/O, used
+	 * by cluster_rbuild().
+	 */
+	maxrbuild = vmaxiosize(vp) / blksize;
 
 	/*
 	 * if it is in the cache, then check to see if the reads have been
@@ -139,8 +167,7 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 		/*
 		 * Not sequential, do not do any read-ahead
 		 */
-		seqcount -= (bp->b_bufsize + BKVASIZE - 1) / BKVASIZE;
-		if (seqcount <= 0 || maxra == 0)
+		if (maxra <= 1)
 			return 0;
 
 		/*
@@ -175,6 +202,11 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 			}
 			++i;
 		}
+
+		/*
+		 * We got everything or everything is in the cache, no
+		 * point continuing.
+		 */
 		if (i >= maxra)
 			return 0;
 		maxra -= i;
@@ -193,38 +225,41 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 
 		KASSERT(firstread != NOOFFSET, 
 			("cluster_read: no buffer offset"));
-		if (firstread + totread > filesize)
-			totread = (int)(filesize - firstread);
-		nblks = totread / blksize;
-		if (nblks) {
-			int burstbytes;
 
-			if (nblks > racluster)
-				nblks = racluster;
+		/*
+		 * nblks is our cluster_rbuild request size, limited
+		 * primarily by the device.
+		 */
+		if ((nblks = maxra) > maxrbuild)
+			nblks = maxrbuild;
+
+		if (nblks > 1) {
+			int burstbytes;
 
 	    		error = VOP_BMAP(vp, loffset, &doffset,
 					 &burstbytes, NULL, BUF_CMD_READ);
 			if (error)
 				goto single_block_read;
-			if (doffset == NOOFFSET)
-				goto single_block_read;
-			if (burstbytes < blksize * 2)
-				goto single_block_read;
 			if (nblks > burstbytes / blksize)
 				nblks = burstbytes / blksize;
+			if (doffset == NOOFFSET)
+				goto single_block_read;
+			if (nblks <= 1)
+				goto single_block_read;
 
 			bp = cluster_rbuild(vp, filesize, loffset,
 					    doffset, blksize, nblks, bp);
 			loffset += bp->b_bufsize;
-			maxra -= (bp->b_bufsize - blksize) / blksize;
+			maxra -= bp->b_bufsize / blksize;
 		} else {
 single_block_read:
 			/*
-			 * if it isn't in the cache, then get a chunk from
+			 * If it isn't in the cache, then get a chunk from
 			 * disk if sequential, otherwise just get the block.
 			 */
 			cluster_setram(bp);
 			loffset += blksize;
+			--maxra;
 		}
 	}
 
@@ -238,13 +273,12 @@ single_block_read:
 	if (bp) {
 #if defined(CLUSTERDEBUG)
 		if (rcluster)
-			kprintf("S(%lld,%d,%d)\n",
-			    bp->b_loffset, bp->b_bcount, seqcount);
+			kprintf("S(%012jx,%d,%d)\n",
+			    (intmax_t)bp->b_loffset, bp->b_bcount, maxra);
 #endif
 		if ((bp->b_flags & B_CLUSTER) == 0)
 			vfs_busy_pages(vp, bp);
 		bp->b_flags &= ~(B_ERROR|B_INVAL);
-		seqcount -= (bp->b_bufsize + BKVASIZE - 1) / BKVASIZE;
 		vn_strategy(vp, &bp->b_bio1);
 		error = 0;
 		/* bp invalid now */
@@ -259,12 +293,10 @@ single_block_read:
 	 * will do device-readahead irrespective of what the blocks
 	 * represent.
 	 */
-	while (!error && seqcount > 0 && maxra > 0 &&
-	       loffset + blksize <= filesize) {
-		int nblksread;
-		int ntoread;
+	while (error == 0 && maxra > 0) {
 		int burstbytes;
 		int tmp_error;
+		int nblks;
 
 		rbp = getblk(vp, loffset, blksize,
 			     GETBLK_SZMATCH|GETBLK_NOWAIT, 0);
@@ -287,12 +319,10 @@ single_block_read:
 			rbp = NULL;
 			goto no_read_ahead;
 		}
-		ntoread = burstbytes / blksize;
-		nblksread = (totread + blksize - 1) / blksize;
-		if (seqcount < nblksread)
-			seqcount = nblksread;
-		if (ntoread > seqcount)
-			ntoread = seqcount;
+		if ((nblks = maxra) > maxrbuild)
+			nblks = maxrbuild;
+		if (nblks > burstbytes / blksize)
+			nblks = burstbytes / blksize;
 
 		/*
 		 * rbp: async read
@@ -301,26 +331,29 @@ single_block_read:
 		/*rbp->b_flags |= B_AGE*/;
 		cluster_setram(rbp);
 
-		if (burstbytes) {
+		if (nblks > 1) {
 			rbp = cluster_rbuild(vp, filesize, loffset,
 					     doffset, blksize, 
-					     ntoread, rbp);
+					     nblks, rbp);
 		} else {
 			rbp->b_bio2.bio_offset = doffset;
 		}
-		seqcount -= (rbp->b_bufsize + BKVASIZE - 1) / BKVASIZE;
+
 #if defined(CLUSTERDEBUG)
 		if (rcluster) {
-			if (bp)
-				kprintf("A+(%lld,%d,%lld,%d) ra=%d\n",
-				    rbp->b_loffset, rbp->b_bcount,
-				    rbp->b_loffset - origoffset,
-				    seqcount, maxra);
-			else
-				kprintf("A-(%lld,%d,%lld,%d) ra=%d\n",
-				    rbp->b_loffset, rbp->b_bcount,
-				    rbp->b_loffset - origoffset,
-				    seqcount, maxra);
+			if (bp) {
+				kprintf("A+(%012jx,%d,%jd) "
+					"doff=%012jx minr=%zd ra=%d\n",
+				    (intmax_t)loffset, rbp->b_bcount,
+				    (intmax_t)(loffset - origoffset),
+				    (intmax_t)doffset, minreq, maxra);
+			} else {
+				kprintf("A-(%012jx,%d,%jd) "
+					"doff=%012jx minr=%zd ra=%d\n",
+				    (intmax_t)rbp->b_loffset, rbp->b_bcount,
+				    (intmax_t)(loffset - origoffset),
+				    (intmax_t)doffset, minreq, maxra);
+			}
 		}
 #endif
 		rbp->b_flags &= ~(B_ERROR|B_INVAL);

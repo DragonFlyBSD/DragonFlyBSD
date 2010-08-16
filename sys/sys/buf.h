@@ -432,7 +432,7 @@ void	biodone_sync (struct bio *);
 
 void	cluster_append(struct bio *, struct buf *);
 int	cluster_read (struct vnode *, off_t, off_t, int,
-	    size_t, int, struct buf **);
+	    size_t, size_t, struct buf **);
 int	cluster_wbuild (struct vnode *, int, off_t, int);
 void	cluster_write (struct buf *, off_t, int, int);
 int	physread (struct dev_read_args *);

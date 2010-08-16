@@ -272,7 +272,8 @@ cd9660_read(struct vop_read_args *ap)
 				error = cluster_read(vp, (off_t)ip->i_size,
 						     loffset, size,
 						     uio->uio_resid,
-						     (ap->a_ioflag >> 16),
+						     (ap->a_ioflag >> 16) *
+						      BKVASIZE,
 						     &bp);
 			} else {
 				error = bread(vp, loffset, size, &bp);

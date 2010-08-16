@@ -418,9 +418,12 @@ ffs_balloc(struct vop_balloc_args *ap)
 				error = cluster_read(vp, (off_t)ip->i_size,
 					    lblktodoff(fs, lbn),
 					    (int)fs->fs_bsize, 
-					    MAXBSIZE, seqcount, &dbp);
+					    fs->fs_bsize,
+					    seqcount * BKVASIZE,
+					    &dbp);
 			} else {
-				error = bread(vp, lblktodoff(fs, lbn), (int)fs->fs_bsize, &dbp);
+				error = bread(vp, lblktodoff(fs, lbn),
+					      (int)fs->fs_bsize, &dbp);
 			}
 			if (error)
 				goto fail;

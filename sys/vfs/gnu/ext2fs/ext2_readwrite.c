@@ -111,7 +111,8 @@ ext2_read(struct vop_read_args *ap)
 			error = cluster_read(vp, (off_t)ip->i_size,
 					     lblktodoff(fs, lbn), size, 
 					     uio->uio_resid, 
-					     (ap->a_ioflag >> 16), &bp);
+					     (ap->a_ioflag >> 16) * BKVASIZE,
+					     &bp);
 		} else if (seqcount > 1) {
 			int nextsize = BLKSIZE(fs, ip, nextlbn);
 			error = breadn(vp, lblktodoff(fs, lbn),

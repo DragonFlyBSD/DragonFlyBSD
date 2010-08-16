@@ -281,9 +281,9 @@ hammer_io_notmeta(hammer_buffer_t buffer)
  * speaking HAMMER assumes some locality of reference and will cluster 
  * a 64K read.
  *
- * Note that clustering occurs at the device layer, not the logical layer.
- * If the buffers do not apply to the current operation they may apply to
- * some other.
+ * Note that the clustering which occurs here is clustering within the
+ * block device... typically meta-data and small-file data.  Regular
+ * file clustering is different and handled in hammer_vnops.c
  */
 int
 hammer_io_read(struct vnode *devvp, struct hammer_io *io, hammer_off_t limit)
@@ -298,7 +298,8 @@ hammer_io_read(struct vnode *devvp, struct hammer_io *io, hammer_off_t limit)
 			error = cluster_read(devvp, limit,
 					     io->offset, io->bytes,
 					     HAMMER_CLUSTER_SIZE,
-					     HAMMER_CLUSTER_BUFS, &io->bp);
+					     HAMMER_CLUSTER_SIZE,
+					     &io->bp);
 		} else {
 			error = bread(devvp, io->offset, io->bytes, &io->bp);
 		}
