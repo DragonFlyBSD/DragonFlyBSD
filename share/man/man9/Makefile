@@ -116,6 +116,7 @@ MAN=	accept_filter.9 \
 	module.9 \
 	MODULE_DEPEND.9 \
 	MODULE_VERSION.9 \
+	mpipe.9 \
 	mutex.9 \
 	nlookup.9 \
 	objcache.9 \
@@ -582,6 +583,11 @@ MLINKS+=microtime.9 getmicrotime.9 \
 MLINKS+=microuptime.9 getmicrouptime.9 \
 	microuptime.9 getnanouptime.9 \
 	microuptime.9 nanouptime.9
+MLINKS+=mpipe.9 mpipe_init.9 \
+	mpipe.9 mpipe_done.9 \
+	mpipe.9 mpipe_alloc_nowait.9 \
+	mpipe.9 mpipe_alloc_waitok.9 \
+	mpipe.9 mpipe_free.9
 MLINKS+=mutex.9 mtx_downgrade.9 \
 	mutex.9 mtx_drop.9 \
 	mutex.9 mtx_hold.9 \
