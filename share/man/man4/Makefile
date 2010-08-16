@@ -71,6 +71,7 @@ MAN=	aac.4 \
 	dm.4 \
 	dpt.4 \
 	drm.4 \
+	dsched.4 \
 	dummynet.4 \
 	ecc.4 \
 	ed.4 \
@@ -371,6 +372,7 @@ MLINKS+=drm.4 i915drm.4 \
 	drm.4 sisdrm.4 \
 	drm.4 tdfxdrm.4
 #	drm.4 viadrm.4
+MLINKS+=dsched.4 dsched_fq.4
 MLINKS+=fd.4 stderr.4 \
 	fd.4 stdin.4 \
 	fd.4 stdout.4

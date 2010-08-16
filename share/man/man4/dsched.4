@@ -1,0 +1,78 @@
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.Dd August 16, 2010
+.Os
+.Dt DSCHED 4
+.Sh NAME
+.Nm dsched
+.Nd kernel disk scheduler framework
+.Sh DESCRIPTION
+The
+.Nm
+framework implements a disk scheduler framework that can be
+used to switch disk scheduling policies at runtime for each
+disk in the system.
+The
+.Nm
+framework and the policies for each disk can be managed via
+.Xr loader 8
+tunables and via
+.Xr sysctl 8
+variables.
+.Sh LOADER TUNABLES
+Tunables can be set at the
+.Xr loader 8
+prompt before booting the kernel or stored in
+.Xr loader.conf 5 .
+.Bl -tag -width ".Va dsched.policy.default"
+.It Va dsched.policy.default
+This tunable sets the default policy used for every device that
+has no policy specified via any of the other tunables.
+.It Va dsched.policy.da0
+This tunable sets the dsched policy for the disk da0.
+The default value is 0.
+.It Va dsched.policy.da
+This tunable sets the dsched policy for all disks created by
+the driver
+.Xr da 4 .
+.El
+.Sh SYSCTL VARIABLES
+.Bl -tag -width ".Va dsched.policy.SN39A39"
+.It Va dsched.debug
+set the debug-level, 0 means no debugging, 5 for maximum.
+.It Va dsched.policy.default
+shows and sets the current default dsched policy.
+.It Va dsched.policy.da0
+shows and sets the current policy for the disk da0.
+.It Va dsched.policy.SN39A39
+shows and sets the current policy for the disk with serial number
+SN39A39.
+.El
+.Pp
+.Bl -tag -width ".Va dsched.policy.SN39A39"
+The following are informative only:
+.It Va dsched.policies
+shows all available dsched policies, separated by spaces.
+.El
+.Sh SEE ALSO
+.Xr loader.conf 5 ,
+.Xr sysctl.conf 5
+.\".Xr dsched 9
+.Sh HISTORY
+The
+.Nm
+framework first appeared in
+.Dx 2.5 .
+.Sh AUTHORS
+The
+.Nm
+framework was written by
+.An Alex Hornung .
