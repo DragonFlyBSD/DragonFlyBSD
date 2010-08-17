@@ -28,6 +28,8 @@ MAN=	aac.4 \
 	alpm.4 \
 	altq.4 \
 	amd.4 \
+	amdpm.4 \
+	amdsmb.4 \
 	amr.4 \
 	an.4 \
 	aps.4 \
