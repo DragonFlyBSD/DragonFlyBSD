@@ -59,17 +59,29 @@
 #include <sys/udev.h>
 #include "udevd.h"
 
+int debugopt = 0;
+
 static int udevfd;
 
 extern pthread_mutex_t	monitor_lock;
 extern TAILQ_HEAD(udev_monitor_list_head, udev_monitor)	udev_monitor_list;
 extern TAILQ_HEAD(pdev_array_list_head, pdev_array_entry)	pdev_array_list;
 
+static void usage(void);
+
 int match_dev_dict(prop_dictionary_t, prop_dictionary_t);
 prop_dictionary_t find_dev_dict(int64_t, prop_dictionary_t, int *);
 
 void udev_read_event(int);
 prop_array_t udev_getdevs(int);
+
+static
+void
+usage(void)
+{
+	fprintf(stderr, "usage: udevd [-d]\n");
+	exit(1);
+}
 
 int
 match_dev_dict(prop_dictionary_t dict, prop_dictionary_t match_dict)
@@ -320,14 +332,28 @@ set_killed_signal(void)
 	act.sa_flags = 0;
 
 	ret = sigaction(SIGTERM, &act, NULL);
-	return ret;	
+	return ret;
 }
 
-int main(int argc __unused, char *argv[] __unused)
+int main(int argc, char *argv[])
 {
 	int error __unused, i, r, s;
 	struct pollfd fds[NFDS];
 	FILE *pidf;
+	int ch = 0;
+
+	while ((ch = getopt(argc, argv, "d")) != -1) {
+		switch(ch) {
+		case 'd':
+			debugopt = 1;
+			break;
+		default:
+			usage();
+			/* NOT REACHED */
+		}
+	}
+	argc -= optind;
+	argv -= optind;
 
 	TAILQ_INIT(&pdev_array_list);
 	TAILQ_INIT(&udev_monitor_list);
@@ -354,8 +380,9 @@ int main(int argc __unused, char *argv[] __unused)
 
 	set_killed_signal();
 
-	if (daemon(0, 0) == -1)
-		err(1, "daemon");
+	if (debugopt == 0)
+		if (daemon(0, 0) == -1)
+			err(1, "daemon");
 
 	fprintf(pidf, "%ld\n", (long)getpid());
 	fclose(pidf);
