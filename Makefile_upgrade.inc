@@ -1494,6 +1494,8 @@ TO_REMOVE+=/usr/share/man/cat3/evdns_search_clear.3.gz
 TO_REMOVE+=/usr/share/man/cat3/evdns_search_add.3.gz
 TO_REMOVE+=/usr/share/man/cat3/evdns_search_ndots_set.3.gz
 TO_REMOVE+=/usr/share/man/cat3/evdns_set_log_fn.3.gz
+TO_REMOVE+=/usr/share/man/cat4/i386/alpm.4.gz
+TO_REMOVE+=/usr/share/man/man4/i386/alpm.4.gz
 
 # XXX Remove when adjusted to the new 802.11 framework
 TO_REMOVE+=/boot/modules/if_acx.ko
