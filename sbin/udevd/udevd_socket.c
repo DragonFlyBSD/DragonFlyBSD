@@ -34,6 +34,7 @@
 #include <sys/types.h>
 #include <sys/device.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
@@ -128,6 +129,7 @@ block_descriptor(int s)
 int
 init_local_server(const char *sockfile, int socktype, int nonblock)
 {
+	mode_t msk;
 	int s;
 	struct sockaddr_un un_addr;
 
@@ -150,10 +152,12 @@ init_local_server(const char *sockfile, int socktype, int nonblock)
 		return -1;
 	}
 
+	msk = umask(S_IXUSR|S_IXGRP|S_IXOTH);
 	if (bind(s, (struct sockaddr *)&un_addr, sizeof(un_addr)) < 0) {
 		close(s);
 		return -1;
 	}
+	umask(msk);	 /* Restore the original mask */
 
 	if (socktype == SOCK_STREAM && listen(s, LOCAL_BACKLOG) < 0) {
 		close(s);
