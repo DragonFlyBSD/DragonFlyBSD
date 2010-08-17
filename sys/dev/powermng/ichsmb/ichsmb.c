@@ -68,7 +68,7 @@
 #define ICHSMB_DEBUG	0
 #if ICHSMB_DEBUG != 0 && defined(__CC_SUPPORTS___FUNC__)
 #define DBG(fmt, args...)	\
-	do { printf("%s: " fmt, __func__ , ## args); } while (0)
+	do { kprintf("%s: " fmt, __func__ , ## args); } while (0)
 #else
 #define DBG(fmt, args...)	do { } while (0)
 #endif

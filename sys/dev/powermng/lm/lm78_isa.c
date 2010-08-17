@@ -41,7 +41,7 @@
 extern struct cfdriver lm_cd;
 
 #if defined(LMDEBUG)
-#define DPRINTF(x)		do { printf x; } while (0)
+#define DPRINTF(x)		do { kprintf x; } while (0)
 #else
 #define DPRINTF(x)
 #endif

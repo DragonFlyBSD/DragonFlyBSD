@@ -39,7 +39,7 @@
 #include "itvar.h"
 
 #if defined(ITDEBUG)
-#define DPRINTF(x)		do { printf x; } while (0)
+#define DPRINTF(x)		do { kprintf x; } while (0)
 #else
 #define DPRINTF(x)
 #endif
