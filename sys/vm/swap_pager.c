@@ -177,6 +177,8 @@ SYSCTL_INT(_vm, OID_AUTO, swap_cache_use,
         CTLFLAG_RD, &vm_swap_cache_use, 0, "");
 SYSCTL_INT(_vm, OID_AUTO, swap_anon_use,
         CTLFLAG_RD, &vm_swap_anon_use, 0, "");
+SYSCTL_INT(_vm, OID_AUTO, swap_size,
+        CTLFLAG_RD, &vm_swap_size, 0, "");
 
 vm_zone_t		swap_zone;
 
