@@ -3448,6 +3448,13 @@ vn_strategy(struct vnode *vp, struct bio *bio)
 	KKASSERT(bp->b_cmd != BUF_CMD_DONE);
 
 	/*
+	 * Set when an I/O is issued on the bp.  Cleared by consumers
+	 * (aka HAMMER), allowing the consumer to determine if I/O had
+	 * actually occurred.
+	 */
+	bp->b_flags |= B_IODEBUG;
+
+	/*
 	 * Handle the swap cache intercept.
 	 */
 	if (vn_cache_strategy(vp, bio))

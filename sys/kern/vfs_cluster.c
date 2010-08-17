@@ -611,11 +611,12 @@ cluster_callback(struct bio *bio)
 	while ((tbp = bio->bio_caller_info1.cluster_head) != NULL) {
 		bio->bio_caller_info1.cluster_head = tbp->b_cluster_next;
 		if (error) {
-			tbp->b_flags |= B_ERROR;
+			tbp->b_flags |= B_ERROR | B_IODEBUG;
 			tbp->b_error = error;
 		} else {
 			tbp->b_dirtyoff = tbp->b_dirtyend = 0;
 			tbp->b_flags &= ~(B_ERROR|B_INVAL);
+			tbp->b_flags |= B_IODEBUG;
 			/*
 			 * XXX the bdwrite()/bqrelse() issued during
 			 * cluster building clears B_RELBUF (see bqrelse()

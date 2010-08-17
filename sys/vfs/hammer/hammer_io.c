@@ -311,6 +311,45 @@ hammer_io_read(struct vnode *devvp, struct hammer_io *io, hammer_off_t limit)
 		 * even if we error out here.
 		 */
 		bp = io->bp;
+		if ((hammer_debug_io & 0x0001) && (bp->b_flags & B_IODEBUG)) {
+			const char *metatype;
+
+			switch(io->type) {
+			case HAMMER_STRUCTURE_VOLUME:
+				metatype = "volume";
+				break;
+			case HAMMER_STRUCTURE_META_BUFFER:
+				switch(((struct hammer_buffer *)io)->
+					zoneX_offset & HAMMER_OFF_ZONE_MASK) {
+				case HAMMER_ZONE_BTREE:
+					metatype = "btree";
+					break;
+				case HAMMER_ZONE_META:
+					metatype = "meta";
+					break;
+				case HAMMER_ZONE_FREEMAP:
+					metatype = "freemap";
+					break;
+				default:
+					metatype = "meta?";
+					break;
+				}
+				break;
+			case HAMMER_STRUCTURE_DATA_BUFFER:
+				metatype = "data";
+				break;
+			case HAMMER_STRUCTURE_UNDO_BUFFER:
+				metatype = "undo";
+				break;
+			default:
+				metatype = "unknown";
+				break;
+			}
+			kprintf("doff %016jx %s\n",
+				(intmax_t)bp->b_bio2.bio_offset,
+				metatype);
+		}
+		bp->b_flags &= ~B_IODEBUG;
 		bp->b_ops = &hammer_bioops;
 		KKASSERT(LIST_FIRST(&bp->b_dep) == NULL);
 		LIST_INSERT_HEAD(&bp->b_dep, &io->worklist, node);

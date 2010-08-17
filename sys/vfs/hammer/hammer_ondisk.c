@@ -793,7 +793,7 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 	 */
 	volume = buffer->io.volume;
 
-	if (hammer_debug_io & 0x0001) {
+	if (hammer_debug_io & 0x0004) {
 		kprintf("load_buffer %016llx %016llx isnew=%d od=%p\n",
 			(long long)buffer->zoneX_offset,
 			(long long)buffer->zone2_offset,
