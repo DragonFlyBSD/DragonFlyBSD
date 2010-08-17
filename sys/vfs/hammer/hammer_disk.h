@@ -91,6 +91,8 @@
 #define HAMMER_OFF_LONG_REC_MASK 0x0FFFFFFFFF000000ULL /* recovery boundary */
 #define HAMMER_RECOVERY_BND	0x0000000001000000ULL
 
+#define HAMMER_OFF_BAD		((hammer_off_t)-1)
+
 /*
  * The current limit of volumes that can make up a HAMMER FS
  */
