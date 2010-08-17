@@ -929,3 +929,20 @@ hammer_cursor_inserted_element(hammer_node_t node, int index)
 	}
 }
 
+/*
+ * Invalidate the cached data buffer associated with a cursor.
+ *
+ * This needs to be done when the underlying block is being freed or
+ * the referenced buffer can prevent the related buffer cache buffer
+ * from being properly invalidated.
+ */
+void
+hammer_cursor_invalidate_cache(hammer_cursor_t cursor)
+{
+        if (cursor->data_buffer) {
+                hammer_rel_buffer(cursor->data_buffer, 0);
+                cursor->data_buffer = NULL;
+		cursor->data = NULL;
+        }
+}
+

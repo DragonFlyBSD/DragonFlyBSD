@@ -355,6 +355,21 @@ flag.
 .\" .It Ar blockmap
 .\" Dump the B-Tree, record, large-data, and small-data blockmaps, showing
 .\" physical block assignments and free space percentages.
+.\" ==== recover ====
+.It Cm recover Ar targetdir
+This is a low level command which operates on the filesystem image and
+attempts to locate and recover files from a corrupted filesystem.  The
+entire image is scanned linearly looking for B-Tree nodes.  Any node
+found which passes its crc test is scanned for file, inode, and directory
+fragments and the target directory is populated with the resulting data.
+files and directories in the target directory are initially named after
+the object id and are renamed as fragmentory information is processed.
+.Pp
+This command keeps track of filename/objid translations and may eat a
+considerably amount of memory while operating.
+.Pp
+This command is literally the last line of defense when it comes to
+recovering data from a dead filesystem.
 .\" ==== namekey1 ====
 .It Cm namekey1 Ar filename
 Generate a

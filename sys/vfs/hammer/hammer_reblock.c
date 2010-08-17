@@ -419,11 +419,16 @@ hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 	hammer_io_notmeta(data_buffer);
 
 	/*
-	 * Move the data
+	 * Move the data.  Note that we must invalidate any cached
+	 * data buffer in the cursor before calling blockmap_free.
+	 * The blockmap_free may free up the entire large-block and
+	 * will not be able to invalidate it if the cursor is holding
+	 * a data buffer cached in that large block.
 	 */
 	hammer_modify_buffer(cursor->trans, data_buffer, NULL, 0);
 	bcopy(cursor->data, ndata, elm->leaf.data_len);
 	hammer_modify_buffer_done(data_buffer);
+	hammer_cursor_invalidate_cache(cursor);
 
 	hammer_blockmap_free(cursor->trans,
 			     elm->leaf.data_offset, elm->leaf.data_len);

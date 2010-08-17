@@ -1128,6 +1128,7 @@ void	hammer_cursor_parent_changed(hammer_node_t node, hammer_node_t oparent,
 			hammer_node_t nparent, int nindex);
 void	hammer_cursor_inserted_element(hammer_node_t node, int index);
 void	hammer_cursor_deleted_element(hammer_node_t node, int index);
+void	hammer_cursor_invalidate_cache(hammer_cursor_t cursor);
 
 int	hammer_btree_lookup(hammer_cursor_t cursor);
 int	hammer_btree_first(hammer_cursor_t cursor);

@@ -72,6 +72,7 @@ int     NumVolumes;
 int	RootVolNo = -1;
 int	UseReadBehind = -4;
 int	UseReadAhead = 4;
+int	AssertOnFailure = 1;
 struct volume_list VolList = TAILQ_HEAD_INITIALIZER(VolList);
 
 static __inline
@@ -205,7 +206,13 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 	if (zone > HAMMER_ZONE_RAW_BUFFER_INDEX) {
 		buf_offset = blockmap_lookup(buf_offset, NULL, NULL, NULL);
 	}
-	assert((buf_offset & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_RAW_BUFFER);
+	if (buf_offset == HAMMER_OFF_BAD)
+		return(NULL);
+
+	if (AssertOnFailure) {
+		assert((buf_offset & HAMMER_OFF_ZONE_MASK) ==
+		       HAMMER_ZONE_RAW_BUFFER);
+	}
 	vol_no = HAMMER_VOL_DECODE(buf_offset);
 	volume = get_volume(vol_no);
 	buf_offset &= ~HAMMER_BUFMASK64;
@@ -249,11 +256,13 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 			n = pread(volume->fd, ondisk, HAMMER_BUFSIZE,
 				  buf->raw_offset);
 			if (n != HAMMER_BUFSIZE) {
+				if (AssertOnFailure)
 				err(1, "get_buffer: %s:%016llx Read failed at "
 				       "offset %016llx",
 				    volume->name,
 				    (long long)buf->buf_offset,
 				    (long long)buf->raw_offset);
+				bzero(ondisk, HAMMER_BUFSIZE);
 			}
 		}
 	}
@@ -357,8 +366,12 @@ get_node(hammer_off_t node_offset, struct buffer_info **bufp)
 	if (*bufp)
 		rel_buffer(*bufp);
 	*bufp = buf = get_buffer(node_offset, 0);
-	return((void *)((char *)buf->ondisk +
-			(int32_t)(node_offset & HAMMER_BUFMASK)));
+	if (buf) {
+		return((void *)((char *)buf->ondisk +
+				(int32_t)(node_offset & HAMMER_BUFMASK)));
+	} else {
+		return(NULL);
+	}
 }
 
 /*

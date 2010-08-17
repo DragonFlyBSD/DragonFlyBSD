@@ -111,6 +111,7 @@ extern int RootVolNo;
 extern struct volume_list VolList;
 extern int UseReadBehind;
 extern int UseReadAhead;
+extern int AssertOnFailure;
 
 uint32_t crc32(const void *buf, size_t size);
 uint32_t crc32_ext(const void *buf, size_t size, uint32_t ocrc);

@@ -71,6 +71,8 @@ hammer_cmd_show(hammer_off_t node_offset, u_int32_t lo, int64_t obj_id,
 	btree_search_t searchp;
 	int zone;
 
+	AssertOnFailure = 0;
+
 	if (node_offset == (hammer_off_t)-1) {
 		volume = get_volume(RootVolNo);
 		node_offset = volume->ondisk->vol0_btree_root;
@@ -104,6 +106,8 @@ hammer_cmd_show(hammer_off_t node_offset, u_int32_t lo, int64_t obj_id,
 			 left_bound, right_bound);
 	print_btree_node(node_offset, searchp, depth, 1, HAMMER_MAX_TID,
 			 left_bound, right_bound);
+
+	AssertOnFailure = 1;
 }
 
 static void
@@ -122,6 +126,12 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 	const char *ext;
 
 	node = get_node(node_offset, &buffer);
+
+	if (node == NULL) {
+		printf("BI   NODE %016jx (IO ERROR)\n",
+		       (uintmax_t)node_offset);
+		return;
+	}
 
 	if (crc32(&node->crc + 1, HAMMER_BTREE_CRCSIZE) == node->crc)
 		badc = ' ';
@@ -319,7 +329,9 @@ print_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 
 			subnode = get_node(elm->internal.subtree_offset,
 					   &buffer);
-			if (subnode->parent != node_offset)
+			if (subnode == NULL)
+				flags |= FLAG_BADCHILDPARENT;
+			else if (subnode->parent != node_offset)
 				flags |= FLAG_BADCHILDPARENT;
 			rel_buffer(buffer);
 		}
