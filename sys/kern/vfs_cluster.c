@@ -58,7 +58,6 @@
 
 #include <machine/limits.h>
 
-#define CLUSTERDEBUG
 #if defined(CLUSTERDEBUG)
 #include <sys/sysctl.h>
 static int	rcluster= 0;
