@@ -432,6 +432,7 @@ struct syncache {
 #define SCF_TIMESTAMP		0x04		/* negotiated timestamps */
 #define SCF_UNREACH		0x10		/* icmp unreachable received */
 #define	SCF_SACK_PERMITTED	0x20		/* saw SACK permitted option */
+#define SCF_MARKER		0x80		/* not a real entry */
 	TAILQ_ENTRY(syncache) sc_hash;
 	TAILQ_ENTRY(syncache) sc_timerq;
 };
