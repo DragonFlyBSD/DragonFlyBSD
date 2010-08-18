@@ -165,6 +165,22 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 }
 
 struct volume_info *
+test_volume(int32_t vol_no)
+{
+	struct volume_info *vol;
+
+	TAILQ_FOREACH(vol, &VolList, entry) {
+		if (vol->vol_no == vol_no)
+			break;
+	}
+	if (vol == NULL)
+		return(NULL);
+	++vol->cache.refs;
+	/* not added to or removed from hammer cache */
+	return(vol);
+}
+
+struct volume_info *
 get_volume(int32_t vol_no)
 {
 	struct volume_info *vol;
@@ -214,7 +230,13 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 		       HAMMER_ZONE_RAW_BUFFER);
 	}
 	vol_no = HAMMER_VOL_DECODE(buf_offset);
-	volume = get_volume(vol_no);
+	volume = test_volume(vol_no);
+	if (volume == NULL) {
+		if (AssertOnFailure)
+			errx(1, "get_buffer: Volume %d not found!", vol_no);
+		return(NULL);
+	}
+
 	buf_offset &= ~HAMMER_BUFMASK64;
 
 	hi = buffer_hash(buf_offset);
@@ -351,6 +373,8 @@ get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
 	}
 	if (buffer == NULL)
 		buffer = *bufferp = get_buffer(buf_offset, isnew);
+	if (buffer == NULL)
+		return (NULL);
 	return((char *)buffer->ondisk + ((int32_t)buf_offset & HAMMER_BUFMASK));
 }
 
