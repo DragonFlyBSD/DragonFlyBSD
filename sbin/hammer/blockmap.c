@@ -55,6 +55,11 @@ blockmap_lookup(hammer_off_t zone_offset,
 	int i;
 	int error = 0;
 
+	if (save_layer1)
+		*save_layer1 = NULL;
+	if (save_layer2)
+		*save_layer2 = NULL;
+
 	zone = HAMMER_ZONE_DECODE(zone_offset);
 
 	if (AssertOnFailure) {
@@ -101,6 +106,9 @@ blockmap_lookup(hammer_off_t zone_offset,
 	/*
 	 * The blockmap should match the requested zone (else the volume
 	 * header is mashed).
+	 *
+	 * Note that a valid offset can still be returned if AssertOnFailure
+	 * is zero.
 	 */
 	if (AssertOnFailure) {
 		assert(HAMMER_ZONE_DECODE(blockmap->alloc_offset) == zone);
@@ -124,8 +132,13 @@ blockmap_lookup(hammer_off_t zone_offset,
 			HAMMER_BLOCKMAP_LAYER1_OFFSET(result_offset);
 	layer1 = get_buffer_data(layer1_offset, &buffer, 0);
 	if (AssertOnFailure) {
+		assert(layer1);
 		assert(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
 	} else {
+		if (layer1 == NULL) {
+			error = EDOM;
+			goto done;
+		}
 		if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
 			error = EDOM;
 			goto done;
@@ -140,15 +153,22 @@ blockmap_lookup(hammer_off_t zone_offset,
 	layer2_offset = layer1->phys_offset +
 			HAMMER_BLOCKMAP_LAYER2_OFFSET(result_offset);
 	layer2 = get_buffer_data(layer2_offset, &buffer, 0);
-	if (save_layer2)
-		*save_layer2 = *layer2;
 
 	if (AssertOnFailure) {
+		assert(layer2);
 		assert(layer2->zone == zone);
 	} else {
-		if (layer2->zone != zone)
+		if (layer2 == NULL) {
 			error = EDOM;
+			goto done;
+		}
+		if (layer2->zone != zone) {
+			error = EDOM;
+			goto done;
+		}
 	}
+	if (save_layer2)
+		*save_layer2 = *layer2;
 
 done:
 	if (buffer)
