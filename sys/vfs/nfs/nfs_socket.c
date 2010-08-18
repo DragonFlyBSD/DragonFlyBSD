@@ -2178,30 +2178,23 @@ nfs_realign(struct mbuf **pm, int hsiz)
 {
 	struct mbuf *m;
 	struct mbuf *n = NULL;
-	int off = 0;
 
+	/*
+	 * Check for misalignemnt
+	 */
 	++nfs_realign_test;
-
 	while ((m = *pm) != NULL) {
-		if ((m->m_len & 0x3) || (mtod(m, intptr_t) & 0x3)) {
-			n = m_getl(m->m_len, MB_WAIT, MT_DATA, 0, NULL);
-			n->m_len = 0;
+		if ((m->m_len & 0x3) || (mtod(m, intptr_t) & 0x3))
 			break;
-		}
 		pm = &m->m_next;
 	}
 
 	/*
-	 * If n is non-NULL, loop on m copying data, then replace the
-	 * portion of the chain that had to be realigned.
+	 * If misalignment found make a completely new copy.
 	 */
-	if (n != NULL) {
+	if (m) {
 		++nfs_realign_count;
-		while (m) {
-			m_copyback(n, off, m->m_len, mtod(m, caddr_t));
-			off += m->m_len;
-			m = m->m_next;
-		}
+		n = m_dup_data(m, MB_WAIT);
 		m_freem(*pm);
 		*pm = n;
 	}

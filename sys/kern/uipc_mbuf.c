@@ -1317,6 +1317,80 @@ nospace0:
 }
 
 /*
+ * Copy the non-packet mbuf data chain into a new set of mbufs, including
+ * copying any mbuf clusters.  This is typically used to realign a data
+ * chain by nfs_realign().
+ *
+ * The original chain is left intact.  how should be MB_WAIT or MB_DONTWAIT
+ * and NULL can be returned if MB_DONTWAIT is passed.
+ *
+ * Be careful to use cluster mbufs, a large mbuf chain converted to non
+ * cluster mbufs can exhaust our supply of mbufs.
+ */
+struct mbuf *
+m_dup_data(struct mbuf *m, int how)
+{
+	struct mbuf **p, *n, *top = NULL;
+	int mlen, moff, chunk, gsize, nsize;
+
+	/*
+	 * Degenerate case
+	 */
+	if (m == NULL)
+		return (NULL);
+
+	/*
+	 * Optimize the mbuf allocation but do not get too carried away.
+	 */
+	if (m->m_next || m->m_len > MLEN)
+		gsize = MCLBYTES;
+	else
+		gsize = MLEN;
+
+	/* Chain control */
+	p = &top;
+	n = NULL;
+	nsize = 0;
+
+	/*
+	 * Scan the mbuf chain until nothing is left, the new mbuf chain
+	 * will be allocated on the fly as needed.
+	 */
+	while (m) {
+		mlen = m->m_len;
+		moff = 0;
+
+		while (mlen) {
+			KKASSERT(m->m_type == MT_DATA);
+			if (n == NULL) {
+				n = m_getl(gsize, how, MT_DATA, 0, &nsize);
+				n->m_len = 0;
+				if (n == NULL)
+					goto nospace;
+				*p = n;
+				p = &n->m_next;
+			}
+			chunk = imin(mlen, nsize);
+			bcopy(m->m_data + moff, n->m_data + n->m_len, chunk);
+			mlen -= chunk;
+			moff += chunk;
+			n->m_len += chunk;
+			nsize -= chunk;
+			if (nsize == 0)
+				n = NULL;
+		}
+		m = m->m_next;
+	}
+	*p = NULL;
+	return(top);
+nospace:
+	*p = NULL;
+	m_freem(top);
+	atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_mcfail, 1);
+	return (NULL);
+}
+
+/*
  * Concatenate mbuf chain n to m.
  * Both chains must be of the same type (e.g. MT_DATA).
  * Any m_pkthdr is not updated.
