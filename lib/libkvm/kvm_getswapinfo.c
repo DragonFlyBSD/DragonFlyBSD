@@ -495,11 +495,16 @@ kvm_getswapinfo_sysctl(kvm_t *kd, struct kvm_swap *swap_ary,
 		return(-1);
 	if (bytes == 0)
 		return(-1);
+
 	xswbuf = malloc(bytes);
-	if (sysctlbyname("vm.swap_info_array", xswbuf, &bytes, NULL, 0) < 0)
+	if (sysctlbyname("vm.swap_info_array", xswbuf, &bytes, NULL, 0) < 0) {
+		free(xswbuf);
 		return(-1);
-	if (bytes == 0)
+	}
+	if (bytes == 0) {
+		free(xswbuf);
 		return(-1);
+	}
 
 	bzero(swap_ary, sizeof(struct kvm_swap) * swap_max);
 	--swap_max;
@@ -541,5 +546,6 @@ kvm_getswapinfo_sysctl(kvm_t *kd, struct kvm_swap *swap_ary,
 		}
 		++ti;
 	}
+	free(xswbuf);
 	return(ti);
 }
