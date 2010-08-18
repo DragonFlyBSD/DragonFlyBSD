@@ -43,6 +43,8 @@
 #include <sys/stat.h>
 #include <sys/conf.h>
 #include <sys/blist.h>
+#include <sys/sysctl.h>
+#include <vm/vm_param.h>
 
 #include <err.h>
 #include <fcntl.h>
@@ -53,6 +55,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
+
+#include "kvm_private.h"
 
 static struct nlist kvm_swap_nl[] = {
 	{ "_swapblist" },	/* new radix swap list		*/
@@ -73,6 +78,8 @@ static int unswdev;
 static int dmmax;
 
 static void getswapinfo_radix(kvm_t *kd, struct kvm_swap *swap_ary,
+			      int swap_max, int flags);
+static int kvm_getswapinfo_sysctl(kvm_t *kd, struct kvm_swap *swap_ary,
 			      int swap_max, int flags);
 
 #define	SVAR(var) __STRING(var)	/* to force expansion */
@@ -102,7 +109,7 @@ kvm_getswapinfo(
 	int swap_max, 
 	int flags
 ) {
-	int ti = 0;
+	int ti;
 
 	/*
 	 * clear cache
@@ -110,6 +117,15 @@ kvm_getswapinfo(
 	if (kd == NULL) {
 		kvm_swap_nl_cached = 0;
 		return(0);
+	}
+
+	/*
+	 * Use sysctl if possible
+	 */
+	if (kvm_ishost(kd) && (flags & SWIF_DUMP_TREE) == 0) {
+		ti = kvm_getswapinfo_sysctl(kd, swap_ary, swap_max, flags);
+		if (ti >= 0)
+			return(ti);
 	}
 
 	/*
@@ -157,7 +173,6 @@ kvm_getswapinfo(
 
 		kvm_swap_nl_cached = 1;
 	}
-
 
 	{
 		struct swdevt *sw;
@@ -461,4 +476,70 @@ getswapinfo_radix(kvm_t *kd, struct kvm_swap *swap_ary, int swap_max, int flags)
 	} else {
 		swap_ary[0].ksw_used -= blcopy.bl_free;
 	}
+}
+
+static
+int
+kvm_getswapinfo_sysctl(kvm_t *kd, struct kvm_swap *swap_ary,
+		       int swap_max, int flags)
+{
+	size_t bytes = 0;
+	size_t ksize;
+	int ti;
+	int n;
+	int i;
+	char *xswbuf;
+	struct xswdev *xsw;
+
+	if (sysctlbyname("vm.swap_info_array", NULL, &bytes, NULL, 0) < 0)
+		return(-1);
+	if (bytes == 0)
+		return(-1);
+	xswbuf = malloc(bytes);
+	if (sysctlbyname("vm.swap_info_array", xswbuf, &bytes, NULL, 0) < 0)
+		return(-1);
+	if (bytes == 0)
+		return(-1);
+
+	bzero(swap_ary, sizeof(struct kvm_swap) * swap_max);
+	--swap_max;
+
+	/*
+	 * Calculate size of xsw entry returned by kernel (it can be larger
+	 * than the one we have if there is a version mismatch).
+	 *
+	 * Then iterate the list looking for live swap devices.
+	 */
+	ksize = ((struct xswdev *)xswbuf)->xsw_size;
+	n = (int)(bytes / ksize);
+
+	for (i = ti = 0; i < n && ti < swap_max; ++i) {
+		xsw = (void *)((char *)xswbuf + i * ksize);
+
+		if ((xsw->xsw_flags & SW_FREED) == 0)
+			continue;
+
+		swap_ary[ti].ksw_total = xsw->xsw_nblks;
+		swap_ary[ti].ksw_used = xsw->xsw_used;
+		swap_ary[ti].ksw_flags = xsw->xsw_flags;
+
+		if (xsw->xsw_dev == NODEV) {
+			snprintf(
+			    swap_ary[ti].ksw_devname,
+			    sizeof(swap_ary[ti].ksw_devname),
+			    "%s",
+			    "[NFS swap]"
+			);
+		} else {
+			snprintf(
+			    swap_ary[ti].ksw_devname,
+			    sizeof(swap_ary[ti].ksw_devname),
+			    "%s%s",
+			    ((flags & SWIF_DEV_PREFIX) ? _PATH_DEV : ""),
+			    devname(xsw->xsw_dev, S_IFCHR)
+			);
+		}
+		++ti;
+	}
+	return(ti);
 }
