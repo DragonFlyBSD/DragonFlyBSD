@@ -46,6 +46,7 @@
 #include <sys/proc.h>
 #include <sys/priv.h>
 #include <sys/nlookup.h>
+#include <sys/sysctl.h>
 #include <sys/dmap.h>		/* XXX */
 #include <sys/vnode.h>
 #include <sys/fcntl.h>
@@ -59,6 +60,7 @@
 #include <vm/vm_extern.h>
 #include <vm/swap_pager.h>
 #include <vm/vm_zone.h>
+#include <vm/vm_param.h>
 
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
@@ -338,7 +340,7 @@ swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 	sp->sw_dev = dev2udev(dev);
 	sp->sw_device = dev;
 	sp->sw_flags |= SW_FREED;
-	sp->sw_nblks = (swblk_t)nblks;
+	sp->sw_nused = 0;
 
 	/*
 	 * nblks, nswap, and dmmax are PAGE_SIZE'd parameters now, not
@@ -346,6 +348,7 @@ swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 	 * size of the swap bitmap, taking into account the stripe size.
 	 */
 	aligned_nblks = (swblk_t)((nblks + (dmmax - 1)) & ~(u_long)(dmmax - 1));
+	sp->sw_nblks = aligned_nblks;
 
 	if (aligned_nblks * nswdev > nswap)
 		nswap = aligned_nblks * nswdev;
@@ -355,8 +358,8 @@ swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 	else
 		blist_resize(&swapblist, nswap, 0);
 
-	for (dvbase = dmmax; dvbase < nblks; dvbase += dmmax) {
-		blk = min(nblks - dvbase, dmmax);
+	for (dvbase = dmmax; dvbase < aligned_nblks; dvbase += dmmax) {
+		blk = min(aligned_nblks - dvbase, dmmax);
 		vsbase = index * dmmax + dvbase * nswdev;
 		blist_free(swapblist, vsbase, blk);
 		vm_swap_size += blk;
@@ -367,3 +370,57 @@ swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 	mtx_unlock(&swap_mtx);
 	return (0);
 }
+
+/*
+ * Account for swap space in individual swdevt's.  The caller ensures
+ * that the provided range falls into a single swdevt.
+ *
+ * +count	space freed
+ * -count	space allocated
+ */
+void
+swapacctspace(swblk_t base, swblk_t count)
+{
+	int index;
+	int seg;
+
+	vm_swap_size += count;
+	seg = base / dmmax;
+	index = seg % nswdev;
+	swdevt[index].sw_nused -= count;
+}
+
+/*
+ * Retrieve swap info
+ */
+static int
+sysctl_vm_swap_info(SYSCTL_HANDLER_ARGS)
+{
+	struct xswdev xs;
+	struct swdevt *sp;
+	int	error;
+	int	n;
+
+	error = 0;
+	for (n = 0; n < nswdev; ++n) {
+		sp = &swdevt[n];
+
+		xs.xsw_size = sizeof(xs);
+		xs.xsw_version = XSWDEV_VERSION;
+		xs.xsw_blksize = PAGE_SIZE;
+		xs.xsw_dev = sp->sw_dev;
+		xs.xsw_flags = sp->sw_flags;
+		xs.xsw_nblks = sp->sw_nblks;
+		xs.xsw_used = sp->sw_nused;
+
+		error = SYSCTL_OUT(req, &xs, sizeof(xs));
+		if (error)
+			break;
+	}
+	return (error);
+}
+
+SYSCTL_INT(_vm, OID_AUTO, nswapdev, CTLFLAG_RD, &nswdev, 0,
+	   "Number of swap devices");
+SYSCTL_NODE(_vm, OID_AUTO, swap_info_array, CTLFLAG_RD, sysctl_vm_swap_info,
+	    "Swap statistics by device");

@@ -178,10 +178,12 @@ void ldisc_deregister (int);
 struct swdevt {
 	udev_t	sw_dev;			/* For quasibogus swapdev reporting */
 	int	sw_flags;
-	int	sw_nblks;
+	int	sw_nblks;		/* Number of swap blocks on device */
+	int	sw_nused;		/* swap blocks used on device */
 	struct	vnode *sw_vp;
 	struct cdev *sw_device;
 };
+
 #define	SW_FREED	0x01
 #define	SW_SEQUENTIAL	0x02
 #define	sw_freed	sw_flags	/* XXX compat */

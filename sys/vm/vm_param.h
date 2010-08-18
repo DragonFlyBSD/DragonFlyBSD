@@ -111,6 +111,21 @@
 }
 
 /*
+ * Structure for swap device statistics
+ */
+#define XSWDEV_VERSION  1
+
+struct xswdev {
+	size_t	xsw_size;
+	int	xsw_version;
+	int	xsw_flags;
+	dev_t	xsw_dev;
+	size_t	xsw_blksize;
+	size_t	xsw_nblks;
+	size_t	xsw_used;
+};
+
+/*
  *	Return values from the VM routines.
  */
 #define	KERN_SUCCESS		0

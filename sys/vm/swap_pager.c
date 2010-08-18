@@ -490,7 +490,7 @@ swp_pager_getswapspace(vm_object_t object, int npages)
 			swap_pager_almost_full = 1;
 		}
 	} else {
-		vm_swap_size -= npages;
+		swapacctspace(blk, -npages);
 		if (object->type == OBJT_SWAP)
 			vm_swap_anon_use += npages;
 		else
@@ -519,7 +519,7 @@ static __inline void
 swp_pager_freeswapspace(vm_object_t object, swblk_t blk, int npages)
 {
 	blist_free(swapblist, blk, npages);
-	vm_swap_size += npages;
+	swapacctspace(blk, npages);
 	if (object->type == OBJT_SWAP)
 		vm_swap_anon_use -= npages;
 	else
