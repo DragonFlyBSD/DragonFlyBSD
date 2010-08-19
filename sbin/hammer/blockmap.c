@@ -56,9 +56,9 @@ blockmap_lookup(hammer_off_t zone_offset,
 	int error = 0;
 
 	if (save_layer1)
-		*save_layer1 = NULL;
+		bzero(save_layer1, sizeof(*save_layer1));
 	if (save_layer2)
-		*save_layer2 = NULL;
+		bzero(save_layer2, sizeof(*save_layer2));
 
 	zone = HAMMER_ZONE_DECODE(zone_offset);
 
