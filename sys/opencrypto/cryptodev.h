@@ -384,6 +384,7 @@ extern	int crypto_freesession(u_int64_t sid);
 #define CRYPTOCAP_F_HARDWARE	CRYPTO_FLAG_HARDWARE
 #define CRYPTOCAP_F_SOFTWARE	CRYPTO_FLAG_SOFTWARE
 #define CRYPTOCAP_F_SYNC	0x04000000	/* operates synchronously */
+#define CRYPTOCAP_F_SMP		0x08000000	/* SMP dispatch ok */
 extern	int32_t crypto_get_driverid(device_t dev, int flags);
 extern	int crypto_find_driver(const char *);
 extern	device_t crypto_find_device_byhid(int hid);

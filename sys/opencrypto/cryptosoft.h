@@ -37,6 +37,7 @@ struct swcr_data {
 			struct auth_hash *SW_axf;
 		} SWCR_AUTH;
 		struct {
+			int		 SW_kschedule_refs;
 			u_int8_t	 *SW_kschedule;
 			struct enc_xform *SW_exf;
 		} SWCR_ENC;
@@ -52,6 +53,7 @@ struct swcr_data {
 #define sw_mlen		SWCR_UN.SWCR_AUTH.SW_mlen
 #define sw_axf		SWCR_UN.SWCR_AUTH.SW_axf
 #define sw_kschedule	SWCR_UN.SWCR_ENC.SW_kschedule
+#define sw_kschedule_refs SWCR_UN.SWCR_ENC.SW_kschedule_refs
 #define sw_exf		SWCR_UN.SWCR_ENC.SW_exf
 #define sw_size		SWCR_UN.SWCR_COMP.SW_size
 #define sw_cxf		SWCR_UN.SWCR_COMP.SW_cxf

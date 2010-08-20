@@ -1,6 +1,3 @@
-/*	$FreeBSD: src/sys/opencrypto/cryptosoft.c,v 1.23 2009/02/05 17:43:12 imp Exp $	*/
-/*	$OpenBSD: cryptosoft.c,v 1.35 2002/04/26 08:43:50 deraadt Exp $	*/
-
 /*-
  * The author of this code is Angelos D. Keromytis (angelos@cis.upenn.edu)
  * Copyright (c) 2002-2006 Sam Leffler, Errno Consulting
@@ -10,6 +7,8 @@
  * supported the development of this code.
  *
  * Copyright (c) 2000, 2001 Angelos D. Keromytis
+ *
+ * SMP modifications by Matthew Dillon for the DragonFlyBSD Project
  *
  * Permission to use, copy, and modify this software with or without fee
  * is hereby granted, provided that this entire notice is included in
@@ -21,6 +20,9 @@
  * REPRESENTATION OR WARRANTY OF ANY KIND CONCERNING THE
  * MERCHANTABILITY OF THIS SOFTWARE OR ITS FITNESS FOR ANY PARTICULAR
  * PURPOSE.
+ *
+ * $FreeBSD: src/sys/opencrypto/cryptosoft.c,v 1.23 2009/02/05 17:43:12 imp Exp $
+ * $OpenBSD: cryptosoft.c,v 1.35 2002/04/26 08:43:50 deraadt Exp $
  */
 
 #include <sys/param.h>
@@ -33,6 +35,7 @@
 #include <sys/random.h>
 #include <sys/kernel.h>
 #include <sys/uio.h>
+#include <sys/spinlock2.h>
 
 #include <crypto/blowfish/blowfish.h>
 #include <crypto/sha1.h>
@@ -52,6 +55,9 @@
 static	int32_t swcr_id;
 static	struct swcr_data **swcr_sessions = NULL;
 static	u_int32_t swcr_sesnum;
+static	u_int32_t swcr_minsesnum = 1;
+
+static struct spinlock swcr_spin = SPINLOCK_INITIALIZER(swcr_spin);
 
 u_int8_t hmac_ipad_buffer[HMAC_MAX_BLOCK_LEN];
 u_int8_t hmac_opad_buffer[HMAC_MAX_BLOCK_LEN];
@@ -60,6 +66,7 @@ static	int swcr_encdec(struct cryptodesc *, struct swcr_data *, caddr_t, int);
 static	int swcr_authcompute(struct cryptodesc *, struct swcr_data *, caddr_t, int);
 static	int swcr_compdec(struct cryptodesc *, struct swcr_data *, caddr_t, int);
 static	int swcr_freesession(device_t dev, u_int64_t tid);
+static	int swcr_freesession_slot(struct swcr_data **swdp, u_int32_t sid);
 
 /*
  * Apply a symmetric encryption/decryption algorithm.
@@ -70,8 +77,12 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 {
 	unsigned char iv[EALG_MAX_BLOCK_LEN], blk[EALG_MAX_BLOCK_LEN], *idat;
 	unsigned char *ivp, piv[EALG_MAX_BLOCK_LEN];
+	u_int8_t *kschedule;
+	u_int8_t *okschedule;
 	struct enc_xform *exf;
 	int i, k, j, blks;
+	int error;
+	int explicit_kschedule;
 
 	exf = sw->sw_exf;
 	blks = exf->blocksize;
@@ -102,16 +113,25 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 		}
 	}
 
+	/*
+	 * The semantics are seriously broken because the session key
+	 * storage was never designed for concurrent ops.
+	 */
 	if (crd->crd_flags & CRD_F_KEY_EXPLICIT) {
-		int error;
-
-		if (sw->sw_kschedule)
-			exf->zerokey(&(sw->sw_kschedule));
-		error = exf->setkey(&sw->sw_kschedule,
-				crd->crd_key, crd->crd_klen / 8);
+		kschedule = NULL;
+		explicit_kschedule = 1;
+		error = exf->setkey(&kschedule,
+				    crd->crd_key, crd->crd_klen / 8);
 		if (error)
-			return (error);
+			goto done;
+	} else {
+		spin_lock_wr(&swcr_spin);
+		kschedule = sw->sw_kschedule;
+		++sw->sw_kschedule_refs;
+		spin_unlock_wr(&swcr_spin);
+		explicit_kschedule = 0;
 	}
+
 	ivp = iv;
 
 	if (flags & CRYPTO_F_IMBUF) {
@@ -119,8 +139,10 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 
 		/* Find beginning of data */
 		m = m_getptr(m, crd->crd_skip, &k);
-		if (m == NULL)
-			return EINVAL;
+		if (m == NULL) {
+			error = EINVAL;
+			goto done;
+		}
 
 		i = crd->crd_len;
 
@@ -138,7 +160,7 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 					for (j = 0; j < blks; j++)
 						blk[j] ^= ivp[j];
 
-					exf->encrypt(sw->sw_kschedule, blk);
+					exf->encrypt(kschedule, blk);
 
 					/*
 					 * Keep encrypted block for XOR'ing
@@ -156,7 +178,7 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 					else
 						bcopy(blk, iv, blks);
 
-					exf->decrypt(sw->sw_kschedule, blk);
+					exf->decrypt(kschedule, blk);
 
 					/* XOR with previous block */
 					for (j = 0; j < blks; j++)
@@ -173,8 +195,10 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 
 				/* Advance pointer */
 				m = m_getptr(m, k + blks, &k);
-				if (m == NULL)
-					return EINVAL;
+				if (m == NULL) {
+					error = EINVAL;
+					goto done;
+				}
 
 				i -= blks;
 
@@ -192,8 +216,10 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 			}
 
 			/* Sanity check */
-			if (m == NULL)
-				return EINVAL;
+			if (m == NULL) {
+				error = EINVAL;
+				goto done;
+			}
 
 			/*
 			 * Warning: idat may point to garbage here, but
@@ -208,7 +234,7 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 					for (j = 0; j < blks; j++)
 						idat[j] ^= ivp[j];
 
-					exf->encrypt(sw->sw_kschedule, idat);
+					exf->encrypt(kschedule, idat);
 					ivp = idat;
 				} else {	/* decrypt */
 					/*
@@ -220,7 +246,7 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 					else
 						bcopy(idat, iv, blks);
 
-					exf->decrypt(sw->sw_kschedule, idat);
+					exf->decrypt(kschedule, idat);
 
 					/* XOR with previous block/IV */
 					for (j = 0; j < blks; j++)
@@ -237,16 +263,17 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 				i -= blks;
 			}
 		}
-
-		return 0; /* Done with mbuf encryption/decryption */
+		error = 0;	/* Done with mbuf encryption/decryption */
 	} else if (flags & CRYPTO_F_IOV) {
 		struct uio *uio = (struct uio *) buf;
 		struct iovec *iov;
 
 		/* Find beginning of data */
 		iov = cuio_getptr(uio, crd->crd_skip, &k);
-		if (iov == NULL)
-			return EINVAL;
+		if (iov == NULL) {
+			error = EINVAL;
+			goto done;
+		}
 
 		i = crd->crd_len;
 
@@ -264,7 +291,7 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 					for (j = 0; j < blks; j++)
 						blk[j] ^= ivp[j];
 
-					exf->encrypt(sw->sw_kschedule, blk);
+					exf->encrypt(kschedule, blk);
 
 					/*
 					 * Keep encrypted block for XOR'ing
@@ -282,7 +309,7 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 					else
 						bcopy(blk, iv, blks);
 
-					exf->decrypt(sw->sw_kschedule, blk);
+					exf->decrypt(kschedule, blk);
 
 					/* XOR with previous block */
 					for (j = 0; j < blks; j++)
@@ -299,8 +326,10 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 
 				/* Advance pointer */
 				iov = cuio_getptr(uio, k + blks, &k);
-				if (iov == NULL)
-					return EINVAL;
+				if (iov == NULL) {
+					error = EINVAL;
+					goto done;
+				}
 
 				i -= blks;
 
@@ -322,7 +351,7 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 					for (j = 0; j < blks; j++)
 						idat[j] ^= ivp[j];
 
-					exf->encrypt(sw->sw_kschedule, idat);
+					exf->encrypt(kschedule, idat);
 					ivp = idat;
 				} else {	/* decrypt */
 					/*
@@ -334,7 +363,7 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 					else
 						bcopy(idat, iv, blks);
 
-					exf->decrypt(sw->sw_kschedule, idat);
+					exf->decrypt(kschedule, idat);
 
 					/* XOR with previous block/IV */
 					for (j = 0; j < blks; j++)
@@ -355,9 +384,11 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 				k = 0;
 			}
 		}
-
-		return 0; /* Done with iovec encryption/decryption */
-	} else {	/* contiguous buffer */
+		error = 0;	/* Done with iovec encryption/decryption */
+	} else {
+		/*
+		 * contiguous buffer
+		 */
 		if (crd->crd_flags & CRD_F_ENCRYPT) {
 			for (i = crd->crd_skip;
 			    i < crd->crd_skip + crd->crd_len; i += blks) {
@@ -368,16 +399,16 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 				else
 					for (k = 0; k < blks; k++)
 						buf[i + k] ^= buf[i + k - blks];
-				exf->encrypt(sw->sw_kschedule, buf + i);
+				exf->encrypt(kschedule, buf + i);
 			}
 		} else {		/* Decrypt */
 			/*
-			 * Start at the end, so we don't need to keep the encrypted
-			 * block as the IV for the next block.
+			 * Start at the end, so we don't need to keep the
+			 * encrypted block as the IV for the next block.
 			 */
 			for (i = crd->crd_skip + crd->crd_len - blks;
 			    i >= crd->crd_skip; i -= blks) {
-				exf->decrypt(sw->sw_kschedule, buf + i);
+				exf->decrypt(kschedule, buf + i);
 
 				/* XOR with the IV/previous block, as appropriate */
 				if (i == crd->crd_skip)
@@ -388,12 +419,30 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 						buf[i + k] ^= buf[i + k - blks];
 			}
 		}
-
-		return 0; /* Done with contiguous buffer encryption/decryption */
+		error = 0; /* Done w/contiguous buffer encrypt/decrypt */
 	}
-
-	/* Unreachable */
-	return EINVAL;
+done:
+	/*
+	 * Cleanup - explicitly replace the session key if requested
+	 *	     (horrible semantics for concurrent operation)
+	 */
+	if (explicit_kschedule) {
+		spin_lock_wr(&swcr_spin);
+		if (sw->sw_kschedule && sw->sw_kschedule_refs == 0) {
+			okschedule = sw->sw_kschedule;
+			sw->sw_kschedule = kschedule;
+		} else {
+			okschedule = NULL;
+		}
+		spin_unlock_wr(&swcr_spin);
+		if (okschedule)
+			exf->zerokey(&okschedule);
+	} else {
+		spin_lock_wr(&swcr_spin);
+		--sw->sw_kschedule_refs;
+		spin_unlock_wr(&swcr_spin);
+	}
+	return error;
 }
 
 static void
@@ -516,7 +565,7 @@ swcr_authcompute(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
  */
 static int
 swcr_compdec(struct cryptodesc *crd, struct swcr_data *sw,
-    caddr_t buf, int flags)
+	     caddr_t buf, int flags)
 {
 	u_int8_t *data, *out;
 	struct comp_algo *cxf;
@@ -525,12 +574,12 @@ swcr_compdec(struct cryptodesc *crd, struct swcr_data *sw,
 
 	cxf = sw->sw_cxf;
 
-	/* We must handle the whole buffer of data in one time
+	/*
+	 * We must handle the whole buffer of data in one time
 	 * then if there is not all the data in the mbuf, we must
 	 * copy in a buffer.
 	 */
-
-	data = kmalloc(crd->crd_len, M_CRYPTO_DATA,  M_NOWAIT);
+	data = kmalloc(crd->crd_len, M_CRYPTO_DATA, M_INTWAIT);
 	if (data == NULL)
 		return (EINVAL);
 	crypto_copydata(flags, buf, crd->crd_skip, crd->crd_len, data);
@@ -593,61 +642,25 @@ swcr_compdec(struct cryptodesc *crd, struct swcr_data *sw,
 static int
 swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 {
+	struct swcr_data *swd_base;
 	struct swcr_data **swd;
+	struct swcr_data **oswd;
 	struct auth_hash *axf;
 	struct enc_xform *txf;
 	struct comp_algo *cxf;
 	u_int32_t i;
+	u_int32_t n;
 	int error;
 
 	if (sid == NULL || cri == NULL)
 		return EINVAL;
 
-	if (swcr_sessions) {
-		for (i = 1; i < swcr_sesnum; i++)
-			if (swcr_sessions[i] == NULL)
-				break;
-	} else
-		i = 1;		/* NB: to silence compiler warning */
-
-	if (swcr_sessions == NULL || i == swcr_sesnum) {
-		if (swcr_sessions == NULL) {
-			i = 1; /* We leave swcr_sessions[0] empty */
-			swcr_sesnum = CRYPTO_SW_SESSIONS;
-		} else
-			swcr_sesnum *= 2;
-
-		swd = kmalloc(swcr_sesnum * sizeof(struct swcr_data *),
-		    M_CRYPTO_DATA, M_NOWAIT|M_ZERO);
-		if (swd == NULL) {
-			/* Reset session number */
-			if (swcr_sesnum == CRYPTO_SW_SESSIONS)
-				swcr_sesnum = 0;
-			else
-				swcr_sesnum /= 2;
-			return ENOBUFS;
-		}
-
-		/* Copy existing sessions */
-		if (swcr_sessions != NULL) {
-			bcopy(swcr_sessions, swd,
-			    (swcr_sesnum / 2) * sizeof(struct swcr_data *));
-			kfree(swcr_sessions, M_CRYPTO_DATA);
-		}
-
-		swcr_sessions = swd;
-	}
-
-	swd = &swcr_sessions[i];
-	*sid = i;
+	swd_base = NULL;
+	swd = &swd_base;
 
 	while (cri) {
 		*swd = kmalloc(sizeof(struct swcr_data),
-		    M_CRYPTO_DATA, M_NOWAIT|M_ZERO);
-		if (*swd == NULL) {
-			swcr_freesession(dev, i);
-			return ENOBUFS;
-		}
+			       M_CRYPTO_DATA, M_WAITOK | M_ZERO);
 
 		switch (cri->cri_alg) {
 		case CRYPTO_DES_CBC:
@@ -677,15 +690,16 @@ swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 		enccommon:
 			if (cri->cri_key != NULL) {
 				error = txf->setkey(&((*swd)->sw_kschedule),
-				    cri->cri_key, cri->cri_klen / 8);
+						    cri->cri_key,
+						    cri->cri_klen / 8);
 				if (error) {
-					swcr_freesession(dev, i);
+					swcr_freesession_slot(&swd_base, 0);
 					return error;
 				}
 			}
 			(*swd)->sw_exf = txf;
 			break;
-	
+
 		case CRYPTO_MD5_HMAC:
 			axf = &auth_hash_hmac_md5;
 			goto authcommon;
@@ -708,16 +722,16 @@ swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 			axf = &auth_hash_hmac_ripemd_160;
 		authcommon:
 			(*swd)->sw_ictx = kmalloc(axf->ctxsize, M_CRYPTO_DATA,
-			    M_NOWAIT);
+						  M_WAITOK);
 			if ((*swd)->sw_ictx == NULL) {
-				swcr_freesession(dev, i);
+				swcr_freesession_slot(&swd_base, 0);
 				return ENOBUFS;
 			}
 	
 			(*swd)->sw_octx = kmalloc(axf->ctxsize, M_CRYPTO_DATA,
-			    M_NOWAIT);
+						  M_WAITOK);
 			if ((*swd)->sw_octx == NULL) {
-				swcr_freesession(dev, i);
+				swcr_freesession_slot(&swd_base, 0);
 				return ENOBUFS;
 			}
 	
@@ -738,16 +752,16 @@ swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 			axf = &auth_hash_key_sha1;
 		auth2common:
 			(*swd)->sw_ictx = kmalloc(axf->ctxsize, M_CRYPTO_DATA,
-			    M_NOWAIT);
+						  M_WAITOK);
 			if ((*swd)->sw_ictx == NULL) {
-				swcr_freesession(dev, i);
+				swcr_freesession_slot(&swd_base, 0);
 				return ENOBUFS;
 			}
 	
 			(*swd)->sw_octx = kmalloc(cri->cri_klen / 8,
-			    M_CRYPTO_DATA, M_NOWAIT);
+						  M_CRYPTO_DATA, M_WAITOK);
 			if ((*swd)->sw_octx == NULL) {
-				swcr_freesession(dev, i);
+				swcr_freesession_slot(&swd_base, 0);
 				return ENOBUFS;
 			}
 	
@@ -769,9 +783,9 @@ swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 			axf = &auth_hash_sha1;
 		auth3common:
 			(*swd)->sw_ictx = kmalloc(axf->ctxsize, M_CRYPTO_DATA,
-			    M_NOWAIT);
+						  M_WAITOK);
 			if ((*swd)->sw_ictx == NULL) {
-				swcr_freesession(dev, i);
+				swcr_freesession_slot(&swd_base, 0);
 				return ENOBUFS;
 			}
 
@@ -785,7 +799,7 @@ swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 			(*swd)->sw_cxf = cxf;
 			break;
 		default:
-			swcr_freesession(dev, i);
+			swcr_freesession_slot(&swd_base, 0);
 			return EINVAL;
 		}
 	
@@ -793,6 +807,56 @@ swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 		cri = cri->cri_next;
 		swd = &((*swd)->sw_next);
 	}
+
+	for (;;) {
+		/*
+		 * Atomically allocate a session
+		 */
+		spin_lock_wr(&swcr_spin);
+		for (i = swcr_minsesnum; i < swcr_sesnum; ++i) {
+			if (swcr_sessions[i] == NULL)
+				break;
+		}
+		if (i < swcr_sesnum) {
+			swcr_sessions[i] = swd_base;
+			swcr_minsesnum = i + 1;
+			spin_unlock_wr(&swcr_spin);
+			break;
+		}
+		n = swcr_sesnum;
+		spin_unlock_wr(&swcr_spin);
+
+		/*
+		 * A larger allocation is required, reallocate the array
+		 * and replace, checking for SMP races.
+		 */
+		if (n < CRYPTO_SW_SESSIONS)
+			n = CRYPTO_SW_SESSIONS;
+		else
+			n = n * 3 / 2;
+		swd = kmalloc(n * sizeof(struct swcr_data *),
+			      M_CRYPTO_DATA, M_WAITOK | M_ZERO);
+
+		spin_lock_wr(&swcr_spin);
+		if (swcr_sesnum >= n) {
+			spin_unlock_wr(&swcr_spin);
+			kfree(swd, M_CRYPTO_DATA);
+		} else if (swcr_sesnum) {
+			bcopy(swcr_sessions, swd,
+			      swcr_sesnum * sizeof(struct swcr_data *));
+			oswd = swcr_sessions;
+			swcr_sessions = swd;
+			swcr_sesnum = n;
+			spin_unlock_wr(&swcr_spin);
+			kfree(oswd, M_CRYPTO_DATA);
+		} else {
+			swcr_sessions = swd;
+			swcr_sesnum = n;
+			spin_unlock_wr(&swcr_spin);
+		}
+	}
+
+	*sid = i;
 	return 0;
 }
 
@@ -802,22 +866,47 @@ swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 static int
 swcr_freesession(device_t dev, u_int64_t tid)
 {
-	struct swcr_data *swd;
-	struct enc_xform *txf;
-	struct auth_hash *axf;
-	struct comp_algo *cxf;
 	u_int32_t sid = CRYPTO_SESID2LID(tid);
 
 	if (sid > swcr_sesnum || swcr_sessions == NULL ||
-	    swcr_sessions[sid] == NULL)
+	    swcr_sessions[sid] == NULL) {
 		return EINVAL;
+	}
 
 	/* Silently accept and return */
 	if (sid == 0)
 		return 0;
 
-	while ((swd = swcr_sessions[sid]) != NULL) {
-		swcr_sessions[sid] = swd->sw_next;
+	return(swcr_freesession_slot(&swcr_sessions[sid], sid));
+}
+
+static
+int
+swcr_freesession_slot(struct swcr_data **swdp, u_int32_t sid)
+{
+	struct enc_xform *txf;
+	struct auth_hash *axf;
+	struct comp_algo *cxf;
+	struct swcr_data *swd;
+	struct swcr_data *swnext;
+
+	/*
+	 * Protect session detachment with the spinlock.
+	 */
+	spin_lock_wr(&swcr_spin);
+	swnext = *swdp;
+	*swdp = NULL;
+	if (sid && swcr_minsesnum > sid)
+		swcr_minsesnum = sid;
+	spin_unlock_wr(&swcr_spin);
+
+	/*
+	 * Clean up at our leisure.
+	 */
+	while ((swd = swnext) != NULL) {
+		swnext = swd->sw_next;
+
+		swd->sw_next = NULL;
 
 		switch (swd->sw_alg) {
 		case CRYPTO_DES_CBC:
@@ -1007,8 +1096,9 @@ swcr_attach(device_t dev)
 	memset(hmac_ipad_buffer, HMAC_IPAD_VAL, HMAC_MAX_BLOCK_LEN);
 	memset(hmac_opad_buffer, HMAC_OPAD_VAL, HMAC_MAX_BLOCK_LEN);
 
-	swcr_id = crypto_get_driverid(dev,
-			CRYPTOCAP_F_SOFTWARE | CRYPTOCAP_F_SYNC);
+	swcr_id = crypto_get_driverid(dev, CRYPTOCAP_F_SOFTWARE |
+					   CRYPTOCAP_F_SYNC |
+					   CRYPTOCAP_F_SMP);
 	if (swcr_id < 0) {
 		device_printf(dev, "cannot initialize!");
 		return ENOMEM;

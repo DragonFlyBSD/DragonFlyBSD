@@ -312,7 +312,7 @@ des1_setkey(u_int8_t **sched, u_int8_t *key, int len)
 	int err;
 
 	p = kmalloc(sizeof (des_key_schedule),
-		M_CRYPTO_DATA, M_NOWAIT|M_ZERO);
+		    M_CRYPTO_DATA, M_INTWAIT | M_ZERO);
 	if (p != NULL) {
 		des_set_key((des_cblock *) key, p[0]);
 		err = 0;
@@ -354,8 +354,8 @@ des3_setkey(u_int8_t **sched, u_int8_t *key, int len)
 	des_key_schedule *p;
 	int err;
 
-	p = kmalloc(3*sizeof (des_key_schedule),
-		M_CRYPTO_DATA, M_NOWAIT|M_ZERO);
+	p = kmalloc(3 * sizeof(des_key_schedule),
+		    M_CRYPTO_DATA, M_INTWAIT | M_ZERO);
 	if (p != NULL) {
 		des_set_key((des_cblock *)(key +  0), p[0]);
 		des_set_key((des_cblock *)(key +  8), p[1]);
@@ -410,8 +410,7 @@ blf_setkey(u_int8_t **sched, u_int8_t *key, int len)
 {
 	int err;
 
-	*sched = kmalloc(sizeof(BF_KEY),
-		M_CRYPTO_DATA, M_NOWAIT|M_ZERO);
+	*sched = kmalloc(sizeof(BF_KEY), M_CRYPTO_DATA, M_INTWAIT | M_ZERO);
 	if (*sched != NULL) {
 		BF_set_key((BF_KEY *) *sched, len, key);
 		err = 0;
@@ -445,7 +444,7 @@ cast5_setkey(u_int8_t **sched, u_int8_t *key, int len)
 {
 	int err;
 
-	*sched = kmalloc(sizeof(cast_key), M_CRYPTO_DATA, M_NOWAIT|M_ZERO);
+	*sched = kmalloc(sizeof(cast_key), M_CRYPTO_DATA, M_INTWAIT | M_ZERO);
 	if (*sched != NULL) {
 		cast_setkey((cast_key *)*sched, key, len);
 		err = 0;
@@ -481,7 +480,7 @@ skipjack_setkey(u_int8_t **sched, u_int8_t *key, int len)
 
 	/* NB: allocate all the memory that's needed at once */
 	*sched = kmalloc(10 * (sizeof(u_int8_t *) + 0x100),
-		M_CRYPTO_DATA, M_NOWAIT|M_ZERO);
+			 M_CRYPTO_DATA, M_INTWAIT | M_ZERO);
 	if (*sched != NULL) {
 		u_int8_t** key_tables = (u_int8_t**) *sched;
 		u_int8_t* table = (u_int8_t*) &key_tables[10];
@@ -527,7 +526,7 @@ rijndael128_setkey(u_int8_t **sched, u_int8_t *key, int len)
 	if (len != 16 && len != 24 && len != 32)
 		return (EINVAL);
 	*sched = kmalloc(sizeof(rijndael_ctx), M_CRYPTO_DATA,
-	    M_NOWAIT|M_ZERO);
+			 M_INTWAIT | M_ZERO);
 	if (*sched != NULL) {
 		rijndael_set_key((rijndael_ctx *) *sched, (u_char *) key,
 		    len * 8);
@@ -566,7 +565,7 @@ cml_setkey(u_int8_t **sched, u_int8_t *key, int len)
 	if (len != 16 && len != 24 && len != 32)
 		return (EINVAL);
 	*sched = kmalloc(sizeof(camellia_ctx), M_CRYPTO_DATA,
-	    M_NOWAIT|M_ZERO);
+			 M_INTWAIT | M_ZERO);
 	if (*sched != NULL) {
 		camellia_set_key((camellia_ctx *) *sched, (u_char *) key,
 		    len * 8);
