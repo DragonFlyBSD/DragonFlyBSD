@@ -54,7 +54,28 @@
 MALLOC_DEFINE(M_DMCRYPT, "dm_crypt", "Device Mapper Target Crypt");
 
 struct target_crypt_config;
-typedef void ivgen_t(struct target_crypt_config *, u_int8_t *, size_t, off_t);
+
+typedef void dispatch_t(void *);
+typedef void ivgen_t(struct target_crypt_config *, u_int8_t *, size_t, off_t,
+    void *);
+
+typedef int ivgen_ctor_t(struct target_crypt_config *, char *, void **);
+typedef int ivgen_dtor_t(struct target_crypt_config *, void *);
+
+struct iv_generator {
+	const char	*name;
+	ivgen_ctor_t	*ctor;
+	ivgen_dtor_t	*dtor;
+	ivgen_t		*gen_iv;
+};
+
+struct essiv_ivgen_priv {
+	struct cryptoini	crypto_session;
+	struct objcache	*crp_crd_cache;
+	u_int64_t	crypto_sid;
+	size_t		keyhash_len;
+	u_int8_t	crypto_keyhash[SHA512_DIGEST_LENGTH];
+};
 
 typedef struct target_crypt_config {
 	size_t	params_len;
@@ -63,13 +84,16 @@ typedef struct target_crypt_config {
 	int	crypto_alg;
 	int	crypto_klen;
 	u_int8_t	crypto_key[512>>3];
-	u_int8_t	crypto_keyhash[SHA512_DIGEST_LENGTH];
+	
 	u_int64_t	crypto_sid;
 	u_int64_t	block_offset;
 	u_int64_t	iv_offset;
 	SHA512_CTX	essivsha512_ctx;
+
 	struct cryptoini	crypto_session;
-	ivgen_t	*crypto_ivgen;
+
+	struct iv_generator	*ivgen;
+	void	*ivgen_priv;
 } dm_target_crypt_config_t;
 
 struct dmtc_helper {
@@ -78,6 +102,7 @@ struct dmtc_helper {
 	caddr_t data_buf;
 };
 
+static void dmtc_crypto_dispatch(void *arg);
 static void dmtc_crypto_read_start(dm_target_crypt_config_t *priv,
 				struct bio *bio);
 static void dmtc_crypto_write_start(dm_target_crypt_config_t *priv,
@@ -87,13 +112,42 @@ static void dmtc_bio_write_done(struct bio *bio);
 static int dmtc_crypto_cb_read_done(struct cryptop *crp);
 static int dmtc_crypto_cb_write_done(struct cryptop *crp);
 
+static ivgen_ctor_t	essiv_ivgen_ctor;
+static ivgen_dtor_t	essiv_ivgen_dtor;
+static ivgen_t		essiv_ivgen;
+static ivgen_t		plain_ivgen;
+
+static struct iv_generator ivgens[] = {
+	{ .name = "essiv", .ctor = essiv_ivgen_ctor, .dtor = essiv_ivgen_dtor,
+	    .gen_iv = essiv_ivgen },
+	{ .name = "plain", .ctor = NULL, .dtor = NULL, .gen_iv = plain_ivgen },
+	{ NULL, NULL, NULL, NULL }
+};
+
+struct objcache_malloc_args essiv_ivgen_malloc_args = {
+		2*sizeof(void *) + (sizeof(struct cryptodesc) +
+		sizeof(struct cryptop)), M_DMCRYPT };
+
 /*
- * Support routines for dm_target_crypt_init
+ * Overwrite private information (in buf) to avoid leaking it
  */
-static int
-essiv_hash_mkey(dm_target_crypt_config_t *priv, char *iv_hash)
+static void
+dmtc_crypto_clear(void *buf, size_t len)
 {
+	memset(buf, 0xFF, len);
+	bzero(buf, len);
+}
+
+/*
+ * ESSIV IV Generator Routines
+ */
+static int 
+essiv_ivgen_ctor(struct target_crypt_config *priv, char *iv_hash, void **p_ivpriv)
+{
+	struct essiv_ivgen_priv *ivpriv;
+	u_int8_t crypto_keyhash[SHA512_DIGEST_LENGTH];
 	unsigned int klen;
+	int error;
 
 	klen = (priv->crypto_klen >> 3);
 
@@ -108,7 +162,7 @@ essiv_hash_mkey(dm_target_crypt_config_t *priv, char *iv_hash)
 
 		SHA1Init(&ctx);
 		SHA1Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
-		SHA1Final(priv->crypto_keyhash, &ctx);
+		SHA1Final(crypto_keyhash, &ctx);
 	} else if (!strcmp(iv_hash, "sha256")) {
 		SHA256_CTX ctx;
 
@@ -117,7 +171,7 @@ essiv_hash_mkey(dm_target_crypt_config_t *priv, char *iv_hash)
 
 		SHA256_Init(&ctx);
 		SHA256_Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
-		SHA256_Final(priv->crypto_keyhash, &ctx);
+		SHA256_Final(crypto_keyhash, &ctx);
 	} else if (!strcmp(iv_hash, "sha384")) {
 		SHA384_CTX ctx;
 
@@ -126,7 +180,7 @@ essiv_hash_mkey(dm_target_crypt_config_t *priv, char *iv_hash)
 
 		SHA384_Init(&ctx);
 		SHA384_Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
-		SHA384_Final(priv->crypto_keyhash, &ctx);
+		SHA384_Final(crypto_keyhash, &ctx);
 	} else if (!strcmp(iv_hash, "sha512")) {
 		SHA512_CTX ctx;
 
@@ -135,7 +189,7 @@ essiv_hash_mkey(dm_target_crypt_config_t *priv, char *iv_hash)
 
 		SHA512_Init(&ctx);
 		SHA512_Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
-		SHA512_Final(priv->crypto_keyhash, &ctx);
+		SHA512_Final(crypto_keyhash, &ctx);
 	} else if (!strcmp(iv_hash, "md5")) {
 		MD5_CTX ctx;
 
@@ -144,7 +198,7 @@ essiv_hash_mkey(dm_target_crypt_config_t *priv, char *iv_hash)
 
 		MD5Init(&ctx);
 		MD5Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
-		MD5Final(priv->crypto_keyhash, &ctx);
+		MD5Final(crypto_keyhash, &ctx);
 	} else if (!strcmp(iv_hash, "rmd160") ||
 		   !strcmp(iv_hash, "ripemd160")) {
 		RMD160_CTX ctx;
@@ -154,10 +208,60 @@ essiv_hash_mkey(dm_target_crypt_config_t *priv, char *iv_hash)
 
 		RMD160Init(&ctx);
 		RMD160Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
-		RMD160Final(priv->crypto_keyhash, &ctx);
+		RMD160Final(crypto_keyhash, &ctx);
 	} else {
 		return EINVAL;
 	}
+
+	ivpriv = kmalloc(sizeof(struct essiv_ivgen_priv), M_DMCRYPT,
+	    M_WAITOK | M_ZERO);
+	memcpy(ivpriv->crypto_keyhash, crypto_keyhash, sizeof(crypto_keyhash));
+	ivpriv->keyhash_len = sizeof(crypto_keyhash);
+	dmtc_crypto_clear(crypto_keyhash, sizeof(crypto_keyhash));
+
+	ivpriv->crypto_session.cri_alg = priv->crypto_alg;
+	ivpriv->crypto_session.cri_key = (u_int8_t *)ivpriv->crypto_keyhash;
+	ivpriv->crypto_session.cri_klen = priv->crypto_klen;
+	ivpriv->crypto_session.cri_mlen = 0;
+	ivpriv->crypto_session.cri_next = NULL;
+
+	error = crypto_newsession(&ivpriv->crypto_sid,
+				  &ivpriv->crypto_session,
+				  CRYPTOCAP_F_SOFTWARE | CRYPTOCAP_F_HARDWARE);
+	if (error) {
+		kprintf("dm_target_crypt: Error during crypto_newsession "
+			"for essiv_ivgen, error = %d\n",
+			error);
+		dmtc_crypto_clear(ivpriv->crypto_keyhash, ivpriv->keyhash_len);
+		kfree(ivpriv, M_DMCRYPT);
+		return ENOTSUP;
+	}
+
+	ivpriv->crp_crd_cache = objcache_create(
+	    "dmcrypt-essiv-cache", 0, 0,
+	    NULL, NULL, NULL,
+	    objcache_malloc_alloc,
+	    objcache_malloc_free,
+	    &essiv_ivgen_malloc_args );
+
+	*p_ivpriv = ivpriv;
+	return 0;
+}
+
+static int 
+essiv_ivgen_dtor(struct target_crypt_config *priv, void *arg)
+{
+	struct essiv_ivgen_priv *ivpriv;
+
+	ivpriv = (struct essiv_ivgen_priv *)arg;
+	KKASSERT(ivpriv != NULL);
+
+	crypto_freesession(ivpriv->crypto_sid);
+
+	objcache_destroy(ivpriv->crp_crd_cache);
+
+	dmtc_crypto_clear(ivpriv->crypto_keyhash, ivpriv->keyhash_len);
+	kfree(ivpriv, M_DMCRYPT);
 
 	return 0;
 }
@@ -165,6 +269,9 @@ essiv_hash_mkey(dm_target_crypt_config_t *priv, char *iv_hash)
 static int
 essiv_ivgen_done(struct cryptop *crp)
 {
+	struct essiv_ivgen_priv *ivpriv;
+	void *free_addr;
+	void *opaque;
 
 	if (crp->crp_etype == EAGAIN)
 		return crypto_dispatch(crp);
@@ -174,75 +281,99 @@ essiv_ivgen_done(struct cryptop *crp)
 			"crp->crp_etype = %d\n", crp->crp_etype);
 	}
 
-	atomic_add_int((int *)crp->crp_opaque, 1);
-	wakeup(crp->crp_opaque);
+	free_addr = crp->crp_opaque;
+	/*
+	 * In-memory structure is:
+	 * |  ivpriv  |  opaque  |     crp     |      crd      |
+	 * | (void *) | (void *) |   (cryptop) |  (cryptodesc) |
+	 */
+	ivpriv = *((struct essiv_ivgen_priv **)crp->crp_opaque);
+	crp->crp_opaque += sizeof(void *);
+	opaque = *((void **)crp->crp_opaque);
+	
+	objcache_put(ivpriv->crp_crd_cache, free_addr);
+	dmtc_crypto_dispatch(opaque);
 	return 0;
 }
 
 static void
-plain_ivgen(dm_target_crypt_config_t *priv, u_int8_t *iv,
-	    size_t iv_len, off_t sector)
-{
-	bzero(iv, iv_len);
-	*((off_t *)iv) = htole64(sector + priv->iv_offset);
-}
-
-static void
 essiv_ivgen(dm_target_crypt_config_t *priv, u_int8_t *iv,
-	    size_t iv_len, off_t sector)
+	    size_t iv_len, off_t sector, void *opaque)
 {
-	struct cryptodesc crd;
-	struct cryptop crp;
-	int error, id;
+	struct essiv_ivgen_priv *ivpriv;
+	struct cryptodesc *crd;
+	struct cryptop *crp;
+	caddr_t space, alloc_addr;
+	int error;
 
-	id = 0;
-	bzero(iv, iv_len);
-	bzero(&crd, sizeof(crd));
-	bzero(&crp, sizeof(crp));
-	*((off_t *)iv) = htole64(sector + priv->iv_offset);
-	crp.crp_buf = (caddr_t)iv;
-
-	crp.crp_sid = priv->crypto_sid;
-	crp.crp_ilen = crp.crp_olen = iv_len;
-
-	crp.crp_opaque = (void *)&id;
-
-	crp.crp_callback = essiv_ivgen_done;
-
-	crp.crp_desc = &crd;
-	crp.crp_etype = 0;
-	crp.crp_flags = CRYPTO_F_CBIFSYNC | CRYPTO_F_REL;
-
-	crd.crd_alg = priv->crypto_alg;
-	crd.crd_key = (caddr_t)priv->crypto_keyhash;
-	crd.crd_klen = priv->crypto_klen;
-
-	bzero(crd.crd_iv, sizeof(crd.crd_iv));
-
-	crd.crd_skip = 0;
-	crd.crd_len = iv_len;
-	crd.crd_flags = CRD_F_KEY_EXPLICIT | CRD_F_IV_EXPLICIT |
-			CRD_F_IV_PRESENT;
-	crd.crd_flags |= CRD_F_ENCRYPT;
-	crd.crd_next = NULL;
-
-	error = crypto_dispatch(&crp);
-	if (error)
-		kprintf("dm_target_crypt: essiv_ivgen, error = %d\n", error);
+	ivpriv = priv->ivgen_priv;
+	KKASSERT(ivpriv != NULL);
 
 	/*
-	 * id is modified in the callback, so that if crypto_dispatch finishes
-	 * synchronously we don't tsleep() forever.
+	 * In-memory structure is:
+	 * |  ivpriv  |  opaque  |     crp     |      crd      |
+	 * | (void *) | (void *) |   (cryptop) |  (cryptodesc) |
 	 */
-	if (id == 0)
-		tsleep((void *)&error, 0, "essivgen", 0);
+	alloc_addr = space = objcache_get(ivpriv->crp_crd_cache, M_WAITOK);
+	*((struct essiv_ivgen_priv **)space) = ivpriv;
+	space += sizeof(void *);
+	*((void **)space) = opaque;
+	space += sizeof(void *);
+	crp = (struct cryptop *)space;
+	space += sizeof(struct cryptop);
+	crd = (struct cryptodesc *)space;
+
+	bzero(iv, iv_len);
+	bzero(crd, sizeof(struct cryptodesc));
+	bzero(crp, sizeof(struct cryptop));
+	*((off_t *)iv) = htole64(sector + priv->iv_offset);
+	crp->crp_buf = (caddr_t)iv;
+
+	crp->crp_sid = ivpriv->crypto_sid;
+	crp->crp_ilen = crp->crp_olen = iv_len;
+
+	crp->crp_opaque = alloc_addr;
+
+	crp->crp_callback = essiv_ivgen_done;
+
+	crp->crp_desc = crd;
+	crp->crp_etype = 0;
+	crp->crp_flags = CRYPTO_F_CBIFSYNC | CRYPTO_F_REL | CRYPTO_F_BATCH;
+
+	crd->crd_alg = priv->crypto_alg;
+#if 0
+	crd->crd_key = (caddr_t)priv->crypto_keyhash;
+	crd->crd_klen = priv->crypto_klen;
+#endif
+
+	bzero(crd->crd_iv, sizeof(crd->crd_iv));
+
+	crd->crd_skip = 0;
+	crd->crd_len = iv_len;
+	crd->crd_flags = CRD_F_IV_EXPLICIT | CRD_F_IV_PRESENT;
+	crd->crd_flags |= CRD_F_ENCRYPT;
+	crd->crd_next = NULL;
+
+	error = crypto_dispatch(crp);
+	if (error)
+		kprintf("dm_target_crypt: essiv_ivgen, error = %d\n", error);
 }
 
-#if 0
 
 static void
+plain_ivgen(dm_target_crypt_config_t *priv, u_int8_t *iv,
+	    size_t iv_len, off_t sector, void *opaque)
+{
+	bzero(iv, iv_len);
+	*((off_t *)iv) = htole64(sector + priv->iv_offset);
+	dmtc_crypto_dispatch(opaque);
+}
+
+
+#if 0
+static void
 geli_ivgen(dm_target_crypt_config_t *priv, u_int8_t *iv,
-	   size_t iv_len, off_t sector)
+	   size_t iv_len, off_t sector, void *opaque)
 {
 
 	SHA512_CTX	ctx512;
@@ -253,8 +384,8 @@ geli_ivgen(dm_target_crypt_config_t *priv, u_int8_t *iv,
 	SHA512_Final(md, &ctx512);
 
 	memcpy(iv, md, iv_len);
+	dmtc_crypto_dispatch(opaque);
 }
-
 #endif
 
 #ifdef DM_TARGET_MODULE
@@ -345,7 +476,7 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 	char **ap, *args[5];
 	char *crypto_alg, *crypto_mode, *iv_mode, *iv_opt, *key, *dev;
 	char *status_str;
-	int argc, klen, error;
+	int i, argc, klen, error;
 	uint64_t iv_offset, block_offset;
 
 	if (params == NULL)
@@ -385,7 +516,7 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 	/* bits / 8 = bytes, 1 byte = 2 hexa chars, so << 2 */
 	klen = strlen(key) << 2;
 
-	kprintf("dm_target_crypt: dev=%s, crypto_alg=%s, crypto_mode=%s, "
+	kprintf("dm_target_crypt - new: dev=%s, crypto_alg=%s, crypto_mode=%s, "
 		"iv_mode=%s, iv_opt=%s, key=%s, iv_offset=%ju, "
 		"block_offset=%ju\n",
 		dev, crypto_alg, crypto_mode, iv_mode, iv_opt, key, iv_offset,
@@ -463,10 +594,6 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 
 	dmv->dev_type = DM_CRYPTO_DEV;
 
-	priv->crypto_session.cri_alg = priv->crypto_alg;
-	priv->crypto_session.cri_klen = priv->crypto_klen;
-	priv->crypto_session.cri_mlen = 0;
-
 	error = hex2key(key, priv->crypto_klen >> 3,
 			(u_int8_t *)priv->crypto_key);
 
@@ -476,22 +603,35 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 		goto notsup;
 	}
 
-	if (!strcmp(iv_mode, "essiv")) {
-		error = essiv_hash_mkey(priv, iv_opt);
-		if (error) {
-			kprintf("dm_target_crypt: essiv_hash_mkey failed\n");
-			goto notsup;
-		}
-		priv->crypto_ivgen = essiv_ivgen;
-	} else if (!strcmp(iv_mode, "plain")) {
-		priv->crypto_ivgen = plain_ivgen;
-	} else {
-		kprintf("dm_target_crypt: only support iv_mode='essiv' and "
-			"'plain', iv_mode='%s' unsupported\n",
-			iv_mode);
+	/* Handle cmd */
+	for(i = 0; ivgens[i].name != NULL; i++) {
+		if (!strcmp(iv_mode, ivgens[i].name))
+			break;
 	}
 
+	if (ivgens[i].name == NULL) {
+		kprintf("dm_target_crypt: iv_mode='%s' unsupported\n",
+			iv_mode);	
+		goto notsup;
+	}
+
+	/* Call our ivgen constructor */
+	if (ivgens[i].ctor != NULL) {
+		error = ivgens[i].ctor(priv, iv_opt,
+		    &priv->ivgen_priv);
+		if (error) {
+			kprintf("dm_target_crypt: ctor for '%s' failed\n",
+			    ivgens[i].name);
+			goto notsup;
+		}
+	}
+
+	priv->ivgen = &ivgens[i];
+
+	priv->crypto_session.cri_alg = priv->crypto_alg;
 	priv->crypto_session.cri_key = (u_int8_t *)priv->crypto_key;
+	priv->crypto_session.cri_klen = priv->crypto_klen;
+	priv->crypto_session.cri_mlen = 0;
 	priv->crypto_session.cri_next = NULL;
 
 	error = crypto_newsession(&priv->crypto_sid,
@@ -553,12 +693,16 @@ dm_target_crypt_destroy(dm_table_entry_t * table_en)
 	 * Overwrite the private information before freeing memory to
 	 * avoid leaking it.
 	 */
-	memset(priv->status_str, 0xFF, strlen(priv->status_str));
-	bzero(priv->status_str, strlen(priv->status_str));
+	dmtc_crypto_clear(priv->status_str, strlen(priv->status_str));
 	kfree(priv->status_str, M_DMCRYPT);
 
-	memset(priv, 0xFF, sizeof(dm_target_crypt_config_t));
-	bzero(priv, sizeof(dm_target_crypt_config_t));
+	crypto_freesession(priv->crypto_sid);
+
+	if (priv->ivgen->dtor != NULL) {
+		priv->ivgen->dtor(priv, priv->ivgen_priv);
+	}
+
+	dmtc_crypto_clear(priv, sizeof(dm_target_crypt_config_t));
 	kfree(priv, M_DMCRYPT);
 
 	return 0;
@@ -601,6 +745,19 @@ dm_target_crypt_upcall(dm_table_entry_t * table_en, struct buf * bp)
  * WRITE PATH:	crypto_work -> crypto_cb_write_done -> doio -> bio_write_done
  */
 
+/*
+ * Wrapper around crypto_dispatch() to match dispatch_t type
+ */
+static void
+dmtc_crypto_dispatch(void *arg)
+{
+	struct cryptop *crp;
+
+	crp = (struct cryptop *)arg;
+	KKASSERT(crp != NULL);
+	crypto_dispatch(crp);
+}
+ 
 /*
  * Start IO operation, called from dmstrategy routine.
  */
@@ -681,7 +838,7 @@ dmtc_crypto_read_start(dm_target_crypt_config_t *priv, struct bio *bio)
 	struct cryptodesc *crd;
 	struct cryptop *crp;
 	struct cryptoini *cri;
-	int error, i, bytes, isector, sectors, sz;
+	int i, bytes, isector, sectors, sz;
 	u_char *ptr, *space;
 
 	cri = &priv->crypto_session;
@@ -759,8 +916,17 @@ dmtc_crypto_read_start(dm_target_crypt_config_t *priv, struct bio *bio)
 				 CRYPTO_F_BATCH;
 
 		crd->crd_alg = priv->crypto_alg;
+#if 0
 		crd->crd_key = (caddr_t)priv->crypto_key;
 		crd->crd_klen = priv->crypto_klen;
+#endif
+
+		crd->crd_skip = 0;
+		crd->crd_len = DEV_BSIZE /* XXX */;
+		crd->crd_flags = CRD_F_IV_EXPLICIT | CRD_F_IV_PRESENT;
+		crd->crd_next = NULL;
+
+		crd->crd_flags &= ~CRD_F_ENCRYPT;
 
 		/*
 		 * Note: last argument is used to generate salt(?) and is
@@ -768,18 +934,8 @@ dmtc_crypto_read_start(dm_target_crypt_config_t *priv, struct bio *bio)
 		 *	 int.  Changing it now will break pre-existing
 		 *	 crypt volumes.
 		 */
-		priv->crypto_ivgen(priv, crd->crd_iv, sizeof(crd->crd_iv),
-				   (int)(isector + i));
-
-		crd->crd_skip = 0;
-		crd->crd_len = DEV_BSIZE /* XXX */;
-		crd->crd_flags = CRD_F_KEY_EXPLICIT | CRD_F_IV_EXPLICIT |
-				 CRD_F_IV_PRESENT;
-		crd->crd_next = NULL;
-
-		crd->crd_flags &= ~CRD_F_ENCRYPT;
-
-		error = crypto_dispatch(crp);
+		priv->ivgen->gen_iv(priv, crd->crd_iv, sizeof(crd->crd_iv),
+				   (int)(isector + i), crp);
 	}
 }
 
@@ -853,7 +1009,7 @@ dmtc_crypto_write_start(dm_target_crypt_config_t *priv, struct bio *bio)
 	struct cryptodesc *crd;
 	struct cryptop *crp;
 	struct cryptoini *cri;
-	int error, i, bytes, isector, sectors, sz;
+	int i, bytes, isector, sectors, sz;
 	u_char *ptr, *space;
 
 	cri = &priv->crypto_session;
@@ -915,8 +1071,17 @@ dmtc_crypto_write_start(dm_target_crypt_config_t *priv, struct bio *bio)
 				 CRYPTO_F_BATCH;
 
 		crd->crd_alg = priv->crypto_alg;
+#if 0
 		crd->crd_key = (caddr_t)priv->crypto_key;
 		crd->crd_klen = priv->crypto_klen;
+#endif
+
+		crd->crd_skip = 0;
+		crd->crd_len = DEV_BSIZE /* XXX */;
+		crd->crd_flags = CRD_F_IV_EXPLICIT | CRD_F_IV_PRESENT;
+		crd->crd_next = NULL;
+
+		crd->crd_flags |= CRD_F_ENCRYPT;
 
 		/*
 		 * Note: last argument is used to generate salt(?) and is
@@ -924,17 +1089,8 @@ dmtc_crypto_write_start(dm_target_crypt_config_t *priv, struct bio *bio)
 		 *	 int.  Changing it now will break pre-existing
 		 *	 crypt volumes.
 		 */
-		priv->crypto_ivgen(priv, crd->crd_iv, sizeof(crd->crd_iv),
-				   (int)(isector + i));
-
-		crd->crd_skip = 0;
-		crd->crd_len = DEV_BSIZE /* XXX */;
-		crd->crd_flags = CRD_F_KEY_EXPLICIT | CRD_F_IV_EXPLICIT |
-				 CRD_F_IV_PRESENT;
-		crd->crd_next = NULL;
-
-		crd->crd_flags |= CRD_F_ENCRYPT;
-		error = crypto_dispatch(crp);
+		priv->ivgen->gen_iv(priv, crd->crd_iv, sizeof(crd->crd_iv),
+				   (int)(isector + i), crp);
 	}
 }
 
