@@ -451,19 +451,19 @@ dm_target_crypt_modcmd(modcmd_t cmd, void *arg)
  * aes-cbc-essiv:sha256 7997f8af... 0 /dev/ad0s0a 8
  */
 static int
-hex2key(char *hex, size_t hex_length, u_int8_t *key)
+hex2key(char *hex, size_t key_len, u_int8_t *key)
 {
 	char hex_buf[3];
 	size_t key_idx;
 
-	key_idx = 0;
-	bzero(hex_buf, sizeof(hex_buf));
-
-	for (; hex_length > 0; hex_length -= 2) {
+	hex_buf[2] = 0;
+	for (key_idx = 0; key_idx < key_len; ++key_idx) {
 		hex_buf[0] = *hex++;
 		hex_buf[1] = *hex++;
-		key[key_idx++] = (u_int8_t)strtoul(hex_buf, NULL, 16);
+		key[key_idx] = (u_int8_t)strtoul(hex_buf, NULL, 16);
 	}
+	hex_buf[0] = 0;
+	hex_buf[1] = 0;
 
 	return 0;
 }
