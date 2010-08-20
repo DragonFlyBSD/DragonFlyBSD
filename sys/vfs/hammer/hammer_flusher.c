@@ -614,8 +614,8 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 		hammer_io_flush(io, 0);
 		hammer_io_done_interlock(io);
 		hammer_rel_buffer((hammer_buffer_t)io, 0);
-		++count;
 		hammer_io_limit_backlog(hmp);
+		++count;
 	}
 
 	/*
@@ -754,8 +754,8 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
 		hammer_io_flush(io, 0);
 		hammer_rel_buffer((hammer_buffer_t)io, 0);
-		++count;
 		hammer_io_limit_backlog(hmp);
+		++count;
 	}
 
 	/*
@@ -847,6 +847,7 @@ hammer_flusher_flush_undos(hammer_mount_t hmp, int mode)
 		hammer_io_flush(io, hammer_undo_reclaim(io));
 		hammer_io_done_interlock(io);
 		hammer_rel_buffer((hammer_buffer_t)io, 0);
+		hammer_io_limit_backlog(hmp);
 		++count;
 	}
 	hammer_flusher_clean_loose_ios(hmp);
