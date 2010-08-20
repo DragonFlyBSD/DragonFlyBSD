@@ -212,7 +212,7 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 		loffset += i * blksize;
 		reqbp = bp = NULL;
 	} else {
-		off_t firstread = bp->b_loffset;
+		__debugvar off_t firstread = bp->b_loffset;
 		int nblks;
 
 		/*
