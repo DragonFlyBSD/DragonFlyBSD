@@ -169,6 +169,10 @@ int	crypto_devallowsoft = 0;	/* only use hardware crypto for asym */
 SYSCTL_INT(_kern, OID_AUTO, cryptodevallowsoft, CTLFLAG_RW,
 	   &crypto_devallowsoft, 0,
 	   "Enable/disable use of software asym crypto support");
+int	crypto_altdispatch = 0;		/* dispatch to alternative cpu */
+SYSCTL_INT(_kern, OID_AUTO, cryptoaltdispatch, CTLFLAG_RW,
+	   &crypto_altdispatch, 0,
+	   "Do not queue crypto op on current cpu");
 
 MALLOC_DEFINE(M_CRYPTO_DATA, "crypto", "crypto session records");
 
@@ -811,12 +815,16 @@ crypto_dispatch(struct cryptop *crp)
 
 	hid = CRYPTO_SESID2HID(crp->crp_sid);
 
-	if ((crp->crp_flags & CRYPTO_F_BATCH) == 0) {
-		/*
-		 * Caller marked the request to be processed
-		 * immediately; dispatch it directly to the
-		 * driver unless the driver is currently blocked.
-		 */
+	/*
+	 * Dispatch the crypto op directly to the driver if the caller
+	 * marked the request to be processed immediately or this is
+	 * a synchronous callback chain occuring from within a crypto
+	 * processing thread.
+	 *
+	 * Fall through to queueing the driver is blocked.
+	 */
+	if ((crp->crp_flags & CRYPTO_F_BATCH) == 0 ||
+	    (curthread->td_flags & TDF_CRYPTO)) {
 		cap = crypto_checkdriver(hid);
 		/* Driver cannot disappeared when there is an active session. */
 		KASSERT(cap != NULL, ("%s: Driver disappeared.", __func__));
@@ -832,10 +840,13 @@ crypto_dispatch(struct cryptop *crp)
 	}
 
 	/*
-	 * Dispatch to a cpu for action if possible
+	 * Dispatch to a cpu for action if possible.  Dispatch to a different
+	 * cpu than the current cpu.
 	 */
 	if (CRYPTO_SESID2CAPS(crp->crp_sid) & CRYPTOCAP_F_SMP) {
 		n = atomic_fetchadd_int(&dispatch_rover, 1) & 255;
+		if (crypto_altdispatch && mycpu->gd_cpuid == n)
+			++n;
 		n = n % ncpus;
 	} else {
 		n = 0;
@@ -1295,6 +1306,8 @@ crypto_proc(void *arg)
 	rel_mplock();		/* release the mplock held on startup */
 
 	CRYPTO_Q_LOCK(tdinfo);
+
+	curthread->td_flags |= TDF_CRYPTO;
 
 	for (;;) {
 		/*

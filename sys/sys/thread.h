@@ -310,6 +310,7 @@ struct thread {
 #define TDF_USINGFP		0x00800000	/* thread using fp coproc */
 #define TDF_KERNELFP		0x01000000	/* kernel using fp coproc */
 #define TDF_NETWORK		0x02000000	/* network proto thread */
+#define TDF_CRYPTO		0x04000000	/* crypto thread */
 
 /*
  * Thread priorities.  Typically only one thread from any given
