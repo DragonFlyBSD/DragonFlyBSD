@@ -1094,6 +1094,7 @@ crypto_freereq(struct cryptop *crp)
 	struct cryptodesc *crd;
 #ifdef DIAGNOSTIC
 	crypto_tdinfo_t tdinfo;
+	struct cryptop *crp2;
 	int n;
 #endif
 
@@ -1102,8 +1103,6 @@ crypto_freereq(struct cryptop *crp)
 
 #ifdef DIAGNOSTIC
 	for (n = 0; n < ncpus; ++n) {
-		struct cryptop *crp2;
-
 		tdinfo = &tdinfo_array[n];
 
 		CRYPTO_Q_LOCK(tdinfo);
