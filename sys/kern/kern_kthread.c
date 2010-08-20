@@ -49,7 +49,7 @@
  */
 int
 kthread_create(void (*func)(void *), void *arg,
-    struct thread **tdp, const char *fmt, ...)
+	       struct thread **tdp, const char *fmt, ...)
 {
     thread_t td;
     __va_list ap;
@@ -78,12 +78,43 @@ kthread_create(void (*func)(void *), void *arg,
     return 0;
 }
 
+int
+kthread_create_cpu(void (*func)(void *), void *arg,
+		   struct thread **tdp, int cpu, const char *fmt, ...)
+{
+    thread_t td;
+    __va_list ap;
+
+    td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, cpu, TDF_VERBOSE);
+    if (tdp)
+	*tdp = td;
+    cpu_set_thread_handler(td, kthread_exit, func, arg);
+#ifdef SMP
+    KKASSERT(td->td_mpcount == 1);
+#endif
+
+    /*
+     * Set up arg0 for 'ps' etc
+     */
+    __va_start(ap, fmt);
+    kvsnprintf(td->td_comm, sizeof(td->td_comm), fmt, ap);
+    __va_end(ap);
+
+    td->td_ucred = crhold(proc0.p_ucred);
+
+    /*
+     * Schedule the thread to run
+     */
+    lwkt_schedule(td);
+    return 0;
+}
+
 /*
  * Same as kthread_create() but you can specify a custom stack size.
  */
 int
 kthread_create_stk(void (*func)(void *), void *arg,
-    struct thread **tdp, int stksize, const char *fmt, ...)
+		   struct thread **tdp, int stksize, const char *fmt, ...)
 {
     thread_t td;
     __va_list ap;
@@ -116,7 +147,6 @@ kthread_exit(void)
     lwkt_exit();
 }
 
-
 /*
  * Start a kernel process.  This is called after a fork() call in
  * mi_startup() in the file kern/init_main.c.
@@ -131,7 +161,7 @@ kproc_start(const void *udata)
 	int error;
 
 	error = kthread_create((void (*)(void *))kp->func, NULL,
-		    kp->global_threadpp, kp->arg0);
+				kp->global_threadpp, kp->arg0);
 	lwkt_setpri(*kp->global_threadpp, TDPRI_KERN_DAEMON);
 	if (error)
 		panic("kproc_start: %s: error %d", kp->arg0, error);
