@@ -813,6 +813,7 @@ vfsync_bp(struct buf *bp, void *data)
 			bremfree(bp);
 			bawrite(bp);
 		}
+		waitrunningbufspace();
 		if (info->lazylimit && info->lazycount >= info->lazylimit)
 			error = 1;
 		else

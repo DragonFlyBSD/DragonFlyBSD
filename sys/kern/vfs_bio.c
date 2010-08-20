@@ -298,7 +298,7 @@ bufcountwakeup(void)
  * B_LOCKED dirty buffers, so also wait for at least one running buffer
  * to complete.
  */
-static __inline void
+void
 waitrunningbufspace(void)
 {
 	int limit = hirunningspace * 2 / 3;
