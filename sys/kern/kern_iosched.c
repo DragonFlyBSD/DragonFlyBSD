@@ -87,15 +87,19 @@ badjiosched(thread_t td, size_t bytes)
 		td->td_iosdata.lastticks = ticks;
 		if (delta < 0 || delta > hz * 10)
 			delta = hz * 10;
+		/* be careful of interger overflows */
 		bytes = (int64_t)td->td_iosdata.iowbytes * delta / (hz * 10);
 		td->td_iosdata.iowbytes -= bytes;
 		ioscpu[gd->gd_cpuid].iowbytes -= bytes;
 		iostotal -= bytes;
 	}
+
+	/* be careful of interger overflows */
 	if (iostotal > 0)
-		factor = td->td_iosdata.iowbytes * 100 / iostotal;
+		factor = (int64_t)td->td_iosdata.iowbytes * 100 / iostotal;
 	else
 		factor = 50;
+
 	if (delta && (iosched_debug & 1)) {
 		kprintf("proc %12s (%-5d) factor %3d (%zd/%zd)\n",
 			td->td_comm,
@@ -130,8 +134,9 @@ bwillwrite(int bytes)
 
 	count = bd_heatup();
 	if (count > 0) {
+		/* be careful of interger overflows */
 		factor = badjiosched(curthread, (size_t)bytes);
-		count = hidirtybufspace * factor / 100;
+		count = hidirtybufspace / 100 * factor;
 		bd_wait(count);
 	}
 }
