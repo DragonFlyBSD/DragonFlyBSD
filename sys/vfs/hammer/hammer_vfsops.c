@@ -727,6 +727,14 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	if (hmp->ronly == 0)
 		error = hammer_recover_stage2(hmp, rootvol);
 
+	/*
+	 * If the stage2 recovery fails be sure to clean out all cached
+	 * vnodes before throwing away the mount structure or bad things
+	 * will happen.
+	 */
+	if (error)
+		vflush(mp, 0, 0);
+
 done:
 	hammer_rel_volume(rootvol, 0);
 failed:
