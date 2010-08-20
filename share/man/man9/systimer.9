@@ -17,8 +17,8 @@
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
 .Dd August 19, 2010
-.Os
 .Dt SYSTIMER 9
+.Os
 .Sh NAME
 .Nm systimer_init_periodic ,
 .Nm systimer_init_periodic_nq ,
@@ -37,36 +37,38 @@
 .Fn systimer_init_oneshot "systimer_t info" "void *func" "void *data" "int us"
 .Sh DESCRIPTION
 .Pp
-Systimers invoke callbacks at either fixed frequencies or after time delays. The
-callbacks are invoked in an interrupt thread and should only be used for limited
-work.
+Systimers invoke callbacks at either fixed frequencies or after time delays.
+The callbacks are invoked in an interrupt thread and should only be used
+for limited work.
 .Pp
-The 
+The
 .Fn systimer_init_periodic
 function initializes a systimer callback function to be called at frequency
 .Fa hz .
 The
-.Fa info 
-argument is an allocated systimer structure; the 
+.Fa info
+argument is an allocated systimer structure; the
 .Fa func
 argument is the function to call, with argument
 .Fa data .
 .Pp
-The 
+The
 .Fn systimer_init_periodic_nq
 function initializes a systimer callback function to be called at a frequency
 .Fa hz .
-Unlike the 
+Unlike the
 .Fn systimer_init_periodic
-function, the 
+function, the
 .Fn systimer_init_periodic_nq
 function's callback is only called once at a given time, even if delays caused
 multiple time intervals to have occured.
 .Pp
 The
 .Fn systimer_adjust_periodic
-function changes the frequency at which a systimer's callback is invoked. The
-current time interval is not affected. The 
+function changes the frequency at which a systimer's callback is invoked.
+The
+current time interval is not affected.
+The
 .Fa hz
 argument specifies the new frequency.
 .Pp
@@ -78,17 +80,17 @@ to be invoked with argument
 .Fa data
 once, after at least
 .Fa us
-microseconds. 
+microseconds.
 .Sh EXAMPLE
 A simple example of using a one-short systimer to call a function after a short
 time:
-.Bd -literal
-...
+.Bd -literal -offset indent
+\&...
 static struct systimer short_st;
 char *str = "goodbye!";
-...
+\&...
 systimer_init_oneshot(&short_st, panic, str, 1000);
-...
+\&...
 .Ed
 .Sh FILES
 The systimer implementation is in
@@ -98,4 +100,3 @@ The systimer implementation is in
 .Sh HISTORY
 Systimers first appeared in
 .Dx 1.0 .
-
