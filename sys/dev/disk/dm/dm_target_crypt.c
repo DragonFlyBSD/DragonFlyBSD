@@ -838,7 +838,8 @@ dmtc_crypto_read_start(dm_target_crypt_config_t *priv, struct bio *bio)
 	struct cryptodesc *crd;
 	struct cryptop *crp;
 	struct cryptoini *cri;
-	int i, bytes, isector, sectors, sz;
+	int i, bytes, sectors, sz;
+	off_t isector;
 	u_char *ptr, *space;
 
 	cri = &priv->crypto_session;
@@ -848,7 +849,7 @@ dmtc_crypto_read_start(dm_target_crypt_config_t *priv, struct bio *bio)
 	 *	 b_bcount.
 	 */
 	bytes = bio->bio_buf->b_bcount;
-	isector = (int)(bio->bio_offset / DEV_BSIZE);	/* ivgen salt base? */
+	isector = bio->bio_offset / DEV_BSIZE;	/* ivgen salt base? */
 	sectors = bytes / DEV_BSIZE;		/* Number of sectors */
 	sz = sectors * (sizeof(*crp) + sizeof(*crd));
 
@@ -935,7 +936,7 @@ dmtc_crypto_read_start(dm_target_crypt_config_t *priv, struct bio *bio)
 		 *	 crypt volumes.
 		 */
 		priv->ivgen->gen_iv(priv, crd->crd_iv, sizeof(crd->crd_iv),
-				   (int)(isector + i), crp);
+				    isector + i, crp);
 	}
 }
 
@@ -1009,7 +1010,8 @@ dmtc_crypto_write_start(dm_target_crypt_config_t *priv, struct bio *bio)
 	struct cryptodesc *crd;
 	struct cryptop *crp;
 	struct cryptoini *cri;
-	int i, bytes, isector, sectors, sz;
+	int i, bytes, sectors, sz;
+	off_t isector;
 	u_char *ptr, *space;
 
 	cri = &priv->crypto_session;
@@ -1019,7 +1021,7 @@ dmtc_crypto_write_start(dm_target_crypt_config_t *priv, struct bio *bio)
 	 */
 	bytes = bio->bio_buf->b_bcount;
 
-	isector = (int)(bio->bio_offset / DEV_BSIZE);	/* ivgen salt base? */
+	isector = bio->bio_offset / DEV_BSIZE;	/* ivgen salt base? */
 	sectors = bytes / DEV_BSIZE;		/* Number of sectors */
 	sz = sectors * (sizeof(*crp) + sizeof(*crd));
 
@@ -1090,7 +1092,7 @@ dmtc_crypto_write_start(dm_target_crypt_config_t *priv, struct bio *bio)
 		 *	 crypt volumes.
 		 */
 		priv->ivgen->gen_iv(priv, crd->crd_iv, sizeof(crd->crd_iv),
-				   (int)(isector + i), crp);
+				    isector + i, crp);
 	}
 }
 
