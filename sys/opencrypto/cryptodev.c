@@ -185,6 +185,12 @@ cryptof_ioctl(struct file *fp, u_long cmd, caddr_t data,
 		case CRYPTO_AES_CBC:
 			txform = &enc_xform_rijndael128;
 			break;
+		case CRYPTO_AES_XTS:
+			txform = &enc_xform_aes_xts;
+			break;
+		case CRYPTO_AES_CTR:
+			txform = &enc_xform_aes_ctr;
+			break;		
 		case CRYPTO_NULL_CBC:
 			txform = &enc_xform_null;
 			break;

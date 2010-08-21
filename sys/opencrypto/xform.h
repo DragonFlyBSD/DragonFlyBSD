@@ -49,12 +49,13 @@ struct auth_hash {
 struct enc_xform {
 	int type;
 	char *name;
-	u_int16_t blocksize;
+	u_int16_t blocksize, ivsize;
 	u_int16_t minkey, maxkey;
 	void (*encrypt) (caddr_t, u_int8_t *);
 	void (*decrypt) (caddr_t, u_int8_t *);
 	int (*setkey) (u_int8_t **, u_int8_t *, int len);
 	void (*zerokey) (u_int8_t **);
+	void (*reinit) (caddr_t, u_int8_t *);
 };
 
 struct comp_algo {
@@ -81,6 +82,8 @@ extern struct enc_xform enc_xform_blf;
 extern struct enc_xform enc_xform_cast5;
 extern struct enc_xform enc_xform_skipjack;
 extern struct enc_xform enc_xform_rijndael128;
+extern struct enc_xform enc_xform_aes_xts;
+extern struct enc_xform enc_xform_aes_ctr;
 extern struct enc_xform enc_xform_arc4;
 extern struct enc_xform enc_xform_camellia;
 

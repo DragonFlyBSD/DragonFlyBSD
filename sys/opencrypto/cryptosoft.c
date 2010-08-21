@@ -80,12 +80,13 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 	u_int8_t *kschedule;
 	u_int8_t *okschedule;
 	struct enc_xform *exf;
-	int i, k, j, blks;
+	int i, k, j, blks, ivlen;
 	int error;
 	int explicit_kschedule;
 
 	exf = sw->sw_exf;
 	blks = exf->blocksize;
+	ivlen = exf->ivsize;
 
 	/* Check for non-padded data */
 	if (crd->crd_len % blks)
@@ -95,23 +96,32 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 	if (crd->crd_flags & CRD_F_ENCRYPT) {
 		/* IV explicitly provided ? */
 		if (crd->crd_flags & CRD_F_IV_EXPLICIT)
-			bcopy(crd->crd_iv, iv, blks);
+			bcopy(crd->crd_iv, iv, ivlen);
 		else
-			karc4rand(iv, blks);
+			karc4rand(iv, ivlen);
 
 		/* Do we need to write the IV */
 		if (!(crd->crd_flags & CRD_F_IV_PRESENT))
-			crypto_copyback(flags, buf, crd->crd_inject, blks, iv);
+			crypto_copyback(flags, buf, crd->crd_inject, ivlen, iv);
 
 	} else {	/* Decryption */
 			/* IV explicitly provided ? */
 		if (crd->crd_flags & CRD_F_IV_EXPLICIT)
-			bcopy(crd->crd_iv, iv, blks);
+			bcopy(crd->crd_iv, iv, ivlen);
 		else {
 			/* Get IV off buf */
-			crypto_copydata(flags, buf, crd->crd_inject, blks, iv);
+			crypto_copydata(flags, buf, crd->crd_inject, ivlen, iv);
 		}
 	}
+
+	ivp = iv;
+
+	/*
+	 * xforms that provide a reinit method perform all IV
+	 * handling themselves.
+	 */
+	if (exf->reinit)
+		exf->reinit(sw->sw_kschedule, iv);
 
 	/*
 	 * The semantics are seriously broken because the session key
@@ -131,8 +141,6 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 		spin_unlock_wr(&swcr_spin);
 		explicit_kschedule = 0;
 	}
-
-	ivp = iv;
 
 	if (flags & CRYPTO_F_IMBUF) {
 		struct mbuf *m = (struct mbuf *) buf;
@@ -155,7 +163,15 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 				m_copydata(m, k, blks, blk);
 
 				/* Actual encryption/decryption */
-				if (crd->crd_flags & CRD_F_ENCRYPT) {
+				if (exf->reinit) {
+					if (crd->crd_flags & CRD_F_ENCRYPT) {
+						exf->encrypt(kschedule,
+						    blk);
+					} else {
+						exf->decrypt(kschedule,
+						    blk);
+					}
+				} else if (crd->crd_flags & CRD_F_ENCRYPT) {
 					/* XOR with previous block */
 					for (j = 0; j < blks; j++)
 						blk[j] ^= ivp[j];
@@ -229,7 +245,15 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 			idat = mtod(m, unsigned char *) + k;
 
 	   		while (m->m_len >= k + blks && i > 0) {
-				if (crd->crd_flags & CRD_F_ENCRYPT) {
+				if (exf->reinit) {
+					if (crd->crd_flags & CRD_F_ENCRYPT) {
+						exf->encrypt(kschedule,
+						    idat);
+					} else {
+						exf->decrypt(kschedule,
+						    idat);
+					}
+				} else if (crd->crd_flags & CRD_F_ENCRYPT) {
 					/* XOR with previous block/IV */
 					for (j = 0; j < blks; j++)
 						idat[j] ^= ivp[j];
@@ -286,7 +310,15 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 				cuio_copydata(uio, k, blks, blk);
 
 				/* Actual encryption/decryption */
-				if (crd->crd_flags & CRD_F_ENCRYPT) {
+				if (exf->reinit) {
+					if (crd->crd_flags & CRD_F_ENCRYPT) {
+						exf->encrypt(kschedule,
+						    blk);
+					} else {
+						exf->decrypt(kschedule,
+						    blk);
+					}
+				} else if (crd->crd_flags & CRD_F_ENCRYPT) {
 					/* XOR with previous block */
 					for (j = 0; j < blks; j++)
 						blk[j] ^= ivp[j];
@@ -346,7 +378,15 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 			idat = (char *)iov->iov_base + k;
 
 	   		while (iov->iov_len >= k + blks && i > 0) {
-				if (crd->crd_flags & CRD_F_ENCRYPT) {
+				if (exf->reinit) {
+					if (crd->crd_flags & CRD_F_ENCRYPT) {
+						exf->encrypt(kschedule,
+						    idat);
+					} else {
+						exf->decrypt(kschedule,
+						    idat);
+					}
+				} else if (crd->crd_flags & CRD_F_ENCRYPT) {
 					/* XOR with previous block/IV */
 					for (j = 0; j < blks; j++)
 						idat[j] ^= ivp[j];
@@ -681,6 +721,12 @@ swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 		case CRYPTO_RIJNDAEL128_CBC:
 			txf = &enc_xform_rijndael128;
 			goto enccommon;
+		case CRYPTO_AES_XTS:
+			txf = &enc_xform_aes_xts;
+			goto enccommon;
+		case CRYPTO_AES_CTR:
+			txf = &enc_xform_aes_ctr;
+			goto enccommon;
 		case CRYPTO_CAMELLIA_CBC:
 			txf = &enc_xform_camellia;
 			goto enccommon;
@@ -915,6 +961,8 @@ swcr_freesession_slot(struct swcr_data **swdp, u_int32_t sid)
 		case CRYPTO_CAST_CBC:
 		case CRYPTO_SKIPJACK_CBC:
 		case CRYPTO_RIJNDAEL128_CBC:
+		case CRYPTO_AES_XTS:
+		case CRYPTO_AES_CTR:
 		case CRYPTO_CAMELLIA_CBC:
 		case CRYPTO_NULL_CBC:
 			txf = swd->sw_exf;
@@ -1029,6 +1077,8 @@ swcr_process(device_t dev, struct cryptop *crp, int hint)
 		case CRYPTO_CAST_CBC:
 		case CRYPTO_SKIPJACK_CBC:
 		case CRYPTO_RIJNDAEL128_CBC:
+		case CRYPTO_AES_XTS:
+		case CRYPTO_AES_CTR:
 		case CRYPTO_CAMELLIA_CBC:
 			if ((crp->crp_etype = swcr_encdec(crd, sw,
 			    crp->crp_buf, crp->crp_flags)) != 0)
@@ -1123,6 +1173,8 @@ swcr_attach(device_t dev)
 	REGISTER(CRYPTO_MD5);
 	REGISTER(CRYPTO_SHA1);
 	REGISTER(CRYPTO_RIJNDAEL128_CBC);
+	REGISTER(CRYPTO_AES_XTS);
+	REGISTER(CRYPTO_AES_CTR);
 	REGISTER(CRYPTO_CAMELLIA_CBC);
 	REGISTER(CRYPTO_DEFLATE_COMP);
 #undef REGISTER
