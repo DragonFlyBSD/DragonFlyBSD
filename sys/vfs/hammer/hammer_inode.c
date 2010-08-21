@@ -3206,7 +3206,7 @@ hammer_inode_inostats(hammer_mount_t hmp, pid_t pid)
 	struct hammer_inostats *stats;
 	int delta;
 	int chain;
-	static int iterator;	/* we don't care about MP races */
+	static volatile int iterator;	/* we don't care about MP races */
 
 	/*
 	 * Chain up to 4 times to find our entry.
