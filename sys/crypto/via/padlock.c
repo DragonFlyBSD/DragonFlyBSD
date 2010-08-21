@@ -155,7 +155,7 @@ padlock_detach(device_t dev)
 	}
 	while ((ses = TAILQ_FIRST(&sc->sc_sessions)) != NULL) {
 		TAILQ_REMOVE(&sc->sc_sessions, ses, ses_next);
-		kfree(ses, M_PADLOCK);
+		kfree(ses->ses_freeaddr, M_PADLOCK);
 	}
 	lockuninit(&sc->sc_sessions_lock);
 	crypto_unregister_all(sc->sc_cid);
@@ -166,7 +166,7 @@ static int
 padlock_newsession(device_t dev, uint32_t *sidp, struct cryptoini *cri)
 {
 	struct padlock_softc *sc = device_get_softc(dev);
-	struct padlock_session *ses = NULL;
+	struct padlock_session *ases, *ses = NULL;
 	struct cryptoini *encini, *macini;
 	int error;
 
@@ -215,10 +215,18 @@ padlock_newsession(device_t dev, uint32_t *sidp, struct cryptoini *cri)
 	 */
 	ses = TAILQ_FIRST(&sc->sc_sessions);
 	if (ses == NULL || ses->ses_used) {
-		ses = kmalloc(sizeof(*ses), M_PADLOCK, M_NOWAIT | M_ZERO);
+		ses = kmalloc(sizeof(*ses) + 16, M_PADLOCK, M_NOWAIT | M_ZERO);
 		if (ses == NULL) {
 			lockmgr(&sc->sc_sessions_lock, LK_RELEASE);
 			return (ENOMEM);
+		}
+		/* Check if 'ses' is 16-byte aligned. If not, align it. */
+		if (((uintptr_t)ses & 0xf) != 0) {
+			ases = PADLOCK_ALIGN(ses);
+			ases->ses_freeaddr = ses;
+			ses = ases;
+		} else {
+			ses->ses_freeaddr = ses;
 		}
 		ses->ses_id = sc->sc_sid++;
 	} else {

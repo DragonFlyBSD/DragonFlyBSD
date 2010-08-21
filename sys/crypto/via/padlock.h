@@ -70,7 +70,8 @@ struct padlock_session {
 	int		ses_used;
 	uint32_t	ses_id;
 	TAILQ_ENTRY(padlock_session) ses_next;
-};
+	void		*ses_freeaddr;
+} __aligned(16);
 
 #define	PADLOCK_ALIGN(p)	(void *)(roundup2((uintptr_t)(p), 16))
 
