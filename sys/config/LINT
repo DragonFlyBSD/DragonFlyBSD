@@ -2691,6 +2691,7 @@ options		UBSEC_RNDTEST	# enable rndtest support
 
 device		glxsb		# Geode LX Security Block
 device		padlock		# hardware crypto/RNG for VIA C3/C7/Eden
+device		aesni		# hardware crypto/RNG for AES-NI
 
 #
 # ACPI support using the Intel ACPI Component Architecture reference

@@ -52,6 +52,10 @@ emulation/linux/x86_64/linux32_sysvec.c	optional	compat_linux32
 
 # XXX use assembler versions of bf_enc and des_enc
 crypto/blowfish/bf_enc.c		optional	ipsec ipsec_esp
+crypto/aesni/aesencdec_x86_64.S	optional	aesni
+crypto/aesni/aeskeys_x86_64.S	optional	aesni
+crypto/aesni/aesni.c		optional	aesni
+crypto/aesni/aesni_wrap.c	optional	aesni
 crypto/des/des_enc.c			optional	ipsec ipsec_esp
 crypto/des/des_ecb.c			optional	netsmbcrypto
 crypto/des/des_enc.c			optional	netsmbcrypto
