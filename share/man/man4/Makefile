@@ -220,6 +220,7 @@ MAN=	aac.4 \
 	pty.4 \
 	puc.4 \
 	ral.4 \
+	random.4 \
 	rc.4 \
 	re.4 \
 	rl.4 \
@@ -393,6 +394,7 @@ MLINKS+=nataraid.4 ar.4
 MLINKS+=netintro.4 networking.4
 MLINKS+=pccbb.4 cbb.4
 MLINKS+=pcm.4 sound.4
+MLINKS+=random.4 urandom.4
 MLINKS+=scsi.4 CAM.4 \
 	scsi.4 cam.4 \
 	scsi.4 scbus.4 \
