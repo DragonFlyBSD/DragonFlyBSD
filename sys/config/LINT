@@ -2689,9 +2689,9 @@ options		UBSEC_DEBUG	# enable debugging support: hw.ubsec.debug
 #options	UBSEC_NO_RNG	# for devices without RNG
 options		UBSEC_RNDTEST	# enable rndtest support
 
+device		aesni		# hardware crypto/RNG for AES-NI
 device		glxsb		# Geode LX Security Block
 device		padlock		# hardware crypto/RNG for VIA C3/C7/Eden
-device		aesni		# hardware crypto/RNG for AES-NI
 
 #
 # ACPI support using the Intel ACPI Component Architecture reference
