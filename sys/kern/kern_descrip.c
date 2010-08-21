@@ -622,6 +622,11 @@ retry:
 	 * close() were performed on it).
 	 */
 	if (delfp) {
+		if (SLIST_FIRST(&delfp->f_klist)) {
+			get_mplock();
+			knote_fdclose(delfp, fdp, new);
+			rel_mplock();
+		}
 		closef(delfp, p);
 		if (holdleaders) {
 			spin_lock_wr(&fdp->fd_spin);
@@ -1993,6 +1998,11 @@ fdfree(struct proc *p, struct filedesc *repl)
 			fp = funsetfd_locked(fdp, i);
 			if (fp) {
 				spin_unlock_wr(&fdp->fd_spin);
+				if (SLIST_FIRST(&fp->f_klist)) {
+					get_mplock();
+					knote_fdclose(fp, fdp, i);
+					rel_mplock();
+				}
 				closef(fp, p);
 				spin_lock_wr(&fdp->fd_spin);
 			}
@@ -2390,6 +2400,7 @@ fdrop(struct file *fp)
 	if (atomic_fetchadd_int(&fp->f_count, -1) > 1)
 		return (0);
 
+	KKASSERT(SLIST_FIRST(&fp->f_klist) == NULL);
 	get_mplock();
 
 	/*

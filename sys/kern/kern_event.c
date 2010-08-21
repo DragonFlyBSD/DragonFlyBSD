@@ -133,6 +133,9 @@ static int 		kq_ncallouts = 0;
 static int 		kq_calloutmax = (4 * 1024);
 SYSCTL_INT(_kern, OID_AUTO, kq_calloutmax, CTLFLAG_RW,
     &kq_calloutmax, 0, "Maximum number of callouts allocated for kqueue");
+static int		kq_checkloop = 1000000;
+SYSCTL_INT(_kern, OID_AUTO, kq_checkloop, CTLFLAG_RW,
+    &kq_checkloop, 0, "Maximum number of callouts allocated for kqueue");
 
 #define KNOTE_ACTIVATE(kn) do { 					\
 	kn->kn_status |= KN_ACTIVE;					\
@@ -418,25 +421,10 @@ void
 kqueue_terminate(struct kqueue *kq)
 {
 	struct knote *kn;
-	struct klist *list;
-	int hv;
 
 	while ((kn = TAILQ_FIRST(&kq->kq_knlist)) != NULL) {
 		filter_detach(kn);
-		if (kn->kn_fop->f_flags & FILTEROP_ISFD) {
-			list = &kn->kn_fp->f_klist;
-			SLIST_REMOVE(list, kn, knote, kn_link);
-			fdrop(kn->kn_fp);
-			kn->kn_fp = NULL;
-		} else {
-			hv = KN_HASH(kn->kn_id, kq->kq_knhashmask);
-			list = &kq->kq_knhash[hv];
-			SLIST_REMOVE(list, kn, knote, kn_link);
-		}
-		TAILQ_REMOVE(&kq->kq_knlist, kn, kn_kqlink);
-		if (kn->kn_status & KN_QUEUED)
-			knote_dequeue(kn);
-		knote_free(kn);
+		knote_drop(kn);
 	}
 
 	if (kq->kq_knhash) {
@@ -531,6 +519,7 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 	struct timespec *tsp;
 	int i, n, total, error, nerrors = 0;
 	int lres;
+	int limit = kq_checkloop;
 	struct kevent kev[KQ_NEVENTS];
 	struct knote marker;
 
@@ -642,6 +631,8 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 			if (error)
 				break;
 		}
+		if (limit && --limit == 0)
+			panic("kqueue: checkloop failed i=%d", i);
 
 		/*
 		 * Normally when fewer events are returned than requested
@@ -1224,11 +1215,12 @@ knote_drop(struct knote *kn)
 	TAILQ_REMOVE(&kq->kq_knlist, kn, kn_kqlink);
 	if (kn->kn_status & KN_QUEUED)
 		knote_dequeue(kn);
-	if (kn->kn_fop->f_flags & FILTEROP_ISFD)
+	if (kn->kn_fop->f_flags & FILTEROP_ISFD) {
 		fdrop(kn->kn_fp);
+		kn->kn_fp = NULL;
+	}
 	knote_free(kn);
 }
-
 
 static void
 knote_enqueue(struct knote *kn)
