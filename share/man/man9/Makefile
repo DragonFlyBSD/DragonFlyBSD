@@ -785,11 +785,11 @@ MLINKS+=sysctl_ctx_init.9 sysctl_ctx_entry_add.9 \
 	sysctl_ctx_init.9 sysctl_ctx_entry_del.9 \
 	sysctl_ctx_init.9 sysctl_ctx_entry_find.9 \
 	sysctl_ctx_init.9 sysctl_ctx_free.9
-MLINKS+=systimer.9 systimers.9 \
+MLINKS+=systimer.9 systimer_adjust_periodic.9 \
+	systimer.9 systimer_init_oneshot.9 \
 	systimer.9 systimer_init_periodic.9 \
 	systimer.9 systimer_init_periodic_nq.9 \
-	systimer.9 systimer_init_oneshot.9 \
-	systimer.9 systimer_adjust_periodic.9
+	systimer.9 systimers.9
 MLINKS+=taskqueue.9 TASK_INIT.9 \
 	taskqueue.9 taskqueue_block.9 \
 	taskqueue.9 taskqueue_create.9 \
