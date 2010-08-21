@@ -284,8 +284,11 @@ cryptof_ioctl(struct file *fp, u_long cmd, caddr_t data,
 			error = checkforsoftware(crid);
 			if (error)
 				goto bail;
-		} else
+		} else {
 			crid = CRYPTOCAP_F_HARDWARE;
+			if (crypto_devallowsoft)
+				crid |= CRYPTOCAP_F_SOFTWARE;
+		}
 		error = crypto_newsession(&sid, (txform ? &crie : &cria), crid);
 		if (error)
 			goto bail;
