@@ -365,7 +365,7 @@ plain_ivgen(dm_target_crypt_config_t *priv, u_int8_t *iv,
 	    size_t iv_len, off_t sector, void *opaque)
 {
 	bzero(iv, iv_len);
-	*((off_t *)iv) = htole64(sector + priv->iv_offset);
+	*((uint32_t *)iv) = htole32((uint32_t)(sector + priv->iv_offset));
 	dmtc_crypto_dispatch(opaque);
 }
 
@@ -588,7 +588,7 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 	/* Save length of param string */
 	priv->params_len = len;
 	priv->block_offset = block_offset;
-	priv->iv_offset = iv_offset;
+	priv->iv_offset = iv_offset - block_offset;
 
 	*target_config = priv;
 
