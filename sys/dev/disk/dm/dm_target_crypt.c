@@ -536,9 +536,8 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 		return ENOENT;
 	}
 
-	if ((strcmp(crypto_mode, "cbc") != 0) ||
-	    ((strcmp(crypto_mode, "xts") == 0) && (strcmp(crypto_alg, "aes") != 0)))
-	
+	if ((strcmp(crypto_mode, "cbc") != 0) &&
+	    !((strcmp(crypto_mode, "xts") == 0) && (strcmp(crypto_alg, "aes") == 0)))
 	{
 		kprintf("dm_target_crypt: only support 'cbc' chaining mode"
 		    " and aes-xts, invalid mode '%s-%s'\n",
