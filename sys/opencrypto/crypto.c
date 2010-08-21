@@ -1263,7 +1263,7 @@ crypto_getfeat(int *featp)
 		    !crypto_devallowsoft) {
 			continue;
 		}
-		for (kalg = 0; kalg < CRK_ALGORITHM_MAX; kalg++)
+		for (kalg = 0; kalg <= CRK_ALGORITHM_MAX; kalg++)
 			if (cap->cc_kalg[kalg] & CRYPTO_ALG_FLAG_SUPPORTED)
 				feat |=  1 << kalg;
 	}
