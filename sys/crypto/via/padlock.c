@@ -31,6 +31,8 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/lock.h>
+#include <sys/spinlock.h>
+#include <sys/spinlock2.h>
 #include <sys/malloc.h>
 #include <sys/libkern.h>
 #if defined(__x86_64__) || defined(__i386__)
@@ -58,7 +60,7 @@ struct padlock_softc {
 	int32_t		sc_cid;
 	uint32_t	sc_sid;
 	TAILQ_HEAD(padlock_sessions_head, padlock_session) sc_sessions;
-	struct lock	sc_sessions_lock;
+	struct spinlock	sc_sessions_lock;
 };
 
 static int padlock_newsession(device_t, uint32_t *sidp, struct cryptoini *cri);
@@ -127,7 +129,7 @@ padlock_attach(device_t dev)
 		return (ENOMEM);
 	}
 
-	lockinit(&sc->sc_sessions_lock, "padlock_lock", 0, 0);
+	spin_init(&sc->sc_sessions_lock);
 	crypto_register(sc->sc_cid, CRYPTO_AES_CBC, 0, 0);
 	crypto_register(sc->sc_cid, CRYPTO_MD5_HMAC, 0, 0);
 	crypto_register(sc->sc_cid, CRYPTO_SHA1_HMAC, 0, 0);
@@ -144,10 +146,10 @@ padlock_detach(device_t dev)
 	struct padlock_softc *sc = device_get_softc(dev);
 	struct padlock_session *ses;
 
-	lockmgr(&sc->sc_sessions_lock, LK_SHARED);
+	spin_lock_wr(&sc->sc_sessions_lock);
 	TAILQ_FOREACH(ses, &sc->sc_sessions, ses_next) {
 		if (ses->ses_used) {
-			lockmgr(&sc->sc_sessions_lock, LK_RELEASE);
+			spin_unlock_wr(&sc->sc_sessions_lock);
 			device_printf(dev,
 			    "Cannot detach, sessions still active.\n");
 			return (EBUSY);
@@ -157,7 +159,8 @@ padlock_detach(device_t dev)
 		TAILQ_REMOVE(&sc->sc_sessions, ses, ses_next);
 		kfree(ses->ses_freeaddr, M_PADLOCK);
 	}
-	lockuninit(&sc->sc_sessions_lock);
+	spin_unlock_wr(&sc->sc_sessions_lock);
+	spin_uninit(&sc->sc_sessions_lock);
 	crypto_unregister_all(sc->sc_cid);
 	return (0);
 }
@@ -208,7 +211,7 @@ padlock_newsession(device_t dev, uint32_t *sidp, struct cryptoini *cri)
 	/*
 	 * Let's look for a free session structure.
 	 */
-	lockmgr(&sc->sc_sessions_lock, LK_SHARED);
+	spin_lock_wr(&sc->sc_sessions_lock);
 	/*
 	 * Free sessions goes first, so if first session is used, we need to
 	 * allocate one.
@@ -217,7 +220,7 @@ padlock_newsession(device_t dev, uint32_t *sidp, struct cryptoini *cri)
 	if (ses == NULL || ses->ses_used) {
 		ses = kmalloc(sizeof(*ses) + 16, M_PADLOCK, M_NOWAIT | M_ZERO);
 		if (ses == NULL) {
-			lockmgr(&sc->sc_sessions_lock, LK_RELEASE);
+			spin_unlock_wr(&sc->sc_sessions_lock);
 			return (ENOMEM);
 		}
 		/* Check if 'ses' is 16-byte aligned. If not, align it. */
@@ -234,7 +237,7 @@ padlock_newsession(device_t dev, uint32_t *sidp, struct cryptoini *cri)
 	}
 	ses->ses_used = 1;
 	TAILQ_INSERT_TAIL(&sc->sc_sessions, ses, ses_next);
-	lockmgr(&sc->sc_sessions_lock, LK_RELEASE);
+	spin_unlock_wr(&sc->sc_sessions_lock);
 
 	error = padlock_cipher_setup(ses, encini);
 	if (error != 0) {
@@ -261,7 +264,7 @@ padlock_freesession_one(struct padlock_softc *sc, struct padlock_session *ses,
 	uint32_t sid = ses->ses_id;
 
 	if (!locked)
-		lockmgr(&sc->sc_sessions_lock, LK_SHARED);
+		spin_lock_wr(&sc->sc_sessions_lock);
 	TAILQ_REMOVE(&sc->sc_sessions, ses, ses_next);
 	padlock_hash_free(ses);
 	bzero(ses, sizeof(*ses));
@@ -269,7 +272,7 @@ padlock_freesession_one(struct padlock_softc *sc, struct padlock_session *ses,
 	ses->ses_id = sid;
 	TAILQ_INSERT_HEAD(&sc->sc_sessions, ses, ses_next);
 	if (!locked)
-		lockmgr(&sc->sc_sessions_lock, LK_RELEASE);
+		spin_unlock_wr(&sc->sc_sessions_lock);
 }
 
 static int
@@ -279,18 +282,18 @@ padlock_freesession(device_t dev, uint64_t tid)
 	struct padlock_session *ses;
 	uint32_t sid = ((uint32_t)tid) & 0xffffffff;
 
-	lockmgr(&sc->sc_sessions_lock, LK_SHARED);
+	spin_lock_wr(&sc->sc_sessions_lock);
 	TAILQ_FOREACH_REVERSE(ses, &sc->sc_sessions, padlock_sessions_head,
 	    ses_next) {
 		if (ses->ses_id == sid)
 			break;
 	}
 	if (ses == NULL) {
-		lockmgr(&sc->sc_sessions_lock, LK_RELEASE);
+		spin_unlock_wr(&sc->sc_sessions_lock);
 		return (EINVAL);
 	}
 	padlock_freesession_one(sc, ses, 1);
-	lockmgr(&sc->sc_sessions_lock, LK_RELEASE);
+	spin_unlock_wr(&sc->sc_sessions_lock);
 	return (0);
 }
 
@@ -344,13 +347,13 @@ padlock_process(device_t dev, struct cryptop *crp, int hint __unused)
 		goto out;
 	}
 
-	lockmgr(&sc->sc_sessions_lock, LK_SHARED);
+	spin_lock_wr(&sc->sc_sessions_lock); /* XXX: was rd lock */
 	TAILQ_FOREACH_REVERSE(ses, &sc->sc_sessions, padlock_sessions_head,
 	    ses_next) {
 		if (ses->ses_id == (crp->crp_sid & 0xffffffff))
 			break;
 	}
-	lockmgr(&sc->sc_sessions_lock, LK_RELEASE);
+	spin_unlock_wr(&sc->sc_sessions_lock); /* XXX: was rd lock */
 	if (ses == NULL) {
 		error = EINVAL;
 		goto out;
