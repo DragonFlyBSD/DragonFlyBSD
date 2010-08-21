@@ -22,6 +22,8 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * FreeBSD: src/sys/crypto/aesni/aesencdec_amd64.S,v 1.1 2010/07/23 11:00:46 kib Exp
  */
 
 #include <machine/asmacros.h>
@@ -131,5 +133,3 @@ ENTRY(aesni_decrypt_cbc)
 	retq
 	.cfi_endproc
 END(aesni_decrypt_cbc)
-
-	.ident	"$FreeBSD: src/sys/crypto/aesni/aesencdec_amd64.S,v 1.1 2010/07/23 11:00:46 kib Exp $"

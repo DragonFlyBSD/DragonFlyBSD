@@ -22,10 +22,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * FreeBSD: src/sys/crypto/aesni/aesni_wrap.c,v 1.1 2010/07/23 11:00:46 kib Exp 
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/crypto/aesni/aesni_wrap.c,v 1.1 2010/07/23 11:00:46 kib Exp $");
 
 #include <sys/param.h>
 #include <sys/libkern.h>
@@ -109,7 +110,7 @@ int
 aesni_cipher_setup(struct aesni_session *ses, struct cryptoini *encini)
 {
 	struct thread *td;
-	int error;
+	int error = 0;
 
 	switch (encini->cri_klen) {
 	case 128:
@@ -126,14 +127,18 @@ aesni_cipher_setup(struct aesni_session *ses, struct cryptoini *encini)
 	}
 
 	td = curthread;
+#if 0
 	error = fpu_kern_enter(td, &ses->fpu_ctx, FPU_KERN_NORMAL);
+#endif
 	if (error == 0) {
 		aesni_set_enckey(encini->cri_key, ses->enc_schedule,
 		    ses->rounds);
 		aesni_set_deckey(ses->enc_schedule, ses->dec_schedule,
 		    ses->rounds);
-		arc4rand(ses->iv, sizeof(ses->iv), 0);
+		karc4rand(ses->iv, sizeof(ses->iv));
+#if 0
 		fpu_kern_leave(td, &ses->fpu_ctx);
+#endif
 	}
 	return (error);
 }
@@ -144,7 +149,7 @@ aesni_cipher_process(struct aesni_session *ses, struct cryptodesc *enccrd,
 {
 	struct thread *td;
 	uint8_t *buf;
-	int error, allocated;
+	int error = 0, allocated;
 
 	buf = aesni_cipher_alloc(enccrd, crp, &allocated);
 	if (buf == NULL) {
@@ -153,7 +158,9 @@ aesni_cipher_process(struct aesni_session *ses, struct cryptodesc *enccrd,
 	}
 
 	td = curthread;
+#if 0
 	error = fpu_kern_enter(td, &ses->fpu_ctx, FPU_KERN_NORMAL);
+#endif
 	if (error != 0)
 		goto out1;
 
@@ -176,7 +183,9 @@ aesni_cipher_process(struct aesni_session *ses, struct cryptodesc *enccrd,
 		aesni_decrypt_cbc(ses->rounds, ses->dec_schedule,
 		    enccrd->crd_len, buf, ses->iv);
 	}
+#if 0
 	fpu_kern_leave(td, &ses->fpu_ctx);
+#endif
 	if (allocated)
 		crypto_copyback(crp->crp_flags, crp->crp_buf, enccrd->crd_skip,
 		    enccrd->crd_len, buf);
@@ -187,7 +196,7 @@ aesni_cipher_process(struct aesni_session *ses, struct cryptodesc *enccrd,
  out1:
 	if (allocated) {
 		bzero(buf, enccrd->crd_len);
-		free(buf, M_AESNI);
+		kfree(buf, M_AESNI);
 	}
  out:
 	return (error);

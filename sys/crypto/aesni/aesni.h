@@ -51,6 +51,7 @@
 #define	AES192_ROUNDS	12
 #define	AES256_ROUNDS	14
 #define	AES_SCHED_LEN	((AES256_ROUNDS + 1) * AES_BLOCK_LEN)
+#define	CPUID2_AESNI	0x02000000
 
 struct aesni_session {
 	uint8_t enc_schedule[AES_SCHED_LEN] __aligned(16);
@@ -63,7 +64,9 @@ struct aesni_session {
 	int used;
 	uint32_t id;
 	TAILQ_ENTRY(aesni_session) next;
+#if 0
 	struct fpu_kern_ctx fpu_ctx;
+#endif
 };
 
 /*
