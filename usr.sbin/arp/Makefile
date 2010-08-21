@@ -3,6 +3,6 @@
 # $DragonFly: src/usr.sbin/arp/Makefile,v 1.3 2005/01/17 01:49:24 cpressey Exp $
 
 PROG=	arp
-MAN=	arp.4 arp.8
+MAN=	arp.8
 
 .include <bsd.prog.mk>
