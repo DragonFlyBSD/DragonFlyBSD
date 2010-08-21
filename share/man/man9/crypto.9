@@ -17,7 +17,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/crypto.9,v 1.14 2007/09/19 16:28:46 brueffer Exp $
 .\"
-.Dd October 3, 2009
+.Dd August 21, 2010
 .Dt CRYPTO 9
 .Os
 .Sh NAME
@@ -182,6 +182,8 @@ Currently supported algorithms are:
 .Pp
 .Bl -tag -width ".Dv CRYPTO_RIPEMD160_HMAC" -compact
 .It Dv CRYPTO_AES_CBC
+.It Dv CRYPTO_AES_XTS
+.It Dv CRYPTO_AES_CTR
 .It Dv CRYPTO_ARC4
 .It Dv CRYPTO_BLF_CBC
 .It Dv CRYPTO_CAMELLIA_CBC
