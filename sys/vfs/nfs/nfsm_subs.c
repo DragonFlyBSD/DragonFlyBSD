@@ -139,6 +139,7 @@ nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
 	struct nfsm_info info;
 	struct mbuf *mb2;
 	u_int32_t *tl;
+	u_int32_t xid;
 	int siz, grpsiz, authsiz, dsiz;
 	int i;
 
@@ -163,13 +164,12 @@ nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
 	/* Get a pretty random xid to start with */
 	if (!nfs_xid)
 		nfs_xid = krandom();
-	/*
-	 * Skip zero xid if it should ever happen.
-	 */
-	if (++nfs_xid == 0)
-		nfs_xid++;
 
-	*tl++ = *xidp = txdr_unsigned(nfs_xid);
+	do {
+		xid = atomic_fetchadd_int(&nfs_xid, 1);
+	} while (xid == 0);
+
+	*tl++ = *xidp = txdr_unsigned(xid);
 	*tl++ = rpc_call;
 	*tl++ = rpc_vers;
 	*tl++ = txdr_unsigned(NFS_PROG);

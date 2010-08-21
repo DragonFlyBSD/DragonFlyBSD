@@ -201,7 +201,8 @@ krpc_call(struct sockaddr_in *sa, u_int prog, u_int vers, u_int func,
 	struct timeval tv;
 	struct sockbuf sio;
 	int error, rcvflg, timo, secs, len;
-	static u_int32_t xid = ~0xFF;
+	static u_int32_t static_xid = ~0xFF;
+	u_int32_t xid;
 	u_int16_t tport;
 	u_int32_t saddr;
 
@@ -280,7 +281,9 @@ krpc_call(struct sockaddr_in *sa, u_int prog, u_int vers, u_int func,
 	mhead->m_len = sizeof(*call);
 	bzero((caddr_t)call, sizeof(*call));
 	/* rpc_call part */
-	xid++;
+	do {
+		xid = atomic_fetchadd_int(&static_xid, 1);
+	} while (xid == 0);
 	call->rp_xid = txdr_unsigned(xid);
 	/* call->rp_direction = 0; */
 	call->rp_rpcvers = txdr_unsigned(2);
