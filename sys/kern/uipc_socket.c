@@ -1188,7 +1188,7 @@ sorflush(struct socket *so)
 	bzero((caddr_t)ssb, sizeof (*ssb));
 	if (asb.ssb_flags & SSB_KNOTE) {
 		ssb->ssb_kq.ki_note = asb.ssb_kq.ki_note;
-		ssb->ssb_flags = SSB_KNOTE;
+		ssb->ssb_flags |= SSB_KNOTE;
 	}
 	crit_exit();
 
