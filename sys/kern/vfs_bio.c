@@ -4574,9 +4574,8 @@ nestiobuf_done(struct bio *mbio, int donebytes, int error)
 	}
 
 	/*
-	 * Decrement the master buf b_resid according to our donebytes, and
-	 * also check if this is the last missing bit for the whole nestio
-	 * mess to complete. If so, call biodone() on the master buf mbp.
+	 * Decrement the operations in progress counter and terminate the
+	 * I/O if this was the last bit.
 	 */
 	if (atomic_fetchadd_int((int *)&mbio->bio_driver_info, -1) == 1) {
 		mbp->b_resid = 0;
@@ -4606,9 +4605,8 @@ nestiobuf_start(struct bio *mbio)
 	struct buf *mbp = mbio->bio_buf;
 
 	/*
-	 * Decrement the master buf b_resid according to our donebytes, and
-	 * also check if this is the last missing bit for the whole nestio
-	 * mess to complete. If so, call biodone() on the master buf mbp.
+	 * Decrement the operations in progress counter and terminate the
+	 * I/O if this was the last bit.
 	 */
 	if (atomic_fetchadd_int((int *)&mbio->bio_driver_info, -1) == 1) {
 		if (mbp->b_flags & B_ERROR)
