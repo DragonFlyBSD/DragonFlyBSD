@@ -655,11 +655,19 @@ hammer_blockmap_reserve_complete(hammer_mount_t hmp, hammer_reserve_t resv)
 		error = hammer_del_buffers(hmp, base_offset,
 					   resv->zone_offset,
 					   HAMMER_LARGEBLOCK_SIZE,
-					   0);
+					   1);
+		if (hammer_debug_general & 0x20000) {
+			kprintf("hammer: dellgblk %016jx error %d\n",
+				(intmax_t)base_offset, error);
+		}
 		if (error)
 			hammer_reserve_setdelay(hmp, resv);
 	}
 	if (--resv->refs == 0) {
+		if (hammer_debug_general & 0x20000) {
+			kprintf("hammer: delresvr %016jx zone %02x\n",
+				(intmax_t)resv->zone_offset, resv->zone);
+		}
 		KKASSERT((resv->flags & HAMMER_RESF_ONDELAY) == 0);
 		RB_REMOVE(hammer_res_rb_tree, &hmp->rb_resv_root, resv);
 		kfree(resv, hmp->m_misc);
@@ -733,6 +741,11 @@ hammer_reserve_setdelay(hammer_mount_t hmp, hammer_reserve_t resv)
 	}
 }
 
+/*
+ * Reserve has reached its flush point, remove it from the delay list
+ * and finish it off.  hammer_blockmap_reserve_complete() inherits
+ * the ondelay reference.
+ */
 void
 hammer_reserve_clrdelay(hammer_mount_t hmp, hammer_reserve_t resv)
 {
