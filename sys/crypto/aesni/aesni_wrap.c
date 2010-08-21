@@ -43,13 +43,13 @@ ps_len(const char *string, const uint8_t *data, int length)
 {
 	int i;
 
-	printf("%-12s[0x", string);
+	kprintf("%-12s[0x", string);
 	for(i = 0; i < length; i++) {
 		if (i % AES_BLOCK_LEN == 0 && i > 0)
-			printf("+");
-		printf("%02x", data[i]);
+			kprintf("+");
+		kprintf("%02x", data[i]);
 	}
-	printf("]\n");
+	kprintf("]\n");
 }
 #endif
 
