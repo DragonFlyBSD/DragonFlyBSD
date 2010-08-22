@@ -226,6 +226,9 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	tmp->tm_pages_max = pages;
 	tmp->tm_pages_used = 0;
 
+	kmalloc_raise_limit(M_TMPFS_NODE, sizeof(struct tmpfs_node) *
+			    tmp->tm_nodes_max);
+
 	tmp->tm_dirent_pool =  objcache_create( "tmpfs dirent cache",
 	    0, 0,
 	    NULL, NULL, NULL,
