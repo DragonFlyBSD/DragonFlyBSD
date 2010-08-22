@@ -422,6 +422,7 @@ kqueue_terminate(struct kqueue *kq)
 {
 	struct knote *kn;
 
+	lwkt_gettoken(&kq_token);
 	while ((kn = TAILQ_FIRST(&kq->kq_knlist)) != NULL)
 		knote_detach_and_drop(kn);
 
@@ -430,6 +431,7 @@ kqueue_terminate(struct kqueue *kq)
 		kq->kq_knhash = NULL;
 		kq->kq_knhashmask = 0;
 	}
+	lwkt_reltoken(&kq_token);
 }
 
 /*
@@ -738,11 +740,14 @@ kqueue_register(struct kqueue *kq, struct kevent *kev)
 		return (EINVAL);
 	}
 
+	lwkt_gettoken(&kq_token);
 	if (fops->f_flags & FILTEROP_ISFD) {
 		/* validate descriptor */
 		fp = holdfp(fdp, kev->ident, -1);
-		if (fp == NULL)
+		if (fp == NULL) {
+			lwkt_reltoken(&kq_token);
 			return (EBADF);
+		}
 
 		SLIST_FOREACH(kn, &fp->f_klist, kn_link) {
 			if (kn->kn_kq == kq &&
@@ -850,6 +855,7 @@ kqueue_register(struct kqueue *kq, struct kevent *kev)
 	}
 
 done:
+	lwkt_reltoken(&kq_token);
 	if (fp != NULL)
 		fdrop(fp);
 	return (error);
@@ -929,9 +935,15 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 			continue;
 		}
 
+		/*
+		 * Remove the event for processing.
+		 *
+		 * WARNING!  We must leave KN_QUEUED set to prevent the
+		 *	     event from being KNOTE()d again while we
+		 *	     potentially block in the filter function.
+		 */
 		TAILQ_REMOVE(&kq->kq_knpend, kn, kn_tqe);
 		kq->kq_count--;
-		kn->kn_status &= ~KN_QUEUED;
 
 		/*
 		 * Even though close/dup2 will clean out pending knotes this
@@ -946,7 +958,7 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 		 */
 		if ((kn->kn_fop->f_flags & FILTEROP_ISFD) &&
 		    checkfdclosed(kq->kq_fdp, kn->kn_kevent.ident, kn->kn_fp)) {
-			kn->kn_status &= ~KN_ACTIVE;
+			kn->kn_status &= ~(KN_QUEUED | KN_ACTIVE);
 			continue;
 		}
 
@@ -955,8 +967,10 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 		 * its active bit set.  On re-enablement the event may be
 		 * immediately triggered.
 		 */
-		if (kn->kn_status & KN_DISABLED)
+		if (kn->kn_status & KN_DISABLED) {
+			kn->kn_status &= ~KN_QUEUED;
 			continue;
+		}
 
 		/*
 		 * If not running in one-shot mode and the event is no
@@ -965,7 +979,7 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 		 */
 		if ((kn->kn_flags & EV_ONESHOT) == 0 &&
 		    filter_event(kn, 0) == 0) {
-			kn->kn_status &= ~KN_ACTIVE;
+			kn->kn_status &= ~(KN_QUEUED | KN_ACTIVE);
 			continue;
 		}
 
@@ -977,15 +991,15 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 		 * Post-event action on the note
 		 */
 		if (kn->kn_flags & EV_ONESHOT) {
+			kn->kn_status &= ~KN_QUEUED;
 			knote_detach_and_drop(kn);
 		} else if (kn->kn_flags & EV_CLEAR) {
 			kn->kn_data = 0;
 			kn->kn_fflags = 0;
-			kn->kn_status &= ~KN_ACTIVE;
+			kn->kn_status &= ~(KN_QUEUED | KN_ACTIVE);
 		} else {
 			TAILQ_INSERT_TAIL(&kq->kq_knpend, kn, kn_tqe);
 			kq->kq_count++;
-			kn->kn_status |= KN_QUEUED;
 		}
 	}
 	TAILQ_REMOVE(&kq->kq_knpend, &local_marker, kn_tqe);
@@ -1069,13 +1083,10 @@ kqueue_close(struct file *fp)
 {
 	struct kqueue *kq = (struct kqueue *)fp->f_data;
 
-	lwkt_gettoken(&kq_token);
-
 	kqueue_terminate(kq);
 
 	fp->f_data = NULL;
 	funsetown(kq->kq_sigio);
-	lwkt_reltoken(&kq_token);
 
 	kfree(kq, M_KQUEUE);
 	return (0);
@@ -1189,7 +1200,9 @@ knote(struct klist *list, long hint)
 void
 knote_insert(struct klist *klist, struct knote *kn)
 {
+	lwkt_gettoken(&kq_token);
 	SLIST_INSERT_HEAD(klist, kn, kn_next);
+	lwkt_reltoken(&kq_token);
 }
 
 /*
@@ -1200,7 +1213,9 @@ knote_insert(struct klist *klist, struct knote *kn)
 void
 knote_remove(struct klist *klist, struct knote *kn)
 {
+	lwkt_gettoken(&kq_token);
 	SLIST_REMOVE(klist, kn, knote, kn_next);
+	lwkt_reltoken(&kq_token);
 }
 
 /*
