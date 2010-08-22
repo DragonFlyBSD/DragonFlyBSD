@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/usr/pkg/bin/bash
 
-CRYPTSETUP=../src/cryptsetup
+CRYPTSETUP=/sbin/cryptsetup
 
-LOOPDEV=/dev/loop5
+LOOPDEV=/dev/vn1
 DEV_NAME=dummy
 DEV_NAME2=dummy2
 ORIG_IMG=luks-test-orig
@@ -21,14 +21,16 @@ KEY_MATERIAL1_EXT="S69632-133632"
 
 function remove_mapping()
 {
-	[ -b /dev/mapper/$DEV_NAME2 ] && dmsetup remove $DEV_NAME2
-	[ -b /dev/mapper/$DEV_NAME ] && dmsetup remove $DEV_NAME
-	losetup -d $LOOPDEV >/dev/null 2>&1
+	[ -e /dev/mapper/$DEV_NAME2 ] && dmsetup remove $DEV_NAME2
+	[ -e /dev/mapper/$DEV_NAME ] && dmsetup remove $DEV_NAME
+	vnconfig -u $LOOPDEV >/dev/null 2>&1
+#	losetup -d $LOOPDEV >/dev/null 2>&1
 	rm -f $ORIG_IMG $IMG $IMG1 $KEY1 >/dev/null 2>&1
 }
 
 function fail()
 {
+	echo "last ret: $?"
 	remove_mapping
 	echo "FAILED"
 	exit 2
@@ -41,7 +43,7 @@ function prepare()
 		exit 0
 	fi
 
-	[ -b /dev/mapper/$DEV_NAME ] && dmsetup remove $DEV_NAME
+	[ -e /dev/mapper/$DEV_NAME ] && dmsetup remove $DEV_NAME
 
 	if [ ! -e $KEY1 ]; then
 		dd if=/dev/urandom of=$KEY1 count=1 bs=32 >/dev/null 2>&1
@@ -49,24 +51,28 @@ function prepare()
 
 	if [ ! -e $IMG ]; then
 		bzip2 -cd compatimage.img.bz2 > $IMG
-		losetup -d $LOOPDEV >/dev/null 2>&1
-		losetup $LOOPDEV $IMG
+		vnconfig -u $LOOPDEV >/dev/null 2>&1
+		vnconfig -S labels -T $LOOPDEV $IMG
+#		losetup -d $LOOPDEV >/dev/null 2>&1
+#		losetup $LOOPDEV $IMG
 	fi
 
 	cp $IMG $ORIG_IMG
 
-	[ -n "$1" ] && echo "CASE: $1"
+	echo "CASE: $1"
 }
 
 function check()
 {
+	sync
+	sync
 	sync
 	./fileDiffer.py $IMG $ORIG_IMG $1|| fail
 }
 
 function check_exists()
 {
-	[ -b /dev/mapper/$DEV_NAME ] || fail
+	[ -e /dev/mapper/$DEV_NAME ] || fail
 	check $1
 }
 
