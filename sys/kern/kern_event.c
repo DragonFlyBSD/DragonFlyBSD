@@ -941,9 +941,16 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 		 * WARNING!  We must leave KN_QUEUED set to prevent the
 		 *	     event from being KNOTE()d again while we
 		 *	     potentially block in the filter function.
+		 *
+		 *	     This protects the knote from everything except
+		 *	     getting dropped.
+		 *
+		 * WARNING!  KN_PROCESSING is meant to handle any cases
+		 *	     that leaving KN_QUEUED set does not.
 		 */
 		TAILQ_REMOVE(&kq->kq_knpend, kn, kn_tqe);
 		kq->kq_count--;
+		kn->kn_status |= KN_PROCESSING;
 
 		/*
 		 * Even though close/dup2 will clean out pending knotes this
@@ -958,7 +965,8 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 		 */
 		if ((kn->kn_fop->f_flags & FILTEROP_ISFD) &&
 		    checkfdclosed(kq->kq_fdp, kn->kn_kevent.ident, kn->kn_fp)) {
-			kn->kn_status &= ~(KN_QUEUED | KN_ACTIVE);
+			kn->kn_status &= ~(KN_QUEUED | KN_ACTIVE |
+					   KN_PROCESSING);
 			continue;
 		}
 
@@ -968,7 +976,7 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 		 * immediately triggered.
 		 */
 		if (kn->kn_status & KN_DISABLED) {
-			kn->kn_status &= ~KN_QUEUED;
+			kn->kn_status &= ~(KN_QUEUED | KN_PROCESSING);
 			continue;
 		}
 
@@ -979,7 +987,8 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 		 */
 		if ((kn->kn_flags & EV_ONESHOT) == 0 &&
 		    filter_event(kn, 0) == 0) {
-			kn->kn_status &= ~(KN_QUEUED | KN_ACTIVE);
+			kn->kn_status &= ~(KN_QUEUED | KN_ACTIVE |
+					   KN_PROCESSING);
 			continue;
 		}
 
@@ -991,15 +1000,17 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 		 * Post-event action on the note
 		 */
 		if (kn->kn_flags & EV_ONESHOT) {
-			kn->kn_status &= ~KN_QUEUED;
+			kn->kn_status &= ~(KN_QUEUED | KN_PROCESSING);
 			knote_detach_and_drop(kn);
 		} else if (kn->kn_flags & EV_CLEAR) {
 			kn->kn_data = 0;
 			kn->kn_fflags = 0;
-			kn->kn_status &= ~(KN_QUEUED | KN_ACTIVE);
+			kn->kn_status &= ~(KN_QUEUED | KN_ACTIVE |
+					   KN_PROCESSING);
 		} else {
 			TAILQ_INSERT_TAIL(&kq->kq_knpend, kn, kn_tqe);
 			kq->kq_count++;
+			kn->kn_status &= ~KN_PROCESSING;
 		}
 	}
 	TAILQ_REMOVE(&kq->kq_knpend, &local_marker, kn_tqe);
@@ -1321,6 +1332,7 @@ knote_dequeue(struct knote *kn)
 	struct kqueue *kq = kn->kn_kq;
 
 	KASSERT(kn->kn_status & KN_QUEUED, ("knote not queued"));
+	KKASSERT((kn->kn_status & KN_PROCESSING) == 0);
 
 	TAILQ_REMOVE(&kq->kq_knpend, kn, kn_tqe);
 	kn->kn_status &= ~KN_QUEUED;

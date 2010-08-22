@@ -196,6 +196,7 @@ struct knote {
 #define KN_DETACHED	0x08			/* knote is detached */
 #define KN_CREATING	0x10			/* creation in progress */
 #define KN_DELETING	0x20			/* deletion in progress */
+#define KN_PROCESSING	0x40			/* queued event processing */
 
 #define kn_id		kn_kevent.ident
 #define kn_filter	kn_kevent.filter
