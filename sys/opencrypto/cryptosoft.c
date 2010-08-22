@@ -117,13 +117,6 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 	ivp = iv;
 
 	/*
-	 * xforms that provide a reinit method perform all IV
-	 * handling themselves.
-	 */
-	if (exf->reinit)
-		exf->reinit(sw->sw_kschedule, iv);
-
-	/*
 	 * The semantics are seriously broken because the session key
 	 * storage was never designed for concurrent ops.
 	 */
@@ -141,6 +134,13 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 		spin_unlock_wr(&swcr_spin);
 		explicit_kschedule = 0;
 	}
+
+	/*
+	 * xforms that provide a reinit method perform all IV
+	 * handling themselves.
+	 */
+	if (exf->reinit)
+		exf->reinit(kschedule, iv);
 
 	if (flags & CRYPTO_F_IMBUF) {
 		struct mbuf *m = (struct mbuf *) buf;
@@ -429,7 +429,16 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 		/*
 		 * contiguous buffer
 		 */
-		if (crd->crd_flags & CRD_F_ENCRYPT) {
+		if (exf->reinit) {
+			for(i = crd->crd_skip;
+			    i < crd->crd_skip + crd->crd_len; i += blks) {
+				if (crd->crd_flags & CRD_F_ENCRYPT) {
+					exf->encrypt(kschedule, buf + i);
+				} else {
+					exf->decrypt(kschedule, buf + i);
+				}
+			}
+		} else if (crd->crd_flags & CRD_F_ENCRYPT) {
 			for (i = crd->crd_skip;
 			    i < crd->crd_skip + crd->crd_len; i += blks) {
 				/* XOR with the IV/previous block, as appropriate. */
