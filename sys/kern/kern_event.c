@@ -84,7 +84,6 @@ static int 	kqueue_stat(struct file *fp, struct stat *st,
 static int 	kqueue_close(struct file *fp);
 static void	kqueue_wakeup(struct kqueue *kq);
 static int	filter_attach(struct knote *kn);
-static void	filter_detach(struct knote *kn);
 static int	filter_event(struct knote *kn, long hint);
 
 /*
@@ -102,6 +101,7 @@ static struct fileops kqueueops = {
 
 static void 	knote_attach(struct knote *kn);
 static void 	knote_drop(struct knote *kn);
+static void	knote_detach_and_drop(struct knote *kn);
 static void 	knote_enqueue(struct knote *kn);
 static void 	knote_dequeue(struct knote *kn);
 static void 	knote_init(void);
@@ -422,10 +422,8 @@ kqueue_terminate(struct kqueue *kq)
 {
 	struct knote *kn;
 
-	while ((kn = TAILQ_FIRST(&kq->kq_knlist)) != NULL) {
-		filter_detach(kn);
-		knote_drop(kn);
-	}
+	while ((kn = TAILQ_FIRST(&kq->kq_knlist)) != NULL)
+		knote_detach_and_drop(kn);
 
 	if (kq->kq_knhash) {
 		kfree(kq->kq_knhash, M_KQUEUE);
@@ -798,9 +796,27 @@ kqueue_register(struct kqueue *kq, struct kevent *kev)
 			kev->data = 0;
 			kn->kn_kevent = *kev;
 
+			/*
+			 * Interlock against creation/deletion races due
+			 * to f_attach() blocking.  knote_attach() will set
+			 * KN_CREATING.
+			 */
 			knote_attach(kn);
 			if ((error = filter_attach(kn)) != 0) {
+				kn->kn_status |= KN_DELETING;
 				knote_drop(kn);
+				goto done;
+			}
+			kn->kn_status &= ~KN_CREATING;
+
+			/*
+			 * Interlock against close races which remove our
+			 * knotes.  We do not want to end up with a knote
+			 * on a closed descriptor.
+			 */
+			if ((fops->f_flags & FILTEROP_ISFD) &&
+			    (error = checkfdclosed(fdp, kev->ident, kn->kn_fp)) != 0) {
+				knote_detach_and_drop(kn);
 				goto done;
 			}
 		} else {
@@ -816,10 +832,8 @@ kqueue_register(struct kqueue *kq, struct kevent *kev)
 
 		if (filter_event(kn, 0))
 			KNOTE_ACTIVATE(kn);
-
 	} else if (kev->flags & EV_DELETE) {
-		filter_detach(kn);
-		knote_drop(kn);
+		knote_detach_and_drop(kn);
 		goto done;
 	}
 
@@ -917,15 +931,44 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 
 		TAILQ_REMOVE(&kq->kq_knpend, kn, kn_tqe);
 		kq->kq_count--;
-		if (kn->kn_status & KN_DISABLED) {
-			kn->kn_status &= ~KN_QUEUED;
+		kn->kn_status &= ~KN_QUEUED;
+
+		/*
+		 * Even though close/dup2 will clean out pending knotes this
+		 * code is MPSAFE and it is possible to race a close inbetween
+		 * the removal of its descriptor and the clearing out of the
+		 * knote(s).
+		 *
+		 * In this case we must ensure that the knote is not queued
+		 * to knpend or we risk an infinite kernel loop calling
+		 * kscan, because the select/poll code will not be able to
+		 * delete the event.
+		 */
+		if ((kn->kn_fop->f_flags & FILTEROP_ISFD) &&
+		    checkfdclosed(kq->kq_fdp, kn->kn_kevent.ident, kn->kn_fp)) {
+			kn->kn_status &= ~KN_ACTIVE;
 			continue;
 		}
+
+		/*
+		 * If disabled we ensure the event is not queued but leave
+		 * its active bit set.  On re-enablement the event may be
+		 * immediately triggered.
+		 */
+		if (kn->kn_status & KN_DISABLED)
+			continue;
+
+		/*
+		 * If not running in one-shot mode and the event is no
+		 * longer present we ensure it is removed from the queue and
+		 * ignore it.
+		 */
 		if ((kn->kn_flags & EV_ONESHOT) == 0 &&
 		    filter_event(kn, 0) == 0) {
-			kn->kn_status &= ~(KN_QUEUED | KN_ACTIVE);
+			kn->kn_status &= ~KN_ACTIVE;
 			continue;
 		}
+
 		*kevp++ = kn->kn_kevent;
 		++total;
 		--count;
@@ -934,16 +977,15 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 		 * Post-event action on the note
 		 */
 		if (kn->kn_flags & EV_ONESHOT) {
-			kn->kn_status &= ~KN_QUEUED;
-			filter_detach(kn);
-			knote_drop(kn);
+			knote_detach_and_drop(kn);
 		} else if (kn->kn_flags & EV_CLEAR) {
 			kn->kn_data = 0;
 			kn->kn_fflags = 0;
-			kn->kn_status &= ~(KN_QUEUED | KN_ACTIVE);
+			kn->kn_status &= ~KN_ACTIVE;
 		} else {
 			TAILQ_INSERT_TAIL(&kq->kq_knpend, kn, kn_tqe);
 			kq->kq_count++;
+			kn->kn_status |= KN_QUEUED;
 		}
 	}
 	TAILQ_REMOVE(&kq->kq_knpend, &local_marker, kn_tqe);
@@ -1070,29 +1112,47 @@ filter_attach(struct knote *kn)
 }
 
 /*
+ * Detach the knote and drop it, destroying the knote.
+ *
  * Calls filterops f_detach function, acquiring mplock if filter is not
  * marked as FILTEROP_MPSAFE.
+ *
+ * This can race due to the MP lock and/or locks acquired by f_detach,
+ * so we interlock with KN_DELETING.  It is also possible to race
+ * a create for the same reason if userland tries to delete the knote
+ * before the create is complete.
  */
 static void
-filter_detach(struct knote *kn)
+knote_detach_and_drop(struct knote *kn)
 {
-	if (!(kn->kn_fop->f_flags & FILTEROP_MPSAFE)) {
+	if (kn->kn_status & (KN_CREATING | KN_DELETING))
+		return;
+	kn->kn_status |= KN_DELETING;
+
+	if (kn->kn_fop->f_flags & FILTEROP_MPSAFE) {
+		kn->kn_fop->f_detach(kn);
+	} else {
 		get_mplock();
 		kn->kn_fop->f_detach(kn);
 		rel_mplock();
-	} else {
-		kn->kn_fop->f_detach(kn);
 	}
+	knote_drop(kn);
 }
 
 /*
  * Calls filterops f_event function, acquiring mplock if filter is not
  * marked as FILTEROP_MPSAFE.
+ *
+ * If the knote is in the middle of being created or deleted we cannot
+ * safely call the filter op.
  */
 static int
 filter_event(struct knote *kn, long hint)
 {
 	int ret;
+
+	if (kn->kn_status & (KN_CREATING | KN_DELETING))
+		return(0);
 
 	if (!(kn->kn_fop->f_flags & FILTEROP_MPSAFE)) {
 		get_mplock();
@@ -1114,9 +1174,10 @@ knote(struct klist *list, long hint)
 	struct knote *kn;
 
 	lwkt_gettoken(&kq_token);
-	SLIST_FOREACH(kn, list, kn_next)
+	SLIST_FOREACH(kn, list, kn_next) {
 		if (filter_event(kn, hint))
 			KNOTE_ACTIVATE(kn);
+	}
 	lwkt_reltoken(&kq_token);
 }
 
@@ -1151,10 +1212,8 @@ knote_empty(struct klist *list)
 	struct knote *kn;
 
 	lwkt_gettoken(&kq_token);
-	while ((kn = SLIST_FIRST(list)) != NULL) {
-		filter_detach(kn);
-		knote_drop(kn);
-	}
+	while ((kn = SLIST_FIRST(list)) != NULL)
+		knote_detach_and_drop(kn);
 	lwkt_reltoken(&kq_token);
 }
 
@@ -1170,8 +1229,7 @@ knote_fdclose(struct file *fp, struct filedesc *fdp, int fd)
 restart:
 	SLIST_FOREACH(kn, &fp->f_klist, kn_link) {
 		if (kn->kn_kq->kq_fdp == fdp && kn->kn_id == fd) {
-			filter_detach(kn);
-			knote_drop(kn);
+			knote_detach_and_drop(kn);
 			goto restart;
 		}
 	}
@@ -1195,7 +1253,7 @@ knote_attach(struct knote *kn)
 	}
 	SLIST_INSERT_HEAD(list, kn, kn_link);
 	TAILQ_INSERT_HEAD(&kq->kq_knlist, kn, kn_kqlink);
-	kn->kn_status = 0;
+	kn->kn_status = KN_CREATING;
 }
 
 static void

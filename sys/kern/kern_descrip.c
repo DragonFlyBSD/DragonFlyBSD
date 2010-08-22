@@ -110,7 +110,6 @@
 static void fsetfd_locked(struct filedesc *fdp, struct file *fp, int fd);
 static void fdreserve_locked (struct filedesc *fdp, int fd0, int incr);
 static struct file *funsetfd_locked (struct filedesc *fdp, int fd);
-static int checkfpclosed(struct filedesc *fdp, int fd, struct file *fp);
 static void ffree(struct file *fp);
 
 static MALLOC_DEFINE(M_FILEDESC, "file desc", "Open file descriptor table");
@@ -354,7 +353,7 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 		 * we were blocked getting the lock.  If this occurs the
 		 * close might not have caught the lock.
 		 */
-		if (checkfpclosed(p->p_fd, fd, fp)) {
+		if (checkfdclosed(p->p_fd, fd, fp)) {
 			dat->fc_flock.l_whence = SEEK_SET;
 			dat->fc_flock.l_start = 0;
 			dat->fc_flock.l_len = 0;
@@ -1494,16 +1493,19 @@ done:
 }
 
 /*
+ * Check for races against a file descriptor by determining that the
+ * file pointer is still associated with the specified file descriptor,
+ * and a close is not currently in progress.
+ *
  * MPSAFE
  */
-static
 int
-checkfpclosed(struct filedesc *fdp, int fd, struct file *fp)
+checkfdclosed(struct filedesc *fdp, int fd, struct file *fp)
 {
 	int error;
 
 	spin_lock_rd(&fdp->fd_spin);
-	if ((unsigned) fd >= fdp->fd_nfiles || fp != fdp->fd_files[fd].fp)
+	if ((unsigned)fd >= fdp->fd_nfiles || fp != fdp->fd_files[fd].fp)
 		error = EBADF;
 	else
 		error = 0;

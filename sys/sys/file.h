@@ -147,6 +147,7 @@ MALLOC_DECLARE(M_FILE);
 
 extern void fhold(struct file *fp);
 extern int fdrop (struct file *fp);
+extern int checkfdclosed(struct filedesc *fdp, int fd, struct file *fp);
 extern int fp_open(const char *path, int flags, int mode, struct file **fpp);
 extern int fp_vpopen(struct vnode *vp, int flags, struct file **fpp);
 extern int fp_pread(struct file *fp, void *buf, size_t nbytes, off_t offset, ssize_t *res, enum uio_seg);
