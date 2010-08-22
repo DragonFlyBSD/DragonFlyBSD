@@ -166,17 +166,17 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 				if (exf->reinit) {
 					if (crd->crd_flags & CRD_F_ENCRYPT) {
 						exf->encrypt(kschedule,
-						    blk);
+						    blk, iv);
 					} else {
 						exf->decrypt(kschedule,
-						    blk);
+						    blk, iv);
 					}
 				} else if (crd->crd_flags & CRD_F_ENCRYPT) {
 					/* XOR with previous block */
 					for (j = 0; j < blks; j++)
 						blk[j] ^= ivp[j];
 
-					exf->encrypt(kschedule, blk);
+					exf->encrypt(kschedule, blk, iv);
 
 					/*
 					 * Keep encrypted block for XOR'ing
@@ -194,7 +194,7 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 					else
 						bcopy(blk, iv, blks);
 
-					exf->decrypt(kschedule, blk);
+					exf->decrypt(kschedule, blk, iv);
 
 					/* XOR with previous block */
 					for (j = 0; j < blks; j++)
@@ -248,17 +248,17 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 				if (exf->reinit) {
 					if (crd->crd_flags & CRD_F_ENCRYPT) {
 						exf->encrypt(kschedule,
-						    idat);
+						    idat, iv);
 					} else {
 						exf->decrypt(kschedule,
-						    idat);
+						    idat, iv);
 					}
 				} else if (crd->crd_flags & CRD_F_ENCRYPT) {
 					/* XOR with previous block/IV */
 					for (j = 0; j < blks; j++)
 						idat[j] ^= ivp[j];
 
-					exf->encrypt(kschedule, idat);
+					exf->encrypt(kschedule, idat, iv);
 					ivp = idat;
 				} else {	/* decrypt */
 					/*
@@ -270,7 +270,7 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 					else
 						bcopy(idat, iv, blks);
 
-					exf->decrypt(kschedule, idat);
+					exf->decrypt(kschedule, idat, iv);
 
 					/* XOR with previous block/IV */
 					for (j = 0; j < blks; j++)
@@ -313,17 +313,17 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 				if (exf->reinit) {
 					if (crd->crd_flags & CRD_F_ENCRYPT) {
 						exf->encrypt(kschedule,
-						    blk);
+						    blk, iv);
 					} else {
 						exf->decrypt(kschedule,
-						    blk);
+						    blk, iv);
 					}
 				} else if (crd->crd_flags & CRD_F_ENCRYPT) {
 					/* XOR with previous block */
 					for (j = 0; j < blks; j++)
 						blk[j] ^= ivp[j];
 
-					exf->encrypt(kschedule, blk);
+					exf->encrypt(kschedule, blk, iv);
 
 					/*
 					 * Keep encrypted block for XOR'ing
@@ -341,7 +341,7 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 					else
 						bcopy(blk, iv, blks);
 
-					exf->decrypt(kschedule, blk);
+					exf->decrypt(kschedule, blk, iv);
 
 					/* XOR with previous block */
 					for (j = 0; j < blks; j++)
@@ -381,17 +381,17 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 				if (exf->reinit) {
 					if (crd->crd_flags & CRD_F_ENCRYPT) {
 						exf->encrypt(kschedule,
-						    idat);
+						    idat, iv);
 					} else {
 						exf->decrypt(kschedule,
-						    idat);
+						    idat, iv);
 					}
 				} else if (crd->crd_flags & CRD_F_ENCRYPT) {
 					/* XOR with previous block/IV */
 					for (j = 0; j < blks; j++)
 						idat[j] ^= ivp[j];
 
-					exf->encrypt(kschedule, idat);
+					exf->encrypt(kschedule, idat, iv);
 					ivp = idat;
 				} else {	/* decrypt */
 					/*
@@ -403,7 +403,7 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 					else
 						bcopy(idat, iv, blks);
 
-					exf->decrypt(kschedule, idat);
+					exf->decrypt(kschedule, idat, iv);
 
 					/* XOR with previous block/IV */
 					for (j = 0; j < blks; j++)
@@ -433,9 +433,9 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 			for(i = crd->crd_skip;
 			    i < crd->crd_skip + crd->crd_len; i += blks) {
 				if (crd->crd_flags & CRD_F_ENCRYPT) {
-					exf->encrypt(kschedule, buf + i);
+					exf->encrypt(kschedule, buf + i, iv);
 				} else {
-					exf->decrypt(kschedule, buf + i);
+					exf->decrypt(kschedule, buf + i, iv);
 				}
 			}
 		} else if (crd->crd_flags & CRD_F_ENCRYPT) {
@@ -448,7 +448,7 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 				else
 					for (k = 0; k < blks; k++)
 						buf[i + k] ^= buf[i + k - blks];
-				exf->encrypt(kschedule, buf + i);
+				exf->encrypt(kschedule, buf + i, iv);
 			}
 		} else {		/* Decrypt */
 			/*
@@ -457,7 +457,7 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 			 */
 			for (i = crd->crd_skip + crd->crd_len - blks;
 			    i >= crd->crd_skip; i -= blks) {
-				exf->decrypt(kschedule, buf + i);
+				exf->decrypt(kschedule, buf + i, iv);
 
 				/* XOR with the IV/previous block, as appropriate */
 				if (i == crd->crd_skip)

@@ -62,8 +62,8 @@
 #include <opencrypto/cryptodev.h>
 #include <opencrypto/xform.h>
 
-static void null_encrypt(caddr_t, u_int8_t *);
-static void null_decrypt(caddr_t, u_int8_t *);
+static void null_encrypt(caddr_t, u_int8_t *, u_int8_t *);
+static void null_decrypt(caddr_t, u_int8_t *, u_int8_t *);
 static int null_setkey(u_int8_t **, u_int8_t *, int);
 static void null_zerokey(u_int8_t **);
 
@@ -76,22 +76,22 @@ static	int rijndael128_setkey(u_int8_t **, u_int8_t *, int);
 static	int aes_xts_setkey(u_int8_t **, u_int8_t *, int);
 static	int aes_ctr_setkey(u_int8_t **, u_int8_t *, int);
 static	int cml_setkey(u_int8_t **, u_int8_t *, int);
-static	void des1_encrypt(caddr_t, u_int8_t *);
-static	void des3_encrypt(caddr_t, u_int8_t *);
-static	void blf_encrypt(caddr_t, u_int8_t *);
-static	void cast5_encrypt(caddr_t, u_int8_t *);
-static	void skipjack_encrypt(caddr_t, u_int8_t *);
-static	void rijndael128_encrypt(caddr_t, u_int8_t *);
-static	void aes_xts_encrypt(caddr_t, u_int8_t *);
-static	void cml_encrypt(caddr_t, u_int8_t *);
-static	void des1_decrypt(caddr_t, u_int8_t *);
-static	void des3_decrypt(caddr_t, u_int8_t *);
-static	void blf_decrypt(caddr_t, u_int8_t *);
-static	void cast5_decrypt(caddr_t, u_int8_t *);
-static	void skipjack_decrypt(caddr_t, u_int8_t *);
-static	void rijndael128_decrypt(caddr_t, u_int8_t *);
-static	void aes_xts_decrypt(caddr_t, u_int8_t *);
-static	void cml_decrypt(caddr_t, u_int8_t *);
+static	void des1_encrypt(caddr_t, u_int8_t *, u_int8_t *);
+static	void des3_encrypt(caddr_t, u_int8_t *, u_int8_t *);
+static	void blf_encrypt(caddr_t, u_int8_t *, u_int8_t *);
+static	void cast5_encrypt(caddr_t, u_int8_t *, u_int8_t *);
+static	void skipjack_encrypt(caddr_t, u_int8_t *, u_int8_t *);
+static	void rijndael128_encrypt(caddr_t, u_int8_t *, u_int8_t *);
+static	void aes_xts_encrypt(caddr_t, u_int8_t *, u_int8_t *);
+static	void cml_encrypt(caddr_t, u_int8_t *, u_int8_t *);
+static	void des1_decrypt(caddr_t, u_int8_t *, u_int8_t *);
+static	void des3_decrypt(caddr_t, u_int8_t *, u_int8_t *);
+static	void blf_decrypt(caddr_t, u_int8_t *, u_int8_t *);
+static	void cast5_decrypt(caddr_t, u_int8_t *, u_int8_t *);
+static	void skipjack_decrypt(caddr_t, u_int8_t *, u_int8_t *);
+static	void rijndael128_decrypt(caddr_t, u_int8_t *, u_int8_t *);
+static	void aes_xts_decrypt(caddr_t, u_int8_t *, u_int8_t *);
+static	void cml_decrypt(caddr_t, u_int8_t *, u_int8_t *);
 static	void des1_zerokey(u_int8_t **);
 static	void des3_zerokey(u_int8_t **);
 static	void blf_zerokey(u_int8_t **);
@@ -102,7 +102,7 @@ static	void aes_xts_zerokey(u_int8_t **);
 static	void aes_ctr_zerokey(u_int8_t **);
 static	void cml_zerokey(u_int8_t **);
 
-static	void aes_ctr_crypt(caddr_t, u_int8_t *);
+static	void aes_ctr_crypt(caddr_t, u_int8_t *, u_int8_t *);
 
 static	void aes_ctr_reinit(caddr_t, u_int8_t *);
 static	void aes_xts_reinit(caddr_t, u_int8_t *);
@@ -124,7 +124,7 @@ static	u_int32_t deflate_decompress(u_int8_t *, u_int32_t, u_int8_t **);
 
 /* Helper */
 struct aes_xts_ctx;
-static void aes_xts_crypt(struct aes_xts_ctx *, u_int8_t *, u_int);
+static void aes_xts_crypt(struct aes_xts_ctx *, u_int8_t *, u_int8_t *, u_int);
 
 MALLOC_DEFINE(M_XDATA, "xform", "xform data buffers");
 
@@ -312,11 +312,11 @@ struct comp_algo comp_algo_deflate = {
  * Encryption wrapper routines.
  */
 static void
-null_encrypt(caddr_t key, u_int8_t *blk)
+null_encrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
 }
 static void
-null_decrypt(caddr_t key, u_int8_t *blk)
+null_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
 }
 static int
@@ -332,7 +332,7 @@ null_zerokey(u_int8_t **sched)
 }
 
 static void
-des1_encrypt(caddr_t key, u_int8_t *blk)
+des1_encrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
 	des_cblock *cb = (des_cblock *) blk;
 	des_key_schedule *p = (des_key_schedule *) key;
@@ -341,7 +341,7 @@ des1_encrypt(caddr_t key, u_int8_t *blk)
 }
 
 static void
-des1_decrypt(caddr_t key, u_int8_t *blk)
+des1_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
 	des_cblock *cb = (des_cblock *) blk;
 	des_key_schedule *p = (des_key_schedule *) key;
@@ -375,7 +375,7 @@ des1_zerokey(u_int8_t **sched)
 }
 
 static void
-des3_encrypt(caddr_t key, u_int8_t *blk)
+des3_encrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
 	des_cblock *cb = (des_cblock *) blk;
 	des_key_schedule *p = (des_key_schedule *) key;
@@ -384,7 +384,7 @@ des3_encrypt(caddr_t key, u_int8_t *blk)
 }
 
 static void
-des3_decrypt(caddr_t key, u_int8_t *blk)
+des3_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
 	des_cblock *cb = (des_cblock *) blk;
 	des_key_schedule *p = (des_key_schedule *) key;
@@ -420,7 +420,7 @@ des3_zerokey(u_int8_t **sched)
 }
 
 static void
-blf_encrypt(caddr_t key, u_int8_t *blk)
+blf_encrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
 	BF_LONG t[2];
 
@@ -435,7 +435,7 @@ blf_encrypt(caddr_t key, u_int8_t *blk)
 }
 
 static void
-blf_decrypt(caddr_t key, u_int8_t *blk)
+blf_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
 	BF_LONG t[2];
 
@@ -472,13 +472,13 @@ blf_zerokey(u_int8_t **sched)
 }
 
 static void
-cast5_encrypt(caddr_t key, u_int8_t *blk)
+cast5_encrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
 	cast_encrypt((cast_key *) key, blk, blk);
 }
 
 static void
-cast5_decrypt(caddr_t key, u_int8_t *blk)
+cast5_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
 	cast_decrypt((cast_key *) key, blk, blk);
 }
@@ -506,13 +506,13 @@ cast5_zerokey(u_int8_t **sched)
 }
 
 static void
-skipjack_encrypt(caddr_t key, u_int8_t *blk)
+skipjack_encrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
 	skipjack_forwards(blk, blk, (u_int8_t **) key);
 }
 
 static void
-skipjack_decrypt(caddr_t key, u_int8_t *blk)
+skipjack_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
 	skipjack_backwards(blk, blk, (u_int8_t **) key);
 }
@@ -550,13 +550,13 @@ skipjack_zerokey(u_int8_t **sched)
 }
 
 static void
-rijndael128_encrypt(caddr_t key, u_int8_t *blk)
+rijndael128_encrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
 	rijndael_encrypt((rijndael_ctx *) key, (u_char *) blk, (u_char *) blk);
 }
 
 static void
-rijndael128_decrypt(caddr_t key, u_int8_t *blk)
+rijndael128_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
 	rijndael_decrypt(((rijndael_ctx *) key), (u_char *) blk,
 	    (u_char *) blk);
@@ -593,39 +593,46 @@ rijndael128_zerokey(u_int8_t **sched)
 struct aes_xts_ctx {
 	rijndael_ctx key1;
 	rijndael_ctx key2;
-	u_int8_t tweak[AES_XTS_BLOCK_LEN];
 };
 
 void
 aes_xts_reinit(caddr_t key, u_int8_t *iv)
 {
 	struct aes_xts_ctx *ctx = (struct aes_xts_ctx *)key;
+#if 0
 	u_int64_t blocknum;
 	u_int i;
+#endif
 
+#if 0
+	/* 
+	 * XXX: I've no idea why OpenBSD chose to make this dance of the moon
+	 * around just copying the IV...
+	 */
 	/*
-	* Prepare tweak as E_k2(IV). IV is specified as LE representation
-	* of a 64-bit block number which we allow to be passed in directly.
-	*/
+	 * Prepare tweak as E_k2(IV). IV is specified as LE representation
+	 * of a 64-bit block number which we allow to be passed in directly.
+	 */
 	bcopy(iv, &blocknum, AES_XTS_IV_LEN);
 	for (i = 0; i < AES_XTS_IV_LEN; i++) {
 		ctx->tweak[i] = blocknum & 0xff;
 		blocknum >>= 8;
 	}
+#endif
 	/* Last 64 bits of IV are always zero */
-	bzero(ctx->tweak + AES_XTS_IV_LEN, AES_XTS_IV_LEN);
+	bzero(iv + AES_XTS_IV_LEN, AES_XTS_IV_LEN);
 
-	rijndael_encrypt(&ctx->key2, ctx->tweak, ctx->tweak);
+	rijndael_encrypt(&ctx->key2, iv, iv);
 }
 
 void
-aes_xts_crypt(struct aes_xts_ctx *ctx, u_int8_t *data, u_int do_encrypt)
+aes_xts_crypt(struct aes_xts_ctx *ctx, u_int8_t *data, u_int8_t *iv, u_int do_encrypt)
 {
 	u_int8_t block[AES_XTS_BLOCK_LEN];
 	u_int i, carry_in, carry_out;
 
 	for (i = 0; i < AES_XTS_BLOCK_LEN; i++)
-		block[i] = data[i] ^ ctx->tweak[i];
+		block[i] = data[i] ^ iv[i];
 
 	if (do_encrypt)
 		rijndael_encrypt(&ctx->key1, block, data);
@@ -633,30 +640,30 @@ aes_xts_crypt(struct aes_xts_ctx *ctx, u_int8_t *data, u_int do_encrypt)
 		rijndael_decrypt(&ctx->key1, block, data);
 
 	for (i = 0; i < AES_XTS_BLOCK_LEN; i++)
-		data[i] ^= ctx->tweak[i];
+		data[i] ^= iv[i];
 
 	/* Exponentiate tweak */
 	carry_in = 0;
 	for (i = 0; i < AES_XTS_BLOCK_LEN; i++) {
-		carry_out = ctx->tweak[i] & 0x80;
-		ctx->tweak[i] = (ctx->tweak[i] << 1) | (carry_in ? 1 : 0);
+		carry_out = iv[i] & 0x80;
+		iv[i] = (iv[i] << 1) | (carry_in ? 1 : 0);
 		carry_in = carry_out;
 	}
 	if (carry_in)
-		ctx->tweak[0] ^= AES_XTS_ALPHA;
+		iv[0] ^= AES_XTS_ALPHA;
 	bzero(block, sizeof(block));
 }
 
 void
-aes_xts_encrypt(caddr_t key, u_int8_t *data)
+aes_xts_encrypt(caddr_t key, u_int8_t *data, u_int8_t *iv)
 {
-	aes_xts_crypt((struct aes_xts_ctx *)key, data, 1);
+	aes_xts_crypt((struct aes_xts_ctx *)key, data, iv, 1);
 }
 
 void
-aes_xts_decrypt(caddr_t key, u_int8_t *data)
+aes_xts_decrypt(caddr_t key, u_int8_t *data, u_int8_t *iv)
 {
-	aes_xts_crypt((struct aes_xts_ctx *)key, data, 0);
+	aes_xts_crypt((struct aes_xts_ctx *)key, data, iv, 0);
 }
 
 int
@@ -699,14 +706,15 @@ aes_ctr_reinit(caddr_t key, u_int8_t *iv)
 	struct aes_ctr_ctx *ctx;
 
 	ctx = (struct aes_ctr_ctx *)key;
-	bcopy(iv, ctx->ac_block + AESCTR_NONCESIZE, AESCTR_IV_LEN);
+	bcopy(iv, iv + AESCTR_NONCESIZE, AESCTR_IV_LEN);
+	bcopy(ctx->ac_block, iv, AESCTR_NONCESIZE);
 
 	/* reset counter */
-	bzero(ctx->ac_block + AESCTR_NONCESIZE + AESCTR_IV_LEN, 4);
+	bzero(iv + AESCTR_NONCESIZE + AESCTR_IV_LEN, 4);
 }
 
 void
-aes_ctr_crypt(caddr_t key, u_int8_t *data)
+aes_ctr_crypt(caddr_t key, u_int8_t *data, u_int8_t *iv)
 {
 	struct aes_ctr_ctx *ctx;
 	u_int8_t keystream[AESCTR_BLOCK_LEN];
@@ -716,9 +724,9 @@ aes_ctr_crypt(caddr_t key, u_int8_t *data)
 	/* increment counter */
 	for (i = AESCTR_BLOCK_LEN - 1;
 	i >= AESCTR_NONCESIZE + AESCTR_IV_LEN; i--)
-		if (++ctx->ac_block[i])   /* continue on overflow */
+		if (++iv[i])   /* continue on overflow */
 			break;
-	rijndaelEncrypt(ctx->ac_ek, ctx->ac_nr, ctx->ac_block, keystream);
+	rijndaelEncrypt(ctx->ac_ek, ctx->ac_nr, iv, keystream);
 	for (i = 0; i < AESCTR_BLOCK_LEN; i++)
 		data[i] ^= keystream[i];
 }
@@ -753,13 +761,13 @@ aes_ctr_zerokey(u_int8_t **sched)
 }
 
 static void
-cml_encrypt(caddr_t key, u_int8_t *blk)
+cml_encrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
 	camellia_encrypt((camellia_ctx *) key, (u_char *) blk, (u_char *) blk);
 }
 
 static void
-cml_decrypt(caddr_t key, u_int8_t *blk)
+cml_decrypt(caddr_t key, u_int8_t *blk, u_int8_t *iv)
 {
 	camellia_decrypt(((camellia_ctx *) key), (u_char *) blk,
 	    (u_char *) blk);
