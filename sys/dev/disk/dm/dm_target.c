@@ -314,7 +314,7 @@ dm_target_init(void)
 	r = dm_target_insert(dmt3);
 	
 	dmt5->version[0] = 1;
-	dmt5->version[1] = 0;
+	dmt5->version[1] = 6;
 	dmt5->version[2] = 0;
 	strlcpy(dmt5->name, "crypt", DM_MAX_TYPE_NAME);
 	dmt5->init = &dm_target_crypt_init;

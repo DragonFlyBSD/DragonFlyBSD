@@ -411,7 +411,7 @@ dm_target_crypt_modcmd(modcmd_t cmd, void *arg)
 		dmt = dm_target_alloc("crypt");
 
 		dmt->version[0] = 1;
-		dmt->version[1] = 0;
+		dmt->version[1] = 6;
 		dmt->version[2] = 0;
 		strlcpy(dmt->name, "crypt", DM_MAX_TYPE_NAME);
 		dmt->init = &dm_target_crypt_init;
