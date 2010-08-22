@@ -486,10 +486,14 @@ kvm_getswapinfo_sysctl(kvm_t *kd, struct kvm_swap *swap_ary,
 	size_t bytes = 0;
 	size_t ksize;
 	int ti;
+	int swi;
 	int n;
 	int i;
 	char *xswbuf;
 	struct xswdev *xsw;
+
+	if (swap_max < 1)
+		return(-1);
 
 	if (sysctlbyname("vm.swap_info_array", NULL, &bytes, NULL, 0) < 0)
 		return(-1);
@@ -512,40 +516,62 @@ kvm_getswapinfo_sysctl(kvm_t *kd, struct kvm_swap *swap_ary,
 	/*
 	 * Calculate size of xsw entry returned by kernel (it can be larger
 	 * than the one we have if there is a version mismatch).
-	 *
-	 * Then iterate the list looking for live swap devices.
 	 */
 	ksize = ((struct xswdev *)xswbuf)->xsw_size;
 	n = (int)(bytes / ksize);
 
-	for (i = ti = 0; i < n && ti < swap_max; ++i) {
+	/*
+	 * Calculate the number of live swap devices and calculate
+	 * the swap_ary[] index used for the cumulative result (swi)
+	 */
+	for (i = swi = 0; i < n; ++i) {
+		xsw = (void *)((char *)xswbuf + i * ksize);
+		if ((xsw->xsw_flags & SW_FREED) == 0)
+			continue;
+		++swi;
+	}
+	if (swi > swap_max)
+		swi = swap_max;
+
+	/*
+	 * Accumulate results.  If the provided swap_ary[] is too
+	 * small will only populate up to the available entries,
+	 * but we always populate the cumulative results entry.
+	 */
+	for (i = ti = 0; i < n; ++i) {
 		xsw = (void *)((char *)xswbuf + i * ksize);
 
 		if ((xsw->xsw_flags & SW_FREED) == 0)
 			continue;
 
-		swap_ary[ti].ksw_total = xsw->xsw_nblks;
-		swap_ary[ti].ksw_used = xsw->xsw_used;
-		swap_ary[ti].ksw_flags = xsw->xsw_flags;
+		swap_ary[swi].ksw_total += xsw->xsw_nblks;
+		swap_ary[swi].ksw_used += xsw->xsw_used;
 
-		if (xsw->xsw_dev == NODEV) {
-			snprintf(
-			    swap_ary[ti].ksw_devname,
-			    sizeof(swap_ary[ti].ksw_devname),
-			    "%s",
-			    "[NFS swap]"
-			);
-		} else {
-			snprintf(
-			    swap_ary[ti].ksw_devname,
-			    sizeof(swap_ary[ti].ksw_devname),
-			    "%s%s",
-			    ((flags & SWIF_DEV_PREFIX) ? _PATH_DEV : ""),
-			    devname(xsw->xsw_dev, S_IFCHR)
-			);
+		if (ti < swap_max) {
+			swap_ary[ti].ksw_total = xsw->xsw_nblks;
+			swap_ary[ti].ksw_used = xsw->xsw_used;
+			swap_ary[ti].ksw_flags = xsw->xsw_flags;
+
+			if (xsw->xsw_dev == NODEV) {
+				snprintf(
+				    swap_ary[ti].ksw_devname,
+				    sizeof(swap_ary[ti].ksw_devname),
+				    "%s",
+				    "[NFS swap]"
+				);
+			} else {
+				snprintf(
+				    swap_ary[ti].ksw_devname,
+				    sizeof(swap_ary[ti].ksw_devname),
+				    "%s%s",
+				    ((flags & SWIF_DEV_PREFIX) ? _PATH_DEV : ""),
+				    devname(xsw->xsw_dev, S_IFCHR)
+				);
+			}
+			++ti;
 		}
-		++ti;
 	}
+
 	free(xswbuf);
-	return(ti);
+	return(swi);
 }
