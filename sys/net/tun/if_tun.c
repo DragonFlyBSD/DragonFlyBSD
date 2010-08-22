@@ -398,7 +398,9 @@ tunoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 		if (tp->tun_flags & TUN_ASYNC && tp->tun_sigio)
 			pgsigio(tp->tun_sigio, SIGIO, 0);
 		rel_mplock();
+		ifnet_deserialize_all(ifp);
 		KNOTE(&tp->tun_rkq.ki_note, 0);
+		ifnet_serialize_all(ifp);
 	}
 	return (error);
 }
@@ -790,6 +792,8 @@ tunstart(struct ifnet *ifp)
 		}
 		if (tp->tun_flags & TUN_ASYNC && tp->tun_sigio)
 			pgsigio(tp->tun_sigio, SIGIO, 0);
+		ifnet_deserialize_tx(ifp);
 		KNOTE(&tp->tun_rkq.ki_note, 0);
+		ifnet_serialize_tx(ifp);
 	}
 }
