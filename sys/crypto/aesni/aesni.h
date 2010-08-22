@@ -44,7 +44,7 @@
 #if defined(__i386__)
 #include <machine/npx.h>
 #elif defined(__amd64__)
-#include <machine/fpu.h>
+#include <machine/npx.h>
 #endif
 
 #define	AES128_ROUNDS	10
