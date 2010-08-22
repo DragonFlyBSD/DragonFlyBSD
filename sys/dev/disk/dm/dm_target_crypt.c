@@ -87,7 +87,7 @@ typedef struct target_crypt_config {
 	
 	u_int64_t	crypto_sid;
 	u_int64_t	block_offset;
-	u_int64_t	iv_offset;
+	int64_t		iv_offset;
 	SHA512_CTX	essivsha512_ctx;
 
 	struct cryptoini	crypto_session;
@@ -146,7 +146,7 @@ essiv_ivgen_ctor(struct target_crypt_config *priv, char *iv_hash, void **p_ivpri
 {
 	struct essiv_ivgen_priv *ivpriv;
 	u_int8_t crypto_keyhash[SHA512_DIGEST_LENGTH];
-	unsigned int klen;
+	unsigned int klen, hashlen;
 	int error;
 
 	klen = (priv->crypto_klen >> 3);
@@ -157,45 +157,35 @@ essiv_ivgen_ctor(struct target_crypt_config *priv, char *iv_hash, void **p_ivpri
 	if (!strcmp(iv_hash, "sha1")) {
 		SHA1_CTX ctx;
 
-		if (klen != SHA1_RESULTLEN)
-			return EINVAL;
-
+		hashlen = SHA1_RESULTLEN;
 		SHA1Init(&ctx);
 		SHA1Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
 		SHA1Final(crypto_keyhash, &ctx);
 	} else if (!strcmp(iv_hash, "sha256")) {
 		SHA256_CTX ctx;
 
-		if (klen != SHA256_DIGEST_LENGTH)
-			return EINVAL;
-
+		hashlen = SHA256_DIGEST_LENGTH;
 		SHA256_Init(&ctx);
 		SHA256_Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
 		SHA256_Final(crypto_keyhash, &ctx);
 	} else if (!strcmp(iv_hash, "sha384")) {
 		SHA384_CTX ctx;
 
-		if (klen != SHA384_DIGEST_LENGTH)
-			return EINVAL;
-
+		hashlen = SHA384_DIGEST_LENGTH;
 		SHA384_Init(&ctx);
 		SHA384_Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
 		SHA384_Final(crypto_keyhash, &ctx);
 	} else if (!strcmp(iv_hash, "sha512")) {
 		SHA512_CTX ctx;
 
-		if (klen != SHA512_DIGEST_LENGTH)
-			return EINVAL;
-
+		hashlen = SHA512_DIGEST_LENGTH;
 		SHA512_Init(&ctx);
 		SHA512_Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
 		SHA512_Final(crypto_keyhash, &ctx);
 	} else if (!strcmp(iv_hash, "md5")) {
 		MD5_CTX ctx;
 
-		if (klen != MD5_DIGEST_LENGTH)
-			return EINVAL;
-
+		hashlen = MD5_DIGEST_LENGTH;
 		MD5Init(&ctx);
 		MD5Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
 		MD5Final(crypto_keyhash, &ctx);
@@ -203,15 +193,16 @@ essiv_ivgen_ctor(struct target_crypt_config *priv, char *iv_hash, void **p_ivpri
 		   !strcmp(iv_hash, "ripemd160")) {
 		RMD160_CTX ctx;
 
-		if (klen != (160/8))
-			return EINVAL;
-
+		hashlen = 160/8;
 		RMD160Init(&ctx);
 		RMD160Update(&ctx, priv->crypto_key, priv->crypto_klen>>3);
 		RMD160Final(crypto_keyhash, &ctx);
 	} else {
 		return EINVAL;
 	}
+
+	/* Convert hashlen to bits */
+	hashlen <<= 3;
 
 	ivpriv = kmalloc(sizeof(struct essiv_ivgen_priv), M_DMCRYPT,
 	    M_WAITOK | M_ZERO);
@@ -221,9 +212,14 @@ essiv_ivgen_ctor(struct target_crypt_config *priv, char *iv_hash, void **p_ivpri
 
 	ivpriv->crypto_session.cri_alg = priv->crypto_alg;
 	ivpriv->crypto_session.cri_key = (u_int8_t *)ivpriv->crypto_keyhash;
-	ivpriv->crypto_session.cri_klen = priv->crypto_klen;
+	ivpriv->crypto_session.cri_klen = hashlen;
 	ivpriv->crypto_session.cri_mlen = 0;
 	ivpriv->crypto_session.cri_next = NULL;
+
+	/*
+	 * XXX: in principle we also need to check if the block size of the
+	 *	cipher is a valid iv size for the block cipher.
+	 */
 
 	error = crypto_newsession(&ivpriv->crypto_sid,
 				  &ivpriv->crypto_session,
@@ -703,12 +699,13 @@ dm_target_crypt_destroy(dm_table_entry_t * table_en)
 	 * Overwrite the private information before freeing memory to
 	 * avoid leaking it.
 	 */
-	dmtc_crypto_clear(priv->status_str, strlen(priv->status_str));
-	kfree(priv->status_str, M_DMCRYPT);
+	if (priv->status_str) {
+		dmtc_crypto_clear(priv->status_str, strlen(priv->status_str));
+		kfree(priv->status_str, M_DMCRYPT);
+		crypto_freesession(priv->crypto_sid);
+	}
 
-	crypto_freesession(priv->crypto_sid);
-
-	if (priv->ivgen->dtor != NULL) {
+	if ((priv->ivgen) && (priv->ivgen->dtor != NULL)) {
 		priv->ivgen->dtor(priv, priv->ivgen_priv);
 	}
 
