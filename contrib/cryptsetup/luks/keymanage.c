@@ -433,6 +433,7 @@ int LUKS_generate_phdr(struct luks_phdr *header,
 	int r;
 	uint32_t ret;
 	char luksMagic[] = LUKS_MAGIC;
+	char *uu;
 	uuid_t partitionUuid;
 	int currentSector;
 	int alignSectors = LUKS_ALIGN_KEYSLOTS / SECTOR_SIZE;
@@ -499,7 +500,13 @@ int LUKS_generate_phdr(struct luks_phdr *header,
 	}
 	if (!uuid)
 		uuid_create(&partitionUuid, &ret);
-	uuid_to_string(&partitionUuid, &header->uuid, &ret);
+	uuid_to_string(&partitionUuid, &uu, &ret);
+	if (uu == NULL) {
+		log_err(ctx, _("Cannot allocate memory in uuid_to_string()\n"));
+		return -1;
+	}
+	memcpy(header->uuid, uu, UUID_STRING_L);
+	free(uu);
 
 	log_dbg("Data offset %d, UUID %s, digest iterations %" PRIu32,
 		header->payloadOffset, header->uuid, header->mkDigestIterations);

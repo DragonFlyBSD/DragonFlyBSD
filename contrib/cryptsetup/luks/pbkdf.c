@@ -266,7 +266,6 @@ int PBKDF2_performance_check(const char *hash, uint64_t *iter)
 	}
 
 	r = pkcs5_pbkdf2(hash, "foo", 3, "bar", 3, ~(0U), 1, &buf, 1);
-	printf("foo4: %d\n", r);
 	*iter = __PBKDF2_performance;
 	__PBKDF2_global_j = 0;
 	__PBKDF2_performance = 0;

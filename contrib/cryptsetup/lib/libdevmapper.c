@@ -391,15 +391,13 @@ static void dm_prepare_uuid(const char *name, const char *type, const char *uuid
 	if (uuid) {
 		uuid_from_string(uuid, &uu, &ret);
 		if (ret != uuid_s_ok) {
-		printf("crap happened in uuid_from_string(%s), err = %d\n", uuid, ret);
+			printf("error in uuid_from_string(%s), err = %d\n", uuid, ret);
 			for (ptr = uuid2, i = 0; i < UUID_LEN; i++) {
 				if (uuid[i] != '-') {
 					*ptr = uuid[i];
 					ptr++;
 				}
 			}
-		} else {
-			printf("went well in uuid_from_string(%s), err = %d\n", uuid, ret);
 		}
 	}
 
