@@ -141,7 +141,7 @@ monitor_add(const char *path)
 	if (elm->fd >= NumFiles) {
 		MaxFiles = (elm->fd + 16) * 3 / 2;
 		Elms = realloc(Elms, MaxFiles * sizeof(elm));
-		bzero(&Elms[NumFiles], (NumFiles - MaxFiles) * sizeof(elm));
+		bzero(&Elms[NumFiles], (MaxFiles - NumFiles) * sizeof(elm));
 		NumFiles = MaxFiles;
 	}
 	Elms[elm->fd] = elm;
