@@ -481,7 +481,7 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 	len = strlen(params) + 1;
 	argc = 0;
 
-	status_str = kstrdup(params, M_DMCRYPT);
+	status_str = kmalloc(len, M_DMCRYPT, M_WAITOK);
 	/*
 	 * Parse a string, containing tokens delimited by white space,
 	 * into an argument vector
@@ -512,11 +512,13 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 	/* bits / 8 = bytes, 1 byte = 2 hexa chars, so << 2 */
 	klen = strlen(key) << 2;
 
+#if 0
 	kprintf("dm_target_crypt - new: dev=%s, crypto_alg=%s, crypto_mode=%s, "
 		"iv_mode=%s, iv_opt=%s, key=%s, iv_offset=%ju, "
 		"block_offset=%ju\n",
 		dev, crypto_alg, crypto_mode, iv_mode, iv_opt, key, iv_offset,
 		block_offset);
+#endif
 
 	priv = kmalloc(sizeof(dm_target_crypt_config_t), M_DMCRYPT, M_WAITOK);
 	if (priv == NULL) {
@@ -650,7 +652,18 @@ dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 		goto notsup;
 	}
 
+	memset(key, '0', strlen(key));
+	if (iv_opt) {
+		ksprintf(status_str, "%s-%s-%s:%s %s %ju %s %ju",
+		    crypto_alg, crypto_mode, iv_mode, iv_opt,
+		    key, iv_offset, dev, block_offset);
+	} else {
+		ksprintf(status_str, "%s-%s-%s %s %ju %s %ju",
+		    crypto_alg, crypto_mode, iv_mode,
+		    key, iv_offset, dev, block_offset);
+	}
 	priv->status_str = status_str;
+
 	return 0;
 
 notsup:
