@@ -157,8 +157,12 @@ MALLOC_DECLARE(M_KQUEUE);
 /*
  * Flag indicating hint is a signal.  Used by EVFILT_SIGNAL, and also
  * shared by EVFILT_PROC  (all knotes attached to p->p_klist)
+ *
+ * NOTE_OLDAPI is used to signal that standard filters are being called
+ * from the select/poll wrapper.
  */
 #define NOTE_SIGNAL	0x08000000
+#define NOTE_OLDAPI	0x04000000	/* select/poll note */
 
 #define FILTEROP_ISFD	0x0001		/* if ident == filedescriptor */
 #define FILTEROP_MPSAFE	0x0002

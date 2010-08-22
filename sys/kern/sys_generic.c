@@ -915,7 +915,7 @@ select_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
 			 */
 			fdp = skap->read_set;
 			filter = EVFILT_READ;
-			fflags = 0;
+			fflags = NOTE_OLDAPI;
 			if (fdp)
 				break;
 			++skap->active_set;
@@ -927,7 +927,7 @@ select_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
 			 */
 			fdp = skap->write_set;
 			filter = EVFILT_WRITE;
-			fflags = 0;
+			fflags = NOTE_OLDAPI;
 			if (fdp)
 				break;
 			++skap->active_set;
@@ -939,7 +939,7 @@ select_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
 			 */
 			fdp = skap->except_set;
 			filter = EVFILT_EXCEPT;
-			fflags = NOTE_OOB;
+			fflags = NOTE_OLDAPI | NOTE_OOB;
 			if (fdp)
 				break;
 			++skap->active_set;
@@ -1253,17 +1253,17 @@ poll_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
 		kev = &kevp[*events];
 		if (pfd->events & (POLLIN | POLLRDNORM)) {
 			EV_SET(kev++, pfd->fd, EVFILT_READ, EV_ADD|EV_ENABLE,
-			       0, 0, (void *)(uintptr_t)
+			       NOTE_OLDAPI, 0, (void *)(uintptr_t)
 				(pkap->lwp->lwp_kqueue_serial + pkap->pfds));
 		}
 		if (pfd->events & (POLLOUT | POLLWRNORM)) {
 			EV_SET(kev++, pfd->fd, EVFILT_WRITE, EV_ADD|EV_ENABLE,
-			       0, 0, (void *)(uintptr_t)
+			       NOTE_OLDAPI, 0, (void *)(uintptr_t)
 				(pkap->lwp->lwp_kqueue_serial + pkap->pfds));
 		}
 		if (pfd->events & (POLLPRI | POLLRDBAND)) {
 			EV_SET(kev++, pfd->fd, EVFILT_EXCEPT, EV_ADD|EV_ENABLE,
-			       NOTE_OOB, 0,
+			       NOTE_OLDAPI | NOTE_OOB, 0,
 			       (void *)(uintptr_t)
 				(pkap->lwp->lwp_kqueue_serial + pkap->pfds));
 		}

@@ -3384,10 +3384,7 @@ hammer_vop_kqfilter(struct vop_kqfilter_args *ap)
 
 	kn->kn_hook = (caddr_t)vp;
 
-	/* XXX: kq token actually protects the list */
-	lwkt_gettoken(&vp->v_token);
 	knote_insert(&vp->v_pollinfo.vpi_kqinfo.ki_note, kn);
-	lwkt_reltoken(&vp->v_token);
 
 	return(0);
 }
@@ -3397,9 +3394,7 @@ filt_hammerdetach(struct knote *kn)
 {
 	struct vnode *vp = (void *)kn->kn_hook;
 
-	lwkt_gettoken(&vp->v_token);
 	knote_remove(&vp->v_pollinfo.vpi_kqinfo.ki_note, kn);
-	lwkt_reltoken(&vp->v_token);
 }
 
 static int
@@ -3407,12 +3402,16 @@ filt_hammerread(struct knote *kn, long hint)
 {
 	struct vnode *vp = (void *)kn->kn_hook;
 	hammer_inode_t ip = VTOI(vp);
+	off_t off;
 
 	if (hint == NOTE_REVOKE) {
 		kn->kn_flags |= (EV_EOF | EV_ONESHOT);
 		return(1);
 	}
-	kn->kn_data = ip->ino_data.size - kn->kn_fp->f_offset;
+	off = ip->ino_data.size - kn->kn_fp->f_offset;
+	kn->kn_data = (off < INTPTR_MAX) ? off : INTPTR_MAX;
+	if (kn->kn_sfflags & NOTE_OLDAPI)
+		return(1);
 	return (kn->kn_data != 0);
 }
 

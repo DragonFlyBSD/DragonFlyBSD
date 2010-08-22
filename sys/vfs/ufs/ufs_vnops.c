@@ -2174,6 +2174,7 @@ filt_ufsread(struct knote *kn, long hint)
 {
 	struct vnode *vp = (struct vnode *)kn->kn_hook;
 	struct inode *ip = VTOI(vp);
+	off_t off;
 
 	/*
 	 * filesystem is gone, so set the EOF flag and schedule 
@@ -2184,7 +2185,10 @@ filt_ufsread(struct knote *kn, long hint)
 		return (1);
 	}
 
-        kn->kn_data = ip->i_size - kn->kn_fp->f_offset;
+	off = ip->i_size - kn->kn_fp->f_offset;
+	kn->kn_data = (off < INTPTR_MAX) ? off : INTPTR_MAX;
+	if (kn->kn_sfflags & NOTE_OLDAPI)
+		return(1);
         return (kn->kn_data != 0);
 }
 
