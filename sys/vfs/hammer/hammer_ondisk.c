@@ -446,7 +446,7 @@ hammer_load_volume(hammer_volume_t volume)
 
 	if (volume->ondisk == NULL) {
 		error = hammer_io_read(volume->devvp, &volume->io,
-				       volume->maxraw_off);
+				       HAMMER_BUFSIZE);
 		if (error == 0) {
 			volume->ondisk = (void *)volume->io.bp->b_data;
                         hammer_ref_interlock_done(&volume->io.lock);
@@ -808,11 +808,30 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 	}
 
 	if (buffer->ondisk == NULL) {
+		/*
+		 * Issue the read or generate a new buffer.  When reading
+		 * the limit argument controls any read-ahead clustering
+		 * hammer_io_read() is allowed to do.
+		 *
+		 * We cannot read-ahead in the large-data zone and we cannot
+		 * cross a largeblock boundary as the next largeblock might
+		 * use a different buffer size.
+		 */
 		if (isnew) {
 			error = hammer_io_new(volume->devvp, &buffer->io);
-		} else {
+		} else if ((buffer->zoneX_offset & HAMMER_OFF_ZONE_MASK) ==
+			   HAMMER_ZONE_LARGE_DATA) {
 			error = hammer_io_read(volume->devvp, &buffer->io,
-					       volume->maxraw_off);
+					       buffer->io.bytes);
+		} else {
+			hammer_off_t limit;
+
+			limit = (buffer->zone2_offset +
+				 HAMMER_LARGEBLOCK_MASK64) &
+				~HAMMER_LARGEBLOCK_MASK64;
+			limit -= buffer->zone2_offset;
+			error = hammer_io_read(volume->devvp, &buffer->io,
+					       limit);
 		}
 		if (error == 0)
 			buffer->ondisk = (void *)buffer->io.bp->b_data;
