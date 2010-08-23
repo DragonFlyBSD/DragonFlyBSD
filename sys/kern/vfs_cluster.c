@@ -122,13 +122,16 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 	 * Then we limit maxreq to max_readahead to ensure it is a reasonable
 	 * value.
 	 *
-	 * Finally we must ensure that loffset + maxreq does not cross the
+	 * Finally we must ensure that (loffset + maxreq) does not cross the
 	 * boundary (filesize) for the current blocksize.  If we allowed it
 	 * to cross we could end up with buffers past the boundary with the
 	 * wrong block size (HAMMER large-data areas use mixed block sizes).
+	 * minreq is also absolutely limited to filesize.
 	 */
 	if (maxreq < minreq)
 		maxreq = minreq;
+	/* minreq not used beyond this point */
+
 	if (maxreq > max_readahead) {
 		maxreq = max_readahead;
 		if (maxreq > 16 * 1024 * 1024)
