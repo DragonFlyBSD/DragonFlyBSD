@@ -44,6 +44,7 @@
 #include <sys/kernel.h>
 #include <sys/proc.h>
 #include <sys/rtprio.h>
+#include <sys/kinfo.h>
 #include <sys/queue.h>
 #include <sys/sysctl.h>
 #include <sys/kthread.h>
@@ -501,6 +502,8 @@ lwkt_switch(void)
     int mpheld;
 #endif
     int didaccumulate;
+    const char *lmsg;	/* diagnostic - 'systat -pv 1' */
+    const void *laddr;
 
     /*
      * Switching from within a 'fast' (non thread switched) interrupt or IPI
@@ -654,6 +657,8 @@ lwkt_switch(void)
 		    continue;
 		}
 	    }
+	    cpu_time.cp_msg[0] = 0;
+	    cpu_time.cp_stallpc = 0;
 	    goto haveidle;
 	}
 
@@ -664,7 +669,7 @@ lwkt_switch(void)
 #ifdef SMP
 	    (ntd->td_mpcount == 0 || mpheld || cpu_try_mplock()) &&
 #endif
-	    (!TD_TOKS_HELD(ntd) || lwkt_getalltokens(ntd))
+	    (!TD_TOKS_HELD(ntd) || lwkt_getalltokens(ntd, &lmsg, &laddr))
 	) {
 #ifdef SMP
 	    clr_mplock_contention_mask(gd);
@@ -672,9 +677,16 @@ lwkt_switch(void)
 	    goto havethread;
 	}
 
+	lmsg = NULL;
+	laddr = NULL;
+
 #ifdef SMP
 	/* Reload mpheld (it become stale after mplock/token ops) */
 	mpheld = MP_LOCK_HELD();
+	if (ntd->td_mpcount && mpheld == 0) {
+	    lmsg = "mplock";
+	    laddr = ntd->td_mplock_stallpc;
+	}
 #endif
 
 	/*
@@ -743,7 +755,10 @@ lwkt_switch(void)
 		 * the (almost) top.
 		 */
 		if (didaccumulate)
-			break;
+			break;		/* try again from the top, almost */
+		if (lmsg)
+		    strlcpy(cpu_time.cp_msg, lmsg, sizeof(cpu_time.cp_msg));
+		cpu_time.cp_stallpc = (uintptr_t)laddr;
 		goto haveidle;
 	    }
 
@@ -755,7 +770,7 @@ lwkt_switch(void)
 #ifdef SMP
 		(ntd->td_mpcount == 0 || mpheld || cpu_try_mplock()) &&
 #endif
-		(!TD_TOKS_HELD(ntd) || lwkt_getalltokens(ntd))
+		(!TD_TOKS_HELD(ntd) || lwkt_getalltokens(ntd, &lmsg, &laddr))
 	    ) {
 #ifdef SMP
 		    clr_mplock_contention_mask(gd);
@@ -765,6 +780,11 @@ lwkt_switch(void)
 #ifdef SMP
 	    /* Reload mpheld (it become stale after mplock/token ops) */
 	    mpheld = MP_LOCK_HELD();
+	    if (ntd->td_mpcount && mpheld == 0) {
+		lmsg = "mplock";
+		laddr = ntd->td_mplock_stallpc;
+	    }
+
 	    if (ntd->td_pri >= TDPRI_KERN_LPSCHED && ntd->td_fairq_accum >= 0)
 		nquserok = 0;
 #endif

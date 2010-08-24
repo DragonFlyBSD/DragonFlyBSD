@@ -97,7 +97,7 @@ sys_vmspace_create(struct vmspace_create_args *uap)
 		lwkt_gettoken(&proc_token);
 		if (p->p_vkernel == NULL) {
 			vkp->refs = 1;
-			lwkt_token_init(&vkp->token, 1);
+			lwkt_token_init(&vkp->token, 1, "vkernel");
 			RB_INIT(&vkp->root);
 			p->p_vkernel = vkp;
 		} else {

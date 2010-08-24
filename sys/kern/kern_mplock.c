@@ -109,6 +109,7 @@ _get_mplock_contested(const char *file, int line)
 	globaldata_t gd = mycpu;
 	int ov;
 	int nv;
+	const void **stkframe = (const void **)&file;
 
 	++mplock_contention_count;
 	for (;;) {
@@ -120,6 +121,7 @@ _get_mplock_contested(const char *file, int line)
 			if (atomic_cmpset_int(&mp_lock, ov, gd->gd_cpuid))
 				break;
 		} else {
+			gd->gd_curthread->td_mplock_stallpc = stkframe[-1];
 			loggiant(beg);
 			lwkt_switch();
 			loggiant(end);

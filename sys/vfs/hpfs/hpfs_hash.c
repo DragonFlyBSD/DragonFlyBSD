@@ -69,7 +69,7 @@ hpfs_hphashinit(void)
 	lockinit (&hpfs_hphash_lock, "hpfs_hphashlock", 0, 0);
 	hpfs_hphashtbl = HASHINIT(desiredvnodes, M_HPFSHASH, M_WAITOK,
 	    &hpfs_hphash);
-	lwkt_token_init(&hpfs_hphash_token, 1);
+	lwkt_token_init(&hpfs_hphash_token, 1, "hpfsihash");
 }
 
 /*

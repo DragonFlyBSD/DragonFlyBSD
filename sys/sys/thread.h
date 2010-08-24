@@ -104,6 +104,7 @@ typedef struct lwkt_token {
     struct lwkt_tokref	*t_ref;		/* Owning ref or NULL */
     intptr_t		t_flags;	/* MP lock required */
     long		t_collisions;	/* Collision counter */
+    const char		*t_desc;	/* Descriptive name */
 } lwkt_token;
 
 #define LWKT_TOKEN_MPSAFE	0x0001
@@ -134,6 +135,7 @@ struct lwkt_tokref {
     lwkt_token_t	tr_tok;		/* token in question */
     struct thread	*tr_owner;	/* me */
     intptr_t		tr_flags;	/* copy of t_flags */
+    const void		*tr_stallpc;	/* stalled at pc */
 };
 
 #define MAXCPUFIFO      16	/* power of 2 */
@@ -229,7 +231,6 @@ struct thread {
     __uint64_t	td_sticks;      /* Statclock hits in system mode (uS) */
     __uint64_t	td_iticks;	/* Statclock hits processing intr (uS) */
     int		td_locks;	/* lockmgr lock debugging */
-    int		td_fairq_lticks;	/* fairq wakeup accumulator reset */
     void	*td_dsched_priv1;	/* priv data for I/O schedulers */
     int		td_refs;	/* hold position in gd_tdallq / hold free */
     int		td_nest_count;	/* prevent splz nesting */
@@ -248,6 +249,9 @@ struct thread {
     struct caps_kinfo *td_caps;	/* list of client and server registrations */
     lwkt_tokref_t td_toks_stop;
     struct lwkt_tokref td_toks_array[LWKT_MAXTOKENS];
+    int		td_fairq_lticks;	/* fairq wakeup accumulator reset */
+    int		td_fairq_accum;		/* fairq priority accumulator */
+    const void	*td_mplock_stallpc;	/* last mplock stall address */
 #ifdef DEBUG_CRIT_SECTIONS
 #define CRIT_DEBUG_ARRAY_SIZE   32
 #define CRIT_DEBUG_ARRAY_MASK   (CRIT_DEBUG_ARRAY_SIZE - 1)
@@ -255,7 +259,6 @@ struct thread {
     int		td_crit_debug_index;
     int		td_in_crit_report;	
 #endif
-    int		td_fairq_accum;		/* fairq priority accumulator */
     struct md_thread td_mach;
 };
 
@@ -397,10 +400,10 @@ extern void lwkt_passive_release(thread_t);
 extern void lwkt_gettoken(lwkt_token_t);
 extern int  lwkt_trytoken(lwkt_token_t);
 extern void lwkt_reltoken(lwkt_token_t);
-extern int  lwkt_getalltokens(thread_t);
+extern int  lwkt_getalltokens(thread_t, const char **, const void **);
 extern void lwkt_relalltokens(thread_t);
 extern void lwkt_drain_token_requests(void);
-extern void lwkt_token_init(lwkt_token_t, int);
+extern void lwkt_token_init(lwkt_token_t, int, const char *);
 extern void lwkt_token_uninit(lwkt_token_t);
 
 extern void lwkt_token_pool_init(void);

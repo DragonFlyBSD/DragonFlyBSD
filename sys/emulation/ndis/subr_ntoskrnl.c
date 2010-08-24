@@ -184,7 +184,7 @@ static MALLOC_DEFINE(M_NDIS, "ndis", "ndis emulation");
 int
 ntoskrnl_libinit(void)
 {
-	lwkt_token_init(&ntoskrnl_dispatchtoken, 1);
+	lwkt_token_init(&ntoskrnl_dispatchtoken, 1, "ndiskrnl");
 	ntoskrnl_init_lock(&ntoskrnl_global);
 	TAILQ_INIT(&ntoskrnl_reflist);
 	return(0);

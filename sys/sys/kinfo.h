@@ -74,6 +74,11 @@ struct kinfo_cputime {
 	uint64_t	cp_sys;
 	uint64_t	cp_intr;
 	uint64_t	cp_idle;
+	uint64_t	cp_unused01;
+	uint64_t	cp_unused02;
+	uint64_t	cp_unused03;
+	uint64_t	cp_stallpc;	/* code stall address */
+	char		cp_msg[32];	/* code stall token or mplock */
 };
 
 /*

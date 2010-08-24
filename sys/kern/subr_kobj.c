@@ -66,7 +66,7 @@ static int kobj_next_id = 1;
 static void
 kobj_init_token(void *arg)
 {
-	lwkt_token_init(&kobj_token, 1);
+	lwkt_token_init(&kobj_token, 1, "kobj");
 }
 
 SYSINIT(kobj, SI_BOOT1_LOCK, SI_ORDER_ANY, kobj_init_token, NULL);

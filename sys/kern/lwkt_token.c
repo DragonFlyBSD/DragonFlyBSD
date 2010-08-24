@@ -227,7 +227,7 @@ _lwkt_tokref_init(lwkt_tokref_t ref, lwkt_token_t tok, thread_t td)
  * Called from a critical section.
  */
 int
-lwkt_getalltokens(thread_t td)
+lwkt_getalltokens(thread_t td, const char **msgp, const void **addrp)
 {
 	lwkt_tokref_t scan;
 	lwkt_tokref_t ref;
@@ -268,6 +268,8 @@ lwkt_getalltokens(thread_t td)
 			 * Otherwise we failed to acquire all the tokens.
 			 * Undo and return.
 			 */
+			*msgp = tok->t_desc;
+			*addrp = scan->tr_stallpc;
 			atomic_add_long(&tok->t_collisions, 1);
 			lwkt_relalltokens(td);
 			return(FALSE);
@@ -391,7 +393,7 @@ _lwkt_trytokref(lwkt_tokref_t ref, thread_t td)
  */
 static __inline
 void
-_lwkt_gettokref(lwkt_tokref_t ref, thread_t td)
+_lwkt_gettokref(lwkt_tokref_t ref, thread_t td, const void **stkframe)
 {
 	if ((ref->tr_flags & LWKT_TOKEN_MPSAFE) == 0)
 		get_mplock();
@@ -407,6 +409,7 @@ _lwkt_gettokref(lwkt_tokref_t ref, thread_t td)
 		 * return tr_tok->t_ref should be assigned to this specific
 		 * ref.
 		 */
+		ref->tr_stallpc = stkframe[-1];
 		atomic_add_long(&ref->tr_tok->t_collisions, 1);
 		logtoken(fail, ref);
 		lwkt_switch();
@@ -425,7 +428,7 @@ lwkt_gettoken(lwkt_token_t tok)
 	KKASSERT(ref < &td->td_toks_end);
 	_lwkt_tokref_init(ref, tok, td);
 	++td->td_toks_stop;
-	_lwkt_gettokref(ref, td);
+	_lwkt_gettokref(ref, td, (const void **)&tok);
 }
 
 lwkt_token_t
@@ -440,7 +443,7 @@ lwkt_getpooltoken(void *ptr)
 	tok = _lwkt_token_pool_lookup(ptr);
 	_lwkt_tokref_init(ref, tok, td);
 	++td->td_toks_stop;
-	_lwkt_gettokref(ref, td);
+	_lwkt_gettokref(ref, td, (const void **)&ptr);
 	return(tok);
 }
 
@@ -510,7 +513,7 @@ lwkt_token_pool_init(void)
 	int i;
 
 	for (i = 0; i < LWKT_NUM_POOL_TOKENS; ++i)
-		lwkt_token_init(&pool_tokens[i], 1);
+		lwkt_token_init(&pool_tokens[i], 1, "pool");
 }
 
 lwkt_token_t
@@ -524,7 +527,7 @@ lwkt_token_pool_lookup(void *ptr)
  * acquiring the token and released after releasing the token.
  */
 void
-lwkt_token_init(lwkt_token_t tok, int mpsafe)
+lwkt_token_init(lwkt_token_t tok, int mpsafe, const char *desc)
 {
 	tok->t_ref = NULL;
 	tok->t_flags = mpsafe ? LWKT_TOKEN_MPSAFE : 0;

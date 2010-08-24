@@ -208,7 +208,6 @@ vm_pagezero(void __unused *arg)
 			 * resched has been requested.
 			 */
 			while (i < PAGE_SIZE) {
-				lwkt_yield();
 				if (idlezero_nocache == 1)
 					bzeront(&pg[i], IDLEZERO_RUN);
 				else
