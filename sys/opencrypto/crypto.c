@@ -830,7 +830,6 @@ crypto_dispatch(struct cryptop *crp)
 		KASSERT(cap != NULL, ("%s: Driver disappeared.", __func__));
 		if (!cap->cc_qblocked) {
 			result = crypto_invoke(cap, crp, 0);
-			lwkt_yield();
 			if (result != ERESTART)
 				return (result);
 			/*
@@ -1363,7 +1362,6 @@ crypto_proc(void *arg)
 
 			CRYPTO_Q_UNLOCK(tdinfo);
 			result = crypto_invoke(cap, submit, hint);
-			lwkt_yield();
 			CRYPTO_Q_LOCK(tdinfo);
 
 			if (result == ERESTART) {

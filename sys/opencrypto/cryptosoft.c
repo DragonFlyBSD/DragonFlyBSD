@@ -1129,6 +1129,7 @@ swcr_process(device_t dev, struct cryptop *crp, int hint)
 
 done:
 	crypto_done(crp);
+	lwkt_yield();
 	return 0;
 }
 
