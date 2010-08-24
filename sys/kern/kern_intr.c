@@ -633,7 +633,7 @@ ithread_fast_handler(struct intrframe *frame)
     td = curthread;
 
     /* We must be in critical section. */
-    KKASSERT(td->td_pri >= TDPRI_CRIT);
+    KKASSERT(td->td_critcount);
 
     info = &intr_info_ary[intr];
 

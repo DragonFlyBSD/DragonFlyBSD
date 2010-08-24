@@ -121,10 +121,10 @@ _crit_enter(__DEBUG_CRIT_ARG__)
     struct thread *td = curthread;
 
 #ifdef INVARIANTS
-    if (td->td_pri < 0)
+    if (td->td_critcount < 0)
 	crit_panic();
 #endif
-    td->td_pri += TDPRI_CRIT;
+    ++td->td_critcount;
     __DEBUG_CRIT_ENTER(td);
     cpu_ccfence();
 }
@@ -132,7 +132,7 @@ _crit_enter(__DEBUG_CRIT_ARG__)
 static __inline void
 _crit_enter_quick(struct thread *curtd __DEBUG_CRIT_ADD_ARG__)
 {
-    curtd->td_pri += TDPRI_CRIT;
+    ++curtd->td_critcount;
     __DEBUG_CRIT_ENTER(curtd);
     cpu_ccfence();
 }
@@ -147,7 +147,7 @@ static __inline void
 _crit_exit_noyield(struct thread *curtd __DEBUG_CRIT_ADD_ARG__)
 {
     __DEBUG_CRIT_EXIT(curtd);
-    curtd->td_pri -= TDPRI_CRIT;
+    --curtd->td_critcount;
 #ifdef INVARIANTS
     if (curtd->td_pri < 0)
 	crit_panic();
@@ -161,13 +161,13 @@ _crit_exit(__DEBUG_CRIT_ARG__)
     thread_t td = curthread;
 
     __DEBUG_CRIT_EXIT(td);
-    td->td_pri -= TDPRI_CRIT;
+    --td->td_critcount;
 #ifdef INVARIANTS
     if (td->td_pri < 0)
 	crit_panic();
 #endif
     cpu_ccfence();	/* prevent compiler reordering */
-    if (td->td_gd->gd_reqflags && td->td_pri < TDPRI_CRIT)
+    if (td->td_gd->gd_reqflags && td->td_critcount == 0)
 	splz_check();
 }
 
@@ -177,9 +177,9 @@ _crit_exit_quick(struct thread *curtd __DEBUG_CRIT_ADD_ARG__)
     globaldata_t gd = curtd->td_gd;
 
     __DEBUG_CRIT_EXIT(curtd);
-    curtd->td_pri -= TDPRI_CRIT;
+    --curtd->td_critcount;
     cpu_ccfence();	/* prevent compiler reordering */
-    if (gd->gd_reqflags && curtd->td_pri < TDPRI_CRIT)
+    if (gd->gd_reqflags && curtd->td_critcount == 0)
 	splz_check();
 }
 
@@ -192,7 +192,7 @@ _crit_exit_gd(globaldata_t mygd __DEBUG_CRIT_ADD_ARG__)
 static __inline int
 crit_test(thread_t td)
 {
-    return(td->td_pri >= TDPRI_CRIT);
+    return(td->td_critcount);
 }
 
 /*
@@ -202,13 +202,13 @@ crit_test(thread_t td)
 static __inline int
 lwkt_runnable(void)
 {
-    return (mycpu->gd_runqmask != 0);
+    return (TAILQ_FIRST(&mycpu->gd_tdrunq) != NULL);
 }
 
 static __inline int
 lwkt_getpri(thread_t td)
 {
-    return(td->td_pri & TDPRI_MASK);
+    return(td->td_pri);
 }
 
 static __inline int

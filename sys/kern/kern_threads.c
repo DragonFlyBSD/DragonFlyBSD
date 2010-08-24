@@ -56,7 +56,6 @@
 #include <sys/proc.h>
 #include <sys/resourcevar.h>
 #include <sys/sysproto.h>
-#include <sys/uio.h>		/* uio_yield() fixme */
 
 #if 0
 
@@ -164,7 +163,7 @@ int
 sys_yield(struct yield_args *uap) 
 {
 	uap->sysmsg_result = 0;
-	uio_yield();
+	lwkt_user_yield();
 	return(0);
 }
 

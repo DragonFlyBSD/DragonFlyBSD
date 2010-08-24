@@ -196,9 +196,6 @@ typedef struct lwkt_cpu_msg {
  * must be done through cpu_*msg() functions.  e.g. you could request
  * ownership of a thread that way, or hand a thread off to another cpu.
  *
- * NOTE: td_pri is bumped by TDPRI_CRIT when entering a critical section,
- * but this does not effect how the thread is scheduled by LWKT.
- *
  * NOTE: td_ucred is synchronized from the p_ucred on user->kernel syscall,
  *	 trap, and AST/signal transitions to provide a stable ucred for
  *	 (primarily) system calls.  This field will be NULL for pure kernel
@@ -219,9 +216,10 @@ struct thread {
     const char	*td_wmesg;	/* string name for blockage */
     const volatile void	*td_wchan;	/* waiting on channel */
     int		td_pri;		/* 0-31, 31=highest priority (note 1) */
+    int		td_critcount;	/* critical section priority */
     int		td_flags;	/* TDF flags */
     int		td_wdomain;	/* domain for wchan address (typ 0) */
-    void	(*td_preemptable)(struct thread *td, int critpri);
+    void	(*td_preemptable)(struct thread *td, int critcount);
     void	(*td_release)(struct thread *td);
     char	*td_kstack;	/* kernel stack */
     int		td_kstack_size;	/* size of kernel stack */
@@ -231,7 +229,7 @@ struct thread {
     __uint64_t	td_sticks;      /* Statclock hits in system mode (uS) */
     __uint64_t	td_iticks;	/* Statclock hits processing intr (uS) */
     int		td_locks;	/* lockmgr lock debugging */
-    int		td_unused01;
+    int		td_fairq_lticks;	/* fairq wakeup accumulator reset */
     void	*td_dsched_priv1;	/* priv data for I/O schedulers */
     int		td_refs;	/* hold position in gd_tdallq / hold free */
     int		td_nest_count;	/* prevent splz nesting */
@@ -257,6 +255,7 @@ struct thread {
     int		td_crit_debug_index;
     int		td_in_crit_report;	
 #endif
+    int		td_fairq_accum;		/* fairq priority accumulator */
     struct md_thread td_mach;
 };
 
@@ -311,6 +310,7 @@ struct thread {
 #define TDF_KERNELFP		0x01000000	/* kernel using fp coproc */
 #define TDF_NETWORK		0x02000000	/* network proto thread */
 #define TDF_CRYPTO		0x04000000	/* crypto thread */
+#define TDF_MARKER		0x80000000	/* fairq marker thread */
 
 /*
  * Thread priorities.  Typically only one thread from any given
@@ -339,14 +339,21 @@ struct thread {
 #define TDPRI_INT_HIGH		29	/* high priority interrupt */
 #define TDPRI_MAX		31
 
-#define TDPRI_MASK		31
-#define TDPRI_CRIT		32	/* high bits of td_pri used for crit */
+/*
+ * Scale is the approximate number of ticks for which we desire the
+ * entire gd_tdrunq to get service.  With hz = 100 a scale of 8 is 80ms.
+ *
+ * Setting this value too small will result in inefficient switching
+ * rates.
+ */
+#define TDFAIRQ_SCALE		8
+#define TDFAIRQ_MAX(gd)		((gd)->gd_fairq_total_pri * TDFAIRQ_SCALE)
 
 #define LWKT_THREAD_STACK	(UPAGES * PAGE_SIZE)
 
 #define CACHE_NTHREADS		6
 
-#define IN_CRITICAL_SECT(td)	((td)->td_pri >= TDPRI_CRIT)
+#define IN_CRITICAL_SECT(td)	((td)->td_critcount)
 
 #ifdef _KERNEL
 
@@ -403,7 +410,11 @@ extern lwkt_token_t lwkt_getpooltoken(void *);
 extern void lwkt_setpri(thread_t, int);
 extern void lwkt_setpri_initial(thread_t, int);
 extern void lwkt_setpri_self(int);
-extern int lwkt_check_resched(thread_t);
+extern void lwkt_fairq_schedulerclock(thread_t td);
+extern void lwkt_fairq_setpri_self(int pri);
+extern int lwkt_fairq_push(int pri);
+extern void lwkt_fairq_pop(int pri);
+extern void lwkt_fairq_yield(void);
 extern void lwkt_setcpu_self(struct globaldata *);
 extern void lwkt_migratecpu(int);
 

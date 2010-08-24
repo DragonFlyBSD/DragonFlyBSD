@@ -546,7 +546,7 @@ ENTRY(cpu_kthread_restore)
 	movl	%ecx,%cr3
 	andl	$~TDF_RUNNING,TD_FLAGS(%ebx)
 	orl	$TDF_RUNNING,TD_FLAGS(%eax)
-	subl	$TDPRI_CRIT,TD_PRI(%eax)
+	decl	TD_CRITCOUNT(%eax)
 	popl	%eax		/* kthread exit function */
 	pushl	PCB_EBX(%edx)	/* argument to ESI function */
 	pushl	%eax		/* set exit func as return address */

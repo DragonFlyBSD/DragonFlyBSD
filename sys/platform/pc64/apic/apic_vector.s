@@ -130,8 +130,8 @@ IDTVEC(vec_name) ;							\
 	movq	PCPU(curthread),%rbx ;					\
 	testl	$-1,TD_NEST_COUNT(%rbx) ;				\
 	jne	1f ;							\
-	cmpl	$TDPRI_CRIT,TD_PRI(%rbx) ;				\
-	jl	2f ;							\
+	testl	$-1,TD_CRITCOUNT(%rbx) ;				\
+	je	2f ;							\
 1: ;									\
 	/* in critical section, make interrupt pending */		\
 	/* set the pending bit and return, leave interrupt masked */	\
@@ -143,9 +143,9 @@ IDTVEC(vec_name) ;							\
 	andl	$~IRQ_LBIT(irq_num),PCPU(fpending) ;			\
 	pushq	$irq_num ;		/* trapframe -> intrframe */	\
 	movq	%rsp, %rdi ;		/* pass frame by reference */	\
-	addl	$TDPRI_CRIT,TD_PRI(%rbx) ;				\
+	incl	TD_CRITCOUNT(%rbx) ;					\
 	call	ithread_fast_handler ;	/* returns 0 to unmask */	\
-	subl	$TDPRI_CRIT,TD_PRI(%rbx) ;				\
+	decl	TD_CRITCOUNT(%rbx) ;					\
 	addq	$8, %rsp ;		/* intrframe -> trapframe */	\
 	UNMASK_IRQ(irq_num) ;						\
 5: ;									\
@@ -305,14 +305,14 @@ Xipiq:
 
 	incl    PCPU(cnt) + V_IPI
 	movq	PCPU(curthread),%rbx
-	cmpl	$TDPRI_CRIT,TD_PRI(%rbx)
-	jge	1f
+	testl	$-1,TD_CRITCOUNT(%rbx)
+	jne	1f
 	subq	$8,%rsp			/* make same as interrupt frame */
 	movq	%rsp,%rdi		/* pass frame by reference */
 	incl	PCPU(intr_nesting_level)
-	addl	$TDPRI_CRIT,TD_PRI(%rbx)
+	incl	TD_CRITCOUNT(%rbx)
 	call	lwkt_process_ipiq_frame
-	subl	$TDPRI_CRIT,TD_PRI(%rbx)
+	decl	TD_CRITCOUNT(%rbx)
 	decl	PCPU(intr_nesting_level)
 	addq	$8,%rsp			/* turn into trapframe */
 	MEXITCOUNT
@@ -334,16 +334,16 @@ Xtimer:
 
 	incl    PCPU(cnt) + V_TIMER
 	movq	PCPU(curthread),%rbx
-	cmpl	$TDPRI_CRIT,TD_PRI(%rbx)
-	jge	1f
+	testl	$-1,TD_CRITCOUNT(%rbx)
+	jne	1f
 	testl	$-1,TD_NEST_COUNT(%rbx)
 	jne	1f
 	subq	$8,%rsp			/* make same as interrupt frame */
 	movq	%rsp,%rdi		/* pass frame by reference */
 	incl	PCPU(intr_nesting_level)
-	addl	$TDPRI_CRIT,TD_PRI(%rbx)
+	incl	TD_CRITCOUNT(%rbx)
 	call	lapic_timer_process_frame
-	subl	$TDPRI_CRIT,TD_PRI(%rbx)
+	decl	TD_CRITCOUNT(%rbx)
 	decl	PCPU(intr_nesting_level)
 	addq	$8,%rsp			/* turn into trapframe */
 	MEXITCOUNT

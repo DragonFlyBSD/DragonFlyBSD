@@ -291,10 +291,7 @@ bsd4_acquire_curproc(struct lwp *lp)
 		 * the run queue.  When we are reactivated we will have
 		 * another chance.
 		 */
-		if (lwkt_check_resched(lp->lwp_thread) > 1) {
-			lwkt_switch();
-			continue;
-		}
+		lwkt_yield();
 	} while (dd->uschedcp != lp);
 
 	crit_exit();

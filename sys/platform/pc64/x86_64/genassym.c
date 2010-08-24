@@ -178,6 +178,7 @@ ASSYM(TD_LWP, offsetof(struct thread, td_lwp));
 ASSYM(TD_PCB, offsetof(struct thread, td_pcb));
 ASSYM(TD_SP, offsetof(struct thread, td_sp));
 ASSYM(TD_PRI, offsetof(struct thread, td_pri));
+ASSYM(TD_CRITCOUNT, offsetof(struct thread, td_critcount));
 ASSYM(TD_MACH, offsetof(struct thread, td_mach));
 ASSYM(TD_WCHAN, offsetof(struct thread, td_wchan));
 ASSYM(TD_NEST_COUNT, offsetof(struct thread, td_nest_count));
@@ -236,7 +237,6 @@ ASSYM(MSR_FSBASE, MSR_FSBASE);
 
 ASSYM(MACHINTR_INTREN, offsetof(struct machintr_abi, intren));
 
-ASSYM(TDPRI_CRIT, TDPRI_CRIT);
 ASSYM(TDPRI_INT_SUPPORT, TDPRI_INT_SUPPORT);
 #ifdef SMP
 ASSYM(CPUMASK_LOCK, CPUMASK_LOCK);

@@ -82,7 +82,6 @@ uiomove(caddr_t cp, size_t n, struct uio *uio)
 	size_t cnt;
 	int error = 0;
 	int save = 0;
-	int baseticks = ticks;
 
 	KASSERT(uio->uio_rw == UIO_READ || uio->uio_rw == UIO_WRITE,
 	    ("uiomove: mode"));
@@ -108,10 +107,7 @@ uiomove(caddr_t cp, size_t n, struct uio *uio)
 		switch (uio->uio_segflg) {
 
 		case UIO_USERSPACE:
-			if (ticks - baseticks >= hogticks) {
-				uio_yield();
-				baseticks = ticks;
-			}
+			lwkt_user_yield();
 			if (uio->uio_rw == UIO_READ)
 				error = copyout(cp, iov->iov_base, cnt);
 			else

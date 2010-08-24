@@ -147,8 +147,8 @@ IDTVEC(vec_name) ; 							\
 	pushl	$0 ;			/* DUMMY CPL FOR DORETI */	\
 	testl	$-1,TD_NEST_COUNT(%ebx) ;				\
 	jne	1f ;							\
-	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
-	jl	2f ;							\
+	testl	$-1,TD_CRITCOUNT(%ebx) ;				\
+	je	2f ;							\
 1: ;									\
 	/* set pending bit and return, leave interrupt masked */	\
 	orl	$IRQ_LBIT(irq_num),PCPU(fpending) ;			\
@@ -159,9 +159,9 @@ IDTVEC(vec_name) ; 							\
 	andl	$~IRQ_LBIT(irq_num),PCPU(fpending) ;			\
 	pushl	$irq_num ;						\
 	pushl	%esp ;			/* pass frame by reference */	\
-	addl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
+	incl	TD_CRITCOUNT(%ebx) ;					\
 	call	ithread_fast_handler ;	/* returns 0 to unmask int */	\
-	subl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
+	decl	TD_CRITCOUNT(%ebx) ;					\
 	addl	$8,%esp ;						\
 	UNMASK_IRQ(icu, irq_num) ;					\
 5: ;									\

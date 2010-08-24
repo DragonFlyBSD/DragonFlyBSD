@@ -296,7 +296,6 @@ nanosleep1(struct timespec *rqt, struct timespec *rmt)
 	struct timespec ts, ts2, ts3;
 	struct timeval tv;
 	int error;
-	int tried_yield;
 
 	if (rqt->tv_nsec < 0 || rqt->tv_nsec >= 1000000000)
 		return (EINVAL);
@@ -306,7 +305,6 @@ nanosleep1(struct timespec *rqt, struct timespec *rmt)
 	nanouptime(&ts);
 	timespecadd(&ts, rqt);		/* ts = target timestamp compare */
 	TIMESPEC_TO_TIMEVAL(&tv, rqt);	/* tv = sleep interval */
-	tried_yield = 0;
 
 	for (;;) {
 		int ticks;
@@ -316,9 +314,8 @@ nanosleep1(struct timespec *rqt, struct timespec *rmt)
 
 		if (tv.tv_sec == 0 && ticks == 0) {
 			thread_t td = curthread;
-			if (tried_yield || tv.tv_usec < sleep_hard_us) {
-				tried_yield = 0;
-				uio_yield();
+			if (tv.tv_usec < sleep_hard_us) {
+				lwkt_user_yield();
 			} else {
 				crit_enter_quick(td);
 				systimer_init_oneshot(&info, ns1_systimer,

@@ -160,7 +160,7 @@ signalintr(int intr)
 	struct mdglobaldata *gd = mdcpu;
 	thread_t td = gd->mi.gd_curthread;
 
-	if (td->td_pri >= TDPRI_CRIT || td->td_nest_count) {
+	if (td->td_critcount || td->td_nest_count) {
 		atomic_set_int_nonlocked(&gd->gd_fpending, 1 << intr);
 		atomic_set_int_nonlocked(&gd->mi.gd_reqflags, RQF_INTPEND);
 	} else {

@@ -208,8 +208,7 @@ vm_pagezero(void __unused *arg)
 			 * resched has been requested.
 			 */
 			while (i < PAGE_SIZE) {
-				if (lwkt_check_resched(curthread))
-					break;
+				lwkt_yield();
 				if (idlezero_nocache == 1)
 					bzeront(&pg[i], IDLEZERO_RUN);
 				else
@@ -227,8 +226,7 @@ vm_pagezero(void __unused *arg)
 			++idlezero_count;
 			break;
 		}
-		if (lwkt_check_resched(curthread))
-			lwkt_switch();
+		lwkt_yield();
 	}
 }
 

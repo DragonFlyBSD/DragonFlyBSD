@@ -593,7 +593,7 @@ ENTRY(cpu_kthread_restore)
 	/* rax and rbx come from the switchout code */
 	andl	$~TDF_RUNNING,TD_FLAGS(%rbx)
 	orl	$TDF_RUNNING,TD_FLAGS(%rax)
-	subl	$TDPRI_CRIT,TD_PRI(%rax)
+	decl	TD_CRITCOUNT(%rax)
 	movq	PCB_R12(%rdx),%rdi	/* argument to RBX function */
 	movq	PCB_RBX(%rdx),%rax	/* thread function */
 	/* note: top of stack return address inherited by function */

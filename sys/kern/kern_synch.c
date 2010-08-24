@@ -486,7 +486,7 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 		 * in case this is the idle process and already asleep.
 		 */
 		splz();
-		oldpri = td->td_pri & TDPRI_MASK;
+		oldpri = td->td_pri;
 		lwkt_setpri_self(safepri);
 		lwkt_switch();
 		lwkt_setpri_self(oldpri);
@@ -1100,41 +1100,6 @@ tstop(void)
 	p->p_nstopped--;
 	lp->lwp_flag &= ~LWP_WSTOP;
 	crit_exit();
-}
-
-/*
- * Yield / synchronous reschedule.  This is a bit tricky because the trap
- * code might have set a lazy release on the switch function.   Setting
- * P_PASSIVE_ACQ will ensure that the lazy release executes when we call
- * switch, and that we are given a greater chance of affinity with our
- * current cpu.
- *
- * We call lwkt_setpri_self() to rotate our thread to the end of the lwkt
- * run queue.  lwkt_switch() will also execute any assigned passive release
- * (which usually calls release_curproc()), allowing a same/higher priority
- * process to be designated as the current process.  
- *
- * While it is possible for a lower priority process to be designated,
- * it's call to lwkt_maybe_switch() in acquire_curproc() will likely
- * round-robin back to us and we will be able to re-acquire the current
- * process designation.
- *
- * MPSAFE
- */
-void
-uio_yield(void)
-{
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-
-	lwkt_setpri_self(td->td_pri & TDPRI_MASK);
-	if (p) {
-		p->p_flag |= P_PASSIVE_ACQ;
-		lwkt_switch();
-		p->p_flag &= ~P_PASSIVE_ACQ;
-	} else {
-		lwkt_switch();
-	}
 }
 
 /*

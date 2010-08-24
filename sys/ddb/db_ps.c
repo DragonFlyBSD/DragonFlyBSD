@@ -113,9 +113,8 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 
 	    if (db_more(&nl) < 0)
 		return;
-	    db_printf("cpu %d tdrunqmask %08x curthread %p reqflags %04x\n",
-		    gd->gd_cpuid, gd->gd_runqmask,
-		    gd->gd_curthread, gd->gd_reqflags);
+	    db_printf("cpu %d curthread %p reqflags %04x\n",
+		    gd->gd_cpuid, gd->gd_curthread, gd->gd_reqflags);
 	    if (gd->gd_curthread && gd->gd_curthread->td_preempted) {
 		    db_printf("       PREEMPTING THREAD %p\n",
 				gd->gd_curthread->td_preempted);
@@ -137,28 +136,26 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 	    if (db_more(&nl) < 0)
 		return;
 	    db_printf("  tdq     thread pid    flags pri/cs/mp        sp    wmesg comm\n");
-	    for (np = 0; np < 32; ++np) {
-		TAILQ_FOREACH(td, &gd->gd_tdrunq[np], td_threadq) {
-		    if (db_more(&nl) < 0)
-			return;
-		    db_printf("  %3d %p %3d %08x %2d/%02d/%02d %p %8.8s %s\n",
-			np, td, 
-			(td->td_proc ? td->td_proc->p_pid : -1),
-			td->td_flags, 
-			td->td_pri & TDPRI_MASK,
-			td->td_pri / TDPRI_CRIT,
+	    TAILQ_FOREACH(td, &gd->gd_tdrunq, td_threadq) {
+		if (db_more(&nl) < 0)
+		    return;
+		db_printf("  %p %3d %08x %2d/%02d/%02d %p %8.8s %s\n",
+		    td,
+		    (td->td_proc ? td->td_proc->p_pid : -1),
+		    td->td_flags,
+		    td->td_pri,
+		    td->td_critcount,
 #ifdef SMP
-			td->td_mpcount,
+		    td->td_mpcount,
 #else
-			0,
+		    0,
 #endif
-			td->td_sp,
-			td->td_wmesg ? td->td_wmesg : "-",
-			td->td_proc ? td->td_proc->p_comm : td->td_comm);
-		    if (td->td_preempted)
-			db_printf("  PREEMPTING THREAD %p\n", td->td_preempted);
-		    db_dump_td_tokens(td);
-		}
+		    td->td_sp,
+		    td->td_wmesg ? td->td_wmesg : "-",
+		    td->td_proc ? td->td_proc->p_comm : td->td_comm);
+		if (td->td_preempted)
+		    db_printf("  PREEMPTING THREAD %p\n", td->td_preempted);
+		db_dump_td_tokens(td);
 	    }
 	    if (db_more(&nl) < 0)
 		return;
@@ -173,8 +170,8 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 		    np, td, 
 		    (td->td_proc ? td->td_proc->p_pid : -1),
 		    td->td_flags,
-		    td->td_pri & TDPRI_MASK,
-		    td->td_pri / TDPRI_CRIT,
+		    td->td_pri,
+		    td->td_critcount,
 #ifdef SMP
 		    td->td_mpcount,
 #else
@@ -209,7 +206,7 @@ db_dump_td_tokens(thread_t td)
 
 		db_printf(" %p[tok=%p", ref, ref->tr_tok);
 #ifdef SMP
-		if (td == tok->t_ref->tr_owner)
+		if (tok->t_ref && td == tok->t_ref->tr_owner)
 		    db_printf(",held");
 #endif
 		db_printf("]");

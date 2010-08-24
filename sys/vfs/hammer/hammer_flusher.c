@@ -333,7 +333,7 @@ hammer_flusher_flush(hammer_mount_t hmp)
 
 			if (++hmp->check_yield > hammer_yield_check) {
 				hmp->check_yield = 0;
-				lwkt_user_yield();
+				lwkt_yield();
 			}
 
 			/*

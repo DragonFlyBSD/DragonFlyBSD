@@ -401,7 +401,7 @@ _lwkt_gettokref(lwkt_tokref_t ref, thread_t td)
 		 *
 		 * Since the tokref is already active the scheduler now
 		 * takes care of acquisition, so we need only call
-		 * lwkt_yield().
+		 * lwkt_switch().
 		 *
 		 * Since we failed this was not a recursive token so upon
 		 * return tr_tok->t_ref should be assigned to this specific
@@ -409,7 +409,7 @@ _lwkt_gettokref(lwkt_tokref_t ref, thread_t td)
 		 */
 		atomic_add_long(&ref->tr_tok->t_collisions, 1);
 		logtoken(fail, ref);
-		lwkt_yield();
+		lwkt_switch();
 		logtoken(succ, ref);
 		KKASSERT(ref->tr_tok->t_ref == ref);
 	}

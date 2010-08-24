@@ -59,7 +59,6 @@ struct upcall {
 #define UPC_CONTROL_POLLANDCLEAR	5
 #define UPC_CONTROL_WAIT		6
 
-#define UPC_CRITADD			32	/* NOTE! same as TDPRI_CRIT */
 #define UPC_RESERVED			32	/* # of reserved id's */
 
 #if defined(_KERNEL)

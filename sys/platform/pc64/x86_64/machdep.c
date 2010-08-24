@@ -778,7 +778,7 @@ sendupcall(struct vmupcall *vu, int morepending)
 	 */
 	vu->vu_pending = 0;
 	upcall.upc_pending = morepending;
-	crit_count += TDPRI_CRIT;
+	++crit_count;
 	copyout(&upcall.upc_pending, &lp->lwp_upcall->upc_pending, 
 		sizeof(upcall.upc_pending));
 	copyout(&crit_count, (char *)upcall.upc_uthread + upcall.upc_critoff,
@@ -836,7 +836,7 @@ fetchupcall(struct vmupcall *vu, int morepending, void *rsp)
 		crit_count = 0;
 		if (error == 0)
 			error = copyin((char *)upcall.upc_uthread + upcall.upc_critoff, &crit_count, sizeof(int));
-		crit_count += TDPRI_CRIT;
+		++crit_count;
 		if (error == 0)
 			error = copyout(&crit_count, (char *)upcall.upc_uthread + upcall.upc_critoff, sizeof(int));
 		regs->tf_rax = (register_t)vu->vu_func;
@@ -928,7 +928,7 @@ cpu_idle(void)
 	struct thread *td = curthread;
 
 	crit_exit();
-	KKASSERT(td->td_pri < TDPRI_CRIT);
+	KKASSERT(td->td_critcount == 0);
 	for (;;) {
 		/*
 		 * See if there are any LWKTs ready to go.

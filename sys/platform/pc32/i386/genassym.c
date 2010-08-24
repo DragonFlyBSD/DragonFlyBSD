@@ -92,6 +92,7 @@ ASSYM(TD_NEST_COUNT, offsetof(struct thread, td_nest_count));
 #ifdef SMP
 ASSYM(TD_MPCOUNT, offsetof(struct thread, td_mpcount));
 #endif
+ASSYM(TD_CRITCOUNT, offsetof(struct thread, td_critcount));
 ASSYM(TD_FLAGS, offsetof(struct thread, td_flags));
 ASSYM(TDF_RUNNING, TDF_RUNNING);
 ASSYM(TDF_USINGFP, TDF_USINGFP);
@@ -100,7 +101,6 @@ ASSYM(MACHINTR_INTREN, offsetof(struct machintr_abi, intren));
 
 ASSYM(TD_SAVEFPU, offsetof(struct thread, td_mach) + offsetof(struct md_thread, mtd_savefpu));
 
-ASSYM(TDPRI_CRIT, TDPRI_CRIT);
 ASSYM(TDPRI_INT_SUPPORT, TDPRI_INT_SUPPORT);
 #ifdef SMP
 ASSYM(CPUMASK_LOCK, CPUMASK_LOCK);

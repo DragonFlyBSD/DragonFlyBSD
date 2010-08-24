@@ -591,7 +591,7 @@ sendupcall(struct vmupcall *vu, int morepending)
 	 */
 	vu->vu_pending = 0;
 	upcall.upc_pending = morepending;
-	crit_count += TDPRI_CRIT;
+	++crit_count;
 	copyout(&upcall.upc_pending, &lp->lwp_upcall->upc_pending,
 		sizeof(upcall.upc_pending));
 	copyout(&crit_count, (char *)upcall.upc_uthread + upcall.upc_critoff,
@@ -649,7 +649,7 @@ fetchupcall(struct vmupcall *vu, int morepending, void *rsp)
 		crit_count = 0;
 		if (error == 0)
 			error = copyin((char *)upcall.upc_uthread + upcall.upc_critoff, &crit_count, sizeof(int));
-		crit_count += TDPRI_CRIT;
+		++crit_count;
 		if (error == 0)
 			error = copyout(&crit_count, (char *)upcall.upc_uthread + upcall.upc_critoff, sizeof(int));
 		regs->tf_rax = (register_t)vu->vu_func;
@@ -708,7 +708,7 @@ cpu_idle(void)
 	struct mdglobaldata *gd = mdcpu;
 
 	crit_exit();
-	KKASSERT(td->td_pri < TDPRI_CRIT);
+	KKASSERT(td->td_critcount == 0);
 	cpu_enable_intr();
 	for (;;) {
 		/*
@@ -728,7 +728,7 @@ cpu_idle(void)
 				struct timeval tv1, tv2;
 				gettimeofday(&tv1, NULL);
 #endif
-				umtx_sleep(&gd->mi.gd_runqmask, 0, 1000000);
+				umtx_sleep(&gd->mi.gd_reqflags, 0, 1000000);
 #ifdef DEBUGIDLE
 				gettimeofday(&tv2, NULL);
 				if (tv2.tv_usec - tv1.tv_usec +
@@ -736,7 +736,7 @@ cpu_idle(void)
 				    > 500000) {
 					kprintf("cpu %d idlelock %08x %08x\n",
 						gd->mi.gd_cpuid,
-						gd->mi.gd_runqmask,
+						gd->mi.gd_reqflags,
 						gd->gd_fpending);
 				}
 #endif

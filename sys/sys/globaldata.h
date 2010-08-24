@@ -129,9 +129,7 @@ struct globaldata {
 	__uint32_t	gd_reqflags;		/* (see note above) */
 	void		*gd_unused00B;
 	lwkt_queue	gd_tdallq;		/* all threads */
-	lwkt_queue	gd_unused00C;
-	lwkt_queue	gd_tdrunq[32];		/* runnable threads */
-	__uint32_t	gd_runqmask;		/* which queues? */
+	lwkt_queue	gd_tdrunq;		/* runnable threads */
 	__uint32_t	gd_cpuid;
 	cpumask_t	gd_cpumask;		/* mask = 1<<cpuid */
 	cpumask_t	gd_other_cpus;		/* mask of 'other' cpus */
@@ -140,8 +138,7 @@ struct globaldata {
 	struct vmmeter	gd_cnt;
 	struct lwkt_ipiq *gd_ipiq;		/* array[ncpu] of ipiq's */
 	struct lwkt_ipiq gd_cpusyncq;		/* ipiq for cpu synchro */
-	short		gd_unused01;
-	short		gd_unused02;
+	int		gd_fairq_total_pri;
 	struct thread	gd_unused02B;
 	struct thread	gd_idlethread;
 	SLGlobalData	gd_slab;		/* slab allocator */
@@ -150,7 +147,6 @@ struct globaldata {
 	struct vm_map_entry *gd_vme_base;	/* vm_map_entry reservation */
 	struct systimerq gd_systimerq;		/* per-cpu system timers */
 	int		gd_syst_nest;
-	sysclock_t	gd_unused03;
 	struct systimer gd_hardclock;		/* scheduler periodic */
 	struct systimer gd_statclock;		/* statistics periodic */
 	struct systimer gd_schedclock;		/* scheduler periodic */
@@ -181,6 +177,7 @@ typedef struct globaldata *globaldata_t;
 #define RQB_AST_LWKT_RESCHED	5
 #define RQB_AST_UPCALL		6
 #define RQB_TIMER		7
+#define RQB_RUNNING		8
 
 #define RQF_IPIQ		(1 << RQB_IPIQ)
 #define RQF_INTPEND		(1 << RQB_INTPEND)
@@ -190,6 +187,7 @@ typedef struct globaldata *globaldata_t;
 #define RQF_AST_USER_RESCHED	(1 << RQB_AST_USER_RESCHED)
 #define RQF_AST_LWKT_RESCHED	(1 << RQB_AST_LWKT_RESCHED)
 #define RQF_AST_UPCALL		(1 << RQB_AST_UPCALL)
+#define RQF_RUNNING		(1 << RQB_RUNNING)
 #define RQF_AST_MASK		(RQF_AST_OWEUPC|RQF_AST_SIGNAL|\
 				RQF_AST_USER_RESCHED|RQF_AST_LWKT_RESCHED|\
 				RQF_AST_UPCALL)

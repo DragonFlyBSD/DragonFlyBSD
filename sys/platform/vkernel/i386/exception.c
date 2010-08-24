@@ -78,12 +78,12 @@ static
 void
 ipisig(int nada, siginfo_t *info, void *ctxp)
 {
-	if (curthread->td_pri < TDPRI_CRIT) {
-		curthread->td_pri += TDPRI_CRIT;
+	if (curthread->td_critcount == 0) {
+		++curthread->td_critcount;
 		++mycpu->gd_intr_nesting_level;
 		lwkt_process_ipiq();
 		--mycpu->gd_intr_nesting_level;
-		curthread->td_pri -= TDPRI_CRIT;
+		--curthread->td_critcount;
 	} else {
 		need_ipiq();
 	}
@@ -115,13 +115,13 @@ stopsig(int nada, siginfo_t *info, void *ctxp)
 	sigaddset(&ss, SIGTERM);
 	sigaddset(&ss, SIGWINCH);
 
-	curthread->td_pri += TDPRI_CRIT;
+	++curthread->td_critcount;
 	++mycpu->gd_intr_nesting_level;
 	while (stopped_cpus & mycpu->gd_cpumask) {
 		sigsuspend(&ss);
 	}
 	--mycpu->gd_intr_nesting_level;
-	curthread->td_pri -= TDPRI_CRIT;
+	--curthread->td_critcount;
 }
 
 #endif

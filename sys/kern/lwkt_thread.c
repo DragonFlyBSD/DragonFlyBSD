@@ -99,6 +99,7 @@ static struct objcache *thread_cache;
 #ifdef SMP
 static void lwkt_schedule_remote(void *arg, int arg2, struct intrframe *frame);
 #endif
+static void lwkt_fairq_accumulate(globaldata_t gd, thread_t td);
 
 extern void cpu_heavy_restore(void);
 extern void cpu_lwkt_restore(void);
@@ -147,6 +148,8 @@ SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_weird, CTLFLAG_RW, &preempt_weird, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count, CTLFLAG_RW,
 	&token_contention_count, 0, "spinning due to token contention");
 #endif
+static int fairq_enable = 1;
+SYSCTL_INT(_lwkt, OID_AUTO, fairq_enable, CTLFLAG_RW, &fairq_enable, 0, "");
 
 /*
  * These helper procedures handle the runq, they can only be called from
@@ -162,26 +165,45 @@ void
 _lwkt_dequeue(thread_t td)
 {
     if (td->td_flags & TDF_RUNQ) {
-	int nq = td->td_pri & TDPRI_MASK;
 	struct globaldata *gd = td->td_gd;
 
 	td->td_flags &= ~TDF_RUNQ;
-	TAILQ_REMOVE(&gd->gd_tdrunq[nq], td, td_threadq);
-	/* runqmask is passively cleaned up by the switcher */
+	TAILQ_REMOVE(&gd->gd_tdrunq, td, td_threadq);
+	gd->gd_fairq_total_pri -= td->td_pri;
+	if (TAILQ_FIRST(&gd->gd_tdrunq) == NULL)
+		atomic_clear_int_nonlocked(&gd->gd_reqflags, RQF_RUNNING);
     }
 }
 
+/*
+ * Priority enqueue.
+ *
+ * NOTE: There are a limited number of lwkt threads runnable since user
+ *	 processes only schedule one at a time per cpu.
+ */
 static __inline
 void
 _lwkt_enqueue(thread_t td)
 {
+    thread_t xtd;
+
     if ((td->td_flags & (TDF_RUNQ|TDF_MIGRATING|TDF_BLOCKQ)) == 0) {
-	int nq = td->td_pri & TDPRI_MASK;
 	struct globaldata *gd = td->td_gd;
 
 	td->td_flags |= TDF_RUNQ;
-	TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], td, td_threadq);
-	gd->gd_runqmask |= 1 << nq;
+	xtd = TAILQ_FIRST(&gd->gd_tdrunq);
+	if (xtd == NULL) {
+		TAILQ_INSERT_TAIL(&gd->gd_tdrunq, td, td_threadq);
+		atomic_set_int_nonlocked(&gd->gd_reqflags, RQF_RUNNING);
+	} else {
+		while (xtd && xtd->td_pri > td->td_pri)
+			xtd = TAILQ_NEXT(xtd, td_threadq);
+		if (xtd)
+			TAILQ_INSERT_BEFORE(xtd, td, td_threadq);
+		else
+			TAILQ_INSERT_TAIL(&gd->gd_tdrunq, td, td_threadq);
+	}
+	gd->gd_fairq_total_pri += td->td_pri;
     }
 }
 
@@ -232,7 +254,8 @@ void
 lwkt_schedule_self(thread_t td)
 {
     crit_enter_quick(td);
-    KASSERT(td != &td->td_gd->gd_idlethread, ("lwkt_schedule_self(): scheduling gd_idlethread is illegal!"));
+    KASSERT(td != &td->td_gd->gd_idlethread,
+	    ("lwkt_schedule_self(): scheduling gd_idlethread is illegal!"));
     KKASSERT(td->td_lwp == NULL || (td->td_lwp->lwp_flag & LWP_ONRUNQ) == 0);
     _lwkt_enqueue(td);
     crit_exit_quick(td);
@@ -259,11 +282,7 @@ lwkt_deschedule_self(thread_t td)
 void
 lwkt_gdinit(struct globaldata *gd)
 {
-    int i;
-
-    for (i = 0; i < sizeof(gd->gd_tdrunq)/sizeof(gd->gd_tdrunq[0]); ++i)
-	TAILQ_INIT(&gd->gd_tdrunq[i]);
-    gd->gd_runqmask = 0;
+    TAILQ_INIT(&gd->gd_tdrunq);
     TAILQ_INIT(&gd->gd_tdallq);
 }
 
@@ -357,7 +376,8 @@ lwkt_init_thread(thread_t td, void *stack, int stksize, int flags,
     td->td_kstack_size = stksize;
     td->td_flags = flags;
     td->td_gd = gd;
-    td->td_pri = TDPRI_KERN_DAEMON + TDPRI_CRIT;
+    td->td_pri = TDPRI_KERN_DAEMON;
+    td->td_critcount = 1;
     td->td_toks_stop = &td->td_toks_base;
 #ifdef SMP
     if ((flags & TDF_MPSAFE) == 0)
@@ -474,9 +494,13 @@ lwkt_switch(void)
     globaldata_t gd = mycpu;
     thread_t td = gd->gd_curthread;
     thread_t ntd;
+    thread_t xtd;
+    thread_t nlast;
 #ifdef SMP
+    int nquserok;
     int mpheld;
 #endif
+    int didaccumulate;
 
     /*
      * Switching from within a 'fast' (non thread switched) interrupt or IPI
@@ -557,17 +581,18 @@ lwkt_switch(void)
     }
 #endif
 #endif
+
+    /*
+     * If we had preempted another thread on this cpu, resume the preempted
+     * thread.  This occurs transparently, whether the preempted thread
+     * was scheduled or not (it may have been preempted after descheduling
+     * itself).
+     *
+     * We have to setup the MP lock for the original thread after backing
+     * out the adjustment that was made to curthread when the original
+     * was preempted.
+     */
     if ((ntd = td->td_preempted) != NULL) {
-	/*
-	 * We had preempted another thread on this cpu, resume the preempted
-	 * thread.  This occurs transparently, whether the preempted thread
-	 * was scheduled or not (it may have been preempted after descheduling
-	 * itself). 
-	 *
-	 * We have to setup the MP lock for the original thread after backing
-	 * out the adjustment that was made to curthread when the original
-	 * was preempted.
-	 */
 	KKASSERT(ntd->td_flags & TDF_PREEMPT_LOCK);
 #ifdef SMP
 	if (ntd->td_mpcount && mpheld == 0) {
@@ -586,181 +611,197 @@ lwkt_switch(void)
 	 * set the reschedule flag if the originally interrupted thread is
 	 * at a lower priority.
 	 */
-	if (gd->gd_runqmask > (2 << (ntd->td_pri & TDPRI_MASK)) - 1)
+	if (TAILQ_FIRST(&gd->gd_tdrunq) &&
+	    TAILQ_FIRST(&gd->gd_tdrunq)->td_pri > ntd->td_pri) {
 	    need_lwkt_resched();
+	}
 	/* YYY release mp lock on switchback if original doesn't need it */
-    } else {
-	/*
-	 * Priority queue / round-robin at each priority.  Note that user
-	 * processes run at a fixed, low priority and the user process
-	 * scheduler deals with interactions between user processes
-	 * by scheduling and descheduling them from the LWKT queue as
-	 * necessary.
-	 *
-	 * We have to adjust the MP lock for the target thread.  If we 
-	 * need the MP lock and cannot obtain it we try to locate a
-	 * thread that does not need the MP lock.  If we cannot, we spin
-	 * instead of HLT.
-	 *
-	 * A similar issue exists for the tokens held by the target thread.
-	 * If we cannot obtain ownership of the tokens we cannot immediately
-	 * schedule the thread.
-	 */
+	goto havethread_preempted;
+    }
 
-	/*
-	 * If an LWKT reschedule was requested, well that is what we are
-	 * doing now so clear it.
-	 */
+    /*
+     * Implement round-robin fairq with priority insertion.  The priority
+     * insertion is handled by _lwkt_enqueue()
+     *
+     * We have to adjust the MP lock for the target thread.  If we
+     * need the MP lock and cannot obtain it we try to locate a
+     * thread that does not need the MP lock.  If we cannot, we spin
+     * instead of HLT.
+     *
+     * A similar issue exists for the tokens held by the target thread.
+     * If we cannot obtain ownership of the tokens we cannot immediately
+     * schedule the thread.
+     */
+    for (;;) {
 	clear_lwkt_resched();
-again:
-	if (gd->gd_runqmask) {
-	    int nq = bsrl(gd->gd_runqmask);
-	    if ((ntd = TAILQ_FIRST(&gd->gd_tdrunq[nq])) == NULL) {
-		gd->gd_runqmask &= ~(1 << nq);
-		goto again;
+	didaccumulate = 0;
+	ntd = TAILQ_FIRST(&gd->gd_tdrunq);
+
+	/*
+	 * Hotpath if we can get all necessary resources.
+	 *
+	 * If nothing is runnable switch to the idle thread
+	 */
+	if (ntd == NULL) {
+	    ntd = &gd->gd_idlethread;
+	    if (gd->gd_reqflags & RQF_IDLECHECK_MASK)
+		    ntd->td_flags |= TDF_IDLE_NOHLT;
+	    if (ntd->td_mpcount) {
+		if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
+		    panic("Idle thread %p was holding the BGL!", ntd);
+		if (mpheld == 0) {
+		    cpu_pause();
+		    continue;
+		}
 	    }
+	    goto haveidle;
+	}
+
+	/*
+	 * Hotpath schedule
+	 */
+	if (ntd->td_fairq_accum >= 0 &&
 #ifdef SMP
+	    (ntd->td_mpcount == 0 || mpheld || cpu_try_mplock()) &&
+#endif
+	    (!TD_TOKS_HELD(ntd) || lwkt_getalltokens(ntd))
+	) {
+#ifdef SMP
+	    clr_mplock_contention_mask(gd);
+#endif
+	    goto havethread;
+	}
+
+#ifdef SMP
+	/* Reload mpheld (it become stale after mplock/token ops) */
+	mpheld = MP_LOCK_HELD();
+#endif
+
+	/*
+	 * Coldpath - unable to schedule ntd, continue looking for threads
+	 * to schedule.  This is only allowed of the (presumably) kernel
+	 * thread exhausted its fair share.  A kernel thread stuck on
+	 * resources does not currently allow a user thread to get in
+	 * front of it.
+	 */
+#ifdef SMP
+	nquserok = ((ntd->td_pri < TDPRI_KERN_LPSCHED) ||
+		    (ntd->td_fairq_accum < 0));
+#endif
+	nlast = NULL;
+
+	for (;;) {
 	    /*
-	     * THREAD SELECTION FOR AN SMP MACHINE BUILD
+	     * If the fair-share scheduler ran out ntd gets moved to the
+	     * end and its accumulator will be bumped, if it didn't we
+	     * maintain the same queue position.
 	     *
-	     * If the target needs the MP lock and we couldn't get it,
-	     * or if the target is holding tokens and we could not 
-	     * gain ownership of the tokens, continue looking for a
-	     * thread to schedule and spin instead of HLT if we can't.
-	     *
-	     * NOTE: the mpheld variable invalid after this conditional, it
-	     * can change due to both cpu_try_mplock() returning success
-	     * AND interactions in lwkt_getalltokens() due to the fact that
-	     * we are trying to check the mpcount of a thread other then
-	     * the current thread.  Because of this, if the current thread
-	     * is not holding td_mpcount, an IPI indirectly run via
-	     * lwkt_getalltokens() can obtain and release the MP lock and
-	     * cause the core MP lock to be released. 
+	     * nlast keeps track of the last element prior to any moves.
 	     */
-	    if ((ntd->td_mpcount && mpheld == 0 && !cpu_try_mplock()) ||
-		(TD_TOKS_HELD(ntd) && lwkt_getalltokens(ntd) == 0)
-	    ) {
-		u_int32_t rqmask = gd->gd_runqmask;
+	    if (ntd->td_fairq_accum < 0) {
+		xtd = TAILQ_NEXT(ntd, td_threadq);
+		lwkt_fairq_accumulate(gd, ntd);
+		didaccumulate = 1;
+		TAILQ_REMOVE(&gd->gd_tdrunq, ntd, td_threadq);
+		TAILQ_INSERT_TAIL(&gd->gd_tdrunq, ntd, td_threadq);
+		if (nlast == NULL) {
+		    nlast = ntd;
+		    if (xtd == NULL)
+			xtd = ntd;
+		}
+		ntd = xtd;
+	    } else {
+		ntd = TAILQ_NEXT(ntd, td_threadq);
+	    }
 
+	    /*
+	     * If we exhausted the run list switch to the idle thread.
+	     * Since one or more threads had resource acquisition issues
+	     * we do not allow the idle thread to halt.
+	     *
+	     * NOTE: nlast can be NULL.
+	     */
+	    if (ntd == nlast) {
 		cpu_pause();
-
-		mpheld = MP_LOCK_HELD();
-		ntd = NULL;
-		while (rqmask) {
-		    TAILQ_FOREACH(ntd, &gd->gd_tdrunq[nq], td_threadq) {
-			if (ntd->td_mpcount && !mpheld && !cpu_try_mplock()) {
-			    /* spinning due to MP lock being held */
-			    continue;
-			}
-
-			/*
-			 * mpheld state invalid after getalltokens call returns
-			 * failure, but the variable is only needed for
-			 * the loop.
-			 */
-			if (TD_TOKS_HELD(ntd) && !lwkt_getalltokens(ntd)) {
-			    /* spinning due to token contention */
-#ifdef	INVARIANTS
-			    ++token_contention_count;
-#endif
-			    mpheld = MP_LOCK_HELD();
-			    continue;
-			}
-			break;
-		    }
-		    if (ntd)
-			break;
-		    rqmask &= ~(1 << nq);
-		    nq = bsrl(rqmask);
-
-		    /*
-		     * We have two choices. We can either refuse to run a
-		     * user thread when a kernel thread needs the MP lock
-		     * but could not get it, or we can allow it to run but
-		     * then expect an IPI (hopefully) later on to force a
-		     * reschedule when the MP lock might become available.
-		     */
-		    if (nq < TDPRI_KERN_LPSCHED) {
-			break;	/* for now refuse to run */
-#if 0
-			if (chain_mplock == 0)
-				break;
-			/* continue loop, allow user threads to be scheduled */
-#endif
+		ntd = &gd->gd_idlethread;
+		ntd->td_flags |= TDF_IDLE_NOHLT;
+		set_mplock_contention_mask(gd);
+		cpu_mplock_contested();
+		if (ntd->td_mpcount) {
+		    mpheld = MP_LOCK_HELD();
+		    if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
+			panic("Idle thread %p was holding the BGL!", ntd);
+		    if (mpheld == 0) {
+			cpu_pause();
+			break;		/* try again from the top, almost */
 		    }
 		}
 
 		/*
-		 * Case where a (kernel) thread needed the MP lock and could
-		 * not get one, and we may or may not have found another
-		 * thread which does not need the MP lock to run while
-		 * we wait (ntd).
+		 * If fairq accumulations occured we do not schedule the
+		 * idle thread.  This will cause us to try again from
+		 * the (almost) top.
 		 */
-		if (ntd == NULL) {
-		    ntd = &gd->gd_idlethread;
-		    ntd->td_flags |= TDF_IDLE_NOHLT;
-		    set_mplock_contention_mask(gd);
-		    cpu_mplock_contested();
-		    goto using_idle_thread;
-		} else {
-		    clr_mplock_contention_mask(gd);
-		    ++gd->gd_cnt.v_swtch;
-		    TAILQ_REMOVE(&gd->gd_tdrunq[nq], ntd, td_threadq);
-		    TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], ntd, td_threadq);
-		}
-	    } else {
-		clr_mplock_contention_mask(gd);
-		++gd->gd_cnt.v_swtch;
-		TAILQ_REMOVE(&gd->gd_tdrunq[nq], ntd, td_threadq);
-		TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], ntd, td_threadq);
+		if (didaccumulate)
+			break;
+		goto haveidle;
 	    }
-#else
+
 	    /*
-	     * THREAD SELECTION FOR A UP MACHINE BUILD.  We don't have to
-	     * worry about tokens or the BGL.  However, we still have
-	     * to call lwkt_getalltokens() in order to properly detect
-	     * stale tokens.  This call cannot fail for a UP build!
+	     * Try to switch to this thread.
 	     */
-	    lwkt_getalltokens(ntd);
-	    ++gd->gd_cnt.v_swtch;
-	    TAILQ_REMOVE(&gd->gd_tdrunq[nq], ntd, td_threadq);
-	    TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], ntd, td_threadq);
-#endif
-	} else {
-	    /*
-	     * We have nothing to run but only let the idle loop halt
-	     * the cpu if there are no pending interrupts.
-	     */
-	    ntd = &gd->gd_idlethread;
-	    if (gd->gd_reqflags & RQF_IDLECHECK_MASK)
-		ntd->td_flags |= TDF_IDLE_NOHLT;
+	    if ((ntd->td_pri >= TDPRI_KERN_LPSCHED || nquserok) &&
+		ntd->td_fairq_accum >= 0 &&
 #ifdef SMP
-using_idle_thread:
-	    /*
-	     * The idle thread should not be holding the MP lock unless we
-	     * are trapping in the kernel or in a panic.  Since we select the
-	     * idle thread unconditionally when no other thread is available,
-	     * if the MP lock is desired during a panic or kernel trap, we
-	     * have to loop in the scheduler until we get it.
-	     */
-	    if (ntd->td_mpcount) {
-		mpheld = MP_LOCK_HELD();
-		if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
-		    panic("Idle thread %p was holding the BGL!", ntd);
-		if (mpheld == 0)
-		    goto again;
+		(ntd->td_mpcount == 0 || mpheld || cpu_try_mplock()) &&
+#endif
+		(!TD_TOKS_HELD(ntd) || lwkt_getalltokens(ntd))
+	    ) {
+#ifdef SMP
+		    clr_mplock_contention_mask(gd);
+#endif
+		    goto havethread;
 	    }
+#ifdef SMP
+	    /* Reload mpheld (it become stale after mplock/token ops) */
+	    mpheld = MP_LOCK_HELD();
+	    if (ntd->td_pri >= TDPRI_KERN_LPSCHED && ntd->td_fairq_accum >= 0)
+		nquserok = 0;
 #endif
 	}
     }
-    KASSERT(ntd->td_pri >= TDPRI_CRIT,
-	("priority problem in lwkt_switch %d %d", td->td_pri, ntd->td_pri));
 
     /*
-     * Do the actual switch.  If the new target does not need the MP lock
-     * and we are holding it, release the MP lock.  If the new target requires
-     * the MP lock we have already acquired it for the target.
+     * Do the actual switch.  WARNING: mpheld is stale here.
+     *
+     * We must always decrement td_fairq_accum on non-idle threads just
+     * in case a thread never gets a tick due to being in a continuous
+     * critical section.  The page-zeroing code does that.
+     *
+     * If the thread we came up with is a higher or equal priority verses
+     * the thread at the head of the queue we move our thread to the
+     * front.  This way we can always check the front of the queue.
      */
+havethread:
+    ++gd->gd_cnt.v_swtch;
+    --ntd->td_fairq_accum;
+    xtd = TAILQ_FIRST(&gd->gd_tdrunq);
+    if (ntd != xtd && ntd->td_pri >= xtd->td_pri) {
+	TAILQ_REMOVE(&gd->gd_tdrunq, ntd, td_threadq);
+	TAILQ_INSERT_HEAD(&gd->gd_tdrunq, ntd, td_threadq);
+    }
+havethread_preempted:
+    ;
+    /*
+     * If the new target does not need the MP lock and we are holding it,
+     * release the MP lock.  If the new target requires the MP lock we have
+     * already acquired it for the target.
+     *
+     * WARNING: mpheld is stale here.
+     */
+haveidle:
+    KASSERT(ntd->td_critcount,
+	    ("priority problem in lwkt_switch %d %d", td->td_pri, ntd->td_pri));
 #ifdef SMP
     if (ntd->td_mpcount == 0 ) {
 	if (MP_LOCK_HELD())
@@ -772,10 +813,10 @@ using_idle_thread:
     if (td != ntd) {
 	++switch_count;
 #ifdef __x86_64__
-    {
-	int tos_ok __debugvar = jg_tos_ok(ntd);
-	KKASSERT(tos_ok);
-    }
+	{
+	    int tos_ok __debugvar = jg_tos_ok(ntd);
+	    KKASSERT(tos_ok);
+	}
 #endif
 	KTR_LOG(ctxsw_sw, gd->gd_cpuid, ntd);
 	td->td_switch(ntd);
@@ -798,7 +839,7 @@ using_idle_thread:
  *
  * THE CALLER OF LWKT_PREEMPT() MUST BE IN A CRITICAL SECTION.  Typically
  * this is called via lwkt_schedule() through the td_preemptable callback.
- * critpri is the managed critical priority that we should ignore in order
+ * critcount is the managed critical priority that we should ignore in order
  * to determine whether preemption is possible (aka usually just the crit
  * priority of lwkt_schedule() itself).
  *
@@ -819,7 +860,7 @@ using_idle_thread:
  * can leave it synchronized on return).
  */
 void
-lwkt_preempt(thread_t ntd, int critpri)
+lwkt_preempt(thread_t ntd, int critcount)
 {
     struct globaldata *gd = mycpu;
     thread_t td;
@@ -831,7 +872,7 @@ lwkt_preempt(thread_t ntd, int critpri)
     /*
      * The caller has put us in a critical section.  We can only preempt
      * if the caller of the caller was not in a critical section (basically
-     * a local interrupt), as determined by the 'critpri' parameter.  We
+     * a local interrupt), as determined by the 'critcount' parameter.  We
      * also can't preempt if the caller is holding any spinlocks (even if
      * he isn't in a critical section).  This also handles the tokens test.
      *
@@ -840,14 +881,14 @@ lwkt_preempt(thread_t ntd, int critpri)
      *
      * Set need_lwkt_resched() unconditionally for now YYY.
      */
-    KASSERT(ntd->td_pri >= TDPRI_CRIT, ("BADCRIT0 %d", ntd->td_pri));
+    KASSERT(ntd->td_critcount, ("BADCRIT0 %d", ntd->td_pri));
 
     td = gd->gd_curthread;
-    if ((ntd->td_pri & TDPRI_MASK) <= (td->td_pri & TDPRI_MASK)) {
+    if (ntd->td_pri <= td->td_pri) {
 	++preempt_miss;
 	return;
     }
-    if ((td->td_pri & ~TDPRI_MASK) > critpri) {
+    if (td->td_critcount > critcount) {
 	++preempt_miss;
 	need_lwkt_resched();
 	return;
@@ -952,28 +993,15 @@ splz_check(void)
     globaldata_t gd = mycpu;
     thread_t td = gd->gd_curthread;
 
-    if (gd->gd_reqflags && td->td_nest_count < 2)
+    if ((gd->gd_reqflags & RQF_IDLECHECK_MASK) && td->td_nest_count < 2)
 	splz();
 }
 
 /*
- * This implements a normal yield which will yield to equal priority
- * threads as well as higher priority threads.  Note that gd_reqflags
- * tests will be handled by the crit_exit() call in lwkt_switch().
- *
- * (self contained on a per cpu basis)
- */
-void
-lwkt_yield(void)
-{
-    lwkt_schedule_self(curthread);
-    lwkt_switch();
-}
-
-/*
- * This function is used along with the lwkt_passive_recover() inline
- * by the trap code to negotiate a passive release of the current
- * process/lwp designation with the user scheduler.
+ * This function is used to negotiate a passive release of the current
+ * process/lwp designation with the user scheduler, allowing the user
+ * scheduler to schedule another user thread.  The related kernel thread
+ * (curthread) continues running in the released state.
  */
 void
 lwkt_passive_release(struct thread *td)
@@ -985,10 +1013,43 @@ lwkt_passive_release(struct thread *td)
     lp->lwp_proc->p_usched->release_curproc(lp);
 }
 
+
 /*
- * Make a kernel thread act as if it were in user mode with regards
- * to scheduling, to avoid becoming cpu-bound in the kernel.  Kernel
- * loops which may be potentially cpu-bound can call lwkt_user_yield().
+ * This implements a normal yield.  This routine is virtually a nop if
+ * there is nothing to yield to but it will always run any pending interrupts
+ * if called from a critical section.
+ *
+ * This yield is designed for kernel threads without a user context.
+ *
+ * (self contained on a per cpu basis)
+ */
+void
+lwkt_yield(void)
+{
+    globaldata_t gd = mycpu;
+    thread_t td = gd->gd_curthread;
+    thread_t xtd;
+
+    if ((gd->gd_reqflags & RQF_IDLECHECK_MASK) && td->td_nest_count < 2)
+	splz();
+    if (td->td_fairq_accum < 0) {
+	lwkt_schedule_self(curthread);
+	lwkt_switch();
+    } else {
+	xtd = TAILQ_FIRST(&gd->gd_tdrunq);
+	if (xtd && xtd->td_pri > td->td_pri) {
+	    lwkt_schedule_self(curthread);
+	    lwkt_switch();
+	}
+    }
+}
+
+/*
+ * This yield is designed for kernel threads with a user context.
+ *
+ * The kernel acting on behalf of the user is potentially cpu-bound,
+ * this function will efficiently allow other threads to run and also
+ * switch to other processes by releasing.
  *
  * The lwkt_user_yield() function is designed to have very low overhead
  * if no yield is determined to be needed.
@@ -996,8 +1057,15 @@ lwkt_passive_release(struct thread *td)
 void
 lwkt_user_yield(void)
 {
-    thread_t td = curthread;
-    struct lwp *lp = td->td_lwp;
+    globaldata_t gd = mycpu;
+    thread_t td = gd->gd_curthread;
+
+    /*
+     * Always run any pending interrupts in case we are in a critical
+     * section.
+     */
+    if ((gd->gd_reqflags & RQF_IDLECHECK_MASK) && td->td_nest_count < 2)
+	splz();
 
 #ifdef SMP
     /*
@@ -1013,53 +1081,30 @@ lwkt_user_yield(void)
 #endif
 
     /*
-     * Another kernel thread wants the cpu
+     * Switch (which forces a release) if another kernel thread needs
+     * the cpu, if userland wants us to resched, or if our kernel
+     * quantum has run out.
      */
-    if (lwkt_resched_wanted())
+    if (lwkt_resched_wanted() ||
+	user_resched_wanted() ||
+	td->td_fairq_accum < 0)
+    {
 	lwkt_switch();
-
-    /*
-     * If the user scheduler has asynchronously determined that the current
-     * process (when running in user mode) needs to lose the cpu then make
-     * sure we are released.
-     */
-    if (user_resched_wanted()) {
-	if (td->td_release)
-	    td->td_release(td);
     }
 
+#if 0
     /*
-     * If we are released reduce our priority
+     * Reacquire the current process if we are released.
+     *
+     * XXX not implemented atm.  The kernel may be holding locks and such,
+     *     so we want the thread to continue to receive cpu.
      */
-    if (td->td_release == NULL) {
-	if (lwkt_check_resched(td) > 0)
-		lwkt_switch();
-	if (lp) {
-		lp->lwp_proc->p_usched->acquire_curproc(lp);
-		td->td_release = lwkt_passive_release;
-		lwkt_setpri_self(TDPRI_USER_NORM);
-	}
+    if (td->td_release == NULL && lp) {
+	lp->lwp_proc->p_usched->acquire_curproc(lp);
+	td->td_release = lwkt_passive_release;
+	lwkt_setpri_self(TDPRI_USER_NORM);
     }
-}
-
-/*
- * Return 0 if no runnable threads are pending at the same or higher
- * priority as the passed thread.
- *
- * Return 1 if runnable threads are pending at the same priority.
- *
- * Return 2 if runnable threads are pending at a higher priority.
- */
-int
-lwkt_check_resched(thread_t td)
-{
-	int pri = td->td_pri & TDPRI_MASK;
-
-	if (td->td_gd->gd_runqmask > (2 << pri) - 1)
-		return(2);
-	if (TAILQ_NEXT(td, td_threadq))
-		return(1);
-	return(0);
+#endif
 }
 
 /*
@@ -1083,17 +1128,30 @@ lwkt_check_resched(thread_t td)
  */
 static __inline
 void
-_lwkt_schedule_post(globaldata_t gd, thread_t ntd, int cpri, int reschedok)
+_lwkt_schedule_post(globaldata_t gd, thread_t ntd, int ccount, int reschedok)
 {
     thread_t otd;
 
     if (ntd->td_flags & TDF_RUNQ) {
 	if (ntd->td_preemptable && reschedok) {
-	    ntd->td_preemptable(ntd, cpri);	/* YYY +token */
+	    ntd->td_preemptable(ntd, ccount);	/* YYY +token */
 	} else if (reschedok) {
 	    otd = curthread;
-	    if ((ntd->td_pri & TDPRI_MASK) > (otd->td_pri & TDPRI_MASK))
+	    if (ntd->td_pri > otd->td_pri)
 		need_lwkt_resched();
+	}
+
+	/*
+	 * Give the thread a little fair share scheduler bump if it
+	 * has been asleep for a while.  This is primarily to avoid
+	 * a degenerate case for interrupt threads where accumulator
+	 * crosses into negative territory unnecessarily.
+	 */
+	if (ntd->td_fairq_lticks != ticks) {
+	    ntd->td_fairq_lticks = ticks;
+	    ntd->td_fairq_accum += gd->gd_fairq_total_pri;
+	    if (ntd->td_fairq_accum > TDFAIRQ_MAX(gd))
+		    ntd->td_fairq_accum = TDFAIRQ_MAX(gd);
 	}
     }
 }
@@ -1118,13 +1176,13 @@ _lwkt_schedule(thread_t td, int reschedok)
 #ifdef SMP
 	if (td->td_gd == mygd) {
 	    _lwkt_enqueue(td);
-	    _lwkt_schedule_post(mygd, td, TDPRI_CRIT, reschedok);
+	    _lwkt_schedule_post(mygd, td, 1, reschedok);
 	} else {
 	    lwkt_send_ipiq3(td->td_gd, lwkt_schedule_remote, td, 0);
 	}
 #else
 	_lwkt_enqueue(td);
-	_lwkt_schedule_post(mygd, td, TDPRI_CRIT, reschedok);
+	_lwkt_schedule_post(mygd, td, 1, reschedok);
 #endif
     }
     crit_exit_gd(mygd);
@@ -1257,29 +1315,23 @@ lwkt_deschedule(thread_t td)
  * Set the target thread's priority.  This routine does not automatically
  * switch to a higher priority thread, LWKT threads are not designed for
  * continuous priority changes.  Yield if you want to switch.
- *
- * We have to retain the critical section count which uses the high bits
- * of the td_pri field.  The specified priority may also indicate zero or
- * more critical sections by adding TDPRI_CRIT*N.
- *
- * Note that we requeue the thread whether it winds up on a different runq
- * or not.  uio_yield() depends on this and the routine is not normally
- * called with the same priority otherwise.
  */
 void
 lwkt_setpri(thread_t td, int pri)
 {
-    KKASSERT(pri >= 0);
     KKASSERT(td->td_gd == mycpu);
-    crit_enter();
-    if (td->td_flags & TDF_RUNQ) {
-	_lwkt_dequeue(td);
-	td->td_pri = (td->td_pri & ~TDPRI_MASK) + pri;
-	_lwkt_enqueue(td);
-    } else {
-	td->td_pri = (td->td_pri & ~TDPRI_MASK) + pri;
+    if (td->td_pri != pri) {
+	KKASSERT(pri >= 0);
+	crit_enter();
+	if (td->td_flags & TDF_RUNQ) {
+	    _lwkt_dequeue(td);
+	    td->td_pri = pri;
+	    _lwkt_enqueue(td);
+	} else {
+	    td->td_pri = pri;
+	}
+	crit_exit();
     }
-    crit_exit();
 }
 
 /*
@@ -1296,7 +1348,7 @@ lwkt_setpri_initial(thread_t td, int pri)
 {
     KKASSERT(pri >= 0);
     KKASSERT((td->td_flags & TDF_RUNQ) == 0);
-    td->td_pri = (td->td_pri & ~TDPRI_MASK) + pri;
+    td->td_pri = pri;
 }
 
 void
@@ -1308,12 +1360,44 @@ lwkt_setpri_self(int pri)
     crit_enter();
     if (td->td_flags & TDF_RUNQ) {
 	_lwkt_dequeue(td);
-	td->td_pri = (td->td_pri & ~TDPRI_MASK) + pri;
+	td->td_pri = pri;
 	_lwkt_enqueue(td);
     } else {
-	td->td_pri = (td->td_pri & ~TDPRI_MASK) + pri;
+	td->td_pri = pri;
     }
     crit_exit();
+}
+
+/*
+ * 1/hz tick (typically 10ms) x TDFAIRQ_SCALE (typ 8) = 80ms full cycle.
+ *
+ * Example: two competing threads, same priority N.  decrement by (2*N)
+ * increment by N*8, each thread will get 4 ticks.
+ */
+void
+lwkt_fairq_schedulerclock(thread_t td)
+{
+    if (fairq_enable) {
+	while (td) {
+	    if (td != &td->td_gd->gd_idlethread) {
+		td->td_fairq_accum -= td->td_gd->gd_fairq_total_pri;
+		if (td->td_fairq_accum < -TDFAIRQ_MAX(td->td_gd))
+			td->td_fairq_accum = -TDFAIRQ_MAX(td->td_gd);
+		if (td->td_fairq_accum < 0)
+			need_lwkt_resched();
+		td->td_fairq_lticks = ticks;
+	    }
+	    td = td->td_preempted;
+	}
+    }
+}
+
+static void
+lwkt_fairq_accumulate(globaldata_t gd, thread_t td)
+{
+	td->td_fairq_accum += td->td_pri * TDFAIRQ_SCALE;
+	if (td->td_fairq_accum > TDFAIRQ_MAX(td->td_gd))
+		td->td_fairq_accum = TDFAIRQ_MAX(td->td_gd);
 }
 
 /*

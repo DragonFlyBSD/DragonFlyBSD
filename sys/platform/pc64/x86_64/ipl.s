@@ -138,12 +138,12 @@ doreti:
 	FAKE_MCOUNT(bintr)		/* init "from" bintr -> doreti */
 	movq	$0,%rax			/* irq mask unavailable due to BGL */
 	movq	PCPU(curthread),%rbx
-	cli				/* interlock with TDPRI_CRIT */
+	cli				/* interlock with critical section */
 	cmpl	$0,PCPU(reqflags)	/* short cut if nothing to do */
 	je	5f
-	cmpl	$TDPRI_CRIT,TD_PRI(%rbx) /* can't unpend if in critical sec */
-	jge	5f
-	addl	$TDPRI_CRIT,TD_PRI(%rbx) /* force all ints to pending */
+	testl	$-1,TD_CRITCOUNT(%rbx)	/* can't unpend if in critical sec */
+	jne	5f
+	incl	TD_CRITCOUNT(%rbx)	/* force all ints to pending */
 doreti_next:
 	sti				/* allow new interrupts */
 	movl	%eax,%ecx		/* irq mask unavailable due to BGL */
@@ -175,7 +175,7 @@ doreti_next:
 	 * BGL requirements.  We can only clear RQF_INTPEND if *ALL* pending
 	 * interrupts have been processed.
 	 */
-	subl	$TDPRI_CRIT,TD_PRI(%rbx)	/* interlocked with cli */
+	decl	TD_CRITCOUNT(%rbx)	/* interlocked with cli */
 	testl	%eax,%eax
 	jnz	5f
 	andl	$~RQF_INTPEND,PCPU(reqflags)
@@ -275,9 +275,9 @@ doreti_soft:
 	pushq	%rax
 	movl	%ecx,%edi		/* argument to C call */
 	incl	TD_NEST_COUNT(%rbx)	/* prevent doreti/splz nesting */
-	subl	$TDPRI_CRIT,TD_PRI(%rbx) /* so we can preempt */
+	decl	TD_CRITCOUNT(%rbx)	/* so we can preempt */
 	call	sched_ithd		/* YYY must pull in imasks */
-	addl	$TDPRI_CRIT,TD_PRI(%rbx)
+	incl	TD_CRITCOUNT(%rbx)
 	decl	TD_NEST_COUNT(%rbx)
 	popq	%rax
 	jmp	doreti_next
@@ -298,9 +298,9 @@ doreti_ast:
 	movl	%eax,%r12d		/* save cpl (can't use stack) */
 	movl	$T_ASTFLT,TF_TRAPNO(%rsp)
 	movq	%rsp,%rdi		/* pass frame by ref (%edi = C arg) */
-	subl	$TDPRI_CRIT,TD_PRI(%rbx)
+	decl	TD_CRITCOUNT(%rbx)
 	call	trap
-	addl	$TDPRI_CRIT,TD_PRI(%rbx)
+	incl	TD_CRITCOUNT(%rbx)
 	movl	%r12d,%eax		/* restore cpl for loop */
 	jmp	doreti_next
 
@@ -348,7 +348,7 @@ ENTRY(splz)
 	pushfq
 	pushq	%rbx
 	movq	PCPU(curthread),%rbx
-	addl	$TDPRI_CRIT,TD_PRI(%rbx)
+	incl	TD_CRITCOUNT(%rbx)
 	movl	$0,%eax
 
 splz_next:
@@ -368,7 +368,7 @@ splz_next:
 	cmpl	$0,%ecx
 	jnz	splz_soft
 
-	subl	$TDPRI_CRIT,TD_PRI(%rbx)
+	decl	TD_CRITCOUNT(%rbx)
 
 	/*
 	 * Nothing left to do, finish up.  Interrupts are still disabled.
@@ -431,10 +431,10 @@ splz_soft:
 	sti
 	pushq	%rax
 	movl	%ecx,%edi		/* C argument */
-	subl	$TDPRI_CRIT,TD_PRI(%rbx)
+	decl	TD_CRITCOUNT(%rbx)
 	incl	TD_NEST_COUNT(%rbx)	/* prevent doreti/splz nesting */
 	call	sched_ithd		/* YYY must pull in imasks */
-	addl	$TDPRI_CRIT,TD_PRI(%rbx)
+	incl	TD_CRITCOUNT(%rbx)
 	decl	TD_NEST_COUNT(%rbx)	/* prevent doreti/splz nesting */
 	popq	%rax
 	jmp	splz_next

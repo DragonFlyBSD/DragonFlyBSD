@@ -56,7 +56,7 @@
  */
 ENTRY(fork_trampoline)
 	movq	PCPU(curthread),%rax
-	subl	$TDPRI_CRIT,TD_PRI(%rax)
+	decl	TD_CRITCOUNT(%rax)
 
 	/*
 	 * cpu_set_fork_handler intercepts this function call to

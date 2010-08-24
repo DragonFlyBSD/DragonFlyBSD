@@ -519,6 +519,11 @@ hardclock(systimer_t info, struct intrframe *frame)
 	}
 
 	/*
+	 * lwkt thread scheduler fair queueing
+	 */
+	lwkt_fairq_schedulerclock(curthread);
+
+	/*
 	 * softticks are handled for all cpus
 	 */
 	hardclock_softtick(gd);

@@ -142,8 +142,8 @@ IDTVEC(vec_name) ; 							\
 	movq	PCPU(curthread),%rbx ;					\
 	testl	$-1,TD_NEST_COUNT(%rbx) ;				\
 	jne	1f ;							\
-	cmpl	$TDPRI_CRIT,TD_PRI(%rbx) ;				\
-	jl	2f ;							\
+	testl	$-1,TD_CRITCOUNT(%rbx) ;				\
+	je	2f ;							\
 1: ;									\
 	/* set pending bit and return, leave interrupt masked */	\
 	orl	$IRQ_LBIT(irq_num),PCPU(fpending) ;			\
@@ -154,9 +154,9 @@ IDTVEC(vec_name) ; 							\
 	andl	$~IRQ_LBIT(irq_num),PCPU(fpending) ;			\
 	pushq	$irq_num ;						\
 	movq	%rsp,%rdi ;		/* rdi = call argument */	\
-	addl	$TDPRI_CRIT,TD_PRI(%rbx) ;				\
+	incl	TD_CRITCOUNT(%rbx) ;					\
 	call	ithread_fast_handler ;	/* returns 0 to unmask int */	\
-	subl	$TDPRI_CRIT,TD_PRI(%rbx) ;				\
+	decl	TD_CRITCOUNT(%rbx) ;					\
 	addq	$8,%rsp ;		/* intr frame -> trap frame */	\
 	UNMASK_IRQ(icu, irq_num) ;					\
 5: ;									\

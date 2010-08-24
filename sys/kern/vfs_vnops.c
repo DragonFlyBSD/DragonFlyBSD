@@ -573,7 +573,7 @@ vn_rdwr(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
  * Package up an I/O request on a vnode into a uio and do it.  The I/O
  * request is split up into smaller chunks and we try to avoid saturating
  * the buffer cache while potentially holding a vnode locked, so we 
- * check bwillwrite() before calling vn_rdwr().  We also call uio_yield()
+ * check bwillwrite() before calling vn_rdwr().  We also call lwkt_user_yield()
  * to give other processes a chance to lock the vnode (either other processes
  * core'ing the same binary, or unrelated processes scanning the directory).
  *
@@ -616,7 +616,7 @@ vn_rdwr_inchunks(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
 			break;
 		offset += chunk;
 		base += chunk;
-		uio_yield();
+		lwkt_user_yield();
 	} while (len);
 	if (aresid)
 		*aresid += len;

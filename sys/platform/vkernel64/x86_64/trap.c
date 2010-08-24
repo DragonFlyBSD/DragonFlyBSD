@@ -381,7 +381,7 @@ user_trap(struct trapframe *frame)
 	int have_mplock = 0;
 #endif
 #ifdef INVARIANTS
-	int crit_count = td->td_pri & ~TDPRI_MASK;
+	int crit_count = td->td_critcount;
 #endif
 	vm_offset_t eva;
 
@@ -635,9 +635,9 @@ out2:	;
 #endif
 	KTR_LOG(kernentry_trap_ret, lp->lwp_proc->p_pid, lp->lwp_tid);
 #ifdef INVARIANTS
-	KASSERT(crit_count == (td->td_pri & ~TDPRI_MASK),
+	KASSERT(crit_count == td->td_critcount,
 		("syscall: critical section count mismatch! %d/%d",
-		crit_count / TDPRI_CRIT, td->td_pri / TDPRI_CRIT));
+		crit_count, td->td_pri));
 #endif
 }
 
@@ -653,7 +653,7 @@ kern_trap(struct trapframe *frame)
 	int have_mplock = 0;
 #endif
 #ifdef INVARIANTS
-	int crit_count = td->td_pri & ~TDPRI_MASK;
+	int crit_count = td->td_critcount;
 #endif
 	vm_offset_t eva;
 
@@ -846,9 +846,9 @@ out2:
 		rel_mplock();
 #endif
 #ifdef INVARIANTS
-	KASSERT(crit_count == (td->td_pri & ~TDPRI_MASK),
+	KASSERT(crit_count == td->td_critcount,
 		("syscall: critical section count mismatch! %d/%d",
-		crit_count / TDPRI_CRIT, td->td_pri / TDPRI_CRIT));
+		crit_count, td->td_pri));
 #endif
 }
 
@@ -1009,7 +1009,7 @@ trap_fatal(struct trapframe *frame, int usermode, vm_offset_t eva)
 		kprintf("Idle\n");
 	}
 	kprintf("current thread          = pri %d ", curthread->td_pri);
-	if (curthread->td_pri >= TDPRI_CRIT)
+	if (curthread->td_critcount)
 		kprintf("(CRIT)");
 	kprintf("\n");
 #ifdef SMP
@@ -1141,7 +1141,7 @@ syscall2(struct trapframe *frame)
 	int error;
 	int narg;
 #ifdef INVARIANTS
-	int crit_count = td->td_pri & ~TDPRI_MASK;
+	int crit_count = td->td_critcount;
 #endif
 #ifdef SMP
 	int have_mplock = 0;
@@ -1363,9 +1363,9 @@ bad:
 #endif
 	KTR_LOG(kernentry_syscall_ret, lp->lwp_proc->p_pid, lp->lwp_tid, error);
 #ifdef INVARIANTS
-	KASSERT(crit_count == (td->td_pri & ~TDPRI_MASK),
+	KASSERT(crit_count == td->td_critcount,
 		("syscall: critical section count mismatch! %d/%d",
-		crit_count / TDPRI_CRIT, td->td_pri / TDPRI_CRIT));
+		crit_count, td->td_pri));
 #endif
 }
 

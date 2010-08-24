@@ -163,7 +163,7 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
     if (gd->gd_intr_nesting_level > 20)
 	panic("lwkt_send_ipiq: TOO HEAVILY NESTED!");
 #endif
-    KKASSERT(curthread->td_pri >= TDPRI_CRIT);
+    KKASSERT(curthread->td_critcount);
     ++ipiq_count;
     ip = &gd->gd_ipiq[target->gd_cpuid];
 
@@ -253,7 +253,7 @@ lwkt_send_ipiq3_passive(globaldata_t target, ipifunc3_t func,
     if (gd->gd_intr_nesting_level > 20)
 	panic("lwkt_send_ipiq: TOO HEAVILY NESTED!");
 #endif
-    KKASSERT(curthread->td_pri >= TDPRI_CRIT);
+    KKASSERT(curthread->td_critcount);
     ++ipiq_count;
     ++ipiq_passive;
     ip = &gd->gd_ipiq[target->gd_cpuid];
@@ -322,7 +322,7 @@ lwkt_send_ipiq3_nowait(globaldata_t target, ipifunc3_t func,
     struct globaldata *gd = mycpu;
 
     logipiq(send_nbio, func, arg1, arg2, gd, target);
-    KKASSERT(curthread->td_pri >= TDPRI_CRIT);
+    KKASSERT(curthread->td_critcount);
     if (target == gd) {
 	func(arg1, arg2, NULL);
 	logipiq(send_end, func, arg1, arg2, gd, target);
@@ -530,7 +530,7 @@ lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip,
      * Issue a load fence to prevent speculative reads of e.g. data written
      * by the other cpu prior to it updating the index.
      */
-    KKASSERT(curthread->td_pri >= TDPRI_CRIT);
+    KKASSERT(curthread->td_critcount);
     wi = ip->ip_windex;
     cpu_lfence();
 

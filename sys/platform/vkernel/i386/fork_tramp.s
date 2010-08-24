@@ -59,7 +59,7 @@
  */
 ENTRY(fork_trampoline)
 	movl	PCPU(curthread),%eax
-	subl	$TDPRI_CRIT,TD_PRI(%eax)
+	decl	TD_CRITCOUNT(%eax)
 
 	/*
 	 * cpu_set_fork_handler intercepts this function call to

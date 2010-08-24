@@ -250,7 +250,7 @@ fill_kinfo_proc_kthread(struct thread *td, struct kinfo_proc *kp)
 
 	kp->kp_lwp.kl_tdprio = td->td_pri;
 	kp->kp_lwp.kl_rtprio.type = RTP_PRIO_THREAD;
-	kp->kp_lwp.kl_rtprio.prio = td->td_pri & TDPRI_MASK;
+	kp->kp_lwp.kl_rtprio.prio = td->td_pri;
 
 	kp->kp_lwp.kl_uticks = td->td_uticks;
 	kp->kp_lwp.kl_sticks = td->td_sticks;

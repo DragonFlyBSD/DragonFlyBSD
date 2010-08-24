@@ -52,7 +52,7 @@
 #include <sys/sysctl.h>
 
 static int ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t offset,
-				 size_t len, struct buf *bp, int *baseticks);
+				 size_t len, struct buf *bp);
 static int ffs_rawread_main(struct vnode *vp,
 			    struct uio *uio);
 
@@ -142,7 +142,7 @@ done:
 
 static int
 ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t loffset,
-		      size_t len, struct buf *bp, int *baseticks)
+		      size_t len, struct buf *bp)
 {
 	int error;
 	int iolen;
@@ -190,10 +190,7 @@ ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t loffset,
 		if (vmapbuf(bp, udata, len) < 0)
 			return EFAULT;
 		
-		if (ticks - *baseticks >= hogticks) {
-			*baseticks = ticks;
-			uio_yield();
-		}
+		lwkt_user_yield();
 		bzero(bp->b_data, bp->b_bcount);
 
 		/* Mark operation completed (similar to bufdone()) */
@@ -230,7 +227,6 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 	int error, nerror;
 	struct buf *bp, *nbp, *tbp;
 	int iolen;
-	int baseticks = ticks;
 	caddr_t udata;
 	int resid;
 	off_t offset;
@@ -250,8 +246,8 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 		if (bp == NULL) { /* Setup first read */
 			/* XXX: Leave some bufs for swap */
 			bp = getpbuf_kva(&ffsrawbufcnt);
-			error = ffs_rawread_readahead(vp, udata, offset, resid,
-						      bp, &baseticks);
+			error = ffs_rawread_readahead(vp, udata, offset,
+						      resid, bp);
 			if (error != 0)
 				break;
 			
@@ -267,7 +263,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 							udata + bp->b_bufsize,
 							offset + bp->b_bufsize,
 							resid - bp->b_bufsize,
-							nbp, &baseticks);
+							nbp);
 					if (nerror) {
 						relpbuf(nbp, &ffsrawbufcnt);
 						nbp = NULL;
@@ -298,7 +294,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 			/* Incomplete read.  Try to read remaining part */
 			error = ffs_rawread_readahead(
 				    vp, udata, offset,
-				    bp->b_bufsize - iolen, bp, &baseticks);
+				    bp->b_bufsize - iolen, bp);
 			if (error != 0)
 				break;
 		} else if (nbp != NULL) { /* Complete read with readahead */
@@ -317,7 +313,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 						vp, udata + bp->b_bufsize,
 				   		offset + bp->b_bufsize,
 						resid - bp->b_bufsize,
-						nbp, &baseticks);
+						nbp);
 				if (nerror != 0) {
 					relpbuf(nbp, &ffsrawbufcnt);
 					nbp = NULL;
@@ -327,8 +323,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 			break;		
 		}  else if (resid > 0) { /* More to read, no readahead */
 			error = ffs_rawread_readahead(vp, udata, offset,
-						      resid, bp,
-						      &baseticks);
+						      resid, bp);
 			if (error != 0)
 				break;
 		}

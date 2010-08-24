@@ -93,7 +93,6 @@ struct uio {
 struct vm_object;
 struct vm_page;
 
-void	uio_yield (void);
 int	uiomove (caddr_t, size_t, struct uio *);
 int	uiomovez (size_t, struct uio *);
 int 	uiomove_frombuf (void *buf, size_t buflen, struct uio *uio);

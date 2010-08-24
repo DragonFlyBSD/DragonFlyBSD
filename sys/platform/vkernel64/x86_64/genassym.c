@@ -109,6 +109,7 @@ ASSYM(TD_LWP, offsetof(struct thread, td_lwp));
 ASSYM(TD_PCB, offsetof(struct thread, td_pcb));
 ASSYM(TD_SP, offsetof(struct thread, td_sp));
 ASSYM(TD_PRI, offsetof(struct thread, td_pri));
+ASSYM(TD_CRITCOUNT, offsetof(struct thread, td_critcount));
 #ifdef SMP
 ASSYM(TD_MPCOUNT, offsetof(struct thread, td_mpcount));
 #endif
@@ -116,5 +117,3 @@ ASSYM(TD_FLAGS, offsetof(struct thread, td_flags));
 ASSYM(TD_SAVEFPU, offsetof(struct thread, td_savefpu));
 ASSYM(TDF_RUNNING, TDF_RUNNING);
 ASSYM(GD_NPXTHREAD, offsetof(struct mdglobaldata, gd_npxthread));
-
-ASSYM(TDPRI_CRIT, TDPRI_CRIT);
