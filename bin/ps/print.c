@@ -256,7 +256,7 @@ pri(const KINFO *k, const struct varent *vent)
 	if (KI_LWP(k, pid) != -1)
 	    printf("%*d", vent->width, KI_LWP(k, prio));
 	else
-	    printf("%*d", vent->width, -(KI_LWP(k, tdprio) & TDPRI_MASK));
+	    printf("%*d", vent->width, -(KI_LWP(k, tdprio)));
 }
 
 void
@@ -265,7 +265,7 @@ tdpri(const KINFO *k, const struct varent *vent)
 	char buf[32];
 	int val = KI_LWP(k, tdprio);
 
-	snprintf(buf, sizeof(buf), "%02d/%d", val & TDPRI_MASK, val / TDPRI_CRIT);
+	snprintf(buf, sizeof(buf), "%2d", val);
 	printf("%*s", vent->width, buf);
 }
 
