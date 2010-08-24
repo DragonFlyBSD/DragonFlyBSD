@@ -497,8 +497,8 @@ lwkt_switch(void)
     thread_t ntd;
     thread_t xtd;
     thread_t nlast;
-#ifdef SMP
     int nquserok;
+#ifdef SMP
     int mpheld;
 #endif
     int didaccumulate;
@@ -649,6 +649,7 @@ lwkt_switch(void)
 	    ntd = &gd->gd_idlethread;
 	    if (gd->gd_reqflags & RQF_IDLECHECK_MASK)
 		    ntd->td_flags |= TDF_IDLE_NOHLT;
+#ifdef SMP
 	    if (ntd->td_mpcount) {
 		if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
 		    panic("Idle thread %p was holding the BGL!", ntd);
@@ -657,6 +658,7 @@ lwkt_switch(void)
 		    continue;
 		}
 	    }
+#endif
 	    cpu_time.cp_msg[0] = 0;
 	    cpu_time.cp_stallpc = 0;
 	    goto haveidle;
@@ -664,6 +666,9 @@ lwkt_switch(void)
 
 	/*
 	 * Hotpath schedule
+	 *
+	 * NOTE: For UP there is no mplock and lwkt_getalltokens()
+	 *	     always succeeds.
 	 */
 	if (ntd->td_fairq_accum >= 0 &&
 #ifdef SMP
@@ -699,6 +704,8 @@ lwkt_switch(void)
 #ifdef SMP
 	nquserok = ((ntd->td_pri < TDPRI_KERN_LPSCHED) ||
 		    (ntd->td_fairq_accum < 0));
+#else
+	nquserok = 1;
 #endif
 	nlast = NULL;
 
@@ -737,6 +744,7 @@ lwkt_switch(void)
 		cpu_pause();
 		ntd = &gd->gd_idlethread;
 		ntd->td_flags |= TDF_IDLE_NOHLT;
+#ifdef SMP
 		set_mplock_contention_mask(gd);
 		cpu_mplock_contested();
 		if (ntd->td_mpcount) {
@@ -748,6 +756,7 @@ lwkt_switch(void)
 			break;		/* try again from the top, almost */
 		    }
 		}
+#endif
 
 		/*
 		 * If fairq accumulations occured we do not schedule the
@@ -764,6 +773,9 @@ lwkt_switch(void)
 
 	    /*
 	     * Try to switch to this thread.
+	     *
+	     * NOTE: For UP there is no mplock and lwkt_getalltokens()
+	     *	     always succeeds.
 	     */
 	    if ((ntd->td_pri >= TDPRI_KERN_LPSCHED || nquserok) &&
 		ntd->td_fairq_accum >= 0 &&
