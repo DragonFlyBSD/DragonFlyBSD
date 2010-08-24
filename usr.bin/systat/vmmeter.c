@@ -2,6 +2,7 @@
 #include <sys/param.h>
 #include <sys/sysctl.h>
 #include <sys/vmmeter.h>
+#include "symbols.h"
 
 #include <err.h>
 #include <kinfo.h>
@@ -15,6 +16,7 @@
 
 #define X_START		1
 #define CPU_START	1
+#define CPU_STARTX	(3 + vmm_ncpus)
 #define CPU_LABEL_W	7
 
 #define DRAW_ROW(n, y, w, fmt, args...) \
@@ -27,6 +29,8 @@ static int vmm_ncpus;
 static int vmm_fetched;
 static struct vmmeter *vmm_cur, *vmm_prev;
 static struct kinfo_cputime *vmm_cptime_cur, *vmm_cptime_prev;
+static struct save_ctx symctx;
+static int symbols_read;
 
 static void
 getvmm(void)
@@ -107,6 +111,15 @@ do { \
 
 #undef CPUV
 #undef CPUD
+#define CPUC(idx, field) vmm_cptime_cur[idx].cp_##field
+
+		n = X_START + CPU_LABEL_W;
+
+		DRAW_ROW(n, CPU_STARTX + i, 15, "%-*s", CPUC(i, msg));
+		DRAW_ROW(n, CPU_STARTX + i, 35, "%-*s",
+			address_to_symbol((void *)(intptr_t)CPUC(i, stallpc),
+					  &symctx));
+#undef CPUC
 	}
 }
 
@@ -130,22 +143,34 @@ labelvmm(void)
 
 	n = X_START + CPU_LABEL_W;
 
-	DRAW_ROW(n, 0, 6, "%*s", "timer");
-	DRAW_ROW(n, 0, 8, "%*s", "ipi");
-	DRAW_ROW(n, 0, 8, "%*s", "extint");
-	DRAW_ROW(n, 0, 7, "%*s", "user%");
-	DRAW_ROW(n, 0, 7, "%*s", "nice%");
-	DRAW_ROW(n, 0, 7, "%*s", "sys%");
-	DRAW_ROW(n, 0, 7, "%*s", "intr%");
-	DRAW_ROW(n, 0, 7, "%*s", "idle%");
+	DRAW_ROW(n, CPU_START - 1, 6, "%*s", "timer");
+	DRAW_ROW(n, CPU_START - 1, 8, "%*s", "ipi");
+	DRAW_ROW(n, CPU_START - 1, 8, "%*s", "extint");
+	DRAW_ROW(n, CPU_START - 1, 7, "%*s", "user%");
+	DRAW_ROW(n, CPU_START - 1, 7, "%*s", "nice%");
+	DRAW_ROW(n, CPU_START - 1, 7, "%*s", "sys%");
+	DRAW_ROW(n, CPU_START - 1, 7, "%*s", "intr%");
+	DRAW_ROW(n, CPU_START - 1, 7, "%*s", "idle%");
 
 	for (i = 0; i < vmm_ncpus; ++i)
 		mvprintw(CPU_START + i, X_START, "cpu%d", i);
+
+	n = X_START + CPU_LABEL_W;
+	DRAW_ROW(n, CPU_STARTX - 1, 15, "%-*s", "contention");
+	DRAW_ROW(n, CPU_STARTX - 1, 35, "%-*s", "function");
+
+	for (i = 0; i < vmm_ncpus; ++i)
+		mvprintw(CPU_STARTX + i, X_START, "cpu%d", i);
 }
 
 WINDOW *
 openvmm(void)
 {
+	if (symbols_read == 0) {
+		symbols_read = 1;
+		read_symbols(NULL);
+	}
+
 	if (kinfo_get_cpus(&vmm_ncpus))
 		err(1, "kinfo_get_cpus");
 

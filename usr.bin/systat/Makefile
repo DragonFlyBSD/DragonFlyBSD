@@ -5,7 +5,7 @@ PROG=	systat
 CFLAGS+=-DINET6 -I${.CURDIR}/../../sys
 SRCS=	cmds.c cmdtab.c convtbl.c devs.c fetch.c ifcmds.c ifstat.c iostat.c \
 	keyboard.c main.c mbufs.c netcmds.c netstat.c pigs.c sensors.c swap.c \
-	icmp.c mode.c ip.c tcp.c vmstat.c ip6.c icmp6.c vmmeter.c
+	icmp.c mode.c ip.c tcp.c vmstat.c ip6.c icmp6.c vmmeter.c symbols.c
 DPADD=	${LIBCURSES} ${LIBTERMCAP} ${LIBM} ${LIBKVM} ${LIBDEVSTAT} ${LIBKINFO}
 LDADD=	-lcurses -ltermcap -lm -lkvm -ldevstat -lkinfo
 BINGRP=	kmem
