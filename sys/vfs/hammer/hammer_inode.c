@@ -177,6 +177,7 @@ int
 hammer_vop_inactive(struct vop_inactive_args *ap)
 {
 	struct hammer_inode *ip = VTOI(ap->a_vp);
+	hammer_mount_t hmp;
 
 	/*
 	 * Degenerate case
@@ -199,12 +200,13 @@ hammer_vop_inactive(struct vop_inactive_args *ap)
 	 * multiple inode updates.
 	 */
 	if (ip->ino_data.nlinks == 0) {
-		get_mplock();
+		hmp = ip->hmp;
+		lwkt_gettoken(&hmp->fs_token);
 		hammer_inode_unloadable_check(ip, 0);
 		if (ip->flags & HAMMER_INODE_MODMASK)
 			hammer_flush_inode(ip, 0);
+		lwkt_reltoken(&hmp->fs_token);
 		vrecycle(ap->a_vp);
-		rel_mplock();
 	}
 	return(0);
 }
@@ -229,6 +231,7 @@ hammer_vop_reclaim(struct vop_reclaim_args *ap)
 
 	if ((ip = vp->v_data) != NULL) {
 		hmp = ip->hmp;
+		lwkt_gettoken(&hmp->fs_token);
 		hammer_lock_ex(&ip->lock);
 		vp->v_data = NULL;
 		ip->vp = NULL;
@@ -240,6 +243,7 @@ hammer_vop_reclaim(struct vop_reclaim_args *ap)
 		}
 		hammer_unlock(&ip->lock);
 		hammer_rel_inode(ip, 1);
+		lwkt_reltoken(&hmp->fs_token);
 	}
 	return(0);
 }

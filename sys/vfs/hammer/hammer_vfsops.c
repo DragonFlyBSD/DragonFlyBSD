@@ -395,7 +395,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	}
 
 	/*
-	 * Interal mount data structure
+	 * Internal mount data structure
 	 */
 	if (hmp == NULL) {
 		hmp = kmalloc(sizeof(*hmp), M_HAMMER, M_WAITOK | M_ZERO);
@@ -467,6 +467,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 * recovery if it has not already been run.
 	 */
 	if (mp->mnt_flag & MNT_UPDATE) {
+		lwkt_gettoken(&hmp->fs_token);
 		error = 0;
 		if (hmp->ronly && (mp->mnt_kern_flag & MNTK_WANTRDWR)) {
 			kprintf("HAMMER read-only -> read-write\n");
@@ -498,6 +499,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 			RB_SCAN(hammer_vol_rb_tree, &hmp->rb_vols_root, NULL,
 				hammer_adjust_volume_mode, NULL);
 		}
+		lwkt_reltoken(&hmp->fs_token);
 		return(error);
 	}
 
@@ -518,6 +520,11 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	TAILQ_INIT(&hmp->meta_list);
 	TAILQ_INIT(&hmp->lose_list);
 	TAILQ_INIT(&hmp->iorun_list);
+
+	lwkt_token_init(&hmp->fs_token, 1, "hammerfs");
+	lwkt_token_init(&hmp->io_token, 1, "hammerio");
+
+	lwkt_gettoken(&hmp->fs_token);
 
 	/*
 	 * Load volumes
@@ -586,6 +593,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	}
 
 	if (error) {
+		/* called with fs_token held */
 		hammer_free_hmp(mp);
 		return (error);
 	}
@@ -603,8 +611,8 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 * on return, so even if we do not specify it we no longer get
 	 * the BGL regardlless of how we are flagged.
 	 */
-	mp->mnt_kern_flag |= MNTK_RD_MPSAFE | MNTK_GA_MPSAFE |
-			     MNTK_IN_MPSAFE;
+	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;
+	/*MNTK_RD_MPSAFE | MNTK_GA_MPSAFE | MNTK_IN_MPSAFE;*/
 
 	/* 
 	 * note: f_iosize is used by vnode_pager_haspage() when constructing
@@ -741,45 +749,54 @@ failed:
 	/*
 	 * Cleanup and return.
 	 */
-	if (error)
+	if (error) {
+		/* called with fs_token held */
 		hammer_free_hmp(mp);
+	} else {
+		lwkt_reltoken(&hmp->fs_token);
+	}
 	return (error);
 }
 
 static int
 hammer_vfs_unmount(struct mount *mp, int mntflags)
 {
-#if 0
-	struct hammer_mount *hmp = (void *)mp->mnt_data;
-#endif
+	hammer_mount_t hmp = (void *)mp->mnt_data;
 	int flags;
 	int error;
 
 	/*
 	 * Clean out the vnodes
 	 */
+	lwkt_gettoken(&hmp->fs_token);
 	flags = 0;
 	if (mntflags & MNT_FORCE)
 		flags |= FORCECLOSE;
-	if ((error = vflush(mp, 0, flags)) != 0)
-		return (error);
+	error = vflush(mp, 0, flags);
 
 	/*
 	 * Clean up the internal mount structure and related entities.  This
 	 * may issue I/O.
 	 */
-	hammer_free_hmp(mp);
-	return(0);
+	if (error == 0) {
+		/* called with fs_token held */
+		hammer_free_hmp(mp);
+	} else {
+		lwkt_reltoken(&hmp->fs_token);
+	}
+	return(error);
 }
 
 /*
  * Clean up the internal mount structure and disassociate it from the mount.
  * This may issue I/O.
+ *
+ * Called with fs_token held.
  */
 static void
 hammer_free_hmp(struct mount *mp)
 {
-	struct hammer_mount *hmp = (void *)mp->mnt_data;
+	hammer_mount_t hmp = (void *)mp->mnt_data;
 	hammer_flush_group_t flg;
 	int count;
 	int dummy;
@@ -857,6 +874,7 @@ hammer_free_hmp(struct mount *mp)
 	hammer_destroy_objid_cache(hmp);
 	kmalloc_destroy(&hmp->m_misc);
 	kmalloc_destroy(&hmp->m_inodes);
+	lwkt_reltoken(&hmp->fs_token);
 	kfree(hmp, M_HAMMER);
 }
 
@@ -901,6 +919,7 @@ hammer_vfs_vget(struct mount *mp, struct vnode *dvp,
 	int error;
 	u_int32_t localization;
 
+	lwkt_gettoken(&hmp->fs_token);
 	hammer_simple_transaction(&trans, hmp);
 
 	/*
@@ -925,12 +944,12 @@ hammer_vfs_vget(struct mount *mp, struct vnode *dvp,
 			      0, &error);
 	if (ip == NULL) {
 		*vpp = NULL;
-		hammer_done_transaction(&trans);
-		return(error);
+	} else {
+		error = hammer_get_vnode(ip, vpp);
+		hammer_rel_inode(ip, 0);
 	}
-	error = hammer_get_vnode(ip, vpp);
-	hammer_rel_inode(ip, 0);
 	hammer_done_transaction(&trans);
+	lwkt_reltoken(&hmp->fs_token);
 	return (error);
 }
 
@@ -943,9 +962,6 @@ hammer_vfs_vget(struct mount *mp, struct vnode *dvp,
 static int
 hammer_vfs_root(struct mount *mp, struct vnode **vpp)
 {
-#if 0
-	struct hammer_mount *hmp = (void *)mp->mnt_data;
-#endif
 	int error;
 
 	error = hammer_vfs_vget(mp, NULL, 1, vpp);
@@ -962,9 +978,12 @@ hammer_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	int64_t bfree;
 	int64_t breserved;
 
+	lwkt_gettoken(&hmp->fs_token);
 	volume = hammer_get_root_volume(hmp, &error);
-	if (error)
+	if (error) {
+		lwkt_reltoken(&hmp->fs_token);
 		return(error);
+	}
 	ondisk = volume->ondisk;
 
 	/*
@@ -981,6 +1000,7 @@ hammer_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 		mp->mnt_stat.f_files = 0;
 
 	*sbp = mp->mnt_stat;
+	lwkt_reltoken(&hmp->fs_token);
 	return(0);
 }
 
@@ -994,9 +1014,12 @@ hammer_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 	int64_t bfree;
 	int64_t breserved;
 
+	lwkt_gettoken(&hmp->fs_token);
 	volume = hammer_get_root_volume(hmp, &error);
-	if (error)
+	if (error) {
+		lwkt_reltoken(&hmp->fs_token);
 		return(error);
+	}
 	ondisk = volume->ondisk;
 
 	/*
@@ -1012,6 +1035,7 @@ hammer_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 	if (mp->mnt_vstat.f_files < 0)
 		mp->mnt_vstat.f_files = 0;
 	*sbp = mp->mnt_vstat;
+	lwkt_reltoken(&hmp->fs_token);
 	return(0);
 }
 
@@ -1029,16 +1053,21 @@ hammer_vfs_sync(struct mount *mp, int waitfor)
 	struct hammer_mount *hmp = (void *)mp->mnt_data;
 	int error;
 
+	lwkt_gettoken(&hmp->fs_token);
 	if (panicstr == NULL) {
 		error = hammer_sync_hmp(hmp, waitfor);
 	} else {
 		error = EIO;
 	}
+	lwkt_reltoken(&hmp->fs_token);
 	return (error);
 }
 
 /*
  * Convert a vnode to a file handle.
+ *
+ * Accesses read-only fields on already-referenced structures so
+ * no token is needed.
  */
 static int
 hammer_vfs_vptofh(struct vnode *vp, struct fid *fhp)
@@ -1065,6 +1094,7 @@ static int
 hammer_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 		  struct fid *fhp, struct vnode **vpp)
 {
+	hammer_mount_t hmp = (void *)mp->mnt_data;
 	struct hammer_transaction trans;
 	struct hammer_inode *ip;
 	struct hammer_inode_info info;
@@ -1078,7 +1108,8 @@ hammer_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 	else
 		localization = (u_int32_t)fhp->fid_ext << 16;
 
-	hammer_simple_transaction(&trans, (void *)mp->mnt_data);
+	lwkt_gettoken(&hmp->fs_token);
+	hammer_simple_transaction(&trans, hmp);
 
 	/*
 	 * Get/allocate the hammer_inode structure.  The structure must be
@@ -1094,6 +1125,7 @@ hammer_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 		*vpp = NULL;
 	}
 	hammer_done_transaction(&trans);
+	lwkt_reltoken(&hmp->fs_token);
 	return (error);
 }
 
@@ -1105,6 +1137,7 @@ hammer_vfs_checkexp(struct mount *mp, struct sockaddr *nam,
 	struct netcred *np;
 	int error;
 
+	lwkt_gettoken(&hmp->fs_token);
 	np = vfs_export_lookup(mp, &hmp->export, nam);
 	if (np) {
 		*exflagsp = np->netc_exflags;
@@ -1113,6 +1146,7 @@ hammer_vfs_checkexp(struct mount *mp, struct sockaddr *nam,
 	} else {
 		error = EACCES;
 	}
+	lwkt_reltoken(&hmp->fs_token);
 	return (error);
 
 }
@@ -1123,6 +1157,8 @@ hammer_vfs_export(struct mount *mp, int op, const struct export_args *export)
 	hammer_mount_t hmp = (void *)mp->mnt_data;
 	int error;
 
+	lwkt_gettoken(&hmp->fs_token);
+
 	switch(op) {
 	case MOUNTCTL_SET_EXPORT:
 		error = vfs_export(mp, &hmp->export, export);
@@ -1131,6 +1167,8 @@ hammer_vfs_export(struct mount *mp, int op, const struct export_args *export)
 		error = EOPNOTSUPP;
 		break;
 	}
+	lwkt_reltoken(&hmp->fs_token);
+
 	return(error);
 }
 

@@ -171,13 +171,13 @@ hammer_flusher_create(hammer_mount_t hmp)
 	TAILQ_INIT(&hmp->flusher.ready_list);
 
 	lwkt_create(hammer_flusher_master_thread, hmp,
-		    &hmp->flusher.td, NULL, 0, -1, "hammer-M");
+		    &hmp->flusher.td, NULL, TDF_MPSAFE, -1, "hammer-M");
 	for (i = 0; i < HAMMER_MAX_FLUSHERS; ++i) {
 		info = kmalloc(sizeof(*info), hmp->m_misc, M_WAITOK|M_ZERO);
 		info->hmp = hmp;
 		TAILQ_INSERT_TAIL(&hmp->flusher.ready_list, info, entry);
 		lwkt_create(hammer_flusher_slave_thread, info,
-			    &info->td, NULL, 0, -1, "hammer-S%d", i);
+			    &info->td, NULL, TDF_MPSAFE, -1, "hammer-S%d", i);
 	}
 }
 
@@ -222,6 +222,8 @@ hammer_flusher_master_thread(void *arg)
 
 	hmp = arg;
 
+	lwkt_gettoken(&hmp->fs_token);
+
 	for (;;) {
 		/*
 		 * Do at least one flush cycle.  We may have to update the
@@ -264,6 +266,7 @@ hammer_flusher_master_thread(void *arg)
 	 */
 	hmp->flusher.td = NULL;
 	wakeup(&hmp->flusher.exiting);
+	lwkt_reltoken(&hmp->fs_token);
 	lwkt_exit();
 }
 
@@ -438,6 +441,7 @@ hammer_flusher_slave_thread(void *arg)
 
 	info = arg;
 	hmp = info->hmp;
+	lwkt_gettoken(&hmp->fs_token);
 
 	for (;;) {
 		while (info->runstate == 0)
@@ -459,6 +463,7 @@ hammer_flusher_slave_thread(void *arg)
 	}
 	info->td = NULL;
 	wakeup(&info->td);
+	lwkt_reltoken(&hmp->fs_token);
 	lwkt_exit();
 }
 
@@ -472,9 +477,11 @@ hammer_flusher_clean_loose_ios(hammer_mount_t hmp)
 	 * loose ends - buffers without bp's aren't tracked by the kernel
 	 * and can build up, so clean them out.  This can occur when an
 	 * IO completes on a buffer with no references left.
+	 *
+	 * The io_token is needed to protect the list.
 	 */
 	if ((io = TAILQ_FIRST(&hmp->lose_list)) != NULL) {
-		crit_enter();	/* biodone() race */
+		lwkt_gettoken(&hmp->io_token);
 		while ((io = TAILQ_FIRST(&hmp->lose_list)) != NULL) {
 			KKASSERT(io->mod_list == &hmp->lose_list);
 			TAILQ_REMOVE(&hmp->lose_list, io, mod_entry);
@@ -483,7 +490,7 @@ hammer_flusher_clean_loose_ios(hammer_mount_t hmp)
 			buffer = (void *)io;
 			hammer_rel_buffer(buffer, 0);
 		}
-		crit_exit();
+		lwkt_reltoken(&hmp->io_token);
 	}
 }
 

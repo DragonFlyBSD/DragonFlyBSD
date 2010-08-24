@@ -39,6 +39,11 @@
 
 #include "hammer.h"
 
+/*
+ * Check for a user signal interrupting a long operation
+ *
+ * MPSAFE
+ */
 int
 hammer_signal_check(hammer_mount_t hmp)
 {

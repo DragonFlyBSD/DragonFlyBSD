@@ -1223,6 +1223,8 @@ failed:
 
 /*
  * Check space availability
+ *
+ * MPSAFE - does not require fs_token
  */
 int
 _hammer_checkspace(hammer_mount_t hmp, int slop, int64_t *resp)

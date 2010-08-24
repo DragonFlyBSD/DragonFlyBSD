@@ -554,15 +554,18 @@ again:
 		 * buffers will never be in a modified state.  This should
 		 * only occur on the 0->1 transition of refs.
 		 *
-		 * lose_list can be modified via a biodone() interrupt.
+		 * lose_list can be modified via a biodone() interrupt
+		 * so the io_token must be held.
 		 */
 		if (buffer->io.mod_list == &hmp->lose_list) {
-			crit_enter();	/* biodone race against list */
-			TAILQ_REMOVE(buffer->io.mod_list, &buffer->io,
-				     mod_entry);
-			crit_exit();
-			buffer->io.mod_list = NULL;
-			KKASSERT(buffer->io.modified == 0);
+			lwkt_gettoken(&hmp->io_token);
+			if (buffer->io.mod_list == &hmp->lose_list) {
+				TAILQ_REMOVE(buffer->io.mod_list, &buffer->io,
+					     mod_entry);
+				buffer->io.mod_list = NULL;
+				KKASSERT(buffer->io.modified == 0);
+			}
+			lwkt_reltoken(&hmp->io_token);
 		}
 		goto found;
 	}
@@ -903,6 +906,7 @@ hammer_unload_buffer(hammer_buffer_t buffer, void *data)
 int
 hammer_ref_buffer(hammer_buffer_t buffer)
 {
+	hammer_mount_t hmp;
 	int error;
 	int locked;
 
@@ -911,22 +915,23 @@ hammer_ref_buffer(hammer_buffer_t buffer)
 	 * 0->1 transition.
 	 */
 	locked = hammer_ref_interlock(&buffer->io.lock);
+	hmp = buffer->io.hmp;
 
 	/*
 	 * At this point a biodone() will not touch the buffer other then
 	 * incidental bits.  However, lose_list can be modified via
 	 * a biodone() interrupt.
 	 *
-	 * No longer loose
+	 * No longer loose.  lose_list requires the io_token.
 	 */
-	if (buffer->io.mod_list == &buffer->io.hmp->lose_list) {
-		crit_enter();
-		if (buffer->io.mod_list == &buffer->io.hmp->lose_list) {
+	if (buffer->io.mod_list == &hmp->lose_list) {
+		lwkt_gettoken(&hmp->io_token);
+		if (buffer->io.mod_list == &hmp->lose_list) {
 			TAILQ_REMOVE(buffer->io.mod_list, &buffer->io,
 				     mod_entry);
 			buffer->io.mod_list = NULL;
 		}
-		crit_exit();
+		lwkt_reltoken(&hmp->io_token);
 	}
 
 	if (locked) {

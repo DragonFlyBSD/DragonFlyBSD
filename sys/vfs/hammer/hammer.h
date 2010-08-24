@@ -859,8 +859,8 @@ struct hammer_mount {
 	struct hammer_io_list meta_list;	/* dirty meta bufs    */
 	struct hammer_io_list lose_list;	/* loose buffers      */
 	int	locked_dirty_space;		/* meta/volu count    */
-	int	io_running_space;		/* track I/O in progress */
-	int	io_running_wakeup;
+	int	io_running_space;		/* io_token */
+	int	io_running_wakeup;		/* io_token */
 	int	objid_cache_count;
 	int	error;				/* critical I/O error */
 	struct krate	krate;			/* rate limited kprintf */
@@ -890,6 +890,9 @@ struct hammer_mount {
 	TAILQ_HEAD(, hammer_objid_cache) objid_cache_list;
 	TAILQ_HEAD(, hammer_reclaim) reclaim_list;
 	TAILQ_HEAD(, hammer_io) iorun_list;
+
+	struct lwkt_token	fs_token;	/* high level */
+	struct lwkt_token	io_token;	/* low level (IO callback) */
 
 	struct hammer_inostats	inostats[HAMMER_INOSTATS_HSIZE];
 };
