@@ -433,6 +433,7 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 {
 	hammer_node_ondisk_t node;
 	hammer_btree_elm_t elm;
+	hammer_mount_t hmp;
 	int error = 0;
 	int r;
 	int s;
@@ -456,11 +457,20 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 		--cursor->index;
 
 	/*
+	 * HAMMER can wind up being cpu-bound.
+	 */
+	hmp = cursor->trans->hmp;
+	if (++hmp->check_yield > hammer_yield_check) {
+		hmp->check_yield = 0;
+		lwkt_user_yield();
+	}
+
+	/*
 	 * Loop until an element is found or we are done.
 	 */
 	for (;;) {
 		++hammer_stats_btree_iterations;
-		hammer_flusher_clean_loose_ios(cursor->trans->hmp);
+		hammer_flusher_clean_loose_ios(hmp);
 
 		/*
 		 * We iterate up the tree and then index over one element
