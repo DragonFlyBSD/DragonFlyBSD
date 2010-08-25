@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 2009 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
@@ -245,6 +247,8 @@ ahci_os_start_port(struct ahci_port *ap)
 
 	atomic_set_int(&ap->ap_signal, AP_SIGF_INIT | AP_SIGF_THREAD_SYNC);
 	lockinit(&ap->ap_lock, "ahcipo", 0, 0);
+	lockinit(&ap->ap_sim_lock, "ahcicam", 0, LK_CANRECURSE);
+	lockinit(&ap->ap_sig_lock, "ahport", 0, 0);
 	sysctl_ctx_init(&ap->sysctl_ctx);
 	ksnprintf(name, sizeof(name), "%d", ap->ap_num);
 	ap->sysctl_tree = SYSCTL_ADD_NODE(&ap->sysctl_ctx,
@@ -304,8 +308,10 @@ ahci_os_stop_port(struct ahci_port *ap)
 void
 ahci_os_signal_port_thread(struct ahci_port *ap, int mask)
 {
+	lockmgr(&ap->ap_sig_lock, LK_EXCLUSIVE);
 	atomic_set_int(&ap->ap_signal, mask);
 	wakeup(&ap->ap_thread);
+	lockmgr(&ap->ap_sig_lock, LK_RELEASE);
 }
 
 /*
@@ -349,6 +355,8 @@ ahci_port_thread(void *arg)
 	struct ahci_port *ap = arg;
 	int mask;
 
+	rel_mplock();
+
 	/*
 	 * The helper thread is responsible for the initial port init,
 	 * so all the ports can be inited in parallel.
@@ -373,9 +381,12 @@ ahci_port_thread(void *arg)
 	while ((mask & AP_SIGF_STOP) == 0) {
 		atomic_clear_int(&ap->ap_signal, mask);
 		ahci_port_thread_core(ap, mask);
-		tsleep_interlock(&ap->ap_thread, 0);
-		if (ap->ap_signal == 0)
-			tsleep(&ap->ap_thread, PINTERLOCKED, "ahport", 0);
+		lockmgr(&ap->ap_sig_lock, LK_EXCLUSIVE);
+		if (ap->ap_signal == 0) {
+			lksleep(&ap->ap_thread, &ap->ap_sig_lock, 0,
+				"ahport", 0);
+		}
+		lockmgr(&ap->ap_sig_lock, LK_RELEASE);
 		mask = ap->ap_signal;
 	}
 	ap->ap_thread = NULL;

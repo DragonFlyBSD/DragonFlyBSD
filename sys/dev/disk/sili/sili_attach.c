@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 2006 David Gwynne <dlg@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -256,7 +258,8 @@ sili_pci_attach(device_t dev)
 	 * ready to go.
 	 */
 	if (error == 0) {
-		error = bus_setup_intr(dev, sc->sc_irq, 0, sili_intr, sc,
+		error = bus_setup_intr(dev, sc->sc_irq, INTR_MPSAFE,
+				       sili_intr, sc,
 				       &sc->sc_irq_handle, NULL);
 	}
 

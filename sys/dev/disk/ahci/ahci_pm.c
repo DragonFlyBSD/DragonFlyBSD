@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 2009 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project

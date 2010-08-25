@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 2009 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
@@ -105,14 +107,16 @@ sili_cam_attach(struct sili_port *ap)
 		return (ENOMEM);
 	}
 	sim = cam_sim_alloc(sili_xpt_action, sili_xpt_poll, "sili",
-			   (void *)ap, unit, &sim_mplock, 1, 1, devq);
+			   (void *)ap, unit, &ap->ap_sim_lock, 1, 1, devq);
 	cam_simq_release(devq);
 	if (sim == NULL) {
 		return (ENOMEM);
 	}
 	ap->ap_sim = sim;
 	sili_os_unlock_port(ap);
+	lockmgr(&ap->ap_sim_lock, LK_EXCLUSIVE);
 	error = xpt_bus_register(ap->ap_sim, ap->ap_num);
+	lockmgr(&ap->ap_sim_lock, LK_RELEASE);
 	sili_os_lock_port(ap);
 	if (error != CAM_SUCCESS) {
 		sili_cam_detach(ap);
@@ -190,7 +194,7 @@ sili_cam_detach(struct sili_port *ap)
 
 	if ((ap->ap_flags & AP_F_CAM_ATTACHED) == 0)
 		return;
-	get_mplock();
+	lockmgr(&ap->ap_sim_lock, LK_EXCLUSIVE);
 	if (ap->ap_sim) {
 		xpt_freeze_simq(ap->ap_sim, 1);
 	}
@@ -203,7 +207,7 @@ sili_cam_detach(struct sili_port *ap)
 		cam_sim_free(ap->ap_sim);
 		ap->ap_sim = NULL;
 	}
-	rel_mplock();
+	lockmgr(&ap->ap_sim_lock, LK_RELEASE);
 	ap->ap_flags &= ~AP_F_CAM_ATTACHED;
 }
 
