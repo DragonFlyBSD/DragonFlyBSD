@@ -1,7 +1,9 @@
 /*
+ * (MPSAFE)
+ *
  * KERN_SLABALLOC.C	- Kernel SLAB memory allocator
  * 
- * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003,2004,2010 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -116,7 +118,6 @@
 #include <machine/cpu.h>
 
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
 
 #define arysize(ary)	(sizeof(ary)/sizeof((ary)[0]))
 
@@ -1121,10 +1122,6 @@ chunk_mark_free(SLZone *z, void *chunk)
  *	use PQ_CACHE pages.  However, if an interrupt thread is run
  *	non-preemptively or blocks and then runs non-preemptively, then
  *	it is free to use PQ_CACHE pages.
- *
- *	This routine will currently obtain the BGL.
- *
- * MPALMOSTSAFE - acquires mplock
  */
 static void *
 kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
@@ -1142,10 +1139,10 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
      * cannot block.
      */
     if (flags & M_RNOWAIT) {
-	if (try_mplock() == 0)
+	if (lwkt_trytoken(&vm_token) == 0)
 	    return(NULL);
     } else {
-	get_mplock();
+	lwkt_gettoken(&vm_token);
     }
     count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
     crit_enter();
@@ -1156,7 +1153,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	    panic("kmem_slab_alloc(): kernel_map ran out of space!");
 	crit_exit();
 	vm_map_entry_release(count);
-	rel_mplock();
+	lwkt_reltoken(&vm_token);
 	return(NULL);
     }
 
@@ -1244,7 +1241,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	    vm_map_unlock(&kernel_map);
 	    crit_exit();
 	    vm_map_entry_release(count);
-	    rel_mplock();
+	    lwkt_reltoken(&vm_token);
 	    return(NULL);
 	}
     }
@@ -1280,22 +1277,20 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     }
     vm_map_unlock(&kernel_map);
     vm_map_entry_release(count);
-    rel_mplock();
+    lwkt_reltoken(&vm_token);
     return((void *)addr);
 }
 
 /*
  * kmem_slab_free()
- *
- * MPALMOSTSAFE - acquires mplock
  */
 static void
 kmem_slab_free(void *ptr, vm_size_t size)
 {
-    get_mplock();
     crit_enter();
+    lwkt_gettoken(&vm_token);
     vm_map_remove(&kernel_map, (vm_offset_t)ptr, (vm_offset_t)ptr + size);
+    lwkt_reltoken(&vm_token);
     crit_exit();
-    rel_mplock();
 }
 
