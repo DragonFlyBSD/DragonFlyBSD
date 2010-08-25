@@ -388,7 +388,7 @@ static struct periph_driver dadriver =
 PERIPHDRIVER_DECLARE(da, dadriver);
 
 static struct dev_ops da_ops = {
-	{ "da", DA_CDEV_MAJOR, D_DISK },
+	{ "da", DA_CDEV_MAJOR, D_DISK | D_MPSAFE },
 	.d_open =	daopen,
 	.d_close =	daclose,
 	.d_read =	physread,

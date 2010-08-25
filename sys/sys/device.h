@@ -250,9 +250,7 @@ struct dev_ops {
 #define D_TRACKCLOSE	0x00080000	/* track all closes */
 #define D_MASTER	0x00100000	/* used by pty/tty code */
 #define D_KQFILTER	0x00200000	/* has kqfilter entry */
-#define D_MPSAFE_READ	0x00400000	/* doesn't require mplock for reads */
-#define D_MPSAFE_WRITE	0x00800000	/* doesn't require mplock for writes */
-#define D_MPSAFE_IOCTL	0x01000000	/* doesn't require mplock for ioctls */
+#define D_MPSAFE	0x00400000	/* all dev_d*() calls are MPSAFE */
 
 /*
  * A union of all possible argument structures.

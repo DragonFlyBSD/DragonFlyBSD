@@ -72,8 +72,7 @@ static void dmminphys(struct buf *);
 
 /* ***Variable-definitions*** */
 struct dev_ops dm_ops = {
-	{ "dm", 0, D_DISK |
-	    D_MPSAFE_READ | D_MPSAFE_WRITE | D_MPSAFE_IOCTL },
+	{ "dm", 0, D_DISK | D_MPSAFE },
 	.d_open		= dmopen,
 	.d_close	= dmclose,
 	.d_read 	= physread,

@@ -45,10 +45,33 @@
 #include <sys/tree.h>
 #include <sys/syslink_rpc.h>
 #include <sys/proc.h>
+#include <sys/sysctl.h>
 #include <machine/stdarg.h>
-#include <sys/thread2.h>
 #include <sys/devfs.h>
 #include <sys/dsched.h>
+
+#include <sys/thread2.h>
+#include <sys/mplock2.h>
+
+static int mpsafe_writes;
+static int mplock_writes;
+static int mpsafe_reads;
+static int mplock_reads;
+static int mpsafe_strategies;
+static int mplock_strategies;
+
+SYSCTL_INT(_kern, OID_AUTO, mpsafe_writes, CTLFLAG_RD, &mpsafe_writes,
+	   0, "mpsafe writes");
+SYSCTL_INT(_kern, OID_AUTO, mplock_writes, CTLFLAG_RD, &mplock_writes,
+	   0, "non-mpsafe writes");
+SYSCTL_INT(_kern, OID_AUTO, mpsafe_reads, CTLFLAG_RD, &mpsafe_reads,
+	   0, "mpsafe reads");
+SYSCTL_INT(_kern, OID_AUTO, mplock_reads, CTLFLAG_RD, &mplock_reads,
+	   0, "non-mpsafe reads");
+SYSCTL_INT(_kern, OID_AUTO, mpsafe_strategies, CTLFLAG_RD, &mpsafe_strategies,
+	   0, "mpsafe strategies");
+SYSCTL_INT(_kern, OID_AUTO, mplock_strategies, CTLFLAG_RD, &mplock_strategies,
+	   0, "non-mpsafe strategies");
 
 /*
  * system link descriptors identify the command in the
@@ -96,47 +119,82 @@ struct dev_ops default_dev_ops = {
 	.d_revoke = norevoke,
 	.d_clone = noclone
 };
+
+static __inline
+int
+dev_needmplock(cdev_t dev)
+{
+    return((dev->si_ops->head.flags & D_MPSAFE) == 0);
+}
     
 /************************************************************************
  *			GENERAL DEVICE API FUNCTIONS			*
- ************************************************************************/
-
+ ************************************************************************
+ *
+ * The MPSAFEness of these depends on dev->si_ops->head.flags
+ */
 int
 dev_dopen(cdev_t dev, int oflags, int devtype, struct ucred *cred)
 {
 	struct dev_open_args ap;
+	int needmplock = dev_needmplock(dev);
+	int error;
 
 	ap.a_head.a_desc = &dev_open_desc;
 	ap.a_head.a_dev = dev;
 	ap.a_oflags = oflags;
 	ap.a_devtype = devtype;
 	ap.a_cred = cred;
-	return(dev->si_ops->d_open(&ap));
+
+	if (needmplock)
+		get_mplock();
+	error = dev->si_ops->d_open(&ap);
+	if (needmplock)
+		rel_mplock();
+	return (error);
 }
 
 int
 dev_dclose(cdev_t dev, int fflag, int devtype)
 {
 	struct dev_close_args ap;
+	int needmplock = dev_needmplock(dev);
+	int error;
 
 	ap.a_head.a_desc = &dev_close_desc;
 	ap.a_head.a_dev = dev;
 	ap.a_fflag = fflag;
 	ap.a_devtype = devtype;
-	return(dev->si_ops->d_close(&ap));
+
+	if (needmplock)
+		get_mplock();
+	error = dev->si_ops->d_close(&ap);
+	if (needmplock)
+		rel_mplock();
+	return (error);
 }
 
 int
 dev_dread(cdev_t dev, struct uio *uio, int ioflag)
 {
 	struct dev_read_args ap;
+	int needmplock = dev_needmplock(dev);
 	int error;
 
 	ap.a_head.a_desc = &dev_read_desc;
 	ap.a_head.a_dev = dev;
 	ap.a_uio = uio;
 	ap.a_ioflag = ioflag;
+
+	if (needmplock) {
+		get_mplock();
+		++mplock_reads;
+	} else {
+		++mpsafe_reads;
+	}
 	error = dev->si_ops->d_read(&ap);
+	if (needmplock)
+		rel_mplock();
 	if (error == 0)
 		dev->si_lastread = time_second;
 	return (error);
@@ -146,6 +204,7 @@ int
 dev_dwrite(cdev_t dev, struct uio *uio, int ioflag)
 {
 	struct dev_write_args ap;
+	int needmplock = dev_needmplock(dev);
 	int error;
 
 	dev->si_lastwrite = time_second;
@@ -153,7 +212,16 @@ dev_dwrite(cdev_t dev, struct uio *uio, int ioflag)
 	ap.a_head.a_dev = dev;
 	ap.a_uio = uio;
 	ap.a_ioflag = ioflag;
+
+	if (needmplock) {
+		get_mplock();
+		++mplock_writes;
+	} else {
+		++mpsafe_writes;
+	}
 	error = dev->si_ops->d_write(&ap);
+	if (needmplock)
+		rel_mplock();
 	return (error);
 }
 
@@ -162,6 +230,8 @@ dev_dioctl(cdev_t dev, u_long cmd, caddr_t data, int fflag, struct ucred *cred,
 	   struct sysmsg *msg)
 {
 	struct dev_ioctl_args ap;
+	int needmplock = dev_needmplock(dev);
+	int error;
 
 	ap.a_head.a_desc = &dev_ioctl_desc;
 	ap.a_head.a_dev = dev;
@@ -170,20 +240,33 @@ dev_dioctl(cdev_t dev, u_long cmd, caddr_t data, int fflag, struct ucred *cred,
 	ap.a_fflag = fflag;
 	ap.a_cred = cred;
 	ap.a_sysmsg = msg;
-	return(dev->si_ops->d_ioctl(&ap));
+
+	if (needmplock)
+		get_mplock();
+	error = dev->si_ops->d_ioctl(&ap);
+	if (needmplock)
+		rel_mplock();
+	return (error);
 }
 
 int
 dev_dmmap(cdev_t dev, vm_offset_t offset, int nprot)
 {
 	struct dev_mmap_args ap;
+	int needmplock = dev_needmplock(dev);
 	int error;
 
 	ap.a_head.a_desc = &dev_mmap_desc;
 	ap.a_head.a_dev = dev;
 	ap.a_offset = offset;
 	ap.a_nprot = nprot;
+
+	if (needmplock)
+		get_mplock();
 	error = dev->si_ops->d_mmap(&ap);
+	if (needmplock)
+		rel_mplock();
+
 	if (error == 0)
 		return(ap.a_result);
 	return(-1);
@@ -193,20 +276,37 @@ int
 dev_dclone(cdev_t dev)
 {
 	struct dev_clone_args ap;
+	int needmplock = dev_needmplock(dev);
+	int error;
 
 	ap.a_head.a_desc = &dev_clone_desc;
 	ap.a_head.a_dev = dev;
-	return (dev->si_ops->d_clone(&ap));
+
+	if (needmplock)
+		get_mplock();
+	error = dev->si_ops->d_clone(&ap);
+	if (needmplock)
+		rel_mplock();
+	return (error);
 }
 
 int
 dev_drevoke(cdev_t dev)
 {
 	struct dev_revoke_args ap;
+	int needmplock = dev_needmplock(dev);
+	int error;
 
 	ap.a_head.a_desc = &dev_revoke_desc;
 	ap.a_head.a_dev = dev;
-	return (dev->si_ops->d_revoke(&ap));
+
+	if (needmplock)
+		get_mplock();
+	error = dev->si_ops->d_revoke(&ap);
+	if (needmplock)
+		rel_mplock();
+
+	return (error);
 }
 
 /*
@@ -221,6 +321,7 @@ dev_dstrategy(cdev_t dev, struct bio *bio)
 {
 	struct dev_strategy_args ap;
 	struct bio_track *track;
+	int needmplock = dev_needmplock(dev);
 
 	ap.a_head.a_desc = &dev_strategy_desc;
 	ap.a_head.a_dev = dev;
@@ -239,13 +340,22 @@ dev_dstrategy(cdev_t dev, struct bio *bio)
 		dsched_new_buf(bio->bio_buf);
 
 	KKASSERT((bio->bio_flags & BIO_DONE) == 0);
+	if (needmplock) {
+		get_mplock();
+		++mplock_strategies;
+	} else {
+		++mpsafe_strategies;
+	}
 	(void)dev->si_ops->d_strategy(&ap);
+	if (needmplock)
+		rel_mplock();
 }
 
 void
 dev_dstrategy_chain(cdev_t dev, struct bio *bio)
 {
 	struct dev_strategy_args ap;
+	int needmplock = dev_needmplock(dev);
 
 	ap.a_head.a_desc = &dev_strategy_desc;
 	ap.a_head.a_dev = dev;
@@ -253,7 +363,11 @@ dev_dstrategy_chain(cdev_t dev, struct bio *bio)
 
 	KKASSERT(bio->bio_track != NULL);
 	KKASSERT((bio->bio_flags & BIO_DONE) == 0);
+	if (needmplock)
+		get_mplock();
 	(void)dev->si_ops->d_strategy(&ap);
+	if (needmplock)
+		rel_mplock();
 }
 
 /*
@@ -265,6 +379,8 @@ dev_ddump(cdev_t dev, void *virtual, vm_offset_t physical, off_t offset,
     size_t length)
 {
 	struct dev_dump_args ap;
+	int needmplock = dev_needmplock(dev);
+	int error;
 
 	ap.a_head.a_desc = &dev_dump_desc;
 	ap.a_head.a_dev = dev;
@@ -275,18 +391,31 @@ dev_ddump(cdev_t dev, void *virtual, vm_offset_t physical, off_t offset,
 	ap.a_physical = physical;
 	ap.a_offset = offset;
 	ap.a_length = length;
-	return(dev->si_ops->d_dump(&ap));
+
+	if (needmplock)
+		get_mplock();
+	error = dev->si_ops->d_dump(&ap);
+	if (needmplock)
+		get_mplock();
+	return (error);
 }
 
 int64_t
 dev_dpsize(cdev_t dev)
 {
 	struct dev_psize_args ap;
+	int needmplock = dev_needmplock(dev);
 	int error;
 
 	ap.a_head.a_desc = &dev_psize_desc;
 	ap.a_head.a_dev = dev;
+
+	if (needmplock)
+		get_mplock();
 	error = dev->si_ops->d_psize(&ap);
+	if (needmplock)
+		rel_mplock();
+
 	if (error == 0)
 		return (ap.a_result);
 	return(-1);
@@ -302,13 +431,20 @@ int
 dev_dkqfilter(cdev_t dev, struct knote *kn)
 {
 	struct dev_kqfilter_args ap;
+	int needmplock = dev_needmplock(dev);
 	int error;
 
 	ap.a_head.a_desc = &dev_kqfilter_desc;
 	ap.a_head.a_dev = dev;
 	ap.a_kn = kn;
 	ap.a_result = 0;
+
+	if (needmplock)
+		get_mplock();
 	error = dev->si_ops->d_kqfilter(&ap);
+	if (needmplock)
+		rel_mplock();
+
 	if (error == 0)
 		return(ap.a_result);
 	return(ENODEV);
@@ -362,9 +498,18 @@ int
 dev_doperate(struct dev_generic_args *ap)
 {
     int (*func)(struct dev_generic_args *);
+    int needmplock = dev_needmplock(ap->a_dev);
+    int error;
 
     func = *(void **)((char *)ap->a_dev->si_ops + ap->a_desc->sd_offset);
-    return (func(ap));
+
+    if (needmplock)
+	    get_mplock();
+    error = func(ap);
+    if (needmplock)
+	    rel_mplock();
+
+    return (error);
 }
 
 /*
@@ -376,9 +521,18 @@ int
 dev_doperate_ops(struct dev_ops *ops, struct dev_generic_args *ap)
 {
     int (*func)(struct dev_generic_args *);
+    int needmplock = ((ops->head.flags & D_MPSAFE) == 0);
+    int error;
 
     func = *(void **)((char *)ops + ap->a_desc->sd_offset);
-    return (func(ap));
+
+    if (needmplock)
+	    get_mplock();
+    error = func(ap);
+    if (needmplock)
+	    rel_mplock();
+
+    return (error);
 }
 
 /*

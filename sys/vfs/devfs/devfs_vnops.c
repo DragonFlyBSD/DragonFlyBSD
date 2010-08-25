@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 2009 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
@@ -70,24 +72,24 @@
 #include <vm/vm_page2.h>
 
 MALLOC_DECLARE(M_DEVFS);
-#define DEVFS_BADOP	(void *)devfs_badop
+#define DEVFS_BADOP	(void *)devfs_vop_badop
 
-static int devfs_badop(struct vop_generic_args *);
-static int devfs_access(struct vop_access_args *);
-static int devfs_inactive(struct vop_inactive_args *);
-static int devfs_reclaim(struct vop_reclaim_args *);
-static int devfs_readdir(struct vop_readdir_args *);
-static int devfs_getattr(struct vop_getattr_args *);
-static int devfs_setattr(struct vop_setattr_args *);
-static int devfs_readlink(struct vop_readlink_args *);
-static int devfs_print(struct vop_print_args *);
+static int devfs_vop_badop(struct vop_generic_args *);
+static int devfs_vop_access(struct vop_access_args *);
+static int devfs_vop_inactive(struct vop_inactive_args *);
+static int devfs_vop_reclaim(struct vop_reclaim_args *);
+static int devfs_vop_readdir(struct vop_readdir_args *);
+static int devfs_vop_getattr(struct vop_getattr_args *);
+static int devfs_vop_setattr(struct vop_setattr_args *);
+static int devfs_vop_readlink(struct vop_readlink_args *);
+static int devfs_vop_print(struct vop_print_args *);
 
-static int devfs_nresolve(struct vop_nresolve_args *);
-static int devfs_nlookupdotdot(struct vop_nlookupdotdot_args *);
-static int devfs_nmkdir(struct vop_nmkdir_args *);
-static int devfs_nsymlink(struct vop_nsymlink_args *);
-static int devfs_nrmdir(struct vop_nrmdir_args *);
-static int devfs_nremove(struct vop_nremove_args *);
+static int devfs_vop_nresolve(struct vop_nresolve_args *);
+static int devfs_vop_nlookupdotdot(struct vop_nlookupdotdot_args *);
+static int devfs_vop_nmkdir(struct vop_nmkdir_args *);
+static int devfs_vop_nsymlink(struct vop_nsymlink_args *);
+static int devfs_vop_nrmdir(struct vop_nrmdir_args *);
+static int devfs_vop_nremove(struct vop_nremove_args *);
 
 static int devfs_spec_open(struct vop_open_args *);
 static int devfs_spec_close(struct vop_close_args *);
@@ -105,100 +107,102 @@ static int devfs_spec_advlock(struct vop_advlock_args *);
 static void devfs_spec_getpages_iodone(struct bio *);
 static int devfs_spec_getpages(struct vop_getpages_args *);
 
-
-static int devfs_specf_close(struct file *);
-static int devfs_specf_read(struct file *, struct uio *, struct ucred *, int);
-static int devfs_specf_write(struct file *, struct uio *, struct ucred *, int);
-static int devfs_specf_stat(struct file *, struct stat *, struct ucred *);
-static int devfs_specf_kqfilter(struct file *, struct knote *);
-static int devfs_specf_ioctl(struct file *, u_long, caddr_t,
+static int devfs_fo_close(struct file *);
+static int devfs_fo_read(struct file *, struct uio *, struct ucred *, int);
+static int devfs_fo_write(struct file *, struct uio *, struct ucred *, int);
+static int devfs_fo_stat(struct file *, struct stat *, struct ucred *);
+static int devfs_fo_kqfilter(struct file *, struct knote *);
+static int devfs_fo_ioctl(struct file *, u_long, caddr_t,
 				struct ucred *, struct sysmsg *);
 static __inline int sequential_heuristic(struct uio *, struct file *);
 
 extern struct lock devfs_lock;
 
-static int mpsafe_reads, mpsafe_writes, mplock_reads, mplock_writes;
-
 /*
- * devfs vnode operations for regular files
+ * devfs vnode operations for regular files.  All vnode ops are MPSAFE.
  */
 struct vop_ops devfs_vnode_norm_vops = {
 	.vop_default =		vop_defaultop,
-	.vop_access =		devfs_access,
+	.vop_access =		devfs_vop_access,
 	.vop_advlock =		DEVFS_BADOP,
-	.vop_bmap =			DEVFS_BADOP,
+	.vop_bmap =		DEVFS_BADOP,
 	.vop_close =		vop_stdclose,
-	.vop_getattr =		devfs_getattr,
-	.vop_inactive =		devfs_inactive,
+	.vop_getattr =		devfs_vop_getattr,
+	.vop_inactive =		devfs_vop_inactive,
 	.vop_ncreate =		DEVFS_BADOP,
-	.vop_nresolve =		devfs_nresolve,
-	.vop_nlookupdotdot =	devfs_nlookupdotdot,
+	.vop_nresolve =		devfs_vop_nresolve,
+	.vop_nlookupdotdot =	devfs_vop_nlookupdotdot,
 	.vop_nlink =		DEVFS_BADOP,
-	.vop_nmkdir =		devfs_nmkdir,
+	.vop_nmkdir =		devfs_vop_nmkdir,
 	.vop_nmknod =		DEVFS_BADOP,
-	.vop_nremove =		devfs_nremove,
+	.vop_nremove =		devfs_vop_nremove,
 	.vop_nrename =		DEVFS_BADOP,
-	.vop_nrmdir =		devfs_nrmdir,
-	.vop_nsymlink =		devfs_nsymlink,
-	.vop_open =			vop_stdopen,
+	.vop_nrmdir =		devfs_vop_nrmdir,
+	.vop_nsymlink =		devfs_vop_nsymlink,
+	.vop_open =		vop_stdopen,
 	.vop_pathconf =		vop_stdpathconf,
-	.vop_print =		devfs_print,
-	.vop_read =			DEVFS_BADOP,
-	.vop_readdir =		devfs_readdir,
-	.vop_readlink =		devfs_readlink,
-	.vop_reclaim =		devfs_reclaim,
-	.vop_setattr =		devfs_setattr,
+	.vop_print =		devfs_vop_print,
+	.vop_read =		DEVFS_BADOP,
+	.vop_readdir =		devfs_vop_readdir,
+	.vop_readlink =		devfs_vop_readlink,
+	.vop_reclaim =		devfs_vop_reclaim,
+	.vop_setattr =		devfs_vop_setattr,
 	.vop_write =		DEVFS_BADOP,
 	.vop_ioctl =		DEVFS_BADOP
 };
 
 /*
- * devfs vnode operations for character devices
+ * devfs vnode operations for character devices.  All vnode ops are MPSAFE.
  */
 struct vop_ops devfs_vnode_dev_vops = {
 	.vop_default =		vop_defaultop,
-	.vop_access =		devfs_access,
+	.vop_access =		devfs_vop_access,
 	.vop_advlock =		devfs_spec_advlock,
-	.vop_bmap =			devfs_spec_bmap,
+	.vop_bmap =		devfs_spec_bmap,
 	.vop_close =		devfs_spec_close,
 	.vop_freeblks =		devfs_spec_freeblks,
 	.vop_fsync =		devfs_spec_fsync,
-	.vop_getattr =		devfs_getattr,
+	.vop_getattr =		devfs_vop_getattr,
 	.vop_getpages =		devfs_spec_getpages,
-	.vop_inactive =		devfs_inactive,
-	.vop_open =			devfs_spec_open,
+	.vop_inactive =		devfs_vop_inactive,
+	.vop_open =		devfs_spec_open,
 	.vop_pathconf =		vop_stdpathconf,
-	.vop_print =		devfs_print,
+	.vop_print =		devfs_vop_print,
 	.vop_kqfilter =		devfs_spec_kqfilter,
-	.vop_read =			devfs_spec_read,
+	.vop_read =		devfs_spec_read,
 	.vop_readdir =		DEVFS_BADOP,
 	.vop_readlink =		DEVFS_BADOP,
-	.vop_reclaim =		devfs_reclaim,
-	.vop_setattr =		devfs_setattr,
+	.vop_reclaim =		devfs_vop_reclaim,
+	.vop_setattr =		devfs_vop_setattr,
 	.vop_strategy =		devfs_spec_strategy,
 	.vop_write =		devfs_spec_write,
 	.vop_ioctl =		devfs_spec_ioctl
 };
 
+/*
+ * devfs file pointer operations.  All fileops are MPSAFE.
+ */
 struct vop_ops *devfs_vnode_dev_vops_p = &devfs_vnode_dev_vops;
 
 struct fileops devfs_dev_fileops = {
-	.fo_read = devfs_specf_read,
-	.fo_write = devfs_specf_write,
-	.fo_ioctl = devfs_specf_ioctl,
-	.fo_kqfilter = devfs_specf_kqfilter,
-	.fo_stat = devfs_specf_stat,
-	.fo_close = devfs_specf_close,
-	.fo_shutdown = nofo_shutdown
+	.fo_read	= devfs_fo_read,
+	.fo_write	= devfs_fo_write,
+	.fo_ioctl	= devfs_fo_ioctl,
+	.fo_kqfilter	= devfs_fo_kqfilter,
+	.fo_stat	= devfs_fo_stat,
+	.fo_close	= devfs_fo_close,
+	.fo_shutdown	= nofo_shutdown
 };
 
 /*
- * These two functions are possibly temporary hacks for
- * devices (aka the pty code) which want to control the
- * node attributes themselves.
+ * These two functions are possibly temporary hacks for devices (aka
+ * the pty code) which want to control the node attributes themselves.
  *
  * XXX we may ultimately desire to simply remove the uid/gid/mode
  * from the node entirely.
+ *
+ * MPSAFE - sorta.  Theoretically the overwrite can compete since they
+ *	    are loading from the same fields.
  */
 static __inline void
 node_sync_dev_get(struct devfs_node *node)
@@ -228,14 +232,14 @@ node_sync_dev_set(struct devfs_node *node)
  * generic entry point for unsupported operations
  */
 static int
-devfs_badop(struct vop_generic_args *ap)
+devfs_vop_badop(struct vop_generic_args *ap)
 {
 	return (EIO);
 }
 
 
 static int
-devfs_access(struct vop_access_args *ap)
+devfs_vop_access(struct vop_access_args *ap)
 {
 	struct devfs_node *node = DEVFS_NODE(ap->a_vp);
 	int error;
@@ -251,7 +255,7 @@ devfs_access(struct vop_access_args *ap)
 
 
 static int
-devfs_inactive(struct vop_inactive_args *ap)
+devfs_vop_inactive(struct vop_inactive_args *ap)
 {
 	struct devfs_node *node = DEVFS_NODE(ap->a_vp);
 
@@ -262,7 +266,7 @@ devfs_inactive(struct vop_inactive_args *ap)
 
 
 static int
-devfs_reclaim(struct vop_reclaim_args *ap)
+devfs_vop_reclaim(struct vop_reclaim_args *ap)
 {
 	struct devfs_node *node;
 	struct vnode *vp;
@@ -303,7 +307,7 @@ devfs_reclaim(struct vop_reclaim_args *ap)
 
 
 static int
-devfs_readdir(struct vop_readdir_args *ap)
+devfs_vop_readdir(struct vop_readdir_args *ap)
 {
 	struct devfs_node *dnode = DEVFS_NODE(ap->a_vp);
 	struct devfs_node *node;
@@ -385,9 +389,9 @@ devfs_readdir(struct vop_readdir_args *ap)
 		}
 
 		/*
-		 * If the node type is a valid devfs alias, then we make sure that the
-		 * target isn't hidden. If it is, we don't show the link in the
-		 * directory listing.
+		 * If the node type is a valid devfs alias, then we make
+		 * sure that the target isn't hidden. If it is, we don't
+		 * show the link in the directory listing.
 		 */
 		if ((node->node_type == Plink) && (node->link_target != NULL) &&
 			(node->link_target->flags & DEVFS_HIDDEN))
@@ -437,7 +441,7 @@ done:
 
 
 static int
-devfs_nresolve(struct vop_nresolve_args *ap)
+devfs_vop_nresolve(struct vop_nresolve_args *ap)
 {
 	struct devfs_node *dnode = DEVFS_NODE(ap->a_dvp);
 	struct devfs_node *node, *found = NULL;
@@ -504,7 +508,7 @@ out:
 
 
 static int
-devfs_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
+devfs_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 {
 	struct devfs_node *dnode = DEVFS_NODE(ap->a_dvp);
 
@@ -524,7 +528,7 @@ devfs_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 
 
 static int
-devfs_getattr(struct vop_getattr_args *ap)
+devfs_vop_getattr(struct vop_getattr_args *ap)
 {
 	struct devfs_node *node = DEVFS_NODE(ap->a_vp);
 	struct vattr *vap = ap->a_vap;
@@ -598,7 +602,7 @@ devfs_getattr(struct vop_getattr_args *ap)
 
 
 static int
-devfs_setattr(struct vop_setattr_args *ap)
+devfs_vop_setattr(struct vop_setattr_args *ap)
 {
 	struct devfs_node *node = DEVFS_NODE(ap->a_vp);
 	struct vattr *vap;
@@ -651,7 +655,7 @@ out:
 
 
 static int
-devfs_readlink(struct vop_readlink_args *ap)
+devfs_vop_readlink(struct vop_readlink_args *ap)
 {
 	struct devfs_node *node = DEVFS_NODE(ap->a_vp);
 	int ret;
@@ -668,13 +672,13 @@ devfs_readlink(struct vop_readlink_args *ap)
 
 
 static int
-devfs_print(struct vop_print_args *ap)
+devfs_vop_print(struct vop_print_args *ap)
 {
 	return (0);
 }
 
 static int
-devfs_nmkdir(struct vop_nmkdir_args *ap)
+devfs_vop_nmkdir(struct vop_nmkdir_args *ap)
 {
 	struct devfs_node *dnode = DEVFS_NODE(ap->a_dvp);
 	struct devfs_node *node;
@@ -701,7 +705,7 @@ out:
 }
 
 static int
-devfs_nsymlink(struct vop_nsymlink_args *ap)
+devfs_vop_nsymlink(struct vop_nsymlink_args *ap)
 {
 	struct devfs_node *dnode = DEVFS_NODE(ap->a_dvp);
 	struct devfs_node *node;
@@ -736,7 +740,7 @@ out:
 }
 
 static int
-devfs_nrmdir(struct vop_nrmdir_args *ap)
+devfs_vop_nrmdir(struct vop_nrmdir_args *ap)
 {
 	struct devfs_node *dnode = DEVFS_NODE(ap->a_dvp);
 	struct devfs_node *node;
@@ -789,7 +793,7 @@ out:
 }
 
 static int
-devfs_nremove(struct vop_nremove_args *ap)
+devfs_vop_nremove(struct vop_nremove_args *ap)
 {
 	struct devfs_node *dnode = DEVFS_NODE(ap->a_dvp);
 	struct devfs_node *node;
@@ -909,6 +913,9 @@ devfs_spec_open(struct vop_open_args *ap)
 	if (dev_dflags(dev) & D_TTY)
 		vsetflags(vp, VISTTY);
 
+	/*
+	 * Open underlying device
+	 */
 	vn_unlock(vp);
 	error = dev_dopen(dev, ap->a_mode, S_IFCHR, ap->a_cred);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
@@ -1083,15 +1090,13 @@ devfs_spec_close(struct vop_close_args *ap)
 
 
 static int
-devfs_specf_close(struct file *fp)
+devfs_fo_close(struct file *fp)
 {
 	struct vnode *vp = (struct vnode *)fp->f_data;
 	int error;
 
-	get_mplock();
 	fp->f_ops = &badfileops;
 	error = vn_close(vp, fp->f_flag);
-	rel_mplock();
 
 	return (error);
 }
@@ -1106,7 +1111,7 @@ devfs_specf_close(struct file *fp)
  * MPALMOSTSAFE - acquires mplock
  */
 static int
-devfs_specf_read(struct file *fp, struct uio *uio,
+devfs_fo_read(struct file *fp, struct uio *uio,
 		 struct ucred *cred, int flags)
 {
 	struct devfs_node *node;
@@ -1129,14 +1134,6 @@ devfs_specf_read(struct file *fp, struct uio *uio,
 
 	if ((dev = vp->v_rdev) == NULL)
 		return EBADF;
-
-	/* only acquire mplock for devices that require it */
-	if (!(dev_dflags(dev) & D_MPSAFE_READ)) {
-		atomic_add_int(&mplock_reads, 1);
-		get_mplock();
-	} else {
-		atomic_add_int(&mpsafe_reads, 1);
-	}
 
 	reference_dev(dev);
 
@@ -1169,15 +1166,12 @@ devfs_specf_read(struct file *fp, struct uio *uio,
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
 
-	if (!(dev_dflags(dev) & D_MPSAFE_READ))
-		rel_mplock();
-
 	return (error);
 }
 
 
 static int
-devfs_specf_write(struct file *fp, struct uio *uio,
+devfs_fo_write(struct file *fp, struct uio *uio,
 		  struct ucred *cred, int flags)
 {
 	struct devfs_node *node;
@@ -1202,14 +1196,6 @@ devfs_specf_write(struct file *fp, struct uio *uio,
 
 	if ((dev = vp->v_rdev) == NULL)
 		return EBADF;
-
-	/* only acquire mplock for devices that require it */
-	if (!(dev_dflags(dev) & D_MPSAFE_WRITE)) {
-		atomic_add_int(&mplock_writes, 1);
-		get_mplock();
-	} else {
-		atomic_add_int(&mpsafe_writes, 1);
-	}
 
 	reference_dev(dev);
 
@@ -1260,14 +1246,12 @@ devfs_specf_write(struct file *fp, struct uio *uio,
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
 
-	if (!(dev_dflags(dev) & D_MPSAFE_WRITE))
-		rel_mplock();
 	return (error);
 }
 
 
 static int
-devfs_specf_stat(struct file *fp, struct stat *sb, struct ucred *cred)
+devfs_fo_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 {
 	struct vnode *vp;
 	struct vattr vattr;
@@ -1367,13 +1351,11 @@ devfs_specf_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 
 
 static int
-devfs_specf_kqfilter(struct file *fp, struct knote *kn)
+devfs_fo_kqfilter(struct file *fp, struct knote *kn)
 {
 	struct vnode *vp;
 	int error;
 	cdev_t dev;
-
-	get_mplock();
 
 	vp = (struct vnode *)fp->f_data;
 	if (vp == NULL || vp->v_type == VBAD) {
@@ -1391,7 +1373,6 @@ devfs_specf_kqfilter(struct file *fp, struct knote *kn)
 	release_dev(dev);
 
 done:
-	rel_mplock();
 	return (error);
 }
 
@@ -1399,7 +1380,7 @@ done:
  * MPALMOSTSAFE - acquires mplock
  */
 static int
-devfs_specf_ioctl(struct file *fp, u_long com, caddr_t data,
+devfs_fo_ioctl(struct file *fp, u_long com, caddr_t data,
 		  struct ucred *ucred, struct sysmsg *msg)
 {
 	struct devfs_node *node;
@@ -1421,7 +1402,7 @@ devfs_specf_ioctl(struct file *fp, u_long com, caddr_t data,
 	node = DEVFS_NODE(vp);
 
 	devfs_debug(DEVFS_DEBUG_DEBUG,
-		    "devfs_specf_ioctl() called! for dev %s\n",
+		    "devfs_fo_ioctl() called! for dev %s\n",
 		    dev->si_name);
 
 	if (com == FIODTYPE) {
@@ -1446,10 +1427,6 @@ devfs_specf_ioctl(struct file *fp, u_long com, caddr_t data,
 		goto out;
 	}
 
-	/* only acquire mplock for devices that require it */
-	if (!(dev_dflags(dev) & D_MPSAFE_IOCTL))
-		get_mplock();
-
 	error = dev_dioctl(dev, com, data, fp->f_flag, ucred, msg);
 
 #if 0
@@ -1458,13 +1435,9 @@ devfs_specf_ioctl(struct file *fp, u_long com, caddr_t data,
 		nanotime(&node->mtime);
 	}
 #endif
-
-	if (!(dev_dflags(dev) & D_MPSAFE_IOCTL))
-		rel_mplock();
-
 	if (com == TIOCSCTTY) {
 		devfs_debug(DEVFS_DEBUG_DEBUG,
-			    "devfs_specf_ioctl: got TIOCSCTTY on %s\n",
+			    "devfs_fo_ioctl: got TIOCSCTTY on %s\n",
 			    dev->si_name);
 	}
 	if (error == 0 && com == TIOCSCTTY) {
@@ -1472,7 +1445,7 @@ devfs_specf_ioctl(struct file *fp, u_long com, caddr_t data,
 		struct session *sess;
 
 		devfs_debug(DEVFS_DEBUG_DEBUG,
-			    "devfs_specf_ioctl: dealing with TIOCSCTTY on %s\n",
+			    "devfs_fo_ioctl: dealing with TIOCSCTTY on %s\n",
 			    dev->si_name);
 		if (p == NULL) {
 			error = ENOTTY;
@@ -1500,7 +1473,7 @@ devfs_specf_ioctl(struct file *fp, u_long com, caddr_t data,
 
 out:
 	release_dev(dev);
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_specf_ioctl() finished! \n");
+	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_fo_ioctl() finished! \n");
 	return (error);
 }
 
@@ -2125,14 +2098,3 @@ sequential_heuristic(struct uio *uio, struct file *fp)
 		fp->f_seqcount = 0;
 	return(0);
 }
-
-extern SYSCTL_NODE(_vfs, OID_AUTO, devfs, CTLFLAG_RW, 0, "devfs");
-
-SYSCTL_INT(_vfs_devfs, OID_AUTO, mpsafe_writes, CTLFLAG_RD, &mpsafe_writes,
-		0, "mpsafe writes");
-SYSCTL_INT(_vfs_devfs, OID_AUTO, mplock_writes, CTLFLAG_RD, &mplock_writes,
-		0, "non-mpsafe writes");
-SYSCTL_INT(_vfs_devfs, OID_AUTO, mpsafe_reads, CTLFLAG_RD, &mpsafe_reads,
-		0, "mpsafe reads");
-SYSCTL_INT(_vfs_devfs, OID_AUTO, mplock_reads, CTLFLAG_RD, &mplock_reads,
-		0, "non-mpsafe reads");

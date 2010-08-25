@@ -101,15 +101,17 @@
 #include <sys/syslog.h>
 #include <sys/device.h>
 #include <sys/msgport.h>
-#include <sys/msgport2.h>
-#include <sys/buf2.h>
 #include <sys/devfs.h>
 #include <sys/thread.h>
-#include <sys/thread2.h>
 #include <sys/dsched.h>
 #include <sys/queue.h>
 #include <sys/lock.h>
 #include <sys/udev.h>
+
+#include <sys/buf2.h>
+#include <sys/mplock2.h>
+#include <sys/msgport2.h>
+#include <sys/thread2.h>
 
 static MALLOC_DEFINE(M_DISK, "disk", "disk data");
 static int disk_debug_enable = 0;
@@ -134,7 +136,7 @@ static LIST_HEAD(, disk) disklist = LIST_HEAD_INITIALIZER(&disklist);
 static struct lwkt_token disklist_token;
 
 static struct dev_ops disk_ops = {
-	{ "disk", 0, D_DISK },
+	{ "disk", 0, D_DISK | D_MPSAFE },
 	.d_open = diskopen,
 	.d_close = diskclose,
 	.d_read = physread,
@@ -801,11 +803,14 @@ diskopen(struct dev_open_args *ap)
 	/*
 	 * Deal with open races
 	 */
+	get_mplock();
 	while (dp->d_flags & DISKFLAG_LOCK) {
 		dp->d_flags |= DISKFLAG_WANTED;
 		error = tsleep(dp, PCATCH, "diskopen", hz);
-		if (error)
+		if (error) {
+			rel_mplock();
 			return (error);
+		}
 	}
 	dp->d_flags |= DISKFLAG_LOCK;
 
@@ -841,6 +846,7 @@ out:
 		dp->d_flags &= ~DISKFLAG_WANTED;
 		wakeup(dp);
 	}
+	rel_mplock();
 
 	return(error);
 }
@@ -859,10 +865,12 @@ diskclose(struct dev_close_args *ap)
 	error = 0;
 	dp = dev->si_disk;
 
+	get_mplock();
 	dsclose(dev, ap->a_devtype, dp->d_slice);
 	if (!dsisopen(dp->d_slice)) {
 		error = dev_dclose(dp->d_rawdev, ap->a_fflag, ap->a_devtype);
 	}
+	rel_mplock();
 	return (error);
 }
 
@@ -898,8 +906,10 @@ diskioctl(struct dev_ioctl_args *ap)
 	if (&dp->d_slice == NULL || dp->d_slice == NULL) {
 		error = ENOIOCTL;
 	} else {
+		get_mplock();
 		error = dsioctl(dev, ap->a_cmd, ap->a_data, ap->a_fflag,
 				&dp->d_slice, &dp->d_info);
+		rel_mplock();
 	}
 
 	if (error == ENOIOCTL) {
