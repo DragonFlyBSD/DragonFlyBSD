@@ -129,7 +129,7 @@ typedef struct lwkt_token {
 }
 
 #define ASSERT_LWKT_TOKEN_HELD(tok) \
-	KKASSERT((tok)->t_ref->tr_owner == curthread)
+	KKASSERT((tok)->t_ref && (tok)->t_ref->tr_owner == curthread)
 
 struct lwkt_tokref {
     lwkt_token_t	tr_tok;		/* token in question */
