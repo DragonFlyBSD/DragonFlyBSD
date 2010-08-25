@@ -41,8 +41,6 @@
 #include <sys/gpt.h>
 #include <net/if_var.h>
 
-#include <sys/mplock2.h>
-
 /*
  * See also:
  *	http://www.opengroup.org/dce/info/draft-leach-uuids-guids-01.txt
@@ -156,8 +154,6 @@ kern_uuidgen(struct uuid *store, size_t count)
  * uuidgen(struct uuid *store, int count)
  *
  * Generate an array of new UUIDs
- *
- * MPALMOSTSAFE
  */
 int
 sys_uuidgen(struct uuidgen_args *uap)
@@ -176,10 +172,10 @@ sys_uuidgen(struct uuidgen_args *uap)
 		return (EINVAL);
 
 	count = uap->count;
-	store = kmalloc(count * sizeof(struct uuid), M_TEMP, M_WAITOK);
-	get_mplock();
+	store = kmalloc(count * sizeof(struct uuid), M_TEMP, M_WAITOK|M_NULLOK);
+	if (store == NULL)
+		return (ENOSPC);
 	kern_uuidgen(store, count);
-	rel_mplock();
 	error = copyout(store, uap->store, count * sizeof(struct uuid));
 	kfree(store, M_TEMP);
 	return (error);
