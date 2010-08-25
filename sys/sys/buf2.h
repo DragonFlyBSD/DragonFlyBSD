@@ -218,6 +218,8 @@ buf_act_decline(struct buf *bp)
 
 /*
  * biodeps inlines - used by softupdates and HAMMER.
+ *
+ * All bioops are MPSAFE
  */
 static __inline void
 buf_dep_init(struct buf *bp)
@@ -228,6 +230,8 @@ buf_dep_init(struct buf *bp)
 
 /*
  * Precondition: the buffer has some dependencies.
+ *
+ * MPSAFE
  */
 static __inline void
 buf_deallocate(struct buf *bp)
@@ -239,6 +243,9 @@ buf_deallocate(struct buf *bp)
 		ops->io_deallocate(bp);
 }
 
+/*
+ * MPSAFE
+ */
 static __inline int
 buf_countdeps(struct buf *bp, int n)
 {
@@ -252,6 +259,9 @@ buf_countdeps(struct buf *bp, int n)
 	return(r);
 }
 
+/*
+ * MPSAFE
+ */
 static __inline void
 buf_start(struct buf *bp)
 {
@@ -261,6 +271,9 @@ buf_start(struct buf *bp)
 		ops->io_start(bp);
 }
 
+/*
+ * MPSAFE
+ */
 static __inline void
 buf_complete(struct buf *bp)
 {
@@ -270,6 +283,9 @@ buf_complete(struct buf *bp)
 		ops->io_complete(bp);
 }
 
+/*
+ * MPSAFE
+ */
 static __inline int
 buf_fsync(struct vnode *vp)
 {
@@ -283,6 +299,9 @@ buf_fsync(struct vnode *vp)
 	return(r);
 }
 
+/*
+ * MPSAFE
+ */
 static __inline void
 buf_movedeps(struct buf *bp1, struct buf *bp2)
 {
@@ -292,6 +311,9 @@ buf_movedeps(struct buf *bp1, struct buf *bp2)
 		ops->io_movedeps(bp1, bp2);
 }
 
+/*
+ * MPSAFE
+ */
 static __inline int
 buf_checkread(struct buf *bp)
 {
@@ -302,6 +324,9 @@ buf_checkread(struct buf *bp)
 	return(0);
 }
 
+/*
+ * MPSAFE
+ */
 static __inline int
 buf_checkwrite(struct buf *bp)
 {
@@ -316,6 +341,8 @@ buf_checkwrite(struct buf *bp)
  * Chained biodone.  The bio callback was made and the callback function
  * wishes to chain the biodone.  If no BIO's are left we call bpdone()
  * with elseit=TRUE (asynchronous completion).
+ *
+ * MPSAFE
  */
 static __inline void
 biodone_chain(struct bio *bio)

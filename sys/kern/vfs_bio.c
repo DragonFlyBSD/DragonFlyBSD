@@ -2539,6 +2539,8 @@ flushbufqueues(bufq_type_t q)
 			 * If the buffer is flagged B_ERROR it may be
 			 * requeued over and over again, we try to
 			 * avoid a live lock.
+			 *
+			 * NOTE: buf_checkwrite is MPSAFE.
 			 */
 			if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) == 0) {
 				spin_unlock_wr(&bufspin);
@@ -3585,7 +3587,7 @@ bpdone(struct buf *bp, int elseit)
 	 * a lot worse.  XXX - move this above the clearing of b_cmd
 	 */
 	if (LIST_FIRST(&bp->b_dep) != NULL)
-		buf_complete(bp);
+		buf_complete(bp);	/* MPSAFE */
 
 	/*
 	 * A failed write must re-dirty the buffer unless B_INVAL

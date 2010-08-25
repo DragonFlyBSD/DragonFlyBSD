@@ -123,6 +123,9 @@ struct statfs {
  * bio_ops are associated with the mount structure and used in conjuction
  * with the b_dep field in a buffer.  Currently softupdates and HAMMER
  * utilize this field.
+ *
+ * All bio_ops callbacks must be MPSAFE and could be called without
+ * the mplock.
  */
 struct buf;
 
