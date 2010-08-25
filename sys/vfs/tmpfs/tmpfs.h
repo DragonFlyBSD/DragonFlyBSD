@@ -385,9 +385,12 @@ struct tmpfs_mount {
 	/* All node lock to protect the node list and tmp_pages_used */
 	struct lock		 allnode_lock;
 
-	/* Per-mount malloc zone for tmpfs nodes */
+	/* Per-mount malloc zones for tmpfs nodes and dirents */
 	struct malloc_type	*tm_node_zone;
+	struct malloc_type	*tm_dirent_zone;
+
 	struct objcache_malloc_args tm_node_zone_malloc_args;
+	struct objcache_malloc_args tm_dirent_zone_malloc_args;
 
 	/* Pools used to store file system meta data.  These are not shared
 	 * across several instances of tmpfs for the reasons described in
