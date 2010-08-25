@@ -1,6 +1,4 @@
 /*
- * (MPSAFE)
- *
  * Copyright (c) 1994 John Dyson
  * Copyright (c) 2001 Matt Dillon
  * Copyright (c) 2010 The DragonFly Project
@@ -62,7 +60,7 @@
 #define ZIDLE_HI(v)	((v) * 4 / 5)
 
 /* Number of bytes to zero between reschedule checks */
-#define IDLEZERO_RUN	(32)
+#define IDLEZERO_RUN	(64)
 
 /* Maximum number of pages per second to zero */
 #define NPAGES_RUN	(20000)
@@ -204,8 +202,7 @@ vm_pagezero(void __unused *arg)
 			break;
 		case STATE_ZERO_PAGE:
 			/*
-			 * Zero-out the page, stop immediately if a
-			 * resched has been requested.
+			 * Zero-out the page
 			 */
 			while (i < PAGE_SIZE) {
 				if (idlezero_nocache == 1)
@@ -213,9 +210,9 @@ vm_pagezero(void __unused *arg)
 				else
 					bzero(&pg[i], IDLEZERO_RUN);
 				i += IDLEZERO_RUN;
+				lwkt_yield();
 			}
-			if (i == PAGE_SIZE)
-				state = STATE_RELEASE_PAGE;
+			state = STATE_RELEASE_PAGE;
 			break;
 		case STATE_RELEASE_PAGE:
 			lwbuf_free(buf);
