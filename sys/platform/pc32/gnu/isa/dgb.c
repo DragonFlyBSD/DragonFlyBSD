@@ -218,7 +218,7 @@ static	d_ioctl_t	dgbioctl;
 static struct cdevsw dgb_cdevsw = {
 	/* name */	"dgb",
 	/* maj */	CDEV_MAJOR,
-	/* flags */	D_TTY | D_KQFILTER,
+	/* flags */	D_TTY,
 	/* port */	NULL,
 	/* clone */	NULL,
 

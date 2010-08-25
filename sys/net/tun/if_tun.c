@@ -99,7 +99,7 @@ DEVFS_DECLARE_CLONE_BITMAP(tun);
 
 #define CDEV_MAJOR 52
 static struct dev_ops tun_ops = {
-	{ "tun", CDEV_MAJOR, D_KQFILTER },
+	{ "tun", CDEV_MAJOR, 0 },
 	.d_open =	tunopen,
 	.d_close =	tunclose,
 	.d_read =	tunread,

@@ -92,7 +92,7 @@ static	d_ioctl_t	rcioctl;
 
 #define	CDEV_MAJOR	63
 static struct dev_ops rc_ops = {
-	{ "rc", CDEV_MAJOR, D_TTY | D_KQFILTER },
+	{ "rc", CDEV_MAJOR, D_TTY },
 	.d_open =	rcopen,
 	.d_close =	rcclose,
 	.d_read =	ttyread,

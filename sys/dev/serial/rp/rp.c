@@ -572,7 +572,7 @@ static	d_ioctl_t	rpioctl;
 
 #define	CDEV_MAJOR	81
 struct dev_ops rp_ops = {
-	{ "rp", CDEV_MAJOR, D_TTY | D_KQFILTER },
+	{ "rp", CDEV_MAJOR, D_TTY },
 	.d_open =	rpopen,
 	.d_close =	rpclose,
 	.d_read =	ttyread,

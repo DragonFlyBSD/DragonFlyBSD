@@ -229,7 +229,7 @@ static void		aac_ioctl_event(struct aac_softc *sc,
 #define AAC_CDEV_MAJOR	150
 
 static struct dev_ops aac_ops = {
-	{ "aac", AAC_CDEV_MAJOR, D_KQFILTER },
+	{ "aac", AAC_CDEV_MAJOR, 0 },
 	.d_open =	aac_open,
 	.d_close =	aac_close,
 	.d_ioctl =	aac_ioctl,

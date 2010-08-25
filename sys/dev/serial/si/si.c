@@ -120,7 +120,7 @@ static	d_ioctl_t	siioctl;
 
 #define	CDEV_MAJOR	68
 static struct dev_ops si_ops = {
-	{ "si", CDEV_MAJOR, D_TTY | D_KQFILTER },
+	{ "si", CDEV_MAJOR, D_TTY },
 	.d_open =	siopen,
 	.d_close =	siclose,
 	.d_read =	ttyread,

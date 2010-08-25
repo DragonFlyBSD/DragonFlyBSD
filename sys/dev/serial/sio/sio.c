@@ -251,7 +251,7 @@ static	d_ioctl_t	sioioctl;
 
 #define	CDEV_MAJOR	28
 static struct dev_ops sio_ops = {
-	{ driver_name, CDEV_MAJOR, D_TTY | D_KQFILTER },
+	{ driver_name, CDEV_MAJOR, D_TTY },
 	.d_open =	sioopen,
 	.d_close =	sioclose,
 	.d_read =	sioread,

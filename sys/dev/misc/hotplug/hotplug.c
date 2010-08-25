@@ -46,7 +46,7 @@ static void hotplugfiltdetach(struct knote *);
 static int hotplugfilt(struct knote *, long);
 
 static struct dev_ops hotplug_ops = {
-	{ "hotplug", CDEV_MAJOR, D_KQFILTER },
+	{ "hotplug", CDEV_MAJOR, 0 },
 	.d_open =	hotplugopen,
 	.d_close =	hotplugclose,
 	.d_read =	hotplugread,

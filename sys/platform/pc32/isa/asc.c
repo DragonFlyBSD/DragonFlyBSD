@@ -192,7 +192,7 @@ static int ascfilter(struct knote *kn, long hint);
 #define CDEV_MAJOR 71
 
 static struct dev_ops asc_ops = {
-	{ "asc", CDEV_MAJOR, D_KQFILTER },
+	{ "asc", CDEV_MAJOR, 0 },
 	.d_open =	ascopen,
 	.d_close =	ascclose,
 	.d_read =	ascread,

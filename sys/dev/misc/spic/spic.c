@@ -91,7 +91,7 @@ static void spicfilt_detach(struct knote *);
 static int spicfilt(struct knote *, long);
 
 static struct dev_ops spic_ops = {
-	{ "spic", CDEV_MAJOR, D_KQFILTER },
+	{ "spic", CDEV_MAJOR, 0 },
         .d_open =	spicopen,
         .d_close =	spicclose,
         .d_read =	spicread,

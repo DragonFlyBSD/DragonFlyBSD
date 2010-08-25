@@ -66,7 +66,7 @@ static int cttyfilt_write(struct knote *, long);
 #define	CDEV_MAJOR	1
 /* Don't make this static, since fdesc_vnops uses it. */
 struct dev_ops ctty_ops = {
-	{ "ctty", CDEV_MAJOR, D_TTY | D_KQFILTER },
+	{ "ctty", CDEV_MAJOR, D_TTY },
 	.d_open =	cttyopen,
 	.d_close =	cttyclose,
 	.d_read =	cttyread,

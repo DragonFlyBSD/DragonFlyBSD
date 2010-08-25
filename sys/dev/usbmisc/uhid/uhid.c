@@ -139,7 +139,7 @@ static int uhidfilt_write(struct knote *, long);
 #define		UHID_CDEV_MAJOR 122
 
 static struct dev_ops uhid_ops = {
-	{ "uhid", UHID_CDEV_MAJOR, D_KQFILTER },
+	{ "uhid", UHID_CDEV_MAJOR, 0 },
 	.d_open =	uhidopen,
 	.d_close =	uhidclose,
 	.d_read =	uhidread,

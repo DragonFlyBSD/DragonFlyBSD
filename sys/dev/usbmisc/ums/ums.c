@@ -146,7 +146,7 @@ static int ums_filt(struct knote *, long);
 #define UMS_CDEV_MAJOR	111
 
 static struct dev_ops ums_ops = {
-	{ "ums", UMS_CDEV_MAJOR, D_KQFILTER },
+	{ "ums", UMS_CDEV_MAJOR, 0 },
 	.d_open =	ums_open,
 	.d_close =	ums_close,
 	.d_read =	ums_read,

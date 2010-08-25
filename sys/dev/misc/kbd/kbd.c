@@ -502,7 +502,7 @@ static int genkbdfilter(struct knote *, long);
 #define CDEV_MAJOR	112
 
 static struct dev_ops kbd_ops = {
-	{ "kbd", CDEV_MAJOR, D_KQFILTER },
+	{ "kbd", CDEV_MAJOR, 0 },
 	.d_open =	genkbdopen,
 	.d_close =	genkbdclose,
 	.d_read =	genkbdread,
