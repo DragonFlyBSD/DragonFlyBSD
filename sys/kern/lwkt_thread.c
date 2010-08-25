@@ -1618,10 +1618,10 @@ void
 crit_panic(void)
 {
     thread_t td = curthread;
-    int lpri = td->td_pri;
+    int lcrit = td->td_critcount;
 
-    td->td_pri = 0;
-    panic("td_pri is/would-go negative! %p %d", td, lpri);
+    td->td_critcount = 0;
+    panic("td_critcount is/would-go negative! %p %d", td, lcrit);
 }
 
 #ifdef SMP

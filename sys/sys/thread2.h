@@ -149,7 +149,7 @@ _crit_exit_noyield(struct thread *curtd __DEBUG_CRIT_ADD_ARG__)
     __DEBUG_CRIT_EXIT(curtd);
     --curtd->td_critcount;
 #ifdef INVARIANTS
-    if (curtd->td_pri < 0)
+    if (curtd->td_critcount < 0)
 	crit_panic();
 #endif
     cpu_ccfence();	/* prevent compiler reordering */
@@ -163,7 +163,7 @@ _crit_exit(__DEBUG_CRIT_ARG__)
     __DEBUG_CRIT_EXIT(td);
     --td->td_critcount;
 #ifdef INVARIANTS
-    if (td->td_pri < 0)
+    if (td->td_critcount < 0)
 	crit_panic();
 #endif
     cpu_ccfence();	/* prevent compiler reordering */
