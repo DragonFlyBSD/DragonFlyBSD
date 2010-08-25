@@ -126,6 +126,7 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 	case VCHR:
 		rdev = makeudev(rmajor, rminor);
 		if (rdev == NOUDEV) {
+			objcache_put(tmp->tm_node_pool, nnode);
 			return(EINVAL);
 		}
 		nnode->tn_rdev = rdev;
@@ -155,7 +156,11 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 	case VLNK:
 		nnode->tn_size = strlen(target);
 		nnode->tn_link = kmalloc(nnode->tn_size + 1, M_TMPFSNAME,
-					 M_WAITOK);
+					 M_WAITOK | M_NULLOK);
+		if (nnode->tn_link == NULL) {
+			objcache_put(tmp->tm_node_pool, nnode);
+			return (ENOSPC);
+		}
 		bcopy(target, nnode->tn_link, nnode->tn_size);
 		nnode->tn_link[nnode->tn_size] = '\0';
 		break;
@@ -315,9 +320,13 @@ tmpfs_alloc_dirent(struct tmpfs_mount *tmp, struct tmpfs_node *node,
 {
 	struct tmpfs_dirent *nde;
 
-
-	nde = (struct tmpfs_dirent *)objcache_get(tmp->tm_dirent_pool, M_WAITOK);
-	nde->td_name = kmalloc(len + 1, M_TMPFSNAME, M_WAITOK);
+	nde = objcache_get(tmp->tm_dirent_pool, M_WAITOK);
+	nde->td_name = kmalloc(len + 1, M_TMPFSNAME, M_WAITOK | M_NULLOK);
+	if (nde->td_name == NULL) {
+		objcache_put(tmp->tm_dirent_pool, nde);
+		*de = NULL;
+		return (ENOSPC);
+	}
 	nde->td_namelen = len;
 	bcopy(name, nde->td_name, len);
 	nde->td_name[len] = '\0';

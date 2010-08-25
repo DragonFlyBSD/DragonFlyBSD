@@ -937,7 +937,12 @@ tmpfs_nrename(struct vop_nrename_args *v)
 	 */
 	if (fncp->nc_nlen != tncp->nc_nlen ||
 	    bcmp(fncp->nc_name, tncp->nc_name, fncp->nc_nlen) != 0) {
-		newname = kmalloc(tncp->nc_nlen + 1, M_TMPFSNAME, M_WAITOK);
+		newname = kmalloc(tncp->nc_nlen + 1, M_TMPFSNAME, 
+				  M_WAITOK | M_NULLOK);
+		if (newname == NULL) {
+			error = ENOSPC;
+			goto out_locked;
+		}
 		bcopy(tncp->nc_name, newname, tncp->nc_nlen);
 		newname[tncp->nc_nlen] = '\0';
 	} else {
