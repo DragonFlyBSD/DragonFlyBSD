@@ -68,7 +68,6 @@
 MALLOC_DEFINE(M_TMPFSMNT, "tmpfs mount", "tmpfs mount structures");
 MALLOC_DEFINE(M_TMPFSNAME, "tmpfs name", "tmpfs file names");
 MALLOC_DEFINE(M_TMPFS_DIRENT, "tmpfs dirent", "tmpfs dirent structures");
-MALLOC_DEFINE(M_TMPFS_NODE, "tmpfs node", "tmpfs node structures");
 
 /* --------------------------------------------------------------------- */
 
@@ -126,8 +125,6 @@ tmpfs_node_fini(void *obj, void *args)
 
 struct objcache_malloc_args tmpfs_dirent_pool_malloc_args =
 	{ sizeof(struct tmpfs_dirent), M_TMPFS_DIRENT };
-struct objcache_malloc_args tmpfs_node_pool_malloc_args =
-	{ sizeof(struct tmpfs_node), M_TMPFS_NODE };
 
 static int
 tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
@@ -226,8 +223,13 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	tmp->tm_pages_max = pages;
 	tmp->tm_pages_used = 0;
 
-	kmalloc_raise_limit(M_TMPFS_NODE, sizeof(struct tmpfs_node) *
+	kmalloc_create(&tmp->tm_node_zone, "tmpfs node");
+
+	kmalloc_raise_limit(tmp->tm_node_zone, sizeof(struct tmpfs_node) *
 			    tmp->tm_nodes_max);
+
+	tmp->tm_node_zone_malloc_args.objsize = sizeof(struct tmpfs_node);
+	tmp->tm_node_zone_malloc_args.mtype = tmp->tm_node_zone;
 
 	tmp->tm_dirent_pool =  objcache_create( "tmpfs dirent cache",
 	    0, 0,
@@ -238,7 +240,7 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	    0, 0,
 	    tmpfs_node_ctor, tmpfs_node_dtor, NULL,
 	    tmpfs_node_init, tmpfs_node_fini,
-	    &tmpfs_node_pool_malloc_args);
+	    &tmp->tm_node_zone_malloc_args);
 
 	/* Allocate the root node. */
 	error = tmpfs_alloc_node(tmp, VDIR, root_uid, root_gid,
@@ -389,6 +391,8 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 
 	objcache_destroy(tmp->tm_dirent_pool);
 	objcache_destroy(tmp->tm_node_pool);
+
+	kmalloc_destroy(&tmp->tm_node_zone);
 
 	lockuninit(&tmp->allnode_lock);
 	KKASSERT(tmp->tm_pages_used == 0);
