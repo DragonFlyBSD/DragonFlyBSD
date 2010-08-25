@@ -253,8 +253,9 @@ struct _prop_object_iterator {
 #include <sys/malloc.h>
 #include <sys/objcache.h>
 #include <sys/systm.h>
-#include <sys/spinlock.h>
-#include <sys/spinlock2.h>
+#include <sys/globaldata.h>
+#include <sys/mutex.h>
+#include <sys/mutex2.h>
 #include <sys/lock.h>
 
 #define	_PROP_ASSERT(x)			KKASSERT(x)
@@ -285,17 +286,21 @@ SYSINIT(pp##_init, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY, pp##_init, NULL)
 #define	_PROP_MALLOC_DEFINE(t, s, l)					\
 		MALLOC_DEFINE(t, s, l);
 
+/*
+ * NOTE: These locks might be held through a sleep so no spinlocks
+ *	 can be used.
+ */
 #define	_PROP_MUTEX_DECL_STATIC(x)	static struct lock x;
 #define	_PROP_MUTEX_INIT(x)		lockinit(&(x),"proplib",0,LK_CANRECURSE)
 #define	_PROP_MUTEX_LOCK(x)		lockmgr(&(x), LK_EXCLUSIVE)
 #define	_PROP_MUTEX_UNLOCK(x)		lockmgr(&(x), LK_RELEASE)
 
-#define	_PROP_RWLOCK_DECL(x)		struct spinlock x;
-#define	_PROP_RWLOCK_INIT(x)		spin_init(&(x))
-#define	_PROP_RWLOCK_RDLOCK(x)		spin_lock_wr(&(x))
-#define	_PROP_RWLOCK_WRLOCK(x)		spin_lock_wr(&(x))
-#define	_PROP_RWLOCK_UNLOCK(x)		spin_unlock_wr(&(x))
-#define	_PROP_RWLOCK_DESTROY(x)		spin_uninit(&(x))
+#define	_PROP_RWLOCK_DECL(x)		struct mtx x;
+#define	_PROP_RWLOCK_INIT(x)		mtx_init(&(x))
+#define	_PROP_RWLOCK_RDLOCK(x)		mtx_lock(&(x))
+#define	_PROP_RWLOCK_WRLOCK(x)		mtx_lock(&(x))
+#define	_PROP_RWLOCK_UNLOCK(x)		mtx_unlock(&(x))
+#define	_PROP_RWLOCK_DESTROY(x)		mtx_uninit(&(x))
 
 #define _PROP_ONCE_DECL(x)		static int x = 0;
 #define _PROP_ONCE_RUN(x,f)		if (atomic_cmpset_int(&(x), 0, 1)) f()
