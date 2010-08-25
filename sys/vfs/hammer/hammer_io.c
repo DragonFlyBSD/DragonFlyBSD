@@ -416,6 +416,10 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 	hmp = volume->io.hmp;
 	lwkt_gettoken(&hmp->io_token);
 
+	/*
+	 * Warning: FINDBLK_TEST return stable storage but not stable
+	 *	    contents.  It happens to be ok in this case.
+	 */
 	phys_offset = volume->ondisk->vol_buf_beg +
 		      (zone2_offset & HAMMER_OFF_SHORT_MASK);
 	if ((bp = findblk(volume->devvp, phys_offset, FINDBLK_TEST)) != NULL)
@@ -1662,6 +1666,10 @@ hammer_io_direct_uncache_callback(hammer_inode_t ip, void *data)
 	blksize = iinfo->u.leaf->data_len;
 	KKASSERT((blksize & HAMMER_BUFMASK) == 0);
 
+	/*
+	 * Warning: FINDBLK_TEST return stable storage but not stable
+	 *	    contents.  It happens to be ok in this case.
+	 */
 	hammer_ref(&ip->lock);
 	if (hammer_get_vnode(ip, &vp) == 0) {
 		if ((bp = findblk(ip->vp, file_offset, FINDBLK_TEST)) != NULL &&

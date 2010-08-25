@@ -3602,6 +3602,10 @@ nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			 * If we have a buffer and it is marked B_DELWRI we
 			 * have to lock and write it.  Otherwise the prior
 			 * write is assumed to have already been committed.
+			 *
+			 * WARNING: FINDBLK_TEST buffers represent stable
+			 *	    storage but not necessarily stable
+			 *	    content.  It is ok in this case.
 			 */
 			if ((bp = findblk(vp, loffset, FINDBLK_TEST)) != NULL) {
 				if (bp->b_flags & B_DELWRI)
