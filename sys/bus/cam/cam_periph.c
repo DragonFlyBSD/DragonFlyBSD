@@ -170,6 +170,7 @@ cam_periph_alloc(periph_ctor_t *periph_ctor,
 	xpt_unlock_buses();
 
 	sim = xpt_path_sim(path);
+	CAM_SIM_LOCK(sim);
 	path_id = xpt_path_path_id(path);
 	target_id = xpt_path_target_id(path);
 	lun_id = xpt_path_lun_id(path);
@@ -237,6 +238,7 @@ failure:
 	default:
 		panic("cam_periph_alloc: Unknown init level");
 	}
+	CAM_SIM_UNLOCK(sim);
 	return(status);
 }
 
