@@ -116,6 +116,7 @@ struct tty {
 	speed_t	t_ospeedwat;		/* t_ospeed override for watermarks. */
 	int	t_gen;			/* Generation number. */
 	TAILQ_ENTRY(tty) t_list;	/* Global chain of ttys for pstat(8) */
+	int	t_refs;			/* Reference count. */
 };
 
 #define	t_cc		t_termios.c_cc
@@ -276,6 +277,8 @@ int	 ttyclose (struct tty *tp);
 void	 ttyclearsession (struct tty *tp);
 void	 ttyclosesession (struct session *, int);
 void	 ttyflush (struct tty *tp, int rw);
+void	 ttyhold (struct tty *tp);
+void	 ttyunhold (struct tty *tp);
 void	 ttyinfo (struct tty *tp);
 int	 ttyinput (int c, struct tty *tp);
 int	 ttylclose (struct tty *tp, int flag);
