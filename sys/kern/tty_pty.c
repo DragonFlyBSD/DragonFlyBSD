@@ -304,10 +304,10 @@ pti_done(struct pt_ioctl *pti)
 		 * out the device infrastructure.
 		 *
 		 * Do not terminate the tty if it still has a session
-		 * association.
+		 * association (t_refs).
 		 */
 		if ((pti->pt_flags2 & (PF_SOPEN|PF_MOPEN)) == 0 &&
-		    pti->pt_tty.t_session == NULL) {
+		    pti->pt_tty.t_refs == 0) {
 			pti->pt_flags2 |= PF_TERMINATED;
 			uminor_no = pti->pt_uminor;
 

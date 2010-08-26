@@ -284,6 +284,7 @@ ttyclearsession(struct tty *tp)
 		/* FULL CLOSE (not yet) */
 		if (sp->s_ttyp == tp) {
 			sp->s_ttyp = NULL;
+			ttyunhold(tp);
 		} else {
 			kprintf("ttyclearsession: warning: sp->s_ttyp != tp "
 				"%p/%p\n", sp->s_ttyp, tp);
@@ -797,6 +798,7 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 	struct thread *td = curthread;
 	struct lwp *lp = td->td_lwp;
 	struct proc *p = td->td_proc;
+	struct tty *otp;
 	int error;
 
 	KKASSERT(p);
@@ -1100,11 +1102,16 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 		/* Session ctty vnode pointer set in vnode layer. */
 		if (!SESS_LEADER(p) ||
 		    ((p->p_session->s_ttyvp || tp->t_session) &&
-		    (tp->t_session != p->p_session)))
+		    (tp->t_session != p->p_session))) {
 			return (EPERM);
+		}
+		ttyhold(tp);
 		tp->t_session = p->p_session;
 		tp->t_pgrp = p->p_pgrp;
+		otp = p->p_session->s_ttyp;
 		p->p_session->s_ttyp = tp;
+		if (otp)
+			ttyunhold(otp);
 		p->p_flag |= P_CONTROLT;
 		break;
 	case TIOCSPGRP: {		/* set pgrp of tty */
@@ -1454,6 +1461,18 @@ ttylclose(struct tty *tp, int flag)
 	if (flag & FNONBLOCK || ttywflush(tp))
 		ttyflush(tp, FREAD | FWRITE);
 	return (0);
+}
+
+void
+ttyhold(struct tty *tp)
+{
+	++tp->t_refs;
+}
+
+void
+ttyunhold(struct tty *tp)
+{
+	--tp->t_refs;
 }
 
 /*

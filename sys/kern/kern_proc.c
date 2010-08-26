@@ -352,6 +352,8 @@ sess_hold(struct session *sp)
 void
 sess_rele(struct session *sp)
 {
+	struct tty *tp;
+
 	KKASSERT(sp->s_count > 0);
 	lwkt_gettoken(&tty_token);
 	if (--sp->s_count == 0) {
@@ -365,6 +367,10 @@ sess_rele(struct session *sp)
 			if (sp->s_ttyp->t_session == sp)
 				sp->s_ttyp->t_session = NULL;
 #endif
+		}
+		if ((tp = sp->s_ttyp) != NULL) {
+			sp->s_ttyp = NULL;
+			ttyunhold(tp);
 		}
 		kfree(sp, M_SESSION);
 	}
