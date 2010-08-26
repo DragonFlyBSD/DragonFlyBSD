@@ -190,24 +190,11 @@ static struct dev_ops pf_ops = {	    /* XXX convert to port model */
 
 static volatile int pf_pfil_hooked = 0;
 int pf_end_threads = 0;
-struct lock pf_task_lck;
+struct lock pf_mod_lck;
 
 int debug_pfugidhack = 0;
 SYSCTL_INT(_debug, OID_AUTO, pfugidhack, CTLFLAG_RW, &debug_pfugidhack, 0,
 	"Enable/disable pf user/group rules mpsafe hack");
-
-
-static void
-init_pf_lck(void)
-{
-	lockinit(&pf_task_lck, "pf task lck", 0, LK_CANRECURSE);
-}
-
-static void
-destroy_pf_lck(void)
-{
-	lockuninit(&pf_task_lck);
-}
 
 void
 init_zone_var(void)
@@ -3279,7 +3266,7 @@ pf_load(void)
 	int error;
 
 	init_zone_var();
-	init_pf_lck();
+	lockinit(&pf_mod_lck, "pf task lck", 0, LK_CANRECURSE);
 	kprintf("pf_load() p1\n"); /*XXX*/
 	pf_dev = make_dev(&pf_ops, 0, 0, 0, 0600, PF_NAME);
 	kprintf("pf_load() p2\n"); /*XXX*/
@@ -3287,7 +3274,7 @@ pf_load(void)
 	kprintf("pf_load() p3\n"); /*XXX*/
 	if (error) {
 		dev_ops_remove_all(&pf_ops);
-		destroy_pf_lck();
+		lockuninit(&pf_mod_lck);
 		return (error);
 	}
 	lockinit(&pf_consistency_lock, "pfconslck", 0, LK_CANRECURSE);
@@ -3315,7 +3302,7 @@ pf_unload(void)
 	pf_end_threads = 1;
 	while (pf_end_threads < 2) {
 		wakeup_one(pf_purge_thread);
-		lksleep(pf_purge_thread, &pf_task_lck, 0, "pftmo", hz);
+		lksleep(pf_purge_thread, &pf_mod_lck, 0, "pftmo", hz);
 
 	}
 	pfi_cleanup();
@@ -3324,7 +3311,7 @@ pf_unload(void)
 	cleanup_pf_zone();
 	dev_ops_remove_all(&pf_ops);
 	lockuninit(&pf_consistency_lock);
-	destroy_pf_lck();
+	lockuninit(&pf_mod_lck);
 	return 0;
 }
 
