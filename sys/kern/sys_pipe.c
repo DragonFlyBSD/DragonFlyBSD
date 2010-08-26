@@ -61,7 +61,6 @@
 
 #include <sys/file2.h>
 #include <sys/signal2.h>
-#include <sys/mplock2.h>
 
 #include <machine/cpufunc.h>
 
@@ -141,9 +140,6 @@ SYSCTL_INT(_kern_pipe, OID_AUTO, maxbig,
 static int pipe_delay = 5000;	/* 5uS default */
 SYSCTL_INT(_kern_pipe, OID_AUTO, delay,
         CTLFLAG_RW, &pipe_delay, 0, "SMP delay optimization in ns");
-static int pipe_mpsafe = 1;
-SYSCTL_INT(_kern_pipe, OID_AUTO, mpsafe,
-        CTLFLAG_RW, &pipe_mpsafe, 0, "");
 #endif
 #if !defined(NO_PIPE_SYSCTL_STATS)
 SYSCTL_INT(_kern_pipe, OID_AUTO, bcache_alloc,
@@ -161,9 +157,9 @@ static __inline void
 pipewakeup(struct pipe *cpipe, int dosigio)
 {
 	if (dosigio && (cpipe->pipe_state & PIPE_ASYNC) && cpipe->pipe_sigio) {
-		get_mplock();
+		lwkt_gettoken(&proc_token);
 		pgsigio(cpipe->pipe_sigio, SIGIO, 0);
-		rel_mplock();
+		lwkt_reltoken(&proc_token);
 	}
 	KNOTE(&cpipe->pipe_kq.ki_note, 0);
 }
@@ -203,30 +199,6 @@ pipe_end_uio(struct pipe *cpipe, int *ipp)
 		*ipp = 0;
 	}
 }
-
-static __inline void
-pipe_get_mplock(int *save)
-{
-#ifdef SMP
-	if (pipe_mpsafe == 0) {
-		get_mplock();
-		*save = 1;
-	} else
-#endif
-	{
-		*save = 0;
-	}
-}
-
-static __inline void
-pipe_rel_mplock(int *save)
-{
-#ifdef SMP
-	if (*save)
-		rel_mplock();
-#endif
-}
-
 
 /*
  * The pipe system call for the DTYPE_PIPE type of pipes
@@ -325,7 +297,6 @@ pipespace(struct pipe *cpipe, int size)
 	 * ones.
 	 */
 	if (object == NULL || object->size != npages) {
-		get_mplock();
 		object = vm_object_allocate(OBJT_DEFAULT, npages);
 		buffer = (caddr_t)vm_map_min(&kernel_map);
 
@@ -338,11 +309,9 @@ pipespace(struct pipe *cpipe, int size)
 
 		if (error != KERN_SUCCESS) {
 			vm_object_deallocate(object);
-			rel_mplock();
 			return (ENOMEM);
 		}
 		pipe_free_kmem(cpipe);
-		rel_mplock();
 		cpipe->pipe_buffer.object = object;
 		cpipe->pipe_buffer.buffer = buffer;
 		cpipe->pipe_buffer.size = size;
@@ -386,9 +355,6 @@ pipe_create(struct pipe **cpipep)
 	return (0);
 }
 
-/*
- * MPALMOSTSAFE (acquires mplock)
- */
 static int
 pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 {
@@ -401,7 +367,6 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	u_int nsize;	/* total bytes to read */
 	u_int rindex;	/* contiguous bytes available */
 	int notify_writer;
-	int mpsave;
 	int bigread;
 	int bigcount;
 
@@ -411,7 +376,6 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	/*
 	 * Setup locks, calculate nbio
 	 */
-	pipe_get_mplock(&mpsave);
 	rpipe = (struct pipe *)fp->f_data;
 	wpipe = rpipe->pipe_peer;
 	lwkt_gettoken(&rpipe->pipe_rlock);
@@ -433,7 +397,6 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	 */
 	error = pipe_start_uio(rpipe, &rpipe->pipe_rip);
 	if (error) {
-		pipe_rel_mplock(&mpsave);
 		lwkt_reltoken(&rpipe->pipe_rlock);
 		return (error);
 	}
@@ -663,13 +626,9 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	/*size = rpipe->pipe_buffer.windex - rpipe->pipe_buffer.rindex;*/
 	lwkt_reltoken(&rpipe->pipe_rlock);
 
-	pipe_rel_mplock(&mpsave);
 	return (error);
 }
 
-/*
- * MPALMOSTSAFE - acquires mplock
- */
 static int
 pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 {
@@ -681,11 +640,8 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	u_int windex;
 	u_int space;
 	u_int wcount;
-	int mpsave;
 	int bigwrite;
 	int bigcount;
-
-	pipe_get_mplock(&mpsave);
 
 	/*
 	 * Writes go to the peer.  The peer will always exist.
@@ -694,7 +650,6 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	wpipe = rpipe->pipe_peer;
 	lwkt_gettoken(&wpipe->pipe_wlock);
 	if (wpipe->pipe_state & PIPE_WEOF) {
-		pipe_rel_mplock(&mpsave);
 		lwkt_reltoken(&wpipe->pipe_wlock);
 		return (EPIPE);
 	}
@@ -703,7 +658,6 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	 * Degenerate case (EPIPE takes prec)
 	 */
 	if (uio->uio_resid == 0) {
-		pipe_rel_mplock(&mpsave);
 		lwkt_reltoken(&wpipe->pipe_wlock);
 		return(0);
 	}
@@ -713,7 +667,6 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	 */
 	error = pipe_start_uio(wpipe, &wpipe->pipe_wip);
 	if (error) {
-		pipe_rel_mplock(&mpsave);
 		lwkt_reltoken(&wpipe->pipe_wlock);
 		return (error);
 	}
@@ -832,7 +785,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 			 * NOTE: We can't clear WANTR here without acquiring
 			 * the rlock, which we don't want to do here!
 			 */
-			if ((wpipe->pipe_state & PIPE_WANTR) && pipe_mpsafe > 1)
+			if ((wpipe->pipe_state & PIPE_WANTR))
 				wakeup(wpipe);
 #endif
 
@@ -972,13 +925,10 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	 */
 	/*space = wpipe->pipe_buffer.windex - wpipe->pipe_buffer.rindex;*/
 	lwkt_reltoken(&wpipe->pipe_wlock);
-	pipe_rel_mplock(&mpsave);
 	return (error);
 }
 
 /*
- * MPALMOSTSAFE - acquires mplock
- *
  * we implement a very minimal set of ioctls for compatibility with sockets.
  */
 int
@@ -987,9 +937,7 @@ pipe_ioctl(struct file *fp, u_long cmd, caddr_t data,
 {
 	struct pipe *mpipe;
 	int error;
-	int mpsave;
 
-	pipe_get_mplock(&mpsave);
 	mpipe = (struct pipe *)fp->f_data;
 
 	lwkt_gettoken(&mpipe->pipe_rlock);
@@ -1010,9 +958,9 @@ pipe_ioctl(struct file *fp, u_long cmd, caddr_t data,
 		error = 0;
 		break;
 	case FIOSETOWN:
-		get_mplock();
+		lwkt_gettoken(&proc_token);
 		error = fsetown(*(int *)data, &mpipe->pipe_sigio);
-		rel_mplock();
+		lwkt_reltoken(&proc_token);
 		break;
 	case FIOGETOWN:
 		*(int *)data = fgetown(mpipe->pipe_sigio);
@@ -1020,9 +968,9 @@ pipe_ioctl(struct file *fp, u_long cmd, caddr_t data,
 		break;
 	case TIOCSPGRP:
 		/* This is deprecated, FIOSETOWN should be used instead. */
-		get_mplock();
+		lwkt_gettoken(&proc_token);
 		error = fsetown(-(*(int *)data), &mpipe->pipe_sigio);
-		rel_mplock();
+		lwkt_reltoken(&proc_token);
 		break;
 
 	case TIOCGPGRP:
@@ -1036,7 +984,6 @@ pipe_ioctl(struct file *fp, u_long cmd, caddr_t data,
 	}
 	lwkt_reltoken(&mpipe->pipe_wlock);
 	lwkt_reltoken(&mpipe->pipe_rlock);
-	pipe_rel_mplock(&mpsave);
 
 	return (error);
 }
@@ -1048,9 +995,7 @@ static int
 pipe_stat(struct file *fp, struct stat *ub, struct ucred *cred)
 {
 	struct pipe *pipe;
-	int mpsave;
 
-	pipe_get_mplock(&mpsave);
 	pipe = (struct pipe *)fp->f_data;
 
 	bzero((caddr_t)ub, sizeof(*ub));
@@ -1066,32 +1011,26 @@ pipe_stat(struct file *fp, struct stat *ub, struct ucred *cred)
 	 * st_flags, st_gen.
 	 * XXX (st_dev, st_ino) should be unique.
 	 */
-	pipe_rel_mplock(&mpsave);
 	return (0);
 }
 
-/*
- * MPALMOSTSAFE - acquires mplock
- */
 static int
 pipe_close(struct file *fp)
 {
 	struct pipe *cpipe;
 
-	get_mplock();
 	cpipe = (struct pipe *)fp->f_data;
 	fp->f_ops = &badfileops;
 	fp->f_data = NULL;
+	lwkt_gettoken(&proc_token);
 	funsetown(cpipe->pipe_sigio);
+	lwkt_reltoken(&proc_token);
 	pipeclose(cpipe);
-	rel_mplock();
 	return (0);
 }
 
 /*
  * Shutdown one or both directions of a full-duplex pipe.
- *
- * MPALMOSTSAFE - acquires mplock
  */
 static int
 pipe_shutdown(struct file *fp, int how)
@@ -1099,9 +1038,7 @@ pipe_shutdown(struct file *fp, int how)
 	struct pipe *rpipe;
 	struct pipe *wpipe;
 	int error = EPIPE;
-	int mpsave;
 
-	pipe_get_mplock(&mpsave);
 	rpipe = (struct pipe *)fp->f_data;
 	wpipe = rpipe->pipe_peer;
 
@@ -1153,7 +1090,6 @@ pipe_shutdown(struct file *fp, int how)
 	lwkt_reltoken(&rpipe->pipe_wlock);
 	lwkt_reltoken(&rpipe->pipe_rlock);
 
-	pipe_rel_mplock(&mpsave);
 	return (error);
 }
 
@@ -1265,9 +1201,6 @@ pipeclose(struct pipe *cpipe)
 	}
 }
 
-/*
- * MPALMOSTSAFE - acquires mplock
- */
 static int
 pipe_kqfilter(struct file *fp, struct knote *kn)
 {
