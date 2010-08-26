@@ -43,8 +43,6 @@
 #include <sys/user.h>
 #include <sys/reg.h>
 
-#include <sys/mplock2.h>
-
 #include <machine/md_var.h>
 #include <machine/pcb.h>
 
@@ -276,8 +274,6 @@ sys_linux_ptrace(struct linux_ptrace_args *uap)
 	pid  = (pid_t)uap->pid;
 	addr = (void *)uap->addr;
 
-	get_mplock();
-
 	switch (req) {
 	case PTRACE_TRACEME:
 	case PTRACE_POKETEXT:
@@ -502,6 +498,5 @@ sys_linux_ptrace(struct linux_ptrace_args *uap)
 		break;
 	}
 
-	rel_mplock();
 	return (error);
 }
