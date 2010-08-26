@@ -127,7 +127,7 @@ PDEVSTATIC int i4brbchkfilt_write(struct knote *, long);
 #define CDEV_MAJOR 57
 
 static struct dev_ops i4brbch_ops = {
-	{ "i4brbch", CDEV_MAJOR, D_KQFILTER },
+	{ "i4brbch", CDEV_MAJOR, 0 },
 	.d_open =	i4brbchopen,
 	.d_close =	i4brbchclose,
 	.d_read =	i4brbchread,

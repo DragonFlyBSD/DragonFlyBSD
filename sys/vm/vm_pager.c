@@ -477,9 +477,9 @@ relpbuf(struct buf *bp, int *pfreecnt)
 	KKASSERT(bp->b_flags & B_PAGING);
 	dsched_exit_buf(bp);
 
-	spin_lock_wr(&bswspin);
-
 	BUF_UNLOCK(bp);
+
+	spin_lock_wr(&bswspin);
 	if (bp->b_kvabase) {
 		TAILQ_INSERT_HEAD(&bswlist_kva, bp, b_freelist);
 		++pbuf_kva_count;
@@ -499,7 +499,6 @@ relpbuf(struct buf *bp, int *pfreecnt)
 		if (++*pfreecnt == 1)
 			wake_freecnt = 1;
 	}
-
 	spin_unlock_wr(&bswspin);
 
 	if (wake_bsw_kva)

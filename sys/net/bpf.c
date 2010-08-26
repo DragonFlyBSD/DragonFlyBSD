@@ -141,7 +141,7 @@ static d_kqfilter_t	bpfkqfilter;
 
 #define CDEV_MAJOR 23
 static struct dev_ops bpf_ops = {
-	{ "bpf", CDEV_MAJOR, D_KQFILTER },
+	{ "bpf", CDEV_MAJOR, 0 },
 	.d_open =	bpfopen,
 	.d_close =	bpfclose,
 	.d_read =	bpfread,

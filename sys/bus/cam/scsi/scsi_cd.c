@@ -302,7 +302,7 @@ static struct periph_driver cddriver =
 PERIPHDRIVER_DECLARE(cd, cddriver);
 
 static struct dev_ops cd_ops = {
-	{ "cd", SCSICD_CDEV_MAJOR, D_DISK },
+	{ "cd", SCSICD_CDEV_MAJOR, D_DISK | D_MPSAFE },
 	.d_open = cdopen,
 	.d_close = cdclose,
 	.d_read = physread,

@@ -88,7 +88,7 @@ static int fwfilt_write(struct knote *, long);
 
 struct dev_ops firewire_ops = 
 {
-	{ "fw", CDEV_MAJOR, D_MEM | D_KQFILTER },
+	{ "fw", CDEV_MAJOR, D_MEM },
 	.d_open =	fw_open,
 	.d_close =	fw_close,
 	.d_read =	fw_read,

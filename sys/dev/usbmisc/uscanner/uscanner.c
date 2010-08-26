@@ -259,7 +259,7 @@ d_kqfilter_t uscannerkqfilter;
 #define USCANNER_CDEV_MAJOR	156
 
 static struct dev_ops uscanner_ops = {
-	{ "uscanner", USCANNER_CDEV_MAJOR, D_KQFILTER },
+	{ "uscanner", USCANNER_CDEV_MAJOR, 0 },
 	.d_open =	uscanneropen,
 	.d_close =	uscannerclose,
 	.d_read =	uscannerread,

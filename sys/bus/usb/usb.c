@@ -152,7 +152,7 @@ static void usbfilt_detach(struct knote *);
 static int usbfilt(struct knote *, long);
 
 struct dev_ops usb_ops = {
-	{ "usb", USB_CDEV_MAJOR, D_KQFILTER },
+	{ "usb", USB_CDEV_MAJOR, 0 },
 	.d_open =	usbopen,
 	.d_close =	usbclose,
 	.d_read =	usbread,

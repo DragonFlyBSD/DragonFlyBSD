@@ -33,6 +33,7 @@ MAN=	aac.4 \
 	amr.4 \
 	an.4 \
 	aps.4 \
+	arcmsr.4 \
 	arp.4 \
 	ata.4 \
 	atapicam.4 \

@@ -59,9 +59,11 @@
 #include <sys/priv.h>
 #include <sys/random.h>
 #include <sys/signalvar.h>
-#include <sys/signal2.h>
 #include <sys/uio.h>
 #include <sys/vnode.h>
+
+#include <sys/signal2.h>
+#include <sys/mplock2.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -78,7 +80,7 @@ static	d_kqfilter_t	mmkqfilter;
 
 #define CDEV_MAJOR 2
 static struct dev_ops mem_ops = {
-	{ "mem", CDEV_MAJOR, D_MEM | D_MPSAFE_READ | D_MPSAFE_WRITE | D_KQFILTER },
+	{ "mem", CDEV_MAJOR, D_MPSAFE },
 	.d_open =	mmopen,
 	.d_close =	mmclose,
 	.d_read =	mmread,
@@ -365,17 +367,27 @@ static int
 mmioctl(struct dev_ioctl_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
+	int error;
+
+	get_mplock();
 
 	switch (minor(dev)) {
 	case 0:
-		return mem_ioctl(dev, ap->a_cmd, ap->a_data,
-				 ap->a_fflag, ap->a_cred);
+		error = mem_ioctl(dev, ap->a_cmd, ap->a_data,
+				  ap->a_fflag, ap->a_cred);
+		break;
 	case 3:
 	case 4:
-		return random_ioctl(dev, ap->a_cmd, ap->a_data,
-				    ap->a_fflag, ap->a_cred);
+		error = random_ioctl(dev, ap->a_cmd, ap->a_data,
+				     ap->a_fflag, ap->a_cred);
+		break;
+	default:
+		error = ENODEV;
+		break;
 	}
-	return (ENODEV);
+
+	rel_mplock();
+	return (error);
 }
 
 /*

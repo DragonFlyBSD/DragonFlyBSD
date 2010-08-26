@@ -59,7 +59,7 @@ extern struct mc malloced[];
 
 struct dev_ops vinum_ops =
 {
-	{ "vinum", VINUM_CDEV_MAJOR, D_DISK | D_KQFILTER },
+	{ "vinum", VINUM_CDEV_MAJOR, D_DISK },
 	.d_open =	vinumopen,
 	.d_close =	vinumclose,
 	.d_read =	physread,

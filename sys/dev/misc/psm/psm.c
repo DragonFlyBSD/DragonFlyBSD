@@ -343,7 +343,7 @@ static struct isa_pnp_id psm_ids[] = {
 #define CDEV_MAJOR        21
 
 static struct dev_ops psm_ops = {
-	{ PSM_DRIVER_NAME, CDEV_MAJOR, D_KQFILTER },
+	{ PSM_DRIVER_NAME, CDEV_MAJOR, 0 },
 	.d_open =	psmopen,
 	.d_close =	psmclose,
 	.d_read =	psmread,

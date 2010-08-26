@@ -757,6 +757,8 @@ struct sili_port {
 	int			ap_signal;	/* os per-port thread sig */
 	thread_t		ap_thread;	/* os per-port thread */
 	struct lock		ap_lock;	/* os per-port lock */
+	struct lock		ap_sim_lock;	/* cam sim lock */
+	struct lock		ap_sig_lock;	/* signal thread */
 #define AP_SIGF_INIT		0x0001
 #define AP_SIGF_TIMEOUT		0x0002
 #define AP_SIGF_PORTINT		0x0004

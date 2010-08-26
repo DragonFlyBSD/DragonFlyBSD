@@ -70,7 +70,7 @@ static d_kqfilter_t apmkqfilter;
 
 #define CDEV_MAJOR 39
 static struct dev_ops apm_ops = {
-	{ "apm", CDEV_MAJOR, D_KQFILTER },
+	{ "apm", CDEV_MAJOR, 0 },
         .d_open = apmopen,
         .d_close = apmclose,
 	.d_write = apmwrite,

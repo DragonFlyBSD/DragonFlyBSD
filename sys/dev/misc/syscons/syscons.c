@@ -234,7 +234,7 @@ static	d_ioctl_t	scioctl;
 static	d_mmap_t	scmmap;
 
 static struct dev_ops sc_ops = {
-	{ "sc", CDEV_MAJOR, D_TTY | D_KQFILTER },
+	{ "sc", CDEV_MAJOR, D_TTY },
 	.d_open =	scopen,
 	.d_close =	scclose,
 	.d_read =	scread,

@@ -111,7 +111,7 @@ static struct filterops targwrite_filtops =
 
 #define TARG_CDEV_MAJOR 65
 static struct dev_ops targ_ops = {
-	{ "targ", TARG_CDEV_MAJOR, D_KQFILTER },
+	{ "targ", TARG_CDEV_MAJOR, 0 },
 	.d_open = targopen,
 	.d_close = targclose,
 	.d_read = targread,

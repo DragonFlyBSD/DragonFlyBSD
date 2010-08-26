@@ -69,7 +69,7 @@ static	d_ioctl_t	nmdmioctl;
 
 #define	CDEV_MAJOR	18
 static struct dev_ops nmdm_ops = {
-	{ "pts", CDEV_MAJOR, D_TTY | D_KQFILTER },
+	{ "pts", CDEV_MAJOR, D_TTY },
 	.d_open =	nmdmopen,
 	.d_close =	nmdmclose,
 	.d_read =	nmdmread,

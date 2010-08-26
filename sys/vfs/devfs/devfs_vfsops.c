@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 2009 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
@@ -46,17 +48,17 @@ extern struct vop_ops devfs_vnode_norm_vops;
 extern struct vop_ops devfs_vnode_dev_vops;
 extern struct lock 	devfs_lock;
 
-static int	devfs_mount (struct mount *mp, char *path, caddr_t data,
+static int	devfs_vfs_mount (struct mount *mp, char *path, caddr_t data,
 				  struct ucred *cred);
-static int	devfs_statfs (struct mount *mp, struct statfs *sbp,
+static int	devfs_vfs_statfs (struct mount *mp, struct statfs *sbp,
 				struct ucred *cred);
-static int	devfs_unmount (struct mount *mp, int mntflags);
-int			devfs_root(struct mount *mp, struct vnode **vpp);
-static int	devfs_vget(struct mount *mp, struct vnode *dvp,
+static int	devfs_vfs_unmount (struct mount *mp, int mntflags);
+int		devfs_vfs_root(struct mount *mp, struct vnode **vpp);
+static int	devfs_vfs_vget(struct mount *mp, struct vnode *dvp,
 				ino_t ino, struct vnode **vpp);
-static int	devfs_fhtovp(struct mount *mp, struct vnode *rootvp,
+static int	devfs_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 				struct fid *fhp, struct vnode **vpp);
-static int	devfs_vptofh(struct vnode *vp, struct fid *fhp);
+static int	devfs_vfs_vptofh(struct vnode *vp, struct fid *fhp);
 
 
 /*
@@ -64,9 +66,8 @@ static int	devfs_vptofh(struct vnode *vp, struct fid *fhp);
  *
  * mount system call
  */
-/* ARGSUSED */
 static int
-devfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
+devfs_vfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	struct devfs_mount_info info;
 	struct devfs_mnt_data *mnt;
@@ -86,14 +87,14 @@ devfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	}
 
 	mp->mnt_flag |= MNT_LOCAL;
-	mp->mnt_kern_flag |= MNTK_NOSTKMNT;
+	mp->mnt_kern_flag |= MNTK_NOSTKMNT | MNTK_ALL_MPSAFE;
 	mp->mnt_data = NULL;
 	vfs_getnewfsid(mp);
 
 	size = sizeof("devfs") - 1;
 	bcopy("devfs", mp->mnt_stat.f_mntfromname, size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
-	devfs_statfs(mp, &mp->mnt_stat, cred);
+	devfs_vfs_statfs(mp, &mp->mnt_stat, cred);
 
 	/*
 	 * XXX: save other mount info passed from userland or so.
@@ -129,7 +130,7 @@ devfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
  * unmount system call
  */
 static int
-devfs_unmount(struct mount *mp, int mntflags)
+devfs_vfs_unmount(struct mount *mp, int mntflags)
 {
 	int error = 0;
 	int flags = 0;
@@ -143,7 +144,9 @@ devfs_unmount(struct mount *mp, int mntflags)
 
 	if (error)
 		return (error);
+	lockmgr(&devfs_lock, LK_EXCLUSIVE);
 	devfs_tracer_orphan_count(mp, 1);
+	lockmgr(&devfs_lock, LK_RELEASE);
 	devfs_mount_del(DEVFS_MNTDATA(mp));
 	kfree(mp->mnt_data, M_DEVFS);
 	mp->mnt_data = NULL;
@@ -155,13 +158,15 @@ devfs_unmount(struct mount *mp, int mntflags)
  * Sets *vpp to the root procfs vnode, referenced and exclusively locked
  */
 int
-devfs_root(struct mount *mp, struct vnode **vpp)
+devfs_vfs_root(struct mount *mp, struct vnode **vpp)
 {
 	int ret;
+
 	devfs_debug(DEVFS_DEBUG_DEBUG, "(vfsops) devfs_root() called!\n");
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);
 	ret = devfs_allocv(vpp, DEVFS_MNTDATA(mp)->root_node);
 	lockmgr(&devfs_lock, LK_RELEASE);
+
 	return ret;
 }
 
@@ -169,7 +174,7 @@ devfs_root(struct mount *mp, struct vnode **vpp)
  * Get file system statistics.
  */
 static int
-devfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
+devfs_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	devfs_debug(DEVFS_DEBUG_DEBUG, "(vfsops) devfs_stat() called!\n");
 	sbp->f_bsize = DEV_BSIZE;
@@ -190,8 +195,8 @@ devfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 }
 
 static int
-devfs_fhtovp(struct mount *mp, struct vnode *rootvp,
-	   struct fid *fhp, struct vnode **vpp)
+devfs_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
+		 struct fid *fhp, struct vnode **vpp)
 {
 	struct vnode		*vp;
 	struct devfs_fid	*dfhp;
@@ -213,9 +218,8 @@ devfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 /*
  * Vnode pointer to File handle
  */
-/* ARGSUSED */
 static int
-devfs_vptofh(struct vnode *vp, struct fid *fhp)
+devfs_vfs_vptofh(struct vnode *vp, struct fid *fhp)
 {
 	struct devfs_node	*node;
 	struct devfs_fid	*dfhp;
@@ -233,7 +237,8 @@ devfs_vptofh(struct vnode *vp, struct fid *fhp)
 }
 
 static int
-devfs_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
+devfs_vfs_vget(struct mount *mp, struct vnode *dvp,
+	       ino_t ino, struct vnode **vpp)
 {
 	struct vnode *vp;
 	vp = devfs_inode_to_vnode(mp, ino);
@@ -247,14 +252,14 @@ devfs_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 
 
 static struct vfsops devfs_vfsops = {
-	.vfs_mount 	=   devfs_mount,
-	.vfs_unmount =  devfs_unmount,
-	.vfs_root 	=   devfs_root,
-	.vfs_statfs =   devfs_statfs,
-	.vfs_sync 	=   vfs_stdsync,
-	.vfs_vget	= 	devfs_vget,
-	.vfs_vptofh	= 	devfs_vptofh,
-	.vfs_fhtovp	= 	devfs_fhtovp
+	.vfs_mount 	= devfs_vfs_mount,
+	.vfs_unmount	= devfs_vfs_unmount,
+	.vfs_root 	= devfs_vfs_root,
+	.vfs_statfs	= devfs_vfs_statfs,
+	.vfs_sync 	= vfs_stdsync,
+	.vfs_vget	= devfs_vfs_vget,
+	.vfs_vptofh	= devfs_vfs_vptofh,
+	.vfs_fhtovp	= devfs_vfs_fhtovp
 };
 
 VFS_SET(devfs_vfsops, devfs, VFCF_SYNTHETIC);

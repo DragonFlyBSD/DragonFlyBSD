@@ -633,7 +633,7 @@ struct isa_driver	stlidriver = {
 
 #define	CDEV_MAJOR	75
 static struct dev_ops stli_ops = {
-	{ stli_drvname, CDEV_MAJOR, D_TTY | D_KQFILTER },
+	{ stli_drvname, CDEV_MAJOR, D_TTY },
 	.d_open =	stliopen,
 	.d_close =	stliclose,
 	.d_read =	stliread,

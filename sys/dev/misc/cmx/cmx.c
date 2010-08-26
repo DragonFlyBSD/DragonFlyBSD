@@ -140,7 +140,7 @@ static int cmx_filter_write(struct knote *, long);
 
 #define CDEV_MAJOR	185
 static struct dev_ops cmx_ops = {
-	{ "cmx", CDEV_MAJOR, D_KQFILTER },
+	{ "cmx", CDEV_MAJOR, 0 },
 	.d_open =	cmx_open,
 	.d_close =	cmx_close,
 	.d_read =	cmx_read,

@@ -70,7 +70,7 @@ static	int  logfiltread(struct knote *kn, long hint);
 
 #define CDEV_MAJOR 7
 static struct dev_ops log_ops = {
-	{ "log", CDEV_MAJOR, D_KQFILTER },
+	{ "log", CDEV_MAJOR, 0 },
 	.d_open =	logopen,
 	.d_close =	logclose,
 	.d_read =	logread,

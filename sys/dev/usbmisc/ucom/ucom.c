@@ -119,7 +119,7 @@ static d_ioctl_t ucomioctl;
 #define UCOM_CDEV_MAJOR  138
 
 static struct dev_ops ucom_ops = {
-	{ "ucom", UCOM_CDEV_MAJOR, D_TTY | D_KQFILTER },
+	{ "ucom", UCOM_CDEV_MAJOR, D_TTY },
 	.d_open =	ucomopen,
 	.d_close =	ucomclose,
 	.d_read =	ucomread,

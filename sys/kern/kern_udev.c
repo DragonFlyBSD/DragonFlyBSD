@@ -102,7 +102,7 @@ struct udev_softc {
 } udevctx;
 
 static struct dev_ops udev_dev_ops = {
-	{ "udev", 0, D_KQFILTER },
+	{ "udev", 0, 0 },
 	.d_open = udev_dev_open,
 	.d_close = udev_dev_close,
 	.d_read = udev_dev_read,

@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 2009 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
@@ -194,6 +196,8 @@ sili_os_start_port(struct sili_port *ap)
 {
 	atomic_set_int(&ap->ap_signal, AP_SIGF_INIT);
 	lockinit(&ap->ap_lock, "silipo", 0, 0);
+	lockinit(&ap->ap_sim_lock, "silicam", 0, LK_CANRECURSE);
+	lockinit(&ap->ap_sig_lock, "siport", 0, 0);
 	kthread_create(sili_port_thread, ap, &ap->ap_thread,
 		       "%s", PORTNAME(ap));
 }
@@ -226,8 +230,10 @@ sili_os_stop_port(struct sili_port *ap)
 void
 sili_os_signal_port_thread(struct sili_port *ap, int mask)
 {
+	lockmgr(&ap->ap_sig_lock, LK_EXCLUSIVE);
 	atomic_set_int(&ap->ap_signal, mask);
 	wakeup(&ap->ap_thread);
+	lockmgr(&ap->ap_sig_lock, LK_RELEASE);
 }
 
 /*
@@ -271,6 +277,8 @@ sili_port_thread(void *arg)
 	struct sili_port *ap = arg;
 	int mask;
 
+	rel_mplock();
+
 	/*
 	 * The helper thread is responsible for the initial port init,
 	 * so all the ports can be inited in parallel.
@@ -293,9 +301,12 @@ sili_port_thread(void *arg)
 	while ((mask & AP_SIGF_STOP) == 0) {
 		atomic_clear_int(&ap->ap_signal, mask);
 		sili_port_thread_core(ap, mask);
-		tsleep_interlock(&ap->ap_thread, 0);
-		if (ap->ap_signal == 0)
-			tsleep(&ap->ap_thread, PINTERLOCKED, "ahport", 0);
+		lockmgr(&ap->ap_sig_lock, LK_EXCLUSIVE);
+		if (ap->ap_signal == 0) {
+			lksleep(&ap->ap_thread, &ap->ap_sig_lock, 0,
+				"siport", 0);
+		}
+		lockmgr(&ap->ap_sig_lock, LK_RELEASE);
 		mask = ap->ap_signal;
 	}
 	ap->ap_thread = NULL;

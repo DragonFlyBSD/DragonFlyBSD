@@ -147,7 +147,7 @@ static int ugen_filt_write(struct knote *, long);
 #define UGEN_CDEV_MAJOR	114
 
 static struct dev_ops ugen_ops = {
-	{ "ugen", UGEN_CDEV_MAJOR, D_KQFILTER },
+	{ "ugen", UGEN_CDEV_MAJOR, 0 },
 	.d_open =	ugenopen,
 	.d_close =	ugenclose,
 	.d_read =	ugenread,

@@ -150,7 +150,7 @@ PDEVSTATIC int i4btelfilt_write(struct knote *, long);
 #define CDEV_MAJOR 56
 
 static struct dev_ops i4btel_ops = {
-	{ "i4btel", CDEV_MAJOR, D_KQFILTER },
+	{ "i4btel", CDEV_MAJOR, 0 },
 	.d_open =	i4btelopen,
 	.d_close =	i4btelclose,
 	.d_read =	i4btelread,

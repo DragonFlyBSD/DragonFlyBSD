@@ -242,7 +242,7 @@ static devclass_t dgmdevclass;
 
 #define	CDEV_MAJOR	101
 static struct dev_ops dgm_ops = {
-	{ "dgm", CDEV_MAJOR, D_TTY | D_KQFILTER },
+	{ "dgm", CDEV_MAJOR, D_TTY },
 	.d_open =	dgmopen,
 	.d_close =	dgmclose,
 	.d_read =	ttyread,

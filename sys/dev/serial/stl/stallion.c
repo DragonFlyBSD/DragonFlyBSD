@@ -750,7 +750,7 @@ COMPAT_PCI_DRIVER (stlpci, stlpcidriver);
 
 #define	CDEV_MAJOR	72
 static struct dev_ops stl_ops = {
-	{ "stl", CDEV_MAJOR, D_TTY | D_KQFILTER },
+	{ "stl", CDEV_MAJOR, D_TTY },
 	.d_open =	stlopen,
 	.d_close =	stlclose,
 	.d_read =	ttyread,

@@ -94,7 +94,7 @@ PDEVSTATIC int i4bkqfilt_write(struct knote *, long);
 #define CDEV_MAJOR 60
 
 static struct dev_ops i4b_ops = {
-	{ "i4b", CDEV_MAJOR, D_KQFILTER },
+	{ "i4b", CDEV_MAJOR, 0 },
 	.d_open =	i4bopen,
 	.d_close =	i4bclose,
 	.d_read =	i4bread,

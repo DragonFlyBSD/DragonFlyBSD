@@ -55,7 +55,7 @@ static int snpfilter_wr(struct knote *, long);
 
 #define CDEV_MAJOR 53
 static struct dev_ops snp_ops = {
-	{ "snp", CDEV_MAJOR, D_KQFILTER },
+	{ "snp", CDEV_MAJOR, 0 },
 	.d_open =	snpopen,
 	.d_close =	snpclose,
 	.d_read =	snpread,
