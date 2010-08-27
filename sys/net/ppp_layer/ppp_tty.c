@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * ppp_tty.c - Point-to-Point Protocol (PPP) driver for asynchronous
  * 	       tty devices.
  *
@@ -182,16 +184,19 @@ pppopen(cdev_t dev, struct tty *tp)
 	return (error);
 
     crit_enter();
+    lwkt_gettoken(&tty_token);
 
     if (tp->t_line == PPPDISC) {
 	sc = (struct ppp_softc *) tp->t_sc;
 	if (sc != NULL && sc->sc_devp == (void *) tp) {
+	    lwkt_reltoken(&tty_token);
 	    crit_exit();
 	    return (0);
 	}
     }
 
     if ((sc = pppalloc(td)) == NULL) {
+        lwkt_reltoken(&tty_token);
 	crit_exit();
 	return ENXIO;
     }
@@ -229,6 +234,7 @@ pppopen(cdev_t dev, struct tty *tp)
 			sc->sc_if.if_mtu + PPP_HIWAT);
     clist_alloc_cblocks(&tp->t_rawq, 0, 0);
 
+    lwkt_reltoken(&tty_token);
     crit_exit();
 
     return (0);
@@ -246,6 +252,7 @@ pppclose(struct tty *tp, int flag)
     struct ppp_softc *sc;
 
     crit_enter();
+    lwkt_gettoken(&tty_token);
     ttyflush(tp, FREAD | FWRITE);
     clist_free_cblocks(&tp->t_canq);
     clist_free_cblocks(&tp->t_outq);
@@ -258,6 +265,7 @@ pppclose(struct tty *tp, int flag)
 	    pppdealloc(sc);
 	}
     }
+    lwkt_reltoken(&tty_token);
     crit_exit();
     return 0;
 }
@@ -269,6 +277,7 @@ static void
 pppasyncrelinq(struct ppp_softc *sc)
 {
     crit_enter();
+    lwkt_gettoken(&tty_token);
 
     if (sc->sc_outm) {
 	m_freem(sc->sc_outm);
@@ -283,6 +292,7 @@ pppasyncrelinq(struct ppp_softc *sc)
 	sc->sc_flags &= ~SC_TIMEOUT;
     }
 
+    lwkt_reltoken(&tty_token);
     crit_exit();
 }
 
@@ -295,9 +305,11 @@ pppasyncsetmtu(struct ppp_softc *sc)
     struct tty *tp = (struct tty *) sc->sc_devp;
 
     crit_enter();
+    lwkt_gettoken(&tty_token);
     if (tp != NULL)
 	clist_alloc_cblocks(&tp->t_outq, sc->sc_if.if_mtu + PPP_HIWAT,
 			     sc->sc_if.if_mtu + PPP_HIWAT);
+    lwkt_reltoken(&tty_token);
     crit_exit();
 }
 
@@ -320,23 +332,28 @@ pppread(struct tty *tp, struct uio *uio, int flag)
      * happens in the meantime.
      */
     crit_enter();
+    lwkt_gettoken(&tty_token);
     for (;;) {
 	if (tp != (struct tty *) sc->sc_devp || tp->t_line != PPPDISC) {
+	    lwkt_reltoken(&tty_token);
 	    crit_exit();
 	    return 0;
 	}
 	if (sc->sc_inq.ifq_head != NULL)
 	    break;
 	if ((tp->t_state & TS_CONNECTED) == 0) {
+	    lwkt_reltoken(&tty_token);
 	    crit_exit();
 	    return 0;		/* end of file */
 	}
 	if (tp->t_state & TS_ASYNC || flag & IO_NDELAY) {
+	    lwkt_reltoken(&tty_token);
 	    crit_exit();
 	    return (EWOULDBLOCK);
 	}
 	error = ttysleep(tp, TSA_HUP_OR_INPUT(tp), PCATCH, "pppin", 0);
 	if (error) {
+	    lwkt_reltoken(&tty_token);
 	    crit_exit();
 	    return error;
 	}
@@ -347,6 +364,7 @@ pppread(struct tty *tp, struct uio *uio, int flag)
 
     /* Get the packet from the input queue */
     IF_DEQUEUE(&sc->sc_inq, m0);
+    lwkt_reltoken(&tty_token);
     crit_exit();
 
     for (m = m0; m && uio->uio_resid; m = m->m_next)
@@ -369,15 +387,24 @@ pppwrite(struct tty *tp, struct uio *uio, int flag)
     struct sockaddr dst;
     int len, error;
 
-    if ((tp->t_state & TS_CONNECTED) == 0)
+    lwkt_gettoken(&tty_token);
+    if ((tp->t_state & TS_CONNECTED) == 0) {
+	lwkt_reltoken(&tty_token);
 	return 0;		/* wrote 0 bytes */
-    if (tp->t_line != PPPDISC)
+    }
+    if (tp->t_line != PPPDISC) {
+        lwkt_reltoken(&tty_token);
 	return (EINVAL);
-    if (sc == NULL || tp != (struct tty *) sc->sc_devp)
+    }
+    if (sc == NULL || tp != (struct tty *) sc->sc_devp) {
+        lwkt_reltoken(&tty_token);
 	return EIO;
+    }
     if (uio->uio_resid > sc->sc_if.if_mtu + PPP_HDRLEN ||
-	uio->uio_resid < PPP_HDRLEN)
+	uio->uio_resid < PPP_HDRLEN) {
+	lwkt_reltoken(&tty_token);
 	return (EMSGSIZE);
+    }
 
     crit_enter();
     for (mp = &m0; uio->uio_resid; mp = &m->m_next) {
@@ -391,6 +418,7 @@ pppwrite(struct tty *tp, struct uio *uio, int flag)
 	if ((*mp = m) == NULL) {
 	    m_freem(m0);
 	    crit_exit();
+	    lwkt_reltoken(&tty_token);
 	    return (ENOBUFS);
 	}
 	m->m_len = 0;
@@ -402,6 +430,7 @@ pppwrite(struct tty *tp, struct uio *uio, int flag)
 	if ((error = uiomove(mtod(m, u_char *), len, uio)) != 0) {
 	    m_freem(m0);
 	    crit_exit();
+	    lwkt_reltoken(&tty_token);
 	    return (error);
 	}
 	m->m_len = len;
@@ -414,6 +443,7 @@ pppwrite(struct tty *tp, struct uio *uio, int flag)
     /* call the upper layer to "transmit" it... */
     error = pppoutput(&sc->sc_if, m0, &dst, NULL);
     crit_exit();
+    lwkt_reltoken(&tty_token);
     return (error);
 }
 
@@ -429,8 +459,11 @@ ppptioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct ucred *cr)
     struct ppp_softc *sc = (struct ppp_softc *) tp->t_sc;
     int error;
 
-    if (sc == NULL || tp != (struct tty *) sc->sc_devp)
+    lwkt_gettoken(&tty_token);
+    if (sc == NULL || tp != (struct tty *) sc->sc_devp) {
+	lwkt_reltoken(&tty_token);
 	return (ENOIOCTL);
+    }
 
     error = 0;
     switch (cmd) {
@@ -475,6 +508,7 @@ ppptioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct ucred *cr)
 	    pppgetm(sc);
     }
 
+    lwkt_reltoken(&tty_token);
     return error;
 }
 
@@ -541,6 +575,7 @@ pppasyncstart(struct ppp_softc *sc)
     int n, ndone, done, idle;
 
     idle = 0;
+    lwkt_gettoken(&tty_token);
     /* XXX assumes atomic access to *tp although we're not at spltty(). */
     while (CCOUNT(&tp->t_outq) < PPP_HIWAT) {
 	/*
@@ -708,6 +743,7 @@ pppasyncstart(struct ppp_softc *sc)
     }
 
     crit_exit();
+    lwkt_reltoken(&tty_token);
 }
 
 /*
@@ -721,9 +757,11 @@ pppasyncctlp(struct ppp_softc *sc)
 
     /* Put a placeholder byte in canq for ttselect()/ttnread(). */
     crit_enter();
+    lwkt_gettoken(&tty_token);
     tp = (struct tty *) sc->sc_devp;
     clist_putc(0, &tp->t_canq);
     ttwakeup(tp);
+    lwkt_reltoken(&tty_token);
     crit_exit();
 }
 
@@ -738,6 +776,7 @@ pppstart(struct tty *tp)
 {
     struct ppp_softc *sc = (struct ppp_softc *) tp->t_sc;
 
+    lwkt_gettoken(&tty_token);
     /*
      * Call output process whether or not there is any output.
      * We are being called in lieu of ttstart and must do what it would.
@@ -750,8 +789,10 @@ pppstart(struct tty *tp)
      * pppintr() could loop without doing anything useful
      * under rate-limiting.
      */
-    if (ifq_is_enabled(&sc->sc_if.if_snd))
+    if (ifq_is_enabled(&sc->sc_if.if_snd)) {
+	lwkt_reltoken(&tty_token);
 	return 0;
+    }
 
     /*
      * If the transmit queue has drained and the tty has not hung up
@@ -764,6 +805,7 @@ pppstart(struct tty *tp)
 	ppp_restart(sc);
     }
 
+    lwkt_reltoken(&tty_token);
     return 0;
 }
 
@@ -777,8 +819,10 @@ ppp_timeout(void *x)
     struct tty *tp = (struct tty *) sc->sc_devp;
 
     crit_enter();
+    lwkt_gettoken(&tty_token);
     sc->sc_flags &= ~SC_TIMEOUT;
     pppstart(tp);
+    lwkt_reltoken(&tty_token);
     crit_exit();
 }
 
@@ -825,9 +869,12 @@ pppinput(int c, struct tty *tp)
     struct mbuf *m;
     int ilen;
 
+    lwkt_gettoken(&tty_token);
     sc = (struct ppp_softc *) tp->t_sc;
-    if (sc == NULL || tp != (struct tty *) sc->sc_devp)
+    if (sc == NULL || tp != (struct tty *) sc->sc_devp) {
+	lwkt_reltoken(&tty_token);
 	return 0;
+    }
 
     ++tk_nin;
     ++sc->sc_stats.ppp_ibytes;
@@ -857,12 +904,14 @@ pppinput(int c, struct tty *tp)
 		tp->t_state |= TS_TTSTOP;
 		tp->t_stop(tp, 0);
 	    }
+	    lwkt_reltoken(&tty_token);
 	    return 0;
 	}
 	if (c == tp->t_cc[VSTART] && tp->t_cc[VSTART] != _POSIX_VDISABLE) {
 	    tp->t_state &= ~TS_TTSTOP;
 	    if (tp->t_oproc != NULL)
 		(*tp->t_oproc)(tp);
+	    lwkt_reltoken(&tty_token);
 	    return 0;
 	}
     }
@@ -905,6 +954,7 @@ pppinput(int c, struct tty *tp)
 	    } else
 		sc->sc_flags &= ~(SC_FLUSH | SC_ESCAPED);
 	    crit_exit();
+	    lwkt_reltoken(&tty_token);
 	    return 0;
 	}
 
@@ -918,6 +968,7 @@ pppinput(int c, struct tty *tp)
 		sc->sc_flags |= SC_PKTLOST;
 		crit_exit();
 	    }
+	    lwkt_reltoken(&tty_token);
 	    return 0;
 	}
 
@@ -945,17 +996,21 @@ pppinput(int c, struct tty *tp)
 	}
 
 	pppgetm(sc);
+	lwkt_reltoken(&tty_token);
 	return 0;
     }
 
     if (sc->sc_flags & SC_FLUSH) {
 	if (sc->sc_flags & SC_LOG_FLUSH)
 	    ppplogchar(sc, c);
+	lwkt_reltoken(&tty_token);
 	return 0;
     }
 
-    if (c < 0x20 && (sc->sc_rasyncmap & (1 << c)))
+    if (c < 0x20 && (sc->sc_rasyncmap & (1 << c))) {
+        lwkt_reltoken(&tty_token);
 	return 0;
+    }
 
     crit_enter();
     if (sc->sc_flags & SC_ESCAPED) {
@@ -964,6 +1019,7 @@ pppinput(int c, struct tty *tp)
     } else if (c == PPP_ESCAPE) {
 	sc->sc_flags |= SC_ESCAPED;
         crit_exit();
+	lwkt_reltoken(&tty_token);
 	return 0;
     }
     crit_exit();
@@ -1052,6 +1108,7 @@ pppinput(int c, struct tty *tp)
     ++m->m_len;
     *sc->sc_mp++ = c;
     sc->sc_fcs = PPP_FCS(sc->sc_fcs, c);
+    lwkt_reltoken(&tty_token);
     return 0;
 
  flush:
@@ -1064,6 +1121,7 @@ pppinput(int c, struct tty *tp)
 	if (sc->sc_flags & SC_LOG_FLUSH)
 	    ppplogchar(sc, c);
     }
+    lwkt_reltoken(&tty_token);
     return 0;
 }
 

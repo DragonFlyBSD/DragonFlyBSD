@@ -1,4 +1,6 @@
 /*-
+ * (MPSAFE)
+ *
  * Copyright (c) 1982, 1986, 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  * (c) UNIX System Laboratories, Inc.
@@ -105,6 +107,7 @@ ldisc_register(int discipline, struct linesw *linesw_p)
 {
 	int slot = -1;
 
+	lwkt_gettoken(&tty_token);
 	if (discipline == LDISC_LOAD) {
 		int i;
 		for (i = LOADABLE_LDISC; i < MAXLDISC; i++)
@@ -119,6 +122,7 @@ ldisc_register(int discipline, struct linesw *linesw_p)
 	if (slot != -1 && linesw_p)
 		linesw[slot] = *linesw_p;
 
+	lwkt_reltoken(&tty_token);
 	return slot;
 }
 
@@ -131,9 +135,11 @@ ldisc_register(int discipline, struct linesw *linesw_p)
 void
 ldisc_deregister(int discipline)
 {
+	lwkt_gettoken(&tty_token);
 	if (discipline < MAXLDISC) {
 		linesw[discipline] = nodisc;
 	}
+	lwkt_reltoken(&tty_token);
 }
 
 static int

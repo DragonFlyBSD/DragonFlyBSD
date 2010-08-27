@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
@@ -98,6 +100,7 @@ vcons_open(struct dev_open_args *ap)
 	struct tty *tp;
 	int error;
 
+	lwkt_gettoken(&tty_token);
 	tp = dev->si_tty = ttymalloc(dev->si_tty);
 
 #define	ISSET(t, f)	((t) & (f))
@@ -128,6 +131,7 @@ vcons_open(struct dev_open_args *ap)
 		/* dummy up other minors so the installer will run */
 		error = 0;
 	}
+	lwkt_reltoken(&tty_token);
 	return(error);
 }
 
@@ -137,9 +141,11 @@ vcons_close(struct dev_close_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
 
+	lwkt_gettoken(&tty_token);
 	tp = dev->si_tty;
 	(*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
 	ttyclose(tp);
+	lwkt_reltoken(&tty_token);
 	return(0);
 }
 
@@ -150,23 +156,31 @@ vcons_ioctl(struct dev_ioctl_args *ap)
 	struct tty *tp;
 	int error;
 
+	lwkt_gettoken(&tty_token);
 	tp = dev->si_tty;
 	error = (*linesw[tp->t_line].l_ioctl)(tp, ap->a_cmd, ap->a_data,
 					      ap->a_fflag, ap->a_cred);
-	if (error != ENOIOCTL)
+	if (error != ENOIOCTL) {
+		lwkt_reltoken(&tty_token);
 		return (error);
+	}
 	error = ttioctl(tp, ap->a_cmd, ap->a_data, ap->a_fflag);
-	if (error != ENOIOCTL)
+	if (error != ENOIOCTL) {
+		lwkt_reltoken(&tty_token);
 		return (error);
+	}
+	lwkt_reltoken(&tty_token);
 	return (ENOTTY);
 }
 
 static int
 vcons_tty_param(struct tty *tp, struct termios *tio)
 {
+	lwkt_gettoken(&tty_token);
 	tp->t_ispeed = tio->c_ispeed;
 	tp->t_ospeed = tio->c_ospeed;
 	tp->t_cflag = tio->c_cflag;
+	lwkt_reltoken(&tty_token);
 	return(0);
 }
 
@@ -176,8 +190,10 @@ vcons_tty_start(struct tty *tp)
 	int n;
 	char buf[64];
 
+	lwkt_gettoken(&tty_token);
 	if (tp->t_state & (TS_TIMEOUT | TS_TTSTOP)) {
 		ttwwakeup(tp);
+		lwkt_reltoken(&tty_token);
 		return;
 	}
 	tp->t_state |= TS_BUSY;
@@ -190,6 +206,7 @@ vcons_tty_start(struct tty *tp)
 		}
 	}
 	tp->t_state &= ~TS_BUSY;
+	lwkt_reltoken(&tty_token);
 	ttwwakeup(tp);
 }
 
@@ -202,12 +219,15 @@ vcons_intr(void *tpx, struct intrframe *frame __unused)
 	int i;
 	int n;
 
+	lwkt_gettoken(&tty_token);
 	/*
 	 * If we aren't open we only have synchronous traffic via the
 	 * debugger and do not need to poll.
 	 */
-	if ((tp->t_state & TS_ISOPEN) == 0)
+	if ((tp->t_state & TS_ISOPEN) == 0) {
+		lwkt_reltoken(&tty_token);
 		return;
+	}
 
 	/*
 	 * Only poll if we are open and haven't been stolen by the debugger.
@@ -219,6 +239,7 @@ vcons_intr(void *tpx, struct intrframe *frame __unused)
 				(*linesw[tp->t_line].l_rint)(buf[i], tp);
 		} while (n > 0);
 	}
+	lwkt_reltoken(&tty_token);
 }
 
 /************************************************************************
@@ -260,6 +281,7 @@ vconssignal(int sig)
 	struct sigaction sa, osa;
 	sigset_t ss, oss;
 
+	lwkt_gettoken(&tty_token);
 	tcgetattr(0, &curtio);
 	tcsetattr(0, TCSAFLUSH, &init_tio);
 	bzero(&sa, sizeof(sa));
@@ -273,6 +295,7 @@ vconssignal(int sig)
 	sigprocmask(SIG_SETMASK, &oss, NULL);
 	sigaction(sig, &osa, NULL);
 	tcsetattr(0, TCSAFLUSH, &curtio);
+	lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -286,6 +309,7 @@ vconswinch_intr(void *arg __unused, void *frame __unused)
 {
 	struct winsize newsize;
 
+	lwkt_gettoken(&tty_token);
 	if (vconsole != NULL && vconsole->cn_dev->si_tty != NULL) {
 		ioctl(0, TIOCGWINSZ, &newsize);
 		/*
@@ -299,6 +323,7 @@ vconswinch_intr(void *arg __unused, void *frame __unused)
 			pgsignal(vconsole->cn_dev->si_tty->t_pgrp, SIGWINCH, 1);
 		}
 	}
+	lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -307,8 +332,10 @@ vconscleanup(void)
 	/*
 	 * We might catch stray SIGIOs, so try hard.
 	 */
+	lwkt_gettoken(&tty_token);
 	while (tcsetattr(0, TCSAFLUSH, &init_tio) != 0 && errno == EINTR)
 		/* NOTHING */;
+	lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -318,6 +345,7 @@ vconsinit(struct consdev *cp)
 
 	vconsole = cp;
 
+	lwkt_gettoken(&tty_token);
 	tcgetattr(0, &init_tio);
 	bzero(&sa, sizeof(sa));
 	sigemptyset(&sa.sa_mask);
@@ -327,6 +355,7 @@ vconsinit(struct consdev *cp)
 	sigaction(SIGTERM, &sa, NULL);
 	atexit(vconscleanup);
 	vcons_set_mode(0);
+	lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -408,8 +437,11 @@ vcons_set_mode(int in_debugger)
 {
 	struct termios tio;
 
-	if (tcgetattr(0, &tio) < 0)
+	lwkt_gettoken(&tty_token);
+	if (tcgetattr(0, &tio) < 0) {
+		lwkt_reltoken(&tty_token);
 		return;
+	}
 	cfmakeraw(&tio);
 	tio.c_oflag |= OPOST | ONLCR;
 	tio.c_lflag |= ISIG;
@@ -423,4 +455,5 @@ vcons_set_mode(int in_debugger)
 		tio.c_cc[VSTATUS] = _POSIX_VDISABLE;
 	}
 	tcsetattr(0, TCSAFLUSH, &tio);
+	lwkt_reltoken(&tty_token);
 }

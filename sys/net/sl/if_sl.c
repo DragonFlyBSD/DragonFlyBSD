@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 1987, 1989, 1992, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -204,6 +206,7 @@ slattach(void *dummy)
 	struct sl_softc *sc;
 	int i = 0;
 
+	lwkt_gettoken(&tty_token);
 	linesw[SLIPDISC] = slipdisc;
 
 	for (sc = sl_softc; i < NSL; sc++) {
@@ -223,21 +226,24 @@ slattach(void *dummy)
 		sc->sc_fastq.ifq_maxlen = 32;
 		sc->sc_if.if_linkmib = sc;
 		sc->sc_if.if_linkmiblen = sizeof *sc;
-		callout_init(&sc->sc_oftimeout);
-		callout_init(&sc->sc_katimeout);
+		callout_init_mp(&sc->sc_oftimeout);
+		callout_init_mp(&sc->sc_katimeout);
 		if_attach(&sc->sc_if, NULL);
 		bpfattach(&sc->sc_if, DLT_SLIP, SLIP_HDRLEN);
 	}
+	lwkt_reltoken(&tty_token);
 }
 
 static int
 slinit(struct sl_softc *sc)
 {
+	lwkt_gettoken(&tty_token);
 	if (sc->sc_ep == NULL)
 		sc->sc_ep = kmalloc(SLBUFSIZE, M_DEVBUF, M_WAITOK);
 	sc->sc_buf = sc->sc_ep + SLBUFSIZE - SLRMAX;
 	sc->sc_mp = sc->sc_buf;
 	sl_compress_init(&sc->sc_comp, -1);
+	lwkt_reltoken(&tty_token);
 	return (1);
 }
 
@@ -258,13 +264,18 @@ slopen(cdev_t dev, struct tty *tp)
 	if (error)
 		return (error);
 
-	if (tp->t_line == SLIPDISC)
+	lwkt_gettoken(&tty_token);
+	if (tp->t_line == SLIPDISC) {
+		lwkt_reltoken(&tty_token);
 		return (0);
+	}
 
 	for (nsl = NSL, sc = sl_softc; --nsl >= 0; sc++)
 		if (sc->sc_ttyp == NULL && !(sc->sc_flags & SC_STATIC)) {
-			if (slinit(sc) == 0)
+			if (slinit(sc) == 0) {
+				lwkt_reltoken(&tty_token);
 				return (ENOBUFS);
+			}
 			tp->t_sc = (caddr_t)sc;
 			sc->sc_ttyp = tp;
 			sc->sc_if.if_baudrate = tp->t_ospeed;
@@ -290,8 +301,10 @@ slopen(cdev_t dev, struct tty *tp)
 			crit_enter();
 			if_up(&sc->sc_if);
 			crit_exit();
+			lwkt_reltoken(&tty_token);
 			return (0);
 		}
+	lwkt_reltoken(&tty_token);
 	return (ENXIO);
 }
 
@@ -304,6 +317,7 @@ slclose(struct tty *tp, int flag)
 {
 	struct sl_softc *sc;
 
+	lwkt_gettoken(&tty_token);
 	ttyflush(tp, FREAD | FWRITE);
 	crit_enter();
 
@@ -331,6 +345,7 @@ slclose(struct tty *tp, int flag)
 		sc->sc_buf = 0;
 	}
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -346,6 +361,7 @@ sltioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct ucred *cred)
 	int nsl;
 
 	crit_enter();
+	lwkt_gettoken(&tty_token);
 
 	switch (cmd) {
 	case SLIOCGUNIT:
@@ -382,6 +398,7 @@ sltioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct ucred *cred)
 					goto slfound;
 				}
 			}
+			lwkt_reltoken(&tty_token);
 			crit_exit();
 			return (ENXIO);
 		}
@@ -426,9 +443,11 @@ sltioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct ucred *cred)
 		break;
 
 	default:
+		lwkt_reltoken(&tty_token);
 		crit_exit();
 		return (ENOIOCTL);
 	}
+	lwkt_reltoken(&tty_token);
 	crit_exit();
 	return (0);
 }
@@ -529,6 +548,7 @@ slstart(struct tty *tp)
 	u_char bpfbuf[SLTMAX + SLIP_HDRLEN];
 	int len = 0;
 
+	lwkt_gettoken(&tty_token);
 	for (;;) {
 		/*
 		 * Call output process whether or not there is more in the
@@ -540,15 +560,19 @@ slstart(struct tty *tp)
 		if (tp->t_outq.c_cc != 0) {
 			if (sc != NULL)
 				sc->sc_flags &= ~SC_OUTWAIT;
-			if (tp->t_outq.c_cc > SLIP_HIWAT)
+			if (tp->t_outq.c_cc > SLIP_HIWAT) {
+				lwkt_reltoken(&tty_token);
 				return 0;
+			}
 		}
 
 		/*
 		 * This happens briefly when the line shuts down.
 		 */
-		if (sc == NULL)
+		if (sc == NULL) {
+			lwkt_reltoken(&tty_token);
 			return 0;
+		}
 
 		/*
 		 * Get a packet and send it to the interface.
@@ -560,8 +584,10 @@ slstart(struct tty *tp)
 		else
 			m = ifq_dequeue(&sc->sc_if.if_snd, NULL);
 		crit_exit();
-		if (m == NULL)
+		if (m == NULL) {
+			lwkt_reltoken(&tty_token);
 			return 0;
+		}
 
 		/*
 		 * We do the header compression here rather than in sloutput
@@ -698,6 +724,7 @@ slstart(struct tty *tp)
 			sc->sc_if.if_opackets++;
 		}
 	}
+	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -752,12 +779,16 @@ slinput(int c, struct tty *tp)
 	int len;
 	u_char chdr[CHDR_LEN];
 
+	lwkt_gettoken(&tty_token);
 	tk_nin++;
 	sc = (struct sl_softc *)tp->t_sc;
-	if (sc == NULL)
+	if (sc == NULL) {
+		lwkt_reltoken(&tty_token);
 		return 0;
+	}
 	if (c & TTY_ERRORMASK || (tp->t_state & TS_CONNECTED) == 0) {
 		sc->sc_flags |= SC_ERROR;
+		lwkt_reltoken(&tty_token);
 		return 0;
 	}
 	c &= TTY_CHARMASK;
@@ -782,6 +813,7 @@ slinput(int c, struct tty *tp)
 					sc->sc_starttime = time_second;
 				if (sc->sc_abortcount >= ABT_COUNT) {
 					slclose(tp,0);
+					lwkt_reltoken(&tty_token);
 					return 0;
 				}
 			}
@@ -804,6 +836,7 @@ slinput(int c, struct tty *tp)
 
 	case FRAME_ESCAPE:
 		sc->sc_escape = 1;
+		lwkt_reltoken(&tty_token);
 		return 0;
 
 	case FRAME_END:
@@ -890,6 +923,7 @@ slinput(int c, struct tty *tp)
 	if (sc->sc_mp < sc->sc_ep + SLBUFSIZE) {
 		*sc->sc_mp++ = c;
 		sc->sc_escape = 0;
+		lwkt_reltoken(&tty_token);
 		return 0;
 	}
 
@@ -901,6 +935,7 @@ error:
 newpack:
 	sc->sc_mp = sc->sc_buf = sc->sc_ep + SLBUFSIZE - SLRMAX;
 	sc->sc_escape = 0;
+	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -980,6 +1015,8 @@ sl_keepalive(void *chan)
 {
 	struct sl_softc *sc = chan;
 
+	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&proc_token);
 	if (sc->sc_keepalive) {
 		if (sc->sc_flags & SC_KEEPALIVE)
 			pgsignal (sc->sc_ttyp->t_pgrp, SIGURG, 1);
@@ -990,6 +1027,8 @@ sl_keepalive(void *chan)
 	} else {
 		sc->sc_flags &= ~SC_KEEPALIVE;
 	}
+	lwkt_reltoken(&proc_token);
+	lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -997,6 +1036,8 @@ sl_outfill(void *chan)
 {
 	struct sl_softc *sc = chan;
 	struct tty *tp = sc->sc_ttyp;
+
+	lwkt_gettoken(&tty_token);
 
 	if (sc->sc_outfill && tp != NULL) {
 		if (sc->sc_flags & SC_OUTWAIT) {
@@ -1012,4 +1053,5 @@ sl_outfill(void *chan)
 	} else {
 		sc->sc_flags &= ~SC_OUTWAIT;
 	}
+	lwkt_reltoken(&tty_token);
 }

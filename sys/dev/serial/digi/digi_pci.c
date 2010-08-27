@@ -188,7 +188,7 @@ digi_pci_attach(device_t dev)
 		device_printf(dev, "couldn't map interrupt\n");
 		return (ENXIO);
 	}
-	retVal = bus_setup_intr(dev, sc->res.irq, 0, digiintr, sc,
+	retVal = bus_setup_intr(dev, sc->res.irq, INTR_MPSAFE, digiintr, sc,
 				&sc->res.irqHandler, NULL);
 #else
 	DLOG(DIGIDB_IRQ, (sc->dev, "Interrupt support compiled out\n"));

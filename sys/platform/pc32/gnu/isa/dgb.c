@@ -1,4 +1,6 @@
 /*-
+ * (MPSAFE)
+ *
  *  dgb.c $FreeBSD: src/sys/gnu/i386/isa/dgb.c,v 1.56.2.1 2001/02/26 04:23:09 jlemon Exp $
  *  dgb.c $DragonFly: src/sys/platform/pc32/gnu/isa/dgb.c,v 1.20 2008/08/02 01:14:43 dillon Exp $
  *
@@ -414,6 +416,7 @@ dgbprobe(dev)
 	u_long win_size;  /* size of vizible memory window */
 	int unit=dev->id_unit;
 
+	lwkt_gettoken(&tty_token);
 	sc->unit=dev->id_unit;
 	sc->port=dev->id_iobase;
 
@@ -441,6 +444,7 @@ dgbprobe(dev)
 
 	if(sc->status!=ENABLED) {
 		DPRINT2(DB_EXCEPT,"dgb%d: failed to respond\n",dev->id_unit);
+		lwkt_reltoken(&tty_token);
 		return 0;
 	}
 
@@ -479,6 +483,7 @@ dgbprobe(dev)
 		if( v & 0x1 ) {
 			kprintf("dgb%d: PC/Xm isn't supported\n",dev->id_unit);
 			sc->status=DISABLED;
+			lwkt_reltoken(&tty_token);
 			return 0;
 			}
 
@@ -511,6 +516,7 @@ dgbprobe(dev)
 	outb(sc->port, FEPCLR); /* drop RESET */
 	hidewin(sc); /* Helg: to set initial bmws state */
 
+	lwkt_reltoken(&tty_token);
 	return 4; /* we need I/O space of 4 ports */
 }
 
@@ -533,14 +539,16 @@ dgbattach(dev)
 	static int nports=0;
 	char suffix;
 
+	lwkt_gettoken(&tty_token);
 	if(sc->status!=ENABLED) {
 		DPRINT2(DB_EXCEPT,"dbg%d: try to attach a disabled card\n",unit);
+		lwkt_reltoken(&tty_token);
 		return 0;
 		}
 
-	callout_init(&sc->dgb_pause);
-	callout_init(&sc->dgbpoll);
-	callout_init(&sc->wakeflush);
+	callout_init_mp(&sc->dgb_pause);
+	callout_init_mp(&sc->dgbpoll);
+	callout_init_mp(&sc->wakeflush);
 
 	mem=sc->vmem;
 
@@ -553,6 +561,7 @@ dgbattach(dev)
 			kprintf("dgb%d: 1st reset failed\n",dev->id_unit);
 			sc->status=DISABLED;
 			hidewin(sc);
+			lwkt_reltoken(&tty_token);
 			return 0;
 		}
 		DELAY(1);
@@ -582,6 +591,7 @@ dgbattach(dev)
 				kprintf("dgb%d: 2nd reset failed\n",dev->id_unit);
 				sc->status=DISABLED;
 				hidewin(sc);
+				lwkt_reltoken(&tty_token);
 				return 0;
 			}
 			DELAY(1);
@@ -600,6 +610,7 @@ dgbattach(dev)
 		kprintf("dgb%d: 1st memory test failed\n",dev->id_unit);
 		sc->status=DISABLED;
 		hidewin(sc);
+		lwkt_reltoken(&tty_token);
 		return 0;
 	}
 		
@@ -609,6 +620,7 @@ dgbattach(dev)
 		kprintf("dgb%d: 2nd memory test failed\n",dev->id_unit);
 		sc->status=DISABLED;
 		hidewin(sc);
+		lwkt_reltoken(&tty_token);
 		return 0;
 	}
 		
@@ -655,6 +667,7 @@ dgbattach(dev)
 				kprintf("dgb%d: BIOS start failed\n",dev->id_unit);
 				sc->status=DISABLED;
 				hidewin(sc);
+				lwkt_reltoken(&tty_token);
 				return 0;
 			}
 			DELAY(1);
@@ -675,6 +688,7 @@ dgbattach(dev)
 
 		sc->status=DISABLED;
 		hidewin(sc);
+		lwkt_reltoken(&tty_token);
 		return 0;
 	}
 
@@ -710,6 +724,7 @@ dgbattach(dev)
 				kprintf("dgb%d: BIOS start failed\n",dev->id_unit);
 				sc->status=DISABLED;
 				hidewin(sc);
+				lwkt_reltoken(&tty_token);
 				return 0;
 			}
 			DELAY(1);
@@ -733,6 +748,7 @@ dgbattach(dev)
 
 		sc->status=DISABLED;
 		hidewin(sc);
+		lwkt_reltoken(&tty_token);
 		return 0;
 	}
 
@@ -764,6 +780,7 @@ load_fep:
 				*(ushort volatile *)(mem+addr));
 			sc->status=DISABLED;
 			hidewin(sc);
+			lwkt_reltoken(&tty_token);
 			return 0;
 		}
 	}
@@ -785,6 +802,7 @@ load_fep:
 			kprintf("dgb%d: FEP/OS start failed\n",dev->id_unit);
 			sc->status=DISABLED;
 			hidewin(sc);
+			lwkt_reltoken(&tty_token);
 			return 0;
 		}
 	}
@@ -799,6 +817,7 @@ load_fep:
 		kprintf("dgb%d: too many ports\n",unit);
 		sc->status=DISABLED;
 		hidewin(sc);
+		lwkt_reltoken(&tty_token);
 		return 0;
 	}
 
@@ -931,6 +950,7 @@ load_fep:
 	/* register the polling function */
 	callout_reset(&sc->dgbpoll, hz / POLLSPERSEC, dgbpoll, (void *)unit);
 
+	lwkt_reltoken(&tty_token);
 	return 1;
 }
 
@@ -949,12 +969,14 @@ dgbopen(cdev_t dev, int flag, int mode, struct thread *td)
 
 	error=0;
 
+	lwkt_gettoken(&tty_token);
 	mynor=minor(dev);
 	unit=MINOR_TO_UNIT(mynor);
 	pnum=MINOR_TO_PORT(mynor);
 
 	if(unit >= NDGB) {
 		DPRINT2(DB_EXCEPT,"dgb%d: try to open a nonexisting card\n",unit);
+		lwkt_reltoken(&tty_token);
 		return ENXIO;
 	}
 
@@ -962,16 +984,20 @@ dgbopen(cdev_t dev, int flag, int mode, struct thread *td)
 
 	if(sc->status!=ENABLED) {
 		DPRINT2(DB_EXCEPT,"dgb%d: try to open a disabled card\n",unit);
+		lwkt_reltoken(&tty_token);
 		return ENXIO;
 	}
 
 	if(pnum>=sc->numports) {
 		DPRINT3(DB_EXCEPT,"dgb%d: try to open non-existing port %d\n",unit,pnum);
+		lwkt_reltoken(&tty_token);
 		return ENXIO;
 	}
 
-	if(mynor & CONTROL_MASK)
+	if(mynor & CONTROL_MASK) {
+		lwkt_reltoken(&tty_token);
 		return 0;
+	}
 
 	tp=&sc->ttys[pnum];
 	dev->si_tty = tp;
@@ -1105,6 +1131,7 @@ out:
 
 	DPRINT4(DB_OPEN,"dgb%d: port%d: open() returns %d\n",unit,pnum,error);
 
+	lwkt_reltoken(&tty_token);
 	return error;
 }
 
@@ -1122,6 +1149,7 @@ dgbclose(cdev_t dev, int flag, int mode, struct thread *td)
 	mynor=minor(dev);
 	if(mynor & CONTROL_MASK)
 		return 0;
+	lwkt_gettoken(&tty_token);
 	unit=MINOR_TO_UNIT(mynor);
 	pnum=MINOR_TO_PORT(mynor);
 
@@ -1165,15 +1193,21 @@ dgbclose(cdev_t dev, int flag, int mode, struct thread *td)
 
 	DPRINT3(DB_CLOSE,"dgb%d: port%d: close exit\n",unit,pnum);
 
+	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static void
 dgbhardclose(port)
 	struct dgb_p *port;
 {
 	struct dgb_softc *sc=&dgb_softc[port->unit];
 	volatile struct board_chan *bc=port->brdchan;
+
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 
 	crit_enter();
 	port->do_timestamp = 0;
@@ -1196,7 +1230,9 @@ static void
 dgb_pause(chan)
 	void *chan;
 {
+	lwkt_gettoken(&tty_token);
 	wakeup((caddr_t)chan);
+	lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -1219,10 +1255,12 @@ dgbpoll(unit_c)
 	int ocount;
 	int ibuf_full,obuf_full;
 
+	lwkt_gettoken(&tty_token);
 	BoardMemWinState ws=bmws_get();
 
 	if(sc->status==DISABLED) {
 		kprintf("dgb%d: polling of disabled board stopped\n",unit);
+		lwkt_reltoken(&tty_token);
 		return;
 	}
 	
@@ -1460,6 +1498,7 @@ dgbpoll(unit_c)
 	bmws_set(ws);
 
 	callout_reset(&sc->dgbpoll, hz / POLLSPERSEC, dgbpoll, unit_c);
+	lwkt_reltoken(&tty_token);
 }
 
 static	int
@@ -1474,6 +1513,7 @@ dgbioctl(cdev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 	int error;
 	int tiocm_xxx;
 
+	lwkt_gettoken(&tty_token);
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)
 	u_long		oldcmd;
 	struct termios	term;
@@ -1501,25 +1541,33 @@ dgbioctl(cdev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 			ct = mynor & CALLOUT_MASK ? &port->lt_out : &port->lt_in;
 			break;
 		default:
+			lwkt_reltoken(&tty_token);
 			return (ENODEV);	/* /dev/nodev */
 		}
 		switch (cmd) {
 		case TIOCSETA:
 			error = priv_check(td, PRIV_ROOT);
-			if (error != 0)
+			if (error != 0) {
+				lwkt_reltoken(&tty_token);
 				return (error);
+			}
 			*ct = *(struct termios *)data;
+			lwkt_reltoken(&tty_token);
 			return (0);
 		case TIOCGETA:
 			*(struct termios *)data = *ct;
+			lwkt_reltoken(&tty_token);
 			return (0);
 		case TIOCGETD:
 			*(int *)data = TTYDISC;
+			lwkt_reltoken(&tty_token);
 			return (0);
 		case TIOCGWINSZ:
 			bzero(data, sizeof(struct winsize));
+			lwkt_reltoken(&tty_token);
 			return (0);
 		default:
+			lwkt_reltoken(&tty_token);
 			return (ENOTTY);
 		}
 	}
@@ -1531,8 +1579,10 @@ dgbioctl(cdev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 	}
 	oldcmd = cmd;
 	error = ttsetcompat(tp, &cmd, data, &term);
-	if (error != 0)
+	if (error != 0) {
+		lwkt_reltoken(&tty_token);
 		return (error);
+	}
 	if (cmd != oldcmd)
 		data = (caddr_t)&term;
 #endif
@@ -1567,6 +1617,7 @@ dgbioctl(cdev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 		fepcmd(port, PAUSETX, 0, 0, 0, 0);
 		bmws_set(ws);
 		crit_exit();
+		lwkt_reltoken(&tty_token);
 		return 0;
 	} else if(cmd==TIOCSTART) {
 		crit_enter();
@@ -1574,6 +1625,7 @@ dgbioctl(cdev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 		fepcmd(port, RESUMETX, 0, 0, 0, 0);
 		bmws_set(ws);
 		crit_exit();
+		lwkt_reltoken(&tty_token);
 		return 0;
 	}
 
@@ -1581,8 +1633,10 @@ dgbioctl(cdev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 		port->mustdrain=1;
 
 	error = linesw[tp->t_line].l_ioctl(tp, cmd, data, flag, td);
-	if (error != ENOIOCTL)
+	if (error != ENOIOCTL) {
+		lwkt_reltoken(&tty_token);
 		return error;
+	}
 	crit_enter();
 	error = ttioctl(tp, cmd, data, flag);
 	disc_optim(tp,&tp->t_termios);
@@ -1592,6 +1646,7 @@ dgbioctl(cdev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 		if (cmd == TIOCSETA || cmd == TIOCSETAW || cmd == TIOCSETAF) {
 			DPRINT6(DB_PARAM,"dgb%d: port%d: dgbioctl-RES c=0x%x i=0x%x l=0x%x\n",unit,pnum,tp->t_cflag,tp->t_iflag,tp->t_lflag);
 		}
+		lwkt_reltoken(&tty_token);
 		return error;
 	}
 
@@ -1602,6 +1657,7 @@ dgbioctl(cdev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 
 		if(error!=0) {
 			crit_exit();
+			lwkt_reltoken(&tty_token);
 			return error;
 		}
 
@@ -1730,6 +1786,7 @@ dgbioctl(cdev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 		error = priv_check(td, PRIV_ROOT);
 		if (error != 0) {
 			crit_exit();
+			lwkt_reltoken(&tty_token);
 			return (error);
 		}
 		port->close_delay = *(int *)data * hz / 100;
@@ -1748,11 +1805,13 @@ dgbioctl(cdev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 	default:
 		bmws_set(ws);
 		crit_exit();
+		lwkt_reltoken(&tty_token);
 		return ENOTTY;
 	}
 	bmws_set(ws);
 	crit_exit();
 
+	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -1762,11 +1821,15 @@ wakeflush(p)
 {
 	struct dgb_p *port=p;
 
+	lwkt_gettoken(&tty_token);
 	wakeup(&port->draining);
+	lwkt_reltoken(&tty_token);
 }
 
 /* wait for the output to drain */
-
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static int
 dgbdrain(port)
 	struct dgb_p	*port;
@@ -1776,6 +1839,7 @@ dgbdrain(port)
 	int error;
 	int head, tail;
 
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	BoardMemWinState ws=bmws_get();
 
 	setwin(sc,0);
@@ -1815,7 +1879,9 @@ dgbdrain(port)
 
 /* wait for the output to drain */
 /* or simply clear the buffer it it's stopped */
-
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static void
 dgb_drain_or_flush(port)
 	struct dgb_p	*port;
@@ -1827,6 +1893,7 @@ dgb_drain_or_flush(port)
 	int lasttail;
 	int head, tail;
 
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	setwin(sc,0);
 
 	lasttail=-1;
@@ -1890,6 +1957,7 @@ dgbparam(tp, t)
 	int iflag;
 	int hflow;
 
+	lwkt_gettoken(&tty_token);
 	BoardMemWinState ws=bmws_get();
 
 	DPRINT6(DB_PARAM,"dgb%d: port%d: dgbparm c=0x%x i=0x%x l=0x%x\n",unit,pnum,t->c_cflag,t->c_iflag,t->c_lflag);
@@ -1906,6 +1974,7 @@ dgbparam(tp, t)
 
 	if (cflag < 0 /* || cflag > 0 && t->c_ispeed != t->c_ospeed */) {
 		DPRINT4(DB_PARAM,"dgb%d: port%d: invalid cflag=0%o\n",unit,pnum,cflag);
+		lwkt_reltoken(&tty_token);
 		return (EINVAL);
 	}
 
@@ -1964,6 +2033,7 @@ dgbparam(tp, t)
 	bmws_set(ws);
 	crit_exit();
 
+	lwkt_reltoken(&tty_token);
 	return 0;
 
 }
@@ -1981,6 +2051,7 @@ dgbstart(tp)
 	int size, ocount;
 	int wmask;
 
+	lwkt_gettoken(&tty_token);
 	BoardMemWinState ws=bmws_get();
 
 	unit=MINOR_TO_UNIT(minor(tp->t_dev));
@@ -2043,6 +2114,7 @@ dgbstart(tp)
 			bmws_set(ws);
 			tp->t_state|=TS_BUSY;
 			crit_exit();
+			lwkt_reltoken(&tty_token);
 			return;
 		}
 
@@ -2077,6 +2149,7 @@ dgbstart(tp)
 	}
 	tp->t_state&=~TS_BUSY;
 #endif
+	lwkt_reltoken(&tty_token);
 }
 
 void
@@ -2090,6 +2163,7 @@ dgbstop(tp, rw)
 	struct dgb_softc *sc;
 	volatile struct board_chan *bc;
 
+	lwkt_gettoken(&tty_token);
 	BoardMemWinState ws=bmws_get();
 
 	unit=MINOR_TO_UNIT(minor(tp->t_dev));
@@ -2118,8 +2192,12 @@ dgbstop(tp, rw)
 	bmws_set(ws);
 	crit_exit();
 	dgbstart(tp);
+	lwkt_reltoken(&tty_token);
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static void 
 fepcmd(port, cmd, op1, op2, ncmds, bytecmd)
 	struct dgb_p *port;
@@ -2129,6 +2207,8 @@ fepcmd(port, cmd, op1, op2, ncmds, bytecmd)
 	u_char *mem=sc->vmem;
 	unsigned tail, head;
 	int count, n;
+
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 
 	if(port->status==DISABLED) {
 		kprintf("dgb%d: port%d: FEP command on disabled port\n", 
@@ -2179,6 +2259,7 @@ disc_optim(tp, t)
 	struct tty	*tp;
 	struct termios	*t;
 {
+	lwkt_gettoken(&tty_token);
 	if (!(t->c_iflag & (ICRNL | IGNCR | IMAXBEL | INLCR | ISTRIP | IXON))
 	    && (!(t->c_iflag & BRKINT) || (t->c_iflag & IGNBRK))
 	    && (!(t->c_iflag & PARMRK)
@@ -2188,4 +2269,5 @@ disc_optim(tp, t)
 		tp->t_state |= TS_CAN_BYPASS_L_RINT;
 	else
 		tp->t_state &= ~TS_CAN_BYPASS_L_RINT;
+	lwkt_reltoken(&tty_token);
 }

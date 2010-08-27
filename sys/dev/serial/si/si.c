@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Device driver for Specialix range (SI/XIO) of serial line multiplexors.
  *
  * Copyright (C) 1990, 1992, 1998 Specialix International,
@@ -267,8 +269,9 @@ siattach(device_t dev)
 	int n;
 
 	if ((poll_ch.c_flags & CALLOUT_DID_INIT) == 0)
-		callout_init(&poll_ch);
+		callout_init_mp(&poll_ch);
 
+	lwkt_gettoken(&tty_token);
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
 
@@ -315,6 +318,7 @@ siattach(device_t dev)
 		break;
 		default: /* this should never happen */
 			kprintf("si%d: unsupported configuration\n", unit);
+			lwkt_reltoken(&tty_token);
 			return EINVAL;
 		break;
 	}
@@ -398,6 +402,7 @@ siattach(device_t dev)
 		break;
 	default: /* this should _REALLY_ never happen */
 		kprintf("si%d: Uh, it was supported a second ago...\n", unit);
+		lwkt_reltoken(&tty_token);
 		return EINVAL;
 	}
 
@@ -413,6 +418,7 @@ siattach(device_t dev)
 	case 0:
 		kprintf("si%d: startup timeout - aborting\n", unit);
 		sc->sc_type = SIEMPTY;
+		lwkt_reltoken(&tty_token);
 		return EINVAL;
 	case 1:
 		if (SI_ISJET(sc->sc_type)) {
@@ -434,10 +440,12 @@ siattach(device_t dev)
 		 */
 		kprintf("si%d: %s - no ports found\n", unit,
 			si_type[sc->sc_type]);
+		lwkt_reltoken(&tty_token);
 		return 0;
 	default:
 		kprintf("si%d: download code version error - initstat %x\n",
 			unit, regp->initstat);
+		lwkt_reltoken(&tty_token);
 		return EINVAL;
 	}
 
@@ -512,8 +520,8 @@ try_next:
 				M_DEVBUF, M_WAITOK | M_ZERO);
 	sc->sc_nport = nport;
 	for (n = 0; n < nport; ++n) {
-		callout_init(&sc->sc_ports[n].lstart_ch);
-		callout_init(&sc->sc_ports[n].dtr_ch);
+		callout_init_mp(&sc->sc_ports[n].lstart_ch);
+		callout_init_mp(&sc->sc_ports[n].dtr_ch);
 	}
 
 	/*
@@ -610,6 +618,7 @@ try_next2:
 		make_dev(&si_ops, x + 0x20080, 0, 0, 0600, "cualA%02d", y);
 	}
 	make_dev(&si_ops, 0x40000, 0, 0, 0600, "si_control");
+	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
@@ -625,21 +634,28 @@ siopen(struct dev_open_args *ap)
 	struct si_port *pp;
 	int mynor = minor(dev);
 
+	lwkt_gettoken(&tty_token);
 	/* quickly let in /dev/si_control */
 	if (IS_CONTROLDEV(mynor)) {
-		if ((error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0)))
+		if ((error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0))) {
+			lwkt_reltoken(&tty_token);
 			return(error);
+		}
+		lwkt_reltoken(&tty_token);
 		return(0);
 	}
 
 	card = SI_CARD(mynor);
 	sc = devclass_get_softc(si_devclass, card);
-	if (sc == NULL)
+	if (sc == NULL) {
+		lwkt_reltoken(&tty_token);
 		return (ENXIO);
+	}
 
 	if (sc->sc_type == SIEMPTY) {
 		DPRINT((0, DBG_OPEN|DBG_FAIL, "si%d: type %s??\n",
 			card, sc->sc_typename));
+		lwkt_reltoken(&tty_token);
 		return(ENXIO);
 	}
 
@@ -647,6 +663,7 @@ siopen(struct dev_open_args *ap)
 	if (port >= sc->sc_nport) {
 		DPRINT((0, DBG_OPEN|DBG_FAIL, "si%d: nports %d\n",
 			card, sc->sc_nport));
+		lwkt_reltoken(&tty_token);
 		return(ENXIO);
 	}
 
@@ -662,6 +679,7 @@ siopen(struct dev_open_args *ap)
 
 	/* initial/lock device */
 	if (IS_STATE(mynor)) {
+		lwkt_reltoken(&tty_token);
 		return(0);
 	}
 
@@ -780,6 +798,7 @@ out:
 	if (!(tp->t_state & TS_ISOPEN) && pp->sp_wopeners == 0)
 		sihardclose(pp);
 
+	lwkt_reltoken(&tty_token);
 	return(error);
 }
 
@@ -795,6 +814,7 @@ siclose(struct dev_close_args *ap)
 	if (IS_SPECIAL(mynor))
 		return(0);
 
+	lwkt_gettoken(&tty_token);
 	crit_enter();
 
 	pp = MINOR2PP(mynor);
@@ -840,6 +860,7 @@ siclose(struct dev_close_args *ap)
 out:
 	DPRINT((pp, DBG_CLOSE|DBG_EXIT, "close done, returning\n"));
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return(error);
 }
 
@@ -850,6 +871,7 @@ sihardclose(struct si_port *pp)
 	volatile struct si_channel *ccbp;
 
 	crit_enter();
+	lwkt_gettoken(&tty_token);
 
 	tp = pp->sp_tty;
 	ccbp = pp->sp_ccb;			/* Find control block */
@@ -873,6 +895,7 @@ sihardclose(struct si_port *pp)
 	wakeup((caddr_t)&pp->sp_active_out);
 	wakeup(TSA_CARR_ON(tp));
 
+	lwkt_reltoken(&tty_token);
 	crit_exit();
 }
 
@@ -886,11 +909,13 @@ sidtrwakeup(void *chan)
 	struct si_port *pp;
 
 	crit_enter();
+	lwkt_gettoken(&tty_token);
 
 	pp = (struct si_port *)chan;
 	pp->sp_state &= ~SS_DTR_OFF;
 	wakeup(&pp->sp_dtr_wait);
 
+	lwkt_reltoken(&tty_token);
 	crit_exit();
 }
 
@@ -903,8 +928,10 @@ siwrite(struct dev_write_args *ap)
 	int error = 0;
 	int mynor = minor(dev);
 
+	lwkt_gettoken(&tty_token);
 	if (IS_SPECIAL(mynor)) {
 		DPRINT((0, DBG_ENTRY|DBG_FAIL|DBG_WRITE, "siwrite(CONTROLDEV!!)\n"));
+		lwkt_reltoken(&tty_token);
 		return(ENODEV);
 	}
 	pp = MINOR2PP(mynor);
@@ -929,6 +956,7 @@ siwrite(struct dev_write_args *ap)
 	error = (*linesw[tp->t_line].l_write)(tp, ap->a_uio, ap->a_ioflag);
 out:
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return (error);
 }
 
@@ -952,6 +980,7 @@ siioctl(struct dev_ioctl_args *ap)
 	if (IS_SI_IOCTL(cmd))
 		return(si_Sioctl(dev, cmd, data, ap->a_fflag, ap->a_cred));
 
+	lwkt_gettoken(&tty_token);
 	pp = MINOR2PP(mynor);
 	tp = pp->sp_tty;
 
@@ -968,6 +997,7 @@ siioctl(struct dev_ioctl_args *ap)
 			ct = IS_CALLOUT(mynor) ? &pp->sp_lout : &pp->sp_lin;
 			break;
 		default:
+			lwkt_reltoken(&tty_token);
 			return (ENODEV);
 		}
 		switch (cmd) {
@@ -976,17 +1006,22 @@ siioctl(struct dev_ioctl_args *ap)
 			if (error != 0)
 				return (error);
 			*ct = *(struct termios *)data;
+			lwkt_reltoken(&tty_token);
 			return (0);
 		case TIOCGETA:
 			*(struct termios *)data = *ct;
+			lwkt_reltoken(&tty_token);
 			return (0);
 		case TIOCGETD:
 			*(int *)data = TTYDISC;
+			lwkt_reltoken(&tty_token);
 			return (0);
 		case TIOCGWINSZ:
 			bzero(data, sizeof(struct winsize));
+			lwkt_reltoken(&tty_token);
 			return (0);
 		default:
+			lwkt_reltoken(&tty_token);
 			return (ENOTTY);
 		}
 	}
@@ -997,8 +1032,10 @@ siioctl(struct dev_ioctl_args *ap)
 	term = tp->t_termios;
 	oldcmd = cmd;
 	error = ttsetcompat(tp, &cmd, data, &term);
-	if (error != 0)
+	if (error != 0) {
+		lwkt_reltoken(&tty_token);
 		return (error);
+	}
 	if (cmd != oldcmd)
 		data = (caddr_t)&term;
 #endif
@@ -1102,6 +1139,7 @@ out:
 	DPRINT((pp, DBG_IOCTL|DBG_EXIT, "siioctl ret %d\n", error));
 	if (blocked)
 		si_write_enable(pp, 1);
+	lwkt_reltoken(&tty_token);
 	return(error);
 }
 
@@ -1135,6 +1173,7 @@ si_Sioctl(cdev_t dev, u_long cmd, caddr_t data, int flag, struct ucred *cred)
 	}
 
 	crit_enter();	/* better safe than sorry */
+	lwkt_gettoken(&tty_token);
 
 	ip = (int *)data;
 
@@ -1246,6 +1285,7 @@ si_Sioctl(cdev_t dev, u_long cmd, caddr_t data, int flag, struct ucred *cred)
 		goto out;
 	}
 out:
+	lwkt_reltoken(&tty_token);
 	crit_exit();
 	return(error);		/* success */
 }
@@ -1267,6 +1307,7 @@ siparam(struct tty *tp, struct termios *t)
 	int ospeed = 0;		/* shutup gcc */
 	BYTE val;
 
+	lwkt_gettoken(&tty_token);
 	DPRINT((pp, DBG_ENTRY|DBG_PARAM, "siparam(%x,%x)\n", tp, t));
 	cflag = t->c_cflag;
 	iflag = t->c_iflag;
@@ -1285,8 +1326,10 @@ siparam(struct tty *tp, struct termios *t)
 			 ttspeedtab(t->c_ispeed, bdrates) : ospeed;
 
 		/* enforce legit baud rate */
-		if (ospeed < 0 || ispeed < 0)
+		if (ospeed < 0 || ispeed < 0) {
+			lwkt_reltoken(&tty_token);
 			return (EINVAL);
+		}
 	}
 
 	crit_enter();
@@ -1418,17 +1461,20 @@ siparam(struct tty *tp, struct termios *t)
 		ccbp->hi_mr1, ccbp->hi_mr2, ccbp->hi_mask, ccbp->hi_prtcl, ccbp->hi_break));
 
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return(error);
 }
 
 /*
  * Enable or Disable the writes to this channel...
  * "state" ->  enabled = 1; disabled = 0;
+ * NOTE: Must be called with tty_token held
  */
 static void
 si_write_enable(struct si_port *pp, int state)
 {
 
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	crit_enter();
 
 	if (state) {
@@ -1450,6 +1496,7 @@ si_write_enable(struct si_port *pp, int state)
  * Due to DCE-like behaviour of the adapter, some signals need translation:
  *	TIOCM_DTR	DSR
  *	TIOCM_RTS	CTS
+ * NOTE: Must be called with tty_token held
  */
 static int
 si_modem(struct si_port *pp, enum si_mctl cmd, int bits)
@@ -1457,6 +1504,7 @@ si_modem(struct si_port *pp, enum si_mctl cmd, int bits)
 	volatile struct si_channel *ccbp;
 	int x;
 
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	DPRINT((pp, DBG_ENTRY|DBG_MODEM, "si_modem(%x,%s,%x)\n", pp, si_mctl2str(cmd), bits));
 	ccbp = pp->sp_ccb;		/* Find channel address */
 	switch (cmd) {
@@ -1490,10 +1538,12 @@ si_modem(struct si_port *pp, enum si_mctl cmd, int bits)
 
 /*
  * Handle change of modem state
+ * NOTE: Must be called with tty_token held
  */
 static void
 si_modem_state(struct si_port *pp, struct tty *tp, int hi_ip)
 {
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 							/* if a modem dev */
 	if (hi_ip & IP_DCD) {
 		if (!(pp->sp_last_hi_ip & IP_DCD)) {
@@ -1530,6 +1580,7 @@ si_poll(void *nothing)
 
 	DPRINT((0, DBG_POLL, "si_poll()\n"));
 	crit_enter();
+	lwkt_gettoken(&tty_token);
 	if (in_intr)
 		goto out;
 	lost = 0;
@@ -1569,6 +1620,7 @@ si_poll(void *nothing)
 	if (lost || si_realpoll)
 		si_intr(NULL);	/* call intr with fake vector */
 out:
+	lwkt_reltoken(&tty_token);
 	crit_exit();
 
 	callout_reset(&poll_ch, si_pollrate, si_poll, NULL);
@@ -1602,6 +1654,8 @@ si_intr(void *arg)
 	if (in_intr)
 		return;
 	in_intr = 1;
+
+	lwkt_gettoken(&tty_token);
 
 	/*
 	 * When we get an int we poll all the channels and do ALL pending
@@ -1868,6 +1922,7 @@ si_intr(void *arg)
 	} /* end of for (all controllers) */
 
 	in_intr = 0;
+	lwkt_reltoken(&tty_token);
 	DPRINT((0, arg == NULL ? DBG_POLL:DBG_INTR, "end si_intr\n"));
 }
 
@@ -1892,6 +1947,7 @@ si_start(struct tty *tp)
 	int count, n, amount, buffer_full;
 
 	crit_enter();
+	lwkt_gettoken(&tty_token);
 
 	qp = &tp->t_outq;
 	pp = TP2PP(tp);
@@ -1969,6 +2025,7 @@ si_start(struct tty *tp)
 	}
 
 out:
+	lwkt_reltoken(&tty_token);
 	crit_exit();
 	DPRINT((pp, DBG_EXIT|DBG_START, "leave si_start()\n"));
 }
@@ -1989,8 +2046,10 @@ si_lstart(void *arg)
 		pp, pp->sp_state));
 
 	crit_enter();
+	lwkt_gettoken(&tty_token);
 
 	if ((pp->sp_state & SS_OPEN) == 0 || (pp->sp_state & SS_LSTART) == 0) {
+		lwkt_reltoken(&tty_token);
 		crit_exit();
 		return;
 	}
@@ -2006,6 +2065,7 @@ si_lstart(void *arg)
 	(*linesw[tp->t_line].l_start)(tp);
 
 	pp->sp_state &= ~SS_INLSTART;
+	lwkt_reltoken(&tty_token);
 	crit_exit();
 }
 
@@ -2018,6 +2078,7 @@ si_stop(struct tty *tp, int rw)
 	volatile struct si_channel *ccbp;
 	struct si_port *pp;
 
+	lwkt_gettoken(&tty_token);
 	pp = TP2PP(tp);
 	ccbp = pp->sp_ccb;
 
@@ -2042,6 +2103,7 @@ si_stop(struct tty *tp, int rw)
 		ccbp->hi_rxopos = ccbp->hi_rxipos;
 	}
 #endif
+	lwkt_reltoken(&tty_token);
 }
 
 /*
@@ -2058,6 +2120,7 @@ si_command(struct si_port *pp, int cmd, int waitflag)
 		pp, cmd, waitflag, ccbp->hi_stat));
 
 	crit_enter();		/* Keep others out */
+	lwkt_gettoken(&tty_token);
 
 	/* wait until it's finished what it was doing.. */
 	/* XXX: sits in IDLE_BREAK until something disturbs it or break
@@ -2070,10 +2133,12 @@ si_command(struct si_port *pp, int cmd, int waitflag)
 			DPRINT((pp, DBG_PARAM,
 				"cmd intr collision - completing %d\trequested %d\n",
 				x, cmd));
+			lwkt_reltoken(&tty_token);
 			crit_exit();
 			return;
 		} else if (ttysleep(pp->sp_tty, (caddr_t)&pp->sp_state, PCATCH,
 				"sicmd1", 1)) {
+			lwkt_reltoken(&tty_token);
 			crit_exit();
 			return;
 		}
@@ -2102,6 +2167,7 @@ si_command(struct si_port *pp, int cmd, int waitflag)
 			DPRINT((pp, DBG_PARAM,
 				"attempt to sleep in si_intr - cmd req %d\n",
 				cmd));
+			lwkt_reltoken(&tty_token);
 			crit_exit();
 			return;
 		} else while(ccbp->hi_stat != IDLE_OPEN &&
@@ -2111,12 +2177,14 @@ si_command(struct si_port *pp, int cmd, int waitflag)
 				break;
 		}
 	}
+	lwkt_reltoken(&tty_token);
 	crit_exit();
 }
 
 static void
 si_disc_optim(struct tty *tp, struct termios *t, struct si_port *pp)
 {
+	lwkt_gettoken(&tty_token);
 	/*
 	 * XXX can skip a lot more cases if Smarts.  Maybe
 	 * (IGNCR | ISTRIP | IXON) in c_iflag.  But perhaps we
@@ -2135,6 +2203,7 @@ si_disc_optim(struct tty *tp, struct termios *t, struct si_port *pp)
 	DPRINT((pp, DBG_OPTIM, "bypass: %s, hotchar: %x\n",
 		(tp->t_state & TS_CAN_BYPASS_L_RINT) ? "on" : "off",
 		pp->sp_hotchar));
+	lwkt_reltoken(&tty_token);
 }
 
 

@@ -1,10 +1,10 @@
-/*
- * ng_h4.c
- */
-
 /*-
+ * (MPSAFE)
+ *
  * Copyright (c) 2001-2002 Maksim Yevmenkin <m_evmenkin@yahoo.com>
  * All rights reserved.
+ *
+ * ng_h4.c
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -166,6 +166,7 @@ ng_h4_open(struct cdev *dev, struct tty *tp)
 	if (sc == NULL)
 		return (ENOMEM);
 
+	lwkt_gettoken(&tty_token);
 	sc->tp = tp;
 	sc->debug = NG_H4_WARN_LEVEL;
 
@@ -190,6 +191,7 @@ ng_h4_open(struct cdev *dev, struct tty *tp)
 		bzero(sc, sizeof(*sc));
 		FREE(sc, M_NETGRAPH_H4);
 
+		lwkt_reltoken(&tty_token);
 		return (error);
 	}
 
@@ -207,6 +209,7 @@ ng_h4_open(struct cdev *dev, struct tty *tp)
 		bzero(sc, sizeof(*sc));
 		FREE(sc, M_NETGRAPH_H4);
 
+		lwkt_reltoken(&tty_token);
 		return (error);
 	}
 
@@ -230,6 +233,7 @@ ng_h4_open(struct cdev *dev, struct tty *tp)
 
 	NG_H4_UNLOCK(sc);
 
+	lwkt_reltoken(&tty_token);
 	return (error);
 } /* ng_h4_open */
 
@@ -243,6 +247,7 @@ ng_h4_close(struct tty *tp, int flag)
 {
 	ng_h4_info_p	sc = (ng_h4_info_p) tp->t_lsc;
 
+	lwkt_gettoken(&tty_token);
 	ttyflush(tp, FREAD | FWRITE);
 	clist_free_cblocks(&tp->t_outq);
 
@@ -260,6 +265,7 @@ ng_h4_close(struct tty *tp, int flag)
 		ng_rmnode_self(sc->node);
 	}
 
+	lwkt_reltoken(&tty_token);
 	return (0);
 } /* ng_h4_close */
 
@@ -297,6 +303,7 @@ ng_h4_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag,
 	if (sc == NULL)
 		return (ENXIO);
 
+	lwkt_gettoken(&tty_token);
 	NG_H4_LOCK(sc);
 
 	switch (cmd) {
@@ -324,6 +331,7 @@ ng_h4_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag,
 
 	NG_H4_UNLOCK(sc);
 
+	lwkt_reltoken(&tty_token);
 	return (error);
 } /* ng_h4_ioctl */
 
@@ -337,9 +345,12 @@ ng_h4_input(int c, struct tty *tp)
 {
 	ng_h4_info_p	sc = (ng_h4_info_p) tp->t_lsc;
 
+	lwkt_gettoken(&tty_token);
 	if (sc == NULL || tp != sc->tp ||
-	    sc->node == NULL || NG_NODE_NOT_VALID(sc->node))
+	    sc->node == NULL || NG_NODE_NOT_VALID(sc->node)) {
+		lwkt_reltoken(&tty_token);
 		return (0);
+	}
 
 	NG_H4_LOCK(sc);
 
@@ -354,6 +365,7 @@ ng_h4_input(int c, struct tty *tp)
 
 		NG_H4_UNLOCK(sc);
 
+		lwkt_reltoken(&tty_token);
 		return (0); /* XXX Loss of synchronization here! */
 	}
 
@@ -371,6 +383,7 @@ ng_h4_input(int c, struct tty *tp)
 
 		NG_H4_UNLOCK(sc);
 
+		lwkt_reltoken(&tty_token);
 		return (0); /* XXX Loss of synchronization here! */
 	}
 
@@ -390,6 +403,7 @@ ng_h4_input(int c, struct tty *tp)
 
 		NG_H4_UNLOCK(sc);
 
+		lwkt_reltoken(&tty_token);
 		return (0); /* XXX Loss of synchronization here! */
 	}
 
@@ -401,6 +415,7 @@ ng_h4_input(int c, struct tty *tp)
 	if (sc->got < sc->want) {
 		NG_H4_UNLOCK(sc);
 
+		lwkt_reltoken(&tty_token);
 		return (0); /* Wait for more */
 	}
 
@@ -557,6 +572,7 @@ ng_h4_input(int c, struct tty *tp)
 
 	NG_H4_UNLOCK(sc);
 
+	lwkt_reltoken(&tty_token);
 	return (0);
 } /* ng_h4_input */
 
@@ -572,9 +588,12 @@ ng_h4_start(struct tty *tp)
 	struct mbuf	*m = NULL;
 	int		 size;
 
+	lwkt_gettoken(&tty_token);
 	if (sc == NULL || tp != sc->tp || 
-	    sc->node == NULL || NG_NODE_NOT_VALID(sc->node))
+	    sc->node == NULL || NG_NODE_NOT_VALID(sc->node)) {
+		lwkt_reltoken(&tty_token);
 		return (0);
+	}
 
 #if 0
 	while (tp->t_outq.c_cc < NG_H4_HIWATER) { /* XXX 2.2 specific ? */
@@ -635,6 +654,7 @@ ng_h4_start(struct tty *tp)
 
 	NG_H4_UNLOCK(sc);
 
+	lwkt_reltoken(&tty_token);
 	return (0);
 } /* ng_h4_start */
 

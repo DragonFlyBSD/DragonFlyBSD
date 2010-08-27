@@ -1,4 +1,6 @@
 /*-
+ * (MPSAFE)
+ *
  * cyclades cyclom-y serial driver
  *	Andrew Herbert <andrew@werple.apana.org.au>, 17 August 1993
  *
@@ -495,9 +497,12 @@ sioattach(struct isa_device *isdp)
 {
 	int	adapter;
 
+	lwkt_gettoken(&tty_token);
 	adapter = cyattach_common((cy_addr) isdp->id_maddr, 0);
-	if (adapter < 0)
+	if (adapter < 0) {
+		lwkt_reltoken(&tty_token);
 		return (0);
+	}
 
 	/*
 	 * XXX
@@ -510,9 +515,13 @@ sioattach(struct isa_device *isdp)
 	}
 	isdp->id_intr = (inthand2_t *)siointr;
 	/* isdp->id_ri_flags |= RI_FAST; XXX unimplemented - use newbus! */
+	lwkt_reltoken(&tty_token);
 	return (1);
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 int
 cyattach_common(cy_addr cy_iobase, int cy_align)
 {
@@ -523,6 +532,8 @@ cyattach_common(cy_addr cy_iobase, int cy_align)
 	int	minorbase;
 	int	ncyu;
 	int	unit;
+
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 
 	adapter = cy_total_devices;
 	if ((u_int)adapter >= NCY) {
@@ -555,7 +566,7 @@ cyattach_common(cy_addr cy_iobase, int cy_align)
 
 	com = kmalloc(sizeof *com, M_DEVBUF, M_WAITOK | M_ZERO);
 	com->unit = unit;
-			callout_init(&com->dtr_ch);
+			callout_init_mp(&com->dtr_ch);
 			com->gfrcr_image = firmware_version;
 			if (CY_RTS_DTR_SWAPPED(firmware_version)) {
 				com->mcr_dtr = MCR_RTS;
@@ -607,8 +618,8 @@ cyattach_common(cy_addr cy_iobase, int cy_align)
 	crit_exit();
 
 	if (!sio_registered) {
-		callout_init(&sio_timeout_handle);
-		register_swi(SWI_TTY, siopoll, NULL, "cy", NULL);
+		callout_init_mp(&sio_timeout_handle);
+		register_swi_mp(SWI_TTY, siopoll, NULL, "cy", NULL);
 		sio_registered = TRUE;
 	}
 	minorbase = UNIT_TO_MINOR(unit);
@@ -657,6 +668,8 @@ sioopen(struct dev_open_args *ap)
 		return (ENXIO);
 	if (mynor & CONTROL_MASK)
 		return (0);
+
+	lwkt_gettoken(&tty_token);
 #if 0 /* XXX */
 	tp = com->tp = sio_tty[unit] = ttymalloc(sio_tty[unit]);
 #else
@@ -819,9 +832,13 @@ out:
 	crit_exit();
 	if (!(tp->t_state & TS_ISOPEN) && com->wopeners == 0)
 		comhardclose(com);
+	lwkt_reltoken(&tty_token);
 	return (error);
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static int
 sioclose(struct dev_close_args *ap)
 {
@@ -830,9 +847,11 @@ sioclose(struct dev_close_args *ap)
 	int		mynor;
 	struct tty	*tp;
 
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	mynor = minor(dev);
 	if (mynor & CONTROL_MASK)
 		return (0);
+	lwkt_gettoken(&tty_token);
 	com = com_addr(MINOR_TO_UNIT(mynor));
 	tp = com->tp;
 	crit_enter();
@@ -848,15 +867,21 @@ sioclose(struct dev_close_args *ap)
 	ttyfree(tp);
 	com->tp = sio_tty[unit] = NULL;
 #endif
+	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static void
 comhardclose(struct com_s *com)
 {
 	cy_addr		iobase;
 	struct tty	*tp;
 	int		unit;
+
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 
 	unit = com->unit;
 	iobase = com->iobase;
@@ -942,6 +967,7 @@ siowrite(struct dev_write_args *ap)
 	if (mynor & CONTROL_MASK)
 		return (ENODEV);
 
+	lwkt_gettoken(&tty_token);
 	unit = MINOR_TO_UNIT(mynor);
 	tp = com_addr(unit)->tp;
 	/*
@@ -960,6 +986,7 @@ siowrite(struct dev_write_args *ap)
 #else
 	return ((*linesw[tp->t_line].l_write)(tp, uio, ap->a_ioflag));
 #endif
+	lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -967,11 +994,16 @@ siodtrwakeup(void *chan)
 {
 	struct com_s	*com;
 
+	lwkt_gettoken(&tty_token);
 	com = (struct com_s *)chan;
 	com->state &= ~CS_DTR_OFF;
 	wakeup(&com->dtr_wait);
+	lwkt_reltoken(&tty_token);
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static void
 sioinput(struct com_s *com)
 {
@@ -980,6 +1012,8 @@ sioinput(struct com_s *com)
 	u_char		line_status;
 	int		recv_data;
 	struct tty	*tp;
+
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 
 	buf = com->ibuf;
 	tp = com->tp;
@@ -1069,6 +1103,7 @@ siointr(void *arg)
 	cy_addr	iobase;
 	u_char	status;
 
+	lwkt_gettoken(&tty_token);
 	com_lock();	/* XXX could this be placed down lower in the loop? */
 
 	baseu = unit * CY_MAX_PORTS;
@@ -1535,6 +1570,7 @@ terminate_tx_service:
 	schedsofttty();
 
 	com_unlock();
+	lwkt_reltoken(&tty_token);
 }
 
 #if 0
@@ -1559,6 +1595,7 @@ sioioctl(struct dev_ioctl_args *ap)
 	struct termios	term;
 #endif
 
+	lwkt_gettoken(&tty_token);
 	mynor = minor(dev);
 	com = com_addr(MINOR_TO_UNIT(mynor));
 	if (mynor & CONTROL_MASK) {
@@ -1572,25 +1609,33 @@ sioioctl(struct dev_ioctl_args *ap)
 			ct = mynor & CALLOUT_MASK ? &com->lt_out : &com->lt_in;
 			break;
 		default:
+			lwkt_reltoken(&tty_token);
 			return (ENODEV);	/* /dev/nodev */
 		}
 		switch (cmd) {
 		case TIOCSETA:
 			error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
-			if (error != 0)
+			if (error != 0) {
+				lwkt_reltoken(&tty_token);
 				return (error);
+			}
 			*ct = *(struct termios *)data;
+			lwkt_reltoken(&tty_token);
 			return (0);
 		case TIOCGETA:
 			*(struct termios *)data = *ct;
+			lwkt_reltoken(&tty_token);
 			return (0);
 		case TIOCGETD:
 			*(int *)data = TTYDISC;
+			lwkt_reltoken(&tty_token);
 			return (0);
 		case TIOCGWINSZ:
 			bzero(data, sizeof(struct winsize));
+			lwkt_reltoken(&tty_token);
 			return (0);
 		default:
+			lwkt_reltoken(&tty_token);
 			return (ENOTTY);
 		}
 	}
@@ -1599,8 +1644,10 @@ sioioctl(struct dev_ioctl_args *ap)
 	term = tp->t_termios;
 	oldcmd = cmd;
 	error = ttsetcompat(tp, &cmd, data, &term);
-	if (error != 0)
+	if (error != 0) {
+		lwkt_reltoken(&tty_token);
 		return (error);
+	}
 	if (cmd != oldcmd)
 		data = (caddr_t)&term;
 #endif
@@ -1628,13 +1675,16 @@ sioioctl(struct dev_ioctl_args *ap)
 	}
 	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data,
 					      ap->a_fflag, ap->a_cred);
-	if (error != ENOIOCTL)
+	if (error != ENOIOCTL) {
+		lwkt_reltoken(&tty_token);
 		return (error);
+	}
 	crit_enter();
 	error = ttioctl(tp, cmd, data, ap->a_fflag);
 	disc_optim(tp, &tp->t_termios, com);
 	if (error != ENOIOCTL) {
 		crit_exit();
+		lwkt_reltoken(&tty_token);
 		return (error);
 	}
 	switch (cmd) {
@@ -1679,6 +1729,7 @@ sioioctl(struct dev_ioctl_args *ap)
 		error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
 		if (error != 0) {
 			crit_exit();
+			lwkt_reltoken(&tty_token);
 			return (error);
 		}
 		com->dtr_wait = *(int *)data * hz / 100;
@@ -1696,9 +1747,11 @@ sioioctl(struct dev_ioctl_args *ap)
 		break;
 	default:
 		crit_exit();
+		lwkt_reltoken(&tty_token);
 		return (ENOTTY);
 	}
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
@@ -1707,11 +1760,14 @@ siopoll(void *data, void *frame)
 {
 	int		unit;
 
+	lwkt_gettoken(&tty_token);
 #ifdef CyDebug
 	++cy_timeouts;
 #endif
-	if (com_events == 0)
+	if (com_events == 0) {
+		lwkt_reltoken(&tty_token);
 		return;
+	}
 repeat:
 	for (unit = 0; unit < NSIO; ++unit) {
 		struct com_s	*com;
@@ -1789,6 +1845,7 @@ repeat:
 	}
 	if (com_events >= LOTS_OF_EVENTS)
 		goto repeat;
+	lwkt_reltoken(&tty_token);
 }
 
 static int
@@ -1808,6 +1865,7 @@ comparam(struct tty *tp, struct termios *t)
 	u_char		opt;
 	int		unit;
 
+	lwkt_gettoken(&tty_token);
 	/* do historical conversions */
 	if (t->c_ispeed == 0)
 		t->c_ispeed = t->c_ospeed;
@@ -1818,11 +1876,15 @@ comparam(struct tty *tp, struct termios *t)
 	/* check requested parameters */
 	cy_clock = CY_CLOCK(com->gfrcr_image);
 	idivisor = comspeed(t->c_ispeed, cy_clock, &iprescaler);
-	if (idivisor < 0)
+	if (idivisor < 0) {
+		lwkt_reltoken(&tty_token);
 		return (EINVAL);
+	}
 	odivisor = comspeed(t->c_ospeed, cy_clock, &oprescaler);
-	if (odivisor < 0)
+	if (odivisor < 0) {
+		lwkt_reltoken(&tty_token);
 		return (EINVAL);
+	}
 
 	/* parameters are OK, convert them to the com struct and the device */
 	crit_enter();
@@ -2158,9 +2220,13 @@ comparam(struct tty *tp, struct termios *t)
 		kfree(com->ibufold, M_DEVBUF);
 		com->ibufold = NULL;
 	}
+	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static int
 siosetwater(struct com_s *com, speed_t speed)
 {
@@ -2168,6 +2234,8 @@ siosetwater(struct com_s *com, speed_t speed)
 	u_char		*ibuf;
 	int		ibufsize;
 	struct tty	*tp;
+
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 
 	/*
 	 * Make the buffer size large enough to handle a softtty interrupt
@@ -2237,6 +2305,7 @@ comstart(struct tty *tp)
 	unit = DEV_TO_UNIT(tp->t_dev);
 	com = com_addr(unit);
 	crit_enter();
+	lwkt_gettoken(&tty_token);
 
 #ifdef CyDebug
 	++com->start_count;
@@ -2282,6 +2351,7 @@ comstart(struct tty *tp)
 	enable_intr();
 	if (tp->t_state & (TS_TIMEOUT | TS_TTSTOP)) {
 		ttwwakeup(tp);
+		lwkt_reltoken(&tty_token);
 		crit_exit();
 		return;
 	}
@@ -2362,6 +2432,7 @@ comstart(struct tty *tp)
 	enable_intr();
 #endif
 	ttwwakeup(tp);
+	lwkt_reltoken(&tty_token);
 	crit_exit();
 }
 
@@ -2371,6 +2442,7 @@ comstop(struct tty *tp, int rw)
 	struct com_s	*com;
 	bool_t		wakeup_etc;
 
+	lwkt_gettoken(&tty_token);
 	com = com_addr(DEV_TO_UNIT(tp->t_dev));
 	wakeup_etc = FALSE;
 	disable_intr();
@@ -2402,13 +2474,19 @@ comstop(struct tty *tp, int rw)
 	if (rw & FWRITE && com->etc == ETC_NONE)
 		cd1400_channel_cmd(com, CD1400_CCR_CMDRESET | CD1400_CCR_FTF);
 	comstart(tp);
+	lwkt_reltoken(&tty_token);
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static int
 commctl(struct com_s *com, int bits, int how)
 {
 	int	mcr;
 	int	msr;
+
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 
 	if (how == DMGET) {
 		if (com->channel_control & CD1400_CCR_RCVEN)
@@ -2468,6 +2546,9 @@ commctl(struct com_s *com, int bits, int how)
 	return (0);
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static void
 siosettimeout(void)
 {
@@ -2475,6 +2556,7 @@ siosettimeout(void)
 	bool_t		someopen;
 	int		unit;
 
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	/*
 	 * Set our timeout period to 1 second if no polled devices are open.
 	 * Otherwise set it to max(1/200, 1/hz).
@@ -2514,6 +2596,7 @@ comwakeup(void *chan)
 	struct com_s	*com;
 	int		unit;
 
+	lwkt_gettoken(&tty_token);
 	callout_reset(&sio_timeout_handle, sio_timeout, comwakeup, NULL);
 
 #if 0
@@ -2535,8 +2618,10 @@ comwakeup(void *chan)
 	/*
 	 * Check for and log errors, but not too often.
 	 */
-	if (--sio_timeouts_until_log > 0)
+	if (--sio_timeouts_until_log > 0) {
+		lwkt_reltoken(&tty_token);
 		return;
+	}
 	sio_timeouts_until_log = hz / sio_timeout;
 	for (unit = 0; unit < NSIO; ++unit) {
 		int	errnum;
@@ -2560,6 +2645,7 @@ comwakeup(void *chan)
 			    delta == 1 ? "" : "s", total);
 		}
 	}
+	lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -2569,6 +2655,7 @@ disc_optim(struct tty *tp, struct termios *t, struct com_s *com)
 	u_char	opt;
 #endif
 
+	lwkt_gettoken(&tty_token);
 	/*
 	 * XXX can skip a lot more cases if Smarts.  Maybe
 	 * (IGNCR | ISTRIP | IXON) in c_iflag.  But perhaps we
@@ -2596,6 +2683,7 @@ disc_optim(struct tty *tp, struct termios *t, struct com_s *com)
 		cd1400_channel_cmd(com, CD1400_CCR_CMDCORCHG | CD1400_CCR_COR3);
 	}
 #endif
+	lwkt_reltoken(&tty_token);
 }
 
 #ifdef Smarts
@@ -2654,20 +2742,29 @@ comspeed(speed_t speed, u_long cy_clock, int *prescaler_io)
 	return (divider);
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static void
 cd1400_channel_cmd(struct com_s *com, int cmd)
 {
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	cd1400_channel_cmd_wait(com);
 	cd_setreg(com, CD1400_CCR, cmd);
 	cd1400_channel_cmd_wait(com);
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static void
 cd1400_channel_cmd_wait(struct com_s *com)
 {
 	struct timeval	start;
 	struct timeval	tv;
 	long		usec;
+
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 
 	if (cd_getreg(com, CD1400_CCR) == 0)
 		return;
@@ -2687,9 +2784,13 @@ cd1400_channel_cmd_wait(struct com_s *com)
 	}
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static void
 cd_etc(struct com_s *com, int etc)
 {
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	/*
 	 * We can't change the hardware's ETC state while there are any
 	 * characters in the tx fifo, since those characters would be
@@ -2726,6 +2827,9 @@ wait:
 		continue;
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static int
 cd_getreg(struct com_s *com, int reg)
 {
@@ -2735,6 +2839,8 @@ cd_getreg(struct com_s *com, int reg)
 	u_long	ef;
 	cy_addr	iobase;
 	int	val;
+
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 
 	basecom = com_addr(com->unit & ~(CD1400_NO_OF_CHANNELS - 1));
 	car = com->unit & CD1400_CAR_CHAN;
@@ -2751,6 +2857,9 @@ cd_getreg(struct com_s *com, int reg)
 	return (val);
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static void
 cd_setreg(struct com_s *com, int reg, int val)
 {
@@ -2759,6 +2868,8 @@ cd_setreg(struct com_s *com, int reg, int val)
 	int	cy_align;
 	u_long	ef;
 	cy_addr	iobase;
+
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 
 	basecom = com_addr(com->unit & ~(CD1400_NO_OF_CHANNELS - 1));
 	car = com->unit & CD1400_CAR_CHAN;
@@ -2791,6 +2902,7 @@ cystatus(int unit)
 	kprintf("calls to upper layer:\t\t%d\n", cy_timeouts);
 	if (com == NULL)
 		return;
+	lwkt_gettoken(&tty_token);
 	iobase = com->iobase;
 	kprintf("\n");
 	kprintf("cd1400 base address:\\tt%p\n", iobase);
@@ -2829,7 +2941,9 @@ cystatus(int unit)
 		kprintf(
 		"upper layer queue lengths:\t%d raw, %d canon, %d output\n",
 		       tp->t_rawq.c_cc, tp->t_canq.c_cc, tp->t_outq.c_cc);
-	} else
+	} else {
 		kprintf("tty state:\t\t\tclosed\n");
+	}
+	lwkt_reltoken(&tty_token);
 }
 #endif /* CyDebug */

@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 1982, 1986, 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -32,6 +34,11 @@
  *
  * $FreeBSD: src/sys/dev/nmdm/nmdm.c,v 1.5.2.1 2001/08/11 00:54:14 mp Exp $
  * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.16 2008/01/05 14:02:37 swildner Exp $
+ */
+
+/*
+ * MPSAFE NOTE: This file acquires the tty_token mainly for linesw access and
+ *		tp (struct tty) access.
  */
 
 /*
@@ -115,6 +122,8 @@ do {	\
 
 /*
  * This function creates and initializes a pair of ttys.
+ *
+ * NOTE: Must be called with tty_token held
  */
 static void
 nmdminit(int n)
@@ -128,6 +137,8 @@ nmdminit(int n)
 	 */
 	if (n & ~0x7f)
 		return;
+
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 
 	pt = kmalloc(sizeof(*pt), M_NLMDM, M_WAITOK | M_ZERO);
 	pt->part1.dev = dev1 = make_dev(&nmdm_ops, n << 1,
@@ -187,6 +198,7 @@ nmdmopen(struct dev_open_args *ap)
 	if (!dev->si_drv1)
 		return(ENXIO);	
 
+	lwkt_gettoken(&tty_token);
 	pti = dev->si_drv1;
 	if (is_b) 
 		tp = &pti->part2.nm_tty;
@@ -204,8 +216,10 @@ nmdmopen(struct dev_open_args *ap)
 		tp->t_cflag = TTYDEF_CFLAG;
 		tp->t_ispeed = tp->t_ospeed = TTYDEF_SPEED;
 	} else if (tp->t_state & TS_XCLUDE && priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) {
+		lwkt_reltoken(&tty_token);
 		return (EBUSY);
 	} else if (pti->pt_prison != ap->a_cred->cr_prison) {
+		lwkt_reltoken(&tty_token);
 		return (EBUSY);
 	}
 
@@ -232,8 +246,10 @@ nmdmopen(struct dev_open_args *ap)
 		if (flag & FNONBLOCK)
 			break;
 		error = ttysleep(tp, TSA_CARR_ON(tp), PCATCH, "nmdopn", 0);
-		if (error)
+		if (error) {
+			lwkt_reltoken(&tty_token);
 			return (error);
+		}
 	}
 #endif
 
@@ -250,6 +266,7 @@ nmdmopen(struct dev_open_args *ap)
 	nmdm_crossover(pti, ourpart, otherpart);
 	if (error == 0)
 		wakeup_other(tp, FREAD|FWRITE); /* XXX */
+	lwkt_reltoken(&tty_token);
 	return (error);
 }
 
@@ -261,6 +278,7 @@ nmdmclose(struct dev_close_args *ap)
 	int err;
 	struct softpart *ourpart, *otherpart;
 
+	lwkt_gettoken(&tty_token);
 	/*
 	 * let the other end know that the game is up
 	 */
@@ -288,6 +306,7 @@ nmdmclose(struct dev_close_args *ap)
 	nmdm_crossover(dev->si_drv1, ourpart, otherpart);
 	nmdmstop(tp, FREAD|FWRITE);
 	(void) ttyclose(tp);
+	lwkt_reltoken(&tty_token);
 	return (err);
 }
 
@@ -299,6 +318,7 @@ nmdmread(struct dev_read_args *ap)
 	struct tty *tp, *tp2;
 	struct softpart *ourpart, *otherpart;
 
+	lwkt_gettoken(&tty_token);
 	tp = dev->si_tty;
 	GETPARTS(tp, ourpart, otherpart);
 	tp2 = &otherpart->nm_tty;
@@ -309,6 +329,7 @@ nmdmread(struct dev_read_args *ap)
 		wakeup_other(tp, FWRITE);
 	} else {
 		if (flag & IO_NDELAY) {
+			lwkt_reltoken(&tty_token);
 			return (EWOULDBLOCK);
 		}
 		error = tsleep(TSA_PTC_READ(tp), PCATCH, "nmdout", 0);
@@ -318,6 +339,7 @@ nmdmread(struct dev_read_args *ap)
 	if ((error = (*linesw[tp->t_line].l_read)(tp, ap->a_uio, ap->a_ioflag)) == 0)
 		wakeup_other(tp, FWRITE);
 #endif
+	lwkt_reltoken(&tty_token);
 	return (error);
 }
 
@@ -339,6 +361,7 @@ nmdmwrite(struct dev_write_args *ap)
 	struct tty *tp1, *tp;
 	struct softpart *ourpart, *otherpart;
 
+	lwkt_gettoken(&tty_token);
 	tp1 = dev->si_tty;
 	/*
 	 * Get the other tty struct.
@@ -348,8 +371,10 @@ nmdmwrite(struct dev_write_args *ap)
 	tp = &otherpart->nm_tty;
 
 again:
-	if ((tp->t_state & TS_ISOPEN) == 0) 
+	if ((tp->t_state & TS_ISOPEN) == 0) {
+		lwkt_reltoken(&tty_token);
 		return (EIO);
+	}
 	while (uio->uio_resid > 0 || cc > 0) {
 		/*
 		 * Fill up the buffer if it's empty
@@ -358,12 +383,15 @@ again:
 			cc = szmin(uio->uio_resid, BUFSIZ);
 			cp = locbuf;
 			error = uiomove((caddr_t)cp, cc, uio);
-			if (error)
+			if (error) {
+				lwkt_reltoken(&tty_token);
 				return (error);
+			}
 			/* check again for safety */
 			if ((tp->t_state & TS_ISOPEN) == 0) {
 				/* adjust for data copied in but not written */
 				uio->uio_resid += cc;
+				lwkt_reltoken(&tty_token);
 				return (EIO);
 			}
 		}
@@ -382,6 +410,7 @@ again:
 					 * not written.
 					 */
 					uio->uio_resid += cc;
+					lwkt_reltoken(&tty_token);
 					return (EIO);
 				}
 				if (ap->a_ioflag & IO_NDELAY) {
@@ -391,8 +420,11 @@ again:
 					 * not written.
 					 */
 					uio->uio_resid += cc;
-					if (cnt == 0)
+					if (cnt == 0) {
+						lwkt_reltoken(&tty_token);
 						return (EWOULDBLOCK);
+					}
+					lwkt_reltoken(&tty_token);
 					return (0);
 				}
 				error = tsleep(TSA_PTC_WRITE(tp),
@@ -405,6 +437,7 @@ again:
 					 * not written
 					 */
 					uio->uio_resid += cc;
+					lwkt_reltoken(&tty_token);
 					return (error);
 				}
 				goto again;
@@ -415,6 +448,7 @@ again:
 		}
 		cc = 0;
 	}
+	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
@@ -427,10 +461,14 @@ nmdmstart(struct tty *tp)
 {
 	struct nm_softc *pti = tp->t_dev->si_drv1;
 
-	if (tp->t_state & TS_TTSTOP)
+	lwkt_gettoken(&tty_token);
+	if (tp->t_state & TS_TTSTOP) {
+		lwkt_reltoken(&tty_token);
 		return;
+	}
 	pti->pt_flags &= ~PF_STOPPED;
 	wakeup_other(tp, FREAD);
+	lwkt_reltoken(&tty_token);
 }
 
 /* Wakes up the OTHER tty;*/
@@ -439,6 +477,7 @@ wakeup_other(struct tty *tp, int flag)
 {
 	struct softpart *ourpart, *otherpart;
 
+	lwkt_gettoken(&tty_token);
 	GETPARTS(tp, ourpart, otherpart);
 	if (flag & FREAD) {
 		wakeup(TSA_PTC_READ((&otherpart->nm_tty)));
@@ -448,6 +487,7 @@ wakeup_other(struct tty *tp, int flag)
 		wakeup(TSA_PTC_WRITE((&otherpart->nm_tty)));
 		KNOTE(&otherpart->nm_tty.t_wkq.ki_note, 0);
 	}
+	lwkt_reltoken(&tty_token);
 }
 
 static	void
@@ -456,6 +496,7 @@ nmdmstop(struct tty *tp, int flush)
 	struct nm_softc *pti = tp->t_dev->si_drv1;
 	int flag;
 
+	lwkt_gettoken(&tty_token);
 	/* note: FLUSHREAD and FLUSHWRITE already ok */
 	if (flush == 0) {
 		flush = TIOCPKT_STOP;
@@ -469,6 +510,7 @@ nmdmstop(struct tty *tp, int flush)
 	if (flush & FWRITE)
 		flag |= FREAD;
 	wakeup_other(tp, flag);
+	lwkt_reltoken(&tty_token);
 }
 
 /*ARGSUSED*/
@@ -483,6 +525,7 @@ nmdmioctl(struct dev_ioctl_args *ap)
 	struct softpart *ourpart, *otherpart;
 
 	crit_enter();
+	lwkt_gettoken(&tty_token);
 	GETPARTS(tp, ourpart, otherpart);
 	tp2 = &otherpart->nm_tty;
 
@@ -525,6 +568,7 @@ nmdmioctl(struct dev_ioctl_args *ap)
 		case TIOCTIMESTAMP:
 		case TIOCDCDTIMESTAMP:
 		default:
+			lwkt_reltoken(&tty_token);
 			crit_exit();
 			error = ENOTTY;
 			return (error);
@@ -532,6 +576,7 @@ nmdmioctl(struct dev_ioctl_args *ap)
 		error = 0;
 		nmdm_crossover(pti, ourpart, otherpart);
 	}
+	lwkt_reltoken(&tty_token);
 	crit_exit();
 	return (error);
 }
@@ -541,11 +586,13 @@ nmdm_crossover(struct nm_softc *pti,
 		struct softpart *ourpart,
 		struct softpart *otherpart)
 {
+	lwkt_gettoken(&tty_token);
 	otherpart->modemsignals &= ~(TIOCM_CTS|TIOCM_CAR);
 	if (ourpart->modemsignals & TIOCM_RTS)
 		otherpart->modemsignals |= TIOCM_CTS;
 	if (ourpart->modemsignals & TIOCM_DTR)
 		otherpart->modemsignals |= TIOCM_CAR;
+	lwkt_reltoken(&tty_token);
 }
 
 
@@ -556,7 +603,9 @@ static void
 nmdm_drvinit(void *unused)
 {
 	/* XXX: Gross hack for DEVFS */
+	lwkt_gettoken(&tty_token);
 	nmdminit(0);
+	lwkt_reltoken(&tty_token);
 }
 
 SYSINIT(nmdmdev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,nmdm_drvinit,NULL)

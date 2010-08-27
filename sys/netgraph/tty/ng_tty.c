@@ -1,5 +1,6 @@
-
 /*
+ * (MPSAFE)
+ *
  * ng_tty.c
  *
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -196,6 +197,7 @@ ngt_open(cdev_t dev, struct tty *tp)
 	if ((error = priv_check(td, PRIV_ROOT)))
 		return (error);
 	crit_enter();
+	lwkt_gettoken(&tty_token);
 
 	/* Already installed? */
 	if (tp->t_line == NETGRAPHDISC) {
@@ -210,7 +212,7 @@ ngt_open(cdev_t dev, struct tty *tp)
 	sc->hotchar = NG_TTY_DFL_HOTCHAR;
 	sc->qtail = &sc->qhead;
 	QUEUECHECK(sc);
-	callout_init(&sc->ctimeout);
+	callout_init_mp(&sc->ctimeout);
 
 	/* Setup netgraph node */
 	ngt_nodeop_ok = 1;
@@ -247,6 +249,7 @@ ngt_open(cdev_t dev, struct tty *tp)
 
 done:
 	/* Done */
+	lwkt_reltoken(&tty_token);
 	crit_exit();
 	return (error);
 }
@@ -262,6 +265,7 @@ ngt_close(struct tty *tp, int flag)
 	const sc_p sc = (sc_p) tp->t_sc;
 
 	crit_enter();
+	lwkt_gettoken(&tty_token);
 	ttyflush(tp, FREAD | FWRITE);
 	clist_free_cblocks(&tp->t_outq);
 	tp->t_line = 0;
@@ -275,6 +279,7 @@ ngt_close(struct tty *tp, int flag)
 		ngt_nodeop_ok = 0;
 		tp->t_sc = NULL;
 	}
+	lwkt_reltoken(&tty_token);
 	crit_exit();
 	return (0);
 }
@@ -307,6 +312,7 @@ ngt_tioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct ucred *cre
 	int error = 0;
 
 	crit_enter();
+	lwkt_gettoken(&tty_token);
 	switch (cmd) {
 	case NGIOCGINFO:
 	    {
@@ -325,6 +331,7 @@ ngt_tioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct ucred *cre
 		ERROUT(ENOIOCTL);
 	}
 done:
+	lwkt_reltoken(&tty_token);
 	crit_exit();
 	return (error);
 }
@@ -342,8 +349,11 @@ ngt_input(int c, struct tty *tp)
 	struct mbuf *m;
 	int error = 0;
 
-	if (!sc || tp != sc->tp)
+	lwkt_gettoken(&tty_token);
+	if (!sc || tp != sc->tp) {
+		lwkt_reltoken(&tty_token);
 		return (0);
+	}
 	crit_enter();
 	if (!sc->hook)
 		ERROUT(0);
@@ -391,6 +401,7 @@ ngt_input(int c, struct tty *tp)
 	}
 done:
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return (error);
 }
 
@@ -405,6 +416,7 @@ ngt_start(struct tty *tp)
 	const sc_p sc = (sc_p) tp->t_sc;
 
 	crit_enter();
+	lwkt_gettoken(&tty_token);
 	while (tp->t_outq.c_cc < NGT_HIWATER) {	/* XXX 2.2 specific ? */
 		struct mbuf *m = sc->qhead;
 
@@ -452,6 +464,7 @@ ngt_start(struct tty *tp)
 		callout_reset(&sc->ctimeout, 1, ngt_timeout, sc);
 		sc->flags |= FLG_TIMEOUT;
 	}
+	lwkt_reltoken(&tty_token);
 	crit_exit();
 	return (0);
 }
@@ -465,8 +478,10 @@ ngt_timeout(void *arg)
 	const sc_p sc = (sc_p) arg;
 
 	crit_enter();
+	lwkt_gettoken(&tty_token);
 	sc->flags &= ~FLG_TIMEOUT;
 	ngt_start(sc->tp);
+	lwkt_reltoken(&tty_token);
 	crit_exit();
 }
 
@@ -500,10 +515,12 @@ ngt_newhook(node_p node, hook_p hook, const char *name)
 	if (strcmp(name, NG_TTY_HOOK))
 		return (EINVAL);
 	crit_enter();
+	lwkt_gettoken(&tty_token);
 	if (sc->hook)
 		ERROUT(EISCONN);
 	sc->hook = hook;
 done:
+	lwkt_reltoken(&tty_token);
 	crit_exit();
 	return (error);
 }
@@ -517,11 +534,13 @@ ngt_disconnect(hook_p hook)
 	const sc_p sc = hook->node->private;
 
 	crit_enter();
+	lwkt_gettoken(&tty_token);
 	if (hook != sc->hook)
 		panic(__func__);
 	sc->hook = NULL;
 	m_freem(sc->m);
 	sc->m = NULL;
+	lwkt_reltoken(&tty_token);
 	crit_exit();
 	return (0);
 }
@@ -537,6 +556,7 @@ ngt_shutdown(node_p node)
 
 	if (!ngt_nodeop_ok)
 		return (EOPNOTSUPP);
+	lwkt_gettoken(&tty_token);
 	ng_unname(node);
 	ng_cutlinks(node);
 	node->private = NULL;
@@ -545,6 +565,7 @@ ngt_shutdown(node_p node)
 	m_freem(sc->m);
 	bzero(sc, sizeof(*sc));
 	FREE(sc, M_NETGRAPH);
+	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
@@ -562,6 +583,7 @@ ngt_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		panic(__func__);
 	NG_FREE_META(meta);
 	crit_enter();
+	lwkt_gettoken(&tty_token);
 	if (sc->qlen >= MAX_MBUFQ)
 		ERROUT(ENOBUFS);
 	m->m_nextpkt = NULL;
@@ -573,6 +595,7 @@ ngt_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	if (sc->qlen == 1)
 		ngt_start(sc->tp);
 done:
+	lwkt_reltoken(&tty_token);
 	crit_exit();
 	if (m)
 		m_freem(m);
@@ -590,6 +613,7 @@ ngt_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr,
 	struct ng_mesg *resp = NULL;
 	int error = 0;
 
+	lwkt_gettoken(&tty_token);
 	switch (msg->header.typecookie) {
 	case NGM_TTY_COOKIE:
 		switch (msg->header.cmd) {
@@ -626,6 +650,7 @@ ngt_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr,
 
 done:
 	FREE(msg, M_NETGRAPH);
+	lwkt_reltoken(&tty_token);
 	return (error);
 }
 
@@ -642,6 +667,7 @@ ngt_mod_event(module_t mod, int event, void *data)
 	/* struct ng_type *const type = data;*/
 	int error = 0;
 
+	lwkt_gettoken(&tty_token);
 	switch (event) {
 	case MOD_LOAD:
 		/* Register line discipline */
@@ -667,6 +693,6 @@ ngt_mod_event(module_t mod, int event, void *data)
 		error = EOPNOTSUPP;
 		break;
 	}
+	lwkt_reltoken(&tty_token);
 	return (error);
 }
-

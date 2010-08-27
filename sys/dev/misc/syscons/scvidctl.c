@@ -1,4 +1,6 @@
 /*-
+ * (MPSAFE)
+ *
  * Copyright (c) 1998 Kazutaka YOKOTA <yokota@zodiac.mech.utsunomiya-u.ac.jp>
  * All rights reserved.
  *
@@ -57,8 +59,12 @@ sc_set_text_mode(scr_stat *scp, struct tty *tp, int mode, int xsize, int ysize,
     int new_ysize;
     int error;
 
-    if ((*vidsw[scp->sc->adapter]->get_info)(scp->sc->adp, mode, &info))
+    lwkt_gettoken(&tty_token);
+    if ((*vidsw[scp->sc->adapter]->get_info)(scp->sc->adp, mode, &info)) {
+	lwkt_reltoken(&tty_token);
 	return ENODEV;
+    }
+    lwkt_reltoken(&tty_token);
 
     /* adjust argument values */
     if (fontsize <= 0)
@@ -172,8 +178,12 @@ sc_set_graphics_mode(scr_stat *scp, struct tty *tp, int mode)
     video_info_t info;
     int error;
 
-    if ((*vidsw[scp->sc->adapter]->get_info)(scp->sc->adp, mode, &info))
+    lwkt_gettoken(&tty_token);
+    if ((*vidsw[scp->sc->adapter]->get_info)(scp->sc->adp, mode, &info)) {
+        lwkt_reltoken(&tty_token);
 	return ENODEV;
+    }
+    lwkt_reltoken(&tty_token);
 
     /* stop screen saver, etc */
     crit_enter();
@@ -241,8 +251,11 @@ sc_set_pixel_mode(scr_stat *scp, struct tty *tp, int xsize, int ysize,
     int new_ysize;
     int error;
 
-    if ((*vidsw[scp->sc->adapter]->get_info)(scp->sc->adp, scp->mode, &info))
+    lwkt_gettoken(&tty_token);
+    if ((*vidsw[scp->sc->adapter]->get_info)(scp->sc->adp, scp->mode, &info)) {
+        lwkt_reltoken(&tty_token);
 	return ENODEV;		/* this shouldn't happen */
+    }
 
     /* adjust argument values */
     if (fontsize <= 0)
@@ -392,7 +405,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
     scr_stat *scp;
     video_adapter_t *adp;
     video_info_t info;
-    int error;
+    int error, ret;
 
 	KKASSERT(tp->t_dev);
 
@@ -403,71 +416,104 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
     if (adp == NULL)		/* shouldn't happen??? */
 		return ENODEV;
 
+    lwkt_gettoken(&tty_token);
     switch (cmd) {
 
     case CONS_CURRENTADP:	/* get current adapter index */
     case FBIO_ADAPTER:
-	return fb_ioctl(adp, FBIO_ADAPTER, data);
+	ret = fb_ioctl(adp, FBIO_ADAPTER, data);
+	lwkt_reltoken(&tty_token);
+	return ret;
 
     case CONS_CURRENT:  	/* get current adapter type */
     case FBIO_ADPTYPE:
-	return fb_ioctl(adp, FBIO_ADPTYPE, data);
+	ret = fb_ioctl(adp, FBIO_ADPTYPE, data);
+	lwkt_reltoken(&tty_token);
+	return ret;
 
     case CONS_ADPINFO:		/* adapter information */
     case FBIO_ADPINFO:
 	if (((video_adapter_info_t *)data)->va_index >= 0) {
 	    adp = vid_get_adapter(((video_adapter_info_t *)data)->va_index);
-	    if (adp == NULL)
+	    if (adp == NULL) {
+		lwkt_reltoken(&tty_token);
 		return ENODEV;
+	    }
 	}
-	return fb_ioctl(adp, FBIO_ADPINFO, data);
+	ret = fb_ioctl(adp, FBIO_ADPINFO, data);
+	lwkt_reltoken(&tty_token);
+	return ret;
 
     case CONS_GET:      	/* get current video mode */
     case FBIO_GETMODE:
 	*(int *)data = scp->mode;
+	lwkt_reltoken(&tty_token);
 	return 0;
 
 #ifndef SC_NO_MODE_CHANGE
     case CONS_SET:
     case FBIO_SETMODE:		/* set video mode */
-	if (!(adp->va_flags & V_ADP_MODECHANGE))
+	if (!(adp->va_flags & V_ADP_MODECHANGE)) {
+	    lwkt_reltoken(&tty_token);
  	    return ENODEV;
+	}
 	info.vi_mode = *(int *)data;
 	error = fb_ioctl(adp, FBIO_MODEINFO, &info);
-	if (error)
+	if (error) {
+	    lwkt_reltoken(&tty_token);
 	    return error;
-	if (info.vi_flags & V_INFO_GRAPHICS)
+	}
+	if (info.vi_flags & V_INFO_GRAPHICS) {
+	    lwkt_reltoken(&tty_token);
 	    return sc_set_graphics_mode(scp, tp, *(int *)data);
-	else
+	} else {
+	    lwkt_reltoken(&tty_token);
 	    return sc_set_text_mode(scp, tp, *(int *)data, 0, 0, 0);
+	}
 #endif /* SC_NO_MODE_CHANGE */
 
     case CONS_MODEINFO:		/* get mode information */
     case FBIO_MODEINFO:
-	return fb_ioctl(adp, FBIO_MODEINFO, data);
+	ret = fb_ioctl(adp, FBIO_MODEINFO, data);
+	lwkt_reltoken(&tty_token);
+	return ret;
 
     case CONS_FINDMODE:		/* find a matching video mode */
     case FBIO_FINDMODE:
-	return fb_ioctl(adp, FBIO_FINDMODE, data);
+	ret = fb_ioctl(adp, FBIO_FINDMODE, data);
+	lwkt_reltoken(&tty_token);
+	return ret;
 
     case CONS_SETWINORG:	/* set frame buffer window origin */
     case FBIO_SETWINORG:
-	if (scp != scp->sc->cur_scp)
+	if (scp != scp->sc->cur_scp) {
+	    lwkt_reltoken(&tty_token);
 	    return ENODEV;	/* XXX */
-	return fb_ioctl(adp, FBIO_SETWINORG, data);
+	}
+	ret = fb_ioctl(adp, FBIO_SETWINORG, data);
+	lwkt_reltoken(&tty_token);
+	return ret;
 
     case FBIO_GETWINORG:	/* get frame buffer window origin */
-	if (scp != scp->sc->cur_scp)
+	if (scp != scp->sc->cur_scp) {
+	    lwkt_reltoken(&tty_token);
 	    return ENODEV;	/* XXX */
-	return fb_ioctl(adp, FBIO_GETWINORG, data);
+	}
+	ret = fb_ioctl(adp, FBIO_GETWINORG, data);
+	lwkt_reltoken(&tty_token);
+	return ret;
 
     case FBIO_GETDISPSTART:
     case FBIO_SETDISPSTART:
     case FBIO_GETLINEWIDTH:
     case FBIO_SETLINEWIDTH:
-	if (scp != scp->sc->cur_scp)
+	if (scp != scp->sc->cur_scp) {
+	    lwkt_reltoken(&tty_token);
 	    return ENODEV;	/* XXX */
-	return fb_ioctl(adp, cmd, data);
+	}
+	ret = fb_ioctl(adp, cmd, data);
+	lwkt_reltoken(&tty_token);
+	return ret;
 
     case FBIO_GETPALETTE:
     case FBIO_SETPALETTE:
@@ -482,9 +528,13 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
     case FBIOSCURPOS:
     case FBIOGCURPOS:
     case FBIOGCURMAX:
-	if (scp != scp->sc->cur_scp)
+	if (scp != scp->sc->cur_scp) {
+	    lwkt_reltoken(&tty_token);
 	    return ENODEV;	/* XXX */
-	return fb_ioctl(adp, cmd, data);
+	}
+	ret = fb_ioctl(adp, cmd, data);
+	lwkt_reltoken(&tty_token);
+	return ret;
 
     case KDSETMODE:     	/* set current mode of this (virtual) console */
 	switch (*(int *)data) {
@@ -493,8 +543,10 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	     * If scp->mode is of graphics modes, we don't know which
 	     * text mode to switch back to...
 	     */
-	    if (scp->status & GRAPHICS_MODE)
+	    if (scp->status & GRAPHICS_MODE) {
+	        lwkt_reltoken(&tty_token);
 		return EINVAL;
+	    }
 	    /* restore fonts & palette ! */
 #if 0
 #ifndef SC_NO_FONT_LOADING
@@ -527,11 +579,14 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	     * If scp->mode is of graphics modes, we don't know which
 	     * text/pixel mode to switch back to...
 	     */
-	    if (scp->status & GRAPHICS_MODE)
+	    if (scp->status & GRAPHICS_MODE) {
+	        lwkt_reltoken(&tty_token);
 		return EINVAL;
+	    }
 	    crit_enter();
 	    if ((error = sc_clean_up(scp))) {
 		crit_exit();
+		lwkt_reltoken(&tty_token);
 		return error;
 	    }
 	    scp->status |= UNKNOWN_MODE | MOUSE_HIDDEN;
@@ -541,18 +596,24 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 		set_mode(scp);
 	    sc_clear_screen(scp);
 	    scp->status &= ~UNKNOWN_MODE;
+	    lwkt_reltoken(&tty_token);
 	    return 0;
 
 #ifdef SC_PIXEL_MODE
 	case KD_PIXEL:		/* pixel (raster) display */
-	    if (!(scp->status & (GRAPHICS_MODE | PIXEL_MODE)))
+	    if (!(scp->status & (GRAPHICS_MODE | PIXEL_MODE))) {
+	        lwkt_reltoken(&tty_token);
 		return EINVAL;
-	    if (scp->status & GRAPHICS_MODE)
+            }
+	    if (scp->status & GRAPHICS_MODE) {
+	        lwkt_reltoken(&tty_token);
 		return sc_set_pixel_mode(scp, tp, scp->xsize, scp->ysize, 
 					 scp->font_size);
+	    }
 	    crit_enter();
 	    if ((error = sc_clean_up(scp))) {
 		crit_exit();
+		lwkt_reltoken(&tty_token);
 		return error;
 	    }
 	    scp->status |= (UNKNOWN_MODE | PIXEL_MODE | MOUSE_HIDDEN);
@@ -565,6 +626,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	    }
 	    sc_clear_screen(scp);
 	    scp->status &= ~UNKNOWN_MODE;
+	    lwkt_reltoken(&tty_token);
 	    return 0;
 #endif /* SC_PIXEL_MODE */
 
@@ -572,21 +634,27 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	    crit_enter();
 	    if ((error = sc_clean_up(scp))) {
 		crit_exit();
+		lwkt_reltoken(&tty_token);
 		return error;
 	    }
 	    scp->status |= UNKNOWN_MODE | MOUSE_HIDDEN;
 	    crit_exit();
+	    lwkt_reltoken(&tty_token);
 	    return 0;
 
 	default:
+	    lwkt_reltoken(&tty_token);
 	    return EINVAL;
 	}
 	/* NOT REACHED */
 
 #ifdef SC_PIXEL_MODE
     case KDRASTER:		/* set pixel (raster) display mode */
-	if (ISUNKNOWNSC(scp) || ISTEXTSC(scp))
+	if (ISUNKNOWNSC(scp) || ISTEXTSC(scp)) {
+	    lwkt_reltoken(&tty_token);
 	    return ENODEV;
+	}
+	lwkt_reltoken(&tty_token);
 	return sc_set_pixel_mode(scp, tp, ((int *)data)[0], ((int *)data)[1], 
 				 ((int *)data)[2]);
 #endif /* SC_PIXEL_MODE */
@@ -597,15 +665,18 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	 * as KD_TEXT... 
 	 */
 	*data = ISGRAPHSC(scp) ? KD_GRAPHICS : KD_TEXT;
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case KDSBORDER:     	/* set border color of this (virtual) console */
 	scp->border = *data;
 	if (scp == scp->sc->cur_scp)
 	    sc_set_border(scp, scp->border);
+	lwkt_reltoken(&tty_token);
 	return 0;
     }
 
+    lwkt_reltoken(&tty_token);
     return ENOIOCTL;
 }
 

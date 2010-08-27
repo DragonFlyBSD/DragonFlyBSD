@@ -107,7 +107,7 @@ cy_attach(pcici_t config_id, int unit)
 	 *	the unit number as the token even for PCI.
 	 */
 	if (!pci_map_int_right(config_id, (pci_inthand_t *)cyintr,
-			       (void *)adapter, 0)) {
+			       (void *)adapter, INTR_MPSAFE)) {
 		kprintf("cy%d: couldn't map interrupt\n", unit);
 		goto fail;
 	}

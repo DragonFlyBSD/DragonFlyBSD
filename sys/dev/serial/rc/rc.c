@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (C) 1995 by Pavel Antonov, Moscow, Russia.
  * Copyright (C) 1995 by Andrey A. Chernov, Moscow, Russia.
  * All rights reserved.
@@ -204,15 +206,20 @@ rcprobe(struct isa_device *dvp)
 		kprintf("rc%d: illegal IRQ value %d\n", dvp->id_unit, irq);
 		return 0;
 	}
+	lwkt_gettoken(&tty_token);
 	rcout(CD180_PPRL, 0x22); /* Random values to Prescale reg. */
 	rcout(CD180_PPRH, 0x11);
-	if (rcin(CD180_PPRL) != 0x22 || rcin(CD180_PPRH) != 0x11)
+	if (rcin(CD180_PPRL) != 0x22 || rcin(CD180_PPRH) != 0x11) {
+		lwkt_reltoken(&tty_token);
 		return 0;
+	}
 	/* Now, test the board more thoroughly, with diagnostic */
-	if (rc_test(nec, dvp->id_unit))
+	if (rc_test(nec, dvp->id_unit)) {
+		lwkt_reltoken(&tty_token);
 		return 0;
+	}
 	rc_softc[dvp->id_unit].rcb_probed = RC_PROBED;
-
+	lwkt_reltoken(&tty_token);
 	return 0xF;
 }
 
@@ -225,11 +232,14 @@ rcattach(struct isa_device *dvp)
 	static int              rc_started = 0;
 	struct tty              *tp;
 
+	lwkt_gettoken(&tty_token);
 	dvp->id_intr = rcintr;
 
 	/* Thorooughly test the device */
-	if (rcb->rcb_probed != RC_PROBED)
+	if (rcb->rcb_probed != RC_PROBED) {
+		lwkt_reltoken(&tty_token);
 		return 0;
+	}
 	rcb->rcb_addr   = nec;
 	rcb->rcb_dtr    = 0;
 	rcb->rcb_baserc = rc;
@@ -239,7 +249,7 @@ rcattach(struct isa_device *dvp)
 		CD180_NCHAN, (rcin(CD180_GFRCR) & 0xF) + 'A');
 
 	for (chan = 0; chan < CD180_NCHAN; chan++, rc++) {
-		callout_init(&rc->rc_dtr_ch);
+		callout_init_mp(&rc->rc_dtr_ch);
 		rc->rc_rcb     = rcb;
 		rc->rc_chan    = chan;
 		rc->rc_iptr    = rc->rc_ibuf;
@@ -259,11 +269,12 @@ rcattach(struct isa_device *dvp)
 	}
 	rcb->rcb_probed = RC_ATTACHED;
 	if (!rc_started) {
-		register_swi(SWI_TTY, rcpoll, NULL, "rcpoll", NULL);
-		callout_init(&rc_wakeup_ch);
+		register_swi_mp(SWI_TTY, rcpoll, NULL, "rcpoll", NULL);
+		callout_init_mp(&rc_wakeup_ch);
 		rc_wakeup(NULL);
 		rc_started = 1;
 	}
+	lwkt_reltoken(&tty_token);
 	return 1;
 }
 
@@ -278,8 +289,10 @@ rcintr(void *arg, void *frame)
 	u_char                 val, iack, bsr, ucnt, *optr;
 	int                             good_data, t_state;
 
+	lwkt_gettoken(&tty_token);
 	if (rcb->rcb_probed != RC_ATTACHED) {
 		kprintf("rc%d: bogus interrupt\n", unit);
+		lwkt_reltoken(&tty_token);
 		return;
 	}
 	nec = rcb->rcb_addr;
@@ -289,6 +302,7 @@ rcintr(void *arg, void *frame)
 	if (!(bsr & (RC_BSR_TOUT|RC_BSR_RXINT|RC_BSR_TXINT|RC_BSR_MOINT))) {
 		kprintf("rc%d: extra interrupt\n", unit);
 		rcout(CD180_EOIR, 0);
+		lwkt_reltoken(&tty_token);
 		return;
 	}
 
@@ -304,6 +318,7 @@ rcintr(void *arg, void *frame)
 			kprintf("rc%d: hardware failure, reset board\n", unit);
 			rcout(RC_CTOUT, 0);
 			rc_reinit(rcb);
+			lwkt_reltoken(&tty_token);
 			return;
 		}
 		if (bsr & RC_BSR_RXINT) {
@@ -482,6 +497,7 @@ rcintr(void *arg, void *frame)
 		rcout(RC_CTOUT, 0);
 		bsr = ~(rcin(RC_BSR));
 	}
+	lwkt_reltoken(&tty_token);
 }
 
 /* Feed characters to output buffer */
@@ -491,8 +507,11 @@ rc_start(struct tty *tp)
 	struct rc_chans       *rc = &rc_chans[GET_UNIT(tp->t_dev)];
 	int                    nec = rc->rc_rcb->rcb_addr;
 
-	if (rc->rc_flags & RC_OSBUSY)
+	lwkt_gettoken(&tty_token);
+	if (rc->rc_flags & RC_OSBUSY) {
+		lwkt_reltoken(&tty_token);
 		return;
+	}
 	crit_enter();
 	rc->rc_flags |= RC_OSBUSY;
 	cpu_disable_intr();
@@ -545,6 +564,7 @@ rc_start(struct tty *tp)
 out:
 	rc->rc_flags &= ~RC_OSBUSY;
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 }
 
 /* Handle delayed events. */
@@ -557,8 +577,11 @@ rcpoll(void *dummy, void *frame)
 	struct tty    *tp;
 	int            chan, icnt, nec, unit;
 
-	if (rc_scheduled_event == 0)
+	lwkt_gettoken(&tty_token);
+	if (rc_scheduled_event == 0) {
+		lwkt_reltoken(&tty_token);
 		return;
+	}
 repeat:
 	for (unit = 0; unit < NRC; unit++) {
 		rcb = &rc_softc[unit];
@@ -671,6 +694,7 @@ done1: ;
 	}
 	if (rc_scheduled_event >= LOTS_OF_EVENTS)
 		goto repeat;
+	lwkt_reltoken(&tty_token);
 }
 
 static	void
@@ -679,6 +703,7 @@ rc_stop(struct tty *tp, int rw)
 	struct rc_chans        *rc = &rc_chans[GET_UNIT(tp->t_dev)];
 	u_char *tptr, *eptr;
 
+	lwkt_gettoken(&tty_token);
 #ifdef RCDEBUG
 	kprintf("rc%d/%d: rc_stop %s%s\n", rc->rc_rcb->rcb_unit, rc->rc_chan,
 		(rw & FWRITE)?"FWRITE ":"", (rw & FREAD)?"FREAD":"");
@@ -703,6 +728,7 @@ rc_stop(struct tty *tp, int rw)
 	else
 		rc->rc_flags &= ~RC_OSUSP;
 	cpu_enable_intr();
+	lwkt_reltoken(&tty_token);
 }
 
 static	int
@@ -713,11 +739,16 @@ rcopen(struct dev_open_args *ap)
 	struct tty      *tp;
 	int             unit, nec, error = 0;
 
+	lwkt_gettoken(&tty_token);
 	unit = GET_UNIT(dev);
-	if (unit >= NRC * CD180_NCHAN)
+	if (unit >= NRC * CD180_NCHAN) {
+		lwkt_reltoken(&tty_token);
 		return ENXIO;
-	if (rc_softc[unit / CD180_NCHAN].rcb_probed != RC_ATTACHED)
+	}
+	if (rc_softc[unit / CD180_NCHAN].rcb_probed != RC_ATTACHED) {
+		lwkt_reltoken(&tty_token);
 		return ENXIO;
+	}
 	rc  = &rc_chans[unit];
 	tp  = rc->rc_tp;
 	dev->si_tty = tp;
@@ -794,6 +825,7 @@ out:
 	if(rc->rc_dcdwaits == 0 && !(tp->t_state & TS_ISOPEN))
 		rc_hardclose(rc);
 
+	lwkt_reltoken(&tty_token);
 	return error;
 }
 
@@ -805,8 +837,11 @@ rcclose(struct dev_close_args *ap)
 	struct tty      *tp;
 	int unit = GET_UNIT(dev);
 
-	if (unit >= NRC * CD180_NCHAN)
+	lwkt_gettoken(&tty_token);
+	if (unit >= NRC * CD180_NCHAN) {
+		lwkt_reltoken(&tty_token);
 		return ENXIO;
+	}
 	rc  = &rc_chans[unit];
 	tp  = rc->rc_tp;
 #ifdef RCDEBUG
@@ -819,15 +854,20 @@ rcclose(struct dev_close_args *ap)
 	rc_hardclose(rc);
 	ttyclose(tp);
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static void
 rc_hardclose(struct rc_chans *rc)
 {
 	int nec = rc->rc_rcb->rcb_addr;
 	struct tty *tp = rc->rc_tp;
 
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	crit_enter();
 	rcout(CD180_CAR, rc->rc_chan);
 
@@ -855,9 +895,13 @@ rc_hardclose(struct rc_chans *rc)
 }
 
 /* Reset the bastard */
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static void
 rc_hwreset(int unit, int nec, unsigned int chipid)
 {
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	CCRCMD(unit, -1, CCR_HWRESET);            /* Hardware reset */
 	DELAY(20000);
 	WAITFORCCR(unit, -1);
@@ -887,10 +931,14 @@ rc_param(struct tty *tp, struct termios *ts)
 	int    nec = rc->rc_rcb->rcb_addr;
 	int      idivs, odivs, val, cflag, iflag, lflag, inpflow;
 
+	lwkt_gettoken(&tty_token);
+
 	if (   ts->c_ospeed < 0 || ts->c_ospeed > 76800
 	    || ts->c_ispeed < 0 || ts->c_ispeed > 76800
-	   )
+	   ) {
+		lwkt_reltoken(&tty_token);
 		return (EINVAL);
+	}
 	if (ts->c_ispeed == 0)
 		ts->c_ispeed = ts->c_ospeed;
 	odivs = RC_BRD(ts->c_ospeed);
@@ -1030,16 +1078,21 @@ rc_param(struct tty *tp, struct termios *ts)
 		rc->rc_flags |= RC_SEND_RDY;
 	rcout(CD180_IER, rc->rc_ier);
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
 /* Re-initialize board after bogus interrupts */
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static void
 rc_reinit(struct rc_softc *rcb)
 {
 	struct rc_chans       *rc, *rce;
 	int                    nec;
 
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	nec = rcb->rcb_addr;
 	rc_hwreset(rcb->rcb_unit, nec, RC_FAKEID);
 	rc  = &rc_chans[rcb->rcb_unit * CD180_NCHAN];
@@ -1056,14 +1109,19 @@ rcioctl(struct dev_ioctl_args *ap)
 	int                   error;
 	struct tty                     *tp = rc->rc_tp;
 
+	lwkt_gettoken(&tty_token);
 	error = (*linesw[tp->t_line].l_ioctl)(tp, ap->a_cmd, ap->a_data,
 					      ap->a_fflag, ap->a_cred);
-	if (error != ENOIOCTL)
+	if (error != ENOIOCTL) {
+		lwkt_reltoken(&tty_token);
 		return (error);
+	}
 	error = ttioctl(tp, ap->a_cmd, ap->a_data, ap->a_fflag);
 	disc_optim(tp, &tp->t_termios, rc);
-	if (error != ENOIOCTL)
+	if (error != ENOIOCTL) {
+		lwkt_reltoken(&tty_token);
 		return (error);
+	}
 	crit_enter();
 
 	switch (ap->a_cmd) {
@@ -1103,6 +1161,7 @@ rcioctl(struct dev_ioctl_args *ap)
 		error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
 		if (error != 0) {
 			crit_exit();
+			lwkt_reltoken(&tty_token);
 			return (error);
 		}
 		rc->rc_dtrwait = *(int *)ap->a_data * hz / 100;
@@ -1114,21 +1173,26 @@ rcioctl(struct dev_ioctl_args *ap)
 
 	    default:
 		crit_exit();
+		lwkt_reltoken(&tty_token);
 		return ENOTTY;
 	}
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
 
 /* Modem control routines */
-
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static int
 rc_modctl(struct rc_chans *rc, int bits, int cmd)
 {
 	int    nec = rc->rc_rcb->rcb_addr;
 	u_char         *dtr = &rc->rc_rcb->rcb_dtr, msvr;
 
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	rcout(CD180_CAR, rc->rc_chan);
 
 	switch (cmd) {
@@ -1213,6 +1277,7 @@ rc_test(int nec, int unit)
 		int     txptr;                  /* TX pointer */
 	} tchans[CD180_NCHAN];
 
+	lwkt_gettoken(&tty_token);
 	crit_enter();
 
 	chipid = RC_FAKEID;
@@ -1328,6 +1393,7 @@ rc_test(int nec, int unit)
 				ERR(("data mismatch chan %d ptr %d (%d != %d)\n",
 				    chan, i, ctest[i], tchans[chan].rxbuf[i]))
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -1368,14 +1434,17 @@ rc_dtrwakeup(void *chan)
 {
 	struct rc_chans  *rc;
 
+	lwkt_gettoken(&tty_token);
 	rc = (struct rc_chans *)chan;
 	rc->rc_flags &= ~RC_DTR_OFF;
 	wakeup(&rc->rc_dtrwait);
+	lwkt_reltoken(&tty_token);
 }
 
 static void
 rc_discard_output(struct rc_chans *rc)
 {
+	lwkt_gettoken(&tty_token);
 	cpu_disable_intr();
 	if (rc->rc_flags & RC_DOXXFER) {
 		rc_scheduled_event -= LOTS_OF_EVENTS;
@@ -1385,23 +1454,27 @@ rc_discard_output(struct rc_chans *rc)
 	rc->rc_tp->t_state &= ~TS_BUSY;
 	cpu_enable_intr();
 	ttwwakeup(rc->rc_tp);
+	lwkt_reltoken(&tty_token);
 }
 
 static void
 rc_wakeup(void *chan)
 {
+	lwkt_gettoken(&tty_token);
 	if (rc_scheduled_event != 0) {
 		crit_enter();
 		rcpoll(NULL, NULL);
 		crit_exit();
 	}
 	callout_reset(&rc_wakeup_ch, 1, rc_wakeup, NULL);
+	lwkt_reltoken(&tty_token);
 }
 
 static void
 disc_optim(struct tty *tp, struct termios *t, struct rc_chans *rc)
 {
 
+	lwkt_gettoken(&tty_token);
 	if (!(t->c_iflag & (ICRNL | IGNCR | IMAXBEL | INLCR | ISTRIP | IXON))
 	    && (!(t->c_iflag & BRKINT) || (t->c_iflag & IGNBRK))
 	    && (!(t->c_iflag & PARMRK)
@@ -1412,6 +1485,7 @@ disc_optim(struct tty *tp, struct termios *t, struct rc_chans *rc)
 	else
 		tp->t_state &= ~TS_CAN_BYPASS_L_RINT;
 	rc->rc_hotchar = linesw[tp->t_line].l_hotchar;
+	lwkt_reltoken(&tty_token);
 }
 
 static void

@@ -36,6 +36,7 @@
 #include <sys/syslog.h>
 #include <sys/consio.h>
 #include <sys/fbio.h>
+#include <sys/thread.h>
 #include <sys/thread2.h>
 
 #include <dev/video/fb/fbreg.h>
