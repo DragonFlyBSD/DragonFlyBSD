@@ -84,7 +84,6 @@
 #include <machine/pmap.h>
 
 #include <sys/spinlock2.h>
-#include <sys/mplock2.h>
 
 static void plimit_copy(struct plimit *olimit, struct plimit *nlimit);
 
@@ -401,10 +400,8 @@ kern_setrlimit(u_int which, struct rlimit *limp)
 			spin_unlock_rd(&limit->p_spin);
                         addr = trunc_page(addr);
                         size = round_page(size);
-			get_mplock();
                         vm_map_protect(&p->p_vmspace->vm_map,
 				       addr, addr+size, prot, FALSE);
-			rel_mplock();
                 } else {
 			spin_unlock_rd(&limit->p_spin);
 		}
