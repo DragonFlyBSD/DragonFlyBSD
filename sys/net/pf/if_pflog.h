@@ -1,6 +1,3 @@
-/* $FreeBSD: src/sys/contrib/pf/net/if_pflog.h,v 1.4 2004/06/16 23:24:00 mlaier Exp $ */
-/* $OpenBSD: if_pflog.h,v 1.10 2004/03/19 04:52:04 frantzen Exp $ */
-/* $DragonFly: src/sys/net/pf/if_pflog.h,v 1.1 2004/09/19 22:32:47 joerg Exp $ */
 /* $OpenBSD: if_pflog.h,v 1.14 2006/10/25 11:27:01 henning Exp $ */
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.

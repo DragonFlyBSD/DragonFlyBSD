@@ -1,4 +1,4 @@
-/*	$OpenBSD: ftp-proxy.c,v 1.13 2006/12/30 13:24:00 camield Exp $ */
+/*	$OpenBSD: ftp-proxy.c,v 1.15 2007/08/15 15:18:02 camield Exp $ */
 
 /*
  * Copyright (c) 2004, 2005 Camiel Dobbelaar, <cd@sentia.nl>
@@ -110,6 +110,7 @@ void	proxy_reply(int, struct sockaddr *, u_int16_t);
 int	server_parse(struct session *);
 void	server_read(struct session *);
 void	server_write(struct session *);
+int	allow_data_connection(struct session *s);
 const char *sock_ntop(struct sockaddr *);
 void	usage(void);
 
@@ -124,7 +125,7 @@ int nchanges;
 
 struct sockaddr_storage fixed_server_ss, fixed_proxy_ss;
 char *fixed_server, *fixed_server_port, *fixed_proxy, *listen_ip, *listen_port,
-    *qname;
+    *qname, *tagname;
 int anonymous_only, daemonize, id_count, ipv6_mode, loglevel, max_sessions,
     rfc_mode, session_count, timeout, verbose;
 extern char *__progname;
@@ -160,8 +161,19 @@ client_parse(struct session *s)
 		return (1);
 
 	if (linebuf[0] == 'P' || linebuf[0] == 'p' ||
-	    linebuf[0] == 'E' || linebuf[0] == 'e')
-		return (client_parse_cmd(s));
+	    linebuf[0] == 'E' || linebuf[0] == 'e') {
+		if (!client_parse_cmd(s))
+			return (0);
+
+		/*
+		 * Allow active mode connections immediately, instead of
+		 * waiting for a positive reply from the server.  Some
+		 * rare servers/proxies try to probe or setup the data
+		 * connection before an actual transfer request.
+		 */
+		if (s->cmd == CMD_PORT || s->cmd == CMD_EPRT)
+			return (allow_data_connection(s));
+	}
 	
 	if (anonymous_only && (linebuf[0] == 'U' || linebuf[0] == 'u'))
 		return (client_parse_anon(s));
@@ -627,6 +639,7 @@ main(int argc, char *argv[])
 	max_sessions	= 100;
 	qname		= NULL;
 	rfc_mode	= 0;
+	tagname		= NULL;
 	timeout		= 24 * 3600;
 	verbose		= 0;
 
@@ -635,7 +648,7 @@ main(int argc, char *argv[])
 	session_count	= 0;
 	nchanges	= 0;
 
-	while ((ch = getopt(argc, argv, "6Aa:b:D:dm:P:p:q:R:rt:v")) != -1) {
+	while ((ch = getopt(argc, argv, "6Aa:b:D:dm:P:p:q:R:rT:t:v")) != -1) {
 		switch (ch) {
 		case '6':
 			ipv6_mode = 1;
@@ -679,6 +692,11 @@ main(int argc, char *argv[])
 			break;
 		case 'r':
 			rfc_mode = 1;
+			break;
+		case 'T':
+			if (strlen(optarg) >= PF_TAG_NAME_SIZE)
+				errx(1, "tagname too long");
+			tagname = optarg;
 			break;
 		case 't':
 			timeout = strtonum(optarg, 0, 86400, &errstr);
@@ -760,7 +778,7 @@ main(int argc, char *argv[])
 	freeaddrinfo(res);
 
 	/* Initialize pf. */
-	init_filter(qname, verbose);
+	init_filter(qname, tagname, verbose);
 
 	if (daemonize) {
 		if (daemon(0, 0) == -1)
@@ -952,6 +970,23 @@ proxy_reply(int cmd, struct sockaddr *sa, u_int16_t port)
 int
 server_parse(struct session *s)
 {
+	if (s->cmd == CMD_NONE || linelen < 4 || linebuf[0] != '2')
+		goto out;
+
+	if ((s->cmd == CMD_PASV && strncmp("227 ", linebuf, 4) == 0) ||
+	    (s->cmd == CMD_EPSV && strncmp("229 ", linebuf, 4) == 0))
+		return (allow_data_connection(s));
+
+ out:
+	s->cmd = CMD_NONE;
+	s->port = 0;
+
+	return (1);
+}
+
+int
+allow_data_connection(struct session *s)
+{
 	struct sockaddr *client_sa, *orig_sa, *proxy_sa, *server_sa;
 	int prepared = 0;
 
@@ -982,8 +1017,7 @@ server_parse(struct session *s)
 		orig_sa = sstosa(&s->server_ss);
 
 	/* Passive modes. */
-	if ((s->cmd == CMD_PASV && strncmp("227 ", linebuf, 4) == 0) ||
-	    (s->cmd == CMD_EPSV && strncmp("229 ", linebuf, 4) == 0)) {
+	if (s->cmd == CMD_PASV || s->cmd == CMD_EPSV) {
 		s->port = parse_port(s->cmd);
 		if (s->port < MIN_PORT) {
 			logmsg(LOG_CRIT, "#%d bad port in '%s'", s->id,
@@ -1024,8 +1058,7 @@ server_parse(struct session *s)
 	}
 
 	/* Active modes. */
-	if ((s->cmd == CMD_PORT || s->cmd == CMD_EPRT) &&
-	    strncmp("200 ", linebuf, 4) == 0) {
+	if (s->cmd == CMD_PORT || s->cmd == CMD_EPRT) {
 		logmsg(LOG_INFO, "#%d active: server to client port %d"
 		    " via port %d", s->id, s->port, s->proxy_port);
 
@@ -1183,6 +1216,6 @@ usage(void)
 {
 	fprintf(stderr, "usage: %s [-6Adrv] [-a address] [-b address]"
 	    " [-D level] [-m maxsessions]\n                 [-P port]"
-	    " [-p port] [-q queue] [-R address] [-t timeout]\n", __progname);
+	    " [-p port] [-q queue] [-R address] [-T tag] [-t timeout]\n", __progname);
 	exit(1);
 }

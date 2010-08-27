@@ -203,6 +203,8 @@ KTR_INFO(KTR_IF_START, if_start, chase_sched, 4,
 #endif
 #define logifstart(name, arg)	KTR_LOG(if_start_ ## name, arg)
 
+TAILQ_HEAD(, ifg_group) ifg_head;
+
 /*
  * Network interface utility routines.
  *
@@ -811,6 +813,201 @@ if_detach(struct ifnet *ifp)
 }
 
 /*
+ * Create interface group without members
+ */
+struct ifg_group *
+if_creategroup(const char *groupname)
+{
+        struct ifg_group        *ifg = NULL;
+
+        if ((ifg = (struct ifg_group *)kmalloc(sizeof(struct ifg_group),
+            M_TEMP, M_NOWAIT)) == NULL)
+                return (NULL);
+
+        strlcpy(ifg->ifg_group, groupname, sizeof(ifg->ifg_group));
+        ifg->ifg_refcnt = 0;
+        ifg->ifg_carp_demoted = 0;
+        TAILQ_INIT(&ifg->ifg_members);
+#if NPF > 0
+        pfi_attach_ifgroup(ifg);
+#endif
+        TAILQ_INSERT_TAIL(&ifg_head, ifg, ifg_next);
+
+        return (ifg);
+}
+
+/*
+ * Add a group to an interface
+ */
+int
+if_addgroup(struct ifnet *ifp, const char *groupname)
+{
+	struct ifg_list		*ifgl;
+	struct ifg_group	*ifg = NULL;
+	struct ifg_member	*ifgm;
+
+	if (groupname[0] && groupname[strlen(groupname) - 1] >= '0' &&
+	    groupname[strlen(groupname) - 1] <= '9')
+		return (EINVAL);
+
+	TAILQ_FOREACH(ifgl, &ifp->if_groups, ifgl_next)
+		if (!strcmp(ifgl->ifgl_group->ifg_group, groupname))
+			return (EEXIST);
+
+	if ((ifgl = kmalloc(sizeof(*ifgl), M_TEMP, M_NOWAIT)) == NULL)
+		return (ENOMEM);
+
+	if ((ifgm = kmalloc(sizeof(*ifgm), M_TEMP, M_NOWAIT)) == NULL) {
+		kfree(ifgl, M_TEMP);
+		return (ENOMEM);
+	}
+
+	TAILQ_FOREACH(ifg, &ifg_head, ifg_next)
+		if (!strcmp(ifg->ifg_group, groupname))
+			break;
+
+	if (ifg == NULL && (ifg = if_creategroup(groupname)) == NULL) {
+		kfree(ifgl, M_TEMP);
+		kfree(ifgm, M_TEMP);
+		return (ENOMEM);
+	}
+
+	ifg->ifg_refcnt++;
+	ifgl->ifgl_group = ifg;
+	ifgm->ifgm_ifp = ifp;
+
+	TAILQ_INSERT_TAIL(&ifg->ifg_members, ifgm, ifgm_next);
+	TAILQ_INSERT_TAIL(&ifp->if_groups, ifgl, ifgl_next);
+
+#if NPF > 0
+	pfi_group_change(groupname);
+#endif
+
+	return (0);
+}
+
+/*
+ * Remove a group from an interface
+ */
+int
+if_delgroup(struct ifnet *ifp, const char *groupname)
+{
+	struct ifg_list		*ifgl;
+	struct ifg_member	*ifgm;
+
+	TAILQ_FOREACH(ifgl, &ifp->if_groups, ifgl_next)
+		if (!strcmp(ifgl->ifgl_group->ifg_group, groupname))
+			break;
+	if (ifgl == NULL)
+		return (ENOENT);
+
+	TAILQ_REMOVE(&ifp->if_groups, ifgl, ifgl_next);
+
+	TAILQ_FOREACH(ifgm, &ifgl->ifgl_group->ifg_members, ifgm_next)
+		if (ifgm->ifgm_ifp == ifp)
+			break;
+
+	if (ifgm != NULL) {
+		TAILQ_REMOVE(&ifgl->ifgl_group->ifg_members, ifgm, ifgm_next);
+		kfree(ifgm, M_TEMP);
+	}
+
+	if (--ifgl->ifgl_group->ifg_refcnt == 0) {
+		TAILQ_REMOVE(&ifg_head, ifgl->ifgl_group, ifg_next);
+#if NPF > 0
+		pfi_detach_ifgroup(ifgl->ifgl_group);
+#endif
+		kfree(ifgl->ifgl_group, M_TEMP);
+	}
+
+	kfree(ifgl, M_TEMP);
+
+#if NPF > 0
+	pfi_group_change(groupname);
+#endif
+
+	return (0);
+}
+
+/*
+ * Stores all groups from an interface in memory pointed
+ * to by data
+ */
+int
+if_getgroup(caddr_t data, struct ifnet *ifp)
+{
+	int			 len, error;
+	struct ifg_list		*ifgl;
+	struct ifg_req		 ifgrq, *ifgp;
+	struct ifgroupreq	*ifgr = (struct ifgroupreq *)data;
+
+	if (ifgr->ifgr_len == 0) {
+		TAILQ_FOREACH(ifgl, &ifp->if_groups, ifgl_next)
+			ifgr->ifgr_len += sizeof(struct ifg_req);
+		return (0);
+	}
+
+	len = ifgr->ifgr_len;
+	ifgp = ifgr->ifgr_groups;
+	TAILQ_FOREACH(ifgl, &ifp->if_groups, ifgl_next) {
+		if (len < sizeof(ifgrq))
+			return (EINVAL);
+		bzero(&ifgrq, sizeof ifgrq);
+		strlcpy(ifgrq.ifgrq_group, ifgl->ifgl_group->ifg_group,
+		    sizeof(ifgrq.ifgrq_group));
+		if ((error = copyout((caddr_t)&ifgrq, (caddr_t)ifgp,
+		    sizeof(struct ifg_req))))
+			return (error);
+		len -= sizeof(ifgrq);
+		ifgp++;
+	}
+
+	return (0);
+}
+
+/*
+ * Stores all members of a group in memory pointed to by data
+ */
+int
+if_getgroupmembers(caddr_t data)
+{
+	struct ifgroupreq	*ifgr = (struct ifgroupreq *)data;
+	struct ifg_group	*ifg;
+	struct ifg_member	*ifgm;
+	struct ifg_req		 ifgrq, *ifgp;
+	int			 len, error;
+
+	TAILQ_FOREACH(ifg, &ifg_head, ifg_next)
+		if (!strcmp(ifg->ifg_group, ifgr->ifgr_name))
+			break;
+	if (ifg == NULL)
+		return (ENOENT);
+
+	if (ifgr->ifgr_len == 0) {
+		TAILQ_FOREACH(ifgm, &ifg->ifg_members, ifgm_next)
+			ifgr->ifgr_len += sizeof(ifgrq);
+		return (0);
+	}
+
+	len = ifgr->ifgr_len;
+	ifgp = ifgr->ifgr_groups;
+	TAILQ_FOREACH(ifgm, &ifg->ifg_members, ifgm_next) {
+		if (len < sizeof(ifgrq))
+			return (EINVAL);
+		bzero(&ifgrq, sizeof ifgrq);
+		strlcpy(ifgrq.ifgrq_member, ifgm->ifgm_ifp->if_xname,
+		    sizeof(ifgrq.ifgrq_member));
+		if ((error = copyout((caddr_t)&ifgrq, (caddr_t)ifgp,
+		    sizeof(struct ifg_req))))
+			return (error);
+		len -= sizeof(ifgrq);
+		ifgp++;
+	}
+
+	return (0);
+}
+
+/*
  * Delete Routes for a Network Interface
  *
  * Called for each routing entry via the rnh->rnh_walktree() call above
@@ -1308,6 +1505,12 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 	case SIOCGIFMTU:
 		ifr->ifr_mtu = ifp->if_mtu;
 		break;
+
+	case SIOCGIFDATA:
+		error = copyout((caddr_t)&ifp->if_data, ifr->ifr_data,
+		    sizeof(ifp->if_data));
+		break;
+
 
 	case SIOCGIFPHYS:
 		ifr->ifr_phys = ifp->if_physical;

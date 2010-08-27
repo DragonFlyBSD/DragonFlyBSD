@@ -170,6 +170,7 @@ struct ifcarpvhaddr {
 
 #ifdef _KERNEL
 void		 carp_carpdev_state(void *);
+void		 carp_group_demote_adj(struct ifnet *, int);
 void		 carp_input(struct mbuf *, ...);
 int		 carp6_input(struct mbuf **, int *, int);
 int		 carp_output(struct ifnet *, struct mbuf *, struct sockaddr *,

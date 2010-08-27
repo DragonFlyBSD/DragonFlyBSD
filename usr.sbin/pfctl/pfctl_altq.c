@@ -1,4 +1,4 @@
-/*	$OpenBSD: pfctl_altq.c,v 1.91 2006/11/28 00:08:50 henning Exp $	*/
+/*	$OpenBSD: pfctl_altq.c,v 1.92 2007/05/27 05:15:17 claudio Exp $	*/
 
 /*
  * Copyright (c) 2002
@@ -1293,8 +1293,6 @@ getifmtu(char *ifname)
 		errx(1, "getifmtu: strlcpy");
 	if (ioctl(s, SIOCGIFMTU, (caddr_t)&ifr) == -1)
 		err(1, "SIOCGIFMTU");
-	if (shutdown(s, SHUT_RDWR) == -1)
-		err(1, "shutdown");
 	if (close(s))
 		err(1, "close");
 	if (ifr.ifr_mtu > 0)

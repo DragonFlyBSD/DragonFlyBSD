@@ -415,7 +415,6 @@ priq_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 {
 	struct priq_if *pif = (struct priq_if *)ifq->altq_disc;
 	struct priq_class *cl;
-	struct pf_mtag *pf;
 	int error;
 	int len;
 
@@ -430,8 +429,8 @@ priq_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 		goto done;
 	}
 
-	if ((pf = altq_find_pftag(m)) != NULL)
-		cl = clh_to_clp(pif, pf->qid);
+	if (m->m_pkthdr.fw_flags & PF_MBUF_STRUCTURE)
+		cl = clh_to_clp(pif, m->m_pkthdr.pf.qid);
 	else
 		cl = NULL;
 	if (cl == NULL) {

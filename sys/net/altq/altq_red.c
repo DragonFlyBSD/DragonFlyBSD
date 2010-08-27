@@ -419,16 +419,13 @@ drop_early(int fp_len, int fp_probd, int count)
 int
 mark_ecn(struct mbuf *m, struct altq_pktattr *pktattr, int flags)
 {
-	struct pf_mtag *pf;
 	struct mbuf *m0;
 	void *hdr;
 	int  af;
 
-	pf = altq_find_pftag(m);
-	if (pf == NULL)
-		return (0);
-	af = pf->af;
-	hdr = pf->hdr;
+	KKASSERT(m->m_pkthdr.fw_flags & PF_MBUF_STRUCTURE);
+	af = m->m_pkthdr.pf.ecn_af;
+	hdr = m->m_pkthdr.pf.hdr;
 
 	if (af != AF_INET && af != AF_INET6)
 		return (0);
@@ -450,9 +447,6 @@ mark_ecn(struct mbuf *m, struct altq_pktattr *pktattr, int flags)
 			struct ip *ip = hdr;
 			uint8_t otos;
 			int sum;
-
-			if (ip->ip_v != 4)
-				return (0);	/* version mismatch! */
 
 			if ((ip->ip_tos & IPTOS_ECN_MASK) == IPTOS_ECN_NOTECT)
 				return (0);	/* not-ECT */

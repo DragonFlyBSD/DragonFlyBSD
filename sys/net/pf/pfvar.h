@@ -1,8 +1,4 @@
-/*	$FreeBSD: src/sys/contrib/pf/net/pfvar.h,v 1.8 2004/08/12 13:59:44 mlaier Exp $	*/
-/*	$OpenBSD: pfvar.h,v 1.187 2004/03/22 04:54:18 mcbride Exp $ */
-/* add	$OpenBSD: pfvar.h,v 1.194 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pfvar.h,v 1.8 2008/04/11 18:21:48 dillon Exp $ */
-/*	$OpenBSD: pfvar.h,v 1.244 2007/02/23 21:31:51 deraadt Exp $ */
+/*	$OpenBSD: pfvar.h,v 1.254 2007/07/13 09:17:48 markus Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -766,68 +762,187 @@ struct pf_state_peer {
 
 TAILQ_HEAD(pf_state_queue, pf_state);
 
+/* keep synced with struct pf_state_key, used in RB_FIND */
+struct pf_state_key_cmp {
+	struct pf_state_host lan;
+	struct pf_state_host gwy;
+	struct pf_state_host ext;
+	sa_family_t	 af;
+	u_int8_t	 proto;
+	u_int8_t	 direction;
+	u_int8_t	 pad;
+};
+
+TAILQ_HEAD(pf_statelist, pf_state);
+
+struct pf_state_key {
+	struct pf_state_host lan;
+	struct pf_state_host gwy;
+	struct pf_state_host ext;
+	sa_family_t	 af;
+	u_int8_t	 proto;
+	u_int8_t	 direction;
+	u_int8_t	 pad;
+
+	RB_ENTRY(pf_state_key)	 entry_lan_ext;
+	RB_ENTRY(pf_state_key)	 entry_ext_gwy;
+	struct pf_statelist	 states;
+	u_short		 refcnt;	/* same size as if_index */	 
+};
+
+
 /* keep synced with struct pf_state, used in RB_FIND */
 struct pf_state_cmp {
 	u_int64_t	 id;
 	u_int32_t	 creatorid;
-	struct pf_state_host lan;
-	struct pf_state_host gwy;
-	struct pf_state_host ext;
-	sa_family_t	 af;
-	u_int8_t	 proto;
-	u_int8_t	 direction;
-	u_int8_t	 pad;
+	u_int32_t	 pad;
 };
 
 struct pf_state {
-	u_int64_t	 id;
+	u_int64_t		 id;
+	u_int32_t		 creatorid;
+	u_int32_t		 pad;
+
+	TAILQ_ENTRY(pf_state)	 entry_list;
+	TAILQ_ENTRY(pf_state)	 next;
+	RB_ENTRY(pf_state)	 entry_id;
+	struct pf_state_peer	 src;
+	struct pf_state_peer	 dst;
+	union pf_rule_ptr	 rule;
+	union pf_rule_ptr	 anchor;
+	union pf_rule_ptr	 nat_rule;
+	struct pf_addr		 rt_addr;
+	struct pf_state_key	*state_key;
+	struct pfi_kif		*kif;
+	struct pfi_kif		*rt_kif;
+	struct pf_src_node	*src_node;
+	struct pf_src_node	*nat_src_node;
+	u_int64_t		 packets[2];
+	u_int64_t		 bytes[2];
+	u_int32_t		 hash;
+	u_int32_t		 creation;
+	u_int32_t		 expire;
+	u_int32_t		 pfsync_time;
+	u_int16_t		 tag;
+	u_int8_t		 log;
+	u_int8_t		 allow_opts;
+	u_int8_t		 timeout;
+	u_int8_t		 sync_flags;
+	u_int8_t		 pickup_mode;
+#define	PFSTATE_NOSYNC	 0x01
+#define	PFSTATE_FROMSYNC 0x02
+#define	PFSTATE_STALE	 0x04
+};
+
+/*
+ * Unified state structures for pulling states out of the kernel
+ * used by pfsync(4) and the pf(4) ioctl.
+ */
+struct pfsync_state_scrub {
+	u_int16_t	pfss_flags;
+	u_int8_t	pfss_ttl;	/* stashed TTL		*/
+#define PFSYNC_SCRUB_FLAG_VALID 	0x01
+	u_int8_t	scrub_flag;
+	u_int32_t	pfss_ts_mod;	/* timestamp modulation	*/
+};
+
+struct pfsync_state_host {
+	struct pf_addr	addr;
+	u_int16_t	port;
+	u_int16_t	pad[3];
+};
+
+struct pfsync_state_peer {
+	struct pfsync_state_scrub scrub;	/* state is scrubbed	*/
+	u_int32_t	seqlo;		/* Max sequence number sent	*/
+	u_int32_t	seqhi;		/* Max the other end ACKd + win	*/
+	u_int32_t	seqdiff;	/* Sequence number modulator	*/
+	u_int16_t	max_win;	/* largest window (pre scaling)	*/
+	u_int16_t	mss;		/* Maximum segment size option	*/
+	u_int8_t	state;		/* active state level		*/
+	u_int8_t	wscale;		/* window scaling factor	*/
+	u_int8_t	pad[6];
+};
+
+struct pfsync_state {
+	u_int32_t	 id[2];
+	char		 ifname[IFNAMSIZ];
+	struct pfsync_state_host lan;
+	struct pfsync_state_host gwy;
+	struct pfsync_state_host ext;
+	struct pfsync_state_peer src;
+	struct pfsync_state_peer dst;
+	struct pf_addr	 rt_addr;
+	u_int32_t	 rule;
+	u_int32_t	 anchor;
+	u_int32_t	 nat_rule;
+	u_int32_t	 creation;
+	u_int32_t	 expire;
+	u_int32_t	 packets[2][2];
+	u_int32_t	 bytes[2][2];
 	u_int32_t	 creatorid;
-	struct pf_state_host lan;
-	struct pf_state_host gwy;
-	struct pf_state_host ext;
 	sa_family_t	 af;
 	u_int8_t	 proto;
 	u_int8_t	 direction;
-	u_int8_t	 pad;
 	u_int8_t	 log;
 	u_int8_t	 allow_opts;
 	u_int8_t	 timeout;
 	u_int8_t	 sync_flags;
-	u_int8_t	 pickup_mode;
-#define	PFSTATE_NOSYNC	 0x01
-#define	PFSTATE_FROMSYNC 0x02
-#define	PFSTATE_STALE	 0x04
+	u_int8_t	 updates;
+}; 
+
+#define PFSYNC_FLAG_COMPRESS 	0x01
+#define PFSYNC_FLAG_STALE	0x02
+#define PFSYNC_FLAG_SRCNODE	0x04
+#define PFSYNC_FLAG_NATSRCNODE	0x08
+#define PFSTATE_GOT_SYN_MASK	(PFSTATE_GOT_SYN1|PFSTATE_GOT_SYN2)
 #define PFSTATE_GOT_SYN1 0x04	/* got SYN in one direction */
 #define PFSTATE_GOT_SYN2 0x08	/* got SYN in the other direction */
-	union {
-		struct {
-			RB_ENTRY(pf_state)	 entry_lan_ext;
-			RB_ENTRY(pf_state)	 entry_ext_gwy;
-			RB_ENTRY(pf_state)	 entry_id;
-			TAILQ_ENTRY(pf_state)	 entry_list;
-			struct pfi_kif		*kif;
-		} s;
-		char	 ifname[IFNAMSIZ];
-	} u;
-	struct pf_state_peer src;
-	struct pf_state_peer dst;
-	union pf_rule_ptr rule;
-	union pf_rule_ptr anchor;
-	union pf_rule_ptr nat_rule;
-	struct pf_addr	 rt_addr;
-	struct pfi_kif	*rt_kif;
-	struct pf_src_node	*src_node;
-	struct pf_src_node	*nat_src_node;
-	u_int64_t	 packets[2];
-	u_int64_t	 bytes[2];
-	u_int32_t	 hash;
-	u_int32_t	 creation;
-	u_int32_t	 expire;
-	u_int32_t	 pfsync_time;
-	u_int16_t	 tag;
-};
 
-#define PFSTATE_GOT_SYN_MASK	(PFSTATE_GOT_SYN1|PFSTATE_GOT_SYN2)
+/* for copies to/from userland via pf_ioctl() */
+#define pf_state_peer_to_pfsync(s,d) do {	\
+	(d)->seqlo = (s)->seqlo;		\
+	(d)->seqhi = (s)->seqhi;		\
+	(d)->seqdiff = (s)->seqdiff;		\
+	(d)->max_win = (s)->max_win;		\
+	(d)->mss = (s)->mss;			\
+	(d)->state = (s)->state;		\
+	(d)->wscale = (s)->wscale;		\
+	if ((s)->scrub) {						\
+		(d)->scrub.pfss_flags = 				\
+		    (s)->scrub->pfss_flags & PFSS_TIMESTAMP;		\
+		(d)->scrub.pfss_ttl = (s)->scrub->pfss_ttl;		\
+		(d)->scrub.pfss_ts_mod = (s)->scrub->pfss_ts_mod;	\
+		(d)->scrub.scrub_flag = PFSYNC_SCRUB_FLAG_VALID;	\
+	}								\
+} while (0)
+
+#define pf_state_peer_from_pfsync(s,d) do {	\
+	(d)->seqlo = (s)->seqlo;		\
+	(d)->seqhi = (s)->seqhi;		\
+	(d)->seqdiff = (s)->seqdiff;		\
+	(d)->max_win = (s)->max_win;		\
+	(d)->mss = ntohs((s)->mss);		\
+	(d)->state = (s)->state;		\
+	(d)->wscale = (s)->wscale;		\
+	if ((s)->scrub.scrub_flag == PFSYNC_SCRUB_FLAG_VALID && 	\
+	    (d)->scrub != NULL) {					\
+		(d)->scrub->pfss_flags =				\
+		    ntohs((s)->scrub.pfss_flags) & PFSS_TIMESTAMP;	\
+		(d)->scrub->pfss_ttl = (s)->scrub.pfss_ttl;		\
+		(d)->scrub->pfss_ts_mod = (s)->scrub.pfss_ts_mod;	\
+	}								\
+} while (0)
+
+#define pf_state_counter_to_pfsync(s,d) do {			\
+	d[0] = (s>>32)&0xffffffff;				\
+	d[1] = s&0xffffffff;					\
+} while (0)
+
+#define pf_state_counter_from_pfsync(s)		\
+	(((u_int64_t)(s[0])<<32) | (u_int64_t)(s[1]))
+
+
 
 TAILQ_HEAD(pf_rulequeue, pf_rule);
 
@@ -970,13 +1085,13 @@ struct pfr_ktable {
 #define pfrkt_nomatch	pfrkt_ts.pfrts_nomatch
 #define pfrkt_tzero	pfrkt_ts.pfrts_tzero
 
-RB_HEAD(pf_state_tree_lan_ext, pf_state);
-RB_PROTOTYPE(pf_state_tree_lan_ext, pf_state,
-    u.s.entry_lan_ext, pf_state_compare_lan_ext);
+RB_HEAD(pf_state_tree_lan_ext, pf_state_key);
+RB_PROTOTYPE(pf_state_tree_lan_ext, pf_state_key,
+    entry_lan_ext, pf_state_compare_lan_ext);
 
-RB_HEAD(pf_state_tree_ext_gwy, pf_state);
-RB_PROTOTYPE(pf_state_tree_ext_gwy, pf_state,
-    u.s.entry_ext_gwy, pf_state_compare_ext_gwy);
+RB_HEAD(pf_state_tree_ext_gwy, pf_state_key);
+RB_PROTOTYPE(pf_state_tree_ext_gwy, pf_state_key,
+    entry_ext_gwy, pf_state_compare_ext_gwy);
 
 struct pfi_if {
 	char				 pfif_name[IFNAMSIZ];
@@ -994,6 +1109,10 @@ TAILQ_HEAD(pfi_grouphead, pfi_kif);
 TAILQ_HEAD(pfi_statehead, pfi_kif);
 RB_HEAD(pfi_ifhead, pfi_kif);
 
+/* state tables */
+extern struct pf_state_tree_lan_ext	 pf_statetbl_lan_ext;
+extern struct pf_state_tree_ext_gwy	 pf_statetbl_ext_gwy;
+
 /* keep synced with pfi_kif, used in RB_FIND */
 struct pfi_kif_cmp {
 	char				 pfik_ifname[IFNAMSIZ];
@@ -1006,11 +1125,6 @@ struct pfi_kif {
 	u_int64_t			 pfik_bytes[2][2][2];
 	u_int32_t			 pfik_tzero;
 	int				 pfik_flags;
-	struct pf_state_tree_lan_ext	 pfik_lan_ext;
-	struct pf_state_tree_ext_gwy	 pfik_ext_gwy;
-	struct pfi_grouphead		 pfik_grouphead;
-	TAILQ_ENTRY(pfi_kif)		 pfik_instances;
-	TAILQ_ENTRY(pfi_kif)		 pfik_w_states;
 	struct hook_desc_head		*pfik_ah_head;
 	void				*pfik_ah_cookie;
 	struct pfi_kif			*pfik_parent;
@@ -1067,7 +1181,6 @@ struct pf_pdesc {
 	struct pf_addr	*dst;
 	struct ether_header
 			*eh;
-	struct pf_mtag	*pf_mtag;
 	u_int16_t	*ip_sum;
 	u_int32_t	 p_len;		/* total length of payload */
 	u_int16_t	 flags;		/* Let SCRUB trigger behavior in
@@ -1291,17 +1404,6 @@ struct pf_altq {
 #define	PF_TAG_TRANSLATE_LOCALHOST	0x04
 #define	PF_TAG_STATE_HASHED		0x08
 
-struct pf_mtag {
-	void		*hdr;		/* saved hdr pos in mbuf, for ECN */
-	u_int		 rtableid;	/* alternate routing table id */
-	u_int32_t	 qid;		/* queue id */
-	u_int16_t	 tag;		/* tag id */
-	u_int8_t	 flags;
-	u_int8_t	 routed;
-	sa_family_t	 af;		/* for ECN */
-	u_int32_t	 state_hash;	/* for fairq */
-};
-
 struct pf_tag {
 	u_int16_t	tag;		/* tag id */
 };
@@ -1364,7 +1466,7 @@ struct pfioc_natlook {
 
 struct pfioc_state {
 	u_int32_t	 nr;
-	struct pf_state	 state;
+	void		*state;
 };
 
 struct pfioc_src_node_kill {
@@ -1386,8 +1488,8 @@ struct pfioc_state_kill {
 struct pfioc_states {
 	int	ps_len;
 	union {
-		caddr_t		 psu_buf;
-		struct pf_state	*psu_states;
+		caddr_t			psu_buf;
+		struct pfsync_state	*psu_states;
 	} ps_u;
 #define ps_buf		ps_u.psu_buf
 #define ps_states	ps_u.psu_states
@@ -1610,8 +1712,10 @@ extern void			 pf_tbladdr_remove(struct pf_addr_wrap *);
 extern void			 pf_tbladdr_copyout(struct pf_addr_wrap *);
 extern void			 pf_calc_skip_steps(struct pf_rulequeue *);
 extern vm_zone_t		 pf_src_tree_pl, pf_rule_pl;
-extern vm_zone_t		 pf_state_pl, pf_altq_pl, pf_pooladdr_pl;
+extern vm_zone_t		 pf_state_pl, pf_state_key_pl, pf_altq_pl,
+				    pf_pooladdr_pl;
 extern vm_zone_t		 pfr_ktable_pl, pfr_kentry_pl;
+extern vm_zone_t		 pfr_kentry_pl2;
 extern vm_zone_t		 pf_cache_pl, pf_cent_pl;
 extern vm_zone_t		 pf_state_scrub_pl;
 extern vm_zone_t		 pfi_addr_pl;
@@ -1626,10 +1730,10 @@ extern int			 pf_insert_src_node(struct pf_src_node **,
 				    struct pf_rule *, struct pf_addr *,
 				    sa_family_t);
 void				 pf_src_tree_remove_state(struct pf_state *);
-u_int32_t			 pf_state_hash(struct pf_state *s);
+u_int32_t			 pf_state_hash(struct pf_state_key *sk);
 extern struct pf_state		*pf_find_state_byid(struct pf_state_cmp *);
-extern struct pf_state		*pf_find_state_all(struct pf_state_cmp *key,
-				    u_int8_t tree, int *more);
+extern struct pf_state		*pf_find_state_all(struct pf_state_key_cmp *,
+				    u_int8_t, int *);
 extern void			 pf_print_state(struct pf_state *);
 extern void			 pf_print_flags(u_int8_t);
 extern u_int16_t		 pf_cksum_fixup(u_int16_t, u_int16_t, u_int16_t,
@@ -1653,7 +1757,7 @@ void	pf_poolmask(struct pf_addr *, struct pf_addr*,
 void	pf_addr_inc(struct pf_addr *, sa_family_t);
 #endif /* INET6 */
 
-u_int32_t	pf_new_isn(struct pf_state *); /* From FreeBSD */
+u_int32_t	pf_new_isn(struct pf_state_key *); /* From FreeBSD */
 void   *pf_pull_hdr(struct mbuf *, int, void *, int, u_short *, u_short *,
 	    sa_family_t);
 void	pf_change_a(void *, u_int16_t *, u_int32_t, u_int8_t);
@@ -1685,7 +1789,9 @@ u_int32_t
 void	pf_purge_expired_fragments(void);
 int	pf_routable(struct pf_addr *addr, sa_family_t af, struct pfi_kif *);
 int	pf_rtlabel_match(struct pf_addr *, sa_family_t, struct pf_addr_wrap *);
-int	pf_socket_lookup(int, struct pf_pdesc *, struct inpcb *);
+int	pf_socket_lookup(int, struct pf_pdesc *);
+struct pf_state_key *
+	pf_alloc_state_key(struct pf_state *);
 void	pfr_initialize(void);
 int	pfr_match_addr(struct pfr_ktable *, struct pf_addr *, sa_family_t);
 void	pfr_update_stats(struct pfr_ktable *, struct pf_addr *, sa_family_t,
@@ -1723,7 +1829,6 @@ int	pfr_ina_commit(struct pfr_table *, u_int32_t, int *, int *, int);
 int	pfr_ina_define(struct pfr_table *, struct pfr_addr *, int, int *,
 	    int *, u_int32_t, int);
 
-extern struct pfi_statehead	 pfi_statehead;
 extern struct pfi_kif		*pfi_all;
 
 void		 pfi_initialize(void);
@@ -1755,12 +1860,10 @@ u_int16_t	 pf_tagname2tag(char *);
 void		 pf_tag2tagname(u_int16_t, char *);
 void		 pf_tag_ref(u_int16_t);
 void		 pf_tag_unref(u_int16_t);
-int		 pf_tag_packet(struct mbuf *, struct pf_mtag *, int, int);
+int		 pf_tag_packet(struct mbuf *, int, int);
 u_int32_t	 pf_qname2qid(char *);
 void		 pf_qid2qname(u_int32_t, char *);
 void		 pf_qid_unref(u_int32_t);
-struct pf_mtag	*pf_find_mtag(struct mbuf *);
-struct pf_mtag	*pf_get_mtag(struct mbuf *);
 
 extern struct pf_status	pf_status;
 extern vm_zone_t	pf_frent_pl, pf_frag_pl;

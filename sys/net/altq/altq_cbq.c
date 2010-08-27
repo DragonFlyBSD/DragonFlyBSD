@@ -485,7 +485,6 @@ cbq_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 {
 	cbq_state_t	*cbqp = (cbq_state_t *)ifq->altq_disc;
 	struct rm_class	*cl;
-	struct pf_mtag *pf;
 	int len;
 
 	/* grab class set by classifier */
@@ -495,9 +494,8 @@ cbq_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 		m_freem(m);
 		return (ENOBUFS);
 	}
-
-	if ((pf = altq_find_pftag(m)) != NULL)
-		cl = clh_to_clp(cbqp, pf->qid);
+	if (m->m_pkthdr.fw_flags & PF_MBUF_STRUCTURE)
+		cl = clh_to_clp(cbqp, m->m_pkthdr.pf.qid);
 	else
 		cl = NULL;
 	if (cl == NULL) {

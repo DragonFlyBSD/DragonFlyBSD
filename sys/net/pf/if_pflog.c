@@ -1,7 +1,4 @@
-/*	$FreeBSD: src/sys/contrib/pf/net/if_pflog.c,v 1.9 2004/06/22 20:13:24 brooks Exp $	*/
-/*	$OpenBSD: if_pflog.c,v 1.11 2003/12/31 11:18:25 cedric Exp $	*/
-/*	$DragonFly: src/sys/net/pf/if_pflog.c,v 1.6 2006/12/22 23:44:57 swildner Exp $ */
-/*	$OpenBSD: if_pflog.c,v 1.22 2006/12/15 09:31:20 otto Exp $	*/
+/*	$OpenBSD: if_pflog.c,v 1.24 2007/05/26 17:13:30 jason Exp $	*/
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
  * Angelos D. Keromytis (kermit@csd.uch.gr) and 
@@ -92,7 +89,6 @@ int	pflogoutput(struct ifnet *, struct mbuf *, struct sockaddr *,
 int	pflogioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 void	pflogrtrequest(int, struct rtentry *, struct sockaddr *);
 void	pflogstart(struct ifnet *);
-
 int	pflog_clone_create(struct if_clone *, int, caddr_t);
 void pflog_clone_destroy(struct ifnet *);
 
@@ -109,7 +105,6 @@ pflogattach(int npflog)
 	LIST_INIT(&pflogif_list);
 	for (i = 0; i < PFLOGIFS_MAX; i++)
 		pflogifs[i] = NULL;
-	(void) pflog_clone_create(&pflog_cloner, 0, NULL);
 	if_clone_attach(&pflog_cloner);
 }
 
@@ -251,13 +246,12 @@ pflog_packet(struct pfi_kif *kif, struct mbuf *m, sa_family_t af, u_int8_t dir,
 	} else {
 		hdr.rulenr = htonl(am->nr);
 		hdr.subrulenr = htonl(rm->nr);
-		if (ruleset != NULL && ruleset->anchor != NULL) {
+		if (ruleset != NULL && ruleset->anchor != NULL)
 			strlcpy(hdr.ruleset, ruleset->anchor->name,
 			    sizeof(hdr.ruleset));
-		}
 	}
 	if (rm->log & PF_LOG_SOCKET_LOOKUP && !pd->lookup.done)
-		pd->lookup.done = pf_socket_lookup(dir, pd, NULL);
+		pd->lookup.done = pf_socket_lookup(dir, pd);
 	if (pd->lookup.done > 0) {
 		hdr.uid = pd->lookup.uid;
 		hdr.pid = pd->lookup.pid;

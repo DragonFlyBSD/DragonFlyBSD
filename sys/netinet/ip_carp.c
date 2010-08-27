@@ -2059,6 +2059,29 @@ carp_set_state(struct carp_softc *sc, int state)
 }
 
 void
+carp_group_demote_adj(struct ifnet *ifp, int adj)
+{
+	struct ifg_list	*ifgl;
+	int *dm;
+	
+	TAILQ_FOREACH(ifgl, &ifp->if_groups, ifgl_next) {
+		if (!strcmp(ifgl->ifgl_group->ifg_group, IFG_ALL))
+			continue;
+		dm = &ifgl->ifgl_group->ifg_carp_demoted;
+
+		if (*dm + adj >= 0)
+			*dm += adj;
+		else
+			*dm = 0;
+
+		if (adj > 0 && *dm == 1)
+			carp_send_ad_all();
+		CARP_LOG("%s demoted group %s to %d", ifp->if_xname,
+                    ifgl->ifgl_group->ifg_group, *dm);
+	}
+}
+
+void
 carp_carpdev_state(void *v)
 {
 	struct carp_if *cif = v;

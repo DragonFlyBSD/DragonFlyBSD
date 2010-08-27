@@ -81,6 +81,7 @@
 #define	SIOCSIFCAP	 _IOW('i', 30, struct ifreq)	/* set IF features */
 #define	SIOCGIFCAP	_IOWR('i', 31, struct ifreq)	/* get IF features */
 #define	SIOCGIFINDEX	_IOWR('i', 32, struct ifreq)	/* get IF index */
+#define	SIOCGIFDATA	_IOWR('i', 33, struct ifreq)	/* get if_data */
 #define	SIOCSIFNAME	_IOW('i', 40, struct ifreq)	/* set IF name */
 
 #define	SIOCADDMULTI	 _IOW('i', 49, struct ifreq)	/* add m'cast addr */

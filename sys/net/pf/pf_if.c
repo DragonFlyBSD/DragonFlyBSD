@@ -65,7 +65,6 @@
 #endif /* INET6 */
 
 struct pfi_kif		 *pfi_all = NULL;
-struct pfi_statehead	  pfi_statehead;
 vm_zone_t		  pfi_addr_pl;
 struct pfi_ifhead	  pfi_ifs;
 long			  pfi_update = 1;
@@ -107,7 +106,6 @@ pfi_initialize(void)
 	if (pfi_all != NULL)	/* already initialized */
 		return;
 
-	TAILQ_INIT(&pfi_statehead);
 	pfi_buffer_max = 64;
 	pfi_buffer = kmalloc(pfi_buffer_max * sizeof(*pfi_buffer),
 	    PFI_MTYPE, M_WAITOK);
@@ -229,8 +227,7 @@ pfi_kif_ref(struct pfi_kif *kif, enum pfi_kif_refs what)
 		kif->pfik_rules++;
 		break;
 	case PFI_KIF_REF_STATE:
-		if (!kif->pfik_states++)
-			TAILQ_INSERT_TAIL(&pfi_statehead, kif, pfik_w_states);
+		kif->pfik_states++;
 		break;
 	default:
 		panic("pfi_kif_ref with unknown type");
@@ -258,8 +255,7 @@ pfi_kif_unref(struct pfi_kif *kif, enum pfi_kif_refs what)
 			kprintf("pfi_kif_unref: state refcount <= 0\n");
 			return;
 		}
-		if (!--kif->pfik_states)
-			TAILQ_REMOVE(&pfi_statehead, kif, pfik_w_states);
+		kif->pfik_states--;
 		break;
 	default:
 		panic("pfi_kif_unref with unknown type");
