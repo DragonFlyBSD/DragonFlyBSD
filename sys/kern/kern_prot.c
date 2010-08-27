@@ -63,13 +63,9 @@
 
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
-#include <sys/mplock2.h>
 
 static MALLOC_DEFINE(M_CRED, "cred", "credentials");
 
-/*
- * MPALMOSTSAFE
- */
 int
 sys_getpid(struct getpid_args *uap)
 {
@@ -77,24 +73,21 @@ sys_getpid(struct getpid_args *uap)
 
 	uap->sysmsg_fds[0] = p->p_pid;
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)
-	get_mplock();
+	lwkt_gettoken(&proc_token);
 	uap->sysmsg_fds[1] = p->p_pptr->p_pid;
-	rel_mplock();
+	lwkt_reltoken(&proc_token);
 #endif
 	return (0);
 }
 
-/*
- * MPALMOSTSAFE
- */
 int
 sys_getppid(struct getppid_args *uap)
 {
 	struct proc *p = curproc;
 
-	get_mplock();
+	lwkt_gettoken(&proc_token);
 	uap->sysmsg_result = p->p_pptr->p_pid;
-	rel_mplock();
+	lwkt_reltoken(&proc_token);
 
 	return (0);
 }
@@ -127,8 +120,6 @@ sys_getpgrp(struct getpgrp_args *uap)
 
 /*
  * Get an arbitrary pid's process group id 
- *
- * MPALMOSTSAFE
  */
 int
 sys_getpgid(struct getpgid_args *uap)
@@ -137,7 +128,7 @@ sys_getpgid(struct getpgid_args *uap)
 	struct proc *pt;
 	int error;
 
-	get_mplock();
+	lwkt_gettoken(&proc_token);
 	error = 0;
 
 	if (uap->pid == 0) {
@@ -149,14 +140,12 @@ sys_getpgid(struct getpgid_args *uap)
 	}
 	if (error == 0)
 		uap->sysmsg_result = pt->p_pgrp->pg_id;
-	rel_mplock();
+	lwkt_reltoken(&proc_token);
 	return (error);
 }
 
 /*
  * Get an arbitrary pid's session id.
- *
- * MPALMOSTSAFE
  */
 int
 sys_getsid(struct getsid_args *uap)
@@ -165,7 +154,7 @@ sys_getsid(struct getsid_args *uap)
 	struct proc *pt;
 	int error;
 
-	get_mplock();
+	lwkt_gettoken(&proc_token);
 	error = 0;
 
 	if (uap->pid == 0) {
@@ -177,7 +166,7 @@ sys_getsid(struct getsid_args *uap)
 	}
 	if (error == 0)
 		uap->sysmsg_result = pt->p_session->s_sid;
-	rel_mplock();
+	lwkt_reltoken(&proc_token);
 	return (error);
 }
 
@@ -271,16 +260,13 @@ sys_getgroups(struct getgroups_args *uap)
 	return (error);
 }
 
-/*
- * MPALMOSTSAFE
- */
 int
 sys_setsid(struct setsid_args *uap)
 {
 	struct proc *p = curproc;
 	int error;
 
-	get_mplock();
+	lwkt_gettoken(&proc_token);
 	if (p->p_pgid == p->p_pid || pgfind(p->p_pid)) {
 		error = EPERM;
 	} else {
@@ -288,7 +274,7 @@ sys_setsid(struct setsid_args *uap)
 		uap->sysmsg_result = p->p_pid;
 		error = 0;
 	}
-	rel_mplock();
+	lwkt_reltoken(&proc_token);
 	return (error);
 }
 
@@ -304,8 +290,6 @@ sys_setsid(struct setsid_args *uap)
  * if pgid != pid
  * 	there must exist some pid in same session having pgid (EPERM)
  * pid must not be session leader (EPERM)
- *
- * MPALMOSTSAFE
  */
 int
 sys_setpgid(struct setpgid_args *uap)
@@ -318,7 +302,7 @@ sys_setpgid(struct setpgid_args *uap)
 	if (uap->pgid < 0)
 		return (EINVAL);
 
-	get_mplock();
+	lwkt_gettoken(&proc_token);
 	if (uap->pid != 0 && uap->pid != curp->p_pid) {
 		if ((targp = pfind(uap->pid)) == 0 || !inferior(targp)) {
 			error = ESRCH;
@@ -351,7 +335,7 @@ sys_setpgid(struct setpgid_args *uap)
 	}
 	error = enterpgrp(targp, uap->pgid, 0);
 done:
-	rel_mplock();
+	lwkt_reltoken(&proc_token);
 	return (error);
 }
 
@@ -367,9 +351,6 @@ done:
  */
 #define POSIX_APPENDIX_B_4_2_2
 
-/*
- * MPALMOSTSAFE
- */
 int
 sys_setuid(struct setuid_args *uap)
 {
@@ -378,7 +359,7 @@ sys_setuid(struct setuid_args *uap)
 	uid_t uid;
 	int error;
 
-	get_mplock();
+	lwkt_gettoken(&proc_token);
 	cr = p->p_ucred;
 
 	/*
@@ -452,13 +433,10 @@ sys_setuid(struct setuid_args *uap)
 	}
 	error = 0;
 done:
-	rel_mplock();
+	lwkt_reltoken(&proc_token);
 	return (error);
 }
 
-/*
- * MPALMOSTSAFE
- */
 int
 sys_seteuid(struct seteuid_args *uap)
 {
@@ -467,13 +445,13 @@ sys_seteuid(struct seteuid_args *uap)
 	uid_t euid;
 	int error;
 
-	get_mplock();
+	lwkt_gettoken(&proc_token);
 	cr = p->p_ucred;
 	euid = uap->euid;
 	if (euid != cr->cr_ruid &&		/* allow seteuid(getuid()) */
 	    euid != cr->cr_svuid &&		/* allow seteuid(saved uid) */
 	    (error = priv_check_cred(cr, PRIV_CRED_SETEUID, 0))) {
-		rel_mplock();
+		lwkt_reltoken(&proc_token);
 		return (error);
 	}
 
@@ -485,13 +463,10 @@ sys_seteuid(struct seteuid_args *uap)
 		change_euid(euid);
 		setsugid();
 	}
-	rel_mplock();
+	lwkt_reltoken(&proc_token);
 	return (0);
 }
 
-/*
- * MPALMOSTSAFE
- */
 int
 sys_setgid(struct setgid_args *uap)
 {
@@ -500,7 +475,7 @@ sys_setgid(struct setgid_args *uap)
 	gid_t gid;
 	int error;
 
-	get_mplock();
+	lwkt_gettoken(&proc_token);
 	cr = p->p_ucred;
 
 	/*
@@ -570,13 +545,10 @@ sys_setgid(struct setgid_args *uap)
 	}
 	error = 0;
 done:
-	rel_mplock();
+	lwkt_reltoken(&proc_token);
 	return (error);
 }
 
-/*
- * MPALMOSTSAFE
- */
 int
 sys_setegid(struct setegid_args *uap)
 {
@@ -585,7 +557,7 @@ sys_setegid(struct setegid_args *uap)
 	gid_t egid;
 	int error;
 
-	get_mplock();
+	lwkt_gettoken(&proc_token);
 	cr = p->p_ucred;
 	egid = uap->egid;
 	if (egid != cr->cr_rgid &&		/* allow setegid(getgid()) */
@@ -600,13 +572,10 @@ sys_setegid(struct setegid_args *uap)
 	}
 	error = 0;
 done:
-	rel_mplock();
+	lwkt_reltoken(&proc_token);
 	return (error);
 }
 
-/*
- * MPALMOSTSAFE
- */
 int
 sys_setgroups(struct setgroups_args *uap)
 {
@@ -615,7 +584,7 @@ sys_setgroups(struct setgroups_args *uap)
 	u_int ngrp;
 	int error;
 
-	get_mplock();
+	lwkt_gettoken(&proc_token);
 	cr = p->p_ucred;
 
 	if ((error = priv_check_cred(cr, PRIV_CRED_SETGROUPS, 0)))
@@ -648,13 +617,10 @@ sys_setgroups(struct setgroups_args *uap)
 	setsugid();
 	error = 0;
 done:
-	rel_mplock();
+	lwkt_reltoken(&proc_token);
 	return (error);
 }
 
-/*
- * MPALMOSTSAFE
- */
 int
 sys_setreuid(struct setreuid_args *uap)
 {
@@ -663,7 +629,7 @@ sys_setreuid(struct setreuid_args *uap)
 	uid_t ruid, euid;
 	int error;
 
-	get_mplock();
+	lwkt_gettoken(&proc_token);
 	cr = p->p_ucred;
 
 	ruid = uap->ruid;
@@ -691,13 +657,10 @@ sys_setreuid(struct setreuid_args *uap)
 	}
 	error = 0;
 done:
-	rel_mplock();
+	lwkt_reltoken(&proc_token);
 	return (error);
 }
 
-/*
- * MPALMOSTSAFE
- */
 int
 sys_setregid(struct setregid_args *uap)
 {
@@ -706,7 +669,7 @@ sys_setregid(struct setregid_args *uap)
 	gid_t rgid, egid;
 	int error;
 
-	get_mplock();
+	lwkt_gettoken(&proc_token);
 	cr = p->p_ucred;
 
 	rgid = uap->rgid;
@@ -736,15 +699,13 @@ sys_setregid(struct setregid_args *uap)
 	}
 	error = 0;
 done:
-	rel_mplock();
+	lwkt_reltoken(&proc_token);
 	return (error);
 }
 
 /*
  * setresuid(ruid, euid, suid) is like setreuid except control over the
  * saved uid is explicit.
- *
- * MPALMOSTSAFE
  */
 int
 sys_setresuid(struct setresuid_args *uap)
@@ -754,7 +715,7 @@ sys_setresuid(struct setresuid_args *uap)
 	uid_t ruid, euid, suid;
 	int error;
 
-	get_mplock();
+	lwkt_gettoken(&proc_token);
 	cr = p->p_ucred;
 
 	ruid = uap->ruid;
@@ -784,15 +745,13 @@ sys_setresuid(struct setresuid_args *uap)
 	}
 	error = 0;
 done:
-	rel_mplock();
+	lwkt_reltoken(&proc_token);
 	return (error);
 }
 
 /*
  * setresgid(rgid, egid, sgid) is like setregid except control over the
  * saved gid is explicit.
- *
- * MPALMOSTSAFE
  */
 int
 sys_setresgid(struct setresgid_args *uap)
@@ -802,7 +761,7 @@ sys_setresgid(struct setresgid_args *uap)
 	gid_t rgid, egid, sgid;
 	int error;
 
-	get_mplock();
+	lwkt_gettoken(&proc_token);
 	cr = p->p_ucred;
 	rgid = uap->rgid;
 	egid = uap->egid;
@@ -834,13 +793,10 @@ sys_setresgid(struct setresgid_args *uap)
 	}
 	error = 0;
 done:
-	rel_mplock();
+	lwkt_reltoken(&proc_token);
 	return (error);
 }
 
-/*
- * MPALMOSTSAFE
- */
 int
 sys_getresuid(struct getresuid_args *uap)
 {
@@ -848,7 +804,7 @@ sys_getresuid(struct getresuid_args *uap)
 	struct ucred *cr;
 	int error1 = 0, error2 = 0, error3 = 0;
 
-	get_mplock();
+	lwkt_gettoken(&proc_token);
 	cr = p->p_ucred;
 	if (uap->ruid)
 		error1 = copyout((caddr_t)&cr->cr_ruid,
@@ -859,7 +815,7 @@ sys_getresuid(struct getresuid_args *uap)
 	if (uap->suid)
 		error3 = copyout((caddr_t)&cr->cr_svuid,
 		    (caddr_t)uap->suid, sizeof(cr->cr_svuid));
-	rel_mplock();
+	lwkt_reltoken(&proc_token);
 	return error1 ? error1 : (error2 ? error2 : error3);
 }
 
@@ -1182,8 +1138,6 @@ cru2x(struct ucred *cr, struct xucred *xcr)
 
 /*
  * Get login name, if available.
- *
- * MPALMOSTSAFE
  */
 int
 sys_getlogin(struct getlogin_args *uap)
@@ -1194,10 +1148,10 @@ sys_getlogin(struct getlogin_args *uap)
 
 	if (uap->namelen > MAXLOGNAME)		/* namelen is unsigned */
 		uap->namelen = MAXLOGNAME;
-	get_mplock();
 	bzero(buf, sizeof(buf));
+	lwkt_gettoken(&proc_token);
 	bcopy(p->p_pgrp->pg_session->s_login, buf, uap->namelen);
-	rel_mplock();
+	lwkt_reltoken(&proc_token);
 
 	error = copyout(buf, uap->namebuf, uap->namelen);
 	return (error);
@@ -1205,8 +1159,6 @@ sys_getlogin(struct getlogin_args *uap)
 
 /*
  * Set login name.
- *
- * MPALMOSTSAFE
  */
 int
 sys_setlogin(struct setlogin_args *uap)
@@ -1227,9 +1179,9 @@ sys_setlogin(struct setlogin_args *uap)
 	if (error == ENAMETOOLONG)
 		error = EINVAL;
 	if (error == 0) {
-		get_mplock();
+		lwkt_gettoken(&proc_token);
 		memcpy(p->p_pgrp->pg_session->s_login, buf, sizeof(buf));
-		rel_mplock();
+		lwkt_reltoken(&proc_token);
 	}
 	return (error);
 }
