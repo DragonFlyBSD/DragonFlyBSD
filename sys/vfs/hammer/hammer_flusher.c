@@ -751,6 +751,9 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 * by a crash up until the next flush cycle due to the first_offset
 	 * in the volume header for the UNDO FIFO not being adjusted until
 	 * the following flush cycle.
+	 *
+	 * No io interlock is needed, bioops callbacks will not mess with
+	 * meta data buffers.
 	 */
 	count = 0;
 	while ((io = TAILQ_FIRST(&hmp->meta_list)) != NULL) {

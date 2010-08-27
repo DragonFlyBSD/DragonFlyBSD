@@ -66,7 +66,7 @@ struct bio {
 	struct bio	*bio_prev;	/* BIO stack */
 	struct bio	*bio_next;	/* BIO stack / cached translations */
 	struct buf	*bio_buf;   	/* High-level buffer back-pointer. */
-	biodone_t	*bio_done;   	/* Caller completion function */
+	biodone_t	*bio_done;   	/* MPSAFE caller completion function */
 	off_t		bio_offset;	/* Logical offset relative to device */
 	void		*bio_driver_info;
 	int		bio_flags;

@@ -153,6 +153,9 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 		 * Only changes to the header of the root volume
 		 * are automatically flushed to disk. For all
 		 * other volumes that we modify we do it here.
+		 *
+		 * No interlock is needed, volume buffers are not
+		 * messed with by bioops.
 		 */
 		if (volume != trans->rootvol && volume->io.modified) {
 			hammer_crc_set_volume(volume->ondisk);
@@ -373,6 +376,9 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 		 * Only changes to the header of the root volume
 		 * are automatically flushed to disk. For all
 		 * other volumes that we modify we do it here.
+		 *
+		 * No interlock is needed, volume buffers are not
+		 * messed with by bioops.
 		 */
 		if (volume != trans->rootvol && volume->io.modified) {
 			hammer_crc_set_volume(volume->ondisk);

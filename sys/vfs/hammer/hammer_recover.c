@@ -1441,6 +1441,9 @@ hammer_recover_flush_buffers(hammer_mount_t hmp, hammer_volume_t root_volume,
 
 	/*
 	 * Finalize the root volume header.
+	 *
+	 * No interlock is needed, volume buffers are not
+	 * messed with by bioops.
 	 */
 	if (root_volume && root_volume->io.recovered && final > 0) {
 		hammer_io_wait_all(hmp, "hmrflx", 1);
@@ -1470,6 +1473,10 @@ hammer_recover_flush_volume_callback(hammer_volume_t volume, void *data)
 	if (volume->io.recovered && volume != root_volume) {
 		volume->io.recovered = 0;
 		if (root_volume != NULL) {
+			/*
+			 * No interlock is needed, volume buffers are not
+			 * messed with by bioops.
+			 */
 			hammer_io_flush(&volume->io, 0);
 		} else {
 			hammer_io_clear_error(&volume->io);
@@ -1501,7 +1508,9 @@ hammer_recover_flush_buffer_callback(hammer_buffer_t buffer, void *data)
 			hammer_io_clear_error(&buffer->io);
 			hammer_io_clear_modify(&buffer->io, 1);
 		} else {
+			hammer_io_write_interlock(&buffer->io);
 			hammer_io_flush(&buffer->io, 0);
+			hammer_io_done_interlock(&buffer->io);
 		}
 		hammer_rel_buffer(buffer, 0);
 	} else {

@@ -152,10 +152,14 @@ vfs_sync_init(void)
 /*
  * Add an item to the syncer work queue.
  *
+ * WARNING: Cannot get vp->v_token here if not already held, we must
+ *	    depend on the syncer_token (which might already be held by
+ *	    the caller) to protect v_synclist and VONWORKLST.
+ *
  * MPSAFE
  */
 void
-vn_syncer_add_to_worklist(struct vnode *vp, int delay)
+vn_syncer_add(struct vnode *vp, int delay)
 {
 	int slot;
 
@@ -169,6 +173,25 @@ vn_syncer_add_to_worklist(struct vnode *vp, int delay)
 
 	LIST_INSERT_HEAD(&syncer_workitem_pending[slot], vp, v_synclist);
 	vsetflags(vp, VONWORKLST);
+
+	lwkt_reltoken(&syncer_token);
+}
+
+/*
+ * Removes the vnode from the syncer list.  Since we might block while
+ * acquiring the syncer_token we have to recheck conditions.
+ *
+ * vp->v_token held on call
+ */
+void
+vn_syncer_remove(struct vnode *vp)
+{
+	lwkt_gettoken(&syncer_token);
+
+	if ((vp->v_flag & VONWORKLST) && RB_EMPTY(&vp->v_rbdirty_tree)) {
+		vclrflags(vp, VONWORKLST);
+		LIST_REMOVE(vp, v_synclist);
+	}
 
 	lwkt_reltoken(&syncer_token);
 }
@@ -218,29 +241,28 @@ sched_sync(void)
 			}
 
 			/*
-			 * If the vnode is still at the head of the list
-			 * we were not able to completely flush it.  To
-			 * give other vnodes a fair shake we move it to
-			 * a later slot.
+			 * vp is stale but can still be used if we can
+			 * verify that it remains at the head of the list.
+			 * Be careful not to try to get vp->v_token as
+			 * vp can become stale if this blocks.
+			 *
+			 * If the vp is still at the head of the list were
+			 * unable to completely flush it and move it to
+			 * a later slot to give other vnodes a fair shot.
 			 *
 			 * Note that v_tag VT_VFS vnodes can remain on the
 			 * worklist with no dirty blocks, but sync_fsync()
 			 * moves it to a later slot so we will never see it
 			 * here.
+			 *
+			 * It is possible to race a vnode with no dirty
+			 * buffers being removed from the list.  If this
+			 * occurs we will move the vnode in the synclist
+			 * and then the other thread will remove it.  Do
+			 * not try to remove it here.
 			 */
-			if (LIST_FIRST(slp) == vp) {
-				lwkt_gettoken(&vp->v_token);
-				if (LIST_FIRST(slp) == vp) {
-					if (RB_EMPTY(&vp->v_rbdirty_tree) &&
-					    !vn_isdisk(vp, NULL)) {
-						panic("sched_sync: fsync "
-						      "failed vp %p tag %d",
-						      vp, vp->v_tag);
-					}
-					vn_syncer_add_to_worklist(vp, syncdelay);
-				}
-				lwkt_reltoken(&vp->v_token);
-			}
+			if (LIST_FIRST(slp) == vp)
+				vn_syncer_add(vp, syncdelay);
 		}
 		lwkt_reltoken(&syncer_token);
 
@@ -359,7 +381,7 @@ vfs_allocate_syncvnode(struct mount *mp)
 		}
 		next = start;
 	}
-	vn_syncer_add_to_worklist(vp, syncdelay > 0 ? next % syncdelay : 0);
+	vn_syncer_add(vp, syncdelay > 0 ? next % syncdelay : 0);
 
 	/*
 	 * The mnt_syncer field inherits the vnode reference, which is
@@ -397,7 +419,7 @@ sync_fsync(struct vop_fsync_args *ap)
 	/*
 	 * Move ourselves to the back of the sync list.
 	 */
-	vn_syncer_add_to_worklist(syncvp, syncdelay);
+	vn_syncer_add(syncvp, syncdelay);
 
 	/*
 	 * Walk the list of vnodes pushing all that are dirty and

@@ -69,6 +69,7 @@
 #include <machine/stdarg.h>
 #include <sys/thread2.h>
 #include <sys/buf2.h>
+#include <sys/mplock2.h>
 #else
 #include <setjmp.h>
 #include <stdarg.h>

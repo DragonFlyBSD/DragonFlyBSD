@@ -141,7 +141,6 @@
 #include <sys/devicestat.h>
 #include <sys/fcntl.h>
 #include <sys/vnode.h>
-#include <sys/buf2.h>
 #include <sys/ccdvar.h>
 
 #include <vm/vm_zone.h>
@@ -150,6 +149,8 @@
 #include <vfs/ufs/fs.h> 	/* XXX used only to get BBSIZE and SBSIZE */
 
 #include <sys/thread2.h>
+#include <sys/buf2.h>
+#include <sys/mplock2.h>
 
 #if defined(CCDDEBUG) && !defined(DEBUG)
 #define DEBUG
@@ -1184,6 +1185,7 @@ ccdintr(struct ccd_softc *cs, struct bio *bio)
 
 /*
  * Called at interrupt time.
+ *
  * Mark the component as done and if all components are done,
  * take a ccd interrupt.
  */
@@ -1202,6 +1204,7 @@ ccdiodone(struct bio *bio)
 	 */
 	clearbiocache(bio->bio_next);
 
+	get_mplock();
 	crit_enter();
 #ifdef DEBUG
 	if (ccddebug & CCDB_FOLLOW)
@@ -1272,6 +1275,7 @@ ccdiodone(struct bio *bio)
 				cbp->cb_mirror->cb_pflags |= CCDPF_MIRROR_DONE;
 				putccdbuf(cbp);
 				crit_exit();
+				rel_mplock();
 				return;
 			}
 		} else {
@@ -1290,6 +1294,7 @@ ccdiodone(struct bio *bio)
 					);
 					putccdbuf(cbp);
 					crit_exit();
+					rel_mplock();
 					return;
 				} else {
 					putccdbuf(cbp->cb_mirror);
@@ -1314,6 +1319,7 @@ ccdiodone(struct bio *bio)
 	if (obp->b_resid == 0)
 		ccdintr(&ccd_softc[unit], obio);
 	crit_exit();
+	rel_mplock();
 }
 
 static int

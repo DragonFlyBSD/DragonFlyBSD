@@ -177,6 +177,7 @@ struct buf {
 	int	b_kvasize;		/* size of kva for buffer */
 	int	b_dirtyoff;		/* Offset in buffer of dirty region. */
 	int	b_dirtyend;		/* Offset of end of dirty region. */
+	int	b_refs;			/* FINDBLK_REF / unrefblk() */
 	struct	xio b_xio;  		/* data buffer page list management */
 	struct  bio_ops *b_ops;		/* bio_ops used w/ b_dep */
 	struct	workhead b_dep;		/* List of filesystem dependencies. */
@@ -211,6 +212,7 @@ struct buf {
 
 #define FINDBLK_TEST	0x0010	/* test only, do not lock */
 #define FINDBLK_NBLOCK	0x0020	/* use non-blocking lock, can return NULL */
+#define FINDBLK_REF	0x0040	/* ref the buf to prevent reuse */
 
 /*
  * These flags are kept in b_flags.
@@ -375,8 +377,6 @@ struct cluster_save {
 extern int	nbuf;			/* The number of buffer headers */
 extern long	maxswzone;		/* Max KVA for swap structures */
 extern long	maxbcache;		/* Max KVA for buffer cache */
-extern int	runningbufspace;
-extern int	runningbufcount;
 extern int	hidirtybufspace;
 extern int      buf_maxio;              /* nominal maximum I/O for buffer */
 extern struct buf *buf;			/* The buffer headers. */
@@ -422,6 +422,7 @@ struct buf *findblk (struct vnode *, off_t, int);
 struct buf *getblk (struct vnode *, off_t, int, int, int);
 struct buf *getcacheblk (struct vnode *, off_t);
 struct buf *geteblk (int);
+void unrefblk(struct buf *bp);
 void regetblk(struct buf *bp);
 struct bio *push_bio(struct bio *);
 struct bio *pop_bio(struct bio *);
@@ -446,6 +447,7 @@ void	vunmapbuf (struct buf *);
 void	relpbuf (struct buf *, int *);
 void	brelvp (struct buf *);
 int	bgetvp (struct vnode *, struct buf *, int);
+void	bsetrunningbufspace(struct buf *, int);
 int	allocbuf (struct buf *bp, int size);
 int	scan_all_buffers (int (*)(struct buf *, void *), void *);
 void	reassignbuf (struct buf *);

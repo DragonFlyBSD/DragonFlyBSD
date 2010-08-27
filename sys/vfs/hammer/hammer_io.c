@@ -44,6 +44,10 @@
  * If the kernel tries to destroy a passively associated buf which we cannot
  * yet let go we set B_LOCKED in the buffer and then actively released it
  * later when we can.
+ *
+ * The io_token is required for anything which might race bioops and bio_done
+ * callbacks, with one exception: A successful hammer_try_interlock_norefs().
+ * the fs_token will be held in all other cases.
  */
 
 #include "hammer.h"
@@ -62,7 +66,6 @@ static int hammer_io_direct_uncache_callback(hammer_inode_t ip, void *data);
 static void hammer_io_set_modlist(struct hammer_io *io);
 static void hammer_io_flush_mark(hammer_volume_t volume);
 
-
 /*
  * Initialize a new, already-zero'd hammer_io structure, or reinitialize
  * an existing hammer_io structure which may have switched to another type.
@@ -77,21 +80,24 @@ hammer_io_init(hammer_io_t io, hammer_volume_t volume, enum hammer_io_type type)
 
 /*
  * Helper routine to disassociate a buffer cache buffer from an I/O
- * structure.  The io must be interlocked marked appropriately for
+ * structure.  The io must be interlocked and marked appropriately for
  * reclamation.
- *
- * The io may have 0 or 1 references depending on who called us.  The
- * caller is responsible for dealing with the refs.
  *
  * The io must be in a released state with the io->bp owned and
  * locked by the caller of this function.  When not called from an
  * io_deallocate() this cannot race an io_deallocate() since the
  * kernel would be unable to get the buffer lock in that case.
+ * (The released state in this case means we own the bp, not the
+ * hammer_io structure).
+ *
+ * The io may have 0 or 1 references depending on who called us.  The
+ * caller is responsible for dealing with the refs.
  *
  * This call can only be made when no action is required on the buffer.
  *
- * The caller must own the buffer and the IO must indicate that the
- * structure no longer owns it (io.released != 0).
+ * This function is guaranteed not to race against anything because we
+ * own both the io lock and the bp lock and are interlocked with no
+ * references.
  */
 static void
 hammer_io_disassociate(hammer_io_structure_t iou)
@@ -208,11 +214,28 @@ hammer_io_wait_all(hammer_mount_t hmp, const char *ident, int doflush)
 void
 hammer_io_clear_error(struct hammer_io *io)
 {
+	hammer_mount_t hmp = io->hmp;
+
+	lwkt_gettoken(&hmp->io_token);
 	if (io->ioerror) {
 		io->ioerror = 0;
 		hammer_rel(&io->lock);
 		KKASSERT(hammer_isactive(&io->lock));
 	}
+	lwkt_reltoken(&hmp->io_token);
+}
+
+void
+hammer_io_clear_error_noassert(struct hammer_io *io)
+{
+	hammer_mount_t hmp = io->hmp;
+
+	lwkt_gettoken(&hmp->io_token);
+	if (io->ioerror) {
+		io->ioerror = 0;
+		hammer_rel(&io->lock);
+	}
+	lwkt_reltoken(&hmp->io_token);
 }
 
 /*
@@ -238,9 +261,6 @@ hammer_io_notmeta(hammer_buffer_t buffer)
 		lwkt_reltoken(&hmp->io_token);
 	}
 }
-
-
-#define HAMMER_MAXRA	4
 
 /*
  * Load bp for a HAMMER structure.  The io must be exclusively locked by
@@ -435,7 +455,7 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 		iou->io.released = 0;
 		BUF_KERNPROC(bp);
 		iou->io.reclaim = 1;
-		iou->io.waitdep = 1;
+		iou->io.waitdep = 1;	/* XXX this is a fs_token field */
 		KKASSERT(hammer_isactive(&iou->io.lock) == 1);
 		hammer_rel_buffer(&iou->buffer, 0);
 		/*hammer_io_deallocate(bp);*/
@@ -618,11 +638,15 @@ hammer_io_release(struct hammer_io *io, int flush)
  * no other references to the structure exists other then ours.  This
  * routine is ONLY called when HAMMER believes it is safe to flush a
  * potentially modified buffer out.
+ *
+ * The locked io or io reference prevents a flush from being initiated
+ * by the kernel.
  */
 void
 hammer_io_flush(struct hammer_io *io, int reclaim)
 {
 	struct buf *bp;
+	hammer_mount_t hmp;
 
 	/*
 	 * Degenerate case - nothing to flush if nothing is dirty.
@@ -643,6 +667,7 @@ hammer_io_flush(struct hammer_io *io, int reclaim)
 	 *
 	 * The io_token should not be required here as only
 	 */
+	hmp = io->hmp;
 	bp = io->bp;
 	if (io->released) {
 		regetblk(bp);
@@ -692,9 +717,11 @@ hammer_io_flush(struct hammer_io *io, int reclaim)
 	 *	 update io_running_space.
 	 */
 	io->running = 1;
-	atomic_add_int(&io->hmp->io_running_space, io->bytes);
+	atomic_add_int(&hmp->io_running_space, io->bytes);
 	atomic_add_int(&hammer_count_io_running_write, io->bytes);
-	TAILQ_INSERT_TAIL(&io->hmp->iorun_list, io, iorun_entry);
+	lwkt_gettoken(&hmp->io_token);
+	TAILQ_INSERT_TAIL(&hmp->iorun_list, io, iorun_entry);
+	lwkt_reltoken(&hmp->io_token);
 	bawrite(bp);
 	hammer_io_flush_mark(io->volume);
 }
@@ -715,6 +742,8 @@ hammer_io_flush(struct hammer_io *io, int reclaim)
  * Mark a HAMMER structure as undergoing modification.  Meta-data buffers
  * are locked until the flusher can deal with them, pure data buffers
  * can be written out.
+ *
+ * The referenced io prevents races.
  */
 static
 void
@@ -736,16 +765,20 @@ hammer_io_modify(hammer_io_t io, int count)
 	if (io->modified && io->released == 0)
 		return;
 
+	/*
+	 * NOTE: It is important not to set the modified bit
+	 *	 until after we have acquired the bp or we risk
+	 *	 racing against checkwrite.
+	 */
 	hammer_lock_ex(&io->lock);
-	if (io->modified == 0) {
-		hammer_io_set_modlist(io);
-		io->modified = 1;
-	}
 	if (io->released) {
 		regetblk(io->bp);
 		BUF_KERNPROC(io->bp);
 		io->released = 0;
-		KKASSERT(io->modified != 0);
+	}
+	if (io->modified == 0) {
+		hammer_io_set_modlist(io);
+		io->modified = 1;
 	}
 	hammer_unlock(&io->lock);
 }
@@ -762,14 +795,28 @@ hammer_io_modify_done(hammer_io_t io)
 	}
 }
 
+/*
+ * The write interlock blocks other threads trying to modify a buffer
+ * (they block in hammer_io_modify()) after us, or blocks us while other
+ * threads are in the middle of modifying a buffer.
+ *
+ * The caller also has a ref on the io, however if we are not careful
+ * we will race bioops callbacks (checkwrite).  To deal with this
+ * we must at least acquire and release the io_token, and it is probably
+ * better to hold it through the setting of modify_refs.
+ */
 void
 hammer_io_write_interlock(hammer_io_t io)
 {
+	hammer_mount_t hmp = io->hmp;
+
+	lwkt_gettoken(&hmp->io_token);
 	while (io->modify_refs != 0) {
 		io->waitmod = 1;
 		tsleep(io, 0, "hmrmod", 0);
 	}
 	io->modify_refs = -1;
+	lwkt_reltoken(&hmp->io_token);
 }
 
 void
@@ -855,8 +902,19 @@ hammer_modify_buffer_done(hammer_buffer_t buffer)
 void
 hammer_io_clear_modify(struct hammer_io *io, int inval)
 {
+	hammer_mount_t hmp;
+
+	/*
+	 * io_token is needed to avoid races on mod_list
+	 */
 	if (io->modified == 0)
 		return;
+	hmp = io->hmp;
+	lwkt_gettoken(&hmp->io_token);
+	if (io->modified == 0) {
+		lwkt_reltoken(&hmp->io_token);
+		return;
+	}
 
 	/*
 	 * Take us off the mod-list and clear the modified bit.
@@ -870,6 +928,8 @@ hammer_io_clear_modify(struct hammer_io *io, int inval)
 	TAILQ_REMOVE(io->mod_list, io, mod_entry);
 	io->mod_list = NULL;
 	io->modified = 0;
+
+	lwkt_reltoken(&hmp->io_token);
 
 	/*
 	 * If this bit is not set there are no delayed adjustments.
@@ -932,6 +992,7 @@ hammer_io_set_modlist(struct hammer_io *io)
 {
 	struct hammer_mount *hmp = io->hmp;
 
+	lwkt_gettoken(&hmp->io_token);
 	KKASSERT(io->mod_list == NULL);
 
 	switch(io->type) {
@@ -956,6 +1017,7 @@ hammer_io_set_modlist(struct hammer_io *io)
 		break;
 	}
 	TAILQ_INSERT_TAIL(io->mod_list, io, mod_entry);
+	lwkt_reltoken(&hmp->io_token);
 }
 
 /************************************************************************
@@ -978,9 +1040,10 @@ hammer_io_start(struct buf *bp)
 /*
  * Post-IO completion kernel callback - MAY BE CALLED FROM INTERRUPT!
  *
- * NOTE: HAMMER may modify a buffer after initiating I/O.  The modified bit
- * may also be set if we were marking a cluster header open.  Only remove
- * our dependancy if the modified bit is clear.
+ * NOTE: HAMMER may modify a data buffer after we have initiated write
+ *	 I/O.
+ *
+ * NOTE: MPSAFE callback
  *
  * bioops callback - hold io_token
  */
@@ -1013,8 +1076,11 @@ hammer_io_complete(struct buf *bp)
 		 * away.
 		 */
 		if (bp->b_flags & B_ERROR) {
+			lwkt_gettoken(&hmp->fs_token);
 			hammer_critical_error(hmp, NULL, bp->b_error,
 					      "while flushing meta-data");
+			lwkt_reltoken(&hmp->fs_token);
+
 			switch(iou->io.type) {
 			case HAMMER_STRUCTURE_UNDO_BUFFER:
 				break;
@@ -1194,6 +1260,8 @@ hammer_io_checkread(struct buf *bp)
 }
 
 /*
+ * The kernel is asking us whether it can write out a dirty buffer or not.
+ *
  * bioops callback - hold io_token
  */
 static int
@@ -1219,8 +1287,30 @@ hammer_io_checkwrite(struct buf *bp)
 	}
 
 	/*
-	 * We can only clear the modified bit if the IO is not currently
-	 * undergoing modification.  Otherwise we may miss changes.
+	 * We have to be able to interlock the IO to safely modify any
+	 * of its fields without holding the fs_token.  If we can't lock
+	 * it then we are racing someone.
+	 *
+	 * Our ownership of the bp lock prevents the io from being ripped
+	 * out from under us.
+	 */
+	if (hammer_try_interlock_norefs(&io->lock) == 0) {
+		bp->b_flags |= B_LOCKED;
+		atomic_add_int(&hammer_count_io_locked, 1);
+		lwkt_reltoken(&hmp->io_token);
+		return(1);
+	}
+
+	/*
+	 * The modified bit must be cleared prior to the initiation of
+	 * any IO (returning 0 initiates the IO).  Because this is a
+	 * normal data buffer hammer_io_clear_modify() runs through a
+	 * simple degenerate case.
+	 *
+	 * Return 0 will cause the kernel to initiate the IO, and we
+	 * must normally clear the modified bit before we begin.  If
+	 * the io has modify_refs we do not clear the modified bit,
+	 * otherwise we may miss changes.
 	 *
 	 * Only data and undo buffers can reach here.  These buffers do
 	 * not have terminal crc functions but we temporarily reference
@@ -1243,6 +1333,7 @@ hammer_io_checkwrite(struct buf *bp)
 	atomic_add_int(&hammer_count_io_running_write, io->bytes);
 	TAILQ_INSERT_TAIL(&io->hmp->iorun_list, io, iorun_entry);
 
+	hammer_put_interlock(&io->lock, 1);
 	lwkt_reltoken(&hmp->io_token);
 
 	return(0);
@@ -1374,6 +1465,8 @@ done:
  *
  * MPSAFE - since we do not modify and hammer_records we do not need
  *	    io_token.
+ *
+ * NOTE: MPSAFE callback
  */
 static
 void
@@ -1401,7 +1494,7 @@ hammer_io_direct_read_complete(struct bio *nbio)
  * Write a buffer associated with a front-end vnode directly to the
  * disk media.  The bio may be issued asynchronously.
  *
- * The BIO is associated with the specified record and RECF_DIRECT_IO
+ * The BIO is associated with the specified record and RECG_DIRECT_IO
  * is set.  The recorded is added to its object.
  */
 int
@@ -1461,8 +1554,8 @@ hammer_io_direct_write(hammer_mount_t hmp, struct bio *bio,
 			nbio->bio_done = hammer_io_direct_write_complete;
 			nbio->bio_caller_info1.ptr = record;
 			record->zone2_offset = zone2_offset;
-			record->flags |= HAMMER_RECF_DIRECT_IO |
-					 HAMMER_RECF_DIRECT_INVAL;
+			record->gflags |= HAMMER_RECG_DIRECT_IO |
+					 HAMMER_RECG_DIRECT_INVAL;
 
 			/*
 			 * Third level bio - raw offset specific to the
@@ -1481,7 +1574,7 @@ hammer_io_direct_write(hammer_mount_t hmp, struct bio *bio,
 	} else {
 		/* 
 		 * Must fit in a standard HAMMER buffer.  In this case all
-		 * consumers use the HAMMER buffer system and RECF_DIRECT_IO
+		 * consumers use the HAMMER buffer system and RECG_DIRECT_IO
 		 * does not need to be set-up.
 		 */
 		KKASSERT(((buf_offset ^ (buf_offset + leaf->data_len - 1)) & ~HAMMER_BUFMASK64) == 0);
@@ -1525,6 +1618,9 @@ hammer_io_direct_write(hammer_mount_t hmp, struct bio *bio,
  * An I/O error forces the mount to read-only.  Data buffers
  * are not B_LOCKED like meta-data buffers are, so we have to
  * throw the buffer away to prevent the kernel from retrying.
+ *
+ * NOTE: MPSAFE callback, only modify fields we have explicit
+ *	 access to (the bp and the record->gflags).
  */
 static
 void
@@ -1544,21 +1640,23 @@ hammer_io_direct_write_complete(struct bio *nbio)
 	bp = nbio->bio_buf;
 	obio = pop_bio(nbio);
 	if (bp->b_flags & B_ERROR) {
+		lwkt_gettoken(&hmp->fs_token);
 		hammer_critical_error(hmp, record->ip,
 				      bp->b_error,
 				      "while writing bulk data");
+		lwkt_reltoken(&hmp->fs_token);
 		bp->b_flags |= B_INVAL;
 	}
 	biodone(obio);
 
-	KKASSERT(record->flags & HAMMER_RECF_DIRECT_IO);
-	if (record->flags & HAMMER_RECF_DIRECT_WAIT) {
-		record->flags &= ~(HAMMER_RECF_DIRECT_IO |
-				   HAMMER_RECF_DIRECT_WAIT);
+	KKASSERT(record->gflags & HAMMER_RECG_DIRECT_IO);
+	if (record->gflags & HAMMER_RECG_DIRECT_WAIT) {
+		record->gflags &= ~(HAMMER_RECG_DIRECT_IO |
+				    HAMMER_RECG_DIRECT_WAIT);
 		/* record can disappear once DIRECT_IO flag is cleared */
 		wakeup(&record->flags);
 	} else {
-		record->flags &= ~HAMMER_RECF_DIRECT_IO;
+		record->gflags &= ~HAMMER_RECG_DIRECT_IO;
 		/* record can disappear once DIRECT_IO flag is cleared */
 	}
 	lwkt_reltoken(&hmp->io_token);
@@ -1583,10 +1681,10 @@ hammer_io_direct_wait(hammer_record_t record)
 	/*
 	 * Wait for I/O to complete
 	 */
-	if (record->flags & HAMMER_RECF_DIRECT_IO) {
+	if (record->gflags & HAMMER_RECG_DIRECT_IO) {
 		lwkt_gettoken(&hmp->io_token);
-		while (record->flags & HAMMER_RECF_DIRECT_IO) {
-			record->flags |= HAMMER_RECF_DIRECT_WAIT;
+		while (record->gflags & HAMMER_RECG_DIRECT_IO) {
+			record->gflags |= HAMMER_RECG_DIRECT_WAIT;
 			tsleep(&record->flags, 0, "hmdiow", 0);
 		}
 		lwkt_reltoken(&hmp->io_token);
@@ -1602,12 +1700,12 @@ hammer_io_direct_wait(hammer_record_t record)
 	 * reservations ensure that all such buffers are removed before
 	 * an area can be reused.
 	 */
-	if (record->flags & HAMMER_RECF_DIRECT_INVAL) {
+	if (record->gflags & HAMMER_RECG_DIRECT_INVAL) {
 		KKASSERT(record->leaf.data_offset);
 		hammer_del_buffers(hmp, record->leaf.data_offset,
 				   record->zone2_offset, record->leaf.data_len,
 				   1);
-		record->flags &= ~HAMMER_RECF_DIRECT_INVAL;
+		record->gflags &= ~HAMMER_RECG_DIRECT_INVAL;
 	}
 }
 
@@ -1692,7 +1790,7 @@ hammer_io_direct_uncache_callback(hammer_inode_t ip, void *data)
 static void
 hammer_io_flush_mark(hammer_volume_t volume)
 {
-	volume->vol_flags |= HAMMER_VOLF_NEEDFLUSH;
+	atomic_set_int(&volume->vol_flags, HAMMER_VOLF_NEEDFLUSH);
 }
 
 /*
@@ -1707,7 +1805,8 @@ hammer_io_flush_sync(hammer_mount_t hmp)
 
 	RB_FOREACH(volume, hammer_vol_rb_tree, &hmp->rb_vols_root) {
 		if (volume->vol_flags & HAMMER_VOLF_NEEDFLUSH) {
-			volume->vol_flags &= ~HAMMER_VOLF_NEEDFLUSH;
+			atomic_clear_int(&volume->vol_flags,
+					 HAMMER_VOLF_NEEDFLUSH);
 			bp = getpbuf(NULL);
 			bp->b_bio1.bio_offset = 0;
 			bp->b_bufsize = 0;

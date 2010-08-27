@@ -59,6 +59,7 @@
 
 #include <sys/buf2.h>
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 #include <vm/vm_page2.h>
 
 #include "rpcv2.h"
@@ -1359,6 +1360,8 @@ nfs_readrpc_bio_done(nfsm_info_t info)
 
 	KKASSERT(info->state == NFSM_STATE_DONE);
 
+	get_mplock();
+
 	if (info->v3) {
 		ERROROUT(nfsm_postop_attr(info, info->vp, &attrflag,
 					 NFS_LATTR_NOSHRINK));
@@ -1397,6 +1400,7 @@ nfs_readrpc_bio_done(nfsm_info_t info)
 	bp->b_resid = 0;
 	/* bp->b_resid = bp->b_bcount - retlen; */
 nfsmout:
+	rel_mplock();
 	kfree(info, M_NFSREQ);
 	if (error) {
 		bp->b_error = error;
@@ -1508,6 +1512,8 @@ nfs_writerpc_bio_done(nfsm_info_t info)
 	int error;
 	int len = bp->b_resid;	/* b_resid was set to shortened length */
 	u_int32_t *tl;
+
+	get_mplock();
 
 	if (info->v3) {
 		/*
@@ -1624,6 +1630,7 @@ nfsmout:
 	}
 	if (info->info_writerpc.must_commit)
 		nfs_clearcommit(info->vp->v_mount);
+	rel_mplock();
 	kfree(info, M_NFSREQ);
 	if (error) {
 		bp->b_flags |= B_ERROR;
@@ -1689,6 +1696,8 @@ nfs_commitrpc_bio_done(nfsm_info_t info)
 	int wccflag = NFSV3_WCCRATTR;
 	int error = 0;
 
+	get_mplock();
+
 	ERROROUT(nfsm_wcc_data(info, info->vp, &wccflag));
 	if (error == 0) {
 		NULLOUT(tl = nfsm_dissect(info, NFSX_V3WRITEVERF));
@@ -1714,5 +1723,6 @@ nfsmout:
 	} else {
 		nfs_writerpc_bio(info->vp, bio);
 	}
+	rel_mplock();
 }
 

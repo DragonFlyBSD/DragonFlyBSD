@@ -508,6 +508,7 @@ struct hammer_record {
 	struct hammer_btree_leaf_elm	leaf;
 	union hammer_data_ondisk	*data;
 	int				flags;
+	int				gflags;
 	hammer_off_t			zone2_offset;	/* direct-write only */
 };
 
@@ -525,11 +526,14 @@ typedef struct hammer_record *hammer_record_t;
 #define HAMMER_RECF_INTERLOCK_BE	0x0020	/* backend interlock */
 #define HAMMER_RECF_WANTED		0x0040	/* wanted by the frontend */
 #define HAMMER_RECF_CONVERT_DELETE 	0x0100	/* special case */
-#define HAMMER_RECF_DIRECT_IO		0x0200	/* related direct I/O running*/
-#define HAMMER_RECF_DIRECT_WAIT		0x0400	/* related direct I/O running*/
-#define HAMMER_RECF_DIRECT_INVAL	0x0800	/* buffer alias invalidation */
 #define HAMMER_RECF_REDO		0x1000	/* REDO was laid down */
 
+/*
+ * These flags must be separate to deal with SMP races
+ */
+#define HAMMER_RECG_DIRECT_IO		0x0001	/* related direct I/O running*/
+#define HAMMER_RECG_DIRECT_WAIT		0x0002	/* related direct I/O running*/
+#define HAMMER_RECG_DIRECT_INVAL	0x0004	/* buffer alias invalidation */
 /*
  * hammer_create_at_cursor() and hammer_delete_at_cursor() flags.
  */
@@ -608,17 +612,33 @@ struct hammer_io {
 	int			bytes;	   /* buffer cache buffer size */
 	int			modify_refs;
 
-	u_int		modified : 1;	/* bp's data was modified */
-	u_int		released : 1;	/* bp released (w/ B_LOCKED set) */
+	/*
+	 * These can be modified at any time by the backend while holding
+	 * io_token, due to bio_done and hammer_io_complete() callbacks.
+	 */
 	u_int		running : 1;	/* bp write IO in progress */
 	u_int		waiting : 1;	/* someone is waiting on us */
+	u_int		ioerror : 1;	/* abort on io-error */
+	u_int		unusedA : 29;
+
+	/*
+	 * These can only be modified by the frontend while holding
+	 * fs_token, or by the backend while holding the io interlocked
+	 * with no references (which will block the frontend when it
+	 * tries to reference it).
+	 *
+	 * WARNING! SMP RACES will create havoc if the callbacks ever tried
+	 *	    to modify any of these outside the above restrictions.
+	 */
+	u_int		modified : 1;	/* bp's data was modified */
+	u_int		released : 1;	/* bp released (w/ B_LOCKED set) */
 	u_int		validated : 1;	/* ondisk has been validated */
 	u_int		waitdep : 1;	/* flush waits for dependancies */
 	u_int		recovered : 1;	/* has recovery ref */
 	u_int		waitmod : 1;	/* waiting for modify_refs */
 	u_int		reclaim : 1;	/* reclaim requested */
 	u_int		gencrc : 1;	/* crc needs to be generated */
-	u_int		ioerror : 1;	/* abort on io-error */
+	u_int		unusedB : 24;
 };
 
 typedef struct hammer_io *hammer_io_t;
@@ -1353,6 +1373,7 @@ void hammer_io_clear_modify(struct hammer_io *io, int inval);
 void hammer_io_clear_modlist(struct hammer_io *io);
 void hammer_io_flush_sync(hammer_mount_t hmp);
 void hammer_io_clear_error(struct hammer_io *io);
+void hammer_io_clear_error_noassert(struct hammer_io *io);
 void hammer_io_notmeta(hammer_buffer_t buffer);
 void hammer_io_limit_backlog(hammer_mount_t hmp);
 

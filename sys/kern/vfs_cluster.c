@@ -1015,11 +1015,7 @@ cluster_wbuild(struct vnode *vp, int blksize, off_t start_loffset, int bytes)
 		bp->b_cmd = BUF_CMD_WRITE;
 
 		vfs_busy_pages(vp, bp);
-		bp->b_runningbufspace = bp->b_bufsize;
-		if (bp->b_runningbufspace) {
-			runningbufspace += bp->b_runningbufspace;
-			++runningbufcount;
-		}
+		bsetrunningbufspace(bp, bp->b_bufsize);
 		BUF_KERNPROC(bp);
 		vn_strategy(vp, &bp->b_bio1);
 

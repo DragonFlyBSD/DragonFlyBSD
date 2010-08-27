@@ -1635,20 +1635,24 @@ retry_lookup:
 		 *	vm_page_wire() call.
 		 */
 		crit_enter();
+		lwkt_gettoken(&vm_token);
 		pg = vm_page_lookup(obj, pindex);
 		if (pg == NULL) {
 			pg = vm_page_alloc(obj, pindex, VM_ALLOC_NORMAL);
 			if (pg == NULL) {
 				vm_wait(0);
+				lwkt_reltoken(&vm_token);
 				crit_exit();
 				goto retry_lookup;
 			}
 			vm_page_wakeup(pg);
 		} else if (vm_page_sleep_busy(pg, TRUE, "sfpbsy")) {
+			lwkt_reltoken(&vm_token);
 			crit_exit();
 			goto retry_lookup;
 		}
 		vm_page_wire(pg);
+		lwkt_reltoken(&vm_token);
 		crit_exit();
 
 		/*

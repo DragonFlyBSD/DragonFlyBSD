@@ -1723,6 +1723,8 @@ devfs_spec_strategy(struct vop_strategy_args *ap)
 
 /*
  * Chunked up transfer completion routine - chain transfers until done
+ *
+ * NOTE: MPSAFE callback.
  */
 static
 void
@@ -1877,6 +1879,9 @@ devfs_spec_advlock(struct vop_advlock_args *ap)
 	return ((ap->a_flags & F_POSIX) ? EINVAL : EOPNOTSUPP);
 }
 
+/*
+ * NOTE: MPSAFE callback.
+ */
 static void
 devfs_spec_getpages_iodone(struct bio *bio)
 {
@@ -1940,11 +1945,7 @@ devfs_spec_getpages(struct vop_getpages_args *ap)
 	bp->b_cmd = BUF_CMD_READ;
 	bp->b_bcount = size;
 	bp->b_resid = 0;
-	bp->b_runningbufspace = size;
-	if (size) {
-		runningbufspace += bp->b_runningbufspace;
-		++runningbufcount;
-	}
+	bsetrunningbufspace(bp, size);
 
 	bp->b_bio1.bio_offset = offset;
 	bp->b_bio1.bio_done = devfs_spec_getpages_iodone;

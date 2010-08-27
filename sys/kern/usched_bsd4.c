@@ -291,7 +291,7 @@ bsd4_acquire_curproc(struct lwp *lp)
 		 * the run queue.  When we are reactivated we will have
 		 * another chance.
 		 */
-		lwkt_yield();
+		lwkt_switch();
 	} while (dd->uschedcp != lp);
 
 	crit_exit();
@@ -518,11 +518,6 @@ bsd4_setrunqueue(struct lwp *lp)
  * the BGL IS NOT HELD ON ENTRY.  This routine is called at ESTCPUFREQ on
  * each cpu.
  *
- * Because this is effectively a 'fast' interrupt, we cannot safely
- * use spinlocks unless gd_spinlock_rd is NULL and gd_spinlocks_wr is 0,
- * even if the spinlocks are 'non conflicting'.  This is due to the way
- * spinlock conflicts against cached read locks are handled.
- *
  * MPSAFE
  */
 static
@@ -557,15 +552,20 @@ bsd4_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 		--lp->lwp_origcpu;
 
 	/*
-	 * We can only safely call bsd4_resetpriority(), which uses spinlocks,
-	 * if we aren't interrupting a thread that is using spinlocks.
-	 * Otherwise we can deadlock with another cpu waiting for our read
-	 * spinlocks to clear.
+	 * Spinlocks also hold a critical section so there should not be
+	 * any active.
 	 */
-	if (gd->gd_spinlock_rd == NULL && gd->gd_spinlocks_wr == 0)
-		bsd4_resetpriority(lp);
-	else
-		need_user_resched();
+	KKASSERT(gd->gd_spinlock_rd == NULL);
+	KKASSERT(gd->gd_spinlocks_wr == 0);
+
+	bsd4_resetpriority(lp);
+#if 0
+	/*
+	* if we can't call bsd4_resetpriority for some reason we must call
+	 * need user_resched().
+	 */
+	need_user_resched();
+#endif
 }
 
 /*

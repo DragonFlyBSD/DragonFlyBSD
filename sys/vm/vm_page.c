@@ -422,7 +422,6 @@ vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 	/*
 	 * Insert it into the object.
 	 */
-	ASSERT_MP_LOCK_HELD(curthread);
 	vm_page_rb_tree_RB_INSERT(&object->rb_memq, m);
 	object->generation++;
 
@@ -478,7 +477,6 @@ vm_page_remove(vm_page_t m)
 	/*
 	 * Remove the page from the object and update the object.
 	 */
-	ASSERT_MP_LOCK_HELD(curthread);
 	vm_page_rb_tree_RB_REMOVE(&object->rb_memq, m);
 	object->resident_page_count--;
 	object->generation++;
@@ -492,7 +490,7 @@ vm_page_remove(vm_page_t m)
  * Locate and return the page at (object, pindex), or NULL if the
  * page could not be found.
  *
- * The caller must hold vm_token if non-blocking operation is desired.
+ * The caller must hold vm_token.
  */
 vm_page_t
 vm_page_lookup(vm_object_t object, vm_pindex_t pindex)
@@ -502,11 +500,9 @@ vm_page_lookup(vm_object_t object, vm_pindex_t pindex)
 	/*
 	 * Search the hash table for this object/offset pair
 	 */
-	ASSERT_MP_LOCK_HELD(curthread);
+	ASSERT_LWKT_TOKEN_HELD(&vm_token);
 	crit_enter();
-	lwkt_gettoken(&vm_token);
 	m = vm_page_rb_tree_RB_LOOKUP(&object->rb_memq, pindex);
-	lwkt_reltoken(&vm_token);
 	crit_exit();
 	KKASSERT(m == NULL || (m->object == object && m->pindex == pindex));
 	return(m);

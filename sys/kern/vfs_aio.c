@@ -2026,6 +2026,7 @@ aio_physwakeup(struct bio *bio)
 	struct aio_liojob *lj;
 
 	aiocbe = bio->bio_caller_info2.ptr;
+	get_mplock();
 
 	if (aiocbe) {
 		p = bio->bio_caller_info1.ptr;
@@ -2081,6 +2082,7 @@ aio_physwakeup(struct bio *bio)
 		}
 	}
 	biodone_sync(bio);
+	rel_mplock();
 }
 #endif /* VFS_AIO */
 

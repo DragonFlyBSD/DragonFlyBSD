@@ -676,6 +676,8 @@ ar_done(struct bio *bio)
     struct ar_softc *rdp = (struct ar_softc *)bio->bio_caller_info1.ptr;
     struct ar_buf *buf = (struct ar_buf *)bio->bio_buf;
 
+    get_mplock();
+
     switch (rdp->flags & (AR_F_RAID0 | AR_F_RAID1 | AR_F_SPAN)) {
     case AR_F_SPAN:
     case AR_F_RAID0:
@@ -708,6 +710,7 @@ ar_done(struct bio *bio)
 		    buf->bp.b_error = 0;
 		    dev_dstrategy(AD_SOFTC(rdp->disks[buf->drive])->dev,
 				  &buf->bp.b_bio1);
+		    rel_mplock();
 		    return;
 		}
 		else {
@@ -743,6 +746,7 @@ ar_done(struct bio *bio)
 	kprintf("ar%d: unknown array type in ar_done\n", rdp->lun);
     }
     kfree(buf, M_AR);
+    rel_mplock();
 }
 
 static void

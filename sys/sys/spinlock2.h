@@ -86,6 +86,8 @@ spin_trylock_wr(struct spinlock *mtx)
 	globaldata_t gd = mycpu;
 	int value;
 
+	++gd->gd_curthread->td_critcount;
+	cpu_ccfence();
 	++gd->gd_spinlocks_wr;
 	if ((value = atomic_swap_int(&mtx->lock, SPINLOCK_EXCLUSIVE)) != 0)
 		return (spin_trylock_wr_contested(gd, mtx, value));
@@ -99,6 +101,8 @@ spin_trylock_wr(struct spinlock *mtx)
 {
 	globaldata_t gd = mycpu;
 
+	++gd->gd_curthread->td_critcount;
+	cpu_ccfence();
 	++gd->gd_spinlocks_wr;
 	return (TRUE);
 }
@@ -116,6 +120,8 @@ spin_lock_wr_quick(globaldata_t gd, struct spinlock *mtx)
 	int value;
 #endif
 
+	++gd->gd_curthread->td_critcount;
+	cpu_ccfence();
 	++gd->gd_spinlocks_wr;
 #ifdef SMP
 	if ((value = atomic_swap_int(&mtx->lock, SPINLOCK_EXCLUSIVE)) != 0) {
@@ -131,41 +137,6 @@ spin_lock_wr(struct spinlock *mtx)
 {
 	spin_lock_wr_quick(mycpu, mtx);
 }
-
-#if 0
-
-/*
- * Upgrade a shared spinlock to exclusive.  Return TRUE if we were
- * able to upgrade without another exclusive holder getting in before
- * us, FALSE otherwise.
- */
-static __inline int
-spin_lock_upgrade(struct spinlock *mtx)
-{
-	globaldata_t gd = mycpu;
-#ifdef SMP
-	int value;
-#endif
-
-	++gd->gd_spinlocks_wr;
-#ifdef SMP
-	value = atomic_swap_int(&mtx->lock, SPINLOCK_EXCLUSIVE);
-	cpu_sfence();
-#endif
-	gd->gd_spinlock_rd = NULL;
-#ifdef SMP
-	value &= ~gd->gd_cpumask;
-	if (value) {
-		spin_lock_wr_contested(mtx, value);
-		if (value & SPINLOCK_EXCLUSIVE)
-			return (FALSE);
-		XXX regain original shared lock?
-	}
-	return (TRUE);
-#endif
-}
-
-#endif
 
 /*
  * Obtain a shared spinlock and return.  This is a critical code path.
@@ -188,6 +159,8 @@ spin_lock_upgrade(struct spinlock *mtx)
 static __inline void
 spin_lock_rd_quick(globaldata_t gd, struct spinlock *mtx)
 {
+	++gd->gd_curthread->td_critcount;
+	cpu_ccfence();
 	gd->gd_spinlock_rd = mtx;
 #ifdef SMP
 	cpu_mfence();
@@ -215,6 +188,8 @@ spin_unlock_wr_quick(globaldata_t gd, struct spinlock *mtx)
 #endif
 	KKASSERT(gd->gd_spinlocks_wr > 0);
 	--gd->gd_spinlocks_wr;
+	cpu_ccfence();
+	--gd->gd_curthread->td_critcount;
 }
 
 static __inline void
@@ -235,6 +210,8 @@ spin_unlock_rd_quick(globaldata_t gd, struct spinlock *mtx)
 {
 	KKASSERT(gd->gd_spinlock_rd == mtx);
 	gd->gd_spinlock_rd = NULL;
+	cpu_ccfence();
+	--gd->gd_curthread->td_critcount;
 }
 
 static __inline void

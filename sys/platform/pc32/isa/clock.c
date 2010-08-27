@@ -450,20 +450,26 @@ DODELAY(int n, int doswitch)
 #endif
 }
 
+/*
+ * DELAY() never switches
+ */
 void
 DELAY(int n)
 {
 	DODELAY(n, 0);
 }
 
+/*
+ * DRIVERSLEEP() does not switch if called with a spinlock held or
+ * from a hard interrupt.
+ */
 void
 DRIVERSLEEP(int usec)
 {
 	globaldata_t gd = mycpu;
 
 	if (gd->gd_intr_nesting_level || 
-	    gd->gd_spinlock_rd ||
-	    gd->gd_spinlocks_wr) {
+	    gd->gd_spinlock_rd != NULL || gd->gd_spinlocks_wr) {
 		DODELAY(usec, 0);
 	} else {
 		DODELAY(usec, 1);

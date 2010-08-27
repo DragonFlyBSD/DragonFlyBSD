@@ -600,13 +600,8 @@ exec_map_page(struct image_params *imgp, vm_pindex_t pageno,
 	if (pageno >= object->size)
 		return (EIO);
 
-	/*
-	 * We shouldn't need protection for vm_page_grab() but we certainly
-	 * need it for the lookup loop below (lookup/busy race), since
-	 * an interrupt can unbusy and free the page before our busy check.
-	 */
 	m = vm_page_grab(object, pageno, VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
-	crit_enter();
+
 	lwkt_gettoken(&vm_token);
 	while ((m->valid & VM_PAGE_BITS_ALL) != VM_PAGE_BITS_ALL) {
 		ma = m;
@@ -627,14 +622,12 @@ exec_map_page(struct image_params *imgp, vm_pindex_t pageno,
 				vnode_pager_freepage(m);
 			}
 			lwkt_reltoken(&vm_token);
-			crit_exit();
 			return EIO;
 		}
 	}
 	vm_page_hold(m);	/* requires vm_token to be held */
 	vm_page_wakeup(m);	/* unbusy the page */
 	lwkt_reltoken(&vm_token);
-	crit_exit();
 
 	*plwb = lwbuf_alloc(m);
 	*pdata = (void *)lwbuf_kva(*plwb);

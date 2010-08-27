@@ -136,6 +136,7 @@ spin_trylock_wr_contested(globaldata_t gd, struct spinlock *mtx, int value)
 			if (globaldata_find(bit)->gd_spinlock_rd == mtx) {
 				atomic_swap_int(&mtx->lock, value);
 				--gd->gd_spinlocks_wr;
+				--gd->gd_curthread->td_critcount;
 				return (FALSE);
 			}
 			value &= ~(1 << bit);
@@ -143,6 +144,7 @@ spin_trylock_wr_contested(globaldata_t gd, struct spinlock *mtx, int value)
 		return (TRUE);
 	}
 	--gd->gd_spinlocks_wr;
+	--gd->gd_curthread->td_critcount;
 	return (FALSE);
 }
 

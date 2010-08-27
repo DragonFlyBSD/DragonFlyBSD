@@ -1176,8 +1176,10 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	base_vmflags |= VM_ALLOC_SYSTEM;
     if (flags & M_USE_INTERRUPT_RESERVE)
         base_vmflags |= VM_ALLOC_INTERRUPT;
-    if ((flags & (M_RNOWAIT|M_WAITOK)) == 0)
-    	panic("kmem_slab_alloc: bad flags %08x (%p)", flags, ((int **)&size)[-1]);
+    if ((flags & (M_RNOWAIT|M_WAITOK)) == 0) {
+	panic("kmem_slab_alloc: bad flags %08x (%p)",
+	      flags, ((int **)&size)[-1]);
+    }
 
 
     /*
@@ -1217,7 +1219,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	    if (flags & M_WAITOK) {
 		if (td->td_preempted) {
 		    vm_map_unlock(&kernel_map);
-		    lwkt_yield();
+		    lwkt_switch();
 		    vm_map_lock(&kernel_map);
 		} else {
 		    vm_map_unlock(&kernel_map);
@@ -1233,9 +1235,11 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	     */
 	    while (i != 0) {
 		i -= PAGE_SIZE;
+		lwkt_gettoken(&vm_token);
 		m = vm_page_lookup(&kernel_object, OFF_TO_IDX(addr + i));
 		/* page should already be busy */
 		vm_page_free(m);
+		lwkt_reltoken(&vm_token);
 	    }
 	    vm_map_delete(&kernel_map, addr, addr + size, &count);
 	    vm_map_unlock(&kernel_map);
@@ -1260,6 +1264,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     /*
      * Enter the pages into the pmap and deal with PG_ZERO and M_ZERO.
      */
+    lwkt_gettoken(&vm_token);
     for (i = 0; i < size; i += PAGE_SIZE) {
 	vm_page_t m;
 
@@ -1275,6 +1280,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	KKASSERT(m->flags & (PG_WRITEABLE | PG_MAPPED));
 	vm_page_flag_set(m, PG_REFERENCED);
     }
+    lwkt_reltoken(&vm_token);
     vm_map_unlock(&kernel_map);
     vm_map_entry_release(count);
     lwkt_reltoken(&vm_token);

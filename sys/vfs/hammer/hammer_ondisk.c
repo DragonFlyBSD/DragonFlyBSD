@@ -289,10 +289,8 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 	/*
 	 * Clean up the persistent ref ioerror might have on the volume
 	 */
-	if (volume->io.ioerror) {
-		volume->io.ioerror = 0;
-		hammer_rel(&volume->io.lock);
-	}
+	if (volume->io.ioerror)
+		hammer_io_clear_error_noassert(&volume->io);
 
 	/*
 	 * This should release the bp.  Releasing the volume with flush set
@@ -877,8 +875,7 @@ hammer_unload_buffer(hammer_buffer_t buffer, void *data)
 	 * and acquire a ref.  Expect a 0->1 transition.
 	 */
 	if (buffer->io.ioerror) {
-		buffer->io.ioerror = 0;
-		hammer_rel(&buffer->io.lock);
+		hammer_io_clear_error_noassert(&buffer->io);
 		--hammer_count_refedbufs;
 	}
 	hammer_ref_interlock_true(&buffer->io.lock);

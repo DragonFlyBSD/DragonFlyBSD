@@ -595,7 +595,8 @@ void	vfs_lock_init(void);
 void	vfs_sync_init(void);
 void	mount_init(struct mount *mp);
 
-void	vn_syncer_add_to_worklist(struct vnode *, int);
+void	vn_syncer_add(struct vnode *, int);
+void	vn_syncer_remove(struct vnode *);
 void	vnlru_proc_wait(void);
 
 extern	struct vop_ops default_vnode_vops;

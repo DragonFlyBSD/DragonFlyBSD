@@ -425,8 +425,8 @@ hammer_rel_mem_record(struct hammer_record *record)
 			 * we can destroy the record because the bio may
 			 * have a reference to it.
 			 */
-			if (record->flags & 
-			   (HAMMER_RECF_DIRECT_IO | HAMMER_RECF_DIRECT_INVAL)) {
+			if (record->gflags &
+			   (HAMMER_RECG_DIRECT_IO | HAMMER_RECG_DIRECT_INVAL)) {
 				hammer_io_direct_wait(record);
 			}
 
@@ -1129,7 +1129,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	 * Any direct-write related to the record must complete before we
 	 * can sync the record to the on-disk media.
 	 */
-	if (record->flags & (HAMMER_RECF_DIRECT_IO | HAMMER_RECF_DIRECT_INVAL))
+	if (record->gflags & (HAMMER_RECG_DIRECT_IO | HAMMER_RECG_DIRECT_INVAL))
 		hammer_io_direct_wait(record);
 
 	/*

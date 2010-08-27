@@ -1125,10 +1125,10 @@ swap_chain_iodone(struct bio *biox)
         KKASSERT(bp != NULL);
 	if (bufx->b_flags & B_ERROR) {
 		atomic_set_int(&bufx->b_flags, B_ERROR);
-		bp->b_error = bufx->b_error;
+		bp->b_error = bufx->b_error;	/* race ok */
 	} else if (bufx->b_resid != 0) {
 		atomic_set_int(&bufx->b_flags, B_ERROR);
-		bp->b_error = EINVAL;
+		bp->b_error = EINVAL;		/* race ok */
 	} else {
 		atomic_subtract_int(&bp->b_resid, bufx->b_bcount);
 	}

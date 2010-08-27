@@ -657,7 +657,7 @@ vfsync(struct vnode *vp, int waitfor, int passes,
 		if (error == 0)
 			vp->v_lazyw = 0;
 		else if (!RB_EMPTY(&vp->v_rbdirty_tree))
-			vn_syncer_add_to_worklist(vp, 1);
+			vn_syncer_add(vp, 1);
 		error = 0;
 		break;
 	case MNT_NOWAIT:
@@ -887,6 +887,8 @@ bgetvp(struct vnode *vp, struct buf *bp, int testsize)
 
 /*
  * Disassociate a buffer from a vnode.
+ *
+ * MPSAFE
  */
 void
 brelvp(struct buf *bp)
@@ -911,11 +913,10 @@ brelvp(struct buf *bp)
 		buf_rb_hash_RB_REMOVE(&vp->v_rbhash_tree, bp);
 		bp->b_flags &= ~B_HASHED;
 	}
-	if ((vp->v_flag & VONWORKLST) && RB_EMPTY(&vp->v_rbdirty_tree)) {
-		vclrflags(vp, VONWORKLST);
-		LIST_REMOVE(vp, v_synclist);
-	}
+	if ((vp->v_flag & VONWORKLST) && RB_EMPTY(&vp->v_rbdirty_tree))
+		vn_syncer_remove(vp);
 	bp->b_vp = NULL;
+
 	lwkt_reltoken(&vp->v_token);
 
 	vdrop(vp);
@@ -975,7 +976,7 @@ reassignbuf(struct buf *bp)
 			default:
 				delay = filedelay;
 			}
-			vn_syncer_add_to_worklist(vp, delay);
+			vn_syncer_add(vp, delay);
 		}
 	} else {
 		/*
@@ -995,8 +996,7 @@ reassignbuf(struct buf *bp)
 		}
 		if ((vp->v_flag & VONWORKLST) &&
 		    RB_EMPTY(&vp->v_rbdirty_tree)) {
-			vclrflags(vp, VONWORKLST);
-			LIST_REMOVE(vp, v_synclist);
+			vn_syncer_remove(vp);
 		}
 	}
 	lwkt_reltoken(&vp->v_token);

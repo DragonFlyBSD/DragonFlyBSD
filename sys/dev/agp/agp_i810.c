@@ -1008,8 +1008,11 @@ agp_i810_free_memory(device_t dev, struct agp_memory *mem)
 			/*
 			 * Unwire the page which we wired in alloc_memory.
 			 */
-			vm_page_t m = vm_page_lookup(mem->am_obj, 0);
+			vm_page_t m;
+			lwkt_gettoken(&vm_token);
+			m = vm_page_lookup(mem->am_obj, 0);
 			vm_page_unwire(m, 0);
+			lwkt_reltoken(&vm_token);
 		} else {
 			contigfree(sc->argb_cursor, mem->am_size, M_AGP);
 			sc->argb_cursor = NULL;
