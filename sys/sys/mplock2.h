@@ -27,11 +27,11 @@ void _try_mplock_contested(const char *file, int line);
 void _cpu_try_mplock_contested(const char *file, int line);
 void _rel_mplock_contested(void);
 void cpu_get_initial_mplock(void);
-void cpu_mplock_contested(void);
+void handle_cpu_contention_mask(void);
 void yield_mplock(struct thread *td);
 
 extern int mp_lock;
-extern int mp_lock_contention_mask;
+extern int cpu_contention_mask;
 extern const char *mp_lock_holder_file;
 extern int mp_lock_holder_line;
 
@@ -153,9 +153,9 @@ cpu_try_mplock_debug(const char *file, int line)
  */
 static __inline
 void
-set_mplock_contention_mask(globaldata_t gd)
+set_cpu_contention_mask(globaldata_t gd)
 {
-	atomic_set_int(&mp_lock_contention_mask, gd->gd_cpumask);
+	atomic_set_int(&cpu_contention_mask, gd->gd_cpumask);
 }
 
 /*
@@ -167,9 +167,9 @@ set_mplock_contention_mask(globaldata_t gd)
  */
 static __inline
 void
-clr_mplock_contention_mask(globaldata_t gd)
+clr_cpu_contention_mask(globaldata_t gd)
 {
-	atomic_clear_int(&mp_lock_contention_mask, gd->gd_cpumask);
+	atomic_clear_int(&cpu_contention_mask, gd->gd_cpumask);
 }
 
 static __inline
@@ -187,15 +187,17 @@ owner_mplock(void)
  *	    end up clearing someone else's lock.
  */
 static __inline void
-cpu_rel_mplock(void)
+cpu_rel_mplock(int cpu)
 {
-	mp_lock = -1;
+	(void)atomic_cmpset_int(&mp_lock, cpu, -1);
 }
 
-#define MP_LOCK_HELD()		\
-	(mp_lock == mycpu->gd_cpuid)
-#define ASSERT_MP_LOCK_HELD(td)	\
-	KASSERT(MP_LOCK_HELD(), ("MP_LOCK_HELD: Not held thread %p", td))
+#define MP_LOCK_HELD(gd)			\
+	(mp_lock == gd->gd_cpuid)
+
+#define ASSERT_MP_LOCK_HELD(td)			\
+	KASSERT(MP_LOCK_HELD(td->td_gd),	\
+		("MP_LOCK_HELD: Not held thread %p", td))
 
 #else
 
@@ -206,7 +208,7 @@ cpu_rel_mplock(void)
 #define	rel_mplock()
 #define try_mplock()		1
 #define owner_mplock()		0
-#define MP_LOCK_HELD()		(!0)
+#define MP_LOCK_HELD(gd)	(!0)
 #define ASSERT_MP_LOCK_HELD(td)
 
 #endif

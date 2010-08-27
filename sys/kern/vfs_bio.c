@@ -1163,8 +1163,10 @@ bdirty(struct buf *bp)
 	bp->b_flags &= ~B_RELBUF;
 
 	if ((bp->b_flags & B_DELWRI) == 0) {
+		lwkt_gettoken(&bp->b_vp->v_token);
 		bp->b_flags |= B_DELWRI;
 		reassignbuf(bp);
+		lwkt_reltoken(&bp->b_vp->v_token);
 
 		spin_lock_wr(&bufcspin);
 		++dirtybufcount;
@@ -1215,8 +1217,10 @@ void
 bundirty(struct buf *bp)
 {
 	if (bp->b_flags & B_DELWRI) {
+		lwkt_gettoken(&bp->b_vp->v_token);
 		bp->b_flags &= ~B_DELWRI;
 		reassignbuf(bp);
+		lwkt_reltoken(&bp->b_vp->v_token);
 
 		spin_lock_wr(&bufcspin);
 		--dirtybufcount;
@@ -2535,6 +2539,9 @@ buf_daemon_hw(void)
  *	B_RELBUF may only be set by VFSs.  We do set B_AGE to indicate
  *	that we really want to try to get the buffer out and reuse it
  *	due to the write load on the machine.
+ *
+ *	We must lock the buffer in order to check its validity before we
+ *	can mess with its contents.  bufqspin isn't enough.
  */
 static int
 flushbufqueues(bufq_type_t q)
@@ -2548,65 +2555,72 @@ flushbufqueues(bufq_type_t q)
 
 	bp = TAILQ_FIRST(&bufqueues[q]);
 	while (bp) {
-		KASSERT((bp->b_flags & B_DELWRI),
-			("unexpected clean buffer %p", bp));
-
-		if (bp->b_flags & B_DELWRI) {
-			if (bp->b_flags & B_INVAL) {
-				if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) != 0) {
-					bp = TAILQ_NEXT(bp, b_freelist);
-					continue;
-				}
-				_bremfree(bp);
-				spin_unlock_wr(&bufqspin);
-				spun = 0;
-				brelse(bp);
-				++r;
-				break;
-			}
-			if (LIST_FIRST(&bp->b_dep) != NULL &&
-			    (bp->b_flags & B_DEFERRED) == 0 &&
-			    buf_countdeps(bp, 0)) {
-				TAILQ_REMOVE(&bufqueues[q], bp, b_freelist);
-				TAILQ_INSERT_TAIL(&bufqueues[q], bp,
-						  b_freelist);
-				bp->b_flags |= B_DEFERRED;
-				bp = TAILQ_FIRST(&bufqueues[q]);
-				continue;
-			}
-
-			/*
-			 * Only write it out if we can successfully lock
-			 * it.  If the buffer has a dependancy,
-			 * buf_checkwrite must also return 0 for us to
-			 * be able to initate the write.
-			 *
-			 * If the buffer is flagged B_ERROR it may be
-			 * requeued over and over again, we try to
-			 * avoid a live lock.
-			 *
-			 * NOTE: buf_checkwrite is MPSAFE.
-			 */
-			if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) == 0) {
-				spin_unlock_wr(&bufqspin);
-				spun = 0;
-				if (LIST_FIRST(&bp->b_dep) != NULL &&
-				    buf_checkwrite(bp)) {
-					bremfree(bp);
-					brelse(bp);
-				} else if (bp->b_flags & B_ERROR) {
-					tsleep(bp, 0, "bioer", 1);
-					bp->b_flags &= ~B_AGE;
-					vfs_bio_awrite(bp);
-				} else {
-					bp->b_flags |= B_AGE;
-					vfs_bio_awrite(bp);
-				}
-				++r;
-				break;
-			}
+		if ((bp->b_flags & B_DELWRI) == 0) {
+			kprintf("Unexpected clean buffer %p\n", bp);
+			bp = TAILQ_NEXT(bp, b_freelist);
+			continue;
 		}
-		bp = TAILQ_NEXT(bp, b_freelist);
+		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT)) {
+			bp = TAILQ_NEXT(bp, b_freelist);
+			continue;
+		}
+		KKASSERT(bp->b_qindex == q);
+
+		/*
+		 * Must recheck B_DELWRI after successfully locking
+		 * the buffer.
+		 */
+		if ((bp->b_flags & B_DELWRI) == 0) {
+			BUF_UNLOCK(bp);
+			bp = TAILQ_NEXT(bp, b_freelist);
+			continue;
+		}
+
+		if (bp->b_flags & B_INVAL) {
+			_bremfree(bp);
+			spin_unlock_wr(&bufqspin);
+			spun = 0;
+			brelse(bp);
+			++r;
+			break;
+		}
+
+		if (LIST_FIRST(&bp->b_dep) != NULL &&
+		    (bp->b_flags & B_DEFERRED) == 0 &&
+		    buf_countdeps(bp, 0)) {
+			TAILQ_REMOVE(&bufqueues[q], bp, b_freelist);
+			TAILQ_INSERT_TAIL(&bufqueues[q], bp, b_freelist);
+			bp->b_flags |= B_DEFERRED;
+			BUF_UNLOCK(bp);
+			bp = TAILQ_FIRST(&bufqueues[q]);
+			continue;
+		}
+
+		/*
+		 * If the buffer has a dependancy, buf_checkwrite() must
+		 * also return 0 for us to be able to initate the write.
+		 *
+		 * If the buffer is flagged B_ERROR it may be requeued
+		 * over and over again, we try to avoid a live lock.
+		 *
+		 * NOTE: buf_checkwrite is MPSAFE.
+		 */
+		spin_unlock_wr(&bufqspin);
+		spun = 0;
+
+		if (LIST_FIRST(&bp->b_dep) != NULL && buf_checkwrite(bp)) {
+			bremfree(bp);
+			brelse(bp);
+		} else if (bp->b_flags & B_ERROR) {
+			tsleep(bp, 0, "bioer", 1);
+			bp->b_flags &= ~B_AGE;
+			vfs_bio_awrite(bp);
+		} else {
+			bp->b_flags |= B_AGE;
+			vfs_bio_awrite(bp);
+		}
+		++r;
+		break;
 	}
 	if (spun)
 		spin_unlock_wr(&bufqspin);

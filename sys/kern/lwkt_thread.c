@@ -576,7 +576,7 @@ lwkt_switch(void)
      * (but, of course, another cpu may own or release the lock so the
      * actual value of mp_lock is not stable).
      */
-    mpheld = MP_LOCK_HELD();
+    mpheld = MP_LOCK_HELD(gd);
 #ifdef	INVARIANTS
     if (td->td_cscount) {
 	kprintf("Diagnostic: attempt to switch while mastering cpusync: %p\n",
@@ -656,10 +656,15 @@ lwkt_switch(void)
 		if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
 		    panic("Idle thread %p was holding the BGL!", ntd);
 		if (mpheld == 0) {
+		    set_cpu_contention_mask(gd);
+		    handle_cpu_contention_mask();
+		    cpu_try_mplock();
+		    mpheld = MP_LOCK_HELD(gd);
 		    cpu_pause();
 		    continue;
 		}
 	    }
+	    clr_cpu_contention_mask(gd);
 #endif
 	    cpu_time.cp_msg[0] = 0;
 	    cpu_time.cp_stallpc = 0;
@@ -679,7 +684,7 @@ lwkt_switch(void)
 	    (!TD_TOKS_HELD(ntd) || lwkt_getalltokens(ntd, &lmsg, &laddr))
 	) {
 #ifdef SMP
-	    clr_mplock_contention_mask(gd);
+	    clr_cpu_contention_mask(gd);
 #endif
 	    goto havethread;
 	}
@@ -688,8 +693,10 @@ lwkt_switch(void)
 	laddr = NULL;
 
 #ifdef SMP
+	if (ntd->td_fairq_accum >= 0)
+		set_cpu_contention_mask(gd);
 	/* Reload mpheld (it become stale after mplock/token ops) */
-	mpheld = MP_LOCK_HELD();
+	mpheld = MP_LOCK_HELD(gd);
 	if (ntd->td_mpcount && mpheld == 0) {
 	    lmsg = "mplock";
 	    laddr = ntd->td_mplock_stallpc;
@@ -720,11 +727,19 @@ lwkt_switch(void)
 	     * nlast keeps track of the last element prior to any moves.
 	     */
 	    if (ntd->td_fairq_accum < 0) {
-		xtd = TAILQ_NEXT(ntd, td_threadq);
 		lwkt_fairq_accumulate(gd, ntd);
 		didaccumulate = 1;
+
+		/*
+		 * Move to end
+		 */
+		xtd = TAILQ_NEXT(ntd, td_threadq);
 		TAILQ_REMOVE(&gd->gd_tdrunq, ntd, td_threadq);
 		TAILQ_INSERT_TAIL(&gd->gd_tdrunq, ntd, td_threadq);
+
+		/*
+		 * Set terminal element (nlast)
+		 */
 		if (nlast == NULL) {
 		    nlast = ntd;
 		    if (xtd == NULL)
@@ -747,13 +762,15 @@ lwkt_switch(void)
 		ntd = &gd->gd_idlethread;
 		ntd->td_flags |= TDF_IDLE_NOHLT;
 #ifdef SMP
-		set_mplock_contention_mask(gd);
-		cpu_mplock_contested();
 		if (ntd->td_mpcount) {
-		    mpheld = MP_LOCK_HELD();
+		    mpheld = MP_LOCK_HELD(gd);
 		    if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
 			panic("Idle thread %p was holding the BGL!", ntd);
 		    if (mpheld == 0) {
+			set_cpu_contention_mask(gd);
+			handle_cpu_contention_mask();
+			cpu_try_mplock();
+			mpheld = MP_LOCK_HELD(gd);
 			cpu_pause();
 			break;		/* try again from the top, almost */
 		    }
@@ -787,22 +804,48 @@ lwkt_switch(void)
 		(!TD_TOKS_HELD(ntd) || lwkt_getalltokens(ntd, &lmsg, &laddr))
 	    ) {
 #ifdef SMP
-		    clr_mplock_contention_mask(gd);
+		    clr_cpu_contention_mask(gd);
 #endif
 		    goto havethread;
 	    }
 #ifdef SMP
-	    /* Reload mpheld (it become stale after mplock/token ops) */
-	    mpheld = MP_LOCK_HELD();
+	    if (ntd->td_fairq_accum >= 0)
+		    set_cpu_contention_mask(gd);
+	    /*
+	     * Reload mpheld (it become stale after mplock/token ops).
+	     */
+	    mpheld = MP_LOCK_HELD(gd);
 	    if (ntd->td_mpcount && mpheld == 0) {
 		lmsg = "mplock";
 		laddr = ntd->td_mplock_stallpc;
 	    }
-
 	    if (ntd->td_pri >= TDPRI_KERN_LPSCHED && ntd->td_fairq_accum >= 0)
 		nquserok = 0;
 #endif
 	}
+
+	/*
+	 * All threads exhausted but we can loop due to a negative
+	 * accumulator.
+	 *
+	 * While we are looping in the scheduler be sure to service
+	 * any interrupts which were made pending due to our critical
+	 * section, otherwise we could livelock (e.g.) IPIs.
+	 *
+	 * NOTE: splz can enter and exit the mplock so mpheld is
+	 * stale after this call.
+	 */
+	splz_check();
+
+#ifdef SMP
+	/*
+	 * Our mplock can be cached and cause other cpus to livelock
+	 * if we loop due to e.g. not being able to acquire tokens.
+	 */
+	if (MP_LOCK_HELD(gd))
+	    cpu_rel_mplock(gd->gd_cpuid);
+	mpheld = 0;
+#endif
     }
 
     /*
@@ -838,8 +881,8 @@ haveidle:
 	    ("priority problem in lwkt_switch %d %d", td->td_pri, ntd->td_pri));
 #ifdef SMP
     if (ntd->td_mpcount == 0 ) {
-	if (MP_LOCK_HELD())
-	    cpu_rel_mplock();
+	if (MP_LOCK_HELD(gd))
+	    cpu_rel_mplock(gd->gd_cpuid);
     } else {
 	ASSERT_MP_LOCK_HELD(ntd);
     }
@@ -970,7 +1013,7 @@ lwkt_preempt(thread_t ntd, int critcount)
      * or not.
      */
     savecnt = td->td_mpcount;
-    mpheld = MP_LOCK_HELD();
+    mpheld = MP_LOCK_HELD(gd);
     ntd->td_mpcount += td->td_mpcount;
     if (mpheld == 0 && ntd->td_mpcount && !cpu_try_mplock()) {
 	ntd->td_mpcount -= td->td_mpcount;
@@ -993,9 +1036,9 @@ lwkt_preempt(thread_t ntd, int critcount)
     KKASSERT(ntd->td_preempted && (td->td_flags & TDF_PREEMPT_DONE));
 #ifdef SMP
     KKASSERT(savecnt == td->td_mpcount);
-    mpheld = MP_LOCK_HELD();
+    mpheld = MP_LOCK_HELD(gd);
     if (mpheld && td->td_mpcount == 0)
-	cpu_rel_mplock();
+	cpu_rel_mplock(gd->gd_cpuid);
     else if (mpheld == 0 && td->td_mpcount)
 	panic("lwkt_preempt(): MP lock was not held through");
 #endif
@@ -1102,7 +1145,7 @@ lwkt_user_yield(void)
      * has a chaining effect since if the interrupt is blocked, so is
      * the event, so normal scheduling will not pick up on the problem.
      */
-    if (mp_lock_contention_mask && td->td_mpcount) {
+    if (cpu_contention_mask && td->td_mpcount) {
 	yield_mplock(td);
     }
 #endif

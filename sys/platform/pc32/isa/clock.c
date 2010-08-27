@@ -442,6 +442,7 @@ DODELAY(int n, int doswitch)
 		ticks_left -= delta;
 		if (doswitch && ticks_left > 0)
 			lwkt_switch();
+		cpu_pause();
 	}
 #ifdef DELAYDEBUG
 	if (state == 1)

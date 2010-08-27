@@ -702,9 +702,13 @@ cpu_idle(void)
 {
 	struct thread *td = curthread;
 	struct mdglobaldata *gd = mdcpu;
+	int reqflags;
 
 	crit_exit();
 	KKASSERT(td->td_critcount == 0);
+#ifdef SMP
+	KKASSERT(td->td_mpcount == 0);
+#endif
 	cpu_enable_intr();
 	for (;;) {
 		/*
@@ -712,6 +716,9 @@ cpu_idle(void)
 		 */
 		lwkt_switch();
 
+#ifdef SMP
+		KKASSERT(td->td_mpcount == 0);
+#endif
 		/*
 		 * The idle loop halts only if no threads are scheduleable
 		 * and no signals have occured.
@@ -719,12 +726,19 @@ cpu_idle(void)
 		if (cpu_idle_hlt && !lwkt_runnable() &&
 		    (td->td_flags & TDF_IDLE_NOHLT) == 0) {
 			splz();
+#ifdef SMP
+			KKASSERT(td->td_mpcount == 0);
+			KKASSERT(MP_LOCK_HELD(td->td_gd) == 0);
+#endif
 			if (!lwkt_runnable()) {
 #ifdef DEBUGIDLE
 				struct timeval tv1, tv2;
 				gettimeofday(&tv1, NULL);
 #endif
-				umtx_sleep(&gd->mi.gd_reqflags, 0, 1000000);
+				reqflags = gd->mi.gd_reqflags &
+					   ~RQF_IDLECHECK_MASK;
+				umtx_sleep(&gd->mi.gd_reqflags, reqflags,
+					   1000000);
 #ifdef DEBUGIDLE
 				gettimeofday(&tv2, NULL);
 				if (tv2.tv_usec - tv1.tv_usec +
@@ -739,7 +753,7 @@ cpu_idle(void)
 			}
 #ifdef SMP
 			else {
-			    __asm __volatile("pause");
+				handle_cpu_contention_mask();
 			}
 #endif
 			++cpu_idle_hltcnt;
@@ -747,10 +761,8 @@ cpu_idle(void)
 			td->td_flags &= ~TDF_IDLE_NOHLT;
 			splz();
 #ifdef SMP
-			/*__asm __volatile("sti; pause");*/
+			handle_cpu_contention_mask();
 			__asm __volatile("pause");
-#else
-			/*__asm __volatile("sti");*/
 #endif
 			++cpu_idle_spincnt;
 		}
@@ -766,9 +778,17 @@ cpu_idle(void)
  * we sleep for a bit.
  */
 void
-cpu_mplock_contested(void)
+handle_cpu_contention_mask(void)
 {
-	usleep(1000);
+	cpumask_t mask;
+
+	mask = cpu_contention_mask;
+	cpu_ccfence();
+	if (mask && bsfl(mask) != mycpu->gd_cpuid) {
+		cpu_pause();
+		usleep(1000);
+	}
+	/* usleep(1000); */
 }
 
 /*
@@ -781,9 +801,11 @@ cpu_mplock_contested(void)
 void
 cpu_spinlock_contested(void)
 {
+	cpu_pause();
+	/*
 	crit_enter();
 	usleep(1000);
-	crit_exit();
+	crit_exit();*/
 }
 
 #endif

@@ -172,7 +172,9 @@ done:
 static void
 umtx_sleep_page_action_cow(vm_page_t m, vm_page_action_t action)
 {
+    lwkt_gettoken(&vm_token);
     wakeup_domain(action->data, PDOMAIN_UMTX);
+    lwkt_reltoken(&vm_token);
 }
 
 /*

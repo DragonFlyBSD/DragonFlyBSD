@@ -85,7 +85,7 @@ KTR_INFO(KTR_GIANT_CONTENTION, giant, end, 1,
 		file, line)
 
 int	mp_lock;
-int	mp_lock_contention_mask;
+int	cpu_contention_mask;
 const char *mp_lock_holder_file;	/* debugging */
 int	mp_lock_holder_line;		/* debugging */
 
@@ -220,7 +220,7 @@ yield_mplock(thread_t td)
 
 /*
  * The rel_mplock() code will call this function after releasing the
- * last reference on the MP lock if mp_lock_contention_mask is non-zero.
+ * last reference on the MP lock if cpu_contention_mask is non-zero.
  *
  * We then chain an IPI to a single other cpu potentially needing the
  * lock.  This is a bit heuristical and we can wind up with IPIs flying
@@ -240,7 +240,7 @@ lwkt_mp_lock_uncontested(void)
     if (chain_mplock) {
 	gd = mycpu;
 	clr_mplock_contention_mask(gd);
-	mask = mp_lock_contention_mask;
+	mask = cpu_contention_mask;
 	tmpmask = ~((1 << gd->gd_cpuid) - 1);
 
 	if (mask) {
@@ -248,7 +248,7 @@ lwkt_mp_lock_uncontested(void)
 		    cpuid = bsfl(mask & tmpmask);
 	    else
 		    cpuid = bsfl(mask);
-	    atomic_clear_int(&mp_lock_contention_mask, 1 << cpuid);
+	    atomic_clear_int(&cpu_contention_mask, 1 << cpuid);
 	    dgd = globaldata_find(cpuid);
 	    lwkt_send_ipiq(dgd, lwkt_mp_lock_uncontested_remote, NULL);
 	}

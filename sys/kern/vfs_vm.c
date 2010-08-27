@@ -121,10 +121,17 @@ static int nvtruncbuf_bp_metasync(struct buf *bp, void *data);
  * bdwrite() will call BMAP on it again.  Some filesystems, like HAMMER,
  * never overwrite existing data blocks.
  */
+
+struct truncbuf_info {
+	struct vnode *vp;
+	off_t truncloffset;	/* truncation point */
+	int clean;		/* clean tree, else dirty tree */
+};
+
 int
 nvtruncbuf(struct vnode *vp, off_t length, int blksize, int boff)
 {
-	off_t truncloffset;
+	struct truncbuf_info info;
 	off_t truncboffset;
 	const char *filename;
 	struct buf *bp;
@@ -141,18 +148,20 @@ nvtruncbuf(struct vnode *vp, off_t length, int blksize, int boff)
 	if (boff < 0)
 		boff = (int)(length % blksize);
 	if (boff)
-		truncloffset = length + (blksize - boff);
+		info.truncloffset = length + (blksize - boff);
 	else
-		truncloffset = length;
-
+		info.truncloffset = length;
+	info.vp = vp;
 	lwkt_gettoken(&vp->v_token);
 	do {
+		info.clean = 1;
 		count = RB_SCAN(buf_rb_tree, &vp->v_rbclean_tree,
 				nvtruncbuf_bp_trunc_cmp,
-				nvtruncbuf_bp_trunc, &truncloffset);
+				nvtruncbuf_bp_trunc, &info);
+		info.clean = 0;
 		count += RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree,
 				nvtruncbuf_bp_trunc_cmp,
-				nvtruncbuf_bp_trunc, &truncloffset);
+				nvtruncbuf_bp_trunc, &info);
 	} while(count);
 
 	nvnode_pager_setsize(vp, length, blksize, boff);
@@ -197,7 +206,7 @@ nvtruncbuf(struct vnode *vp, off_t length, int blksize, int boff)
 		do {
 			count = RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree,
 					nvtruncbuf_bp_metasync_cmp,
-					nvtruncbuf_bp_metasync, vp);
+					nvtruncbuf_bp_metasync, &info);
 		} while (count);
 	}
 
@@ -222,12 +231,14 @@ nvtruncbuf(struct vnode *vp, off_t length, int blksize, int boff)
 	 * to busy dirty VM pages being flushed out to disk.
 	 */
 	do {
+		info.clean = 1;
 		count = RB_SCAN(buf_rb_tree, &vp->v_rbclean_tree,
 				nvtruncbuf_bp_trunc_cmp,
-				nvtruncbuf_bp_trunc, &truncloffset);
+				nvtruncbuf_bp_trunc, &info);
+		info.clean = 0;
 		count += RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree,
 				nvtruncbuf_bp_trunc_cmp,
-				nvtruncbuf_bp_trunc, &truncloffset);
+				nvtruncbuf_bp_trunc, &info);
 		if (count) {
 			kprintf("Warning: vtruncbuf():  Had to re-clean %d "
 			       "left over buffers in %s\n", count, filename);
@@ -247,7 +258,9 @@ static
 int
 nvtruncbuf_bp_trunc_cmp(struct buf *bp, void *data)
 {
-	if (bp->b_loffset >= *(off_t *)data)
+	struct truncbuf_info *info = data;
+
+	if (bp->b_loffset >= info->truncloffset)
 		return(0);
 	return(-1);
 }
@@ -256,14 +269,23 @@ static
 int
 nvtruncbuf_bp_trunc(struct buf *bp, void *data)
 {
+	struct truncbuf_info *info = data;
+
 	/*
-	 * Do not try to use a buffer we cannot immediately lock, but sleep
-	 * anyway to prevent a livelock.  The code will loop until all buffers
-	 * can be acted upon.
+	 * Do not try to use a buffer we cannot immediately lock,
+	 * but sleep anyway to prevent a livelock.  The code will
+	 * loop until all buffers can be acted upon.
 	 */
 	if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT)) {
+		atomic_add_int(&bp->b_refs, 1);
 		if (BUF_LOCK(bp, LK_EXCLUSIVE|LK_SLEEPFAIL) == 0)
 			BUF_UNLOCK(bp);
+		atomic_subtract_int(&bp->b_refs, 1);
+	} else if ((info->clean && (bp->b_flags & B_DELWRI)) ||
+		   (info->clean == 0 && (bp->b_flags & B_DELWRI) == 0) ||
+		   bp->b_vp != info->vp ||
+		   nvtruncbuf_bp_trunc_cmp(bp, data)) {
+		BUF_UNLOCK(bp);
 	} else {
 		bremfree(bp);
 		bp->b_flags |= (B_INVAL | B_RELBUF | B_NOCACHE);
@@ -278,7 +300,7 @@ nvtruncbuf_bp_trunc(struct buf *bp, void *data)
  * Note that the compare function must conform to the RB_SCAN's requirements.
  */
 static int
-nvtruncbuf_bp_metasync_cmp(struct buf *bp, void *data)
+nvtruncbuf_bp_metasync_cmp(struct buf *bp, void *data __unused)
 {
 	if (bp->b_loffset < 0)
 		return(0);
@@ -288,28 +310,27 @@ nvtruncbuf_bp_metasync_cmp(struct buf *bp, void *data)
 static int
 nvtruncbuf_bp_metasync(struct buf *bp, void *data)
 {
-	struct vnode *vp = data;
+	struct truncbuf_info *info = data;
 
-	if (bp->b_flags & B_DELWRI) {
-		/*
-		 * Do not try to use a buffer we cannot immediately lock,
-		 * but sleep anyway to prevent a livelock.  The code will
-		 * loop until all buffers can be acted upon.
-		 */
-		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT)) {
-			if (BUF_LOCK(bp, LK_EXCLUSIVE|LK_SLEEPFAIL) == 0)
-				BUF_UNLOCK(bp);
-		} else {
-			bremfree(bp);
-			if (bp->b_vp == vp)
-				bawrite(bp);
-			else
-				bwrite(bp);
-		}
-		return(1);
+	/*
+	 * Do not try to use a buffer we cannot immediately lock,
+	 * but sleep anyway to prevent a livelock.  The code will
+	 * loop until all buffers can be acted upon.
+	 */
+	if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT)) {
+		atomic_add_int(&bp->b_refs, 1);
+		if (BUF_LOCK(bp, LK_EXCLUSIVE|LK_SLEEPFAIL) == 0)
+			BUF_UNLOCK(bp);
+		atomic_subtract_int(&bp->b_refs, 1);
+	} else if ((bp->b_flags & B_DELWRI) == 0 ||
+		   bp->b_vp != info->vp ||
+		   nvtruncbuf_bp_metasync_cmp(bp, data)) {
+		BUF_UNLOCK(bp);
 	} else {
-		return(0);
+		bremfree(bp);
+		bawrite(bp);
 	}
+	return(1);
 }
 
 /*

@@ -319,7 +319,6 @@ exponential_backoff(struct exponential_backoff *bo)
 #endif
 		if (bo->nsec == 60)
 			panic("spin_lock: %p, indefinite wait!\n", bo->mtx);
-		splz();
 		bo->base = count;
 	}
 	return (FALSE);

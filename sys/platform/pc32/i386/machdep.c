@@ -920,17 +920,18 @@ cpu_idle(void)
 			__asm __volatile("cli");
 			splz();
 			if (!lwkt_runnable())
-			    cpu_idle_hook();
+				cpu_idle_hook();
 #ifdef SMP
 			else
-			    __asm __volatile("pause");
+				handle_cpu_contention_mask();
 #endif
 			++cpu_idle_hltcnt;
 		} else {
 			td->td_flags &= ~TDF_IDLE_NOHLT;
 			splz();
 #ifdef SMP
-			__asm __volatile("sti; pause");
+			__asm __volatile("sti");
+			handle_cpu_contention_mask();
 #else
 			__asm __volatile("sti");
 #endif
@@ -947,9 +948,16 @@ cpu_idle(void)
  * we let the scheduler spin.
  */
 void
-cpu_mplock_contested(void)
+handle_cpu_contention_mask(void)
 {
-	cpu_pause();
+	cpumask_t mask;
+
+	mask = cpu_contention_mask;
+	cpu_ccfence();
+	if (mask && bsfl(mask) != mycpu->gd_cpuid) {
+		cpu_pause();
+		DELAY(2);
+	}
 }
 
 /*
