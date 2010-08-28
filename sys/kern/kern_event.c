@@ -60,7 +60,7 @@
 /*
  * Global token for kqueue subsystem
  */
-struct lwkt_token kq_token = LWKT_TOKEN_UP_INITIALIZER;
+struct lwkt_token kq_token = LWKT_TOKEN_UP_INITIALIZER(kq_token);
 
 MALLOC_DEFINE(M_KQUEUE, "kqueue", "memory for kqueue system");
 

@@ -128,14 +128,14 @@ SYSCTL_INT(_lwkt, OID_AUTO, token_debug, CTLFLAG_RW, &token_debug, 0, "");
  * any time, the MP state is copied to the tokref when the token is acquired
  * and will not race against sysctl changes.
  */
-struct lwkt_token pmap_token = LWKT_TOKEN_UP_INITIALIZER;
-struct lwkt_token dev_token = LWKT_TOKEN_UP_INITIALIZER;
-struct lwkt_token vm_token = LWKT_TOKEN_UP_INITIALIZER;
-struct lwkt_token vmspace_token = LWKT_TOKEN_UP_INITIALIZER;
-struct lwkt_token kvm_token = LWKT_TOKEN_UP_INITIALIZER;
-struct lwkt_token proc_token = LWKT_TOKEN_UP_INITIALIZER;
-struct lwkt_token tty_token = LWKT_TOKEN_UP_INITIALIZER;
-struct lwkt_token vnode_token = LWKT_TOKEN_UP_INITIALIZER;
+struct lwkt_token pmap_token = LWKT_TOKEN_UP_INITIALIZER(pmap_token);
+struct lwkt_token dev_token = LWKT_TOKEN_UP_INITIALIZER(dev_token);
+struct lwkt_token vm_token = LWKT_TOKEN_UP_INITIALIZER(vm_token);
+struct lwkt_token vmspace_token = LWKT_TOKEN_UP_INITIALIZER(vmspace_token);
+struct lwkt_token kvm_token = LWKT_TOKEN_UP_INITIALIZER(kvm_token);
+struct lwkt_token proc_token = LWKT_TOKEN_UP_INITIALIZER(proc_token);
+struct lwkt_token tty_token = LWKT_TOKEN_UP_INITIALIZER(tty_token);
+struct lwkt_token vnode_token = LWKT_TOKEN_UP_INITIALIZER(vnode_token);
 
 SYSCTL_INT(_lwkt, OID_AUTO, pmap_mpsafe,
 	   CTLFLAG_RW, &pmap_token.t_flags, 0, "");

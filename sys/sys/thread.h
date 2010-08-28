@@ -114,18 +114,20 @@ typedef struct lwkt_token {
  *	UP - Not MPSAFE (full MP lock will also be acquired)
  *	MP - Is MPSAFE  (only the token will be acquired)
  */
-#define LWKT_TOKEN_UP_INITIALIZER	\
+#define LWKT_TOKEN_UP_INITIALIZER(name)	\
 {					\
 	.t_ref = NULL,			\
 	.t_flags = 0,			\
-	.t_collisions = 0		\
+	.t_collisions = 0,		\
+	.t_desc = #name			\
 }
 
-#define LWKT_TOKEN_MP_INITIALIZER	\
+#define LWKT_TOKEN_MP_INITIALIZER(name)	\
 {					\
 	.t_ref = NULL,			\
 	.t_flags = LWKT_TOKEN_MPSAFE,	\
-	.t_collisions = 0		\
+	.t_collisions = 0,		\
+	.t_desc = #name			\
 }
 
 #define ASSERT_LWKT_TOKEN_HELD(tok) \
