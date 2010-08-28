@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  * (c) UNIX System Laboratories, Inc.
@@ -201,8 +203,6 @@ struct  thread *updatethread;
 
 /*
  * System filesystem synchronizer daemon.
- *
- * NOTE: Started MPSAFE but is not yet mpsafe.
  */
 static void
 syncer_thread(void)
@@ -214,8 +214,6 @@ syncer_thread(void)
 
 	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc, td,
 			      SHUTDOWN_PRI_LAST);
-	get_mplock();
-
 	for (;;) {
 		kproc_suspend_loop();
 
@@ -279,7 +277,7 @@ syncer_thread(void)
 		 * threatened with exhaustion.
 		 */
 		if (rushjob > 0) {
-			rushjob -= 1;
+			atomic_subtract_int(&rushjob, 1);
 			continue;
 		}
 		/*
@@ -293,7 +291,6 @@ syncer_thread(void)
 		if (time_second == starttime)
 			tsleep(&lbolt_syncer, 0, "syncer", 0);
 	}
-	rel_mplock();
 }
 
 static struct kproc_desc up_kp = {
@@ -307,8 +304,6 @@ SYSINIT(syncer, SI_SUB_KTHREAD_UPDATE, SI_ORDER_FIRST, kproc_start, &up_kp)
  * Request the syncer daemon to speed up its work.
  * We never push it to speed up more than half of its
  * normal turn time, otherwise it could take over the cpu.
- *
- * YYY wchan field protected by the BGL.
  */
 int
 speedup_syncer(void)
@@ -319,7 +314,7 @@ speedup_syncer(void)
 	 */
 	wakeup(&lbolt_syncer);
 	if (rushjob < syncdelay / 2) {
-		rushjob += 1;
+		atomic_add_int(&rushjob, 1);
 		stat_rush_requests += 1;
 		return (1);
 	}
