@@ -78,6 +78,13 @@
 
 #define KEYCODE_BS		0x0e		/* "<-- Backspace" key, XXX */
 
+#if 1
+#undef	ASSERT_LWKT_TOKEN_HELD
+#define	ASSERT_LWKT_TOKEN_HELD(x)
+#define	lwkt_gettoken(x)
+#define	lwkt_reltoken(x)
+#endif
+
 MALLOC_DEFINE(M_SYSCONS, "syscons", "Syscons");
 
 typedef struct default_attr {
@@ -319,7 +326,7 @@ sc_attach_unit(int unit, int flags)
 #endif
     int vc;
     cdev_t dev;
-
+    lwkt_gettoken(&tty_token);
     flags &= ~SC_KERNEL_CONSOLE;
 
     if (sc_console_unit == unit) {
@@ -437,6 +444,7 @@ sc_attach_unit(int unit, int flags)
 			UID_ROOT, GID_WHEEL, 0600, "consolectl");
     cctl_dev->si_tty = sc_console_tty = ttymalloc(sc_console_tty);
     cctl_dev->si_drv1 = sc_console;
+    lwkt_reltoken(&tty_token);
     return 0;
 }
 
@@ -487,19 +495,23 @@ int
 scopen(struct dev_open_args *ap)
 {
     cdev_t dev = ap->a_head.a_dev;
-    int unit = scdevtounit(dev);
+    int unit;
     sc_softc_t *sc;
     struct tty *tp;
     scr_stat *scp;
     keyarg_t key;
     int error;
 
+    lwkt_gettoken(&tty_token);
+    unit = scdevtounit(dev);
     DPRINTF(5, ("scopen: dev:%d,%d, unit:%d, vty:%d\n",
 		major(dev), minor(dev), unit, SC_VTY(dev)));
 
     sc = sc_get_softc(unit, (sc_console_unit == unit) ? SC_KERNEL_CONSOLE : 0);
-    if (sc == NULL)
+    if (sc == NULL) {
+	lwkt_reltoken(&tty_token);
 	return ENXIO;
+    }
 
     tp = dev->si_tty = ttymalloc(dev->si_tty);
     tp->t_oproc = scstart;
@@ -526,8 +538,10 @@ scopen(struct dev_open_args *ap)
 	(*linesw[tp->t_line].l_modem)(tp, 1);
     }
     else
-	if (tp->t_state & TS_XCLUDE && priv_check_cred(ap->a_cred, PRIV_ROOT, 0))
+	if (tp->t_state & TS_XCLUDE && priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) {
+	    lwkt_reltoken(&tty_token);
 	    return(EBUSY);
+	}
 
     error = (*linesw[tp->t_line].l_open)(dev, tp);
 
@@ -542,6 +556,7 @@ scopen(struct dev_open_args *ap)
 	tp->t_winsize.ws_row = scp->ysize;
     }
 
+    lwkt_reltoken(&tty_token);
     return error;
 }
 
@@ -553,6 +568,7 @@ scclose(struct dev_close_args *ap)
     scr_stat *scp;
 
     crit_enter();
+    lwkt_gettoken(&tty_token);
     if (SC_VTY(dev) != SC_CONSOLECTL) {
 	scp = SC_STAT(tp->t_dev);
 	/* were we in the middle of the VT switching process? */
@@ -592,6 +608,7 @@ scclose(struct dev_close_args *ap)
     }
     (*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
     ttyclose(tp);
+    lwkt_reltoken(&tty_token);
     crit_exit();
 
     return(0);
@@ -600,8 +617,13 @@ scclose(struct dev_close_args *ap)
 int
 scread(struct dev_read_args *ap)
 {
+    int ret;
+
+    lwkt_gettoken(&tty_token);
     sc_touch_scrn_saver();
-    return (ttyread(ap));
+    ret = (ttyread(ap));
+    lwkt_reltoken(&tty_token);
+    return ret;
 }
 
 static int
@@ -613,6 +635,7 @@ sckbdevent(keyboard_t *thiskbd, int event, void *arg)
     size_t len;
     u_char *cp;
 
+    lwkt_gettoken(&tty_token);
     /*
      * WARNING: In early boot sc->dev may not be setup yet.
      */
@@ -626,8 +649,10 @@ sckbdevent(keyboard_t *thiskbd, int event, void *arg)
 	sc->kbd = NULL;
 	sc->keyboard = -1;
 	kbd_release(thiskbd, (void *)&sc->keyboard);
+	lwkt_reltoken(&tty_token);
 	return 0;
     default:
+        lwkt_reltoken(&tty_token);
 	return EINVAL;
     }
 
@@ -672,15 +697,18 @@ sckbdevent(keyboard_t *thiskbd, int event, void *arg)
 
     sc->cur_scp->status |= MOUSE_HIDDEN;
 
+    lwkt_reltoken(&tty_token);
     return 0;
 }
 
 static int
 scparam(struct tty *tp, struct termios *t)
 {
+    lwkt_gettoken(&tty_token);
     tp->t_ispeed = t->c_ispeed;
     tp->t_ospeed = t->c_ospeed;
     tp->t_cflag = t->c_cflag;
+    lwkt_reltoken(&tty_token);
     return 0;
 }
 
@@ -697,22 +725,29 @@ scioctl(struct dev_ioctl_args *ap)
     sc_softc_t *sc;
     scr_stat *scp;
 
+    lwkt_gettoken(&tty_token);
     tp = dev->si_tty;
 
     error = sc_vid_ioctl(tp, cmd, data, flag);
-    if (error != ENOIOCTL)
+    if (error != ENOIOCTL) {
+        lwkt_reltoken(&tty_token);
 	return error;
+    }
 
 #ifndef SC_NO_HISTORY
     error = sc_hist_ioctl(tp, cmd, data, flag);
-    if (error != ENOIOCTL)
+    if (error != ENOIOCTL) {
+        lwkt_reltoken(&tty_token);
 	return error;
+    }
 #endif
 
 #ifndef SC_NO_SYSMOUSE
     error = sc_mouse_ioctl(tp, cmd, data, flag);
-    if (error != ENOIOCTL)
+    if (error != ENOIOCTL) {
+        lwkt_reltoken(&tty_token);
 	return error;
+    }
 #endif
 
     scp = SC_STAT(tp->t_dev);
@@ -722,27 +757,34 @@ scioctl(struct dev_ioctl_args *ap)
 
     if (scp->tsw) {
 	error = (*scp->tsw->te_ioctl)(scp, tp, cmd, data, flag);
-	if (error != ENOIOCTL)
+	if (error != ENOIOCTL) {
+	    lwkt_reltoken(&tty_token);
 	    return error;
+	}
     }
 
     switch (cmd) {  		/* process console hardware related ioctl's */
 
     case GIO_ATTR:      	/* get current attributes */
 	/* this ioctl is not processed here, but in the terminal emulator */
+	lwkt_reltoken(&tty_token);
 	return ENOTTY;
 
     case GIO_COLOR:     	/* is this a color console ? */
 	*(int *)data = (sc->adp->va_flags & V_ADP_COLOR) ? 1 : 0;
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case CONS_BLANKTIME:    	/* set screen saver timeout (0 = no saver) */
-	if (*(int *)data < 0 || *(int *)data > MAX_BLANKTIME)
+	if (*(int *)data < 0 || *(int *)data > MAX_BLANKTIME) {
+	    lwkt_reltoken(&tty_token);
             return EINVAL;
+	}
 	crit_enter();
 	scrn_blank_time = *(int *)data;
 	run_scrn_saver = (scrn_blank_time != 0);
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case CONS_CURSORTYPE:   	/* set cursor type blink/noblink */
@@ -766,6 +808,7 @@ scioctl(struct dev_ioctl_args *ap)
 	    sc_draw_cursor_image(sc->cur_scp);
 	}
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case CONS_BELLTYPE: 	/* set bell type sound/visual */
@@ -777,6 +820,7 @@ scioctl(struct dev_ioctl_args *ap)
 	    sc->flags |= SC_QUIET_BELL;
 	else
 	    sc->flags &= ~SC_QUIET_BELL;
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case CONS_GETINFO:  	/* get current (virtual) console info */
@@ -803,13 +847,16 @@ scioctl(struct dev_ioctl_args *ap)
 	    if (scp == sc->cur_scp)
 		save_kbd_state(scp);
 	    ptr->mk_keylock = scp->status & LOCK_MASK;
+	    lwkt_reltoken(&tty_token);
 	    return 0;
 	}
+	lwkt_reltoken(&tty_token);
 	return EINVAL;
     }
 
     case CONS_GETVERS:  	/* get version number */
 	*(int*)data = 0x200;    /* version 2.0 */
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case CONS_IDLE:		/* see if the screen has been idle */
@@ -825,6 +872,7 @@ scioctl(struct dev_ioctl_args *ap)
 	*(int *)data = (sc->flags & SC_SCRN_IDLE)
 		       && (!ISGRAPHSC(sc->cur_scp)
 			   || (sc->cur_scp->status & SAVER_RUNNING));
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case CONS_SAVERMODE:	/* set saver mode */
@@ -838,6 +886,7 @@ scioctl(struct dev_ioctl_args *ap)
 #if NSPLASH > 0
 	    if ((error = wait_scrn_saver_stop(NULL))) {
 		crit_exit();
+		lwkt_reltoken(&tty_token);
 		return error;
 	    }
 #endif /* NSPLASH */
@@ -857,8 +906,10 @@ scioctl(struct dev_ioctl_args *ap)
 	    crit_exit();
 	    break;
 	default:
+	    lwkt_reltoken(&tty_token);
 	    return EINVAL;
 	}
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case CONS_SAVERSTART:	/* immediately start/stop the screen saver */
@@ -871,6 +922,7 @@ scioctl(struct dev_ioctl_args *ap)
 	if (run_scrn_saver)
 	    sc->scrn_time_stamp -= scrn_blank_time;
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case CONS_SCRSHOT:		/* get a screen shot */
@@ -879,15 +931,18 @@ scioctl(struct dev_ioctl_args *ap)
 	crit_enter();
 	if (ISGRAPHSC(scp)) {
 	    crit_exit();
+	    lwkt_reltoken(&tty_token);
 	    return EOPNOTSUPP;
 	}
 	if (scp->xsize != ptr->xsize || scp->ysize != ptr->ysize) {
 	    crit_exit();
+	    lwkt_reltoken(&tty_token);
 	    return EINVAL;
 	}
 	copyout ((void*)scp->vtb.vtb_buffer, ptr->buf,
 		 ptr->xsize * ptr->ysize * sizeof(uint16_t));
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return 0;
     }
 
@@ -898,10 +953,14 @@ scioctl(struct dev_ioctl_args *ap)
 	mode = (struct vt_mode *)data;
 	DPRINTF(5, ("sc%d: VT_SETMODE ", sc->unit));
 	if (scp->smode.mode == VT_PROCESS) {
+	    lwkt_gettoken(&proc_token);
     	    if (scp->proc == pfind(scp->pid) && scp->proc != curproc) {
 		DPRINTF(5, ("error EPERM\n"));
+		lwkt_reltoken(&proc_token);
+		lwkt_reltoken(&tty_token);
 		return EPERM;
 	    }
+	    lwkt_reltoken(&proc_token);
 	}
 	crit_enter();
 	if (mode->mode == VT_AUTO) {
@@ -925,22 +984,27 @@ scioctl(struct dev_ioctl_args *ap)
 		|| !ISSIGVALID(mode->frsig)) {
 		crit_exit();
 		DPRINTF(5, ("error EINVAL\n"));
+		lwkt_reltoken(&tty_token);
 		return EINVAL;
 	    }
 	    DPRINTF(5, ("VT_PROCESS %d, ", curproc->p_pid));
+	    lwkt_gettoken(&proc_token);
 	    bcopy(data, &scp->smode, sizeof(struct vt_mode));
 	    scp->proc = curproc;
 	    scp->pid = scp->proc->p_pid;
+	    lwkt_reltoken(&proc_token);
 	    if ((scp == sc->cur_scp) && (sc->unit == sc_console_unit))
 		cons_unavail = TRUE;
 	}
 	crit_exit();
 	DPRINTF(5, ("\n"));
+	lwkt_reltoken(&tty_token);
 	return 0;
     }
 
     case VT_GETMODE:    	/* get screen switcher mode */
 	bcopy(&scp->smode, data, sizeof(struct vt_mode));
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case VT_RELDISP:    	/* screen switcher ioctl */
@@ -951,11 +1015,13 @@ scioctl(struct dev_ioctl_args *ap)
 	 */
 	if ((scp != sc->cur_scp) || (scp->smode.mode != VT_PROCESS)) {
 	    crit_exit();
+	    lwkt_reltoken(&tty_token);
 	    return EINVAL;
 	}
 	/* ...and this process is controlling it. */
 	if (scp->proc != curproc) {
 	    crit_exit();
+	    lwkt_reltoken(&tty_token);
 	    return EPERM;
 	}
 	error = EINVAL;
@@ -993,9 +1059,11 @@ scioctl(struct dev_ioctl_args *ap)
 	    tp = VIRTUAL_TTY(sc, i);
 	    if (!ISTTYOPEN(tp)) {
 		*(int *)data = i + 1;
+		lwkt_reltoken(&tty_token);
 		return 0;
 	    }
 	}
+	lwkt_reltoken(&tty_token);
 	return EINVAL;
 
     case VT_ACTIVATE:   	/* switch to screen *data */
@@ -1003,30 +1071,40 @@ scioctl(struct dev_ioctl_args *ap)
 	crit_enter();
 	sc_clean_up(sc->cur_scp);
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return sc_switch_scr(sc, i);
 
     case VT_WAITACTIVE: 	/* wait for switch to occur */
 	i = (*(int *)data == 0) ? scp->index : (*(int *)data - 1);
-	if ((i < sc->first_vty) || (i >= sc->first_vty + sc->vtys))
+	if ((i < sc->first_vty) || (i >= sc->first_vty + sc->vtys)) {
+	    lwkt_reltoken(&tty_token);
 	    return EINVAL;
+	}
 	crit_enter();
 	error = sc_clean_up(sc->cur_scp);
 	crit_exit();
-	if (error)
+	if (error) {
+	    lwkt_reltoken(&tty_token);
 	    return error;
+	}
 	scp = SC_STAT(SC_DEV(sc, i));
-	if (scp == scp->sc->cur_scp)
+	if (scp == scp->sc->cur_scp) {
+	    lwkt_reltoken(&tty_token);
 	    return 0;
+	}
 	error = tsleep((caddr_t)&scp->smode, PCATCH, "waitvt", 0);
 	/* May return ERESTART */
+	lwkt_reltoken(&tty_token);
 	return error;
 
     case VT_GETACTIVE:		/* get active vty # */
 	*(int *)data = sc->cur_scp->index + 1;
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case VT_GETINDEX:		/* get this vty # */
 	*(int *)data = scp->index + 1;
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case VT_LOCKSWITCH:		/* prevent vty switching */
@@ -1034,42 +1112,57 @@ scioctl(struct dev_ioctl_args *ap)
 	    sc->flags |= SC_SCRN_VTYLOCK;
 	else
 	    sc->flags &= ~SC_SCRN_VTYLOCK;
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case KDENABIO:      	/* allow io operations */
 	error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
-	if (error != 0)
+	if (error != 0) {
+	    lwkt_reltoken(&tty_token);
 	    return error;
-	if (securelevel > 0)
+	}
+	if (securelevel > 0) {
+	    lwkt_reltoken(&tty_token);
 	    return EPERM;
+	}
+	lwkt_gettoken(&proc_token);
 #if defined(__i386__)
 	curthread->td_lwp->lwp_md.md_regs->tf_eflags |= PSL_IOPL;
 #elif defined(__x86_64__)
 	curthread->td_lwp->lwp_md.md_regs->tf_rflags |= PSL_IOPL;
 #endif
+        lwkt_reltoken(&proc_token);
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case KDDISABIO:     	/* disallow io operations (default) */
+        lwkt_gettoken(&proc_token);
 #if defined(__i386__)
 	curthread->td_lwp->lwp_md.md_regs->tf_eflags &= ~PSL_IOPL;
 #elif defined(__x86_64__)
 	curthread->td_lwp->lwp_md.md_regs->tf_rflags &= ~PSL_IOPL;
 #endif
+        lwkt_reltoken(&proc_token);
+        lwkt_reltoken(&tty_token);
 	return 0;
 
     case KDSKBSTATE:    	/* set keyboard state (locks) */
-	if (*(int *)data & ~LOCK_MASK)
+	if (*(int *)data & ~LOCK_MASK) {
+	    lwkt_reltoken(&tty_token);
 	    return EINVAL;
+	}
 	scp->status &= ~LOCK_MASK;
 	scp->status |= *(int *)data;
 	if (scp == sc->cur_scp)
 	    update_kbd_state(scp, scp->status, LOCK_MASK);
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case KDGKBSTATE:    	/* get keyboard state (locks) */
 	if (scp == sc->cur_scp)
 	    save_kbd_state(scp);
 	*(int *)data = scp->status & LOCK_MASK;
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case KDGETREPEAT:      	/* get keyboard repeat & delay rates */
@@ -1077,6 +1170,7 @@ scioctl(struct dev_ioctl_args *ap)
 	error = kbd_ioctl(sc->kbd, cmd, data);
 	if (error == ENOIOCTL)
 	    error = ENODEV;
+	lwkt_reltoken(&tty_token);
 	return error;
 
     case KDSETRAD:      	/* set keyboard repeat & delay rates (old) */
@@ -1085,6 +1179,7 @@ scioctl(struct dev_ioctl_args *ap)
 	error = kbd_ioctl(sc->kbd, cmd, data);
 	if (error == ENOIOCTL)
 	    error = ENODEV;
+	lwkt_reltoken(&tty_token);
 	return error;
 
     case KDSKBMODE:     	/* set keyboard mode */
@@ -1095,20 +1190,24 @@ scioctl(struct dev_ioctl_args *ap)
 	    scp->kbd_mode = *(int *)data;
 	    if (scp == sc->cur_scp)
 		kbd_ioctl(sc->kbd, cmd, data);
+            lwkt_reltoken(&tty_token);
 	    return 0;
 	default:
+	    lwkt_reltoken(&tty_token);
 	    return EINVAL;
 	}
 	/* NOT REACHED */
 
     case KDGKBMODE:     	/* get keyboard mode */
 	*(int *)data = scp->kbd_mode;
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case KDGKBINFO:
 	error = kbd_ioctl(sc->kbd, cmd, data);
 	if (error == ENOIOCTL)
 	    error = ENODEV;
+	lwkt_reltoken(&tty_token);
 	return error;
 
     case KDMKTONE:      	/* sound the bell */
@@ -1117,15 +1216,20 @@ scioctl(struct dev_ioctl_args *ap)
 		    (((*(int*)data)>>16)&0xffff)*hz/1000);
 	else
 	    sc_bell(scp, scp->bell_pitch, scp->bell_duration);
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case KIOCSOUND:     	/* make tone (*data) hz */
 	if (scp == sc->cur_scp) {
-	    if (*(int *)data)
+	    if (*(int *)data) {
+	        lwkt_reltoken(&tty_token);
 		return sc_tone(*(int *)data);
-	    else
+	    } else {
+	        lwkt_reltoken(&tty_token);
 		return sc_tone(0);
+	    }
 	}
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case KDGKBTYPE:     	/* get keyboard type */
@@ -1134,21 +1238,26 @@ scioctl(struct dev_ioctl_args *ap)
 	    /* always return something? XXX */
 	    *(int *)data = 0;
 	}
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case KDSETLED:      	/* set keyboard LED status */
-	if (*(int *)data & ~LED_MASK)	/* FIXME: LOCK_MASK? */
+	if (*(int *)data & ~LED_MASK) {	/* FIXME: LOCK_MASK? */
+	    lwkt_reltoken(&tty_token);
 	    return EINVAL;
+	}
 	scp->status &= ~LED_MASK;
 	scp->status |= *(int *)data;
 	if (scp == sc->cur_scp)
 	    update_kbd_leds(scp, scp->status);
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case KDGETLED:      	/* get keyboard LED status */
 	if (scp == sc->cur_scp)
 	    save_kbd_state(scp);
 	*(int *)data = scp->status & LED_MASK;
+	lwkt_reltoken(&tty_token);
 	return 0;
 
 	case KBADDKBD:              /* add/remove keyboard to/from mux */
@@ -1156,6 +1265,7 @@ scioctl(struct dev_ioctl_args *ap)
 		error = kbd_ioctl(sc->kbd, cmd, data);
 		if (error == ENOIOCTL)
 			error = ENODEV;
+		lwkt_reltoken(&tty_token);
 		return error;
 
     case CONS_SETKBD: 		/* set the new keyboard */
@@ -1166,6 +1276,7 @@ scioctl(struct dev_ioctl_args *ap)
 	    newkbd = kbd_get_keyboard(*(int *)data);
 	    if (newkbd == NULL) {
 		crit_exit();
+		lwkt_reltoken(&tty_token);
 		return EINVAL;
 	    }
 	    error = 0;
@@ -1189,6 +1300,7 @@ scioctl(struct dev_ioctl_args *ap)
 		}
 	    }
 	    crit_exit();
+	    lwkt_reltoken(&tty_token);
 	    return error;
 	}
 
@@ -1204,6 +1316,7 @@ scioctl(struct dev_ioctl_args *ap)
 	    }
 	}
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return error;
 
     case CONS_GETTERM:		/* get the current terminal emulator info */
@@ -1221,11 +1334,13 @@ scioctl(struct dev_ioctl_args *ap)
 		strncpy(((term_info_t *)data)->ti_desc, sw->te_desc, 
 			sizeof(((term_info_t *)data)->ti_desc));
 		((term_info_t *)data)->ti_flags = 0;
+		lwkt_reltoken(&tty_token);
 		return 0;
 	    } else {
 		((term_info_t *)data)->ti_name[0] = '\0';
 		((term_info_t *)data)->ti_desc[0] = '\0';
 		((term_info_t *)data)->ti_flags = 0;
+		lwkt_reltoken(&tty_token);
 		return EINVAL;
 	    }
 	}
@@ -1235,10 +1350,12 @@ scioctl(struct dev_ioctl_args *ap)
 	error = sc_init_emulator(scp, ((term_info_t *)data)->ti_name);
 	/* FIXME: what if scp == sc_console! XXX */
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return error;
 
     case GIO_SCRNMAP:   	/* get output translation table */
 	bcopy(&sc->scr_map, data, sizeof(sc->scr_map));
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case PIO_SCRNMAP:   	/* set output translation table */
@@ -1246,6 +1363,7 @@ scioctl(struct dev_ioctl_args *ap)
 	for (i=0; i<sizeof(sc->scr_map); i++) {
 	    sc->scr_rmap[sc->scr_map[i]] = i;
 	}
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case GIO_KEYMAP:		/* get keyboard translation table */
@@ -1257,13 +1375,16 @@ scioctl(struct dev_ioctl_args *ap)
 	error = kbd_ioctl(sc->kbd, cmd, data);
 	if (error == ENOIOCTL)
 	    error = ENODEV;
+	lwkt_reltoken(&tty_token);
 	return error;
 
 #ifndef SC_NO_FONT_LOADING
 
     case PIO_FONT8x8:   	/* set 8x8 dot font */
-	if (!ISFONTAVAIL(sc->adp->va_flags))
+	if (!ISFONTAVAIL(sc->adp->va_flags)) {
+	    lwkt_reltoken(&tty_token);
 	    return ENXIO;
+	}
 	bcopy(data, sc->font_8, 8*256);
 	sc->fonts_loaded |= FONT_8;
 	/*
@@ -1273,21 +1394,29 @@ scioctl(struct dev_ioctl_args *ap)
 	 */
 	if (ISTEXTSC(sc->cur_scp) && (sc->cur_scp->font_size < 14))
 	    sc_load_font(sc->cur_scp, 0, 8, sc->font_8, 0, 256);
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case GIO_FONT8x8:   	/* get 8x8 dot font */
-	if (!ISFONTAVAIL(sc->adp->va_flags))
+	if (!ISFONTAVAIL(sc->adp->va_flags)) {
+	    lwkt_reltoken(&tty_token);
 	    return ENXIO;
+	}
 	if (sc->fonts_loaded & FONT_8) {
 	    bcopy(sc->font_8, data, 8*256);
+	    lwkt_reltoken(&tty_token);
 	    return 0;
 	}
-	else
+	else {
+	    lwkt_reltoken(&tty_token);
 	    return ENXIO;
+	}
 
     case PIO_FONT8x14:  	/* set 8x14 dot font */
-	if (!ISFONTAVAIL(sc->adp->va_flags))
+	if (!ISFONTAVAIL(sc->adp->va_flags)) {
+	    lwkt_reltoken(&tty_token);
 	    return ENXIO;
+	}
 	bcopy(data, sc->font_14, 14*256);
 	sc->fonts_loaded |= FONT_14;
 	/*
@@ -1299,21 +1428,29 @@ scioctl(struct dev_ioctl_args *ap)
 	    && (sc->cur_scp->font_size >= 14)
 	    && (sc->cur_scp->font_size < 16))
 	    sc_load_font(sc->cur_scp, 0, 14, sc->font_14, 0, 256);
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case GIO_FONT8x14:  	/* get 8x14 dot font */
-	if (!ISFONTAVAIL(sc->adp->va_flags))
+	if (!ISFONTAVAIL(sc->adp->va_flags)) {
+	    lwkt_reltoken(&tty_token);
 	    return ENXIO;
+	}
 	if (sc->fonts_loaded & FONT_14) {
 	    bcopy(sc->font_14, data, 14*256);
+	    lwkt_reltoken(&tty_token);
 	    return 0;
 	}
-	else
+	else {
+	    lwkt_reltoken(&tty_token);
 	    return ENXIO;
+        }
 
     case PIO_FONT8x16:  	/* set 8x16 dot font */
-	if (!ISFONTAVAIL(sc->adp->va_flags))
+	if (!ISFONTAVAIL(sc->adp->va_flags)) {
+	    lwkt_reltoken(&tty_token);
 	    return ENXIO;
+	}
 	bcopy(data, sc->font_16, 16*256);
 	sc->fonts_loaded |= FONT_16;
 	/*
@@ -1323,17 +1460,23 @@ scioctl(struct dev_ioctl_args *ap)
 	 */
 	if (ISTEXTSC(sc->cur_scp) && (sc->cur_scp->font_size >= 16))
 	    sc_load_font(sc->cur_scp, 0, 16, sc->font_16, 0, 256);
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case GIO_FONT8x16:  	/* get 8x16 dot font */
-	if (!ISFONTAVAIL(sc->adp->va_flags))
+	if (!ISFONTAVAIL(sc->adp->va_flags)) {
+	    lwkt_reltoken(&tty_token);
 	    return ENXIO;
+	}
 	if (sc->fonts_loaded & FONT_16) {
 	    bcopy(sc->font_16, data, 16*256);
+	    lwkt_reltoken(&tty_token);
 	    return 0;
 	}
-	else
+	else {
+	    lwkt_reltoken(&tty_token);
 	    return ENXIO;
+        }
 
 #endif /* SC_NO_FONT_LOADING */
 
@@ -1342,11 +1485,16 @@ scioctl(struct dev_ioctl_args *ap)
     }
 
     error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, ap->a_cred);
-    if (error != ENOIOCTL)
+    if (error != ENOIOCTL) {
+        lwkt_reltoken(&tty_token);
 	return(error);
+    }
     error = ttioctl(tp, cmd, data, flag);
-    if (error != ENOIOCTL)
+    if (error != ENOIOCTL) {
+        lwkt_reltoken(&tty_token);
 	return(error);
+    }
+    lwkt_reltoken(&tty_token);
     return(ENOTTY);
 }
 
@@ -1358,11 +1506,13 @@ scstart(struct tty *tp)
     u_char buf[PCBURST];
     scr_stat *scp = SC_STAT(tp->t_dev);
 
+    lwkt_gettoken(&tty_token);
     syscons_lock();
     if (scp->status & SLKED ||
 	(scp == scp->sc->cur_scp && scp->sc->blink_in_progress))
     {
 	syscons_unlock();
+	lwkt_reltoken(&tty_token);
 	return;
     }
     if (!(tp->t_state & (TS_TIMEOUT | TS_BUSY | TS_TTSTOP))) {
@@ -1376,6 +1526,7 @@ scstart(struct tty *tp)
 	ttwwakeup(tp);
     }
     syscons_unlock();
+    lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -1384,6 +1535,7 @@ sccnprobe(struct consdev *cp)
     int unit;
     int flags;
 
+    lwkt_gettoken(&tty_token);
     cp->cn_pri = sc_get_cons_priority(&unit, &flags);
 
     /* a video card is always required */
@@ -1393,8 +1545,10 @@ sccnprobe(struct consdev *cp)
     /* syscons will become console even when there is no keyboard */
     sckbdprobe(unit, flags, TRUE);
 
-    if (cp->cn_pri == CN_DEAD)
+    if (cp->cn_pri == CN_DEAD) {
+        lwkt_reltoken(&tty_token);
 	return;
+    }
 
     /* initialize required fields */
     cp->cn_probegood = 1;
@@ -1406,10 +1560,12 @@ sccninit(struct consdev *cp)
     int unit;
     int flags;
 
+    lwkt_gettoken(&tty_token);
     sc_get_cons_priority(&unit, &flags);
     scinit(unit, flags | SC_KERNEL_CONSOLE);
     sc_console_unit = unit;
     sc_console = sc_get_softc(unit, SC_KERNEL_CONSOLE)->console_scp;
+    lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -1428,6 +1584,7 @@ sccnterm(struct consdev *cp)
     if (sc_console_unit < 0)
 	return;			/* shouldn't happen */
 
+    lwkt_gettoken(&tty_token);
 #if 0 /* XXX */
     sc_clear_screen(sc_console);
     sccnupdate(sc_console);
@@ -1435,6 +1592,7 @@ sccnterm(struct consdev *cp)
     scterm(sc_console_unit, SC_KERNEL_CONSOLE);
     sc_console_unit = -1;
     sc_console = NULL;
+    lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -1449,6 +1607,7 @@ sccnputc(void *private, int c)
 
     /* assert(sc_console != NULL) */
 
+    lwkt_gettoken(&tty_token);
     syscons_lock();
 #ifndef SC_NO_HISTORY
     if (scp == scp->sc->cur_scp && scp->status & SLKED) {
@@ -1479,6 +1638,7 @@ sccnputc(void *private, int c)
 
     sccnupdate(scp);
     syscons_unlock();
+    lwkt_reltoken(&tty_token);
 }
 
 static int
@@ -1504,6 +1664,7 @@ sccndbctl(void *private, int on)
 	 * and the screen is updated before switching to 
 	 * the vty0.
 	 */
+        lwkt_gettoken(&tty_token);
 	scrn_timer(NULL);
 	if (!cold
 	    && sc_console->sc->cur_scp->smode.mode == VT_AUTO
@@ -1511,6 +1672,7 @@ sccndbctl(void *private, int on)
 	    sc_console->sc->cur_scp->status |= MOUSE_HIDDEN;
 	    sc_switch_scr(sc_console->sc, sc_console->index);
 	}
+	lwkt_reltoken(&tty_token);
     }
     if (on)
 	++debugger;
@@ -1528,6 +1690,7 @@ sccngetch(int flags)
     int cur_mode;
     int c;
 
+    lwkt_gettoken(&tty_token);
     syscons_lock();
     /* assert(sc_console != NULL) */
 
@@ -1540,11 +1703,15 @@ sccngetch(int flags)
     sccnupdate(scp);
     syscons_unlock();
 
-    if (fkeycp < fkey.len)
+    if (fkeycp < fkey.len) {
+        lwkt_reltoken(&tty_token);
 	return fkey.str[fkeycp++];
+    }
 
-    if (scp->sc->kbd == NULL)
+    if (scp->sc->kbd == NULL) {
+        lwkt_reltoken(&tty_token);
 	return -1;
+    }
 
     /* 
      * Make sure the keyboard is accessible even when the kbd device
@@ -1569,6 +1736,7 @@ sccngetch(int flags)
 
     switch (KEYFLAGS(c)) {
     case 0:	/* normal char */
+        lwkt_reltoken(&tty_token);
 	return KEYCHAR(c);
     case FKEY:	/* function key */
 	p = kbd_get_fkeystr(scp->sc->kbd, KEYCHAR(c), (size_t *)&fkeycp);
@@ -1576,12 +1744,15 @@ sccngetch(int flags)
 	if ((p != NULL) && (fkey.len > 0)) {
 	    bcopy(p, fkey.str, fkey.len);
 	    fkeycp = 1;
+	    lwkt_reltoken(&tty_token);
 	    return fkey.str[0];
 	}
+	lwkt_reltoken(&tty_token);
 	return c;	/* XXX */
     case NOKEY:
     case ERRKEY:
     default:
+        lwkt_reltoken(&tty_token);
 	return -1;
     }
     /* NOT REACHED */
@@ -1592,12 +1763,16 @@ sccnupdate(scr_stat *scp)
 {
     /* this is a cut-down version of scrn_timer()... */
 
-    if (scp->sc->font_loading_in_progress || scp->sc->videoio_in_progress)
+    lwkt_gettoken(&tty_token);
+    if (scp->sc->font_loading_in_progress || scp->sc->videoio_in_progress) {
+        lwkt_reltoken(&tty_token);
 	return;
+    }
 
     if (debugger > 0 || panicstr || shutdown_in_progress) {
 	sc_touch_scrn_saver();
     } else if (scp != scp->sc->cur_scp) {
+        lwkt_reltoken(&tty_token);
 	return;
     }
 
@@ -1610,8 +1785,10 @@ sccnupdate(scr_stat *scp)
 #endif /* NSPLASH */
 
     if (scp != scp->sc->cur_scp || scp->sc->blink_in_progress
-	|| scp->sc->switch_in_progress)
+	|| scp->sc->switch_in_progress) {
+	lwkt_reltoken(&tty_token);
 	return;
+    }
     /*
      * FIXME: unlike scrn_timer(), we call scrn_update() from here even
      * when write_in_progress is non-zero.  XXX
@@ -1619,6 +1796,7 @@ sccnupdate(scr_stat *scp)
 
     if (!ISGRAPHSC(scp) && !(scp->sc->flags & SC_SCRN_BLANKED))
 	scrn_update(scp, TRUE);
+    lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -1630,17 +1808,21 @@ scrn_timer(void *arg)
     scr_stat *scp;
     int again;
 
+    lwkt_gettoken(&tty_token);
     again = (arg != NULL);
-    if (arg != NULL)
+    if (arg != NULL) {
 	sc = (sc_softc_t *)arg;
-    else if (sc_console != NULL)
+    } else if (sc_console != NULL) {
 	sc = sc_console->sc;
-    else
+    } else {
+        lwkt_reltoken(&tty_token);
 	return;
+    }
 
     if (syscons_lock_nonblock() == 0) {
 	if (again)
 	    callout_reset(&sc->scrn_timer_ch, hz / 10, scrn_timer, sc);
+	lwkt_reltoken(&tty_token);
 	return;
     }
 
@@ -1650,6 +1832,7 @@ scrn_timer(void *arg)
 	if (again)
 	    callout_reset(&sc->scrn_timer_ch, hz / 10, scrn_timer, sc);
 	syscons_unlock();
+	lwkt_reltoken(&tty_token);
 	return;
     }
 
@@ -1695,6 +1878,7 @@ scrn_timer(void *arg)
 	if (again)
 	    callout_reset(&sc->scrn_timer_ch, hz / 10, scrn_timer, sc);
 	syscons_unlock();
+	lwkt_reltoken(&tty_token);
 	return;
     }
 
@@ -1713,6 +1897,7 @@ scrn_timer(void *arg)
     if (again)
 	callout_reset(&sc->scrn_timer_ch, hz / 25, scrn_timer, sc);
     syscons_unlock();
+    lwkt_reltoken(&tty_token);
 }
 
 static int
@@ -1735,6 +1920,7 @@ scrn_update(scr_stat *scp, int show_cursor)
 
     /* assert(scp == scp->sc->cur_scp) */
 
+    lwkt_gettoken(&tty_token);
     ++scp->sc->videoio_in_progress;
 
 #ifndef SC_NO_CUTPASTE
@@ -1806,6 +1992,7 @@ scrn_update(scr_stat *scp, int show_cursor)
         scp->end = 0;
         scp->start = scp->xsize*scp->ysize - 1;
 	--scp->sc->videoio_in_progress;
+	lwkt_reltoken(&tty_token);
 	return;
     }
 
@@ -1845,6 +2032,7 @@ scrn_update(scr_stat *scp, int show_cursor)
     scp->start = scp->xsize*scp->ysize - 1;
 
     --scp->sc->videoio_in_progress;
+    lwkt_reltoken(&tty_token);
 }
 
 #if NSPLASH > 0
@@ -1854,6 +2042,7 @@ scsplash_callback(int event, void *arg)
     sc_softc_t *sc;
     int error;
 
+    lwkt_gettoken(&tty_token);
     sc = (sc_softc_t *)arg;
 
     switch (event) {
@@ -1866,18 +2055,23 @@ scsplash_callback(int event, void *arg)
 		(*current_saver)(sc, TRUE);
 	    }
 	}
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     case SPLASH_TERM:
 	if (current_saver == scsplash_saver) {
 	    scsplash_stick(FALSE);
 	    error = remove_scrn_saver(scsplash_saver);
-	    if (error)
+	    if (error) {
+	        lwkt_reltoken(&tty_token);
 		return error;
+            }
 	}
+	lwkt_reltoken(&tty_token);
 	return 0;
 
     default:
+        lwkt_reltoken(&tty_token);
 	return EINVAL;
     }
 }
@@ -1891,6 +2085,7 @@ scsplash_saver(sc_softc_t *sc, int show)
     if (busy)
 	return;
     busy = TRUE;
+    lwkt_gettoken(&tty_token);
 
     scp = sc->cur_scp;
     if (show) {
@@ -1917,6 +2112,7 @@ scsplash_saver(sc_softc_t *sc, int show)
 	    restore_scrn_saver_mode(scp, TRUE);
     }
     busy = FALSE;
+    lwkt_reltoken(&tty_token);
 }
 
 static int
@@ -1931,12 +2127,16 @@ add_scrn_saver(void (*this_saver)(sc_softc_t *, int))
 	    return error;
     }
 #endif
-    if (current_saver != none_saver)
+    lwkt_gettoken(&tty_token);
+    if (current_saver != none_saver) {
+	lwkt_reltoken(&tty_token);
 	return EBUSY;
+    }
 
     run_scrn_saver = FALSE;
     saver_mode = CONS_LKM_SAVER;
     current_saver = this_saver;
+    lwkt_reltoken(&tty_token);
     return 0;
 }
 
@@ -1957,13 +2157,16 @@ remove_scrn_saver(void (*this_saver)(sc_softc_t *, int))
     if (scrn_blanked)
         stop_scrn_saver(this_saver);
 #endif
-
+    lwkt_gettoken(&tty_token);
     /* unblank all blanked screens */
     wait_scrn_saver_stop(NULL);
-    if (scrn_blanked)
+    if (scrn_blanked) {
+        lwkt_reltoken(&tty_token);
 	return EBUSY;
+    }
 
     current_saver = none_saver;
+    lwkt_reltoken(&tty_token);
     return 0;
 }
 
@@ -1972,6 +2175,7 @@ set_scrn_saver_mode(scr_stat *scp, int mode, u_char *pal, int border)
 {
 
     /* assert(scp == scp->sc->cur_scp) */
+    lwkt_gettoken(&tty_token);
     crit_enter();
     if (!ISGRAPHSC(scp))
 	sc_remove_cursor_image(scp);
@@ -1982,8 +2186,10 @@ set_scrn_saver_mode(scr_stat *scp, int mode, u_char *pal, int border)
     scp->sc->flags |= SC_SCRN_BLANKED;
     ++scrn_blanked;
     crit_exit();
-    if (mode < 0)
+    if (mode < 0) {
+        lwkt_reltoken(&tty_token);
 	return 0;
+    }
     scp->mode = mode;
     if (set_mode(scp) == 0) {
 	if (scp->sc->adp->va_info.vi_flags & V_INFO_GRAPHICS)
@@ -1993,6 +2199,7 @@ set_scrn_saver_mode(scr_stat *scp, int mode, u_char *pal, int border)
 	    load_palette(scp->sc->adp, pal);
 #endif
 	sc_set_border(scp, border);
+	lwkt_reltoken(&tty_token);
 	return 0;
     } else {
 	crit_enter();
@@ -2000,8 +2207,10 @@ set_scrn_saver_mode(scr_stat *scp, int mode, u_char *pal, int border)
 	scp->status &= ~(UNKNOWN_MODE | SAVER_RUNNING);
 	scp->status |= scp->splash_save_status;
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return 1;
     }
+    /* NOTREACHED */
 }
 
 static int
@@ -2011,6 +2220,7 @@ restore_scrn_saver_mode(scr_stat *scp, int changemode)
     int status;
 
     /* assert(scp == scp->sc->cur_scp) */
+    lwkt_gettoken(&tty_token);
     crit_enter();
     mode = scp->mode;
     status = scp->status;
@@ -2023,6 +2233,7 @@ restore_scrn_saver_mode(scr_stat *scp, int changemode)
 	    sc_draw_cursor_image(scp);
 	--scrn_blanked;
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return 0;
     }
     if (set_mode(scp) == 0) {
@@ -2031,28 +2242,35 @@ restore_scrn_saver_mode(scr_stat *scp, int changemode)
 #endif
 	--scrn_blanked;
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return 0;
     } else {
 	scp->mode = mode;
 	scp->status = status;
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return 1;
     }
+    /* NOTREACHED */
 }
 
 static void
 stop_scrn_saver(sc_softc_t *sc, void (*saver)(sc_softc_t *, int))
 {
+    lwkt_gettoken(&tty_token);
     (*saver)(sc, FALSE);
     run_scrn_saver = FALSE;
     /* the screen saver may have chosen not to stop after all... */
-    if (sc->flags & SC_SCRN_BLANKED)
+    if (sc->flags & SC_SCRN_BLANKED) {
+        lwkt_reltoken(&tty_token);
 	return;
+    }
 
     mark_all(sc->cur_scp);
     if (sc->delayed_next_scr)
 	sc_switch_scr(sc, sc->delayed_next_scr - 1);
     wakeup((caddr_t)&scrn_blanked);
+    lwkt_reltoken(&tty_token);
 }
 
 static int
@@ -2060,6 +2278,7 @@ wait_scrn_saver_stop(sc_softc_t *sc)
 {
     int error = 0;
 
+    lwkt_gettoken(&tty_token);
     while (scrn_blanked > 0) {
 	run_scrn_saver = FALSE;
 	if (sc && !(sc->flags & SC_SCRN_BLANKED)) {
@@ -2072,6 +2291,7 @@ wait_scrn_saver_stop(sc_softc_t *sc)
 		break;
     }
     run_scrn_saver = FALSE;
+    lwkt_reltoken(&tty_token);
     return error;
 }
 #endif /* NSPLASH */
@@ -2091,10 +2311,12 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
 
     DPRINTF(5, ("sc0: sc_switch_scr() %d ", next_scr + 1));
 
+    lwkt_gettoken(&tty_token);
     /* prevent switch if previously requested */
     if (sc->flags & SC_SCRN_VTYLOCK) {
 	    sc_bell(sc->cur_scp, sc->cur_scp->bell_pitch,
 		sc->cur_scp->bell_duration);
+	    lwkt_reltoken(&tty_token);
 	    return EPERM;
     }
 
@@ -2104,6 +2326,7 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
 	sc->delayed_next_scr = next_scr + 1;
 	sc_touch_scrn_saver();
 	DPRINTF(5, ("switch delayed\n"));
+	lwkt_reltoken(&tty_token);
 	return 0;
     }
 
@@ -2111,6 +2334,7 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
     cur_scp = sc->cur_scp;
 
     /* we are in the middle of the vty switching process... */
+    lwkt_gettoken(&proc_token);
     if (sc->switch_in_progress
 	&& (cur_scp->smode.mode == VT_PROCESS)
 	&& cur_scp->proc) {
@@ -2135,6 +2359,8 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
 		finish_vt_rel(cur_scp, TRUE);
 		crit_exit();
 		DPRINTF(5, ("finishing previous switch\n"));
+		lwkt_reltoken(&proc_token);
+		lwkt_reltoken(&tty_token);
 		return EINVAL;
 	    } else if (cur_scp->status & SWITCH_WAIT_ACQ) {
 		/* let's assume screen switch has been completed. */
@@ -2179,6 +2405,8 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
 		    finish_vt_rel(cur_scp, FALSE);
 		    crit_exit();
 		    DPRINTF(5, ("act as if VT_FALSE was seen\n"));
+		    lwkt_reltoken(&proc_token);
+		    lwkt_reltoken(&tty_token);
 		    return EINVAL;
 		}
 	    } else if (cur_scp->status & SWITCH_WAIT_ACQ) {
@@ -2201,6 +2429,7 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
 	    }
 	}
     }
+    lwkt_reltoken(&proc_token);
 
     /*
      * Return error if an invalid argument is given, or vty switch
@@ -2211,6 +2440,7 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
 	crit_exit();
 	sc_bell(cur_scp, bios_value.bell_pitch, BELL_DURATION);
 	DPRINTF(5, ("error 1\n"));
+	lwkt_reltoken(&tty_token);
 	return EINVAL;
     }
 
@@ -2227,6 +2457,7 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
 	crit_exit();
 	sc_bell(cur_scp, bios_value.bell_pitch, BELL_DURATION);
 	DPRINTF(5, ("error, graphics mode\n"));
+	lwkt_reltoken(&tty_token);
 	return EINVAL;
     }
 
@@ -2242,11 +2473,13 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
 	    crit_exit();
 	    sc_bell(cur_scp, bios_value.bell_pitch, BELL_DURATION);
 	    DPRINTF(5, ("error 2, requested vty isn't open!\n"));
+	    lwkt_reltoken(&tty_token);
 	    return EINVAL;
 	}
 	if ((debugger > 0) && (SC_STAT(tp->t_dev)->smode.mode == VT_PROCESS)) {
 	    crit_exit();
 	    DPRINTF(5, ("error 3, requested vty is in the VT_PROCESS mode\n"));
+	    lwkt_reltoken(&tty_token);
 	    return EINVAL;
 	}
     }
@@ -2261,6 +2494,7 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
 	wakeup((caddr_t)&sc->new_scp->smode);
 	crit_exit();
 	DPRINTF(5, ("switch done (new == old)\n"));
+	lwkt_reltoken(&tty_token);
 	return 0;
     }
 
@@ -2271,6 +2505,7 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
     /* wait for the controlling process to release the screen, if necessary */
     if (signal_vt_rel(sc->old_scp)) {
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return 0;
     }
 
@@ -2285,6 +2520,7 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
     /* wait for the controlling process to acknowledge, if necessary */
     if (signal_vt_acq(sc->cur_scp)) {
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return 0;
     }
 
@@ -2294,6 +2530,7 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
     crit_exit();
     DPRINTF(5, ("switch done\n"));
 
+    lwkt_reltoken(&tty_token);
     return 0;
 }
 
@@ -2304,6 +2541,7 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
 static void
 do_switch_scr(sc_softc_t *sc)
 {
+    lwkt_gettoken(&tty_token);
     vt_proc_alive(sc->new_scp);
 
     crit_exit();
@@ -2318,42 +2556,62 @@ do_switch_scr(sc_softc_t *sc)
 	if (sc->unit == sc_console_unit)
 	    cons_unavail = FALSE;
     }
+    lwkt_reltoken(&tty_token);
 }
 
 static int
 vt_proc_alive(scr_stat *scp)
 {
+    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&proc_token);
     if (scp->proc) {
-	if (scp->proc == pfind(scp->pid))
+	if (scp->proc == pfind(scp->pid)) {
+	    lwkt_reltoken(&proc_token);
+	    lwkt_reltoken(&tty_token);
 	    return TRUE;
+	}
 	scp->proc = NULL;
 	scp->smode.mode = VT_AUTO;
 	DPRINTF(5, ("vt controlling process %d died\n", scp->pid));
     }
+    lwkt_reltoken(&proc_token);
+    lwkt_reltoken(&tty_token);
     return FALSE;
 }
 
 static int
 signal_vt_rel(scr_stat *scp)
 {
-    if (scp->smode.mode != VT_PROCESS)
+    lwkt_gettoken(&tty_token);
+    if (scp->smode.mode != VT_PROCESS) {
+        lwkt_reltoken(&tty_token);
 	return FALSE;
+    }
     scp->status |= SWITCH_WAIT_REL;
+    lwkt_gettoken(&proc_token);
     ksignal(scp->proc, scp->smode.relsig);
+    lwkt_reltoken(&proc_token);
     DPRINTF(5, ("sending relsig to %d\n", scp->pid));
+    lwkt_reltoken(&tty_token);
     return TRUE;
 }
 
 static int
 signal_vt_acq(scr_stat *scp)
 {
-    if (scp->smode.mode != VT_PROCESS)
+    lwkt_gettoken(&tty_token);
+    if (scp->smode.mode != VT_PROCESS) {
+        lwkt_reltoken(&tty_token);
 	return FALSE;
+    }
     if (scp->sc->unit == sc_console_unit)
 	cons_unavail = TRUE;
     scp->status |= SWITCH_WAIT_ACQ;
+    lwkt_gettoken(&proc_token);
     ksignal(scp->proc, scp->smode.acqsig);
+    lwkt_reltoken(&proc_token);
     DPRINTF(5, ("sending acqsig to %d\n", scp->pid));
+    lwkt_reltoken(&tty_token);
     return TRUE;
 }
 
@@ -2364,25 +2622,31 @@ signal_vt_acq(scr_stat *scp)
 static int
 finish_vt_rel(scr_stat *scp, int release)
 {
+    lwkt_gettoken(&tty_token);
     if (scp == scp->sc->old_scp && scp->status & SWITCH_WAIT_REL) {
 	scp->status &= ~SWITCH_WAIT_REL;
 	if (release)
 	    do_switch_scr(scp->sc);
 	else
 	    scp->sc->switch_in_progress = 0;
+	lwkt_reltoken(&tty_token);
 	return 0;
     }
+    lwkt_reltoken(&tty_token);
     return EINVAL;
 }
 
 static int
 finish_vt_acq(scr_stat *scp)
 {
+    lwkt_gettoken(&tty_token);
     if (scp == scp->sc->new_scp && scp->status & SWITCH_WAIT_ACQ) {
 	scp->status &= ~SWITCH_WAIT_ACQ;
 	scp->sc->switch_in_progress = 0;
+	lwkt_reltoken(&tty_token);
 	return 0;
     }
+    lwkt_reltoken(&tty_token);
     return EINVAL;
 }
 
@@ -2391,6 +2655,7 @@ exchange_scr(sc_softc_t *sc)
 {
     scr_stat *scp;
 
+    lwkt_gettoken(&tty_token);
     /* save the current state of video and keyboard */
     sc_move_cursor(sc->old_scp, sc->old_scp->xpos, sc->old_scp->ypos);
     if (!ISGRAPHSC(sc->old_scp))
@@ -2421,11 +2686,13 @@ exchange_scr(sc_softc_t *sc)
     update_kbd_state(scp, scp->status, LOCK_MASK);
 
     mark_all(scp);
+    lwkt_reltoken(&tty_token);
 }
 
 static void
 sc_puts(scr_stat *scp, u_char *buf, int len)
 {
+    lwkt_gettoken(&tty_token);
 #if NSPLASH > 0
     /* make screensaver happy */
     if (!sticky_splash && scp == scp->sc->cur_scp)
@@ -2437,11 +2704,14 @@ sc_puts(scr_stat *scp, u_char *buf, int len)
 
     if (scp->sc->delayed_next_scr)
 	sc_switch_scr(scp->sc, scp->sc->delayed_next_scr - 1);
+
+    lwkt_reltoken(&tty_token);
 }
 
 void
 sc_draw_cursor_image(scr_stat *scp)
 {
+    lwkt_gettoken(&tty_token);
     /* assert(scp == scp->sc->cur_scp); */
     ++scp->sc->videoio_in_progress;
     (*scp->rndr->draw_cursor)(scp, scp->cursor_pos,
@@ -2449,17 +2719,20 @@ sc_draw_cursor_image(scr_stat *scp)
 			      sc_inside_cutmark(scp, scp->cursor_pos));
     scp->cursor_oldpos = scp->cursor_pos;
     --scp->sc->videoio_in_progress;
+    lwkt_reltoken(&tty_token);
 }
 
 void
 sc_remove_cursor_image(scr_stat *scp)
 {
+    lwkt_gettoken(&tty_token);
     /* assert(scp == scp->sc->cur_scp); */
     ++scp->sc->videoio_in_progress;
     (*scp->rndr->draw_cursor)(scp, scp->cursor_oldpos,
 			      scp->sc->flags & SC_BLINK_CURSOR, FALSE,
 			      sc_inside_cutmark(scp, scp->cursor_oldpos));
     --scp->sc->videoio_in_progress;
+    lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -2467,6 +2740,7 @@ update_cursor_image(scr_stat *scp)
 {
     int blink;
 
+    lwkt_gettoken(&tty_token);
     if (scp->sc->flags & SC_CHAR_CURSOR) {
 	scp->cursor_base = imax(0, scp->sc->cursor_base);
 	scp->cursor_height = imin(scp->sc->cursor_height, scp->font_size);
@@ -2484,11 +2758,13 @@ update_cursor_image(scr_stat *scp)
     (*scp->rndr->draw_cursor)(scp, scp->cursor_pos, blink, TRUE, 
 			      sc_inside_cutmark(scp, scp->cursor_pos));
     --scp->sc->videoio_in_progress;
+    lwkt_reltoken(&tty_token);
 }
 
 void
 sc_set_cursor_image(scr_stat *scp)
 {
+    lwkt_gettoken(&tty_token);
     if (scp->sc->flags & SC_CHAR_CURSOR) {
 	scp->cursor_base = imax(0, scp->sc->cursor_base);
 	scp->cursor_height = imin(scp->sc->cursor_height, scp->font_size);
@@ -2502,6 +2778,7 @@ sc_set_cursor_image(scr_stat *scp)
     (*scp->rndr->set_cursor)(scp, scp->cursor_base, scp->cursor_height,
 			     scp->sc->flags & SC_BLINK_CURSOR);
     --scp->sc->videoio_in_progress;
+    lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -2529,6 +2806,7 @@ scinit(int unit, int flags)
     int row;
     int i;
 
+    lwkt_gettoken(&tty_token);
     /* one time initialization */
     if (init_done == COLD)
 	sc_get_bios_values(&bios_value);
@@ -2690,14 +2968,17 @@ scinit(int unit, int flags)
     }
 
     /* the rest is not necessary, if we have done it once */
-    if (sc->flags & SC_INIT_DONE)
+    if (sc->flags & SC_INIT_DONE) {
+        lwkt_reltoken(&tty_token);
 	return;
+    }
 
     /* initialize mapscrn arrays to a one to one map */
     for (i = 0; i < sizeof(sc->scr_map); i++)
 	sc->scr_map[i] = sc->scr_rmap[i] = i;
 
     sc->flags |= SC_INIT_DONE;
+    lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -2710,6 +2991,7 @@ scterm(int unit, int flags)
     if (sc == NULL)
 	return;			/* shouldn't happen */
 
+    lwkt_gettoken(&tty_token);
 #if NSPLASH > 0
     /* this console is no longer available for the splash screen */
     if (sc->flags & SC_SPLASH_SCRN) {
@@ -2760,6 +3042,7 @@ scterm(int unit, int flags)
     bzero(sc, sizeof(*sc));
     sc->keyboard = -1;
     sc->adapter = -1;
+    lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -2767,12 +3050,14 @@ scshutdown(void *arg, int howto)
 {
     /* assert(sc_console != NULL) */
 
+    lwkt_gettoken(&tty_token);
     sc_touch_scrn_saver();
     if (!cold && sc_console
 	&& sc_console->sc->cur_scp->smode.mode == VT_AUTO 
 	&& sc_console->smode.mode == VT_AUTO)
 	sc_switch_scr(sc_console->sc, sc_console->index);
     shutdown_in_progress = TRUE;
+    lwkt_reltoken(&tty_token);
 }
 
 int
@@ -2782,16 +3067,20 @@ sc_clean_up(scr_stat *scp)
     int error;
 #endif /* NSPLASH */
 
+    lwkt_gettoken(&tty_token);
     if (scp->sc->flags & SC_SCRN_BLANKED) {
 	sc_touch_scrn_saver();
 #if NSPLASH > 0
-	if ((error = wait_scrn_saver_stop(scp->sc)))
+	if ((error = wait_scrn_saver_stop(scp->sc))) {
+	    lwkt_reltoken(&tty_token);
 	    return error;
+	}
 #endif /* NSPLASH */
     }
     scp->status |= MOUSE_HIDDEN;
     sc_remove_mouse_image(scp);
     sc_remove_cutmarking(scp);
+    lwkt_reltoken(&tty_token);
     return 0;
 }
 
@@ -2801,6 +3090,7 @@ sc_alloc_scr_buffer(scr_stat *scp, int wait, int discard)
     sc_vtb_t new;
     sc_vtb_t old;
 
+    lwkt_gettoken(&tty_token);
     old = scp->vtb;
     sc_vtb_init(&new, VTB_MEMORY, scp->xsize, scp->ysize, NULL, wait);
     if (!discard && (old.vtb_flags & VTB_VALID)) {
@@ -2821,6 +3111,7 @@ sc_alloc_scr_buffer(scr_stat *scp, int wait, int discard)
     /* move the mouse cursor at the center of the screen */
     sc_mouse_move(scp, scp->xpixel / 2, scp->ypixel / 2);
 #endif
+    lwkt_reltoken(&tty_token);
 }
 
 static scr_stat *
@@ -2831,6 +3122,7 @@ alloc_scp(sc_softc_t *sc, int vty)
     /* assert(sc_malloc) */
 
     scp = kmalloc(sizeof(scr_stat), M_SYSCONS, M_WAITOK);
+    lwkt_gettoken(&tty_token);
     init_scp(sc, vty, scp);
 
     sc_alloc_scr_buffer(scp, TRUE, TRUE);
@@ -2844,15 +3136,19 @@ alloc_scp(sc_softc_t *sc, int vty)
 #ifndef SC_NO_HISTORY
     sc_alloc_history_buffer(scp, 0, 0, TRUE);
 #endif
-
+    lwkt_reltoken(&tty_token);
     return scp;
 }
 
+/*
+ * NOTE: Must be called with tty_token held.
+ */
 static void
 init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
 {
     video_info_t info;
 
+    ASSERT_LWKT_TOKEN_HELD(&tty_token);
     bzero(scp, sizeof(*scp));
 
     scp->index = vty;
@@ -2935,12 +3231,15 @@ sc_init_emulator(scr_stat *scp, char *name)
     void *p;
     int error;
 
+    lwkt_gettoken(&tty_token);
     if (name == NULL)	/* if no name is given, use the current emulator */
 	sw = scp->tsw;
     else		/* ...otherwise find the named emulator */
 	sw = sc_term_match(name);
-    if (sw == NULL)
+    if (sw == NULL) {
+        lwkt_reltoken(&tty_token);
 	return EINVAL;
+    }
 
     rndr = NULL;
     if (strcmp(sw->te_renderer, "*") != 0) {
@@ -2948,8 +3247,10 @@ sc_init_emulator(scr_stat *scp, char *name)
     }
     if (rndr == NULL) {
 	rndr = sc_render_match(scp, scp->sc->adp->va_name, scp->model);
-	if (rndr == NULL)
+	if (rndr == NULL) {
+	    lwkt_reltoken(&tty_token);
 	    return ENODEV;
+	}
     }
 
     if (sw == scp->tsw) {
@@ -2957,6 +3258,7 @@ sc_init_emulator(scr_stat *scp, char *name)
 	scp->rndr = rndr;
 	sc_clear_screen(scp);
 	/* assert(error == 0); */
+	lwkt_reltoken(&tty_token);
 	return error;
     }
 
@@ -2965,8 +3267,10 @@ sc_init_emulator(scr_stat *scp, char *name)
     else
 	p = NULL;
     error = (*sw->te_init)(scp, &p, SC_TE_COLD_INIT);
-    if (error)
+    if (error) {
+        lwkt_reltoken(&tty_token);
 	return error;
+    }
 
     if (scp->tsw)
 	(*scp->tsw->te_term)(scp, &scp->ts);
@@ -2980,6 +3284,7 @@ sc_init_emulator(scr_stat *scp, char *name)
     (*sw->te_default_attr)(scp, user_default.std_color, user_default.rev_color);
     sc_clear_screen(scp);
 
+    lwkt_reltoken(&tty_token);
     return 0;
 }
 
@@ -3001,8 +3306,11 @@ scgetc(sc_softc_t *sc, u_int flags)
     int f;
     int i;
 
-    if (sc->kbd == NULL)
+    lwkt_gettoken(&tty_token);
+    if (sc->kbd == NULL) {
+        lwkt_reltoken(&tty_token);
 	return NOKEY;
+    }
 
 next_code:
 #if 1
@@ -3020,10 +3328,12 @@ next_code:
 	if (c == ERRKEY) {
 	    if (!(flags & SCGETC_CN))
 		sc_bell(scp, bios_value.bell_pitch, BELL_DURATION);
-	} else if (c == NOKEY)
+	} else if (c == NOKEY) {
+	    lwkt_reltoken(&tty_token);
 	    return c;
-	else
+	} else {
 	    break;
+	}
     }
 
     /* make screensaver happy */
@@ -3034,8 +3344,10 @@ next_code:
 	/* do the /dev/random device a favour */
 	add_keyboard_randomness(c);
 
-    if (scp->kbd_mode != K_XLATE)
+    if (scp->kbd_mode != K_XLATE) {
+        lwkt_reltoken(&tty_token);
 	return KEYCHAR(c);
+    }
 
     /* if scroll-lock pressed allow history browsing */
     if (!ISGRAPHSC(scp) && scp->history && scp->status & SLKED) {
@@ -3142,8 +3454,10 @@ next_code:
 		break;
 
 	    case BTAB:
-		if (!(sc->flags & SC_SCRN_BLANKED))
+		if (!(sc->flags & SC_SCRN_BLANKED)) {
+                    lwkt_reltoken(&tty_token);
 		    return c;
+		}
 		break;
 
 	    case SPSC:
@@ -3251,8 +3565,10 @@ next_code:
 		    break;
 		}
 		/* assert(c & FKEY) */
-		if (!(sc->flags & SC_SCRN_BLANKED))
+		if (!(sc->flags & SC_SCRN_BLANKED)) {
+		    lwkt_reltoken(&tty_token);
 		    return c;
+		}
 		break;
 	    }
 	    /* goto next_code */
@@ -3271,11 +3587,15 @@ scmmap(struct dev_mmap_args *ap)
 {
     scr_stat *scp;
 
+    lwkt_gettoken(&tty_token);
     scp = SC_STAT(ap->a_head.a_dev);
-    if (scp != scp->sc->cur_scp)
+    if (scp != scp->sc->cur_scp) {
+        lwkt_reltoken(&tty_token);
 	return EINVAL;
+    }
     ap->a_result = (*vidsw[scp->sc->adapter]->mmap)(scp->sc->adp, ap->a_offset,
 						    ap->a_nprot);
+    lwkt_reltoken(&tty_token);
     return(0);
 }
 
@@ -3285,6 +3605,7 @@ save_kbd_state(scr_stat *scp)
     int state;
     int error;
 
+    lwkt_gettoken(&tty_token);
     error = kbd_ioctl(scp->sc->kbd, KDGKBSTATE, (caddr_t)&state);
     if (error == ENOIOCTL)
 	error = ENODEV;
@@ -3292,6 +3613,7 @@ save_kbd_state(scr_stat *scp)
 	scp->status &= ~LOCK_MASK;
 	scp->status |= state;
     }
+    lwkt_reltoken(&tty_token);
     return error;
 }
 
@@ -3301,12 +3623,15 @@ update_kbd_state(scr_stat *scp, int new_bits, int mask)
     int state;
     int error;
 
+    lwkt_gettoken(&tty_token);
     if (mask != LOCK_MASK) {
 	error = kbd_ioctl(scp->sc->kbd, KDGKBSTATE, (caddr_t)&state);
 	if (error == ENOIOCTL)
 	    error = ENODEV;
-	if (error)
+	if (error) {
+	    lwkt_reltoken(&tty_token);
 	    return error;
+	}
 	state &= ~mask;
 	state |= new_bits & mask;
     } else {
@@ -3315,6 +3640,7 @@ update_kbd_state(scr_stat *scp, int new_bits, int mask)
     error = kbd_ioctl(scp->sc->kbd, KDSKBSTATE, (caddr_t)&state);
     if (error == ENOIOCTL)
 	error = ENODEV;
+    lwkt_reltoken(&tty_token);
     return error;
 }
 
@@ -3323,10 +3649,12 @@ update_kbd_leds(scr_stat *scp, int which)
 {
     int error;
 
+    lwkt_gettoken(&tty_token);
     which &= LOCK_MASK;
     error = kbd_ioctl(scp->sc->kbd, KDSETLED, (caddr_t)&which);
     if (error == ENOIOCTL)
 	error = ENODEV;
+    lwkt_reltoken(&tty_token);
     return error;
 }
 
@@ -3335,13 +3663,18 @@ set_mode(scr_stat *scp)
 {
     video_info_t info;
 
+    lwkt_gettoken(&tty_token);
     /* reject unsupported mode */
-    if ((*vidsw[scp->sc->adapter]->get_info)(scp->sc->adp, scp->mode, &info))
+    if ((*vidsw[scp->sc->adapter]->get_info)(scp->sc->adp, scp->mode, &info)) {
+        lwkt_reltoken(&tty_token);
 	return 1;
+    }
 
     /* if this vty is not currently showing, do nothing */
-    if (scp != scp->sc->cur_scp)
+    if (scp != scp->sc->cur_scp) {
+        lwkt_reltoken(&tty_token);
 	return 0;
+    }
 
     /* setup video hardware for the given mode */
     (*vidsw[scp->sc->adapter]->set_mode)(scp->sc->adp, scp->mode);
@@ -3378,6 +3711,7 @@ set_mode(scr_stat *scp)
     sc_set_border(scp, scp->border);
     sc_set_cursor_image(scp);
 
+    lwkt_reltoken(&tty_token);
     return 0;
 }
 
@@ -3390,6 +3724,7 @@ refresh_ega_palette(scr_stat *scp)
     int rfld, gfld, bfld;
     int i;
 
+    lwkt_gettoken(&tty_token);
     rsize = scp->sc->adp->va_info.vi_pixel_fsizes[0];
     gsize = scp->sc->adp->va_info.vi_pixel_fsizes[1];
     bsize = scp->sc->adp->va_info.vi_pixel_fsizes[2];
@@ -3406,14 +3741,17 @@ refresh_ega_palette(scr_stat *scp)
 
 	scp->ega_palette[i] = (r << rfld) + (g << gfld) + (b << bfld);
     }
+    lwkt_reltoken(&tty_token);
 }
 
 void
 sc_set_border(scr_stat *scp, int color)
 {
+    lwkt_gettoken(&tty_token);
     ++scp->sc->videoio_in_progress;
     (*scp->rndr->draw_border)(scp, color);
     --scp->sc->videoio_in_progress;
+    lwkt_reltoken(&tty_token);
 }
 
 #ifndef SC_NO_FONT_LOADING
@@ -3423,10 +3761,12 @@ sc_load_font(scr_stat *scp, int page, int size, u_char *buf,
 {
     sc_softc_t *sc;
 
+    lwkt_gettoken(&tty_token);
     sc = scp->sc;
     sc->font_loading_in_progress = TRUE;
     (*vidsw[sc->adapter]->load_font)(sc->adp, page, size, buf, base, count);
     sc->font_loading_in_progress = FALSE;
+    lwkt_reltoken(&tty_token);
 }
 
 void
@@ -3435,16 +3775,20 @@ sc_save_font(scr_stat *scp, int page, int size, u_char *buf,
 {
     sc_softc_t *sc;
 
+    lwkt_gettoken(&tty_token);
     sc = scp->sc;
     sc->font_loading_in_progress = TRUE;
     (*vidsw[sc->adapter]->save_font)(sc->adp, page, size, buf, base, count);
     sc->font_loading_in_progress = FALSE;
+    lwkt_reltoken(&tty_token);
 }
 
 void
 sc_show_font(scr_stat *scp, int page)
 {
+    lwkt_gettoken(&tty_token);
     (*vidsw[scp->sc->adapter]->show_font)(scp->sc->adp, page);
+    lwkt_reltoken(&tty_token);
 }
 #endif /* !SC_NO_FONT_LOADING */
 
@@ -3454,14 +3798,18 @@ sc_paste(scr_stat *scp, u_char *p, int count)
     struct tty *tp;
     u_char *rmap;
 
+    lwkt_gettoken(&tty_token);
     if (scp->status & MOUSE_VISIBLE) {
 	tp = VIRTUAL_TTY(scp->sc, scp->sc->cur_scp->index);
-	if (!ISTTYOPEN(tp))
+	if (!ISTTYOPEN(tp)) {
+	    lwkt_reltoken(&tty_token);
 	    return;
+	}
 	rmap = scp->sc->scr_rmap;
 	for (; count > 0; --count)
 	    (*linesw[tp->t_line].l_rint)(rmap[*p++], tp);
     }
+    lwkt_reltoken(&tty_token);
 }
 
 void
@@ -3470,12 +3818,17 @@ sc_bell(scr_stat *scp, int pitch, int duration)
     if (cold || shutdown_in_progress)
 	return;
 
-    if (scp != scp->sc->cur_scp && (scp->sc->flags & SC_QUIET_BELL))
+    lwkt_gettoken(&tty_token);
+    if (scp != scp->sc->cur_scp && (scp->sc->flags & SC_QUIET_BELL)) {
+        lwkt_reltoken(&tty_token);
 	return;
+    }
 
     if (scp->sc->flags & SC_VISUAL_BELL) {
-	if (scp->sc->blink_in_progress)
+	if (scp->sc->blink_in_progress) {
+	    lwkt_reltoken(&tty_token);
 	    return;
+	}
 	scp->sc->blink_in_progress = 3;
 	if (scp != scp->sc->cur_scp)
 	    scp->sc->blink_in_progress += 2;
@@ -3485,6 +3838,7 @@ sc_bell(scr_stat *scp, int pitch, int duration)
 	    pitch *= 2;
 	sysbeep(pitch, duration);
     }
+    lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -3493,6 +3847,7 @@ blink_screen(void *arg)
     scr_stat *scp = arg;
     struct tty *tp;
 
+    lwkt_gettoken(&tty_token);
     if (ISGRAPHSC(scp) || (scp->sc->blink_in_progress <= 1)) {
 	scp->sc->blink_in_progress = 0;
     	mark_all(scp);
@@ -3508,6 +3863,7 @@ blink_screen(void *arg)
 	scp->sc->blink_in_progress--;
 	callout_reset(&scp->blink_screen_ch, hz / 10, blink_screen, scp);
     }
+    lwkt_reltoken(&tty_token);
 }
 
 
@@ -3524,6 +3880,7 @@ sc_allocate_keyboard(sc_softc_t *sc, int unit)
 	keyboard_t	*k0, *k;
 	keyboard_info_t	 ki;
 
+	lwkt_gettoken(&tty_token);
 	idx0 = kbd_allocate("kbdmux", -1, (void *)&sc->keyboard, sckbdevent, sc);
 	if (idx0 != -1) {
 		k0 = kbd_get_keyboard(idx0);
@@ -3545,5 +3902,6 @@ sc_allocate_keyboard(sc_softc_t *sc, int unit)
 	} else
 		idx0 = kbd_allocate("*", unit, (void *)&sc->keyboard, sckbdevent, sc);
 
+	lwkt_reltoken(&tty_token);
 	return (idx0);
 }

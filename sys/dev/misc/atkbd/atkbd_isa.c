@@ -1,4 +1,6 @@
 /*-
+ * (MPSAFE)
+ *
  * Copyright (c) 1999 Kazutaka YOKOTA <yokota@zodiac.mech.utsunomiya-u.ac.jp>
  * All rights reserved.
  *
@@ -34,6 +36,7 @@
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
+#include <sys/thread.h>
 
 #include <sys/kbio.h>
 #include <dev/misc/kbd/kbdreg.h>
@@ -42,6 +45,11 @@
 
 #include <bus/isa/isareg.h>
 #include <bus/isa/isavar.h>
+
+#if 0
+#define lwkt_gettoken(x)
+#define lwkt_reltoken(x)
+#endif
 
 typedef struct {
 	struct resource	*intr;
@@ -111,7 +119,7 @@ atkbdattach(device_t dev)
 	rid = 0;
 	sc->intr = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, irq, irq, 1,
 				      RF_SHAREABLE | RF_ACTIVE);
-	BUS_SETUP_INTR(device_get_parent(dev), dev, sc->intr, 0,
+	BUS_SETUP_INTR(device_get_parent(dev), dev, sc->intr, INTR_MPSAFE,
 		       atkbd_isa_intr, kbd, &sc->ih, NULL);
 
 	return 0;
@@ -124,6 +132,7 @@ atkbdresume(device_t dev)
         keyboard_t *kbd;
         int args[2];
 
+	lwkt_gettoken(&tty_token);
         sc = device_get_softc(dev);
         kbd = kbd_get_keyboard(kbd_find_keyboard(ATKBD_DRIVER_NAME,
                                                  device_get_unit(dev)));
@@ -136,6 +145,7 @@ atkbdresume(device_t dev)
 		(*kbdsw[kbd->kb_index]->clear_state)(kbd);
 
         }
+	lwkt_reltoken(&tty_token);
         return 0;
 }
 
@@ -144,8 +154,10 @@ atkbd_isa_intr(void *arg)
 {
 	keyboard_t *kbd;
 
+	lwkt_gettoken(&tty_token);
 	kbd = (keyboard_t *)arg;
 	kbd_intr(kbd, NULL);
+	lwkt_reltoken(&tty_token);
 }
 
 DRIVER_MODULE(atkbd, atkbdc, atkbd_driver, atkbd_devclass, 0, 0);

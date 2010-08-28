@@ -99,7 +99,7 @@ si_eisa_attach(device_t dev)
 		goto fail;
 	}
 	sc->sc_irq = rman_get_start(sc->sc_irq_res);
-	error = bus_setup_intr(dev, sc->sc_irq_res, 0, si_intr, sc, &ih, NULL);
+	error = bus_setup_intr(dev, sc->sc_irq_res, INTR_MPSAFE, si_intr, sc, &ih, NULL);
 	if (error) {
 		device_printf(dev, "couldn't activate interrupt");
 		goto fail;

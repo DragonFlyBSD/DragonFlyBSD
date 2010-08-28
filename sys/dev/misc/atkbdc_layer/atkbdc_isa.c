@@ -1,4 +1,6 @@
 /*-
+ * (MPSAFE)
+ *
  * Copyright (c) 1999 Kazutaka YOKOTA <yokota@zodiac.mech.utsunomiya-u.ac.jp>
  * All rights reserved.
  *
@@ -35,11 +37,17 @@
 #include <sys/bus.h>
 #include <sys/malloc.h>
 #include <sys/rman.h>
+#include <sys/thread.h>
 
 #include <dev/misc/kbd/atkbdcreg.h>
 
 #include <bus/isa/isareg.h>
 #include <bus/isa/isavar.h>
+
+#if 0
+#define lwkt_gettoken(x)
+#define lwkt_reltoken(x)
+#endif
 
 MALLOC_DEFINE(M_ATKBDDEV, "atkbddev", "AT Keyboard device");
 
@@ -198,6 +206,7 @@ atkbdc_attach(device_t dev)
 	int		rid;
 	int		i;
 
+	lwkt_gettoken(&tty_token);
 	unit = device_get_unit(dev);
 	sc = *(atkbdc_softc_t **)device_get_softc(dev);
 	if (sc == NULL) {
@@ -209,20 +218,25 @@ atkbdc_attach(device_t dev)
 		 * See atkbdc.c. XXX
 		 */
 		sc = atkbdc_get_softc(unit);
-		if (sc == NULL)
+		if (sc == NULL) {
+			lwkt_reltoken(&tty_token);
 			return ENOMEM;
+		}
 	}
 
 	rid = 0;
 	sc->port0 = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid, 0, ~0, 1,
 				       RF_ACTIVE);
-	if (sc->port0 == NULL)
+	if (sc->port0 == NULL) {
+		lwkt_reltoken(&tty_token);
 		return ENXIO;
+	}
 	rid = 1;
 	sc->port1 = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid, 0, ~0, 1,
 				       RF_ACTIVE);
 	if (sc->port1 == NULL) {
 		bus_release_resource(dev, SYS_RES_IOPORT, 0, sc->port0);
+		lwkt_reltoken(&tty_token);
 		return ENXIO;
 	}
 
@@ -230,6 +244,7 @@ atkbdc_attach(device_t dev)
 	if (error) {
 		bus_release_resource(dev, SYS_RES_IOPORT, 0, sc->port0);
 		bus_release_resource(dev, SYS_RES_IOPORT, 1, sc->port1);
+		lwkt_reltoken(&tty_token);
 		return error;
 	}
 	*(atkbdc_softc_t **)device_get_softc(dev) = sc;
@@ -256,6 +271,7 @@ atkbdc_attach(device_t dev)
 
 	bus_generic_attach(dev);
 
+	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -282,6 +298,7 @@ atkbdc_read_ivar(device_t bus, device_t dev, int index, u_long *val)
 {
 	atkbdc_device_t *ivar;
 
+	lwkt_gettoken(&tty_token);
 	ivar = (atkbdc_device_t *)device_get_ivars(dev);
 	switch (index) {
 	case KBDC_IVAR_IRQ:
@@ -303,8 +320,11 @@ atkbdc_read_ivar(device_t bus, device_t dev, int index, u_long *val)
 		*val = (u_long)ivar->compatid;
 		break;
 	default:
+		lwkt_reltoken(&tty_token);
 		return ENOENT;
 	}
+
+	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -313,6 +333,7 @@ atkbdc_write_ivar(device_t bus, device_t dev, int index, u_long val)
 {
 	atkbdc_device_t *ivar;
 
+	lwkt_gettoken(&tty_token);
 	ivar = (atkbdc_device_t *)device_get_ivars(dev);
 	switch (index) {
 	case KBDC_IVAR_IRQ:
@@ -334,8 +355,11 @@ atkbdc_write_ivar(device_t bus, device_t dev, int index, u_long val)
 		ivar->compatid = (u_int32_t)val;
 		break;
 	default:
+		lwkt_reltoken(&tty_token);
 		return ENOENT;
 	}
+
+	lwkt_reltoken(&tty_token);
 	return 0;
 }
 

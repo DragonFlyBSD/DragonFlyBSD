@@ -1,4 +1,6 @@
 /*-
+ * (MPSAFE)
+ *
  * Copyright (c) 1999 Kazutaka YOKOTA <yokota@zodiac.mech.utsunomiya-u.ac.jp>
  * All rights reserved.
  *
@@ -27,6 +29,10 @@
  * $DragonFly: src/sys/dev/misc/syscons/sysmouse.c,v 1.12 2006/09/10 01:26:35 dillon Exp $
  */
 
+/* MPSAFE NOTE: This file uses the tty_token mostly for the linesw access and
+ *		for the internal mouse structures. The latter ones could be protected
+ *		by a local lock.
+ */
 #include "opt_syscons.h"
 
 #include <sys/param.h>
@@ -75,6 +81,7 @@ smopen(struct dev_open_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
+	int ret;
 
 	DPRINTF(5, ("smopen: dev:%d,%d, vty:%d\n",
 		major(dev), minor(dev), SC_VTY(dev)));
@@ -84,6 +91,7 @@ smopen(struct dev_open_args *ap)
 		return ENXIO;
 #endif
 
+	lwkt_gettoken(&tty_token);
 	tp = dev->si_tty = ttymalloc(dev->si_tty);
 	if (!(tp->t_state & TS_ISOPEN)) {
 		sysmouse_tty = tp;
@@ -100,10 +108,13 @@ smopen(struct dev_open_args *ap)
 		smparam(tp, &tp->t_termios);
 		(*linesw[tp->t_line].l_modem)(tp, 1);
 	} else if (tp->t_state & TS_XCLUDE && priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) {
+		lwkt_reltoken(&tty_token);
 		return EBUSY;
 	}
 
-	return (*linesw[tp->t_line].l_open)(dev, tp);
+	ret = (*linesw[tp->t_line].l_open)(dev, tp);
+	lwkt_reltoken(&tty_token);
+	return ret;
 }
 
 static int
@@ -114,9 +125,11 @@ smclose(struct dev_close_args *ap)
 
 	tp = dev->si_tty;
 	crit_enter();
+	lwkt_gettoken(&tty_token);
 	mouse_level = 0;
 	(*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
 	ttyclose(tp);
+	lwkt_reltoken(&tty_token);
 	crit_exit();
 
 	return 0;
@@ -129,6 +142,7 @@ smstart(struct tty *tp)
 	u_char buf[PCBURST];
 
 	crit_enter();
+	lwkt_gettoken(&tty_token);
 	if (!(tp->t_state & (TS_TIMEOUT | TS_BUSY | TS_TTSTOP))) {
 		tp->t_state |= TS_BUSY;
 		rbp = &tp->t_outq;
@@ -137,15 +151,18 @@ smstart(struct tty *tp)
 		tp->t_state &= ~TS_BUSY;
 		ttwwakeup(tp);
 	}
+	lwkt_reltoken(&tty_token);
 	crit_exit();
 }
 
 static int
 smparam(struct tty *tp, struct termios *t)
 {
+	lwkt_gettoken(&tty_token);
 	tp->t_ispeed = t->c_ispeed;
 	tp->t_ospeed = t->c_ospeed;
 	tp->t_cflag = t->c_cflag;
+	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -158,6 +175,7 @@ smioctl(struct dev_ioctl_args *ap)
 	mousemode_t *mode;
 	int error;
 
+	lwkt_gettoken(&tty_token);
 	tp = dev->si_tty;
 
 	switch (ap->a_cmd) {
@@ -168,6 +186,7 @@ smioctl(struct dev_ioctl_args *ap)
 		hw->type = MOUSE_MOUSE;
 		hw->model = MOUSE_MODEL_GENERIC;
 		hw->hwid = 0;
+		lwkt_reltoken(&tty_token);
 		return 0;
 
 	case MOUSE_GETMODE:	/* get protocol/mode */
@@ -194,26 +213,34 @@ smioctl(struct dev_ioctl_args *ap)
 			mode->syncmask[1] = MOUSE_SYS_SYNC;
 			break;
 		}
+		lwkt_reltoken(&tty_token);
 		return 0;
 
 	case MOUSE_SETMODE:	/* set protocol/mode */
 		mode = (mousemode_t *)ap->a_data;
 		if (mode->level == -1)
 			; 	/* don't change the current setting */
-		else if ((mode->level < 0) || (mode->level > 1))
+		else if ((mode->level < 0) || (mode->level > 1)) {
+			lwkt_reltoken(&tty_token);
 			return EINVAL;
-		else
+		} else {
 			mouse_level = mode->level;
+		}
+		lwkt_reltoken(&tty_token);
 		return 0;
 
 	case MOUSE_GETLEVEL:	/* get operation level */
 		*(int *)ap->a_data = mouse_level;
+		lwkt_reltoken(&tty_token);
 		return 0;
 
 	case MOUSE_SETLEVEL:	/* set operation level */
-		if ((*(int *)ap->a_data  < 0) || (*(int *)ap->a_data > 1))
+		if ((*(int *)ap->a_data  < 0) || (*(int *)ap->a_data > 1)) {
+			lwkt_reltoken(&tty_token);
 			return EINVAL;
+		}
 		mouse_level = *(int *)ap->a_data;
+		lwkt_reltoken(&tty_token);
 		return 0;
 
 	case MOUSE_GETSTATUS:	/* get accumulated mouse events */
@@ -225,25 +252,33 @@ smioctl(struct dev_ioctl_args *ap)
 		mouse_status.dy = 0;
 		mouse_status.dz = 0;
 		crit_exit();
+		lwkt_reltoken(&tty_token);
 		return 0;
 
 #if notyet
 	case MOUSE_GETVARS:	/* get internal mouse variables */
 	case MOUSE_SETVARS:	/* set internal mouse variables */
+		lwkt_reltoken(&tty_token);
 		return ENODEV;
 #endif
 
 	case MOUSE_READSTATE:	/* read status from the device */
 	case MOUSE_READDATA:	/* read data from the device */
+		lwkt_reltoken(&tty_token);
 		return ENODEV;
 	}
 
 	error = (*linesw[tp->t_line].l_ioctl)(tp, ap->a_cmd, ap->a_data, ap->a_fflag, ap->a_cred);
-	if (error != ENOIOCTL)
+	if (error != ENOIOCTL) {
+		lwkt_reltoken(&tty_token);
 		return error;
+	}
 	error = ttioctl(tp, ap->a_cmd, ap->a_data, ap->a_fflag);
-	if (error != ENOIOCTL)
+	if (error != ENOIOCTL) {
+		lwkt_reltoken(&tty_token);
 		return error;
+	}
+	lwkt_reltoken(&tty_token);
 	return ENOTTY;
 }
 
@@ -278,6 +313,7 @@ sysmouse_event(mouse_info_t *info)
 	int x, y, z;
 	int i;
 
+	lwkt_gettoken(&tty_token);
 	switch (info->operation) {
 	case MOUSE_ACTION:
         	mouse_status.button = info->u.data.buttons;
@@ -295,6 +331,7 @@ sysmouse_event(mouse_info_t *info)
 			mouse_status.button &= ~info->u.event.id;
 		break;
 	default:
+		lwkt_reltoken(&tty_token);
 		return 0;
 	}
 
@@ -303,11 +340,15 @@ sysmouse_event(mouse_info_t *info)
 	mouse_status.dz += z;
 	mouse_status.flags |= ((x || y || z) ? MOUSE_POSCHANGED : 0)
 			      | (mouse_status.obutton ^ mouse_status.button);
-	if (mouse_status.flags == 0)
+	if (mouse_status.flags == 0) {
+		lwkt_reltoken(&tty_token);
 		return 0;
+	}
 
-	if ((sysmouse_tty == NULL) || !(sysmouse_tty->t_state & TS_ISOPEN))
+	if ((sysmouse_tty == NULL) || !(sysmouse_tty->t_state & TS_ISOPEN)) {
+		lwkt_reltoken(&tty_token);
 		return mouse_status.flags;
+	}
 
 	/* the first five bytes are compatible with MouseSystems' */
 	buf[0] = MOUSE_MSC_SYNC
@@ -332,6 +373,7 @@ sysmouse_event(mouse_info_t *info)
 							       sysmouse_tty);
 	}
 
+	lwkt_reltoken(&tty_token);
 	return mouse_status.flags;
 }
 

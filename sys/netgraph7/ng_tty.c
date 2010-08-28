@@ -1,8 +1,8 @@
-/*
- * ng_tty.c
- */
-
 /*-
+ * (MPSAFE)
+ *
+ * ng_tty.c
+ *
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
  * All rights reserved.
  * 
@@ -199,6 +199,7 @@ ngt_open(struct cdev *dev, struct tty *tp)
 	if (sc == NULL)
 		return (ENOMEM);
 
+	lwkt_gettoken(&tty_token);
 	sc->tp = tp;
 	sc->hotchar = tp->t_hotchar = NG_TTY_DFL_HOTCHAR;
 	mtx_init(&sc->outq.ifq_mtx, "ng_tty node+queue", NULL, MTX_DEF);
@@ -211,6 +212,7 @@ ngt_open(struct cdev *dev, struct tty *tp)
 	if (error) {
 		NGTUNLOCK(sc);
 		FREE(sc, M_NETGRAPH);
+		lwkt_reltoken(&tty_token);
 		return (error);
 	}
 
@@ -223,6 +225,7 @@ ngt_open(struct cdev *dev, struct tty *tp)
 		NGTUNLOCK(sc);
 		NG_NODE_UNREF(sc->node);
 		log(LOG_ERR, "%s: node name exists?\n", name);
+		lwkt_reltoken(&tty_token);
 		return (error);
 	}
 
@@ -230,7 +233,7 @@ ngt_open(struct cdev *dev, struct tty *tp)
 	NG_NODE_SET_PRIVATE(sc->node, sc);
 	tp->t_lsc = sc;
 
-	ng_callout_init(&sc->chand);
+	ng_callout_init_mp(&sc->chand);
 
 	/*
 	 * Pre-allocate cblocks to the an appropriate amount.
@@ -244,6 +247,7 @@ ngt_open(struct cdev *dev, struct tty *tp)
 
 	NGTUNLOCK(sc);
 
+	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
@@ -256,6 +260,7 @@ ngt_close(struct tty *tp, int flag)
 {
 	const sc_p sc = (sc_p) tp->t_lsc;
 
+	lwkt_gettoken(&tty_token);
 	ttyflush(tp, FREAD | FWRITE);
 	clist_free_cblocks(&tp->t_outq);
 	if (sc != NULL) {
@@ -267,6 +272,7 @@ ngt_close(struct tty *tp, int flag)
 		NGTUNLOCK(sc);
 		ng_rmnode_self(sc->node);
 	}
+	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
@@ -300,6 +306,7 @@ ngt_tioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *td
 		/* No node attached */
 		return (0);
 
+	lwkt_gettoken(&tty_token);
 	switch (cmd) {
 	case NGIOCGINFO:
 	    {
@@ -317,9 +324,11 @@ ngt_tioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *td
 		break;
 	    }
 	default:
+		lwkt_reltoken(&tty_token);
 		return (ENOIOCTL);
 	}
 
+	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
@@ -338,10 +347,13 @@ ngt_input(int c, struct tty *tp)
 	struct mbuf *m;
 	int error = 0;
 
+	lwkt_gettoken(&tty_token);
 	sc = (sc_p) tp->t_lsc;
-	if (sc == NULL)
+	if (sc == NULL) {
 		/* No node attached */
+		lwkt_reltoken(&tty_token);
 		return (0);
+	}
 
 	node = sc->node;
 
@@ -352,6 +364,7 @@ ngt_input(int c, struct tty *tp)
 	if ((tp->t_state & TS_CONNECTED) == 0) {
 		if (sc->flags & FLG_DEBUG)
 			log(LOG_DEBUG, "%s: no carrier\n", NG_NODE_NAME(node));
+		lwkt_reltoken(&tty_token);
 		return (0);
 	}
 	if (c & TTY_ERRORMASK) {
@@ -359,6 +372,7 @@ ngt_input(int c, struct tty *tp)
 		if (sc->flags & FLG_DEBUG)
 			log(LOG_DEBUG, "%s: line error %x\n",
 			    NG_NODE_NAME(node), c & TTY_ERRORMASK);
+		lwkt_reltoken(&tty_token);
 		return (0);
 	}
 	c &= TTY_CHARMASK;
@@ -370,6 +384,7 @@ ngt_input(int c, struct tty *tp)
 			if (sc->flags & FLG_DEBUG)
 				log(LOG_ERR,
 				    "%s: can't get mbuf\n", NG_NODE_NAME(node));
+			lwkt_reltoken(&tty_token);
 			return (ENOBUFS);
 		}
 		m->m_len = m->m_pkthdr.len = 0;
@@ -399,12 +414,14 @@ ngt_input(int c, struct tty *tp)
 		if (sc->hook == NULL) {
 			NGTUNLOCK(sc);
 			m_freem(m);
+			lwkt_reltoken(&tty_token);
 			return (0);		/* XXX: original behavior */
 		}
 		NG_SEND_DATA_ONLY(error, sc->hook, m);	/* Will queue */
 		NGTUNLOCK(sc);
 	}
 
+	lwkt_reltoken(&tty_token);
 	return (error);
 }
 
@@ -417,6 +434,7 @@ ngt_start(struct tty *tp)
 {
 	const sc_p sc = (sc_p) tp->t_lsc;
 
+	lwkt_gettoken(&tty_token);
 	while (tp->t_outq.c_cc < NGT_HIWATER) {	/* XXX 2.2 specific ? */
 		struct mbuf *m;
 
@@ -455,6 +473,7 @@ ngt_start(struct tty *tp)
 	if (!IFQ_IS_EMPTY(&sc->outq) && !callout_pending(&sc->chand))
 		ng_callout(&sc->chand, sc->node, NULL, 1, ngt_timeout, NULL, 0);
 
+	lwkt_reltoken(&tty_token);
 	return (0);
 }
 

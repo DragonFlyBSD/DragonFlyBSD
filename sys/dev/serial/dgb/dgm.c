@@ -464,6 +464,7 @@ dgmprobe(device_t dev)
 	if (sc->io_res == NULL)
 		return (ENXIO);
 
+	lwkt_gettoken(&tty_token);
 	outb(sc->port, FEPRST);
 	sc->enabled = 0;
 
@@ -480,6 +481,7 @@ dgmprobe(device_t dev)
 	if (!sc->enabled) {
 		DPRINT2(DB_EXCEPT, "dgm%d: failed to respond\n", sc->unit);
 		bus_release_resource(dev, SYS_RES_IOPORT, sc->iorid, sc->io_res);
+		lwkt_reltoken(&tty_token);
 		return (ENXIO);
 	}
 
@@ -506,6 +508,7 @@ dgmprobe(device_t dev)
 	if (sc->mem_res == NULL) {
 		device_printf(dev, "0x%lx: Memory range is in use\n", sc->pmem);
 		bus_release_resource(dev, SYS_RES_IOPORT, sc->iorid, sc->io_res);
+		lwkt_reltoken(&tty_token);
 		return (ENXIO);
 	}
 
@@ -520,6 +523,7 @@ dgmprobe(device_t dev)
 
 	DPRINT2(DB_INFO, "dgm%d: Probe returns 0\n", sc->unit);
 
+	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
@@ -539,7 +543,8 @@ dgmattach(device_t dev)
 
 	DPRINT2(DB_INFO, "dbg%d: attaching\n", device_get_unit(dev));
 
-	callout_init(&sc->toh);
+	lwkt_gettoken(&tty_token);
+	callout_init_mp(&sc->toh);
 	sc->unit = device_get_unit(dev);
 	bus_get_resource(dev, SYS_RES_IOPORT, 0, &sc->port, &iosize);
 	bus_get_resource(dev, SYS_RES_MEMORY, 0, &sc->pmem, &msize);
@@ -554,14 +559,17 @@ dgmattach(device_t dev)
 	sc->iorid = 0;
 	sc->io_res = bus_alloc_resource(dev, SYS_RES_IOPORT, &sc->iorid,
 	    0ul, ~0ul, iosize, RF_ACTIVE);
-	if (sc->io_res == NULL)
+	if (sc->io_res == NULL) {
+		lwkt_reltoken(&tty_token);
 		return (ENXIO);
+	}
 	sc->mrid = 0;
 	sc->mem_res = bus_alloc_resource(dev, SYS_RES_MEMORY, &sc->mrid,
 	    0ul, ~0ul, msize, RF_ACTIVE);
 	if (sc->mem_res == NULL) {
 		device_printf(dev, "0x%lx: Memory range is in use\n", sc->pmem);
 		bus_release_resource(dev, SYS_RES_IOPORT, sc->iorid, sc->io_res);
+		lwkt_reltoken(&tty_token);
 		return (ENXIO);
 	}
 
@@ -582,6 +590,7 @@ dgmattach(device_t dev)
 			hidewin(sc);
 			bus_release_resource(dev, SYS_RES_MEMORY, sc->mrid, sc->mem_res);
 			bus_release_resource(dev, SYS_RES_IOPORT, sc->iorid, sc->io_res);
+			lwkt_reltoken(&tty_token);
 			return (ENXIO);
 		}
 		DELAY(1);
@@ -606,6 +615,7 @@ dgmattach(device_t dev)
 		hidewin(sc);
 		bus_release_resource(dev, SYS_RES_MEMORY, sc->mrid, sc->mem_res);
 		bus_release_resource(dev, SYS_RES_IOPORT, sc->iorid, sc->io_res);
+		lwkt_reltoken(&tty_token);
 		return (ENXIO);
 	}
 
@@ -619,6 +629,7 @@ dgmattach(device_t dev)
 		hidewin(sc);
 		bus_release_resource(dev, SYS_RES_MEMORY, sc->mrid, sc->mem_res);
 		bus_release_resource(dev, SYS_RES_IOPORT, sc->iorid, sc->io_res);
+		lwkt_reltoken(&tty_token);
 		return (ENXIO);
 	}
 
@@ -648,6 +659,7 @@ dgmattach(device_t dev)
 			hidewin(sc);
 			bus_release_resource(dev, SYS_RES_MEMORY, sc->mrid, sc->mem_res);
 			bus_release_resource(dev, SYS_RES_IOPORT, sc->iorid, sc->io_res);
+			lwkt_reltoken(&tty_token);
 			return (ENXIO);
 		}
 	}
@@ -666,6 +678,7 @@ dgmattach(device_t dev)
 			hidewin(sc);
 			bus_release_resource(dev, SYS_RES_MEMORY, sc->mrid, sc->mem_res);
 			bus_release_resource(dev, SYS_RES_IOPORT, sc->iorid, sc->io_res);
+			lwkt_reltoken(&tty_token);
 			return (ENXIO);
 		}
 	}
@@ -687,6 +700,7 @@ dgmattach(device_t dev)
 			hidewin(sc);
 			bus_release_resource(dev, SYS_RES_MEMORY, sc->mrid, sc->mem_res);
 			bus_release_resource(dev, SYS_RES_IOPORT, sc->iorid, sc->io_res);
+			lwkt_reltoken(&tty_token);
 			return (ENXIO);
 		}
 	}
@@ -697,6 +711,7 @@ dgmattach(device_t dev)
 		hidewin(sc);
 		bus_release_resource(dev, SYS_RES_MEMORY, sc->mrid, sc->mem_res);
 		bus_release_resource(dev, SYS_RES_IOPORT, sc->iorid, sc->io_res);
+		lwkt_reltoken(&tty_token);
 		return (ENXIO);
 	}
 	kprintf(", DigiBIOS running\n");
@@ -716,6 +731,7 @@ dgmattach(device_t dev)
 			hidewin(sc);
 			bus_release_resource(dev, SYS_RES_MEMORY, sc->mrid, sc->mem_res);
 			bus_release_resource(dev, SYS_RES_IOPORT, sc->iorid, sc->io_res);
+			lwkt_reltoken(&tty_token);
 			return (ENXIO);
 		}
 	}
@@ -735,6 +751,7 @@ dgmattach(device_t dev)
 			hidewin(sc);
 			bus_release_resource(dev, SYS_RES_MEMORY, sc->mrid, sc->mem_res);
 			bus_release_resource(dev, SYS_RES_IOPORT, sc->iorid, sc->io_res);
+			lwkt_reltoken(&tty_token);
 			return (ENXIO);
 		}
 	}
@@ -745,6 +762,7 @@ dgmattach(device_t dev)
 		hidewin(sc);
 		bus_release_resource(dev, SYS_RES_MEMORY, sc->mrid, sc->mem_res);
 		bus_release_resource(dev, SYS_RES_IOPORT, sc->iorid, sc->io_res);
+		lwkt_reltoken(&tty_token);
 		return (ENXIO);
 	}
 	kprintf(", FEP/OS running\n");
@@ -758,6 +776,7 @@ dgmattach(device_t dev)
 		hidewin(sc);
 		bus_release_resource(dev, SYS_RES_MEMORY, sc->mrid, sc->mem_res);
 		bus_release_resource(dev, SYS_RES_IOPORT, sc->iorid, sc->io_res);
+		lwkt_reltoken(&tty_token);
 		return (ENXIO);
 	}
 
@@ -769,8 +788,8 @@ dgmattach(device_t dev)
 	DPRINT3(DB_INFO, "dgm%d: enable %d ports\n", sc->unit, sc->numports);
 	for (i = 0; i < sc->numports; i++) {
 		sc->ports[i].enabled = 1;
-		callout_init(&sc->ports[i].hc_timeout);
-		callout_init(&sc->ports[i].wf_timeout);
+		callout_init_mp(&sc->ports[i].hc_timeout);
+		callout_init_mp(&sc->ports[i].wf_timeout);
 	}
 
 	/* We should now init per-port structures */
@@ -881,6 +900,7 @@ dgmattach(device_t dev)
 
 	DPRINT2(DB_INFO, "dgm%d: poll thread started\n", sc->unit);
 
+	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
@@ -890,9 +910,13 @@ dgmdetach(device_t dev)
 	struct dgm_softc *sc = device_get_softc(dev);
 	int i;
 
-	for (i = 0; i < sc->numports; i++)
-		if (sc->ttys[i].t_state & TS_ISOPEN)
+	lwkt_gettoken(&tty_token);
+	for (i = 0; i < sc->numports; i++) {
+		if (sc->ttys[i].t_state & TS_ISOPEN) {
+			lwkt_reltoken(&tty_token);
 			return (EBUSY);
+		}
+	}
 
 	DPRINT2(DB_INFO, "dgm%d: detach\n", sc->unit);
 
@@ -916,6 +940,7 @@ dgmdetach(device_t dev)
 		sc->vmem = NULL;
 	}
 
+	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
@@ -945,6 +970,7 @@ dgmopen(struct dev_open_args *ap)
 	int error;
 	volatile struct board_chan *bc;
 
+	lwkt_gettoken(&tty_token);
 	error = 0;
 	mynor = minor(dev);
 	unit = MINOR_TO_UNIT(mynor);
@@ -954,6 +980,7 @@ dgmopen(struct dev_open_args *ap)
 	if (sc == NULL) {
 		DPRINT2(DB_EXCEPT, "dgm%d: try to open a nonexisting card\n",
 		    unit);
+		lwkt_reltoken(&tty_token);
 		return ENXIO;
 	}
 
@@ -962,17 +989,21 @@ dgmopen(struct dev_open_args *ap)
 	if (!sc->enabled) {
 		DPRINT2(DB_EXCEPT, "dgm%d: try to open a disabled card\n",
 		    unit);
+		lwkt_reltoken(&tty_token);
 		return ENXIO;
 	}
 
 	if (pnum >= sc->numports) {
 		DPRINT3(DB_EXCEPT, "dgm%d: try to open non-existing port %d\n",
 		    unit, pnum);
+		lwkt_reltoken(&tty_token);
 		return ENXIO;
 	}
 
-	if (mynor & CONTROL_MASK)
+	if (mynor & CONTROL_MASK) {
+		lwkt_reltoken(&tty_token);
 		return 0;
+	}
 
 	tp = &sc->ttys[pnum];
 	dev->si_tty = tp;
@@ -1109,6 +1140,7 @@ out:
 	DPRINT4(DB_OPEN, "dgm%d: port%d: open() returns %d\n",
 	    unit, pnum, error);
 
+	lwkt_reltoken(&tty_token);
 	return error;
 }
 
@@ -1127,6 +1159,8 @@ dgmclose(struct dev_close_args *ap)
 	mynor = minor(dev);
 	if (mynor & CONTROL_MASK)
 		return 0;
+
+	lwkt_gettoken(&tty_token);
 	unit = MINOR_TO_UNIT(mynor);
 	pnum = MINOR_TO_PORT(mynor);
 
@@ -1170,15 +1204,20 @@ dgmclose(struct dev_close_args *ap)
 
 	DPRINT3(DB_CLOSE, "dgm%d: port%d: close exit\n", unit, pnum);
 
+	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static void
 dgmhardclose(struct dgm_p *port)
 {
 	volatile struct board_chan *bc = port->brdchan;
 	struct dgm_softc *sc;
 
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	sc = devclass_get_softc(dgmdevclass, port->sc->unit);
 	DPRINT2(DB_INFO, "dgm%d: dgmhardclose\n", sc->unit);
 	crit_enter();
@@ -1203,7 +1242,9 @@ dgmhardclose(struct dgm_p *port)
 static void
 dgm_pause(void *chan)
 {
+	lwkt_gettoken(&tty_token);
 	wakeup((caddr_t)chan);
+	lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -1226,11 +1267,13 @@ dgmpoll(void *unit_c)
 	int ibuf_full, obuf_full;
 	BoardMemWinState ws = bmws_get();
 
+	lwkt_gettoken(&tty_token);
 	sc = devclass_get_softc(dgmdevclass, unit);
 	DPRINT2(DB_INFO, "dgm%d: poll\n", sc->unit);
 
 	if (!sc->enabled) {
 		kprintf("dgm%d: polling of disabled board stopped\n", unit);
+		lwkt_reltoken(&tty_token);
 		return;
 	}
 
@@ -1481,6 +1524,7 @@ dgmpoll(void *unit_c)
 	callout_reset(&sc->toh, hz / POLLSPERSEC, dgmpoll, unit_c);
 
 	DPRINT2(DB_INFO, "dgm%d: poll done\n", sc->unit);
+	lwkt_reltoken(&tty_token);
 }
 
 static int
@@ -1498,6 +1542,7 @@ dgmioctl(struct dev_ioctl_args *ap)
 	int error;
 	int tiocm_xxx;
 
+	lwkt_gettoken(&tty_token);
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)
 	u_long		oldcmd;
 	struct termios	term;
@@ -1530,20 +1575,27 @@ dgmioctl(struct dev_ioctl_args *ap)
 		switch (cmd) {
 		case TIOCSETA:
 			error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
-			if (error != 0)
+			if (error != 0) {
+				lwkt_reltoken(&tty_token);
 				return (error);
+			}
 			*ct = *(struct termios *)data;
+			lwkt_reltoken(&tty_token);
 			return (0);
 		case TIOCGETA:
 			*(struct termios *)data = *ct;
+			lwkt_reltoken(&tty_token);
 			return (0);
 		case TIOCGETD:
 			*(int *)data = TTYDISC;
+			lwkt_reltoken(&tty_token);
 			return (0);
 		case TIOCGWINSZ:
 			bzero(data, sizeof(struct winsize));
+			lwkt_reltoken(&tty_token);
 			return (0);
 		default:
+			lwkt_reltoken(&tty_token);
 			return (ENOTTY);
 		}
 	}
@@ -1555,8 +1607,10 @@ dgmioctl(struct dev_ioctl_args *ap)
 	}
 	oldcmd = cmd;
 	error = ttsetcompat(tp, &cmd, data, &term);
-	if (error != 0)
+	if (error != 0) {
+		lwkt_reltoken(&tty_token);
 		return (error);
+	}
 	if (cmd != oldcmd)
 		data = (caddr_t)&term;
 #endif
@@ -1591,6 +1645,7 @@ dgmioctl(struct dev_ioctl_args *ap)
 		fepcmd(port, PAUSETX, 0, 0, 0, 0);
 		bmws_set(ws);
 		crit_exit();
+		lwkt_reltoken(&tty_token);
 		return 0;
 	} else if (cmd == TIOCSTART) {
 		crit_enter();
@@ -1598,6 +1653,7 @@ dgmioctl(struct dev_ioctl_args *ap)
 		fepcmd(port, RESUMETX, 0, 0, 0, 0);
 		bmws_set(ws);
 		crit_exit();
+		lwkt_reltoken(&tty_token);
 		return 0;
 	}
 
@@ -1606,8 +1662,10 @@ dgmioctl(struct dev_ioctl_args *ap)
 
 	error = linesw[tp->t_line].l_ioctl(tp, cmd, data,
 					   ap->a_fflag, ap->a_cred);
-	if (error != ENOIOCTL)
+	if (error != ENOIOCTL) {
+		lwkt_reltoken(&tty_token);
 		return error;
+	}
 	crit_enter();
 	error = ttioctl(tp, cmd, data, ap->a_fflag);
 	disc_optim(tp, &tp->t_termios);
@@ -1617,6 +1675,7 @@ dgmioctl(struct dev_ioctl_args *ap)
 		if (cmd == TIOCSETA || cmd == TIOCSETAW || cmd == TIOCSETAF) {
 			DPRINT6(DB_PARAM, "dgm%d: port%d: dgmioctl-RES c = 0x%x i = 0x%x l = 0x%x\n", unit, pnum, tp->t_cflag, tp->t_iflag, tp->t_lflag);
 		}
+		lwkt_reltoken(&tty_token);
 		return error;
 	}
 
@@ -1627,6 +1686,7 @@ dgmioctl(struct dev_ioctl_args *ap)
 
 		if (error != 0) {
 			crit_exit();
+			lwkt_reltoken(&tty_token);
 			return error;
 		}
 #endif
@@ -1755,6 +1815,7 @@ dgmioctl(struct dev_ioctl_args *ap)
 		error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
 		if (error != 0) {
 			crit_exit();
+			lwkt_reltoken(&tty_token);
 			return (error);
 		}
 		port->close_delay = *(int *)data * hz / 100;
@@ -1773,11 +1834,13 @@ dgmioctl(struct dev_ioctl_args *ap)
 	default:
 		bmws_set(ws);
 		crit_exit();
+		lwkt_reltoken(&tty_token);
 		return ENOTTY;
 	}
 	bmws_set(ws);
 	crit_exit();
 
+	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -1786,11 +1849,15 @@ wakeflush(void *p)
 {
 	struct dgm_p *port = p;
 
+	lwkt_gettoken(&tty_token);
 	wakeup(&port->draining);
+	lwkt_reltoken(&tty_token);
 }
 
 /* wait for the output to drain */
-
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static int
 dgmdrain(struct dgm_p *port)
 {
@@ -1800,6 +1867,7 @@ dgmdrain(struct dgm_p *port)
 	int head, tail;
 	BoardMemWinState ws = bmws_get();
 
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	sc = devclass_get_softc(dgmdevclass, port->sc->unit);
 
 	setwin(sc, 0);
@@ -1839,7 +1907,9 @@ dgmdrain(struct dgm_p *port)
 
 /* wait for the output to drain */
 /* or simply clear the buffer it it's stopped */
-
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static void
 dgm_drain_or_flush(struct dgm_p *port)
 {
@@ -1850,6 +1920,7 @@ dgm_drain_or_flush(struct dgm_p *port)
 	int lasttail;
 	int head, tail;
 
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	sc = devclass_get_softc(dgmdevclass, port->sc->unit);
 	setwin(sc, 0);
 
@@ -1913,6 +1984,7 @@ dgmparam(struct tty *tp, struct termios *t)
 	int hflow;
 	BoardMemWinState ws = bmws_get();
 
+	lwkt_gettoken(&tty_token);
 	sc = devclass_get_softc(dgmdevclass, unit);
 	port = &sc->ports[pnum];
 	bc = port->brdchan;
@@ -1931,6 +2003,7 @@ dgmparam(struct tty *tp, struct termios *t)
 
 	if (cflag < 0 /* || cflag > 0 && t->c_ispeed != t->c_ospeed */) {
 		DPRINT4(DB_PARAM, "dgm%d: port%d: invalid cflag = 0%o\n", unit, pnum, cflag);
+		lwkt_reltoken(&tty_token);
 		return (EINVAL);
 	}
 
@@ -1990,6 +2063,7 @@ dgmparam(struct tty *tp, struct termios *t)
 	bmws_set(ws);
 	crit_exit();
 
+	lwkt_reltoken(&tty_token);
 	return 0;
 
 }
@@ -2006,6 +2080,7 @@ dgmstart(struct tty *tp)
 	int size, ocount;
 	int wmask;
 
+	lwkt_gettoken(&tty_token);
 	BoardMemWinState ws = bmws_get();
 
 	unit = MINOR_TO_UNIT(minor(tp->t_dev));
@@ -2067,6 +2142,7 @@ dgmstart(struct tty *tp)
 			bmws_set(ws);
 			tp->t_state |= TS_BUSY;
 			crit_exit();
+			lwkt_reltoken(&tty_token);
 			return;
 		}
 
@@ -2102,6 +2178,7 @@ dgmstart(struct tty *tp)
 	}
 	tp->t_state& = ~TS_BUSY;
 #endif
+	lwkt_reltoken(&tty_token);
 }
 
 void
@@ -2113,6 +2190,7 @@ dgmstop(struct tty *tp, int rw)
 	struct dgm_softc *sc;
 	volatile struct board_chan *bc;
 
+	lwkt_gettoken(&tty_token);
 	BoardMemWinState ws = bmws_get();
 
 	unit = MINOR_TO_UNIT(minor(tp->t_dev));
@@ -2142,8 +2220,12 @@ dgmstop(struct tty *tp, int rw)
 	bmws_set(ws);
 	crit_exit();
 	dgmstart(tp);
+	lwkt_reltoken(&tty_token);
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static void
 fepcmd(struct dgm_p *port,
 	unsigned cmd,
@@ -2156,6 +2238,7 @@ fepcmd(struct dgm_p *port,
 	unsigned tail, head;
 	int count, n;
 
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	KASSERT(port->sc, ("Couldn't (re)obtain driver softc"));
 	mem = port->sc->vmem;
 
@@ -2206,6 +2289,7 @@ fepcmd(struct dgm_p *port,
 static void
 disc_optim(struct tty *tp, struct termios *t)
 {
+	lwkt_gettoken(&tty_token);
 	if (!(t->c_iflag & (ICRNL | IGNCR | IMAXBEL | INLCR | ISTRIP | IXON))
 	    && (!(t->c_iflag & BRKINT) || (t->c_iflag & IGNBRK))
 	    && (!(t->c_iflag & PARMRK)
@@ -2215,4 +2299,5 @@ disc_optim(struct tty *tp, struct termios *t)
 		tp->t_state |= TS_CAN_BYPASS_L_RINT;
 	else
 		tp->t_state &= ~TS_CAN_BYPASS_L_RINT;
+	lwkt_reltoken(&tty_token);
 }

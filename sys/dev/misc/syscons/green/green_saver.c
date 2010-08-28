@@ -1,4 +1,6 @@
 /*-
+ * (MPSAFE)
+ *
  * Copyright (c) 1995-1998 Søren Schmidt
  * All rights reserved.
  *
@@ -35,6 +37,7 @@
 #include <sys/module.h>
 #include <sys/consio.h>
 #include <sys/fbio.h>
+#include <sys/thread.h>
 
 #include <dev/video/fb/fbreg.h>
 #include <dev/video/fb/splashreg.h>
@@ -45,22 +48,33 @@ static int blanked;
 static int
 green_saver(video_adapter_t *adp, int blank)
 {
-	if (blank == blanked)
+	lwkt_gettoken(&tty_token);
+
+	if (blank == blanked) {
+		lwkt_reltoken(&tty_token);
 		return 0;
+	}
 
 	(*vidsw[adp->va_index]->blank_display)
 		(adp, blank ? V_DISPLAY_STAND_BY : V_DISPLAY_ON);
 
 	blanked = blank;
 
+	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
 static int
 green_init(video_adapter_t *adp)
 {
-	if ((*vidsw[adp->va_index]->blank_display)(adp, V_DISPLAY_ON) == 0)
+	lwkt_gettoken(&tty_token);
+
+	if ((*vidsw[adp->va_index]->blank_display)(adp, V_DISPLAY_ON) == 0) {
+		lwkt_reltoken(&tty_token);
 		return 0;
+	}
+
+	lwkt_reltoken(&tty_token);
 	return ENODEV;
 }
 

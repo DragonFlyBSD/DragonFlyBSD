@@ -38,6 +38,7 @@
 #include <sys/fbio.h>
 #include <sys/random.h>
 #include <sys/thread2.h>
+#include <sys/thread.h>
 
 #include <dev/video/fb/fbreg.h>
 #include <dev/video/fb/splashreg.h>

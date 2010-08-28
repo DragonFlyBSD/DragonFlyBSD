@@ -36,6 +36,7 @@
 #include <sys/kernel.h>
 #include <sys/linker.h>
 #include <sys/fbio.h>
+#include <sys/thread.h>
 
 #include <dev/video/fb/fbreg.h>
 #include <dev/video/fb/splashreg.h>

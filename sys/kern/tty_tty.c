@@ -1,4 +1,6 @@
 /*-
+ * (MPSAFE)
+ *
  * Copyright (c) 1982, 1986, 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -219,23 +221,32 @@ cttyioctl(struct dev_ioctl_args *ap)
 	struct proc *p = curproc;
 
 	KKASSERT(p);
+	lwkt_gettoken(&proc_token);
 	ttyvp = cttyvp(p);
-	if (ttyvp == NULL)
+	if (ttyvp == NULL) {
+		lwkt_reltoken(&proc_token);
 		return (EIO);
+	}
 	/*
 	 * Don't allow controlling tty to be set to the controlling tty
 	 * (infinite recursion).
 	 */
-	if (ap->a_cmd == TIOCSCTTY)
+	if (ap->a_cmd == TIOCSCTTY) {
+		lwkt_reltoken(&proc_token);
 		return EINVAL;
+	}
 	if (ap->a_cmd == TIOCNOTTY) {
 		if (!SESS_LEADER(p)) {
 			p->p_flag &= ~P_CONTROLT;
+			lwkt_reltoken(&proc_token);
 			return (0);
 		} else {
+			lwkt_reltoken(&proc_token);
 			return (EINVAL);
 		}
 	}
+	lwkt_reltoken(&proc_token);
+
 	return (VOP_IOCTL(ttyvp, ap->a_cmd, ap->a_data, ap->a_fflag,
 			  ap->a_cred, ap->a_sysmsg));
 }

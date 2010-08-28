@@ -1,4 +1,6 @@
 /*-
+ * (MPSAFE)
+ *
  * Copyright (c) 1998 Kazutaka YOKOTA and Michael Smith
  * All rights reserved.
  *
@@ -841,13 +843,16 @@ vesa_configure(int flags)
 	if (flags & VIO_PROBE_ONLY)
 		return 0;		/* XXX */
 
+	lwkt_gettoken(&tty_token);
 	/*
 	 * If the VESA module has already been loaded, abort loading 
 	 * the module this time.
 	 */
 	for (i = 0; (adp = vid_get_adapter(i)) != NULL; ++i) {
-		if (adp->va_flags & V_ADP_VESA)
+		if (adp->va_flags & V_ADP_VESA) {
+			lwkt_reltoken(&tty_token);
 			return ENXIO;
+		}
 		if (adp->va_type == KD_VGA)
 			break;
 	}
@@ -859,6 +864,7 @@ vesa_configure(int flags)
 	 */
 	if (adp == NULL) {
 		vga_sub_configure = vesa_configure;
+		lwkt_reltoken(&tty_token);
 		return ENODEV;
 	}
 
@@ -866,6 +872,7 @@ vesa_configure(int flags)
 	vesa_adp = adp;
 	if (vesa_bios_init()) {
 		vesa_adp = NULL;
+		lwkt_reltoken(&tty_token);
 		return ENXIO;
 	}
 	vesa_adp->va_flags |= V_ADP_VESA | V_ADP_COLOR;
@@ -873,6 +880,7 @@ vesa_configure(int flags)
 	prevvidsw = vidsw[vesa_adp->va_index];
 	vidsw[vesa_adp->va_index] = &vesavidsw;
 	vesa_init_done = TRUE;
+	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -893,13 +901,25 @@ vesa_error(void)
 static int
 vesa_probe(int unit, video_adapter_t **adpp, void *arg, int flags)
 {
-	return (*prevvidsw->probe)(unit, adpp, arg, flags);
+	int ret;
+
+	lwkt_gettoken(&tty_token);
+	ret = (*prevvidsw->probe)(unit, adpp, arg, flags);
+	lwkt_reltoken(&tty_token);
+
+	return ret;
 }
 
 static int
 vesa_init(int unit, video_adapter_t *adp, int flags)
 {
-	return (*prevvidsw->init)(unit, adp, flags);
+	int ret;
+
+	lwkt_gettoken(&tty_token);
+	ret = (*prevvidsw->init)(unit, adp, flags);
+	lwkt_reltoken(&tty_token);
+
+	return ret;
 }
 
 static int
@@ -907,20 +927,27 @@ vesa_get_info(video_adapter_t *adp, int mode, video_info_t *info)
 {
 	int i;
 
-	if ((*prevvidsw->get_info)(adp, mode, info) == 0)
+	lwkt_gettoken(&tty_token);
+	if ((*prevvidsw->get_info)(adp, mode, info) == 0) {
+		lwkt_reltoken(&tty_token);
 		return 0;
+	}
 
-	if (adp != vesa_adp)
+	if (adp != vesa_adp) {
+		lwkt_reltoken(&tty_token);
 		return 1;
+	}
 
 	for (i = 0; vesa_vmode[i].vi_mode != EOT; ++i) {
 		if (vesa_vmode[i].vi_mode == NA)
 			continue;
 		if (vesa_vmode[i].vi_mode == mode) {
 			*info = vesa_vmode[i];
+			lwkt_reltoken(&tty_token);
 			return 0;
 		}
 	}
+	lwkt_reltoken(&tty_token);
 	return 1;
 }
 
@@ -967,10 +994,15 @@ static int
 vesa_set_mode(video_adapter_t *adp, int mode)
 {
 	video_info_t info;
-	int len;
+	int len, ret;
 
-	if (adp != vesa_adp)
-		return (*prevvidsw->set_mode)(adp, mode);
+	lwkt_gettoken(&tty_token);
+
+	if (adp != vesa_adp) {
+		ret = (*prevvidsw->set_mode)(adp, mode);
+		lwkt_reltoken(&tty_token);
+		return ret;
+	}
 
 #if VESA_DEBUG > 0
 	kprintf("VESA: set_mode(): %d(0x%x) -> %d(0x%x)\n",
@@ -998,12 +1030,16 @@ vesa_set_mode(video_adapter_t *adp, int mode)
 	}
 
 	/* we may not need to handle this mode after all... */
-	if ((*prevvidsw->set_mode)(adp, mode) == 0)
+	if ((*prevvidsw->set_mode)(adp, mode) == 0) {
+		lwkt_reltoken(&tty_token);
 		return 0;
+	}
 
 	/* is the new mode supported? */
-	if (vesa_get_info(adp, mode, &info))
+	if (vesa_get_info(adp, mode, &info)) {
+		lwkt_reltoken(&tty_token);
 		return 1;
+	}
 	/* assert(VESA_MODE(mode)); */
 
 #if VESA_DEBUG > 0
@@ -1013,8 +1049,10 @@ vesa_set_mode(video_adapter_t *adp, int mode)
 	if (!(info.vi_flags & V_INFO_GRAPHICS))
 		info.vi_flags &= ~V_INFO_LINEAR;
 
-	if (vesa_bios_set_mode(mode | ((info.vi_flags & V_INFO_LINEAR) ? 0x4000 : 0)))
+	if (vesa_bios_set_mode(mode | ((info.vi_flags & V_INFO_LINEAR) ? 0x4000 : 0))) {
+		lwkt_reltoken(&tty_token);
 		return 1;
+	}
 
 	if (adp->va_info.vi_flags & V_INFO_LINEAR)
 		vesa_unmap_buffer(adp->va_buffer,
@@ -1084,6 +1122,7 @@ vesa_set_mode(video_adapter_t *adp, int mode)
 	/* move hardware cursor out of the way */
 	(*vidsw[vesa_adp->va_index]->set_hw_cursor)(vesa_adp, -1, -1);
 
+	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -1091,20 +1130,35 @@ static int
 vesa_save_font(video_adapter_t *adp, int page, int fontsize, u_char *data,
 	       int ch, int count)
 {
-	return (*prevvidsw->save_font)(adp, page, fontsize, data, ch, count);
+	int ret;
+
+	lwkt_gettoken(&tty_token);
+	ret = (*prevvidsw->save_font)(adp, page, fontsize, data, ch, count);
+	lwkt_reltoken(&tty_token);
+	return ret;
 }
 
 static int
 vesa_load_font(video_adapter_t *adp, int page, int fontsize, u_char *data,
 	       int ch, int count)
 {
-	return (*prevvidsw->load_font)(adp, page, fontsize, data, ch, count);
+	int ret;
+
+	lwkt_gettoken(&tty_token);
+	ret = (*prevvidsw->load_font)(adp, page, fontsize, data, ch, count);
+	lwkt_reltoken(&tty_token);
+	return ret;
 }
 
 static int
 vesa_show_font(video_adapter_t *adp, int page)
 {
-	return (*prevvidsw->show_font)(adp, page);
+	int ret;
+
+	lwkt_gettoken(&tty_token);
+	ret = (*prevvidsw->show_font)(adp, page);
+	lwkt_reltoken(&tty_token);
+	return ret;
 }
 
 static int
@@ -1112,23 +1166,34 @@ vesa_save_palette(video_adapter_t *adp, u_char *palette)
 {
 	int bits;
 	int error;
+	int ret;
 
+	lwkt_gettoken(&tty_token);
 	if ((adp == vesa_adp) && (vesa_adp_info->v_flags & V_DAC8)
 	    && VESA_MODE(adp->va_mode)) {
 		bits = vesa_bios_get_dac();
 		error = vesa_bios_save_palette(0, 256, palette, bits);
-		if (error == 0)
+		if (error == 0) {
+			lwkt_reltoken(&tty_token);
 			return 0;
-		if (bits != 6)
+		}
+		if (bits != 6) {
+			lwkt_reltoken(&tty_token);
 			return error;
+		}
 	}
 
-	return (*prevvidsw->save_palette)(adp, palette);
+	ret = (*prevvidsw->save_palette)(adp, palette);
+	lwkt_reltoken(&tty_token);
+	return ret;
 }
 
 static int
 vesa_load_palette(video_adapter_t *adp, const u_char *palette)
 {
+	int ret;
+
+	lwkt_gettoken(&tty_token);
 #if notyet
 	int bits;
 	int error;
@@ -1136,49 +1201,80 @@ vesa_load_palette(video_adapter_t *adp, const u_char *palette)
 	if ((adp == vesa_adp) && (vesa_adp_info->v_flags & V_DAC8) 
 	    && VESA_MODE(adp->va_mode) && ((bits = vesa_bios_set_dac(8)) > 6)) {
 		error = vesa_bios_load_palette(0, 256, palette, bits);
-		if (error == 0)
+		if (error == 0) {
+			lwkt_reltoken(&tty_token);
 			return 0;
-		if (vesa_bios_set_dac(6) != 6)
+		}
+		if (vesa_bios_set_dac(6) != 6) {
+			lwkt_reltoken(&tty_token);
 			return 1;
+		}
 	}
 #endif /* notyet */
 
-	return (*prevvidsw->load_palette)(adp, palette);
+	ret = (*prevvidsw->load_palette)(adp, palette);
+	lwkt_reltoken(&tty_token);
+	return ret;
 }
 
 static int
 vesa_set_border(video_adapter_t *adp, int color)
 {
-	return (*prevvidsw->set_border)(adp, color);
+	int ret;
+
+	lwkt_gettoken(&tty_token);
+	ret = (*prevvidsw->set_border)(adp, color);
+	lwkt_reltoken(&tty_token);
+	return ret;
 }
 
 static int
 vesa_save_state(video_adapter_t *adp, void *p, size_t size)
 {
-	if (adp != vesa_adp)
-		return (*prevvidsw->save_state)(adp, p, size);
+	int ret;
+
+	lwkt_gettoken(&tty_token);
+	if (adp != vesa_adp) {
+		ret = (*prevvidsw->save_state)(adp, p, size);
+		lwkt_reltoken(&tty_token);
+		return ret;
+	}
 
 	if (vesa_state_buf_size == 0)
 		vesa_state_buf_size = vesa_bios_state_buf_size();
-	if (size == 0)
+	if (size == 0) {
+		lwkt_reltoken(&tty_token);
 		return (sizeof(int) + vesa_state_buf_size);
-	else if (size < (sizeof(int) + vesa_state_buf_size))
+	} else if (size < (sizeof(int) + vesa_state_buf_size)) {
+		lwkt_reltoken(&tty_token);
 		return 1;
+	}
 
 	((adp_state_t *)p)->sig = V_STATE_SIG;
 	bzero(((adp_state_t *)p)->regs, vesa_state_buf_size);
-	return vesa_bios_save_restore(STATE_SAVE, ((adp_state_t *)p)->regs, 
+	ret = vesa_bios_save_restore(STATE_SAVE, ((adp_state_t *)p)->regs, 
 				      vesa_state_buf_size);
+	lwkt_reltoken(&tty_token);
+	return ret;
 }
 
 static int
 vesa_load_state(video_adapter_t *adp, void *p)
 {
-	if ((adp != vesa_adp) || (((adp_state_t *)p)->sig != V_STATE_SIG))
-		return (*prevvidsw->load_state)(adp, p);
+	int ret;
 
-	return vesa_bios_save_restore(STATE_LOAD, ((adp_state_t *)p)->regs, 
+	lwkt_gettoken(&tty_token);
+
+	if ((adp != vesa_adp) || (((adp_state_t *)p)->sig != V_STATE_SIG)) {
+		ret = (*prevvidsw->load_state)(adp, p);
+		lwkt_reltoken(&tty_token);
+		return ret;
+	}
+
+	ret = vesa_bios_save_restore(STATE_LOAD, ((adp_state_t *)p)->regs, 
 				      vesa_state_buf_size);
+	lwkt_reltoken(&tty_token);
+	return ret;
 }
 
 #if 0
@@ -1203,7 +1299,9 @@ static int
 vesa_set_origin(video_adapter_t *adp, off_t offset)
 {
 	struct vm86frame vmf;
-	int err;
+	int err, ret;
+
+	lwkt_gettoken(&tty_token);
 
 	/*
 	 * This function should return as quickly as possible to 
@@ -1211,15 +1309,24 @@ vesa_set_origin(video_adapter_t *adp, off_t offset)
 	 * error checking is kept minimal and let the VESA BIOS to 
 	 * detect error.
 	 */
-	if (adp != vesa_adp) 
-		return (*prevvidsw->set_win_org)(adp, offset);
+	if (adp != vesa_adp) {
+		ret = (*prevvidsw->set_win_org)(adp, offset);
+		lwkt_reltoken(&tty_token);
+		return ret;
+	}
 
 	/* if this is a linear frame buffer, do nothing */
-	if (adp->va_info.vi_flags & V_INFO_LINEAR)
+	if (adp->va_info.vi_flags & V_INFO_LINEAR) {
+		lwkt_reltoken(&tty_token);
 		return 0;
+	}
 	/* XXX */
-	if (adp->va_window_gran == 0)
+	if (adp->va_window_gran == 0) {
+		lwkt_reltoken(&tty_token);
 		return 1;
+	}
+
+	lwkt_reltoken(&tty_token);
 
 	bzero(&vmf, sizeof(vmf));
 	vmf.vmf_eax = 0x4f05; 
@@ -1240,21 +1347,39 @@ vesa_set_origin(video_adapter_t *adp, off_t offset)
 static int
 vesa_read_hw_cursor(video_adapter_t *adp, int *col, int *row)
 {
-	return (*prevvidsw->read_hw_cursor)(adp, col, row);
+	int ret;
+
+	lwkt_gettoken(&tty_token);
+	ret = (*prevvidsw->read_hw_cursor)(adp, col, row);
+	lwkt_reltoken(&tty_token);
+
+	return ret;
 }
 
 static int
 vesa_set_hw_cursor(video_adapter_t *adp, int col, int row)
 {
-	return (*prevvidsw->set_hw_cursor)(adp, col, row);
+	int ret;
+
+	lwkt_gettoken(&tty_token);
+	ret = (*prevvidsw->set_hw_cursor)(adp, col, row);
+	lwkt_reltoken(&tty_token);
+
+	return ret;
 }
 
 static int
 vesa_set_hw_cursor_shape(video_adapter_t *adp, int base, int height,
 			 int celsize, int blink)
 {
-	return (*prevvidsw->set_hw_cursor_shape)(adp, base, height, celsize,
+	int ret;
+
+	lwkt_gettoken(&tty_token);
+	ret = (*prevvidsw->set_hw_cursor_shape)(adp, base, height, celsize,
 						 blink);
+	lwkt_reltoken(&tty_token);
+
+	return ret;
 }
 
 /*
@@ -1271,15 +1396,18 @@ vesa_blank_display(video_adapter_t *adp, int mode)
 	struct vm86frame vmf;
 	int err;
 
+	lwkt_gettoken(&tty_token);
 	if (mode == V_DISPLAY_ON) {
 		err = (*prevvidsw->blank_display)(adp, V_DISPLAY_ON);
 		if (dpms_states == 0) {
+			lwkt_reltoken(&tty_token);
 			return err;
 		} else {
 			bzero(&vmf, sizeof(vmf));
 			vmf.vmf_eax = 0x4f10;
 			vmf.vmf_ebx = 1;
 			err = vm86_intcall(0x10, &vmf);
+			lwkt_reltoken(&tty_token);
 			return ((err != 0) || (vmf.vmf_ax != 0x4f));
 		}
 	} else if (dpms_states & mode) {
@@ -1287,15 +1415,21 @@ vesa_blank_display(video_adapter_t *adp, int mode)
 			vmf.vmf_eax = 0x4f10;
 			vmf.vmf_ebx = (mode << 8) | 1;
 			err = vm86_intcall(0x10, &vmf);
+			lwkt_reltoken(&tty_token);
 			return ((err != 0) || (vmf.vmf_ax != 0x4f));
 	}
 
-	return (*prevvidsw->blank_display)(adp, mode);
+	err = (*prevvidsw->blank_display)(adp, mode);
+	lwkt_reltoken(&tty_token);
+	return err;
 }
 
 static int
 vesa_mmap(video_adapter_t *adp, vm_offset_t offset, int prot)
 {
+	int ret;
+
+	lwkt_gettoken(&tty_token);
 #if VESA_DEBUG > 0
 	kprintf("vesa_mmap(): window:0x%x, buffer:0x%x, offset:0x%lx\n",
 	       adp->va_info.vi_window, adp->va_info.vi_buffer, (long )offset);
@@ -1304,26 +1438,44 @@ vesa_mmap(video_adapter_t *adp, vm_offset_t offset, int prot)
 	if ((adp == vesa_adp) && (adp->va_info.vi_flags & V_INFO_LINEAR)) {
 		/* va_window_size == va_buffer_size/vi_planes */
 		/* XXX: is this correct? */
-		if (offset > adp->va_window_size - PAGE_SIZE)
+		if (offset > adp->va_window_size - PAGE_SIZE) {
+			lwkt_reltoken(&tty_token);
 			return -1;
+		}
 #ifdef __i386__
+		lwkt_reltoken(&tty_token);
 		return i386_btop(adp->va_info.vi_buffer + offset);
 #endif
 	} else {
-		return (*prevvidsw->mmap)(adp, offset, prot);
+		ret = (*prevvidsw->mmap)(adp, offset, prot);
+		lwkt_reltoken(&tty_token);
+		return ret;
 	}
+	lwkt_reltoken(&tty_token);
 }
 
 static int
 vesa_clear(video_adapter_t *adp)
 {
-	return (*prevvidsw->clear)(adp);
+	int ret;
+
+	lwkt_gettoken(&tty_token);
+	ret = (*prevvidsw->clear)(adp);
+	lwkt_reltoken(&tty_token);
+
+	return ret;
 }
 
 static int
 vesa_fill_rect(video_adapter_t *adp, int val, int x, int y, int cx, int cy)
 {
-	return (*prevvidsw->fill_rect)(adp, val, x, y, cx, cy);
+	int ret;
+
+	lwkt_gettoken(&tty_token);
+	ret = (*prevvidsw->fill_rect)(adp, val, x, y, cx, cy);
+	lwkt_reltoken(&tty_token);
+
+	return ret;
 }
 
 static int

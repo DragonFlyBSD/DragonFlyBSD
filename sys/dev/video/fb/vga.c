@@ -1,4 +1,6 @@
 /*-
+ * (MPSAFE ?)
+ *
  * Copyright (c) 1999 Kazutaka YOKOTA <yokota@zodiac.mech.utsunomiya-u.ac.jp>
  * Copyright (c) 1992-1998 Søren Schmidt
  * All rights reserved.
@@ -1035,6 +1037,8 @@ vga_set_mode(video_adapter_t *adp, int mode)
     if (vga_get_info(adp, mode, &info))
 	return EINVAL;
 
+    lwkt_gettoken(&tty_token);
+
 #if VGA_DEBUG > 1
     kprintf("vga_set_mode(): setting mode %d\n", mode);
 #endif
@@ -1140,6 +1144,7 @@ setup_grmode:
 	break;
 
     default:
+        lwkt_reltoken(&tty_token);
 	return EINVAL;
     }
 
@@ -1150,8 +1155,10 @@ setup_grmode:
     /* move hardware cursor out of the way */
     (*vidsw[adp->va_index]->set_hw_cursor)(adp, -1, -1);
 
+    lwkt_reltoken(&tty_token);
     return 0;
 #else /* VGA_NO_MODE_CHANGE */
+    lwkt_reltoken(&tty_token);
     return ENODEV;
 #endif /* VGA_NO_MODE_CHANGE */
 }
@@ -1823,6 +1830,7 @@ planar_fill(video_adapter_t *adp, int val)
     int at;			/* position in the frame buffer */
     int l;
 
+    lwkt_gettoken(&tty_token);
     outw(GDCIDX, 0x0005);		/* read mode 0, write mode 0 */
     outw(GDCIDX, 0x0003);		/* data rotate/function select */
     outw(GDCIDX, 0x0f01);		/* set/reset enable */
@@ -1839,6 +1847,7 @@ planar_fill(video_adapter_t *adp, int val)
     }
     outw(GDCIDX, 0x0000);		/* set/reset */
     outw(GDCIDX, 0x0001);		/* set/reset enable */
+    lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -1848,6 +1857,7 @@ packed_fill(video_adapter_t *adp, int val)
     int at;			/* position in the frame buffer */
     int l;
 
+    lwkt_gettoken(&tty_token);
     at = 0;
     length = adp->va_line_width*adp->va_info.vi_height;
     while (length > 0) {
@@ -1857,6 +1867,7 @@ packed_fill(video_adapter_t *adp, int val)
 	length -= l;
 	at += l;
     }
+    lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -1866,6 +1877,7 @@ direct_fill(video_adapter_t *adp, int val)
     int at;			/* position in the frame buffer */
     int l;
 
+    lwkt_gettoken(&tty_token);
     at = 0;
     length = adp->va_line_width*adp->va_info.vi_height;
     while (length > 0) {
@@ -1885,6 +1897,7 @@ direct_fill(video_adapter_t *adp, int val)
 	length -= l;
 	at += l;
     }
+    lwkt_reltoken(&tty_token);
 }
 
 static int
@@ -1918,6 +1931,7 @@ planar_fill_rect(video_adapter_t *adp, int val, int x, int y, int cx, int cy)
     int bx;
     int l;
 
+    lwkt_gettoken(&tty_token);
     outw(GDCIDX, 0x0005);		/* read mode 0, write mode 0 */
     outw(GDCIDX, 0x0003);		/* data rotate/function select */
     outw(GDCIDX, 0x0f01);		/* set/reset enable */
@@ -1975,6 +1989,7 @@ planar_fill_rect(video_adapter_t *adp, int val, int x, int y, int cx, int cy)
     outw(GDCIDX, 0xff08);		/* bit mask */
     outw(GDCIDX, 0x0000);		/* set/reset */
     outw(GDCIDX, 0x0001);		/* set/reset enable */
+    lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -1986,6 +2001,7 @@ packed_fill_rect(video_adapter_t *adp, int val, int x, int y, int cx, int cy)
     int offset;			/* offset within window */
     int end;
 
+    lwkt_gettoken(&tty_token);
     banksize = adp->va_window_size;
     bank = -1;
     cx *= adp->va_info.vi_pixel_size;
@@ -2009,6 +2025,7 @@ packed_fill_rect(video_adapter_t *adp, int val, int x, int y, int cx, int cy)
 	++y;
 	--cy;
     }
+    lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -2020,6 +2037,7 @@ direct_fill_rect16(video_adapter_t *adp, int val, int x, int y, int cx, int cy)
     int offset;			/* offset within window */
     int end;
 
+    lwkt_gettoken(&tty_token);
     /*
      * XXX: the function assumes that banksize is a muliple of
      * sizeof(u_int16_t).
@@ -2047,6 +2065,7 @@ direct_fill_rect16(video_adapter_t *adp, int val, int x, int y, int cx, int cy)
 	++y;
 	--cy;
     }
+    lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -2061,6 +2080,7 @@ direct_fill_rect24(video_adapter_t *adp, int val, int x, int y, int cx, int cy)
     int j;
     u_int8_t b[3];
 
+    lwkt_gettoken(&tty_token);
     b[0] = val & 0x0000ff;
     b[1] = (val >> 8) & 0x0000ff;
     b[2] = (val >> 16) & 0x0000ff;
@@ -2091,6 +2111,7 @@ direct_fill_rect24(video_adapter_t *adp, int val, int x, int y, int cx, int cy)
 	++y;
 	--cy;
     }
+    lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -2102,6 +2123,7 @@ direct_fill_rect32(video_adapter_t *adp, int val, int x, int y, int cx, int cy)
     int offset;			/* offset within window */
     int end;
 
+    lwkt_gettoken(&tty_token);
     /*
      * XXX: the function assumes that banksize is a muliple of
      * sizeof(u_int32_t).
@@ -2129,6 +2151,7 @@ direct_fill_rect32(video_adapter_t *adp, int val, int x, int y, int cx, int cy)
 	++y;
 	--cy;
     }
+    lwkt_reltoken(&tty_token);
 }
 
 static int

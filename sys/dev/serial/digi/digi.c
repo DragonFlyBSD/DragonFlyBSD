@@ -1,4 +1,6 @@
 /*-
+ * (MPSAFE)
+ *
  * Copyright (c) 2001 Brian Somers <brian@Awfulhak.org>
  *   based on work by Slawa Olhovchenkov
  *                    John Prince <johnp@knight-trosoft.com>
@@ -163,7 +165,7 @@ digi_poll(void *ptr)
 	struct digi_softc *sc;
 
 	sc = (struct digi_softc *)ptr;
-	callout_init(&sc->callout);
+	callout_init_mp(&sc->callout);
 	digi_intr(sc);
 	callout_reset(&sc->callout, (hz >= 200) ? hz / 100 : 1, digi_poll, sc);
 }
@@ -173,7 +175,7 @@ digi_int_test(void *v)
 {
 	struct digi_softc *sc = v;
 
-	callout_init(&sc->inttest);
+	callout_init_mp(&sc->inttest);
 #ifdef DIGI_INTERRUPT
 	if (sc->intr_timestamp.tv_sec || sc->intr_timestamp.tv_usec) {
 		/* interrupt OK! */
@@ -228,6 +230,9 @@ digi_delay(struct digi_softc *sc, const char *txt, u_long timo)
 		tsleep(sc, PCATCH, txt, timo);
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static int
 digi_init(struct digi_softc *sc)
 {
@@ -237,6 +242,7 @@ digi_init(struct digi_softc *sc)
 	struct digi_p *port;
 	volatile struct board_chan *bc;
 
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	ptr = NULL;
 
 	if (sc->status == DIGI_STATUS_DISABLED) {
@@ -650,11 +656,15 @@ digi_init(struct digi_softc *sc)
 	return (0);
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static int
 digimctl(struct digi_p *port, int bits, int how)
 {
 	int mstat;
 
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	if (how == DMGET) {
 		port->sc->setwin(port->sc, 0);
 		mstat = port->bc->mstat;
@@ -700,6 +710,7 @@ digimctl(struct digi_p *port, int bits, int how)
 static void
 digi_disc_optim(struct tty *tp, struct termios *t, struct digi_p *port)
 {
+	lwkt_gettoken(&tty_token);
 	if (!(t->c_iflag & (ICRNL | IGNCR | IMAXBEL | INLCR | ISTRIP)) &&
 	    (!(t->c_iflag & BRKINT) || (t->c_iflag & IGNBRK)) &&
 	    (!(t->c_iflag & PARMRK) ||
@@ -709,6 +720,7 @@ digi_disc_optim(struct tty *tp, struct termios *t, struct digi_p *port)
 		tp->t_state |= TS_CAN_BYPASS_L_RINT;
 	else
 		tp->t_state &= ~TS_CAN_BYPASS_L_RINT;
+	lwkt_reltoken(&tty_token);
 }
 
 static int
@@ -732,16 +744,20 @@ digiopen(struct dev_open_args *ap)
 	if (!sc)
 		return (ENXIO);
 
+	lwkt_gettoken(&tty_token);
 	if (sc->status != DIGI_STATUS_ENABLED) {
 		DLOG(DIGIDB_OPEN, (sc->dev, "Cannot open a disabled card\n"));
+		lwkt_reltoken(&tty_token);
 		return (ENXIO);
 	}
 	if (pnum >= sc->numports) {
 		DLOG(DIGIDB_OPEN, (sc->dev, "port%d: Doesn't exist\n", pnum));
+		lwkt_reltoken(&tty_token);
 		return (ENXIO);
 	}
 	if (mynor & (CTRL_DEV | CONTROL_MASK)) {
 		sc->opencnt++;
+		lwkt_reltoken(&tty_token);
 		return (0);
 	}
 	port = &sc->ports[pnum];
@@ -800,7 +816,7 @@ open_top:
 		 * cases: to preempt sleeping callin opens if we are callout,
 		 * and to complete a callin open after DCD rises.
 		 */
-		callout_init(&port->wakeupco);
+		callout_init_mp(&port->wakeupco);
 		tp->t_oproc = digistart;
 		tp->t_param = digiparam;
 		tp->t_stop = digistop;
@@ -873,6 +889,7 @@ out:
 	DLOG(DIGIDB_OPEN, (sc->dev, "port %d: open() returns %d\n",
 	    pnum, error));
 
+	lwkt_reltoken(&tty_token);
 	return (error);
 }
 
@@ -886,6 +903,7 @@ digiclose(struct dev_close_args *ap)
 	struct digi_softc *sc;
 	struct digi_p *port;
 
+	lwkt_gettoken(&tty_token);
 	mynor = minor(dev);
 	unit = MINOR_TO_UNIT(mynor);
 	pnum = MINOR_TO_PORT(mynor);
@@ -895,6 +913,7 @@ digiclose(struct dev_close_args *ap)
 
 	if (mynor & (CTRL_DEV | CONTROL_MASK)) {
 		sc->opencnt--;
+		lwkt_reltoken(&tty_token);
 		return (0);
 	}
 
@@ -911,6 +930,7 @@ digiclose(struct dev_close_args *ap)
 	ttyclose(tp);
 	--sc->opencnt;
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
@@ -919,16 +939,22 @@ digidtrwakeup(void *chan)
 {
 	struct digi_p *port = chan;
 
+	lwkt_gettoken(&tty_token);
 	port->status &= ~DIGI_DTR_OFF;
 	wakeup(&port->dtr_wait);
 	port->wopeners--;
+	lwkt_reltoken(&tty_token);
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static void
 digihardclose(struct digi_p *port)
 {
 	volatile struct board_chan *bc;
 
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	bc = port->bc;
 
 	crit_enter();
@@ -969,6 +995,7 @@ digiread(struct dev_read_args *ap)
 	if (mynor & CONTROL_MASK)
 		return (ENODEV);
 
+	lwkt_gettoken(&tty_token);
 	unit = MINOR_TO_UNIT(mynor);
 	pnum = MINOR_TO_PORT(mynor);
 
@@ -980,6 +1007,7 @@ digiread(struct dev_read_args *ap)
 	DLOG(DIGIDB_READ, (sc->dev, "port %d: read() returns %d\n",
 	    pnum, error));
 
+	lwkt_reltoken(&tty_token);
 	return (error);
 }
 
@@ -996,6 +1024,7 @@ digiwrite(struct dev_write_args *ap)
 	if (mynor & CONTROL_MASK)
 		return (ENODEV);
 
+	lwkt_gettoken(&tty_token);
 	unit = MINOR_TO_UNIT(mynor);
 	pnum = MINOR_TO_PORT(mynor);
 
@@ -1007,6 +1036,7 @@ digiwrite(struct dev_write_args *ap)
 	DLOG(DIGIDB_WRITE, (sc->dev, "port %d: write() returns %d\n",
 	    pnum, error));
 
+	lwkt_reltoken(&tty_token);
 	return (error);
 }
 
@@ -1060,7 +1090,7 @@ digiioctl(struct dev_ioctl_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	u_long cmd = ap->a_cmd;
 	caddr_t data = ap->a_data;
-	int unit, pnum, mynor, error;
+	int unit, pnum, mynor, error, ret;
 	struct digi_softc *sc;
 	struct digi_p *port;
 	struct tty *tp;
@@ -1073,44 +1103,57 @@ digiioctl(struct dev_ioctl_args *ap)
 	unit = MINOR_TO_UNIT(mynor);
 	pnum = MINOR_TO_PORT(mynor);
 
+	lwkt_gettoken(&tty_token);
 	sc = (struct digi_softc *)devclass_get_softc(digi_devclass, unit);
 	KASSERT(sc, ("digi%d: softc not allocated in digiioctl\n", unit));
 
-	if (sc->status == DIGI_STATUS_DISABLED)
+	if (sc->status == DIGI_STATUS_DISABLED) {
+		lwkt_reltoken(&tty_token);
 		return (ENXIO);
+	}
 
 	if (mynor & CTRL_DEV) {
 		switch (cmd) {
 		case DIGIIO_DEBUG:
 #ifdef DEBUG
 			digi_debug = *(int *)data;
+			lwkt_reltoken(&tty_token);
 			return (0);
 #else
 			device_printf(sc->dev, "DEBUG not defined\n");
+			lwkt_reltoken(&tty_token);
 			return (ENXIO);
 #endif
 		case DIGIIO_REINIT:
 			digi_loaddata(sc);
 			error = digi_init(sc);
 			digi_freedata(sc);
+			lwkt_reltoken(&tty_token);
 			return (error);
 
 		case DIGIIO_MODEL:
 			*(enum digi_model *)data = sc->model;
+			lwkt_reltoken(&tty_token);
 			return (0);
 
 		case DIGIIO_IDENT:
-			return (copyout(sc->name, *(char **)data,
-			    strlen(sc->name) + 1));
+			ret = copyout(sc->name, *(char **)data,
+			    strlen(sc->name) + 1);
+			lwkt_reltoken(&tty_token);
+			return ret;
 		}
 	}
 
-	if (pnum >= sc->numports)
+	if (pnum >= sc->numports) {
+		lwkt_reltoken(&tty_token);
 		return (ENXIO);
+	}
 
 	port = sc->ports + pnum;
-	if (!(port->status & ENABLED))
+	if (!(port->status & ENABLED)) {
+		lwkt_reltoken(&tty_token);
 		return (ENXIO);
+	}
 
 	tp = port->tp;
 
@@ -1127,27 +1170,34 @@ digiioctl(struct dev_ioctl_args *ap)
 			    &port->lt_out : &port->lt_in;
 			break;
 		default:
+			lwkt_reltoken(&tty_token);
 			return (ENODEV);	/* /dev/nodev */
 		}
 
 		switch (cmd) {
 		case TIOCSETA:
 			error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
-			if (error != 0)
+			if (error != 0) {
+				lwkt_reltoken(&tty_token);
 				return (error);
+			}
 			*ct = *(struct termios *)data;
+			lwkt_reltoken(&tty_token);
 			return (0);
 
 		case TIOCGETA:
 			*(struct termios *)data = *ct;
+			lwkt_reltoken(&tty_token);
 			return (0);
 
 		case TIOCGETD:
 			*(int *)data = TTYDISC;
+			lwkt_reltoken(&tty_token);
 			return (0);
 
 		case TIOCGWINSZ:
 			bzero(data, sizeof(struct winsize));
+			lwkt_reltoken(&tty_token);
 			return (0);
 
 		case DIGIIO_GETALTPIN:
@@ -1162,8 +1212,10 @@ digiioctl(struct dev_ioctl_args *ap)
 
 			default:
 				panic("Confusion when re-testing minor");
+				lwkt_reltoken(&tty_token);
 				return (ENODEV);
 			}
+			lwkt_reltoken(&tty_token);
 			return (0);
 
 		case DIGIIO_SETALTPIN:
@@ -1186,11 +1238,14 @@ digiioctl(struct dev_ioctl_args *ap)
 
 			default:
 				panic("Confusion when re-testing minor");
+				lwkt_reltoken(&tty_token);
 				return (ENODEV);
 			}
+			lwkt_reltoken(&tty_token);
 			return (0);
 
 		default:
+			lwkt_reltoken(&tty_token);
 			return (ENOTTY);
 		}
 	}
@@ -1198,6 +1253,7 @@ digiioctl(struct dev_ioctl_args *ap)
 	switch (cmd) {
 	case DIGIIO_GETALTPIN:
 		*(int *)data = !!(port->dsr == sc->csigs->cd);
+		lwkt_reltoken(&tty_token);
 		return (0);
 
 	case DIGIIO_SETALTPIN:
@@ -1214,6 +1270,7 @@ digiioctl(struct dev_ioctl_args *ap)
 				port->dsr = sc->csigs->dsr;
 			}
 		}
+		lwkt_reltoken(&tty_token);
 		return (0);
 	}
 
@@ -1222,8 +1279,10 @@ digiioctl(struct dev_ioctl_args *ap)
 	term = tp->t_termios;
 	oldcmd = cmd;
 	error = ttsetcompat(tp, &cmd, data, &term);
-	if (error != 0)
+	if (error != 0) {
+		lwkt_reltoken(&tty_token);
 		return (error);
+	}
 	if (cmd != oldcmd)
 		data = (caddr_t) & term;
 #endif
@@ -1258,8 +1317,10 @@ digiioctl(struct dev_ioctl_args *ap)
 	if (error == 0 && cmd == TIOCGETA)
 		((struct termios *)data)->c_iflag |= port->c_iflag;
 
-	if (error >= 0 && error != ENOIOCTL)
+	if (error >= 0 && error != ENOIOCTL) {
+		lwkt_reltoken(&tty_token);
 		return (error);
+	}
 	crit_enter();
 	error = ttioctl(tp, cmd, data, ap->a_fflag);
 	if (error == 0 && cmd == TIOCGETA)
@@ -1268,6 +1329,7 @@ digiioctl(struct dev_ioctl_args *ap)
 	digi_disc_optim(tp, &tp->t_termios, port);
 	if (error >= 0 && error != ENOIOCTL) {
 		crit_exit();
+		lwkt_reltoken(&tty_token);
 		return (error);
 	}
 	sc->setwin(sc, 0);
@@ -1307,6 +1369,7 @@ digiioctl(struct dev_ioctl_args *ap)
 		error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
 		if (error != 0) {
 			crit_exit();
+			lwkt_reltoken(&tty_token);
 			return (error);
 		}
 		port->dtr_wait = *(int *)data *hz / 100;
@@ -1323,9 +1386,11 @@ digiioctl(struct dev_ioctl_args *ap)
 #endif
 	default:
 		crit_exit();
+		lwkt_reltoken(&tty_token);
 		return (ENOTTY);
 	}
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
@@ -1342,6 +1407,7 @@ digiparam(struct tty *tp, struct termios *t)
 	int hflow;
 	int window;
 
+	lwkt_gettoken(&tty_token);
 	mynor = minor(tp->t_dev);
 	unit = MINOR_TO_UNIT(mynor);
 	pnum = MINOR_TO_PORT(mynor);
@@ -1358,8 +1424,10 @@ digiparam(struct tty *tp, struct termios *t)
 
 	cflag = ttspeedtab(t->c_ospeed, digispeedtab);
 
-	if (cflag < 0 || (cflag > 0 && t->c_ispeed != t->c_ospeed))
+	if (cflag < 0 || (cflag > 0 && t->c_ispeed != t->c_ospeed)) {
+		lwkt_reltoken(&tty_token);
 		return (EINVAL);
+	}
 
 	crit_enter();
 
@@ -1438,6 +1506,7 @@ digiparam(struct tty *tp, struct termios *t)
 		sc->towin(sc, window);
 	crit_exit();
 
+	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
@@ -1460,10 +1529,12 @@ digi_intr(void *vp)
 		u_char lstat;
 	} event;
 
+	lwkt_gettoken(&tty_token);
 	sc = vp;
 
 	if (sc->status != DIGI_STATUS_ENABLED) {
 		DLOG(DIGIDB_IRQ, (sc->dev, "interrupt on disabled board !\n"));
+		lwkt_reltoken(&tty_token);
 		return;
 	}
 
@@ -1666,6 +1737,7 @@ eoi:
 		sc->towin(sc, 0);
 	if (window != 0)
 		sc->towin(sc, window);
+	lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -1680,6 +1752,7 @@ digistart(struct tty *tp)
 	int size, ocount, totcnt = 0;
 	int wmask;
 
+	lwkt_gettoken(&tty_token);
 	unit = MINOR_TO_UNIT(minor(tp->t_dev));
 	pnum = MINOR_TO_PORT(minor(tp->t_dev));
 
@@ -1753,6 +1826,7 @@ digistart(struct tty *tp)
 	DLOG(DIGIDB_INT, (sc->dev, "port%d: s total cnt = %d\n", pnum, totcnt));
 	ttwwakeup(tp);
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -1763,6 +1837,7 @@ digistop(struct tty *tp, int rw)
 	int pnum;
 	struct digi_p *port;
 
+	lwkt_gettoken(&tty_token);
 	unit = MINOR_TO_UNIT(minor(tp->t_dev));
 	pnum = MINOR_TO_PORT(minor(tp->t_dev));
 
@@ -1773,8 +1848,12 @@ digistop(struct tty *tp, int rw)
 	DLOG(DIGIDB_TX, (sc->dev, "port %d: pause TX\n", pnum));
 	port->status |= PAUSE_TX;
 	fepcmd_w(port, PAUSETX, 0, 10);
+	lwkt_reltoken(&tty_token);
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static void
 fepcmd(struct digi_p *port, int cmd, int op1, int ncmds)
 {
@@ -1782,6 +1861,7 @@ fepcmd(struct digi_p *port, int cmd, int op1, int ncmds)
 	unsigned tail, head;
 	int count, n;
 
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	mem = port->sc->memcmd;
 
 	port->sc->setwin(port->sc, 0);
@@ -1825,6 +1905,7 @@ digi_errortxt(int id)
 int
 digi_attach(struct digi_softc *sc)
 {
+	lwkt_gettoken(&tty_token);
 	sc->res.ctldev = make_dev(&digi_ops,
 	    (sc->res.unit << 16) | CTRL_DEV, UID_ROOT, GID_WHEEL,
 	    0600, "digi%r.ctl", sc->res.unit);
@@ -1833,14 +1914,19 @@ digi_attach(struct digi_softc *sc)
 	digi_init(sc);
 	digi_freedata(sc);
 
+	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static int
 digi_inuse(struct digi_softc *sc)
 {
 	int i;
 
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	for (i = 0; i < sc->numports; i++)
 		if (sc->ttys[i].t_state & TS_ISOPEN) {
 			DLOG(DIGIDB_INIT, (sc->dev, "port%d: busy\n", i));
@@ -1853,11 +1939,15 @@ digi_inuse(struct digi_softc *sc)
 	return (0);
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static void
 digi_free_state(struct digi_softc *sc)
 {
 	int d, i;
 
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	/* Blow it all away */
 
 	for (i = 0; i < sc->numports; i++)
@@ -1893,6 +1983,7 @@ digi_detach(device_t dev)
 {
 	struct digi_softc *sc = device_get_softc(dev);
 
+	lwkt_gettoken(&tty_token);
 	DLOG(DIGIDB_INIT, (sc->dev, "detaching\n"));
 
 	/* If we're INIT'd, numports must be 0 */
@@ -1900,8 +1991,10 @@ digi_detach(device_t dev)
 	    ("digi%d: numports(%d) & status(%d) are out of sync",
 	    sc->res.unit, sc->numports, (int)sc->status));
 
-	if (digi_inuse(sc))
+	if (digi_inuse(sc)) {
+		lwkt_reltoken(&tty_token);
 		return (EBUSY);
+	}
 
 	digi_free_state(sc);
 
@@ -1922,6 +2015,7 @@ digi_detach(device_t dev)
 		sc->msize = 0;
 	}
 
+	lwkt_reltoken(&tty_token);
 	return (0);
 }
 

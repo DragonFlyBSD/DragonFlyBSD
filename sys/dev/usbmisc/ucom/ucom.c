@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * $NetBSD: ucom.c,v 1.39 2001/08/16 22:31:24 augustss Exp $
  * $NetBSD: ucom.c,v 1.40 2001/11/13 06:24:54 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/ucom.c,v 1.35 2003/11/16 11:58:21 akiyama Exp $
@@ -163,6 +165,7 @@ ucom_attach(struct ucom_softc *sc)
 	int unit;
 	cdev_t dev;
 
+	lwkt_gettoken(&tty_token);
 	unit = device_get_unit(sc->sc_dev);
 
 	sc->sc_tty = tp = ttymalloc(sc->sc_tty);
@@ -178,6 +181,7 @@ ucom_attach(struct ucom_softc *sc)
 			UID_UUCP, GID_DIALER, 0660,
 			"ucom%d", unit);
 	dev->si_tty = tp;
+	lwkt_reltoken(&tty_token);
 
 	return (0);
 }
@@ -190,6 +194,7 @@ ucom_detach(struct ucom_softc *sc)
 
 	DPRINTF(("ucom_detach: sc = %p, tp = %p\n", sc, sc->sc_tty));
 
+	lwkt_gettoken(&tty_token);
 	sc->sc_dying = 1;
 
 	if (sc->sc_bulkin_pipe != NULL)
@@ -206,6 +211,7 @@ ucom_detach(struct ucom_softc *sc)
 		}
 	} else {
 		DPRINTF(("ucom_detach: no tty\n"));
+		lwkt_reltoken(&tty_token);
 		return (0);
 	}
 
@@ -219,6 +225,7 @@ ucom_detach(struct ucom_softc *sc)
 	unit = device_get_unit(sc->sc_dev);
 	dev_ops_remove_minor(&ucom_ops, /*UCOMUNIT_MASK, */unit);
 
+	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
@@ -227,6 +234,7 @@ ucom_shutdown(struct ucom_softc *sc)
 {
 	struct tty *tp = sc->sc_tty;
 
+	lwkt_gettoken(&tty_token);
 	DPRINTF(("ucom_shutdown\n"));
 	/*
 	 * Hang up if necessary.  Wait a bit, so the other side has time to
@@ -236,6 +244,7 @@ ucom_shutdown(struct ucom_softc *sc)
 		(void)ucomctl(sc, TIOCM_DTR, DMBIC);
 		(void)tsleep(sc, 0, "ucomsd", hz);
 	}
+	lwkt_reltoken(&tty_token);
 }
 
 static int
@@ -255,6 +264,7 @@ ucomopen(struct dev_open_args *ap)
 	if (sc->sc_dying)
 		return (ENXIO);
 
+	lwkt_gettoken(&tty_token);
 	tp = sc->sc_tty;
 
 	DPRINTF(("%s: ucomopen: tp = %p\n", device_get_nameunit(sc->sc_dev), tp));
@@ -263,6 +273,7 @@ ucomopen(struct dev_open_args *ap)
 	    ISSET(tp->t_state, TS_XCLUDE) &&
 	    priv_check_cred(ap->a_cred, PRIV_ROOT, 0)
 	) {
+		lwkt_reltoken(&tty_token);
 		return (EBUSY);
 	}
 
@@ -316,6 +327,7 @@ ucomopen(struct dev_open_args *ap)
 				sc->sc_opening = 0;
 				wakeup(&sc->sc_opening);
 				crit_exit();
+				lwkt_reltoken(&tty_token);
 				return (error);
 			}
 		}
@@ -402,6 +414,7 @@ ucomopen(struct dev_open_args *ap)
 	sc->sc_poll = 1;
 	sc->sc_refcnt++;
 
+	lwkt_reltoken(&tty_token);
 	return (0);
 
 fail_4:
@@ -420,6 +433,7 @@ fail_0:
 	sc->sc_opening = 0;
 	wakeup(&sc->sc_opening);
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return (error);
 
 bad:
@@ -433,6 +447,7 @@ bad:
 
 	DPRINTF(("%s: ucomopen: failed\n", device_get_nameunit(sc->sc_dev)));
 
+	lwkt_reltoken(&tty_token);
 	return (error);
 }
 
@@ -445,6 +460,7 @@ ucomclose(struct dev_close_args *ap)
 
 	sc = devclass_get_softc(ucom_devclass, UCOMUNIT(dev));
 
+	lwkt_gettoken(&tty_token);
 	tp = sc->sc_tty;
 
 	DPRINTF(("%s: ucomclose: unit = %d\n",
@@ -483,6 +499,7 @@ quit:
 	if (--sc->sc_refcnt < 0)
 		usb_detach_wakeup(sc->sc_dev);
 
+	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
@@ -495,17 +512,21 @@ ucomread(struct dev_read_args *ap)
 	int error;
 
 	sc = devclass_get_softc(ucom_devclass, UCOMUNIT(dev));
+	lwkt_gettoken(&tty_token);
 	tp = sc->sc_tty;
 
 	DPRINTF(("ucomread: tp = %p, flag = 0x%x\n", tp, ap->a_ioflag));
 
-	if (sc->sc_dying)
+	if (sc->sc_dying) {
+		lwkt_reltoken(&tty_token);
 		return (EIO);
+	}
 
 	error = (*linesw[tp->t_line].l_read)(tp, ap->a_uio, ap->a_ioflag);
 
 	DPRINTF(("ucomread: error = %d\n", error));
 
+	lwkt_reltoken(&tty_token);
 	return (error);
 }
 
@@ -518,17 +539,21 @@ ucomwrite(struct dev_write_args *ap)
 	int error;
 
 	sc = devclass_get_softc(ucom_devclass, UCOMUNIT(dev));
+	lwkt_gettoken(&tty_token);
 	tp = sc->sc_tty;
 
 	DPRINTF(("ucomwrite: tp = %p, flag = 0x%x\n", tp, ap->a_ioflag));
 
-	if (sc->sc_dying)
+	if (sc->sc_dying) {
+		lwkt_reltoken(&tty_token);
 		return (EIO);
+	}
 
 	error = (*linesw[tp->t_line].l_write)(tp, ap->a_uio, ap->a_ioflag);
 
 	DPRINTF(("ucomwrite: error = %d\n", error));
 
+	lwkt_reltoken(&tty_token);
 	return (error);
 }
 
@@ -542,10 +567,13 @@ ucomioctl(struct dev_ioctl_args *ap)
 	int d;
 
 	sc = devclass_get_softc(ucom_devclass, UCOMUNIT(dev));
+	lwkt_gettoken(&tty_token);
 	tp = sc->sc_tty;
 
-	if (sc->sc_dying)
+	if (sc->sc_dying) {
+		lwkt_reltoken(&tty_token);
 		return (EIO);
+	}
 
 	DPRINTF(("ucomioctl: cmd = 0x%08lx\n", ap->a_cmd));
 
@@ -553,6 +581,7 @@ ucomioctl(struct dev_ioctl_args *ap)
 					      ap->a_fflag, ap->a_cred);
 	if (error != ENOIOCTL) {
 		DPRINTF(("ucomioctl: l_ioctl: error = %d\n", error));
+		lwkt_reltoken(&tty_token);
 		return (error);
 	}
 
@@ -563,6 +592,7 @@ ucomioctl(struct dev_ioctl_args *ap)
 	if (error != ENOIOCTL) {
 		crit_exit();
 		DPRINTF(("ucomioctl: ttioctl: error = %d\n", error));
+		lwkt_reltoken(&tty_token);
 		return (error);
 	}
 
@@ -573,6 +603,7 @@ ucomioctl(struct dev_ioctl_args *ap)
 						    ap->a_fflag, curthread);
 		if (error >= 0) {
 			crit_exit();
+			lwkt_reltoken(&tty_token);
 			return (error);
 		}
 	}
@@ -629,9 +660,13 @@ ucomioctl(struct dev_ioctl_args *ap)
 
 	crit_exit();
 
+	lwkt_reltoken(&tty_token);
 	return (error);
 }
 
+/*
+ * NOTE: Must be called with tty_token held.
+ */
 static int
 ucomctl(struct ucom_softc *sc, int bits, int how)
 {
@@ -639,6 +674,7 @@ ucomctl(struct ucom_softc *sc, int bits, int how)
 	int	msr;
 	int	onoff;
 
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	DPRINTF(("ucomctl: bits = 0x%x, how = %d\n", bits, how));
 
 	if (how == DMGET) {
@@ -705,9 +741,13 @@ ucomctl(struct ucom_softc *sc, int bits, int how)
 	return (0);
 }
 
+/*
+ * NOTE: Must be called with tty_token held.
+ */
 static void
 ucom_break(struct ucom_softc *sc, int onoff)
 {
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	DPRINTF(("ucom_break: onoff = %d\n", onoff));
 
 	if (sc->sc_callback->ucom_set == NULL)
@@ -716,9 +756,13 @@ ucom_break(struct ucom_softc *sc, int onoff)
 				  UCOM_SET_BREAK, onoff);
 }
 
+/*
+ * NOTE: Must be called with tty_token held.
+ */
 static void
 ucom_dtr(struct ucom_softc *sc, int onoff)
 {
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	DPRINTF(("ucom_dtr: onoff = %d\n", onoff));
 
 	if (sc->sc_callback->ucom_set == NULL)
@@ -727,9 +771,13 @@ ucom_dtr(struct ucom_softc *sc, int onoff)
 				  UCOM_SET_DTR, onoff);
 }
 
+/*
+ * NOTE: Must be called with tty_token held.
+ */
 static void
 ucom_rts(struct ucom_softc *sc, int onoff)
 {
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	DPRINTF(("ucom_rts: onoff = %d\n", onoff));
 
 	if (sc->sc_callback->ucom_set == NULL)
@@ -745,9 +793,11 @@ ucom_status_change(struct ucom_softc *sc)
 	u_char old_msr;
 	int onoff;
 
+	lwkt_gettoken(&tty_token);
 	if (sc->sc_callback->ucom_get_status == NULL) {
 		sc->sc_lsr = 0;
 		sc->sc_msr = 0;
+		lwkt_reltoken(&tty_token);
 		return;
 	}
 
@@ -755,12 +805,15 @@ ucom_status_change(struct ucom_softc *sc)
 	sc->sc_callback->ucom_get_status(sc->sc_parent, sc->sc_portno,
 					 &sc->sc_lsr, &sc->sc_msr);
 	if (ISSET((sc->sc_msr ^ old_msr), UMSR_DCD)) {
-		if (sc->sc_poll == 0)
+		if (sc->sc_poll == 0) {
+			lwkt_reltoken(&tty_token);
 			return;
+		}
 		onoff = ISSET(sc->sc_msr, UMSR_DCD) ? 1 : 0;
 		DPRINTF(("ucom_status_change: DCD changed to %d\n", onoff));
 		(*linesw[tp->t_line].l_modem)(tp, onoff);
 	}
+	lwkt_reltoken(&tty_token);
 }
 
 static int
@@ -772,18 +825,23 @@ ucomparam(struct tty *tp, struct termios *t)
 
 	sc = devclass_get_softc(ucom_devclass, UCOMUNIT(tp->t_dev));
 
-	if (sc->sc_dying)
+	lwkt_gettoken(&tty_token);
+	if (sc->sc_dying) {
+		lwkt_reltoken(&tty_token);
 		return (EIO);
+	}
 
 	DPRINTF(("ucomparam: sc = %p\n", sc));
 
 	/* Check requested parameters. */
 	if (t->c_ospeed < 0) {
 		DPRINTF(("ucomparam: negative ospeed\n"));
+		lwkt_reltoken(&tty_token);
 		return (EINVAL);
 	}
 	if (t->c_ispeed && t->c_ispeed != t->c_ospeed) {
 		DPRINTF(("ucomparam: mismatch ispeed and ospeed\n"));
+		lwkt_reltoken(&tty_token);
 		return (EINVAL);
 	}
 
@@ -793,22 +851,27 @@ ucomparam(struct tty *tp, struct termios *t)
 	 * VMIN and VTIME.
 	 */
 	if (tp->t_ospeed == t->c_ospeed &&
-	    tp->t_cflag == t->c_cflag)
+	    tp->t_cflag == t->c_cflag) {
+		lwkt_reltoken(&tty_token);
 		return (0);
+	}
 
 	/* And copy to tty. */
 	tp->t_ispeed = 0;
 	tp->t_ospeed = t->c_ospeed;
 	tp->t_cflag = t->c_cflag;
 
-	if (sc->sc_callback->ucom_param == NULL)
+	if (sc->sc_callback->ucom_param == NULL) {
+		lwkt_reltoken(&tty_token);
 		return (0);
+	}
 
 	ucomstopread(sc);
 
 	error = sc->sc_callback->ucom_param(sc->sc_parent, sc->sc_portno, t);
 	if (error) {
 		DPRINTF(("ucomparam: callback: error = %d\n", error));
+		lwkt_reltoken(&tty_token);
 		return (error);
 	}
 
@@ -824,9 +887,12 @@ ucomparam(struct tty *tp, struct termios *t)
 	disc_optim(tp, t, sc);
 
 	uerr = ucomstartread(sc);
-	if (uerr != USBD_NORMAL_COMPLETION)
+	if (uerr != USBD_NORMAL_COMPLETION) {
+		lwkt_reltoken(&tty_token);
 		return (EIO);
+	}
 
+	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
@@ -842,8 +908,12 @@ ucomstart(struct tty *tp)
 	sc = devclass_get_softc(ucom_devclass, UCOMUNIT(tp->t_dev));
 	DPRINTF(("ucomstart: sc = %p\n", sc));
 
-	if (sc->sc_dying)
+	lwkt_gettoken(&tty_token);
+
+	if (sc->sc_dying) {
+		lwkt_reltoken(&tty_token);
 		return;
+	}
 
 	crit_enter();
 
@@ -919,6 +989,7 @@ ucomstart(struct tty *tp)
 
     out:
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -930,6 +1001,7 @@ ucomstop(struct tty *tp, int flag)
 
 	DPRINTF(("ucomstop: %d\n", flag));
 
+	lwkt_gettoken(&tty_token);
 	if (flag & FREAD) {
 		/*
 		 * This is just supposed to flush pending receive data,
@@ -952,6 +1024,7 @@ ucomstop(struct tty *tp, int flag)
 	}
 
 	DPRINTF(("ucomstop: done\n"));
+	lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -961,6 +1034,7 @@ ucomwritecb(usbd_xfer_handle xfer, usbd_private_handle p, usbd_status status)
 	struct tty *tp = sc->sc_tty;
 	u_int32_t cc;
 
+	lwkt_gettoken(&tty_token);
 	DPRINTF(("ucomwritecb: status = %d\n", status));
 
 	if (status == USBD_CANCELLED || sc->sc_dying)
@@ -1000,20 +1074,26 @@ ucomwritecb(usbd_xfer_handle xfer, usbd_private_handle p, usbd_status status)
 	(*linesw[tp->t_line].l_start)(tp);
 	crit_exit();
 
+	lwkt_reltoken(&tty_token);
 	return;
 
   error:
 	crit_enter();
 	CLR(tp->t_state, TS_BUSY);
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return;
 }
 
+/*
+ * NOTE: Must be called with tty_token held
+ */
 static usbd_status
 ucomstartread(struct ucom_softc *sc)
 {
 	usbd_status err;
 
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	DPRINTF(("ucomstartread: start\n"));
 
 	sc->sc_state &= ~UCS_RXSTOP;
@@ -1039,6 +1119,8 @@ ucomstartread(struct ucom_softc *sc)
 static void
 ucomreadcb(usbd_xfer_handle xfer, usbd_private_handle p, usbd_status status)
 {
+	lwkt_gettoken(&tty_token);
+
 	struct ucom_softc *sc = (struct ucom_softc *)p;
 	struct tty *tp = sc->sc_tty;
 	int (*rint) (int c, struct tty *tp) = linesw[tp->t_line].l_rint;
@@ -1056,6 +1138,7 @@ ucomreadcb(usbd_xfer_handle xfer, usbd_private_handle p, usbd_status status)
 		if (status == USBD_STALLED)
 			usbd_clear_endpoint_stall_async(sc->sc_bulkin_pipe);
 		/* XXX we should restart after some delay. */
+		lwkt_reltoken(&tty_token);
 		return;
 	}
 
@@ -1133,11 +1216,17 @@ resubmit:
 	if ((sc->sc_state & UCS_RTS_IFLOW) && !ISSET(sc->sc_mcr, UMCR_RTS)
 	    && !(tp->t_state & TS_TBLOCK))
 		ucomctl(sc, UMCR_RTS, DMBIS);
+
+	lwkt_reltoken(&tty_token);
 }
 
+/*
+ * NOTE: Must be called with tty_token held.
+ */
 static void
 ucom_cleanup(struct ucom_softc *sc)
 {
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	DPRINTF(("ucom_cleanup: closing pipes\n"));
 
 	ucom_shutdown(sc);
@@ -1161,11 +1250,15 @@ ucom_cleanup(struct ucom_softc *sc)
 	}
 }
 
+/*
+ * NOTE: Must be called with tty_token held.
+ */
 static void
 ucomstopread(struct ucom_softc *sc)
 {
 	usbd_status err;
 
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	DPRINTF(("ucomstopread: enter\n"));
 
 	if (!(sc->sc_state & UCS_RXSTOP)) {
@@ -1184,9 +1277,13 @@ ucomstopread(struct ucom_softc *sc)
 	DPRINTF(("ucomstopread: leave\n"));
 }
 
+/*
+ * NOTE: Must be called with tty_token held.
+ */
 static void
 disc_optim(struct tty *tp, struct termios *t, struct ucom_softc *sc)
 {
+	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	if (!(t->c_iflag & (ICRNL | IGNCR | IMAXBEL | INLCR | ISTRIP | IXON))
 	    && (!(t->c_iflag & BRKINT) || (t->c_iflag & IGNBRK))
 	    && (!(t->c_iflag & PARMRK)
