@@ -55,8 +55,11 @@
 #include <signal.h>
 #include <sys/eventhandler.h>
 #include <sys/mutex.h>
-#include <sys/mutex2.h>
 #include <sys/socketops.h>
+
+#include <sys/thread2.h>
+#include <sys/mutex2.h>
+#include <sys/mplock2.h>
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
@@ -578,6 +581,7 @@ isc_soc(void *vp)
      struct socket	*so = sp->soc;
      int		error;
 
+     get_mplock();
      debug_called(8);
 
      sp->td = curthread;
@@ -631,7 +635,7 @@ isc_soc(void *vp)
 
      sdebug(2, "dropped ISC_CON_RUNNING");
 
-     kthread_exit();
+     rel_mplock();
 }
 
 void

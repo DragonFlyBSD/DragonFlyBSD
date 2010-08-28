@@ -79,7 +79,7 @@ static void	aac_complete(void *context, int pending);
 static int	aac_bio_command(struct aac_softc *sc, struct aac_command **cmp);
 static void	aac_bio_complete(struct aac_command *cm);
 static int	aac_wait_command(struct aac_command *cm);
-static void	aac_command_thread(struct aac_softc *sc);
+static void	aac_command_thread(void *arg);
 
 /* Command Buffer Management */
 static void	aac_map_command_sg(void *arg, bus_dma_segment_t *segs,
@@ -360,7 +360,7 @@ aac_attach(struct aac_softc *sc)
 	reference_dev(sc->aac_dev_t);
 
 	/* Create the AIF thread */
-	if (kthread_create((void(*)(void *))aac_command_thread, sc,
+	if (kthread_create(aac_command_thread, sc,
 			   &sc->aifthread, "aac%daif", unit))
 		panic("Could not create AIF thread\n");
 
@@ -909,12 +909,14 @@ aac_map_command(struct aac_command *cm)
  * Handle notification of one or more FIBs coming from the controller.
  */
 static void
-aac_command_thread(struct aac_softc *sc)
+aac_command_thread(void *arg)
 {
+	struct aac_softc *sc = arg;
 	struct aac_fib *fib;
 	u_int32_t fib_size;
 	int size, retval;
 
+	get_mplock();
 	debug_called(2);
 
 	AAC_LOCK_ACQUIRE(&sc->aac_io_lock);
@@ -1005,7 +1007,7 @@ aac_command_thread(struct aac_softc *sc)
 	AAC_LOCK_RELEASE(&sc->aac_io_lock);
 	wakeup(sc->aac_dev);
 
-	kthread_exit();
+	rel_mplock();
 }
 
 /*

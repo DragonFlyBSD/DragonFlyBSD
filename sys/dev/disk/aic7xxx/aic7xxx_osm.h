@@ -51,7 +51,9 @@
 #include <sys/malloc.h>
 #include <sys/queue.h>
 #include <sys/rman.h>
+
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #if defined(__DragonFly__) || __FreeBSD_version < 500000
 #include <use_pci.h>

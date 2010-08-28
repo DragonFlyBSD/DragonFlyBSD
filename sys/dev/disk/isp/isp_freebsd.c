@@ -1917,6 +1917,7 @@ isp_kthread(void *arg)
 {
 	struct ispsoftc *isp = arg;
 
+	get_mplock();
 	crit_enter();
 	isp->isp_osinfo.intsok = 1;
 
@@ -1958,6 +1959,7 @@ isp_kthread(void *arg)
 		tsleep(&isp->isp_osinfo.kthread, 0, "isp_fc_worker", 0);
 		isp_prt(isp, ISP_LOGDEBUG0, "kthread: waiting until called");
 	}
+	rel_mplock();
 }
 
 static void

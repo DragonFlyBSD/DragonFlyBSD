@@ -3985,7 +3985,10 @@ mpt_recovery_thread(void *arg)
 	struct mpt_softc *mpt;
 
 	mpt = (struct mpt_softc *)arg;
+
+	get_mplock();
 	MPT_LOCK(mpt);
+
 	for (;;) {
 		if (TAILQ_EMPTY(&mpt->request_timeout_list) != 0) {
 			if (mpt->shutdwn_recovery == 0) {
@@ -4000,7 +4003,7 @@ mpt_recovery_thread(void *arg)
 	mpt->recovery_thread = NULL;
 	wakeup(&mpt->recovery_thread);
 	MPT_UNLOCK(mpt);
-	mpt_kthread_exit(0);
+	rel_mplock();
 }
 
 static int

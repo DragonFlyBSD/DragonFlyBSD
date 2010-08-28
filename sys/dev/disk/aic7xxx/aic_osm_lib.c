@@ -112,8 +112,11 @@ aic_recovery_thread(void *arg)
 {
 	struct aic_softc *aic;
 
+	get_mplock();
+
 	aic = (struct aic_softc *)arg;
 	aic_lock(aic);
+
 	for (;;) {
 		
 		if (LIST_EMPTY(&aic->timedout_scbs) != 0
@@ -132,5 +135,6 @@ aic_recovery_thread(void *arg)
 	aic->platform_data->recovery_thread = NULL;
 	wakeup(aic->platform_data);
 	aic_unlock(aic);
-	kthread_exit();
+
+	rel_mplock();
 }

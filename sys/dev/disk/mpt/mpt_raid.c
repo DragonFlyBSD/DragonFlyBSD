@@ -670,7 +670,10 @@ mpt_raid_thread(void *arg)
 
 	mpt = (struct mpt_softc *)arg;
 	firstrun = 1;
+
+	get_mplock();
 	MPT_LOCK(mpt);
+
 	while (mpt->shutdwn_raid == 0) {
 
 		if (mpt->raid_wakeup == 0) {
@@ -727,7 +730,7 @@ mpt_raid_thread(void *arg)
 	mpt->raid_thread = NULL;
 	wakeup(&mpt->raid_thread);
 	MPT_UNLOCK(mpt);
-	mpt_kthread_exit(0);
+	rel_mplock();
 }
 
 #if 0

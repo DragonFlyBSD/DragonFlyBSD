@@ -54,7 +54,10 @@
 #include <sys/bus.h>
 #include <sys/eventhandler.h>
 #include <sys/mutex.h>
+
+#include <sys/thread2.h>
 #include <sys/mutex2.h>
+#include <sys/mplock2.h>
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
@@ -570,6 +573,7 @@ ism_proc(void *vp)
      isc_session_t 	*sp = (isc_session_t *)vp;
      int		error;
 
+     get_mplock();
      debug_called(8);
 
      sdebug(3, "started sp->flags=%x", sp->flags);
@@ -604,7 +608,7 @@ ism_proc(void *vp)
 
      debug(3, "terminated sp=%p sp->sid=%d", sp, sp->sid);
 
-     kthread_exit();
+     rel_mplock();
 }
 
 #if 0

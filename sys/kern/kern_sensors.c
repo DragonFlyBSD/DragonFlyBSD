@@ -30,6 +30,8 @@
 #include <sys/sysctl.h>
 #include <sys/sensors.h>
 
+#include <sys/mplock2.h>
+
 int			sensordev_count = 0;
 SLIST_HEAD(, ksensordev) sensordev_list = SLIST_HEAD_INITIALIZER(sensordev_list);
 
@@ -221,6 +223,8 @@ sensor_task_thread(void *arg)
 	struct sensor_task	*st, *nst;
 	time_t			now;
 
+	get_mplock();
+
 	while (!TAILQ_EMPTY(&tasklist)) {
 		while ((nst = TAILQ_FIRST(&tasklist))->nextrun >
 		    (now = time_second))
@@ -248,7 +252,7 @@ sensor_task_thread(void *arg)
 		}
 	}
 
-	kthread_exit();
+	rel_mplock();
 }
 
 void

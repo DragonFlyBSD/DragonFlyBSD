@@ -73,7 +73,9 @@
 #include <sys/vnode.h>
 #include <sys/signalvar.h>
 #include <sys/sysctl.h>
+
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
@@ -443,6 +445,7 @@ usb_event_thread(void *arg)
 	 */
 	usb_delay_ms(sc->sc_bus, 500);
 
+	get_mplock();
 	crit_enter();
 
 	/* Make sure first discover does something. */
@@ -465,12 +468,12 @@ usb_event_thread(void *arg)
 	sc->sc_event_thread = NULL;
 
 	crit_exit();
+	rel_mplock();
 
 	/* In case parent is waiting for us to exit. */
 	wakeup(sc);
 
 	DPRINTF(("usb_event_thread: exit\n"));
-	kthread_exit();
 }
 
 void
@@ -479,6 +482,7 @@ usb_task_thread(void *arg)
 	struct usb_task *task;
 	struct usb_taskq *taskq;
 
+	get_mplock();
 	crit_enter();
 
 	taskq = arg;
@@ -502,6 +506,7 @@ usb_task_thread(void *arg)
 	}
 
 	crit_exit();
+	rel_mplock();
 
 	taskq->taskcreated = 0;
 	wakeup(&taskq->taskcreated);

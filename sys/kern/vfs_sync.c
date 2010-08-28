@@ -82,6 +82,7 @@
 
 #include <sys/buf2.h>
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 /*
  * The workitem queue.
@@ -197,19 +198,14 @@ vn_syncer_remove(struct vnode *vp)
 }
 
 struct  thread *updatethread;
-static void sched_sync (void);
-static struct kproc_desc up_kp = {
-	"syncer",
-	sched_sync,
-	&updatethread
-};
-SYSINIT(syncer, SI_SUB_KTHREAD_UPDATE, SI_ORDER_FIRST, kproc_start, &up_kp)
 
 /*
  * System filesystem synchronizer daemon.
+ *
+ * NOTE: Started MPSAFE but is not yet mpsafe.
  */
-void 
-sched_sync(void)
+static void
+syncer_thread(void)
 {
 	struct thread *td = curthread;
 	struct synclist *slp;
@@ -217,7 +213,8 @@ sched_sync(void)
 	long starttime;
 
 	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc, td,
-	    SHUTDOWN_PRI_LAST);   
+			      SHUTDOWN_PRI_LAST);
+	get_mplock();
 
 	for (;;) {
 		kproc_suspend_loop();
@@ -296,7 +293,15 @@ sched_sync(void)
 		if (time_second == starttime)
 			tsleep(&lbolt_syncer, 0, "syncer", 0);
 	}
+	rel_mplock();
 }
+
+static struct kproc_desc up_kp = {
+	"syncer",
+	syncer_thread,
+	&updatethread
+};
+SYSINIT(syncer, SI_SUB_KTHREAD_UPDATE, SI_ORDER_FIRST, kproc_start, &up_kp)
 
 /*
  * Request the syncer daemon to speed up its work.

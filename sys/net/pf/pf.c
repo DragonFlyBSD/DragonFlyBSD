@@ -60,6 +60,8 @@
 #include <sys/proc.h>
 #include <sys/kthread.h>
 
+#include <sys/mplock2.h>
+
 #include <machine/inttypes.h>
 
 #include <net/if.h>
@@ -889,6 +891,7 @@ pf_purge_thread(void *v)
 	int nloops = 0;
 	int locked = 0;
 
+	get_mplock();
 	for (;;) {
 		tsleep(pf_purge_thread, PWAIT, "pftm", 1 * hz);
 
@@ -925,6 +928,7 @@ pf_purge_thread(void *v)
 		crit_exit();
 		lockmgr(&pf_consistency_lock, LK_RELEASE);
 	}
+	rel_mplock();
 }
 
 u_int32_t

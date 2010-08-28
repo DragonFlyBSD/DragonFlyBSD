@@ -269,6 +269,8 @@ sili_os_unlock_port(struct sili_port *ap)
  * Per-port thread helper.  This helper thread is responsible for
  * atomically retrieving and clearing the signal mask and calling
  * the machine-independant driver core.
+ *
+ * MPSAFE
  */
 static
 void
@@ -276,8 +278,6 @@ sili_port_thread(void *arg)
 {
 	struct sili_port *ap = arg;
 	int mask;
-
-	rel_mplock();
 
 	/*
 	 * The helper thread is responsible for the initial port init,

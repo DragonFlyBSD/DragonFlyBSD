@@ -55,7 +55,6 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/buf.h>
-#include <sys/buf2.h>
 #include <sys/bus.h>
 #include <sys/conf.h>
 #include <sys/disk.h>
@@ -67,6 +66,9 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/spinlock.h>
+
+#include <sys/buf2.h>
+#include <sys/mplock2.h>
 
 #include <bus/mmc/mmcvar.h>
 #include <bus/mmc/mmcreg.h>
@@ -184,7 +186,7 @@ mmcsd_attach(device_t dev)
 	sc->running = 1;
 	sc->suspend = 0;
 	sc->eblock = sc->eend = 0;
-	kthread_create(&mmcsd_task, sc, &sc->td, "mmc/sd card task");
+	kthread_create(mmcsd_task, sc, &sc->td, "mmc/sd card task");
 
 	return (0);
 }
@@ -259,7 +261,7 @@ mmcsd_resume(device_t dev)
 	if (sc->running <= 0) {
 		sc->running = 1;
 		MMCSD_UNLOCK(sc);
-		kthread_create(&mmcsd_task, sc, &sc->td, "mmc/sd card task");
+		kthread_create(mmcsd_task, sc, &sc->td, "mmc/sd card task");
 	} else
 		MMCSD_UNLOCK(sc);
 	return (0);
@@ -495,7 +497,9 @@ mmcsd_task(void *arg)
 	daddr_t block, end;
 	device_t dev;
 
+	get_mplock();
 	dev = sc->dev;
+
 	while (1) {
 		MMCSD_LOCK(sc);
 		do {
@@ -543,7 +547,7 @@ out:
 	MMCSD_UNLOCK(sc);
 	wakeup(sc);
 
-	kthread_exit();
+	rel_mplock();
 }
 
 static const char *

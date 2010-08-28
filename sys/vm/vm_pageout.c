@@ -99,6 +99,7 @@
 #include <vm/vm_extern.h>
 
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 #include <vm/vm_page2.h>
 
 /*
@@ -106,18 +107,10 @@
  */
 
 /* the kernel process "vm_pageout"*/
-static void vm_pageout (void);
 static int vm_pageout_clean (vm_page_t);
 static int vm_pageout_scan (int pass);
 static int vm_pageout_free_page_calc (vm_size_t count);
 struct thread *pagethread;
-
-static struct kproc_desc page_kp = {
-	"pagedaemon",
-	vm_pageout,
-	&pagethread
-};
-SYSINIT(pagedaemon, SI_SUB_KTHREAD_PAGE, SI_ORDER_FIRST, kproc_start, &page_kp)
 
 #if !defined(NO_SWAPPING)
 /* the kernel process "vm_daemon"*/
@@ -1482,7 +1475,7 @@ vm_pageout_free_page_calc(vm_size_t count)
  * No requirements.
  */
 static void
-vm_pageout(void)
+vm_pageout_thread(void)
 {
 	int pass;
 	int inactive_shortage;
@@ -1490,6 +1483,7 @@ vm_pageout(void)
 	/*
 	 * Permanently hold vm_token.
 	 */
+	get_mplock();
 	lwkt_gettoken(&vm_token);
 
 	/*
@@ -1656,6 +1650,14 @@ vm_pageout(void)
 		}
 	}
 }
+
+static struct kproc_desc page_kp = {
+	"pagedaemon",
+	vm_pageout_thread,
+	&pagethread
+};
+SYSINIT(pagedaemon, SI_SUB_KTHREAD_PAGE, SI_ORDER_FIRST, kproc_start, &page_kp)
+
 
 /*
  * Called after allocating a page out of the cache or free queue

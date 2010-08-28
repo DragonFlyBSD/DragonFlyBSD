@@ -75,24 +75,17 @@
 #include <vm/vm_extern.h>
 
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 #include <vm/vm_page2.h>
 
 #define INACTIVE_LIST	(&vm_page_queues[PQ_INACTIVE].pl)
 
 /* the kernel process "vm_pageout"*/
-static void vm_swapcached (void);
 static int vm_swapcached_flush (vm_page_t m, int isblkdev);
 static int vm_swapcache_test(vm_page_t m);
 static void vm_swapcache_writing(vm_page_t marker);
 static void vm_swapcache_cleaning(vm_object_t marker);
 struct thread *swapcached_thread;
-
-static struct kproc_desc swpc_kp = {
-	"swapcached",
-	vm_swapcached,
-	&swapcached_thread
-};
-SYSINIT(swapcached, SI_SUB_KTHREAD_PAGE, SI_ORDER_SECOND, kproc_start, &swpc_kp)
 
 SYSCTL_NODE(_vm, OID_AUTO, swapcache, CTLFLAG_RW, NULL, NULL);
 
@@ -150,7 +143,7 @@ SYSCTL_QUAD(_vm_swapcache, OID_AUTO, write_count,
  * No requirements.
  */
 static void
-vm_swapcached(void)
+vm_swapcached_thread(void)
 {
 	enum { SWAPC_WRITING, SWAPC_CLEANING } state = SWAPC_WRITING;
 	enum { SWAPB_BURSTING, SWAPB_RECOVERING } burst = SWAPB_BURSTING;
@@ -161,6 +154,8 @@ vm_swapcached(void)
 	 * Thread setup
 	 */
 	curthread->td_flags |= TDF_SYSTHREAD;
+
+	get_mplock();
 	crit_enter();
 	lwkt_gettoken(&vm_token);
 
@@ -253,6 +248,13 @@ vm_swapcached(void)
 	lwkt_reltoken(&vm_token);
 	crit_exit();
 }
+
+static struct kproc_desc swpc_kp = {
+	"swapcached",
+	vm_swapcached_thread,
+	&swapcached_thread
+};
+SYSINIT(swapcached, SI_SUB_KTHREAD_PAGE, SI_ORDER_SECOND, kproc_start, &swpc_kp)
 
 /*
  * The caller must hold vm_token.

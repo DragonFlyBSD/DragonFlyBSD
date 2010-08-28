@@ -88,6 +88,8 @@
 #include <sys/queue.h>
 #include <sys/rman.h>
 
+#include <sys/mplock2.h>
+
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
 #include <bus/cam/cam_periph.h>
@@ -3541,7 +3543,9 @@ ciss_notify_thread(void *arg)
 
     sc = (struct ciss_softc *)arg;
 
+    get_mplock();
     crit_enter();
+
     for (;;) {
 	if (TAILQ_EMPTY(&sc->ciss_notify) != 0 &&
 	    (sc->ciss_flags & CISS_FLAG_THREAD_SHUT) == 0) {
@@ -3577,8 +3581,7 @@ ciss_notify_thread(void *arg)
     sc->ciss_notify_thread = NULL;
     wakeup(&sc->ciss_notify_thread);
     crit_exit();
-
-    kthread_exit();
+    rel_mplock();
 }
 
 /************************************************************************
@@ -3587,7 +3590,7 @@ ciss_notify_thread(void *arg)
 static void
 ciss_spawn_notify_thread(struct ciss_softc *sc)
 {
-    if (kthread_create((void(*)(void *))ciss_notify_thread, sc,
+    if (kthread_create(ciss_notify_thread, sc,
 		       &sc->ciss_notify_thread, "ciss_notify%d",
 		       device_get_unit(sc->ciss_dev)))
 	panic("Could not create notify thread\n");

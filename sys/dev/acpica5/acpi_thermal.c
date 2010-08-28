@@ -42,6 +42,8 @@
 #include <sys/power.h>
 #include <sys/sensors.h>
 
+#include <sys/mplock2.h>
+
 #include "acpi.h"
 #include "accommon.h"
 
@@ -949,6 +951,7 @@ acpi_tz_thread(void *arg)
     devs = NULL;
     devcount = 0;
     sc = NULL;
+    get_mplock();
 
     for (;;) {
 	/* If the number of devices has changed, re-evaluate. */
@@ -991,6 +994,7 @@ acpi_tz_thread(void *arg)
 	    ACPI_UNLOCK(thermal);
 	}
     }
+    rel_mplock();
 }
 
 #ifdef __FreeBSD__
@@ -1132,6 +1136,7 @@ acpi_tz_cooling_thread(void *arg)
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
     sc = (struct acpi_tz_softc *)arg;
+    get_mplock();
 
     prev_temp = sc->tz_temperature;
     while (sc->tz_cooling_enabled) {
@@ -1175,7 +1180,7 @@ acpi_tz_cooling_thread(void *arg)
     ACPI_LOCK(thermal);
     sc->tz_cooling_proc_running = FALSE;
     ACPI_UNLOCK(thermal);
-    kthread_exit();
+    rel_mplock();
 }
 
 /*

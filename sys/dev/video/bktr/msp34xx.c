@@ -86,6 +86,8 @@
 #include <sys/kthread.h>
 #include <sys/malloc.h>
 
+#include <sys/mplock2.h>
+
 #include <dev/video/meteor/ioctl_meteor.h>
 #include <dev/video/bktr/ioctl_bt848.h>	/* extensions to ioctl_meteor.h */
 #include <dev/video/bktr/bktr_reg.h>
@@ -692,13 +694,15 @@ static void watch_stereo(bktr_ptr_t client)
 
 }
 
-static void msp3400c_thread(void *data)
+static void
+msp3400c_thread(void *data)
 {
 	bktr_ptr_t client = data;
 	struct msp3400c *msp = (struct msp3400c*)client->msp3400c_info;
-	
 	struct CARRIER_DETECT *cd;
 	int count, max1,max2,val1,val2, val,this;
+
+	get_mplock();
 	
 	dprintk(("msp3400: thread started\n"));
 	
@@ -894,8 +898,7 @@ done:
 
 	msp->kthread = NULL;
 	wakeup(&msp->kthread);
-
-	kthread_exit();
+	rel_mplock();
 }
 
 /* ----------------------------------------------------------------------- */
@@ -936,6 +939,7 @@ static void msp3410d_thread(void *data)
 	int mode,val,i,std;
 	int timo = 0;
     
+	get_mplock();
 	dprintk(("msp3410: thread started\n"));
 		
 	for (;;) {
@@ -1121,7 +1125,7 @@ done:
 	msp->kthread = NULL;
 	wakeup(&msp->kthread);
 
-	kthread_exit();
+	rel_mplock();
 }
 
 int msp_attach(bktr_ptr_t bktr)

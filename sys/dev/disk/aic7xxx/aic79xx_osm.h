@@ -51,7 +51,9 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/queue.h>
+
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #define AIC_PCI_CONFIG 1
 #include <machine/endian.h>

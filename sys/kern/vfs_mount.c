@@ -92,6 +92,7 @@
 #include <sys/buf2.h>
 #include <sys/thread2.h>
 #include <sys/sysref2.h>
+#include <sys/mplock2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>
@@ -693,9 +694,11 @@ vnlru_proc(void)
 	int done;
 
 	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc, td,
-	    SHUTDOWN_PRI_FIRST);   
+			      SHUTDOWN_PRI_FIRST);
 
+	get_mplock();
 	crit_enter();
+
 	for (;;) {
 		kproc_suspend_loop();
 
@@ -757,7 +760,9 @@ vnlru_proc(void)
 			vnlru_nowhere = 0;
 		}
 	}
+
 	crit_exit();
+	rel_mplock();
 }
 
 /*

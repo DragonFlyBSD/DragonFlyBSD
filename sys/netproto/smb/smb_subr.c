@@ -44,9 +44,11 @@
 #include <sys/sysctl.h>
 #include <sys/socket.h>
 #include <sys/signalvar.h>
-#include <sys/signal2.h>
 #include <sys/wait.h>
 #include <sys/unistd.h>
+
+#include <sys/signal2.h>
+#include <sys/mplock2.h>
 
 #include <machine/stdarg.h>
 
@@ -367,8 +369,8 @@ smb_put_asunistring(struct smb_rq *rqp, const char *src)
  * pure thread when possible.
  */
 int
-kthread_create2(void (*func)(void *), void *arg,
-    struct proc **newpp, int flags, const char *fmt, ...)
+smb_kthread_create(void (*func)(void *), void *arg,
+		   struct proc **newpp, int flags, const char *fmt, ...)
 {
 	int error;
 	__va_list ap;
@@ -405,7 +407,7 @@ kthread_create2(void (*func)(void *), void *arg,
 }
 
 void
-kthread_exit2(void)
+smb_kthread_exit(void)
 {
 	exit1(0);
 }

@@ -2413,6 +2413,9 @@ static struct kproc_desc bufhw_kp = {
 SYSINIT(bufdaemon_hw, SI_SUB_KTHREAD_BUF, SI_ORDER_FIRST,
 	kproc_start, &bufhw_kp)
 
+/*
+ * MPSAFE thread
+ */
 static void
 buf_daemon(void)
 {
@@ -2424,8 +2427,6 @@ buf_daemon(void)
 	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc,
 			      bufdaemon_td, SHUTDOWN_PRI_LAST);
 	curthread->td_flags |= TDF_SYSTHREAD;
-
-	rel_mplock();
 
 	/*
 	 * This process is allowed to take the buffer cache to the limit
@@ -2471,6 +2472,9 @@ buf_daemon(void)
 	}
 }
 
+/*
+ * MPSAFE thread
+ */
 static void
 buf_daemon_hw(void)
 {
@@ -2482,8 +2486,6 @@ buf_daemon_hw(void)
 	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc,
 			      bufdaemonhw_td, SHUTDOWN_PRI_LAST);
 	curthread->td_flags |= TDF_SYSTHREAD;
-
-	rel_mplock();
 
 	/*
 	 * This process is allowed to take the buffer cache to the limit

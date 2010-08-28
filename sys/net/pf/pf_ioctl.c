@@ -54,13 +54,15 @@
 #include <sys/socketvar.h>
 #include <sys/kernel.h>
 #include <sys/kthread.h>
-#include <sys/thread2.h>
 #include <sys/time.h>
 #include <sys/proc.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <vm/vm_zone.h>
 #include <sys/lock.h>
+
+#include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -103,7 +105,6 @@ u_int rt_numfibs = RT_NUMFIBS;
 void			 init_zone_var(void);
 void			 cleanup_pf_zone(void);
 int			 pfattach(void);
-void			 pf_thread_create(void *);
 struct pf_pool		*pf_get_pool(char *, u_int32_t, u_int8_t, u_int32_t,
 			    u_int8_t, u_int8_t, u_int8_t);
 
@@ -315,17 +316,10 @@ pfattach(void)
 	/* XXX do our best to avoid a conflict */
 	pf_status.hostid = karc4random();
 
-	/* require process context to purge states, so perform in a thread */
-	kthread_create(pf_thread_create, NULL, NULL, "dummy");
-
-	return (error);
-}
-
-void
-pf_thread_create(void *v)
-{
 	if (kthread_create(pf_purge_thread, NULL, NULL, "pfpurge"))
 		panic("pfpurge thread");
+
+	return (error);
 }
 
 int

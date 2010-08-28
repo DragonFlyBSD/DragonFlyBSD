@@ -47,13 +47,14 @@
 #include <sys/sched.h>
 #include <sys/sysctl.h>
 #include <sys/thread.h>
-#include <sys/thread2.h>
 #include <sys/kthread.h>
-#include <sys/mplock2.h>
 #include <sys/unistd.h>
 #include <vm/vm.h>
 #include <vm/vm_page.h>
 #include <cpu/lwbuf.h>
+
+#include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 /*
  * Implement the pre-zeroed page mechanism.
@@ -142,6 +143,9 @@ vm_page_zero_time(void)
 	return (DEFAULT_SLEEP_TIME);
 }
 
+/*
+ * MPSAFE thread
+ */
 static void
 vm_pagezero(void __unused *arg)
 {
@@ -152,9 +156,6 @@ vm_pagezero(void __unused *arg)
 	int npages = 0;
 	int sleep_time;	
 	int i = 0;
-
-	/* MPSAFE thread */
-	rel_mplock();
 
 	/*
 	 * Adjust thread parameters before entering our loop.  The thread

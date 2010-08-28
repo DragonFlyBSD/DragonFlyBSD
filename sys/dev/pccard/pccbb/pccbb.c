@@ -89,7 +89,9 @@
 #include <sys/rman.h>
 #include <sys/sysctl.h>
 #include <sys/systm.h>
+
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
@@ -437,6 +439,7 @@ cbb_event_thread(void *arg)
 	int err;
 	int not_a_card = 0;
 
+	get_mplock();
 	sc->flags |= CBB_KTHREAD_RUNNING;
 	while ((sc->flags & CBB_KTHREAD_DONE) == 0) {
 		/*
@@ -494,7 +497,7 @@ cbb_event_thread(void *arg)
 	}
 	sc->flags &= ~CBB_KTHREAD_RUNNING;
 	wakeup(sc->event_thread);
-	kthread_exit();
+	rel_mplock();
 }
 
 /************************************************************************/

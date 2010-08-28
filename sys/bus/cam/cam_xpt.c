@@ -1399,6 +1399,8 @@ xpt_scanner_thread(void *dummy)
 	union ccb	*ccb;
 	struct cam_sim	*sim;
 
+	get_mplock();
+
 	for (;;) {
 		xpt_lock_buses();
 		xsoftc.ccb_scanq_running = 1;
@@ -1419,6 +1421,8 @@ xpt_scanner_thread(void *dummy)
 		xpt_unlock_buses();
 		tsleep(&xsoftc.ccb_scanq, PINTERLOCKED, "ccb_scanq", 0);
 	}
+
+	rel_mplock();	/* not reached */
 }
 
 /*

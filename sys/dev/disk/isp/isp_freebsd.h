@@ -38,7 +38,9 @@
 #include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/bus.h>
+
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #include <machine/clock.h>
 #include <machine/cpu.h>

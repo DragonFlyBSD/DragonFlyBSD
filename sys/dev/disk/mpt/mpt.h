@@ -105,23 +105,18 @@
 #include <sys/systm.h>
 #include <sys/endian.h>
 #include <sys/eventhandler.h>
-#if __FreeBSD_version < 500000
+
 #include <sys/kernel.h>
 #include <sys/queue.h>
 #include <sys/malloc.h>
 #include <sys/devicestat.h>
-#include <sys/thread2.h>
-#else
-#include <sys/lock.h>
-#include <sys/kernel.h>
-#include <sys/queue.h>
-#include <sys/malloc.h>
-#include <sys/mutex.h>
-#include <sys/condvar.h>
-#endif
+
 #include <sys/proc.h>
 #include <sys/bus.h>
 #include <sys/module.h>
+
+#include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #include <sys/rman.h>
 

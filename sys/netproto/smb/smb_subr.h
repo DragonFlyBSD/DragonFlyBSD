@@ -168,9 +168,9 @@ int  smb_put_asunistring(struct smb_rq *rqp, const char *src);
 /*
  * Compatibilty with 5.x functions
  */
-int kthread_create2(void (*func)(void *), void *arg,
-    struct proc **newpp, int flags, const char *fmt, ...);
-void kthread_exit2(void);
+int smb_kthread_create(void (*func)(void *), void *arg,
+	struct proc **newpp, int flags, const char *fmt, ...);
+void smb_kthread_exit(void);
 int smb_sleep(void *chan, struct smb_slock *sl, int slpflags, const char *wmesg, int timo);
 
 

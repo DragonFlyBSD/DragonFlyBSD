@@ -37,15 +37,18 @@
 #include <sys/unistd.h>
 #include <sys/wait.h>
 
+#include <sys/mplock2.h>
+
 #include <machine/stdarg.h>
+
+static struct lwkt_token kpsus_token = LWKT_TOKEN_MP_INITIALIZER(kpsus_token);
+
 
 /*
  * Create a kernel process/thread/whatever.  It shares it's address space
  * with proc0 - ie: kernel only.  5.x compatible.
  *
- * NOTE!  By default kthreads are created with the MP lock held.  A
- * thread which does not require the MP lock should release it by calling
- * rel_mplock() at the start of the new thread.
+ * All kthreads are created as MPSAFE threads.
  */
 int
 kthread_create(void (*func)(void *), void *arg,
@@ -54,13 +57,11 @@ kthread_create(void (*func)(void *), void *arg,
     thread_t td;
     __va_list ap;
 
-    td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, -1, TDF_VERBOSE);
+    td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, -1,
+			   TDF_VERBOSE | TDF_MPSAFE);
     if (tdp)
 	*tdp = td;
     cpu_set_thread_handler(td, kthread_exit, func, arg);
-#ifdef SMP
-    KKASSERT(td->td_mpcount == 1);
-#endif
 
     /*
      * Set up arg0 for 'ps' etc
@@ -85,13 +86,11 @@ kthread_create_cpu(void (*func)(void *), void *arg,
     thread_t td;
     __va_list ap;
 
-    td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, cpu, TDF_VERBOSE);
+    td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, cpu,
+			   TDF_VERBOSE | TDF_MPSAFE);
     if (tdp)
 	*tdp = td;
     cpu_set_thread_handler(td, kthread_exit, func, arg);
-#ifdef SMP
-    KKASSERT(td->td_mpcount == 1);
-#endif
 
     /*
      * Set up arg0 for 'ps' etc
@@ -119,13 +118,11 @@ kthread_create_stk(void (*func)(void *), void *arg,
     thread_t td;
     __va_list ap;
 
-    td = lwkt_alloc_thread(NULL, stksize, -1, TDF_VERBOSE);
+    td = lwkt_alloc_thread(NULL, stksize, -1, TDF_VERBOSE | TDF_MPSAFE);
     if (tdp)
 	*tdp = td;
     cpu_set_thread_handler(td, kthread_exit, func, arg);
-#ifdef SMP
-    KKASSERT(td->td_mpcount == 1);
-#endif
+
     __va_start(ap, fmt);
     kvsnprintf(td->td_comm, sizeof(td->td_comm), fmt, ap);
     __va_end(ap);
@@ -153,6 +150,8 @@ kthread_exit(void)
  *
  * This function is used to start "internal" daemons and intended
  * to be called from SYSINIT().
+ *
+ * These threads are created MPSAFE.
  */
 void
 kproc_start(const void *udata)
@@ -175,6 +174,7 @@ int
 suspend_kproc(struct thread *td, int timo)
 {
 	if (td->td_proc == NULL) {
+		lwkt_gettoken(&kpsus_token);
 		td->td_flags |= TDF_STOPREQ;	/* request thread pause */
 		wakeup(td);
 		while (td->td_flags & TDF_STOPREQ) {
@@ -183,6 +183,7 @@ suspend_kproc(struct thread *td, int timo)
 				break;
 		}
 		td->td_flags &= ~TDF_STOPREQ;
+		lwkt_reltoken(&kpsus_token);
 		return(0);
 	} else {
 		return(EINVAL);	/* not a kernel thread */
@@ -195,6 +196,7 @@ kproc_suspend_loop(void)
 	struct thread *td = curthread;
 
 	if (td->td_flags & TDF_STOPREQ) {
+		lwkt_gettoken(&kpsus_token);
 		td->td_flags &= ~TDF_STOPREQ;
 		while ((td->td_flags & TDF_WAKEREQ) == 0) {
 			wakeup(td);
@@ -202,6 +204,7 @@ kproc_suspend_loop(void)
 		}
 		td->td_flags &= ~TDF_WAKEREQ;
 		wakeup(td);
+		lwkt_reltoken(&kpsus_token);
 	}
 }
 

@@ -1,4 +1,6 @@
-/*-
+/*
+ * (MPSAFE)
+ *
  * Copyright (c) 1999 Michael Smith <msmith@freebsd.org>
  * All rights reserved.
  *
@@ -33,11 +35,13 @@
 #include <sys/systm.h>
 #include <sys/eventhandler.h>
 
+#include <sys/mplock2.h>
+
 MALLOC_DEFINE(M_EVENTHANDLER, "eventhandler", "Event handler records");
 
 /* List of 'slow' lists */
-static TAILQ_HEAD(, eventhandler_list)	eventhandler_lists;
-static int				eventhandler_lists_initted = 0;
+static TAILQ_HEAD(, eventhandler_list)	eventhandler_lists = TAILQ_HEAD_INITIALIZER(eventhandler_lists);
+static struct lwkt_token evlist_token = LWKT_TOKEN_MP_INITIALIZER(evlist_token);
 
 struct eventhandler_entry_generic 
 {
@@ -48,6 +52,8 @@ struct eventhandler_entry_generic
 /* 
  * Insertion is O(n) due to the priority scan, but optimises to O(1)
  * if all priorities are identical.
+ *
+ * MPSAFE
  */
 eventhandler_tag
 eventhandler_register(struct eventhandler_list *list, char *name, 
@@ -56,27 +62,28 @@ eventhandler_register(struct eventhandler_list *list, char *name,
     struct eventhandler_entry_generic	*eg;
     struct eventhandler_entry		*ep;
     
-    /* avoid the need for a SYSINIT just to init the list */
-    if (!eventhandler_lists_initted) {
-	TAILQ_INIT(&eventhandler_lists);
-	eventhandler_lists_initted = 1;
-    }
+    lwkt_gettoken(&evlist_token);
 
-    /* Do we need to find/create the (slow) list? */
-    if (list == NULL) {
-	/* look for a matching, existing list */
+    /*
+     * find/create the list as needed
+     */
+    while (list == NULL) {
 	list = eventhandler_find_list(name);
-
-	/* Do we need to create the list? */
-	if (list == NULL) {
-	    list = kmalloc(sizeof(struct eventhandler_list) + strlen(name) + 1, 
-			   M_EVENTHANDLER, M_INTWAIT);
+	if (list)
+		break;
+	list = kmalloc(sizeof(struct eventhandler_list) + strlen(name) + 1,
+		       M_EVENTHANDLER, M_INTWAIT);
+	if (eventhandler_find_list(name)) {
+	    kfree(list, M_EVENTHANDLER);
+	    list = NULL;
+	} else {
 	    list->el_flags = 0;
 	    list->el_name = (char *)list + sizeof(struct eventhandler_list);
 	    strcpy(list->el_name, name);
 	    TAILQ_INSERT_HEAD(&eventhandler_lists, list, el_link);
 	}
     }
+
     if (!(list->el_flags & EHE_INITTED)) {
 	TAILQ_INIT(&list->el_entries);
 	list->el_flags = EHE_INITTED;
@@ -100,15 +107,22 @@ eventhandler_register(struct eventhandler_list *list, char *name,
     }
     if (ep == NULL)
 	TAILQ_INSERT_TAIL(&list->el_entries, &eg->ee, ee_link);
+    lwkt_reltoken(&evlist_token);
+
     return(&eg->ee);
 }
 
+/*
+ * MPSAFE
+ */
 void
 eventhandler_deregister(struct eventhandler_list *list, eventhandler_tag tag)
 {
     struct eventhandler_entry	*ep = tag;
 
+    lwkt_gettoken(&evlist_token);
     /* XXX insert diagnostic check here? */
+
     if (ep != NULL) {
 	/* remove just this entry */
 	TAILQ_REMOVE(&list->el_entries, ep, ee_link);
@@ -121,19 +135,24 @@ eventhandler_deregister(struct eventhandler_list *list, eventhandler_tag tag)
 	    kfree(ep, M_EVENTHANDLER);
 	}
     }
+    lwkt_reltoken(&evlist_token);
 }
 
+/*
+ * Locate the requested list
+ */
 struct eventhandler_list *
 eventhandler_find_list(char *name)
 {
     struct eventhandler_list	*list;
 
-    /* scan looking for the requested list */
+    lwkt_gettoken(&evlist_token);
     for (list = TAILQ_FIRST(&eventhandler_lists); 
 	 list != NULL; 
 	 list = TAILQ_NEXT(list, el_link)) {
 	if (!strcmp(name, list->el_name))
 	    break;
     }
+    lwkt_reltoken(&evlist_token);
     return(list);
 }

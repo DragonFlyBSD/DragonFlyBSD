@@ -66,6 +66,7 @@
 #include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/sysctl.h>
+
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
 
@@ -1292,6 +1293,8 @@ crypto_finis(void *chan)
 
 /*
  * Crypto thread, dispatches crypto requests.
+ *
+ * MPSAFE
  */
 static void
 crypto_proc(void *arg)
@@ -1302,8 +1305,6 @@ crypto_proc(void *arg)
 	struct cryptocap *cap;
 	u_int32_t hid;
 	int result, hint;
-
-	rel_mplock();		/* release the mplock held on startup */
 
 	CRYPTO_Q_LOCK(tdinfo);
 
@@ -1458,6 +1459,8 @@ crypto_proc(void *arg)
  * Crypto returns thread, does callbacks for processed crypto requests.
  * Callbacks are done here, rather than in the crypto drivers, because
  * callbacks typically are expensive and would slow interrupt handling.
+ *
+ * MPSAFE
  */
 static void
 crypto_ret_proc(void *dummy __unused)
@@ -1465,6 +1468,7 @@ crypto_ret_proc(void *dummy __unused)
 	struct cryptop *crpt;
 	struct cryptkop *krpt;
 
+	get_mplock();
 	CRYPTO_RETQ_LOCK();
 	for (;;) {
 		/* Harvest return q's for completed ops */
