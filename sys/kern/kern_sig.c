@@ -79,6 +79,7 @@ static char	*expand_name(const char *, uid_t, pid_t);
 static int	dokillpg(int sig, int pgid, int all);
 static int	sig_ffs(sigset_t *set);
 static int	sigprop(int sig);
+static void	lwp_signotify(struct lwp *lp);
 #ifdef SMP
 static void	signotify_remote(void *arg);
 #endif
@@ -1233,10 +1234,15 @@ out:
 	crit_exit();
 }
 
-void
+/*
+ * proc_token must be held
+ */
+static void
 lwp_signotify(struct lwp *lp)
 {
+	ASSERT_LWKT_TOKEN_HELD(&proc_token);
 	crit_enter();
+
 	if (lp->lwp_stat == LSSLEEP || lp->lwp_stat == LSSTOP) {
 		/*
 		 * Thread is in tsleep.
@@ -1332,16 +1338,22 @@ signotify_remote(void *arg)
 
 #endif
 
+/*
+ * Caller must hold proc_token
+ */
 void
 proc_stop(struct proc *p)
 {
 	struct lwp *lp;
 
-	/* If somebody raced us, be happy with it */
-	if (p->p_stat == SSTOP || p->p_stat == SZOMB)
-		return;
-
+	ASSERT_LWKT_TOKEN_HELD(&proc_token);
 	crit_enter();
+
+	/* If somebody raced us, be happy with it */
+	if (p->p_stat == SSTOP || p->p_stat == SZOMB) {
+		crit_exit();
+		return;
+	}
 	p->p_stat = SSTOP;
 
 	FOREACH_LWP_IN_PROC(lp, p) {
@@ -1386,15 +1398,22 @@ proc_stop(struct proc *p)
 	crit_exit();
 }
 
+/*
+ * Caller must hold proc_token
+ */
 void
 proc_unstop(struct proc *p)
 {
 	struct lwp *lp;
 
-	if (p->p_stat != SSTOP)
-		return;
-
+	ASSERT_LWKT_TOKEN_HELD(&proc_token);
 	crit_enter();
+
+	if (p->p_stat != SSTOP) {
+		crit_exit();
+		return;
+	}
+
 	p->p_stat = SACTIVE;
 
 	FOREACH_LWP_IN_PROC(lp, p) {
@@ -1673,6 +1692,7 @@ issignal(struct lwp *lp, int maytrace)
 	int sig, prop;
 
 	lwkt_gettoken(&proc_token);
+
 	for (;;) {
 		int traced = (p->p_flag & P_TRACED) || (p->p_stops & S_SIG);
 

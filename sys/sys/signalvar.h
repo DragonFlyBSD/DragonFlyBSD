@@ -200,7 +200,6 @@ void	pgsignal (struct pgrp *pgrp, int sig, int checkctty);
 void	postsig (int sig);
 void	ksignal (struct proc *p, int sig);
 void	lwpsignal (struct proc *p, struct lwp *lp, int sig);
-void	lwp_signotify (struct lwp *lp);
 void	siginit (struct proc *p);
 void	trapsignal (struct lwp *p, int sig, u_long code);
 

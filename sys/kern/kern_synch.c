@@ -830,8 +830,8 @@ endtsleep(void *arg)
 	thread_t td = arg;
 	struct lwp *lp;
 
-	ASSERT_MP_LOCK_HELD(curthread);
 	crit_enter();
+	lwkt_gettoken(&proc_token);
 
 	/*
 	 * cpu interlock.  Thread flags are only manipulated on
@@ -849,6 +849,7 @@ endtsleep(void *arg)
 			_tsleep_wakeup(td);
 		}
 	}
+	lwkt_reltoken(&proc_token);
 	crit_exit();
 }
 
@@ -1032,7 +1033,7 @@ wakeup_domain_one(const volatile void *ident, int domain)
 /*
  * setrunnable()
  *
- * Make a process runnable.  The MP lock must be held on call.  This only
+ * Make a process runnable.  The proc_token must be held on call.  This only
  * has an effect if we are in SSLEEP.  We only break out of the
  * tsleep if LWP_BREAKTSLEEP is set, otherwise we just fix-up the state.
  *
@@ -1042,8 +1043,8 @@ wakeup_domain_one(const volatile void *ident, int domain)
 void
 setrunnable(struct lwp *lp)
 {
+	ASSERT_LWKT_TOKEN_HELD(&proc_token);
 	crit_enter();
-	ASSERT_MP_LOCK_HELD(curthread);
 	if (lp->lwp_stat == LSSTOP)
 		lp->lwp_stat = LSSLEEP;
 	if (lp->lwp_stat == LSSLEEP && (lp->lwp_flag & LWP_BREAKTSLEEP))

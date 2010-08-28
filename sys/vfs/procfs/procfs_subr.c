@@ -272,11 +272,17 @@ procfs_rw(struct vop_read_args *ap)
 	if ((curp = curtd->td_proc) == NULL)	/* XXX */
 		return (EINVAL);
 
+	lwkt_gettoken(&proc_token);
+
 	p = PFIND(pfs->pfs_pid);
-	if (p == NULL)
+	if (p == NULL) {
+		lwkt_reltoken(&proc_token);
 		return (EINVAL);
-	if (p->p_pid == 1 && securelevel > 0 && uio->uio_rw == UIO_WRITE)
+	}
+	if (p->p_pid == 1 && securelevel > 0 && uio->uio_rw == UIO_WRITE) {
+		lwkt_reltoken(&proc_token);
 		return (EACCES);
+	}
 	/* XXX lwp */
 	lp = FIRST_LWP_IN_PROC(p);
 	LWPHOLD(lp);
@@ -338,7 +344,9 @@ procfs_rw(struct vop_read_args *ap)
 	}
 	LWPRELE(lp);
 	pfs->pfs_lockowner = 0;
+	lwkt_reltoken(&proc_token);
 	wakeup(&pfs->pfs_lockowner);
+
 	return rtval;
 }
 
