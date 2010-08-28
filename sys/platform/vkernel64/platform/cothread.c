@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2008-2010 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -150,17 +150,17 @@ cothread_intr(cothread_t cotd)
 
 /*
  * Called by the vkernel to wakeup a cothread.
+ * The cothread must be locked.
  */
 void
 cothread_signal(cothread_t cotd)
 {
-	crit_enter();
 	pthread_cond_signal(&cotd->cond);
-	crit_exit();
 }
 
 /*
  * Called by the cothread to wait for the vkernel to call cothread_signal().
+ * The cothread must be locked.
  */
 void
 cothread_wait(cothread_t cotd)
@@ -170,6 +170,13 @@ cothread_wait(cothread_t cotd)
 
 /*
  * Typically called by kernel thread or cothread
+ *
+ * These must be a matched pair.  We will acquire a critical
+ * section in cothread_lock() and release it in cothread_unlock().
+ *
+ * We do this to simplify cothread operation to prevent an
+ * interrupt (e.g. vkd_io_intr()) from preempting a vkd_strategy()
+ * call and creating a recursion in the pthread.
  */
 void
 cothread_lock(cothread_t cotd, int is_cotd)
@@ -177,9 +184,8 @@ cothread_lock(cothread_t cotd, int is_cotd)
 	if (is_cotd) {
 		pthread_mutex_lock(&cotd->mutex);
 	} else {
-		crit_enter();
+		crit_enter_id("cothread");
 		pthread_mutex_lock(&cotd->mutex);
-		crit_exit();
 	}
 }
 
@@ -189,8 +195,7 @@ cothread_unlock(cothread_t cotd, int is_cotd)
 	if (is_cotd) {
 		pthread_mutex_unlock(&cotd->mutex);
 	} else {
-		crit_enter();
 		pthread_mutex_unlock(&cotd->mutex);
-		crit_exit();
+		crit_exit_id("cothread");
 	}
 }

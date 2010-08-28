@@ -720,8 +720,7 @@ ithread_fast_handler(struct intrframe *frame)
 /*
  * Interrupt threads run this as their main loop.
  *
- * The handler begins execution outside a critical section and with the BGL
- * held.
+ * The handler begins execution outside a critical section and no MP lock.
  *
  * The i_running state starts at 0.  When an interrupt occurs, the hardware
  * interrupt is disabled and sched_ithd() The HW interrupt remains disabled

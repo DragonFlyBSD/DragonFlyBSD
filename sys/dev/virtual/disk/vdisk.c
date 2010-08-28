@@ -187,17 +187,26 @@ vkd_io_intr(cothread_t cotd)
 {
 	struct vkd_softc *sc;
 	struct bio *bio;
+	TAILQ_HEAD(, bio) tmpq;
 
 	sc = cotd->arg;
 
+	/*
+	 * We can't call back into the kernel while holding cothread!
+	 */
+	TAILQ_INIT(&tmpq);
 	cothread_lock(cotd, 0);
-	while (!TAILQ_EMPTY(&sc->cotd_done)) {
-		bio = TAILQ_FIRST(&sc->cotd_done);
+	while ((bio = TAILQ_FIRST(&sc->cotd_done)) != NULL) {
 		TAILQ_REMOVE(&sc->cotd_done, bio, bio_act);
+		TAILQ_INSERT_TAIL(&tmpq, bio, bio_act);
+	}
+	cothread_unlock(cotd, 0);
+
+	while ((bio = TAILQ_FIRST(&tmpq)) != NULL) {
+		TAILQ_REMOVE(&tmpq, bio, bio_act);
 		devstat_end_transaction_buf(&sc->stats, bio->bio_buf);
 		biodone(bio);
 	}
-	cothread_unlock(sc->cotd, 0);
 }
 
 /*
