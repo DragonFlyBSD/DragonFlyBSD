@@ -106,6 +106,7 @@
 #include <sys/ptrace.h>
 #include <machine/sigframe.h>
 #include <unistd.h>		/* umtx_* functions */
+#include <pthread.h>		/* pthread_yield() */
 
 extern void dblfault_handler (void);
 
@@ -778,10 +779,8 @@ handle_cpu_contention_mask(void)
 
 	mask = cpu_contention_mask;
 	cpu_ccfence();
-	if (mask && bsfl(mask) != mycpu->gd_cpuid) {
-		cpu_pause();
-		usleep(1000);
-	}
+	if (mask && bsfl(mask) != mycpu->gd_cpuid)
+		pthread_yield();
 }
 
 /*
@@ -794,9 +793,7 @@ handle_cpu_contention_mask(void)
 void
 cpu_spinlock_contested(void)
 {
-	crit_enter();
-	usleep(1000);
-	crit_exit();
+	cpu_pause();
 }
 
 #endif

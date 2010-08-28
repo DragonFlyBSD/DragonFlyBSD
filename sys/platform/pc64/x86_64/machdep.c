@@ -975,7 +975,12 @@ cpu_idle(void)
 void
 handle_cpu_contention_mask(void)
 {
-	cpu_pause();
+        cpumask_t mask;
+
+        mask = cpu_contention_mask;
+        cpu_ccfence();
+        if (mask && bsfl(mask) != mycpu->gd_cpuid)
+                DELAY(2);
 }
 
 /*
