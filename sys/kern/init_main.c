@@ -498,8 +498,6 @@ SYSCTL_STRING(_kern, OID_AUTO, init_path, CTLFLAG_RD, init_path, 0, "");
 /*
  * Start the initial user process; try exec'ing each pathname in init_path.
  * The program is invoked with one argument containing the boot flags.
- *
- * The MP lock is held on entry.
  */
 static void
 start_init(void *dummy, struct trapframe *frame)
@@ -514,6 +512,11 @@ start_init(void *dummy, struct trapframe *frame)
 	struct mount *mp;
 	struct vnode *vp;
 
+	/*
+	 * The MP lock is not held on entry.  We release it before
+	 * returning to userland.
+	 */
+	get_mplock();
 	p = curproc;
 
 	lp = ONLY_LWP_IN_PROC(p);

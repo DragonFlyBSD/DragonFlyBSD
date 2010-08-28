@@ -647,7 +647,11 @@ smb_iod_thread(void *arg)
 {
 	struct smbiod *iod = arg;
 
-	ASSERT_MP_LOCK_HELD(curthread);
+	/*
+	 * mplock not held on entry but we aren't mpsafe yet.
+	 */
+	get_mplock();
+
 	smb_makescred(&iod->iod_scred, iod->iod_td, NULL);
 	while ((iod->iod_flags & SMBIOD_SHUTDOWN) == 0) {
 		smb_iod_main(iod);

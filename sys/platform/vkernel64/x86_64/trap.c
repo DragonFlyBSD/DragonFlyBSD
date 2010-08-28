@@ -1369,6 +1369,9 @@ bad:
 #endif
 }
 
+/*
+ * NOTE: mplock not held at any point
+ */
 void
 fork_return(struct lwp *lp, struct trapframe *frame)
 {
@@ -1382,9 +1385,12 @@ fork_return(struct lwp *lp, struct trapframe *frame)
 
 /*
  * Simplified back end of syscall(), used when returning from fork()
- * or lwp_create() directly into user mode.  MP lock is held on entry and
- * should be released on return.  This code will return back into the fork
- * trampoline code which then runs doreti.
+ * directly into user mode.
+ *
+ * This code will return back into the fork trampoline code which then
+ * runs doreti.
+ *
+ * NOTE: The mplock is not held at any point.
  */
 void
 generic_lwp_return(struct lwp *lp, struct trapframe *frame)
@@ -1410,10 +1416,6 @@ generic_lwp_return(struct lwp *lp, struct trapframe *frame)
 	p->p_flag |= P_PASSIVE_ACQ;
 	userexit(lp);
 	p->p_flag &= ~P_PASSIVE_ACQ;
-#ifdef SMP
-	KKASSERT(lp->lwp_thread->td_mpcount == 1);
-	rel_mplock();
-#endif
 }
 
 /*

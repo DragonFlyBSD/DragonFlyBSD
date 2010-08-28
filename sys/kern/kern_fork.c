@@ -617,14 +617,11 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags)
 	destproc->p_lasttid = lp->lwp_tid;
 	destproc->p_nthreads++;
 
-	td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, -1, 0);
+	td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, -1, TDF_MPSAFE);
 	lp->lwp_thread = td;
 	td->td_proc = destproc;
 	td->td_lwp = lp;
 	td->td_switch = cpu_heavy_switch;
-#ifdef SMP
-	KKASSERT(td->td_mpcount == 1);
-#endif
 	lwkt_setpri(td, TDPRI_KERN_USER);
 	lwkt_set_comm(td, "%s", destproc->p_comm);
 

@@ -610,8 +610,6 @@ aio_process(struct aiocblist *aiocbe)
 /*
  * The AIO daemon, most of the actual work is done in aio_process,
  * but the setup (and address space mgmt) is done in this routine.
- *
- * The MP lock is held on entry.
  */
 static void
 aio_daemon(void *uproc, struct trapframe *frame)
@@ -625,6 +623,11 @@ aio_daemon(void *uproc, struct trapframe *frame)
 	struct vmspace *curvm;
 	struct lwp *mylwp;
 	struct ucred *cr;
+
+	/*
+	 * mplock not held on entry but we aren't mpsafe yet.
+	 */
+	get_mplock();
 
 	mylwp = curthread->td_lwp;
 	mycp = mylwp->lwp_proc;
