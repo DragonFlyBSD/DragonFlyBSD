@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
@@ -147,6 +149,7 @@ sysctl_vm_resident(SYSCTL_HANDLER_ARGS)
 	    return SYSCTL_OUT(req, 0, exec_res_id);
 
 	lockmgr(&exec_list_lock, LK_SHARED);
+
 	TAILQ_FOREACH(vmres, &exec_res_list, vr_link) {
 		struct xresident xres;
 		error = fill_xresident(vmres, &xres, td);
@@ -173,13 +176,25 @@ exec_resident_imgact(struct image_params *imgp)
 	/*
 	 * resident image activator
 	 */
-	if ((vmres = imgp->vp->v_resident) == NULL)
+	lockmgr(&exec_list_lock, LK_SHARED);
+	if ((vmres = imgp->vp->v_resident) == NULL) {
+	    lockmgr(&exec_list_lock, LK_RELEASE);
 	    return(-1);
+	}
+	atomic_add_int(&vmres->vr_refs, 1);
+	lockmgr(&exec_list_lock, LK_RELEASE);
+
+	/*
+	 * We want to exec the new vmspace without holding the lock to
+	 * improve concurrency.
+	 */
 	exec_new_vmspace(imgp, vmres->vr_vmspace);
 	imgp->resident = 1;
 	imgp->interpreted = 0;
 	imgp->proc->p_sysent = vmres->vr_sysent;
 	imgp->entry_addr = vmres->vr_entry_addr;
+	atomic_subtract_int(&vmres->vr_refs, 1);
+
 	return(0);
 }
 
@@ -207,31 +222,29 @@ sys_exec_sys_register(struct exec_sys_register_args *uap)
     if (error)
 	return(error);
 
-    get_mplock();
-
-    if ((vp = p->p_textvp) == NULL) {
-	rel_mplock();
+    if ((vp = p->p_textvp) == NULL)
 	return(ENOENT);
-    }
+
+    lockmgr(&exec_list_lock, LK_EXCLUSIVE);
+
     if (vp->v_resident) {
-	rel_mplock();
+	lockmgr(&exec_list_lock, LK_RELEASE);
 	return(EEXIST);
     }
+
     vhold(vp);
-    vmres = kmalloc(sizeof(*vmres), M_EXEC_RES, M_WAITOK);
-    vp->v_resident = vmres;
+    vmres = kmalloc(sizeof(*vmres), M_EXEC_RES, M_WAITOK | M_ZERO);
     vmres->vr_vnode = vp;
     vmres->vr_sysent = p->p_sysent;
     vmres->vr_id = ++exec_res_id;
     vmres->vr_entry_addr = (intptr_t)uap->entry;
     vmres->vr_vmspace = vmspace_fork(p->p_vmspace); /* XXX order */
     pmap_pinit2(vmspace_pmap(vmres->vr_vmspace));
+    vp->v_resident = vmres;
 
-    lockmgr(&exec_list_lock, LK_EXCLUSIVE);
     TAILQ_INSERT_TAIL(&exec_res_list, vmres, vr_link);
     lockmgr(&exec_list_lock, LK_RELEASE);
 
-    rel_mplock();
     return(0);
 }
 
@@ -262,7 +275,8 @@ sys_exec_sys_unregister(struct exec_sys_unregister_args *uap)
     /*
      * If id is -1, unregister ourselves
      */
-    get_mplock();
+    lockmgr(&exec_list_lock, LK_EXCLUSIVE);
+
     if ((id = uap->id) == -1 && p->p_textvp && p->p_textvp->v_resident)
 	id = p->p_textvp->v_resident->vr_id;
 
@@ -272,10 +286,22 @@ sys_exec_sys_unregister(struct exec_sys_unregister_args *uap)
     error = ENOENT;
     count = 0;
 
-    lockmgr(&exec_list_lock, LK_EXCLUSIVE);
 restart:
     TAILQ_FOREACH(vmres, &exec_res_list, vr_link) {
 	if (id == -2 || vmres->vr_id == id) {
+	    /*
+	     * Check race against exec
+	     */
+	    if (vmres->vr_refs) {
+		lockmgr(&exec_list_lock, LK_RELEASE);
+		tsleep(vmres, 0, "vmres", 1);
+		lockmgr(&exec_list_lock, LK_EXCLUSIVE);
+		goto restart;
+	    }
+
+	    /*
+	     * Remove it
+	     */
 	    TAILQ_REMOVE(&exec_res_list, vmres, vr_link);
 	    if (vmres->vr_vnode) {
 		vmres->vr_vnode->v_resident = NULL;
@@ -294,7 +320,7 @@ restart:
 	}
     }
     lockmgr(&exec_list_lock, LK_RELEASE);
-    rel_mplock();
+
     if (error == 0)
 	uap->sysmsg_result = count;
     return(error);

@@ -284,6 +284,7 @@ struct vmresident {
 	intptr_t	vr_entry_addr;		/* registered entry point */
 	struct sysentvec *vr_sysent;		/* system call vects */
 	int		vr_id;			/* registration id */
+	int		vr_refs;		/* temporary refs */
 };
 
 #ifdef _KERNEL
