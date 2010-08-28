@@ -2784,7 +2784,7 @@ comwakeup(void *chan)
 	 * Check for and log errors, but not too often.
 	 */
 	if (--sio_timeouts_until_log > 0) {
-		lwkt_gettoken(&tty_token);
+		lwkt_reltoken(&tty_token);
 		return;
 	}
 	sio_timeouts_until_log = hz / sio_timeout;
