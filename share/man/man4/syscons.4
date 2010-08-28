@@ -445,7 +445,7 @@ Set the border color of the current (virtual) console.
 .It Dv KDRASTER Ar scr_size_t *sizes
 Set raster (pixel) text mode and adjust the current (virtual) console's
 geometry and font size. The
-.Dv scr_size_t
+.Vt scr_size_t
 argument structure is as follows:
 .Bd -literal
 struct _scr_size {
@@ -456,7 +456,7 @@ struct _scr_size {
 .It Dv GIO_SCRNMAP Ar scrmap_t *map
 .It Dv PIO_SCRNMAP Ar scrmap_t *map
 Get or set the screen map for the current (virtual) console. The
-.Dv scrmap_t
+.Vt scrmap_t
 argument structure is defined as follows:
 .Bd -literal
 struct _scrmap {
@@ -538,7 +538,7 @@ Start or stop the screen saver.
 .It Dv PIO_FONT8x8 Ar fnt8_t *font
 .It Dv GIO_FONT8x8 Ar fnt8_t *font
 Get or set the 8x8 font. The
-.Dv fnt8_t
+.Vt fnt8_t
 argument structure is defined as follows:
 .Bd -literal
 struct fnt8 {
@@ -549,7 +549,7 @@ struct fnt8 {
 .It Dv PIO_FONT8x14 Ar fnt14_t *font
 .It Dv GIO_FONT8x14 Ar fnt14_t *font
 Get or set the 8x14 font. The
-.Dv fnt14_t
+.Vt fnt14_t
 argument structure is defined as follows:
 .Bd -literal
 struct fnt14 {
@@ -560,7 +560,7 @@ struct fnt14 {
 .It Dv PIO_FONT8x16 Ar fnt16_t *font
 .It Dv GIO_FONT8x16 Ar fnt16_t *font
 Get or set the 8x16 font. The
-.Dv fnt16_t
+.Vt fnt16_t
 argument structure is defined as follows:
 .Bd -literal
 struct fnt16 {
@@ -570,7 +570,7 @@ struct fnt16 {
 .Pp
 .It Dv CONS_GETINFO Ar vid_info_t *info
 Get information about the current video mode. The
-.Dv vid_info_t
+.Vt vid_info_t
 structure is defined as follows:
 .Bd -literal
 struct vid_info {
@@ -618,7 +618,7 @@ Release the current keyboard.
 .Pp
 .It Dv CONS_SCRSHOT Ar scrshot_t *data
 Make a snapshot of the current video buffer. The
-.Dv scrshot_t
+.Vt scrshot_t
 structure is defined as:
 .Bd -literal
 struct scrshot {
@@ -631,7 +631,7 @@ struct scrshot {
 .It Dv CONS_GETTERM Ar term_info_t *info
 .It Dv CONS_SETTERM Ar term_info_t *info
 Get or set terminal characteristics. The
-.Dv term_info_t
+.Vt term_info_t
 structure is defined as:
 .Bd -literal
 struct term_info {
@@ -648,7 +648,7 @@ Get the next available terminal.
 .It Dv VT_SETMODE Ar vtmode_t *mode
 .It Dv VT_GETMODE Ar vtmode_t *mode
 Get or set the terminal switching mode. The
-.Dv vtmode_t
+.Vt vtmode_t
 argument structure is defined as follows:
 .Bd -literal
 struct vt_mode {
