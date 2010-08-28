@@ -2760,7 +2760,10 @@ comwakeup(void *chan)
 	struct com_s	*com;
 	int		unit;
 
-	ASSERT_LWKT_TOKEN_HELD(&tty_token);
+	/*
+	 * Can be called from a callout too so just get the token
+	 */
+	lwkt_gettoken(&tty_token);
 	callout_reset(&sio_timeout_handle, sio_timeout, comwakeup, NULL);
 
 	/*
@@ -2780,8 +2783,10 @@ comwakeup(void *chan)
 	/*
 	 * Check for and log errors, but not too often.
 	 */
-	if (--sio_timeouts_until_log > 0)
+	if (--sio_timeouts_until_log > 0) {
+		lwkt_gettoken(&tty_token);
 		return;
+	}
 	sio_timeouts_until_log = hz / sio_timeout;
 	for (unit = 0; unit < sio_numunits; ++unit) {
 		int	errnum;
@@ -2807,6 +2812,7 @@ comwakeup(void *chan)
 			    delta == 1 ? "" : "s", total);
 		}
 	}
+	lwkt_reltoken(&tty_token);
 }
 
 static void
