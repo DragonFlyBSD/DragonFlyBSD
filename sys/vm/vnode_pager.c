@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 1990 University of Utah.
  * Copyright (c) 1991 The Regents of the University of California.
  * All rights reserved.
@@ -831,6 +833,8 @@ vnode_pager_lock(vm_object_t object)
 {
 	struct thread *td = curthread;	/* XXX */
 	int error;
+
+	ASSERT_LWKT_TOKEN_HELD(&vm_token);
 
 	for (; object != NULL; object = object->backing_object) {
 		if (object->type != OBJT_VNODE)

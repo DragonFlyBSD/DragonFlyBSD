@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 1994 John Dyson
  * Copyright (c) 2001 Matt Dillon
  * Copyright (c) 2010 The DragonFly Project
@@ -150,6 +152,9 @@ vm_pagezero(void __unused *arg)
 	int npages = 0;
 	int sleep_time;	
 	int i = 0;
+
+	/* MPSAFE thread */
+	rel_mplock();
 
 	/*
 	 * Adjust thread parameters before entering our loop.  The thread
