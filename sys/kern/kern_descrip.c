@@ -2794,9 +2794,6 @@ struct fileops badfileops = {
 	.fo_shutdown = badfo_shutdown
 };
 
-/*
- * MPSAFE
- */
 int
 badfo_readwrite(
 	struct file *fp,
@@ -2807,9 +2804,6 @@ badfo_readwrite(
 	return (EBADF);
 }
 
-/*
- * MPSAFE
- */
 int
 badfo_ioctl(struct file *fp, u_long com, caddr_t data,
 	    struct ucred *cred, struct sysmsg *msgv)
@@ -2817,9 +2811,6 @@ badfo_ioctl(struct file *fp, u_long com, caddr_t data,
 	return (EBADF);
 }
 
-/*
- * MPSAFE
- */
 int
 badfo_poll(struct file *fp, int events, struct ucred *cred)
 {
@@ -2827,14 +2818,18 @@ badfo_poll(struct file *fp, int events, struct ucred *cred)
 }
 
 /*
- * MPSAFE
+ * Must return an error to prevent registration, typically
+ * due to a revoked descriptor (file_filtops assigned).
  */
 int
 badfo_kqfilter(struct file *fp, struct knote *kn)
 {
-	return (0);
+	return (EOPNOTSUPP);
 }
 
+/*
+ * MPSAFE
+ */
 int
 badfo_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 {
