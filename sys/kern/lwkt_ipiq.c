@@ -519,6 +519,7 @@ static int
 lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip, 
 		       struct intrframe *frame)
 {
+    globaldata_t mygd = mycpu;
     int ri;
     int wi;
     ipifunc3_t copy_func;
@@ -533,6 +534,7 @@ lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip,
     KKASSERT(curthread->td_critcount);
     wi = ip->ip_windex;
     cpu_lfence();
+    ++mygd->gd_intr_nesting_level;
 
     /*
      * Note: xindex is only updated after we are sure the function has
@@ -571,6 +573,7 @@ lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip,
 	}
 #endif
     }
+    --mygd->gd_intr_nesting_level;
 
     /*
      * Return non-zero if there are more IPI messages pending on this

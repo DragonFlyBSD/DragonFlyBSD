@@ -1235,8 +1235,8 @@ vclean_vxlocked(struct vnode *vp, int flags)
 	/*
 	 * If the vnode has an object, destroy it.
 	 */
+	lwkt_gettoken(&vmobj_token);
 	if ((object = vp->v_object) != NULL) {
-		lwkt_gettoken(&vm_token);
 		KKASSERT(object == vp->v_object);
 		if (object->ref_count == 0) {
 			if ((object->flags & OBJ_DEAD) == 0)
@@ -1245,8 +1245,8 @@ vclean_vxlocked(struct vnode *vp, int flags)
 			vm_pager_deallocate(object);
 		}
 		vclrflags(vp, VOBJBUF);
-		lwkt_reltoken(&vm_token);
 	}
+	lwkt_reltoken(&vmobj_token);
 	KKASSERT((vp->v_flag & VOBJBUF) == 0);
 
 	/*
@@ -1490,9 +1490,9 @@ vinitvmio(struct vnode *vp, off_t filesize, int blksize, int boff)
 	vm_object_t object;
 	int error = 0;
 
+	lwkt_gettoken(&vmobj_token);
 retry:
 	if ((object = vp->v_object) == NULL) {
-		lwkt_gettoken(&vm_token);
 		object = vnode_pager_alloc(vp, filesize, 0, 0, blksize, boff);
 		/*
 		 * Dereference the reference we just created.  This assumes
@@ -1500,17 +1500,19 @@ retry:
 		 */
 		object->ref_count--;
 		vrele(vp);
-		lwkt_reltoken(&vm_token);
 	} else {
 		if (object->flags & OBJ_DEAD) {
 			vn_unlock(vp);
-			vm_object_dead_sleep(object, "vodead");
+			if (vp->v_object == object)
+				vm_object_dead_sleep(object, "vodead");
 			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 			goto retry;
 		}
 	}
 	KASSERT(vp->v_object != NULL, ("vinitvmio: NULL object"));
 	vsetflags(vp, VOBJBUF);
+	lwkt_reltoken(&vmobj_token);
+
 	return (error);
 }
 

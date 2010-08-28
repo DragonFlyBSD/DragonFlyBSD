@@ -136,6 +136,7 @@ struct lwkt_token kvm_token = LWKT_TOKEN_UP_INITIALIZER(kvm_token);
 struct lwkt_token proc_token = LWKT_TOKEN_UP_INITIALIZER(proc_token);
 struct lwkt_token tty_token = LWKT_TOKEN_UP_INITIALIZER(tty_token);
 struct lwkt_token vnode_token = LWKT_TOKEN_UP_INITIALIZER(vnode_token);
+struct lwkt_token vmobj_token = LWKT_TOKEN_UP_INITIALIZER(vmobj_token);
 
 SYSCTL_INT(_lwkt, OID_AUTO, pmap_mpsafe,
 	   CTLFLAG_RW, &pmap_token.t_flags, 0, "");
@@ -153,6 +154,8 @@ SYSCTL_INT(_lwkt, OID_AUTO, tty_mpsafe,
 	   CTLFLAG_RW, &tty_token.t_flags, 0, "");
 SYSCTL_INT(_lwkt, OID_AUTO, vnode_mpsafe,
 	   CTLFLAG_RW, &vnode_token.t_flags, 0, "");
+SYSCTL_INT(_lwkt, OID_AUTO, vmobj_mpsafe,
+	   CTLFLAG_RW, &vmobj_token.t_flags, 0, "");
 
 /*
  * The collision count is bumped every time the LWKT scheduler fails

@@ -323,7 +323,7 @@ vke_init(void *xsc)
  *
  * NOTE: We can't make any kernel callbacks while holding cothread lock
  *	 because the cothread lock is not governed by the kernel scheduler
- *	 (so mplock, tokens, etc will not bbe released).
+ *	 (so mplock, tokens, etc will not be released).
  */
 static void
 vke_start(struct ifnet *ifp)

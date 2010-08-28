@@ -127,6 +127,8 @@ linprocfs_domeminfo(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	}
 	swapused = swaptotal - swapfree;
 	memshared = 0;
+
+	lwkt_gettoken(&vmobj_token);
 	for (object = TAILQ_FIRST(&vm_object_list); object != NULL;
 	    object = TAILQ_NEXT(object, object_list)) {
 		if (object->type == OBJT_MARKER)
@@ -134,6 +136,7 @@ linprocfs_domeminfo(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 		if (object->shadow_count > 1)
 			memshared += object->resident_page_count;
 	}
+	lwkt_reltoken(&vmobj_token);
 	memshared *= PAGE_SIZE;
 	/*
 	 * We'd love to be able to write:

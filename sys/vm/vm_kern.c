@@ -112,9 +112,8 @@ kmem_alloc_pageable(vm_map_t map, vm_size_t size)
 			     TRUE, VM_MAPTYPE_NORMAL,
 			     VM_PROT_ALL, VM_PROT_ALL,
 			     0);
-	if (result != KERN_SUCCESS) {
+	if (result != KERN_SUCCESS)
 		return (0);
-	}
 	return (addr);
 }
 
@@ -136,9 +135,8 @@ kmem_alloc_nofault(vm_map_t map, vm_size_t size, vm_size_t align)
 			     TRUE, VM_MAPTYPE_NORMAL,
 			     VM_PROT_ALL, VM_PROT_ALL,
 			     MAP_NOFAULT);
-	if (result != KERN_SUCCESS) {
+	if (result != KERN_SUCCESS)
 		return (0);
-	}
 	return (addr);
 }
 

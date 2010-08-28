@@ -161,7 +161,6 @@ vm_pagezero(void __unused *arg)
 	 * For now leave the MP lock held, the VM routines cannot be called
 	 * with it released until tokenization is finished.
 	 */
-	/* rel_mplock(); */
 	lwkt_setpri_self(TDPRI_IDLE_WORK);
 	lwkt_setcpu_self(globaldata_find(ncpus - 1));
 	sleep_time = DEFAULT_SLEEP_TIME;

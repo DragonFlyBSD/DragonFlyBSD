@@ -407,7 +407,6 @@ zget(vm_zone_t z)
 		 * Interrupt zones do not mess with the kernel_map, they
 		 * simply populate an existing mapping.
 		 */
-		get_mplock();
 		lwkt_gettoken(&vm_token);
 		savezpc = z->zpagecount;
 		nbytes = z->zpagecount * PAGE_SIZE;
@@ -442,7 +441,6 @@ zget(vm_zone_t z)
 		}
 		nitems = ((z->zpagecount * PAGE_SIZE) - nbytes) / z->zsize;
 		lwkt_reltoken(&vm_token);
-		rel_mplock();
 	} else if (z->zflags & ZONE_SPECIAL) {
 		/*
 		 * The special zone is the one used for vm_map_entry_t's.

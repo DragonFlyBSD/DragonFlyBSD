@@ -1151,8 +1151,8 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	vm_map_unlock(&kernel_map);
 	if ((flags & M_NULLOK) == 0)
 	    panic("kmem_slab_alloc(): kernel_map ran out of space!");
-	crit_exit();
 	vm_map_entry_release(count);
+	crit_exit();
 	lwkt_reltoken(&vm_token);
 	return(NULL);
     }
@@ -1232,19 +1232,19 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 
 	    /*
 	     * We were unable to recover, cleanup and return NULL
+	     *
+	     * (vm_token already held)
 	     */
 	    while (i != 0) {
 		i -= PAGE_SIZE;
-		lwkt_gettoken(&vm_token);
 		m = vm_page_lookup(&kernel_object, OFF_TO_IDX(addr + i));
 		/* page should already be busy */
 		vm_page_free(m);
-		lwkt_reltoken(&vm_token);
 	    }
 	    vm_map_delete(&kernel_map, addr, addr + size, &count);
 	    vm_map_unlock(&kernel_map);
-	    crit_exit();
 	    vm_map_entry_release(count);
+	    crit_exit();
 	    lwkt_reltoken(&vm_token);
 	    return(NULL);
 	}

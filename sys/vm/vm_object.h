@@ -84,6 +84,9 @@
 #ifndef _SYS_TREE_H_
 #include <sys/tree.h>
 #endif
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>
+#endif
 #ifndef _MACHINE_ATOMIC_H_
 #include <machine/atomic.h>
 #endif
@@ -138,15 +141,18 @@ struct vm_object_lock {
 /*
  * vm_object		A VM object which represents an arbitrarily sized
  *			data store.
+ *
+ * Locking requirements: vmobj_token for ref_count and object_list, and
+ * vm_token for everything else.
  */
 struct vm_object {
-	TAILQ_ENTRY(vm_object) object_list; /* list of all objects */
+	TAILQ_ENTRY(vm_object) object_list; /* vmobj_token */
 	LIST_HEAD(, vm_object) shadow_head; /* objects that this is a shadow for */
 	LIST_ENTRY(vm_object) shadow_list; /* chain of shadow objects */
 	RB_HEAD(vm_page_rb_tree, vm_page) rb_memq;	/* resident pages */
 	int generation;			/* generation ID */
 	vm_pindex_t size;		/* Object size */
-	int ref_count;			/* How many refs?? */
+	int ref_count;			/* vmobj_token */
 	int shadow_count;		/* how many objects that this is a shadow for */
 	int hash_rand;			/* vm hash table randomizer	*/
 	objtype_t type;			/* type of pager */
@@ -285,6 +291,7 @@ void _vm_object_allocate (objtype_t, vm_pindex_t, vm_object_t);
 boolean_t vm_object_coalesce (vm_object_t, vm_pindex_t, vm_size_t, vm_size_t);
 void vm_object_collapse (vm_object_t);
 void vm_object_deallocate (vm_object_t);
+void vm_object_deallocate_locked (vm_object_t);
 void vm_object_terminate (vm_object_t);
 void vm_object_set_writeable_dirty (vm_object_t);
 void vm_object_init (void);
@@ -294,6 +301,7 @@ void vm_object_pmap_copy (vm_object_t, vm_pindex_t, vm_pindex_t);
 void vm_object_pmap_copy_1 (vm_object_t, vm_pindex_t, vm_pindex_t);
 void vm_object_pmap_remove (vm_object_t, vm_pindex_t, vm_pindex_t);
 void vm_object_reference (vm_object_t);
+void vm_object_reference_locked (vm_object_t);
 void vm_object_shadow (vm_object_t *, vm_ooffset_t *, vm_size_t);
 void vm_object_madvise (vm_object_t, vm_pindex_t, int, int);
 void vm_object_init2 (void);

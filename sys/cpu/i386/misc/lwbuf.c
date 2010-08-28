@@ -52,7 +52,6 @@
 #include <machine/atomic.h>
 #include <machine/param.h>
 #include <sys/thread.h>
-#include <sys/mplock2.h>
 
 static void lwbuf_init(void *);
 SYSINIT(sock_lwb, SI_BOOT2_MACHDEP, SI_ORDER_ANY, lwbuf_init, NULL);
@@ -105,9 +104,7 @@ lwbuf_cache_dtor(void *obj, void *pdata)
     struct lwbuf *lwb = (struct lwbuf *)obj;
 
     KKASSERT(lwb->kva != 0);
-    get_mplock();
     pmap_kremove_quick(lwb->kva);
-    rel_mplock();
     kmem_free(&kernel_map, lwb->kva, PAGE_SIZE);
     lwb->kva = 0;
     atomic_add_int(&lwbuf_kva_bytes, -PAGE_SIZE);

@@ -90,12 +90,13 @@ do_vmtotal(SYSCTL_HANDLER_ARGS)
 	struct vmtotal *totalp;
 	vm_object_t object;
 
+	bzero(&total, sizeof(total));
 	totalp = &total;
-	bzero(totalp, sizeof *totalp);
 
 	/*
 	 * Mark all objects as inactive.
 	 */
+	lwkt_gettoken(&vmobj_token);
 	for (object = TAILQ_FIRST(&vm_object_list);
 	    object != NULL;
 	    object = TAILQ_NEXT(object,object_list)) {
@@ -103,6 +104,7 @@ do_vmtotal(SYSCTL_HANDLER_ARGS)
 			continue;
 		vm_object_clear_flag(object, OBJ_ACTIVE);
 	}
+	lwkt_reltoken(&vmobj_token);
 
 	/*
 	 * Calculate process statistics.
@@ -112,7 +114,7 @@ do_vmtotal(SYSCTL_HANDLER_ARGS)
 	/*
 	 * Calculate object memory usage statistics.
 	 */
-	lwkt_gettoken(&vm_token);
+	lwkt_gettoken(&vmobj_token);
 	for (object = TAILQ_FIRST(&vm_object_list);
 	    object != NULL;
 	    object = TAILQ_NEXT(object, object_list)) {
@@ -140,8 +142,9 @@ do_vmtotal(SYSCTL_HANDLER_ARGS)
 			}
 		}
 	}
+	lwkt_reltoken(&vmobj_token);
 	totalp->t_free = vmstats.v_free_count + vmstats.v_cache_count;
-	lwkt_reltoken(&vm_token);
+
 	return (sysctl_handle_opaque(oidp, totalp, sizeof total, req));
 }
 

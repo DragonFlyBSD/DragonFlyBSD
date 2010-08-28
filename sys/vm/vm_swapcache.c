@@ -180,7 +180,9 @@ vm_swapcached(void)
 	 */
 	bzero(&object_marker, sizeof(object_marker));
 	object_marker.type = OBJT_MARKER;
+	lwkt_gettoken(&vmobj_token);
 	TAILQ_INSERT_HEAD(&vm_object_list, &object_marker, object_list);
+	lwkt_reltoken(&vmobj_token);
 
 	for (;;) {
 		/*
@@ -245,7 +247,9 @@ vm_swapcached(void)
 		}
 	}
 	TAILQ_REMOVE(INACTIVE_LIST, &page_marker, pageq);
+	lwkt_gettoken(&vmobj_token);
 	TAILQ_REMOVE(&vm_object_list, &object_marker, object_list);
+	lwkt_reltoken(&vmobj_token);
 	lwkt_reltoken(&vm_token);
 	crit_exit();
 }
@@ -523,6 +527,8 @@ vm_swapcache_cleaning(vm_object_t marker)
 	 * Look for vnode objects
 	 */
 	lwkt_gettoken(&vm_token);
+	lwkt_gettoken(&vmobj_token);
+
 	while ((object = TAILQ_NEXT(object, object_list)) != NULL && count--) {
 		if (object->type != OBJT_VNODE)
 			continue;
@@ -581,5 +587,7 @@ vm_swapcache_cleaning(vm_object_t marker)
 	else
 		TAILQ_INSERT_HEAD(&vm_object_list, marker, object_list);
 	marker->backing_object = object;
+
+	lwkt_reltoken(&vmobj_token);
 	lwkt_reltoken(&vm_token);
 }

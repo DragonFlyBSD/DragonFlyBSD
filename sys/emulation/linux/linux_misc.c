@@ -147,6 +147,8 @@ sys_linux_sysinfo(struct linux_sysinfo_args *args)
 		ts.tv_sec %= 60;
 		i = 1;
 	}
+
+	bzero(&sysinfo, sizeof(sysinfo));
 	sysinfo.uptime=ts.tv_sec;
 
 	/* Use the information from the mib to get our load averages */
@@ -155,9 +157,9 @@ sys_linux_sysinfo(struct linux_sysinfo_args *args)
 
 	sysinfo.totalram = Maxmem * PAGE_SIZE;
 	sysinfo.freeram = sysinfo.totalram - vmstats.v_wire_count * PAGE_SIZE;
-
-	get_mplock();
 	sysinfo.sharedram = 0;
+
+	lwkt_gettoken(&vmobj_token);
 	for (object = TAILQ_FIRST(&vm_object_list); object != NULL;
 	     object = TAILQ_NEXT(object, object_list)) {
 		if (object->type == OBJT_MARKER)
@@ -165,6 +167,7 @@ sys_linux_sysinfo(struct linux_sysinfo_args *args)
 		if (object->shadow_count > 1)
 			sysinfo.sharedram += object->resident_page_count;
 	}
+	lwkt_reltoken(&vmobj_token);
 
 	sysinfo.sharedram *= PAGE_SIZE;
 	sysinfo.bufferram = 0;
@@ -176,7 +179,6 @@ sys_linux_sysinfo(struct linux_sysinfo_args *args)
 		sysinfo.totalswap = swapblist->bl_blocks * 1024;
 		sysinfo.freeswap = swapblist->bl_root->u.bmu_avail * PAGE_SIZE;
 	}
-	rel_mplock();
 
 	sysinfo.procs = nprocs;
 	sysinfo.totalhigh = 0;
