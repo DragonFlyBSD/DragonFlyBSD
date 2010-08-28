@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_signal.c,v 1.23.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_signal.c,v 1.14 2007/03/12 21:07:42 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -39,7 +38,6 @@
 #include <sys/thread.h>
 
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
 
 #include <arch_linux/linux.h>
 #include <arch_linux/linux_proto.h>
@@ -153,9 +151,7 @@ sys_linux_signal(struct linux_signal_args *args)
 		sig = args->sig;
 	}
 
-	get_mplock();
 	error = kern_sigaction(sig, &nsa, &osa);
-	rel_mplock();
 
 	bsd_to_linux_sigaction(&osa, &linux_osa);
 	args->sysmsg_result = (int) linux_osa.lsa_handler;
@@ -193,10 +189,8 @@ sys_linux_rt_sigaction(struct linux_rt_sigaction_args *args)
 		sig = args->sig;
 	}
 
-	get_mplock();
 	error = kern_sigaction(sig, args->act ? &nsa : NULL,
 			       args->oact ? &osa : NULL);
-	rel_mplock();
 
 	if (error == 0 && args->oact) {
 		bsd_to_linux_sigaction(&osa, &linux_osa);
@@ -247,10 +241,8 @@ sys_linux_sigprocmask(struct linux_sigprocmask_args *args)
 	}
 	how = linux_to_bsd_sigprocmask(args->how);
 
-	get_mplock();
 	error = kern_sigprocmask(how, args->mask ? &set : NULL,
 				 args->omask ? &oset : NULL);
-	rel_mplock();
 
 	if (error == 0 && args->omask) {
 		bsd_to_linux_sigset(&oset, &linux_oset);
@@ -288,10 +280,8 @@ sys_linux_rt_sigprocmask(struct linux_rt_sigprocmask_args *args)
 	}
 	how = linux_to_bsd_sigprocmask(args->how);
 
-	get_mplock();
 	error = kern_sigprocmask(how, args->mask ? &set : NULL,
 				 args->omask ? &oset : NULL);
-	rel_mplock();
 
 	if (error == 0 && args->omask) {
 		bsd_to_linux_sigset(&oset, &linux_oset);
@@ -376,9 +366,6 @@ sys_linux_sigpending(struct linux_sigpending_args *args)
 	return (error);
 }
 
-/*
- * MPALMOSTSAFE
- */
 int
 sys_linux_kill(struct linux_kill_args *args)
 {
@@ -399,9 +386,7 @@ sys_linux_kill(struct linux_kill_args *args)
 	else
 		sig = args->signum;
 
-	get_mplock();
 	error = kern_kill(sig, args->pid, -1);
-	rel_mplock();
 
 	return(error);
 }
@@ -448,9 +433,7 @@ linux_do_tkill(l_int tgid, l_int pid, l_int sig)
 	}
 	EMUL_UNLOCK();
 
-	get_mplock();
 	error = kern_kill(sig, pid, -1);
-	rel_mplock();
 
 done1:
 	PRELE(p);

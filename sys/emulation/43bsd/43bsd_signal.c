@@ -57,7 +57,6 @@
 #include <sys/signalvar.h>
 
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
 
 #define	ONSIG	32		/* NSIG for osig* syscalls.  XXX. */
 
@@ -100,9 +99,7 @@ sys_osigvec(struct osigvec_args *uap)
 		nsap->sa_flags ^= SA_RESTART;	/* opposite of SV_INTERRUPT */
 	}
 
-	get_mplock();
 	error = kern_sigaction(uap->signum, nsap, osap);
-	rel_mplock();
 
 	if (osap && !error) {
 		vec.sv_handler = osap->sa_handler;
@@ -176,17 +173,12 @@ sys_osigstack(struct osigstack_args *uap)
 	return (error);
 }
 
-/*
- * MPALMOSTSAFE
- */
 int
 sys_okillpg(struct okillpg_args *uap)
 {
 	int error;
 
-	get_mplock();
 	error = kern_kill(uap->signum, -uap->pgid, -1);
-	rel_mplock();
 
 	return (error);
 }
