@@ -42,8 +42,6 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 
-#include <sys/mplock2.h>
-
 /*
  * A bcopy that works dring low level boot, before FP is working
  */
@@ -132,7 +130,6 @@ copyin(const void *udaddr, void *kaddr, size_t len)
 	size_t n;
 
 	error = 0;
-	get_mplock();
 	while (len) {
 		m = vm_fault_page(&vm->vm_map, trunc_page((vm_offset_t)udaddr),
 				  VM_PROT_READ,
@@ -151,7 +148,6 @@ copyin(const void *udaddr, void *kaddr, size_t len)
 		lwbuf_free(lwb);
 		vm_page_unhold(m);
 	}
-	rel_mplock();
 	return (error);
 }
 
@@ -170,7 +166,6 @@ copyout(const void *kaddr, void *udaddr, size_t len)
 	size_t n;
 
 	error = 0;
-	get_mplock();
 	while (len) {
 		m = vm_fault_page(&vm->vm_map, trunc_page((vm_offset_t)udaddr),
 				  VM_PROT_READ|VM_PROT_WRITE, 
@@ -190,7 +185,6 @@ copyout(const void *kaddr, void *udaddr, size_t len)
 		lwbuf_free(lwb);
 		vm_page_unhold(m);
 	}
-	rel_mplock();
 	return (error);
 }
  
