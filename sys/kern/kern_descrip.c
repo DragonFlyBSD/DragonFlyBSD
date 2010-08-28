@@ -621,11 +621,8 @@ retry:
 	 * close() were performed on it).
 	 */
 	if (delfp) {
-		if (SLIST_FIRST(&delfp->f_klist)) {
-			get_mplock();
+		if (SLIST_FIRST(&delfp->f_klist))
 			knote_fdclose(delfp, fdp, new);
-			rel_mplock();
-		}
 		closef(delfp, p);
 		if (holdleaders) {
 			spin_lock_wr(&fdp->fd_spin);
@@ -854,11 +851,8 @@ kern_close(int fd)
 	 * array.
 	 */
 	spin_unlock_wr(&fdp->fd_spin);
-	if (SLIST_FIRST(&fp->f_klist)) {
-		get_mplock();
+	if (SLIST_FIRST(&fp->f_klist))
 		knote_fdclose(fp, fdp, fd);
-		rel_mplock();
-	}
 	error = closef(fp, p);
 	if (holdleaders) {
 		spin_lock_wr(&fdp->fd_spin);
@@ -2000,11 +1994,8 @@ fdfree(struct proc *p, struct filedesc *repl)
 			fp = funsetfd_locked(fdp, i);
 			if (fp) {
 				spin_unlock_wr(&fdp->fd_spin);
-				if (SLIST_FIRST(&fp->f_klist)) {
-					get_mplock();
+				if (SLIST_FIRST(&fp->f_klist))
 					knote_fdclose(fp, fdp, i);
-					rel_mplock();
-				}
 				closef(fp, p);
 				spin_lock_wr(&fdp->fd_spin);
 			}
