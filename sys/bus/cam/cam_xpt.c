@@ -800,6 +800,7 @@ static xpt_busfunc_t	xptconfigfunc;
 static void	 xpt_config(void *arg);
 static xpt_devicefunc_t xptpassannouncefunc;
 static void	 xpt_finishconfig(struct cam_periph *periph, union ccb *ccb);
+static void	 xpt_uncount_bus (struct cam_eb *bus);
 static void	 xptaction(struct cam_sim *sim, union ccb *work_ccb);
 static void	 xptpoll(struct cam_sim *sim);
 static inthand2_t swi_cambio;
@@ -1396,9 +1397,7 @@ static void
 xpt_scanner_thread(void *dummy)
 {
 	union ccb	*ccb;
-#if 0
 	struct cam_sim	*sim;
-#endif
 
 	for (;;) {
 		xpt_lock_buses();
@@ -1407,15 +1406,13 @@ xpt_scanner_thread(void *dummy)
 			TAILQ_REMOVE(&xsoftc.ccb_scanq, &ccb->ccb_h,
 				     sim_links.tqe);
 			xpt_unlock_buses();
-#if 0
+
 			sim = ccb->ccb_h.path->bus->sim;
 			CAM_SIM_LOCK(sim);
-#endif
 			xpt_action(ccb);
-#if 0
 			CAM_SIM_UNLOCK(sim);
+
 			xpt_lock_buses();
-#endif
 		}
 		xsoftc.ccb_scanq_running = 0;
 		tsleep_interlock(&xsoftc.ccb_scanq, 0);
@@ -2934,7 +2931,6 @@ xpt_action_sasync_cb(void *context, int pending)
 	struct xpt_task *task;
 	uint32_t added;
 
-	get_mplock();
 	task = (struct xpt_task *)context;
 	cur_entry = (struct async_node *)task->data1;
 	added = task->data2;
@@ -2953,8 +2949,6 @@ xpt_action_sasync_cb(void *context, int pending)
 		 */
 		xpt_for_all_busses(xptsetasyncbusfunc, cur_entry);
 	}
-
-	rel_mplock();
 	kfree(task, M_CAMXPT);
 }
 
@@ -6883,7 +6877,7 @@ xptconfigbuscountfunc(struct cam_eb *bus, void *arg)
 				kprintf(" (unknown)\n");
 			}
 		}
-		busses_to_config++;
+		atomic_add_int(&busses_to_config, 1);
 		bus->counted_to_config = 1;
 		xpt_compile_path(&path, NULL, bus->path_id,
 				 CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD);
@@ -6895,6 +6889,11 @@ xptconfigbuscountfunc(struct cam_eb *bus, void *arg)
 		if ((cpi.hba_misc & PIM_NOBUSRESET) == 0 && can_negotiate)
 			busses_to_reset++;
 		xpt_release_path(&path);
+	} else
+	if (bus->counted_to_config == 0 && bus->path_id == CAM_XPT_PATH_ID) {
+		/* this is our dummy periph/bus */
+		atomic_add_int(&busses_to_config, 1);
+		bus->counted_to_config = 1;
 	}
 
 	return(1);
@@ -6920,11 +6919,7 @@ xptconfigfunc(struct cam_eb *bus, void *arg)
 			       "status %#x for bus %d\n", status, bus->path_id);
 			kprintf("xptconfigfunc: halting bus configuration\n");
 			xpt_free_ccb(work_ccb);
-			if (bus->counted_to_config) {
-				bus->counted_to_config = 0;
-				busses_to_config--;
-			}
-			xpt_finishconfig(xpt_periph, NULL);
+			xpt_uncount_bus(bus);
 			return(0);
 		}
 		xpt_setup_ccb(&work_ccb->ccb_h, path, /*priority*/1);
@@ -6954,6 +6949,8 @@ xptconfigfunc(struct cam_eb *bus, void *arg)
 			work_ccb->ccb_h.func_code = XPT_RESET_BUS;
 			xpt_finishconfig(xpt_periph, work_ccb);
 		}
+	} else {
+		xpt_uncount_bus(bus);
 	}
 
 	return(1);
@@ -7000,22 +6997,18 @@ xpt_config(void *arg)
 #endif /* CAMDEBUG */
 
 	/*
-	 * Scan all installed busses.
+	 * Scan all installed busses.  This will also add a count
+	 * for our dummy placeholder (xpt_periph).
 	 */
 	xpt_for_all_busses(xptconfigbuscountfunc, NULL);
 
-	kprintf("CAM: Configuring %d busses\n", busses_to_config);
-
-	if (busses_to_config == 0) {
-		/* Call manually because we don't have any busses */
-		xpt_finishconfig(xpt_periph, NULL);
-	} else  {
-		if (busses_to_reset > 0 && scsi_delay >= 2000) {
-			kprintf("Waiting %d seconds for SCSI "
-			       "devices to settle\n", scsi_delay/1000);
-		}
-		xpt_for_all_busses(xptconfigfunc, NULL);
+	kprintf("CAM: Configuring %d busses\n", busses_to_config - 1);
+	if (busses_to_reset > 0 && scsi_delay >= 2000) {
+		kprintf("Waiting %d seconds for SCSI "
+			"devices to settle\n",
+			scsi_delay/1000);
 	}
+	xpt_for_all_busses(xptconfigfunc, NULL);
 }
 
 /*
@@ -7046,9 +7039,7 @@ xpt_finishconfig_task(void *context, int pending)
 	struct	periph_driver **p_drv;
 	int	i;
 
-	get_mplock();
-	kprintf("CAM: finished configuring all busses (%d left)\n",
-		busses_to_config);
+	kprintf("CAM: finished configuring all busses\n");
 
 	if (busses_to_config == 0) {
 		/* Register all the peripheral drivers */
@@ -7070,61 +7061,61 @@ xpt_finishconfig_task(void *context, int pending)
 		kfree(xsoftc.xpt_config_hook, M_CAMXPT);
 		xsoftc.xpt_config_hook = NULL;
 	}
-
-	rel_mplock();
 	kfree(context, M_CAMXPT);
+}
+
+static void
+xpt_uncount_bus (struct cam_eb *bus)
+{
+	struct xpt_task *task;
+
+	if (bus->counted_to_config) {
+		bus->counted_to_config = 0;
+		if (atomic_fetchadd_int(&busses_to_config, -1) == 1) {
+			task = kmalloc(sizeof(struct xpt_task), M_CAMXPT,
+				       M_INTWAIT | M_ZERO);
+			TASK_INIT(&task->task, 0, xpt_finishconfig_task, task);
+			taskqueue_enqueue(taskqueue_thread[mycpuid],
+					  &task->task);
+		}
+	}
 }
 
 static void
 xpt_finishconfig(struct cam_periph *periph, union ccb *done_ccb)
 {
-	struct	xpt_task *task;
 	struct cam_path *path;
 
-	if (done_ccb != NULL) {
-		path = done_ccb->ccb_h.path;
-		CAM_DEBUG(path, CAM_DEBUG_TRACE, ("xpt_finishconfig\n"));
+	path = done_ccb->ccb_h.path;
+	CAM_DEBUG(path, CAM_DEBUG_TRACE, ("xpt_finishconfig\n"));
 
-		switch(done_ccb->ccb_h.func_code) {
-		case XPT_RESET_BUS:
-			if (done_ccb->ccb_h.status == CAM_REQ_CMP) {
-				done_ccb->ccb_h.func_code = XPT_SCAN_BUS;
-				done_ccb->ccb_h.cbfcnp = xpt_finishconfig;
-				done_ccb->crcn.flags = 0;
-				xpt_action(done_ccb);
-				return;
-			}
-			/* FALLTHROUGH */
-		case XPT_SCAN_BUS:
-		default:
-			if (bootverbose) {
-				kprintf("CAM: Finished configuring bus:");
-				if (path->bus->sim) {
-					kprintf(" %s%d\n",
-						path->bus->sim->sim_name,
-						path->bus->sim->unit_number);
-				} else {
-					kprintf(" (unknown)\n");
-				}
-			}
-			if (path->bus->counted_to_config) {
-				path->bus->counted_to_config = 0;
-				busses_to_config--;
-			}
-			xpt_free_path(path);
-			break;
+	switch(done_ccb->ccb_h.func_code) {
+	case XPT_RESET_BUS:
+		if (done_ccb->ccb_h.status == CAM_REQ_CMP) {
+			done_ccb->ccb_h.func_code = XPT_SCAN_BUS;
+			done_ccb->ccb_h.cbfcnp = xpt_finishconfig;
+			done_ccb->crcn.flags = 0;
+			xpt_action(done_ccb);
+			return;
 		}
-	}
-
-	if (busses_to_config == 0) {
-		task = kmalloc(sizeof(struct xpt_task), M_CAMXPT,
-			       M_INTWAIT | M_ZERO);
-		TASK_INIT(&task->task, 0, xpt_finishconfig_task, task);
-		taskqueue_enqueue(taskqueue_thread[mycpuid], &task->task);
-	}
-
-	if (done_ccb != NULL)
+		/* FALLTHROUGH */
+	case XPT_SCAN_BUS:
+	default:
+		if (bootverbose) {
+			kprintf("CAM: Finished configuring bus:");
+			if (path->bus->sim) {
+				kprintf(" %s%d\n",
+					path->bus->sim->sim_name,
+					path->bus->sim->unit_number);
+			} else {
+				kprintf(" (unknown)\n");
+			}
+		}
+		xpt_uncount_bus(path->bus);
+		xpt_free_path(path);
 		xpt_free_ccb(done_ccb);
+		break;
+	}
 }
 
 cam_status
