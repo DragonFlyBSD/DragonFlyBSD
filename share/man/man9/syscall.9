@@ -116,17 +116,17 @@ So, if one has added the line:
 .Ed
 .Pp
 to the system call master file, the generated prototype would be:
-.Bd -literal
-int sys_mycall(struct mycall_args *uap);
-.Ed
+.Pp
+.Ft int
+.Fn sys_mycall "struct mycall_args *uap" ;
 .Pp
 It is customary to extract system call arguments with the
-.Dv SCARG(uap, member)
+.Fn SCARG uap member
 macro, which is defined in
 .Pa sys/sys/sysent.h
 file.
 Last, in order to return a value to userland, the
-.Li uap->sysmsg_result
+.Fa uap->sysmsg_result
 variable and friends of it are used, as defined in
 .Pa sys/sys/sysmsg.h .
 .Sh FILES
