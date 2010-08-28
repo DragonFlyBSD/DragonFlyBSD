@@ -398,7 +398,6 @@ ptsopen(struct dev_open_args *ap)
 			return (error);
 		}
 	}
-	tp->t_state &= ~TS_ZOMBIE;
 	error = (*linesw[tp->t_line].l_open)(dev, tp);
 	if (error == 0)
 		ptcwakeup(tp, FREAD|FWRITE);
@@ -437,7 +436,6 @@ ptsclose(struct dev_close_args *ap)
 	err = (*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
 	ptsstop(tp, FREAD|FWRITE);
 	(void) ttyclose(tp); /* clears t_state */
-	tp->t_state |= TS_ZOMBIE;
 
 #ifdef UNIX98_PTYS
 	/*
