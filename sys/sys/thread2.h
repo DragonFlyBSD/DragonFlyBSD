@@ -67,7 +67,7 @@
 #define crit_enter_quick(curtd)		_crit_enter_quick((curtd))
 #define crit_enter_hard()		_crit_enter_hard(mycpu)
 #define crit_enter_hard_gd(curgd)	_crit_enter_hard((curgd))
-#define crit_exit()			_crit_exit(mycpu)
+#define crit_exit()			crit_exit_wrapper()
 #define crit_exit_id(id)		_crit_exit(mycpu)
 #define crit_exit_gd(curgd)		_crit_exit((curgd))
 #define crit_exit_quick(curtd)		_crit_exit_quick((curtd))
@@ -157,6 +157,10 @@ _crit_enter_hard(globaldata_t gd __DEBUG_CRIT_ADD_ARG__)
  *	 never true regardless of crit_count, should result in 100%
  *	 optimal code execution.  We don't check crit_count because
  *	 it just bloats the inline and does not improve performance.
+ *
+ * NOTE: This can produce a considerable amount of code despite the
+ *	 relatively few lines of code so the non-debug case typically
+ *	 just wraps it in a real function, crit_exit_wrapper().
  */
 static __inline void
 _crit_exit_noyield(thread_t td __DEBUG_CRIT_ADD_ARG__)
