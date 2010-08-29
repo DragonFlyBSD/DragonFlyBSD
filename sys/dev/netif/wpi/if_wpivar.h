@@ -205,11 +205,9 @@ struct wpi_softc {
 	int8_t			maxpwr[IEEE80211_CHAN_MAX];
 	char			domain[4];	/*reglatory domain XXX */
 };
-#define WPI_LOCK_INIT(_sc) \
-	lockinit(&(_sc)->sc_lock, \
-	    __DECONST(char *, device_get_nameunit((_sc)->sc_dev)), \
-            0, LK_CANRECURSE)
-#define WPI_LOCK(_sc)		lockmgr(&(_sc)->sc_lock, LK_EXCLUSIVE)
-#define WPI_UNLOCK(_sc)		lockmgr(&(_sc)->sc_lock, LK_RELEASE)
-#define WPI_LOCK_ASSERT(sc)     KKASSERT(lockstatus(&(sc)->sc_lock, curthread) != 0)
-#define WPI_LOCK_DESTROY(_sc)	lockuninit(&(_sc)->sc_lock)
+
+#define WPI_LOCK_INIT(_sc)
+#define WPI_LOCK(_sc) lwkt_gettoken(&wlan_token)
+#define WPI_UNLOCK(_sc) lwkt_reltoken(&wlan_token)
+#define WPI_LOCK_DESTROY(_sc)
+#define WPI_LOCK_ASSERT(_sc) ASSERT_LWKT_TOKEN_HELD(&wlan_token)
