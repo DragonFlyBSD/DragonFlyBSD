@@ -1506,13 +1506,11 @@ scstart(struct tty *tp)
     u_char buf[PCBURST];
     scr_stat *scp = SC_STAT(tp->t_dev);
 
-    lwkt_gettoken(&tty_token);
     syscons_lock();
     if (scp->status & SLKED ||
 	(scp == scp->sc->cur_scp && scp->sc->blink_in_progress))
     {
 	syscons_unlock();
-	lwkt_reltoken(&tty_token);
 	return;
     }
     if (!(tp->t_state & (TS_TIMEOUT | TS_BUSY | TS_TTSTOP))) {
@@ -1526,7 +1524,6 @@ scstart(struct tty *tp)
 	ttwwakeup(tp);
     }
     syscons_unlock();
-    lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -1535,7 +1532,6 @@ sccnprobe(struct consdev *cp)
     int unit;
     int flags;
 
-    lwkt_gettoken(&tty_token);
     cp->cn_pri = sc_get_cons_priority(&unit, &flags);
 
     /* a video card is always required */
@@ -1546,7 +1542,6 @@ sccnprobe(struct consdev *cp)
     sckbdprobe(unit, flags, TRUE);
 
     if (cp->cn_pri == CN_DEAD) {
-        lwkt_reltoken(&tty_token);
 	return;
     }
 
@@ -1560,12 +1555,10 @@ sccninit(struct consdev *cp)
     int unit;
     int flags;
 
-    lwkt_gettoken(&tty_token);
     sc_get_cons_priority(&unit, &flags);
     scinit(unit, flags | SC_KERNEL_CONSOLE);
     sc_console_unit = unit;
     sc_console = sc_get_softc(unit, SC_KERNEL_CONSOLE)->console_scp;
-    lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -1584,7 +1577,6 @@ sccnterm(struct consdev *cp)
     if (sc_console_unit < 0)
 	return;			/* shouldn't happen */
 
-    lwkt_gettoken(&tty_token);
 #if 0 /* XXX */
     sc_clear_screen(sc_console);
     sccnupdate(sc_console);
@@ -1592,7 +1584,6 @@ sccnterm(struct consdev *cp)
     scterm(sc_console_unit, SC_KERNEL_CONSOLE);
     sc_console_unit = -1;
     sc_console = NULL;
-    lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -1607,7 +1598,6 @@ sccnputc(void *private, int c)
 
     /* assert(sc_console != NULL) */
 
-    lwkt_gettoken(&tty_token);
     syscons_lock();
 #ifndef SC_NO_HISTORY
     if (scp == scp->sc->cur_scp && scp->status & SLKED) {
@@ -1638,7 +1628,6 @@ sccnputc(void *private, int c)
 
     sccnupdate(scp);
     syscons_unlock();
-    lwkt_reltoken(&tty_token);
 }
 
 static int
@@ -1664,7 +1653,6 @@ sccndbctl(void *private, int on)
 	 * and the screen is updated before switching to 
 	 * the vty0.
 	 */
-        lwkt_gettoken(&tty_token);
 	scrn_timer(NULL);
 	if (!cold
 	    && sc_console->sc->cur_scp->smode.mode == VT_AUTO
@@ -1672,7 +1660,6 @@ sccndbctl(void *private, int on)
 	    sc_console->sc->cur_scp->status |= MOUSE_HIDDEN;
 	    sc_switch_scr(sc_console->sc, sc_console->index);
 	}
-	lwkt_reltoken(&tty_token);
     }
     if (on)
 	++debugger;
@@ -1690,7 +1677,6 @@ sccngetch(int flags)
     int cur_mode;
     int c;
 
-    lwkt_gettoken(&tty_token);
     syscons_lock();
     /* assert(sc_console != NULL) */
 
@@ -1704,12 +1690,10 @@ sccngetch(int flags)
     syscons_unlock();
 
     if (fkeycp < fkey.len) {
-        lwkt_reltoken(&tty_token);
 	return fkey.str[fkeycp++];
     }
 
     if (scp->sc->kbd == NULL) {
-        lwkt_reltoken(&tty_token);
 	return -1;
     }
 
@@ -1736,7 +1720,6 @@ sccngetch(int flags)
 
     switch (KEYFLAGS(c)) {
     case 0:	/* normal char */
-        lwkt_reltoken(&tty_token);
 	return KEYCHAR(c);
     case FKEY:	/* function key */
 	p = kbd_get_fkeystr(scp->sc->kbd, KEYCHAR(c), (size_t *)&fkeycp);
@@ -1747,12 +1730,10 @@ sccngetch(int flags)
 	    lwkt_reltoken(&tty_token);
 	    return fkey.str[0];
 	}
-	lwkt_reltoken(&tty_token);
 	return c;	/* XXX */
     case NOKEY:
     case ERRKEY:
     default:
-        lwkt_reltoken(&tty_token);
 	return -1;
     }
     /* NOT REACHED */
@@ -1765,14 +1746,12 @@ sccnupdate(scr_stat *scp)
 
     lwkt_gettoken(&tty_token);
     if (scp->sc->font_loading_in_progress || scp->sc->videoio_in_progress) {
-        lwkt_reltoken(&tty_token);
 	return;
     }
 
     if (debugger > 0 || panicstr || shutdown_in_progress) {
 	sc_touch_scrn_saver();
     } else if (scp != scp->sc->cur_scp) {
-        lwkt_reltoken(&tty_token);
 	return;
     }
 
@@ -1786,7 +1765,6 @@ sccnupdate(scr_stat *scp)
 
     if (scp != scp->sc->cur_scp || scp->sc->blink_in_progress
 	|| scp->sc->switch_in_progress) {
-	lwkt_reltoken(&tty_token);
 	return;
     }
     /*
@@ -1796,7 +1774,6 @@ sccnupdate(scr_stat *scp)
 
     if (!ISGRAPHSC(scp) && !(scp->sc->flags & SC_SCRN_BLANKED))
 	scrn_update(scp, TRUE);
-    lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -1920,7 +1897,6 @@ scrn_update(scr_stat *scp, int show_cursor)
 
     /* assert(scp == scp->sc->cur_scp) */
 
-    lwkt_gettoken(&tty_token);
     ++scp->sc->videoio_in_progress;
 
 #ifndef SC_NO_CUTPASTE
@@ -1992,7 +1968,6 @@ scrn_update(scr_stat *scp, int show_cursor)
         scp->end = 0;
         scp->start = scp->xsize*scp->ysize - 1;
 	--scp->sc->videoio_in_progress;
-	lwkt_reltoken(&tty_token);
 	return;
     }
 
@@ -2032,7 +2007,6 @@ scrn_update(scr_stat *scp, int show_cursor)
     scp->start = scp->xsize*scp->ysize - 1;
 
     --scp->sc->videoio_in_progress;
-    lwkt_reltoken(&tty_token);
 }
 
 #if NSPLASH > 0
@@ -2042,7 +2016,6 @@ scsplash_callback(int event, void *arg)
     sc_softc_t *sc;
     int error;
 
-    lwkt_gettoken(&tty_token);
     sc = (sc_softc_t *)arg;
 
     switch (event) {
@@ -2055,7 +2028,6 @@ scsplash_callback(int event, void *arg)
 		(*current_saver)(sc, TRUE);
 	    }
 	}
-	lwkt_reltoken(&tty_token);
 	return 0;
 
     case SPLASH_TERM:
@@ -2063,15 +2035,12 @@ scsplash_callback(int event, void *arg)
 	    scsplash_stick(FALSE);
 	    error = remove_scrn_saver(scsplash_saver);
 	    if (error) {
-	        lwkt_reltoken(&tty_token);
 		return error;
             }
 	}
-	lwkt_reltoken(&tty_token);
 	return 0;
 
     default:
-        lwkt_reltoken(&tty_token);
 	return EINVAL;
     }
 }
@@ -2085,7 +2054,6 @@ scsplash_saver(sc_softc_t *sc, int show)
     if (busy)
 	return;
     busy = TRUE;
-    lwkt_gettoken(&tty_token);
 
     scp = sc->cur_scp;
     if (show) {
@@ -2112,7 +2080,6 @@ scsplash_saver(sc_softc_t *sc, int show)
 	    restore_scrn_saver_mode(scp, TRUE);
     }
     busy = FALSE;
-    lwkt_reltoken(&tty_token);
 }
 
 static int
@@ -2157,16 +2124,13 @@ remove_scrn_saver(void (*this_saver)(sc_softc_t *, int))
     if (scrn_blanked)
         stop_scrn_saver(this_saver);
 #endif
-    lwkt_gettoken(&tty_token);
     /* unblank all blanked screens */
     wait_scrn_saver_stop(NULL);
     if (scrn_blanked) {
-        lwkt_reltoken(&tty_token);
 	return EBUSY;
     }
 
     current_saver = none_saver;
-    lwkt_reltoken(&tty_token);
     return 0;
 }
 
@@ -2175,7 +2139,6 @@ set_scrn_saver_mode(scr_stat *scp, int mode, u_char *pal, int border)
 {
 
     /* assert(scp == scp->sc->cur_scp) */
-    lwkt_gettoken(&tty_token);
     crit_enter();
     if (!ISGRAPHSC(scp))
 	sc_remove_cursor_image(scp);
@@ -2199,7 +2162,6 @@ set_scrn_saver_mode(scr_stat *scp, int mode, u_char *pal, int border)
 	    load_palette(scp->sc->adp, pal);
 #endif
 	sc_set_border(scp, border);
-	lwkt_reltoken(&tty_token);
 	return 0;
     } else {
 	crit_enter();
@@ -2207,7 +2169,6 @@ set_scrn_saver_mode(scr_stat *scp, int mode, u_char *pal, int border)
 	scp->status &= ~(UNKNOWN_MODE | SAVER_RUNNING);
 	scp->status |= scp->splash_save_status;
 	crit_exit();
-	lwkt_reltoken(&tty_token);
 	return 1;
     }
     /* NOTREACHED */
@@ -2220,7 +2181,6 @@ restore_scrn_saver_mode(scr_stat *scp, int changemode)
     int status;
 
     /* assert(scp == scp->sc->cur_scp) */
-    lwkt_gettoken(&tty_token);
     crit_enter();
     mode = scp->mode;
     status = scp->status;
@@ -2233,7 +2193,6 @@ restore_scrn_saver_mode(scr_stat *scp, int changemode)
 	    sc_draw_cursor_image(scp);
 	--scrn_blanked;
 	crit_exit();
-	lwkt_reltoken(&tty_token);
 	return 0;
     }
     if (set_mode(scp) == 0) {
@@ -2242,13 +2201,11 @@ restore_scrn_saver_mode(scr_stat *scp, int changemode)
 #endif
 	--scrn_blanked;
 	crit_exit();
-	lwkt_reltoken(&tty_token);
 	return 0;
     } else {
 	scp->mode = mode;
 	scp->status = status;
 	crit_exit();
-	lwkt_reltoken(&tty_token);
 	return 1;
     }
     /* NOTREACHED */
@@ -2257,7 +2214,6 @@ restore_scrn_saver_mode(scr_stat *scp, int changemode)
 static void
 stop_scrn_saver(sc_softc_t *sc, void (*saver)(sc_softc_t *, int))
 {
-    lwkt_gettoken(&tty_token);
     (*saver)(sc, FALSE);
     run_scrn_saver = FALSE;
     /* the screen saver may have chosen not to stop after all... */
@@ -2270,7 +2226,6 @@ stop_scrn_saver(sc_softc_t *sc, void (*saver)(sc_softc_t *, int))
     if (sc->delayed_next_scr)
 	sc_switch_scr(sc, sc->delayed_next_scr - 1);
     wakeup((caddr_t)&scrn_blanked);
-    lwkt_reltoken(&tty_token);
 }
 
 static int
@@ -2692,7 +2647,6 @@ exchange_scr(sc_softc_t *sc)
 static void
 sc_puts(scr_stat *scp, u_char *buf, int len)
 {
-    lwkt_gettoken(&tty_token);
 #if NSPLASH > 0
     /* make screensaver happy */
     if (!sticky_splash && scp == scp->sc->cur_scp)
@@ -2705,13 +2659,11 @@ sc_puts(scr_stat *scp, u_char *buf, int len)
     if (scp->sc->delayed_next_scr)
 	sc_switch_scr(scp->sc, scp->sc->delayed_next_scr - 1);
 
-    lwkt_reltoken(&tty_token);
 }
 
 void
 sc_draw_cursor_image(scr_stat *scp)
 {
-    lwkt_gettoken(&tty_token);
     /* assert(scp == scp->sc->cur_scp); */
     ++scp->sc->videoio_in_progress;
     (*scp->rndr->draw_cursor)(scp, scp->cursor_pos,
@@ -2719,20 +2671,17 @@ sc_draw_cursor_image(scr_stat *scp)
 			      sc_inside_cutmark(scp, scp->cursor_pos));
     scp->cursor_oldpos = scp->cursor_pos;
     --scp->sc->videoio_in_progress;
-    lwkt_reltoken(&tty_token);
 }
 
 void
 sc_remove_cursor_image(scr_stat *scp)
 {
-    lwkt_gettoken(&tty_token);
     /* assert(scp == scp->sc->cur_scp); */
     ++scp->sc->videoio_in_progress;
     (*scp->rndr->draw_cursor)(scp, scp->cursor_oldpos,
 			      scp->sc->flags & SC_BLINK_CURSOR, FALSE,
 			      sc_inside_cutmark(scp, scp->cursor_oldpos));
     --scp->sc->videoio_in_progress;
-    lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -2740,7 +2689,6 @@ update_cursor_image(scr_stat *scp)
 {
     int blink;
 
-    lwkt_gettoken(&tty_token);
     if (scp->sc->flags & SC_CHAR_CURSOR) {
 	scp->cursor_base = imax(0, scp->sc->cursor_base);
 	scp->cursor_height = imin(scp->sc->cursor_height, scp->font_size);
@@ -2758,13 +2706,11 @@ update_cursor_image(scr_stat *scp)
     (*scp->rndr->draw_cursor)(scp, scp->cursor_pos, blink, TRUE, 
 			      sc_inside_cutmark(scp, scp->cursor_pos));
     --scp->sc->videoio_in_progress;
-    lwkt_reltoken(&tty_token);
 }
 
 void
 sc_set_cursor_image(scr_stat *scp)
 {
-    lwkt_gettoken(&tty_token);
     if (scp->sc->flags & SC_CHAR_CURSOR) {
 	scp->cursor_base = imax(0, scp->sc->cursor_base);
 	scp->cursor_height = imin(scp->sc->cursor_height, scp->font_size);
@@ -2778,7 +2724,6 @@ sc_set_cursor_image(scr_stat *scp)
     (*scp->rndr->set_cursor)(scp, scp->cursor_base, scp->cursor_height,
 			     scp->sc->flags & SC_BLINK_CURSOR);
     --scp->sc->videoio_in_progress;
-    lwkt_reltoken(&tty_token);
 }
 
 static void

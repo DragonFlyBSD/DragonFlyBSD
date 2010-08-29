@@ -53,7 +53,7 @@
  * XXX: this still doesn't quite work with tokens (mainly vga_txtcursor*),
  *	so temporarily disable tokens here.
  */
-#if 1
+#if 0
 #define lwkt_gettoken(x)
 #define lwkt_reltoken(x)
 #endif
@@ -177,9 +177,7 @@ vga_nop(scr_stat *scp, ...)
 static void
 vga_txtborder(scr_stat *scp, int color)
 {
-	lwkt_gettoken(&tty_token);
 	(*vidsw[scp->sc->adapter]->set_border)(scp->sc->adp, color);
-	lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -210,7 +208,7 @@ vga_txtcursor_shape(scr_stat *scp, int base, int height, int blink)
 {
 	if (base < 0 || base >= scp->font_size)
 		return;
-	lwkt_gettoken(&tty_token);
+
 	/* the caller may set height <= 0 in order to disable the cursor */
 #if 0
 	scp->cursor_base = base;
@@ -219,7 +217,7 @@ vga_txtcursor_shape(scr_stat *scp, int base, int height, int blink)
 	(*vidsw[scp->sc->adapter]->set_hw_cursor_shape)(scp->sc->adp,
 							base, height,
 							scp->font_size, blink);
-	lwkt_reltoken(&tty_token);
+
 }
 
 static void
@@ -231,7 +229,6 @@ draw_txtcharcursor(scr_stat *scp, int at, u_short c, u_short a, int flip)
 	scp->cursor_saveunder_char = c;
 	scp->cursor_saveunder_attr = a;
 
-	//lwkt_gettoken(&tty_token);
 #ifndef SC_NO_FONT_LOADING
 	if (sc->flags & SC_CHAR_CURSOR) {
 		unsigned char *font;
@@ -284,7 +281,6 @@ draw_txtcharcursor(scr_stat *scp, int at, u_short c, u_short a, int flip)
 				| ((a & 0x7000) >> 4) | ((a & 0x0700) << 4);
 		sc_vtb_putc(&scp->scr, at, c, a);
 	}
-	//lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -296,7 +292,6 @@ vga_txtcursor(scr_stat *scp, int at, int blink, int on, int flip)
 	if (scp->cursor_height <= 0)	/* the text cursor is disabled */
 		return;
 
-	//lwkt_gettoken(&tty_token);
 	adp = scp->sc->adp;
 	if (blink) {
 		scp->status |= VR_CURSOR_BLINK;
@@ -332,7 +327,6 @@ vga_txtcursor(scr_stat *scp, int at, int blink, int on, int flip)
 			scp->status &= ~VR_CURSOR_ON;
 		}
 	}
-	//lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -353,8 +347,6 @@ draw_txtmouse(scr_stat *scp, int x, int y)
 	int pos;
 	int xoffset, yoffset;
 	int i;
-
-	lwkt_gettoken(&tty_token);
 
 	/* prepare mousepointer char's bitmaps */
 	pos = (y/scp->font_size - scp->yoff)*scp->xsize + x/8 - scp->xoff;
@@ -427,7 +419,6 @@ draw_txtmouse(scr_stat *scp, int x, int y)
 	sc_vtb_putc(&scp->scr, pos, sc_vtb_getc(&scp->scr, pos), color);
     }
 
-    lwkt_reltoken(&tty_token);
 }
 
 static void

@@ -265,10 +265,8 @@ static struct consdev *vconsole;
 static void
 vconsprobe(struct consdev *cp)
 {
-	lwkt_gettoken(&tty_token);
 	cp->cn_pri = CN_NORMAL;
 	cp->cn_probegood = 1;
-	lwkt_reltoken(&tty_token);
 }
 
 /*
@@ -283,7 +281,6 @@ vconssignal(int sig)
 	struct sigaction sa, osa;
 	sigset_t ss, oss;
 
-	lwkt_gettoken(&tty_token);
 	tcgetattr(0, &curtio);
 	tcsetattr(0, TCSAFLUSH, &init_tio);
 	bzero(&sa, sizeof(sa));
@@ -297,7 +294,6 @@ vconssignal(int sig)
 	sigprocmask(SIG_SETMASK, &oss, NULL);
 	sigaction(sig, &osa, NULL);
 	tcsetattr(0, TCSAFLUSH, &curtio);
-	lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -311,7 +307,6 @@ vconswinch_intr(void *arg __unused, void *frame __unused)
 {
 	struct winsize newsize;
 
-	lwkt_gettoken(&tty_token);
 	if (vconsole != NULL && vconsole->cn_dev->si_tty != NULL) {
 		ioctl(0, TIOCGWINSZ, &newsize);
 		/*
@@ -325,7 +320,6 @@ vconswinch_intr(void *arg __unused, void *frame __unused)
 			pgsignal(vconsole->cn_dev->si_tty->t_pgrp, SIGWINCH, 1);
 		}
 	}
-	lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -334,10 +328,8 @@ vconscleanup(void)
 	/*
 	 * We might catch stray SIGIOs, so try hard.
 	 */
-	lwkt_gettoken(&tty_token);
 	while (tcsetattr(0, TCSAFLUSH, &init_tio) != 0 && errno == EINTR)
 		/* NOTHING */;
-	lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -347,7 +339,6 @@ vconsinit(struct consdev *cp)
 
 	vconsole = cp;
 
-	lwkt_gettoken(&tty_token);
 	tcgetattr(0, &init_tio);
 	bzero(&sa, sizeof(sa));
 	sigemptyset(&sa.sa_mask);
@@ -357,7 +348,6 @@ vconsinit(struct consdev *cp)
 	sigaction(SIGTERM, &sa, NULL);
 	atexit(vconscleanup);
 	vcons_set_mode(0);
-	lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -403,7 +393,6 @@ vconsgetc(void *private)
 	unsigned char c;
 	ssize_t n;
 
-	lwkt_gettoken(&tty_token);
 	console_stolen_by_kernel = 1;
 	for (;;) {
 		n = pread(0, &c, 1, -1);
@@ -414,7 +403,6 @@ vconsgetc(void *private)
 		panic("vconsgetc: EOF on console %d %d", n ,errno);
 	}
 	console_stolen_by_kernel = 0;
-	lwkt_reltoken(&tty_token);
 	return((int)c);
 }
 
@@ -441,9 +429,7 @@ vcons_set_mode(int in_debugger)
 {
 	struct termios tio;
 
-	lwkt_gettoken(&tty_token);
 	if (tcgetattr(0, &tio) < 0) {
-		lwkt_reltoken(&tty_token);
 		return;
 	}
 	cfmakeraw(&tio);
@@ -459,5 +445,4 @@ vcons_set_mode(int in_debugger)
 		tio.c_cc[VSTATUS] = _POSIX_VDISABLE;
 	}
 	tcsetattr(0, TCSAFLUSH, &tio);
-	lwkt_reltoken(&tty_token);
 }

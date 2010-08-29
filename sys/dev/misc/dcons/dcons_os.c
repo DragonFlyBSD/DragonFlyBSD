@@ -243,7 +243,6 @@ dcons_os_getc(struct dcons_softc *dc)
 static void
 dcons_os_putc(struct dcons_softc *dc, int c)
 {
-	lwkt_gettoken(&tty_token);
 	if (dg.dma_tag != NULL)
 		bus_dmamap_sync(dg.dma_tag, dg.dma_map, BUS_DMASYNC_POSTWRITE);
 
@@ -251,7 +250,6 @@ dcons_os_putc(struct dcons_softc *dc, int c)
 
 	if (dg.dma_tag != NULL)
 		bus_dmamap_sync(dg.dma_tag, dg.dma_map, BUS_DMASYNC_PREWRITE);
-	lwkt_reltoken(&tty_token);
 }
 static int
 dcons_open(struct dev_open_args *ap)
@@ -432,7 +430,6 @@ dcons_cnprobe(struct consdev *cp)
 static void
 dcons_cninit(struct consdev *cp)
 {
-	lwkt_gettoken(&tty_token);
 	dcons_drv_init(0);
 #if CONS_NODEV
 	cp->cn_arg
@@ -440,7 +437,6 @@ dcons_cninit(struct consdev *cp)
 	cp->cn_private
 #endif
 		= (void *)&sc[DCONS_CON]; /* share port0 with unit0 */
-	lwkt_reltoken(&tty_token);
 }
 
 static void

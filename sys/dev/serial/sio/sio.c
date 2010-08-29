@@ -734,6 +734,7 @@ sioprobe(device_t dev, int xrid, u_long rclk)
 		kprintf("sio%d: can't drain, serial port might "
 			"not exist, disabling\n", device_get_unit(dev));
 		com_unlock();
+		lwkt_reltoken(&tty_token);
 		return (ENXIO);
 	}
 
@@ -2867,15 +2868,11 @@ CONS_DRIVER(sio, siocnprobe, siocninit, siocninit_fini,
 #include <ddb/ddb.h>
 #endif
 
-/*
- * NOTE: Must be called with tty_token held
- */
 static void
 siocntxwait(Port_t iobase)
 {
 	int	timo;
 
-	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	/*
 	 * Wait for any pending transmission to finish.  Required to avoid
 	 * the UART lockup bug when the speed is changed, and for normal
@@ -2906,7 +2903,6 @@ siocngetspeed(Port_t iobase, u_long rclk)
 	u_char	dlbl;
 	u_char  cfcr;
 
-	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	cfcr = inb(iobase + com_cfcr);
 	outb(iobase + com_cfcr, CFCR_DLAB | cfcr);
 
@@ -2930,7 +2926,6 @@ siocnopen(struct siocnstate *sp, Port_t iobase, int speed)
 	u_char	dlbh;
 	u_char	dlbl;
 
-	lwkt_gettoken(&tty_token);
 	/*
 	 * Save all the device control registers except the fifo register
 	 * and set our default ones (cs8 -parenb speed=comdefaultrate).
@@ -2964,13 +2959,11 @@ siocnopen(struct siocnstate *sp, Port_t iobase, int speed)
 	 * an interrupt by floating the IRQ line.
 	 */
 	outb(iobase + com_mcr, (sp->mcr & MCR_IENABLE) | MCR_DTR | MCR_RTS);
-	lwkt_reltoken(&tty_token);
 }
 
 static void
 siocnclose(struct siocnstate *sp, Port_t iobase)
 {
-	lwkt_gettoken(&tty_token);
 	/*
 	 * Restore the device control registers.
 	 */
@@ -2986,7 +2979,6 @@ siocnclose(struct siocnstate *sp, Port_t iobase)
 	 */
 	outb(iobase + com_mcr, sp->mcr | MCR_DTR | MCR_RTS);
 	outb(iobase + com_ier, sp->ier);
-	lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -3014,7 +3006,6 @@ siocnprobe(struct consdev *cp)
 	 */
 	cp->cn_pri = CN_DEAD;
 
-	lwkt_gettoken(&tty_token);
 	for (unit = 0; unit < 16; unit++) { /* XXX need to know how many */
 		int flags;
 		int disabled;
@@ -3048,6 +3039,7 @@ siocnprobe(struct consdev *cp)
 			 * need to set the speed in hardware so that
 			 * switching it later is null.
 			 */
+			com_lock();
 			cfcr = inb(iobase + com_cfcr);
 			outb(iobase + com_cfcr, CFCR_DLAB | cfcr);
 			divisor = siodivisor(comdefaultrclk, comdefaultrate);
@@ -3056,6 +3048,7 @@ siocnprobe(struct consdev *cp)
 			outb(iobase + com_cfcr, cfcr);
 
 			siocnopen(&sp, iobase, comdefaultrate);
+			com_unlock();
 
 			crit_exit();
 			if (COM_CONSOLE(flags) && !COM_LLCONSOLE(flags)) {
@@ -3097,7 +3090,6 @@ siocnprobe(struct consdev *cp)
 	}
 #endif
 #endif
-	lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -3136,11 +3128,11 @@ siocncheckc(void *private)
 	Port_t	iobase;
 	struct siocnstate	sp;
 
-	lwkt_gettoken(&tty_token);
 	if (unit == siogdbunit)
 		iobase = siogdbiobase;
 	else
 		iobase = siocniobase;
+	com_lock();
 	crit_enter();
 	siocnopen(&sp, iobase, comdefaultrate);
 	if (inb(iobase + com_lsr) & LSR_RXRDY)
@@ -3149,7 +3141,7 @@ siocncheckc(void *private)
 		c = -1;
 	siocnclose(&sp, iobase);
 	crit_exit();
-	lwkt_reltoken(&tty_token);
+	com_unlock();
 	return (c);
 }
 
@@ -3162,11 +3154,11 @@ siocngetc(void *private)
 	Port_t	iobase;
 	struct siocnstate	sp;
 
-	lwkt_gettoken(&tty_token);
 	if (unit == siogdbunit)
 		iobase = siogdbiobase;
 	else
 		iobase = siocniobase;
+	com_lock();
 	crit_enter();
 	siocnopen(&sp, iobase, comdefaultrate);
 	while (!(inb(iobase + com_lsr) & LSR_RXRDY))
@@ -3174,7 +3166,7 @@ siocngetc(void *private)
 	c = inb(iobase + com_data);
 	siocnclose(&sp, iobase);
 	crit_exit();
-	lwkt_reltoken(&tty_token);
+	com_unlock();
 	return (c);
 }
 
@@ -3185,18 +3177,18 @@ siocnputc(void *private, int c)
 	struct siocnstate	sp;
 	Port_t	iobase;
 
-	lwkt_gettoken(&tty_token);
 	if (unit == siogdbunit)
 		iobase = siogdbiobase;
 	else
 		iobase = siocniobase;
+	com_lock();
 	crit_enter();
 	siocnopen(&sp, iobase, comdefaultrate);
 	siocntxwait(iobase);
 	outb(iobase + com_data, c);
 	siocnclose(&sp, iobase);
 	crit_exit();
-	lwkt_reltoken(&tty_token);
+	com_unlock();
 }
 
 DRIVER_MODULE(sio, isa, sio_isa_driver, sio_devclass, 0, 0);
