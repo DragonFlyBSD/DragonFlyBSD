@@ -148,9 +148,7 @@ const char *panicstr;
 int dumping;				/* system is dumping */
 static struct dumperinfo dumper;	/* selected dumper */
 
-#ifdef SMP
 globaldata_t panic_cpu_gd;		/* which cpu took the panic */
-#endif
 
 int bootverbose = 0;			/* note: assignment to force non-bss */
 SYSCTL_INT(_debug, OID_AUTO, bootverbose, CTLFLAG_RW,
@@ -726,8 +724,8 @@ panic(const char *fmt, ...)
 	}
 #else
 	panic_cpu_gd = gd;
-	kvcreinitspin();
 #endif
+	kvcreinitspin();
 	/*
 	 * Setup
 	 */
