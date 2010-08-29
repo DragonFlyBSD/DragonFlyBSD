@@ -519,7 +519,7 @@ lwkt_switch(void)
 	int savegdnest;
 	int savegdtrap;
 
-	if (gd->gd_trap_nesting_level == 0 && panicstr == NULL) {
+	if (gd->gd_trap_nesting_level == 0 && panic_cpu_gd != mycpu) {
 	    panic("lwkt_switch: Attempt to switch from a "
 		  "a fast interrupt, ipi, or hard code section, "
 		  "td %p\n",

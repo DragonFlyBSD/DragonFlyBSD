@@ -2306,9 +2306,6 @@ outb(u_int port, u_char data)
 /* critical region when masking or unmasking interupts */
 struct spinlock_deprecated imen_spinlock;
 
-/* Make FAST_INTR() routines sequential */
-struct spinlock_deprecated fast_intr_spinlock;
-
 /* critical region for old style disable_intr/enable_intr */
 struct spinlock_deprecated mpintr_spinlock;
 
@@ -2321,14 +2318,8 @@ struct spinlock_deprecated mcount_spinlock;
 /* locks com (tty) data/hardware accesses: a FASTINTR() */
 struct spinlock_deprecated com_spinlock;
 
-/* locks kernel kprintfs */
-struct spinlock_deprecated cons_spinlock;
-
 /* lock regions around the clock hardware */
 struct spinlock_deprecated clock_spinlock;
-
-/* lock around the MP rendezvous */
-struct spinlock_deprecated smp_rv_spinlock;
 
 static void
 init_locks(void)
@@ -2345,14 +2336,11 @@ init_locks(void)
 #endif
 	/* DEPRECATED */
 	spin_lock_init(&mcount_spinlock);
-	spin_lock_init(&fast_intr_spinlock);
 	spin_lock_init(&intr_spinlock);
 	spin_lock_init(&mpintr_spinlock);
 	spin_lock_init(&imen_spinlock);
-	spin_lock_init(&smp_rv_spinlock);
 	spin_lock_init(&com_spinlock);
 	spin_lock_init(&clock_spinlock);
-	spin_lock_init(&cons_spinlock);
 
 	/* our token pool needs to work early */
 	lwkt_token_pool_init();

@@ -59,6 +59,9 @@
 #include <sys/lock.h>
 #include <sys/ctype.h>
 
+#include <sys/thread2.h>
+#include <sys/spinlock2.h>
+
 #ifdef DDB
 #include <ddb/ddb.h>
 #endif
@@ -92,7 +95,6 @@ extern	int log_open;
 
 struct	tty *constty;			/* pointer to console "window" tty */
 
-static void (*v_putc)(int) = cnputc;	/* routine to putc on virtual console */
 static void  msglogchar(int c, int pri);
 static void  msgaddchar(int c, void *dummy);
 static void  kputchar (int ch, void *arg);
@@ -102,6 +104,8 @@ static void  snprintf_func (int ch, void *arg);
 
 static int consintr = 1;		/* Ok to handle console interrupts? */
 static int msgbufmapped;		/* Set when safe to use msgbuf */
+static struct spinlock cons_spin = SPINLOCK_INITIALIZER(cons_spin);
+
 int msgbuftrigger;
 
 static int      log_console_output = 1;
@@ -284,8 +288,6 @@ log_console(struct uio *uio)
 
 /*
  * Output to the console.
- *
- * NOT YET ENTIRELY MPSAFE
  */
 int
 kprintf(const char *fmt, ...)
@@ -301,9 +303,7 @@ kprintf(const char *fmt, ...)
 	pca.tty = NULL;
 	pca.flags = TOCONS | TOLOG;
 	pca.pri = -1;
-	cons_lock();
 	retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
-	cons_unlock();
 	__va_end(ap);
 	if (!panicstr)
 		msgbuftrigger = 1;
@@ -323,9 +323,7 @@ kvprintf(const char *fmt, __va_list ap)
 	pca.tty = NULL;
 	pca.flags = TOCONS | TOLOG;
 	pca.pri = -1;
-	cons_lock();
 	retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
-	cons_unlock();
 	if (!panicstr)
 		msgbuftrigger = 1;
 	consintr = savintr;		/* reenable interrupts */
@@ -383,7 +381,7 @@ kputchar(int c, void *arg)
 	if ((flags & TOLOG))
 		msglogchar(c, ap->pri);
 	if ((flags & TOCONS) && constty == NULL && c != '\0')
-		(*v_putc)(c);
+		cnputc(c);
 }
 
 /*
@@ -557,10 +555,13 @@ ksprintn(char *nbuf, uintmax_t num, int base, int *lenp, int upper)
  *		("%6D", ptr, ":")   -> XX:XX:XX:XX:XX:XX
  *		("%*D", len, ptr, " " -> XX XX XX XX ...
  */
+
+#define PCHAR(c) {int cc=(c); if(func) (*func)(cc,arg); else *d++=cc; retval++;}
+
 int
-kvcprintf(char const *fmt, void (*func)(int, void*), void *arg, int radix, __va_list ap)
+kvcprintf(char const *fmt, void (*func)(int, void*), void *arg,
+	  int radix, __va_list ap)
 {
-#define PCHAR(c) {int cc=(c); if (func) (*func)(cc,arg); else *d++ = cc; retval++; }
 	char nbuf[MAXNBUF];
 	char *d;
 	const char *p, *percent, *q;
@@ -572,6 +573,7 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg, int radix, __va_
 	int dwidth, upper;
 	char padc;
 	int retval = 0, stop = 0;
+	int not_panic_cpu = (panic_cpu_gd != mycpu);
 
 	num = 0;
 	if (!func)
@@ -585,12 +587,17 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg, int radix, __va_
 	if (radix < 2 || radix > 36)
 		radix = 10;
 
+	if (not_panic_cpu && func == kputchar) {
+		crit_enter_hard();
+		spin_lock_wr(&cons_spin);
+	}
+
 	for (;;) {
 		padc = ' ';
 		width = 0;
 		while ((ch = (u_char)*fmt++) != '%' || stop) {
 			if (ch == '\0')
-				return (retval);
+				goto done;
 			PCHAR(ch);
 		}
 		percent = fmt - 1;
@@ -863,8 +870,25 @@ number:
 			break;
 		}
 	}
-#undef PCHAR
+done:
+	if (not_panic_cpu && func == kputchar) {
+		spin_unlock_wr(&cons_spin);
+		crit_exit_hard();
+	}
+	return (retval);
 }
+
+#undef PCHAR
+
+/*
+ * Called from the panic code
+ */
+void
+kvcreinitspin(void)
+{
+	spin_init(&cons_spin);
+}
+
 
 /*
  * Put character in log buffer with a particular priority.

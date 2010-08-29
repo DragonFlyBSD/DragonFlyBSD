@@ -1140,10 +1140,10 @@ putxyl(int x, int y, char *str, int len)
 		break;
 		
 	    default:
-		cnputc(*str++);	/* not an escape */
+		kprintf("%c", *str++);	/* not an escape */
 	    }
 	}else{
-	    cnputc(*str++);		/* emit the character */
+	    kprintf("%c", *str++);		/* emit the character */
 	}
     }
 }
@@ -1347,10 +1347,8 @@ drawline(int row, int detail, DEV_LIST *list, int inverse, char *dhelp)
 /**
  ** drawlist
  **
- ** Displays (num) lines of the contents of (list) at (row), optionally displaying the
- ** port and IRQ fields as well if (detail) is nonzero
- **
- ** kprintf in the kernel is essentially useless, so we do most of the hard work ourselves here.
+ ** Displays (num) lines of the contents of (list) at (row), optionally
+ ** displaying the port and IRQ fields as well if (detail) is nonzero.
  **/
 static void 
 drawlist(int row, int num, int detail, DEV_LIST *list)

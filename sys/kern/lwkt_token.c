@@ -341,9 +341,11 @@ _lwkt_trytokref2(lwkt_tokref_t nref, thread_t td, int blocking)
 		ref = tok->t_ref;
 		if (ref == NULL) {
 			KASSERT((blocking == 0 ||
-				td->td_gd->gd_intr_nesting_level == 0),
+				td->td_gd->gd_intr_nesting_level == 0 ||
+				panic_cpu_gd == mycpu),
 				("Attempt to acquire token %p not already "
 				 "held in hard code section", tok));
+
 			/*
 			 * NOTE: If atomic_cmpset_ptr() fails we have to
 			 *	 loop and try again.  It just means we

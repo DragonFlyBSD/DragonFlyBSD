@@ -100,11 +100,3 @@ NON_GPROF_ENTRY(com_unlock)
 	SPIN_UNLOCK(com_spinlock)
 	NON_GPROF_RET
 
-NON_GPROF_ENTRY(cons_lock)
-	SPIN_LOCK(cons_spinlock)
-	NON_GPROF_RET
-
-NON_GPROF_ENTRY(cons_unlock)
-	SPIN_UNLOCK(cons_spinlock)
-	NON_GPROF_RET
-

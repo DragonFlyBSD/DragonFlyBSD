@@ -163,22 +163,21 @@ debuglockmgr(struct lock *lkp, u_int flags,
 	int error;
 	int extflags;
 	int dowakeup;
-	static int didpanic;
 
 	error = 0;
 	dowakeup = 0;
 
 	if (mycpu->gd_intr_nesting_level &&
 	    (flags & LK_NOWAIT) == 0 &&
-	    (flags & LK_TYPE_MASK) != LK_RELEASE && didpanic == 0) {
+	    (flags & LK_TYPE_MASK) != LK_RELEASE &&
+	    panic_cpu_gd != mycpu
+	) {
 
 #ifndef DEBUG_LOCKS
-		didpanic = 1;
 		panic("lockmgr %s from %p: called from interrupt, ipi, "
 		      "or hard code section",
 		      lkp->lk_wmesg, ((int **)&lkp)[-1]);
 #else
-		didpanic = 1;
 		panic("lockmgr %s from %s:%d: called from interrupt, ipi, "
 		      "or hard code section",
 		      lkp->lk_wmesg, file, line);

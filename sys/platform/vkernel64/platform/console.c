@@ -54,19 +54,6 @@
 static int console_stolen_by_kernel;
 static struct kqueue_info *kqueue_console_info;
 
-/*
- * Global console locking functions
- */
-void
-cons_lock(void)
-{
-}
-
-void
-cons_unlock(void)
-{
-}
-
 /************************************************************************
  *			    CONSOLE DEVICE				*
  ************************************************************************

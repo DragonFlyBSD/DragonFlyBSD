@@ -181,6 +181,7 @@ void	init_param2 (int physpages);
 void	tablefull (const char *);
 int	kvcprintf (char const *, void (*)(int, void*), void *, int,
 		      __va_list) __printflike(1, 0);
+void	kvcreinitspin(void);
 int	log (int, const char *, ...) __printflike(2, 3);
 void	logwakeup (void);
 void	log_console (struct uio *);
@@ -249,13 +250,6 @@ void	DRIVERSLEEP(int usec);
 void	startprofclock (struct proc *);
 void	stopprofclock (struct proc *);
 void	setstatclockrate (int hzrate);
-
-/*
- * Console I/O spinlocks - these typically also hard-disable interrupts
- * for the duration.
- */
-void	cons_lock(void); 
-void	cons_unlock(void);
 
 /*
  * Kernel environment support functions and sundry.
@@ -343,6 +337,7 @@ int	rm_at_fork (forklist_fn function);
 typedef void (*watchdog_tickle_fn) (void);
 
 extern watchdog_tickle_fn	wdog_tickler;
+extern struct globaldata	*panic_cpu_gd;
 
 /* 
  * Common `proc' functions are declared here so that proc.h can be included

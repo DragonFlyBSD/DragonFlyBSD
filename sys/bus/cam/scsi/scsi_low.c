@@ -2262,8 +2262,7 @@ static char tw_chars[] = "|/-\\";
 static void
 scsi_low_twiddle_wait(void)
 {
-	cnputc('\b');
-	cnputc(tw_chars[tw_pos++]);
+	kprintf("\b%c", tw_chars[tw_pos++]);
 	tw_pos %= (sizeof(tw_chars) - 1);
 	SCSI_LOW_DELAY(TWIDDLEWAIT);
 }
@@ -2278,8 +2277,7 @@ scsi_low_bus_reset(struct scsi_low_softc *slp)
 	kprintf("%s: try to reset scsi bus  ", slp->sl_xname);
 	for (i = 0; i <= SCSI2_RESET_DELAY / TWIDDLEWAIT ; i++)
 		scsi_low_twiddle_wait();
-	cnputc('\b');
-	kprintf("\n");
+	kprintf("\b\n");
 }
 
 int

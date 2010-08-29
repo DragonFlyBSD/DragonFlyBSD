@@ -39,6 +39,8 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/cons.h>
+#include <sys/thread2.h>
+#include <sys/spinlock2.h>
 
 #include <machine/stdarg.h>
 
@@ -113,6 +115,8 @@ db_putchar(int c, void *arg)
 		return;
 	}
 
+	crit_enter_hard();
+
 	if (c > ' ' && c <= '~') {
 	    /*
 	     * Printing character.
@@ -151,6 +155,7 @@ db_putchar(int c, void *arg)
 	    cnputc(c);
 	}
 	/* other characters are assumed non-printing */
+	crit_exit_hard();
 }
 
 /*
@@ -164,6 +169,9 @@ db_print_position(void)
 
 /*
  * Printing
+ *
+ * NOTE: We bypass subr_prf's cons_spin here by using our own putchar
+ *	 function.
  */
 void
 db_printf(const char *fmt, ...)

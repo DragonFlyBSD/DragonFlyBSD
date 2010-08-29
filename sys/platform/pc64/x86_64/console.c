@@ -33,18 +33,3 @@
  */
 
 #include <sys/systm.h>
-
-#if JG
-/*
- * Global console locking functions
- */
-void
-cons_lock(void)
-{
-}
-
-void
-cons_unlock(void)
-{
-}
-#endif

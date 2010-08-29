@@ -149,7 +149,6 @@ int dumping;				/* system is dumping */
 static struct dumperinfo dumper;	/* selected dumper */
 
 #ifdef SMP
-u_int panic_cpu_interlock;		/* panic interlock */
 globaldata_t panic_cpu_gd;		/* which cpu took the panic */
 #endif
 
@@ -668,6 +667,7 @@ void
 panic(const char *fmt, ...)
 {
 	int bootopt, newpanic;
+	globaldata_t gd = mycpu;
 	__va_list ap;
 	static char buf[256];
 
@@ -685,37 +685,66 @@ panic(const char *fmt, ...)
 	 * Bumping gd_trap_nesting_level will also bypass assertions in
 	 * lwkt_switch() and allow us to switch away even if we are a
 	 * FAST interrupt or IPI.
+	 *
+	 * The setting of panic_cpu_gd also determines how kprintf()
+	 * spin-locks itself.  DDB can set panic_cpu_gd as well.
 	 */
-	if (atomic_poll_acquire_int(&panic_cpu_interlock)) {
-		panic_cpu_gd = mycpu;
-	} else if (panic_cpu_gd != mycpu) {
-		crit_enter();
-		++mycpu->gd_trap_nesting_level;
-		if (mycpu->gd_trap_nesting_level < 25) {
-			kprintf("SECONDARY PANIC ON CPU %d THREAD %p\n",
-				mycpu->gd_cpuid, curthread);
+	for (;;) {
+		globaldata_t xgd = panic_cpu_gd;
+
+		/*
+		 * Someone else got the panic cpu
+		 */
+		if (xgd && xgd != gd) {
+			crit_enter();
+			++mycpu->gd_trap_nesting_level;
+			if (mycpu->gd_trap_nesting_level < 25) {
+				kprintf("SECONDARY PANIC ON CPU %d THREAD %p\n",
+					mycpu->gd_cpuid, curthread);
+			}
+			curthread->td_release = NULL;	/* be a grinch */
+			for (;;) {
+				lwkt_deschedule_self(curthread);
+				lwkt_switch();
+			}
+			/* NOT REACHED */
+			/* --mycpu->gd_trap_nesting_level */
+			/* crit_exit() */
 		}
-		curthread->td_release = NULL;	/* be a grinch */
-		for (;;) {
-			lwkt_deschedule_self(curthread);
-			lwkt_switch();
-		}
-		/* NOT REACHED */
-		/* --mycpu->gd_trap_nesting_level */
-		/* crit_exit() */
+
+		/*
+		 * Reentrant panic
+		 */
+		if (xgd && xgd == gd)
+			break;
+
+		/*
+		 * We got it
+		 */
+		if (atomic_cmpset_ptr(&panic_cpu_gd, NULL, gd))
+			break;
 	}
+#else
+	panic_cpu_gd = gd;
+	kvcreinitspin();
 #endif
+	/*
+	 * Setup
+	 */
 	bootopt = RB_AUTOBOOT | RB_DUMP;
 	if (sync_on_panic == 0)
 		bootopt |= RB_NOSYNC;
 	newpanic = 0;
-	if (panicstr)
+	if (panicstr) {
 		bootopt |= RB_NOSYNC;
-	else {
+	} else {
 		panicstr = fmt;
 		newpanic = 1;
 	}
 
+	/*
+	 * Format the panic string.
+	 */
 	__va_start(ap, fmt);
 	kvsnprintf(buf, sizeof(buf), fmt, ap);
 	if (panicstr == fmt)

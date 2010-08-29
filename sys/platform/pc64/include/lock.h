@@ -148,8 +148,6 @@ void	imen_unlock(void);
 void	clock_lock(void);	/* disables int / spinlock combo */
 void	clock_unlock(void);
 
-extern struct spinlock_deprecated smp_rv_spinlock;
-
 void	spin_lock_deprecated(spinlock_t lock);
 void	spin_unlock_deprecated(spinlock_t lock);
 
