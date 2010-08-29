@@ -76,6 +76,8 @@
 #define crit_exit_noyield(curtd)	_crit_exit_noyield((curtd))
 #endif
 
+extern void crit_exit_wrapper(__DEBUG_CRIT_ARG__);
+
 /*
  * Track crit_enter()/crit_exit() pairs and warn on mismatches.
  */

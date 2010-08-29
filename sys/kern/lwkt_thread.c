@@ -1688,9 +1688,9 @@ lwkt_remove_tdallq(thread_t td)
  * smaller code size.
  */
 void
-crit_exit_wrapper(void)
+crit_exit_wrapper(__DEBUG_CRIT_ARG__)
 {
-    _crit_exit(mycpu);
+    _crit_exit(mycpu __DEBUG_CRIT_PASS_ARG__);
 }
 
 void
