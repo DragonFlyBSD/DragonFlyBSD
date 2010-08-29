@@ -573,7 +573,16 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg,
 	int dwidth, upper;
 	char padc;
 	int retval = 0, stop = 0;
-	int not_panic_cpu = (panic_cpu_gd != mycpu);
+	int usespin;
+
+	/*
+	 * Make a supreme effort to avoid reentrant panics or deadlocks.
+	 */
+	if (func == kputchar) {
+		if (mycpu->gd_flags & GDF_KPRINTF)
+			return(0);
+		atomic_set_long(&mycpu->gd_flags, GDF_KPRINTF);
+	}
 
 	num = 0;
 	if (!func)
@@ -587,7 +596,10 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg,
 	if (radix < 2 || radix > 36)
 		radix = 10;
 
-	if (not_panic_cpu && func == kputchar) {
+	usespin = (panic_cpu_gd != mycpu &&
+		   func == kputchar &&
+		   (((struct putchar_arg *)arg)->flags & TOTTY) == 0);
+	if (usespin) {
 		crit_enter_hard();
 		spin_lock_wr(&cons_spin);
 	}
@@ -871,7 +883,12 @@ number:
 		}
 	}
 done:
-	if (not_panic_cpu && func == kputchar) {
+	/*
+	 * Cleanup reentrancy issues.
+	 */
+	if (func == kputchar)
+		atomic_clear_long(&mycpu->gd_flags, GDF_KPRINTF);
+	if (usespin) {
 		spin_unlock_wr(&cons_spin);
 		crit_exit_hard();
 	}
@@ -881,12 +898,14 @@ done:
 #undef PCHAR
 
 /*
- * Called from the panic code
+ * Called from the panic code to try to get the console working
+ * again in case we paniced inside a kprintf().
  */
 void
 kvcreinitspin(void)
 {
 	spin_init(&cons_spin);
+	atomic_clear_long(&mycpu->gd_flags, GDF_KPRINTF);
 }
 
 

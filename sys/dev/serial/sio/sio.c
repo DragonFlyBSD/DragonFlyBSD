@@ -731,10 +731,10 @@ sioprobe(device_t dev, int xrid, u_long rclk)
 		(void)sio_getreg(com, com_data);
 	}
 	if (fn == 256) {
-		kprintf("sio%d: can't drain, serial port might "
-			"not exist, disabling\n", device_get_unit(dev));
 		com_unlock();
 		lwkt_reltoken(&tty_token);
+		kprintf("sio%d: can't drain, serial port might "
+			"not exist, disabling\n", device_get_unit(dev));
 		return (ENXIO);
 	}
 
@@ -1060,7 +1060,6 @@ sioattach(device_t dev, int xrid, u_long rclk)
 	} else
 		com->it_in.c_ispeed = com->it_in.c_ospeed = TTYDEF_SPEED;
 	if (siosetwater(com, com->it_in.c_ispeed) != 0) {
-		com_unlock();
 		/*
 		 * Leave i/o resources allocated if this is a `cn'-level
 		 * console, so that other devices can't snarf them.
@@ -1070,7 +1069,6 @@ sioattach(device_t dev, int xrid, u_long rclk)
 		lwkt_reltoken(&tty_token);
 		return (ENOMEM);
 	}
-	com_unlock();
 	termioschars(&com->it_in);
 	com->it_out = com->it_in;
 
@@ -1656,7 +1654,10 @@ siodtrwakeup(void *chan)
 }
 
 /*
- * NOTE: Must be called with tty_token held
+ * NOTE: Normally called with tty_token held but might not be when
+ *	 operating as the console.
+ *
+ *	 Must be called with com_lock
  */
 static void
 sioinput(struct com_s *com)
@@ -1667,7 +1668,6 @@ sioinput(struct com_s *com)
 	int		recv_data;
 	struct tty	*tp;
 
-	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	buf = com->ibuf;
 	tp = com->tp;
 	if (!(tp->t_state & TS_ISOPEN) || !(tp->t_cflag & CREAD)) {
@@ -1784,6 +1784,9 @@ siointr(void *arg)
 	lwkt_reltoken(&tty_token);
 }
 
+/*
+ * Called with tty_token held and com_lock held.
+ */
 static void
 siointr1(struct com_s *com)
 {
@@ -1795,7 +1798,6 @@ siointr1(struct com_s *com)
 	u_char	int_ctl_new;
 	u_int	count;
 
-	lwkt_gettoken(&tty_token);
 	int_ctl = inb(com->intr_ctl_port);
 	int_ctl_new = int_ctl;
 
@@ -1838,7 +1840,9 @@ siointr1(struct com_s *com)
 					if (recv_data == KEY_TILDE)
 						brk_state2 = recv_data;
 					else if (brk_state2 == KEY_TILDE && recv_data == KEY_CRTLB) {
+							com_unlock();
 							breakpoint();
+							com_lock();
 							brk_state1 = brk_state2 = 0;
 							goto cont;
 					} else
@@ -1863,7 +1867,9 @@ siointr1(struct com_s *com)
 				if (line_status & LSR_BI) {
 #if defined(DDB) && defined(BREAK_TO_DEBUGGER)
 					if (com->unit == comconsole) {
+						com_unlock();
 						breakpoint();
+						com_lock();
 						goto cont;
 					}
 #endif
@@ -1998,11 +2004,9 @@ cont:
 		if ((inb(com->int_id_port) & IIR_IMASK) == IIR_NOPEND)
 #endif /* COM_MULTIPORT */
 		{
-			lwkt_reltoken(&tty_token);
 			return;
 		}
 	}
-	lwkt_reltoken(&tty_token);
 }
 
 static int
@@ -2253,6 +2257,9 @@ repeat:
 	lwkt_reltoken(&tty_token);
 }
 
+/*
+ * Called with tty_token held but no com_lock
+ */
 static int
 comparam(struct tty *tp, struct termios *t)
 {
@@ -2264,11 +2271,9 @@ comparam(struct tty *tp, struct termios *t)
 	u_char		dlbl;
 	int		unit;
 
-	lwkt_gettoken(&tty_token);
 	unit = DEV_TO_UNIT(tp->t_dev);
 	com = com_addr(unit);
 	if (com == NULL) {
-		lwkt_reltoken(&tty_token);
 		return (ENODEV);
 	}
 
@@ -2280,15 +2285,11 @@ comparam(struct tty *tp, struct termios *t)
 	if (t->c_ospeed == 0)
 		divisor = 0;
 	else {
-		if (t->c_ispeed != t->c_ospeed) {
-			lwkt_reltoken(&tty_token);
+		if (t->c_ispeed != t->c_ospeed)
 			return (EINVAL);
-		}
 		divisor = siodivisor(com->rclk, t->c_ispeed);
-		if (divisor == 0) {
-			lwkt_reltoken(&tty_token);
+		if (divisor == 0)
 			return (EINVAL);
-		}
 	}
 
 	/* parameters are OK, convert them to the com struct and the device */
@@ -2439,20 +2440,23 @@ comparam(struct tty *tp, struct termios *t)
 	 * unconditionally, but that defeated the careful discarding of
 	 * stale input in sioopen().
 	 */
-	if (com->state >= (CS_BUSY | CS_TTGO))
+	if (com->state >= (CS_BUSY | CS_TTGO)) {
+		com_lock();
 		siointr1(com);
-
-	com_unlock();
+		com_unlock();
+	}
 	crit_exit();
 	comstart(tp);
 	if (com->ibufold != NULL) {
 		kfree(com->ibufold, M_DEVBUF);
 		com->ibufold = NULL;
 	}
-	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
+/*
+ * called with tty_token held
+ */
 static int
 siosetwater(struct com_s *com, speed_t speed)
 {
@@ -2461,7 +2465,6 @@ siosetwater(struct com_s *com, speed_t speed)
 	int		ibufsize;
 	struct tty	*tp;
 
-	lwkt_gettoken(&tty_token);
 	/*
 	 * Make the buffer size large enough to handle a softtty interrupt
 	 * latency of about 2 ticks without loss of throughput or data
@@ -2471,11 +2474,8 @@ siosetwater(struct com_s *com, speed_t speed)
 	cp4ticks = speed / 10 / hz * 4;
 	for (ibufsize = 128; ibufsize < cp4ticks;)
 		ibufsize <<= 1;
-	if (ibufsize == com->ibufsize) {
-		com_lock();
-		lwkt_reltoken(&tty_token);
+	if (ibufsize == com->ibufsize)
 		return (0);
-	}
 
 	/*
 	 * Allocate input buffer.  The extra factor of 2 in the size is
@@ -2494,8 +2494,7 @@ siosetwater(struct com_s *com, speed_t speed)
 	}
 
 	/*
-	 * Read current input buffer, if any.  Continue with interrupts
-	 * disabled.
+	 * Read current input buffer.
 	 */
 	com_lock();
 	if (com->iptr != com->ibuf)
@@ -2516,7 +2515,7 @@ siosetwater(struct com_s *com, speed_t speed)
 	com->ibufend = ibuf + ibufsize;
 	com->ierroff = ibufsize;
 	com->ihighwater = ibuf + 3 * ibufsize / 4;
-	lwkt_reltoken(&tty_token);
+	com_unlock();
 	return (0);
 }
 

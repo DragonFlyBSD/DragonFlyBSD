@@ -127,7 +127,7 @@ struct globaldata {
 	struct thread	*gd_curthread;
 	struct thread	*gd_freetd;		/* cache one free td */
 	__uint32_t	gd_reqflags;		/* (see note above) */
-	void		*gd_unused00B;
+	long		gd_flags;
 	lwkt_queue	gd_tdallq;		/* all threads */
 	lwkt_queue	gd_tdrunq;		/* runnable threads */
 	__uint32_t	gd_cpuid;
@@ -192,6 +192,11 @@ typedef struct globaldata *globaldata_t;
 				RQF_AST_USER_RESCHED|RQF_AST_LWKT_RESCHED|\
 				RQF_AST_UPCALL)
 #define RQF_IDLECHECK_MASK	(RQF_IPIQ|RQF_INTPEND|RQF_TIMER)
+
+/*
+ * globaldata flags
+ */
+#define GDF_KPRINTF		0x0001	/* kprintf() reentrancy */
 
 #endif
 
