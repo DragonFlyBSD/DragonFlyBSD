@@ -557,8 +557,10 @@ The
 .Va net.inet.ip.portrange.*
 sysctls control the port number ranges automatically bound to TCP and UDP
 sockets.  There are three ranges:  A low range, a default range, and a
-high range, selectable via an IP_PORTRANGE setsockopt() call.  Most
-network programs use the default range which is controlled by
+high range, selectable via an IP_PORTRANGE
+.Fn setsockopt
+call.
+Most network programs use the default range which is controlled by
 .Va net.inet.ip.portrange.first
 and
 .Va net.inet.ip.portrange.last ,

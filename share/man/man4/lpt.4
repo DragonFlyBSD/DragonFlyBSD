@@ -60,8 +60,9 @@ system.
 .Pp
 One purpose of this port was to allow parallel port sharing with other
 parallel devices.
-Secondly, inb()/outb() calls have been replaced by ppbus
-function calls.
+Secondly,
+.Fn inb / outb
+calls have been replaced by ppbus function calls.
 lpt is now arch-independent thanks to the ppbus interface.
 See
 .Xr ppbus 4

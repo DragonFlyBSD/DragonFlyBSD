@@ -86,8 +86,10 @@ The program
 .Xr jls 8
 ca be used to identify all active jails.
 .Sh RETURN VALUES
-If successful, jail() returns a non-negative integer, termed the jail
-identifier (JID). It returns -1 on failure, and sets
+If successful,
+.Fn jail
+returns a non-negative integer, termed the jail identifier (JID).
+It returns -1 on failure, and sets
 .Va errno
 to indicate the error.
 .Sh ERRORS

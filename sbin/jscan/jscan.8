@@ -231,10 +231,14 @@ no longer need the data.
 .It Fl F
 Forces
 .Nm
-to fsync() after updating a journaling file prior to acknowledging the
+to
+.Fn fsync
+after updating a journaling file prior to acknowledging the
 data or updating a transaction-id-tracking file.  If specified twice,
 .Nm
-will also fsync() after updating the transaction-id-tracking file.
+will also
+.Fn fsync
+after updating the transaction-id-tracking file.
 .It Ar journal_prefix/file
 Specify the input to
 .Nm .
@@ -286,8 +290,9 @@ these conditions, if the input is a stream rather than a file
 .Nm
 will be forced to buffer meta-transactions (for mirroring) entirely in
 memory, which could present a serious problem since a single meta-transaction
-can exceed a gigabyte (e.g. if someone were to do a single write() system
-call writing a gigabyte all in one go).
+can exceed a gigabyte (e.g. if someone were to do a single
+.Fn write
+system call writing a gigabyte all in one go).
 .Sh SEE ALSO
 .Xr mountctl 8
 .Sh CAVEATS

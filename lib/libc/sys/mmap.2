@@ -229,7 +229,8 @@ The bottom of the stack at maximum growth is the starting
 address returned by the call.
 .Pp
 The entire area is reserved from the point of view of other
-mmap() calls, even if not faulted in yet.
+.Fn mmap
+calls, even if not faulted in yet.
 .Pp
 WARNING.  We currently allow
 .Dv MAP_STACK

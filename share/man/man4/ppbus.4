@@ -98,8 +98,11 @@ functions to initialize the ppbus system.
 The logical parallel port model chosen for the ppbus system is the PC's
 parallel port model.
 Consequently, for the i386 implementation of ppbus,
-most of the services provided by ppc are macros for inb()
-and outb() calls.
+most of the services provided by ppc are macros for
+.Fn inb
+and
+.Fn outb
+calls.
 But, for an other architecture, accesses to one of our logical
 registers (data, status, control...) may require more than one I/O access.
 .Ss Description

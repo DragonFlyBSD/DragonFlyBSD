@@ -72,8 +72,9 @@ implementation,
 .Nm
 filesystems are backed by swap space.
 Only memory pressure will cause data to be backed to swap.
-Normal filesystem operations such as fsync(), buffer cache flushing,
-and vnode recycling have no effect.
+Normal filesystem operations such as
+.Fn fsync ,
+buffer cache flushing, and vnode recycling have no effect.
 .Pp
 .Nm
 stores meta-data in wired kernel memory.
