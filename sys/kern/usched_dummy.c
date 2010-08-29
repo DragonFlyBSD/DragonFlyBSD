@@ -455,6 +455,8 @@ dummy_exiting(struct lwp *plp, struct lwp *lp)
  * is possible to deschedule an LWKT thread and then do some work before
  * switching away.  The thread can be rescheduled at any time, even before
  * we switch away.
+ *
+ * MPSAFE
  */
 #ifdef SMP
 
@@ -473,11 +475,6 @@ dummy_sched_thread(void *dummy)
     cpuid = gd->gd_cpuid;
     dd = &dummy_pcpu[cpuid];
     cpumask = 1 << cpuid;
-
-    /*
-     * Our Scheduler helper thread does not need to hold the MP lock
-     */
-    rel_mplock();
 
     for (;;) {
 	lwkt_deschedule_self(gd->gd_curthread);		/* interlock */
@@ -540,7 +537,7 @@ dummy_sched_thread_cpu_init(void)
 	    kprintf(" %d", i);
 
 	lwkt_create(dummy_sched_thread, NULL, NULL, &dd->helper_thread, 
-		    TDF_STOPREQ, i, "dsched %d", i);
+		    TDF_STOPREQ | TDF_MPSAFE, i, "dsched %d", i);
 
 	/*
 	 * Allow user scheduling on the target cpu.  cpu #0 has already

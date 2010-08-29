@@ -374,6 +374,9 @@ lwkt_init_thread(thread_t td, void *stack, int stksize, int flags,
 {
     globaldata_t mygd = mycpu;
 
+    /* all threads start mpsafe now */
+    KKASSERT(flags & TDF_MPSAFE);
+
     bzero(td, sizeof(struct thread));
     td->td_kstack = stack;
     td->td_kstack_size = stksize;
@@ -1570,9 +1573,8 @@ lwkt_preempted_proc(void)
  * rel_mplock() at the start of the new thread.
  */
 int
-lwkt_create(void (*func)(void *), void *arg,
-    struct thread **tdp, thread_t template, int tdflags, int cpu,
-    const char *fmt, ...)
+lwkt_create(void (*func)(void *), void *arg, struct thread **tdp,
+	    thread_t template, int tdflags, int cpu, const char *fmt, ...)
 {
     thread_t td;
     __va_list ap;

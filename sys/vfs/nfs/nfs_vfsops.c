@@ -1121,9 +1121,9 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	 * Start the reader and writer threads.
 	 */
 	lwkt_create(nfssvc_iod_reader, nmp, &nmp->nm_rxthread,
-		    NULL, 0, rxcpu, "nfsiod_rx");
+		    NULL, TDF_MPSAFE, rxcpu, "nfsiod_rx");
 	lwkt_create(nfssvc_iod_writer, nmp, &nmp->nm_txthread,
-		    NULL, 0, txcpu, "nfsiod_tx");
+		    NULL, TDF_MPSAFE, txcpu, "nfsiod_tx");
 
 	return (0);
 bad:

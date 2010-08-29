@@ -39,17 +39,19 @@
 #include <sys/types.h>
 #include <sys/lock.h>
 #include <sys/msgport.h>
-#include <sys/msgport2.h>
-#include <sys/spinlock2.h>
 #include <sys/sysctl.h>
 #include <sys/ucred.h>
 #include <sys/param.h>
-#include <sys/sysref2.h>
 #include <sys/systm.h>
 #include <sys/devfs.h>
 #include <sys/devfs_rules.h>
 #include <sys/hotplug.h>
 #include <sys/udev.h>
+
+#include <sys/msgport2.h>
+#include <sys/spinlock2.h>
+#include <sys/mplock2.h>
+#include <sys/sysref2.h>
 
 MALLOC_DEFINE(M_DEVFS, "devfs", "Device File System (devfs) allocations");
 DEVFS_DECLARE_CLONE_BITMAP(ops_id);
@@ -1071,9 +1073,14 @@ devfs_msg_core(void *arg)
 {
 	devfs_msg_t msg;
 
-	devfs_run = 1;
 	lwkt_initport_thread(&devfs_msg_port, curthread);
+
+	lockmgr(&devfs_lock, LK_EXCLUSIVE);
+	devfs_run = 1;
 	wakeup(td_core);
+	lockmgr(&devfs_lock, LK_RELEASE);
+
+	get_mplock();	/* mpsafe yet? */
 
 	while (devfs_run) {
 		msg = (devfs_msg_t)lwkt_waitport(&devfs_msg_port, 0);
@@ -1083,7 +1090,10 @@ devfs_msg_core(void *arg)
 		devfs_msg_exec(msg);
 		lwkt_replymsg(&msg->hdr, 0);
 	}
+
+	rel_mplock();
 	wakeup(td_core);
+
 	lwkt_exit();
 }
 
@@ -2362,12 +2372,12 @@ devfs_init(void)
 	/* Initialize *THE* devfs lock */
 	lockinit(&devfs_lock, "devfs_core lock", 0, 0);
 
-
+	lockmgr(&devfs_lock, LK_EXCLUSIVE);
 	lwkt_create(devfs_msg_core, /*args*/NULL, &td_core, NULL,
-		    0, 0, "devfs_msg_core");
-
+		    TDF_MPSAFE, 0, "devfs_msg_core");
 	while (devfs_run == 0)
-		tsleep(td_core, 0, "devfsc", 0);
+		lksleep(td_core, &devfs_lock, 0, "devfsc", 0);
+	lockmgr(&devfs_lock, LK_RELEASE);
 
 	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_init finished\n");
 }

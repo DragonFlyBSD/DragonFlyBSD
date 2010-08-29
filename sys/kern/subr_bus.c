@@ -1665,8 +1665,7 @@ device_probe_and_attach(device_t dev)
 
 /*
  * Device is known to be alive, do the attach asynchronously.
- *
- * The MP lock is held by all threads.
+ * However, serialize the attaches with the mp lock.
  */
 static void
 device_attach_async(device_t dev)
@@ -1675,7 +1674,8 @@ device_attach_async(device_t dev)
 
 	atomic_add_int(&numasyncthreads, 1);
 	lwkt_create(device_attach_thread, dev, &td, NULL,
-		    0, 0, (dev->desc ? dev->desc : "devattach"));
+		    TDF_MPSAFE, 0,
+		    (dev->desc ? dev->desc : "devattach"));
 }
 
 static void
@@ -1683,9 +1683,11 @@ device_attach_thread(void *arg)
 {
 	device_t dev = arg;
 
+	get_mplock();	/* XXX replace with devattach_token later */
 	(void)device_doattach(dev);
 	atomic_subtract_int(&numasyncthreads, 1);
 	wakeup(&numasyncthreads);
+	rel_mplock();	/* XXX replace with devattach_token later */
 }
 
 /*

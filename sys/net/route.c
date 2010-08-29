@@ -90,6 +90,7 @@
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
+#include <sys/mplock2.h>
 #include <net/netmsg2.h>
 
 #ifdef MPLS
@@ -153,7 +154,7 @@ route_init(void)
 
 	for (cpu = 0; cpu < ncpus; cpu++) {
 		lwkt_create(rtable_service_loop, NULL, &rtd, NULL,
-			    0, cpu, "rtable_cpu %d", cpu);
+			    TDF_MPSAFE, cpu, "rtable_cpu %d", cpu);
 		rt_ports[cpu] = &rtd->td_msgport;
 	}
 }
@@ -196,6 +197,8 @@ rtable_service_loop(void *dummy __unused)
 {
 	struct netmsg *netmsg;
 	thread_t td = curthread;
+
+	get_mplock();	/* XXX is this mpsafe yet? */
 
 	while ((netmsg = lwkt_waitport(&td->td_msgport, 0)) != NULL) {
 		netmsg->nm_dispatch(netmsg);

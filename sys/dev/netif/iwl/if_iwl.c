@@ -479,6 +479,7 @@ iwl_service_loop(void *arg)
 	struct ifnet *ifp = &iwl->iwl_ic.ic_if;
 	struct netmsg *nmsg;
 
+	get_mplock();
 	lwkt_serialize_enter(ifp->if_serializer);
 	while ((nmsg = lwkt_waitport(&iwl->iwl_thread_port, 0))) {
 		nmsg->nm_dispatch(nmsg);
@@ -486,8 +487,7 @@ iwl_service_loop(void *arg)
 			break;
 	}
 	lwkt_serialize_exit(ifp->if_serializer);
-
-	lwkt_exit();
+	rel_mplock();
 }
 
 void
@@ -503,7 +503,7 @@ iwl_create_thread(struct iwlcom *iwl, int unit)
 	iwl->iwl_thread_port.mp_putport = iwl_put_port;
 
 	lwkt_create(iwl_service_loop, iwl, NULL, &iwl->iwl_thread,
-		    0, unit % ncpus, "iwl%d", unit);
+		    TDF_MPSAFE, unit % ncpus, "iwl%d", unit);
 }
 
 static void

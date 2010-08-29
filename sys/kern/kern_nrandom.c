@@ -140,6 +140,7 @@
 
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
+#include <sys/mplock2.h>
 
 /*
  * Portability note: The u_char/unsigned char type is used where
@@ -568,6 +569,8 @@ read_random_unlimited(void *buf, u_int nbytes)
 /*
  * Random number generator helper thread.  This limits code overhead from
  * high frequency events by delaying the clearing of rand_thread_signal.
+ *
+ * MPSAFE thread
  */
 static
 void
@@ -575,10 +578,12 @@ rand_thread_loop(void *dummy)
 {
 	int count;
 
+	get_mplock();
+
 	for (;;) {
 		NANOUP_EVENT ();
 		spin_lock_wr(&rand_spin);
-		count = (int)(L15_Byte() * hz / (256 * 10) + hz / 10);
+		count = (int)(L15_Byte() * hz / (256 * 10) + hz / 10 + 1);
 		spin_unlock_wr(&rand_spin);
 		tsleep(rand_td, 0, "rwait", count);
 		crit_enter();
@@ -594,7 +599,8 @@ static
 void
 rand_thread_init(void)
 {
-	lwkt_create(rand_thread_loop, NULL, &rand_td, NULL, 0, 0, "random");
+	lwkt_create(rand_thread_loop, NULL, &rand_td, NULL,
+		    TDF_MPSAFE, 0, "random");
 }
 
 SYSINIT(rand, SI_SUB_HELPER_THREADS, SI_ORDER_ANY, rand_thread_init, 0);

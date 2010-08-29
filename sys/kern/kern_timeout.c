@@ -177,8 +177,8 @@ swi_softclock_setup(void *arg)
 		 * the cpu they were scheduled on.
 		 */
 		lwkt_create(softclock_handler, sc, NULL,
-			    &sc->thread, TDF_STOPREQ|TDF_INTTHREAD, cpu,
-			    "softclock %d", cpu);
+			    &sc->thread, TDF_STOPREQ|TDF_INTTHREAD|TDF_MPSAFE,
+			    cpu, "softclock %d", cpu);
 	}
 }
 
@@ -237,9 +237,9 @@ hardclock_softtick(globaldata_t gd)
  * a critical section is sufficient to interlock sc->curticks and protect
  * us from remote IPI's / list removal.
  *
- * The thread starts with the MP lock held and not in a critical section.
- * The loop itself is MP safe while individual callbacks may or may not
- * be, so we obtain or release the MP lock as appropriate.
+ * The thread starts with the MP lock released and not in a critical
+ * section.  The loop itself is MP safe while individual callbacks
+ * may or may not be, so we obtain or release the MP lock as appropriate.
  */
 static void
 softclock_handler(void *arg)
@@ -250,7 +250,7 @@ softclock_handler(void *arg)
 	void (*c_func)(void *);
 	void *c_arg;
 #ifdef SMP
-	int mpsafe = 0;
+	int mpsafe = 1;
 #endif
 
 	lwkt_setpri_self(TDPRI_SOFT_NORM);

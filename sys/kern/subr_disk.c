@@ -375,8 +375,12 @@ disk_msg_core(void *arg)
 	disk_msg_t msg;
 	int run;
 
+	lwkt_gettoken(&disklist_token);
 	lwkt_initport_thread(&disk_msg_port, curthread);
-	wakeup(curthread);
+	wakeup(curthread);	/* synchronous startup */
+	lwkt_reltoken(&disklist_token);
+
+	get_mplock();	/* not mpsafe yet? */
 	run = 1;
 
 	while (run) {
@@ -1275,10 +1279,11 @@ disk_init(void)
 	 */
 	lwkt_initport_replyonly(&disk_dispose_port, disk_msg_autofree_reply);
 
+	lwkt_gettoken(&disklist_token);
 	lwkt_create(disk_msg_core, /*args*/NULL, &td_core, NULL,
-		    0, 0, "disk_msg_core");
-
+		    TDF_MPSAFE, 0, "disk_msg_core");
 	tsleep(td_core, 0, "diskcore", 0);
+	lwkt_reltoken(&disklist_token);
 }
 
 static void

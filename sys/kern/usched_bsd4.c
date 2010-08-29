@@ -1070,10 +1070,13 @@ bsd4_setrunqueue_locked(struct lwp *lp)
 /*
  * For SMP systems a user scheduler helper thread is created for each
  * cpu and is used to allow one cpu to wakeup another for the purposes of
- * scheduling userland threads from setrunqueue().  UP systems do not
- * need the helper since there is only one cpu.  We can't use the idle
- * thread for this because we need to hold the MP lock.  Additionally,
- * doing things this way allows us to HLT idle cpus on MP systems.
+ * scheduling userland threads from setrunqueue().
+ *
+ * UP systems do not need the helper since there is only one cpu.
+ *
+ * We can't use the idle thread for this because we might block.
+ * Additionally, doing things this way allows us to HLT idle cpus
+ * on MP systems.
  *
  * MPSAFE
  */
@@ -1096,11 +1099,9 @@ sched_thread(void *dummy)
     dd = &bsd4_pcpu[cpuid];
 
     /*
-     * The scheduler thread does not need to hold the MP lock.  Since we
-     * are woken up only when no user processes are scheduled on a cpu, we
-     * can run at an ultra low priority.
+     * Since we are woken up only when no user processes are scheduled
+     * on a cpu, we can run at an ultra low priority.
      */
-    rel_mplock();
     lwkt_setpri_self(TDPRI_USER_SCHEDULER);
 
     for (;;) {
@@ -1194,7 +1195,7 @@ sched_thread_cpu_init(void)
 	    kprintf(" %d", i);
 
 	lwkt_create(sched_thread, NULL, NULL, &dd->helper_thread, 
-		    TDF_STOPREQ, i, "usched %d", i);
+		    TDF_STOPREQ | TDF_MPSAFE, i, "usched %d", i);
 
 	/*
 	 * Allow user scheduling on the target cpu.  cpu #0 has already

@@ -56,11 +56,12 @@
 #include <sys/mutex.h>
 
 #include <sys/signal2.h>
+#include <sys/thread2.h>
 #include <sys/mutex2.h>
+#include <sys/mplock2.h>
 
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-#include <sys/thread2.h>
 
 #include "rpcv2.h"
 #include "nfsproto.h"
@@ -71,6 +72,9 @@
 #include "nfsnode.h"
 #include "nfsrtt.h"
 
+/*
+ * nfs service connection reader thread
+ */
 void
 nfssvc_iod_reader(void *arg)
 {
@@ -78,6 +82,8 @@ nfssvc_iod_reader(void *arg)
 	struct nfsm_info *info;
 	struct nfsreq *req;
 	int error;
+
+	get_mplock();
 
 	if (nmp->nm_rxstate == NFSSVC_INIT)
 		nmp->nm_rxstate = NFSSVC_PENDING;
@@ -149,6 +155,8 @@ nfssvc_iod_reader(void *arg)
 }
 
 /*
+ * nfs service connection writer thread
+ *
  * The writer sits on the send side of the client's socket and
  * does both the initial processing of BIOs and also transmission
  * and retransmission of nfsreq's.
@@ -165,8 +173,11 @@ nfssvc_iod_writer(void *arg)
 	struct vnode *vp;
 	nfsm_info_t info;
 
+	get_mplock();
+
 	if (nmp->nm_txstate == NFSSVC_INIT)
 		nmp->nm_txstate = NFSSVC_PENDING;
+
 	crit_enter();
 	for (;;) {
 		if (nmp->nm_txstate == NFSSVC_WAITING) {

@@ -90,6 +90,7 @@
 
 #include <sys/file2.h>
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 #include <sys/spinlock2.h>
 
 static void journal_wthread(void *info);
@@ -119,14 +120,16 @@ journal_create_threads(struct journal *jo)
 	jo->flags &= ~(MC_JOURNAL_STOP_REQ | MC_JOURNAL_STOP_IMM);
 	jo->flags |= MC_JOURNAL_WACTIVE;
 	lwkt_create(journal_wthread, jo, NULL, &jo->wthread,
-			TDF_STOPREQ, -1, "journal w:%.*s", JIDMAX, jo->id);
+		    TDF_STOPREQ | TDF_MPSAFE,
+		    -1, "journal w:%.*s", JIDMAX, jo->id);
 	lwkt_setpri(&jo->wthread, TDPRI_KERN_DAEMON);
 	lwkt_schedule(&jo->wthread);
 
 	if (jo->flags & MC_JOURNAL_WANT_FULLDUPLEX) {
 	    jo->flags |= MC_JOURNAL_RACTIVE;
 	    lwkt_create(journal_rthread, jo, NULL, &jo->rthread,
-			TDF_STOPREQ, -1, "journal r:%.*s", JIDMAX, jo->id);
+			TDF_STOPREQ | TDF_MPSAFE,
+			-1, "journal r:%.*s", JIDMAX, jo->id);
 	    lwkt_setpri(&jo->rthread, TDPRI_KERN_DAEMON);
 	    lwkt_schedule(&jo->rthread);
 	}
@@ -171,6 +174,9 @@ journal_wthread(void *info)
     size_t avail;
     size_t bytes;
     size_t res;
+
+    /* not MPSAFE yet */
+    get_mplock();
 
     for (;;) {
 	/*
@@ -288,6 +294,7 @@ journal_wthread(void *info)
     jo->flags &= ~MC_JOURNAL_WACTIVE;
     wakeup(jo);
     wakeup(&jo->fifo.windex);
+    rel_mplock();
 }
 
 /*
@@ -307,6 +314,9 @@ journal_rthread(void *info)
 
     transid = 0;
     error = 0;
+
+    /* not MPSAFE yet */
+    get_mplock();
 
     for (;;) {
 	/*
@@ -403,6 +413,7 @@ journal_rthread(void *info)
     jo->flags &= ~MC_JOURNAL_RACTIVE;
     wakeup(jo);
     wakeup(&jo->fifo.windex);
+    rel_mplock();
 }
 
 /*
