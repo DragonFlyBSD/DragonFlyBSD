@@ -578,8 +578,6 @@ rand_thread_loop(void *dummy)
 {
 	int count;
 
-	get_mplock();
-
 	for (;;) {
 		NANOUP_EVENT ();
 		spin_lock_wr(&rand_spin);
