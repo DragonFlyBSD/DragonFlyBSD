@@ -485,6 +485,7 @@ extern void lwkt_cpusync_add(cpumask_t, lwkt_cpusync_t);
 extern void lwkt_cpusync_finish(lwkt_cpusync_t);
 
 extern void crit_panic(void) __dead2;
+extern void crit_exit_wrapper(void);
 extern struct lwp *lwkt_preempted_proc(void);
 
 extern int  lwkt_create (void (*func)(void *), void *, struct thread **,

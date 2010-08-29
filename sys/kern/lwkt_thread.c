@@ -1675,6 +1675,24 @@ lwkt_remove_tdallq(thread_t td)
     TAILQ_REMOVE(&td->td_gd->gd_tdallq, td, td_allq);
 }
 
+/*
+ * Code reduction and branch prediction improvements.  Call/return
+ * overhead on modern cpus often degenerates into 0 cycles due to
+ * the cpu's branch prediction hardware and return pc cache.  We
+ * can take advantage of this by not inlining medium-complexity
+ * functions and we can also reduce the branch prediction impact
+ * by collapsing perfectly predictable branches into a single
+ * procedure instead of duplicating it.
+ *
+ * Is any of this noticeable?  Probably not, so I'll take the
+ * smaller code size.
+ */
+void
+crit_exit_wrapper(void)
+{
+    _crit_exit(mycpu);
+}
+
 void
 crit_panic(void)
 {
