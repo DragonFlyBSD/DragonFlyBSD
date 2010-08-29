@@ -134,7 +134,7 @@ struct globaldata {
 	cpumask_t	gd_cpumask;		/* mask = 1<<cpuid */
 	cpumask_t	gd_other_cpus;		/* mask of 'other' cpus */
 	struct timeval	gd_stattv;
-	int		gd_intr_nesting_level;	/* (for interrupts) */
+	int		gd_intr_nesting_level;	/* hard code, intrs, ipis */
 	struct vmmeter	gd_cnt;
 	struct lwkt_ipiq *gd_ipiq;		/* array[ncpu] of ipiq's */
 	struct lwkt_ipiq gd_cpusyncq;		/* ipiq for cpu synchro */

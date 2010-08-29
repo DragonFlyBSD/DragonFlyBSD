@@ -42,30 +42,38 @@
 #define __DEBUG_CRIT_PASS_ARG__		, id
 #define __DEBUG_CRIT_ENTER(td)		_debug_crit_enter((td), id)
 #define __DEBUG_CRIT_EXIT(td)		_debug_crit_exit((td), id)
-#define crit_enter()			_crit_enter(__FUNCTION__)
-#define crit_enter_id(id)		_crit_enter(id)
+#define crit_enter()			_crit_enter(mycpu, __FUNCTION__)
+#define crit_enter_id(id)		_crit_enter(mycpu, id)
+#define crit_enter_gd(curgd)		_crit_enter((curgd), __FUNCTION__)
 #define crit_enter_quick(curtd)		_crit_enter_quick((curtd), __FUNCTION__)
-#define crit_enter_gd(curgd)		_crit_enter_gd(curgd, __FUNCTION__)
-#define crit_exit()			_crit_exit(__FUNCTION__)
-#define crit_exit_id(id)		_crit_exit(id)
+#define crit_enter_hard()		_crit_enter_hard(mycpu, __FUNCTION__)
+#define crit_enter_hard_gd(curgd)	_crit_enter_hard((curgd), __FUNCTION__)
+#define crit_exit()			_crit_exit(mycpu, __FUNCTION__)
+#define crit_exit_id(id)		_crit_exit(mycpu, id)
+#define crit_exit_gd(curgd)		_crit_exit((curgd), __FUNCTION__)
 #define crit_exit_quick(curtd)		_crit_exit_quick((curtd), __FUNCTION__)
+#define crit_exit_hard()		_crit_exit_hard(mycpu, __FUNCTION__)
+#define crit_exit_hard_gd(curgd)	_crit_exit_hard((curgd), __FUNCTION__)
 #define crit_exit_noyield(curtd)	_crit_exit_noyield((curtd),__FUNCTION__)
-#define crit_exit_gd(curgd)		_crit_exit_gd((curgd), __FUNCTION__)
 #else
 #define __DEBUG_CRIT_ARG__		void
 #define __DEBUG_CRIT_ADD_ARG__
 #define __DEBUG_CRIT_PASS_ARG__
 #define __DEBUG_CRIT_ENTER(td)
 #define __DEBUG_CRIT_EXIT(td)
-#define crit_enter()			_crit_enter()
-#define crit_enter_id(id)		_crit_enter()
-#define crit_enter_quick(curtd)		_crit_enter_quick(curtd)
-#define crit_enter_gd(curgd)		_crit_enter_gd(curgd)
-#define crit_exit()			_crit_exit()
-#define crit_exit_id(id)		_crit_exit()
-#define crit_exit_quick(curtd)		_crit_exit_quick(curtd)
-#define crit_exit_noyield(curtd)	_crit_exit_noyield(curtd)
-#define crit_exit_gd(curgd)		_crit_exit_gd(curgd)
+#define crit_enter()			_crit_enter(mycpu)
+#define crit_enter_id(id)		_crit_enter(mycpu)
+#define crit_enter_gd(curgd)		_crit_enter((curgd))
+#define crit_enter_quick(curtd)		_crit_enter_quick((curtd))
+#define crit_enter_hard()		_crit_enter_hard(mycpu)
+#define crit_enter_hard_gd(curgd)	_crit_enter_hard((curgd))
+#define crit_exit()			_crit_exit(mycpu)
+#define crit_exit_id(id)		_crit_exit(mycpu)
+#define crit_exit_gd(curgd)		_crit_exit((curgd))
+#define crit_exit_quick(curtd)		_crit_exit_quick((curtd))
+#define crit_exit_hard()		_crit_exit_hard(mycpu)
+#define crit_exit_hard_gd(curgd)	_crit_exit_hard((curgd))
+#define crit_exit_noyield(curtd)	_crit_exit_noyield((curtd))
 #endif
 
 /*
@@ -102,91 +110,85 @@ _debug_crit_exit(thread_t td, const char *id)
 #endif
 
 /*
- * Critical sections prevent preemption by raising a thread's priority
- * above the highest possible interrupting priority.  Additionally, the
- * current cpu will not be able to schedule a new thread but will instead
- * place it on a pending list (with interrupts physically disabled) and
- * set mycpu->gd_reqflags to indicate that work needs to be done, which
- * splz_check() takes care of.
+ * Critical sections prevent preemption, but allowing explicit blocking
+ * and thread switching.  Any interrupt occuring while in a critical
+ * section is made pending and returns immediately.  Interrupts are not
+ * physically disabled.
  *
- * Some of these routines take a struct thread pointer as an argument.  This
- * pointer MUST be curthread and is only passed as an optimization.
+ * Hard critical sections prevent preemption and disallow any blocking
+ * or thread switching, and in addition will assert on any blockable
+ * operation (acquire token not already held, lockmgr, mutex ops, or
+ * splz).  Spinlocks can still be used in hard sections.
  *
- * Synchronous switching and blocking is allowed while in a critical section.
+ * All critical section routines only operate on the current thread.
+ * Passed gd or td arguments are simply optimizations when mycpu or
+ * curthread is already available to the caller.
  */
 
+/*
+ * crit_enter
+ */
 static __inline void
-_crit_enter(__DEBUG_CRIT_ARG__)
+_crit_enter_quick(thread_t td __DEBUG_CRIT_ADD_ARG__)
 {
-    struct thread *td = curthread;
-
-#ifdef INVARIANTS
-    if (td->td_critcount < 0)
-	crit_panic();
-#endif
     ++td->td_critcount;
     __DEBUG_CRIT_ENTER(td);
     cpu_ccfence();
 }
 
 static __inline void
-_crit_enter_quick(struct thread *curtd __DEBUG_CRIT_ADD_ARG__)
+_crit_enter(globaldata_t gd __DEBUG_CRIT_ADD_ARG__)
 {
-    ++curtd->td_critcount;
-    __DEBUG_CRIT_ENTER(curtd);
-    cpu_ccfence();
+    _crit_enter_quick(gd->gd_curthread __DEBUG_CRIT_PASS_ARG__);
 }
 
 static __inline void
-_crit_enter_gd(globaldata_t mygd __DEBUG_CRIT_ADD_ARG__)
+_crit_enter_hard(globaldata_t gd __DEBUG_CRIT_ADD_ARG__)
 {
-    _crit_enter_quick(mygd->gd_curthread __DEBUG_CRIT_PASS_ARG__);
+    _crit_enter_quick(gd->gd_curthread __DEBUG_CRIT_PASS_ARG__);
+    ++gd->gd_intr_nesting_level;
 }
 
-static __inline void
-_crit_exit_noyield(struct thread *curtd __DEBUG_CRIT_ADD_ARG__)
-{
-    __DEBUG_CRIT_EXIT(curtd);
-    --curtd->td_critcount;
-#ifdef INVARIANTS
-    if (curtd->td_critcount < 0)
-	crit_panic();
-#endif
-    cpu_ccfence();	/* prevent compiler reordering */
-}
 
+/*
+ * crit_exit*()
+ *
+ * NOTE: Conditionalizing just gd_reqflags, a case which is virtually
+ *	 never true regardless of crit_count, should result in 100%
+ *	 optimal code execution.  We don't check crit_count because
+ *	 it just bloats the inline and does not improve performance.
+ */
 static __inline void
-_crit_exit(__DEBUG_CRIT_ARG__)
+_crit_exit_noyield(thread_t td __DEBUG_CRIT_ADD_ARG__)
 {
-    thread_t td = curthread;
-
     __DEBUG_CRIT_EXIT(td);
     --td->td_critcount;
 #ifdef INVARIANTS
-    if (td->td_critcount < 0)
+    if (__predict_false(td->td_critcount < 0))
 	crit_panic();
 #endif
     cpu_ccfence();	/* prevent compiler reordering */
-    if (td->td_gd->gd_reqflags && td->td_critcount == 0)
-	splz_check();
 }
 
 static __inline void
-_crit_exit_quick(struct thread *curtd __DEBUG_CRIT_ADD_ARG__)
+_crit_exit_quick(thread_t td __DEBUG_CRIT_ADD_ARG__)
 {
-    globaldata_t gd = curtd->td_gd;
-
-    __DEBUG_CRIT_EXIT(curtd);
-    --curtd->td_critcount;
-    cpu_ccfence();	/* prevent compiler reordering */
-    if (gd->gd_reqflags && curtd->td_critcount == 0)
-	splz_check();
+    _crit_exit_noyield(td __DEBUG_CRIT_PASS_ARG__);
+    if (__predict_false(td->td_gd->gd_reqflags & RQF_IDLECHECK_MASK))
+	lwkt_maybe_splz(td);
 }
 
 static __inline void
-_crit_exit_gd(globaldata_t mygd __DEBUG_CRIT_ADD_ARG__)
+_crit_exit(globaldata_t gd __DEBUG_CRIT_ADD_ARG__)
 {
-    _crit_exit_quick(mygd->gd_curthread __DEBUG_CRIT_PASS_ARG__);
+    _crit_exit_quick(gd->gd_curthread __DEBUG_CRIT_PASS_ARG__);
+}
+
+static __inline void
+_crit_exit_hard(globaldata_t gd __DEBUG_CRIT_ADD_ARG__)
+{
+    --gd->gd_intr_nesting_level;
+    _crit_exit_quick(gd->gd_curthread __DEBUG_CRIT_PASS_ARG__);
 }
 
 static __inline int

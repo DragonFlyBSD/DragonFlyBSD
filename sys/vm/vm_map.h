@@ -385,6 +385,9 @@ vm_map_lock_upgrade(vm_map_t map) {
 #define		vm_map_max(map)		((map)->max_offset)
 #define		vm_map_pmap(map)	((map)->pmap)
 
+/*
+ * Must not block
+ */
 static __inline struct pmap *
 vmspace_pmap(struct vmspace *vmspace)
 {

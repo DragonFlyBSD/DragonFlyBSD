@@ -317,12 +317,10 @@ lwkt_relalltokens(thread_t td)
  */
 static __inline
 int
-_lwkt_trytokref2(lwkt_tokref_t nref, thread_t td)
+_lwkt_trytokref2(lwkt_tokref_t nref, thread_t td, int blocking)
 {
 	lwkt_token_t tok;
 	lwkt_tokref_t ref;
-
-	KKASSERT(td->td_gd->gd_intr_nesting_level == 0);
 
 	/*
 	 * Make sure the compiler does not reorder prior instructions
@@ -337,10 +335,15 @@ _lwkt_trytokref2(lwkt_tokref_t nref, thread_t td)
 	for (;;) {
 		/*
 		 * Try to acquire the token if we do not already have
-		 * it.
+		 * it.  This is not allowed if we are in a hard code
+		 * section (because it 'might' have blocked).
 		 */
 		ref = tok->t_ref;
 		if (ref == NULL) {
+			KASSERT((blocking == 0 ||
+				td->td_gd->gd_intr_nesting_level == 0),
+				("Attempt to acquire token %p not already "
+				 "held in hard code section", tok));
 			/*
 			 * NOTE: If atomic_cmpset_ptr() fails we have to
 			 *	 loop and try again.  It just means we
@@ -357,13 +360,22 @@ _lwkt_trytokref2(lwkt_tokref_t nref, thread_t td)
 		 * (it might belong to another thread and is thus
 		 * unstable), but we don't have to. We can simply
 		 * range-check it.
+		 *
+		 * It is ok to acquire a token that is already held
+		 * by the current thread when in a hard code section.
 		 */
 		if (ref >= &td->td_toks_base && ref < td->td_toks_stop)
 			return(TRUE);
 
 		/*
-		 * Otherwise we failed.
+		 * Otherwise we failed, and it is not ok to attempt to
+		 * acquire a token in a hard code section.
 		 */
+		KASSERT((blocking == 0 ||
+			td->td_gd->gd_intr_nesting_level == 0),
+			("Attempt to acquire token %p not already "
+			 "held in hard code section", tok));
+
 		return(FALSE);
 	}
 }
@@ -379,7 +391,7 @@ _lwkt_trytokref(lwkt_tokref_t ref, thread_t td)
 		if (try_mplock() == 0)
 			return (FALSE);
 	}
-	if (_lwkt_trytokref2(ref, td) == FALSE) {
+	if (_lwkt_trytokref2(ref, td, 0) == FALSE) {
 		/*
 		 * Cleanup, deactivate the failed token.
 		 */
@@ -400,7 +412,7 @@ _lwkt_gettokref(lwkt_tokref_t ref, thread_t td, const void **stkframe)
 {
 	if ((ref->tr_flags & LWKT_TOKEN_MPSAFE) == 0)
 		get_mplock();
-	if (_lwkt_trytokref2(ref, td) == FALSE) {
+	if (_lwkt_trytokref2(ref, td, 1) == FALSE) {
 		/*
 		 * Give up running if we can't acquire the token right now.
 		 *
@@ -432,6 +444,20 @@ lwkt_gettoken(lwkt_token_t tok)
 	_lwkt_tokref_init(ref, tok, td);
 	++td->td_toks_stop;
 	_lwkt_gettokref(ref, td, (const void **)&tok);
+}
+
+void
+lwkt_gettoken_hard(lwkt_token_t tok)
+{
+	thread_t td = curthread;
+	lwkt_tokref_t ref;
+
+	ref = td->td_toks_stop;
+	KKASSERT(ref < &td->td_toks_end);
+	_lwkt_tokref_init(ref, tok, td);
+	++td->td_toks_stop;
+	_lwkt_gettokref(ref, td, (const void **)&tok);
+	crit_enter_hard_gd(td->td_gd);
 }
 
 lwkt_token_t
@@ -501,6 +527,13 @@ lwkt_reltoken(lwkt_token_t tok)
 	 */
 	if (tok->t_ref == ref)
 		tok->t_ref = NULL;
+}
+
+void
+lwkt_reltoken_hard(lwkt_token_t tok)
+{
+	lwkt_reltoken(tok);
+	crit_exit_hard();
 }
 
 /*

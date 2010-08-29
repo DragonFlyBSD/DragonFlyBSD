@@ -55,12 +55,6 @@
 #include <sys/spinlock2.h>
 
 /*
- * 0: no warnings, 1: warnings, 2: panic
- */
-static int lockmgr_from_int = 1;
-SYSCTL_INT(_debug, OID_AUTO, lockmgr_from_int, CTLFLAG_RW, &lockmgr_from_int, 0, "");
-
-/*
  * Locking primitives implementation.
  * Locks provide shared/exclusive sychronization.
  */
@@ -174,33 +168,20 @@ debuglockmgr(struct lock *lkp, u_int flags,
 	error = 0;
 	dowakeup = 0;
 
-	if (lockmgr_from_int && mycpu->gd_intr_nesting_level &&
+	if (mycpu->gd_intr_nesting_level &&
 	    (flags & LK_NOWAIT) == 0 &&
 	    (flags & LK_TYPE_MASK) != LK_RELEASE && didpanic == 0) {
+
 #ifndef DEBUG_LOCKS
-		    if (lockmgr_from_int == 2) {
-			    didpanic = 1;
-			    panic(
-				"lockmgr %s from %p: called from interrupt",
-				lkp->lk_wmesg, ((int **)&lkp)[-1]);
-			    didpanic = 0;
-		    } else {
-			    kprintf(
-				"lockmgr %s from %p: called from interrupt\n",
-				lkp->lk_wmesg, ((int **)&lkp)[-1]);
-		    }
+		didpanic = 1;
+		panic("lockmgr %s from %p: called from interrupt, ipi, "
+		      "or hard code section",
+		      lkp->lk_wmesg, ((int **)&lkp)[-1]);
 #else
-		    if (lockmgr_from_int == 2) {
-			    didpanic = 1;
-			    panic(
-				"lockmgr %s from %s:%d: called from interrupt",
-				lkp->lk_wmesg, file, line);
-			    didpanic = 0;
-		    } else {
-			    kprintf(
-				"lockmgr %s from %s:%d: called from interrupt\n",
-				lkp->lk_wmesg, file, line);
-		    }
+		didpanic = 1;
+		panic("lockmgr %s from %s:%d: called from interrupt, ipi, "
+		      "or hard code section",
+		      lkp->lk_wmesg, file, line);
 #endif
 	}
 

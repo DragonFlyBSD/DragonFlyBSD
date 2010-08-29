@@ -100,6 +100,28 @@ cpu_get_initial_mplock(void)
 }
 
 /*
+ * This code is called from the get_mplock() inline when the mplock
+ * is not already held.
+ */
+void
+_get_mplock_predisposed(const char *file, int line)
+{
+	globaldata_t gd = mycpu;
+
+	if (gd->gd_intr_nesting_level) {
+		panic("Attempt to acquire mplock not already held "
+		      "in hard section, ipi or interrupt %s:%d",
+		      file, line);
+	}
+	if (atomic_cmpset_int(&mp_lock, -1, gd->gd_cpuid) == 0)
+		_get_mplock_contested(file, line);
+#ifdef INVARIANTS
+	mp_lock_holder_file = file;
+	mp_lock_holder_line = line;
+#endif
+}
+
+/*
  * Called when the MP lock could not be trvially acquired.  The caller
  * has already bumped td_mpcount.
  */

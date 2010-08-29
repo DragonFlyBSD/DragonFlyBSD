@@ -130,8 +130,39 @@ typedef struct lwkt_token {
 	.t_desc = #name			\
 }
 
-#define ASSERT_LWKT_TOKEN_HELD(tok) \
+/*
+ * Assert that a particular token is held
+ */
+#define ASSERT_LWKT_TOKEN_HELD(tok)	\
 	KKASSERT((tok)->t_ref && (tok)->t_ref->tr_owner == curthread)
+
+/*
+ * Assert that a particular token is held and we are in a hard
+ * code execution section (interrupt, ipi, or hard code section).
+ * Hard code sections are not allowed to block or potentially block.
+ * e.g. lwkt_gettoken() would only be ok if the token were already
+ * held.
+ */
+#define ASSERT_LWKT_TOKEN_HARD(tok)					\
+	do {								\
+		globaldata_t zgd __debugvar = mycpu;			\
+		KKASSERT((tok)->t_ref &&				\
+			 (tok)->t_ref->tr_owner == zgd->gd_curthread &&	\
+			 zgd->gd_intr_nesting_level > 0);		\
+	} while(0)
+
+/*
+ * Assert that a particular token is held and we are in a normal
+ * critical section.  Critical sections will not be preempted but
+ * can explicitly block (tsleep, lwkt_gettoken, etc).
+ */
+#define ASSERT_LWKT_TOKEN_CRIT(tok)					\
+	do {								\
+		globaldata_t zgd __debugvar = mycpu;			\
+		KKASSERT((tok)->t_ref &&				\
+			 (tok)->t_ref->tr_owner == zgd->gd_curthread &&	\
+			 zgd->gd_curthread->td_critcount > 0);		\
+	} while(0)
 
 struct lwkt_tokref {
     lwkt_token_t	tr_tok;		/* token in question */
@@ -399,10 +430,13 @@ extern void lwkt_token_wait(void);
 extern void lwkt_hold(thread_t);
 extern void lwkt_rele(thread_t);
 extern void lwkt_passive_release(thread_t);
+extern void lwkt_maybe_splz(thread_t);
 
 extern void lwkt_gettoken(lwkt_token_t);
+extern void lwkt_gettoken_hard(lwkt_token_t);
 extern int  lwkt_trytoken(lwkt_token_t);
 extern void lwkt_reltoken(lwkt_token_t);
+extern void lwkt_reltoken_hard(lwkt_token_t);
 extern int  lwkt_getalltokens(thread_t, const char **, const void **);
 extern void lwkt_relalltokens(thread_t);
 extern void lwkt_drain_token_requests(void);
@@ -450,7 +484,7 @@ extern void lwkt_cpusync_start(cpumask_t, lwkt_cpusync_t);
 extern void lwkt_cpusync_add(cpumask_t, lwkt_cpusync_t);
 extern void lwkt_cpusync_finish(lwkt_cpusync_t);
 
-extern void crit_panic(void);
+extern void crit_panic(void) __dead2;
 extern struct lwp *lwkt_preempted_proc(void);
 
 extern int  lwkt_create (void (*func)(void *), void *, struct thread **,

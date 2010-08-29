@@ -22,6 +22,7 @@
 #define try_mplock()		try_mplock_debug(__FILE__, __LINE__)
 #define cpu_try_mplock()	cpu_try_mplock_debug(__FILE__, __LINE__)
 
+void _get_mplock_predisposed(const char *file, int line);
 void _get_mplock_contested(const char *file, int line);
 void _try_mplock_contested(const char *file, int line);
 void _cpu_try_mplock_contested(const char *file, int line);
@@ -41,9 +42,8 @@ extern int mp_lock_holder_line;
  * In order to acquire the MP lock we must first pre-dispose td_mpcount
  * for the acquisition and then get the actual lock.
  *
- * The contested function is called only if we do not have or are unable
- * to acquire the actual lock.  It will not return until the lock has
- * been acquired.
+ * The mplock must check a number of conditions and it is better to
+ * leave it to a procedure if we cannot get it trivially.
  */
 static __inline
 void
@@ -53,14 +53,8 @@ get_mplock_debug(const char *file, int line)
 	thread_t td = gd->gd_curthread;
 
 	++td->td_mpcount;
-	if (mp_lock != gd->gd_cpuid) {
-		if (atomic_cmpset_int(&mp_lock, -1, gd->gd_cpuid) == 0)
-			_get_mplock_contested(file, line);
-#ifdef INVARIANTS
-		mp_lock_holder_file = file;
-		mp_lock_holder_line = line;
-#endif
-	}
+	if (mp_lock != gd->gd_cpuid)
+		_get_mplock_predisposed(file, line);
 }
 
 /*

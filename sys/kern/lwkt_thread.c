@@ -520,8 +520,10 @@ lwkt_switch(void)
 	int savegdtrap;
 
 	if (gd->gd_trap_nesting_level == 0 && panicstr == NULL) {
-	    panic("lwkt_switch: cannot switch from within "
-		  "a fast interrupt, yet, td %p\n", td);
+	    panic("lwkt_switch: Attempt to switch from a "
+		  "a fast interrupt, ipi, or hard code section, "
+		  "td %p\n",
+		  td);
 	} else {
 	    savegdnest = gd->gd_intr_nesting_level;
 	    savegdtrap = gd->gd_trap_nesting_level;
@@ -529,7 +531,8 @@ lwkt_switch(void)
 	    gd->gd_trap_nesting_level = 0;
 	    if ((td->td_flags & TDF_PANICWARN) == 0) {
 		td->td_flags |= TDF_PANICWARN;
-		kprintf("Warning: thread switch from interrupt or IPI, "
+		kprintf("Warning: thread switch from interrupt, IPI, "
+			"or hard code section.\n"
 			"thread %p (%s)\n", td, td->td_comm);
 		print_backtrace(-1);
 	    }
@@ -1049,12 +1052,8 @@ lwkt_preempt(thread_t ntd, int critcount)
 
 /*
  * Conditionally call splz() if gd_reqflags indicates work is pending.
- *
- * td_nest_count prevents deep nesting via splz() or doreti() which
- * might otherwise blow out the kernel stack.  Note that except for
- * this special case, we MUST call splz() here to handle any
- * pending ints, particularly after we switch, or we might accidently
- * halt the cpu with interrupts pending.
+ * This will work inside a critical section but not inside a hard code
+ * section.
  *
  * (self contained on a per cpu basis)
  */
@@ -1064,8 +1063,32 @@ splz_check(void)
     globaldata_t gd = mycpu;
     thread_t td = gd->gd_curthread;
 
-    if ((gd->gd_reqflags & RQF_IDLECHECK_MASK) && td->td_nest_count < 2)
+    if ((gd->gd_reqflags & RQF_IDLECHECK_MASK) &&
+	gd->gd_intr_nesting_level == 0 &&
+	td->td_nest_count < 2)
+    {
 	splz();
+    }
+}
+
+/*
+ * This version is integrated into crit_exit, reqflags has already
+ * been tested but td_critcount has not.
+ *
+ * We only want to execute the splz() on the 1->0 transition of
+ * critcount and not in a hard code section or if too deeply nested.
+ */
+void
+lwkt_maybe_splz(thread_t td)
+{
+    globaldata_t gd = td->td_gd;
+
+    if (td->td_critcount == 0 &&
+	gd->gd_intr_nesting_level == 0 &&
+	td->td_nest_count < 2)
+    {
+	splz();
+    }
 }
 
 /*
@@ -1660,6 +1683,7 @@ crit_panic(void)
 
     td->td_critcount = 0;
     panic("td_critcount is/would-go negative! %p %d", td, lcrit);
+    /* NOT REACHED */
 }
 
 #ifdef SMP
