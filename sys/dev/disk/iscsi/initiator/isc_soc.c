@@ -612,7 +612,7 @@ isc_soc(void *vp)
 	  }
      }
      sdebug(2, "terminated, flags=%x so_state=%x error=%d proc=%p",
-	    sp->flags, so->so_state, error, sp->proc);
+	    sp->flags, so ? so->so_state : 0, error, sp->proc);
      if((sp->proc != NULL) && sp->signal) {
 	  PROC_LOCK(sp->proc);
 	  ksignal(sp->proc, sp->signal);
