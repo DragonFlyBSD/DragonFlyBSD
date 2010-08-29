@@ -6027,7 +6027,7 @@ ahd_alloc_scbs(struct ahd_softc *ahd)
 
 		/* Allocate the next batch of hardware SCBs */
 		if (aic_dmamem_alloc(ahd, scb_data->hscb_dmat,
-				     (void **)&hscb_map->vaddr,
+				     (void *)&hscb_map->vaddr,
 				     BUS_DMA_NOWAIT, &hscb_map->dmamap) != 0) {
 			kfree(hscb_map, M_DEVBUF);
 			return (0);
@@ -6057,7 +6057,7 @@ ahd_alloc_scbs(struct ahd_softc *ahd)
 
 		/* Allocate the next batch of S/G lists */
 		if (aic_dmamem_alloc(ahd, scb_data->sg_dmat,
-				     (void **)&sg_map->vaddr,
+				     (void *)&sg_map->vaddr,
 				     BUS_DMA_NOWAIT, &sg_map->dmamap) != 0) {
 			kfree(sg_map, M_DEVBUF);
 			return (0);
@@ -6091,7 +6091,7 @@ ahd_alloc_scbs(struct ahd_softc *ahd)
 
 		/* Allocate the next batch of sense buffers */
 		if (aic_dmamem_alloc(ahd, scb_data->sense_dmat,
-				     (void **)&sense_map->vaddr,
+				     (void *)&sense_map->vaddr,
 				     BUS_DMA_NOWAIT, &sense_map->dmamap) != 0) {
 			kfree(sense_map, M_DEVBUF);
 			return (0);
@@ -6309,7 +6309,7 @@ ahd_init(struct ahd_softc *ahd)
 
 	/* Allocation of driver data */
 	if (aic_dmamem_alloc(ahd, ahd->shared_data_dmat,
-			     (void **)&ahd->shared_data_map.vaddr,
+			     (void *)&ahd->shared_data_map.vaddr,
 			     BUS_DMA_NOWAIT,
 			     &ahd->shared_data_map.dmamap) != 0) {
 		return (ENOMEM);

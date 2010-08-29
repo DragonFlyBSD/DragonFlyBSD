@@ -735,7 +735,7 @@ ciss_flush_adapter(struct ciss_softc *sc)
      */
     cbfc = kmalloc(sizeof(*cbfc), CISS_MALLOC_CLASS, M_INTWAIT | M_ZERO);
     if ((error = ciss_get_bmic_request(sc, &cr, CISS_BMIC_FLUSH_CACHE,
-				       (void **)&cbfc, sizeof(*cbfc))) != 0)
+				       (void *)&cbfc, sizeof(*cbfc))) != 0)
 	goto out;
 
     /*
@@ -861,7 +861,7 @@ ciss_identify_adapter(struct ciss_softc *sc)
      * Get a request, allocate storage for the adapter data.
      */
     if ((error = ciss_get_bmic_request(sc, &cr, CISS_BMIC_ID_CTLR,
-				       (void **)&sc->ciss_id,
+				       (void *)&sc->ciss_id,
 				       sizeof(*sc->ciss_id))) != 0)
 	goto out;
 
@@ -1341,7 +1341,7 @@ ciss_identify_logical(struct ciss_softc *sc, struct ciss_ldrive *ld)
      * Build a BMIC request to fetch the drive ID.
      */
     if ((error = ciss_get_bmic_request(sc, &cr, CISS_BMIC_ID_LDRIVE,
-				       (void **)&ld->cl_ldrive,
+				       (void *)&ld->cl_ldrive,
 				       sizeof(*ld->cl_ldrive))) != 0)
 	goto out;
     cc = CISS_FIND_COMMAND(cr);
@@ -1437,7 +1437,7 @@ ciss_get_ldrive_status(struct ciss_softc *sc,  struct ciss_ldrive *ld)
      * Build a CISS BMIC command to get the logical drive status.
      */
     if ((error = ciss_get_bmic_request(sc, &cr, CISS_BMIC_ID_LSTATUS,
-				       (void **)&ld->cl_lstatus,
+				       (void *)&ld->cl_lstatus,
 				       sizeof(*ld->cl_lstatus))) != 0)
 	goto out;
     cc = CISS_FIND_COMMAND(cr);

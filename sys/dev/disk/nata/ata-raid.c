@@ -1024,6 +1024,7 @@ ata_raid_create(struct ata_ioc_raid_config *config)
     device_t subdisk;
     int array, disk;
     int ctlr = 0, disk_size = 0, total_disks = 0;
+    device_t gpdev;
 
     for (array = 0; array < MAX_ARRAYS; array++) {
 	if (!ata_raid_arrays[array])
@@ -1048,7 +1049,9 @@ ata_raid_create(struct ata_ioc_raid_config *config)
 	    }
 	    rdp->disks[disk].dev = device_get_parent(subdisk);
 
-	    switch (pci_get_vendor(GRANDPARENT(rdp->disks[disk].dev))) {
+	    gpdev = GRANDPARENT(rdp->disks[disk].dev);
+
+	    switch (pci_get_vendor(gpdev)) {
 	    case ATA_HIGHPOINT_ID:
 		/* 
 		 * we need some way to decide if it should be v2 or v3
@@ -1393,10 +1396,16 @@ ata_raid_read_metadata(device_t subdisk)
 {
     devclass_t pci_devclass = devclass_find("pci");
     devclass_t devclass=device_get_devclass(GRANDPARENT(GRANDPARENT(subdisk)));
+    device_t gpdev;
+    uint16_t vendor;
 
     /* prioritize vendor native metadata layout if possible */
     if (devclass == pci_devclass) {
-	switch (pci_get_vendor(GRANDPARENT(device_get_parent(subdisk)))) {
+	gpdev = device_get_parent(subdisk);
+	gpdev = GRANDPARENT(gpdev);
+	vendor = pci_get_vendor(gpdev);
+
+	switch (vendor) {
 	case ATA_HIGHPOINT_ID: 
 	    if (ata_raid_hptv3_read_meta(subdisk, ata_raid_arrays))
 		return 0;

@@ -247,7 +247,7 @@ adv_eisa_attach(device_t dev)
 			goto bad;
        		}
 		if (bus_dmamem_alloc(overrun_dmat,
-				     (void **)&overrun_buf,
+				     (void *)&overrun_buf,
 				     BUS_DMA_NOWAIT,
 				     &overrun_dmamap) != 0) {
 			bus_dma_tag_destroy(overrun_dmat);

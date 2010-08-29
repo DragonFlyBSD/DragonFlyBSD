@@ -1840,7 +1840,7 @@ msk_txrx_dma_alloc(struct msk_if_softc *sc_if)
 	/* Create DMA stuffs for Tx ring. */
 	error = msk_dmamem_create(sc_if->msk_if_dev, MSK_TX_RING_SZ,
 				  &sc_if->msk_cdata.msk_tx_ring_tag,
-				  (void **)&sc_if->msk_rdata.msk_tx_ring,
+				  (void *)&sc_if->msk_rdata.msk_tx_ring,
 				  &sc_if->msk_rdata.msk_tx_ring_paddr,
 				  &sc_if->msk_cdata.msk_tx_ring_map);
 	if (error) {
@@ -1852,7 +1852,7 @@ msk_txrx_dma_alloc(struct msk_if_softc *sc_if)
 	/* Create DMA stuffs for Rx ring. */
 	error = msk_dmamem_create(sc_if->msk_if_dev, MSK_RX_RING_SZ,
 				  &sc_if->msk_cdata.msk_rx_ring_tag,
-				  (void **)&sc_if->msk_rdata.msk_rx_ring,
+				  (void *)&sc_if->msk_rdata.msk_rx_ring,
 				  &sc_if->msk_rdata.msk_rx_ring_paddr,
 				  &sc_if->msk_cdata.msk_rx_ring_map);
 	if (error) {

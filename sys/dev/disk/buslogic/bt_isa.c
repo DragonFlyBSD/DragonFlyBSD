@@ -266,7 +266,7 @@ bt_isa_attach(device_t dev)
 
 		/* Allocation of sense buffers */
 		if (bus_dmamem_alloc(bt->sense_dmat,
-				     (void **)&bt->sense_buffers,
+				     (void *)&bt->sense_buffers,
 				     BUS_DMA_NOWAIT, &bt->sense_dmamap) != 0) {
 			bt_isa_release_resources(dev);
 			return (ENOMEM);

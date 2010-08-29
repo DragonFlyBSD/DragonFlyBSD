@@ -933,8 +933,10 @@ saioctl(struct dev_ioctl_args *ap)
 		 * and ask the drive again what it's set to.
 		 */
 		if (!SA_IS_CTRL(dev) && !softc->open_pending_mount) {
-			u_int8_t write_protect;
-			int comp_enabled, comp_supported;
+			u_int8_t write_protect = 0;	/* silence gcc */
+			int comp_enabled = 0;		/* silence gcc */
+			int comp_supported = 0;		/* silence gcc */
+
 			error = sagetparams(periph, SA_PARAM_ALL,
 			    &softc->media_blksize, &softc->media_density,
 			    &softc->media_numblks, &softc->buffer_mode,
@@ -1908,8 +1910,10 @@ samount(struct cam_periph *periph, int oflags, cdev_t dev)
 
 	if ((softc->flags & SA_FLAG_TAPE_MOUNTED) == 0) {
 		struct scsi_read_block_limits_data *rblim = NULL;
-		int comp_enabled, comp_supported;
-		u_int8_t write_protect, guessing = 0;
+		int comp_enabled = 0;		/* silence gcc */
+		int comp_supported = 0;		/* silence gcc */
+		u_int8_t write_protect = 0;	/* silence gcc */
+		u_int8_t guessing = 0;
 
 		/*
 		 * Clear out old state.
@@ -2729,10 +2733,10 @@ sasetparams(struct cam_periph *periph, sa_params params_to_set,
 	    u_int32_t sense_flags)
 {
 	struct sa_softc *softc;
-	u_int32_t current_blocksize;
+	u_int32_t current_blocksize = 0;/* silence gcc */
 	u_int32_t current_calg;
-	u_int8_t current_density;
-	u_int8_t current_speed;
+	u_int8_t current_density = 0;	/* silence gcc */
+	u_int8_t current_speed = 0;	/* silence gcc */
 	int comp_enabled, comp_supported;
 	void *mode_buffer;
 	int mode_buffer_len;

@@ -1489,7 +1489,7 @@ fw_bus_explore_callback(struct fw_xfer *xfer)
 	if(fc->ongodev == NULL){
 		if(sfp->mode.rreqq.dest_lo == (0xf0000000 | CSRROMOFF)){
 			rfp->mode.rresq.data = ntohl(rfp->mode.rresq.data);
-			chdr = (struct csrhdr *)(&rfp->mode.rresq.data);
+			chdr = (struct csrhdr *)(void *)(&rfp->mode.rresq.data);
 /* If CSR is minimal confinguration, more investgation is not needed. */
 			if(chdr->info_len == 1){
 				if (firewire_debug)

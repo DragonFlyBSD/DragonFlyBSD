@@ -612,15 +612,15 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 			return(EINVAL);
 		}
 		if (ccb->cdm.pattern_buf_len > 0) {
-			data_ptrs[0] = (u_int8_t **)&ccb->cdm.patterns;
+			data_ptrs[0] = (void *)&ccb->cdm.patterns;
 			lengths[0] = ccb->cdm.pattern_buf_len;
 			mapinfo->dirs[0] = CAM_DIR_OUT;
-			data_ptrs[1] = (u_int8_t **)&ccb->cdm.matches;
+			data_ptrs[1] = (void *)&ccb->cdm.matches;
 			lengths[1] = ccb->cdm.match_buf_len;
 			mapinfo->dirs[1] = CAM_DIR_IN;
 			numbufs = 2;
 		} else {
-			data_ptrs[0] = (u_int8_t **)&ccb->cdm.matches;
+			data_ptrs[0] = (void *)&ccb->cdm.matches;
 			lengths[0] = ccb->cdm.match_buf_len;
 			mapinfo->dirs[0] = CAM_DIR_IN;
 			numbufs = 1;
@@ -785,10 +785,10 @@ cam_periph_unmapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 		numbufs = min(mapinfo->num_bufs_used, 2);
 
 		if (numbufs == 1) {
-			data_ptrs[0] = (u_int8_t **)&ccb->cdm.matches;
+			data_ptrs[0] = (void *)&ccb->cdm.matches;
 		} else {
-			data_ptrs[0] = (u_int8_t **)&ccb->cdm.patterns;
-			data_ptrs[1] = (u_int8_t **)&ccb->cdm.matches;
+			data_ptrs[0] = (void *)&ccb->cdm.patterns;
+			data_ptrs[1] = (void *)&ccb->cdm.matches;
 		}
 		break;
 	case XPT_SCSI_IO:

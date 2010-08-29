@@ -1641,10 +1641,10 @@ nfe_alloc_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 	void **desc;
 
 	if (sc->sc_caps & NFE_40BIT_ADDR) {
-		desc = (void **)&ring->desc64;
+		desc = (void *)&ring->desc64;
 		descsize = sizeof(struct nfe_desc64);
 	} else {
-		desc = (void **)&ring->desc32;
+		desc = (void *)&ring->desc32;
 		descsize = sizeof(struct nfe_desc32);
 	}
 
@@ -1929,10 +1929,10 @@ nfe_alloc_tx_ring(struct nfe_softc *sc, struct nfe_tx_ring *ring)
 	void **desc;
 
 	if (sc->sc_caps & NFE_40BIT_ADDR) {
-		desc = (void **)&ring->desc64;
+		desc = (void *)&ring->desc64;
 		descsize = sizeof(struct nfe_desc64);
 	} else {
-		desc = (void **)&ring->desc32;
+		desc = (void *)&ring->desc32;
 		descsize = sizeof(struct nfe_desc32);
 	}
 

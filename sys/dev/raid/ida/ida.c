@@ -224,7 +224,7 @@ ida_init(struct ida_softc *ida)
         /* Allocation of hardware QCBs */
 	/* XXX allocation is rounded to hardware page size */
 	error = bus_dmamem_alloc(ida->hwqcb_dmat,
-	    (void **)&ida->hwqcbs, BUS_DMA_NOWAIT, &ida->hwqcb_dmamap);
+	    (void *)&ida->hwqcbs, BUS_DMA_NOWAIT, &ida->hwqcb_dmamap);
 	if (error)
                 return (ENOMEM);
 

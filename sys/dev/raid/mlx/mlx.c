@@ -257,7 +257,7 @@ mlx_sglist_map(struct mlx_softc *sc)
      * contiguous slab.  We may need to switch to a more complex arrangement where
      * we allocate in smaller chunks and keep a lookup table from slot to bus address.
      */
-    error = bus_dmamem_alloc(sc->mlx_sg_dmat, (void **)&sc->mlx_sgtable, BUS_DMA_NOWAIT, &sc->mlx_sg_dmamap);
+    error = bus_dmamem_alloc(sc->mlx_sg_dmat, (void *)&sc->mlx_sgtable, BUS_DMA_NOWAIT, &sc->mlx_sg_dmamap);
     if (error) {
 	device_printf(sc->mlx_dev, "can't allocate s/g table\n");
 	return(ENOMEM);

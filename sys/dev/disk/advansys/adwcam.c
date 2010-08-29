@@ -160,7 +160,7 @@ adwallocsgmap(struct adw_softc *adw)
 	sg_map = kmalloc(sizeof(*sg_map), M_DEVBUF, M_INTWAIT);
 
 	/* Allocate S/G space for the next batch of ACBS */
-	if (bus_dmamem_alloc(adw->sg_dmat, (void **)&sg_map->sg_vaddr,
+	if (bus_dmamem_alloc(adw->sg_dmat, (void *)&sg_map->sg_vaddr,
 			     BUS_DMA_NOWAIT, &sg_map->sg_dmamap) != 0) {
 		kfree(sg_map, M_DEVBUF);
 		return (NULL);
@@ -1051,7 +1051,7 @@ adw_init(struct adw_softc *adw)
 	adw->init_level++;
 
 	/* Allocation for our ccb carrier structures */
-	if (bus_dmamem_alloc(adw->carrier_dmat, (void **)&adw->carriers,
+	if (bus_dmamem_alloc(adw->carrier_dmat, (void *)&adw->carriers,
 			     BUS_DMA_NOWAIT, &adw->carrier_dmamap) != 0) {
 		return (ENOMEM);
 	}
@@ -1105,7 +1105,7 @@ adw_init(struct adw_softc *adw)
 	adw->init_level++;
 
 	/* Allocation for our ccbs */
-	if (bus_dmamem_alloc(adw->acb_dmat, (void **)&adw->acbs,
+	if (bus_dmamem_alloc(adw->acb_dmat, (void *)&adw->acbs,
 			     BUS_DMA_NOWAIT, &adw->acb_dmamap) != 0)
 		return (ENOMEM);
 

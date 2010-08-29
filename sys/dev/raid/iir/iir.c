@@ -236,7 +236,7 @@ iir_init(struct gdt_softc *gdt)
     gdt->sc_init_level++;
 
     /* Allocation for our ccb scratch area */
-    if (bus_dmamem_alloc(gdt->sc_gcscratch_dmat, (void **)&gdt->sc_gcscratch,
+    if (bus_dmamem_alloc(gdt->sc_gcscratch_dmat, (void *)&gdt->sc_gcscratch,
                          BUS_DMA_NOWAIT, &gdt->sc_gcscratch_dmamap) != 0) {
         kprintf("iir%d: bus_dmamem_alloc(...,&gdt->sc_gcscratch,...) failed\n",
                gdt->sc_hanum);

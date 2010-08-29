@@ -767,7 +767,7 @@ bge_alloc_jumbo_mem(struct bge_softc *sc)
 	error = bge_dma_block_alloc(sc, BGE_JUMBO_RX_RING_SZ,
 				    &sc->bge_cdata.bge_rx_jumbo_ring_tag,
 				    &sc->bge_cdata.bge_rx_jumbo_ring_map,
-				    (void **)&sc->bge_ldata.bge_rx_jumbo_ring,
+				    (void *)&sc->bge_ldata.bge_rx_jumbo_ring,
 				    &sc->bge_ldata.bge_rx_jumbo_ring_paddr);
 	if (error) {
 		if_printf(ifp, "could not create jumbo RX ring\n");
@@ -3506,7 +3506,7 @@ bge_dma_alloc(struct bge_softc *sc)
 	error = bge_dma_block_alloc(sc, BGE_STD_RX_RING_SZ,
 				    &sc->bge_cdata.bge_rx_std_ring_tag,
 				    &sc->bge_cdata.bge_rx_std_ring_map,
-				    (void **)&sc->bge_ldata.bge_rx_std_ring,
+				    (void *)&sc->bge_ldata.bge_rx_std_ring,
 				    &sc->bge_ldata.bge_rx_std_ring_paddr);
 	if (error) {
 		if_printf(ifp, "could not create std RX ring\n");
@@ -3530,7 +3530,7 @@ bge_dma_alloc(struct bge_softc *sc)
 	error = bge_dma_block_alloc(sc, BGE_RX_RTN_RING_SZ(sc),
 				    &sc->bge_cdata.bge_rx_return_ring_tag,
 				    &sc->bge_cdata.bge_rx_return_ring_map,
-				    (void **)&sc->bge_ldata.bge_rx_return_ring,
+				    (void *)&sc->bge_ldata.bge_rx_return_ring,
 				    &sc->bge_ldata.bge_rx_return_ring_paddr);
 	if (error) {
 		if_printf(ifp, "could not create RX ret ring\n");
@@ -3543,7 +3543,7 @@ bge_dma_alloc(struct bge_softc *sc)
 	error = bge_dma_block_alloc(sc, BGE_TX_RING_SZ,
 				    &sc->bge_cdata.bge_tx_ring_tag,
 				    &sc->bge_cdata.bge_tx_ring_map,
-				    (void **)&sc->bge_ldata.bge_tx_ring,
+				    (void *)&sc->bge_ldata.bge_tx_ring,
 				    &sc->bge_ldata.bge_tx_ring_paddr);
 	if (error) {
 		if_printf(ifp, "could not create TX ring\n");
@@ -3556,7 +3556,7 @@ bge_dma_alloc(struct bge_softc *sc)
 	error = bge_dma_block_alloc(sc, BGE_STATUS_BLK_SZ,
 				    &sc->bge_cdata.bge_status_tag,
 				    &sc->bge_cdata.bge_status_map,
-				    (void **)&sc->bge_ldata.bge_status_block,
+				    (void *)&sc->bge_ldata.bge_status_block,
 				    &sc->bge_ldata.bge_status_block_paddr);
 	if (error) {
 		if_printf(ifp, "could not create status block\n");
@@ -3569,7 +3569,7 @@ bge_dma_alloc(struct bge_softc *sc)
 	error = bge_dma_block_alloc(sc, BGE_STATS_SZ,
 				    &sc->bge_cdata.bge_stats_tag,
 				    &sc->bge_cdata.bge_stats_map,
-				    (void **)&sc->bge_ldata.bge_stats,
+				    (void *)&sc->bge_ldata.bge_stats,
 				    &sc->bge_ldata.bge_stats_paddr);
 	if (error) {
 		if_printf(ifp, "could not create stats block\n");

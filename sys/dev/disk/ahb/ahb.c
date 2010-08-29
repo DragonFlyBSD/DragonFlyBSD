@@ -316,7 +316,7 @@ ahbattach(device_t dev)
 	ahb->init_level++;
 
 	/* Allocation for our ccbs */
-	if (bus_dmamem_alloc(ahb->ecb_dmat, (void **)&ahb->ecb_array,
+	if (bus_dmamem_alloc(ahb->ecb_dmat, (void *)&ahb->ecb_array,
 			     BUS_DMA_NOWAIT, &ahb->ecb_dmamap) != 0)
 		goto error_exit;
 

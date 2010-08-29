@@ -1360,7 +1360,7 @@ adv_attach(struct adv_softc *adv)
 	adv->init_level++;
 
 	/* Allocation for our sense buffers */
-	if (bus_dmamem_alloc(adv->sense_dmat, (void **)&adv->sense_buffers,
+	if (bus_dmamem_alloc(adv->sense_dmat, (void *)&adv->sense_buffers,
 			     BUS_DMA_NOWAIT, &adv->sense_dmamap) != 0) {
 		return (ENOMEM);
 	}

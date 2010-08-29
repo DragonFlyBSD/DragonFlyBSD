@@ -303,7 +303,7 @@ ahd_setup_data_scb(struct ahd_softc *ahd, struct scb *scb)
 		uint32_t *dataptr_words;
 
 		sg = (struct ahd_dma_seg *)scb->sg_list;
-		dataptr_words = (uint32_t*)&scb->hscb->dataptr;
+		dataptr_words = (uint32_t*)(void *)&scb->hscb->dataptr;
 		dataptr_words[0] = sg->addr;
 		dataptr_words[1] = 0;
 		if ((ahd->flags & AHD_39BIT_ADDRESSING) != 0) {

@@ -525,7 +525,7 @@ amr_sglist_map(struct amr_softc *sc)
      *	               avoid this with the tag setup, but that does't seem to work.
      */
 retry:
-    error = bus_dmamem_alloc(sc->amr_sg_dmat, (void **)&sc->amr_sgtable, BUS_DMA_NOWAIT, &sc->amr_sg_dmamap);
+    error = bus_dmamem_alloc(sc->amr_sg_dmat, (void *)&sc->amr_sgtable, BUS_DMA_NOWAIT, &sc->amr_sg_dmamap);
     if (error) {
 	device_printf(sc->amr_dev, "can't allocate s/g table\n");
 	return(ENOMEM);
@@ -585,7 +585,7 @@ amr_setup_mbox(struct amr_softc *sc)
      * Allocate the mailbox structure and permanently map it into
      * controller-visible space.
      */
-    error = bus_dmamem_alloc(sc->amr_mailbox_dmat, (void **)&p, BUS_DMA_NOWAIT, 
+    error = bus_dmamem_alloc(sc->amr_mailbox_dmat, (void *)&p, BUS_DMA_NOWAIT,
 			     &sc->amr_mailbox_dmamap);
     if (error) {
 	device_printf(sc->amr_dev, "can't allocate mailbox memory\n");

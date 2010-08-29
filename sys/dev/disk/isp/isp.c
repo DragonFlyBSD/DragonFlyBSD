@@ -3154,7 +3154,7 @@ isp_start(XS_T *xs)
 		isp_update(isp);
 	}
 
-	if (isp_getrqentry(isp, &nxti, &optr, (void **)&qep)) {
+	if (isp_getrqentry(isp, &nxti, &optr, (void *)&qep)) {
 		isp_prt(isp, ISP_LOGDEBUG0, "Request Queue Overflow");
 		XS_SETERR(xs, HBA_BOTCH);
 		return (CMD_EAGAIN);
@@ -3183,7 +3183,7 @@ isp_start(XS_T *xs)
 			isp_put_request(isp, reqp, qep);
 			ISP_ADD_REQUEST(isp, nxti);
 			isp->isp_sendmarker &= ~(1 << i);
-			if (isp_getrqentry(isp, &nxti, &optr, (void **) &qep)) {
+			if (isp_getrqentry(isp, &nxti, &optr, (void *) &qep)) {
 				isp_prt(isp, ISP_LOGDEBUG0,
 				    "Request Queue Overflow+");
 				XS_SETERR(xs, HBA_BOTCH);

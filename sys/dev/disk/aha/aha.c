@@ -543,7 +543,7 @@ aha_init(struct aha_softc* aha)
 	aha->init_level++;
 
 	/* Allocation for our mailboxes */
-	if (bus_dmamem_alloc(aha->mailbox_dmat, (void **)&aha->out_boxes,
+	if (bus_dmamem_alloc(aha->mailbox_dmat, (void *)&aha->out_boxes,
 			     BUS_DMA_NOWAIT, &aha->mailbox_dmamap) != 0) {
 		goto error_exit;
 	}
@@ -578,7 +578,7 @@ aha_init(struct aha_softc* aha)
 	aha->init_level++;
 
 	/* Allocation for our ccbs */
-	if (bus_dmamem_alloc(aha->ccb_dmat, (void **)&aha->aha_ccb_array,
+	if (bus_dmamem_alloc(aha->ccb_dmat, (void *)&aha->aha_ccb_array,
 			     BUS_DMA_NOWAIT, &aha->ccb_dmamap) != 0) {
 		goto error_exit;
 	}
@@ -723,7 +723,7 @@ ahaallocccbs(struct aha_softc *aha)
 	sg_map = kmalloc(sizeof(*sg_map), M_DEVBUF, M_INTWAIT);
 
 	/* Allocate S/G space for the next batch of CCBS */
-	if (bus_dmamem_alloc(aha->sg_dmat, (void **)&sg_map->sg_vaddr,
+	if (bus_dmamem_alloc(aha->sg_dmat, (void *)&sg_map->sg_vaddr,
 			     BUS_DMA_NOWAIT, &sg_map->sg_dmamap) != 0) {
 		kfree(sg_map, M_DEVBUF);
 		return;

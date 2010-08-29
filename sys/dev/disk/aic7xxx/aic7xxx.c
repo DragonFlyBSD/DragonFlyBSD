@@ -4353,7 +4353,7 @@ ahc_init_scbdata(struct ahc_softc *ahc)
 
 	/* Allocation for our hscbs */
 	if (aic_dmamem_alloc(ahc, scb_data->hscb_dmat,
-			     (void **)&scb_data->hscbs,
+			     (void *)&scb_data->hscbs,
 			     BUS_DMA_NOWAIT, &scb_data->hscb_dmamap) != 0) {
 		goto error_exit;
 	}
@@ -4385,7 +4385,7 @@ ahc_init_scbdata(struct ahc_softc *ahc)
 
 	/* Allocate them */
 	if (aic_dmamem_alloc(ahc, scb_data->sense_dmat,
-			     (void **)&scb_data->sense,
+			     (void *)&scb_data->sense,
 			     BUS_DMA_NOWAIT, &scb_data->sense_dmamap) != 0) {
 		goto error_exit;
 	}
@@ -4518,7 +4518,7 @@ ahc_alloc_scbs(struct ahc_softc *ahc)
 
 	/* Allocate S/G space for the next batch of SCBS */
 	if (aic_dmamem_alloc(ahc, scb_data->sg_dmat,
-			     (void **)&sg_map->sg_vaddr,
+			     (void *)&sg_map->sg_vaddr,
 			     BUS_DMA_NOWAIT, &sg_map->sg_dmamap) != 0) {
 		kfree(sg_map, M_DEVBUF);
 		return (0);
@@ -4908,7 +4908,7 @@ ahc_init(struct ahc_softc *ahc)
 
 	/* Allocation of driver data */
 	if (aic_dmamem_alloc(ahc, ahc->shared_data_dmat,
-			     (void **)&ahc->qoutfifo,
+			     (void *)&ahc->qoutfifo,
 			     BUS_DMA_NOWAIT, &ahc->shared_data_dmamap) != 0) {
 		return (ENOMEM);
 	}

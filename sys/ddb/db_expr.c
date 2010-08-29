@@ -131,6 +131,8 @@ db_mult_expr(db_expr_t *valuep)
 	db_expr_t	lhs, rhs;
 	int		t;
 
+	*valuep = 0;	/* silence gcc */
+
 	if (!db_unary(&lhs))
 	    return (FALSE);
 
@@ -166,6 +168,8 @@ db_add_expr(db_expr_t *valuep)
 {
 	db_expr_t	lhs, rhs;
 	int		t;
+
+	*valuep = 0;	/* silence gcc */
 
 	if (!db_mult_expr(&lhs))
 	    return (FALSE);

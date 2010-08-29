@@ -1892,7 +1892,7 @@ isp_watchdog(void *arg)
 			XS_CMD_C_WDOG(xs);
 			callout_reset(&xs->ccb_h.timeout_ch, hz,
 				      isp_watchdog, xs);
-			if (isp_getrqentry(isp, &nxti, &optr, (void **) &qe)) {
+			if (isp_getrqentry(isp, &nxti, &optr, (void *) &qe)) {
 				ISP_UNLOCK(isp);
 				return;
 			}

@@ -460,7 +460,7 @@ an_dma_malloc(struct an_softc *sc, bus_size_t size, struct an_dma_alloc *dma,
 	if (r != 0)
 		goto fail_0;
 
-	r = bus_dmamem_alloc(sc->an_dtag, (void**) &dma->an_dma_vaddr,
+	r = bus_dmamem_alloc(sc->an_dtag, (void*)&dma->an_dma_vaddr,
 			     BUS_DMA_WAITOK, &dma->an_dma_map);
 	if (r != 0)
 		goto fail_1;
@@ -585,10 +585,10 @@ an_init_mpi350_desc(struct an_softc *sc)
 		an_rx_desc.an_phys = sc->an_rx_buffer[desc].an_dma_paddr;
 
 		for (i = 0; i < sizeof(an_rx_desc) / 4; i++)
-			CSR_MEM_AUX_WRITE_4(sc, AN_RX_DESC_OFFSET 
+			CSR_MEM_AUX_WRITE_4(sc, AN_RX_DESC_OFFSET
 					    + (desc * sizeof(an_rx_desc))
 					    + (i * 4),
-					    ((u_int32_t*)&an_rx_desc)[i]);
+					((u_int32_t*)(void *)&an_rx_desc)[i]);
 	}
 
 	/*
@@ -618,7 +618,7 @@ an_init_mpi350_desc(struct an_softc *sc)
 			CSR_MEM_AUX_WRITE_4(sc, AN_TX_DESC_OFFSET
 					    + (desc * sizeof(an_tx_desc))
 					    + (i * 4),
-					    ((u_int32_t*)&an_tx_desc)[i]);
+					((u_int32_t*)(void *)&an_tx_desc)[i]);
 	}
 
 	/*
@@ -644,7 +644,7 @@ an_init_mpi350_desc(struct an_softc *sc)
 
 	for (i = 0; i < sizeof(an_rid_desc) / 4; i++)
 		CSR_MEM_AUX_WRITE_4(sc, AN_HOST_DESC_OFFSET + i * 4, 
-				    ((u_int32_t*)&an_rid_desc)[i]);
+				    ((u_int32_t*)(void *)&an_rid_desc)[i]);
 
 	return(0);
 }
@@ -965,7 +965,7 @@ an_rxeof(struct an_softc *sc)
 	} else { /* MPI-350 */
 		for (count = 0; count < AN_MAX_RX_DESC; count++){
 			for (i = 0; i < sizeof(an_rx_desc) / 4; i++)
-				((u_int32_t*)&an_rx_desc)[i] 
+				((u_int32_t*)(void *)&an_rx_desc)[i]
 					= CSR_MEM_AUX_READ_4(sc, 
 						AN_RX_DESC_OFFSET 
 						+ (count * sizeof(an_rx_desc))
@@ -1033,7 +1033,7 @@ an_rxeof(struct an_softc *sc)
 						AN_RX_DESC_OFFSET 
 						+ (count * sizeof(an_rx_desc))
 						+ (i * 4),
-						((u_int32_t*)&an_rx_desc)[i]);
+					((u_int32_t*)(void *)&an_rx_desc)[i]);
 				
 			} else {
 				if_printf(ifp, "Didn't get valid RX packet "
@@ -1362,7 +1362,7 @@ an_read_record(struct an_softc *sc, struct an_ltv_gen *ltv)
 
 		for (i = 0; i < sizeof(an_rid_desc) / 4; i++)
 			CSR_MEM_AUX_WRITE_4(sc, AN_HOST_DESC_OFFSET + i * 4, 
-					    ((u_int32_t*)&an_rid_desc)[i]);
+					((u_int32_t *)(void *)&an_rid_desc)[i]);
 
 		if (an_cmd_struct(sc, &cmd, &reply)
 		    || reply.an_status & AN_CMD_QUAL_MASK) {
@@ -1470,7 +1470,7 @@ an_write_record(struct an_softc *sc, struct an_ltv_gen *ltv)
 
 		for (i = 0; i < sizeof(an_rid_desc) / 4; i++)
 			CSR_MEM_AUX_WRITE_4(sc, AN_HOST_DESC_OFFSET + i * 4, 
-					    ((u_int32_t*)&an_rid_desc)[i]);
+					((u_int32_t *)(void *)&an_rid_desc)[i]);
 
 		if ((i = an_cmd_struct(sc, &cmd, &reply))) {
 			if_printf(&sc->arpcom.ac_if,
@@ -1861,7 +1861,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			    sc->an_sigitems) / 2) + 1;
 		} else
 #endif
-		if (an_read_record(sc, (struct an_ltv_gen *)&sc->areq)) {
+		if (an_read_record(sc, (struct an_ltv_gen *)(void *)&sc->areq)) {
 			error = EINVAL;
 			break;
 		}
@@ -1912,7 +1912,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			if (ireq->i_val == -1) {
 				sc->areq.an_type = AN_RID_STATUS;
 				if (an_read_record(sc,
-				    (struct an_ltv_gen *)&sc->areq)) {
+				    (struct an_ltv_gen *)(void *)&sc->areq)) {
 					error = EINVAL;
 					break;
 				}
@@ -1921,7 +1921,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			} else if (ireq->i_val >= 0) {
 				sc->areq.an_type = AN_RID_SSIDLIST;
 				if (an_read_record(sc,
-				    (struct an_ltv_gen *)&sc->areq)) {
+				    (struct an_ltv_gen *)(void *)&sc->areq)) {
 					error = EINVAL;
 					break;
 				}
@@ -1958,7 +1958,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			sc->areq.an_len = sizeof(sc->areq);
 			sc->areq.an_type = AN_RID_SSIDLIST;
 			if (an_read_record(sc,
-			    (struct an_ltv_gen *)&sc->areq)) {
+			    (struct an_ltv_gen *)(void *)&sc->areq)) {
 				error = EINVAL;
 				break;
 			}
@@ -1975,7 +1975,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		case IEEE80211_IOC_WEP:
 			sc->areq.an_type = AN_RID_ACTUALCFG;
 			if (an_read_record(sc,
-			    (struct an_ltv_gen *)&sc->areq)) {
+			    (struct an_ltv_gen *)(void *)&sc->areq)) {
 				error = EINVAL;
 				break;
 			}
@@ -2005,7 +2005,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 				sc->areq.an_type = AN_RID_WEP_TEMP;
 				for (i = 0; i < 5; i++) {
 					if (an_read_record(sc,
-					    (struct an_ltv_gen *)&sc->areq)) {
+				    (struct an_ltv_gen *)(void *)&sc->areq)) {
 						error = EINVAL;
 						break;
 					}
@@ -2039,7 +2039,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			sc->areq.an_type = AN_RID_WEP_TEMP;
 			for (i = 0; i < 5; i++) {
 				if (an_read_record(sc,
-				    (struct an_ltv_gen *) &sc->areq)) {
+				    (struct an_ltv_gen *)(void *)&sc->areq)) {
 					error = EINVAL;
 					break;
 				}
@@ -2054,7 +2054,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			sc->areq.an_type = AN_RID_WEP_PERM;
 			key->kindex = 0xffff;
 			if (an_read_record(sc,
-			    (struct an_ltv_gen *)&sc->areq)) {
+			    (struct an_ltv_gen *)(void *)&sc->areq)) {
 				error = EINVAL;
 				break;
 			}
@@ -2067,7 +2067,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			sc->areq.an_len  = sizeof(struct an_ltv_genconfig);
 			sc->areq.an_type = AN_RID_GENCONFIG;
 			if (an_read_record(sc,
-			    (struct an_ltv_gen *)&sc->areq)) {
+			    (struct an_ltv_gen *)(void *)&sc->areq)) {
 				error = EINVAL;
 				break;
 			}
@@ -2077,7 +2077,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		case IEEE80211_IOC_AUTHMODE:
 			sc->areq.an_type = AN_RID_ACTUALCFG;
 			if (an_read_record(sc,
-			    (struct an_ltv_gen *)&sc->areq)) {
+			    (struct an_ltv_gen *)(void *)&sc->areq)) {
 				error = EINVAL;
 				break;
 			}
@@ -2096,7 +2096,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		case IEEE80211_IOC_STATIONNAME:
 			sc->areq.an_type = AN_RID_ACTUALCFG;
 			if (an_read_record(sc,
-			    (struct an_ltv_gen *)&sc->areq)) {
+			    (struct an_ltv_gen *)(void *)&sc->areq)) {
 				error = EINVAL;
 				break;
 			}
@@ -2110,7 +2110,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		case IEEE80211_IOC_CHANNEL:
 			sc->areq.an_type = AN_RID_STATUS;
 			if (an_read_record(sc,
-			    (struct an_ltv_gen *)&sc->areq)) {
+			    (struct an_ltv_gen *)(void *)&sc->areq)) {
 				error = EINVAL;
 				break;
 			}
@@ -2119,7 +2119,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		case IEEE80211_IOC_POWERSAVE:
 			sc->areq.an_type = AN_RID_ACTUALCFG;
 			if (an_read_record(sc,
-			    (struct an_ltv_gen *)&sc->areq)) {
+			    (struct an_ltv_gen *)(void *)&sc->areq)) {
 				error = EINVAL;
 				break;
 			}
@@ -2137,7 +2137,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		case IEEE80211_IOC_POWERSAVESLEEP:
 			sc->areq.an_type = AN_RID_ACTUALCFG;
 			if (an_read_record(sc,
-			    (struct an_ltv_gen *)&sc->areq)) {
+			    (struct an_ltv_gen *)(void *)&sc->areq)) {
 				error = EINVAL;
 				break;
 			}
@@ -2159,7 +2159,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		    ireq->i_type != IEEE80211_IOC_WEPTXKEY) {
 			sc->areq.an_type = AN_RID_GENCONFIG;
 			if (an_read_record(sc,
-			    (struct an_ltv_gen *)&sc->areq)) {
+			    (struct an_ltv_gen *)(void *)&sc->areq)) {
 				error = EINVAL;
 				break;
 			}
@@ -2169,7 +2169,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			sc->areq.an_len = sizeof(sc->areq);
 			sc->areq.an_type = AN_RID_SSIDLIST;
 			if (an_read_record(sc,
-			    (struct an_ltv_gen *)&sc->areq)) {
+			    (struct an_ltv_gen *)(void *)&sc->areq)) {
 				error = EINVAL;
 				break;
 			}
@@ -2261,7 +2261,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			sc->areq.an_len  = sizeof(struct an_ltv_genconfig);
 			sc->areq.an_type = AN_RID_ACTUALCFG;
 			if (an_read_record(sc,
-	       		    (struct an_ltv_gen *)&sc->areq)) {
+			    (struct an_ltv_gen *)(void *)&sc->areq)) {
 	       			error = EINVAL;
 				break;
 			}
@@ -2618,7 +2618,7 @@ an_start(struct ifnet *ifp)
 				    /* zero for now */ 
 				    + (0 * sizeof(an_tx_desc))
 				    + (i * 4),
-				    ((u_int32_t*)&an_tx_desc)[i]);
+				    ((u_int32_t*)(void *)&an_tx_desc)[i]);
  			}
 
 			BPF_MTAP(ifp, m0);
@@ -3082,7 +3082,7 @@ readrids(struct ifnet *ifp, struct aironet_ioctl *l_ioctl)
 	sc->areq.an_len  = AN_MAX_DATALEN;
 	sc->areq.an_type = rid;
 
-	an_read_record(sc, (struct an_ltv_gen *)&sc->areq);
+	an_read_record(sc, (struct an_ltv_gen *)(void *)&sc->areq);
 
 	l_ioctl->len = sc->areq.an_len - 4;	/* just data */
 
@@ -3142,7 +3142,7 @@ writerids(struct ifnet *ifp, struct aironet_ioctl *l_ioctl)
 		sc->areq.an_len = AN_MAX_DATALEN;
 		sc->areq.an_type = rid;
 
-		an_read_record(sc, (struct an_ltv_gen *)&sc->areq);
+		an_read_record(sc, (struct an_ltv_gen *)(void *)&sc->areq);
 		l_ioctl->len = sc->areq.an_len - 4;	/* just data */
 
 		/* the data contains the length at first */
@@ -3184,7 +3184,7 @@ writerids(struct ifnet *ifp, struct aironet_ioctl *l_ioctl)
 		       l_ioctl->len);
 
 		an_cmd(sc, AN_CMD_DISABLE, 0);
-		an_write_record(sc, (struct an_ltv_gen *)&sc->areq);
+		an_write_record(sc, (struct an_ltv_gen *)(void *)&sc->areq);
 		an_cmd(sc, AN_CMD_ENABLE, 0);
 		return 0;
 	}
@@ -3408,12 +3408,13 @@ flashputbuf(struct ifnet *ifp)
 		CSR_WRITE_2(sc, AN_AUX_OFFSET, 0);
 
 		for (nwords = 0; nwords != FLASH_SIZE / 2; nwords++) {
-			CSR_WRITE_2(sc, AN_AUX_DATA, bufp[nwords] & 0xffff);
+			CSR_WRITE_2(sc, AN_AUX_DATA,
+				((u_int16_t *)(void *)bufp)[nwords] & 0xffff);
 		}
 	} else {
 		for (nwords = 0; nwords != FLASH_SIZE / 4; nwords++) {
 			CSR_MEM_AUX_WRITE_4(sc, 0x8000, 
-				((u_int32_t *)bufp)[nwords] & 0xffff);
+				((u_int32_t *)(void *)bufp)[nwords] & 0xffff);
 		}
 	}
 
@@ -3474,7 +3475,7 @@ flashcard(struct ifnet *ifp, struct aironet_ioctl *l_ioctl)
 		break;
 	case AIROFLSHGCHR:	/* Get char from aux */
 		copyin(l_ioctl->data, &sc->areq, l_ioctl->len);
-		z = *(int *)&sc->areq;
+		z = *(int *)(void *)&sc->areq;
 		if ((status = flashgchar(ifp, z, 8000)) == 1)
 			return 0;
 		else
@@ -3482,7 +3483,7 @@ flashcard(struct ifnet *ifp, struct aironet_ioctl *l_ioctl)
 		break;
 	case AIROFLSHPCHR:	/* Send char to card. */
 		copyin(l_ioctl->data, &sc->areq, l_ioctl->len);
-		z = *(int *)&sc->areq;
+		z = *(int *)(void *)&sc->areq;
 		if ((status = flashpchar(ifp, z, 8000)) == -1)
 			return -EIO;
 		else

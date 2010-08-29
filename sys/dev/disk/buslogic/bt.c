@@ -720,7 +720,7 @@ bt_init(device_t dev)
 	bt->init_level++;
 
 	/* Allocation for our mailboxes */
-	if (bus_dmamem_alloc(bt->mailbox_dmat, (void **)&bt->out_boxes,
+	if (bus_dmamem_alloc(bt->mailbox_dmat, (void *)&bt->out_boxes,
 			     BUS_DMA_NOWAIT, &bt->mailbox_dmamap) != 0) {
 		goto error_exit;
 	}
@@ -755,7 +755,7 @@ bt_init(device_t dev)
 	bt->init_level++;
 
 	/* Allocation for our ccbs */
-	if (bus_dmamem_alloc(bt->ccb_dmat, (void **)&bt->bt_ccb_array,
+	if (bus_dmamem_alloc(bt->ccb_dmat, (void *)&bt->bt_ccb_array,
 			     BUS_DMA_NOWAIT, &bt->ccb_dmamap) != 0) {
 		goto error_exit;
 	}
@@ -955,7 +955,7 @@ btallocccbs(struct bt_softc *bt)
 	sg_map = kmalloc(sizeof(*sg_map), M_DEVBUF, M_WAITOK);
 
 	/* Allocate S/G space for the next batch of CCBS */
-	if (bus_dmamem_alloc(bt->sg_dmat, (void **)&sg_map->sg_vaddr,
+	if (bus_dmamem_alloc(bt->sg_dmat, (void *)&sg_map->sg_vaddr,
 			     BUS_DMA_NOWAIT, &sg_map->sg_dmamap) != 0) {
 		kfree(sg_map, M_DEVBUF);
 		goto error_exit;

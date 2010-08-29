@@ -134,8 +134,8 @@ ata_dmaalloc(device_t dev)
 			   0, &ch->dma->work_tag))
 	goto error;
 
-    if (bus_dmamem_alloc(ch->dma->work_tag, (void **)&ch->dma->work, 0,
-			 &ch->dma->work_map))
+    if (bus_dmamem_alloc(ch->dma->work_tag, (void *)&ch->dma->work, 0,
+			 (void *)&ch->dma->work_map))
 	goto error;
 
     if (bus_dmamap_load(ch->dma->work_tag, ch->dma->work_map,ch->dma->work,

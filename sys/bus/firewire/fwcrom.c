@@ -416,7 +416,7 @@ crom_add_entry(struct crom_chunk *chunk, int key, int val)
 	struct csrreg *reg;
 	u_int32_t i;
 	
-	reg = (struct csrreg *)&i;
+	reg = (struct csrreg *)(void *)&i;
 	reg->key = key;
 	reg->val = val;
 	return(crom_add_quad(chunk, (u_int32_t) i));
@@ -463,7 +463,7 @@ crom_add_simple_text(struct crom_src *src, struct crom_chunk *parent,
 		len = MAX_TEXT;
 	}
 
-	tl = (struct csrtext *) &chunk->data;
+	tl = (struct csrtext *)(void *)&chunk->data;
 	tl->crc_len = howmany(sizeof(struct csrtext) + len, sizeof(u_int32_t));
 	tl->spec_id = 0;
 	tl->spec_type = 0;
@@ -519,7 +519,7 @@ crom_load(struct crom_src *src, u_int32_t *buf, int maxlen)
 	/* Calculate CRC and dump to the buffer */
 	len = 1 + src->hdr.info_len;
 	count = 0;
-	if (crom_copy((u_int32_t *)&src->hdr, buf, &count, len, maxlen) < 0)
+	if (crom_copy((u_int32_t *)(void *)&src->hdr, buf, &count, len, maxlen) < 0)
 		return(-1);
 	STAILQ_FOREACH(chunk, &src->chunk_list, link) {
 		chunk->data.crc =
