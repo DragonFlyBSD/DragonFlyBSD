@@ -638,7 +638,8 @@ void
 isc_stop_receiver(isc_session_t *sp)
 {
      debug_called(8);
-     sdebug(3, "sp=%p sp->soc=%p", sp, sp? sp->soc: 0);
+     debug(3, "sp=%p sp->sid=%d sp->soc=%p", sp, sp ? sp->sid : 0,
+	  sp ? sp->soc : NULL);
      iscsi_lock_ex(&sp->io_mtx);
      sp->flags &= ~ISC_LINK_UP;
      if (sp->flags & ISC_CON_RUNNING) {
@@ -647,7 +648,7 @@ isc_stop_receiver(isc_session_t *sp)
      iscsi_unlock_ex(&sp->io_mtx);
 
      if (sp->soc)
-	     soshutdown(sp->soc, SHUT_RD);
+	  soshutdown(sp->soc, SHUT_RD);
 
      iscsi_lock_ex(&sp->io_mtx);
      sdebug(3, "soshutdown");
@@ -660,8 +661,8 @@ isc_stop_receiver(isc_session_t *sp)
 
      if (sp->fp != NULL) {
 	  fdrop(sp->fp);
-	 sp->fp = NULL;
-    }
+	  sp->fp = NULL;
+     }
      /* sofree(sp->soc); fp deals with socket termination */
      sp->soc = NULL;
 
