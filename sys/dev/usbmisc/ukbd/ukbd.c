@@ -681,8 +681,6 @@ ukbd_term(keyboard_t *kbd)
 	}
 
 	error = kbd_unregister(kbd);
-	/* kbd is stale after this */
-	kbd = NULL;
 
 	DPRINTF(("ukbd_term: kbd_unregister() %d\n", error));
 	if (error == 0) {
@@ -728,9 +726,8 @@ ukbd_interrupt(keyboard_t *kbd, void *arg)
 	int i, j;
 
 	DPRINTFN(5, ("ukbd_intr: status=%d\n", status));
-	if (status == USBD_CANCELLED) {
+	if (status == USBD_CANCELLED)
 		return 0;
-	}
 
 	state = (ukbd_state_t *)kbd->kb_data;
 	ud = &state->ks_ndata;
@@ -1401,12 +1398,10 @@ ukbd_poll(keyboard_t *kbd, int on)
 	crit_enter();
 	if (on) {
 		++state->ks_polling;
-		kprintf("usbd set polling %d\n", state->ks_polling);
 		if (state->ks_polling == 1)
 			usbd_set_polling(dev, on);
 	} else {
 		--state->ks_polling;
-		kprintf("usbd clear polling %d\n", state->ks_polling);
 		if (state->ks_polling == 0)
 			usbd_set_polling(dev, on);
 	}

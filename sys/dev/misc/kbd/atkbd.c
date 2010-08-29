@@ -292,8 +292,7 @@ atkbd_configure(int flags)
 		if (i >= 0) {
 			kbd = kbd_get_keyboard(i);
 			kbd_unregister(kbd);
-			/* kbd is stale after this */
-			kbd = NULL;
+			kbd = NULL; /* huh? */
 		}
 		return 0;
 	}
