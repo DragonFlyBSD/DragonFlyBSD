@@ -1586,6 +1586,9 @@ sccnterm(struct consdev *cp)
     sc_console = NULL;
 }
 
+/*
+ * Console path - cannot block!
+ */
 static void
 sccnputc(void *private, int c)
 {
@@ -1630,12 +1633,18 @@ sccnputc(void *private, int c)
     syscons_unlock();
 }
 
+/*
+ * Console path - cannot block!
+ */
 static int
 sccngetc(void *private)
 {
     return sccngetch(0);
 }
 
+/*
+ * Console path - cannot block!
+ */
 static int
 sccncheckc(void *private)
 {
@@ -1667,6 +1676,9 @@ sccndbctl(void *private, int on)
 	--debugger;
 }
 
+/*
+ * Console path - cannot block!
+ */
 static int
 sccngetch(int flags)
 {

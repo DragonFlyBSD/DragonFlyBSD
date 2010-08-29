@@ -28,6 +28,9 @@
  * $FreeBSD: src/sys/dev/kbd/atkbd.c,v 1.25.2.4 2002/04/08 19:21:38 asmodai Exp $
  * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.14 2007/04/22 10:43:00 y0netan1 Exp $
  */
+/*
+ * NOTE: All locks are handled by the kbd wrappers.
+ */
 
 #include "opt_kbd.h"
 #include "opt_atkbd.h"
@@ -57,11 +60,6 @@
 
 #include <bus/isa/isareg.h>
 
-#if 0
-#define lwkt_gettoken(x)
-#define lwkt_reltoken(x)
-#endif
-
 static timeout_t	atkbd_timeout;
 
 int
@@ -71,18 +69,14 @@ atkbd_probe_unit(int unit, int ctlr, int irq, int flags)
 	int args[2];
 	int error;
 
-	lwkt_gettoken(&tty_token);
 	sw = kbd_get_switch(ATKBD_DRIVER_NAME);
 	if (sw == NULL) {
-		lwkt_reltoken(&tty_token);
 		return ENXIO;
 	}
 
 	args[0] = ctlr;
 	args[1] = irq;
 	error = (*sw->probe)(unit, args, flags);
-
-	lwkt_reltoken(&tty_token);
 
 	if (error)
 		return error;
@@ -96,11 +90,8 @@ atkbd_attach_unit(int unit, keyboard_t **kbd, int ctlr, int irq, int flags)
 	int args[2];
 	int error;
 
-	lwkt_gettoken(&tty_token);
-
 	sw = kbd_get_switch(ATKBD_DRIVER_NAME);
 	if (sw == NULL) {
-		lwkt_reltoken(&tty_token);
 		return ENXIO;
 	}
 
@@ -110,12 +101,10 @@ atkbd_attach_unit(int unit, keyboard_t **kbd, int ctlr, int irq, int flags)
 	*kbd = NULL;
 	error = (*sw->probe)(unit, args, flags);
 	if (error) {
-		lwkt_reltoken(&tty_token);
 		return error;
 	}
 	error = (*sw->init)(unit, kbd, args, flags);
 	if (error) {
-		lwkt_reltoken(&tty_token);
 		return error;
 	}
 	(*sw->enable)(*kbd);
@@ -124,7 +113,6 @@ atkbd_attach_unit(int unit, keyboard_t **kbd, int ctlr, int irq, int flags)
 	/* attach a virtual keyboard cdev */
 	error = kbd_attach(*kbd);
 	if (error) {
-		lwkt_reltoken(&tty_token);
 		return error;
 	}
 #endif
@@ -138,7 +126,6 @@ atkbd_attach_unit(int unit, keyboard_t **kbd, int ctlr, int irq, int flags)
 	if (bootverbose)
 		(*sw->diag)(*kbd, bootverbose);
 
-	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -173,7 +160,6 @@ atkbd_timeout(void *arg)
 	 * The keyboard apparently unwedges the irq in most cases.
 	 */
 	crit_enter();
-	lwkt_gettoken(&tty_token);
 	kbd = (keyboard_t *)arg;
 	if (kbd_lock(kbd, TRUE)) {
 		/*
@@ -186,7 +172,6 @@ atkbd_timeout(void *arg)
 			kbd_intr(kbd, NULL);
 	}
 	callout_reset(&kbd->kb_atkbd_timeout_ch, hz / 10, atkbd_timeout, arg);
-	lwkt_reltoken(&tty_token);
 	crit_exit();
 }
 
@@ -297,8 +282,6 @@ atkbd_configure(int flags)
 	int arg[2];
 	int i;
 
-	lwkt_gettoken(&tty_token);
-
 	/*
 	 * Probe the keyboard controller, if not present or if the driver
 	 * is disabled, unregister the keyboard if any.
@@ -309,9 +292,9 @@ atkbd_configure(int flags)
 		if (i >= 0) {
 			kbd = kbd_get_keyboard(i);
 			kbd_unregister(kbd);
-			kbd->kb_flags &= ~KB_REGISTERED;
+			/* kbd is stale after this */
+			kbd = NULL;
 		}
-		lwkt_reltoken(&tty_token);
 		return 0;
 	}
 	
@@ -324,16 +307,13 @@ atkbd_configure(int flags)
 	arg[1] = -1;
 	kbd = NULL;
 	if (atkbd_probe(ATKBD_DEFAULT, arg, flags)) {
-		lwkt_reltoken(&tty_token);
 		return 0;
 	}
 	if (atkbd_init(ATKBD_DEFAULT, &kbd, arg, flags)) {
-		lwkt_reltoken(&tty_token);
 		return 0;
 	}
 
 	/* return the number of found keyboards */
-	lwkt_reltoken(&tty_token);
 	return 1;
 }
 
@@ -346,28 +326,23 @@ atkbd_probe(int unit, void *arg, int flags)
 	KBDC kbdc;
 	int *data = (int *)arg;	/* data[0]: controller, data[1]: irq */
 
-	lwkt_gettoken(&tty_token);
 
 	if (unit == ATKBD_DEFAULT) {
 		if (KBD_IS_PROBED(&default_kbd)) {
-			lwkt_reltoken(&tty_token);
 			return 0;
 		}
 	}
 
 	kbdc = atkbdc_open(data[0]);
 	if (kbdc == NULL) {
-		lwkt_reltoken(&tty_token);
 		return ENXIO;
 	}
 	if (probe_keyboard(kbdc, flags)) {
 		if (flags & KB_CONF_FAIL_IF_NO_KBD) {
-			lwkt_reltoken(&tty_token);
 			return ENXIO;
 		}
 	}
 
-	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -384,13 +359,10 @@ atkbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 	int delay[2];
 	int *data = (int *)arg;	/* data[0]: controller, data[1]: irq */
 
-	lwkt_gettoken(&tty_token);
-
 	/* XXX */
 	if (unit == ATKBD_DEFAULT) {
 		*kbdp = kbd = &default_kbd;
 		if (KBD_IS_INITIALIZED(kbd) && KBD_IS_CONFIGURED(kbd)) {
-			lwkt_reltoken(&tty_token);
 			return 0;
 		}
 		state = &default_kbd_state;
@@ -407,7 +379,6 @@ atkbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		fkeymap = kmalloc(sizeof(fkey_tab), M_DEVBUF, M_WAITOK);
 		fkeymap_size = sizeof(fkey_tab)/sizeof(fkey_tab[0]);
 	} else if (KBD_IS_INITIALIZED(*kbdp) && KBD_IS_CONFIGURED(*kbdp)) {
-		lwkt_reltoken(&tty_token);
 		return 0;
 	} else {
 		kbd = *kbdp;
@@ -422,7 +393,6 @@ atkbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 	if (!KBD_IS_PROBED(kbd)) {
 		state->kbdc = atkbdc_open(data[0]);
 		if (state->kbdc == NULL) {
-			lwkt_reltoken(&tty_token);
 			return ENXIO;
 		}
 		kbd_init_struct(kbd, ATKBD_DRIVER_NAME, KB_OTHER, unit, flags,
@@ -436,7 +406,6 @@ atkbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 	
 		if (probe_keyboard(state->kbdc, flags)) { /* shouldn't happen */
 			if (flags & KB_CONF_FAIL_IF_NO_KBD) {
-				lwkt_reltoken(&tty_token);
 				return ENXIO;
 			}
 		} else {
@@ -455,7 +424,6 @@ atkbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		if (KBD_HAS_DEVICE(kbd)
 	    	    && init_keyboard(state->kbdc, &kbd->kb_type, kbd->kb_config)
 	    	    && (kbd->kb_config & KB_CONF_FAIL_IF_NO_KBD)) {
-			lwkt_reltoken(&tty_token);
 			return ENXIO;
 		}
 		atkbd_ioctl(kbd, KDSETLED, (caddr_t)&state->ks_state);
@@ -467,13 +435,11 @@ atkbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 	}
 	if (!KBD_IS_CONFIGURED(kbd)) {
 		if (kbd_register(kbd) < 0) {
-			lwkt_reltoken(&tty_token);
 			return ENXIO;
 		}
 		KBD_CONFIG_DONE(kbd);
 	}
 
-	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -481,9 +447,7 @@ atkbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 static int
 atkbd_term(keyboard_t *kbd)
 {
-	lwkt_gettoken(&tty_token);
 	kbd_unregister(kbd);
-	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -495,7 +459,6 @@ atkbd_intr(keyboard_t *kbd, void *arg)
 	int delay[2];
 	int c;
 
-	lwkt_gettoken(&tty_token);
 	if (KBD_IS_ACTIVE(kbd) && KBD_IS_BUSY(kbd)) {
 		/* let the callback function to process the input */
 		(*kbd->kb_callback.kc_func)(kbd, KBDIO_KEYINPUT,
@@ -523,7 +486,6 @@ atkbd_intr(keyboard_t *kbd, void *arg)
 		}
 	}
 
-	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -553,9 +515,7 @@ static int
 atkbd_enable(keyboard_t *kbd)
 {
 	crit_enter();
-	lwkt_gettoken(&tty_token);
 	KBD_ACTIVATE(kbd);
-	lwkt_reltoken(&tty_token);
 	crit_exit();
 	return 0;
 }
@@ -565,9 +525,7 @@ static int
 atkbd_disable(keyboard_t *kbd)
 {
 	crit_enter();
-	lwkt_gettoken(&tty_token);
 	KBD_DEACTIVATE(kbd);
-	lwkt_reltoken(&tty_token);
 	crit_exit();
 	return 0;
 }
@@ -578,7 +536,6 @@ atkbd_read(keyboard_t *kbd, int wait)
 {
 	int c, ret;
 
-	lwkt_gettoken(&tty_token);
 	if (wait)
 		c = read_kbd_data(((atkbd_state_t *)kbd->kb_data)->kbdc);
 	else
@@ -588,7 +545,6 @@ atkbd_read(keyboard_t *kbd, int wait)
 
 	ret = (KBD_IS_ACTIVE(kbd) ? c : -1);
 
-	lwkt_reltoken(&tty_token);
 	return ret;
 }
 
@@ -598,15 +554,12 @@ atkbd_check(keyboard_t *kbd)
 {
 	int ret;
 
-	lwkt_gettoken(&tty_token);
 
 	if (!KBD_IS_ACTIVE(kbd)) {
-		lwkt_reltoken(&tty_token);
 		return FALSE;
 	}
 	ret = kbdc_data_ready(((atkbd_state_t *)kbd->kb_data)->kbdc);
 
-	lwkt_reltoken(&tty_token);
 	return ret;
 }
 
@@ -619,7 +572,6 @@ atkbd_read_char(keyboard_t *kbd, int wait)
 	int scancode;
 	int keycode;
 
-	lwkt_gettoken(&tty_token);
 	state = (atkbd_state_t *)kbd->kb_data;
 next_code:
 	/* do we have a composed char to return? */
@@ -627,10 +579,8 @@ next_code:
 		action = state->ks_composed_char;
 		state->ks_composed_char = 0;
 		if (action > UCHAR_MAX) {
-			lwkt_reltoken(&tty_token);
 			return ERRKEY;
 		}
-		lwkt_reltoken(&tty_token);
 		return action;
 	}
 
@@ -642,7 +592,6 @@ next_code:
 	} else {
 		scancode = read_kbd_data_no_wait(state->kbdc);
 		if (scancode == -1) {
-			lwkt_reltoken(&tty_token);
 			return NOKEY;
 		}
 	}
@@ -654,7 +603,6 @@ next_code:
 
 	/* return the byte as is for the K_RAW mode */
 	if (state->ks_mode == K_RAW) {
-		lwkt_reltoken(&tty_token);
 		return scancode;
 	}
 
@@ -797,7 +745,6 @@ next_code:
 
 	/* return the key code in the K_CODE mode */
 	if (state->ks_mode == K_CODE) {
-		lwkt_reltoken(&tty_token);
 		return (keycode | (scancode & 0x80));
 	}
 
@@ -843,7 +790,6 @@ next_code:
 			if (state->ks_composed_char > 0) {
 				state->ks_flags &= ~COMPOSE;
 				state->ks_composed_char = 0;
-				lwkt_reltoken(&tty_token);
 				return ERRKEY;
 			}
 			break;
@@ -856,10 +802,8 @@ next_code:
 	if (action == NOKEY) {
 		goto next_code;
 	} else {
-		lwkt_reltoken(&tty_token);
 		return action;
 	}
-	lwkt_reltoken(&tty_token);
 }
 
 /* check if char is waiting */
@@ -869,18 +813,14 @@ atkbd_check_char(keyboard_t *kbd)
 	atkbd_state_t *state;
 	int ret;
 
-	lwkt_gettoken(&tty_token);
 	if (!KBD_IS_ACTIVE(kbd)) {
-		lwkt_reltoken(&tty_token);
 		return FALSE;
 	}
 	state = (atkbd_state_t *)kbd->kb_data;
 	if (!(state->ks_flags & COMPOSE) && (state->ks_composed_char > 0)) {
-		lwkt_reltoken(&tty_token);
 		return TRUE;
 	}
 	ret = kbdc_data_ready(state->kbdc);
-	lwkt_reltoken(&tty_token);
 	return ret;
 }
 
@@ -897,7 +837,6 @@ atkbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 	int i;
 
 	crit_enter();
-	lwkt_gettoken(&tty_token);
 
 	switch (cmd) {
 
@@ -921,7 +860,6 @@ atkbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 			}
 			break;
 		default:
-			lwkt_reltoken(&tty_token);
 			crit_exit();
 			return EINVAL;
 		}
@@ -933,7 +871,6 @@ atkbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 	case KDSETLED:		/* set keyboard LED */
 		/* NOTE: lock key state in ks_state won't be changed */
 		if (*(int *)arg & ~LOCK_MASK) {
-			lwkt_reltoken(&tty_token);
 			crit_exit();
 			return EINVAL;
 		}
@@ -950,7 +887,6 @@ atkbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 			error = write_kbd(state->kbdc, KBDC_SET_LEDS,
 					  ledmap[i & LED_MASK]);
 			if (error) {
-				lwkt_reltoken(&tty_token);
 				crit_exit();
 				return error;
 			}
@@ -963,13 +899,11 @@ atkbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		break;
 	case KDSKBSTATE:	/* set lock key state */
 		if (*(int *)arg & ~LOCK_MASK) {
-			lwkt_reltoken(&tty_token);
 			crit_exit();
 			return EINVAL;
 		}
 		state->ks_state &= ~LOCK_MASK;
 		state->ks_state |= *(int *)arg;
-		lwkt_reltoken(&tty_token);
 		crit_exit();
 		/* set LEDs and quit */
 		return atkbd_ioctl(kbd, KDSETLED, arg);
@@ -977,7 +911,6 @@ atkbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 	case KDSETREPEAT:	/* set keyboard repeat rate (new interface) */
 		crit_exit();
 		if (!KBD_HAS_DEVICE(kbd)) {
-			lwkt_reltoken(&tty_token);
 			return 0;
 		}
 		i = typematic(((int *)arg)[0], ((int *)arg)[1]);
@@ -986,13 +919,11 @@ atkbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 			kbd->kb_delay1 = typematic_delay(i);
 			kbd->kb_delay2 = typematic_rate(i);
 		}
-		lwkt_reltoken(&tty_token);
 		return error;
 
 	case KDSETRAD:		/* set keyboard repeat rate (old interface) */
 		crit_exit();
 		if (!KBD_HAS_DEVICE(kbd)) {
-			lwkt_reltoken(&tty_token);
 			return 0;
 		}
 		error = write_kbd(state->kbdc, KBDC_SET_TYPEMATIC, *(int *)arg);
@@ -1000,7 +931,6 @@ atkbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 			kbd->kb_delay1 = typematic_delay(*(int *)arg);
 			kbd->kb_delay2 = typematic_rate(*(int *)arg);
 		}
-		lwkt_reltoken(&tty_token);
 		return error;
 
 	case PIO_KEYMAP:	/* set keyboard translation table */
@@ -1009,12 +939,10 @@ atkbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		state->ks_accents = 0;
 		/* FALL THROUGH */
 	default:
-		lwkt_reltoken(&tty_token);
 		crit_exit();
 		return genkbd_commonioctl(kbd, cmd, arg);
 	}
 
-	lwkt_reltoken(&tty_token);
 	crit_exit();
 	return 0;
 }
@@ -1052,9 +980,7 @@ atkbd_get_state(keyboard_t *kbd, void *buf, size_t len)
 	if (len < sizeof(atkbd_state_t))
 		return -1;
 
-	lwkt_gettoken(&tty_token);
 	bcopy(kbd->kb_data, buf, sizeof(atkbd_state_t));
-	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -1067,9 +993,7 @@ atkbd_set_state(keyboard_t *kbd, void *buf, size_t len)
 	if (((atkbd_state_t *)kbd->kb_data)->kbdc
 		!= ((atkbd_state_t *)buf)->kbdc)
 		return ENOMEM;
-	lwkt_gettoken(&tty_token);
 	bcopy(buf, kbd->kb_data, sizeof(atkbd_state_t));
-	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -1078,15 +1002,13 @@ atkbd_poll(keyboard_t *kbd, int on)
 {
 	atkbd_state_t *state;
 
-	lwkt_gettoken(&tty_token);
 	state = (atkbd_state_t *)kbd->kb_data;
 	crit_enter();
 	if (on)
-		++state->ks_polling;
+		state->ks_polling = 1;
 	else
-		--state->ks_polling;
+		state->ks_polling = 0;
 	crit_exit();
-	lwkt_reltoken(&tty_token);
 	return 0;
 }
 

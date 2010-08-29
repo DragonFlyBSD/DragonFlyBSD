@@ -113,6 +113,10 @@ dev/misc/kbd/kbd.c			optional	atkbd
 dev/misc/kbd/kbd.c			optional	kbd
 dev/misc/kbd/kbd.c			optional	sc
 dev/misc/kbd/kbd.c			optional	ukbd
+dev/misc/kbd/kbdsw.c			optional	atkbd
+dev/misc/kbd/kbdsw.c			optional	kbd
+dev/misc/kbd/kbdsw.c			optional	sc
+dev/misc/kbd/kbdsw.c			optional	ukbd
 dev/raid/pst/pst-pci.c			optional	pst pci
 dev/raid/pst/pst-iop.c			optional	pst
 dev/raid/pst/pst-raid.c			optional	pst

@@ -140,9 +140,9 @@ atkbdresume(device_t dev)
                 kbd->kb_flags &= ~KB_INITIALIZED;
                 args[0] = device_get_unit(device_get_parent(dev));
                 args[1] = rman_get_start(sc->intr);
-		(*kbdsw[kbd->kb_index]->init)(device_get_unit(dev), &kbd,
+		sw_init(kbdsw[kbd->kb_index], device_get_unit(dev), &kbd,
                                               args, device_get_flags(dev));
-		(*kbdsw[kbd->kb_index]->clear_state)(kbd);
+		kbd_clear_state(kbd);
 
         }
 	lwkt_reltoken(&tty_token);

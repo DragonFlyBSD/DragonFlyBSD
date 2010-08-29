@@ -178,6 +178,7 @@ kbd_init_struct(keyboard_t *kbd, char *name, int type, int unit, int config,
 	kbd->kb_io_base = port;
 	kbd->kb_io_size = port_size;
 	kbd_reinit_struct(kbd, config, pref);
+	lockinit(&kbd->kb_lock, name, 0, LK_CANRECURSE);
 	lwkt_reltoken(&tty_token);
 }
 
@@ -319,9 +320,13 @@ kbd_unregister(keyboard_t *kbd)
 			return EBUSY;
 		}
 	}
+	KBD_CONFIG_LOST(kbd);
 	KBD_INVALID(kbd);
 	keyboard[kbd->kb_index] = NULL;
 	kbdsw[kbd->kb_index] = NULL;
+
+	KBD_ALWAYS_UNLOCK(kbd);
+	lockuninit(&kbd->kb_lock);
 
 	crit_exit();
 	lwkt_reltoken(&tty_token);

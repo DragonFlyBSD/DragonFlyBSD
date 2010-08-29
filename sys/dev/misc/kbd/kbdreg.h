@@ -30,6 +30,10 @@
 #ifndef _DEV_KBD_KBDREG_H_
 #define _DEV_KBD_KBDREG_H_
 
+#ifndef _SYS_LOCK_H_
+#include <sys/lock.h>
+#endif
+
 /* forward declarations */
 typedef struct keyboard keyboard_t;
 struct keymap;
@@ -96,6 +100,7 @@ struct keyboard {
 	int		kb_pref;	/* keyboard preference */
 	u_char		kb_lastact[NUM_KEYS/2];
 	struct callout  kb_atkbd_timeout_ch;
+	struct lock	kb_lock;
 };
 
 #define KBD_IS_VALID(k)		((k)->kb_flags & KB_VALID)
@@ -112,6 +117,7 @@ struct keyboard {
 #define KBD_LOST_INIT(k)	((k)->kb_flags &= ~KB_INITIALIZED)
 #define KBD_IS_CONFIGURED(k)	((k)->kb_flags & KB_REGISTERED)
 #define KBD_CONFIG_DONE(k)	((k)->kb_flags |= KB_REGISTERED)
+#define KBD_CONFIG_LOST(k)	((k)->kb_flags &= ~KB_REGISTERED)
 #define KBD_IS_BUSY(k)		((k)->kb_flags & KB_BUSY)
 #define KBD_BUSY(k)		((k)->kb_flags |= KB_BUSY)
 #define KBD_UNBUSY(k)		((k)->kb_flags &= ~KB_BUSY)
@@ -123,10 +129,37 @@ struct keyboard {
 #define KBD_DEACTIVATE(k)	(--(k)->kb_active)
 #define KBD_LED_VAL(k)		((k)->kb_led)
 
+/* Locking functions */
+
+#define KBD_LOCK_DECLARE	int dont_lock
+
+#define KBD_LOCK(k)						\
+	do {							\
+		dont_lock = (k)->kb_flags & KB_POLLED;		\
+		if (dont_lock == 0)				\
+			lockmgr(&(k)->kb_lock, LK_EXCLUSIVE);	\
+	} while (0)
+
+#define KBD_UNLOCK(k)						\
+	do {							\
+		if (dont_lock == 0)				\
+			lockmgr(&(k)->kb_lock, LK_RELEASE);	\
+	} while (0)
+
+#define KBD_LOCK_ASSERT(k)					\
+	KKASSERT(((k)->kb_flags & KB_POLLED) ||			\
+		 lockstatus(&(k)->kb_lock, curthread) == LK_EXCLUSIVE)
+
+#define KBD_ALWAYS_LOCK(k)					\
+		lockmgr(&(k)->kb_lock, LK_EXCLUSIVE);		\
+
+#define KBD_ALWAYS_UNLOCK(k)					\
+		lockmgr(&(k)->kb_lock, LK_RELEASE);		\
+
 /* keyboard function table */
 typedef int		kbd_probe_t(int unit, void *arg, int flags);
-typedef int		kbd_init_t(int unit, keyboard_t **kbdp, void *arg,
-				   int flags);
+typedef int		kbd_init_t(int unit, keyboard_t **kbdp,
+				void *arg, int flags);
 typedef int		kbd_term_t(keyboard_t *kbd);
 typedef int		kbd_intr_t(keyboard_t *kbd, void *arg);
 typedef int		kbd_test_if_t(keyboard_t *kbd);
@@ -142,7 +175,7 @@ typedef void		kbd_clear_state_t(keyboard_t *kbd);
 typedef int		kbd_get_state_t(keyboard_t *kbd, void *buf, size_t len);
 typedef int		kbd_set_state_t(keyboard_t *kbd, void *buf, size_t len);
 typedef u_char		*kbd_get_fkeystr_t(keyboard_t *kbd, int fkey,
-					   size_t *len);
+				size_t *len);
 typedef int		kbd_poll_mode_t(keyboard_t *kbd, int on);
 typedef void		kbd_diag_t(keyboard_t *kbd, int level);
 
@@ -168,49 +201,27 @@ typedef struct keyboard_switch {
 	kbd_diag_t	*diag;
 } keyboard_switch_t;
 
-/*
- * Keyboard disciplines: call actual handlers via kbdsw[].
- */
-#define kbd_probe(kbd, unit, arg, flags)				\
-	(*kbdsw[(kbd)->kb_index]->probe)((unit), (arg), (flags))
-#define kbd_init(kbd, unit, kbdpp, arg, flags)				\
-	(*kbdsw[(kbd)->kb_index]->init)((unit), (kbdpp), (arg), (flags))
-#define kbd_term(kbd)							\
-	(*kbdsw[(kbd)->kb_index]->term)((kbd))
-#define kbd_intr(kbd, arg)						\
-	(*kbdsw[(kbd)->kb_index]->intr)((kbd), (arg))
-#define kbd_test_if(kbd)						\
-	(*kbdsw[(kbd)->kb_index]->test_if)((kbd))
-#define kbd_enable(kbd)						\
-	(*kbdsw[(kbd)->kb_index]->enable)((kbd))
-#define kbd_disable(kbd)						\
-	(*kbdsw[(kbd)->kb_index]->disable)((kbd))
-#define kbd_read(kbd, wait)						\
-	(*kbdsw[(kbd)->kb_index]->read)((kbd), (wait))
-#define kbd_check(kbd)							\
-	(*kbdsw[(kbd)->kb_index]->check)((kbd))
-#define kbd_read_char(kbd, wait)					\
-	(*kbdsw[(kbd)->kb_index]->read_char)((kbd), (wait))
-#define kbd_check_char(kbd)						\
-	(*kbdsw[(kbd)->kb_index]->check_char)((kbd))
-#define kbd_ioctl(kbd, cmd, arg)					\
-	(((kbd) == NULL) ?						\
-	    ENODEV :							\
-	    (*kbdsw[(kbd)->kb_index]->ioctl)((kbd), (cmd), (arg)))
-#define kbd_lock(kbd, lockf)						\
-	(*kbdsw[(kbd)->kb_index]->lock)((kbd), (lockf))
-#define kbd_clear_state(kbd)						\
-	(*kbdsw[(kbd)->kb_index]->clear_state)((kbd))
-#define kbd_get_state(kbd, buf, len)					\
-	(*kbdsw[(kbd)->kb_index]->get_state)((kbd), (buf), (len))
-#define kbd_set_state(kbd, buf, len)					\
-	(*kbdsw[(kbd)->kb_index]->set_state)((kbd), (buf), (len))
-#define kbd_get_fkeystr(kbd, fkey, len)				\
-	(*kbdsw[(kbd)->kb_index]->get_fkeystr)((kbd), (fkey), (len))
-#define kbd_poll(kbd, on)						\
-	(*kbdsw[(kbd)->kb_index]->poll)((kbd), (on))
-#define kbd_diag(kbd, level)						\
-	(*kbdsw[(kbd)->kb_index]->diag)((kbd), (leve))
+int sw_probe(keyboard_switch_t *sw, int unit, void *arg, int flags);
+int sw_init(keyboard_switch_t *sw, int unit, keyboard_t **kbdpp,
+		void *arg, int flags);
+
+kbd_term_t	kbd_term;
+kbd_intr_t	kbd_intr;
+kbd_test_if_t	kbd_test_if;
+kbd_enable_t	kbd_enable;
+kbd_disable_t	kbd_disable;
+kbd_read_t	kbd_read;
+kbd_check_t	kbd_check;
+kbd_read_char_t	kbd_read_char;
+kbd_check_char_t kbd_check_char;
+kbd_ioctl_t	kbd_ioctl;
+kbd_lock_t	kbd_lock;
+kbd_clear_state_t kbd_clear_state;
+kbd_get_state_t	kbd_get_state;
+kbd_set_state_t	kbd_set_state;
+kbd_get_fkeystr_t kbd_get_fkeystr;
+kbd_poll_mode_t kbd_poll;
+kbd_diag_t	kbd_diag;
 
 /* keyboard driver */
 typedef struct keyboard_driver {

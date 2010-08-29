@@ -44,6 +44,8 @@
 
 /*
  * HID spec: http://www.usb.org/developers/devclass_docs/HID1_11.pdf
+ *
+ * NOTE: All locks are handled by the kbd wrappers.
  */
 
 #include "opt_kbd.h"
@@ -155,21 +157,15 @@ ukbd_match(device_t self)
 	void *arg[2];
 	int unit = device_get_unit(self);
 
-	lwkt_gettoken(&tty_token);
 	sw = kbd_get_switch(DRIVER_NAME);
-	if (sw == NULL) {
-		lwkt_reltoken(&tty_token);
+	if (sw == NULL)
 		return (UMATCH_NONE);
-	}
 
 	arg[0] = (void *)uaa;
 	arg[1] = (void *)ukbd_intr;
-	if ((*sw->probe)(unit, (void *)arg, 0)) {
-		lwkt_reltoken(&tty_token);
+	if ((*sw->probe)(unit, (void *)arg, 0))
 		return (UMATCH_NONE);
-	}
 
-	lwkt_reltoken(&tty_token);
 	return (UMATCH_IFACECLASS_IFACESUBCLASS_IFACEPROTO);
 }
 
@@ -184,39 +180,27 @@ ukbd_attach(device_t self)
 	void *arg[2];
 	int unit = device_get_unit(self);
 
-	lwkt_gettoken(&tty_token);
-
 	sc->sc_dev = self;
 
 	sw = kbd_get_switch(DRIVER_NAME);
-	if (sw == NULL) {
-		lwkt_reltoken(&tty_token);
+	if (sw == NULL)
 		return ENXIO;
-	}
 
 	arg[0] = (void *)uaa;
 	arg[1] = (void *)ukbd_intr;
 	kbd = NULL;
-	if ((*sw->probe)(unit, (void *)arg, 0)) {
-		lwkt_reltoken(&tty_token);
+	if ((*sw->probe)(unit, (void *)arg, 0))
 		return ENXIO;
-	}
-	if ((*sw->init)(unit, &kbd, (void *)arg, 0)) {
-		lwkt_reltoken(&tty_token);
+	if ((*sw->init)(unit, &kbd, (void *)arg, 0))
 		return ENXIO;
-	}
 	(*sw->enable)(kbd);
 
 #ifdef KBD_INSTALL_CDEV
-	if (kbd_attach(kbd)) {
-		lwkt_reltoken(&tty_token);
+	if (kbd_attach(kbd))
 		return ENXIO;
-	}
 #endif
 	if (bootverbose)
 		(*sw->diag)(kbd, bootverbose);
-
-	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -226,32 +210,25 @@ ukbd_detach(device_t self)
 	keyboard_t *kbd;
 	int error;
 
-	lwkt_gettoken(&tty_token);
 	kbd = kbd_get_keyboard(kbd_find_keyboard(DRIVER_NAME,
 						 device_get_unit(self)));
 	if (kbd == NULL) {
 		DPRINTF(("%s: keyboard not attached!?\n", device_get_nameunit(self)));
-		lwkt_reltoken(&tty_token);
 		return ENXIO;
 	}
 	kbd_disable(kbd);
 
 #ifdef KBD_INSTALL_CDEV
 	error = kbd_detach(kbd);
-	if (error) {
-		lwkt_reltoken(&tty_token);
+	if (error)
 		return error;
-	}
 #endif
 	error = kbd_term(kbd);
-	if (error) {
-		lwkt_reltoken(&tty_token);
+	if (error)
 		return error;
-	}
 
 	DPRINTF(("%s: disconnected\n", device_get_nameunit(self)));
 
-	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
@@ -260,13 +237,11 @@ ukbd_resume(device_t self)
 {
 	keyboard_t *kbd;
 
-	lwkt_gettoken(&tty_token);
 	kbd = kbd_get_keyboard(kbd_find_keyboard(DRIVER_NAME,
 						 device_get_unit(self)));
 	if (kbd)
 		kbd_clear_state(kbd);
 
-	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
@@ -275,9 +250,7 @@ ukbd_intr(usbd_xfer_handle xfer, usbd_private_handle addr, usbd_status status)
 {
 	keyboard_t *kbd = (keyboard_t *)addr;
 
-	lwkt_gettoken(&tty_token);
 	kbd_intr(kbd, (void *)status);
-	lwkt_reltoken(&tty_token);
 }
 
 DRIVER_MODULE(ukbd, uhub, ukbd_driver, ukbd_devclass, ukbd_driver_load, 0);
@@ -553,11 +526,9 @@ ukbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 	void **data = (void **)arg;
 	struct usb_attach_arg *uaa = (struct usb_attach_arg *)data[0];
 
-	lwkt_gettoken(&tty_token);
 	if (unit == UKBD_DEFAULT) {
 		*kbdp = kbd = &default_kbd;
 		if (KBD_IS_INITIALIZED(kbd) && KBD_IS_CONFIGURED(kbd)) {
-			lwkt_reltoken(&tty_token);
 			return 0;
 		}
 		state = &default_kbd_state;
@@ -584,11 +555,9 @@ ukbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 			if (fkeymap != NULL)
 				kfree(fkeymap, M_DEVBUF);
 			kfree(kbd, M_DEVBUF);
-			lwkt_reltoken(&tty_token);
 			return ENOMEM;
 		}
 	} else if (KBD_IS_INITIALIZED(*kbdp) && KBD_IS_CONFIGURED(*kbdp)) {
-		lwkt_reltoken(&tty_token);
 		return 0;
 	} else {
 		kbd = *kbdp;
@@ -612,7 +581,6 @@ ukbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		kbd->kb_data = (void *)state;
 
 		if (probe_keyboard(uaa, flags)) {
-			lwkt_reltoken(&tty_token);
 			return ENXIO;
 		} else {
 			KBD_FOUND_DEVICE(kbd);
@@ -640,7 +608,6 @@ ukbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		if (KBD_HAS_DEVICE(kbd)
 		    && init_keyboard((ukbd_state_t *)kbd->kb_data,
 				     &kbd->kb_type, kbd->kb_flags)) {
-			lwkt_reltoken(&tty_token);
 			return ENXIO;
 		}
 		ukbd_ioctl(kbd, KDSETLED, (caddr_t)&(state->ks_state));
@@ -649,7 +616,6 @@ ukbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		if (kbd_register(kbd) < 0) {
 			kbd->kb_flags = 0;
 			/* XXX: Missing free()'s */
-			lwkt_reltoken(&tty_token);
 			return ENXIO;
 		}
 		if (ukbd_enable_intr(kbd, TRUE, (usbd_intr_t *)data[1]) == 0)
@@ -657,7 +623,6 @@ ukbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		KBD_CONFIG_DONE(kbd);
 	}
 
-	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -667,11 +632,9 @@ ukbd_enable_intr(keyboard_t *kbd, int on, usbd_intr_t *func)
 	ukbd_state_t *state = (ukbd_state_t *)kbd->kb_data;
 	usbd_status err;
 
-	lwkt_gettoken(&tty_token);
 	if (on) {
 		/* Set up interrupt pipe. */
 		if (state->ks_ifstate & INTRENABLED) {
-			lwkt_reltoken(&tty_token);
 			return EBUSY;
 		}
 
@@ -683,7 +646,6 @@ ukbd_enable_intr(keyboard_t *kbd, int on, usbd_intr_t *func)
 					sizeof(state->ks_ndata), func,
 					USBD_DEFAULT_INTERVAL);
 		if (err) {
-			lwkt_reltoken(&tty_token);
 			return (EIO);
 		}
 	} else {
@@ -694,7 +656,6 @@ ukbd_enable_intr(keyboard_t *kbd, int on, usbd_intr_t *func)
 		state->ks_ifstate &= ~INTRENABLED;
 	}
 
-	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
@@ -706,7 +667,6 @@ ukbd_term(keyboard_t *kbd)
 	int error;
 
 	crit_enter();
-	lwkt_gettoken(&tty_token);
 	state = (ukbd_state_t *)kbd->kb_data;
 	DPRINTF(("ukbd_term: ks_ifstate=0x%x\n", state->ks_ifstate));
 
@@ -715,13 +675,15 @@ ukbd_term(keyboard_t *kbd)
 	if (state->ks_ifstate & INTRENABLED)
 		ukbd_enable_intr(kbd, FALSE, NULL);
 	if (state->ks_ifstate & INTRENABLED) {
-		lwkt_reltoken(&tty_token);
 		crit_exit();
 		DPRINTF(("ukbd_term: INTRENABLED!\n"));
 		return ENXIO;
 	}
 
 	error = kbd_unregister(kbd);
+	/* kbd is stale after this */
+	kbd = NULL;
+
 	DPRINTF(("ukbd_term: kbd_unregister() %d\n", error));
 	if (error == 0) {
 		kbd->kb_flags = 0;
@@ -733,7 +695,6 @@ ukbd_term(keyboard_t *kbd)
 			kfree(kbd, M_DEVBUF);
 		}
 	}
-	lwkt_reltoken(&tty_token);
 	crit_exit();
 	return error;
 }
@@ -746,14 +707,12 @@ ukbd_timeout(void *arg)
 	keyboard_t *kbd;
 	ukbd_state_t *state;
 
-	lwkt_gettoken(&tty_token);
 	kbd = (keyboard_t *)arg;
 	state = (ukbd_state_t *)kbd->kb_data;
 	crit_enter();
 	kbd_intr(kbd, (void *)USBD_NORMAL_COMPLETION);
 	callout_reset(&state->ks_timeout, hz / 40, ukbd_timeout, arg);
 	crit_exit();
-	lwkt_reltoken(&tty_token);
 }
 
 static int
@@ -768,11 +727,8 @@ ukbd_interrupt(keyboard_t *kbd, void *arg)
 	int key, c;
 	int i, j;
 
-	lwkt_gettoken(&tty_token);
-
 	DPRINTFN(5, ("ukbd_intr: status=%d\n", status));
 	if (status == USBD_CANCELLED) {
-		lwkt_reltoken(&tty_token);
 		return 0;
 	}
 
@@ -783,12 +739,10 @@ ukbd_interrupt(keyboard_t *kbd, void *arg)
 		DPRINTF(("ukbd_intr: status=%d\n", status));
 		if (status == USBD_STALLED)
 		    usbd_clear_endpoint_stall_async(state->ks_intrpipe);
-		lwkt_reltoken(&tty_token);
 		return 0;
 	}
 
 	if (ud->keycode[0] == KEY_ERROR) {
-		lwkt_reltoken(&tty_token);
 		return 0;		/* ignore  */
 	}
 
@@ -863,7 +817,6 @@ ukbd_interrupt(keyboard_t *kbd, void *arg)
 	state->ks_odata = *ud;
 	bcopy(state->ks_ntime, state->ks_otime, sizeof(state->ks_ntime));
 	if (state->ks_inputs <= 0) {
-		lwkt_reltoken(&tty_token);
 		return 0;
 	}
 
@@ -884,7 +837,6 @@ ukbd_interrupt(keyboard_t *kbd, void *arg)
 #endif /* USB_DEBUG */
 
 	if (state->ks_polling) {
-		lwkt_reltoken(&tty_token);
 		return 0;
 	}
 
@@ -899,7 +851,6 @@ ukbd_interrupt(keyboard_t *kbd, void *arg)
 		} while (c != NOKEY);
 	}
 
-	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -908,7 +859,6 @@ ukbd_getc(ukbd_state_t *state, int wait)
 {
 	int c;
 
-	lwkt_gettoken(&tty_token);
 	if (state->ks_polling) {
 		DPRINTFN(1,("ukbd_getc: polling\n"));
 		crit_enter();
@@ -929,7 +879,6 @@ ukbd_getc(ukbd_state_t *state, int wait)
 	}
 	crit_exit();
 
-	lwkt_reltoken(&tty_token);
 	return c;
 }
 
@@ -948,9 +897,7 @@ static int
 ukbd_enable(keyboard_t *kbd)
 {
 	crit_enter();
-	lwkt_gettoken(&tty_token);
 	KBD_ACTIVATE(kbd);
-	lwkt_reltoken(&tty_token);
 	crit_exit();
 	return 0;
 }
@@ -960,9 +907,7 @@ static int
 ukbd_disable(keyboard_t *kbd)
 {
 	crit_enter();
-	lwkt_gettoken(&tty_token);
 	KBD_DEACTIVATE(kbd);
-	lwkt_reltoken(&tty_token);
 	crit_exit();
 	return 0;
 }
@@ -978,19 +923,16 @@ ukbd_read(keyboard_t *kbd, int wait)
 	int scancode;
 #endif
 
-	lwkt_gettoken(&tty_token);
 	state = (ukbd_state_t *)kbd->kb_data;
 #ifdef UKBD_EMULATE_ATSCANCODE
 	if (state->ks_buffered_char[0]) {
 		scancode = state->ks_buffered_char[0];
 		if (scancode & SCAN_PREFIX) {
 			state->ks_buffered_char[0] = scancode & ~SCAN_PREFIX;
-			lwkt_reltoken(&tty_token);
 			return ((scancode & SCAN_PREFIX_E0) ? 0xe0 : 0xe1);
 		} else {
 			state->ks_buffered_char[0] = state->ks_buffered_char[1];
 			state->ks_buffered_char[1] = 0;
-			lwkt_reltoken(&tty_token);
 			return scancode;
 		}
 	}
@@ -998,14 +940,12 @@ ukbd_read(keyboard_t *kbd, int wait)
 
 	usbcode = ukbd_getc(state, wait);
 	if (!KBD_IS_ACTIVE(kbd) || (usbcode == -1)) {
-		lwkt_reltoken(&tty_token);
 		return -1;
 	}
 	++kbd->kb_count;
 #ifdef UKBD_EMULATE_ATSCANCODE
 	keycode = ukbd_trtab[KEY_INDEX(usbcode)];
 	if (keycode == NN) {
-		lwkt_reltoken(&tty_token);
 		return -1;
 	}
 
@@ -1025,13 +965,10 @@ ukbd_read(keyboard_t *kbd, int wait)
 			state->ks_buffered_char[0] = scancode & ~SCAN_PREFIX;
 			state->ks_buffered_char[1] = 0;
 		}
-		lwkt_reltoken(&tty_token);
 		return ((scancode & SCAN_PREFIX_E0) ? 0xe0 : 0xe1);
 	}
-	lwkt_reltoken(&tty_token);
 	return scancode;
 #else /* !UKBD_EMULATE_ATSCANCODE */
-	lwkt_reltoken(&tty_token);
 	return usbcode;
 #endif /* UKBD_EMULATE_ATSCANCODE */
 }
@@ -1042,9 +979,7 @@ ukbd_check(keyboard_t *kbd)
 {
 	ukbd_state_t *state;
 
-	lwkt_gettoken(&tty_token);
 	if (!KBD_IS_ACTIVE(kbd)) {
-		lwkt_reltoken(&tty_token);
 		return FALSE;
 	}
 	state = (ukbd_state_t *)kbd->kb_data;
@@ -1055,16 +990,13 @@ ukbd_check(keyboard_t *kbd)
 	}
 #ifdef UKBD_EMULATE_ATSCANCODE
 	if (((ukbd_state_t *)kbd->kb_data)->ks_buffered_char[0]) {
-		lwkt_reltoken(&tty_token);
 		return TRUE;
 	}
 #endif
 	if (((ukbd_state_t *)kbd->kb_data)->ks_inputs > 0) {
-		lwkt_reltoken(&tty_token);
 		return TRUE;
 	}
 
-	lwkt_reltoken(&tty_token);
 	return FALSE;
 }
 
@@ -1080,7 +1012,6 @@ ukbd_read_char(keyboard_t *kbd, int wait)
 	int scancode;
 #endif
 
-	lwkt_gettoken(&tty_token);
 	state = (ukbd_state_t *)kbd->kb_data;
 next_code:
 	/* do we have a composed char to return? */
@@ -1088,10 +1019,8 @@ next_code:
 		action = state->ks_composed_char;
 		state->ks_composed_char = 0;
 		if (action > UCHAR_MAX) {
-			lwkt_reltoken(&tty_token);
 			return ERRKEY;
 		}
-		lwkt_reltoken(&tty_token);
 		return action;
 	}
 
@@ -1103,13 +1032,11 @@ next_code:
 			if (scancode & SCAN_PREFIX) {
 				state->ks_buffered_char[0] =
 					scancode & ~SCAN_PREFIX;
-				lwkt_reltoken(&tty_token);
 				return ((scancode & SCAN_PREFIX_E0) ? 0xe0 : 0xe1);
 			} else {
 				state->ks_buffered_char[0] =
 					state->ks_buffered_char[1];
 				state->ks_buffered_char[1] = 0;
-				lwkt_reltoken(&tty_token);
 				return scancode;
 			}
 		}
@@ -1120,7 +1047,6 @@ next_code:
 	/* XXX */
 	usbcode = ukbd_getc(state, wait);
 	if (usbcode == -1) {
-		lwkt_reltoken(&tty_token);
 		return NOKEY;
 	}
 	++kbd->kb_count;
@@ -1129,7 +1055,6 @@ next_code:
 	/* USB key index -> key code -> AT scan code */
 	keycode = ukbd_trtab[KEY_INDEX(usbcode)];
 	if (keycode == NN) {
-		lwkt_reltoken(&tty_token);
 		return NOKEY;
 	}
 
@@ -1153,23 +1078,19 @@ next_code:
 					scancode & ~SCAN_PREFIX;
 				state->ks_buffered_char[1] = 0;
 			}
-			lwkt_reltoken(&tty_token);
 			return ((scancode & SCAN_PREFIX_E0) ? 0xe0 : 0xe1);
 		}
-		lwkt_reltoken(&tty_token);
 		return scancode;
 	}
 #else /* !UKBD_EMULATE_ATSCANCODE */
 	/* return the byte as is for the K_RAW mode */
 	if (state->ks_mode == K_RAW) {
-		lwkt_reltoken(&tty_token);
 		return usbcode;
 	}
 
 	/* USB key index -> key code */
 	keycode = ukbd_trtab[KEY_INDEX(usbcode)];
 	if (keycode == NN) {
-		lwkt_reltoken(&tty_token);
 		return NOKEY;
 	}
 #endif /* UKBD_EMULATE_ATSCANCODE */
@@ -1204,7 +1125,6 @@ next_code:
 	if (usbcode & KEY_RELEASE)
 		keycode |= SCAN_RELEASE;
 	if (state->ks_mode == K_CODE) {
-		lwkt_reltoken(&tty_token);
 		return keycode;
 	}
 
@@ -1216,7 +1136,6 @@ next_code:
 			state->ks_composed_char *= 10;
 			state->ks_composed_char += keycode - 0x40;
 			if (state->ks_composed_char > UCHAR_MAX) {
-				lwkt_reltoken(&tty_token);
 				return ERRKEY;
 			}
 			goto next_code;
@@ -1224,7 +1143,6 @@ next_code:
 			state->ks_composed_char *= 10;
 			state->ks_composed_char += keycode - 0x47;
 			if (state->ks_composed_char > UCHAR_MAX) {
-				lwkt_reltoken(&tty_token);
 				return ERRKEY;
 			}
 			goto next_code;
@@ -1232,14 +1150,12 @@ next_code:
 			state->ks_composed_char *= 10;
 			state->ks_composed_char += keycode - 0x4E;
 			if (state->ks_composed_char > UCHAR_MAX) {
-				lwkt_reltoken(&tty_token);
 				return ERRKEY;
 			}
 			goto next_code;
 		case 0x52:				/* keypad 0 */
 			state->ks_composed_char *= 10;
 			if (state->ks_composed_char > UCHAR_MAX) {
-				lwkt_reltoken(&tty_token);
 				return ERRKEY;
 			}
 			goto next_code;
@@ -1264,7 +1180,6 @@ next_code:
 			if (state->ks_composed_char > 0) {
 				state->ks_flags &= ~COMPOSE;
 				state->ks_composed_char = 0;
-				lwkt_reltoken(&tty_token);
 				return ERRKEY;
 			}
 			break;
@@ -1278,11 +1193,9 @@ next_code:
 	if (action == NOKEY) {
 		goto next_code;
 	} else {
-		lwkt_reltoken(&tty_token);
 		return action;
 	}
 	/* NOTREACHED */
-	lwkt_reltoken(&tty_token);
 }
 
 /* check if char is waiting */
@@ -1292,19 +1205,15 @@ ukbd_check_char(keyboard_t *kbd)
 	ukbd_state_t *state;
 	int ret;
 
-	lwkt_gettoken(&tty_token);
 	if (!KBD_IS_ACTIVE(kbd)) {
-		lwkt_reltoken(&tty_token);
 		return FALSE;
 	}
 	state = (ukbd_state_t *)kbd->kb_data;
 	if (!(state->ks_flags & COMPOSE) && (state->ks_composed_char > 0)) {
-		lwkt_reltoken(&tty_token);
 		return TRUE;
 	}
 	ret = (ukbd_check(kbd));
 
-	lwkt_reltoken(&tty_token);
 	return ret;
 }
 
@@ -1320,7 +1229,6 @@ ukbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 	int i;
 
 	crit_enter();
-	lwkt_gettoken(&tty_token);
 	switch (cmd) {
 	case KDGKBMODE:		/* get keyboard mode */
 		*(int *)arg = state->ks_mode;
@@ -1343,7 +1251,6 @@ ukbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 			}
 			break;
 		default:
-			lwkt_reltoken(&tty_token);
 			crit_exit();
 			return EINVAL;
 		}
@@ -1355,7 +1262,6 @@ ukbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 	case KDSETLED:		/* set keyboard LED */
 		/* NOTE: lock key state in ks_state won't be changed */
 		if (*(int *)arg & ~LOCK_MASK) {
-			lwkt_reltoken(&tty_token);
 			crit_exit();
 			return EINVAL;
 		}
@@ -1380,13 +1286,11 @@ ukbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		break;
 	case KDSKBSTATE:	/* set lock key state */
 		if (*(int *)arg & ~LOCK_MASK) {
-			lwkt_reltoken(&tty_token);
 			crit_exit();
 			return EINVAL;
 		}
 		state->ks_state &= ~LOCK_MASK;
 		state->ks_state |= *(int *)arg;
-		lwkt_reltoken(&tty_token);
 		crit_exit();
 		/* set LEDs and quit */
 		return ukbd_ioctl(kbd, KDSETLED, arg);
@@ -1394,15 +1298,12 @@ ukbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 	case KDSETREPEAT:	/* set keyboard repeat rate (new interface) */
 		crit_exit();
 		if (!KBD_HAS_DEVICE(kbd)) {
-			lwkt_reltoken(&tty_token);
 			return 0;
 		}
 		if (((int *)arg)[1] < 0) {
-			lwkt_reltoken(&tty_token);
 			return EINVAL;
 		}
 		if (((int *)arg)[0] < 0) {
-			lwkt_reltoken(&tty_token);
 			return EINVAL;
 		}
 		else if (((int *)arg)[0] == 0)	/* fastest possible value */
@@ -1410,12 +1311,10 @@ ukbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		else
 			kbd->kb_delay1 = ((int *)arg)[0];
 		kbd->kb_delay2 = ((int *)arg)[1];
-		lwkt_reltoken(&tty_token);
 		return 0;
 
 	case KDSETRAD:		/* set keyboard repeat rate (old interface) */
 		crit_exit();
-		lwkt_reltoken(&tty_token);
 		return set_typematic(kbd, *(int *)arg);
 
 	case PIO_KEYMAP:	/* set keyboard translation table */
@@ -1425,7 +1324,6 @@ ukbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		/* FALLTHROUGH */
 	default:
 		crit_exit();
-		lwkt_reltoken(&tty_token);
 		return genkbd_commonioctl(kbd, cmd, arg);
 
 #ifdef USB_DEBUG
@@ -1436,7 +1334,6 @@ ukbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 	}
 
 	crit_exit();
-	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -1454,7 +1351,6 @@ ukbd_clear_state(keyboard_t *kbd)
 {
 	ukbd_state_t *state;
 
-	lwkt_gettoken(&tty_token);
 	state = (ukbd_state_t *)kbd->kb_data;
 	state->ks_flags = 0;
 	state->ks_polling = 0;
@@ -1469,7 +1365,6 @@ ukbd_clear_state(keyboard_t *kbd)
 	bzero(&state->ks_odata, sizeof(state->ks_odata));
 	bzero(&state->ks_ntime, sizeof(state->ks_ntime));
 	bzero(&state->ks_otime, sizeof(state->ks_otime));
-	lwkt_reltoken(&tty_token);
 }
 
 /* save the internal state */
@@ -1480,9 +1375,7 @@ ukbd_get_state(keyboard_t *kbd, void *buf, size_t len)
 		return sizeof(ukbd_state_t);
 	if (len < sizeof(ukbd_state_t))
 		return -1;
-	lwkt_gettoken(&tty_token);
 	bcopy(kbd->kb_data, buf, sizeof(ukbd_state_t));
-	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -1492,9 +1385,7 @@ ukbd_set_state(keyboard_t *kbd, void *buf, size_t len)
 {
 	if (len < sizeof(ukbd_state_t))
 		return ENOMEM;
-	lwkt_gettoken(&tty_token);
 	bcopy(buf, kbd->kb_data, sizeof(ukbd_state_t));
-	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
@@ -1504,22 +1395,22 @@ ukbd_poll(keyboard_t *kbd, int on)
 	ukbd_state_t *state;
 	usbd_device_handle dev;
 
-	lwkt_gettoken(&tty_token);
 	state = (ukbd_state_t *)kbd->kb_data;
 	usbd_interface2device_handle(state->ks_iface, &dev);
 
 	crit_enter();
 	if (on) {
 		++state->ks_polling;
+		kprintf("usbd set polling %d\n", state->ks_polling);
 		if (state->ks_polling == 1)
 			usbd_set_polling(dev, on);
 	} else {
 		--state->ks_polling;
+		kprintf("usbd clear polling %d\n", state->ks_polling);
 		if (state->ks_polling == 0)
 			usbd_set_polling(dev, on);
 	}
 	crit_exit();
-	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
