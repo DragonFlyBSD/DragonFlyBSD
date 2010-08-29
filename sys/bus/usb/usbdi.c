@@ -843,9 +843,10 @@ usb_transfer_complete(usbd_xfer_handle xfer)
 			xfer->callback(xfer, xfer->priv, xfer->status);
 		pipe->methods->done(xfer);
 	} else {
-		pipe->methods->done(xfer);
+		int status = xfer->status;	/* get this before restart */
+		pipe->methods->done(xfer);	/* restart */
 		if (xfer->callback)
-			xfer->callback(xfer, xfer->priv, xfer->status);
+			xfer->callback(xfer, xfer->priv, status);
 	}
 
 	if (sync && !polling)
