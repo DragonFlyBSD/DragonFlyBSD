@@ -155,9 +155,8 @@ vm_swapcached_thread(void)
 	 */
 	curthread->td_flags |= TDF_SYSTHREAD;
 
-	get_mplock();
-	crit_enter();
 	lwkt_gettoken(&vm_token);
+	crit_enter();
 
 	/*
 	 * Initialize our marker for the inactive scan (SWAPC_WRITING)
@@ -241,12 +240,17 @@ vm_swapcached_thread(void)
 			vm_swapcache_cleaning(&object_marker);
 		}
 	}
+
+	/*
+	 * Cleanup (NOT REACHED)
+	 */
 	TAILQ_REMOVE(INACTIVE_LIST, &page_marker, pageq);
+	crit_exit();
+	lwkt_reltoken(&vm_token);
+
 	lwkt_gettoken(&vmobj_token);
 	TAILQ_REMOVE(&vm_object_list, &object_marker, object_list);
 	lwkt_reltoken(&vmobj_token);
-	lwkt_reltoken(&vm_token);
-	crit_exit();
 }
 
 static struct kproc_desc swpc_kp = {

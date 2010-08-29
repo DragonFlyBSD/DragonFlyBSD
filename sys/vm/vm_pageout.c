@@ -1483,7 +1483,6 @@ vm_pageout_thread(void)
 	/*
 	 * Permanently hold vm_token.
 	 */
-	get_mplock();
 	lwkt_gettoken(&vm_token);
 
 	/*
