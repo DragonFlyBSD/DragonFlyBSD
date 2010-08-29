@@ -368,14 +368,16 @@ lwkt_init_thread_remote(void *arg)
 
 #endif
 
+/*
+ * lwkt core thread structural initialization.
+ *
+ * NOTE: All threads are initialized as mpsafe threads.
+ */
 void
 lwkt_init_thread(thread_t td, void *stack, int stksize, int flags,
 		struct globaldata *gd)
 {
     globaldata_t mygd = mycpu;
-
-    /* all threads start mpsafe now */
-    KKASSERT(flags & TDF_MPSAFE);
 
     bzero(td, sizeof(struct thread));
     td->td_kstack = stack;
@@ -385,10 +387,6 @@ lwkt_init_thread(thread_t td, void *stack, int stksize, int flags,
     td->td_pri = TDPRI_KERN_DAEMON;
     td->td_critcount = 1;
     td->td_toks_stop = &td->td_toks_base;
-#ifdef SMP
-    if ((flags & TDF_MPSAFE) == 0)
-	td->td_mpcount = 1;
-#endif
     if (lwkt_use_spin_port)
 	lwkt_initport_spin(&td->td_msgport);
     else

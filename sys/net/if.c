@@ -2495,7 +2495,8 @@ ifnetinit(void *dummy __unused)
 		struct thread *thr = &ifnet_threads[i];
 
 		lwkt_create(netmsg_service_loop, &ifnet_mpsafe_thread, NULL,
-			    thr, TDF_NETWORK | TDF_MPSAFE, i, "ifnet %d", i);
+			    thr, TDF_NETWORK, i,
+			    "ifnet %d", i);
 		netmsg_service_port_init(&thr->td_msgport);
 	}
 }

@@ -73,10 +73,12 @@ fq_prepare(struct dsched_disk_ctx *ds_diskctx)
 	struct	fq_disk_ctx	*diskctx = (struct fq_disk_ctx *)ds_diskctx;
 	struct thread *td_core, *td_balance;
 
-	lwkt_create((void (*)(void *))fq_dispatcher, diskctx, &td_core, NULL,
-	    TDF_MPSAFE, -1, "fq_dispatch_%s", ds_diskctx->dp->d_cdev->si_name);
+	lwkt_create((void (*)(void *))fq_dispatcher, diskctx, &td_core,
+		    NULL, 0, -1, "fq_dispatch_%s",
+		    ds_diskctx->dp->d_cdev->si_name);
 	lwkt_create((void (*)(void *))fq_balance_thread, diskctx, &td_balance,
-	    NULL, TDF_MPSAFE, -1, "fq_balance_%s", ds_diskctx->dp->d_cdev->si_name);
+		    NULL, 0, -1, "fq_balance_%s",
+		    ds_diskctx->dp->d_cdev->si_name);
 	diskctx->td_balance = td_balance;
 
 	return 0;

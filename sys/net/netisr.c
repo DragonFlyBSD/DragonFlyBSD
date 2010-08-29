@@ -177,7 +177,7 @@ netisr_init(void)
      */
     for (i = 0; i < ncpus; ++i) {
 	lwkt_create(netmsg_service_loop, &netisr_mpsafe_thread, NULL,
-		    &netisr_cpu[i], TDF_NETWORK | TDF_MPSAFE, i,
+		    &netisr_cpu[i], TDF_NETWORK, i,
 		    "netisr_cpu %d", i);
 	netmsg_service_port_init(&netisr_cpu[i].td_msgport);
     }
@@ -346,7 +346,7 @@ netmsg_service_loop(void *arg)
     int mplocked, *mpsafe_mode = arg;
 
     /*
-     * Thread was started with TDF_MPSAFE
+     * Threads always start mpsafe.
      */
     mplocked = 0;
 

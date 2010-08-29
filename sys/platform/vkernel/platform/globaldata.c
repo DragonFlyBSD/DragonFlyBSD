@@ -71,7 +71,7 @@ cpu_gdinit(struct mdglobaldata *gd, int cpu)
 	lwkt_init_thread(&gd->mi.gd_idlethread,
 			gd->mi.gd_prvspace->idlestack,
 			sizeof(gd->mi.gd_prvspace->idlestack),
-			TDF_MPSAFE, &gd->mi);
+			0, &gd->mi);
 	lwkt_set_comm(&gd->mi.gd_idlethread, "idle_%d", cpu);
 	gd->mi.gd_idlethread.td_switch = cpu_lwkt_switch;
 	gd->mi.gd_idlethread.td_sp -= sizeof(void *);

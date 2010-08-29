@@ -503,7 +503,7 @@ iwl_create_thread(struct iwlcom *iwl, int unit)
 	iwl->iwl_thread_port.mp_putport = iwl_put_port;
 
 	lwkt_create(iwl_service_loop, iwl, NULL, &iwl->iwl_thread,
-		    TDF_MPSAFE, unit % ncpus, "iwl%d", unit);
+		    0, unit % ncpus, "iwl%d", unit);
 }
 
 static void

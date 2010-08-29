@@ -617,7 +617,7 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags)
 	destproc->p_lasttid = lp->lwp_tid;
 	destproc->p_nthreads++;
 
-	td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, -1, TDF_MPSAFE);
+	td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, -1, 0);
 	lp->lwp_thread = td;
 	td->td_proc = destproc;
 	td->td_lwp = lp;

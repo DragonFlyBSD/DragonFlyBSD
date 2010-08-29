@@ -57,8 +57,7 @@ kthread_create(void (*func)(void *), void *arg,
     thread_t td;
     __va_list ap;
 
-    td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, -1,
-			   TDF_VERBOSE | TDF_MPSAFE);
+    td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, -1, TDF_VERBOSE);
     if (tdp)
 	*tdp = td;
     cpu_set_thread_handler(td, kthread_exit, func, arg);
@@ -86,8 +85,7 @@ kthread_create_cpu(void (*func)(void *), void *arg,
     thread_t td;
     __va_list ap;
 
-    td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, cpu,
-			   TDF_VERBOSE | TDF_MPSAFE);
+    td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, cpu, TDF_VERBOSE);
     if (tdp)
 	*tdp = td;
     cpu_set_thread_handler(td, kthread_exit, func, arg);
@@ -118,7 +116,7 @@ kthread_create_stk(void (*func)(void *), void *arg,
     thread_t td;
     __va_list ap;
 
-    td = lwkt_alloc_thread(NULL, stksize, -1, TDF_VERBOSE | TDF_MPSAFE);
+    td = lwkt_alloc_thread(NULL, stksize, -1, TDF_VERBOSE);
     if (tdp)
 	*tdp = td;
     cpu_set_thread_handler(td, kthread_exit, func, arg);

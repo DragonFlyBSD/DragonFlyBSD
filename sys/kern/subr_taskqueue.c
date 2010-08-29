@@ -339,12 +339,14 @@ taskqueue_start_threads(struct taskqueue **tqp, int count, int pri, int ncpu,
 
 		if (count == 1) {
 			error = lwkt_create(taskqueue_thread_loop, tqp,
-			    &tq->tq_threads[i], NULL, TDF_STOPREQ | TDF_MPSAFE,
-			    cpu, "%s", ktname);
+					    &tq->tq_threads[i], NULL,
+					    TDF_STOPREQ, cpu,
+					    "%s", ktname);
 		} else {
 			error = lwkt_create(taskqueue_thread_loop, tqp,
-			    &tq->tq_threads[i], NULL, TDF_STOPREQ | TDF_MPSAFE,
-			    cpu, "%s_%d", ktname, i);
+					    &tq->tq_threads[i], NULL,
+					    TDF_STOPREQ, cpu,
+					    "%s_%d", ktname, i);
 		}
 		if (error) {
 			kprintf("%s: kthread_add(%s): error %d", __func__,

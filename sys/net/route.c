@@ -154,7 +154,7 @@ route_init(void)
 
 	for (cpu = 0; cpu < ncpus; cpu++) {
 		lwkt_create(rtable_service_loop, NULL, &rtd, NULL,
-			    TDF_MPSAFE, cpu, "rtable_cpu %d", cpu);
+			    0, cpu, "rtable_cpu %d", cpu);
 		rt_ports[cpu] = &rtd->td_msgport;
 	}
 }

@@ -220,10 +220,8 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
      * it up.
      */
     if (emergency_intr_thread.td_kstack == NULL) {
-	lwkt_create(ithread_emergency, NULL, NULL,
-		    &emergency_intr_thread,
-		    TDF_STOPREQ|TDF_INTTHREAD|TDF_MPSAFE,
-		    -1, "ithread emerg");
+	lwkt_create(ithread_emergency, NULL, NULL, &emergency_intr_thread,
+		    TDF_STOPREQ | TDF_INTTHREAD, -1, "ithread emerg");
 	systimer_init_periodic_nq(&emergency_intr_timer,
 		    emergency_intr_timer_callback, &emergency_intr_thread, 
 		    (emergency_intr_enable ? emergency_intr_freq : 1));
@@ -237,9 +235,9 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
      */
     if (info->i_state == ISTATE_NOTHREAD) {
 	info->i_state = ISTATE_NORMAL;
-	lwkt_create((void *)ithread_handler, (void *)(intptr_t)intr, NULL,
-	    &info->i_thread, TDF_STOPREQ|TDF_INTTHREAD|TDF_MPSAFE, -1, 
-	    "ithread %d", intr);
+	lwkt_create(ithread_handler, (void *)(intptr_t)intr, NULL,
+		    &info->i_thread, TDF_STOPREQ | TDF_INTTHREAD, -1,
+		    "ithread %d", intr);
 	if (intr >= FIRST_SOFTINT)
 	    lwkt_setpri(&info->i_thread, TDPRI_SOFT_NORM);
 	else
@@ -741,7 +739,7 @@ ithread_handler(void *arg)
 
     /*
      * The loop must be entered with one critical section held.  The thread
-     * is created with TDF_MPSAFE so the MP lock is not held on start.
+     * does not hold the mplock on startup.
      */
     gd = mycpu;
     lseconds = gd->gd_time_seconds;

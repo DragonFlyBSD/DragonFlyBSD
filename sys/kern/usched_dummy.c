@@ -537,7 +537,7 @@ dummy_sched_thread_cpu_init(void)
 	    kprintf(" %d", i);
 
 	lwkt_create(dummy_sched_thread, NULL, NULL, &dd->helper_thread, 
-		    TDF_STOPREQ | TDF_MPSAFE, i, "dsched %d", i);
+		    TDF_STOPREQ, i, "dsched %d", i);
 
 	/*
 	 * Allow user scheduling on the target cpu.  cpu #0 has already

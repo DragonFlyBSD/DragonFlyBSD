@@ -400,7 +400,7 @@ tcpmsg_service_loop(void *dummy)
 	int mplocked;
 
 	/*
-	 * Thread was started with TDF_MPSAFE
+	 * Threads always start mpsafe.
 	 */
 	mplocked = 0;
 

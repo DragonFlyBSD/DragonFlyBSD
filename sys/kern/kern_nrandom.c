@@ -599,8 +599,7 @@ static
 void
 rand_thread_init(void)
 {
-	lwkt_create(rand_thread_loop, NULL, &rand_td, NULL,
-		    TDF_MPSAFE, 0, "random");
+	lwkt_create(rand_thread_loop, NULL, &rand_td, NULL, 0, 0, "random");
 }
 
 SYSINIT(rand, SI_SUB_HELPER_THREADS, SI_ORDER_ANY, rand_thread_init, 0);

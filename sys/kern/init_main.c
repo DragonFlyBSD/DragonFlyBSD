@@ -161,8 +161,7 @@ sysinit_add(struct sysinit **set, struct sysinit **set_end)
 void
 mi_proc0init(struct globaldata *gd, struct user *proc0paddr)
 {
-	lwkt_init_thread(&thread0, proc0paddr, LWKT_THREAD_STACK,
-			 TDF_MPSAFE, gd);
+	lwkt_init_thread(&thread0, proc0paddr, LWKT_THREAD_STACK, 0, gd);
 	lwkt_set_comm(&thread0, "thread0");
 #ifdef SMP
 	thread0.td_mpcount = 1;	/* will hold mplock initially */

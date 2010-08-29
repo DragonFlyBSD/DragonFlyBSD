@@ -568,7 +568,7 @@ tcp_thread_init(void)
 
 	for (cpu = 0; cpu < ncpus2; cpu++) {
 		lwkt_create(tcpmsg_service_loop, NULL, NULL,
-			    &tcp_thread[cpu], TDF_NETWORK | TDF_MPSAFE, cpu,
+			    &tcp_thread[cpu], TDF_NETWORK, cpu,
 			    "tcp_thread %d", cpu);
 		netmsg_service_port_init(&tcp_thread[cpu].td_msgport);
 	}
@@ -581,7 +581,7 @@ udp_thread_init(void)
 
 	for (cpu = 0; cpu < ncpus2; cpu++) {
 		lwkt_create(netmsg_service_loop, &udp_mpsafe_thread, NULL,
-			    &udp_thread[cpu], TDF_NETWORK | TDF_MPSAFE, cpu,
+			    &udp_thread[cpu], TDF_NETWORK, cpu,
 			    "udp_thread %d", cpu);
 		netmsg_service_port_init(&udp_thread[cpu].td_msgport);
 	}
