@@ -495,7 +495,7 @@ npx_attach(device_t dev)
 		}
 	}
 
-	if ((cpu_feature & CPUID_MMX) && (cpu_feature & CPUID_SSE) && mmxopt)
+	if ((cpu_feature & CPUID_SSE2) && mmxopt)
 		bzeront_avail = 1;
 #endif
 #if 0
