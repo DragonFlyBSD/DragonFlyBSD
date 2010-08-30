@@ -87,7 +87,7 @@ extern int   src_mode;
 extern int   dst_mode;
 struct symbol;
 
-void stop(const char *errstring, int err_code);
+void stop(const char *errstring, int err_code) __dead2;
 void include_file(char *file_name, include_type type);
 void expand_macro(struct symbol *macro_symbol);
 struct instruction *seq_alloc(void);
