@@ -80,6 +80,44 @@ int max_installed_soft_intr;
 
 #define EMERGENCY_INTR_POLLING_FREQ_MAX 20000
 
+#ifdef INVARIANTS
+
+#define TD_INVARIANTS_DECLARE	\
+	int mpcount;		\
+	int spincount;		\
+	lwkt_tokref_t curstop
+
+#define TD_INVARIANTS_GET(td)					\
+	do {							\
+		mpcount = (td)->td_mpcount;			\
+		spincount = (td)->td_gd->gd_spinlocks_wr;	\
+		curstop = (td)->td_toks_stop;			\
+	} while(0)
+
+#define TD_INVARIANTS_TEST(td, name)					\
+	do {								\
+		KASSERT(mpcount == (td)->td_mpcount,			\
+			("mpcount mismatch after interrupt handler %s",	\
+			name));						\
+		KASSERT(spincount == (td)->td_gd->gd_spinlocks_wr, 	\
+			("spincount mismatch after interrupt handler %s", \
+			name));						\
+		KASSERT(curstop == (td)->td_toks_stop,			\
+			("token count mismatch after interrupt handler %s", \
+			name));						\
+	} while(0)
+
+#define TD_INVARIANTS_ADJMP(count)	mpcount += (count)
+
+#else
+
+#define TD_INVARIANTS_DECLARE
+#define TD_INVARIANTS_GET(td)
+#define TD_INVARIANTS_TEST(td)
+#define TD_INVARIANTS_ADJMP(count)
+
+#endif
+
 static int sysctl_emergency_freq(SYSCTL_HANDLER_ARGS);
 static int sysctl_emergency_enable(SYSCTL_HANDLER_ARGS);
 static void emergency_intr_timer_callback(systimer_t, struct intrframe *);
@@ -608,6 +646,7 @@ ithread_fast_handler(struct intrframe *frame)
 #ifdef SMP
     int got_mplock;
 #endif
+    TD_INVARIANTS_DECLARE;
     intrec_t rec, next_rec;
     globaldata_t gd;
     thread_t td;
@@ -652,7 +691,9 @@ ithread_fast_handler(struct intrframe *frame)
     got_mplock = 0;
 #endif
 
+    TD_INVARIANTS_GET(td);
     list = &info->i_reclist;
+
     for (rec = *list; rec; rec = next_rec) {
 	next_rec = rec->next;	/* rec may be invalid after call */
 
@@ -665,6 +706,7 @@ ithread_fast_handler(struct intrframe *frame)
 		    break;
 		}
 		got_mplock = 1;
+		TD_INVARIANTS_ADJMP(1);
 	    }
 #endif
 	    if (rec->serializer) {
@@ -674,6 +716,7 @@ ithread_fast_handler(struct intrframe *frame)
 	    } else {
 		rec->handler(rec->argument, frame);
 	    }
+	    TD_INVARIANTS_TEST(td, rec->name);
 	}
     }
 
@@ -731,6 +774,7 @@ ithread_handler(void *arg)
     globaldata_t gd;
     struct systimer ill_timer;	/* enforced freq. timer */
     u_int ill_count;		/* interrupt livelock counter */
+    TD_INVARIANTS_DECLARE;
 
     ill_count = 0;
     intr = (int)(intptr_t)arg;
@@ -766,6 +810,8 @@ ithread_handler(void *arg)
 	}
 #endif
 
+	TD_INVARIANTS_GET(gd->gd_curthread);
+
 	/*
 	 * If an interrupt is pending, clear i_running and execute the
 	 * handlers.  Note that certain types of interrupts can re-trigger
@@ -789,6 +835,7 @@ ithread_handler(void *arg)
 		} else {
 		    rec->handler(rec->argument, NULL);
 		}
+		TD_INVARIANTS_TEST(gd->gd_curthread, rec->name);
 	    }
 	}
 
@@ -914,8 +961,11 @@ ithread_emergency(void *arg __unused)
     struct intr_info *info;
     intrec_t rec, nrec;
     int intr;
+    thread_t td __debugvar = curthread;
+    TD_INVARIANTS_DECLARE;
 
     get_mplock();
+    TD_INVARIANTS_GET(td);
 
     for (;;) {
 	for (intr = 0; intr < max_installed_hard_intr; ++intr) {
@@ -928,6 +978,7 @@ ithread_emergency(void *arg __unused)
 		    } else {
 			rec->handler(rec->argument, NULL);
 		    }
+		    TD_INVARIANTS_TEST(td, rec->name);
 		}
 		nrec = rec->next;
 	    }

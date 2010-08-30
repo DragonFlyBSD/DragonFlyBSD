@@ -44,6 +44,11 @@ extern int mp_lock_holder_line;
  *
  * The mplock must check a number of conditions and it is better to
  * leave it to a procedure if we cannot get it trivially.
+ *
+ * WARNING: The mp_lock and td_mpcount are not necessarily synchronized.
+ *	    We must synchronize them here.  They can be unsynchronized
+ *	    for a variety of reasons including predisposition, td_xpcount,
+ *	    and so forth.
  */
 static __inline
 void
@@ -61,7 +66,8 @@ get_mplock_debug(const char *file, int line)
  * Release the MP lock
  *
  * In order to release the MP lock we must first pre-dispose td_mpcount
- * for the release and then, if it is 0, release the actual lock.
+ * for the release and then, if it is 0 and td_xpcount is also zero,
+ * release the actual lock.
  *
  * The contested function is called only if we are unable to release the
  * Actual lock.  This can occur if we raced an interrupt after decrementing
@@ -69,6 +75,11 @@ get_mplock_debug(const char *file, int line)
  *
  * The function also catches the td_mpcount underflow case because the
  * lock will be in a released state and thus fail the subsequent release.
+ *
+ * WARNING: The mp_lock and td_mpcount are not necessarily synchronized.
+ *	    We must synchronize them here.  They can be unsynchronized
+ *	    for a variety of reasons including predisposition, td_xpcount,
+ *	    and so forth.
  */
 static __inline
 void
@@ -79,8 +90,10 @@ rel_mplock(void)
 	int n;
 
 	n = --td->td_mpcount;
-	if (n <= 0 && atomic_cmpset_int(&mp_lock, gd->gd_cpuid, -1) == 0)
+	if (n < 0 || ((n + td->td_xpcount) == 0 &&
+		      atomic_cmpset_int(&mp_lock, gd->gd_cpuid, -1) == 0)) {
 		_rel_mplock_contested();
+	}
 }
 
 /*

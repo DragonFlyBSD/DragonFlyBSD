@@ -481,9 +481,11 @@ lwkt_free_thread(thread_t td)
  * different beast and LWKT priorities should not be confused with
  * user process priorities.
  *
- * The MP lock may be out of sync with the thread's td_mpcount.  lwkt_switch()
- * cleans it up.  Note that the td_switch() function cannot do anything that
- * requires the MP lock since the MP lock will have already been setup for
+ * The MP lock may be out of sync with the thread's td_mpcount + td_xpcount.
+ * lwkt_switch() cleans it up.
+ *
+ * Note that the td_switch() function cannot do anything that requires
+ * the MP lock since the MP lock will have already been setup for
  * the target thread (not the current thread).  It's nice to have a scheduler
  * that does not need the MP lock to work because it allows us to do some
  * really cool high-performance MP lock optimizations.
@@ -570,12 +572,12 @@ lwkt_switch(void)
 
 #ifdef SMP
     /*
-     * td_mpcount cannot be used to determine if we currently hold the
-     * MP lock because get_mplock() will increment it prior to attempting
-     * to get the lock, and switch out if it can't.  Our ownership of 
-     * the actual lock will remain stable while we are in a critical section
-     * (but, of course, another cpu may own or release the lock so the
-     * actual value of mp_lock is not stable).
+     * td_mpcount + td_xpcount cannot be used to determine if we currently
+     * hold the MP lock because get_mplock() will increment it prior to
+     * attempting to get the lock, and switch out if it can't.  Our
+     * ownership of the actual lock will remain stable while we are
+     * in a critical section, and once we actually acquire the underlying
+     * lock as long as the count is greater than 0.
      */
     mpheld = MP_LOCK_HELD(gd);
 #ifdef	INVARIANTS
@@ -601,14 +603,11 @@ lwkt_switch(void)
     if ((ntd = td->td_preempted) != NULL) {
 	KKASSERT(ntd->td_flags & TDF_PREEMPT_LOCK);
 #ifdef SMP
-	if (ntd->td_mpcount && mpheld == 0) {
+	if (ntd->td_mpcount + ntd->td_xpcount && mpheld == 0) {
 	    panic("MPLOCK NOT HELD ON RETURN: %p %p %d %d",
-	       td, ntd, td->td_mpcount, ntd->td_mpcount);
+	       td, ntd, td->td_mpcount, ntd->td_mpcount + ntd->td_xpcount);
 	}
-	if (ntd->td_mpcount) {
-	    td->td_mpcount -= ntd->td_mpcount;
-	    KKASSERT(td->td_mpcount >= 0);
-	}
+	td->td_xpcount = 0;
 #endif
 	ntd->td_flags |= TDF_PREEMPT_DONE;
 
@@ -653,6 +652,7 @@ lwkt_switch(void)
 	    if (gd->gd_reqflags & RQF_IDLECHECK_MASK)
 		    ntd->td_flags |= TDF_IDLE_NOHLT;
 #ifdef SMP
+	    KKASSERT(ntd->td_xpcount == 0);
 	    if (ntd->td_mpcount) {
 		if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
 		    panic("Idle thread %p was holding the BGL!", ntd);
@@ -680,7 +680,8 @@ lwkt_switch(void)
 	 */
 	if (ntd->td_fairq_accum >= 0 &&
 #ifdef SMP
-	    (ntd->td_mpcount == 0 || mpheld || cpu_try_mplock()) &&
+	    (ntd->td_mpcount + ntd->td_xpcount == 0 ||
+	     mpheld || cpu_try_mplock()) &&
 #endif
 	    (!TD_TOKS_HELD(ntd) || lwkt_getalltokens(ntd, &lmsg, &laddr))
 	) {
@@ -698,7 +699,7 @@ lwkt_switch(void)
 		set_cpu_contention_mask(gd);
 	/* Reload mpheld (it become stale after mplock/token ops) */
 	mpheld = MP_LOCK_HELD(gd);
-	if (ntd->td_mpcount && mpheld == 0) {
+	if (ntd->td_mpcount + ntd->td_xpcount && mpheld == 0) {
 	    lmsg = "mplock";
 	    laddr = ntd->td_mplock_stallpc;
 	}
@@ -763,6 +764,7 @@ lwkt_switch(void)
 		ntd = &gd->gd_idlethread;
 		ntd->td_flags |= TDF_IDLE_NOHLT;
 #ifdef SMP
+		KKASSERT(ntd->td_xpcount == 0);
 		if (ntd->td_mpcount) {
 		    mpheld = MP_LOCK_HELD(gd);
 		    if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
@@ -800,7 +802,8 @@ lwkt_switch(void)
 	    if ((ntd->td_pri >= TDPRI_KERN_LPSCHED || nquserok ||
 		user_pri_sched) && ntd->td_fairq_accum >= 0 &&
 #ifdef SMP
-		(ntd->td_mpcount == 0 || mpheld || cpu_try_mplock()) &&
+		(ntd->td_mpcount + ntd->td_xpcount == 0 ||
+		 mpheld || cpu_try_mplock()) &&
 #endif
 		(!TD_TOKS_HELD(ntd) || lwkt_getalltokens(ntd, &lmsg, &laddr))
 	    ) {
@@ -816,7 +819,7 @@ lwkt_switch(void)
 	     * Reload mpheld (it become stale after mplock/token ops).
 	     */
 	    mpheld = MP_LOCK_HELD(gd);
-	    if (ntd->td_mpcount && mpheld == 0) {
+	    if (ntd->td_mpcount + ntd->td_xpcount && mpheld == 0) {
 		lmsg = "mplock";
 		laddr = ntd->td_mplock_stallpc;
 	    }
@@ -881,7 +884,7 @@ haveidle:
     KASSERT(ntd->td_critcount,
 	    ("priority problem in lwkt_switch %d %d", td->td_pri, ntd->td_pri));
 #ifdef SMP
-    if (ntd->td_mpcount == 0 ) {
+    if (ntd->td_mpcount + ntd->td_xpcount == 0 ) {
 	if (MP_LOCK_HELD(gd))
 	    cpu_rel_mplock(gd->gd_cpuid);
     } else {
@@ -1005,18 +1008,17 @@ lwkt_preempt(thread_t ntd, int critcount)
     }
 #ifdef SMP
     /*
-     * note: an interrupt might have occured just as we were transitioning
+     * NOTE: An interrupt might have occured just as we were transitioning
      * to or from the MP lock.  In this case td_mpcount will be pre-disposed
-     * (non-zero) but not actually synchronized with the actual state of the
-     * lock.  We can use it to imply an MP lock requirement for the
-     * preemption but we cannot use it to test whether we hold the MP lock
-     * or not.
+     * (non-zero) but not actually synchronized with the mp_lock itself.
+     * We can use it to imply an MP lock requirement for the preemption but
+     * we cannot use it to test whether we hold the MP lock or not.
      */
     savecnt = td->td_mpcount;
     mpheld = MP_LOCK_HELD(gd);
-    ntd->td_mpcount += td->td_mpcount;
-    if (mpheld == 0 && ntd->td_mpcount && !cpu_try_mplock()) {
-	ntd->td_mpcount -= td->td_mpcount;
+    ntd->td_xpcount = td->td_mpcount;
+    if (mpheld == 0 && ntd->td_mpcount + ntd->td_xpcount && !cpu_try_mplock()) {
+	ntd->td_xpcount = 0;
 	++preempt_miss;
 	need_lwkt_resched();
 	return;
@@ -1039,7 +1041,7 @@ lwkt_preempt(thread_t ntd, int critcount)
     mpheld = MP_LOCK_HELD(gd);
     if (mpheld && td->td_mpcount == 0)
 	cpu_rel_mplock(gd->gd_cpuid);
-    else if (mpheld == 0 && td->td_mpcount)
+    else if (mpheld == 0 && td->td_mpcount + td->td_xpcount)
 	panic("lwkt_preempt(): MP lock was not held through");
 #endif
     ntd->td_preempted = NULL;
@@ -1165,7 +1167,7 @@ lwkt_user_yield(void)
      * has a chaining effect since if the interrupt is blocked, so is
      * the event, so normal scheduling will not pick up on the problem.
      */
-    if (cpu_contention_mask && td->td_mpcount) {
+    if (cpu_contention_mask && td->td_mpcount + td->td_xpcount) {
 	yield_mplock(td);
     }
 #endif

@@ -357,6 +357,7 @@ trap(struct trapframe *frame)
 #endif
 #ifdef INVARIANTS
 	int crit_count = td->td_critcount;
+	lwkt_tokref_t curstop = td->td_toks_stop;
 #endif
 	vm_offset_t eva;
 
@@ -763,8 +764,10 @@ trap(struct trapframe *frame)
 
 out:
 #ifdef SMP
-        if (ISPL(frame->tf_cs) == SEL_UPL)
-		KASSERT(td->td_mpcount == have_mplock, ("badmpcount trap/end from %p", (void *)frame->tf_rip));
+        if (ISPL(frame->tf_cs) == SEL_UPL) {
+		KASSERT(td->td_mpcount == have_mplock,
+			("badmpcount trap/end from %p", (void *)frame->tf_rip));
+	}
 #endif
 	userret(lp, frame, sticks);
 	userexit(lp);
@@ -777,8 +780,12 @@ out2:	;
 		KTR_LOG(kernentry_trap_ret, p->p_pid, lp->lwp_tid);
 #ifdef INVARIANTS
 	KASSERT(crit_count == td->td_critcount,
-		("syscall: critical section count mismatch! %d/%d",
+		("trap: critical section count mismatch! %d/%d",
 		crit_count, td->td_pri));
+	KASSERT(curstop == td->td_toks_stop,
+		("trap: extra tokens held after trap! %ld/%ld",
+		curstop - &td->td_toks_base,
+		td->td_toks_stop - &td->td_toks_base));
 #endif
 }
 
@@ -1243,6 +1250,9 @@ bad:
 	KASSERT(crit_count == td->td_critcount,
 		("syscall: critical section count mismatch! %d/%d",
 		crit_count, td->td_pri));
+	KASSERT(&td->td_toks_base == td->td_toks_stop,
+		("syscall: extra tokens held after trap! %ld",
+		td->td_toks_stop - &td->td_toks_base));
 #endif
 }
 

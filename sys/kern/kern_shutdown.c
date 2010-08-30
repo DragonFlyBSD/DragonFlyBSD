@@ -149,6 +149,8 @@ int dumping;				/* system is dumping */
 static struct dumperinfo dumper;	/* selected dumper */
 
 globaldata_t panic_cpu_gd;		/* which cpu took the panic */
+struct lwkt_tokref panic_tokens[LWKT_MAXTOKENS];
+int panic_tokens_count;
 
 int bootverbose = 0;			/* note: assignment to force non-bss */
 SYSCTL_INT(_debug, OID_AUTO, bootverbose, CTLFLAG_RW,
@@ -666,6 +668,7 @@ panic(const char *fmt, ...)
 {
 	int bootopt, newpanic;
 	globaldata_t gd = mycpu;
+	thread_t td = gd->gd_curthread;
 	__va_list ap;
 	static char buf[256];
 
@@ -698,11 +701,11 @@ panic(const char *fmt, ...)
 			++mycpu->gd_trap_nesting_level;
 			if (mycpu->gd_trap_nesting_level < 25) {
 				kprintf("SECONDARY PANIC ON CPU %d THREAD %p\n",
-					mycpu->gd_cpuid, curthread);
+					mycpu->gd_cpuid, td);
 			}
-			curthread->td_release = NULL;	/* be a grinch */
+			td->td_release = NULL;	/* be a grinch */
 			for (;;) {
-				lwkt_deschedule_self(curthread);
+				lwkt_deschedule_self(td);
 				lwkt_switch();
 			}
 			/* NOT REACHED */
@@ -725,7 +728,18 @@ panic(const char *fmt, ...)
 #else
 	panic_cpu_gd = gd;
 #endif
+	/*
+	 * Try to get the system into a working state.  Save information
+	 * we are about to destroy.
+	 */
 	kvcreinitspin();
+	if (panicstr == NULL) {
+		bcopy(td->td_toks_array, panic_tokens, sizeof(panic_tokens));
+		panic_tokens_count = td->td_toks_stop - &td->td_toks_base;
+	}
+	lwkt_relalltokens(td);
+	td->td_toks_stop = &td->td_toks_base;
+
 	/*
 	 * Setup
 	 */

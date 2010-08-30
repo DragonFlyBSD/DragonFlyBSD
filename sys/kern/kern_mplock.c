@@ -101,7 +101,8 @@ cpu_get_initial_mplock(void)
 
 /*
  * This code is called from the get_mplock() inline when the mplock
- * is not already held.
+ * is not already held.  td_mpcount has already been predisposed
+ * (incremented).
  */
 void
 _get_mplock_predisposed(const char *file, int line)
@@ -154,8 +155,9 @@ _get_mplock_contested(const char *file, int line)
 }
 
 /*
- * Called if td_mpcount went negative or if td_mpcount is 0 and we were
- * unable to release the MP lock.  Handles sanity checks and conflicts.
+ * Called if td_mpcount went negative or if td_mpcount + td_xpcount is 0
+ * and we were unable to release the MP lock.  Handles sanity checks
+ * and conflicts.
  *
  * It is possible for the inline release to have raced an interrupt which
  * get/rel'd the MP lock, causing the inline's cmpset to fail.  If this
@@ -166,15 +168,18 @@ void
 _rel_mplock_contested(void)
 {
 	globaldata_t gd = mycpu;
+	thread_t td = gd->gd_curthread;
 	int ov;
 
-	KKASSERT(gd->gd_curthread->td_mpcount >= 0);
-	for (;;) {
-		ov = mp_lock;
-		if (ov != gd->gd_cpuid)
-			break;
-		if (atomic_cmpset_int(&mp_lock, ov, -1))
-			break;
+	KKASSERT(td->td_mpcount >= 0);
+	if (td->td_mpcount + td->td_xpcount == 0) {
+		for (;;) {
+			ov = mp_lock;
+			if (ov != gd->gd_cpuid)
+				break;
+			if (atomic_cmpset_int(&mp_lock, ov, -1))
+				break;
+		}
 	}
 }
 
@@ -201,12 +206,14 @@ _try_mplock_contested(const char *file, int line)
 	KKASSERT(td->td_mpcount >= 0);
 	++mplock_contention_count;
 
-	for (;;) {
-		ov = mp_lock;
-		if (ov != gd->gd_cpuid)
-			break;
-		if (atomic_cmpset_int(&mp_lock, ov, -1))
-			break;
+	if (td->td_mpcount + td->td_xpcount == 0) {
+		for (;;) {
+			ov = mp_lock;
+			if (ov != gd->gd_cpuid)
+				break;
+			if (atomic_cmpset_int(&mp_lock, ov, -1))
+				break;
+		}
 	}
 }
 
@@ -223,19 +230,22 @@ _cpu_try_mplock_contested(const char *file, int line)
 
 /*
  * Temporarily yield the MP lock.  This is part of lwkt_user_yield()
- * which is kinda hackish.
+ * which is kinda hackish.  The MP lock cannot be yielded if inherited
+ * due to a preemption.
  */
 void
 yield_mplock(thread_t td)
 {
 	int savecnt;
 
-	savecnt = td->td_mpcount;
-	td->td_mpcount = 1;
-	rel_mplock();
-	DELAY(bgl_yield);
-	get_mplock();
-	td->td_mpcount = savecnt;
+	if (td->td_xpcount == 0) {
+		savecnt = td->td_mpcount;
+		td->td_mpcount = 1;
+		rel_mplock();
+		DELAY(bgl_yield);
+		get_mplock();
+		td->td_mpcount = savecnt;
+	}
 }
 
 #if 0

@@ -135,6 +135,8 @@ typedef struct lwkt_token {
  */
 #define ASSERT_LWKT_TOKEN_HELD(tok)	\
 	KKASSERT((tok)->t_ref && (tok)->t_ref->tr_owner == curthread)
+#define ASSERT_NO_TOKENS_HELD(td)	\
+	KKASSERT((td)->td_toks_stop == &td->toks_array[0])
 
 /*
  * Assert that a particular token is held and we are in a hard
@@ -269,11 +271,16 @@ struct thread {
     int		td_nest_count;	/* prevent splz nesting */
 #ifdef SMP
     int		td_mpcount;	/* MP lock held (count) */
+    int		td_xpcount;	/* MP lock held inherited (count) */
     int		td_cscount;	/* cpu synchronization master */
+    int		td_unused02[4];	/* for future fields */
 #else
     int		td_mpcount_unused;	/* filler so size matches */
+    int		td_xpcount_unused;
     int		td_cscount_unused;
+    int		td_unused02[4];
 #endif
+    int		td_unused03[4];		/* for future fields */
     struct iosched_data td_iosdata;	/* Dynamic I/O scheduling data */
     struct timeval td_start;	/* start time for a thread/process */
     char	td_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
@@ -295,8 +302,8 @@ struct thread {
     struct md_thread td_mach;
 };
 
-#define td_toks_base	td_toks_array[0]
-#define td_toks_end	td_toks_array[LWKT_MAXTOKENS]
+#define td_toks_base		td_toks_array[0]
+#define td_toks_end		td_toks_array[LWKT_MAXTOKENS]
 
 #define TD_TOKS_HELD(td)	((td)->td_toks_stop != &(td)->td_toks_base)
 #define TD_TOKS_NOT_HELD(td)	((td)->td_toks_stop == &(td)->td_toks_base)

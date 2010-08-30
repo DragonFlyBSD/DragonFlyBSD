@@ -200,6 +200,10 @@ _lwkt_token_pool_lookup(void *ptr)
  * holding the MP lock.  This bypasses unncessary calls to get_mplock() and
  * rel_mplock() on tokens which are not normally MPSAFE when the thread
  * is already holding the MP lock.
+ *
+ * WARNING: The inherited td_xpcount does not count here because a switch
+ *	    could schedule the preempted thread and blow away the inherited
+ *	    mplock.
  */
 static __inline
 void
@@ -390,16 +394,18 @@ int
 _lwkt_trytokref(lwkt_tokref_t ref, thread_t td)
 {
 	if ((ref->tr_flags & LWKT_TOKEN_MPSAFE) == 0) {
-		if (try_mplock() == 0)
+		if (try_mplock() == 0) {
+			--td->td_toks_stop;
 			return (FALSE);
+		}
 	}
 	if (_lwkt_trytokref2(ref, td, 0) == FALSE) {
 		/*
 		 * Cleanup, deactivate the failed token.
 		 */
-		--td->td_toks_stop;
 		if ((ref->tr_flags & LWKT_TOKEN_MPSAFE) == 0)
 			rel_mplock();
+		--td->td_toks_stop;
 		return (FALSE);
 	}
 	return (TRUE);
@@ -443,8 +449,8 @@ lwkt_gettoken(lwkt_token_t tok)
 
 	ref = td->td_toks_stop;
 	KKASSERT(ref < &td->td_toks_end);
-	_lwkt_tokref_init(ref, tok, td);
 	++td->td_toks_stop;
+	_lwkt_tokref_init(ref, tok, td);
 	_lwkt_gettokref(ref, td, (const void **)&tok);
 }
 
@@ -456,8 +462,8 @@ lwkt_gettoken_hard(lwkt_token_t tok)
 
 	ref = td->td_toks_stop;
 	KKASSERT(ref < &td->td_toks_end);
-	_lwkt_tokref_init(ref, tok, td);
 	++td->td_toks_stop;
+	_lwkt_tokref_init(ref, tok, td);
 	_lwkt_gettokref(ref, td, (const void **)&tok);
 	crit_enter_hard_gd(td->td_gd);
 }
@@ -471,9 +477,9 @@ lwkt_getpooltoken(void *ptr)
 
 	ref = td->td_toks_stop;
 	KKASSERT(ref < &td->td_toks_end);
+	++td->td_toks_stop;
 	tok = _lwkt_token_pool_lookup(ptr);
 	_lwkt_tokref_init(ref, tok, td);
-	++td->td_toks_stop;
 	_lwkt_gettokref(ref, td, (const void **)&ptr);
 	return(tok);
 }
@@ -486,8 +492,8 @@ lwkt_trytoken(lwkt_token_t tok)
 
 	ref = td->td_toks_stop;
 	KKASSERT(ref < &td->td_toks_end);
-	_lwkt_tokref_init(ref, tok, td);
 	++td->td_toks_stop;
+	_lwkt_tokref_init(ref, tok, td);
 	return(_lwkt_trytokref(ref, td));
 }
 
@@ -509,13 +515,13 @@ lwkt_reltoken(lwkt_token_t tok)
 	 */
 	ref = td->td_toks_stop - 1;
 	KKASSERT(ref >= &td->td_toks_base && ref->tr_tok == tok);
-	td->td_toks_stop = ref;
 
 	/*
 	 * If the token was not MPSAFE release the MP lock.
 	 */
 	if ((ref->tr_flags & LWKT_TOKEN_MPSAFE) == 0)
 		rel_mplock();
+	td->td_toks_stop = ref;
 
 	/*
 	 * Make sure the compiler does not reorder the clearing of
