@@ -988,7 +988,7 @@ xptopen(struct dev_open_args *ap)
 	 * We don't allow nonblocking access.
 	 */
 	if ((ap->a_oflags & O_NONBLOCK) != 0) {
-		kprintf("%s: can't' do nonblocking access\n", devtoname(dev));
+		kprintf("%s: can't do nonblocking access\n", devtoname(dev));
 		return(ENODEV);
 	}
 
