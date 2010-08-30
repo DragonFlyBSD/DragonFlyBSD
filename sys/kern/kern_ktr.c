@@ -288,12 +288,6 @@ ktr_resync_callback(void *dummy __unused)
 			spin_unlock_wr(&spin);
 		}
 		logtest_noargs(spin_end);
-		logtest_noargs(spin_beg);
-		for (count = ktr_testspincnt; count; --count) {
-			spin_lock_rd(&spin);
-			spin_unlock_rd(&spin);
-		}
-		logtest_noargs(spin_end);
 		ktr_testspincnt = 0;
 	}
 #endif

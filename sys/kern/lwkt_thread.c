@@ -563,9 +563,6 @@ lwkt_switch(void)
      * We had better not be holding any spin locks, but don't get into an
      * endless panic loop.
      */
-    KASSERT(gd->gd_spinlock_rd == NULL || panicstr != NULL, 
-	    ("lwkt_switch: still holding a shared spinlock %p!", 
-	     gd->gd_spinlock_rd));
     KASSERT(gd->gd_spinlocks_wr == 0 || panicstr != NULL, 
 	    ("lwkt_switch: still holding %d exclusive spinlocks!",
 	     gd->gd_spinlocks_wr));
@@ -989,7 +986,6 @@ lwkt_preempt(thread_t ntd, int critcount)
      * We could try to acquire the tokens but this case is so rare there
      * is no need to support it.
      */
-    KKASSERT(gd->gd_spinlock_rd == NULL);
     KKASSERT(gd->gd_spinlocks_wr == 0);
 
     if (TD_TOKS_HELD(ntd)) {

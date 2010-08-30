@@ -108,41 +108,16 @@ exponential_init(struct exponential_backoff *bo, struct spinlock *mtx)
 	bo->backoff = BACKOFF_INITIAL;
 	bo->nsec = 0;
 	bo->mtx = mtx;
+	bo->base = 0;	/* silence gcc */
 }
 
 /*
- * We were either contested due to another exclusive lock holder,
- * or due to the presence of shared locks.  We have to undo the mess
- * we created by returning the shared locks.
- *
- * If there was another exclusive lock holder only the exclusive bit
- * in value will be the only bit set.  We don't have to do anything since
- * restoration does not involve any work.  
- *
- * Otherwise we successfully obtained the exclusive bit.  Attempt to
- * clear the shared bits.  If we are able to clear the shared bits 
- * we win.  Otherwise we lose and we have to restore the shared bits
- * we couldn't clear (and also clear our exclusive bit).
+ * We contested due to another exclusive lock holder.  We lose.
  */
 int
-spin_trylock_wr_contested(globaldata_t gd, struct spinlock *mtx, int value)
+spin_trylock_wr_contested2(globaldata_t gd)
 {
-	int bit;
-
 	++spinlocks_contested1;
-	if ((value & SPINLOCK_EXCLUSIVE) == 0) {
-		while (value) {
-			bit = bsfl(value);
-			if (globaldata_find(bit)->gd_spinlock_rd == mtx) {
-				atomic_swap_int(&mtx->lock, value);
-				--gd->gd_spinlocks_wr;
-				--gd->gd_curthread->td_critcount;
-				return (FALSE);
-			}
-			value &= ~(1 << bit);
-		}
-		return (TRUE);
-	}
 	--gd->gd_spinlocks_wr;
 	--gd->gd_curthread->td_critcount;
 	return (FALSE);
@@ -156,100 +131,25 @@ spin_trylock_wr_contested(globaldata_t gd, struct spinlock *mtx, int value)
  * would have been set and we can throw away value. 
  */
 void
-spin_lock_wr_contested(struct spinlock *mtx, int value)
+spin_lock_wr_contested2(struct spinlock *mtx)
 {
 	struct exponential_backoff backoff;
-	globaldata_t gd = mycpu;
-	int bit;
-	int mask;
+	int value;
 
 	/*
 	 * Wait until we can gain exclusive access vs another exclusive
 	 * holder.
 	 */
-	exponential_init(&backoff, mtx);
 	++spinlocks_contested1;
+	exponential_init(&backoff, mtx);
+
 	logspin(beg, mtx, 'w');
-
-	while (value & SPINLOCK_EXCLUSIVE) {
-		value = atomic_swap_int(&mtx->lock, SPINLOCK_EXCLUSIVE);
-		if (exponential_backoff(&backoff)) {
-			value &= ~SPINLOCK_EXCLUSIVE;
+	do {
+		if (exponential_backoff(&backoff))
 			break;
-		}
-	}
-
-	/*
-	 * Kill the cached shared bit for our own cpu.  This is the most
-	 * common case and there's no sense wasting cpu on it.  Since
-	 * spinlocks aren't recursive, we can't own a shared ref on the
-	 * spinlock while trying to get an exclusive one.
-	 *
-	 * If multiple bits are set do not stall on any single cpu.  Check
-	 * all cpus that have the cache bit set, then loop and check again,
-	 * until we've cleaned all the bits.
-	 */
-	value &= ~gd->gd_cpumask;
-
-	while ((mask = value) != 0) {
-		while (mask) {
-			bit = bsfl(value);
-			if (globaldata_find(bit)->gd_spinlock_rd != mtx) {
-				value &= ~(1 << bit);
-			} else if (exponential_backoff(&backoff)) {
-				value = 0;
-				break;
-			}
-			mask &= ~(1 << bit);
-		}
-	}
+		value = atomic_swap_int(&mtx->lock, SPINLOCK_EXCLUSIVE);
+	} while (value & SPINLOCK_EXCLUSIVE);
 	logspin(end, mtx, 'w');
-}
-
-/*
- * The cache bit wasn't set for our cpu.  Loop until we can set the bit.
- * As with the spin_lock_rd() inline we need a memory fence after setting
- * gd_spinlock_rd to interlock against exclusive spinlocks waiting for
- * that field to clear.
- */
-void
-spin_lock_rd_contested(struct spinlock *mtx)
-{
-	struct exponential_backoff backoff;
-	globaldata_t gd = mycpu;
-	int value = mtx->lock;
-
-	/*
-	 * Shortcut the op if we can just set the cache bit.  This case
-	 * occurs when the last lock was an exclusive lock.
-	 */
-	while ((value & SPINLOCK_EXCLUSIVE) == 0) {
-		if (atomic_cmpset_int(&mtx->lock, value, value|gd->gd_cpumask))
-			return;
-		value = mtx->lock;
-	}
-
-	exponential_init(&backoff, mtx);
-	++spinlocks_contested1;
-
-	logspin(beg, mtx, 'r');
-
-	while ((value & gd->gd_cpumask) == 0) {
-		if (value & SPINLOCK_EXCLUSIVE) {
-			gd->gd_spinlock_rd = NULL;
-			if (exponential_backoff(&backoff)) {
-				gd->gd_spinlock_rd = mtx;
-				break;
-			}
-			gd->gd_spinlock_rd = mtx;
-			cpu_mfence();
-		} else {
-			if (atomic_cmpset_int(&mtx->lock, value, value|gd->gd_cpumask))
-				break;
-		}
-		value = mtx->lock;
-	}
-	logspin(end, mtx, 'r');
 }
 
 /*
@@ -377,18 +277,6 @@ sysctl_spin_lock_test(SYSCTL_HANDLER_ARGS)
 		}
 	}
 
-	/*
-	 * Time best-case shared spinlocks
-	 */
-	if (value == 3) {
-		globaldata_t gd = mycpu;
-
-		spin_init(&mtx);
-		for (i = spin_test_count; i > 0; --i) {
-		    spin_lock_rd_quick(gd, &mtx);
-		    spin_unlock_rd_quick(gd, &mtx);
-		}
-	}
         return (0);
 }
 

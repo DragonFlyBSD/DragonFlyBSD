@@ -555,7 +555,6 @@ bsd4_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 	 * Spinlocks also hold a critical section so there should not be
 	 * any active.
 	 */
-	KKASSERT(gd->gd_spinlock_rd == NULL);
 	KKASSERT(gd->gd_spinlocks_wr == 0);
 
 	bsd4_resetpriority(lp);
