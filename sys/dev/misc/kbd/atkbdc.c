@@ -1,4 +1,6 @@
-/*-
+/*
+ * (MPSAFE)
+ *
  * Copyright (c) 1996-1999
  * Kazutaka YOKOTA (yokota@zodiac.mech.utsunomiya-u.ac.jp)
  * All rights reserved.
