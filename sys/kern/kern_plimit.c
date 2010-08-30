@@ -343,15 +343,15 @@ kern_setrlimit(u_int which, struct rlimit *limp)
         if (limp->rlim_max < 0)
                 limp->rlim_max = RLIM_INFINITY;
 
-	spin_lock_rd(&limit->p_spin);
+	spin_lock_wr(&limit->p_spin);
         if (limp->rlim_cur > alimp->rlim_max ||
             limp->rlim_max > alimp->rlim_max) {
-		spin_unlock_rd(&limit->p_spin);
+		spin_unlock_wr(&limit->p_spin);
                 error = priv_check_cred(p->p_ucred, PRIV_PROC_SETRLIMIT, 0);
                 if (error)
                         return (error);
 	} else {
-		spin_unlock_rd(&limit->p_spin);
+		spin_unlock_wr(&limit->p_spin);
 	}
         if (limp->rlim_cur > limp->rlim_max)
                 limp->rlim_cur = limp->rlim_max;
@@ -382,7 +382,7 @@ kern_setrlimit(u_int which, struct rlimit *limp)
                  * "rlim_cur" bytes accessible.  If stack limit is going
                  * up make more accessible, if going down make inaccessible.
                  */
-		spin_lock_rd(&limit->p_spin);
+		spin_lock_wr(&limit->p_spin);
                 if (limp->rlim_cur != alimp->rlim_cur) {
                         vm_offset_t addr;
                         vm_size_t size;
@@ -397,13 +397,13 @@ kern_setrlimit(u_int which, struct rlimit *limp)
                                 size = alimp->rlim_cur - limp->rlim_cur;
                                 addr = USRSTACK - alimp->rlim_cur;
                         }
-			spin_unlock_rd(&limit->p_spin);
+			spin_unlock_wr(&limit->p_spin);
                         addr = trunc_page(addr);
                         size = round_page(size);
                         vm_map_protect(&p->p_vmspace->vm_map,
 				       addr, addr+size, prot, FALSE);
                 } else {
-			spin_unlock_rd(&limit->p_spin);
+			spin_unlock_wr(&limit->p_spin);
 		}
                 break;
 
@@ -452,9 +452,9 @@ kern_getrlimit(u_int which, struct rlimit *limp)
                 return (EINVAL);
 
 	limit = p->p_limit;
-	spin_lock_rd(&limit->p_spin);
+	spin_lock_wr(&limit->p_spin);
         *limp = p->p_rlimit[which];
-	spin_unlock_rd(&limit->p_spin);
+	spin_unlock_wr(&limit->p_spin);
         return (0);
 }
 
@@ -470,19 +470,27 @@ plimit_testcpulimit(struct plimit *limit, u_int64_t ttime)
 	struct rlimit *rlim;
 	int mode;
 
-	mode = PLIMIT_TESTCPU_OK;
-	if (limit->p_cpulimit != RLIM_INFINITY) {
-		spin_lock_rd(&limit->p_spin);
-		if (ttime > limit->p_cpulimit) {
-			rlim = &limit->pl_rlimit[RLIMIT_CPU];
-			if (ttime / (rlim_t)1000000 >= rlim->rlim_max + 5) {
-				mode = PLIMIT_TESTCPU_KILL;
-			} else {
-				mode = PLIMIT_TESTCPU_XCPU;
-			}
-		}
-		spin_unlock_rd(&limit->p_spin);
+	/*
+	 * Initial tests without the spinlock.  This is the fast path.
+	 * Any 32/64 bit glitches will fall through and retest with
+	 * the spinlock.
+	 */
+	if (limit->p_cpulimit == RLIM_INFINITY)
+		return(PLIMIT_TESTCPU_OK);
+	if (ttime <= limit->p_cpulimit)
+		return(PLIMIT_TESTCPU_OK);
+
+	spin_lock_wr(&limit->p_spin);
+	if (ttime > limit->p_cpulimit) {
+		rlim = &limit->pl_rlimit[RLIMIT_CPU];
+		if (ttime / (rlim_t)1000000 >= rlim->rlim_max + 5)
+			mode = PLIMIT_TESTCPU_KILL;
+		else
+			mode = PLIMIT_TESTCPU_XCPU;
+	} else {
+		mode = PLIMIT_TESTCPU_OK;
 	}
+	spin_unlock_wr(&limit->p_spin);
 	return(mode);
 }
 
