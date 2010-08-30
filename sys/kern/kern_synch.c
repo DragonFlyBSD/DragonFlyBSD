@@ -710,9 +710,9 @@ ssleep(const volatile void *ident, struct spinlock *spin, int flags,
 	int error;
 
 	_tsleep_interlock(gd, ident, flags);
-	spin_unlock_wr_quick(gd, spin);
+	spin_unlock_quick(gd, spin);
 	error = tsleep(ident, flags | PINTERLOCKED, wmesg, timo);
-	spin_lock_wr_quick(gd, spin);
+	spin_lock_quick(gd, spin);
 
 	return (error);
 }

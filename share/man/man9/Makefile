@@ -739,16 +739,12 @@ MLINKS+=sleep.9 lksleep.9 \
 	sleep.9 wakeup_one.9 \
 	sleep.9 zsleep.9
 MLINKS+=spinlock.9 spin_init.9 \
-	spinlock.9 spin_lock_rd.9 \
-	spinlock.9 spin_lock_rd_quick.9 \
-	spinlock.9 spin_lock_wr.9 \
-	spinlock.9 spin_lock_wr_quick.9 \
-	spinlock.9 spin_trylock_wr.9 \
+	spinlock.9 spin_lock.9 \
+	spinlock.9 spin_lock_quick.9 \
+	spinlock.9 spin_trylock.9 \
 	spinlock.9 spin_uninit.9 \
-	spinlock.9 spin_unlock_rd.9 \
-	spinlock.9 spin_unlock_rd_quick.9 \
-	spinlock.9 spin_unlock_wr.9 \
-	spinlock.9 spin_unlock_wr_quick.9
+	spinlock.9 spin_unlock.9 \
+	spinlock.9 spin_unlock_quick.9
 MLINKS+=store.9 casuword.9 \
 	store.9 subyte.9 \
 	store.9 susword.9 \

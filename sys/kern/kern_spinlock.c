@@ -272,8 +272,8 @@ sysctl_spin_lock_test(SYSCTL_HANDLER_ARGS)
 
 		spin_init(&mtx);
 		for (i = spin_test_count; i > 0; --i) {
-		    spin_lock_wr_quick(gd, &mtx);
-		    spin_unlock_wr_quick(gd, &mtx);
+		    spin_lock_quick(gd, &mtx);
+		    spin_unlock_quick(gd, &mtx);
 		}
 	}
 

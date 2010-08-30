@@ -28,21 +28,17 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd April 10, 2010
+.Dd August 30, 2010
 .Os
 .Dt SPINLOCK 9
 .Sh NAME
 .Nm spin_init ,
-.Nm spin_lock_rd ,
-.Nm spin_lock_rd_quick ,
-.Nm spin_lock_wr ,
-.Nm spin_lock_wr_quick ,
-.Nm spin_trylock_wr ,
+.Nm spin_lock ,
+.Nm spin_lock_quick ,
+.Nm spin_trylock ,
 .Nm spin_uninit ,
-.Nm spin_unlock_rd ,
-.Nm spin_unlock_rd_quick ,
-.Nm spin_unlock_wr ,
-.Nm spin_unlock_wr_quick
+.Nm spin_unlock ,
+.Nm spin_unlock_quick
 .Nd core spinlocks
 .Sh SYNOPSIS
 .In sys/spinlock.h
@@ -52,23 +48,15 @@
 .Ft void
 .Fn spin_uninit "struct spinlock *mtx"
 .Ft void
-.Fn spin_lock_rd "struct spinlock *mtx"
+.Fn spin_lock "struct spinlock *mtx"
 .Ft void
-.Fn spin_lock_rd_quick "globaldata_t gd" "struct spinlock *mtx"
-.Ft void
-.Fn spin_unlock_rd "struct spinlock *mtx"
-.Ft void
-.Fn spin_unlock_rd_quick "globaldata_t gd" "struct spinlock *mtx"
-.Ft void
-.Fn spin_lock_wr "struct spinlock *mtx"
-.Ft void
-.Fn spin_lock_wr_quick "globaldata_t gd" "struct spinlock *mtx"
+.Fn spin_lock_quick "globaldata_t gd" "struct spinlock *mtx"
 .Ft boolean_t
-.Fn spin_trylock_wr "struct spinlock *mtx"
+.Fn spin_trylock "struct spinlock *mtx"
 .Ft void
-.Fn spin_unlock_wr "struct spinlock *mtx"
+.Fn spin_unlock "struct spinlock *mtx"
 .Ft void
-.Fn spin_unlock_wr_quick "globaldata_t gd" "struct spinlock *mtx"
+.Fn spin_unlock_quick "globaldata_t gd" "struct spinlock *mtx"
 .Sh DESCRIPTION
 The
 .Fa spinlock
@@ -88,50 +76,14 @@ The structure is cleaned up with
 when it is no longer needed.
 .Pp
 The
-.Fn spin_lock_rd
-function obtains a shared
-.Em read-only
-spinlock.
-A thread may hold only one shared lock at a time, and may not acquire any
-new exclusive locks while holding a shared lock (but may already be holding
-some).
-A shared spinlock can be held by multiple CPUs concurrently.
-If a thread attempts to obtain an exclusive spinlock while shared
-references from other CPUs exist it will spin until the shared references
-go away.
-No new shared references will be allowed (that is, new shared requests
-will also spin) while the exclusive spinlock is being acquired.
-If you have the current CPU's
-.Fa globaldata
-pointer in hand you can call
-.Fn spin_lock_rd_quick ,
-but most code will just call the normal version.
-Shared spinlocks reserve a bit in the spinlock's memory for each CPU
-and do not clear the bit once set.
-This means that once set, a shared spinlock does not need to issue a
-locked read-modify-write bus cycle to the spinlock's memory, which in
-turn greatly reduces conflicts between CPU caches.
-The bit is cleared via a different mechanism only when an exclusive
-spinlock is acquired.
-The result is extremely low overheads even when a shared spinlock is
-being operated upon concurrently by multiple CPUs.
-.Pp
-A previously obtained shared spinlock is released by calling either
-.Fn spin_unlock_rd
-or
-.Fn spin_unlock_rd_quick .
-.Pp
-The
-.Fn spin_lock_wr
+.Fn spin_lock
 function obtains an exclusive
 .Em read-write
 spinlock.
 A thread may hold any number of exclusive spinlocks but should always
 be mindful of ordering deadlocks.
-Exclusive spinlocks can only be safely
-acquired if no shared spinlocks are held.
 The
-.Fn spin_trylock_wr
+.Fn spin_trylock
 function will return
 .Dv TRUE
 if the spinlock was successfully obtained and
@@ -140,23 +92,15 @@ if it wasn't.
 If you have the current CPU's
 .Fa globaldata
 pointer in hand you can call
-.Fn spin_lock_wr_quick ,
+.Fn spin_lock_quick ,
 but most code will just call the normal version.
 A spinlock used only for exclusive access has about the same overhead
 as a mutex based on a locked bus cycle.
-When used in a mixed shared/exclusive environment, however, additional
-overhead may be incurred to obtain the exclusive spinlock.
-Because shared spinlocks are left intact even after released (to
-optimize shared spinlock performance), the exclusive spinlock code
-must run through any shared bits it finds in the spinlock, clear them,
-and check the related CPU's
-.Fa globaldata
-structure to determine whether it needs to spin or not.
 .Pp
 A previously obtained exclusive spinlock is released by calling either
-.Fn spin_unlock_wr
+.Fn spin_unlock
 or
-.Fn spin_unlock_wr_quick .
+.Fn spin_unlock_quick .
 .Sh IMPLEMENTATION NOTES
 A thread may not hold any spinlock across a blocking condition or
 thread switch.
@@ -193,9 +137,7 @@ Currently, FAST interrupts, including IPI messages, are not allowed to
 acquire any spinlocks.
 It is possible to work around this if
 .Va mycpu->gd_spinlocks_wr
-and
-.Va mycpu->gd_spinlocks_rd
-are both 0.
+is 0.
 If one
 or the other is not zero, the FAST interrupt or IPI cannot acquire
 any spinlocks without risking a deadlock, even if the spinlocks in
@@ -204,16 +146,6 @@ question are not related.
 A thread may hold any number of exclusive
 .Em read-write
 spinlocks.
-However, a thread may only hold one shared
-.Em read-only
-spinlock, and may not acquire any new exclusive locks while it is holding
-that one shared lock.
-This requirement is due to the method exclusive
-spinlocks use to determine when they can clear cached shared bits in
-the lock.
-If an exclusive lock is acquired while holding shared locks,
-a deadlock can occur even if the locks are unrelated.
-Always be mindful of potential deadlocks.
 .Pp
 Spinlocks spin.
 A thread will not block, switch away, or lose its critical section

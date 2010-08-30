@@ -103,7 +103,7 @@ spin_trylock(struct spinlock *mtx)
  * Obtain an exclusive spinlock and return.
  */
 static __inline void
-spin_lock_wr_quick(globaldata_t gd, struct spinlock *mtx)
+spin_lock_quick(globaldata_t gd, struct spinlock *mtx)
 {
 #ifdef SMP
 	int value;
@@ -121,7 +121,7 @@ spin_lock_wr_quick(globaldata_t gd, struct spinlock *mtx)
 static __inline void
 spin_lock(struct spinlock *mtx)
 {
-	spin_lock_wr_quick(mycpu, mtx);
+	spin_lock_quick(mycpu, mtx);
 }
 
 /*
@@ -130,7 +130,7 @@ spin_lock(struct spinlock *mtx)
  * cleared.
  */
 static __inline void
-spin_unlock_wr_quick(globaldata_t gd, struct spinlock *mtx)
+spin_unlock_quick(globaldata_t gd, struct spinlock *mtx)
 {
 #ifdef SMP
 	mtx->lock = 0;
@@ -144,7 +144,7 @@ spin_unlock_wr_quick(globaldata_t gd, struct spinlock *mtx)
 static __inline void
 spin_unlock(struct spinlock *mtx)
 {
-	spin_unlock_wr_quick(mycpu, mtx);
+	spin_unlock_quick(mycpu, mtx);
 }
 
 static __inline void

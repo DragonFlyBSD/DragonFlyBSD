@@ -1500,6 +1500,15 @@ TO_REMOVE+=/usr/share/man/cat4/i386/amdpm.4.gz
 TO_REMOVE+=/usr/share/man/man4/i386/amdpm.4.gz
 TO_REMOVE+=/usr/include/machine/iic.h
 TO_REMOVE+=/usr/include/machine/smb.h
+TO_REMOVE+=/usr/share/man/man9/spin_lock_rd.9.gz
+TO_REMOVE+=/usr/share/man/man9/spin_lock_rd_quick.9.gz
+TO_REMOVE+=/usr/share/man/man9/spin_lock_wr.9.gz
+TO_REMOVE+=/usr/share/man/man9/spin_lock_wr_quick.9.gz
+TO_REMOVE+=/usr/share/man/man9/spin_trylock_wr.9.gz
+TO_REMOVE+=/usr/share/man/man9/spin_unlock_rd.9.gz
+TO_REMOVE+=/usr/share/man/man9/spin_unlock_rd_quick.9.gz
+TO_REMOVE+=/usr/share/man/man9/spin_unlock_wr.9.gz
+TO_REMOVE+=/usr/share/man/man9/spin_unlock_wr_quick.9.gz
 
 # XXX Remove when adjusted to the new 802.11 framework
 TO_REMOVE+=/boot/modules/if_acx.ko
