@@ -874,6 +874,9 @@ uilookup(uid_t uid)
 }
 
 /*
+ * Helper function to creat ea uid that could not be found.
+ * This function will properly deal with races.
+ *
  * MPSAFE
  */
 static struct uidinfo *
@@ -901,19 +904,23 @@ uicreate(uid_t uid)
 	spin_lock_wr(&uihash_lock);
 	tmp = uilookup(uid);
 	if (tmp != NULL) {
-		varsymset_clean(&uip->ui_varsymset);
+		uihold(tmp);
+		spin_unlock_wr(&uihash_lock);
+
 		spin_uninit(&uip->ui_lock);
+		varsymset_clean(&uip->ui_varsymset);
 		FREE(uip, M_UIDINFO);
 		uip = tmp;
 	} else {
 		LIST_INSERT_HEAD(UIHASH(uid), uip, ui_hash);
+		spin_unlock_wr(&uihash_lock);
 	}
-	spin_unlock_wr(&uihash_lock);
-
 	return (uip);
 }
 
 /*
+ *
+ *
  * MPSAFE
  */
 struct uidinfo *
@@ -921,58 +928,59 @@ uifind(uid_t uid)
 {
 	struct	uidinfo *uip;
 
-	spin_lock_rd(&uihash_lock);
+	spin_lock_wr(&uihash_lock);
 	uip = uilookup(uid);
 	if (uip == NULL) {
-		spin_unlock_rd(&uihash_lock);
+		spin_unlock_wr(&uihash_lock);
 		uip = uicreate(uid);
 	} else {
 		uihold(uip);
-		spin_unlock_rd(&uihash_lock);
+		spin_unlock_wr(&uihash_lock);
 	}
 	return (uip);
 }
 
 /*
+ * Helper funtion to remove a uidinfo whos reference count is
+ * transitioning from 1->0.  The reference count is 1 on call.
+ *
+ * Zero is returned on success, otherwise non-zero and the
+ * uiphas not been removed.
+ *
  * MPSAFE
  */
-static __inline void
+static __inline int
 uifree(struct uidinfo *uip)
 {
+	/*
+	 * If we are still the only holder after acquiring the uihash_lock
+	 * we can safely unlink the uip and destroy it.  Otherwise we lost
+	 * a race and must fail.
+	 */
 	spin_lock_wr(&uihash_lock);
+	if (uip->ui_ref != 1) {
+		spin_unlock_wr(&uihash_lock);
+		return(-1);
+	}
+	LIST_REMOVE(uip, ui_hash);
+	spin_unlock_wr(&uihash_lock);
 
 	/*
-	 * Note that we're taking a read lock even though we
-	 * modify the structure because we know nobody can find
-	 * it now that we've locked uihash_lock. If somebody
-	 * can get to it through a stored pointer, the reference
-	 * count will not be 0 and in that case we don't modify
-	 * the struct.
+	 * The uip is now orphaned and we can destroy it at our
+	 * leisure.
 	 */
-	spin_lock_rd(&uip->ui_lock);
-	if (uip->ui_ref != 0) {
-		/*
-		 * Someone found the uid and got a ref when we
-		 * unlocked. No need to free any more.
-		 */
-		spin_unlock_rd(&uip->ui_lock);
-		return;
-	}
 	if (uip->ui_sbsize != 0)
-		/* XXX no %qd in kernel.  Truncate. */
-		kprintf("freeing uidinfo: uid = %d, sbsize = %ld\n",
-		    uip->ui_uid, (long)uip->ui_sbsize);
+		kprintf("freeing uidinfo: uid = %d, sbsize = %jd\n",
+		    uip->ui_uid, (intmax_t)uip->ui_sbsize);
 	if (uip->ui_proccnt != 0)
 		kprintf("freeing uidinfo: uid = %d, proccnt = %ld\n",
 		    uip->ui_uid, uip->ui_proccnt);
 	
-	LIST_REMOVE(uip, ui_hash);
-	spin_unlock_wr(&uihash_lock);
 	varsymset_clean(&uip->ui_varsymset);
 	lockuninit(&uip->ui_varsymset.vx_lock);
-	spin_unlock_rd(&uip->ui_lock);
 	spin_uninit(&uip->ui_lock);
 	FREE(uip, M_UIDINFO);
+	return(0);
 }
 
 /*
@@ -986,14 +994,31 @@ uihold(struct uidinfo *uip)
 }
 
 /*
+ * NOTE: It is important for us to not drop the ref count to 0
+ *	 because this can cause a 2->0/2->0 race with another
+ *	 concurrent dropper.  Losing the race in that situation
+ *	 can cause uip to become stale for one of the other
+ *	 threads.
+ *
  * MPSAFE
  */
 void
 uidrop(struct uidinfo *uip)
 {
+	int ref;
+
 	KKASSERT(uip->ui_ref > 0);
-	if (atomic_fetchadd_int(&uip->ui_ref, -1) == 1) {
-		uifree(uip);
+
+	for (;;) {
+		ref = uip->ui_ref;
+		cpu_ccfence();
+		if (ref == 1) {
+			if (uifree(uip) == 0)
+				break;
+		} else if (atomic_cmpset_int(&uip->ui_ref, ref, ref - 1)) {
+			break;
+		}
+		/* else retry */
 	}
 }
 
