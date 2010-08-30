@@ -39,16 +39,12 @@
 #include <sys/conf.h>
 #include <sys/kernel.h>
 #include <sys/sensors.h>
-#include <sys/spinlock.h>
-#include <sys/spinlock2.h>
 #include <sys/proc.h>	/* for curthread */
 #include <sys/sched.h>
 
 #include <machine/specialreg.h>
 #include <machine/cpufunc.h>
 #include <machine/md_var.h>
-
-static struct spinlock		coretemp_lock;
 
 struct coretemp_softc {
 	struct ksensordev	sc_sensordev;
@@ -186,7 +182,6 @@ coretemp_attach(device_t dev)
 		return (ENXIO);
 	}
 	sensordev_install(&sc->sc_sensordev);
-	spin_init(&coretemp_lock);
 
 	return (0);
 }
@@ -196,11 +191,8 @@ coretemp_detach(device_t dev)
 {
 	struct coretemp_softc *sc = device_get_softc(dev);
 
-	spin_lock_wr(&coretemp_lock);
 	sensordev_deinstall(&sc->sc_sensordev);
 	sensor_task_unregister(sc);
-	spin_unlock_wr(&coretemp_lock);
-	spin_uninit(&coretemp_lock);
 
 	return (0);
 }
@@ -225,9 +217,7 @@ coretemp_get_temp(device_t dev)
 		origcpu = mycpuid;
 		lwkt_migratecpu(cpu);
 
-		spin_lock_wr(&coretemp_lock);
 		msr = rdmsr(MSR_THERM_STATUS);
-		spin_unlock_wr(&coretemp_lock);
 
 		lwkt_migratecpu(origcpu);
 	} else if (cpu != 0)

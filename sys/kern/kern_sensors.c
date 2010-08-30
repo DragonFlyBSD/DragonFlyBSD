@@ -86,11 +86,11 @@ sensordev_install(struct ksensordev *sensdev)
 	}
 	sensordev_count++;
 	/* mtx_unlock(&Giant); */
+	spin_unlock_wr(&sensor_dev_lock);
 
 #ifndef NOSYSCTL8HACK
 	sensor_sysctl8magic_install(sensdev);
 #endif
-	spin_unlock_wr(&sensor_dev_lock);
 }
 
 void
@@ -139,11 +139,11 @@ sensordev_deinstall(struct ksensordev *sensdev)
 	sensordev_count--;
 	SLIST_REMOVE(&sensordev_list, sensdev, ksensordev, list);
 	/* mtx_unlock(&Giant); */
+	spin_unlock_wr(&sensor_dev_lock);
 
 #ifndef NOSYSCTL8HACK
 	sensor_sysctl8magic_deinstall(sensdev);
 #endif
-	spin_unlock_wr(&sensor_dev_lock);
 }
 
 void
