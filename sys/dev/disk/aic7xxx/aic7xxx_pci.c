@@ -2141,6 +2141,9 @@ ahc_pci_resume(struct ahc_softc *ahc)
 		sd.sd_control_offset = SEECTL;		
 		sd.sd_status_offset = SEECTL;		
 		sd.sd_dataout_offset = SEECTL;		
+		sd.sd_MS = SEEMS;
+		sd.sd_RDY = SEERDY;
+		sd.sd_CS = SEECS;
 
 		ahc_acquire_seeprom(ahc, &sd);
 		configure_termination(ahc, &sd,
