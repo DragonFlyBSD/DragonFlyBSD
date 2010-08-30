@@ -19,6 +19,11 @@ tags:  kernel-tags
 install: kernel-install
 reinstall: kernel-reinstall
 
+# Often developers just want the kernel, don't let
+# -j builds leak into the modules until the kernel is done.
+#
+.ORDER: ${KERNEL}.stripped modules
+
 ${KERNEL}.stripped: ${FULLKERNEL}
 	${OBJCOPY} --strip-debug ${FULLKERNEL} ${KERNEL}.stripped
 
