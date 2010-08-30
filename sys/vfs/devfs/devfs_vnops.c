@@ -1015,9 +1015,13 @@ devfs_spec_close(struct vop_close_args *ap)
 	int error = 0;
 	int needrelock;
 
-	devfs_debug(DEVFS_DEBUG_DEBUG,
-		    "devfs_spec_close() called on %s! \n",
-		    dev->si_name);
+	if (dev)
+		devfs_debug(DEVFS_DEBUG_DEBUG,
+			    "devfs_spec_close() called on %s! \n",
+			    dev->si_name);
+	else
+		devfs_debug(DEVFS_DEBUG_DEBUG,
+			    "devfs_spec_close() called, null vode!\n");
 
 	/*
 	 * A couple of hacks for devices and tty devices.  The
