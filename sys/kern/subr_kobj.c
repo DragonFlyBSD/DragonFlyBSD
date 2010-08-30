@@ -46,20 +46,6 @@
 
 static MALLOC_DEFINE(M_KOBJ, "kobj", "Kernel object structures");
 
-#ifdef KOBJ_STATS
-
-#include <sys/sysctl.h>
-
-u_int kobj_lookup_hits;
-u_int kobj_lookup_misses;
-
-SYSCTL_UINT(_kern, OID_AUTO, kobj_hits, CTLFLAG_RD,
-	   &kobj_lookup_hits, 0, "")
-SYSCTL_UINT(_kern, OID_AUTO, kobj_misses, CTLFLAG_RD,
-	   &kobj_lookup_misses, 0, "")
-
-#endif
-
 static struct lwkt_token kobj_token;
 static int kobj_next_id = 1;
 
