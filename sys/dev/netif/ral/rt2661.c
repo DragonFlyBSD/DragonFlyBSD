@@ -1346,7 +1346,7 @@ rt2661_tx_mgt(struct rt2661_softc *sc, struct mbuf *m0,
 	}
 
 	error = bus_dmamap_load_mbuf_segment(sc->mgtq.data_dmat, data->map, m0,
-	    segs, 1, &nsegs, 0);
+	    segs, 1, &nsegs, BUS_DMA_NOWAIT);
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not map mbuf (error %d)\n",
 		    error);
@@ -1447,7 +1447,7 @@ rt2661_sendprot(struct rt2661_softc *sc, int ac,
 	desc = &txq->desc[txq->cur];
 
 	error = bus_dmamap_load_mbuf_segment(txq->data_dmat, data->map, mprot, segs,
-	    1, &nsegs, 0);
+	    1, &nsegs, BUS_DMA_NOWAIT);
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "could not map mbuf (error %d)\n", error);
@@ -1545,7 +1545,7 @@ rt2661_tx_data(struct rt2661_softc *sc, struct mbuf *m0,
 	desc = &txq->desc[txq->cur];
 
 	error = bus_dmamap_load_mbuf_segment(txq->data_dmat, data->map, m0, segs,
-	    1, &nsegs, 0);
+	    1, &nsegs, BUS_DMA_NOWAIT);
 	if (error != 0 && error != EFBIG) {
 		device_printf(sc->sc_dev, "could not map mbuf (error %d)\n",
 		    error);
@@ -1563,7 +1563,7 @@ rt2661_tx_data(struct rt2661_softc *sc, struct mbuf *m0,
 		m0 = mnew;
 
 		error = bus_dmamap_load_mbuf_segment(txq->data_dmat, data->map, m0,
-		    segs, 1, &nsegs, 0);
+		    segs, 1, &nsegs, BUS_DMA_NOWAIT);
 		if (error != 0) {
 			device_printf(sc->sc_dev,
 			    "could not map mbuf (error %d)\n", error);
