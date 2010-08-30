@@ -217,43 +217,24 @@ void		kobj_init(kobj_t obj, kobj_class_t cls);
 void		kobj_delete(kobj_t obj, struct malloc_type *mtype);
 
 /*
- * Maintain stats on hits/misses in lookup caches.
- */
-#ifdef KOBJ_STATS
-extern u_int kobj_lookup_hits;
-extern u_int kobj_lookup_misses;
-#endif
-
-/*
  * Lookup the method in the cache and if it isn't there look it up the
  * slow way.
+ *
+ * We do the cache inside kobj_lookup_method() now, we don't try to
+ * expand it because it's really silly.  These lookups are not in the
+ * critical path.
  */
-#ifdef KOBJ_STATS
+
 #define KOBJOPLOOKUP(OPS,OP) do {					\
-	kobjop_desc_t _desc = &OP##_##desc;				\
-	kobj_method_t **_cep =						\
-	    &OPS->cache[_desc->id & (KOBJ_CACHE_SIZE-1)];		\
-	kobj_method_t *_ce = *_cep;					\
-	kobj_lookup_hits++; /* assume hit */				\
-	if (_ce->desc != _desc)						\
-		_ce = kobj_lookup_method(OPS->cls,			\
-					 _cep, _desc);			\
-	_m = _ce->func;							\
+	_m = kobj_lookup_method_cache(OPS->cls, &OPS->cache[0],		\
+				       &OP##_##desc);			\
 } while(0)
-#else
-#define KOBJOPLOOKUP(OPS,OP) do {					\
-	kobjop_desc_t _desc = &OP##_##desc;				\
-	kobj_method_t **_cep =						\
-	    &OPS->cache[_desc->id & (KOBJ_CACHE_SIZE-1)];		\
-	kobj_method_t *_ce = *_cep;					\
-	if (_ce->desc != _desc)						\
-		_ce = kobj_lookup_method(OPS->cls,			\
-					 _cep, _desc);			\
-	_m = _ce->func;							\
-} while(0)
-#endif
 
 kobj_method_t *kobj_lookup_method(kobj_class_t cls,
+				  kobj_method_t **cep,
+				  kobjop_desc_t desc);
+
+kobjop_t kobj_lookup_method_cache(kobj_class_t cls,
 				  kobj_method_t **cep,
 				  kobjop_desc_t desc);
 

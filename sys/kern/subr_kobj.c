@@ -182,20 +182,29 @@ kobj_lookup_method(kobj_class_t cls,
 {
 	kobj_method_t *ce;
 
-#ifdef KOBJ_STATS
-	/*
-	 * Correct for the 'hit' assumption in KOBJOPLOOKUP and record
-	 * a 'miss'.
-	 */
-	kobj_lookup_hits--;
-	kobj_lookup_misses--;
-#endif
-
 	ce = kobj_lookup_method_mi(cls, desc);
 	if (!ce)
 		ce = desc->deflt;
 	*cep = ce;
 	return(ce);
+}
+
+/*
+ * This is called from the KOBJOPLOOKUP() macro in sys/kobj.h and
+ * replaces the original large body of the macro with a single
+ * procedure call.
+ */
+kobjop_t
+kobj_lookup_method_cache(kobj_class_t cls, kobj_method_t **cep,
+			 kobjop_desc_t desc)
+{
+	kobj_method_t *ce;
+
+	cep = &cep[desc->id & (KOBJ_CACHE_SIZE-1)];
+	ce = *cep;
+	if (ce->desc != desc)
+		ce = kobj_lookup_method(cls, cep, desc);
+	return(ce->func);
 }
 
 static void
