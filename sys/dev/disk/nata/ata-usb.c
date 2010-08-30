@@ -935,7 +935,7 @@ ata_usbchannel_locking(device_t dev, int flags)
     int res = -1;
 
 
-    spin_lock_wr(&sc->locked_mtx);
+    spin_lock(&sc->locked_mtx);
     switch (flags) {
     case ATA_LF_LOCK:
 	if (sc->locked_ch == NULL)
@@ -950,7 +950,7 @@ ata_usbchannel_locking(device_t dev, int flags)
 	    if (sc->restart_ch) {
 		ch = sc->restart_ch;
 		sc->restart_ch = NULL;
-		spin_unlock_wr(&sc->locked_mtx);
+		spin_unlock(&sc->locked_mtx);
 		ata_start(ch->dev);
 		return res;
 	    }
@@ -962,7 +962,7 @@ ata_usbchannel_locking(device_t dev, int flags)
     }
     if (sc->locked_ch)
 	res = sc->locked_ch->unit;
-    spin_unlock_wr(&sc->locked_mtx);
+    spin_unlock(&sc->locked_mtx);
     return res;
 }
 

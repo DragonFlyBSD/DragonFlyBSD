@@ -153,9 +153,9 @@ plimit_fork(struct proc *p1)
 		if (olimit->p_refcnt == 1) {
 			++olimit->p_refcnt;
 		} else {
-			spin_lock_wr(&olimit->p_spin);
+			spin_lock(&olimit->p_spin);
 			++olimit->p_refcnt;
-			spin_unlock_wr(&olimit->p_spin);
+			spin_unlock(&olimit->p_spin);
 		}
 		return(olimit);
 	}
@@ -164,7 +164,7 @@ plimit_fork(struct proc *p1)
 	 * Full-blown code-up.
 	 */
 	nlimit = NULL;
-	spin_lock_wr(&olimit->p_spin);
+	spin_lock(&olimit->p_spin);
 
 	for (;;) {
 		if (olimit->p_exclusive == 0) {
@@ -178,11 +178,11 @@ plimit_fork(struct proc *p1)
 			nlimit = NULL;
 			break;
 		}
-		spin_unlock_wr(&olimit->p_spin);
+		spin_unlock(&olimit->p_spin);
 		nlimit = kmalloc(sizeof(*nlimit), M_SUBPROC, M_WAITOK);
-		spin_lock_wr(&olimit->p_spin);
+		spin_lock(&olimit->p_spin);
 	}
-	spin_unlock_wr(&olimit->p_spin);
+	spin_unlock(&olimit->p_spin);
 	if (nlimit)
 		kfree(nlimit, M_SUBPROC);
 	return(rlimit);
@@ -255,7 +255,7 @@ plimit_modify(struct proc *p, int index, struct rlimit *rlim)
 	 * exclusive without copying.
 	 */
 	nlimit = NULL;
-	spin_lock_wr(&olimit->p_spin);
+	spin_lock(&olimit->p_spin);
 
 	for (;;) {
 		if (olimit->p_refcnt == 1) {
@@ -273,13 +273,13 @@ plimit_modify(struct proc *p, int index, struct rlimit *rlim)
 			nlimit = NULL;
 			break;
 		}
-		spin_unlock_wr(&olimit->p_spin);
+		spin_unlock(&olimit->p_spin);
 		nlimit = kmalloc(sizeof(*nlimit), M_SUBPROC, M_WAITOK);
-		spin_lock_wr(&olimit->p_spin);
+		spin_lock(&olimit->p_spin);
 	}
 	if (index >= 0)
 		rlimit->pl_rlimit[index] = *rlim;
-	spin_unlock_wr(&olimit->p_spin);
+	spin_unlock(&olimit->p_spin);
 	if (nlimit)
 		kfree(nlimit, M_SUBPROC);
 }
@@ -301,12 +301,12 @@ plimit_free(struct proc *p)
 			limit->p_refcnt = -999;
 			kfree(limit, M_SUBPROC);
 		} else {
-			spin_lock_wr(&limit->p_spin);
+			spin_lock(&limit->p_spin);
 			if (--limit->p_refcnt == 0) {
-				spin_unlock_wr(&limit->p_spin);
+				spin_unlock(&limit->p_spin);
 				kfree(limit, M_SUBPROC);
 			} else {
-				spin_unlock_wr(&limit->p_spin);
+				spin_unlock(&limit->p_spin);
 			}
 		}
 	}
@@ -343,27 +343,27 @@ kern_setrlimit(u_int which, struct rlimit *limp)
         if (limp->rlim_max < 0)
                 limp->rlim_max = RLIM_INFINITY;
 
-	spin_lock_wr(&limit->p_spin);
+	spin_lock(&limit->p_spin);
         if (limp->rlim_cur > alimp->rlim_max ||
             limp->rlim_max > alimp->rlim_max) {
-		spin_unlock_wr(&limit->p_spin);
+		spin_unlock(&limit->p_spin);
                 error = priv_check_cred(p->p_ucred, PRIV_PROC_SETRLIMIT, 0);
                 if (error)
                         return (error);
 	} else {
-		spin_unlock_wr(&limit->p_spin);
+		spin_unlock(&limit->p_spin);
 	}
         if (limp->rlim_cur > limp->rlim_max)
                 limp->rlim_cur = limp->rlim_max;
 
         switch (which) {
         case RLIMIT_CPU:
-		spin_lock_wr(&limit->p_spin);
+		spin_lock(&limit->p_spin);
                 if (limp->rlim_cur > RLIM_INFINITY / (rlim_t)1000000)
                         limit->p_cpulimit = RLIM_INFINITY;
                 else
                         limit->p_cpulimit = (rlim_t)1000000 * limp->rlim_cur;
-		spin_unlock_wr(&limit->p_spin);
+		spin_unlock(&limit->p_spin);
                 break;
         case RLIMIT_DATA:
                 if (limp->rlim_cur > maxdsiz)
@@ -382,7 +382,7 @@ kern_setrlimit(u_int which, struct rlimit *limp)
                  * "rlim_cur" bytes accessible.  If stack limit is going
                  * up make more accessible, if going down make inaccessible.
                  */
-		spin_lock_wr(&limit->p_spin);
+		spin_lock(&limit->p_spin);
                 if (limp->rlim_cur != alimp->rlim_cur) {
                         vm_offset_t addr;
                         vm_size_t size;
@@ -397,13 +397,13 @@ kern_setrlimit(u_int which, struct rlimit *limp)
                                 size = alimp->rlim_cur - limp->rlim_cur;
                                 addr = USRSTACK - alimp->rlim_cur;
                         }
-			spin_unlock_wr(&limit->p_spin);
+			spin_unlock(&limit->p_spin);
                         addr = trunc_page(addr);
                         size = round_page(size);
                         vm_map_protect(&p->p_vmspace->vm_map,
 				       addr, addr+size, prot, FALSE);
                 } else {
-			spin_unlock_wr(&limit->p_spin);
+			spin_unlock(&limit->p_spin);
 		}
                 break;
 
@@ -431,9 +431,9 @@ kern_setrlimit(u_int which, struct rlimit *limp)
                         limp->rlim_max = maxposixlocksperuid;
                 break;
         }
-	spin_lock_wr(&limit->p_spin);
+	spin_lock(&limit->p_spin);
         *alimp = *limp;
-	spin_unlock_wr(&limit->p_spin);
+	spin_unlock(&limit->p_spin);
         return (0);
 }
 
@@ -452,9 +452,9 @@ kern_getrlimit(u_int which, struct rlimit *limp)
                 return (EINVAL);
 
 	limit = p->p_limit;
-	spin_lock_wr(&limit->p_spin);
+	spin_lock(&limit->p_spin);
         *limp = p->p_rlimit[which];
-	spin_unlock_wr(&limit->p_spin);
+	spin_unlock(&limit->p_spin);
         return (0);
 }
 
@@ -480,7 +480,7 @@ plimit_testcpulimit(struct plimit *limit, u_int64_t ttime)
 	if (ttime <= limit->p_cpulimit)
 		return(PLIMIT_TESTCPU_OK);
 
-	spin_lock_wr(&limit->p_spin);
+	spin_lock(&limit->p_spin);
 	if (ttime > limit->p_cpulimit) {
 		rlim = &limit->pl_rlimit[RLIMIT_CPU];
 		if (ttime / (rlim_t)1000000 >= rlim->rlim_max + 5)
@@ -490,7 +490,7 @@ plimit_testcpulimit(struct plimit *limit, u_int64_t ttime)
 	} else {
 		mode = PLIMIT_TESTCPU_OK;
 	}
-	spin_unlock_wr(&limit->p_spin);
+	spin_unlock(&limit->p_spin);
 	return(mode);
 }
 

@@ -131,8 +131,8 @@ struct bounce_zone {
 };
 
 #ifdef SMP
-#define BZ_LOCK(bz)	spin_lock_wr(&(bz)->spin)
-#define BZ_UNLOCK(bz)	spin_unlock_wr(&(bz)->spin)
+#define BZ_LOCK(bz)	spin_lock(&(bz)->spin)
+#define BZ_UNLOCK(bz)	spin_unlock(&(bz)->spin)
 #else
 #define BZ_LOCK(bz)	crit_enter()
 #define BZ_UNLOCK(bz)	crit_exit()
@@ -213,7 +213,7 @@ bus_dma_tag_lock(bus_dma_tag_t tag, bus_dma_segment_t *cache)
 	if (tag->nsegments <= BUS_DMA_CACHE_SEGMENTS)
 		return(cache);
 #ifdef SMP
-	spin_lock_wr(&tag->spin);
+	spin_lock(&tag->spin);
 #endif
 	return(tag->segments);
 }
@@ -224,7 +224,7 @@ bus_dma_tag_unlock(bus_dma_tag_t tag)
 {
 #ifdef SMP
 	if (tag->nsegments > BUS_DMA_CACHE_SEGMENTS)
-		spin_unlock_wr(&tag->spin);
+		spin_unlock(&tag->spin);
 #endif
 }
 

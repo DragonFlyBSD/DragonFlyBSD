@@ -229,10 +229,10 @@ tw_osli_req_q_init(struct twa_softc *sc, TW_UINT8 q_type)
 static __inline	TW_VOID
 tw_osli_req_q_insert_head(struct tw_osli_req_context *req, TW_UINT8 q_type)
 {
-	spin_lock_wr(req->ctlr->q_lock);
+	spin_lock(req->ctlr->q_lock);
 	TW_CL_Q_INSERT_HEAD(&(req->ctlr->req_q_head[q_type]), &(req->link));
 	TW_OSLI_Q_INSERT(req->ctlr, q_type);
-	spin_unlock_wr(req->ctlr->q_lock);
+	spin_unlock(req->ctlr->q_lock);
 }
 
 
@@ -241,10 +241,10 @@ tw_osli_req_q_insert_head(struct tw_osli_req_context *req, TW_UINT8 q_type)
 static __inline	TW_VOID
 tw_osli_req_q_insert_tail(struct tw_osli_req_context *req, TW_UINT8 q_type)
 {
-	spin_lock_wr(req->ctlr->q_lock);
+	spin_lock(req->ctlr->q_lock);
 	TW_CL_Q_INSERT_TAIL(&(req->ctlr->req_q_head[q_type]), &(req->link));
 	TW_OSLI_Q_INSERT(req->ctlr, q_type);
-	spin_unlock_wr(req->ctlr->q_lock);
+	spin_unlock(req->ctlr->q_lock);
 }
 
 
@@ -256,7 +256,7 @@ tw_osli_req_q_remove_head(struct twa_softc *sc, TW_UINT8 q_type)
 	struct tw_osli_req_context	*req = NULL;
 	struct tw_cl_link		*link;
 
-	spin_lock_wr(sc->q_lock);
+	spin_lock(sc->q_lock);
 	if ((link = TW_CL_Q_FIRST_ITEM(&(sc->req_q_head[q_type]))) !=
 		TW_CL_NULL) {
 		req = TW_CL_STRUCT_HEAD(link,
@@ -264,7 +264,7 @@ tw_osli_req_q_remove_head(struct twa_softc *sc, TW_UINT8 q_type)
 		TW_CL_Q_REMOVE_ITEM(&(sc->req_q_head[q_type]), &(req->link));
 		TW_OSLI_Q_REMOVE(sc, q_type);
 	}
-	spin_unlock_wr(sc->q_lock);
+	spin_unlock(sc->q_lock);
 	return(req);
 }
 
@@ -274,10 +274,10 @@ tw_osli_req_q_remove_head(struct twa_softc *sc, TW_UINT8 q_type)
 static __inline TW_VOID
 tw_osli_req_q_remove_item(struct tw_osli_req_context *req, TW_UINT8 q_type)
 {
-	spin_lock_wr(req->ctlr->q_lock);
+	spin_lock(req->ctlr->q_lock);
 	TW_CL_Q_REMOVE_ITEM(&(req->ctlr->req_q_head[q_type]), &(req->link));
 	TW_OSLI_Q_REMOVE(req->ctlr, q_type);
-	spin_unlock_wr(req->ctlr->q_lock);
+	spin_unlock(req->ctlr->q_lock);
 }
 
 

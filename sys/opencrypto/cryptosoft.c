@@ -128,10 +128,10 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 		if (error)
 			goto done;
 	} else {
-		spin_lock_wr(&swcr_spin);
+		spin_lock(&swcr_spin);
 		kschedule = sw->sw_kschedule;
 		++sw->sw_kschedule_refs;
-		spin_unlock_wr(&swcr_spin);
+		spin_unlock(&swcr_spin);
 		explicit_kschedule = 0;
 	}
 
@@ -476,20 +476,20 @@ done:
 	 *	     (horrible semantics for concurrent operation)
 	 */
 	if (explicit_kschedule) {
-		spin_lock_wr(&swcr_spin);
+		spin_lock(&swcr_spin);
 		if (sw->sw_kschedule && sw->sw_kschedule_refs == 0) {
 			okschedule = sw->sw_kschedule;
 			sw->sw_kschedule = kschedule;
 		} else {
 			okschedule = NULL;
 		}
-		spin_unlock_wr(&swcr_spin);
+		spin_unlock(&swcr_spin);
 		if (okschedule)
 			exf->zerokey(&okschedule);
 	} else {
-		spin_lock_wr(&swcr_spin);
+		spin_lock(&swcr_spin);
 		--sw->sw_kschedule_refs;
-		spin_unlock_wr(&swcr_spin);
+		spin_unlock(&swcr_spin);
 	}
 	return error;
 }
@@ -867,7 +867,7 @@ swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 		/*
 		 * Atomically allocate a session
 		 */
-		spin_lock_wr(&swcr_spin);
+		spin_lock(&swcr_spin);
 		for (i = swcr_minsesnum; i < swcr_sesnum; ++i) {
 			if (swcr_sessions[i] == NULL)
 				break;
@@ -875,11 +875,11 @@ swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 		if (i < swcr_sesnum) {
 			swcr_sessions[i] = swd_base;
 			swcr_minsesnum = i + 1;
-			spin_unlock_wr(&swcr_spin);
+			spin_unlock(&swcr_spin);
 			break;
 		}
 		n = swcr_sesnum;
-		spin_unlock_wr(&swcr_spin);
+		spin_unlock(&swcr_spin);
 
 		/*
 		 * A larger allocation is required, reallocate the array
@@ -892,9 +892,9 @@ swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 		swd = kmalloc(n * sizeof(struct swcr_data *),
 			      M_CRYPTO_DATA, M_WAITOK | M_ZERO);
 
-		spin_lock_wr(&swcr_spin);
+		spin_lock(&swcr_spin);
 		if (swcr_sesnum >= n) {
-			spin_unlock_wr(&swcr_spin);
+			spin_unlock(&swcr_spin);
 			kfree(swd, M_CRYPTO_DATA);
 		} else if (swcr_sesnum) {
 			bcopy(swcr_sessions, swd,
@@ -902,12 +902,12 @@ swcr_newsession(device_t dev, u_int32_t *sid, struct cryptoini *cri)
 			oswd = swcr_sessions;
 			swcr_sessions = swd;
 			swcr_sesnum = n;
-			spin_unlock_wr(&swcr_spin);
+			spin_unlock(&swcr_spin);
 			kfree(oswd, M_CRYPTO_DATA);
 		} else {
 			swcr_sessions = swd;
 			swcr_sesnum = n;
-			spin_unlock_wr(&swcr_spin);
+			spin_unlock(&swcr_spin);
 		}
 	}
 
@@ -948,12 +948,12 @@ swcr_freesession_slot(struct swcr_data **swdp, u_int32_t sid)
 	/*
 	 * Protect session detachment with the spinlock.
 	 */
-	spin_lock_wr(&swcr_spin);
+	spin_lock(&swcr_spin);
 	swnext = *swdp;
 	*swdp = NULL;
 	if (sid && swcr_minsesnum > sid)
 		swcr_minsesnum = sid;
-	spin_unlock_wr(&swcr_spin);
+	spin_unlock(&swcr_spin);
 
 	/*
 	 * Clean up at our leisure.

@@ -126,16 +126,16 @@ kgetenv(const char *name)
 	int	len;
 
 	if (kenv_isdynamic) {
-		spin_lock_wr(&kenv_dynlock);
+		spin_lock(&kenv_dynlock);
 		cp = kenv_getstring_dynamic(name, NULL);
 		if (cp != NULL) {
 			strcpy(buf, cp);
-			spin_unlock_wr(&kenv_dynlock);
+			spin_unlock(&kenv_dynlock);
 			len = strlen(buf) + 1;
 			ret = kmalloc(len, M_KENV, M_WAITOK);
 			strcpy(ret, buf);
 		} else {
-			spin_unlock_wr(&kenv_dynlock);
+			spin_unlock(&kenv_dynlock);
 			ret = NULL;
 		}
 	} else
@@ -159,13 +159,13 @@ ksetenv(const char *name, const char *value)
 			return(-1);
 		buf = kmalloc(namelen + vallen, M_KENV, M_WAITOK);
 		ksprintf(buf, "%s=%s", name, value);
-		spin_lock_wr(&kenv_dynlock);
+		spin_lock(&kenv_dynlock);
 		cp = kenv_getstring_dynamic(name, &i);
 		if (cp != NULL) {
 			/* replace existing environment variable */
 			oldenv = kenv_dynp[i];
 			kenv_dynp[i] = buf;
-			spin_unlock_wr(&kenv_dynlock);
+			spin_unlock(&kenv_dynlock);
 			kfree(oldenv, M_KENV);
 		} else {
 			/* append new environment variable */
@@ -174,12 +174,12 @@ ksetenv(const char *name, const char *value)
 			/* bounds checking */
 			if (i < 0 || i >= (KENV_DYNMAXNUM - 1)) {
 				kfree(buf, M_KENV);
-				spin_unlock_wr(&kenv_dynlock);
+				spin_unlock(&kenv_dynlock);
 				return(-1);
 			}
 			kenv_dynp[i] = buf;
 			kenv_dynp[i + 1] = NULL;
-			spin_unlock_wr(&kenv_dynlock);
+			spin_unlock(&kenv_dynlock);
 		}
 		return(0);
 	} else {
@@ -198,7 +198,7 @@ kunsetenv(const char *name)
 	int	i, j;
 
 	if (kenv_isdynamic) {
-		spin_lock_wr(&kenv_dynlock);
+		spin_lock(&kenv_dynlock);
 		cp = kenv_getstring_dynamic(name, &i);
 		if (cp != NULL) {
 			oldenv = kenv_dynp[i];
@@ -206,11 +206,11 @@ kunsetenv(const char *name)
 			for (j = i + 1; kenv_dynp[j] != NULL; j++)
 				kenv_dynp[i++] = kenv_dynp[j];
 			kenv_dynp[i] = NULL;
-			spin_unlock_wr(&kenv_dynlock);
+			spin_unlock(&kenv_dynlock);
 			kfree(oldenv, M_KENV);
 			return(0);
 		}
-		spin_unlock_wr(&kenv_dynlock);
+		spin_unlock(&kenv_dynlock);
 		return(-1);
 	} else {
 		kprintf("WARNING: kunsetenv: dynamic array not created yet\n");
@@ -237,9 +237,9 @@ ktestenv(const char *name)
 	char	*cp;
 
 	if (kenv_isdynamic) {
-		spin_lock_wr(&kenv_dynlock);
+		spin_lock(&kenv_dynlock);
 		cp = kenv_getstring_dynamic(name, NULL);
-		spin_unlock_wr(&kenv_dynlock);
+		spin_unlock(&kenv_dynlock);
 	} else
 		cp = kenv_getstring_static(name);
 	if (cp != NULL)

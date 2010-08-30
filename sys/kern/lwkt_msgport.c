@@ -748,10 +748,10 @@ lwkt_spin_getport(lwkt_port_t port)
 {
     lwkt_msg_t msg;
 
-    spin_lock_wr(&port->mpu_spin);
+    spin_lock(&port->mpu_spin);
     if ((msg = _lwkt_pollmsg(port)) != NULL)
 	_lwkt_pullmsg(port, msg);
-    spin_unlock_wr(&port->mpu_spin);
+    spin_unlock(&port->mpu_spin);
     return(msg);
 }
 
@@ -764,14 +764,14 @@ lwkt_spin_putport(lwkt_port_t port, lwkt_msg_t msg)
     KKASSERT((msg->ms_flags & (MSGF_DONE | MSGF_REPLY)) == 0);
 
     msg->ms_target_port = port;
-    spin_lock_wr(&port->mpu_spin);
+    spin_lock(&port->mpu_spin);
     _lwkt_pushmsg(port, msg);
     dowakeup = 0;
     if (port->mp_flags & MSGPORTF_WAITING) {
 	port->mp_flags &= ~MSGPORTF_WAITING;
 	dowakeup = 1;
     }
-    spin_unlock_wr(&port->mpu_spin);
+    spin_unlock(&port->mpu_spin);
     if (dowakeup)
 	wakeup(port);
     return (EASYNC);
@@ -791,7 +791,7 @@ lwkt_spin_waitmsg(lwkt_msg_t msg, int flags)
     if ((msg->ms_flags & MSGF_DONE) == 0) {
 	port = msg->ms_reply_port;
 	sentabort = 0;
-	spin_lock_wr(&port->mpu_spin);
+	spin_lock(&port->mpu_spin);
 	while ((msg->ms_flags & MSGF_DONE) == 0) {
 	    void *won;
 
@@ -815,9 +815,9 @@ lwkt_spin_waitmsg(lwkt_msg_t msg, int flags)
 		error = ssleep(won, &port->mpu_spin, PCATCH, "waitmsg", 0);
 		if (error) {
 		    sentabort = error;
-		    spin_unlock_wr(&port->mpu_spin);
+		    spin_unlock(&port->mpu_spin);
 		    lwkt_abortmsg(msg);
-		    spin_lock_wr(&port->mpu_spin);
+		    spin_lock(&port->mpu_spin);
 		}
 	    } else {
 		error = ssleep(won, &port->mpu_spin, 0, "waitmsg", 0);
@@ -831,13 +831,13 @@ lwkt_spin_waitmsg(lwkt_msg_t msg, int flags)
 	    msg->ms_error = sentabort;
 	if (msg->ms_flags & MSGF_QUEUED)
 	    _lwkt_pullmsg(port, msg);
-	spin_unlock_wr(&port->mpu_spin);
+	spin_unlock(&port->mpu_spin);
     } else {
 	if (msg->ms_flags & MSGF_QUEUED) {
 	    port = msg->ms_reply_port;
-	    spin_lock_wr(&port->mpu_spin);
+	    spin_lock(&port->mpu_spin);
 	    _lwkt_pullmsg(port, msg);
-	    spin_unlock_wr(&port->mpu_spin);
+	    spin_unlock(&port->mpu_spin);
 	}
     }
     return(msg->ms_error);
@@ -850,18 +850,18 @@ lwkt_spin_waitport(lwkt_port_t port, int flags)
     lwkt_msg_t msg;
     int error;
 
-    spin_lock_wr(&port->mpu_spin);
+    spin_lock(&port->mpu_spin);
     while ((msg = _lwkt_pollmsg(port)) == NULL) {
 	port->mp_flags |= MSGPORTF_WAITING;
 	error = ssleep(port, &port->mpu_spin, flags, "waitport", 0);
 	/* see note at the top on the MSGPORTF_WAITING flag */
 	if (error) {
-	    spin_unlock_wr(&port->mpu_spin);
+	    spin_unlock(&port->mpu_spin);
 	    return(NULL);
 	}
     }
     _lwkt_pullmsg(port, msg);
-    spin_unlock_wr(&port->mpu_spin);
+    spin_unlock(&port->mpu_spin);
     return(msg);
 }
 
@@ -885,14 +885,14 @@ lwkt_spin_replyport(lwkt_port_t port, lwkt_msg_t msg)
 	 * If an asynchronous completion has been requested the message
 	 * must be queued to the reply port.
 	 */
-	spin_lock_wr(&port->mpu_spin);
+	spin_lock(&port->mpu_spin);
 	_lwkt_enqueue_reply(port, msg);
 	dowakeup = 0;
 	if (port->mp_flags & MSGPORTF_WAITING) {
 	    port->mp_flags &= ~MSGPORTF_WAITING;
 	    dowakeup = 1;
 	}
-	spin_unlock_wr(&port->mpu_spin);
+	spin_unlock(&port->mpu_spin);
 	if (dowakeup)
 	    wakeup(port);
     }

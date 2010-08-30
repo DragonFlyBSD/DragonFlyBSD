@@ -146,10 +146,10 @@ padlock_detach(device_t dev)
 	struct padlock_softc *sc = device_get_softc(dev);
 	struct padlock_session *ses;
 
-	spin_lock_wr(&sc->sc_sessions_lock);
+	spin_lock(&sc->sc_sessions_lock);
 	TAILQ_FOREACH(ses, &sc->sc_sessions, ses_next) {
 		if (ses->ses_used) {
-			spin_unlock_wr(&sc->sc_sessions_lock);
+			spin_unlock(&sc->sc_sessions_lock);
 			device_printf(dev,
 			    "Cannot detach, sessions still active.\n");
 			return (EBUSY);
@@ -159,7 +159,7 @@ padlock_detach(device_t dev)
 		TAILQ_REMOVE(&sc->sc_sessions, ses, ses_next);
 		kfree(ses->ses_freeaddr, M_PADLOCK);
 	}
-	spin_unlock_wr(&sc->sc_sessions_lock);
+	spin_unlock(&sc->sc_sessions_lock);
 	spin_uninit(&sc->sc_sessions_lock);
 	crypto_unregister_all(sc->sc_cid);
 	return (0);
@@ -211,7 +211,7 @@ padlock_newsession(device_t dev, uint32_t *sidp, struct cryptoini *cri)
 	/*
 	 * Let's look for a free session structure.
 	 */
-	spin_lock_wr(&sc->sc_sessions_lock);
+	spin_lock(&sc->sc_sessions_lock);
 	/*
 	 * Free sessions goes first, so if first session is used, we need to
 	 * allocate one.
@@ -220,7 +220,7 @@ padlock_newsession(device_t dev, uint32_t *sidp, struct cryptoini *cri)
 	if (ses == NULL || ses->ses_used) {
 		ses = kmalloc(sizeof(*ses) + 16, M_PADLOCK, M_NOWAIT | M_ZERO);
 		if (ses == NULL) {
-			spin_unlock_wr(&sc->sc_sessions_lock);
+			spin_unlock(&sc->sc_sessions_lock);
 			return (ENOMEM);
 		}
 		/* Check if 'ses' is 16-byte aligned. If not, align it. */
@@ -237,7 +237,7 @@ padlock_newsession(device_t dev, uint32_t *sidp, struct cryptoini *cri)
 	}
 	ses->ses_used = 1;
 	TAILQ_INSERT_TAIL(&sc->sc_sessions, ses, ses_next);
-	spin_unlock_wr(&sc->sc_sessions_lock);
+	spin_unlock(&sc->sc_sessions_lock);
 
 	error = padlock_cipher_setup(ses, encini);
 	if (error != 0) {
@@ -264,7 +264,7 @@ padlock_freesession_one(struct padlock_softc *sc, struct padlock_session *ses,
 	uint32_t sid = ses->ses_id;
 
 	if (!locked)
-		spin_lock_wr(&sc->sc_sessions_lock);
+		spin_lock(&sc->sc_sessions_lock);
 	TAILQ_REMOVE(&sc->sc_sessions, ses, ses_next);
 	padlock_hash_free(ses);
 	bzero(ses, sizeof(*ses));
@@ -272,7 +272,7 @@ padlock_freesession_one(struct padlock_softc *sc, struct padlock_session *ses,
 	ses->ses_id = sid;
 	TAILQ_INSERT_HEAD(&sc->sc_sessions, ses, ses_next);
 	if (!locked)
-		spin_unlock_wr(&sc->sc_sessions_lock);
+		spin_unlock(&sc->sc_sessions_lock);
 }
 
 static int
@@ -282,18 +282,18 @@ padlock_freesession(device_t dev, uint64_t tid)
 	struct padlock_session *ses;
 	uint32_t sid = ((uint32_t)tid) & 0xffffffff;
 
-	spin_lock_wr(&sc->sc_sessions_lock);
+	spin_lock(&sc->sc_sessions_lock);
 	TAILQ_FOREACH_REVERSE(ses, &sc->sc_sessions, padlock_sessions_head,
 	    ses_next) {
 		if (ses->ses_id == sid)
 			break;
 	}
 	if (ses == NULL) {
-		spin_unlock_wr(&sc->sc_sessions_lock);
+		spin_unlock(&sc->sc_sessions_lock);
 		return (EINVAL);
 	}
 	padlock_freesession_one(sc, ses, 1);
-	spin_unlock_wr(&sc->sc_sessions_lock);
+	spin_unlock(&sc->sc_sessions_lock);
 	return (0);
 }
 
@@ -347,13 +347,13 @@ padlock_process(device_t dev, struct cryptop *crp, int hint __unused)
 		goto out;
 	}
 
-	spin_lock_wr(&sc->sc_sessions_lock); /* XXX: was rd lock */
+	spin_lock(&sc->sc_sessions_lock); /* XXX: was rd lock */
 	TAILQ_FOREACH_REVERSE(ses, &sc->sc_sessions, padlock_sessions_head,
 	    ses_next) {
 		if (ses->ses_id == (crp->crp_sid & 0xffffffff))
 			break;
 	}
-	spin_unlock_wr(&sc->sc_sessions_lock); /* XXX: was rd lock */
+	spin_unlock(&sc->sc_sessions_lock); /* XXX: was rd lock */
 	if (ses == NULL) {
 		error = EINVAL;
 		goto out;

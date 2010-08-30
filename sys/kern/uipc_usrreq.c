@@ -417,9 +417,9 @@ uipc_sense(struct socket *so, struct stat *sb)
 	sb->st_blksize = so->so_snd.ssb_hiwat;
 	sb->st_dev = NOUDEV;
 	if (unp->unp_ino == 0) {	/* make up a non-zero inode number */
-		spin_lock_wr(&unp_ino_spin);
+		spin_lock(&unp_ino_spin);
 		unp->unp_ino = unp_ino++;
-		spin_unlock_wr(&unp_ino_spin);
+		spin_unlock(&unp_ino_spin);
 	}
 	sb->st_ino = unp->unp_ino;
 	return (0);
@@ -1030,10 +1030,10 @@ unp_fp_externalize(struct lwp *lp, struct file *fp, int fd)
 			fsetfd(lp->lwp_proc->p_fd, fp, fd);
 		}
 	}
-	spin_lock_wr(&unp_spin);
+	spin_lock(&unp_spin);
 	fp->f_msgcount--;
 	unp_rights--;
-	spin_unlock_wr(&unp_spin);
+	spin_unlock(&unp_spin);
 	fdrop(fp);
 }
 
@@ -1148,10 +1148,10 @@ unp_internalize(struct mbuf *control, struct thread *td)
 			fp = fdescp->fd_files[*fdp--].fp;
 			*rp-- = fp;
 			fhold(fp);
-			spin_lock_wr(&unp_spin);
+			spin_lock(&unp_spin);
 			fp->f_msgcount++;
 			unp_rights++;
-			spin_unlock_wr(&unp_spin);
+			spin_unlock(&unp_spin);
 		}
 	} else {
 		fdp = (int *)CMSG_DATA(cm);
@@ -1160,10 +1160,10 @@ unp_internalize(struct mbuf *control, struct thread *td)
 			fp = fdescp->fd_files[*fdp++].fp;
 			*rp++ = fp;
 			fhold(fp);
-			spin_lock_wr(&unp_spin);
+			spin_lock(&unp_spin);
 			fp->f_msgcount++;
 			unp_rights++;
-			spin_unlock_wr(&unp_spin);
+			spin_unlock(&unp_spin);
 		}
 	}
 	return (0);
@@ -1193,13 +1193,13 @@ unp_gc(void)
 	struct file **fpp;
 	int i;
 
-	spin_lock_wr(&unp_spin);
+	spin_lock(&unp_spin);
 	if (unp_gcing) {
-		spin_unlock_wr(&unp_spin);
+		spin_unlock(&unp_spin);
 		return;
 	}
 	unp_gcing = TRUE;
-	spin_unlock_wr(&unp_spin);
+	spin_unlock(&unp_spin);
 
 	/* 
 	 * before going through all this, set all FDs to 
@@ -1563,10 +1563,10 @@ unp_mark(struct file *fp, void *data)
 static void
 unp_discard(struct file *fp, void *data __unused)
 {
-	spin_lock_wr(&unp_spin);
+	spin_lock(&unp_spin);
 	fp->f_msgcount--;
 	unp_rights--;
-	spin_unlock_wr(&unp_spin);
+	spin_unlock(&unp_spin);
 	closef(fp, NULL);
 }
 

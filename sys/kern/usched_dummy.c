@@ -238,18 +238,18 @@ dummy_select_curproc(globaldata_t gd)
 	struct lwp *lp;
 
 	clear_user_resched();
-	spin_lock_wr(&dummy_spin);
+	spin_lock(&dummy_spin);
 	if ((lp = TAILQ_FIRST(&dummy_runq)) == NULL) {
 		dd->uschedcp = NULL;
 		atomic_clear_int(&dummy_curprocmask, gd->gd_cpumask);
-		spin_unlock_wr(&dummy_spin);
+		spin_unlock(&dummy_spin);
 	} else {
 		--dummy_runqcount;
 		TAILQ_REMOVE(&dummy_runq, lp, lwp_procq);
 		lp->lwp_flag &= ~LWP_ONRUNQ;
 		dd->uschedcp = lp;
 		atomic_set_int(&dummy_curprocmask, gd->gd_cpumask);
-		spin_unlock_wr(&dummy_spin);
+		spin_unlock(&dummy_spin);
 #ifdef SMP
 		lwkt_acquire(lp->lwp_thread);
 #endif
@@ -287,7 +287,7 @@ dummy_setrunqueue(struct lwp *lp)
 		 * Add to our global runq
 		 */
 		KKASSERT((lp->lwp_flag & LWP_ONRUNQ) == 0);
-		spin_lock_wr(&dummy_spin);
+		spin_lock(&dummy_spin);
 		++dummy_runqcount;
 		TAILQ_INSERT_TAIL(&dummy_runq, lp, lwp_procq);
 		lp->lwp_flag |= LWP_ONRUNQ;
@@ -311,10 +311,10 @@ dummy_setrunqueue(struct lwp *lp)
 		if (mask) {
 			cpuid = bsfl(mask);
 			atomic_clear_int(&dummy_rdyprocmask, 1 << cpuid);
-			spin_unlock_wr(&dummy_spin);
+			spin_unlock(&dummy_spin);
 			lwkt_schedule(&dummy_pcpu[cpuid].helper_thread);
 		} else {
-			spin_unlock_wr(&dummy_spin);
+			spin_unlock(&dummy_spin);
 		}
 	}
 }
@@ -479,7 +479,7 @@ dummy_sched_thread(void *dummy)
     for (;;) {
 	lwkt_deschedule_self(gd->gd_curthread);		/* interlock */
 	atomic_set_int(&dummy_rdyprocmask, cpumask);
-	spin_lock_wr(&dummy_spin);
+	spin_lock(&dummy_spin);
 	if (dd->uschedcp) {
 		/*
 		 * We raced another cpu trying to schedule a thread onto us.
@@ -491,10 +491,10 @@ dummy_sched_thread(void *dummy)
 			tmpid = bsfl(tmpmask);
 			KKASSERT(tmpid != cpuid);
 			atomic_clear_int(&dummy_rdyprocmask, 1 << tmpid);
-			spin_unlock_wr(&dummy_spin);
+			spin_unlock(&dummy_spin);
 			lwkt_schedule(&dummy_pcpu[tmpid].helper_thread);
 		} else {
-			spin_unlock_wr(&dummy_spin);
+			spin_unlock(&dummy_spin);
 		}
 	} else if ((lp = TAILQ_FIRST(&dummy_runq)) != NULL) {
 		--dummy_runqcount;
@@ -502,13 +502,13 @@ dummy_sched_thread(void *dummy)
 		lp->lwp_flag &= ~LWP_ONRUNQ;
 		dd->uschedcp = lp;
 		atomic_set_int(&dummy_curprocmask, cpumask);
-		spin_unlock_wr(&dummy_spin);
+		spin_unlock(&dummy_spin);
 #ifdef SMP
 		lwkt_acquire(lp->lwp_thread);
 #endif
 		lwkt_schedule(lp->lwp_thread);
 	} else {
-		spin_unlock_wr(&dummy_spin);
+		spin_unlock(&dummy_spin);
 	}
 	lwkt_switch();
     }

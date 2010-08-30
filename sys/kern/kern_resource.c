@@ -901,11 +901,11 @@ uicreate(uid_t uid)
 	 * Somebody may have already created the uidinfo for this
 	 * uid. If so, return that instead.
 	 */
-	spin_lock_wr(&uihash_lock);
+	spin_lock(&uihash_lock);
 	tmp = uilookup(uid);
 	if (tmp != NULL) {
 		uihold(tmp);
-		spin_unlock_wr(&uihash_lock);
+		spin_unlock(&uihash_lock);
 
 		spin_uninit(&uip->ui_lock);
 		varsymset_clean(&uip->ui_varsymset);
@@ -913,7 +913,7 @@ uicreate(uid_t uid)
 		uip = tmp;
 	} else {
 		LIST_INSERT_HEAD(UIHASH(uid), uip, ui_hash);
-		spin_unlock_wr(&uihash_lock);
+		spin_unlock(&uihash_lock);
 	}
 	return (uip);
 }
@@ -928,14 +928,14 @@ uifind(uid_t uid)
 {
 	struct	uidinfo *uip;
 
-	spin_lock_wr(&uihash_lock);
+	spin_lock(&uihash_lock);
 	uip = uilookup(uid);
 	if (uip == NULL) {
-		spin_unlock_wr(&uihash_lock);
+		spin_unlock(&uihash_lock);
 		uip = uicreate(uid);
 	} else {
 		uihold(uip);
-		spin_unlock_wr(&uihash_lock);
+		spin_unlock(&uihash_lock);
 	}
 	return (uip);
 }
@@ -957,13 +957,13 @@ uifree(struct uidinfo *uip)
 	 * we can safely unlink the uip and destroy it.  Otherwise we lost
 	 * a race and must fail.
 	 */
-	spin_lock_wr(&uihash_lock);
+	spin_lock(&uihash_lock);
 	if (uip->ui_ref != 1) {
-		spin_unlock_wr(&uihash_lock);
+		spin_unlock(&uihash_lock);
 		return(-1);
 	}
 	LIST_REMOVE(uip, ui_hash);
-	spin_unlock_wr(&uihash_lock);
+	spin_unlock(&uihash_lock);
 
 	/*
 	 * The uip is now orphaned and we can destroy it at our
@@ -1037,7 +1037,7 @@ int
 chgproccnt(struct uidinfo *uip, int diff, int max)
 {
 	int ret;
-	spin_lock_wr(&uip->ui_lock);
+	spin_lock(&uip->ui_lock);
 	/* don't allow them to exceed max, but allow subtraction */
 	if (diff > 0 && uip->ui_proccnt + diff > max && max != 0) {
 		ret = 0;
@@ -1047,7 +1047,7 @@ chgproccnt(struct uidinfo *uip, int diff, int max)
 			kprintf("negative proccnt for uid = %d\n", uip->ui_uid);
 		ret = 1;
 	}
-	spin_unlock_wr(&uip->ui_lock);
+	spin_unlock(&uip->ui_lock);
 	return ret;
 }
 
@@ -1059,7 +1059,7 @@ chgsbsize(struct uidinfo *uip, u_long *hiwat, u_long to, rlim_t max)
 {
 	rlim_t new;
 
-	spin_lock_wr(&uip->ui_lock);
+	spin_lock(&uip->ui_lock);
 	new = uip->ui_sbsize + to - *hiwat;
 	KKASSERT(new >= 0);
 
@@ -1078,7 +1078,7 @@ chgsbsize(struct uidinfo *uip, u_long *hiwat, u_long to, rlim_t max)
 	}
 	uip->ui_sbsize = new;
 	*hiwat = to;
-	spin_unlock_wr(&uip->ui_lock);
+	spin_unlock(&uip->ui_lock);
 	return (1);
 }
 

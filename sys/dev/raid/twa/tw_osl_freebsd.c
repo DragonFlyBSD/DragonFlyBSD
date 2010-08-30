@@ -848,11 +848,11 @@ twa_busdma_lock(TW_VOID *lock_arg, bus_dma_lock_op_t op)
 	lock = (struct spinlock *)lock_arg;
 	switch (op) {
 	case BUS_DMA_LOCK:
-		spin_lock_wr(lock);
+		spin_lock(lock);
 		break;
 
 	case BUS_DMA_UNLOCK:
-		spin_unlock_wr(lock);
+		spin_unlock(lock);
 		break;
 
 	default:
@@ -1376,12 +1376,12 @@ tw_osli_map_request(struct tw_osli_req_context *req)
 		 */
 		if (req->flags & TW_OSLI_REQ_FLAGS_PASSTHRU) {
 			/* Lock against multiple simultaneous ioctl calls. */
-			spin_lock_wr(sc->io_lock);
+			spin_lock(sc->io_lock);
 			error = bus_dmamap_load(sc->ioctl_tag, sc->ioctl_map,
 				req->data, req->length,
 				twa_map_load_data_callback, req,
 				BUS_DMA_WAITOK);
-			spin_unlock_wr(sc->io_lock);
+			spin_unlock(sc->io_lock);
 		} else {
 			/*
 			 * There's only one CAM I/O thread running at a time.
@@ -1402,11 +1402,11 @@ tw_osli_map_request(struct tw_osli_req_context *req)
 				 * in ...tag_create should protect the access
 				 * of ...FLAGS_MAPPED from the callback.
 				 */
-				spin_lock_wr(sc->io_lock);
+				spin_lock(sc->io_lock);
 				if (!(req->flags & TW_OSLI_REQ_FLAGS_MAPPED))
 					req->flags |= TW_OSLI_REQ_FLAGS_IN_PROGRESS;
 				tw_osli_disallow_new_requests(sc, &(req->req_handle));
-				spin_unlock_wr(sc->io_lock);
+				spin_unlock(sc->io_lock);
 				error = 0;
 			} else {
 				/* Free alignment buffer if it was used. */
@@ -1463,7 +1463,7 @@ tw_osli_unmap_request(struct tw_osli_req_context *req)
 	if (req->data != NULL) {
 		if (req->flags & TW_OSLI_REQ_FLAGS_PASSTHRU) {
 			/* Lock against multiple simultaneous ioctl calls. */
-			spin_lock_wr(sc->io_lock);
+			spin_lock(sc->io_lock);
 
 			if (req->flags & TW_OSLI_REQ_FLAGS_DATA_IN) {
 				bus_dmamap_sync(sc->ioctl_tag,
@@ -1484,7 +1484,7 @@ tw_osli_unmap_request(struct tw_osli_req_context *req)
 
 			bus_dmamap_unload(sc->ioctl_tag, sc->ioctl_map);
 
-			spin_unlock_wr(sc->io_lock);
+			spin_unlock(sc->io_lock);
 		} else {
 			if (req->flags & TW_OSLI_REQ_FLAGS_DATA_IN) {
 				bus_dmamap_sync(sc->dma_tag,

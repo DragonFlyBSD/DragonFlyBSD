@@ -354,10 +354,10 @@ glxsb_detach(device_t dev)
 	struct glxsb_softc *sc = device_get_softc(dev);
 	struct glxsb_session *ses;
 
-	spin_lock_wr(&sc->sc_sessions_lock);
+	spin_lock(&sc->sc_sessions_lock);
 	TAILQ_FOREACH(ses, &sc->sc_sessions, ses_next) {
 		if (ses->ses_used) {
-			spin_unlock_wr(&sc->sc_sessions_lock);
+			spin_unlock(&sc->sc_sessions_lock);
 			device_printf(dev,
 				"cannot detach, sessions still active.\n");
 			return (EBUSY);
@@ -368,7 +368,7 @@ glxsb_detach(device_t dev)
 		TAILQ_REMOVE(&sc->sc_sessions, ses, ses_next);
 		kfree(ses, M_GLXSB);
 	}
-	spin_unlock_wr(&sc->sc_sessions_lock);
+	spin_unlock(&sc->sc_sessions_lock);
 	crypto_unregister_all(sc->sc_cid);
 #if 0
 	/* XXX: need implementation of callout_drain or workaround */
@@ -590,12 +590,12 @@ glxsb_crypto_newsession(device_t dev, uint32_t *sidp, struct cryptoini *cri)
 	 * allocate one.
 	 */
 
-	spin_lock_wr(&sc->sc_sessions_lock);
+	spin_lock(&sc->sc_sessions_lock);
 	ses = TAILQ_FIRST(&sc->sc_sessions);
 	if (ses == NULL || ses->ses_used) {
 		ses = kmalloc(sizeof(*ses), M_GLXSB, M_NOWAIT | M_ZERO);
 		if (ses == NULL) {
-			spin_unlock_wr(&sc->sc_sessions_lock);
+			spin_unlock(&sc->sc_sessions_lock);
 			return (ENOMEM);
 		}
 		ses->ses_id = sc->sc_sid++;
@@ -604,7 +604,7 @@ glxsb_crypto_newsession(device_t dev, uint32_t *sidp, struct cryptoini *cri)
 	}
 	ses->ses_used = 1;
 	TAILQ_INSERT_TAIL(&sc->sc_sessions, ses, ses_next);
-	spin_unlock_wr(&sc->sc_sessions_lock);
+	spin_unlock(&sc->sc_sessions_lock);
 
 	if (encini->cri_alg == CRYPTO_AES_CBC) {
 		if (encini->cri_klen != 128) {
@@ -641,13 +641,13 @@ glxsb_crypto_freesession(device_t dev, uint64_t tid)
 	if (sc == NULL)
 		return (EINVAL);
 
-	spin_lock_wr(&sc->sc_sessions_lock);
+	spin_lock(&sc->sc_sessions_lock);
 	TAILQ_FOREACH_REVERSE(ses, &sc->sc_sessions, ses_head, ses_next) {
 		if (ses->ses_id == sid)
 			break;
 	}
 	if (ses == NULL) {
-		spin_unlock_wr(&sc->sc_sessions_lock);
+		spin_unlock(&sc->sc_sessions_lock);
 		return (EINVAL);
 	}
 	TAILQ_REMOVE(&sc->sc_sessions, ses, ses_next);
@@ -656,7 +656,7 @@ glxsb_crypto_freesession(device_t dev, uint64_t tid)
 	ses->ses_used = 0;
 	ses->ses_id = sid;
 	TAILQ_INSERT_HEAD(&sc->sc_sessions, ses, ses_next);
-	spin_unlock_wr(&sc->sc_sessions_lock);
+	spin_unlock(&sc->sc_sessions_lock);
 
 	return (0);
 }
@@ -864,9 +864,9 @@ glxsb_crypto_task(void *arg, int pending)
 			goto out;
 	}
 out:
-	spin_lock_wr(&sc->sc_task_mtx);
+	spin_lock(&sc->sc_task_mtx);
 	sc->sc_task_count--;
-	spin_unlock_wr(&sc->sc_task_mtx);
+	spin_unlock(&sc->sc_task_mtx);
 
 	crp->crp_etype = error;
 	crypto_unblock(sc->sc_cid, CRYPTO_SYMQ);
@@ -927,20 +927,20 @@ glxsb_crypto_process(device_t dev, struct cryptop *crp, int hint)
 	}
 
 	sid = crp->crp_sid & 0xffffffff;
-	spin_lock_wr(&sc->sc_sessions_lock);
+	spin_lock(&sc->sc_sessions_lock);
 	TAILQ_FOREACH_REVERSE(ses, &sc->sc_sessions, ses_head, ses_next) {
 		if (ses->ses_id == sid)
 			break;
 	}
-	spin_unlock_wr(&sc->sc_sessions_lock);
+	spin_unlock(&sc->sc_sessions_lock);
 	if (ses == NULL || !ses->ses_used) {
 		error = EINVAL;
 		goto fail;
 	}
 
-	spin_lock_wr(&sc->sc_task_mtx);
+	spin_lock(&sc->sc_task_mtx);
 	if (sc->sc_task_count != 0) {
-		spin_unlock_wr(&sc->sc_task_mtx);
+		spin_unlock(&sc->sc_task_mtx);
 		return (ERESTART);
 	}
 	sc->sc_task_count++;
@@ -949,7 +949,7 @@ glxsb_crypto_process(device_t dev, struct cryptop *crp, int hint)
 	sc->sc_to.to_enccrd = enccrd;
 	sc->sc_to.to_crp = crp;
 	sc->sc_to.to_ses = ses;
-	spin_unlock_wr(&sc->sc_task_mtx);
+	spin_unlock(&sc->sc_task_mtx);
 	/* XXX: thread taskqueues ? */
 	taskqueue_enqueue(sc->sc_tq, &sc->sc_cryptotask);
 	return(0);

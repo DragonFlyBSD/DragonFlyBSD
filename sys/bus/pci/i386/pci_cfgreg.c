@@ -53,8 +53,8 @@
 
 #if defined(__DragonFly__)
 #define mtx_init(a, b, c, d) spin_init(a)
-#define mtx_lock_spin(a) spin_lock_wr(a)
-#define mtx_unlock_spin(a) spin_unlock_wr(a)
+#define mtx_lock_spin(a) spin_lock(a)
+#define mtx_unlock_spin(a) spin_unlock(a)
 #endif
 
 #define PRVERB(a) do {							\

@@ -71,7 +71,7 @@ extern void spin_lock_wr_contested2(struct spinlock *mtx);
  * TRUE on success.
  */
 static __inline boolean_t
-spin_trylock_wr(struct spinlock *mtx)
+spin_trylock(struct spinlock *mtx)
 {
 	globaldata_t gd = mycpu;
 	int value;
@@ -87,7 +87,7 @@ spin_trylock_wr(struct spinlock *mtx)
 #else
 
 static __inline boolean_t
-spin_trylock_wr(struct spinlock *mtx)
+spin_trylock(struct spinlock *mtx)
 {
 	globaldata_t gd = mycpu;
 
@@ -119,7 +119,7 @@ spin_lock_wr_quick(globaldata_t gd, struct spinlock *mtx)
 }
 
 static __inline void
-spin_lock_wr(struct spinlock *mtx)
+spin_lock(struct spinlock *mtx)
 {
 	spin_lock_wr_quick(mycpu, mtx);
 }
@@ -142,7 +142,7 @@ spin_unlock_wr_quick(globaldata_t gd, struct spinlock *mtx)
 }
 
 static __inline void
-spin_unlock_wr(struct spinlock *mtx)
+spin_unlock(struct spinlock *mtx)
 {
 	spin_unlock_wr_quick(mycpu, mtx);
 }

@@ -63,10 +63,10 @@ static void wdog_reset_all(void *unused);
 void
 wdog_register(struct watchdog *wd)
 {
-	spin_lock_wr(&wdogmtx);
+	spin_lock(&wdogmtx);
 	wd->period = WDOG_DEFAULT_PERIOD;
 	LIST_INSERT_HEAD(&wdoglist, wd, link);
-	spin_unlock_wr(&wdogmtx);
+	spin_unlock(&wdogmtx);
 
 	wdog_reset_all(NULL);
 
@@ -77,9 +77,9 @@ wdog_register(struct watchdog *wd)
 void
 wdog_unregister(struct watchdog *wd)
 {
-	spin_lock_wr(&wdogmtx);
+	spin_lock(&wdogmtx);
 	LIST_REMOVE(wd, link);
-	spin_unlock_wr(&wdogmtx);
+	spin_unlock(&wdogmtx);
 
 	kprintf("wdog: Watchdog %s unregistered\n", wd->name);
 }
@@ -96,7 +96,7 @@ wdog_reset_all(void *unused)
 	struct watchdog *wd;
 	int period, min_period = INT_MAX;
 
-	spin_lock_wr(&wdogmtx);
+	spin_lock(&wdogmtx);
 	LIST_FOREACH(wd, &wdoglist, link) {
 		period = wdog_reset(wd);
 		if (period < min_period)
@@ -107,7 +107,7 @@ wdog_reset_all(void *unused)
 
 	wdog_auto_period = min_period;
 
-	spin_unlock_wr(&wdogmtx);
+	spin_unlock(&wdogmtx);
 }
 
 static void
@@ -115,12 +115,12 @@ wdog_set_period(int period)
 {
 	struct watchdog *wd;
 
-	spin_lock_wr(&wdogmtx);
+	spin_lock(&wdogmtx);
 	LIST_FOREACH(wd, &wdoglist, link) {
 		/* XXX: check for period_max */
 		wd->period = period;
 	}
-	spin_unlock_wr(&wdogmtx);
+	spin_unlock(&wdogmtx);
 }
 
 

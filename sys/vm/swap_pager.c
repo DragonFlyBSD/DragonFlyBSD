@@ -1136,7 +1136,7 @@ swap_chain_iodone(struct bio *biox)
 	/*
 	 * Remove us from the chain.
 	 */
-	spin_lock_wr(&bp->b_lock.lk_spinlock);
+	spin_lock(&bp->b_lock.lk_spinlock);
 	nextp = &nbio->bio_caller_info1.cluster_head;
 	while (*nextp != bufx) {
 		KKASSERT(*nextp != NULL);
@@ -1144,7 +1144,7 @@ swap_chain_iodone(struct bio *biox)
 	}
 	*nextp = bufx->b_cluster_next;
 	chain_empty = (nbio->bio_caller_info1.cluster_head == NULL);
-	spin_unlock_wr(&bp->b_lock.lk_spinlock);
+	spin_unlock(&bp->b_lock.lk_spinlock);
 
 	/*
 	 * Clean up bufx.  If the chain is now empty we finish out

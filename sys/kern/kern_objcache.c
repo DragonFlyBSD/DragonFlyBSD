@@ -280,9 +280,9 @@ objcache_create(const char *name, int *cluster_limit0, int mag_capacity,
 		SLIST_INSERT_HEAD(&depot->emptymagazines, mag, nextmagazine);
 	}
 
-	spin_lock_wr(&objcachelist_spin);
+	spin_lock(&objcachelist_spin);
 	LIST_INSERT_HEAD(&allobjcaches, oc, oc_next);
-	spin_unlock_wr(&objcachelist_spin);
+	spin_unlock(&objcachelist_spin);
 
 	if (cluster_limit0 != NULL)
 		*cluster_limit0 = cluster_limit;
@@ -384,7 +384,7 @@ retry:
 	 * NOTE: Beyond this point, M_* flags are handled via oc->alloc()
 	 */
 	depot = &oc->depot[myclusterid];
-	spin_lock_wr(&depot->spin);
+	spin_lock(&depot->spin);
 
 	/*
 	 * Recheck the cpucache after obtaining the depot spinlock.  This
@@ -393,7 +393,7 @@ retry:
 	if (MAGAZINE_NOTEMPTY(cpucache->loaded_magazine) ||
 	    MAGAZINE_NOTEMPTY(cpucache->previous_magazine)
 	) {
-		spin_unlock_wr(&depot->spin);
+		spin_unlock(&depot->spin);
 		goto retry;
 	}
 
@@ -410,7 +410,7 @@ retry:
 		KKASSERT(MAGAZINE_EMPTY(emptymag));
 		SLIST_INSERT_HEAD(&depot->emptymagazines,
 				  emptymag, nextmagazine);
-		spin_unlock_wr(&depot->spin);
+		spin_unlock(&depot->spin);
 		goto retry;
 	}
 
@@ -424,7 +424,7 @@ retry:
 	 */
 	if (depot->unallocated_objects) {
 		--depot->unallocated_objects;
-		spin_unlock_wr(&depot->spin);
+		spin_unlock(&depot->spin);
 		crit_exit();
 
 		obj = oc->alloc(oc->allocator_args, ocflags);
@@ -435,9 +435,9 @@ retry:
 			obj = NULL;
 		}
 		if (obj == NULL) {
-			spin_lock_wr(&depot->spin);
+			spin_lock(&depot->spin);
 			++depot->unallocated_objects;
-			spin_unlock_wr(&depot->spin);
+			spin_unlock(&depot->spin);
 			if (depot->waiting)
 				wakeup(depot);
 
@@ -466,7 +466,7 @@ retry:
 		ssleep(depot, &depot->spin, 0, "objcache_get", 0);
 		--cpucache->waiting;
 		--depot->waiting;
-		spin_unlock_wr(&depot->spin);
+		spin_unlock(&depot->spin);
 		goto retry;
 	}
 
@@ -476,7 +476,7 @@ retry:
 	++cpucache->gets_null;
 	--cpucache->gets_cumulative;
 	crit_exit();
-	spin_unlock_wr(&depot->spin);
+	spin_unlock(&depot->spin);
 	return (NULL);
 }
 
@@ -577,7 +577,7 @@ retry:
 	 * Obtain the depot spinlock.
 	 */
 	depot = &oc->depot[myclusterid];
-	spin_lock_wr(&depot->spin);
+	spin_lock(&depot->spin);
 
 	/*
 	 * If an empty magazine is available in the depot, cycle it
@@ -598,11 +598,11 @@ retry:
 		if (MAGAZINE_EMPTY(loadedmag)) {
 			SLIST_INSERT_HEAD(&depot->emptymagazines,
 					  loadedmag, nextmagazine);
-			spin_unlock_wr(&depot->spin);
+			spin_unlock(&depot->spin);
 		} else {
 			SLIST_INSERT_HEAD(&depot->fullmagazines,
 					  loadedmag, nextmagazine);
-			spin_unlock_wr(&depot->spin);
+			spin_unlock(&depot->spin);
 			if (depot->waiting)
 				wakeup(depot);
 		}
@@ -615,7 +615,7 @@ retry:
 	 * to allocate a mag, just free the object.
 	 */
 	++depot->unallocated_objects;
-	spin_unlock_wr(&depot->spin);
+	spin_unlock(&depot->spin);
 	if (depot->waiting)
 		wakeup(depot);
 	crit_exit();
@@ -634,9 +634,9 @@ objcache_dtor(struct objcache *oc, void *obj)
 	struct magazinedepot *depot;
 
 	depot = &oc->depot[myclusterid];
-	spin_lock_wr(&depot->spin);
+	spin_lock(&depot->spin);
 	++depot->unallocated_objects;
-	spin_unlock_wr(&depot->spin);
+	spin_unlock(&depot->spin);
 	if (depot->waiting)
 		wakeup(depot);
 	oc->dtor(obj, oc->privdata);
@@ -758,10 +758,10 @@ objcache_reclaim(struct objcache *oc)
 	count += mag_purge(oc, cache_percpu->previous_magazine, FALSE);
 	crit_exit();
 
-	spin_lock_wr(&depot->spin);
+	spin_lock(&depot->spin);
 	depot->unallocated_objects += count;
 	depot_disassociate(depot, &tmplist);
-	spin_unlock_wr(&depot->spin);
+	spin_unlock(&depot->spin);
 	count += maglist_purge(oc, &tmplist);
 	if (count && depot->waiting)
 		wakeup(depot);
@@ -795,17 +795,17 @@ objcache_reclaimlist(struct objcache *oclist[], int nlist, int ocflags)
 			count += mag_purge(oc, cpucache->previous_magazine, FALSE);
 		crit_exit();
 		if (count > 0) {
-			spin_lock_wr(&depot->spin);
+			spin_lock(&depot->spin);
 			depot->unallocated_objects += count;
-			spin_unlock_wr(&depot->spin);
+			spin_unlock(&depot->spin);
 			if (depot->waiting)
 				wakeup(depot);
 			return (TRUE);
 		}
-		spin_lock_wr(&depot->spin);
+		spin_lock(&depot->spin);
 		maglist_disassociate(depot, &depot->fullmagazines,
 				     &tmplist, FALSE);
-		spin_unlock_wr(&depot->spin);
+		spin_unlock(&depot->spin);
 		count = maglist_purge(oc, &tmplist);
 		if (count > 0) {
 			if (depot->waiting)
@@ -827,16 +827,16 @@ objcache_destroy(struct objcache *oc)
 	int clusterid, cpuid;
 	struct magazinelist tmplist;
 
-	spin_lock_wr(&objcachelist_spin);
+	spin_lock(&objcachelist_spin);
 	LIST_REMOVE(oc, oc_next);
-	spin_unlock_wr(&objcachelist_spin);
+	spin_unlock(&objcachelist_spin);
 
 	SLIST_INIT(&tmplist);
 	for (clusterid = 0; clusterid < MAXCLUSTERS; clusterid++) {
 		depot = &oc->depot[clusterid];
-		spin_lock_wr(&depot->spin);
+		spin_lock(&depot->spin);
 		depot_disassociate(depot, &tmplist);
-		spin_unlock_wr(&depot->spin);
+		spin_unlock(&depot->spin);
 	}
 	maglist_purge(oc, &tmplist);
 

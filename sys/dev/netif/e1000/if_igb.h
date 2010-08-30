@@ -481,19 +481,19 @@ struct igb_rx_buf {
 
 #define	IGB_CORE_LOCK_INIT(_sc, _name)  spin_init(&(_sc)->core_spin)
 #define	IGB_CORE_LOCK_DESTROY(_sc)	spin_uninit(&(_sc)->core_spin)
-#define	IGB_CORE_LOCK(_sc)		spin_lock_wr(&(_sc)->core_spin)
-#define	IGB_CORE_UNLOCK(_sc)		spin_unlock_wr(&(_sc)->core_spin)
+#define	IGB_CORE_LOCK(_sc)		spin_lock(&(_sc)->core_spin)
+#define	IGB_CORE_UNLOCK(_sc)		spin_unlock(&(_sc)->core_spin)
 #define	IGB_CORE_LOCK_ASSERT(_sc) 	
 
 #define	IGB_TX_LOCK_DESTROY(_sc)	spin_uninit(&(_sc)->tx_spin)
-#define	IGB_TX_LOCK(_sc)		spin_lock_wr(&(_sc)->tx_spin)
-#define	IGB_TX_UNLOCK(_sc)		spin_unlock_wr(&(_sc)->tx_spin)
-#define	IGB_TX_TRYLOCK(_sc)		spin_trylock_wr(&(_sc)->tx_spin)
+#define	IGB_TX_LOCK(_sc)		spin_lock(&(_sc)->tx_spin)
+#define	IGB_TX_UNLOCK(_sc)		spin_unlock(&(_sc)->tx_spin)
+#define	IGB_TX_TRYLOCK(_sc)		spin_trylock(&(_sc)->tx_spin)
 #define	IGB_TX_LOCK_ASSERT(_sc)		
 
 #define	IGB_RX_LOCK_DESTROY(_sc)	spin_uninit(&(_sc)->rx_spin)
-#define	IGB_RX_LOCK(_sc)		spin_lock_wr(&(_sc)->rx_spin)
-#define	IGB_RX_UNLOCK(_sc)		spin_unlock_wr(&(_sc)->rx_spin)
+#define	IGB_RX_LOCK(_sc)		spin_lock(&(_sc)->rx_spin)
+#define	IGB_RX_UNLOCK(_sc)		spin_unlock(&(_sc)->rx_spin)
 #define	IGB_TX_LOCK_ASSERT(_sc)		
 
 #endif /* _IGB_H_DEFINED_ */

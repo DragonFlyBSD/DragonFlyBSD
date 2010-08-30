@@ -107,10 +107,10 @@ aesni_detach(device_t dev)
 	struct aesni_session *ses;
 
 	sc = device_get_softc(dev);
-	spin_lock_wr(&sc->lock);
+	spin_lock(&sc->lock);
 	TAILQ_FOREACH(ses, &sc->sessions, next) {
 		if (ses->used) {
-			spin_unlock_wr(&sc->lock);
+			spin_unlock(&sc->lock);
 			device_printf(dev,
 			    "Cannot detach, sessions still active.\n");
 			return (EBUSY);
@@ -120,7 +120,7 @@ aesni_detach(device_t dev)
 		TAILQ_REMOVE(&sc->sessions, ses, next);
 		kfree(ses, M_AESNI);
 	}
-	spin_unlock_wr(&sc->lock);
+	spin_unlock(&sc->lock);
 	spin_uninit(&sc->lock);
 	crypto_unregister_all(sc->cid);
 	return (0);
@@ -154,7 +154,7 @@ aesni_newsession(device_t dev, uint32_t *sidp, struct cryptoini *cri)
 	if (encini == NULL)
 		return (EINVAL);
 
-	spin_lock_wr(&sc->lock);
+	spin_lock(&sc->lock);
 	/*
 	 * Free sessions goes first, so if first session is used, we need to
 	 * allocate one.
@@ -163,7 +163,7 @@ aesni_newsession(device_t dev, uint32_t *sidp, struct cryptoini *cri)
 	if (ses == NULL || ses->used) {
 		ses = kmalloc(sizeof(*ses), M_AESNI, M_NOWAIT | M_ZERO);
 		if (ses == NULL) {
-			spin_unlock_wr(&sc->lock);
+			spin_unlock(&sc->lock);
 			return (ENOMEM);
 		}
 		KASSERT(((uintptr_t)ses) % 0x10 == 0,
@@ -174,13 +174,13 @@ aesni_newsession(device_t dev, uint32_t *sidp, struct cryptoini *cri)
 	}
 	ses->used = 1;
 	TAILQ_INSERT_TAIL(&sc->sessions, ses, next);
-	spin_unlock_wr(&sc->lock);
+	spin_unlock(&sc->lock);
 
 	error = aesni_cipher_setup(ses, encini);
 	if (error != 0) {
-		spin_lock_wr(&sc->lock);
+		spin_lock(&sc->lock);
 		aesni_freesession_locked(sc, ses);
-		spin_unlock_wr(&sc->lock);
+		spin_unlock(&sc->lock);
 		return (error);
 	}
 
@@ -209,17 +209,17 @@ aesni_freesession(device_t dev, uint64_t tid)
 
 	sc = device_get_softc(dev);
 	sid = ((uint32_t)tid) & 0xffffffff;
-	spin_lock_wr(&sc->lock);
+	spin_lock(&sc->lock);
 	TAILQ_FOREACH_REVERSE(ses, &sc->sessions, aesni_sessions_head, next) {
 		if (ses->id == sid)
 			break;
 	}
 	if (ses == NULL) {
-		spin_unlock_wr(&sc->lock);
+		spin_unlock(&sc->lock);
 		return (EINVAL);
 	}
 	aesni_freesession_locked(sc, ses);
-	spin_unlock_wr(&sc->lock);
+	spin_unlock(&sc->lock);
 	return (0);
 }
 
@@ -261,12 +261,12 @@ aesni_process(device_t dev, struct cryptop *crp, int hint __unused)
 		goto out;
 	}
 
-	spin_lock_wr(&sc->lock); /* XXX: was rd lock */
+	spin_lock(&sc->lock); /* XXX: was rd lock */
 	TAILQ_FOREACH_REVERSE(ses, &sc->sessions, aesni_sessions_head, next) {
 		if (ses->id == (crp->crp_sid & 0xffffffff))
 			break;
 	}
-	spin_unlock_wr(&sc->lock); /* XXX: was rd lock */
+	spin_unlock(&sc->lock); /* XXX: was rd lock */
 	if (ses == NULL) {
 		error = EINVAL;
 		goto out;

@@ -415,27 +415,27 @@ shutdownsldesc(struct sldesc *sl, int how)
 	/*
 	 * Return unread and unreplied messages
 	 */
-	spin_lock_wr(&sl->spin);
+	spin_lock(&sl->spin);
 	while ((slmsg = TAILQ_FIRST(&sl->inq)) != NULL) {
 		TAILQ_REMOVE(&sl->inq, slmsg, tqnode);
-		spin_unlock_wr(&sl->spin);
+		spin_unlock(&sl->spin);
 		if (slmsg->msg->sm_proto & SM_PROTO_REPLY) {
 			sl->repbytes -= slmsg->maxsize;
 			slmsg->flags &= ~SLMSGF_ONINQ;
 			sl->peer->backend_dispose(sl->peer, slmsg);
 		}
 		/* leave ONINQ set for commands, it will cleared below */
-		spin_lock_wr(&sl->spin);
+		spin_lock(&sl->spin);
 	}
 	while ((slmsg = RB_ROOT(&sl->reply_rb_root)) != NULL) {
 		RB_REMOVE(slmsg_rb_tree, &sl->reply_rb_root, slmsg);
 		sl->cmdbytes -= slmsg->maxsize;
-		spin_unlock_wr(&sl->spin);
+		spin_unlock(&sl->spin);
 		slmsg->flags &= ~SLMSGF_ONINQ;
 		sl->peer->backend_reply(sl->peer, slmsg, NULL);
-		spin_lock_wr(&sl->spin);
+		spin_lock(&sl->spin);
 	}
-	spin_unlock_wr(&sl->spin);
+	spin_unlock(&sl->spin);
 
 	/*
 	 * Call shutdown on the peer with the opposite flags
@@ -459,7 +459,7 @@ static
 void
 shutdownsldesc2(struct sldesc *sl, int how)
 {
-	spin_lock_wr(&sl->spin);
+	spin_lock(&sl->spin);
 	switch(how) {
 	case SHUT_RD:
 		sl->flags |= SLF_RSHUTDOWN;
@@ -471,7 +471,7 @@ shutdownsldesc2(struct sldesc *sl, int how)
 		sl->flags |= SLF_RSHUTDOWN | SLF_WSHUTDOWN;
 		break;
 	}
-	spin_unlock_wr(&sl->spin);
+	spin_unlock(&sl->spin);
 
 	/*
 	 * Handle signaling on the user side
@@ -494,9 +494,9 @@ sldrop(struct sldesc *sl)
 {
 	struct sldesc *slpeer;
 
-	spin_lock_wr(&sl->common->spin);
+	spin_lock(&sl->common->spin);
 	if (--sl->common->refs == 0) {
-		spin_unlock_wr(&sl->common->spin);
+		spin_unlock(&sl->common->spin);
 		if ((slpeer = sl->peer) != NULL) {
 			sl->peer = NULL;
 			slpeer->peer = NULL;
@@ -513,7 +513,7 @@ sldrop(struct sldesc *sl)
 		sl->common = NULL;
 		kfree(sl, M_SYSLINK);
 	} else {
-		spin_unlock_wr(&sl->common->spin);
+		spin_unlock(&sl->common->spin);
 	}
 }
 
@@ -582,7 +582,7 @@ slfileop_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	/*
 	 * Get a message, blocking if necessary.
 	 */
-	spin_lock_wr(&sl->spin);
+	spin_lock(&sl->spin);
 	while ((slmsg = TAILQ_FIRST(&sl->inq)) == NULL) {
 		if (sl->flags & SLF_RSHUTDOWN) {
 			error = 0;
@@ -631,7 +631,7 @@ slfileop_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	TAILQ_REMOVE(&sl->inq, slmsg, tqnode);
 	if (slmsg->msg->sm_proto & SM_PROTO_REPLY)
 		sl->repbytes -= slmsg->maxsize;
-	spin_unlock_wr(&sl->spin);
+	spin_unlock(&sl->spin);
 
 	/*
 	 * Load the message data into the user buffer.
@@ -691,10 +691,10 @@ slfileop_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 		/*
 		 * Requeue the message if we could not read it successfully
 		 */
-		spin_lock_wr(&sl->spin);
+		spin_lock(&sl->spin);
 		TAILQ_INSERT_HEAD(&sl->inq, slmsg, tqnode);
 		slmsg->flags |= SLMSGF_ONINQ;
-		spin_unlock_wr(&sl->spin);
+		spin_unlock(&sl->spin);
 	} else if (slmsg->msg->sm_proto & SM_PROTO_REPLY) {
 		/*
 		 * Dispose of any received reply after we've copied it
@@ -716,7 +716,7 @@ slfileop_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	}
 	return(error);
 done1:
-	spin_unlock_wr(&sl->spin);
+	spin_unlock(&sl->spin);
 done2:
 	return(error);
 }
@@ -857,17 +857,17 @@ slfileop_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 		/*
 		 * Replies have to be matched up against received commands.
 		 */
-		spin_lock_wr(&sl->spin);
+		spin_lock(&sl->spin);
 		slcmd = slmsg_rb_tree_RB_LOOKUP(&sl->reply_rb_root,
 						slmsg->msg->sm_msgid);
 		if (slcmd == NULL || (slcmd->flags & SLMSGF_ONINQ)) {
 			error = ENOENT;
-			spin_unlock_wr(&sl->spin);
+			spin_unlock(&sl->spin);
 			goto done1;
 		}
 		RB_REMOVE(slmsg_rb_tree, &sl->reply_rb_root, slcmd);
 		sl->cmdbytes -= slcmd->maxsize;
-		spin_unlock_wr(&sl->spin);
+		spin_unlock(&sl->spin);
 
 		/*
 		 * If the original command specified DMAR, has an xio, and
@@ -1219,7 +1219,7 @@ backend_wblocked_user(struct sldesc *sl, int nbio, sl_proto_t proto)
 	 * ok to have a MP race against cmdbytes.
 	 */
 	if (*bytesp >= syslink_bufsize) {
-		spin_lock_wr(&sl->spin);
+		spin_lock(&sl->spin);
 		while (*bytesp >= syslink_bufsize) {
 			if (sl->flags & SLF_WSHUTDOWN) {
 				error = EPIPE;
@@ -1235,7 +1235,7 @@ backend_wblocked_user(struct sldesc *sl, int nbio, sl_proto_t proto)
 			if (error)
 				break;
 		}
-		spin_unlock_wr(&sl->spin);
+		spin_unlock(&sl->spin);
 	}
 	return (error);
 }
@@ -1252,7 +1252,7 @@ backend_write_user(struct sldesc *sl, struct slmsg *slmsg)
 {
 	int error;
 
-	spin_lock_wr(&sl->spin);
+	spin_lock(&sl->spin);
 	if (sl->flags & SLF_RSHUTDOWN) {
 		/*
 		 * Not accepting new messages
@@ -1281,7 +1281,7 @@ backend_write_user(struct sldesc *sl, struct slmsg *slmsg)
 		slmsg->flags |= SLMSGF_ONINQ;
 		error = 0;
 	}
-	spin_unlock_wr(&sl->spin);
+	spin_unlock(&sl->spin);
 	if (sl->rwaiters)
 		wakeup(&sl->rwaiters);
 	return(error);
@@ -1300,7 +1300,7 @@ backend_reply_user(struct sldesc *sl, struct slmsg *slcmd, struct slmsg *slrep)
 
 	slmsg_put(slcmd);
 	if (slrep) {
-		spin_lock_wr(&sl->spin);
+		spin_lock(&sl->spin);
 		if ((sl->flags & SLF_RSHUTDOWN) == 0) {
 			TAILQ_INSERT_TAIL(&sl->inq, slrep, tqnode);
 			sl->repbytes += slrep->maxsize;
@@ -1308,7 +1308,7 @@ backend_reply_user(struct sldesc *sl, struct slmsg *slcmd, struct slmsg *slrep)
 		} else {
 			error = EPIPE;
 		}
-		spin_unlock_wr(&sl->spin);
+		spin_unlock(&sl->spin);
 		if (error)
 			sl->peer->backend_dispose(sl->peer, slrep);
 		else if (sl->rwaiters)
@@ -1401,7 +1401,7 @@ syslink_kdomsg(struct sldesc *ksl, struct slmsg *slmsg)
 	 * then remove the message from the matching tree and return.
 	 */
 	error = ksl->peer->backend_write(ksl->peer, slmsg);
-	spin_lock_wr(&ksl->spin);
+	spin_lock(&ksl->spin);
 	if (error == 0) {
 		while (slmsg->rep == NULL) {
 			error = ssleep(slmsg, &ksl->spin, 0, "kwtmsg", 0);
@@ -1414,7 +1414,7 @@ syslink_kdomsg(struct sldesc *ksl, struct slmsg *slmsg)
 			error = slmsg->rep->msg->sm_head.se_aux;
 		}
 	}
-	spin_unlock_wr(&ksl->spin);
+	spin_unlock(&ksl->spin);
 	return(error);
 }
 
@@ -1458,7 +1458,7 @@ syslink_kwaitmsg(struct sldesc *ksl, struct slmsg *slmsg)
 {
 	int error;
 
-	spin_lock_wr(&ksl->spin);
+	spin_lock(&ksl->spin);
 	while (slmsg->rep == NULL) {
 		error = ssleep(slmsg, &ksl->spin, 0, "kwtmsg", 0);
 		/* XXX ignore error for now */
@@ -1469,7 +1469,7 @@ syslink_kwaitmsg(struct sldesc *ksl, struct slmsg *slmsg)
 	} else {
 		error = slmsg->rep->msg->sm_head.se_aux;
 	}
-	spin_unlock_wr(&ksl->spin);
+	spin_unlock(&ksl->spin);
 	return(error);
 }
 
@@ -1590,7 +1590,7 @@ backend_reply_kern(struct sldesc *ksl, struct slmsg *slcmd, struct slmsg *slrep)
 {
 	int error;
 
-	spin_lock_wr(&ksl->spin);
+	spin_lock(&ksl->spin);
 	if (slrep == NULL) {
 		slcmd->rep = (struct slmsg *)-1;
 		error = EIO;
@@ -1598,7 +1598,7 @@ backend_reply_kern(struct sldesc *ksl, struct slmsg *slcmd, struct slmsg *slrep)
 		slcmd->rep = slrep;
 		error = slrep->msg->sm_head.se_aux;
 	}
-	spin_unlock_wr(&ksl->spin);
+	spin_unlock(&ksl->spin);
 
 	/*
 	 * Issue callback or wakeup a synchronous waiter.

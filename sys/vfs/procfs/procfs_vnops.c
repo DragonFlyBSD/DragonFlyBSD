@@ -239,10 +239,10 @@ procfs_close(struct vop_close_args *ap)
 		if ((ap->a_vp->v_opencount < 2)
 		    && (p = pfind(pfs->pfs_pid))
 		    && !(p->p_pfsflags & PF_LINGER)) {
-			spin_lock_wr(&p->p_spin);
+			spin_lock(&p->p_spin);
 			p->p_stops = 0;
 			p->p_step = 0;
-			spin_unlock_wr(&p->p_spin);
+			spin_unlock(&p->p_spin);
 			wakeup(&p->p_step);
 		}
 		break;
@@ -310,15 +310,15 @@ procfs_ioctl(struct vop_ioctl_args *ap)
 	  psp = (struct procfs_status *)ap->a_data;
 	  psp->flags = procp->p_pfsflags;
 	  psp->events = procp->p_stops;
-	  spin_lock_wr(&procp->p_spin);
+	  spin_lock(&procp->p_spin);
 	  if (procp->p_step) {
 	    psp->state = 0;
 	    psp->why = procp->p_stype;
 	    psp->val = procp->p_xstat;
-	    spin_unlock_wr(&procp->p_spin);
+	    spin_unlock(&procp->p_spin);
 	  } else {
 	    psp->state = 1;
-	    spin_unlock_wr(&procp->p_spin);
+	    spin_unlock(&procp->p_spin);
 	    psp->why = 0;	/* Not defined values */
 	    psp->val = 0;	/* Not defined values */
 	  }
@@ -329,16 +329,16 @@ procfs_ioctl(struct vop_ioctl_args *ap)
 	   *	   the MP lock.
 	   */
 	  psp = (struct procfs_status *)ap->a_data;
-	  spin_lock_wr(&procp->p_spin);
+	  spin_lock(&procp->p_spin);
 	  while (procp->p_step == 0) {
 	    tsleep_interlock(&procp->p_stype, PCATCH);
-	    spin_unlock_wr(&procp->p_spin);
+	    spin_unlock(&procp->p_spin);
 	    error = tsleep(&procp->p_stype, PCATCH | PINTERLOCKED, "piocwait", 0);
 	    if (error)
 	      return error;
-	    spin_lock_wr(&procp->p_spin);
+	    spin_lock(&procp->p_spin);
 	  }
-	  spin_unlock_wr(&procp->p_spin);
+	  spin_unlock(&procp->p_spin);
 	  psp->state = 1;	/* It stopped */
 	  psp->flags = procp->p_pfsflags;
 	  psp->events = procp->p_stops;

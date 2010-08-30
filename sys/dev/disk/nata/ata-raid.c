@@ -699,7 +699,7 @@ ata_raid_done(struct ata_request *request)
 
 		/* is this a rebuild composite */
 		if ((composite = request->composite)) {
-		    spin_lock_wr(&composite->lock);
+		    spin_lock(&composite->lock);
 		
 		    /* handle the read part of a rebuild composite */
 		    if (request->flags & ATA_R_READ) {
@@ -735,7 +735,7 @@ ata_raid_done(struct ata_request *request)
 				finished = 1;
 			}
 		    }
-		    spin_unlock_wr(&composite->lock);
+		    spin_unlock(&composite->lock);
 		}
 
 		/* if read failed retry on the mirror */
@@ -756,7 +756,7 @@ ata_raid_done(struct ata_request *request)
 	    else if (bbp->b_cmd == BUF_CMD_WRITE) {
 		/* do we have a mirror or rebuild to deal with ? */
 		if ((composite = request->composite)) {
-		    spin_lock_wr(&composite->lock);
+		    spin_lock(&composite->lock);
 		    if (composite->wr_done & (1 << mirror)) {
 			if (request->result) {
 			    if (composite->request[mirror]->result) {
@@ -779,7 +779,7 @@ ata_raid_done(struct ata_request *request)
 			if (!composite->residual)
 			    finished = 1;
 		    }
-		    spin_unlock_wr(&composite->lock);
+		    spin_unlock(&composite->lock);
 		}
 		/* no mirror we are done */
 		else {
@@ -912,7 +912,7 @@ ata_raid_config_changed(struct ar_softc *rdp, int writeback)
 {
     int disk, count, status;
 
-    spin_lock_wr(&rdp->lock);
+    spin_lock(&rdp->lock);
     /* set default all working mode */
     status = rdp->status;
     rdp->status &= ~AR_S_DEGRADED;
@@ -988,7 +988,7 @@ ata_raid_config_changed(struct ar_softc *rdp, int writeback)
 	    writeback = 1;
 	}
     }
-    spin_unlock_wr(&rdp->lock);
+    spin_unlock(&rdp->lock);
     if (writeback)
 	ata_raid_write_metadata(rdp);
 

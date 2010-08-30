@@ -50,8 +50,8 @@ ACPI_MODULE_NAME("SYNCH")
 
 MALLOC_DEFINE(M_ACPISEM, "acpisem", "ACPI semaphore");
 
-#define AS_LOCK(as)		spin_lock_wr(&(as)->as_spin)
-#define AS_UNLOCK(as)		spin_unlock_wr(&(as)->as_spin)
+#define AS_LOCK(as)		spin_lock(&(as)->as_spin)
+#define AS_UNLOCK(as)		spin_unlock(&(as)->as_spin)
 #define AS_LOCK_DECL
 
 /*
@@ -375,7 +375,7 @@ _AcpiOsAcquireLock (ACPI_SPINLOCK Spin, const char *func, int line)
 AcpiOsAcquireLock (ACPI_SPINLOCK Spin)
 #endif
 {
-    spin_lock_wr(&Spin->lock);
+    spin_lock(&Spin->lock);
 
 #ifdef ACPI_DEBUG_LOCKS
     if (Spin->owner) {
@@ -408,7 +408,7 @@ AcpiOsReleaseLock (ACPI_SPINLOCK Spin, ACPI_CPU_FLAGS Flags)
     Spin->func = "";
     Spin->line = 0;
 #endif
-    spin_unlock_wr(&Spin->lock);
+    spin_unlock(&Spin->lock);
 }
 
 /* Section 5.2.9.1:  global lock acquire/release functions */

@@ -132,12 +132,12 @@ ccms_dataspace_destroy(ccms_dataspace_t ds)
 {
     ccms_cst_t cst;
 
-    spin_lock_wr(&ds->spin);
+    spin_lock(&ds->spin);
     RB_SCAN(ccms_rb_tree, &ds->tree, NULL,
 	    ccms_dataspace_destroy_match, ds);
     cst = ds->delayed_free;
     ds->delayed_free = NULL;
-    spin_unlock_wr(&ds->spin);
+    spin_unlock(&ds->spin);
     ccms_delayed_free(cst);
 }
 
@@ -186,7 +186,7 @@ ccms_lock_get(ccms_dataspace_t ds, ccms_lock_t lock)
     info.cst1 = objcache_get(ccms_oc, M_WAITOK);
     info.cst2 = objcache_get(ccms_oc, M_WAITOK);
 
-    spin_lock_wr(&ds->spin);
+    spin_lock(&ds->spin);
     RB_SCAN(ccms_rb_tree, &ds->tree, ccms_lock_scan_cmp,
 	    ccms_lock_get_match, &info);
 
@@ -207,7 +207,7 @@ ccms_lock_get(ccms_dataspace_t ds, ccms_lock_t lock)
     }
     cst = ds->delayed_free;
     ds->delayed_free = NULL;
-    spin_unlock_wr(&ds->spin);
+    spin_unlock(&ds->spin);
 
     /*
      * Cleanup
@@ -479,12 +479,12 @@ ccms_lock_put(ccms_dataspace_t ds, ccms_lock_t lock)
     info.cst1 = NULL;
     info.cst2 = NULL;
 
-    spin_lock_wr(&ds->spin);
+    spin_lock(&ds->spin);
     RB_SCAN(ccms_rb_tree, &ds->tree, ccms_lock_scan_cmp,
 	    ccms_lock_put_match, &info);
     cst = ds->delayed_free;
     ds->delayed_free = NULL;
-    spin_unlock_wr(&ds->spin);
+    spin_unlock(&ds->spin);
 
     ccms_delayed_free(cst);
     if (info.cst1)

@@ -72,7 +72,7 @@ sensordev_install(struct ksensordev *sensdev)
 	struct ksensordev *v, *nv;
 
 	/* mtx_lock(&Giant); */
-	spin_lock_wr(&sensor_dev_lock);
+	spin_lock(&sensor_dev_lock);
 	if (sensordev_count == 0) {
 		sensdev->num = 0;
 		SLIST_INSERT_HEAD(&sensordev_list, sensdev, list);
@@ -86,7 +86,7 @@ sensordev_install(struct ksensordev *sensdev)
 	}
 	sensordev_count++;
 	/* mtx_unlock(&Giant); */
-	spin_unlock_wr(&sensor_dev_lock);
+	spin_unlock(&sensor_dev_lock);
 
 #ifndef NOSYSCTL8HACK
 	sensor_sysctl8magic_install(sensdev);
@@ -101,7 +101,7 @@ sensor_attach(struct ksensordev *sensdev, struct ksensor *sens)
 	int i;
 
 	/* mtx_lock(&Giant); */
-	spin_lock_wr(&sensor_dev_lock);
+	spin_lock(&sensor_dev_lock);
 	sh = &sensdev->sensors_list;
 	if (sensdev->sensors_count == 0) {
 		for (i = 0; i < SENSOR_MAX_TYPES; i++)
@@ -127,7 +127,7 @@ sensor_attach(struct ksensordev *sensdev, struct ksensor *sens)
 	if (sensdev->maxnumt[sens->type] == sens->numt)
 		sensdev->maxnumt[sens->type]++;
 	sensdev->sensors_count++;
-	spin_unlock_wr(&sensor_dev_lock);
+	spin_unlock(&sensor_dev_lock);
 	/* mtx_unlock(&Giant); */
 }
 
@@ -135,11 +135,11 @@ void
 sensordev_deinstall(struct ksensordev *sensdev)
 {
 	/* mtx_lock(&Giant); */
-	spin_lock_wr(&sensor_dev_lock);
+	spin_lock(&sensor_dev_lock);
 	sensordev_count--;
 	SLIST_REMOVE(&sensordev_list, sensdev, ksensordev, list);
 	/* mtx_unlock(&Giant); */
-	spin_unlock_wr(&sensor_dev_lock);
+	spin_unlock(&sensor_dev_lock);
 
 #ifndef NOSYSCTL8HACK
 	sensor_sysctl8magic_deinstall(sensdev);
@@ -168,14 +168,14 @@ sensordev_get(int num)
 {
 	struct ksensordev *sd;
 
-	spin_lock_wr(&sensor_dev_lock);
+	spin_lock(&sensor_dev_lock);
 	SLIST_FOREACH(sd, &sensordev_list, list)
 		if (sd->num == num) {
-			spin_unlock_wr(&sensor_dev_lock);
+			spin_unlock(&sensor_dev_lock);
 			return (sd);
 		}
 
-	spin_unlock_wr(&sensor_dev_lock);
+	spin_unlock(&sensor_dev_lock);
 	return (NULL);
 }
 
@@ -185,16 +185,16 @@ sensor_find(struct ksensordev *sensdev, enum sensor_type type, int numt)
 	struct ksensor *s;
 	struct ksensors_head *sh;
 
-	spin_lock_wr(&sensor_dev_lock);
+	spin_lock(&sensor_dev_lock);
 	sh = &sensdev->sensors_list;
 	SLIST_FOREACH(s, sh, list) {
 		if (s->type == type && s->numt == numt) {
-			spin_unlock_wr(&sensor_dev_lock);
+			spin_unlock(&sensor_dev_lock);
 			return (s);
 		}
 	}
 
-	spin_unlock_wr(&sensor_dev_lock);
+	spin_unlock(&sensor_dev_lock);
 	return (NULL);
 }
 

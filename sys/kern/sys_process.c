@@ -698,16 +698,16 @@ stopevent(struct proc *p, unsigned int event, unsigned int val)
 	 * Set event info.  Recheck p_stops in case we are
 	 * racing a close() on procfs.
 	 */
-	spin_lock_wr(&p->p_spin);
+	spin_lock(&p->p_spin);
 	if ((p->p_stops & event) == 0) {
-		spin_unlock_wr(&p->p_spin);
+		spin_unlock(&p->p_spin);
 		return;
 	}
 	p->p_xstat = val;
 	p->p_stype = event;
 	p->p_step = 1;
 	tsleep_interlock(&p->p_step, 0);
-	spin_unlock_wr(&p->p_spin);
+	spin_unlock(&p->p_spin);
 
 	/*
 	 * Wakeup any PIOCWAITing procs and wait for p_step to
@@ -716,13 +716,13 @@ stopevent(struct proc *p, unsigned int event, unsigned int val)
 	for (;;) {
 		wakeup(&p->p_stype);
 		tsleep(&p->p_step, PINTERLOCKED, "stopevent", 0);
-		spin_lock_wr(&p->p_spin);
+		spin_lock(&p->p_spin);
 		if (p->p_step == 0) {
-			spin_unlock_wr(&p->p_spin);
+			spin_unlock(&p->p_spin);
 			break;
 		}
 		tsleep_interlock(&p->p_step, 0);
-		spin_unlock_wr(&p->p_spin);
+		spin_unlock(&p->p_spin);
 	}
 }
 

@@ -366,22 +366,22 @@ bsd4_select_curproc(globaldata_t gd)
 
 	crit_enter_gd(gd);
 
-	spin_lock_wr(&bsd4_spin);
+	spin_lock(&bsd4_spin);
 	if ((nlp = chooseproc_locked(dd->uschedcp)) != NULL) {
 		atomic_set_int(&bsd4_curprocmask, 1 << cpuid);
 		dd->upri = nlp->lwp_priority;
 		dd->uschedcp = nlp;
-		spin_unlock_wr(&bsd4_spin);
+		spin_unlock(&bsd4_spin);
 #ifdef SMP
 		lwkt_acquire(nlp->lwp_thread);
 #endif
 		lwkt_schedule(nlp->lwp_thread);
 	} else if (bsd4_runqcount && (bsd4_rdyprocmask & (1 << cpuid))) {
 		atomic_clear_int(&bsd4_rdyprocmask, 1 << cpuid);
-		spin_unlock_wr(&bsd4_spin);
+		spin_unlock(&bsd4_spin);
 		lwkt_schedule(&dd->helper_thread);
 	} else {
-		spin_unlock_wr(&bsd4_spin);
+		spin_unlock(&bsd4_spin);
 	}
 	crit_exit_gd(gd);
 }
@@ -469,7 +469,7 @@ bsd4_setrunqueue(struct lwp *lp)
 	 * up and it could exit, or its priority could be further adjusted,
 	 * or something like that.
 	 */
-	spin_lock_wr(&bsd4_spin);
+	spin_lock(&bsd4_spin);
 	bsd4_setrunqueue_locked(lp);
 
 #ifdef SMP
@@ -481,7 +481,7 @@ bsd4_setrunqueue(struct lwp *lp)
 	++bsd4_scancpu;
 	mask = ~bsd4_curprocmask & bsd4_rdyprocmask &
 		lp->lwp_cpumask & smp_active_mask;
-	spin_unlock_wr(&bsd4_spin);
+	spin_unlock(&bsd4_spin);
 
 	while (mask) {
 		tmpmask = ~((1 << cpuid) - 1);
@@ -505,7 +505,7 @@ bsd4_setrunqueue(struct lwp *lp)
 	/*
 	 * Request a reschedule if appropriate.
 	 */
-	spin_unlock_wr(&bsd4_spin);
+	spin_unlock(&bsd4_spin);
 	if ((dd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK)) {
 		need_user_resched();
 	}
@@ -687,7 +687,7 @@ bsd4_resetpriority(struct lwp *lp)
 	 * Calculate the new priority and queue type
 	 */
 	crit_enter();
-	spin_lock_wr(&bsd4_spin);
+	spin_lock(&bsd4_spin);
 
 	newrqtype = lp->lwp_rtprio.type;
 
@@ -737,7 +737,7 @@ bsd4_resetpriority(struct lwp *lp)
 		lp->lwp_priority = newpriority;
 		reschedcpu = -1;
 	}
-	spin_unlock_wr(&bsd4_spin);
+	spin_unlock(&bsd4_spin);
 
 	/*
 	 * Determine if we need to reschedule the target cpu.  This only
@@ -1111,7 +1111,7 @@ sched_thread(void *dummy)
 	 */
 	crit_enter_gd(gd);
 	lwkt_deschedule_self(gd->gd_curthread);
-	spin_lock_wr(&bsd4_spin);
+	spin_lock(&bsd4_spin);
 	atomic_set_int(&bsd4_rdyprocmask, cpumask);
 
 	clear_user_resched();	/* This satisfied the reschedule request */
@@ -1126,11 +1126,11 @@ sched_thread(void *dummy)
 			atomic_set_int(&bsd4_curprocmask, cpumask);
 			dd->upri = nlp->lwp_priority;
 			dd->uschedcp = nlp;
-			spin_unlock_wr(&bsd4_spin);
+			spin_unlock(&bsd4_spin);
 			lwkt_acquire(nlp->lwp_thread);
 			lwkt_schedule(nlp->lwp_thread);
 		} else {
-			spin_unlock_wr(&bsd4_spin);
+			spin_unlock(&bsd4_spin);
 		}
 #if 0
 	/*
@@ -1164,7 +1164,7 @@ sched_thread(void *dummy)
 		/*
 		 * The runq is empty.
 		 */
-		spin_unlock_wr(&bsd4_spin);
+		spin_unlock(&bsd4_spin);
 	}
 	crit_exit_gd(gd);
 	lwkt_switch();

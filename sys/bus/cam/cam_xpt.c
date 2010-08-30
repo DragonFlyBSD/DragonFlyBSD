@@ -988,7 +988,7 @@ xptopen(struct dev_open_args *ap)
 	 * We don't allow nonblocking access.
 	 */
 	if ((ap->a_oflags & O_NONBLOCK) != 0) {
-		kprintf("%s: can't do nonblocking access\n", devtoname(dev));
+		kprintf("%s: can't' do nonblocking access\n", devtoname(dev));
 		return(ENODEV);
 	}
 
@@ -4882,19 +4882,19 @@ xpt_done(union ccb *done_ccb)
 		sim = done_ccb->ccb_h.path->bus->sim;
 		switch (done_ccb->ccb_h.path->periph->type) {
 		case CAM_PERIPH_BIO:
-			spin_lock_wr(&sim->sim_spin);
+			spin_lock(&sim->sim_spin);
 			TAILQ_INSERT_TAIL(&sim->sim_doneq, &done_ccb->ccb_h,
 					  sim_links.tqe);
 			done_ccb->ccb_h.pinfo.index = CAM_DONEQ_INDEX;
-			spin_unlock_wr(&sim->sim_spin);
+			spin_unlock(&sim->sim_spin);
 			if ((sim->flags & CAM_SIM_ON_DONEQ) == 0) {
-				spin_lock_wr(&cam_simq_spin);
+				spin_lock(&cam_simq_spin);
 				if ((sim->flags & CAM_SIM_ON_DONEQ) == 0) {
 					TAILQ_INSERT_TAIL(&cam_simq, sim,
 							  links);
 					sim->flags |= CAM_SIM_ON_DONEQ;
 				}
-				spin_unlock_wr(&cam_simq_spin);
+				spin_unlock(&cam_simq_spin);
 			}
 			if ((done_ccb->ccb_h.flags & CAM_POLLED) == 0)
 				setsoftcambio();
@@ -5508,7 +5508,7 @@ typedef struct {
 	probe_flags	flags;
 	MD5_CTX		context;
 	u_int8_t	digest[16];
-} probe_softc;
+}probe_softc; 
 
 static void
 xpt_scan_lun(struct cam_periph *periph, struct cam_path *path,
@@ -7235,10 +7235,10 @@ camisr(void *dummy)
 	cam_simq_t queue;
 	struct cam_sim *sim;
 
-	spin_lock_wr(&cam_simq_spin);
+	spin_lock(&cam_simq_spin);
 	TAILQ_INIT(&queue);
 	TAILQ_CONCAT(&queue, &cam_simq, links);
-	spin_unlock_wr(&cam_simq_spin);
+	spin_unlock(&cam_simq_spin);
 
 	while ((sim = TAILQ_FIRST(&queue)) != NULL) {
 		TAILQ_REMOVE(&queue, sim, links);
@@ -7255,10 +7255,10 @@ camisr_runqueue(struct cam_sim *sim)
 	struct	ccb_hdr *ccb_h;
 	int	runq;
 
-	spin_lock_wr(&sim->sim_spin);
+	spin_lock(&sim->sim_spin);
 	while ((ccb_h = TAILQ_FIRST(&sim->sim_doneq)) != NULL) {
 		TAILQ_REMOVE(&sim->sim_doneq, ccb_h, sim_links.tqe);
-		spin_unlock_wr(&sim->sim_spin);
+		spin_unlock(&sim->sim_spin);
 		ccb_h->pinfo.index = CAM_UNQUEUED_INDEX;
 
 		CAM_DEBUG(ccb_h->path, CAM_DEBUG_TRACE,
@@ -7350,9 +7350,9 @@ camisr_runqueue(struct cam_sim *sim)
 
 		/* Call the peripheral driver's callback */
 		(*ccb_h->cbfcnp)(ccb_h->path->periph, (union ccb *)ccb_h);
-		spin_lock_wr(&sim->sim_spin);
+		spin_lock(&sim->sim_spin);
 	}
-	spin_unlock_wr(&sim->sim_spin);
+	spin_unlock(&sim->sim_spin);
 }
 
 /*

@@ -280,12 +280,12 @@ ktr_resync_callback(void *dummy __unused)
 		struct spinlock spin;
 
 		spin_init(&spin);
-		spin_lock_wr(&spin);
-		spin_unlock_wr(&spin);
+		spin_lock(&spin);
+		spin_unlock(&spin);
 		logtest_noargs(spin_beg);
 		for (count = ktr_testspincnt; count; --count) {
-			spin_lock_wr(&spin);
-			spin_unlock_wr(&spin);
+			spin_lock(&spin);
+			spin_unlock(&spin);
 		}
 		logtest_noargs(spin_end);
 		ktr_testspincnt = 0;

@@ -83,13 +83,13 @@ TQ_LOCK_UNINIT(struct taskqueue *tq)
 static __inline void
 TQ_LOCK(struct taskqueue *tq)
 {
-	spin_lock_wr(&tq->tq_lock);
+	spin_lock(&tq->tq_lock);
 }
 
 static __inline void
 TQ_UNLOCK(struct taskqueue *tq)
 {
-	spin_unlock_wr(&tq->tq_lock);
+	spin_unlock(&tq->tq_lock);
 }
 
 static __inline void

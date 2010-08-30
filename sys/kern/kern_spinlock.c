@@ -256,11 +256,11 @@ sysctl_spin_lock_test(SYSCTL_HANDLER_ARGS)
 	 */
 	if (value == 1) {
 		spin_init(&mtx);
-		spin_lock_wr(&mtx);	/* force an indefinite wait */
+		spin_lock(&mtx);	/* force an indefinite wait */
 		spin_lock_test_mode = 1;
-		spin_lock_wr(&mtx);
-		spin_unlock_wr(&mtx);	/* Clean up the spinlock count */
-		spin_unlock_wr(&mtx);
+		spin_lock(&mtx);
+		spin_unlock(&mtx);	/* Clean up the spinlock count */
+		spin_unlock(&mtx);
 		spin_lock_test_mode = 0;
 	}
 

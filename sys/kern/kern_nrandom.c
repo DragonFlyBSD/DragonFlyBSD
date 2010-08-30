@@ -451,9 +451,9 @@ rand_initialize(void)
 void
 add_keyboard_randomness(u_char scancode)
 {
-	spin_lock_wr(&rand_spin);
+	spin_lock(&rand_spin);
 	L15_Vector((const LByteType *) &scancode, sizeof (scancode));
-	spin_unlock_wr(&rand_spin);
+	spin_unlock(&rand_spin);
 	add_interrupt_randomness(0);
 }
 
@@ -475,11 +475,11 @@ add_interrupt_randomness(int intr)
 void
 add_true_randomness(int val)
 {
-	spin_lock_wr(&rand_spin);
+	spin_lock(&rand_spin);
 	IBAA_Seed(val);
 	L15_Vector((const LByteType *) &val, sizeof (val));
 	++nrandevents;
-	spin_unlock_wr(&rand_spin);
+	spin_unlock(&rand_spin);
 }
 
 int
@@ -541,10 +541,10 @@ read_random(void *buf, u_int nbytes)
 {
 	u_int i;
 
-	spin_lock_wr(&rand_spin);
+	spin_lock(&rand_spin);
 	for (i = 0; i < nbytes; ++i) 
 		((u_char *)buf)[i] = IBAA_Byte();
-	spin_unlock_wr(&rand_spin);
+	spin_unlock(&rand_spin);
 	add_interrupt_randomness(0);
 	return(i);
 }
@@ -558,10 +558,10 @@ read_random_unlimited(void *buf, u_int nbytes)
 {
 	u_int i;
 
-	spin_lock_wr(&rand_spin);
+	spin_lock(&rand_spin);
 	for (i = 0; i < nbytes; ++i)
 		((u_char *)buf)[i] = L15_Byte();
-	spin_unlock_wr(&rand_spin);
+	spin_unlock(&rand_spin);
 	add_interrupt_randomness(0);
 	return (i);
 }
@@ -580,9 +580,9 @@ rand_thread_loop(void *dummy)
 
 	for (;;) {
 		NANOUP_EVENT ();
-		spin_lock_wr(&rand_spin);
+		spin_lock(&rand_spin);
 		count = (int)(L15_Byte() * hz / (256 * 10) + hz / 10 + 1);
-		spin_unlock_wr(&rand_spin);
+		spin_unlock(&rand_spin);
 		tsleep(rand_td, 0, "rwait", count);
 		crit_enter();
 		lwkt_deschedule_self(rand_td);
@@ -624,7 +624,7 @@ NANOUP_EVENT(void)
 	struct timespec		now;
 
 	nanouptime(&now);
-	spin_lock_wr(&rand_spin);
+	spin_lock(&rand_spin);
 	if ((now.tv_nsec > NEXT.tv_nsec) || (now.tv_sec != NEXT.tv_sec)) {
 		/* 
 		 * Randomised time-delay: 200e6 - 350e6 ns; 5 - 2.86 Hz. 
@@ -651,6 +651,6 @@ NANOUP_EVENT(void)
 			   sizeof(ACCUM.tv_nsec));
 		++nrandevents;
 	}
-	spin_unlock_wr(&rand_spin);
+	spin_unlock(&rand_spin);
 }
 

@@ -192,7 +192,7 @@ static int sc_allocate_keyboard(sc_softc_t *sc, int unit);
 static void
 syscons_lock(void)
 {
-	spin_lock_wr(&syscons_spin);
+	spin_lock(&syscons_spin);
 }
 
 /*
@@ -201,13 +201,13 @@ syscons_lock(void)
 static int
 syscons_lock_nonblock(void)
 {
-	return(spin_trylock_wr(&syscons_spin));
+	return(spin_trylock(&syscons_spin));
 }
 
 static void
 syscons_unlock(void)
 {
-	spin_unlock_wr(&syscons_spin);
+	spin_unlock(&syscons_spin);
 }
 
 /*

@@ -134,7 +134,7 @@ lf_count_adjust(struct proc *p, int increase)
 	KKASSERT(p != NULL);
 
 	uip = p->p_ucred->cr_uidinfo;
-	spin_lock_wr(&uip->ui_lock);
+	spin_lock(&uip->ui_lock);
 
 	if (increase)
 		uip->ui_posixlocks += p->p_numposixlocks;
@@ -144,7 +144,7 @@ lf_count_adjust(struct proc *p, int increase)
 	KASSERT(uip->ui_posixlocks >= 0,
 		("Negative number of POSIX locks held by %s user: %d.",
 		 increase ? "new" : "old", uip->ui_posixlocks));
-	spin_unlock_wr(&uip->ui_lock);
+	spin_unlock(&uip->ui_lock);
 }
 
 static int
@@ -162,7 +162,7 @@ lf_count_change(struct proc *owner, int diff)
 	max = MIN(owner->p_rlimit[RLIMIT_POSIXLOCKS].rlim_cur,
 		  maxposixlocksperuid);
 
-	spin_lock_wr(&uip->ui_lock);
+	spin_lock(&uip->ui_lock);
 	if (diff > 0 && owner->p_ucred->cr_uid != 0 && max != -1 &&
 	    uip->ui_posixlocks >= max ) {
 		ret = 1;
@@ -177,7 +177,7 @@ lf_count_change(struct proc *owner, int diff)
 			 uip->ui_posixlocks));
 		ret = 0;
 	}
-	spin_unlock_wr(&uip->ui_lock);
+	spin_unlock(&uip->ui_lock);
 	return ret;
 }
 

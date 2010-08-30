@@ -71,9 +71,9 @@
 #define E1000_MUTEX                     struct spinlock
 #define E1000_MUTEX_INIT(spin)          spin_init(spin)
 #define E1000_MUTEX_DESTROY(spin)       spin_uninit(spin)
-#define E1000_MUTEX_LOCK(spin)          spin_lock_wr(spin)
-#define E1000_MUTEX_TRYLOCK(spin)       spin_trylock_wr(spin)
-#define E1000_MUTEX_UNLOCK(spin)        spin_unlock_wr(spin)
+#define E1000_MUTEX_LOCK(spin)          spin_lock(spin)
+#define E1000_MUTEX_TRYLOCK(spin)       spin_trylock(spin)
+#define E1000_MUTEX_UNLOCK(spin)        spin_unlock(spin)
 
 typedef uint64_t	u64;
 typedef uint32_t	u32;

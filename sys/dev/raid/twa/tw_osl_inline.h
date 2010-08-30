@@ -90,7 +90,7 @@
  * Return value:	None
  */
 #define tw_osl_get_lock(ctlr_handle, lock)	\
-	spin_lock_wr(lock)
+	spin_lock(lock)
 
 
 
@@ -104,7 +104,7 @@
  * Return value:	None
  */
 #define tw_osl_free_lock(ctlr_handle, lock)	\
-	spin_unlock_wr(lock)
+	spin_unlock(lock)
 
 
 

@@ -2139,9 +2139,9 @@ devfs_fetch_ino(void)
 {
 	ino_t	ret;
 
-	spin_lock_wr(&ino_lock);
+	spin_lock(&ino_lock);
 	ret = d_ino++;
-	spin_unlock_wr(&ino_lock);
+	spin_unlock(&ino_lock);
 
 	return ret;
 }

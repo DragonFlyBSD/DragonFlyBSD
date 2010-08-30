@@ -23,10 +23,10 @@ _cv_timedwait(struct cv *c, struct lock *l, int timo, int wakesig)
 	int flags = wakesig ? PCATCH : 0;
 	int error;
 
-	spin_lock_wr(&c->cv_lock);
+	spin_lock(&c->cv_lock);
 	tsleep_interlock(c, flags);
 	c->cv_waiters++;
-	spin_unlock_wr(&c->cv_lock);
+	spin_unlock(&c->cv_lock);
 	if (l != NULL)
 		lockmgr(l, LK_RELEASE);
 	error = tsleep(c, flags, c->cv_desc, timo);
@@ -39,7 +39,7 @@ _cv_timedwait(struct cv *c, struct lock *l, int timo, int wakesig)
 void
 _cv_signal(struct cv *c, int broadcast)
 {
-	spin_lock_wr(&c->cv_lock);
+	spin_lock(&c->cv_lock);
 	if (c->cv_waiters == 0)
 		goto out;
 
@@ -52,5 +52,5 @@ _cv_signal(struct cv *c, int broadcast)
 	}
 
 out:
-	spin_unlock_wr(&c->cv_lock);
+	spin_unlock(&c->cv_lock);
 }

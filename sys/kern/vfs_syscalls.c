@@ -521,7 +521,7 @@ checkdirs_callback(struct proc *p, void *data)
 		 * A shared filedesc is ok, we don't have to copy it
 		 * because we are making this change globally.
 		 */
-		spin_lock_wr(&fdp->fd_spin);
+		spin_lock(&fdp->fd_spin);
 		if (fdp->fd_ncdir.mount == info->old_nch.mount &&
 		    fdp->fd_ncdir.ncp == info->old_nch.ncp) {
 			vprele1 = fdp->fd_cdir;
@@ -538,7 +538,7 @@ checkdirs_callback(struct proc *p, void *data)
 			ncdrop2 = fdp->fd_nrdir;
 			cache_copy(&info->new_nch, &fdp->fd_nrdir);
 		}
-		spin_unlock_wr(&fdp->fd_spin);
+		spin_unlock(&fdp->fd_spin);
 		if (ncdrop1.ncp)
 			cache_drop(&ncdrop1);
 		if (ncdrop2.ncp)
@@ -2565,7 +2565,7 @@ kern_lseek(int fd, off_t offset, int whence, off_t *res)
 
 	switch (whence) {
 	case L_INCR:
-		spin_lock_wr(&fp->f_spin);
+		spin_lock(&fp->f_spin);
 		new_offset = fp->f_offset + offset;
 		error = 0;
 		break;
@@ -2573,18 +2573,18 @@ kern_lseek(int fd, off_t offset, int whence, off_t *res)
 		get_mplock();
 		error = VOP_GETATTR(vp, &vattr);
 		rel_mplock();
-		spin_lock_wr(&fp->f_spin);
+		spin_lock(&fp->f_spin);
 		new_offset = offset + vattr.va_size;
 		break;
 	case L_SET:
 		new_offset = offset;
 		error = 0;
-		spin_lock_wr(&fp->f_spin);
+		spin_lock(&fp->f_spin);
 		break;
 	default:
 		new_offset = 0;
 		error = EINVAL;
-		spin_lock_wr(&fp->f_spin);
+		spin_lock(&fp->f_spin);
 		break;
 	}
 
@@ -2606,7 +2606,7 @@ kern_lseek(int fd, off_t offset, int whence, off_t *res)
 		}
 	}
 	*res = fp->f_offset;
-	spin_unlock_wr(&fp->f_spin);
+	spin_unlock(&fp->f_spin);
 done:
 	fdrop(fp);
 	return (error);

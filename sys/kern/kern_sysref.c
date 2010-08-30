@@ -119,9 +119,9 @@ sysref_init(struct sysref *sr, struct sysref_class *srclass)
 	sr->srclass = srclass;
 
 	sa = &sysref_array[gd->gd_cpuid];
-	spin_lock_wr(&sa->spin);
+	spin_lock(&sa->spin);
 	sysref_rb_tree_RB_INSERT(&sa->rbtree, sr);
-	spin_unlock_wr(&sa->spin);
+	spin_unlock(&sa->spin);
 	crit_exit_gd(gd);
 }
 
@@ -222,9 +222,9 @@ sysref_ctor(void *data, void *privdata, int ocflags)
 	sr->srclass = srclass;
 
 	sa = &sysref_array[gd->gd_cpuid];
-	spin_lock_wr(&sa->spin);
+	spin_lock(&sa->spin);
 	sysref_rb_tree_RB_INSERT(&sa->rbtree, sr);
-	spin_unlock_wr(&sa->spin);
+	spin_unlock(&sa->spin);
 	crit_exit_gd(gd);
 
 	/*
@@ -256,9 +256,9 @@ sysref_dtor(void *data, void *privdata)
 
 	KKASSERT(sr->refcnt == 0);
 	sa = &sysref_array[(int)sr->sysid & ncpus_fit_mask];
-	spin_lock_wr(&sa->spin);
+	spin_lock(&sa->spin);
 	sysref_rb_tree_RB_REMOVE(&sa->rbtree, sr);
-	spin_unlock_wr(&sa->spin);
+	spin_unlock(&sa->spin);
 	if (srclass->dtor)
 		srclass->dtor(data, privdata);
 }

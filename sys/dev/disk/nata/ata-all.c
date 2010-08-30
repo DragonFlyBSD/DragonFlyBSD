@@ -164,9 +164,9 @@ ata_detach(device_t dev)
 	return ENXIO;
 
     /* grap the channel lock so no new requests gets launched */
-    spin_lock_wr(&ch->state_mtx);
+    spin_lock(&ch->state_mtx);
     ch->state |= ATA_STALL_QUEUE;
-    spin_unlock_wr(&ch->state_mtx);
+    spin_unlock(&ch->state_mtx);
 
     /* detach & delete all children */
     if (!device_get_children(dev, &children, &nchildren)) {
@@ -205,14 +205,14 @@ ata_reinit(device_t dev)
 	tsleep(&dev, 0, "atarini", 1);
 
     /* catch eventual request in ch->running */
-    spin_lock_wr(&ch->state_mtx);
+    spin_lock(&ch->state_mtx);
     if ((request = ch->running))
 	callout_stop(&request->callout);
     ch->running = NULL;
 
     /* unconditionally grap the channel lock */
     ch->state |= ATA_STALL_QUEUE;
-    spin_unlock_wr(&ch->state_mtx);
+    spin_unlock(&ch->state_mtx);
 
     /* reset the controller HW, the channel and device(s) */
     ATA_RESET(dev);
@@ -258,9 +258,9 @@ ata_reinit(device_t dev)
     }
 
     /* we're done release the channel for new work */
-    spin_lock_wr(&ch->state_mtx);
+    spin_lock(&ch->state_mtx);
     ch->state = ATA_IDLE;
-    spin_unlock_wr(&ch->state_mtx);
+    spin_unlock(&ch->state_mtx);
     ATA_LOCKING(dev, ATA_LF_UNLOCK);
 
     if (bootverbose)
@@ -282,13 +282,13 @@ ata_suspend(device_t dev)
 
     /* wait for the channel to be IDLE or detached before suspending */
     while (ch->r_irq) {
-	spin_lock_wr(&ch->state_mtx);
+	spin_lock(&ch->state_mtx);
 	if (ch->state == ATA_IDLE) {
 	    ch->state = ATA_ACTIVE;
-	    spin_unlock_wr(&ch->state_mtx);
+	    spin_unlock(&ch->state_mtx);
 	    break;
 	}
-	spin_unlock_wr(&ch->state_mtx);
+	spin_unlock(&ch->state_mtx);
 	tsleep(ch, 0, "atasusp", hz/10);
     }
     ATA_LOCKING(dev, ATA_LF_UNLOCK);
@@ -319,7 +319,7 @@ ata_interrupt(void *data)
     struct ata_channel *ch = (struct ata_channel *)data;
     struct ata_request *request;
 
-    spin_lock_wr(&ch->state_mtx);
+    spin_lock(&ch->state_mtx);
     do {
 	/*
 	 * Ignore interrupt if its not for us.  This may also have the
@@ -356,13 +356,13 @@ ata_interrupt(void *data)
 	    ch->running = NULL;
 	    if (ch->state == ATA_ACTIVE)
 		ch->state = ATA_IDLE;
-	    spin_unlock_wr(&ch->state_mtx);
+	    spin_unlock(&ch->state_mtx);
 	    ATA_LOCKING(ch->dev, ATA_LF_UNLOCK);
 	    ata_finish(request);
 	    return 1;
 	}
     } while (0);
-    spin_unlock_wr(&ch->state_mtx);
+    spin_unlock(&ch->state_mtx);
     return 0;
 }
 

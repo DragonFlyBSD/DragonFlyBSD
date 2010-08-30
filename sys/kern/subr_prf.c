@@ -601,7 +601,7 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg,
 		   (((struct putchar_arg *)arg)->flags & TOTTY) == 0);
 	if (usespin) {
 		crit_enter_hard();
-		spin_lock_wr(&cons_spin);
+		spin_lock(&cons_spin);
 	}
 
 	for (;;) {
@@ -889,7 +889,7 @@ done:
 	if (func == kputchar)
 		atomic_clear_long(&mycpu->gd_flags, GDF_KPRINTF);
 	if (usespin) {
-		spin_unlock_wr(&cons_spin);
+		spin_unlock(&cons_spin);
 		crit_exit_hard();
 	}
 	return (retval);

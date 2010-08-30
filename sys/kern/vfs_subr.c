@@ -510,10 +510,10 @@ vtruncbuf(struct vnode *vp, off_t length, int blksize)
 	/*
 	 * Debugging only
 	 */
-	spin_lock_wr(&vp->v_spinlock);
+	spin_lock(&vp->v_spinlock);
 	filename = TAILQ_FIRST(&vp->v_namecache) ?
 		   TAILQ_FIRST(&vp->v_namecache)->nc_name : "?";
-	spin_unlock_wr(&vp->v_spinlock);
+	spin_unlock(&vp->v_spinlock);
 
 	/*
 	 * Make sure no buffers were instantiated while we were trying

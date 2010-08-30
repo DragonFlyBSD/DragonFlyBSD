@@ -309,9 +309,9 @@ ata_sata_phy_event(void *context, int dummy)
 		    device_delete_child(tp->dev, children[i]);
 	    kfree(children, M_TEMP);
 	}    
-	spin_lock_wr(&ch->state_mtx);
+	spin_lock(&ch->state_mtx);
 	ch->state = ATA_IDLE;
-	spin_unlock_wr(&ch->state_mtx);
+	spin_unlock(&ch->state_mtx);
 	if (bootverbose)
 	    device_printf(tp->dev, "DISCONNECTED\n");
     }
@@ -3993,14 +3993,14 @@ ata_promise_mio_reset(device_t dev)
 		  ~0x00003f9f) | (ch->unit + 1));
 
 	/* softreset HOST module */ /* XXX SOS what about other outstandings */
-	spin_lock_wr(&hpktp->mtx);
+	spin_lock(&hpktp->mtx);
 	ATA_OUTL(ctlr->r_res2, 0xc012c,
 		 (ATA_INL(ctlr->r_res2, 0xc012c) & ~0x00000f9f) | (1 << 11));
 	DELAY(10);
 	ATA_OUTL(ctlr->r_res2, 0xc012c,
 		 (ATA_INL(ctlr->r_res2, 0xc012c) & ~0x00000f9f));
 	hpktp->busy = 0;
-	spin_unlock_wr(&hpktp->mtx);
+	spin_unlock(&hpktp->mtx);
 	ata_generic_reset(dev);
 	break;
 
@@ -4292,7 +4292,7 @@ ata_promise_queue_hpkt(struct ata_pci_controller *ctlr, u_int32_t hpkt)
 {
     struct ata_promise_sx4 *hpktp = device_get_ivars(ctlr->dev);
 
-    spin_lock_wr(&hpktp->mtx);
+    spin_lock(&hpktp->mtx);
     if (hpktp->busy) {
 	struct host_packet *hp = 
 	    kmalloc(sizeof(struct host_packet), M_TEMP, M_INTWAIT | M_ZERO);
@@ -4303,7 +4303,7 @@ ata_promise_queue_hpkt(struct ata_pci_controller *ctlr, u_int32_t hpkt)
 	hpktp->busy = 1;
 	ATA_OUTL(ctlr->r_res2, 0x000c0100, hpkt);
     }
-    spin_unlock_wr(&hpktp->mtx);
+    spin_unlock(&hpktp->mtx);
 }
 
 static void
@@ -4312,7 +4312,7 @@ ata_promise_next_hpkt(struct ata_pci_controller *ctlr)
     struct ata_promise_sx4 *hpktp = device_get_ivars(ctlr->dev);
     struct host_packet *hp;
 
-    spin_lock_wr(&hpktp->mtx);
+    spin_lock(&hpktp->mtx);
     if ((hp = TAILQ_FIRST(&hpktp->queue))) {
 	TAILQ_REMOVE(&hpktp->queue, hp, chain);
 	ATA_OUTL(ctlr->r_res2, 0x000c0100, hp->addr);
@@ -4320,7 +4320,7 @@ ata_promise_next_hpkt(struct ata_pci_controller *ctlr)
     }
     else
 	hpktp->busy = 0;
-    spin_unlock_wr(&hpktp->mtx);
+    spin_unlock(&hpktp->mtx);
 }
 
 
@@ -5791,7 +5791,7 @@ ata_serialize(device_t dev, int flags)
     else
 	serial = device_get_ivars(ctlr->dev);
 
-    spin_lock_wr(&serial->locked_mtx);
+    spin_lock(&serial->locked_mtx);
     switch (flags) {
     case ATA_LF_LOCK:
 	if (serial->locked_ch == -1)
@@ -5806,7 +5806,7 @@ ata_serialize(device_t dev, int flags)
 	    if (serial->restart_ch != -1) {
 		if ((ch = ctlr->interrupt[serial->restart_ch].argument)) {
 		    serial->restart_ch = -1;
-		    spin_unlock_wr(&serial->locked_mtx);
+		    spin_unlock(&serial->locked_mtx);
 		    ata_start(ch->dev);
 		    return -1;
 		}
@@ -5818,7 +5818,7 @@ ata_serialize(device_t dev, int flags)
 	break;
     }
     res = serial->locked_ch;
-    spin_unlock_wr(&serial->locked_mtx);
+    spin_unlock(&serial->locked_mtx);
     return res;
 }
 

@@ -84,8 +84,8 @@ void m_dumpm(struct mbuf *m);
 #define	smb_slock			spinlock
 #define	smb_sl_init(sl, desc)		spin_init(sl)
 #define	smb_sl_destroy(sl)
-#define	smb_sl_lock(sl)			spin_lock_wr(sl)
-#define	smb_sl_unlock(sl)		spin_unlock_wr(sl)
+#define	smb_sl_lock(sl)			spin_lock(sl)
+#define	smb_sl_unlock(sl)		spin_unlock(sl)
 
 #define SMB_STRFREE(p)	do { if (p) smb_strfree(p); } while(0)
 

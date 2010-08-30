@@ -251,9 +251,9 @@ atapi_cam_detach(device_t dev)
     get_mplock();
     xpt_freeze_simq(scp->sim, 1 /*count*/);
     rel_mplock();
-    spin_lock_wr(&scp->state_lock);
+    spin_lock(&scp->state_lock);
     scp->flags |= DETACHING;
-    spin_unlock_wr(&scp->state_lock);
+    spin_unlock(&scp->state_lock);
     free_softc(scp);
     return (0);
 }
@@ -283,7 +283,7 @@ reinit_bus(struct atapi_xpt_softc *scp, enum reinit_reason reason) {
 	return;
     }
 
-    spin_lock_wr(&scp->state_lock);
+    spin_lock(&scp->state_lock);
     old_atadev[0] = scp->atadev[0];
     old_atadev[1] = scp->atadev[1];
     scp->atadev[0] = NULL;
@@ -303,7 +303,7 @@ reinit_bus(struct atapi_xpt_softc *scp, enum reinit_reason reason) {
     }
     dev_changed = (old_atadev[0] != scp->atadev[0])
 	    || (old_atadev[1] != scp->atadev[1]);
-    spin_unlock_wr(&scp->state_lock);
+    spin_unlock(&scp->state_lock);
     kfree(children, M_TEMP);
 
     switch (reason) {
@@ -375,11 +375,11 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	cpi->protocol_version = SCSI_REV_2;
 
 	if (softc->ata_ch && tid != CAM_TARGET_WILDCARD) {
-	    spin_lock_wr(&softc->state_lock);
+	    spin_lock(&softc->state_lock);
 	    if (softc->atadev[tid] == NULL) {
 		ccb->ccb_h.status = CAM_DEV_NOT_THERE;
 		xpt_done(ccb);
-		spin_unlock_wr(&softc->state_lock);
+		spin_unlock(&softc->state_lock);
 		return;
 	    }
 	    switch (softc->atadev[ccb_h->target_id]->mode) {
@@ -412,7 +412,7 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	    default:
 		break;
 	    }
-	    spin_unlock_wr(&softc->state_lock);
+	    spin_unlock(&softc->state_lock);
 	}
 	ccb->ccb_h.status = CAM_REQ_CMP;
 	xpt_done(ccb);
@@ -473,18 +473,18 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 
 	CAM_DEBUG(ccb_h->path, CAM_DEBUG_SUBTRACE, ("XPT_SCSI_IO\n"));
 
-	spin_lock_wr(&softc->state_lock);
+	spin_lock(&softc->state_lock);
 	if (softc->flags & DETACHING) {
 	    ccb->ccb_h.status = CAM_REQ_ABORTED;
 	    xpt_done(ccb);
-	    spin_unlock_wr(&softc->state_lock);
+	    spin_unlock(&softc->state_lock);
 	    return;
 	}
 
 	if (softc->atadev[tid] == NULL) {
 	    ccb->ccb_h.status = CAM_DEV_NOT_THERE;
 	    xpt_done(ccb);
-	    spin_unlock_wr(&softc->state_lock);
+	    spin_unlock(&softc->state_lock);
 	    return;
 	}
 
@@ -492,7 +492,7 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	if ((ccb_h->status & CAM_STATUS_MASK) != CAM_REQ_INPROG) {
 	    kprintf("XPT_SCSI_IO received but already in progress?\n");
 	    xpt_done(ccb);
-	    spin_unlock_wr(&softc->state_lock);
+	    spin_unlock(&softc->state_lock);
 	    return;
 	}
 	if (lid > 0) {
@@ -625,7 +625,7 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	TAILQ_INSERT_TAIL(&softc->pending_hcbs, hcb, chain);
 	hcb->flags |= QUEUED;
 	ccb_h->status |= CAM_SIM_QUEUED;
-	spin_unlock_wr(&softc->state_lock);
+	spin_unlock(&softc->state_lock);
 
 	ata_queue_request(request);
 	return;
@@ -644,7 +644,7 @@ action_oom:
 	ata_free_request(request);
     if (hcb != NULL)
 	free_hcb(hcb);
-    spin_unlock_wr(&softc->state_lock);
+    spin_unlock(&softc->state_lock);
     get_mplock();
     xpt_print_path(ccb_h->path);
     kprintf("out of memory, freezing queue.\n");
@@ -656,7 +656,7 @@ action_oom:
     return;
 
 action_invalid:
-    spin_unlock_wr(&softc->state_lock);
+    spin_unlock(&softc->state_lock);
     ccb_h->status = CAM_REQ_INVALID;
     xpt_done(ccb);
     return;
@@ -748,9 +748,9 @@ atapi_cb(struct ata_request *request)
 	}
     }
 
-    spin_lock_wr(&scp->state_lock);
+    spin_lock(&scp->state_lock);
     free_hcb_and_ccb_done(hcb, rc);
-    spin_unlock_wr(&scp->state_lock);
+    spin_unlock(&scp->state_lock);
 
     ata_free_request(request);
 }
@@ -874,11 +874,11 @@ free_softc(struct atapi_xpt_softc *scp)
     struct atapi_hcb *hcb;
 
     if (scp != NULL) {
-	spin_lock_wr(&scp->state_lock);
+	spin_lock(&scp->state_lock);
 	TAILQ_FOREACH(hcb, &scp->pending_hcbs, chain) {
 	    free_hcb_and_ccb_done(hcb, CAM_UNREC_HBA_ERROR);
 	}
-	spin_unlock_wr(&scp->state_lock);
+	spin_unlock(&scp->state_lock);
 	get_mplock();
 	if (scp->path != NULL) {
 	    setup_async_cb(scp, 0);

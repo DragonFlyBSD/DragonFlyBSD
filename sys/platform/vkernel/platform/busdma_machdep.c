@@ -121,8 +121,8 @@ struct bounce_zone {
 };
 
 #ifdef SMP
-#define BZ_LOCK(bz)	spin_lock_wr(&(bz)->spin)
-#define BZ_UNLOCK(bz)	spin_unlock_wr(&(bz)->spin)
+#define BZ_LOCK(bz)	spin_lock(&(bz)->spin)
+#define BZ_UNLOCK(bz)	spin_unlock(&(bz)->spin)
 #else
 #define BZ_LOCK(bz)	crit_enter()
 #define BZ_UNLOCK(bz)	crit_exit()
