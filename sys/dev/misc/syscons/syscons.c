@@ -1797,6 +1797,9 @@ scrn_timer(void *arg)
     scr_stat *scp;
     int again;
 
+    /*
+     * Setup depending on who called us
+     */
     lwkt_gettoken(&tty_token);
     again = (arg != NULL);
     if (arg != NULL) {
@@ -1808,25 +1811,21 @@ scrn_timer(void *arg)
 	return;
     }
 
-    if (syscons_lock_nonblock() == 0) {
-	if (again)
-	    callout_reset(&sc->scrn_timer_ch, hz / 10, scrn_timer, sc);
-	lwkt_reltoken(&tty_token);
-	return;
-    }
-
-
-    /* don't do anything when we are performing some I/O operations */
+    /*
+     * Don't do anything when we are performing some I/O operations.
+     * (These are initiated by the frontend?)
+     */
     if (sc->font_loading_in_progress || sc->videoio_in_progress) {
 	if (again)
 	    callout_reset(&sc->scrn_timer_ch, hz / 10, scrn_timer, sc);
-	syscons_unlock();
 	lwkt_reltoken(&tty_token);
 	return;
     }
 
+    /*
+     * Try to allocate a keyboard automatically
+     */
     if ((sc->kbd == NULL) && (sc->config & SC_AUTODETECT_KBD)) {
-	/* try to allocate a keyboard automatically */
 	if (++kbd_interval >= 25) {
 	    sc->keyboard = sc_allocate_keyboard(sc, -1);
 	    if (sc->keyboard >= 0) {
@@ -1840,8 +1839,19 @@ scrn_timer(void *arg)
 	}
     }
 
-    /* should we stop the screen saver? */
+    /*
+     * Should we stop the screen saver?  We need the syscons_lock
+     * for most of this stuff.
+     */
     getmicrouptime(&tv);
+
+    if (syscons_lock_nonblock() == 0) {
+	if (again)
+	    callout_reset(&sc->scrn_timer_ch, hz / 10, scrn_timer, sc);
+	lwkt_reltoken(&tty_token);
+	return;
+    }
+
     if (debugger > 0 || panicstr || shutdown_in_progress)
 	sc_touch_scrn_saver();
     if (run_scrn_saver) {
@@ -1862,11 +1872,12 @@ scrn_timer(void *arg)
 #endif /* NSPLASH */
 
     /* should we just return ? */
-    if (sc->blink_in_progress || sc->switch_in_progress
-	|| sc->write_in_progress) {
+    if (sc->blink_in_progress || sc->switch_in_progress ||
+	sc->write_in_progress)
+    {
+	syscons_unlock();
 	if (again)
 	    callout_reset(&sc->scrn_timer_ch, hz / 10, scrn_timer, sc);
-	syscons_unlock();
 	lwkt_reltoken(&tty_token);
 	return;
     }
@@ -1883,9 +1894,9 @@ scrn_timer(void *arg)
 	    (*current_saver)(sc, TRUE);
 #endif /* NSPLASH */
 
+    syscons_unlock();
     if (again)
 	callout_reset(&sc->scrn_timer_ch, hz / 25, scrn_timer, sc);
-    syscons_unlock();
     lwkt_reltoken(&tty_token);
 }
 
