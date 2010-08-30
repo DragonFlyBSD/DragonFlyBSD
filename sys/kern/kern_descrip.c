@@ -169,12 +169,13 @@ sys_getdtablesize(struct getdtablesize_args *uap)
 	struct plimit *limit = p->p_limit;
 	int dtsize;
 
-	spin_lock_rd(&limit->p_spin);
+	spin_lock_wr(&limit->p_spin);
 	if (limit->pl_rlimit[RLIMIT_NOFILE].rlim_cur > INT_MAX)
 		dtsize = INT_MAX;
 	else
 		dtsize = (int)limit->pl_rlimit[RLIMIT_NOFILE].rlim_cur;
-	spin_unlock_rd(&limit->p_spin);
+	spin_unlock_wr(&limit->p_spin);
+
 	if (dtsize > maxfilesperproc)
 		dtsize = maxfilesperproc;
 	if (dtsize < minfilesperproc)
@@ -1106,12 +1107,13 @@ fdalloc(struct proc *p, int want, int *result)
 	/*
 	 * Check dtable size limit
 	 */
-	spin_lock_rd(&p->p_limit->p_spin);
+	spin_lock_wr(&p->p_limit->p_spin);
 	if (p->p_rlimit[RLIMIT_NOFILE].rlim_cur > INT_MAX)
 		lim = INT_MAX;
 	else
 		lim = (int)p->p_rlimit[RLIMIT_NOFILE].rlim_cur;
-	spin_unlock_rd(&p->p_limit->p_spin);
+	spin_unlock_wr(&p->p_limit->p_spin);
+
 	if (lim > maxfilesperproc)
 		lim = maxfilesperproc;
 	if (lim < minfilesperproc)
@@ -1226,31 +1228,32 @@ fdavail(struct proc *p, int n)
 	struct fdnode *fdnode;
 	int i, lim, last;
 
-	spin_lock_rd(&p->p_limit->p_spin);
+	spin_lock_wr(&p->p_limit->p_spin);
 	if (p->p_rlimit[RLIMIT_NOFILE].rlim_cur > INT_MAX)
 		lim = INT_MAX;
 	else
 		lim = (int)p->p_rlimit[RLIMIT_NOFILE].rlim_cur;
-	spin_unlock_rd(&p->p_limit->p_spin);
+	spin_unlock_wr(&p->p_limit->p_spin);
+
 	if (lim > maxfilesperproc)
 		lim = maxfilesperproc;
 	if (lim < minfilesperproc)
 		lim = minfilesperproc;
 
-	spin_lock_rd(&fdp->fd_spin);
+	spin_lock_wr(&fdp->fd_spin);
 	if ((i = lim - fdp->fd_nfiles) > 0 && (n -= i) <= 0) {
-		spin_unlock_rd(&fdp->fd_spin);
+		spin_unlock_wr(&fdp->fd_spin);
 		return (1);
 	}
 	last = min(fdp->fd_nfiles, lim);
 	fdnode = &fdp->fd_files[fdp->fd_freefile];
 	for (i = last - fdp->fd_freefile; --i >= 0; ++fdnode) {
 		if (fdnode->fp == NULL && --n <= 0) {
-			spin_unlock_rd(&fdp->fd_spin);
+			spin_unlock_wr(&fdp->fd_spin);
 			return (1);
 		}
 	}
-	spin_unlock_rd(&fdp->fd_spin);
+	spin_unlock_wr(&fdp->fd_spin);
 	return (0);
 }
 
@@ -1498,12 +1501,12 @@ checkfdclosed(struct filedesc *fdp, int fd, struct file *fp)
 {
 	int error;
 
-	spin_lock_rd(&fdp->fd_spin);
+	spin_lock_wr(&fdp->fd_spin);
 	if ((unsigned)fd >= fdp->fd_nfiles || fp != fdp->fd_files[fd].fp)
 		error = EBADF;
 	else
 		error = 0;
-	spin_unlock_rd(&fdp->fd_spin);
+	spin_unlock_wr(&fdp->fd_spin);
 	return (error);
 }
 
@@ -1573,7 +1576,7 @@ fgetfdflags(struct filedesc *fdp, int fd, int *flagsp)
 {
 	int error;
 
-	spin_lock_rd(&fdp->fd_spin);
+	spin_lock_wr(&fdp->fd_spin);
 	if (((u_int)fd) >= fdp->fd_nfiles) {
 		error = EBADF;
 	} else if (fdp->fd_files[fd].fp == NULL) {
@@ -1582,7 +1585,7 @@ fgetfdflags(struct filedesc *fdp, int fd, int *flagsp)
 		*flagsp = fdp->fd_files[fd].fileflags;
 		error = 0;
 	}
-	spin_unlock_rd(&fdp->fd_spin);
+	spin_unlock_wr(&fdp->fd_spin);
 	return (error);
 }
 
@@ -1701,7 +1704,7 @@ fdinit(struct proc *p)
 	struct filedesc *fdp = p->p_fd;
 
 	newfdp = kmalloc(sizeof(struct filedesc), M_FILEDESC, M_WAITOK|M_ZERO);
-	spin_lock_rd(&fdp->fd_spin);
+	spin_lock_wr(&fdp->fd_spin);
 	if (fdp->fd_cdir) {
 		newfdp->fd_cdir = fdp->fd_cdir;
 		vref(newfdp->fd_cdir);
@@ -1722,7 +1725,7 @@ fdinit(struct proc *p)
 		vref(newfdp->fd_jdir);
 		cache_copy(&fdp->fd_njdir, &newfdp->fd_njdir);
 	}
-	spin_unlock_rd(&fdp->fd_spin);
+	spin_unlock_wr(&fdp->fd_spin);
 
 	/* Create the file descriptor table. */
 	newfdp->fd_refcnt = 1;
@@ -1779,7 +1782,7 @@ fdcopy(struct proc *p)
 	 */
 	newfdp = kmalloc(sizeof(struct filedesc), M_FILEDESC, M_WAITOK | M_ZERO);
 again:
-	spin_lock_rd(&fdp->fd_spin);
+	spin_lock_wr(&fdp->fd_spin);
 	if (fdp->fd_lastfile < NDFILE) {
 		newfdp->fd_files = newfdp->fd_builtin_files;
 		i = NDFILE;
@@ -1794,16 +1797,16 @@ again:
 			i = ni;
 			ni = (i - 1) / 2;
 		}
-		spin_unlock_rd(&fdp->fd_spin);
+		spin_unlock_wr(&fdp->fd_spin);
 		newfdp->fd_files = kmalloc(i * sizeof(struct fdnode),
 					  M_FILEDESC, M_WAITOK | M_ZERO);
 
 		/*
 		 * Check for race, retry
 		 */
-		spin_lock_rd(&fdp->fd_spin);
+		spin_lock_wr(&fdp->fd_spin);
 		if (i <= fdp->fd_lastfile) {
-			spin_unlock_rd(&fdp->fd_spin);
+			spin_unlock_wr(&fdp->fd_spin);
 			kfree(newfdp->fd_files, M_FILEDESC);
 			goto again;
 		}
@@ -1868,7 +1871,7 @@ again:
 			}
 		}
 	}
-	spin_unlock_rd(&fdp->fd_spin);
+	spin_unlock_wr(&fdp->fd_spin);
 	return (newfdp);
 }
 
@@ -2051,7 +2054,7 @@ holdfp(struct filedesc *fdp, int fd, int flag)
 {
 	struct file* fp;
 
-	spin_lock_rd(&fdp->fd_spin);
+	spin_lock_wr(&fdp->fd_spin);
 	if (((u_int)fd) >= fdp->fd_nfiles) {
 		fp = NULL;
 		goto done;
@@ -2064,7 +2067,7 @@ holdfp(struct filedesc *fdp, int fd, int flag)
 	}
 	fhold(fp);
 done:
-	spin_unlock_rd(&fdp->fd_spin);
+	spin_unlock_wr(&fdp->fd_spin);
 	return (fp);
 }
 
@@ -2081,7 +2084,7 @@ holdsock(struct filedesc *fdp, int fd, struct file **fpp)
 	struct file *fp;
 	int error;
 
-	spin_lock_rd(&fdp->fd_spin);
+	spin_lock_wr(&fdp->fd_spin);
 	if ((unsigned)fd >= fdp->fd_nfiles) {
 		error = EBADF;
 		fp = NULL;
@@ -2098,7 +2101,7 @@ holdsock(struct filedesc *fdp, int fd, struct file **fpp)
 	fhold(fp);
 	error = 0;
 done:
-	spin_unlock_rd(&fdp->fd_spin);
+	spin_unlock_wr(&fdp->fd_spin);
 	*fpp = fp;
 	return (error);
 }
@@ -2114,7 +2117,7 @@ holdvnode(struct filedesc *fdp, int fd, struct file **fpp)
 	struct file *fp;
 	int error;
 
-	spin_lock_rd(&fdp->fd_spin);
+	spin_lock_wr(&fdp->fd_spin);
 	if ((unsigned)fd >= fdp->fd_nfiles) {
 		error = EBADF;
 		fp = NULL;
@@ -2132,7 +2135,7 @@ holdvnode(struct filedesc *fdp, int fd, struct file **fpp)
 	fhold(fp);
 	error = 0;
 done:
-	spin_unlock_rd(&fdp->fd_spin);
+	spin_unlock_wr(&fdp->fd_spin);
 	*fpp = fp;
 	return (error);
 }
@@ -2714,7 +2717,7 @@ sysctl_kern_file_callback(struct proc *p, void *data)
 	 * The fdp's own spinlock prevents the contents from being
 	 * modified.
 	 */
-	spin_lock_rd(&fdp->fd_spin);
+	spin_lock_wr(&fdp->fd_spin);
 	for (n = 0; n < fdp->fd_nfiles; ++n) {
 		if ((fp = fdp->fd_files[n].fp) == NULL)
 			continue;
@@ -2723,14 +2726,14 @@ sysctl_kern_file_callback(struct proc *p, void *data)
 		} else {
 			uid = p->p_ucred ? p->p_ucred->cr_uid : -1;
 			kcore_make_file(&kf, fp, p->p_pid, uid, n);
-			spin_unlock_rd(&fdp->fd_spin);
+			spin_unlock_wr(&fdp->fd_spin);
 			info->error = SYSCTL_OUT(info->req, &kf, sizeof(kf));
-			spin_lock_rd(&fdp->fd_spin);
+			spin_lock_wr(&fdp->fd_spin);
 			if (info->error)
 				break;
 		}
 	}
-	spin_unlock_rd(&fdp->fd_spin);
+	spin_unlock_wr(&fdp->fd_spin);
 	atomic_subtract_int(&fdp->fd_softrefs, 1);
 	if (info->error)
 		return(-1);
