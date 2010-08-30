@@ -168,16 +168,6 @@ SYSCTL_INT(_machdep, OID_AUTO, fast_release, CTLFLAG_RW,
 static int slow_release;
 SYSCTL_INT(_machdep, OID_AUTO, slow_release, CTLFLAG_RW,
 	&slow_release, 0, "Passive Release was nonoptimal");
-#ifdef SMP
-static int syscall_mpsafe = 1;
-SYSCTL_INT(_kern, OID_AUTO, syscall_mpsafe, CTLFLAG_RW,
-	&syscall_mpsafe, 0, "Allow MPSAFE marked syscalls to run without BGL");
-TUNABLE_INT("kern.syscall_mpsafe", &syscall_mpsafe);
-static int trap_mpsafe = 1;
-SYSCTL_INT(_kern, OID_AUTO, trap_mpsafe, CTLFLAG_RW,
-	&trap_mpsafe, 0, "Allow traps to mostly run without the BGL");
-TUNABLE_INT("kern.trap_mpsafe", &trap_mpsafe);
-#endif
 
 MALLOC_DEFINE(M_SYSMSG, "sysmsg", "sysmsg structure");
 extern int max_sysmsg;
@@ -424,14 +414,6 @@ user_trap(struct trapframe *frame)
 		goto out2;
 	}
 #endif
-
-	++gd->gd_trap_nesting_level;
-#ifdef SMP
-	if (trap_mpsafe == 0)
-		MAKEMPSAFE(have_mplock);
-#endif
-
-	--gd->gd_trap_nesting_level;
 
 #if defined(I586_CPU) && !defined(NO_F00F_HACK)
 restart:
@@ -698,16 +680,6 @@ kern_trap(struct trapframe *frame)
 		goto out2;
 	}
 #endif
-
-	++gd->gd_trap_nesting_level;
-
-#ifdef SMP
-	if (trap_mpsafe == 0)
-		MAKEMPSAFE(have_mplock);
-#endif
-
-	--gd->gd_trap_nesting_level;
-
 	type = frame->tf_trapno;
 	code = frame->tf_err;
 
@@ -1108,9 +1080,8 @@ syscall2(struct trapframe *frame)
 		frame->tf_eax);
 
 #ifdef SMP
-	KASSERT(td->td_mpcount == 0, ("badmpcount syscall2 from %p", (void *)frame->tf_eip));
-	if (syscall_mpsafe == 0)
-		MAKEMPSAFE(have_mplock);
+	KASSERT(td->td_mpcount == 0,
+		("badmpcount syscall2 from %p", (void *)frame->tf_eip));
 #endif
 	userenter(td, p);	/* lazy raise our priority */
 

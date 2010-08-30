@@ -154,16 +154,6 @@ SYSCTL_INT(_machdep, OID_AUTO, fast_release, CTLFLAG_RW,
 static int slow_release;
 SYSCTL_INT(_machdep, OID_AUTO, slow_release, CTLFLAG_RW,
 	&slow_release, 0, "Passive Release was nonoptimal");
-#ifdef SMP
-static int syscall_mpsafe = 1;
-SYSCTL_INT(_kern, OID_AUTO, syscall_mpsafe, CTLFLAG_RW,
-	&syscall_mpsafe, 0, "Allow MPSAFE marked syscalls to run without BGL");
-TUNABLE_INT("kern.syscall_mpsafe", &syscall_mpsafe);
-static int trap_mpsafe = 1;
-SYSCTL_INT(_kern, OID_AUTO, trap_mpsafe, CTLFLAG_RW,
-	&trap_mpsafe, 0, "Allow traps to mostly run without the BGL");
-TUNABLE_INT("kern.trap_mpsafe", &trap_mpsafe);
-#endif
 
 /*
  * Passively intercepts the thread switch function to increase
@@ -402,14 +392,6 @@ trap(struct trapframe *frame)
 #endif
 
 	eva = 0;
-
-#ifdef SMP
-        if (trap_mpsafe == 0) {
-		++gd->gd_trap_nesting_level;
-		MAKEMPSAFE(have_mplock);
-		--gd->gd_trap_nesting_level;
-	}
-#endif
 
 	if ((frame->tf_rflags & PSL_I) == 0) {
 		/*
@@ -1057,9 +1039,8 @@ syscall2(struct trapframe *frame)
 		frame->tf_eax);
 
 #ifdef SMP
-	KASSERT(td->td_mpcount == 0, ("badmpcount syscall2 from %p", (void *)frame->tf_rip));
-	if (syscall_mpsafe == 0)
-		MAKEMPSAFE(have_mplock);
+	KASSERT(td->td_mpcount == 0,
+		("badmpcount syscall2 from %p", (void *)frame->tf_rip));
 #endif
 	userenter(td, p);	/* lazy raise our priority */
 
