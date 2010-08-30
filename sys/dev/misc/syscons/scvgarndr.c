@@ -49,15 +49,6 @@
 
 #include <bus/isa/isareg.h>
 
-/*
- * XXX: this still doesn't quite work with tokens (mainly vga_txtcursor*),
- *	so temporarily disable tokens here.
- */
-#if 0
-#define lwkt_gettoken(x)
-#define lwkt_reltoken(x)
-#endif
-
 static vr_draw_border_t		vga_txtborder;
 static vr_draw_t		vga_txtdraw;
 static vr_set_cursor_t		vga_txtcursor_shape;
