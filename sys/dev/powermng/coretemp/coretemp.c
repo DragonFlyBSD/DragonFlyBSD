@@ -225,9 +225,9 @@ coretemp_get_temp(device_t dev)
 		origcpu = mycpuid;
 		lwkt_migratecpu(cpu);
 
-		spin_lock_rd(&coretemp_lock);
+		spin_lock_wr(&coretemp_lock);
 		msr = rdmsr(MSR_THERM_STATUS);
-		spin_unlock_rd(&coretemp_lock);
+		spin_unlock_wr(&coretemp_lock);
 
 		lwkt_migratecpu(origcpu);
 	} else if (cpu != 0)
