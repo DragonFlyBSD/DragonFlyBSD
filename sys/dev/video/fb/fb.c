@@ -172,6 +172,7 @@ vid_register(video_adapter_t *adp)
 		if (strcmp(p->name, adp->va_name) == 0) {
 			adapter[index] = adp;
 			vidsw[index] = p->vidsw;
+			lwkt_reltoken(&tty_token);
 			return index;
 		}
 	}
@@ -542,9 +543,12 @@ int genfbioctl(genfb_softc_t *sc, video_adapter_t *adp, u_long cmd,
 int genfbmmap(genfb_softc_t *sc, video_adapter_t *adp, vm_offset_t offset,
 	      int prot)
 {
+	int error;
+
 	lwkt_gettoken(&tty_token);
-	return (*vidsw[adp->va_index]->mmap)(adp, offset, prot);
+	error = (*vidsw[adp->va_index]->mmap)(adp, offset, prot);
 	lwkt_reltoken(&tty_token);
+	return (error);
 }
 
 #endif /* FB_INSTALL_CDEV */
