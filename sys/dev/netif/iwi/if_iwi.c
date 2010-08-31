@@ -1979,8 +1979,10 @@ iwi_start_locked(struct ifnet *ifp)
 static void
 iwi_start(struct ifnet *ifp)
 {
-	struct iwi_softc *sc = ifp->if_softc;
+	struct iwi_softc *sc;
 	IWI_LOCK_DECL;
+
+	sc = ifp->if_softc;
 
 	IWI_LOCK(sc);
 	iwi_start_locked(ifp);
@@ -2489,7 +2491,7 @@ iwi_load_firmware(struct iwi_softc *sc, const struct iwi_fw *fw)
 	CSR_WRITE_4(sc, IWI_CSR_CTL, tmp | IWI_CTL_ALLOW_STANDBY);
 
 	/* wait at most one second for firmware initialization to complete */
-	error = lksleep(sc, &sc->sc_lock, PINTERLOCKED, "iwiinit", hz);
+	error = tsleep(sc, 0, "iwiinit", hz);
 	if (error != 0) {
 		device_printf(sc->sc_dev, "timeout waiting for firmware "
 			    "initialization to complete\n");

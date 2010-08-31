@@ -243,14 +243,9 @@ struct iwi_softc {
  * NB.: This models the only instance of async locking in iwi_init_locked
  *	and must be kept in sync.
  */
-#define	IWI_LOCK_INIT(sc) \
-	lockinit(&(sc)->sc_lock, \
-	    __DECONST(char *, device_get_nameunit((sc)->sc_dev)), \
-	    0, LK_CANRECURSE)
-
-#define	IWI_LOCK_DESTROY(sc)	lockuninit(&(sc)->sc_lock)
 #define	IWI_LOCK_DECL
-#define IWI_LOCK_ASSERT(sc)	\
-	KKASSERT(lockstatus(&(sc)->sc_lock, curthread) == LK_EXCLUSIVE)
-#define IWI_LOCK(sc)		lockmgr(&(sc)->sc_lock, LK_EXCLUSIVE)
-#define IWI_UNLOCK(sc)		lockmgr(&(sc)->sc_lock, LK_RELEASE)
+#define IWI_LOCK_INIT(_sc)
+#define IWI_LOCK(_sc) lwkt_gettoken(&wlan_token)
+#define IWI_UNLOCK(_sc) lwkt_reltoken(&wlan_token)
+#define IWI_LOCK_DESTROY(_sc)
+#define IWI_LOCK_ASSERT(_sc) ASSERT_LWKT_TOKEN_HELD(&wlan_token)
