@@ -2805,9 +2805,11 @@ scinit(int unit, int flags)
 	}
 #endif
 
+	lwkt_gettoken(&tty_token);
 	/* extract the hardware cursor location and hide the cursor for now */
 	(*vidsw[sc->adapter]->read_hw_cursor)(sc->adp, &col, &row);
 	(*vidsw[sc->adapter]->set_hw_cursor)(sc->adp, -1, -1);
+	lwkt_reltoken(&tty_token);
 
 	/* set up the first console */
 	sc->first_vty = unit*MAXCONS;
@@ -3087,7 +3089,6 @@ init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
 {
     video_info_t info;
 
-    ASSERT_LWKT_TOKEN_HELD(&tty_token);
     bzero(scp, sizeof(*scp));
 
     scp->index = vty;
@@ -3095,7 +3096,9 @@ init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
     scp->status = 0;
     scp->mode = sc->initial_mode;
     callout_init(&scp->blink_screen_ch);
+    lwkt_gettoken(&tty_token);
     (*vidsw[sc->adapter]->get_info)(sc->adp, scp->mode, &info);
+    lwkt_reltoken(&tty_token);
     if (info.vi_flags & V_INFO_GRAPHICS) {
 	scp->status |= GRAPHICS_MODE;
 	scp->xpixel = info.vi_width;
