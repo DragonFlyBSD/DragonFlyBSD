@@ -1126,6 +1126,7 @@ syscall2(struct trapframe *frame)
 	int narg;
 #ifdef INVARIANTS
 	int crit_count = td->td_critcount;
+	lwkt_tokref_t curstop = td->td_toks_stop;
 #endif
 #ifdef SMP
 	int have_mplock = 0;
