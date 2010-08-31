@@ -295,7 +295,6 @@ passregister(struct cam_periph *periph, void *arg)
 
 	if (bootverbose)
 		xpt_announce_periph(periph, NULL);
-	CAM_SIM_UNLOCK(periph->sim);
 
 	return(CAM_REQ_CMP);
 }

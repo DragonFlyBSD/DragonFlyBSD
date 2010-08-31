@@ -160,7 +160,7 @@ cam_periph_alloc(periph_ctor_t *periph_ctor,
 	
 	periph = kmalloc(sizeof(*periph), M_CAMPERIPH, M_INTWAIT | M_ZERO);
 	
-	init_level++;
+	init_level++;	/* 1 */
 
 	xpt_lock_buses();
 	for (p_drv = periph_drivers; *p_drv != NULL; p_drv++) {
@@ -190,9 +190,9 @@ cam_periph_alloc(periph_ctor_t *periph_ctor,
 	if (status != CAM_REQ_CMP)
 		goto failure;
 
-	periph->path = path;
-	init_level++;
+	init_level++;	/* 2 */
 
+	periph->path = path;
 	status = xpt_add_periph(periph);
 
 	if (status != CAM_REQ_CMP)
@@ -221,15 +221,18 @@ failure:
 	switch (init_level) {
 	case 4:
 		/* Initialized successfully */
+		CAM_SIM_UNLOCK(sim);
 		break;
 	case 3:
 		TAILQ_REMOVE(&(*p_drv)->units, periph, unit_links);
 		xpt_remove_periph(periph);
 		/* FALLTHROUGH */
 	case 2:
-		xpt_free_path(periph->path);
+		periph->path = NULL;
 		/* FALLTHROUGH */
 	case 1:
+		CAM_SIM_UNLOCK(sim);	/* sim was retrieved from path */
+		xpt_free_path(path);
 		kfree(periph, M_CAMPERIPH);
 		/* FALLTHROUGH */
 	case 0:
@@ -238,7 +241,6 @@ failure:
 	default:
 		panic("cam_periph_alloc: Unknown init level");
 	}
-	CAM_SIM_UNLOCK(sim);
 	return(status);
 }
 
