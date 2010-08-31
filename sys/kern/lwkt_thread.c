@@ -1016,7 +1016,7 @@ lwkt_preempt(thread_t ntd, int critcount)
      */
     savecnt = td->td_mpcount;
     mpheld = MP_LOCK_HELD(gd);
-    ntd->td_xpcount = td->td_mpcount;
+    ntd->td_xpcount = td->td_mpcount + td->td_xpcount;
     if (mpheld == 0 && ntd->td_mpcount + ntd->td_xpcount && !cpu_try_mplock()) {
 	ntd->td_xpcount = 0;
 	++preempt_miss;
