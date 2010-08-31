@@ -122,6 +122,15 @@ cninit(void)
 	struct consdev *best_cp, *cp, **list;
 
 	/*
+	 * Workaround for token acquisition and releases during the
+	 * console init.  For some reason if lwkt_gettoken()'s mpcount
+	 * optimization is turned off the console init blows up.  It
+	 * might be trying to kprintf() something in the middle of
+	 * its init.
+	 */
+	lwkt_gettoken(&tty_token);
+
+	/*
 	 * Check if we should mute the console (for security reasons perhaps)
 	 * It can be changes dynamically using sysctl kern.consmute
 	 * once we are up and going.
@@ -154,8 +163,7 @@ cninit(void)
 	if (best_cp == NULL) {
 		if (cn_tab != NULL && cn_tab->cn_term != NULL)
 			(*cn_tab->cn_term)(cn_tab);
-		cn_tab = best_cp;
-		return;
+		goto done;
 	}
 
 	/*
@@ -170,7 +178,16 @@ cninit(void)
 	}
 	if (boothowto & RB_PAUSE)
 		console_pausing = 1;
+done:
 	cn_tab = best_cp;
+
+	/*
+	 * We can safely release the token after the init is done.
+	 * Also assert that the mpcount is still correct or otherwise
+	 * the SMP/AP boot will blow up on us.
+	 */
+	lwkt_reltoken(&tty_token);
+	KKASSERT(curthread->td_mpcount == 1);
 }
 
 
