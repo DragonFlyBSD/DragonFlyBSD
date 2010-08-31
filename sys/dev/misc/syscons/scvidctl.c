@@ -256,6 +256,7 @@ sc_set_pixel_mode(scr_stat *scp, struct tty *tp, int xsize, int ysize,
         lwkt_reltoken(&tty_token);
 	return ENODEV;		/* this shouldn't happen */
     }
+    lwkt_reltoken(&tty_token);
 
     /* adjust argument values */
     if (fontsize <= 0)
