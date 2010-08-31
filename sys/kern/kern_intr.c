@@ -80,34 +80,57 @@ int max_installed_soft_intr;
 
 #define EMERGENCY_INTR_POLLING_FREQ_MAX 20000
 
+/*
+ * Assert that callers into interrupt handlers don't return with
+ * dangling tokens, spinlocks, or mp locks.
+ */
 #ifdef INVARIANTS
 
+#ifdef SMP
+
+#define SMP_INVARIANTS_DECLARE	\
+	int mpcount;
+
+#define SMP_INVARIANTS_GET(td)		\
+	mpcount = (td)->td_mpcount
+
+#define SMP_INVARIANTS_TEST(td, name)					\
+		KASSERT(mpcount == (td)->td_mpcount,			\
+			("mpcount mismatch after interrupt handler %s",	\
+			name))
+
+#define SMP_INVARIANTS_ADJMP(count)	mpcount += (count)
+
+#else
+
+#define SMP_INVARIANTS_DECLARE
+#define SMP_INVARIANTS_GET(td)
+#define SMP_INVARIANTS_TEST(td, name)
+
+#endif
+
 #define TD_INVARIANTS_DECLARE	\
-	int mpcount;		\
+	SMP_INVARIANTS_DECLARE	\
 	int spincount;		\
 	lwkt_tokref_t curstop
 
 #define TD_INVARIANTS_GET(td)					\
 	do {							\
-		mpcount = (td)->td_mpcount;			\
+		SMP_INVARIANTS_GET(td);				\
 		spincount = (td)->td_gd->gd_spinlocks_wr;	\
 		curstop = (td)->td_toks_stop;			\
 	} while(0)
 
 #define TD_INVARIANTS_TEST(td, name)					\
 	do {								\
-		KASSERT(mpcount == (td)->td_mpcount,			\
-			("mpcount mismatch after interrupt handler %s",	\
-			name));						\
 		KASSERT(spincount == (td)->td_gd->gd_spinlocks_wr, 	\
 			("spincount mismatch after interrupt handler %s", \
 			name));						\
 		KASSERT(curstop == (td)->td_toks_stop,			\
 			("token count mismatch after interrupt handler %s", \
 			name));						\
+		SMP_INVARIANTS_TEST(td, name);				\
 	} while(0)
-
-#define TD_INVARIANTS_ADJMP(count)	mpcount += (count)
 
 #else
 
@@ -706,7 +729,7 @@ ithread_fast_handler(struct intrframe *frame)
 		    break;
 		}
 		got_mplock = 1;
-		TD_INVARIANTS_ADJMP(1);
+		SMP_INVARIANTS_ADJMP(1);
 	    }
 #endif
 	    if (rec->serializer) {
