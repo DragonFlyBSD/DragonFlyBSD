@@ -328,19 +328,19 @@ wpi_load_firmware(struct wpi_softc *sc)
 	DPRINTFN(WPI_DEBUG_FIRMWARE,
 	    ("Attempting Loading Firmware from wpi_fw module\n"));
 
-	WPI_UNLOCK(sc);
+	WPI_UNLOCK();
 
 	if (sc->fw_fp == NULL && (sc->fw_fp = firmware_get("wpifw")) == NULL) {
 		device_printf(sc->sc_dev,
 		    "could not load firmware image 'wpifw_fw'\n");
 		error = ENOENT;
-		WPI_LOCK(sc);
+		WPI_LOCK();
 		goto fail;
 	}
 
 	fp = sc->fw_fp;
 
-	WPI_LOCK(sc);
+	WPI_LOCK();
 
 
 	/* Validate the firmware is minimum a particular version */
@@ -484,9 +484,9 @@ wpi_unload_firmware(struct wpi_softc *sc)
 	ifp = sc->sc_ifp;
 
 	if (sc->fw_fp) {
-		WPI_UNLOCK(sc);
+		WPI_UNLOCK();
 		firmware_put(sc->fw_fp, FIRMWARE_UNLOAD);
-		WPI_LOCK(sc);
+		WPI_LOCK();
 		sc->fw_fp = NULL;
 	}
 }
@@ -524,7 +524,7 @@ wpi_attach(device_t dev)
 	TASK_INIT(&sc->sc_restarttask, 0, wpi_hwreset, sc);
 	TASK_INIT(&sc->sc_radiotask, 0, wpi_rfreset, sc);
 
-	WPI_LOCK_INIT(sc);
+	WPI_LOCK_INIT();
 
 	callout_init(&sc->calib_to);
 	callout_init(&sc->watchdog_to);
@@ -733,7 +733,7 @@ wpi_detach(device_t dev)
 		ieee80211_ifdetach(ic);
 	}
 
-	WPI_LOCK(sc);
+	WPI_LOCK();
 	if (sc->txq[0].data_dmat) {
 		for (ac = 0; ac < WME_NUM_AC; ac++)
 			wpi_free_tx_ring(sc, &sc->txq[ac]);
@@ -749,7 +749,7 @@ wpi_detach(device_t dev)
 
 	if (sc->fw_dma.tag)
 		wpi_free_fwmem(sc);
-	WPI_UNLOCK(sc);
+	WPI_UNLOCK();
 
 	if (sc->irq != NULL) {
 		bus_teardown_intr(dev, sc->irq, sc->sc_ih);
@@ -762,7 +762,7 @@ wpi_detach(device_t dev)
 	if (ifp != NULL)
 		if_free(ifp);
 
-	WPI_LOCK_DESTROY(sc);
+	WPI_LOCK_DESTROY();
 
 	return 0;
 }
@@ -1206,10 +1206,10 @@ wpi_shutdown(device_t dev)
 {
 	struct wpi_softc *sc = device_get_softc(dev);
 
-	WPI_LOCK(sc);
+	WPI_LOCK();
 	wpi_stop_locked(sc);
 	wpi_unload_firmware(sc);
-	WPI_UNLOCK(sc);
+	WPI_UNLOCK();
 
 	return 0;
 }
@@ -1268,7 +1268,7 @@ wpi_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 		ieee80211_state_name[nstate], sc->flags));
 
 	IEEE80211_UNLOCK(ic);
-	WPI_LOCK(sc);
+	WPI_LOCK();
 	if (nstate == IEEE80211_S_AUTH) {
 		/* The node must be registered in the firmware before auth */
 		error = wpi_auth(sc, vap);
@@ -1291,7 +1291,7 @@ wpi_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 		wpi_calib_timeout(sc);
 		/* XXX split out rate control timer */
 	}
-	WPI_UNLOCK(sc);
+	WPI_UNLOCK();
 	IEEE80211_LOCK(ic);
 	return wvp->newstate(vap, nstate, arg);
 }
@@ -1551,7 +1551,7 @@ wpi_rx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc,
 			tap->wr_flags |= IEEE80211_RADIOTAP_F_SHORTPRE;
 	}
 
-	WPI_UNLOCK(sc);
+	WPI_UNLOCK();
 
 	ni = ieee80211_find_rxnode(ic, mtod(m, struct ieee80211_frame_min *));
 	if (ni != NULL) {
@@ -1560,7 +1560,7 @@ wpi_rx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc,
 	} else
 		(void) ieee80211_input_all(ic, m, stat->rssi, 0);
 
-	WPI_LOCK(sc);
+	WPI_LOCK();
 }
 
 static void
@@ -1769,11 +1769,11 @@ wpi_intr(void *arg)
 	struct wpi_softc *sc = arg;
 	uint32_t r;
 
-	WPI_LOCK(sc);
+	WPI_LOCK();
 
 	r = WPI_READ(sc, WPI_INTR);
 	if (r == 0 || r == 0xffffffff) {
-		WPI_UNLOCK(sc);
+		WPI_UNLOCK();
 		return;
 	}
 
@@ -1794,7 +1794,7 @@ wpi_intr(void *arg)
 			ieee80211_cancel_scan(vap);
 		ieee80211_runtask(ic, &sc->sc_restarttask);
 		sc->flags &= ~WPI_FLAG_BUSY;
-		WPI_UNLOCK(sc);
+		WPI_UNLOCK();
 		return;
 	}
 
@@ -1808,7 +1808,7 @@ wpi_intr(void *arg)
 	if (sc->sc_ifp->if_flags & IFF_UP)
 		WPI_WRITE(sc, WPI_MASK, WPI_INTR_MASK);
 
-	WPI_UNLOCK(sc);
+	WPI_UNLOCK();
 }
 
 static uint8_t
@@ -2017,11 +2017,9 @@ wpi_tx_data(struct wpi_softc *sc, struct mbuf *m0, struct ieee80211_node *ni,
 static void
 wpi_start(struct ifnet *ifp)
 {
-	struct wpi_softc *sc = ifp->if_softc;
-
-	WPI_LOCK(sc);
+	WPI_LOCK();
 	wpi_start_locked(ifp);
-	WPI_UNLOCK(sc);
+	WPI_UNLOCK();
 }
 
 static void
@@ -2032,7 +2030,7 @@ wpi_start_locked(struct ifnet *ifp)
 	struct mbuf *m;
 	int ac;
 
-	WPI_LOCK_ASSERT(sc);
+	WPI_LOCK_ASSERT();
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0) {
 		ifq_purge(&ifp->if_snd);
@@ -2074,13 +2072,13 @@ wpi_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 		ieee80211_free_node(ni);
 		return ENETDOWN;
 	}
-	WPI_LOCK(sc);
+	WPI_LOCK();
 
 	/* management frames go into ring 0 */
 	if (sc->txq[0].queued > sc->txq[0].count - 8) {
 		ifp->if_flags |= IFF_OACTIVE;
 		m_freem(m);
-		WPI_UNLOCK(sc);
+		WPI_UNLOCK();
 		ieee80211_free_node(ni);
 		return ENOBUFS;		/* XXX */
 	}
@@ -2091,11 +2089,11 @@ wpi_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 	sc->sc_tx_timer = 5;
 	callout_reset(&sc->watchdog_to, hz, wpi_watchdog, sc);
 
-	WPI_UNLOCK(sc);
+	WPI_UNLOCK();
 	return 0;
 bad:
 	ifp->if_oerrors++;
-	WPI_UNLOCK(sc);
+	WPI_UNLOCK();
 	ieee80211_free_node(ni);
 	return EIO;		/* XXX */
 }
@@ -2110,7 +2108,7 @@ wpi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:
-		WPI_LOCK(sc);
+		WPI_LOCK();
 		if ((ifp->if_flags & IFF_UP)) {
 			if (!(ifp->if_flags & IFF_RUNNING)) {
 				wpi_init_locked(sc, 0);
@@ -2119,7 +2117,7 @@ wpi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 		} else if ((ifp->if_flags & IFF_RUNNING) ||
 			   (sc->flags & WPI_FLAG_HW_RADIO_OFF))
 			wpi_stop_locked(sc);
-		WPI_UNLOCK(sc);
+		WPI_UNLOCK();
 		if (startall)
 			ieee80211_start_all(ic);
 		break;
@@ -2176,7 +2174,7 @@ wpi_cmd(struct wpi_softc *sc, int code, const void *buf, int size, int async)
 
 #ifdef WPI_DEBUG
 	if (!async) {
-		WPI_LOCK_ASSERT(sc);
+		WPI_LOCK_ASSERT();
 	}
 #endif
 
@@ -3162,9 +3160,9 @@ wpi_init(void *arg)
 	struct ifnet *ifp = sc->sc_ifp;
 	struct ieee80211com *ic = ifp->if_l2com;
 
-	WPI_LOCK(sc);
+	WPI_LOCK();
 	wpi_init_locked(sc, 0);
-	WPI_UNLOCK(sc);
+	WPI_UNLOCK();
 
 	if (ifp->if_flags & IFF_RUNNING)
 		ieee80211_start_all(ic);		/* start all vaps */
@@ -3219,9 +3217,9 @@ wpi_stop_locked(struct wpi_softc *sc)
 static void
 wpi_stop(struct wpi_softc *sc)
 {
-	WPI_LOCK(sc);
+	WPI_LOCK();
 	wpi_stop_locked(sc);
-	WPI_UNLOCK(sc);
+	WPI_UNLOCK();
 }
 
 static void
@@ -3532,9 +3530,9 @@ wpi_scan_start(struct ieee80211com *ic)
 	struct ifnet *ifp = ic->ic_ifp;
 	struct wpi_softc *sc = ifp->if_softc;
 
-	WPI_LOCK(sc);
+	WPI_LOCK();
 	wpi_set_led(sc, WPI_LED_LINK, 20, 2);
-	WPI_UNLOCK(sc);
+	WPI_UNLOCK();
 }
 
 /**
@@ -3583,10 +3581,10 @@ wpi_scan_curchan(struct ieee80211_scan_state *ss, unsigned long maxdwell)
 	struct ifnet *ifp = vap->iv_ic->ic_ifp;
 	struct wpi_softc *sc = ifp->if_softc;
 
-	WPI_LOCK(sc);
+	WPI_LOCK();
 	if (wpi_scan(sc))
 		ieee80211_cancel_scan(vap);
-	WPI_UNLOCK(sc);
+	WPI_UNLOCK();
 }
 
 /**
@@ -3606,9 +3604,9 @@ wpi_hwreset(void *arg, int pending)
 {
 	struct wpi_softc *sc = arg;
 
-	WPI_LOCK(sc);
+	WPI_LOCK();
 	wpi_init_locked(sc, 0);
-	WPI_UNLOCK(sc);
+	WPI_UNLOCK();
 }
 
 static void
@@ -3616,9 +3614,9 @@ wpi_rfreset(void *arg, int pending)
 {
 	struct wpi_softc *sc = arg;
 
-	WPI_LOCK(sc);
+	WPI_LOCK();
 	wpi_rfkill_resume(sc);
-	WPI_UNLOCK(sc);
+	WPI_UNLOCK();
 }
 
 /*

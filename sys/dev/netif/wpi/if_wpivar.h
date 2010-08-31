@@ -206,8 +206,8 @@ struct wpi_softc {
 	char			domain[4];	/*reglatory domain XXX */
 };
 
-#define WPI_LOCK_INIT(_sc)
-#define WPI_LOCK(_sc) lwkt_gettoken(&wlan_token)
-#define WPI_UNLOCK(_sc) lwkt_reltoken(&wlan_token)
-#define WPI_LOCK_DESTROY(_sc)
-#define WPI_LOCK_ASSERT(_sc) ASSERT_LWKT_TOKEN_HELD(&wlan_token)
+#define WPI_LOCK_INIT()
+#define WPI_LOCK() lwkt_gettoken(&wlan_token)
+#define WPI_UNLOCK() lwkt_reltoken(&wlan_token)
+#define WPI_LOCK_DESTROY()
+#define WPI_LOCK_ASSERT() ASSERT_LWKT_TOKEN_HELD(&wlan_token)

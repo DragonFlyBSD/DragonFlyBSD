@@ -1328,7 +1328,7 @@ iwi_checkforqos(struct ieee80211vap *vap,
 #define	SUBTYPE(wh)	((wh)->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK)
 	const uint8_t *frm, *efrm, *wme;
 	struct ieee80211_node *ni;
-	uint16_t capinfo, status, associd;
+	uint16_t capinfo, associd;
 
 	/* NB: +8 for capinfo, status, associd, and first ie */
 	if (!(sizeof(*wh)+8 < len && len < IEEE80211_MAX_LEN) ||
@@ -1347,9 +1347,7 @@ iwi_checkforqos(struct ieee80211vap *vap,
 	efrm = ((const uint8_t *) wh) + len;
 
 	capinfo = le16toh(*(const uint16_t *)frm);
-	frm += 2;
-	status = le16toh(*(const uint16_t *)frm);
-	frm += 2;
+	frm += 4;
 	associd = le16toh(*(const uint16_t *)frm);
 	frm += 2;
 
@@ -1844,9 +1842,6 @@ iwi_tx_start(struct ifnet *ifp, struct mbuf *m0, struct ieee80211_node *ni,
 			m_freem(m0);
 			return ENOBUFS;
 		}
-
-		/* packet header may have moved, reset our local pointer */
-		wh = mtod(m0, struct ieee80211_frame *);
 	}
 
 	if (ieee80211_radiotap_active_vap(vap)) {
@@ -2806,7 +2801,6 @@ iwi_auth_and_assoc(struct iwi_softc *sc, struct ieee80211vap *vap)
 	}
 
 	IWI_STATE_BEGIN(sc, IWI_FW_ASSOCIATING);
-	error = 0;
 	mode = 0;
 
 	if (IEEE80211_IS_CHAN_A(ic->ic_curchan))
