@@ -514,6 +514,14 @@ start_init(void *dummy, struct trapframe *frame)
 	struct lwp *lp;
 	struct mount *mp;
 	struct vnode *vp;
+	char *env;
+
+        /*
+	 * This is passed in by the bootloader
+         */
+	env = kgetenv("kernelname");
+	if (env != NULL)
+		strlcpy(kernelname, env, sizeof(kernelname));
 
 	/*
 	 * The MP lock is not held on entry.  We release it before

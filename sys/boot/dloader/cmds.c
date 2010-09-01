@@ -117,9 +117,17 @@ command_local(int ac, char **av)
 	else
 		dvar_unset(name);
 
+	/*
+	 * These variable have to mirror to kenv because libstand or
+	 * other consumers may have hooks into them.
+	 */
 	if (strchr(name, '.') ||
 	    strcmp(name, "kernelname") == 0 ||
-	    strcmp(name, "module_path") == 0) {
+	    strcmp(name, "module_path") == 0 ||
+	    strcmp(name, "console") == 0 ||
+	    strcmp(name, "currdev") == 0 ||
+	    strcmp(name, "loaddev") == 0 ||
+	    strcmp(name, "bootfile") == 0) {
 		if (*data)
 			setenv(name, data, 1);
 		else
@@ -240,13 +248,18 @@ static int
 command_menuitem(int ac, char **av)
 {
 	char namebuf[32];
+	char *cp;
 
 	if (ac != 3) {
 		sprintf(command_errbuf, "Bad menuitem syntax");
 		return (CMD_ERROR);
 	}
-	curitem = strtol(av[1], NULL, 0);
-	snprintf(namebuf, sizeof(namebuf), "menu_%d", curitem);
+	curitem = (unsigned char)av[1][0];
+	if (curitem == 0) {
+		sprintf(command_errbuf, "Bad menuitem syntax");
+		return (CMD_ERROR);
+	}
+	snprintf(namebuf, sizeof(namebuf), "menu_%c", curitem);
 	dvar_set(namebuf, &av[2], 1);
 	curadd = 0;
 
@@ -264,7 +277,11 @@ command_menuadd(int ac, char **av)
 
 	if (ac == 1)
 		return(CMD_OK);
-	snprintf(namebuf, sizeof(namebuf), "item_%d_%d", curitem, curadd);
+	if (curitem == 0) {
+		sprintf(command_errbuf, "Missing menuitem for menuadd");
+		return(CMD_ERROR);
+	}
+	snprintf(namebuf, sizeof(namebuf), "item_%c_%d", curitem, curadd);
 	dvar_set(namebuf, &av[1], ac - 1);
 	++curadd;
 	return (CMD_OK);
@@ -283,6 +300,7 @@ command_menu(int ac, char **av)
 	char *cp;
 	int c;
 	int res;
+	int counting = 1;
 
 	menu_display();
 	if ((cp = getenv("autoboot_delay")) != NULL)
@@ -302,6 +320,14 @@ command_menu(int ac, char **av)
 				c = '1';
 				break;
 			}
+			if (c == ' ') {
+				if (counting) {
+					printf("\rCountdown halted by "
+					       "space   ");
+				}
+				counting = 0;
+				continue;
+			}
 			if (c == 0x1b) {
 				setenv("autoboot_delay", "NO", 1);
 				return(CMD_OK);
@@ -313,16 +339,18 @@ command_menu(int ac, char **av)
 			}
 			/* else ignore char */
 		}
-		t = time(NULL);
-		if (time_last == t)
-			continue;
-		time_last = t;
-		printf("\rBooting in %d second%s... ",
-			(int)(time_target - t),
-			((time_target - t) == 1 ? "" : "s"));
-		if ((int)(time_target - t) <= 0) {
-			c = '1';
-			break;
+		if (counting) {
+			t = time(NULL);
+			if (time_last == t)
+				continue;
+			time_last = t;
+			printf("\rBooting in %d second%s... ",
+				(int)(time_target - t),
+				((time_target - t) == 1 ? "" : "s"));
+			if ((int)(time_target - t) <= 0) {
+				c = '1';
+				break;
+			}
 		}
 	}
 	res = menu_execute(c);

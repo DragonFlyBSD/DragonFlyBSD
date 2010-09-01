@@ -578,7 +578,7 @@ file_lookup(const char *path, const char *name, int namelen, char **extlist)
 	if (len > extlen)
 	    extlen = len;
     }
-    result = malloc(pathlen + namelen + extlen + 2);
+    result = malloc(pathlen + namelen + extlen + 2 + 7 + 1);
     if (result == NULL)
 	return (NULL);
     bcopy(path, result, pathlen);
@@ -589,8 +589,15 @@ file_lookup(const char *path, const char *name, int namelen, char **extlist)
     cp += namelen;
     for (cpp = extlist; *cpp; cpp++) {
 	strcpy(cp, *cpp);
-	if (rel_stat(result, &st) == 0 && S_ISREG(st.st_mode)) {
-	    return result;
+	if (rel_stat(result, &st) == 0) {
+	    if (S_ISREG(st.st_mode)) {
+		return result;
+	    } else if (S_ISDIR(st.st_mode)) {
+		strcat(result, "/kernel");
+		if (rel_stat(result, &st) == 0 && S_ISREG(st.st_mode)) {
+		    return result;
+		}
+	    }
 	}
     }
     free(result);
@@ -634,10 +641,21 @@ file_search(const char *name, char **extlist)
     if (*name == 0)
 	return(strdup(name));
 
+    /*
+     * Qualified name.  If it is a directory tag on
+     * a "/kernel" to it.
+     */
     if (file_havepath(name)) {
 	/* Qualified, so just see if it exists */
-	if (rel_stat(name, &sb) == 0)
-	    return(strdup(name));
+	if (rel_stat(name, &sb) == 0) {
+	    if (S_ISDIR(sb.st_mode)) {
+		result = malloc(strlen(name) + 7 + 1);
+		sprintf(result, "%s/kernel", name);
+		return(result);
+	    } else {
+		return(strdup(name));
+	    }
+	}
 	return(NULL);
     }
     moduledir_rebuild();

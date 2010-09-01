@@ -93,10 +93,12 @@ menuadd loadall
 menuadd boot
 menuadd set autoboot_delay=NO
 
-menuitem 6 "Boot DragonFly using kernel.alt"
-menuadd cd ${base}kernel.alt
+menuitem 6 "Boot DragonFly without ACPI driver"
+menuadd cd ${base}kernel
 menuadd optinclude loader.conf
 menuadd optinclude loader.conf.local
+menuadd set hint.acpi.0.disabled=1
+menuadd set loader.acpi_disabled_by_user=1
 menuadd lunsetif acpi_load hint.acpi.0.disabled
 menuadd lunsetif ehci_load hint.ehci.0.disabled
 menuadd lunsetif ahci_load hint.ahci.disabled
@@ -115,8 +117,11 @@ menuadd loadall
 menuadd boot
 menuadd set autoboot_delay=NO
 
-menuitem 8 "Boot Backup kernel kernel.bak"
-menuadd cd ${base}kernel.bak
+menuitem 9 "Escape to loader prompt (also ESC)"
+menuadd set autoboot_delay=NO
+
+menuitem a "Boot Backup kernel kernel.alt"
+menuadd cd ${base}kernel.alt
 menuadd optinclude loader.conf
 menuadd optinclude loader.conf.local
 menuadd lunsetif acpi_load hint.acpi.0.disabled
@@ -126,7 +131,15 @@ menuadd loadall
 menuadd boot
 menuadd set autoboot_delay=NO
 
-menuitem 9 "Escape to loader prompt (also ESC)"
+menuitem b "Boot Backup kernel kernel.bak"
+menuadd cd ${base}kernel.bak
+menuadd optinclude loader.conf
+menuadd optinclude loader.conf.local
+menuadd lunsetif acpi_load hint.acpi.0.disabled
+menuadd lunsetif ehci_load hint.ehci.0.disabled
+menuadd lunsetif ahci_load hint.ahci.disabled
+menuadd loadall
+menuadd boot
 menuadd set autoboot_delay=NO
 
 menuitem R "Reboot"

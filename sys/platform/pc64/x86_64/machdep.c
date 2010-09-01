@@ -1639,7 +1639,6 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 #endif
 	struct mdglobaldata *gd;
 	u_int64_t msr;
-	char *env;
 
 #if JG
 	/*
@@ -1846,9 +1845,6 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	thread0.td_pcb->pcb_cr3 = KPML4phys;
 	thread0.td_pcb->pcb_ext = 0;
 	lwp0.lwp_md.md_regs = &proc0_tf;
-        env = kgetenv("kernelname");
-	if (env != NULL)
-		strlcpy(kernelname, env, sizeof(kernelname));
 
 	/* Location of kernel stack for locore */
 	return ((u_int64_t)thread0.td_pcb);
