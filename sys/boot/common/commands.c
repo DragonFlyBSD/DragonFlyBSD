@@ -132,7 +132,7 @@ command_help(int argc, char *argv[])
 
     /* page the help text from our load path */
     /* sprintf(buf, "%s/boot/loader.help", getenv("loaddev")); */
-    if ((hfd = rel_open("loader.help", O_RDONLY)) < 0) {
+    if ((hfd = rel_open("loader.help", NULL, O_RDONLY)) < 0) {
 	printf("Verbose help not available, use '?' to list commands\n");
 	return(CMD_OK);
     }
@@ -285,16 +285,12 @@ COMMAND_SET(unset, "unset", "unset a variable", command_unset);
 static int
 command_unset(int argc, char *argv[]) 
 {
-    int		err;
-    
     if (argc != 2) {
 	command_errmsg = "wrong number of arguments";
 	return(CMD_ERROR);
     } else {
-	if ((err = unsetenv(argv[1])) != 0) {
-	    command_errmsg = strerror(err);
-	    return(CMD_ERROR);
-	}
+	/* ignore any errors */
+	unsetenv(argv[1]);
     }
     return(CMD_OK);
 }

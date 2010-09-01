@@ -53,6 +53,8 @@ static int
 command_boot(int argc, char *argv[])
 {
     struct preloaded_file	*fp;
+    char *local_module_path;
+    char *exported_module_path;
     
     /*
      * See if the user has specified an explicit kernel to boot.
@@ -102,8 +104,34 @@ command_boot(int argc, char *argv[])
     if (archsw.arch_autoload() != 0)
 	return(CMD_ERROR);
 
+    /*
+     * Exec the kernel.  We have to shift our exported_module_path
+     * (which has the correct /boot prefix for the kernel) over to
+     * module_path.  If the exec fails we switch it back.
+     */
+    exported_module_path = getenv("exported_module_path");
+    if (exported_module_path) {
+	    exported_module_path = strdup(exported_module_path);
+	    local_module_path = getenv("module_path");
+	    if (local_module_path)
+		local_module_path = strdup(local_module_path);
+	    setenv("module_path", exported_module_path, 1);
+	    unsetenv("exported_module_path");
+    }
+
     /* Call the exec handler from the loader matching the kernel */
     file_formats[fp->f_loader]->l_exec(fp);
+
+    if (exported_module_path) {
+	    if (local_module_path) {
+		setenv("module_path", local_module_path, 1);
+		free(local_module_path);
+	    } else {
+		unsetenv("module_path");
+	    }
+	    setenv("exported_module_path", exported_module_path, 1);
+	    free(exported_module_path);
+    }
     return(CMD_ERROR);
 }
 

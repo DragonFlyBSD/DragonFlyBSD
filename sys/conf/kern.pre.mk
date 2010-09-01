@@ -18,6 +18,10 @@ SIZE?=		size
 OBJCOPY?=	objcopy
 
 COPTFLAGS?=-O -pipe
+#COPTFLAGS?=-O -fthread-jumps -fcse-follow-jumps -fcrossjumping -frerun-cse-after-loop -fno-guess-branch-probability --param min-crossjump-insns=1 -pipe
+#COPTFLAGS?=-O -fcrossjumping -pipe
+#COPTFLAGS?=-Os -fno-strict-aliasing -pipe
+#COPTFLAGS?=-O2 -fno-strict-aliasing -pipe
 .if !defined(NO_CPU_COPTFLAGS)
 COPTFLAGS+= ${_CPUCFLAGS}
 .endif

@@ -45,7 +45,7 @@ filedup(const char *path, int flags)
     int		fd;
     size_t	size, result;
     
-    if ((fd = rel_open(path, F_READ | flags)) == -1)
+    if ((fd = rel_open(path, NULL, F_READ | flags)) == -1)
 	return(NULL);
     
     printf("%s open, flags 0x%x\n", path, files[fd].f_flags);
@@ -87,7 +87,7 @@ filedup(const char *path, int flags)
     close(fd);
 
     /* reopen the file, realloc the buffer */
-    if ((fd = rel_open(path, F_READ | flags)) == -1)
+    if ((fd = rel_open(path, NULL, F_READ | flags)) == -1)
 	return(NULL);
     buf = alloc(size);
     result = read(fd, buf, size);

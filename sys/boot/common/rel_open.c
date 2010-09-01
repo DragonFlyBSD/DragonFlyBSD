@@ -38,32 +38,150 @@
 #include <string.h>
 #include "bootstrap.h"
 
-const char *DirBase;
+char *DirBase;
+
+COMMAND_SET(cd, "cd", "Change directory", command_chdir);
+COMMAND_SET(optcd, "optcd", "Change directory", command_optchdir);
+
+int
+command_chdir(int ac, char **av)
+{
+	if (ac != 2) {
+		sprintf(command_errbuf, "Missing path");
+		return(CMD_ERROR);
+	}
+	return(chdir(av[1]));
+}
+
+int
+command_optchdir(int ac, char **av)
+{
+	if (ac == 2)
+		chdir(av[1]);
+	return(CMD_OK);
+}
 
 int
 chdir(const char *path)
 {
 	struct stat st;
+	char *base;
+	char *p;
+	char *b;
+	char *s;
+	char *w;
+	int len;
+	int dlen;
+	int res;
 
-	if (stat(path, &st) == 0 && S_ISDIR(st.st_mode))
-		DirBase = path;
-	return 0;
+	if (DirBase == NULL)
+		DirBase = strdup("/");
+
+	len = strlen(path);
+	if (path[0] == '/') {
+		base = malloc(len + 2);		/* room for trailing / */
+		bcopy(path, base, len + 1);
+	} else {
+		while (len && path[len-1] == '/')
+			--len;
+		dlen = strlen(DirBase);
+		base = malloc(dlen + len + 2);	/* room for trailing / */
+		bcopy(DirBase, base, dlen);
+		bcopy(path, base + dlen, len);
+		base[dlen + len] = 0;
+	}
+
+	if (stat(base, &st) == 0 && S_ISDIR(st.st_mode)) {
+		p = b = w = s = base;
+		while (*s) {
+			if (*s == '/') {
+				if (s - b == 2 && b[0] == '.' && b[1] == '.') {
+					w = p;
+				} else {
+					p = b;
+					b = s + 1;
+				}
+				while (s[1] == '/')
+					++s;
+			}
+			*w = *s;
+			++w;
+			++s;
+		}
+		if (s - b == 2 && b[0] == '.' && b[1] == '.')
+			w = p;
+		while (w > base && w[-1] == '/')
+			--w;
+		*w++ = '/';
+		*w = 0;
+
+		if (DirBase)
+			free(DirBase);
+		DirBase = base;
+		res = CMD_OK;
+	} else {
+		free(base);
+		sprintf(command_errbuf, "Unable to find directory");
+		res = CMD_ERROR;
+	}
+	return (res);
+}
+
+COMMAND_SET(pwd, "pwd", "Get current directory", command_pwd);
+
+int
+command_pwd(int ac, char **av)
+{
+	printf("%s\n", DirBase ? DirBase : "/");
+	return(0);
 }
 
 int
-rel_open(const char *path, int flags)
+rel_open(const char *path, char **abspathp, int flags)
 {
 	int fd;
 	char *ptr;
 
-	if (DirBase && path[0] != '/') {
-		ptr = malloc(strlen(DirBase) + strlen(path) + 2);
-		sprintf(ptr, "%s/%s", DirBase, path);
+	if (DirBase == NULL)
+		DirBase = strdup("/");
+
+	if (path[0] != '/') {
+		ptr = malloc(strlen(DirBase) + strlen(path) + 1);
+		sprintf(ptr, "%s%s", DirBase, path);
 		fd = open(ptr, flags);
-		free(ptr);
+		if (abspathp && fd >= 0)
+			*abspathp = ptr;
+		else if (abspathp)
+			*abspathp = NULL;
+		else
+			free(ptr);
 	} else {
 		fd = open(path, flags);
+		if (abspathp && fd >= 0)
+			*abspathp = strdup(path);
+		else if (abspathp)
+			*abspathp = NULL;
 	}
 	return(fd);
+}
+
+int
+rel_stat(const char *path, struct stat *st)
+{
+	char *ptr;
+	int res;
+
+	if (DirBase == NULL)
+		DirBase = strdup("/");
+
+	if (path[0] != '/') {
+		ptr = malloc(strlen(DirBase) + strlen(path) + 1);
+		sprintf(ptr, "%s%s", DirBase, path);
+		res = stat(ptr, st);
+		free(ptr);
+	} else {
+		res = stat(path, st);
+	}
+	return(res);
 }
 

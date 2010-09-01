@@ -66,7 +66,7 @@ static void			moduledir_rebuild(void);
 /* load address should be tweaked by first module loaded (kernel) */
 static vm_offset_t	loadaddr = 0;
 
-static const char	*default_searchpath ="/boot;/boot/modules;/;/modules";
+static const char	*default_searchpath ="modules;KERNEL";
 
 static STAILQ_HEAD(, moduledir) moduledir_list = STAILQ_HEAD_INITIALIZER(moduledir_list);
 
@@ -327,7 +327,7 @@ file_loadraw(char *type, char *name)
     }
     name = cp;
     
-    if ((fd = rel_open(name, O_RDONLY)) < 0) {
+    if ((fd = rel_open(name, NULL, O_RDONLY)) < 0) {
 	sprintf(command_errbuf, "can't open '%s': %s", name, strerror(errno));
 	free(name);
 	return(CMD_ERROR);
@@ -589,8 +589,9 @@ file_lookup(const char *path, const char *name, int namelen, char **extlist)
     cp += namelen;
     for (cpp = extlist; *cpp; cpp++) {
 	strcpy(cp, *cpp);
-	if (stat(result, &st) == 0 && S_ISREG(st.st_mode))
+	if (rel_stat(result, &st) == 0 && S_ISREG(st.st_mode)) {
 	    return result;
+	}
     }
     free(result);
     return NULL;
@@ -635,7 +636,7 @@ file_search(const char *name, char **extlist)
 
     if (file_havepath(name)) {
 	/* Qualified, so just see if it exists */
-	if (stat(name, &sb) == 0)
+	if (rel_stat(name, &sb) == 0)
 	    return(strdup(name));
 	return(NULL);
     }
@@ -864,8 +865,8 @@ moduledir_readhints(struct moduledir *mdp)
     if (mdp->d_hints != NULL || (mdp->d_flags & MDIR_NOHINTS))
 	return;
     path = moduledir_fullpath(mdp, "linker.hints");
-    if (stat(path, &st) != 0 || st.st_size < (sizeof(version) + sizeof(int)) ||
-	st.st_size > 100 * 1024 || (fd = rel_open(path, O_RDONLY)) < 0) {
+    if (rel_stat(path, &st) != 0 || st.st_size < (sizeof(version) + sizeof(int)) ||
+	st.st_size > 100 * 1024 || (fd = rel_open(path, NULL, O_RDONLY)) < 0) {
 	free(path);
 	mdp->d_flags |= MDIR_NOHINTS;
 	return;

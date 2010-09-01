@@ -108,7 +108,7 @@ command_ls(int argc, char *argv[])
 		buf = malloc(strlen(path) + strlen(d->d_name) + 2);
 		sprintf(buf, "%s/%s", path, d->d_name);
 		/* ignore return, could be symlink, etc. */
-		if (stat(buf, &sb))
+		if (rel_stat(buf, &sb))
 		    sb.st_size = 0;
 		free(buf);
 		sprintf(lbuf, " %c %8d %s\n", typestr[d->d_type],
@@ -154,11 +154,7 @@ ls_getdir(char **pathp)
 	goto out;
     }
     
-    /* If there's no path on the device, assume '/' */
-    if (*cp == 0)
-	strcat(path, "/");
-
-    fd = rel_open(path, O_RDONLY);
+    fd = rel_open(cp, NULL, O_RDONLY);
     if (fd < 0) {
 	sprintf(command_errbuf, "open '%s' failed: %s", path, strerror(errno));
 	goto out;

@@ -11,7 +11,7 @@
 # KMOD          The name of the kernel module to build.
 #
 # KMODDIR	Base path for kernel modules (see kld(4)).
-#		[${DESTKERNDIR}/${DESTMODULESNAME}]
+#		[${DESTKERNDIR}]
 #
 # KMODOWN	KLD owner. [${BINOWN}]
 #
@@ -60,7 +60,7 @@ OBJCOPY?=	objcopy
 KMODLOAD?=	/sbin/kldload
 KMODUNLOAD?=	/sbin/kldunload
 
-KMODDIR?=	${DESTKERNDIR}/${DESTMODULESNAME}
+KMODDIR?=	${DESTKERNDIR}
 KMODOWN?=	${BINOWN}
 KMODGRP?=	${BINGRP}
 KMODMODE?=	${BINMODE}

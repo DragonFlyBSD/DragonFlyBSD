@@ -1,7 +1,7 @@
 # $FreeBSD: src/sys/boot/common/Makefile.inc,v 1.16 2003/06/26 03:51:57 peter Exp $
 # $DragonFly: src/sys/boot/common/Makefile.inc,v 1.5 2008/09/02 17:21:12 dillon Exp $
 
-SRCS+=	bcache.c boot.c commands.c console.c devopen.c interp.c 
+SRCS+=	bcache.c boot.c commands.c console.c devopen.c
 SRCS+=	interp_backslash.c interp_parse.c ls.c misc.c 
 SRCS+=	module.c panic.c rel_open.c
 
@@ -30,9 +30,17 @@ SRCS+=	pnp.c
 
 # Forth interpreter
 .if BOOT_FORTH
-SRCS+=	interp_forth.c
+SRCS+=	do_forth.c
 MAN+=	../forth/loader.conf.5
 MAN+=	../forth/loader.4th.8
+.endif
+.if BOOT_DLOADER
+SRCS+=	do_dloader.c
+#MAN+=	../dloader/loader.conf.5
+#MAN+=	../dloader/loader.dloader.8
+.endif
+.if BOOT_DEFAULT
+SRCS+=	do_default.c
 .endif
 
 MAN+=	loader.8

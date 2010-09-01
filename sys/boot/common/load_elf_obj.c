@@ -97,7 +97,7 @@ __elfN(obj_loadfile)(char *filename, u_int64_t dest,
 	 */
 	if (filename == NULL)	/* can't handle nameless */
 		return(EFTYPE);
-	if ((ef.fd = rel_open(filename, O_RDONLY)) == -1)
+	if ((ef.fd = rel_open(filename, NULL, O_RDONLY)) == -1)
 		return(errno);
 
 	hdr = &ef.hdr;

@@ -71,7 +71,8 @@ int	bf_run(char *line);
 int	autoboot(int timeout, char *prompt);
 void	autoboot_maybe(void);
 int	getrootmount(char *rootdev);
-int	rel_open(const char *path, int flags);
+int	rel_open(const char *path, char **abspathp, int flags);
+int	rel_stat(const char *path, struct stat *st);
 int	chdir(const char *path);
 
 /* misc.c */

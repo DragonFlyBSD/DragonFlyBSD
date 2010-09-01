@@ -5,10 +5,8 @@
 .MAKEFLAGS:  MACHINE_ARCH=i386 MACHINE_PLATFORM=pc32 REALLY_X86_64=true
 .endif
 
-.if !defined(NOFORTH) && ${MACHINE_ARCH} != "powerpc"
-# Build the add-in FORTH interpreter
-SUBDIR+=		ficl
-.endif
+# Build DLoader
+SUBDIR+=		dloader
 
 # Build OpenFirmware library
 .if ${MACHINE_ARCH} == "powerpc" || ${MACHINE_ARCH} == "sparc64"

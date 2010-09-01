@@ -99,7 +99,18 @@ parse(int *argc, char ***argv, char *str)
     while (*p) {
 	switch (state) {
 	case STR:
-	    if ((*p == '\\') && p[1]) {
+	    /*
+	     * Check comment
+	     */
+	    if (*p == '#' && quote == 0) {
+		*p = 0;
+		break;
+	    }
+
+	    /*
+	     * Check line continuation
+	     */
+	    if (*p == '\\' && p[1]) {
 		p++;
 		PARSE_FAIL(i == (PARSE_BUFSIZE - 1));
 		buf[i++] = *p++;
@@ -164,8 +175,8 @@ parse(int *argc, char ***argv, char *str)
     }
     args[ac] = NULL;
     *argc = ac;
-    *argv = (char **)malloc((sizeof(char *) * ac + 1));
-    bcopy(args, *argv, sizeof(char *) * ac + 1);
+    *argv = (char **)malloc(sizeof(char *) * (ac + 1));
+    bcopy(args, *argv, sizeof(char *) * (ac + 1));
     free(buf);
     free(copy);
     return 0;

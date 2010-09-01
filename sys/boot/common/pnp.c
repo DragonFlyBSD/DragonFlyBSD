@@ -176,7 +176,7 @@ pnp_readconf(char *path)
     char		*cp, *ep, *tp, c;
 
     /* try to open the file */
-    if ((fd = rel_open(path, O_RDONLY)) >= 0) {
+    if ((fd = rel_open(path, NULL, O_RDONLY)) >= 0) {
 	line = 0;
 	currbus = NULL;
 	

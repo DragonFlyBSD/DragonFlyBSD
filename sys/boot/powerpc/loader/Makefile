@@ -33,14 +33,15 @@ CFLAGS+=	-DLOADER_NET_SUPPORT
 
 ###.if !defined(NOFORTH)
 #### Enable BootForth
-###BOOT_FORTH=	yes
-###CFLAGS+=	-DBOOT_FORTH -I${.CURDIR}/../../ficl -I${.CURDIR}/../../ficl/powerpc
-###.if exists(${.OBJDIR}/../../ficl/libficl.a)
-###LIBFICL=	${.OBJDIR}/../../ficl/libficl.a
+###BOOT_DLOADER=	yes
+###CFLAGS+=	-I${.CURDIR}/../../dloader -I${.CURDIR}/../../dloader/powerpc
+###.if exists(${.OBJDIR}/../../dloader/libdloader.a)
+###LIBDLOADER=	${.OBJDIR}/../../dloader/libdloader.a
 ###.else
-###LIBFICL=	${.CURDIR}/../../ficl/libficl.a
+###LIBDLOADER=	${.CURDIR}/../../dloader/libdloader.a
 ###.endif
 ###.endif
+BOOT_DEFAULT=	yes
 
 # Always add MI sources 
 .PATH:		${.CURDIR}/../../common
@@ -89,20 +90,21 @@ beforeinstall:
 	${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 \
 		${.CURDIR}/${BASE}.help ${DESTDIR}/boot
 .endif
-.if !exists(${DESTDIR}/boot/loader.rc)
+.if !exists(${DESTDIR}/boot/dloader.rc)
 	${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 \
-		${.CURDIR}/../../forth/loader.rc ${DESTDIR}/boot
+		${.CURDIR}/../../dloader/dloader.rc ${DESTDIR}/boot
 .endif
-	${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 \
-		${.CURDIR}/../../forth/loader.4th ${DESTDIR}/boot
-	${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 \
-		${.CURDIR}/../../forth/support.4th ${DESTDIR}/boot
-	${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 \
-		${.CURDIR}/../../forth/loader.conf ${DESTDIR}/boot/defaults
 
-${PROG}: ${OBJS} ${LIBOFW} ${LIBSTAND} ${LIBFICL} start.o vers.o
+#	${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 \
+#		${.CURDIR}/../../forth/loader.4th ${DESTDIR}/boot
+#	${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 \
+#		${.CURDIR}/../../forth/support.4th ${DESTDIR}/boot
+#	${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 \
+#		${.CURDIR}/../../forth/loader.conf ${DESTDIR}/boot/defaults
+
+${PROG}: ${OBJS} ${LIBOFW} ${LIBSTAND} ${LIBDLOADER} start.o vers.o
 	${LD} ${LDFLAGS} -o ${.TARGET} start.o ${OBJS} \
-		vers.o ${LIBFICL} ${LIBOFW} ${LIBSTAND}
+		vers.o ${LIBDLOADER} ${LIBOFW} ${LIBSTAND}
 
 machine:
 	${LN} -sf ${.CURDIR}/../../../powerpc/include machine

@@ -98,6 +98,7 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
     int				err;
     u_int			pad;
     ssize_t			bytes_read;
+    char			*fullpath;
 
     fp = NULL;
     bzero(&ef, sizeof(struct elf_file));
@@ -107,11 +108,12 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
      */
     if (filename == NULL)	/* can't handle nameless */
 	return(EFTYPE);
-    if ((ef.fd = rel_open(filename, O_RDONLY)) == -1)
+    if ((ef.fd = rel_open(filename, &fullpath, O_RDONLY)) == -1)
 	return(errno);
     ef.firstpage = malloc(PAGE_SIZE);
     if (ef.firstpage == NULL) {
 	close(ef.fd);
+	free(fullpath);
 	return(ENOMEM);
     }
     bytes_read = read(ef.fd, ef.firstpage, PAGE_SIZE);
@@ -194,8 +196,30 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
 	    err = EPERM;
 	    goto out;
     }
-    if (ef.kernel)
-	setenv("kernelname", filename, 1);
+
+    /*
+     * Set the kernel name and module path correctly for the kernel's
+     * consumption.  Always prepend a /boot if we don't have one.
+     */
+    if (ef.kernel) {
+	char *mptr;
+	char *fpend;
+	const char *prefix = "";
+
+	mptr = malloc(strlen(fullpath) * 2 + 10 + 16);
+	if (strncmp(fullpath, "/boot/", 6) != 0)
+		prefix = "/boot";
+	sprintf(mptr, "%s%s", prefix, fullpath);
+	setenv("kernelname", mptr, 1);
+
+	fpend = strrchr(mptr, '/');
+	*fpend = 0;
+	if (strcmp(mptr, "/boot") == 0)
+		sprintf(mptr, "/boot/modules");
+	/* this will be moved to "module_path" on boot */
+	setenv("exported_module_path", mptr, 1);
+	free(mptr);
+    }
     fp->f_name = strdup(filename);
     fp->f_type = strdup(ef.kernel ? __elfN(kerneltype) : __elfN(moduletype));
 
@@ -226,6 +250,8 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
     if (ef.firstpage)
 	free(ef.firstpage);
     close(ef.fd);
+    if (fullpath)
+	free(fullpath);
     return(err);
 }
 

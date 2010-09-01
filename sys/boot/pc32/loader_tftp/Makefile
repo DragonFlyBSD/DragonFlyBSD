@@ -31,12 +31,12 @@ HAVE_ISABUS=	yes
 
 .if !defined(NOFORTH)
 # Enable BootForth
-BOOT_FORTH=	yes
-CFLAGS+=	-DBOOT_FORTH -I${.CURDIR}/../../ficl -I${.CURDIR}/../../ficl/i386
-.if exists(${.OBJDIR}/../../ficl/libficl.a)
-LIBFICL=	${.OBJDIR}/../../ficl/libficl.a
+BOOT_DLOADER=	yes
+CFLAGS+=	-I${.CURDIR}/../../dloader -I${.CURDIR}/../../dloader/i386
+.if exists(${.OBJDIR}/../../dloader/libdloader.a)
+LIBDLOADER=	${.OBJDIR}/../../dloader/libdloader.a
 .else
-LIBFICL=	${.CURDIR}/../../ficl/libficl.a
+LIBDLOADER=	${.CURDIR}/../../dloader/libdloader.a
 .endif
 .endif
 
@@ -108,14 +108,13 @@ ${PROG}.bin: ${PROG}.sym
 ${PROG}.help: help.common help.i386
 	cat ${.ALLSRC} | awk -f ${.CURDIR}/../../common/merge_help.awk > ${.TARGET}
 
-.PATH: ${.CURDIR}/../../forth 
-FILES=	${PROG}.help loader.4th support.4th loader.conf loader-bootp.conf
-FILES+= screen.4th frames.4th beastie.4th
+.PATH: ${.CURDIR}/../../dloader
+FILES=	${PROG}.help loader.conf loader-bootp.conf
 FILESDIR_loader.conf=	/boot/defaults
 FILESDIR_loader-bootp.conf=	/boot/defaults
 
-.if !exists(${DESTDIR}/boot/loader.rc)
-FILES+=	${.CURDIR}/../loader/loader.rc
+.if !exists(${DESTDIR}/boot/dloader.rc)
+FILES+=	${.CURDIR}/../loader/dloader.rc
 .endif
 
 .include "../Makefile.inc"
@@ -123,9 +122,9 @@ FILES+=	${.CURDIR}/../loader/loader.rc
 # Cannot use ${OBJS} above this line
 .include <bsd.prog.mk>
 
-${PROG}.sym: ${OBJS} ${LIBI386} ${LIBSTAND} ${LIBFICL} vers.o
+${PROG}.sym: ${OBJS} ${LIBI386} ${LIBSTAND} ${LIBDLOADER} vers.o
 	${CC} ${LDFLAGS} -o ${.TARGET} ${BTXCRT} ${OBJS} vers.o \
-		${LIBFICL} ${LIBI386} ${LIBSTAND}
+		${LIBDLOADER} ${LIBI386} ${LIBSTAND}
 
 # If it's not there, don't consider it a target
 .if exists(${.CURDIR}/../../../i386/include)

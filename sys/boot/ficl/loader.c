@@ -433,7 +433,7 @@ static void pfopen(FICL_VM *pVM)
     name[count] = 0;
 
     /* open the file */
-    fd = rel_open(name, mode);
+    fd = rel_open(name, NULL, mode);
     free(name);
     stackPushINT(pVM->pStack, fd);
     return;

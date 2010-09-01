@@ -1,0 +1,133 @@
+# Default menu
+#
+#
+
+menuclear
+unload
+
+unset boot_askname
+unset boot_cdrom
+unset boot_userconfig
+unset boot_ddb
+unset boot_gdb
+unset boot_single
+unset boot_verbose
+unset boot_vidcons
+unset boot_serial
+
+# Re-CD into the originally calculated base directory and set the
+# module_path.
+#
+# The module_path is a bit fragile, we want to set it to the current h
+# directory and ./modules subdirectory only, which is "<empty>;modules"
+#
+cd ${base}
+set module_path=";modules"
+
+acpi_load="YES"
+ahci_load="YES"
+ehci_load="YES"
+
+menuitem 1 "Boot DragonFly [default]"
+menuadd optcd kernel
+menuadd optinclude loader.conf
+menuadd optinclude loader.conf.local
+menuadd lunsetif acpi_load hint.acpi.0.disabled
+menuadd lunsetif ehci_load hint.ehci.0.disabled
+menuadd lunsetif ahci_load hint.ahci.disabled
+menuadd loadall
+menuadd boot
+
+menuitem 2 "Boot DragonFly in Safe Mode"
+menuadd optcd kernel
+menuadd optinclude loader.conf
+menuadd optinclude loader.conf.local
+menuadd set hint.acpi.0.disabled=1
+menuadd set loader.acpi_disabled_by_user=1
+menuadd set hint.ehci.0.disabled=1
+menuadd set loader.ehci_disabled_by_user=1
+menuadd set hw.ata.ata_dma=0
+menuadd set hw.ata.atapi_dma=0
+menuadd set hw.ata.wc=0
+menuadd set hw.eisa_slots=0
+menuadd lunsetif acpi_load hint.acpi.0.disabled
+menuadd lunsetif ehci_load hint.ehci.0.disabled
+menuadd lunsetif ahci_load hint.ahci.disabled
+menuadd loadall
+menuadd boot
+menuadd set autoboot_delay=NO
+
+menuitem 3 "Boot DragonFly in single user mode"
+menuadd optcd kernel
+menuadd optinclude loader.conf
+menuadd optinclude loader.conf.local
+menuadd set boot_single="YES"
+menuadd lunsetif acpi_load hint.acpi.0.disabled
+menuadd lunsetif ehci_load hint.ehci.0.disabled
+menuadd lunsetif ahci_load hint.ahci.disabled
+menuadd loadall
+menuadd boot
+menuadd set autoboot_delay=NO
+
+menuitem 4 "Boot DragonFly with verbose logging"
+menuadd optcd kernel
+menuadd optinclude loader.conf
+menuadd optinclude loader.conf.local
+menuadd set boot_verbose=YES
+menuadd lunsetif acpi_load hint.acpi.0.disabled
+menuadd lunsetif ehci_load hint.ehci.0.disabled
+menuadd lunsetif ahci_load hint.ahci.disabled
+menuadd loadall
+menuadd boot
+menuadd set autoboot_delay=NO
+
+menuitem 5 "Boot DragonFly without AHCI driver"
+menuadd optcd kernel
+menuadd optinclude loader.conf
+menuadd optinclude loader.conf.local
+menuadd set hint.ahci.disabled=YES
+menuadd lunsetif acpi_load hint.acpi.0.disabled
+menuadd lunsetif ehci_load hint.ehci.0.disabled
+menuadd lunsetif ahci_load hint.ahci.disabled
+menuadd loadall
+menuadd boot
+menuadd set autoboot_delay=NO
+
+menuitem 6 "Boot DragonFly using kernel.alt"
+menuadd cd ${base}kernel.alt
+menuadd optinclude loader.conf
+menuadd optinclude loader.conf.local
+menuadd lunsetif acpi_load hint.acpi.0.disabled
+menuadd lunsetif ehci_load hint.ehci.0.disabled
+menuadd lunsetif ahci_load hint.ahci.disabled
+menuadd loadall
+menuadd boot
+menuadd set autoboot_delay=NO
+
+menuitem 7 "Boot DragonFly using kernel.old"
+menuadd cd ${base}kernel.old
+menuadd optinclude loader.conf
+menuadd optinclude loader.conf.local
+menuadd lunsetif acpi_load hint.acpi.0.disabled
+menuadd lunsetif ehci_load hint.ehci.0.disabled
+menuadd lunsetif ahci_load hint.ahci.disabled
+menuadd loadall
+menuadd boot
+menuadd set autoboot_delay=NO
+
+menuitem 8 "Boot Backup kernel kernel.bak"
+menuadd cd ${base}kernel.bak
+menuadd optinclude loader.conf
+menuadd optinclude loader.conf.local
+menuadd lunsetif acpi_load hint.acpi.0.disabled
+menuadd lunsetif ehci_load hint.ehci.0.disabled
+menuadd lunsetif ahci_load hint.ahci.disabled
+menuadd loadall
+menuadd boot
+menuadd set autoboot_delay=NO
+
+menuitem 9 "Escape to loader prompt (also ESC)"
+menuadd set autoboot_delay=NO
+
+menuitem R "Reboot"
+menuadd reboot
