@@ -553,8 +553,10 @@ ptsstart(struct tty *tp)
 	lwkt_gettoken(&tty_token);
 	struct pt_ioctl *pti = tp->t_dev->si_drv1;
 
-	if (tp->t_state & TS_TTSTOP)
+	if (tp->t_state & TS_TTSTOP) {
+		lwkt_reltoken(&tty_token);
 		return;
+	}
 	if (pti) {
 		if (pti->pt_flags & PF_STOPPED) {
 			pti->pt_flags &= ~PF_STOPPED;
