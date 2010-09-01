@@ -215,7 +215,7 @@ modules-tags:
 # We may have to remove deprecated kernel.old files before we can create
 # the kernel.old directory.
 #
-modules-install:
+modules-install: kernel-installable
 .if !defined(NO_MODULES_OLD)
 .  ifdef NO_KERNEL_OLD_STRIP
 	set -- ${DESTDIR}${DESTKERNDIR}/*;			\
