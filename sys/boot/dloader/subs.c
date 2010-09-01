@@ -67,15 +67,20 @@ dvar_set(const char *name, char **data, int count)
 		var = malloc(sizeof(*var) + strlen(name) + 1);
 		var->name = (char *)(void *)(var + 1);
 		strcpy(var->name, name);
-		var->count = count;
-		var->data = malloc(sizeof(char *) * (count + 1));
-		var->data[count] = NULL;
-		while (--count >= 0)
-			var->data[count] = strdup(data[count]);
 		var->next = NULL;
 		*dvlastp = var;
 		dvlastp = &var->next;
+	} else {
+		while (--var->count >= 0)
+			free(var->data[var->count]);
+		free(var->data);
+		/* var->data = NULL; not needed */
 	}
+	var->count = count;
+	var->data = malloc(sizeof(char *) * (count + 1));
+	var->data[count] = NULL;
+	while (--count >= 0)
+		var->data[count] = strdup(data[count]);
 }
 
 void
