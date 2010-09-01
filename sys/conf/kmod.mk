@@ -60,6 +60,10 @@ OBJCOPY?=	objcopy
 KMODLOAD?=	/sbin/kldload
 KMODUNLOAD?=	/sbin/kldunload
 
+# KERNEL is needed when running make install directly from
+# the obj directory.
+KERNEL?=	kernel
+
 KMODDIR?=	${DESTKERNDIR}
 KMODOWN?=	${BINOWN}
 KMODGRP?=	${BINGRP}
