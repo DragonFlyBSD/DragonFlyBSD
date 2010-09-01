@@ -236,10 +236,8 @@ draw_txtcharcursor(scr_stat *scp, int at, u_short c, u_short a, int flip)
 			font = sc->font_14;
 			h = 14;
 		}
-		if (scp->cursor_base >= h) {
-			lwkt_reltoken(&tty_token);
+		if (scp->cursor_base >= h)
 			return;
-		}
 		if (flip)
 			a = (a & 0x8800)
 				| ((a & 0x7000) >> 4) | ((a & 0x0700) << 4);

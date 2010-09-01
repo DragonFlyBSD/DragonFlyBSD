@@ -441,6 +441,7 @@ kbd_allocate(char *driver, int unit, void *id, kbd_callback_func_t *func,
 	if (index >= 0) {
 		if (KBD_IS_BUSY(keyboard[index])) {
 			crit_exit();
+			lwkt_reltoken(&tty_token);
 			return -1;
 		}
 		keyboard[index]->kb_token = id;
@@ -1298,8 +1299,10 @@ make_accent_char(keyboard_t *kbd, u_int ch, int *accents)
 	for (i = 0; i < NUM_ACCENTCHARS; ++i) {
 		if (acc->map[i][0] == 0)	/* end of table */
 			break;
-		if (acc->map[i][0] == ch)
+		if (acc->map[i][0] == ch) {
+			lwkt_reltoken(&tty_token);
 			return acc->map[i][1];
+		}
 	}
 	lwkt_reltoken(&tty_token);
 	/* this char cannot be accented... */

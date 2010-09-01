@@ -117,27 +117,40 @@ typedef struct video_switch {
 } video_switch_t;
 
 #define save_palette(adp, pal)				\
-	lwkt_gettoken(&tty_token);			\
-	(*vidsw[(adp)->va_index]->save_palette)((adp), (pal)); \
-	lwkt_reltoken(&tty_token)
+	do {						\
+		lwkt_gettoken(&tty_token);		\
+		(*vidsw[(adp)->va_index]->save_palette)((adp), (pal)); \
+		lwkt_reltoken(&tty_token);		\
+	} while (0)
+
 #define load_palette(adp, pal)				\
-	lwkt_gettoken(&tty_token);			\
-	(*vidsw[(adp)->va_index]->load_palette)((adp), (pal)); \
-	lwkt_reltoken(&tty_token)
+	do {						\
+		lwkt_gettoken(&tty_token);		\
+		(*vidsw[(adp)->va_index]->load_palette)((adp), (pal)); \
+		lwkt_reltoken(&tty_token);		\
+	} while (0)
+
 #define get_mode_info(adp, mode, buf)			\
 	(*vidsw[(adp)->va_index]->get_info)((adp), (mode), (buf))
+
 #define set_video_mode(adp, mode)			\
 	(*vidsw[(adp)->va_index]->set_mode)((adp), (mode))
+
 #if 0 /* XXX conflicts with syscons' set_border() */
 #define set_border(adp, border)				\
-	lwkt_gettoken(&tty_token);			\
-	(*vidsw[(adp)->va_index]->set_border)((adp), (border)); \
-	lwkt_reltoken(&tty_token)
+	do {						\
+		lwkt_gettoken(&tty_token);		\
+		(*vidsw[(adp)->va_index]->set_border)((adp), (border)); \
+		lwkt_reltoken(&tty_token);		\
+	} while (0)
 #endif
+
 #define set_origin(adp, o)				\
-	lwkt_gettoken(&tty_token);			\
-	(*vidsw[(adp)->va_index]->set_win_org)(adp, o); \
-	lwkt_reltoken(&tty_token)
+	do {						\
+		lwkt_gettoken(&tty_token);		\
+		(*vidsw[(adp)->va_index]->set_win_org)(adp, o); \
+		lwkt_reltoken(&tty_token);		\
+	} while (0)
 
 /* XXX - add more macros */
 

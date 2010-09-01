@@ -1043,6 +1043,7 @@ scioctl(struct dev_ioctl_args *ap)
 	    break;
 	}
 	crit_exit();
+	lwkt_reltoken(&tty_token);
 	return error;
 
     case VT_OPENQRY:    	/* return free virtual console */
@@ -1165,8 +1166,10 @@ scioctl(struct dev_ioctl_args *ap)
 	return error;
 
     case KDSETRAD:      	/* set keyboard repeat & delay rates (old) */
-	if (*(int *)data & ~0x7f)
+	if (*(int *)data & ~0x7f) {
+	    lwkt_reltoken(&tty_token);
 	    return EINVAL;
+	}
 	error = kbd_ioctl(sc->kbd, cmd, data);
 	if (error == ENOIOCTL)
 	    error = ENODEV;
