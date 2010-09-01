@@ -420,7 +420,8 @@ init_sys_memory(char *imageFile)
 		char *zmem;
 		off_t off = st.st_size & ~SEG_MASK;
 
-		kprintf("%s: Reserving blocks for memory image\n", imageFile);
+		/* cannot use kprintf yet */
+		printf("%s: Reserving blocks for memory image\n", imageFile);
 		zmem = malloc(SEG_SIZE);
 		bzero(zmem, SEG_SIZE);
 		lseek(fd, off, SEEK_SET);
@@ -487,6 +488,8 @@ init_kern_memory(void)
 	KvaStart = (vm_offset_t)base;
 	KvaSize = KERNEL_KVA_SIZE;
 	KvaEnd = KvaStart + KvaSize;
+
+	/* cannot use kprintf yet */
 	printf("KVM mapped at %p-%p\n", (void *)KvaStart, (void *)KvaEnd);
 
 	/* MAP_FILE? */
