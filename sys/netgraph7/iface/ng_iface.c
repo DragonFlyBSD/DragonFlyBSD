@@ -457,7 +457,7 @@ ng_iface_output(struct ifnet *ifp, struct mbuf *m,
 static void
 ng_iface_start(struct ifnet *ifp)
 {
-	struct mbuf *m;
+	struct mbuf *m = NULL;
 	sa_family_t sa;
 
 	KASSERT(ifq_is_enabled(&ifp->if_snd), ("%s without ALTQ", __func__));

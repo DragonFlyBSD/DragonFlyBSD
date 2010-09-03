@@ -104,7 +104,7 @@ lock_sleep(void *ident, int flags, const char *wmesg, int timo,
 	KKASSERT((mode == LK_EXCLUSIVE) || (mode == LK_SHARED));
 
 	crit_enter();
-	tsleep_interlock(ident);
+	tsleep_interlock(ident, flags);
 	lockmgr(lk, LK_RELEASE);
 	err = tsleep(ident, flags, wmesg, timo);
 	crit_exit();
