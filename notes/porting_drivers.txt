@@ -6,9 +6,20 @@ $DragonFly: doc/notes/porting_drivers.txt,v 1.4 2008/04/06 19:08:30 pavalos Exp 
   a disk driver /usr/src/sys/dev/blah in FreeBSD would likely be 
   /usr/src/sys/dev/disk/blah in DragonFly.
 
-* Edit all source files and move the FBSDID declaration into a comment
-  (removing the declaration but leave the CVS id in the comment).  Remove
-  the #include <sys/cdefs.h> as well.
+* Keep all the CVS ids in the files for future reference point. If the files
+  don't have it, please add it to them. You can find them out from CVSWeb
+  repository or by checking out the specific source files with the FreeBSD
+  SVN client.
+  This could be automated in the case pkgsrc's SVN client had the set of
+  patches that provide this functionality.
+
+* Try to keep all the CVS ids from FreeBSD for future reference. You can
+  get them by checking out the related source files with the FreeBSD SVN
+  client or having a look at their cvsweb site. A permanent solution for
+  this issue would be to patch pkgsrc's SVN client with FreeBSD patches to
+  get the IDs properly handled automatically.
+
+* Remove FBSDID declaration and '#include <sys/cdefs.h>' as well.
 
 * Driver local #include's probably use a <dev/blah/blah.h> path.  These
   need to be changed to "blah.h".   '.' is not included in the #include
