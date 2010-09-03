@@ -13,12 +13,6 @@ $DragonFly: doc/notes/porting_drivers.txt,v 1.4 2008/04/06 19:08:30 pavalos Exp 
   This could be automated in the case pkgsrc's SVN client had the set of
   patches that provide this functionality.
 
-* Try to keep all the CVS ids from FreeBSD for future reference. You can
-  get them by checking out the related source files with the FreeBSD SVN
-  client or having a look at their cvsweb site. A permanent solution for
-  this issue would be to patch pkgsrc's SVN client with FreeBSD patches to
-  get the IDs properly handled automatically.
-
 * Remove FBSDID declaration and '#include <sys/cdefs.h>' as well.
 
 * Driver local #include's probably use a <dev/blah/blah.h> path.  These
