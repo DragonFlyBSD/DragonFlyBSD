@@ -176,19 +176,6 @@ struct	pt_ioctl {
 #define	PF_MOPEN	0x04
 #define PF_TERMINATED	0x08
 
-static int
-ptydebug(int level, char *fmt, ...)
-{
-	__va_list ap;
-
-	__va_start(ap, fmt);
-	if (level <= pty_debug_level)
-		kvprintf(fmt, ap);
-	__va_end(ap);
-
-	return 0;
-}
-
 /*
  * This function creates and initializes a pts/ptc pair
  *
@@ -369,7 +356,13 @@ ptsopen(struct dev_open_args *ap)
 		lwkt_reltoken(&tty_token);
 		return(ENXIO);
 	}
+
 	tp = dev->si_tty;
+
+	/*
+	 * Reinit most of the tty state if it isn't open.  Handle
+	 * exclusive access.
+	 */
 	if ((tp->t_state & TS_ISOPEN) == 0) {
 		ttychars(tp);		/* Set up default chars */
 		tp->t_iflag = TTYDEF_IFLAG;
@@ -377,7 +370,8 @@ ptsopen(struct dev_open_args *ap)
 		tp->t_lflag = TTYDEF_LFLAG;
 		tp->t_cflag = TTYDEF_CFLAG;
 		tp->t_ispeed = tp->t_ospeed = TTYDEF_SPEED;
-	} else if ((tp->t_state & TS_XCLUDE) && priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) {
+	} else if ((tp->t_state & TS_XCLUDE) &&
+		   priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) {
 		pti_done(pti);
 		lwkt_reltoken(&tty_token);
 		return (EBUSY);
@@ -386,8 +380,22 @@ ptsopen(struct dev_open_args *ap)
 		lwkt_reltoken(&tty_token);
 		return (EBUSY);
 	}
-	if (tp->t_oproc)			/* Ctrlr still around. */
+
+	/*
+	 * If the ptc is already present this will connect us up.  It
+	 * is unclear if this is actually needed.
+	 *
+	 * If neither side is open be sure to clear any left over
+	 * ZOMBIE state before continuing.
+	 */
+	if (tp->t_oproc)
 		(void)(*linesw[tp->t_line].l_modem)(tp, 1);
+	else if ((pti->pt_flags2 & PF_SOPEN) == 0)
+		tp->t_state &= ~TS_ZOMBIE;
+
+	/*
+	 * Wait for the carrier (ptc side)
+	 */
 	while ((tp->t_state & TS_CARR_ON) == 0) {
 		if (ap->a_oflags & FNONBLOCK)
 			break;
@@ -398,23 +406,16 @@ ptsopen(struct dev_open_args *ap)
 			return (error);
 		}
 	}
-	error = (*linesw[tp->t_line].l_open)(dev, tp);
-	if (error == 0)
-		ptcwakeup(tp, FREAD|FWRITE);
 
-#ifdef UNIX98_PTYS
 	/*
-	 * Unix98 pty stuff.
-	 * On open of the slave, we set the corresponding flag in the common
-	 * struct.
+	 * Mark the tty open and mark the slave side as being open.
 	 */
-	ptydebug(1, "ptsopen=%s | unix98? %s\n", dev->si_name,
-	    (pti->pt_flags2 & PF_UNIX98)?"yes":"no");
+	error = (*linesw[tp->t_line].l_open)(dev, tp);
 
-	if (error == 0 && (pti->pt_flags2 & PF_UNIX98)) {
+	if (error == 0) {
 		pti->pt_flags2 |= PF_SOPEN;
+		ptcwakeup(tp, FREAD|FWRITE);
 	}
-#endif
 	pti_done(pti);
 
 	lwkt_reltoken(&tty_token);
@@ -432,27 +433,26 @@ ptsclose(struct dev_close_args *ap)
 	lwkt_gettoken(&tty_token);
 	if (pti_hold(pti))
 		panic("ptsclose on terminated pti");
+
+	/*
+	 * Disconnect the slave side
+	 */
 	tp = dev->si_tty;
 	err = (*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
 	ptsstop(tp, FREAD|FWRITE);
-	(void) ttyclose(tp); /* clears t_state */
+	ttyclose(tp);			/* clears t_state */
 
-#ifdef UNIX98_PTYS
 	/*
-	 * Unix98 pty stuff.
-	 * On close of the slave, we unset the corresponding flag, and if the master
-	 * isn't open anymore, we destroy the slave and unset the unit.
+	 * Mark the pty side closed.
+	 *
+	 * If the ptc is still open mark the tty zombie and wakeup the
+	 * ptc.
 	 */
-	ptydebug(1, "ptsclose=%s | unix98? %s\n", dev->si_name,
-	    (pti->pt_flags2 & PF_UNIX98)?"yes":"no");
-
-	if (pti->pt_flags2 & PF_UNIX98) {
-		pti->pt_flags2 &= ~PF_SOPEN;
-		KKASSERT((pti->pt_flags2 & PF_SOPEN) == 0);
-		ptydebug(1, "master open? %s\n",
-		    (pti->pt_flags2 & PF_MOPEN)?"yes":"no");
+	pti->pt_flags2 &= ~PF_SOPEN;
+	if (tp->t_oproc) {
+		tp->t_state |= TS_ZOMBIE;
+		ptcwakeup(tp, FREAD);
 	}
-#endif
 	pti_done(pti);
 	lwkt_reltoken(&tty_token);
 	return (err);
@@ -617,9 +617,22 @@ ptcopen(struct dev_open_args *ap)
 		lwkt_reltoken(&tty_token);
 		return (EIO);
 	}
+
+	/*
+	 * If the slave side is not yet open clear any left over zombie
+	 * state before doing our modem control.
+	 */
+	if ((pti->pt_flags2 & PF_SOPEN) == 0)
+		tp->t_state &= ~TS_ZOMBIE;
+
 	tp->t_oproc = ptsstart;
 	tp->t_stop = ptsstop;
+
+	/*
+	 * Carrier on!
+	 */
 	(void)(*linesw[tp->t_line].l_modem)(tp, 1);
+
 	tp->t_lflag &= ~EXTPROC;
 	pti->pt_prison = ap->a_cred->cr_prison;
 	pti->pt_flags = 0;
@@ -633,19 +646,11 @@ ptcopen(struct dev_open_args *ap)
 	pti->devc->si_gid = 0;
 	pti->devc->si_perms = 0600;
 
-#ifdef UNIX98_PTYS
 	/*
-	 * Unix98 pty stuff.
-	 * On open of the master, we set the corresponding flag in the common
-	 * struct.
+	 * Mark master side open.  This does not cause any events
+	 * on the slave side.
 	 */
-	ptydebug(1, "ptcopen=%s (master) | unix98? %s\n", dev->si_name,
-	    (pti->pt_flags2 & PF_UNIX98)?"yes":"no");
-
-	if (pti->pt_flags2 & PF_UNIX98) {
-		pti->pt_flags2 |= PF_MOPEN;
-	}
-#endif
+	pti->pt_flags2 |= PF_MOPEN;
 	pti_done(pti);
 
 	lwkt_reltoken(&tty_token);
@@ -667,28 +672,28 @@ ptcclose(struct dev_close_args *ap)
 	(void)(*linesw[tp->t_line].l_modem)(tp, 0);
 
 	/*
-	 * XXX MDMBUF makes no sense for ptys but would inhibit the above
-	 * l_modem().  CLOCAL makes sense but isn't supported.   Special
-	 * l_modem()s that ignore carrier drop make no sense for ptys but
-	 * may be in use because other parts of the line discipline make
-	 * sense for ptys.  Recover by doing everything that a normal
-	 * ttymodem() would have done except for sending a SIGHUP.
+	 * Mark the master side closed.  If the slave is still open
+	 * mark the tty ZOMBIE, preventing any new action until both
+	 * sides have closed.
+	 *
+	 * NOTE: The ttyflush() will wake up the slave once we've
+	 *	 set appropriate flags.  The ZOMBIE flag will be
+	 *	 cleared when the slave side is closed.
+	 */
+	pti->pt_flags2 &= ~PF_MOPEN;
+	if (pti->pt_flags2 & PF_SOPEN) {
+		tp->t_state |= TS_ZOMBIE;
+	}
+
+	/*
+	 * Turn off the carrier and disconnect.  This will notify the slave
+	 * side.
 	 */
 	if (tp->t_state & TS_ISOPEN) {
 		tp->t_state &= ~(TS_CARR_ON | TS_CONNECTED);
-		tp->t_state |= TS_ZOMBIE;
 		ttyflush(tp, FREAD | FWRITE);
 	}
-	tp->t_oproc = 0;		/* mark closed */
-
-#ifdef UNIX98_PTYS
-	/*
-	 * Unix98 pty stuff.
-	 * On close of the master, we unset the corresponding flag in the common
-	 * struct asap.
-	 */
-	pti->pt_flags2 &= ~PF_MOPEN;
-#endif
+	tp->t_oproc = NULL;		/* mark closed */
 
 	pti->pt_prison = NULL;
 	pti->devs->si_uid = 0;
@@ -1099,7 +1104,8 @@ ptyioctl(struct dev_ioctl_args *ap)
 
 #ifdef UNIX98_PTYS
 		case TIOCISPTMASTER:
-			if ((pti->pt_flags2 & PF_UNIX98) && (pti->devc == dev)) {
+			if ((pti->pt_flags2 & PF_UNIX98) &&
+			    (pti->devc == dev)) {
 				lwkt_reltoken(&tty_token);
 				return (0);
 			} else {
