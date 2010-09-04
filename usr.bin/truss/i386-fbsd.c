@@ -170,7 +170,7 @@ i386_syscall_entry(int pid, int nargs) {
   if (read(Procfd, fsc.args, nargs * sizeof(unsigned long)) == -1)
     return;
 
-  sc = get_syscall(fsc.name);
+  sc = fsc.name ? get_syscall(fsc.name) : NULL;
   if (sc) {
     fsc.nargs = sc->nargs;
   } else {
@@ -226,7 +226,8 @@ i386_syscall_entry(int pid, int nargs) {
    * parameter?
    */
 
-  if (!strcmp(fsc.name, "execve") || !strcmp(fsc.name, "exit")) {
+  if (fsc.name != NULL &&
+      (!strcmp(fsc.name, "execve") || !strcmp(fsc.name, "exit"))) {
     print_syscall(outfile, fsc.name, fsc.nargs, fsc.s_args);
   }
 
@@ -248,6 +249,9 @@ i386_syscall_exit(int pid, int syscall_num __unused) {
   int i;
   int errorp;
   struct syscall *sc;
+
+  if (fsc.name == NULL)
+    return;
 
   if (fd == -1 || pid != cpid) {
     asprintf(&buf, "%s/%d/regs", procfs_path, pid);

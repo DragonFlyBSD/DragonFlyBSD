@@ -66,7 +66,7 @@ LSUBDIRS=	bus/cam bus/cam/scsi \
 	netgraph/mppc netgraph/one2many netgraph/ppp \
 	netgraph/pppoe netgraph/pptpgre netgraph/rfc1490 netgraph/socket \
 	netgraph/tee netgraph/tty netgraph/vjc \
-	bus/cam bus/usb bus/pccard bus/pci bus/isa bus/ppbus \
+	bus/cam bus/usb bus/pccard bus/pci bus/isa bus/ppbus bus/smbus \
 	netproto/atalk netproto/atm netproto/ipsec netproto/ipx \
 	netproto/key netproto/natm netproto/ncp netproto/ns netproto/smb \
 	netproto/atm/ipatm netproto/atm/sigpvc netproto/atm/spans \
