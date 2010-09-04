@@ -13,15 +13,17 @@
             scsi
             ..
         ..
-        pccard
+        isa
         ..
-        usb
+        pccard
         ..
         pci
         ..
         ppbus
         ..
-        isa
+        smbus
+        ..
+        usb
         ..
     ..
     c++
