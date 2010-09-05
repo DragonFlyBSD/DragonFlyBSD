@@ -107,7 +107,11 @@ static struct sysentvec elf_freebsd_sysvec = {
         sigcode,
         &szsigcode,
         0,
-	"FreeBSD ELF",
+#if defined(__x86_64__)
+	"FreeBSD ELF64",
+#else
+	"FreeBSD ELF32",
+#endif
 	elf_coredump,
 	NULL,
 	MINSIGSTKSZ

@@ -825,7 +825,11 @@ struct sysentvec elf_linux_sysvec = {
 	linux_sigcode,
 	&linux_szsigcode,
 	linux_prepsyscall,
-	"Linux ELF",
+#if defined(__x86_64__)
+	"Linux ELF64",
+#else
+	"Linux ELF32",
+#endif
 	elf_coredump,
 	exec_linux_imgact_try,
 	LINUX_MINSIGSTKSZ
