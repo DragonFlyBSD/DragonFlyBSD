@@ -58,6 +58,8 @@
 #include <sys/sysctl.h>
 #include <sys/lock.h>
 #include <sys/ctype.h>
+#include <sys/eventhandler.h>
+#include <sys/kthread.h>
 
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
@@ -73,9 +75,10 @@
  */
 #include <machine/stdarg.h>
 
-#define TOCONS	0x01
-#define TOTTY	0x02
-#define TOLOG	0x04
+#define TOCONS		0x01
+#define TOTTY		0x02
+#define TOLOG		0x04
+#define TOWAKEUP	0x08
 
 /* Max number conversion buffer length: a u_quad_t in base 2, plus NUL byte. */
 #define MAXNBUF	(sizeof(intmax_t) * NBBY + 1)
@@ -105,6 +108,7 @@ static void  snprintf_func (int ch, void *arg);
 static int consintr = 1;		/* Ok to handle console interrupts? */
 static int msgbufmapped;		/* Set when safe to use msgbuf */
 static struct spinlock cons_spin = SPINLOCK_INITIALIZER(cons_spin);
+static thread_t constty_td = NULL;
 
 int msgbuftrigger;
 
@@ -360,10 +364,10 @@ krateprintf(struct krate *rate, const char *fmt, ...)
  * Print a character to the dmesg log, the console, and/or the user's
  * terminal.
  *
- * When printing to the console if a tty console intercept is active
- * (e.g. X11) we only generate output to it if we can acquire the
- * tty_token non-blocking.  Otherwise kprintf()s from hard sections
- * will panic us.
+ * NOTE: TOTTY does not require nonblocking operation, but TOCONS
+ * 	 and TOLOG do.  When we have a constty we still output to
+ *	 the real console but we have a monitoring thread which
+ *	 we wakeup which tracks the log.
  */
 static void
 kputchar(int c, void *arg)
@@ -371,26 +375,17 @@ kputchar(int c, void *arg)
 	struct putchar_arg *ap = (struct putchar_arg*) arg;
 	int flags = ap->flags;
 	struct tty *tp = ap->tty;
-	int have_tty_token = 0;
 
 	if (panicstr)
 		constty = NULL;
-	if ((flags & TOCONS) && tp == NULL && constty) {
-		if (lwkt_trytoken(&tty_token)) {
-			tp = constty;
-			flags |= TOTTY;
-			have_tty_token = 1;
-		}
-	}
-	if ((flags & TOTTY) && tp && tputchar(c, tp) < 0 &&
-	    (flags & TOCONS) && tp == constty)
-		constty = NULL;
+	if ((flags & TOCONS) && tp == NULL && constty)
+		flags |= TOLOG | TOWAKEUP;
 	if ((flags & TOLOG))
 		msglogchar(c, ap->pri);
-	if ((flags & TOCONS) && constty == NULL && c != '\0')
+	if ((flags & TOCONS) && c)
 		cnputc(c);
-	if (have_tty_token)
-		lwkt_reltoken(&tty_token);
+	if (flags & TOWAKEUP)
+		wakeup(constty_td);
 }
 
 /*
@@ -917,6 +912,83 @@ kvcreinitspin(void)
 	atomic_clear_long(&mycpu->gd_flags, GDF_KPRINTF);
 }
 
+/*
+ * Console support thread for constty intercepts.  This is needed because
+ * console tty intercepts can block.  Instead of having kputchar() attempt
+ * to directly write to the console intercept we just force it to log
+ * and wakeup this baby to track and dump the log to constty.
+ */
+static void
+constty_daemon(void)
+{
+	int rindex = -1;
+	int windex = -1;
+        struct msgbuf *mbp;
+	struct tty *tp;
+
+        EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc,
+                              constty_td, SHUTDOWN_PRI_FIRST);
+        constty_td->td_flags |= TDF_SYSTHREAD;
+
+        for (;;) {
+                kproc_suspend_loop();
+
+		crit_enter();
+		mbp = msgbufp;
+		if (mbp == NULL || msgbufmapped == 0 ||
+		    windex == mbp->msg_bufx) {
+			tsleep(constty_td, 0, "waiting", hz*60);
+			crit_exit();
+			continue;
+		}
+		windex = mbp->msg_bufx;
+		crit_exit();
+
+		/*
+		 * Get message buf FIFO indices.  rindex is tracking.
+		 */
+		if ((tp = constty) == NULL) {
+			rindex = mbp->msg_bufx;
+			continue;
+		}
+
+		/*
+		 * Don't blow up if the message buffer is broken
+		 */
+		if (windex < 0 || windex >= mbp->msg_size)
+			continue;
+		if (rindex < 0 || rindex >= mbp->msg_size)
+			rindex = windex;
+
+		/*
+		 * And dump it.  If constty gets stuck will give up.
+		 */
+		while (rindex != windex) {
+			if (tputchar((uint8_t)mbp->msg_ptr[rindex], tp) < 0) {
+				constty = NULL;
+				rindex = mbp->msg_bufx;
+				break;
+			}
+			if (++rindex >= mbp->msg_size)
+				rindex = 0;
+                        if (tp->t_outq.c_cc >= tp->t_ohiwat) {
+				tsleep(constty_daemon, 0, "blocked", hz / 10);
+				if (tp->t_outq.c_cc >= tp->t_ohiwat) {
+					rindex = windex;
+					break;
+				}
+			}
+		}
+	}
+}
+
+static struct kproc_desc constty_kp = {
+        "consttyd",
+	constty_daemon,
+        &constty_td
+};
+SYSINIT(bufdaemon, SI_SUB_KTHREAD_UPDATE, SI_ORDER_ANY,
+        kproc_start, &constty_kp)
 
 /*
  * Put character in log buffer with a particular priority.
