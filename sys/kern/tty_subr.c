@@ -434,7 +434,6 @@ clist_putc(int chr, struct clist *clistp)
 		if (clistp->c_cbreserved < 1) {
 			lwkt_reltoken(&tty_token);
 			crit_exit();
-			kprintf("putc to a clist with no reserved cblocks\n");
 			return (-1);		/* nothing done */
 		}
 		cblockp = cblock_alloc();

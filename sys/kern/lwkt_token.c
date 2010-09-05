@@ -484,6 +484,9 @@ lwkt_getpooltoken(void *ptr)
 	return(tok);
 }
 
+/*
+ * Attempt to acquire a token, return TRUE on success, FALSE on failure.
+ */
 int
 lwkt_trytoken(lwkt_token_t tok)
 {

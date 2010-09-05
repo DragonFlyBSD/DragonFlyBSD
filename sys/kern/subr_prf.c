@@ -357,11 +357,13 @@ krateprintf(struct krate *rate, const char *fmt, ...)
 }
 
 /*
- * Print a character on console or users terminal.  If destination is
- * the console then the last bunch of characters are saved in msgbuf for
- * inspection later.
+ * Print a character to the dmesg log, the console, and/or the user's
+ * terminal.
  *
- * NOT YET ENTIRELY MPSAFE, EVEN WHEN LOGGING JUST TO THE SYSCONSOLE.
+ * When printing to the console if a tty console intercept is active
+ * (e.g. X11) we only generate output to it if we can acquire the
+ * tty_token non-blocking.  Otherwise kprintf()s from hard sections
+ * will panic us.
  */
 static void
 kputchar(int c, void *arg)
@@ -369,11 +371,16 @@ kputchar(int c, void *arg)
 	struct putchar_arg *ap = (struct putchar_arg*) arg;
 	int flags = ap->flags;
 	struct tty *tp = ap->tty;
+	int have_tty_token = 0;
+
 	if (panicstr)
 		constty = NULL;
 	if ((flags & TOCONS) && tp == NULL && constty) {
-		tp = constty;
-		flags |= TOTTY;
+		if (lwkt_trytoken(&tty_token)) {
+			tp = constty;
+			flags |= TOTTY;
+			have_tty_token = 1;
+		}
 	}
 	if ((flags & TOTTY) && tp && tputchar(c, tp) < 0 &&
 	    (flags & TOCONS) && tp == constty)
@@ -382,6 +389,8 @@ kputchar(int c, void *arg)
 		msglogchar(c, ap->pri);
 	if ((flags & TOCONS) && constty == NULL && c != '\0')
 		cnputc(c);
+	if (have_tty_token)
+		lwkt_reltoken(&tty_token);
 }
 
 /*
