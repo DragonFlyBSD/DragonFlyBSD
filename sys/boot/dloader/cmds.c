@@ -64,6 +64,16 @@ COMMAND_SET(menu, "menu", "Run menu system", command_menu);
 static int curitem;
 static int curadd;
 
+static char *kenv_vars[] = {
+	"bootfile",
+	"console",
+	"currdev",
+	"kernelname",
+	"loaddev",
+	"module_path",
+	NULL
+};
+
 /*
  * Set local variable.  Sniff "module_path"
  *
@@ -118,20 +128,19 @@ command_local(int ac, char **av)
 		dvar_unset(name);
 
 	/*
-	 * These variable have to mirror to kenv because libstand or
+	 * Take care of loader tunables and several other variables,
+	 * all of which have to mirror to kenv because libstand or
 	 * other consumers may have hooks into them.
 	 */
-	if (strchr(name, '.') ||
-	    strcmp(name, "kernelname") == 0 ||
-	    strcmp(name, "module_path") == 0 ||
-	    strcmp(name, "console") == 0 ||
-	    strcmp(name, "currdev") == 0 ||
-	    strcmp(name, "loaddev") == 0 ||
-	    strcmp(name, "bootfile") == 0) {
-		if (*data)
-			setenv(name, data, 1);
-		else
-			unsetenv(name);
+	if (strchr(name, '.')) {
+		setenv(name, data, 1);
+	} else {
+		for (i = 0; kenv_vars[i] != NULL; i++) {
+			if (strcmp(name, kenv_vars[i]) == 0) {
+				setenv(name, data, 1);
+				return(CMD_OK);
+			}
+		}
 	}
 	return(CMD_OK);
 }
