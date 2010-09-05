@@ -33,6 +33,7 @@ MAN=	acct.5 \
 	kernel.conf.5 \
 	link.5 \
 	linprocfs.5 \
+	loader.conf.5 \
 	mailer.conf.5 \
 	make.conf.5 \
 	manpath.config.5 \
