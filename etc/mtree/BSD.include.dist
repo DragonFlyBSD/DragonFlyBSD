@@ -226,6 +226,8 @@
         ..
         iface
         ..
+        ksocket
+        ..
         socket
         ..
         tee

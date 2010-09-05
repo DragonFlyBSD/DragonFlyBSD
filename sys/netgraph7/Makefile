@@ -12,6 +12,7 @@ SUBDIR=	UI \
 	ether \
 	hole \
 	iface \
+	ksocket \
 	netgraph \
 	socket \
 	tee \
@@ -21,7 +22,6 @@ SUBDIR=	UI \
 #	etf \
 #	fec \
 #	frame_relay \
-#	ksocket \
 #	l2tp \
 #	lmi \
 #	netgraph \
