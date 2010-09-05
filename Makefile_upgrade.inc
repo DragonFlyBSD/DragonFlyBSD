@@ -1520,6 +1520,7 @@ TO_REMOVE+=/usr/share/man/man9/spin_unlock_wr.9.gz
 TO_REMOVE+=/usr/share/man/man9/spin_unlock_wr_quick.9.gz
 TO_REMOVE+=/usr/share/man/cat8/loader.4th.8.gz
 TO_REMOVE+=/usr/share/man/man8/loader.4th.8.gz
+TO_REMOVE+=/usr/share/examples/bootforth
 
 # XXX Remove when adjusted to the new 802.11 framework
 TO_REMOVE+=/boot/modules/if_acx.ko
