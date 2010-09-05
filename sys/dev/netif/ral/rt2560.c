@@ -1232,7 +1232,7 @@ rt2560_decryption_intr(struct rt2560_softc *sc)
 		}
 
 		sc->sc_flags |= RT2560_F_INPUT_RUNNING;
-		RAL_UNLOCK(sc);
+		RAL_UNLOCK();
 		wh = mtod(m, struct ieee80211_frame *);
 		ni = ieee80211_find_rxnode(ic,
 		    (struct ieee80211_frame_min *)wh);
@@ -1242,7 +1242,7 @@ rt2560_decryption_intr(struct rt2560_softc *sc)
 		} else
 			(void) ieee80211_input_all(ic, m, rssi, nf);
 
-		RAL_LOCK(sc);
+		RAL_LOCK();
 		sc->sc_flags &= ~RT2560_F_INPUT_RUNNING;
 skip:		desc->flags = htole32(RT2560_RX_BUSY);
 
@@ -1371,14 +1371,14 @@ rt2560_intr(void *arg)
 	struct ifnet *ifp = sc->sc_ifp;
 	uint32_t r;
 
-	RAL_LOCK(sc);
+	RAL_LOCK();
 
 	/* disable interrupts */
 	RAL_WRITE(sc, RT2560_CSR8, 0xffffffff);
 
 	/* don't re-enable interrupts if we're shutting down */
 	if (!(ifp->if_flags & IFF_RUNNING)) {
-		RAL_UNLOCK(sc);
+		RAL_UNLOCK();
 		return;
 	}
 
@@ -1411,7 +1411,7 @@ rt2560_intr(void *arg)
 	/* re-enable interrupts */
 	RAL_WRITE(sc, RT2560_CSR8, RT2560_INTR_MASK);
 
-	RAL_UNLOCK(sc);
+	RAL_UNLOCK();
 }
 
 #define RAL_SIFS		10	/* us */
@@ -1928,7 +1928,7 @@ rt2560_start_locked(struct ifnet *ifp)
 	struct mbuf *m;
 	struct ieee80211_node *ni;
 
-	RAL_LOCK_ASSERT(sc);
+	RAL_LOCK_ASSERT();
 
 	for (;;) {
 		IF_DEQUEUE(&ifp->if_snd, m);
@@ -1954,11 +1954,13 @@ rt2560_start_locked(struct ifnet *ifp)
 static void
 rt2560_start(struct ifnet *ifp)
 {
-	struct rt2560_softc *sc = ifp->if_softc;
+	struct rt2560_softc *sc;
 
-	RAL_LOCK(sc);
+	sc = ifp->if_softc;
+
+	RAL_LOCK();
 	rt2560_start_locked(ifp);
-	RAL_UNLOCK(sc);
+	RAL_UNLOCK();
 }
 
 static void
@@ -1967,7 +1969,7 @@ rt2560_watchdog(void *arg)
 	struct rt2560_softc *sc = arg;
 	struct ifnet *ifp = sc->sc_ifp;
 
-	RAL_LOCK(sc);
+	RAL_LOCK();
 
 	KASSERT(ifp->if_flags & IFF_RUNNING, ("not running"));
 
@@ -1985,7 +1987,7 @@ rt2560_watchdog(void *arg)
 		return;
 	}
 	callout_reset(&sc->watchdog_ch, hz, rt2560_watchdog, sc);
-	RAL_UNLOCK(sc);
+	RAL_UNLOCK();
 }
 
 static int
@@ -1998,7 +2000,7 @@ rt2560_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:
-		RAL_LOCK(sc);
+		RAL_LOCK();
 		if (ifp->if_flags & IFF_UP) {
 			if ((ifp->if_flags & IFF_RUNNING) == 0) {
 				rt2560_init_locked(sc);
@@ -2009,7 +2011,7 @@ rt2560_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 			if (ifp->if_flags & IFF_RUNNING)
 				rt2560_stop_locked(sc);
 		}
-		RAL_UNLOCK(sc);
+		RAL_UNLOCK();
 		if (startall)
 			ieee80211_start_all(ic);
 		break;
@@ -2210,9 +2212,9 @@ rt2560_set_channel(struct ieee80211com *ic)
 	struct ifnet *ifp = ic->ic_ifp;
 	struct rt2560_softc *sc = ifp->if_softc;
 
-	RAL_LOCK(sc);
+	RAL_LOCK();
 	rt2560_set_chan(sc, ic->ic_curchan);
-	RAL_UNLOCK(sc);
+	RAL_UNLOCK();
 
 }
 
@@ -2627,7 +2629,7 @@ rt2560_init_locked(struct rt2560_softc *sc)
 	uint32_t tmp;
 	int i;
 
-	RAL_LOCK_ASSERT(sc);
+	RAL_LOCK_ASSERT();
 
 	rt2560_stop_locked(sc);
 
@@ -2668,7 +2670,7 @@ rt2560_init_locked(struct rt2560_softc *sc)
 
 	if (rt2560_bbp_init(sc) != 0) {
 		rt2560_stop(sc);
-		RAL_UNLOCK(sc);
+		RAL_UNLOCK();
 		return;
 	}
 
@@ -2714,9 +2716,9 @@ rt2560_init(void *priv)
 	struct ifnet *ifp = sc->sc_ifp;
 	struct ieee80211com *ic = ifp->if_l2com;
 
-	RAL_LOCK(sc);
+	RAL_LOCK();
 	rt2560_init_locked(sc);
-	RAL_UNLOCK(sc);
+	RAL_UNLOCK();
 
 	if (ifp->if_flags & IFF_RUNNING)
 		ieee80211_start_all(ic);		/* start all vap's */
@@ -2728,7 +2730,7 @@ rt2560_stop_locked(struct rt2560_softc *sc)
 	struct ifnet *ifp = sc->sc_ifp;
 	volatile int *flags = &sc->sc_flags;
 
-	RAL_LOCK_ASSERT(sc);
+	RAL_LOCK_ASSERT();
 
 	while (*flags & RT2560_F_INPUT_RUNNING)
 		lksleep(sc, &sc->sc_lock, 0, "ralrunning", hz/10);
@@ -2767,9 +2769,9 @@ rt2560_stop(void *arg)
 {
 	struct rt2560_softc *sc = arg;
 
-	RAL_LOCK(sc);
+	RAL_LOCK();
 	rt2560_stop_locked(sc);
-	RAL_UNLOCK(sc);
+	RAL_UNLOCK();
 }
 
 static int
@@ -2780,11 +2782,11 @@ rt2560_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 	struct ifnet *ifp = ic->ic_ifp;
 	struct rt2560_softc *sc = ifp->if_softc;
 
-	RAL_LOCK(sc);
+	RAL_LOCK();
 
 	/* prevent management frames from being sent if we're not ready */
 	if (!(ifp->if_flags & IFF_RUNNING)) {
-		RAL_UNLOCK(sc);
+		RAL_UNLOCK();
 		m_freem(m);
 		ieee80211_free_node(ni);
 		return ENETDOWN;
@@ -2792,7 +2794,7 @@ rt2560_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 	if (sc->prioq.queued >= RT2560_PRIO_RING_COUNT) {
 		ifp->if_flags |= IFF_OACTIVE;
 		sc->sc_flags |= RT2560_F_PRIO_OACTIVE;
-		RAL_UNLOCK(sc);
+		RAL_UNLOCK();
 		m_freem(m);
 		ieee80211_free_node(ni);
 		return ENOBUFS;		/* XXX */
@@ -2817,12 +2819,12 @@ rt2560_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 	}
 	sc->sc_tx_timer = 5;
 
-	RAL_UNLOCK(sc);
+	RAL_UNLOCK();
 
 	return 0;
 bad:
 	ifp->if_oerrors++;
 	ieee80211_free_node(ni);
-	RAL_UNLOCK(sc);
+	RAL_UNLOCK();
 	return EIO;		/* XXX */
 }
