@@ -65,6 +65,15 @@ static int curitem;
 static int curadd;
 
 static char *kenv_vars[] = {
+	"boot_askname",
+	"boot_cdrom",
+	"boot_ddb",
+	"boot_gdb",
+	"boot_serial",
+	"boot_single",
+	"boot_userconfig",
+	"boot_verbose",
+	"boot_vidcons",
 	"bootfile",
 	"console",
 	"currdev",
