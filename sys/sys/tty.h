@@ -104,6 +104,7 @@ struct tty {
 	void	(*t_stop) (struct tty *, int);
 					/* Set hardware state. */
 	int	(*t_param) (struct tty *, struct termios *);
+	void	(*t_unhold) (struct tty *); /* callback to pty after unhold */
 	void	*t_sc;			/* XXX: net/if_sl.c:sl_softc. */
 	int	t_column;		/* Tty output column. */
 	int	t_rocount, t_rocol;	/* Tty. */

@@ -78,6 +78,7 @@ MALLOC_DEFINE(M_PTY, "ptys", "pty data structures");
 
 static void ptsstart (struct tty *tp);
 static void ptsstop (struct tty *tp, int rw);
+static void ptsunhold (struct tty *tp);
 static void ptcwakeup (struct tty *tp, int flag);
 static void ptyinit (int n);
 static int  filt_ptcread (struct knote *kn, long hint);
@@ -154,7 +155,6 @@ static struct dev_ops ptc_ops = {
 
 struct	pt_ioctl {
 	int	pt_flags;
-	int	pt_flags2;
 	int	pt_refs;	/* Structural references interlock S/MOPEN */
 	int	pt_uminor;
 	struct	kqinfo pt_kqr, pt_kqw;
@@ -165,16 +165,28 @@ struct	pt_ioctl {
 	struct	prison *pt_prison;
 };
 
-#define	PF_PKT		0x08		/* packet mode */
-#define	PF_STOPPED	0x10		/* user told stopped */
-#define	PF_REMOTE	0x20		/* remote and flow controlled input */
-#define	PF_NOSTOP	0x40
-#define PF_UCNTL	0x80		/* user control mode */
+/*
+ * pt_flags ptc state
+ */
+#define	PF_PKT		0x0008		/* packet mode */
+#define	PF_STOPPED	0x0010		/* user told stopped */
+#define	PF_REMOTE	0x0020		/* remote and flow controlled input */
+#define	PF_NOSTOP	0x0040
+#define PF_UCNTL	0x0080		/* user control mode */
 
-#define	PF_UNIX98	0x01
-#define	PF_SOPEN	0x02
-#define	PF_MOPEN	0x04
-#define PF_TERMINATED	0x08
+#define PF_PTCSTATEMASK	0x00FF
+
+/*
+ * pt_flags open state.  Note that PF_SCLOSED is used to activate
+ * read EOF on the ptc so it is only set after the slave has been
+ * opened and then closed, and cleared again if the slave is opened
+ * again.
+ */
+#define	PF_UNIX98	0x0100
+#define	PF_SOPEN	0x0200
+#define	PF_MOPEN	0x0400
+#define PF_SCLOSED	0x0800
+#define PF_TERMINATED	0x8000
 
 /*
  * This function creates and initializes a pts/ptc pair
@@ -246,7 +258,7 @@ ptyclone(struct dev_clone_args *ap)
 	pt->devc->si_flags |= SI_OVERRIDE;	/* uid, gid, perms from dev */
 
 	pt->pt_tty.t_dev = pt->devs;
-	pt->pt_flags2 |= PF_UNIX98;
+	pt->pt_flags |= PF_UNIX98;
 	pt->pt_uminor = unit;
 	pt->devs->si_drv1 = pt->devc->si_drv1 = pt;
 	pt->devs->si_tty = pt->devc->si_tty = &pt->pt_tty;
@@ -269,7 +281,7 @@ ptyclone(struct dev_clone_args *ap)
 static int
 pti_hold(struct pt_ioctl *pti)
 {
-	if (pti->pt_flags2 & PF_TERMINATED)
+	if (pti->pt_flags & PF_TERMINATED)
 		return(ENXIO);
 	++pti->pt_refs;
 	return(0);
@@ -295,7 +307,7 @@ pti_done(struct pt_ioctl *pti)
 		/*
 		 * Only unix09 ptys are freed up
 		 */
-		if ((pti->pt_flags2 & PF_UNIX98) == 0) {
+		if ((pti->pt_flags & PF_UNIX98) == 0) {
 			lwkt_reltoken(&tty_token);
 			return;
 		}
@@ -308,9 +320,9 @@ pti_done(struct pt_ioctl *pti)
 		 * Do not terminate the tty if it still has a session
 		 * association (t_refs).
 		 */
-		if ((pti->pt_flags2 & (PF_SOPEN|PF_MOPEN)) == 0 &&
+		if ((pti->pt_flags & (PF_SOPEN|PF_MOPEN)) == 0 &&
 		    pti->pt_tty.t_refs == 0) {
-			pti->pt_flags2 |= PF_TERMINATED;
+			pti->pt_flags |= PF_TERMINATED;
 			uminor_no = pti->pt_uminor;
 
 			if ((dev = pti->devs) != NULL) {
@@ -390,7 +402,7 @@ ptsopen(struct dev_open_args *ap)
 	 */
 	if (tp->t_oproc)
 		(void)(*linesw[tp->t_line].l_modem)(tp, 1);
-	else if ((pti->pt_flags2 & PF_SOPEN) == 0)
+	else if ((pti->pt_flags & PF_SOPEN) == 0)
 		tp->t_state &= ~TS_ZOMBIE;
 
 	/*
@@ -413,7 +425,8 @@ ptsopen(struct dev_open_args *ap)
 	error = (*linesw[tp->t_line].l_open)(dev, tp);
 
 	if (error == 0) {
-		pti->pt_flags2 |= PF_SOPEN;
+		pti->pt_flags |= PF_SOPEN;
+		pti->pt_flags &= ~PF_SCLOSED;
 		ptcwakeup(tp, FREAD|FWRITE);
 	}
 	pti_done(pti);
@@ -443,16 +456,18 @@ ptsclose(struct dev_close_args *ap)
 	ttyclose(tp);			/* clears t_state */
 
 	/*
-	 * Mark the pty side closed.
+	 * Mark the pts side closed and signal the ptc.  Do not mark the
+	 * tty a zombie... that is, allow the tty to be re-opened as long
+	 * as the ptc is still open.  The ptc will read() EOFs until the
+	 * pts side is reopened or the ptc is closed.
 	 *
-	 * If the ptc is still open mark the tty zombie and wakeup the
-	 * ptc.
+	 * xterm() depends on this behavior as it will revoke() the pts
+	 * and then reopen it after the (unnecessary old code) chmod.
 	 */
-	pti->pt_flags2 &= ~PF_SOPEN;
-	if (tp->t_oproc) {
-		tp->t_state |= TS_ZOMBIE;
+	pti->pt_flags &= ~PF_SOPEN;
+	pti->pt_flags |= PF_SCLOSED;
+	if (tp->t_oproc)
 		ptcwakeup(tp, FREAD);
-	}
 	pti_done(pti);
 	lwkt_reltoken(&tty_token);
 	return (err);
@@ -622,11 +637,12 @@ ptcopen(struct dev_open_args *ap)
 	 * If the slave side is not yet open clear any left over zombie
 	 * state before doing our modem control.
 	 */
-	if ((pti->pt_flags2 & PF_SOPEN) == 0)
+	if ((pti->pt_flags & PF_SOPEN) == 0)
 		tp->t_state &= ~TS_ZOMBIE;
 
 	tp->t_oproc = ptsstart;
 	tp->t_stop = ptsstop;
+	tp->t_unhold = ptsunhold;
 
 	/*
 	 * Carrier on!
@@ -635,7 +651,7 @@ ptcopen(struct dev_open_args *ap)
 
 	tp->t_lflag &= ~EXTPROC;
 	pti->pt_prison = ap->a_cred->cr_prison;
-	pti->pt_flags = 0;
+	pti->pt_flags &= ~PF_PTCSTATEMASK;
 	pti->pt_send = 0;
 	pti->pt_ucntl = 0;
 
@@ -650,7 +666,7 @@ ptcopen(struct dev_open_args *ap)
 	 * Mark master side open.  This does not cause any events
 	 * on the slave side.
 	 */
-	pti->pt_flags2 |= PF_MOPEN;
+	pti->pt_flags |= PF_MOPEN;
 	pti_done(pti);
 
 	lwkt_reltoken(&tty_token);
@@ -680,10 +696,9 @@ ptcclose(struct dev_close_args *ap)
 	 *	 set appropriate flags.  The ZOMBIE flag will be
 	 *	 cleared when the slave side is closed.
 	 */
-	pti->pt_flags2 &= ~PF_MOPEN;
-	if (pti->pt_flags2 & PF_SOPEN) {
+	pti->pt_flags &= ~PF_MOPEN;
+	if (pti->pt_flags & PF_SOPEN)
 		tp->t_state |= TS_ZOMBIE;
-	}
 
 	/*
 	 * Turn off the carrier and disconnect.  This will notify the slave
@@ -727,7 +742,7 @@ ptcread(struct dev_read_args *ap)
 	 */
 	for (;;) {
 		if (tp->t_state&TS_ISOPEN) {
-			if (pti->pt_flags&PF_PKT && pti->pt_send) {
+			if ((pti->pt_flags & PF_PKT) && pti->pt_send) {
 				error = ureadc((int)pti->pt_send, ap->a_uio);
 				if (error) {
 					lwkt_reltoken(&tty_token);
@@ -743,7 +758,7 @@ ptcread(struct dev_read_args *ap)
 				lwkt_reltoken(&tty_token);
 				return (0);
 			}
-			if (pti->pt_flags&PF_UCNTL && pti->pt_ucntl) {
+			if ((pti->pt_flags & PF_UCNTL) && pti->pt_ucntl) {
 				error = ureadc((int)pti->pt_ucntl, ap->a_uio);
 				if (error) {
 					lwkt_reltoken(&tty_token);
@@ -813,6 +828,24 @@ ptsstop(struct tty *tp, int flush)
 }
 
 /*
+ * ttyunhold() calls us instead of just decrementing tp->t_refs.  This
+ * is needed because a session can hold onto a pts (half closed state)
+ * even if there are no live file descriptors.  Without the callback
+ * we can't clean up.
+ */
+static	void
+ptsunhold(struct tty *tp)
+{
+	struct pt_ioctl *pti = tp->t_dev->si_drv1;
+
+	lwkt_gettoken(&tty_token);
+	pti_hold(pti);
+	--tp->t_refs;
+	pti_done(pti);
+	lwkt_reltoken(&tty_token);
+}
+
+/*
  * kqueue ops for pseudo-terminals.
  */
 static struct filterops ptcread_filtops =
@@ -858,7 +891,7 @@ filt_ptcread (struct knote *kn, long hint)
 	struct pt_ioctl *pti = ((cdev_t)kn->kn_hook)->si_drv1;
 
 	lwkt_gettoken(&tty_token);
-	if (tp->t_state & TS_ZOMBIE) {
+	if ((tp->t_state & TS_ZOMBIE) || (pti->pt_flags & PF_SCLOSED)) {
 		kn->kn_flags |= EV_EOF;
 		lwkt_reltoken(&tty_token);
 		return (1);
@@ -1076,8 +1109,9 @@ ptyioctl(struct dev_ioctl_args *ap)
 					return (EINVAL);
 				}
 				pti->pt_flags |= PF_PKT;
-			} else
+			} else {
 				pti->pt_flags &= ~PF_PKT;
+			}
 			lwkt_reltoken(&tty_token);
 			return (0);
 
@@ -1088,8 +1122,9 @@ ptyioctl(struct dev_ioctl_args *ap)
 					return (EINVAL);
 				}
 				pti->pt_flags |= PF_UCNTL;
-			} else
+			} else {
 				pti->pt_flags &= ~PF_UCNTL;
+			}
 			lwkt_reltoken(&tty_token);
 			return (0);
 
@@ -1104,7 +1139,7 @@ ptyioctl(struct dev_ioctl_args *ap)
 
 #ifdef UNIX98_PTYS
 		case TIOCISPTMASTER:
-			if ((pti->pt_flags2 & PF_UNIX98) &&
+			if ((pti->pt_flags & PF_UNIX98) &&
 			    (pti->devc == dev)) {
 				lwkt_reltoken(&tty_token);
 				return (0);

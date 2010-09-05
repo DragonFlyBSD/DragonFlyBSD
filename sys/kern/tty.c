@@ -1618,7 +1618,10 @@ ttyhold(struct tty *tp)
 void
 ttyunhold(struct tty *tp)
 {
-	--tp->t_refs;
+	if (tp->t_unhold)
+		tp->t_unhold(tp);
+	else
+		--tp->t_refs;
 }
 
 /*
