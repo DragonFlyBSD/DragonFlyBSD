@@ -1937,7 +1937,7 @@ devfs_spec_getpages(struct vop_getpages_args *ap)
 
 	size = (ap->a_count + blksiz - 1) & ~(blksiz - 1);
 
-	bp = getpbuf(NULL);
+	bp = getpbuf_kva(NULL);
 	kva = (vm_offset_t)bp->b_data;
 
 	/*

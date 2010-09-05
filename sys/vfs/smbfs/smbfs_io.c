@@ -430,7 +430,7 @@ smbfs_getpages(struct vop_getpages_args *ap)
 	}
 	smb_makescred(&scred, td, cred);
 
-	bp = getpbuf(&smbfs_pbuf_freecnt);
+	bp = getpbuf_kva(&smbfs_pbuf_freecnt);
 	npages = btoc(count);
 	kva = (vm_offset_t) bp->b_data;
 	pmap_qenter(kva, pages, npages);
@@ -576,7 +576,7 @@ smbfs_putpages(struct vop_putpages_args *ap)
 		rtvals[i] = VM_PAGER_AGAIN;
 	}
 
-	bp = getpbuf(&smbfs_pbuf_freecnt);
+	bp = getpbuf_kva(&smbfs_pbuf_freecnt);
 	kva = (vm_offset_t) bp->b_data;
 	pmap_qenter(kva, pages, npages);
 

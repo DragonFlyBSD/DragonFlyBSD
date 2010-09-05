@@ -408,7 +408,7 @@ nwfs_getpages(struct vop_getpages_args *ap)
 		return VM_PAGER_ERROR;
 	}
 
-	bp = getpbuf(&nwfs_pbuf_freecnt);
+	bp = getpbuf_kva(&nwfs_pbuf_freecnt);
 	npages = btoc(count);
 	kva = (vm_offset_t) bp->b_data;
 	pmap_qenter(kva, pages, npages);
@@ -538,7 +538,7 @@ nwfs_putpages(struct vop_putpages_args *ap)
 		rtvals[i] = VM_PAGER_AGAIN;
 	}
 
-	bp = getpbuf(&nwfs_pbuf_freecnt);
+	bp = getpbuf_kva(&nwfs_pbuf_freecnt);
 	kva = (vm_offset_t) bp->b_data;
 	pmap_qenter(kva, pages, npages);
 
