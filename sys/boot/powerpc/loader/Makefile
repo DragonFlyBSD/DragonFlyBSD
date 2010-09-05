@@ -31,15 +31,12 @@ CFLAGS+=	-DLOADER_DISK_SUPPORT
 CFLAGS+=	-DLOADER_NET_SUPPORT
 .endif
 
-###.if !defined(NOFORTH)
-#### Enable BootForth
 ###BOOT_DLOADER=	yes
 ###CFLAGS+=	-I${.CURDIR}/../../dloader -I${.CURDIR}/../../dloader/powerpc
 ###.if exists(${.OBJDIR}/../../dloader/libdloader.a)
 ###LIBDLOADER=	${.OBJDIR}/../../dloader/libdloader.a
 ###.else
 ###LIBDLOADER=	${.CURDIR}/../../dloader/libdloader.a
-###.endif
 ###.endif
 BOOT_DEFAULT=	yes
 

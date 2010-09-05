@@ -28,17 +28,11 @@ SRCS+=	isapnp.c
 SRCS+=	pnp.c
 .endif
 
-# Forth interpreter
-.if BOOT_FORTH
-SRCS+=	do_forth.c
-MAN+=	../forth/loader.conf.5
-MAN+=	../forth/loader.4th.8
-.endif
 .if BOOT_DLOADER
 SRCS+=	do_dloader.c
-#MAN+=	../dloader/loader.conf.5
 #MAN+=	../dloader/loader.dloader.8
 .endif
+
 .if BOOT_DEFAULT
 SRCS+=	do_default.c
 .endif

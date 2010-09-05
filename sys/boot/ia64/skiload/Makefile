@@ -13,15 +13,12 @@ SRCS+=		conf.c main.c start.S
 
 CFLAGS+=	-ffreestanding
 
-.if !defined(NOFORTH)
-# Enable BootForth
 BOOT_DLOADER=	yes
 CFLAGS+=	-I${.CURDIR}/../../dloader -I${.CURDIR}/../../dloader/${MACHINE_ARCH}
 .if exists(${.OBJDIR}/../../dloader/libdloader.a)
 LIBDLOADER=	${.OBJDIR}/../../dloader/libdloader.a
 .else
 LIBDLOADER=	${.CURDIR}/../../dloader/libdloader.a
-.endif
 .endif
 
 # where to get libstand from

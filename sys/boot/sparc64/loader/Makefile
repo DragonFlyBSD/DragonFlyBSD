@@ -45,15 +45,12 @@ CFLAGS+=	-DLOADER_NFS_SUPPORT
 CFLAGS+=	-DLOADER_TFTP_SUPPORT
 .endif
 
-.if !defined(NOFORTH)
-# Enable BootForth
 BOOT_DLOADER=	yes
 CFLAGS+=	-I${.CURDIR}/../../dloader -I${.CURDIR}/../../dloader/sparc64
 .if exists(${.OBJDIR}/../../dloader/libdloader.a)
 LIBDLOADER=	${.OBJDIR}/../../dloader/libdloader.a
 .else
 LIBDLOADER=	${.CURDIR}/../../dloader/libdloader.a
-.endif
 .endif
 
 # Always add MI sources 

@@ -29,15 +29,12 @@ CFLAGS+=	-DLOADER_TFTP_SUPPORT
 HAVE_PNP=	yes
 HAVE_ISABUS=	yes
 
-.if !defined(NOFORTH)
-# Enable BootForth
 BOOT_DLOADER=	yes
 CFLAGS+=	-I${.CURDIR}/../../dloader -I${.CURDIR}/../../dloader/i386
 .if exists(${.OBJDIR}/../../dloader/libdloader.a)
 LIBDLOADER=	${.OBJDIR}/../../dloader/libdloader.a
 .else
 LIBDLOADER=	${.CURDIR}/../../dloader/libdloader.a
-.endif
 .endif
 
 .if defined(LOADER_BZIP2_SUPPORT)
