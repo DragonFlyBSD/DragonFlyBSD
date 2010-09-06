@@ -171,7 +171,6 @@ void	rt2661_suspend(void *);
 void	rt2661_resume(void *);
 void	rt2661_intr(void *);
 
-#define RAL_LOCK(sc)		lockmgr(&(sc)->sc_lock, LK_EXCLUSIVE)
-#define RAL_LOCK_ASSERT(sc)	\
-	KKASSERT(lockstatus(&(sc)->sc_lock, curthread) == LK_EXCLUSIVE)
-#define RAL_UNLOCK(sc)		lockmgr(&(sc)->sc_lock, LK_RELEASE)
+#define RAL_LOCK()    lwkt_gettoken(&wlan_token)
+#define RAL_LOCK_ASSERT()   ASSERT_LWKT_TOKEN_HELD(&wlan_token)
+#define RAL_UNLOCK()     lwkt_reltoken(&wlan_token)
