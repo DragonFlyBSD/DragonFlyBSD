@@ -110,6 +110,8 @@ struct tcphdr {
 #define	TCPOPT_CC		11		/* CC options: RFC-1644 */
 #define TCPOPT_CCNEW		12
 #define TCPOPT_CCECHO		13
+#define TCPOPT_SIGNATURE		19      /* Keyed MD5: RFC 2385 */
+#define TCPOLEN_SIGNATURE		18
 
 /*
  * Default maximum segment size for TCP.
@@ -160,5 +162,6 @@ struct tcphdr {
 #define	TCP_MAXSEG	0x02	/* set maximum segment size */
 #define TCP_NOPUSH	0x04	/* don't push last block of write */
 #define TCP_NOOPT	0x08	/* don't use TCP options */
+#define TCP_SIGNATURE_ENABLE    0x10    /* use MD5 digests (RFC2385) */
 
 #endif

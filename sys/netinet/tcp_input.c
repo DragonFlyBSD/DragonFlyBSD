@@ -69,6 +69,7 @@
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
+#include "opt_inet.h"
 #include "opt_inet6.h"
 #include "opt_ipsec.h"
 #include "opt_tcpdebug.h"
@@ -520,7 +521,8 @@ tcp_input(struct mbuf *m, ...)
 	struct inpcb *inp = NULL;
 	u_char *optp = NULL;
 	int optlen = 0;
-	int len, tlen, off;
+	int tlen, off;
+	int len = 0;
 	int drop_hdrlen;
 	struct tcpcb *tp = NULL;
 	int thflags;
@@ -2701,6 +2703,19 @@ tcp_dooptions(struct tcpopt *to, u_char *cp, int cnt, boolean_t is_syn)
 				r->rblk_end = ntohl(r->rblk_end);
 			}
 			break;
+#ifdef TCP_SIGNATURE
+		/*
+		 * XXX In order to reply to a host which has set the
+		 * TCP_SIGNATURE option in its initial SYN, we have to
+		 * record the fact that the option was observed here
+		 * for the syncache code to perform the correct response.
+		 */
+		case TCPOPT_SIGNATURE:
+			if (optlen != TCPOLEN_SIGNATURE)
+				continue;
+			to->to_flags |= (TOF_SIGNATURE | TOF_SIGLEN);
+			break;
+#endif /* TCP_SIGNATURE */
 		default:
 			continue;
 		}

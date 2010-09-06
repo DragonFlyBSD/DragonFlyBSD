@@ -69,6 +69,7 @@
  */
 
 #include "opt_compat.h"
+#include "opt_inet.h"
 #include "opt_inet6.h"
 #include "opt_ipsec.h"
 #include "opt_tcpdebug.h"
@@ -126,6 +127,7 @@
 
 #ifdef IPSEC
 #include <netinet6/ipsec.h>
+#include <netproto/key/key.h>
 #ifdef INET6
 #include <netinet6/ipsec6.h>
 #endif
@@ -1979,3 +1981,165 @@ tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq)
 		bwnd = tp->t_maxseg * 2;
 	tp->snd_bwnd = bwnd;
 }
+
+#ifdef TCP_SIGNATURE
+/*
+ * Compute TCP-MD5 hash of a TCP segment. (RFC2385)
+ *
+ * We do this over ip, tcphdr, segment data, and the key in the SADB.
+ * When called from tcp_input(), we can be sure that th_sum has been
+ * zeroed out and verified already.
+ *
+ * Return 0 if successful, otherwise return -1.
+ *
+ * XXX The key is retrieved from the system's PF_KEY SADB, by keying a
+ * search with the destination IP address, and a 'magic SPI' to be
+ * determined by the application. This is hardcoded elsewhere to 1179
+ * right now. Another branch of this code exists which uses the SPD to
+ * specify per-application flows but it is unstable.
+ */
+int
+tcpsignature_compute(
+	struct mbuf *m,		/* mbuf chain */
+	int len,		/* length of TCP data */
+	int optlen,		/* length of TCP options */
+	u_char *buf,		/* storage for MD5 digest */
+	u_int direction)	/* direction of flow */
+{
+	struct ippseudo ippseudo;
+	MD5_CTX ctx;
+	int doff;
+	struct ip *ip;
+	struct ipovly *ipovly;
+	struct secasvar *sav;
+	struct tcphdr *th;
+#ifdef INET6
+	struct ip6_hdr *ip6;
+	struct in6_addr in6;
+	uint32_t plen;
+	uint16_t nhdr;
+#endif /* INET6 */
+	u_short savecsum;
+
+	KASSERT(m != NULL, ("passed NULL mbuf. Game over."));
+	KASSERT(buf != NULL, ("passed NULL storage pointer for MD5 signature"));
+	/*
+	 * Extract the destination from the IP header in the mbuf.
+	 */
+	ip = mtod(m, struct ip *);
+#ifdef INET6
+	ip6 = NULL;     /* Make the compiler happy. */
+#endif /* INET6 */
+	/*
+	 * Look up an SADB entry which matches the address found in
+	 * the segment.
+	 */
+	switch (IP_VHL_V(ip->ip_vhl)) {
+	case IPVERSION:
+		sav = key_allocsa(AF_INET, (caddr_t)&ip->ip_src, (caddr_t)&ip->ip_dst,
+				IPPROTO_TCP, htonl(TCP_SIG_SPI));
+		break;
+#ifdef INET6
+	case (IPV6_VERSION >> 4):
+		ip6 = mtod(m, struct ip6_hdr *);
+		sav = key_allocsa(AF_INET6, (caddr_t)&ip6->ip6_src, (caddr_t)&ip6->ip6_dst,
+				IPPROTO_TCP, htonl(TCP_SIG_SPI));
+		break;
+#endif /* INET6 */
+	default:
+		return (EINVAL);
+		/* NOTREACHED */
+		break;
+	}
+	if (sav == NULL) {
+		kprintf("%s: SADB lookup failed\n", __func__);
+		return (EINVAL);
+	}
+	MD5Init(&ctx);
+
+	/*
+	 * Step 1: Update MD5 hash with IP pseudo-header.
+	 *
+	 * XXX The ippseudo header MUST be digested in network byte order,
+	 * or else we'll fail the regression test. Assume all fields we've
+	 * been doing arithmetic on have been in host byte order.
+	 * XXX One cannot depend on ipovly->ih_len here. When called from
+	 * tcp_output(), the underlying ip_len member has not yet been set.
+	 */
+	switch (IP_VHL_V(ip->ip_vhl)) {
+	case IPVERSION:
+		ipovly = (struct ipovly *)ip;
+		ippseudo.ippseudo_src = ipovly->ih_src;
+		ippseudo.ippseudo_dst = ipovly->ih_dst;
+		ippseudo.ippseudo_pad = 0;
+		ippseudo.ippseudo_p = IPPROTO_TCP;
+		ippseudo.ippseudo_len = htons(len + sizeof(struct tcphdr) + optlen);
+		MD5Update(&ctx, (char *)&ippseudo, sizeof(struct ippseudo));
+		th = (struct tcphdr *)((u_char *)ip + sizeof(struct ip));
+		doff = sizeof(struct ip) + sizeof(struct tcphdr) + optlen;
+		break;
+#ifdef INET6
+	/*
+	 * RFC 2385, 2.0  Proposal
+	 * For IPv6, the pseudo-header is as described in RFC 2460, namely the
+	 * 128-bit source IPv6 address, 128-bit destination IPv6 address, zero-
+	 * extended next header value (to form 32 bits), and 32-bit segment
+	 * length.
+	 * Note: Upper-Layer Packet Length comes before Next Header.
+	 */
+	case (IPV6_VERSION >> 4):
+		in6 = ip6->ip6_src;
+		in6_clearscope(&in6);
+		MD5Update(&ctx, (char *)&in6, sizeof(struct in6_addr));
+		in6 = ip6->ip6_dst;
+		in6_clearscope(&in6);
+		MD5Update(&ctx, (char *)&in6, sizeof(struct in6_addr));
+		plen = htonl(len + sizeof(struct tcphdr) + optlen);
+		MD5Update(&ctx, (char *)&plen, sizeof(uint32_t));
+		nhdr = 0;
+		MD5Update(&ctx, (char *)&nhdr, sizeof(uint8_t));
+		MD5Update(&ctx, (char *)&nhdr, sizeof(uint8_t));
+		MD5Update(&ctx, (char *)&nhdr, sizeof(uint8_t));
+		nhdr = IPPROTO_TCP;
+		MD5Update(&ctx, (char *)&nhdr, sizeof(uint8_t));
+		th = (struct tcphdr *)((u_char *)ip6 + sizeof(struct ip6_hdr));
+		doff = sizeof(struct ip6_hdr) + sizeof(struct tcphdr) + optlen;
+		break;
+#endif /* INET6 */
+	default:
+		return (EINVAL);
+		/* NOTREACHED */
+		break;
+	}
+	/*
+	 * Step 2: Update MD5 hash with TCP header, excluding options.
+	 * The TCP checksum must be set to zero.
+	 */
+	savecsum = th->th_sum;
+	th->th_sum = 0;
+	MD5Update(&ctx, (char *)th, sizeof(struct tcphdr));
+	th->th_sum = savecsum;
+	/*
+	 * Step 3: Update MD5 hash with TCP segment data.
+	 *         Use m_apply() to avoid an early m_pullup().
+	 */
+	if (len > 0)
+		m_apply(m, doff, len, tcpsignature_apply, &ctx);
+	/*
+	 * Step 4: Update MD5 hash with shared secret.
+	 */
+	MD5Update(&ctx, _KEYBUF(sav->key_auth), _KEYLEN(sav->key_auth));
+	MD5Final(buf, &ctx);
+	key_sa_recordxfer(sav, m);
+	key_freesav(sav);
+	return (0);
+}
+
+int
+tcpsignature_apply(void *fstate, void *data, unsigned int len)
+{
+
+	MD5Update((MD5_CTX *)fstate, (unsigned char *)data, len);
+	return (0);
+}
+#endif /* TCP_SIGNATURE */

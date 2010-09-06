@@ -2945,6 +2945,7 @@ key_setsaval(struct secasvar *sav, struct mbuf *m,
 		switch (mhp->msg->sadb_msg_satype) {
 		case SADB_SATYPE_AH:
 		case SADB_SATYPE_ESP:
+		case SADB_X_SATYPE_TCPSIGNATURE:
 			if (len == PFKEY_ALIGN8(sizeof(struct sadb_key)) &&
 			    sav->alg_auth != SADB_X_AALG_NULL)
 				error = EINVAL;
@@ -3000,6 +3001,7 @@ key_setsaval(struct secasvar *sav, struct mbuf *m,
 			sav->key_enc = NULL;	/*just in case*/
 			break;
 		case SADB_SATYPE_AH:
+		case SADB_X_SATYPE_TCPSIGNATURE:
 		default:
 			error = EINVAL;
 			break;
@@ -3034,6 +3036,7 @@ key_setsaval(struct secasvar *sav, struct mbuf *m,
 		break;
 	case SADB_SATYPE_AH:
 	case SADB_X_SATYPE_IPCOMP:
+	case SADB_X_SATYPE_TCPSIGNATURE:
 		break;
 	default:
 		ipseclog((LOG_DEBUG, "key_setsaval: invalid SA type.\n"));
@@ -3212,6 +3215,15 @@ key_mature(struct secasvar *sav)
 		}
 		checkmask = 4;
 		mustmask = 4;
+		break;
+	case IPPROTO_TCP:
+		if (sav->alg_auth != SADB_X_AALG_TCP_MD5) {
+			ipseclog((LOG_DEBUG, "key_mature: "
+				"protocol and algorithm mismated.\n"));
+			return(EINVAL);
+		}
+		checkmask = 0;
+		mustmask = 0;
 		break;
 	default:
 		ipseclog((LOG_DEBUG, "key_mature: Invalid satype.\n"));
@@ -4407,6 +4419,8 @@ key_satype2proto(u_int8_t satype)
 		return IPPROTO_ESP;
 	case SADB_X_SATYPE_IPCOMP:
 		return IPPROTO_IPCOMP;
+	case SADB_X_SATYPE_TCPSIGNATURE:
+		return IPPROTO_TCP;
 		break;
 	default:
 		return 0;
@@ -4429,6 +4443,8 @@ key_proto2satype(u_int16_t proto)
 		return SADB_SATYPE_ESP;
 	case IPPROTO_IPCOMP:
 		return SADB_X_SATYPE_IPCOMP;
+	case IPPROTO_TCP:
+		return SADB_X_SATYPE_TCPSIGNATURE;
 		break;
 	default:
 		return 0;
@@ -6757,6 +6773,7 @@ key_parse(struct mbuf *m, struct socket *so)
 	case SADB_SATYPE_AH:
 	case SADB_SATYPE_ESP:
 	case SADB_X_SATYPE_IPCOMP:
+	case SADB_X_SATYPE_TCPSIGNATURE:
 		switch (msg->sadb_msg_type) {
 		case SADB_X_SPDADD:
 		case SADB_X_SPDDELETE:

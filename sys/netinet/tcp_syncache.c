@@ -72,6 +72,7 @@
  * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.35 2008/11/22 11:03:35 sephe Exp $
  */
 
+#include "opt_inet.h"
 #include "opt_inet6.h"
 #include "opt_ipsec.h"
 
@@ -848,6 +849,12 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 	if (sc->sc_flags & SCF_SACK_PERMITTED)
 		tp->t_flags |= TF_SACK_PERMITTED;
 
+#ifdef TCP_SIGNATURE
+	if (sc->sc_flags & SCF_SIGNATURE)
+		tp->t_flags |= TF_SIGNATURE;
+#endif /* TCP_SIGNATURE */
+
+
 	tcp_mss(tp, sc->sc_peer_mss);
 
 	/*
@@ -1081,6 +1088,17 @@ syncache_add(struct in_conninfo *inc, struct tcpopt *to, struct tcphdr *th,
 		sc->sc_flags |= SCF_SACK_PERMITTED;
 	if (tp->t_flags & TF_NOOPT)
 		sc->sc_flags = SCF_NOOPT;
+#ifdef TCP_SIGNATURE
+	/*
+	 * If listening socket requested TCP digests, and received SYN
+	 * contains the option, flag this in the syncache so that
+	 * syncache_respond() will do the right thing with the SYN+ACK.
+	 * XXX Currently we always record the option by default and will
+	 * attempt to use it in syncache_respond().
+	 */
+	if (to->to_flags & TOF_SIGNATURE)
+		sc->sc_flags = SCF_SIGNATURE;
+#endif /* TCP_SIGNATURE */
 
 	if (syncache_respond(sc, m) == 0) {
 		syncache_insert(sc, sch);
@@ -1137,6 +1155,10 @@ syncache_respond(struct syncache *sc, struct mbuf *m)
 		    ((sc->sc_flags & SCF_TIMESTAMP) ? TCPOLEN_TSTAMP_APPA : 0) +
 		    ((sc->sc_flags & SCF_SACK_PERMITTED) ?
 			TCPOLEN_SACK_PERMITTED_ALIGNED : 0);
+#ifdef TCP_SIGNATURE
+				optlen += ((sc->sc_flags & SCF_SIGNATURE) ?
+						(TCPOLEN_SIGNATURE + 2) : 0);
+#endif /* TCP_SIGNATURE */
 	}
 	tlen = hlen + sizeof(struct tcphdr) + optlen;
 
@@ -1236,6 +1258,26 @@ syncache_respond(struct syncache *sc, struct mbuf *m)
 		*lp   = htonl(sc->sc_tsrecent);
 		optp += TCPOLEN_TSTAMP_APPA;
 	}
+
+#ifdef TCP_SIGNATURE
+	/*
+	 * Handle TCP-MD5 passive opener response.
+	 */
+	if (sc->sc_flags & SCF_SIGNATURE) {
+		u_int8_t *bp = optp;
+		int i;
+
+		*bp++ = TCPOPT_SIGNATURE;
+		*bp++ = TCPOLEN_SIGNATURE;
+		for (i = 0; i < TCP_SIGLEN; i++)
+			*bp++ = 0;
+		tcpsignature_compute(m, 0, optlen,
+				optp + 2, IPSEC_DIR_OUTBOUND);
+		*bp++ = TCPOPT_NOP;
+		*bp++ = TCPOPT_EOL;
+		optp += TCPOLEN_SIGNATURE + 2;
+}
+#endif /* TCP_SIGNATURE */
 
 	if (sc->sc_flags & SCF_SACK_PERMITTED) {
 		*((u_int32_t *)optp) = htonl(TCPOPT_SACK_PERMITTED_ALIGNED);
