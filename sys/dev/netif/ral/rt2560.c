@@ -1954,10 +1954,6 @@ rt2560_start_locked(struct ifnet *ifp)
 static void
 rt2560_start(struct ifnet *ifp)
 {
-	struct rt2560_softc *sc;
-
-	sc = ifp->if_softc;
-
 	RAL_LOCK();
 	rt2560_start_locked(ifp);
 	RAL_UNLOCK();
