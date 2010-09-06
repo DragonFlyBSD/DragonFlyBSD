@@ -157,6 +157,11 @@ device		mlx		# Mylex DAC960 family
 device		twe		# 3ware Escalade 7000/8000's
 device		twa		# 3ware 9000 series PATA/SATA RAID
 
+#
+# Areca RAID (CAM is required).
+#
+device		arcmsr		# Areca SATA II RAID
+
 # atkbdc0 controls both the keyboard and the PS/2 mouse
 device		atkbdc0	at isa? port IO_KBD
 device		atkbd0	at atkbdc? irq 1 flags 0x1

@@ -1252,8 +1252,7 @@ device		mlx		# Mylex DAC960
 device		amr		# AMI MegaRAID
 
 #
-# Areca 11xx and 12xx series of SATA II RAID controllers.
-# CAM is required.
+# Areca RAID (CAM is required).
 #
 device		arcmsr		# Areca SATA II RAID
 
