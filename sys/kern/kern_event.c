@@ -338,6 +338,8 @@ filt_timerexpire(void *knx)
 	struct timeval tv;
 	int tticks;
 
+	lwkt_gettoken(&kq_token);
+
 	kn->kn_data++;
 	KNOTE_ACTIVATE(kn);
 
@@ -348,6 +350,8 @@ filt_timerexpire(void *knx)
 		calloutp = (struct callout *)kn->kn_hook;
 		callout_reset(calloutp, tticks, filt_timerexpire, kn);
 	}
+
+	lwkt_reltoken(&kq_token);
 }
 
 /*
