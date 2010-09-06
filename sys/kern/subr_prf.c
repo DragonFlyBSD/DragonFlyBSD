@@ -158,7 +158,6 @@ uprintf(const char *fmt, ...)
 tpr_t
 tprintf_open(struct proc *p)
 {
-
 	if ((p->p_flag & P_CONTROLT) && p->p_session->s_ttyvp) {
 		sess_hold(p->p_session);
 		return ((tpr_t) p->p_session);
@@ -380,6 +379,8 @@ kputchar(int c, void *arg)
 		constty = NULL;
 	if ((flags & TOCONS) && tp == NULL && constty)
 		flags |= TOLOG | TOWAKEUP;
+	if ((flags & TOTTY) && tputchar(c, tp) < 0)
+		ap->flags &= ~TOTTY;
 	if ((flags & TOLOG))
 		msglogchar(c, ap->pri);
 	if ((flags & TOCONS) && c)
