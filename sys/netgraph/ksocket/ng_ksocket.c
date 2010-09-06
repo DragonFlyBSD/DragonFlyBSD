@@ -612,8 +612,8 @@ ng_ksocket_newhook(node_p node, hook_p hook, const char *name0)
 		/* Add our hook for incoming data and other events */
 		priv->so->so_upcallarg = (caddr_t)node;
 		priv->so->so_upcall = ng_ksocket_incoming;
-		priv->so->so_rcv.ssb_flags |= SSB_UPCALL;
-		priv->so->so_snd.ssb_flags |= SSB_UPCALL;
+		atomic_set_int(&priv->so->so_rcv.ssb_flags, SSB_UPCALL);
+		atomic_set_int(&priv->so->so_snd.ssb_flags, SSB_UPCALL);
 	}
 
 	/* OK */
@@ -936,8 +936,8 @@ ng_ksocket_rmnode(node_p node)
 	/* Close our socket (if any) */
 	if (priv->so != NULL) {
 		priv->so->so_upcall = NULL;
-		priv->so->so_rcv.ssb_flags &= ~SSB_UPCALL;
-		priv->so->so_snd.ssb_flags &= ~SSB_UPCALL;
+		atomic_clear_int(&priv->so->so_rcv.ssb_flags, SSB_UPCALL);
+		atomic_clear_int(&priv->so->so_snd.ssb_flags, SSB_UPCALL);
 		soclose(priv->so, FNONBLOCK);
 		priv->so = NULL;
 	}
@@ -1206,8 +1206,8 @@ ng_ksocket_finish_accept(priv_p priv, struct ng_mesg **rptr)
 
 	so->so_upcallarg = (caddr_t)node2;
 	so->so_upcall = ng_ksocket_incoming;
-	so->so_rcv.ssb_flags |= SSB_UPCALL;
-	so->so_snd.ssb_flags |= SSB_UPCALL;
+	atomic_set_int(&so->so_rcv.ssb_flags, SSB_UPCALL);
+	atomic_set_int(&so->so_snd.ssb_flags, SSB_UPCALL);
 
 	/* Fill in the response data and send it or return it to the caller */
 	resp_data = (struct ng_ksocket_accept *)resp->data;

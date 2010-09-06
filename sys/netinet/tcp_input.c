@@ -1345,11 +1345,11 @@ after_listen:
 					tp->t_flags |= TF_RXRESIZED;
 					if (!ssb_reserve(&so->so_rcv, newsize,
 							 so, NULL)) {
-						so->so_rcv.ssb_flags &= ~SSB_AUTOSIZE;
+						atomic_clear_int(&so->so_rcv.ssb_flags, SSB_AUTOSIZE);
 					}
 					if (newsize >=
 					    (TCP_MAXWIN << tp->rcv_scale)) {
-						so->so_rcv.ssb_flags &= ~SSB_AUTOSIZE;
+						atomic_clear_int(&so->so_rcv.ssb_flags, SSB_AUTOSIZE);
 					}
 				}
 				m_adj(m, drop_hdrlen); /* delayed header drop */

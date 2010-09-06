@@ -217,7 +217,7 @@ sohashttpget(struct socket *so, void *arg, int waitflag)
 fallout:
 	DPRINT("fallout");
 	so->so_upcall = NULL;
-	so->so_rcv.ssb_flags &= ~SSB_UPCALL;
+	atomic_clear_int(&so->so_rcv.ssb_flags, SSB_UPCALL);
 	soisconnected(so);
 	return;
 }
@@ -283,13 +283,13 @@ readmore:
 	 * we don't understand or a newline, so try again
 	 */
 	so->so_upcall = soparsehttpvers;
-	so->so_rcv.ssb_flags |= SSB_UPCALL;
+	atomic_set_int(&so->so_rcv.ssb_flags, SSB_UPCALL);
 	return;
 
 fallout:
 	DPRINT("fallout");
 	so->so_upcall = NULL;
-	so->so_rcv.ssb_flags &= ~SSB_UPCALL;
+	atomic_clear_int(&so->so_rcv.ssb_flags, SSB_UPCALL);
 	soisconnected(so);
 	return;
 }
@@ -354,12 +354,12 @@ soishttpconnected(struct socket *so, void *arg, int waitflag)
 
 readmore:
 	so->so_upcall = soishttpconnected;
-	so->so_rcv.ssb_flags |= SSB_UPCALL;
+	atomic_set_int(&so->so_rcv.ssb_flags, SSB_UPCALL);
 	return;
 
 gotit:
 	so->so_upcall = NULL;
-	so->so_rcv.ssb_flags &= ~SSB_UPCALL;
+	atomic_clear_int(&so->so_rcv.ssb_flags, SSB_UPCALL);
 	soisconnected(so);
 	return;
 }

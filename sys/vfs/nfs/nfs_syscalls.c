@@ -391,9 +391,9 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 		val = 1;
 		sosetopt(so, &sopt);
 	}
-	so->so_rcv.ssb_flags &= ~SSB_NOINTR;
+	atomic_clear_int(&so->so_rcv.ssb_flags, SSB_NOINTR);
 	so->so_rcv.ssb_timeo = 0;
-	so->so_snd.ssb_flags &= ~SSB_NOINTR;
+	atomic_clear_int(&so->so_snd.ssb_flags, SSB_NOINTR);
 	so->so_snd.ssb_timeo = 0;
 
 	slp = (struct nfssvc_sock *)kmalloc(sizeof (struct nfssvc_sock),
@@ -410,7 +410,7 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 	crit_enter();
 	so->so_upcallarg = (caddr_t)slp;
 	so->so_upcall = nfsrv_rcv;
-	so->so_rcv.ssb_flags |= SSB_UPCALL;
+	atomic_set_int(&so->so_rcv.ssb_flags, SSB_UPCALL);
 	slp->ns_flag = (SLP_VALID | SLP_NEEDQ);
 	nfsrv_wakenfsd(slp, 1);
 	crit_exit();
@@ -714,7 +714,7 @@ nfsrv_zapsock(struct nfssvc_sock *slp)
 	if (fp) {
 		slp->ns_fp = NULL;
 		so = slp->ns_so;
-		so->so_rcv.ssb_flags &= ~SSB_UPCALL;
+		atomic_clear_int(&so->so_rcv.ssb_flags, SSB_UPCALL);
 		so->so_upcall = NULL;
 		so->so_upcallarg = NULL;
 		soshutdown(so, SHUT_RDWR);

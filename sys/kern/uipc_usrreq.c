@@ -256,7 +256,7 @@ uipc_rcvd(struct socket *so, int flags)
 		if (so->so_rcv.ssb_cc < so2->so_snd.ssb_hiwat &&
 		    so->so_rcv.ssb_mbcnt < so2->so_snd.ssb_mbmax
 		) {
-			so2->so_snd.ssb_flags &= ~SSB_STOP;
+			atomic_clear_int(&so2->so_snd.ssb_flags, SSB_STOP);
 			sowwakeup(so2);
 		}
 		break;
@@ -376,7 +376,7 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 		if (so2->so_rcv.ssb_cc >= so->so_snd.ssb_hiwat ||
 		    so2->so_rcv.ssb_mbcnt >= so->so_snd.ssb_mbmax
 		) {
-			so->so_snd.ssb_flags |= SSB_STOP;
+			atomic_set_int(&so->so_snd.ssb_flags, SSB_STOP);
 		}
 		sorwakeup(so2);
 		break;

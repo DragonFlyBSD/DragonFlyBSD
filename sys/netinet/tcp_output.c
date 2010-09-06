@@ -373,9 +373,9 @@ again:
 					 tcp_autosndbuf_inc,
 					tcp_autosndbuf_max);
 			if (!ssb_reserve(&so->so_snd, newsize, so, NULL))
-				so->so_snd.ssb_flags &= ~SSB_AUTOSIZE;
+				atomic_clear_int(&so->so_snd.ssb_flags, SSB_AUTOSIZE);
 			if (newsize >= (TCP_MAXWIN << tp->snd_scale))
-				so->so_snd.ssb_flags &= ~SSB_AUTOSIZE;
+				atomic_clear_int(&so->so_snd.ssb_flags, SSB_AUTOSIZE);
 		}
 	}
 

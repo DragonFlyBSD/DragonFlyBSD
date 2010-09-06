@@ -298,8 +298,8 @@ portal_open(struct vop_open_args *ap)
 	 */
 	so->so_rcv.ssb_timeo = 0;
 	so->so_snd.ssb_timeo = 0;
-	so->so_rcv.ssb_flags |= SSB_NOINTR;
-	so->so_snd.ssb_flags |= SSB_NOINTR;
+	atomic_set_int(&so->so_rcv.ssb_flags, SSB_NOINTR);
+	atomic_set_int(&so->so_snd.ssb_flags, SSB_NOINTR);
 
 
 	pcred.pcr_flag = ap->a_mode;

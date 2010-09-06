@@ -623,8 +623,8 @@ netmsg_so_notify(netmsg_t netmsg)
 	} else {
 		lwkt_gettoken(&kq_token);
 		TAILQ_INSERT_TAIL(&ssb->ssb_kq.ki_mlist, msg, nm_list);
+		atomic_set_int(&ssb->ssb_flags, SSB_MEVENT);
 		lwkt_reltoken(&kq_token);
-		ssb->ssb_flags |= SSB_MEVENT;
 	}
 }
 

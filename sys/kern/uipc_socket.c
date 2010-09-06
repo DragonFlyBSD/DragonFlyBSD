@@ -1178,19 +1178,23 @@ sorflush(struct socket *so)
 	struct protosw *pr = so->so_proto;
 	struct signalsockbuf asb;
 
-	ssb->ssb_flags |= SSB_NOINTR;
-	(void) ssb_lock(ssb, M_WAITOK);
+	atomic_set_int(&ssb->ssb_flags, SSB_NOINTR);
 
-	crit_enter();
+	ssb_lock(ssb, M_WAITOK);
 	socantrcvmore(so);
-	ssb_unlock(ssb);
 	asb = *ssb;
-	bzero((caddr_t)ssb, sizeof (*ssb));
-	if (asb.ssb_flags & SSB_KNOTE) {
-		ssb->ssb_kq.ki_note = asb.ssb_kq.ki_note;
-		ssb->ssb_flags |= SSB_KNOTE;
-	}
-	crit_exit();
+
+	/*
+	 * Can't just blow up the ssb structure here
+	 */
+	ssb->ssb_timeo = 0;
+	ssb->ssb_unused01 = 0;
+	ssb->ssb_lowat = 0;
+	ssb->ssb_hiwat = 0;
+	ssb->ssb_mbmax = 0;
+	atomic_clear_int(&ssb->ssb_flags, SSB_CLEAR_MASK);
+
+	ssb_unlock(ssb);
 
 	if (pr->pr_flags & PR_RIGHTS && pr->pr_domain->dom_dispose)
 		(*pr->pr_domain->dom_dispose)(asb.ssb_mb);
@@ -1317,6 +1321,7 @@ sosetopt(struct socket *so, struct sockopt *sopt)
 	struct	linger l;
 	struct	timeval tv;
 	u_long  val;
+	struct signalsockbuf *sotmp;
 
 	error = 0;
 	sopt->sopt_dir = SOPT_SET;
@@ -1393,8 +1398,10 @@ sosetopt(struct socket *so, struct sockopt *sopt)
 					error = ENOBUFS;
 					goto bad;
 				}
-				(sopt->sopt_name == SO_SNDBUF ? &so->so_snd :
-				    &so->so_rcv)->ssb_flags &= ~SSB_AUTOSIZE;
+				sotmp = (sopt->sopt_name == SO_SNDBUF) ?
+						&so->so_snd : &so->so_rcv;
+				atomic_clear_int(&sotmp->ssb_flags,
+						 SSB_AUTOSIZE);
 				break;
 
 			/*
@@ -1405,13 +1412,15 @@ sosetopt(struct socket *so, struct sockopt *sopt)
 				so->so_snd.ssb_lowat =
 				    (optval > so->so_snd.ssb_hiwat) ?
 				    so->so_snd.ssb_hiwat : optval;
-				so->so_snd.ssb_flags &= ~SSB_AUTOLOWAT;
+				atomic_clear_int(&so->so_snd.ssb_flags,
+						 SSB_AUTOLOWAT);
 				break;
 			case SO_RCVLOWAT:
 				so->so_rcv.ssb_lowat =
 				    (optval > so->so_rcv.ssb_hiwat) ?
 				    so->so_rcv.ssb_hiwat : optval;
-				so->so_rcv.ssb_flags &= ~SSB_AUTOLOWAT;
+				atomic_clear_int(&so->so_rcv.ssb_flags,
+						 SSB_AUTOLOWAT);
 				break;
 			}
 			break;
@@ -1728,7 +1737,7 @@ sokqfilter(struct file *fp, struct knote *kn)
 	}
 
 	knote_insert(&ssb->ssb_kq.ki_note, kn);
-	ssb->ssb_flags |= SSB_KNOTE;
+	atomic_set_int(&ssb->ssb_flags, SSB_KNOTE);
 	return (0);
 }
 
@@ -1739,7 +1748,7 @@ filt_sordetach(struct knote *kn)
 
 	knote_remove(&so->so_rcv.ssb_kq.ki_note, kn);
 	if (SLIST_EMPTY(&so->so_rcv.ssb_kq.ki_note))
-		so->so_rcv.ssb_flags &= ~SSB_KNOTE;
+		atomic_clear_int(&so->so_rcv.ssb_flags, SSB_KNOTE);
 }
 
 /*ARGSUSED*/
@@ -1780,7 +1789,7 @@ filt_sowdetach(struct knote *kn)
 
 	knote_remove(&so->so_snd.ssb_kq.ki_note, kn);
 	if (SLIST_EMPTY(&so->so_snd.ssb_kq.ki_note))
-		so->so_snd.ssb_flags &= ~SSB_KNOTE;
+		atomic_clear_int(&so->so_snd.ssb_flags, SSB_KNOTE);
 }
 
 /*ARGSUSED*/

@@ -58,12 +58,16 @@ struct accept_filter;
 /*
  * Signaling socket buffers contain additional elements for locking
  * and signaling conditions.  These are used primarily by sockets.
+ *
+ * WARNING: See partial clearing of fields in kern/uipc_socket.c
+ *	    sorflush() and sowflush().
  */
 struct signalsockbuf {
 	struct sockbuf sb;
 	struct kqinfo ssb_kq;	/* process selecting read/write */
-	short	ssb_flags;	/* flags, see below */
+	uint32_t ssb_flags;	/* flags, see below (use atomic ops) */
 	short	ssb_timeo;	/* timeout for read/write */
+	short	ssb_unused01;
 	long	ssb_lowat;	/* low water mark */
 	u_long	ssb_hiwat;	/* high water mark / max actual char count */
 	u_long	ssb_mbmax;	/* max chars of mbufs to use */
@@ -73,18 +77,25 @@ struct signalsockbuf {
 #define ssb_mb		sb.sb_mb	/* commonly used fields */
 #define ssb_mbcnt	sb.sb_mbcnt	/* commonly used fields */
 
-#define	SSB_LOCK	0x01		/* lock on data queue */
-#define	SSB_WANT	0x02		/* someone is waiting to lock */
-#define	SSB_WAIT	0x04		/* someone is waiting for data/space */
-#define	SSB_ASYNC	0x10		/* ASYNC I/O, need signals */
-#define	SSB_UPCALL	0x20		/* someone wants an upcall */
-#define	SSB_NOINTR	0x40		/* operations not interruptible */
-#define SSB_AIO		0x80		/* AIO operations queued */
-#define SSB_KNOTE	0x100		/* kernel note attached */
-#define SSB_MEVENT	0x200		/* need message event notification */
-#define SSB_STOP	0x400		/* backpressure indicator */
-#define	SSB_AUTOSIZE	0x800		/* automatically size socket buffer */
+#define	SSB_LOCK	0x0001		/* lock on data queue */
+#define	SSB_WANT	0x0002		/* someone is waiting to lock */
+#define	SSB_WAIT	0x0004		/* someone is waiting for data/space */
+#define	SSB_ASYNC	0x0010		/* ASYNC I/O, need signals */
+#define	SSB_UPCALL	0x0020		/* someone wants an upcall */
+#define	SSB_NOINTR	0x0040		/* operations not interruptible */
+#define SSB_AIO		0x0080		/* AIO operations queued */
+#define SSB_KNOTE	0x0100		/* kernel note attached */
+#define SSB_MEVENT	0x0200		/* need message event notification */
+#define SSB_STOP	0x0400		/* backpressure indicator */
+#define	SSB_AUTOSIZE	0x0800		/* automatically size socket buffer */
 #define SSB_AUTOLOWAT	0x1000		/* automatically scale lowat */
+#define SSB_WAKEUP	0x2000		/* wakeup event race */
+
+#define SSB_CLEAR_MASK	(SSB_ASYNC | SSB_UPCALL | SSB_STOP | \
+			 SSB_AUTOSIZE | SSB_AUTOLOWAT)
+
+#define SSB_NOTIFY_MASK	(SSB_WAIT | SSB_ASYNC | SSB_UPCALL | \
+			 SSB_AIO | SSB_KNOTE | SSB_MEVENT)
 
 /*
  * Per-socket kernel structure.  Contains universal send and receive queues,
@@ -211,11 +222,16 @@ struct	xsocket {
 
 /*
  * Do we need to notify the other side when I/O is possible?
+ *
+ * NOTE: Interlock for ssb_wait/wakeup.  The protocol side will set
+ *	 SSB_WAKEUP asynchronously and this can race, so if it isn't
+ *	 set we have to go through the full-on notification check.
+ *	 If it is set but no waiting ever takes place it simply
+ *	 remains set.
  */
-#define	ssb_notify(ssb)					\
-	(((ssb)->ssb_flags &				\
-	(SSB_WAIT | SSB_ASYNC | SSB_UPCALL |		\
-	SSB_AIO | SSB_KNOTE | SSB_MEVENT)))
+#define ssb_notify(ssb)					\
+	    (((ssb)->ssb_flags & SSB_NOTIFY_MASK) ||	\
+	     ((ssb)->ssb_flags & SSB_WAKEUP) == 0)
 
 /* do we have to send all at once on a socket? */
 
@@ -262,29 +278,27 @@ ssb_space(struct signalsockbuf *ssb)
 	((ssb_space(ssb) <= 0) ? 0 : sbappendcontrol(&(ssb)->sb, m, control))
 
 #define ssb_insert_knote(ssb, kn) {					\
-	lwkt_gettoken(&kq_token);					\
-        SLIST_INSERT_HEAD(&(ssb)->ssb_kq.ki_note, kn, kn_next);		\
-	lwkt_reltoken(&kq_token);					\
-	(ssb)->ssb_flags |= SSB_KNOTE;					\
+	knote_insert(&(ssb)->ssb_kq.ki_note, kn);			\
+	atomic_set_int(&(ssb)->ssb_flags, SSB_KNOTE);			\
 }
 
 #define ssb_remove_knote(ssb, kn) {					\
-	lwkt_gettoken(&kq_token);					\
-        SLIST_REMOVE(&(ssb)->ssb_kq.ki_note, kn, knote, kn_next);	\
+	knote_remove(&(ssb)->ssb_kq.ki_note, kn);			\
 	if (SLIST_EMPTY(&(ssb)->ssb_kq.ki_note))			\
-		(ssb)->ssb_flags &= ~SSB_KNOTE;				\
-	lwkt_reltoken(&kq_token);					\
+		atomic_clear_int(&(ssb)->ssb_flags, SSB_KNOTE);		\
 }
 
-#define	sorwakeup(so)	do { \
-			  if (ssb_notify(&(so)->so_rcv)) \
-			    sowakeup((so), &(so)->so_rcv); \
-			} while (0)
+#define	sorwakeup(so)						\
+	do {							\
+		if (ssb_notify(&(so)->so_rcv))			\
+			sowakeup((so), &(so)->so_rcv);		\
+	} while (0)
 
-#define	sowwakeup(so)	do { \
-			  if (ssb_notify(&(so)->so_snd)) \
-			    sowakeup((so), &(so)->so_snd); \
-			} while (0)
+#define	sowwakeup(so)						\
+	do {							\
+		if (ssb_notify(&(so)->so_snd))			\
+			sowakeup((so), &(so)->so_snd);		\
+	} while (0)
 
 #ifdef _KERNEL
 

@@ -76,16 +76,51 @@ static	u_long sb_efficiency = 8;	/* parameter for sbreserve() */
 
 /*
  * Wait for data to arrive at/drain from a socket buffer.
+ *
+ * NOTE: Caller must generally hold the ssb_lock (client side lock) since
+ *	 WAIT/WAKEUP only works for one client at a time.
+ *
+ * NOTE: Caller always retries whatever operation it was waiting on.
  */
 int
 ssb_wait(struct signalsockbuf *ssb)
 {
+	uint32_t flags;
+	int pflags;
+	int error;
 
-	ssb->ssb_flags |= SSB_WAIT;
-	return (tsleep((caddr_t)&ssb->ssb_cc,
-			((ssb->ssb_flags & SSB_NOINTR) ? 0 : PCATCH),
-			"sbwait",
-			ssb->ssb_timeo));
+	pflags = (ssb->ssb_flags & SSB_NOINTR) ? 0 : PCATCH;
+
+	for (;;) {
+		flags = ssb->ssb_flags;
+		cpu_ccfence();
+
+		/*
+		 * WAKEUP and WAIT interlock eachother.  We can catch the
+		 * race by checking to see if WAKEUP has already been set,
+		 * and only setting WAIT if WAKEUP is clear.
+		 */
+		if (flags & SSB_WAKEUP) {
+			if (atomic_cmpset_int(&ssb->ssb_flags, flags,
+					      flags & ~SSB_WAKEUP)) {
+				error = 0;
+				break;
+			}
+			continue;
+		}
+
+		/*
+		 * Only set WAIT if WAKEUP is clear.
+		 */
+		tsleep_interlock(&ssb->ssb_cc, pflags);
+		if (atomic_cmpset_int(&ssb->ssb_flags, flags,
+				      flags | SSB_WAIT)) {
+			error = tsleep(&ssb->ssb_cc, pflags | PINTERLOCKED,
+				       "sbwait", ssb->ssb_timeo);
+			break;
+		}
+	}
+	return (error);
 }
 
 /*
@@ -95,18 +130,34 @@ ssb_wait(struct signalsockbuf *ssb)
 int
 _ssb_lock(struct signalsockbuf *ssb)
 {
+	uint32_t flags;
+	int pflags;
 	int error;
 
-	while (ssb->ssb_flags & SSB_LOCK) {
-		ssb->ssb_flags |= SSB_WANT;
-		error = tsleep((caddr_t)&ssb->ssb_flags,
-			    ((ssb->ssb_flags & SSB_NOINTR) ? 0 : PCATCH),
-			    "sblock", 0);
-		if (error)
-			return (error);
+	pflags = (ssb->ssb_flags & SSB_NOINTR) ? 0 : PCATCH;
+
+	for (;;) {
+		flags = ssb->ssb_flags;
+		cpu_ccfence();
+		if (flags & SSB_LOCK) {
+			tsleep_interlock(&ssb->ssb_flags, pflags);
+			if (atomic_cmpset_int(&ssb->ssb_flags, flags,
+					      flags | SSB_WANT)) {
+				error = tsleep(&ssb->ssb_flags,
+					       pflags | PINTERLOCKED,
+					       "sblock", 0);
+				if (error)
+					break;
+			}
+		} else {
+			if (atomic_cmpset_int(&ssb->ssb_flags, flags,
+					      flags | SSB_LOCK)) {
+				error = 0;
+				break;
+			}
+		}
 	}
-	ssb->ssb_flags |= SSB_LOCK;
-	return (0);
+	return (error);
 }
 
 /*
@@ -176,7 +227,7 @@ soisconnected(struct socket *so)
 		if ((so->so_options & SO_ACCEPTFILTER) != 0) {
 			so->so_upcall = head->so_accf->so_accept_filter->accf_callback;
 			so->so_upcallarg = head->so_accf->so_accept_filter_arg;
-			so->so_rcv.ssb_flags |= SSB_UPCALL;
+			atomic_set_int(&so->so_rcv.ssb_flags, SSB_UPCALL);
 			so->so_options &= ~SO_ACCEPTFILTER;
 			so->so_upcall(so, so->so_upcallarg, 0);
 			return;
@@ -350,17 +401,36 @@ void
 sowakeup(struct socket *so, struct signalsockbuf *ssb)
 {
 	struct kqinfo *kqinfo = &ssb->ssb_kq;
+	uint32_t flags;
 
-	if (ssb->ssb_flags & SSB_WAIT) {
+	/*
+	 * Check conditions, set the WAKEUP flag, and clear and signal if
+	 * the WAIT flag is found to be set.  This interlocks against the
+	 * client side.
+	 */
+	for (;;) {
+		flags = ssb->ssb_flags;
+		cpu_ccfence();
+
 		if ((ssb == &so->so_snd && ssb_space(ssb) >= ssb->ssb_lowat) ||
 		    (ssb == &so->so_rcv && ssb->ssb_cc >= ssb->ssb_lowat) ||
 		    (ssb == &so->so_snd && (so->so_state & SS_CANTSENDMORE)) ||
 		    (ssb == &so->so_rcv && (so->so_state & SS_CANTRCVMORE))
 		) {
-			ssb->ssb_flags &= ~SSB_WAIT;
-			wakeup((caddr_t)&ssb->ssb_cc);
+			if (atomic_cmpset_int(&ssb->ssb_flags, flags,
+					  (flags | SSB_WAKEUP) & ~SSB_WAIT)) {
+				if (flags & SSB_WAIT)
+					wakeup(&ssb->ssb_cc);
+				break;
+			}
+		} else {
+			break;
 		}
 	}
+
+	/*
+	 * Misc other events
+	 */
 	if ((so->so_state & SS_ASYNC) && so->so_sigio != NULL)
 		pgsigio(so->so_sigio, SIGIO, 0);
 	if (ssb->ssb_flags & SSB_UPCALL)
@@ -379,7 +449,7 @@ sowakeup(struct socket *so, struct signalsockbuf *ssb)
 			}
 		}
 		if (TAILQ_EMPTY(&ssb->ssb_kq.ki_mlist))
-			ssb->ssb_flags &= ~SSB_MEVENT;
+			atomic_clear_int(&ssb->ssb_flags, SSB_MEVENT);
 	}
 }
 
@@ -418,7 +488,7 @@ int
 soreserve(struct socket *so, u_long sndcc, u_long rcvcc, struct rlimit *rl)
 {
 	if (so->so_snd.ssb_lowat == 0)
-		so->so_snd.ssb_flags |= SSB_AUTOLOWAT;
+		atomic_set_int(&so->so_snd.ssb_flags, SSB_AUTOLOWAT);
 	if (ssb_reserve(&so->so_snd, sndcc, so, rl) == 0)
 		goto bad;
 	if (ssb_reserve(&so->so_rcv, rcvcc, so, rl) == 0)

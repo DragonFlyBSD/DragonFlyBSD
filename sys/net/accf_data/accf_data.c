@@ -76,7 +76,7 @@ sohasdata(struct socket *so, void *arg, int waitflag)
 	}
 
 	so->so_upcall = NULL;
-	so->so_rcv.ssb_flags &= ~SSB_UPCALL;
+	atomic_clear_int(&so->so_rcv.ssb_flags, SSB_UPCALL);
 	soisconnected(so);
 	return;
 }

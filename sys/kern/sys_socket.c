@@ -137,12 +137,12 @@ soo_ioctl(struct file *fp, u_long cmd, caddr_t data,
 	case FIOASYNC:
 		if (*(int *)data) {
 			so->so_state |= SS_ASYNC;
-			so->so_rcv.ssb_flags |= SSB_ASYNC;
-			so->so_snd.ssb_flags |= SSB_ASYNC;
+			atomic_set_int(&so->so_rcv.ssb_flags,  SSB_ASYNC);
+			atomic_set_int(&so->so_snd.ssb_flags, SSB_ASYNC);
 		} else {
 			so->so_state &= ~SS_ASYNC;
-			so->so_rcv.ssb_flags &= ~SSB_ASYNC;
-			so->so_snd.ssb_flags &= ~SSB_ASYNC;
+			atomic_clear_int(&so->so_rcv.ssb_flags, SSB_ASYNC);
+			atomic_clear_int(&so->so_snd.ssb_flags, SSB_ASYNC);
 		}
 		error = 0;
 		break;

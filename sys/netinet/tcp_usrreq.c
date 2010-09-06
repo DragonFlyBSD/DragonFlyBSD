@@ -1384,8 +1384,8 @@ tcp_attach(struct socket *so, struct pru_attach_info *ai)
 		if (error)
 			return (error);
 	}
-	so->so_rcv.ssb_flags |= SSB_AUTOSIZE;
-	so->so_snd.ssb_flags |= SSB_AUTOSIZE;
+	atomic_set_int(&so->so_rcv.ssb_flags, SSB_AUTOSIZE);
+	atomic_set_int(&so->so_snd.ssb_flags, SSB_AUTOSIZE);
 	cpu = mycpu->gd_cpuid;
 	error = in_pcballoc(so, &tcbinfo[cpu]);
 	if (error)
