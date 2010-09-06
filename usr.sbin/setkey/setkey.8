@@ -220,6 +220,8 @@ AH based on rfc2402
 AH based on rfc1826
 .It Li ipcomp
 IPCOMP
+.It Li tcp
+TCP-MD5 based on rfc2385
 .El
 .\"
 .Pp
@@ -230,6 +232,8 @@ You cannot use the set of SPI values in the range 0 through 255.
 (with
 .Li 0x
 attached).
+TCP-MD5 associations must use 0x1000 and therefore only have per-host
+granularity at this time.
 .\"
 .Pp
 .It Ar extensions
@@ -547,6 +551,7 @@ hmac-sha2-384	384		ah: 96bit ICV (no document)
 		384		ah-old: 128bit ICV (no document)
 hmac-sha2-512	512		ah: 96bit ICV (no document)
 		512		ah-old: 128bit ICV (no document)
+tcp-md5		8 to 640	tcp: rfc2385
 .Ed
 .Pp
 Followings are the list of encryption algorithms that can be used as
@@ -601,6 +606,8 @@ dump esp ;
 
 spdadd	10.0.11.41/32[21] 10.0.11.33/32[any] any
 		-P out ipsec esp/tunnel/192.168.0.1-192.168.1.2/require ;
+
+add 10.1.10.34 10.1.10.36 tcp 0x1000 -A tcp-md5 "TCP-MD5 BGP secret" ;
 
 .Ed
 .\"
