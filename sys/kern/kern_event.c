@@ -102,6 +102,7 @@ static struct fileops kqueueops = {
 static void 	knote_attach(struct knote *kn);
 static void 	knote_drop(struct knote *kn);
 static void	knote_detach_and_drop(struct knote *kn);
+static void	knote_detach_and_drop_locked(struct knote *kn);
 static void 	knote_enqueue(struct knote *kn);
 static void 	knote_dequeue(struct knote *kn);
 static void 	knote_init(void);
@@ -420,6 +421,9 @@ kqueue_init(struct kqueue *kq, struct filedesc *fdp)
 /*
  * Terminate a kqueue.  Freeing the actual kq itself is left up to the
  * caller (it might be embedded in a lwp so we don't do it here).
+ *
+ * The kq's knlist must be completely eradicated so block on any
+ * processing races.
  */
 void
 kqueue_terminate(struct kqueue *kq)
@@ -427,9 +431,14 @@ kqueue_terminate(struct kqueue *kq)
 	struct knote *kn;
 
 	lwkt_gettoken(&kq_token);
-	while ((kn = TAILQ_FIRST(&kq->kq_knlist)) != NULL)
+	while ((kn = TAILQ_FIRST(&kq->kq_knlist)) != NULL) {
+		if (kn->kn_status & KN_PROCESSING) {
+			kn->kn_status |= KN_WAITING | KN_REPROCESS;
+			tsleep(kn, 0, "kqtrms", hz);
+			continue;
+		}
 		knote_detach_and_drop(kn);
-
+	}
 	if (kq->kq_knhash) {
 		kfree(kq->kq_knhash, M_KQUEUE);
 		kq->kq_knhash = NULL;
@@ -601,6 +610,7 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 	total = 0;
 	error = 0;
 	marker.kn_filter = EVFILT_MARKER;
+	marker.kn_status = KN_PROCESSING;
 	TAILQ_INSERT_TAIL(&kq->kq_knpend, &marker, kn_tqe);
 	while ((n = nevents - total) > 0) {
 		if (n > KQ_NEVENTS)
@@ -806,27 +816,27 @@ kqueue_register(struct kqueue *kq, struct kevent *kev)
 			kn->kn_kevent = *kev;
 
 			/*
-			 * Interlock against creation/deletion races due
-			 * to f_attach() blocking.  knote_attach() will set
-			 * KN_CREATING.
+			 * KN_PROCESSING prevents the knote from getting
+			 * ripped out from under us while we are trying
+			 * to attach it, in case the attach blocks.
 			 */
+			kn->kn_status = KN_PROCESSING;
 			knote_attach(kn);
 			if ((error = filter_attach(kn)) != 0) {
 				kn->kn_status |= KN_DELETING;
 				knote_drop(kn);
 				goto done;
 			}
-			kn->kn_status &= ~KN_CREATING;
 
 			/*
-			 * Interlock against close races which remove our
-			 * knotes.  We do not want to end up with a knote
-			 * on a closed descriptor.
+			 * Interlock against close races which either tried
+			 * to remove our knote while we were blocked or missed
+			 * it entirely prior to our attachment.  We do not
+			 * want to end up with a knote on a closed descriptor.
 			 */
 			if ((fops->f_flags & FILTEROP_ISFD) &&
-			    (error = checkfdclosed(fdp, kev->ident, kn->kn_fp)) != 0) {
-				knote_detach_and_drop(kn);
-				goto done;
+			    checkfdclosed(fdp, kev->ident, kn->kn_fp)) {
+				kn->kn_status |= KN_DELETING;
 			}
 		} else {
 			/*
@@ -834,28 +844,59 @@ kqueue_register(struct kqueue *kq, struct kevent *kev)
 			 * initial EV_ADD, but doing so will not reset any 
 			 * filter which have already been triggered.
 			 */
+			kn->kn_status |= KN_PROCESSING;
 			kn->kn_sfflags = kev->fflags;
 			kn->kn_sdata = kev->data;
 			kn->kn_kevent.udata = kev->udata;
 		}
 
-		if (filter_event(kn, 0))
-			KNOTE_ACTIVATE(kn);
+		/*
+		 * Execute the filter event to immediately activate the
+		 * knote if necessary.  We still own KN_PROCESSING so
+		 * process any KN_REPROCESS races as well.
+		 */
+		for (;;) {
+			if (kn->kn_status & KN_DELETING) {
+				error = EBADF;
+				knote_detach_and_drop_locked(kn);
+				goto done;
+			}
+			if (filter_event(kn, 0))
+				KNOTE_ACTIVATE(kn);
+			if ((kn->kn_status & KN_REPROCESS) == 0)
+				break;
+			if (kn->kn_status & KN_WAITING) {
+				kn->kn_status &= ~KN_WAITING;
+				wakeup(kn);
+			}
+			kn->kn_status &= ~KN_REPROCESS;
+		}
+		kn->kn_status &= ~KN_PROCESSING;
 	} else if (kev->flags & EV_DELETE) {
+		/*
+		 * Attempt to delete the existing knote
+		 */
 		knote_detach_and_drop(kn);
 		goto done;
 	}
 
+	/*
+	 * Disablement does not deactivate a knote here.
+	 */
 	if ((kev->flags & EV_DISABLE) &&
 	    ((kn->kn_status & KN_DISABLED) == 0)) {
 		kn->kn_status |= KN_DISABLED;
 	}
 
+	/*
+	 * Re-enablement may have to immediately enqueue an active knote.
+	 */
 	if ((kev->flags & EV_ENABLE) && (kn->kn_status & KN_DISABLED)) {
 		kn->kn_status &= ~KN_DISABLED;
 		if ((kn->kn_status & KN_ACTIVE) &&
-		    ((kn->kn_status & KN_QUEUED) == 0))
+		    ((kn->kn_status & KN_QUEUED) == 0)) {
 			knote_enqueue(kn);
+		}
 	}
 
 done:
@@ -920,6 +961,7 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 
         total = 0;
 	local_marker.kn_filter = EVFILT_MARKER;
+	local_marker.kn_status = KN_PROCESSING;
 
 	/*
 	 * Collect events.
@@ -940,82 +982,102 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 		}
 
 		/*
+		 * We can't skip a knote undergoing processing, otherwise
+		 * we risk not returning it when the user process expects
+		 * it should be returned.  Sleep and retry.
+		 */
+		if (kn->kn_status & KN_PROCESSING) {
+			kn->kn_status |= KN_WAITING | KN_REPROCESS;
+			tsleep(kn, 0, "kqepts", hz);
+			continue;
+		}
+
+		/*
 		 * Remove the event for processing.
 		 *
 		 * WARNING!  We must leave KN_QUEUED set to prevent the
-		 *	     event from being KNOTE()d again while we
-		 *	     potentially block in the filter function.
+		 *	     event from being KNOTE_ACTIVATE()d while
+		 *	     the queue state is in limbo, in case we
+		 *	     block.
 		 *
-		 *	     This protects the knote from everything except
-		 *	     getting dropped.
-		 *
-		 * WARNING!  KN_PROCESSING is meant to handle any cases
-		 *	     that leaving KN_QUEUED set does not.
+		 * WARNING!  We must set KN_PROCESSING to avoid races
+		 *	     against deletion or another thread's
+		 *	     processing.
 		 */
 		TAILQ_REMOVE(&kq->kq_knpend, kn, kn_tqe);
 		kq->kq_count--;
 		kn->kn_status |= KN_PROCESSING;
 
 		/*
-		 * Even though close/dup2 will clean out pending knotes this
-		 * code is MPSAFE and it is possible to race a close inbetween
-		 * the removal of its descriptor and the clearing out of the
-		 * knote(s).
+		 * We have to deal with an extremely important race against
+		 * file descriptor close()s here.  The file descriptor can
+		 * disappear MPSAFE, and there is a small window of
+		 * opportunity between that and the call to knote_fdclose().
 		 *
-		 * In this case we must ensure that the knote is not queued
-		 * to knpend or we risk an infinite kernel loop calling
-		 * kscan, because the select/poll code will not be able to
-		 * delete the event.
+		 * If we hit that window here while doselect or dopoll is
+		 * trying to delete a spurious event they will not be able
+		 * to match up the event against a knote and will go haywire.
 		 */
 		if ((kn->kn_fop->f_flags & FILTEROP_ISFD) &&
 		    checkfdclosed(kq->kq_fdp, kn->kn_kevent.ident, kn->kn_fp)) {
-			kn->kn_status &= ~(KN_QUEUED | KN_ACTIVE |
-					   KN_PROCESSING);
-			continue;
+			kn->kn_status |= KN_DELETING | KN_REPROCESS;
 		}
 
-		/*
-		 * If disabled we ensure the event is not queued but leave
-		 * its active bit set.  On re-enablement the event may be
-		 * immediately triggered.
-		 */
 		if (kn->kn_status & KN_DISABLED) {
-			kn->kn_status &= ~(KN_QUEUED | KN_PROCESSING);
-			continue;
-		}
-
-		/*
-		 * If not running in one-shot mode and the event is no
-		 * longer present we ensure it is removed from the queue and
-		 * ignore it.
-		 */
-		if ((kn->kn_flags & EV_ONESHOT) == 0 &&
-		    filter_event(kn, 0) == 0) {
-			kn->kn_status &= ~(KN_QUEUED | KN_ACTIVE |
-					   KN_PROCESSING);
-			continue;
-		}
-
-		*kevp++ = kn->kn_kevent;
-		++total;
-		--count;
-
-		/*
-		 * Post-event action on the note
-		 */
-		if (kn->kn_flags & EV_ONESHOT) {
-			kn->kn_status &= ~(KN_QUEUED | KN_PROCESSING);
-			knote_detach_and_drop(kn);
-		} else if (kn->kn_flags & EV_CLEAR) {
-			kn->kn_data = 0;
-			kn->kn_fflags = 0;
-			kn->kn_status &= ~(KN_QUEUED | KN_ACTIVE |
-					   KN_PROCESSING);
+			/*
+			 * If disabled we ensure the event is not queued
+			 * but leave its active bit set.  On re-enablement
+			 * the event may be immediately triggered.
+			 */
+			kn->kn_status &= ~KN_QUEUED;
+		} else if ((kn->kn_flags & EV_ONESHOT) == 0 &&
+			   filter_event(kn, 0) == 0) {
+			/*
+			 * If not running in one-shot mode and the event
+			 * is no longer present we ensure it is removed
+			 * from the queue and ignore it.
+			 */
+			kn->kn_status &= ~(KN_QUEUED | KN_ACTIVE);
 		} else {
-			TAILQ_INSERT_TAIL(&kq->kq_knpend, kn, kn_tqe);
-			kq->kq_count++;
-			kn->kn_status &= ~KN_PROCESSING;
+			/*
+			 * Post the event
+			 */
+			*kevp++ = kn->kn_kevent;
+			++total;
+			--count;
+
+			if (kn->kn_flags & EV_ONESHOT) {
+				kn->kn_status &= ~KN_QUEUED;
+				kn->kn_status |= KN_DELETING | KN_REPROCESS;
+			} else if (kn->kn_flags & EV_CLEAR) {
+				kn->kn_data = 0;
+				kn->kn_fflags = 0;
+				kn->kn_status &= ~(KN_QUEUED | KN_ACTIVE);
+			} else {
+				TAILQ_INSERT_TAIL(&kq->kq_knpend, kn, kn_tqe);
+				kq->kq_count++;
+			}
 		}
+
+		/*
+		 * Handle any post-processing states
+		 */
+		while (kn->kn_status & KN_REPROCESS) {
+			kn->kn_status &= ~KN_REPROCESS;
+			if (kn->kn_status & KN_DELETING) {
+				knote_detach_and_drop_locked(kn);
+				goto skip;
+			}
+			if (kn->kn_status & KN_WAITING) {
+				kn->kn_status &= ~KN_WAITING;
+				wakeup(kn);
+			}
+			if (filter_event(kn, 0))
+				KNOTE_ACTIVATE(kn);
+		}
+		kn->kn_status &= ~KN_PROCESSING;
+skip:
+		;
 	}
 	TAILQ_REMOVE(&kq->kq_knpend, &local_marker, kn_tqe);
 
@@ -1142,19 +1204,25 @@ filter_attach(struct knote *kn)
  *
  * Calls filterops f_detach function, acquiring mplock if filter is not
  * marked as FILTEROP_MPSAFE.
- *
- * This can race due to the MP lock and/or locks acquired by f_detach,
- * so we interlock with KN_DELETING.  It is also possible to race
- * a create for the same reason if userland tries to delete the knote
- * before the create is complete.
  */
 static void
 knote_detach_and_drop(struct knote *kn)
 {
-	if (kn->kn_status & (KN_CREATING | KN_DELETING))
+	/*
+	 * If someone else is procesing the knote we cannot destroy it now,
+	 * flag the request and return.
+	 */
+	if (kn->kn_status & KN_PROCESSING) {
+		kn->kn_status |= KN_DELETING | KN_REPROCESS;
 		return;
-	kn->kn_status |= KN_DELETING;
+	}
+	kn->kn_status |= KN_PROCESSING | KN_DELETING;
+	knote_detach_and_drop_locked(kn);
+}
 
+static void
+knote_detach_and_drop_locked(struct knote *kn)
+{
 	if (kn->kn_fop->f_flags & FILTEROP_MPSAFE) {
 		kn->kn_fop->f_detach(kn);
 	} else {
@@ -1177,22 +1245,23 @@ filter_event(struct knote *kn, long hint)
 {
 	int ret;
 
-	if (kn->kn_status & (KN_CREATING | KN_DELETING))
-		return(0);
-
-	if (!(kn->kn_fop->f_flags & FILTEROP_MPSAFE)) {
+	if (kn->kn_fop->f_flags & FILTEROP_MPSAFE) {
+		ret = kn->kn_fop->f_event(kn, hint);
+	} else {
 		get_mplock();
 		ret = kn->kn_fop->f_event(kn, hint);
 		rel_mplock();
-	} else {
-		ret = kn->kn_fop->f_event(kn, hint);
 	}
-
 	return (ret);
 }
 
 /*
- * walk down a list of knotes, activating them if their event has triggered.
+ * Walk down a list of knotes, activating them if their event has triggered.
+ *
+ * If we encounter any knotes which are undergoing processing we just mark
+ * them for reprocessing and do not try to [re]activate the knote.  However,
+ * if a hint is being passed we have to wait and that makes things a bit
+ * sticky.
  */
 void
 knote(struct klist *list, long hint)
@@ -1200,41 +1269,91 @@ knote(struct klist *list, long hint)
 	struct knote *kn;
 
 	lwkt_gettoken(&kq_token);
+restart:
 	SLIST_FOREACH(kn, list, kn_next) {
+		if (kn->kn_status & KN_PROCESSING) {
+			/*
+			 * Someone else is processing the knote, ask the
+			 * other thread to reprocess it and don't mess
+			 * with it otherwise.
+			 */
+			if (hint == 0) {
+				kn->kn_status |= KN_REPROCESS;
+				continue;
+			}
+
+			/*
+			 * If the note is not empty we have to wait.
+			 *
+			 * XXX This is a real problem, certain process
+			 *     and signal filters will bump kn_data for
+			 *     already-processed notes more than once if
+			 *     we restart the list scan.  FIXME.
+			 */
+			kprintf("Warning: knote() on busy "
+				"knote (ev=%d hint=%08lx)\n",
+				kn->kn_filter, hint);
+			kn->kn_status |= KN_WAITING | KN_REPROCESS;
+			tsleep(kn, 0, "knotec", hz);
+			goto restart;
+		}
+
+		/*
+		 * Become the reprocessing master ourselves.
+		 */
+		kn->kn_status |= KN_PROCESSING;
 		if (filter_event(kn, hint))
 			KNOTE_ACTIVATE(kn);
+		while (kn->kn_status & KN_REPROCESS) {
+			kn->kn_status &= ~KN_REPROCESS;
+			if (kn->kn_status & KN_DELETING) {
+				knote_detach_and_drop_locked(kn);
+				goto restart;
+			}
+			if (kn->kn_status & KN_WAITING) {
+				kn->kn_status &= ~KN_WAITING;
+				wakeup(kn);
+			}
+			if (filter_event(kn, hint))
+				KNOTE_ACTIVATE(kn);
+		}
+		kn->kn_status &= ~KN_PROCESSING;
 	}
 	lwkt_reltoken(&kq_token);
 }
 
 /*
- * insert knote at head of klist
+ * Insert knote at head of klist.
  *
- * Requires: kq_token
+ * This function may only be called via a filter function and thus
+ * kq_token should already be held and marked for processing.
  */
 void
 knote_insert(struct klist *klist, struct knote *kn)
 {
-	lwkt_gettoken(&kq_token);
+	KKASSERT(kn->kn_status & KN_PROCESSING);
+	ASSERT_LWKT_TOKEN_HELD(&kq_token);
 	SLIST_INSERT_HEAD(klist, kn, kn_next);
-	lwkt_reltoken(&kq_token);
 }
 
 /*
- * remove knote from a klist
+ * Remove knote from a klist
  *
- * Requires: kq_token
+ * This function may only be called via a filter function and thus
+ * kq_token should already be held and marked for processing.
  */
 void
 knote_remove(struct klist *klist, struct knote *kn)
 {
-	lwkt_gettoken(&kq_token);
+	KKASSERT(kn->kn_status & KN_PROCESSING);
+	ASSERT_LWKT_TOKEN_HELD(&kq_token);
 	SLIST_REMOVE(klist, kn, knote, kn_next);
-	lwkt_reltoken(&kq_token);
 }
 
 /*
- * remove all knotes from a specified klist
+ * Remove all knotes from a specified klist
+ *
+ * Only called from aio.
  */
 void
 knote_empty(struct klist *list)
@@ -1242,8 +1361,14 @@ knote_empty(struct klist *list)
 	struct knote *kn;
 
 	lwkt_gettoken(&kq_token);
-	while ((kn = SLIST_FIRST(list)) != NULL)
+	while ((kn = SLIST_FIRST(list)) != NULL) {
+		if (kn->kn_status & KN_PROCESSING) {
+			kn->kn_status |= KN_WAITING | KN_REPROCESS;
+			tsleep(kn, 0, "kqepts", hz);
+			continue;
+		}
 		knote_detach_and_drop(kn);
+	}
 	lwkt_reltoken(&kq_token);
 }
 
@@ -1259,13 +1384,23 @@ knote_fdclose(struct file *fp, struct filedesc *fdp, int fd)
 restart:
 	SLIST_FOREACH(kn, &fp->f_klist, kn_link) {
 		if (kn->kn_kq->kq_fdp == fdp && kn->kn_id == fd) {
-			knote_detach_and_drop(kn);
+			if (kn->kn_status & KN_PROCESSING) {
+				kn->kn_status |= KN_WAITING | KN_REPROCESS;
+				tsleep(kn, 0, "kqepts", hz);
+			} else {
+				knote_detach_and_drop(kn);
+			}
 			goto restart;
 		}
 	}
 	lwkt_reltoken(&kq_token);
 }
 
+/*
+ * Low level attach function.
+ *
+ * The knote should already be marked for processing.
+ */
 static void
 knote_attach(struct knote *kn)
 {
@@ -1283,9 +1418,13 @@ knote_attach(struct knote *kn)
 	}
 	SLIST_INSERT_HEAD(list, kn, kn_link);
 	TAILQ_INSERT_HEAD(&kq->kq_knlist, kn, kn_kqlink);
-	kn->kn_status = KN_CREATING;
 }
 
+/*
+ * Low level drop function.
+ *
+ * The knote should already be marked for processing.
+ */
 static void
 knote_drop(struct knote *kn)
 {
@@ -1310,13 +1449,17 @@ knote_drop(struct knote *kn)
 	knote_free(kn);
 }
 
+/*
+ * Low level enqueue function.
+ *
+ * The knote should already be marked for processing.
+ */
 static void
 knote_enqueue(struct knote *kn)
 {
 	struct kqueue *kq = kn->kn_kq;
 
 	KASSERT((kn->kn_status & KN_QUEUED) == 0, ("knote already queued"));
-
 	TAILQ_INSERT_TAIL(&kq->kq_knpend, kn, kn_tqe);
 	kn->kn_status |= KN_QUEUED;
 	++kq->kq_count;
@@ -1330,14 +1473,17 @@ knote_enqueue(struct knote *kn)
 	kqueue_wakeup(kq);
 }
 
+/*
+ * Low level dequeue function.
+ *
+ * The knote should already be marked for processing.
+ */
 static void
 knote_dequeue(struct knote *kn)
 {
 	struct kqueue *kq = kn->kn_kq;
 
 	KASSERT(kn->kn_status & KN_QUEUED, ("knote not queued"));
-	KKASSERT((kn->kn_status & KN_PROCESSING) == 0);
-
 	TAILQ_REMOVE(&kq->kq_knpend, kn, kn_tqe);
 	kn->kn_status &= ~KN_QUEUED;
 	kq->kq_count--;

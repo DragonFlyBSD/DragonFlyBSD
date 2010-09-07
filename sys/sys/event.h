@@ -194,13 +194,16 @@ struct knote {
 	} kn_ptr;
 	struct			filterops *kn_fop;
 	caddr_t			kn_hook;
-#define KN_ACTIVE	0x01			/* event has been triggered */
-#define KN_QUEUED	0x02			/* event is on queue */
-#define KN_DISABLED	0x04			/* event is disabled */
-#define KN_DETACHED	0x08			/* knote is detached */
-#define KN_CREATING	0x10			/* creation in progress */
-#define KN_DELETING	0x20			/* deletion in progress */
-#define KN_PROCESSING	0x40			/* queued event processing */
+};
+
+#define KN_ACTIVE	0x0001			/* event has been triggered */
+#define KN_QUEUED	0x0002			/* event is on queue */
+#define KN_DISABLED	0x0004			/* event is disabled */
+#define KN_DETACHED	0x0008			/* knote is detached */
+#define KN_REPROCESS	0x0010			/* force reprocessing race */
+#define KN_DELETING	0x0020			/* deletion in progress */
+#define KN_PROCESSING	0x0040			/* event processing in prog */
+#define KN_WAITING	0x0080			/* waiting on processing */
 
 #define kn_id		kn_kevent.ident
 #define kn_filter	kn_kevent.filter
@@ -208,7 +211,6 @@ struct knote {
 #define kn_fflags	kn_kevent.fflags
 #define kn_data		kn_kevent.data
 #define kn_fp		kn_ptr.p_fp
-};
 
 struct proc;
 struct thread;
