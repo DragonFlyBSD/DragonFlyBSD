@@ -77,10 +77,6 @@ MALLOC_DEFINE(M_NETGRAPH_KSOCKET, "netgraph_ksock", "netgraph ksock node ");
 #define OFFSETOF(s, e) ((char *)&((s *)0)->e - (char *)((s *)0))
 #define SADATA_OFFSET	(OFFSETOF(struct sockaddr, sa_data))
 
-#define SOCKBUF_LOCK(s)
-#define SOCKBUF_UNLOCK(s)
-#define SOCK_LOCK(s)
-#define SOCK_UNLOCK(s)
 #define ACCEPT_LOCK(s)
 #define ACCEPT_UNLOCK(s)
 
@@ -619,17 +615,8 @@ ng_ksocket_connect(hook_p hook)
 	/* Add our hook for incoming data and other events */
 	priv->so->so_upcallarg = (caddr_t)node;
 	priv->so->so_upcall = ng_ksocket_incoming;
-	SOCKBUF_LOCK(&priv->so->so_rcv);
-	priv->so->so_rcv.ssb_flags |= SSB_UPCALL;
-	SOCKBUF_UNLOCK(&priv->so->so_rcv);
-	SOCKBUF_LOCK(&priv->so->so_snd);
-	priv->so->so_snd.ssb_flags |= SSB_UPCALL;
-	SOCKBUF_UNLOCK(&priv->so->so_snd);
-	/*
-	SOCK_LOCK(priv->so);
-	sosetstate(priv->so, SS_NBIO);
-	SOCK_UNLOCK(priv->so);
-	*/
+	atomic_set_int(&priv->so->so_rcv.ssb_flags, SSB_UPCALL);
+	atomic_set_int(&priv->so->so_snd.ssb_flags, SSB_UPCALL);
 	/*
 	 * --Original comment--
 	 * On a cloned socket we may have already received one or more
@@ -943,12 +930,8 @@ ng_ksocket_shutdown(node_p node)
 
 	/* Close our socket (if any) */
 	if (priv->so != NULL) {
-		SOCKBUF_LOCK(&priv->so->so_rcv);
-		priv->so->so_rcv.ssb_flags &= ~SSB_UPCALL;
-		SOCKBUF_UNLOCK(&priv->so->so_rcv);
-		SOCKBUF_LOCK(&priv->so->so_snd);
-		priv->so->so_snd.ssb_flags &= ~SSB_UPCALL;
-		SOCKBUF_UNLOCK(&priv->so->so_snd);
+		atomic_clear_int(&priv->so->so_rcv.ssb_flags, SSB_UPCALL);
+		atomic_clear_int(&priv->so->so_snd.ssb_flags, SSB_UPCALL);
 		priv->so->so_upcall = NULL;
 		soclose(priv->so, FNONBLOCK);
 		priv->so = NULL;
@@ -1269,12 +1252,8 @@ ng_ksocket_finish_accept(priv_p priv)
 
 	so->so_upcallarg = (caddr_t)node;
 	so->so_upcall = ng_ksocket_incoming;
-	SOCKBUF_LOCK(&so->so_rcv);
-	so->so_rcv.ssb_flags |= SSB_UPCALL;
-	SOCKBUF_UNLOCK(&so->so_rcv);
-	SOCKBUF_LOCK(&so->so_snd);
-	so->so_snd.ssb_flags |= SSB_UPCALL;
-	SOCKBUF_UNLOCK(&so->so_snd);
+	atomic_set_int(&priv->so->so_rcv.ssb_flags, SSB_UPCALL);
+	atomic_set_int(&priv->so->so_snd.ssb_flags, SSB_UPCALL);
 
 	/* Fill in the response data and send it or return it to the caller */
 	resp_data = (struct ng_ksocket_accept *)resp->data;
