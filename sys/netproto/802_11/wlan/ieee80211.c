@@ -392,7 +392,6 @@ ieee80211_vap_setup(struct ieee80211com *ic, struct ieee80211vap *vap,
 		return ENOMEM;
 	}
 	if_initname(ifp, name, unit);
-	ifp->if_serializer = &wlan_global_serializer;
 	ifp->if_softc = vap;			/* back pointer */
 	ifp->if_flags = IFF_SIMPLEX | IFF_BROADCAST | IFF_MULTICAST;
 	ifp->if_start = ieee80211_start;
@@ -529,7 +528,7 @@ ieee80211_vap_attach(struct ieee80211vap *vap,
 	if (maxrate)
 		ifp->if_baudrate = IF_Mbps(maxrate);
 
-	ether_ifattach(ifp, vap->iv_myaddr, NULL);
+	ether_ifattach(ifp, vap->iv_myaddr, &wlan_global_serializer);
 	if (vap->iv_opmode == IEEE80211_M_MONITOR) {
 		/* NB: disallow transmit */
 #ifdef __FreeBSD__
@@ -582,8 +581,11 @@ ieee80211_vap_detach(struct ieee80211vap *vap)
 	/*
 	 * Flush any deferred vap tasks.
 	 */
+	wlan_assert_serialized();
+	wlan_serialize_exit();	/* exit to block */
 	ieee80211_draintask(ic, &vap->iv_nstate_task);
 	ieee80211_draintask(ic, &vap->iv_swbmiss_task);
+	wlan_serialize_enter();	/* then reenter */
 
 #ifdef __FreeBSD__
 	/* XXX band-aid until ifnet handles this for us */

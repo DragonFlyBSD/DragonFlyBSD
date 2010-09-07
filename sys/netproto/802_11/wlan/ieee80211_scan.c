@@ -978,7 +978,7 @@ scan_task(void *arg, int pending)
 
 		ss->ss_ops->scan_restart(ss, vap);	/* XXX? */
 		ieee80211_runtask(ic, &SCAN_PRIVATE(ss)->ss_scan_task);
-		return;
+		goto done2;
 	}
 
 	/* past here, scandone is ``true'' if not in bg mode */
@@ -1016,6 +1016,7 @@ done:
 	}
 	SCAN_PRIVATE(ss)->ss_iflags &= ~(ISCAN_CANCEL|ISCAN_ABORT);
 	ss->ss_flags &= ~(IEEE80211_SCAN_ONCE | IEEE80211_SCAN_PICK1ST);
+done2:
 	wlan_serialize_exit();
 #undef ISCAN_REP
 }

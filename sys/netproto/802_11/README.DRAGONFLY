@@ -5,33 +5,75 @@
     wlan_global_serializer.  Normally all wireless base drivers also
     use this serializer to avoid deadlocks.
 
-modevent	ieee80211_dragonfly.h
-		search for DECLARE_MODULE
+STEP 1:
 
-sysctl		search for SYSCTL_HANDLER_ARGS
+    When porting a new wireless low level device be sure to remove all
+    *LOCK* (upper case) macro calls because the whole point of this is
+    to redo the locking with our own.
 
-eventhandler	search for EVENTHANDLER_REGISTER
+STEP 2:
 
-taskq		search for TASK_INIT
+    All border crossings (module loader, sysctl, eventhandlers, tasks,
+    callouts, ifnet, devmethod, and interrupt handlers) must be properly
+    wrapped with wlan_serialize_enter() and wlan_serialize_exit().  Pay
+    careful attention to any early return()s that might break your locks.
 
-callout		search for callout_reset
 
-		search for callout_stop to deal with
-		potential deadlock issues
+modevent	search for DECLARE_MODULE and MOD_LOAD and friends.
+
+sysctl		search for SYSCTL_HANDLER_ARGS.
+
+		Generally speaking sysctls should be rewritten to use
+		a flow-through model (see ath for an example) as most
+		of them currently use a badly designed early-termination
+		model.
+
+eventhandler	search for EVENTHANDLER_REGISTER.
+
+taskq		search for TASK_INIT.
+
+		All taskq callback procedures should be renamed to
+		"<blah>_task".
+
+callout		search for callout_reset.
+
+		search for callout_stop to deal with potential deadlock
+		issues.
+
+		All callout callback procedures should be renamed to
+		"<blah>_callout"
 
 ifnet		wlan/ieee80211.c
 
-		Set if_serializer to &wlan_global_serializer.  There are
-		a few places where if_ioctl is set to NULL and then later
-		restored.  It is unclear why this is being done.
+		This is handled by ieee80211_ifattach() where we set
+		the serializer to &wlan_global_serializer when we
+		call ether_ifattach().  The low level drivers should
+		just be calling ieee80211_ifattach() so no additional
+		work should be needed here.
 
-ifnet, interrupt, devmethod, copyin/copyout
+devmethod	Search for DEVMETHOD (low level drivers).  Typically
+		this is in the *_pci.c file.  The attach function might
+		present an issue where you may wish to release the
+		serializer across the main DMA area allocations.
+		see ath.
+
+interrupt	Search for bus_setup_intr().
+
+		Typically we pass the &wlan_global_serializer to
+		bus_setup_intr().  The interrupt callback is thus
+		serialized automatically.
 
 ieee80211_ioctl()
-
 		This is called directly from the wlan's ifp->if_ioctl and
 		also from various wireless drivers.  This function expects
 		the serializer to already be acquired.
 
 		The kernel will acquire if_serializer when making
 		ifp->if_ioctl() calls.
+
+Low level device drivers
+		Don't forget that low level device drivers such as ath
+		have callouts, taskq, sysctl, and other elements also!
+
+		Look for old calls to ifnet_serialize*() and remove,
+		in addition to the various LOCK macros.

@@ -714,7 +714,11 @@ ieee80211_parse_action(struct ieee80211_node *ni, struct mbuf *m)
 	return 0;
 }
 
-#ifdef IEEE80211_DEBUG
+/*
+ * Modules may be compiled with debugging even if wlan isn't
+ */
+/*#ifdef IEEE80211_DEBUG*/
+#if 1
 /*
  * Debugging support.
  */

@@ -155,19 +155,23 @@ wlan_clone_destroy(struct ifnet *ifp)
 	ic->ic_vap_delete(vap);
 }
 
+const char *wlan_last_enter_func;
+const char *wlan_last_exit_func;
 /*
  * These serializer functions are used by wlan and all drivers.
  */
 void
-wlan_serialize_enter(void)
+_wlan_serialize_enter(const char *funcname)
 {
 	lwkt_serialize_enter(&wlan_global_serializer);
+	wlan_last_enter_func = funcname;
 }
 
 void
-wlan_serialize_exit(void)
+_wlan_serialize_exit(const char *funcname)
 {
 	lwkt_serialize_exit(&wlan_global_serializer);
+	wlan_last_exit_func = funcname;
 }
 
 int
@@ -907,7 +911,7 @@ static eventhandler_tag wlan_bpfevent;
 static eventhandler_tag wlan_ifllevent;
 
 static void
-bpf_track(void *arg, struct ifnet *ifp, int dlt, int attach)
+bpf_track_event(void *arg, struct ifnet *ifp, int dlt, int attach)
 {
 	/* NB: identify vap's by if_start */
 
@@ -935,7 +939,7 @@ bpf_track(void *arg, struct ifnet *ifp, int dlt, int attach)
 }
 
 static void
-wlan_iflladdr(void *arg __unused, struct ifnet *ifp)
+wlan_iflladdr_event(void *arg __unused, struct ifnet *ifp)
 {
 	struct ieee80211com *ic = ifp->if_l2com;
 	struct ieee80211vap *vap, *next;
@@ -980,14 +984,14 @@ wlan_modevent(module_t mod, int type, void *unused)
 		if (bootverbose)
 			kprintf("wlan: <802.11 Link Layer>\n");
 		wlan_bpfevent = EVENTHANDLER_REGISTER(bpf_track,
-					bpf_track, 0,
+					bpf_track_event, 0,
 					EVENTHANDLER_PRI_ANY);
 		if (wlan_bpfevent == NULL) {
 			error = ENOMEM;
 			break;
 		}
 		wlan_ifllevent = EVENTHANDLER_REGISTER(iflladdr_event,
-					wlan_iflladdr, NULL,
+					wlan_iflladdr_event, NULL,
 					EVENTHANDLER_PRI_ANY);
 		if (wlan_ifllevent == NULL) {
 			EVENTHANDLER_DEREGISTER(bpf_track, wlan_bpfevent);
