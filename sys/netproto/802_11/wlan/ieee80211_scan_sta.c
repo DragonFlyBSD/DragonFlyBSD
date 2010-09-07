@@ -1678,19 +1678,15 @@ ap_force_promisc(struct ieee80211com *ic)
 {
 	struct ifnet *ifp = ic->ic_ifp;
 
-	IEEE80211_LOCK(ic);
 	/* set interface into promiscuous mode */
 	ifp->if_flags |= IFF_PROMISC;
 	ieee80211_runtask(ic, &ic->ic_promisc_task);
-	IEEE80211_UNLOCK(ic);
 }
 
 static void
 ap_reset_promisc(struct ieee80211com *ic)
 {
-	IEEE80211_LOCK(ic);
 	ieee80211_syncifflag_locked(ic, IFF_PROMISC);
-	IEEE80211_UNLOCK(ic);
 }
 
 static int

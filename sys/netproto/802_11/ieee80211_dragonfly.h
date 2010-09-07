@@ -29,101 +29,19 @@
 #define _NET80211_IEEE80211_DRAGONFLY_H_
 
 #ifdef _KERNEL
+
 #include <sys/param.h>
 #include <sys/types.h>
-#include <sys/lock.h>
-#include <sys/mutex2.h>
+#include <sys/serialize.h>
 #include <sys/sysctl.h>
+#include <sys/condvar.h>
 #include <sys/taskqueue.h>
 
-#define	IF_LOCK(_lock)		/* */
-#define IF_UNLOCK(_lock)	/* */
-
-/*
- * Common state locking definitions.
- */
-typedef struct {
-	char		name[16];		/* e.g. "ath0_com_lock" */
-	struct lock	lock;
-} ieee80211_com_lock_t;
-/*
-#define	IEEE80211_LOCK_INIT(_ic, _name) do {				\
-	ieee80211_com_lock_t *cl = &(_ic)->ic_comlock;			\
-	ksnprintf(cl->name, sizeof(cl->name), "%s_com_lock", _name);	\
-	lockinit(&cl->lock, cl->name, 0, LK_CANRECURSE);		\
-} while (0)
-#define	IEEE80211_LOCK_OBJ(_ic)	(&(_ic)->ic_comlock.lock)
-#define	IEEE80211_LOCK_DESTROY(_ic) lockuninit(IEEE80211_LOCK_OBJ(_ic))
-#define	IEEE80211_LOCK(_ic) \
-	lockmgr(IEEE80211_LOCK_OBJ(_ic), LK_EXCLUSIVE)
-#define	IEEE80211_UNLOCK(_ic)	   lockmgr(IEEE80211_LOCK_OBJ(_ic), LK_RELEASE)
-#define	IEEE80211_LOCK_ASSERT(_ic) \
-    	KKASSERT(lockstatus(IEEE80211_LOCK_OBJ(_ic), curthread) != 0)
-*/
-#define IEEE80211_LOCK_INIT(_ic, _name)
-#define IEEE80211_LOCK_OBJ(_ic) (NULL)
-#define IEEE80211_LOCK_DESTROY(_ic)
-#define IEEE80211_LOCK(_ic) lwkt_gettoken(&wlan_token)
-#define IEEE80211_UNLOCK(_ic) lwkt_reltoken(&wlan_token)
-#define IEEE80211_LOCK_ASSERT(_ic) ASSERT_LWKT_TOKEN_HELD(&wlan_token)
-
-/*
- * Node locking definitions.
- */
-typedef struct {
-	char		name[16];		/* e.g. "ath0_node_lock" */
-	struct lock	lock;
-} ieee80211_node_lock_t;
-#define	IEEE80211_NODE_LOCK_INIT(_nt, _name) do {			\
-	ieee80211_node_lock_t *nl = &(_nt)->nt_nodelock;		\
-	ksnprintf(nl->name, sizeof(nl->name), "%s_node_lock", _name);	\
-	lockinit(&nl->lock, nl->name, 0, LK_CANRECURSE);		\
-} while (0)
-#define	IEEE80211_NODE_LOCK_OBJ(_nt)	(&(_nt)->nt_nodelock.lock)
-#define	IEEE80211_NODE_LOCK_DESTROY(_nt) \
-	lockuninit(IEEE80211_NODE_LOCK_OBJ(_nt))
-#define	IEEE80211_NODE_LOCK(_nt) \
-	lockmgr(IEEE80211_NODE_LOCK_OBJ(_nt), LK_EXCLUSIVE)
-#define	IEEE80211_NODE_IS_LOCKED(_nt) \
-	(lockstatus(IEEE80211_NODE_LOCK_OBJ(_nt), curthread) == LK_EXCLUSIVE)
-#define	IEEE80211_NODE_UNLOCK(_nt) \
-	lockmgr(IEEE80211_NODE_LOCK_OBJ(_nt), LK_RELEASE)
-#define	IEEE80211_NODE_LOCK_ASSERT(_nt)	\
-	KKASSERT(lockstatus(IEEE80211_NODE_LOCK_OBJ(_nt), curthread) != 0)
-
-/*
- * Node table iteration locking definitions; this protects the
- * scan generation # used to iterate over the station table
- * while grabbing+releasing the node lock.
- */
-typedef struct {
-	char		name[16];		/* e.g. "ath0_scan_lock" */
-	struct lock	lock;
-} ieee80211_scan_lock_t;
-#define	IEEE80211_NODE_ITERATE_LOCK_INIT(_nt, _name) do {		\
-	ieee80211_scan_lock_t *sl = &(_nt)->nt_scanlock;		\
-	ksnprintf(sl->name, sizeof(sl->name), "%s_scan_lock", _name);	\
-	lockinit(&sl->lock, sl->name, 0, 0);				\
-} while (0)
-#define	IEEE80211_NODE_ITERATE_LOCK_OBJ(_nt)	(&(_nt)->nt_scanlock.lock)
-#define	IEEE80211_NODE_ITERATE_LOCK_DESTROY(_nt) \
-	lockuninit(IEEE80211_NODE_ITERATE_LOCK_OBJ(_nt))
-#define	IEEE80211_NODE_ITERATE_LOCK(_nt) \
-	lockmgr(IEEE80211_NODE_ITERATE_LOCK_OBJ(_nt), LK_EXCLUSIVE)
-#define	IEEE80211_NODE_ITERATE_UNLOCK(_nt) \
-	lockmgr(IEEE80211_NODE_ITERATE_LOCK_OBJ(_nt), LK_RELEASE)
-
-/*
- * Power-save queue definitions. 
- */
-typedef struct lock ieee80211_psq_lock_t;
-#define	IEEE80211_PSQ_INIT(_psq, _name) \
-	lockinit(&(_psq)->psq_lock, __DECONST(char *, _name), 0, 0)
-#define	IEEE80211_PSQ_DESTROY(_psq)	lockuninit(&(_psq)->psq_lock)
-#define	IEEE80211_PSQ_LOCK(_psq)	lockmgr(&(_psq)->psq_lock, LK_EXCLUSIVE)
-#define	IEEE80211_PSQ_UNLOCK(_psq)	lockmgr(&(_psq)->psq_lock, LK_RELEASE)
+#include <sys/mutex2.h>
+#include <sys/serialize2.h>
 
 #ifndef IF_PREPEND_LIST
+
 #define _IF_PREPEND_LIST(ifq, mhead, mtail, mcount) do {	\
 	(mtail)->m_nextpkt = (ifq)->ifq_head;			\
 	if ((ifq)->ifq_tail == NULL)				\
@@ -131,34 +49,36 @@ typedef struct lock ieee80211_psq_lock_t;
 	(ifq)->ifq_head = (mhead);				\
 	(ifq)->ifq_len += (mcount);				\
 } while (0)
+
 #define IF_PREPEND_LIST(ifq, mhead, mtail, mcount) do {		\
-	IF_LOCK(ifq);						\
+	wlan_assert_serialized();				\
 	_IF_PREPEND_LIST(ifq, mhead, mtail, mcount);		\
-	IF_UNLOCK(ifq);						\
 } while (0)
+
 #endif /* IF_PREPEND_LIST */
- 
-/*
- * Age queue definitions.
- */
-typedef struct lock ieee80211_ageq_lock_t;
-#define	IEEE80211_AGEQ_INIT(_aq, _name) \
-	lockinit(&(_aq)->aq_lock, __DECONST(char *, _name), 0, 0)
-#define	IEEE80211_AGEQ_DESTROY(_aq)	lockuninit(&(_aq)->aq_lock)
-#define	IEEE80211_AGEQ_LOCK(_aq)	lockmgr(&(_aq)->aq_lock, LK_EXCLUSIVE)
-#define	IEEE80211_AGEQ_UNLOCK(_aq)	lockmgr(&(_aq)->aq_lock, LK_RELEASE)
 
 /*
- * 802.1x MAC ACL database locking definitions.
+ * Global serializer (operates like a non-reentrant lockmgr lock)
  */
-typedef struct lock acl_lock_t;
-#define	ACL_LOCK_INIT(_as, _name) \
-	lockinit(&(_as)->as_lock, __DECONST(char *, _name), 0, 0)
-#define	ACL_LOCK_DESTROY(_as)		lockuninit(&(_as)->as_lock)
-#define	ACL_LOCK(_as)			lockmgr(&(_as)->as_lock, LK_EXCLUSIVE)
-#define	ACL_UNLOCK(_as)			lockmgr(&(_as)->as_lock, LK_RELEASE)
-#define	ACL_LOCK_ASSERT(_as) \
-	KKASSERT(lockstatus(&(_as)->as_lock, curthread) != 0)
+extern struct lwkt_serialize wlan_global_serializer;
+
+void wlan_serialize_enter(void);
+void wlan_serialize_exit(void);
+int wlan_serialize_sleep(void *ident, int flags, const char *wmesg, int timo);
+
+static __inline void
+wlan_assert_serialized(void)
+{
+	ASSERT_SERIALIZED(&wlan_global_serializer);
+}
+
+/*
+ * wlan condition variables.  Assume the global serializer is held.
+ */
+void wlan_cv_init(struct cv *cv, const char *desc);
+int wlan_cv_timedwait(struct cv *cv, int ticks);
+void wlan_cv_wait(struct cv *cv);
+void wlan_cv_signal(struct cv *cv, int broadcast);
 
 /*
  * Node reference counting definitions.

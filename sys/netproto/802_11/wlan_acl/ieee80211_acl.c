@@ -75,7 +75,6 @@ struct acl {
 	uint8_t			acl_macaddr[IEEE80211_ADDR_LEN];
 };
 struct aclstate {
-	acl_lock_t		as_lock;
 	int			as_policy;
 	int			as_nacls;
 	TAILQ_HEAD(, acl)	as_list;	/* list of all ACL's */
@@ -103,7 +102,6 @@ acl_attach(struct ieee80211vap *vap)
 		M_80211_ACL, M_INTWAIT | M_ZERO);
 	if (as == NULL)
 		return 0;
-	ACL_LOCK_INIT(as, "acl");
 	TAILQ_INIT(&as->as_list);
 	as->as_policy = ACL_POLICY_OPEN;
 	as->as_vap = vap;
@@ -122,7 +120,6 @@ acl_detach(struct ieee80211vap *vap)
 
 	acl_free_all(vap);
 	vap->iv_as = NULL;
-	ACL_LOCK_DESTROY(as);
 	kfree(as, M_80211_ACL);
 }
 
@@ -143,7 +140,6 @@ _find_acl(struct aclstate *as, const uint8_t *macaddr)
 static void
 _acl_free(struct aclstate *as, struct acl *acl)
 {
-	ACL_LOCK_ASSERT(as);
 
 	TAILQ_REMOVE(&as->as_list, acl, acl_list);
 	LIST_REMOVE(acl, acl_hash);
@@ -183,11 +179,9 @@ acl_add(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 		return ENOMEM;
 	}
 
-	ACL_LOCK(as);
 	hash = ACL_HASH(mac);
 	LIST_FOREACH(acl, &as->as_hash[hash], acl_hash) {
 		if (IEEE80211_ADDR_EQ(acl->acl_macaddr, mac)) {
-			ACL_UNLOCK(as);
 			kfree(new, M_80211_ACL);
 			IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL,
 				"ACL: add %6D failed, already present\n",
@@ -199,7 +193,6 @@ acl_add(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 	TAILQ_INSERT_TAIL(&as->as_list, new, acl_list);
 	LIST_INSERT_HEAD(&as->as_hash[hash], new, acl_hash);
 	as->as_nacls++;
-	ACL_UNLOCK(as);
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL,
 		"ACL: add %6D\n", mac, ":");
@@ -212,11 +205,9 @@ acl_remove(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 	struct aclstate *as = vap->iv_as;
 	struct acl *acl;
 
-	ACL_LOCK(as);
 	acl = _find_acl(as, mac);
 	if (acl != NULL)
 		_acl_free(as, acl);
-	ACL_UNLOCK(as);
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL,
 		"ACL: remove %6D%s\n", mac, ":",
@@ -233,10 +224,8 @@ acl_free_all(struct ieee80211vap *vap)
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL, "ACL: %s\n", "free all");
 
-	ACL_LOCK(as);
 	while ((acl = TAILQ_FIRST(&as->as_list)) != NULL)
 		_acl_free(as, acl);
-	ACL_UNLOCK(as);
 
 	return 0;
 }
@@ -306,12 +295,10 @@ acl_getioctl(struct ieee80211vap *vap, struct ieee80211req *ireq)
 		if (ap == NULL)
 			return ENOMEM;
 		i = 0;
-		ACL_LOCK(as);
 		TAILQ_FOREACH(acl, &as->as_list, acl_list) {
 			IEEE80211_ADDR_COPY(ap[i].ml_macaddr, acl->acl_macaddr);
 			i++;
 		}
-		ACL_UNLOCK(as);
 		if (ireq->i_len >= space) {
 			error = copyout(ap, ireq->i_data, space);
 			ireq->i_len = space;

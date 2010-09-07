@@ -49,7 +49,6 @@ struct mbuf;
  * frames are required to handle them when they come back.
  */
 struct ieee80211_psq {
-	ieee80211_psq_lock_t psq_lock;
 	int	psq_len;
 	int	psq_maxlen;
 	int	psq_drops;

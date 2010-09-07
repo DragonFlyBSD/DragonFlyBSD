@@ -73,6 +73,7 @@ static struct if_clone wlan_cloner =
 	IF_CLONE_INITIALIZER("wlan", wlan_clone_create, wlan_clone_destroy,
 	    0, IF_MAXUNIT);
 
+struct lwkt_serialize wlan_global_serializer = LWKT_SERIALIZE_INITIALIZER;
 
 /*
  * Allocate/free com structure in conjunction with ifnet;
@@ -154,6 +155,72 @@ wlan_clone_destroy(struct ifnet *ifp)
 	ic->ic_vap_delete(vap);
 }
 
+/*
+ * These serializer functions are used by wlan and all drivers.
+ */
+void
+wlan_serialize_enter(void)
+{
+	lwkt_serialize_enter(&wlan_global_serializer);
+}
+
+void
+wlan_serialize_exit(void)
+{
+	lwkt_serialize_exit(&wlan_global_serializer);
+}
+
+int
+wlan_serialize_sleep(void *ident, int flags, const char *wmesg, int timo)
+{
+	return(zsleep(ident, &wlan_global_serializer, flags, wmesg, timo));
+}
+
+/*
+ * condition-var functions which interlock the ic lock (which is now
+ * just wlan_global_serializer)
+ */
+void
+wlan_cv_init(struct cv *cv, const char *desc)
+{
+	cv->cv_desc = desc;
+	cv->cv_waiters = 0;
+}
+
+int
+wlan_cv_timedwait(struct cv *cv, int ticks)
+{
+	int error;
+
+	++cv->cv_waiters;
+	error = wlan_serialize_sleep(cv, 0, cv->cv_desc, ticks);
+	return (error);
+}
+
+void
+wlan_cv_wait(struct cv *cv)
+{
+	++cv->cv_waiters;
+	wlan_serialize_sleep(cv, 0, cv->cv_desc, 0);
+}
+
+void
+wlan_cv_signal(struct cv *cv, int broadcast)
+{
+	if (cv->cv_waiters) {
+		if (broadcast) {
+			cv->cv_waiters = 0;
+			wakeup(cv);
+		} else {
+			--cv->cv_waiters;
+			wakeup_one(cv);
+		}
+	}
+}
+
+/*
+ * Misc
+ */
 void
 ieee80211_vap_destroy(struct ieee80211vap *vap)
 {
@@ -205,9 +272,7 @@ ieee80211_sysctl_radar(SYSCTL_HANDLER_ARGS)
 	error = sysctl_handle_int(oidp, &t, 0, req);
 	if (error || !req->newptr)
 		return error;
-	IEEE80211_LOCK(ic);
 	ieee80211_dfs_notify_radar(ic, ic->ic_curchan);
-	IEEE80211_UNLOCK(ic);
 	return 0;
 }
 
@@ -324,6 +389,7 @@ ieee80211_drain_ifq(struct ifqueue *ifq)
 	struct ieee80211_node *ni;
 	struct mbuf *m;
 
+	wlan_assert_serialized();
 	for (;;) {
 		IF_DEQUEUE(ifq, m);
 		if (m == NULL)
@@ -344,7 +410,7 @@ ieee80211_flush_ifq(struct ifqueue *ifq, struct ieee80211vap *vap)
 	struct ieee80211_node *ni;
 	struct mbuf *m, **mprev;
 
-	IF_LOCK(ifq);
+	wlan_assert_serialized();
 	mprev = &ifq->ifq_head;
 	while ((m = *mprev) != NULL) {
 		ni = (struct ieee80211_node *)m->m_pkthdr.rcvif;
@@ -362,7 +428,6 @@ ieee80211_flush_ifq(struct ifqueue *ifq, struct ieee80211vap *vap)
 	for (; m != NULL && m->m_nextpkt != NULL; m = m->m_nextpkt)
 		;
 	ifq->ifq_tail = m;
-	IF_UNLOCK(ifq);
 }
 
 /*
@@ -865,7 +930,6 @@ wlan_iflladdr(void *arg __unused, struct ifnet *ifp)
 	if (ifp->if_type != IFT_IEEE80211 || ic == NULL)
 		return;
 
-	IEEE80211_LOCK(ic);
 	TAILQ_FOREACH_MUTABLE(vap, &ic->ic_vaps, iv_next, next) {
 		/*
 		 * If the MAC address has changed on the parent and it was
@@ -874,13 +938,12 @@ wlan_iflladdr(void *arg __unused, struct ifnet *ifp)
 		if (vap->iv_ic == ic &&
 		    (vap->iv_flags_ext & IEEE80211_FEXT_UNIQMAC) == 0) {
 			IEEE80211_ADDR_COPY(vap->iv_myaddr, IF_LLADDR(ifp));
-			IEEE80211_UNLOCK(ic);
+			wlan_serialize_exit();
 			if_setlladdr(vap->iv_ifp, IF_LLADDR(ifp),
-			    IEEE80211_ADDR_LEN);
-			IEEE80211_LOCK(ic);
+				     IEEE80211_ADDR_LEN);
+			wlan_serialize_enter();
 		}
 	}
-	IEEE80211_UNLOCK(ic);
 }
 
 /*

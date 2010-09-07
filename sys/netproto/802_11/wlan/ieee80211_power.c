@@ -105,7 +105,6 @@ ieee80211_psq_init(struct ieee80211_psq *psq, const char *name)
 {
 	memset(psq, 0, sizeof(psq));
 	psq->psq_maxlen = IEEE80211_PS_MAX_QUEUE;
-	IEEE80211_PSQ_INIT(psq, name);		/* OS-dependent setup */
 }
 
 void
@@ -116,7 +115,6 @@ ieee80211_psq_cleanup(struct ieee80211_psq *psq)
 #else
 	KASSERT(psq->psq_len == 0, ("%d frames on ps q", psq->psq_len));
 #endif
-	IEEE80211_PSQ_DESTROY(psq);		/* OS-dependent cleanup */
 }
 
 /*
@@ -129,7 +127,6 @@ ieee80211_node_psq_dequeue(struct ieee80211_node *ni, int *qlen)
 	struct ieee80211_psq_head *qhead;
 	struct mbuf *m;
 
-	IEEE80211_PSQ_LOCK(psq);
 	qhead = &psq->psq_head[0];
 again:
 	if ((m = qhead->head) != NULL) {
@@ -148,7 +145,6 @@ again:
 	}
 	if (qlen != NULL)
 		*qlen = psq->psq_len;
-	IEEE80211_PSQ_UNLOCK(psq);
 	return m;
 }
 
@@ -178,7 +174,6 @@ psq_drain(struct ieee80211_psq *psq)
 	struct mbuf *m;
 	int qlen;
 
-	IEEE80211_PSQ_LOCK(psq);
 	qlen = psq->psq_len;
 	qhead = &psq->psq_head[0];
 again:
@@ -193,7 +188,6 @@ again:
 		goto again;
 	}
 	psq->psq_len = 0;
-	IEEE80211_PSQ_UNLOCK(psq);
 
 	return qlen;
 }
@@ -231,7 +225,6 @@ ieee80211_node_psq_age(struct ieee80211_node *ni)
 		struct ieee80211_psq_head *qhead;
 		struct mbuf *m;
 
-		IEEE80211_PSQ_LOCK(psq);
 		qhead = &psq->psq_head[0];
 	again:
 		while ((m = qhead->head) != NULL &&
@@ -253,7 +246,6 @@ ieee80211_node_psq_age(struct ieee80211_node *ni)
 		}
 		if (m != NULL)
 			M_AGE_SUB(m, IEEE80211_INACT_WAIT);
-		IEEE80211_PSQ_UNLOCK(psq);
 
 		IEEE80211_NOTE(vap, IEEE80211_MSG_POWER, ni,
 		    "discard %u frames for age", discard);
@@ -294,7 +286,6 @@ ieee80211_set_tim(struct ieee80211_node *ni, int set)
 	KASSERT(aid < vap->iv_max_aid,
 		("bogus aid %u, max %u", aid, vap->iv_max_aid));
 
-	IEEE80211_LOCK(ic);
 	changed = (set != (isset(vap->iv_tim_bitmap, aid) != 0));
 	if (changed) {
 		if (set) {
@@ -307,7 +298,6 @@ ieee80211_set_tim(struct ieee80211_node *ni, int set)
 		/* NB: we know vap is in RUN state so no need to check */
 		vap->iv_update_beacon(vap, IEEE80211_BEACON_TIM);
 	}
-	IEEE80211_UNLOCK(ic);
 
 	return changed;
 }
@@ -326,10 +316,8 @@ ieee80211_pwrsave(struct ieee80211_node *ni, struct mbuf *m)
 	struct ieee80211_psq_head *qhead;
 	int qlen, age;
 
-	IEEE80211_PSQ_LOCK(psq);
 	if (psq->psq_len >= psq->psq_maxlen) {
 		psq->psq_drops++;
-		IEEE80211_PSQ_UNLOCK(psq);
 		IEEE80211_NOTE(vap, IEEE80211_MSG_ANY, ni,
 		    "pwr save q overflow, drops %d (size %d)",
 		    psq->psq_drops, psq->psq_len);
@@ -392,7 +380,6 @@ ieee80211_pwrsave(struct ieee80211_node *ni, struct mbuf *m)
 	qhead->tail = m;
 	qhead->len++;
 	qlen = ++(psq->psq_len);
-	IEEE80211_PSQ_UNLOCK(psq);
 
 	IEEE80211_NOTE(vap, IEEE80211_MSG_POWER, ni,
 	    "save frame with age %d, %u now queued", age, qlen);
@@ -420,7 +407,6 @@ pwrsave_flushq(struct ieee80211_node *ni)
 	IEEE80211_NOTE(vap, IEEE80211_MSG_POWER, ni,
 	    "flush ps queue, %u packets queued", psq->psq_len);
 
-	IEEE80211_PSQ_LOCK(psq);
 	qhead = &psq->psq_head[0];	/* 802.11 frames */
 	if (qhead->head != NULL) {
 		/* XXX could dispatch through vap and check M_ENCAP */
@@ -446,7 +432,6 @@ pwrsave_flushq(struct ieee80211_node *ni)
 	} else
 		ifp = NULL;
 	psq->psq_len = 0;
-	IEEE80211_PSQ_UNLOCK(psq);
 
 	/* NB: do this outside the psq lock */
 	/* XXX packets might get reordered if parent is OACTIVE */

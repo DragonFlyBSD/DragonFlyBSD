@@ -139,11 +139,6 @@ static const struct ieee80211_mesh_proto_metric mesh_metric_airtime = {
 static struct ieee80211_mesh_proto_path		mesh_proto_paths[4];
 static struct ieee80211_mesh_proto_metric	mesh_proto_metrics[4];
 
-#define	MESH_RT_LOCK(ms)	lockmgr(&(ms)->ms_rt_lock, LK_EXCLUSIVE)
-#define	MESH_RT_LOCK_ASSERT(ms)	\
-	KKASSERT(lockstatus(&(ms)->ms_rt_lock, curthread) != 0)
-#define	MESH_RT_UNLOCK(ms)	lockmgr(&(ms)->ms_rt_lock, LK_RELEASE)
-
 MALLOC_DEFINE(M_80211_MESH_RT, "80211mesh", "802.11s routing table");
 
 /*
@@ -155,8 +150,6 @@ mesh_rt_find_locked(struct ieee80211_mesh_state *ms,
     const uint8_t dest[IEEE80211_ADDR_LEN])
 {
 	struct ieee80211_mesh_route *rt;
-
-	MESH_RT_LOCK_ASSERT(ms);
 
 	TAILQ_FOREACH(rt, &ms->ms_routes, rt_next) {
 		if (IEEE80211_ADDR_EQ(dest, rt->rt_dest))
@@ -173,8 +166,6 @@ mesh_rt_add_locked(struct ieee80211_mesh_state *ms,
 
 	KASSERT(!IEEE80211_ADDR_EQ(broadcastaddr, dest),
 	    ("%s: adding broadcast to the routing table", __func__));
-
-	MESH_RT_LOCK_ASSERT(ms);
 
 	rt = kmalloc(ALIGN(sizeof(struct ieee80211_mesh_route)) +
 	    ms->ms_ppath->mpp_privlen, M_80211_MESH_RT, M_INTWAIT | M_ZERO);
@@ -194,9 +185,7 @@ ieee80211_mesh_rt_find(struct ieee80211vap *vap,
 	struct ieee80211_mesh_state *ms = vap->iv_mesh;
 	struct ieee80211_mesh_route *rt;
 
-	MESH_RT_LOCK(ms);
 	rt = mesh_rt_find_locked(ms, dest);
-	MESH_RT_UNLOCK(ms);
 	return rt;
 }
 
@@ -212,9 +201,7 @@ ieee80211_mesh_rt_add(struct ieee80211vap *vap,
 	KASSERT(!IEEE80211_ADDR_EQ(vap->iv_myaddr, dest),
 	    ("%s: adding self to the routing table", __func__));
 
-	MESH_RT_LOCK(ms);
 	rt = mesh_rt_add_locked(ms, dest);
-	MESH_RT_UNLOCK(ms);
 	return rt;
 }
 
@@ -228,7 +215,6 @@ ieee80211_mesh_proxy_check(struct ieee80211vap *vap,
 	struct ieee80211_mesh_state *ms = vap->iv_mesh;
 	struct ieee80211_mesh_route *rt;
 
-	MESH_RT_LOCK(ms);
 	rt = mesh_rt_find_locked(ms, dest);
 	if (rt == NULL) {
 		rt = mesh_rt_add_locked(ms, dest);
@@ -262,7 +248,6 @@ ieee80211_mesh_proxy_check(struct ieee80211vap *vap,
 		   (void *)(uintptr_t) ieee80211_mac_hash(ic, dest));
 		/* XXX stat? */
 	}
-	MESH_RT_UNLOCK(ms);
 }
 
 static __inline void
@@ -279,15 +264,12 @@ ieee80211_mesh_rt_del(struct ieee80211vap *vap,
 	struct ieee80211_mesh_state *ms = vap->iv_mesh;
 	struct ieee80211_mesh_route *rt, *next;
 
-	MESH_RT_LOCK(ms);
 	TAILQ_FOREACH_MUTABLE(rt, &ms->ms_routes, rt_next, next) {
 		if (IEEE80211_ADDR_EQ(rt->rt_dest, dest)) {
 			mesh_rt_del(ms, rt);
-			MESH_RT_UNLOCK(ms);
 			return;
 		}
 	}
-	MESH_RT_UNLOCK(ms);
 }
 
 void
@@ -298,10 +280,8 @@ ieee80211_mesh_rt_flush(struct ieee80211vap *vap)
 
 	if (ms == NULL)
 		return;
-	MESH_RT_LOCK(ms);
 	TAILQ_FOREACH_MUTABLE(rt, &ms->ms_routes, rt_next, next)
 		mesh_rt_del(ms, rt);
-	MESH_RT_UNLOCK(ms);
 }
 
 void
@@ -311,12 +291,10 @@ ieee80211_mesh_rt_flush_peer(struct ieee80211vap *vap,
 	struct ieee80211_mesh_state *ms = vap->iv_mesh;
 	struct ieee80211_mesh_route *rt, *next;
 
-	MESH_RT_LOCK(ms);
 	TAILQ_FOREACH_MUTABLE(rt, &ms->ms_routes, rt_next, next) {
 		if (IEEE80211_ADDR_EQ(rt->rt_nexthop, peer))
 			mesh_rt_del(ms, rt);
 	}
-	MESH_RT_UNLOCK(ms);
 }
 
 /*
@@ -331,13 +309,11 @@ mesh_rt_flush_invalid(struct ieee80211vap *vap)
 
 	if (ms == NULL)
 		return;
-	MESH_RT_LOCK(ms);
 	TAILQ_FOREACH_MUTABLE(rt, &ms->ms_routes, rt_next, next) {
 		if ((rt->rt_flags & IEEE80211_MESHRT_FLAGS_VALID) == 0 &&
 		    ticks - rt->rt_crtime >= ms->ms_ppath->mpp_inact)
 			mesh_rt_del(ms, rt);
 	}
-	MESH_RT_UNLOCK(ms);
 }
 
 #define	N(a)	(sizeof(a) / sizeof(a[0]))
@@ -507,7 +483,6 @@ mesh_vdetach(struct ieee80211vap *vap)
 	ieee80211_iterate_nodes(&vap->iv_ic->ic_sta, mesh_vdetach_peers,
 	    NULL);
 	ieee80211_mesh_rt_flush(vap);
-	lockuninit(&ms->ms_rt_lock);
 	ms->ms_ppath->mpp_vdetach(vap);
 	kfree(vap->iv_mesh, M_80211_VAP);
 	vap->iv_mesh = NULL;
@@ -532,7 +507,6 @@ mesh_vattach(struct ieee80211vap *vap)
 	ms->ms_flags = (IEEE80211_MESHFLAGS_AP | IEEE80211_MESHFLAGS_FWD);
 	ms->ms_ttl = IEEE80211_MESH_DEFAULT_TTL;
 	TAILQ_INIT(&ms->ms_routes);
-	lockinit(&ms->ms_rt_lock, "MBSS", 0, 0);
 	callout_init_mp(&ms->ms_cleantimer);
 	mesh_select_proto_metric(vap, "AIRTIME");
 	KASSERT(ms->ms_pmetric, ("ms_pmetric == NULL"));
@@ -551,8 +525,6 @@ mesh_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ieee80211_node *ni;
 	enum ieee80211_state ostate;
-
-	IEEE80211_LOCK_ASSERT(ic);
 
 	ostate = vap->iv_state;
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_STATE, "%s: %s -> %s (%d)\n",
@@ -2603,11 +2575,9 @@ mesh_ioctl_get80211(struct ieee80211vap *vap, struct ieee80211req *ireq)
 		switch (ireq->i_val) {
 		case IEEE80211_MESH_RTCMD_LIST:
 			len = 0;
-			MESH_RT_LOCK(ms);
 			TAILQ_FOREACH(rt, &ms->ms_routes, rt_next) {
 				len += sizeof(*imr);
 			}
-			MESH_RT_UNLOCK(ms);
 			if (len > ireq->i_len || ireq->i_len < sizeof(*imr)) {
 				ireq->i_len = len;
 				return ENOMEM;
@@ -2618,7 +2588,6 @@ mesh_ioctl_get80211(struct ieee80211vap *vap, struct ieee80211req *ireq)
 			if (p == NULL)
 				return ENOMEM;
 			off = 0;
-			MESH_RT_LOCK(ms);
 			TAILQ_FOREACH(rt, &ms->ms_routes, rt_next) {
 				if (off >= len)
 					break;
@@ -2635,7 +2604,6 @@ mesh_ioctl_get80211(struct ieee80211vap *vap, struct ieee80211req *ireq)
 				imr->imr_lastmseq = rt->rt_lastmseq;
 				off += sizeof(*imr);
 			}
-			MESH_RT_UNLOCK(ms);
 			error = copyout(p, (uint8_t *)ireq->i_data,
 			    ireq->i_len);
 			kfree(p, M_TEMP);

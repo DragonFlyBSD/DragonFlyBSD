@@ -207,8 +207,6 @@ sta_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	struct ieee80211_node *ni;
 	enum ieee80211_state ostate;
 
-	IEEE80211_LOCK_ASSERT(ic);
-
 	ostate = vap->iv_state;
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_STATE, "%s: %s -> %s (%d)\n",
 	    __func__, ieee80211_state_name[ostate],
@@ -1118,7 +1116,6 @@ ieee80211_parse_csaparams(struct ieee80211vap *vap, uint8_t *frm,
 		    wh, "CSA", "invalid mode %u", csa->csa_mode);
 		return;
 	}
-	IEEE80211_LOCK(ic);
 	if ((ic->ic_flags & IEEE80211_F_CSAPENDING) == 0) {
 		/*
 		 * Convert the channel number to a channel reference.  We
@@ -1198,7 +1195,7 @@ ieee80211_parse_csaparams(struct ieee80211vap *vap, uint8_t *frm,
 		}
 	}
 done:
-	IEEE80211_UNLOCK(ic);
+	;
 }
 
 /*
@@ -1377,9 +1374,7 @@ sta_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m0,
 				 * stuck in CSA state.  If the AP really is
 				 * moving we'll get a beacon miss and scan.
 				 */
-				IEEE80211_LOCK(ic);
 				ieee80211_csa_cancelswitch(ic);
-				IEEE80211_UNLOCK(ic);
 			}
 			/*
 			 * If scanning, pass the info to the scan module.

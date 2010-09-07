@@ -132,8 +132,6 @@ adhoc_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	struct ieee80211_node *ni;
 	enum ieee80211_state ostate;
 
-	IEEE80211_LOCK_ASSERT(vap->iv_ic);
-
 	ostate = vap->iv_state;
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_STATE, "%s: %s -> %s (%d)\n",
 	    __func__, ieee80211_state_name[ostate],

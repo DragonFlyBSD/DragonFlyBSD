@@ -1044,8 +1044,6 @@ htinfo_notify(struct ieee80211com *ic)
 	struct ieee80211vap *vap;
 	int first = 1;
 
-	IEEE80211_LOCK_ASSERT(ic);
-
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next) {
 		if (vap->iv_opmode != IEEE80211_M_HOSTAP)
 			continue;
@@ -1106,8 +1104,6 @@ ieee80211_ht_node_join(struct ieee80211_node *ni)
 {
 	struct ieee80211com *ic = ni->ni_ic;
 
-	IEEE80211_LOCK_ASSERT(ic);
-
 	if (ni->ni_flags & IEEE80211_NODE_HT) {
 		ic->ic_ht_sta_assoc++;
 		if (ni->ni_chw == 40)
@@ -1123,8 +1119,6 @@ void
 ieee80211_ht_node_leave(struct ieee80211_node *ni)
 {
 	struct ieee80211com *ic = ni->ni_ic;
-
-	IEEE80211_LOCK_ASSERT(ic);
 
 	if (ni->ni_flags & IEEE80211_NODE_HT) {
 		ic->ic_ht_sta_assoc--;
@@ -1150,8 +1144,6 @@ void
 ieee80211_htprot_update(struct ieee80211com *ic, int protmode)
 {
 #define	OPMODE(x)	SM(x, IEEE80211_HTINFO_OPMODE)
-	IEEE80211_LOCK(ic);
-
 	/* track non-HT station presence */
 	KASSERT(protmode & IEEE80211_HTINFO_NONHT_PRESENT,
 	    ("protmode 0x%x", protmode));
@@ -1165,7 +1157,6 @@ ieee80211_htprot_update(struct ieee80211com *ic, int protmode)
 		ic->ic_curhtprotmode = protmode;
 		htinfo_notify(ic);
 	}
-	IEEE80211_UNLOCK(ic);
 #undef OPMODE
 }
 
@@ -1180,8 +1171,6 @@ ieee80211_htprot_update(struct ieee80211com *ic, int protmode)
 void
 ieee80211_ht_timeout(struct ieee80211com *ic)
 {
-	IEEE80211_LOCK_ASSERT(ic);
-
 	if ((ic->ic_flags_ht & IEEE80211_FHT_NONHT_PR) &&
 	    time_after(ticks, ic->ic_lastnonht + IEEE80211_NONHT_PRESENT_AGE)) {
 #if 0

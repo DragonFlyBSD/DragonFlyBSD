@@ -429,7 +429,6 @@ struct ieee80211_mesh_state {
 #define IEEE80211_MESHFLAGS_PORTAL	0x02	/* mesh portal role */
 #define IEEE80211_MESHFLAGS_FWD		0x04	/* forward packets */
 	uint8_t				ms_flags;
-	struct lock			ms_rt_lock;
 	struct callout			ms_cleantimer;
 	TAILQ_HEAD(, ieee80211_mesh_route)  ms_routes;
 	struct ieee80211_mesh_proto_metric *ms_pmetric;

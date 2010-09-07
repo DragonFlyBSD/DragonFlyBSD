@@ -94,8 +94,6 @@ monitor_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	struct ieee80211com *ic = vap->iv_ic;
 	enum ieee80211_state ostate;
 
-	IEEE80211_LOCK_ASSERT(ic);
-
 	ostate = vap->iv_state;
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_STATE, "%s: %s -> %s (%d)\n",
 	    __func__, ieee80211_state_name[ostate],

@@ -267,7 +267,6 @@ ieee80211_ifattach(struct ieee80211com *ic,
 
 	KASSERT(ifp->if_type == IFT_IEEE80211, ("if_type %d", ifp->if_type));
 
-	IEEE80211_LOCK_INIT(ic, ifp->if_xname);
 	TAILQ_INIT(&ic->ic_vaps);
 
 	/* Create a taskqueue for all state changes */
@@ -356,7 +355,6 @@ ieee80211_ifdetach(struct ieee80211com *ic)
 
 	ifmedia_removeall(&ic->ic_media);
 	taskqueue_free(ic->ic_tq);
-	IEEE80211_LOCK_DESTROY(ic);
 }
 
 /*
@@ -544,7 +542,6 @@ ieee80211_vap_attach(struct ieee80211vap *vap,
 	}
 	/* NB: if_mtu set by ether_ifattach to ETHERMTU */
 
-	IEEE80211_LOCK(ic);
 	TAILQ_INSERT_TAIL(&ic->ic_vaps, vap, iv_next);
 	ieee80211_syncflag_locked(ic, IEEE80211_F_WME);
 #ifdef IEEE80211_SUPPORT_SUPERG
@@ -556,7 +553,6 @@ ieee80211_vap_attach(struct ieee80211vap *vap,
 	ieee80211_syncflag_ht_locked(ic, IEEE80211_FHT_USEHT40);
 	ieee80211_syncifflag_locked(ic, IFF_PROMISC);
 	ieee80211_syncifflag_locked(ic, IFF_ALLMULTI);
-	IEEE80211_UNLOCK(ic);
 
 	return 1;
 }
@@ -593,7 +589,6 @@ ieee80211_vap_detach(struct ieee80211vap *vap)
 	taskqueue_drain(taskqueue_swi, &ifp->if_linktask);
 #endif
 
-	IEEE80211_LOCK(ic);
 	KASSERT(vap->iv_state == IEEE80211_S_INIT , ("vap still running"));
 	TAILQ_REMOVE(&ic->ic_vaps, vap, iv_next);
 	ieee80211_syncflag_locked(ic, IEEE80211_F_WME);
@@ -608,7 +603,6 @@ ieee80211_vap_detach(struct ieee80211vap *vap)
 	ieee80211_syncflag_ext_locked(ic, IEEE80211_FEXT_BPF);
 	ieee80211_syncifflag_locked(ic, IFF_PROMISC);
 	ieee80211_syncifflag_locked(ic, IFF_ALLMULTI);
-	IEEE80211_UNLOCK(ic);
 
 	ifmedia_removeall(&vap->iv_media);
 
@@ -640,8 +634,6 @@ ieee80211_syncifflag_locked(struct ieee80211com *ic, int flag)
 	struct ifnet *ifp = ic->ic_ifp;
 	struct ieee80211vap *vap;
 	int bit, oflags;
-
-	IEEE80211_LOCK_ASSERT(ic);
 
 	bit = 0;
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next)
@@ -686,8 +678,6 @@ ieee80211_syncflag_locked(struct ieee80211com *ic, int flag)
 	struct ieee80211vap *vap;
 	int bit;
 
-	IEEE80211_LOCK_ASSERT(ic);
-
 	bit = 0;
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next)
 		if (vap->iv_flags & flag) {
@@ -705,14 +695,12 @@ ieee80211_syncflag(struct ieee80211vap *vap, int flag)
 {
 	struct ieee80211com *ic = vap->iv_ic;
 
-	IEEE80211_LOCK(ic);
 	if (flag < 0) {
 		flag = -flag;
 		vap->iv_flags &= ~flag;
 	} else
 		vap->iv_flags |= flag;
 	ieee80211_syncflag_locked(ic, flag);
-	IEEE80211_UNLOCK(ic);
 }
 
 /*
@@ -725,8 +713,6 @@ ieee80211_syncflag_ht_locked(struct ieee80211com *ic, int flag)
 {
 	struct ieee80211vap *vap;
 	int bit;
-
-	IEEE80211_LOCK_ASSERT(ic);
 
 	bit = 0;
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next)
@@ -745,14 +731,12 @@ ieee80211_syncflag_ht(struct ieee80211vap *vap, int flag)
 {
 	struct ieee80211com *ic = vap->iv_ic;
 
-	IEEE80211_LOCK(ic);
 	if (flag < 0) {
 		flag = -flag;
 		vap->iv_flags_ht &= ~flag;
 	} else
 		vap->iv_flags_ht |= flag;
 	ieee80211_syncflag_ht_locked(ic, flag);
-	IEEE80211_UNLOCK(ic);
 }
 
 /*
@@ -765,8 +749,6 @@ ieee80211_syncflag_ext_locked(struct ieee80211com *ic, int flag)
 {
 	struct ieee80211vap *vap;
 	int bit;
-
-	IEEE80211_LOCK_ASSERT(ic);
 
 	bit = 0;
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next)
@@ -785,14 +767,12 @@ ieee80211_syncflag_ext(struct ieee80211vap *vap, int flag)
 {
 	struct ieee80211com *ic = vap->iv_ic;
 
-	IEEE80211_LOCK(ic);
 	if (flag < 0) {
 		flag = -flag;
 		vap->iv_flags_ext &= ~flag;
 	} else
 		vap->iv_flags_ext |= flag;
 	ieee80211_syncflag_ext_locked(ic, flag);
-	IEEE80211_UNLOCK(ic);
 }
 
 static __inline int

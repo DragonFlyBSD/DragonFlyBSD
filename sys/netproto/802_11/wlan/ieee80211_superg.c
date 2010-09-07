@@ -560,7 +560,6 @@ ieee80211_ff_age(struct ieee80211com *ic, struct ieee80211_stageq *sq,
 
 	KASSERT(sq->head != NULL, ("stageq empty"));
 
-	IEEE80211_LOCK(ic);
 	head = sq->head;
 	while ((m = sq->head) != NULL && M_AGE_GET(m) < quanta) {
 		/* clear tap ref to frame */
@@ -577,7 +576,6 @@ ieee80211_ff_age(struct ieee80211com *ic, struct ieee80211_stageq *sq,
 		sq->tail = NULL;
 	else
 		M_AGE_SUB(m, quanta);
-	IEEE80211_UNLOCK(ic);
 
 	ff_flush(head, m);
 }
@@ -670,7 +668,6 @@ ieee80211_ff_check(struct ieee80211_node *ni, struct mbuf *m)
 	 *     Do 802.1x EAPOL frames proceed in the clear? Then they couldn't
 	 *     be aggregated with other types of frames when encryption is on?
 	 */
-	IEEE80211_LOCK(ic);
 	tap = &ni->ni_tx_ampdu[pri];
 	mstaged = tap->txa_private;		/* NB: we reuse AMPDU state */
 	ieee80211_txampdu_count_packet(tap);
@@ -683,7 +680,6 @@ ieee80211_ff_check(struct ieee80211_node *ni, struct mbuf *m)
 	if (vap->iv_opmode != IEEE80211_M_STA &&
 	    ETHER_IS_MULTICAST(mtod(m, struct ether_header *)->ether_dhost)) {
 		/* XXX flush staged frame? */
-		IEEE80211_UNLOCK(ic);
 		return m;
 	}
 	/*
@@ -692,7 +688,6 @@ ieee80211_ff_check(struct ieee80211_node *ni, struct mbuf *m)
 	 */
 	if (mstaged == NULL &&
 	    ieee80211_txampdu_getpps(tap) < ieee80211_ffppsmin) {
-		IEEE80211_UNLOCK(ic);
 		return m;
 	}
 	sq = &sg->ff_stageq[pri];
@@ -715,7 +710,6 @@ ieee80211_ff_check(struct ieee80211_node *ni, struct mbuf *m)
 		tap->txa_private = NULL;
 		if (mstaged != NULL)
 			stageq_remove(sq, mstaged);
-		IEEE80211_UNLOCK(ic);
 
 		if (mstaged != NULL) {
 			IEEE80211_NOTE(vap, IEEE80211_MSG_SUPERG, ni,
@@ -735,7 +729,6 @@ ieee80211_ff_check(struct ieee80211_node *ni, struct mbuf *m)
 	if (mstaged != NULL) {
 		tap->txa_private = NULL;
 		stageq_remove(sq, mstaged);
-		IEEE80211_UNLOCK(ic);
 
 		IEEE80211_NOTE(vap, IEEE80211_MSG_SUPERG, ni,
 		    "%s: aggregate fast-frame", __func__);
@@ -757,7 +750,6 @@ ieee80211_ff_check(struct ieee80211_node *ni, struct mbuf *m)
 
 		stageq_add(sq, m);
 		sg->ff_stageqdepth++;
-		IEEE80211_UNLOCK(ic);
 
 		IEEE80211_NOTE(vap, IEEE80211_MSG_SUPERG, ni,
 		    "%s: stage frame, %u queued", __func__, sq->depth);
@@ -786,7 +778,6 @@ ieee80211_ff_node_cleanup(struct ieee80211_node *ni)
 	struct mbuf *m, *head;
 	int ac;
 
-	IEEE80211_LOCK(ic);
 	head = NULL;
 	for (ac = 0; ac < WME_NUM_AC; ac++) {
 		tap = &ni->ni_tx_ampdu[ac];
@@ -798,7 +789,6 @@ ieee80211_ff_node_cleanup(struct ieee80211_node *ni)
 			head = m;
 		}
 	}
-	IEEE80211_UNLOCK(ic);
 
 	for (m = head; m != NULL; m = m->m_nextpkt) {
 		m_freem(m);

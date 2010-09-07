@@ -872,8 +872,6 @@ ieee80211_wme_initparams_locked(struct ieee80211vap *vap)
 	enum ieee80211_phymode mode;
 	int i;
 
-	IEEE80211_LOCK_ASSERT(ic);
-
 	if ((ic->ic_caps & IEEE80211_C_WME) == 0 || ic->ic_nrunning > 1)
 		return;
 
@@ -937,9 +935,7 @@ ieee80211_wme_initparams(struct ieee80211vap *vap)
 	struct ieee80211com *ic = vap->iv_ic;
 
 	ic = vap->iv_ic;
-	IEEE80211_LOCK(ic);
 	ieee80211_wme_initparams_locked(vap);
-	IEEE80211_UNLOCK(ic);
 }
 
 /*
@@ -1080,9 +1076,7 @@ ieee80211_wme_updateparams(struct ieee80211vap *vap)
 	struct ieee80211com *ic = vap->iv_ic;
 
 	if (ic->ic_caps & IEEE80211_C_WME) {
-		IEEE80211_LOCK(ic);
 		ieee80211_wme_updateparams_locked(vap);
-		IEEE80211_UNLOCK(ic);
 	}
 }
 
@@ -1149,8 +1143,6 @@ ieee80211_start_locked(struct ieee80211vap *vap)
 	struct ifnet *ifp = vap->iv_ifp;
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ifnet *parent = ic->ic_ifp;
-
-	IEEE80211_LOCK_ASSERT(ic);
 
 	IEEE80211_DPRINTF(vap,
 		IEEE80211_MSG_STATE | IEEE80211_MSG_DEBUG,
@@ -1234,9 +1226,7 @@ ieee80211_init(void *arg)
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_STATE | IEEE80211_MSG_DEBUG,
 	    "%s\n", __func__);
 
-	IEEE80211_LOCK(vap->iv_ic);
 	ieee80211_start_locked(vap);
-	IEEE80211_UNLOCK(vap->iv_ic);
 }
 
 /*
@@ -1247,13 +1237,11 @@ ieee80211_start_all(struct ieee80211com *ic)
 {
 	struct ieee80211vap *vap;
 
-	IEEE80211_LOCK(ic);
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next) {
 		struct ifnet *ifp = vap->iv_ifp;
 		if (IFNET_IS_UP_RUNNING(ifp))	/* NB: avoid recursion */
 			ieee80211_start_locked(vap);
 	}
-	IEEE80211_UNLOCK(ic);
 }
 
 /*
@@ -1269,8 +1257,6 @@ ieee80211_stop_locked(struct ieee80211vap *vap)
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ifnet *ifp = vap->iv_ifp;
 	struct ifnet *parent = ic->ic_ifp;
-
-	IEEE80211_LOCK_ASSERT(ic);
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_STATE | IEEE80211_MSG_DEBUG,
 	    "stop running, %d vaps running\n", ic->ic_nrunning);
@@ -1295,9 +1281,7 @@ ieee80211_stop(struct ieee80211vap *vap)
 	struct ieee80211com *ic = vap->iv_ic;
 
 	ic = vap->iv_ic;
-	IEEE80211_LOCK(ic);
 	ieee80211_stop_locked(vap);
-	IEEE80211_UNLOCK(ic);
 }
 
 /*
@@ -1308,13 +1292,11 @@ ieee80211_stop_all(struct ieee80211com *ic)
 {
 	struct ieee80211vap *vap;
 
-	IEEE80211_LOCK(ic);
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next) {
 		struct ifnet *ifp = vap->iv_ifp;
 		if (IFNET_IS_UP_RUNNING(ifp))	/* NB: avoid recursion */
 			ieee80211_stop_locked(vap);
 	}
-	IEEE80211_UNLOCK(ic);
 
 	ieee80211_waitfor_parent(ic);
 }
@@ -1328,7 +1310,6 @@ ieee80211_suspend_all(struct ieee80211com *ic)
 {
 	struct ieee80211vap *vap;
 
-	IEEE80211_LOCK(ic);
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next) {
 		struct ifnet *ifp = vap->iv_ifp;
 		if (IFNET_IS_UP_RUNNING(ifp)) {	/* NB: avoid recursion */
@@ -1336,7 +1317,6 @@ ieee80211_suspend_all(struct ieee80211com *ic)
 			ieee80211_stop_locked(vap);
 		}
 	}
-	IEEE80211_UNLOCK(ic);
 
 	ieee80211_waitfor_parent(ic);
 }
@@ -1349,7 +1329,6 @@ ieee80211_resume_all(struct ieee80211com *ic)
 {
 	struct ieee80211vap *vap;
 
-	IEEE80211_LOCK(ic);
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next) {
 		struct ifnet *ifp = vap->iv_ifp;
 		if (!IFNET_IS_UP_RUNNING(ifp) &&
@@ -1358,18 +1337,15 @@ ieee80211_resume_all(struct ieee80211com *ic)
 			ieee80211_start_locked(vap);
 		}
 	}
-	IEEE80211_UNLOCK(ic);
 }
 
 void
 ieee80211_beacon_miss(struct ieee80211com *ic)
 {
-	IEEE80211_LOCK(ic);
 	if ((ic->ic_flags & IEEE80211_F_SCAN) == 0) {
 		/* Process in a taskq, the handler may reenter the driver */
 		ieee80211_runtask(ic, &ic->ic_bmiss_task);
 	}
-	IEEE80211_UNLOCK(ic);
 }
 
 static void
@@ -1460,8 +1436,6 @@ ieee80211_csa_startswitch(struct ieee80211com *ic,
 {
 	struct ieee80211vap *vap;
 
-	IEEE80211_LOCK_ASSERT(ic);
-
 	ic->ic_csa_newchan = c;
 	ic->ic_csa_mode = mode;
 	ic->ic_csa_count = count;
@@ -1499,8 +1473,6 @@ csa_completeswitch(struct ieee80211com *ic)
 void
 ieee80211_csa_completeswitch(struct ieee80211com *ic)
 {
-	IEEE80211_LOCK_ASSERT(ic);
-
 	KASSERT(ic->ic_flags & IEEE80211_F_CSAPENDING, ("csa not pending"));
 
 	ieee80211_setcurchan(ic, ic->ic_csa_newchan);
@@ -1515,8 +1487,6 @@ ieee80211_csa_completeswitch(struct ieee80211com *ic)
 void
 ieee80211_csa_cancelswitch(struct ieee80211com *ic)
 {
-	IEEE80211_LOCK_ASSERT(ic);
-
 	csa_completeswitch(ic);
 }
 
@@ -1530,7 +1500,6 @@ ieee80211_cac_completeswitch(struct ieee80211vap *vap0)
 	struct ieee80211com *ic = vap0->iv_ic;
 	struct ieee80211vap *vap;
 
-	IEEE80211_LOCK(ic);
 	/*
 	 * Complete CAC state change for lead vap first; then
 	 * clock all the other vap's waiting.
@@ -1542,7 +1511,6 @@ ieee80211_cac_completeswitch(struct ieee80211vap *vap0)
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next)
 		if (vap->iv_state == IEEE80211_S_CAC)
 			ieee80211_new_state_locked(vap, IEEE80211_S_RUN, 0);
-	IEEE80211_UNLOCK(ic);
 }
 
 /*
@@ -1556,8 +1524,6 @@ markwaiting(struct ieee80211vap *vap0)
 {
 	struct ieee80211com *ic = vap0->iv_ic;
 	struct ieee80211vap *vap;
-
-	IEEE80211_LOCK_ASSERT(ic);
 
 	/*
 	 * A vap list entry can not disappear since we are running on the
@@ -1586,8 +1552,6 @@ wakeupwaiting(struct ieee80211vap *vap0)
 {
 	struct ieee80211com *ic = vap0->iv_ic;
 	struct ieee80211vap *vap;
-
-	IEEE80211_LOCK_ASSERT(ic);
 
 	/*
 	 * A vap list entry can not disappear since we are running on the
@@ -1619,7 +1583,6 @@ ieee80211_newstate_cb(void *xvap, int npending)
 	enum ieee80211_state nstate, ostate;
 	int arg, rc;
 
-	IEEE80211_LOCK(ic);
 	nstate = vap->iv_nstate;
 	arg = vap->iv_nstate_arg;
 
@@ -1697,7 +1660,7 @@ ieee80211_newstate_cb(void *xvap, int npending)
 		ieee80211_flush_ifq((struct ifqueue *)&ic->ic_ifp->if_snd, vap);
 	}
 done:
-	IEEE80211_UNLOCK(ic);
+	;
 }
 
 /*
@@ -1735,8 +1698,6 @@ ieee80211_new_state_locked(struct ieee80211vap *vap,
 	struct ieee80211vap *vp;
 	enum ieee80211_state ostate;
 	int nrunning, nscanning;
-
-	IEEE80211_LOCK_ASSERT(ic);
 
 	if (vap->iv_flags_ext & IEEE80211_FEXT_STATEWAIT) {
 		if (vap->iv_nstate == IEEE80211_S_INIT) {
@@ -1884,8 +1845,6 @@ ieee80211_new_state(struct ieee80211vap *vap,
 	int rc;
 
 	ic = vap->iv_ic;
-	IEEE80211_LOCK(ic);
 	rc = ieee80211_new_state_locked(vap, nstate, arg);
-	IEEE80211_UNLOCK(ic);
 	return rc;
 }

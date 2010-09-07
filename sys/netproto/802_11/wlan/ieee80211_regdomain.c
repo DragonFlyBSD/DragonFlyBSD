@@ -323,7 +323,6 @@ allvapsdown(struct ieee80211com *ic)
 {
 	struct ieee80211vap *vap;
 
-	IEEE80211_LOCK_ASSERT(ic);
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next)
 		if (vap->iv_state != IEEE80211_S_INIT)
 			return 0;
@@ -385,10 +384,8 @@ ieee80211_setregdomain(struct ieee80211vap *vap,
 		if (c->ic_maxpower == 0)
 			c->ic_maxpower = 2*c->ic_maxregpower;
 	}
-	IEEE80211_LOCK(ic);
 	/* XXX bandaid; a running vap will likely crash */
 	if (!allvapsdown(ic)) {
-		IEEE80211_UNLOCK(ic);
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_IOCTL,
 		    "%s: reject: vaps are running\n", __func__);
 		return EBUSY;
@@ -396,7 +393,6 @@ ieee80211_setregdomain(struct ieee80211vap *vap,
 	error = ic->ic_setregdomain(ic, &reg->rd,
 	    reg->chaninfo.ic_nchans, reg->chaninfo.ic_chans);
 	if (error != 0) {
-		IEEE80211_UNLOCK(ic);
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_IOCTL,
 		    "%s: driver rejected request, error %u\n", __func__, error);
 		return error;
@@ -443,7 +439,6 @@ ieee80211_setregdomain(struct ieee80211vap *vap,
 		/* NB: may be NULL if not present in new channel list */
 		vap->iv_des_chan = (c != NULL) ? c : IEEE80211_CHAN_ANYC;
 	}
-	IEEE80211_UNLOCK(ic);
 
 	return 0;
 }

@@ -101,8 +101,6 @@ cac_timeout(void *arg)
 	struct ieee80211_dfs_state *dfs = &ic->ic_dfs;
 	int i;
 
-	IEEE80211_LOCK(ic);
-
 	if (vap->iv_state != IEEE80211_S_CAC)	/* NB: just in case */
 		return;
 	/*
@@ -142,8 +140,6 @@ cac_timeout(void *arg)
 		    IEEE80211_NOTIFY_CAC_EXPIRE);
 		ieee80211_cac_completeswitch(vap);
 	}
-
-	IEEE80211_UNLOCK(ic);
 }
 
 /*
@@ -156,8 +152,6 @@ ieee80211_dfs_cac_start(struct ieee80211vap *vap)
 {
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ieee80211_dfs_state *dfs = &ic->ic_dfs;
-
-	IEEE80211_LOCK_ASSERT(ic);
 
 	callout_reset(&dfs->cac_timer, CAC_TIMEOUT, cac_timeout, vap);
 	if_printf(vap->iv_ifp, "start %d second CAC timer on channel %u (%u MHz)\n",
@@ -174,8 +168,6 @@ ieee80211_dfs_cac_stop(struct ieee80211vap *vap)
 {
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ieee80211_dfs_state *dfs = &ic->ic_dfs;
-
-	IEEE80211_LOCK_ASSERT(ic);
 
 	/* NB: racey but not important */
 	if (callout_pending(&dfs->cac_timer)) {
@@ -208,8 +200,6 @@ dfs_timeout(void *arg)
 	struct ieee80211_channel *c;
 	int i, oldest, now;
 
-	IEEE80211_LOCK(ic);
-
 	now = oldest = ticks;
 	for (i = 0; i < ic->ic_nchans; i++) {
 		c = &ic->ic_channels[i];
@@ -239,8 +229,6 @@ dfs_timeout(void *arg)
 		callout_reset(&dfs->nol_timer, oldest + NOL_TIMEOUT - now,
 		    dfs_timeout, ic);
 	}
-
-	IEEE80211_UNLOCK(ic);
 }
 
 static void
@@ -270,8 +258,6 @@ ieee80211_dfs_notify_radar(struct ieee80211com *ic, struct ieee80211_channel *ch
 {
 	struct ieee80211_dfs_state *dfs = &ic->ic_dfs;
 	int i, now;
-
-	IEEE80211_LOCK_ASSERT(ic);
 
 	/*
 	 * Mark all entries with this frequency.  Notify user

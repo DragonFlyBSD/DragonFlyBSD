@@ -122,7 +122,7 @@ static int
 ieee80211_create_wds(struct ieee80211vap *vap, struct ieee80211_channel *chan)
 {
 	struct ieee80211com *ic = vap->iv_ic;
-	struct ieee80211_node_table *nt = &ic->ic_sta;
+/*	struct ieee80211_node_table *nt = &ic->ic_sta;*/
 	struct ieee80211_node *ni, *obss;
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_WDS,
@@ -143,7 +143,6 @@ ieee80211_create_wds(struct ieee80211vap *vap, struct ieee80211_channel *chan)
 		 * be dispatched upward (e.g. to a bridge) as though
 		 * they arrived on the WDS vap.
 		 */
-		IEEE80211_NODE_LOCK(nt);
 		obss = NULL;
 		ni = ieee80211_find_node_locked(&ic->ic_sta, vap->iv_des_bssid);
 		if (ni == NULL) {
@@ -178,7 +177,6 @@ ieee80211_create_wds(struct ieee80211vap *vap, struct ieee80211_channel *chan)
 			vap->iv_bss = ni;
 			ni->ni_wdsvap = vap;
 		}
-		IEEE80211_NODE_UNLOCK(nt);
 		if (obss != NULL) {
 			/* NB: deferred to avoid recursive lock */
 			ieee80211_free_node(obss);
@@ -342,8 +340,6 @@ wds_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	struct ieee80211_node *ni;
 	enum ieee80211_state ostate;
 	int error;
-
-	IEEE80211_LOCK_ASSERT(ic);
 
 	ostate = vap->iv_state;
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_STATE, "%s: %s -> %s\n", __func__,

@@ -145,10 +145,8 @@ ieee80211_defrag(struct ieee80211_node *ni, struct mbuf *m, int hdrspace)
 		m_freem(m);
 		return NULL;
 	}
-	IEEE80211_NODE_LOCK(ni->ni_table);
 	mfrag = ni->ni_rxfrag[0];
 	ni->ni_rxfrag[0] = NULL;
-	IEEE80211_NODE_UNLOCK(ni->ni_table);
 
 	/*
 	 * Validate new fragment is in order and

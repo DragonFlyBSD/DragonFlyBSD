@@ -1324,14 +1324,12 @@ setmlme_dropsta(struct ieee80211vap *vap,
 
 	/* NB: the broadcast address means do 'em all */
 	if (!IEEE80211_ADDR_EQ(mac, ic->ic_ifp->if_broadcastaddr)) {
-		IEEE80211_NODE_LOCK(nt);
 		ni = ieee80211_find_node_locked(nt, mac);
 		if (ni != NULL) {
 			domlme(mlmeop, ni);
 			ieee80211_free_node(ni);
 		} else
 			error = ENOENT;
-		IEEE80211_NODE_UNLOCK(nt);
 	} else {
 		ieee80211_iterate_nodes(nt, domlme, mlmeop);
 	}
@@ -1395,7 +1393,6 @@ setmlme_common(struct ieee80211vap *vap, int op,
 			error = EINVAL;
 			break;
 		}
-		IEEE80211_NODE_LOCK(nt);
 		ni = ieee80211_find_vap_node_locked(nt, vap, mac);
 		if (ni != NULL) {
 			mlmedebug(vap, mac, op, reason);
@@ -1406,14 +1403,12 @@ setmlme_common(struct ieee80211vap *vap, int op,
 			ieee80211_free_node(ni);
 		} else
 			error = ENOENT;
-		IEEE80211_NODE_UNLOCK(nt);
 		break;
 	case IEEE80211_MLME_AUTH:
 		if (vap->iv_opmode != IEEE80211_M_HOSTAP) {
 			error = EINVAL;
 			break;
 		}
-		IEEE80211_NODE_LOCK(nt);
 		ni = ieee80211_find_vap_node_locked(nt, vap, mac);
 		if (ni != NULL) {
 			mlmedebug(vap, mac, op, reason);
@@ -1438,7 +1433,6 @@ setmlme_common(struct ieee80211vap *vap, int op,
 			ieee80211_free_node(ni);
 		} else
 			error = ENOENT;
-		IEEE80211_NODE_UNLOCK(nt);
 		break;
 	default:
 		error = EINVAL;
@@ -2218,8 +2212,6 @@ ieee80211_ioctl_setappie_locked(struct ieee80211vap *vap,
 {
 	int error;
 
-	IEEE80211_LOCK_ASSERT(vap->iv_ic);
-
 	switch (fc0 & IEEE80211_FC0_SUBTYPE_MASK) {
 	case IEEE80211_FC0_SUBTYPE_BEACON:
 		if (vap->iv_opmode != IEEE80211_M_HOSTAP &&
@@ -2303,9 +2295,7 @@ ieee80211_ioctl_setappie(struct ieee80211vap *vap,
 	if ((fc0 & IEEE80211_FC0_TYPE_MASK) != IEEE80211_FC0_TYPE_MGT)
 		return EINVAL;
 	/* NB: could check iv_opmode and reject but hardly worth the effort */
-	IEEE80211_LOCK(ic);
 	error = ieee80211_ioctl_setappie_locked(vap, ireq, fc0);
-	IEEE80211_UNLOCK(ic);
 	return error;
 }
 
@@ -2330,14 +2320,12 @@ ieee80211_ioctl_chanswitch(struct ieee80211vap *vap, struct ieee80211req *ireq)
 	    csr.csa_chan.ic_freq, csr.csa_chan.ic_flags);
 	if (c == NULL)
 		return ENOENT;
-	IEEE80211_LOCK(ic);
 	if ((ic->ic_flags & IEEE80211_F_CSAPENDING) == 0)
 		ieee80211_csa_startswitch(ic, c, csr.csa_mode, csr.csa_count);
 	else if (csr.csa_count == 0)
 		ieee80211_csa_cancelswitch(ic);
 	else
 		error = EBUSY;
-	IEEE80211_UNLOCK(ic);
 	return error;
 }
 
@@ -2418,7 +2406,6 @@ ieee80211_ioctl_scanreq(struct ieee80211vap *vap, struct ieee80211req *ireq)
 	 *
 	 * Otherwise just invoke the scan machinery directly.
 	 */
-	IEEE80211_LOCK(ic);
 	if (vap->iv_state == IEEE80211_S_INIT) {
 		/* NB: clobbers previous settings */
 		vap->iv_scanreq_flags = sr.sr_flags;
@@ -2430,11 +2417,9 @@ ieee80211_ioctl_scanreq(struct ieee80211vap *vap, struct ieee80211req *ireq)
 			    sr.sr_ssid[i].len);
 		}
 		vap->iv_flags_ext |= IEEE80211_FEXT_SCANREQ;
-		IEEE80211_UNLOCK(ic);
 		ieee80211_new_state(vap, IEEE80211_S_SCAN, 0);
 	} else {
 		vap->iv_flags_ext &= ~IEEE80211_FEXT_SCANREQ;
-		IEEE80211_UNLOCK(ic);
 		/* XXX neeed error return codes */
 		if (sr.sr_flags & IEEE80211_IOC_SCAN_CHECK) {
 			(void) ieee80211_check_scan(vap, sr.sr_flags,
@@ -3207,7 +3192,6 @@ ieee80211_ioctl_updatemulti(struct ieee80211com *ic)
 	struct ieee80211vap *vap;
 	void *ioctl;
 
-	IEEE80211_LOCK(ic);
 	if_delallmulti(parent);
 	ioctl = parent->if_ioctl;	/* XXX WAR if_allmulti */
 	parent->if_ioctl = NULL;
@@ -3223,7 +3207,6 @@ ieee80211_ioctl_updatemulti(struct ieee80211com *ic)
 	}
 	parent->if_ioctl = ioctl;
 	ieee80211_runtask(ic, &ic->ic_mcast_task);
-	IEEE80211_UNLOCK(ic);
 }
 
 int
@@ -3237,7 +3220,6 @@ ieee80211_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:
-		IEEE80211_LOCK(ic);
 		ieee80211_syncifflag_locked(ic, IFF_PROMISC);
 		ieee80211_syncifflag_locked(ic, IFF_ALLMULTI);
 		if (ifp->if_flags & IFF_UP) {
@@ -3256,7 +3238,6 @@ ieee80211_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred
 			 */
 			ieee80211_stop_locked(vap);
 		}
-		IEEE80211_UNLOCK(ic);
 		/* Wait for parent ioctl handler if it was queued */
 		ieee80211_waitfor_parent(ic);
 		break;

@@ -508,7 +508,6 @@ _db_show_com(const struct ieee80211com *ic, int showvaps, int showsta, int showp
 		db_printf(" %s(%p)", vap->iv_ifp->if_xname, vap);
 	db_printf("\n");
 	db_printf("\tifp %p(%s)", ic->ic_ifp, ic->ic_ifp->if_xname);
-	db_printf(" comlock %p", &ic->ic_comlock);
 	db_printf("\n");
 	db_printf("\theadroom %d", ic->ic_headroom);
 	db_printf(" phytype %d", ic->ic_phytype);
@@ -674,9 +673,7 @@ _db_show_node_table(const char *tag, const struct ieee80211_node_table *nt)
 	int i;
 
 	db_printf("%s%s@%p:\n", tag, nt->nt_name, nt);
-	db_printf("%s nodelock %p", tag, &nt->nt_nodelock);
 	db_printf(" inact_init %d", nt->nt_inact_init);
-	db_printf(" scanlock %p", &nt->nt_scanlock);
 	db_printf(" scangen %u\n", nt->nt_scangen);
 	db_printf("%s keyixmax %d keyixmap %p\n",
 	    tag, nt->nt_keyixmax, nt->nt_keyixmap);
@@ -845,8 +842,8 @@ _db_show_ageq(const char *tag, const struct ieee80211_ageq *q)
 {
 	const struct mbuf *m;
 
-	db_printf("%s lock %p len %d maxlen %d drops %d head %p tail %p\n",
-	    tag, &q->aq_lock, q->aq_len, q->aq_maxlen, q->aq_drops,
+	db_printf("%s len %d maxlen %d drops %d head %p tail %p\n",
+	    tag, q->aq_len, q->aq_maxlen, q->aq_drops,
 	    q->aq_head, q->aq_tail);
 	for (m = q->aq_head; m != NULL; m = m->m_nextpkt)
 		db_printf("%s %p (len %d, %b)\n", tag, m, m->m_len,

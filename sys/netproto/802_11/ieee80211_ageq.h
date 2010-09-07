@@ -32,7 +32,6 @@ struct ieee80211_node;
 struct mbuf;
 
 struct ieee80211_ageq {
-	ieee80211_ageq_lock_t	aq_lock;
 	int			aq_len;		/* # items on queue */
 	int			aq_maxlen;	/* max queue length */
 	int			aq_drops;	/* frames dropped */

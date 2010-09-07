@@ -148,7 +148,6 @@ ieee80211_start(struct ifnet *ifp)
 	 * for CSA).
 	 */
 	if (vap->iv_state != IEEE80211_S_RUN) {
-		IEEE80211_LOCK(ic);
 		/* re-check under the com lock to avoid races */
 		if (vap->iv_state != IEEE80211_S_RUN) {
 			IEEE80211_DPRINTF(vap, IEEE80211_MSG_OUTPUT,
@@ -156,10 +155,8 @@ ieee80211_start(struct ifnet *ifp)
 			    __func__, ieee80211_state_name[vap->iv_state]);
 			vap->iv_stats.is_tx_badstate++;
 			ifp->if_flags |= IFF_OACTIVE;
-			IEEE80211_UNLOCK(ic);
 			return;
 		}
-		IEEE80211_UNLOCK(ic);
 	}
 	for (;;) {
 		m = ifq_dequeue(&ifp->if_snd, NULL);
@@ -2789,7 +2786,6 @@ ieee80211_beacon_update(struct ieee80211_node *ni,
 	int len_changed = 0;
 	uint16_t capinfo;
 
-	IEEE80211_LOCK(ic);
 	/*
 	 * Handle 11h channel change when we've reached the count.
 	 * We must recalculate the beacon frame contents to account
@@ -2815,7 +2811,6 @@ ieee80211_beacon_update(struct ieee80211_node *ni,
 		    mtod(m, uint8_t*) + sizeof(struct ieee80211_frame), bo, ni);
 
 		/* XXX do WME aggressive mode processing? */
-		IEEE80211_UNLOCK(ic);
 		return 1;		/* just assume length changed */
 	}
 
@@ -3042,7 +3037,6 @@ ieee80211_beacon_update(struct ieee80211_node *ni,
 			frm  = add_appie(frm, aie);
 		clrbit(bo->bo_flags, IEEE80211_BEACON_APPIE);
 	}
-	IEEE80211_UNLOCK(ic);
 
 	return len_changed;
 }

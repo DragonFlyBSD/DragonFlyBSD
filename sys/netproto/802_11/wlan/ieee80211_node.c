@@ -648,10 +648,8 @@ ieee80211_sync_curchan(struct ieee80211com *ic)
 		ic->ic_curchan = c;
 		ic->ic_curmode = ieee80211_chan2mode(ic->ic_curchan);
 		ic->ic_rt = ieee80211_get_ratetable(ic->ic_curchan);
-		IEEE80211_UNLOCK(ic);
 		ic->ic_set_channel(ic);
 		ieee80211_radiotap_chan_change(ic);
-		IEEE80211_LOCK(ic);
 	}
 }
 
@@ -1049,8 +1047,6 @@ node_age(struct ieee80211_node *ni)
 {
 	struct ieee80211vap *vap = ni->ni_vap;
 
-	IEEE80211_NODE_LOCK_ASSERT(&vap->iv_ic->ic_sta);
-
 	/*
 	 * Age frames on the power save queue.
 	 */
@@ -1126,13 +1122,11 @@ ieee80211_alloc_node(struct ieee80211_node_table *nt,
 	if (vap->iv_opmode == IEEE80211_M_MBSS)
 		ieee80211_mesh_node_init(vap, ni);
 #endif
-	IEEE80211_NODE_LOCK(nt);
 	TAILQ_INSERT_TAIL(&nt->nt_node, ni, ni_list);
 	LIST_INSERT_HEAD(&nt->nt_hash[hash], ni, ni_hash);
 	ni->ni_table = nt;
 	ni->ni_vap = vap;
 	ni->ni_ic = ic;
-	IEEE80211_NODE_UNLOCK(nt);
 
 	IEEE80211_NOTE(vap, IEEE80211_MSG_INACT, ni,
 	    "%s: inact_reload %u", __func__, ni->ni_inact_reload);
@@ -1275,8 +1269,6 @@ ieee80211_find_node_locked(struct ieee80211_node_table *nt,
 	struct ieee80211_node *ni;
 	int hash;
 
-	IEEE80211_NODE_LOCK_ASSERT(nt);
-
 	hash = IEEE80211_NODE_HASH(nt->nt_ic, macaddr);
 	LIST_FOREACH(ni, &nt->nt_hash[hash], ni_hash) {
 		if (IEEE80211_ADDR_EQ(ni->ni_macaddr, macaddr)) {
@@ -1305,9 +1297,7 @@ ieee80211_find_node(struct ieee80211_node_table *nt,
 {
 	struct ieee80211_node *ni;
 
-	IEEE80211_NODE_LOCK(nt);
 	ni = ieee80211_find_node_locked(nt, macaddr);
-	IEEE80211_NODE_UNLOCK(nt);
 	return ni;
 }
 
@@ -1324,8 +1314,6 @@ ieee80211_find_vap_node_locked(struct ieee80211_node_table *nt,
 {
 	struct ieee80211_node *ni;
 	int hash;
-
-	IEEE80211_NODE_LOCK_ASSERT(nt);
 
 	hash = IEEE80211_NODE_HASH(nt->nt_ic, macaddr);
 	LIST_FOREACH(ni, &nt->nt_hash[hash], ni_hash) {
@@ -1358,9 +1346,7 @@ ieee80211_find_vap_node(struct ieee80211_node_table *nt,
 {
 	struct ieee80211_node *ni;
 
-	IEEE80211_NODE_LOCK(nt);
 	ni = ieee80211_find_vap_node_locked(nt, vap, macaddr);
-	IEEE80211_NODE_UNLOCK(nt);
 	return ni;
 }
 
@@ -1513,9 +1499,7 @@ ieee80211_find_rxnode(struct ieee80211com *ic,
 	struct ieee80211_node *ni;
 
 	nt = &ic->ic_sta;
-	IEEE80211_NODE_LOCK(nt);
 	ni = _find_rxnode(nt, wh);
-	IEEE80211_NODE_UNLOCK(nt);
 
 	return ni;
 }
@@ -1542,7 +1526,6 @@ ieee80211_find_rxnode_withkey(struct ieee80211com *ic,
 	struct ieee80211_node *ni;
 
 	nt = &ic->ic_sta;
-	IEEE80211_NODE_LOCK(nt);
 	if (nt->nt_keyixmap != NULL && keyix < nt->nt_keyixmax)
 		ni = nt->nt_keyixmap[keyix];
 	else
@@ -1572,8 +1555,6 @@ ieee80211_find_rxnode_withkey(struct ieee80211com *ic,
 		else
 			ieee80211_ref_node(ni);
 	}
-	IEEE80211_NODE_UNLOCK(nt);
-
 	return ni;
 }
 #undef IS_BCAST_PROBEREQ
@@ -1603,14 +1584,12 @@ ieee80211_find_txnode(struct ieee80211vap *vap,
 	 * to the bss node.
 	 */
 	/* XXX can't hold lock across dup_bss 'cuz of recursive locking */
-	IEEE80211_NODE_LOCK(nt);
 	if (vap->iv_opmode == IEEE80211_M_STA ||
 	    vap->iv_opmode == IEEE80211_M_WDS ||
 	    IEEE80211_IS_MULTICAST(macaddr))
 		ni = ieee80211_ref_node(vap->iv_bss);
 	else
 		ni = ieee80211_find_node_locked(nt, macaddr);
-	IEEE80211_NODE_UNLOCK(nt);
 
 	if (ni == NULL) {
 		if (vap->iv_opmode == IEEE80211_M_IBSS ||
@@ -1677,7 +1656,6 @@ ieee80211_free_node(struct ieee80211_node *ni)
 		 ni->ni_macaddr, ":", ieee80211_node_refcnt(ni)-1);
 #endif
 	if (nt != NULL) {
-		IEEE80211_NODE_LOCK(nt);
 		if (ieee80211_node_dectestref(ni)) {
 			/*
 			 * Last reference, reclaim state.
@@ -1701,7 +1679,6 @@ ieee80211_free_node(struct ieee80211_node *ni)
 				_ieee80211_free_node(ni);
 			}
 		}
-		IEEE80211_NODE_UNLOCK(nt);
 	} else {
 		if (ieee80211_node_dectestref(ni))
 			_ieee80211_free_node(ni);
@@ -1718,7 +1695,7 @@ ieee80211_node_delucastkey(struct ieee80211_node *ni)
 	struct ieee80211_node_table *nt = &ic->ic_sta;
 	struct ieee80211_node *nikey;
 	ieee80211_keyix keyix;
-	int isowned, status;
+	int status;
 
 	/*
 	 * NB: We must beware of LOR here; deleting the key
@@ -1732,9 +1709,6 @@ ieee80211_node_delucastkey(struct ieee80211_node *ni)
 	 * way to separate out this path so we must do this
 	 * conditionally.
 	 */
-	isowned = IEEE80211_NODE_IS_LOCKED(nt);
-	if (!isowned)
-		IEEE80211_NODE_LOCK(nt);
 	nikey = NULL;
 	status = 1;		/* NB: success */
 	if (ni->ni_ucastkey.wk_keyix != IEEE80211_KEYIX_NONE) {
@@ -1745,8 +1719,6 @@ ieee80211_node_delucastkey(struct ieee80211_node *ni)
 			nt->nt_keyixmap[keyix] = NULL;
 		}
 	}
-	if (!isowned)
-		IEEE80211_NODE_UNLOCK(nt);
 
 	if (nikey != NULL) {
 		KASSERT(nikey == ni,
@@ -1769,8 +1741,6 @@ static void
 node_reclaim(struct ieee80211_node_table *nt, struct ieee80211_node *ni)
 {
 	ieee80211_keyix keyix;
-
-	IEEE80211_NODE_LOCK_ASSERT(nt);
 
 	IEEE80211_DPRINTF(ni->ni_vap, IEEE80211_MSG_NODE,
 		"%s: remove %p<%6D> from %s table, refcnt %d\n",
@@ -1815,11 +1785,7 @@ ieee80211_node_table_init(struct ieee80211com *ic,
 	struct ieee80211_node_table *nt,
 	const char *name, int inact, int keyixmax)
 {
-	struct ifnet *ifp = ic->ic_ifp;
-
 	nt->nt_ic = ic;
-	IEEE80211_NODE_LOCK_INIT(nt, ifp->if_xname);
-	IEEE80211_NODE_ITERATE_LOCK_INIT(nt, ifp->if_xname);
 	TAILQ_INIT(&nt->nt_node);
 	nt->nt_name = name;
 	nt->nt_scangen = 1;
@@ -1843,7 +1809,6 @@ ieee80211_node_table_reset(struct ieee80211_node_table *nt,
 {
 	struct ieee80211_node *ni, *next;
 
-	IEEE80211_NODE_LOCK(nt);
 	TAILQ_FOREACH_MUTABLE(ni, &nt->nt_node, ni_list, next) {
 		if (match != NULL && ni->ni_vap != match)
 			continue;
@@ -1871,7 +1836,6 @@ ieee80211_node_table_reset(struct ieee80211_node_table *nt,
 			if (ni->ni_wdsvap == match)
 				ni->ni_wdsvap = NULL;
 	}
-	IEEE80211_NODE_UNLOCK(nt);
 }
 
 static void
@@ -1890,8 +1854,6 @@ ieee80211_node_table_cleanup(struct ieee80211_node_table *nt)
 		kfree(nt->nt_keyixmap, M_80211_NODE);
 		nt->nt_keyixmap = NULL;
 	}
-	IEEE80211_NODE_ITERATE_LOCK_DESTROY(nt);
-	IEEE80211_NODE_LOCK_DESTROY(nt);
 }
 
 /*
@@ -1912,10 +1874,8 @@ ieee80211_timeout_stations(struct ieee80211com *ic)
 	struct ieee80211_node *ni;
 	int gen = 0;
 
-	IEEE80211_NODE_ITERATE_LOCK(nt);
 	gen = ++nt->nt_scangen;
 restart:
-	IEEE80211_NODE_LOCK(nt);
 	TAILQ_FOREACH(ni, &nt->nt_node, ni_list) {
 		if (ni->ni_scangen == gen)	/* previously handled */
 			continue;
@@ -2000,7 +1960,6 @@ restart:
 				 * ref for us as needed.
 				 */
 				ieee80211_ref_node(ni);
-				IEEE80211_NODE_UNLOCK(nt);
 				ieee80211_send_nulldata(ni);
 				/* XXX stat? */
 				goto restart;
@@ -2028,7 +1987,6 @@ restart:
 			 * in a LOR between the node lock and the driver lock.
 			 */
 			ieee80211_ref_node(ni);
-			IEEE80211_NODE_UNLOCK(nt);
 			if (ni->ni_associd != 0) {
 				IEEE80211_SEND_MGMT(ni,
 				    IEEE80211_FC0_SUBTYPE_DEAUTH,
@@ -2040,9 +1998,6 @@ restart:
 			goto restart;
 		}
 	}
-	IEEE80211_NODE_UNLOCK(nt);
-
-	IEEE80211_NODE_ITERATE_UNLOCK(nt);
 }
 
 /*
@@ -2056,7 +2011,6 @@ ieee80211_drain(struct ieee80211com *ic)
 	struct ieee80211vap *vap;
 	struct ieee80211_node *ni;
 
-	IEEE80211_NODE_LOCK(nt);
 	TAILQ_FOREACH(ni, &nt->nt_node, ni_list) {
 		/*
 		 * Ignore entries for which have yet to receive an
@@ -2092,7 +2046,6 @@ ieee80211_drain(struct ieee80211com *ic)
 		 */
 		ic->ic_node_drain(ni);
 	}
-	IEEE80211_NODE_UNLOCK(nt);
 }
 
 /*
@@ -2117,10 +2070,8 @@ ieee80211_node_timeout(void *arg)
 		ieee80211_timeout_stations(ic);
 		ieee80211_ageq_age(&ic->ic_stageq, IEEE80211_INACT_WAIT);
 
-		IEEE80211_LOCK(ic);
 		ieee80211_erp_timeout(ic);
 		ieee80211_ht_timeout(ic);
-		IEEE80211_UNLOCK(ic);
 	}
 	callout_reset(&ic->ic_inact, IEEE80211_INACT_WAIT*hz,
 		ieee80211_node_timeout, ic);
@@ -2133,23 +2084,17 @@ ieee80211_iterate_nodes(struct ieee80211_node_table *nt,
 	struct ieee80211_node *ni;
 	u_int gen;
 
-	IEEE80211_NODE_ITERATE_LOCK(nt);
 	gen = ++nt->nt_scangen;
 restart:
-	IEEE80211_NODE_LOCK(nt);
 	TAILQ_FOREACH(ni, &nt->nt_node, ni_list) {
 		if (ni->ni_scangen != gen) {
 			ni->ni_scangen = gen;
 			(void) ieee80211_ref_node(ni);
-			IEEE80211_NODE_UNLOCK(nt);
 			(*f)(arg, ni);
 			ieee80211_free_node(ni);
 			goto restart;
 		}
 	}
-	IEEE80211_NODE_UNLOCK(nt);
-
-	IEEE80211_NODE_ITERATE_UNLOCK(nt);
 }
 
 void
@@ -2194,8 +2139,6 @@ ieee80211_notify_erp_locked(struct ieee80211com *ic)
 {
 	struct ieee80211vap *vap;
 
-	IEEE80211_LOCK_ASSERT(ic);
-
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next)
 		if (vap->iv_opmode == IEEE80211_M_HOSTAP)
 			ieee80211_beacon_notify(vap, IEEE80211_BEACON_ERP);
@@ -2204,9 +2147,7 @@ ieee80211_notify_erp_locked(struct ieee80211com *ic)
 void
 ieee80211_notify_erp(struct ieee80211com *ic)
 {
-	IEEE80211_LOCK(ic);
 	ieee80211_notify_erp_locked(ic);
-	IEEE80211_UNLOCK(ic);
 }
 
 /*
@@ -2216,8 +2157,6 @@ static void
 ieee80211_node_join_11g(struct ieee80211_node *ni)
 {
 	struct ieee80211com *ic = ni->ni_ic;
-
-	IEEE80211_LOCK_ASSERT(ic);
 
 	/*
 	 * Station isn't capable of short slot time.  Bump
@@ -2303,7 +2242,6 @@ ieee80211_node_join(struct ieee80211_node *ni, int resp)
 		}
 		ni->ni_associd = aid | 0xc000;
 		ni->ni_jointime = time_second;
-		IEEE80211_LOCK(ic);
 		IEEE80211_AID_SET(vap, ni->ni_associd);
 		vap->iv_sta_assoc++;
 		ic->ic_sta_assoc++;
@@ -2313,7 +2251,6 @@ ieee80211_node_join(struct ieee80211_node *ni, int resp)
 		if (IEEE80211_IS_CHAN_ANYG(ic->ic_bsschan) &&
 		    IEEE80211_IS_CHAN_FULL(ic->ic_bsschan))
 			ieee80211_node_join_11g(ni);
-		IEEE80211_UNLOCK(ic);
 
 		newassoc = 1;
 	} else
@@ -2375,8 +2312,6 @@ ieee80211_node_leave_11g(struct ieee80211_node *ni)
 {
 	struct ieee80211com *ic = ni->ni_ic;
 
-	IEEE80211_LOCK_ASSERT(ic);
-
 	KASSERT(IEEE80211_IS_CHAN_ANYG(ic->ic_bsschan),
 	     ("not in 11g, bss %u:0x%x", ic->ic_bsschan->ic_freq,
 	      ic->ic_bsschan->ic_flags));
@@ -2437,9 +2372,6 @@ ieee80211_node_leave_11g(struct ieee80211_node *ni)
 static void
 ieee80211_erp_timeout(struct ieee80211com *ic)
 {
-
-	IEEE80211_LOCK_ASSERT(ic);
-
 	if ((ic->ic_flags_ext & IEEE80211_FEXT_NONERP_PR) &&
 	    time_after(ticks, ic->ic_lastnonerp + IEEE80211_NONERP_PRESENT_AGE)) {
 #if 0
@@ -2484,7 +2416,6 @@ ieee80211_node_leave(struct ieee80211_node *ni)
 	if (vap->iv_auth->ia_node_leave != NULL)
 		vap->iv_auth->ia_node_leave(ni);
 
-	IEEE80211_LOCK(ic);
 	IEEE80211_AID_CLR(vap, ni->ni_associd);
 	ni->ni_associd = 0;
 	vap->iv_sta_assoc--;
@@ -2495,7 +2426,6 @@ ieee80211_node_leave(struct ieee80211_node *ni)
 	if (IEEE80211_IS_CHAN_ANYG(ic->ic_bsschan) &&
 	    IEEE80211_IS_CHAN_FULL(ic->ic_bsschan))
 		ieee80211_node_leave_11g(ni);
-	IEEE80211_UNLOCK(ic);
 	/*
 	 * Cleanup station state.  In particular clear various
 	 * state that might otherwise be reused if the node
@@ -2511,9 +2441,7 @@ done:
 	 * for inactivity.
 	 */
 	if (nt != NULL) {
-		IEEE80211_NODE_LOCK(nt);
 		node_reclaim(nt, ni);
-		IEEE80211_NODE_UNLOCK(nt);
 	} else
 		ieee80211_free_node(ni);
 }
