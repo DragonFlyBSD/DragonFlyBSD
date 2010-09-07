@@ -1131,7 +1131,6 @@ update_channel_task(void *arg, int npending)
 void
 ieee80211_waitfor_parent(struct ieee80211com *ic)
 {
-	print_backtrace(-1);
 	wlan_assert_serialized();
 	wlan_serialize_exit();	/* exit to block */
 	taskqueue_block(ic->ic_tq);
