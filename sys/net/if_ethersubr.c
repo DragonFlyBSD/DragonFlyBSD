@@ -987,7 +987,7 @@ ether_demux_oncpu(struct ifnet *ifp, struct mbuf *m)
 
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_len >= ETHER_HDR_LEN,
-		("ether header is no contiguous!\n"));
+		("ether header is not contiguous!\n"));
 
 	eh = mtod(m, struct ether_header *);
 
@@ -1197,6 +1197,12 @@ post_stats:
 		}
 #endif
 		if (ng_ether_input_orphan_p != NULL) {
+			/*
+			 * Put back the ethernet header so netgraph has a
+			 * consistent view of inbound packets.
+			 */
+			M_PREPEND(m, ETHER_HDR_LEN, MB_DONTWAIT);
+
 			/*
 			 * Hold BGL and recheck ng_ether_input_orphan_p
 			 */
