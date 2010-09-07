@@ -522,6 +522,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	/*
 	 * Release the bootsector buffer.
 	 */
+	bp->b_flags |= B_RELBUF;
 	brelse(bp);
 	bp = NULL;
 
@@ -543,6 +544,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 				pmp->pm_nxtfree = CLUST_FIRST;
 		} else
 			pmp->pm_fsinfo = 0;
+		bp->b_flags |= B_RELBUF;
 		brelse(bp);
 		bp = NULL;
 	}
@@ -605,8 +607,10 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	return 0;
 
 error_exit:
-	if (bp)
+	if (bp) {
+		bp->b_flags |= B_RELBUF;
 		brelse(bp);
+	}
 	VOP_CLOSE(devvp, ronly ? FREAD : FREAD | FWRITE);
 	if (pmp) {
 		if (pmp->pm_inusemap)
