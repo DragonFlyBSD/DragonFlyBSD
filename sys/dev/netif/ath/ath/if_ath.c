@@ -126,11 +126,11 @@ static void	ath_start(struct ifnet *);
 static int	ath_reset(struct ifnet *);
 static int	ath_reset_vap(struct ieee80211vap *, u_long);
 static int	ath_media_change(struct ifnet *);
-static void	ath_watchdog(void *);
+static void	ath_watchdog_callout(void *);
 static int	ath_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	ath_fatal_proc(void *, int);
 static void	ath_bmiss_vap(struct ieee80211vap *);
-static void	ath_bmiss_proc(void *, int);
+static void	ath_bmiss_task(void *, int);
 static int	ath_keyset(struct ath_softc *, const struct ieee80211_key *,
 			struct ieee80211_node *);
 static int	ath_key_alloc(struct ieee80211vap *,
@@ -154,7 +154,7 @@ static void	ath_beacon_setup(struct ath_softc *, struct ath_buf *);
 static void	ath_beacon_proc(void *, int);
 static struct ath_buf *ath_beacon_generate(struct ath_softc *,
 			struct ieee80211vap *);
-static void	ath_bstuck_proc(void *, int);
+static void	ath_bstuck_task(void *, int);
 static void	ath_beacon_return(struct ath_softc *, struct ath_buf *);
 static void	ath_beacon_free(struct ath_softc *);
 static void	ath_beacon_config(struct ath_softc *, struct ieee80211vap *);
@@ -171,7 +171,7 @@ static int	ath_rxbuf_init(struct ath_softc *, struct ath_buf *);
 static void	ath_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m,
 			int subtype, int rssi, int nf);
 static void	ath_setdefantenna(struct ath_softc *, u_int);
-static void	ath_rx_proc(void *, int);
+static void	ath_rx_task(void *, int);
 static void	ath_txq_init(struct ath_softc *sc, struct ath_txq *, int);
 static struct ath_txq *ath_txq_setup(struct ath_softc*, int qtype, int subtype);
 static int	ath_tx_setup(struct ath_softc *, int, int);
@@ -181,9 +181,9 @@ static void	ath_tx_cleanup(struct ath_softc *);
 static void	ath_freetx(struct mbuf *);
 static int	ath_tx_start(struct ath_softc *, struct ieee80211_node *,
 			     struct ath_buf *, struct mbuf *);
-static void	ath_tx_proc_q0(void *, int);
-static void	ath_tx_proc_q0123(void *, int);
-static void	ath_tx_proc(void *, int);
+static void	ath_tx_task_q0(void *, int);
+static void	ath_tx_task_q0123(void *, int);
+static void	ath_tx_task(void *, int);
 static void	ath_tx_draintxq(struct ath_softc *, struct ath_txq *);
 static int	ath_chan_set(struct ath_softc *, struct ieee80211_channel *);
 static void	ath_draintxq(struct ath_softc *);
@@ -193,7 +193,7 @@ static void	ath_chan_change(struct ath_softc *, struct ieee80211_channel *);
 static void	ath_scan_start(struct ieee80211com *);
 static void	ath_scan_end(struct ieee80211com *);
 static void	ath_set_channel(struct ieee80211com *);
-static void	ath_calibrate(void *);
+static void	ath_calibrate_callout(void *);
 static int	ath_newstate(struct ieee80211vap *, enum ieee80211_state, int);
 static void	ath_setup_stationkey(struct ieee80211_node *);
 static void	ath_newassoc(struct ieee80211_node *, int);
@@ -450,7 +450,10 @@ ath_attach(u_int16_t devid, struct ath_softc *sc)
 	/*
 	 * Allocate tx+rx descriptors and populate the lists.
 	 */
+	wlan_assert_serialized();
+	wlan_serialize_exit();
 	error = ath_desc_alloc(sc);
+	wlan_serialize_enter();
 	if (error != 0) {
 		if_printf(ifp, "failed to allocate descriptors: %d\n", error);
 		goto bad;
@@ -458,16 +461,14 @@ ath_attach(u_int16_t devid, struct ath_softc *sc)
 	callout_init(&sc->sc_cal_ch);
 	callout_init(&sc->sc_wd_ch);
 
-	ATH_TXBUF_LOCK_INIT(sc);
-
 	sc->sc_tq = taskqueue_create("ath_taskq", M_INTWAIT,
 		taskqueue_thread_enqueue, &sc->sc_tq);
 	taskqueue_start_threads(&sc->sc_tq, 1, TDPRI_KERN_DAEMON, -1,
 		"%s taskq", ifp->if_xname);
 
-	TASK_INIT(&sc->sc_rxtask, 0, ath_rx_proc, sc);
-	TASK_INIT(&sc->sc_bmisstask, 0, ath_bmiss_proc, sc);
-	TASK_INIT(&sc->sc_bstucktask,0, ath_bstuck_proc, sc);
+	TASK_INIT(&sc->sc_rxtask, 0, ath_rx_task, sc);
+	TASK_INIT(&sc->sc_bmisstask, 0, ath_bmiss_task, sc);
+	TASK_INIT(&sc->sc_bstucktask,0, ath_bstuck_task, sc);
 
 	/*
 	 * Allocate hardware transmit queues: one queue for
@@ -522,13 +523,13 @@ ath_attach(u_int16_t devid, struct ath_softc *sc)
 	 */
 	switch (sc->sc_txqsetup &~ (1<<sc->sc_cabq->axq_qnum)) {
 	case 0x01:
-		TASK_INIT(&sc->sc_txtask, 0, ath_tx_proc_q0, sc);
+		TASK_INIT(&sc->sc_txtask, 0, ath_tx_task_q0, sc);
 		break;
 	case 0x0f:
-		TASK_INIT(&sc->sc_txtask, 0, ath_tx_proc_q0123, sc);
+		TASK_INIT(&sc->sc_txtask, 0, ath_tx_task_q0123, sc);
 		break;
 	default:
-		TASK_INIT(&sc->sc_txtask, 0, ath_tx_proc, sc);
+		TASK_INIT(&sc->sc_txtask, 0, ath_tx_task, sc);
 		break;
 	}
 
@@ -879,7 +880,6 @@ ath_vap_create(struct ieee80211com *ic,
 	needbeacon = 0;
 	IEEE80211_ADDR_COPY(mac, mac0);
 
-	ATH_LOCK(sc);
 	ic_opmode = opmode;		/* default to opmode of new vap */
 	switch (opmode) {
 	case IEEE80211_M_STA:
@@ -974,10 +974,8 @@ ath_vap_create(struct ieee80211com *ic,
 
 	vap = &avp->av_vap;
 	/* XXX can't hold mutex across if_alloc */
-	ATH_UNLOCK(sc);
 	error = ieee80211_vap_setup(ic, vap, name, unit, opmode, flags,
 	    bssid, mac);
-	ATH_LOCK(sc);
 	if (error != 0) {
 		device_printf(sc->sc_dev, "%s: error %d creating vap\n",
 		    __func__, error);
@@ -1083,7 +1081,6 @@ ath_vap_create(struct ieee80211com *ic,
 		 */
 		sc->sc_swbmiss = 1;
 	}
-	ATH_UNLOCK(sc);
 
 	/* complete setup */
 	ieee80211_vap_attach(vap, ath_media_change, ieee80211_media_status);
@@ -1093,7 +1090,6 @@ bad2:
 	ath_hal_setbssidmask(sc->sc_ah, sc->sc_hwbssidmask);
 bad:
 	kfree(avp, M_80211_VAP);
-	ATH_UNLOCK(sc);
 	return NULL;
 }
 
@@ -1118,7 +1114,6 @@ ath_vap_delete(struct ieee80211vap *vap)
 	}
 
 	ieee80211_vap_detach(vap);
-	ATH_LOCK(sc);
 	/*
 	 * Reclaim beacon state.  Note this must be done before
 	 * the vap instance is reclaimed as we may have a reference
@@ -1140,7 +1135,6 @@ ath_vap_delete(struct ieee80211vap *vap)
 		 * Reclaim any pending mcast frames for the vap.
 		 */
 		ath_tx_draintxq(sc, &avp->av_mcastq);
-		ATH_TXQ_LOCK_DESTROY(&avp->av_mcastq);
 	}
 	/*
 	 * Update bookkeeping.
@@ -1165,7 +1159,6 @@ ath_vap_delete(struct ieee80211vap *vap)
 		sc->sc_swbmiss = 0;
 	}
 #endif
-	ATH_UNLOCK(sc);
 	kfree(avp, M_80211_VAP);
 
 	if (ifp->if_flags & IFF_RUNNING) {
@@ -1474,19 +1467,22 @@ ath_hal_gethangstate(struct ath_hal *ah, uint32_t mask, uint32_t *hangs)
 }
 
 static void
-ath_bmiss_proc(void *arg, int pending)
+ath_bmiss_task(void *arg, int pending)
 {
 	struct ath_softc *sc = arg;
 	struct ifnet *ifp = sc->sc_ifp;
 	uint32_t hangs;
 
+	wlan_serialize_enter();
 	DPRINTF(sc, ATH_DEBUG_ANY, "%s: pending %u\n", __func__, pending);
 
 	if (ath_hal_gethangstate(sc->sc_ah, 0xff, &hangs) && hangs != 0) {
 		if_printf(ifp, "bb hang detected (0x%x), reseting\n", hangs); 
 		ath_reset(ifp);
-	} else
+	} else {
 		ieee80211_beacon_miss(ifp->if_l2com);
+	}
+	wlan_serialize_exit();
 }
 
 /*
@@ -1524,7 +1520,6 @@ ath_init(void *arg)
 	DPRINTF(sc, ATH_DEBUG_ANY, "%s: if_flags 0x%x\n",
 		__func__, ifp->if_flags);
 
-	ATH_LOCK(sc);
 	/*
 	 * Stop anything previously setup.  This is safe
 	 * whether this is the first time through or not.
@@ -1542,7 +1537,6 @@ ath_init(void *arg)
 	if (!ath_hal_reset(ah, sc->sc_opmode, ic->ic_curchan, AH_FALSE, &status)) {
 		if_printf(ifp, "unable to reset hardware; hal status %u\n",
 			status);
-		ATH_UNLOCK(sc);
 		return;
 	}
 	ath_chan_change(sc, ic->ic_curchan);
@@ -1565,7 +1559,6 @@ ath_init(void *arg)
 	 */
 	if (ath_startrecv(sc) != 0) {
 		if_printf(ifp, "unable to start recv logic\n");
-		ATH_UNLOCK(sc);
 		return;
 	}
 
@@ -1583,10 +1576,9 @@ ath_init(void *arg)
 		sc->sc_imask |= HAL_INT_MIB;
 
 	ifp->if_flags |= IFF_RUNNING;
-	callout_reset(&sc->sc_wd_ch, hz, ath_watchdog, sc);
+	callout_reset(&sc->sc_wd_ch, hz, ath_watchdog_callout, sc);
 	ath_hal_intrset(ah, sc->sc_imask);
 
-	ATH_UNLOCK(sc);
 
 #ifdef ATH_TX99_DIAG
 	if (sc->sc_tx99 != NULL)
@@ -1605,7 +1597,6 @@ ath_stop_locked(struct ifnet *ifp)
 	DPRINTF(sc, ATH_DEBUG_ANY, "%s: invalid %u if_flags 0x%x\n",
 		__func__, sc->sc_invalid, ifp->if_flags);
 
-	ATH_LOCK_ASSERT(sc);
 	if (ifp->if_flags & IFF_RUNNING) {
 		/*
 		 * Shutdown the hardware and driver:
@@ -1651,11 +1642,9 @@ ath_stop_locked(struct ifnet *ifp)
 static void
 ath_stop(struct ifnet *ifp)
 {
-	struct ath_softc *sc = ifp->if_softc;
+	struct ath_softc *sc __unused = ifp->if_softc;
 
-	ATH_LOCK(sc);
 	ath_stop_locked(ifp);
-	ATH_UNLOCK(sc);
 }
 
 /*
@@ -1731,8 +1720,6 @@ _ath_getbuf_locked(struct ath_softc *sc)
 {
 	struct ath_buf *bf;
 
-	ATH_TXBUF_LOCK_ASSERT(sc);
-
 	bf = STAILQ_FIRST(&sc->sc_txbuf);
 	if (bf != NULL && (bf->bf_flags & ATH_BUF_BUSY) == 0)
 		STAILQ_REMOVE_HEAD(&sc->sc_txbuf, bf_list);
@@ -1751,7 +1738,6 @@ ath_getbuf(struct ath_softc *sc)
 {
 	struct ath_buf *bf;
 
-	ATH_TXBUF_LOCK(sc);
 	bf = _ath_getbuf_locked(sc);
 	if (bf == NULL) {
 		struct ifnet *ifp = sc->sc_ifp;
@@ -1760,7 +1746,6 @@ ath_getbuf(struct ath_softc *sc)
 		sc->sc_stats.ast_tx_qstop++;
 		ifp->if_flags |= IFF_OACTIVE;
 	}
-	ATH_TXBUF_UNLOCK(sc);
 	return bf;
 }
 
@@ -1774,8 +1759,6 @@ ath_txfrag_cleanup(struct ath_softc *sc,
 	ath_bufhead *frags, struct ieee80211_node *ni)
 {
 	struct ath_buf *bf, *next;
-
-	ATH_TXBUF_LOCK_ASSERT(sc);
 
 	STAILQ_FOREACH_MUTABLE(bf, frags, bf_list, next) {
 		/* NB: bf assumed clean */
@@ -1797,7 +1780,6 @@ ath_txfrag_setup(struct ath_softc *sc, ath_bufhead *frags,
 	struct mbuf *m;
 	struct ath_buf *bf;
 
-	ATH_TXBUF_LOCK(sc);
 	for (m = m0->m_nextpkt; m != NULL; m = m->m_nextpkt) {
 		bf = _ath_getbuf_locked(sc);
 		if (bf == NULL) {	/* out of buffers, cleanup */
@@ -1807,7 +1789,6 @@ ath_txfrag_setup(struct ath_softc *sc, ath_bufhead *frags,
 		ieee80211_node_incref(ni);
 		STAILQ_INSERT_TAIL(frags, bf, bf_list);
 	}
-	ATH_TXBUF_UNLOCK(sc);
 
 	return !STAILQ_EMPTY(frags);
 }
@@ -1835,9 +1816,7 @@ ath_start(struct ifnet *ifp)
 
 		IF_DEQUEUE(&ifp->if_snd, m);
 		if (m == NULL) {
-			ATH_TXBUF_LOCK(sc);
 			STAILQ_INSERT_HEAD(&sc->sc_txbuf, bf, bf_list);
-			ATH_TXBUF_UNLOCK(sc);
 			break;
 		}
 		ni = (struct ieee80211_node *) m->m_pkthdr.rcvif;
@@ -1878,10 +1857,8 @@ ath_start(struct ifnet *ifp)
 	reclaim:
 			bf->bf_m = NULL;
 			bf->bf_node = NULL;
-			ATH_TXBUF_LOCK(sc);
 			STAILQ_INSERT_HEAD(&sc->sc_txbuf, bf, bf_list);
 			ath_txfrag_cleanup(sc, &frags, ni);
-			ATH_TXBUF_UNLOCK(sc);
 			if (ni != NULL)
 				ieee80211_free_node(ni);
 			continue;
@@ -2350,7 +2327,6 @@ ath_key_update_begin(struct ieee80211vap *vap)
 
 	DPRINTF(sc, ATH_DEBUG_KEYCACHE, "%s:\n", __func__);
 	taskqueue_block(sc->sc_tq);
-	IF_LOCK(&ifp->if_snd);		/* NB: doesn't block mgmt frames */
 }
 
 static void
@@ -2360,7 +2336,6 @@ ath_key_update_end(struct ieee80211vap *vap)
 	struct ath_softc *sc = ifp->if_softc;
 
 	DPRINTF(sc, ATH_DEBUG_KEYCACHE, "%s:\n", __func__);
-	IF_UNLOCK(&ifp->if_snd);
 	taskqueue_unblock(sc->sc_tq);
 }
 
@@ -2990,8 +2965,6 @@ ath_beacon_generate(struct ath_softc *sc, struct ieee80211vap *vap)
 		struct ath_hal *ah = sc->sc_ah;
 
 		/* NB: only at DTIM */
-		ATH_TXQ_LOCK(cabq);
-		ATH_TXQ_LOCK(&avp->av_mcastq);
 		if (nmcastq) {
 			struct ath_buf *bfm;
 
@@ -3011,8 +2984,6 @@ ath_beacon_generate(struct ath_softc *sc, struct ieee80211vap *vap)
 		}
 		/* NB: gated by beacon so safe to start here */
 		ath_hal_txstart(ah, cabq->axq_qnum);
-		ATH_TXQ_UNLOCK(cabq);
-		ATH_TXQ_UNLOCK(&avp->av_mcastq);
 	}
 	return bf;
 }
@@ -3061,15 +3032,17 @@ ath_beacon_start_adhoc(struct ath_softc *sc, struct ieee80211vap *vap)
  * Reset the hardware after detecting beacons have stopped.
  */
 static void
-ath_bstuck_proc(void *arg, int pending)
+ath_bstuck_task(void *arg, int pending)
 {
 	struct ath_softc *sc = arg;
 	struct ifnet *ifp = sc->sc_ifp;
 
+	wlan_serialize_enter();
 	if_printf(ifp, "stuck beacon; resetting (bmiss count %u)\n",
-		sc->sc_bmisscount);
+		  sc->sc_bmisscount);
 	sc->sc_stats.ast_bstuck++;
 	ath_reset(ifp);
+	wlan_serialize_exit();
 }
 
 /*
@@ -3768,16 +3741,16 @@ ath_handle_micerror(struct ieee80211com *ic,
 }
 
 static void
-ath_rx_proc(void *arg, int npending)
+ath_rx_task(void *arg, int npending)
 {
 #define	PA2DESC(_sc, _pa) \
 	((struct ath_desc *)((caddr_t)(_sc)->sc_rxdma.dd_desc + \
 		((_pa) - (_sc)->sc_rxdma.dd_desc_paddr)))
 	struct ath_softc *sc = arg;
 	struct ath_buf *bf;
-	struct ifnet *ifp = sc->sc_ifp;
-	struct ieee80211com *ic = ifp->if_l2com;
-	struct ath_hal *ah = sc->sc_ah;
+	struct ifnet *ifp;
+	struct ieee80211com *ic;
+	struct ath_hal *ah;
 	struct ath_desc *ds;
 	struct ath_rx_status *rs;
 	struct mbuf *m;
@@ -3787,6 +3760,11 @@ ath_rx_proc(void *arg, int npending)
 	HAL_STATUS status;
 	int16_t nf;
 	u_int64_t tsf;
+
+	wlan_serialize_enter();
+	ifp = sc->sc_ifp;
+	ic = ifp->if_l2com;
+	ah = sc->sc_ah;
 
 	DPRINTF(sc, ATH_DEBUG_RX_PROC, "%s: pending %u\n", __func__, npending);
 	ngood = 0;
@@ -4073,6 +4051,7 @@ rx_next:
 		if (!ifq_is_empty(&ifp->if_snd))
 			ath_start(ifp);
 	}
+	wlan_serialize_exit();
 #undef PA2DESC
 }
 
@@ -4085,7 +4064,6 @@ ath_txq_init(struct ath_softc *sc, struct ath_txq *txq, int qnum)
 	txq->axq_intrcnt = 0;
 	txq->axq_link = NULL;
 	STAILQ_INIT(&txq->axq_q);
-	ATH_TXQ_LOCK_INIT(sc, txq);
 }
 
 /*
@@ -4264,7 +4242,6 @@ ath_tx_cleanupq(struct ath_softc *sc, struct ath_txq *txq)
 {
 
 	ath_hal_releasetxqueue(sc->sc_ah, txq->axq_qnum);
-	ATH_TXQ_LOCK_DESTROY(txq);
 	sc->sc_txqsetup &= ~(1<<txq->axq_qnum);
 }
 
@@ -4276,7 +4253,6 @@ ath_tx_cleanup(struct ath_softc *sc)
 {
 	int i;
 
-	ATH_TXBUF_LOCK_DESTROY(sc);
 	for (i = 0; i < HAL_NUM_TX_QUEUES; i++)
 		if (ATH_TXQ_SETUP(sc, i))
 			ath_tx_cleanupq(sc, &sc->sc_txq[i]);
@@ -4381,7 +4357,6 @@ ath_tx_handoff(struct ath_softc *sc, struct ath_txq *txq, struct ath_buf *bf)
 	 * the SWBA handler since frames only go out on DTIM and
 	 * to avoid possible races.
 	 */
-	ATH_TXQ_LOCK(txq);
 	KASSERT((bf->bf_flags & ATH_BUF_BUSY) == 0,
 	     ("busy status 0x%x", bf->bf_flags));
 	if (txq->axq_qnum != ATH_TXQ_SWQ) {
@@ -4475,7 +4450,6 @@ ath_tx_handoff(struct ath_softc *sc, struct ath_txq *txq, struct ath_buf *bf)
 		ATH_TXQ_INSERT_TAIL(txq, bf, bf_list);
 		txq->axq_link = &bf->bf_desc[bf->bf_nseg - 1].ds_link;
 	}
-	ATH_TXQ_UNLOCK(txq);
 }
 
 static int
@@ -4912,13 +4886,10 @@ ath_tx_processq(struct ath_softc *sc, struct ath_txq *txq)
 		txq->axq_link);
 	nacked = 0;
 	for (;;) {
-		ATH_TXQ_LOCK(txq);
 		txq->axq_intrcnt = 0;	/* reset periodic desc intr count */
 		bf = STAILQ_FIRST(&txq->axq_q);
-		if (bf == NULL) {
-			ATH_TXQ_UNLOCK(txq);
+		if (bf == NULL)
 			break;
-		}
 		ds0 = &bf->bf_desc[0];
 		ds = &bf->bf_desc[bf->bf_nseg - 1];
 		ts = &bf->bf_status.ds_txstat;
@@ -4928,10 +4899,8 @@ ath_tx_processq(struct ath_softc *sc, struct ath_txq *txq)
 			ath_printtxbuf(sc, bf, txq->axq_qnum, 0,
 			    status == HAL_OK);
 #endif
-		if (status == HAL_EINPROGRESS) {
-			ATH_TXQ_UNLOCK(txq);
+		if (status == HAL_EINPROGRESS)
 			break;
-		}
 		ATH_TXQ_REMOVE_HEAD(txq, bf_list);
 #ifdef IEEE80211_SUPPORT_TDMA
 		if (txq->axq_depth > 0) {
@@ -4946,7 +4915,6 @@ ath_tx_processq(struct ath_softc *sc, struct ath_txq *txq)
 		if (txq->axq_depth == 0)
 #endif
 			txq->axq_link = NULL;
-		ATH_TXQ_UNLOCK(txq);
 
 		ni = bf->bf_node;
 		if (ni != NULL) {
@@ -5012,12 +4980,10 @@ ath_tx_processq(struct ath_softc *sc, struct ath_txq *txq)
 		bf->bf_m = NULL;
 		bf->bf_node = NULL;
 
-		ATH_TXBUF_LOCK(sc);
 		last = STAILQ_LAST(&sc->sc_txbuf, ath_buf, bf_list);
 		if (last != NULL)
 			last->bf_flags &= ~ATH_BUF_BUSY;
 		STAILQ_INSERT_TAIL(&sc->sc_txbuf, bf, bf_list);
-		ATH_TXBUF_UNLOCK(sc);
 	}
 #ifdef IEEE80211_SUPPORT_SUPERG
 	/*
@@ -5042,11 +5008,12 @@ txqactive(struct ath_hal *ah, int qnum)
  * for a single hardware transmit queue (e.g. 5210 and 5211).
  */
 static void
-ath_tx_proc_q0(void *arg, int npending)
+ath_tx_task_q0(void *arg, int npending)
 {
 	struct ath_softc *sc = arg;
 	struct ifnet *ifp = sc->sc_ifp;
 
+	wlan_serialize_enter();
 	if (txqactive(sc->sc_ah, 0) && ath_tx_processq(sc, &sc->sc_txq[0]))
 		sc->sc_lastrx = ath_hal_gettsf64(sc->sc_ah);
 	if (txqactive(sc->sc_ah, sc->sc_cabq->axq_qnum))
@@ -5058,6 +5025,7 @@ ath_tx_proc_q0(void *arg, int npending)
 		ath_led_event(sc, sc->sc_txrix);
 
 	ath_start(ifp);
+	wlan_serialize_exit();
 }
 
 /*
@@ -5065,12 +5033,13 @@ ath_tx_proc_q0(void *arg, int npending)
  * for four hardware queues, 0-3 (e.g. 5212 w/ WME support).
  */
 static void
-ath_tx_proc_q0123(void *arg, int npending)
+ath_tx_task_q0123(void *arg, int npending)
 {
 	struct ath_softc *sc = arg;
 	struct ifnet *ifp = sc->sc_ifp;
 	int nacked;
 
+	wlan_serialize_enter();
 	/*
 	 * Process each active queue.
 	 */
@@ -5095,25 +5064,29 @@ ath_tx_proc_q0123(void *arg, int npending)
 		ath_led_event(sc, sc->sc_txrix);
 
 	ath_start(ifp);
+	wlan_serialize_exit();
 }
 
 /*
  * Deferred processing of transmit interrupt.
  */
 static void
-ath_tx_proc(void *arg, int npending)
+ath_tx_task(void *arg, int npending)
 {
 	struct ath_softc *sc = arg;
 	struct ifnet *ifp = sc->sc_ifp;
 	int i, nacked;
 
+	wlan_serialize_enter();
+
 	/*
 	 * Process each active queue.
 	 */
 	nacked = 0;
-	for (i = 0; i < HAL_NUM_TX_QUEUES; i++)
+	for (i = 0; i < HAL_NUM_TX_QUEUES; i++) {
 		if (ATH_TXQ_SETUP(sc, i) && txqactive(sc->sc_ah, i))
 			nacked += ath_tx_processq(sc, &sc->sc_txq[i]);
+	}
 	if (nacked)
 		sc->sc_lastrx = ath_hal_gettsf64(sc->sc_ah);
 
@@ -5124,6 +5097,7 @@ ath_tx_proc(void *arg, int npending)
 		ath_led_event(sc, sc->sc_txrix);
 
 	ath_start(ifp);
+	wlan_serialize_exit();
 }
 
 static void
@@ -5140,21 +5114,16 @@ ath_tx_draintxq(struct ath_softc *sc, struct ath_txq *txq)
 	 * NB: this assumes output has been stopped and
 	 *     we do not need to block ath_tx_proc
 	 */
-	ATH_TXBUF_LOCK(sc);
 	bf = STAILQ_LAST(&sc->sc_txbuf, ath_buf, bf_list);
 	if (bf != NULL)
 		bf->bf_flags &= ~ATH_BUF_BUSY;
-	ATH_TXBUF_UNLOCK(sc);
 	for (ix = 0;; ix++) {
-		ATH_TXQ_LOCK(txq);
 		bf = STAILQ_FIRST(&txq->axq_q);
 		if (bf == NULL) {
 			txq->axq_link = NULL;
-			ATH_TXQ_UNLOCK(txq);
 			break;
 		}
 		ATH_TXQ_REMOVE_HEAD(txq, bf_list);
-		ATH_TXQ_UNLOCK(txq);
 #ifdef ATH_DEBUG
 		if (sc->sc_debug & ATH_DEBUG_RESET) {
 			struct ieee80211com *ic = sc->sc_ifp->if_l2com;
@@ -5181,9 +5150,7 @@ ath_tx_draintxq(struct ath_softc *sc, struct ath_txq *txq)
 		bf->bf_m = NULL;
 		bf->bf_flags &= ~ATH_BUF_BUSY;
 
-		ATH_TXBUF_LOCK(sc);
 		STAILQ_INSERT_TAIL(&sc->sc_txbuf, bf, bf_list);
-		ATH_TXBUF_UNLOCK(sc);
 	}
 }
 
@@ -5394,7 +5361,7 @@ ath_chan_set(struct ath_softc *sc, struct ieee80211_channel *chan)
  * for temperature/environment changes.
  */
 static void
-ath_calibrate(void *arg)
+ath_calibrate_callout(void *arg)
 {
 	struct ath_softc *sc = arg;
 	struct ath_hal *ah = sc->sc_ah;
@@ -5403,7 +5370,7 @@ ath_calibrate(void *arg)
 	HAL_BOOL longCal, isCalDone;
 	int nextcal;
 
-	ATH_LOCK(sc);
+	wlan_serialize_enter();
 
 	if (ic->ic_flags & IEEE80211_F_SCAN)	/* defer, off channel */
 		goto restart;
@@ -5468,14 +5435,14 @@ restart:
 	if (nextcal != 0) {
 		DPRINTF(sc, ATH_DEBUG_CALIBRATE, "%s: next +%u (%sisCalDone)\n",
 		    __func__, nextcal, isCalDone ? "" : "!");
-		callout_reset(&sc->sc_cal_ch, nextcal, ath_calibrate, sc);
+		callout_reset(&sc->sc_cal_ch, nextcal,
+			      ath_calibrate_callout, sc);
 	} else {
 		DPRINTF(sc, ATH_DEBUG_CALIBRATE, "%s: calibration disabled\n",
 		    __func__);
 		/* NB: don't rearm timer */
 	}
-
-	ATH_UNLOCK(sc);
+	wlan_serialize_exit();
 }
 
 static void
@@ -5543,8 +5510,6 @@ ath_isanyrunningvaps(struct ieee80211vap *this)
 {
 	struct ieee80211com *ic = this->iv_ic;
 	struct ieee80211vap *vap;
-
-	IEEE80211_LOCK_ASSERT(ic);
 
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next) {
 		if (vap != this && vap->iv_state >= IEEE80211_S_RUN)
@@ -5717,7 +5682,8 @@ ath_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 		 */
 		if (ath_longcalinterval != 0) {
 			/* start periodic recalibration timer */
-			callout_reset(&sc->sc_cal_ch, 1, ath_calibrate, sc);
+			callout_reset(&sc->sc_cal_ch, 1,
+				      ath_calibrate_callout, sc);
 		} else {
 			DPRINTF(sc, ATH_DEBUG_CALIBRATE,
 			    "%s: calibration disabled\n", __func__);
@@ -5881,11 +5847,13 @@ ath_getchannels(struct ath_softc *sc)
 }
 
 static void
-ath_led_done(void *arg)
+ath_led_done_callout(void *arg)
 {
 	struct ath_softc *sc = arg;
 
+	wlan_serialize_enter();
 	sc->sc_blinking = 0;
+	wlan_serialize_exit();
 }
 
 /*
@@ -5893,12 +5861,15 @@ ath_led_done(void *arg)
  * update will happen for the specified duration.
  */
 static void
-ath_led_off(void *arg)
+ath_led_off_callout(void *arg)
 {
 	struct ath_softc *sc = arg;
 
+	wlan_serialize_enter();
 	ath_hal_gpioset(sc->sc_ah, sc->sc_ledpin, !sc->sc_ledon);
-	callout_reset(&sc->sc_ledtimer, sc->sc_ledoff, ath_led_done, sc);
+	callout_reset(&sc->sc_ledtimer, sc->sc_ledoff,
+			ath_led_done_callout, sc);
+	wlan_serialize_exit();
 }
 
 /*
@@ -5911,7 +5882,7 @@ ath_led_blink(struct ath_softc *sc, int on, int off)
 	ath_hal_gpioset(sc->sc_ah, sc->sc_ledpin, sc->sc_ledon);
 	sc->sc_blinking = 1;
 	sc->sc_ledoff = off;
-	callout_reset(&sc->sc_ledtimer, on, ath_led_off, sc);
+	callout_reset(&sc->sc_ledtimer, on, ath_led_off_callout, sc);
 }
 
 static void
@@ -6106,12 +6077,11 @@ ath_printtxbuf(struct ath_softc *sc, const struct ath_buf *bf,
 #endif /* ATH_DEBUG */
 
 static void
-ath_watchdog(void *arg)
+ath_watchdog_callout(void *arg)
 {
 	struct ath_softc *sc = arg;
 
-	ATH_LOCK(sc);
-
+	wlan_serialize_enter();
 	if (sc->sc_wd_timer != 0 && --sc->sc_wd_timer == 0) {
 		struct ifnet *ifp = sc->sc_ifp;
 		uint32_t hangs;
@@ -6126,9 +6096,8 @@ ath_watchdog(void *arg)
 		ifp->if_oerrors++;
 		sc->sc_stats.ast_watchdog++;
 	}
-	callout_reset(&sc->sc_wd_ch, hz, ath_watchdog, sc);
-
-	ATH_UNLOCK(sc);
+	callout_reset(&sc->sc_wd_ch, hz, ath_watchdog_callout, sc);
+	wlan_serialize_exit();
 }
 
 #ifdef ATH_DIAGAPI
@@ -6207,7 +6176,6 @@ ath_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:
-		ATH_LOCK(sc);
 		if (IS_RUNNING(ifp)) {
 			/*
 			 * To avoid rescanning another access point,
@@ -6235,7 +6203,6 @@ ath_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 				ath_hal_setpower(sc->sc_ah, HAL_PM_FULL_SLEEP);
 #endif
 		}
-		ATH_UNLOCK(sc);
 		break;
 	case SIOCGIFMEDIA:
 	case SIOCSIFMEDIA:
@@ -6282,39 +6249,54 @@ static int
 ath_sysctl_slottime(SYSCTL_HANDLER_ARGS)
 {
 	struct ath_softc *sc = arg1;
-	u_int slottime = ath_hal_getslottime(sc->sc_ah);
+	u_int slottime;
 	int error;
 
+	wlan_serialize_enter();
+	slottime = ath_hal_getslottime(sc->sc_ah);
 	error = sysctl_handle_int(oidp, &slottime, 0, req);
-	if (error || !req->newptr)
-		return error;
-	return !ath_hal_setslottime(sc->sc_ah, slottime) ? EINVAL : 0;
+	if (error == 0 && req->newptr) {
+		if (!ath_hal_setslottime(sc->sc_ah, slottime))
+			error = EINVAL;
+	}
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
 ath_sysctl_acktimeout(SYSCTL_HANDLER_ARGS)
 {
 	struct ath_softc *sc = arg1;
-	u_int acktimeout = ath_hal_getacktimeout(sc->sc_ah);
+	u_int acktimeout;
 	int error;
 
+	wlan_serialize_enter();
+	acktimeout = ath_hal_getacktimeout(sc->sc_ah);
 	error = sysctl_handle_int(oidp, &acktimeout, 0, req);
-	if (error || !req->newptr)
-		return error;
-	return !ath_hal_setacktimeout(sc->sc_ah, acktimeout) ? EINVAL : 0;
+	if (error == 0 && req->newptr) {
+		if (!ath_hal_setacktimeout(sc->sc_ah, acktimeout))
+			error = EINVAL;
+	}
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
 ath_sysctl_ctstimeout(SYSCTL_HANDLER_ARGS)
 {
 	struct ath_softc *sc = arg1;
-	u_int ctstimeout = ath_hal_getctstimeout(sc->sc_ah);
+	u_int ctstimeout;
 	int error;
 
+	wlan_serialize_enter();
+	ctstimeout = ath_hal_getctstimeout(sc->sc_ah);
 	error = sysctl_handle_int(oidp, &ctstimeout, 0, req);
-	if (error || !req->newptr)
-		return error;
-	return !ath_hal_setctstimeout(sc->sc_ah, ctstimeout) ? EINVAL : 0;
+	if (error == 0 && req->newptr) {
+		if (!ath_hal_setctstimeout(sc->sc_ah, ctstimeout))
+			error = EINVAL;
+	}
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
@@ -6327,6 +6309,7 @@ ath_sysctl_softled(SYSCTL_HANDLER_ARGS)
 	error = sysctl_handle_int(oidp, &softled, 0, req);
 	if (error || !req->newptr)
 		return error;
+	wlan_serialize_enter();
 	softled = (softled != 0);
 	if (softled != sc->sc_softled) {
 		if (softled) {
@@ -6338,6 +6321,7 @@ ath_sysctl_softled(SYSCTL_HANDLER_ARGS)
 		}
 		sc->sc_softled = softled;
 	}
+	wlan_serialize_exit();
 	return 0;
 }
 
@@ -6351,6 +6335,7 @@ ath_sysctl_ledpin(SYSCTL_HANDLER_ARGS)
 	error = sysctl_handle_int(oidp, &ledpin, 0, req);
 	if (error || !req->newptr)
 		return error;
+	wlan_serialize_enter();
 	if (ledpin != sc->sc_ledpin) {
 		sc->sc_ledpin = ledpin;
 		if (sc->sc_softled) {
@@ -6360,6 +6345,7 @@ ath_sysctl_ledpin(SYSCTL_HANDLER_ARGS)
 				!sc->sc_ledon);
 		}
 	}
+	wlan_serialize_exit();
 	return 0;
 }
 
@@ -6367,22 +6353,29 @@ static int
 ath_sysctl_txantenna(SYSCTL_HANDLER_ARGS)
 {
 	struct ath_softc *sc = arg1;
-	u_int txantenna = ath_hal_getantennaswitch(sc->sc_ah);
+	u_int txantenna;
 	int error;
 
+	wlan_serialize_enter();
+	txantenna = ath_hal_getantennaswitch(sc->sc_ah);
 	error = sysctl_handle_int(oidp, &txantenna, 0, req);
+
 	if (!error && req->newptr) {
 		/* XXX assumes 2 antenna ports */
-		if (txantenna < HAL_ANT_VARIABLE || txantenna > HAL_ANT_FIXED_B)
-			return EINVAL;
-		ath_hal_setantennaswitch(sc->sc_ah, txantenna);
-		/*
-		 * NB: with the switch locked this isn't meaningful,
-		 *     but set it anyway so things like radiotap get
-		 *     consistent info in their data.
-		 */
-		sc->sc_txantenna = txantenna;
+		if (txantenna < HAL_ANT_VARIABLE ||
+		    txantenna > HAL_ANT_FIXED_B) {
+			error = EINVAL;
+		} else {
+			ath_hal_setantennaswitch(sc->sc_ah, txantenna);
+			/*
+			 * NB: with the switch locked this isn't meaningful,
+			 *     but set it anyway so things like radiotap get
+			 *     consistent info in their data.
+			 */
+			sc->sc_txantenna = txantenna;
+		}
 	}
+	wlan_serialize_exit();
 	return error;
 }
 
@@ -6390,12 +6383,15 @@ static int
 ath_sysctl_rxantenna(SYSCTL_HANDLER_ARGS)
 {
 	struct ath_softc *sc = arg1;
-	u_int defantenna = ath_hal_getdefantenna(sc->sc_ah);
+	u_int defantenna;
 	int error;
 
+	wlan_serialize_enter();
+	defantenna = ath_hal_getdefantenna(sc->sc_ah);
 	error = sysctl_handle_int(oidp, &defantenna, 0, req);
-	if (!error && req->newptr)
+	if (error == 0 && req->newptr)
 		ath_hal_setdefantenna(sc->sc_ah, defantenna);
+	wlan_serialize_exit();
 	return error;
 }
 
@@ -6403,16 +6399,20 @@ static int
 ath_sysctl_diversity(SYSCTL_HANDLER_ARGS)
 {
 	struct ath_softc *sc = arg1;
-	u_int diversity = ath_hal_getdiversity(sc->sc_ah);
+	u_int diversity;
 	int error;
 
+	wlan_serialize_enter();
+	diversity = ath_hal_getdiversity(sc->sc_ah);
 	error = sysctl_handle_int(oidp, &diversity, 0, req);
-	if (error || !req->newptr)
-		return error;
-	if (!ath_hal_setdiversity(sc->sc_ah, diversity))
-		return EINVAL;
-	sc->sc_diversity = diversity;
-	return 0;
+	if (error == 0 && req->newptr) {
+		if (!ath_hal_setdiversity(sc->sc_ah, diversity))
+			error = EINVAL;
+		else
+			sc->sc_diversity = diversity;
+	}
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
@@ -6422,12 +6422,18 @@ ath_sysctl_diag(SYSCTL_HANDLER_ARGS)
 	u_int32_t diag;
 	int error;
 
-	if (!ath_hal_getdiag(sc->sc_ah, &diag))
-		return EINVAL;
-	error = sysctl_handle_int(oidp, &diag, 0, req);
-	if (error || !req->newptr)
-		return error;
-	return !ath_hal_setdiag(sc->sc_ah, diag) ? EINVAL : 0;
+	wlan_serialize_enter();
+	if (!ath_hal_getdiag(sc->sc_ah, &diag)) {
+		error = EINVAL;
+	} else {
+		error = sysctl_handle_int(oidp, &diag, 0, req);
+		if (error == 0 && req->newptr) {
+			if (!ath_hal_setdiag(sc->sc_ah, diag))
+				error = EINVAL;
+		}
+	}
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
@@ -6438,44 +6444,62 @@ ath_sysctl_tpscale(SYSCTL_HANDLER_ARGS)
 	u_int32_t scale;
 	int error;
 
-	(void) ath_hal_gettpscale(sc->sc_ah, &scale);
+	wlan_serialize_enter();
+	(void)ath_hal_gettpscale(sc->sc_ah, &scale);
 	error = sysctl_handle_int(oidp, &scale, 0, req);
-	if (error || !req->newptr)
-		return error;
-	return !ath_hal_settpscale(sc->sc_ah, scale) ? EINVAL :
-	    (ifp->if_flags & IFF_RUNNING) ? ath_reset(ifp) : 0;
+	if (error == 0 && req->newptr) {
+		if (!ath_hal_settpscale(sc->sc_ah, scale))
+			error = EINVAL;
+		else if (ifp->if_flags & IFF_RUNNING)
+			error = ath_reset(ifp);
+	}
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
 ath_sysctl_tpc(SYSCTL_HANDLER_ARGS)
 {
 	struct ath_softc *sc = arg1;
-	u_int tpc = ath_hal_gettpc(sc->sc_ah);
+	u_int tpc;
 	int error;
 
+	wlan_serialize_enter();
+	tpc = ath_hal_gettpc(sc->sc_ah);
 	error = sysctl_handle_int(oidp, &tpc, 0, req);
-	if (error || !req->newptr)
-		return error;
-	return !ath_hal_settpc(sc->sc_ah, tpc) ? EINVAL : 0;
+	if (error == 0 && req->newptr) {
+		if (!ath_hal_settpc(sc->sc_ah, tpc))
+			error = EINVAL;
+	}
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
 ath_sysctl_rfkill(SYSCTL_HANDLER_ARGS)
 {
 	struct ath_softc *sc = arg1;
-	struct ifnet *ifp = sc->sc_ifp;
-	struct ath_hal *ah = sc->sc_ah;
-	u_int rfkill = ath_hal_getrfkill(ah);
+	struct ifnet *ifp;
+	struct ath_hal *ah;
+	u_int rfkill;
 	int error;
 
+	wlan_serialize_enter();
+	ifp = sc->sc_ifp;
+	ah = sc->sc_ah;
+	rfkill = ath_hal_getrfkill(ah);
+
 	error = sysctl_handle_int(oidp, &rfkill, 0, req);
-	if (error || !req->newptr)
-		return error;
-	if (rfkill == ath_hal_getrfkill(ah))	/* unchanged */
-		return 0;
-	if (!ath_hal_setrfkill(ah, rfkill))
-		return EINVAL;
-	return (ifp->if_flags & IFF_RUNNING) ? ath_reset(ifp) : 0;
+	if (error == 0 && req->newptr) {
+		if (rfkill != ath_hal_getrfkill(ah)) {
+			if (!ath_hal_setrfkill(ah, rfkill))
+				error = EINVAL;
+			else if (ifp->if_flags & IFF_RUNNING)
+				error = ath_reset(ifp);
+		}
+	}
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
@@ -6485,15 +6509,19 @@ ath_sysctl_rfsilent(SYSCTL_HANDLER_ARGS)
 	u_int rfsilent;
 	int error;
 
-	(void) ath_hal_getrfsilent(sc->sc_ah, &rfsilent);
+	wlan_serialize_enter();
+	(void)ath_hal_getrfsilent(sc->sc_ah, &rfsilent);
 	error = sysctl_handle_int(oidp, &rfsilent, 0, req);
-	if (error || !req->newptr)
-		return error;
-	if (!ath_hal_setrfsilent(sc->sc_ah, rfsilent))
-		return EINVAL;
-	sc->sc_rfsilentpin = rfsilent & 0x1c;
-	sc->sc_rfsilentpol = (rfsilent & 0x2) != 0;
-	return 0;
+	if (error == 0 && req->newptr) {
+		if (!ath_hal_setrfsilent(sc->sc_ah, rfsilent)) {
+			error = EINVAL;
+		} else {
+			sc->sc_rfsilentpin = rfsilent & 0x1c;
+			sc->sc_rfsilentpol = (rfsilent & 0x2) != 0;
+		}
+	}
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
@@ -6503,11 +6531,15 @@ ath_sysctl_tpack(SYSCTL_HANDLER_ARGS)
 	u_int32_t tpack;
 	int error;
 
-	(void) ath_hal_gettpack(sc->sc_ah, &tpack);
+	wlan_serialize_enter();
+	(void)ath_hal_gettpack(sc->sc_ah, &tpack);
 	error = sysctl_handle_int(oidp, &tpack, 0, req);
-	if (error || !req->newptr)
-		return error;
-	return !ath_hal_settpack(sc->sc_ah, tpack) ? EINVAL : 0;
+	if (error == 0 && req->newptr) {
+		if (!ath_hal_settpack(sc->sc_ah, tpack))
+			error = EINVAL;
+	}
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
@@ -6517,11 +6549,15 @@ ath_sysctl_tpcts(SYSCTL_HANDLER_ARGS)
 	u_int32_t tpcts;
 	int error;
 
-	(void) ath_hal_gettpcts(sc->sc_ah, &tpcts);
+	wlan_serialize_enter();
+	(void)ath_hal_gettpcts(sc->sc_ah, &tpcts);
 	error = sysctl_handle_int(oidp, &tpcts, 0, req);
-	if (error || !req->newptr)
-		return error;
-	return !ath_hal_settpcts(sc->sc_ah, tpcts) ? EINVAL : 0;
+	if (error == 0 && req->newptr) {
+		if (!ath_hal_settpcts(sc->sc_ah, tpcts))
+			error = EINVAL;
+	}
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
@@ -6530,11 +6566,15 @@ ath_sysctl_intmit(SYSCTL_HANDLER_ARGS)
 	struct ath_softc *sc = arg1;
 	int intmit, error;
 
+	wlan_serialize_enter();
 	intmit = ath_hal_getintmit(sc->sc_ah);
 	error = sysctl_handle_int(oidp, &intmit, 0, req);
-	if (error || !req->newptr)
-		return error;
-	return !ath_hal_setintmit(sc->sc_ah, intmit) ? EINVAL : 0;
+	if (error == 0 && req->newptr) {
+		if (!ath_hal_setintmit(sc->sc_ah, intmit))
+			error = EINVAL;
+	}
+	wlan_serialize_exit();
+	return error;
 }
 
 #ifdef IEEE80211_SUPPORT_TDMA
@@ -6544,12 +6584,13 @@ ath_sysctl_setcca(SYSCTL_HANDLER_ARGS)
 	struct ath_softc *sc = arg1;
 	int setcca, error;
 
+	wlan_serialize_enter();
 	setcca = sc->sc_setcca;
 	error = sysctl_handle_int(oidp, &setcca, 0, req);
-	if (error || !req->newptr)
-		return error;
-	sc->sc_setcca = (setcca != 0);
-	return 0;
+	if (error == 0 && req->newptr)
+		sc->sc_setcca = (setcca != 0);
+	wlan_serialize_exit();
+	return error;
 }
 #endif /* IEEE80211_SUPPORT_TDMA */
 
@@ -6930,9 +6971,7 @@ ath_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 
 	return 0;
 bad2:
-	ATH_TXBUF_LOCK(sc);
 	STAILQ_INSERT_HEAD(&sc->sc_txbuf, bf, bf_list);
-	ATH_TXBUF_UNLOCK(sc);
 bad:
 	ifp->if_oerrors++;
 	sc->sc_stats.ast_tx_raw_fail++;

@@ -102,7 +102,7 @@ static	int ath_rateinterval = 1000;		/* rate ctl interval (ms)  */
 static	int ath_rate_raise = 10;		/* add credit threshold */
 static	int ath_rate_raise_threshold = 10;	/* rate ctl raise threshold */
 
-static void	ath_ratectl(void *);
+static void	ath_ratectl_callout(void *);
 static void	ath_rate_update(struct ath_softc *, struct ieee80211_node *,
 			int rate);
 static void	ath_rate_ctl_start(struct ath_softc *, struct ieee80211_node *);
@@ -352,7 +352,7 @@ ath_rate_newstate(struct ath_softc *sc, enum ieee80211_state state)
 		if (ic->ic_opmode == IEEE80211_M_STA)
 			interval /= 2;
 		callout_reset(&osc->timer, (interval * hz) / 1000,
-			      ath_ratectl, ifp);
+			      ath_ratectl_callout, ifp);
 	}
 }
 
@@ -429,7 +429,7 @@ ath_rate_ctl(void *arg, struct ieee80211_node *ni)
 }
 
 static void
-ath_ratectl(void *arg)
+ath_ratectl_callout(void *arg)
 {
 	struct ifnet *ifp = arg;
 	struct ath_softc *sc = ifp->if_softc;
@@ -437,8 +437,7 @@ ath_ratectl(void *arg)
 	struct ieee80211com *ic = &sc->sc_ic;
 	int interval;
 
-	ifnet_serialize_all(ifp);
-
+	wlan_serialize_enter();
 	if (ifp->if_flags & IFF_RUNNING) {
 		sc->sc_stats.ast_rate_calls++;
 
@@ -450,9 +449,10 @@ ath_ratectl(void *arg)
 	interval = ath_rateinterval;
 	if (ic->ic_opmode == IEEE80211_M_STA)
 		interval /= 2;
-	callout_reset(&osc->timer, (interval * hz) / 1000, ath_ratectl, ifp);
+	callout_reset(&osc->timer, (interval * hz) / 1000,
+			ath_ratectl_callout, ifp);
 
-	ifnet_deserialize_all(ifp);
+	wlan_serialize_exit();
 }
 
 static void
@@ -508,15 +508,28 @@ ath_rate_stop(struct ath_ratectrl *arc)
 static int
 onoe_modevent(module_t mod, int type, void *unused)
 {
+	int error;
+
+	wlan_serialize_enter();
+
 	switch (type) {
 	case MOD_LOAD:
-		if (bootverbose)
-			kprintf("ath_rate: <Atsushi Onoe's rate control algorithm>\n");
-		return 0;
+		if (bootverbose) {
+			kprintf("ath_rate: <Atsushi Onoe's rate "
+				"control algorithm>\n");
+		}
+		error = 0;
+		break;
 	case MOD_UNLOAD:
-		return 0;
+		error = 0;
+		break;
+	default:
+		error = EINVAL;
+		break;
 	}
-	return EINVAL;
+	wlan_serialize_exit();
+
+	return error;
 }
 
 static moduledata_t onoe_mod = {

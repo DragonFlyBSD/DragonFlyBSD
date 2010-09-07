@@ -78,11 +78,14 @@ ath_pci_probe(device_t dev)
 {
 	const char* devname;
 
+	wlan_serialize_enter();
 	devname = ath_hal_probe(pci_get_vendor(dev), pci_get_device(dev));
 	if (devname != NULL) {
 		device_set_desc(dev, devname);
+		wlan_serialize_exit();
 		return BUS_PROBE_DEFAULT;
 	}
+	wlan_serialize_exit();
 	return ENXIO;
 }
 
@@ -94,6 +97,7 @@ ath_pci_attach(device_t dev)
 	int error = ENXIO;
 	int rid;
 
+	wlan_serialize_enter();
 	sc->sc_dev = dev;
 
 	/*
@@ -138,7 +142,8 @@ ath_pci_attach(device_t dev)
 	}
 	if (bus_setup_intr(dev, psc->sc_irq,
 			   INTR_MPSAFE,
-			   ath_intr, sc, &psc->sc_ih, NULL)) {
+			   ath_intr, sc, &psc->sc_ih,
+			   &wlan_global_serializer)) {
 		device_printf(dev, "could not establish interrupt\n");
 		goto bad2;
 	}
@@ -160,13 +165,12 @@ ath_pci_attach(device_t dev)
 		goto bad3;
 	}
 
-	ATH_LOCK_INIT(sc);
-
 	error = ath_attach(pci_get_device(dev), sc);
-	if (error == 0)					/* success */
+	if (error == 0)	{				/* success */
+		wlan_serialize_exit();
 		return 0;
+	}
 
-	ATH_LOCK_DESTROY(sc);
 	bus_dma_tag_destroy(sc->sc_dmat);
 bad3:
 	bus_teardown_intr(dev, psc->sc_irq, psc->sc_ih);
@@ -175,6 +179,7 @@ bad2:
 bad1:
 	bus_release_resource(dev, SYS_RES_MEMORY, BS_BAR, psc->sc_sr);
 bad:
+	wlan_serialize_exit();
 	return (error);
 }
 
@@ -184,6 +189,7 @@ ath_pci_detach(device_t dev)
 	struct ath_pci_softc *psc = device_get_softc(dev);
 	struct ath_softc *sc = &psc->sc_sc;
 
+	wlan_serialize_enter();
 	/* check if device was removed */
 	sc->sc_invalid = !bus_child_present(dev);
 
@@ -196,8 +202,7 @@ ath_pci_detach(device_t dev)
 	bus_dma_tag_destroy(sc->sc_dmat);
 	bus_release_resource(dev, SYS_RES_MEMORY, BS_BAR, psc->sc_sr);
 
-	ATH_LOCK_DESTROY(sc);
-
+	wlan_serialize_exit();
 	return (0);
 }
 
@@ -206,7 +211,9 @@ ath_pci_shutdown(device_t dev)
 {
 	struct ath_pci_softc *psc = device_get_softc(dev);
 
+	wlan_serialize_enter();
 	ath_shutdown(&psc->sc_sc);
+	wlan_serialize_exit();
 	return (0);
 }
 
@@ -215,7 +222,9 @@ ath_pci_suspend(device_t dev)
 {
 	struct ath_pci_softc *psc = device_get_softc(dev);
 
+	wlan_serialize_enter();
 	ath_suspend(&psc->sc_sc);
+	wlan_serialize_exit();
 
 	return (0);
 }
@@ -225,7 +234,9 @@ ath_pci_resume(device_t dev)
 {
 	struct ath_pci_softc *psc = device_get_softc(dev);
 
+	wlan_serialize_enter();
 	ath_resume(&psc->sc_sc);
+	wlan_serialize_exit();
 
 	return (0);
 }

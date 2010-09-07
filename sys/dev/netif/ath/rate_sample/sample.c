@@ -901,16 +901,19 @@ static int
 ath_rate_sysctl_stats(SYSCTL_HANDLER_ARGS)
 {
 	struct ath_softc *sc = arg1;
-	struct ifnet *ifp = sc->sc_ifp;
-	struct ieee80211com *ic = ifp->if_l2com;
+	struct ifnet *ifp;
+	struct ieee80211com *ic;
 	int error, v;
 
+	wlan_serialize_enter();
 	v = 0;
+	ifp = sc->sc_ifp;
+	ic = ifp->if_l2com;
 	error = sysctl_handle_int(oidp, &v, 0, req);
-	if (error || !req->newptr)
-		return error;
-	ieee80211_iterate_nodes(&ic->ic_sta, sample_stats, sc);
-	return 0;
+	if (error == 0 && req->newptr)
+		ieee80211_iterate_nodes(&ic->ic_sta, sample_stats, sc);
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
@@ -919,15 +922,19 @@ ath_rate_sysctl_smoothing_rate(SYSCTL_HANDLER_ARGS)
 	struct sample_softc *ssc = arg1;
 	int rate, error;
 
+	wlan_serialize_enter();
 	rate = ssc->smoothing_rate;
 	error = sysctl_handle_int(oidp, &rate, 0, req);
-	if (error || !req->newptr)
-		return error;
-	if (!(0 <= rate && rate < 100))
-		return EINVAL;
-	ssc->smoothing_rate = rate;
-	ssc->smoothing_minpackets = 100 / (100 - rate);
-	return 0;
+	if (error == 0 && req->newptr) {
+		if (!(0 <= rate && rate < 100)) {
+			error = EINVAL;
+		} else {
+			ssc->smoothing_rate = rate;
+			ssc->smoothing_minpackets = 100 / (100 - rate);
+		}
+	}
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
@@ -936,14 +943,17 @@ ath_rate_sysctl_sample_rate(SYSCTL_HANDLER_ARGS)
 	struct sample_softc *ssc = arg1;
 	int rate, error;
 
+	wlan_serialize_enter();
 	rate = ssc->sample_rate;
 	error = sysctl_handle_int(oidp, &rate, 0, req);
-	if (error || !req->newptr)
-		return error;
-	if (!(2 <= rate && rate <= 100))
-		return EINVAL;
-	ssc->sample_rate = rate;
-	return 0;
+	if (error == 0 && req->newptr) {
+		if (!(2 <= rate && rate <= 100))
+			error = EINVAL;
+		else
+			ssc->sample_rate = rate;
+	}
+	wlan_serialize_exit();
+	return error;
 }
 
 static void
@@ -1005,15 +1015,28 @@ ath_rate_detach(struct ath_ratectrl *arc)
 static int
 sample_modevent(module_t mod, int type, void *unused)
 {
+	int error;
+
+	wlan_serialize_enter();
+
 	switch (type) {
 	case MOD_LOAD:
-		if (bootverbose)
-			kprintf("ath_rate: <SampleRate bit-rate selection algorithm>\n");
-		return 0;
+		if (bootverbose) {
+			kprintf("ath_rate: <SampleRate bit-rate "
+				"selection algorithm>\n");
+		}
+		error = 0;
+		break;
 	case MOD_UNLOAD:
-		return 0;
+		error = 0;
+		break;
+	default:
+		error = EINVAL;
+		break;
 	}
-	return EINVAL;
+	wlan_serialize_exit();
+
+	return error;
 }
 
 static moduledata_t sample_mod = {

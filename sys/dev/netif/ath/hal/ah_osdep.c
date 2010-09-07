@@ -39,7 +39,13 @@
 #include <sys/malloc.h>
 #include <sys/proc.h>
 
+#include <net/if.h>
+#include <net/if_media.h>
+#include <net/if_arp.h>
+
 #include <machine/stdarg.h>
+
+#include <netproto/802_11/ieee80211_var.h>
 
 #include <dev/netif/ath/hal/ath_hal/ah.h>
 
@@ -200,12 +206,13 @@ sysctl_hw_ath_hal_log(SYSCTL_HANDLER_ARGS)
 {
 	int error, enable;
 
+	wlan_serialize_enter();
 	enable = (ath_hal_alq != NULL);
         error = sysctl_handle_int(oidp, &enable, 0, req);
-        if (error || !req->newptr)
-                return (error);
-	else
-		return (ath_hal_setlogging(enable));
+	if (error == 0 && req->newptr)
+		error = ath_hal_setlogging(enable);
+	wlan_serialize_exit();
+	return error;
 }
 SYSCTL_PROC(_hw_ath_hal, OID_AUTO, alq, CTLTYPE_INT|CTLFLAG_RW,
 	0, 0, sysctl_hw_ath_hal_log, "I", "Enable HAL register logging");
@@ -361,14 +368,23 @@ ath_hal_assert_failed(const char* filename, int lineno, const char *msg)
 static int
 ath_hal_modevent(module_t mod, int type, void *unused)
 {
+	int error;
+
+	wlan_serialize_enter();
+
 	switch (type) {
 	case MOD_LOAD:
-		return 0;
+		error = 0;
+		break;
 	case MOD_UNLOAD:
-		return 0;
+		error = 0;
+		break;
+	default:
+		error = EINVAL;
+		break;
 	}
-
-	return EINVAL;
+	wlan_serialize_exit();
+	return error;
 }
 
 static moduledata_t ath_hal_mod = {

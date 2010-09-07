@@ -156,17 +156,6 @@ struct ath_txq {
 	char			axq_name[12];	/* e.g. "ath0_txq4" */
 };
 
-#define	ATH_TXQ_LOCK_INIT(_sc, _tq) do { \
-	ksnprintf((_tq)->axq_name, sizeof((_tq)->axq_name), "%s_txq%u", \
-		device_get_nameunit((_sc)->sc_dev), (_tq)->axq_qnum); \
-	lockinit(&(_tq)->axq_lock, (_tq)->axq_name, 0, 0); \
-} while (0)
-#define	ATH_TXQ_LOCK_DESTROY(_tq)	lockuninit(&(_tq)->axq_lock)
-#define	ATH_TXQ_LOCK(_tq)		lockmgr(&(_tq)->axq_lock, LK_EXCLUSIVE)
-#define	ATH_TXQ_UNLOCK(_tq)		lockmgr(&(_tq)->axq_lock, LK_RELEASE)
-#define	ATH_TXQ_LOCK_ASSERT(_tq) \
-    KKASSERT(lockstatus(&(_tq)->axq_lock, curthread) == LK_EXCLUSIVE)
-
 #define ATH_TXQ_INSERT_TAIL(_tq, _elm, _field) do { \
 	STAILQ_INSERT_TAIL(&(_tq)->axq_q, (_elm), _field); \
 	(_tq)->axq_depth++; \
@@ -348,30 +337,7 @@ struct ath_softc {
 	struct sysctl_oid	*sc_sysctl_tree;
 };
 
-#define	ATH_LOCK_INIT(_sc) \
-	lockinit(&(_sc)->sc_lock, \
-	    __DECONST(char *, device_get_nameunit((_sc)->sc_dev)), \
-	    0, LK_CANRECURSE)
-#define	ATH_LOCK_DESTROY(_sc)	lockuninit(&(_sc)->sc_lock)
-#define	ATH_LOCK(_sc)		lockmgr(&(_sc)->sc_lock, LK_EXCLUSIVE)
-#define	ATH_UNLOCK(_sc)		lockmgr(&(_sc)->sc_lock, LK_RELEASE)
-#define	ATH_LOCK_ASSERT(_sc)	\
-    KKASSERT(lockstatus(&(_sc)->sc_lock, curthread) == LK_EXCLUSIVE)
-
 #define	ATH_TXQ_SETUP(sc, i)	((sc)->sc_txqsetup & (1<<i))
-
-#define	ATH_TXBUF_LOCK_INIT(_sc) do { \
-	ksnprintf((_sc)->sc_txname, sizeof((_sc)->sc_txname), "%s_buf", \
-		device_get_nameunit((_sc)->sc_dev)); \
-	lockinit(&(_sc)->sc_txbuflock, (_sc)->sc_txname, 0, 0); \
-} while (0)
-#define	ATH_TXBUF_LOCK_DESTROY(_sc)	lockuninit(&(_sc)->sc_txbuflock)
-#define	ATH_TXBUF_LOCK(_sc)	\
-	lockmgr(&(_sc)->sc_txbuflock, LK_EXCLUSIVE)
-#define	ATH_TXBUF_UNLOCK(_sc)	\
-	lockmgr(&(_sc)->sc_txbuflock, LK_RELEASE)
-#define	ATH_TXBUF_LOCK_ASSERT(_sc) \
-	KKASSERT(lockstatus(&(_sc)->sc_txbuflock, curthread) == LK_EXCLUSIVE)
 
 int	ath_attach(u_int16_t, struct ath_softc *);
 int	ath_detach(struct ath_softc *);
