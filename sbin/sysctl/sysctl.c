@@ -655,7 +655,7 @@ machdep_bootdev(u_long value)
 static int
 show_var(int *oid, size_t nlen)
 {
-	u_char buf[BUFSIZ], *val, *p, *nul;
+	u_char buf[BUFSIZ], *val = NULL, *p, *nul;
 	char name[BUFSIZ], *fmt;
 	const char *sep, *spacer;
 	int qoid[CTL_MAXNAME+2];
@@ -663,6 +663,7 @@ show_var(int *oid, size_t nlen)
 	size_t j, len;
 	u_int kind;
 	int (*func)(int, void *);
+	int error = 0;
 
 	qoid[0] = 0;
 	memcpy(qoid + 2, oid, nlen * sizeof(int));
@@ -697,15 +698,20 @@ show_var(int *oid, size_t nlen)
 	i = sysctl(oid, nlen, 0, &j, 0, 0);
 	j += j; /* we want to be sure :-) */
 
-	val = alloca(j + 1);
+	val = malloc(j + 1);
+	if (val == NULL)
+		return (1);
+
 	len = j;
 	i = sysctl(oid, nlen, val, &len, 0, 0);
-	if (i || !len)
-		return (1);
+	if (i || !len) {
+		error = 1;
+		goto done;
+	}
 
 	if (bflag) {
 		fwrite(val, 1, len, stdout);
-		return (0);
+		goto done;
 	}
 
 	val[len] = '\0';
@@ -736,7 +742,7 @@ show_var(int *oid, size_t nlen)
 			len -= sizeof(int);
 			p += sizeof(int);
 		}
-		return (0);
+		goto done;
 
 	case 'L':
 		if (!nflag)
@@ -756,13 +762,13 @@ show_var(int *oid, size_t nlen)
 			len -= sizeof(long);
 			p += sizeof(long);
 		}
-		return (0);
+		goto done;
 
 	case 'P':
 		if (!nflag)
 			printf("%s%s", name, sep);
 		printf("%p", *(void **)p);
-		return (0);
+		goto done;
 
 	case 'Q':
 		if (!nflag)
@@ -781,7 +787,7 @@ show_var(int *oid, size_t nlen)
 			len -= sizeof(int64_t);
 			p += sizeof(int64_t);
 		}
-		return (0);
+		goto done;
 
 	case 'T':
 	case 'S':
@@ -806,13 +812,16 @@ show_var(int *oid, size_t nlen)
 			if (func) {
 				if (!nflag)
 					printf("%s%s", name, sep);
-				return ((*func)(len, p));
+				error = (*func)(len, p);
+				goto done;
 			}
 		}
 		/* FALL THROUGH */
 	default:
-		if (!oflag && !xflag)
-			return (1);
+		if (!oflag && !xflag) {
+			error = 1;
+			goto done;
+		}
 		if (!nflag)
 			printf("%s%s", name, sep);
 		printf("Format:%s Length:%zu Dump:0x", fmt, len);
@@ -820,9 +829,13 @@ show_var(int *oid, size_t nlen)
 			printf("%02x", *p++);
 		if (!xflag && len > 16)
 			printf("...");
-		return (0);
+		goto done;
 	}
-	return (1);
+
+done:
+	if (val != NULL)
+		free(val);
+	return (error);
 }
 
 static int
