@@ -218,7 +218,7 @@ modules-tags:
 modules-install: kernel-installable
 .if !defined(NO_MODULES_OLD)
 .  ifdef NO_KERNEL_OLD_STRIP
-	set -- ${DESTDIR}${DESTKERNDIR}/*;			\
+	set -- ${DESTDIR}${DESTKERNDIR}/*.ko;			\
 	if [ -f "$$1" ]; then					\
 		if [ -f ${DESTDIR}${DESTKERNDIR}.old ]; then	\
 		    rm -f ${DESTDIR}${DESTKERNDIR}.old; 	\
@@ -229,7 +229,7 @@ modules-install: kernel-installable
 		done;						\
 	fi
 .  else
-	set -- ${DESTDIR}${DESTKERNDIR}/*;			\
+	set -- ${DESTDIR}${DESTKERNDIR}/*.ko;			\
 	if [ -f "$$1" ]; then					\
 		if [ -f ${DESTDIR}${DESTKERNDIR}.old ]; then	\
 		    rm -f ${DESTDIR}${DESTKERNDIR}.old; 	\
