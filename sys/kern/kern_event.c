@@ -61,6 +61,10 @@
  * Global token for kqueue subsystem
  */
 struct lwkt_token kq_token = LWKT_TOKEN_UP_INITIALIZER(kq_token);
+SYSCTL_INT(_lwkt, OID_AUTO, kq_mpsafe,
+	   CTLFLAG_RW, &kq_token.t_flags, 0, "");
+SYSCTL_LONG(_lwkt, OID_AUTO, kq_collisions,
+	    CTLFLAG_RW, &kq_token.t_collisions, 0, "");
 
 MALLOC_DEFINE(M_KQUEUE, "kqueue", "memory for kqueue system");
 
