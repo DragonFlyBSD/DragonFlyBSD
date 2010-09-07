@@ -227,6 +227,11 @@ ieee80211_vap_destroy(struct ieee80211vap *vap)
 	if_clone_destroy(vap->iv_ifp->if_xname);
 }
 
+/*
+ * NOTE: This handler is used generally to convert milliseconds
+ *	 to ticks for various simple sysctl variables and does not
+ *	 need to be serialized.
+ */
 int
 ieee80211_sysctl_msecs_ticks(SYSCTL_HANDLER_ARGS)
 {
@@ -234,11 +239,12 @@ ieee80211_sysctl_msecs_ticks(SYSCTL_HANDLER_ARGS)
 	int error, t;
 
 	error = sysctl_handle_int(oidp, &msecs, 0, req);
-	if (error || !req->newptr)
-		return error;
-	t = msecs_to_ticks(msecs);
-	*(int *)arg1 = (t < 1) ? 1 : t;
-	return 0;
+	if (error == 0 && req->newptr) {
+		t = msecs_to_ticks(msecs);
+		*(int *)arg1 = (t < 1) ? 1 : t;
+	}
+
+	return error;
 }
 
 static int
@@ -248,10 +254,12 @@ ieee80211_sysctl_inact(SYSCTL_HANDLER_ARGS)
 	int error;
 
 	error = sysctl_handle_int(oidp, &inact, 0, req);
-	if (error || !req->newptr)
-		return error;
-	*(int *)arg1 = inact / IEEE80211_INACT_WAIT;
-	return 0;
+	wlan_serialize_enter();
+	if (error == 0 && req->newptr)
+		*(int *)arg1 = inact / IEEE80211_INACT_WAIT;
+	wlan_serialize_exit();
+
+	return error;
 }
 
 static int
@@ -270,10 +278,12 @@ ieee80211_sysctl_radar(SYSCTL_HANDLER_ARGS)
 	int t = 0, error;
 
 	error = sysctl_handle_int(oidp, &t, 0, req);
-	if (error || !req->newptr)
-		return error;
-	ieee80211_dfs_notify_radar(ic, ic->ic_curchan);
-	return 0;
+	wlan_serialize_enter();
+	if (error == 0 && req->newptr)
+		ieee80211_dfs_notify_radar(ic, ic->ic_curchan);
+	wlan_serialize_exit();
+
+	return error;
 }
 
 void
@@ -900,6 +910,8 @@ static void
 bpf_track(void *arg, struct ifnet *ifp, int dlt, int attach)
 {
 	/* NB: identify vap's by if_start */
+
+	wlan_serialize_enter();
 	if (dlt == DLT_IEEE802_11_RADIO && ifp->if_start == ieee80211_start) {
 		struct ieee80211vap *vap = ifp->if_softc;
 		/*
@@ -919,6 +931,7 @@ bpf_track(void *arg, struct ifnet *ifp, int dlt, int attach)
 				atomic_subtract_int(&vap->iv_ic->ic_montaps, 1);
 		}
 	}
+	wlan_serialize_exit();
 }
 
 static void
@@ -927,8 +940,11 @@ wlan_iflladdr(void *arg __unused, struct ifnet *ifp)
 	struct ieee80211com *ic = ifp->if_l2com;
 	struct ieee80211vap *vap, *next;
 
-	if (ifp->if_type != IFT_IEEE80211 || ic == NULL)
+	wlan_serialize_enter();
+	if (ifp->if_type != IFT_IEEE80211 || ic == NULL) {
+		wlan_serialize_exit();
 		return;
+	}
 
 	TAILQ_FOREACH_MUTABLE(vap, &ic->ic_vaps, iv_next, next) {
 		/*
@@ -944,6 +960,7 @@ wlan_iflladdr(void *arg __unused, struct ifnet *ifp)
 			wlan_serialize_enter();
 		}
 	}
+	wlan_serialize_exit();
 }
 
 /*
@@ -954,31 +971,47 @@ wlan_iflladdr(void *arg __unused, struct ifnet *ifp)
 static int
 wlan_modevent(module_t mod, int type, void *unused)
 {
+	int error;
+
+	wlan_serialize_enter();
+
 	switch (type) {
 	case MOD_LOAD:
 		if (bootverbose)
 			kprintf("wlan: <802.11 Link Layer>\n");
 		wlan_bpfevent = EVENTHANDLER_REGISTER(bpf_track,
-		    bpf_track, 0, EVENTHANDLER_PRI_ANY);
-		if (wlan_bpfevent == NULL)
-			return ENOMEM;
+					bpf_track, 0,
+					EVENTHANDLER_PRI_ANY);
+		if (wlan_bpfevent == NULL) {
+			error = ENOMEM;
+			break;
+		}
 		wlan_ifllevent = EVENTHANDLER_REGISTER(iflladdr_event,
-		    wlan_iflladdr, NULL, EVENTHANDLER_PRI_ANY);
+					wlan_iflladdr, NULL,
+					EVENTHANDLER_PRI_ANY);
 		if (wlan_ifllevent == NULL) {
 			EVENTHANDLER_DEREGISTER(bpf_track, wlan_bpfevent);
-			return ENOMEM;
+			error = ENOMEM;
+			break;
 		}
 		if_clone_attach(&wlan_cloner);
 		if_register_com_alloc(IFT_IEEE80211, wlan_alloc, wlan_free);
-		return 0;
+		error = 0;
+		break;
 	case MOD_UNLOAD:
 		if_deregister_com_alloc(IFT_IEEE80211);
 		if_clone_detach(&wlan_cloner);
 		EVENTHANDLER_DEREGISTER(bpf_track, wlan_bpfevent);
 		EVENTHANDLER_DEREGISTER(iflladdr_event, wlan_ifllevent);
-		return 0;
+		error = 0;
+		break;
+	default:
+		error = EINVAL;
+		break;
 	}
-	return EINVAL;
+	wlan_serialize_exit();
+
+	return error;
 }
 
 static moduledata_t wlan_mod = {

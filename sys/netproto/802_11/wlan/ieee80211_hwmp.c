@@ -81,8 +81,8 @@ static uint8_t * hwmp_add_meshperr(uint8_t *,
 static uint8_t * hwmp_add_meshrann(uint8_t *,
 		    const struct ieee80211_meshrann_ie *);
 static void	hwmp_rootmode_setup(struct ieee80211vap *);
-static void	hwmp_rootmode_cb(void *);
-static void	hwmp_rootmode_rann_cb(void *);
+static void	hwmp_rootmode_callout(void *);
+static void	hwmp_rootmode_rann_callout(void *);
 static void	hwmp_recv_preq(struct ieee80211vap *, struct ieee80211_node *,
 		    const struct ieee80211_frame *,
 		    const struct ieee80211_meshpreq_ie *);
@@ -586,11 +586,11 @@ hwmp_rootmode_setup(struct ieee80211vap *vap)
 	case IEEE80211_HWMP_ROOTMODE_NORMAL:
 	case IEEE80211_HWMP_ROOTMODE_PROACTIVE:
 		callout_reset(&hs->hs_roottimer, ieee80211_hwmp_rootint,
-		    hwmp_rootmode_cb, vap);
+		    hwmp_rootmode_callout, vap);
 		break;
 	case IEEE80211_HWMP_ROOTMODE_RANN:
 		callout_reset(&hs->hs_roottimer, ieee80211_hwmp_rannint,
-		    hwmp_rootmode_rann_cb, vap);
+		    hwmp_rootmode_rann_callout, vap);
 		break;
 	}
 }
@@ -603,12 +603,16 @@ hwmp_rootmode_setup(struct ieee80211vap *vap)
 #define	PREQ_TADDR(n)	preq.preq_targets[n].target_addr
 #define	PREQ_TSEQ(n)	preq.preq_targets[n].target_seq
 static void
-hwmp_rootmode_cb(void *arg)
+hwmp_rootmode_callout(void *arg)
 {
 	struct ieee80211vap *vap = (struct ieee80211vap *)arg;
-	struct ieee80211_hwmp_state *hs = vap->iv_hwmp;
-	struct ieee80211_mesh_state *ms = vap->iv_mesh;
+	struct ieee80211_hwmp_state *hs;
+	struct ieee80211_mesh_state *ms;
 	struct ieee80211_meshpreq_ie preq;
+
+	wlan_serialize_enter();
+	hs = vap->iv_hwmp;
+	ms = vap->iv_mesh;
 
 	IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, vap->iv_bss,
 	    "%s", "send broadcast PREQ");
@@ -633,6 +637,7 @@ hwmp_rootmode_cb(void *arg)
 	vap->iv_stats.is_hwmp_rootreqs++;
 	hwmp_send_preq(vap->iv_bss, vap->iv_myaddr, broadcastaddr, &preq);
 	hwmp_rootmode_setup(vap);
+	wlan_serialize_exit();
 }
 #undef	PREQ_TFLAGS
 #undef	PREQ_TADDR
@@ -643,13 +648,16 @@ hwmp_rootmode_cb(void *arg)
  * called when the vap is configured as a HWMP RANN root node.
  */
 static void
-hwmp_rootmode_rann_cb(void *arg)
+hwmp_rootmode_rann_callout(void *arg)
 {
 	struct ieee80211vap *vap = (struct ieee80211vap *)arg;
-	struct ieee80211_hwmp_state *hs = vap->iv_hwmp;
-	struct ieee80211_mesh_state *ms = vap->iv_mesh;
+	struct ieee80211_hwmp_state *hs;
+	struct ieee80211_mesh_state *ms;
 	struct ieee80211_meshrann_ie rann;
 
+	wlan_serialize_enter();
+	hs = vap->iv_hwmp;
+	ms = vap->iv_mesh;
 	IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, vap->iv_bss,
 	    "%s", "send broadcast RANN");
 
@@ -665,6 +673,7 @@ hwmp_rootmode_rann_cb(void *arg)
 	vap->iv_stats.is_hwmp_rootrann++;
 	hwmp_send_rann(vap->iv_bss, vap->iv_myaddr, broadcastaddr, &rann);
 	hwmp_rootmode_setup(vap);
+	wlan_serialize_exit();
 }
 
 #define	PREQ_TFLAGS(n)	preq->preq_targets[n].target_flags

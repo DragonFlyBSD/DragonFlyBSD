@@ -2476,11 +2476,13 @@ ieee80211_alloc_cts(struct ieee80211com *ic,
 }
 
 static void
-ieee80211_tx_mgt_timeout(void *arg)
+ieee80211_tx_mgt_timeout_callout(void *arg)
 {
 	struct ieee80211_node *ni = arg;
-	struct ieee80211vap *vap = ni->ni_vap;
+	struct ieee80211vap *vap;
 
+	wlan_serialize_enter();
+	vap = ni->ni_vap;
 	if (vap->iv_state != IEEE80211_S_INIT &&
 	    (vap->iv_ic->ic_flags & IEEE80211_F_SCAN) == 0) {
 		/*
@@ -2490,6 +2492,7 @@ ieee80211_tx_mgt_timeout(void *arg)
 		ieee80211_new_state(vap, IEEE80211_S_SCAN,
 			IEEE80211_SCAN_FAIL_TIMEOUT);
 	}
+	wlan_serialize_exit();
 }
 
 static void
@@ -2512,7 +2515,7 @@ ieee80211_tx_mgt_cb(struct ieee80211_node *ni, void *arg, int status)
 	if (vap->iv_state == ostate)
 		callout_reset(&vap->iv_mgtsend,
 			status == 0 ? IEEE80211_TRANS_WAIT*hz : 0,
-			ieee80211_tx_mgt_timeout, ni);
+			ieee80211_tx_mgt_timeout_callout, ni);
 }
 
 static void

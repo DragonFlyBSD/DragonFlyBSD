@@ -1496,13 +1496,15 @@ ampdu_tx_stop(struct ieee80211_tx_ampdu *tap)
 }
 
 static void
-addba_timeout(void *arg)
+addba_timeout_callout(void *arg)
 {
 	struct ieee80211_tx_ampdu *tap = arg;
 
+	wlan_serialize_enter();
 	/* XXX ? */
 	tap->txa_flags &= ~IEEE80211_AGGR_XCHGPEND;
 	tap->txa_attempts++;
+	wlan_serialize_exit();
 }
 
 static void
@@ -1510,7 +1512,7 @@ addba_start_timeout(struct ieee80211_tx_ampdu *tap)
 {
 	/* XXX use CALLOUT_PENDING instead? */
 	callout_reset(&tap->txa_timer, ieee80211_addba_timeout,
-	    addba_timeout, tap);
+			addba_timeout_callout, tap);
 	tap->txa_flags |= IEEE80211_AGGR_XCHGPEND;
 	tap->txa_nextrequest = ticks + ieee80211_addba_timeout;
 }
@@ -1941,11 +1943,13 @@ ieee80211_ampdu_stop(struct ieee80211_node *ni, struct ieee80211_tx_ampdu *tap,
 }
 
 static void
-bar_timeout(void *arg)
+bar_timeout_callout(void *arg)
 {
 	struct ieee80211_tx_ampdu *tap = arg;
-	struct ieee80211_node *ni = tap->txa_ni;
+	struct ieee80211_node *ni;
 
+	wlan_serialize_enter();
+	ni = tap->txa_ni;
 	KASSERT((tap->txa_flags & IEEE80211_AGGR_XCHGPEND) == 0,
 	    ("bar/addba collision, flags 0x%x", tap->txa_flags));
 
@@ -1954,19 +1958,21 @@ bar_timeout(void *arg)
 	    tap->txa_ac, tap->txa_flags, tap->txa_attempts);
 
 	/* guard against race with bar_tx_complete */
-	if ((tap->txa_flags & IEEE80211_AGGR_BARPEND) == 0)
-		return;
-	/* XXX ? */
-	if (tap->txa_attempts >= ieee80211_bar_maxtries)
-		ieee80211_ampdu_stop(ni, tap, IEEE80211_REASON_TIMEOUT);
-	else
-		ieee80211_send_bar(ni, tap, tap->txa_seqpending);
+	if (tap->txa_flags & IEEE80211_AGGR_BARPEND) {
+		/* XXX ? */
+		if (tap->txa_attempts >= ieee80211_bar_maxtries)
+			ieee80211_ampdu_stop(ni, tap, IEEE80211_REASON_TIMEOUT);
+		else
+			ieee80211_send_bar(ni, tap, tap->txa_seqpending);
+	}
+	wlan_serialize_exit();
 }
 
 static void
 bar_start_timer(struct ieee80211_tx_ampdu *tap)
 {
-	callout_reset(&tap->txa_timer, ieee80211_bar_timeout, bar_timeout, tap);
+	callout_reset(&tap->txa_timer, ieee80211_bar_timeout,
+			bar_timeout_callout, tap);
 }
 
 static void

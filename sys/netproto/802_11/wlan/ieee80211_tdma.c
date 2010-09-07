@@ -274,7 +274,7 @@ tdma_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 		    ((ts->tdma_slotcnt * ts->tdma_slotlen) / 1024));
 		vap->iv_swbmiss_count = 0;
 		callout_reset(&vap->iv_swbmiss, vap->iv_swbmiss_period,
-			ieee80211_swbmiss, vap);
+			      ieee80211_swbmiss_callout, vap);
 	}
 	return status;
 }

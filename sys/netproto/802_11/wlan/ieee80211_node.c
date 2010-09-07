@@ -90,6 +90,7 @@ static int8_t node_getrssi(const struct ieee80211_node *);
 static void node_getsignal(const struct ieee80211_node *, int8_t *, int8_t *);
 static void node_getmimoinfo(const struct ieee80211_node *,
 	struct ieee80211_mimo_info *);
+static void ieee80211_node_timeout_callout(void *arg);
 
 static void _ieee80211_free_node(struct ieee80211_node *);
 
@@ -114,7 +115,7 @@ ieee80211_node_attach(struct ieee80211com *ic)
 		IEEE80211_INACT_INIT, ic->ic_max_keyix);
 	callout_init_mp(&ic->ic_inact);
 	callout_reset(&ic->ic_inact, IEEE80211_INACT_WAIT*hz,
-		ieee80211_node_timeout, ic);
+		      ieee80211_node_timeout_callout, ic);
 
 	ic->ic_node_alloc = node_alloc;
 	ic->ic_node_free = node_free;
@@ -2051,8 +2052,8 @@ ieee80211_drain(struct ieee80211com *ic)
 /*
  * Per-ieee80211com inactivity timer callback.
  */
-void
-ieee80211_node_timeout(void *arg)
+static void
+ieee80211_node_timeout_callout(void *arg)
 {
 	struct ieee80211com *ic = arg;
 
@@ -2065,6 +2066,7 @@ ieee80211_node_timeout(void *arg)
 	 * idle counters) but this should be ok unless the CSA is
 	 * active for an unusually long time.
 	 */
+	wlan_serialize_enter();
 	if ((ic->ic_flags & IEEE80211_F_CSAPENDING) == 0) {
 		ieee80211_scan_timeout(ic);
 		ieee80211_timeout_stations(ic);
@@ -2074,7 +2076,8 @@ ieee80211_node_timeout(void *arg)
 		ieee80211_ht_timeout(ic);
 	}
 	callout_reset(&ic->ic_inact, IEEE80211_INACT_WAIT*hz,
-		ieee80211_node_timeout, ic);
+		      ieee80211_node_timeout_callout, ic);
+	wlan_serialize_exit();
 }
 
 void

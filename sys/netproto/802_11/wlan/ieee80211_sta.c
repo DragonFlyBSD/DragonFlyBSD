@@ -409,7 +409,7 @@ sta_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 				2 * vap->iv_bmissthreshold * ni->ni_intval);
 			vap->iv_swbmiss_count = 0;
 			callout_reset(&vap->iv_swbmiss, vap->iv_swbmiss_period,
-				ieee80211_swbmiss, vap);
+				      ieee80211_swbmiss_callout, vap);
 		}
 		/*
 		 * When 802.1x is not in use mark the port authorized

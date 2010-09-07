@@ -67,7 +67,7 @@ static int	mesh_select_proto_path(struct ieee80211vap *, const char *);
 static int	mesh_select_proto_metric(struct ieee80211vap *, const char *);
 static void	mesh_vattach(struct ieee80211vap *);
 static int	mesh_newstate(struct ieee80211vap *, enum ieee80211_state, int);
-static void	mesh_rt_cleanup_cb(void *);
+static void	mesh_rt_cleanup_callout(void *);
 static void	mesh_linkchange(struct ieee80211_node *,
 		    enum ieee80211_mesh_mlstate);
 static void	mesh_checkid(void *, struct ieee80211_node *);
@@ -84,7 +84,7 @@ static void	mesh_recv_mgmt(struct ieee80211_node *, struct mbuf *, int,
 		    int, int);
 static void	mesh_peer_timeout_setup(struct ieee80211_node *);
 static void	mesh_peer_timeout_backoff(struct ieee80211_node *);
-static void	mesh_peer_timeout_cb(void *);
+static void	mesh_peer_timeout_callout(void *);
 static __inline void
 		mesh_peer_timeout_stop(struct ieee80211_node *);
 static int	mesh_verify_meshid(struct ieee80211vap *, const uint8_t *);
@@ -659,7 +659,7 @@ mesh_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 		}
 		ieee80211_node_authorize(vap->iv_bss);
 		callout_reset(&ms->ms_cleantimer, ms->ms_ppath->mpp_inact,
-                    mesh_rt_cleanup_cb, vap);
+                    mesh_rt_cleanup_callout, vap);
 		break;
 	default:
 		break;
@@ -670,14 +670,16 @@ mesh_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 }
 
 static void
-mesh_rt_cleanup_cb(void *arg)
+mesh_rt_cleanup_callout(void *arg)
 {
 	struct ieee80211vap *vap = arg;
 	struct ieee80211_mesh_state *ms = vap->iv_mesh;
 
+	wlan_serialize_enter();
 	mesh_rt_flush_invalid(vap);
 	callout_reset(&ms->ms_cleantimer, ms->ms_ppath->mpp_inact,
-	    mesh_rt_cleanup_cb, vap);
+		      mesh_rt_cleanup_callout, vap);
+	wlan_serialize_exit();
 }
 
 
@@ -2155,9 +2157,10 @@ mesh_peer_timeout_setup(struct ieee80211_node *ni)
 		ni->ni_mltval = ieee80211_mesh_retrytimeout;
 		break;
 	}
-	if (ni->ni_mltval)
+	if (ni->ni_mltval) {
 		callout_reset(&ni->ni_mltimer, ni->ni_mltval,
-		    mesh_peer_timeout_cb, ni);
+			      mesh_peer_timeout_callout, ni);
+	}
 }
 
 /*
@@ -2170,8 +2173,8 @@ mesh_peer_timeout_backoff(struct ieee80211_node *ni)
 	
 	r = karc4random();
 	ni->ni_mltval += r % ni->ni_mltval;
-	callout_reset(&ni->ni_mltimer, ni->ni_mltval, mesh_peer_timeout_cb,
-	    ni);
+	callout_reset(&ni->ni_mltimer, ni->ni_mltval,
+		      mesh_peer_timeout_callout, ni);
 }
 
 static __inline void
@@ -2184,11 +2187,12 @@ mesh_peer_timeout_stop(struct ieee80211_node *ni)
  * Mesh Peer Link Management FSM timeout handling.
  */
 static void
-mesh_peer_timeout_cb(void *arg)
+mesh_peer_timeout_callout(void *arg)
 {
 	struct ieee80211_node *ni = (struct ieee80211_node *)arg;
 	uint16_t args[3];
 
+	wlan_serialize_enter();
 	IEEE80211_NOTE(ni->ni_vap, IEEE80211_MSG_MESH,
 	    ni, "mesh link timeout, state %d, retry counter %d",
 	    ni->ni_mlstate, ni->ni_mlrcnt);
@@ -2236,6 +2240,7 @@ mesh_peer_timeout_cb(void *arg)
 		mesh_linkchange(ni, IEEE80211_NODE_MESH_IDLE);
 		break;
 	}
+	wlan_serialize_exit();
 }
 
 static int

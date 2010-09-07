@@ -221,16 +221,22 @@ static int								\
 wlan_##name##_modevent(module_t mod, int type, void *unused)		\
 {									\
 	policy##_setup * const *iter, f;				\
+	int error;							\
+									\
+	wlan_serialize_enter();						\
+									\
 	switch (type) {							\
 	case MOD_LOAD:							\
 		SET_FOREACH(iter, policy##_set) {			\
 			f = (void*) *iter;				\
 			f(type);					\
 		}							\
-		return 0;						\
+		error = 0;						\
+		break;							\
 	case MOD_UNLOAD:						\
 		if (nrefs) {						\
-			kprintf("wlan_##name: still in use (%u dynamic refs)\n",\
+			kprintf("wlan_##name: still in use (%u "	\
+				"dynamic refs)\n",			\
 				nrefs);					\
 			return EBUSY;					\
 		}							\
@@ -240,9 +246,16 @@ wlan_##name##_modevent(module_t mod, int type, void *unused)		\
 				f(type);				\
 			}						\
 		}							\
-		return 0;						\
+		error = 0;						\
+		break;							\
+	default:							\
+		error = EINVAL;						\
+		break;							\
 	}								\
-	return EINVAL;							\
+									\
+	wlan_serialize_exit();						\
+									\
+	return error;							\
 }									\
 static moduledata_t name##_mod = {					\
 	"wlan_" #name,							\
@@ -261,10 +274,12 @@ _IEEE80211_POLICY_MODULE(crypto, name, version);			\
 static void								\
 name##_modevent(int type)						\
 {									\
+	wlan_serialize_enter();						\
 	if (type == MOD_LOAD)						\
 		ieee80211_crypto_register(&name);			\
 	else								\
 		ieee80211_crypto_unregister(&name);			\
+	wlan_serialize_exit();						\
 }									\
 TEXT_SET(crypto##_set, name##_modevent)
 
@@ -278,10 +293,12 @@ TEXT_SET(crypto##_set, name##_modevent)
 static void								\
 name##_modevent(int type)						\
 {									\
+	wlan_serialize_enter();						\
 	if (type == MOD_LOAD)						\
 		ieee80211_scanner_register(alg, &v);			\
 	else								\
 		ieee80211_scanner_unregister(alg, &v);			\
+	wlan_serialize_exit();						\
 }									\
 TEXT_SET(scanner_set, name##_modevent);					\
 
@@ -293,10 +310,12 @@ _IEEE80211_POLICY_MODULE(acl, name, version);				\
 static void								\
 alg##_modevent(int type)						\
 {									\
+	wlan_serialize_enter();						\
 	if (type == MOD_LOAD)						\
 		ieee80211_aclator_register(&alg);			\
 	else								\
 		ieee80211_aclator_unregister(&alg);			\
+	wlan_serialize_exit();						\
 }									\
 TEXT_SET(acl_set, alg##_modevent);					\
 
@@ -310,10 +329,12 @@ TEXT_SET(acl_set, alg##_modevent);					\
 static void								\
 name##_modevent(int type)						\
 {									\
+	wlan_serialize_enter();						\
 	if (type == MOD_LOAD)						\
 		ieee80211_authenticator_register(alg, &v);		\
 	else								\
 		ieee80211_authenticator_unregister(alg);		\
+	wlan_serialize_exit();						\
 }									\
 TEXT_SET(auth_set, name##_modevent)
 
@@ -327,10 +348,12 @@ TEXT_SET(auth_set, name##_modevent)
 static void								\
 alg##_modevent(int type)						\
 {									\
+	wlan_serialize_enter();						\
 	if (type == MOD_LOAD)						\
 		ieee80211_ratectl_register(alg, &v);			\
 	else								\
 		ieee80211_ratectl_unregister(alg);			\
+	wlan_serialize_exit();						\
 }									\
 TEXT_SET(ratectl##_set, alg##_modevent)
 

@@ -392,6 +392,7 @@ ieee80211_vap_setup(struct ieee80211com *ic, struct ieee80211vap *vap,
 		return ENOMEM;
 	}
 	if_initname(ifp, name, unit);
+	ifp->if_serializer = &wlan_global_serializer;
 	ifp->if_softc = vap;			/* back pointer */
 	ifp->if_flags = IFF_SIMPLEX | IFF_BROADCAST | IFF_MULTICAST;
 	ifp->if_start = ieee80211_start;

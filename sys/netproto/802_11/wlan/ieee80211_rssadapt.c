@@ -320,10 +320,12 @@ rssadapt_sysctl_interval(SYSCTL_HANDLER_ARGS)
 	int error;
 
 	error = sysctl_handle_int(oidp, &msecs, 0, req);
-	if (error || !req->newptr)
-		return error;
-	rssadapt_setinterval(vap, msecs);
-	return 0;
+	wlan_serialize_enter();
+	if (error == 0 && req->newptr)
+		rssadapt_setinterval(vap, msecs);
+	wlan_serialize_exit();
+
+	return error;
 }
 
 static void

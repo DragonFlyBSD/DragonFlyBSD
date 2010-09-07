@@ -428,7 +428,6 @@ struct ieee80211_node *ieee80211_find_txnode(struct ieee80211vap *,
 		const uint8_t macaddr[IEEE80211_ADDR_LEN]);
 #endif
 int	ieee80211_node_delucastkey(struct ieee80211_node *);
-void	ieee80211_node_timeout(void *arg);
 
 typedef void ieee80211_iter_func(void *, struct ieee80211_node *);
 void	ieee80211_iterate_nodes(struct ieee80211_node_table *,

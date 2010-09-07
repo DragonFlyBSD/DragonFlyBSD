@@ -1,0 +1,37 @@
+
+			    README.DRAGONFLY
+
+    All ABI entry points into the wlan infrastructure must acquire the
+    wlan_global_serializer.  Normally all wireless base drivers also
+    use this serializer to avoid deadlocks.
+
+modevent	ieee80211_dragonfly.h
+		search for DECLARE_MODULE
+
+sysctl		search for SYSCTL_HANDLER_ARGS
+
+eventhandler	search for EVENTHANDLER_REGISTER
+
+taskq		search for TASK_INIT
+
+callout		search for callout_reset
+
+		search for callout_stop to deal with
+		potential deadlock issues
+
+ifnet		wlan/ieee80211.c
+
+		Set if_serializer to &wlan_global_serializer.  There are
+		a few places where if_ioctl is set to NULL and then later
+		restored.  It is unclear why this is being done.
+
+ifnet, interrupt, devmethod, copyin/copyout
+
+ieee80211_ioctl()
+
+		This is called directly from the wlan's ifp->if_ioctl and
+		also from various wireless drivers.  This function expects
+		the serializer to already be acquired.
+
+		The kernel will acquire if_serializer when making
+		ifp->if_ioctl() calls.

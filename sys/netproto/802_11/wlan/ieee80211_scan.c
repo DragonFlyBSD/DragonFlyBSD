@@ -95,7 +95,8 @@ struct scan_state {
 
 static	void scan_curchan(struct ieee80211_scan_state *, unsigned long);
 static	void scan_mindwell(struct ieee80211_scan_state *);
-static	void scan_signal(void *);
+static	void scan_signal_callout(void *);
+static	void scan_signal(struct ieee80211_scan_state *ss);
 static	void scan_task(void *, int);
 
 MALLOC_DEFINE(M_80211_SCAN, "80211scan", "802.11 scan state");
@@ -785,14 +786,22 @@ scan_curchan(struct ieee80211_scan_state *ss, unsigned long maxdwell)
 	if (ss->ss_flags & IEEE80211_SCAN_ACTIVE)
 		ieee80211_probe_curchan(vap, 0);
 	callout_reset(&SCAN_PRIVATE(ss)->ss_scan_timer,
-	    maxdwell, scan_signal, ss);
+		      maxdwell, scan_signal_callout, ss);
 }
 
 static void
-scan_signal(void *arg)
+scan_signal_callout(void *arg)
 {
 	struct ieee80211_scan_state *ss = (struct ieee80211_scan_state *) arg;
 
+	wlan_serialize_enter();
+	scan_signal(ss);
+	wlan_serialize_exit();
+}
+
+static void
+scan_signal(struct ieee80211_scan_state *ss)
+{
 	wlan_cv_signal(&SCAN_PRIVATE(ss)->ss_scan_cv, 0);
 }
 
@@ -814,11 +823,15 @@ scan_task(void *arg, int pending)
 {
 #define	ISCAN_REP	(ISCAN_MINDWELL | ISCAN_DISCARD)
 	struct ieee80211_scan_state *ss = (struct ieee80211_scan_state *) arg;
-	struct ieee80211vap *vap = ss->ss_vap;
-	struct ieee80211com *ic = ss->ss_ic;
+	struct ieee80211vap *vap;
+	struct ieee80211com *ic;
 	struct ieee80211_channel *chan;
 	unsigned long maxdwell, scanend;
 	int scandone = 0;
+
+	wlan_serialize_enter();
+	vap = ss->ss_vap;
+	ic = ss->ss_ic;
 
 	if (vap == NULL || (ic->ic_flags & IEEE80211_F_SCAN) == 0 ||
 	    (SCAN_PRIVATE(ss)->ss_iflags & ISCAN_ABORT)) {
@@ -1003,6 +1016,7 @@ done:
 	}
 	SCAN_PRIVATE(ss)->ss_iflags &= ~(ISCAN_CANCEL|ISCAN_ABORT);
 	ss->ss_flags &= ~(IEEE80211_SCAN_ONCE | IEEE80211_SCAN_PICK1ST);
+	wlan_serialize_exit();
 #undef ISCAN_REP
 }
 

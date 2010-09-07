@@ -94,15 +94,20 @@ ieee80211_dfs_reset(struct ieee80211com *ic)
 }
 
 static void
-cac_timeout(void *arg)
+cac_timeout_callout(void *arg)
 {
 	struct ieee80211vap *vap = arg;
-	struct ieee80211com *ic = vap->iv_ic;
-	struct ieee80211_dfs_state *dfs = &ic->ic_dfs;
+	struct ieee80211com *ic;
+	struct ieee80211_dfs_state *dfs;
 	int i;
 
-	if (vap->iv_state != IEEE80211_S_CAC)	/* NB: just in case */
+	wlan_serialize_enter();
+	ic = vap->iv_ic;
+	dfs = &ic->ic_dfs;
+	if (vap->iv_state != IEEE80211_S_CAC) {	/* NB: just in case */
+		wlan_serialize_exit();
 		return;
+	}
 	/*
 	 * When radar is detected during a CAC we are woken
 	 * up prematurely to switch to a new channel.
@@ -140,6 +145,7 @@ cac_timeout(void *arg)
 		    IEEE80211_NOTIFY_CAC_EXPIRE);
 		ieee80211_cac_completeswitch(vap);
 	}
+	wlan_serialize_exit();
 }
 
 /*
@@ -153,7 +159,7 @@ ieee80211_dfs_cac_start(struct ieee80211vap *vap)
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ieee80211_dfs_state *dfs = &ic->ic_dfs;
 
-	callout_reset(&dfs->cac_timer, CAC_TIMEOUT, cac_timeout, vap);
+	callout_reset(&dfs->cac_timer, CAC_TIMEOUT, cac_timeout_callout, vap);
 	if_printf(vap->iv_ifp, "start %d second CAC timer on channel %u (%u MHz)\n",
 	    ticks_to_secs(CAC_TIMEOUT),
 	    ic->ic_curchan->ic_ieee, ic->ic_curchan->ic_freq);
@@ -193,13 +199,14 @@ ieee80211_dfs_cac_clear(struct ieee80211com *ic,
 }
 
 static void
-dfs_timeout(void *arg)
+dfs_timeout_callout(void *arg)
 {
 	struct ieee80211com *ic = arg;
 	struct ieee80211_dfs_state *dfs = &ic->ic_dfs;
 	struct ieee80211_channel *c;
 	int i, oldest, now;
 
+	wlan_serialize_enter();
 	now = oldest = ticks;
 	for (i = 0; i < ic->ic_nchans; i++) {
 		c = &ic->ic_channels[i];
@@ -227,8 +234,9 @@ dfs_timeout(void *arg)
 	if (oldest != now) {
 		/* arrange to process next channel up for a status change */
 		callout_reset(&dfs->nol_timer, oldest + NOL_TIMEOUT - now,
-		    dfs_timeout, ic);
+		    dfs_timeout_callout, ic);
 	}
+	wlan_serialize_exit();
 }
 
 static void
@@ -276,8 +284,10 @@ ieee80211_dfs_notify_radar(struct ieee80211com *ic, struct ieee80211_channel *ch
 	}
 	ieee80211_notify_radar(ic, chan);
 	chan->ic_state |= IEEE80211_CHANSTATE_NORADAR;
-	if (!callout_pending(&dfs->nol_timer))
-		callout_reset(&dfs->nol_timer, NOL_TIMEOUT, dfs_timeout, ic);
+	if (!callout_pending(&dfs->nol_timer)) {
+		callout_reset(&dfs->nol_timer, NOL_TIMEOUT,
+				dfs_timeout_callout, ic);
+	}
 
 	/*
 	 * If radar is detected on the bss channel while
@@ -297,8 +307,10 @@ ieee80211_dfs_notify_radar(struct ieee80211com *ic, struct ieee80211_channel *ch
 		announce_radar(ic->ic_ifp, chan, dfs->newchan);
 
 #ifdef notyet
-		if (callout_pending(&dfs->cac_timer))
-			callout_reset(&dfs->cac_timer, 0, cac_timeout, vap);
+		if (callout_pending(&dfs->cac_timer)) {
+			callout_reset(&dfs->cac_timer, 0,
+					cac_timeout_callout, vap);
+		}
 		else if (dfs->newchan != NULL) {
 			/* XXX mode 1, switch count 2 */
 			/* XXX calculate switch count based on max
