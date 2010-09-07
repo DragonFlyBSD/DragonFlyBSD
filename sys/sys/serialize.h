@@ -25,6 +25,8 @@ struct lwkt_serialize {
     struct thread	*last_td;
 };
 
+#define LWKT_SERIALIZE_INITIALIZER      { 0, NULL }
+
 #ifdef INVARIANTS
 /*
  * Note that last_td is only maintained when INVARIANTS is turned on,
