@@ -152,7 +152,9 @@ wlan_clone_destroy(struct ifnet *ifp)
 	struct ieee80211vap *vap = ifp->if_softc;
 	struct ieee80211com *ic = vap->iv_ic;
 
+	wlan_serialize_enter();	/* WARNING must be global serializer */
 	ic->ic_vap_delete(vap);
+	wlan_serialize_exit();
 }
 
 const char *wlan_last_enter_func;
@@ -801,6 +803,8 @@ ieee80211_handoff(struct ifnet *dst_ifp, struct mbuf *m)
         struct mbuf *m0;
 
 	/* We may be sending a fragment so traverse the mbuf */
+	wlan_assert_serialized();
+	wlan_serialize_exit();
 	for (; m; m = m0) {
 		struct altq_pktattr pktattr;
 
@@ -812,6 +816,7 @@ ieee80211_handoff(struct ifnet *dst_ifp, struct mbuf *m)
 
 		ifq_dispatch(dst_ifp, m, &pktattr);
 	}
+	wlan_serialize_enter();
 
 	return (0);
 }
