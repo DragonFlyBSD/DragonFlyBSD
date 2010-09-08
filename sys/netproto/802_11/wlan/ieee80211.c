@@ -455,10 +455,18 @@ ieee80211_vap_setup(struct ieee80211com *ic, struct ieee80211vap *vap,
 		vap->iv_flags |= IEEE80211_F_WME;
 	if (vap->iv_caps & IEEE80211_C_BURST)
 		vap->iv_flags |= IEEE80211_F_BURST;
-	/* NB: bg scanning only makes sense for station mode right now */
+#if 0
+	/*
+	 * NB: bg scanning only makes sense for station mode right now
+	 *
+	 * XXX: bgscan is not necessarily stable, so do not enable it by
+	 *	default.  It messes up atheros drivers for sure.
+	 *	(tested w/ AR9280).
+	 */
 	if (vap->iv_opmode == IEEE80211_M_STA &&
 	    (vap->iv_caps & IEEE80211_C_BGSCAN))
 		vap->iv_flags |= IEEE80211_F_BGSCAN;
+#endif
 	vap->iv_flags |= IEEE80211_F_DOTH;	/* XXX no cap, just ena */
 	/* NB: DFS support only makes sense for ap mode right now */
 	if (vap->iv_opmode == IEEE80211_M_HOSTAP &&
@@ -573,15 +581,21 @@ ieee80211_vap_detach(struct ieee80211vap *vap)
 	    __func__, ieee80211_opmode_name[vap->iv_opmode],
 	    ic->ic_ifp->if_xname);
 
-	/* NB: bpfdetach is called by ether_ifdetach and claims all taps */
+	/*
+	 * NB: bpfdetach is called by ether_ifdetach and claims all taps
+	 *
+	 * ether_ifdetach() must be called without the serializer held.
+	 */
+	wlan_assert_serialized();
+	wlan_serialize_exit();	/* exit to block */
 	ether_ifdetach(ifp);
 
+	wlan_serialize_enter();	/* then reenter */
 	ieee80211_stop(vap);
 
 	/*
 	 * Flush any deferred vap tasks.
 	 */
-	wlan_assert_serialized();
 	wlan_serialize_exit();	/* exit to block */
 	ieee80211_draintask(ic, &vap->iv_nstate_task);
 	ieee80211_draintask(ic, &vap->iv_swbmiss_task);
