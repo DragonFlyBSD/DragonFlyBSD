@@ -5,9 +5,9 @@ SUBDIR= an age alc ale ar ath aue axe bce bfe bge \
 	cue dc ed em ep et fwe \
 	fxp ic iwi jme kue lge lnc mii_layer my msk mxge nfe nge pcn \
 	re rl rue sbni sbsh sf sis sk sln sr ste stge ti tl tx txp \
-	vge vr vx wb xe xl ig_hal emx ae
+	vge vr vx wb wpi xe xl ig_hal emx ae
 #
-# iwn ral wi wpi
+# iwn ral wi
 
 #SUBDIR= an age alc ale ar ath aue axe bce bfe bge \
 #	cue dc ed em ep et fwe \
