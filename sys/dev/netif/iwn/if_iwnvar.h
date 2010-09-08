@@ -219,7 +219,6 @@ struct iwn_softc {
 
 	/* Locks */
 	struct mtx		sc_mtx;
-	struct lock		sc_lock;
 
 	/* Bus */
 	device_t 		sc_dev;
@@ -323,26 +322,3 @@ struct iwn_softc {
 	struct sysctl_ctx_list	sc_sysctl_ctx;
 	struct sysctl_oid	*sc_sysctl_tree;
 };
-
-#if 0
-#define IWN_LOCK_INIT(_sc)
-#define IWN_LOCK(_sc)			lwkt_serialize_enter((_sc)->sc_ifp->if_serializer)
-#define IWN_LOCK_ASSERT(_sc)		ASSERT_SERIALIZED((_sc)->sc_ifp->if_serializer)
-#define IWN_UNLOCK(_sc)			lwkt_serialize_exit((_sc)->sc_ifp->if_serializer)
-#define IWN_LOCK_DESTROY(_sc)
-
-#define IWN_LOCK_INIT(_sc) \
-	lockinit(&(_sc)->sc_lock, \
-		__DECONST(char *, device_get_nameunit((_sc)->sc_dev)), \
-		0, LK_CANRECURSE)
-#define IWN_LOCK(_sc)			lockmgr(&(_sc)->sc_lock, LK_EXCLUSIVE)
-#define IWN_LOCK_ASSERT(_sc)		KKASSERT(lockstatus(&(sc)->sc_lock, curthread)  != 0)
-#define IWN_UNLOCK(_sc)			lockmgr(&(_sc)->sc_lock, LK_RELEASE)
-#define IWN_LOCK_DESTROY(_sc)		lockuninit(&(_sc)->sc_lock)
-#endif
-
-#define IWN_LOCK_INIT(_sc)
-#define IWN_LOCK(_sc) lwkt_gettoken(&wlan_token)
-#define IWN_UNLOCK(_sc) lwkt_reltoken(&wlan_token)
-#define IWN_LOCK_DESTROY(_sc)
-#define IWN_LOCK_ASSERT(_sc) ASSERT_LWKT_TOKEN_HELD(&wlan_token)
