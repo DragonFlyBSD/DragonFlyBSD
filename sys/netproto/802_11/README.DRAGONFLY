@@ -71,6 +71,19 @@ ieee80211_ioctl()
 		The kernel will acquire if_serializer when making
 		ifp->if_ioctl() calls.
 
+tsleep		Low level drivers sometimes call tsleep() to wait for
+		an interrupt driven event to wake them up.  In these
+		cases the interrupt will be blocked on the wlan
+		serializer and the tsleep will timeout.  To fix the
+		problem use zsleep() to release the &wlan_global_serializer
+		across the sleep operation.
+
+firmware	The firmware loader uses a taskq to defer certain
+		operations which can then deadlock against the wlan
+		serializer.  Thus it is usually a good idea to
+		release the serializer (wlan_serialize_exit/enter)
+		around the call to firmware_get().
+
 Low level device drivers
 		Don't forget that low level device drivers such as ath
 		have callouts, taskq, sysctl, and other elements also!

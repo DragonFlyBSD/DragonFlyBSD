@@ -230,7 +230,10 @@ wlan_cv_signal(struct cv *cv, int broadcast)
 void
 ieee80211_vap_destroy(struct ieee80211vap *vap)
 {
+	wlan_assert_serialized();
+	wlan_serialize_exit();
 	if_clone_destroy(vap->iv_ifp->if_xname);
+	wlan_serialize_enter();
 }
 
 /*
