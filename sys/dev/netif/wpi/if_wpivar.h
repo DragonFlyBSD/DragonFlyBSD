@@ -138,7 +138,6 @@ struct wpi_softc {
 	struct arpcom		arpcom;
 	struct ifnet		*sc_ifp;
 	device_t		sc_dev;
-	struct lock		sc_lock;
 
 	struct fw_image 	*sc_fw_image;
 
@@ -159,13 +158,13 @@ struct wpi_softc {
 	struct wpi_rx_ring	rxq;
 
 	/* TX Thermal Callibration */
-	struct callout		calib_to;
+	struct callout		calib_to_callout;
 	int			calib_cnt;
 
 	/* Watch dog timer */
-	struct callout		watchdog_to;
+	struct callout		watchdog_to_callout;
 	/* Hardware switch polling timer */
-	struct callout		hwswitch_to;
+	struct callout		hwswitch_to_callout;
 
 	struct resource		*irq;
 	struct resource		*mem;
@@ -207,7 +206,7 @@ struct wpi_softc {
 };
 
 #define WPI_LOCK_INIT()
-#define WPI_LOCK() lwkt_gettoken(&wlan_token)
-#define WPI_UNLOCK() lwkt_reltoken(&wlan_token)
+#define WPI_LOCK() wlan_serialize_enter();
+#define WPI_UNLOCK() wlan_serialize_exit();
 #define WPI_LOCK_DESTROY()
-#define WPI_LOCK_ASSERT() ASSERT_LWKT_TOKEN_HELD(&wlan_token)
+#define WPI_LOCK_ASSERT() wlan_assert_serialized();

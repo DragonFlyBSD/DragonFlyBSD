@@ -199,7 +199,7 @@ static void	wpi_cmd_intr(struct wpi_softc *, struct wpi_rx_desc *);
 static void	wpi_notif_intr(struct wpi_softc *);
 static void	wpi_intr(void *);
 static uint8_t	wpi_plcp_signal(int);
-static void	wpi_watchdog(void *);
+static void	wpi_watchdog_callout(void *);
 static int	wpi_tx_data(struct wpi_softc *, struct mbuf *,
 		    struct ieee80211_node *, int);
 static void	wpi_start(struct ifnet *);
@@ -231,8 +231,8 @@ static int	wpi_config(struct wpi_softc *);
 static void	wpi_stop_master(struct wpi_softc *);
 static int	wpi_power_up(struct wpi_softc *);
 static int	wpi_reset(struct wpi_softc *);
-static void	wpi_hwreset(void *, int);
-static void	wpi_rfreset(void *, int);
+static void	wpi_hwreset_task(void *, int);
+static void	wpi_rfreset_task(void *, int);
 static void	wpi_hw_config(struct wpi_softc *);
 static void	wpi_init(void *);
 static void	wpi_init_locked(struct wpi_softc *, int);
@@ -242,7 +242,7 @@ static void	wpi_stop_locked(struct wpi_softc *);
 static void	wpi_newassoc(struct ieee80211_node *, int);
 static int	wpi_set_txpower(struct wpi_softc *, struct ieee80211_channel *,
 		    int);
-static void	wpi_calib_timeout(void *);
+static void	wpi_calib_timeout_callout(void *);
 static void	wpi_power_calibration(struct wpi_softc *, int);
 static int	wpi_get_power_index(struct wpi_softc *,
 		    struct wpi_power_group *, struct ieee80211_channel *, int);
@@ -297,13 +297,16 @@ wpi_probe(device_t dev)
 {
 	const struct wpi_ident *ident;
 
+	wlan_serialize_enter();
 	for (ident = wpi_ident_table; ident->name != NULL; ident++) {
 		if (pci_get_vendor(dev) == ident->vendor &&
 		    pci_get_device(dev) == ident->device) {
 			device_set_desc(dev, ident->name);
+			wlan_serialize_exit();
 			return 0;
 		}
 	}
+	wlan_serialize_exit();
 	return ENXIO;
 }
 
@@ -328,20 +331,18 @@ wpi_load_firmware(struct wpi_softc *sc)
 	DPRINTFN(WPI_DEBUG_FIRMWARE,
 	    ("Attempting Loading Firmware from wpi_fw module\n"));
 
-	WPI_UNLOCK();
-
+	wlan_assert_serialized();
+	wlan_serialize_exit();
 	if (sc->fw_fp == NULL && (sc->fw_fp = firmware_get("wpifw")) == NULL) {
 		device_printf(sc->sc_dev,
 		    "could not load firmware image 'wpifw_fw'\n");
 		error = ENOENT;
-		WPI_LOCK();
+		wlan_serialize_enter();
 		goto fail;
 	}
+	wlan_serialize_enter();
 
 	fp = sc->fw_fp;
-
-	WPI_LOCK();
-
 
 	/* Validate the firmware is minimum a particular version */
 	if (fp->version < WPI_FW_MINVERSION) {
@@ -439,7 +440,7 @@ wpi_load_firmware(struct wpi_softc *sc)
 	WPI_WRITE(sc, WPI_RESET, 0);
 
 	/* wait at most one second for the first alive notification */
-	if ((error = lksleep(sc, &sc->sc_lock, 0, "wpiinit", hz)) != 0) {
+	if ((error = zsleep(sc, &wlan_global_serializer, 0, "wpiinit", hz)) != 0) {
 		device_printf(sc->sc_dev,
 		    "timeout waiting for adapter to initialize\n");
 		goto fail;
@@ -460,7 +461,7 @@ wpi_load_firmware(struct wpi_softc *sc)
 	wpi_mem_unlock(sc);
 
 	/* wait at most one second for the first alive notification */
-	if ((error = lksleep(sc, &sc->sc_lock, 0, "wpiinit", hz)) != 0) {
+	if ((error = zsleep(sc, &wlan_global_serializer, 0, "wpiinit", hz)) != 0) {
 		device_printf(sc->sc_dev,
 		    "timeout waiting for adapter to initialize2\n");
 		goto fail;
@@ -484,9 +485,10 @@ wpi_unload_firmware(struct wpi_softc *sc)
 	ifp = sc->sc_ifp;
 
 	if (sc->fw_fp) {
-		WPI_UNLOCK();
+		wlan_assert_serialized();
+		wlan_serialize_exit();
 		firmware_put(sc->fw_fp, FIRMWARE_UNLOAD);
-		WPI_LOCK();
+		wlan_serialize_enter();
 		sc->fw_fp = NULL;
 	}
 }
@@ -501,6 +503,8 @@ wpi_attach(device_t dev)
 	uint32_t tmp;
 	const struct wpi_ident *ident;
 	uint8_t macaddr[IEEE80211_ADDR_LEN];
+
+	wlan_serialize_enter();
 
 	sc->sc_dev = dev;
 
@@ -521,13 +525,11 @@ wpi_attach(device_t dev)
 	}
 
 	/* Create the tasks that can be queued */
-	TASK_INIT(&sc->sc_restarttask, 0, wpi_hwreset, sc);
-	TASK_INIT(&sc->sc_radiotask, 0, wpi_rfreset, sc);
+	TASK_INIT(&sc->sc_restarttask, 0, wpi_hwreset_task, sc);
+	TASK_INIT(&sc->sc_radiotask, 0, wpi_rfreset_task, sc);
 
-	WPI_LOCK_INIT();
-
-	callout_init(&sc->calib_to);
-	callout_init(&sc->watchdog_to);
+	callout_init(&sc->calib_to_callout);
+	callout_init(&sc->watchdog_to_callout);
 
 	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
 		device_printf(dev, "chip is in D%d power mode "
@@ -697,7 +699,7 @@ wpi_attach(device_t dev)
 	 * Hook our interrupt after all initialization is complete.
 	 */
 	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE,
-	    wpi_intr, sc, &sc->sc_ih, ifp->if_serializer);
+	    wpi_intr, sc, &sc->sc_ih, &wlan_global_serializer);
 	if (error != 0) {
 		device_printf(dev, "could not set up interrupt\n");
 		goto fail;
@@ -708,9 +710,12 @@ wpi_attach(device_t dev)
 #ifdef XXX_DEBUG
 	ieee80211_announce_channels(ic);
 #endif
+	wlan_serialize_exit();
 	return 0;
 
-fail:	wpi_detach(dev);
+fail:
+	wlan_serialize_exit();
+	wpi_detach(dev);
 	return ENXIO;
 }
 
@@ -722,18 +727,18 @@ wpi_detach(device_t dev)
 	struct ieee80211com *ic;
 	int ac;
 
+	wlan_serialize_enter();
 	if (ifp != NULL) {
 		ic = ifp->if_l2com;
 
 		ieee80211_draintask(ic, &sc->sc_restarttask);
 		ieee80211_draintask(ic, &sc->sc_radiotask);
 		wpi_stop(sc);
-		callout_stop(&sc->watchdog_to);
-		callout_stop(&sc->calib_to);
+		callout_stop(&sc->watchdog_to_callout);
+		callout_stop(&sc->calib_to_callout);
 		ieee80211_ifdetach(ic);
 	}
 
-	WPI_LOCK();
 	if (sc->txq[0].data_dmat) {
 		for (ac = 0; ac < WME_NUM_AC; ac++)
 			wpi_free_tx_ring(sc, &sc->txq[ac]);
@@ -749,7 +754,6 @@ wpi_detach(device_t dev)
 
 	if (sc->fw_dma.tag)
 		wpi_free_fwmem(sc);
-	WPI_UNLOCK();
 
 	if (sc->irq != NULL) {
 		bus_teardown_intr(dev, sc->irq, sc->sc_ih);
@@ -762,8 +766,7 @@ wpi_detach(device_t dev)
 	if (ifp != NULL)
 		if_free(ifp);
 
-	WPI_LOCK_DESTROY();
-
+	wlan_serialize_exit();
 	return 0;
 }
 
@@ -1206,10 +1209,10 @@ wpi_shutdown(device_t dev)
 {
 	struct wpi_softc *sc = device_get_softc(dev);
 
-	WPI_LOCK();
+	wlan_serialize_enter();
 	wpi_stop_locked(sc);
 	wpi_unload_firmware(sc);
-	WPI_UNLOCK();
+	wlan_serialize_exit();
 
 	return 0;
 }
@@ -1219,7 +1222,9 @@ wpi_suspend(device_t dev)
 {
 	struct wpi_softc *sc = device_get_softc(dev);
 
+	wlan_serialize_enter();
 	wpi_stop(sc);
+	wlan_serialize_exit();
 	return 0;
 }
 
@@ -1229,6 +1234,7 @@ wpi_resume(device_t dev)
 	struct wpi_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = sc->sc_ifp;
 
+	wlan_serialize_enter();
 	pci_write_config(dev, 0x41, 0, 1);
 
 	if (ifp->if_flags & IFF_UP) {
@@ -1236,6 +1242,7 @@ wpi_resume(device_t dev)
 		if (ifp->if_flags & IFF_RUNNING)
 			wpi_start(ifp);
 	}
+	wlan_serialize_exit();
 	return 0;
 }
 
@@ -1267,8 +1274,6 @@ wpi_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 		ieee80211_state_name[vap->iv_state],
 		ieee80211_state_name[nstate], sc->flags));
 
-	IEEE80211_UNLOCK(ic);
-	WPI_LOCK();
 	if (nstate == IEEE80211_S_AUTH) {
 		/* The node must be registered in the firmware before auth */
 		error = wpi_auth(sc, vap);
@@ -1288,11 +1293,9 @@ wpi_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	}
 	if (nstate == IEEE80211_S_RUN) {
 		/* RUN -> RUN transition; just restart the timers */
-		wpi_calib_timeout(sc);
+		wpi_calib_timeout_callout(sc);
 		/* XXX split out rate control timer */
 	}
-	WPI_UNLOCK();
-	IEEE80211_LOCK(ic);
 	return wvp->newstate(vap, nstate, arg);
 }
 
@@ -1551,16 +1554,12 @@ wpi_rx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc,
 			tap->wr_flags |= IEEE80211_RADIOTAP_F_SHORTPRE;
 	}
 
-	WPI_UNLOCK();
-
 	ni = ieee80211_find_rxnode(ic, mtod(m, struct ieee80211_frame_min *));
 	if (ni != NULL) {
 		(void) ieee80211_input(ni, m, stat->rssi, 0);
 		ieee80211_free_node(ni);
 	} else
 		(void) ieee80211_input_all(ic, m, stat->rssi, 0);
-
-	WPI_LOCK();
 }
 
 static void
@@ -1769,11 +1768,8 @@ wpi_intr(void *arg)
 	struct wpi_softc *sc = arg;
 	uint32_t r;
 
-	WPI_LOCK();
-
 	r = WPI_READ(sc, WPI_INTR);
 	if (r == 0 || r == 0xffffffff) {
-		WPI_UNLOCK();
 		return;
 	}
 
@@ -1794,7 +1790,6 @@ wpi_intr(void *arg)
 			ieee80211_cancel_scan(vap);
 		ieee80211_runtask(ic, &sc->sc_restarttask);
 		sc->flags &= ~WPI_FLAG_BUSY;
-		WPI_UNLOCK();
 		return;
 	}
 
@@ -1808,7 +1803,6 @@ wpi_intr(void *arg)
 	if (sc->sc_ifp->if_flags & IFF_UP)
 		WPI_WRITE(sc, WPI_MASK, WPI_INTR_MASK);
 
-	WPI_UNLOCK();
 }
 
 static uint8_t
@@ -2017,9 +2011,7 @@ wpi_tx_data(struct wpi_softc *sc, struct mbuf *m0, struct ieee80211_node *ni,
 static void
 wpi_start(struct ifnet *ifp)
 {
-	WPI_LOCK();
 	wpi_start_locked(ifp);
-	WPI_UNLOCK();
 }
 
 static void
@@ -2029,8 +2021,6 @@ wpi_start_locked(struct ifnet *ifp)
 	struct ieee80211_node *ni;
 	struct mbuf *m;
 	int ac;
-
-	WPI_LOCK_ASSERT();
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0) {
 		ifq_purge(&ifp->if_snd);
@@ -2072,13 +2062,11 @@ wpi_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 		ieee80211_free_node(ni);
 		return ENETDOWN;
 	}
-	WPI_LOCK();
 
 	/* management frames go into ring 0 */
 	if (sc->txq[0].queued > sc->txq[0].count - 8) {
 		ifp->if_flags |= IFF_OACTIVE;
 		m_freem(m);
-		WPI_UNLOCK();
 		ieee80211_free_node(ni);
 		return ENOBUFS;		/* XXX */
 	}
@@ -2087,13 +2075,11 @@ wpi_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 	if (wpi_tx_data(sc, m, ni, 0) != 0)
 		goto bad;
 	sc->sc_tx_timer = 5;
-	callout_reset(&sc->watchdog_to, hz, wpi_watchdog, sc);
+	callout_reset(&sc->watchdog_to_callout, hz, wpi_watchdog_callout, sc);
 
-	WPI_UNLOCK();
 	return 0;
 bad:
 	ifp->if_oerrors++;
-	WPI_UNLOCK();
 	ieee80211_free_node(ni);
 	return EIO;		/* XXX */
 }
@@ -2108,7 +2094,6 @@ wpi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:
-		WPI_LOCK();
 		if ((ifp->if_flags & IFF_UP)) {
 			if (!(ifp->if_flags & IFF_RUNNING)) {
 				wpi_init_locked(sc, 0);
@@ -2117,7 +2102,6 @@ wpi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 		} else if ((ifp->if_flags & IFF_RUNNING) ||
 			   (sc->flags & WPI_FLAG_HW_RADIO_OFF))
 			wpi_stop_locked(sc);
-		WPI_UNLOCK();
 		if (startall)
 			ieee80211_start_all(ic);
 		break;
@@ -2174,7 +2158,7 @@ wpi_cmd(struct wpi_softc *sc, int code, const void *buf, int size, int async)
 
 #ifdef WPI_DEBUG
 	if (!async) {
-		WPI_LOCK_ASSERT();
+		wlan_assert_serialized();
 	}
 #endif
 
@@ -2214,7 +2198,7 @@ wpi_cmd(struct wpi_softc *sc, int code, const void *buf, int size, int async)
 		return 0;
 	}
 
-	return lksleep(cmd, &sc->sc_lock, 0, "wpicmd", hz);
+	return zsleep(cmd, &wlan_global_serializer, 0, "wpicmd", hz);
 }
 
 static int
@@ -2530,7 +2514,7 @@ wpi_run(struct wpi_softc *sc, struct ieee80211vap *vap)
 	wpi_set_led(sc, WPI_LED_LINK, 0, 1);
 
 	/* start automatic rate control timer */
-	callout_reset(&sc->calib_to, 60*hz, wpi_calib_timeout, sc);
+	callout_reset(&sc->calib_to_callout, 60*hz, wpi_calib_timeout_callout, sc);
 
 	return (error);
 }
@@ -3041,7 +3025,7 @@ wpi_rfkill_resume(struct wpi_softc *sc)
 		}
 	}
 
-	callout_reset(&sc->watchdog_to, hz, wpi_watchdog, sc);
+	callout_reset(&sc->watchdog_to_callout, hz, wpi_watchdog_callout, sc);
 }
 
 static void
@@ -3150,7 +3134,7 @@ wpi_init_locked(struct wpi_softc *sc, int force)
 	ifp->if_flags &= ~IFF_OACTIVE;
 	ifp->if_flags |= IFF_RUNNING;
 out:
-	callout_reset(&sc->watchdog_to, hz, wpi_watchdog, sc);
+	callout_reset(&sc->watchdog_to_callout, hz, wpi_watchdog_callout, sc);
 }
 
 static void
@@ -3160,9 +3144,7 @@ wpi_init(void *arg)
 	struct ifnet *ifp = sc->sc_ifp;
 	struct ieee80211com *ic = ifp->if_l2com;
 
-	WPI_LOCK();
 	wpi_init_locked(sc, 0);
-	WPI_UNLOCK();
 
 	if (ifp->if_flags & IFF_RUNNING)
 		ieee80211_start_all(ic);		/* start all vaps */
@@ -3179,8 +3161,8 @@ wpi_stop_locked(struct wpi_softc *sc)
 	sc->sc_scan_timer = 0;
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 	sc->flags &= ~WPI_FLAG_HW_RADIO_OFF;
-	callout_stop(&sc->watchdog_to);
-	callout_stop(&sc->calib_to);
+	callout_stop(&sc->watchdog_to_callout);
+	callout_stop(&sc->calib_to_callout);
 
 
 	/* disable interrupts */
@@ -3217,9 +3199,7 @@ wpi_stop_locked(struct wpi_softc *sc)
 static void
 wpi_stop(struct wpi_softc *sc)
 {
-	WPI_LOCK();
 	wpi_stop_locked(sc);
-	WPI_UNLOCK();
 }
 
 static void
@@ -3230,7 +3210,7 @@ wpi_newassoc(struct ieee80211_node *ni, int isnew)
 }
 
 static void
-wpi_calib_timeout(void *arg)
+wpi_calib_timeout_callout(void *arg)
 {
 	struct wpi_softc *sc = arg;
 	struct ifnet *ifp = sc->sc_ifp;
@@ -3247,7 +3227,7 @@ wpi_calib_timeout(void *arg)
 
 	wpi_power_calibration(sc, temp);
 
-	callout_reset(&sc->calib_to, 60*hz, wpi_calib_timeout, sc);
+	callout_reset(&sc->calib_to_callout, 60*hz, wpi_calib_timeout_callout, sc);
 }
 
 /*
@@ -3530,9 +3510,7 @@ wpi_scan_start(struct ieee80211com *ic)
 	struct ifnet *ifp = ic->ic_ifp;
 	struct wpi_softc *sc = ifp->if_softc;
 
-	WPI_LOCK();
 	wpi_set_led(sc, WPI_LED_LINK, 20, 2);
-	WPI_UNLOCK();
 }
 
 /**
@@ -3581,10 +3559,8 @@ wpi_scan_curchan(struct ieee80211_scan_state *ss, unsigned long maxdwell)
 	struct ifnet *ifp = vap->iv_ic->ic_ifp;
 	struct wpi_softc *sc = ifp->if_softc;
 
-	WPI_LOCK();
 	if (wpi_scan(sc))
 		ieee80211_cancel_scan(vap);
-	WPI_UNLOCK();
 }
 
 /**
@@ -3600,23 +3576,23 @@ wpi_scan_mindwell(struct ieee80211_scan_state *ss)
 }
 
 static void
-wpi_hwreset(void *arg, int pending)
+wpi_hwreset_task(void *arg, int pending)
 {
 	struct wpi_softc *sc = arg;
 
-	WPI_LOCK();
+	wlan_serialize_enter();
 	wpi_init_locked(sc, 0);
-	WPI_UNLOCK();
+	wlan_serialize_exit();
 }
 
 static void
-wpi_rfreset(void *arg, int pending)
+wpi_rfreset_task(void *arg, int pending)
 {
 	struct wpi_softc *sc = arg;
 
-	WPI_LOCK();
+	wlan_serialize_enter();
 	wpi_rfkill_resume(sc);
-	WPI_UNLOCK();
+	wlan_serialize_exit();
 }
 
 /*
@@ -3638,17 +3614,18 @@ wpi_free_fwmem(struct wpi_softc *sc)
 }
 
 /**
- * Called every second, wpi_watchdog used by the watch dog timer
+ * Called every second, wpi_watchdog_callout used by the watch dog timer
  * to check that the card is still alive
  */
 static void
-wpi_watchdog(void *arg)
+wpi_watchdog_callout(void *arg)
 {
 	struct wpi_softc *sc = arg;
 	struct ifnet *ifp = sc->sc_ifp;
 	struct ieee80211com *ic = ifp->if_l2com;
 	uint32_t tmp;
 
+	wlan_serialize_enter();
 	DPRINTFN(WPI_DEBUG_WATCHDOG,("Watchdog: tick\n"));
 
 	if (sc->flags & WPI_FLAG_HW_RADIO_OFF) {
@@ -3657,12 +3634,14 @@ wpi_watchdog(void *arg)
 
 		if ((tmp & 0x1) == 0) {
 			/* Radio kill switch is still off */
-			callout_reset(&sc->watchdog_to, hz, wpi_watchdog, sc);
+			callout_reset(&sc->watchdog_to_callout, hz, wpi_watchdog_callout, sc);
+			wlan_serialize_exit();
 			return;
 		}
 
 		device_printf(sc->sc_dev, "Hardware Switch Enabled\n");
 		ieee80211_runtask(ic, &sc->sc_radiotask);
+		wlan_serialize_exit();
 		return;
 	}
 
@@ -3670,7 +3649,9 @@ wpi_watchdog(void *arg)
 		if (--sc->sc_tx_timer == 0) {
 			device_printf(sc->sc_dev,"device timeout\n");
 			ifp->if_oerrors++;
+			wlan_serialize_exit();
 			ieee80211_runtask(ic, &sc->sc_restarttask);
+			wlan_serialize_enter();
 		}
 	}
 	if (sc->sc_scan_timer > 0) {
@@ -3678,12 +3659,16 @@ wpi_watchdog(void *arg)
 		if (--sc->sc_scan_timer == 0 && vap != NULL) {
 			device_printf(sc->sc_dev,"scan timeout\n");
 			ieee80211_cancel_scan(vap);
+			wlan_serialize_exit();
 			ieee80211_runtask(ic, &sc->sc_restarttask);
+			wlan_serialize_enter();
 		}
 	}
 
 	if (ifp->if_flags & IFF_RUNNING)
-		callout_reset(&sc->watchdog_to, hz, wpi_watchdog, sc);
+		callout_reset(&sc->watchdog_to_callout, hz, wpi_watchdog_callout, sc);
+
+	wlan_serialize_exit();
 }
 
 #ifdef WPI_DEBUG
@@ -3716,7 +3701,3 @@ MODULE_DEPEND(wpi, pci,  1, 1, 1);
 MODULE_DEPEND(wpi, wlan, 1, 1, 1);
 MODULE_DEPEND(wpi, firmware, 1, 1, 1);
 MODULE_DEPEND(wpi, wlan_amrr, 1, 1, 1);
-/*
-MODULE_DEPEND(wpi, wpifw_fw_fw, 1, 1, 1);
-MODULE_DEPEND(wpi, ath_rate, 1, 1, 1);
-*/
