@@ -1285,6 +1285,7 @@ ath_intr(void *arg)
 	struct ifnet *ifp = sc->sc_ifp;
 	struct ath_hal *ah = sc->sc_ah;
 	HAL_INT status;
+	HAL_INT ostatus;
 
 	if (sc->sc_invalid) {
 		/*
@@ -1294,6 +1295,7 @@ ath_intr(void *arg)
 		DPRINTF(sc, ATH_DEBUG_ANY, "%s: invalid; ignored\n", __func__);
 		return;
 	}
+
 	if (!ath_hal_intrpend(ah))		/* shared irq, not for us */
 		return;
 	if ((ifp->if_flags & IFF_UP) == 0 ||
@@ -1312,9 +1314,9 @@ ath_intr(void *arg)
 	 * bits we haven't explicitly enabled so we mask the
 	 * value to insure we only process bits we requested.
 	 */
-	ath_hal_getisr(ah, &status);		/* NB: clears ISR too */
-	DPRINTF(sc, ATH_DEBUG_INTR, "%s: status 0x%x\n", __func__, status);
-	status &= sc->sc_imask;			/* discard unasked for bits */
+	ath_hal_getisr(ah, &ostatus);		/* NB: clears ISR too */
+	DPRINTF(sc, ATH_DEBUG_INTR, "%s: status 0x%x\n", __func__, ostatus);
+	status = ostatus & sc->sc_imask;	/* discard unasked for bits */
 	if (status & HAL_INT_FATAL) {
 		sc->sc_stats.ast_hardware++;
 		ath_hal_intrset(ah, 0);		/* disable intr's until reset */
@@ -1352,28 +1354,34 @@ ath_intr(void *arg)
 #endif
 			}
 		}
+
+		/*
+		 * NB: The hardware should re-read the link when the RXE
+		 *     bit is written, but it doesn't work at least on
+		 *     older chipsets.
+		 */
 		if (status & HAL_INT_RXEOL) {
-			/*
-			 * NB: the hardware should re-read the link when
-			 *     RXE bit is written, but it doesn't work at
-			 *     least on older hardware revs.
-			 */
 			sc->sc_stats.ast_rxeol++;
 			sc->sc_rxlink = NULL;
 		}
+
 		if (status & HAL_INT_TXURN) {
 			sc->sc_stats.ast_txurn++;
 			/* bump tx trigger level */
 			ath_hal_updatetxtriglevel(ah, AH_TRUE);
 		}
+
 		if (status & HAL_INT_RX)
 			taskqueue_enqueue(sc->sc_tq, &sc->sc_rxtask);
+
 		if (status & HAL_INT_TX)
 			taskqueue_enqueue(sc->sc_tq, &sc->sc_txtask);
+
 		if (status & HAL_INT_BMISS) {
 			sc->sc_stats.ast_bmiss++;
 			taskqueue_enqueue(sc->sc_tq, &sc->sc_bmisstask);
 		}
+
 		if (status & HAL_INT_MIB) {
 			sc->sc_stats.ast_mib++;
 			/*
@@ -1388,6 +1396,7 @@ ath_intr(void *arg)
 			ath_hal_mibevent(ah, &sc->sc_halstats);
 			ath_hal_intrset(ah, sc->sc_imask);
 		}
+
 		if (status & HAL_INT_RXORN) {
 			/* NB: hal marks HAL_INT_FATAL when RXORN is fatal */
 			sc->sc_stats.ast_rxorn++;
@@ -1726,6 +1735,7 @@ _ath_getbuf_locked(struct ath_softc *sc)
 	else
 		bf = NULL;
 	if (bf == NULL) {
+		kprintf("ath: ran out of descriptors\n");
 		DPRINTF(sc, ATH_DEBUG_XMIT, "%s: %s\n", __func__,
 		    STAILQ_FIRST(&sc->sc_txbuf) == NULL ?
 			"out of xmit buffers" : "xmit buffer busy");
@@ -2781,7 +2791,8 @@ static void
 ath_txqmove(struct ath_txq *dst, struct ath_txq *src)
 {
 	STAILQ_CONCAT(&dst->axq_q, &src->axq_q);
-	dst->axq_link = src->axq_link;
+	if (src->axq_depth)
+		dst->axq_link = src->axq_link;
 	src->axq_link = NULL;
 	dst->axq_depth += src->axq_depth;
 	src->axq_depth = 0;
@@ -2825,6 +2836,15 @@ ath_beacon_proc(void *arg, int pending)
 			"%s: resume beacon xmit after %u misses\n",
 			__func__, sc->sc_bmisscount);
 		sc->sc_bmisscount = 0;
+	}
+
+	/*
+	 * Stop any current dma before messing with the beacon linkages.
+	 */
+	if (!ath_hal_stoptxdma(ah, sc->sc_bhalq)) {
+		DPRINTF(sc, ATH_DEBUG_ANY,
+			"%s: beacon queue %u did not stop?\n",
+			__func__, sc->sc_bhalq);
 	}
 
 	if (sc->sc_stagbeacons) {			/* staggered beacons */
@@ -2885,22 +2905,12 @@ ath_beacon_proc(void *arg, int pending)
 	}
 
 	if (bfaddr != 0) {
-		/*
-		 * Stop any current dma and put the new frame on the queue.
-		 * This should never fail since we check above that no frames
-		 * are still pending on the queue.
-		 */
-		if (!ath_hal_stoptxdma(ah, sc->sc_bhalq)) {
-			DPRINTF(sc, ATH_DEBUG_ANY,
-				"%s: beacon queue %u did not stop?\n",
-				__func__, sc->sc_bhalq);
-		}
 		/* NB: cabq traffic should already be queued and primed */
 		ath_hal_puttxbuf(ah, sc->sc_bhalq, bfaddr);
-		ath_hal_txstart(ah, sc->sc_bhalq);
-
 		sc->sc_stats.ast_be_xmit++;
+		ath_hal_txstart(ah, sc->sc_bhalq);
 	}
+	/* else no beacon will be generated */
 }
 
 static struct ath_buf *
@@ -2967,17 +2977,31 @@ ath_beacon_generate(struct ath_softc *sc, struct ieee80211vap *vap)
 		/* NB: only at DTIM */
 		if (nmcastq) {
 			struct ath_buf *bfm;
+			int qbusy;
 
 			/*
 			 * Move frames from the s/w mcast q to the h/w cab q.
 			 * XXX MORE_DATA bit
 			 */
 			bfm = STAILQ_FIRST(&avp->av_mcastq.axq_q);
-			if (cabq->axq_link != NULL) {
-				*cabq->axq_link = bfm->bf_daddr;
-			} else
-				ath_hal_puttxbuf(ah, cabq->axq_qnum,
-					bfm->bf_daddr);
+			qbusy = ath_hal_txqenabled(ah, cabq->axq_qnum);
+			if (qbusy == 0) {
+				if (cabq->axq_link != NULL) {
+					cpu_sfence();
+					*cabq->axq_link = bfm->bf_daddr;
+					cabq->axq_flags |= ATH_TXQ_PUTPENDING;
+				} else {
+					cpu_sfence();
+					ath_hal_puttxbuf(ah, cabq->axq_qnum,
+						bfm->bf_daddr);
+				}
+			} else {
+				if (cabq->axq_link != NULL) {
+					cpu_sfence();
+					*cabq->axq_link = bfm->bf_daddr;
+				}
+				cabq->axq_flags |= ATH_TXQ_PUTPENDING;
+			}
 			ath_txqmove(cabq, &avp->av_mcastq);
 
 			sc->sc_stats.ast_cabq_xmit += nmcastq;
@@ -3539,8 +3563,9 @@ ath_rxbuf_init(struct ath_softc *sc, struct ath_buf *bf)
 		 * multiple of the cache line size.  Not doing this
 		 * causes weird stuff to happen (for the 5210 at least).
 		 */
-		m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+		m = m_getcl(MB_WAIT, MT_DATA, M_PKTHDR);
 		if (m == NULL) {
+			kprintf("ath_rxbuf_init: no mbuf\n");
 			DPRINTF(sc, ATH_DEBUG_ANY,
 				"%s: no mbuf/cluster\n", __func__);
 			sc->sc_stats.ast_rx_nombuf++;
@@ -4361,59 +4386,60 @@ ath_tx_handoff(struct ath_softc *sc, struct ath_txq *txq, struct ath_buf *bf)
 	     ("busy status 0x%x", bf->bf_flags));
 	if (txq->axq_qnum != ATH_TXQ_SWQ) {
 #ifdef IEEE80211_SUPPORT_TDMA
+		/*
+		 * Supporting transmit dma.  If the queue is busy it is
+		 * impossible to determine if we've won the race against
+		 * the chipset checking the link field or not, so we don't
+		 * try.  Instead we let the TX interrupt detect the case
+		 * and restart the transmitter.
+		 *
+		 * If the queue is not busy we can start things rolling
+		 * right here.
+		 */
 		int qbusy;
 
 		ATH_TXQ_INSERT_TAIL(txq, bf, bf_list);
 		qbusy = ath_hal_txqenabled(ah, txq->axq_qnum);
-		if (txq->axq_link == NULL) {
-			/*
-			 * Be careful writing the address to TXDP.  If
-			 * the tx q is enabled then this write will be
-			 * ignored.  Normally this is not an issue but
-			 * when tdma is in use and the q is beacon gated
-			 * this race can occur.  If the q is busy then
-			 * defer the work to later--either when another
-			 * packet comes along or when we prepare a beacon
-			 * frame at SWBA.
-			 */
-			if (!qbusy) {
-				ath_hal_puttxbuf(ah, txq->axq_qnum, bf->bf_daddr);
-				txq->axq_flags &= ~ATH_TXQ_PUTPENDING;
-				DPRINTF(sc, ATH_DEBUG_XMIT,
-				    "%s: TXDP[%u] = %p (%p) depth %d\n",
-				    __func__, txq->axq_qnum,
-				    (caddr_t)bf->bf_daddr, bf->bf_desc,
-				    txq->axq_depth);
-			} else {
+
+		if (qbusy == 0) {
+			if (txq->axq_link != NULL) {
+				/*
+				 * We had already started one previously but
+				 * not yet processed the TX interrupt.  Don't
+				 * try to race a restart because we do not
+				 * know where it stopped, let the TX interrupt
+				 * restart us when it figures out where we
+				 * stopped.
+				 */
+				cpu_sfence();
+				*txq->axq_link = bf->bf_daddr;
 				txq->axq_flags |= ATH_TXQ_PUTPENDING;
-				DPRINTF(sc, ATH_DEBUG_TDMA | ATH_DEBUG_XMIT,
-				    "%s: Q%u busy, defer enable\n", __func__,
-				    txq->axq_qnum);
+			} else {
+				/*
+				 * We are first in line, we can safely start
+				 * at this address.
+				 */
+				cpu_sfence();
+				ath_hal_puttxbuf(ah, txq->axq_qnum,
+						 bf->bf_daddr);
 			}
 		} else {
-			*txq->axq_link = bf->bf_daddr;
-			DPRINTF(sc, ATH_DEBUG_XMIT,
-			    "%s: link[%u](%p)=%p (%p) depth %d\n", __func__,
-			    txq->axq_qnum, txq->axq_link,
-			    (caddr_t)bf->bf_daddr, bf->bf_desc, txq->axq_depth);
-			if ((txq->axq_flags & ATH_TXQ_PUTPENDING) && !qbusy) {
-				/*
-				 * The q was busy when we previously tried
-				 * to write the address of the first buffer
-				 * in the chain.  Since it's not busy now
-				 * handle this chore.  We are certain the
-				 * buffer at the front is the right one since
-				 * axq_link is NULL only when the buffer list
-				 * is/was empty.
-				 */
+			/*
+			 * The queue is busy, go ahead and link us in but
+			 * do not try to start/restart the tx.  We just
+			 * don't know whether it will pick up our link
+			 * or not and we don't want to double-xmit.
+			 */
+			if (txq->axq_link != NULL) {
+				cpu_sfence();
+				*txq->axq_link = bf->bf_daddr;
+			}
+			txq->axq_flags |= ATH_TXQ_PUTPENDING;
+		}
+#if 0
 				ath_hal_puttxbuf(ah, txq->axq_qnum,
 					STAILQ_FIRST(&txq->axq_q)->bf_daddr);
-				txq->axq_flags &= ~ATH_TXQ_PUTPENDING;
-				DPRINTF(sc, ATH_DEBUG_TDMA | ATH_DEBUG_XMIT,
-				    "%s: Q%u restarted\n", __func__,
-				    txq->axq_qnum);
-			}
-		}
+#endif
 #else
 		ATH_TXQ_INSERT_TAIL(txq, bf, bf_list);
 		if (txq->axq_link == NULL) {
@@ -4886,6 +4912,8 @@ ath_tx_processq(struct ath_softc *sc, struct ath_txq *txq)
 		txq->axq_link);
 	nacked = 0;
 	for (;;) {
+		int qbusy;
+
 		txq->axq_intrcnt = 0;	/* reset periodic desc intr count */
 		bf = STAILQ_FIRST(&txq->axq_q);
 		if (bf == NULL)
@@ -4893,14 +4921,29 @@ ath_tx_processq(struct ath_softc *sc, struct ath_txq *txq)
 		ds0 = &bf->bf_desc[0];
 		ds = &bf->bf_desc[bf->bf_nseg - 1];
 		ts = &bf->bf_status.ds_txstat;
+		qbusy = ath_hal_txqenabled(ah, txq->axq_qnum);
 		status = ath_hal_txprocdesc(ah, ds, ts);
 #ifdef ATH_DEBUG
 		if (sc->sc_debug & ATH_DEBUG_XMIT_DESC)
 			ath_printtxbuf(sc, bf, txq->axq_qnum, 0,
 			    status == HAL_OK);
 #endif
-		if (status == HAL_EINPROGRESS)
+		if (status == HAL_EINPROGRESS) {
+#ifdef IEEE80211_SUPPORT_TDMA
+			/*
+			 * If not done and the queue is not busy then the
+			 * transmitter raced the hardware on the link field
+			 * and we have to restart it.
+			 */
+			if (!qbusy) {
+				cpu_sfence();
+				ath_hal_puttxbuf(ah, txq->axq_qnum,
+						 bf->bf_daddr);
+				ath_hal_txstart(ah, txq->axq_qnum);
+			}
+#endif
 			break;
+		}
 		ATH_TXQ_REMOVE_HEAD(txq, bf_list);
 #ifdef IEEE80211_SUPPORT_TDMA
 		if (txq->axq_depth > 0) {
@@ -7345,19 +7388,20 @@ ath_tdma_beacon_send(struct ath_softc *sc, struct ieee80211vap *vap)
 		sc->sc_ant_tx[1] = sc->sc_ant_tx[2] = 0;
 	}
 
+	/*
+	 * Stop any current dma before messing with the beacon linkages.
+	 *
+	 * This should never fail since we check above that no frames
+	 * are still pending on the queue.
+	 */
+	if (!ath_hal_stoptxdma(ah, sc->sc_bhalq)) {
+		DPRINTF(sc, ATH_DEBUG_ANY,
+			"%s: beacon queue %u did not stop?\n",
+			__func__, sc->sc_bhalq);
+		/* NB: the HAL still stops DMA, so proceed */
+	}
 	bf = ath_beacon_generate(sc, vap);
 	if (bf != NULL) {
-		/*
-		 * Stop any current dma and put the new frame on the queue.
-		 * This should never fail since we check above that no frames
-		 * are still pending on the queue.
-		 */
-		if (!ath_hal_stoptxdma(ah, sc->sc_bhalq)) {
-			DPRINTF(sc, ATH_DEBUG_ANY,
-				"%s: beacon queue %u did not stop?\n",
-				__func__, sc->sc_bhalq);
-			/* NB: the HAL still stops DMA, so proceed */
-		}
 		ath_hal_puttxbuf(ah, sc->sc_bhalq, bf->bf_daddr);
 		ath_hal_txstart(ah, sc->sc_bhalq);
 
@@ -7368,6 +7412,8 @@ ath_tdma_beacon_send(struct ath_softc *sc, struct ieee80211vap *vap)
 		 * in arbitrating slot collisions.
 		 */
 		vap->iv_bss->ni_tstamp.tsf = ath_hal_gettsf64(ah);
+	} else {
+		device_printf(sc->sc_dev, "tdma beacon gen failed!\n");
 	}
 }
 #endif /* IEEE80211_SUPPORT_TDMA */

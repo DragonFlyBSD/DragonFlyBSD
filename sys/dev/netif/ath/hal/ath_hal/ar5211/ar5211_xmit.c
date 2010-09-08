@@ -435,6 +435,7 @@ ar5211StartTxDma(struct ath_hal *ah, u_int q)
 	HALASSERT(q < HAL_NUM_TX_QUEUES);
 	HALASSERT(AH5211(ah)->ah_txq[q].tqi_type != HAL_TX_QUEUE_INACTIVE);
 
+	cpu_sfence();
 	/* Check that queue is not already active */
 	HALASSERT((OS_REG_READ(ah, AR_Q_TXD) & (1<<q)) == 0);
 

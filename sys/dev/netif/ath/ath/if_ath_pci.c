@@ -152,7 +152,7 @@ ath_pci_attach(device_t dev)
 	 * Setup DMA descriptor area.
 	 */
 	if (bus_dma_tag_create(sc->sc_dmat,	/* parent */
-			       1, 0,			/* alignment, bounds */
+			       4, 0,			/* alignment, bounds */
 			       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			       BUS_SPACE_MAXADDR,	/* highaddr */
 			       NULL, NULL,		/* filter, filterarg */

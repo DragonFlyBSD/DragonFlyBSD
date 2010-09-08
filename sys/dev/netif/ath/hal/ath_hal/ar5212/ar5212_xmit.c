@@ -526,6 +526,7 @@ ar5212StartTxDma(struct ath_hal *ah, u_int q)
 
 	HALDEBUG(ah, HAL_DEBUG_TXQUEUE, "%s: queue %u\n", __func__, q);
 
+	cpu_sfence();
 	/* Check to be sure we're not enabling a q that has its TXD bit set. */
 	HALASSERT((OS_REG_READ(ah, AR_Q_TXD) & (1 << q)) == 0);
 
@@ -859,6 +860,7 @@ ar5212ProcTxDesc(struct ath_hal *ah,
 	ts->ts_tstamp = MS(ads->ds_txstatus0, AR_SendTimestamp);
 	ts->ts_status = 0;
 	if ((ads->ds_txstatus0 & AR_FrmXmitOK) == 0) {
+		kprintf("bad status on tx queue\n");
 		if (ads->ds_txstatus0 & AR_ExcessiveRetries)
 			ts->ts_status |= HAL_TXERR_XRETRY;
 		if (ads->ds_txstatus0 & AR_Filtered)

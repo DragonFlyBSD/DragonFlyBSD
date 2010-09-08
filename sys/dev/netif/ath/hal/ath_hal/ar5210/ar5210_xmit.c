@@ -372,6 +372,7 @@ ar5210StartTxDma(struct ath_hal *ah, u_int q)
 
 	HALASSERT(q < HAL_NUM_TX_QUEUES);
 
+	cpu_sfence();
 	HALDEBUG(ah, HAL_DEBUG_TXQUEUE, "%s: queue %u\n", __func__, q);
 	qi = &ahp->ah_txq[q];
 	switch (qi->tqi_type) {
