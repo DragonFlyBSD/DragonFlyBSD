@@ -206,6 +206,8 @@ static int ip_checkinterface = 0;
 SYSCTL_INT(_net_inet_ip, OID_AUTO, check_interface, CTLFLAG_RW,
     &ip_checkinterface, 0, "Verify packet arrives on correct interface");
 
+static struct lwkt_token ipq_token = LWKT_TOKEN_MP_INITIALIZER(ipq_token);
+
 #ifdef DIAGNOSTIC
 static int ipprintfs = 0;
 #endif
@@ -984,12 +986,14 @@ ip_reass(struct mbuf *m)
 	/*
 	 * Look for queue of fragments of this datagram.
 	 */
-	for (fp = ipq[sum].next; fp != &ipq[sum]; fp = fp->next)
+	lwkt_gettoken(&ipq_token);
+	for (fp = ipq[sum].next; fp != &ipq[sum]; fp = fp->next) {
 		if (ip->ip_id == fp->ipq_id &&
 		    ip->ip_src.s_addr == fp->ipq_src.s_addr &&
 		    ip->ip_dst.s_addr == fp->ipq_dst.s_addr &&
 		    ip->ip_p == fp->ipq_p)
 			goto found;
+	}
 
 	fp = NULL;
 
@@ -1032,11 +1036,12 @@ found:
 		if (ip->ip_len == 0 || (ip->ip_len & 0x7) != 0) {
 			ipstat.ips_toosmall++; /* XXX */
 			m_freem(m);
-			return NULL;
+			goto done;
 		}
 		m->m_flags |= M_FRAG;
-	} else
+	} else {
 		m->m_flags &= ~M_FRAG;
+	}
 	ip->ip_off <<= 3;
 
 	ipstat.ips_fragments++;
@@ -1085,9 +1090,10 @@ found:
 	/*
 	 * Find a segment which begins after this one does.
 	 */
-	for (p = NULL, q = fp->ipq_frags; q; p = q, q = q->m_nextpkt)
+	for (p = NULL, q = fp->ipq_frags; q; p = q, q = q->m_nextpkt) {
 		if (GETIP(q)->ip_off > ip->ip_off)
 			break;
+	}
 
 	/*
 	 * If there is a preceding segment, it may provide some of
@@ -1155,7 +1161,7 @@ inserted:
 				ipstat.ips_fragdropped += fp->ipq_nfrags;
 				ip_freef(fp);
 			}
-			return (NULL);
+			goto done;
 		}
 		next += GETIP(q)->ip_len;
 	}
@@ -1165,7 +1171,7 @@ inserted:
 			ipstat.ips_fragdropped += fp->ipq_nfrags;
 			ip_freef(fp);
 		}
-		return (NULL);
+		goto done;
 	}
 
 	/*
@@ -1177,7 +1183,7 @@ inserted:
 		ipstat.ips_toolong++;
 		ipstat.ips_fragdropped += fp->ipq_nfrags;
 		ip_freef(fp);
-		return (NULL);
+		goto done;
 	}
 
 	/*
@@ -1231,6 +1237,7 @@ inserted:
 	}
 
 	ipstat.ips_reassembled++;
+	lwkt_reltoken(&ipq_token);
 	return (m);
 
 dropfrag:
@@ -1238,6 +1245,8 @@ dropfrag:
 	if (fp != NULL)
 		fp->ipq_nfrags--;
 	m_freem(m);
+done:
+	lwkt_reltoken(&ipq_token);
 	return (NULL);
 
 #undef GETIP
@@ -1246,19 +1255,28 @@ dropfrag:
 /*
  * Free a fragment reassembly header and all
  * associated datagrams.
+ *
+ * Called with ipq_token held.
  */
 static void
 ip_freef(struct ipq *fp)
 {
 	struct mbuf *q;
 
+	/*
+	 * Remove first to protect against blocking
+	 */
+	remque(fp);
+
+	/*
+	 * Clean out at our leisure
+	 */
 	while (fp->ipq_frags) {
 		q = fp->ipq_frags;
 		fp->ipq_frags = q->m_nextpkt;
 		q->m_nextpkt = NULL;
 		m_freem(q);
 	}
-	remque(fp);
 	mpipe_free(&ipq_mpipe, fp);
 	nipq--;
 }
@@ -1274,7 +1292,7 @@ ip_slowtimo(void)
 	struct ipq *fp;
 	int i;
 
-	crit_enter();
+	lwkt_gettoken(&ipq_token);
 	for (i = 0; i < IPREASS_NHASH; i++) {
 		fp = ipq[i].next;
 		if (fp == NULL)
@@ -1303,8 +1321,8 @@ ip_slowtimo(void)
 			}
 		}
 	}
+	lwkt_reltoken(&ipq_token);
 	ipflow_slowtimo();
-	crit_exit();
 }
 
 /*
@@ -1315,12 +1333,14 @@ ip_drain(void)
 {
 	int i;
 
+	lwkt_gettoken(&ipq_token);
 	for (i = 0; i < IPREASS_NHASH; i++) {
 		while (ipq[i].next != &ipq[i]) {
 			ipstat.ips_fragdropped += ipq[i].next->ipq_nfrags;
 			ip_freef(ipq[i].next);
 		}
 	}
+	lwkt_reltoken(&ipq_token);
 	in_rtqdrain();
 }
 

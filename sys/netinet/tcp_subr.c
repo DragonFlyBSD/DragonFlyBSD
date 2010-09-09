@@ -984,7 +984,7 @@ no_valid_rt:
 		LIST_REMOVE(q, tqe_q);
 		m_freem(q->tqe_m);
 		FREE(q, M_TSEGQ);
-		tcp_reass_qsize--;
+		atomic_add_int(&tcp_reass_qsize, -1);
 	}
 	/* throw away SACK blocks in scoreboard*/
 	if (TCP_DO_SACK(tp))
@@ -1040,22 +1040,34 @@ no_valid_rt:
 static __inline void
 tcp_drain_oncpu(struct inpcbhead *head)
 {
+	struct inpcb *marker;
 	struct inpcb *inpb;
 	struct tcpcb *tcpb;
 	struct tseg_qent *te;
 
-	LIST_FOREACH(inpb, head, inp_list) {
-		if (inpb->inp_flags & INP_PLACEMARKER)
-			continue;
-		if ((tcpb = intotcpcb(inpb))) {
-			while ((te = LIST_FIRST(&tcpb->t_segq)) != NULL) {
-				LIST_REMOVE(te, tqe_q);
-				m_freem(te->tqe_m);
-				FREE(te, M_TSEGQ);
-				tcp_reass_qsize--;
-			}
+	/*
+	 * Allows us to block while running the list
+	 */
+	marker = kmalloc(sizeof(struct inpcb), M_TEMP, M_WAITOK|M_ZERO);
+	marker->inp_flags |= INP_PLACEMARKER;
+	LIST_INSERT_HEAD(head, marker, inp_list);
+
+	while ((inpb = LIST_NEXT(marker, inp_list)) != NULL) {
+		if ((inpb->inp_flags & INP_PLACEMARKER) == 0 &&
+		    (tcpb = intotcpcb(inpb)) != NULL &&
+		    (te = LIST_FIRST(&tcpb->t_segq)) != NULL) {
+			LIST_REMOVE(te, tqe_q);
+			m_freem(te->tqe_m);
+			FREE(te, M_TSEGQ);
+			atomic_add_int(&tcp_reass_qsize, -1);
+			/* retry */
+		} else {
+			LIST_REMOVE(marker, inp_list);
+			LIST_INSERT_AFTER(inpb, marker, inp_list);
 		}
 	}
+	LIST_REMOVE(marker, inp_list);
+	kfree(marker, M_TEMP);
 }
 
 #ifdef SMP

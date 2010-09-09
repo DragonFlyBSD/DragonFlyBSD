@@ -170,6 +170,8 @@ tcp_output(struct tcpcb *tp)
 	const boolean_t isipv6 = FALSE;
 #endif
 
+	KKASSERT(so->so_port == &curthread->td_msgport);
+
 	/*
 	 * Determine length of data that should be transmitted,
 	 * and flags that will be used.

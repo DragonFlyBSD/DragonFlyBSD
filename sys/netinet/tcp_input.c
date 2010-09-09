@@ -308,7 +308,7 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 		tp->reportblk.rblk_start = tp->reportblk.rblk_end;
 		return (0);
 	}
-	tcp_reass_qsize++;
+	atomic_add_int(&tcp_reass_qsize, 1);
 
 	/*
 	 * Find a segment which begins after this one does.
@@ -341,7 +341,7 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 				tcpstat.tcps_rcvdupbyte += *tlenp;
 				m_freem(m);
 				kfree(te, M_TSEGQ);
-				tcp_reass_qsize--;
+				atomic_add_int(&tcp_reass_qsize, -1);
 				/*
 				 * Try to present any queued data
 				 * at the left window edge to the user.
@@ -396,7 +396,7 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 		LIST_REMOVE(q, tqe_q);
 		m_freem(q->tqe_m);
 		kfree(q, M_TSEGQ);
-		tcp_reass_qsize--;
+		atomic_add_int(&tcp_reass_qsize, -1);
 		q = nq;
 	}
 
@@ -422,7 +422,7 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 			tp->reportblk.rblk_end = tend;
 		LIST_REMOVE(q, tqe_q);
 		kfree(q, M_TSEGQ);
-		tcp_reass_qsize--;
+		atomic_add_int(&tcp_reass_qsize, -1);
 	}
 
 	if (p == NULL) {
@@ -440,9 +440,10 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 			if (!(tp->t_flags & TF_DUPSEG))
 				tp->reportblk.rblk_start = p->tqe_th->th_seq;
 			kfree(te, M_TSEGQ);
-			tcp_reass_qsize--;
-		} else
+			atomic_add_int(&tcp_reass_qsize, -1);
+		} else {
 			LIST_INSERT_AFTER(p, te, tqe_q);
+		}
 	}
 
 present:
@@ -472,7 +473,7 @@ present:
 	else
 		ssb_appendstream(&so->so_rcv, q->tqe_m);
 	kfree(q, M_TSEGQ);
-	tcp_reass_qsize--;
+	atomic_add_int(&tcp_reass_qsize, -1);
 	ND6_HINT(tp);
 	sorwakeup(so);
 	return (flags);
@@ -894,13 +895,21 @@ findpcb:
 					rstreason = BANDLIM_RST_OPENPORT;
 					goto dropwithreset;
 				}
+
+				/*
+				 * Could not complete 3-way handshake,
+				 * connection is being closed down, and
+				 * syncache will free mbuf.
+				 */
 				if (so == NULL)
-					/*
-					 * Could not complete 3-way handshake,
-					 * connection is being closed down, and
-					 * syncache will free mbuf.
-					 */
 					return;
+
+				/*
+				 * We must be in the correct protocol thread
+				 * for this connection.
+				 */
+				KKASSERT(so->so_port == &curthread->td_msgport);
+
 				/*
 				 * Socket is created in state SYN_RECEIVED.
 				 * Continue processing segment.
@@ -1024,12 +1033,20 @@ findpcb:
 			tcp_dooptions(&to, optp, optlen, TRUE);
 			if (!syncache_add(&inc, &to, th, &so, m))
 				goto drop;
+
+			/*
+			 * Entry added to syncache, mbuf used to
+			 * send SYN,ACK packet.
+			 */
 			if (so == NULL)
-				/*
-				 * Entry added to syncache, mbuf used to
-				 * send SYN,ACK packet.
-				 */
 				return;
+
+			/*
+			 * We must be in the correct protocol thread for
+			 * this connection.
+			 */
+			KKASSERT(so->so_port == &curthread->td_msgport);
+
 			inp = so->so_pcb;
 			tp = intotcpcb(inp);
 			tp->snd_wnd = tiwin;
@@ -1061,10 +1078,16 @@ findpcb:
 		}
 		goto drop;
 	}
-after_listen:
 
-	/* should not happen - syncache should pick up these connections */
+after_listen:
+	/*
+	 * Should not happen - syncache should pick up these connections.
+	 *
+	 * Once we are past handling listen sockets we must be in the
+	 * correct protocol processing thread.
+	 */
 	KASSERT(tp->t_state != TCPS_LISTEN, ("tcp_input: TCPS_LISTEN state"));
+	KKASSERT(so->so_port == &curthread->td_msgport);
 
 	/*
 	 * This is the second part of the MSS DoS prevention code (after
