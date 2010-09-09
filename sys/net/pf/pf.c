@@ -1652,7 +1652,7 @@ pf_send_tcp(const struct pf_rule *r, sa_family_t af,
 	m->m_pkthdr.pf.tag = rtag;
 
 	if (r != NULL && r->rtableid >= 0)
-		m->m_pkthdr.pf.rtableid = m->m_pkthdr.pf.rtableid;
+		m->m_pkthdr.pf.rtableid = r->rtableid;
 
 #ifdef ALTQ
 	if (r != NULL && r->qid) {
