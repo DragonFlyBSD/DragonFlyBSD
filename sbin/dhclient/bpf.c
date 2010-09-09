@@ -323,7 +323,7 @@ receive_packet(struct sockaddr_in *from, struct hardware *hfrom)
 	 */
 	do {
 		/* If the buffer is empty, fill it. */
-		if (ifi->rbuf_offset == ifi->rbuf_len) {
+		if (ifi->rbuf_offset >= ifi->rbuf_len) {
 			length = read(ifi->rfdesc, ifi->rbuf, ifi->rbuf_max);
 			if (length <= 0)
 				return (length);
