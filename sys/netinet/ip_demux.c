@@ -47,9 +47,7 @@
 
 #include <net/if.h>
 #include <net/netisr.h>
-#ifdef RSS
 #include <net/toeplitz2.h>
-#endif
 
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
@@ -69,48 +67,19 @@ extern int udp_mpsafe_thread;
 static struct thread tcp_thread[MAXCPU];
 static struct thread udp_thread[MAXCPU];
 
-#ifndef RSS
-
-static __inline int
-INP_MPORT_HASH(in_addr_t faddr, in_addr_t laddr,
-	       in_port_t fport, in_port_t lport)
-{
-	/*
-	 * Use low order bytes.
-	 */
-
-#if (BYTE_ORDER == LITTLE_ENDIAN)
-	KASSERT(ncpus2 < 256, ("need different hash function"));  /* XXX JH */
-	return (((faddr >> 24) ^ (fport >> 8) ^ (laddr >> 24) ^ (lport >> 8)) &
-		ncpus2_mask);
-#else
-	return ((faddr ^ fport ^ laddr ^ lport) & ncpus2_mask);
-#endif
-}
-
-#endif	/* !RSS */
-
 static __inline int
 INP_MPORT_HASH_UDP(in_addr_t faddr, in_addr_t laddr,
 		   in_port_t fport, in_port_t lport)
 {
-#ifndef RSS
-	return INP_MPORT_HASH(faddr, laddr, fport, lport);
-#else
 	return toeplitz_hash(toeplitz_rawhash_addr(faddr, laddr));
-#endif
 }
 
 static __inline int
 INP_MPORT_HASH_TCP(in_addr_t faddr, in_addr_t laddr,
 		   in_port_t fport, in_port_t lport)
 {
-#ifndef RSS
-	return INP_MPORT_HASH(faddr, laddr, fport, lport);
-#else
 	return toeplitz_hash(
 	       toeplitz_rawhash_addrport(faddr, laddr, fport, lport));
-#endif
 }
 
 /*
@@ -304,25 +273,20 @@ ip_mport(struct mbuf **mptr, int dir)
 	case IPPROTO_TCP:
 		th = (struct tcphdr *)((caddr_t)ip + iphlen);
 		thoff = th->th_off << 2;
-		cpu = INP_MPORT_HASH_TCP(ip->ip_src.s_addr, ip->ip_dst.s_addr,
-		    th->th_sport, th->th_dport);
+		cpu = INP_MPORT_HASH_TCP(ip->ip_src.s_addr,
+					 ip->ip_dst.s_addr,
+					 th->th_sport,
+					 th->th_dport);
 		port = &tcp_thread[cpu].td_msgport;
 		break;
 
 	case IPPROTO_UDP:
 		uh = (struct udphdr *)((caddr_t)ip + iphlen);
 
-#ifndef RSS
-		if (IN_MULTICAST(ntohl(ip->ip_dst.s_addr)) ||
-		    (dir == IP_MPORT_IN &&
-		     in_broadcast(ip->ip_dst, m->m_pkthdr.rcvif))) {
-			cpu = 0;
-		} else
-#endif
-		{
-			cpu = INP_MPORT_HASH_UDP(ip->ip_src.s_addr,
-			    ip->ip_dst.s_addr, uh->uh_sport, uh->uh_dport);
-		}
+		cpu = INP_MPORT_HASH_UDP(ip->ip_src.s_addr,
+					 ip->ip_dst.s_addr,
+					 uh->uh_sport,
+					 uh->uh_dport);
 		port = &udp_thread[cpu].td_msgport;
 		break;
 
@@ -538,12 +502,7 @@ tcp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 int
 udp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 {
-#ifndef RSS
-	if (IN_MULTICAST(ntohl(laddr)))
-		return (0);
-	else
-#endif
-		return (INP_MPORT_HASH_UDP(faddr, laddr, fport, lport));
+	return (INP_MPORT_HASH_UDP(faddr, laddr, fport, lport));
 }
 
 /*

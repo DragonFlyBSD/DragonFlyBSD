@@ -620,7 +620,9 @@ jme_attach(device_t dev)
 	if (sc->jme_tx_desc_cnt > JME_NDESC_MAX)
 		sc->jme_tx_desc_cnt = JME_NDESC_MAX;
 
-#ifdef RSS
+	/*
+	 * Calculate rx rings based on ncpus2
+	 */
 	sc->jme_rx_ring_cnt = jme_rx_ring_count;
 	if (sc->jme_rx_ring_cnt <= 0)
 		sc->jme_rx_ring_cnt = JME_NRXRING_1;
@@ -631,9 +633,6 @@ jme_attach(device_t dev)
 		sc->jme_rx_ring_cnt = JME_NRXRING_4;
 	else if (sc->jme_rx_ring_cnt >= JME_NRXRING_2)
 		sc->jme_rx_ring_cnt = JME_NRXRING_2;
-#else
-	sc->jme_rx_ring_cnt = JME_NRXRING_MIN;
-#endif
 	sc->jme_rx_ring_inuse = sc->jme_rx_ring_cnt;
 
 	sc->jme_dev = dev;

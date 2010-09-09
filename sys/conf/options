@@ -658,8 +658,7 @@ SYSLINK			opt_syslink.h
 # DSCHED stuff
 DSCHED_FQ		opt_dsched.h
 
-# Receive Side Scaling
-RSS			opt_rss.h
+# Receive Side Scaling (now basecode)
 RSS_DEBUG		opt_rss.h
 
 # Enable watchdogs

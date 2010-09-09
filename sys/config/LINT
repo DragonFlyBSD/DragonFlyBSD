@@ -2913,10 +2913,6 @@ options		SCTP_MAP_LOGGING
 # DSCHED stuff
 options		DSCHED_FQ
 
-# Receive Side Scaling
-options		RSS
-options		RSS_DEBUG
-
 # WATCHDOG
 options		WATCHDOG_ENABLE		# Enable watchdog support framework
 options		WDOG_DISABLE_ON_PANIC	# Automatically disable watchdogs on panic

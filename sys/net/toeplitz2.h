@@ -45,8 +45,6 @@
 
 #define TOEPLITZ_KEYSEED_CNT	2
 
-#ifdef RSS
-
 extern uint32_t	toeplitz_cache[TOEPLITZ_KEYSEED_CNT][256];
 
 static __inline uint32_t
@@ -89,8 +87,6 @@ toeplitz_rawhash_addr(in_addr_t _faddr, in_addr_t _laddr)
 
 	return _res;
 }
-
-#endif	/* RSS */
 
 static __inline int
 toeplitz_hash(uint32_t _rawhash)

@@ -514,12 +514,10 @@ emx_attach(device_t dev)
 	/* This controls when hardware reports transmit completion status. */
 	sc->hw.mac.report_tx_early = 1;
 
-#ifdef RSS
 	/* Calculate # of RX rings */
 	if (ncpus > 1)
 		sc->rx_ring_cnt = EMX_NRX_RING;
 	else
-#endif
 		sc->rx_ring_cnt = 1;
 	sc->rx_ring_inuse = sc->rx_ring_cnt;
 
