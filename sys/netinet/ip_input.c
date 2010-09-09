@@ -451,10 +451,10 @@ ip_input(struct mbuf *m)
 	u_short sum;
 	struct in_addr pkt_dst;
 	boolean_t using_srcrt = FALSE;		/* forward (by PFIL_HOOKS) */
-	boolean_t needredispatch = FALSE;
 	struct in_addr odst;			/* original dst address(NAT) */
 	struct m_tag *mtag;
 	struct sockaddr_in *next_hop = NULL;
+	lwkt_port_t port;
 #ifdef FAST_IPSEC
 	struct tdb_ident *tdbi;
 	struct secpolicy *sp;
@@ -463,6 +463,22 @@ ip_input(struct mbuf *m)
 
 	M_ASSERTPKTHDR(m);
 
+	/*
+	 * This does necessary pullups and figures out the protocol
+	 * port.  If the packet is really badly formed it will blow
+	 * it away and return NULL.
+	 *
+	 * We do not necessarily make use of the port (forwarding,
+	 * defragmentation, etc).
+	 */
+	port = ip_mport(&m, IP_MPORT_IN);
+	if (port == NULL)
+		return;
+	ip = mtod(m, struct ip *);
+
+	/*
+	 * Pull out certain tags
+	 */
 	if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
 		/* Next hop */
 		mtag = m_tag_find(m, PACKET_TAG_IPFORWARD, NULL);
@@ -481,7 +497,6 @@ ip_input(struct mbuf *m)
 
 	/* length checks already done in ip_mport() */
 	KASSERT(m->m_len >= sizeof(struct ip), ("IP header not in one mbuf"));
-	ip = mtod(m, struct ip *);
 
 	if (IP_VHL_V(ip->ip_vhl) != IPVERSION) {
 		ipstat.ips_badvers++;
@@ -610,7 +625,6 @@ iphack:
 		return;
 	}
 	if (m->m_pkthdr.fw_flags & FW_MBUF_REDISPATCH) {
-		needredispatch = TRUE;
 		m->m_pkthdr.fw_flags &= ~FW_MBUF_REDISPATCH;
 	}
 pass:
@@ -866,8 +880,6 @@ ours:
 
 		/* Get the header length of the reassembled packet */
 		hlen = IP_VHL_HL(ip->ip_vhl) << 2;
-
-		needredispatch = TRUE;
 	} else {
 		ip->ip_len -= hlen;
 	}
@@ -925,19 +937,16 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 #endif /* FAST_IPSEC */
 
 	/*
-	 * NOTE: ip_len in host form and adjusted down by hlen for
+	 * NOTE: ip_len is now in host form and adjusted down by hlen for
 	 *	 protocol processing.
+	 *
+	 * We must forward the packet to the correct protocol thread if
+	 * we are not already in it.
 	 */
 	ipstat.ips_delivered++;
-	if (needredispatch) {
-		struct netmsg_packet *pmsg;
-		lwkt_port_t port;
 
-		ip->ip_off = htons(ip->ip_off);
-		ip->ip_len = htons(ip->ip_len + hlen);
-		port = ip_mport_in(&m);
-		if (port == NULL)
-			return;
+	if (port != &curthread->td_msgport) {
+		struct netmsg_packet *pmsg;
 
 		pmsg = &m->m_hdr.mh_netmsg;
 		netmsg_init(&pmsg->nm_netmsg, NULL, &netisr_apanic_rport,
@@ -945,9 +954,6 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 		pmsg->nm_packet = m;
 		pmsg->nm_netmsg.nm_lmsg.u.ms_result = hlen;
 
-		ip = mtod(m, struct ip *);
-		ip->ip_len = ntohs(ip->ip_len) - hlen;
-		ip->ip_off = ntohs(ip->ip_off);
 		lwkt_sendmsg(port, &pmsg->nm_netmsg.nm_lmsg);
 	} else {
 		transport_processing_oncpu(m, hlen, ip);

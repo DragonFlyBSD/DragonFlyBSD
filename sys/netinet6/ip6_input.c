@@ -86,15 +86,16 @@
 #include <sys/proc.h>
 #include <sys/priv.h>
 
-#include <sys/thread2.h>
-#include <sys/msgport2.h>
-
 #include <net/if.h>
 #include <net/if_types.h>
 #include <net/if_dl.h>
 #include <net/route.h>
 #include <net/netisr.h>
 #include <net/pfil.h>
+
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
+#include <net/netmsg2.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -164,6 +165,7 @@ static void ip6_input(struct netmsg *msg);
 #ifdef PULLDOWN_TEST
 static struct mbuf *ip6_pullexthdr (struct mbuf *, size_t, int);
 #endif
+static void transport6_processing_handler(netmsg_t netmsg);
 
 /*
  * IP6 initialization: fill in IP6 protocol switch table.
@@ -796,6 +798,8 @@ hbhcheck:
 
 	rh_present = 0;
 	while (nxt != IPPROTO_DONE) {
+		struct ip6protosw *sw6;
+
 		if (ip6_hdrnestlimit && (++nest > ip6_hdrnestlimit)) {
 			ip6stat.ip6s_toomanyhdr++;
 			in6_ifstat_inc(m->m_pkthdr.rcvif, ifs6_in_hdrerr);
@@ -837,20 +841,41 @@ hbhcheck:
 			}
 		}
 
+		sw6 = &inet6sw[ip6_protox[nxt]];
 #ifdef IPSEC
 		/*
 		 * enforce IPsec policy checking if we are seeing last header.
 		 * note that we do not visit this with protocols with pcb layer
 		 * code - like udp/tcp/raw ip.
 		 */
-		if ((inet6sw[ip6_protox[nxt]].pr_flags & PR_LASTHDR) &&
-		    ipsec6_in_reject(m, NULL)) {
+		if ((sw6->pr_flags & PR_LASTHDR) && ipsec6_in_reject(m, NULL)) {
 			ipsec6stat.in_polvio++;
 			goto bad;
 		}
 #endif
+		/*
+		 * If this is a terminal header forward to the port, otherwise
+		 * process synchronously for more headers.
+		 */
+		if (sw6->pr_flags & PR_LASTHDR) {
+			struct netmsg_packet *pmsg;
+			lwkt_port_t port;
 
-		nxt = (*inet6sw[ip6_protox[nxt]].pr_input)(&m, &off, nxt);
+			port = sw6->pr_soport(NULL, NULL, &m);
+			KKASSERT(port != NULL);
+			pmsg = &m->m_hdr.mh_netmsg;
+			netmsg_init(&pmsg->nm_netmsg, NULL,
+				    &netisr_apanic_rport,
+				    MSGF_MPSAFE, transport6_processing_handler);
+			pmsg->nm_packet = m;
+			pmsg->nm_nxt = nxt;
+			pmsg->nm_netmsg.nm_lmsg.u.ms_result = off;
+			lwkt_sendmsg(port, &pmsg->nm_netmsg.nm_lmsg);
+			/* done with m */
+			nxt = IPPROTO_DONE;
+		} else {
+			nxt = sw6->pr_input(&m, &off, nxt);
+		}
 	}
 	goto bad2;
 bad:
@@ -858,6 +883,28 @@ bad:
 bad2:
 	;
 	/* msg was embedded in the mbuf, do not reply! */
+}
+
+/*
+ * We have to call the pr_input() function from the correct protocol
+ * thread.  The sw6->pr_soport() request at the end of ip6_input()
+ * returns the port and we forward a netmsg to the port to execute
+ * this function.
+ */
+static void
+transport6_processing_handler(netmsg_t netmsg)
+{
+	struct netmsg_packet *pmsg = (struct netmsg_packet *)netmsg;
+	struct ip6protosw *sw6;
+	int hlen;
+	int nxt;
+
+	sw6 = &inet6sw[ip6_protox[pmsg->nm_nxt]];
+	hlen = pmsg->nm_netmsg.nm_lmsg.u.ms_result;
+
+	nxt = sw6->pr_input(&pmsg->nm_packet, &hlen, pmsg->nm_nxt);
+	KKASSERT(nxt == IPPROTO_DONE);
+	/* netmsg was embedded in the mbuf, do not reply! */
 }
 
 /*

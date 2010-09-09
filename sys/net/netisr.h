@@ -133,6 +133,7 @@ typedef __boolean_t (*msg_predicate_fn_t)(struct netmsg *);
 struct netmsg_packet {
     struct netmsg	nm_netmsg;
     struct mbuf		*nm_packet;
+    int			nm_nxt;
 };
 
 struct netmsg_pr_timeout {
