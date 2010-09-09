@@ -1008,8 +1008,6 @@ wi_start_locked(struct ifnet *ifp)
 static void
 wi_start(struct ifnet *ifp)
 {
-	struct wi_softc	*sc = ifp->if_softc;
-
 	wi_start_locked(ifp);
 }
 
