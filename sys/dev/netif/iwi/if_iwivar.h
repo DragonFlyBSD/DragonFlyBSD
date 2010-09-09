@@ -206,9 +206,9 @@ struct iwi_softc {
 	u_int8_t		sc_txrate;	/* current tx rate for LED */
 	u_int8_t		sc_txrix;
 	u_int16_t		sc_ledoff;	/* off time for current blink */
-	struct callout		sc_ledtimer;	/* led off timer */
-	struct callout		sc_wdtimer;	/* watchdog timer */
-	struct callout		sc_rftimer;	/* rfkill timer */
+	struct callout		sc_ledtimer_callout;	/* led off timer */
+	struct callout		sc_wdtimer_callout;	/* watchdog timer */
+	struct callout		sc_rftimer_callout;	/* rfkill timer */
 
 	int			sc_tx_timer;
 	int			sc_state_timer;	/* firmware state timer */
@@ -239,13 +239,3 @@ struct iwi_softc {
 	wakeup(_sc);						\
 	_sc->sc_state_timer = 0;				\
 } while (0)
-/*
- * NB.: This models the only instance of async locking in iwi_init_locked
- *	and must be kept in sync.
- */
-#define	IWI_LOCK_DECL
-#define IWI_LOCK_INIT(_sc)
-#define IWI_LOCK(_sc) lwkt_gettoken(&wlan_token)
-#define IWI_UNLOCK(_sc) lwkt_reltoken(&wlan_token)
-#define IWI_LOCK_DESTROY(_sc)
-#define IWI_LOCK_ASSERT(_sc) ASSERT_LWKT_TOKEN_HELD(&wlan_token)
