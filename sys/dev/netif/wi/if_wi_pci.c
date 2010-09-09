@@ -118,15 +118,18 @@ wi_pci_probe(device_t dev)
 	struct wi_softc		*sc;
 	int i;
 
+	wlan_serialize_enter();
 	sc = device_get_softc(dev);
 	for(i=0; pci_ids[i].vendor != 0; i++) {
 		if ((pci_get_vendor(dev) == pci_ids[i].vendor) &&
 			(pci_get_device(dev) == pci_ids[i].device)) {
 			sc->wi_bus_type = pci_ids[i].bus_type;
 			device_set_desc(dev, pci_ids[i].desc);
+			wlan_serialize_exit();
 			return (BUS_PROBE_DEFAULT);
 		}
 	}
+	wlan_serialize_exit();
 	return(ENXIO);
 }
 
@@ -139,6 +142,7 @@ wi_pci_attach(device_t dev)
 	int			error;
 	int			timeout;
 
+	wlan_serialize_enter();
 	sc = device_get_softc(dev);
 
 	command = pci_read_config(dev, PCIR_COMMAND, 4);
@@ -148,13 +152,16 @@ wi_pci_attach(device_t dev)
 	command = pci_read_config(dev, PCIR_COMMAND, 4);
 	if ((command & wanted) != wanted) {
 		device_printf(dev, "wi_pci_attach() failed to enable pci!\n");
+		wlan_serialize_exit();
 		return (ENXIO);
 	}
 
 	if (sc->wi_bus_type != WI_BUS_PCI_NATIVE) {
 		error = wi_alloc(dev, WI_PCI_IORES);
-		if (error)
+		if (error) {
+			wlan_serialize_exit();
 			return (error);
+		}
 
 		/* Make sure interrupts are disabled. */
 		CSR_WRITE_2(sc, WI_INT_EN, 0);
@@ -181,6 +188,7 @@ wi_pci_attach(device_t dev)
 		if (sc->mem == NULL) {
 			device_printf(dev, "couldn't allocate memory\n");
 			wi_free(dev);
+			wlan_serialize_exit();
 			return (ENXIO);
 		}
 		sc->wi_bmemtag = rman_get_bustag(sc->mem);
@@ -198,12 +206,15 @@ wi_pci_attach(device_t dev)
 			device_printf(dev, "CSM_READ_1(WI_COR_OFFSET) "
 			    "wanted %d, got %d\n", WI_COR_VALUE, reg);
 			wi_free(dev);
+			wlan_serialize_exit();
 			return (ENXIO);
 		}
 	} else {
 		error = wi_alloc(dev, WI_PCI_LMEMRES);
-		if (error)
+		if (error) {
+			wlan_serialize_exit();
 			return (error);
+		}
 
 		CSR_WRITE_2(sc, WI_PCICOR_OFF, WI_PCICOR_RESET);
 		DELAY(250000);
@@ -219,6 +230,7 @@ wi_pci_attach(device_t dev)
 		if (timeout == 0) {
 			device_printf(dev, "couldn't reset prism pci core.\n");
 			wi_free(dev);
+			wlan_serialize_exit();
 			return(ENXIO);
 		}
 	}
@@ -230,12 +242,14 @@ wi_pci_attach(device_t dev)
 		    "CSR_READ_2(WI_HFA384X_SWSUPPORT0_OFF) "
 		    "wanted %d, got %d\n", WI_PRISM2STA_MAGIC, reg);
 		wi_free(dev);
+		wlan_serialize_exit();
 		return (ENXIO);
 	}
 
 	error = wi_attach(dev);
 	if (error != 0)
 		wi_free(dev);
+	wlan_serialize_exit();
 	return (error);
 }
 
@@ -244,7 +258,9 @@ wi_pci_suspend(device_t dev)
 {
 	struct wi_softc	*sc = device_get_softc(dev);
 
+	wlan_serialize_enter();
 	wi_stop(sc, 1);
+	wlan_serialize_exit();
 	
 	return (0);
 }
@@ -255,14 +271,18 @@ wi_pci_resume(device_t dev)
 	struct wi_softc	*sc = device_get_softc(dev);
 	struct ifnet *ifp = sc->sc_ifp;
 
-	if (sc->wi_bus_type != WI_BUS_PCI_NATIVE)
+	wlan_serialize_enter();
+	if (sc->wi_bus_type != WI_BUS_PCI_NATIVE) {
+		wlan_serialize_exit();
 		return (0);
+	}
 
 	if (ifp->if_flags & IFF_UP) {
 		ifp->if_init(ifp->if_softc);
 		if (ifp->if_flags & IFF_RUNNING)
 			ifp->if_start(ifp);
 	}
+	wlan_serialize_exit();
 
 	return (0);
 }

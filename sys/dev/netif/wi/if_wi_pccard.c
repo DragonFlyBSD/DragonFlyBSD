@@ -156,18 +156,24 @@ wi_pccard_probe(device_t dev)
 	const struct pccard_product *pp;
 	u_int32_t fcn = PCCARD_FUNCTION_UNSPEC;
 
+	wlan_serialize_enter();
+
 	/* Make sure we're a network driver */
 	fcn = pccard_get_function_number(dev);
-	if (fcn != PCCARD_FUNCTION_NETWORK)
+	if (fcn != PCCARD_FUNCTION_NETWORK) {
+		wlan_serialize_exit();
 		return ENXIO;
+	}
 
 	pp = pccard_product_lookup(dev, wi_pccard_products,
 	    sizeof(wi_pccard_products[0]), NULL);
 	if (pp != NULL) {
 		if (pp->pp_name != NULL)
 			device_set_desc(dev, pp->pp_name);
+		wlan_serialize_exit();
 		return 0;
 	}
+	wlan_serialize_exit();
 	return ENXIO;
 }
 
@@ -177,6 +183,7 @@ wi_pccard_attach(device_t dev)
 	struct wi_softc	*sc;
 	int error;
 
+	wlan_serialize_enter();
 	sc = device_get_softc(dev);
 	sc->wi_gone = 0;
 	sc->wi_bus_type = WI_BUS_PCCARD;
@@ -191,5 +198,6 @@ wi_pccard_attach(device_t dev)
 		if (error != 0)
 			wi_free(dev);
 	}
+	wlan_serialize_exit();
 	return error;
 }

@@ -126,7 +126,7 @@ static int  wi_newstate_hostap(struct ieee80211vap *, enum ieee80211_state,
 static void wi_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m,
 		int subtype, int rssi, int nf);
 static int  wi_reset(struct wi_softc *);
-static void wi_watchdog(void *);
+static void wi_watchdog_callout(void *);
 static int  wi_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void wi_media_status(struct ifnet *, struct ifmediareq *);
 
@@ -309,8 +309,6 @@ wi_attach(device_t dev)
 	SYSCTL_ADD_STRING(sctx, SYSCTL_CHILDREN(soid), OID_AUTO, "nic_name",
 	    CTLFLAG_RD, sc->sc_nic_name, 0, "NIC name");
 
-	lockinit(&sc->sc_lock, __DECONST(char *, device_get_nameunit(dev)),
-	    0, LK_CANRECURSE);
 	callout_init(&sc->sc_watchdog);
 
 	/*
@@ -497,19 +495,15 @@ wi_detach(device_t dev)
 	struct ifnet *ifp = sc->sc_ifp;
 	struct ieee80211com *ic = ifp->if_l2com;
 
-	WI_LOCK(sc);
-
 	/* check if device was removed */
 	sc->wi_gone |= !bus_child_present(dev);
 
 	wi_stop_locked(sc, 0);
-	WI_UNLOCK(sc);
 	ieee80211_ifdetach(ic);
 
 	bus_teardown_intr(dev, sc->irq, sc->wi_intrhand);
 	if_free(sc->sc_ifp);
 	wi_free(dev);
-	lockuninit(&sc->sc_lock);
 	return (0);
 }
 
@@ -595,12 +589,9 @@ wi_intr(void *arg)
 	struct ifnet *ifp = sc->sc_ifp;
 	u_int16_t status;
 
-	WI_LOCK(sc);
-
 	if (sc->wi_gone || !sc->sc_enabled || (ifp->if_flags & IFF_UP) == 0) {
 		CSR_WRITE_2(sc, WI_INT_EN, 0);
 		CSR_WRITE_2(sc, WI_EVENT_ACK, 0xFFFF);
-		WI_UNLOCK(sc);
 		return;
 	}
 
@@ -622,8 +613,6 @@ wi_intr(void *arg)
 
 	/* Re-enable interrupts. */
 	CSR_WRITE_2(sc, WI_INT_EN, WI_INTRS);
-
-	WI_UNLOCK(sc);
 
 	return;
 }
@@ -681,8 +670,6 @@ wi_init_locked(struct wi_softc *sc)
 	struct ifnet *ifp = sc->sc_ifp;
 	int wasenabled;
 
-	WI_LOCK_ASSERT(sc);
-
 	wasenabled = sc->sc_enabled;
 	if (wasenabled)
 		wi_stop_locked(sc, 1);
@@ -696,7 +683,7 @@ wi_init_locked(struct wi_softc *sc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	callout_reset(&sc->sc_watchdog, hz, wi_watchdog, sc);
+	callout_reset(&sc->sc_watchdog, hz, wi_watchdog_callout, sc);
 
 	wi_enable(sc);			/* Enable desired port */
 }
@@ -708,9 +695,7 @@ wi_init(void *arg)
 	struct ifnet *ifp = sc->sc_ifp;
 	struct ieee80211com *ic = ifp->if_l2com;
 
-	WI_LOCK(sc);
 	wi_init_locked(sc);
-	WI_UNLOCK(sc);
 
 	if (ifp->if_flags & IFF_RUNNING)
 		ieee80211_start_all(ic);		/* start all vap's */
@@ -720,8 +705,6 @@ static void
 wi_stop_locked(struct wi_softc *sc, int disable)
 {
 	struct ifnet *ifp = sc->sc_ifp;
-
-	WI_LOCK_ASSERT(sc);
 
 	if (sc->sc_enabled && !sc->wi_gone) {
 		CSR_WRITE_2(sc, WI_INT_EN, 0);
@@ -741,9 +724,7 @@ wi_stop_locked(struct wi_softc *sc, int disable)
 void
 wi_stop(struct wi_softc *sc, int disable)
 {
-	WI_LOCK(sc);
 	wi_stop_locked(sc, disable);
-	WI_UNLOCK(sc);
 }
 
 static void
@@ -756,10 +737,8 @@ wi_set_channel(struct ieee80211com *ic)
 	    ieee80211_chan2ieee(ic, ic->ic_curchan),
 	    ic->ic_flags & IEEE80211_F_SCAN ? "" : "!"));
 
-	WI_LOCK(sc);
 	wi_write_val(sc, WI_RID_OWN_CHNL,
 	    ieee80211_chan2ieee(ic, ic->ic_curchan));
-	WI_UNLOCK(sc);
 }
 
 static void
@@ -771,7 +750,6 @@ wi_scan_start(struct ieee80211com *ic)
 
 	DPRINTF(("%s\n", __func__));
 
-	WI_LOCK(sc);
 	/*
 	 * Switch device to monitor mode.
 	 */
@@ -782,7 +760,6 @@ wi_scan_start(struct ieee80211com *ic)
 	}
 	/* force full dwell time to compensate for firmware overhead */
 	ss->ss_mindwell = ss->ss_maxdwell = msecs_to_ticks(400);
-	WI_UNLOCK(sc);
 
 }
 
@@ -794,13 +771,11 @@ wi_scan_end(struct ieee80211com *ic)
 
 	DPRINTF(("%s: restore port type %d\n", __func__, sc->sc_porttype));
 
-	WI_LOCK(sc);
 	wi_write_val(sc, WI_RID_PORTTYPE, sc->sc_porttype);
 	if (sc->sc_firmware_type == WI_INTERSIL) {
 		wi_cmd(sc, WI_CMD_DISABLE | WI_PORT0, 0, 0, 0);
 		wi_cmd(sc, WI_CMD_ENABLE | WI_PORT0, 0, 0, 0);
 	}
-	WI_UNLOCK(sc);
 }
 
 static void
@@ -832,7 +807,6 @@ wi_newstate_sta(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 		ieee80211_state_name[nstate]));
 
 	if (nstate == IEEE80211_S_AUTH) {
-		WI_LOCK(sc);
 		wi_setup_locked(sc, WI_PORTTYPE_BSS, 3, vap->iv_myaddr);
 
 		if (vap->iv_flags & IEEE80211_F_PMGTON) {
@@ -876,7 +850,6 @@ wi_newstate_sta(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 			    ieee80211_chan2ieee(ic, bss->ni_chan));
 			wi_write_rid(sc, WI_RID_JOIN_REQ, &join, sizeof(join));
 		}
-		WI_UNLOCK(sc);
 
 		/*
 		 * NB: don't go through 802.11 layer, it'll send auth frame;
@@ -904,7 +877,6 @@ wi_newstate_hostap(struct ieee80211vap *vap, enum ieee80211_state nstate, int ar
 
 	error = WI_VAP(vap)->wv_newstate(vap, nstate, arg);
 	if (error == 0 && nstate == IEEE80211_S_RUN) {
-		WI_LOCK(sc);
 		wi_setup_locked(sc, WI_PORTTYPE_HOSTAP, 0, vap->iv_myaddr);
 
 		bss = vap->iv_bss;
@@ -947,7 +919,6 @@ wi_newstate_hostap(struct ieee80211vap *vap, enum ieee80211_state nstate, int ar
 			sc->sc_encryption = 0;
 
 		wi_enable(sc);		/* enable port */
-		WI_UNLOCK(sc);
 	}
 	return error;
 }
@@ -963,8 +934,6 @@ wi_start_locked(struct ifnet *ifp)
 	struct wi_frame frmhdr;
 	const struct llc *llc;
 	int cur;
-
-	WI_LOCK_ASSERT(sc);
 
 	if (sc->wi_gone)
 		return;
@@ -1041,9 +1010,7 @@ wi_start(struct ifnet *ifp)
 {
 	struct wi_softc	*sc = ifp->if_softc;
 
-	WI_LOCK(sc);
 	wi_start_locked(ifp);
-	WI_UNLOCK(sc);
 }
 
 static int
@@ -1087,8 +1054,6 @@ wi_raw_xmit(struct ieee80211_node *ni, struct mbuf *m0,
 	struct wi_frame frmhdr;
 	int cur;
 	int rc = 0;
-
-	WI_LOCK(sc);
 
 	if (sc->wi_gone) {
 		rc = ENETDOWN;
@@ -1137,7 +1102,6 @@ wi_raw_xmit(struct ieee80211_node *ni, struct mbuf *m0,
 
 	sc->sc_txnext = cur = (cur + 1) % sc->sc_ntxbuf;
 out:
-	WI_UNLOCK(sc);
 
 	if (m0 != NULL)
 		m_freem(m0);
@@ -1174,12 +1138,10 @@ wi_reset(struct wi_softc *sc)
 }
 
 static void
-wi_watchdog(void *arg)
+wi_watchdog_callout(void *arg)
 {
 	struct wi_softc	*sc = arg;
 	struct ifnet *ifp = sc->sc_ifp;
-
-	WI_LOCK(sc);
 
 	if (!sc->sc_enabled)
 		return;
@@ -1190,7 +1152,7 @@ wi_watchdog(void *arg)
 		wi_init_locked(ifp->if_softc);
 		return;
 	}
-	callout_reset(&sc->sc_watchdog, hz, wi_watchdog, sc);
+	callout_reset(&sc->sc_watchdog, hz, wi_watchdog_callout, sc);
 }
 
 static int
@@ -1203,7 +1165,6 @@ wi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:
-		WI_LOCK(sc);
 		/*
 		 * Can't do promisc and hostap at the same time.  If all that's
 		 * changing is the promisc flag, try to short-circuit a call to
@@ -1229,7 +1190,6 @@ wi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 			sc->wi_gone = 0;
 		}
 		sc->sc_if_flags = ifp->if_flags;
-		WI_UNLOCK(sc);
 		if (startall)
 			ieee80211_start_all(ic);
 		break;
@@ -1409,8 +1369,6 @@ wi_rx_intr(struct wi_softc *sc)
 	if (ic->ic_opmode == IEEE80211_M_IBSS && dir == IEEE80211_FC1_DIR_NODS)
 		wi_sync_bssid(sc, wh->i_addr3);
 
-	WI_UNLOCK(sc);
-
 	ni = ieee80211_find_rxnode(ic, mtod(m, struct ieee80211_frame_min *));
 	if (ni != NULL) {
 		(void) ieee80211_input(ni, m, rssi, nf);
@@ -1418,7 +1376,6 @@ wi_rx_intr(struct wi_softc *sc)
 	} else
 		(void) ieee80211_input_all(ic, m, rssi, nf);
 
-	WI_LOCK(sc);
 }
 
 static __noinline void
@@ -1523,20 +1480,16 @@ wi_info_intr(struct wi_softc *sc)
 				break;
 			/* fall thru... */
 		case WI_INFO_LINK_STAT_AP_CHG:
-			IEEE80211_LOCK(ic);
 			vap->iv_bss->ni_associd = 1 | 0xc000;	/* NB: anything will do */
 			ieee80211_new_state(vap, IEEE80211_S_RUN, 0);
-			IEEE80211_UNLOCK(ic);
 			break;
 		case WI_INFO_LINK_STAT_AP_INR:
 			break;
 		case WI_INFO_LINK_STAT_DISCONNECTED:
 			/* we dropped off the net; e.g. due to deauth/disassoc */
-			IEEE80211_LOCK(ic);
 			vap->iv_bss->ni_associd = 0;
 			vap->iv_stats.is_rx_deauth++;
 			ieee80211_new_state(vap, IEEE80211_S_SCAN, 0);
-			IEEE80211_UNLOCK(ic);
 			break;
 		case WI_INFO_LINK_STAT_AP_OOR:
 			/* XXX does this need to be per-vap? */
@@ -1621,12 +1574,10 @@ wi_update_promisc(struct ifnet *ifp)
 	struct wi_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = ifp->if_l2com;
 
-	WI_LOCK(sc);
 	/* XXX handle WEP special case handling? */
 	wi_write_val(sc, WI_RID_PROMISC, 
 	    (ic->ic_opmode == IEEE80211_M_MONITOR ||
 	     (ifp->if_flags & IFF_PROMISC)));
-	WI_UNLOCK(sc);
 }
 
 static void
