@@ -537,10 +537,17 @@ sosend(struct socket *so, struct sockaddr *addr, struct uio *uio,
 	int atomic = sosendallatonce(so) || top;
 	int pru_flags;
 
-	if (uio)
+	if (uio) {
 		resid = uio->uio_resid;
-	else
+	} else {
 		resid = (size_t)top->m_pkthdr.len;
+#ifdef INVARIANTS
+		len = 0;
+		for (m = top; m; m = m->m_next)
+			len += m->m_len;
+		KKASSERT(top->m_pkthdr.len == len);
+#endif
+	}
 
 	/*
 	 * WARNING!  resid is unsigned, space and len are signed.  space
