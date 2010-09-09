@@ -1671,6 +1671,7 @@ ath_reset(struct ifnet *ifp)
 	struct ath_hal *ah = sc->sc_ah;
 	HAL_STATUS status;
 
+	kprintf("ath_reset\n");
 	ath_hal_intrset(ah, 0);		/* disable interrupts */
 	ath_draintxq(sc);		/* stop xmit side */
 	ath_stoprecv(sc);		/* stop recv side */
@@ -5420,6 +5421,7 @@ ath_calibrate_callout(void *arg)
 	longCal = (ticks - sc->sc_lastlongcal >= ath_longcalinterval*hz);
 	if (longCal) {
 		sc->sc_stats.ast_per_cal++;
+		sc->sc_lastlongcal = ticks;
 		if (ath_hal_getrfgain(ah) == HAL_RFGAIN_NEED_CHANGE) {
 			/*
 			 * Rfgain is out of bounds, reset the chip
@@ -5468,7 +5470,6 @@ restart:
 			nextcal *= 10;
 	} else {
 		nextcal = ath_longcalinterval*hz;
-		sc->sc_lastlongcal = ticks;
 		if (sc->sc_lastcalreset == 0)
 			sc->sc_lastcalreset = sc->sc_lastlongcal;
 		else if (ticks - sc->sc_lastcalreset >= ath_resetcalinterval*hz)
