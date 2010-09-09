@@ -1,4 +1,6 @@
 /*
+ * (MPSAFE)
+ *
  * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
@@ -50,6 +52,8 @@
 #define arysize(ary)	(sizeof(ary)/sizeof((ary)[0]))
 
 static MALLOC_DEFINE(M_MPIPEARY, "MPipe Array", "Auxillary MPIPE structure");
+
+static struct lwkt_token mpipe_token = LWKT_TOKEN_MP_INITIALIZER(mpipe_token);
 
 /*
  * Initialize a malloc pipeline for the specified malloc type and allocation
@@ -131,7 +135,7 @@ mpipe_alloc_nowait(malloc_pipe_t mpipe)
     void *buf;
     int n;
 
-    crit_enter();
+    lwkt_gettoken(&mpipe_token);
     if ((n = mpipe->free_count) != 0) {
 	/*
 	 * Use a free entry if it exists.
@@ -153,7 +157,7 @@ mpipe_alloc_nowait(malloc_pipe_t mpipe)
 	if (buf)
 	    ++mpipe->total_count;
     }
-    crit_exit();
+    lwkt_reltoken(&mpipe_token);
     return(buf);
 }
 
@@ -168,7 +172,7 @@ mpipe_alloc_waitok(malloc_pipe_t mpipe)
     int n;
     int mfailed;
 
-    crit_enter();
+    lwkt_gettoken(&mpipe_token);
     mfailed = 0;
     for (;;) {
 	if ((n = mpipe->free_count) != 0) {
@@ -200,7 +204,7 @@ mpipe_alloc_waitok(malloc_pipe_t mpipe)
 	}
 	mfailed = 1;
     }
-    crit_exit();
+    lwkt_reltoken(&mpipe_token);
     return(buf);
 }
 
@@ -215,7 +219,7 @@ mpipe_free(malloc_pipe_t mpipe, void *buf)
     if (buf == NULL)
 	return;
 
-    crit_enter();
+    lwkt_gettoken(&mpipe_token);
     if ((n = mpipe->free_count) < mpipe->ary_count) {
 	/*
 	 * Free slot available in free array (LIFO)
@@ -224,7 +228,7 @@ mpipe_free(malloc_pipe_t mpipe, void *buf)
 	++mpipe->free_count;
 	if ((mpipe->mpflags & (MPF_CACHEDATA|MPF_NOZERO)) == 0) 
 	    bzero(buf, mpipe->bytes);
-	crit_exit();
+	lwkt_reltoken(&mpipe_token);
 
 	/*
 	 * Wakeup anyone blocked in mpipe_alloc_*().
@@ -241,7 +245,7 @@ mpipe_free(malloc_pipe_t mpipe, void *buf)
 	KKASSERT(mpipe->total_count >= mpipe->free_count);
 	if (mpipe->deconstruct)
 	    mpipe->deconstruct(mpipe, buf);
-	crit_exit();
+	lwkt_reltoken(&mpipe_token);
 	kfree(buf, mpipe->type);
     }
 }
