@@ -111,8 +111,6 @@ struct rt2560_softc {
 	bus_space_tag_t		sc_st;
 	bus_space_handle_t	sc_sh;
 
-	struct lock		sc_lock;
-
 	struct callout		watchdog_ch;
 
 	int			sc_tx_timer;
@@ -165,7 +163,3 @@ int	rt2560_detach(void *);
 void	rt2560_stop(void *);
 void	rt2560_resume(void *);
 void	rt2560_intr(void *);
-
-#define RAL_LOCK()		lwkt_gettoken(&wlan_token)
-#define RAL_LOCK_ASSERT()	ASSERT_LWKT_TOKEN_HELD(&wlan_token)
-#define RAL_UNLOCK()		lwkt_reltoken(&wlan_token)

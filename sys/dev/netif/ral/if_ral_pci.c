@@ -146,13 +146,17 @@ ral_pci_probe(device_t dev)
 {
 	const struct ral_pci_ident *ident;
 
+	wlan_serialize_enter();
+
 	for (ident = ral_pci_ids; ident->name != NULL; ident++) {
 		if (pci_get_vendor(dev) == ident->vendor &&
 		    pci_get_device(dev) == ident->device) {
 			device_set_desc(dev, ident->name);
+			wlan_serialize_exit();
 			return 0;
 		}
 	}
+	wlan_serialize_exit();
 	return ENXIO;
 }
 
@@ -167,6 +171,7 @@ ral_pci_attach(device_t dev)
 	struct ifnet *ifp;
 	int error;
 
+	wlan_serialize_enter();
 	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
 		device_printf(dev, "chip is in D%d power mode "
 		    "-- setting to D0\n", pci_get_powerstate(dev));
@@ -184,6 +189,7 @@ ral_pci_attach(device_t dev)
 	    RF_ACTIVE);
 	if (psc->mem == NULL) {
 		device_printf(dev, "could not allocate memory resource\n");
+		wlan_serialize_exit();
 		return ENXIO;
 	}
 
@@ -196,25 +202,30 @@ ral_pci_attach(device_t dev)
 	    RF_ACTIVE | RF_SHAREABLE);
 	if (psc->irq == NULL) {
 		device_printf(dev, "could not allocate interrupt resource\n");
+		wlan_serialize_exit();
 		return ENXIO;
 	}
 
 	error = (*psc->sc_opns->attach)(dev, pci_get_device(dev));
-	if (error != 0)
+	if (error != 0) {
+		wlan_serialize_exit();
 		return error;
+	}
 	ifp = sc->sc_ifp;
 
 	/*
 	 * Hook our interrupt after all initialization is complete.
 	 */
 	error = bus_setup_intr(dev, psc->irq, INTR_MPSAFE,
-	    psc->sc_opns->intr, psc, &psc->sc_ih, ifp->if_serializer);
+	    psc->sc_opns->intr, psc, &psc->sc_ih, &wlan_global_serializer);
 	if (error != 0) {
 		device_printf(dev, "could not set up interrupt\n");
+		wlan_serialize_exit();
 		return error;
 	}
 	sc->sc_invalid = 0;
 	
+	wlan_serialize_exit();
 	return 0;
 }
 
@@ -224,6 +235,7 @@ ral_pci_detach(device_t dev)
 	struct ral_pci_softc *psc = device_get_softc(dev);
 	struct rt2560_softc *sc = &psc->u.sc_rt2560;
 	
+	wlan_serialize_enter();
 	/* check if device was removed */
 	sc->sc_invalid = !bus_child_present(dev);
 	
@@ -235,6 +247,7 @@ ral_pci_detach(device_t dev)
 
 	bus_release_resource(dev, SYS_RES_MEMORY, psc->mem_rid, psc->mem);
 
+	wlan_serialize_exit();
 	return 0;
 }
 
@@ -243,7 +256,9 @@ ral_pci_shutdown(device_t dev)
 {
 	struct ral_pci_softc *psc = device_get_softc(dev);
 
+	wlan_serialize_enter();
 	(*psc->sc_opns->shutdown)(psc);
+	wlan_serialize_exit();
 
 	return 0;
 }
@@ -253,7 +268,9 @@ ral_pci_suspend(device_t dev)
 {
 	struct ral_pci_softc *psc = device_get_softc(dev);
 
+	wlan_serialize_enter();
 	(*psc->sc_opns->suspend)(psc);
+	wlan_serialize_exit();
 
 	return 0;
 }
@@ -263,7 +280,9 @@ ral_pci_resume(device_t dev)
 {
 	struct ral_pci_softc *psc = device_get_softc(dev);
 
+	wlan_serialize_enter();
 	(*psc->sc_opns->resume)(psc);
+	wlan_serialize_exit();
 
 	return 0;
 }

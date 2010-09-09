@@ -103,8 +103,6 @@ struct rt2661_softc {
 	bus_space_tag_t			sc_st;
 	bus_space_handle_t		sc_sh;
 
-	struct lock			sc_lock;
-
 	struct callout			watchdog_ch;
 
 	int				sc_tx_timer;
@@ -170,7 +168,3 @@ void	rt2661_shutdown(void *);
 void	rt2661_suspend(void *);
 void	rt2661_resume(void *);
 void	rt2661_intr(void *);
-
-#define RAL_LOCK()    lwkt_gettoken(&wlan_token)
-#define RAL_LOCK_ASSERT()   ASSERT_LWKT_TOKEN_HELD(&wlan_token)
-#define RAL_UNLOCK()     lwkt_reltoken(&wlan_token)

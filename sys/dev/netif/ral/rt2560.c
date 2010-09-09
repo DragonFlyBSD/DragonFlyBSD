@@ -127,7 +127,7 @@ static int		rt2560_tx_data(struct rt2560_softc *, struct mbuf *,
 			    struct ieee80211_node *);
 static void		rt2560_start_locked(struct ifnet *);
 static void		rt2560_start(struct ifnet *);
-static void		rt2560_watchdog(void *);
+static void		rt2560_watchdog_callout(void *);
 static int		rt2560_ioctl(struct ifnet *, u_long, caddr_t,
     			    struct ucred *);
 static void		rt2560_bbp_write(struct rt2560_softc *, uint8_t,
@@ -204,9 +204,6 @@ rt2560_attach(device_t dev, int id)
 	struct sysctl_oid *tree;
 
 	sc->sc_dev = dev;
-
-	lockinit(&sc->sc_lock, __DECONST(char *, device_get_nameunit(dev)),
-	    0, LK_CANRECURSE);
 
 	callout_init(&sc->watchdog_ch);
 
@@ -351,7 +348,7 @@ fail5:	rt2560_free_tx_ring(sc, &sc->bcnq);
 fail4:	rt2560_free_tx_ring(sc, &sc->prioq);
 fail3:	rt2560_free_tx_ring(sc, &sc->atimq);
 fail2:	rt2560_free_tx_ring(sc, &sc->txq);
-fail1:	lockuninit(&sc->sc_lock);
+fail1:
 
 	return ENXIO;
 }
@@ -374,8 +371,6 @@ rt2560_detach(void *xsc)
 	rt2560_free_rx_ring(sc, &sc->rxq);
 
 	if_free(ifp);
-
-	lockuninit(&sc->sc_lock);
 
 	return 0;
 }
@@ -1232,7 +1227,6 @@ rt2560_decryption_intr(struct rt2560_softc *sc)
 		}
 
 		sc->sc_flags |= RT2560_F_INPUT_RUNNING;
-		RAL_UNLOCK();
 		wh = mtod(m, struct ieee80211_frame *);
 		ni = ieee80211_find_rxnode(ic,
 		    (struct ieee80211_frame_min *)wh);
@@ -1242,7 +1236,6 @@ rt2560_decryption_intr(struct rt2560_softc *sc)
 		} else
 			(void) ieee80211_input_all(ic, m, rssi, nf);
 
-		RAL_LOCK();
 		sc->sc_flags &= ~RT2560_F_INPUT_RUNNING;
 skip:		desc->flags = htole32(RT2560_RX_BUSY);
 
@@ -1371,14 +1364,11 @@ rt2560_intr(void *arg)
 	struct ifnet *ifp = sc->sc_ifp;
 	uint32_t r;
 
-	RAL_LOCK();
-
 	/* disable interrupts */
 	RAL_WRITE(sc, RT2560_CSR8, 0xffffffff);
 
 	/* don't re-enable interrupts if we're shutting down */
 	if (!(ifp->if_flags & IFF_RUNNING)) {
-		RAL_UNLOCK();
 		return;
 	}
 
@@ -1410,8 +1400,6 @@ rt2560_intr(void *arg)
 
 	/* re-enable interrupts */
 	RAL_WRITE(sc, RT2560_CSR8, RT2560_INTR_MASK);
-
-	RAL_UNLOCK();
 }
 
 #define RAL_SIFS		10	/* us */
@@ -1928,8 +1916,6 @@ rt2560_start_locked(struct ifnet *ifp)
 	struct mbuf *m;
 	struct ieee80211_node *ni;
 
-	RAL_LOCK_ASSERT();
-
 	for (;;) {
 		IF_DEQUEUE(&ifp->if_snd, m);
 		if (m == NULL)
@@ -1954,18 +1940,14 @@ rt2560_start_locked(struct ifnet *ifp)
 static void
 rt2560_start(struct ifnet *ifp)
 {
-	RAL_LOCK();
 	rt2560_start_locked(ifp);
-	RAL_UNLOCK();
 }
 
 static void
-rt2560_watchdog(void *arg)
+rt2560_watchdog_callout(void *arg)
 {
 	struct rt2560_softc *sc = arg;
 	struct ifnet *ifp = sc->sc_ifp;
-
-	RAL_LOCK();
 
 	KASSERT(ifp->if_flags & IFF_RUNNING, ("not running"));
 
@@ -1982,8 +1964,7 @@ rt2560_watchdog(void *arg)
 		/* NB: callout is reset in rt2560_init() */
 		return;
 	}
-	callout_reset(&sc->watchdog_ch, hz, rt2560_watchdog, sc);
-	RAL_UNLOCK();
+	callout_reset(&sc->watchdog_ch, hz, rt2560_watchdog_callout, sc);
 }
 
 static int
@@ -1996,7 +1977,6 @@ rt2560_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:
-		RAL_LOCK();
 		if (ifp->if_flags & IFF_UP) {
 			if ((ifp->if_flags & IFF_RUNNING) == 0) {
 				rt2560_init_locked(sc);
@@ -2007,7 +1987,6 @@ rt2560_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 			if (ifp->if_flags & IFF_RUNNING)
 				rt2560_stop_locked(sc);
 		}
-		RAL_UNLOCK();
 		if (startall)
 			ieee80211_start_all(ic);
 		break;
@@ -2208,9 +2187,7 @@ rt2560_set_channel(struct ieee80211com *ic)
 	struct ifnet *ifp = ic->ic_ifp;
 	struct rt2560_softc *sc = ifp->if_softc;
 
-	RAL_LOCK();
 	rt2560_set_chan(sc, ic->ic_curchan);
-	RAL_UNLOCK();
 
 }
 
@@ -2625,8 +2602,6 @@ rt2560_init_locked(struct rt2560_softc *sc)
 	uint32_t tmp;
 	int i;
 
-	RAL_LOCK_ASSERT();
-
 	rt2560_stop_locked(sc);
 
 	/* setup tx rings */
@@ -2666,7 +2641,6 @@ rt2560_init_locked(struct rt2560_softc *sc)
 
 	if (rt2560_bbp_init(sc) != 0) {
 		rt2560_stop(sc);
-		RAL_UNLOCK();
 		return;
 	}
 
@@ -2701,7 +2675,7 @@ rt2560_init_locked(struct rt2560_softc *sc)
 	ifp->if_flags &= ~IFF_OACTIVE;
 	ifp->if_flags |= IFF_RUNNING;
 
-	callout_reset(&sc->watchdog_ch, hz, rt2560_watchdog, sc);
+	callout_reset(&sc->watchdog_ch, hz, rt2560_watchdog_callout, sc);
 #undef N
 }
 
@@ -2712,9 +2686,7 @@ rt2560_init(void *priv)
 	struct ifnet *ifp = sc->sc_ifp;
 	struct ieee80211com *ic = ifp->if_l2com;
 
-	RAL_LOCK();
 	rt2560_init_locked(sc);
-	RAL_UNLOCK();
 
 	if (ifp->if_flags & IFF_RUNNING)
 		ieee80211_start_all(ic);		/* start all vap's */
@@ -2726,10 +2698,8 @@ rt2560_stop_locked(struct rt2560_softc *sc)
 	struct ifnet *ifp = sc->sc_ifp;
 	volatile int *flags = &sc->sc_flags;
 
-	RAL_LOCK_ASSERT();
-
 	while (*flags & RT2560_F_INPUT_RUNNING)
-		lksleep(sc, &sc->sc_lock, 0, "ralrunning", hz/10);
+		zsleep(sc, &wlan_global_serializer, 0, "ralrunning", hz/10);
 
 	callout_stop(&sc->watchdog_ch);
 	sc->sc_tx_timer = 0;
@@ -2765,9 +2735,7 @@ rt2560_stop(void *arg)
 {
 	struct rt2560_softc *sc = arg;
 
-	RAL_LOCK();
 	rt2560_stop_locked(sc);
-	RAL_UNLOCK();
 }
 
 static int
@@ -2778,11 +2746,8 @@ rt2560_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 	struct ifnet *ifp = ic->ic_ifp;
 	struct rt2560_softc *sc = ifp->if_softc;
 
-	RAL_LOCK();
-
 	/* prevent management frames from being sent if we're not ready */
 	if (!(ifp->if_flags & IFF_RUNNING)) {
-		RAL_UNLOCK();
 		m_freem(m);
 		ieee80211_free_node(ni);
 		return ENETDOWN;
@@ -2790,7 +2755,6 @@ rt2560_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 	if (sc->prioq.queued >= RT2560_PRIO_RING_COUNT) {
 		ifp->if_flags |= IFF_OACTIVE;
 		sc->sc_flags |= RT2560_F_PRIO_OACTIVE;
-		RAL_UNLOCK();
 		m_freem(m);
 		ieee80211_free_node(ni);
 		return ENOBUFS;		/* XXX */
@@ -2815,12 +2779,9 @@ rt2560_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 	}
 	sc->sc_tx_timer = 5;
 
-	RAL_UNLOCK();
-
 	return 0;
 bad:
 	ifp->if_oerrors++;
 	ieee80211_free_node(ni);
-	RAL_UNLOCK();
 	return EIO;		/* XXX */
 }
