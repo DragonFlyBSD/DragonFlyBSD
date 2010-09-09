@@ -57,6 +57,7 @@
 #include <ctype.h>
 #include <poll.h>
 #include <pwd.h>
+#include <unistd.h>
 
 #include "dhcpd.h"
 #include "privsep.h"
@@ -64,6 +65,8 @@
 #define	CLIENT_PATH 		"PATH=/usr/bin:/usr/sbin:/bin:/sbin"
 #define DEFAULT_LEASE_TIME	43200	/* 12 hours... */
 #define TIME_MAX		2147483647
+#define POLL_FAILURES		10
+#define POLL_FAILURE_WAIT	1	/* Back off multiplier (seconds) */
 
 time_t cur_time;
 
@@ -2123,7 +2126,7 @@ int
 fork_privchld(int fd, int fd2)
 {
 	struct pollfd pfd[1];
-	int nfds;
+	int nfds, pfail = 0;
 
 	switch (fork()) {
 	case -1:
@@ -2153,8 +2156,16 @@ fork_privchld(int fd, int fd2)
 			if (errno != EINTR)
 				error("poll error");
 
-		if (nfds == 0 || !(pfd[0].revents & POLLIN))
+		/*
+		 * Handle temporary errors, but bail if they persist.
+		 */
+		if (nfds == 0 || !(pfd[0].revents & POLLIN)) {
+			if (pfail > POLL_FAILURES)
+				error("poll failed > %d times", POLL_FAILURES);
+			sleep(pfail * POLL_FAILURE_WAIT);
+			pfail++;
 			continue;
+		}
 
 		dispatch_imsg(fd);
 	}
