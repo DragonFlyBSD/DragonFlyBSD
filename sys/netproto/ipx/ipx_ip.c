@@ -218,7 +218,7 @@ ipxip_input(struct mbuf *m, ...)
 	/*
 	 * Deliver to IPX
 	 */
-	netisr_dispatch(NETISR_IPX, m);
+	netisr_queue(NETISR_IPX, m);
 }
 
 static int

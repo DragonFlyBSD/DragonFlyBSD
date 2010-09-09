@@ -541,12 +541,9 @@ at_setsockaddr(struct socket *so, struct sockaddr **nam)
 void 
 ddp_init(void)
 {
-	netisr_register(NETISR_ATALK1, cpu0_portfn, pktinfo_portfn_cpu0,
-			at1intr, NETISR_FLAG_NOTMPSAFE);
-	netisr_register(NETISR_ATALK2, cpu0_portfn, pktinfo_portfn_cpu0,
-			at2intr, NETISR_FLAG_NOTMPSAFE);
-	netisr_register(NETISR_AARP, cpu0_portfn, pktinfo_portfn_cpu0,
-			aarpintr, NETISR_FLAG_NOTMPSAFE);
+	netisr_register(NETISR_ATALK1, at1intr, NULL);
+	netisr_register(NETISR_ATALK2, at2intr, NULL);
+	netisr_register(NETISR_AARP, aarpintr, NULL);
 }
 
 #if 0

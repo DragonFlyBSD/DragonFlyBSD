@@ -297,7 +297,8 @@ atm_input(struct ifnet *ifp, struct atm_pseudohdr *ah, struct mbuf *m,
 		}
 	}
 
-	netisr_dispatch(isr, m);
+	m->m_flags &= ~M_HASH;
+	netisr_queue(isr, m);
 }
 
 /*

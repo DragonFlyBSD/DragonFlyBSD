@@ -227,7 +227,7 @@ idpip_input(struct mbuf *m, ...)
 	/*
 	 * Deliver to NS
 	 */
-	netisr_dispatch(NETISR_NS, m);
+	netisr_queue(NETISR_NS, m);
 }
 
 /* ARGSUSED */

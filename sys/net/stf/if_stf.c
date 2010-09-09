@@ -587,7 +587,7 @@ in_stf_input(struct mbuf *m, ...)
 	 */
 	ifp->if_ipackets++;
 	ifp->if_ibytes += m->m_pkthdr.len;
-	netisr_dispatch(NETISR_IPV6, m);
+	netisr_queue(NETISR_IPV6, m);
 }
 
 /* ARGSUSED */

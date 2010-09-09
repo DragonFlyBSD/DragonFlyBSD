@@ -152,22 +152,15 @@
 #define KTR_TCP		KTR_ALL
 #endif
 KTR_INFO_MASTER(tcp);
+/*
 KTR_INFO(KTR_TCP, tcp, rxmsg, 0, "tcp getmsg", 0);
 KTR_INFO(KTR_TCP, tcp, wait, 1, "tcp waitmsg", 0);
 KTR_INFO(KTR_TCP, tcp, delayed, 2, "tcp execute delayed ops", 0);
+*/
 #define logtcp(name)	KTR_LOG(tcp_ ## name)
 
 struct inpcbinfo tcbinfo[MAXCPU];
 struct tcpcbackqhead tcpcbackq[MAXCPU];
-
-int tcp_mpsafe_proto = 0;
-TUNABLE_INT("net.inet.tcp.mpsafe_proto", &tcp_mpsafe_proto);
-
-static int tcp_mpsafe_thread = NETMSG_SERVICE_ADAPTIVE;
-TUNABLE_INT("net.inet.tcp.mpsafe_thread", &tcp_mpsafe_thread);
-SYSCTL_INT(_net_inet_tcp, OID_AUTO, mpsafe_thread, CTLFLAG_RW,
-	   &tcp_mpsafe_thread, 0,
-	   "0:BGL, 1:Adaptive BGL, 2:No BGL(experimental)");
 
 int tcp_mssdflt = TCP_MSS;
 SYSCTL_INT(_net_inet_tcp, TCPCTL_MSSDFLT, mssdflt, CTLFLAG_RW,
@@ -254,7 +247,7 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, inflight_stab, CTLFLAG_RW,
 static MALLOC_DEFINE(M_TCPTEMP, "tcptemp", "TCP Templates for Keepalives");
 static struct malloc_pipe tcptemp_mpipe;
 
-static void tcp_willblock(int);
+static void tcp_willblock(void);
 static void tcp_notify (struct inpcb *, int);
 
 struct tcp_stats tcpstats_percpu[MAXCPU];
@@ -392,48 +385,14 @@ tcp_init(void)
 #endif
 
 	syncache_init();
-	tcp_thread_init();
-}
-
-void
-tcpmsg_service_loop(void *dummy)
-{
-	struct netmsg *msg;
-	int mplocked;
-
-	/*
-	 * Threads always start mpsafe.
-	 */
-	mplocked = 0;
-
-	while ((msg = lwkt_waitport(&curthread->td_msgport, 0))) {
-		do {
-			logtcp(rxmsg);
-			mplocked = netmsg_service(msg, tcp_mpsafe_thread,
-						  mplocked);
-		} while ((msg = lwkt_getport(&curthread->td_msgport)) != NULL);
-
-		logtcp(delayed);
-		tcp_willblock(mplocked);
-		logtcp(wait);
-	}
+	netisr_register_rollup(tcp_willblock);
 }
 
 static void
-tcp_willblock(int mplocked)
+tcp_willblock(void)
 {
 	struct tcpcb *tp;
 	int cpu = mycpu->gd_cpuid;
-	int unlock = 0;
-
-	if (!mplocked && !tcp_mpsafe_proto) {
-		if (TAILQ_EMPTY(&tcpcbackq[cpu]))
-			return;
-
-		get_mplock();
-		mplocked = 1;
-		unlock = 1;
-	}
 
 	while ((tp = TAILQ_FIRST(&tcpcbackq[cpu])) != NULL) {
 		KKASSERT(tp->t_flags & TF_ONOUTPUTQ);
@@ -441,11 +400,7 @@ tcp_willblock(int mplocked)
 		TAILQ_REMOVE(&tcpcbackq[cpu], tp, t_outputq);
 		tcp_output(tp);
 	}
-
-	if (unlock)
-		rel_mplock();
 }
-
 
 /*
  * Fill in the IP and TCP headers for an outgoing packet, given the tcpcb.
@@ -819,7 +774,7 @@ in_pcbremwildcardhash_handler(struct netmsg *msg0)
 		in_pcbremwildcardhash_oncpu(msg->nm_inp, msg->nm_pcbinfo);
 		cpu = (cpu + 1) % ncpus2;
 		msg->nm_pcbinfo = &tcbinfo[cpu];
-		lwkt_forwardmsg(tcp_cport(cpu), &msg->nm_netmsg.nm_lmsg);
+		lwkt_forwardmsg(cpu_portfn(cpu), &msg->nm_netmsg.nm_lmsg);
 	}
 }
 
@@ -1021,7 +976,7 @@ no_valid_rt:
 #endif
 		msg->nm_inp = inp;
 		msg->nm_pcbinfo = &tcbinfo[cpu];
-		lwkt_sendmsg(tcp_cport(cpu), &msg->nm_netmsg.nm_lmsg);
+		lwkt_sendmsg(cpu_portfn(cpu), &msg->nm_netmsg.nm_lmsg);
 	} else
 #endif
 	{
@@ -1118,7 +1073,7 @@ tcp_drain(void)
 			netmsg_init(&msg->nm_netmsg, NULL, &netisr_afree_rport,
 				    0, tcp_drain_handler);
 			msg->nm_head = &tcbinfo[cpu].pcblisthead;
-			lwkt_sendmsg(tcp_cport(cpu), &msg->nm_netmsg.nm_lmsg);
+			lwkt_sendmsg(cpu_portfn(cpu), &msg->nm_netmsg.nm_lmsg);
 		}
 	}
 #else
@@ -1374,7 +1329,7 @@ tcp_notifyall_oncpu(struct netmsg *netmsg)
 
 	nextcpu = mycpuid + 1;
 	if (nextcpu < ncpus2)
-		lwkt_forwardmsg(tcp_cport(nextcpu), &netmsg->nm_lmsg);
+		lwkt_forwardmsg(cpu_portfn(nextcpu), &netmsg->nm_lmsg);
 	else
 		lwkt_replymsg(&netmsg->nm_lmsg, 0);
 }
@@ -1458,7 +1413,7 @@ tcp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 		nmsg.nm_arg = arg;
 		nmsg.nm_notify = notify;
 
-		lwkt_domsg(tcp_cport(0), &nmsg.nm_nmsg.nm_lmsg, 0);
+		lwkt_domsg(cpu_portfn(0), &nmsg.nm_nmsg.nm_lmsg, 0);
 	}
 }
 

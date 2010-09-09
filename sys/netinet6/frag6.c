@@ -520,8 +520,11 @@ insert:
 	in6_ifstat_inc(dstifp, ifs6_reass_ok);
 
 	/*
-	 * Tell launch routine the next header
+	 * Reassembly complete, return the next protocol.
+	 * Be sure to clear M_HASH to force the packet
+	 * to be re-characterized.
 	 */
+	m->m_flags &= ~M_HASH;
 
 	*mp = m;
 	*offp = offset;

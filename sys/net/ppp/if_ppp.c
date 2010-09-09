@@ -98,6 +98,7 @@
 #include <sys/malloc.h>
 
 #include <sys/msgport2.h>
+#include <sys/mplock2.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -211,6 +212,8 @@ pppintr(struct netmsg *msg)
      */
     lwkt_replymsg(&msg->nm_lmsg, 0);
 
+    get_mplock();
+
     sc = ppp_softc;
     for (i = 0; i < NPPP; ++i, ++sc) {
 	ifnet_serialize_all(&sc->sc_if);
@@ -227,6 +230,7 @@ pppintr(struct netmsg *msg)
 	}
 	ifnet_deserialize_all(&sc->sc_if);
     }
+    rel_mplock();
 }
 
 /*
@@ -257,8 +261,7 @@ pppattach(void *dummy)
 	if_attach(&sc->sc_if, NULL);
 	bpfattach(&sc->sc_if, DLT_PPP, PPP_HDRLEN);
     }
-    netisr_register(NETISR_PPP, cpu0_portfn, pktinfo_portfn_cpu0,
-    		    pppintr, NETISR_FLAG_NOTMPSAFE);
+    netisr_register(NETISR_PPP, pppintr, NULL);
     /*
      * XXX layering violation - if_ppp can work over any lower level
      * transport that cares to attach to it.

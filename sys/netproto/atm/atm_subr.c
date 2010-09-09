@@ -112,8 +112,7 @@ atm_initialize(void)
 	atm_init = 1;
 
 	atm_intrq.ifq_maxlen = ATM_INTRQ_MAX;
-	netisr_register(NETISR_ATM, cpu0_portfn, pktinfo_portfn_cpu0,
-			atm_intr, NETISR_FLAG_NOTMPSAFE);
+	netisr_register(NETISR_ATM, atm_intr, NULL);
 
 	/*
 	 * Initialize subsystems
@@ -859,6 +858,7 @@ atm_intr(struct netmsg *msg)
 	/*
 	 * Get function to call and token value
 	 */
+	get_mplock();
 	KB_DATASTART(m, cp, caddr_t);
 	func = *(atm_intr_func_t *)cp;
 	cp += sizeof(func);
@@ -879,6 +879,7 @@ atm_intr(struct netmsg *msg)
 	 * Drain any deferred calls
 	 */
 	STACK_DRAIN();
+	rel_mplock();
 	/* msg was embedded in the mbuf, do not reply! */
 }
 

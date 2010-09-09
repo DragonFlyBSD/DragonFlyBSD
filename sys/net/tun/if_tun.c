@@ -697,7 +697,7 @@ tunwrite(struct dev_write_args *ap)
 		return (EAFNOSUPPORT);
 	}
 
-	netisr_dispatch(isr, top);
+	netisr_queue(isr, top);
 	return (0);
 }
 

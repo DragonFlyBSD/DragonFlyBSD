@@ -1830,7 +1830,7 @@ bridge_enqueue(struct ifnet *dst_ifp, struct mbuf *m)
 	nmp->nm_packet = m;
 	nmp->nm_netmsg.nm_lmsg.u.ms_resultp = dst_ifp;
 
-	lwkt_sendmsg(curnetport, &nmp->nm_netmsg.nm_lmsg);
+	lwkt_sendmsg(ifnet_portfn(mycpu->gd_cpuid), &nmp->nm_netmsg.nm_lmsg);
 }
 
 /*

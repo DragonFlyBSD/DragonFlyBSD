@@ -17,6 +17,7 @@
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
+#include <sys/mplock2.h>
 
 #include <net/if.h>
 #include <net/netisr.h>
@@ -250,6 +251,8 @@ aarpintr(struct netmsg *msg)
     struct arphdr	*ar;
     struct arpcom	*ac;
 
+    get_mplock();
+
     ac = (struct arpcom *)m->m_pkthdr.rcvif;
     if ( ac->ac_if.if_flags & IFF_NOARP )
 	goto out;
@@ -280,7 +283,7 @@ aarpintr(struct netmsg *msg)
 out:
     m_freem(m);
 out2:
-    ;
+    rel_mplock();
     /* msg was embedded in the mbuf, do not reply! */
 }
 

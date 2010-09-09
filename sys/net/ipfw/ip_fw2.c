@@ -2484,7 +2484,7 @@ ipfw_dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 	pkt->pipe_nr = pipe_nr;
 
 	pkt->cpuid = mycpuid;
-	pkt->msgport = curnetport;
+	pkt->msgport = cur_netport();
 
 	id = &fwa->f_id;
 	fid = &pkt->id;
@@ -4440,7 +4440,7 @@ ipfw_init_dispatch(struct netmsg *nmsg)
 
 	callout_init_mp(&ipfw_timeout_h);
 	netmsg_init(&ipfw_timeout_netmsg, NULL, &netisr_adone_rport,
-		    MSGF_MPSAFE | MSGF_DROPABLE | MSGF_PRIORITY,
+		    MSGF_DROPABLE | MSGF_PRIORITY,
 		    ipfw_tick_dispatch);
 	lockinit(&dyn_lock, "ipfw_dyn", 0, 0);
 

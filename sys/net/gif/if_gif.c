@@ -427,7 +427,8 @@ gif_input(struct mbuf *m, int af, struct ifnet *ifp)
 
 	ifp->if_ipackets++;
 	ifp->if_ibytes += m->m_pkthdr.len;
-	netisr_dispatch(isr, m);
+	m->m_flags &= ~M_HASH;
+	netisr_queue(isr, m);
 
 	return;
 }

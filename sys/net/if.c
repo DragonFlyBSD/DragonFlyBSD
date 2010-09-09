@@ -171,7 +171,6 @@ struct callout		if_slowtimo_timer;
 int			if_index = 0;
 struct ifnet		**ifindex2ifnet = NULL;
 static struct thread	ifnet_threads[MAXCPU];
-static int		ifnet_mpsafe_thread = NETMSG_SERVICE_MPSAFE;
 
 #define IFQ_KTR_STRING		"ifq=%p"
 #define IFQ_KTR_ARG_SIZE	(sizeof(void *))
@@ -2486,6 +2485,21 @@ ifnet_sendmsg(struct lwkt_msg *lmsg, int cpu)
 	lwkt_sendmsg(ifnet_portfn(cpu), lmsg);
 }
 
+/*
+ * Generic netmsg service loop.  Some protocols may roll their own but all
+ * must do the basic command dispatch function call done here.
+ */
+static void
+ifnet_service_loop(void *arg __unused)
+{
+	struct netmsg *msg;
+
+	while ((msg = lwkt_waitport(&curthread->td_msgport, 0))) {
+		KASSERT(msg->nm_dispatch, ("ifnet_service: badmsg"));
+		msg->nm_dispatch(msg);
+	}
+}
+
 static void
 ifnetinit(void *dummy __unused)
 {
@@ -2494,10 +2508,10 @@ ifnetinit(void *dummy __unused)
 	for (i = 0; i < ncpus; ++i) {
 		struct thread *thr = &ifnet_threads[i];
 
-		lwkt_create(netmsg_service_loop, &ifnet_mpsafe_thread, NULL,
-			    thr, TDF_NETWORK, i,
-			    "ifnet %d", i);
+		lwkt_create(ifnet_service_loop, NULL, NULL,
+			    thr, TDF_STOPREQ, i, "ifnet %d", i);
 		netmsg_service_port_init(&thr->td_msgport);
+		lwkt_schedule(thr);
 	}
 }
 

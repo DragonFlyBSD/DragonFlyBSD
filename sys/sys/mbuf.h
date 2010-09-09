@@ -73,7 +73,8 @@
  * mtocl(x) -	convert pointer within cluster to cluster index #
  * cltom(x) -	convert cluster # to ptr to beginning of cluster
  */
-#define	mtod(m, t)	((t)((m)->m_data))
+#define	mtod(m, t)		((t)((m)->m_data))
+#define	mtodoff(m, t, off)	((t)((m)->m_data + (off)))
 
 /*
  * Header present at the beginning of every mbuf.

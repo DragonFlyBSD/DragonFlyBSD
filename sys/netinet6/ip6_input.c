@@ -200,8 +200,7 @@ ip6_init(void)
 			"error %d\n", __func__, i);
 	}
 
-	netisr_register(NETISR_IPV6, cpu0_portfn, pktinfo_portfn_cpu0,
-			ip6_input, NETISR_FLAG_NOTMPSAFE);
+	netisr_register(NETISR_IPV6, ip6_input, NULL); /* XXX cpufn */
 	scope6_init();
 	addrsel_policy_init();
 	nd6_init();
@@ -866,7 +865,7 @@ hbhcheck:
 			pmsg = &m->m_hdr.mh_netmsg;
 			netmsg_init(&pmsg->nm_netmsg, NULL,
 				    &netisr_apanic_rport,
-				    MSGF_MPSAFE, transport6_processing_handler);
+				    0, transport6_processing_handler);
 			pmsg->nm_packet = m;
 			pmsg->nm_nxt = nxt;
 			pmsg->nm_netmsg.nm_lmsg.u.ms_result = off;

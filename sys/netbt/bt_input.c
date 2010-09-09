@@ -24,6 +24,8 @@
 
 #include <net/netisr.h>
 
+#include <sys/mplock2.h>
+
 #include <netbt/hci.h>
 
 void
@@ -31,7 +33,9 @@ btintr(struct netmsg *msg)
 {
 	struct hci_unit *unit;
 
+	get_mplock();
 	TAILQ_FOREACH(unit, &hci_unit_list, hci_next) {
 		hci_intr(unit);
 	}
+	rel_mplock();
 }

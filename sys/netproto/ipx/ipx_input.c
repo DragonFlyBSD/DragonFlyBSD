@@ -48,6 +48,7 @@
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
+#include <sys/mplock2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -117,8 +118,7 @@ ipx_init(void)
 	ipx_hostmask.sipx_addr.x_net = ipx_broadnet;
 	ipx_hostmask.sipx_addr.x_host = ipx_broadhost;
 
-	netisr_register(NETISR_IPX, cpu0_portfn, pktinfo_portfn_cpu0,
-			ipxintr, NETISR_FLAG_NOTMPSAFE);
+	netisr_register(NETISR_IPX, ipxintr, NULL);
 }
 
 /*
@@ -132,6 +132,8 @@ ipxintr(struct netmsg *msg)
 	struct ipxpcb *ipxp;
 	struct ipx_ifaddr *ia;
 	int len;
+
+	get_mplock();
 
 	/*
 	 * If no IPX addresses have been set yet but the interfaces
@@ -269,7 +271,7 @@ ours:
 bad:
 	m_freem(m);
 out:
-	;
+	rel_mplock();
 	/* msg was embedded in the mbuf, do not reply! */
 }
 

@@ -60,8 +60,7 @@ struct mpls_stats {
 extern struct mpls_stats  mplsstats_percpu[MAXCPU];
 
 void			mpls_init(void);
-boolean_t		mpls_lengthcheck(struct mbuf **);
-struct	lwkt_port *	mpls_mport(struct mbuf **);
+void			mpls_cpufn(struct mbuf **, int);
 void			mpls_input(struct mbuf *);
 int			mpls_output(struct mbuf *, struct rtentry *);
 boolean_t		mpls_output_process(struct mbuf *, struct rtentry *);

@@ -536,7 +536,7 @@ ah4_input(struct mbuf *m, ...)
 				ipsecstat.in_polvio++;
 				goto fail;
 			}
-			if (!ip_lengthcheck(&m)) {
+			if (!ip_lengthcheck(&m, 0)) {
 				/* freed in ip_lengthcheck() */
 				goto fail;
 			}

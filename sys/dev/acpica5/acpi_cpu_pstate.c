@@ -940,8 +940,7 @@ acpi_pst_check_csr(struct acpi_pst_softc *sc)
 		return 0;
 
 	netmsg_init(&msg.nmsg, NULL, &curthread->td_msgport,
-		    MSGF_MPSAFE | MSGF_PRIORITY,
-		    acpi_pst_check_csr_handler);
+		    MSGF_PRIORITY, acpi_pst_check_csr_handler);
 	msg.ctrl = &sc->pst_creg;
 	msg.status = &sc->pst_sreg;
 
@@ -966,8 +965,7 @@ acpi_pst_check_pstates(struct acpi_pst_softc *sc)
 		return 0;
 
 	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
-		    MSGF_MPSAFE | MSGF_PRIORITY,
-		    acpi_pst_check_pstates_handler);
+		    MSGF_PRIORITY, acpi_pst_check_pstates_handler);
 
 	return lwkt_domsg(cpu_portfn(sc->pst_cpuid), &nmsg.nm_lmsg, 0);
 }
@@ -991,7 +989,7 @@ acpi_pst_init(struct acpi_pst_softc *sc)
 		return 0;
 
 	netmsg_init(&msg.nmsg, NULL, &curthread->td_msgport,
-		    MSGF_MPSAFE | MSGF_PRIORITY, acpi_pst_init_handler);
+		    MSGF_PRIORITY, acpi_pst_init_handler);
 	msg.ctrl = &sc->pst_creg;
 	msg.status = &sc->pst_sreg;
 
@@ -1017,8 +1015,7 @@ acpi_pst_set_pstate(struct acpi_pst_softc *sc, const struct acpi_pstate *pstate)
 	KKASSERT(acpi_pst_md != NULL);
 
 	netmsg_init(&msg.nmsg, NULL, &curthread->td_msgport,
-		    MSGF_MPSAFE | MSGF_PRIORITY,
-		    acpi_pst_set_pstate_handler);
+		    MSGF_PRIORITY, acpi_pst_set_pstate_handler);
 	msg.nmsg.nm_lmsg.u.ms_resultp = __DECONST(void *, pstate);
 	msg.ctrl = &sc->pst_creg;
 	msg.status = &sc->pst_sreg;
@@ -1047,8 +1044,7 @@ acpi_pst_get_pstate(struct acpi_pst_softc *sc)
 		return 0;
 
 	netmsg_init(&msg.nmsg, NULL, &curthread->td_msgport,
-		    MSGF_MPSAFE | MSGF_PRIORITY,
-		    acpi_pst_get_pstate_handler);
+		    MSGF_PRIORITY, acpi_pst_get_pstate_handler);
 	msg.status = &sc->pst_sreg;
 
 	lwkt_domsg(cpu_portfn(sc->pst_cpuid), &msg.nmsg.nm_lmsg, 0);

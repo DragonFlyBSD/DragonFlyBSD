@@ -56,53 +56,50 @@ MPLSP_MPORT_HASH(mpls_label_t label, u_short if_index)
         return ((label ^ if_index) & ncpus2_mask);
 }
 
-boolean_t
-mpls_lengthcheck(struct mbuf **mp)
+static void
+mpls_lengthcheck(struct mbuf **mp, int hoff)
 {
 	struct mbuf *m = *mp;
+	int hlen = hoff + sizeof(struct mpls);
 
 	/* The packet must be at least the size of an MPLS header. */
-	if (m->m_pkthdr.len < sizeof(struct mpls)) {
+	if (m->m_pkthdr.len < hlen) {
 		mplsstat.mplss_tooshort++;
 		m_free(m);
-		return FALSE;
+		*mp = NULL;
+		return;
 	}
 
 	/* The MPLS header must reside completely in the first mbuf. */
-	if (m->m_len < sizeof(struct mpls)) {
-		m = m_pullup(m, sizeof(struct mpls));
+	if (m->m_len < hlen) {
+		m = m_pullup(m, hlen);
 		if (m == NULL) {
 			mplsstat.mplss_toosmall++;
-			return FALSE;
+			*mp = NULL;
+			return;
 		}
 	}
-
 	*mp = m;
-	return TRUE;
 }
 
-struct lwkt_port *
-mpls_mport(struct mbuf **mp)
+void
+mpls_cpufn(struct mbuf **mp, int hoff)
 {
 	struct mbuf *m = *mp;
 	struct mpls *mpls;
 	mpls_label_t label;
 	struct ifnet *ifp;
-	int cpu;
 	lwkt_port_t port;
 
-	if (!mpls_lengthcheck(mp)) {
-		*mp = NULL;
-		return (NULL);
-	}
+	mpls_lengthcheck(mp, hoff);
+	if ((m = *mp) == NULL)
+		return;
 
-	mpls = mtod(m, struct mpls *);
+	mpls = mtodoff(m, struct mpls *, hoff);
 
 	label = MPLS_LABEL(ntohl(mpls->mpls_shim));
 	ifp = m->m_pkthdr.rcvif;
-	cpu = MPLSP_MPORT_HASH(label, ifp->if_index);
-	port = &netisr_cpu[cpu].td_msgport;
-
-	return (port);
+	m->m_pkthdr.hash = MPLSP_MPORT_HASH(label, ifp->if_index);
+	m->m_flags |= M_HASH;
 }
 

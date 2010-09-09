@@ -728,13 +728,14 @@ sppp_input(struct ifnet *ifp, struct mbuf *m)
 
 	/* Check queue. */
 
-	netisr_dispatch(isr, m);
+	netisr_queue(isr, m);
+
+	/*
+	 * Do only account for network packets, not for control
+	 * packets.  This is used by some subsystems to detect
+	 * idle lines.
+	 */
 	if (do_account)
-		/*
-		 * Do only account for network packets, not for control
-		 * packets.  This is used by some subsystems to detect
-		 * idle lines.
-		 */
 		sp->pp_last_recv = time_second;
 }
 

@@ -49,6 +49,7 @@
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
+#include <sys/mplock2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -96,8 +97,7 @@ ns_init(void)
 	ns_hostmask.sns_len = 12;
 	ns_hostmask.sns_addr.x_net = ns_broadnet;
 	ns_hostmask.sns_addr.x_host = ns_broadhost;
-	netisr_register(NETISR_NS, cpu0_portfn, pktinfo_portfn_cpu0,
-			nsintr, NETISR_FLAG_NOTMPSAFE);
+	netisr_register(NETISR_NS, nsintr, NULL);
 }
 
 /*
@@ -115,6 +115,8 @@ nsintr(struct netmsg *msg)
 	int i;
 	int len, error;
 	char oddpacketp;
+
+	get_mplock();
 
 	/*
 	 * Get IDP header in first mbuf.
@@ -233,7 +235,7 @@ nsintr(struct netmsg *msg)
 bad:
 	m_freem(m);
 out:
-	;
+	rel_mplock();
 	/* msg was embedded in the mbuf, do not reply! */
 }
 

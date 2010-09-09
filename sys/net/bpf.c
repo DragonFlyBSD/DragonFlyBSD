@@ -587,7 +587,7 @@ bpfwrite(struct dev_write_args *ap)
 		dst.sa_family = pseudo_AF_HDRCMPLT;
 
 	netmsg_init(&bmsg.nm_netmsg, NULL, &curthread->td_msgport,
-		    MSGF_MPSAFE, bpf_output_dispatch);
+		    0, bpf_output_dispatch);
 	bmsg.nm_mbuf = m;
 	bmsg.nm_ifp = ifp;
 	bmsg.nm_dst = &dst;

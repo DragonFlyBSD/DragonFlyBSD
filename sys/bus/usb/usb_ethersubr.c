@@ -59,6 +59,7 @@
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
+#include <sys/mplock2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -79,9 +80,12 @@ usbintr(struct netmsg *msg)
 	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
 	struct ifnet *ifp;
 
+	/* not MPSAFE */
+	get_mplock();
 	ifp = m->m_pkthdr.rcvif;
 	(*ifp->if_input)(ifp, m);
 	/* the msg is embedded in the mbuf, do not reply it */
+	rel_mplock();
 }
 
 void
@@ -89,8 +93,7 @@ usb_register_netisr(void)
 {
 	if (netisr_inited == 0) {
 		netisr_inited = 1;
-		netisr_register(NETISR_USB, cpu0_portfn, pktinfo_portfn_notsupp,
-				usbintr, NETISR_FLAG_NOTMPSAFE);
+		netisr_register(NETISR_USB, usbintr, NULL);
 	}
 }
 

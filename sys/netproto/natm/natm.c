@@ -51,6 +51,7 @@
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
+#include <sys/mplock2.h>
 
 #include <net/if.h>
 #include <net/if_atm.h>
@@ -746,8 +747,7 @@ static void natmintr(struct netmsg *);
 static void
 netisr_natm_setup(void *dummy __unused)
 {
-	netisr_register(NETISR_NATM, cpu0_portfn, pktinfo_portfn_cpu0,
-			natmintr, NETISR_FLAG_NOTMPSAFE);
+	netisr_register(NETISR_NATM, natmintr, NULL);
 }
 SYSINIT(natm_setup, SI_BOOT2_KLD, SI_ORDER_ANY, netisr_natm_setup, NULL);
 #endif
@@ -757,8 +757,7 @@ natm_init(void)
 {
   LIST_INIT(&natm_pcbs);
 
-  netisr_register(NETISR_NATM, cpu0_portfn, pktinfo_portfn_cpu0,
-		  natmintr, NETISR_FLAG_NOTMPSAFE);
+  netisr_register(NETISR_NATM, natmintr, NULL);
 }
 
 /*
@@ -779,6 +778,8 @@ natmintr(struct netmsg *msg)
   if ((m->m_flags & M_PKTHDR) == 0)
     panic("natmintr no HDR");
 #endif
+
+  get_mplock();
 
   npcb = (struct natmpcb *) m->m_pkthdr.rcvif; /* XXX: overloaded */
   so = npcb->npcb_socket;
@@ -823,7 +824,7 @@ m->m_pkthdr.rcvif = NULL;	/* null it out to be safe */
     m_freem(m);
   }
 out:
-  ;
+  rel_mplock();
   /* msg was embedded in the mbuf, do not reply! */
 }
 

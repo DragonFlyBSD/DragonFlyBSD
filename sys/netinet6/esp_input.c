@@ -434,7 +434,7 @@ noreplaycheck:
 				ipsecstat.in_polvio++;
 				goto bad;
 			}
-			if (!ip_lengthcheck(&m)) {
+			if (!ip_lengthcheck(&m, 0)) {
 				/* freed in ip_lengthcheck() */
 				goto bad;
 			}

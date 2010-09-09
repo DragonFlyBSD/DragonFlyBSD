@@ -49,9 +49,9 @@ static __inline void
 netmsg_init(netmsg_t msg, struct socket *so, lwkt_port_t rport,
 	    int flags, netisr_fn_t dispatch)
 {
-    lwkt_initmsg(&msg->nm_lmsg, rport, flags);
-    msg->nm_dispatch = dispatch;
-    msg->nm_so = so;
+	lwkt_initmsg(&msg->nm_lmsg, rport, flags);
+	msg->nm_dispatch = dispatch;
+	msg->nm_so = so;
 }
 
 static __inline void
@@ -59,9 +59,9 @@ netmsg_init_abortable(netmsg_t msg, struct socket *so, lwkt_port_t rport,
 		      int flags, netisr_fn_t dispatch,
 		      void (*abortfn)(lwkt_msg_t))
 {
-    lwkt_initmsg_abortable(&msg->nm_lmsg, rport, flags, abortfn);
-    msg->nm_dispatch = dispatch;
-    msg->nm_so = so;
+	lwkt_initmsg_abortable(&msg->nm_lmsg, rport, flags, abortfn);
+	msg->nm_dispatch = dispatch;
+	msg->nm_so = so;
 }
 
 #endif /* _NET_NETMSG2_H_ */

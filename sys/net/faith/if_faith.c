@@ -245,9 +245,10 @@ faithoutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	/* XXX do we need more sanity checks? */
 
 	m->m_pkthdr.rcvif = ifp;
+	m->m_flags &= ~M_HASH;
 	ifp->if_ipackets++;
 	ifp->if_ibytes += m->m_pkthdr.len;
-	netisr_dispatch(isr, m);
+	netisr_queue(isr, m);
 	return (0);
 }
 

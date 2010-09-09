@@ -358,7 +358,7 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		 */
 		if (bcmp(edst, &ns_thishost, ETHER_ADDR_LEN) == 0) {
 			m->m_pkthdr.rcvif = ifp;
-			netisr_dispatch(NETISR_NS, m);
+			netisr_queue(NETISR_NS, m);
 			return (error);
 		}
 		if (bcmp(edst, &ns_broadhost, ETHER_ADDR_LEN) == 0)
@@ -1035,19 +1035,13 @@ static void
 ether_input_ipifunc(void *arg)
 {
 	struct mbuf *m, *next;
-	lwkt_port_t port;
+	lwkt_port_t port = cpu_portfn(mycpu->gd_cpuid);
 
 	m = arg;
 	do {
 		next = m->m_nextpkt;
 		m->m_nextpkt = NULL;
-
-		port = m->m_pkthdr.header;
-		m->m_pkthdr.header = NULL;
-
-		lwkt_sendmsg(port,
-		&m->m_hdr.mh_netmsg.nm_netmsg.nm_lmsg);
-
+		lwkt_sendmsg(port, &m->m_hdr.mh_netmsg.nm_netmsg.nm_lmsg);
 		m = next;
 	} while (m != NULL);
 }
@@ -1062,7 +1056,7 @@ ether_input_dispatch(struct mbuf_chain *chain)
 	for (i = 0; i < ncpus; ++i) {
 		if (chain[i].mc_head != NULL) {
 			lwkt_send_ipiq(globaldata_find(i),
-			ether_input_ipifunc, chain[i].mc_head);
+				       ether_input_ipifunc, chain[i].mc_head);
 		}
 	}
 #else
@@ -1222,7 +1216,7 @@ post_stats:
 #ifdef INET
 	case ETHERTYPE_IP:
 		if ((m->m_flags & M_LENCHECKED) == 0) {
-			if (!ip_lengthcheck(&m))
+			if (!ip_lengthcheck(&m, 0))
 				return;
 		}
 		if (ipflow_fastforward(m))
@@ -1361,17 +1355,14 @@ dropanyway:
 		return;
 	}
 
-	if (!redispatch)
-		netisr_run(isr, m);
-	else
-		netisr_dispatch(isr, m);
+	netisr_queue(isr, m);
 }
 
 /*
  * First we perform any link layer operations, then continue to the
  * upper layers with ether_demux_oncpu().
  */
-void
+static void
 ether_input_oncpu(struct ifnet *ifp, struct mbuf *m)
 {
 	if ((ifp->if_flags & (IFF_UP | IFF_MONITOR)) != IFF_UP) {
@@ -1532,48 +1523,24 @@ ether_input_handler(struct netmsg *nmsg)
 	ether_input_oncpu(ifp, m);
 }
 
-static __inline void
-ether_init_netpacket(int num, struct mbuf *m)
+/*
+ * Send the packet to the target msgport or queue it into 'chain'.
+ */
+static void
+ether_dispatch(int isr, struct mbuf *m, struct mbuf_chain *chain)
 {
 	struct netmsg_packet *pmsg;
 
+	KKASSERT(m->m_flags & M_HASH);
 	pmsg = &m->m_hdr.mh_netmsg;
 	netmsg_init(&pmsg->nm_netmsg, NULL, &netisr_apanic_rport,
-		    MSGF_MPSAFE, ether_input_handler);
+		    0, ether_input_handler);
 	pmsg->nm_packet = m;
-	pmsg->nm_netmsg.nm_lmsg.u.ms_result = num;
-}
-
-static __inline struct lwkt_port *
-ether_mport(int num, struct mbuf **m)
-{
-	if (num == NETISR_MAX) {
-		/*
-		 * All packets whose target msgports can't be
-		 * determined here are dispatched to netisr0,
-		 * where further dispatching may happen.
-		 */
-		return cpu_portfn(0);
-	}
-	return netisr_find_port(num, m);
-}
-
-/*
- * Send the packet to the target msgport or
- * queue it into 'chain'.
- */
-static void
-ether_dispatch(int isr, struct lwkt_port *port, struct mbuf *m,
-	       struct mbuf_chain *chain)
-{
-	ether_init_netpacket(isr, m);
+	pmsg->nm_netmsg.nm_lmsg.u.ms_result = isr;
 
 	if (chain != NULL) {
+		int cpuid = m->m_pkthdr.hash;
 		struct mbuf_chain *c;
-		int cpuid;
-
-		m->m_pkthdr.header = port; /* XXX */
-		cpuid = port->mpu_td->td_gd->gd_cpuid;
 
 		c = &chain[cpuid];
 		if (c->mc_head == NULL) {
@@ -1584,7 +1551,8 @@ ether_dispatch(int isr, struct lwkt_port *port, struct mbuf *m,
 		}
 		m->m_nextpkt = NULL;
 	} else {
-		lwkt_sendmsg(port, &m->m_hdr.mh_netmsg.nm_netmsg.nm_lmsg);
+		lwkt_sendmsg(cpu_portfn(m->m_pkthdr.hash),
+			     &pmsg->nm_netmsg.nm_lmsg);
 	}
 }
 
@@ -1595,13 +1563,10 @@ ether_dispatch(int isr, struct lwkt_port *port, struct mbuf *m,
  * MUST MAKE SURE that there are at least sizeof(struct ether_header)
  * bytes in the first mbuf.
  *
- * We first try to find the target msgport for this ether frame, if
- * there is no target msgport for it, this ether frame is discarded,
- * else we do following processing according to whether 'chain' is
- * NULL or not:
  * - If 'chain' is NULL, this ether frame is sent to the target msgport
  *   immediately.  This situation happens when ether_input_chain is
  *   accessed through ifnet.if_input.
+ *
  * - If 'chain' is not NULL, this ether frame is queued to the 'chain'
  *   bucket indexed by the target msgport's cpuid and the target msgport
  *   is saved in mbuf's m_pkthdr.m_head.  Caller of ether_input_chain
@@ -1613,8 +1578,7 @@ void
 ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
 		  struct mbuf_chain *chain)
 {
-	struct ether_header *eh, *save_eh, save_eh0;
-	struct lwkt_port *port;
+	struct ether_header *eh;
 	uint16_t ether_type;
 	int isr;
 
@@ -1654,27 +1618,21 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
 		return;
 	}
 
+	/*
+	 * If the packet has been characterized (pi->pi_netisr / M_HASH)
+	 * we can dispatch it immediately without further inspection.
+	 */
 	if (pi != NULL && (m->m_flags & M_HASH)) {
 #ifdef RSS_DEBUG
 		ether_pktinfo_try++;
 #endif
-		/* Try finding the port using the packet info */
-		port = netisr_find_pktinfo_port(pi, m);
-		if (port != NULL) {
+		ether_dispatch(pi->pi_netisr, m, chain);
+
 #ifdef RSS_DEBUG
-			ether_pktinfo_hit++;
+		ether_pktinfo_hit++;
 #endif
-			ether_dispatch(pi->pi_netisr, port, m, chain);
-
-			logether(chain_end, ifp);
-			return;
-		}
-
-		/*
-		 * The packet info does not contain enough
-		 * information, we will have to check the
-		 * packet content.
-		 */
+		logether(chain_end, ifp);
+		return;
 	}
 #ifdef RSS_DEBUG
 	else if (ifp->if_capenable & IFCAP_RSS) {
@@ -1753,58 +1711,26 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
 	default:
 		/*
 		 * NETISR_MAX is an invalid value; it is chosen to let
-		 * ether_mport() know that we are not able to decide
-		 * this packet's msgport here.
 		 */
 		isr = NETISR_MAX;
 		break;
 	}
 
 	/*
-	 * If the packet is in contiguous memory, following
-	 * m_adj() could ensure that the hidden ether header
-	 * will not be destroyed, else we will have to save
-	 * the ether header for the later restoration.
+	 * Ask the isr to characterize the packet since we couldn't.
+	 * This is an attempt to optimally get us onto the correct protocol
+	 * thread.
 	 */
-	if (m->m_pkthdr.len != m->m_len) {
-		save_eh0 = *eh;
-		save_eh = &save_eh0;
-	} else {
-		save_eh = NULL;
-	}
-
-	/*
-	 * Temporarily remove ether header; ether_mport()
-	 * expects a packet without ether header.
-	 */
-	m_adj(m, sizeof(struct ether_header));
-
-	/*
-	 * Find the packet's target msgport.
-	 */
-	port = ether_mport(isr, &m);
-	if (port == NULL) {
-		KKASSERT(m == NULL);
+	netisr_characterize(isr, &m, sizeof(struct ether_header));
+	if (m == NULL) {
 		logether(chain_end, ifp);
 		return;
 	}
 
 	/*
-	 * Restore ether header.
+	 * Finally dispatch it
 	 */
-	if (save_eh != NULL) {
-		ether_restore_header(&m, eh, save_eh);
-		if (m == NULL) {
-			logether(chain_end, ifp);
-			return;
-		}
-	} else {
-		m->m_data -= ETHER_HDR_LEN;
-		m->m_len += ETHER_HDR_LEN;
-		m->m_pkthdr.len += ETHER_HDR_LEN;
-	}
-
-	ether_dispatch(isr, port, m, chain);
+	ether_dispatch(isr, m, chain);
 
 	logether(chain_end, ifp);
 }

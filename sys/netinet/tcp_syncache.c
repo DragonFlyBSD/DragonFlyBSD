@@ -332,9 +332,9 @@ syncache_init(void)
 			callout_init(&syncache_percpu->tt_timerq[i]);
 
 			syncache_percpu->mrec[i].slot = i;
-			syncache_percpu->mrec[i].port = tcp_cport(cpu);
+			syncache_percpu->mrec[i].port = cpu_portfn(cpu);
 			syncache_percpu->mrec[i].msg.nm_mrec =
-			    &syncache_percpu->mrec[i];
+				    &syncache_percpu->mrec[i];
 			netmsg_init(&syncache_percpu->mrec[i].msg.nm_netmsg,
 				    NULL, &syncache_null_rport,
 				    0, syncache_timer_handler);

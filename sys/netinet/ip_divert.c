@@ -215,7 +215,16 @@ div_soport(struct socket *so, struct sockaddr *nam, struct mbuf **mptr)
 		m->m_pkthdr.rcvif = ifa->ifa_ifp;
 	}
 
-	return ip_mport(mptr, dir);
+	/*
+	 * Recalculate the protocol thread.
+	 */
+	ip_cpufn(mptr, 0, dir);
+	m = *mptr;
+	if (m) {
+		KKASSERT(m->m_flash & M_HASH);
+		return(cpu_portfn(m->m_pkthdr.hash));
+	}
+	return(NULL);
 }
 
 /*
@@ -369,7 +378,7 @@ divert_packet(struct mbuf *m, int incoming)
 
 		nmp = &m->m_hdr.mh_netmsg;
 		netmsg_init(&nmp->nm_netmsg, NULL, &netisr_apanic_rport,
-		    MSGF_MPSAFE, div_packet_handler);
+			    0, div_packet_handler);
 		nmp->nm_packet = m;
 
 		msg = &nmp->nm_netmsg.nm_lmsg;
@@ -543,7 +552,7 @@ static int
 div_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 	 struct mbuf *control, struct thread *td)
 {
-	/* Length check already done in ip_mport() */
+	/* Length check already done in ip_cpufn() */
 	KASSERT(m->m_len >= sizeof(struct ip), ("IP header not in one mbuf"));
 
 	/* Send packet */

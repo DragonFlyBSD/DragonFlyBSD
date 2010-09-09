@@ -239,8 +239,7 @@ SYSCTL_INT(_net_bluetooth_sco, OID_AUTO, recvspace, CTLFLAG_RW, &sco_recvspace,
 static void
 netisr_netbt_setup(void *dummy __unused)
 {
-	netisr_register(NETISR_BLUETOOTH, cpu0_portfn, pktinfo_portfn_cpu0,
-			btintr, NETISR_FLAG_NOTMPSAFE);
+	netisr_register(NETISR_BLUETOOTH, btintr, NULL);
 }
 
 SYSINIT(netbt_setup, SI_BOOT2_KLD, SI_ORDER_ANY, netisr_netbt_setup, NULL);

@@ -140,9 +140,6 @@ int rsvp_on = 0;
 static int ip_rsvp_on;
 struct socket *ip_rsvpd;
 
-int ip_mpsafe = 1;
-TUNABLE_INT("net.inet.ip.mpsafe", &ip_mpsafe);
-
 int ipforwarding = 0;
 SYSCTL_INT(_net_inet_ip, IPCTL_FORWARDING, forwarding, CTLFLAG_RW,
     &ipforwarding, 0, "Enable IP forwarding between interfaces");
@@ -206,14 +203,24 @@ static int ip_checkinterface = 0;
 SYSCTL_INT(_net_inet_ip, OID_AUTO, check_interface, CTLFLAG_RW,
     &ip_checkinterface, 0, "Verify packet arrives on correct interface");
 
+static int ip_dispatch_fast = 0;
+static int ip_dispatch_slow = 0;
+static int ip_dispatch_recheck = 0;
+static int ip_dispatch_software = 0;
+SYSCTL_INT(_net_inet_ip, OID_AUTO, dispatch_fast_count, CTLFLAG_RW,
+	   &ip_dispatch_fast, 0, "");
+SYSCTL_INT(_net_inet_ip, OID_AUTO, dispatch_slow_count, CTLFLAG_RW,
+	   &ip_dispatch_slow, 0, "");
+SYSCTL_INT(_net_inet_ip, OID_AUTO, dispatch_software_count, CTLFLAG_RW,
+	   &ip_dispatch_software, 0, "");
+SYSCTL_INT(_net_inet_ip, OID_AUTO, dispatch_recheck_count, CTLFLAG_RW,
+	   &ip_dispatch_recheck, 0, "");
+
 static struct lwkt_token ipq_token = LWKT_TOKEN_MP_INITIALIZER(ipq_token);
 
 #ifdef DIAGNOSTIC
 static int ipprintfs = 0;
 #endif
-
-extern	int udp_mpsafe_proto;
-extern	int tcp_mpsafe_proto;
 
 extern	struct domain inetdomain;
 extern	struct protosw inetsw[];
@@ -315,7 +322,6 @@ void
 ip_init(void)
 {
 	struct protosw *pr;
-	uint32_t flags;
 	int i;
 #ifdef SMP
 	int cpu;
@@ -342,19 +348,6 @@ ip_init(void)
 		if (pr->pr_domain->dom_family == PF_INET && pr->pr_protocol) {
 			if (pr->pr_protocol != IPPROTO_RAW)
 				ip_protox[pr->pr_protocol] = pr - inetsw;
-
-			/* XXX */
-			switch (pr->pr_protocol) {
-			case IPPROTO_TCP:
-				if (tcp_mpsafe_proto)
-					pr->pr_flags |= PR_MPSAFE;
-				break;
-
-			case IPPROTO_UDP:
-				if (udp_mpsafe_proto)
-					pr->pr_flags |= PR_MPSAFE;
-				break;
-			}
 		}
 	}
 
@@ -385,19 +378,7 @@ ip_init(void)
 	bzero(&ipstat, sizeof(struct ip_stats));
 #endif
 
-#if defined(IPSEC) || defined(FAST_IPSEC)
-	/* XXX IPSEC is not MPSAFE yet */
-	flags = NETISR_FLAG_NOTMPSAFE;
-#else
-	if (ip_mpsafe) {
-		kprintf("ip: MPSAFE\n");
-		flags = NETISR_FLAG_MPSAFE;
-	} else {
-		flags = NETISR_FLAG_NOTMPSAFE;
-	}
-#endif
-	netisr_register(NETISR_IP, ip_mport_in, ip_mport_pktinfo,
-			ip_input_handler, flags);
+	netisr_register(NETISR_IP, ip_input_handler, ip_cpufn_in);
 }
 
 /* Do transport protocol processing. */
@@ -464,16 +445,16 @@ ip_input(struct mbuf *m)
 	M_ASSERTPKTHDR(m);
 
 	/*
-	 * This does necessary pullups and figures out the protocol
-	 * port.  If the packet is really badly formed it will blow
-	 * it away and return NULL.
-	 *
-	 * We do not necessarily make use of the port (forwarding,
-	 * defragmentation, etc).
+	 * This routine is called from numerous places which may not have
+	 * characterized the packet.
 	 */
-	port = ip_mport(&m, IP_MPORT_IN);
-	if (port == NULL)
-		return;
+	if ((m->m_flags & M_HASH) == 0) {
+		++ip_dispatch_software;
+		ip_cpufn(&m, 0, IP_MPORT_IN);
+		if (m == NULL)
+			return;
+		KKASSERT(m->m_flags & M_HASH);
+	}
 	ip = mtod(m, struct ip *);
 
 	/*
@@ -495,7 +476,7 @@ ip_input(struct mbuf *m)
 
 	ipstat.ips_total++;
 
-	/* length checks already done in ip_mport() */
+	/* length checks already done in ip_cpufn() */
 	KASSERT(m->m_len >= sizeof(struct ip), ("IP header not in one mbuf"));
 
 	if (IP_VHL_V(ip->ip_vhl) != IPVERSION) {
@@ -504,7 +485,7 @@ ip_input(struct mbuf *m)
 	}
 
 	hlen = IP_VHL_HL(ip->ip_vhl) << 2;
-	/* length checks already done in ip_mport() */
+	/* length checks already done in ip_cpufn() */
 	KASSERT(hlen >= sizeof(struct ip), ("IP header len too small"));
 	KASSERT(m->m_len >= hlen, ("complete IP header not in one mbuf"));
 
@@ -542,7 +523,7 @@ ip_input(struct mbuf *m)
 	ip->ip_len = ntohs(ip->ip_len);
 	ip->ip_off = ntohs(ip->ip_off);
 
-	/* length checks already done in ip_mport() */
+	/* length checks already done in ip_cpufn() */
 	KASSERT(ip->ip_len >= hlen, ("total length less then header length"));
 	KASSERT(m->m_pkthdr.len >= ip->ip_len, ("mbuf too short"));
 
@@ -602,9 +583,8 @@ iphack:
 	/*
 	 * Run through list of hooks for input packets.
 	 *
-	 * NB: Beware of the destination address changing (e.g.
-	 *     by NAT rewriting). When this happens, tell
-	 *     ip_forward to do the right thing.
+	 * NOTE!  If the packet is rewritten pf/ipfw/whoever must
+	 *	  clear M_HASH.
 	 */
 	odst = ip->ip_dst;
 	if (pfil_run_hooks(&inet_pfil_hook, &m, m->m_pkthdr.rcvif, PFIL_IN))
@@ -870,8 +850,11 @@ ours:
 	 */
 	if (ip->ip_off & (IP_MF | IP_OFFMASK)) {
 		/*
-		 * Attempt reassembly; if it succeeds, proceed.
-		 * ip_reass() will return a different mbuf.
+		 * Attempt reassembly; if it succeeds, proceed.  ip_reass()
+		 * will return a different mbuf.
+		 *
+		 * NOTE: ip_reass() returns m with M_HASH cleared to force
+		 *	 us to recharacterize the packet.
 		 */
 		m = ip_reass(m);
 		if (m == NULL)
@@ -937,25 +920,45 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 #endif /* FAST_IPSEC */
 
 	/*
-	 * NOTE: ip_len is now in host form and adjusted down by hlen for
-	 *	 protocol processing.
-	 *
 	 * We must forward the packet to the correct protocol thread if
 	 * we are not already in it.
+	 *
+	 * NOTE: ip_len is now in host form.  ip_len is not adjusted
+	 *	 further for protocol processing, instead we pass hlen
+	 *	 to the protosw and let it deal with it.
 	 */
 	ipstat.ips_delivered++;
+
+	if ((m->m_flags & M_HASH) == 0) {
+		++ip_dispatch_recheck;
+		ip->ip_len = htons(ip->ip_len);
+		ip->ip_off = htons(ip->ip_off);
+
+		ip_cpufn(&m, 0, IP_MPORT_IN);
+		if (m == NULL)
+			return;
+
+		ip = mtod(m, struct ip *);
+		ip->ip_len = ntohs(ip->ip_len);
+		ip->ip_off = ntohs(ip->ip_off);
+		KKASSERT(m->m_flags & M_HASH);
+	}
+	port = cpu_portfn(m->m_pkthdr.hash);
 
 	if (port != &curthread->td_msgport) {
 		struct netmsg_packet *pmsg;
 
+		++ip_dispatch_slow;
+
 		pmsg = &m->m_hdr.mh_netmsg;
 		netmsg_init(&pmsg->nm_netmsg, NULL, &netisr_apanic_rport,
-			    MSGF_MPSAFE, transport_processing_handler);
+			    0, transport_processing_handler);
 		pmsg->nm_packet = m;
 		pmsg->nm_netmsg.nm_lmsg.u.ms_result = hlen;
 
 		lwkt_sendmsg(port, &pmsg->nm_netmsg.nm_lmsg);
 	} else {
+		++ip_dispatch_fast;
 		transport_processing_oncpu(m, hlen, ip);
 	}
 	return;
@@ -1241,6 +1244,16 @@ inserted:
 			plen += n->m_len;
 		m->m_pkthdr.len = plen;
 	}
+
+	/*
+	 * Reassembly complete, return the next protocol.
+	 *
+	 * Be sure to clear M_HASH to force the packet
+	 * to be re-characterized.
+	 *
+	 * Clear M_FRAG, we are no longer a fragment.
+	 */
+	m->m_flags &= ~(M_HASH | M_FRAG);
 
 	ipstat.ips_reassembled++;
 	lwkt_reltoken(&ipq_token);

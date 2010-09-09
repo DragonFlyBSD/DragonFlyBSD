@@ -197,28 +197,27 @@ void netmsg_so_notify_doabort(lwkt_msg_t);
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
+/*
+ * Temporary pktinfo structure passed directly from the driver to
+ * ether_input_chain(), allows us to bypass numerous checks.
+ */
 struct pktinfo {
 	int		pi_netisr;	/* netisr index, e.g. NETISR_IP */
 	uint32_t	pi_flags;	/* PKTINFO_FLAG_ */
 	int		pi_l3proto;	/* layer3 protocol number */
 };
 
-#define PKTINFO_FLAG_FRAG	0x1
+#define PKTINFO_FLAG_FRAG      0x1
 
-typedef lwkt_port_t (*pkt_portfn_t)(struct mbuf **);
-typedef lwkt_port_t (*pktinfo_portfn_t)(const struct pktinfo *, struct mbuf *);
-
+/*
+ * NETISR_xxx registrations
+ */
 struct netisr {
-	lwkt_port	ni_port;	/* must be first */
-	pkt_portfn_t	ni_mport;
-	pktinfo_portfn_t ni_mport_pktinfo;
-	netisr_fn_t	ni_handler;
+	netisr_fn_t	ni_handler;	/* packet handler function */
+	netisr_ru_t	ni_rufunc;	/* rollup function */
+	netisr_cpufn_t	ni_cpufn;	/* characterize pkt return cpu */
 	struct netmsg	ni_netmsg;	/* for sched_netisr() (no-data) */
-	uint32_t	ni_flags;	/* NETISR_FLAG_ */
 };
-
-#define NETISR_FLAG_NOTMPSAFE	0x0	/* ni_handler is not MPSAFE */
-#define NETISR_FLAG_MPSAFE	0x1	/* ni_handler is MPSAFE */
 
 #endif
 
@@ -231,24 +230,16 @@ extern lwkt_port netisr_adone_rport;
 extern lwkt_port netisr_afree_rport;
 extern lwkt_port netisr_apanic_rport;
 
-lwkt_port_t	cpu0_portfn(struct mbuf **mptr);
 lwkt_port_t	cpu_portfn(int cpu);
-lwkt_port_t	pktinfo_portfn_cpu0(const struct pktinfo *, struct mbuf *);
-lwkt_port_t	pktinfo_portfn_notsupp(const struct pktinfo *, struct mbuf *);
 lwkt_port_t	cur_netport(void);
 
-lwkt_port_t	netisr_find_port(int, struct mbuf **);
-lwkt_port_t	netisr_find_pktinfo_port(const struct pktinfo *, struct mbuf *);
-void		netisr_dispatch(int, struct mbuf *);
-void		netisr_run(int, struct mbuf *);
+void		netisr_register(int, netisr_fn_t, netisr_cpufn_t);
+void		netisr_register_rollup(netisr_ru_t ru_func);
+
+void		netisr_characterize(int num, struct mbuf **mp, int hoff);
 int		netisr_queue(int, struct mbuf *);
-void		netisr_register(int, pkt_portfn_t, pktinfo_portfn_t,
-				netisr_fn_t, uint32_t);
-int		netisr_unregister(int);
 
 void		netmsg_service_port_init(lwkt_port_t);
-void		netmsg_service_loop(void *arg);
-int		netmsg_service(struct netmsg *, int, int);
 void		netmsg_service_sync(void);
 void		schednetisr(int);
 

@@ -387,7 +387,7 @@ tcp_usr_listen(struct socket *so, struct thread *td)
 			    0, in_pcbinswildcardhash_handler);
 		msg->nm_inp = inp;
 		msg->nm_pcbinfo = &tcbinfo[cpu];
-		lwkt_sendmsg(tcp_cport(cpu), &msg->nm_netmsg.nm_lmsg);
+		lwkt_sendmsg(cpu_portfn(cpu), &msg->nm_netmsg.nm_lmsg);
 	}
 #else
 	in_pcbinswildcardhash(inp);
@@ -436,7 +436,7 @@ tcp6_usr_listen(struct socket *so, struct thread *td)
 			    0, in_pcbinswildcardhash_handler);
 		msg->nm_inp = inp;
 		msg->nm_pcbinfo = &tcbinfo[cpu];
-		lwkt_sendmsg(tcp_cport(cpu), &msg->nm_netmsg.nm_lmsg);
+		lwkt_sendmsg(cpu_portfn(cpu), &msg->nm_netmsg.nm_lmsg);
 	}
 #else
 	in_pcbinswildcardhash(inp);

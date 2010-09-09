@@ -163,13 +163,16 @@ struct ip6protosw inet6sw[] = {
   ip6_init,	0,		frag6_slowtimo,	frag6_drain,
   &nousrreqs,
 },
-{ SOCK_DGRAM,	&inet6domain,	IPPROTO_UDP,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
+{ SOCK_DGRAM,	&inet6domain,	IPPROTO_UDP,	PR_ATOMIC | PR_ADDR |
+						PR_MPSAFE | PR_LASTHDR,
   udp6_input,	0,		udp6_ctlinput,	ip6_ctloutput,
   cpu0_soport,	cpu0_ctlport,
   0,		0,		0,		0,
   &udp6_usrreqs,
 },
-{ SOCK_STREAM,	&inet6domain,	IPPROTO_TCP,	PR_CONNREQUIRED|PR_WANTRCVD|PR_LISTEN|PR_LASTHDR,
+{ SOCK_STREAM,	&inet6domain,	IPPROTO_TCP,	PR_CONNREQUIRED |
+						PR_WANTRCVD | PR_LISTEN |
+						PR_MPSAFE | PR_LASTHDR,
   tcp6_input,	0,		tcp6_ctlinput,	tcp_ctloutput,
   tcp6_soport,	cpu0_ctlport,
 #ifdef INET	/* don't call initialization and timeout routines twice */

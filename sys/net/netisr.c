@@ -58,30 +58,26 @@
 #include <net/netmsg2.h>
 #include <sys/mplock2.h>
 
-#define NETISR_GET_MPLOCK(ni) \
-do { \
-    if (((ni)->ni_flags & NETISR_FLAG_MPSAFE) == 0) \
-	get_mplock(); \
-} while (0)
-
-#define NETISR_REL_MPLOCK(ni) \
-do { \
-    if (((ni)->ni_flags & NETISR_FLAG_MPSAFE) == 0) \
-	rel_mplock(); \
-} while (0)
-
 static void netmsg_sync_func(struct netmsg *msg);
+static void netmsg_service_loop(void *arg);
+static void cpu0_cpufn(struct mbuf **mp, int hoff);
 
 struct netmsg_port_registration {
-    TAILQ_ENTRY(netmsg_port_registration) npr_entry;
-    lwkt_port_t	npr_port;
+	TAILQ_ENTRY(netmsg_port_registration) npr_entry;
+	lwkt_port_t	npr_port;
+};
+
+struct netmsg_rollup {
+	TAILQ_ENTRY(netmsg_rollup) ru_entry;
+	netisr_ru_t	ru_func;
 };
 
 static struct netisr netisrs[NETISR_MAX];
 static TAILQ_HEAD(,netmsg_port_registration) netreglist;
+static TAILQ_HEAD(,netmsg_rollup) netrulist;
 
 /* Per-CPU thread to handle any protocol.  */
-struct thread netisr_cpu[MAXCPU];
+static struct thread netisr_cpu[MAXCPU];
 lwkt_port netisr_afree_rport;
 lwkt_port netisr_adone_rport;
 lwkt_port netisr_apanic_rport;
@@ -89,23 +85,7 @@ lwkt_port netisr_sync_port;
 
 static int (*netmsg_fwd_port_fn)(lwkt_port_t, lwkt_msg_t);
 
-static int netisr_mpsafe_thread = NETMSG_SERVICE_ADAPTIVE;
-TUNABLE_INT("net.netisr.mpsafe_thread", &netisr_mpsafe_thread);
-
 SYSCTL_NODE(_net, OID_AUTO, netisr, CTLFLAG_RW, 0, "netisr");
-SYSCTL_INT(_net_netisr, OID_AUTO, mpsafe_thread, CTLFLAG_RW,
-	   &netisr_mpsafe_thread, 0,
-	   "0:BGL, 1:Adaptive BGL, 2:No BGL(experimental)");
-
-static __inline int
-NETISR_TO_MSGF(const struct netisr *ni)
-{
-    int msg_flags = 0;
-    
-    if (ni->ni_flags & NETISR_FLAG_MPSAFE)
-    	msg_flags |= MSGF_MPSAFE;
-    return msg_flags;
-}
 
 /*
  * netisr_afree_rport replymsg function, only used to handle async
@@ -114,7 +94,7 @@ NETISR_TO_MSGF(const struct netisr *ni)
 static void
 netisr_autofree_reply(lwkt_port_t port, lwkt_msg_t msg)
 {
-    kfree(msg, M_LWKTMSG);
+	kfree(msg, M_LWKTMSG);
 }
 
 /*
@@ -131,16 +111,18 @@ netisr_autofree_reply(lwkt_port_t port, lwkt_msg_t msg)
 static int
 netmsg_put_port(lwkt_port_t port, lwkt_msg_t lmsg)
 {
-    netmsg_t netmsg = (void *)lmsg;
+	netmsg_t netmsg = (void *)lmsg;
 
-    if ((lmsg->ms_flags & MSGF_SYNC) && port == &curthread->td_msgport) {
-	netmsg->nm_dispatch(netmsg);
-	if ((lmsg->ms_flags & MSGF_DONE) == 0)
-	    panic("netmsg_put_port: self-referential deadlock on netport");
-	return(EASYNC);
-    } else {
-	return(netmsg_fwd_port_fn(port, lmsg));
-    }
+	if ((lmsg->ms_flags & MSGF_SYNC) && port == &curthread->td_msgport) {
+		netmsg->nm_dispatch(netmsg);
+		if ((lmsg->ms_flags & MSGF_DONE) == 0) {
+			panic("netmsg_put_port: self-referential "
+			      "deadlock on netport");
+		}
+		return(EASYNC);
+	} else {
+		return(netmsg_fwd_port_fn(port, lmsg));
+	}
 }
 
 /*
@@ -156,47 +138,49 @@ netmsg_put_port(lwkt_port_t port, lwkt_msg_t lmsg)
 static int
 netmsg_sync_putport(lwkt_port_t port, lwkt_msg_t lmsg)
 {
-    netmsg_t netmsg = (void *)lmsg;
+	netmsg_t netmsg = (void *)lmsg;
 
-    KKASSERT((lmsg->ms_flags & MSGF_DONE) == 0);
+	KKASSERT((lmsg->ms_flags & MSGF_DONE) == 0);
 
-    lmsg->ms_target_port = port;	/* required for abort */
-    netmsg->nm_dispatch(netmsg);
-    return(EASYNC);
+	lmsg->ms_target_port = port;	/* required for abort */
+	netmsg->nm_dispatch(netmsg);
+	return(EASYNC);
 }
 
 static void
 netisr_init(void)
 {
-    int i;
+	int i;
 
-    TAILQ_INIT(&netreglist);
+	TAILQ_INIT(&netreglist);
+	TAILQ_INIT(&netrulist);
 
-    /*
-     * Create default per-cpu threads for generic protocol handling.
-     */
-    for (i = 0; i < ncpus; ++i) {
-	lwkt_create(netmsg_service_loop, &netisr_mpsafe_thread, NULL,
-		    &netisr_cpu[i], TDF_NETWORK, i,
-		    "netisr_cpu %d", i);
-	netmsg_service_port_init(&netisr_cpu[i].td_msgport);
-    }
+	/*
+	 * Create default per-cpu threads for generic protocol handling.
+	 */
+	for (i = 0; i < ncpus; ++i) {
+		lwkt_create(netmsg_service_loop, NULL, NULL,
+			    &netisr_cpu[i], TDF_STOPREQ, i,
+			    "netisr_cpu %d", i);
+		netmsg_service_port_init(&netisr_cpu[i].td_msgport);
+		lwkt_schedule(&netisr_cpu[i]);
+	}
 
-    /*
-     * The netisr_afree_rport is a special reply port which automatically
-     * frees the replied message.  The netisr_adone_rport simply marks
-     * the message as being done.  The netisr_apanic_rport panics if
-     * the message is replied to.
-     */
-    lwkt_initport_replyonly(&netisr_afree_rport, netisr_autofree_reply);
-    lwkt_initport_replyonly_null(&netisr_adone_rport);
-    lwkt_initport_panic(&netisr_apanic_rport);
+	/*
+	 * The netisr_afree_rport is a special reply port which automatically
+	 * frees the replied message.  The netisr_adone_rport simply marks
+	 * the message as being done.  The netisr_apanic_rport panics if
+	 * the message is replied to.
+	 */
+	lwkt_initport_replyonly(&netisr_afree_rport, netisr_autofree_reply);
+	lwkt_initport_replyonly_null(&netisr_adone_rport);
+	lwkt_initport_panic(&netisr_apanic_rport);
 
-    /*
-     * The netisr_syncport is a special port which executes the message
-     * synchronously and waits for it if EASYNC is returned.
-     */
-    lwkt_initport_putonly(&netisr_sync_port, netmsg_sync_putport);
+	/*
+	 * The netisr_syncport is a special port which executes the message
+	 * synchronously and waits for it if EASYNC is returned.
+	 */
+	lwkt_initport_putonly(&netisr_sync_port, netmsg_sync_putport);
 }
 
 SYSINIT(netisr, SI_SUB_PRE_DRIVERS, SI_ORDER_FIRST, netisr_init, NULL);
@@ -209,25 +193,25 @@ SYSINIT(netisr, SI_SUB_PRE_DRIVERS, SI_ORDER_FIRST, netisr_init, NULL);
 void
 netmsg_service_port_init(lwkt_port_t port)
 {
-    struct netmsg_port_registration *reg;
+	struct netmsg_port_registration *reg;
 
-    /*
-     * Override the putport function.  Our custom function checks for 
-     * self-references and executes such commands synchronously.
-     */
-    if (netmsg_fwd_port_fn == NULL)
-	netmsg_fwd_port_fn = port->mp_putport;
-    KKASSERT(netmsg_fwd_port_fn == port->mp_putport);
-    port->mp_putport = netmsg_put_port;
+	/*
+	 * Override the putport function.  Our custom function checks for
+	 * self-references and executes such commands synchronously.
+	 */
+	if (netmsg_fwd_port_fn == NULL)
+		netmsg_fwd_port_fn = port->mp_putport;
+	KKASSERT(netmsg_fwd_port_fn == port->mp_putport);
+	port->mp_putport = netmsg_put_port;
 
-    /*
-     * Keep track of ports using the netmsg API so we can synchronize
-     * certain operations (such as freeing an ifnet structure) across all
-     * consumers.
-     */
-    reg = kmalloc(sizeof(*reg), M_TEMP, M_WAITOK|M_ZERO);
-    reg->npr_port = port;
-    TAILQ_INSERT_TAIL(&netreglist, reg, npr_entry);
+	/*
+	 * Keep track of ports using the netmsg API so we can synchronize
+	 * certain operations (such as freeing an ifnet structure) across all
+	 * consumers.
+	 */
+	reg = kmalloc(sizeof(*reg), M_TEMP, M_WAITOK|M_ZERO);
+	reg->npr_port = port;
+	TAILQ_INSERT_TAIL(&netreglist, reg, npr_entry);
 }
 
 /*
@@ -242,15 +226,14 @@ netmsg_service_port_init(lwkt_port_t port)
 void
 netmsg_service_sync(void)
 {
-    struct netmsg_port_registration *reg;
-    struct netmsg smsg;
+	struct netmsg_port_registration *reg;
+	struct netmsg smsg;
 
-    netmsg_init(&smsg, NULL, &curthread->td_msgport,
-		MSGF_MPSAFE, netmsg_sync_func);
+	netmsg_init(&smsg, NULL, &curthread->td_msgport, 0, netmsg_sync_func);
 
-    TAILQ_FOREACH(reg, &netreglist, npr_entry) {
-	lwkt_domsg(reg->npr_port, &smsg.nm_lmsg, 0);
-    }
+	TAILQ_FOREACH(reg, &netreglist, npr_entry) {
+		lwkt_domsg(reg->npr_port, &smsg.nm_lmsg, 0);
+	}
 }
 
 /*
@@ -260,233 +243,240 @@ netmsg_service_sync(void)
 static void
 netmsg_sync_func(struct netmsg *msg)
 {
-    lwkt_replymsg(&msg->nm_lmsg, 0);
-}
-
-/*
- * Service a netmsg request and modify the BGL lock state if appropriate.
- * The new BGL lock state is returned (1:locked, 0:unlocked).
- */
-int
-netmsg_service(struct netmsg *msg, int mpsafe_mode, int mplocked)
-{
-    /*
-     * If nm_so is non-NULL the message is related to a socket.  Sockets
-     * can migrate between protocol processing threads when they connect,
-     * due to an implied connect during a sendmsg(), or when a connection
-     * is accepted.
-     *
-     * If this occurs any messages already queued to the original thread
-     * or which race the change must be forwarded to the new protocol
-     * processing port.
-     *
-     * MPSAFE - socket changes are synchronous to the current protocol port
-     * 		so if the port can only change out from under us if it is
-     *		already different from the current port anyway so we forward
-     *		it.  It is possible to chase a changing port, which is fine.
-     */
-    if (msg->nm_so && msg->nm_so->so_port != &curthread->td_msgport) {
-	lwkt_forwardmsg(msg->nm_so->so_port, &msg->nm_lmsg);
-	return(mplocked);
-    }
-
-    /*
-     * Adjust the mplock dynamically.
-     */
-    switch (mpsafe_mode) {
-    case NETMSG_SERVICE_ADAPTIVE: /* Adaptive BGL */
-	if (msg->nm_lmsg.ms_flags & MSGF_MPSAFE) {
-	    if (mplocked) {
-		rel_mplock();
-		mplocked = 0;
-	    }
-	    msg->nm_dispatch(msg);
-	    /* Leave mpunlocked */
-	} else {
-	    if (!mplocked) {
-		get_mplock();
-		/* mplocked = 1; not needed */
-	    }
-	    msg->nm_dispatch(msg);
-	    rel_mplock();
-	    mplocked = 0;
-	    /* Leave mpunlocked, next msg might be mpsafe */
-	}
-	break;
-
-    case NETMSG_SERVICE_MPSAFE: /* No BGL */
-	if (mplocked) {
-	    rel_mplock();
-	    mplocked = 0;
-	}
-	msg->nm_dispatch(msg);
-	/* Leave mpunlocked */
-	break;
-
-    default: /* BGL */
-	if (!mplocked) {
-	    get_mplock();
-	    mplocked = 1;
-	}
-	msg->nm_dispatch(msg);
-	/* Leave mplocked */
-	break;
-    }
-    return mplocked;
+	lwkt_replymsg(&msg->nm_lmsg, 0);
 }
 
 /*
  * Generic netmsg service loop.  Some protocols may roll their own but all
  * must do the basic command dispatch function call done here.
  */
-void
+static void
 netmsg_service_loop(void *arg)
 {
-    struct netmsg *msg;
-    int mplocked, *mpsafe_mode = arg;
+	struct netmsg_rollup *ru;
+	struct netmsg *msg;
+	thread_t td = curthread;;
+	int limit;
 
-    /*
-     * Threads always start mpsafe.
-     */
-    mplocked = 0;
+	while ((msg = lwkt_waitport(&td->td_msgport, 0))) {
+		/*
+		 * Run up to 512 pending netmsgs.
+		 */
+		limit = 512;
+		do {
+			KASSERT(msg->nm_dispatch != NULL,
+				("netmsg_service isr %d badmsg\n",
+				msg->nm_lmsg.u.ms_result));
+			msg->nm_dispatch(msg);
+			if (--limit == 0)
+				break;
+		} while ((msg = lwkt_getport(&td->td_msgport)) != NULL);
 
-    /*
-     * Loop on netmsgs
-     */
-    while ((msg = lwkt_waitport(&curthread->td_msgport, 0))) {
-	mplocked = netmsg_service(msg, *mpsafe_mode, mplocked);
-    }
+		/*
+		 * Run all registered rollup functions for this cpu
+		 * (e.g. tcp_willblock()).
+		 */
+		TAILQ_FOREACH(ru, &netrulist, ru_entry)
+			ru->ru_func();
+	}
 }
 
 /*
- * Call the netisr directly.
- * Queueing may be done in the msg port layer at its discretion.
- */
-void
-netisr_dispatch(int num, struct mbuf *m)
-{
-    /* just queue it for now XXX JH */
-    netisr_queue(num, m);
-}
-
-/*
- * Same as netisr_dispatch(), but always queue.
- * This is either used in places where we are not confident that
- * direct dispatch is possible, or where queueing is required.
+ * Forward a packet to a netisr service function.
+ *
+ * If the packet has not been assigned to a protocol thread we call
+ * the port characterization function to assign it.  The caller must
+ * clear M_HASH (or not have set it in the first place) if the caller
+ * wishes the packet to be recharacterized.
  */
 int
 netisr_queue(int num, struct mbuf *m)
 {
-    struct netisr *ni;
-    struct netmsg_packet *pmsg;
-    lwkt_port_t port;
+	struct netisr *ni;
+	struct netmsg_packet *pmsg;
+	lwkt_port_t port;
 
-    KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
-    	    ("%s: bad isr %d", __func__, num));
+	KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
+		("Bad isr %d", num));
 
-    ni = &netisrs[num];
-    if (ni->ni_handler == NULL) {
-	kprintf("%s: unregistered isr %d\n", __func__, num);
-	m_freem(m);
-	return (EIO);
-    }
+	ni = &netisrs[num];
+	if (ni->ni_handler == NULL) {
+		kprintf("Unregistered isr %d\n", num);
+		m_freem(m);
+		return (EIO);
+	}
 
-    if ((port = ni->ni_mport(&m)) == NULL)
-	return (EIO);
+	/*
+	 * Figure out which protocol thread to send to.  This does not
+	 * have to be perfect but performance will be really good if it
+	 * is correct.  Major protocol inputs such as ip_input() will
+	 * re-characterize the packet as necessary.
+	 */
+	if ((m->m_flags & M_HASH) == 0) {
+		ni->ni_cpufn(&m, 0);
+		if (m == NULL) {
+			m_freem(m);
+			return (EIO);
+		}
+		if ((m->m_flags & M_HASH) == 0) {
+			kprintf("netisr_queue(%d): packet hash failed\n", num);
+			m_freem(m);
+			return (EIO);
+		}
+	}
 
-    pmsg = &m->m_hdr.mh_netmsg;
+	/*
+	 * Get the protocol port based on the packet hash, initialize
+	 * the netmsg, and send it off.
+	 */
+	port = cpu_portfn(m->m_pkthdr.hash);
+	pmsg = &m->m_hdr.mh_netmsg;
+	netmsg_init(&pmsg->nm_netmsg, NULL, &netisr_apanic_rport,
+		    0, ni->ni_handler);
+	pmsg->nm_packet = m;
+	pmsg->nm_netmsg.nm_lmsg.u.ms_result = num;
+	lwkt_sendmsg(port, &pmsg->nm_netmsg.nm_lmsg);
 
-    netmsg_init(&pmsg->nm_netmsg, NULL, &netisr_apanic_rport,
-		NETISR_TO_MSGF(ni), ni->ni_handler);
-    pmsg->nm_packet = m;
-    pmsg->nm_netmsg.nm_lmsg.u.ms_result = num;
-    lwkt_sendmsg(port, &pmsg->nm_netmsg.nm_lmsg);
-    return (0);
+	return (0);
+}
+
+/*
+ * Pre-characterization of a deeper portion of the packet for the
+ * requested isr.
+ *
+ * The base of the ISR type (e.g. IP) that we want to characterize is
+ * at (hoff) relative to the beginning of the mbuf.  This allows
+ * e.g. ether_input_chain() to not have to adjust the m_data/m_len.
+ */
+void
+netisr_characterize(int num, struct mbuf **mp, int hoff)
+{
+	struct netisr *ni;
+	struct mbuf *m;
+
+	/*
+	 * Validation
+	 */
+	KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
+		("Bad isr %d", num));
+	m = *mp;
+	KKASSERT(m != NULL);
+
+	/*
+	 * Valid netisr?
+	 */
+	ni = &netisrs[num];
+	if (ni->ni_handler == NULL) {
+		kprintf("Unregistered isr %d\n", num);
+		m_freem(m);
+		*mp = NULL;
+	}
+
+	/*
+	 * Characterize the packet
+	 */
+	if ((m->m_flags & M_HASH) == 0) {
+		ni->ni_cpufn(mp, hoff);
+		m = *mp;
+		if (m && (m->m_flags & M_HASH) == 0)
+			kprintf("netisr_queue(%d): packet hash failed\n", num);
+	}
 }
 
 void
-netisr_register(int num, pkt_portfn_t mportfn,
-		pktinfo_portfn_t mportfn_pktinfo, netisr_fn_t handler,
-		uint32_t flags)
+netisr_register(int num, netisr_fn_t handler, netisr_cpufn_t cpufn)
 {
-    struct netisr *ni;
+	struct netisr *ni;
 
-    KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
-	("netisr_register: bad isr %d", num));
-    ni = &netisrs[num];
+	KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
+		("netisr_register: bad isr %d", num));
+	KKASSERT(handler != NULL);
 
-    ni->ni_mport = mportfn;
-    ni->ni_mport_pktinfo = mportfn_pktinfo;
-    ni->ni_handler = handler;
-    ni->ni_flags = flags;
-    netmsg_init(&ni->ni_netmsg, NULL, &netisr_adone_rport,
-		NETISR_TO_MSGF(ni), NULL);
+	if (cpufn == NULL)
+		cpufn = cpu0_cpufn;
+
+	ni = &netisrs[num];
+
+	ni->ni_handler = handler;
+	ni->ni_cpufn = cpufn;
+	netmsg_init(&ni->ni_netmsg, NULL, &netisr_adone_rport, 0, NULL);
 }
 
-int
-netisr_unregister(int num)
+void
+netisr_register_rollup(netisr_ru_t ru_func)
 {
-    KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
-	("unregister_netisr: bad isr number: %d\n", num));
+	struct netmsg_rollup *ru;
 
-    /* XXX JH */
-    return (0);
+	ru = kmalloc(sizeof(*ru), M_TEMP, M_WAITOK|M_ZERO);
+	ru->ru_func = ru_func;
+	TAILQ_INSERT_TAIL(&netrulist, ru, ru_entry);
 }
 
 /*
- * Return message port for default handler thread on CPU 0.
+ * Return the message port for the general protocol message servicing
+ * thread for a particular cpu.
  */
-lwkt_port_t
-cpu0_portfn(struct mbuf **mptr)
-{
-    struct mbuf *m = *mptr;
-    int cpu = 0;
-
-    m->m_pkthdr.hash = cpu;
-    m->m_flags |= M_HASH;
-    return (&netisr_cpu[cpu].td_msgport);
-}
-
 lwkt_port_t
 cpu_portfn(int cpu)
 {
-    return (&netisr_cpu[cpu].td_msgport);
+	KKASSERT(cpu >= 0 && cpu < ncpus);
+	return (&netisr_cpu[cpu].td_msgport);
 }
 
 /*
- * If the current thread is a network protocol thread (TDF_NETWORK),
- * then return the current thread's message port.
- * XXX Else, return the current CPU's netisr message port.
+ * Return the current cpu's network protocol thread.
  */
 lwkt_port_t
 cur_netport(void)
 {
-    if (curthread->td_flags & TDF_NETWORK)
-	return &curthread->td_msgport;
-    else
-	return cpu_portfn(mycpuid);
+	return(cpu_portfn(mycpu->gd_cpuid));
 }
 
-/* ARGSUSED */
+/*
+ * Return a default protocol mbuf processing thread port
+ */
 lwkt_port_t
 cpu0_soport(struct socket *so __unused, struct sockaddr *nam __unused,
 	    struct mbuf **dummy __unused)
 {
-    return (&netisr_cpu[0].td_msgport);
+	return (&netisr_cpu[0].td_msgport);
 }
 
+/*
+ * Return a default protocol control message processing thread port
+ */
 lwkt_port_t
 cpu0_ctlport(int cmd __unused, struct sockaddr *sa __unused,
 	     void *extra __unused)
 {
-    return (&netisr_cpu[0].td_msgport);
+	return (&netisr_cpu[0].td_msgport);
 }
 
+/*
+ * This is a dummy port that causes a message to be executed synchronously
+ * instead of being queued to a port.
+ */
 lwkt_port_t
 sync_soport(struct socket *so __unused, struct sockaddr *nam __unused,
 	    struct mbuf **dummy __unused)
 {
-    return (&netisr_sync_port);
+	return (&netisr_sync_port);
+}
+
+/*
+ * This is a default netisr packet characterization function which
+ * sets M_HASH.  If a netisr is registered with a NULL cpufn function
+ * this one is assigned.
+ *
+ * This function makes no attempt to validate the packet.
+ */
+static void
+cpu0_cpufn(struct mbuf **mp, int hoff __unused)
+{
+	struct mbuf *m = *mp;
+
+	m->m_flags |= M_HASH;
+	m->m_pkthdr.hash = 0;
 }
 
 /*
@@ -504,122 +494,37 @@ sync_soport(struct socket *so __unused, struct sockaddr *nam __unused,
 static void
 schednetisr_remote(void *data)
 {
-    int num = (int)(intptr_t)data;
-    struct netisr *ni = &netisrs[num];
-    lwkt_port_t port = &netisr_cpu[0].td_msgport;
-    struct netmsg *pmsg;
+	int num = (int)(intptr_t)data;
+	struct netisr *ni = &netisrs[num];
+	lwkt_port_t port = &netisr_cpu[0].td_msgport;
+	struct netmsg *pmsg;
 
-    pmsg = &netisrs[num].ni_netmsg;
-    crit_enter();
-    if (pmsg->nm_lmsg.ms_flags & MSGF_DONE) {
-	netmsg_init(pmsg, NULL, &netisr_adone_rport,
-		    NETISR_TO_MSGF(ni), ni->ni_handler);
-	pmsg->nm_lmsg.u.ms_result = num;
-	lwkt_sendmsg(port, &pmsg->nm_lmsg);
-    }
-    crit_exit();
+	pmsg = &netisrs[num].ni_netmsg;
+	if (pmsg->nm_lmsg.ms_flags & MSGF_DONE) {
+		netmsg_init(pmsg, NULL, &netisr_adone_rport, 0, ni->ni_handler);
+		pmsg->nm_lmsg.u.ms_result = num;
+		lwkt_sendmsg(port, &pmsg->nm_lmsg);
+	}
 }
 
 void
 schednetisr(int num)
 {
-    KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
-	("schednetisr: bad isr %d", num));
+	KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
+		("schednetisr: bad isr %d", num));
+	KKASSERT(netisrs[num].ni_handler != NULL);
 #ifdef SMP
-    if (mycpu->gd_cpuid != 0) {
-	lwkt_send_ipiq(globaldata_find(0),
-		       schednetisr_remote, (void *)(intptr_t)num);
-    } else {
-	schednetisr_remote((void *)(intptr_t)num);
-    }
+	if (mycpu->gd_cpuid != 0) {
+		lwkt_send_ipiq(globaldata_find(0),
+			       schednetisr_remote, (void *)(intptr_t)num);
+	} else {
+		crit_enter();
+		schednetisr_remote((void *)(intptr_t)num);
+		crit_exit();
+	}
 #else
-    schednetisr_remote((void *)(intptr_t)num);
+	crit_enter();
+	schednetisr_remote((void *)(intptr_t)num);
+	crit_exit();
 #endif
-}
-
-lwkt_port_t
-netisr_find_port(int num, struct mbuf **m0)
-{
-    struct netisr *ni;
-    lwkt_port_t port;
-    struct mbuf *m = *m0;
-
-    *m0 = NULL;
-
-    KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
-    	    ("%s: bad isr %d", __func__, num));
-
-    ni = &netisrs[num];
-    if (ni->ni_mport == NULL) {
-	kprintf("%s: unregistered isr %d\n", __func__, num);
-	m_freem(m);
-	return NULL;
-    }
-
-    if ((port = ni->ni_mport(&m)) == NULL)
-	return NULL;
-
-    *m0 = m;
-    return port;
-}
-
-void
-netisr_run(int num, struct mbuf *m)
-{
-    struct netisr *ni;
-    struct netmsg_packet *pmsg;
-
-    KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
-    	    ("%s: bad isr %d", __func__, num));
-
-    ni = &netisrs[num];
-    if (ni->ni_handler == NULL) {
-	kprintf("%s: unregistered isr %d\n", __func__, num);
-	m_freem(m);
-	return;
-    }
-
-    pmsg = &m->m_hdr.mh_netmsg;
-
-    netmsg_init(&pmsg->nm_netmsg, NULL, &netisr_apanic_rport,
-		0, ni->ni_handler);
-    pmsg->nm_packet = m;
-    pmsg->nm_netmsg.nm_lmsg.u.ms_result = num;
-
-    NETISR_GET_MPLOCK(ni);
-    ni->ni_handler(&pmsg->nm_netmsg);
-    NETISR_REL_MPLOCK(ni);
-}
-
-lwkt_port_t
-pktinfo_portfn_cpu0(const struct pktinfo *dummy __unused,
-		    struct mbuf *m)
-{
-    m->m_pkthdr.hash = 0;
-    return &netisr_cpu[0].td_msgport;
-}
-
-lwkt_port_t
-pktinfo_portfn_notsupp(const struct pktinfo *dummy __unused,
-		       struct mbuf *m __unused)
-{
-    return NULL;
-}
-
-lwkt_port_t
-netisr_find_pktinfo_port(const struct pktinfo *pi, struct mbuf *m)
-{
-    struct netisr *ni;
-    int num = pi->pi_netisr;
-
-    KASSERT(m->m_flags & M_HASH, ("packet does not contain hash\n"));
-    KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
-    	    ("%s: bad isr %d", __func__, num));
-
-    ni = &netisrs[num];
-    if (ni->ni_mport_pktinfo == NULL) {
-	kprintf("%s: unregistered isr %d\n", __func__, num);
-	return NULL;
-    }
-    return ni->ni_mport_pktinfo(pi, m);
 }

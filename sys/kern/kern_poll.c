@@ -258,13 +258,13 @@ init_device_poll_pcpu(int cpuid)
 	poll_reset_state(pctx);
 
 	netmsg_init(&pctx->poll_netmsg, NULL, &netisr_adone_rport,
-		    MSGF_MPSAFE, netisr_poll);
+		    0, netisr_poll);
 #ifdef INVARIANTS
 	pctx->poll_netmsg.nm_lmsg.u.ms_resultp = pctx;
 #endif
 
 	netmsg_init(&pctx->poll_more_netmsg, NULL, &netisr_adone_rport,
-		    MSGF_MPSAFE, netisr_pollmore);
+		    0, netisr_pollmore);
 #ifdef INVARIANTS
 	pctx->poll_more_netmsg.nm_lmsg.u.ms_resultp = pctx;
 #endif
@@ -342,7 +342,7 @@ sysctl_pollhz(SYSCTL_HANDLER_ARGS)
 		phz = DEVICE_POLLING_FREQ_MAX;
 
 	netmsg_init(&msg, NULL, &curthread->td_msgport,
-		    MSGF_MPSAFE, poll_sysctl_pollhz);
+		    0, poll_sysctl_pollhz);
 	msg.nm_lmsg.u.ms_result = phz;
 
 	port = cpu_portfn(pctx->poll_cpuid);
@@ -367,7 +367,7 @@ sysctl_polling(SYSCTL_HANDLER_ARGS)
 		return error;
 
 	netmsg_init(&msg, NULL, &curthread->td_msgport,
-		    MSGF_MPSAFE, poll_sysctl_polling);
+		    0, poll_sysctl_polling);
 	msg.nm_lmsg.u.ms_result = enabled;
 
 	port = cpu_portfn(pctx->poll_cpuid);
@@ -390,7 +390,7 @@ sysctl_regfrac(SYSCTL_HANDLER_ARGS)
 		return error;
 
 	netmsg_init(&msg, NULL, &curthread->td_msgport,
-		    MSGF_MPSAFE, poll_sysctl_regfrac);
+		    0, poll_sysctl_regfrac);
 	msg.nm_lmsg.u.ms_result = reg_frac;
 
 	port = cpu_portfn(pctx->poll_cpuid);
@@ -417,7 +417,7 @@ sysctl_burstmax(SYSCTL_HANDLER_ARGS)
 		burst_max = MAX_POLL_BURST_MAX;
 
 	netmsg_init(&msg, NULL, &curthread->td_msgport,
-		    MSGF_MPSAFE, poll_sysctl_burstmax);
+		    0, poll_sysctl_burstmax);
 	msg.nm_lmsg.u.ms_result = burst_max;
 
 	port = cpu_portfn(pctx->poll_cpuid);
@@ -440,7 +440,7 @@ sysctl_eachburst(SYSCTL_HANDLER_ARGS)
 		return error;
 
 	netmsg_init(&msg, NULL, &curthread->td_msgport,
-		    MSGF_MPSAFE, poll_sysctl_eachburst);
+		    0, poll_sysctl_eachburst);
 	msg.nm_lmsg.u.ms_result = each_burst;
 
 	port = cpu_portfn(pctx->poll_cpuid);
@@ -767,7 +767,7 @@ ether_pollcpu_register(struct ifnet *ifp, int cpuid)
 	ifnet_deserialize_all(ifp);
 
 	netmsg_init(&msg, NULL, &curthread->td_msgport,
-		    MSGF_MPSAFE, poll_register);
+		    0, poll_register);
 	msg.nm_lmsg.u.ms_resultp = ifp;
 
 	port = cpu_portfn(cpuid);
@@ -861,7 +861,7 @@ ether_poll_deregister(struct ifnet *ifp)
 	ifnet_deserialize_all(ifp);
 
 	netmsg_init(&msg, NULL, &curthread->td_msgport,
-		    MSGF_MPSAFE, poll_deregister);
+		    0, poll_deregister);
 	msg.nm_lmsg.u.ms_resultp = ifp;
 
 	port = cpu_portfn(cpuid);

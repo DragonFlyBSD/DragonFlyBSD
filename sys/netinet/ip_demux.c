@@ -61,12 +61,11 @@
 #include <netinet/udp.h>
 #include <netinet/udp_var.h>
 
-extern struct thread netisr_cpu[];
 extern int udp_mpsafe_thread;
 
-static struct thread tcp_thread[MAXCPU];
-static struct thread udp_thread[MAXCPU];
-
+/*
+ * Toeplitz hash functions - the idea is to match the hardware.
+ */
 static __inline int
 INP_MPORT_HASH_UDP(in_addr_t faddr, in_addr_t laddr,
 		   in_port_t fport, in_port_t lport)
@@ -80,6 +79,21 @@ INP_MPORT_HASH_TCP(in_addr_t faddr, in_addr_t laddr,
 {
 	return toeplitz_hash(
 	       toeplitz_rawhash_addrport(faddr, laddr, fport, lport));
+}
+
+/*
+ * Map a network address to a processor.
+ */
+int
+tcp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
+{
+	return (INP_MPORT_HASH_TCP(faddr, laddr, fport, lport));
+}
+
+int
+udp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
+{
+	return (INP_MPORT_HASH_UDP(faddr, laddr, fport, lport));
 }
 
 /*
@@ -104,30 +118,35 @@ INP_MPORT_HASH_TCP(in_addr_t faddr, in_addr_t laddr,
  * o  IP total length is not less than (IP header length + TCP header length).
  */
 boolean_t
-ip_lengthcheck(struct mbuf **mp)
+ip_lengthcheck(struct mbuf **mp, int hoff)
 {
 	struct mbuf *m = *mp;
 	struct ip *ip;
-	int iphlen, iplen;
+	int len, iphlen, iplen;
 	struct tcphdr *th;
 	int thoff;				/* TCP data offset */
 
+	len = hoff + sizeof(struct ip);
+
 	/* The packet must be at least the size of an IP header. */
-	if (m->m_pkthdr.len < sizeof(struct ip)) {
+	if (m->m_pkthdr.len < len) {
+		kprintf("pkthdr %d %d < %d\n", (m->m_flags & M_PKTHDR),
+			m->m_pkthdr.len, len);
 		ipstat.ips_tooshort++;
 		goto fail;
 	}
 
 	/* The fixed IP header must reside completely in the first mbuf. */
-	if (m->m_len < sizeof(struct ip)) {
-		m = m_pullup(m, sizeof(struct ip));
+	if (m->m_len < len) {
+		m = m_pullup(m, len);
 		if (m == NULL) {
+			kprintf("can't pullup %d\n", len);
 			ipstat.ips_toosmall++;
 			goto fail;
 		}
 	}
 
-	ip = mtod(m, struct ip *);
+	ip = mtodoff(m, struct ip *, hoff);
 
 	/* Bound check the packet's stated IP header length. */
 	iphlen = ip->ip_hl << 2;
@@ -137,13 +156,13 @@ ip_lengthcheck(struct mbuf **mp)
 	}
 
 	/* The full IP header must reside completely in the one mbuf. */
-	if (m->m_len < iphlen) {
-		m = m_pullup(m, iphlen);
+	if (m->m_len < hoff + iphlen) {
+		m = m_pullup(m, hoff + iphlen);
 		if (m == NULL) {
 			ipstat.ips_badhlen++;
 			goto fail;
 		}
-		ip = mtod(m, struct ip *);
+		ip = mtodoff(m, struct ip *, hoff);
 	}
 
 	iplen = ntohs(ip->ip_len);
@@ -152,7 +171,10 @@ ip_lengthcheck(struct mbuf **mp)
 	 * Check that the amount of data in the buffers is as
 	 * at least much as the IP header would have us expect.
 	 */
-	if (m->m_pkthdr.len < iplen) {
+	if (m->m_pkthdr.len < hoff + iplen) {
+		kprintf("data in buffer not enough %d -  %d vs %d+%d\n",
+			(m->m_flags & M_PKTHDR),
+			m->m_pkthdr.len, hoff, iplen);
 		ipstat.ips_tooshort++;
 		goto fail;
 	}
@@ -179,13 +201,13 @@ ip_lengthcheck(struct mbuf **mp)
 			++tcpstat.tcps_rcvshort;
 			goto fail;
 		}
-		if (m->m_len < iphlen + sizeof(struct tcphdr)) {
-			m = m_pullup(m, iphlen + sizeof(struct tcphdr));
+		if (m->m_len < hoff + iphlen + sizeof(struct tcphdr)) {
+			m = m_pullup(m, hoff + iphlen + sizeof(struct tcphdr));
 			if (m == NULL) {
 				tcpstat.tcps_rcvshort++;
 				goto fail;
 			}
-			ip = mtod(m, struct ip *);
+			ip = mtodoff(m, struct ip *, hoff);
 		}
 		th = (struct tcphdr *)((caddr_t)ip + iphlen);
 		thoff = th->th_off << 2;
@@ -194,8 +216,8 @@ ip_lengthcheck(struct mbuf **mp)
 			tcpstat.tcps_rcvbadoff++;
 			goto fail;
 		}
-		if (m->m_len < iphlen + thoff) {
-			m = m_pullup(m, iphlen + thoff);
+		if (m->m_len < hoff + iphlen + thoff) {
+			m = m_pullup(m, hoff + iphlen + thoff);
 			if (m == NULL) {
 				tcpstat.tcps_rcvshort++;
 				goto fail;
@@ -207,8 +229,8 @@ ip_lengthcheck(struct mbuf **mp)
 			++udpstat.udps_hdrops;
 			goto fail;
 		}
-		if (m->m_len < iphlen + sizeof(struct udphdr)) {
-			m = m_pullup(m, iphlen + sizeof(struct udphdr));
+		if (m->m_len < hoff + iphlen + sizeof(struct udphdr)) {
+			m = m_pullup(m, hoff + iphlen + sizeof(struct udphdr));
 			if (m == NULL) {
 				udpstat.udps_hdrops++;
 				goto fail;
@@ -236,13 +258,13 @@ fail:
 }
 
 /*
- * Map a packet to a protocol processing thread and return the thread's port.
- * If an error occurs, the passed mbuf will be freed, *mptr will be set
- * to NULL, and NULL will be returned.  If no error occurs, the passed mbuf
- * may be modified and a port pointer will be returned.
+ * Assign a protocol processing thread to a packet.  The IP header is at
+ * offset (hoff) in the packet (i.e. the mac header might still be intact).
+ *
+ * This function can blow away the mbuf if the packet is malformed.
  */
-lwkt_port_t
-ip_mport(struct mbuf **mptr, int dir)
+void
+ip_cpufn(struct mbuf **mptr, int hoff, int dir)
 {
 	struct ip *ip;
 	int iphlen;
@@ -250,14 +272,13 @@ ip_mport(struct mbuf **mptr, int dir)
 	struct udphdr *uh;
 	struct mbuf *m;
 	int thoff;				/* TCP data offset */
-	lwkt_port_t port;
 	int cpu;
 
-	if (!ip_lengthcheck(mptr))
-		return (NULL);
+	if (!ip_lengthcheck(mptr, hoff))
+		return;
 
 	m = *mptr;
-	ip = mtod(m, struct ip *);
+	ip = mtodoff(m, struct ip *, hoff);
 	iphlen = ip->ip_hl << 2;
 
 	/*
@@ -265,7 +286,6 @@ ip_mport(struct mbuf **mptr, int dir)
 	 */
 	if (ntohs(ip->ip_off) & (IP_MF | IP_OFFMASK)) {
 		cpu = 0;
-		port = &netisr_cpu[cpu].td_msgport;
 		goto back;
 	}
 
@@ -277,7 +297,6 @@ ip_mport(struct mbuf **mptr, int dir)
 					 ip->ip_dst.s_addr,
 					 th->th_sport,
 					 th->th_dport);
-		port = &tcp_thread[cpu].td_msgport;
 		break;
 
 	case IPPROTO_UDP:
@@ -287,29 +306,28 @@ ip_mport(struct mbuf **mptr, int dir)
 					 ip->ip_dst.s_addr,
 					 uh->uh_sport,
 					 uh->uh_dport);
-		port = &udp_thread[cpu].td_msgport;
 		break;
 
 	default:
 		cpu = 0;
-		port = &netisr_cpu[cpu].td_msgport;
 		break;
 	}
 back:
 	m->m_flags |= M_HASH;
 	m->m_pkthdr.hash = cpu;
-	return (port);
 }
 
-lwkt_port_t
-ip_mport_in(struct mbuf **mptr)
+void
+ip_cpufn_in(struct mbuf **mptr, int hoff)
 {
-	return ip_mport(mptr, IP_MPORT_IN);
+	ip_cpufn(mptr, hoff, IP_MPORT_IN);
 }
+
+#if 0
 
 /*
  * Map a packet to a protocol processing thread and return the thread's port.
- * Unlike ip_mport(), the packet content is not accessed.  The packet info
+ * Unlike ip_cpufn(), the packet content is not accessed.  The packet info
  * (pi) and the hash of the packet (m_pkthdr.hash) is used instead.  NULL is
  * returned if the packet info does not contain enough information.
  *
@@ -329,16 +347,16 @@ ip_mport_pktinfo(const struct pktinfo *pi, struct mbuf *m)
 	 */
 	if (pi->pi_flags & PKTINFO_FLAG_FRAG) {
 		m->m_pkthdr.hash = 0;
-		return &netisr_cpu[0].td_msgport;
+		return cpu_portfn(0);
 	}
 
 	switch (pi->pi_l3proto) {
 	case IPPROTO_TCP:
-		port = &tcp_thread[m->m_pkthdr.hash].td_msgport;
+		port = cpu_portfn(m->m_pkthdr.hash);
 		break;
 
 	case IPPROTO_UDP:
-		port = &udp_thread[m->m_pkthdr.hash].td_msgport;
+		port = cpu_portfn(m->m_pkthdr.hash);
 		break;
 
 	default:
@@ -348,6 +366,8 @@ ip_mport_pktinfo(const struct pktinfo *pi, struct mbuf *m)
 	return port;
 }
 
+#endif
+
 /*
  * Initital port when creating the socket, generally before
  * binding or connect.
@@ -355,7 +375,7 @@ ip_mport_pktinfo(const struct pktinfo *pi, struct mbuf *m)
 lwkt_port_t
 tcp_soport_attach(struct socket *so)
 {
-	return(&tcp_thread[0].td_msgport);
+	return(cpu_portfn(0));
 }
 
 /*
@@ -406,27 +426,25 @@ tcp_ctlport(int cmd, struct sockaddr *sa, void *vip)
 		cpu = tcp_addrcpu(faddr.s_addr, th->th_dport,
 				  ip->ip_src.s_addr, th->th_sport);
 	}
-	return(&tcp_thread[cpu].td_msgport);
+	return(cpu_portfn(cpu));
 }
 
 lwkt_port_t
 tcp_addrport(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 {
-	return (&tcp_thread[tcp_addrcpu(faddr, fport,
-					laddr, lport)].td_msgport);
+	return(cpu_portfn(tcp_addrcpu(faddr, fport, laddr, lport)));
 }
 
 lwkt_port_t
 tcp_addrport0(void)
 {
-	return (&tcp_thread[0].td_msgport);
+	return(cpu_portfn(0));
 }
 
 lwkt_port_t
 udp_addrport(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 {
-	return (&udp_thread[udp_addrcpu(faddr, fport,
-					laddr, lport)].td_msgport);
+	return(cpu_portfn(udp_addrcpu(faddr, fport, laddr, lport)));
 }
 
 /*
@@ -436,7 +454,7 @@ udp_addrport(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 lwkt_port_t
 udp_soport_attach(struct socket *so)
 {
-	return(&udp_thread[0].td_msgport);
+	return(cpu_portfn(0));
 }
 
 /*
@@ -487,61 +505,5 @@ udp_ctlport(int cmd, struct sockaddr *sa, void *vip)
 		cpu = INP_MPORT_HASH_UDP(faddr.s_addr, ip->ip_src.s_addr,
 					 uh->uh_dport, uh->uh_sport);
 	}
-	return (&udp_thread[cpu].td_msgport);
-}
-
-/*
- * Map a network address to a processor.
- */
-int
-tcp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
-{
-	return (INP_MPORT_HASH_TCP(faddr, laddr, fport, lport));
-}
-
-int
-udp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
-{
-	return (INP_MPORT_HASH_UDP(faddr, laddr, fport, lport));
-}
-
-/*
- * Return LWKT port for cpu.
- */
-lwkt_port_t
-tcp_cport(int cpu)
-{
-	return (&tcp_thread[cpu].td_msgport);
-}
-
-lwkt_port_t
-udp_cport(int cpu)
-{
-	return (&udp_thread[cpu].td_msgport);
-}
-
-void
-tcp_thread_init(void)
-{
-	int cpu;
-
-	for (cpu = 0; cpu < ncpus2; cpu++) {
-		lwkt_create(tcpmsg_service_loop, NULL, NULL,
-			    &tcp_thread[cpu], TDF_NETWORK, cpu,
-			    "tcp_thread %d", cpu);
-		netmsg_service_port_init(&tcp_thread[cpu].td_msgport);
-	}
-}
-
-void
-udp_thread_init(void)
-{
-	int cpu;
-
-	for (cpu = 0; cpu < ncpus2; cpu++) {
-		lwkt_create(netmsg_service_loop, &udp_mpsafe_thread, NULL,
-			    &udp_thread[cpu], TDF_NETWORK, cpu,
-			    "udp_thread %d", cpu);
-		netmsg_service_port_init(&udp_thread[cpu].td_msgport);
-	}
+	return (cpu_portfn(cpu));
 }

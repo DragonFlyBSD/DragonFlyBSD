@@ -206,7 +206,7 @@ gre_input2(struct mbuf *m ,int hlen, u_char proto)
 		bpf_ptap(sc->sc_if.if_bpf, m, &af, sizeof(af));
 
 	m->m_pkthdr.rcvif = &sc->sc_if;
-	netisr_dispatch(isr, m);
+	netisr_queue(isr, m);
 	return(1);	/* packet is done, no further processing needed */
 }
 
@@ -278,7 +278,7 @@ gre_mobile_input(struct mbuf *m, ...)
 
 	m->m_pkthdr.rcvif = &sc->sc_if;
 
-	netisr_dispatch(NETISR_IP, m);
+	netisr_queue(NETISR_IP, m);
 }
 
 /*

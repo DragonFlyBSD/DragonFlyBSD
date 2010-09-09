@@ -149,9 +149,6 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, useloopback, CTLFLAG_RW,
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, proxyall, CTLFLAG_RW,
 	   &arp_proxyall, 0, "Enable proxy ARP for all suitable requests");
 
-static int	arp_mpsafe = 1;
-TUNABLE_INT("net.link.ether.inet.arp_mpsafe", &arp_mpsafe);
-
 static void	arp_rtrequest(int, struct rtentry *, struct rt_addrinfo *);
 static void	arprequest(struct ifnet *, const struct in_addr *,
 			   const struct in_addr *, const u_char *);
@@ -417,7 +414,7 @@ arprequest(struct ifnet *ifp, const struct in_addr *sip,
 /*
  * Same as arprequest(), except:
  * - Caller is allowed to hold ifp's serializer
- * - Network output is done in TDF_NETWORK kernel thread
+ * - Network output is done in protocol thead
  */
 static void
 arprequest_async(struct ifnet *ifp, const struct in_addr *sip,
@@ -527,7 +524,7 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 	if (la->la_hold != NULL)
 		m_freem(la->la_hold);
 	la->la_hold = m;
-	la->la_msgport = curnetport;
+	la->la_msgport = cur_netport();
 	if (rt->rt_expire || ((rt->rt_flags & RTF_STATIC) && !sdl->sdl_alen)) {
 		rt->rt_flags &= ~RTF_REJECT;
 		if (la->la_asked == 0 || rt->rt_expire != time_second) {
@@ -747,8 +744,7 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 			pmsg = &m->m_hdr.mh_netmsg;
 			netmsg_init(&pmsg->nm_netmsg, NULL,
 				    &netisr_apanic_rport,
-				    MSGF_MPSAFE | MSGF_PRIORITY,
-				    arp_hold_output);
+				    MSGF_PRIORITY, arp_hold_output);
 			pmsg->nm_packet = m;
 
 			/* Record necessary information */
@@ -1118,20 +1114,12 @@ arp_iainit(struct ifnet *ifp, const struct in_addr *addr, const u_char *enaddr)
 static void
 arp_init(void)
 {
-	uint32_t flags;
 	int cpu;
 
 	for (cpu = 0; cpu < ncpus2; cpu++)
 		LIST_INIT(&llinfo_arp_list[cpu]);
 
-	if (arp_mpsafe) {
-		flags = NETISR_FLAG_MPSAFE;
-		kprintf("arp: MPSAFE\n");
-	} else {
-		flags = NETISR_FLAG_NOTMPSAFE;
-	}
-	netisr_register(NETISR_ARP, cpu0_portfn, pktinfo_portfn_cpu0,
-			arpintr, flags);
+	netisr_register(NETISR_ARP, arpintr, NULL);
 }
 
 SYSINIT(arp, SI_SUB_PROTO_DOMAIN, SI_ORDER_ANY, arp_init, 0);

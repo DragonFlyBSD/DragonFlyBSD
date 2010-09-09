@@ -122,14 +122,15 @@ struct protosw inetsw[] = {
   ip_init,	0,		ip_slowtimo,	ip_drain,
   &nousrreqs
 },
-{ SOCK_DGRAM,	&inetdomain,	IPPROTO_UDP,	PR_ATOMIC|PR_ADDR,
+{ SOCK_DGRAM,	&inetdomain,	IPPROTO_UDP,	PR_ATOMIC|PR_ADDR|PR_MPSAFE,
   udp_input,	0,		udp_ctlinput,	ip_ctloutput,
   udp_soport,	udp_ctlport,
   udp_init,	0,		0,		0,
   &udp_usrreqs
 },
-{ SOCK_STREAM,	&inetdomain,	IPPROTO_TCP,
-	PR_CONNREQUIRED|PR_IMPLOPCL|PR_WANTRCVD,
+{ SOCK_STREAM,	&inetdomain,	IPPROTO_TCP,	PR_CONNREQUIRED |
+						PR_IMPLOPCL | PR_WANTRCVD |
+						PR_MPSAFE,
   tcp_input,	0,		tcp_ctlinput,	tcp_ctloutput,
   tcp_soport,	tcp_ctlport,
   tcp_init,	0,		tcp_slowtimo,	tcp_drain,

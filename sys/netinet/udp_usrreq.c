@@ -118,15 +118,6 @@
 #include <netinet6/ipsec.h>
 #endif
 
-int	udp_mpsafe_proto = 0;
-TUNABLE_INT("net.inet.udp.mpsafe_proto", &udp_mpsafe_proto);
-
-int	udp_mpsafe_thread = NETMSG_SERVICE_ADAPTIVE;
-TUNABLE_INT("net.inet.udp.mpsafe_thread", &udp_mpsafe_thread);
-SYSCTL_INT(_net_inet_udp, OID_AUTO, mpsafe_thread, CTLFLAG_RW,
-	   &udp_mpsafe_thread, 0,
-	   "0:BGL, 1:Adaptive BGL, 2:No BGL(experimental)");
-
 /*
  * UDP protocol implementation.
  * Per RFC 768, August, 1980.
@@ -198,7 +189,6 @@ udp_init(void)
 	udbinfo.wildcardhashbase = hashinit(UDBHASHSIZE, M_PCB,
 					    &udbinfo.wildcardhashmask);
 	udbinfo.ipi_size = sizeof(struct inpcb);
-	udp_thread_init();
 }
 
 /*
@@ -627,7 +617,7 @@ udp_notifyall_oncpu(struct netmsg *netmsg)
 
 	nextcpu = mycpuid + 1;
 	if (nextcpu < ncpus2)
-		lwkt_forwardmsg(udp_cport(nextcpu), &netmsg->nm_lmsg);
+		lwkt_forwardmsg(cpu_portfn(nextcpu), &netmsg->nm_lmsg);
 	else
 		lwkt_replymsg(&netmsg->nm_lmsg, 0);
 }
@@ -688,13 +678,13 @@ udp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 		nmsg.nm_arg = inetctlerrmap[cmd];
 		nmsg.nm_notify = notify;
 
-		lwkt_domsg(udp_cport(0), &nmsg.nm_nmsg.nm_lmsg, 0);
+		lwkt_domsg(cpu_portfn(0), &nmsg.nm_nmsg.nm_lmsg, 0);
 	} else {
 		/*
 		 * XXX We should forward msg upon PRC_HOSTHEAD and ip == NULL,
 		 * once UDP inpcbs are CPU localized
 		 */
-		KKASSERT(&curthread->td_msgport == udp_cport(0));
+		KKASSERT(&curthread->td_msgport == cpu_portfn(0));
 		in_pcbnotifyall(&udbinfo.pcblisthead, faddr, inetctlerrmap[cmd],
 				notify);
 	}

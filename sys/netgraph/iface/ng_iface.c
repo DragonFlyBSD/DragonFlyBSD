@@ -792,7 +792,7 @@ ng_iface_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		m_freem(m);
 		return (EAFNOSUPPORT);
 	}
-	netisr_dispatch(isr, m);
+	netisr_queue(isr, m);
 	return (0);
 }
 

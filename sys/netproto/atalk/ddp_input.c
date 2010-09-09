@@ -15,6 +15,7 @@
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
+#include <sys/mplock2.h>
 
 #include <net/if.h>
 #include <net/netisr.h>
@@ -46,7 +47,9 @@ at2intr(struct netmsg *msg)
 	/*
 	 * Phase 2 packet handling 
 	 */
+	get_mplock();
 	ddp_input(m, m->m_pkthdr.rcvif, NULL, 2);
+	rel_mplock();
 	/* msg was embedded in the mbuf, do not reply! */
 }
 
@@ -55,6 +58,8 @@ at1intr(struct netmsg *msg)
 {
 	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
 	struct elaphdr *elhp, elh;
+
+	get_mplock();
 
 	/*
 	 * Phase 1 packet handling 
@@ -77,7 +82,7 @@ at1intr(struct netmsg *msg)
 		ddp_input(m, m->m_pkthdr.rcvif, &elh, 1);
 	}
 out:
-	;
+	rel_mplock();
 	/* msg was embedded in the mbuf, do not reply! */
 }
 

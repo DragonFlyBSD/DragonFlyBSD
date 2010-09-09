@@ -253,7 +253,7 @@ ef_inputEII(struct mbuf *m, struct llc* l, u_short ether_type)
 	default:
 		return (EPROTONOSUPPORT);
 	}
-	netisr_dispatch(isr, m);
+	netisr_queue(isr, m);
 	return (0);
 }
 
@@ -272,7 +272,7 @@ ef_inputSNAP(struct mbuf *m, struct llc* l, u_short ether_type)
 	default:
 		return (EPROTONOSUPPORT);
 	}
-	netisr_dispatch(isr, m);
+	netisr_queue(isr, m);
 	return (0);
 }
 
@@ -291,7 +291,7 @@ ef_input8022(struct mbuf *m, struct llc* l, u_short ether_type)
 	default:
 		return (EPROTONOSUPPORT);
 	}
-	netisr_dispatch(isr, m);
+	netisr_queue(isr, m);
 	return (0);
 }
 
@@ -384,7 +384,7 @@ ef_input(struct ifnet *ifp, const struct ether_header *eh, struct mbuf *m)
 			ft, ether_type);
 		return (EPROTONOSUPPORT);
 	}
-	netisr_dispatch(isr, m);
+	netisr_queue(isr, m);
 	return (0);
 }
 

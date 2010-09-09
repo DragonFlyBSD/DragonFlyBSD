@@ -135,6 +135,6 @@ ipatm_ipinput(struct ip_nif *inp, KBuffer *m)
 	 * just call IP directly to avoid the extra unnecessary 
 	 * kernel scheduling.
 	 */
-	netisr_dispatch(NETISR_IP, m);
+	netisr_queue(NETISR_IP, m);
 	return (0);
 }

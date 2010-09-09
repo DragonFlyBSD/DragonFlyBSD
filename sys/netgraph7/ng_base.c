@@ -3068,8 +3068,7 @@ ngb_mod_event(module_t mod, int event, void *data)
 		ng_qdzone = uma_zcreate("NetGraph data items", sizeof(struct ng_item),
 		    NULL, NULL, NULL, NULL, UMA_ALIGN_CACHE, 0);
 		uma_zone_set_max(ng_qdzone, maxdata);
-		netisr_register(NETISR_NETGRAPH, (netisr_t *)ngintr, NULL,
-				NETISR_FLAG_NOTMPSAFE);
+		netisr_register(NETISR_NETGRAPH, (netisr_t *)ngintr, NULL);
 		break;
 	case MOD_UNLOAD:
 		/* You can't unload it because an interface may be using it. */
@@ -3233,6 +3232,7 @@ SYSCTL_PROC(_debug, OID_AUTO, ng_dump_items, CTLTYPE_INT | CTLFLAG_RW,
 static void
 ngintr(void)
 {
+	XXX replymsg XXX
 	for (;;) {
 		node_p  node;
 

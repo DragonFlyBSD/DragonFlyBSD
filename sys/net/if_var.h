@@ -721,7 +721,6 @@ void	ether_ifattach_bpf(struct ifnet *, uint8_t *, u_int, u_int,
 			struct lwkt_serialize *);
 void	ether_ifdetach(struct ifnet *);
 void	ether_demux_oncpu(struct ifnet *, struct mbuf *);
-void	ether_input_oncpu(struct ifnet *, struct mbuf *);
 void	ether_reinput_oncpu(struct ifnet *, struct mbuf *, int);
 void	ether_input_chain(struct ifnet *, struct mbuf *,
 			  const struct pktinfo *, struct mbuf_chain *);

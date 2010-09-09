@@ -1842,9 +1842,7 @@ ngb_mod_event(module_t mod, int event, void *data)
 			crit_exit();
 			break;
 		}
-		netisr_register(NETISR_NETGRAPH, cpu0_portfn,
-				pktinfo_portfn_notsupp, ngintr,
-				NETISR_FLAG_NOTMPSAFE);
+		netisr_register(NETISR_NETGRAPH, ngintr, NULL);
 		error = 0;
 		crit_exit();
 		break;
@@ -2058,6 +2056,8 @@ ngintr(struct netmsg *pmsg)
 	 */
 	lwkt_replymsg(&pmsg->nm_lmsg, 0);
 
+	get_mplock();
+
 	while (1) {
 		crit_enter();
 		if ((ngq = ngqbase)) {
@@ -2096,7 +2096,7 @@ ngintr(struct netmsg *pmsg)
 		}
 	}
 out:
-	;
+	rel_mplock();
 }
 
 

@@ -204,7 +204,7 @@ ipflow_fastforward(struct mbuf *m)
 	if (m->m_flags & (M_BCAST | M_MCAST))
 		return 0;
 
-	/* length checks already done in ip_mport() */
+	/* length checks already done in ip_cpufn() */
 	KASSERT(m->m_len >= sizeof(struct ip), ("IP header not in one mbuf"));
 	ip = mtod(m, struct ip *);
 
@@ -215,7 +215,7 @@ ipflow_fastforward(struct mbuf *m)
 		return 0;
 
 	iplen = ntohs(ip->ip_len);
-	/* length checks already done in ip_mport() */
+	/* length checks already done in ip_cpufn() */
 	KASSERT(iplen >= sizeof(struct ip),
 		("total length less then header length"));
 	KASSERT(m->m_pkthdr.len >= iplen, ("mbuf too short"));
@@ -573,7 +573,7 @@ ipflow_init(void)
 
 	for (i = 0; i < ncpus; ++i) {
 		netmsg_init(&ipflow_timo_netmsgs[i], NULL, &netisr_adone_rport,
-			    MSGF_MPSAFE, ipflow_timo_dispatch);
+			    0, ipflow_timo_dispatch);
 
 		ksnprintf(oid_name, sizeof(oid_name), "inuse%d", i);
 

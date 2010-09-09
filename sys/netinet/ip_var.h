@@ -169,7 +169,7 @@ extern struct ip_stats	ipstats_percpu[MAXCPU];
 #define	IP_ALLOWBROADCAST	SO_BROADCAST	/* can send broadcast packets */
 #define	IP_DEBUGROUTE		0x10000		/* debug route */
 
-/* direction passed to ip_mport as last parameter */
+/* direction passed to ip_cpufn as last parameter */
 #define IP_MPORT_IN		0 /* Find lwkt port for incoming packets */
 #define IP_MPORT_OUT		1 /* Find lwkt port for outgoing packets */
 
@@ -202,12 +202,11 @@ void	 ip_init(void);
 extern int	 (*ip_mforward)(struct ip *, struct ifnet *, struct mbuf *,
 			  struct ip_moptions *);
 
-struct lwkt_port *ip_mport(struct mbuf **, int);
-struct lwkt_port *ip_mport_in(struct mbuf **);
-struct lwkt_port *ip_mport_pktinfo(const struct pktinfo *, struct mbuf *);
+void	ip_cpufn(struct mbuf **, int, int);
+void	ip_cpufn_in(struct mbuf **, int);
 
 boolean_t
-	 ip_lengthcheck(struct mbuf **);
+	 ip_lengthcheck(struct mbuf **, int);
 int	 ip_output(struct mbuf *,
 	    struct mbuf *, struct route *, int, struct ip_moptions *,
 	    struct inpcb *);

@@ -574,7 +574,6 @@ struct lwkt_port *tcp_addrport0(void);
 void	 tcp_canceltimers (struct tcpcb *);
 struct tcpcb *
 	 tcp_close (struct tcpcb *);
-void	 tcpmsg_service_loop (void *);
 void	 tcp_ctlinput (int, struct sockaddr *, void *);
 int	 tcp_ctloutput (struct socket *, struct sockopt *);
 struct lwkt_port *
