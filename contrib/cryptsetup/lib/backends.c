@@ -37,7 +37,7 @@ int hash(const char *backend_name, const char *hash_name,
 
 	EVP_DigestInit(&mdctx, md);
 	EVP_DigestUpdate(&mdctx, passphrase, sizep);
-	EVP_DigestFinal(&mdctx, result, NULL);
+	r = !EVP_DigestFinal(&mdctx, result, NULL);
 
 	if (pad) {
 		memset(result+size, 0, pad);
