@@ -148,6 +148,7 @@ static int	nfs_reconnect (struct nfsmount *nmp, struct nfsreq *rep);
 #ifndef NFS_NOSERVER 
 static int	nfsrv_getstream (struct nfssvc_sock *, int, int *);
 static void	nfs_timer_req(struct nfsreq *req);
+static void	nfs_checkpkt(struct mbuf *m, int len);
 
 int (*nfsrv3_procs[NFS_NPROCS]) (struct nfsrv_descript *nd,
 				    struct nfssvc_sock *slp,
@@ -454,8 +455,11 @@ nfs_send(struct socket *so, struct sockaddr *nam, struct mbuf *top,
 	else
 		flags = 0;
 
+	/*
+	 * calls pru_sosend -> sosend -> so_pru_send -> netrpc
+	 */
 	error = so_pru_sosend(so, sendnam, NULL, top, NULL, flags,
-	    curthread /*XXX*/);
+			      curthread /*XXX*/);
 	/*
 	 * ENOBUFS for dgram sockets is transient and non fatal.
 	 * No need to log, and no need to break a soft mount.
@@ -1201,6 +1205,8 @@ nfs_request_auth(struct nfsreq *rep)
 			nmp->nm_numgrps : (cred->cr_ngroups - 1)) << 2) +
 			5 * NFSX_UNSIGNED;
 	}
+	if (rep->r_mrest)
+		nfs_checkpkt(rep->r_mrest, rep->r_mrest_len);
 	m = nfsm_rpchead(cred, nmp->nm_flag, rep->r_procnum, auth_type,
 			auth_len, auth_str, verf_len, verf_str,
 			rep->r_mrest, rep->r_mrest_len, &rep->r_mheadend, &xid);
@@ -1220,6 +1226,9 @@ nfs_request_auth(struct nfsreq *rep)
 		*mtod(m, u_int32_t *) = htonl(0x80000000 |
 			 (m->m_pkthdr.len - NFSX_UNSIGNED));
 	}
+
+	nfs_checkpkt(m, m->m_pkthdr.len);
+
 	rep->r_mreq = m;
 	rep->r_xid = xid;
 	return (0);
@@ -1439,6 +1448,7 @@ nfs_request_processreply(nfsm_info_t info, int error)
 				m_freem(info->mrep);
 				info->mrep = NULL;
 				m_freem(req->r_mreq);
+				req->r_mreq = NULL;
 				return (ENEEDAUTH);
 			} else {
 				error = EAUTH;
@@ -1834,6 +1844,8 @@ nfs_timer_req(struct nfsreq *req)
 	 *
 	 * r_rtt is left intact in case we get an answer after the
 	 * retry that was a reply to the original packet.
+	 *
+	 * NOTE: so_pru_send()
 	 */
 	if (ssb_space(&so->so_snd) >= req->r_mreq->m_pkthdr.len &&
 	    (req->r_flags & (R_SENT | R_NEEDSXMIT)) &&
@@ -1841,8 +1853,7 @@ nfs_timer_req(struct nfsreq *req)
 		if ((nmp->nm_flag & NFSMNT_NOCONN) == 0)
 		    error = so_pru_send(so, 0, m, NULL, NULL, td);
 		else
-		    error = so_pru_send(so, 0, m, nmp->nm_nam,
-			NULL, td);
+		    error = so_pru_send(so, 0, m, nmp->nm_nam, NULL, td);
 		if (error) {
 			if (NFSIGNORE_SOERROR(nmp->nm_soflags, error))
 				so->so_error = 0;
@@ -2736,6 +2747,34 @@ nfsrv_getstream(struct nfssvc_sock *slp, int waitflag, int *countp)
 	    }
 	}
 }
+
+#ifdef INVARIANTS
+
+/*
+ * Sanity check our mbuf chain.
+ */
+static void
+nfs_checkpkt(struct mbuf *m, int len)
+{
+	int xlen = 0;
+	while (m) {
+		xlen += m->m_len;
+		m = m->m_next;
+	}
+	if (xlen != len) {
+		panic("nfs_checkpkt: len mismatch %d/%d mbuf %p\n",
+			xlen, len, m);
+	}
+}
+
+#else
+
+static void
+nfs_checkpkt(struct mbuf *m __unused, int len __unused)
+{
+}
+
+#endif
 
 /*
  * Parse an RPC header.
