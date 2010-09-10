@@ -2317,6 +2317,22 @@ is set.
 If crash dumps are enabled, these are the flags to pass to the
 .Xr savecore 8
 utility.
+.It Va crashinfo_enable
+.Pq Vt bool
+Set to
+.Dq Li YES
+to turn on automatic crash dump summary generation using the utility
+specified by the
+.Va crashinfo_program
+variable.
+.It Va crashinfo_program
+.Pq Vt str
+Program to run to generate a crash dump summary if the variable
+.Va crashinfo_enable
+is set to
+.Dq Li YES .
+The default value is
+.Pa /usr/sbin/crashinfo .
 .It Va enable_quotas
 .Pq Vt bool
 Set to

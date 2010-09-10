@@ -59,6 +59,9 @@ savecore_start()
 	if [ X$dumpdev != X ]; then
 		echo "Checking for core dump..."
 		savecore ${savecore_flags} ${DUMPDIR} ${dumpdev}
+		if checkyesno crashinfo_enable; then
+			${crashinfo_program} -d ${DUMPDIR}
+		fi
 		return ${RC_CONFIGURED}
 	fi
 }
