@@ -1694,7 +1694,7 @@ nfs_rephead(int siz, struct nfsrv_descript *nd, struct nfssvc_sock *slp,
  * in a later timer call.
  */
 void
-nfs_timer(void *arg /* never used */)
+nfs_timer_callout(void *arg /* never used */)
 {
 	struct nfsmount *nmp;
 	struct nfsreq *req;
@@ -1703,8 +1703,9 @@ nfs_timer(void *arg /* never used */)
 	u_quad_t cur_usec;
 #endif /* NFS_NOSERVER */
 
-	crit_enter();
+	lwkt_gettoken(&nfs_token);
 	TAILQ_FOREACH(nmp, &nfs_mountq, nm_entry) {
+		lwkt_gettoken(&nmp->nm_token);
 		TAILQ_FOREACH(req, &nmp->nm_reqq, r_chain) {
 			KKASSERT(nmp == req->r_nmp);
 			if (req->r_mrep)
@@ -1723,6 +1724,7 @@ nfs_timer(void *arg /* never used */)
 				wakeup(req);
 			}
 		}
+		lwkt_reltoken(&nmp->nm_token);
 	}
 #ifndef NFS_NOSERVER
 
@@ -1731,13 +1733,18 @@ nfs_timer(void *arg /* never used */)
 	 * completed now.
 	 */
 	cur_usec = nfs_curusec();
+
 	TAILQ_FOREACH(slp, &nfssvc_sockhead, ns_chain) {
+	    /* XXX race against removal */
+	    lwkt_gettoken(&slp->ns_token);
 	    if (slp->ns_tq.lh_first && slp->ns_tq.lh_first->nd_time<=cur_usec)
 		nfsrv_wakenfsd(slp, 1);
+	    lwkt_reltoken(&slp->ns_token);
 	}
 #endif /* NFS_NOSERVER */
-	crit_exit();
-	callout_reset(&nfs_timer_handle, nfs_ticks, nfs_timer, NULL);
+
+	callout_reset(&nfs_timer_handle, nfs_ticks, nfs_timer_callout, NULL);
+	lwkt_reltoken(&nfs_token);
 }
 
 static
@@ -2468,11 +2475,24 @@ nfs_msg(struct thread *td, char *server, char *msg)
 }
 
 #ifndef NFS_NOSERVER
+
+void
+nfsrv_rcv_upcall(struct socket *so, void *arg, int waitflag)
+{
+	struct nfssvc_sock *slp = (struct nfssvc_sock *)arg;
+
+	lwkt_gettoken(&slp->ns_token);
+	nfsrv_rcv(so, arg, waitflag);
+	lwkt_reltoken(&slp->ns_token);
+}
+
 /*
  * Socket upcall routine for the nfsd sockets.
  * The caddr_t arg is a pointer to the "struct nfssvc_sock".
  * Essentially do as much as possible non-blocking, else punt and it will
  * be called with MB_WAIT from an nfsd.
+ *
+ * slp->ns_token is held on call
  */
 void
 nfsrv_rcv(struct socket *so, void *arg, int waitflag)
@@ -2483,6 +2503,8 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 	struct sockbuf sio;
 	int flags, error;
 	int nparallel_wakeup = 0;
+
+	ASSERT_LWKT_TOKEN_HELD(&slp->ns_token);
 
 	if ((slp->ns_flag & SLP_VALID) == 0)
 		return;
@@ -2522,7 +2544,7 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 		 *
 		 * Note that this procedure can be called from any number of
 		 * NFS severs *OR* can be upcalled directly from a TCP
-		 * protocol thread.
+		 * protocol thread without the lock.
 		 */
 		if (slp->ns_flag & SLP_GETSTREAM) {
 			slp->ns_flag |= SLP_NEEDQ;

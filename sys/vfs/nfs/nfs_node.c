@@ -342,8 +342,11 @@ fail:
 int
 nfs_inactive(struct vop_inactive_args *ap)
 {
+	struct nfsmount *nmp = VFSTONFS(ap->a_vp->v_mount);
 	struct nfsnode *np;
 	struct sillyrename *sp;
+
+	lwkt_gettoken(&nmp->nm_token);
 
 	np = VTONFS(ap->a_vp);
 	if (prtactive && ap->a_vp->v_sysref.refcnt > 1)
@@ -373,6 +376,7 @@ nfs_inactive(struct vop_inactive_args *ap)
 	}
 
 	np->n_flag &= ~(NWRITEERR | NACC | NUPD | NCHG | NLOCKED | NWANTED);
+	lwkt_reltoken(&nmp->nm_token);
 
 	return (0);
 }
@@ -388,9 +392,12 @@ nfs_reclaim(struct vop_reclaim_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct nfsnode *np = VTONFS(vp);
 	struct nfsdmap *dp, *dp2;
+	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
 
 	if (prtactive && vp->v_sysref.refcnt > 1)
 		vprint("nfs_reclaim: pushing active", vp);
+
+	lwkt_gettoken(&nmp->nm_token);
 
 	if (np->n_hash.le_prev != NULL)
 		LIST_REMOVE(np, n_hash);
@@ -419,9 +426,11 @@ nfs_reclaim(struct vop_reclaim_args *ap)
 		crfree(np->n_wucred);
 		np->n_wucred = NULL;
 	}
-
 	vp->v_data = NULL;
+
+	lwkt_reltoken(&nmp->nm_token);
 	zfree(nfsnode_zone, np);
+
 	return (0);
 }
 

@@ -99,6 +99,12 @@ enum vtype nv3tov_type[8]= {
 
 int nfs_ticks;
 
+/*
+ * Protect master lists only.  Primary protection uses the per-mount
+ * and per nfssvc_sock tokens.
+ */
+struct lwkt_token nfs_token = LWKT_TOKEN_MP_INITIALIZER(unp_token);
+
 static int nfs_pbuf_freecnt = -1;	/* start out unlimited */
 
 struct nfsmount_head nfs_mountq = TAILQ_HEAD_INITIALIZER(nfs_mountq);
@@ -602,7 +608,7 @@ nfs_init(struct vfsconf *vfsp)
 	/*
 	 * Initialize reply list and start timer
 	 */
-	nfs_timer(0);
+	nfs_timer_callout(0);
 
 	nfs_prev_nfssvc_sy_narg = sysent[SYS_nfssvc].sy_narg;
 	sysent[SYS_nfssvc].sy_narg = 2;

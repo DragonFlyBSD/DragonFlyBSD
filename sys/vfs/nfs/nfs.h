@@ -47,6 +47,7 @@
 
 #include <sys/vnode.h>
 #include <sys/mutex.h>
+#include <sys/thread.h>
 
 /*
  * Tunable constants for nfs
@@ -485,6 +486,7 @@ struct nfssvc_sock {
 	LIST_HEAD(, nfsrv_descript) ns_tq;	/* Write gather lists */
 	LIST_HEAD(, nfsuid) ns_uidhashtbl[NFS_UIDHASHSIZ];
 	LIST_HEAD(nfsrvw_delayhash, nfsrv_descript) ns_wdelayhashtbl[NFS_WDELAYHASHSIZ];
+	struct lwkt_token ns_token;
 };
 
 /* Bits for "ns_flag" */
@@ -647,6 +649,7 @@ extern int32_t (*nfsrv3_procs[NFS_NPROCS]) (struct nfsrv_descript *nd,
 					    struct mbuf **mreqp);
 
 extern struct nfsv3_diskless nfsv3_diskless;
+extern struct lwkt_token nfs_token;
 
 u_quad_t nfs_curusec (void);
 int	nfs_init (struct vfsconf *vfsp);
@@ -698,7 +701,7 @@ int	nfs_savenickauth (struct nfsmount *, struct ucred *, int,
 int	nfs_adv (struct mbuf **, caddr_t *, int, int);
 void	nfs_nhinit (void);
 int	nfs_nmcancelreqs (struct nfsmount *);
-void	nfs_timer (void*);
+void	nfs_timer_callout (void*);
 int	nfsrv_dorec (struct nfssvc_sock *, struct nfsd *, 
 			 struct nfsrv_descript **);
 int	nfsrv_getcache (struct nfsrv_descript *, struct nfssvc_sock *,
@@ -782,7 +785,9 @@ int	nfsrv_symlink (struct nfsrv_descript *nfsd,
 int	nfsrv_write (struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			 struct thread *td, struct mbuf **mrq);
 void	nfsrv_rcv (struct socket *so, void *arg, int waitflag);
+void	nfsrv_rcv_upcall (struct socket *so, void *arg, int waitflag);
 void	nfsrv_slpderef (struct nfssvc_sock *slp);
+void	nfsrv_slpref (struct nfssvc_sock *slp);
 int	nfs_meta_setsize (struct vnode *vp, struct thread *td,
 			off_t nbase, int trivial);
 int	nfs_clientd(struct nfsmount *nmp, struct ucred *cred,

@@ -43,6 +43,7 @@
 #define _NFS_NFSMOUNT_H_
 
 #include <sys/mutex.h>
+#include <sys/thread.h>	/* token */
 
 enum nfssvc_state {
 	NFSSVC_INIT,
@@ -112,6 +113,7 @@ struct	nfsmount {
 	int	nm_reqqlen;		/* number of nfsreqs in queue */
 	u_int64_t nm_maxfilesize;	/* maximum file size */
 	struct ucred *nm_cred;		/* 'root' credential */
+	struct lwkt_token nm_token;	/* protective token */
 };
 
 

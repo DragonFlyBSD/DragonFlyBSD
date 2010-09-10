@@ -307,12 +307,16 @@ nfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	info.mrep = NULL;
 	info.v3 = (nmp->nm_flag & NFSMNT_NFSV3);
 
+	lwkt_gettoken(&nmp->nm_token);
+
 #ifndef nolint
 	sfp = NULL;
 #endif
 	error = nfs_nget(mp, (nfsfh_t *)nmp->nm_fh, nmp->nm_fhsize, &np);
-	if (error)
+	if (error) {
+		lwkt_reltoken(&nmp->nm_token);
 		return (error);
+	}
 	vp = NFSTOV(np);
 	/* ignore the passed cred */
 	cred = crget();
@@ -371,6 +375,7 @@ nfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 nfsmout:
 	vput(vp);
 	crfree(cred);
+	lwkt_reltoken(&nmp->nm_token);
 	return (error);
 }
 
@@ -387,13 +392,16 @@ nfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 
 	info.mrep = NULL;
 	info.v3 = (nmp->nm_flag & NFSMNT_NFSV3);
+	lwkt_gettoken(&nmp->nm_token);
 
 #ifndef nolint
 	sfp = NULL;
 #endif
 	error = nfs_nget(mp, (nfsfh_t *)nmp->nm_fh, nmp->nm_fhsize, &np);
-	if (error)
+	if (error) {
+		lwkt_reltoken(&nmp->nm_token);
 		return (error);
+	}
 	vp = NFSTOV(np);
 	/* ignore the passed cred */
 	cred = crget();
@@ -449,6 +457,7 @@ nfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 nfsmout:
 	vput(vp);
 	crfree(cred);
+	lwkt_reltoken(&nmp->nm_token);
 	return (error);
 }
 
@@ -1003,9 +1012,13 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 		TAILQ_INIT(&nmp->nm_reqtxq);
 		TAILQ_INIT(&nmp->nm_reqrxq);
 		mp->mnt_data = (qaddr_t)nmp;
+		lwkt_token_init(&nmp->nm_token, 1, "nfs_token");
 	}
 	vfs_getnewfsid(mp);
 	nmp->nm_mountp = mp;
+	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;
+
+	lwkt_gettoken(&nmp->nm_token);
 
 	/*
 	 * V2 can only handle 32 bit filesizes.  A 4GB-1 limit may be too
@@ -1094,7 +1107,9 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	 * Lose the lock but keep the ref.
 	 */
 	vn_unlock(*vpp);
+	lwkt_gettoken(&nfs_token);
 	TAILQ_INSERT_TAIL(&nfs_mountq, nmp, nm_entry);
+	lwkt_reltoken(&nfs_token);
 
 #ifdef SMP
 	switch(ncpus) {
@@ -1124,10 +1139,11 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 		    NULL, 0, rxcpu, "nfsiod_rx");
 	lwkt_create(nfssvc_iod_writer, nmp, &nmp->nm_txthread,
 		    NULL, 0, txcpu, "nfsiod_tx");
-
+	lwkt_reltoken(&nmp->nm_token);
 	return (0);
 bad:
 	nfs_disconnect(nmp);
+	lwkt_reltoken(&nmp->nm_token);
 	nfs_free_mount(nmp);
 	return (error);
 }
@@ -1142,6 +1158,7 @@ nfs_unmount(struct mount *mp, int mntflags)
 	int error, flags = 0;
 
 	nmp = VFSTONFS(mp);
+	lwkt_gettoken(&nmp->nm_token);
 	if (mntflags & MNT_FORCE) {
 		flags |= FORCECLOSE;
 		nmp->nm_flag |= NFSMNT_FORCE;
@@ -1177,8 +1194,10 @@ nfs_unmount(struct mount *mp, int mntflags)
 	error = vflush(mp, 1, flags);
 	if (error) {
 		nmp->nm_state &= ~NFSSTA_DISMINPROG;
-		if ((flags & FORCECLOSE) == 0)
+		if ((flags & FORCECLOSE) == 0) {
+			lwkt_reltoken(&nmp->nm_token);
 			return (error);
+		}
 	}
 
 	/*
@@ -1190,7 +1209,12 @@ nfs_unmount(struct mount *mp, int mntflags)
 	nfssvc_iod_stop1(nmp);
 	nfs_disconnect(nmp);
 	nfssvc_iod_stop2(nmp);
+
+	lwkt_gettoken(&nfs_token);
 	TAILQ_REMOVE(&nfs_mountq, nmp, nm_entry);
+	lwkt_reltoken(&nfs_token);
+
+	lwkt_reltoken(&nmp->nm_token);
 
 	if ((nmp->nm_flag & NFSMNT_KERB) == 0) {
 		nfs_free_mount(nmp);
@@ -1225,9 +1249,12 @@ nfs_root(struct mount *mp, struct vnode **vpp)
 	int error;
 
 	nmp = VFSTONFS(mp);
+	lwkt_gettoken(&nmp->nm_token);
 	error = nfs_nget(mp, (nfsfh_t *)nmp->nm_fh, nmp->nm_fhsize, &np);
-	if (error)
+	if (error) {
+		lwkt_reltoken(&nmp->nm_token);
 		return (error);
+	}
 	vp = NFSTOV(np);
 
 	/*
@@ -1263,6 +1290,7 @@ nfs_root(struct mount *mp, struct vnode **vpp)
 		vput(vp);
 	else
 		*vpp = vp;
+	lwkt_reltoken(&nmp->nm_token);
 	return (error);
 }
 
@@ -1282,6 +1310,7 @@ static int nfs_sync_scan2(struct mount *mp, struct vnode *vp, void *data);
 static int
 nfs_sync(struct mount *mp, int waitfor)
 {
+	struct nfsmount *nmp = VFSTONFS(mp);
 	struct scaninfo scaninfo;
 	int error;
 
@@ -1292,12 +1321,14 @@ nfs_sync(struct mount *mp, int waitfor)
 	/*
 	 * Force stale buffer cache information to be flushed.
 	 */
+	lwkt_gettoken(&nmp->nm_token);
 	error = 0;
 	while (error == 0 && scaninfo.rescan) {
 		scaninfo.rescan = 0;
 		error = vmntvnodescan(mp, VMSC_GETVP, nfs_sync_scan1,
 					nfs_sync_scan2, &scaninfo);
 	}
+	lwkt_reltoken(&nmp->nm_token);
 	return(error);
 }
 

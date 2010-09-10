@@ -311,7 +311,10 @@ nfs_access(struct vop_access_args *ap)
 	int error = 0;
 	u_int32_t mode, wmode;
 	struct nfsnode *np = VTONFS(vp);
+	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
 	int v3 = NFS_ISV3(vp);
+
+	lwkt_gettoken(&nmp->nm_token);
 
 	/*
 	 * Disallow write attempts on filesystems mounted read-only;
@@ -323,6 +326,7 @@ nfs_access(struct vop_access_args *ap)
 		case VREG:
 		case VDIR:
 		case VLNK:
+			lwkt_reltoken(&nmp->nm_token);
 			return (EROFS);
 		default:
 			break;
@@ -401,6 +405,7 @@ nfs_access(struct vop_access_args *ap)
 	} else {
 		if ((error = nfs_laccess(ap)) != 0) {
 			crfree(cred);
+			lwkt_reltoken(&nmp->nm_token);
 			return (error);
 		}
 
@@ -462,6 +467,7 @@ nfs_access(struct vop_access_args *ap)
 			np->n_wucred = cred;
 		}
 	}
+	lwkt_reltoken(&nmp->nm_token);
 	crfree(cred);
 	return(error);
 }
@@ -482,13 +488,17 @@ nfs_open(struct vop_open_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct nfsnode *np = VTONFS(vp);
+	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
 	struct vattr vattr;
 	int error;
+
+	lwkt_gettoken(&nmp->nm_token);
 
 	if (vp->v_type != VREG && vp->v_type != VDIR && vp->v_type != VLNK) {
 #ifdef DIAGNOSTIC
 		kprintf("open eacces vtyp=%d\n",vp->v_type);
 #endif
+		lwkt_reltoken(&nmp->nm_token);
 		return (EOPNOTSUPP);
 	}
 
@@ -543,18 +553,24 @@ nfs_open(struct vop_open_args *ap)
 		}
 	}
 	error = VOP_GETATTR(vp, &vattr);
-	if (error)
+	if (error) {
+		lwkt_reltoken(&nmp->nm_token);
 		return (error);
+	}
 	if (np->n_flag & NRMODIFIED) {
 		if (vp->v_type == VDIR)
 			nfs_invaldir(vp);
 		error = nfs_vinvalbuf(vp, V_SAVE, 1);
-		if (error == EINTR)
+		if (error == EINTR) {
+			lwkt_reltoken(&nmp->nm_token);
 			return (error);
+		}
 		np->n_flag &= ~NRMODIFIED;
 	}
+	error = vop_stdopen(ap);
+	lwkt_reltoken(&nmp->nm_token);
 
-	return (vop_stdopen(ap));
+	return error;
 }
 
 /*
@@ -595,8 +611,11 @@ nfs_close(struct vop_close_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct nfsnode *np = VTONFS(vp);
+	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
 	int error = 0;
 	thread_t td = curthread;
+
+	lwkt_gettoken(&nmp->nm_token);
 
 	if (vp->v_type == VREG) {
 	    if (np->n_flag & NLMODIFIED) {
@@ -628,6 +647,8 @@ nfs_close(struct vop_close_args *ap)
 	    }
 	}
 	vop_stdclose(ap);
+	lwkt_reltoken(&nmp->nm_token);
+
 	return (error);
 }
 
@@ -649,6 +670,8 @@ nfs_getattr(struct vop_getattr_args *ap)
 	info.mrep = NULL;
 	info.v3 = NFS_ISV3(vp);
 	nmp = VFSTONFS(vp->v_mount);
+
+	lwkt_gettoken(&nmp->nm_token);
 	
 	/*
 	 * Update local times for special files.
@@ -686,6 +709,7 @@ done:
 	if ((nmp->nm_flag & NFSMNT_CACHE) && (vp->v_flag & VROOT))
 		ap->a_vap->va_flags |= UF_CACHE;
 nfsmout:
+	lwkt_reltoken(&nmp->nm_token);
 	return (error);
 }
 
@@ -699,6 +723,7 @@ nfs_setattr(struct vop_setattr_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct nfsnode *np = VTONFS(vp);
+	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
 	struct vattr *vap = ap->a_vap;
 	int biosize = vp->v_mount->mnt_stat.f_iosize;
 	int error = 0;
@@ -709,7 +734,6 @@ nfs_setattr(struct vop_setattr_args *ap)
 #ifndef nolint
 	tsize = (off_t)0;
 #endif
-
 	/*
 	 * Setting of flags is not supported.
 	 */
@@ -725,12 +749,15 @@ nfs_setattr(struct vop_setattr_args *ap)
 	    (vp->v_mount->mnt_flag & MNT_RDONLY))
 		return (EROFS);
 
+	lwkt_gettoken(&nmp->nm_token);
+
 	if (vap->va_size != VNOVAL) {
 		/*
 		 * truncation requested
 		 */
  		switch (vp->v_type) {
  		case VDIR:
+			lwkt_reltoken(&nmp->nm_token);
  			return (EISDIR);
  		case VCHR:
  		case VBLK:
@@ -740,8 +767,10 @@ nfs_setattr(struct vop_setattr_args *ap)
 			    vap->va_atime.tv_sec == VNOVAL &&
 			    vap->va_mode == (mode_t)VNOVAL &&
 			    vap->va_uid == (uid_t)VNOVAL &&
-			    vap->va_gid == (gid_t)VNOVAL)
+			    vap->va_gid == (gid_t)VNOVAL) {
+				lwkt_reltoken(&nmp->nm_token);
 				return (0);
+			}
  			vap->va_size = VNOVAL;
  			break;
  		default:
@@ -749,8 +778,10 @@ nfs_setattr(struct vop_setattr_args *ap)
 			 * Disallow write attempts if the filesystem is
 			 * mounted read-only.
 			 */
-			if (vp->v_mount->mnt_flag & MNT_RDONLY)
+			if (vp->v_mount->mnt_flag & MNT_RDONLY) {
+				lwkt_reltoken(&nmp->nm_token);
 				return (EROFS);
+			}
 
 			tsize = np->n_size;
 again:
@@ -814,6 +845,8 @@ again:
 		np->n_size = np->n_vattr.va_size = tsize;
 		nfs_meta_setsize(vp, td, np->n_size, 0);
 	}
+	lwkt_reltoken(&nmp->nm_token);
+
 	return (error);
 }
 
@@ -896,6 +929,7 @@ nfs_nresolve(struct vop_nresolve_args *ap)
 {
 	struct thread *td = curthread;
 	struct namecache *ncp;
+	struct nfsmount *nmp;
 	struct ucred *cred;
 	struct nfsnode *np;
 	struct vnode *dvp;
@@ -910,9 +944,14 @@ nfs_nresolve(struct vop_nresolve_args *ap)
 
 	cred = ap->a_cred;
 	dvp = ap->a_dvp;
+	nmp = VFSTONFS(dvp->v_mount);
 
-	if ((error = vget(dvp, LK_SHARED)) != 0)
+	lwkt_gettoken(&nmp->nm_token);
+
+	if ((error = vget(dvp, LK_SHARED)) != 0) {
+		lwkt_reltoken(&nmp->nm_token);
 		return (error);
+	}
 
 	info.mrep = NULL;
 	info.v3 = NFS_ISV3(dvp);
@@ -979,6 +1018,7 @@ nfs_nresolve(struct vop_nresolve_args *ap)
 			m_freem(info.mrep);
 			info.mrep = NULL;
 			vput(dvp);
+			lwkt_reltoken(&nmp->nm_token);
 			return (error);
 		}
 		nvp = NFSTOV(np);
@@ -995,6 +1035,7 @@ nfs_nresolve(struct vop_nresolve_args *ap)
 	m_freem(info.mrep);
 	info.mrep = NULL;
 nfsmout:
+	lwkt_reltoken(&nmp->nm_token);
 	vput(dvp);
 	if (nvp) {
 		if (nvp == dvp)
@@ -1056,6 +1097,8 @@ nfs_lookup(struct vop_old_lookup_args *ap)
 	nmp = VFSTONFS(dvp->v_mount);
 	np = VTONFS(dvp);
 
+	lwkt_gettoken(&nmp->nm_token);
+
 	/*
 	 * Go to the wire.
 	 */
@@ -1091,12 +1134,14 @@ nfs_lookup(struct vop_old_lookup_args *ap)
 		if (NFS_CMPFH(np, fhp, fhsize)) {
 			m_freem(info.mrep);
 			info.mrep = NULL;
+			lwkt_reltoken(&nmp->nm_token);
 			return (EISDIR);
 		}
 		error = nfs_nget(dvp->v_mount, fhp, fhsize, &np);
 		if (error) {
 			m_freem(info.mrep);
 			info.mrep = NULL;
+			lwkt_reltoken(&nmp->nm_token);
 			return (error);
 		}
 		newvp = NFSTOV(np);
@@ -1115,6 +1160,7 @@ nfs_lookup(struct vop_old_lookup_args *ap)
 			vn_unlock(dvp);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
+		lwkt_reltoken(&nmp->nm_token);
 		return (0);
 	}
 
@@ -1125,6 +1171,7 @@ nfs_lookup(struct vop_old_lookup_args *ap)
 		if (error) {
 			vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY);
 			cnp->cn_flags &= ~CNP_PDIRUNLOCK;
+			lwkt_reltoken(&nmp->nm_token);
 			return (error); /* NOTE: return error from nget */
 		}
 		newvp = NFSTOV(np);
@@ -1132,6 +1179,7 @@ nfs_lookup(struct vop_old_lookup_args *ap)
 			error = vn_lock(dvp, LK_EXCLUSIVE);
 			if (error) {
 				vput(newvp);
+				lwkt_reltoken(&nmp->nm_token);
 				return (error);
 			}
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
@@ -1144,6 +1192,7 @@ nfs_lookup(struct vop_old_lookup_args *ap)
 		if (error) {
 			m_freem(info.mrep);
 			info.mrep = NULL;
+			lwkt_reltoken(&nmp->nm_token);
 			return (error);
 		}
 		if (!lockparent) {
@@ -1189,6 +1238,7 @@ nfsmout:
 				error = EJUSTRETURN;
 		}
 	}
+	lwkt_reltoken(&nmp->nm_token);
 	return (error);
 }
 
@@ -1203,8 +1253,14 @@ static int
 nfs_read(struct vop_read_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
+	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
+	int error;
 
-	return (nfs_bioread(vp, ap->a_uio, ap->a_ioflag));
+	lwkt_gettoken(&nmp->nm_token);
+	error = nfs_bioread(vp, ap->a_uio, ap->a_ioflag);
+	lwkt_reltoken(&nmp->nm_token);
+
+	return error;
 }
 
 /*
@@ -1216,10 +1272,17 @@ static int
 nfs_readlink(struct vop_readlink_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
+	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
+	int error;
 
 	if (vp->v_type != VLNK)
 		return (EINVAL);
-	return (nfs_bioread(vp, ap->a_uio, 0));
+
+	lwkt_gettoken(&nmp->nm_token);
+	error = nfs_bioread(vp, ap->a_uio, 0);
+	lwkt_reltoken(&nmp->nm_token);
+
+	return error;
 }
 
 /*
@@ -1278,6 +1341,7 @@ nfs_readrpc_uio(struct vnode *vp, struct uio *uiop)
 	eof = 0;
 #endif
 	nmp = VFSTONFS(vp->v_mount);
+
 	tsiz = uiop->uio_resid;
 	tmp_off = uiop->uio_offset + tsiz;
 	if (tmp_off > nmp->nm_maxfilesize || tmp_off < uiop->uio_offset)
@@ -1563,7 +1627,14 @@ nfsmout:
 static int
 nfs_mknod(struct vop_old_mknod_args *ap)
 {
-	return nfs_mknodrpc(ap->a_dvp, ap->a_vpp, ap->a_cnp, ap->a_vap);
+	struct nfsmount *nmp = VFSTONFS(ap->a_dvp->v_mount);
+	int error;
+
+	lwkt_gettoken(&nmp->nm_token);
+	error = nfs_mknodrpc(ap->a_dvp, ap->a_vpp, ap->a_cnp, ap->a_vap);
+	lwkt_reltoken(&nmp->nm_token);
+
+	return error;
 }
 
 static u_long create_verf;
@@ -1578,6 +1649,7 @@ nfs_create(struct vop_old_create_args *ap)
 {
 	struct vnode *dvp = ap->a_dvp;
 	struct vattr *vap = ap->a_vap;
+	struct nfsmount *nmp = VFSTONFS(dvp->v_mount);
 	struct componentname *cnp = ap->a_cnp;
 	struct nfsv2_sattr *sp;
 	u_int32_t *tl;
@@ -1589,14 +1661,19 @@ nfs_create(struct vop_old_create_args *ap)
 
 	info.mrep = NULL;
 	info.v3 = NFS_ISV3(dvp);
+	lwkt_gettoken(&nmp->nm_token);
 
 	/*
 	 * Oops, not for me..
 	 */
-	if (vap->va_type == VSOCK)
-		return (nfs_mknodrpc(dvp, ap->a_vpp, cnp, vap));
+	if (vap->va_type == VSOCK) {
+		error = nfs_mknodrpc(dvp, ap->a_vpp, cnp, vap);
+		lwkt_reltoken(&nmp->nm_token);
+		return error;
+	}
 
 	if ((error = VOP_GETATTR(dvp, &vattr)) != 0) {
+		lwkt_reltoken(&nmp->nm_token);
 		return (error);
 	}
 	if (vap->va_vaflags & VA_EXCLUSIVE)
@@ -1697,6 +1774,7 @@ nfsmout:
 	VTONFS(dvp)->n_flag |= NLMODIFIED;
 	if (!wccflag)
 		VTONFS(dvp)->n_attrstamp = 0;
+	lwkt_reltoken(&nmp->nm_token);
 	return (error);
 }
 
@@ -1719,20 +1797,21 @@ nfs_remove(struct vop_old_remove_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vnode *dvp = ap->a_dvp;
+	struct nfsmount *nmp = VFSTONFS(dvp->v_mount);
 	struct componentname *cnp = ap->a_cnp;
 	struct nfsnode *np = VTONFS(vp);
 	int error = 0;
 	struct vattr vattr;
 
+	lwkt_gettoken(&nmp->nm_token);
 #ifndef DIAGNOSTIC
 	if (vp->v_sysref.refcnt < 1)
 		panic("nfs_remove: bad v_sysref.refcnt");
 #endif
-	if (vp->v_type == VDIR)
+	if (vp->v_type == VDIR) {
 		error = EPERM;
-	else if (vp->v_sysref.refcnt == 1 || (np->n_sillyrename &&
-	    VOP_GETATTR(vp, &vattr) == 0 &&
-	    vattr.va_nlink > 1)) {
+	} else if (vp->v_sysref.refcnt == 1 || (np->n_sillyrename &&
+		   VOP_GETATTR(vp, &vattr) == 0 && vattr.va_nlink > 1)) {
 		/*
 		 * throw away biocache buffers, mainly to avoid
 		 * unnecessary delayed writes later.
@@ -1754,6 +1833,8 @@ nfs_remove(struct vop_old_remove_args *ap)
 		error = nfs_sillyrename(dvp, vp, cnp);
 	}
 	np->n_attrstamp = 0;
+	lwkt_reltoken(&nmp->nm_token);
+
 	return (error);
 }
 
@@ -1814,7 +1895,10 @@ nfs_rename(struct vop_old_rename_args *ap)
 	struct vnode *tdvp = ap->a_tdvp;
 	struct componentname *tcnp = ap->a_tcnp;
 	struct componentname *fcnp = ap->a_fcnp;
+	struct nfsmount *nmp = VFSTONFS(fdvp->v_mount);
 	int error;
+
+	lwkt_gettoken(&nmp->nm_token);
 
 	/* Check for cross-device rename */
 	if ((fvp->v_mount != tdvp->v_mount) ||
@@ -1862,6 +1946,7 @@ nfs_rename(struct vop_old_rename_args *ap)
 		tcnp->cn_td);
 
 out:
+	lwkt_reltoken(&nmp->nm_token);
 	if (tdvp == tvp)
 		vrele(tdvp);
 	else
@@ -1939,6 +2024,7 @@ nfs_link(struct vop_old_link_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vnode *tdvp = ap->a_tdvp;
+	struct nfsmount *nmp = VFSTONFS(tdvp->v_mount);
 	struct componentname *cnp = ap->a_cnp;
 	int error = 0, wccflag = NFSV3_WCCRATTR, attrflag = 0;
 	struct nfsm_info info;
@@ -1946,6 +2032,7 @@ nfs_link(struct vop_old_link_args *ap)
 	if (vp->v_mount != tdvp->v_mount) {
 		return (EXDEV);
 	}
+	lwkt_gettoken(&nmp->nm_token);
 
 	/*
 	 * The attribute cache may get out of sync with the server on link.
@@ -1987,6 +2074,7 @@ nfsmout:
 	 */
 	if (error == EEXIST)
 		error = 0;
+	lwkt_reltoken(&nmp->nm_token);
 	return (error);
 }
 
@@ -2002,6 +2090,7 @@ nfs_symlink(struct vop_old_symlink_args *ap)
 {
 	struct vnode *dvp = ap->a_dvp;
 	struct vattr *vap = ap->a_vap;
+	struct nfsmount *nmp = VFSTONFS(dvp->v_mount);
 	struct componentname *cnp = ap->a_cnp;
 	struct nfsv2_sattr *sp;
 	int slen, error = 0, wccflag = NFSV3_WCCRATTR, gotvp;
@@ -2010,6 +2099,7 @@ nfs_symlink(struct vop_old_symlink_args *ap)
 
 	info.mrep = NULL;
 	info.v3 = NFS_ISV3(dvp);
+	lwkt_gettoken(&nmp->nm_token);
 
 	nfsstats.rpccnt[NFSPROC_SYMLINK]++;
 	slen = strlen(ap->a_target);
@@ -2075,7 +2165,7 @@ nfsmout:
 		struct nfsnode *np = NULL;
 
 		error = nfs_lookitup(dvp, cnp->cn_nameptr, cnp->cn_namelen,
-		    cnp->cn_cred, cnp->cn_td, &np);
+				     cnp->cn_cred, cnp->cn_td, &np);
 		if (!error)
 			newvp = NFSTOV(np);
 	}
@@ -2088,6 +2178,8 @@ nfsmout:
 	VTONFS(dvp)->n_flag |= NLMODIFIED;
 	if (!wccflag)
 		VTONFS(dvp)->n_attrstamp = 0;
+	lwkt_reltoken(&nmp->nm_token);
+
 	return (error);
 }
 
@@ -2102,6 +2194,7 @@ nfs_mkdir(struct vop_old_mkdir_args *ap)
 {
 	struct vnode *dvp = ap->a_dvp;
 	struct vattr *vap = ap->a_vap;
+	struct nfsmount *nmp = VFSTONFS(dvp->v_mount);
 	struct componentname *cnp = ap->a_cnp;
 	struct nfsv2_sattr *sp;
 	struct nfsnode *np = NULL;
@@ -2114,8 +2207,10 @@ nfs_mkdir(struct vop_old_mkdir_args *ap)
 
 	info.mrep = NULL;
 	info.v3 = NFS_ISV3(dvp);
+	lwkt_gettoken(&nmp->nm_token);
 
 	if ((error = VOP_GETATTR(dvp, &vattr)) != 0) {
+		lwkt_reltoken(&nmp->nm_token);
 		return (error);
 	}
 	len = cnp->cn_namelen;
@@ -2170,8 +2265,10 @@ nfsmout:
 	if (error) {
 		if (newvp)
 			vrele(newvp);
-	} else
+	} else {
 		*ap->a_vpp = newvp;
+	}
+	lwkt_reltoken(&nmp->nm_token);
 	return (error);
 }
 
@@ -2186,6 +2283,7 @@ nfs_rmdir(struct vop_old_rmdir_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vnode *dvp = ap->a_dvp;
+	struct nfsmount *nmp = VFSTONFS(dvp->v_mount);
 	struct componentname *cnp = ap->a_cnp;
 	int error = 0, wccflag = NFSV3_WCCRATTR;
 	struct nfsm_info info;
@@ -2195,6 +2293,9 @@ nfs_rmdir(struct vop_old_rmdir_args *ap)
 
 	if (dvp == vp)
 		return (EINVAL);
+
+	lwkt_gettoken(&nmp->nm_token);
+
 	nfsstats.rpccnt[NFSPROC_RMDIR]++;
 	nfsm_reqhead(&info, dvp, NFSPROC_RMDIR,
 		     NFSX_FH(info.v3) + NFSX_UNSIGNED +
@@ -2218,6 +2319,8 @@ nfsmout:
 	 */
 	if (error == ENOENT)
 		error = 0;
+	lwkt_reltoken(&nmp->nm_token);
+
 	return (error);
 }
 
@@ -2231,6 +2334,7 @@ nfs_readdir(struct vop_readdir_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct nfsnode *np = VTONFS(vp);
+	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
 	struct uio *uio = ap->a_uio;
 	int tresid, error;
 	struct vattr vattr;
@@ -2240,6 +2344,8 @@ nfs_readdir(struct vop_readdir_args *ap)
 
 	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
 		return (error);
+
+	lwkt_gettoken(&nmp->nm_token);
 
 	/*
 	 * If we have a valid EOF offset cache we must call VOP_GETATTR()
@@ -2267,7 +2373,9 @@ nfs_readdir(struct vop_readdir_args *ap)
 	if (!error && uio->uio_resid == tresid)
 		nfsstats.direofcache_misses++;
 done:
+	lwkt_reltoken(&nmp->nm_token);
 	vn_unlock(vp);
+
 	return (error);
 }
 
@@ -2967,6 +3075,7 @@ nfsmout:
 static int
 nfs_bmap(struct vop_bmap_args *ap)
 {
+	/* no token lock required */
 	if (ap->a_doffsetp != NULL)
 		*ap->a_doffsetp = ap->a_loffset;
 	if (ap->a_runp != NULL)
@@ -2985,6 +3094,7 @@ nfs_strategy(struct vop_strategy_args *ap)
 	struct bio *bio = ap->a_bio;
 	struct bio *nbio;
 	struct buf *bp __debugvar = bio->bio_buf;
+	struct nfsmount *nmp = VFSTONFS(ap->a_vp->v_mount);
 	struct thread *td;
 	int error;
 
@@ -2997,6 +3107,8 @@ nfs_strategy(struct vop_strategy_args *ap)
 		td = curthread;	/* XXX */
 	else
 		td = NULL;
+
+	lwkt_gettoken(&nmp->nm_token);
 
         /*
 	 * We probably don't need to push an nbio any more since no
@@ -3023,6 +3135,8 @@ nfs_strategy(struct vop_strategy_args *ap)
 		nfs_asyncio(ap->a_vp, nbio);
 		error = 0;
 	}
+	lwkt_reltoken(&nmp->nm_token);
+
 	return (error);
 }
 
@@ -3037,6 +3151,7 @@ nfs_strategy(struct vop_strategy_args *ap)
 static int
 nfs_mmap(struct vop_mmap_args *ap)
 {
+	/* no token lock required */
 	return (EINVAL);
 }
 
@@ -3049,7 +3164,14 @@ nfs_mmap(struct vop_mmap_args *ap)
 static int
 nfs_fsync(struct vop_fsync_args *ap)
 {
-	return (nfs_flush(ap->a_vp, ap->a_waitfor, curthread, 1));
+	struct nfsmount *nmp = VFSTONFS(ap->a_vp->v_mount);
+	int error;
+
+	lwkt_gettoken(&nmp->nm_token);
+	error = nfs_flush(ap->a_vp, ap->a_waitfor, curthread, 1);
+	lwkt_reltoken(&nmp->nm_token);
+
+	return error;
 }
 
 /*
@@ -3374,6 +3496,7 @@ nfs_advlock(struct vop_advlock_args *ap)
 {
 	struct nfsnode *np = VTONFS(ap->a_vp);
 
+	/* no token lock currently required */
 	/*
 	 * The following kludge is to allow diskless support to work
 	 * until a real NFS lockd is implemented. Basically, just pretend
@@ -3409,13 +3532,18 @@ nfs_print(struct vop_print_args *ap)
 static int
 nfs_laccess(struct vop_access_args *ap)
 {
+	struct nfsmount *nmp = VFSTONFS(ap->a_vp->v_mount);
 	struct vattr vattr;
 	int error;
 
+	lwkt_gettoken(&nmp->nm_token);
 	error = VOP_GETATTR(ap->a_vp, &vattr);
-	if (!error)
+	if (error == 0) {
 		error = vop_helper_access(ap, vattr.va_uid, vattr.va_gid, 
-				vattr.va_mode, 0);
+					  vattr.va_mode, 0);
+	}
+	lwkt_reltoken(&nmp->nm_token);
+
 	return (error);
 }
 
@@ -3430,6 +3558,7 @@ nfsfifo_read(struct vop_read_args *ap)
 {
 	struct nfsnode *np = VTONFS(ap->a_vp);
 
+	/* no token access required */
 	/*
 	 * Set access flag.
 	 */
@@ -3449,6 +3578,7 @@ nfsfifo_write(struct vop_write_args *ap)
 {
 	struct nfsnode *np = VTONFS(ap->a_vp);
 
+	/* no token access required */
 	/*
 	 * Set update flag.
 	 */
@@ -3471,6 +3601,8 @@ nfsfifo_close(struct vop_close_args *ap)
 	struct nfsnode *np = VTONFS(vp);
 	struct vattr vattr;
 	struct timespec ts;
+
+	/* no token access required */
 
 	if (np->n_flag & (NACC | NUPD)) {
 		getnanotime(&ts);
