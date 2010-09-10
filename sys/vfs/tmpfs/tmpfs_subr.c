@@ -105,7 +105,9 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 	if (tmp->tm_nodes_inuse >= tmp->tm_nodes_max)
 		return (ENOSPC);
 
-	nnode = (struct tmpfs_node *)objcache_get(tmp->tm_node_pool, M_WAITOK);
+	nnode = objcache_get(tmp->tm_node_pool, M_WAITOK | M_NULLOK);
+	if (nnode == NULL)
+		return (ENOSPC);
 
 	/* Generic initialization. */
 	nnode->tn_type = type;

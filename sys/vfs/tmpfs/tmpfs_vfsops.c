@@ -106,6 +106,8 @@ static void*
 tmpfs_node_init(void *args, int flags)
 {
 	struct tmpfs_node *node = (struct tmpfs_node *)objcache_malloc_alloc(args, flags);
+	if (node == NULL)
+		return (NULL);
 	node->tn_id = 0;
 
 	lockinit(&node->tn_interlock, "tmpfs node interlock", 0, LK_CANRECURSE);
