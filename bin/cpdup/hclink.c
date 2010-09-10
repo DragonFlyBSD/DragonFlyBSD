@@ -388,7 +388,7 @@ int
 hcc_check_space(hctransaction_t trans, struct HCHead *head, int n, int size)
 {
     size = HCC_ALIGN(size) + n * sizeof(struct HCLeaf);
-    if (size > HC_BUFSIZE - trans->windex) {
+    if (size >= HC_BUFSIZE - trans->windex) {
 	struct HCHead *whead = (void *)trans->wbuf;
 
 	whead->cmd |= HCF_CONTINUE;
