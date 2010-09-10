@@ -706,6 +706,8 @@ ng_btsocket_rfcomm_detach(struct socket *so)
 
 	mtx_lock(&pcb->pcb_mtx);
 
+	so->so_pcb = NULL;
+
 	switch (pcb->state) {
 	case NG_BTSOCKET_RFCOMM_DLC_W4_CONNECT:
 	case NG_BTSOCKET_RFCOMM_DLC_CONFIGURING:
@@ -748,7 +750,7 @@ ng_btsocket_rfcomm_detach(struct socket *so)
 	FREE(pcb, M_NETGRAPH_BTSOCKET_RFCOMM);
 
 	soisdisconnected(so);
-	so->so_pcb = NULL;
+	sofree(so);		/* for so_pcb = NULL */
 } /* ng_btsocket_rfcomm_detach */
 
 /*
@@ -1296,7 +1298,7 @@ ng_btsocket_rfcomm_session_create(ng_btsocket_rfcomm_session_p *sp,
 	SOCKBUF_LOCK(&l2so->so_snd);
 	l2so->so_snd.sb_flags |= SB_UPCALL;
 	SOCKBUF_UNLOCK(&l2so->so_snd);
-	l2so->so_state |= SS_NBIO;
+	sosetstate(l2so, SS_NBIO);
 	s->l2so = l2so;
 
 	mtx_lock(&s->session_mtx);
@@ -1380,7 +1382,7 @@ bad:
 	SOCKBUF_LOCK(&l2so->so_snd);
 	l2so->so_snd.sb_flags &= ~SB_UPCALL;
 	SOCKBUF_UNLOCK(&l2so->so_snd);
-	l2so->so_state &= ~SS_NBIO;
+	soclrstate(l2so, SS_NBIO);
 
 	mtx_destroy(&s->session_mtx);
 	bzero(s, sizeof(*s));
@@ -1434,7 +1436,7 @@ ng_btsocket_rfcomm_session_accept(ng_btsocket_rfcomm_session_p s0)
 	l2so->so_head = NULL;
 	SOCK_LOCK(l2so);
 	soref(l2so);
-	l2so->so_state |= SS_NBIO;
+	sosetstate(l2so, SS_NBIO);
 	SOCK_UNLOCK(l2so);
 	ACCEPT_UNLOCK();
 

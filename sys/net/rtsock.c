@@ -81,7 +81,9 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/domain.h>
+
 #include <sys/thread2.h>
+#include <sys/socketvar2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -160,6 +162,7 @@ rts_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	 */
 	crit_enter();
 	so->so_pcb = rp;
+	soreference(so);	/* so_pcb assignment */
 	error = raw_attach(so, proto, ai->sb_rlimit);
 	rp = sotorawcb(so);
 	if (error) {

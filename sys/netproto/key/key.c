@@ -153,6 +153,8 @@ static LIST_HEAD(_acqtree, secacq) acqtree;		/* acquiring list */
 #endif
 static LIST_HEAD(_spacqtree, secspacq) spacqtree;	/* SP acquiring list */
 
+struct lwkt_token key_token = LWKT_TOKEN_MP_INITIALIZER(key_token);
+
 struct key_cb key_cb;
 
 /* search order for SAs */
@@ -526,7 +528,7 @@ key_allocsp(struct secpolicyindex *spidx, u_int dir)
 	}
 
 	/* get a SP entry */
-	crit_enter();
+	lwkt_gettoken(&key_token);
 	KEYDEBUG(KEYDEBUG_IPSEC_DATA,
 		kprintf("*** objects\n");
 		kdebug_secpolicyindex(spidx));
@@ -542,7 +544,7 @@ key_allocsp(struct secpolicyindex *spidx, u_int dir)
 			goto found;
 	}
 
-	crit_exit();
+	lwkt_reltoken(&key_token);
 	return NULL;
 
 found:
@@ -553,7 +555,7 @@ found:
 	microtime(&tv);
 	sp->lastused = tv.tv_sec;
 	sp->refcnt++;
-	crit_exit();
+	lwkt_reltoken(&key_token);
 	KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
 		kprintf("DP key_allocsp cause refcnt++:%d SP:%p\n",
 			sp->refcnt, sp));
@@ -582,7 +584,7 @@ key_gettunnel(struct sockaddr *osrc, struct sockaddr *odst,
 		return NULL;
 	}
 
-	crit_enter();
+	lwkt_gettoken(&key_token);
 	LIST_FOREACH(sp, &sptree[dir], chain) {
 		if (sp->state == IPSEC_SPSTATE_DEAD)
 			continue;
@@ -622,14 +624,14 @@ key_gettunnel(struct sockaddr *osrc, struct sockaddr *odst,
 			goto found;
 		}
 	}
-	crit_exit();
+	lwkt_reltoken(&key_token);
 	return NULL;
 
 found:
 	microtime(&tv);
 	sp->lastused = tv.tv_sec;
 	sp->refcnt++;
-	crit_exit();
+	lwkt_reltoken(&key_token);
 	return sp;
 }
 
@@ -658,6 +660,8 @@ key_checkrequest(struct ipsecrequest *isr, struct secasindex *saidx)
 	default:
 		panic("key_checkrequest: Invalid policy defined.\n");
 	}
+
+	lwkt_gettoken(&key_token);
 
 	/* get current level */
 	level = ipsec_get_reqlevel(isr);
@@ -706,17 +710,21 @@ key_checkrequest(struct ipsecrequest *isr, struct secasindex *saidx)
 		isr->sav = key_allocsa_policy(saidx);
 
 	/* When there is SA. */
-	if (isr->sav != NULL)
+	if (isr->sav != NULL) {
+		lwkt_reltoken(&key_token);
 		return 0;
+	}
 
 	/* there is no SA */
 	if ((error = key_acquire(saidx, isr->sp)) != 0) {
 		/* XXX What should I do ? */
 		ipseclog((LOG_DEBUG, "key_checkrequest: error %d returned "
 			"from key_acquire.\n", error));
+		lwkt_reltoken(&key_token);
 		return error;
 	}
 
+	lwkt_reltoken(&key_token);
 	return level == IPSEC_LEVEL_REQUIRE ? ENOENT : 0;
 }
 
@@ -945,7 +953,7 @@ key_allocsa(u_int family, caddr_t src, caddr_t dst, u_int proto,
 	 * IPsec tunnel packet is received.  But ESP tunnel mode is
 	 * encrypted so we can't check internal IP header.
 	 */
-	crit_enter();
+	lwkt_gettoken(&key_token);
 	LIST_FOREACH(sah, &sahtree, chain) {
 		/*
 		 * search a valid state list for inbound packet.
@@ -1044,12 +1052,12 @@ key_allocsa(u_int family, caddr_t src, caddr_t dst, u_int proto,
 	}
 
 	/* not found */
-	crit_exit();
+	lwkt_reltoken(&key_token);
 	return NULL;
 
 found:
 	sav->refcnt++;
-	crit_exit();
+	lwkt_reltoken(&key_token);
 	KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
 		kprintf("DP allocsa cause refcnt++:%d SA:%p\n",
 			sav->refcnt, sav));
@@ -1067,6 +1075,7 @@ key_freesp(struct secpolicy *sp)
 	if (sp == NULL)
 		panic("key_freesp: NULL pointer is passed.\n");
 
+	lwkt_gettoken(&key_token);
 	sp->refcnt--;
 	KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
 		kprintf("DP freesp cause refcnt--:%d SP:%p\n",
@@ -1074,8 +1083,7 @@ key_freesp(struct secpolicy *sp)
 
 	if (sp->refcnt == 0)
 		key_delsp(sp);
-
-	return;
+	lwkt_reltoken(&key_token);
 }
 
 /*
@@ -1089,6 +1097,7 @@ key_freeso(struct socket *so)
 	if (so == NULL)
 		panic("key_freeso: NULL pointer is passed.\n");
 
+	lwkt_gettoken(&key_token);
 	switch (so->so_proto->pr_domain->dom_family) {
 #ifdef INET
 	case PF_INET:
@@ -1097,7 +1106,7 @@ key_freeso(struct socket *so)
 
 		/* Does it have a PCB ? */
 		if (pcb == NULL)
-			return;
+			break;
 		key_freesp_so(&pcb->inp_sp->sp_in);
 		key_freesp_so(&pcb->inp_sp->sp_out);
 	    }
@@ -1111,7 +1120,7 @@ key_freeso(struct socket *so)
 
 		/* Does it have a PCB ? */
 		if (pcb == NULL)
-			return;
+			break;
 		key_freesp_so(&pcb->inp_sp->sp_in);
 		key_freesp_so(&pcb->inp_sp->sp_out);
 #else
@@ -1119,7 +1128,7 @@ key_freeso(struct socket *so)
 
 		/* Does it have a PCB ? */
 		if (pcb == NULL)
-			return;
+			break;
 		key_freesp_so(&pcb->in6p_sp->sp_in);
 		key_freesp_so(&pcb->in6p_sp->sp_out);
 #endif
@@ -1129,10 +1138,9 @@ key_freeso(struct socket *so)
 	default:
 		ipseclog((LOG_DEBUG, "key_freeso: unknown address family=%d.\n",
 		    so->so_proto->pr_domain->dom_family));
-		return;
+		break;
 	}
-
-	return;
+	lwkt_reltoken(&key_token);
 }
 
 static void
@@ -1171,6 +1179,7 @@ key_freesav(struct secasvar *sav)
 	if (sav == NULL)
 		panic("key_freesav: NULL pointer is passed.\n");
 
+	lwkt_gettoken(&key_token);
 	sav->refcnt--;
 	KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
 		kprintf("DP freesav cause refcnt--:%d SA:%p SPI %u\n",
@@ -1179,7 +1188,7 @@ key_freesav(struct secasvar *sav)
 	if (sav->refcnt == 0)
 		key_delsav(sav);
 
-	return;
+	lwkt_reltoken(&key_token);
 }
 
 /* %%% SPD management */
@@ -1198,7 +1207,6 @@ key_delsp(struct secpolicy *sp)
 	if (sp->refcnt > 0)
 		return; /* can't free */
 
-	crit_enter();
 	/* remove from SP index */
 	if (__LIST_CHAINED(sp))
 		LIST_REMOVE(sp, chain);
@@ -1222,10 +1230,6 @@ key_delsp(struct secpolicy *sp)
     }
 
 	keydb_delsecpolicy(sp);
-
-	crit_exit();
-
-	return;
 }
 
 /*
@@ -1290,12 +1294,13 @@ key_newsp(void)
 {
 	struct secpolicy *newsp = NULL;
 
+	lwkt_gettoken(&key_token);
 	newsp = keydb_newsecpolicy();
-	if (!newsp)
-		return newsp;
-
-	newsp->refcnt = 1;
-	newsp->req = NULL;
+	if (newsp) {
+		newsp->refcnt = 1;
+		newsp->req = NULL;
+	}
+	lwkt_reltoken(&key_token);
 
 	return newsp;
 }
@@ -1321,7 +1326,9 @@ key_msg2sp(struct sadb_x_policy *xpl0, size_t len, int *error)
 		return NULL;
 	}
 
+	lwkt_gettoken(&key_token);
 	if ((newsp = key_newsp()) == NULL) {
+		lwkt_reltoken(&key_token);
 		*error = ENOBUFS;
 		return NULL;
 	}
@@ -1349,6 +1356,7 @@ key_msg2sp(struct sadb_x_policy *xpl0, size_t len, int *error)
 			ipseclog((LOG_DEBUG,
 			    "key_msg2sp: Invalid msg length.\n"));
 			key_freesp(newsp);
+			lwkt_reltoken(&key_token);
 			*error = EINVAL;
 			return NULL;
 		}
@@ -1363,6 +1371,7 @@ key_msg2sp(struct sadb_x_policy *xpl0, size_t len, int *error)
 				ipseclog((LOG_DEBUG, "key_msg2sp: "
 					"invalid ipsecrequest length.\n"));
 				key_freesp(newsp);
+				lwkt_reltoken(&key_token);
 				*error = EINVAL;
 				return NULL;
 			}
@@ -1373,6 +1382,7 @@ key_msg2sp(struct sadb_x_policy *xpl0, size_t len, int *error)
 				ipseclog((LOG_DEBUG,
 				    "key_msg2sp: No more memory.\n"));
 				key_freesp(newsp);
+				lwkt_reltoken(&key_token);
 				*error = ENOBUFS;
 				return NULL;
 			}
@@ -1391,6 +1401,7 @@ key_msg2sp(struct sadb_x_policy *xpl0, size_t len, int *error)
 				    "key_msg2sp: invalid proto type=%u\n",
 				    xisr->sadb_x_ipsecrequest_proto));
 				key_freesp(newsp);
+				lwkt_reltoken(&key_token);
 				*error = EPROTONOSUPPORT;
 				return NULL;
 			}
@@ -1406,6 +1417,7 @@ key_msg2sp(struct sadb_x_policy *xpl0, size_t len, int *error)
 				    "key_msg2sp: invalid mode=%u\n",
 				    xisr->sadb_x_ipsecrequest_mode));
 				key_freesp(newsp);
+				lwkt_reltoken(&key_token);
 				*error = EINVAL;
 				return NULL;
 			}
@@ -1436,6 +1448,7 @@ key_msg2sp(struct sadb_x_policy *xpl0, size_t len, int *error)
 					u_int32_t reqid;
 					if ((reqid = key_newreqid()) == 0) {
 						key_freesp(newsp);
+						lwkt_reltoken(&key_token);
 						*error = ENOBUFS;
 						return NULL;
 					}
@@ -1452,6 +1465,7 @@ key_msg2sp(struct sadb_x_policy *xpl0, size_t len, int *error)
 				ipseclog((LOG_DEBUG, "key_msg2sp: invalid level=%u\n",
 					xisr->sadb_x_ipsecrequest_level));
 				key_freesp(newsp);
+				lwkt_reltoken(&key_token);
 				*error = EINVAL;
 				return NULL;
 			}
@@ -1469,6 +1483,7 @@ key_msg2sp(struct sadb_x_policy *xpl0, size_t len, int *error)
 					ipseclog((LOG_DEBUG, "key_msg2sp: invalid request "
 						"address length.\n"));
 					key_freesp(newsp);
+					lwkt_reltoken(&key_token);
 					*error = EINVAL;
 					return NULL;
 				}
@@ -1484,6 +1499,7 @@ key_msg2sp(struct sadb_x_policy *xpl0, size_t len, int *error)
 					ipseclog((LOG_DEBUG, "key_msg2sp: invalid request "
 						"address length.\n"));
 					key_freesp(newsp);
+					lwkt_reltoken(&key_token);
 					*error = EINVAL;
 					return NULL;
 				}
@@ -1502,6 +1518,7 @@ key_msg2sp(struct sadb_x_policy *xpl0, size_t len, int *error)
 			if (tlen < 0) {
 				ipseclog((LOG_DEBUG, "key_msg2sp: becoming tlen < 0.\n"));
 				key_freesp(newsp);
+				lwkt_reltoken(&key_token);
 				*error = EINVAL;
 				return NULL;
 			}
@@ -1514,10 +1531,11 @@ key_msg2sp(struct sadb_x_policy *xpl0, size_t len, int *error)
 	default:
 		ipseclog((LOG_DEBUG, "key_msg2sp: invalid policy type.\n"));
 		key_freesp(newsp);
+		lwkt_reltoken(&key_token);
 		*error = EINVAL;
 		return NULL;
 	}
-
+	lwkt_reltoken(&key_token);
 	*error = 0;
 	return newsp;
 }
@@ -1550,12 +1568,14 @@ key_sp2msg(struct secpolicy *sp)
 	if (sp == NULL)
 		panic("key_sp2msg: NULL pointer was passed.\n");
 
+	lwkt_gettoken(&key_token);
 	tlen = key_getspreqmsglen(sp);
 
 	m = key_alloc_mbuf(tlen);
 	if (!m || m->m_next) {	/*XXX*/
 		if (m)
 			m_freem(m);
+		lwkt_reltoken(&key_token);
 		return NULL;
 	}
 
@@ -1597,7 +1617,7 @@ key_sp2msg(struct secpolicy *sp)
 					+ isr->saidx.dst.ss_len);
 		}
 	}
-
+	lwkt_reltoken(&key_token);
 	return m;
 }
 
@@ -2200,6 +2220,7 @@ key_spdacquire(struct secpolicy *sp)
 	if (sp->policy != IPSEC_POLICY_IPSEC)
 		panic("key_spdacquire: policy mismatched. IPsec is expected.\n");
 
+	lwkt_gettoken(&key_token);
 	/* get a entry to check whether sent message or not. */
 	if ((newspacq = key_getspacq(&sp->spidx)) != NULL) {
 		if (key_blockacq_count < newspacq->count) {
@@ -2208,12 +2229,15 @@ key_spdacquire(struct secpolicy *sp)
 		} else {
 			/* increment counter and do nothing. */
 			newspacq->count++;
+			lwkt_reltoken(&key_token);
 			return 0;
 		}
 	} else {
 		/* make new entry for blocking to send SADB_ACQUIRE. */
-		if ((newspacq = key_newspacq(&sp->spidx)) == NULL)
+		if ((newspacq = key_newspacq(&sp->spidx)) == NULL) {
+			lwkt_reltoken(&key_token);
 			return ENOBUFS;
+		}
 
 		/* add to acqtree */
 		LIST_INSERT_HEAD(&spacqtree, newspacq, chain);
@@ -2234,9 +2258,12 @@ key_spdacquire(struct secpolicy *sp)
 	mtod(result, struct sadb_msg *)->sadb_msg_len =
 	    PFKEY_UNIT64(result->m_pkthdr.len);
 
-	return key_sendup_mbuf(NULL, m, KEY_SENDUP_REGISTERED);
+	error = key_sendup_mbuf(NULL, m, KEY_SENDUP_REGISTERED);
+	lwkt_reltoken(&key_token);
+	return error;
 
 fail:
+	lwkt_reltoken(&key_token);
 	if (result)
 		m_freem(result);
 	return error;
@@ -2443,7 +2470,6 @@ key_spdexpire(struct secpolicy *sp)
 	struct sadb_lifetime *lt;
 
 	/* XXX: Why do we lock ? */
-	crit_enter();
 
 	/* sanity check */
 	if (sp == NULL)
@@ -2536,7 +2562,6 @@ key_spdexpire(struct secpolicy *sp)
  fail:
 	if (result)
 		m_freem(result);
-	crit_exit();
 	return error;
 }
 
@@ -2582,8 +2607,6 @@ key_delsah(struct secashead *sah)
 	if (sah == NULL)
 		panic("key_delsah: NULL pointer is passed.\n");
 
-	crit_enter();
-
 	/* searching all SA registerd in the secindex. */
 	for (stateidx = 0;
 	     stateidx < _ARRAYLEN(saorder_state_any);
@@ -2614,10 +2637,8 @@ key_delsah(struct secashead *sah)
 	}
 
 	/* don't delete sah only if there are savs. */
-	if (zombie) {
-		crit_exit();
+	if (zombie)
 		return;
-	}
 
 	if (sah->sa_route.ro_rt) {
 		RTFREE(sah->sa_route.ro_rt);
@@ -2630,7 +2651,6 @@ key_delsah(struct secashead *sah)
 
 	KFREE(sah);
 
-	crit_exit();
 	return;
 }
 
@@ -3728,11 +3748,13 @@ key_ismyaddr(struct sockaddr *sa)
 	struct sockaddr_in *sin;
 	struct in_ifaddr_container *iac;
 #endif
+	int res;
 
 	/* sanity check */
 	if (sa == NULL)
 		panic("key_ismyaddr: NULL pointer is passed.\n");
 
+	lwkt_gettoken(&key_token);
 	switch (sa->sa_family) {
 #ifdef INET
 	case AF_INET:
@@ -3744,18 +3766,24 @@ key_ismyaddr(struct sockaddr *sa)
 			    sin->sin_len == ia->ia_addr.sin_len &&
 			    sin->sin_addr.s_addr == ia->ia_addr.sin_addr.s_addr)
 			{
+				lwkt_reltoken(&key_token);
 				return 1;
 			}
 		}
+		res = 0;
 		break;
 #endif
 #ifdef INET6
 	case AF_INET6:
-		return key_ismyaddr6((struct sockaddr_in6 *)sa);
+		res = key_ismyaddr6((struct sockaddr_in6 *)sa);
+		break;
 #endif
+	default:
+		res = 0;
+		break;
 	}
-
-	return 0;
+	lwkt_reltoken(&key_token);
+	return res;
 }
 
 #ifdef INET6
@@ -4099,7 +4127,7 @@ key_timehandler(void *__dummy)
 
 	microtime(&tv);
 
-	crit_enter();
+	lwkt_gettoken(&key_token);
 
 	/* SPD */
     {
@@ -4349,7 +4377,7 @@ key_timehandler(void *__dummy)
 	callout_reset(&key_timehandler_ch, hz, key_timehandler, NULL);
 #endif /* IPSEC_DEBUG2 */
 
-	crit_exit();
+	lwkt_reltoken(&key_token);
 	return;
 }
 
@@ -6262,6 +6290,7 @@ key_freereg(struct socket *so)
 	 * check all type of SA, because there is a potential that
 	 * one socket is registered to multiple type of SA.
 	 */
+	lwkt_gettoken(&key_token);
 	for (i = 0; i <= SADB_SATYPE_MAX; i++) {
 		LIST_FOREACH(reg, &regtree[i], chain) {
 			if (reg->so == so
@@ -6272,8 +6301,7 @@ key_freereg(struct socket *so)
 			}
 		}
 	}
-	
-	return;
+	lwkt_reltoken(&key_token);
 }
 
 /*
@@ -6294,9 +6322,6 @@ key_expire(struct secasvar *sav)
 	int len;
 	int error = -1;
 	struct sadb_lifetime *lt;
-
-	/* XXX: Why do we lock ? */
-	crit_enter();
 
 	/* sanity check */
 	if (sav == NULL)
@@ -6393,13 +6418,11 @@ key_expire(struct secasvar *sav)
 	mtod(result, struct sadb_msg *)->sadb_msg_len =
 	    PFKEY_UNIT64(result->m_pkthdr.len);
 
-	crit_exit();
 	return key_sendup_mbuf(NULL, result, KEY_SENDUP_REGISTERED);
 
  fail:
 	if (result)
 		m_freem(result);
-	crit_exit();
 	return error;
 }
 
@@ -6905,11 +6928,17 @@ key_parse(struct mbuf *m, struct socket *so)
 		goto senderror;
 	}
 
-	return (*key_typesw[msg->sadb_msg_type])(so, m, &mh);
+	lwkt_gettoken(&key_token);
+	error = (*key_typesw[msg->sadb_msg_type])(so, m, &mh);
+	lwkt_reltoken(&key_token);
+	return error;
 
 senderror:
 	msg->sadb_msg_errno = error;
-	return key_sendup_mbuf(so, m, target);
+	lwkt_gettoken(&key_token);
+	error = key_sendup_mbuf(so, m, target);
+	lwkt_reltoken(&key_token);
+	return error;
 }
 
 static int
@@ -7274,6 +7303,7 @@ key_sa_routechange(struct sockaddr *dst)
 	struct secashead *sah;
 	struct route *ro;
 
+	lwkt_gettoken(&key_token);
 	LIST_FOREACH(sah, &sahtree, chain) {
 		ro = &sah->sa_route;
 		if (ro->ro_rt && dst->sa_len == ro->ro_dst.sa_len
@@ -7282,8 +7312,7 @@ key_sa_routechange(struct sockaddr *dst)
 			ro->ro_rt = NULL;
 		}
 	}
-
-	return;
+	lwkt_reltoken(&key_token);
 }
 
 static void
@@ -7305,7 +7334,6 @@ key_sa_chgstate(struct secasvar *sav, u_int8_t state)
 void
 key_sa_stir_iv(struct secasvar *sav)
 {
-
 	if (!sav->iv)
 		panic("key_sa_stir_iv called with sav == NULL");
 	key_randomfill(sav->iv, sav->ivlen);

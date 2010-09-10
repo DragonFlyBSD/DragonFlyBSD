@@ -91,6 +91,7 @@
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
+#include <sys/socketvar2.h>
 
 #include <net/if.h>
 #include <net/netisr.h>
@@ -171,7 +172,7 @@ tcp_usr_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	struct tcpcb *tp = 0;
 	TCPDEBUG0;
 
-	crit_enter();
+	soreference(so);
 	inp = so->so_pcb;
 	TCPDEBUG1();
 	if (inp) {
@@ -187,8 +188,8 @@ tcp_usr_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 		so->so_linger = TCP_LINGERTIME;
 	tp = sototcpcb(so);
 out:
+	sofree(so);		/* from ref above */
 	TCPDEBUG2(PRU_ATTACH);
-	crit_exit();
 	return error;
 }
 
@@ -207,17 +208,14 @@ tcp_usr_detach(struct socket *so)
 	struct tcpcb *tp;
 	TCPDEBUG0;
 
-	crit_enter();
 	inp = so->so_pcb;
 
 	/*
 	 * If the inp is already detached it may have been due to an async
 	 * close.  Just return as if no error occured.
 	 */
-	if (inp == NULL) {
-		crit_exit();
+	if (inp == NULL)
 		return 0;
-	}
 
 	/*
 	 * It's possible for the tcpcb (tp) to disconnect from the inp due
@@ -229,7 +227,6 @@ tcp_usr_detach(struct socket *so)
 		tp = tcp_disconnect(tp);
 		TCPDEBUG2(PRU_DETACH);
 	}
-	crit_exit();
 	return error;
 }
 
@@ -241,19 +238,16 @@ tcp_usr_detach(struct socket *so)
 #define	COMMON_START(so, inp, ignore_error)			\
 	TCPDEBUG0; 		\
 				\
-	crit_enter();		\
 	inp = so->so_pcb; 	\
 	do {			\
 		 if (inp == NULL) {				\
-			 crit_exit();				\
 			 return (ignore_error ? 0 : EINVAL);	\
 		 }						\
 		 tp = intotcpcb(inp);				\
 		 TCPDEBUG1();					\
 	} while(0)
 
-#define COMMON_END(req)	out: TCPDEBUG2(req); crit_exit(); return error; goto out
-
+#define COMMON_END(req)	out: TCPDEBUG2(req); return error; goto out
 
 /*
  * Give the socket an address.
@@ -570,16 +564,14 @@ tcp_usr_accept(struct socket *so, struct sockaddr **nam)
 	struct tcpcb *tp = NULL;
 	TCPDEBUG0;
 
-	crit_enter();
 	inp = so->so_pcb;
 	if (so->so_state & SS_ISDISCONNECTED) {
 		error = ECONNABORTED;
 		goto out;
 	}
-	if (inp == 0) {
-		crit_exit();
+	if (inp == 0)
 		return (EINVAL);
-	}
+
 	tp = intotcpcb(inp);
 	TCPDEBUG1();
 	in_setpeeraddr(so, nam);
@@ -595,17 +587,14 @@ tcp6_usr_accept(struct socket *so, struct sockaddr **nam)
 	struct tcpcb *tp = NULL;
 	TCPDEBUG0;
 
-	crit_enter();
 	inp = so->so_pcb;
 
 	if (so->so_state & SS_ISDISCONNECTED) {
 		error = ECONNABORTED;
 		goto out;
 	}
-	if (inp == 0) {
-		crit_exit();
+	if (inp == 0)
 		return (EINVAL);
-	}
 	tp = intotcpcb(inp);
 	TCPDEBUG1();
 	in6_mapped_peeraddr(so, nam);
@@ -664,7 +653,6 @@ tcp_usr_send(struct socket *so, int flags, struct mbuf *m,
 #endif
 	TCPDEBUG0;
 
-	crit_enter();
 	inp = so->so_pcb;
 
 	if (inp == NULL) {
@@ -769,7 +757,8 @@ tcp_usr_send(struct socket *so, int flags, struct mbuf *m,
 }
 
 /*
- * Abort the TCP.
+ * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
+ *	 will sofree() it when we return.
  */
 static int
 tcp_usr_abort(struct socket *so)
@@ -1228,12 +1217,10 @@ tcp_ctloutput(struct socket *so, struct sockopt *sopt)
 	struct	tcpcb *tp;
 
 	error = 0;
-	crit_enter();		/* XXX */
 	inp = so->so_pcb;
-	if (inp == NULL) {
-		crit_exit();
+	if (inp == NULL)
 		return (ECONNRESET);
-	}
+
 	if (sopt->sopt_level != IPPROTO_TCP) {
 #ifdef INET6
 		if (INP_CHECK_SOCKAF(so, AF_INET6))
@@ -1241,7 +1228,6 @@ tcp_ctloutput(struct socket *so, struct sockopt *sopt)
 		else
 #endif /* INET6 */
 		error = ip_ctloutput(so, sopt);
-		crit_exit();
 		return (error);
 	}
 	tp = intotcpcb(inp);
@@ -1343,7 +1329,6 @@ tcp_ctloutput(struct socket *so, struct sockopt *sopt)
 			soopt_from_kbuf(sopt, &optval, sizeof optval);
 		break;
 	}
-	crit_exit();
 	return (error);
 }
 
@@ -1379,8 +1364,10 @@ tcp_attach(struct socket *so, struct pru_attach_info *ai)
 #endif
 
 	if (so->so_snd.ssb_hiwat == 0 || so->so_rcv.ssb_hiwat == 0) {
+		lwkt_gettoken(&so->so_rcv.ssb_token);
 		error = soreserve(so, tcp_sendspace, tcp_recvspace,
 				  ai->sb_rlimit);
+		lwkt_reltoken(&so->so_rcv.ssb_token);
 		if (error)
 			return (error);
 	}
@@ -1400,17 +1387,18 @@ tcp_attach(struct socket *so, struct pru_attach_info *ai)
 #endif
 	inp->inp_vflag |= INP_IPV4;
 	tp = tcp_newtcpcb(inp);
-	if (tp == 0) {
-		int nofd = so->so_state & SS_NOFDREF;	/* XXX */
-
-		so->so_state &= ~SS_NOFDREF;	/* don't free the socket yet */
+	if (tp == NULL) {
+		/*
+		 * Make sure the socket is destroyed by the pcbdetach.
+		 */
+		soreference(so);
 #ifdef INET6
 		if (isipv6)
 			in6_pcbdetach(inp);
 		else
 #endif
 		in_pcbdetach(inp);
-		so->so_state |= nofd;
+		sofree(so);	/* from ref above */
 		return (ENOBUFS);
 	}
 	tp->t_state = TCPS_CLOSED;
@@ -1431,16 +1419,18 @@ tcp_disconnect(struct tcpcb *tp)
 {
 	struct socket *so = tp->t_inpcb->inp_socket;
 
-	if (tp->t_state < TCPS_ESTABLISHED)
+	if (tp->t_state < TCPS_ESTABLISHED) {
 		tp = tcp_close(tp);
-	else if ((so->so_options & SO_LINGER) && so->so_linger == 0)
+	} else if ((so->so_options & SO_LINGER) && so->so_linger == 0) {
 		tp = tcp_drop(tp, 0);
-	else {
+	} else {
+		lwkt_gettoken(&so->so_rcv.ssb_token);
 		soisdisconnecting(so);
 		sbflush(&so->so_rcv.sb);
 		tp = tcp_usrclosed(tp);
 		if (tp)
 			tcp_output(tp);
+		lwkt_reltoken(&so->so_rcv.ssb_token);
 	}
 	return (tp);
 }

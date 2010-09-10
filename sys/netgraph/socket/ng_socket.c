@@ -476,6 +476,7 @@ ng_attach_common(struct socket *so, int type)
 	pcbp->type = type;
 
 	/* Link the pcb and the socket */
+	soreference(so);
 	so->so_pcb = (caddr_t) pcbp;
 	pcbp->ng_socket = so;
 
@@ -494,6 +495,7 @@ static void
 ng_detach_common(struct ngpcb *pcbp, int which)
 {
 	struct ngsock *sockdata;
+	struct socket *so;
 
 	if (pcbp->sockdata) {
 		sockdata = pcbp->sockdata;
@@ -511,8 +513,11 @@ ng_detach_common(struct ngpcb *pcbp, int which)
 		if ((--sockdata->refs == 0) && (sockdata->node != NULL))
 			ng_rmnode(sockdata->node);
 	}
-	pcbp->ng_socket->so_pcb = NULL;
+	so = pcbp->ng_socket;
+	so->so_pcb = NULL;
 	pcbp->ng_socket = NULL;
+	sofree(so);		/* remove pcb ref */
+
 	LIST_REMOVE(pcbp, socks);
 	FREE(pcbp, M_PCB);
 }

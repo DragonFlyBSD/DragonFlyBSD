@@ -824,9 +824,9 @@ ngs_connect(hook_p hook)
 
 	if ((priv->datasock) && (priv->datasock->ng_socket)) {
 		if (NG_NODE_NUMHOOKS(node) == 1)
-			priv->datasock->ng_socket->so_state |= SS_ISCONNECTED;
+			sosetstate(priv->datasock->ng_socket, SS_ISCONNECTED);
 		else
-			priv->datasock->ng_socket->so_state &= ~SS_ISCONNECTED;
+			soclrstate(priv->datasock->ng_socket, SS_ISCONNECTED);
 	}
 	return (0);
 }
@@ -983,9 +983,9 @@ ngs_disconnect(hook_p hook)
 
 	if ((priv->datasock) && (priv->datasock->ng_socket)) {
 		if (NG_NODE_NUMHOOKS(node) == 1)
-			priv->datasock->ng_socket->so_state |= SS_ISCONNECTED;
+			sosetstate(priv->datasock->ng_socket, SS_ISCONNECTED);
 		else
-			priv->datasock->ng_socket->so_state &= ~SS_ISCONNECTED;
+			soclrstate(priv->datasock->ng_socket, SS_ISCONNECTED);
 	}
 
 	if ((priv->flags & NGS_FLAG_NOLINGER) &&

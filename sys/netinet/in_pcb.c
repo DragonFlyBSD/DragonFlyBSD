@@ -84,7 +84,9 @@
 #include <sys/jail.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
+
 #include <sys/thread2.h>
+#include <sys/socketvar2.h>
 
 #include <machine/limits.h>
 
@@ -217,6 +219,7 @@ in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo)
 	if (ip6_auto_flowlabel)
 		inp->inp_flags |= IN6P_AUTOFLOWLABEL;
 #endif
+	soreference(so);
 	so->so_pcb = inp;
 	LIST_INSERT_HEAD(&pcbinfo->pcblisthead, inp, inp_list);
 	pcbinfo->ipi_count++;
@@ -648,7 +651,7 @@ in_pcbdetach(struct inpcb *inp)
 	inp->inp_gencnt = ++ipi->ipi_gencnt;
 	in_pcbremlists(inp);
 	so->so_pcb = NULL;
-	sofree(so);
+	sofree(so);			/* remove pcb ref */
 	if (inp->inp_options)
 		m_free(inp->inp_options);
 	if (inp->inp_route.ro_rt)

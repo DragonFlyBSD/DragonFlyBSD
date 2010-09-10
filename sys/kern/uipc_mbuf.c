@@ -167,9 +167,9 @@ mbufuntrack(struct mbuf *m)
 		panic("mbufuntrack: mbuf %p was not tracked\n", m);
 	} else {
 		mbuf_rb_tree_RB_REMOVE(&mbuf_track_root, mbt);
+		spin_unlock(&mbuf_track_spin);
 		kfree(mbt, M_MTRACK);
 	}
-	spin_unlock(&mbuf_track_spin);
 }
 
 void

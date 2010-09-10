@@ -1499,6 +1499,11 @@ socket_wait_copyout(void *arg, struct kevent *kevp, int count, int *res)
 }
 
 extern	struct fileops socketops;
+
+/*
+ * NOTE: Callers of socket_wait() must already have a reference on the
+ *	 socket.
+ */
 int
 socket_wait(struct socket *so, struct timespec *ts, int *res)
 {

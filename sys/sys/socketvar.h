@@ -47,6 +47,9 @@
 #ifndef _SYS_EVENT_H_
 #include <sys/event.h>			/* for struct kqinfo */
 #endif
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>			/* for struct lwkt_token */
+#endif
 #ifndef _SYS_SOCKBUF_H_
 #include <sys/sockbuf.h>
 #endif
@@ -71,6 +74,7 @@ struct signalsockbuf {
 	long	ssb_lowat;	/* low water mark */
 	u_long	ssb_hiwat;	/* high water mark / max actual char count */
 	u_long	ssb_mbmax;	/* max chars of mbufs to use */
+	struct lwkt_token ssb_token; /* frontend/backend serializer */
 };
 
 #define ssb_cc		sb.sb_cc	/* commonly used fields */
@@ -139,6 +143,7 @@ struct socket {
 	struct	ucred *so_cred;		/* user credentials */
 	/* NB: generation count must not be first; easiest to make it last. */
 	void	*so_emuldata;		/* private data for emulators */
+	int	so_refs;		/* shutdown refs */
 	struct	so_accf { 
 		struct	accept_filter *so_accept_filter;
 		void	*so_accept_filter_arg;	/* saved filter args */
@@ -150,6 +155,11 @@ struct socket {
 
 /*
  * Socket state bits.
+ *
+ * NOTE: The following states are interlocked with so_refs:
+ *
+ *	SS_NOFDREF	so_refs while not set
+ *	(so_pcb)	so_refs while set
  */
 #define	SS_NOFDREF		0x0001	/* no file table ref any more */
 #define	SS_ISCONNECTED		0x0002	/* socket connected to a peer */
@@ -159,7 +169,7 @@ struct socket {
 #define	SS_CANTRCVMORE		0x0020	/* can't receive more data from peer */
 #define	SS_RCVATMARK		0x0040	/* at mark on input */
 
-#define	SS_ABORTING		0x0100	/* so_abort() in progress */
+#define	SS_UNUSED0100		0x0100
 #define	SS_ASYNC		0x0200	/* async i/o notify */
 #define	SS_ISCONFIRMING		0x0400	/* deciding to accept connection req */
 
@@ -389,7 +399,6 @@ int	soconnect (struct socket *so, struct sockaddr *nam, struct thread *td);
 int	soconnect2 (struct socket *so1, struct socket *so2);
 int	socreate (int dom, struct socket **aso, int type, int proto,
 	    struct thread *td);
-void	sodealloc (struct socket *so);
 int	sodisconnect (struct socket *so);
 void	sofree (struct socket *so);
 int	sogetopt (struct socket *so, struct sockopt *sopt);

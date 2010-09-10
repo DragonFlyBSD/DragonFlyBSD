@@ -44,6 +44,8 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 
+#include <sys/socketvar2.h>
+
 #include <net/raw_cb.h>
 
 /*
@@ -133,6 +135,10 @@ raw_ctlinput(int cmd, struct sockaddr *arg, void *dummy)
 	/* INCOMPLETE */
 }
 
+/*
+ * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
+ *	 will sofree() it when we return.
+ */
 static int
 raw_uabort(struct socket *so)
 {
@@ -141,7 +147,6 @@ raw_uabort(struct socket *so)
 	if (rp == NULL)
 		return EINVAL;
 	raw_disconnect(rp);
-	sofree(so);
 	soisdisconnected(so);
 	return 0;
 }
@@ -198,8 +203,11 @@ raw_udisconnect(struct socket *so)
 	if (rp->rcb_faddr == NULL) {
 		return ENOTCONN;
 	}
+	soreference(so);
 	raw_disconnect(rp);
 	soisdisconnected(so);
+	sofree(so);
+
 	return 0;
 }
 

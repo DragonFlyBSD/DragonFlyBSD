@@ -188,8 +188,10 @@ ipx_abort(struct ipxpcb *ipxp)
 {
 	struct socket *so = ipxp->ipxp_socket;
 
+	soreference(so);
 	ipx_pcbdisconnect(ipxp);
 	soisdisconnected(so);
+	sofree(so);
 }
 
 /*
@@ -213,8 +215,10 @@ ipx_drop(struct ipxpcb *ipxp, int errno)
 		tcp_output(tp);
 	}*/
 	so->so_error = errno;
+	soreference(so);
 	ipx_pcbdisconnect(ipxp);
 	soisdisconnected(so);
+	sofree(so);
 }
 
 static int
@@ -443,16 +447,18 @@ ipx_ctloutput(struct socket *so, struct sockopt *sopt)
 	return (error);
 }
 
+/*
+ * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
+ *	 will sofree() it when we return.
+ */
 static int
 ipx_usr_abort(struct socket *so)
 {
 	struct ipxpcb *ipxp = sotoipxpcb(so);
 
-	crit_enter();
 	ipx_pcbdetach(ipxp);
-	crit_exit();
-	sofree(so);
 	soisdisconnected(so);
+
 	return (0);
 }
 
@@ -464,9 +470,7 @@ ipx_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 
 	if (ipxp != NULL)
 		return (EINVAL);
-	crit_enter();
 	error = ipx_pcballoc(so, &ipxpcb);
-	crit_exit();
 	if (error == 0)
 		error = soreserve(so, ipxsendspace, ipxrecvspace,
 				  ai->sb_rlimit);
@@ -489,9 +493,7 @@ ipx_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 
 	if (!ipx_nullhost(ipxp->ipxp_faddr))
 		return (EISCONN);
-	crit_enter();
 	error = ipx_pcbconnect(ipxp, nam, td);
-	crit_exit();
 	if (error == 0)
 		soisconnected(so);
 	return (error);
@@ -504,9 +506,7 @@ ipx_detach(struct socket *so)
 
 	if (ipxp == NULL)
 		return (ENOTCONN);
-	crit_enter();
 	ipx_pcbdetach(ipxp);
-	crit_exit();
 	return (0);
 }
 
@@ -517,10 +517,11 @@ ipx_disconnect(struct socket *so)
 
 	if (ipx_nullhost(ipxp->ipxp_faddr))
 		return (ENOTCONN);
-	crit_enter();
+	soreference(so);
 	ipx_pcbdisconnect(ipxp);
-	crit_exit();
 	soisdisconnected(so);
+	sofree(so);
+
 	return (0);
 }
 
@@ -541,7 +542,6 @@ ipx_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 	struct ipxpcb *ipxp = sotoipxpcb(so);
 	struct ipx_addr laddr;
 
-	crit_enter();
 	if (nam != NULL) {
 		laddr = ipxp->ipxp_laddr;
 		if (!ipx_nullhost(ipxp->ipxp_faddr)) {
@@ -568,7 +568,6 @@ ipx_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 		ipxp->ipxp_laddr = laddr;
 	}
 send_release:
-	crit_exit();
 	if (m != NULL)
 		m_freem(m);
 	return (error);
@@ -598,9 +597,7 @@ ripx_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 
 	if ((error = priv_check_cred(ai->p_ucred, PRIV_ROOT, NULL_CRED_OKAY)) != 0)
 		return (error);
-	crit_enter();
 	error = ipx_pcballoc(so, &ipxrawpcb);
-	crit_exit();
 	if (error)
 		return (error);
 	error = soreserve(so, ipxsendspace, ipxrecvspace, ai->sb_rlimit);

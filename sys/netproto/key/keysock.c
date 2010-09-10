@@ -112,10 +112,10 @@ key_output(struct mbuf *m, struct socket *so, ...)
 	}
 
 	/*XXX giant lock*/
-	crit_enter();
+	lwkt_gettoken(&key_token);
 	error = key_parse(m, so);
 	m = NULL;
-	crit_exit();
+	lwkt_reltoken(&key_token);
 end:
 	if (m)
 		m_freem(m);
@@ -153,13 +153,16 @@ key_sendup0(struct rawcb *rp, struct mbuf *m, int promisc)
 		pfkeystat.in_msgtype[pmsg->sadb_msg_type]++;
 	}
 
-	if (!ssb_appendaddr(&rp->rcb_socket->so_rcv, (struct sockaddr *)&key_src,
-	    m, NULL)) {
+	lwkt_gettoken(&key_token);
+	if (!ssb_appendaddr(&rp->rcb_socket->so_rcv,
+			    (struct sockaddr *)&key_src, m, NULL)) {
 		pfkeystat.in_nomem++;
 		m_freem(m);
 		error = ENOBUFS;
-	} else
+	} else {
 		error = 0;
+	}
+	lwkt_reltoken(&key_token);
 	sorwakeup(rp->rcb_socket);
 	return error;
 }
@@ -285,6 +288,8 @@ key_sendup_mbuf(struct socket *so, struct mbuf *m, int target)
 		pfkeystat.in_msgtype[msg->sadb_msg_type]++;
 	}
 
+	lwkt_gettoken(&key_token);
+
 	LIST_FOREACH(rp, &rawcb_list, list)
 	{
 		if (rp->rcb_proto.sp_family != PF_KEY)
@@ -335,16 +340,19 @@ key_sendup_mbuf(struct socket *so, struct mbuf *m, int target)
 		if ((n = m_copy(m, 0, (int)M_COPYALL)) == NULL) {
 			m_freem(m);
 			pfkeystat.in_nomem++;
+			lwkt_reltoken(&key_token);
 			return ENOBUFS;
 		}
 
 		if ((error = key_sendup0(rp, n, 0)) != 0) {
+			lwkt_reltoken(&key_token);
 			m_freem(m);
 			return error;
 		}
 
 		n = NULL;
 	}
+	lwkt_reltoken(&key_token);
 
 	if (so) {
 		error = key_sendup0(sotorawcb(so), m, 0);
@@ -365,9 +373,10 @@ key_abort(struct socket *so)
 {
 	int error;
 
-	crit_enter();
+	lwkt_gettoken(&key_token);
 	error = raw_usrreqs.pru_abort(so);
-	crit_exit();
+	lwkt_reltoken(&key_token);
+
 	return error;
 }
 
@@ -392,14 +401,14 @@ key_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	 * Probably we should try to do more of this work beforehand and
 	 * eliminate the critical section.
 	 */
-	crit_enter();
+	lwkt_gettoken(&key_token);
 	so->so_pcb = (caddr_t)kp;
 	error = raw_usrreqs.pru_attach(so, proto, ai);
 	kp = (struct keycb *)sotorawcb(so);
 	if (error) {
 		kfree(kp, M_PCB);
 		so->so_pcb = (caddr_t) 0;
-		crit_exit();
+		lwkt_reltoken(&key_token);
 		return error;
 	}
 
@@ -413,7 +422,7 @@ key_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	soisconnected(so);
 	so->so_options |= SO_USELOOPBACK;
 
-	crit_exit();
+	lwkt_reltoken(&key_token);
 	return 0;
 }
 
@@ -426,9 +435,9 @@ key_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	int error;
 
-	crit_enter();
+	lwkt_gettoken(&key_token);
 	error = raw_usrreqs.pru_bind(so, nam, td); /* xxx just EINVAL */
-	crit_exit();
+	lwkt_reltoken(&key_token);
 	return error;
 }
 
@@ -441,9 +450,9 @@ key_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	int error;
 
-	crit_enter();
+	lwkt_gettoken(&key_token);
 	error = raw_usrreqs.pru_connect(so, nam, td); /* XXX just EINVAL */
-	crit_exit();
+	lwkt_reltoken(&key_token);
 	return error;
 }
 
@@ -457,7 +466,7 @@ key_detach(struct socket *so)
 	struct keycb *kp = (struct keycb *)sotorawcb(so);
 	int error;
 
-	crit_enter();
+	lwkt_gettoken(&key_token);
 	if (kp != 0) {
 		if (kp->kp_raw.rcb_proto.sp_protocol
 		    == PF_KEY) /* XXX: AF_KEY */
@@ -467,7 +476,7 @@ key_detach(struct socket *so)
 		key_freereg(so);
 	}
 	error = raw_usrreqs.pru_detach(so);
-	crit_exit();
+	lwkt_reltoken(&key_token);
 	return error;
 }
 
@@ -480,9 +489,9 @@ key_disconnect(struct socket *so)
 {
 	int error;
 
-	crit_enter();
+	lwkt_gettoken(&key_token);
 	error = raw_usrreqs.pru_disconnect(so);
-	crit_exit();
+	lwkt_reltoken(&key_token);
 	return error;
 }
 
@@ -495,9 +504,9 @@ key_peeraddr(struct socket *so, struct sockaddr **nam)
 {
 	int error;
 
-	crit_enter();
+	lwkt_gettoken(&key_token);
 	error = raw_usrreqs.pru_peeraddr(so, nam);
-	crit_exit();
+	lwkt_reltoken(&key_token);
 	return error;
 }
 
@@ -511,9 +520,9 @@ key_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 {
 	int error;
 
-	crit_enter();
+	lwkt_gettoken(&key_token);
 	error = raw_usrreqs.pru_send(so, flags, m, nam, control, td);
-	crit_exit();
+	lwkt_reltoken(&key_token);
 	return error;
 }
 
@@ -526,9 +535,9 @@ key_shutdown(struct socket *so)
 {
 	int error;
 
-	crit_enter();
+	lwkt_gettoken(&key_token);
 	error = raw_usrreqs.pru_shutdown(so);
-	crit_exit();
+	lwkt_reltoken(&key_token);
 	return error;
 }
 
@@ -541,9 +550,9 @@ key_sockaddr(struct socket *so, struct sockaddr **nam)
 {
 	int error;
 
-	crit_enter();
+	lwkt_gettoken(&key_token);
 	error = raw_usrreqs.pru_sockaddr(so, nam);
-	crit_exit();
+	lwkt_reltoken(&key_token);
 	return error;
 }
 

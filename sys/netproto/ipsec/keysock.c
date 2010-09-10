@@ -355,9 +355,9 @@ static int
 key_abort(struct socket *so)
 {
 	int error;
-	crit_enter();
+
 	error = raw_usrreqs.pru_abort(so);
-	crit_exit();
+
 	return error;
 }
 

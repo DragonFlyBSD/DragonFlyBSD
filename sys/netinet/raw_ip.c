@@ -50,7 +50,9 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
+
 #include <sys/thread2.h>
+#include <sys/socketvar2.h>
 
 #include <machine/stdarg.h>
 
@@ -82,6 +84,9 @@ struct	inpcbinfo ripcbinfo;
 /* control hooks for ipfw and dummynet */
 ip_fw_ctl_t *ip_fw_ctl_ptr;
 ip_dn_ctl_t *ip_dn_ctl_ptr;
+
+static struct lwkt_token raw_token = LWKT_TOKEN_MP_INITIALIZER(raw_token);
+
 
 /*
  * hooks for multicast routing. They all default to NULL,
@@ -156,6 +161,7 @@ rip_input(struct mbuf *m, ...)
 	__va_end(ap);
 
 	ripsrc.sin_addr = ip->ip_src;
+	lwkt_gettoken(&raw_token);
 	LIST_FOREACH(inp, &ripcbinfo.pcblisthead, inp_list) {
 		if (inp->inp_flags & INP_PLACEMARKER)
 			continue;
@@ -190,18 +196,21 @@ rip_input(struct mbuf *m, ...)
 			} else
 #endif /*FAST_IPSEC*/
 			if (n) {
+				lwkt_gettoken(&last->inp_socket->so_rcv.ssb_token);
 				if (last->inp_flags & INP_CONTROLOPTS ||
 				    last->inp_socket->so_options & SO_TIMESTAMP)
 				    ip_savecontrol(last, &opts, ip, n);
 				if (ssb_appendaddr(&last->inp_socket->so_rcv,
-				    (struct sockaddr *)&ripsrc, n,
-				    opts) == 0) {
+					    (struct sockaddr *)&ripsrc, n,
+					    opts) == 0) {
 					/* should notify about lost packet */
 					m_freem(n);
 					if (opts)
 					    m_freem(opts);
-				} else
+				} else {
 					sorwakeup(last->inp_socket);
+				}
+				lwkt_reltoken(&last->inp_socket->so_rcv.ssb_token);
 				opts = 0;
 			}
 		}
@@ -232,18 +241,22 @@ rip_input(struct mbuf *m, ...)
 		if (last->inp_flags & INP_CONTROLOPTS ||
 		    last->inp_socket->so_options & SO_TIMESTAMP)
 			ip_savecontrol(last, &opts, ip, m);
+		lwkt_gettoken(&last->inp_socket->so_rcv.ssb_token);
 		if (ssb_appendaddr(&last->inp_socket->so_rcv,
 		    (struct sockaddr *)&ripsrc, m, opts) == 0) {
 			m_freem(m);
 			if (opts)
 			    m_freem(opts);
-		} else
+		} else {
 			sorwakeup(last->inp_socket);
+		}
+		lwkt_reltoken(&last->inp_socket->so_rcv.ssb_token);
 	} else {
 		m_freem(m);
 		ipstat.ips_noproto++;
 		ipstat.ips_delivered--;
 	}
+	lwkt_reltoken(&raw_token);
 }
 
 /*
@@ -538,15 +551,15 @@ rip_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	error = soreserve(so, rip_sendspace, rip_recvspace, ai->sb_rlimit);
 	if (error)
 		return error;
-	crit_enter();
+	lwkt_gettoken(&raw_token);
 	error = in_pcballoc(so, &ripcbinfo);
-	crit_exit();
-	if (error)
-		return error;
-	inp = (struct inpcb *)so->so_pcb;
-	inp->inp_vflag |= INP_IPV4;
-	inp->inp_ip_p = proto;
-	inp->inp_ip_ttl = ip_defttl;
+	if (error == 0) {
+		inp = (struct inpcb *)so->so_pcb;
+		inp->inp_vflag |= INP_IPV4;
+		inp->inp_ip_p = proto;
+		inp->inp_ip_ttl = ip_defttl;
+	}
+	lwkt_reltoken(&raw_token);
 	return 0;
 }
 
@@ -568,21 +581,36 @@ rip_detach(struct socket *so)
 	return 0;
 }
 
+/*
+ * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
+ *	 will sofree() it when we return.
+ */
 static int
 rip_abort(struct socket *so)
 {
+	int error;
+
 	soisdisconnected(so);
-	if (so->so_state & SS_NOFDREF)
-		return rip_detach(so);
-	return 0;
+	if (so->so_state & SS_NOFDREF)	/* XXX not sure why this test */
+		error = rip_detach(so);
+	else
+		error = 0;
+
+	return error;
 }
 
 static int
 rip_disconnect(struct socket *so)
 {
+	int error;
+
 	if ((so->so_state & SS_ISCONNECTED) == 0)
 		return ENOTCONN;
-	return rip_abort(so);
+	soreference(so);
+	error = rip_abort(so);
+	sofree(so);
+
+	return error;
 }
 
 static int

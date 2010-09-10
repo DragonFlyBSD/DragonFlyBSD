@@ -37,6 +37,7 @@
 #ifdef _KERNEL
 
 extern struct key_cb key_cb;
+extern struct lwkt_token key_token;
 
 struct secpolicy;
 struct secpolicyindex;

@@ -225,6 +225,7 @@ soaccept_predicate(struct netmsg *msg0)
 		msg->nm_netmsg.nm_lmsg.ms_error = head->so_error;
 		return (TRUE);
 	}
+	lwkt_gettoken(&head->so_rcv.ssb_token);
 	if (!TAILQ_EMPTY(&head->so_comp)) {
 		/* Abuse nm_so field as copy in/copy out parameter. XXX JH */
 		msg->nm_so = TAILQ_FIRST(&head->so_comp);
@@ -232,8 +233,10 @@ soaccept_predicate(struct netmsg *msg0)
 		head->so_qlen--;
 
 		msg->nm_netmsg.nm_lmsg.ms_error = 0;
+		lwkt_reltoken(&head->so_rcv.ssb_token);
 		return (TRUE);
 	}
+	lwkt_reltoken(&head->so_rcv.ssb_token);
 	if (head->so_state & SS_CANTRCVMORE) {
 		msg->nm_netmsg.nm_lmsg.ms_error = ECONNABORTED;
 		return (TRUE);
@@ -313,7 +316,7 @@ kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res)
 	/* connection has been removed from the listen queue */
 	KNOTE(&head->so_rcv.ssb_kq.ki_note, 0);
 
-	so->so_state &= ~SS_COMP;
+	soclrstate(so, SS_COMP);
 	so->so_head = NULL;
 	if (head->so_sigio != NULL)
 		fsetown(fgetown(head->so_sigio), &so->so_sigio);
@@ -517,7 +520,7 @@ kern_connect(int s, int fflags, struct sockaddr *sa)
 	}
 bad:
 	if (!interrupted)
-		so->so_state &= ~SS_ISCONNECTING;
+		soclrstate(so, SS_ISCONNECTING);
 	if (error == ERESTART)
 		error = EINTR;
 done:
@@ -1880,8 +1883,8 @@ sys_sctp_peeloff(struct sctp_peeloff_args *uap)
 		 */
 		goto noconnection;
 	}
-	so->so_state &= ~SS_COMP;
-	so->so_state &= ~SS_NOFDREF;
+	soreference(so);			/* reference needed */
+	soclrstate(so, SS_NOFDREF | SS_COMP);	/* when clearing NOFDREF */
 	so->so_head = NULL;
 	if (head->so_sigio != NULL)
 		fsetown(fgetown(head->so_sigio), &so->so_sigio);

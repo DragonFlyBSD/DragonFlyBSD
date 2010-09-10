@@ -292,12 +292,15 @@ ipsec4_getpolicybysock(struct mbuf *m, u_int dir, struct socket *so, int *error)
 	if (currsp == NULL)
 		panic("ipsec4_getpolicybysock: currsp is NULL.");
 
+	lwkt_gettoken(&key_token);
+
 	/* when privilieged socket */
 	if (pcbsp->priv) {
 		switch (currsp->policy) {
 		case IPSEC_POLICY_BYPASS:
 			currsp->refcnt++;
 			*error = 0;
+			lwkt_reltoken(&key_token);
 			return currsp;
 
 		case IPSEC_POLICY_ENTRUST:
@@ -310,6 +313,7 @@ ipsec4_getpolicybysock(struct mbuf *m, u_int dir, struct socket *so, int *error)
 					kprintf("DP ipsec4_getpolicybysock called "
 					       "to allocate SP:%p\n", kernsp));
 				*error = 0;
+				lwkt_reltoken(&key_token);
 				return kernsp;
 			}
 
@@ -323,17 +327,20 @@ ipsec4_getpolicybysock(struct mbuf *m, u_int dir, struct socket *so, int *error)
 			}
 			ip4_def_policy.refcnt++;
 			*error = 0;
+			lwkt_reltoken(&key_token);
 			return &ip4_def_policy;
 			
 		case IPSEC_POLICY_IPSEC:
 			currsp->refcnt++;
 			*error = 0;
+			lwkt_reltoken(&key_token);
 			return currsp;
 
 		default:
 			ipseclog((LOG_ERR, "ipsec4_getpolicybysock: "
 			      "Invalid policy for PCB %d\n", currsp->policy));
 			*error = EINVAL;
+			lwkt_reltoken(&key_token);
 			return NULL;
 		}
 		/* NOTREACHED */
@@ -349,6 +356,7 @@ ipsec4_getpolicybysock(struct mbuf *m, u_int dir, struct socket *so, int *error)
 			kprintf("DP ipsec4_getpolicybysock called "
 			       "to allocate SP:%p\n", kernsp));
 		*error = 0;
+		lwkt_reltoken(&key_token);
 		return kernsp;
 	}
 
@@ -359,6 +367,7 @@ ipsec4_getpolicybysock(struct mbuf *m, u_int dir, struct socket *so, int *error)
 		       "Illegal policy for non-priviliged defined %d\n",
 			currsp->policy));
 		*error = EINVAL;
+		lwkt_reltoken(&key_token);
 		return NULL;
 
 	case IPSEC_POLICY_ENTRUST:
@@ -371,17 +380,20 @@ ipsec4_getpolicybysock(struct mbuf *m, u_int dir, struct socket *so, int *error)
 		}
 		ip4_def_policy.refcnt++;
 		*error = 0;
+		lwkt_reltoken(&key_token);
 		return &ip4_def_policy;
 
 	case IPSEC_POLICY_IPSEC:
 		currsp->refcnt++;
 		*error = 0;
+		lwkt_reltoken(&key_token);
 		return currsp;
 
 	default:
 		ipseclog((LOG_ERR, "ipsec4_getpolicybysock: "
 		   "Invalid policy for PCB %d\n", currsp->policy));
 		*error = EINVAL;
+		lwkt_reltoken(&key_token);
 		return NULL;
 	}
 	/* NOTREACHED */

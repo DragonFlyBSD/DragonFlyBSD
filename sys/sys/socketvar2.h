@@ -55,6 +55,9 @@
  * Acquire a lock on a signalsockbuf, sleep if the lock is already held.
  * The sleep is interruptable unless SSB_NOINTR is set in the ssb.
  *
+ * We also acquire the token on success.  This token is used to interlock
+ * frontend/backend operations until the sockbuf itself can be made mpsafe.
+ *
  * Returns 0 on success, non-zero if the lock could not be acquired.
  */
 static __inline int
@@ -70,8 +73,10 @@ ssb_lock(struct signalsockbuf *ssb, int wf)
 				return _ssb_lock(ssb);
 			return EWOULDBLOCK;
 		}
-		if (atomic_cmpset_int(&ssb->ssb_flags, flags, flags | SSB_LOCK))
+		if (atomic_cmpset_int(&ssb->ssb_flags, flags, flags|SSB_LOCK)) {
+			lwkt_gettoken(&ssb->ssb_token);
 			return(0);
+		}
 	}
 }
 
@@ -86,6 +91,7 @@ ssb_unlock(struct signalsockbuf *ssb)
 	uint32_t flags;
 
 	KKASSERT(ssb->ssb_flags & SSB_LOCK);
+	lwkt_reltoken(&ssb->ssb_token);
 	for (;;) {
 		flags = ssb->ssb_flags;
 		cpu_ccfence();
@@ -96,6 +102,24 @@ ssb_unlock(struct signalsockbuf *ssb)
 			break;
 		}
 	}
+}
+
+static __inline void
+sosetstate(struct socket *so, short state)
+{
+	atomic_set_short(&so->so_state, state);
+}
+
+static __inline void
+soclrstate(struct socket *so, short state)
+{
+	atomic_clear_short(&so->so_state, state);
+}
+
+static __inline void
+soreference(struct socket *so)
+{
+	atomic_add_int(&so->so_refs, 1);
 }
 
 #endif

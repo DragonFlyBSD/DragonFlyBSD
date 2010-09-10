@@ -57,6 +57,7 @@
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
+#include <sys/socketvar2.h>
 
 int	maxsockets;
 
@@ -152,6 +153,7 @@ _ssb_lock(struct signalsockbuf *ssb)
 		} else {
 			if (atomic_cmpset_int(&ssb->ssb_flags, flags,
 					      flags | SSB_LOCK)) {
+				lwkt_gettoken(&ssb->ssb_token);
 				error = 0;
 				break;
 			}
@@ -212,8 +214,8 @@ ssbtoxsockbuf(struct signalsockbuf *ssb, struct xsockbuf *xsb)
 void
 soisconnecting(struct socket *so)
 {
-	so->so_state &= ~(SS_ISCONNECTED|SS_ISDISCONNECTING);
-	so->so_state |= SS_ISCONNECTING;
+	soclrstate(so, SS_ISCONNECTED | SS_ISDISCONNECTING);
+	sosetstate(so, SS_ISCONNECTING);
 }
 
 void
@@ -221,8 +223,8 @@ soisconnected(struct socket *so)
 {
 	struct socket *head = so->so_head;
 
-	so->so_state &= ~(SS_ISCONNECTING|SS_ISDISCONNECTING|SS_ISCONFIRMING);
-	so->so_state |= SS_ISCONNECTED;
+	soclrstate(so, SS_ISCONNECTING | SS_ISDISCONNECTING | SS_ISCONFIRMING);
+	sosetstate(so, SS_ISCONNECTED);
 	if (head && (so->so_state & SS_INCOMP)) {
 		if ((so->so_options & SO_ACCEPTFILTER) != 0) {
 			so->so_upcall = head->so_accf->so_accept_filter->accf_callback;
@@ -232,12 +234,19 @@ soisconnected(struct socket *so)
 			so->so_upcall(so, so->so_upcallarg, 0);
 			return;
 		}
+
+		/*
+		 * Listen socket are not per-cpu.
+		 */
+		lwkt_gettoken(&head->so_rcv.ssb_token);
 		TAILQ_REMOVE(&head->so_incomp, so, so_list);
 		head->so_incqlen--;
-		so->so_state &= ~SS_INCOMP;
+		soclrstate(so, SS_INCOMP);
 		TAILQ_INSERT_TAIL(&head->so_comp, so, so_list);
 		head->so_qlen++;
-		so->so_state |= SS_COMP;
+		sosetstate(so, SS_COMP);
+		lwkt_reltoken(&head->so_rcv.ssb_token);
+
 		sorwakeup(head);
 		wakeup_one(&head->so_timeo);
 	} else {
@@ -250,8 +259,8 @@ soisconnected(struct socket *so)
 void
 soisdisconnecting(struct socket *so)
 {
-	so->so_state &= ~SS_ISCONNECTING;
-	so->so_state |= (SS_ISDISCONNECTING|SS_CANTRCVMORE|SS_CANTSENDMORE);
+	soclrstate(so, SS_ISCONNECTING);
+	sosetstate(so, SS_ISDISCONNECTING | SS_CANTRCVMORE | SS_CANTSENDMORE);
 	wakeup((caddr_t)&so->so_timeo);
 	sowwakeup(so);
 	sorwakeup(so);
@@ -260,8 +269,8 @@ soisdisconnecting(struct socket *so)
 void
 soisdisconnected(struct socket *so)
 {
-	so->so_state &= ~(SS_ISCONNECTING|SS_ISCONNECTED|SS_ISDISCONNECTING);
-	so->so_state |= (SS_CANTRCVMORE|SS_CANTSENDMORE|SS_ISDISCONNECTED);
+	soclrstate(so, SS_ISCONNECTING | SS_ISCONNECTED | SS_ISDISCONNECTING);
+	sosetstate(so, SS_CANTRCVMORE | SS_CANTSENDMORE | SS_ISDISCONNECTED);
 	wakeup((caddr_t)&so->so_timeo);
 	sbdrop(&so->so_snd.sb, so->so_snd.ssb_cc);
 	sowwakeup(so);
@@ -271,15 +280,15 @@ soisdisconnected(struct socket *so)
 void
 soisreconnecting(struct socket *so)
 {
-        so->so_state &= ~(SS_ISDISCONNECTING|SS_ISDISCONNECTED|SS_CANTRCVMORE|
-			SS_CANTSENDMORE);
-	so->so_state |= SS_ISCONNECTING;
+        soclrstate(so, SS_ISDISCONNECTING | SS_ISDISCONNECTED |
+		       SS_CANTRCVMORE | SS_CANTSENDMORE);
+	sosetstate(so, SS_ISCONNECTING);
 }
 
 void
 soisreconnected(struct socket *so)
 {
-	so->so_state &= ~(SS_ISDISCONNECTED|SS_CANTRCVMORE|SS_CANTSENDMORE);
+	soclrstate(so, SS_ISDISCONNECTED | SS_CANTRCVMORE | SS_CANTSENDMORE);
 	soisconnected(so);
 }
 
@@ -301,6 +310,9 @@ sosetport(struct socket *so, lwkt_port_t port)
  * then we allocate a new structure, propoerly linked into the
  * data structure of the original socket, and return this.
  * Connstatus may be 0, or SO_ISCONFIRMING, or SO_ISCONNECTED.
+ *
+ * The new socket is returned with one ref and so_pcb assigned.
+ * The reference is implied by so_pcb.
  */
 struct socket *
 sonewconn(struct socket *head, int connstatus)
@@ -320,18 +332,31 @@ sonewconn(struct socket *head, int connstatus)
 	so->so_type = head->so_type;
 	so->so_options = head->so_options &~ SO_ACCEPTCONN;
 	so->so_linger = head->so_linger;
+
+	/*
+	 * NOTE: Clearing NOFDREF implies referencing the so with
+	 *	 soreference().
+	 */
 	so->so_state = head->so_state | SS_NOFDREF;
 	so->so_proto = head->so_proto;
 	so->so_cred = crhold(head->so_cred);
 	ai.sb_rlimit = NULL;
 	ai.p_ucred = NULL;
 	ai.fd_rdir = NULL;		/* jail code cruft XXX JH */
-	if (soreserve(so, head->so_snd.ssb_hiwat, head->so_rcv.ssb_hiwat, NULL) ||
-	    /* Directly call function since we're already at protocol level. */
+
+	/*
+	 * Reserve space and call pru_attach.  We can directl call the
+	 * function since we're already in the protocol thread.
+	 */
+	if (soreserve(so, head->so_snd.ssb_hiwat,
+		      head->so_rcv.ssb_hiwat, NULL) ||
 	    (*so->so_proto->pr_usrreqs->pru_attach)(so, 0, &ai)) {
-		sodealloc(so);
+		so->so_head = NULL;
+		sofree(so);		/* remove implied pcb ref */
 		return (NULL);
 	}
+	KKASSERT(so->so_refs == 2);	/* attach + our base ref */
+	sofree(so);
 	KKASSERT(so->so_port != NULL);
 	so->so_rcv.ssb_lowat = head->so_rcv.ssb_lowat;
 	so->so_snd.ssb_lowat = head->so_snd.ssb_lowat;
@@ -341,27 +366,29 @@ sonewconn(struct socket *head, int connstatus)
 				(SSB_AUTOSIZE | SSB_AUTOLOWAT);
 	so->so_snd.ssb_flags |= head->so_snd.ssb_flags &
 				(SSB_AUTOSIZE | SSB_AUTOLOWAT);
+	lwkt_gettoken(&head->so_rcv.ssb_token);
 	if (connstatus) {
 		TAILQ_INSERT_TAIL(&head->so_comp, so, so_list);
-		so->so_state |= SS_COMP;
+		sosetstate(so, SS_COMP);
 		head->so_qlen++;
 	} else {
 		if (head->so_incqlen > head->so_qlimit) {
 			sp = TAILQ_FIRST(&head->so_incomp);
 			TAILQ_REMOVE(&head->so_incomp, sp, so_list);
 			head->so_incqlen--;
-			sp->so_state &= ~SS_INCOMP;
+			soclrstate(sp, SS_INCOMP);
 			sp->so_head = NULL;
 			soaborta(sp);
 		}
 		TAILQ_INSERT_TAIL(&head->so_incomp, so, so_list);
-		so->so_state |= SS_INCOMP;
+		sosetstate(so, SS_INCOMP);
 		head->so_incqlen++;
 	}
+	lwkt_reltoken(&head->so_rcv.ssb_token);
 	if (connstatus) {
 		sorwakeup(head);
 		wakeup((caddr_t)&head->so_timeo);
-		so->so_state |= connstatus;
+		sosetstate(so, connstatus);
 	}
 	return (so);
 }
@@ -378,14 +405,14 @@ sonewconn(struct socket *head, int connstatus)
 void
 socantsendmore(struct socket *so)
 {
-	so->so_state |= SS_CANTSENDMORE;
+	sosetstate(so, SS_CANTSENDMORE);
 	sowwakeup(so);
 }
 
 void
 socantrcvmore(struct socket *so)
 {
-	so->so_state |= SS_CANTRCVMORE;
+	sosetstate(so, SS_CANTRCVMORE);
 	sorwakeup(so);
 }
 

@@ -65,6 +65,7 @@
 
 #include <sys/signal2.h>
 #include <sys/mutex2.h>
+#include <sys/socketvar2.h>
 
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -271,7 +272,7 @@ nfs_connect(struct nfsmount *nmp, struct nfsreq *rep)
 			if ((so->so_state & SS_ISCONNECTING) &&
 			    so->so_error == 0 && rep &&
 			    (error = nfs_sigintr(nmp, rep, rep->r_td)) != 0){
-				so->so_state &= ~SS_ISCONNECTING;
+				soclrstate(so, SS_ISCONNECTING);
 				crit_exit();
 				goto bad;
 			}

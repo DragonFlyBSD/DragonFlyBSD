@@ -126,6 +126,8 @@ static u_long	div_recvspace = DIVRCVQ;	/* XXX sysctl ? */
 
 static struct mbuf *ip_divert(struct mbuf *, int, int);
 
+static struct lwkt_token div_token = LWKT_TOKEN_MP_INITIALIZER(div_token);
+
 /*
  * Initialize divert connection block queue.
  */
@@ -307,7 +309,7 @@ div_packet(struct mbuf *m, int incoming, int port)
 	 * saving/testing the socket pointer is not MPSAFE.  So we still
 	 * need to hold BGL here.
 	 */
-	get_mplock();
+	lwkt_gettoken(&div_token);
 	LIST_FOREACH(inp, &divcbinfo.pcblisthead, inp_list) {
 		if (inp->inp_flags & INP_PLACEMARKER)
 			continue;
@@ -315,18 +317,18 @@ div_packet(struct mbuf *m, int incoming, int port)
 			sa = inp->inp_socket;
 	}
 	if (sa) {
-		if (ssb_appendaddr(&sa->so_rcv, (struct sockaddr *)&divsrc, m,
-				 NULL) == 0)
+		lwkt_gettoken(&sa->so_rcv.ssb_token);
+		if (ssb_appendaddr(&sa->so_rcv, (struct sockaddr *)&divsrc, m, NULL) == 0)
 			m_freem(m);
 		else
 			sorwakeup(sa);
-		rel_mplock();
+		lwkt_reltoken(&sa->so_rcv.ssb_token);
 	} else {
-		rel_mplock();
 		m_freem(m);
 		ipstat.ips_noproto++;
 		ipstat.ips_delivered--;
 	}
+	lwkt_reltoken(&div_token);
 }
 
 #ifdef SMP
@@ -476,9 +478,12 @@ div_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	error = soreserve(so, div_sendspace, div_recvspace, ai->sb_rlimit);
 	if (error)
 		return error;
+	lwkt_gettoken(&div_token);
 	error = in_pcballoc(so, &divcbinfo);
-	if (error)
+	if (error) {
+		lwkt_reltoken(&div_token);
 		return error;
+	}
 	inp = (struct inpcb *)so->so_pcb;
 	inp->inp_ip_p = proto;
 	inp->inp_vflag |= INP_IPV4;
@@ -488,7 +493,8 @@ div_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	 * we always know "where" to send the packet.
 	 */
 	so->so_port = cpu0_soport(so, NULL, NULL);
-	so->so_state |= SS_ISCONNECTED;
+	sosetstate(so, SS_ISCONNECTED);
+	lwkt_reltoken(&div_token);
 	return 0;
 }
 
@@ -504,19 +510,33 @@ div_detach(struct socket *so)
 	return 0;
 }
 
+/*
+ * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
+ *	 will sofree() it when we return.
+ */
 static int
 div_abort(struct socket *so)
 {
+	int error;
+
 	soisdisconnected(so);
-	return div_detach(so);
+	error = div_detach(so);
+
+	return error;
 }
 
 static int
 div_disconnect(struct socket *so)
 {
+	int error;
+
 	if (!(so->so_state & SS_ISCONNECTED))
 		return ENOTCONN;
-	return div_abort(so);
+	soreference(so);
+	error = div_abort(so);
+	sofree(so);
+
+	return error;
 }
 
 static int

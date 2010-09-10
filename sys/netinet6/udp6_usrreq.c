@@ -83,7 +83,9 @@
 #include <sys/syslog.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
+
 #include <sys/thread2.h>
+#include <sys/socketvar2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -523,19 +525,26 @@ SYSCTL_PROC(_net_inet6_udp6, OID_AUTO, getcred, CTLTYPE_OPAQUE|CTLFLAG_RW,
 	    0, 0,
 	    udp6_getcred, "S,ucred", "Get the ucred of a UDP6 connection");
 
+/*
+ * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
+ *	 will sofree() it when we return.
+ */
 static int
 udp6_abort(struct socket *so)
 {
 	struct inpcb *inp;
+	int error;
 
 	inp = so->so_pcb;
-	if (inp == NULL)
-		return EINVAL;	/* ??? possible? panic instead? */
-	soisdisconnected(so);
-	crit_enter();
-	in6_pcbdetach(inp);
-	crit_exit();
-	return 0;
+	if (inp) {
+		soisdisconnected(so);
+		in6_pcbdetach(inp);
+		error = 0;
+	} else {
+		error = EINVAL;
+	}
+
+	return error;
 }
 
 static int
@@ -712,7 +721,7 @@ udp6_disconnect(struct socket *so)
 	crit_enter();
 	in6_pcbdisconnect(inp);
 	crit_exit();
-	so->so_state &= ~SS_ISCONNECTED;		/* XXX */
+	soclrstate(so, SS_ISCONNECTED);		/* XXX */
 	return 0;
 }
 

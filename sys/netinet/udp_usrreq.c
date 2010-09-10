@@ -84,8 +84,10 @@
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
-#include <sys/thread2.h>
 #include <sys/in_cksum.h>
+
+#include <sys/thread2.h>
+#include <sys/socketvar2.h>
 
 #include <machine/stdarg.h>
 
@@ -661,13 +663,11 @@ udp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 	else if ((unsigned)cmd >= PRC_NCMDS || inetctlerrmap[cmd] == 0)
 		return;
 	if (ip) {
-		crit_enter();
 		uh = (struct udphdr *)((caddr_t)ip + (ip->ip_hl << 2));
 		inp = in_pcblookup_hash(&udbinfo, faddr, uh->uh_dport,
 					ip->ip_src, uh->uh_sport, 0, NULL);
 		if (inp != NULL && inp->inp_socket != NULL)
 			(*notify)(inp, inetctlerrmap[cmd]);
-		crit_exit();
 	} else if (PRC_IS_REDIRECT(cmd)) {
 		struct netmsg_udp_notify nmsg;
 
@@ -706,7 +706,6 @@ udp_getcred(SYSCTL_HANDLER_ARGS)
 	error = SYSCTL_IN(req, addrs, sizeof addrs);
 	if (error)
 		return (error);
-	crit_enter();
 	inp = in_pcblookup_hash(&udbinfo, addrs[1].sin_addr, addrs[1].sin_port,
 				addrs[0].sin_addr, addrs[0].sin_port, 1, NULL);
 	if (inp == NULL || inp->inp_socket == NULL) {
@@ -715,7 +714,6 @@ udp_getcred(SYSCTL_HANDLER_ARGS)
 	}
 	error = SYSCTL_OUT(req, inp->inp_socket->so_cred, sizeof(struct ucred));
 out:
-	crit_exit();
 	return (error);
 }
 
@@ -880,19 +878,25 @@ u_long	udp_recvspace = 40 * (1024 +
 SYSCTL_INT(_net_inet_udp, UDPCTL_RECVSPACE, recvspace, CTLFLAG_RW,
     &udp_recvspace, 0, "Maximum incoming UDP datagram size");
 
+/*
+ * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
+ *	 will sofree() it when we return.
+ */
 static int
 udp_abort(struct socket *so)
 {
 	struct inpcb *inp;
+	int error;
 
 	inp = so->so_pcb;
-	if (inp == NULL)
-		return EINVAL;	/* ??? possible? panic instead? */
-	soisdisconnected(so);
-	crit_enter();
-	in_pcbdetach(inp);
-	crit_exit();
-	return 0;
+	if (inp) {
+		soisdisconnected(so);
+		in_pcbdetach(inp);
+		error = 0;
+	} else {
+		error = EINVAL;
+	}
+	return error;
 }
 
 static int
@@ -908,9 +912,7 @@ udp_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	error = soreserve(so, udp_sendspace, udp_recvspace, ai->sb_rlimit);
 	if (error)
 		return error;
-	crit_enter();
 	error = in_pcballoc(so, &udbinfo);
-	crit_exit();
 	if (error)
 		return error;
 	so->so_port = udp_soport_attach(so);
@@ -931,9 +933,7 @@ udp_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 	inp = so->so_pcb;
 	if (inp == NULL)
 		return EINVAL;
-	crit_enter();
 	error = in_pcbbind(inp, nam, td);
-	crit_exit();
 	if (error == 0) {
 		if (sin->sin_addr.s_addr != INADDR_ANY)
 			inp->inp_flags |= INP_WASBOUND_NOTANY;
@@ -1079,9 +1079,7 @@ udp_detach(struct socket *so)
 	inp = so->so_pcb;
 	if (inp == NULL)
 		return EINVAL;
-	crit_enter();
 	in_pcbdetach(inp);
-	crit_exit();
 	return 0;
 }
 
@@ -1097,10 +1095,10 @@ udp_disconnect(struct socket *so)
 	if (inp->inp_faddr.s_addr == INADDR_ANY)
 		return ENOTCONN;
 
-	crit_enter();
+	soreference(so);
 	in_pcbdisconnect(inp);
-	crit_exit();
-	so->so_state &= ~SS_ISCONNECTED;		/* XXX */
+	soclrstate(so, SS_ISCONNECTED);		/* XXX */
+	sofree(so);
 
 	ro = &inp->inp_route;
 	if (ro->ro_rt != NULL)

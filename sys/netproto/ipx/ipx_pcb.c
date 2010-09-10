@@ -261,8 +261,9 @@ ipx_pcbdetach(struct ipxpcb *ipxp)
 {
 	struct socket *so = ipxp->ipxp_socket;
 
-	so->so_pcb = 0;
+	so->so_pcb = NULL;
 	sofree(so);
+
 	if (ipxp->ipxp_route.ro_rt != NULL)
 		rtfree(ipxp->ipxp_route.ro_rt);
 	remque(ipxp);

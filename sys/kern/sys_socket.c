@@ -52,6 +52,7 @@
 #include <sys/ucred.h>
 
 #include <sys/mplock2.h>
+#include <sys/socketvar2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -136,11 +137,11 @@ soo_ioctl(struct file *fp, u_long cmd, caddr_t data,
 	switch (cmd) {
 	case FIOASYNC:
 		if (*(int *)data) {
-			so->so_state |= SS_ASYNC;
+			sosetstate(so, SS_ASYNC);
 			atomic_set_int(&so->so_rcv.ssb_flags,  SSB_ASYNC);
 			atomic_set_int(&so->so_snd.ssb_flags, SSB_ASYNC);
 		} else {
-			so->so_state &= ~SS_ASYNC;
+			soclrstate(so, SS_ASYNC);
 			atomic_clear_int(&so->so_rcv.ssb_flags, SSB_ASYNC);
 			atomic_clear_int(&so->so_snd.ssb_flags, SSB_ASYNC);
 		}

@@ -591,7 +591,7 @@ sctp_handle_shutdown(struct sctp_shutdown_chunk *cp,
 #if defined(__FreeBSD__) && __FreeBSD_version >= 502115
 			stcb->sctp_ep->sctp_socket->so_rcv.sb_state |= SBS_CANTSENDMORE;
 #else
-			stcb->sctp_ep->sctp_socket->so_state |= SS_CANTSENDMORE;
+			sosetstate(stcb->sctp_ep->sctp_socket, SS_CANTSENDMORE);
 #endif
 		}
 		/* reset time */

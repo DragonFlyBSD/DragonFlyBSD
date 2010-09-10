@@ -518,6 +518,8 @@ out:
  *	0	request processed
  *	error	error processing request - reason indicated
  *
+ * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
+ *	 will sofree() it when we return.
  */
 static int
 atm_aal5_abort(struct socket *so)
@@ -526,7 +528,6 @@ atm_aal5_abort(struct socket *so)
 
 	so->so_error = ECONNABORTED;
 	err = atm_sock_detach(so);
-
 	ATM_OUTRO();
 }
 

@@ -102,7 +102,7 @@ ncp_soconnect(struct socket *so,struct sockaddr *target, struct thread *td) {
 		tsleep((caddr_t)&so->so_timeo, 0, "ncpcon", 2 * hz);
 		if ((so->so_state & SS_ISCONNECTING) &&
 		    so->so_error == 0 /*&& rep &&*/) {
-			so->so_state &= ~SS_ISCONNECTING;
+			soclrstate(so, SS_ISCONNECTING);
 			crit_exit();
 			goto bad;
 		}

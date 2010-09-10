@@ -181,12 +181,14 @@ db_printf(const char *fmt, ...)
 	__va_start(listp, fmt);
 	kvcprintf (fmt, db_putchar, NULL, db_radix, listp);
 	__va_end(listp);
+/*	DELAY(100000);*/
 }
 
 void
 db_vprintf(const char *fmt, __va_list va)
 {
 	kvcprintf (fmt, db_putchar, NULL, db_radix, va);
+/*	DELAY(100000);*/
 }
 
 int db_indent;

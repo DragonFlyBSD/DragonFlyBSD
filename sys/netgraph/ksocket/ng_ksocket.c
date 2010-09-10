@@ -732,7 +732,7 @@ ng_ksocket_rcvmsg(node_p node, struct ng_mesg *msg,
 			if ((so->so_state & SS_ISCONNECTING) != 0)
 				ERROUT(EALREADY);
 			if ((error = soconnect(so, sa, td)) != 0) {
-				so->so_state &= ~SS_ISCONNECTING;
+				soclrstate(so, SS_ISCONNECTING);
 				ERROUT(error);
 			}
 			if ((so->so_state & SS_ISCONNECTING) != 0) {
@@ -1006,7 +1006,7 @@ ng_ksocket_incoming(struct socket *so, void *arg, int waitflag)
 	if (priv->flags & KSF_CONNECTING) {
 		if ((error = so->so_error) != 0) {
 			so->so_error = 0;
-			so->so_state &= ~SS_ISCONNECTING;
+			soclrstate(so, SS_ISCONNECTING);
 		}
 		if (!(so->so_state & SS_ISCONNECTING)) {
 			NG_MKMESSAGE(response, NGM_KSOCKET_COOKIE,
@@ -1132,16 +1132,20 @@ ng_ksocket_check_accept(priv_p priv)
 	struct socket *const head = priv->so;
 	int error;
 
+	lwkt_gettoken(&head->so_rcv.ssb_token);
 	if ((error = head->so_error) != 0) {
 		head->so_error = 0;
+		lwkt_reltoken(&head->so_rcv.ssb_token);
 		return error;
 	}
 	if (TAILQ_EMPTY(&head->so_comp)) {
 		if (head->so_state & SS_CANTRCVMORE)
-			return ECONNABORTED;
-		return EWOULDBLOCK;
+			error = ECONNABORTED;
+		else
+			error = EWOULDBLOCK;
 	}
-	return 0;
+	lwkt_reltoken(&head->so_rcv.ssb_token);
+	return error;
 }
 
 /*
@@ -1160,15 +1164,19 @@ ng_ksocket_finish_accept(priv_p priv, struct ng_mesg **rptr)
 	priv_p priv2;
 	int len;
 
+	lwkt_gettoken(&head->so_rcv.ssb_token);
 	so = TAILQ_FIRST(&head->so_comp);
-	if (so == NULL)		/* Should never happen */
+	if (so == NULL)	{	/* Should never happen */
+		lwkt_reltoken(&head->so_rcv.ssb_token);
 		return;
+	}
 	TAILQ_REMOVE(&head->so_comp, so, so_list);
 	head->so_qlen--;
+	lwkt_reltoken(&head->so_rcv.ssb_token);
 
 	/* XXX KNOTE(&head->so_rcv.ssb_sel.si_note, 0); */
 
-	so->so_state &= ~SS_COMP;
+	soclrstate(so, SS_COMP);
 	so->so_head = NULL;
 
 	soaccept(so, &sa);

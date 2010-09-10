@@ -139,9 +139,9 @@ natm_usr_detach(struct socket *so)
     /*
      * we turn on 'drain' *before* we sofree.
      */
-    npcb_free(npcb, NPCB_DESTROY);	/* drain */
     so->so_pcb = NULL;
-    sofree(so);
+    npcb_free(npcb, NPCB_DESTROY);	/* drain */
+    sofree(so);				/* remove pcb ref */
  out:
     crit_exit();
     return (error);
@@ -400,10 +400,18 @@ natm_usr_control(struct socket *so, u_long cmd, caddr_t arg,
     return (error);
 }
 
+/*
+ * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
+ *	 will sofree() it when we return.
+ */
 static int
 natm_usr_abort(struct socket *so)
 {
-    return natm_usr_shutdown(so);
+    int error;
+
+    error = natm_usr_shutdown(so);
+
+    return error;
 }
 
 static int
@@ -500,9 +508,9 @@ natm_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,
        * we turn on 'drain' *before* we sofree.
        */
 
-      npcb_free(npcb, NPCB_DESTROY);	/* drain */
       so->so_pcb = NULL;
-      sofree(so);
+      npcb_free(npcb, NPCB_DESTROY);	/* drain */
+      sofree(so);			/* remove pcb ref */
 
       break;
 

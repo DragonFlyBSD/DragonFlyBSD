@@ -88,6 +88,8 @@
 #include <sys/syslog.h>
 #include <sys/in_cksum.h>
 
+#include <sys/socketvar2.h>
+
 #include <machine/cpu.h>	/* before tcp_seq.h, for tcp_random18() */
 #include <machine/stdarg.h>
 
@@ -468,10 +470,13 @@ present:
 	KASSERT(LIST_EMPTY(&tp->t_segq) ||
 		LIST_FIRST(&tp->t_segq)->tqe_th->th_seq != tp->rcv_nxt,
 		("segment not coalesced"));
-	if (so->so_state & SS_CANTRCVMORE)
+	if (so->so_state & SS_CANTRCVMORE) {
 		m_freem(q->tqe_m);
-	else
+	} else {
+		lwkt_gettoken(&so->so_rcv.ssb_token);
 		ssb_appendstream(&so->so_rcv, q->tqe_m);
+		lwkt_reltoken(&so->so_rcv.ssb_token);
+	}
 	kfree(q, M_TSEGQ);
 	atomic_add_int(&tcp_reass_qsize, -1);
 	ND6_HINT(tp);
@@ -1364,6 +1369,7 @@ after_listen:
 				 * being avoided (which is the default),
 				 * so force an ack.
 				 */
+				lwkt_gettoken(&so->so_rcv.ssb_token);
 				if (newsize) {
 					tp->t_flags |= TF_RXRESIZED;
 					if (!ssb_reserve(&so->so_rcv, newsize,
@@ -1377,6 +1383,7 @@ after_listen:
 				}
 				m_adj(m, drop_hdrlen); /* delayed header drop */
 				ssb_appendstream(&so->so_rcv, m);
+				lwkt_reltoken(&so->so_rcv.ssb_token);
 			}
 			sorwakeup(so);
 			/*
@@ -2395,7 +2402,7 @@ step6:
 			so->so_oobmark = so->so_rcv.ssb_cc +
 			    (tp->rcv_up - tp->rcv_nxt) - 1;
 			if (so->so_oobmark == 0)
-				so->so_state |= SS_RCVATMARK;
+				sosetstate(so, SS_RCVATMARK);
 			sohasoutofband(so);
 			tp->t_oobflags &= ~(TCPOOB_HAVEDATA | TCPOOB_HADDATA);
 		}
@@ -2457,10 +2464,13 @@ dodata:							/* XXX */
 			tcpstat.tcps_rcvpack++;
 			tcpstat.tcps_rcvbyte += tlen;
 			ND6_HINT(tp);
-			if (so->so_state & SS_CANTRCVMORE)
+			if (so->so_state & SS_CANTRCVMORE) {
 				m_freem(m);
-			else
+			} else {
+				lwkt_gettoken(&so->so_rcv.ssb_token);
 				ssb_appendstream(&so->so_rcv, m);
+				lwkt_reltoken(&so->so_rcv.ssb_token);
+			}
 			sorwakeup(so);
 		} else {
 			if (!(tp->t_flags & TF_DUPSEG)) {
@@ -3041,8 +3051,11 @@ tcp_mss(struct tcpcb *tp, int offer)
 		bufsize = roundup(bufsize, mss);
 		if (bufsize > sb_max)
 			bufsize = sb_max;
-		if (bufsize > so->so_rcv.ssb_hiwat)
+		if (bufsize > so->so_rcv.ssb_hiwat) {
+			lwkt_gettoken(&so->so_rcv.ssb_token);
 			ssb_reserve(&so->so_rcv, bufsize, so, NULL);
+			lwkt_reltoken(&so->so_rcv.ssb_token);
+		}
 	}
 
 	/*

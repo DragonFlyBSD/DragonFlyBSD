@@ -459,6 +459,7 @@ sctp_deliver_data(struct sctp_tcb *stcb, struct sctp_association *asoc,
 			}
 			goto skip;
 		}
+		lwkt_gettoken(&stcb->sctp_socket->so_rcv.ssb_token);
 		if (!sctp_sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv,
 		    to, chk->data, control, stcb->asoc.my_vtag,
 		    stcb->sctp_ep)) {
@@ -479,13 +480,16 @@ sctp_deliver_data(struct sctp_tcb *stcb, struct sctp_association *asoc,
 			}
 			free_it = 1;
 		}
+		lwkt_reltoken(&stcb->sctp_socket->so_rcv.ssb_token);
 	} else {
 		/* append to a already started message. */
+		lwkt_gettoken(&stcb->sctp_socket->so_rcv.ssb_token);
 		if (sctp_sbspace(&stcb->sctp_socket->so_rcv) >=
 		    (long)chk->send_size) {
 			ssb_append(&stcb->sctp_socket->so_rcv, chk->data);
 			free_it = 1;
 		}
+		lwkt_reltoken(&stcb->sctp_socket->so_rcv.ssb_token);
 	}
  skip:
 	if (hold_locks == 0)
@@ -684,6 +688,7 @@ sctp_service_reassembly(struct sctp_tcb *stcb, struct sctp_association *asoc, in
 					SCTP_INP_WUNLOCK(stcb->sctp_ep);
 				return;
 			}
+			lwkt_gettoken(&stcb->sctp_socket->so_rcv.ssb_token);
 			if (!sctp_sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv,
 						  to, chk->data, control, stcb->asoc.my_vtag,
 						  stcb->sctp_ep)) {
@@ -697,8 +702,10 @@ sctp_service_reassembly(struct sctp_tcb *stcb, struct sctp_association *asoc, in
 					       stcb->sctp_socket);
 				if (hold_locks == 0)
 					SCTP_INP_WUNLOCK(stcb->sctp_ep);
+				lwkt_reltoken(&stcb->sctp_socket->so_rcv.ssb_token);
 				return;
 			}
+			lwkt_reltoken(&stcb->sctp_socket->so_rcv.ssb_token);
 			if ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) == 0) {
 				if (sctp_add_to_socket_q(stcb->sctp_ep, stcb)) {
 					stcb->asoc.my_rwnd_control_len +=
@@ -711,7 +718,9 @@ sctp_service_reassembly(struct sctp_tcb *stcb, struct sctp_association *asoc, in
 		} else {
 			if (sctp_sbspace(&stcb->sctp_socket->so_rcv) >=
 			    (long)chk->send_size) {
+				lwkt_gettoken(&stcb->sctp_socket->so_rcv.ssb_token);
 				ssb_append(&stcb->sctp_socket->so_rcv, chk->data);
+				lwkt_reltoken(&stcb->sctp_socket->so_rcv.ssb_token);
 				cntDel++;
 			} else {
 				/* out of space in the sb */
@@ -1996,6 +2005,7 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 		SCTP_TCB_UNLOCK(stcb);
 		SCTP_INP_WLOCK(stcb->sctp_ep);
 		SCTP_TCB_LOCK(stcb);
+		lwkt_gettoken(&stcb->sctp_socket->so_rcv.ssb_token);
 		if (!sctp_sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv, to, dmbuf,
 		    control, stcb->asoc.my_vtag, stcb->sctp_ep)) {
 			if (control) {
@@ -2004,8 +2014,10 @@ sctp_process_a_data_chunk(struct sctp_tcb *stcb, struct sctp_association *asoc,
 				    CMSG_LEN(sizeof(struct sctp_sndrcvinfo));
 			}
 			sctp_m_freem(dmbuf);
+			lwkt_reltoken(&stcb->sctp_socket->so_rcv.ssb_token);
 			goto failed_express_del;
 		}
+		lwkt_reltoken(&stcb->sctp_socket->so_rcv.ssb_token);
 		if ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) == 0) {
 			if (sctp_add_to_socket_q(stcb->sctp_ep, stcb)) {
 				stcb->asoc.my_rwnd_control_len += sizeof(struct mbuf);

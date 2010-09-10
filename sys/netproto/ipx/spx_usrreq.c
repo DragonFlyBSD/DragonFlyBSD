@@ -601,7 +601,7 @@ present:
 				if (so->so_rcv.ssb_cc)
 					so->so_oobmark = so->so_rcv.ssb_cc;
 				else
-					so->so_state |= SS_RCVATMARK;
+					sosetstate(so, SS_RCVATMARK);
 			}
 			nq = q;
 			q = q->si_prev;
@@ -633,7 +633,7 @@ present:
 					m_chtype(m, MT_OOBDATA);
 					spx_newchecks[1]++;
 					so->so_oobmark = 0;
-					so->so_state &= ~SS_RCVATMARK;
+					soclrstate(so, SS_RCVATMARK);
 				}
 				if (packetp == 0) {
 					m->m_data += SPINC;
@@ -1293,6 +1293,10 @@ spx_ctloutput(struct socket *so, struct sockopt *sopt)
 	return (error);
 }
 
+/*
+ * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
+ *	 will sofree() it when we return.
+ */
 static int
 spx_usr_abort(struct socket *so)
 {
@@ -1302,9 +1306,8 @@ spx_usr_abort(struct socket *so)
 	ipxp = sotoipxpcb(so);
 	cb = ipxtospxpcb(ipxp);
 
-	crit_enter();
 	spx_drop(cb, ECONNABORTED);
-	crit_exit();
+
 	return (0);
 }
 

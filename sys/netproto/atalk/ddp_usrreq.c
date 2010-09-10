@@ -50,9 +50,7 @@ ddp_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	    return( EINVAL);
 	}
 
-	crit_enter();
 	error = at_pcballoc( so );
-	crit_exit();
 	if (error) {
 	    return (error);
 	}
@@ -68,9 +66,7 @@ ddp_detach(struct socket *so)
 	if ( ddp == NULL ) {
 	    return( EINVAL);
 	}
-	crit_enter();
 	at_pcbdetach( so, ddp );
-	crit_exit();
 	return(0);
 }
 
@@ -84,9 +80,7 @@ ddp_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 	if ( ddp == NULL ) {
 	    return( EINVAL);
 	}
-	crit_enter();
 	error = at_pcbsetaddr(ddp, nam, td);
-	crit_exit();
 	return (error);
 }
     
@@ -105,9 +99,7 @@ ddp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	    return(EISCONN);
 	}
 
-	crit_enter();
 	error = at_pcbconnect( ddp, nam, td );
-	crit_exit();
 	if ( error == 0 )
 	    soisconnected( so );
 	return(error);
@@ -127,11 +119,11 @@ ddp_disconnect(struct socket *so)
 	    return(ENOTCONN);
 	}
 
-	crit_enter();
+	soreference(so);
 	at_pcbdisconnect( ddp );
 	ddp->ddp_fsat.sat_addr.s_node = ATADDR_ANYNODE;
-	crit_exit();
 	soisdisconnected( so );
+	sofree(sp);		/* soref above */
 	return(0);
 }
 
@@ -169,9 +161,7 @@ ddp_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 			return(EISCONN);
 		}
 
-		crit_enter();
 		error = at_pcbconnect(ddp, addr, td);
-		crit_exit();
 		if ( error ) {
 			return(error);
 		}
@@ -181,29 +171,32 @@ ddp_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 		}
 	}
 
-	crit_enter();
 	error = ddp_output( m, so );
 	if ( addr ) {
 	    at_pcbdisconnect( ddp );
 	}
-	crit_exit();
 	return(error);
 }
 
+/*
+ * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
+ *	 will sofree() it when we return.
+ */
 static int
 ddp_abort(struct socket *so)
 {
-	struct ddpcb	*ddp;
+	struct ddpcb *ddp;
+	int error;
 	
-	ddp = sotoddpcb( so );
-	if ( ddp == NULL ) {
-		return(EINVAL);
+	ddp = sotoddpcb(so);
+	if (ddb) {
+		soisdisconnected( so );
+		at_pcbdetach( so, ddp );
+		error = 0;
+	} else {
+		error = EINVAL;
 	}
-	soisdisconnected( so );
-	crit_enter();
-	at_pcbdetach( so, ddp );
-	crit_exit();
-	return(0);
+	return error;
 }
 
 
@@ -435,9 +428,9 @@ at_pcballoc( struct socket *so )
 static void
 at_pcbdetach( struct socket *so, struct ddpcb *ddp)
 {
-    soisdisconnected( so );
-    so->so_pcb = 0;
-    sofree( so );
+    soisdisconnected(so);
+    so->so_pcb = NULL;
+    sofree(so);
 
     /* remove ddp from ddp_ports list */
     if ( ddp->ddp_lsat.sat_port != ATADDR_ANYPORT &&

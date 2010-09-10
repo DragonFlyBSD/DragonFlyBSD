@@ -697,19 +697,24 @@ SYSCTL_INT(_net_inet_sctp, OID_AUTO, debug, CTLFLAG_RW,
 #endif /* SCTP_DEBUG */
 #endif
 
+/*
+ * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
+ *	 will sofree() it when we return.
+ */
 static int
 sctp_abort(struct socket *so)
 {
 	struct sctp_inpcb *inp;
+	int error;
 
 	inp = (struct sctp_inpcb *)so->so_pcb;
-	if (inp == 0)
-		return EINVAL;	/* ??? possible? panic instead? */
-
-	crit_enter();
-	sctp_inpcb_free(inp, 1);
-	crit_exit();
-	return 0;
+	if (inp) {
+		sctp_inpcb_free(inp, 1);
+		error = 0;
+	} else {
+		error = EINVAL;
+	}
+	return error;
 }
 
 static int
@@ -1077,7 +1082,7 @@ sctp_shutdown(struct socket *so)
 #if defined(__FreeBSD__) && __FreeBSD_version >= 502115
 		so->so_rcv.sb_state &= ~SBS_CANTRCVMORE;
 #else
-		so->so_state &= ~SS_CANTRCVMORE;
+		soclrstate(so, SS_CANTRCVMORE);
 #endif
 		/* This proc will wakeup for read and do nothing (I hope) */
 		crit_exit();

@@ -179,7 +179,7 @@ nb_connect_in(struct nbpcb *nbp, struct sockaddr_in *to, struct thread *td)
 		tsleep(&so->so_timeo, 0, "nbcon", 2 * hz);
 		if ((so->so_state & SS_ISCONNECTING) && so->so_error == 0 &&
 			(error = nb_intr(nbp, td)) != 0) {
-			so->so_state &= ~SS_ISCONNECTING;
+			soclrstate(so, SS_ISCONNECTING);
 			crit_exit();
 			goto bad;
 		}

@@ -123,9 +123,12 @@ idp_abort(struct nspcb *nsp)
 {
 	struct socket *so = nsp->nsp_socket;
 
+	soreference(so);
 	ns_pcbdisconnect(nsp);
 	soisdisconnected(so);
+	sofree(so);
 }
+
 /*
  * Drop connection, reporting
  * the specified error.
@@ -145,8 +148,10 @@ idp_drop(struct nspcb *nsp, int errno)
 		tcp_output(tp);
 	}*/
 	so->so_error = errno;
+	soreference(so);
 	ns_pcbdisconnect(nsp);
 	soisdisconnected(so);
+	sofree(so);
 }
 
 int noIdpRoute;
@@ -384,6 +389,10 @@ idp_ctloutput(int req, struct socket *so, int level, int name,
  *  IDP_USRREQ PROCEDURES
  */
 
+/*
+ * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
+ *      will sofree() it when we return.
+ */
 static int
 idp_usr_abort(struct socket *so)
 {
@@ -392,12 +401,12 @@ idp_usr_abort(struct socket *so)
 
 	if (nsp) {
 		ns_pcbdetach(nsp);
-		sofree(so);
 		soisdisconnected(so);
 		error = 0;
 	} else {
 		error = EINVAL;
 	}
+
 	return(error);
 }
 
@@ -493,8 +502,10 @@ idp_usr_disconnect(struct socket *so)
 			error = ENOTCONN;
 		} else {
 			error = 0;
+			soreference(so);
 			ns_pcbdisconnect(nsp);
 			soisdisconnected(so);
+			sofree(so);
 		}
 	} else {
 		error = EINVAL;

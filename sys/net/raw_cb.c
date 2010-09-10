@@ -61,6 +61,9 @@ static u_long	raw_recvspace = RAWRCVQ;
 /*
  * Allocate a control block and a nominal amount
  * of buffer space for the socket.
+ *
+ * The so->so_pcb has already been assigned by the caller, and the
+ * caller has also already bumped the socket refs.
  */
 int
 raw_attach(struct socket *so, int proto, struct rlimit *rl)
@@ -95,7 +98,7 @@ raw_detach(struct rawcb *rp)
 	struct socket *so = rp->rcb_socket;
 
 	so->so_pcb = NULL;
-	sofree(so);
+	sofree(so);		/* remove pcb ref */
 	LIST_REMOVE(rp, list);
 	kfree(rp, M_PCB);
 }

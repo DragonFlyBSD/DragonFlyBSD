@@ -150,7 +150,7 @@ atm_sock_detach(struct socket *so)
 	 * Break links and free control blocks
 	 */
 	so->so_pcb = NULL;
-	sofree(so);
+	sofree(so);		/* remove pcb ref */
 
 	atm_free((caddr_t)atp);
 

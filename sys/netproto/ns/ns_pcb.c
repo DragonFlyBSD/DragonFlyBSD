@@ -234,7 +234,7 @@ ns_pcbdetach(struct nspcb *nsp)
 {
 	struct socket *so = nsp->nsp_socket;
 
-	so->so_pcb = 0;
+	so->so_pcb = NULL;
 	sofree(so);
 	if (nsp->nsp_route.ro_rt)
 		rtfree(nsp->nsp_route.ro_rt);

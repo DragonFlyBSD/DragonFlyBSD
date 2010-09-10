@@ -52,6 +52,7 @@
 
 #include <net/pfkeyv2.h>
 #include "keydb.h"
+#include "key.h"
 #include <netinet6/ipsec.h>
 
 #include <net/net_osdep.h>
@@ -119,20 +120,20 @@ keydb_newsecasvar(void)
 void
 keydb_refsecasvar(struct secasvar *p)
 {
-	crit_enter();
+	lwkt_gettoken(&key_token);
 	p->refcnt++;
-	crit_exit();
+	lwkt_reltoken(&key_token);
 }
 
 void
 keydb_freesecasvar(struct secasvar *p)
 {
-	crit_enter();
+	lwkt_gettoken(&key_token);
 	p->refcnt--;
 	/* negative refcnt will cause panic intentionally */
 	if (p->refcnt <= 0)
 		keydb_delsecasvar(p);
-	crit_exit();
+	lwkt_reltoken(&key_token);
 }
 
 static void

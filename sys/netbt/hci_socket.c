@@ -52,7 +52,9 @@
 #include <net/if.h>
 #include <net/if_var.h>
 #include <sys/sysctl.h>
+
 #include <sys/thread2.h>
+#include <sys/socketvar2.h>
 
 #include <netbt/bluetooth.h>
 #include <netbt/hci.h>
@@ -556,14 +558,20 @@ bad:
 
 /*
  * Implementation of usrreqs.
+ *
+ * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
+ *	 will sofree() it when we return.
  */
 static int
 hci_sabort (struct socket *so)
 {
+	int error;
+
 	/* struct hci_pcb *pcb = (struct hci_pcb *)so->so_pcb;	*/
 
 	soisdisconnected(so);
-	return hci_sdetach(so);
+	error = hci_sdetach(so);
+	return (error);
 }
 
 static int
@@ -577,6 +585,8 @@ hci_sdetach(struct socket *so)
 		hci_cmdwait_flush(so);
 
 	so->so_pcb = NULL;
+	sofree(so);		/* remove pcb ref */
+
 	LIST_REMOVE(pcb, hp_next);
 	kfree(pcb, M_PCB);
 	
@@ -599,7 +609,7 @@ hci_sdisconnect (struct socket *so)
 	 * this socket (which is permitted) you get a broken pipe when you
 	 * try to write any data.
 	 */
-	so->so_state &= ~SS_ISCONNECTED;
+	soclrstate(so, SS_ISCONNECTED);
 	
 	return 0;
 }
@@ -628,6 +638,7 @@ hci_sattach (struct socket *so, int proto, struct pru_attach_info *ai)
 	if (pcb == NULL) 
 		return ENOMEM;
 
+	soreference(so);
 	so->so_pcb = pcb;
 	pcb->hp_socket = so;
 

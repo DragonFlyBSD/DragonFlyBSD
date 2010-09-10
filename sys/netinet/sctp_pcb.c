@@ -2237,13 +2237,11 @@ sctp_inpcb_free(struct sctp_inpcb *inp, int immediate)
 #endif
 	int cnt;
 
-	crit_enter();
 	SCTP_ASOC_CREATE_LOCK(inp);
 	SCTP_INP_WLOCK(inp);
 
 	if (inp->sctp_flags & SCTP_PCB_FLAGS_SOCKET_ALLGONE) {
 		/* been here before */
-		crit_exit();
 		kprintf("Endpoint was all gone (dup free)?\n");
 		SCTP_INP_WUNLOCK(inp);
 		SCTP_ASOC_CREATE_UNLOCK(inp);
@@ -2333,7 +2331,6 @@ sctp_inpcb_free(struct sctp_inpcb *inp, int immediate)
 		/* now is there some left in our SHUTDOWN state? */
 		if (cnt_in_sd) {
 			inp->sctp_flags |= SCTP_PCB_FLAGS_SOCKET_GONE;
-			crit_exit();
 			SCTP_INP_WUNLOCK(inp);
 			SCTP_ASOC_CREATE_UNLOCK(inp);
 			return;
@@ -2359,7 +2356,6 @@ sctp_inpcb_free(struct sctp_inpcb *inp, int immediate)
 #ifdef IPSEC
 #ifdef __OpenBSD__
 	/* XXX IPsec cleanup here */
-		crit_enter();
 		if (ip_pcb->inp_tdb_in)
 		    TAILQ_REMOVE(&ip_pcb->inp_tdb_in->tdb_inp_in,
 				 ip_pcb, inp_tdb_in_next);
@@ -2378,7 +2374,6 @@ sctp_inpcb_free(struct sctp_inpcb *inp, int immediate)
 		    ipsp_reffree(ip_pcb->inp_ipsec_localauth);
 		if (ip_pcb->inp_ipsec_remoteauth)
 		    ipsp_reffree(ip_pcb->inp_ipsec_remoteauth);
-		crit_exit();
 #else
 		ipsec4_delete_pcbpolicy(ip_pcb);
 #endif
@@ -2387,12 +2382,8 @@ sctp_inpcb_free(struct sctp_inpcb *inp, int immediate)
 		ACCEPT_LOCK();
 		SOCK_LOCK(so);
 #endif
-		so->so_pcb = 0;
-#if defined(__FreeBSD__) && __FreeBSD_version > 500000
-		sotryfree(so);
-#else
+		so->so_pcb = NULL;
 		sofree(so);
-#endif
 	}
 
 	if (ip_pcb->inp_options) {
@@ -2516,7 +2507,6 @@ sctp_inpcb_free(struct sctp_inpcb *inp, int immediate)
 	sctppcbinfo.ipi_count_ep--;
 
 	SCTP_INP_INFO_WUNLOCK();
-	crit_exit();
 }
 
 
@@ -3319,11 +3309,9 @@ sctp_free_assoc(struct sctp_inpcb *inp, struct sctp_tcb *stcb)
 	struct sctp_socket_q_list *sq;
 
 	/* first, lets purge the entry from the hash table. */
-	crit_enter();
 	if (stcb->asoc.state == 0) {
 		kprintf("Freeing already free association:%p - huh??\n",
 		    stcb);
-		crit_exit();
 		return;
 	}
 	asoc = &stcb->asoc;
@@ -3627,7 +3615,6 @@ sctp_free_assoc(struct sctp_inpcb *inp, struct sctp_tcb *stcb)
 	if (inp->sctp_flags & SCTP_PCB_FLAGS_SOCKET_GONE) {
 		sctp_inpcb_free(inp, 0);
 	}
-	crit_exit();
 }
 
 
@@ -3923,11 +3910,9 @@ int
 sctp_insert_laddr(struct sctpladdr *list, struct ifaddr *ifa) {
 	struct sctp_laddr *laddr;
 
-	crit_enter();
 	laddr = (struct sctp_laddr *)SCTP_ZONE_GET(sctppcbinfo.ipi_zone_laddr);
 	if (laddr == NULL) {
 		/* out of memory? */
-		crit_exit();
 		return (EINVAL);
 	}
 	sctppcbinfo.ipi_count_laddr++;
@@ -3937,7 +3922,6 @@ sctp_insert_laddr(struct sctpladdr *list, struct ifaddr *ifa) {
 	/* insert it */
 	LIST_INSERT_HEAD(list, laddr, sctp_nxt_addr);
 
-	crit_exit();
 	return (0);
 }
 
@@ -3947,13 +3931,11 @@ sctp_insert_laddr(struct sctpladdr *list, struct ifaddr *ifa) {
 void
 sctp_remove_laddr(struct sctp_laddr *laddr)
 {
-	crit_enter();
 	/* remove from the list */
 	LIST_REMOVE(laddr, sctp_nxt_addr);
 	SCTP_ZONE_FREE(sctppcbinfo.ipi_zone_laddr, laddr);
 	sctppcbinfo.ipi_count_laddr--;
 	sctppcbinfo.ipi_gencnt_laddr++;
-	crit_exit();
 }
 
 /*
@@ -5065,9 +5047,7 @@ sctp_initiate_iterator(asoc_func af, uint32_t pcb_state, uint32_t asoc_state,
 	SCTP_INP_INFO_WLOCK();
 	LIST_INSERT_HEAD(&sctppcbinfo.iteratorhead, it, sctp_nxt_itr);
 	SCTP_INP_INFO_WUNLOCK();
-	crit_enter();
 	sctp_iterator_timer(it);
-	crit_exit();
 	return (0);
 }
 
@@ -5089,7 +5069,6 @@ callout_init(struct callout *c)
 void
 callout_reset(struct callout *c, int to_ticks, void (*ftn)(void *), void *arg)
 {
-	crit_enter();
 	if (c->c_flags & CALLOUT_PENDING)
 		callout_stop(c);
 
@@ -5111,19 +5090,16 @@ callout_reset(struct callout *c, int to_ticks, void (*ftn)(void *), void *arg)
 	c->c_time = ticks + to_ticks;
 	TAILQ_INSERT_TAIL(&sctppcbinfo.callqueue, c, tqe);
 #endif
-	crit_exit();
 }
 
 int
 callout_stop(struct callout *c)
 {
-	crit_enter();
 	/*
 	 * Don't attempt to delete a callout that's not on the queue.
 	 */
 	if (!(c->c_flags & CALLOUT_PENDING)) {
 		c->c_flags &= ~CALLOUT_ACTIVE;
-		crit_exit();
 		return (0);
 	}
 	c->c_flags &= ~(CALLOUT_ACTIVE | CALLOUT_PENDING| CALLOUT_FIRED);
@@ -5134,7 +5110,6 @@ callout_stop(struct callout *c)
 	TAILQ_REMOVE(&sctppcbinfo.callqueue, c, tqe);
 	c->c_func = NULL;
 #endif
-	crit_exit();
 	return (1);
 }
 
@@ -5146,7 +5121,6 @@ sctp_fasttim(void)
 	struct calloutlist locallist;
 	int inited = 0;
 
-	crit_enter();
 	/* run through and subtract and mark all callouts */
 	c = TAILQ_FIRST(&sctppcbinfo.callqueue);
 	while (c) {
@@ -5173,14 +5147,11 @@ sctp_fasttim(void)
 			/* now validate that it did not get canceled */
 			if (c->c_flags & CALLOUT_FIRED) {
 				c->c_flags &= ~CALLOUT_PENDING;
-				crit_exit();
 				(*c->c_func)(c->c_arg);
-				crit_enter();
 			}
 			c = TAILQ_FIRST(&locallist);
 		}
 	}
-	crit_exit();
 }
 #endif
 #endif /* _SCTP_NEEDS_CALLOUT_ */

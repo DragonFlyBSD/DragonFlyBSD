@@ -724,20 +724,26 @@ SYSCTL_PROC(_net_inet6_sctp6, OID_AUTO, getcred, CTLTYPE_OPAQUE|CTLFLAG_RW,
 
 #endif
 
-/* This is the same as the sctp_abort() could be made common */
+/*
+ * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
+ *	 will sofree() it when we return.
+ */
 static int
 sctp6_abort(struct socket *so)
 {
 	struct sctp_inpcb *inp;
+	int error;
 
 	inp = (struct sctp_inpcb *)so->so_pcb;
-	if (inp == NULL)
-		return EINVAL;	/* ??? possible? panic instead? */
-	soisdisconnected(so);
-	crit_enter();
-	sctp_inpcb_free(inp, 1);
-	crit_exit();
-	return 0;
+	if (inp) {
+		soisdisconnected(so);
+		sctp_inpcb_free(inp, 1);
+		error = 0;
+	} else {
+		error = EINVAL;
+	}
+
+	return error;
 }
 
 static int

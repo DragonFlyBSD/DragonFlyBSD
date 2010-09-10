@@ -228,15 +228,21 @@ sco_sdetach(struct socket *so)
 	return sco_detach((struct sco_pcb **)&so->so_pcb);
 }
 
+/*
+ * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
+ *	 will sofree() it when we return.
+ */
 static int
 sco_sabort (struct socket *so)
 {
 	struct sco_pcb *pcb = (struct sco_pcb *)so->so_pcb;
+	int error;
 
 	sco_disconnect(pcb, 0);
 	soisdisconnected(so);
+	error = sco_sdetach(so);
 
-	return sco_sdetach(so);
+	return error;
 }
 
 static int

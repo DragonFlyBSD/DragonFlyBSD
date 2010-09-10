@@ -947,6 +947,7 @@ no_valid_rt:
 
 	inp->inp_ppcb = NULL;
 	soisdisconnected(so);
+	/* note: pcb detached later on */
 
 	tcp_destroy_timermsg(tp);
 	if (tp->t_flags & TF_SYNCACHE)

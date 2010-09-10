@@ -79,7 +79,9 @@
 #include <sys/socketvar.h>
 #include <sys/errno.h>
 #include <sys/systm.h>
+
 #include <sys/thread2.h>
+#include <sys/socketvar2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -602,22 +604,35 @@ rip6_detach(struct socket *so)
 	return 0;
 }
 
+/*
+ * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
+ *	 will sofree() it when we return.
+ */
 static int
 rip6_abort(struct socket *so)
 {
+	int error;
+
 	soisdisconnected(so);
-	return rip6_detach(so);
+	error = rip6_detach(so);
+
+	return error;
 }
 
 static int
 rip6_disconnect(struct socket *so)
 {
 	struct inpcb *inp = so->so_pcb;
+	int error;
 
 	if (!(so->so_state & SS_ISCONNECTED))
 		return ENOTCONN;
 	inp->in6p_faddr = kin6addr_any;
-	return rip6_abort(so);
+	soreference(so);
+	error = rip6_abort(so);
+	sofree(so);
+
+	return error;
 }
 
 static int

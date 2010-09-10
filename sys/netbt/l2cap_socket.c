@@ -241,15 +241,21 @@ l2cap_sdetach(struct socket *so)
 	return l2cap_detach((struct l2cap_channel **)&so->so_pcb);
 }
 
+/*
+ * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
+ *	 will sofree() it when we return.
+ */
 static int
 l2cap_sabort (struct socket *so)
 {
 	struct l2cap_channel *pcb = so->so_pcb;
+	int error;
 	
 	l2cap_disconnect(pcb, 0);
 	soisdisconnected(so);
 	
-	return l2cap_sdetach(so);
+	error = l2cap_sdetach(so);
+	return error;
 }
 
 static int

@@ -52,15 +52,12 @@
 
 /*
  * Abort a socket and free it.  Called from soabort() only.
- *
- * The SS_ABORTING flag must already be set.
  */
 void
 so_pru_abort(struct socket *so)
 {
 	struct netmsg_pru_abort msg;
 
-	KKASSERT(so->so_state & SS_ABORTING);
 	netmsg_init(&msg.nm_netmsg, so, &curthread->td_msgport,
 		    0, netmsg_pru_abort);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_abort;
@@ -70,15 +67,12 @@ so_pru_abort(struct socket *so)
 /*
  * Abort a socket and free it, asynchronously.  Called from
  * soaborta() only.
- *
- * The SS_ABORTING flag must already be set.
  */
 void
 so_pru_aborta(struct socket *so)
 {
 	struct netmsg_pru_abort *msg;
 
-	KKASSERT(so->so_state & SS_ABORTING);
 	msg = kmalloc(sizeof(*msg), M_LWKTMSG, M_WAITOK | M_ZERO);
 	netmsg_init(&msg->nm_netmsg, so, &netisr_afree_rport,
 		    0, netmsg_pru_abort);
@@ -89,8 +83,6 @@ so_pru_aborta(struct socket *so)
 /*
  * Abort a socket and free it.  Called from soabort_oncpu() only.
  * Caller must make sure that the current CPU is inpcb's owner CPU.
- *
- * The SS_ABORTING flag must already be set.
  */
 void
 so_pru_abort_oncpu(struct socket *so)
@@ -418,6 +410,9 @@ so_pru_ctlinput(struct protosw *pr, int cmd, struct sockaddr *arg, void *extra)
 
 /*
  * Abort and destroy a socket.
+ *
+ * The originator referenced the socket so we must dereference it when
+ * done.
  */
 void
 netmsg_pru_abort(netmsg_t msg)
@@ -426,11 +421,8 @@ netmsg_pru_abort(netmsg_t msg)
 	struct socket *so = msg->nm_so;
 	int error;
 
-	KKASSERT(so->so_state & SS_ABORTING);
-	so->so_state &= ~SS_ABORTING;
 	error = nm->nm_prufn(so);
-	if (error)
-		sofree(so);
+	sofree(so);	/* from soabort*() */
 	lwkt_replymsg(&msg->nm_lmsg, error);
 }
 

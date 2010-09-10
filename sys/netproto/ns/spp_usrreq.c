@@ -540,7 +540,7 @@ present:
 				if (so->so_rcv.ssb_cc)
 					so->so_oobmark = so->so_rcv.ssb_cc;
 				else
-					so->so_state |= SS_RCVATMARK;
+					sosetstate(so, SS_RCVATMARK);
 			}
 			nq = q;
 			q = q->si_prev;
@@ -572,7 +572,7 @@ present:
 					m_chtype(m, MT_OOBDATA);
 					spp_newchecks[1]++;
 					so->so_oobmark = 0;
-					so->so_state &= ~SS_RCVATMARK;
+					soclrstate(so, SS_RCVATMARK);
 				}
 				if (packetp == 0) {
 					m->m_data += SPINC;
@@ -1275,6 +1275,10 @@ spp_ctloutput(int req, struct socket *so, int level,
  *  SPP_USRREQ PROCEDURES
  */
 
+/*
+ * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
+ *      will sofree() it when we return.
+ */
 static int
 spp_usr_abort(struct socket *so)
 {
@@ -1289,6 +1293,7 @@ spp_usr_abort(struct socket *so)
 	} else {
 		error = EINVAL;
 	}
+
 	return(error);
 }
 
@@ -1719,7 +1724,7 @@ spp_close(struct sppcb *cb)
 	}
 	kfree(cb->s_idp, M_IDP);
 	kfree(cb, M_SPPCB);
-	nsp->nsp_pcb = 0;
+	nsp->nsp_pcb = NULL;
 	soisdisconnected(so);
 	ns_pcbdetach(nsp);
 	sppstat.spps_closed++;

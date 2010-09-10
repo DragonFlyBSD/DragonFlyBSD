@@ -685,7 +685,7 @@ in6_pcbdetach(struct inpcb *inp)
 	inp->inp_gencnt = ++ipi->ipi_gencnt;
 	in_pcbremlists(inp);
 	so->so_pcb = NULL;
-	sofree(so);
+	sofree(so);		/* remove pcb ref */
 
 	if (inp->in6p_options)
 		m_freem(inp->in6p_options);

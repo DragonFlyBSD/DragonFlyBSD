@@ -626,7 +626,7 @@ ng_ksocket_connect(hook_p hook)
 	priv->so->so_snd.sb_flags |= SB_UPCALL;
 	SOCKBUF_UNLOCK(&priv->so->so_snd);
 	SOCK_LOCK(priv->so);
-	priv->so->so_state |= SS_NBIO;
+	sosetstate(priv->so, SS_NBIO);
 	SOCK_UNLOCK(priv->so);
 	/*
 	 * --Original comment--
@@ -761,7 +761,7 @@ ng_ksocket_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			if ((so->so_state & SS_ISCONNECTING) != 0)
 				ERROUT(EALREADY);
 			if ((error = soconnect(so, sa, td)) != 0) {
-				so->so_state &= ~SS_ISCONNECTING;
+				soclrstate(so, SS_ISCONNECTING);
 				ERROUT(error);
 			}
 			if ((so->so_state & SS_ISCONNECTING) != 0) {
@@ -1050,7 +1050,7 @@ ng_ksocket_incoming2(node_p node, hook_p hook, void *arg1, int arg2)
 	if (priv->flags & KSF_CONNECTING) {
 		if ((error = so->so_error) != 0) {
 			so->so_error = 0;
-			so->so_state &= ~SS_ISCONNECTING;
+			soclrstate(so, SS_ISCONNECTING);
 		}
 		if (!(so->so_state & SS_ISCONNECTING)) {
 			NG_MKMESSAGE(response, NGM_KSOCKET_COOKIE,
@@ -1211,7 +1211,7 @@ ng_ksocket_finish_accept(priv_p priv)
 	so->so_head = NULL;
 	SOCK_LOCK(so);
 	soref(so);
-	so->so_state |= SS_NBIO;
+	sosetstate(so, SS_NBIO);
 	SOCK_UNLOCK(so);
 	ACCEPT_UNLOCK();
 

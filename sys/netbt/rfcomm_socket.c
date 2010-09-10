@@ -251,14 +251,20 @@ rfcomm_sdetach(struct socket *so)
 	return rfcomm_detach((struct rfcomm_dlc **)&so->so_pcb);
 }
 
+/*
+ * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
+ *	 will sofree() it when we return.
+ */
 static int
 rfcomm_sabort (struct socket *so)
 {
 	struct rfcomm_dlc *pcb = (struct rfcomm_dlc *) so->so_pcb;
+	int error;
 
 	rfcomm_disconnect(pcb, 0);
 	soisdisconnected(so);
-	return rfcomm_sdetach(so);
+	error = rfcomm_sdetach(so);
+	return error;
 }
 
 static int

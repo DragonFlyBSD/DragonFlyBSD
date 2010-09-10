@@ -51,6 +51,7 @@
 #include <sys/un.h>
 
 #include <sys/thread2.h>
+#include <sys/socketvar2.h>
 
 #include "fifo.h"
 
@@ -193,7 +194,7 @@ fifo_open(struct vop_open_args *ap)
 		}
 		fip->fi_readers = fip->fi_writers = 0;
 		wso->so_snd.ssb_lowat = PIPE_BUF;
-		rso->so_state |= SS_CANTRCVMORE;
+		sosetstate(rso, SS_CANTRCVMORE);
 	}
 	if (ap->a_mode & FREAD) {
 		fip->fi_readers++;

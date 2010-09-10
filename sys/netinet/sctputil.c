@@ -2189,13 +2189,16 @@ sctp_notify_assoc_change(u_int32_t event, struct sctp_tcb *stcb,
 	SCTP_TCB_UNLOCK(stcb);
 	SCTP_INP_WLOCK(stcb->sctp_ep);
 	SCTP_TCB_LOCK(stcb);
+	lwkt_gettoken(&stcb->sctp_socket->so_rcv.ssb_token);
 	if (!sctp_sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv,
 	    to, m_notify, NULL, stcb->asoc.my_vtag, stcb->sctp_ep)) {
 		/* not enough room */
 		sctp_m_freem(m_notify);
 		SCTP_INP_WUNLOCK(stcb->sctp_ep);
+		lwkt_reltoken(&stcb->sctp_socket->so_rcv.ssb_token);
 		return;
 	}
+	lwkt_reltoken(&stcb->sctp_socket->so_rcv.ssb_token);
 	if (((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) == 0) &&
 	   ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_CONNECTED) == 0)){
 		if (sctp_add_to_socket_q(stcb->sctp_ep, stcb)) {
@@ -2281,13 +2284,16 @@ sctp_notify_peer_addr_change(struct sctp_tcb *stcb, uint32_t state,
 	SCTP_TCB_UNLOCK(stcb);
 	SCTP_INP_WLOCK(stcb->sctp_ep);
 	SCTP_TCB_LOCK(stcb);
+	lwkt_gettoken(&stcb->sctp_socket->so_rcv.ssb_token);
 	if (!sctp_sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv, to,
 	    m_notify, NULL, stcb->asoc.my_vtag, stcb->sctp_ep)) {
 		/* not enough room */
 		sctp_m_freem(m_notify);
 		SCTP_INP_WUNLOCK(stcb->sctp_ep);
+		lwkt_reltoken(&stcb->sctp_socket->so_rcv.ssb_token);
 		return;
 	}
+	lwkt_reltoken(&stcb->sctp_socket->so_rcv.ssb_token);
 	if (((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) == 0) &&
 	   ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_CONNECTED) == 0)){
 		if (sctp_add_to_socket_q(stcb->sctp_ep, stcb)) {
@@ -2382,13 +2388,16 @@ sctp_notify_send_failed(struct sctp_tcb *stcb, u_int32_t error,
 	SCTP_TCB_UNLOCK(stcb);
 	SCTP_INP_WLOCK(stcb->sctp_ep);
 	SCTP_TCB_LOCK(stcb);
+	lwkt_gettoken(&stcb->sctp_socket->so_rcv.ssb_token);
 	if (!sctp_sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv, to,
 	    m_notify, NULL, stcb->asoc.my_vtag, stcb->sctp_ep)) {
 		/* not enough room */
 		sctp_m_freem(m_notify);
+		lwkt_reltoken(&stcb->sctp_socket->so_rcv.ssb_token);
 		SCTP_INP_WUNLOCK(stcb->sctp_ep);
 		return;
 	}
+	lwkt_reltoken(&stcb->sctp_socket->so_rcv.ssb_token);
 	if (((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) == 0) &&
 	   ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_CONNECTED) == 0)){
 		if (sctp_add_to_socket_q(stcb->sctp_ep, stcb)) {
@@ -2458,13 +2467,16 @@ sctp_notify_adaption_layer(struct sctp_tcb *stcb,
 	SCTP_TCB_UNLOCK(stcb);
 	SCTP_INP_WLOCK(stcb->sctp_ep);
 	SCTP_TCB_LOCK(stcb);
+	lwkt_gettoken(&stcb->sctp_socket->so_rcv.ssb_token);
 	if (!sctp_sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv, to,
 	    m_notify, NULL, stcb->asoc.my_vtag, stcb->sctp_ep)) {
 		/* not enough room */
 		sctp_m_freem(m_notify);
+		lwkt_reltoken(&stcb->sctp_socket->so_rcv.ssb_token);
 		SCTP_INP_WUNLOCK(stcb->sctp_ep);
 		return;
 	}
+	lwkt_reltoken(&stcb->sctp_socket->so_rcv.ssb_token);
 	if (((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) == 0) &&
 	   ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_CONNECTED) == 0)){
 		if (sctp_add_to_socket_q(stcb->sctp_ep, stcb)) {
@@ -2534,13 +2546,16 @@ sctp_notify_partial_delivery_indication(struct sctp_tcb *stcb,
 	SCTP_TCB_UNLOCK(stcb);
 	SCTP_INP_WLOCK(stcb->sctp_ep);
 	SCTP_TCB_LOCK(stcb);
+	lwkt_gettoken(&stcb->sctp_socket->so_rcv.ssb_token);
 	if (!sctp_sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv, to,
 	    m_notify, NULL, stcb->asoc.my_vtag, stcb->sctp_ep)) {
 		/* not enough room */
 		sctp_m_freem(m_notify);
+		lwkt_reltoken(&stcb->sctp_socket->so_rcv.ssb_token);
 		SCTP_INP_WUNLOCK(stcb->sctp_ep);
 		return;
 	}
+	lwkt_reltoken(&stcb->sctp_socket->so_rcv.ssb_token);
 	if (((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) == 0) &&
 	   ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_CONNECTED) == 0)){
 		if (sctp_add_to_socket_q(stcb->sctp_ep, stcb)) {
@@ -2619,13 +2634,16 @@ sctp_notify_shutdown_event(struct sctp_tcb *stcb)
 	SCTP_TCB_UNLOCK(stcb);
 	SCTP_INP_WLOCK(stcb->sctp_ep);
 	SCTP_TCB_LOCK(stcb);
+	lwkt_gettoken(&stcb->sctp_socket->so_rcv.ssb_token);
 	if (!sctp_sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv, to,
 	    m_notify, NULL, stcb->asoc.my_vtag, stcb->sctp_ep)) {
 		/* not enough room */
 		sctp_m_freem(m_notify);
+		lwkt_reltoken(&stcb->sctp_socket->so_rcv.ssb_token);
 		SCTP_INP_WUNLOCK(stcb->sctp_ep);
 		return;
 	}
+	lwkt_reltoken(&stcb->sctp_socket->so_rcv.ssb_token);
 	if (((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) == 0) &&
 	   ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_CONNECTED) == 0)){
 		if (sctp_add_to_socket_q(stcb->sctp_ep, stcb)) {
@@ -2717,13 +2735,16 @@ sctp_notify_stream_reset(struct sctp_tcb *stcb,
 	SCTP_TCB_UNLOCK(stcb);
 	SCTP_INP_WLOCK(stcb->sctp_ep);
 	SCTP_TCB_LOCK(stcb);
+	lwkt_gettoken(&stcb->sctp_socket->so_rcv.ssb_token);
 	if (!sctp_sbappendaddr_nocheck(&stcb->sctp_socket->so_rcv, to,
 	    m_notify, NULL, stcb->asoc.my_vtag, stcb->sctp_ep)) {
 		/* not enough room */
 		sctp_m_freem(m_notify);
+		lwkt_reltoken(&stcb->sctp_socket->so_rcv.ssb_token);
 		SCTP_INP_WUNLOCK(stcb->sctp_ep);
 		return;
 	}
+	lwkt_reltoken(&stcb->sctp_socket->so_rcv.ssb_token);
 	if (((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL) == 0) &&
 	   ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_CONNECTED) == 0)){
 		if (sctp_add_to_socket_q(stcb->sctp_ep, stcb)) {
@@ -3385,6 +3406,7 @@ sctp_get_first_vtag_from_sb(struct socket *so)
 	u_int32_t retval;
 
 	retval = 0;
+	lwkt_gettoken(&so->so_rcv.ssb_token);
 	if (so->so_rcv.ssb_mb) {
 		/* grubbing time */
 		this = so->so_rcv.ssb_mb;
@@ -3421,6 +3443,7 @@ sctp_get_first_vtag_from_sb(struct socket *so)
 		}
 
 	}
+	lwkt_reltoken(&so->so_rcv.ssb_token);
 	return (retval);
 
 }
@@ -3442,6 +3465,8 @@ sctp_grub_through_socket_buffer(struct sctp_inpcb *inp, struct socket *old,
 	}
 	SOCKBUF_LOCK(old_sb);
 	SOCKBUF_LOCK(new_sb);
+	lwkt_gettoken(&old_sb->ssb_token);
+	lwkt_gettoken(&new_sb->ssb_token);
 
 	if (inp->sctp_vtag_first == asoc->my_vtag) {
 		/* First one must be moved */
@@ -3501,6 +3526,8 @@ sctp_grub_through_socket_buffer(struct sctp_inpcb *inp, struct socket *old,
 		 */
 		inp->sctp_vtag_first = sctp_get_first_vtag_from_sb(old);
 	}
+	lwkt_reltoken(&new_sb->ssb_token);
+	lwkt_reltoken(&old_sb->ssb_token);
 	SOCKBUF_UNLOCK(old_sb);
 	SOCKBUF_UNLOCK(new_sb);
 }
