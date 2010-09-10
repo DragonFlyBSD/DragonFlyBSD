@@ -1587,10 +1587,10 @@ pf_modulate_sack(struct mbuf *m, int off, struct pf_pdesc *pd,
 				    i += TCPOLEN_SACK) {
 					memcpy(&sack, &opt[i], sizeof(sack));
 					pf_change_a(&sack.rblk_start, &th->th_sum,
-					    htonl(ntohl(sack.rblk_start) -
+					    htonl(sack.rblk_start -
 					    dst->seqdiff), 0);
 					pf_change_a(&sack.rblk_end, &th->th_sum,
-					    htonl(ntohl(sack.rblk_end) -
+					    htonl(sack.rblk_end -
 					    dst->seqdiff), 0);
 					memcpy(&opt[i], &sack, sizeof(sack));
 				}
@@ -2192,29 +2192,29 @@ pf_map_addr(sa_family_t af, struct pf_rule *r, struct pf_addr *saddr,
 			switch (af) {
 #ifdef INET
 			case AF_INET:
-				rpool->counter.addr32[0] = htonl(karc4random());
+				rpool->counter.addr32[0] = karc4random();
 				break;
 #endif /* INET */
 #ifdef INET6
 			case AF_INET6:
 				if (rmask->addr32[3] != 0xffffffff)
 					rpool->counter.addr32[3] =
-					    htonl(karc4random());
+					    karc4random();
 				else
 					break;
 				if (rmask->addr32[2] != 0xffffffff)
 					rpool->counter.addr32[2] =
-					    htonl(karc4random());
+					    karc4random();
 				else
 					break;
 				if (rmask->addr32[1] != 0xffffffff)
 					rpool->counter.addr32[1] =
-					    htonl(karc4random());
+					    karc4random();
 				else
 					break;
 				if (rmask->addr32[0] != 0xffffffff)
 					rpool->counter.addr32[0] =
-					    htonl(karc4random());
+					    karc4random();
 				break;
 #endif /* INET6 */
 			}
@@ -2347,7 +2347,7 @@ pf_get_sport(sa_family_t af, u_int8_t proto, struct pf_rule *r,
 				high = tmp;
 			}
 			/* low < high */
-			cut = htonl(karc4random()) % (1 + high - low) + low;
+			cut = karc4random() % (1 + high - low) + low;
 			/* low <= cut <= high */
 			for (tmp = cut; tmp <= high; ++(tmp)) {
 				key.gwy.port = htons(tmp);
@@ -3621,7 +3621,7 @@ cleanup:
 					sport = th->th_dport;
 				}
 			}
-			s->src.seqhi = htonl(karc4random());
+			s->src.seqhi = karc4random();
 			/* Find mss option */
 			mss = pf_get_mss(m, off, th->th_off, af);
 			mss = pf_calc_mss(saddr, af, mss);
@@ -3814,7 +3814,7 @@ pf_test_state_tcp(struct pf_state **state, int direction, struct pfi_kif *kif,
 			}
 			(*state)->src.max_win = MAX(ntohs(th->th_win), 1);
 			if ((*state)->dst.seqhi == 1)
-				(*state)->dst.seqhi = htonl(karc4random());
+				(*state)->dst.seqhi = karc4random();
 			pf_send_tcp((*state)->rule.ptr, pd->af, &src->addr,
 			    &dst->addr, src->port, dst->port,
 			    (*state)->dst.seqhi, 0, TH_SYN, 0,
