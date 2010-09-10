@@ -28,6 +28,7 @@ SUBDIR= 802_11 \
 	ckdist \
 	clog \
 	config \
+	crashinfo \
 	cron \
 	daemon \
 	dconschat \
