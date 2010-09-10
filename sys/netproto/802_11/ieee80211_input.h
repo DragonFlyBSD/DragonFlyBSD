@@ -53,9 +53,10 @@
 	}								\
 } while (0)
 
-#ifdef IEEE80211_DEBUG
 void	ieee80211_ssid_mismatch(struct ieee80211vap *, const char *tag,
 	uint8_t mac[IEEE80211_ADDR_LEN], uint8_t *ssid);
+
+#ifdef IEEE80211_DEBUG
 
 #define	IEEE80211_VERIFY_SSID(_ni, _ssid, _action) do {			\
 	if ((_ssid)[1] != 0 &&						\
