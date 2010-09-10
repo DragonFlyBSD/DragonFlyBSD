@@ -40,6 +40,9 @@
 #ifndef _SYS_MALLOC_H_
 #include <sys/malloc.h>
 #endif
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>
+#endif
 
 /*
  * Pipeline memory allocations with persistent store capabilities.  This
