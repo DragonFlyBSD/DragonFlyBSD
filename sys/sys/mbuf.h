@@ -90,6 +90,21 @@ struct m_hdr {
 	struct netmsg_packet mh_netmsg;	/* hardware->proto stack msg */
 };
 
+/* pf stuff */
+struct pkthdr_pf {
+	void            *hdr;           /* saved hdr pos in mbuf, for ECN */
+	u_int            rtableid;      /* alternate routing table id */
+	u_int32_t        qid;           /* queue id */
+	u_int16_t        tag;           /* tag id */
+	u_int8_t         flags;
+	u_int8_t         routed;
+	uint32_t	state_hash;	/* identifies 'connections' */
+	uint8_t		ecn_af;		/* for altq_red */
+	uint8_t		unused01;
+	uint8_t		unused02;
+	uint8_t		unused03;
+};
+
 /*
  * Packet tag structure (see below for details).
  */
@@ -124,13 +139,7 @@ struct pkthdr {
 	uint32_t fw_flags;		/* flags for PF */
 
 	/* variables for PF processing */
-	uint16_t unused01;		/* was PF tag id */
-	uint8_t	pf_routed;		/* PF routing counter */
-
-	/* variables for ALTQ processing */
-	uint8_t	ecn_af;			/* address family for ECN */
-	uint32_t altq_qid;		/* queue id */
-	uint32_t altq_state_hash;	/* identifies 'connections' */
+	struct pkthdr_pf pf;		/* structure for PF */
 
 	uint16_t ether_vlantag;		/* ethernet 802.1p+q vlan tag */
 	uint16_t hash;			/* packet hash */
@@ -249,25 +258,16 @@ struct mbuf {
  * Flags indicating PF processing status
  */
 #define FW_MBUF_GENERATED	0x00000001
-#define	XX_MBUF_UNUSED02	0x00000002
+#define	PF_MBUF_STRUCTURE	0x00000002	/* m_pkthdr.pf valid */
 #define	PF_MBUF_ROUTED		0x00000004	/* pf_routed field is valid */
-#define	PF_MBUF_TRANSLATE_LOCALHOST					\
-				0x00000008
-#define	PF_MBUF_FRAGCACHE	0x00000010
+#define	XX_MBUF_UNUSED08	0x00000008
+#define	XX_MBUF_UNUSED10	0x00000010
 #define	XX_MBUF_UNUSED20	0x00000020
 #define IPFORWARD_MBUF_TAGGED	0x00000040
 #define DUMMYNET_MBUF_TAGGED	0x00000080
-#define ALTQ_MBUF_STATE_HASHED	0x00000100
+#define XX_MBUF_UNUSED100	0x00000100
 #define FW_MBUF_REDISPATCH	0x00000200
-#define	PF_MBUF_GENERATED	FW_MBUF_GENERATED
 #define	IPFW_MBUF_GENERATED	FW_MBUF_GENERATED
-
-/*
- * The PF code uses a different symbol name for the m_tag.  This is
- * NOT a pkthdr flag.
- */
-#define	PF_MBUF_TAGGED		PACKET_TAG_PF
-
 /*
  * mbuf types.
  */

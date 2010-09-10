@@ -123,7 +123,7 @@ static int	fairq_class_destroy(struct fairq_class *);
 static int	fairq_enqueue(struct ifaltq *, struct mbuf *, struct altq_pktattr *);
 static struct mbuf *fairq_dequeue(struct ifaltq *, struct mbuf *, int);
 
-static int	fairq_addq(struct fairq_class *, struct mbuf *, struct pf_mtag *);
+static int	fairq_addq(struct fairq_class *, struct mbuf *, int hash);
 static struct mbuf *fairq_getq(struct fairq_class *, uint64_t);
 static struct mbuf *fairq_pollq(struct fairq_class *, uint64_t, int *);
 static fairq_bucket_t *fairq_selectq(struct fairq_class *, int);
@@ -498,9 +498,9 @@ fairq_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 {
 	struct fairq_if *pif = (struct fairq_if *)ifq->altq_disc;
 	struct fairq_class *cl;
-	struct pf_mtag *pf;
 	int error;
 	int len;
+	int hash;
 
 	crit_enter();
 
@@ -513,10 +513,16 @@ fairq_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 		goto done;
 	}
 
-	if ((pf = altq_find_pftag(m)) != NULL)
-		cl = clh_to_clp(pif, pf->qid);
-	else
+	if (m->m_pkthdr.fw_flags & PF_MBUF_STRUCTURE) {
+		cl = clh_to_clp(pif, m->m_pkthdr.pf.qid);
+		if (m->m_pkthdr.pf.flags & PF_TAG_STATE_HASHED)
+			hash = (int)m->m_pkthdr.pf.state_hash;
+		else
+			hash = 0;
+	} else {
 		cl = NULL;
+		hash = 0;
+	}
 	if (cl == NULL) {
 		cl = pif->pif_default;
 		if (cl == NULL) {
@@ -528,7 +534,7 @@ fairq_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 	cl->cl_flags |= FARF_HAS_PACKETS;
 	cl->cl_pktattr = NULL;
 	len = m_pktlen(m);
-	if (fairq_addq(cl, m, pf) != 0) {
+	if (fairq_addq(cl, m, hash) != 0) {
 		/* drop occurred.  mbuf was freed in fairq_addq. */
 		PKTCNTR_ADD(&cl->cl_dropcnt, len);
 		error = ENOBUFS;
@@ -627,7 +633,7 @@ fairq_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
 }
 
 static int
-fairq_addq(struct fairq_class *cl, struct mbuf *m, struct pf_mtag *pf)
+fairq_addq(struct fairq_class *cl, struct mbuf *m, int hash)
 {
 	fairq_bucket_t *b;
 	u_int hindex;
@@ -637,13 +643,13 @@ fairq_addq(struct fairq_class *cl, struct mbuf *m, struct pf_mtag *pf)
 	 * If the packet doesn't have any keep state put it on the end of
 	 * our queue.  XXX this can result in out of order delivery.
 	 */
-	if (pf == NULL || (pf->flags & PF_TAG_STATE_HASHED) == 0) {
+	if (hash == 0) {
 		if (cl->cl_head)
 			b = cl->cl_head->prev;
 		else
 			b = &cl->cl_buckets[0];
 	} else {
-		hindex = pf->state_hash & cl->cl_nbucket_mask;
+		hindex = hash & cl->cl_nbucket_mask;
 		b = &cl->cl_buckets[hindex];
 	}
 

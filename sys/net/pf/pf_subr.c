@@ -1,8 +1,3 @@
-/*      $FreeBSD: src/sys/contrib/pf/net/pf_subr.c,v 1.1 2004/06/16 23:24:00 mlaier Exp $ */
-/*	from $OpenBSD: kern_subr.c,v 1.26 2003/10/31 11:10:41 markus Exp $	*/
-/*	$NetBSD: kern_subr.c,v 1.15 1996/04/09 17:21:56 ragge Exp $	*/
-/*	$DragonFly: src/sys/net/pf/pf_subr.c,v 1.2 2006/09/05 00:55:47 dillon Exp $ */
-
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
  *
@@ -187,7 +182,7 @@ static int pf_isn_last_reseed;
 static u_int32_t pf_isn_offset;
 
 u_int32_t
-pf_new_isn(struct pf_state *s)	/* From FreeBSD */
+pf_new_isn(struct pf_state_key *sk)	/* From FreeBSD */
 {
 	MD5_CTX isn_ctx;
 	u_int32_t md5_buffer[4];
@@ -200,12 +195,12 @@ pf_new_isn(struct pf_state *s)	/* From FreeBSD */
 		pf_isn_last_reseed = ticks;
 	}
 
-	if (s->direction == PF_IN) {
-		src = &s->ext;
-		dst = &s->gwy;
+	if (sk->direction == PF_IN) {
+		src = &sk->ext;
+		dst = &sk->gwy;
 	} else {
-		src = &s->lan;
-		dst = &s->ext;
+		src = &sk->lan;
+		dst = &sk->ext;
 	}
 
 	/* Compute the md5 hash and return the ISN. */
@@ -213,7 +208,7 @@ pf_new_isn(struct pf_state *s)	/* From FreeBSD */
 	MD5Update(&isn_ctx, (u_char *) &dst->port, sizeof(u_short));
 	MD5Update(&isn_ctx, (u_char *) &src->port, sizeof(u_short));
 #ifdef INET6
-	if (s->af == AF_INET6) {
+	if (sk->af == AF_INET6) {
 		MD5Update(&isn_ctx, (u_char *) &dst->addr,
 			  sizeof(struct in6_addr));
 		MD5Update(&isn_ctx, (u_char *) &src->addr,

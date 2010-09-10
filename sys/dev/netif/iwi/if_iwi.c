@@ -155,7 +155,7 @@ static void	iwi_media_status(struct ifnet *, struct ifmediareq *);
 static int	iwi_newstate(struct ieee80211vap *, enum ieee80211_state, int);
 static void	iwi_wme_init(struct iwi_softc *);
 static int	iwi_wme_setparams(struct iwi_softc *, struct ieee80211com *);
-static void	iwi_update_wme(void *, int);
+static void	iwi_update_wme_task(void *, int);
 static int	iwi_wme_update(struct ieee80211com *);
 static uint16_t	iwi_read_prom_word(struct iwi_softc *, uint8_t);
 static void	iwi_frame_intr(struct iwi_softc *, struct iwi_rx_data *, int,
@@ -189,17 +189,17 @@ static void	iwi_set_channel(struct ieee80211com *);
 static void	iwi_scan_curchan(struct ieee80211_scan_state *, unsigned long maxdwell);
 static void	iwi_scan_mindwell(struct ieee80211_scan_state *);
 static int	iwi_auth_and_assoc(struct iwi_softc *, struct ieee80211vap *);
-static void	iwi_disassoc(void *, int);
+static void	iwi_disassoc_task(void *, int);
 static int	iwi_disassociate(struct iwi_softc *, int quiet);
 static void	iwi_init_locked(struct iwi_softc *);
 static void	iwi_init(void *);
 static int	iwi_init_fw_dma(struct iwi_softc *, int);
 static void	iwi_stop_locked(void *);
 static void	iwi_stop(struct iwi_softc *);
-static void	iwi_restart(void *, int);
+static void	iwi_restart_task(void *, int);
 static int	iwi_getrfkill(struct iwi_softc *);
-static void	iwi_radio_on(void *, int);
-static void	iwi_radio_off(void *, int);
+static void	iwi_radio_on_task(void *, int);
+static void	iwi_radio_off_task(void *, int);
 static void	iwi_sysctlattach(struct iwi_softc *);
 static void	iwi_led_event(struct iwi_softc *, int);
 static void	iwi_ledattach(struct iwi_softc *);
@@ -252,13 +252,16 @@ iwi_probe(device_t dev)
 {
 	const struct iwi_ident *ident;
 
+	wlan_serialize_enter();
 	for (ident = iwi_ident_table; ident->name != NULL; ident++) {
 		if (pci_get_vendor(dev) == ident->vendor &&
 		    pci_get_device(dev) == ident->device) {
 			device_set_desc(dev, ident->name);
+			wlan_serialize_exit();
 			return 0;
 		}
 	}
+	wlan_serialize_exit();
 	return ENXIO;
 }
 
@@ -276,27 +279,28 @@ iwi_attach(device_t dev)
 	uint8_t bands;
 	uint8_t macaddr[IEEE80211_ADDR_LEN];
 
+	wlan_serialize_enter();
+
 	sc->sc_dev = dev;
 
 	ifp = sc->sc_ifp = if_alloc(IFT_IEEE80211);
 	if (ifp == NULL) {
 		device_printf(dev, "can not if_alloc()\n");
+		wlan_serialize_exit();
 		return ENXIO;
 	}
 	ic = ifp->if_l2com;
 
-	IWI_LOCK_INIT(sc);
-
 	devfs_clone_bitmap_init(&sc->sc_unr);
 
-	TASK_INIT(&sc->sc_radiontask, 0, iwi_radio_on, sc);
-	TASK_INIT(&sc->sc_radiofftask, 0, iwi_radio_off, sc);
-	TASK_INIT(&sc->sc_restarttask, 0, iwi_restart, sc);
-	TASK_INIT(&sc->sc_disassoctask, 0, iwi_disassoc, sc);
-	TASK_INIT(&sc->sc_wmetask, 0, iwi_update_wme, sc);
+	TASK_INIT(&sc->sc_radiontask, 0, iwi_radio_on_task, sc);
+	TASK_INIT(&sc->sc_radiofftask, 0, iwi_radio_off_task, sc);
+	TASK_INIT(&sc->sc_restarttask, 0, iwi_restart_task, sc);
+	TASK_INIT(&sc->sc_disassoctask, 0, iwi_disassoc_task, sc);
+	TASK_INIT(&sc->sc_wmetask, 0, iwi_update_wme_task, sc);
 
-	callout_init(&sc->sc_wdtimer);
-	callout_init(&sc->sc_rftimer);
+	callout_init(&sc->sc_wdtimer_callout);
+	callout_init(&sc->sc_rftimer_callout);
 
 	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
 		device_printf(dev, "chip is in D%d power mode "
@@ -433,7 +437,7 @@ iwi_attach(device_t dev)
 	 * Hook our interrupt after all initialization is complete.
 	 */
 	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE,
-	    iwi_intr, sc, &sc->sc_ih, NULL);
+	    iwi_intr, sc, &sc->sc_ih, &wlan_global_serializer);
 	if (error != 0) {
 		device_printf(dev, "could not set up interrupt\n");
 		goto fail;
@@ -442,9 +446,11 @@ iwi_attach(device_t dev)
 	if (bootverbose)
 		ieee80211_announce(ic);
 
+	wlan_serialize_exit();
 	return 0;
 fail:
 	/* XXX fix */
+	wlan_serialize_exit();
 	iwi_detach(dev);
 	return ENXIO;
 }
@@ -455,6 +461,8 @@ iwi_detach(device_t dev)
 	struct iwi_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = sc->sc_ifp;
 	struct ieee80211com *ic = ifp->if_l2com;
+
+	wlan_serialize_enter();
 
 	/* NB: do early to drain any pending tasks */
 	ieee80211_draintask(ic, &sc->sc_radiontask);
@@ -486,10 +494,9 @@ iwi_detach(device_t dev)
 	if (sc->sc_sysctl_tree != NULL)
 		sysctl_ctx_free(&sc->sc_sysctl_ctx);
 
-	IWI_LOCK_DESTROY(sc);
-
 	if_free(ifp);
 
+	wlan_serialize_exit();
 	return 0;
 }
 
@@ -851,8 +858,10 @@ iwi_shutdown(device_t dev)
 {
 	struct iwi_softc *sc = device_get_softc(dev);
 
+	wlan_serialize_enter();
 	iwi_stop(sc);
 	iwi_put_firmware(sc);		/* ??? XXX */
+	wlan_serialize_exit();
 
 	return 0;
 }
@@ -862,7 +871,9 @@ iwi_suspend(device_t dev)
 {
 	struct iwi_softc *sc = device_get_softc(dev);
 
+	wlan_serialize_enter();
 	iwi_stop(sc);
+	wlan_serialize_exit();
 
 	return 0;
 }
@@ -873,11 +884,13 @@ iwi_resume(device_t dev)
 	struct iwi_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = sc->sc_ifp;
 
+	wlan_serialize_enter();
 	pci_write_config(dev, 0x41, 0, 1);
 
 	if (ifp->if_flags & IFF_UP)
 		iwi_init(sc);
 
+	wlan_serialize_exit();
 	return 0;
 }
 
@@ -958,14 +971,11 @@ iwi_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ifnet *ifp = ic->ic_ifp;
 	struct iwi_softc *sc = ifp->if_softc;
-	IWI_LOCK_DECL;
 
 	DPRINTF(("%s: %s -> %s flags 0x%x\n", __func__,
 		ieee80211_state_name[vap->iv_state],
 		ieee80211_state_name[nstate], sc->flags));
 
-	IEEE80211_UNLOCK(ic);
-	IWI_LOCK(sc);
 	switch (nstate) {
 	case IEEE80211_S_INIT:
 		/*
@@ -1006,8 +1016,7 @@ iwi_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	default:
 		break;
 	}
-	IWI_UNLOCK(sc);
-	IEEE80211_LOCK(ic);
+
 	return ivp->iwi_newstate(vap, nstate, arg);
 }
 
@@ -1081,15 +1090,14 @@ iwi_wme_setparams(struct iwi_softc *sc, struct ieee80211com *ic)
 #undef IWI_EXP2
 
 static void
-iwi_update_wme(void *arg, int npending)
+iwi_update_wme_task(void *arg, int npending)
 {
 	struct ieee80211com *ic = arg;
 	struct iwi_softc *sc = ic->ic_ifp->if_softc;
-	IWI_LOCK_DECL;
 
-	IWI_LOCK(sc);
+	wlan_serialize_enter();
 	(void) iwi_wme_setparams(sc, ic);
-	IWI_UNLOCK(sc);
+	wlan_serialize_exit();
 }
 
 static int
@@ -1206,7 +1214,6 @@ iwi_frame_intr(struct iwi_softc *sc, struct iwi_rx_data *data, int i,
 	struct ieee80211_node *ni;
 	int type, error, framelen;
 	int8_t rssi, nf;
-	IWI_LOCK_DECL;
 
 	framelen = le16toh(frame->len);
 	if (framelen < IEEE80211_MIN_LEN || framelen > MCLBYTES) {
@@ -1288,7 +1295,6 @@ iwi_frame_intr(struct iwi_softc *sc, struct iwi_rx_data *data, int i,
 		tap->wr_rate = iwi_cvtrate(frame->rate);
 		tap->wr_antenna = frame->antenna;
 	}
-	IWI_UNLOCK(sc);
 
 	ni = ieee80211_find_rxnode(ic, mtod(m, struct ieee80211_frame_min *));
 	if (ni != NULL) {
@@ -1297,7 +1303,6 @@ iwi_frame_intr(struct iwi_softc *sc, struct iwi_rx_data *data, int i,
 	} else
 		type = ieee80211_input_all(ic, m, rssi, nf);
 
-	IWI_LOCK(sc);
 	if (sc->sc_softled) {
 		/*
 		 * Blink for any data frame.  Otherwise do a
@@ -1656,12 +1661,8 @@ iwi_intr(void *arg)
 {
 	struct iwi_softc *sc = arg;
 	uint32_t r;
-	IWI_LOCK_DECL;
-
-	IWI_LOCK(sc);
 
 	if ((r = CSR_READ_4(sc, IWI_CSR_INTR)) == 0 || r == 0xffffffff) {
-		IWI_UNLOCK(sc);
 		return;
 	}
 
@@ -1670,7 +1671,7 @@ iwi_intr(void *arg)
 
 	if (r & IWI_INTR_FATAL_ERROR) {
 		iwi_fatal_error_intr(sc);
-		goto done;
+		return;
 	}
 
 	if (r & IWI_INTR_FW_INITED) {
@@ -1706,16 +1707,12 @@ iwi_intr(void *arg)
 		/* XXX rate-limit */
 		device_printf(sc->sc_dev, "parity error\n");
 	}
-done:
-	IWI_UNLOCK(sc);
 }
 
 static int
 iwi_cmd(struct iwi_softc *sc, uint8_t type, void *data, uint8_t len)
 {
 	struct iwi_cmd_desc *desc;
-
-	IWI_LOCK_ASSERT(sc);
 
 	if (sc->flags & IWI_FLAG_BUSY) {
 		device_printf(sc->sc_dev, "%s: cmd %d not sent, busy\n",
@@ -1743,7 +1740,7 @@ iwi_cmd(struct iwi_softc *sc, uint8_t type, void *data, uint8_t len)
 	sc->cmdq.cur = (sc->cmdq.cur + 1) % IWI_CMD_RING_COUNT;
 	CSR_WRITE_4(sc, IWI_CSR_CMD_WIDX, sc->cmdq.cur);
 	
-	return lksleep(sc, &sc->sc_lock, PINTERLOCKED, "iwicmd", hz);
+	return zsleep(sc, &wlan_global_serializer, 0, "iwicmd", hz);
 }
 
 static void
@@ -1782,7 +1779,6 @@ iwi_tx_start(struct ifnet *ifp, struct mbuf *m0, struct ieee80211_node *ni,
 	int error, nsegs, hdrlen, i;
 	int ismcast, flags, xflags, staid;
 
-	IWI_LOCK_ASSERT(sc);
 	wh = mtod(m0, const struct ieee80211_frame *);
 	/* NB: only data frames use this path */
 	hdrlen = ieee80211_hdrsize(wh);
@@ -1947,8 +1943,6 @@ iwi_start_locked(struct ifnet *ifp)
 	struct ieee80211_node *ni;
 	int ac;
 
-	IWI_LOCK_ASSERT(sc);
-
 	if ((ifp->if_flags & IFF_RUNNING) == 0)
 		return;
 
@@ -1979,14 +1973,7 @@ iwi_start_locked(struct ifnet *ifp)
 static void
 iwi_start(struct ifnet *ifp)
 {
-	struct iwi_softc *sc;
-	IWI_LOCK_DECL;
-
-	sc = ifp->if_softc;
-
-	IWI_LOCK(sc);
 	iwi_start_locked(ifp);
-	IWI_UNLOCK(sc);
 }
 
 static void
@@ -1996,13 +1983,14 @@ iwi_watchdog(void *arg)
 	struct ifnet *ifp = sc->sc_ifp;
 	struct ieee80211com *ic = ifp->if_l2com;
 
-	IWI_LOCK(sc);
-
+	wlan_serialize_enter();
 	if (sc->sc_tx_timer > 0) {
 		if (--sc->sc_tx_timer == 0) {
 			if_printf(ifp, "device timeout\n");
 			ifp->if_oerrors++;
+			wlan_serialize_exit();
 			ieee80211_runtask(ic, &sc->sc_restarttask);
+			wlan_serialize_enter();
 		}
 	}
 	if (sc->sc_state_timer > 0) {
@@ -2013,18 +2001,22 @@ iwi_watchdog(void *arg)
 				struct ieee80211com *ic = ifp->if_l2com;
 				ieee80211_cancel_scan(TAILQ_FIRST(&ic->ic_vaps));
 			}
+			wlan_serialize_exit();
 			ieee80211_runtask(ic, &sc->sc_restarttask);
+			wlan_serialize_enter();
 			sc->sc_state_timer = 3;
 		}
 	}
 	if (sc->sc_busy_timer > 0) {
 		if (--sc->sc_busy_timer == 0) {
 			if_printf(ifp, "firmware command timeout, resetting\n");
+			wlan_serialize_exit();
 			ieee80211_runtask(ic, &sc->sc_restarttask);
+			wlan_serialize_enter();
 		}
 	}
-	callout_reset(&sc->sc_wdtimer, hz, iwi_watchdog, sc);
-	IWI_UNLOCK(sc);
+	callout_reset(&sc->sc_wdtimer_callout, hz, iwi_watchdog, sc);
+	wlan_serialize_exit();
 }
 
 static int
@@ -2034,11 +2026,9 @@ iwi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 	struct ieee80211com *ic = ifp->if_l2com;
 	struct ifreq *ifr = (struct ifreq *) data;
 	int error = 0, startall = 0;
-	IWI_LOCK_DECL;
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:
-		IWI_LOCK(sc);
 		if (ifp->if_flags & IFF_UP) {
 			if (!(ifp->if_flags & IFF_RUNNING)) {
 				iwi_init_locked(sc);
@@ -2048,7 +2038,6 @@ iwi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 			if (ifp->if_flags & IFF_RUNNING)
 				iwi_stop_locked(sc);
 		}
-		IWI_UNLOCK(sc);
 		if (startall)
 			ieee80211_start_all(ic);
 		break;
@@ -2173,12 +2162,15 @@ static void
 iwi_getfw(struct iwi_fw *fw, const char *fwname,
 	  struct iwi_fw *uc, const char *ucname)
 {
+	wlan_assert_serialized();
+	wlan_serialize_exit();
 	if (fw->fp == NULL)
 		fw->fp = firmware_get(fwname);
 
 	/* NB: pre-3.0 ucode is packaged separately */
 	if (uc->fp == NULL && fw->fp != NULL && fw->fp->version < 300)
 		uc->fp = firmware_get(ucname);
+	wlan_serialize_enter();
 }
 
 /*
@@ -2201,6 +2193,8 @@ iwi_get_firmware(struct iwi_softc *sc, enum ieee80211_opmode opmode)
 	const struct iwi_firmware_hdr *hdr;
 	const struct firmware *fp;
 
+	wlan_serialize_enter();
+
 	/* invalidate cached firmware on mode change */
 	if (sc->fw_mode != opmode)
 		iwi_put_firmware(sc);
@@ -2218,6 +2212,7 @@ iwi_get_firmware(struct iwi_softc *sc, enum ieee80211_opmode opmode)
 		break;
 	default:
 		device_printf(sc->sc_dev, "unknown opmode %d\n", opmode);
+		wlan_serialize_exit();
 		return EINVAL;
 	}
 	fp = sc->fw_fw.fp;
@@ -2297,19 +2292,24 @@ iwi_get_firmware(struct iwi_softc *sc, enum ieee80211_opmode opmode)
 #endif
 
 	sc->fw_mode = opmode;
+	wlan_serialize_exit();
 	return 0;
 bad:
 	iwi_put_firmware(sc);
+	wlan_serialize_exit();
 	return 1;
 }
 
 static void
 iwi_put_fw(struct iwi_fw *fw)
 {
+	wlan_assert_serialized();
+	wlan_serialize_exit();
 	if (fw->fp != NULL) {
 		firmware_put(fw->fp, FIRMWARE_UNLOAD);
 		fw->fp = NULL;
 	}
+	wlan_serialize_enter();
 	fw->data = NULL;
 	fw->size = 0;
 	fw->name = NULL;
@@ -2335,7 +2335,6 @@ iwi_load_ucode(struct iwi_softc *sc, const struct iwi_fw *fw)
 	size_t size = fw->size;
 	int i, ntries, error;
 
-	IWI_LOCK_ASSERT(sc);
 	error = 0;
 	CSR_WRITE_4(sc, IWI_CSR_RST, CSR_READ_4(sc, IWI_CSR_RST) |
 	    IWI_RST_STOP_MASTER);
@@ -2407,8 +2406,6 @@ iwi_load_firmware(struct iwi_softc *sc, const struct iwi_fw *fw)
 	u_char *p, *end;
 	uint32_t sentinel, ctl, src, dst, sum, len, mlen, tmp;
 	int ntries, error;
-
-	IWI_LOCK_ASSERT(sc);
 
 	/* copy firmware image to DMA memory */
 	memcpy(sc->fw_virtaddr, fw->data, fw->size);
@@ -2491,7 +2488,7 @@ iwi_load_firmware(struct iwi_softc *sc, const struct iwi_fw *fw)
 	CSR_WRITE_4(sc, IWI_CSR_CTL, tmp | IWI_CTL_ALLOW_STANDBY);
 
 	/* wait at most one second for firmware initialization to complete */
-	error = tsleep(sc, 0, "iwiinit", hz);
+	error = zsleep(sc, &wlan_global_serializer, 0, "iwiinit", hz);
 	if (error != 0) {
 		device_printf(sc->sc_dev, "timeout waiting for firmware "
 			    "initialization to complete\n");
@@ -2551,8 +2548,6 @@ iwi_config(struct iwi_softc *sc)
 	uint32_t data;
 	int error, i;
 	const uint8_t *eaddr = IF_LLADDR(ifp);
-
-	IWI_LOCK_ASSERT(sc);
 
 	DPRINTF(("Setting MAC address to %6D\n", eaddr, ":"));
 	error = iwi_cmd(sc, IWI_CMD_SET_MAC_ADDRESS, IF_LLADDR(ifp),
@@ -2665,7 +2660,6 @@ iwi_scanchan(struct iwi_softc *sc, unsigned long maxdwell, int allchan)
 	struct iwi_scan_ext scan;
 	int error = 0;
 
-	IWI_LOCK_ASSERT(sc);
 	if (sc->fw_state == IWI_FW_SCANNING) {
 		/*
 		 * This should not happen as we only trigger scan_next after
@@ -2797,8 +2791,6 @@ iwi_auth_and_assoc(struct iwi_softc *sc, struct ieee80211vap *vap)
 	uint16_t capinfo;
 	uint32_t data;
 	int error, mode;
-
-	IWI_LOCK_ASSERT(sc);
 
 	if (sc->flags & IWI_FLAG_ASSOCIATED) {
 		DPRINTF(("Already associated\n"));
@@ -2965,14 +2957,13 @@ done:
 }
 
 static void
-iwi_disassoc(void *arg, int pending)
+iwi_disassoc_task(void *arg, int pending)
 {
 	struct iwi_softc *sc = arg;
-	IWI_LOCK_DECL;
 
-	IWI_LOCK(sc);
+	wlan_serialize_enter();
 	iwi_disassociate(sc, 0);
-	IWI_UNLOCK(sc);
+	wlan_serialize_exit();
 }
 
 static int
@@ -3064,8 +3055,6 @@ iwi_init_locked(struct iwi_softc *sc)
 	struct iwi_rx_data *data;
 	int i;
 
-	IWI_LOCK_ASSERT(sc);
-
 	if (sc->fw_state == IWI_FW_LOADING) {
 		device_printf(sc->sc_dev, "%s: already loading\n", __func__);
 		return;		/* XXX: condvar? */
@@ -3133,7 +3122,7 @@ iwi_init_locked(struct iwi_softc *sc)
 		goto fail2;
 	}
 
-	callout_reset(&sc->sc_wdtimer, hz, iwi_watchdog, sc);
+	callout_reset(&sc->sc_wdtimer_callout, hz, iwi_watchdog, sc);
 	ifp->if_flags &= ~IFF_OACTIVE;
 	ifp->if_flags |= IFF_RUNNING;
 	return;
@@ -3149,11 +3138,8 @@ iwi_init(void *priv)
 	struct iwi_softc *sc = priv;
 	struct ifnet *ifp = sc->sc_ifp;
 	struct ieee80211com *ic = ifp->if_l2com;
-	IWI_LOCK_DECL;
 
-	IWI_LOCK(sc);
 	iwi_init_locked(sc);
-	IWI_UNLOCK(sc);
 
 	if (ifp->if_flags & IFF_RUNNING)
 		ieee80211_start_all(ic);
@@ -3165,16 +3151,14 @@ iwi_stop_locked(void *priv)
 	struct iwi_softc *sc = priv;
 	struct ifnet *ifp = sc->sc_ifp;
 
-	IWI_LOCK_ASSERT(sc);
-
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 
 	if (sc->sc_softled) {
-		callout_stop(&sc->sc_ledtimer);
+		callout_stop(&sc->sc_ledtimer_callout);
 		sc->sc_blinking = 0;
 	}
-	callout_stop(&sc->sc_wdtimer);
-	callout_stop(&sc->sc_rftimer);
+	callout_stop(&sc->sc_wdtimer_callout);
+	callout_stop(&sc->sc_rftimer_callout);
 
 	iwi_stop_master(sc);
 
@@ -3199,19 +3183,17 @@ iwi_stop_locked(void *priv)
 static void
 iwi_stop(struct iwi_softc *sc)
 {
-	IWI_LOCK_DECL;
-
-	IWI_LOCK(sc);
 	iwi_stop_locked(sc);
-	IWI_UNLOCK(sc);
 }
 
 static void
-iwi_restart(void *arg, int npending)
+iwi_restart_task(void *arg, int npending)
 {
 	struct iwi_softc *sc = arg;
 
+	wlan_serialize_enter();
 	iwi_init(sc);
+	wlan_serialize_exit();
 }
 
 /*
@@ -3225,23 +3207,23 @@ iwi_getrfkill(struct iwi_softc *sc)
 }
 
 static void
-iwi_radio_on(void *arg, int pending)
+iwi_radio_on_task(void *arg, int pending)
 {
 	struct iwi_softc *sc = arg;
 	struct ieee80211com *ic = sc->sc_ifp->if_l2com;
 
+	wlan_serialize_enter();
 	device_printf(sc->sc_dev, "radio turned on\n");
 
 	iwi_init(sc);
 	ieee80211_notify_radio(ic, 1);
+	wlan_serialize_exit();
 }
 
 static void
 iwi_rfkill_poll(void *arg)
 {
 	struct iwi_softc *sc = arg;
-
-	IWI_LOCK_ASSERT(sc);
 
 	/*
 	 * Check for a change in rfkill state.  We get an
@@ -3255,24 +3237,23 @@ iwi_rfkill_poll(void *arg)
 		ieee80211_runtask(ic, &sc->sc_radiontask);
 		return;
 	}
-	callout_reset(&sc->sc_rftimer, 2*hz, iwi_rfkill_poll, sc);
+	callout_reset(&sc->sc_rftimer_callout, 2*hz, iwi_rfkill_poll, sc);
 }
 
 static void
-iwi_radio_off(void *arg, int pending)
+iwi_radio_off_task(void *arg, int pending)
 {
 	struct iwi_softc *sc = arg;
 	struct ieee80211com *ic = sc->sc_ifp->if_l2com;
-	IWI_LOCK_DECL;
 
+	wlan_serialize_enter();
 	device_printf(sc->sc_dev, "radio turned off\n");
 
 	ieee80211_notify_radio(ic, 0);
 
-	IWI_LOCK(sc);
 	iwi_stop_locked(sc);
 	iwi_rfkill_poll(sc);
-	IWI_UNLOCK(sc);
+	wlan_serialize_exit();
 }
 
 static int
@@ -3391,7 +3372,7 @@ iwi_led_off(void *arg)
 	v = iwi_read_event(sc);
 	v &= ~sc->sc_ledpin;
 	iwi_write_event(sc, iwi_toggle_event(v));
-	callout_reset(&sc->sc_ledtimer, sc->sc_ledoff, iwi_led_done, sc);
+	callout_reset(&sc->sc_ledtimer_callout, sc->sc_ledoff, iwi_led_done, sc);
 }
 
 /*
@@ -3407,7 +3388,7 @@ iwi_led_blink(struct iwi_softc *sc, int on, int off)
 	iwi_write_event(sc, iwi_toggle_event(v));
 	sc->sc_blinking = 1;
 	sc->sc_ledoff = off;
-	callout_reset(&sc->sc_ledtimer, on, iwi_led_off, sc);
+	callout_reset(&sc->sc_ledtimer_callout, on, iwi_led_off, sc);
 }
 
 static void
@@ -3503,7 +3484,7 @@ iwi_ledattach(struct iwi_softc *sc)
 	sc->sc_blinking = 0;
 	sc->sc_ledstate = 1;
 	sc->sc_ledidle = (2700*hz)/1000;	/* 2.7sec */
-	callout_init(&sc->sc_ledtimer);
+	callout_init(&sc->sc_ledtimer_callout);
 
 	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		"softled", CTLTYPE_INT | CTLFLAG_RW, sc, 0,
@@ -3552,12 +3533,9 @@ iwi_scan_curchan(struct ieee80211_scan_state *ss, unsigned long maxdwell)
 	struct ieee80211vap *vap = ss->ss_vap;
 	struct ifnet *ifp = vap->iv_ic->ic_ifp;
 	struct iwi_softc *sc = ifp->if_softc;
-	IWI_LOCK_DECL;
 
-	IWI_LOCK(sc);
 	if (iwi_scanchan(sc, maxdwell, 0))
 		ieee80211_cancel_scan(vap);
-	IWI_UNLOCK(sc);
 }
 
 static void
@@ -3571,12 +3549,9 @@ iwi_scan_end(struct ieee80211com *ic)
 {
 	struct ifnet *ifp = ic->ic_ifp;
 	struct iwi_softc *sc = ifp->if_softc;
-	IWI_LOCK_DECL;
 
-	IWI_LOCK(sc);
 	sc->flags &= ~IWI_FLAG_CHANNEL_SCAN;
 	/* NB: make sure we're still scanning */
 	if (sc->fw_state == IWI_FW_SCANNING)
 		iwi_cmd(sc, IWI_CMD_ABORT_SCAN, NULL, 0);
-	IWI_UNLOCK(sc);
 }

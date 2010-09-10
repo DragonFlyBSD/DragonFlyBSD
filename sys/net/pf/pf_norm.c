@@ -1,8 +1,4 @@
-/*	$FreeBSD: src/sys/contrib/pf/net/pf_norm.c,v 1.10 2004/08/14 15:32:40 dwmalone Exp $	*/
-/*	$OpenBSD: pf_norm.c,v 1.80.2.1 2004/04/30 21:46:33 brad Exp $ */
-/* add	$OpenBSD: pf_norm.c,v 1.87 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_norm.c,v 1.10 2008/09/04 09:08:22 hasso Exp $ */
-/*	$OpenBSD: pf_norm.c,v 1.107 2006/04/16 00:59:52 pascoe Exp $ */
+/*	$OpenBSD: pf_norm.c,v 1.109 2007/05/28 17:16:39 henning Exp $ */
 
 /*
  * Copyright (c) 2010 The DragonFly Project.  All rights reserved.
@@ -290,7 +286,7 @@ pf_remove_fragment(struct pf_fragment *frag)
 	}
 }
 
-#define FR_IP_OFF(fr)	((ntohs((fr)->fr_ip->ip_off) & IP_OFFMASK) << 3)
+#define FR_IP_OFF(fr)	(((fr)->fr_ip->ip_off & IP_OFFMASK) << 3)
 struct mbuf *
 pf_reassemble(struct mbuf **m0, struct pf_fragment **frag,
     struct pf_frent *frent, int mff)
@@ -852,7 +848,7 @@ pf_normalize_ip(struct mbuf **m0, int dir, struct pfi_kif *kif, u_short *reason,
 		goto drop;
 
 	/* Clear IP_DF if the rule uses the no-df option */
-	if (r->rule_flag & PFRULE_NODF && h->ip_off & htons(IP_DF)) {
+	if (r->rule_flag & PFRULE_NODF && h->ip_off & IP_DF) {
 		u_int16_t ip_off = h->ip_off;
 
 		h->ip_off &= ~IP_DF;
@@ -915,18 +911,6 @@ pf_normalize_ip(struct mbuf **m0, int dir, struct pfi_kif *kif, u_short *reason,
 		if (m == NULL)
 			return (PF_DROP);
 
-		/* use mtag from concatenated mbuf chain */
-		pd->pf_mtag = pf_find_mtag(m);
-#ifdef DIAGNOSTIC
-		if (pd->pf_mtag == NULL) {
-			kprintf("%s: pf_find_mtag returned NULL(1)\n", __func__);
-			if ((pd->pf_mtag = pf_get_mtag(m)) == NULL) {
-				m_freem(m);
-				*m0 = NULL;
-				goto no_mem;
-			}
-		}
-#endif
 		if (frag != NULL && (frag->fr_flags & PFFRAG_DROP))
 			goto drop;
 
@@ -935,7 +919,7 @@ pf_normalize_ip(struct mbuf **m0, int dir, struct pfi_kif *kif, u_short *reason,
 		/* non-buffering fragment cache (drops or masks overlaps) */
 		int	nomem = 0;
 
-		if (dir == PF_OUT && pd->pf_mtag->flags & PF_TAG_FRAGCACHE) {
+		if (dir == PF_OUT && m->m_pkthdr.pf.flags & PF_TAG_FRAGCACHE) {
 			/*
 			 * Already passed the fragment cache in the
 			 * input direction.  If we continued, it would
@@ -962,20 +946,8 @@ pf_normalize_ip(struct mbuf **m0, int dir, struct pfi_kif *kif, u_short *reason,
 			goto drop;
 		}
 
-		/* use mtag from copied and trimmed mbuf chain */
-		pd->pf_mtag = pf_find_mtag(m);
-#ifdef DIAGNOSTIC
-		if (pd->pf_mtag == NULL) {
-			kprintf("%s: pf_find_mtag returned NULL(2)\n", __func__);
-			if ((pd->pf_mtag = pf_get_mtag(m)) == NULL) {
-				m_freem(m);
-				*m0 = NULL;
-				goto no_mem;
-			}
-		}
-#endif
 		if (dir == PF_IN)
-			pd->pf_mtag->flags |= PF_TAG_FRAGCACHE;
+			m->m_pkthdr.pf.flags |= PF_TAG_FRAGCACHE;
 
 		if (frag != NULL && (frag->fr_flags & PFFRAG_DROP))
 			goto drop;
@@ -984,11 +956,11 @@ pf_normalize_ip(struct mbuf **m0, int dir, struct pfi_kif *kif, u_short *reason,
 
  no_fragment:
 	/* At this point, only IP_DF is allowed in ip_off */
-	if (h->ip_off & IP_DF) {
+	if (h->ip_off & ~IP_DF) {
 		u_int16_t ip_off = h->ip_off;
 
 		h->ip_off &= IP_DF;
-		h->ip_sum = pf_cksum_fixup(h->ip_sum, ip_off, h->ip_off, 0);
+		h->ip_sum = pf_cksum_fixup(h->ip_sum, htons(ip_off), htons(h->ip_off), 0);
 	}
 
 	/* Enforce a minimum ttl, may cause endless packet loops */
@@ -1645,7 +1617,7 @@ pf_normalize_tcp_stateful(struct mbuf *m, int off, struct pf_pdesc *pd,
 		 *    network conditions that re-order packets and
 		 *    cause our view of them to decrease.  For now the
 		 *    only lowerbound we can safely determine is that
-		 *    the TS echo will never be less than the orginal
+		 *    the TS echo will never be less than the original
 		 *    TS.  XXX There is probably a better lowerbound.
 		 *    Remove TS_MAX_CONN with better lowerbound check.
 		 *        tescr >= other original TS

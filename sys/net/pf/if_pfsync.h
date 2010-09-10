@@ -1,4 +1,4 @@
-/*	$OpenBSD: if_pfsync.h,v 1.30 2006/10/31 14:49:01 henning Exp $	*/
+/*	$OpenBSD: if_pfsync.h,v 1.31 2007/05/31 04:11:42 mcbride Exp $	*/
 
 /*
  * Copyright (c) 2001 Michael Shalayeff
@@ -48,61 +48,18 @@
 
 #define PFSYNC_ID_LEN	sizeof(u_int64_t)
 
-struct pfsync_state_scrub {
-	u_int16_t	pfss_flags;
-	u_int8_t	pfss_ttl;	/* stashed TTL		*/
-#define PFSYNC_SCRUB_FLAG_VALID 	0x01
-	u_int8_t	scrub_flag;
-	u_int32_t	pfss_ts_mod;	/* timestamp modulation	*/
-} __packed;
-
-struct pfsync_state_host {
-	struct pf_addr	addr;
-	u_int16_t	port;
-	u_int16_t	pad[3];
-} __packed;
-
-struct pfsync_state_peer {
-	struct pfsync_state_scrub scrub;	/* state is scrubbed	*/
-	u_int32_t	seqlo;		/* Max sequence number sent	*/
-	u_int32_t	seqhi;		/* Max the other end ACKd + win	*/
-	u_int32_t	seqdiff;	/* Sequence number modulator	*/
-	u_int16_t	max_win;	/* largest window (pre scaling)	*/
-	u_int16_t	mss;		/* Maximum segment size option	*/
-	u_int8_t	state;		/* active state level		*/
-	u_int8_t	wscale;		/* window scaling factor	*/
-	u_int8_t	pad[6];
-} __packed;
-
-struct pfsync_state {
-	u_int32_t	 id[2];
-	char		 ifname[IFNAMSIZ];
-	struct pfsync_state_host lan;
-	struct pfsync_state_host gwy;
-	struct pfsync_state_host ext;
-	struct pfsync_state_peer src;
-	struct pfsync_state_peer dst;
-	struct pf_addr	 rt_addr;
-	u_int32_t	 rule;
-	u_int32_t	 anchor;
-	u_int32_t	 nat_rule;
-	u_int32_t	 creation;
-	u_int32_t	 expire;
-	u_int32_t	 packets[2][2];
-	u_int32_t	 bytes[2][2];
-	u_int32_t	 creatorid;
-	sa_family_t	 af;
-	u_int8_t	 proto;
-	u_int8_t	 direction;
-	u_int8_t	 log;
-	u_int8_t	 allow_opts;
-	u_int8_t	 timeout;
-	u_int8_t	 sync_flags;
-	u_int8_t	 updates;
-} __packed;
-
 #define PFSYNC_FLAG_COMPRESS 	0x01
 #define PFSYNC_FLAG_STALE	0x02
+
+struct pfsync_tdb {
+	u_int32_t	spi;
+	union sockaddr_union dst;
+	u_int32_t	rpl;
+	u_int64_t	cur_bytes;
+	u_int8_t	sproto;
+	u_int8_t	updates;
+	u_int8_t	pad[2];
+} __packed;
 
 struct pfsync_state_upd {
 	u_int32_t		id[2];
@@ -259,7 +216,7 @@ struct pfsyncreq {
 #define SIOCSETPFSYNC	_IOW('i', 247, struct ifreq)
 #define SIOCGETPFSYNC	_IOWR('i', 248, struct ifreq)
 
-
+/* for copies to/from network */
 #define pf_state_peer_hton(s,d) do {		\
 	(d)->seqlo = htonl((s)->seqlo);		\
 	(d)->seqhi = htonl((s)->seqhi);		\
@@ -321,7 +278,7 @@ int pfsync_clear_states(u_int32_t, char *);
 int pfsync_pack_state(u_int8_t, struct pf_state *, int);
 #define pfsync_insert_state(st)	do {				\
 	if ((st->rule.ptr->rule_flag & PFRULE_NOSYNC) ||	\
-	    (st->proto == IPPROTO_PFSYNC))			\
+	    (st->state_key->proto == IPPROTO_PFSYNC))			\
 		st->sync_flags |= PFSTATE_NOSYNC;		\
 	else if (!st->sync_flags)				\
 		pfsync_pack_state(PFSYNC_ACT_INS, (st), 	\

@@ -21,13 +21,13 @@
 #include <sys/systimer.h>
 #endif
 
+#endif	/* _KERNEL || _KERNEL_STRUCTURES */
+
 struct iosched_data {
     size_t	iorbytes;
     size_t	iowbytes;
     int		lastticks;	/* decay last recorded */
 };
-
-#endif	/* _KERNEL || _KERNEL_STRUCTURES */
 
 #ifdef _KERNEL
 

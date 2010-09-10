@@ -278,7 +278,7 @@ labelkre(void)
 
 	clear();
 	mvprintw(STATROW, STATCOL + 4, "users    Load");
-	mvprintw(MEMROW, MEMCOL, "Mem:KB    REAL            VIRTUAL");
+	mvprintw(MEMROW, MEMCOL, "Mem:MB    REAL            VIRTUAL");
 	mvprintw(MEMROW + 1, MEMCOL, "        Tot   Share      Tot    Share");
 	mvprintw(MEMROW + 2, MEMCOL, "Act");
 	mvprintw(MEMROW + 3, MEMCOL, "All");
@@ -484,16 +484,17 @@ showkre(void)
 	putfloat(avenrun[1], STATROW, STATCOL + 25, 6, 2, 0);
 	putfloat(avenrun[2], STATROW, STATCOL + 32, 6, 2, 0);
 	mvaddstr(STATROW, STATCOL + 53, buf);
-#define pgtokb(pg)	((pg) * vms.v_page_size / 1024)
-	putint(pgtokb(total.t_arm), MEMROW + 2, MEMCOL + 3, 8, 'K');
-	putint(pgtokb(total.t_armshr), MEMROW + 2, MEMCOL + 11, 8, 'K');
-	putint(pgtokb(total.t_avm), MEMROW + 2, MEMCOL + 19, 9, 'K');
-	putint(pgtokb(total.t_avmshr), MEMROW + 2, MEMCOL + 28, 9, 'K');
-	putint(pgtokb(total.t_rm), MEMROW + 3, MEMCOL + 3, 8, 'K');
-	putint(pgtokb(total.t_rmshr), MEMROW + 3, MEMCOL + 11, 8, 'K');
-	putint(pgtokb(total.t_vm), MEMROW + 3, MEMCOL + 19, 9, 'K');
-	putint(pgtokb(total.t_vmshr), MEMROW + 3, MEMCOL + 28, 9, 'K');
-	putint(pgtokb(total.t_free), MEMROW + 2, MEMCOL + 37, 8, 'K');
+#define pgtokb(pg)	(int)((intmax_t)(pg) * vms.v_page_size / 1024)
+#define pgtomb(pg)	(int)((intmax_t)(pg) * vms.v_page_size / (1024 * 1024))
+	putint(pgtomb(total.t_arm), MEMROW + 2, MEMCOL + 3, 8, 'M');
+	putint(pgtomb(total.t_armshr), MEMROW + 2, MEMCOL + 11, 8, 'M');
+	putint(pgtomb(total.t_avm), MEMROW + 2, MEMCOL + 19, 9, 'M');
+	putint(pgtomb(total.t_avmshr), MEMROW + 2, MEMCOL + 28, 9, 'M');
+	putint(pgtomb(total.t_rm), MEMROW + 3, MEMCOL + 3, 8, 'M');
+	putint(pgtomb(total.t_rmshr), MEMROW + 3, MEMCOL + 11, 8, 'M');
+	putint(pgtomb(total.t_vm), MEMROW + 3, MEMCOL + 19, 9, 'M');
+	putint(pgtomb(total.t_vmshr), MEMROW + 3, MEMCOL + 28, 9, 'M');
+	putint(pgtomb(total.t_free), MEMROW + 2, MEMCOL + 37, 8, 'M');
 	putint(total.t_rq - 1, PROCSROW + 1, PROCSCOL + 0, 3, 'D');
 	putint(total.t_pw, PROCSROW + 1, PROCSCOL + 3, 3, 'D');
 	putint(total.t_dw, PROCSROW + 1, PROCSCOL + 6, 3, 'D');

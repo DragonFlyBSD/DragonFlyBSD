@@ -1,4 +1,4 @@
-/*	$OpenBSD: pflogd.c,v 1.37 2006/10/26 13:34:47 jmc Exp $	*/
+/*	$OpenBSD: pflogd.c,v 1.45 2007/06/06 14:11:26 henning Exp $	*/
 
 /*
  * Copyright (c) 2001 Theo de Raadt
@@ -34,9 +34,13 @@
 #include <sys/ioctl.h>
 #include <sys/file.h>
 #include <sys/stat.h>
+#include <sys/socket.h>
+#include <net/if.h>
+
 #include <machine/inttypes.h>
 
 #include <errno.h>
+#include <err.h>
 #include <fcntl.h>
 #include <syslog.h>
 #include <signal.h>
@@ -74,6 +78,7 @@ char *copy_argv(char * const *);
 void  dump_packet(u_char *, const struct pcap_pkthdr *, const u_char *);
 void  dump_packet_nobuf(u_char *, const struct pcap_pkthdr *, const u_char *);
 int   flush_buffer(FILE *);
+int   if_exists(char *);
 int   init_pcap(void);
 void  purge_buffer(void);
 int   reset_dump(int);
@@ -154,8 +159,8 @@ void
 usage(void)
 {
 	fprintf(stderr, "usage: pflogd [-Dx] [-d delay] [-f filename]");
-	fprintf(stderr, " [-i interface] [-s snaplen]\n");
-	fprintf(stderr, "              [expression]\n");
+	fprintf(stderr, " [-i interface] [-p pidfile]\n");
+	fprintf(stderr, "              [-s snaplen] [expression]\n");
 	exit(1);
 }
 
@@ -189,6 +194,28 @@ set_pcap_filter(void)
 			logmsg(LOG_WARNING, "%s", pcap_geterr(hpcap));
 		pcap_freecode(&bprog);
 	}
+}
+
+int
+if_exists(char *ifname)
+{
+	int s;
+	struct ifreq ifr;
+	struct if_data ifrdat;
+
+	if ((s = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
+		err(1, "socket");
+	bzero(&ifr, sizeof(ifr));
+	if (strlcpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name)) >=
+		sizeof(ifr.ifr_name))
+			errx(1, "main ifr_name: strlcpy");
+	ifr.ifr_data = (caddr_t)&ifrdat;
+	if (ioctl(s, SIOCGIFDATA, (caddr_t)&ifr) == -1)
+		return (0);
+	if (close(s))
+		err(1, "close");
+
+	return (1);
 }
 
 int
@@ -536,16 +563,17 @@ int
 main(int argc, char **argv)
 {
 	struct pcap_stat pstat;
-	int ch, np, Xflag = 0;
+	int ch, np, ret, Xflag = 0;
 	pcap_handler phandler = dump_packet;
 	const char *errstr = NULL;
+	char *pidf = NULL;
 
 	/* Neither FreeBSD nor DFly have this; Max seems to think this may
 	 * be a paranoid check. Comment it out:
 	closefrom(STDERR_FILENO + 1);
 	 */
 
-	while ((ch = getopt(argc, argv, "Dxd:s:f:")) != -1) {
+	while ((ch = getopt(argc, argv, "Dxd:f:i:p:s:")) != -1) {
 		switch (ch) {
 		case 'D':
 			Debug = 1;
@@ -560,6 +588,9 @@ main(int argc, char **argv)
 			break;
 		case 'i':
 			interface = optarg;
+			break;
+		case 'p':
+			pidf = optarg;
 			break;
 		case 's':
 			snaplen = strtonum(optarg, 0, PFLOGD_MAXSNAPLEN,
@@ -582,13 +613,21 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	/* does interface exist */
+	if (!if_exists(__DECONST(char *, interface))) {
+		warn("Failed to initialize: %s", interface);
+		logmsg(LOG_ERR, "Failed to initialize: %s", interface);
+		logmsg(LOG_ERR, "Exiting, init failure");
+		exit(1);
+	}
+
 	if (!Debug) {
 		openlog("pflogd", LOG_PID | LOG_CONS, LOG_DAEMON);
 		if (daemon(0, 0)) {
 			logmsg(LOG_WARNING, "Failed to become daemon: %s",
 			    strerror(errno));
 		}
-		pidfile(NULL);
+		pidfile(pidf);
 	}
 
 	umask(S_IRWXG | S_IRWXO);
@@ -644,8 +683,15 @@ main(int argc, char **argv)
 	while (1) {
 		np = pcap_dispatch(hpcap, PCAP_NUM_PKTS,
 		    phandler, (u_char *)dpcap);
-		if (np < 0)
+		if (np < 0) {
+			if (!if_exists(__DECONST(char *, interface)) == -1) {
+				logmsg(LOG_NOTICE, "interface %s went away",
+				    interface);
+				ret = -1;
+				break;
+			}
 			logmsg(LOG_NOTICE, "%s", pcap_geterr(hpcap));
+		}
 
 		if (gotsig_close)
 			break;
@@ -685,5 +731,5 @@ main(int argc, char **argv)
 	pcap_close(hpcap);
 	if (!Debug)
 		closelog();
-	return (0);
+	return (ret);
 }

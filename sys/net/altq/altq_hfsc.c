@@ -645,7 +645,6 @@ hfsc_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 {
 	struct hfsc_if	*hif = (struct hfsc_if *)ifq->altq_disc;
 	struct hfsc_class *cl;
-	struct pf_mtag *pf;
 	int len;
 
 	/* grab class set by classifier */
@@ -656,8 +655,8 @@ hfsc_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 		return (ENOBUFS);
 	}
 	crit_enter();
-	if ((pf = altq_find_pftag(m)) != NULL)
-		cl = clh_to_clp(hif, pf->qid);
+	if (m->m_pkthdr.fw_flags & PF_MBUF_STRUCTURE)
+		cl = clh_to_clp(hif, m->m_pkthdr.pf.qid);
 	else
 		cl = NULL;
 	if (cl == NULL || is_a_parent_class(cl)) {
