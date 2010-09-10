@@ -111,6 +111,37 @@ define psax
     end
 end
 
+define _infotok
+	set $token = ($arg0)
+	set $tokref = $token->t_ref
+	if ($tokref != 0)
+		printf "%-15s 0x%08x %10d 0x%08x 0x%08x\n", $token->t_desc, \
+			$token->t_flags, $token->t_collisions, $tokref->tr_owner, \
+			$tokref->tr_stallpc
+	else
+		printf "%-15s 0x%08x %10d not held\n", $token->t_desc, \
+			$token->t_flags, $token->t_collisions
+	end
+end
+
+define infotok
+	printf "\nToken           flags      collisions owner      stallpc\n"
+	_infotok ($arg0)
+end
+
+define lstok
+	printf "\nToken           flags      collisions owner      stallpc\n"
+	_infotok &pmap_token
+	_infotok &dev_token
+	_infotok &vm_token
+	_infotok &vmspace_token
+	_infotok &kvm_token
+	_infotok &proc_token
+	_infotok &tty_token
+	_infotok &vnode_token
+	_infotok &vmobj_token
+end
+
 # Documentation, usable within GDB using the 'help' command.
 document lsvfs
 Output list of loaded file systems, refcount, similar to the
@@ -145,4 +176,13 @@ end
 
 document psax
 Output a list of processes.
+end
+
+document lstok
+Display all known global tokens and some information about them.
+end
+
+document infotok
+Takes one argument, a struct lwkt_token * (pointer) and prints some
+information about that token.
 end
