@@ -53,6 +53,7 @@ ENTRY(bzeront)
 	shrl $2, %ecx
 1:
 	movnti %edx, (%eax)
-	add $4, %eax
-	loop 1b
+	addl $4, %eax
+	subl $1, %ecx
+	jnz 1b
 	ret
