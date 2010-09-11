@@ -2790,6 +2790,7 @@ options 	INIT_PATH="/sbin/init:/sbin/oinit"
 # Debug options
 options 	BUS_DEBUG       # enable newbus debugging
 options 	NPX_DEBUG       # enable npx debugging (FPU/math emu)
+options		RSS_DEBUG	# enable RSS (Receive Side Scaling) debugging
 
 # Record the program counter of the code interrupted by the statistics
 # clock interrupt.  Use pctrack(8) to dump this information.
