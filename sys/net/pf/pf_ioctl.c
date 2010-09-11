@@ -330,18 +330,26 @@ pfattach(void)
 int
 pfopen(struct dev_open_args *ap)
 {
+	lwkt_gettoken(&pf_token);
 	cdev_t dev = ap->a_head.a_dev;
-	if (minor(dev) >= 1)
+	if (minor(dev) >= 1) {
+		lwkt_reltoken(&pf_token);
 		return (ENXIO);
+	}
+	lwkt_reltoken(&pf_token);
 	return (0);
 }
 
 int
 pfclose(struct dev_close_args *ap)
 {
+	lwkt_gettoken(&pf_token);
 	cdev_t dev = ap->a_head.a_dev;
-	if (minor(dev) >= 1)
+	if (minor(dev) >= 1) {
+		lwkt_reltoken(&pf_token);
 		return (ENXIO);
+	}
+	lwkt_reltoken(&pf_token);
 	return (0);
 }
 
@@ -1068,6 +1076,8 @@ pfioctl(struct dev_ioctl_args *ap)
 	struct pf_pool		*pool = NULL;
 	int			 error = 0;
 
+	lwkt_gettoken(&pf_token);
+
 	/* XXX keep in sync with switch() below */
 	if (securelevel > 1)
 		switch (cmd) {
@@ -1116,8 +1126,10 @@ pfioctl(struct dev_ioctl_args *ap)
 			if (((struct pfioc_table *)addr)->pfrio_flags &
 			    PFR_FLAG_DUMMY)
 				break; /* dummy operation ok */
+			lwkt_reltoken(&pf_token);
 			return (EPERM);
 		default:
+			lwkt_reltoken(&pf_token);
 			return (EPERM);
 		}
 
@@ -1159,12 +1171,16 @@ pfioctl(struct dev_ioctl_args *ap)
 			if (((struct pfioc_table *)addr)->pfrio_flags &
 			    PFR_FLAG_DUMMY)
 				break; /* dummy operation ok */
+			lwkt_reltoken(&pf_token);
 			return (EACCES);
 		case DIOCGETRULE:
-			if (((struct pfioc_rule *)addr)->action == PF_GET_CLR_CNTR)
+			if (((struct pfioc_rule *)addr)->action == PF_GET_CLR_CNTR) {
+				lwkt_reltoken(&pf_token);
 				return (EACCES);
+			}
 			break;
 		default:
+			lwkt_reltoken(&pf_token);
 			return (EACCES);
 		}
 
@@ -3056,6 +3072,7 @@ pfioctl(struct dev_ioctl_args *ap)
 		break;
 	}
 fail:
+	lwkt_reltoken(&pf_token);
 	return (error);
 }
 
@@ -3193,11 +3210,14 @@ pf_check_in(void *arg, struct mbuf **m, struct ifnet *ifp, int dir)
 	 */
 	int chk;
 
+	lwkt_gettoken(&pf_token);
+
 	chk = pf_test(PF_IN, ifp, m, NULL, NULL);
 	if (chk && *m) {
 		m_freem(*m);
 		*m = NULL;
 	}
+	lwkt_reltoken(&pf_token);
 	return chk;
 }
 
@@ -3211,6 +3231,8 @@ pf_check_out(void *arg, struct mbuf **m, struct ifnet *ifp, int dir)
 	 */
 	int chk;
 
+	lwkt_gettoken(&pf_token);
+
 	/* We need a proper CSUM befor we start (s. OpenBSD ip_output) */
 	if ((*m)->m_pkthdr.csum_flags & CSUM_DELAY_DATA) {
 		in_delayed_cksum(*m);
@@ -3221,6 +3243,7 @@ pf_check_out(void *arg, struct mbuf **m, struct ifnet *ifp, int dir)
 		m_freem(*m);
 		*m = NULL;
 	}
+	lwkt_reltoken(&pf_token);
 	return chk;
 }
 
@@ -3233,11 +3256,14 @@ pf_check6_in(void *arg, struct mbuf **m, struct ifnet *ifp, int dir)
 	 */
 	int chk;
 
+	lwkt_gettoken(&pf_token);
+
 	chk = pf_test6(PF_IN, ifp, m, NULL, NULL);
 	if (chk && *m) {
 		m_freem(*m);
 		*m = NULL;
 	}
+	lwkt_reltoken(&pf_token);
 	return chk;
 }
 
@@ -3249,6 +3275,8 @@ pf_check6_out(void *arg, struct mbuf **m, struct ifnet *ifp, int dir)
 	 */
 	int chk;
 
+	lwkt_gettoken(&pf_token);
+
 	/* We need a proper CSUM befor we start (s. OpenBSD ip_output) */
 	if ((*m)->m_pkthdr.csum_flags & CSUM_DELAY_DATA) {
 		in_delayed_cksum(*m);
@@ -3259,6 +3287,7 @@ pf_check6_out(void *arg, struct mbuf **m, struct ifnet *ifp, int dir)
 		m_freem(*m);
 		*m = NULL;
 	}
+	lwkt_reltoken(&pf_token);
 	return chk;
 }
 #endif /* INET6 */
@@ -3270,13 +3299,19 @@ hook_pf(void)
 #ifdef INET6
 	struct pfil_head *pfh_inet6;
 #endif
-	
-	if (pf_pfil_hooked)
-		return (0); 
+
+	lwkt_gettoken(&pf_token);
+
+	if (pf_pfil_hooked) {
+		lwkt_reltoken(&pf_token);
+		return (0);
+	}
 	
 	pfh_inet = pfil_head_get(PFIL_TYPE_AF, AF_INET);
-	if (pfh_inet == NULL)
+	if (pfh_inet == NULL) {
+		lwkt_reltoken(&pf_token);
 		return (ENODEV);
+	}
 	pfil_add_hook(pf_check_in, NULL, PFIL_IN, pfh_inet);
 	pfil_add_hook(pf_check_out, NULL, PFIL_OUT, pfh_inet);
 #ifdef INET6
@@ -3284,6 +3319,7 @@ hook_pf(void)
 	if (pfh_inet6 == NULL) {
 		pfil_remove_hook(pf_check_in, NULL, PFIL_IN, pfh_inet);
 		pfil_remove_hook(pf_check_out, NULL, PFIL_OUT, pfh_inet);
+		lwkt_reltoken(&pf_token);
 		return (ENODEV);
 	}
 	pfil_add_hook(pf_check6_in, NULL, PFIL_IN, pfh_inet6);
@@ -3291,6 +3327,7 @@ hook_pf(void)
 #endif
 
 	pf_pfil_hooked = 1;
+	lwkt_reltoken(&pf_token);
 	return (0);
 }
 
@@ -3302,23 +3339,32 @@ dehook_pf(void)
 	struct pfil_head *pfh_inet6;
 #endif
 
-	if (pf_pfil_hooked == 0)
+	lwkt_gettoken(&pf_token);
+
+	if (pf_pfil_hooked == 0) {
+		lwkt_reltoken(&pf_token);
 		return (0);
+	}
 
 	pfh_inet = pfil_head_get(PFIL_TYPE_AF, AF_INET);
-	if (pfh_inet == NULL)
+	if (pfh_inet == NULL) {
+		lwkt_reltoken(&pf_token);
 		return (ENODEV);
+	}
 	pfil_remove_hook(pf_check_in, NULL, PFIL_IN, pfh_inet);
 	pfil_remove_hook(pf_check_out, NULL, PFIL_OUT, pfh_inet);
 #ifdef INET6
 	pfh_inet6 = pfil_head_get(PFIL_TYPE_AF, AF_INET6);
-	if (pfh_inet6 == NULL)
+	if (pfh_inet6 == NULL) {
+		lwkt_reltoken(&pf_token);
 		return (ENODEV);
+	}
 	pfil_remove_hook(pf_check6_in, NULL, PFIL_IN, pfh_inet6);
 	pfil_remove_hook(pf_check6_out, NULL, PFIL_OUT, pfh_inet6);
 #endif
 
 	pf_pfil_hooked = 0;
+	lwkt_reltoken(&pf_token);
 	return (0);
 }
 
@@ -3327,6 +3373,8 @@ pf_load(void)
 {
 	int error;
 
+	lwkt_gettoken(&pf_token);
+
 	init_zone_var();
 	lockinit(&pf_mod_lck, "pf task lck", 0, LK_CANRECURSE);
 	pf_dev = make_dev(&pf_ops, 0, 0, 0, 0600, PF_NAME);
@@ -3334,9 +3382,11 @@ pf_load(void)
 	if (error) {
 		dev_ops_remove_all(&pf_ops);
 		lockuninit(&pf_mod_lck);
+		lwkt_reltoken(&pf_token);
 		return (error);
 	}
 	lockinit(&pf_consistency_lock, "pfconslck", 0, LK_CANRECURSE);
+	lwkt_reltoken(&pf_token);
 	return (0);
 }
 
@@ -3344,8 +3394,10 @@ static int
 pf_unload(void)
 {
 	int error;
-
 	pf_status.running = 0;
+
+	lwkt_gettoken(&pf_token);
+
 	error = dehook_pf();
 	if (error) {
 		/*
@@ -3354,6 +3406,7 @@ pf_unload(void)
 		 * a message like 'No such process'.
 		 */
 		kprintf("pfil unregistration fail\n");
+		lwkt_reltoken(&pf_token);
 		return error;
 	}
 	shutdown_pf();
@@ -3370,6 +3423,7 @@ pf_unload(void)
 	dev_ops_remove_all(&pf_ops);
 	lockuninit(&pf_consistency_lock);
 	lockuninit(&pf_mod_lck);
+	lwkt_reltoken(&pf_token);
 	return 0;
 }
 
@@ -3377,6 +3431,8 @@ static int
 pf_modevent(module_t mod, int type, void *data)
 {
 	int error = 0;
+
+	lwkt_gettoken(&pf_token);
 
 	switch(type) {
 	case MOD_LOAD:
@@ -3390,6 +3446,7 @@ pf_modevent(module_t mod, int type, void *data)
 		error = EINVAL;
 		break;
 	}
+	lwkt_reltoken(&pf_token);
 	return error;
 }
 

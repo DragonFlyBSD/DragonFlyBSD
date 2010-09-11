@@ -68,6 +68,8 @@ union sockaddr_union {
 struct ip;
 struct ip6_hdr;
 
+extern struct lwkt_token pf_token;
+
 #define	PF_TCPS_PROXY_SRC	((TCP_NSTATES)+0)
 #define	PF_TCPS_PROXY_DST	((TCP_NSTATES)+1)
 

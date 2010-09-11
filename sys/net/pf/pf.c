@@ -110,6 +110,8 @@
 extern int ip_optcopy(struct ip *, struct ip *);
 extern int debug_pfugidhack;
 
+struct lwkt_token pf_token = LWKT_TOKEN_MP_INITIALIZER(pf_token);
+
 #define DPFPRINTF(n, x)	if (pf_status.debug >= (n)) kprintf x
 
 /*
@@ -1628,6 +1630,8 @@ pf_send_tcp(const struct pf_rule *r, sa_family_t af,
 	struct tcphdr	*th = NULL;
 	char		*opt;
 
+	ASSERT_LWKT_TOKEN_HELD(&pf_token);
+
 	/* maximum segment size tcp option */
 	tlen = sizeof(struct tcphdr);
 	if (mss)
@@ -1648,8 +1652,9 @@ pf_send_tcp(const struct pf_rule *r, sa_family_t af,
 
 	/* create outgoing mbuf */
 	m = m_gethdr(MB_DONTWAIT, MT_HEADER);
-	if (m == NULL)
+	if (m == NULL) {
 		return;
+	}
 	if (tag)
 		m->m_pkthdr.pf.flags |= PF_TAG_GENERATED;
 	m->m_pkthdr.pf.tag = rtag;
@@ -1730,7 +1735,9 @@ pf_send_tcp(const struct pf_rule *r, sa_family_t af,
 		h->ip_ttl = ttl ? ttl : ip_defttl;
 		h->ip_sum = 0;
 		if (eh == NULL) {
+			lwkt_reltoken(&pf_token);
 			ip_output(m, NULL, NULL, 0, NULL, NULL);
+			lwkt_gettoken(&pf_token);
 		} else {
 			struct route		 ro;
 			struct rtentry		 rt;
@@ -1748,8 +1755,10 @@ pf_send_tcp(const struct pf_rule *r, sa_family_t af,
 			bcopy(eh->ether_shost, e->ether_dhost, ETHER_ADDR_LEN);
 			e->ether_type = eh->ether_type;
 			/* XXX_IMPORT: later */
+			lwkt_reltoken(&pf_token);
 			ip_output(m, (void *)NULL, &ro, 0,
 			    (void *)NULL, (void *)NULL);
+			lwkt_gettoken(&pf_token);
 		}
 		break;
 #endif /* INET */
@@ -1762,7 +1771,9 @@ pf_send_tcp(const struct pf_rule *r, sa_family_t af,
 		h6->ip6_vfc |= IPV6_VERSION;
 		h6->ip6_hlim = IPV6_DEFHLIM;
 
+		lwkt_reltoken(&pf_token);
 		ip6_output(m, NULL, NULL, 0, NULL, NULL, NULL);
+		lwkt_gettoken(&pf_token);
 		break;
 #endif /* INET6 */
 	}
@@ -2750,8 +2761,8 @@ pf_socket_lookup(int direction, struct pf_pdesc *pd)
 	case AF_INET:
 #ifdef SMP
 		if (msg != NULL) {
-			lwkt_sendmsg(cpu_portfn(pi_cpu),
-				     &msg->nm_netmsg.nm_lmsg);
+			lwkt_domsg(cpu_portfn(pi_cpu),
+				     &msg->nm_netmsg.nm_lmsg, 0);
 		} else
 #endif /* SMP */
 		{
@@ -4205,7 +4216,8 @@ pf_test_state_tcp(struct pf_state **state, int direction, struct pfi_kif *kif,
 			 * the protocol stack on the wrong cpu for the
 			 * post-translated address.
 			 */
-			m->m_pkthdr.fw_flags |= FW_MBUF_REDISPATCH;
+			/* m->m_pkthdr.fw_flags |= FW_MBUF_REDISPATCH; */
+			m->m_flags &= ~M_HASH;
 			pf_change_ap(pd->dst, &th->th_dport, pd->ip_sum,
 			    &th->th_sum, &(*state)->state_key->lan.addr,
 			    (*state)->state_key->lan.port, 0, pd->af);
@@ -4276,7 +4288,8 @@ pf_test_state_udp(struct pf_state **state, int direction, struct pfi_kif *kif,
 			 * the protocol stack on the wrong cpu for the
 			 * post-translated address.
 			 */
-			m->m_pkthdr.fw_flags |= FW_MBUF_REDISPATCH;
+			/* m->m_pkthdr.fw_flags |= FW_MBUF_REDISPATCH; */
+			m->m_flags &= ~M_HASH;
 			pf_change_ap(pd->dst, &uh->uh_dport, pd->ip_sum,
 			    &uh->uh_sum, &(*state)->state_key->lan.addr,
 			    (*state)->state_key->lan.port, 1, pd->af);
@@ -5097,6 +5110,8 @@ pf_rtlabel_match(struct pf_addr *addr, sa_family_t af, struct pf_addr_wrap *aw)
 #endif
 	int			 ret = 0;
 
+	ASSERT_LWKT_TOKEN_HELD(&pf_token);
+
 	bzero(&ro, sizeof(ro));
 	switch (af) {
 	case AF_INET:
@@ -5145,6 +5160,8 @@ pf_route(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 	struct m_tag		*mtag;
 #endif /* IPSEC */
 
+	ASSERT_LWKT_TOKEN_HELD(&pf_token);
+
 	if (m == NULL || *m == NULL || r == NULL ||
 	    (dir != PF_IN && dir != PF_OUT) || oifp == NULL)
 		panic("pf_route: invalid parameters");
@@ -5161,11 +5178,13 @@ pf_route(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 	}
 
 	if (r->rt == PF_DUPTO) {
-		if ((m0 = m_dup(*m, MB_DONTWAIT)) == NULL)
+		if ((m0 = m_dup(*m, MB_DONTWAIT)) == NULL) {
 			return;
+		}
 	} else {
-		if ((r->rt == PF_REPLYTO) == (r->direction == dir))
+		if ((r->rt == PF_REPLYTO) == (r->direction == dir)) {
 			return;
+		}
 		m0 = *m;
 	}
 
@@ -5261,9 +5280,11 @@ pf_route(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 				ip->ip_sum = in_cksum(m0, ip->ip_hl << 2);
 			}
 		}
+		lwkt_reltoken(&pf_token);
 		crit_exit();
 		error = ifp->if_output(ifp, m0, sintosa(dst), ro->ro_rt);
 		crit_enter();
+		lwkt_gettoken(&pf_token);
 		goto done;
 	}
 
@@ -5293,10 +5314,12 @@ pf_route(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 		m1 = m0->m_nextpkt;
 		m0->m_nextpkt = 0;
 		if (error == 0) {
+			lwkt_reltoken(&pf_token);
 			crit_exit();
 			error = (*ifp->if_output)(ifp, m0, sintosa(dst),
 			    NULL);
 			crit_enter();
+			lwkt_gettoken(&pf_token);
 		} else
 			m_freem(m0);
 	}
