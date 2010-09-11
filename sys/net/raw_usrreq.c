@@ -48,6 +48,9 @@
 
 #include <net/raw_cb.h>
 
+
+static struct lwkt_token raw_token = LWKT_TOKEN_MP_INITIALIZER(raw_token);
+
 /*
  * Initialize raw connection block q.
  */
@@ -77,6 +80,8 @@ raw_input(struct mbuf *m0, const struct sockproto *proto,
 	struct rawcb *rp;
 	struct mbuf *m = m0;
 	struct socket *last;
+
+	lwkt_gettoken(&raw_token);
 
 	last = NULL;
 	LIST_FOREACH(rp, &rawcb_list, list) {
@@ -123,6 +128,7 @@ raw_input(struct mbuf *m0, const struct sockproto *proto,
 	} else {
 		m_freem(m);
 	}
+	lwkt_reltoken(&raw_token);
 }
 
 /*ARGSUSED*/

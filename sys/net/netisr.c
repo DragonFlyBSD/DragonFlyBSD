@@ -357,10 +357,17 @@ netisr_characterize(int num, struct mbuf **mp, int hoff)
 	/*
 	 * Validation
 	 */
-	KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
-		("Bad isr %d", num));
 	m = *mp;
 	KKASSERT(m != NULL);
+
+	if (num < 0 || num >= NETISR_MAX) {
+		if (num == NETISR_MAX) {
+			m->m_flags |= M_HASH;
+			m->m_pkthdr.hash = 0;
+			return;
+		}
+		panic("Bad isr %d", num);
+	}
 
 	/*
 	 * Valid netisr?

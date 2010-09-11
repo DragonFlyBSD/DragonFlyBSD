@@ -468,6 +468,7 @@ sowakeup(struct socket *so, struct signalsockbuf *ssb)
 	if (ssb->ssb_flags & SSB_MEVENT) {
 		struct netmsg_so_notify *msg, *nmsg;
 
+		lwkt_gettoken(&kq_token);
 		TAILQ_FOREACH_MUTABLE(msg, &kqinfo->ki_mlist, nm_list, nmsg) {
 			if (msg->nm_predicate(&msg->nm_netmsg)) {
 				TAILQ_REMOVE(&kqinfo->ki_mlist, msg, nm_list);
@@ -477,6 +478,7 @@ sowakeup(struct socket *so, struct signalsockbuf *ssb)
 		}
 		if (TAILQ_EMPTY(&ssb->ssb_kq.ki_mlist))
 			atomic_clear_int(&ssb->ssb_flags, SSB_MEVENT);
+		lwkt_reltoken(&kq_token);
 	}
 }
 
