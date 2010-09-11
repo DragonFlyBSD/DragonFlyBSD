@@ -317,8 +317,7 @@ struct	inp_tp {
 void
 tcp_init(void)
 {
-	struct inpcbporthead *porthashbase;
-	u_long porthashmask;
+	struct inpcbinfo *ticb;
 	int hashsize = TCBHASHSIZE;
 	int cpu;
 
@@ -344,18 +343,18 @@ tcp_init(void)
 		hashsize = 512; /* safe default */
 	}
 	tcp_tcbhashsize = hashsize;
-	porthashbase = hashinit(hashsize, M_PCB, &porthashmask);
 
 	for (cpu = 0; cpu < ncpus2; cpu++) {
-		in_pcbinfo_init(&tcbinfo[cpu]);
-		tcbinfo[cpu].cpu = cpu;
-		tcbinfo[cpu].hashbase = hashinit(hashsize, M_PCB,
-		    &tcbinfo[cpu].hashmask);
-		tcbinfo[cpu].porthashbase = porthashbase;
-		tcbinfo[cpu].porthashmask = porthashmask;
-		tcbinfo[cpu].wildcardhashbase = hashinit(hashsize, M_PCB,
-		    &tcbinfo[cpu].wildcardhashmask);
-		tcbinfo[cpu].ipi_size = sizeof(struct inp_tp);
+		ticb = &tcbinfo[cpu];
+		in_pcbinfo_init(ticb);
+		ticb->cpu = cpu;
+		ticb->hashbase = hashinit(hashsize, M_PCB,
+					  &ticb->hashmask);
+		ticb->porthashbase = hashinit(hashsize, M_PCB,
+					      &ticb->porthashmask);
+		ticb->wildcardhashbase = hashinit(hashsize, M_PCB,
+						  &ticb->wildcardhashmask);
+		ticb->ipi_size = sizeof(struct inp_tp);
 		TAILQ_INIT(&tcpcbackq[cpu]);
 	}
 
