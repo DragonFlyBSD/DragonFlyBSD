@@ -278,11 +278,11 @@ print_state(struct pfsync_state *s, int opts)
 		min = s->expire % 60;
 		s->expire /= 60;
 		printf(", expires in %.2u:%.2u:%.2u", s->expire, min, sec);
-		printf(", %llu:%llu pkts, %llu:%llu bytes",
-		    pf_state_counter_from_pfsync(s->packets[0]),
-		    pf_state_counter_from_pfsync(s->packets[1]),
-		    pf_state_counter_from_pfsync(s->bytes[0]),
-		    pf_state_counter_from_pfsync(s->bytes[1]));
+		printf(", %ju:%ju pkts, %ju:%ju bytes",
+		    (uintmax_t)pf_state_counter_from_pfsync(s->packets[0]),
+		    (uintmax_t)pf_state_counter_from_pfsync(s->packets[1]),
+		    (uintmax_t)pf_state_counter_from_pfsync(s->bytes[0]),
+		    (uintmax_t)pf_state_counter_from_pfsync(s->bytes[1]));
 		if (s->anchor != -1)
 			printf(", anchor %u", s->anchor);
 		if (s->rule != -1)
@@ -294,8 +294,9 @@ print_state(struct pfsync_state *s, int opts)
 		printf("\n");
 	}
 	if (opts & PF_OPT_VERBOSE2) {
-		printf("   id: %016llx creatorid: %08x%s\n",
-		    pf_state_counter_from_pfsync(s->id), ntohl(s->creatorid),
+		printf("   id: %016jx creatorid: %08x%s\n",
+		    (uintmax_t)pf_state_counter_from_pfsync(s->id),
+		    ntohl(s->creatorid),
 		    ((s->sync_flags & PFSTATE_NOSYNC) ? " (no-sync)" : ""));
 	}
 }
