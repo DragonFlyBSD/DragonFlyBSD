@@ -413,25 +413,23 @@ struct secpolicy *
 ipsec4_getpolicybyaddr(struct mbuf *m, u_int dir, int flag, int *error)
 {
 	struct secpolicy *sp = NULL;
+	struct secpolicyindex spidx;
 
 	/* sanity check */
 	if (m == NULL || error == NULL)
 		panic("ipsec4_getpolicybyaddr: NULL pointer was passed.");
 
-    {
-	struct secpolicyindex spidx;
-
 	bzero(&spidx, sizeof(spidx));
 
 	/* make a index to look for a policy */
 	*error = ipsec_setspidx_mbuf(&spidx, dir, AF_INET, m,
-	    (flag & IP_FORWARDING) ? 0 : 1);
+				     (flag & IP_FORWARDING) ? 0 : 1);
 
 	if (*error != 0)
 		return NULL;
 
+	lwkt_gettoken(&key_token);
 	sp = key_allocsp(&spidx, dir);
-    }
 
 	/* SP found */
 	if (sp != NULL) {
@@ -439,6 +437,7 @@ ipsec4_getpolicybyaddr(struct mbuf *m, u_int dir, int flag, int *error)
 			kprintf("DP ipsec4_getpolicybyaddr called "
 			       "to allocate SP:%p\n", sp));
 		*error = 0;
+		lwkt_reltoken(&key_token);
 		return sp;
 	}
 
@@ -452,6 +451,7 @@ ipsec4_getpolicybyaddr(struct mbuf *m, u_int dir, int flag, int *error)
 	}
 	ip4_def_policy.refcnt++;
 	*error = 0;
+	lwkt_reltoken(&key_token);
 	return &ip4_def_policy;
 }
 
@@ -482,9 +482,10 @@ ipsec6_getpolicybysock(struct mbuf *m, u_int dir, struct socket *so, int *error)
 		panic("ipsec6_getpolicybysock: socket domain != inet6");
 #endif
 
+	lwkt_gettoken(&key_token);
+
 	/* set spidx in pcb */
 	ipsec6_setspidx_in6pcb(m, so->so_pcb);
-
 	pcbsp = sotoin6pcb(so)->in6p_sp;
 
 	/* sanity check */
@@ -512,8 +513,7 @@ ipsec6_getpolicybysock(struct mbuf *m, u_int dir, struct socket *so, int *error)
 		case IPSEC_POLICY_BYPASS:
 			currsp->refcnt++;
 			*error = 0;
-			return currsp;
-
+			break;
 		case IPSEC_POLICY_ENTRUST:
 			/* look for a policy in SPD */
 			kernsp = key_allocsp(&currsp->spidx, dir);
@@ -524,7 +524,8 @@ ipsec6_getpolicybysock(struct mbuf *m, u_int dir, struct socket *so, int *error)
 					kprintf("DP ipsec6_getpolicybysock called "
 					       "to allocate SP:%p\n", kernsp));
 				*error = 0;
-				return kernsp;
+				currsp = kernsp;
+				break;
 			}
 
 			/* no SP found */
@@ -535,21 +536,24 @@ ipsec6_getpolicybysock(struct mbuf *m, u_int dir, struct socket *so, int *error)
 				    ip6_def_policy.policy, IPSEC_POLICY_NONE));
 				ip6_def_policy.policy = IPSEC_POLICY_NONE;
 			}
-			ip6_def_policy.refcnt++;
+			currsp = &ip6_def_policy;
+			currsp->refcnt++;
 			*error = 0;
-			return &ip6_def_policy;
-			
+			break;
 		case IPSEC_POLICY_IPSEC:
 			currsp->refcnt++;
 			*error = 0;
-			return currsp;
-
+			break;
 		default:
 			ipseclog((LOG_ERR, "ipsec6_getpolicybysock: "
 			    "Invalid policy for PCB %d\n", currsp->policy));
 			*error = EINVAL;
-			return NULL;
+			lwkt_reltoken(&key_token);
+			currsp = NULL;
+			break;
 		}
+		lwkt_reltoken(&key_token);
+		return currsp;
 		/* NOTREACHED */
 	}
 
@@ -563,6 +567,7 @@ ipsec6_getpolicybysock(struct mbuf *m, u_int dir, struct socket *so, int *error)
 			kprintf("DP ipsec6_getpolicybysock called "
 			       "to allocate SP:%p\n", kernsp));
 		*error = 0;
+		lwkt_reltoken(&key_token);
 		return kernsp;
 	}
 
@@ -573,8 +578,8 @@ ipsec6_getpolicybysock(struct mbuf *m, u_int dir, struct socket *so, int *error)
 		    "Illegal policy for non-priviliged defined %d\n",
 		    currsp->policy));
 		*error = EINVAL;
-		return NULL;
-
+		currsp = NULL;
+		break;
 	case IPSEC_POLICY_ENTRUST:
 		if (ip6_def_policy.policy != IPSEC_POLICY_DISCARD
 		 && ip6_def_policy.policy != IPSEC_POLICY_NONE) {
@@ -583,23 +588,24 @@ ipsec6_getpolicybysock(struct mbuf *m, u_int dir, struct socket *so, int *error)
 			    ip6_def_policy.policy, IPSEC_POLICY_NONE));
 			ip6_def_policy.policy = IPSEC_POLICY_NONE;
 		}
-		ip6_def_policy.refcnt++;
+		currsp = &ip6_def_policy;
+		currsp->refcnt++;
 		*error = 0;
-		return &ip6_def_policy;
-
+		break;
 	case IPSEC_POLICY_IPSEC:
 		currsp->refcnt++;
 		*error = 0;
-		return currsp;
-
+		break;
 	default:
 		ipseclog((LOG_ERR,
 		    "ipsec6_policybysock: Invalid policy for PCB %d\n",
 		    currsp->policy));
 		*error = EINVAL;
-		return NULL;
+		currsp = NULL;
+		break;
 	}
-	/* NOTREACHED */
+	lwkt_reltoken(&key_token);
+	return currsp;
 }
 
 /*
@@ -622,25 +628,24 @@ struct secpolicy *
 ipsec6_getpolicybyaddr(struct mbuf *m, u_int dir, int flag, int *error)
 {
 	struct secpolicy *sp = NULL;
+	struct secpolicyindex spidx;
 
 	/* sanity check */
 	if (m == NULL || error == NULL)
 		panic("ipsec6_getpolicybyaddr: NULL pointer was passed.");
-
-    {
-	struct secpolicyindex spidx;
-
 	bzero(&spidx, sizeof(spidx));
+
+	lwkt_gettoken(&key_token);
 
 	/* make a index to look for a policy */
 	*error = ipsec_setspidx_mbuf(&spidx, dir, AF_INET6, m,
-	    (flag & IP_FORWARDING) ? 0 : 1);
-
-	if (*error != 0)
+				     (flag & IP_FORWARDING) ? 0 : 1);
+	if (*error != 0) {
+		lwkt_reltoken(&key_token);
 		return NULL;
+	}
 
 	sp = key_allocsp(&spidx, dir);
-    }
 
 	/* SP found */
 	if (sp != NULL) {
@@ -648,6 +653,7 @@ ipsec6_getpolicybyaddr(struct mbuf *m, u_int dir, int flag, int *error)
 			kprintf("DP ipsec6_getpolicybyaddr called "
 			       "to allocate SP:%p\n", sp));
 		*error = 0;
+		lwkt_reltoken(&key_token);
 		return sp;
 	}
 
@@ -658,9 +664,12 @@ ipsec6_getpolicybyaddr(struct mbuf *m, u_int dir, int flag, int *error)
 		    ip6_def_policy.policy, IPSEC_POLICY_NONE));
 		ip6_def_policy.policy = IPSEC_POLICY_NONE;
 	}
-	ip6_def_policy.refcnt++;
+	sp = &ip6_def_policy;
+	sp->refcnt++;
 	*error = 0;
-	return &ip6_def_policy;
+	lwkt_reltoken(&key_token);
+
+	return sp;
 }
 #endif /* INET6 */
 
@@ -1084,9 +1093,12 @@ ipsec_init_policy(struct socket *so, struct inpcbpolicy **pcb_sp)
 	if (so == NULL || pcb_sp == NULL)
 		panic("ipsec_init_policy: NULL pointer was passed.");
 
+	lwkt_gettoken(&key_token);
+
 	new = ipsec_newpcbpolicy();
 	if (new == NULL) {
 		ipseclog((LOG_DEBUG, "ipsec_init_policy: No more memory.\n"));
+		lwkt_reltoken(&key_token);
 		return ENOBUFS;
 	}
 	bzero(new, sizeof(*new));
@@ -1098,6 +1110,7 @@ ipsec_init_policy(struct socket *so, struct inpcbpolicy **pcb_sp)
 
 	if ((new->sp_in = key_newsp()) == NULL) {
 		ipsec_delpcbpolicy(new);
+		lwkt_reltoken(&key_token);
 		return ENOBUFS;
 	}
 	new->sp_in->state = IPSEC_SPSTATE_ALIVE;
@@ -1106,12 +1119,14 @@ ipsec_init_policy(struct socket *so, struct inpcbpolicy **pcb_sp)
 	if ((new->sp_out = key_newsp()) == NULL) {
 		key_freesp(new->sp_in);
 		ipsec_delpcbpolicy(new);
+		lwkt_reltoken(&key_token);
 		return ENOBUFS;
 	}
 	new->sp_out->state = IPSEC_SPSTATE_ALIVE;
 	new->sp_out->policy = IPSEC_POLICY_ENTRUST;
 
 	*pcb_sp = new;
+	lwkt_reltoken(&key_token);
 
 	return 0;
 }
@@ -1122,21 +1137,27 @@ ipsec_copy_policy(struct inpcbpolicy *old, struct inpcbpolicy *new)
 {
 	struct secpolicy *sp;
 
+	lwkt_gettoken(&key_token);
 	sp = ipsec_deepcopy_policy(old->sp_in);
 	if (sp) {
 		key_freesp(new->sp_in);
 		new->sp_in = sp;
-	} else
+	} else {
+		lwkt_reltoken(&key_token);
 		return ENOBUFS;
+	}
 
 	sp = ipsec_deepcopy_policy(old->sp_out);
 	if (sp) {
 		key_freesp(new->sp_out);
 		new->sp_out = sp;
-	} else
+	} else {
+		lwkt_reltoken(&key_token);
 		return ENOBUFS;
+	}
 
 	new->priv = old->priv;
+	lwkt_reltoken(&key_token);
 
 	return 0;
 }
@@ -1151,9 +1172,12 @@ ipsec_deepcopy_policy(struct secpolicy *src)
 	struct ipsecrequest *r;
 	struct secpolicy *dst;
 
+	lwkt_gettoken(&key_token);
 	dst = key_newsp();
-	if (src == NULL || dst == NULL)
+	if (src == NULL || dst == NULL) {
+		lwkt_reltoken(&key_token);
 		return NULL;
+	}
 
 	/*
 	 * deep-copy IPsec request chain.  This is required since struct
@@ -1185,10 +1209,12 @@ ipsec_deepcopy_policy(struct secpolicy *src)
 	dst->state = src->state;
 	dst->policy = src->policy;
 	/* do not touch the refcnt fields */
+	lwkt_reltoken(&key_token);
 
 	return dst;
 
 fail:
+	lwkt_reltoken(&key_token);
 	for (p = newchain; p; p = r) {
 		r = p->next;
 		kfree(p, M_SECA);
@@ -1271,6 +1297,7 @@ ipsec4_set_policy(struct inpcb *inp, int optname, caddr_t request, size_t len,
 {
 	struct sadb_x_policy *xpl;
 	struct secpolicy **pcb_sp;
+	int error;
 
 	/* sanity check. */
 	if (inp == NULL || request == NULL)
@@ -1279,6 +1306,7 @@ ipsec4_set_policy(struct inpcb *inp, int optname, caddr_t request, size_t len,
 		return EINVAL;
 	xpl = (struct sadb_x_policy *)request;
 
+	lwkt_gettoken(&key_token);
 	/* select direction */
 	switch (xpl->sadb_x_policy_dir) {
 	case IPSEC_DIR_INBOUND:
@@ -1290,10 +1318,12 @@ ipsec4_set_policy(struct inpcb *inp, int optname, caddr_t request, size_t len,
 	default:
 		ipseclog((LOG_ERR, "ipsec4_set_policy: invalid direction=%u\n",
 			xpl->sadb_x_policy_dir));
+		lwkt_reltoken(&key_token);
 		return EINVAL;
 	}
-
-	return ipsec_set_policy(pcb_sp, optname, request, len, priv);
+	error = ipsec_set_policy(pcb_sp, optname, request, len, priv);
+	lwkt_reltoken(&key_token);
+	return error;
 }
 
 int
@@ -1302,6 +1332,7 @@ ipsec4_get_policy(struct inpcb *inp, caddr_t request, size_t len,
 {
 	struct sadb_x_policy *xpl;
 	struct secpolicy *pcb_sp;
+	int error;
 
 	/* sanity check. */
 	if (inp == NULL || request == NULL || mp == NULL)
@@ -1311,6 +1342,8 @@ ipsec4_get_policy(struct inpcb *inp, caddr_t request, size_t len,
 	if (len < sizeof(*xpl))
 		return EINVAL;
 	xpl = (struct sadb_x_policy *)request;
+
+	lwkt_gettoken(&key_token);
 
 	/* select direction */
 	switch (xpl->sadb_x_policy_dir) {
@@ -1323,35 +1356,44 @@ ipsec4_get_policy(struct inpcb *inp, caddr_t request, size_t len,
 	default:
 		ipseclog((LOG_ERR, "ipsec4_set_policy: invalid direction=%u\n",
 			xpl->sadb_x_policy_dir));
+		lwkt_reltoken(&key_token);
 		return EINVAL;
 	}
-
-	return ipsec_get_policy(pcb_sp, mp);
+	error = ipsec_get_policy(pcb_sp, mp);
+	lwkt_reltoken(&key_token);
+	return error;
 }
 
 /* delete policy in PCB */
 int
 ipsec4_delete_pcbpolicy(struct inpcb *inp)
 {
+	struct inpcbpolicy *isp;
+
 	/* sanity check. */
 	if (inp == NULL)
 		panic("ipsec4_delete_pcbpolicy: NULL pointer was passed.");
 
-	if (inp->inp_sp == NULL)
+	lwkt_gettoken(&key_token);
+
+	if ((isp = inp->inp_sp) == NULL) {
+		lwkt_reltoken(&key_token);
 		return 0;
-
-	if (inp->inp_sp->sp_in != NULL) {
-		key_freesp(inp->inp_sp->sp_in);
-		inp->inp_sp->sp_in = NULL;
 	}
 
-	if (inp->inp_sp->sp_out != NULL) {
-		key_freesp(inp->inp_sp->sp_out);
-		inp->inp_sp->sp_out = NULL;
+	if (isp->sp_in != NULL) {
+		key_freesp(isp->sp_in);
+		isp->sp_in = NULL;
 	}
 
-	ipsec_delpcbpolicy(inp->inp_sp);
+	if (isp->sp_out != NULL) {
+		key_freesp(isp->sp_out);
+		isp->sp_out = NULL;
+	}
+	KKASSERT(inp->inp_sp == isp);
 	inp->inp_sp = NULL;
+	ipsec_delpcbpolicy(isp);
+	lwkt_reltoken(&key_token);
 
 	return 0;
 }
@@ -1363,6 +1405,7 @@ ipsec6_set_policy(struct in6pcb *in6p, int optname, caddr_t request, size_t len,
 {
 	struct sadb_x_policy *xpl;
 	struct secpolicy **pcb_sp;
+	int error;
 
 	/* sanity check. */
 	if (in6p == NULL || request == NULL)
@@ -1370,6 +1413,8 @@ ipsec6_set_policy(struct in6pcb *in6p, int optname, caddr_t request, size_t len,
 	if (len < sizeof(*xpl))
 		return EINVAL;
 	xpl = (struct sadb_x_policy *)request;
+
+	lwkt_gettoken(&key_token);
 
 	/* select direction */
 	switch (xpl->sadb_x_policy_dir) {
@@ -1382,10 +1427,13 @@ ipsec6_set_policy(struct in6pcb *in6p, int optname, caddr_t request, size_t len,
 	default:
 		ipseclog((LOG_ERR, "ipsec6_set_policy: invalid direction=%u\n",
 			xpl->sadb_x_policy_dir));
+		lwkt_reltoken(&key_token);
 		return EINVAL;
 	}
 
-	return ipsec_set_policy(pcb_sp, optname, request, len, priv);
+	error = ipsec_set_policy(pcb_sp, optname, request, len, priv);
+	lwkt_reltoken(&key_token);
+	return error;
 }
 
 int
@@ -1394,6 +1442,7 @@ ipsec6_get_policy(struct in6pcb *in6p, caddr_t request, size_t len,
 {
 	struct sadb_x_policy *xpl;
 	struct secpolicy *pcb_sp;
+	int error;
 
 	/* sanity check. */
 	if (in6p == NULL || request == NULL || mp == NULL)
@@ -1403,6 +1452,8 @@ ipsec6_get_policy(struct in6pcb *in6p, caddr_t request, size_t len,
 	if (len < sizeof(*xpl))
 		return EINVAL;
 	xpl = (struct sadb_x_policy *)request;
+
+	lwkt_gettoken(&key_token);
 
 	/* select direction */
 	switch (xpl->sadb_x_policy_dir) {
@@ -1415,34 +1466,44 @@ ipsec6_get_policy(struct in6pcb *in6p, caddr_t request, size_t len,
 	default:
 		ipseclog((LOG_ERR, "ipsec6_set_policy: invalid direction=%u\n",
 			xpl->sadb_x_policy_dir));
+		lwkt_reltoken(&key_token);
 		return EINVAL;
 	}
 
-	return ipsec_get_policy(pcb_sp, mp);
+	error = ipsec_get_policy(pcb_sp, mp);
+	lwkt_reltoken(&key_token);
+	return error;
 }
 
 int
 ipsec6_delete_pcbpolicy(struct in6pcb *in6p)
 {
+	struct inpcbpolicy *isp;
+
 	/* sanity check. */
 	if (in6p == NULL)
 		panic("ipsec6_delete_pcbpolicy: NULL pointer was passed.");
 
-	if (in6p->in6p_sp == NULL)
+	lwkt_gettoken(&key_token);
+
+	if ((isp = in6p->in6p_sp) == NULL) {
+		lwkt_reltoken(&key_token);
 		return 0;
-
-	if (in6p->in6p_sp->sp_in != NULL) {
-		key_freesp(in6p->in6p_sp->sp_in);
-		in6p->in6p_sp->sp_in = NULL;
 	}
 
-	if (in6p->in6p_sp->sp_out != NULL) {
-		key_freesp(in6p->in6p_sp->sp_out);
-		in6p->in6p_sp->sp_out = NULL;
+	if (isp->sp_in != NULL) {
+		key_freesp(isp->sp_in);
+		isp->sp_in = NULL;
 	}
 
-	ipsec_delpcbpolicy(in6p->in6p_sp);
+	if (isp->sp_out != NULL) {
+		key_freesp(isp->sp_out);
+		isp->sp_out = NULL;
+	}
+	KKASSERT(in6p->in6p_sp == isp);
 	in6p->in6p_sp = NULL;
+	ipsec_delpcbpolicy(isp);
+	lwkt_reltoken(&key_token);
 
 	return 0;
 }
@@ -1650,19 +1711,22 @@ ipsec4_in_reject_so(struct mbuf *m, struct socket *so)
 	 * When we are called from ip_forward(), we call
 	 * ipsec4_getpolicybyaddr() with IP_FORWARDING flag.
 	 */
+	lwkt_gettoken(&key_token);
 	if (so == NULL)
 		sp = ipsec4_getpolicybyaddr(m, IPSEC_DIR_INBOUND, IP_FORWARDING, &error);
 	else
 		sp = ipsec4_getpolicybysock(m, IPSEC_DIR_INBOUND, so, &error);
 
-	if (sp == NULL)
-		return 0;	/* XXX should be panic ?
-				 * -> No, there may be error. */
+	if (sp == NULL) {
+		lwkt_reltoken(&key_token);
+		return 0;
+	}
 
 	result = ipsec_in_reject(sp, m);
 	KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
 		kprintf("DP ipsec4_in_reject_so call free SP:%p\n", sp));
 	key_freesp(sp);
+	lwkt_reltoken(&key_token);
 
 	return result;
 }
@@ -1699,18 +1763,22 @@ ipsec6_in_reject_so(struct mbuf *m, struct socket *so)
 	 * When we are called from ip_forward(), we call
 	 * ipsec6_getpolicybyaddr() with IP_FORWARDING flag.
 	 */
+	lwkt_gettoken(&key_token);
 	if (so == NULL)
 		sp = ipsec6_getpolicybyaddr(m, IPSEC_DIR_INBOUND, IP_FORWARDING, &error);
 	else
 		sp = ipsec6_getpolicybysock(m, IPSEC_DIR_INBOUND, so, &error);
 
-	if (sp == NULL)
+	if (sp == NULL) {
+		lwkt_reltoken(&key_token);
 		return 0;	/* XXX should be panic ? */
+	}
 
 	result = ipsec_in_reject(sp, m);
 	KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
 		kprintf("DP ipsec6_in_reject_so call free SP:%p\n", sp));
 	key_freesp(sp);
+	lwkt_reltoken(&key_token);
 
 	return result;
 }
@@ -1820,13 +1888,16 @@ ipsec4_hdrsiz(struct mbuf *m, u_int dir, struct inpcb *inp)
 	 * When we are called from ip_forward(), we call
 	 * ipsec4_getpolicybyaddr() with IP_FORWARDING flag.
 	 */
+	lwkt_gettoken(&key_token);
 	if (inp == NULL)
 		sp = ipsec4_getpolicybyaddr(m, dir, IP_FORWARDING, &error);
 	else
 		sp = ipsec4_getpolicybysock(m, dir, inp->inp_socket, &error);
 
-	if (sp == NULL)
+	if (sp == NULL) {
+		lwkt_reltoken(&key_token);
 		return 0;	/* XXX should be panic ? */
+	}
 
 	size = ipsec_hdrsiz(sp);
 	KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
@@ -1834,6 +1905,7 @@ ipsec4_hdrsiz(struct mbuf *m, u_int dir, struct inpcb *inp)
 	KEYDEBUG(KEYDEBUG_IPSEC_DATA,
 		kprintf("ipsec4_hdrsiz: size:%lu.\n", (unsigned long)size));
 	key_freesp(sp);
+	lwkt_reltoken(&key_token);
 
 	return size;
 }
@@ -1857,19 +1929,23 @@ ipsec6_hdrsiz(struct mbuf *m, u_int dir, struct in6pcb *in6p)
 
 	/* get SP for this packet */
 	/* XXX Is it right to call with IP_FORWARDING. */
+	lwkt_gettoken(&key_token);
 	if (in6p == NULL)
 		sp = ipsec6_getpolicybyaddr(m, dir, IP_FORWARDING, &error);
 	else
 		sp = ipsec6_getpolicybysock(m, dir, in6p->in6p_socket, &error);
 
-	if (sp == NULL)
+	if (sp == NULL) {
+		lwkt_reltoken(&key_token);
 		return 0;
+	}
 	size = ipsec_hdrsiz(sp);
 	KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
 		kprintf("DP ipsec6_hdrsiz call free SP:%p\n", sp));
 	KEYDEBUG(KEYDEBUG_IPSEC_DATA,
 		kprintf("ipsec6_hdrsiz: size:%lu.\n", (unsigned long)size));
 	key_freesp(sp);
+	lwkt_reltoken(&key_token);
 
 	return size;
 }
@@ -2632,6 +2708,8 @@ ipsec6_output_trans(struct ipsec_output_state *state, u_char *nexthdrp,
 		kprintf("ipsec6_output_trans: applyed SP\n");
 		kdebug_secpolicy(sp));
 
+	lwkt_gettoken(&key_token);
+
 	*tun = 0;
 	for (isr = sp->req; isr; isr = isr->next) {
 		if (isr->saidx.mode == IPSEC_MODE_TUNNEL) {
@@ -2760,10 +2838,11 @@ ipsec6_output_trans(struct ipsec_output_state *state, u_char *nexthdrp,
 	/* if we have more to go, we need a tunnel mode processing */
 	if (isr != NULL)
 		*tun = 1;
-
+	lwkt_reltoken(&key_token);
 	return 0;
 
 bad:
+	lwkt_reltoken(&key_token);
 	m_freem(state->m);
 	state->m = NULL;
 	return error;
@@ -2798,6 +2877,7 @@ ipsec6_output_tunnel(struct ipsec_output_state *state, struct secpolicy *sp,
 	 * transport mode ipsec (before the 1st tunnel mode) is already
 	 * processed by ipsec6_output_trans().
 	 */
+	lwkt_gettoken(&key_token);
 	for (isr = sp->req; isr; isr = isr->next) {
 		if (isr->saidx.mode == IPSEC_MODE_TUNNEL)
 			break;
@@ -2992,10 +3072,12 @@ ipsec6_output_tunnel(struct ipsec_output_state *state, struct secpolicy *sp,
 		ip6 = mtod(state->m, struct ip6_hdr *);
 		ip6->ip6_plen = htons(plen);
 	}
+	lwkt_reltoken(&key_token);
 
 	return 0;
 
 bad:
+	lwkt_reltoken(&key_token);
 	m_freem(state->m);
 	state->m = NULL;
 	return error;
@@ -3156,13 +3238,17 @@ ipsec4_tunnel_validate(struct mbuf *m, /* no pullup permitted, m->m_len >= ip */
 	 * therefore, we do not do anything special about inner source.
 	 */
 
+	lwkt_gettoken(&key_token);
 	sp = key_gettunnel((struct sockaddr *)&osrc, (struct sockaddr *)&odst,
-	    (struct sockaddr *)&isrc, (struct sockaddr *)&idst);
-	if (!sp)
+			   (struct sockaddr *)&isrc, (struct sockaddr *)&idst);
+	if (sp) {
+		key_freesp(sp);
+		lwkt_reltoken(&key_token);
+		return 1;
+	} else{
+		lwkt_reltoken(&key_token);
 		return 0;
-	key_freesp(sp);
-
-	return 1;
+	}
 }
 
 #ifdef INET6
@@ -3218,8 +3304,9 @@ ipsec6_tunnel_validate(struct mbuf *m, /* no pullup permitted, m->m_len >= ip */
 	 * in ipsec4_tunnel_validate.
 	 */
 
+	lwkt_gettoken(&key_token);
 	sp = key_gettunnel((struct sockaddr *)&osrc, (struct sockaddr *)&odst,
-	    (struct sockaddr *)&isrc, (struct sockaddr *)&idst);
+			   (struct sockaddr *)&isrc, (struct sockaddr *)&idst);
 	/*
 	 * when there is no suitable inbound policy for the packet of the ipsec
 	 * tunnel mode, the kernel never decapsulate the tunneled packet
@@ -3228,11 +3315,14 @@ ipsec6_tunnel_validate(struct mbuf *m, /* no pullup permitted, m->m_len >= ip */
 	 * packet.  if there is no rule of the generic tunnel, the packet
 	 * is rejected and the statistics will be counted up.
 	 */
-	if (!sp)
+	if (sp) {
+		key_freesp(sp);
+		lwkt_reltoken(&key_token);
+		return 1;
+	} else {
+		lwkt_reltoken(&key_token);
 		return 0;
-	key_freesp(sp);
-
-	return 1;
+	}
 }
 #endif
 

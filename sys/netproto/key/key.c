@@ -552,9 +552,9 @@ found:
 	KEY_CHKSPDIR(sp->spidx.dir, dir, "key_allocsp");
 
 	/* found a SPD entry */
+	sp->refcnt++;
 	microtime(&tv);
 	sp->lastused = tv.tv_sec;
-	sp->refcnt++;
 	lwkt_reltoken(&key_token);
 	KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
 		kprintf("DP key_allocsp cause refcnt++:%d SP:%p\n",
@@ -628,9 +628,9 @@ key_gettunnel(struct sockaddr *osrc, struct sockaddr *odst,
 	return NULL;
 
 found:
+	sp->refcnt++;
 	microtime(&tv);
 	sp->lastused = tv.tv_sec;
-	sp->refcnt++;
 	lwkt_reltoken(&key_token);
 	return sp;
 }
@@ -1077,10 +1077,6 @@ key_freesp(struct secpolicy *sp)
 
 	lwkt_gettoken(&key_token);
 	sp->refcnt--;
-	KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-		kprintf("DP freesp cause refcnt--:%d SP:%p\n",
-			sp->refcnt, sp));
-
 	if (sp->refcnt == 0)
 		key_delsp(sp);
 	lwkt_reltoken(&key_token);
@@ -1228,8 +1224,7 @@ key_delsp(struct secpolicy *sp)
 		isr = nextisr;
 	}
     }
-
-	keydb_delsecpolicy(sp);
+    keydb_delsecpolicy(sp);
 }
 
 /*

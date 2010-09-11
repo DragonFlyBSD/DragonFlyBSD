@@ -67,14 +67,13 @@ static void keydb_delsecasvar (struct secasvar *);
 struct secpolicy *
 keydb_newsecpolicy(void)
 {
-	return((struct secpolicy *)kmalloc(sizeof(struct secpolicy), M_SECA,
-	       M_INTWAIT | M_NULLOK | M_ZERO));
+	return(kmalloc(sizeof(struct secpolicy), M_SECA,
+		       M_INTWAIT | M_NULLOK | M_ZERO));
 }
 
 void
 keydb_delsecpolicy(struct secpolicy *p)
 {
-
 	kfree(p, M_SECA);
 }
 
