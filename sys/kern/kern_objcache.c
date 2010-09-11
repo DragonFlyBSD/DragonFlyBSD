@@ -53,7 +53,6 @@ static MALLOC_DEFINE(M_OBJMAG, "objcache magazine", "Object Cache Magazine");
 struct magazine {
 	int			 rounds;
 	int			 capacity;
-	int			 cleaning;
 	SLIST_ENTRY(magazine)	 nextmagazine;
 	void			*objects[];
 };
@@ -151,7 +150,6 @@ mag_alloc(int capacity)
 			M_OBJMAG, M_INTWAIT | M_ZERO);
 	mag->capacity = capacity;
 	mag->rounds = 0;
-	mag->cleaning = 0;
 	return (mag);
 }
 
@@ -366,8 +364,6 @@ retry:
 
 	/* Previous magazine has an object. */
 	if (MAGAZINE_NOTEMPTY(cpucache->previous_magazine)) {
-		KKASSERT(cpucache->previous_magazine->cleaning +
-			 cpucache->loaded_magazine->cleaning == 0);
 		swap(cpucache->loaded_magazine, cpucache->previous_magazine);
 		loadedmag = cpucache->loaded_magazine;
 		obj = loadedmag->objects[--loadedmag->rounds];
@@ -556,8 +552,6 @@ retry:
 	 * Current magazine full, but previous magazine has room.  XXX
 	 */
 	if (!MAGAZINE_FULL(cpucache->previous_magazine)) {
-		KKASSERT(cpucache->previous_magazine->cleaning +
-			 cpucache->loaded_magazine->cleaning == 0);
 		swap(cpucache->loaded_magazine, cpucache->previous_magazine);
 		loadedmag = cpucache->loaded_magazine;
 		loadedmag->objects[loadedmag->rounds++] = obj;
@@ -584,8 +578,6 @@ retry:
 	 * through and retry.
 	 */
 	if (!SLIST_EMPTY(&depot->emptymagazines)) {
-		KKASSERT(cpucache->previous_magazine->cleaning +
-			 cpucache->loaded_magazine->cleaning == 0);
 		loadedmag = cpucache->previous_magazine;
 		cpucache->previous_magazine = cpucache->loaded_magazine;
 		cpucache->loaded_magazine = SLIST_FIRST(&depot->emptymagazines);
@@ -645,21 +637,25 @@ objcache_dtor(struct objcache *oc, void *obj)
 
 /*
  * Deallocate all objects in a magazine and free the magazine if requested.
- * The magazine must already be disassociated from the depot.
+ * When freeit is TRUE the magazine must already be disassociated from the
+ * depot.
  *
  * Must be called with a critical section held when called with a per-cpu
  * magazine.  The magazine may be indirectly modified during the loop.
  *
+ * If the magazine moves during a dtor the operation is aborted.  This is
+ * only allowed when freeit is FALSE.
+ *
  * The number of objects freed is returned.
  */
 static int
-mag_purge(struct objcache *oc, struct magazine *mag, int freeit)
+mag_purge(struct objcache *oc, struct magazine **magp, int freeit)
 {
+	struct magazine *mag = *magp;
 	int count;
 	void *obj;
 
 	count = 0;
-	++mag->cleaning;
 	while (mag->rounds) {
 		obj = mag->objects[--mag->rounds];
 		oc->dtor(obj, oc->privdata);		/* MAY BLOCK */
@@ -667,16 +663,28 @@ mag_purge(struct objcache *oc, struct magazine *mag, int freeit)
 		++count;
 
 		/*
-		 * Cycle for interrupts
+		 * Cycle for interrupts.
 		 */
 		if ((count & 15) == 0) {
 			crit_exit();
 			crit_enter();
 		}
+
+		/*
+		 * mag may have become invalid either due to dtor/free
+		 * blocking or interrupt cycling, do not derefernce it
+		 * until we check.
+		 */
+		if (*magp != mag) {
+			kprintf("mag_purge: mag ripped out\n");
+			break;
+		}
 	}
-	--mag->cleaning;
-	if (freeit)
+	if (freeit) {
+		KKASSERT(*magp == mag);
+		*magp = NULL;
 		kfree(mag, M_OBJMAG);
+	}
 	return(count);
 }
 
@@ -722,7 +730,7 @@ maglist_purge(struct objcache *oc, struct magazinelist *maglist)
 	crit_enter();
 	while ((mag = SLIST_FIRST(maglist)) != NULL) {
 		SLIST_REMOVE_HEAD(maglist, nextmagazine);
-		count += mag_purge(oc, mag, TRUE);
+		count += mag_purge(oc, &mag, TRUE);
 	}
 	crit_exit();
 	return(count);
@@ -754,8 +762,8 @@ objcache_reclaim(struct objcache *oc)
 
 	SLIST_INIT(&tmplist);
 	crit_enter();
-	count = mag_purge(oc, cache_percpu->loaded_magazine, FALSE);
-	count += mag_purge(oc, cache_percpu->previous_magazine, FALSE);
+	count = mag_purge(oc, &cache_percpu->loaded_magazine, FALSE);
+	count += mag_purge(oc, &cache_percpu->previous_magazine, FALSE);
 	crit_exit();
 
 	spin_lock(&depot->spin);
@@ -782,6 +790,8 @@ objcache_reclaimlist(struct objcache *oclist[], int nlist, int ocflags)
 	struct magazinelist tmplist;
 	int i, count;
 
+	kprintf("objcache_reclaimlist\n");
+
 	SLIST_INIT(&tmplist);
 
 	for (i = 0; i < nlist; i++) {
@@ -790,9 +800,9 @@ objcache_reclaimlist(struct objcache *oclist[], int nlist, int ocflags)
 		depot = &oc->depot[myclusterid];
 
 		crit_enter();
-		count = mag_purge(oc, cpucache->loaded_magazine, FALSE);
+		count = mag_purge(oc, &cpucache->loaded_magazine, FALSE);
 		if (count == 0)
-			count += mag_purge(oc, cpucache->previous_magazine, FALSE);
+			count += mag_purge(oc, &cpucache->previous_magazine, FALSE);
 		crit_exit();
 		if (count > 0) {
 			spin_lock(&depot->spin);
@@ -844,8 +854,8 @@ objcache_destroy(struct objcache *oc)
 		cache_percpu = &oc->cache_percpu[cpuid];
 
 		crit_enter();
-		mag_purge(oc, cache_percpu->loaded_magazine, TRUE);
-		mag_purge(oc, cache_percpu->previous_magazine, TRUE);
+		mag_purge(oc, &cache_percpu->loaded_magazine, TRUE);
+		mag_purge(oc, &cache_percpu->previous_magazine, TRUE);
 		crit_exit();
 		cache_percpu->loaded_magazine = NULL;
 		cache_percpu->previous_magazine = NULL;
@@ -886,7 +896,7 @@ objcache_populate_linear(struct objcache *oc, void *base, int nelts, int size)
 	}
 	if (MAGAZINE_EMPTY(emptymag)) {
 		crit_enter();
-		mag_purge(oc, emptymag, TRUE);
+		mag_purge(oc, &emptymag, TRUE);
 		crit_exit();
 	} else {
 		spin_lock_wr(&depot->spin);
