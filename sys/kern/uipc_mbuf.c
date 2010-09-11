@@ -666,9 +666,11 @@ static void __inline
 updatestats(struct mbuf *m, int type)
 {
 	struct globaldata *gd = mycpu;
-	m->m_type = type;
 
+	m->m_type = type;
 	mbuftrack(m);
+	KKASSERT(m->m_next == NULL);
+	KKASSERT(m->m_nextpkt == NULL);
 
 	atomic_add_long_nonlocked(&mbtypes[gd->gd_cpuid][type], 1);
 	atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_mbufs, 1);
