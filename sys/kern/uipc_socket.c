@@ -1162,8 +1162,11 @@ soshutdown(struct socket *so, int how)
 	if (!(how == SHUT_RD || how == SHUT_WR || how == SHUT_RDWR))
 		return (EINVAL);
 
-	if (how != SHUT_WR)
+	if (how != SHUT_WR) {
+		ssb_lock(&so->so_rcv, M_WAITOK);	/* frontend lock */
 		sorflush(so);
+		ssb_unlock(&so->so_rcv);
+	}
 	if (how != SHUT_RD)
 		return (so_pru_shutdown(so));
 	return (0);
@@ -1178,13 +1181,14 @@ sorflush(struct socket *so)
 
 	atomic_set_int(&ssb->ssb_flags, SSB_NOINTR);
 
-	ssb_lock(ssb, M_WAITOK);
+	lwkt_gettoken(&ssb->ssb_token);
 	socantrcvmore(so);
 	asb = *ssb;
 
 	/*
 	 * Can't just blow up the ssb structure here
 	 */
+	bzero(&ssb->sb, sizeof(ssb->sb));
 	ssb->ssb_timeo = 0;
 	ssb->ssb_unused01 = 0;
 	ssb->ssb_lowat = 0;
@@ -1192,7 +1196,7 @@ sorflush(struct socket *so)
 	ssb->ssb_mbmax = 0;
 	atomic_clear_int(&ssb->ssb_flags, SSB_CLEAR_MASK);
 
-	ssb_unlock(ssb);
+	lwkt_reltoken(&ssb->ssb_token);
 
 	if (pr->pr_flags & PR_RIGHTS && pr->pr_domain->dom_dispose)
 		(*pr->pr_domain->dom_dispose)(asb.ssb_mb);
