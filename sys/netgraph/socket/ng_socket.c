@@ -64,10 +64,13 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
-#include <sys/thread2.h>
 #ifdef NOTYET
 #include <sys/vnode.h>
 #endif
+
+#include <sys/thread2.h>
+#include <sys/socketvar2.h>
+
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
 #include "ng_socketvar.h"
