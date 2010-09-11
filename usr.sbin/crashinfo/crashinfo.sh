@@ -179,16 +179,16 @@ if [ $? -eq 0 ]; then
 	echo "bt" >> $file
 	if [ -e /usr/src/test/debug/gdb.kernel ]; then
 		echo "source /usr/src/test/debug/gdb.kernel" >> $file
+		echo "lstok" >> $file
 		echo "psx" >> $file
 		echo "running_threads" >> $file
-		echo "lstok" >> $file
-		echo "kldstat" >> $file
 		echo "lsvfs" >> $file
 		echo "lsvfsops" >> $file
 		echo "lsmount" >> $file
+		echo "kldstat" >> $file
 	fi
 	echo "quit" >> $file
-	kgdb $KERNEL $VMCORE < $file
+	( ulimit -t 15; kgdb $KERNEL $VMCORE < $file )
 	rm -f $file
 	echo
 fi

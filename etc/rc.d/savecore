@@ -57,10 +57,13 @@ savecore_prestart()
 savecore_start()
 {
 	if [ X$dumpdev != X ]; then
-		echo "Checking for core dump..."
-		savecore ${savecore_flags} ${DUMPDIR} ${dumpdev}
-		if checkyesno crashinfo_enable; then
-			${crashinfo_program} -d ${DUMPDIR}
+		if savecore -C "${DUMPDIR}" "${dumpdev}" > /dev/null; then
+			savecore ${savecore_flags} ${DUMPDIR} ${dumpdev}
+			if checkyesno crashinfo_enable; then
+				${crashinfo_program} -d ${DUMPDIR}
+			fi
+		else
+			echo 'No core dumps found.'
 		fi
 		return ${RC_CONFIGURED}
 	fi
