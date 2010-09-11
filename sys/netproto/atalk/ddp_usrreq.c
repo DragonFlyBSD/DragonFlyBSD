@@ -11,8 +11,10 @@
 #include <sys/priv.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
+#include <sys/mplock2.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/socketvar2.h>
 #include <sys/protosw.h>
 #include <sys/thread2.h>
 #include <net/if.h>
@@ -123,7 +125,7 @@ ddp_disconnect(struct socket *so)
 	at_pcbdisconnect( ddp );
 	ddp->ddp_fsat.sat_addr.s_node = ATADDR_ANYNODE;
 	soisdisconnected( so );
-	sofree(sp);		/* soref above */
+	sofree(so);		/* soref above */
 	return(0);
 }
 
@@ -189,7 +191,7 @@ ddp_abort(struct socket *so)
 	int error;
 	
 	ddp = sotoddpcb(so);
-	if (ddb) {
+	if (ddp) {
 		soisdisconnected( so );
 		at_pcbdetach( so, ddp );
 		error = 0;

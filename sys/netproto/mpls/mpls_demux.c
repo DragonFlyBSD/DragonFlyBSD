@@ -89,7 +89,6 @@ mpls_cpufn(struct mbuf **mp, int hoff)
 	struct mpls *mpls;
 	mpls_label_t label;
 	struct ifnet *ifp;
-	lwkt_port_t port;
 
 	mpls_lengthcheck(mp, hoff);
 	if ((m = *mp) == NULL)

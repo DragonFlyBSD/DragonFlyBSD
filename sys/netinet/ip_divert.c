@@ -52,6 +52,7 @@
 #include <sys/socket.h>
 #include <sys/protosw.h>
 #include <sys/socketvar.h>
+#include <sys/socketvar2.h>
 #include <sys/sysctl.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
@@ -223,7 +224,7 @@ div_soport(struct socket *so, struct sockaddr *nam, struct mbuf **mptr)
 	ip_cpufn(mptr, 0, dir);
 	m = *mptr;
 	if (m) {
-		KKASSERT(m->m_flash & M_HASH);
+		KKASSERT(m->m_flags & M_HASH);
 		return(cpu_portfn(m->m_pkthdr.hash));
 	}
 	return(NULL);

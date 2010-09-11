@@ -43,6 +43,7 @@
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/socketvar2.h>
 #include <sys/errno.h>
 #include <sys/thread2.h>
 

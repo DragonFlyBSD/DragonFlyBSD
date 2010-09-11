@@ -42,6 +42,7 @@
 #include <sys/resourcevar.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/socketvar2.h>
 #include <sys/socketops.h>
 #include <sys/poll.h>
 #include <sys/uio.h>

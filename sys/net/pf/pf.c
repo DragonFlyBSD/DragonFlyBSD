@@ -2750,7 +2750,7 @@ pf_socket_lookup(int direction, struct pf_pdesc *pd)
 	case AF_INET:
 #ifdef SMP
 		if (msg != NULL) {
-			lwkt_sendmsg(tcp_cport(pi_cpu),
+			lwkt_sendmsg(cpu_portfn(pi_cpu),
 				     &msg->nm_netmsg.nm_lmsg);
 		} else
 #endif /* SMP */
