@@ -922,6 +922,7 @@ m_free(struct mbuf *m)
 	struct globaldata *gd = mycpu;
 
 	KASSERT(m->m_type != MT_FREE, ("freeing free mbuf %p", m));
+	KASSERT(M_TRAILINGSPACE(m) >= 0, ("overflowed mbuf %p", m));
 	atomic_subtract_long_nonlocked(&mbtypes[gd->gd_cpuid][m->m_type], 1);
 
 	n = m->m_next;
