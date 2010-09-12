@@ -241,10 +241,10 @@ soisconnected(struct socket *so)
 		lwkt_gettoken(&head->so_rcv.ssb_token);
 		TAILQ_REMOVE(&head->so_incomp, so, so_list);
 		head->so_incqlen--;
-		soclrstate(so, SS_INCOMP);
 		TAILQ_INSERT_TAIL(&head->so_comp, so, so_list);
 		head->so_qlen++;
 		sosetstate(so, SS_COMP);
+		soclrstate(so, SS_INCOMP);
 		lwkt_reltoken(&head->so_rcv.ssb_token);
 
 		sorwakeup(head);
@@ -337,7 +337,7 @@ sonewconn(struct socket *head, int connstatus)
 	 * NOTE: Clearing NOFDREF implies referencing the so with
 	 *	 soreference().
 	 */
-	so->so_state = head->so_state | SS_NOFDREF;
+	so->so_state = head->so_state | SS_NOFDREF | SS_ASSERTINPROG;
 	so->so_proto = head->so_proto;
 	so->so_cred = crhold(head->so_cred);
 	ai.sb_rlimit = NULL;
@@ -352,6 +352,7 @@ sonewconn(struct socket *head, int connstatus)
 		      head->so_rcv.ssb_hiwat, NULL) ||
 	    (*so->so_proto->pr_usrreqs->pru_attach)(so, 0, &ai)) {
 		so->so_head = NULL;
+		soclrstate(so, SS_ASSERTINPROG);
 		sofree(so);		/* remove implied pcb ref */
 		return (NULL);
 	}
@@ -390,6 +391,7 @@ sonewconn(struct socket *head, int connstatus)
 		wakeup((caddr_t)&head->so_timeo);
 		sosetstate(so, connstatus);
 	}
+	soclrstate(so, SS_ASSERTINPROG);
 	return (so);
 }
 

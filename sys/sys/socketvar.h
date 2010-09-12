@@ -169,7 +169,7 @@ struct socket {
 #define	SS_CANTRCVMORE		0x0020	/* can't receive more data from peer */
 #define	SS_RCVATMARK		0x0040	/* at mark on input */
 
-#define	SS_UNUSED0100		0x0100
+#define	SS_ASSERTINPROG		0x0100	/* sonewconn race debugging */
 #define	SS_ASYNC		0x0200	/* async i/o notify */
 #define	SS_ISCONFIRMING		0x0400	/* deciding to accept connection req */
 

@@ -322,6 +322,7 @@ sofree(struct socket *so)
 		return;
 
 	KKASSERT(so->so_pcb == NULL && (so->so_state & SS_NOFDREF));
+	KKASSERT((so->so_state & SS_ASSERTINPROG) == 0);
 
 	/*
 	 * We're done, clean up
@@ -698,7 +699,7 @@ restart:
 			    so->so_options &= ~SO_DONTROUTE;
 		    clen = 0;
 		    control = 0;
-		    top = 0;
+		    top = NULL;
 		    mp = &top;
 		    if (error)
 			    goto release;

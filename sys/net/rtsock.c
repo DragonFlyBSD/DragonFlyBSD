@@ -1228,11 +1228,13 @@ rt_ieee80211msg(struct ifnet *ifp, int what, void *data, size_t data_len)
 	 * NB: we assume m is a single mbuf.
 	 */
 	if (data_len > M_TRAILINGSPACE(m)) {
+		/* XXX use m_getb(data_len, MB_DONTWAIT, MT_DATA, 0); */
 		struct mbuf *n = m_get(MB_DONTWAIT, MT_DATA);
 		if (n == NULL) {
 			m_freem(m);
 			return;
 		}
+		KKASSERT(data_len <= M_TRAILINGSPACE(n));
 		bcopy(data, mtod(n, void *), data_len);
 		n->m_len = data_len;
 		m->m_next = n;

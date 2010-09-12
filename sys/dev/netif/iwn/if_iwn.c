@@ -3381,6 +3381,7 @@ iwn_start_locked(struct ifnet *ifp)
 		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL)
 			break;
+		KKASSERT(M_TRAILINGSPACE(m) >= 0);
 		ni = (struct ieee80211_node *)m->m_pkthdr.rcvif;
 		pri = M_WME_GETAC(m);
 		txq = &sc->txq[pri];
