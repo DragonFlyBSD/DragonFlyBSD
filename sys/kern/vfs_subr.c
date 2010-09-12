@@ -153,16 +153,22 @@ rb_buf_compare(struct buf *b1, struct buf *b2)
 
 /*
  * Returns non-zero if the vnode is a candidate for lazy msyncing.
+ *
+ * NOTE: v_object is not stable (this scan can race), however the
+ *	 mntvnodescan code holds vmobj_token so any VM object we
+ *	 do find will remain stable storage.
  */
 static __inline int
 vshouldmsync(struct vnode *vp)
 {
+	vm_object_t object;
+
 	if (vp->v_auxrefs != 0 || vp->v_sysref.refcnt > 0)
 		return (0);		/* other holders */
-	if (vp->v_object &&
-	    (vp->v_object->ref_count || vp->v_object->resident_page_count)) {
-		return (0);
-	}
+	object = vp->v_object;
+	cpu_ccfence();
+	if (object && (object->ref_count || object->resident_page_count))
+		return(0);
 	return (1);
 }
 

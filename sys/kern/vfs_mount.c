@@ -986,6 +986,11 @@ insmntque(struct vnode *vp, struct mount *mp)
  * arbitrarily block.  The scanning code guarentees consistency of operation
  * even if the slow function deletes or moves the node, or blocks and some
  * other thread deletes or moves the node.
+ *
+ * NOTE: We hold vmobj_token to prevent a VM object from being destroyed
+ *	 out from under the fastfunc()'s vnode test.  It will not prevent
+ *	 v_object from getting NULL'd out but it will ensure that the
+ *	 pointer (if we race) will remain stable.
  */
 int
 vmntvnodescan(
@@ -1003,6 +1008,7 @@ vmntvnodescan(
 	int count = 0;
 
 	lwkt_gettoken(&mntvnode_token);
+	lwkt_gettoken(&vmobj_token);
 
 	/*
 	 * If asked to do one pass stop after iterating available vnodes.
@@ -1121,6 +1127,7 @@ next:
 			info.vp = TAILQ_NEXT(vp, v_nmntvnodes);
 	}
 	TAILQ_REMOVE(&mntvnodescan_list, &info, entry);
+	lwkt_reltoken(&vmobj_token);
 	lwkt_reltoken(&mntvnode_token);
 	return(r);
 }
