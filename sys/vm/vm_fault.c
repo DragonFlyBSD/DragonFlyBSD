@@ -790,6 +790,11 @@ RetryFault:
 	if (fault_type & VM_PROT_WRITE)
 		vm_page_dirty(fs.m);
 
+	if (fault_flags & VM_FAULT_DIRTY)
+		vm_page_dirty(fs.m);
+	if (fault_flags & VM_FAULT_UNSWAP)
+		swap_pager_unswapped(fs.m);
+
 	/*
 	 * Indicate that the page was accessed.
 	 */

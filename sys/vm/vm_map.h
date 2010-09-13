@@ -428,6 +428,7 @@ vmspace_resident_count(struct vmspace *vmspace)
 #define VM_FAULT_USER_WIRE	0x02	/* Likewise, but for user purposes */
 #define VM_FAULT_BURST		0x04	/* Burst fault can be done */
 #define VM_FAULT_DIRTY		0x08	/* Dirty the page */
+#define VM_FAULT_UNSWAP		0x10	/* Remove backing store from the page */
 #define VM_FAULT_WIRE_MASK	(VM_FAULT_CHANGE_WIRING|VM_FAULT_USER_WIRE)
 
 #ifdef _KERNEL

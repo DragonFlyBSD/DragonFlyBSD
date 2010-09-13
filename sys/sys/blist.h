@@ -38,6 +38,7 @@
  *		(void)  blist_destroy(blist)
  *		blkno = blist_alloc(blist, count)
  *		(void)  blist_free(blist, blkno, count)
+ *		nblks = blist_fill(blist, blkno, count)
  *		(void)  blist_resize(&blist, count, freeextra)
  *		
  *
@@ -116,6 +117,7 @@ extern blist_t blist_create(swblk_t blocks);
 extern void blist_destroy(blist_t blist);
 extern swblk_t blist_alloc(blist_t blist, swblk_t count);
 extern void blist_free(blist_t blist, swblk_t blkno, swblk_t count);
+extern swblk_t blist_fill(blist_t blist, swblk_t blkno, swblk_t count);
 extern void blist_print(blist_t blist);
 extern void blist_resize(blist_t *pblist, swblk_t count, int freenew);
 

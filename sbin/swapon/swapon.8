@@ -33,44 +33,136 @@
 .\" $FreeBSD: src/sbin/swapon/swapon.8,v 1.15.2.2 2001/12/14 15:17:56 ru Exp $
 .\" $DragonFly: src/sbin/swapon/swapon.8,v 1.4 2007/08/10 18:28:27 swildner Exp $
 .\"
-.Dd June 5, 1993
+.Dd September 7, 2010
 .Dt SWAPON 8
 .Os
 .Sh NAME
-.Nm swapon
-.Nd "specify additional device for paging and swapping"
+.Nm swapon , swapoff , swapctl
+.Nd "specify devices for paging and swapping"
 .Sh SYNOPSIS
-.Nm
-.Fl a
-.Nm
-.Ar special_file ...
+.Nm swapon Fl aq | Ar
+.Nm swapoff Fl aq | Ar
+.Nm swapctl
+.Op Fl AghklmsU
+.Oo
+.Fl a Ar
+|
+.Fl d Ar
+.Oc
 .Sh DESCRIPTION
-.Nm Swapon
-is used to specify additional devices on which paging and swapping
-are to take place.
-The system begins by swapping and paging on only a single device
-so that only one disk is required at bootstrap time.
-Calls to
-.Nm
-normally occur in the system multi-user initialization file
-.Pa /etc/rc
-making all swap devices available, so that the paging and swapping
-activity is interleaved across several devices.
-.Pp
-Normally, the first form is used:
-.Bl -tag -width indent
-.It Fl a
-All devices marked as ``sw''
-swap devices in
+The
+.Nm swapon , swapoff
+and
+.Nm swapctl
+utilities are used to control swap devices in the system.
+At boot time all swap entries in
 .Pa /etc/fstab
-are made available unless their ``noauto'' option is also set.
-.El
+are added automatically when the system goes multi-user.
+Swap devices use a fixed interleave; the maximum number of devices
+is specified by the kernel configuration option
+.Dv NSWAPDEV ,
+which is typically set to 4.
+There is no priority mechanism.
 .Pp
-The second form gives individual block devices as given
-in the system swap configuration table.  The call makes only this space
-available to the system for swap allocation.
+The
+.Nm swapon
+utility adds the specified swap devices to the system.
+If the
+.Fl a
+option is used, all swap devices in
+.Pa /etc/fstab
+will be added, unless their
+.Dq noauto
+option is also set.
+If the
+.Fl q
+option is used informational messages will not be
+written to standard output when a swap device is added.
+.Pp
+The
+.Nm swapoff
+utility removes the specified swap devices from the system.
+If the
+.Fl a
+option is used, all swap devices in
+.Pa /etc/fstab
+will be removed, unless their
+.Dq noauto
+option is also set.
+If the
+.Fl q
+option is used informational messages will not be
+written to standard output when a swap device is removed.
+Note that
+.Nm swapoff
+will fail and refuse to remove a swap device if there is insufficient
+VM (memory + remaining swap devices) to run the system.
+The
+.Nm swapoff
+utility
+must move swapped pages out of the device being removed which could
+lead to high system loads for a period of time, depending on how
+much data has been swapped out to that device.
+.Pp
+The
+.Nm swapctl
+utility exists primarily for those familiar with other
+.Bx Ns s
+and may be
+used to add, remove, or list swap devices.
+Note that the
+.Fl a
+option is used differently in
+.Nm swapctl
+and indicates that a specific list of devices should be added.
+The
+.Fl d
+option indicates that a specific list should be removed.
+The
+.Fl A
+and
+.Fl U
+options to
+.Nm swapctl
+operate on all swap entries in
+.Pa /etc/fstab
+which do not have their
+.Dq noauto
+option set.
+.Pp
+Swap information can be generated using the
+.Xr swapinfo 8
+utility,
+.Nm pstat
+.Fl s ,
+or
+.Nm swapctl
+.Fl l .
+The
+.Nm swapctl
+utility has the following options for listing swap:
+.Bl -tag -width indent
+.It Fl h
+Output values in human-readable form.
+.It Fl g
+Output values in gigabytes.
+.It Fl k
+Output values in kilobytes.
+.It Fl m
+Output values in megabytes.
+.It Fl l
+List the devices making up system swap.
+.It Fl s
+Print a summary line for system swap.
+.Pp
+The
+.Ev BLOCKSIZE
+environment variable is used if not specifically
+overridden.
+1K blocks are used by default.
+.El
 .Sh FILES
-.Bl -tag -width "/dev/{ad,da}?s?b" -compact
+.Bl -tag -width ".Pa /dev/{ad,da}?s?b" -compact
 .It Pa /dev/{ad,da}?s?b
 standard paging devices
 .It Pa /dev/vn?s?b
@@ -80,6 +172,9 @@ ASCII filesystem description table
 .It Pa /etc/vntab
 ASCII vnode file table
 .El
+.Sh DIAGNOSTICS
+These utilities may fail for the reasons described in
+.Xr swapon 2 .
 .Sh SEE ALSO
 .Xr swapon 2 ,
 .Xr fstab 5 ,
@@ -89,10 +184,14 @@ ASCII vnode file table
 .Xr vnconfig 8
 .Sh HISTORY
 The
-.Nm
-command appeared in
+.Nm swapon
+utility appeared in
 .Bx 4.0 .
-.Sh BUGS
-There is no way to stop paging and swapping on a device.
-It is therefore not possible to dismount swap devices which are
-mounted during system operation.
+The
+.Nm swapoff
+and
+.Nm swapctl
+utilities appeared in
+.Fx 5.1
+and were later ported to
+.Dx 2.7 .
