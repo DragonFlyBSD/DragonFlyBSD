@@ -557,6 +557,7 @@ int	 setrgid(gid_t);
 int	 setruid(uid_t);
 void	 setusershell(void);
 int	 strtofflags(char **, u_long *, u_long *);
+int	 swapoff(const char *);
 int	 swapon(const char *);
 int	 syscall(int, ...);
 off_t	 __syscall(quad_t, ...);

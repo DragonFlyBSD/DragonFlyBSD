@@ -307,4 +307,5 @@ MIASM =  \
 	mkfifoat.o \
 	mknodat.o \
 	readlinkat.o \
-	symlinkat.o
+	symlinkat.o \
+	swapoff.o

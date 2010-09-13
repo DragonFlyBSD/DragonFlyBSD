@@ -536,4 +536,5 @@ const char *syscallnames[] = {
 	"mknodat",			/* 526 = mknodat */
 	"readlinkat",			/* 527 = readlinkat */
 	"symlinkat",			/* 528 = symlinkat */
+	"swapoff",			/* 529 = swapoff */
 };

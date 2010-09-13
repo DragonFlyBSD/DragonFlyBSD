@@ -741,3 +741,4 @@
 527	STD	POSIX	{ int readlinkat(int fd, char *path, char *buf, \
 				  size_t bufsize); }
 528	STD	POSIX	{ int symlinkat(char *path1, int fd, char *path2); }
+529	STD	BSD	{ int swapoff(char *name); }

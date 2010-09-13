@@ -141,6 +141,9 @@ static swblk_t blst_meta_alloc(blmeta_t *scan, swblk_t blk,
 static void blst_leaf_free(blmeta_t *scan, swblk_t relblk, int count);
 static void blst_meta_free(blmeta_t *scan, swblk_t freeBlk, swblk_t count, 
 					int64_t radix, int skip, swblk_t blk);
+static swblk_t blst_leaf_fill(blmeta_t *scan, swblk_t blk, int count);
+static swblk_t blst_meta_fill(blmeta_t *scan, swblk_t fillBlk, swblk_t count,
+					int64_t radix, int skip, swblk_t blk);
 static void blst_copy(blmeta_t *scan, swblk_t blk, int64_t radix,
 				swblk_t skip, blist_t dest, swblk_t count);
 static swblk_t	blst_radix_init(blmeta_t *scan, int64_t radix,
@@ -254,6 +257,32 @@ blist_free(blist_t bl, swblk_t blkno, swblk_t count)
 		else
 			blst_meta_free(bl->bl_root, blkno, count, bl->bl_radix, bl->bl_skip, 0);
 		bl->bl_free += count;
+	}
+}
+
+/*
+ * blist_fill() -	mark a region in the block bitmap as off-limits
+ *			to the allocator (i.e. allocate it), ignoring any
+ *			existing allocations.  Return the number of blocks
+ *			actually filled that were free before the call.
+ */
+
+swblk_t
+blist_fill(blist_t bl, swblk_t blkno, swblk_t count)
+{
+	swblk_t filled;
+
+	if (bl) {
+		if (bl->bl_radix == BLIST_BMAP_RADIX) {
+			filled = blst_leaf_fill(bl->bl_root, blkno, count);
+		} else {
+			filled = blst_meta_fill(bl->bl_root, blkno, count,
+			    bl->bl_radix, bl->bl_skip, 0);
+		}
+		bl->bl_free -= filled;
+		return (filled);
+	} else {
+		return 0;
 	}
 }
 
@@ -606,6 +635,111 @@ blst_meta_free(blmeta_t *scan, swblk_t freeBlk, swblk_t count,
 }
 
 /*
+ * BLST_LEAF_FILL() -	allocate specific blocks in leaf bitmap
+ *
+ *	Allocates all blocks in the specified range regardless of
+ *	any existing allocations in that range.  Returns the number
+ *	of blocks allocated by the call.
+ */
+static swblk_t
+blst_leaf_fill(blmeta_t *scan, swblk_t blk, int count)
+{
+	int n = blk & (BLIST_BMAP_RADIX - 1);
+	swblk_t nblks;
+	u_swblk_t mask, bitmap;
+
+	mask = ((u_swblk_t)-1 << n) &
+	    ((u_swblk_t)-1 >> (BLIST_BMAP_RADIX - count - n));
+
+	/* Count the number of blocks we're about to allocate */
+	bitmap = scan->u.bmu_bitmap & mask;
+	for (nblks = 0; bitmap != 0; nblks++)
+		bitmap &= bitmap - 1;
+
+	scan->u.bmu_bitmap &= ~mask;
+	return (nblks);
+}
+
+/*
+ * BLST_META_FILL() -	allocate specific blocks at a meta node
+ *
+ *	Allocates the specified range of blocks, regardless of
+ *	any existing allocations in the range.  The range must
+ *	be within the extent of this node.  Returns the number
+ *	of blocks allocated by the call.
+ */
+static swblk_t
+blst_meta_fill(blmeta_t *scan, swblk_t fillBlk, swblk_t count,
+	       int64_t radix, int skip, swblk_t blk)
+{
+	int i;
+	int next_skip = ((u_int)skip / BLIST_META_RADIX);
+	swblk_t nblks = 0;
+
+	if (count == radix || scan->u.bmu_avail == 0) {
+		/*
+		 * ALL-ALLOCATED special case
+		 */
+		nblks = scan->u.bmu_avail;
+		scan->u.bmu_avail = 0;
+		scan->bm_bighint = count;
+		return (nblks);
+	}
+
+	if (scan->u.bmu_avail == radix) {
+		radix /= BLIST_META_RADIX;
+
+		/*
+		 * ALL-FREE special case, initialize sublevel
+		 */
+		for (i = 1; i <= skip; i += next_skip) {
+			if (scan[i].bm_bighint == (swblk_t)-1)
+				break;
+			if (next_skip == 1) {
+				scan[i].u.bmu_bitmap = (u_swblk_t)-1;
+				scan[i].bm_bighint = BLIST_BMAP_RADIX;
+			} else {
+				scan[i].bm_bighint = (swblk_t)radix;
+				scan[i].u.bmu_avail = (swblk_t)radix;
+			}
+		}
+	} else {
+		radix /= BLIST_META_RADIX;
+	}
+
+	if (count > (swblk_t)radix)
+		panic("blst_meta_fill: allocation too large");
+
+	i = (fillBlk - blk) / (swblk_t)radix;
+	blk += i * (swblk_t)radix;
+	i = i * next_skip + 1;
+
+	while (i <= skip && blk < fillBlk + count) {
+		swblk_t v;
+
+		v = blk + (swblk_t)radix - fillBlk;
+		if (v > count)
+			v = count;
+
+		if (scan->bm_bighint == (swblk_t)-1)
+			panic("blst_meta_fill: filling unexpected range");
+
+		if (next_skip == 1) {
+			nblks += blst_leaf_fill(&scan[i], fillBlk, v);
+		} else {
+			nblks += blst_meta_fill(&scan[i], fillBlk, v,
+			    radix, next_skip - 1, blk);
+		}
+		count -= v;
+		fillBlk += v;
+		blk += (swblk_t)radix;
+		i += next_skip;
+	}
+	scan->u.bmu_avail -= nblks;
+	return (nblks);
+}
+
+/*
  * BLIST_RADIX_COPY() - copy one radix tree to another
  *
  *	Locates free space in the source tree and frees it in the destination
@@ -914,12 +1048,21 @@ main(int ac, char **av)
 				kprintf("?\n");
 			}
 			break;
+		case 'l':
+			if (sscanf(buf + 1, "%x %d", &da, &count) == 2) {
+				printf("    n=%d\n",
+				    blist_fill(bl, da, count));
+			} else {
+				kprintf("?\n");
+			}
+			break;
 		case '?':
 		case 'h':
 			puts(
 			    "p          -print\n"
 			    "a %d       -allocate\n"
 			    "f %x %d    -free\n"
+			    "l %x %d	-fill\n"
 			    "r %d       -resize\n"
 			    "h/?        -help"
 			);

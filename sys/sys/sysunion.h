@@ -415,4 +415,5 @@ union sysunion {
 	struct	mknodat_args mknodat;
 	struct	readlinkat_args readlinkat;
 	struct	symlinkat_args symlinkat;
+	struct	swapoff_args swapoff;
 };

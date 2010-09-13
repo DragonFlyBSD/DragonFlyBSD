@@ -197,7 +197,7 @@ alpm_attach(device_t dev)
 			kprintf(" 55K");
 			break;
 		default:
-			kprintf("unkown");
+			kprintf("unknown");
 			break;
 		}
 		kprintf("\n");

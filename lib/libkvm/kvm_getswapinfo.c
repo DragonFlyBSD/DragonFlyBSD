@@ -77,8 +77,8 @@ static int nswdev;
 static int unswdev;
 static int dmmax;
 
-static void getswapinfo_radix(kvm_t *kd, struct kvm_swap *swap_ary,
-			      int swap_max, int flags);
+static int nlist_init(kvm_t *kd);
+static void dump_blist(kvm_t *kd);
 static int kvm_getswapinfo_sysctl(kvm_t *kd, struct kvm_swap *swap_ary,
 			      int swap_max, int flags);
 
@@ -102,6 +102,17 @@ static int kvm_getswapinfo_sysctl(kvm_t *kd, struct kvm_swap *swap_ary,
 		return (0);						\
 	}
 
+#define GETSWDEVNAME(dev, str, flags)					\
+	if (dev == NODEV) {						\
+		strlcpy(str, "[NFS swap]", sizeof(str));		\
+	} else {							\
+		snprintf(						\
+		    str, sizeof(str), "%s%s",				\
+		    ((flags & SWIF_DEV_PREFIX) ? _PATH_DEV : ""),	\
+		    devname(dev, S_IFCHR)				\
+		);							\
+	}
+
 int
 kvm_getswapinfo(
 	kvm_t *kd, 
@@ -109,7 +120,10 @@ kvm_getswapinfo(
 	int swap_max, 
 	int flags
 ) {
-	int ti;
+	int i, ti, swi;
+	int ttl;
+	struct swdevt *sw;
+	struct swdevt swinfo;
 
 	/*
 	 * clear cache
@@ -118,6 +132,9 @@ kvm_getswapinfo(
 		kvm_swap_nl_cached = 0;
 		return(0);
 	}
+
+	if (swap_max < 1)
+		return (-1);
 
 	/*
 	 * Use sysctl if possible
@@ -131,113 +148,90 @@ kvm_getswapinfo(
 	/*
 	 * namelist
 	 */
-	if (kvm_swap_nl_cached == 0) {
-		struct swdevt *sw;
+	if (!nlist_init(kd))
+		return (-1);
 
-		if (kvm_nlist(kd, kvm_swap_nl) < 0)
-			return(-1);
+	swi = unswdev;
+	if (swi >= swap_max)
+		swi = swap_max - 1;
 
-		/*
-		 * required entries
-		 */
+	bzero(swap_ary, sizeof(struct kvm_swap) * (swi + 1));
 
-		if (
-		    kvm_swap_nl[NL_SWDEVT].n_value == 0 ||
-		    kvm_swap_nl[NL_NSWDEV].n_value == 0 ||
-		    kvm_swap_nl[NL_DMMAX].n_value == 0 ||
-		    kvm_swap_nl[NL_SWAPBLIST].n_type == 0
-		) {
-			return(-1);
-		}
+	KGET(NL_SWDEVT, sw);
+	for (i = ti = 0; i < nswdev; ++i) {
+		KGET2(&sw[i], &swinfo, sizeof(swinfo), "swinfo");
+
+		if (swinfo.sw_nblks == 0)
+			continue;
 
 		/*
-		 * get globals, type of swap
+		 * The first dmmax is never allocated to avoid
+		 * trashing the disklabels.
 		 */
+		ttl = swinfo.sw_nblks - dmmax;
+		if (ttl == 0)
+			continue;
 
-		KGET(NL_NSWDEV, nswdev);
-		KGET(NL_DMMAX, dmmax);
+		swap_ary[swi].ksw_total += ttl;
+		swap_ary[swi].ksw_used += swinfo.sw_nused;
 
-		/*
-		 * figure out how many actual swap devices are enabled
-		 */
-
-		KGET(NL_SWDEVT, sw);
-		for (unswdev = nswdev - 1; unswdev >= 0; --unswdev) {
-			struct swdevt swinfo;
-
-			KGET2(&sw[unswdev], &swinfo, sizeof(swinfo), "swinfo");
-			if (swinfo.sw_nblks)
-				break;
-		}
-		++unswdev;
-
-		kvm_swap_nl_cached = 1;
-	}
-
-	{
-		struct swdevt *sw;
-		int i;
-
-		ti = unswdev;
-		if (ti >= swap_max)
-			ti = swap_max - 1;
-
-		if (ti >= 0)
-			bzero(swap_ary, sizeof(struct kvm_swap) * (ti + 1));
-
-		KGET(NL_SWDEVT, sw);
-		for (i = 0; i < unswdev; ++i) {
-			struct swdevt swinfo;
-			int ttl;
-
-			KGET2(&sw[i], &swinfo, sizeof(swinfo), "swinfo");
-
-			/*
-			 * old style: everything in DEV_BSIZE'd chunks,
-			 * convert to pages.
-			 *
-			 * new style: swinfo in DEV_BSIZE'd chunks but dmmax
-			 * in pages.
-			 *
-			 * The first dmmax is never allocating to avoid 
-			 * trashing the disklabels
-			 */
-
-			ttl = swinfo.sw_nblks - dmmax;
-
-			if (ttl == 0)
-				continue;
-
-			if (i < ti) {
-				swap_ary[i].ksw_total = ttl;
-				swap_ary[i].ksw_used = ttl;
-				swap_ary[i].ksw_flags = swinfo.sw_flags;
-				if (swinfo.sw_dev == NODEV) {
-					snprintf(
-					    swap_ary[i].ksw_devname,
-					    sizeof(swap_ary[i].ksw_devname),
-					    "%s",
-					    "[NFS swap]"
-					);
-				} else {
-					snprintf(
-					    swap_ary[i].ksw_devname,
-					    sizeof(swap_ary[i].ksw_devname),
-					    "%s%s",
-					    ((flags & SWIF_DEV_PREFIX) ? _PATH_DEV : ""),
-					    devname(swinfo.sw_dev, S_IFCHR)
-					);
-				}
-			}
-			if (ti >= 0) {
-				swap_ary[ti].ksw_total += ttl;
-				swap_ary[ti].ksw_used += ttl;
-			}
+		if (ti < swi) {
+			swap_ary[ti].ksw_total = ttl;
+			swap_ary[ti].ksw_used = swinfo.sw_nused;
+			swap_ary[ti].ksw_flags = swinfo.sw_flags;
+			GETSWDEVNAME(swinfo.sw_dev, swap_ary[ti].ksw_devname,
+			    flags);
+			++ti;
 		}
 	}
 
-	getswapinfo_radix(kd, swap_ary, swap_max, flags);
-	return(ti);
+	if (flags & SWIF_DUMP_TREE)
+		dump_blist(kd);
+	return (swi);
+}
+
+static int
+nlist_init(kvm_t *kd)
+{
+	int i;
+	struct swdevt *sw;
+	struct swdevt swinfo;
+
+	if (kvm_swap_nl_cached)
+		return (1);
+
+	if (kvm_nlist(kd, kvm_swap_nl) < 0)
+		return (0);
+
+	/*
+	 * required entries
+	 */
+	if (kvm_swap_nl[NL_SWDEVT].n_value == 0 ||
+	    kvm_swap_nl[NL_NSWDEV].n_value == 0 ||
+	    kvm_swap_nl[NL_DMMAX].n_value == 0 ||
+	    kvm_swap_nl[NL_SWAPBLIST].n_type == 0) {
+		return (0);
+	}
+
+	/*
+	 * get globals, type of swap
+	 */
+	KGET(NL_NSWDEV, nswdev);
+	KGET(NL_DMMAX, dmmax);
+
+	/*
+	 * figure out how many actual swap devices are enabled
+	 */
+	KGET(NL_SWDEVT, sw);
+	for (i = unswdev = 0; i < nswdev; ++i) {
+		KGET2(&sw[i], &swinfo, sizeof(swinfo), "swinfo");
+		if (swinfo.sw_nblks)
+			++unswdev;
+
+	}
+
+	kvm_swap_nl_cached = 1;
+	return (1);
 }
 
 /*
@@ -257,14 +251,10 @@ scanradix(
 	kvm_t *kd,
 	int dmmax, 
 	int nswdev,
-	struct kvm_swap *swap_ary,
-	int swap_max,
-	int tab,
-	int flags
+	int tab
 ) {
 	blmeta_t meta;
 	blmeta_t scan_array[BLIST_BMAP_RADIX];
-	int ti = (unswdev >= swap_max) ? swap_max - 1 : unswdev;
 
 	if (scan_cache) {
 		meta = *scan_cache;
@@ -282,13 +272,11 @@ scanradix(
 	 * Terminator
 	 */
 	if (meta.bm_bighint == (swblk_t)-1) {
-		if (flags & SWIF_DUMP_TREE) {
-			printf("%*.*s(0x%06x,%lld) Terminator\n",
-			    TABME,
-			    blk, 
-			    (long long)radix
-			);
-		}
+		printf("%*.*s(0x%06x,%lld) Terminator\n",
+		    TABME,
+		    blk,
+		    (long long)radix
+		);
 		return(-1);
 	}
 
@@ -296,81 +284,33 @@ scanradix(
 		/*
 		 * Leaf bitmap
 		 */
-		int i;
+		printf("%*.*s(0x%06x,%lld) Bitmap %08x big=%d\n",
+		    TABME,
+		    blk,
+		    (long long)radix,
+		    (int)meta.u.bmu_bitmap,
+		    meta.bm_bighint
+		);
 
-		if (flags & SWIF_DUMP_TREE) {
-			printf("%*.*s(0x%06x,%lld) Bitmap %08x big=%d\n",
-			    TABME,
-			    blk, 
-			    (long long)radix,
-			    (int)meta.u.bmu_bitmap,
-			    meta.bm_bighint
-			);
-		}
-
-		/*
-		 * If not all allocated, count.
-		 */
-		if (meta.u.bmu_bitmap != 0) {
-			for (i = 0; i < BLIST_BMAP_RADIX && i < count; ++i) {
-				/*
-				 * A 0 bit means allocated
-				 */
-				if ((meta.u.bmu_bitmap & (1 << i))) {
-					int t = 0;
-
-					if (nswdev)
-						t = (blk + i) / dmmax % nswdev;
-					if (t < ti)
-						--swap_ary[t].ksw_used;
-					if (ti >= 0)
-						--swap_ary[ti].ksw_used;
-				}
-			}
-		}
 	} else if (meta.u.bmu_avail == radix) {
 		/*
 		 * Meta node if all free
 		 */
-		if (flags & SWIF_DUMP_TREE) {
-			printf("%*.*s(0x%06x,%lld) Submap ALL-FREE {\n",
-			    TABME,
-			    blk, 
-			    (long long)radix
-			);
-		}
-		/*
-		 * Note: both dmmax and radix are powers of 2.  However, dmmax
-		 * may be larger then radix so use a smaller increment if
-		 * necessary.
-		 */
-		{
-			int t;
-			int tinc = dmmax;
+		printf("%*.*s(0x%06x,%lld) Submap ALL-FREE {\n",
+		    TABME,
+		    blk,
+		    (long long)radix
+		);
 
-			while (tinc > radix)
-				tinc >>= 1;
-
-			for (t = blk; t < blk + radix; t += tinc) {
-				int u = (nswdev) ? (t / dmmax % nswdev) : 0;
-
-				if (u < ti)
-					swap_ary[u].ksw_used -= tinc;
-				if (ti >= 0)
-					swap_ary[ti].ksw_used -= tinc;
-			}
-		}
 	} else if (meta.u.bmu_avail == 0) {
 		/*
 		 * Meta node if all used
 		 */
-		if (flags & SWIF_DUMP_TREE) {
-			printf("%*.*s(0x%06x,%lld) Submap ALL-ALLOCATED\n",
-			    TABME,
-			    blk, 
-			    (long long)radix
-			);
-		}
+		printf("%*.*s(0x%06x,%lld) Submap ALL-ALLOCATED\n",
+		    TABME,
+		    blk,
+		    (long long)radix
+		);
 	} else {
 		/*
 		 * Meta node if not all free
@@ -378,15 +318,13 @@ scanradix(
 		int i;
 		int next_skip;
 
-		if (flags & SWIF_DUMP_TREE) {
-			printf("%*.*s(0x%06x,%lld) Submap avail=%d big=%d {\n",
-			    TABME,
-			    blk, 
-			    (long long)radix,
-			    (int)meta.u.bmu_avail,
-			    meta.bm_bighint
-			);
-		}
+		printf("%*.*s(0x%06x,%lld) Submap avail=%d big=%d {\n",
+		    TABME,
+		    blk,
+		    (long long)radix,
+		    (int)meta.u.bmu_avail,
+		    meta.bm_bighint
+		);
 
 		radix /= BLIST_META_RADIX;
 		next_skip = skip / BLIST_META_RADIX;
@@ -406,24 +344,19 @@ scanradix(
 			    kd,
 			    dmmax,
 			    nswdev,
-			    swap_ary,
-			    swap_max,
-			    tab + 4,
-			    flags
+			    tab + 4
 			);
 			if (r < 0)
 				break;
 			blk += (swblk_t)radix;
 		}
-		if (flags & SWIF_DUMP_TREE) {
-			printf("%*.*s}\n", TABME);
-		}
+		printf("%*.*s}\n", TABME);
 	}
 	return(0);
 }
 
 static void
-getswapinfo_radix(kvm_t *kd, struct kvm_swap *swap_ary, int swap_max, int flags)
+dump_blist(kvm_t *kd)
 {
 	struct blist *swapblist = NULL;
 	struct blist blcopy = { 0 };
@@ -431,51 +364,32 @@ getswapinfo_radix(kvm_t *kd, struct kvm_swap *swap_ary, int swap_max, int flags)
 	KGET(NL_SWAPBLIST, swapblist);
 
 	if (swapblist == NULL) {
-		if (flags & SWIF_DUMP_TREE)
-			printf("radix tree: NULL - no swap in system\n");
+		printf("radix tree: NULL - no swap in system\n");
 		return;
 	}
 
 	KGET2(swapblist, &blcopy, sizeof(blcopy), "*swapblist");
 
-	if (flags & SWIF_DUMP_TREE) {
-		printf("radix tree: %d/%d/%lld blocks, %dK wired\n",
-			blcopy.bl_free,
-			blcopy.bl_blocks,
-			(long long)blcopy.bl_radix,
-			(int)((blcopy.bl_rootblks * sizeof(blmeta_t) + 1023)/
-			    1024)
-		);
-	}
+	printf("radix tree: %d/%d/%lld blocks, %dK wired\n",
+		blcopy.bl_free,
+		blcopy.bl_blocks,
+		(long long)blcopy.bl_radix,
+		(int)((blcopy.bl_rootblks * sizeof(blmeta_t) + 1023)/
+		    1024)
+	);
 
-	/*
-	 * XXX Scan the radix tree in the kernel if we have more then one
-	 *     swap device so we can get per-device statistics.  This can
-	 *     get nasty because swap devices are interleaved based on the
-	 *     maximum of (4), so the blist winds up not using any shortcuts.
-	 *
-	 *     Otherwise just pull the free count out of the blist header,
-	 *     which is a billion times faster.
-	 */
-	if ((flags & SWIF_DUMP_TREE) || unswdev > 1) {
-		scanradix(
-		    blcopy.bl_root,
-		    NULL,
-		    0,
-		    blcopy.bl_radix,
-		    blcopy.bl_skip,
-		    blcopy.bl_rootblks,
-		    kd,
-		    dmmax,
-		    nswdev,
-		    swap_ary,
-		    swap_max,
-		    0,
-		    flags
-		);
-	} else {
-		swap_ary[0].ksw_used -= blcopy.bl_free;
-	}
+	scanradix(
+	    blcopy.bl_root,
+	    NULL,
+	    0,
+	    blcopy.bl_radix,
+	    blcopy.bl_skip,
+	    blcopy.bl_rootblks,
+	    kd,
+	    dmmax,
+	    nswdev,
+	    0
+	);
 }
 
 static
@@ -492,9 +406,6 @@ kvm_getswapinfo_sysctl(kvm_t *kd, struct kvm_swap *swap_ary,
 	char *xswbuf;
 	struct xswdev *xsw;
 
-	if (swap_max < 1)
-		return(-1);
-
 	if (sysctlbyname("vm.swap_info_array", NULL, &bytes, NULL, 0) < 0)
 		return(-1);
 	if (bytes == 0)
@@ -509,9 +420,6 @@ kvm_getswapinfo_sysctl(kvm_t *kd, struct kvm_swap *swap_ary,
 		free(xswbuf);
 		return(-1);
 	}
-
-	bzero(swap_ary, sizeof(struct kvm_swap) * swap_max);
-	--swap_max;
 
 	/*
 	 * Calculate size of xsw entry returned by kernel (it can be larger
@@ -530,8 +438,10 @@ kvm_getswapinfo_sysctl(kvm_t *kd, struct kvm_swap *swap_ary,
 			continue;
 		++swi;
 	}
-	if (swi > swap_max)
-		swi = swap_max;
+	if (swi >= swap_max)
+		swi = swap_max - 1;
+
+	bzero(swap_ary, sizeof(struct kvm_swap) * (swi + 1));
 
 	/*
 	 * Accumulate results.  If the provided swap_ary[] is too
@@ -547,27 +457,12 @@ kvm_getswapinfo_sysctl(kvm_t *kd, struct kvm_swap *swap_ary,
 		swap_ary[swi].ksw_total += xsw->xsw_nblks;
 		swap_ary[swi].ksw_used += xsw->xsw_used;
 
-		if (ti < swap_max) {
+		if (ti < swi) {
 			swap_ary[ti].ksw_total = xsw->xsw_nblks;
 			swap_ary[ti].ksw_used = xsw->xsw_used;
 			swap_ary[ti].ksw_flags = xsw->xsw_flags;
-
-			if (xsw->xsw_dev == NODEV) {
-				snprintf(
-				    swap_ary[ti].ksw_devname,
-				    sizeof(swap_ary[ti].ksw_devname),
-				    "%s",
-				    "[NFS swap]"
-				);
-			} else {
-				snprintf(
-				    swap_ary[ti].ksw_devname,
-				    sizeof(swap_ary[ti].ksw_devname),
-				    "%s%s",
-				    ((flags & SWIF_DEV_PREFIX) ? _PATH_DEV : ""),
-				    devname(xsw->xsw_dev, S_IFCHR)
-				);
-			}
+			GETSWDEVNAME(xsw->xsw_dev, swap_ary[ti].ksw_devname,
+			    flags);
 			++ti;
 		}
 	}

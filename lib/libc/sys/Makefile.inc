@@ -167,6 +167,7 @@ MLINKS+=statfs.2 fstatfs.2
 MLINKS+=statvfs.2 fstatvfs.2
 MLINKS+=symlink.2 symlinkat.2
 MLINKS+=syscall.2 __syscall.2
+MLINKS+=swapon.2 swapoff.2
 MLINKS+=tls.2 set_tls_area.2 tls.2 get_tls_area.2
 MLINKS+=truncate.2 ftruncate.2
 MLINKS+=umtx.2 umtx_sleep.2 umtx.2 umtx_wakeup.2

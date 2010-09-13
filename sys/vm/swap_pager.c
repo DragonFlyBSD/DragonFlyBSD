@@ -166,7 +166,12 @@ struct blist *swapblist;
 static int swap_async_max = 4;	/* maximum in-progress async I/O's	*/
 static int swap_burst_read = 0;	/* allow burst reading */
 
-extern struct vnode *swapdev_vp;	/* from vm_swap.c */
+/* from vm_swap.c */
+extern struct vnode *swapdev_vp;
+extern struct swdevt *swdevt;
+extern int nswdev;
+
+#define BLK2DEVIDX(blk) (nswdev > 1 ? blk / dmmax % nswdev : 0)
 
 SYSCTL_INT(_vm, OID_AUTO, swap_async_max,
         CTLFLAG_RW, &swap_async_max, 0, "Maximum running async swap ops");
@@ -518,12 +523,19 @@ swp_pager_getswapspace(vm_object_t object, int npages)
 static __inline void
 swp_pager_freeswapspace(vm_object_t object, swblk_t blk, int npages)
 {
-	blist_free(swapblist, blk, npages);
-	swapacctspace(blk, npages);
+	struct swdevt *sp = &swdevt[BLK2DEVIDX(blk)];
+
+	sp->sw_nused -= npages;
 	if (object->type == OBJT_SWAP)
 		vm_swap_anon_use -= npages;
 	else
 		vm_swap_cache_use -= npages;
+
+	if (sp->sw_flags & SW_CLOSING)
+		return;
+
+	blist_free(swapblist, blk, npages);
+	vm_swap_size += npages;
 	swp_sizecheck();
 }
 
@@ -1887,6 +1899,86 @@ swp_pager_async_iodone(struct bio *bio)
 	relpbuf(bp, nswptr);
 	lwkt_reltoken(&vm_token);
 	crit_exit();
+}
+
+/*
+ * Fault-in a potentially swapped page and remove the swap reference.
+ */
+static __inline void
+swp_pager_fault_page(vm_object_t object, vm_pindex_t pindex)
+{
+	struct vnode *vp;
+	vm_page_t m;
+	int error;
+
+	if (object->type == OBJT_VNODE) {
+		/*
+		 * Any swap related to a vnode is due to swapcache.  We must
+		 * vget() the vnode in case it is not active (otherwise
+		 * vref() will panic).  Calling vm_object_page_remove() will
+		 * ensure that any swap ref is removed interlocked with the
+		 * page.  clean_only is set to TRUE so we don't throw away
+		 * dirty pages.
+		 */
+		vp = object->handle;
+		error = vget(vp, LK_SHARED | LK_RETRY | LK_CANRECURSE);
+		if (error == 0) {
+			vm_object_page_remove(object, pindex, pindex + 1, TRUE);
+			vput(vp);
+		}
+	} else {
+		/*
+		 * Otherwise it is a normal OBJT_SWAP object and we can
+		 * fault the page in and remove the swap.
+		 */
+		m = vm_fault_object_page(object, IDX_TO_OFF(pindex),
+					 VM_PROT_NONE,
+					 VM_FAULT_DIRTY | VM_FAULT_UNSWAP,
+					 &error);
+		if (m)
+			vm_page_unhold(m);
+	}
+}
+
+int
+swap_pager_swapoff(int devidx)
+{
+	vm_object_t object;
+	struct swblock *swap;
+	swblk_t v;
+	int i;
+
+	lwkt_gettoken(&vm_token);
+	lwkt_gettoken(&vmobj_token);
+rescan:
+	TAILQ_FOREACH(object, &vm_object_list, object_list) {
+		if (object->type == OBJT_SWAP || object->type == OBJT_VNODE) {
+			RB_FOREACH(swap, swblock_rb_tree, &object->swblock_root) {
+				for (i = 0; i < SWAP_META_PAGES; ++i) {
+					v = swap->swb_pages[i];
+					if (v != SWAPBLK_NONE &&
+					    BLK2DEVIDX(v) == devidx) {
+						swp_pager_fault_page(
+						    object,
+						    swap->swb_index + i);
+						goto rescan;
+					}
+				}
+			}
+		}
+	}
+	lwkt_reltoken(&vmobj_token);
+	lwkt_reltoken(&vm_token);
+
+	/*
+	 * If we fail to locate all swblocks we just fail gracefully and
+	 * do not bother to restore paging on the swap device.  If the
+	 * user wants to retry the user can retry.
+	 */
+	if (swdevt[devidx].sw_nused)
+		return (1);
+	else
+		return (0);
 }
 
 /************************************************************************
