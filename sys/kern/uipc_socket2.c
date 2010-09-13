@@ -247,6 +247,10 @@ soisconnected(struct socket *so)
 		soclrstate(so, SS_INCOMP);
 		lwkt_reltoken(&head->so_rcv.ssb_token);
 
+		/*
+		 * XXX head may be on a different protocol thread.
+		 *     sorwakeup()->sowakeup() is hacked atm.
+		 */
 		sorwakeup(head);
 		wakeup_one(&head->so_timeo);
 	} else {
@@ -396,6 +400,10 @@ sonewconn(struct socket *head, int connstatus)
 	}
 	lwkt_reltoken(&head->so_rcv.ssb_token);
 	if (connstatus) {
+		/*
+		 * XXX head may be on a different protocol thread.
+		 *     sorwakeup()->sowakeup() is hacked atm.
+		 */
 		sorwakeup(head);
 		wakeup((caddr_t)&head->so_timeo);
 		sosetstate(so, connstatus);
@@ -434,6 +442,10 @@ socantrcvmore(struct socket *so)
  * For users waiting on send/recv try to avoid unnecessary context switch
  * thrashing.  Particularly for senders of large buffers (needs to be
  * extended to sel and aio? XXX)
+ *
+ * WARNING!  Can be called on a foreign socket from the wrong protocol
+ *	     thread.  aka is called on the 'head' listen socket when
+ *	     a new connection comes in.
  */
 void
 sowakeup(struct socket *so, struct signalsockbuf *ssb)
@@ -476,10 +488,17 @@ sowakeup(struct socket *so, struct signalsockbuf *ssb)
 	if (ssb->ssb_flags & SSB_AIO)
 		aio_swake(so, ssb);
 	KNOTE(&kqinfo->ki_note, 0);
+
+	/*
+	 * This is a bit of a hack.  Multiple threads can wind up scanning
+	 * ki_mlist concurrently due to the fact that this function can be
+	 * called on a foreign socket, so we can't afford to block here.
+	 */
 	if (ssb->ssb_flags & SSB_MEVENT) {
 		struct netmsg_so_notify *msg, *nmsg;
 
 		lwkt_gettoken(&kq_token);
+		lwkt_gettoken_hard(&ssb->ssb_token);
 		TAILQ_FOREACH_MUTABLE(msg, &kqinfo->ki_mlist, nm_list, nmsg) {
 			if (msg->nm_predicate(&msg->nm_netmsg)) {
 				TAILQ_REMOVE(&kqinfo->ki_mlist, msg, nm_list);
@@ -489,6 +508,7 @@ sowakeup(struct socket *so, struct signalsockbuf *ssb)
 		}
 		if (TAILQ_EMPTY(&ssb->ssb_kq.ki_mlist))
 			atomic_clear_int(&ssb->ssb_flags, SSB_MEVENT);
+		lwkt_reltoken_hard(&ssb->ssb_token);
 		lwkt_reltoken(&kq_token);
 	}
 }

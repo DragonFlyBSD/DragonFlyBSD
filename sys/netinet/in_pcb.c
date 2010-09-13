@@ -1265,14 +1265,23 @@ in_pcbremwildcardhash(struct inpcb *inp)
 void
 in_pcbremlists(struct inpcb *inp)
 {
-	if (inp->inp_lport) {
-		struct inpcbport *phd = inp->inp_phd;
+	struct inpcbinfo *pcbinfo;
 
+	if (inp->inp_lport) {
+		struct inpcbport *phd;
+
+		pcbinfo = inp->inp_pcbinfo;
+		if (pcbinfo->porttoken)
+			lwkt_gettoken(pcbinfo->porttoken);
+
+		phd = inp->inp_phd;
 		LIST_REMOVE(inp, inp_portlist);
 		if (LIST_FIRST(&phd->phd_pcblist) == NULL) {
 			LIST_REMOVE(phd, phd_hash);
 			kfree(phd, M_PCB);
 		}
+		if (pcbinfo->porttoken)
+			lwkt_reltoken(pcbinfo->porttoken);
 	}
 	if (inp->inp_flags & INP_WILDCARD) {
 		in_pcbremwildcardhash(inp);
