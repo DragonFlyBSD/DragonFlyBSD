@@ -562,4 +562,5 @@ struct sysent sysent[] = {
 	{ AS(mknodat_args), (sy_call_t *)sys_mknodat },	/* 526 = mknodat */
 	{ AS(readlinkat_args), (sy_call_t *)sys_readlinkat },	/* 527 = readlinkat */
 	{ AS(symlinkat_args), (sy_call_t *)sys_symlinkat },	/* 528 = symlinkat */
+	{ AS(swapoff_args), (sy_call_t *)sys_swapoff },	/* 529 = swapoff */
 };

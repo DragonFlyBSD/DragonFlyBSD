@@ -368,4 +368,5 @@
 #define	SYS_mknodat	526
 #define	SYS_readlinkat	527
 #define	SYS_symlinkat	528
-#define	SYS_MAXSYSCALL	529
+#define	SYS_swapoff	529
+#define	SYS_MAXSYSCALL	530

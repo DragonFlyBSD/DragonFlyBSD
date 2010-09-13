@@ -2352,6 +2352,12 @@ struct	symlinkat_args {
 	int	fd;	char fd_[PAD_(int)];
 	char *	path2;	char path2_[PAD_(char *)];
 };
+struct	swapoff_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	char *	name;	char name_[PAD_(char *)];
+};
 
 #ifdef COMPAT_43
 
@@ -2967,6 +2973,7 @@ int	sys_mkfifoat (struct mkfifoat_args *);
 int	sys_mknodat (struct mknodat_args *);
 int	sys_readlinkat (struct readlinkat_args *);
 int	sys_symlinkat (struct symlinkat_args *);
+int	sys_swapoff (struct swapoff_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_
