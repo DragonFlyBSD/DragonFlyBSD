@@ -126,7 +126,7 @@ install: mount
 		 DESTDIR=${VKDIR}/root KERNCONF=${USEKERNEL} \
 		 NO_MODULES= \
 		 installkernel
-	cp ${VKDIR}/root/boot/kernel ${VKDIR}/vkernel
+	cp ${VKDIR}/root/boot/kernel/kernel ${VKDIR}/vkernel
 
 # Quick reinstall - just install a new kernel on top of an existing image
 #
