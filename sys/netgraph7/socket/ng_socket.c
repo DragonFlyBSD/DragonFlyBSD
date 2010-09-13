@@ -65,6 +65,7 @@
 #include <sys/queue.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/socketvar2.h>
 /*
 #include <sys/syscallsubr.h>
 */
