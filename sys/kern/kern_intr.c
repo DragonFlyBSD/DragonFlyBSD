@@ -85,61 +85,66 @@ int max_installed_soft_intr;
  * dangling tokens, spinlocks, or mp locks.
  */
 #ifdef INVARIANTS
-
-#ifdef SMP
-
-#define SMP_INVARIANTS_DECLARE	\
+# ifdef SMP
+/* INVARIANTS & SMP */
+#  define SMP_INVARIANTS_DECLARE				\
 	int mpcount;
 
-#define SMP_INVARIANTS_GET(td)		\
+#  define SMP_INVARIANTS_GET(td)				\
 	mpcount = (td)->td_mpcount
 
-#define SMP_INVARIANTS_TEST(td, name)					\
-		KASSERT(mpcount == (td)->td_mpcount,			\
-			("mpcount mismatch after interrupt handler %s",	\
-			name))
+#  define SMP_INVARIANTS_TEST(td, name)				\
+	KASSERT(mpcount == (td)->td_mpcount,			\
+		("mpcount mismatch after interrupt handler %s",	\
+		 name))
 
-#define SMP_INVARIANTS_ADJMP(count)	mpcount += (count)
+#  define SMP_INVARIANTS_ADJMP(count)				\
+	mpcount += (count)
+
+# else 
+/* INVARIANTS & !SMP */
+#  define SMP_INVARIANTS_DECLARE
+#  define SMP_INVARIANTS_GET(td)
+#  define SMP_INVARIANTS_TEST(td, name)
+
+# endif /* ndef SMP */
+
+#define TD_INVARIANTS_DECLARE   \
+        SMP_INVARIANTS_DECLARE  \
+        int spincount;          \
+        lwkt_tokref_t curstop
+
+#define TD_INVARIANTS_GET(td)                                   \
+        do {                                                    \
+                SMP_INVARIANTS_GET(td);                         \
+                spincount = (td)->td_gd->gd_spinlocks_wr;       \
+                curstop = (td)->td_toks_stop;                   \
+        } while(0)
+
+#define TD_INVARIANTS_TEST(td, name)                                    \
+        do {                                                            \
+                KASSERT(spincount == (td)->td_gd->gd_spinlocks_wr,      \
+                        ("spincount mismatch after interrupt handler %s", \
+                        name));                                         \
+                KASSERT(curstop == (td)->td_toks_stop,                  \
+                        ("token count mismatch after interrupt handler %s", \
+                        name));                                         \
+                SMP_INVARIANTS_TEST(td, name);                          \
+        } while(0)
 
 #else
+/* !INVARIANTS */
+# ifdef SMP
+/* !INVARIANTS & SMP */
+# define SMP_INVARIANTS_ADJMP(count)
 
-#define SMP_INVARIANTS_DECLARE
-#define SMP_INVARIANTS_GET(td)
-#define SMP_INVARIANTS_TEST(td, name)
-
-#endif
-
-#define TD_INVARIANTS_DECLARE	\
-	SMP_INVARIANTS_DECLARE	\
-	int spincount;		\
-	lwkt_tokref_t curstop
-
-#define TD_INVARIANTS_GET(td)					\
-	do {							\
-		SMP_INVARIANTS_GET(td);				\
-		spincount = (td)->td_gd->gd_spinlocks_wr;	\
-		curstop = (td)->td_toks_stop;			\
-	} while(0)
-
-#define TD_INVARIANTS_TEST(td, name)					\
-	do {								\
-		KASSERT(spincount == (td)->td_gd->gd_spinlocks_wr, 	\
-			("spincount mismatch after interrupt handler %s", \
-			name));						\
-		KASSERT(curstop == (td)->td_toks_stop,			\
-			("token count mismatch after interrupt handler %s", \
-			name));						\
-		SMP_INVARIANTS_TEST(td, name);				\
-	} while(0)
-
-#else
+# endif
 
 #define TD_INVARIANTS_DECLARE
 #define TD_INVARIANTS_GET(td)
-#define TD_INVARIANTS_TEST(td)
-#define TD_INVARIANTS_ADJMP(count)
+#define TD_INVARIANTS_TEST(td, name)
 
-#endif
+#endif /* ndef INVARIANTS */
 
 static int sysctl_emergency_freq(SYSCTL_HANDLER_ARGS);
 static int sysctl_emergency_enable(SYSCTL_HANDLER_ARGS);
