@@ -1087,7 +1087,7 @@ void
 ether_demux_oncpu(struct ifnet *ifp, struct mbuf *m)
 {
 	struct ether_header *eh;
-	int isr, redispatch, discard = 0;
+	int isr, discard = 0;
 	u_short ether_type;
 	struct ip_fw *rule = NULL;
 #ifdef NETATALK
@@ -1205,13 +1205,6 @@ post_stats:
 	/* Strip ethernet header. */
 	m_adj(m, sizeof(struct ether_header));
 
-	/*
-	 * By default, we don't need to do the redispatch; for the
-	 * most common packet types, e.g. IPv4, ether_input_chain()
-	 * has already picked up the correct target network msgport.
-	 */
-	redispatch = 0;
-
 	switch (ether_type) {
 #ifdef INET
 	case ETHERTYPE_IP:
@@ -1287,7 +1280,6 @@ post_stats:
 		 * The accurate msgport is not determined before
 		 * we reach here, so redo the dispatching
 		 */
-		redispatch = 1;
 #ifdef IPX
 		if (ef_inputp) {
 			/*
@@ -1525,6 +1517,9 @@ ether_input_handler(struct netmsg *nmsg)
 
 /*
  * Send the packet to the target msgport or queue it into 'chain'.
+ *
+ * At this point the packet had better be characterized (M_HASH set),
+ * so we know which cpu to send it to.
  */
 static void
 ether_dispatch(int isr, struct mbuf *m, struct mbuf_chain *chain)
