@@ -626,8 +626,6 @@ void	 tcp_fillheaders (struct tcpcb *, void *, void *);
 struct lwkt_port *
 	 tcp_soport(struct socket *, struct sockaddr *, struct mbuf **);
 struct lwkt_port *
-	 tcp_soport_attach(struct socket *);
-struct lwkt_port *
 	 tcp_ctlport(int, struct sockaddr *, void *);
 struct tcpcb *
 	 tcp_timers (struct tcpcb *, int);

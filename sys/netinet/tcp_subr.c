@@ -162,6 +162,9 @@ KTR_INFO(KTR_TCP, tcp, delayed, 2, "tcp execute delayed ops", 0);
 struct inpcbinfo tcbinfo[MAXCPU];
 struct tcpcbackqhead tcpcbackq[MAXCPU];
 
+static struct lwkt_token tcp_port_token =
+		LWKT_TOKEN_MP_INITIALIZER(tcp_port_token);
+
 int tcp_mssdflt = TCP_MSS;
 SYSCTL_INT(_net_inet_tcp, TCPCTL_MSSDFLT, mssdflt, CTLFLAG_RW,
     &tcp_mssdflt, 0, "Default TCP Maximum Segment Size");
@@ -317,7 +320,9 @@ struct	inp_tp {
 void
 tcp_init(void)
 {
+	struct inpcbporthead *porthashbase;
 	struct inpcbinfo *ticb;
+	u_long porthashmask;
 	int hashsize = TCBHASHSIZE;
 	int cpu;
 
@@ -343,6 +348,7 @@ tcp_init(void)
 		hashsize = 512; /* safe default */
 	}
 	tcp_tcbhashsize = hashsize;
+	porthashbase = hashinit(hashsize, M_PCB, &porthashmask);
 
 	for (cpu = 0; cpu < ncpus2; cpu++) {
 		ticb = &tcbinfo[cpu];
@@ -350,8 +356,13 @@ tcp_init(void)
 		ticb->cpu = cpu;
 		ticb->hashbase = hashinit(hashsize, M_PCB,
 					  &ticb->hashmask);
+		ticb->porthashbase = porthashbase;
+		ticb->porthashmask = porthashmask;
+		ticb->porttoken = &tcp_port_token;
+#if 0
 		ticb->porthashbase = hashinit(hashsize, M_PCB,
 					      &ticb->porthashmask);
+#endif
 		ticb->wildcardhashbase = hashinit(hashsize, M_PCB,
 						  &ticb->wildcardhashmask);
 		ticb->ipi_size = sizeof(struct inp_tp);

@@ -915,7 +915,11 @@ udp_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	error = in_pcballoc(so, &udbinfo);
 	if (error)
 		return error;
-	so->so_port = udp_soport_attach(so);
+
+	/*
+	 * Set default port for protocol processing prior to bind/connect.
+	 */
+	sosetport(so, cpu_portfn(0));
 
 	inp = (struct inpcb *)so->so_pcb;
 	inp->inp_vflag |= INP_IPV4;
@@ -1004,6 +1008,7 @@ udp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	port = udp_addrport(sin->sin_addr.s_addr, sin->sin_port,
 			    inp->inp_laddr.s_addr, inp->inp_lport);
 #ifdef SMP
+	sosetport(so, port);
 	if (port != &curthread->td_msgport) {
 		struct netmsg_udp_connect msg;
 		struct route *ro = &inp->inp_route;
@@ -1032,6 +1037,7 @@ udp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		error = udp_connect_oncpu(so, td, sin, if_sin);
 	}
 #else
+	KKASSERT(port == &curthread->td_msgport);
 	error = udp_connect_oncpu(so, td, sin, if_sin);
 #endif
 	return (error);
@@ -1057,7 +1063,6 @@ udp_connect_oncpu(struct socket *so, struct thread *td,
 		 * socket.
 		 */
 		soisconnected(so);
-		sosetport(so, &curthread->td_msgport);
 	} else if (error == EAFNOSUPPORT) {	/* connection dissolved */
 		/*
 		 * Follow traditional BSD behavior and retain

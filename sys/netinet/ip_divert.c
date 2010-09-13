@@ -480,6 +480,7 @@ div_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	if (error)
 		return error;
 	lwkt_gettoken(&div_token);
+	so->so_port = cpu0_soport(so, NULL, NULL);
 	error = in_pcballoc(so, &divcbinfo);
 	if (error) {
 		lwkt_reltoken(&div_token);
@@ -493,7 +494,6 @@ div_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	 * The socket is always "connected" because
 	 * we always know "where" to send the packet.
 	 */
-	so->so_port = cpu0_soport(so, NULL, NULL);
 	sosetstate(so, SS_ISCONNECTED);
 	lwkt_reltoken(&div_token);
 	return 0;

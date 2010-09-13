@@ -157,7 +157,6 @@ void			udp_notify (struct inpcb *inp, int error);
 int			udp_shutdown (struct socket *so);
 struct lwkt_port	*udp_soport (struct socket *, struct sockaddr *,
 				     struct mbuf **);
-struct lwkt_port	*udp_soport_attach (struct socket *);
 struct lwkt_port	*udp_ctlport (int, struct sockaddr *, void *);
 struct lwkt_port	*udp_cport (int);
 

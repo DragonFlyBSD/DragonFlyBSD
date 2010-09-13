@@ -276,11 +276,15 @@ struct inpcbport {
 	u_short phd_port;
 };
 
+struct lwkt_token;
+
 struct inpcbinfo {		/* XXX documentation, prefixes */
 	struct	inpcbhead *hashbase;
 	u_long	hashmask;
 	struct	inpcbporthead *porthashbase;
 	u_long	porthashmask;
+	struct  lwkt_token *porttoken;	/* if porthashbase is shared */
+	struct 	inpcbport *portsave;	/* port allocation cache */
 	struct	inpcontainerhead *wildcardhashbase;
 	u_long	wildcardhashmask;
 	struct	inpcbhead pcblisthead;	/* head of queue of active pcb's */
@@ -380,6 +384,8 @@ void	in_losing (struct inpcb *);
 void	in_rtchange (struct inpcb *, int);
 void	in_pcbinfo_init (struct inpcbinfo *);
 int	in_pcballoc (struct socket *, struct inpcbinfo *);
+void	in_pcbunlink (struct inpcb *, struct inpcbinfo *);
+void	in_pcblink (struct inpcb *, struct inpcbinfo *);
 int	in_pcbbind (struct inpcb *, struct sockaddr *, struct thread *);
 int	in_pcbconnect (struct inpcb *, struct sockaddr *, struct thread *);
 void	in_pcbdetach (struct inpcb *);

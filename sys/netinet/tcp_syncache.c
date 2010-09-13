@@ -698,6 +698,9 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 	 * as they would have been set up if we had created the
 	 * connection when the SYN arrived.  If we can't create
 	 * the connection, abort it.
+	 *
+	 * Set the protocol processing port for the socket to the current
+	 * port (that the connection came in on).
 	 */
 	so = sonewconn(lso, SS_ISCONNECTED);
 	if (so == NULL) {
@@ -708,12 +711,6 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 		tcpstat.tcps_listendrop++;
 		goto abort;
 	}
-
-	/*
-	 * Set the protocol processing port for the socket to the current
-	 * port (that the connection came in on).
-	 */
-	sosetport(so, &curthread->td_msgport);
 
 	/*
 	 * Insert new socket into hash list.
@@ -743,7 +740,7 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 		inp->inp_lport = 0;
 		goto abort;
 	}
-	linp = so->so_pcb;
+	linp = lso->so_pcb;
 #ifdef IPSEC
 	/* copy old policy into new socket's */
 	if (ipsec_copy_policy(linp->inp_sp, inp->inp_sp))
@@ -819,6 +816,11 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 	} else {
 		port = tcp_addrport(inp->inp_faddr.s_addr, inp->inp_fport,
 				    inp->inp_laddr.s_addr, inp->inp_lport);
+	}
+	if (port != &curthread->td_msgport) {
+		print_backtrace(-1);
+		kprintf("TCP PORT MISMATCH %p vs %p\n",
+			port, &curthread->td_msgport);
 	}
 	/*KKASSERT(port == &curthread->td_msgport);*/
 

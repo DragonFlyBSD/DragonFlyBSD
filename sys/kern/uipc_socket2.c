@@ -326,6 +326,15 @@ sonewconn(struct socket *head, int connstatus)
 	so = soalloc(1);
 	if (so == NULL)
 		return (NULL);
+
+	/*
+	 * Set the port prior to attaching the inpcb to the current
+	 * cpu's protocol thread (which should be the current thread
+	 * but might not be in all cases).  This serializes any pcb ops
+	 * which occur to our cpu allowing us to complete the attachment
+	 * without racing anything.
+	 */
+	sosetport(so, cpu_portfn(mycpu->gd_cpuid));
 	if ((head->so_options & SO_ACCEPTFILTER) != 0)
 		connstatus = 0;
 	so->so_head = head;

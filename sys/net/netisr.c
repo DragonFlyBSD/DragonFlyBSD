@@ -267,7 +267,23 @@ netmsg_service_loop(void *arg)
 			KASSERT(msg->nm_dispatch != NULL,
 				("netmsg_service isr %d badmsg\n",
 				msg->nm_lmsg.u.ms_result));
-			msg->nm_dispatch(msg);
+			if (msg->nm_so &&
+			    msg->nm_so->so_port != &td->td_msgport) {
+				/*
+				 * Sockets undergoing connect or disconnect
+				 * ops can change ports on us.  Chase the
+				 * port.
+				 */
+				kprintf("netmsg_service_loop: Warning, "
+					"port changed so=%p\n", msg->nm_so);
+				lwkt_forwardmsg(msg->nm_so->so_port,
+						&msg->nm_lmsg);
+			} else {
+				/*
+				 * We are on the correct port, dispatch it.
+				 */
+				msg->nm_dispatch(msg);
+			}
 			if (--limit == 0)
 				break;
 		} while ((msg = lwkt_getport(&td->td_msgport)) != NULL);

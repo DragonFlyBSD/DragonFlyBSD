@@ -189,6 +189,8 @@ in_pcbinfo_init(struct inpcbinfo *pcbinfo)
 {
 	LIST_INIT(&pcbinfo->pcblisthead);
 	pcbinfo->cpu = -1;
+	pcbinfo->portsave = kmalloc(sizeof(*pcbinfo->portsave), M_PCB,
+				    M_WAITOK | M_ZERO);
 }
 
 /*
@@ -226,6 +228,33 @@ in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo)
 	return (0);
 }
 
+/*
+ * Unlink a pcb with the intention of moving it to another cpu with a
+ * different pcbinfo.  While unlinked nothing should attempt to dereference
+ * inp_pcbinfo, NULL it out so we assert if it does.
+ */
+void
+in_pcbunlink(struct inpcb *inp, struct inpcbinfo *pcbinfo)
+{
+	KKASSERT(inp->inp_pcbinfo == pcbinfo);
+
+	LIST_REMOVE(inp, inp_list);
+	pcbinfo->ipi_count--;
+	inp->inp_pcbinfo = NULL;
+}
+
+/*
+ * Relink a pcb into a new pcbinfo.
+ */
+void
+in_pcblink(struct inpcb *inp, struct inpcbinfo *pcbinfo)
+{
+	KKASSERT(inp->inp_pcbinfo == NULL);
+	inp->inp_pcbinfo = pcbinfo;
+	LIST_INSERT_HEAD(&pcbinfo->pcblisthead, inp, inp_list);
+	pcbinfo->ipi_count++;
+}
+
 int
 in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 {
@@ -246,24 +275,39 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		return (EADDRNOTAVAIL);
 	if (inp->inp_lport != 0 || inp->inp_laddr.s_addr != INADDR_ANY)
 		return (EINVAL);	/* already bound */
+
 	if (!(so->so_options & (SO_REUSEADDR|SO_REUSEPORT)))
 		wild = 1;    /* neither SO_REUSEADDR nor SO_REUSEPORT is set */
 	if (p)
 		cred = p->p_ucred;
+
+	/*
+	 * This has to be atomic.  If the porthash is shared across multiple
+	 * protocol threads (aka tcp) then the token will be non-NULL.
+	 */
+	if (pcbinfo->porttoken)
+		lwkt_gettoken(pcbinfo->porttoken);
+
 	if (nam != NULL) {
 		sin = (struct sockaddr_in *)nam;
-		if (nam->sa_len != sizeof *sin)
-			return (EINVAL);
+		if (nam->sa_len != sizeof *sin) {
+			error = EINVAL;
+			goto done;
+		}
 #ifdef notdef
 		/*
 		 * We should check the family, but old programs
 		 * incorrectly fail to initialize it.
 		 */
-		if (sin->sin_family != AF_INET)
-			return (EAFNOSUPPORT);
+		if (sin->sin_family != AF_INET) {
+			error = EAFNOSUPPORT;
+			goto done;
+		}
 #endif
-		if (!prison_replace_wildcards(td, nam))
-				return (EINVAL);
+		if (!prison_replace_wildcards(td, nam)) {
+			error = EINVAL;
+			goto done;
+		}
 		lport = sin->sin_port;
 		if (IN_MULTICAST(ntohl(sin->sin_addr.s_addr))) {
 			/*
@@ -278,21 +322,28 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		} else if (sin->sin_addr.s_addr != INADDR_ANY) {
 			sin->sin_port = 0;		/* yech... */
 			bzero(&sin->sin_zero, sizeof sin->sin_zero);
-			if (ifa_ifwithaddr((struct sockaddr *)sin) == NULL)
-				return (EADDRNOTAVAIL);
+			if (ifa_ifwithaddr((struct sockaddr *)sin) == NULL) {
+				error = EADDRNOTAVAIL;
+				goto done;
+			}
 		}
 		if (lport != 0) {
 			struct inpcb *t;
 
 			/* GROSS */
 			if (ntohs(lport) < IPPORT_RESERVED &&
-			    cred && priv_check_cred(cred, PRIV_NETINET_RESERVEDPORT, 0))
-				return (EACCES);
+			    cred &&
+			    priv_check_cred(cred, PRIV_NETINET_RESERVEDPORT, 0)) {
+				error = EACCES;
+				goto done;
+			}
 			if (so->so_cred->cr_uid != 0 &&
 			    !IN_MULTICAST(ntohl(sin->sin_addr.s_addr))) {
-				t = in_pcblookup_local(inp->inp_pcbinfo,
-				    sin->sin_addr, lport,
-				    INPLOOKUP_WILDCARD, cred);
+				t = in_pcblookup_local(pcbinfo,
+						       sin->sin_addr,
+						       lport,
+						       INPLOOKUP_WILDCARD,
+						       cred);
 				if (t &&
 				    (!in_nullhost(sin->sin_addr) ||
 				     !in_nullhost(t->inp_laddr) ||
@@ -306,11 +357,16 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 					    INP_SOCKAF(so) ==
 					    INP_SOCKAF(t->inp_socket))
 #endif
-					return (EADDRINUSE);
+					{
+						error = EADDRINUSE;
+						goto done;
+					}
 				}
 			}
-			if (cred && !prison_replace_wildcards(td, nam))
-				return (EADDRNOTAVAIL);
+			if (cred && !prison_replace_wildcards(td, nam)) {
+				error = EADDRNOTAVAIL;
+				goto done;
+			}
 			t = in_pcblookup_local(pcbinfo, sin->sin_addr, lport,
 					       wild, cred);
 			if (t && !(reuseport & t->inp_socket->so_options)) {
@@ -319,7 +375,10 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 				    !in_nullhost(t->inp_laddr) ||
 				    INP_SOCKAF(so) == INP_SOCKAF(t->inp_socket))
 #endif
-				return (EADDRINUSE);
+				{
+					error = EADDRINUSE;
+					goto done;
+				}
 			}
 		}
 		inp->inp_laddr = sin->sin_addr;
@@ -332,7 +391,8 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		jsin.sin_addr.s_addr = inp->inp_laddr.s_addr;
 		if (!prison_replace_wildcards(td, (struct sockaddr *)&jsin)) {
 			inp->inp_laddr.s_addr = INADDR_ANY;
-			return (EINVAL);
+			error = EINVAL;
+			goto done;
 		}
 		inp->inp_laddr.s_addr = jsin.sin_addr.s_addr;
 
@@ -346,7 +406,7 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			if (cred &&
 			    (error = priv_check_cred(cred, PRIV_NETINET_RESERVEDPORT, 0))) {
 				inp->inp_laddr.s_addr = INADDR_ANY;
-				return (error);
+				goto done;
 			}
 			first = ipport_lowfirstauto;	/* 1023 */
 			last  = ipport_lowlastauto;	/* 600 */
@@ -372,14 +432,15 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			do {
 				if (count-- < 0) {	/* completely used? */
 					inp->inp_laddr.s_addr = INADDR_ANY;
-					return (EADDRNOTAVAIL);
+					error = EADDRNOTAVAIL;
+					goto done;
 				}
 				--*lastport;
 				if (*lastport > first || *lastport < last)
 					*lastport = first;
 				lport = htons(*lastport);
 			} while (in_pcblookup_local(pcbinfo, inp->inp_laddr,
-				 lport, wild, cred));
+						    lport, wild, cred));
 		} else {
 			/*
 			 * counting up
@@ -389,14 +450,15 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			do {
 				if (count-- < 0) {	/* completely used? */
 					inp->inp_laddr.s_addr = INADDR_ANY;
-					return (EADDRNOTAVAIL);
+					error = EADDRNOTAVAIL;
+					goto done;
 				}
 				++*lastport;
 				if (*lastport < first || *lastport > last)
 					*lastport = first;
 				lport = htons(*lastport);
 			} while (in_pcblookup_local(pcbinfo, inp->inp_laddr,
-				 lport, wild, cred));
+						    lport, wild, cred));
 		}
 	}
 	inp->inp_lport = lport;
@@ -406,16 +468,22 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	if (!prison_replace_wildcards(td, (struct sockaddr*)&jsin)) {
 		inp->inp_laddr.s_addr = INADDR_ANY;
 		inp->inp_lport = 0;
-		return (EINVAL);
+		error = EINVAL;
+		goto done;
 	}
 	inp->inp_laddr.s_addr = jsin.sin_addr.s_addr;
 
 	if (in_pcbinsporthash(inp) != 0) {
 		inp->inp_laddr.s_addr = INADDR_ANY;
 		inp->inp_lport = 0;
-		return (EAGAIN);
+		error = EAGAIN;
+		goto done;
 	}
-	return (0);
+	error = 0;
+done:
+	if (pcbinfo->porttoken)
+		lwkt_reltoken(pcbinfo->porttoken);
+	return error;
 }
 
 /*
@@ -610,8 +678,9 @@ in_pcbconnect(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		return (error);
 
 	if (in_pcblookup_hash(inp->inp_cpcbinfo, sin->sin_addr, sin->sin_port,
-	    inp->inp_laddr.s_addr ? inp->inp_laddr : if_sin->sin_addr,
-	    inp->inp_lport, FALSE, NULL) != NULL) {
+			      inp->inp_laddr.s_addr ?
+				inp->inp_laddr : if_sin->sin_addr,
+			      inp->inp_lport, FALSE, NULL) != NULL) {
 		return (EADDRINUSE);
 	}
 	if (inp->inp_laddr.s_addr == INADDR_ANY) {
@@ -649,6 +718,7 @@ in_pcbdetach(struct inpcb *inp)
 	ipsec4_delete_pcbpolicy(inp);
 #endif /*IPSEC*/
 	inp->inp_gencnt = ++ipi->ipi_gencnt;
+	KKASSERT((so->so_state & SS_ASSERTINPROG) == 0);
 	in_pcbremlists(inp);
 	so->so_pcb = NULL;
 	sofree(so);			/* remove pcb ref */
@@ -849,10 +919,16 @@ in_pcblookup_local(struct inpcbinfo *pcbinfo, struct in_addr laddr,
 	struct inpcb *inp;
 	int matchwild = 3, wildcard;
 	u_short lport = lport_arg;
-
 	struct inpcbporthead *porthash;
 	struct inpcbport *phd;
 	struct inpcb *match = NULL;
+
+	/*
+	 * If the porthashbase is shared across several cpus we need
+	 * to lock.
+	 */
+	if (pcbinfo->porttoken)
+		lwkt_gettoken(pcbinfo->porttoken);
 
 	/*
 	 * Best fit PCB lookup.
@@ -860,8 +936,8 @@ in_pcblookup_local(struct inpcbinfo *pcbinfo, struct in_addr laddr,
 	 * First see if this local port is in use by looking on the
 	 * port hash list.
 	 */
-	porthash = &pcbinfo->porthashbase[INP_PCBPORTHASH(lport,
-	    pcbinfo->porthashmask)];
+	porthash = &pcbinfo->porthashbase[
+			INP_PCBPORTHASH(lport, pcbinfo->porthashmask)];
 	LIST_FOREACH(phd, porthash, phd_hash) {
 		if (phd->phd_port == lport)
 			break;
@@ -902,6 +978,8 @@ in_pcblookup_local(struct inpcbinfo *pcbinfo, struct in_addr laddr,
 			}
 		}
 	}
+	if (pcbinfo->porttoken)
+		lwkt_reltoken(pcbinfo->porttoken);
 	return (match);
 }
 
@@ -909,9 +987,9 @@ in_pcblookup_local(struct inpcbinfo *pcbinfo, struct in_addr laddr,
  * Lookup PCB in hash list.
  */
 struct inpcb *
-in_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in_addr faddr, u_int fport_arg,
-		  struct in_addr laddr, u_int lport_arg, boolean_t wildcard,
-		  struct ifnet *ifp)
+in_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
+		  u_int fport_arg, struct in_addr laddr, u_int lport_arg,
+		  boolean_t wildcard, struct ifnet *ifp)
 {
 	struct inpcbhead *head;
 	struct inpcb *inp, *jinp=NULL;
@@ -1079,22 +1157,29 @@ in_pcbinsporthash(struct inpcb *inp)
 	struct inpcbport *phd;
 
 	/*
+	 * If the porthashbase is shared across several cpus we need
+	 * to lock.
+	 */
+	if (pcbinfo->porttoken)
+		lwkt_gettoken(pcbinfo->porttoken);
+
+	/*
 	 * Insert into the port hash table.
 	 */
 	pcbporthash = &pcbinfo->porthashbase[
 	    INP_PCBPORTHASH(inp->inp_lport, pcbinfo->porthashmask)];
 
 	/* Go through port list and look for a head for this lport. */
-	LIST_FOREACH(phd, pcbporthash, phd_hash)
+	LIST_FOREACH(phd, pcbporthash, phd_hash) {
 		if (phd->phd_port == inp->inp_lport)
 			break;
+	}
 
 	/* If none exists, malloc one and tack it on. */
 	if (phd == NULL) {
-		MALLOC(phd, struct inpcbport *, sizeof(struct inpcbport),
-		    M_PCB, M_INTWAIT | M_NULLOK);
-		if (phd == NULL)
-			return (ENOBUFS); /* XXX */
+		KKASSERT(pcbinfo->portsave != NULL);
+		phd = pcbinfo->portsave;
+		pcbinfo->portsave = NULL;
 		phd->phd_port = inp->inp_lport;
 		LIST_INIT(&phd->phd_pcblist);
 		LIST_INSERT_HEAD(pcbporthash, phd, phd_hash);
@@ -1103,6 +1188,12 @@ in_pcbinsporthash(struct inpcb *inp)
 	inp->inp_phd = phd;
 	LIST_INSERT_HEAD(&phd->phd_pcblist, inp, inp_portlist);
 
+	if (pcbinfo->porttoken)
+		lwkt_reltoken(pcbinfo->porttoken);
+	if (pcbinfo->portsave == NULL) {
+		pcbinfo->portsave = kmalloc(sizeof(*pcbinfo->portsave),
+					    M_PCB, M_INTWAIT | M_ZERO);
+	}
 	return (0);
 }
 

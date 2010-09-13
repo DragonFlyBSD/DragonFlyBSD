@@ -568,7 +568,7 @@ udp6_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	crit_exit();
 	if (error)
 		return error;
-	so->so_port = udp_soport_attach(so);
+	sosetport(so, cpu_portfn(0));
 	inp = (struct inpcb *)so->so_pcb;
 	inp->inp_vflag |= INP_IPV6;
 	if (!ip6_v6only)
@@ -670,7 +670,6 @@ udp6_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 			inp->inp_vflag &= ~INP_IPV4;
 			inp->inp_vflag |= INP_IPV6;
 		}
-		/* sosetport(so, port); here, see udp v4 code */
 		soisconnected(so);
 	} else if (error == EAFNOSUPPORT) {	/* connection dissolved */
 		/*

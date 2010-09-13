@@ -369,16 +369,6 @@ ip_mport_pktinfo(const struct pktinfo *pi, struct mbuf *m)
 #endif
 
 /*
- * Initital port when creating the socket, generally before
- * binding or connect.
- */
-lwkt_port_t
-tcp_soport_attach(struct socket *so)
-{
-	return(cpu_portfn(0));
-}
-
-/*
  * This is used to map a socket to a message port for sendmsg() and friends.
  * It is not called for any other purpose.  In the case of TCP we just return
  * the port already installed in the socket.
@@ -445,16 +435,6 @@ lwkt_port_t
 udp_addrport(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 {
 	return(cpu_portfn(udp_addrcpu(faddr, fport, laddr, lport)));
-}
-
-/*
- * Initital port when creating the socket, generally before
- * binding or connect.
- */
-lwkt_port_t
-udp_soport_attach(struct socket *so)
-{
-	return(cpu_portfn(0));
 }
 
 /*

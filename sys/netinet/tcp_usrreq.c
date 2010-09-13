@@ -162,7 +162,8 @@ static struct tcpcb *
 
 /*
  * TCP attaches to socket via pru_attach(), reserving space,
- * and an internet control block.
+ * and an internet control block.  This is likely occuring on
+ * cpu0 and may have to move later when we bind/connect.
  */
 static int
 tcp_usr_attach(struct socket *so, int proto, struct pru_attach_info *ai)
@@ -896,7 +897,6 @@ tcp_connect_oncpu(struct tcpcb *tp, int flags, struct mbuf *m,
 	 * Create TCP timer message now; we are on the tcpcb's owner
 	 * CPU/thread.
 	 */
-	sosetport(so, &curthread->td_msgport);
 	tcp_create_timermsg(tp, &curthread->td_msgport);
 
 	/*
@@ -947,12 +947,18 @@ struct netmsg_tcp_connect {
 	struct mbuf		*nm_m;
 };
 
+/*
+ * This is called in the target protocol processing thread.  We must
+ * re-link our pcb to the new tcpcb
+ */
 static void
 tcp_connect_handler(netmsg_t netmsg)
 {
 	struct netmsg_tcp_connect *msg = (void *)netmsg;
+	struct socket *so = netmsg->nm_so;
 	int error;
 
+	in_pcblink(so->so_pcb, &tcbinfo[mycpu->gd_cpuid]);
 	error = tcp_connect_oncpu(msg->nm_tp, msg->nm_flags, msg->nm_m,
 				  msg->nm_sin, msg->nm_ifsin);
 	lwkt_replymsg(&msg->nm_netmsg.nm_lmsg, error);
@@ -996,6 +1002,7 @@ tcp_connect(struct tcpcb *tp, int flags, struct mbuf *m,
 	struct inpcb *inp = tp->t_inpcb;
 	struct sockaddr_in *sin = (struct sockaddr_in *)nam;
 	struct sockaddr_in *if_sin;
+	struct socket *so;
 	int error;
 #ifdef SMP
 	lwkt_port_t port;
@@ -1011,10 +1018,13 @@ tcp_connect(struct tcpcb *tp, int flags, struct mbuf *m,
 			return (error);
 		}
 	}
+	so = inp->inp_socket;
+	KKASSERT(so);
 
 	/*
 	 * Calculate the correct protocol processing thread.  The connect
-	 * operation must run there.
+	 * operation must run there.  Set the forwarding port before we
+	 * forward the message or it will get bounced right back to us.
 	 */
 	error = in_pcbladdr(inp, nam, &if_sin, td);
 	if (error) {
@@ -1042,10 +1052,14 @@ tcp_connect(struct tcpcb *tp, int flags, struct mbuf *m,
 		bzero(ro, sizeof(*ro));
 
 		/*
-		 * NOTE: We haven't set so->so_port yet do not pass so
-		 *	 to netmsg_init() or it will be improperly forwarded.
+		 * We are moving the protocol processing port the socket
+		 * is on, we have to unlink here and re-link on the
+		 * target cpu.
 		 */
-		netmsg_init(&msg.nm_netmsg, NULL, &curthread->td_msgport,
+		in_pcbunlink(so->so_pcb, &tcbinfo[mycpu->gd_cpuid]);
+		sosetport(so, port);
+
+		netmsg_init(&msg.nm_netmsg, so, &curthread->td_msgport,
 			    0, tcp_connect_handler);
 		msg.nm_tp = tp;
 		msg.nm_sin = sin;
@@ -1057,6 +1071,7 @@ tcp_connect(struct tcpcb *tp, int flags, struct mbuf *m,
 		error = tcp_connect_oncpu(tp, flags, m, sin, if_sin);
 	}
 #else
+	KKASSERT(so->so_port == &curthread->td_msgport);
 	error = tcp_connect_oncpu(tp, flags, m, sin, if_sin);
 #endif
 	return (error);
@@ -1165,7 +1180,6 @@ tcp6_connect_oncpu(struct tcpcb *tp, int flags, struct mbuf *m,
 	 * Create TCP timer message now; we are on the tcpcb's owner
 	 * CPU/thread.
 	 */
-	sosetport(so, &curthread->td_msgport);
 	tcp_create_timermsg(tp, &curthread->td_msgport);
 
 	/* Compute window scaling to request.  */
@@ -1348,9 +1362,9 @@ SYSCTL_INT(_net_inet_tcp, TCPCTL_RECVSPACE, recvspace, CTLFLAG_RW,
     &tcp_recvspace , 0, "Maximum incoming TCP datagram size");
 
 /*
- * Attach TCP protocol to socket, allocating
- * internet protocol control block, tcp control block,
- * bufer space, and entering LISTEN state if to accept connections.
+ * Attach TCP protocol to socket, allocating internet protocol control
+ * block, tcp control block, bufer space, and entering LISTEN state
+ * if to accept connections.
  */
 static int
 tcp_attach(struct socket *so, struct pru_attach_info *ai)
@@ -1374,6 +1388,11 @@ tcp_attach(struct socket *so, struct pru_attach_info *ai)
 	atomic_set_int(&so->so_rcv.ssb_flags, SSB_AUTOSIZE);
 	atomic_set_int(&so->so_snd.ssb_flags, SSB_AUTOSIZE);
 	cpu = mycpu->gd_cpuid;
+
+	/*
+	 * Set the default port for protocol processing. This will likely
+	 * change when we connect.
+	 */
 	error = in_pcballoc(so, &tcbinfo[cpu]);
 	if (error)
 		return (error);
@@ -1402,7 +1421,6 @@ tcp_attach(struct socket *so, struct pru_attach_info *ai)
 		return (ENOBUFS);
 	}
 	tp->t_state = TCPS_CLOSED;
-	so->so_port = tcp_soport_attach(so);
 	return (0);
 }
 

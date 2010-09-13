@@ -685,6 +685,7 @@ in6_pcbdetach(struct inpcb *inp)
 	inp->inp_gencnt = ++ipi->ipi_gencnt;
 	in_pcbremlists(inp);
 	so->so_pcb = NULL;
+	KKASSERT((so->so_state & SS_ASSERTINPROG) == 0);
 	sofree(so);		/* remove pcb ref */
 
 	if (inp->in6p_options)
@@ -940,17 +941,25 @@ in6_pcblookup_local(struct inpcbinfo *pcbinfo, struct in6_addr *laddr,
 	struct inpcb *match = NULL;
 
 	/*
+	 * If the porthashbase is shared across several cpus we need
+	 * to lock.
+	 */
+	if (pcbinfo->porttoken)
+		lwkt_gettoken(pcbinfo->porttoken);
+
+	/*
 	 * Best fit PCB lookup.
 	 *
 	 * First see if this local port is in use by looking on the
 	 * port hash list.
 	 */
-	porthash = &pcbinfo->porthashbase[INP_PCBPORTHASH(lport,
-	    pcbinfo->porthashmask)];
+	porthash = &pcbinfo->porthashbase[
+				INP_PCBPORTHASH(lport, pcbinfo->porthashmask)];
 	LIST_FOREACH(phd, porthash, phd_hash) {
 		if (phd->phd_port == lport)
 			break;
 	}
+
 	if (phd != NULL) {
 		/*
 		 * Port is in use by one or more PCBs. Look for best
@@ -987,6 +996,9 @@ in6_pcblookup_local(struct inpcbinfo *pcbinfo, struct in6_addr *laddr,
 			}
 		}
 	}
+	if (pcbinfo->porttoken)
+		lwkt_reltoken(pcbinfo->porttoken);
+
 	return (match);
 }
 
