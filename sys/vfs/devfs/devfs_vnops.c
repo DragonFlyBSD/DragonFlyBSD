@@ -1008,7 +1008,7 @@ devfs_spec_open(struct vop_open_args *ap)
 static int
 devfs_spec_close(struct vop_close_args *ap)
 {
-	struct devfs_node *node = DEVFS_NODE(ap->a_vp);
+	struct devfs_node *node;
 	struct proc *p = curproc;
 	struct vnode *vp = ap->a_vp;
 	cdev_t dev = vp->v_rdev;
@@ -1055,6 +1055,14 @@ devfs_spec_close(struct vop_close_args *ap)
 	    (dev_dflags(dev) & D_TRACKCLOSE) ||
 	    (vp->v_opencount == 1))) {
 		/*
+		 * Ugly pty magic, to make pty devices disappear again once
+		 * they are closed.
+		 */
+		node = DEVFS_NODE(ap->a_vp);
+		if (node && (node->flags & DEVFS_PTY))
+			node->flags |= DEVFS_INVISIBLE;
+
+		/*
 		 * Unlock around dev_dclose()
 		 */
 		needrelock = 0;
@@ -1062,14 +1070,13 @@ devfs_spec_close(struct vop_close_args *ap)
 			needrelock = 1;
 			vn_unlock(vp);
 		}
-		error = dev_dclose(dev, ap->a_fflag, S_IFCHR);
 
 		/*
-		 * Ugly pty magic, to make pty devices disappear again once
-		 * they are closed
+		 * WARNING!  If the device destroys itself the devfs node
+		 *	     can disappear here.
 		 */
-		if (node && (node->flags & DEVFS_PTY) == DEVFS_PTY)
-			node->flags |= DEVFS_INVISIBLE;
+		error = dev_dclose(dev, ap->a_fflag, S_IFCHR);
+		/* node is now stale */
 
 		if (needrelock)
 			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
