@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/twa/tw_osl_freebsd.c,v 1.15 2010/06/09 21:40:38 delphij Exp $
+ *	$FreeBSD: src/sys/dev/twa/tw_osl_freebsd.c,v 1.18 2010/09/04 16:27:14 bz Exp $
  */
 
 /*
@@ -181,6 +181,9 @@ static TW_INT32	twa_shutdown(device_t dev);
 static TW_VOID	twa_busdma_lock(TW_VOID *lock_arg, bus_dma_lock_op_t op);
 #endif
 static TW_VOID	twa_pci_intr(TW_VOID *arg);
+static TW_VOID	twa_watchdog(TW_VOID *arg);
+int twa_setup_intr(struct twa_softc *sc);
+int twa_teardown_intr(struct twa_softc *sc);
 
 static TW_INT32	tw_osli_alloc_mem(struct twa_softc *sc);
 static TW_VOID	tw_osli_free_resources(struct twa_softc *sc);
@@ -242,6 +245,32 @@ twa_probe(device_t dev)
 		return(0);
 	}
 	return(ENXIO);
+}
+
+int twa_setup_intr(struct twa_softc *sc)
+{
+	int error = 0;
+
+	if (!(sc->intr_handle) && (sc->irq_res)) {
+		error = bus_setup_intr(sc->bus_dev, sc->irq_res,
+					0,
+					twa_pci_intr,
+					sc, &sc->intr_handle, NULL);
+	}
+	return( error );
+}
+
+
+int twa_teardown_intr(struct twa_softc *sc)
+{
+	int error = 0;
+
+	if ((sc->intr_handle) && (sc->irq_res)) {
+		error = bus_teardown_intr(sc->bus_dev,
+						sc->irq_res, sc->intr_handle);
+		sc->intr_handle = NULL;
+	}
+	return( error );
 }
 
 
@@ -360,10 +389,7 @@ twa_attach(device_t dev)
 		tw_osli_free_resources(sc);
 		return(ENXIO);
 	}
-	if ((error = bus_setup_intr(sc->bus_dev, sc->irq_res,
-			0,
-			twa_pci_intr,
-			sc, &sc->intr_handle, NULL))) {
+	if ((error = twa_setup_intr(sc))) {
 		tw_osli_printf(sc, "error = %d",
 			TW_CL_SEVERITY_ERROR_STRING,
 			TW_CL_MESSAGE_SOURCE_FREEBSD_DRIVER,
@@ -418,9 +444,73 @@ twa_attach(device_t dev)
 		return(error);
 	}
 
+	sc->watchdog_index = 0;
+	callout_init(&(sc->watchdog_callout[0]));
+	callout_init(&(sc->watchdog_callout[1]));
+	callout_reset(&(sc->watchdog_callout[0]), 5*hz, twa_watchdog, &sc->ctlr_handle);
+
 	return(0);
 }
 
+
+static TW_VOID
+twa_watchdog(TW_VOID *arg)
+{
+	struct tw_cl_ctlr_handle *ctlr_handle =
+		(struct tw_cl_ctlr_handle *)arg;
+	struct twa_softc		*sc = ctlr_handle->osl_ctlr_ctxt;
+	int				i;
+	int				i_need_a_reset = 0;
+	int				driver_is_active = 0;
+	TW_UINT64			current_time;
+	struct tw_osli_req_context	*my_req;
+
+
+//==============================================================================
+	current_time = (TW_UINT64) (tw_osl_get_local_time());
+
+	for (i = 0; i < TW_OSLI_MAX_NUM_REQUESTS; i++) {
+		my_req = &(sc->req_ctx_buf[i]);
+
+		if ((my_req->state == TW_OSLI_REQ_STATE_BUSY) &&
+			(my_req->deadline) &&
+			(my_req->deadline < current_time)) {
+			tw_cl_set_reset_needed(ctlr_handle);
+#ifdef    TW_OSL_DEBUG
+			device_printf((sc)->bus_dev, "Request %d timed out! d = %llu, c = %llu\n", i, my_req->deadline, current_time);
+#else  /* TW_OSL_DEBUG */
+			device_printf((sc)->bus_dev, "Request %d timed out!\n", i);
+#endif /* TW_OSL_DEBUG */
+			break;
+		}
+	}
+//==============================================================================
+
+	i_need_a_reset = tw_cl_is_reset_needed(ctlr_handle);
+
+	i = (int) ((sc->watchdog_index++) & 1);
+
+	driver_is_active = tw_cl_is_active(ctlr_handle);
+
+	if (i_need_a_reset) {
+#ifdef    TW_OSL_DEBUG
+		device_printf((sc)->bus_dev, "Watchdog rescheduled in 70 seconds\n");
+#endif /* TW_OSL_DEBUG */
+		callout_reset(&(sc->watchdog_callout[i]), 70*hz, twa_watchdog, &sc->ctlr_handle);
+		tw_cl_reset_ctlr(ctlr_handle);
+#ifdef    TW_OSL_DEBUG
+		device_printf((sc)->bus_dev, "Watchdog reset completed!\n");
+#endif /* TW_OSL_DEBUG */
+	} else if (driver_is_active) {
+		callout_reset(&(sc->watchdog_callout[i]),  5*hz, twa_watchdog, &sc->ctlr_handle);
+	}
+#ifdef    TW_OSL_DEBUG
+	if (i_need_a_reset)
+		device_printf((sc)->bus_dev, "i_need_a_reset = %d, "
+		"driver_is_active = %d\n",
+		i_need_a_reset, driver_is_active);
+#endif /* TW_OSL_DEBUG */
+}
 
 
 /*
@@ -721,9 +811,7 @@ tw_osli_free_resources(struct twa_softc *sc)
 
 
 	/* Disconnect the interrupt handler. */
-	if (sc->intr_handle)
-		if ((error = bus_teardown_intr(sc->bus_dev,
-				sc->irq_res, sc->intr_handle)))
+	if ((error = twa_teardown_intr(sc)))
 			tw_osli_dbg_dprintf(1, sc,
 				"teardown_intr returned %d", error);
 
@@ -815,6 +903,15 @@ twa_shutdown(device_t dev)
 	TW_INT32		error = 0;
 
 	tw_osli_dbg_dprintf(3, sc, "entered");
+
+	/* Disconnect interrupts. */
+	error = twa_teardown_intr(sc);
+
+#if 0 /* XXX swildner */
+	/* Stop watchdog task. */
+	callout_drain(&(sc->watchdog_callout[0]));
+	callout_drain(&(sc->watchdog_callout[1]));
+#endif
 
 	/* Disconnect from the controller. */
 	if ((error = tw_cl_shutdown_ctlr(&(sc->ctlr_handle), 0))) {
@@ -1006,33 +1103,35 @@ tw_osli_fw_passthru(struct twa_softc *sc, TW_INT8 *buf)
 				error = 0; /* False error */
 				break;
 			}
-			tw_osli_printf(sc, "request = %p",
-				TW_CL_SEVERITY_ERROR_STRING,
-				TW_CL_MESSAGE_SOURCE_FREEBSD_DRIVER,
-				0x2018,
-				"Passthru request timed out!",
-				req);
-			/*
-			 * Should I check here if the timeout happened
-			 * because of yet another reset, and not do a
-			 * second reset?
-			 */
-			tw_cl_reset_ctlr(&sc->ctlr_handle);
+			if (!(tw_cl_is_reset_needed(&(req->ctlr->ctlr_handle)))) {
+#ifdef    TW_OSL_DEBUG
+				tw_osli_printf(sc, "request = %p",
+					TW_CL_SEVERITY_ERROR_STRING,
+					TW_CL_MESSAGE_SOURCE_FREEBSD_DRIVER,
+					0x2018,
+					"Passthru request timed out!",
+					req);
+#else  /* TW_OSL_DEBUG */
+			device_printf((sc)->bus_dev, "Passthru request timed out!\n");
+#endif /* TW_OSL_DEBUG */
+				tw_cl_reset_ctlr(&(req->ctlr->ctlr_handle));
+			}
+
+			error = 0;
+			end_time = tw_osl_get_local_time() + timeout;
+			continue;
 			/*
 			 * Don't touch req after a reset.  It (and any
-			 * associated data) will already have been
+			 * associated data) will be
 			 * unmapped by the callback.
 			 */
-			user_buf->driver_pkt.os_status = error;
-			error = ETIMEDOUT;
-			goto fw_passthru_err;
 		}
 		/*
 		 * Either the request got completed, or we were woken up by a
 		 * signal.  Calculate the new timeout, in case it was the latter.
 		 */
 		timeout = (end_time - tw_osl_get_local_time());
-	}
+	} /* End of while loop */
 
 	/* If there was a payload, copy it back. */
 	if ((!error) && (req->length))
@@ -1046,19 +1145,9 @@ tw_osli_fw_passthru(struct twa_softc *sc, TW_INT8 *buf)
 				error);
 
 fw_passthru_err:
-	/*
-	 * Print the failure message.  For some reason, on certain OS versions,
-	 * printing this error message during reset hangs the display (although
-	 * the rest of the system is running fine.  So, don't print it if the
-	 * failure was due to a reset.
-	 */
-	if ((error) && (error != TW_CL_ERR_REQ_BUS_RESET))
-		tw_osli_printf(sc, "error = %d",
-			TW_CL_SEVERITY_ERROR_STRING,
-			TW_CL_MESSAGE_SOURCE_FREEBSD_DRIVER,
-			0x201A,
-			"Firmware passthru failed!",
-			error);
+
+	if (req_pkt->status == TW_CL_ERR_REQ_BUS_RESET)
+		error = EBUSY;
 
 	user_buf->driver_pkt.os_status = error;
 	/* Free resources. */
@@ -1082,6 +1171,8 @@ TW_VOID
 tw_osl_complete_passthru(struct tw_cl_req_handle *req_handle)
 {
 	struct tw_osli_req_context	*req = req_handle->osl_req_ctxt;
+	struct tw_cl_req_packet		*req_pkt =
+		(struct tw_cl_req_packet *)(&req->req_pkt);
 	struct twa_softc		*sc = req->ctlr;
 
 	tw_osli_dbg_dprintf(5, sc, "entered");
@@ -1127,6 +1218,9 @@ tw_osl_complete_passthru(struct tw_cl_req_handle *req_handle)
 			 * was called, simply return.
 			 */
 			if (req->flags & TW_OSLI_REQ_FLAGS_MAPPED)
+				return;
+
+			if (req_pkt->status == TW_CL_ERR_REQ_BUS_RESET)
 				return;
 
 			tw_osli_printf(sc, "request = %p",
@@ -1175,6 +1269,7 @@ tw_osli_get_request(struct twa_softc *sc)
 		req->req_handle.is_io = 0;
 		req->data = NULL;
 		req->length = 0;
+		req->deadline = 0;
 		req->real_data = NULL;
 		req->real_length = 0;
 		req->state = TW_OSLI_REQ_STATE_INIT;/* req being initialized */
@@ -1215,6 +1310,11 @@ twa_map_load_data_callback(TW_VOID *arg, bus_dma_segment_t *segs,
 	struct tw_cl_req_packet		*req_pkt = &(req->req_pkt);
 
 	tw_osli_dbg_dprintf(10, sc, "entered");
+
+	if (error == EINVAL) {
+		req->error_code = error;
+		return;
+	}
 
 	/* Mark the request as currently being processed. */
 	req->state = TW_OSLI_REQ_STATE_BUSY;
@@ -1409,6 +1509,14 @@ tw_osli_map_request(struct tw_osli_req_context *req)
 				spin_unlock(sc->io_lock);
 				error = 0;
 			} else {
+				tw_osli_printf(sc, "error = %d",
+					TW_CL_SEVERITY_ERROR_STRING,
+					TW_CL_MESSAGE_SOURCE_FREEBSD_DRIVER,
+					0x9999,
+					"Failed to map DMA memory "
+					"for I/O request",
+					error);
+				req->flags |= TW_OSLI_REQ_FLAGS_FAILED;
 				/* Free alignment buffer if it was used. */
 				if (req->flags &
 					TW_OSLI_REQ_FLAGS_DATA_COPY_NEEDED) {

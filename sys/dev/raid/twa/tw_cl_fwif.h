@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/twa/tw_cl_fwif.h,v 1.4 2010/06/09 21:40:38 delphij Exp $
+ *	$FreeBSD: src/sys/dev/twa/tw_cl_fwif.h,v 1.5 2010/08/30 19:15:04 delphij Exp $
  */
 
 /*
@@ -89,7 +89,7 @@
 #define TWA_STATUS_MINOR_VERSION_MASK		0x0F000000
 #define TWA_STATUS_MAJOR_VERSION_MASK		0xF0000000
 
-#define TWA_STATUS_UNEXPECTED_BITS		0x00F00000
+#define TWA_STATUS_UNEXPECTED_BITS		0x00D00000
 
 
 /* PCI related defines. */

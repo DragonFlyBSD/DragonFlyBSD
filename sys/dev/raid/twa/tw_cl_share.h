@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/twa/tw_cl_share.h,v 1.7 2010/07/09 17:38:15 delphij Exp $
+ *	$FreeBSD: src/sys/dev/twa/tw_cl_share.h,v 1.8 2010/08/30 19:15:04 delphij Exp $
  */
 
 /*
@@ -349,10 +349,14 @@ extern TW_VOID	tw_osl_breakpoint(TW_VOID);
 #endif
 
 
-#ifndef tw_osl_ctlr_busy
-/* Called when CL is too busy to accept new requests. */
-extern TW_VOID	tw_osl_ctlr_busy(struct tw_cl_ctlr_handle *ctlr_handle,
-	struct tw_cl_req_handle *req_handle);
+#ifndef tw_osl_timeout
+/* Start OS timeout() routine after controller reset sequence */
+extern TW_VOID	tw_osl_timeout(struct tw_cl_req_handle *req_handle);
+#endif
+
+#ifndef tw_osl_untimeout
+/* Stop OS timeout() routine during controller reset sequence */
+extern TW_VOID	tw_osl_untimeout(struct tw_cl_req_handle *req_handle);
 #endif
 
 
@@ -551,6 +555,10 @@ extern TW_INT32	tw_cl_init_ctlr(struct tw_cl_ctlr_handle *ctlr_handle,
 	TW_UINT64 dma_mem_phys
 	);
 
+
+extern TW_VOID  tw_cl_set_reset_needed(struct tw_cl_ctlr_handle *ctlr_handle);
+extern TW_INT32 tw_cl_is_reset_needed(struct tw_cl_ctlr_handle *ctlr_handle);
+extern TW_INT32 tw_cl_is_active(struct tw_cl_ctlr_handle *ctlr_handle);
 
 /* CL's interrupt handler. */
 extern TW_INT32	tw_cl_interrupt(struct tw_cl_ctlr_handle *ctlr_handle);

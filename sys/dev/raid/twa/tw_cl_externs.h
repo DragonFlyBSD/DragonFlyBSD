@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/twa/tw_cl_externs.h,v 1.3 2007/05/09 04:16:32 scottl Exp $
+ *	$FreeBSD: src/sys/dev/twa/tw_cl_externs.h,v 1.4 2010/08/30 19:15:04 delphij Exp $
  */
 
 /*
@@ -86,6 +86,8 @@ extern TW_INT32	tw_cli_submit_and_poll_request(struct tw_cli_req_context *req,
 
 /* Soft reset the controller. */
 extern TW_INT32	tw_cli_soft_reset(struct tw_cli_ctlr_context *ctlr);
+extern int twa_setup_intr(struct twa_softc *sc);
+extern int twa_teardown_intr(struct twa_softc *sc);
 
 /* Send down a SCSI command to the firmware (usually, an internal Req Sense. */
 extern TW_INT32	tw_cli_send_scsi_cmd(struct tw_cli_req_context *req,

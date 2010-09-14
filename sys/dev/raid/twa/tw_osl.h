@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/twa/tw_osl.h,v 1.8 2010/06/09 21:40:38 delphij Exp $
+ *	$FreeBSD: src/sys/dev/twa/tw_osl.h,v 1.9 2010/08/30 19:15:04 delphij Exp $
  */
 
 /*
@@ -77,6 +77,7 @@
 						EINPROGRESS */
 #define TW_OSLI_REQ_FLAGS_PASSTHRU	(1<<5)	/* pass through request */
 #define TW_OSLI_REQ_FLAGS_SLEEPING	(1<<6)	/* owner sleeping on this cmd */
+#define TW_OSLI_REQ_FLAGS_FAILED	(1<<7)	/* bus_dmamap_load() failed */
 
 
 #ifdef TW_OSL_DEBUG
@@ -100,6 +101,7 @@ struct tw_osli_req_context {
 	struct twa_softc	*ctlr;	/* ptr to OSL's controller context */
 	TW_VOID			*data;	/* ptr to data being passed to CL */
 	TW_UINT32		length;	/* length of buf being passed to CL */
+	TW_UINT64		deadline;/* request timeout (in absolute time) */
 
 	/*
 	 * ptr to, and length of data passed to us from above, in case a buffer
@@ -150,6 +152,9 @@ struct twa_softc {
 	struct spinlock		*q_lock;/* ptr to queue manipulation lock */
 	struct lock		sim_lock_handle;/* sim lock shared with cam */
 	struct lock		*sim_lock;/* ptr to sim lock */
+
+	struct callout		watchdog_callout[2]; /* For command timout */
+	TW_UINT32		watchdog_index;
 
 #ifdef TW_OSL_DEBUG
 	struct tw_osli_q_stats	q_stats[TW_OSLI_Q_COUNT];/* queue statistics */

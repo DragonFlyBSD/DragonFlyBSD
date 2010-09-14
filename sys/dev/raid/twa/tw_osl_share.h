@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/twa/tw_osl_share.h,v 1.10 2010/06/09 21:40:38 delphij Exp $
+ *	$FreeBSD: src/sys/dev/twa/tw_osl_share.h,v 1.11 2010/08/30 19:15:04 delphij Exp $
  */
 
 /*
@@ -76,7 +76,7 @@
 #define TW_OSL_ENCLOSURE_SUPPORT
 #endif
 
-#define TW_OSL_DRIVER_VERSION_STRING	"3.80.06.002"
+#define TW_OSL_DRIVER_VERSION_STRING	"3.80.06.003"
 
 #define	TW_OSL_CAN_SLEEP
 
