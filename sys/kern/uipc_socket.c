@@ -869,6 +869,11 @@ bad:
 	if ((so->so_state & SS_ISCONFIRMING) && resid)
 		so_pru_rcvd(so, 0);
 
+	/*
+	 * The token interlocks against the protocol thread while
+	 * ssb_lock is a blocking lock against other userland entities.
+	 */
+	lwkt_gettoken(&so->so_rcv.ssb_token);
 restart:
 	error = ssb_lock(&so->so_rcv, SBLOCKWAIT(flags));
 	if (error)
@@ -1152,6 +1157,7 @@ dontblock:
 release:
 	ssb_unlock(&so->so_rcv);
 done:
+	lwkt_reltoken(&so->so_rcv.ssb_token);
 	if (free_chain)
 		m_freem(free_chain);
 	return (error);
