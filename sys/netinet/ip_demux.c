@@ -90,10 +90,14 @@ tcp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 	return (INP_MPORT_HASH_TCP(faddr, laddr, fport, lport));
 }
 
+/*
+ * Not implemented yet, use protocol thread 0
+ */
 int
 udp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 {
-	return (INP_MPORT_HASH_UDP(faddr, laddr, fport, lport));
+	/*return (INP_MPORT_HASH_UDP(faddr, laddr, fport, lport));*/
+	return 0;
 }
 
 /*
