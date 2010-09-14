@@ -145,6 +145,7 @@ static int	acpi_pst_sysctl_global(SYSCTL_HANDLER_ARGS);
 
 static struct acpi_pst_domlist	acpi_pst_domains =
 	LIST_HEAD_INITIALIZER(acpi_pst_domains);
+static int			acpi_pst_domain_id;
 
 static int			acpi_pst_global_state;
 
@@ -308,9 +309,14 @@ acpi_pst_attach(device_t dev)
 		/* Free _PSD */
 		AcpiOsFree(buf.Pointer);
 	} else {
-		/* Create a stub one processor domain */
-		dom = acpi_pst_domain_alloc(0, ACPI_PSD_COORD_SWANY, 1);
+		/*
+		 * Create a stub one processor domain for each processor
+		 */
+		dom = acpi_pst_domain_alloc(acpi_pst_domain_id,
+			ACPI_PSD_COORD_SWANY, 1);
 		dom->pd_flags |= ACPI_PSTDOM_FLAG_STUB;
+
+		++acpi_pst_domain_id;
 	}
 
 	/* Make sure that adding us will not overflow our domain */
