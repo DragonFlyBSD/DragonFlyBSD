@@ -412,30 +412,14 @@ init_sys_memory(char *imageFile)
 	}
 
 	/*
-	 * Truncate or extend the file as necessary.
+	 * Truncate or extend the file as necessary.  Clean out the contents
+	 * of the file, we want it to be full of holes so we don't waste
+	 * time reading in data from an old file that we no longer care
+	 * about.
 	 */
-	if (st.st_size > Maxmem_bytes) {
-		ftruncate(fd, Maxmem_bytes);
-	} else if (st.st_size < Maxmem_bytes) {
-		char *zmem;
-		off_t off = st.st_size & ~SEG_MASK;
+	ftruncate(fd, 0);
+	ftruncate(fd, Maxmem_bytes);
 
-		/* cannot use kprintf yet */
-		printf("%s: Reserving blocks for memory image\n", imageFile);
-		zmem = malloc(SEG_SIZE);
-		bzero(zmem, SEG_SIZE);
-		lseek(fd, off, SEEK_SET);
-		while (off < Maxmem_bytes) {
-			if (write(fd, zmem, SEG_SIZE) != SEG_SIZE) {
-				err(1, "Unable to reserve blocks for memory image");
-				/* NOT REACHED */
-			}
-			off += SEG_SIZE;
-		}
-		if (fsync(fd) < 0)
-			err(1, "Unable to reserve blocks for memory image");
-		free(zmem);
-	}
 	MemImageFd = fd;
 	Maxmem = Maxmem_bytes >> PAGE_SHIFT;
 }
