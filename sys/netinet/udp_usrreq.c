@@ -612,16 +612,22 @@ static void
 udp_notifyall_oncpu(struct netmsg *netmsg)
 {
 	struct netmsg_udp_notify *nmsg = (struct netmsg_udp_notify *)netmsg;
+#if 0
 	int nextcpu;
+#endif
 
 	in_pcbnotifyall(&udbinfo.pcblisthead, nmsg->nm_faddr, nmsg->nm_arg,
 			nmsg->nm_notify);
+	lwkt_replymsg(&netmsg->nm_lmsg, 0);
 
+#if 0
+	/* XXX currently udp only runs on cpu 0 */
 	nextcpu = mycpuid + 1;
 	if (nextcpu < ncpus2)
 		lwkt_forwardmsg(cpu_portfn(nextcpu), &netmsg->nm_lmsg);
 	else
 		lwkt_replymsg(&netmsg->nm_lmsg, 0);
+#endif
 }
 
 static void
@@ -678,7 +684,7 @@ udp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 		nmsg.nm_arg = inetctlerrmap[cmd];
 		nmsg.nm_notify = notify;
 
-		lwkt_domsg(cpu_portfn(0), &nmsg.nm_nmsg.nm_lmsg, 0);
+		lwkt_sendmsg(cpu_portfn(0), &nmsg.nm_nmsg.nm_lmsg);
 	} else {
 		/*
 		 * XXX We should forward msg upon PRC_HOSTHEAD and ip == NULL,
@@ -962,6 +968,8 @@ udp_connect_handler(netmsg_t netmsg)
 	struct netmsg_udp_connect *msg = (void *)netmsg;
 	int error;
 
+	in_pcblink(msg->nm_so->so_pcb, &udbinfo);
+	/* in_pcblink(msg->nm_so->so_pcb, &udbinfo[mycpu->gd_cpuid]); */
 	error = udp_connect_oncpu(msg->nm_so, msg->nm_td,
 				  msg->nm_sin, msg->nm_ifsin);
 	lwkt_replymsg(&msg->nm_netmsg.nm_lmsg, error);
@@ -1008,10 +1016,12 @@ udp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	port = udp_addrport(sin->sin_addr.s_addr, sin->sin_port,
 			    inp->inp_laddr.s_addr, inp->inp_lport);
 #ifdef SMP
-	sosetport(so, port);
 	if (port != &curthread->td_msgport) {
 		struct netmsg_udp_connect msg;
 		struct route *ro = &inp->inp_route;
+
+		panic("UDP should only be in one protocol thread %p %p",
+			port, &curthread->td_msgport);
 
 		/*
 		 * in_pcbladdr() may have allocated a route entry for us
@@ -1021,6 +1031,15 @@ udp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		if (ro->ro_rt != NULL)
 			RTFREE(ro->ro_rt);
 		bzero(ro, sizeof(*ro));
+
+		/*
+		 * We are moving the protocol processing port the socket
+		 * is on, we have to unlink here and re-link on the
+		 * target cpu.
+		 */
+		in_pcbunlink(so->so_pcb, &udbinfo);
+		/* in_pcbunlink(so->so_pcb, &udbinfo[mycpu->gd_cpuid]); */
+		sosetport(so, port);
 
 		/*
 		 * NOTE: We haven't set so->so_port yet do not pass so
