@@ -52,8 +52,10 @@ struct ifnet_en {
 
 #ifdef _KERNEL
 
-void	ipxip_ctlinput (int cmd, struct sockaddr *sa, void *arg);
-void	ipxip_input (struct mbuf *m, ...);
+union netmsg;
+
+void	ipxip_ctlinput (union netmsg *);
+int	ipxip_input (struct mbuf **mp, int *offp, int);
 int	ipxip_route (struct socket *so, struct sockopt *sopt);
 
 #endif

@@ -511,16 +511,15 @@ tcp6_input(struct mbuf **mp, int *offp, int proto)
 		return (IPPROTO_DONE);
 	}
 
-	tcp_input(m, *offp, proto);
+	tcp_input(mp, offp, proto);
 	return (IPPROTO_DONE);
 }
 #endif
 
-void
-tcp_input(struct mbuf *m, ...)
+int
+tcp_input(struct mbuf **mp, int *offp, int proto)
 {
-	__va_list ap;
-	int off0, proto;
+	int off0;
 	struct tcphdr *th;
 	struct ip *ip = NULL;
 	struct ipovly *ipov;
@@ -542,6 +541,7 @@ tcp_input(struct mbuf *m, ...)
 	int rstreason; /* For badport_bandlim accounting purposes */
 	int cpu;
 	struct ip6_hdr *ip6 = NULL;
+	struct mbuf *m;
 #ifdef INET6
 	boolean_t isipv6;
 #else
@@ -551,10 +551,9 @@ tcp_input(struct mbuf *m, ...)
 	short ostate = 0;
 #endif
 
-	__va_start(ap, m);
-	off0 = __va_arg(ap, int);
-	proto = __va_arg(ap, int);
-	__va_end(ap);
+	off0 = *offp;
+	m = *mp;
+	*mp = NULL;
 
 	tcpstat.tcps_rcvtotal++;
 
@@ -650,7 +649,7 @@ tcp_input(struct mbuf *m, ...)
 	tlen -= off;	/* tlen is used instead of ti->ti_len */
 	if (off > sizeof(struct tcphdr)) {
 		if (isipv6) {
-			IP6_EXTHDR_CHECK(m, off0, off, );
+			IP6_EXTHDR_CHECK(m, off0, off, IPPROTO_DONE);
 			ip6 = mtod(m, struct ip6_hdr *);
 			th = (struct tcphdr *)((caddr_t)ip6 + off0);
 		} else {
@@ -907,7 +906,7 @@ findpcb:
 				 * syncache will free mbuf.
 				 */
 				if (so == NULL)
-					return;
+					return(IPPROTO_DONE);
 
 				/*
 				 * We must be in the correct protocol thread
@@ -1044,7 +1043,7 @@ findpcb:
 			 * send SYN,ACK packet.
 			 */
 			if (so == NULL)
-				return;
+				return(IPPROTO_DONE);
 
 			/*
 			 * We must be in the correct protocol thread for
@@ -1284,7 +1283,7 @@ after_listen:
 				sowwakeup(so);
 				if (so->so_snd.ssb_cc > 0)
 					tcp_output(tp);
-				return;
+				return(IPPROTO_DONE);
 			}
 		} else if (tiwin == tp->snd_wnd &&
 		    th->th_ack == tp->snd_una &&
@@ -1425,7 +1424,7 @@ after_listen:
 				tp->t_flags |= TF_ACKNOW;
 				tcp_output(tp);
 			}
-			return;
+			return(IPPROTO_DONE);
 		}
 	}
 
@@ -2570,7 +2569,7 @@ dodata:							/* XXX */
 	 */
 	if (needoutput || (tp->t_flags & TF_ACKNOW))
 		tcp_output(tp);
-	return;
+	return(IPPROTO_DONE);
 
 dropafterack:
 	/*
@@ -2601,7 +2600,7 @@ dropafterack:
 	m_freem(m);
 	tp->t_flags |= TF_ACKNOW;
 	tcp_output(tp);
-	return;
+	return(IPPROTO_DONE);
 
 dropwithreset:
 	/*
@@ -2647,7 +2646,7 @@ dropwithreset:
 		tcp_respond(tp, mtod(m, void *), th, m, th->th_seq + tlen,
 			    (tcp_seq)0, TH_RST | TH_ACK);
 	}
-	return;
+	return(IPPROTO_DONE);
 
 drop:
 	/*
@@ -2658,7 +2657,7 @@ drop:
 		tcp_trace(TA_DROP, ostate, tp, tcp_saveipgen, &tcp_savetcp, 0);
 #endif
 	m_freem(m);
-	return;
+	return(IPPROTO_DONE);
 }
 
 /*

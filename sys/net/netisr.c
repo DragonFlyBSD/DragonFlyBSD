@@ -58,7 +58,7 @@
 #include <net/netmsg2.h>
 #include <sys/mplock2.h>
 
-static void netmsg_sync_func(struct netmsg *msg);
+static void netmsg_sync_func(netmsg_t msg);
 static void netmsg_service_loop(void *arg);
 static void cpu0_cpufn(struct mbuf **mp, int hoff);
 
@@ -107,18 +107,17 @@ netisr_autofree_reply(lwkt_port_t port, lwkt_msg_t msg)
  * synchronously, effectively turning the message into a glorified direct
  * procedure call back into the protocol stack.  The operation must be
  * complete on return or we will deadlock, so panic if it isn't.
+ *
+ * However, the target function is under no obligation to immediately
+ * reply the message.  It may forward it elsewhere.
  */
 static int
 netmsg_put_port(lwkt_port_t port, lwkt_msg_t lmsg)
 {
-	netmsg_t netmsg = (void *)lmsg;
+	netmsg_base_t nmsg = (void *)lmsg;
 
 	if ((lmsg->ms_flags & MSGF_SYNC) && port == &curthread->td_msgport) {
-		netmsg->nm_dispatch(netmsg);
-		if ((lmsg->ms_flags & MSGF_DONE) == 0) {
-			panic("netmsg_put_port: self-referential "
-			      "deadlock on netport");
-		}
+		nmsg->nm_dispatch((netmsg_t)nmsg);
 		return(EASYNC);
 	} else {
 		return(netmsg_fwd_port_fn(port, lmsg));
@@ -138,12 +137,12 @@ netmsg_put_port(lwkt_port_t port, lwkt_msg_t lmsg)
 static int
 netmsg_sync_putport(lwkt_port_t port, lwkt_msg_t lmsg)
 {
-	netmsg_t netmsg = (void *)lmsg;
+	netmsg_base_t nmsg = (void *)lmsg;
 
 	KKASSERT((lmsg->ms_flags & MSGF_DONE) == 0);
 
 	lmsg->ms_target_port = port;	/* required for abort */
-	netmsg->nm_dispatch(netmsg);
+	nmsg->nm_dispatch((netmsg_t)nmsg);
 	return(EASYNC);
 }
 
@@ -227,12 +226,12 @@ void
 netmsg_service_sync(void)
 {
 	struct netmsg_port_registration *reg;
-	struct netmsg smsg;
+	struct netmsg_base smsg;
 
 	netmsg_init(&smsg, NULL, &curthread->td_msgport, 0, netmsg_sync_func);
 
 	TAILQ_FOREACH(reg, &netreglist, npr_entry) {
-		lwkt_domsg(reg->npr_port, &smsg.nm_lmsg, 0);
+		lwkt_domsg(reg->npr_port, &smsg.lmsg, 0);
 	}
 }
 
@@ -241,9 +240,9 @@ netmsg_service_sync(void)
  * EASYNC to be returned if the netmsg function disposes of the message.
  */
 static void
-netmsg_sync_func(struct netmsg *msg)
+netmsg_sync_func(netmsg_t msg)
 {
-	lwkt_replymsg(&msg->nm_lmsg, 0);
+	lwkt_replymsg(&msg->lmsg, 0);
 }
 
 /*
@@ -254,7 +253,7 @@ static void
 netmsg_service_loop(void *arg)
 {
 	struct netmsg_rollup *ru;
-	struct netmsg *msg;
+	netmsg_base_t msg;
 	thread_t td = curthread;;
 	int limit;
 
@@ -266,7 +265,7 @@ netmsg_service_loop(void *arg)
 		do {
 			KASSERT(msg->nm_dispatch != NULL,
 				("netmsg_service isr %d badmsg\n",
-				msg->nm_lmsg.u.ms_result));
+				msg->lmsg.u.ms_result));
 			if (msg->nm_so &&
 			    msg->nm_so->so_port != &td->td_msgport) {
 				/*
@@ -277,12 +276,12 @@ netmsg_service_loop(void *arg)
 				kprintf("netmsg_service_loop: Warning, "
 					"port changed so=%p\n", msg->nm_so);
 				lwkt_forwardmsg(msg->nm_so->so_port,
-						&msg->nm_lmsg);
+						&msg->lmsg);
 			} else {
 				/*
 				 * We are on the correct port, dispatch it.
 				 */
-				msg->nm_dispatch(msg);
+				msg->nm_dispatch((netmsg_t)msg);
 			}
 			if (--limit == 0)
 				break;
@@ -347,11 +346,11 @@ netisr_queue(int num, struct mbuf *m)
 	 */
 	port = cpu_portfn(m->m_pkthdr.hash);
 	pmsg = &m->m_hdr.mh_netmsg;
-	netmsg_init(&pmsg->nm_netmsg, NULL, &netisr_apanic_rport,
+	netmsg_init(&pmsg->base, NULL, &netisr_apanic_rport,
 		    0, ni->ni_handler);
 	pmsg->nm_packet = m;
-	pmsg->nm_netmsg.nm_lmsg.u.ms_result = num;
-	lwkt_sendmsg(port, &pmsg->nm_netmsg.nm_lmsg);
+	pmsg->base.lmsg.u.ms_result = num;
+	lwkt_sendmsg(port, &pmsg->base.lmsg);
 
 	return (0);
 }
@@ -456,16 +455,6 @@ cur_netport(void)
 }
 
 /*
- * Return a default protocol mbuf processing thread port
- */
-lwkt_port_t
-cpu0_soport(struct socket *so __unused, struct sockaddr *nam __unused,
-	    struct mbuf **dummy __unused)
-{
-	return (&netisr_cpu[0].td_msgport);
-}
-
-/*
  * Return a default protocol control message processing thread port
  */
 lwkt_port_t
@@ -473,17 +462,6 @@ cpu0_ctlport(int cmd __unused, struct sockaddr *sa __unused,
 	     void *extra __unused)
 {
 	return (&netisr_cpu[0].td_msgport);
-}
-
-/*
- * This is a dummy port that causes a message to be executed synchronously
- * instead of being queued to a port.
- */
-lwkt_port_t
-sync_soport(struct socket *so __unused, struct sockaddr *nam __unused,
-	    struct mbuf **dummy __unused)
-{
-	return (&netisr_sync_port);
 }
 
 /*
@@ -520,13 +498,13 @@ schednetisr_remote(void *data)
 	int num = (int)(intptr_t)data;
 	struct netisr *ni = &netisrs[num];
 	lwkt_port_t port = &netisr_cpu[0].td_msgport;
-	struct netmsg *pmsg;
+	netmsg_base_t pmsg;
 
 	pmsg = &netisrs[num].ni_netmsg;
-	if (pmsg->nm_lmsg.ms_flags & MSGF_DONE) {
+	if (pmsg->lmsg.ms_flags & MSGF_DONE) {
 		netmsg_init(pmsg, NULL, &netisr_adone_rport, 0, ni->ni_handler);
-		pmsg->nm_lmsg.u.ms_result = num;
-		lwkt_sendmsg(port, &pmsg->nm_lmsg);
+		pmsg->lmsg.u.ms_result = num;
+		lwkt_sendmsg(port, &pmsg->lmsg);
 	}
 }
 

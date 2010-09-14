@@ -338,9 +338,9 @@ struct inpcb;
 struct sockopt;
 struct in6_ifaddr;
 struct ip6_hdr;
-struct netmsg;
+union netmsg;
 
-int	icmp6_ctloutput (struct socket *, struct sockopt *sopt);
+void	icmp6_ctloutput (union netmsg *);
 
 void	ip6_init (void);
 void	ip6intr (void);
@@ -373,6 +373,7 @@ int	ip6_output (struct mbuf *, struct ip6_pktopts *,
 			int,
 			struct ip6_moptions *, struct ifnet **,
 			struct inpcb *);
+void	ip6_ctloutput_dispatch(netmsg_t msg);
 int	ip6_ctloutput (struct socket *, struct sockopt *sopt);
 int	ip6_raw_ctloutput (struct socket *, struct sockopt *);
 void	init_ip6pktopts (struct ip6_pktopts *);
@@ -392,8 +393,8 @@ void	frag6_drain (void);
 
 void	rip6_init (void);
 int	rip6_input (struct mbuf **mp, int *offp, int proto);
-void	rip6_ctlinput (int, struct sockaddr *, void *);
-int	rip6_ctloutput (struct socket *so, struct sockopt *sopt);
+void	rip6_ctlinput (union netmsg *);
+void	rip6_ctloutput (union netmsg *);
 int	rip6_output (struct mbuf *, struct socket *, ...);
 int	rip6_usrreq (struct socket *,
 	    int, struct mbuf *, struct mbuf *, struct mbuf *, struct proc *);

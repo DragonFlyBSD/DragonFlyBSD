@@ -57,6 +57,7 @@
 
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
+#include <sys/msgport2.h>
 
 #include <net/if.h>
 #include <net/netisr.h>
@@ -1346,15 +1347,18 @@ ip_optcopy(struct ip *ip, struct ip *jp)
 /*
  * IP socket option processing.
  */
-int
-ip_ctloutput(struct socket *so, struct sockopt *sopt)
+void
+ip_ctloutput(netmsg_t msg)
 {
+	struct socket *so = msg->base.nm_so;
+	struct sockopt *sopt = msg->ctloutput.nm_sopt;
 	struct	inpcb *inp = so->so_pcb;
 	int	error, optval;
 
 	error = optval = 0;
 	if (sopt->sopt_level != IPPROTO_IP) {
-		return (EINVAL);
+		error = EINVAL;
+		goto done;
 	}
 
 	switch (sopt->sopt_dir) {
@@ -1378,8 +1382,9 @@ ip_ctloutput(struct socket *so, struct sockopt *sopt)
 			m->m_len = sopt->sopt_valsize;
 			error = soopt_to_kbuf(sopt, mtod(m, void *), m->m_len,
 					      m->m_len);
-			return (ip_pcbopts(sopt->sopt_name, &inp->inp_options,
-					   m));
+			error = ip_pcbopts(sopt->sopt_name,
+					   &inp->inp_options, m);
+			goto done;
 		}
 
 		case IP_TOS:
@@ -1616,7 +1621,8 @@ ip_ctloutput(struct socket *so, struct sockopt *sopt)
 		}
 		break;
 	}
-	return (error);
+done:
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
 /*

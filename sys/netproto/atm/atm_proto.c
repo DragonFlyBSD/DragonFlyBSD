@@ -38,45 +38,36 @@
 #include "kern_include.h"
 
 struct protosw atmsw[] = {
-{	SOCK_DGRAM,				/* ioctl()-only */
-	&atmdomain,
-	0,
-	0,
-	0,			/* pr_input */
-	0,			/* pr_output */
-	0,			/* pr_ctlinput */
-	0,			/* pr_ctloutput */
-	cpu0_soport,		/* pr_mport */
-	NULL,			/* pr_ctlport */
-	0,			/* pr_init */
-	0,			/* pr_fasttimo */
-	0,			/* pr_slowtimo */
-	0,			/* pr_drain */
-	&atm_dgram_usrreqs,	/* pr_usrreqs */
-},
+    {
+	.pr_type = SOCK_DGRAM,		/* ioctl()-only */
+	.pr_domain = &atmdomain,
+	.pr_protocol = 0,
+	.pr_flags = 0,
 
-{	SOCK_SEQPACKET,				/* AAL-5 */
-	&atmdomain,
-	ATM_PROTO_AAL5,
-	PR_ATOMIC|PR_CONNREQUIRED,
-	0,			/* pr_input */
-	0,			/* pr_output */
-	0,			/* pr_ctlinput */
-	atm_aal5_ctloutput,	/* pr_ctloutput */
-	cpu0_soport,		/* pr_mport */
-	NULL,			/* pr_ctlport */
-	0,			/* pr_init */
-	0,			/* pr_fasttimo */
-	0,			/* pr_slowtimo */
-	0,			/* pr_drain */
-	&atm_aal5_usrreqs,	/* pr_usrreqs */
-},
+	.pr_usrreqs = &atm_dgram_usrreqs
+    },
+
+    {
+	.pr_type = SOCK_SEQPACKET,	/* AAL-5 */
+	.pr_domain = &atmdomain,
+	.pr_protocol = ATM_PROTO_AAL5,
+	.pr_flags = PR_ATOMIC|PR_CONNREQUIRED,
+
+	.pr_input = NULL,
+	.pr_output = NULL,
+	.pr_ctlinput = NULL,
+	.pr_ctloutput = atm_aal5_ctloutput,
+
+	.pr_usrreqs = &atm_aal5_usrreqs,
+    },
 
 #ifdef XXX
-{	SOCK_SEQPACKET,				/* SSCOP */
-	&atmdomain,
-	ATM_PROTO_SSCOP,
-	PR_ATOMIC|PR_CONNREQUIRED|PR_WANTRCVD,
+    {
+	.pr_type = SOCK_SEQPACKET,	/* SSCOP */
+	.pr_domain = &atmdomain,
+	.pr_protocol = ATM_PROTO_SSCOP,
+	.pr_flags = PR_ATOMIC|PR_CONNREQUIRED|PR_WANTRCVD,
+
 	x,			/* pr_input */
 	x,			/* pr_output */
 	x,			/* pr_ctlinput */
@@ -88,7 +79,7 @@ struct protosw atmsw[] = {
 	0,			/* pr_slowtimo */
 	x,			/* pr_drain */
 	x,			/* pr_usrreqs */
-},
+    },
 #endif
 };
 
@@ -98,84 +89,3 @@ struct domain atmdomain = {
 };
 
 DOMAIN_SET(atm);
-
-/*
- * Protocol request not supported
- *
- * Arguments:
- *	so	pointer to socket
- *
- * Returns:
- *	errno	error - operation not supported
- *
- */
-int
-atm_proto_notsupp1(struct socket *so)
-{
-	return (EOPNOTSUPP);
-}
-
-
-/*
- * Protocol request not supported
- *
- * Arguments:
- *	so	pointer to socket
- *	addr	pointer to protocol address
- *	p	pointer to process
- *
- * Returns:
- *	errno	error - operation not supported
- *
- */
-int
-atm_proto_notsupp2(struct socket *so, struct sockaddr *addr, thread_t td)
-{
-	return (EOPNOTSUPP);
-}
-
-
-/*
- * Protocol request not supported
- *
- * Arguments:
- *	so	pointer to socket
- *	addr	pointer to pointer to protocol address
- *
- * Returns:
- *	errno	error - operation not supported
- *
- */
-int
-atm_proto_notsupp3(struct socket *so, struct sockaddr **addr)
-{
-	return (EOPNOTSUPP);
-}
-
-
-/*
- * Protocol request not supported
- *
- * Arguments:
- *	so	pointer to socket
- *	i	integer
- *	m	pointer to kernel buffer
- *	addr	pointer to protocol address
- *	m2	pointer to kernel buffer
- *	p	pointer to process
- *
- * Returns:
- *	errno	error - operation not supported
- *
- */
-int
-atm_proto_notsupp4(
-	struct socket	*so,
-	int		i,
-	KBuffer		*m,
-	struct sockaddr	*addr,
-	KBuffer		*m2,
-	struct thread	*td
-) {
-	return (EOPNOTSUPP);
-}

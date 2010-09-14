@@ -175,12 +175,13 @@ soo_ioctl(struct file *fp, u_long cmd, caddr_t data,
 		 * interface and routing ioctls should have a
 		 * different entry since a socket's unnecessary
 		 */
-		if (IOCGROUP(cmd) == 'i')
+		if (IOCGROUP(cmd) == 'i') {
 			error = ifioctl(so, cmd, data, cred);
-		else if (IOCGROUP(cmd) == 'r')
+		} else if (IOCGROUP(cmd) == 'r') {
 			error = rtioctl(cmd, data, cred);
-		else
-			error = so_pru_control(so, cmd, data, NULL);
+		} else {
+			error = so_pru_control_direct(so, cmd, data, NULL);
+		}
 		break;
 	}
 	rel_mplock();

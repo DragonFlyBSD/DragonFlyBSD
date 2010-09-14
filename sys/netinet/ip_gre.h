@@ -44,8 +44,8 @@
 
 struct mbuf;
 
-void gre_input(struct mbuf *, ...);
-void gre_mobile_input(struct mbuf *, ...);
+int gre_input(struct mbuf **, int *, int);
+int gre_mobile_input(struct mbuf **, int *, int);
 
 #endif /* _KERNEL */
 

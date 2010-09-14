@@ -923,7 +923,7 @@ bstp_stop(struct bridge_softc *sc)
 	bstp_timer_stop(&sc->sc_hello_timer);
 
 	crit_enter();
-	lmsg = &sc->sc_bstptimemsg.nm_lmsg;
+	lmsg = &sc->sc_bstptimemsg.lmsg;
 	if ((lmsg->ms_flags & MSGF_DONE) == 0) {
 		/* Pending to be processed; drop it */
 		lwkt_dropmsg(lmsg);
@@ -1122,7 +1122,7 @@ bstp_tick(void *arg)
 	}
 	callout_deactivate(&sc->sc_bstpcallout);
 
-	lmsg = &sc->sc_bstptimemsg.nm_lmsg;
+	lmsg = &sc->sc_bstptimemsg.lmsg;
 	KKASSERT(lmsg->ms_flags & MSGF_DONE);
 	lwkt_sendmsg(BRIDGE_CFGPORT, lmsg);
 
@@ -1130,15 +1130,15 @@ bstp_tick(void *arg)
 }
 
 void
-bstp_tick_handler(struct netmsg *nmsg)
+bstp_tick_handler(netmsg_t msg)
 {
-	struct bridge_softc *sc = nmsg->nm_lmsg.u.ms_resultp;
+	struct bridge_softc *sc = msg->lmsg.u.ms_resultp;
 	struct bridge_iflist *bif;
 
 	KKASSERT(&curthread->td_msgport == BRIDGE_CFGPORT);
 	crit_enter();
 	/* Reply ASAP */
-	lwkt_replymsg(&nmsg->nm_lmsg, 0);
+	lwkt_replymsg(&msg->lmsg, 0);
 	crit_exit();
 
 	ifnet_serialize_all(sc->sc_ifp);

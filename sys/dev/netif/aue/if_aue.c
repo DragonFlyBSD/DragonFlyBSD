@@ -971,7 +971,7 @@ static void
 aue_start_ipifunc(void *arg)
 {
 	struct ifnet *ifp = arg;
-	struct lwkt_msg *lmsg = &ifp->if_start_nmsg[mycpuid].nm_lmsg;
+	struct lwkt_msg *lmsg = &ifp->if_start_nmsg[mycpuid].lmsg;
 
 	crit_enter();
 	if (lmsg->ms_flags & MSGF_DONE)

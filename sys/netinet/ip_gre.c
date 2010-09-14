@@ -106,15 +106,15 @@ static int	gre_input2(struct mbuf *, int, u_char);
  * IPPROTO_GRE and a local destination address).
  * This really is simple
  */
-void
-gre_input(struct mbuf *m, ...)
+int
+gre_input(struct mbuf **mp, int *offp, int proto)
 {
-	int ret, off, proto;
-	__va_list ap;
+	struct mbuf *m;
+	int ret, off;
 
-	__va_start(ap, m);
-	off = __va_arg(ap, int);
-	__va_end(ap);
+	off = *offp;
+	m = *mp;
+	*mp = NULL;
 
 	proto = (mtod(m, struct ip *))->ip_p;
 
@@ -124,8 +124,11 @@ gre_input(struct mbuf *m, ...)
 	 * no matching tunnel that is up is found.
 	 * we inject it to raw ip socket to see if anyone picks it up.
 	 */
-	if (ret == 0)
-		rip_input(m, off, proto);
+	if (ret == 0) {
+		*mp = m;
+		rip_input(mp, offp, proto);
+	}
+	return(IPPROTO_DONE);
 }
 
 /*
@@ -217,25 +220,23 @@ gre_input2(struct mbuf *m ,int hlen, u_char proto)
  * between IP header and payload
  */
 
-void
-gre_mobile_input(struct mbuf *m, ...)
+int
+gre_mobile_input(struct mbuf **mp, int *offp, int proto)
 {
 	static const uint32_t af = AF_INET;
+	struct mbuf *m = *mp;
 	struct ip *ip = mtod(m, struct ip *);
 	struct mobip_h *mip = mtod(m, struct mobip_h *);
 	struct gre_softc *sc;
 	u_char osrc = 0;
 	int msiz, hlen;
-	__va_list ap;
 
-	__va_start(ap, m);
-	hlen = __va_arg(ap, int);
-	__va_end(ap);
+	hlen = *offp;
 
 	if ((sc = gre_lookup(m, IPPROTO_MOBILE)) == NULL) {
 		/* No matching tunnel or tunnel is down. */
 		m_freem(m);
-		return;
+		return(IPPROTO_DONE);
 	}
 
 	sc->sc_if.if_ipackets++;
@@ -253,7 +254,7 @@ gre_mobile_input(struct mbuf *m, ...)
 
 	if (gre_in_cksum((u_short*)&mip->mh,msiz) != 0) {
 		m_freem(m);
-		return;
+		return(IPPROTO_DONE);
 	}
 
 	bcopy((caddr_t)(ip) + (ip->ip_hl << 2) + msiz, (caddr_t)(ip) +
@@ -279,6 +280,7 @@ gre_mobile_input(struct mbuf *m, ...)
 	m->m_pkthdr.rcvif = &sc->sc_if;
 
 	netisr_queue(NETISR_IP, m);
+	return(IPPROTO_DONE);
 }
 
 /*

@@ -442,20 +442,6 @@ udp_addrport(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 }
 
 /*
- * This is used to map a socket to a message port for sendmsg() and friends.
- * It is not called for any other purpose.
- *
- * In the case of UDP we just return the port already installed in the socket,
- * regardless of what (nam) is.
- */
-lwkt_port_t
-udp_soport(struct socket *so, struct sockaddr *nam,
-	   struct mbuf **dummy __unused)
-{
-	return(so->so_port);
-}
-
-/*
  * Used to route icmp messages to the proper protocol thread for ctlinput
  * operation.
  */

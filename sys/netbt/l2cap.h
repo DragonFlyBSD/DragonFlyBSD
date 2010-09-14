@@ -446,6 +446,7 @@ struct l2cap_pdu {
 extern struct pr_usrreqs l2cap_usrreqs;
 struct socket;
 struct mbuf;
+union netmsg;
 
 /* l2cap_lower.c */
 void l2cap_close(struct l2cap_channel *, int);
@@ -471,7 +472,7 @@ int l2cap_send_connect_rsp(struct hci_link *, uint8_t, uint16_t, uint16_t, uint1
 
 /* l2cap_socket.c */
 int l2cap_usrreq(struct socket *, int, struct mbuf *, struct mbuf *, struct mbuf *);
-int l2cap_ctloutput(struct socket *, struct sockopt *);
+void l2cap_ctloutput(union netmsg *);
 
 /* l2cap_upper.c */
 int l2cap_attach(struct l2cap_channel **, const struct btproto *, void *);

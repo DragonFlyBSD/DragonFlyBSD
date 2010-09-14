@@ -55,14 +55,14 @@
 
 #include <net/dummynet/ip_dummynet.h>
 
-static void	ip_dn_ether_output(struct netmsg *);
-static void	ip_dn_ether_demux(struct netmsg *);
-static void	ip_dn_ip_input(struct netmsg *);
-static void	ip_dn_ip_output(struct netmsg *);
+static void	ip_dn_ether_output(netmsg_t);
+static void	ip_dn_ether_demux(netmsg_t);
+static void	ip_dn_ip_input(netmsg_t);
+static void	ip_dn_ip_output(netmsg_t);
 
-static void	ip_dn_sockopt_dispatch(struct netmsg *);
-static void	ip_dn_freepkt_dispatch(struct netmsg *);
-static void	ip_dn_dispatch(struct netmsg *);
+static void	ip_dn_sockopt_dispatch(netmsg_t);
+static void	ip_dn_freepkt_dispatch(netmsg_t);
+static void	ip_dn_dispatch(netmsg_t);
 
 static void	ip_dn_freepkt(struct dn_pkt *);
 
@@ -90,12 +90,12 @@ ip_dn_queue(struct mbuf *m)
 		("mbuf is not tagged for dummynet!\n"));
 
 	nmp = &m->m_hdr.mh_netmsg;
-	netmsg_init(&nmp->nm_netmsg, NULL, &netisr_apanic_rport,
+	netmsg_init(&nmp->base, NULL, &netisr_apanic_rport,
 		    0, ip_dn_dispatch);
 	nmp->nm_packet = m;
 
 	port = cpu_portfn(ip_dn_cpu);
-	lwkt_sendmsg(port, &nmp->nm_netmsg.nm_lmsg);
+	lwkt_sendmsg(port, &nmp->base.lmsg);
 }
 
 void
@@ -109,11 +109,11 @@ ip_dn_packet_free(struct dn_pkt *pkt)
 		("mbuf is not tagged for dummynet!\n"));
 
 	nmp = &m->m_hdr.mh_netmsg;
-	netmsg_init(&nmp->nm_netmsg, NULL, &netisr_apanic_rport,
+	netmsg_init(&nmp->base, NULL, &netisr_apanic_rport,
 		    0, ip_dn_freepkt_dispatch);
 	nmp->nm_packet = m;
 
-	lwkt_sendmsg(pkt->msgport, &nmp->nm_netmsg.nm_lmsg);
+	lwkt_sendmsg(pkt->msgport, &nmp->base.lmsg);
 }
 
 void
@@ -145,11 +145,10 @@ ip_dn_packet_redispatch(struct dn_pkt *pkt)
 		("mbuf is not tagged for dummynet!\n"));
 
 	nmp = &m->m_hdr.mh_netmsg;
-	netmsg_init(&nmp->nm_netmsg, NULL, &netisr_apanic_rport,
-		    0, dispatch);
+	netmsg_init(&nmp->base, NULL, &netisr_apanic_rport, 0, dispatch);
 	nmp->nm_packet = m;
 
-	lwkt_sendmsg(pkt->msgport, &nmp->nm_netmsg.nm_lmsg);
+	lwkt_sendmsg(pkt->msgport, &nmp->base.lmsg);
 }
 
 int
@@ -208,14 +207,14 @@ ip_dn_freepkt(struct dn_pkt *pkt)
 }
 
 static void
-ip_dn_freepkt_dispatch(struct netmsg *nmsg)
+ip_dn_freepkt_dispatch(netmsg_t nmsg)
 {
 	struct netmsg_packet *nmp;
 	struct mbuf *m;
 	struct m_tag *mtag;
 	struct dn_pkt *pkt;
 
-	nmp = (struct netmsg_packet *)nmsg;
+	nmp = &nmsg->packet;
 	m = nmp->nm_packet;
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
@@ -234,7 +233,7 @@ ip_dn_freepkt_dispatch(struct netmsg *nmsg)
 }
 
 static void
-ip_dn_dispatch(struct netmsg *nmsg)
+ip_dn_dispatch(netmsg_t nmsg)
 {
 	struct netmsg_packet *nmp;
 	struct mbuf *m;
@@ -246,7 +245,7 @@ ip_dn_dispatch(struct netmsg *nmsg)
 		 "dummynet cpuid %d, mycpuid %d\n", __func__,
 		 ip_dn_cpu, mycpuid));
 
-	nmp = (struct netmsg_packet *)nmsg;
+	nmp = &nmsg->packet;
 	m = nmp->nm_packet;
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
@@ -268,7 +267,7 @@ ip_dn_dispatch(struct netmsg *nmsg)
 }
 
 static void
-ip_dn_ip_output(struct netmsg *nmsg)
+ip_dn_ip_output(netmsg_t nmsg)
 {
 	struct netmsg_packet *nmp;
 	struct mbuf *m;
@@ -278,7 +277,7 @@ ip_dn_ip_output(struct netmsg *nmsg)
 	ip_dn_unref_priv_t unref_priv;
 	void *priv;
 
-	nmp = (struct netmsg_packet *)nmsg;
+	nmp = &nmsg->packet;
 	m = nmp->nm_packet;
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
@@ -317,7 +316,7 @@ ip_dn_ip_output(struct netmsg *nmsg)
 }
 
 static void
-ip_dn_ip_input(struct netmsg *nmsg)
+ip_dn_ip_input(netmsg_t nmsg)
 {
 	struct netmsg_packet *nmp;
 	struct mbuf *m;
@@ -326,7 +325,7 @@ ip_dn_ip_input(struct netmsg *nmsg)
 	ip_dn_unref_priv_t unref_priv;
 	void *priv;
 
-	nmp = (struct netmsg_packet *)nmsg;
+	nmp = &nmsg->packet;
 	m = nmp->nm_packet;
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
@@ -356,7 +355,7 @@ ip_dn_ip_input(struct netmsg *nmsg)
 }
 
 static void
-ip_dn_ether_demux(struct netmsg *nmsg)
+ip_dn_ether_demux(netmsg_t nmsg)
 {
 	struct netmsg_packet *nmp;
 	struct mbuf *m;
@@ -365,7 +364,7 @@ ip_dn_ether_demux(struct netmsg *nmsg)
 	ip_dn_unref_priv_t unref_priv;
 	void *priv;
 
-	nmp = (struct netmsg_packet *)nmsg;
+	nmp = &nmsg->packet;
 	m = nmp->nm_packet;
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
@@ -403,7 +402,7 @@ back:
 }
 
 static void
-ip_dn_ether_output(struct netmsg *nmsg)
+ip_dn_ether_output(netmsg_t nmsg)
 {
 	struct netmsg_packet *nmp;
 	struct mbuf *m;
@@ -412,7 +411,7 @@ ip_dn_ether_output(struct netmsg *nmsg)
 	ip_dn_unref_priv_t unref_priv;
 	void *priv;
 
-	nmp = (struct netmsg_packet *)nmsg;
+	nmp = &nmsg->packet;
 	m = nmp->nm_packet;
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
@@ -442,9 +441,9 @@ ip_dn_ether_output(struct netmsg *nmsg)
 }
 
 static void
-ip_dn_sockopt_dispatch(struct netmsg *nmsg)
+ip_dn_sockopt_dispatch(netmsg_t nmsg)
 {
-	lwkt_msg *msg = &nmsg->nm_lmsg;
+	lwkt_msg *msg = &nmsg->lmsg;
 	struct dn_sopt *dn_sopt = msg->u.ms_resultp;
 	int error;
 
@@ -464,24 +463,24 @@ static int
 ip_dn_sockopt_flush(struct sockopt *sopt)
 {
 	struct dn_sopt dn_sopt;
-	struct netmsg smsg;
+	struct netmsg_base smsg;
 
 	bzero(&dn_sopt, sizeof(dn_sopt));
 	dn_sopt.dn_sopt_name = sopt->sopt_name;
 
 	netmsg_init(&smsg, NULL, &curthread->td_msgport,
 		    0, ip_dn_sockopt_dispatch);
-	smsg.nm_lmsg.u.ms_resultp = &dn_sopt;
-	lwkt_domsg(cpu_portfn(ip_dn_cpu), &smsg.nm_lmsg, 0);
+	smsg.lmsg.u.ms_resultp = &dn_sopt;
+	lwkt_domsg(cpu_portfn(ip_dn_cpu), &smsg.lmsg, 0);
 
-	return smsg.nm_lmsg.ms_error;
+	return smsg.lmsg.ms_error;
 }
 
 static int
 ip_dn_sockopt_get(struct sockopt *sopt)
 {
 	struct dn_sopt dn_sopt;
-	struct netmsg smsg;
+	struct netmsg_base smsg;
 	int error;
 
 	bzero(&dn_sopt, sizeof(dn_sopt));
@@ -489,10 +488,10 @@ ip_dn_sockopt_get(struct sockopt *sopt)
 
 	netmsg_init(&smsg, NULL, &curthread->td_msgport,
 		    0, ip_dn_sockopt_dispatch);
-	smsg.nm_lmsg.u.ms_resultp = &dn_sopt;
-	lwkt_domsg(cpu_portfn(ip_dn_cpu), &smsg.nm_lmsg, 0);
+	smsg.lmsg.u.ms_resultp = &dn_sopt;
+	lwkt_domsg(cpu_portfn(ip_dn_cpu), &smsg.lmsg, 0);
 
-	error = smsg.nm_lmsg.ms_error;
+	error = smsg.lmsg.ms_error;
 	if (error) {
 		KKASSERT(dn_sopt.dn_sopt_arg == NULL);
 		KKASSERT(dn_sopt.dn_sopt_arglen == 0);
@@ -509,7 +508,7 @@ ip_dn_sockopt_config(struct sockopt *sopt)
 {
 	struct dn_ioc_pipe tmp_ioc_pipe;
 	struct dn_sopt dn_sopt;
-	struct netmsg smsg;
+	struct netmsg_base smsg;
 	int error;
 
 	error = soopt_to_kbuf(sopt, &tmp_ioc_pipe, sizeof tmp_ioc_pipe,
@@ -524,8 +523,8 @@ ip_dn_sockopt_config(struct sockopt *sopt)
 
 	netmsg_init(&smsg, NULL, &curthread->td_msgport,
 		    0, ip_dn_sockopt_dispatch);
-	smsg.nm_lmsg.u.ms_resultp = &dn_sopt;
-	lwkt_domsg(cpu_portfn(ip_dn_cpu), &smsg.nm_lmsg, 0);
+	smsg.lmsg.u.ms_resultp = &dn_sopt;
+	lwkt_domsg(cpu_portfn(ip_dn_cpu), &smsg.lmsg, 0);
 
-	return smsg.nm_lmsg.ms_error;
+	return smsg.lmsg.ms_error;
 }

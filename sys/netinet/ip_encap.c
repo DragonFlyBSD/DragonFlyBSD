@@ -106,7 +106,7 @@ LIST_HEAD(, encaptab) encaptab;
 LIST_HEAD(, encaptab) encaptab = LIST_HEAD_INITIALIZER(&encaptab);
 #endif
 
-void     (*ipip_input)(struct mbuf *, int, int); /* hook for mrouting */
+int     (*ipip_input)(struct mbuf **, int *, int); /* hook for mrouting */
 
 void
 encap_init(void)
@@ -129,23 +129,19 @@ encap_init(void)
 }
 
 #ifdef INET
-void
-encap4_input(struct mbuf *m, ...)
+int
+encap4_input(struct mbuf **mp, int *offp, int proto)
 {
-	int off, proto;
+	struct mbuf *m = *mp;
+	int off = *offp;
 	struct ip *ip;
 	struct sockaddr_in s, d;
 	const struct protosw *psw;
 	struct encaptab *ep, *match;
 	int prio, matchprio;
-	__va_list ap;
-
-	__va_start(ap, m);
-	off = __va_arg(ap, int);
-	proto = __va_arg(ap, int);
-	__va_end(ap);
 
 	ip = mtod(m, struct ip *);
+	*mp = NULL;
 
 	bzero(&s, sizeof s);
 	s.sin_family = AF_INET;
@@ -170,8 +166,9 @@ encap4_input(struct mbuf *m, ...)
 			 * it's inbound traffic, we need to match in reverse
 			 * order
 			 */
-			prio = mask_match(ep, (struct sockaddr *)&d,
-			    (struct sockaddr *)&s);
+			prio = mask_match(ep,
+					  (struct sockaddr *)&d,
+					  (struct sockaddr *)&s);
 		}
 
 		/*
@@ -205,20 +202,25 @@ encap4_input(struct mbuf *m, ...)
 		psw = match->psw;
 		if (psw && psw->pr_input) {
 			encap_fillarg(m, match);
-			(*psw->pr_input)(m, off, proto);
-		} else
+			*mp = m;
+			(*psw->pr_input)(mp, offp, proto);
+		} else {
 			m_freem(m);
-		return;
+		}
+		return(IPPROTO_DONE);
 	}
 
 	/* for backward compatibility */
 	if (proto == IPPROTO_IPV4 && ipip_input) {
-		ipip_input(m, off, proto);
-		return;
+		*mp = m;
+		ipip_input(mp, offp, proto);
+		return(IPPROTO_DONE);
 	}
 
 	/* last resort: inject to raw socket */
-	rip_input(m, off, proto);
+	*mp = m;
+	rip_input(mp, offp, proto);
+	return(IPPROTO_DONE);
 }
 #endif
 
@@ -229,7 +231,7 @@ encap6_input(struct mbuf **mp, int *offp, int proto)
 	struct mbuf *m = *mp;
 	struct ip6_hdr *ip6;
 	struct sockaddr_in6 s, d;
-	const struct ip6protosw *psw;
+	const struct protosw *psw;
 	struct encaptab *ep, *match;
 	int prio, matchprio;
 
@@ -273,7 +275,7 @@ encap6_input(struct mbuf **mp, int *offp, int proto)
 
 	if (match) {
 		/* found a match */
-		psw = (const struct ip6protosw *)match->psw;
+		psw = match->psw;
 		if (psw && psw->pr_input) {
 			encap_fillarg(m, match);
 			return (*psw->pr_input)(mp, offp, proto);

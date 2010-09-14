@@ -237,14 +237,15 @@ do { \
 } while(0)
 
 struct	route;
-struct	netmsg;
 struct  lwkt_serialize;
+union	netmsg;
 
 void	in_ifdetach(struct ifnet *ifp);
 struct	in_multi *in_addmulti (struct in_addr *, struct ifnet *);
 void	in_delmulti (struct in_multi *);
 int	in_control (struct socket *, u_long, caddr_t, struct ifnet *,
 			struct thread *);
+void	in_control_dispatch(union netmsg *);
 void	in_rtqdrain (void);
 void	ip_input (struct mbuf *);
 void	ip_forward (struct mbuf *, boolean_t, struct sockaddr_in *);

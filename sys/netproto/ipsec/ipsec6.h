@@ -50,6 +50,7 @@ extern int ip6_ipsec_ecn;
 extern int ip6_esp_randpad;
 
 struct inpcb;
+union netmsg;
 
 /* KAME compatibility shims */
 #define	ipsec6_getpolicybyaddr	ipsec_getpolicybyaddr
@@ -78,7 +79,7 @@ struct m_tag;
 extern int ipsec6_common_input(struct mbuf **mp, int *offp, int proto);
 extern int ipsec6_common_input_cb(struct mbuf *m, struct secasvar *sav,
 			int skip, int protoff, struct m_tag *mt);
-extern void esp6_ctlinput(int, struct sockaddr *, void *);
+extern void esp6_ctlinput(union netmsg *);
 
 struct ipsec_output_state;
 extern int ipsec6_output_trans (struct ipsec_output_state *, u_char *,

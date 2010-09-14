@@ -50,6 +50,7 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/socketops.h>
 #include <sys/signalvar.h>
 #include <sys/sysctl.h>
 #include <sys/aio.h> /* for aio_swake proto */
@@ -358,12 +359,12 @@ sonewconn(struct socket *head, int connstatus)
 	ai.fd_rdir = NULL;		/* jail code cruft XXX JH */
 
 	/*
-	 * Reserve space and call pru_attach.  We can directl call the
+	 * Reserve space and call pru_attach.  We can direct-call the
 	 * function since we're already in the protocol thread.
 	 */
 	if (soreserve(so, head->so_snd.ssb_hiwat,
 		      head->so_rcv.ssb_hiwat, NULL) ||
-	    (*so->so_proto->pr_usrreqs->pru_attach)(so, 0, &ai)) {
+	    so_pru_attach_direct(so, 0, &ai)) {
 		so->so_head = NULL;
 		soclrstate(so, SS_ASSERTINPROG);
 		sofree(so);		/* remove implied pcb ref */
@@ -500,10 +501,10 @@ sowakeup(struct socket *so, struct signalsockbuf *ssb)
 		lwkt_gettoken(&kq_token);
 		lwkt_gettoken_hard(&ssb->ssb_token);
 		TAILQ_FOREACH_MUTABLE(msg, &kqinfo->ki_mlist, nm_list, nmsg) {
-			if (msg->nm_predicate(&msg->nm_netmsg)) {
+			if (msg->nm_predicate(msg)) {
 				TAILQ_REMOVE(&kqinfo->ki_mlist, msg, nm_list);
-				lwkt_replymsg(&msg->nm_netmsg.nm_lmsg, 
-					      msg->nm_netmsg.nm_lmsg.ms_error);
+				lwkt_replymsg(&msg->base.lmsg,
+					      msg->base.lmsg.ms_error);
 			}
 		}
 		if (TAILQ_EMPTY(&ssb->ssb_kq.ki_mlist))
@@ -646,77 +647,10 @@ ssb_release(struct signalsockbuf *ssb, struct socket *so)
  * Some routines that return EOPNOTSUPP for entry points that are not
  * supported by a protocol.  Fill in as needed.
  */
-int
-pru_accept_notsupp(struct socket *so, struct sockaddr **nam)
+void
+pr_generic_notsupp(netmsg_t msg)
 {
-	return EOPNOTSUPP;
-}
-
-int
-pru_bind_notsupp(struct socket *so, struct sockaddr *nam, struct thread *td)
-{
-	return EOPNOTSUPP;
-}
-
-int
-pru_connect_notsupp(struct socket *so, struct sockaddr *nam, struct thread *td)
-{
-	return EOPNOTSUPP;
-}
-
-int
-pru_connect2_notsupp(struct socket *so1, struct socket *so2)
-{
-	return EOPNOTSUPP;
-}
-
-int
-pru_control_notsupp(struct socket *so, u_long cmd, caddr_t data,
-		    struct ifnet *ifp, struct thread *td)
-{
-	return EOPNOTSUPP;
-}
-
-int
-pru_disconnect_notsupp(struct socket *so)
-{
-	return EOPNOTSUPP;
-}
-
-int
-pru_listen_notsupp(struct socket *so, struct thread *td)
-{
-	return EOPNOTSUPP;
-}
-
-int
-pru_peeraddr_notsupp(struct socket *so, struct sockaddr **nam)
-{
-	return EOPNOTSUPP;
-}
-
-int
-pru_rcvd_notsupp(struct socket *so, int flags)
-{
-	return EOPNOTSUPP;
-}
-
-int
-pru_rcvoob_notsupp(struct socket *so, struct mbuf *m, int flags)
-{
-	return EOPNOTSUPP;
-}
-
-int
-pru_shutdown_notsupp(struct socket *so)
-{
-	return EOPNOTSUPP;
-}
-
-int
-pru_sockaddr_notsupp(struct socket *so, struct sockaddr **nam)
-{
-	return EOPNOTSUPP;
+	lwkt_replymsg(&msg->lmsg, EOPNOTSUPP);
 }
 
 int
@@ -739,21 +673,15 @@ pru_soreceive_notsupp(struct socket *so, struct sockaddr **paddr,
 	return (EOPNOTSUPP);
 }
 
-int
-pru_ctloutput_notsupp(struct socket *so, struct sockopt *sopt)
-{
-	return (EOPNOTSUPP);
-}
-
 /*
  * This isn't really a ``null'' operation, but it's the default one
  * and doesn't do anything destructive.
  */
-int
-pru_sense_null(struct socket *so, struct stat *sb)
+void
+pru_sense_null(netmsg_t msg)
 {
-	sb->st_blksize = so->so_snd.ssb_hiwat;
-	return 0;
+	msg->sense.nm_stat->st_blksize = msg->base.nm_so->so_snd.ssb_hiwat;
+	lwkt_replymsg(&msg->lmsg, 0);
 }
 
 /*

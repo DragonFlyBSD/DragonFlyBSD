@@ -59,15 +59,16 @@
  */
 static __inline int
 so_pru_sosend(struct socket *so, struct sockaddr *addr, struct uio *uio,
-    struct mbuf *top, struct mbuf *control, int flags, struct thread *td)
+	      struct mbuf *top, struct mbuf *control, int flags,
+	      struct thread *td)
 {
 	return ((*so->so_proto->pr_usrreqs->pru_sosend)(so, addr, uio, top,
-	    control, flags, td));
+		control, flags, td));
 }
 
 static __inline int
 so_pru_soreceive(struct socket *so, struct sockaddr **paddr, struct uio *uio,
-    struct sockbuf *sio, struct mbuf **controlp, int *flagsp)
+		 struct sockbuf *sio, struct mbuf **controlp, int *flagsp)
 {
 	return ((*so->so_proto->pr_usrreqs->pru_soreceive)(so, paddr, uio, sio,
 		controlp, flagsp));
@@ -76,12 +77,14 @@ so_pru_soreceive(struct socket *so, struct sockaddr **paddr, struct uio *uio,
 void so_pru_abort (struct socket *so);
 void so_pru_aborta (struct socket *so);
 void so_pru_abort_oncpu (struct socket *so);
-int so_pru_accept (struct socket *so, struct sockaddr **nam);
+int so_pru_accept_direct(struct socket *so, struct sockaddr **nam);
 int so_pru_attach (struct socket *so, int proto, struct pru_attach_info *ai);
+int so_pru_attach_direct(struct socket *so, int proto,
+		struct pru_attach_info *ai);
 int so_pru_bind (struct socket *so, struct sockaddr *nam, struct thread *td);
 int so_pru_connect (struct socket *so, struct sockaddr *nam, struct thread *td);
 int so_pru_connect2 (struct socket *so1, struct socket *so2);
-int so_pru_control (struct socket *so, u_long cmd, caddr_t data,
+int so_pru_control_direct(struct socket *so, u_long cmd, caddr_t data,
 		struct ifnet *ifp);
 int so_pru_detach (struct socket *so);
 int so_pru_disconnect (struct socket *so);
@@ -95,7 +98,7 @@ int so_pru_send (struct socket *so, int flags, struct mbuf *m,
 int so_pru_sense (struct socket *so, struct stat *sb);
 int so_pru_shutdown (struct socket *so);
 int so_pru_sockaddr (struct socket *so, struct sockaddr **nam);
-int so_pru_ctloutput(struct socket *so, struct sockopt *sopt);
+int so_pr_ctloutput(struct socket *so, struct sockopt *sopt);
 void so_pru_ctlinput(struct protosw *pr, int cmd,
 		struct sockaddr *arg, void *extra);
 

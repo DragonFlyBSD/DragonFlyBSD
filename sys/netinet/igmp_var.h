@@ -102,7 +102,7 @@ struct mbuf;
 struct in_multi;
 
 void	igmp_init (void);
-void	igmp_input (struct mbuf *, ...);
+int	igmp_input (struct mbuf **, int *, int);
 void	igmp_joingroup (struct in_multi *);
 void	igmp_leavegroup (struct in_multi *);
 void	igmp_fasttimo (void);

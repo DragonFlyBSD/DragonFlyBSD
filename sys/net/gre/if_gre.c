@@ -115,21 +115,41 @@ static int gre_compute_route(struct gre_softc *sc);
 static void	greattach(void);
 
 #ifdef INET
+
 extern struct domain inetdomain;
+
 static const struct protosw in_gre_protosw =
-{ SOCK_RAW,     &inetdomain,    IPPROTO_GRE,    PR_ATOMIC|PR_ADDR,
-  gre_input,	rip_output,     rip_ctlinput,   rip_ctloutput,
-  cpu0_soport,	cpu0_ctlport,
-  0,		0,		0,		0,
-  &rip_usrreqs
-};
+    {
+	.pr_type = SOCK_RAW,
+	.pr_domain = &inetdomain,
+	.pr_protocol = IPPROTO_GRE,
+	.pr_flags = PR_ATOMIC|PR_ADDR,
+
+	.pr_input = gre_input,
+	.pr_output = rip_output,
+	.pr_ctlinput = rip_ctlinput,
+	.pr_ctloutput = rip_ctloutput,
+
+	.pr_ctlport = cpu0_ctlport,
+	.pr_usrreqs = &rip_usrreqs
+    };
+
 static const struct protosw in_mobile_protosw =
-{ SOCK_RAW,     &inetdomain,    IPPROTO_MOBILE, PR_ATOMIC|PR_ADDR,
-  gre_mobile_input, rip_output, rip_ctlinput,   rip_ctloutput,
-  cpu0_soport,	cpu0_ctlport,
-  0,		0,		0,		0,
-  &rip_usrreqs
-};
+    {
+	.pr_type = SOCK_RAW,
+	.pr_domain = &inetdomain,
+	.pr_protocol = IPPROTO_MOBILE,
+	.pr_flags = PR_ATOMIC|PR_ADDR,
+
+	.pr_input = gre_mobile_input,
+	.pr_output = rip_output,
+	.pr_ctlinput = rip_ctlinput,
+	.pr_ctloutput = rip_ctloutput,
+
+	.pr_ctlport = cpu0_ctlport,
+	.pr_usrreqs = &rip_usrreqs
+    };
+
 #endif
 
 SYSCTL_DECL(_net_link);

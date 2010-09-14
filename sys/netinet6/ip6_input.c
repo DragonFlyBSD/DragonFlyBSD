@@ -136,7 +136,7 @@
 #include <net/net_osdep.h>
 
 extern struct domain inet6domain;
-extern struct ip6protosw inet6sw[];
+extern struct protosw inet6sw[];
 
 u_char ip6_protox[IPPROTO_MAX];
 struct in6_ifaddr *in6_ifaddr;
@@ -161,7 +161,7 @@ struct ip6stat ip6stat;
 static void ip6_init2 (void *);
 static struct ip6aux *ip6_setdstifaddr (struct mbuf *, struct in6_ifaddr *);
 static int ip6_hopopts_input (u_int32_t *, u_int32_t *, struct mbuf **, int *);
-static void ip6_input(struct netmsg *msg);
+static void ip6_input(netmsg_t msg);
 #ifdef PULLDOWN_TEST
 static struct mbuf *ip6_pullexthdr (struct mbuf *, size_t, int);
 #endif
@@ -174,21 +174,17 @@ static void transport6_processing_handler(netmsg_t netmsg);
 void
 ip6_init(void)
 {
-	struct ip6protosw *pr;
+	struct protosw *pr;
 	int i;
 	struct timeval tv;
 
-#ifdef DIAGNOSTIC
-	if (sizeof(struct protosw) != sizeof(struct ip6protosw))
-		panic("sizeof(protosw) != sizeof(ip6protosw)");
-#endif
-	pr = (struct ip6protosw *)pffindproto(PF_INET6, IPPROTO_RAW, SOCK_RAW);
+	pr = pffindproto(PF_INET6, IPPROTO_RAW, SOCK_RAW);
 	if (pr == 0)
 		panic("ip6_init");
 	for (i = 0; i < IPPROTO_MAX; i++)
 		ip6_protox[i] = pr - inet6sw;
-	for (pr = (struct ip6protosw *)inet6domain.dom_protosw;
-	    pr < (struct ip6protosw *)inet6domain.dom_protoswNPROTOSW; pr++)
+	for (pr = inet6domain.dom_protosw;
+	    pr < inet6domain.dom_protoswNPROTOSW; pr++)
 		if (pr->pr_domain->dom_family == PF_INET6 &&
 		    pr->pr_protocol && pr->pr_protocol != IPPROTO_RAW)
 			ip6_protox[pr->pr_protocol] = pr - inet6sw;
@@ -242,9 +238,9 @@ extern struct	route_in6 ip6_forward_rt;
 
 static
 void
-ip6_input(struct netmsg *msg)
+ip6_input(netmsg_t msg)
 {
-	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
+	struct mbuf *m = msg->packet.nm_packet;
 	struct ip6_hdr *ip6;
 	int off = sizeof(struct ip6_hdr), nest;
 	u_int32_t plen;
@@ -797,7 +793,7 @@ hbhcheck:
 
 	rh_present = 0;
 	while (nxt != IPPROTO_DONE) {
-		struct ip6protosw *sw6;
+		struct protosw *sw6;
 
 		if (ip6_hdrnestlimit && (++nest > ip6_hdrnestlimit)) {
 			ip6stat.ip6s_toomanyhdr++;
@@ -860,16 +856,16 @@ hbhcheck:
 			struct netmsg_packet *pmsg;
 			lwkt_port_t port;
 
-			port = sw6->pr_soport(NULL, NULL, &m);
+			port = cpu_portfn(0); /* XXX */
 			KKASSERT(port != NULL);
 			pmsg = &m->m_hdr.mh_netmsg;
-			netmsg_init(&pmsg->nm_netmsg, NULL,
+			netmsg_init(&pmsg->base, NULL,
 				    &netisr_apanic_rport,
 				    0, transport6_processing_handler);
 			pmsg->nm_packet = m;
 			pmsg->nm_nxt = nxt;
-			pmsg->nm_netmsg.nm_lmsg.u.ms_result = off;
-			lwkt_sendmsg(port, &pmsg->nm_netmsg.nm_lmsg);
+			pmsg->base.lmsg.u.ms_result = off;
+			lwkt_sendmsg(port, &pmsg->base.lmsg);
 			/* done with m */
 			nxt = IPPROTO_DONE;
 		} else {
@@ -894,12 +890,12 @@ static void
 transport6_processing_handler(netmsg_t netmsg)
 {
 	struct netmsg_packet *pmsg = (struct netmsg_packet *)netmsg;
-	struct ip6protosw *sw6;
+	struct protosw *sw6;
 	int hlen;
 	int nxt;
 
 	sw6 = &inet6sw[ip6_protox[pmsg->nm_nxt]];
-	hlen = pmsg->nm_netmsg.nm_lmsg.u.ms_result;
+	hlen = pmsg->base.lmsg.u.ms_result;
 
 	nxt = sw6->pr_input(&pmsg->nm_packet, &hlen, pmsg->nm_nxt);
 	KKASSERT(nxt == IPPROTO_DONE);

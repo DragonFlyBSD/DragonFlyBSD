@@ -379,6 +379,8 @@ extern int	ipport_lastauto;
 extern int	ipport_hifirstauto;
 extern int	ipport_hilastauto;
 
+union netmsg;
+
 void	in_pcbpurgeif0 (struct inpcb *, struct ifnet *);
 void	in_losing (struct inpcb *);
 void	in_rtchange (struct inpcb *, int);
@@ -406,7 +408,9 @@ struct inpcb *
 void	in_pcbnotifyall (struct inpcbhead *, struct in_addr,
 	    int, void (*)(struct inpcb *, int));
 int	in_setpeeraddr (struct socket *so, struct sockaddr **nam);
+void	in_setpeeraddr_dispatch(union netmsg *);
 int	in_setsockaddr (struct socket *so, struct sockaddr **nam);
+void	in_setsockaddr_dispatch(netmsg_t msg);
 void	in_pcbremwildcardhash(struct inpcb *inp);
 void	in_pcbremwildcardhash_oncpu(struct inpcb *, struct inpcbinfo *);
 void	in_pcbremconnhash(struct inpcb *inp);

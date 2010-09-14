@@ -71,7 +71,7 @@
 	 ((rt)->rt_ifp->if_flags & IFF_UP) == 0)
 
 struct netmsg_ipfaddr {
-	struct netmsg	ipf_nmsg;
+	struct netmsg_base base;
 	struct in_addr	ipf_addr;
 };
 
@@ -106,7 +106,7 @@ LIST_HEAD(ipflowhead, ipflow);
 static struct ipflowhead	ipflowtable_pcpu[MAXCPU][IPFLOW_HASHSIZE];
 static struct ipflowhead	ipflowlist_pcpu[MAXCPU];
 static int			ipflow_inuse_pcpu[MAXCPU];
-static struct netmsg		ipflow_timo_netmsgs[MAXCPU];
+static struct netmsg_base	ipflow_timo_netmsgs[MAXCPU];
 static int			ipflow_active = 0;
 
 #define IPFLOW_REFCNT_INIT	1
@@ -395,12 +395,12 @@ done:
 }
 
 static void
-ipflow_timo_dispatch(struct netmsg *nmsg)
+ipflow_timo_dispatch(netmsg_t nmsg)
 {
 	struct ipflow *ipf, *next_ipf;
 
 	crit_enter();
-	lwkt_replymsg(&nmsg->nm_lmsg, 0);	/* reply ASAP */
+	lwkt_replymsg(&nmsg->lmsg, 0);	/* reply ASAP */
 	crit_exit();
 
 	LIST_FOREACH_MUTABLE(ipf, &ipflowlist, ipf_list, next_ipf) {
@@ -421,7 +421,7 @@ ipflow_timo_dispatch(struct netmsg *nmsg)
 static void
 ipflow_timo_ipi(void *arg __unused)
 {
-	struct lwkt_msg *msg = &ipflow_timo_netmsgs[mycpuid].nm_lmsg;
+	struct lwkt_msg *msg = &ipflow_timo_netmsgs[mycpuid].lmsg;
 
 	crit_enter();
 	if (msg->ms_flags & MSGF_DONE)
@@ -524,7 +524,7 @@ ipflow_flush_oncpu(void)
 }
 
 static void
-ipflow_ifaddr_handler(struct netmsg *nmsg)
+ipflow_ifaddr_handler(netmsg_t nmsg)
 {
 	struct netmsg_ipfaddr *amsg = (struct netmsg_ipfaddr *)nmsg;
 	struct ipflow *ipf, *next_ipf;
@@ -536,7 +536,7 @@ ipflow_ifaddr_handler(struct netmsg *nmsg)
 			IPFLOW_FREE(ipf);
 		}
 	}
-	ifnet_forwardmsg(&nmsg->nm_lmsg, mycpuid + 1);
+	ifnet_forwardmsg(&nmsg->lmsg, mycpuid + 1);
 }
 
 static void
@@ -558,11 +558,11 @@ ipflow_ifaddr(void *arg __unused, struct ifnet *ifp __unused,
 		return;
 	}
 
-	netmsg_init(&amsg.ipf_nmsg, NULL, &curthread->td_msgport,
+	netmsg_init(&amsg.base, NULL, &curthread->td_msgport,
 		    MSGF_PRIORITY, ipflow_ifaddr_handler);
 	amsg.ipf_addr = ifatoia(ifa)->ia_addr.sin_addr;
 
-	ifnet_domsg(&amsg.ipf_nmsg.nm_lmsg, 0);
+	ifnet_domsg(&amsg.base.lmsg, 0);
 }
 
 static void

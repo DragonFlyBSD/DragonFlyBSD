@@ -2510,6 +2510,7 @@ extern TAILQ_HEAD(hci_unit_list, hci_unit) hci_unit_list;
 /*
  * HCI layer function prototypes
  */
+union netmsg;
 
 /* hci_event.c */
 void hci_event(struct mbuf *, struct hci_unit *);
@@ -2547,7 +2548,7 @@ void hci_memo_free(struct hci_memo *);
 /* hci_socket.c */
 void hci_drop(void *);
 int hci_usrreq(struct socket *, int, struct mbuf *, struct mbuf *, struct mbuf *);
-int hci_ctloutput(struct socket *so, struct sockopt *sopt);
+void hci_ctloutput(union netmsg *);
 void hci_mtap(struct mbuf *, struct hci_unit *);
 
 /* hci_unit.c */
@@ -2565,7 +2566,7 @@ void hci_output_cmd(struct hci_unit *, struct mbuf *);
 void hci_output_acl(struct hci_unit *, struct mbuf *);
 void hci_output_sco(struct hci_unit *, struct mbuf *);
 void hci_intr(void *);
-void btintr(struct netmsg *msg);
+void btintr(union netmsg *);
 
 /* XXX mimic NetBSD for now, although we don't have these interfaces */
 #define M_GETCTX(m, t)	((t)(m)->m_pkthdr.rcvif)

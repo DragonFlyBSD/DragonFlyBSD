@@ -1,6 +1,3 @@
-/* $OpenBSD: sco_socket.c,v 1.1 2007/06/01 02:46:12 uwe Exp $ */
-/* $NetBSD: sco_socket.c,v 1.9 2007/04/21 06:15:23 plunky Exp $ */
-
 /*-
  * Copyright (c) 2006 Itronix Inc.
  * All rights reserved.
@@ -28,6 +25,9 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $OpenBSD: sco_socket.c,v 1.1 2007/06/01 02:46:12 uwe Exp $
+ * $NetBSD: sco_socket.c,v 1.9 2007/04/21 06:15:23 plunky Exp $
  */
 
 /* load symbolic names */
@@ -46,6 +46,8 @@
 #include <sys/socketvar.h>
 #include <sys/systm.h>
 #include <sys/bus.h>
+
+#include <sys/msgport2.h>
 
 #include <netbt/bluetooth.h>
 #include <netbt/hci.h>
@@ -80,9 +82,11 @@ int sco_recvspace = 4096;
 /*
  * get/set socket options
  */
-int
-sco_ctloutput(struct socket *so, struct sockopt *sopt)
+void
+sco_ctloutput(netmsg_t msg)
 {
+	struct socket *so = msg->ctloutput.base.nm_so;
+	struct sockopt *sopt = msg->ctloutput.nm_sopt;
 	struct sco_pcb *pcb = (struct sco_pcb *)so->so_pcb;
 	struct mbuf *m;
 	int err = 0;
@@ -91,11 +95,15 @@ sco_ctloutput(struct socket *so, struct sockopt *sopt)
 	DPRINTFN(2, "req %s\n", prcorequests[req]);
 #endif
 
-	if (pcb == NULL)
-		return EINVAL;
+	if (pcb == NULL) {
+		err = EINVAL;
+		goto out;
+	}
 
-	if (sopt->sopt_level != BTPROTO_SCO)
-		return ENOPROTOOPT;
+	if (sopt->sopt_level != BTPROTO_SCO) {
+		err = ENOPROTOOPT;
+		goto out;
+	}
 
 	switch(sopt->sopt_dir) {
 	case PRCO_GETOPT:
@@ -130,8 +138,8 @@ sco_ctloutput(struct socket *so, struct sockopt *sopt)
 		err = ENOPROTOOPT;
 		break;
 	}
-
-	return err;
+out:
+	lwkt_replymsg(&msg->ctloutput.base.lmsg, err);
 }
 
 /*****************************************************************************
@@ -222,196 +230,225 @@ sco_input(void *arg, struct mbuf *m)
 /*
  * Implementation of usrreqs.
  */
-static int
-sco_sdetach(struct socket *so)
+static void
+sco_sdetach(netmsg_t msg)
 {
-	return sco_detach((struct sco_pcb **)&so->so_pcb);
+	struct socket *so = msg->detach.base.nm_so;;
+	int error;
+
+	error = sco_detach((struct sco_pcb **)&so->so_pcb);
+	lwkt_replymsg(&msg->detach.base.lmsg, error);
 }
 
 /*
  * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
  *	 will sofree() it when we return.
  */
-static int
-sco_sabort (struct socket *so)
+static void
+sco_sabort (netmsg_t msg)
 {
+	struct socket *so = msg->abort.base.nm_so;
 	struct sco_pcb *pcb = (struct sco_pcb *)so->so_pcb;
-	int error;
 
 	sco_disconnect(pcb, 0);
 	soisdisconnected(so);
-	error = sco_sdetach(so);
-
-	return error;
+	sco_sdetach(msg);
+	/* msg invalid now */
 }
 
-static int
-sco_sdisconnect (struct socket *so)
+static void
+sco_sdisconnect (netmsg_t msg)
 {
+	struct socket *so = msg->abort.base.nm_so;
  	struct sco_pcb *pcb = (struct sco_pcb *)so->so_pcb;
+	int error;
 
 	soisdisconnecting(so);
 
-	return sco_disconnect(pcb, so->so_linger);
+	error = sco_disconnect(pcb, so->so_linger);
+	lwkt_replymsg(&msg->disconnect.base.lmsg, error);
 }
 
-static int
-sco_sattach (struct socket *so, int proto,
-    struct pru_attach_info *ai)
+static void
+sco_sattach(netmsg_t msg)
 {
+	struct socket *so = msg->attach.base.nm_so;
 	struct sco_pcb *pcb = (struct sco_pcb *)so->so_pcb;
-	int err=0;
+	int error;
 
-	if (pcb)
-		return EINVAL;
-
-	err = soreserve(so, sco_sendspace, sco_recvspace,NULL);
-	if (err)
-		return err;
-
-	return sco_attach((struct sco_pcb **)&so->so_pcb,
-	    &sco_proto, so);
+	if (pcb) {
+		error = EINVAL;
+	} else {
+		error = soreserve(so, sco_sendspace, sco_recvspace,NULL);
+		if (error == 0) {
+			error = sco_attach((struct sco_pcb **)&so->so_pcb,
+					   &sco_proto, so);
+		}
+	}
+	lwkt_replymsg(&msg->attach.base.lmsg, error);
 }
 
-static int
-sco_sbind (struct socket *so, struct sockaddr *nam,
-				 struct thread *td)
+static void
+sco_sbind(netmsg_t msg)
 {
+	struct socket *so = msg->bind.base.nm_so;
+	struct sockaddr *nam = msg->bind.nm_nam;
 	struct sco_pcb *pcb = (struct sco_pcb *)so->so_pcb;
 	struct sockaddr_bt *sa;
+	int error;
 
 	KKASSERT(nam != NULL);
 	sa = (struct sockaddr_bt *)nam;
 
-	if (sa->bt_len != sizeof(struct sockaddr_bt))
-		return EINVAL;
-
-	if (sa->bt_family != AF_BLUETOOTH)
-		return EAFNOSUPPORT;
-
-	return sco_bind(pcb, sa);
+	if (sa->bt_len != sizeof(struct sockaddr_bt)) {
+		error = EINVAL;
+	} else if (sa->bt_family != AF_BLUETOOTH) {
+		error = EAFNOSUPPORT;
+	} else {
+		error = sco_bind(pcb, sa);
+	}
+	lwkt_replymsg(&msg->bind.base.lmsg, error);
 }
 
-static int
-sco_sconnect (struct socket *so, struct sockaddr *nam,
-				    struct thread *td)
+static void
+sco_sconnect(netmsg_t msg)
 {
+	struct socket *so = msg->connect.base.nm_so;
+	struct sockaddr *nam = msg->connect.nm_nam;
 	struct sco_pcb *pcb = (struct sco_pcb *)so->so_pcb;
 	struct sockaddr_bt *sa;
+	int error;
 
 	KKASSERT(nam != NULL);
 	sa = (struct sockaddr_bt *)nam;
 
-	if (sa->bt_len != sizeof(struct sockaddr_bt))
-		return EINVAL;
-
-	if (sa->bt_family != AF_BLUETOOTH)
-		return EAFNOSUPPORT;
-
-	soisconnecting(so);
-	return sco_connect(pcb, sa);
+	if (sa->bt_len != sizeof(struct sockaddr_bt)) {
+		error = EINVAL;
+	} else if (sa->bt_family != AF_BLUETOOTH) {
+		error = EAFNOSUPPORT;
+	} else {
+		soisconnecting(so);
+		error = sco_connect(pcb, sa);
+	}
+	lwkt_replymsg(&msg->connect.base.lmsg, error);
 }
 
-static int
-sco_speeraddr (struct socket *so, struct sockaddr **nam)
+static void
+sco_speeraddr(netmsg_t msg)
 {
+	struct socket *so = msg->peeraddr.base.nm_so;
+	struct sockaddr **nam = msg->peeraddr.nm_nam;
 	struct sco_pcb *pcb = (struct sco_pcb *)so->so_pcb;
 	struct sockaddr_bt *sa, ssa;
-	int e;
+	int error;
 
 	sa = &ssa;
 	bzero(sa, sizeof *sa);
 	sa->bt_len = sizeof(struct sockaddr_bt);
 	sa->bt_family = AF_BLUETOOTH;
-	e = sco_peeraddr(pcb, sa);
+	error = sco_peeraddr(pcb, sa);
 	*nam = dup_sockaddr((struct sockaddr *)sa);
-
-	return (e);
+	lwkt_replymsg(&msg->peeraddr.base.lmsg, error);
 }
 
-static int
-sco_ssockaddr (struct socket *so, struct sockaddr **nam)
+static void
+sco_ssockaddr(netmsg_t msg)
 {
+	struct socket *so = msg->sockaddr.base.nm_so;
+	struct sockaddr **nam = msg->sockaddr.nm_nam;
 	struct sco_pcb *pcb = (struct sco_pcb *)so->so_pcb;
 	struct sockaddr_bt *sa, ssa;
-	int e;
+	int error;
 
 	sa = &ssa;
 	bzero(sa, sizeof *sa);
 	sa->bt_len = sizeof(struct sockaddr_bt);
 	sa->bt_family = AF_BLUETOOTH;
-	e = sco_sockaddr(pcb, sa);
+	error = sco_sockaddr(pcb, sa);
 	*nam = dup_sockaddr((struct sockaddr *)sa);
 
-	return (e);
+	lwkt_replymsg(&msg->sockaddr.base.lmsg, error);
 }
 
-static int
-sco_sshutdown (struct socket *so)
+static void
+sco_sshutdown(netmsg_t msg)
 {
-	socantsendmore(so);
-	return 0;
+	socantsendmore(msg->shutdown.base.nm_so);
+	lwkt_replymsg(&msg->shutdown.base.lmsg, 0);
 }
 
-static int
-sco_ssend (struct socket *so, int flags, struct mbuf *m,
-    struct sockaddr *addr, struct mbuf *control, struct thread *td)
+static void
+sco_ssend(netmsg_t msg)
 {
+	struct socket *so = msg->send.base.nm_so;
+	struct mbuf *m = msg->send.nm_m;
+	struct sockaddr *addr = msg->send.nm_addr;
+	struct mbuf *control = msg->send.nm_control;
 	struct sco_pcb *pcb = (struct sco_pcb *)so->so_pcb;
 	struct mbuf *m0;
-	int err = 0;
+	int error = 0;
 
 	KKASSERT(m != NULL);
 	if (m->m_pkthdr.len == 0)
-		goto error;
+		goto out;
 
 	if (m->m_pkthdr.len > pcb->sp_mtu) {
-		err = EMSGSIZE;
-		goto error;
+		error = EMSGSIZE;
+		goto out;
 	}
 
 	m0 = m_copym(m, 0, M_COPYALL, MB_DONTWAIT);
 	if (m0 == NULL) {
-		err = ENOMEM;
-		goto error;
+		error = ENOMEM;
+		goto out;
 	}
 
-	if (control) /* no use for that */
+	/* no use for that */
+	if (control) {
 		m_freem(control);
+		control = NULL;
+	}
 
 	sbappendrecord(&so->so_snd.sb, m);
-	return sco_send(pcb, m0);
-
-error:
-	if (m) m_freem(m);
-	if (control) m_freem(control);
-	return err;
+	error = sco_send(pcb, m0);
+	m = NULL;
+out:
+	if (m)
+		m_freem(m);
+	if (control)
+		m_freem(control);
+	lwkt_replymsg(&msg->send.base.lmsg, error);
 }
 
-static int
-sco_saccept(struct socket *so, struct sockaddr **nam)
+static void
+sco_saccept(netmsg_t msg)
 {
+	struct socket *so = msg->accept.base.nm_so;
+	struct sockaddr **nam = msg->accept.nm_nam;
 	struct sco_pcb *pcb = (struct sco_pcb *)so->so_pcb;
 	struct sockaddr_bt *sa, ssa;
-	int e;
+	int error;
 
 	sa = &ssa;
 	bzero(sa, sizeof *sa);
 	sa->bt_len = sizeof(struct sockaddr_bt);
 	sa->bt_family = AF_BLUETOOTH;
-	e = sco_peeraddr(pcb, sa);
+	error = sco_peeraddr(pcb, sa);
 	*nam = dup_sockaddr((struct sockaddr *)sa);
 
-	return (e);
+	lwkt_replymsg(&msg->accept.base.lmsg, error);
 }
 
-static int
-sco_slisten(struct socket *so, struct thread *td)
+static void
+sco_slisten(netmsg_t msg)
 {
+	struct socket *so = msg->listen.base.nm_so;
 	struct sco_pcb *pcb = (struct sco_pcb *)so->so_pcb;
-	return sco_listen(pcb);
-}
+	int error;
 
+	error = sco_listen(pcb);
+	lwkt_replymsg(&msg->accept.base.lmsg, error);
+}
 
 struct pr_usrreqs sco_usrreqs = {
         .pru_abort = sco_sabort,
@@ -419,14 +456,14 @@ struct pr_usrreqs sco_usrreqs = {
         .pru_attach = sco_sattach,
         .pru_bind = sco_sbind,
         .pru_connect = sco_sconnect,
-        .pru_connect2 = pru_connect2_notsupp,
-        .pru_control = pru_control_notsupp,
+        .pru_connect2 = pr_generic_notsupp,
+        .pru_control = pr_generic_notsupp,
         .pru_detach = sco_sdetach,
         .pru_disconnect = sco_sdisconnect,
         .pru_listen = sco_slisten,
         .pru_peeraddr = sco_speeraddr,
-        .pru_rcvd = pru_rcvd_notsupp,
-        .pru_rcvoob = pru_rcvoob_notsupp,
+        .pru_rcvd = pr_generic_notsupp,
+        .pru_rcvoob = pr_generic_notsupp,
         .pru_send = sco_ssend,
         .pru_sense = pru_sense_null,
         .pru_shutdown = sco_sshutdown,

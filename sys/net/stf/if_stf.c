@@ -135,12 +135,19 @@ static int ip_stf_ttl = 40;
 
 extern  struct domain inetdomain;
 struct protosw in_stf_protosw =
-{ SOCK_RAW,	&inetdomain,	IPPROTO_IPV6,	PR_ATOMIC|PR_ADDR,
-  in_stf_input, rip_output,	0,		rip_ctloutput,
-  NULL,		NULL,
-  0,            0,              0,              0,
-  &rip_usrreqs
-};
+    {
+	.pr_type = SOCK_RAW,
+	.pr_domain = &inetdomain,
+	.pr_protocol = IPPROTO_IPV6,
+	.pr_flags = PR_ATOMIC|PR_ADDR,
+
+	.pr_input = in_stf_input,
+	.pr_output = rip_output,
+	.pr_ctlinput = NULL,
+	.pr_ctloutput = rip_ctloutput,
+
+	.pr_usrreqs = &rip_usrreqs
+    };
 
 static int stfmodevent (module_t, int, void *);
 static int stf_encapcheck (const struct mbuf *, int, int, void *);
@@ -503,26 +510,24 @@ stf_checkaddr6(struct stf_softc *sc, struct in6_addr *in6, struct ifnet *inifp)
 	return 0;
 }
 
-void
-in_stf_input(struct mbuf *m, ...)
+int
+in_stf_input(struct mbuf **mp, int *offp, int proto)
 {
+	struct mbuf *m;
 	struct stf_softc *sc;
 	struct ip *ip;
 	struct ip6_hdr *ip6;
 	u_int8_t otos, itos;
 	struct ifnet *ifp;
-	int off, proto;
+	int off;
 	static const uint32_t af = AF_INET6;
-	__va_list ap;
 
-	__va_start(ap, m);
-	off = __va_arg(ap, int);
-	proto = __va_arg(ap, int);
-	__va_end(ap);
+	m = *mp;
+	off = *offp;
 
 	if (proto != IPPROTO_IPV6) {
 		m_freem(m);
-		return;
+		return(IPPROTO_DONE);
 	}
 
 	ip = mtod(m, struct ip *);
@@ -531,7 +536,7 @@ in_stf_input(struct mbuf *m, ...)
 
 	if (sc == NULL || (sc->sc_if.if_flags & IFF_UP) == 0) {
 		m_freem(m);
-		return;
+		return(IPPROTO_DONE);
 	}
 
 	ifp = &sc->sc_if;
@@ -543,7 +548,7 @@ in_stf_input(struct mbuf *m, ...)
 	if (stf_checkaddr4(sc, &ip->ip_dst, NULL) < 0 ||
 	    stf_checkaddr4(sc, &ip->ip_src, m->m_pkthdr.rcvif) < 0) {
 		m_freem(m);
-		return;
+		return(IPPROTO_DONE);
 	}
 
 	otos = ip->ip_tos;
@@ -552,7 +557,7 @@ in_stf_input(struct mbuf *m, ...)
 	if (m->m_len < sizeof(*ip6)) {
 		m = m_pullup(m, sizeof(*ip6));
 		if (!m)
-			return;
+			return(IPPROTO_DONE);
 	}
 	ip6 = mtod(m, struct ip6_hdr *);
 
@@ -563,7 +568,7 @@ in_stf_input(struct mbuf *m, ...)
 	if (stf_checkaddr6(sc, &ip6->ip6_dst, NULL) < 0 ||
 	    stf_checkaddr6(sc, &ip6->ip6_src, m->m_pkthdr.rcvif) < 0) {
 		m_freem(m);
-		return;
+		return(IPPROTO_DONE);
 	}
 
 	itos = (ntohl(ip6->ip6_flow) >> 20) & 0xff;
@@ -588,6 +593,7 @@ in_stf_input(struct mbuf *m, ...)
 	ifp->if_ipackets++;
 	ifp->if_ibytes += m->m_pkthdr.len;
 	netisr_queue(NETISR_IPV6, m);
+	return(IPPROTO_DONE);
 }
 
 /* ARGSUSED */

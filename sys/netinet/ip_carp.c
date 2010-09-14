@@ -489,23 +489,22 @@ carp_ifdetach(void *arg __unused, struct ifnet *ifp)
  * we have rearranged checks order compared to the rfc,
  * but it seems more efficient this way or not possible otherwise.
  */
-void
-carp_input(struct mbuf *m, ...)
+int
+carp_input(struct mbuf **mp, int *offp, int proto)
 {
+	struct mbuf *m = *mp;
 	struct ip *ip = mtod(m, struct ip *);
 	struct carp_header *ch;
 	int len, iphlen;
-	__va_list ap;
 
-	__va_start(ap, m);
-	iphlen = __va_arg(ap, int);
-	__va_end(ap);
+	iphlen = *offp;
+	*mp = NULL;
 
 	carpstats.carps_ipackets++;
 
 	if (!carp_opts[CARPCTL_ALLOW]) {
 		m_freem(m);
-		return;
+		return(IPPROTO_DONE);
 	}
 
 	/* Check if received on a valid carp interface */
@@ -515,7 +514,7 @@ carp_input(struct mbuf *m, ...)
 		    "interface: %s\n",
 		    m->m_pkthdr.rcvif->if_xname);
 		m_freem(m);
-		return;
+		return(IPPROTO_DONE);
 	}
 
 	/* Verify that the IP TTL is CARP_DFLTTL. */
@@ -525,7 +524,7 @@ carp_input(struct mbuf *m, ...)
 		    ip->ip_ttl, CARP_DFLTTL,
 		    m->m_pkthdr.rcvif->if_xname);
 		m_freem(m);
-		return;
+		return(IPPROTO_DONE);
 	}
 
 	/* Minimal CARP packet size */
@@ -540,7 +539,7 @@ carp_input(struct mbuf *m, ...)
 		CARP_LOG("packet too short %d on %s\n", m->m_pkthdr.len,
 			 m->m_pkthdr.rcvif->if_xname);
 		m_freem(m);
-		return;
+		return(IPPROTO_DONE);
 	}
 
 	/* Make sure that CARP header is contiguous */
@@ -549,7 +548,7 @@ carp_input(struct mbuf *m, ...)
 		if (m == NULL) {
 			carpstats.carps_hdrops++;
 			CARP_LOG("carp_input: m_pullup failed\n");
-			return;
+			return(IPPROTO_DONE);
 		}
 		ip = mtod(m, struct ip *);
 	}
@@ -561,9 +560,10 @@ carp_input(struct mbuf *m, ...)
 		CARP_LOG("carp_input: checksum failed on %s\n",
 		    m->m_pkthdr.rcvif->if_xname);
 		m_freem(m);
-		return;
+		return(IPPROTO_DONE);
 	}
 	carp_input_c(m, ch, AF_INET);
+	return(IPPROTO_DONE);
 }
 
 #ifdef INET6

@@ -65,7 +65,10 @@
 #include <sys/systm.h>
 #include <sys/syslog.h>
 #include <sys/proc.h>
+
 #include <sys/thread2.h>
+#include <sys/msgport2.h>
+
 #include <net/if.h>
 #include <net/route.h>
 #include <net/if_types.h>
@@ -122,8 +125,6 @@ extern struct protosw inetsw[];
 extern u_int32_t sctp_debug_on;
 #endif
 
-static	int sctp6_detach(struct socket *so);
-
 #if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
 extern void in6_sin_2_v4mapsin6 (struct sockaddr_in *sin,
 				 struct sockaddr_in6 *sin6);
@@ -174,14 +175,13 @@ in6_sin6_2_sin_in_sock(struct sockaddr *nam)
 
 #endif /* !(__FreeBSD__ || __APPLE__) */
 
+static int sctp6_bind_oncpu(struct socket *so, struct sockaddr *addr, thread_t td);
+
+
 extern int sctp_no_csum_on_loopback;
 
 int
-#if defined(__APPLE__)
-sctp6_input(struct mbuf **mp, int *offp)
-#else
 sctp6_input(struct mbuf **mp, int *offp, int proto)
-#endif
 {
 	struct mbuf *m = *mp;
 	struct ip6_hdr *ip6;
@@ -728,9 +728,10 @@ SYSCTL_PROC(_net_inet6_sctp6, OID_AUTO, getcred, CTLTYPE_OPAQUE|CTLFLAG_RW,
  * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
  *	 will sofree() it when we return.
  */
-static int
-sctp6_abort(struct socket *so)
+static void
+sctp6_abort(netmsg_t msg)
 {
+	struct socket *so = msg->abort.base.nm_so;
 	struct sctp_inpcb *inp;
 	int error;
 
@@ -742,37 +743,33 @@ sctp6_abort(struct socket *so)
 	} else {
 		error = EINVAL;
 	}
-
-	return error;
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-sctp6_attach(struct socket *so, int proto, struct thread *p)
-#elif defined(__DragonFly__)
-sctp6_attach(struct socket *so, int proto, struct pru_attach_info *ai)
-#else
-sctp6_attach(struct socket *so, int proto, struct proc *p)
-#endif
+static void
+sctp6_attach(netmsg_t msg)
 {
+	struct socket *so = msg->attach.base.nm_so;
 	struct in6pcb *inp6;
 	int error;
 	struct sctp_inpcb *inp;
 
 	inp = (struct sctp_inpcb *)so->so_pcb;
-	if (inp != NULL)
-		return EINVAL;
+	if (inp != NULL) {
+		error = EINVAL;
+		goto out;
+	}
 
 	if (so->so_snd.ssb_hiwat == 0 || so->so_rcv.ssb_hiwat == 0) {
 		error = soreserve(so, sctp_sendspace, sctp_recvspace, NULL);
 		if (error)
-			return error;
+			goto out;
 	}
 	crit_enter();
 	error = sctp_inpcb_alloc(so);
 	crit_exit();
 	if (error)
-		return error;
+		goto out;
 	inp = (struct sctp_inpcb *)so->so_pcb;
 	inp->sctp_flags |= SCTP_PCB_FLAGS_BOUND_V6;	/* I'm v6! */
 	inp6 = (struct in6pcb *)inp;
@@ -811,30 +808,34 @@ sctp6_attach(struct socket *so, int proto, struct proc *p)
 	 * Hmm what about the IPSEC stuff that is missing here but
 	 * in sctp_attach()?
 	 */
-	return 0;
+	error = 0;
+out:
+	lwkt_replymsg(&msg->lmsg, error);
+}
+
+static void
+sctp6_bind(netmsg_t msg)
+{
+	int error;
+
+	error = sctp6_bind_oncpu(msg->bind.base.nm_so,
+				 msg->bind.nm_nam,
+				 msg->bind.nm_td);
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
 static int
-#if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
-sctp6_bind(struct socket *so, struct sockaddr *addr, struct thread *p)
+sctp6_bind_oncpu(struct socket *so, struct sockaddr *addr, thread_t td)
 {
-#else
-#if defined(__FreeBSD__) || defined(__APPLE__)
-sctp6_bind(struct socket *so, struct sockaddr *addr, struct proc *p)
-{
-#else
-sctp6_bind(struct socket *so, struct mbuf *nam, struct proc *p)
-{
-	struct sockaddr *addr = nam ?  mtod(nam, struct sockaddr *) : NULL;
-#endif
-#endif
 	struct sctp_inpcb *inp;
 	struct in6pcb *inp6;
 	int error;
 
 	inp = (struct sctp_inpcb *)so->so_pcb;
-	if (inp == NULL)
-		return EINVAL;
+	if (inp == NULL) {
+		error = EINVAL;
+		goto out;
+	}
 
 	inp6 = (struct in6pcb *)inp;
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
@@ -904,41 +905,51 @@ sctp6_bind(struct socket *so, struct mbuf *nam, struct proc *p)
 #endif
 #endif
 				crit_enter();
-				error = sctp_inpcb_bind(so, (struct sockaddr *)&sin, p);
+				error = sctp_inpcb_bind(so,
+						(struct sockaddr *)&sin,
+						td);
 				crit_exit();
-				return error;
+				goto out;
 			}
 		}
 	} else if (addr != NULL) {
 		/* IPV6_V6ONLY socket */
 		if (addr->sa_family == AF_INET) {
 			/* can't bind v4 addr to v6 only socket! */
-			return EINVAL;
+			error = EINVAL;
+			goto out;
 		} else {
 			struct sockaddr_in6 *sin6_p;
 			sin6_p = (struct sockaddr_in6 *)addr;
 
-			if (IN6_IS_ADDR_V4MAPPED(&sin6_p->sin6_addr))
+			if (IN6_IS_ADDR_V4MAPPED(&sin6_p->sin6_addr)) {
 				/* can't bind v4-mapped addrs either! */
 				/* NOTE: we don't support SIIT */
-				return EINVAL;
+				error = EINVAL;
+				goto out;
+			}
 		}
 	}
 	crit_enter();
-	error = sctp_inpcb_bind(so, addr, p);
+	error = sctp_inpcb_bind(so, addr, td);
 	crit_exit();
+out:
 	return error;
 }
 
 /*This could be made common with sctp_detach() since they are identical */
-static int
-sctp6_detach(struct socket *so)
+static void
+sctp6_detach(netmsg_t msg)
 {
+	struct socket *so = msg->detach.base.nm_so;
 	struct sctp_inpcb *inp;
+	int error;
 
 	inp = (struct sctp_inpcb *)so->so_pcb;
-	if (inp == NULL)
-		return EINVAL;
+	if (inp == NULL) {
+		error = EINVAL;
+		goto out;
+	}
 	crit_enter();
 	if (((so->so_options & SO_LINGER) && (so->so_linger == 0)) ||
 	    (so->so_rcv.ssb_cc > 0))
@@ -946,25 +957,30 @@ sctp6_detach(struct socket *so)
 	else
 		sctp_inpcb_free(inp, 0);
 	crit_exit();
-	return 0;
+	error = 0;
+out:
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-sctp6_disconnect(struct socket *so)
+static void
+sctp6_disconnect(netmsg_t msg)
 {
+	struct socket *so = msg->disconnect.base.nm_so;
 	struct sctp_inpcb *inp;
+	int error;
 
 	crit_enter();
 	inp = (struct sctp_inpcb *)so->so_pcb;
 	if (inp == NULL) {
 		crit_exit();
-		return (ENOTCONN);
+		error = ENOTCONN;
+		goto out;
 	}
 	if (inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) {
 		if (LIST_EMPTY(&inp->sctp_asoc_list)) {
 			/* No connection */
 			crit_exit();
-			return (ENOTCONN);
+			error = ENOTCONN;
 		} else {
 			int some_on_streamwheel = 0;
 			struct sctp_association *asoc;
@@ -973,7 +989,8 @@ sctp6_disconnect(struct socket *so)
 			stcb = LIST_FIRST(&inp->sctp_asoc_list);
 			if (stcb == NULL) {
 				crit_exit();
-				return (EINVAL);
+				error = EINVAL;
+				goto out;
 			}
 			asoc = &stcb->asoc;
 			if (!TAILQ_EMPTY(&asoc->out_wheel)) {
@@ -1029,48 +1046,33 @@ sctp6_disconnect(struct socket *so)
 				asoc->state |= SCTP_STATE_SHUTDOWN_PENDING;
 			}
 			crit_exit();
-			return (0);
+			error = 0;
 		}
 	} else {
 		/* UDP model does not support this */
 		crit_exit();
-		return EOPNOTSUPP;
+		error = EOPNOTSUPP;
 	}
+out:
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-int
-#if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
-sctp_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
-	  struct mbuf *control, struct thread *p);
-#else
-sctp_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
-	  struct mbuf *control, struct proc *p);
-#endif
-
-
-static int
-#if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
-sctp6_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
-	   struct mbuf *control, struct thread *p)
+static
+void
+sctp6_send(netmsg_t msg)
 {
-#else
-#if defined(__FreeBSD__) || defined(__APPLE__)
-sctp6_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
-	   struct mbuf *control, struct proc *p)
-{
-#else
-sctp6_send(struct socket *so, int flags, struct mbuf *m, struct mbuf *nam,
-	   struct mbuf *control, struct proc *p)
-{
-	struct sockaddr *addr = nam ? mtod(nam, struct sockaddr *) : NULL;
-#endif
-#endif
+	struct socket *so = msg->send.base.nm_so;
+	struct mbuf *m = msg->send.nm_m;
+	struct mbuf *control = msg->send.nm_control;
+	struct sockaddr *addr = msg->send.nm_addr;
 	struct sctp_inpcb *inp;
 	struct inpcb *in_inp;
 	struct in6pcb *inp6;
+	int flags = msg->send.nm_flags;
 #ifdef INET
 	struct sockaddr_in6 *sin6;
 #endif /* INET */
+	int error;
 	/* No SPL needed since sctp_output does this */
 
 	inp = (struct sctp_inpcb *)so->so_pcb;
@@ -1080,7 +1082,8 @@ sctp6_send(struct socket *so, int flags, struct mbuf *m, struct mbuf *nam,
 			control = NULL;
 		}
 		m_freem(m);
-		return EINVAL;
+		error = EINVAL;
+		goto out;
 	}
 	in_inp = (struct inpcb *)inp;
 	inp6 = (struct in6pcb *)inp;
@@ -1097,7 +1100,8 @@ sctp6_send(struct socket *so, int flags, struct mbuf *m, struct mbuf *nam,
 			m_freem(control);
 			control = NULL;
 		}
-		return (EDESTADDRREQ);
+		error = EDESTADDRREQ;
+		goto out;
 	}
 
 #ifdef INET
@@ -1117,23 +1121,31 @@ sctp6_send(struct socket *so, int flags, struct mbuf *m, struct mbuf *nam,
 		 * destined to a v4 addr or v4-mapped addr
 		 */
 		if (addr->sa_family == AF_INET) {
-			return EINVAL;
+			error = EINVAL;
+			goto out;
 		}
 		if (IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr)) {
-			return EINVAL;
+			error = EINVAL;
+			goto out;
 		}
 	}
 
 	if (IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr)) {
 		if (!ip6_v6only) {
-			struct sockaddr_in sin;
+			struct sockaddr_in *sin;
+
+			sin = kmalloc(sizeof(*sin), M_LWKTMSG, M_INTWAIT);
 			/* convert v4-mapped into v4 addr and send */
-			in6_sin6_2_sin(&sin, sin6);
-			return sctp_send(so, flags,  m, (struct sockaddr *)&sin,
-					   control, p);
+			in6_sin6_2_sin(sin, sin6);
+			msg->send.nm_addr = (struct sockaddr *)sin;
+			msg->send.nm_flags |= PRUS_NAMALLOC;
+			sctp_send(msg);
+			/* msg invalid now */
+			return;
 		} else {
 			/* mapped addresses aren't enabled */
-			return EINVAL;
+			error = EINVAL;
+			goto out;
 		}
 	}
 #endif /* INET */
@@ -1185,31 +1197,22 @@ connected_type:
 		 * optionaly switch back to this code (by changing back
 		 * the defininitions but this is not advisable.
 		 */
-		int ret;
-		ret = sctp_output(inp, inp->pkt , addr, inp->control, p, flags);
+		error = sctp_output(inp, inp->pkt, addr,
+				    inp->control, msg->send.nm_td, flags);
 		inp->pkt = NULL;
 		inp->control = NULL;
-		return (ret);
 	} else {
-		return (0);
+		error = 0;
 	}
+out:
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-#if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
-sctp6_connect(struct socket *so, struct sockaddr *addr, struct thread *p)
+static void
+sctp6_connect(netmsg_t msg)
 {
-#else
-#if defined(__FreeBSD__) || defined(__APPLE__)
-sctp6_connect(struct socket *so, struct sockaddr *addr, struct proc *p)
-{
-#else
-sctp6_connect(struct socket *so, struct mbuf *nam, struct proc *p)
-{
-	struct sockaddr *addr = mtod(nam, struct sockaddr *);
-#endif
-#endif
-	int error = 0;
+	struct socket *so = msg->connect.base.nm_so;
+	struct sockaddr *addr = msg->connect.nm_nam;
 	struct sctp_inpcb *inp;
 	struct in6pcb *inp6;
 	struct sctp_tcb *stcb;
@@ -1217,14 +1220,16 @@ sctp6_connect(struct socket *so, struct mbuf *nam, struct proc *p)
 	struct sockaddr_in6 *sin6;
 	struct sockaddr_storage ss;
 #endif /* INET */
+	int error = 0;
 
 	crit_enter();
 	inp6 = (struct in6pcb *)so->so_pcb;
 	inp = (struct sctp_inpcb *)so->so_pcb;
 	if (inp == NULL) {
 		crit_exit();
-		return (ECONNRESET);	/* I made the same as TCP since
+		error = ECONNRESET;	/* I made the same as TCP since
 					 * we are not setup? */
+		goto out;
 	}
 	SCTP_ASOC_CREATE_LOCK(inp);
 	SCTP_INP_RLOCK(inp);
@@ -1232,12 +1237,11 @@ sctp6_connect(struct socket *so, struct mbuf *nam, struct proc *p)
 	    SCTP_PCB_FLAGS_UNBOUND) {
 		/* Bind a ephemeral port */
 		SCTP_INP_RUNLOCK(inp);
-		error = sctp6_bind(so, NULL, p);
+		error = sctp6_bind_oncpu(so, NULL, msg->connect.nm_td);
 		if (error) {
 			crit_exit();
 			SCTP_ASOC_CREATE_UNLOCK(inp);
-
-			return (error);
+			goto out;
 		}
 		SCTP_INP_RLOCK(inp);
 	}
@@ -1248,7 +1252,8 @@ sctp6_connect(struct socket *so, struct mbuf *nam, struct proc *p)
 		crit_exit();
 		SCTP_INP_RUNLOCK(inp);
 		SCTP_ASOC_CREATE_UNLOCK(inp);
-		return (EADDRINUSE);
+		error = EADDRINUSE;
+		goto out;
 	}
 
 #ifdef INET
@@ -1270,13 +1275,15 @@ sctp6_connect(struct socket *so, struct mbuf *nam, struct proc *p)
 			crit_exit();
 			SCTP_INP_RUNLOCK(inp);
 			SCTP_ASOC_CREATE_UNLOCK(inp);
-			return EINVAL;
+			error = EINVAL;
+			goto out;
 		}
 		if (IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr)) {
 			crit_exit();
 			SCTP_INP_RUNLOCK(inp);
 			SCTP_ASOC_CREATE_UNLOCK(inp);
-			return EINVAL;
+			error = EINVAL;
+			goto out;
 		}
 	}
 
@@ -1290,7 +1297,8 @@ sctp6_connect(struct socket *so, struct mbuf *nam, struct proc *p)
 			crit_exit();
 			SCTP_INP_RUNLOCK(inp);
 			SCTP_ASOC_CREATE_UNLOCK(inp);
-			return EINVAL;
+			error = EINVAL;
+			goto out;
 		}
 	} else
 #endif /* INET */
@@ -1320,7 +1328,8 @@ sctp6_connect(struct socket *so, struct mbuf *nam, struct proc *p)
 		SCTP_ASOC_CREATE_UNLOCK(inp);
 		SCTP_TCB_UNLOCK (stcb);
 		crit_exit();
-		return (EALREADY);
+		error = EALREADY;
+		goto out;
 	}
 	/* We are GOOD to go */
 	stcb = sctp_aloc_assoc(inp, addr, 1, &error, 0);
@@ -1328,7 +1337,7 @@ sctp6_connect(struct socket *so, struct mbuf *nam, struct proc *p)
 	if (stcb == NULL) {
 		/* Gak! no memory */
 		crit_exit();
-		return (error);
+		goto out;
 	}
 	if (stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) {
 		stcb->sctp_ep->sctp_flags |= SCTP_PCB_FLAGS_CONNECTED;
@@ -1340,7 +1349,8 @@ sctp6_connect(struct socket *so, struct mbuf *nam, struct proc *p)
 	sctp_send_initiate(inp, stcb);
 	SCTP_TCB_UNLOCK (stcb);
 	crit_exit();
-	return error;
+out:
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
 static int
@@ -1513,31 +1523,29 @@ sctp6_peeraddr(struct socket *so, struct mbuf *nam)
 	return (0);
 }
 
-static int
-#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-sctp6_in6getaddr(struct socket *so, struct sockaddr **nam)
+static void
+sctp6_in6getaddr(netmsg_t msg)
 {
+	struct socket *so = msg->sockaddr.base.nm_so;;
+	struct sockaddr **nam = msg->sockaddr.nm_nam;
 	struct sockaddr *addr;
-#else
-sctp6_in6getaddr(struct socket *so, struct mbuf *nam)
-{
-	struct sockaddr *addr = mtod(nam, struct sockaddr *);
-#endif
 	struct in6pcb *inp6 = sotoin6pcb(so);
 	int error;
 
-	if (inp6 == NULL)
-		return EINVAL;
+	if (inp6 == NULL) {
+		error = EINVAL;
+		goto out;
+	}
 
 	crit_enter();
 	/* allow v6 addresses precedence */
 	error = sctp6_getaddr(so, nam);
 	if (error) {
 		/* try v4 next if v6 failed */
-		error = sctp_ingetaddr(so, nam);
+		error = sctp_ingetaddr_oncpu(so, nam);
 		if (error) {
 			crit_exit();
-			return (error);
+			goto out;
 		}
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 		addr = *nam;
@@ -1569,35 +1577,33 @@ sctp6_in6getaddr(struct socket *so, struct mbuf *nam)
 #endif
 	}
 	crit_exit();
-	return (error);
+out:
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-
-static int
-#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-sctp6_getpeeraddr(struct socket *so, struct sockaddr **nam)
+static void
+sctp6_getpeeraddr(netmsg_t msg)
 {
+	struct socket *so = msg->peeraddr.base.nm_so;
+	struct sockaddr **nam = msg->peeraddr.nm_nam;
 	struct sockaddr *addr = *nam;
-#else
-sctp6_getpeeraddr(struct socket *so, struct mbuf *nam)
-{
-	struct sockaddr *addr = mtod(nam, struct sockaddr *);
-#endif
 	struct in6pcb *inp6 = sotoin6pcb(so);
 	int error;
 
-	if (inp6 == NULL)
-		return EINVAL;
+	if (inp6 == NULL) {
+		error = EINVAL;
+		goto out;
+	}
 
 	crit_enter();
 	/* allow v6 addresses precedence */
 	error = sctp6_peeraddr(so, nam);
 	if (error) {
 		/* try v4 next if v6 failed */
-		error = sctp_peeraddr(so, nam);
+		error = sctp_peeraddr_oncpu(so, nam);
 		if (error) {
 			crit_exit();
-			return (error);
+			goto out;
 		}
 		/* if I'm V6ONLY, convert it to v4-mapped */
 		if (
@@ -1626,7 +1632,8 @@ sctp6_getpeeraddr(struct socket *so, struct mbuf *nam)
 #endif
 	}
 	crit_exit();
-	return error;
+out:
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
@@ -1636,14 +1643,14 @@ struct pr_usrreqs sctp6_usrreqs = {
 	.pru_attach = sctp6_attach,
 	.pru_bind = sctp6_bind,
 	.pru_connect = sctp6_connect,
-	.pru_connect2 = pru_connect2_notsupp,
-	.pru_control = in6_control,
+	.pru_connect2 = pr_generic_notsupp,
+	.pru_control = in6_control_dispatch,
 	.pru_detach = sctp6_detach,
 	.pru_disconnect = sctp6_disconnect,
 	.pru_listen = sctp_listen,
 	.pru_peeraddr = sctp6_getpeeraddr,
 	.pru_rcvd = sctp_usr_recvd,
-	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_rcvoob = pr_generic_notsupp,
 	.pru_send = sctp6_send,
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = sctp_shutdown,
@@ -1653,6 +1660,8 @@ struct pr_usrreqs sctp6_usrreqs = {
 };
 
 #else
+
+#error x
 
 int
 sctp6_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,

@@ -11,12 +11,15 @@
 #include <sys/priv.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
-#include <sys/mplock2.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
-#include <sys/socketvar2.h>
 #include <sys/protosw.h>
+
 #include <sys/thread2.h>
+#include <sys/socketvar2.h>
+#include <sys/mplock2.h>
+#include <sys/msgport2.h>
+
 #include <net/if.h>
 #include <net/netisr.h>
 #include <net/route.h>
@@ -40,153 +43,181 @@ struct ddpcb	*ddpcb = NULL;
 static u_long	ddp_sendspace = DDP_MAXSZ; /* Max ddp size + 1 (ddp_type) */
 static u_long	ddp_recvspace = 10 * ( 587 + sizeof( struct sockaddr_at ));
 
-static int
-ddp_attach(struct socket *so, int proto, struct pru_attach_info *ai)
+static void
+ddp_attach(netmsg_t msg)
 {
+	struct socket *so = msg->attach.base.nm_so;
+	struct pru_attach_info *ai = msg->attach.nm_ai;
 	struct ddpcb	*ddp;
-	int		error = 0;
-	
+	int error;
 
-	ddp = sotoddpcb( so );
-	if ( ddp != NULL ) {
-	    return( EINVAL);
+	ddp = sotoddpcb(so);
+	if (ddp != NULL) {
+		error = EINVAL;
+		goto out;
 	}
 
-	error = at_pcballoc( so );
-	if (error) {
-	    return (error);
+	error = at_pcballoc(so);
+	if (error == 0) {
+		error = soreserve(so, ddp_sendspace, ddp_recvspace,
+				  ai->sb_rlimit);
 	}
-	return (soreserve( so, ddp_sendspace, ddp_recvspace, ai->sb_rlimit ));
+out:
+	lwkt_replymsg(&msg->attach.base.lmsg, error);
 }
 
-static int
-ddp_detach(struct socket *so)
+static void
+ddp_detach(netmsg_t msg)
 {
+	struct socket *so = msg->detach.base.nm_so;
 	struct ddpcb	*ddp;
+	int error;
 	
-	ddp = sotoddpcb( so );
-	if ( ddp == NULL ) {
-	    return( EINVAL);
+	ddp = sotoddpcb(so);
+	if (ddp == NULL) {
+		error = EINVAL;
+	} else {
+		at_pcbdetach(so, ddp);
+		error = 0;
 	}
-	at_pcbdetach( so, ddp );
-	return(0);
+	lwkt_replymsg(&msg->detach.base.lmsg, error);
 }
 
-static int      
-ddp_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
+static void
+ddp_bind(netmsg_t msg)
 {
-	struct ddpcb	*ddp;
-	int		error = 0;
+	struct socket *so = msg->bind.base.nm_so;
+	struct ddpcb *ddp;
+	int error;
 	
-	ddp = sotoddpcb( so );
-	if ( ddp == NULL ) {
-	    return( EINVAL);
+	ddp = sotoddpcb(so);
+	if (ddp) {
+		error = at_pcbsetaddr(ddp, msg->bind.nm_nam, msg->bind.nm_td);
+	} else {
+		error = EINVAL;
 	}
-	error = at_pcbsetaddr(ddp, nam, td);
-	return (error);
+	lwkt_replymsg(&msg->bind.base.lmsg, error);
 }
     
-static int
-ddp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
+static void
+ddp_connect(netmsg_t msg)
 {
-	struct ddpcb	*ddp;
-	int		error = 0;
+	struct socket *so = msg->connect.base.nm_so;
+	struct ddpcb *ddp;
+	int error;
 	
-	ddp = sotoddpcb( so );
-	if ( ddp == NULL ) {
-	    return( EINVAL);
+	ddp = sotoddpcb(so);
+	if (ddp == NULL) {
+		error = EINVAL;
+	} else if (ddp->ddp_fsat.sat_port != ATADDR_ANYPORT ) {
+		error = EISCONN;
+	} else {
+		error = at_pcbconnect(ddp, msg->connect.nm_nam,
+				      msg->connect.nm_td);
+		if (error == 0)
+			soisconnected(so);
 	}
-
-	if ( ddp->ddp_fsat.sat_port != ATADDR_ANYPORT ) {
-	    return(EISCONN);
-	}
-
-	error = at_pcbconnect( ddp, nam, td );
-	if ( error == 0 )
-	    soisconnected( so );
-	return(error);
+	lwkt_replymsg(&msg->connect.base.lmsg, error);
 }
 
-static int
-ddp_disconnect(struct socket *so)
+static void
+ddp_disconnect(netmsg_t msg)
 {
-
-	struct ddpcb	*ddp;
+	struct socket *so = msg->disconnect.base.nm_so;
+	struct ddpcb *ddp;
+	int error;
 	
-	ddp = sotoddpcb( so );
-	if ( ddp == NULL ) {
-	    return( EINVAL);
+	ddp = sotoddpcb(so);
+	if (ddp == NULL) {
+		error = EINVAL;
+	} else if (ddp->ddp_fsat.sat_addr.s_node == ATADDR_ANYNODE) {
+		error = ENOTCONN;
+	} else {
+		soreference(so);
+		at_pcbdisconnect(ddp);
+		ddp->ddp_fsat.sat_addr.s_node = ATADDR_ANYNODE;
+		soisdisconnected(so);
+		sofree(so);		/* soref above */
+		error = 0;
 	}
-	if ( ddp->ddp_fsat.sat_addr.s_node == ATADDR_ANYNODE ) {
-	    return(ENOTCONN);
-	}
-
-	soreference(so);
-	at_pcbdisconnect( ddp );
-	ddp->ddp_fsat.sat_addr.s_node = ATADDR_ANYNODE;
-	soisdisconnected( so );
-	sofree(so);		/* soref above */
-	return(0);
+	lwkt_replymsg(&msg->disconnect.base.lmsg, error);
 }
 
-static int
-ddp_shutdown(struct socket *so)
+static void
+ddp_shutdown(netmsg_t msg)
 {
+	struct socket *so = msg->shutdown.base.nm_so;
 	struct ddpcb	*ddp;
+	int error;
 
-	ddp = sotoddpcb( so );
-	if ( ddp == NULL ) {
-		return( EINVAL);
+	ddp = sotoddpcb(so);
+	if (ddp) {
+		socantsendmore(so);
+		error = 0;
+	} else {
+		error = EINVAL;
 	}
-	socantsendmore( so );
-	return(0);
+	lwkt_replymsg(&msg->shutdown.base.lmsg, error);
 }
 
-static int
-ddp_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
-            struct mbuf *control, struct thread *td)
+static void
+ddp_send(netmsg_t msg)
 {
-	struct ddpcb	*ddp;
-	int		error = 0;
+	struct socket *so = msg->send.base.nm_so;
+	struct mbuf *m = msg->send.nm_m;
+	struct sockaddr *addr = msg->send.nm_addr;
+	struct mbuf *control = msg->send.nm_control;
+	struct ddpcb *ddp;
+	int error;
 	
-	ddp = sotoddpcb( so );
-	if ( ddp == NULL ) {
-		return(EINVAL);
+	ddp = sotoddpcb(so);
+	if (ddp == NULL) {
+		error = EINVAL;
+		goto out;
 	}
 
-    	if ( control && control->m_len ) {
-		return(EINVAL);
+	if (control && control->m_len) {
+		error = EINVAL;
+		goto out;
     	}
 
-	if ( addr ) {
-		if ( ddp->ddp_fsat.sat_port != ATADDR_ANYPORT ) {
-			return(EISCONN);
+	if (addr) {
+		if (ddp->ddp_fsat.sat_port != ATADDR_ANYPORT) {
+			error = EISCONN;
+			goto out;
 		}
 
-		error = at_pcbconnect(ddp, addr, td);
-		if ( error ) {
-			return(error);
-		}
+		error = at_pcbconnect(ddp, addr, msg->send.nm_td);
+		if (error)
+			goto out;
 	} else {
-		if ( ddp->ddp_fsat.sat_port == ATADDR_ANYPORT ) {
-			return(ENOTCONN);
+		if (ddp->ddp_fsat.sat_port == ATADDR_ANYPORT) {
+			error = ENOTCONN;
+			goto out;
 		}
 	}
 
-	error = ddp_output( m, so );
-	if ( addr ) {
-	    at_pcbdisconnect( ddp );
+	error = ddp_output(m, so);
+	m = NULL;
+	if (addr) {
+		at_pcbdisconnect(ddp);
 	}
-	return(error);
+out:
+	if (m)
+		m_freem(m);
+	if (control)
+		m_freem(control);
+	lwkt_replymsg(&msg->send.base.lmsg, error);
 }
 
 /*
  * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
  *	 will sofree() it when we return.
  */
-static int
-ddp_abort(struct socket *so)
+static void
+ddp_abort(netmsg_t msg)
 {
+	struct socket *so = msg->abort.base.nm_so;
 	struct ddpcb *ddp;
 	int error;
 	
@@ -198,7 +229,44 @@ ddp_abort(struct socket *so)
 	} else {
 		error = EINVAL;
 	}
-	return error;
+	lwkt_replymsg(&msg->abort.base.lmsg, error);
+}
+
+static void
+ddp_setpeeraddr(netmsg_t msg)
+{
+	lwkt_replymsg(&msg->peeraddr.base.lmsg, EOPNOTSUPP);
+}
+
+static void
+ddp_setsockaddr(netmsg_t msg)
+{
+	struct socket *so = msg->sockaddr.base.nm_so;
+	struct sockaddr **nam = msg->sockaddr.nm_nam;
+	struct ddpcb	*ddp;
+	int error;
+
+	ddp = sotoddpcb(so);
+	if (ddp) {
+		at_sockaddr(ddp, nam);
+		error = 0;
+	} else {
+		error = EINVAL;
+	}
+	lwkt_replymsg(&msg->sockaddr.base.lmsg, error);
+}
+
+static void
+ddp_control(netmsg_t msg)
+{
+	struct socket *so = msg->control.base.nm_so;
+	int error;
+
+	error = at_control(so, msg->control.nm_cmd,
+			   msg->control.nm_data,
+			   msg->control.nm_ifp,
+			   msg->control.nm_td);
+	lwkt_replymsg(&msg->control.base.lmsg, error);
 }
 
 
@@ -513,25 +581,6 @@ ddp_search( struct sockaddr_at *from, struct sockaddr_at *to,
     }
     return( ddp );
 }
-static int
-at_setpeeraddr(struct socket *so, struct sockaddr **nam)
-{
-	return(EOPNOTSUPP);
-}
-
-static int
-at_setsockaddr(struct socket *so, struct sockaddr **nam)
-{
-	struct ddpcb	*ddp;
-
-	ddp = sotoddpcb( so );
-	if ( ddp == NULL ) {
-	    return( EINVAL);
-	}
-	at_sockaddr( ddp, nam );
-	return(0);
-}
-
 
 void 
 ddp_init(void)
@@ -555,22 +604,22 @@ ddp_clean(void)
 
 struct pr_usrreqs ddp_usrreqs = {
 	.pru_abort = ddp_abort,
-	.pru_accept = pru_accept_notsupp,
+	.pru_accept = pr_generic_notsupp,
 	.pru_attach = ddp_attach,
 	.pru_bind = ddp_bind,
 	.pru_connect = ddp_connect,
-	.pru_connect2 = pru_connect2_notsupp,
-	.pru_control = at_control,
+	.pru_connect2 = pr_generic_notsupp,
+	.pru_control = ddp_control,
 	.pru_detach = ddp_detach,
 	.pru_disconnect = ddp_disconnect,
-	.pru_listen = pru_listen_notsupp,
-	.pru_peeraddr = at_setpeeraddr,
-	.pru_rcvd = pru_rcvd_notsupp,
-	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_listen = pr_generic_notsupp,
+	.pru_peeraddr = ddp_setpeeraddr,
+	.pru_rcvd = pr_generic_notsupp,
+	.pru_rcvoob = pr_generic_notsupp,
 	.pru_send = ddp_send,
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = ddp_shutdown,
-	.pru_sockaddr = at_setsockaddr,
+	.pru_sockaddr = ddp_setsockaddr,
 	.pru_sosend = sosend,
 	.pru_soreceive = soreceive
 };

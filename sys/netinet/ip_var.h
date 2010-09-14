@@ -179,6 +179,7 @@ struct route;
 struct sockopt;
 struct lwkt_port;
 struct pktinfo;
+union netmsg;
 
 extern u_short	ip_id;				/* ip packet ctr, for ids */
 extern int	ip_defttl;			/* default IP ttl */
@@ -191,7 +192,7 @@ extern u_long	(*ip_mcast_src)(int);
 extern int rsvp_on;
 extern struct	pr_usrreqs rip_usrreqs;
 
-int	 ip_ctloutput(struct socket *, struct sockopt *sopt);
+void	 ip_ctloutput(union netmsg *);
 void	 ip_drain(void);
 int	 ip_fragment(struct ip *ip, struct mbuf **m_frag, int mtu,
 	    u_long if_hwassist_flags, int sw_csum);
@@ -219,18 +220,18 @@ struct mbuf *
 	 ip_srcroute(struct mbuf *);
 void	 ip_stripoptions(struct mbuf *);
 u_int16_t ip_randomid(void);
-int	rip_ctloutput(struct socket *, struct sockopt *);
-void	rip_ctlinput(int, struct sockaddr *, void *);
+void	rip_ctloutput(union netmsg *);
+void	rip_ctlinput(union netmsg *);
 void	rip_init(void);
-void	rip_input(struct mbuf *, ...);
+int	rip_input(struct mbuf **, int *, int);
 int	rip_output(struct mbuf *, struct socket *, ...);
-extern void	(*ipip_input)(struct mbuf *, int, int);
-void	rsvp_input(struct mbuf *, ...);
+extern int (*ipip_input)(struct mbuf **, int *, int);
+int	rsvp_input(struct mbuf **, int *, int);
 int	ip_rsvp_init(struct socket *);
 int	ip_rsvp_done(void);
 extern int	(*ip_rsvp_vif)(struct socket *, struct sockopt *);
 extern void	(*ip_rsvp_force_done)(struct socket *);
-extern void	(*rsvp_input_p)(struct mbuf *m, ...);
+extern int	(*rsvp_input_p)(struct mbuf **, int *, int);
 
 extern	struct pfil_head inet_pfil_hook;
 

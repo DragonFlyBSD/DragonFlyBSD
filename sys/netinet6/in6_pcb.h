@@ -94,6 +94,7 @@ struct ip6_pktopts;
 struct in6_addr;
 struct route_in6;
 struct sockaddr_in6;
+union netmsg;
 
 void	in6_pcbpurgeif0 (struct in6pcb *, struct ifnet *);
 void	in6_losing (struct inpcb *);
@@ -115,10 +116,14 @@ void	in6_pcbnotify (struct inpcbhead *, struct sockaddr *,
 			   in_port_t, const struct sockaddr *, in_port_t,
 			   int, int, void (*)(struct inpcb *, int));
 void	in6_rtchange (struct inpcb *, int);
+void	in6_setpeeraddr_dispatch (union netmsg *);
+void	in6_setsockaddr_dispatch (union netmsg *);
 int	in6_setpeeraddr (struct socket *so, struct sockaddr **nam);
 int	in6_setsockaddr (struct socket *so, struct sockaddr **nam);
+void	in6_mapped_sockaddr_dispatch(union netmsg *msg);
 int	in6_mapped_sockaddr (struct socket *so, struct sockaddr **nam);
 int	in6_mapped_peeraddr (struct socket *so, struct sockaddr **nam);
+void	in6_mapped_peeraddr_dispatch(netmsg_t msg);
 struct	in6_addr *in6_selectsrc (struct sockaddr_in6 *,
 				     struct ip6_pktopts *,
 				     struct ip6_moptions *,

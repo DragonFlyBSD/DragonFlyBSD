@@ -122,72 +122,9 @@
 #include <net/netmsg.h>
 #endif
 
-TAILQ_HEAD(notifymsglist, netmsg_so_notify);
-
-typedef __boolean_t (*msg_predicate_fn_t)(struct netmsg *);
-
-/*
- * Base class.  All net messages must start with the same fields.
- */
-
-struct netmsg_packet {
-    struct netmsg	nm_netmsg;
-    struct mbuf		*nm_packet;
-    int			nm_nxt;
-};
-
-struct netmsg_pr_timeout {
-    struct netmsg	nm_netmsg;
-    int			(*nm_prfn) (void);
-};
-
-struct netmsg_so_notify {
-    struct netmsg			nm_netmsg;
-    msg_predicate_fn_t			nm_predicate;
-    struct socket			*nm_so;
-    int					nm_fflags; /* flags e.g. FNONBLOCK */
-    int					nm_etype;  /* receive or send event */
-    TAILQ_ENTRY(netmsg_so_notify)	nm_list;
-};
-
-struct netmsg_so_notify_abort {
-    struct netmsg			nm_netmsg;
-    struct netmsg_so_notify 		*nm_notifymsg;
-};
-
-#define NM_REVENT	0x1		/* event on receive buffer */
-#define NM_SEVENT	0x2		/* event on send buffer */
-
 #endif
 
 #ifdef _KERNEL
-
-/*
- * for dispatching pr_ functions,
- * until they can be converted to message-passing
- */
-void netmsg_pru_abort(netmsg_t);
-void netmsg_pru_accept(netmsg_t);
-void netmsg_pru_attach(netmsg_t);
-void netmsg_pru_bind(netmsg_t);
-void netmsg_pru_connect(netmsg_t);
-void netmsg_pru_connect2(netmsg_t);
-void netmsg_pru_control(netmsg_t);
-void netmsg_pru_detach(netmsg_t);
-void netmsg_pru_disconnect(netmsg_t);
-void netmsg_pru_listen(netmsg_t);
-void netmsg_pru_peeraddr(netmsg_t);
-void netmsg_pru_rcvd(netmsg_t);
-void netmsg_pru_rcvoob(netmsg_t);
-void netmsg_pru_send(netmsg_t);
-void netmsg_pru_sense(netmsg_t);
-void netmsg_pru_shutdown(netmsg_t);
-void netmsg_pru_sockaddr(netmsg_t);
-
-void netmsg_pru_ctloutput(netmsg_t);
-void netmsg_pru_ctlinput(netmsg_t);
-
-void netmsg_pr_timeout(netmsg_t);
 
 void netmsg_so_notify(netmsg_t);
 void netmsg_so_notify_abort(netmsg_t);
@@ -216,7 +153,7 @@ struct netisr {
 	netisr_fn_t	ni_handler;	/* packet handler function */
 	netisr_ru_t	ni_rufunc;	/* rollup function */
 	netisr_cpufn_t	ni_cpufn;	/* characterize pkt return cpu */
-	struct netmsg	ni_netmsg;	/* for sched_netisr() (no-data) */
+	struct netmsg_base ni_netmsg;	/* for sched_netisr() (no-data) */
 };
 
 #endif
@@ -229,6 +166,7 @@ struct netisr {
 extern lwkt_port netisr_adone_rport;
 extern lwkt_port netisr_afree_rport;
 extern lwkt_port netisr_apanic_rport;
+extern lwkt_port netisr_sync_port;
 
 lwkt_port_t	cpu_portfn(int cpu);
 lwkt_port_t	cur_netport(void);

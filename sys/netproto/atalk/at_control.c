@@ -46,7 +46,7 @@ static int aa_claim_addr(struct ifaddr *ifa, struct sockaddr *gw);
 
 int
 at_control(struct socket *so, u_long cmd, caddr_t data,
-		struct ifnet *ifp, struct thread *td )
+	   struct ifnet *ifp, struct thread *td )
 {
     struct ifreq	*ifr = (struct ifreq *)data;
     struct sockaddr_at	*sat;

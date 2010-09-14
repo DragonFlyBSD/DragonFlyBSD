@@ -4075,15 +4075,11 @@ sctp_saveopt(struct sctp_inpcb *inp, struct mbuf **mp, struct ip *ip,
 
 extern int sctp_no_csum_on_loopback;
 
-#if defined(__FreeBSD__) || defined(__APPLE__)
-void
-sctp_input(struct mbuf *m, int off)
-#else
-void
-sctp_input(struct mbuf *m, ...)
-#endif
+int
+sctp_input(struct mbuf **mp, int *offp, int proto)
 {
 	int iphlen;
+	struct mbuf *m = *mp;
 	u_int8_t ecn_bits;
 	struct ip *ip;
 	struct sctphdr *sh;
@@ -4108,22 +4104,7 @@ sctp_input(struct mbuf *m, ...)
 	int error;
 #endif
 
-#if !(defined(__FreeBSD__) || defined(__APPLE__))
-#ifdef __DragonFly__
-	__va_list ap;
-	__va_start(ap, m);
-	iphlen = __va_arg(ap, int);
-	__va_end(ap);
-#else
-	va_list ap;
-
-	va_start(ap, m);
-	iphlen = va_arg(ap, int);
-	va_end(ap);
-#endif
-#else
-	iphlen = off;
-#endif
+	iphlen = *offp;
 	net = NULL;
 	sctp_pegs[SCTP_INPKTS]++;
 #ifdef SCTP_DEBUG
@@ -4152,7 +4133,7 @@ sctp_input(struct mbuf *m, ...)
 	if (m->m_len < offset) {
 		if ((m = m_pullup(m, offset)) == 0) {
 			sctp_pegs[SCTP_HDR_DROPS]++;
-			return;
+			return(IPPROTO_DONE);
 		}
 		ip = mtod(m, struct ip *);
 	}
@@ -4398,7 +4379,7 @@ sctp_input(struct mbuf *m, ...)
 		SCTP_INP_WUNLOCK(inp);
 	}
 
-	return;
+	return(IPPROTO_DONE);
 bad:
 	if (stcb)
 		SCTP_TCB_UNLOCK(stcb);
@@ -4415,5 +4396,5 @@ bad:
 	}
 	if (opts)
 		sctp_m_freem(opts);
-	return;
+	return(IPPROTO_DONE);
 }

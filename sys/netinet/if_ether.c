@@ -154,7 +154,7 @@ static void	arprequest(struct ifnet *, const struct in_addr *,
 			   const struct in_addr *, const u_char *);
 static void	arprequest_async(struct ifnet *, const struct in_addr *,
 				 const struct in_addr *, const u_char *);
-static void	arpintr(struct netmsg *);
+static void	arpintr(netmsg_t msg);
 static void	arptfree(struct llinfo_arp *);
 static void	arptimer(void *);
 static struct llinfo_arp *
@@ -382,10 +382,10 @@ arpreq_send(struct ifnet *ifp, struct mbuf *m)
 }
 
 static void
-arpreq_send_handler(struct netmsg *nmsg)
+arpreq_send_handler(netmsg_t msg)
 {
-	struct mbuf *m = ((struct netmsg_packet *)nmsg)->nm_packet;
-	struct ifnet *ifp = nmsg->nm_lmsg.u.ms_resultp;
+	struct mbuf *m = msg->packet.nm_packet;
+	struct ifnet *ifp = msg->lmsg.u.ms_resultp;
 
 	arpreq_send(ifp, m);
 	/* nmsg was embedded in the mbuf, do not reply! */
@@ -428,12 +428,12 @@ arprequest_async(struct ifnet *ifp, const struct in_addr *sip,
 		return;
 
 	pmsg = &m->m_hdr.mh_netmsg;
-	netmsg_init(&pmsg->nm_netmsg, NULL, &netisr_apanic_rport,
+	netmsg_init(&pmsg->base, NULL, &netisr_apanic_rport,
 		    0, arpreq_send_handler);
 	pmsg->nm_packet = m;
-	pmsg->nm_netmsg.nm_lmsg.u.ms_resultp = ifp;
+	pmsg->base.lmsg.u.ms_resultp = ifp;
 
-	lwkt_sendmsg(cpu_portfn(mycpuid), &pmsg->nm_netmsg.nm_lmsg);
+	lwkt_sendmsg(cpu_portfn(mycpuid), &pmsg->base.lmsg);
 }
 
 /*
@@ -550,9 +550,9 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
  * then the protocol-specific routine is called.
  */
 static void
-arpintr(struct netmsg *msg)
+arpintr(netmsg_t msg)
 {
-	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
+	struct mbuf *m = msg->packet.nm_packet;
 	struct arphdr *ar;
 	u_short ar_hrd;
 
@@ -623,13 +623,13 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, log_arp_permanent_modify, CTLFLAG_RW,
 
 
 static void
-arp_hold_output(struct netmsg *nmsg)
+arp_hold_output(netmsg_t msg)
 {
-	struct mbuf *m = ((struct netmsg_packet *)nmsg)->nm_packet;
+	struct mbuf *m = msg->packet.nm_packet;
 	struct rtentry *rt;
 	struct ifnet *ifp;
 
-	rt = nmsg->nm_lmsg.u.ms_resultp;
+	rt = msg->lmsg.u.ms_resultp;
 	ifp = m->m_pkthdr.rcvif;
 	m->m_pkthdr.rcvif = NULL;
 
@@ -742,16 +742,16 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 			rt->rt_refcnt++;
 
 			pmsg = &m->m_hdr.mh_netmsg;
-			netmsg_init(&pmsg->nm_netmsg, NULL,
+			netmsg_init(&pmsg->base, NULL,
 				    &netisr_apanic_rport,
 				    MSGF_PRIORITY, arp_hold_output);
 			pmsg->nm_packet = m;
 
 			/* Record necessary information */
 			m->m_pkthdr.rcvif = ifp;
-			pmsg->nm_netmsg.nm_lmsg.u.ms_resultp = rt;
+			pmsg->base.lmsg.u.ms_resultp = rt;
 
-			lwkt_sendmsg(port, &pmsg->nm_netmsg.nm_lmsg);
+			lwkt_sendmsg(port, &pmsg->base.lmsg);
 		}
 	}
 }
@@ -759,13 +759,13 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 #ifdef SMP
 
 struct netmsg_arp_update {
-	struct netmsg	netmsg;
+	struct netmsg_base base;
 	struct mbuf	*m;
 	in_addr_t	saddr;
 	boolean_t	create;
 };
 
-static void arp_update_msghandler(struct netmsg *);
+static void arp_update_msghandler(netmsg_t msg);
 
 #endif
 
@@ -906,12 +906,12 @@ match:
 	if (ifp->if_flags & IFF_STATICARP)
 		goto reply;
 #ifdef SMP
-	netmsg_init(&msg.netmsg, NULL, &curthread->td_msgport,
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport,
 		    0, arp_update_msghandler);
 	msg.m = m;
 	msg.saddr = isaddr.s_addr;
 	msg.create = (itaddr.s_addr == myaddr.s_addr);
-	lwkt_domsg(rtable_portfn(0), &msg.netmsg.nm_lmsg, 0);
+	lwkt_domsg(rtable_portfn(0), &msg.base.lmsg, 0);
 #else
 	arp_update_oncpu(m, isaddr.s_addr, (itaddr.s_addr == myaddr.s_addr),
 			 RTL_REPORTMSG, TRUE);
@@ -996,24 +996,24 @@ reply:
 #ifdef SMP
 
 static void
-arp_update_msghandler(struct netmsg *netmsg)
+arp_update_msghandler(netmsg_t msg)
 {
-	struct netmsg_arp_update *msg = (struct netmsg_arp_update *)netmsg;
+	struct netmsg_arp_update *rmsg = (struct netmsg_arp_update *)msg;
 	int nextcpu;
 
 	/*
 	 * This message handler will be called on all of the CPUs,
 	 * however, we only need to generate rtmsg on CPU0.
 	 */
-	arp_update_oncpu(msg->m, msg->saddr, msg->create,
+	arp_update_oncpu(rmsg->m, rmsg->saddr, rmsg->create,
 			 mycpuid == 0 ? RTL_REPORTMSG : RTL_DONTREPORT,
 			 mycpuid == 0);
 
 	nextcpu = mycpuid + 1;
 	if (nextcpu < ncpus)
-		lwkt_forwardmsg(rtable_portfn(nextcpu), &msg->netmsg.nm_lmsg);
+		lwkt_forwardmsg(rtable_portfn(nextcpu), &rmsg->base.lmsg);
 	else
-		lwkt_replymsg(&msg->netmsg.nm_lmsg, 0);
+		lwkt_replymsg(&rmsg->base.lmsg, 0);
 }
 
 #endif	/* SMP */

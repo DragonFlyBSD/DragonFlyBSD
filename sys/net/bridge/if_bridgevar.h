@@ -332,9 +332,9 @@ struct bridge_softc {
 	uint32_t		sc_brtcnt;	/* cur. # of addresses */
 	uint32_t		sc_brttimeout;	/* rt timeout in seconds */
 	struct callout		sc_brcallout;	/* bridge callout */
-	struct netmsg		sc_brtimemsg;	/* bridge callout msg */
+	struct netmsg_base	sc_brtimemsg;	/* bridge callout msg */
 	struct callout		sc_bstpcallout;	/* STP callout */
-	struct netmsg		sc_bstptimemsg;	/* STP callout msg */
+	struct netmsg_base	sc_bstptimemsg;	/* STP callout msg */
 	struct bridge_iflist_head *sc_iflists;	/* percpu member if lists */
 	struct bridge_rtnode_head **sc_rthashs;	/* percpu forwarding tables */
 	struct bridge_rtnode_head *sc_rtlists;	/* percpu lists of the above */
@@ -359,7 +359,7 @@ void	bstp_linkstate(struct ifnet *, int);
 void	bstp_stop(struct bridge_softc *);
 void	bstp_input(struct bridge_softc *, struct bridge_iflist *,
 		   struct mbuf *);
-void	bstp_tick_handler(struct netmsg *);
+void	bstp_tick_handler(netmsg_t);
 
 void	bridge_enqueue(struct ifnet *, struct mbuf *);
 

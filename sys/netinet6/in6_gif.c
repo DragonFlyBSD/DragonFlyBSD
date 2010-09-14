@@ -76,18 +76,26 @@ static int gif_validate6(const struct ip6_hdr *, struct gif_softc *,
 			 struct ifnet *);
 
 extern  struct domain inet6domain;
-struct ip6protosw in6_gif_protosw =
-{ SOCK_RAW,	&inet6domain,	0/*IPPROTO_IPV[46]*/,	PR_ATOMIC|PR_ADDR,
-  in6_gif_input, rip6_output,	0,		rip6_ctloutput,
-  cpu0_soport,	NULL,
-  0,		0,		0,		0,
-  &rip6_usrreqs
-};
+struct protosw in6_gif_protosw =
+    {
+	.pr_type = SOCK_RAW,
+	.pr_domain = &inet6domain,
+	.pr_protocol = 0/*IPPROTO_IPV[46]*/,
+	.pr_flags = PR_ATOMIC|PR_ADDR,
 
+	.pr_input = in6_gif_input,
+	.pr_output = rip6_output,
+	.pr_ctlinput = NULL,
+	.pr_ctloutput = rip6_ctloutput,
+
+	.pr_usrreqs = &rip6_usrreqs
+    };
+
+/*
+ * family = family of the packet to be encapsulate.
+ */
 int
-in6_gif_output(struct ifnet *ifp,
-	       int family,	/* family of the packet to be encapsulate. */
-	       struct mbuf *m)
+in6_gif_output(struct ifnet *ifp, int family, struct mbuf *m)
 {
 	struct gif_softc *sc = (struct gif_softc*)ifp;
 	struct sockaddr_in6 *dst = (struct sockaddr_in6 *)&sc->gif_ro6.ro_dst;

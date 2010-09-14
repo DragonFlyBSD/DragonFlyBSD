@@ -41,7 +41,11 @@ static struct domain atalkdomain;
 static struct protosw atalksw[] = {
     {
 	/* Identifiers */
-	SOCK_DGRAM,	&atalkdomain,	ATPROTO_DDP,	PR_ATOMIC|PR_ADDR,
+	.pr_type = SOCK_DGRAM,
+	.pr_domain = &atalkdomain,
+	.pr_protocol = ATPROTO_DDP,
+	.pr_flags = PR_ATOMIC|PR_ADDR,
+
 	/*
 	 * protocol-protocol interface.
 	 * fields are pr_input, pr_output, pr_ctlinput, and pr_ctloutput.
@@ -50,12 +54,14 @@ static struct protosw atalksw[] = {
 	 * pr_output can be used by higher level appletalk protocols, should
 	 * they be included in the kernel.
 	 */
-	0,		ddp_output,	0,		0,
-	cpu0_soport,	NULL,
-	/* utility routines. */
-	ddp_init,	0,		0,		0,
-	&ddp_usrreqs
-    },
+	.pr_input = NULL,
+	.pr_output = ddp_output,
+	.pr_ctlinput = NULL,
+	.pr_ctloutput = NULL,
+
+	.pr_init = ddp_init,
+	.pr_usrreqs = &ddp_usrreqs
+    }
 };
 
 static struct domain atalkdomain = {

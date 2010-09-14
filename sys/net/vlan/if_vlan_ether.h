@@ -35,11 +35,11 @@
 
 #ifdef _KERNEL
 
-struct netmsg;
+union netmsg;
 struct bpf_if;
 struct mbuf;
 
-void	vlan_start_dispatch(struct netmsg *);
+void	vlan_start_dispatch(union netmsg *);
 void	vlan_ether_ptap(struct bpf_if *, struct mbuf *, uint16_t);
 void	vlan_ether_decap(struct mbuf **);
 

@@ -53,6 +53,7 @@
 
 #include <sys/thread2.h>
 #include <sys/socketvar2.h>
+#include <sys/msgport2.h>
 
 #include <machine/stdarg.h>
 
@@ -106,7 +107,7 @@ int (*mrt_ioctl)(int, caddr_t);
 int (*legal_vif_num)(int);
 u_long (*ip_mcast_src)(int);
 
-void (*rsvp_input_p)(struct mbuf *m, ...);
+int (*rsvp_input_p)(struct mbuf **, int *, int);
 int (*ip_rsvp_vif)(struct socket *, struct sockopt *);
 void (*ip_rsvp_force_done)(struct socket *);
 
@@ -144,21 +145,19 @@ rip_init(void)
  * for raw_input routine, then pass them along with
  * mbuf chain.
  */
-void
-rip_input(struct mbuf *m, ...)
+int
+rip_input(struct mbuf **mp, int *offp, int proto)
 {
 	struct sockaddr_in ripsrc = { sizeof ripsrc, AF_INET };
+	struct mbuf *m = *mp;
 	struct ip *ip = mtod(m, struct ip *);
 	struct inpcb *inp;
 	struct inpcb *last = NULL;
 	struct mbuf *opts = NULL;
-	int off, proto;
-	__va_list ap;
+	int off;
 
-	__va_start(ap, m);
-	off = __va_arg(ap, int);
-	proto = __va_arg(ap, int);
-	__va_end(ap);
+	off = *offp;
+	*mp = NULL;
 
 	ripsrc.sin_addr = ip->ip_src;
 	lwkt_gettoken(&raw_token);
@@ -257,6 +256,7 @@ rip_input(struct mbuf *m, ...)
 		ipstat.ips_delivered--;
 	}
 	lwkt_reltoken(&raw_token);
+	return(IPPROTO_DONE);
 }
 
 /*
@@ -341,14 +341,18 @@ rip_output(struct mbuf *m, struct socket *so, ...)
 /*
  * Raw IP socket option processing.
  */
-int
-rip_ctloutput(struct socket *so, struct sockopt *sopt)
+void
+rip_ctloutput(netmsg_t msg)
 {
+	struct socket *so = msg->base.nm_so;
+	struct sockopt *sopt = msg->ctloutput.nm_sopt;
 	struct	inpcb *inp = so->so_pcb;
 	int	error, optval;
 
-	if (sopt->sopt_level != IPPROTO_IP)
-		return (EINVAL);
+	if (sopt->sopt_level != IPPROTO_IP) {
+		error = EINVAL;
+		goto done;
+	}
 
 	error = 0;
 
@@ -389,8 +393,9 @@ rip_ctloutput(struct socket *so, struct sockopt *sopt)
 			break;
 
 		default:
-			error = ip_ctloutput(so, sopt);
-			break;
+			ip_ctloutput(msg);
+			/* msg invalid now */
+			return;
 		}
 		break;
 
@@ -455,13 +460,14 @@ rip_ctloutput(struct socket *so, struct sockopt *sopt)
 			break;
 
 		default:
-			error = ip_ctloutput(so, sopt);
-			break;
+			ip_ctloutput(msg);
+			/* msg invalid now */
+			return;
 		}
 		break;
 	}
-
-	return (error);
+done:
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
 /*
@@ -472,8 +478,10 @@ rip_ctloutput(struct socket *so, struct sockopt *sopt)
  * interface routes.
  */
 void
-rip_ctlinput(int cmd, struct sockaddr *sa, void *vip)
+rip_ctlinput(netmsg_t msg)
 {
+	int cmd = msg->ctlinput.nm_cmd;
+	struct sockaddr *sa = msg->ctlinput.nm_arg;
 	struct in_ifaddr *ia;
 	struct in_ifaddr_container *iac;
 	struct ifnet *ifp;
@@ -512,7 +520,7 @@ rip_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 			}
 		}
 		if (ia == NULL || (ia->ia_flags & IFA_ROUTE))
-			return;
+			goto done;
 		flags = RTF_UP;
 		ifp = ia->ia_ifa.ifa_ifp;
 
@@ -525,6 +533,8 @@ rip_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 			ia->ia_flags |= IFA_ROUTE;
 		break;
 	}
+done:
+	lwkt_replymsg(&msg->lmsg, 0);
 }
 
 u_long	rip_sendspace = RIPSNDQ;
@@ -535,9 +545,12 @@ SYSCTL_INT(_net_inet_raw, OID_AUTO, maxdgram, CTLFLAG_RW,
 SYSCTL_INT(_net_inet_raw, OID_AUTO, recvspace, CTLFLAG_RW,
     &rip_recvspace, 0, "Maximum incoming raw IP datagram size");
 
-static int
-rip_attach(struct socket *so, int proto, struct pru_attach_info *ai)
+static void
+rip_attach(netmsg_t msg)
 {
+	struct socket *so = msg->base.nm_so;
+	int proto = msg->attach.nm_proto;
+	struct pru_attach_info *ai = msg->attach.nm_ai;
 	struct inpcb *inp;
 	int error;
 
@@ -546,11 +559,12 @@ rip_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 		panic("rip_attach");
 	error = priv_check_cred(ai->p_ucred, PRIV_NETINET_RAW, NULL_CRED_OKAY);
 	if (error)
-		return error;
+		goto done;
 
 	error = soreserve(so, rip_sendspace, rip_recvspace, ai->sb_rlimit);
 	if (error)
-		return error;
+		goto done;
+
 	lwkt_gettoken(&raw_token);
 	error = in_pcballoc(so, &ripcbinfo);
 	if (error == 0) {
@@ -560,12 +574,15 @@ rip_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 		inp->inp_ip_ttl = ip_defttl;
 	}
 	lwkt_reltoken(&raw_token);
-	return 0;
+	error = 0;
+done:
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-rip_detach(struct socket *so)
+static void
+rip_detach(netmsg_t msg)
 {
+	struct socket *so = msg->base.nm_so;
 	struct inpcb *inp;
 
 	inp = so->so_pcb;
@@ -578,105 +595,135 @@ rip_detach(struct socket *so)
 	if (so == ip_rsvpd)
 		ip_rsvp_done();
 	in_pcbdetach(inp);
-	return 0;
+	lwkt_replymsg(&msg->lmsg, 0);
 }
 
 /*
  * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
  *	 will sofree() it when we return.
  */
-static int
-rip_abort(struct socket *so)
+static void
+rip_abort(netmsg_t msg)
 {
+	struct socket *so = msg->base.nm_so;
 	int error;
 
 	soisdisconnected(so);
-	if (so->so_state & SS_NOFDREF)	/* XXX not sure why this test */
-		error = rip_detach(so);
-	else
-		error = 0;
-
-	return error;
+	if (so->so_state & SS_NOFDREF) {    /* XXX not sure why this test */
+		rip_detach(msg);
+		/* msg invalid now */
+		return;
+	}
+	error = 0;
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-rip_disconnect(struct socket *so)
+static void
+rip_disconnect(netmsg_t msg)
 {
+	struct socket *so = msg->base.nm_so;
 	int error;
 
-	if ((so->so_state & SS_ISCONNECTED) == 0)
-		return ENOTCONN;
-	soreference(so);
-	error = rip_abort(so);
-	sofree(so);
-
-	return error;
+	if (so->so_state & SS_ISCONNECTED) {
+		soreference(so);
+		rip_abort(msg);
+		/* msg invalid now */
+		sofree(so);
+		return;
+	}
+	error = ENOTCONN;
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-rip_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
+static void
+rip_bind(netmsg_t msg)
 {
+	struct socket *so = msg->base.nm_so;
+	struct sockaddr *nam = msg->bind.nm_nam;
 	struct inpcb *inp = so->so_pcb;
 	struct sockaddr_in *addr = (struct sockaddr_in *)nam;
+	int error;
 
-	if (nam->sa_len != sizeof(*addr))
-		return EINVAL;
-
-	if (TAILQ_EMPTY(&ifnet) || ((addr->sin_family != AF_INET) &&
-				    (addr->sin_family != AF_IMPLINK)) ||
-	    (addr->sin_addr.s_addr != INADDR_ANY &&
-	     ifa_ifwithaddr((struct sockaddr *)addr) == 0))
-		return EADDRNOTAVAIL;
-	inp->inp_laddr = addr->sin_addr;
-	return 0;
+	if (nam->sa_len == sizeof(*addr)) {
+		if (TAILQ_EMPTY(&ifnet) ||
+		    ((addr->sin_family != AF_INET) &&
+		     (addr->sin_family != AF_IMPLINK)) ||
+		    (addr->sin_addr.s_addr != INADDR_ANY &&
+		     ifa_ifwithaddr((struct sockaddr *)addr) == 0)) {
+			error = EADDRNOTAVAIL;
+		} else {
+			inp->inp_laddr = addr->sin_addr;
+			error = 0;
+		}
+	} else {
+		error = EINVAL;
+	}
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-rip_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
+static void
+rip_connect(netmsg_t msg)
 {
+	struct socket *so = msg->base.nm_so;
+	struct sockaddr *nam = msg->connect.nm_nam;
 	struct inpcb *inp = so->so_pcb;
 	struct sockaddr_in *addr = (struct sockaddr_in *)nam;
+	int error;
 
-	if (nam->sa_len != sizeof(*addr))
-		return EINVAL;
-	if (TAILQ_EMPTY(&ifnet))
-		return EADDRNOTAVAIL;
-	if ((addr->sin_family != AF_INET) &&
-	    (addr->sin_family != AF_IMPLINK))
-		return EAFNOSUPPORT;
-	inp->inp_faddr = addr->sin_addr;
-	soisconnected(so);
-	return 0;
+	if (nam->sa_len != sizeof(*addr)) {
+		error = EINVAL;
+	} else if (TAILQ_EMPTY(&ifnet)) {
+		error = EADDRNOTAVAIL;
+	} else {
+		if ((addr->sin_family != AF_INET) &&
+		    (addr->sin_family != AF_IMPLINK)) {
+			error = EAFNOSUPPORT;
+		} else {
+			inp->inp_faddr = addr->sin_addr;
+			soisconnected(so);
+			error = 0;
+		}
+	}
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-rip_shutdown(struct socket *so)
+static void
+rip_shutdown(netmsg_t msg)
 {
-	socantsendmore(so);
-	return 0;
+	socantsendmore(msg->base.nm_so);
+	lwkt_replymsg(&msg->lmsg, 0);
 }
 
-static int
-rip_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
-	 struct mbuf *control, struct thread *td)
+static void
+rip_send(netmsg_t msg)
 {
+	struct socket *so = msg->base.nm_so;
+	struct mbuf *m = msg->send.nm_m;
+	/*struct mbuf *control = msg->send.nm_control;*/
+	struct sockaddr *nam = msg->send.nm_addr;
+	/*int flags = msg->send.nm_flags;*/
 	struct inpcb *inp = so->so_pcb;
 	u_long dst;
+	int error;
 
 	if (so->so_state & SS_ISCONNECTED) {
 		if (nam) {
 			m_freem(m);
-			return EISCONN;
+			error = EISCONN;
+		} else {
+			dst = inp->inp_faddr.s_addr;
+			error = rip_output(m, so, dst);
 		}
-		dst = inp->inp_faddr.s_addr;
 	} else {
 		if (nam == NULL) {
 			m_freem(m);
-			return ENOTCONN;
+			error = ENOTCONN;
+		} else {
+			dst = ((struct sockaddr_in *)nam)->sin_addr.s_addr;
+			error = rip_output(m, so, dst);
 		}
-		dst = ((struct sockaddr_in *)nam)->sin_addr.s_addr;
 	}
-	return rip_output(m, so, dst);
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
 SYSCTL_PROC(_net_inet_raw, OID_AUTO/*XXX*/, pcblist, CTLFLAG_RD, &ripcbinfo, 0,
@@ -684,22 +731,22 @@ SYSCTL_PROC(_net_inet_raw, OID_AUTO/*XXX*/, pcblist, CTLFLAG_RD, &ripcbinfo, 0,
 
 struct pr_usrreqs rip_usrreqs = {
 	.pru_abort = rip_abort,
-	.pru_accept = pru_accept_notsupp,
+	.pru_accept = pr_generic_notsupp,
 	.pru_attach = rip_attach,
 	.pru_bind = rip_bind,
 	.pru_connect = rip_connect,
-	.pru_connect2 = pru_connect2_notsupp,
-	.pru_control = in_control,
+	.pru_connect2 = pr_generic_notsupp,
+	.pru_control = in_control_dispatch,
 	.pru_detach = rip_detach,
 	.pru_disconnect = rip_disconnect,
-	.pru_listen = pru_listen_notsupp,
-	.pru_peeraddr = in_setpeeraddr,
-	.pru_rcvd = pru_rcvd_notsupp,
-	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_listen = pr_generic_notsupp,
+	.pru_peeraddr = in_setpeeraddr_dispatch,
+	.pru_rcvd = pr_generic_notsupp,
+	.pru_rcvoob = pr_generic_notsupp,
 	.pru_send = rip_send,
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = rip_shutdown,
-	.pru_sockaddr = in_setsockaddr,
+	.pru_sockaddr = in_setsockaddr_dispatch,
 	.pru_sosend = sosend,
 	.pru_soreceive = soreceive
 };

@@ -63,12 +63,14 @@ extern struct sco_pcb_list sco_pcb;
 
 /* sco_socket.c */
 struct socket;
+union netmsg;
+
 extern struct pr_usrreqs sco_usrreqs;
 extern int sco_sendspace;
 extern int sco_recvspace;
 int sco_usrreq(struct socket *, int, struct mbuf *,
 		struct mbuf *, struct mbuf *);
-int sco_ctloutput(struct socket *so, struct sockopt *sopt);
+void sco_ctloutput(union netmsg *);
 
 /* sco_upper.c */
 int sco_attach(struct sco_pcb **, const struct btproto *, void *);

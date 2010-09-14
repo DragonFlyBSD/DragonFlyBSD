@@ -96,7 +96,7 @@
 #endif /* COMPAT_43 */
 
 struct netmsg_ifaddr {
-	struct netmsg	netmsg;
+	struct netmsg_base base;
 	struct ifaddr	*ifa;
 	struct ifnet	*ifp;
 	int		tail;
@@ -253,7 +253,7 @@ static void
 if_start_ipifunc(void *arg)
 {
 	struct ifnet *ifp = arg;
-	struct lwkt_msg *lmsg = &ifp->if_start_nmsg[mycpuid].nm_lmsg;
+	struct lwkt_msg *lmsg = &ifp->if_start_nmsg[mycpuid].lmsg;
 
 	crit_enter();
 	if (lmsg->ms_flags & MSGF_DONE)
@@ -322,9 +322,9 @@ if_start_need_schedule(struct ifaltq *ifq, int running)
 }
 
 static void
-if_start_dispatch(struct netmsg *nmsg)
+if_start_dispatch(netmsg_t msg)
 {
-	struct lwkt_msg *lmsg = &nmsg->nm_lmsg;
+	struct lwkt_msg *lmsg = &msg->base.lmsg;
 	struct ifnet *ifp = lmsg->u.ms_resultp;
 	struct ifaltq *ifq = &ifp->if_snd;
 	int running = 0;
@@ -518,12 +518,12 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 		ifp->if_start_cpuid = if_start_cpuid_poll;
 #endif
 
-	ifp->if_start_nmsg = kmalloc(ncpus * sizeof(struct netmsg),
+	ifp->if_start_nmsg = kmalloc(ncpus * sizeof(*ifp->if_start_nmsg),
 				     M_LWKTMSG, M_WAITOK);
 	for (i = 0; i < ncpus; ++i) {
 		netmsg_init(&ifp->if_start_nmsg[i], NULL, &netisr_adone_rport,
 			    0, if_start_dispatch);
-		ifp->if_start_nmsg[i].nm_lmsg.u.ms_resultp = ifp;
+		ifp->if_start_nmsg[i].lmsg.u.ms_resultp = ifp;
 	}
 
 	TAILQ_INSERT_TAIL(&ifnet, ifp, if_link);
@@ -1803,15 +1803,16 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		case OSIOCGIFNETMASK:
 			cmd = SIOCGIFNETMASK;
 		}
-		error =  so_pru_control(so, cmd, data, ifp);
-		switch (ocmd) {
 
+		error = so_pru_control_direct(so, cmd, data, ifp);
+
+		switch (ocmd) {
 		case OSIOCGIFADDR:
 		case OSIOCGIFDSTADDR:
 		case OSIOCGIFBRDADDR:
 		case OSIOCGIFNETMASK:
 			*(u_short *)&ifr->ifr_addr = ifr->ifr_addr.sa_family;
-
+			break;
 		}
 	    }
 #endif /* COMPAT_43 */
@@ -2559,7 +2560,7 @@ ifac_free(struct ifaddr_container *ifac, int cpu_id)
 }
 
 static void
-ifa_iflink_dispatch(struct netmsg *nmsg)
+ifa_iflink_dispatch(netmsg_t nmsg)
 {
 	struct netmsg_ifaddr *msg = (struct netmsg_ifaddr *)nmsg;
 	struct ifaddr *ifa = msg->ifa;
@@ -2582,7 +2583,7 @@ ifa_iflink_dispatch(struct netmsg *nmsg)
 
 	crit_exit();
 
-	ifa_forwardmsg(&nmsg->nm_lmsg, cpu + 1);
+	ifa_forwardmsg(&nmsg->lmsg, cpu + 1);
 }
 
 void
@@ -2590,17 +2591,17 @@ ifa_iflink(struct ifaddr *ifa, struct ifnet *ifp, int tail)
 {
 	struct netmsg_ifaddr msg;
 
-	netmsg_init(&msg.netmsg, NULL, &curthread->td_msgport,
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport,
 		    0, ifa_iflink_dispatch);
 	msg.ifa = ifa;
 	msg.ifp = ifp;
 	msg.tail = tail;
 
-	ifa_domsg(&msg.netmsg.nm_lmsg, 0);
+	ifa_domsg(&msg.base.lmsg, 0);
 }
 
 static void
-ifa_ifunlink_dispatch(struct netmsg *nmsg)
+ifa_ifunlink_dispatch(netmsg_t nmsg)
 {
 	struct netmsg_ifaddr *msg = (struct netmsg_ifaddr *)nmsg;
 	struct ifaddr *ifa = msg->ifa;
@@ -2620,7 +2621,7 @@ ifa_ifunlink_dispatch(struct netmsg *nmsg)
 
 	crit_exit();
 
-	ifa_forwardmsg(&nmsg->nm_lmsg, cpu + 1);
+	ifa_forwardmsg(&nmsg->lmsg, cpu + 1);
 }
 
 void
@@ -2628,21 +2629,21 @@ ifa_ifunlink(struct ifaddr *ifa, struct ifnet *ifp)
 {
 	struct netmsg_ifaddr msg;
 
-	netmsg_init(&msg.netmsg, NULL, &curthread->td_msgport,
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport,
 		    0, ifa_ifunlink_dispatch);
 	msg.ifa = ifa;
 	msg.ifp = ifp;
 
-	ifa_domsg(&msg.netmsg.nm_lmsg, 0);
+	ifa_domsg(&msg.base.lmsg, 0);
 }
 
 static void
-ifa_destroy_dispatch(struct netmsg *nmsg)
+ifa_destroy_dispatch(netmsg_t nmsg)
 {
 	struct netmsg_ifaddr *msg = (struct netmsg_ifaddr *)nmsg;
 
 	IFAFREE(msg->ifa);
-	ifa_forwardmsg(&nmsg->nm_lmsg, mycpuid + 1);
+	ifa_forwardmsg(&nmsg->lmsg, mycpuid + 1);
 }
 
 void
@@ -2650,11 +2651,11 @@ ifa_destroy(struct ifaddr *ifa)
 {
 	struct netmsg_ifaddr msg;
 
-	netmsg_init(&msg.netmsg, NULL, &curthread->td_msgport,
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport,
 		    0, ifa_destroy_dispatch);
 	msg.ifa = ifa;
 
-	ifa_domsg(&msg.netmsg.nm_lmsg, 0);
+	ifa_domsg(&msg.base.lmsg, 0);
 }
 
 struct lwkt_port *
@@ -2695,11 +2696,11 @@ ifnet_sendmsg(struct lwkt_msg *lmsg, int cpu)
 static void
 ifnet_service_loop(void *arg __unused)
 {
-	struct netmsg *msg;
+	netmsg_t msg;
 
 	while ((msg = lwkt_waitport(&curthread->td_msgport, 0))) {
-		KASSERT(msg->nm_dispatch, ("ifnet_service: badmsg"));
-		msg->nm_dispatch(msg);
+		KASSERT(msg->base.nm_dispatch, ("ifnet_service: badmsg"));
+		msg->base.nm_dispatch(msg);
 	}
 }
 

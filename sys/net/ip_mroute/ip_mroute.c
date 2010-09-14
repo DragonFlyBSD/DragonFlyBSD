@@ -1708,16 +1708,19 @@ encap_send(struct ip *ip, struct vif *vifp, struct mbuf *m)
  *
  * This is similar to mroute_encapcheck() + mroute_encap_input() in -current.
  */
-static void
-X_ipip_input(struct mbuf *m, int off, int proto)
+static int
+X_ipip_input(struct mbuf **mp, int *offp, int proto)
 {
+    struct mbuf *m = *mp;
     struct ip *ip = mtod(m, struct ip *);
     int hlen = ip->ip_hl << 2;
 
     if (!have_encap_tunnel) {
-	rip_input(m, off, proto);
-	return;
+	rip_input(mp, offp, proto);
+	return(IPPROTO_DONE);
     }
+    *mp = NULL;
+
     /*
      * dump the packet if it's not to a multicast destination or if
      * we don't have an encapsulating tunnel with the source.
@@ -1728,7 +1731,7 @@ X_ipip_input(struct mbuf *m, int off, int proto)
     if (!IN_MULTICAST(ntohl(((struct ip *)((char *)ip+hlen))->ip_dst.s_addr))) {
 	++mrtstat.mrts_bad_tunnel;
 	m_freem(m);
-	return;
+	return(IPPROTO_DONE);
     }
     if (ip->ip_src.s_addr != last_encap_src) {
 	struct vif *vifp = viftable;
@@ -1751,7 +1754,7 @@ X_ipip_input(struct mbuf *m, int off, int proto)
 	if (mrtdebug)
 	    log(LOG_DEBUG, "ip_mforward: no tunnel with %lx\n",
 		(u_long)ntohl(ip->ip_src.s_addr));
-	return;
+	return(IPPROTO_DONE);
     }
 
     if (hlen > sizeof(struct ip))
@@ -1762,6 +1765,7 @@ X_ipip_input(struct mbuf *m, int off, int proto)
     m->m_pkthdr.rcvif = last_encap_vif->v_ifp;
 
     netisr_queue(NETISR_IP, m);
+    return(IPPROTO_DONE);
 }
 
 /*
@@ -2108,26 +2112,24 @@ X_ip_rsvp_force_done(struct socket *so)
     lwkt_reltoken(&mroute_token);
 }
 
-static void
-X_rsvp_input(struct mbuf *m, ...)
+static int
+X_rsvp_input(struct mbuf **mp, int *offp, int proto)
 {
     int vifi;
+    struct mbuf *m = *mp;
     struct ip *ip = mtod(m, struct ip *);
     struct sockaddr_in rsvp_src = { sizeof rsvp_src, AF_INET };
     struct ifnet *ifp;
-    int off, proto;
+    int off;
 #ifdef ALTQ
     /* support IP_RECVIF used by rsvpd rel4.2a1 */
     struct inpcb *inp;
     struct socket *so;
     struct mbuf *opts;
 #endif
-    __va_list ap;
 
-    __va_start(ap, m);
-    off = __va_arg(ap, int);
-    proto = __va_arg(ap, int);
-    __va_end(ap);
+    off = *offp;
+    *mp = NULL;
 
     if (rsvpdebug)
 	kprintf("rsvp_input: rsvp_on %d\n",rsvp_on);
@@ -2138,7 +2140,7 @@ X_rsvp_input(struct mbuf *m, ...)
      */
     if (!rsvp_on) {
 	m_freem(m);
-	return;
+	return(IPPROTO_DONE);
     }
 
     lwkt_gettoken(&mroute_token);
@@ -2170,7 +2172,8 @@ X_rsvp_input(struct mbuf *m, ...)
 	if (ip_rsvpd != NULL) {
 	    if (rsvpdebug)
 		kprintf("rsvp_input: Sending packet up old-style socket\n");
-	    rip_input(m, off, proto);  /* xxx */
+	    *mp = m;
+	    rip_input(mp, offp, proto);  /* xxx */
 	} else {
 	    if (rsvpdebug && vifi == numvifs)
 		kprintf("rsvp_input: Can't find vif for packet.\n");
@@ -2179,7 +2182,7 @@ X_rsvp_input(struct mbuf *m, ...)
 	    m_freem(m);
 	}
 	lwkt_reltoken(&mroute_token);
-	return;
+	return(IPPROTO_DONE);
     }
     rsvp_src.sin_addr = ip->ip_src;
 
@@ -2191,8 +2194,9 @@ X_rsvp_input(struct mbuf *m, ...)
     opts = NULL;
     inp = (struct inpcb *)so->so_pcb;
     if (inp->inp_flags & INP_CONTROLOPTS ||
-	inp->inp_socket->so_options & SO_TIMESTAMP)
+	inp->inp_socket->so_options & SO_TIMESTAMP) {
 	ip_savecontrol(inp, &opts, ip, m);
+    }
     if (ssb_appendaddr(&so->so_rcv,
 		     (struct sockaddr *)&rsvp_src,m, opts) == 0) {
 	m_freem(m);
@@ -2215,8 +2219,8 @@ X_rsvp_input(struct mbuf *m, ...)
 	    kprintf("rsvp_input: send packet up\n");
     }
 #endif /* !ALTQ */
-
     lwkt_reltoken(&mroute_token);
+    return(IPPROTO_DONE);
 }
 
 /*
@@ -3017,24 +3021,19 @@ pim_register_send_rp(struct ip *ip, struct vif *vifp,
  * (used by PIM-SM): the PIM header is stripped off, and the inner packet
  * is passed to if_simloop().
  */
-void
-pim_input(struct mbuf *m, ...)
+int
+pim_input(struct mbuf **mp, int *offp, int proto)
 {
-    int off, proto;
+    struct mbuf *m = *mp;
     struct ip *ip = mtod(m, struct ip *);
     struct pim *pim;
     int minlen;
     int datalen = ip->ip_len;
     int ip_tos;
     int iphlen;
-    __va_list ap;
 
-    __va_start(ap, m);
-    off = __va_arg(ap, int);
-    proto = __va_arg(ap, int);
-    __va_end(ap);
-
-    iphlen = off;
+    iphlen = *offp;
+    *mp = NULL;
 
     /* Keep statistics */
     pimstat.pims_rcv_total_msgs++;
@@ -3048,7 +3047,7 @@ pim_input(struct mbuf *m, ...)
 	log(LOG_ERR, "pim_input: packet size too small %d from %lx\n",
 	    datalen, (u_long)ip->ip_src.s_addr);
 	m_freem(m);
-	return;
+	return(IPPROTO_DONE);
     }
     
     /*
@@ -3067,7 +3066,7 @@ pim_input(struct mbuf *m, ...)
     if ((m->m_flags & M_EXT || m->m_len < minlen) &&
 	(m = m_pullup(m, minlen)) == 0) {
 	log(LOG_ERR, "pim_input: m_pullup failure\n");
-	return;
+	return(IPPROTO_DONE);
     }
     /* m_pullup() may have given us a new mbuf so reset ip. */
     ip = mtod(m, struct ip *);
@@ -3092,7 +3091,7 @@ pim_input(struct mbuf *m, ...)
 	if (mrtdebug & DEBUG_PIM)
 	    log(LOG_DEBUG, "pim_input: invalid checksum");
 	m_freem(m);
-	return;
+	return(IPPROTO_DONE);
     }
 
     /* PIM version check */
@@ -3101,7 +3100,7 @@ pim_input(struct mbuf *m, ...)
 	log(LOG_ERR, "pim_input: incorrect version %d, expecting %d\n",
 	    PIM_VT_V(pim->pim_vt), PIM_VERSION);
 	m_freem(m);
-	return;
+	return(IPPROTO_DONE);
     }
     
     /* restore mbuf back to the outer IP */
@@ -3124,7 +3123,7 @@ pim_input(struct mbuf *m, ...)
 		log(LOG_DEBUG,
 		    "pim_input: register vif not set: %d\n", reg_vif_num);
 	    m_freem(m);
-	    return;
+	    return(IPPROTO_DONE);
 	}
 	
 	/*
@@ -3137,7 +3136,7 @@ pim_input(struct mbuf *m, ...)
 		"pim_input: register packet size too small %d from %lx\n",
 		datalen, (u_long)ip->ip_src.s_addr);
 	    m_freem(m);
-	    return;
+	    return(IPPROTO_DONE);
 	}
 	
 	reghdr = (u_int32_t *)(pim + 1);
@@ -3159,7 +3158,7 @@ pim_input(struct mbuf *m, ...)
 		    "of the inner packet\n", encap_ip->ip_v);
 	    }
 	    m_freem(m);
-	    return;
+	    return(IPPROTO_DONE);
 	}
 	
 	/* verify the inner packet is destined to a mcast group */
@@ -3171,7 +3170,7 @@ pim_input(struct mbuf *m, ...)
 		    "multicast %lx\n",
 		    (u_long)ntohl(encap_ip->ip_dst.s_addr));
 	    m_freem(m);
-	    return;
+	    return(IPPROTO_DONE);
 	}
 
 	/* If a NULL_REGISTER, pass it to the daemon */
@@ -3211,7 +3210,7 @@ pim_input(struct mbuf *m, ...)
 	    log(LOG_ERR,
 		"pim_input: pim register: could not copy register head\n");
 	    m_freem(m);
-	    return;
+	    return(IPPROTO_DONE);
 	}
 	
 	/* Keep statistics */
@@ -3247,9 +3246,10 @@ pim_input_to_daemon:
      * XXX: the outer IP header pkt size of a Register is not adjust to
      * reflect the fact that the inner multicast data is truncated.
      */
-    rip_input(m, iphlen, proto);
-
-    return;
+    *mp = m;
+    *offp = iphlen;
+    rip_input(mp, offp, proto);
+    return(IPPROTO_DONE);
 }
 #endif /* PIM */
 

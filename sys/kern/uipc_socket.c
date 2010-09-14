@@ -206,8 +206,15 @@ socreate(int dom, struct socket **aso, int type,
 	 * on the socket on this port until an inpcb is attached to it and
 	 * is able to match incoming packets, or until the socket becomes
 	 * available to userland.
+	 *
+	 * We normally default the socket to the protocol thread on cpu 0.
+	 * If PR_SYNC_PORT is set (unix domain sockets) there is no protocol
+	 * thread and all pr_*()/pru_*() calls are executed synchronously.
 	 */
-	so->so_port = cpu0_soport(so, NULL, NULL);
+	if (prp->pr_flags & PR_SYNC_PORT)
+		so->so_port = &netisr_sync_port;
+	else
+		so->so_port = cpu_portfn(0);
 
 	TAILQ_INIT(&so->so_incomp);
 	TAILQ_INIT(&so->so_comp);
@@ -454,7 +461,7 @@ soaccept(struct socket *so, struct sockaddr **nam)
 		panic("soaccept: !NOFDREF");
 	soreference(so);		/* create ref */
 	soclrstate(so, SS_NOFDREF);	/* owned by lack of SS_NOFDREF */
-	error = so_pru_accept(so, nam);
+	error = so_pru_accept_direct(so, nam);
 	return (error);
 }
 
@@ -1336,7 +1343,7 @@ sosetopt(struct socket *so, struct sockopt *sopt)
 	sopt->sopt_dir = SOPT_SET;
 	if (sopt->sopt_level != SOL_SOCKET) {
 		if (so->so_proto && so->so_proto->pr_ctloutput) {
-			return (so_pru_ctloutput(so, sopt));
+			return (so_pr_ctloutput(so, sopt));
 		}
 		error = ENOPROTOOPT;
 	} else {
@@ -1471,7 +1478,7 @@ sosetopt(struct socket *so, struct sockopt *sopt)
 			break;
 		}
 		if (error == 0 && so->so_proto && so->so_proto->pr_ctloutput) {
-			(void) so_pru_ctloutput(so, sopt);
+			(void) so_pr_ctloutput(so, sopt);
 		}
 	}
 bad:
@@ -1529,7 +1536,7 @@ sogetopt(struct socket *so, struct sockopt *sopt)
 	sopt->sopt_dir = SOPT_GET;
 	if (sopt->sopt_level != SOL_SOCKET) {
 		if (so->so_proto && so->so_proto->pr_ctloutput) {
-			return (so_pru_ctloutput(so, sopt));
+			return (so_pr_ctloutput(so, sopt));
 		} else
 			return (ENOPROTOOPT);
 	} else {

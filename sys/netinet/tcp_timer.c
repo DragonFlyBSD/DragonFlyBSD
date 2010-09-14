@@ -229,8 +229,8 @@ tcp_send_timermsg(struct tcpcb *tp, uint32_t task)
 		 tmsg->tt_tcb != NULL);
 
 	tmsg->tt_tasks |= task;
-	if (tmsg->tt_nmsg.nm_lmsg.ms_flags & MSGF_DONE)
-		lwkt_sendmsg(tmsg->tt_msgport, &tmsg->tt_nmsg.nm_lmsg);
+	if (tmsg->tt_msg.lmsg.ms_flags & MSGF_DONE)
+		lwkt_sendmsg(tmsg->tt_msgport, &tmsg->tt_msg.lmsg);
 }
 
 int	tcp_syn_backoff[TCP_MAXRXTSHIFT + 1] =
@@ -651,9 +651,9 @@ tcp_timer_rexmt(void *xtp)
 }
 
 static void
-tcp_timer_handler(struct netmsg *nmsg)
+tcp_timer_handler(netmsg_t msg)
 {
-	struct netmsg_tcp_timer *tmsg = (struct netmsg_tcp_timer *)nmsg;
+	struct netmsg_tcp_timer *tmsg = (struct netmsg_tcp_timer *)msg;
 	const struct tcp_timer *tt;
 	struct tcpcb *tp;
 
@@ -668,7 +668,7 @@ tcp_timer_handler(struct netmsg *nmsg)
 	tmsg->tt_tasks = 0;
 
 	/* Reply ASAP */
-	lwkt_replymsg(&tmsg->tt_nmsg.nm_lmsg, 0);
+	lwkt_replymsg(&tmsg->tt_msg.lmsg, 0);
 
 	if (tmsg->tt_running_tasks == 0) {
 		/*
@@ -700,7 +700,7 @@ tcp_create_timermsg(struct tcpcb *tp, struct lwkt_port *msgport)
 {
 	struct netmsg_tcp_timer *tmsg = tp->tt_msg;
 
-	netmsg_init(&tmsg->tt_nmsg, NULL, &netisr_adone_rport,
+	netmsg_init(&tmsg->tt_msg, NULL, &netisr_adone_rport,
 		    MSGF_DROPABLE | MSGF_PRIORITY, tcp_timer_handler);
 	tmsg->tt_cpuid = mycpuid;
 	tmsg->tt_msgport = msgport;
@@ -719,12 +719,12 @@ tcp_destroy_timermsg(struct tcpcb *tp)
 
 	KKASSERT(tmsg->tt_cpuid == mycpuid);
 	crit_enter();
-	if ((tmsg->tt_nmsg.nm_lmsg.ms_flags & MSGF_DONE) == 0) {
+	if ((tmsg->tt_msg.lmsg.ms_flags & MSGF_DONE) == 0) {
 		/*
 		 * This message is still pending to be processed;
 		 * drop it.
 		 */
-		lwkt_dropmsg(&tmsg->tt_nmsg.nm_lmsg);
+		lwkt_dropmsg(&tmsg->tt_msg.lmsg);
 	}
 	crit_exit();
 }

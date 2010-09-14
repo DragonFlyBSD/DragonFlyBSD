@@ -40,9 +40,9 @@ static void     ddp_input(struct mbuf *, struct ifnet *, struct elaphdr *, int);
  * Could probably merge these two code segments a little better...
  */
 void
-at2intr(struct netmsg *msg)
+at2intr(netmsg_t msg)
 {
-	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
+	struct mbuf *m = msg->packet.nm_packet;
 
 	/*
 	 * Phase 2 packet handling 
@@ -54,9 +54,9 @@ at2intr(struct netmsg *msg)
 }
 
 void
-at1intr(struct netmsg *msg)
+at1intr(netmsg_t msg)
 {
-	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
+	struct mbuf *m = msg->packet.nm_packet;
 	struct elaphdr *elhp, elh;
 
 	get_mplock();

@@ -748,7 +748,7 @@ tcp_drop(struct tcpcb *tp, int error)
 #ifdef SMP
 
 struct netmsg_remwildcard {
-	struct netmsg		nm_netmsg;
+	struct netmsg_base	base;
 	struct inpcb		*nm_inp;
 	struct inpcbinfo	*nm_pcbinfo;
 #if defined(INET6)
@@ -764,27 +764,27 @@ struct netmsg_remwildcard {
  * on the cpu controlling the inp last and then doing the disconnect.
  */
 static void
-in_pcbremwildcardhash_handler(struct netmsg *msg0)
+in_pcbremwildcardhash_handler(netmsg_t msg)
 {
-	struct netmsg_remwildcard *msg = (struct netmsg_remwildcard *)msg0;
+	struct netmsg_remwildcard *nmsg = (struct netmsg_remwildcard *)msg;
 	int cpu;
 
-	cpu = msg->nm_pcbinfo->cpu;
+	cpu = nmsg->nm_pcbinfo->cpu;
 
-	if (cpu == msg->nm_inp->inp_pcbinfo->cpu) {
+	if (cpu == nmsg->nm_inp->inp_pcbinfo->cpu) {
 		/* note: detach removes any wildcard hash entry */
 #ifdef INET6
-		if (msg->nm_isinet6)
-			in6_pcbdetach(msg->nm_inp);
+		if (nmsg->nm_isinet6)
+			in6_pcbdetach(nmsg->nm_inp);
 		else
 #endif
-			in_pcbdetach(msg->nm_inp);
-		lwkt_replymsg(&msg->nm_netmsg.nm_lmsg, 0);
+			in_pcbdetach(nmsg->nm_inp);
+		lwkt_replymsg(&nmsg->base.lmsg, 0);
 	} else {
-		in_pcbremwildcardhash_oncpu(msg->nm_inp, msg->nm_pcbinfo);
+		in_pcbremwildcardhash_oncpu(nmsg->nm_inp, nmsg->nm_pcbinfo);
 		cpu = (cpu + 1) % ncpus2;
-		msg->nm_pcbinfo = &tcbinfo[cpu];
-		lwkt_forwardmsg(cpu_portfn(cpu), &msg->nm_netmsg.nm_lmsg);
+		nmsg->nm_pcbinfo = &tcbinfo[cpu];
+		lwkt_forwardmsg(cpu_portfn(cpu), &nmsg->base.lmsg);
 	}
 }
 
@@ -975,19 +975,19 @@ no_valid_rt:
 	 */
 #ifdef SMP
 	if (inp->inp_flags & INP_WILDCARD_MP) {
-		struct netmsg_remwildcard *msg;
+		struct netmsg_remwildcard *nmsg;
 
 		cpu = (inp->inp_pcbinfo->cpu + 1) % ncpus2;
-		msg = kmalloc(sizeof(struct netmsg_remwildcard),
-			      M_LWKTMSG, M_INTWAIT);
-		netmsg_init(&msg->nm_netmsg, NULL, &netisr_afree_rport,
+		nmsg = kmalloc(sizeof(struct netmsg_remwildcard),
+			       M_LWKTMSG, M_INTWAIT);
+		netmsg_init(&nmsg->base, NULL, &netisr_afree_rport,
 			    0, in_pcbremwildcardhash_handler);
 #ifdef INET6
-		msg->nm_isinet6 = isafinet6;
+		nmsg->nm_isinet6 = isafinet6;
 #endif
-		msg->nm_inp = inp;
-		msg->nm_pcbinfo = &tcbinfo[cpu];
-		lwkt_sendmsg(cpu_portfn(cpu), &msg->nm_netmsg.nm_lmsg);
+		nmsg->nm_inp = inp;
+		nmsg->nm_pcbinfo = &tcbinfo[cpu];
+		lwkt_sendmsg(cpu_portfn(cpu), &nmsg->base.lmsg);
 	} else
 #endif
 	{
@@ -1038,17 +1038,17 @@ tcp_drain_oncpu(struct inpcbhead *head)
 
 #ifdef SMP
 struct netmsg_tcp_drain {
-	struct netmsg		nm_netmsg;
+	struct netmsg_base	base;
 	struct inpcbhead	*nm_head;
 };
 
 static void
-tcp_drain_handler(netmsg_t netmsg)
+tcp_drain_handler(netmsg_t msg)
 {
-	struct netmsg_tcp_drain *nm = (void *)netmsg;
+	struct netmsg_tcp_drain *nm = (void *)msg;
 
 	tcp_drain_oncpu(nm->nm_head);
-	lwkt_replymsg(&nm->nm_netmsg.nm_lmsg, 0);
+	lwkt_replymsg(&nm->base.lmsg, 0);
 }
 #endif
 
@@ -1072,19 +1072,19 @@ tcp_drain(void)
 	 */
 #ifdef SMP
 	for (cpu = 0; cpu < ncpus2; cpu++) {
-		struct netmsg_tcp_drain *msg;
+		struct netmsg_tcp_drain *nm;
 
 		if (cpu == mycpu->gd_cpuid) {
 			tcp_drain_oncpu(&tcbinfo[cpu].pcblisthead);
 		} else {
-			msg = kmalloc(sizeof(struct netmsg_tcp_drain),
-				    M_LWKTMSG, M_NOWAIT);
-			if (msg == NULL)
+			nm = kmalloc(sizeof(struct netmsg_tcp_drain),
+				     M_LWKTMSG, M_NOWAIT);
+			if (nm == NULL)
 				continue;
-			netmsg_init(&msg->nm_netmsg, NULL, &netisr_afree_rport,
+			netmsg_init(&nm->base, NULL, &netisr_afree_rport,
 				    0, tcp_drain_handler);
-			msg->nm_head = &tcbinfo[cpu].pcblisthead;
-			lwkt_sendmsg(cpu_portfn(cpu), &msg->nm_netmsg.nm_lmsg);
+			nm->nm_head = &tcbinfo[cpu].pcblisthead;
+			lwkt_sendmsg(cpu_portfn(cpu), &nm->base.lmsg);
 		}
 	}
 #else
@@ -1323,32 +1323,34 @@ SYSCTL_PROC(_net_inet6_tcp6, OID_AUTO, getcred, (CTLTYPE_OPAQUE | CTLFLAG_RW),
 #endif
 
 struct netmsg_tcp_notify {
-	struct netmsg	nm_nmsg;
+	struct netmsg_base base;
 	void		(*nm_notify)(struct inpcb *, int);
 	struct in_addr	nm_faddr;
 	int		nm_arg;
 };
 
 static void
-tcp_notifyall_oncpu(struct netmsg *netmsg)
+tcp_notifyall_oncpu(netmsg_t msg)
 {
-	struct netmsg_tcp_notify *nmsg = (struct netmsg_tcp_notify *)netmsg;
+	struct netmsg_tcp_notify *nm = (struct netmsg_tcp_notify *)msg;
 	int nextcpu;
 
-	in_pcbnotifyall(&tcbinfo[mycpuid].pcblisthead, nmsg->nm_faddr,
-			nmsg->nm_arg, nmsg->nm_notify);
+	in_pcbnotifyall(&tcbinfo[mycpuid].pcblisthead, nm->nm_faddr,
+			nm->nm_arg, nm->nm_notify);
 
 	nextcpu = mycpuid + 1;
 	if (nextcpu < ncpus2)
-		lwkt_forwardmsg(cpu_portfn(nextcpu), &netmsg->nm_lmsg);
+		lwkt_forwardmsg(cpu_portfn(nextcpu), &nm->base.lmsg);
 	else
-		lwkt_replymsg(&netmsg->nm_lmsg, 0);
+		lwkt_replymsg(&nm->base.lmsg, 0);
 }
 
 void
-tcp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
+tcp_ctlinput(netmsg_t msg)
 {
-	struct ip *ip = vip;
+	int cmd = msg->ctlinput.nm_cmd;
+	struct sockaddr *sa = msg->ctlinput.nm_arg;
+	struct ip *ip = msg->ctlinput.nm_extra;
 	struct tcphdr *th;
 	struct in_addr faddr;
 	struct inpcb *inp;
@@ -1358,12 +1360,12 @@ tcp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 	int arg, cpu;
 
 	if ((unsigned)cmd >= PRC_NCMDS || inetctlerrmap[cmd] == 0) {
-		return;
+		goto done;
 	}
 
 	faddr = ((struct sockaddr_in *)sa)->sin_addr;
 	if (sa->sa_family != AF_INET || faddr.s_addr == INADDR_ANY)
-		return;
+		goto done;
 
 	arg = inetctlerrmap[cmd];
 	if (cmd == PRC_QUENCH) {
@@ -1415,23 +1417,30 @@ tcp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 		}
 		crit_exit();
 	} else {
-		struct netmsg_tcp_notify nmsg;
+		struct netmsg_tcp_notify *nm;
 
 		KKASSERT(&curthread->td_msgport == cpu_portfn(0));
-		netmsg_init(&nmsg.nm_nmsg, NULL, &curthread->td_msgport,
+		nm = kmalloc(sizeof(*nm), M_LWKTMSG, M_INTWAIT);
+		netmsg_init(&nm->base, NULL, &netisr_afree_rport,
 			    0, tcp_notifyall_oncpu);
-		nmsg.nm_faddr = faddr;
-		nmsg.nm_arg = arg;
-		nmsg.nm_notify = notify;
+		nm->nm_faddr = faddr;
+		nm->nm_arg = arg;
+		nm->nm_notify = notify;
 
-		lwkt_domsg(cpu_portfn(0), &nmsg.nm_nmsg.nm_lmsg, 0);
+		lwkt_sendmsg(cpu_portfn(0), &nm->base.lmsg);
 	}
+done:
+	lwkt_replymsg(&msg->lmsg, 0);
 }
 
 #ifdef INET6
+
 void
-tcp6_ctlinput(int cmd, struct sockaddr *sa, void *d)
+tcp6_ctlinput(netmsg_t msg)
 {
+	int cmd = msg->ctlinput.nm_cmd;
+	struct sockaddr *sa = msg->ctlinput.nm_arg;
+	void *d = msg->ctlinput.nm_extra;
 	struct tcphdr th;
 	void (*notify) (struct inpcb *, int) = tcp_notify;
 	struct ip6_hdr *ip6;
@@ -1446,8 +1455,9 @@ tcp6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 	int arg;
 
 	if (sa->sa_family != AF_INET6 ||
-	    sa->sa_len != sizeof(struct sockaddr_in6))
-		return;
+	    sa->sa_len != sizeof(struct sockaddr_in6)) {
+		goto out;
+	}
 
 	arg = 0;
 	if (cmd == PRC_QUENCH)
@@ -1460,7 +1470,7 @@ tcp6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 		notify = tcp_mtudisc;
 	} else if (!PRC_IS_REDIRECT(cmd) &&
 		 ((unsigned)cmd > PRC_NCMDS || inet6ctlerrmap[cmd] == 0)) {
-		return;
+		goto out;
 	}
 
 	/* if the parameter is from icmp6, decode it. */
@@ -1486,7 +1496,7 @@ tcp6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 
 		/* check if we can safely examine src and dst ports */
 		if (m->m_pkthdr.len < off + sizeof *thp)
-			return;
+			goto out;
 
 		bzero(&th, sizeof th);
 		m_copydata(m, off, sizeof *thp, (caddr_t)&th);
@@ -1501,10 +1511,14 @@ tcp6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 		inc.inc6_laddr = ip6cp->ip6c_src->sin6_addr;
 		inc.inc_isipv6 = 1;
 		syncache_unreach(&inc, &th);
-	} else
+	} else {
 		in6_pcbnotify(&tcbinfo[0].pcblisthead, sa, 0,
 		    (const struct sockaddr *)sa6_src, 0, cmd, arg, notify);
+	}
+out:
+	lwkt_replymsg(&msg->ctlinput.base.lmsg, 0);
 }
+
 #endif
 
 /*

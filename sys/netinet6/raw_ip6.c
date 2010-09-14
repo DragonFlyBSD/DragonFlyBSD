@@ -82,6 +82,7 @@
 
 #include <sys/thread2.h>
 #include <sys/socketvar2.h>
+#include <sys/msgport2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -270,8 +271,11 @@ rip6_input(struct mbuf **mp, int *offp, int proto)
 }
 
 void
-rip6_ctlinput(int cmd, struct sockaddr *sa, void *d)
+rip6_ctlinput(netmsg_t msg)
 {
+	int cmd = msg->ctlinput.nm_cmd;
+	struct sockaddr *sa = msg->ctlinput.nm_arg;
+	void *d = msg->ctlinput.nm_extra;
 	struct ip6_hdr *ip6;
 	struct mbuf *m;
 	int off = 0;
@@ -281,16 +285,16 @@ rip6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 
 	if (sa->sa_family != AF_INET6 ||
 	    sa->sa_len != sizeof(struct sockaddr_in6))
-		return;
+		goto out;
 
 	if ((unsigned)cmd >= PRC_NCMDS)
-		return;
+		goto out;
 	if (PRC_IS_REDIRECT(cmd))
 		notify = in6_rtchange, d = NULL;
 	else if (cmd == PRC_HOSTDEAD)
 		d = NULL;
 	else if (inet6ctlerrmap[cmd] == 0)
-		return;
+		goto out;
 
 	/* if the parameter is from icmp6, decode it. */
 	if (d != NULL) {
@@ -307,6 +311,8 @@ rip6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 
 	in6_pcbnotify(&ripcbinfo.pcblisthead, sa, 0,
 		      (const struct sockaddr *)sa6_src, 0, cmd, 0, notify);
+out:
+	lwkt_replymsg(&msg->ctlinput.base.lmsg, 0);
 }
 
 /*
@@ -491,19 +497,26 @@ freectl:
 /*
  * Raw IPv6 socket option processing.
  */
-int
-rip6_ctloutput(struct socket *so, struct sockopt *sopt)
+void
+rip6_ctloutput(netmsg_t msg)
 {
+	struct socket *so = msg->ctloutput.base.nm_so;;
+	struct sockopt *sopt = msg->ctloutput.nm_sopt;
 	int error;
 
-	if (sopt->sopt_level == IPPROTO_ICMPV6)
+	if (sopt->sopt_level == IPPROTO_ICMPV6) {
 		/*
 		 * XXX: is it better to call icmp6_ctloutput() directly
 		 * from protosw?
 		 */
-		return (icmp6_ctloutput(so, sopt));
-	else if (sopt->sopt_level != IPPROTO_IPV6)
-		return (EINVAL);
+		icmp6_ctloutput(msg);
+		/* msg invalid now */
+		return;
+	}
+	if (sopt->sopt_level != IPPROTO_IPV6) {
+		error = EINVAL;
+		goto out;
+	}
 
 	error = 0;
 
@@ -548,13 +561,16 @@ rip6_ctloutput(struct socket *so, struct sockopt *sopt)
 		}
 		break;
 	}
-
-	return (error);
+out:
+	lwkt_replymsg(&msg->ctloutput.base.lmsg, error);
 }
 
-static int
-rip6_attach(struct socket *so, int proto, struct pru_attach_info *ai)
+static void
+rip6_attach(netmsg_t msg)
 {
+	struct socket *so = msg->attach.base.nm_so;
+	int proto = msg->attach.nm_proto;
+	struct pru_attach_info *ai = msg->attach.nm_ai;
 	struct inpcb *inp;
 	int error;
 
@@ -563,16 +579,16 @@ rip6_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 		panic("rip6_attach");
 	error = priv_check_cred(ai->p_ucred, PRIV_NETINET_RAW, NULL_CRED_OKAY);
 	if (error)
-		return error;
+		goto out;
 
 	error = soreserve(so, rip_sendspace, rip_recvspace, ai->sb_rlimit);
 	if (error)
-		return error;
+		goto out;
 	crit_enter();
 	error = in_pcballoc(so, &ripcbinfo);
 	crit_exit();
 	if (error)
-		return error;
+		goto out;
 	inp = (struct inpcb *)so->so_pcb;
 	inp->inp_vflag |= INP_IPV6;
 	inp->in6p_ip6_nxt = (long)proto;
@@ -582,12 +598,15 @@ rip6_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	       sizeof(struct icmp6_filter), M_PCB, M_NOWAIT);
 	if (inp->in6p_icmp6filt != NULL)
 		ICMP6_FILTER_SETPASSALL(inp->in6p_icmp6filt);
-	return 0;
+	error = 0;
+out:
+	lwkt_replymsg(&msg->attach.base.lmsg, error);
 }
 
-static int
-rip6_detach(struct socket *so)
+static void
+rip6_detach(netmsg_t msg)
 {
+	struct socket *so = msg->detach.base.nm_so;
 	struct inpcb *inp;
 
 	inp = so->so_pcb;
@@ -601,73 +620,85 @@ rip6_detach(struct socket *so)
 		inp->in6p_icmp6filt = NULL;
 	}
 	in6_pcbdetach(inp);
-	return 0;
+	lwkt_replymsg(&msg->detach.base.lmsg, 0);
 }
 
 /*
  * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
  *	 will sofree() it when we return.
  */
-static int
-rip6_abort(struct socket *so)
+static void
+rip6_abort(netmsg_t msg)
 {
-	int error;
-
-	soisdisconnected(so);
-	error = rip6_detach(so);
-
-	return error;
+	soisdisconnected(msg->abort.base.nm_so);
+	rip6_detach(msg);
+	/* msg invalid now */
 }
 
-static int
-rip6_disconnect(struct socket *so)
+static void
+rip6_disconnect(netmsg_t msg)
 {
+	struct socket *so = msg->disconnect.base.nm_so;
 	struct inpcb *inp = so->so_pcb;
-	int error;
 
-	if (!(so->so_state & SS_ISCONNECTED))
-		return ENOTCONN;
-	inp->in6p_faddr = kin6addr_any;
-	soreference(so);
-	error = rip6_abort(so);
-	sofree(so);
-
-	return error;
+	if (so->so_state & SS_ISCONNECTED) {
+		inp->in6p_faddr = kin6addr_any;
+		soreference(so);
+		rip6_abort(msg);
+		/* msg invalid now */
+		sofree(so);
+		return;
+	}
+	lwkt_replymsg(&msg->disconnect.base.lmsg, ENOTCONN);
 }
 
-static int
-rip6_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
+static void
+rip6_bind(netmsg_t msg)
 {
+	struct socket *so = msg->bind.base.nm_so;
+	struct sockaddr *nam = msg->bind.nm_nam;
 	struct inpcb *inp = so->so_pcb;
 	struct sockaddr_in6 *addr = (struct sockaddr_in6 *)nam;
 	struct ifaddr *ia = NULL;
+	int error;
 
-	if (nam->sa_len != sizeof(*addr))
-		return EINVAL;
+	if (nam->sa_len != sizeof(*addr)) {
+		error = EINVAL;
+		goto out;
+	}
 
-	if (TAILQ_EMPTY(&ifnet) || addr->sin6_family != AF_INET6)
-		return EADDRNOTAVAIL;
+	if (TAILQ_EMPTY(&ifnet) || addr->sin6_family != AF_INET6) {
+		error = EADDRNOTAVAIL;
+		goto out;
+	}
 #ifdef ENABLE_DEFAULT_SCOPE
 	if (addr->sin6_scope_id == 0) {	/* not change if specified  */
 		addr->sin6_scope_id = scope6_addr2default(&addr->sin6_addr);
 	}
 #endif
 	if (!IN6_IS_ADDR_UNSPECIFIED(&addr->sin6_addr) &&
-	    (ia = ifa_ifwithaddr((struct sockaddr *)addr)) == NULL)
-		return EADDRNOTAVAIL;
+	    (ia = ifa_ifwithaddr((struct sockaddr *)addr)) == NULL) {
+		error = EADDRNOTAVAIL;
+		goto out;
+	}
 	if (ia &&
 	    ((struct in6_ifaddr *)ia)->ia6_flags &
 	    (IN6_IFF_ANYCAST|IN6_IFF_NOTREADY|
 	     IN6_IFF_DETACHED|IN6_IFF_DEPRECATED)) {
-		return (EADDRNOTAVAIL);
+		error = EADDRNOTAVAIL;
+		goto out;
 	}
 	inp->in6p_laddr = addr->sin6_addr;
-	return 0;
+	error = 0;
+out:
+	lwkt_replymsg(&msg->bind.base.lmsg, error);
 }
 
-static int
-rip6_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
+static void
+rip6_connect(netmsg_t msg)
 {
+	struct socket *so = msg->connect.base.nm_so;
+	struct sockaddr *nam = msg->connect.nm_nam;
 	struct inpcb *inp = so->so_pcb;
 	struct sockaddr_in6 *addr = (struct sockaddr_in6 *)nam;
 	struct in6_addr *in6a = NULL;
@@ -676,12 +707,18 @@ rip6_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	struct sockaddr_in6 tmp;
 #endif
 
-	if (nam->sa_len != sizeof(*addr))
-		return EINVAL;
-	if (TAILQ_EMPTY(&ifnet))
-		return EADDRNOTAVAIL;
-	if (addr->sin6_family != AF_INET6)
-		return EAFNOSUPPORT;
+	if (nam->sa_len != sizeof(*addr)) {
+		error = EINVAL;
+		goto out;
+	}
+	if (TAILQ_EMPTY(&ifnet)) {
+		error = EADDRNOTAVAIL;
+		goto out;
+	}
+	if (addr->sin6_family != AF_INET6) {
+		error = EAFNOSUPPORT;
+		goto out;
+	}
 #ifdef ENABLE_DEFAULT_SCOPE
 	if (addr->sin6_scope_id == 0) {	/* not change if specified  */
 		/* avoid overwrites */
@@ -694,34 +731,44 @@ rip6_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	in6a = in6_selectsrc(addr, inp->in6p_outputopts,
 			     inp->in6p_moptions, &inp->in6p_route,
 			     &inp->in6p_laddr, &error, NULL);
-	if (in6a == NULL)
-		return (error ? error : EADDRNOTAVAIL);
-	inp->in6p_laddr = *in6a;
-	inp->in6p_faddr = addr->sin6_addr;
-	soisconnected(so);
-	return 0;
+	if (in6a == NULL) {
+		if (error == 0)
+			error = EADDRNOTAVAIL;
+	} else {
+		inp->in6p_laddr = *in6a;
+		inp->in6p_faddr = addr->sin6_addr;
+		soisconnected(so);
+		error = 0;
+	}
+out:
+	lwkt_replymsg(&msg->connect.base.lmsg, error);
 }
 
-static int
-rip6_shutdown(struct socket *so)
+static void
+rip6_shutdown(netmsg_t msg)
 {
-	socantsendmore(so);
-	return 0;
+	socantsendmore(msg->shutdown.base.nm_so);
+	lwkt_replymsg(&msg->shutdown.base.lmsg, 0);
 }
 
-static int
-rip6_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
-	  struct mbuf *control, struct thread *td)
+static void
+rip6_send(netmsg_t msg)
 {
+	struct socket *so = msg->send.base.nm_so;
+	struct mbuf *m = msg->send.nm_m;
+	struct sockaddr *nam = msg->send.nm_addr;
+	struct mbuf *control = msg->send.nm_control;
 	struct inpcb *inp = so->so_pcb;
 	struct sockaddr_in6 tmp;
 	struct sockaddr_in6 *dst;
+	int error;
 
 	/* always copy sockaddr to avoid overwrites */
 	if (so->so_state & SS_ISCONNECTED) {
 		if (nam) {
 			m_freem(m);
-			return EISCONN;
+			error = EISCONN;
+			goto out;
 		}
 		/* XXX */
 		bzero(&tmp, sizeof(tmp));
@@ -733,7 +780,8 @@ rip6_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 	} else {
 		if (nam == NULL) {
 			m_freem(m);
-			return ENOTCONN;
+			error = ENOTCONN;
+			goto out;
 		}
 		tmp = *(struct sockaddr_in6 *)nam;
 		dst = &tmp;
@@ -743,27 +791,29 @@ rip6_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 		dst->sin6_scope_id = scope6_addr2default(&dst->sin6_addr);
 	}
 #endif
-	return rip6_output(m, so, dst, control);
+	error = rip6_output(m, so, dst, control);
+out:
+	lwkt_replymsg(&msg->send.base.lmsg, error);
 }
 
 struct pr_usrreqs rip6_usrreqs = {
 	.pru_abort = rip6_abort,
-	.pru_accept = pru_accept_notsupp,
+	.pru_accept = pr_generic_notsupp,
 	.pru_attach = rip6_attach,
 	.pru_bind = rip6_bind,
 	.pru_connect = rip6_connect,
-	.pru_connect2 = pru_connect2_notsupp,
-	.pru_control = in6_control,
+	.pru_connect2 = pr_generic_notsupp,
+	.pru_control = in6_control_dispatch,
 	.pru_detach = rip6_detach,
 	.pru_disconnect = rip6_disconnect,
-	.pru_listen = pru_listen_notsupp,
-	.pru_peeraddr = in6_setpeeraddr,
-	.pru_rcvd = pru_rcvd_notsupp,
-	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_listen = pr_generic_notsupp,
+	.pru_peeraddr = in6_setpeeraddr_dispatch,
+	.pru_rcvd = pr_generic_notsupp,
+	.pru_rcvoob = pr_generic_notsupp,
 	.pru_send = rip6_send,
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = rip6_shutdown,
-	.pru_sockaddr = in6_setsockaddr,
+	.pru_sockaddr = in6_setsockaddr_dispatch,
 	.pru_sosend = sosend,
 	.pru_soreceive = soreceive
 };

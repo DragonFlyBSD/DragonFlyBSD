@@ -29,7 +29,7 @@
 #include <netbt/hci.h>
 
 void
-btintr(struct netmsg *msg)
+btintr(netmsg_t msg)
 {
 	struct hci_unit *unit;
 

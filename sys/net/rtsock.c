@@ -129,27 +129,31 @@ static void	rt_setmetrics (u_long, struct rt_metrics *,
  * It really doesn't make any sense at all for this code to share much
  * with raw_usrreq.c, since its functionality is so restricted.  XXX
  */
-static int
-rts_abort(struct socket *so)
+static void
+rts_abort(netmsg_t msg)
 {
-	int error;
-
 	crit_enter();
-	error = raw_usrreqs.pru_abort(so);
+	raw_usrreqs.pru_abort(msg);
+	/* msg invalid now */
 	crit_exit();
-	return error;
 }
 
 /* pru_accept is EOPNOTSUPP */
 
-static int
-rts_attach(struct socket *so, int proto, struct pru_attach_info *ai)
+static void
+rts_attach(netmsg_t msg)
 {
+	struct socket *so = msg->base.nm_so;
+	struct pru_attach_info *ai = msg->attach.nm_ai;
 	struct rawcb *rp;
+	int proto = msg->attach.nm_proto;
 	int error;
 
-	if (sotorawcb(so) != NULL)
-		return EISCONN;	/* XXX panic? */
+	crit_enter();
+	if (sotorawcb(so) != NULL) {
+		error = EISCONN;
+		goto done;
+	}
 
 	rp = kmalloc(sizeof *rp, M_PCB, M_WAITOK | M_ZERO);
 
@@ -160,15 +164,13 @@ rts_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	 * Probably we should try to do more of this work beforehand and
 	 * eliminate the critical section.
 	 */
-	crit_enter();
 	so->so_pcb = rp;
 	soreference(so);	/* so_pcb assignment */
 	error = raw_attach(so, proto, ai->sb_rlimit);
 	rp = sotorawcb(so);
 	if (error) {
-		crit_exit();
 		kfree(rp, M_PCB);
-		return error;
+		goto done;
 	}
 	switch(rp->rcb_proto.sp_protocol) {
 	case AF_INET:
@@ -188,40 +190,38 @@ rts_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	route_cb.any_count++;
 	soisconnected(so);
 	so->so_options |= SO_USELOOPBACK;
+	error = 0;
+done:
 	crit_exit();
-	return 0;
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-rts_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
+static void
+rts_bind(netmsg_t msg)
 {
-	int error;
-
 	crit_enter();
-	error = raw_usrreqs.pru_bind(so, nam, td); /* xxx just EINVAL */
+	raw_usrreqs.pru_bind(msg); /* xxx just EINVAL */
+	/* msg invalid now */
 	crit_exit();
-	return error;
 }
 
-static int
-rts_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
+static void
+rts_connect(netmsg_t msg)
 {
-	int error;
-
 	crit_enter();
-	error = raw_usrreqs.pru_connect(so, nam, td); /* XXX just EINVAL */
+	raw_usrreqs.pru_connect(msg); /* XXX just EINVAL */
+	/* msg invalid now */
 	crit_exit();
-	return error;
 }
 
 /* pru_connect2 is EOPNOTSUPP */
 /* pru_control is EOPNOTSUPP */
 
-static int
-rts_detach(struct socket *so)
+static void
+rts_detach(netmsg_t msg)
 {
+	struct socket *so = msg->base.nm_so;
 	struct rawcb *rp = sotorawcb(so);
-	int error;
 
 	crit_enter();
 	if (rp != NULL) {
@@ -241,88 +241,77 @@ rts_detach(struct socket *so)
 		}
 		route_cb.any_count--;
 	}
-	error = raw_usrreqs.pru_detach(so);
+	raw_usrreqs.pru_detach(msg);
+	/* msg invalid now */
 	crit_exit();
-	return error;
 }
 
-static int
-rts_disconnect(struct socket *so)
+static void
+rts_disconnect(netmsg_t msg)
 {
-	int error;
-
 	crit_enter();
-	error = raw_usrreqs.pru_disconnect(so);
+	raw_usrreqs.pru_disconnect(msg);
+	/* msg invalid now */
 	crit_exit();
-	return error;
 }
 
 /* pru_listen is EOPNOTSUPP */
 
-static int
-rts_peeraddr(struct socket *so, struct sockaddr **nam)
+static void
+rts_peeraddr(netmsg_t msg)
 {
-	int error;
-
 	crit_enter();
-	error = raw_usrreqs.pru_peeraddr(so, nam);
+	raw_usrreqs.pru_peeraddr(msg);
+	/* msg invalid now */
 	crit_exit();
-	return error;
 }
 
 /* pru_rcvd is EOPNOTSUPP */
 /* pru_rcvoob is EOPNOTSUPP */
 
-static int
-rts_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
-	 struct mbuf *control, struct thread *td)
+static void
+rts_send(netmsg_t msg)
 {
-	int error;
-
 	crit_enter();
-	error = raw_usrreqs.pru_send(so, flags, m, nam, control, td);
+	raw_usrreqs.pru_send(msg);
+	/* msg invalid now */
 	crit_exit();
-	return error;
 }
 
 /* pru_sense is null */
 
-static int
-rts_shutdown(struct socket *so)
+static void
+rts_shutdown(netmsg_t msg)
 {
-	int error;
-
 	crit_enter();
-	error = raw_usrreqs.pru_shutdown(so);
+	raw_usrreqs.pru_shutdown(msg);
+	/* msg invalid now */
 	crit_exit();
-	return error;
 }
 
-static int
-rts_sockaddr(struct socket *so, struct sockaddr **nam)
+static void
+rts_sockaddr(netmsg_t msg)
 {
-	int error;
-
 	crit_enter();
-	error = raw_usrreqs.pru_sockaddr(so, nam);
+	raw_usrreqs.pru_sockaddr(msg);
+	/* msg invalid now */
 	crit_exit();
-	return error;
 }
 
 static struct pr_usrreqs route_usrreqs = {
 	.pru_abort = rts_abort,
-	.pru_accept = pru_accept_notsupp,
+	.pru_accept = pr_generic_notsupp,
 	.pru_attach = rts_attach,
 	.pru_bind = rts_bind,
 	.pru_connect = rts_connect,
-	.pru_connect2 = pru_connect2_notsupp,
-	.pru_control = pru_control_notsupp,
+	.pru_connect2 = pr_generic_notsupp,
+	.pru_control = pr_generic_notsupp,
 	.pru_detach = rts_detach,
 	.pru_disconnect = rts_disconnect,
-	.pru_listen = pru_listen_notsupp,
+	.pru_listen = pr_generic_notsupp,
 	.pru_peeraddr = rts_peeraddr,
-	.pru_rcvd = pru_rcvd_notsupp,
-	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_rcvd = pr_generic_notsupp,
+	.pru_rcvoob = pr_generic_notsupp,
 	.pru_send = rts_send,
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = rts_shutdown,
@@ -345,17 +334,16 @@ familyof(struct sockaddr *sa)
  * can send a message to the routing socket.
  */
 static void
-rts_input_handler(struct netmsg *msg)
+rts_input_handler(netmsg_t msg)
 {
 	static const struct sockaddr route_dst = { 2, PF_ROUTE, };
 	struct sockproto route_proto;
-	struct netmsg_packet *pmsg;
+	struct netmsg_packet *pmsg = &msg->packet;
 	struct mbuf *m;
 	sa_family_t family;
 	struct rawcb *skip;
 
-	pmsg = (void *)msg;
-	family = pmsg->nm_netmsg.nm_lmsg.u.ms_result;
+	family = pmsg->base.lmsg.u.ms_result;
 	route_proto.sp_family = PF_ROUTE;
 	route_proto.sp_protocol = family;
 
@@ -376,14 +364,14 @@ rts_input_skip(struct mbuf *m, sa_family_t family, struct rawcb *skip)
 
 	M_ASSERTPKTHDR(m);
 
-	port = cpu0_soport(NULL, NULL, NULL); /* same as for routing socket */
+	port = cpu_portfn(0);	/* XXX same as for routing socket */
 	pmsg = &m->m_hdr.mh_netmsg;
-	netmsg_init(&pmsg->nm_netmsg, NULL, &netisr_apanic_rport,
+	netmsg_init(&pmsg->base, NULL, &netisr_apanic_rport,
 		    0, rts_input_handler);
 	pmsg->nm_packet = m;
-	pmsg->nm_netmsg.nm_lmsg.u.ms_result = family;
+	pmsg->base.lmsg.u.ms_result = family;
 	m->m_pkthdr.header = skip; /* XXX steal field in pkthdr */
-	lwkt_sendmsg(port, &pmsg->nm_netmsg.nm_lmsg);
+	lwkt_sendmsg(port, &pmsg->base.lmsg);
 }
 
 static __inline void
@@ -1459,12 +1447,20 @@ SYSCTL_NODE(_net, PF_ROUTE, routetable, CTLFLAG_RD, sysctl_rtsock, "");
 static struct domain routedomain;		/* or at least forward */
 
 static struct protosw routesw[] = {
-{ SOCK_RAW,	&routedomain,	0,		PR_ATOMIC|PR_ADDR,
-  0,		route_output,	raw_ctlinput,	0,
-  cpu0_soport,	cpu0_ctlport,
-  raw_init,	0,		0,		0,
-  &route_usrreqs
-}
+    {
+	.pr_type = SOCK_RAW,
+	.pr_domain = &routedomain,
+	.pr_protocol = 0,
+	.pr_flags = PR_ATOMIC|PR_ADDR,
+	.pr_input = NULL,
+	.pr_output = route_output,
+	.pr_ctlinput = raw_ctlinput,
+	.pr_ctloutput = NULL,
+	.pr_ctlport = cpu0_ctlport,
+
+	.pr_init = raw_init,
+	.pr_usrreqs = &route_usrreqs
+    }
 };
 
 static struct domain routedomain = {

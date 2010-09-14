@@ -78,7 +78,7 @@
 #include <sys/devfs.h>
 
 struct netmsg_bpf_output {
-	struct netmsg	nm_netmsg;
+	struct netmsg_base base;
 	struct mbuf	*nm_mbuf;
 	struct ifnet	*nm_ifp;
 	struct sockaddr	*nm_dst;
@@ -540,9 +540,9 @@ bpf_timed_out(void *arg)
 }
 
 static void
-bpf_output_dispatch(struct netmsg *nmsg)
+bpf_output_dispatch(netmsg_t msg)
 {
-	struct netmsg_bpf_output *bmsg = (struct netmsg_bpf_output *)nmsg;
+	struct netmsg_bpf_output *bmsg = (struct netmsg_bpf_output *)msg;
 	struct ifnet *ifp = bmsg->nm_ifp;
 	int error;
 
@@ -550,7 +550,7 @@ bpf_output_dispatch(struct netmsg *nmsg)
 	 * The driver frees the mbuf.
 	 */
 	error = ifp->if_output(ifp, bmsg->nm_mbuf, bmsg->nm_dst, NULL);
-	lwkt_replymsg(&nmsg->nm_lmsg, error);
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
 static int
@@ -586,13 +586,13 @@ bpfwrite(struct dev_write_args *ap)
 	if (d->bd_hdrcmplt)
 		dst.sa_family = pseudo_AF_HDRCMPLT;
 
-	netmsg_init(&bmsg.nm_netmsg, NULL, &curthread->td_msgport,
+	netmsg_init(&bmsg.base, NULL, &curthread->td_msgport,
 		    0, bpf_output_dispatch);
 	bmsg.nm_mbuf = m;
 	bmsg.nm_ifp = ifp;
 	bmsg.nm_dst = &dst;
 
-	return lwkt_domsg(cpu_portfn(0), &bmsg.nm_netmsg.nm_lmsg, 0);
+	return lwkt_domsg(cpu_portfn(0), &bmsg.base.lmsg, 0);
 }
 
 /*

@@ -56,6 +56,11 @@ struct pr_output_info {
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 /*
+ * netmsg_t union of possible netmsgs typically sent to protocol threads.
+ */
+typedef union netmsg *netmsg_t;
+
+/*
  * Protocol switch table.
  *
  * Each protocol has a handle initializing one of these structures,
@@ -82,29 +87,37 @@ struct protosw {
 	const struct domain *pr_domain; /* domain protocol a member of */
 	short	pr_protocol;		/* protocol number */
 	short	pr_flags;		/* see below */
-/* protocol-protocol hooks */
-	void	(*pr_input) (struct mbuf *, ...);
+
+	/*
+	 * Protocol hooks.  These are typically called directly within the
+	 * context of a protocol thread based on the toeplitz hash.
+	 *
+	 * pr_input() is called using the port supplied by the toeplitz
+	 *	      hash via the netisr port function.
+	 *
+	 * pr_ctlinput() is called using the port supplied by pr_ctlport
+	 *
+	 * pr_ctloutput() and pr_output() are typically called
+	 */
+	int	(*pr_input)(struct mbuf **, int *, int);
 					/* input to protocol (from below) */
-	int	(*pr_output)	(struct mbuf *, struct socket *, ...);
+	int	(*pr_output)(struct mbuf *, struct socket *, ...);
 					/* output to protocol (from above) */
-	void	(*pr_ctlinput)(int, struct sockaddr *, void *);
+	void	(*pr_ctlinput)(union netmsg *);
 					/* control input (from below) */
-	int	(*pr_ctloutput)(struct socket *, struct sockopt *);
+	void	(*pr_ctloutput)(union netmsg *);
 					/* control output (from above) */
-/* user-protocol hooks */
-	struct lwkt_port *(*pr_mport)(struct socket *, struct sockaddr *,
-				      struct mbuf **);
 	struct lwkt_port *(*pr_ctlport)(int, struct sockaddr *, void *);
 
-/* utility hooks */
+	/*
+	 * Utility hooks, not called with any particular context.
+	 */
 	void	(*pr_init) (void);	/* initialization hook */
-	void	(*pr_fasttimo) (void);
-					/* fast timeout (200ms) */
-	void	(*pr_slowtimo) (void);
-					/* slow timeout (500ms) */
-	void	(*pr_drain) (void);
-					/* flush any excess space possible */
-	struct	pr_usrreqs *pr_usrreqs;	/* supersedes pr_usrreq() */
+	void	(*pr_fasttimo) (void);	/* fast timeout (200ms) */
+	void	(*pr_slowtimo) (void);	/* slow timeout (500ms) */
+	void	(*pr_drain) (void);	/* flush any excess space possible */
+
+	struct	pr_usrreqs *pr_usrreqs;	/* messaged requests to proto thread */
 };
 
 #endif
@@ -130,6 +143,7 @@ struct protosw {
 #define	PR_LASTHDR	0x40		/* enforce ipsec policy; last header */
 #define	PR_ADDR_OPT	0x80		/* allow addresses during delivery */
 #define PR_MPSAFE	0x0100		/* protocal is MPSAFE */
+#define PR_SYNC_PORT	0x0200		/* synchronous port (no proto thrds) */
 
 /*
  * The arguments to usrreq are:
@@ -200,49 +214,46 @@ struct pru_attach_info {
 };
 
 /*
- * If the ordering here looks odd, that's because it's alphabetical.
- * Having this structure separated out from the main protoswitch is allegedly
- * a big (12 cycles per call) lose on high-end CPUs.  We will eventually
- * migrate this stuff back into the main structure.
+ * These are netmsg'd requests almost universally in the context of the
+ * appropriate protocol thread.  Exceptions:
+ *
+ *	pru_accept() - called synchronously from user context
+ *
+ *	pru_sosend() - called synchronously from user context, typically
+ *		       runs generic kernel code and then messages via
+ *		       pru_send().
+ *
+ *	pru_soreceive() - called synchronously from user context.  Typically
+ *			  runs generic kernel code and remains synchronous.
  */
 struct pr_usrreqs {
-	int	(*pru_abort) (struct socket *so);
-	int	(*pru_accept) (struct socket *so, struct sockaddr **nam);
-	int	(*pru_attach) (struct socket *so, int proto,
-			       struct pru_attach_info *ai);
-	int	(*pru_bind) (struct socket *so, struct sockaddr *nam,
-				 struct thread *td);
-	int	(*pru_connect) (struct socket *so, struct sockaddr *nam,
-				    struct thread *td);
-	int	(*pru_connect2) (struct socket *so1, struct socket *so2);
-	int	(*pru_control) (struct socket *so, u_long cmd, caddr_t data,
-				    struct ifnet *ifp, struct thread *td);
-	int	(*pru_detach) (struct socket *so);
-	int	(*pru_disconnect) (struct socket *so);
-	int	(*pru_listen) (struct socket *so, struct thread *td);
-	int	(*pru_peeraddr) (struct socket *so, 
-				     struct sockaddr **nam);
-	int	(*pru_rcvd) (struct socket *so, int flags);
-	int	(*pru_rcvoob) (struct socket *so, struct mbuf *m,
-				   int flags);
-	int	(*pru_send) (struct socket *so, int flags, struct mbuf *m, 
-				 struct sockaddr *addr, struct mbuf *control,
-				 struct thread *td);
-#define	PRUS_OOB	0x1
-#define	PRUS_EOF	0x2
-#define	PRUS_MORETOCOME	0x4
-	int	(*pru_sense) (struct socket *so, struct stat *sb);
-	int	(*pru_shutdown) (struct socket *so);
-	int	(*pru_sockaddr) (struct socket *so, 
-				     struct sockaddr **nam);
-	 
+	void	(*pru_abort) (netmsg_t msg);
+	void	(*pru_accept) (netmsg_t msg);	/* synchronous call */
+	void	(*pru_attach) (netmsg_t msg);
+	void	(*pru_bind) (netmsg_t msg);
+	void	(*pru_connect) (netmsg_t msg);
+	void	(*pru_connect2) (netmsg_t msg);
+	void	(*pru_control) (netmsg_t msg);
+	void	(*pru_detach) (netmsg_t msg);
+	void	(*pru_disconnect) (netmsg_t msg);
+	void	(*pru_listen) (netmsg_t msg);
+	void	(*pru_peeraddr) (netmsg_t msg);
+	void	(*pru_rcvd) (netmsg_t msg);
+	void	(*pru_rcvoob) (netmsg_t msg);
+	void	(*pru_send) (netmsg_t msg);
+	void	(*pru_sense) (netmsg_t msg);
+	void	(*pru_shutdown) (netmsg_t msg);
+	void	(*pru_sockaddr) (netmsg_t msg);
+
 	/*
-	 * These three added later, so they are out of order.  They are used
-	 * for shortcutting (fast path input/output) in some protocols.
-	 * XXX - that's a lie, they are not implemented yet
-	 * Rather than calling sosend() etc. directly, calls are made
-	 * through these entry points.  For protocols which still use
-	 * the generic code, these just point to those routines.
+	 * These are direct calls.  Note that sosend() will sometimes
+	 * be converted into an implied connect (pru_connect) with the
+	 * mbufs and flags forwarded in pru_connect's netmsg.  It is
+	 * otherwise typically converted to a send (pru_send).
+	 *
+	 * soreceive() typically remains synchronous in the user's context.
+	 *
+	 * Any converted calls are netmsg's to the socket's protocol thread.
 	 */
 	int	(*pru_sosend) (struct socket *so, struct sockaddr *addr,
 				   struct uio *uio, struct mbuf *top,
@@ -253,34 +264,8 @@ struct pr_usrreqs {
 				      struct uio *uio,
 				      struct sockbuf *sio,
 				      struct mbuf **controlp, int *flagsp);
-	int	(*pru_ctloutput) (struct socket *so, struct sockopt *sopt);
 };
 
-typedef int (*pru_abort_fn_t) (struct socket *so);
-typedef int (*pru_accept_fn_t) (struct socket *so, struct sockaddr **nam);
-typedef int (*pru_attach_fn_t) (struct socket *so, int proto,
-					struct pru_attach_info *ai);
-typedef int (*pru_bind_fn_t) (struct socket *so, struct sockaddr *nam,
-					struct thread *td);
-typedef int (*pru_connect_fn_t) (struct socket *so, struct sockaddr *nam,
-					struct thread *td);
-typedef int (*pru_connect2_fn_t) (struct socket *so1, struct socket *so2);
-typedef int (*pru_control_fn_t) (struct socket *so, u_long cmd, caddr_t data,
-					struct ifnet *ifp,
-					struct thread *td);
-typedef int (*pru_detach_fn_t) (struct socket *so);
-typedef int (*pru_disconnect_fn_t) (struct socket *so);
-typedef int (*pru_listen_fn_t) (struct socket *so, struct thread *td);
-typedef int (*pru_peeraddr_fn_t) (struct socket *so, struct sockaddr **nam);
-typedef int (*pru_rcvd_fn_t) (struct socket *so, int flags);
-typedef int (*pru_rcvoob_fn_t) (struct socket *so, struct mbuf *m, int flags);
-typedef int (*pru_send_fn_t) (struct socket *so, int flags, struct mbuf *m, 
-					struct sockaddr *addr,
-					struct mbuf *control,
-					struct thread *td);
-typedef int (*pru_sense_fn_t) (struct socket *so, struct stat *sb);
-typedef int (*pru_shutdown_fn_t) (struct socket *so);
-typedef int (*pru_sockaddr_fn_t) (struct socket *so, struct sockaddr **nam);
 typedef int (*pru_sosend_fn_t) (struct socket *so, struct sockaddr *addr,
 					struct uio *uio, struct mbuf *top,
 					struct mbuf *control, int flags,
@@ -290,24 +275,10 @@ typedef int (*pru_soreceive_fn_t) (struct socket *so, struct sockaddr **paddr,
 					struct sockbuf *sio,
 					struct mbuf **controlp,
 					int *flagsp);
-typedef	int	(*pru_ctloutput_fn_t) (struct socket *so, struct sockopt *sopt);
-typedef	void (*pru_ctlinput_fn_t) (int cmd, struct sockaddr *arg, void *extra);
 
-int	pru_accept_notsupp (struct socket *so, struct sockaddr **nam);
-int	pru_bind_notsupp (struct socket *so, struct sockaddr *nam,
-				struct thread *td);
-int	pru_connect_notsupp (struct socket *so, struct sockaddr *nam,
-				struct thread *td);
-int	pru_connect2_notsupp (struct socket *so1, struct socket *so2);
-int	pru_control_notsupp (struct socket *so, u_long cmd, caddr_t data,
-				struct ifnet *ifp, struct thread *td);
-int	pru_disconnect_notsupp (struct socket *so);
-int	pru_listen_notsupp (struct socket *so, struct thread *td);
-int	pru_peeraddr_notsupp (struct socket *so, struct sockaddr **nam);
-int	pru_rcvd_notsupp (struct socket *so, int flags);
-int	pru_rcvoob_notsupp (struct socket *so, struct mbuf *m, int flags);
-int	pru_shutdown_notsupp(struct socket *so);
-int	pru_sockaddr_notsupp(struct socket *so, struct sockaddr **nam);
+void	pr_generic_notsupp(netmsg_t msg);
+void	pru_sense_null(netmsg_t msg);
+
 int	pru_sosend_notsupp(struct socket *so, struct sockaddr *addr,
 				struct uio *uio, struct mbuf *top,
 				struct mbuf *control, int flags,
@@ -317,14 +288,10 @@ int	pru_soreceive_notsupp(struct socket *so,
 				struct uio *uio,
 				struct sockbuf *sio,
 				struct mbuf **controlp, int *flagsp);
-int	pru_ctloutput_notsupp(struct socket *so, struct sockopt *sopt);
-int	pru_sense_null (struct socket *so, struct stat *sb);
 
 struct lwkt_port *cpu0_soport(struct socket *, struct sockaddr *,
 			      struct mbuf **);
 struct lwkt_port *cpu0_ctlport(int, struct sockaddr *, void *);
-struct lwkt_port *sync_soport(struct socket *, struct sockaddr *,
-			      struct mbuf **);
 
 #endif /* _KERNEL || _KERNEL_STRUCTURES */
 

@@ -81,7 +81,9 @@
 #include <sys/time.h>
 #include <sys/kernel.h>
 #include <sys/syslog.h>
+
 #include <sys/thread2.h>
+#include <sys/msgport2.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -374,6 +376,19 @@ in6_len2mask(struct in6_addr *mask, int len)
 
 #define ifa2ia6(ifa)	((struct in6_ifaddr *)(ifa))
 #define ia62ifa(ia6)	(&((ia6)->ia_ifa))
+
+void
+in6_control_dispatch(netmsg_t msg)
+{
+	int error;
+
+	error = in6_control(msg->control.base.nm_so,
+			    msg->control.nm_cmd,
+			    msg->control.nm_data,
+			    msg->control.nm_ifp,
+			    msg->control.nm_td);
+	lwkt_replymsg(&msg->control.base.lmsg, error);
+}
 
 int
 in6_control(struct socket *so, u_long cmd, caddr_t data,

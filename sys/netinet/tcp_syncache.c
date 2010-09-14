@@ -162,7 +162,7 @@ static struct syncache *syncookie_lookup(struct in_conninfo *,
 #define TCP_SYNCACHE_BUCKETLIMIT	30
 
 struct netmsg_sc_timer {
-	struct netmsg nm_netmsg;
+	struct netmsg_base base;
 	struct msgrec *nm_mrec;		/* back pointer to containing msgrec */
 };
 
@@ -335,7 +335,7 @@ syncache_init(void)
 			syncache_percpu->mrec[i].port = cpu_portfn(cpu);
 			syncache_percpu->mrec[i].msg.nm_mrec =
 				    &syncache_percpu->mrec[i];
-			netmsg_init(&syncache_percpu->mrec[i].msg.nm_netmsg,
+			netmsg_init(&syncache_percpu->mrec[i].msg.base,
 				    NULL, &syncache_null_rport,
 				    0, syncache_timer_handler);
 		}
@@ -475,7 +475,7 @@ syncache_timer(void *p)
 {
 	struct netmsg_sc_timer *msg = p;
 
-	lwkt_sendmsg(msg->nm_mrec->port, &msg->nm_netmsg.nm_lmsg);
+	lwkt_sendmsg(msg->nm_mrec->port, &msg->base.lmsg);
 }
 
 /*
@@ -490,7 +490,7 @@ syncache_timer(void *p)
  * a timer has been deactivated here can it be restarted by syncache_timeout().
  */
 static void
-syncache_timer_handler(netmsg_t netmsg)
+syncache_timer_handler(netmsg_t msg)
 {
 	struct tcp_syncache_percpu *syncache_percpu;
 	struct syncache *sc;
@@ -499,7 +499,7 @@ syncache_timer_handler(netmsg_t netmsg)
 	struct inpcb *inp;
 	int slot;
 
-	slot = ((struct netmsg_sc_timer *)netmsg)->nm_mrec->slot;
+	slot = ((struct netmsg_sc_timer *)msg)->nm_mrec->slot;
 	syncache_percpu = &tcp_syncache_percpu[mycpu->gd_cpuid];
 
 	list = &syncache_percpu->timerq[slot];
@@ -556,7 +556,7 @@ syncache_timer_handler(netmsg_t netmsg)
 	} else {
 		callout_deactivate(&syncache_percpu->tt_timerq[slot]);
 	}
-	lwkt_replymsg(&netmsg->nm_lmsg, 0);
+	lwkt_replymsg(&msg->base.lmsg, 0);
 }
 
 /*

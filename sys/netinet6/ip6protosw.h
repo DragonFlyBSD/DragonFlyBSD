@@ -1,7 +1,3 @@
-/*	$FreeBSD: src/sys/netinet6/ip6protosw.h,v 1.2.2.4 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6protosw.h,v 1.9 2008/10/27 02:56:30 sephe Exp $	*/
-/*	$KAME: ip6protosw.h,v 1.25 2001/09/26 06:13:03 keiichi Exp $	*/
-
 /*
  * Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
  * All rights reserved.
@@ -30,6 +26,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $FreeBSD: src/sys/netinet6/ip6protosw.h,v 1.2.2.4 2002/04/28 05:40:27 suz Exp $
+ * $DragonFly: src/sys/netinet6/ip6protosw.h,v 1.9 2008/10/27 02:56:30 sephe Exp $
+ * $KAME: ip6protosw.h,v 1.25 2001/09/26 06:13:03 keiichi Exp $
  */
 
 /*	BSDI protosw.h,v 2.3 1996/10/11 16:02:40 pjd Exp	*/
@@ -120,43 +119,6 @@ struct ip6ctlparam {
 	struct in6_addr *ip6c_finaldst;	/* final destination address */
 	void *ip6c_cmdarg;		/* control command dependent data */
 	u_int8_t ip6c_nxt;		/* final next header field */
-};
-
-struct lwkt_port;
-
-struct ip6protosw {
-	short	pr_type;		/* socket type used for */
-	const struct	domain *pr_domain; /* domain protocol a member of */
-	short	pr_protocol;		/* protocol number */
-	short	pr_flags;		/* see below */
-
-/* protocol-protocol hooks */
-	int	(*pr_input)		/* input to protocol (from below) */
-			(struct mbuf **, int *, int);
-	int	(*pr_output)		/* output to protocol (from above) */
-			(struct mbuf *, struct socket *, ...);
-	void	(*pr_ctlinput)		/* control input (from below) */
-			(int, struct sockaddr *, void *);
-	int	(*pr_ctloutput)		/* control output (from above) */
-			(struct socket *, struct sockopt *);
-
-/* user-protocol hook */
-	struct lwkt_port *(*pr_soport)
-			(struct socket *, struct sockaddr *,
-			 struct mbuf **);
-	struct lwkt_port *(*pr_ctlport)(int, struct sockaddr *, void *);
-
-/* utility hooks */
-	void	(*pr_init)		/* initialization hook */
-			(void);
-
-	void	(*pr_fasttimo)		/* fast timeout (200ms) */
-			(void);
-	void	(*pr_slowtimo)		/* slow timeout (500ms) */
-			(void);
-	void	(*pr_drain)		/* flush any excess space possible */
-			(void);
-	const struct	pr_usrreqs *pr_usrreqs;	/* supersedes pr_usrreq() */
 };
 
 #endif /* !_NETINET6_IP6PROTOSW_H_ */

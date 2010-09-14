@@ -58,10 +58,9 @@ so_pru_abort(struct socket *so)
 {
 	struct netmsg_pru_abort msg;
 
-	netmsg_init(&msg.nm_netmsg, so, &curthread->td_msgport,
-		    0, netmsg_pru_abort);
-	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_abort;
-	(void)lwkt_domsg(so->so_port, &msg.nm_netmsg.nm_lmsg, 0);
+	netmsg_init(&msg.base, so, &curthread->td_msgport,
+		    0, so->so_proto->pr_usrreqs->pru_abort);
+	(void)lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 }
 
 /*
@@ -74,10 +73,9 @@ so_pru_aborta(struct socket *so)
 	struct netmsg_pru_abort *msg;
 
 	msg = kmalloc(sizeof(*msg), M_LWKTMSG, M_WAITOK | M_ZERO);
-	netmsg_init(&msg->nm_netmsg, so, &netisr_afree_rport,
-		    0, netmsg_pru_abort);
-	msg->nm_prufn = so->so_proto->pr_usrreqs->pru_abort;
-	lwkt_sendmsg(so->so_port, &msg->nm_netmsg.nm_lmsg);
+	netmsg_init(&msg->base, so, &netisr_afree_rport,
+		    0, so->so_proto->pr_usrreqs->pru_abort);
+	lwkt_sendmsg(so->so_port, &msg->base.lmsg);
 }
 
 /*
@@ -87,41 +85,59 @@ so_pru_aborta(struct socket *so)
 void
 so_pru_abort_oncpu(struct socket *so)
 {
-	so->so_proto->pr_usrreqs->pru_abort(so);
+	struct netmsg_pru_abort msg;
+	netisr_fn_t func = so->so_proto->pr_usrreqs->pru_abort;
+
+	netmsg_init(&msg.base, so, &netisr_adone_rport, 0, func);
+	msg.base.lmsg.ms_flags &= ~(MSGF_REPLY | MSGF_DONE);
+	msg.base.lmsg.ms_flags |= MSGF_SYNC;
+	func((netmsg_t)&msg);
 }
 
+/*
+ * WARNING!  Synchronous call from user context
+ */
 int
-so_pru_accept(struct socket *so, struct sockaddr **nam)
+so_pru_accept_direct(struct socket *so, struct sockaddr **nam)
 {
-	/* Block (memory allocation) in process context. XXX JH */
-	return ((*so->so_proto->pr_usrreqs->pru_accept)(so, nam));
-
-#ifdef notdef
-	int error;
 	struct netmsg_pru_accept msg;
+	netisr_fn_t func = so->so_proto->pr_usrreqs->pru_accept;
 
-	netmsg_init(&msg.nm_netmsg, so, &curthread->td_msgport,
-		    0, netmsg_pru_accept);
-	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_accept;
+	netmsg_init(&msg.base, so, &netisr_adone_rport, 0, func);
+	msg.base.lmsg.ms_flags &= ~(MSGF_REPLY | MSGF_DONE);
+	msg.base.lmsg.ms_flags |= MSGF_SYNC;
 	msg.nm_nam = nam;
-	error = lwkt_domsg(so->so_port, &msg.nm_netmsg.nm_lmsg, 0);
-	return (error);
-#endif
+	func((netmsg_t)&msg);
+	return(msg.base.lmsg.ms_error);
 }
 
 int
 so_pru_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
-	int error;
 	struct netmsg_pru_attach msg;
+	int error;
 
-	netmsg_init(&msg.nm_netmsg, so, &curthread->td_msgport,
-		    0, netmsg_pru_attach);
-	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_attach;
+	netmsg_init(&msg.base, so, &curthread->td_msgport,
+		    0, so->so_proto->pr_usrreqs->pru_attach);
 	msg.nm_proto = proto;
 	msg.nm_ai = ai;
-	error = lwkt_domsg(so->so_port, &msg.nm_netmsg.nm_lmsg, 0);
+	error = lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 	return (error);
+}
+
+int
+so_pru_attach_direct(struct socket *so, int proto, struct pru_attach_info *ai)
+{
+	struct netmsg_pru_attach msg;
+	netisr_fn_t func = so->so_proto->pr_usrreqs->pru_attach;
+
+	netmsg_init(&msg.base, so, &netisr_adone_rport, 0, func);
+	msg.base.lmsg.ms_flags &= ~(MSGF_REPLY | MSGF_DONE);
+	msg.base.lmsg.ms_flags |= MSGF_SYNC;
+	msg.nm_proto = proto;
+	msg.nm_ai = ai;
+	func((netmsg_t)&msg);
+	return(msg.base.lmsg.ms_error);
 }
 
 /*
@@ -130,243 +146,217 @@ so_pru_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 int
 so_pru_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
-	int error;
 	struct netmsg_pru_bind msg;
+	int error;
 
-#if 0
-	port = so->so_proto->pr_mport(NULL, nam, NULL);
-#endif
-	netmsg_init(&msg.nm_netmsg, so, &curthread->td_msgport,
-		    0, netmsg_pru_bind);
-	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_bind;
+	netmsg_init(&msg.base, so, &curthread->td_msgport,
+		    0, so->so_proto->pr_usrreqs->pru_bind);
 	msg.nm_nam = nam;
-	msg.nm_td = td;		/* used only for prison_ip() XXX JH */
-	error = lwkt_domsg(so->so_port, &msg.nm_netmsg.nm_lmsg, 0);
+	msg.nm_td = td;		/* used only for prison_ip() */
+	error = lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 	return (error);
 }
 
 int
 so_pru_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
-	int error;
 	struct netmsg_pru_connect msg;
+	int error;
 
-	netmsg_init(&msg.nm_netmsg, so, &curthread->td_msgport,
-		    0, netmsg_pru_connect);
-	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_connect;
+	netmsg_init(&msg.base, so, &curthread->td_msgport,
+		    0, so->so_proto->pr_usrreqs->pru_connect);
 	msg.nm_nam = nam;
 	msg.nm_td = td;
-	error = lwkt_domsg(so->so_port, &msg.nm_netmsg.nm_lmsg, 0);
+	msg.nm_m = NULL;
+	msg.nm_flags = 0;
+	msg.nm_reconnect = 0;
+	error = lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 	return (error);
 }
 
 int
 so_pru_connect2(struct socket *so1, struct socket *so2)
 {
-	int error;
 	struct netmsg_pru_connect2 msg;
+	int error;
 
-	netmsg_init(&msg.nm_netmsg, so1, &curthread->td_msgport,
-		    0, netmsg_pru_connect2);
-	msg.nm_prufn = so1->so_proto->pr_usrreqs->pru_connect2;
+	netmsg_init(&msg.base, so1, &curthread->td_msgport,
+		    0, so1->so_proto->pr_usrreqs->pru_connect2);
 	msg.nm_so1 = so1;
 	msg.nm_so2 = so2;
-	error = lwkt_domsg(so1->so_port, &msg.nm_netmsg.nm_lmsg, 0);
+	error = lwkt_domsg(so1->so_port, &msg.base.lmsg, 0);
 	return (error);
 }
 
+/*
+ * WARNING!  Synchronous call from user context.  Control function may do
+ *	     copyin/copyout.
+ */
 int
-so_pru_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp)
+so_pru_control_direct(struct socket *so, u_long cmd, caddr_t data,
+		      struct ifnet *ifp)
 {
-	return ((*so->so_proto->pr_usrreqs->pru_control)(
-			so, cmd, data, ifp, curthread));
-#ifdef gag	/* does copyin and copyout deep inside stack XXX JH */
-	int error;
 	struct netmsg_pru_control msg;
+	netisr_fn_t func = so->so_proto->pr_usrreqs->pru_control;
 
-	netmsg_init(&msg.nm_netmsg, so, &curthread->td_msgport,
-		    0, netmsg_pru_control);
-	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_control;
+	netmsg_init(&msg.base, so, &netisr_adone_rport, 0, func);
+	msg.base.lmsg.ms_flags &= ~(MSGF_REPLY | MSGF_DONE);
+	msg.base.lmsg.ms_flags |= MSGF_SYNC;
 	msg.nm_cmd = cmd;
 	msg.nm_data = data;
 	msg.nm_ifp = ifp;
-	msg.nm_td = td;
-	error = lwkt_domsg(so->so_port, &msg.nm_netmsg.nm_lmsg, 0);
-	return (error);
-#endif
+	msg.nm_td = curthread;
+	func((netmsg_t)&msg);
+	return(msg.base.lmsg.ms_error);
 }
 
 int
 so_pru_detach(struct socket *so)
 {
-	int error;
 	struct netmsg_pru_detach msg;
+	int error;
 
-	netmsg_init(&msg.nm_netmsg, so, &curthread->td_msgport,
-		    0, netmsg_pru_detach);
-	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_detach;
-	error = lwkt_domsg(so->so_port, &msg.nm_netmsg.nm_lmsg, 0);
+	netmsg_init(&msg.base, so, &curthread->td_msgport,
+		    0, so->so_proto->pr_usrreqs->pru_detach);
+	error = lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 	return (error);
 }
 
 int
 so_pru_disconnect(struct socket *so)
 {
-	int error;
 	struct netmsg_pru_disconnect msg;
+	int error;
 
-	netmsg_init(&msg.nm_netmsg, so, &curthread->td_msgport,
-		    0, netmsg_pru_disconnect);
-	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_disconnect;
-	error = lwkt_domsg(so->so_port, &msg.nm_netmsg.nm_lmsg, 0);
+	netmsg_init(&msg.base, so, &curthread->td_msgport,
+		    0, so->so_proto->pr_usrreqs->pru_disconnect);
+	error = lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 	return (error);
 }
 
 int
 so_pru_listen(struct socket *so, struct thread *td)
 {
-	int error;
 	struct netmsg_pru_listen msg;
+	int error;
 
-	netmsg_init(&msg.nm_netmsg, so, &curthread->td_msgport,
-		    0, netmsg_pru_listen);
-	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_listen;
+	netmsg_init(&msg.base, so, &curthread->td_msgport,
+		    0, so->so_proto->pr_usrreqs->pru_listen);
 	msg.nm_td = td;		/* used only for prison_ip() XXX JH */
-	error = lwkt_domsg(so->so_port, &msg.nm_netmsg.nm_lmsg, 0);
+	error = lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 	return (error);
 }
 
 int
 so_pru_peeraddr(struct socket *so, struct sockaddr **nam)
 {
-	int error;
 	struct netmsg_pru_peeraddr msg;
+	int error;
 
-	netmsg_init(&msg.nm_netmsg, so, &curthread->td_msgport,
-		    0, netmsg_pru_peeraddr);
-	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_peeraddr;
+	netmsg_init(&msg.base, so, &curthread->td_msgport,
+		    0, so->so_proto->pr_usrreqs->pru_peeraddr);
 	msg.nm_nam = nam;
-	error = lwkt_domsg(so->so_port, &msg.nm_netmsg.nm_lmsg, 0);
+	error = lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 	return (error);
 }
 
 int
 so_pru_rcvd(struct socket *so, int flags)
 {
-	int error;
 	struct netmsg_pru_rcvd msg;
+	int error;
 
-	netmsg_init(&msg.nm_netmsg, so, &curthread->td_msgport,
-		    0, netmsg_pru_rcvd);
-	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_rcvd;
+	netmsg_init(&msg.base, so, &curthread->td_msgport,
+		    0, so->so_proto->pr_usrreqs->pru_rcvd);
 	msg.nm_flags = flags;
-	error = lwkt_domsg(so->so_port, &msg.nm_netmsg.nm_lmsg, 0);
+	error = lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 	return (error);
 }
 
 int
 so_pru_rcvoob(struct socket *so, struct mbuf *m, int flags)
 {
-	int error;
 	struct netmsg_pru_rcvoob msg;
+	int error;
 
-	netmsg_init(&msg.nm_netmsg, so, &curthread->td_msgport,
-		    0, netmsg_pru_rcvoob);
-	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_rcvoob;
+	netmsg_init(&msg.base, so, &curthread->td_msgport,
+		    0, so->so_proto->pr_usrreqs->pru_rcvoob);
 	msg.nm_m = m;
 	msg.nm_flags = flags;
-	error = lwkt_domsg(so->so_port, &msg.nm_netmsg.nm_lmsg, 0);
+	error = lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 	return (error);
 }
 
 /*
- * NOTE: so_pru_send() is the only code which uses pr_mport() now.
- *
  * NOTE: If the target port changes the implied connect will deal with it.
  */
 int
 so_pru_send(struct socket *so, int flags, struct mbuf *m,
 	    struct sockaddr *addr, struct mbuf *control, struct thread *td)
 {
-	int error;
 	struct netmsg_pru_send msg;
-	lwkt_port_t port;
+	int error;
 
-	port = so->so_proto->pr_mport(so, addr, &m);
-	if (port == NULL) {
-		KKASSERT(m == NULL);
-		return EINVAL;
-	}
-
-	netmsg_init(&msg.nm_netmsg, so, &curthread->td_msgport,
-		    0, netmsg_pru_send);
-	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_send;
+	netmsg_init(&msg.base, so, &curthread->td_msgport,
+		    0, so->so_proto->pr_usrreqs->pru_send);
 	msg.nm_flags = flags;
 	msg.nm_m = m;
 	msg.nm_addr = addr;
 	msg.nm_control = control;
 	msg.nm_td = td;
-	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
+	error = lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 	return (error);
 }
 
-/*
- * MPSAFE
- */
 int
 so_pru_sense(struct socket *so, struct stat *sb)
 {
-	int error;
 	struct netmsg_pru_sense msg;
+	int error;
 
-	netmsg_init(&msg.nm_netmsg, so, &curthread->td_msgport,
-		    0, netmsg_pru_sense);
-	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_sense;
+	netmsg_init(&msg.base, so, &curthread->td_msgport,
+		    0, so->so_proto->pr_usrreqs->pru_sense);
 	msg.nm_stat = sb;
-	error = lwkt_domsg(so->so_port, &msg.nm_netmsg.nm_lmsg, 0);
+	error = lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 	return (error);
 }
 
 int
 so_pru_shutdown(struct socket *so)
 {
-	int error;
 	struct netmsg_pru_shutdown msg;
+	int error;
 
-	netmsg_init(&msg.nm_netmsg, so, &curthread->td_msgport,
-		    0, netmsg_pru_shutdown);
-	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_shutdown;
-	error = lwkt_domsg(so->so_port, &msg.nm_netmsg.nm_lmsg, 0);
+	netmsg_init(&msg.base, so, &curthread->td_msgport,
+		    0, so->so_proto->pr_usrreqs->pru_shutdown);
+	error = lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 	return (error);
 }
 
 int
 so_pru_sockaddr(struct socket *so, struct sockaddr **nam)
 {
-	int error;
 	struct netmsg_pru_sockaddr msg;
+	int error;
 
-	netmsg_init(&msg.nm_netmsg, so, &curthread->td_msgport,
-		    0, netmsg_pru_sockaddr);
-	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_sockaddr;
+	netmsg_init(&msg.base, so, &curthread->td_msgport,
+		    0, so->so_proto->pr_usrreqs->pru_sockaddr);
 	msg.nm_nam = nam;
-	error = lwkt_domsg(so->so_port, &msg.nm_netmsg.nm_lmsg, 0);
+	error = lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 	return (error);
 }
 
 int
-so_pru_ctloutput(struct socket *so, struct sockopt *sopt)
+so_pr_ctloutput(struct socket *so, struct sockopt *sopt)
 {
-	struct netmsg_pru_ctloutput msg;
+	struct netmsg_pr_ctloutput msg;
 	int error;
 
 	KKASSERT(!sopt->sopt_val || kva_p(sopt->sopt_val));
-	netmsg_init(&msg.nm_netmsg, so, &curthread->td_msgport,
-		    0, netmsg_pru_ctloutput);
-	/* TBD: move pr_ctloutput to pr_usrreqs */
-	msg.nm_prufn = so->so_proto->pr_ctloutput;
+	netmsg_init(&msg.base, so, &curthread->td_msgport,
+		    0, so->so_proto->pr_ctloutput);
 	msg.nm_sopt = sopt;
-	error = lwkt_domsg(so->so_port, &msg.nm_netmsg.nm_lmsg, 0);
+	error = lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 	return (error);
 }
 
@@ -392,13 +382,12 @@ so_pru_ctlinput(struct protosw *pr, int cmd, struct sockaddr *arg, void *extra)
 	port = pr->pr_ctlport(cmd, arg, extra);
 	if (port == NULL)
 		return;
-	netmsg_init(&msg.nm_netmsg, NULL, &curthread->td_msgport,
-		    0, netmsg_pru_ctlinput);
-	msg.nm_prufn = pr->pr_ctlinput;
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport,
+		    0, pr->pr_ctlinput);
 	msg.nm_cmd = cmd;
 	msg.nm_arg = arg;
 	msg.nm_extra = extra;
-	lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
+	lwkt_domsg(port, &msg.base.lmsg, 0);
 }
 
 /*
@@ -409,212 +398,28 @@ so_pru_ctlinput(struct protosw *pr, int cmd, struct sockaddr *arg, void *extra)
  */
 
 /*
- * Abort and destroy a socket.
- *
- * The originator referenced the socket so we must dereference it when
- * done.
- */
-void
-netmsg_pru_abort(netmsg_t msg)
-{
-	struct netmsg_pru_abort *nm = (void *)msg;
-	struct socket *so = msg->nm_so;
-	int error;
-
-	error = nm->nm_prufn(so);
-	sofree(so);	/* from soabort*() */
-	lwkt_replymsg(&msg->nm_lmsg, error);
-}
-
-#ifdef notused
-void
-netmsg_pru_accept(netmsg_t msg)
-{
-	struct netmsg_pru_accept *nm = (void *)msg;
-
-	lwkt_replymsg(&msg->nm_lmsg, nm->nm_prufn(msg->nm_so, nm->nm_nam));
-}
-#endif
-
-void
-netmsg_pru_attach(netmsg_t msg)
-{
-	struct netmsg_pru_attach *nm = (void *)msg;
-
-	lwkt_replymsg(&msg->nm_lmsg,
-		      nm->nm_prufn(msg->nm_so, nm->nm_proto, nm->nm_ai));
-}
-
-void
-netmsg_pru_bind(netmsg_t msg)
-{
-	struct netmsg_pru_bind *nm = (void *)msg;
-
-	lwkt_replymsg(&msg->nm_lmsg,
-		      nm->nm_prufn(msg->nm_so, nm->nm_nam, nm->nm_td));
-}
-
-void
-netmsg_pru_connect(netmsg_t msg)
-{
-	struct netmsg_pru_connect *nm = (void *)msg;
-
-	lwkt_replymsg(&msg->nm_lmsg,
-		      nm->nm_prufn(msg->nm_so, nm->nm_nam, nm->nm_td));
-}
-
-void
-netmsg_pru_connect2(netmsg_t msg)
-{
-	struct netmsg_pru_connect2 *nm = (void *)msg;
-
-	lwkt_replymsg(&msg->nm_lmsg, nm->nm_prufn(nm->nm_so1, nm->nm_so2));
-}
-
-void
-netmsg_pru_control(netmsg_t msg)
-{
-	struct netmsg_pru_control *nm = (void *)msg;
-	int error;
-
-	error = nm->nm_prufn(msg->nm_so, nm->nm_cmd, nm->nm_data,
-				nm->nm_ifp, nm->nm_td);
-	lwkt_replymsg(&msg->nm_lmsg, error);
-}
-
-void
-netmsg_pru_detach(netmsg_t msg)
-{
-	struct netmsg_pru_detach *nm = (void *)msg;
-
-	lwkt_replymsg(&msg->nm_lmsg, nm->nm_prufn(msg->nm_so));
-}
-
-void
-netmsg_pru_disconnect(netmsg_t msg)
-{
-	struct netmsg_pru_disconnect *nm = (void *)msg;
-
-	lwkt_replymsg(&msg->nm_lmsg, nm->nm_prufn(msg->nm_so));
-}
-
-void
-netmsg_pru_listen(netmsg_t msg)
-{
-	struct netmsg_pru_listen *nm = (void *)msg;
-
-	lwkt_replymsg(&msg->nm_lmsg, nm->nm_prufn(msg->nm_so, nm->nm_td));
-}
-
-void
-netmsg_pru_peeraddr(netmsg_t msg)
-{
-	struct netmsg_pru_peeraddr *nm = (void *)msg;
-
-	lwkt_replymsg(&msg->nm_lmsg, nm->nm_prufn(msg->nm_so, nm->nm_nam));
-}
-
-void
-netmsg_pru_rcvd(netmsg_t msg)
-{
-	struct netmsg_pru_rcvd *nm = (void *)msg;
-
-	lwkt_replymsg(&msg->nm_lmsg, nm->nm_prufn(msg->nm_so, nm->nm_flags));
-}
-
-void
-netmsg_pru_rcvoob(netmsg_t msg)
-{
-	struct netmsg_pru_rcvoob *nm = (void *)msg;
-
-	lwkt_replymsg(&msg->nm_lmsg,
-		      nm->nm_prufn(msg->nm_so, nm->nm_m, nm->nm_flags));
-}
-
-void
-netmsg_pru_send(netmsg_t msg)
-{
-	struct netmsg_pru_send *nm = (void *)msg;
-	int error;
-
-	error = nm->nm_prufn(msg->nm_so, nm->nm_flags, nm->nm_m,
-				nm->nm_addr, nm->nm_control, nm->nm_td);
-	lwkt_replymsg(&msg->nm_lmsg, error);
-}
-
-void
-netmsg_pru_sense(netmsg_t msg)
-{
-	struct netmsg_pru_sense *nm = (void *)msg;
-
-	lwkt_replymsg(&msg->nm_lmsg, nm->nm_prufn(msg->nm_so, nm->nm_stat));
-}
-
-void
-netmsg_pru_shutdown(netmsg_t msg)
-{
-	struct netmsg_pru_shutdown *nm = (void *)msg;
-
-	lwkt_replymsg(&msg->nm_lmsg, nm->nm_prufn(msg->nm_so));
-}
-
-void
-netmsg_pru_sockaddr(netmsg_t msg)
-{
-	struct netmsg_pru_sockaddr *nm = (void *)msg;
-
-	lwkt_replymsg(&msg->nm_lmsg, nm->nm_prufn(msg->nm_so, nm->nm_nam));
-}
-
-void
-netmsg_pru_ctloutput(netmsg_t msg)
-{
-	struct netmsg_pru_ctloutput *nm = (void *)msg;
-
-	lwkt_replymsg(&msg->nm_lmsg, nm->nm_prufn(msg->nm_so, nm->nm_sopt));
-}
-
-void
-netmsg_pru_ctlinput(netmsg_t msg)
-{
-	struct netmsg_pru_ctlinput *nm = (void *)msg;
-
-	nm->nm_prufn(nm->nm_cmd, nm->nm_arg, nm->nm_extra);
-	lwkt_replymsg(&nm->nm_netmsg.nm_lmsg, 0);
-}
-
-void
-netmsg_pr_timeout(netmsg_t msg)
-{
-	struct netmsg_pr_timeout *nm = (void *)msg;
-
-	lwkt_replymsg(&msg->nm_lmsg, nm->nm_prfn());
-}
-
-/*
  * Handle a predicate event request.  This function is only called once
  * when the predicate message queueing request is received.
  */
 void
-netmsg_so_notify(netmsg_t netmsg)
+netmsg_so_notify(netmsg_t msg)
 {
-	struct netmsg_so_notify *msg = (void *)netmsg;
 	struct signalsockbuf *ssb;
 
-	ssb = (msg->nm_etype & NM_REVENT) ?
-			&msg->nm_so->so_rcv :
-			&msg->nm_so->so_snd;
+	ssb = (msg->notify.nm_etype & NM_REVENT) ?
+			&msg->base.nm_so->so_rcv :
+			&msg->base.nm_so->so_snd;
 
 	/*
 	 * Reply immediately if the event has occured, otherwise queue the
 	 * request.
 	 */
-	if (msg->nm_predicate(&msg->nm_netmsg)) {
-		lwkt_replymsg(&msg->nm_netmsg.nm_lmsg,
-			      msg->nm_netmsg.nm_lmsg.ms_error);
+	if (msg->notify.nm_predicate(&msg->notify)) {
+		lwkt_replymsg(&msg->base.lmsg,
+			      msg->base.lmsg.ms_error);
 	} else {
 		lwkt_gettoken(&kq_token);
-		TAILQ_INSERT_TAIL(&ssb->ssb_kq.ki_mlist, msg, nm_list);
+		TAILQ_INSERT_TAIL(&ssb->ssb_kq.ki_mlist, &msg->notify, nm_list);
 		atomic_set_int(&ssb->ssb_flags, SSB_MEVENT);
 		lwkt_reltoken(&kq_token);
 	}
@@ -639,10 +444,10 @@ netmsg_so_notify_doabort(lwkt_msg_t lmsg)
 	struct netmsg_so_notify_abort msg;
 
 	if ((lmsg->ms_flags & (MSGF_DONE | MSGF_REPLY)) == 0) {
-		netmsg_init(&msg.nm_netmsg, NULL, &curthread->td_msgport,
+		netmsg_init(&msg.base, NULL, &curthread->td_msgport,
 			    0, netmsg_so_notify_abort);
 		msg.nm_notifymsg = (void *)lmsg;
-		lwkt_domsg(lmsg->ms_target_port, &msg.nm_netmsg.nm_lmsg, 0);
+		lwkt_domsg(lmsg->ms_target_port, &msg.base.lmsg, 0);
 	}
 }
 
@@ -663,29 +468,28 @@ netmsg_so_notify_doabort(lwkt_msg_t lmsg)
  * reply reaches the originating cpu.  Test both bits anyway.
  */
 void
-netmsg_so_notify_abort(netmsg_t netmsg)
+netmsg_so_notify_abort(netmsg_t msg)
 {
-	struct netmsg_so_notify_abort *abrtmsg = (void *)netmsg;
-	struct netmsg_so_notify *msg = abrtmsg->nm_notifymsg;
+	struct netmsg_so_notify_abort *abrtmsg = &msg->notify_abort;
+	struct netmsg_so_notify *nmsg = abrtmsg->nm_notifymsg;
 	struct signalsockbuf *ssb;
 
 	/*
 	 * The original notify message is not destroyed until after the
 	 * abort request is returned, so we can check its state.
 	 */
-	if ((msg->nm_netmsg.nm_lmsg.ms_flags & (MSGF_DONE | MSGF_REPLY)) == 0) {
-		ssb = (msg->nm_etype & NM_REVENT) ?
-				&msg->nm_so->so_rcv :
-				&msg->nm_so->so_snd;
+	if ((nmsg->base.lmsg.ms_flags & (MSGF_DONE | MSGF_REPLY)) == 0) {
+		ssb = (nmsg->nm_etype & NM_REVENT) ?
+				&nmsg->base.nm_so->so_rcv :
+				&nmsg->base.nm_so->so_snd;
 		lwkt_gettoken(&kq_token);
-		TAILQ_REMOVE(&ssb->ssb_kq.ki_mlist, msg, nm_list);
+		TAILQ_REMOVE(&ssb->ssb_kq.ki_mlist, nmsg, nm_list);
 		lwkt_reltoken(&kq_token);
-		lwkt_replymsg(&msg->nm_netmsg.nm_lmsg, EINTR);
+		lwkt_replymsg(&nmsg->base.lmsg, EINTR);
 	}
 
 	/*
 	 * Reply to the abort message
 	 */
-	lwkt_replymsg(&abrtmsg->nm_netmsg.nm_lmsg, 0);
+	lwkt_replymsg(&abrtmsg->base.lmsg, 0);
 }
-

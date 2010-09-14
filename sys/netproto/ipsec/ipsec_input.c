@@ -560,7 +560,7 @@ esp6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 	}
 }
 
-extern	struct ip6protosw inet6sw[];
+extern	struct protosw inet6sw[];
 extern	u_char ip6_protox[];
 
 /*

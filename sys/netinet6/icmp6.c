@@ -83,6 +83,9 @@
 #include <sys/syslog.h>
 #include <sys/domain.h>
 
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
+
 #include <net/if.h>
 #include <net/route.h>
 #include <net/if_dl.h>
@@ -146,7 +149,7 @@
 #define	HAVE_PPSRATECHECK
 
 extern struct domain inet6domain;
-extern struct ip6protosw inet6sw[];
+extern struct protosw inet6sw[];
 extern u_char ip6_protox[];
 
 struct icmp6stat icmp6stat;
@@ -2602,9 +2605,11 @@ fail:
 /*
  * ICMPv6 socket option processing.
  */
-int
-icmp6_ctloutput(struct socket *so, struct sockopt *sopt)
+void
+icmp6_ctloutput(netmsg_t msg)
 {
+	struct socket *so = msg->ctloutput.base.nm_so;
+	struct sockopt *sopt = msg->ctloutput.nm_sopt;
 	int error = 0;
 	int optlen;
 	struct inpcb *inp = so->so_pcb;
@@ -2619,7 +2624,8 @@ icmp6_ctloutput(struct socket *so, struct sockopt *sopt)
 		level = op = optname = optlen = 0;
 
 	if (level != IPPROTO_ICMPV6) {
-		return EINVAL;
+		error = EINVAL;
+		goto out;
 	}
 
 	switch (op) {
@@ -2667,8 +2673,8 @@ icmp6_ctloutput(struct socket *so, struct sockopt *sopt)
 		}
 		break;
 	}
-
-	return (error);
+out:
+	lwkt_replymsg(&msg->ctloutput.base.lmsg, error);
 }
 #ifdef HAVE_NRL_INPCB
 #undef in6pcb

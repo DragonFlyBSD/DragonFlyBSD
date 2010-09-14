@@ -63,7 +63,7 @@ struct encaptab {
 #ifdef _KERNEL
 
 void	encap_init(void);
-void	encap4_input(struct mbuf *, ...);
+int	encap4_input(struct mbuf **, int *, int);
 int	encap6_input(struct mbuf **, int *, int);
 const struct encaptab *encap_attach(int, int, const struct sockaddr *,
 	const struct sockaddr *, const struct sockaddr *,

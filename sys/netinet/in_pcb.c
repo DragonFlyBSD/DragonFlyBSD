@@ -87,6 +87,7 @@
 
 #include <sys/thread2.h>
 #include <sys/socketvar2.h>
+#include <sys/msgport2.h>
 
 #include <machine/limits.h>
 
@@ -770,6 +771,15 @@ in_setsockaddr(struct socket *so, struct sockaddr **nam)
 	return (0);
 }
 
+void
+in_setsockaddr_dispatch(netmsg_t msg)
+{
+	int error;
+
+	error = in_setsockaddr(msg->base.nm_so, msg->peeraddr.nm_nam);
+	lwkt_replymsg(&msg->lmsg, error);
+}
+
 int
 in_setpeeraddr(struct socket *so, struct sockaddr **nam)
 {
@@ -797,6 +807,15 @@ in_setpeeraddr(struct socket *so, struct sockaddr **nam)
 
 	*nam = (struct sockaddr *)sin;
 	return (0);
+}
+
+void
+in_setpeeraddr_dispatch(netmsg_t msg)
+{
+	int error;
+
+	error = in_setpeeraddr(msg->base.nm_so, msg->peeraddr.nm_nam);
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
 void

@@ -72,7 +72,6 @@ static void	in_socktrim (struct sockaddr_in *);
 static int	in_ifinit(struct ifnet *, struct in_ifaddr *,
 		    const struct sockaddr_in *, int);
 
-static void	in_control_dispatch(struct netmsg *);
 static int	in_control_internal(u_long, caddr_t, struct ifnet *,
 		    struct thread *);
 
@@ -194,22 +193,16 @@ in_len2mask(struct in_addr *mask, int len)
 
 static int in_interfaces;	/* number of external internet interfaces */
 
-struct in_control_arg {
-	u_long		cmd;
-	caddr_t		data;
-	struct ifnet	*ifp;
-	struct thread	*td;
-};
-
-static void
-in_control_dispatch(struct netmsg *nmsg)
+void
+in_control_dispatch(netmsg_t msg)
 {
-	struct lwkt_msg *msg = &nmsg->nm_lmsg;
-	const struct in_control_arg *arg = msg->u.ms_resultp;
 	int error;
 
-	error = in_control_internal(arg->cmd, arg->data, arg->ifp, arg->td);
-	lwkt_replymsg(msg, error);
+	error = in_control_internal(msg->control.nm_cmd,
+				    msg->control.nm_data,
+				    msg->control.nm_ifp,
+				    msg->control.nm_td);
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
 /*
@@ -223,9 +216,7 @@ int
 in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 	   struct thread *td)
 {
-	struct netmsg nmsg;
-	struct in_control_arg arg;
-	struct lwkt_msg *msg;
+	struct netmsg_pru_control msg;
 	int error;
 
 	switch (cmd) {
@@ -254,29 +245,26 @@ in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 	case SIOCSIFNETMASK:
 	case SIOCAIFADDR:
 	case SIOCDIFADDR:
-		bzero(&arg, sizeof(arg));
-		arg.cmd = cmd;
-		arg.data = data;
-		arg.ifp = ifp;
-		arg.td = td;
-
-		netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+		netmsg_init(&msg.base, NULL, &curthread->td_msgport,
 			    0, in_control_dispatch);
-		msg = &nmsg.nm_lmsg;
-		msg->u.ms_resultp = &arg;
-
-		lwkt_domsg(cpu_portfn(0), msg, 0);
-		return msg->ms_error;
+		msg.nm_cmd = cmd;
+		msg.nm_data = data;
+		msg.nm_ifp = ifp;
+		msg.nm_td = td;
+		lwkt_domsg(cpu_portfn(0), &msg.base.lmsg, 0);
+		error = msg.base.lmsg.ms_error;
+		break;
 	default:
-		return in_control_internal(cmd, data, ifp, td);
+		error = in_control_internal(cmd, data, ifp, td);
+		break;
 	}
+	return error;
 }
 
 static void
-in_ialink_dispatch(struct netmsg *nmsg)
+in_ialink_dispatch(netmsg_t msg)
 {
-	struct lwkt_msg *lmsg = &nmsg->nm_lmsg;
-	struct in_ifaddr *ia = lmsg->u.ms_resultp;
+	struct in_ifaddr *ia = msg->lmsg.u.ms_resultp;
 	struct ifaddr_container *ifac;
 	struct in_ifaddr_container *iac;
 	int cpu = mycpuid;
@@ -294,14 +282,13 @@ in_ialink_dispatch(struct netmsg *nmsg)
 
 	crit_exit();
 
-	ifa_forwardmsg(lmsg, cpu + 1);
+	ifa_forwardmsg(&msg->lmsg, cpu + 1);
 }
 
 static void
-in_iaunlink_dispatch(struct netmsg *nmsg)
+in_iaunlink_dispatch(netmsg_t msg)
 {
-	struct lwkt_msg *lmsg = &nmsg->nm_lmsg;
-	struct in_ifaddr *ia = lmsg->u.ms_resultp;
+	struct in_ifaddr *ia = msg->lmsg.u.ms_resultp;
 	struct ifaddr_container *ifac;
 	struct in_ifaddr_container *iac;
 	int cpu = mycpuid;
@@ -319,14 +306,13 @@ in_iaunlink_dispatch(struct netmsg *nmsg)
 
 	crit_exit();
 
-	ifa_forwardmsg(lmsg, cpu + 1);
+	ifa_forwardmsg(&msg->lmsg, cpu + 1);
 }
 
 static void
-in_iahashins_dispatch(struct netmsg *nmsg)
+in_iahashins_dispatch(netmsg_t msg)
 {
-	struct lwkt_msg *lmsg = &nmsg->nm_lmsg;
-	struct in_ifaddr *ia = lmsg->u.ms_resultp;
+	struct in_ifaddr *ia = msg->lmsg.u.ms_resultp;
 	struct ifaddr_container *ifac;
 	struct in_ifaddr_container *iac;
 	int cpu = mycpuid;
@@ -345,14 +331,13 @@ in_iahashins_dispatch(struct netmsg *nmsg)
 
 	crit_exit();
 
-	ifa_forwardmsg(lmsg, cpu + 1);
+	ifa_forwardmsg(&msg->lmsg, cpu + 1);
 }
 
 static void
-in_iahashrem_dispatch(struct netmsg *nmsg)
+in_iahashrem_dispatch(netmsg_t msg)
 {
-	struct lwkt_msg *lmsg = &nmsg->nm_lmsg;
-	struct in_ifaddr *ia = lmsg->u.ms_resultp;
+	struct in_ifaddr *ia = msg->lmsg.u.ms_resultp;
 	struct ifaddr_container *ifac;
 	struct in_ifaddr_container *iac;
 	int cpu = mycpuid;
@@ -370,63 +355,55 @@ in_iahashrem_dispatch(struct netmsg *nmsg)
 
 	crit_exit();
 
-	ifa_forwardmsg(lmsg, cpu + 1);
+	ifa_forwardmsg(&msg->lmsg, cpu + 1);
 }
 
 static void
 in_ialink(struct in_ifaddr *ia)
 {
-	struct netmsg nmsg;
-	struct lwkt_msg *lmsg;
+	struct netmsg_base msg;
 
-	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+	netmsg_init(&msg, NULL, &curthread->td_msgport,
 		    0, in_ialink_dispatch);
-	lmsg = &nmsg.nm_lmsg;
-	lmsg->u.ms_resultp = ia;
+	msg.lmsg.u.ms_resultp = ia;
 
-	ifa_domsg(lmsg, 0);
+	ifa_domsg(&msg.lmsg, 0);
 }
 
 void
 in_iaunlink(struct in_ifaddr *ia)
 {
-	struct netmsg nmsg;
-	struct lwkt_msg *lmsg;
+	struct netmsg_base msg;
 
-	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+	netmsg_init(&msg, NULL, &curthread->td_msgport,
 		    0, in_iaunlink_dispatch);
-	lmsg = &nmsg.nm_lmsg;
-	lmsg->u.ms_resultp = ia;
+	msg.lmsg.u.ms_resultp = ia;
 
-	ifa_domsg(lmsg, 0);
+	ifa_domsg(&msg.lmsg, 0);
 }
 
 void
 in_iahash_insert(struct in_ifaddr *ia)
 {
-	struct netmsg nmsg;
-	struct lwkt_msg *lmsg;
+	struct netmsg_base msg;
 
-	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+	netmsg_init(&msg, NULL, &curthread->td_msgport,
 		    0, in_iahashins_dispatch);
-	lmsg = &nmsg.nm_lmsg;
-	lmsg->u.ms_resultp = ia;
+	msg.lmsg.u.ms_resultp = ia;
 
-	ifa_domsg(lmsg, 0);
+	ifa_domsg(&msg.lmsg, 0);
 }
 
 void
 in_iahash_remove(struct in_ifaddr *ia)
 {
-	struct netmsg nmsg;
-	struct lwkt_msg *lmsg;
+	struct netmsg_base msg;
 
-	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+	netmsg_init(&msg, NULL, &curthread->td_msgport,
 		    0, in_iahashrem_dispatch);
-	lmsg = &nmsg.nm_lmsg;
-	lmsg->u.ms_resultp = ia;
+	msg.lmsg.u.ms_resultp = ia;
 
-	ifa_domsg(lmsg, 0);
+	ifa_domsg(&msg.lmsg, 0);
 }
 
 static __inline struct in_ifaddr *

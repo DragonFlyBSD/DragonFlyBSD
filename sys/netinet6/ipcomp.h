@@ -72,7 +72,7 @@ struct ipcomp_algorithm {
 };
 
 extern const struct ipcomp_algorithm *ipcomp_algorithm_lookup (int);
-extern void ipcomp4_input (struct mbuf *, ...);
+extern int ipcomp4_input (struct mbuf **, int *, int);
 extern int ipcomp4_output (struct mbuf *, struct ipsecrequest *);
 #endif /* KERNEL */
 

@@ -216,33 +216,32 @@ sys_listen(struct listen_args *uap)
  * Returns the accepted socket as well.
  */
 static boolean_t
-soaccept_predicate(struct netmsg *msg0)
+soaccept_predicate(struct netmsg_so_notify *msg)
 {
-	struct netmsg_so_notify *msg = (struct netmsg_so_notify *)msg0;
-	struct socket *head = msg->nm_so;
+	struct socket *head = msg->base.nm_so;
 
 	if (head->so_error != 0) {
-		msg->nm_netmsg.nm_lmsg.ms_error = head->so_error;
+		msg->base.lmsg.ms_error = head->so_error;
 		return (TRUE);
 	}
 	lwkt_gettoken(&head->so_rcv.ssb_token);
 	if (!TAILQ_EMPTY(&head->so_comp)) {
 		/* Abuse nm_so field as copy in/copy out parameter. XXX JH */
-		msg->nm_so = TAILQ_FIRST(&head->so_comp);
-		TAILQ_REMOVE(&head->so_comp, msg->nm_so, so_list);
+		msg->base.nm_so = TAILQ_FIRST(&head->so_comp);
+		TAILQ_REMOVE(&head->so_comp, msg->base.nm_so, so_list);
 		head->so_qlen--;
 
-		msg->nm_netmsg.nm_lmsg.ms_error = 0;
+		msg->base.lmsg.ms_error = 0;
 		lwkt_reltoken(&head->so_rcv.ssb_token);
 		return (TRUE);
 	}
 	lwkt_reltoken(&head->so_rcv.ssb_token);
 	if (head->so_state & SS_CANTRCVMORE) {
-		msg->nm_netmsg.nm_lmsg.ms_error = ECONNABORTED;
+		msg->base.lmsg.ms_error = ECONNABORTED;
 		return (TRUE);
 	}
 	if (msg->nm_fflags & FNONBLOCK) {
-		msg->nm_netmsg.nm_lmsg.ms_error = EWOULDBLOCK;
+		msg->base.lmsg.ms_error = EWOULDBLOCK;
 		return (TRUE);
 	}
 
@@ -296,20 +295,19 @@ kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res)
 		fflags = lfp->f_flag;
 
 	/* optimize for uniprocessor case later XXX JH */
-	netmsg_init_abortable(&msg.nm_netmsg, head, &curthread->td_msgport,
+	netmsg_init_abortable(&msg.base, head, &curthread->td_msgport,
 			      0, netmsg_so_notify, netmsg_so_notify_doabort);
 	msg.nm_predicate = soaccept_predicate;
 	msg.nm_fflags = fflags;
-	msg.nm_so = head;
 	msg.nm_etype = NM_REVENT;
-	error = lwkt_domsg(head->so_port, &msg.nm_netmsg.nm_lmsg, PCATCH);
+	error = lwkt_domsg(head->so_port, &msg.base.lmsg, PCATCH);
 	if (error)
 		goto done;
 
 	/*
 	 * At this point we have the connection that's ready to be accepted.
 	 */
-	so = msg.nm_so;
+	so = msg.base.nm_so;
 
 	fflag = lfp->f_flag;
 
@@ -453,14 +451,13 @@ sys_extaccept(struct extaccept_args *uap)
  * Returns TRUE if predicate satisfied.
  */
 static boolean_t
-soconnected_predicate(struct netmsg *msg0)
+soconnected_predicate(struct netmsg_so_notify *msg)
 {
-	struct netmsg_so_notify *msg = (struct netmsg_so_notify *)msg0;
-	struct socket *so = msg->nm_so;
+	struct socket *so = msg->base.nm_so;
 
 	/* check predicate */
 	if (!(so->so_state & SS_ISCONNECTING) || so->so_error != 0) {
-		msg->nm_netmsg.nm_lmsg.ms_error = so->so_error;
+		msg->base.lmsg.ms_error = so->so_error;
 		return (TRUE);
 	}
 
@@ -502,15 +499,14 @@ kern_connect(int s, int fflags, struct sockaddr *sa)
 	if ((so->so_state & SS_ISCONNECTING) && so->so_error == 0) {
 		struct netmsg_so_notify msg;
 
-		netmsg_init_abortable(&msg.nm_netmsg, so,
+		netmsg_init_abortable(&msg.base, so,
 				      &curthread->td_msgport,
 				      0,
 				      netmsg_so_notify,
 				      netmsg_so_notify_doabort);
 		msg.nm_predicate = soconnected_predicate;
-		msg.nm_so = so;
 		msg.nm_etype = NM_REVENT;
-		error = lwkt_domsg(so->so_port, &msg.nm_netmsg.nm_lmsg, PCATCH);
+		error = lwkt_domsg(so->so_port, &msg.base.lmsg, PCATCH);
 		if (error == EINTR || error == ERESTART)
 			interrupted = 1;
 	}

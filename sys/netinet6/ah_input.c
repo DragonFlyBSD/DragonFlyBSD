@@ -98,10 +98,11 @@
 #ifdef INET
 extern struct protosw inetsw[];
 
-void
-ah4_input(struct mbuf *m, ...)
+int
+ah4_input(struct mbuf **mp, int *offp, int proto)
 {
-	int off, proto;
+	int off;
+	struct mbuf *m;
 	struct ip *ip;
 	struct ah *ah;
 	u_int32_t spi;
@@ -113,12 +114,10 @@ ah4_input(struct mbuf *m, ...)
 	u_int16_t nxt;
 	size_t hlen;
 	size_t stripsiz = 0;
-	__va_list ap;
 
-	__va_start(ap, m);
-	off = __va_arg(ap, int);
-	proto = __va_arg(ap, int);
-	__va_end(ap);
+	off = *offp;
+	m = *mp;
+	*mp = NULL;
 
 #ifndef PULLDOWN_TEST
 	if (m->m_len < off + sizeof(struct newah)) {
@@ -540,9 +539,12 @@ ah4_input(struct mbuf *m, ...)
 				/* freed in ip_lengthcheck() */
 				goto fail;
 			}
-			(*inetsw[ip_protox[nxt]].pr_input)(m, off, nxt);
-		} else
+			*mp = m;
+			*offp = off;
+			(*inetsw[ip_protox[nxt]].pr_input)(mp, offp, nxt);
+		} else {
 			m_freem(m);
+		}
 		m = NULL;
 	}
 
@@ -552,7 +554,7 @@ ah4_input(struct mbuf *m, ...)
 		key_freesav(sav);
 	}
 	ipsecstat.in_success++;
-	return;
+	return(IPPROTO_DONE);
 
 fail:
 	if (sav) {
@@ -562,7 +564,7 @@ fail:
 	}
 	if (m)
 		m_freem(m);
-	return;
+	return(IPPROTO_DONE);
 }
 #endif /* INET */
 

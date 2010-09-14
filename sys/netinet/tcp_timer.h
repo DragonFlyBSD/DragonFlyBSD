@@ -132,7 +132,7 @@ static const char *tcptimers[] =
 
 struct tcpcb;
 struct netmsg_tcp_timer {
-	struct netmsg	tt_nmsg;
+	struct netmsg_base tt_msg;
 	struct tcpcb	*tt_tcb;
 	int		tt_cpuid;		/* owner cpuid */
 	lwkt_port_t	tt_msgport;		/* owner msgport */

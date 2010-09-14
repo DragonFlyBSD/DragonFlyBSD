@@ -72,6 +72,8 @@
 
 MODULE_VERSION(netgraph, NG_ABI_VERSION);
 
+union netmsg;
+
 /* List of all nodes */
 static LIST_HEAD(, ng_node) nodelist;
 
@@ -91,7 +93,7 @@ static int	ng_generic_msg(node_p here, struct ng_mesg *msg,
 			const char *retaddr, struct ng_mesg ** resp);
 static ng_ID_t	ng_decodeidname(const char *name);
 static int	ngb_mod_event(module_t mod, int event, void *data);
-static void	ngintr(struct netmsg *);
+static void	ngintr(union netmsg *);
 static int	ng_load_module(const char *);
 static int	ng_unload_module(const char *);
 
@@ -2039,7 +2041,7 @@ ng_queue_msg(node_p here, struct ng_mesg *msg, const char *address)
  * Pick an item off the queue, process it, and dispose of the queue entry.
  */
 static void
-ngintr(struct netmsg *pmsg)
+ngintr(netmsg_t pmsg)
 {
 	hook_p  hook;
 	struct mbuf *m;
@@ -2055,7 +2057,7 @@ ngintr(struct netmsg *pmsg)
 	 * be replied.  Interlock processing and notification by replying
 	 * the message first.
 	 */
-	lwkt_replymsg(&pmsg->nm_lmsg, 0);
+	lwkt_replymsg(&pmsg->lmsg, 0);
 
 	get_mplock();
 

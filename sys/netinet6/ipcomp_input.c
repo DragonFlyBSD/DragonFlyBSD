@@ -86,11 +86,12 @@
 #ifdef INET
 extern struct protosw inetsw[];
 
-void
-ipcomp4_input(struct mbuf *m, ...)
+int
+ipcomp4_input(struct mbuf **mp, int *offp, int proto)
 {
-	int off, proto;
+	int off;
 	struct mbuf *md;
+	struct mbuf *m;
 	struct ip *ip;
 	struct ipcomp *ipcomp;
 	const struct ipcomp_algorithm *algo;
@@ -100,12 +101,10 @@ ipcomp4_input(struct mbuf *m, ...)
 	int error;
 	size_t newlen, olen;
 	struct secasvar *sav = NULL;
-	__va_list ap;
 
-	__va_start(ap, m);
-	off = __va_arg(ap, int);
-	proto = __va_arg(ap, int);
-	__va_end(ap);
+	off = *offp;
+	m = *mp;
+	*mp = NULL;
 
 	if (m->m_pkthdr.len < off + sizeof(struct ipcomp)) {
 		ipseclog((LOG_DEBUG, "IPv4 IPComp input: assumption failed "
@@ -225,20 +224,23 @@ ipcomp4_input(struct mbuf *m, ...)
 			ipsecstat.in_polvio++;
 			goto fail;
 		}
-		(*inetsw[ip_protox[nxt]].pr_input)(m, off, nxt);
-	} else
+		*mp = m;
+		*offp = off;
+		(*inetsw[ip_protox[nxt]].pr_input)(mp, offp, nxt);
+	} else {
 		m_freem(m);
+	}
 	m = NULL;
 
 	ipsecstat.in_success++;
-	return;
+	return(IPPROTO_DONE);
 
 fail:
 	if (sav)
 		key_freesav(sav);
 	if (m)
 		m_freem(m);
-	return;
+	return(IPPROTO_DONE);
 }
 #endif /* INET */
 

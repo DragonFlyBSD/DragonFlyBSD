@@ -139,7 +139,7 @@ struct iopoll_ctx {
 	uint32_t		stalled;		/* statistics */
 	uint32_t		pending_polls;		/* state */
 
-	struct netmsg		poll_netmsg;
+	struct netmsg_base	poll_netmsg;
 
 	int			poll_cpuid;
 	int			pollhz;
@@ -151,7 +151,7 @@ struct iopoll_ctx {
 	uint32_t		poll_handlers; /* next free entry in pr[]. */
 	struct iopoll_rec	pr[IFPOLL_LIST_LEN];
 
-	struct netmsg		poll_more_netmsg;
+	struct netmsg_base	poll_more_netmsg;
 
 	uint32_t		poll_burst;		/* state */
 	uint32_t		poll_burst_max;		/* tunable */
@@ -185,7 +185,7 @@ struct stpoll_rec {
 };
 
 struct stpoll_ctx {
-	struct netmsg		poll_netmsg;
+	struct netmsg_base	poll_netmsg;
 
 	int			pollhz;
 
@@ -197,19 +197,19 @@ struct stpoll_ctx {
 };
 
 struct iopoll_sysctl_netmsg {
-	struct netmsg		nmsg;
+	struct netmsg_base	base;
 	struct iopoll_ctx	*ctx;
 };
 
 void		ifpoll_init_pcpu(int);
-static void	ifpoll_register_handler(struct netmsg *);
-static void	ifpoll_deregister_handler(struct netmsg *);
+static void	ifpoll_register_handler(netmsg_t);
+static void	ifpoll_deregister_handler(netmsg_t);
 
 /*
  * Status polling
  */
 static void	stpoll_init(void);
-static void	stpoll_handler(struct netmsg *);
+static void	stpoll_handler(netmsg_t);
 static void	stpoll_clock(struct stpoll_ctx *);
 static int	stpoll_register(struct ifnet *, const struct ifpoll_status *);
 static int	stpoll_deregister(struct ifnet *);
@@ -219,8 +219,8 @@ static int	stpoll_deregister(struct ifnet *);
  */
 static struct iopoll_ctx *iopoll_ctx_create(int, int);
 static void	iopoll_init(int);
-static void	iopoll_handler(struct netmsg *);
-static void	iopollmore_handler(struct netmsg *);
+static void	iopoll_handler(netmsg_t);
+static void	iopollmore_handler(netmsg_t);
 static void	iopoll_clock(struct iopoll_ctx *);
 static int	iopoll_register(struct ifnet *, struct iopoll_ctx *,
 		    const struct ifpoll_io *);
@@ -228,9 +228,9 @@ static int	iopoll_deregister(struct ifnet *, struct iopoll_ctx *);
 
 static void	iopoll_add_sysctl(struct sysctl_ctx_list *,
 		    struct sysctl_oid_list *, struct iopoll_ctx *);
-static void	sysctl_burstmax_handler(struct netmsg *);
+static void	sysctl_burstmax_handler(netmsg_t);
 static int	sysctl_burstmax(SYSCTL_HANDLER_ARGS);
-static void	sysctl_eachburst_handler(struct netmsg *);
+static void	sysctl_eachburst_handler(netmsg_t);
 static int	sysctl_eachburst(SYSCTL_HANDLER_ARGS);
 
 /*
@@ -241,9 +241,9 @@ static void	poll_comm_start(int);
 static void	poll_comm_adjust_pollhz(struct poll_comm *);
 static void	poll_comm_systimer0(systimer_t, struct intrframe *);
 static void	poll_comm_systimer(systimer_t, struct intrframe *);
-static void	sysctl_pollhz_handler(struct netmsg *);
-static void	sysctl_stfrac_handler(struct netmsg *);
-static void	sysctl_txfrac_handler(struct netmsg *);
+static void	sysctl_pollhz_handler(netmsg_t);
+static void	sysctl_stfrac_handler(netmsg_t);
+static void	sysctl_txfrac_handler(netmsg_t);
 static int	sysctl_pollhz(SYSCTL_HANDLER_ARGS);
 static int	sysctl_stfrac(SYSCTL_HANDLER_ARGS);
 static int	sysctl_txfrac(SYSCTL_HANDLER_ARGS);
@@ -272,28 +272,28 @@ TUNABLE_INT("net.ifpoll.status_frac", &ifpoll_stfrac);
 TUNABLE_INT("net.ifpoll.tx_frac", &ifpoll_txfrac);
 
 static __inline void
-ifpoll_sendmsg_oncpu(struct netmsg *msg)
+ifpoll_sendmsg_oncpu(netmsg_t msg)
 {
-	if (msg->nm_lmsg.ms_flags & MSGF_DONE)
-		ifnet_sendmsg(&msg->nm_lmsg, mycpuid);
+	if (msg->lmsg.ms_flags & MSGF_DONE)
+		ifnet_sendmsg(&msg->lmsg, mycpuid);
 }
 
 static __inline void
 sched_stpoll(struct stpoll_ctx *st_ctx)
 {
-	ifpoll_sendmsg_oncpu(&st_ctx->poll_netmsg);
+	ifpoll_sendmsg_oncpu((netmsg_t)&st_ctx->poll_netmsg);
 }
 
 static __inline void
 sched_iopoll(struct iopoll_ctx *io_ctx)
 {
-	ifpoll_sendmsg_oncpu(&io_ctx->poll_netmsg);
+	ifpoll_sendmsg_oncpu((netmsg_t)&io_ctx->poll_netmsg);
 }
 
 static __inline void
 sched_iopollmore(struct iopoll_ctx *io_ctx)
 {
-	ifpoll_sendmsg_oncpu(&io_ctx->poll_more_netmsg);
+	ifpoll_sendmsg_oncpu((netmsg_t)&io_ctx->poll_more_netmsg);
 }
 
 static __inline void
@@ -346,7 +346,7 @@ int
 ifpoll_register(struct ifnet *ifp)
 {
 	struct ifpoll_info info;
-	struct netmsg nmsg;
+	struct netmsg_base nmsg;
 	int error;
 
 	if (ifp->if_qpoll == NULL) {
@@ -376,9 +376,9 @@ ifpoll_register(struct ifnet *ifp)
 
 	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
 		    0, ifpoll_register_handler);
-	nmsg.nm_lmsg.u.ms_resultp = &info;
+	nmsg.lmsg.u.ms_resultp = &info;
 
-	error = ifnet_domsg(&nmsg.nm_lmsg, 0);
+	error = ifnet_domsg(&nmsg.lmsg, 0);
 	if (error) {
 		if (!ifpoll_deregister(ifp)) {
 			if_printf(ifp, "ifpoll_register: "
@@ -391,7 +391,7 @@ ifpoll_register(struct ifnet *ifp)
 int
 ifpoll_deregister(struct ifnet *ifp)
 {
-	struct netmsg nmsg;
+	struct netmsg_base nmsg;
 	int error;
 
 	if (ifp->if_qpoll == NULL)
@@ -409,9 +409,9 @@ ifpoll_deregister(struct ifnet *ifp)
 
 	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
 		    0, ifpoll_deregister_handler);
-	nmsg.nm_lmsg.u.ms_resultp = ifp;
+	nmsg.lmsg.u.ms_resultp = ifp;
 
-	error = ifnet_domsg(&nmsg.nm_lmsg, 0);
+	error = ifnet_domsg(&nmsg.lmsg, 0);
 	if (!error) {
 		ifnet_serialize_all(ifp);
 		ifp->if_qpoll(ifp, NULL);
@@ -421,9 +421,9 @@ ifpoll_deregister(struct ifnet *ifp)
 }
 
 static void
-ifpoll_register_handler(struct netmsg *nmsg)
+ifpoll_register_handler(netmsg_t nmsg)
 {
-	const struct ifpoll_info *info = nmsg->nm_lmsg.u.ms_resultp;
+	const struct ifpoll_info *info = nmsg->lmsg.u.ms_resultp;
 	int cpuid = mycpuid, nextcpu;
 	int error;
 
@@ -451,18 +451,18 @@ ifpoll_register_handler(struct netmsg *nmsg)
 
 	nextcpu = cpuid + 1;
 	if (nextcpu < ifpoll_ncpus)
-		ifnet_forwardmsg(&nmsg->nm_lmsg, nextcpu);
+		ifnet_forwardmsg(&nmsg->lmsg, nextcpu);
 	else
-		lwkt_replymsg(&nmsg->nm_lmsg, 0);
+		lwkt_replymsg(&nmsg->lmsg, 0);
 	return;
 failed:
-	lwkt_replymsg(&nmsg->nm_lmsg, error);
+	lwkt_replymsg(&nmsg->lmsg, error);
 }
 
 static void
-ifpoll_deregister_handler(struct netmsg *nmsg)
+ifpoll_deregister_handler(netmsg_t nmsg)
 {
-	struct ifnet *ifp = nmsg->nm_lmsg.u.ms_resultp;
+	struct ifnet *ifp = nmsg->lmsg.u.ms_resultp;
 	int cpuid = mycpuid, nextcpu;
 
 	KKASSERT(cpuid < ifpoll_ncpus);
@@ -479,9 +479,9 @@ ifpoll_deregister_handler(struct netmsg *nmsg)
 
 	nextcpu = cpuid + 1;
 	if (nextcpu < ifpoll_ncpus)
-		ifnet_forwardmsg(&nmsg->nm_lmsg, nextcpu);
+		ifnet_forwardmsg(&nmsg->lmsg, nextcpu);
 	else
-		lwkt_replymsg(&nmsg->nm_lmsg, 0);
+		lwkt_replymsg(&nmsg->lmsg, 0);
 }
 
 static void
@@ -512,7 +512,7 @@ stpoll_init(void)
  * once per polling systimer tick.
  */
 static void
-stpoll_handler(struct netmsg *msg)
+stpoll_handler(netmsg_t msg)
 {
 	struct stpoll_ctx *st_ctx = &stpoll_context;
 	struct thread *td = curthread;
@@ -523,7 +523,7 @@ stpoll_handler(struct netmsg *msg)
 	crit_enter_quick(td);
 
 	/* Reply ASAP */
-	lwkt_replymsg(&msg->nm_lmsg, 0);
+	lwkt_replymsg(&msg->lmsg, 0);
 
 	if (st_ctx->poll_handlers == 0) {
 		crit_exit_quick(td);
@@ -692,11 +692,11 @@ iopoll_ctx_create(int cpuid, int poll_type)
 
 	netmsg_init(&io_ctx->poll_netmsg, NULL, &netisr_adone_rport,
 		    0, iopoll_handler);
-	io_ctx->poll_netmsg.nm_lmsg.u.ms_resultp = io_ctx;
+	io_ctx->poll_netmsg.lmsg.u.ms_resultp = io_ctx;
 
 	netmsg_init(&io_ctx->poll_more_netmsg, NULL, &netisr_adone_rport,
 		    0, iopollmore_handler);
-	io_ctx->poll_more_netmsg.nm_lmsg.u.ms_resultp = io_ctx;
+	io_ctx->poll_more_netmsg.lmsg.u.ms_resultp = io_ctx;
 
 	/*
 	 * Initialize per-cpu sysctl nodes
@@ -779,19 +779,19 @@ iopoll_clock(struct iopoll_ctx *io_ctx)
  * ISR to be scheduled in the handler.
  */
 static void
-iopoll_handler(struct netmsg *msg)
+iopoll_handler(netmsg_t msg)
 {
 	struct iopoll_ctx *io_ctx;
 	struct thread *td = curthread;
 	int i, cycles;
 
-	io_ctx = msg->nm_lmsg.u.ms_resultp;
+	io_ctx = msg->lmsg.u.ms_resultp;
 	KKASSERT(&td->td_msgport == ifnet_portfn(io_ctx->poll_cpuid));
 
 	crit_enter_quick(td);
 
 	/* Reply ASAP */
-	lwkt_replymsg(&msg->nm_lmsg, 0);
+	lwkt_replymsg(&msg->lmsg, 0);
 
 	if (io_ctx->poll_handlers == 0) {
 		crit_exit_quick(td);
@@ -848,7 +848,7 @@ iopoll_handler(struct netmsg *msg)
  * work performed in low level handling.
  */
 static void
-iopollmore_handler(struct netmsg *msg)
+iopollmore_handler(netmsg_t msg)
 {
 	struct thread *td = curthread;
 	struct iopoll_ctx *io_ctx;
@@ -856,13 +856,13 @@ iopollmore_handler(struct netmsg *msg)
 	int kern_load;
 	uint32_t pending_polls;
 
-	io_ctx = msg->nm_lmsg.u.ms_resultp;
+	io_ctx = msg->lmsg.u.ms_resultp;
 	KKASSERT(&td->td_msgport == ifnet_portfn(io_ctx->poll_cpuid));
 
 	crit_enter_quick(td);
 
 	/* Replay ASAP */
-	lwkt_replymsg(&msg->nm_lmsg, 0);
+	lwkt_replymsg(&msg->lmsg, 0);
 
 	if (io_ctx->poll_handlers == 0) {
 		crit_exit_quick(td);
@@ -967,7 +967,7 @@ iopoll_add_sysctl(struct sysctl_ctx_list *ctx, struct sysctl_oid_list *parent,
 }
 
 static void
-sysctl_burstmax_handler(struct netmsg *nmsg)
+sysctl_burstmax_handler(netmsg_t nmsg)
 {
 	struct iopoll_sysctl_netmsg *msg = (struct iopoll_sysctl_netmsg *)nmsg;
 	struct iopoll_ctx *io_ctx;
@@ -975,7 +975,7 @@ sysctl_burstmax_handler(struct netmsg *nmsg)
 	io_ctx = msg->ctx;
 	KKASSERT(&curthread->td_msgport == ifnet_portfn(io_ctx->poll_cpuid));
 
-	io_ctx->poll_burst_max = nmsg->nm_lmsg.u.ms_result;
+	io_ctx->poll_burst_max = nmsg->lmsg.u.ms_result;
 	if (io_ctx->poll_each_burst > io_ctx->poll_burst_max)
 		io_ctx->poll_each_burst = io_ctx->poll_burst_max;
 	if (io_ctx->poll_burst > io_ctx->poll_burst_max)
@@ -983,7 +983,7 @@ sysctl_burstmax_handler(struct netmsg *nmsg)
 	if (io_ctx->residual_burst > io_ctx->poll_burst_max)
 		io_ctx->residual_burst = io_ctx->poll_burst_max;
 
-	lwkt_replymsg(&nmsg->nm_lmsg, 0);
+	lwkt_replymsg(&nmsg->lmsg, 0);
 }
 
 static int
@@ -991,7 +991,6 @@ sysctl_burstmax(SYSCTL_HANDLER_ARGS)
 {
 	struct iopoll_ctx *io_ctx = arg1;
 	struct iopoll_sysctl_netmsg msg;
-	struct netmsg *nmsg;
 	uint32_t burst_max;
 	int error;
 
@@ -1004,17 +1003,16 @@ sysctl_burstmax(SYSCTL_HANDLER_ARGS)
 	else if (burst_max > MAX_IOPOLL_BURST_MAX)
 		burst_max = MAX_IOPOLL_BURST_MAX;
 
-	nmsg = &msg.nmsg;
-	netmsg_init(nmsg, NULL, &curthread->td_msgport,
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport,
 		    0, sysctl_burstmax_handler);
-	nmsg->nm_lmsg.u.ms_result = burst_max;
+	msg.base.lmsg.u.ms_result = burst_max;
 	msg.ctx = io_ctx;
 
-	return ifnet_domsg(&nmsg->nm_lmsg, io_ctx->poll_cpuid);
+	return ifnet_domsg(&msg.base.lmsg, io_ctx->poll_cpuid);
 }
 
 static void
-sysctl_eachburst_handler(struct netmsg *nmsg)
+sysctl_eachburst_handler(netmsg_t nmsg)
 {
 	struct iopoll_sysctl_netmsg *msg = (struct iopoll_sysctl_netmsg *)nmsg;
 	struct iopoll_ctx *io_ctx;
@@ -1023,14 +1021,14 @@ sysctl_eachburst_handler(struct netmsg *nmsg)
 	io_ctx = msg->ctx;
 	KKASSERT(&curthread->td_msgport == ifnet_portfn(io_ctx->poll_cpuid));
 
-	each_burst = nmsg->nm_lmsg.u.ms_result;
+	each_burst = nmsg->lmsg.u.ms_result;
 	if (each_burst > io_ctx->poll_burst_max)
 		each_burst = io_ctx->poll_burst_max;
 	else if (each_burst < 1)
 		each_burst = 1;
 	io_ctx->poll_each_burst = each_burst;
 
-	lwkt_replymsg(&nmsg->nm_lmsg, 0);
+	lwkt_replymsg(&nmsg->lmsg, 0);
 }
 
 static int
@@ -1038,7 +1036,6 @@ sysctl_eachburst(SYSCTL_HANDLER_ARGS)
 {
 	struct iopoll_ctx *io_ctx = arg1;
 	struct iopoll_sysctl_netmsg msg;
-	struct netmsg *nmsg;
 	uint32_t each_burst;
 	int error;
 
@@ -1047,13 +1044,12 @@ sysctl_eachburst(SYSCTL_HANDLER_ARGS)
 	if (error || req->newptr == NULL)
 		return error;
 
-	nmsg = &msg.nmsg;
-	netmsg_init(nmsg, NULL, &curthread->td_msgport,
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport,
 		    0, sysctl_eachburst_handler);
-	nmsg->nm_lmsg.u.ms_result = each_burst;
+	msg.base.lmsg.u.ms_result = each_burst;
 	msg.ctx = io_ctx;
 
-	return ifnet_domsg(&nmsg->nm_lmsg, io_ctx->poll_cpuid);
+	return ifnet_domsg(&msg.base.lmsg, io_ctx->poll_cpuid);
 }
 
 static int
@@ -1257,7 +1253,7 @@ static int
 sysctl_pollhz(SYSCTL_HANDLER_ARGS)
 {
 	struct poll_comm *comm = arg1;
-	struct netmsg nmsg;
+	struct netmsg_base nmsg;
 	int error, phz;
 
 	phz = comm->pollhz;
@@ -1271,20 +1267,20 @@ sysctl_pollhz(SYSCTL_HANDLER_ARGS)
 
 	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
 		    0, sysctl_pollhz_handler);
-	nmsg.nm_lmsg.u.ms_result = phz;
+	nmsg.lmsg.u.ms_result = phz;
 
-	return ifnet_domsg(&nmsg.nm_lmsg, comm->poll_cpuid);
+	return ifnet_domsg(&nmsg.lmsg, comm->poll_cpuid);
 }
 
 static void
-sysctl_pollhz_handler(struct netmsg *nmsg)
+sysctl_pollhz_handler(netmsg_t nmsg)
 {
 	struct poll_comm *comm = poll_common[mycpuid];
 
 	KKASSERT(&curthread->td_msgport == ifnet_portfn(comm->poll_cpuid));
 
 	/* Save polling frequency */
-	comm->pollhz = nmsg->nm_lmsg.u.ms_result;
+	comm->pollhz = nmsg->lmsg.u.ms_result;
 
 	/*
 	 * Adjust cached pollhz
@@ -1300,14 +1296,14 @@ sysctl_pollhz_handler(struct netmsg *nmsg)
 	 */
 	poll_comm_adjust_pollhz(comm);
 
-	lwkt_replymsg(&nmsg->nm_lmsg, 0);
+	lwkt_replymsg(&nmsg->lmsg, 0);
 }
 
 static int
 sysctl_stfrac(SYSCTL_HANDLER_ARGS)
 {
 	struct poll_comm *comm = arg1;
-	struct netmsg nmsg;
+	struct netmsg_base nmsg;
 	int error, stfrac;
 
 	KKASSERT(comm->poll_cpuid == 0);
@@ -1321,16 +1317,16 @@ sysctl_stfrac(SYSCTL_HANDLER_ARGS)
 
 	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
 		    0, sysctl_stfrac_handler);
-	nmsg.nm_lmsg.u.ms_result = stfrac;
+	nmsg.lmsg.u.ms_result = stfrac;
 
-	return ifnet_domsg(&nmsg.nm_lmsg, comm->poll_cpuid);
+	return ifnet_domsg(&nmsg.lmsg, comm->poll_cpuid);
 }
 
 static void
-sysctl_stfrac_handler(struct netmsg *nmsg)
+sysctl_stfrac_handler(netmsg_t nmsg)
 {
 	struct poll_comm *comm = poll_common[mycpuid];
-	int stfrac = nmsg->nm_lmsg.u.ms_result;
+	int stfrac = nmsg->lmsg.u.ms_result;
 
 	KKASSERT(&curthread->td_msgport == ifnet_portfn(comm->poll_cpuid));
 
@@ -1340,14 +1336,14 @@ sysctl_stfrac_handler(struct netmsg *nmsg)
 		comm->stfrac_count = comm->poll_stfrac;
 	crit_exit();
 
-	lwkt_replymsg(&nmsg->nm_lmsg, 0);
+	lwkt_replymsg(&nmsg->lmsg, 0);
 }
 
 static int
 sysctl_txfrac(SYSCTL_HANDLER_ARGS)
 {
 	struct poll_comm *comm = arg1;
-	struct netmsg nmsg;
+	struct netmsg_base nmsg;
 	int error, txfrac;
 
 	txfrac = comm->poll_txfrac;
@@ -1359,16 +1355,16 @@ sysctl_txfrac(SYSCTL_HANDLER_ARGS)
 
 	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
 		    0, sysctl_txfrac_handler);
-	nmsg.nm_lmsg.u.ms_result = txfrac;
+	nmsg.lmsg.u.ms_result = txfrac;
 
-	return ifnet_domsg(&nmsg.nm_lmsg, comm->poll_cpuid);
+	return ifnet_domsg(&nmsg.lmsg, comm->poll_cpuid);
 }
 
 static void
-sysctl_txfrac_handler(struct netmsg *nmsg)
+sysctl_txfrac_handler(netmsg_t nmsg)
 {
 	struct poll_comm *comm = poll_common[mycpuid];
-	int txfrac = nmsg->nm_lmsg.u.ms_result;
+	int txfrac = nmsg->lmsg.u.ms_result;
 
 	KKASSERT(&curthread->td_msgport == ifnet_portfn(comm->poll_cpuid));
 
@@ -1378,5 +1374,5 @@ sysctl_txfrac_handler(struct netmsg *nmsg)
 		comm->txfrac_count = comm->poll_txfrac;
 	crit_exit();
 
-	lwkt_replymsg(&nmsg->nm_lmsg, 0);
+	lwkt_replymsg(&nmsg->lmsg, 0);
 }

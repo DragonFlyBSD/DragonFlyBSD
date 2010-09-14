@@ -88,7 +88,7 @@ struct	ifaddr_container;
 struct	ifaddr;
 struct	lwkt_port;
 struct	lwkt_msg;
-struct	netmsg;
+union	netmsg;
 struct	pktinfo;
 struct	ifpoll_info;
 
@@ -273,7 +273,7 @@ struct ifnet {
 	struct lwkt_serialize *if_serializer;	/* serializer or MP lock */
 	struct lwkt_serialize if_default_serializer; /* if not supplied */
 	int	if_cpuid;
-	struct netmsg *if_start_nmsg; /* percpu messages to schedule if_start */
+	struct netmsg_base *if_start_nmsg; /* percpu msgs to sched if_start */
 	void	*if_pf_kif; /* pf interface abstraction */
  	union {
  		void *carp_s;		/* carp structure (used by !carp ifs) */

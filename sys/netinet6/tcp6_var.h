@@ -81,8 +81,9 @@ struct ip6_hdr;
 struct sockaddr;
 struct in_conninfo;
 struct lwkt_port;
+union netmsg;
 
-void	tcp6_ctlinput (int, struct sockaddr *, void *);
+void	tcp6_ctlinput(union netmsg *);
 void	tcp6_init (void);
 int	tcp6_input (struct mbuf **, int *, int);
 struct	rtentry *tcp_rtlookup6(struct in_conninfo *);

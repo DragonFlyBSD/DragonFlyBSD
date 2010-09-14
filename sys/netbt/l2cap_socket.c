@@ -46,6 +46,9 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/systm.h>
+
+#include <sys/msgport2.h>
+
 #include <vm/vm_zone.h>
 
 #include <netbt/bluetooth.h>
@@ -88,49 +91,55 @@ int l2cap_recvspace = 4096;
  *	Apply configuration commands to channel. This corresponds to
  *	"Reconfigure Channel Request" in the L2CAP specification.
  */
-int
-l2cap_ctloutput(struct socket *so, struct sockopt *sopt)
+void
+l2cap_ctloutput(netmsg_t msg)
 {
+	struct socket *so = msg->ctloutput.base.nm_so;
+	struct sockopt *sopt = msg->ctloutput.nm_sopt;
 	struct l2cap_channel *pcb = (struct l2cap_channel *) so->so_pcb;
 	struct mbuf *m;
-	int err = 0;
+	int error = 0;
 
 #ifdef notyet			/* XXX */
 	DPRINTFN(2, "%s\n", prcorequests[req]);
 #endif
 
-	if (pcb == NULL)
-		return EINVAL;
+	if (pcb == NULL) {
+		error = EINVAL;
+		goto out;
+	}
 
-	if (sopt->sopt_level != BTPROTO_L2CAP)
-		return ENOPROTOOPT;
+	if (sopt->sopt_level != BTPROTO_L2CAP) {
+		error = ENOPROTOOPT;
+		goto out;
+	}
 
 	switch(sopt->sopt_dir) {
 	case PRCO_GETOPT:
 		m = m_get(M_NOWAIT, MT_DATA);
 		if (m == NULL) {
-		    err = ENOMEM;
+		    error = ENOMEM;
 		    break;
 		}
 		m->m_len = l2cap_getopt(pcb, sopt->sopt_name, mtod(m, void *));
 		if (m->m_len == 0) {
 			m_freem(m);
 			m = NULL;
-			err = ENOPROTOOPT;
+			error = ENOPROTOOPT;
 		}
 		soopt_from_kbuf(sopt, mtod(m, void *), m->m_len);
 		break;
 
 	case PRCO_SETOPT:
-		err = l2cap_setopt2(pcb, sopt->sopt_name, so, sopt);
+		error = l2cap_setopt2(pcb, sopt->sopt_name, so, sopt);
 		break;
 
 	default:
-		err = ENOPROTOOPT;
+		error = ENOPROTOOPT;
 		break;
 	}
-
-	return err;
+out:
+	lwkt_replymsg(&msg->ctloutput.base.lmsg, error);
 }
 
 /**********************************************************************
@@ -235,193 +244,228 @@ l2cap_input(void *arg, struct mbuf *m)
 /*
  * Implementation of usrreqs.
  */
-static int
-l2cap_sdetach(struct socket *so)
+static void
+l2cap_sdetach(netmsg_t msg)
 {
-	return l2cap_detach((struct l2cap_channel **)&so->so_pcb);
+	struct socket *so = msg->detach.base.nm_so;
+	int error;
+
+	error = l2cap_detach((struct l2cap_channel **)&so->so_pcb);
+	lwkt_replymsg(&msg->detach.base.lmsg, error);
 }
 
 /*
  * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
  *	 will sofree() it when we return.
  */
-static int
-l2cap_sabort (struct socket *so)
+static void
+l2cap_sabort(netmsg_t msg)
 {
+	struct socket *so = msg->abort.base.nm_so;
 	struct l2cap_channel *pcb = so->so_pcb;
-	int error;
 	
 	l2cap_disconnect(pcb, 0);
 	soisdisconnected(so);
 	
-	error = l2cap_sdetach(so);
-	return error;
+	l2cap_sdetach(msg);
+	/* msg invalid now */
 }
 
-static int
-l2cap_sdisconnect (struct socket *so)
+static void
+l2cap_sdisconnect(netmsg_t msg)
 {
+	struct socket *so = msg->disconnect.base.nm_so;
 	struct l2cap_channel *pcb = so->so_pcb;
+	int error;
 	
 	soisdisconnecting(so);
 	
-	return l2cap_disconnect(pcb, so->so_linger);
+	error = l2cap_disconnect(pcb, so->so_linger);
+	lwkt_replymsg(&msg->disconnect.base.lmsg, error);
 }
 
-static int
-l2cap_scontrol (struct socket *so, u_long cmd, caddr_t data,
-    struct ifnet *ifp, struct thread *td)
+static void
+l2cap_scontrol(netmsg_t msg)
 {
-	return EPASSTHROUGH;
+	lwkt_replymsg(&msg->control.base.lmsg, EPASSTHROUGH);
 }
 
-static int
-l2cap_sattach (struct socket *so, int proto,
-			       struct pru_attach_info *ai)
+static void
+l2cap_sattach(netmsg_t msg)
 {
+	struct socket *so = msg->attach.base.nm_so;
 	struct l2cap_channel *pcb = so->so_pcb;
-	int err = 0;
+	int error;
 
-	if (pcb != NULL)
-		return EINVAL;
+	if (pcb != NULL) {
+		error = EINVAL;
+		goto out;
+	}
 
 	/*
 	 * For L2CAP socket PCB we just use an l2cap_channel structure
 	 * since we have nothing to add..
 	 */
-	err = soreserve(so, l2cap_sendspace, l2cap_recvspace, NULL);
-	if (err)
-		return err;
-
-	return l2cap_attach((struct l2cap_channel **)&so->so_pcb,
-	    &l2cap_proto, so);
+	error = soreserve(so, l2cap_sendspace, l2cap_recvspace, NULL);
+	if (error == 0) {
+		error = l2cap_attach((struct l2cap_channel **)&so->so_pcb,
+				     &l2cap_proto, so);
+	}
+out:
+	lwkt_replymsg(&msg->attach.base.lmsg, error);
 }
 
-static int
-l2cap_sbind (struct socket *so, struct sockaddr *nam,
-				 struct thread *td)
+static void
+l2cap_sbind (netmsg_t msg)
 {
+	struct socket *so = msg->bind.base.nm_so;
+	struct sockaddr *nam = msg->bind.nm_nam;
 	struct l2cap_channel *pcb = so->so_pcb;
 	struct sockaddr_bt *sa;
+	int error;
 
 	KKASSERT(nam != NULL);
 	sa = (struct sockaddr_bt *)nam;
 
-	if (sa->bt_len != sizeof(struct sockaddr_bt))
-		return EINVAL;
-
-	if (sa->bt_family != AF_BLUETOOTH)
-		return EAFNOSUPPORT;
-
-	return l2cap_bind(pcb, sa);
+	if (sa->bt_len != sizeof(struct sockaddr_bt)) {
+		error = EINVAL;
+	} else if (sa->bt_family != AF_BLUETOOTH) {
+		error = EAFNOSUPPORT;
+	} else {
+		error = l2cap_bind(pcb, sa);
+	}
+	lwkt_replymsg(&msg->bind.base.lmsg, error);
 }
 
-static int
-l2cap_sconnect (struct socket *so, struct sockaddr *nam,
-				    struct thread *td)
+static void
+l2cap_sconnect(netmsg_t msg)
 {
+	struct socket *so = msg->connect.base.nm_so;
+	struct sockaddr *nam = msg->connect.nm_nam;
 	struct l2cap_channel *pcb = so->so_pcb;
 	struct sockaddr_bt *sa;
+	int error;
 
 	KKASSERT(nam != NULL);
 	sa = (struct sockaddr_bt *)nam;
 
-	if (sa->bt_len != sizeof(struct sockaddr_bt))
-		return EINVAL;
-
-	if (sa->bt_family != AF_BLUETOOTH)
-		return EAFNOSUPPORT;
-
-	soisconnecting(so);
-	return l2cap_connect(pcb, sa);
+	if (sa->bt_len != sizeof(struct sockaddr_bt)) {
+		error = EINVAL;
+	} else if (sa->bt_family != AF_BLUETOOTH) {
+		error = EAFNOSUPPORT;
+	} else {
+		soisconnecting(so);
+		error = l2cap_connect(pcb, sa);
+	}
+	lwkt_replymsg(&msg->connect.base.lmsg, error);
 }
 
-static int
-l2cap_speeraddr (struct socket *so, struct sockaddr **nam)
+static void
+l2cap_speeraddr(netmsg_t msg)
 {
+	struct socket *so = msg->peeraddr.base.nm_so;
+	struct sockaddr **nam = msg->peeraddr.nm_nam;
 	struct l2cap_channel *pcb = so->so_pcb;
 	struct sockaddr_bt *sa, ssa;
-	int e;
+	int error;
 
 	sa = &ssa;
 	bzero(sa, sizeof *sa);
 	sa->bt_len = sizeof(struct sockaddr_bt);
 	sa->bt_family = AF_BLUETOOTH;
-	e = l2cap_peeraddr(pcb, sa);
+	error = l2cap_peeraddr(pcb, sa);
 	*nam = dup_sockaddr((struct sockaddr *)sa);
 
-	return (e);	
+	lwkt_replymsg(&msg->peeraddr.base.lmsg, error);
 }
 
-static int
-l2cap_ssockaddr (struct socket *so, struct sockaddr **nam)
+static void
+l2cap_ssockaddr(netmsg_t msg)
 {
+	struct socket *so = msg->sockaddr.base.nm_so;
+	struct sockaddr **nam = msg->sockaddr.nm_nam;
 	struct l2cap_channel *pcb = so->so_pcb;
 	struct sockaddr_bt *sa, ssa;
-	int e;
+	int error;
 
 	sa = &ssa;
 	bzero(sa, sizeof *sa);
 	sa->bt_len = sizeof(struct sockaddr_bt);
 	sa->bt_family = AF_BLUETOOTH;
-	e = l2cap_sockaddr(pcb, sa);
+	error = l2cap_sockaddr(pcb, sa);
 	*nam = dup_sockaddr((struct sockaddr *)sa);
 
-	return (e);
+	lwkt_replymsg(&msg->sockaddr.base.lmsg, error);
 }
 
-static int
-l2cap_sshutdown (struct socket *so)
+static void
+l2cap_sshutdown(netmsg_t msg)
 {
+	struct socket *so = msg->shutdown.base.nm_so;
+
 	socantsendmore(so);
-	return 0;
+
+	lwkt_replymsg(&msg->shutdown.base.lmsg, 0);
 }
 
-static int
-l2cap_ssend (struct socket *so, int flags, struct mbuf *m,
-    struct sockaddr *addr, struct mbuf *control, struct thread *td)
+static void
+l2cap_ssend(netmsg_t msg)
 {
+	struct socket *so = msg->send.base.nm_so;
+	struct mbuf *m = msg->send.nm_m;
+	struct mbuf *control = msg->send.nm_control;
 	struct l2cap_channel *pcb = so->so_pcb;
 	struct mbuf *m0;
-
-	int err = 0;
+	int error;
 
 	KKASSERT(m != NULL);
-	if (m->m_pkthdr.len == 0)
-		goto error;
+	if (m->m_pkthdr.len == 0) {
+		error = 0;
+		goto out;
+	}
 
 	if (m->m_pkthdr.len > pcb->lc_omtu) {
-		err = EMSGSIZE;
-		goto error;
+		error = EMSGSIZE;
+		goto out;
 	}
 
 	m0 = m_copym(m, 0, M_COPYALL, MB_DONTWAIT);
 	if (m0 == NULL) {
-		err = ENOMEM;
-		goto error;
+		error = ENOMEM;
+		goto out;
 	}
 
-	if (control)	/* no use for that */
+	m0 = m_copym(m, 0, M_COPYALL, MB_DONTWAIT);
+	if (m0 == NULL) {
+		error = ENOMEM;
+		goto out;
+	}
+
+	/* no use for that */
+	if (control) {
 		m_freem(control);
-
+		control = NULL;
+	}
 	sbappendrecord(&so->so_snd.sb, m);
-	return l2cap_send(pcb, m0);
-
-error:
+	error = l2cap_send(pcb, m0);
+	m = NULL;
+out:
 	if (m)
 		m_freem(m);
 	if (control)
 		m_freem(control);
 
-	return err;
+	lwkt_replymsg(&msg->send.base.lmsg, error);
 }
 
-static int
-l2cap_saccept(struct socket *so, struct sockaddr **nam)
+static void
+l2cap_saccept(netmsg_t msg)
 {
+	struct socket *so = msg->accept.base.nm_so;
+	struct sockaddr **nam = msg->accept.nm_nam;
 	struct l2cap_channel *pcb = so->so_pcb;
 	struct sockaddr_bt sa;
-	int e;
+	int error;
 		
 	KKASSERT(nam != NULL);
 	
@@ -429,10 +473,10 @@ l2cap_saccept(struct socket *so, struct sockaddr **nam)
 	sa.bt_len = sizeof(struct sockaddr_bt);
 	sa.bt_family = AF_BLUETOOTH;
 
-	e = l2cap_peeraddr(pcb, &sa);
+	error = l2cap_peeraddr(pcb, &sa);
 	*nam = dup_sockaddr((struct sockaddr *)&sa);
 
-	return e;	
+	lwkt_replymsg(&msg->accept.base.lmsg, error);
 }
 
 static int
@@ -449,14 +493,14 @@ struct pr_usrreqs l2cap_usrreqs = {
         .pru_attach = l2cap_sattach,
         .pru_bind = l2cap_sbind,
         .pru_connect = l2cap_sconnect,
-        .pru_connect2 = pru_connect2_notsupp,
+        .pru_connect2 = pr_generic_notsupp,
         .pru_control = l2cap_scontrol,
         .pru_detach = l2cap_sdetach,
         .pru_disconnect = l2cap_sdisconnect,
         .pru_listen = l2cap_slisten,
         .pru_peeraddr = l2cap_speeraddr,
-        .pru_rcvd = pru_rcvd_notsupp,
-        .pru_rcvoob = pru_rcvoob_notsupp,
+        .pru_rcvd = pr_generic_notsupp,
+        .pru_rcvoob = pr_generic_notsupp,
         .pru_send = l2cap_ssend,
         .pru_sense = pru_sense_null,
         .pru_shutdown = l2cap_sshutdown,

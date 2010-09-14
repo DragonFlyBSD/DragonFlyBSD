@@ -18,13 +18,13 @@ extern void	aarptfree	(struct aarptab *);
 #endif
 
 struct ifnet;
-struct netmsg;
+union netmsg;
 struct proc;
 struct socket;
 
-extern void	aarpintr	(struct netmsg *);
-extern void	at1intr		(struct netmsg *);
-extern void	at2intr		(struct netmsg *);
+extern void	aarpintr	(union netmsg *);
+extern void	at1intr		(union netmsg *);
+extern void	at2intr		(union netmsg *);
 extern void	aarp_clean	(void);
 extern int	at_control	( struct socket *so,
 					u_long cmd,

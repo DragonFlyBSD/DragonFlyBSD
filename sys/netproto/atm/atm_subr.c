@@ -37,10 +37,6 @@
 
 #include "kern_include.h"
 
-#include <sys/mplock2.h>
-#include <sys/thread2.h>
-#include <sys/msgport2.h>
-
 /*
  * Global variables
  */
@@ -72,7 +68,7 @@ static struct callout atm_timexp_ch;
  */
 static void	atm_compact (struct atm_time *);
 static KTimeout_ret	atm_timexp (void *);
-static void	atm_intr(struct netmsg *);
+static void	atm_intr(netmsg_t msg);
 
 /*
  * Local variables
@@ -849,9 +845,9 @@ atm_stack_drain(void)
  *
  */
 static void
-atm_intr(struct netmsg *msg)
+atm_intr(netmsg_t msg)
 {
-	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
+	struct mbuf *m = msg->packet.nm_packet;
 	caddr_t		cp;
 	atm_intr_func_t	func;
 	void		*token;

@@ -251,26 +251,22 @@ freeit:
 /*
  * Process a received ICMP message.
  */
-void
-icmp_input(struct mbuf *m, ...)
+int
+icmp_input(struct mbuf **mp, int *offp, int proto)
 {
 	struct sockaddr_in icmpsrc = { sizeof(struct sockaddr_in), AF_INET };
 	struct sockaddr_in icmpdst = { sizeof(struct sockaddr_in), AF_INET };
 	struct sockaddr_in icmpgw = { sizeof(struct sockaddr_in), AF_INET };
 	struct icmp *icp;
 	struct in_ifaddr *ia;
+	struct mbuf *m = *mp;
 	struct ip *ip = mtod(m, struct ip *);
 	int icmplen = ip->ip_len;
 	int i, hlen;
-	int code, off, proto;
-	__va_list ap;
+	int code;
 
-	__va_start(ap, m);
-	off = __va_arg(ap, int);
-	proto = __va_arg(ap, int);
-	__va_end(ap);
-
-	hlen = off;
+	*mp = NULL;
+	hlen = *offp;
 
 	/*
 	 * Locate icmp structure in mbuf, and check
@@ -292,7 +288,7 @@ icmp_input(struct mbuf *m, ...)
 	i = hlen + min(icmplen, ICMP_ADVLENMIN);
 	if (m->m_len < i && (m = m_pullup(m, i)) == 0)  {
 		icmpstat.icps_tooshort++;
-		return;
+		return(IPPROTO_DONE);
 	}
 	ip = mtod(m, struct ip *);
 	m->m_len -= hlen;
@@ -533,7 +529,7 @@ reflect:
 		icmpstat.icps_reflect++;
 		icmpstat.icps_outhist[icp->icmp_type]++;
 		icmp_reflect(m);
-		return;
+		return(IPPROTO_DONE);
 
 	case ICMP_REDIRECT:
 		if (log_redirect) {
@@ -604,11 +600,13 @@ reflect:
 	}
 
 raw:
-	rip_input(m, off, proto);
-	return;
+	*mp = m;
+	rip_input(mp, offp, proto);
+	return(IPPROTO_DONE);
 
 freeit:
 	m_freem(m);
+	return(IPPROTO_DONE);
 }
 
 /*
@@ -807,8 +805,8 @@ static void
 icmp_send(struct mbuf *m, struct mbuf *opts, struct route *rt)
 {
 	struct ip *ip = mtod(m, struct ip *);
-	int hlen;
 	struct icmp *icp;
+	int hlen;
 
 	hlen = IP_VHL_HL(ip->ip_vhl) << 2;
 	m->m_data += hlen;

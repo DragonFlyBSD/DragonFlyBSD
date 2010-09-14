@@ -55,6 +55,7 @@
 
 #include <sys/thread2.h>
 #include <sys/socketvar2.h>
+#include <sys/msgport2.h>
 
 #include <netbt/bluetooth.h>
 #include <netbt/hci.h>
@@ -92,23 +93,7 @@ int hci_recvspace = 4096;
 extern struct pr_usrreqs hci_usrreqs;
 
 /* Prototypes for usrreqs methods. */
-static int hci_sabort (struct socket *so);
-static int hci_sdetach(struct socket *so);
-static int hci_sdisconnect (struct socket *so);
-static int hci_scontrol (struct socket *so, u_long cmd, caddr_t data,
-                                    struct ifnet *ifp, struct thread *td);
-static int hci_sattach (struct socket *so, int proto,
-                               struct pru_attach_info *ai);
-static int hci_sbind (struct socket *so, struct sockaddr *nam,
-                                 struct thread *td);
-static int hci_sconnect (struct socket *so, struct sockaddr *nam,
-                                    struct thread *td);
-static int hci_speeraddr (struct socket *so, struct sockaddr **nam);
-static int hci_ssockaddr (struct socket *so, struct sockaddr **nam);
-static int hci_sshutdown (struct socket *so);
-static int hci_ssend (struct socket *so, int flags, struct mbuf *m,
-                                 struct sockaddr *addr, struct mbuf *control,
-                                 struct thread *td);
+static void hci_sdetach(netmsg_t msg);
 
 /* supported commands opcode table */
 static const struct {
@@ -562,81 +547,95 @@ bad:
  * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
  *	 will sofree() it when we return.
  */
-static int
-hci_sabort (struct socket *so)
+static void
+hci_sabort(netmsg_t msg)
+{
+	/* struct hci_pcb *pcb = (struct hci_pcb *)so->so_pcb;	*/
+
+	soisdisconnected(msg->abort.base.nm_so);
+	hci_sdetach(msg);
+	/* msg now invalid */
+}
+
+static void
+hci_sdetach(netmsg_t msg)
+{
+	struct socket *so = msg->detach.base.nm_so;
+	struct hci_pcb *pcb = (struct hci_pcb *)so->so_pcb;	
+	int error;
+	
+	if (pcb == NULL) {
+		error = EINVAL;
+	} else {
+		if (so->so_snd.ssb_mb != NULL)
+			hci_cmdwait_flush(so);
+
+		so->so_pcb = NULL;
+		sofree(so);		/* remove pcb ref */
+
+		LIST_REMOVE(pcb, hp_next);
+		kfree(pcb, M_PCB);
+		error = 0;
+	}
+	lwkt_replymsg(&msg->detach.base.lmsg, error);
+}
+
+static void
+hci_sdisconnect(netmsg_t msg)
+{
+	struct socket *so = msg->disconnect.base.nm_so;
+	struct hci_pcb *pcb = (struct hci_pcb *)so->so_pcb;	
+	int error;
+
+	if (pcb) {
+		bdaddr_copy(&pcb->hp_raddr, BDADDR_ANY);
+		/*
+		 * XXX We cannot call soisdisconnected() here, as it sets
+		 * SS_CANTRCVMORE and SS_CANTSENDMORE. The problem is that
+		 * soisconnected() does not clear these and if you try to
+		 * reconnect this socket (which is permitted) you get a
+		 * broken pipe when you try to write any data.
+		 */
+		soclrstate(so, SS_ISCONNECTED);
+		error = 0;
+	} else {
+		error = EINVAL;
+	}
+	lwkt_replymsg(&msg->disconnect.base.lmsg, error);
+}
+
+static void
+hci_scontrol(netmsg_t msg)
 {
 	int error;
 
-	/* struct hci_pcb *pcb = (struct hci_pcb *)so->so_pcb;	*/
-
-	soisdisconnected(so);
-	error = hci_sdetach(so);
-	return (error);
+	error = hci_ioctl(msg->control.nm_cmd,
+			  (void *)msg->control.nm_data,
+			  NULL);
+	lwkt_replymsg(&msg->control.base.lmsg, error);
 }
 
-static int
-hci_sdetach(struct socket *so)
+static void
+hci_sattach(netmsg_t msg)
 {
-	struct hci_pcb *pcb = (struct hci_pcb *)so->so_pcb;	
-	
-	if (pcb == NULL)
-		return EINVAL;
-	if (so->so_snd.ssb_mb != NULL)
-		hci_cmdwait_flush(so);
-
-	so->so_pcb = NULL;
-	sofree(so);		/* remove pcb ref */
-
-	LIST_REMOVE(pcb, hp_next);
-	kfree(pcb, M_PCB);
-	
-	return 0;
-}
-
-static int
-hci_sdisconnect (struct socket *so)
-{
-	struct hci_pcb *pcb = (struct hci_pcb *)so->so_pcb;	
-
-	if (pcb==NULL)
-		return EINVAL;
-
-	bdaddr_copy(&pcb->hp_raddr, BDADDR_ANY);
-	/*
-	 * XXX We cannot call soisdisconnected() here, as it sets
-	 * SS_CANTRCVMORE and SS_CANTSENDMORE. The problem is that
-	 * soisconnected() does not clear these and if you try to reconnect
-	 * this socket (which is permitted) you get a broken pipe when you
-	 * try to write any data.
-	 */
-	soclrstate(so, SS_ISCONNECTED);
-	
-	return 0;
-}
-
-static int
-hci_scontrol (struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
-    struct thread *td)
-{
-	return hci_ioctl(cmd, (void*)data, NULL);
-}
-
-static int
-hci_sattach (struct socket *so, int proto, struct pru_attach_info *ai)
-{
+	struct socket *so = msg->attach.base.nm_so;
 	struct hci_pcb *pcb = (struct hci_pcb *)so->so_pcb;
-	int err = 0;
+	int error;
 
-	if (pcb)
-		return EINVAL;
+	if (pcb) {
+		error = EINVAL;
+		goto out;
+	}
 
-	err = soreserve(so, hci_sendspace, hci_recvspace,NULL);
-	if (err) 
-		return err;
+	error = soreserve(so, hci_sendspace, hci_recvspace,NULL);
+	if (error)
+		goto out;
 
 	pcb = kmalloc(sizeof *pcb, M_PCB, M_NOWAIT | M_ZERO);
-	if (pcb == NULL) 
-		return ENOMEM;
+	if (pcb == NULL) {
+		error = ENOMEM;
+		goto out;
+	}
 
 	soreference(so);
 	so->so_pcb = pcb;
@@ -656,25 +655,32 @@ hci_sattach (struct socket *so, int proto, struct pru_attach_info *ai)
 	crit_enter();
 	LIST_INSERT_HEAD(&hci_pcb, pcb, hp_next);
 	crit_exit();
-
-	return 0;
+	error = 0;
+out:
+	lwkt_replymsg(&msg->attach.base.lmsg, error);
 }
 
-static int
-hci_sbind (struct socket *so, struct sockaddr *nam,
-				 struct thread *td)
+static void
+hci_sbind(netmsg_t msg)
 {
+	struct socket *so = msg->bind.base.nm_so;
+	struct sockaddr *nam = msg->bind.nm_nam;
 	struct hci_pcb *pcb = (struct hci_pcb *)so->so_pcb;
 	struct sockaddr_bt *sa;
+	int error;
 
 	KKASSERT(nam != NULL);
 	sa = (struct sockaddr_bt *)nam;
 
-	if (sa->bt_len != sizeof(struct sockaddr_bt))
-		return EINVAL;
+	if (sa->bt_len != sizeof(struct sockaddr_bt)) {
+		error = EINVAL;
+		goto out;
+	}
 
-	if (sa->bt_family != AF_BLUETOOTH)
-		return EAFNOSUPPORT;
+	if (sa->bt_family != AF_BLUETOOTH) {
+		error = EAFNOSUPPORT;
+		goto out;
+	}
 
 	bdaddr_copy(&pcb->hp_laddr, &sa->bt_bdaddr);
 
@@ -682,37 +688,49 @@ hci_sbind (struct socket *so, struct sockaddr *nam,
 		pcb->hp_flags |= HCI_PROMISCUOUS;
 	else
 		pcb->hp_flags &= ~HCI_PROMISCUOUS;
-
-	return 0;
+	error = 0;
+out:
+	lwkt_replymsg(&msg->bind.base.lmsg, error);
 }
 
-static int
-hci_sconnect (struct socket *so, struct sockaddr *nam,
-				    struct thread *td)
+static void
+hci_sconnect(netmsg_t msg)
 {
+	struct socket *so = msg->connect.base.nm_so;
+	struct sockaddr *nam = msg->connect.nm_nam;
 	struct hci_pcb *pcb = (struct hci_pcb *)so->so_pcb;
 	struct sockaddr_bt *sa;
+	int error;
+
 	KKASSERT(nam != NULL);
 	sa = (struct sockaddr_bt *)nam;
 
-	if (sa->bt_len != sizeof(struct sockaddr_bt))
-		return EINVAL;
+	if (sa->bt_len != sizeof(struct sockaddr_bt)) {
+		error = EINVAL;
+		goto out;
+	}
 
-	if (sa->bt_family != AF_BLUETOOTH)
-		return EAFNOSUPPORT;
+	if (sa->bt_family != AF_BLUETOOTH) {
+		error =  EAFNOSUPPORT;
+		goto out;
+	}
 
-	if (hci_unit_lookup(&sa->bt_bdaddr) == NULL)
-		return EADDRNOTAVAIL;
-
+	if (hci_unit_lookup(&sa->bt_bdaddr) == NULL) {
+		error = EADDRNOTAVAIL;
+		goto out;
+	}
 	bdaddr_copy(&pcb->hp_raddr, &sa->bt_bdaddr);
 	soisconnected(so);
-
-	return 0;
+	error = 0;
+out:
+	lwkt_replymsg(&msg->connect.base.lmsg, error);
 }
 
-static int
-hci_speeraddr (struct socket *so, struct sockaddr **nam)
+static void
+hci_speeraddr(netmsg_t msg)
 {
+	struct socket *so = msg->peeraddr.base.nm_so;
+	struct sockaddr **nam = msg->peeraddr.nm_nam;
 	struct hci_pcb *pcb = (struct hci_pcb *)so->so_pcb;
 	struct sockaddr_bt *sa;
 
@@ -724,12 +742,14 @@ hci_speeraddr (struct socket *so, struct sockaddr **nam)
 	sa->bt_family = AF_BLUETOOTH;
 	bdaddr_copy(&sa->bt_bdaddr, &pcb->hp_raddr);
 
-	return 0;
+	lwkt_replymsg(&msg->connect.base.lmsg, 0);
 }
 
-static int
-hci_ssockaddr (struct socket *so, struct sockaddr **nam)
+static void
+hci_ssockaddr(netmsg_t msg)
 {
+	struct socket *so = msg->sockaddr.base.nm_so;
+	struct sockaddr **nam = msg->sockaddr.nm_nam;
 	struct hci_pcb *pcb = (struct hci_pcb *)so->so_pcb;
 	struct sockaddr_bt *sa;
 	
@@ -741,69 +761,85 @@ hci_ssockaddr (struct socket *so, struct sockaddr **nam)
 	sa->bt_family = AF_BLUETOOTH;
 	bdaddr_copy(&sa->bt_bdaddr, &pcb->hp_laddr);
 
-	return 0;
+	lwkt_replymsg(&msg->connect.base.lmsg, 0);
 }
 
-static int
-hci_sshutdown (struct socket *so)
+static void
+hci_sshutdown(netmsg_t msg)
 {
+	struct socket *so = msg->shutdown.base.nm_so;
+
 	socantsendmore(so);
-	return 0;
+	lwkt_replymsg(&msg->connect.base.lmsg, 0);
 }
 
-static int
-hci_ssend (struct socket *so, int flags, struct mbuf *m, 
-				 struct sockaddr *addr, struct mbuf *control,
-				 struct thread *td)
+static void
+hci_ssend(netmsg_t msg)
 {
-	int err = 0;
+	struct socket *so = msg->send.base.nm_so;
+	struct mbuf *m = msg->send.nm_m;
+	struct sockaddr *addr = msg->send.nm_addr;
+	struct mbuf *control = msg->send.nm_control;
 	struct hci_pcb *pcb = (struct hci_pcb *)so->so_pcb;
 	struct sockaddr_bt *sa;
+	int error;
 
 	sa = NULL;
 	if (addr) {
 		sa = (struct sockaddr_bt *)addr;
 
 		if (sa->bt_len != sizeof(struct sockaddr_bt)) {
-			err = EINVAL;
-			if (m) m_freem(m);
-			if (control) m_freem(control);
-			return err;
+			error = EINVAL;
+			goto out;
 		}
 
 		if (sa->bt_family != AF_BLUETOOTH) {
-			err = EAFNOSUPPORT;
-			if (m) m_freem(m);
-			if (control) m_freem(control);
-			return err;
+			error = EAFNOSUPPORT;
+			goto out;
 		}
 	}
 
-	if (control) /* have no use for this */
+	/* have no use for this */
+	if (control) {
 		m_freem(control);
+		control = NULL;
+	}
+	error = hci_send(pcb, m, (sa ? &sa->bt_bdaddr : &pcb->hp_raddr));
+	m = NULL;
 
-	return hci_send(pcb, m, (sa ? &sa->bt_bdaddr : &pcb->hp_raddr));
+out:
+	if (m)
+		m_freem(m);
+	if (control)
+		m_freem(control);
+	lwkt_replymsg(&msg->send.base.lmsg, error);
 }
 
 /*
  * get/set socket options
  */
-int
-hci_ctloutput (struct socket *so, struct sockopt *sopt)
+void
+hci_ctloutput(netmsg_t msg)
 {
+	struct socket *so = msg->ctloutput.base.nm_so;
+	struct sockopt *sopt = msg->ctloutput.nm_sopt;
 	struct hci_pcb *pcb = (struct hci_pcb *)so->so_pcb;
 	int idir = 0;
-	int err = 0;
+	int error = 0;
 
 #ifdef notyet			/* XXX */
 	DPRINTFN(2, "req %s\n", prcorequests[req]);
 #endif
 
-	if (pcb == NULL)
-		return EINVAL;
+	if (pcb == NULL) {
+		error = EINVAL;
+		goto out;
+	}
 
-	if (sopt->sopt_level != BTPROTO_HCI)
-		return ENOPROTOOPT;
+	if (sopt->sopt_level != BTPROTO_HCI) {
+		error = ENOPROTOOPT;
+		goto out;
+	}
 
 	switch(sopt->sopt_dir) {
 	case PRCO_GETOPT:
@@ -827,7 +863,7 @@ hci_ctloutput (struct socket *so, struct sockopt *sopt)
 			break;
 
 		default:
-			err = ENOPROTOOPT;
+			error = ENOPROTOOPT;
 			break;
 		}
 		break;
@@ -835,21 +871,22 @@ hci_ctloutput (struct socket *so, struct sockopt *sopt)
 	case PRCO_SETOPT:
 		switch (sopt->sopt_name) {
 		case SO_HCI_EVT_FILTER:	/* set event filter */
-			err = soopt_to_kbuf(sopt, &pcb->hp_efilter,
+			error = soopt_to_kbuf(sopt, &pcb->hp_efilter,
 			    sizeof(struct hci_filter),
 			    sizeof(struct hci_filter)); 
 			break;
 
 		case SO_HCI_PKT_FILTER:	/* set packet filter */
-			err = soopt_to_kbuf(sopt, &pcb->hp_pfilter,
-			    sizeof(struct hci_filter),
-			    sizeof(struct hci_filter)); 
+			error = soopt_to_kbuf(sopt, &pcb->hp_pfilter,
+					      sizeof(struct hci_filter),
+					      sizeof(struct hci_filter));
 			break;
 
 		case SO_HCI_DIRECTION:	/* request direction ctl messages */
-			err = soopt_to_kbuf(sopt, &idir, sizeof(int),
-			    sizeof(int)); 
-			if (err) break;
+			error = soopt_to_kbuf(sopt, &idir, sizeof(int),
+					      sizeof(int));
+			if (error)
+				break;
 			if (idir)
 				pcb->hp_flags |= HCI_DIRECTION;
 			else
@@ -857,17 +894,17 @@ hci_ctloutput (struct socket *so, struct sockopt *sopt)
 			break;
 
 		default:
-			err = ENOPROTOOPT;
+			error = ENOPROTOOPT;
 			break;
 		}
 		break;
 
 	default:
-		err = ENOPROTOOPT;
+		error = ENOPROTOOPT;
 		break;
 	}
-
-	return err;
+out:
+	lwkt_replymsg(&msg->ctloutput.base.lmsg, error);
 }
 
 /*
@@ -976,18 +1013,18 @@ hci_mtap(struct mbuf *m, struct hci_unit *unit)
 
 struct pr_usrreqs hci_usrreqs = {
         .pru_abort = hci_sabort,
-        .pru_accept = pru_accept_notsupp,
+        .pru_accept = pr_generic_notsupp,
         .pru_attach = hci_sattach,
         .pru_bind = hci_sbind,
         .pru_connect = hci_sconnect,
-        .pru_connect2 = pru_connect2_notsupp,
+        .pru_connect2 = pr_generic_notsupp,
         .pru_control = hci_scontrol,
         .pru_detach = hci_sdetach,
         .pru_disconnect = hci_sdisconnect,
-        .pru_listen = pru_listen_notsupp,
+        .pru_listen = pr_generic_notsupp,
         .pru_peeraddr = hci_speeraddr,
-        .pru_rcvd = pru_rcvd_notsupp,
-        .pru_rcvoob = pru_rcvoob_notsupp,
+        .pru_rcvd = pr_generic_notsupp,
+        .pru_rcvoob = pr_generic_notsupp,
         .pru_send = hci_ssend,
         .pru_sense = pru_sense_null,
         .pru_shutdown = hci_sshutdown,

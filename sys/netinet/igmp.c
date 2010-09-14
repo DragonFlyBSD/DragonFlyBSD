@@ -149,10 +149,11 @@ find_rti(struct ifnet *ifp)
 	return rti;
 }
 
-void
-igmp_input(struct mbuf *m, ...)
+int
+igmp_input(struct mbuf **mp, int *offp, int proto)
 {
-	int iphlen, off, proto;
+	struct mbuf *m = *mp;
+	int iphlen;
 	struct igmp *igmp;
 	struct ip *ip;
 	int igmplen;
@@ -162,16 +163,10 @@ igmp_input(struct mbuf *m, ...)
 	struct in_ifaddr *ia;
 	struct in_multistep step;
 	struct router_info *rti;
-	__va_list ap;
-	
 	int timer; /** timer value in the igmp query header **/
 
-	__va_start(ap, m);
-	off = __va_arg(ap, int);
-	proto = __va_arg(ap, int);
-	__va_end(ap);
-
-	iphlen = off;
+	iphlen = *offp;
+	*mp = NULL;
 
 	++igmpstat.igps_rcv_total;
 
@@ -184,13 +179,13 @@ igmp_input(struct mbuf *m, ...)
 	if (igmplen < IGMP_MINLEN) {
 		++igmpstat.igps_rcv_tooshort;
 		m_freem(m);
-		return;
+		return(IPPROTO_DONE);
 	}
 	minlen = iphlen + IGMP_MINLEN;
 	if ((m->m_flags & M_EXT || m->m_len < minlen) &&
 	    (m = m_pullup(m, minlen)) == 0) {
 		++igmpstat.igps_rcv_tooshort;
-		return;
+		return(IPPROTO_DONE);
 	}
 
 	/*
@@ -202,7 +197,7 @@ igmp_input(struct mbuf *m, ...)
 	if (in_cksum(m, igmplen)) {
 		++igmpstat.igps_rcv_badsum;
 		m_freem(m);
-		return;
+		return(IPPROTO_DONE);
 	}
 	m->m_data -= iphlen;
 	m->m_len += iphlen;
@@ -248,7 +243,7 @@ igmp_input(struct mbuf *m, ...)
 			    igmp->igmp_group.s_addr != 0) {
 				++igmpstat.igps_rcv_badqueries;
 				m_freem(m);
-				return;
+				return(IPPROTO_DONE);
 			}
 		} else {
 			/*
@@ -259,7 +254,7 @@ igmp_input(struct mbuf *m, ...)
 			    !IN_MULTICAST(ntohl(igmp->igmp_group.s_addr))) {
 				++igmpstat.igps_rcv_badqueries;
 				m_freem(m);
-				return;
+				return(IPPROTO_DONE);
 			}
 		}
 
@@ -311,7 +306,7 @@ igmp_input(struct mbuf *m, ...)
 		if (!IN_MULTICAST(ntohl(igmp->igmp_group.s_addr))) {
 			++igmpstat.igps_rcv_badreports;
 			m_freem(m);
-			return;
+			return(IPPROTO_DONE);
 		}
 
 		/*
@@ -346,7 +341,9 @@ igmp_input(struct mbuf *m, ...)
 	 * Pass all valid IGMP packets up to any process(es) listening
 	 * on a raw IGMP socket.
 	 */
-	rip_input(m, off, proto);
+	*mp = m;
+	rip_input(mp, offp, proto);
+	return(IPPROTO_DONE);
 }
 
 void

@@ -87,7 +87,7 @@ struct pimstat {
 
 struct mbuf;
 
-void pim_input(struct mbuf *, ...);
+int pim_input(struct mbuf **, int *, int);
 SYSCTL_DECL(_net_inet_pim);
 #endif
 

@@ -101,7 +101,7 @@ extern int esp_max_ivlen (void);
 
 /* crypt routines */
 extern int esp4_output (struct mbuf *, struct ipsecrequest *);
-extern void esp4_input(struct mbuf *, ...);
+extern int esp4_input(struct mbuf **, int *, int);
 extern size_t esp_hdrsiz (struct ipsecrequest *);
 
 extern int esp_schedule (const struct esp_algorithm *, struct secasvar *);

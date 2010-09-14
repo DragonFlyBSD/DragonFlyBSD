@@ -2629,7 +2629,7 @@ pf_get_translation(struct pf_pdesc *pd, struct mbuf *m, int off, int direction,
 
 #ifdef SMP
 struct netmsg_hashlookup {
-	struct netmsg		nm_netmsg;
+	struct netmsg_base	base;
 	struct inpcb		**nm_pinp;
 	struct inpcbinfo    	*nm_pcbinfo;
 	struct pf_addr		*nm_saddr;
@@ -2640,21 +2640,21 @@ struct netmsg_hashlookup {
 };
 
 static void
-in_pcblookup_hash_handler(struct netmsg *msg0)
+in_pcblookup_hash_handler(netmsg_t msg)
 {
-	struct netmsg_hashlookup *msg = (struct netmsg_hashlookup *)msg0;
+	struct netmsg_hashlookup *rmsg = (struct netmsg_hashlookup *)msg;
 
-	if (msg->nm_af == AF_INET)
-		*msg->nm_pinp = in_pcblookup_hash(msg->nm_pcbinfo,
-		    msg->nm_saddr->v4, msg->nm_sport, msg->nm_daddr->v4,
-		    msg->nm_dport, INPLOOKUP_WILDCARD, NULL);
+	if (rmsg->nm_af == AF_INET)
+		*rmsg->nm_pinp = in_pcblookup_hash(rmsg->nm_pcbinfo,
+		    rmsg->nm_saddr->v4, rmsg->nm_sport, rmsg->nm_daddr->v4,
+		    rmsg->nm_dport, INPLOOKUP_WILDCARD, NULL);
 #ifdef INET6
 	else
-		*msg->nm_pinp = in6_pcblookup_hash(msg->nm_pcbinfo,
-		    &msg->nm_saddr->v6, msg->nm_sport, &msg->nm_daddr->v6,
-		    msg->nm_dport, INPLOOKUP_WILDCARD, NULL);
+		*rmsg->nm_pinp = in6_pcblookup_hash(rmsg->nm_pcbinfo,
+		    &rmsg->nm_saddr->v6, rmsg->nm_sport, &rmsg->nm_daddr->v6,
+		    rmsg->nm_dport, INPLOOKUP_WILDCARD, NULL);
 #endif /* INET6 */
-	lwkt_replymsg(&msg->nm_netmsg.nm_lmsg, 0);
+	lwkt_replymsg(&rmsg->base.lmsg, 0);
 }
 #endif /* SMP */
 
@@ -2704,7 +2704,7 @@ pf_socket_lookup(int direction, struct pf_pdesc *pd)
 		 */
 		if (pi_cpu != mycpu->gd_cpuid) {
 			msg = kmalloc(sizeof(*msg), M_LWKTMSG, M_INTWAIT);
-			netmsg_init(&msg->nm_netmsg, NULL, &netisr_afree_rport,
+			netmsg_init(&msg->base, NULL, &netisr_afree_rport,
 				    0, in_pcblookup_hash_handler);
 			msg->nm_pinp = &inp;
 			msg->nm_pcbinfo = pi;
@@ -2762,7 +2762,7 @@ pf_socket_lookup(int direction, struct pf_pdesc *pd)
 #ifdef SMP
 		if (msg != NULL) {
 			lwkt_domsg(cpu_portfn(pi_cpu),
-				     &msg->nm_netmsg.nm_lmsg, 0);
+				     &msg->base.lmsg, 0);
 		} else
 #endif /* SMP */
 		{

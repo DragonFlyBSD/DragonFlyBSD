@@ -78,12 +78,13 @@ static struct callout pfslowtimo_ch;
  * Note: you cant unload it again because a socket may be using it.
  * XXX can't fail at this time.
  */
+#define PR_NOTSUPP(pr, label)		\
+	if (pr->pr_ ## label == NULL)	\
+		pr->pr_ ## label = pr_generic_notsupp;
+
 #define PRU_NOTSUPP(pu, label)		\
 	if (pu->pru_ ## label == NULL)	\
-		pu->pru_ ## label = pru_ ## label ## _notsupp;
-#define PRU_NULL(pu, label)		\
-	if (pu->pru_ ## label == NULL)	\
-		pu->pru_ ## label = pru_ ## label ## _null;
+		pu->pru_ ## label = pr_generic_notsupp;
 
 static void
 net_init_domain(struct domain *dp)
@@ -92,13 +93,17 @@ net_init_domain(struct domain *dp)
 	struct pr_usrreqs *pu;
 
 	crit_enter();
+
 	if (dp->dom_init)
 		(*dp->dom_init)();
+
 	for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++) {
 		pu = pr->pr_usrreqs;
-		if (pu == NULL)
+		if (pu == NULL) {
 			panic("domaininit: %ssw[%ld] has no usrreqs!",
 			      dp->dom_name, (long)(pr - dp->dom_protosw));
+		}
+		PR_NOTSUPP(pr, ctloutput);
 		PRU_NOTSUPP(pu, accept);
 		PRU_NOTSUPP(pu, bind);
 		PRU_NOTSUPP(pu, connect);
@@ -109,12 +114,15 @@ net_init_domain(struct domain *dp)
 		PRU_NOTSUPP(pu, peeraddr);
 		PRU_NOTSUPP(pu, rcvd);
 		PRU_NOTSUPP(pu, rcvoob);
-		PRU_NULL(pu, sense);
 		PRU_NOTSUPP(pu, shutdown);
 		PRU_NOTSUPP(pu, sockaddr);
-		PRU_NOTSUPP(pu, sosend);
-		PRU_NOTSUPP(pu, soreceive);
-		PRU_NOTSUPP(pu, ctloutput);
+
+		if (pu->pru_sense == NULL)
+			pu->pru_sense = pru_sense_null;
+		if (pu->pru_sosend == NULL)
+			pu->pru_sosend = pru_sosend_notsupp;
+		if (pu->pru_soreceive == NULL)
+			pu->pru_soreceive = pru_soreceive_notsupp;
 
 		if (pr->pr_init)
 			(*pr->pr_init)();

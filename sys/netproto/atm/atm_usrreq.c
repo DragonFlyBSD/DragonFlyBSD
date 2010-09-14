@@ -40,33 +40,31 @@
 /*
  * Local functions
  */
-static int	atm_dgram_attach (struct socket *, int,
-			struct pru_attach_info *);
-static int	atm_dgram_control (struct socket *, u_long, caddr_t, 
-			struct ifnet *, struct thread *);
+static void	atm_dgram_attach(netmsg_t msg);
+static void	atm_dgram_control(netmsg_t msg);
 static int	atm_dgram_info (caddr_t);
 
 /*
  * New-style socket request routines
  */
 struct pr_usrreqs	atm_dgram_usrreqs = {
-	.pru_abort = atm_proto_notsupp1,
-	.pru_accept = pru_accept_notsupp,
+	.pru_abort = pr_generic_notsupp,
+	.pru_accept = pr_generic_notsupp,
 	.pru_attach = atm_dgram_attach,
-	.pru_bind = atm_proto_notsupp2,
-	.pru_connect = pru_connect_notsupp,
-	.pru_connect2 = pru_connect2_notsupp,
+	.pru_bind = pr_generic_notsupp,
+	.pru_connect = pr_generic_notsupp,
+	.pru_connect2 = pr_generic_notsupp,
 	.pru_control = atm_dgram_control,
-	.pru_detach = atm_proto_notsupp1,
-	.pru_disconnect = atm_proto_notsupp1,
-	.pru_listen = pru_listen_notsupp,
-	.pru_peeraddr = atm_proto_notsupp3,
-	.pru_rcvd = pru_rcvd_notsupp,
-	.pru_rcvoob = pru_rcvoob_notsupp,
-	.pru_send = atm_proto_notsupp4,
+	.pru_detach = pr_generic_notsupp,
+	.pru_disconnect = pr_generic_notsupp,
+	.pru_listen = pr_generic_notsupp,
+	.pru_peeraddr = pr_generic_notsupp,
+	.pru_rcvd = pr_generic_notsupp,
+	.pru_rcvoob = pr_generic_notsupp,
+	.pru_send = pr_generic_notsupp,
 	.pru_sense = pru_sense_null,
-	.pru_shutdown = atm_proto_notsupp1,
-	.pru_sockaddr = atm_proto_notsupp3,
+	.pru_shutdown = pr_generic_notsupp,
+	.pru_sockaddr = pr_generic_notsupp,
 	.pru_sosend = sosend,
 	.pru_soreceive = soreceive
 };
@@ -75,36 +73,37 @@ struct pr_usrreqs	atm_dgram_usrreqs = {
  * Handy common code macros
  */
 #ifdef DIAGNOSTIC
+
 #define ATM_INTRO()						\
-	int		err = 0;				\
+    do {							\
 	crit_enter();						\
 	/*							\
 	 * Stack queue should have been drained			\
 	 */							\
 	if (atm_stackq_head != NULL)				\
 		panic("atm_usrreq: stack queue not empty");	\
-	;
+    } while(0)
+
 #else
+
 #define ATM_INTRO()						\
-	int		err = 0;				\
+    do {							\
 	crit_enter();						\
-	;
+    } while(0)
+
 #endif
 
 #define	ATM_OUTRO()						\
+    out: do {							\
 	/*							\
 	 * Drain any deferred calls				\
 	 */							\
 	STACK_DRAIN();						\
 	crit_exit();						\
-	return (err);						\
-	;
-
-#define	ATM_RETERR(errno) {					\
-	err = errno;						\
+	lwkt_replymsg(&msg->lmsg, error);			\
+	return;							\
 	goto out;						\
-}
-
+    } while(0)
 
 /*
  * Attach protocol to socket
@@ -119,14 +118,18 @@ struct pr_usrreqs	atm_dgram_usrreqs = {
  *	errno	error processing request - reason indicated
  *
  */
-static int
-atm_dgram_attach(struct socket *so, int proto, struct pru_attach_info *ai)
+static void
+atm_dgram_attach(netmsg_t msg)
 {
+	int error;
+
 	ATM_INTRO();
 
 	/*
 	 * Nothing to do here for ioctl()-only sockets
 	 */
+	error = 0;
+
 	ATM_OUTRO();
 }
 
@@ -146,10 +149,15 @@ atm_dgram_attach(struct socket *so, int proto, struct pru_attach_info *ai)
  *	errno	error processing request - reason indicated
  *
  */
-static int
-atm_dgram_control(struct socket *so, u_long cmd, caddr_t data,
-		  struct ifnet *ifp, struct thread *td)
+static void
+atm_dgram_control(netmsg_t msg)
 {
+	u_long cmd = msg->control.nm_cmd;
+	caddr_t data = msg->control.nm_data;
+	struct thread *td = msg->control.nm_td;
+	int error;
+
+	error = 0;
 	ATM_INTRO();
 
 	/*
@@ -157,13 +165,14 @@ atm_dgram_control(struct socket *so, u_long cmd, caddr_t data,
 	 * then process it based on the sub-op code
 	 */
 	switch (cmd) {
-
 	case AIOCCFG: {
 		struct atmcfgreq	*acp = (struct atmcfgreq *)data;
 		struct atm_pif		*pip;
 
-		if (priv_check(td, PRIV_ROOT))
-			ATM_RETERR(EPERM);
+		if (priv_check(td, PRIV_ROOT)) {
+			error = EPERM;
+			goto out;
+		}
 
 		switch (acp->acr_opcode) {
 
@@ -171,22 +180,27 @@ atm_dgram_control(struct socket *so, u_long cmd, caddr_t data,
 			/*
 			 * Attach signalling manager
 			 */
-			if ((pip = atm_pifname(acp->acr_att_intf)) == NULL)
-				ATM_RETERR(ENXIO);
-			err = atm_sigmgr_attach(pip, acp->acr_att_proto);
+			if ((pip = atm_pifname(acp->acr_att_intf)) == NULL) {
+				error = ENXIO;
+				goto out;
+			}
+			error = atm_sigmgr_attach(pip, acp->acr_att_proto);
 			break;
 
 		case AIOCS_CFG_DET:
 			/*
 			 * Detach signalling manager
 			 */
-			if ((pip = atm_pifname(acp->acr_det_intf)) == NULL)
-				ATM_RETERR(ENXIO);
-			err = atm_sigmgr_detach(pip);
+			if ((pip = atm_pifname(acp->acr_det_intf)) == NULL) {
+				error = ENXIO;
+				goto out;
+			}
+			error = atm_sigmgr_detach(pip);
 			break;
 
 		default:
-			err = EOPNOTSUPP;
+			error = EOPNOTSUPP;
+			break;
 		}
 		break;
 	}
@@ -195,8 +209,10 @@ atm_dgram_control(struct socket *so, u_long cmd, caddr_t data,
 		struct atmaddreq	*aap = (struct atmaddreq *)data;
 		Atm_endpoint		*epp;
 
-		if (priv_check(td, PRIV_ROOT))
-			ATM_RETERR(EPERM);
+		if (priv_check(td, PRIV_ROOT)) {
+			error = EPERM;
+			goto out;
+		}
 
 		switch (aap->aar_opcode) {
 
@@ -210,13 +226,15 @@ atm_dgram_control(struct socket *so, u_long cmd, caddr_t data,
 			 */
 			epp = aap->aar_pvc_sap > ENDPT_MAX ? NULL : 
 					atm_endpoints[aap->aar_pvc_sap];
-			if (epp == NULL)
-				ATM_RETERR(ENOPROTOOPT);
+			if (epp == NULL) {
+				error = ENOPROTOOPT;
+				goto out;
+			}
 
 			/*
 			 * Let endpoint service handle it from here
 			 */
-			err = (*epp->ep_ioctl)(AIOCS_ADD_PVC, data, NULL);
+			error = (*epp->ep_ioctl)(AIOCS_ADD_PVC, data, NULL);
 			break;
 
 		case AIOCS_ADD_ARP:
@@ -224,17 +242,19 @@ atm_dgram_control(struct socket *so, u_long cmd, caddr_t data,
 			 * Add an ARP mapping
 			 */
 			epp = atm_endpoints[ENDPT_IP];
-			if (epp == NULL)
-				ATM_RETERR(ENOPROTOOPT);
+			if (epp == NULL) {
+				error = ENOPROTOOPT;
+				goto out;
+			}
 
 			/*
 			 * Let IP/ATM endpoint handle this
 			 */
-			err = (*epp->ep_ioctl) (AIOCS_ADD_ARP, data, NULL);
+			error = (*epp->ep_ioctl) (AIOCS_ADD_ARP, data, NULL);
 			break;
 
 		default:
-			err = EOPNOTSUPP;
+			error = EOPNOTSUPP;
 		}
 		break;
 	}
@@ -245,8 +265,10 @@ atm_dgram_control(struct socket *so, u_long cmd, caddr_t data,
 		struct sigmgr		*smp;
 		Atm_endpoint		*epp;
 
-		if (priv_check(td, PRIV_ROOT))
-			ATM_RETERR(EPERM);
+		if (priv_check(td, PRIV_ROOT)) {
+			error = EPERM;
+			goto out;
+		}
 
 		switch (adp->adr_opcode) {
 
@@ -259,15 +281,19 @@ atm_dgram_control(struct socket *so, u_long cmd, caddr_t data,
 			/*
 			 * Locate appropriate sigmgr
 			 */
-			if ((pip = atm_pifname(adp->adr_pvc_intf)) == NULL)
-				ATM_RETERR(ENXIO);
-			if ((smp = pip->pif_sigmgr) == NULL)
-				ATM_RETERR(ENOENT);
+			if ((pip = atm_pifname(adp->adr_pvc_intf)) == NULL) {
+				error = ENXIO;
+				goto out;
+			}
+			if ((smp = pip->pif_sigmgr) == NULL) {
+				error = ENOENT;
+				goto out;
+			}
 
 			/*
 			 * Let sigmgr handle it from here
 			 */
-			err = (*smp->sm_ioctl)(adp->adr_opcode, data, 
+			error = (*smp->sm_ioctl)(adp->adr_opcode, data,
 					(caddr_t)pip->pif_siginst);
 			break;
 
@@ -276,17 +302,19 @@ atm_dgram_control(struct socket *so, u_long cmd, caddr_t data,
 			 * Delete an ARP mapping
 			 */
 			epp = atm_endpoints[ENDPT_IP];
-			if (epp == NULL)
-				ATM_RETERR(ENOPROTOOPT);
+			if (epp == NULL) {
+				error = ENOPROTOOPT;
+				goto out;
+			}
 
 			/*
 			 * Let IP/ATM endpoint handle this
 			 */
-			err = (*epp->ep_ioctl) (AIOCS_DEL_ARP, data, NULL);
+			error = (*epp->ep_ioctl) (AIOCS_DEL_ARP, data, NULL);
 			break;
 
 		default:
-			err = EOPNOTSUPP;
+			error = EOPNOTSUPP;
 		}
 		break;
 	}
@@ -298,8 +326,10 @@ atm_dgram_control(struct socket *so, u_long cmd, caddr_t data,
 		struct sigmgr		*smp;
 		struct ifnet		*ifp2;
 
-		if (priv_check(td, PRIV_ROOT))
-			ATM_RETERR(EPERM);
+		if (priv_check(td, PRIV_ROOT)) {
+			error = EPERM;
+			goto out;
+		}
 
 		switch (asp->asr_opcode) {
 
@@ -311,16 +341,20 @@ atm_dgram_control(struct socket *so, u_long cmd, caddr_t data,
 			/*
 			 * Locate appropriate sigmgr
 			 */
-			if ((nip = atm_nifname(asp->asr_arp_intf)) == NULL)
-				ATM_RETERR(ENXIO);
+			if ((nip = atm_nifname(asp->asr_arp_intf)) == NULL) {
+				error = ENXIO;
+				goto out;
+			}
 			pip = nip->nif_pif;
-			if ((smp = pip->pif_sigmgr) == NULL)
-				ATM_RETERR(ENOENT);
+			if ((smp = pip->pif_sigmgr) == NULL) {
+				error = ENOENT;
+				goto out;
+			}
 
 			/*
 			 * Let sigmgr handle it from here
 			 */
-			err = (*smp->sm_ioctl)(AIOCS_SET_ASV, data, 
+			error = (*smp->sm_ioctl)(AIOCS_SET_ASV, data,
 					(caddr_t)nip);
 			break;
 
@@ -332,14 +366,18 @@ atm_dgram_control(struct socket *so, u_long cmd, caddr_t data,
 			/*
 			 * Locate physical interface
 			 */
-			if ((pip = atm_pifname(asp->asr_mac_intf)) == NULL)
-				ATM_RETERR(ENXIO);
+			if ((pip = atm_pifname(asp->asr_mac_intf)) == NULL) {
+				error = ENXIO;
+				goto out;
+			}
 
 			/*
 			 * Interface must be detached
 			 */
-			if (pip->pif_sigmgr != NULL)
-				ATM_RETERR(EADDRINUSE);
+			if (pip->pif_sigmgr != NULL) {
+				error = EADDRINUSE;
+				goto out;
+			}
 
 			/*
 			 * Just plunk the address into the pif
@@ -353,15 +391,20 @@ atm_dgram_control(struct socket *so, u_long cmd, caddr_t data,
 			/*
 			 * Define network interfaces
 			 */
-			if ((pip = atm_pifname(asp->asr_nif_intf)) == NULL)
-				ATM_RETERR(ENXIO);
+			if ((pip = atm_pifname(asp->asr_nif_intf)) == NULL) {
+				error = ENXIO;
+				goto out;
+			}
 
 			/*
 			 * Validate interface count - logical interfaces
 			 * are differentiated by the atm address selector.
 			 */
-			if ((asp->asr_nif_cnt <= 0) || (asp->asr_nif_cnt > 256))
-				ATM_RETERR(EINVAL);
+			if ((asp->asr_nif_cnt <= 0) ||
+			    (asp->asr_nif_cnt > 256)) {
+				error = EINVAL;
+				goto out;
+			}
 
 			/*
 			 * Make sure prefix name is unique
@@ -379,15 +422,16 @@ atm_dgram_control(struct socket *so, u_long cmd, caddr_t data,
 					}
 					if (nip)
 						continue;
-					ATM_RETERR(EEXIST);
+					error = EEXIST;
+					goto out;
 				}
 			}
 
 			/*
 			 * Let interface handle it from here
 			 */
-			err = (*pip->pif_ioctl)(AIOCS_SET_NIF, data,
-					(caddr_t)pip);
+			error = (*pip->pif_ioctl)(AIOCS_SET_NIF, data,
+						  (caddr_t)pip);
 			break;
 
 		case AIOCS_SET_PRF:
@@ -398,33 +442,37 @@ atm_dgram_control(struct socket *so, u_long cmd, caddr_t data,
 			/*
 			 * Locate appropriate sigmgr
 			 */
-			if ((pip = atm_pifname(asp->asr_prf_intf)) == NULL)
-				ATM_RETERR(ENXIO);
-			if ((smp = pip->pif_sigmgr) == NULL)
-				ATM_RETERR(ENOENT);
+			if ((pip = atm_pifname(asp->asr_prf_intf)) == NULL) {
+				error = ENXIO;
+				goto out;
+			}
+			if ((smp = pip->pif_sigmgr) == NULL) {
+				error = ENOENT;
+				goto out;
+			}
 
 			/*
 			 * Let sigmgr handle it from here
 			 */
-			err = (*smp->sm_ioctl)(AIOCS_SET_PRF, data, 
+			error = (*smp->sm_ioctl)(AIOCS_SET_PRF, data,
 					(caddr_t)pip->pif_siginst);
 			break;
 
 		default:
-			err = EOPNOTSUPP;
+			error = EOPNOTSUPP;
+			break;
 		}
 		break;
 	}
 
 	case AIOCINFO:
-		err = atm_dgram_info(data);
+		error = atm_dgram_info(data);
 		break;
 
 	default:
-		err = EOPNOTSUPP;
+		error = EOPNOTSUPP;
 	}
 
-out:
 	ATM_OUTRO();
 }
 

@@ -45,6 +45,7 @@
 #include <sys/socketvar.h>
 
 #include <sys/socketvar2.h>
+#include <sys/msgport2.h>
 
 #include <net/raw_cb.h>
 
@@ -135,118 +136,145 @@ raw_input(struct mbuf *m0, const struct sockproto *proto,
 	lwkt_reltoken(&raw_token);
 }
 
-/*ARGSUSED*/
+/*
+ * nm_cmd, nm_arg, nm_extra
+ */
 void
-raw_ctlinput(int cmd, struct sockaddr *arg, void *dummy)
+raw_ctlinput(netmsg_t msg)
 {
+	int error = 0;
 
-	if (cmd < 0 || cmd > PRC_NCMDS)
-		return;
-	/* INCOMPLETE */
+	if (msg->ctlinput.nm_cmd < 0 || msg->ctlinput.nm_cmd > PRC_NCMDS)
+		;
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
 /*
  * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
  *	 will sofree() it when we return.
  */
-static int
-raw_uabort(struct socket *so)
+static void
+raw_uabort(netmsg_t msg)
 {
-	struct rawcb *rp = sotorawcb(so);
+	struct rawcb *rp = sotorawcb(msg->base.nm_so);
+	int error;
 
-	if (rp == NULL)
-		return EINVAL;
-	raw_disconnect(rp);
-	soisdisconnected(so);
-	return 0;
+	if (rp) {
+		raw_disconnect(rp);
+		soisdisconnected(msg->base.nm_so);
+		error = 0;
+	} else {
+		error = EINVAL;
+	}
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
 /* pru_accept is EOPNOTSUPP */
 
-static int
-raw_uattach(struct socket *so, int proto, struct pru_attach_info *ai)
+static void
+raw_uattach(netmsg_t msg)
 {
-	struct rawcb *rp = sotorawcb(so);
+	struct socket *so = msg->base.nm_so;
+	int proto = msg->attach.nm_proto;
+	struct pru_attach_info *ai = msg->attach.nm_ai;
+	struct rawcb *rp;
 	int error;
 
-	if (rp == NULL)
-		return EINVAL;
-	if ((error = priv_check_cred(ai->p_ucred, PRIV_ROOT, NULL_CRED_OKAY)) != 0)
-		return error;
-	return raw_attach(so, proto, ai->sb_rlimit);
+	rp = sotorawcb(so);
+	if (rp) {
+		error = priv_check_cred(ai->p_ucred, PRIV_ROOT, NULL_CRED_OKAY);
+		if (error == 0)
+			error = raw_attach(so, proto, ai->sb_rlimit);
+	} else {
+		error = EINVAL;
+	}
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-raw_ubind(struct socket *so, struct sockaddr *nam, struct thread *td)
+static void
+raw_ubind(netmsg_t msg)
 {
-	return EINVAL;
+	lwkt_replymsg(&msg->lmsg, EINVAL);
 }
 
-static int
-raw_uconnect(struct socket *so, struct sockaddr *nam, struct thread *td)
+static void
+raw_uconnect(netmsg_t msg)
 {
-	return EINVAL;
+	lwkt_replymsg(&msg->lmsg, EINVAL);
 }
 
 /* pru_connect2 is EOPNOTSUPP */
 /* pru_control is EOPNOTSUPP */
 
-static int
-raw_udetach(struct socket *so)
+static void
+raw_udetach(netmsg_t msg)
 {
-	struct rawcb *rp = sotorawcb(so);
+	struct rawcb *rp = sotorawcb(msg->base.nm_so);
+	int error;
 
-	if (rp == NULL)
-		return EINVAL;
-
-	raw_detach(rp);
-	return 0;
+	if (rp) {
+		raw_detach(rp);
+		error = 0;
+	} else {
+		error = EINVAL;
+	}
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-raw_udisconnect(struct socket *so)
+static void
+raw_udisconnect(netmsg_t msg)
 {
-	struct rawcb *rp = sotorawcb(so);
+	struct socket *so = msg->base.nm_so;
+	struct rawcb *rp;
+	int error;
 
-	if (rp == NULL)
-		return EINVAL;
-	if (rp->rcb_faddr == NULL) {
-		return ENOTCONN;
+	rp = sotorawcb(so);
+	if (rp == NULL) {
+		error = EINVAL;
+	} else if (rp->rcb_faddr == NULL) {
+		error = ENOTCONN;
+	} else {
+		soreference(so);
+		raw_disconnect(rp);
+		soisdisconnected(so);
+		sofree(so);
+		error = 0;
 	}
-	soreference(so);
-	raw_disconnect(rp);
-	soisdisconnected(so);
-	sofree(so);
-
-	return 0;
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
 /* pru_listen is EOPNOTSUPP */
 
-static int
-raw_upeeraddr(struct socket *so, struct sockaddr **nam)
+static void
+raw_upeeraddr(netmsg_t msg)
 {
-	struct rawcb *rp = sotorawcb(so);
+	struct rawcb *rp = sotorawcb(msg->base.nm_so);
+	int error;
 
-	if (rp == NULL)
-		return EINVAL;
-	if (rp->rcb_faddr == NULL) {
-		return ENOTCONN;
+	if (rp == NULL) {
+		error = EINVAL;
+	} else if (rp->rcb_faddr == NULL) {
+		error = ENOTCONN;
+	} else {
+		*msg->peeraddr.nm_nam = dup_sockaddr(rp->rcb_faddr);
+		error = 0;
 	}
-	*nam = dup_sockaddr(rp->rcb_faddr);
-	return 0;
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
 /* pru_rcvd is EOPNOTSUPP */
 /* pru_rcvoob is EOPNOTSUPP */
 
-static int
-raw_usend(struct socket *so, int flags, struct mbuf *m,
-	  struct sockaddr *nam, struct mbuf *control, struct thread *td)
+static void
+raw_usend(netmsg_t msg)
 {
-	int error;
+	struct socket *so = msg->base.nm_so;
+	struct mbuf *m = msg->send.nm_m;
+	struct mbuf *control = msg->send.nm_control;
 	struct rawcb *rp = sotorawcb(so);
 	struct pr_output_info oi;
+	int flags = msg->send.nm_flags;
+	int error;
 
 	if (rp == NULL) {
 		error = EINVAL;
@@ -262,67 +290,75 @@ raw_usend(struct socket *so, int flags, struct mbuf *m,
 		error = EOPNOTSUPP;
 		goto release;
 	}
-	if (nam) {
+	if (msg->send.nm_addr) {
 		if (rp->rcb_faddr) {
 			error = EISCONN;
 			goto release;
 		}
-		rp->rcb_faddr = nam;
+		rp->rcb_faddr = msg->send.nm_addr;
 	} else if (rp->rcb_faddr == NULL) {
 		error = ENOTCONN;
 		goto release;
 	}
-	oi.p_pid = td->td_proc->p_pid;
+	oi.p_pid = msg->send.nm_td->td_proc->p_pid;
 	error = (*so->so_proto->pr_output)(m, so, &oi);
 	m = NULL;
-	if (nam)
+	if (msg->send.nm_addr)
 		rp->rcb_faddr = NULL;
 release:
 	if (m != NULL)
 		m_freem(m);
-	return (error);
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
 /* pru_sense is null */
 
-static int
-raw_ushutdown(struct socket *so)
+static void
+raw_ushutdown(netmsg_t msg)
 {
-	struct rawcb *rp = sotorawcb(so);
+	struct rawcb *rp = sotorawcb(msg->base.nm_so);
+	int error;
 
-	if (rp == NULL)
-		return EINVAL;
-	socantsendmore(so);
-	return 0;
+	if (rp) {
+		socantsendmore(msg->base.nm_so);
+		error = 0;
+	} else {
+		error = EINVAL;
+	}
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-raw_usockaddr(struct socket *so, struct sockaddr **nam)
+static void
+raw_usockaddr(netmsg_t msg)
 {
-	struct rawcb *rp = sotorawcb(so);
+	struct rawcb *rp = sotorawcb(msg->base.nm_so);
+	int error;
 
-	if (rp == NULL)
-		return EINVAL;
-	if (rp->rcb_laddr == NULL)
-		return EINVAL;
-	*nam = dup_sockaddr(rp->rcb_laddr);
-	return 0;
+	if (rp == NULL) {
+		error = EINVAL;
+	} else if (rp->rcb_laddr == NULL) {
+		error = EINVAL;
+	} else {
+		*msg->sockaddr.nm_nam = dup_sockaddr(rp->rcb_laddr);
+		error = 0;
+	}
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
 struct pr_usrreqs raw_usrreqs = {
 	.pru_abort = raw_uabort,
-	.pru_accept = pru_accept_notsupp,
+	.pru_accept = pr_generic_notsupp,
 	.pru_attach = raw_uattach,
 	.pru_bind = raw_ubind,
 	.pru_connect = raw_uconnect,
-	.pru_connect2 = pru_connect2_notsupp,
-	.pru_control = pru_control_notsupp,
+	.pru_connect2 = pr_generic_notsupp,
+	.pru_control = pr_generic_notsupp,
 	.pru_detach = raw_udetach, 
 	.pru_disconnect = raw_udisconnect,
-	.pru_listen = pru_listen_notsupp,
+	.pru_listen = pr_generic_notsupp,
 	.pru_peeraddr = raw_upeeraddr,
-	.pru_rcvd = pru_rcvd_notsupp,
-	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_rcvd = pr_generic_notsupp,
+	.pru_rcvoob = pr_generic_notsupp,
 	.pru_send = raw_usend,
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = raw_ushutdown,

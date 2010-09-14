@@ -565,6 +565,8 @@ extern	int tcp_minmss;
 extern	int tcp_delack_enabled;
 extern	int path_mtu_discovery;
 
+union netmsg;
+
 int	 tcp_addrcpu(in_addr_t faddr, in_port_t fport,
 	    in_addr_t laddr, in_port_t lport);
 struct lwkt_port *
@@ -574,17 +576,15 @@ struct lwkt_port *tcp_addrport0(void);
 void	 tcp_canceltimers (struct tcpcb *);
 struct tcpcb *
 	 tcp_close (struct tcpcb *);
-void	 tcp_ctlinput (int, struct sockaddr *, void *);
-int	 tcp_ctloutput (struct socket *, struct sockopt *);
-struct lwkt_port *
-	 tcp_cport(int cpu);
+void	 tcp_ctlinput(union netmsg *);
+void	 tcp_ctloutput(union netmsg *);
 struct tcpcb *
 	 tcp_drop (struct tcpcb *, int);
 void	 tcp_drain (void);
 void	 tcp_fasttimo (void);
 void	 tcp_init (void);
 void	 tcp_thread_init (void);
-void	 tcp_input (struct mbuf *, ...);
+int	 tcp_input (struct mbuf **, int *, int);
 void	 tcp_mss (struct tcpcb *, int);
 int	 tcp_mssopt (struct tcpcb *);
 void	 tcp_drop_syn_sent (struct inpcb *, int);

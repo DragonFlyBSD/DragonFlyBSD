@@ -115,12 +115,11 @@ static void rtinit_rtrequest_callback(int, int, struct rt_addrinfo *,
 				      struct rtentry *, void *);
 
 #ifdef SMP
-static void rtredirect_msghandler(struct netmsg *netmsg);
-static void rtrequest1_msghandler(struct netmsg *netmsg);
+static void rtredirect_msghandler(netmsg_t msg);
+static void rtrequest1_msghandler(netmsg_t msg);
 #endif
-static void rtsearch_msghandler(struct netmsg *netmsg);
-
-static void rtmask_add_msghandler(struct netmsg *netmsg);
+static void rtsearch_msghandler(netmsg_t msg);
+static void rtmask_add_msghandler(netmsg_t msg);
 
 static int rt_setshims(struct rtentry *, struct sockaddr **);
 
@@ -160,7 +159,7 @@ route_init(void)
 }
 
 static void
-rtable_init_oncpu(struct netmsg *nmsg)
+rtable_init_oncpu(netmsg_t msg)
 {
 	struct domain *dom;
 	int cpu = mycpuid;
@@ -172,17 +171,16 @@ rtable_init_oncpu(struct netmsg *nmsg)
 			        dom->dom_rtoffset);
 		}
 	}
-	ifnet_forwardmsg(&nmsg->nm_lmsg, cpu + 1);
+	ifnet_forwardmsg(&msg->lmsg, cpu + 1);
 }
 
 static void
 rtable_init(void)
 {
-	struct netmsg nmsg;
+	struct netmsg_base msg;
 
-	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
-		    0, rtable_init_oncpu);
-	ifnet_domsg(&nmsg.nm_lmsg, 0);
+	netmsg_init(&msg, NULL, &curthread->td_msgport, 0, rtable_init_oncpu);
+	ifnet_domsg(&msg.lmsg, 0);
 }
 
 /*
@@ -195,13 +193,13 @@ rtable_init(void)
 static void
 rtable_service_loop(void *dummy __unused)
 {
-	struct netmsg *netmsg;
+	netmsg_base_t msg;
 	thread_t td = curthread;
 
 	get_mplock();	/* XXX is this mpsafe yet? */
 
-	while ((netmsg = lwkt_waitport(&td->td_msgport, 0)) != NULL) {
-		netmsg->nm_dispatch(netmsg);
+	while ((msg = lwkt_waitport(&td->td_msgport, 0)) != NULL) {
+		msg->nm_dispatch((netmsg_t)msg);
 	}
 }
 
@@ -364,9 +362,9 @@ rtfree_oncpu(struct rtentry *rt)
 }
 
 static void
-rtfree_remote_dispatch(struct netmsg *nmsg)
+rtfree_remote_dispatch(netmsg_t msg)
 {
-	struct lwkt_msg *lmsg = &nmsg->nm_lmsg;
+	struct lwkt_msg *lmsg = &msg->lmsg;
 	struct rtentry *rt = lmsg->u.ms_resultp;
 
 	rtfree_oncpu(rt);
@@ -376,7 +374,7 @@ rtfree_remote_dispatch(struct netmsg *nmsg)
 void
 rtfree_remote(struct rtentry *rt, int allow_panic)
 {
-	struct netmsg nmsg;
+	struct netmsg_base msg;
 	struct lwkt_msg *lmsg;
 
 	KKASSERT(rt->rt_cpuid != mycpuid);
@@ -390,9 +388,9 @@ rtfree_remote(struct rtentry *rt, int allow_panic)
 		print_backtrace(-1);
 	}
 
-	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+	netmsg_init(&msg, NULL, &curthread->td_msgport,
 		    0, rtfree_remote_dispatch);
-	lmsg = &nmsg.nm_lmsg;
+	lmsg = &msg.lmsg;
 	lmsg->u.ms_resultp = rt;
 
 	lwkt_domsg(rtable_portfn(rt->rt_cpuid), lmsg, 0);
@@ -502,7 +500,7 @@ out:
 #ifdef SMP
 
 struct netmsg_rtredirect {
-	struct netmsg	netmsg;
+	struct netmsg_base base;
 	struct sockaddr *dst;
 	struct sockaddr *gateway;
 	struct sockaddr *netmask;
@@ -529,14 +527,14 @@ rtredirect(struct sockaddr *dst, struct sockaddr *gateway,
 #ifdef SMP
 	struct netmsg_rtredirect msg;
 
-	netmsg_init(&msg.netmsg, NULL, &curthread->td_msgport,
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport,
 		    0, rtredirect_msghandler);
 	msg.dst = dst;
 	msg.gateway = gateway;
 	msg.netmask = netmask;
 	msg.flags = flags;
 	msg.src = src;
-	error = lwkt_domsg(rtable_portfn(0), &msg.netmsg.nm_lmsg, 0);
+	error = lwkt_domsg(rtable_portfn(0), &msg.base.lmsg, 0);
 #else
 	error = rtredirect_oncpu(dst, gateway, netmask, flags, src);
 #endif
@@ -551,18 +549,18 @@ rtredirect(struct sockaddr *dst, struct sockaddr *gateway,
 #ifdef SMP
 
 static void
-rtredirect_msghandler(struct netmsg *netmsg)
+rtredirect_msghandler(netmsg_t msg)
 {
-	struct netmsg_rtredirect *msg = (void *)netmsg;
+	struct netmsg_rtredirect *rmsg = (void *)msg;
 	int nextcpu;
 
-	rtredirect_oncpu(msg->dst, msg->gateway, msg->netmask,
-			 msg->flags, msg->src);
+	rtredirect_oncpu(rmsg->dst, rmsg->gateway, rmsg->netmask,
+			 rmsg->flags, rmsg->src);
 	nextcpu = mycpuid + 1;
 	if (nextcpu < ncpus)
-		lwkt_forwardmsg(rtable_portfn(nextcpu), &netmsg->nm_lmsg);
+		lwkt_forwardmsg(rtable_portfn(nextcpu), &msg->lmsg);
 	else
-		lwkt_replymsg(&netmsg->nm_lmsg, 0);
+		lwkt_replymsg(&msg->lmsg, 0);
 }
 
 #endif
@@ -732,7 +730,7 @@ rtrequest_global(
 #ifdef SMP
 
 struct netmsg_rtq {
-	struct netmsg		netmsg;
+	struct netmsg_base	base;
 	int			req;
 	struct rt_addrinfo	*rtinfo;
 	rtrequest1_callback_func_t callback;
@@ -749,14 +747,14 @@ rtrequest1_global(int req, struct rt_addrinfo *rtinfo,
 #ifdef SMP
 	struct netmsg_rtq msg;
 
-	netmsg_init(&msg.netmsg, NULL, &curthread->td_msgport,
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport,
 		    0, rtrequest1_msghandler);
-	msg.netmsg.nm_lmsg.ms_error = -1;
+	msg.base.lmsg.ms_error = -1;
 	msg.req = req;
 	msg.rtinfo = rtinfo;
 	msg.callback = callback;
 	msg.arg = arg;
-	error = lwkt_domsg(rtable_portfn(0), &msg.netmsg.nm_lmsg, 0);
+	error = lwkt_domsg(rtable_portfn(0), &msg.base.lmsg, 0);
 #else
 	struct rtentry *rt = NULL;
 
@@ -777,9 +775,9 @@ rtrequest1_global(int req, struct rt_addrinfo *rtinfo,
 #ifdef SMP
 
 static void
-rtrequest1_msghandler(struct netmsg *netmsg)
+rtrequest1_msghandler(netmsg_t msg)
 {
-	struct netmsg_rtq *msg = (void *)netmsg;
+	struct netmsg_rtq *rmsg = (void *)msg;
 	struct rt_addrinfo rtinfo;
 	struct rtentry *rt = NULL;
 	int nextcpu;
@@ -791,13 +789,13 @@ rtrequest1_msghandler(struct netmsg *netmsg)
 	 * _not_ be changed; else the next CPU on the netmsg forwarding
 	 * path will see a different rtinfo than what this CPU has seen.
 	 */
-	rtinfo = *msg->rtinfo;
+	rtinfo = *rmsg->rtinfo;
 
-	error = rtrequest1(msg->req, &rtinfo, &rt);
+	error = rtrequest1(rmsg->req, &rtinfo, &rt);
 	if (rt)
 		--rt->rt_refcnt;
-	if (msg->callback)
-		msg->callback(msg->req, error, &rtinfo, rt, msg->arg);
+	if (rmsg->callback)
+		rmsg->callback(rmsg->req, error, &rtinfo, rt, rmsg->arg);
 
 	/*
 	 * RTM_DELETE's are propogated even if an error occurs, since a
@@ -805,21 +803,20 @@ rtrequest1_msghandler(struct netmsg *netmsg)
 	 * are not necessarily replicated.  An overall error is returned
 	 * only if no cpus have the route in question.
 	 */
-	if (msg->netmsg.nm_lmsg.ms_error < 0 || error == 0)
-		msg->netmsg.nm_lmsg.ms_error = error;
+	if (rmsg->base.lmsg.ms_error < 0 || error == 0)
+		rmsg->base.lmsg.ms_error = error;
 
 	nextcpu = mycpuid + 1;
-	if (error && msg->req != RTM_DELETE) {
+	if (error && rmsg->req != RTM_DELETE) {
 		if (mycpuid != 0) {
 			panic("rtrequest1_msghandler: rtrequest table "
 			      "error was not on cpu #0");
 		}
-		lwkt_replymsg(&msg->netmsg.nm_lmsg, error);
+		lwkt_replymsg(&rmsg->base.lmsg, error);
 	} else if (nextcpu < ncpus) {
-		lwkt_forwardmsg(rtable_portfn(nextcpu), &msg->netmsg.nm_lmsg);
+		lwkt_forwardmsg(rtable_portfn(nextcpu), &rmsg->base.lmsg);
 	} else {
-		lwkt_replymsg(&msg->netmsg.nm_lmsg,
-			      msg->netmsg.nm_lmsg.ms_error);
+		lwkt_replymsg(&rmsg->base.lmsg, rmsg->base.lmsg.ms_error);
 	}
 }
 
@@ -1649,7 +1646,7 @@ rtinit_rtrequest_callback(int cmd, int error,
 }
 
 struct netmsg_rts {
-	struct netmsg		netmsg;
+	struct netmsg_base	base;
 	int			req;
 	struct rt_addrinfo	*rtinfo;
 	rtsearch_callback_func_t callback;
@@ -1665,7 +1662,7 @@ rtsearch_global(int req, struct rt_addrinfo *rtinfo,
 {
 	struct netmsg_rts msg;
 
-	netmsg_init(&msg.netmsg, NULL, &curthread->td_msgport,
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport,
 		    0, rtsearch_msghandler);
 	msg.req = req;
 	msg.rtinfo = rtinfo;
@@ -1673,13 +1670,13 @@ rtsearch_global(int req, struct rt_addrinfo *rtinfo,
 	msg.arg = arg;
 	msg.exact_match = exact_match;
 	msg.found_cnt = 0;
-	return lwkt_domsg(rtable_portfn(0), &msg.netmsg.nm_lmsg, 0);
+	return lwkt_domsg(rtable_portfn(0), &msg.base.lmsg, 0);
 }
 
 static void
-rtsearch_msghandler(struct netmsg *netmsg)
+rtsearch_msghandler(netmsg_t msg)
 {
-	struct netmsg_rts *msg = (void *)netmsg;
+	struct netmsg_rts *rmsg = (void *)msg;
 	struct rt_addrinfo rtinfo;
 	struct radix_node_head *rnh;
 	struct rtentry *rt;
@@ -1691,7 +1688,7 @@ rtsearch_msghandler(struct netmsg *netmsg)
 	 * _not_ be changed; else the next CPU on the netmsg forwarding
 	 * path will see a different rtinfo than what this CPU has seen.
 	 */
-	rtinfo = *msg->rtinfo;
+	rtinfo = *rmsg->rtinfo;
 
 	/*
 	 * Find the correct routing tree to use for this Address Family
@@ -1699,7 +1696,7 @@ rtsearch_msghandler(struct netmsg *netmsg)
 	if ((rnh = rt_tables[mycpuid][rtinfo.rti_dst->sa_family]) == NULL) {
 		if (mycpuid != 0)
 			panic("partially initialized routing tables\n");
-		lwkt_replymsg(&msg->netmsg.nm_lmsg, EAFNOSUPPORT);
+		lwkt_replymsg(&rmsg->base.lmsg, EAFNOSUPPORT);
 		return;
 	}
 
@@ -1720,7 +1717,7 @@ rtsearch_msghandler(struct netmsg *netmsg)
 	 * that host route searching got a host route while a network
 	 * route searching got a network route.
 	 */
-	if (rt != NULL && msg->exact_match &&
+	if (rt != NULL && rmsg->exact_match &&
 	    ((rt->rt_flags ^ rtinfo.rti_flags) & RTF_HOST))
 		rt = NULL;
 
@@ -1733,22 +1730,22 @@ rtsearch_msghandler(struct netmsg *netmsg)
 		 */
 		error = 0;
 	} else {
-		msg->found_cnt++;
+		rmsg->found_cnt++;
 
 		rt->rt_refcnt++;
-		error = msg->callback(msg->req, &rtinfo, rt, msg->arg,
-				      msg->found_cnt);
+		error = rmsg->callback(rmsg->req, &rtinfo, rt, rmsg->arg,
+				      rmsg->found_cnt);
 		rt->rt_refcnt--;
 
 		if (error == EJUSTRETURN) {
-			lwkt_replymsg(&msg->netmsg.nm_lmsg, 0);
+			lwkt_replymsg(&rmsg->base.lmsg, 0);
 			return;
 		}
 	}
 
 	nextcpu = mycpuid + 1;
 	if (error) {
-		KKASSERT(msg->found_cnt > 0);
+		KKASSERT(rmsg->found_cnt > 0);
 
 		/*
 		 * Under following cases, unrecoverable error has
@@ -1757,32 +1754,32 @@ rtsearch_msghandler(struct netmsg *netmsg)
 		 * o  The first time that we find the route, but the
 		 *    modification fails.
 		 */
-		if (msg->req != RTM_GET && msg->found_cnt > 1) {
+		if (rmsg->req != RTM_GET && rmsg->found_cnt > 1) {
 			panic("rtsearch_msghandler: unrecoverable error "
 			      "cpu %d", mycpuid);
 		}
-		lwkt_replymsg(&msg->netmsg.nm_lmsg, error);
+		lwkt_replymsg(&rmsg->base.lmsg, error);
 	} else if (nextcpu < ncpus) {
-		lwkt_forwardmsg(rtable_portfn(nextcpu), &msg->netmsg.nm_lmsg);
+		lwkt_forwardmsg(rtable_portfn(nextcpu), &rmsg->base.lmsg);
 	} else {
-		if (msg->found_cnt == 0) {
+		if (rmsg->found_cnt == 0) {
 			/* The requested route was never seen ... */
 			error = ESRCH;
 		}
-		lwkt_replymsg(&msg->netmsg.nm_lmsg, error);
+		lwkt_replymsg(&rmsg->base.lmsg, error);
 	}
 }
 
 int
 rtmask_add_global(struct sockaddr *mask)
 {
-	struct netmsg nmsg;
+	struct netmsg_base msg;
 
-	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+	netmsg_init(&msg, NULL, &curthread->td_msgport,
 		    0, rtmask_add_msghandler);
-	nmsg.nm_lmsg.u.ms_resultp = mask;
+	msg.lmsg.u.ms_resultp = mask;
 
-	return lwkt_domsg(rtable_portfn(0), &nmsg.nm_lmsg, 0);
+	return lwkt_domsg(rtable_portfn(0), &msg.lmsg, 0);
 }
 
 struct sockaddr *
@@ -1804,9 +1801,9 @@ _rtmask_lookup(struct sockaddr *mask, boolean_t search)
 }
 
 static void
-rtmask_add_msghandler(struct netmsg *nmsg)
+rtmask_add_msghandler(netmsg_t msg)
 {
-	struct lwkt_msg *lmsg = &nmsg->nm_lmsg;
+	struct lwkt_msg *lmsg = &msg->lmsg;
 	struct sockaddr *mask = lmsg->u.ms_resultp;
 	int error = 0, nextcpu;
 

@@ -71,12 +71,13 @@ extern struct sp_info	atm_attributes_pool;
 extern struct pr_usrreqs	atm_dgram_usrreqs;
 
 struct lwkt_serialize;
+union netmsg;
 
 /*
  * Global function declarations
  */
 	/* atm_aal5.c */
-int		atm_aal5_ctloutput (struct socket *, struct sockopt *);
+void		atm_aal5_ctloutput (union netmsg *);
 void		atm_aal5_init (void);
 
 	/* atm_cm.c */
@@ -131,14 +132,6 @@ struct atm_pif *
 		atm_pifname (char *);
 struct atm_nif *
 		atm_nifname (char *);
-
-	/* atm_proto.c */
-int		atm_proto_notsupp1 (struct socket *);
-int		atm_proto_notsupp2 (struct socket *, struct sockaddr *,
-			struct thread *);
-int		atm_proto_notsupp3 (struct socket *, struct sockaddr **);
-int		atm_proto_notsupp4 (struct socket *, int, KBuffer *, 
-			struct sockaddr *, KBuffer *, struct thread *);
 
 	/* atm_signal.c */
 int		atm_sigmgr_register (struct sigmgr *);

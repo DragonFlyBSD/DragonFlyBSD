@@ -312,7 +312,7 @@ static struct malloc_pipe ipq_mpipe;
 static void		save_rte(struct mbuf *, u_char *, struct in_addr);
 static int		ip_dooptions(struct mbuf *m, int, struct sockaddr_in *);
 static void		ip_freef(struct ipq *);
-static void		ip_input_handler(struct netmsg *);
+static void		ip_input_handler(netmsg_t);
 
 /*
  * IP initialization: fill in IP protocol switch table.
@@ -391,31 +391,29 @@ transport_processing_oncpu(struct mbuf *m, int hlen, struct ip *ip)
 	 * Switch out to protocol's input routine.
 	 */
 	PR_GET_MPLOCK(pr);
-	pr->pr_input(m, hlen, ip->ip_p);
+	pr->pr_input(&m, &hlen, ip->ip_p);
 	PR_REL_MPLOCK(pr);
 }
 
 static void
-transport_processing_handler(netmsg_t netmsg)
+transport_processing_handler(netmsg_t msg)
 {
-	struct netmsg_packet *pmsg = (struct netmsg_packet *)netmsg;
+	struct netmsg_packet *pmsg = &msg->packet;
 	struct ip *ip;
 	int hlen;
 
 	ip = mtod(pmsg->nm_packet, struct ip *);
-	hlen = pmsg->nm_netmsg.nm_lmsg.u.ms_result;
+	hlen = pmsg->base.lmsg.u.ms_result;
 
 	transport_processing_oncpu(pmsg->nm_packet, hlen, ip);
-	/* netmsg was embedded in the mbuf, do not reply! */
+	/* msg was embedded in the mbuf, do not reply! */
 }
 
 static void
-ip_input_handler(struct netmsg *msg0)
+ip_input_handler(netmsg_t msg)
 {
-	struct mbuf *m = ((struct netmsg_packet *)msg0)->nm_packet;
-
-	ip_input(m);
-	/* msg0 was embedded in the mbuf, do not reply! */
+	ip_input(msg->packet.nm_packet);
+	/* msg was embedded in the mbuf, do not reply! */
 }
 
 /*
@@ -951,12 +949,11 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 		++ip_dispatch_slow;
 
 		pmsg = &m->m_hdr.mh_netmsg;
-		netmsg_init(&pmsg->nm_netmsg, NULL, &netisr_apanic_rport,
+		netmsg_init(&pmsg->base, NULL, &netisr_apanic_rport,
 			    0, transport_processing_handler);
 		pmsg->nm_packet = m;
-		pmsg->nm_netmsg.nm_lmsg.u.ms_result = hlen;
-
-		lwkt_sendmsg(port, &pmsg->nm_netmsg.nm_lmsg);
+		pmsg->base.lmsg.u.ms_result = hlen;
+		lwkt_sendmsg(port, &pmsg->base.lmsg);
 	} else {
 		++ip_dispatch_fast;
 		transport_processing_oncpu(m, hlen, ip);
@@ -2233,20 +2230,19 @@ ip_rsvp_done(void)
 	return 0;
 }
 
-void
-rsvp_input(struct mbuf *m, ...)	/* XXX must fixup manually */
+int
+rsvp_input(struct mbuf **mp, int *offp, int proto)
 {
-	int off, proto;
-	__va_list ap;
+	struct mbuf *m = *mp;
+	int off;
 
-	__va_start(ap, m);
-	off = __va_arg(ap, int);
-	proto = __va_arg(ap, int);
-	__va_end(ap);
+	off = *offp;
+	*mp = NULL;
 
 	if (rsvp_input_p) { /* call the real one if loaded */
-		rsvp_input_p(m, off, proto);
-		return;
+		*mp = m;
+		rsvp_input_p(mp, offp, proto);
+		return(IPPROTO_DONE);
 	}
 
 	/* Can still get packets with rsvp_on = 0 if there is a local member
@@ -2256,13 +2252,15 @@ rsvp_input(struct mbuf *m, ...)	/* XXX must fixup manually */
 
 	if (!rsvp_on) {
 		m_freem(m);
-		return;
+		return(IPPROTO_DONE);
 	}
 
 	if (ip_rsvpd != NULL) {
-		rip_input(m, off, proto);
-		return;
+		*mp = m;
+		rip_input(mp, offp, proto);
+		return(IPPROTO_DONE);
 	}
 	/* Drop the packet */
 	m_freem(m);
+	return(IPPROTO_DONE);
 }

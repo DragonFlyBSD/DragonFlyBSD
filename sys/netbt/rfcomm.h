@@ -385,6 +385,7 @@ struct rfcomm_dlc {
 
 extern struct pr_usrreqs rfcomm_usrreqs;
 struct socket;
+union netmsg;
 
 /* rfcomm_dlc.c */
 struct rfcomm_dlc *rfcomm_dlc_lookup(struct rfcomm_session *, int);
@@ -408,7 +409,7 @@ void rfcomm_session_timeout(void *);
 
 /* rfcomm_socket.c */
 int rfcomm_usrreq(struct socket *, int, struct mbuf *, struct mbuf *, struct mbuf *);
-int rfcomm_ctloutput(struct socket *so, struct sockopt *sopt);
+void rfcomm_ctloutput(union netmsg *);
 
 /* rfcomm_upper.c */
 int rfcomm_attach(struct rfcomm_dlc **, const struct btproto *, void *);

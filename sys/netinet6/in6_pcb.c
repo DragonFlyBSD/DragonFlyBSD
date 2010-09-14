@@ -85,7 +85,9 @@
 #include <sys/proc.h>
 #include <sys/priv.h>
 #include <sys/jail.h>
+
 #include <sys/thread2.h>
+#include <sys/msgport2.h>
 
 #include <vm/vm_zone.h>
 
@@ -713,6 +715,15 @@ in6_pcbdetach(struct inpcb *inp)
  * (or in this case trap) if the PCB is invalid.  (Actually, we don't trap
  * because there actually /is/ a programming error somewhere... XXX)
  */
+void
+in6_setsockaddr_dispatch(netmsg_t msg)
+{
+	int error;
+
+	error = in6_setsockaddr(msg->sockaddr.base.nm_so, msg->sockaddr.nm_nam);
+	lwkt_replymsg(&msg->sockaddr.base.lmsg, error);
+}
+
 int
 in6_setsockaddr(struct socket *so, struct sockaddr **nam)
 {
@@ -748,6 +759,15 @@ in6_setsockaddr(struct socket *so, struct sockaddr **nam)
 	return 0;
 }
 
+void
+in6_setpeeraddr_dispatch(netmsg_t msg)
+{
+	int error;
+
+	error = in6_setpeeraddr(msg->peeraddr.base.nm_so, msg->peeraddr.nm_nam);
+	lwkt_replymsg(&msg->peeraddr.base.lmsg, error);
+}
+
 int
 in6_setpeeraddr(struct socket *so, struct sockaddr **nam)
 {
@@ -781,6 +801,16 @@ in6_setpeeraddr(struct socket *so, struct sockaddr **nam)
 
 	*nam = (struct sockaddr *)sin6;
 	return 0;
+}
+
+void
+in6_mapped_sockaddr_dispatch(netmsg_t msg)
+{
+	int error;
+
+	error = in6_mapped_sockaddr(msg->sockaddr.base.nm_so,
+				    msg->sockaddr.nm_nam);
+	lwkt_replymsg(&msg->sockaddr.base.lmsg, error);
 }
 
 int
@@ -819,6 +849,15 @@ in6_mapped_peeraddr(struct socket *so, struct sockaddr **nam)
 	error = in6_setpeeraddr(so, nam);
 
 	return error;
+}
+
+void
+in6_mapped_peeraddr_dispatch(netmsg_t msg)
+{
+	int error;
+
+	error = in6_mapped_peeraddr(msg->base.nm_so, msg->peeraddr.nm_nam);
+	lwkt_replymsg(&msg->base.lmsg, error);
 }
 
 /*

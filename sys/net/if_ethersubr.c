@@ -1041,7 +1041,7 @@ ether_input_ipifunc(void *arg)
 	do {
 		next = m->m_nextpkt;
 		m->m_nextpkt = NULL;
-		lwkt_sendmsg(port, &m->m_hdr.mh_netmsg.nm_netmsg.nm_lmsg);
+		lwkt_sendmsg(port, &m->m_hdr.mh_netmsg.base.lmsg);
 		m = next;
 	} while (m != NULL);
 }
@@ -1484,9 +1484,9 @@ failed:
 }
 
 static void
-ether_input_handler(struct netmsg *nmsg)
+ether_input_handler(netmsg_t nmsg)
 {
-	struct netmsg_packet *nmp = (struct netmsg_packet *)nmsg;
+	struct netmsg_packet *nmp = &nmsg->packet;	/* actual size */
 	struct ether_header *eh;
 	struct ifnet *ifp;
 	struct mbuf *m;
@@ -1528,10 +1528,10 @@ ether_dispatch(int isr, struct mbuf *m, struct mbuf_chain *chain)
 
 	KKASSERT(m->m_flags & M_HASH);
 	pmsg = &m->m_hdr.mh_netmsg;
-	netmsg_init(&pmsg->nm_netmsg, NULL, &netisr_apanic_rport,
+	netmsg_init(&pmsg->base, NULL, &netisr_apanic_rport,
 		    0, ether_input_handler);
 	pmsg->nm_packet = m;
-	pmsg->nm_netmsg.nm_lmsg.u.ms_result = isr;
+	pmsg->base.lmsg.u.ms_result = isr;
 
 	if (chain != NULL) {
 		int cpuid = m->m_pkthdr.hash;
@@ -1546,8 +1546,7 @@ ether_dispatch(int isr, struct mbuf *m, struct mbuf_chain *chain)
 		}
 		m->m_nextpkt = NULL;
 	} else {
-		lwkt_sendmsg(cpu_portfn(m->m_pkthdr.hash),
-			     &pmsg->nm_netmsg.nm_lmsg);
+		lwkt_sendmsg(cpu_portfn(m->m_pkthdr.hash), &pmsg->base.lmsg);
 	}
 }
 

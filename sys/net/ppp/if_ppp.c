@@ -199,7 +199,7 @@ static struct compressor *ppp_compressors[8] = {
  * Software interrupt routine, called at spl[soft]net.
  */
 static void
-pppintr(struct netmsg *msg)
+pppintr(netmsg_t msg)
 {
     struct mbuf *m;
     struct ppp_softc *sc;
@@ -210,7 +210,7 @@ pppintr(struct netmsg *msg)
      * be replied.  Interlock processing and notification by replying
      * the message first.
      */
-    lwkt_replymsg(&msg->nm_lmsg, 0);
+    lwkt_replymsg(&msg->lmsg, 0);
 
     get_mplock();
 

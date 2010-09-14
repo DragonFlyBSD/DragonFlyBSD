@@ -138,7 +138,7 @@ static struct dn_flowset_head	flowset_table[DN_NR_HASH_MAX];
 /*
  * Variables for dummynet systimer
  */
-static struct netmsg	dn_netmsg;
+static struct netmsg_base dn_netmsg;
 static struct systimer	dn_clock;
 static int		dn_hz = 1000;
 
@@ -187,7 +187,7 @@ static int	config_pipe(struct dn_ioc_pipe *);
 static void	dummynet_flush(void);
 
 static void	dummynet_clock(systimer_t, struct intrframe *);
-static void	dummynet(struct netmsg *);
+static void	dummynet(netmsg_t);
 
 static struct dn_pipe *dn_find_pipe(int);
 static struct dn_flow_set *dn_locate_flowset(int, int);
@@ -644,7 +644,7 @@ dn_expire_pipe_cb(struct dn_pipe *pipe, void *dummy __unused)
  * increment the current tick counter and schedule expired events.
  */
 static void
-dummynet(struct netmsg *msg)
+dummynet(netmsg_t msg)
 {
     void *p;
     struct dn_heap *h;
@@ -657,7 +657,7 @@ dummynet(struct netmsg *msg)
 
     /* Reply ASAP */
     crit_enter();
-    lwkt_replymsg(&msg->nm_lmsg, 0);
+    lwkt_replymsg(&msg->lmsg, 0);
     crit_exit();
 
     curr_time++;
@@ -1875,8 +1875,8 @@ dummynet_clock(systimer_t info __unused, struct intrframe *frame __unused)
 	     mycpuid, ip_dn_cpu));
 
     crit_enter();
-    if (DUMMYNET_LOADED && (dn_netmsg.nm_lmsg.ms_flags & MSGF_DONE))
-	lwkt_sendmsg(cpu_portfn(mycpuid), &dn_netmsg.nm_lmsg);
+    if (DUMMYNET_LOADED && (dn_netmsg.lmsg.ms_flags & MSGF_DONE))
+	lwkt_sendmsg(cpu_portfn(mycpuid), &dn_netmsg.lmsg);
     crit_exit();
 }
 
@@ -1903,7 +1903,7 @@ sysctl_dn_hz(SYSCTL_HANDLER_ARGS)
 }
 
 static void
-ip_dn_init_dispatch(struct netmsg *msg)
+ip_dn_init_dispatch(netmsg_t msg)
 {
     int i, error = 0;
 
@@ -1945,13 +1945,13 @@ ip_dn_init_dispatch(struct netmsg *msg)
 
 back:
     crit_exit();
-    lwkt_replymsg(&msg->nm_lmsg, error);
+    lwkt_replymsg(&msg->lmsg, error);
 }
 
 static int
 ip_dn_init(void)
 {
-    struct netmsg smsg;
+    struct netmsg_base smsg;
 
     if (ip_dn_cpu >= ncpus) {
 	kprintf("%s: CPU%d does not exist, switch to CPU0\n",
@@ -1961,14 +1961,14 @@ ip_dn_init(void)
 
     netmsg_init(&smsg, NULL, &curthread->td_msgport,
 		0, ip_dn_init_dispatch);
-    lwkt_domsg(cpu_portfn(ip_dn_cpu), &smsg.nm_lmsg, 0);
-    return smsg.nm_lmsg.ms_error;
+    lwkt_domsg(cpu_portfn(ip_dn_cpu), &smsg.lmsg, 0);
+    return smsg.lmsg.ms_error;
 }
 
 #ifdef KLD_MODULE
 
 static void
-ip_dn_stop_dispatch(struct netmsg *msg)
+ip_dn_stop_dispatch(netmsg_t msg)
 {
     crit_enter();
 
@@ -1980,18 +1980,18 @@ ip_dn_stop_dispatch(struct netmsg *msg)
     systimer_del(&dn_clock);
 
     crit_exit();
-    lwkt_replymsg(&msg->nm_lmsg, 0);
+    lwkt_replymsg(&msg->lmsg, 0);
 }
 
 
 static void
 ip_dn_stop(void)
 {
-    struct netmsg smsg;
+    struct netmsg_base smsg;
 
     netmsg_init(&smsg, NULL, &curthread->td_msgport,
 		0, ip_dn_stop_dispatch);
-    lwkt_domsg(cpu_portfn(ip_dn_cpu), &smsg.nm_lmsg, 0);
+    lwkt_domsg(cpu_portfn(ip_dn_cpu), &smsg.lmsg, 0);
 
     netmsg_service_sync();
 }

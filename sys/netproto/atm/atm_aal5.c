@@ -48,25 +48,21 @@ u_long		atm_aal5_recvspace = 64 * 1024;	/* XXX */
 /*
  * Local functions
  */
-static int	atm_aal5_attach (struct socket *, int,
-			struct pru_attach_info *);
-static int	atm_aal5_detach (struct socket *);
-static int	atm_aal5_bind (struct socket *, struct sockaddr *, 
-			struct thread *);
-static int	atm_aal5_listen (struct socket *, struct thread *);
-static int	atm_aal5_connect (struct socket *, struct sockaddr *,
-			struct thread *);
-static int	atm_aal5_accept (struct socket *, struct sockaddr **);
-static int	atm_aal5_disconnect (struct socket *);
-static int	atm_aal5_shutdown (struct socket *);
-static int	atm_aal5_send (struct socket *, int, KBuffer *,
-			struct sockaddr *, KBuffer *, struct thread *);
-static int	atm_aal5_abort (struct socket *);
-static int	atm_aal5_control (struct socket *, u_long, caddr_t, 
-			struct ifnet *, struct thread *);
-static int	atm_aal5_sense (struct socket *, struct stat *);
-static int	atm_aal5_sockaddr (struct socket *, struct sockaddr **);
-static int	atm_aal5_peeraddr (struct socket *, struct sockaddr **);
+static void	atm_aal5_abort(netmsg_t);
+static void	atm_aal5_accept(netmsg_t);
+static void	atm_aal5_attach(netmsg_t);
+static void	atm_aal5_bind(netmsg_t);
+static void	atm_aal5_connect(netmsg_t);
+static void	atm_aal5_control(netmsg_t);
+static void	atm_aal5_detach(netmsg_t);
+static void	atm_aal5_listen(netmsg_t);
+static void	atm_aal5_peeraddr(netmsg_t);
+static void	atm_aal5_send(netmsg_t);
+static void	atm_aal5_sense(netmsg_t);
+static void	atm_aal5_disconnect(netmsg_t);
+static void	atm_aal5_shutdown(netmsg_t);
+static void	atm_aal5_sockaddr(netmsg_t);
+
 static int	atm_aal5_incoming (void *, Atm_connection *,
 			Atm_attributes *, void **);
 static void	atm_aal5_cpcs_data (void *, KBuffer *);
@@ -82,14 +78,14 @@ struct pr_usrreqs	atm_aal5_usrreqs = {
 	.pru_attach = atm_aal5_attach,
 	.pru_bind = atm_aal5_bind,
 	.pru_connect = atm_aal5_connect,
-	.pru_connect2 = pru_connect2_notsupp,
+	.pru_connect2 = pr_generic_notsupp,
 	.pru_control = atm_aal5_control,
 	.pru_detach = atm_aal5_detach,
 	.pru_disconnect = atm_aal5_disconnect,
 	.pru_listen = atm_aal5_listen,
 	.pru_peeraddr = atm_aal5_peeraddr,
-	.pru_rcvd = pru_rcvd_notsupp,
-	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_rcvd = pr_generic_notsupp,
+	.pru_rcvoob = pr_generic_notsupp,
 	.pru_send = atm_aal5_send,
 	.pru_sense = atm_aal5_sense,
 	.pru_shutdown = atm_aal5_shutdown,
@@ -175,8 +171,9 @@ static Atm_attributes	atm_aal5_defattr = {
  * Handy common code macros
  */
 #ifdef DIAGNOSTIC
+
 #define ATM_INTRO(f)						\
-	int		err = 0;				\
+    do {							\
 	crit_enter();						\
 	ATM_DEBUG2("aal5 socket %s (%p)\n", f, so);		\
 	/*							\
@@ -184,28 +181,81 @@ static Atm_attributes	atm_aal5_defattr = {
 	 */							\
 	if (atm_stackq_head != NULL)				\
 		panic("atm_aal5: stack queue not empty");	\
-	;
+    } while(0)
+
 #else /* !DIAGNOSTIC */
+
 #define ATM_INTRO(f)						\
-	int		err = 0;				\
+    do {							\
 	crit_enter();						\
-	;
+    } while(0)
+
 #endif /* DIAGNOSTIC */
 
 #define	ATM_OUTRO()						\
+    out: do {							\
 	/*							\
 	 * Drain any deferred calls				\
 	 */							\
 	STACK_DRAIN();						\
 	crit_exit();						\
-	return (err);						\
-	;
-
-#define	ATM_RETERR(error) {					\
-	err = error;						\
+	lwkt_replymsg(&msg->lmsg, error);			\
+	return;							\
 	goto out;						\
+    } while(0)							\
+
+/*
+ * Abnormally terminate service
+ *
+ * Arguments:
+ *	so	pointer to socket
+ *
+ * Returns:
+ *	0	request processed
+ *	error	error processing request - reason indicated
+ *
+ * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
+ *	 will sofree() it when we return.
+ */
+static void
+atm_aal5_abort(netmsg_t msg)
+{
+	struct socket *so = msg->abort.base.nm_so;
+	int error;
+
+	ATM_INTRO("abort");
+	so->so_error = ECONNABORTED;
+	error = atm_sock_detach(so);
+	ATM_OUTRO();
 }
 
+/*
+ * Accept pending connection
+ *
+ * Arguments:
+ *	so	pointer to socket
+ *	addr	pointer to pointer to contain protocol address
+ *
+ * Returns:
+ *	0	request processed
+ *	error	error processing request - reason indicated
+ *
+ */
+static void
+atm_aal5_accept(netmsg_t msg)
+{
+	struct socket *so = msg->accept.base.nm_so;
+	int error;
+
+	ATM_INTRO("accept");
+
+	/*
+	 * Everything is pretty much done already, we just need to
+	 * return the caller's address to the user.
+	 */
+	error = atm_sock_peeraddr(so, msg->accept.nm_nam);
+	ATM_OUTRO();
+}
 
 /*
  * Attach protocol to socket
@@ -220,20 +270,23 @@ static Atm_attributes	atm_aal5_defattr = {
  *	error	error processing request - reason indicated
  *
  */
-static int
-atm_aal5_attach(struct socket *so, int proto, struct pru_attach_info *ai)
+static void
+atm_aal5_attach(netmsg_t msg)
 {
-	Atm_pcb		*atp;
+	struct socket *so = msg->attach.base.nm_so;
+	struct pru_attach_info *ai = msg->attach.nm_ai;
+	Atm_pcb *atp;
+	int error;
 
 	ATM_INTRO("attach");
 
 	/*
 	 * Do general attach stuff
 	 */
-	err = atm_sock_attach(so, atm_aal5_sendspace, atm_aal5_recvspace,
-			      ai->sb_rlimit);
-	if (err)
-		ATM_RETERR(err);
+	error = atm_sock_attach(so, atm_aal5_sendspace, atm_aal5_recvspace,
+				ai->sb_rlimit);
+	if (error)
+		goto out;
 
 	/*
 	 * Finish up any protocol specific stuff
@@ -247,10 +300,8 @@ atm_aal5_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	atp->atp_attr = atm_aal5_defattr;
 	strncpy(atp->atp_name, "(AAL5)", T_ATM_APP_NAME_LEN);
 
-out:
 	ATM_OUTRO();
 }
-
 
 /*
  * Detach protocol from socket
@@ -263,16 +314,18 @@ out:
  *	error	error processing request - reason indicated
  *
  */
-static int
-atm_aal5_detach(struct socket *so)
+static void
+atm_aal5_detach(netmsg_t msg)
 {
+	struct socket *so = msg->detach.base.nm_so;
+	int error;
+
 	ATM_INTRO("detach");
 
-	err = atm_sock_detach(so);
+	error = atm_sock_detach(so);
 
 	ATM_OUTRO();
 }
-
 
 /*
  * Bind address to socket
@@ -287,16 +340,18 @@ atm_aal5_detach(struct socket *so)
  *	error	error processing request - reason indicated
  *
  */
-static int
-atm_aal5_bind(struct socket *so, struct sockaddr *addr, struct thread *td)
+static void
+atm_aal5_bind(netmsg_t msg)
 {
+	struct socket *so = msg->bind.base.nm_so;
+	int error;
+
 	ATM_INTRO("bind");
 
-	err = atm_sock_bind(so, addr);
+	error = atm_sock_bind(so, msg->bind.nm_nam);
 
 	ATM_OUTRO();
 }
-
 
 /*
  * Listen for incoming connections
@@ -310,12 +365,15 @@ atm_aal5_bind(struct socket *so, struct sockaddr *addr, struct thread *td)
  *	error	error processing request - reason indicated
  *
  */
-static int
-atm_aal5_listen(struct socket *so, struct thread *td)
+static void
+atm_aal5_listen(netmsg_t msg)
 {
+	struct socket *so = msg->listen.base.nm_so;
+	int error;
+
 	ATM_INTRO("listen");
 
-	err = atm_sock_listen(so, &atm_aal5_endpt);
+	error = atm_sock_listen(so, &atm_aal5_endpt);
 
 	ATM_OUTRO();
 }
@@ -334,10 +392,13 @@ atm_aal5_listen(struct socket *so, struct thread *td)
  *	error	error processing request - reason indicated
  *
  */
-static int
-atm_aal5_connect(struct socket *so, struct sockaddr *addr, thread_t td)
+static void
+atm_aal5_connect(netmsg_t msg)
 {
-	Atm_pcb		*atp;
+	struct socket *so = msg->connect.base.nm_so;
+	struct thread *td = msg->connect.nm_td;
+	Atm_pcb *atp;
+	int error;
 
 	ATM_INTRO("connect");
 
@@ -347,53 +408,25 @@ atm_aal5_connect(struct socket *so, struct sockaddr *addr, thread_t td)
 	 * Resize send socket buffer to maximum sdu size
 	 */
 	if (atp->atp_attr.aal.tag == T_ATM_PRESENT) {
-		long	size;
+		long size;
 
 		size = atp->atp_attr.aal.v.aal5.forward_max_SDU_size;
-		if (size != T_ATM_ABSENT)
+		if (size != T_ATM_ABSENT) {
 			if (!ssb_reserve(&so->so_snd, size, so,
 				       &td->td_proc->p_rlimit[RLIMIT_SBSIZE])) {
-				err = ENOBUFS;
-				ATM_OUTRO();
+				error = ENOBUFS;
+				goto out;
 			}
-				
+		}
 	}
 
 	/*
 	 * Now get the socket connected
 	 */
-	err = atm_sock_connect(so, addr, &atm_aal5_endpt);
+	error = atm_sock_connect(so, msg->connect.nm_nam, &atm_aal5_endpt);
 
 	ATM_OUTRO();
 }
-
-
-/*
- * Accept pending connection
- *
- * Arguments:
- *	so	pointer to socket
- *	addr	pointer to pointer to contain protocol address
- *
- * Returns:
- *	0	request processed
- *	error	error processing request - reason indicated
- *
- */
-static int
-atm_aal5_accept(struct socket *so, struct sockaddr **addr)
-{
-	ATM_INTRO("accept");
-
-	/*
-	 * Everything is pretty much done already, we just need to
-	 * return the caller's address to the user.
-	 */
-	err = atm_sock_peeraddr(so, addr);
-
-	ATM_OUTRO();
-}
-
 
 /*
  * Disconnect connected socket
@@ -406,12 +439,15 @@ atm_aal5_accept(struct socket *so, struct sockaddr **addr)
  *	error	error processing request - reason indicated
  *
  */
-static int
-atm_aal5_disconnect(struct socket *so)
+static void
+atm_aal5_disconnect(netmsg_t msg)
 {
+	struct socket *so = msg->disconnect.base.nm_so;
+	int error;
+
 	ATM_INTRO("disconnect");
 
-	err = atm_sock_disconnect(so);
+	error = atm_sock_disconnect(so);
 
 	ATM_OUTRO();
 }
@@ -428,12 +464,16 @@ atm_aal5_disconnect(struct socket *so)
  *	error	error processing request - reason indicated
  *
  */
-static int
-atm_aal5_shutdown(struct socket *so)
+static void
+atm_aal5_shutdown(netmsg_t msg)
 {
+	struct socket *so = msg->shutdown.base.nm_so;
+	int error;
+
 	ATM_INTRO("shutdown");
 
 	socantsendmore(so);
+	error = 0;
 
 	ATM_OUTRO();
 }
@@ -455,16 +495,14 @@ atm_aal5_shutdown(struct socket *so)
  *	error	error processing request - reason indicated
  *
  */
-static int
-atm_aal5_send(
-	struct socket	*so,
-	int		flags,
-	KBuffer		*m,
-	struct sockaddr	*addr,
-	KBuffer		*control,
-	struct thread	*td
-) {
-	Atm_pcb		*atp;
+static void
+atm_aal5_send(netmsg_t msg)
+{
+	struct socket *so = msg->send.base.nm_so;
+	KBuffer	*m = msg->send.nm_m;
+	KBuffer	*control = msg->send.nm_control;
+	Atm_pcb *atp;
+	int error;
 
 	ATM_INTRO("send");
 
@@ -472,30 +510,32 @@ atm_aal5_send(
 	 * We don't support any control functions
 	 */
 	if (control) {
-		int	clen;
+		int clen;
 
 		clen = KB_LEN(control);
 		KB_FREEALL(control);
 		if (clen) {
 			KB_FREEALL(m);
-			ATM_RETERR(EINVAL);
+			error = EINVAL;
+			goto out;
 		}
 	}
 
 	/*
 	 * We also don't support any flags or send-level addressing
 	 */
-	if (flags || addr) {
+	if (msg->send.nm_flags || msg->send.nm_addr) {
 		KB_FREEALL(m);
-		ATM_RETERR(EINVAL);
+		error = EINVAL;
+		goto out;
 	}
 
 	/*
 	 * All we've got left is the data, so push it out
 	 */
 	atp = sotoatmpcb(so);
-	err = atm_cm_cpcs_data(atp->atp_conn, m);
-	if (err) {
+	error = atm_cm_cpcs_data(atp->atp_conn, m);
+	if (error) {
 		/*
 		 * Output problem, drop packet
 		 */
@@ -503,31 +543,6 @@ atm_aal5_send(
 		KB_FREEALL(m);
 	}
 
-out:
-	ATM_OUTRO();
-}
-
-
-/*
- * Abnormally terminate service
- *
- * Arguments:
- *	so	pointer to socket
- *
- * Returns:
- *	0	request processed
- *	error	error processing request - reason indicated
- *
- * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
- *	 will sofree() it when we return.
- */
-static int
-atm_aal5_abort(struct socket *so)
-{
-	ATM_INTRO("abort");
-
-	so->so_error = ECONNABORTED;
-	err = atm_sock_detach(so);
 	ATM_OUTRO();
 }
 
@@ -547,20 +562,18 @@ atm_aal5_abort(struct socket *so)
  *	error	error processing request - reason indicated
  *
  */
-static int
-atm_aal5_control(
-	struct socket	*so,
-	u_long		cmd,
-	caddr_t		data,
-	struct ifnet	*ifp,
-	struct thread	*td
-) {
+static void
+atm_aal5_control(netmsg_t msg)
+{
+	struct socket *so = msg->control.base.nm_so;
+	int error;
+
 	ATM_INTRO("control");
 
-	switch (cmd) {
-
+	switch (msg->control.nm_cmd) {
 	default:
-		err = EOPNOTSUPP;
+		error = EOPNOTSUPP;
+		break;
 	}
 
 	ATM_OUTRO();
@@ -578,15 +591,20 @@ atm_aal5_control(
  *	error	error processing request - reason indicated
  *
  */
-static int
-atm_aal5_sense(struct socket *so, struct stat *st)
+static void
+atm_aal5_sense(netmsg_t msg)
 {
+	struct socket *so = msg->sense.base.nm_so;
+	struct stat *st = msg->sense.nm_stat;
+	int error;
+
 	ATM_INTRO("sense");
 
 	/*
 	 * Just return the max sdu size for the connection
 	 */
 	st->st_blksize = so->so_snd.ssb_hiwat;
+	error = 0;
 
 	ATM_OUTRO();
 }
@@ -604,12 +622,15 @@ atm_aal5_sense(struct socket *so, struct stat *st)
  *	error	error processing request - reason indicated
  *
  */
-static int
-atm_aal5_sockaddr(struct socket	*so, struct sockaddr **addr)
+static void
+atm_aal5_sockaddr(netmsg_t msg)
 {
+	struct socket *so = msg->sockaddr.base.nm_so;
+	int error;
+
 	ATM_INTRO("sockaddr");
 
-	err = atm_sock_sockaddr(so, addr);
+	error = atm_sock_sockaddr(so, msg->sockaddr.nm_nam);
 
 	ATM_OUTRO();
 }
@@ -627,16 +648,104 @@ atm_aal5_sockaddr(struct socket	*so, struct sockaddr **addr)
  *	error	error processing request - reason indicated
  *
  */
-static int
-atm_aal5_peeraddr(struct socket *so, struct sockaddr **addr)
+static void
+atm_aal5_peeraddr(netmsg_t msg)
 {
+	struct socket *so = msg->peeraddr.base.nm_so;
+	int error;
+
 	ATM_INTRO("peeraddr");
 
-	err = atm_sock_peeraddr(so, addr);
+	error = atm_sock_peeraddr(so, msg->peeraddr.nm_nam);
 
 	ATM_OUTRO();
 }
 
+/*
+ * Process getsockopt/setsockopt system calls
+ *
+ * Arguments:
+ *	so	pointer to socket
+ *	sopt	pointer to socket option info
+ *
+ * Returns:
+ *	0 	request processed
+ *	error	error processing request - reason indicated
+ *
+ */
+void
+atm_aal5_ctloutput(netmsg_t msg)
+{
+	struct socket *so = msg->ctloutput.base.nm_so;
+	struct sockopt *sopt = msg->ctloutput.nm_sopt;
+	Atm_pcb *atp;
+	int error;
+
+	ATM_INTRO("ctloutput");
+
+	/*
+	 * Make sure this is for us
+	 */
+	if (sopt->sopt_level != T_ATM_SIGNALING) {
+		error = EINVAL;
+		goto out;
+	}
+	atp = sotoatmpcb(so);
+	if (atp == NULL) {
+		error = ENOTCONN;
+		goto out;
+	}
+
+	switch (sopt->sopt_dir) {
+	case SOPT_SET:
+		/*
+		 * setsockopt()
+		 */
+
+		/*
+		 * Validate socket state
+		 */
+		switch (sopt->sopt_name) {
+		case T_ATM_ADD_LEAF:
+		case T_ATM_DROP_LEAF:
+			if ((so->so_state & SS_ISCONNECTED) == 0) {
+				error = ENOTCONN;
+				goto out;
+			}
+			break;
+		case T_ATM_CAUSE:
+		case T_ATM_APP_NAME:
+			break;
+		default:
+			if (so->so_state & SS_ISCONNECTED) {
+				error = EISCONN;
+				goto out;
+			}
+			break;
+		}
+
+		/*
+		 * Validate and save user-supplied option data
+		 */
+		error = atm_sock_setopt(so, sopt, atp);
+		break;
+	case SOPT_GET:
+		/*
+		 * getsockopt()
+		 */
+
+		/*
+		 * Return option data
+		 */
+		error = atm_sock_getopt(so, sopt, atp);
+		break;
+	default:
+		error = EINVAL;
+		break;
+	}
+
+	ATM_OUTRO();
+}
 
 /*
  * Process Incoming Calls
@@ -739,92 +848,6 @@ atm_aal5_cpcs_data(void *tok, KBuffer *m)
 
 	return;
 }
-
-
-/*
- * Process getsockopt/setsockopt system calls
- *
- * Arguments:
- *	so	pointer to socket
- *	sopt	pointer to socket option info
- *
- * Returns:
- *	0 	request processed
- *	error	error processing request - reason indicated
- *
- */
-int
-atm_aal5_ctloutput(struct socket *so, struct sockopt *sopt)
-{
-	Atm_pcb		*atp;
-
-	ATM_INTRO("ctloutput");
-
-	/*
-	 * Make sure this is for us
-	 */
-	if (sopt->sopt_level != T_ATM_SIGNALING) {
-		ATM_RETERR(EINVAL);
-	}
-	atp = sotoatmpcb(so);
-	if (atp == NULL) {
-		ATM_RETERR(ENOTCONN);
-	}
-
-	switch (sopt->sopt_dir) {
-
-	case SOPT_SET:
-		/*
-		 * setsockopt()
-		 */
-
-		/*
-		 * Validate socket state
-		 */
-		switch (sopt->sopt_name) {
-
-		case T_ATM_ADD_LEAF:
-		case T_ATM_DROP_LEAF:
-			if ((so->so_state & SS_ISCONNECTED) == 0) {
-				ATM_RETERR(ENOTCONN);
-			}
-			break;
-
-		case T_ATM_CAUSE:
-		case T_ATM_APP_NAME:
-			break;
-
-		default:
-			if (so->so_state & SS_ISCONNECTED) {
-				ATM_RETERR(EISCONN);
-			}
-			break;
-		}
-
-		/*
-		 * Validate and save user-supplied option data
-		 */
-		err = atm_sock_setopt(so, sopt, atp);
-
-		break;
-
-	case SOPT_GET:
-		/*
-		 * getsockopt()
-		 */
-
-		/*
-		 * Return option data
-		 */
-		err = atm_sock_getopt(so, sopt, atp);
-
-		break;
-	}
-
-out:
-	ATM_OUTRO();
-}
-
 
 /*
  * Initialize AAL5 Sockets

@@ -76,12 +76,20 @@ static int gif_validate4 (const struct ip *, struct gif_softc *,
 
 extern  struct domain inetdomain;
 const struct protosw in_gif_protosw =
-{ SOCK_RAW,	&inetdomain,	0/*IPPROTO_IPV[46]*/,	PR_ATOMIC|PR_ADDR,
-  in_gif_input, rip_output,	0,	rip_ctloutput,
-  cpu0_soport,	NULL,
-  0,		0,		0,		0,
-  &rip_usrreqs
-};
+    {
+	.pr_type = SOCK_RAW,
+	.pr_domain = &inetdomain,
+	.pr_protocol = 0 /*IPPROTO_IPV[46]*/,
+	.pr_flags = PR_ATOMIC|PR_ADDR,
+
+	.pr_input = in_gif_input,
+	.pr_output = rip_output,
+	.pr_ctlinput = NULL,
+	.pr_ctloutput = rip_ctloutput,
+
+	.pr_ctlport = NULL,
+	.pr_usrreqs = &rip_usrreqs
+    };
 
 int ip_gif_ttl = GIF_TTL;
 SYSCTL_INT(_net_inet_ip, IPCTL_GIF_TTL, gifttl, CTLFLAG_RW,
@@ -211,20 +219,18 @@ in_gif_output(struct ifnet *ifp, int family, struct mbuf *m)
 	return(error);
 }
 
-void
-in_gif_input(struct mbuf *m, ...)
+int
+in_gif_input(struct mbuf **mp, int *offp, int proto)
 {
+	struct mbuf *m = *mp;
 	struct ifnet *gifp = NULL;
 	struct ip *ip;
 	int af;
 	u_int8_t otos;
-	int off, proto;
-	__va_list ap;
+	int off;
 
-	__va_start(ap, m);
-	off = __va_arg(ap, int);
-	proto = __va_arg(ap, int);
-	__va_end(ap);
+	off = *offp;
+	*mp = NULL;
 
 	ip = mtod(m, struct ip *);
 
@@ -233,7 +239,7 @@ in_gif_input(struct mbuf *m, ...)
 	if (gifp == NULL || (gifp->if_flags & IFF_UP) == 0) {
 		m_freem(m);
 		ipstat.ips_nogif++;
-		return;
+		return(IPPROTO_DONE);
 	}
 
 	otos = ip->ip_tos;
@@ -248,7 +254,7 @@ in_gif_input(struct mbuf *m, ...)
 		if (m->m_len < sizeof *ip) {
 			m = m_pullup(m, sizeof *ip);
 			if (!m)
-				return;
+				return(IPPROTO_DONE);
 		}
 		ip = mtod(m, struct ip *);
 		if (gifp->if_flags & IFF_LINK1)
@@ -267,7 +273,7 @@ in_gif_input(struct mbuf *m, ...)
 		if (m->m_len < sizeof *ip6) {
 			m = m_pullup(m, sizeof *ip6);
 			if (!m)
-				return;
+				return(IPPROTO_DONE);
 		}
 		ip6 = mtod(m, struct ip6_hdr *);
 		itos = (ntohl(ip6->ip6_flow) >> 20) & 0xff;
@@ -283,10 +289,10 @@ in_gif_input(struct mbuf *m, ...)
 	default:
 		ipstat.ips_nogif++;
 		m_freem(m);
-		return;
+		return(IPPROTO_DONE);
 	}
 	gif_input(m, af, gifp);
-	return;
+	return(IPPROTO_DONE);
 }
 
 /*

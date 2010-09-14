@@ -83,6 +83,9 @@
 #include <sys/proc.h>
 #include <sys/priv.h>
 
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
+
 #include <net/if.h>
 #include <net/route.h>
 #include <net/pfil.h>
@@ -1370,6 +1373,16 @@ ip6_getpmtu(struct route_in6 *ro_pmtu, struct route_in6 *ro,
 /*
  * IP6 socket option processing.
  */
+void
+ip6_ctloutput_dispatch(netmsg_t msg)
+{
+	int error;
+
+	error = ip6_ctloutput(msg->ctloutput.base.nm_so,
+			      msg->ctloutput.nm_sopt);
+	lwkt_replymsg(&msg->ctloutput.base.lmsg, error);
+}
+
 int
 ip6_ctloutput(struct socket *so, struct sockopt *sopt)
 {

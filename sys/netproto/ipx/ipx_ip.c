@@ -158,9 +158,10 @@ static struct mbuf *ipxip_badlen;
 static struct mbuf *ipxip_lastin;
 static int ipxip_hold_input;
 
-void
-ipxip_input(struct mbuf *m, ...)
+int
+ipxip_input(struct mbuf **mp, int *offp, int proto)
 {
+	struct mbuf *m = *mp;
 	struct ip *ip;
 	struct ipx *ipx;
 	int len, s;
@@ -179,7 +180,7 @@ ipxip_input(struct mbuf *m, ...)
 	if (((m->m_flags & M_EXT) || m->m_len < s) &&
 	    (m = m_pullup(m, s)) == NULL) {
 		ipxipif.if_ierrors++;
-		return;
+		return(IPPROTO_DONE);
 	}
 	ip = mtod(m, struct ip *);
 	if (ip->ip_hl > (sizeof(struct ip) >> 2)) {
@@ -187,7 +188,7 @@ ipxip_input(struct mbuf *m, ...)
 		if (m->m_len < s) {
 			if ((m = m_pullup(m, s)) == NULL) {
 				ipxipif.if_ierrors++;
-				return;
+				return(IPPROTO_DONE);
 			}
 			ip = mtod(m, struct ip *);
 		}
@@ -210,7 +211,7 @@ ipxip_input(struct mbuf *m, ...)
 			if (ipxip_badlen)
 				m_freem(ipxip_badlen);
 			ipxip_badlen = m;
-			return;
+			return(IPPROTO_DONE);
 		}
 		/* Any extra will be trimmed off by the IPX routines */
 	}
@@ -219,6 +220,7 @@ ipxip_input(struct mbuf *m, ...)
 	 * Deliver to IPX
 	 */
 	netisr_queue(NETISR_IPX, m);
+	return(IPPROTO_DONE);
 }
 
 static int
@@ -411,17 +413,19 @@ ipxip_free(struct ifnet *ifp)
 }
 
 void
-ipxip_ctlinput(int cmd, struct sockaddr *sa, void *dummy)
+ipxip_ctlinput(netmsg_t msg)
 {
+	int cmd = msg->ctlinput.nm_cmd;
+	struct sockaddr *sa = msg->ctlinput.nm_data;
 	struct sockaddr_in *sin;
 
 	if ((unsigned)cmd >= PRC_NCMDS)
-		return;
+		goto out;
 	if (sa->sa_family != AF_INET && sa->sa_family != AF_IMPLINK)
-		return;
+		goto out;
 	sin = (struct sockaddr_in *)sa;
 	if (sin->sin_addr.s_addr == INADDR_ANY)
-		return;
+		goto out;
 
 	switch (cmd) {
 
@@ -433,6 +437,8 @@ ipxip_ctlinput(int cmd, struct sockaddr *sa, void *dummy)
 		ipxip_rtchange(&sin->sin_addr);
 		break;
 	}
+out:
+	lwkt_replymsg(&msg->lmsg, 0);
 }
 
 static void

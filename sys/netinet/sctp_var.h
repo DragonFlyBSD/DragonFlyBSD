@@ -180,14 +180,16 @@ struct sctphdr;
 void sctp_fasttim(void);
 #endif
 
+union netmsg;
+
 #if defined(__FreeBSD__) || defined(__APPLE__)
 void	sctp_ctlinput(int, struct sockaddr *, void *);
 int	sctp_ctloutput(struct socket *, struct sockopt *);
 void	sctp_input(struct mbuf *, int);
 #elif defined(__DragonFly__)
-void	sctp_ctlinput(int, struct sockaddr *, void *);
-int	sctp_ctloutput(struct socket *, struct sockopt *);
-void	sctp_input(struct mbuf *, ... );
+void	sctp_ctlinput(union netmsg *);
+void	sctp_ctloutput(union netmsg *);
+int	sctp_input(struct mbuf **, int *, int);
 #else
 void*	sctp_ctlinput(int, struct sockaddr *, void *);
 int	sctp_ctloutput(int, struct socket *, int, int, struct mbuf **);
@@ -195,11 +197,11 @@ void	sctp_input(struct mbuf *, ... );
 #endif
 void	sctp_drain(void);
 void	sctp_init(void);
-int	sctp_shutdown(struct socket *);
+void	sctp_shutdown(union netmsg *);
 void	sctp_notify(struct sctp_inpcb *, int, struct sctphdr *,
 		    struct sockaddr *, struct sctp_tcb *,
 		    struct sctp_nets *);
-int sctp_usr_recvd(struct socket *, int);
+void	sctp_usr_recvd(union netmsg *);
 
 #if defined(INET6)
 void ip_2_ip6_hdr(struct ip6_hdr *, struct ip *);
@@ -214,35 +216,12 @@ int sctp_peeloff(struct socket *, struct socket *, int, caddr_t, int *);
 
 sctp_assoc_t sctp_getassocid(struct sockaddr *);
 
-
-
-int sctp_ingetaddr(struct socket *,
-#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-		   struct sockaddr **
-#else
-		   struct mbuf *
-#endif
-);
-
-int sctp_peeraddr(struct socket *,
-#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-		  struct sockaddr **
-#else
-		  struct mbuf *
-#endif
-);
-
-#if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
-int sctp_listen(struct socket *, struct thread *);
-#else
-int sctp_listen(struct socket *, struct proc *);
-#endif
-
-#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-int sctp_accept(struct socket *, struct sockaddr **);
-#else
-int sctp_accept(struct socket *, struct mbuf *);
-#endif
+int sctp_ingetaddr_oncpu(struct socket *, struct sockaddr **);
+int sctp_peeraddr_oncpu(struct socket *, struct sockaddr **);
+void sctp_peeraddr(union netmsg *);
+void sctp_listen(union netmsg *);
+void sctp_accept(union netmsg *);
+void sctp_send(union netmsg *);
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 int sctp_sysctl(int *, u_int, void *, size_t *, void *, size_t);

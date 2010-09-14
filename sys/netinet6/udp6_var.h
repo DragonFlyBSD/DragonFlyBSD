@@ -83,7 +83,7 @@ struct mbuf;
 struct inpcb;
 struct sockaddr;
 
-void	udp6_ctlinput (int, struct sockaddr *, void *);
+void	udp6_ctlinput (union netmsg *);
 int	udp6_input (struct mbuf **, int *, int);
 int	udp6_output (struct inpcb *inp, struct mbuf *m,
 			struct sockaddr *addr, struct mbuf *control,

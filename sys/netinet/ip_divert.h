@@ -49,7 +49,7 @@ struct divert_info {
 };
 
 void	div_init(void);
-void	div_input(struct mbuf *, ...);
+int	div_input(struct mbuf **, int *offp, int);
 struct lwkt_port *
 	div_soport(struct socket *, struct sockaddr *, struct mbuf **);
 

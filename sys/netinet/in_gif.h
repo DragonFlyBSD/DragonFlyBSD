@@ -42,7 +42,7 @@ struct gif_softc;
 struct mbuf;
 struct ifnet;
 
-void in_gif_input (struct mbuf *, ...);
+int in_gif_input (struct mbuf **, int *, int);
 int in_gif_output (struct ifnet *, int, struct mbuf *);
 int gif_encapcheck4 (const struct mbuf *, int, int, void *);
 int in_gif_attach (struct gif_softc *);

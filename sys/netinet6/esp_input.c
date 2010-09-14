@@ -48,6 +48,9 @@
 #include <sys/time.h>
 #include <sys/syslog.h>
 
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
+
 #include <net/if.h>
 #include <net/route.h>
 #include <net/netisr.h>
@@ -100,13 +103,14 @@
 #ifdef INET
 extern struct protosw inetsw[];
 
-void
-esp4_input(struct mbuf *m, ...)
+int
+esp4_input(struct mbuf **mp, int *offp, int proto)
 {
-	int off, proto;
+	int off;
 	struct ip *ip;
 	struct esp *esp;
 	struct esptail esptail;
+	struct mbuf *m;
 	u_int32_t spi;
 	struct secasvar *sav = NULL;
 	size_t taillen;
@@ -115,12 +119,10 @@ esp4_input(struct mbuf *m, ...)
 	int ivlen;
 	size_t hlen;
 	size_t esplen;
-	__va_list ap;
 
-	__va_start(ap, m);
-	off = __va_arg(ap, int);
-	proto = __va_arg(ap, int);
-	__va_end(ap);
+	off = *offp;
+	m = *mp;
+	*mp = NULL;
 
 	/* sanity check for alignment. */
 	if (off % 4 != 0 || m->m_pkthdr.len % 4 != 0) {
@@ -438,9 +440,12 @@ noreplaycheck:
 				/* freed in ip_lengthcheck() */
 				goto bad;
 			}
-			(*inetsw[ip_protox[nxt]].pr_input)(m, off, nxt);
-		} else
+			*mp = m;
+			*offp = off;
+			(*inetsw[ip_protox[nxt]].pr_input)(mp, offp, nxt);
+		} else {
 			m_freem(m);
+		}
 		m = NULL;
 	}
 
@@ -450,7 +455,7 @@ noreplaycheck:
 		key_freesav(sav);
 	}
 	ipsecstat.in_success++;
-	return;
+	return(IPPROTO_DONE);
 
 bad:
 	if (sav) {
@@ -460,7 +465,7 @@ bad:
 	}
 	if (m)
 		m_freem(m);
-	return;
+	return(IPPROTO_DONE);
 }
 #endif /* INET */
 
@@ -870,8 +875,11 @@ bad:
 }
 
 void
-esp6_ctlinput(int cmd, struct sockaddr *sa, void *d)
+esp6_ctlinput(netmsg_t msg)
 {
+	int cmd = msg->ctlinput.nm_cmd;
+	struct sockaddr *sa = msg->ctlinput.nm_arg;
+	void *d = msg->ctlinput.nm_extra;
 	const struct newesp *espp;
 	struct newesp esp;
 	struct ip6ctlparam *ip6cp = NULL, ip6cp1;
@@ -883,9 +891,9 @@ esp6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 
 	if (sa->sa_family != AF_INET6 ||
 	    sa->sa_len != sizeof(struct sockaddr_in6))
-		return;
+		goto out;
 	if ((unsigned)cmd >= PRC_NCMDS)
-		return;
+		goto out;
 
 	/* if the parameter is from icmp6, decode it. */
 	if (d != NULL) {
@@ -925,7 +933,7 @@ esp6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 
 		/* check if we can safely examine src and dst ports */
 		if (m->m_pkthdr.len < off + sizeof(esp))
-			return;
+			goto out;
 
 		if (m->m_len < off + sizeof(esp)) {
 			/*
@@ -971,5 +979,7 @@ esp6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 	} else {
 		/* we normally notify any pcb here */
 	}
+out:
+	lwkt_replymsg(&msg->ctlinput.base.lmsg, 0);
 }
 #endif /* INET6 */

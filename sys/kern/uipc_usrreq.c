@@ -60,6 +60,7 @@
 #include <sys/file2.h>
 #include <sys/spinlock2.h>
 #include <sys/socketvar2.h>
+#include <sys/msgport2.h>
 
 static	MALLOC_DEFINE(M_UNPCB, "unpcb", "unpcb struct");
 static	unp_gen_t unp_gencnt;
@@ -107,14 +108,14 @@ static void    unp_fp_externalize(struct lwp *lp, struct file *fp, int fd);
  * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
  *	 will sofree() it when we return.
  */
-static int
-uipc_abort(struct socket *so)
+static void
+uipc_abort(netmsg_t msg)
 {
 	struct unpcb *unp;
 	int error;
 
 	lwkt_gettoken(&unp_token);
-	unp = so->so_pcb;
+	unp = msg->base.nm_so->so_pcb;
 	if (unp) {
 		unp_drop(unp, ECONNABORTED);
 		unp_detach(unp);
@@ -124,113 +125,117 @@ uipc_abort(struct socket *so)
 	}
 	lwkt_reltoken(&unp_token);
 
-	return error;
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-uipc_accept(struct socket *so, struct sockaddr **nam)
-{
-	struct unpcb *unp;
-
-	lwkt_gettoken(&unp_token);
-	unp = so->so_pcb;
-	if (unp == NULL) {
-		lwkt_reltoken(&unp_token);
-		return EINVAL;
-	}
-
-	/*
-	 * Pass back name of connected socket,
-	 * if it was bound and we are still connected
-	 * (our peer may have closed already!).
-	 */
-	if (unp->unp_conn && unp->unp_conn->unp_addr) {
-		*nam = dup_sockaddr((struct sockaddr *)unp->unp_conn->unp_addr);
-	} else {
-		*nam = dup_sockaddr((struct sockaddr *)&sun_noname);
-	}
-	lwkt_reltoken(&unp_token);
-	return 0;
-}
-
-static int
-uipc_attach(struct socket *so, int proto, struct pru_attach_info *ai)
+static void
+uipc_accept(netmsg_t msg)
 {
 	struct unpcb *unp;
 	int error;
 
 	lwkt_gettoken(&unp_token);
-	unp = so->so_pcb;
+	unp = msg->base.nm_so->so_pcb;
+	if (unp == NULL) {
+		error = EINVAL;
+	} else {
+		/*
+		 * Pass back name of connected socket,
+		 * if it was bound and we are still connected
+		 * (our peer may have closed already!).
+		 */
+		if (unp->unp_conn && unp->unp_conn->unp_addr) {
+			*msg->accept.nm_nam = dup_sockaddr(
+				(struct sockaddr *)unp->unp_conn->unp_addr);
+		} else {
+			*msg->accept.nm_nam = dup_sockaddr(
+				(struct sockaddr *)&sun_noname);
+		}
+		error = 0;
+	}
+	lwkt_reltoken(&unp_token);
+	lwkt_replymsg(&msg->lmsg, error);
+}
+
+static void
+uipc_attach(netmsg_t msg)
+{
+	struct unpcb *unp;
+	int error;
+
+	lwkt_gettoken(&unp_token);
+	unp = msg->base.nm_so->so_pcb;
 	if (unp)
 		error = EISCONN;
 	else
-		error = unp_attach(so, ai);
+		error = unp_attach(msg->base.nm_so, msg->attach.nm_ai);
 	lwkt_reltoken(&unp_token);
-
-	return error;
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-uipc_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
+static void
+uipc_bind(netmsg_t msg)
 {
 	struct unpcb *unp;
 	int error;
 
 	lwkt_gettoken(&unp_token);
-	unp = so->so_pcb;
+	unp = msg->base.nm_so->so_pcb;
 	if (unp)
-		error = unp_bind(unp, nam, td);
+		error = unp_bind(unp, msg->bind.nm_nam, msg->bind.nm_td);
 	else
 		error = EINVAL;
 	lwkt_reltoken(&unp_token);
-
-	return error;
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-uipc_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
+static void
+uipc_connect(netmsg_t msg)
 {
 	struct unpcb *unp;
 	int error;
 
 	lwkt_gettoken(&unp_token);
-	unp = so->so_pcb;
-	if (unp)
-		error = unp_connect(so, nam, td);
-	else
+	unp = msg->base.nm_so->so_pcb;
+	if (unp) {
+		error = unp_connect(msg->base.nm_so,
+				    msg->connect.nm_nam,
+				    msg->connect.nm_td);
+	} else {
 		error = EINVAL;
+	}
 	lwkt_reltoken(&unp_token);
-
-	return error;
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-uipc_connect2(struct socket *so1, struct socket *so2)
+static void
+uipc_connect2(netmsg_t msg)
 {
 	struct unpcb *unp;
 	int error;
 
 	lwkt_gettoken(&unp_token);
-	unp = so1->so_pcb;
-	if (unp)
-		error = unp_connect2(so1, so2);
-	else
+	unp = msg->connect2.nm_so1->so_pcb;
+	if (unp) {
+		error = unp_connect2(msg->connect2.nm_so1,
+				     msg->connect2.nm_so2);
+	} else {
 		error = EINVAL;
+	}
 	lwkt_reltoken(&unp_token);
-
-	return error;
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
 /* control is EOPNOTSUPP */
 
-static int
-uipc_detach(struct socket *so)
+static void
+uipc_detach(netmsg_t msg)
 {
 	struct unpcb *unp;
 	int error;
 
 	lwkt_gettoken(&unp_token);
-	unp = so->so_pcb;
+	unp = msg->base.nm_so->so_pcb;
 	if (unp) {
 		unp_detach(unp);
 		error = 0;
@@ -238,18 +243,17 @@ uipc_detach(struct socket *so)
 		error = EINVAL;
 	}
 	lwkt_reltoken(&unp_token);
-
-	return error;
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-uipc_disconnect(struct socket *so)
+static void
+uipc_disconnect(netmsg_t msg)
 {
 	struct unpcb *unp;
 	int error;
 
 	lwkt_gettoken(&unp_token);
-	unp = so->so_pcb;
+	unp = msg->base.nm_so->so_pcb;
 	if (unp) {
 		unp_disconnect(unp);
 		error = 0;
@@ -257,39 +261,38 @@ uipc_disconnect(struct socket *so)
 		error = EINVAL;
 	}
 	lwkt_reltoken(&unp_token);
-
-	return error;
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-uipc_listen(struct socket *so, struct thread *td)
+static void
+uipc_listen(netmsg_t msg)
 {
 	struct unpcb *unp;
 	int error;
 
 	lwkt_gettoken(&unp_token);
-	unp = so->so_pcb;
+	unp = msg->base.nm_so->so_pcb;
 	if (unp == NULL || unp->unp_vnode == NULL)
 		error = EINVAL;
 	else
-		error = unp_listen(unp, td);
+		error = unp_listen(unp, msg->listen.nm_td);
 	lwkt_reltoken(&unp_token);
-
-	return error;
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-uipc_peeraddr(struct socket *so, struct sockaddr **nam)
+static void
+uipc_peeraddr(netmsg_t msg)
 {
 	struct unpcb *unp;
 	int error;
 
 	lwkt_gettoken(&unp_token);
-	unp = so->so_pcb;
+	unp = msg->base.nm_so->so_pcb;
 	if (unp == NULL) {
 		error = EINVAL;
 	} else if (unp->unp_conn && unp->unp_conn->unp_addr) {
-		*nam = dup_sockaddr((struct sockaddr *)unp->unp_conn->unp_addr);
+		*msg->peeraddr.nm_nam = dup_sockaddr(
+				(struct sockaddr *)unp->unp_conn->unp_addr);
 		error = 0;
 	} else {
 		/*
@@ -297,25 +300,28 @@ uipc_peeraddr(struct socket *so, struct sockaddr **nam)
 		 * connection is established.  So, this else clause is
 		 * added as workaround to return PF_LOCAL sockaddr.
 		 */
-		*nam = dup_sockaddr((struct sockaddr *)&sun_noname);
+		*msg->peeraddr.nm_nam = dup_sockaddr(
+				(struct sockaddr *)&sun_noname);
 		error = 0;
 	}
 	lwkt_reltoken(&unp_token);
-
-	return error;
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-uipc_rcvd(struct socket *so, int flags)
+static void
+uipc_rcvd(netmsg_t msg)
 {
 	struct unpcb *unp;
+	struct socket *so;
 	struct socket *so2;
+	int error;
 
 	lwkt_gettoken(&unp_token);
+	so = msg->base.nm_so;
 	unp = so->so_pcb;
 	if (unp == NULL) {
-		lwkt_reltoken(&unp_token);
-		return EINVAL;
+		error = EINVAL;
+		goto done;
 	}
 
 	switch (so->so_type) {
@@ -343,34 +349,40 @@ uipc_rcvd(struct socket *so, int flags)
 		panic("uipc_rcvd unknown socktype");
 		/*NOTREACHED*/
 	}
+	error = 0;
+done:
 	lwkt_reltoken(&unp_token);
-
-	return 0;
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
 /* pru_rcvoob is EOPNOTSUPP */
 
-static int
-uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
-	  struct mbuf *control, struct thread *td)
+static void
+uipc_send(netmsg_t msg)
 {
 	struct unpcb *unp;
+	struct socket *so;
 	struct socket *so2;
+	struct mbuf *control;
+	struct mbuf *m;
 	int error = 0;
 
 	lwkt_gettoken(&unp_token);
-
+	so = msg->base.nm_so;
+	control = msg->send.nm_control;
+	m = msg->send.nm_m;
 	unp = so->so_pcb;
+
 	if (unp == NULL) {
 		error = EINVAL;
 		goto release;
 	}
-	if (flags & PRUS_OOB) {
+	if (msg->send.nm_flags & PRUS_OOB) {
 		error = EOPNOTSUPP;
 		goto release;
 	}
 
-	if (control && (error = unp_internalize(control, td)))
+	if (control && (error = unp_internalize(control, msg->send.nm_td)))
 		goto release;
 
 	switch (so->so_type) {
@@ -378,12 +390,14 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 	{
 		struct sockaddr *from;
 
-		if (nam) {
+		if (msg->send.nm_addr) {
 			if (unp->unp_conn) {
 				error = EISCONN;
 				break;
 			}
-			error = unp_connect(so, nam, td);
+			error = unp_connect(so,
+					    msg->send.nm_addr,
+					    msg->send.nm_td);
 			if (error)
 				break;
 		} else {
@@ -404,7 +418,7 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 		} else {
 			error = ENOBUFS;
 		}
-		if (nam)
+		if (msg->send.nm_addr)
 			unp_disconnect(unp);
 		break;
 	}
@@ -417,8 +431,10 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 		 * if not equal to the peer's address.
 		 */
 		if (!(so->so_state & SS_ISCONNECTED)) {
-			if (nam) {
-				error = unp_connect(so, nam, td);
+			if (msg->send.nm_addr) {
+				error = unp_connect(so,
+						    msg->send.nm_addr,
+						    msg->send.nm_td);
 				if (error)
 					break;	/* XXX */
 			} else {
@@ -472,7 +488,7 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 	/*
 	 * SEND_EOF is equivalent to a SEND followed by a SHUTDOWN.
 	 */
-	if (flags & PRUS_EOF) {
+	if (msg->send.nm_flags & PRUS_EOF) {
 		socantsendmore(so);
 		unp_shutdown(unp);
 	}
@@ -487,22 +503,27 @@ release:
 		m_freem(control);
 	if (m)
 		m_freem(m);
-	return error;
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
 /*
  * MPSAFE
  */
-static int
-uipc_sense(struct socket *so, struct stat *sb)
+static void
+uipc_sense(netmsg_t msg)
 {
 	struct unpcb *unp;
+	struct socket *so;
+	struct stat *sb;
+	int error;
 
 	lwkt_gettoken(&unp_token);
+	so = msg->base.nm_so;
+	sb = msg->sense.nm_stat;
 	unp = so->so_pcb;
 	if (unp == NULL) {
-		lwkt_reltoken(&unp_token);
-		return EINVAL;
+		error = EINVAL;
+		goto done;
 	}
 	sb->st_blksize = so->so_snd.ssb_hiwat;
 	sb->st_dev = NOUDEV;
@@ -512,18 +533,21 @@ uipc_sense(struct socket *so, struct stat *sb)
 		spin_unlock(&unp_ino_spin);
 	}
 	sb->st_ino = unp->unp_ino;
+	error = 0;
+done:
 	lwkt_reltoken(&unp_token);
-
-	return (0);
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-uipc_shutdown(struct socket *so)
+static void
+uipc_shutdown(netmsg_t msg)
 {
+	struct socket *so;
 	struct unpcb *unp;
 	int error;
 
 	lwkt_gettoken(&unp_token);
+	so = msg->base.nm_so;
 	unp = so->so_pcb;
 	if (unp) {
 		socantsendmore(so);
@@ -533,28 +557,28 @@ uipc_shutdown(struct socket *so)
 		error = EINVAL;
 	}
 	lwkt_reltoken(&unp_token);
-
-	return error;
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-uipc_sockaddr(struct socket *so, struct sockaddr **nam)
+static void
+uipc_sockaddr(netmsg_t msg)
 {
 	struct unpcb *unp;
 	int error;
 
 	lwkt_gettoken(&unp_token);
-	unp = so->so_pcb;
+	unp = msg->base.nm_so->so_pcb;
 	if (unp) {
-		if (unp->unp_addr)
-			*nam = dup_sockaddr((struct sockaddr *)unp->unp_addr);
+		if (unp->unp_addr) {
+			*msg->sockaddr.nm_nam =
+				dup_sockaddr((struct sockaddr *)unp->unp_addr);
+		}
 		error = 0;
 	} else {
 		error = EINVAL;
 	}
 	lwkt_reltoken(&unp_token);
-
-	return error;
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
 struct pr_usrreqs uipc_usrreqs = {
@@ -564,13 +588,13 @@ struct pr_usrreqs uipc_usrreqs = {
 	.pru_bind = uipc_bind,
 	.pru_connect = uipc_connect,
 	.pru_connect2 = uipc_connect2,
-	.pru_control = pru_control_notsupp,
+	.pru_control = pr_generic_notsupp,
 	.pru_detach = uipc_detach,
 	.pru_disconnect = uipc_disconnect,
 	.pru_listen = uipc_listen,
 	.pru_peeraddr = uipc_peeraddr,
 	.pru_rcvd = uipc_rcvd,
-	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_rcvoob = pr_generic_notsupp,
 	.pru_send = uipc_send,
 	.pru_sense = uipc_sense,
 	.pru_shutdown = uipc_shutdown,
@@ -579,13 +603,17 @@ struct pr_usrreqs uipc_usrreqs = {
 	.pru_soreceive = soreceive
 };
 
-int
-uipc_ctloutput(struct socket *so, struct sockopt *sopt)
+void
+uipc_ctloutput(netmsg_t msg)
 {
+	struct socket *so;
+	struct sockopt *sopt;
 	struct unpcb *unp;
 	int error = 0;
 
 	lwkt_gettoken(&unp_token);
+	so = msg->base.nm_so;
+	sopt = msg->ctloutput.nm_sopt;
 	unp = so->so_pcb;
 
 	switch (sopt->sopt_dir) {
@@ -615,8 +643,7 @@ uipc_ctloutput(struct socket *so, struct sockopt *sopt)
 		break;
 	}
 	lwkt_reltoken(&unp_token);
-
-	return (error);
+	lwkt_replymsg(&msg->lmsg, error);
 }
 	
 /*
@@ -665,6 +692,7 @@ unp_attach(struct socket *so, struct pru_attach_info *ai)
 	int error;
 
 	lwkt_gettoken(&unp_token);
+
 	if (so->so_snd.ssb_hiwat == 0 || so->so_rcv.ssb_hiwat == 0) {
 		switch (so->so_type) {
 
@@ -699,7 +727,6 @@ unp_attach(struct socket *so, struct pru_attach_info *ai)
 			 : &unp_shead, unp, unp_link);
 	so->so_pcb = (caddr_t)unp;
 	soreference(so);
-	so->so_port = sync_soport(so, NULL, NULL);
 	error = 0;
 failed:
 	lwkt_reltoken(&unp_token);

@@ -69,7 +69,7 @@ struct packet_filter_hook {
 };
 
 struct netmsg_pfil {
-	struct netmsg		pfil_nmsg;
+	struct netmsg_base	base;
 	pfil_func_t		pfil_func;
 	void			*pfil_arg;
 	int			pfil_flags;
@@ -88,8 +88,8 @@ static struct packet_filter_hook *
 			pfil_list_find(const pfil_list_t *, pfil_func_t,
 				       const void *);
 
-static void		pfil_remove_hook_dispatch(struct netmsg *);
-static void		pfil_add_hook_dispatch(struct netmsg *);
+static void		pfil_remove_hook_dispatch(netmsg_t);
+static void		pfil_add_hook_dispatch(netmsg_t);
 
 /*
  * pfil_run_hooks() runs the specified packet filter hooks.
@@ -176,7 +176,7 @@ pfil_head_get(int type, u_long val)
 }
 
 static void
-pfil_add_hook_dispatch(struct netmsg *nmsg)
+pfil_add_hook_dispatch(netmsg_t nmsg)
 {
 	struct netmsg_pfil *pfilmsg = (struct netmsg_pfil *)nmsg;
 	pfil_func_t func = pfilmsg->pfil_func;
@@ -252,7 +252,7 @@ pfil_add_hook_dispatch(struct netmsg *nmsg)
 	if (old_list_out != NULL)
 		pfil_list_free(old_list_out);
 reply:
-	lwkt_replymsg(&nmsg->nm_lmsg, err);
+	lwkt_replymsg(&nmsg->base.lmsg, err);
 }
 
 /*
@@ -267,9 +267,10 @@ int
 pfil_add_hook(pfil_func_t func, void *arg, int flags, struct pfil_head *ph)
 {
 	struct netmsg_pfil pfilmsg;
-	struct netmsg *nmsg;
+	netmsg_base_t nmsg;
+	int error;
 
-	nmsg = &pfilmsg.pfil_nmsg;
+	nmsg = &pfilmsg.base;
 	netmsg_init(nmsg, NULL, &curthread->td_msgport,
 		    0, pfil_add_hook_dispatch);
 	pfilmsg.pfil_func = func;
@@ -277,11 +278,12 @@ pfil_add_hook(pfil_func_t func, void *arg, int flags, struct pfil_head *ph)
 	pfilmsg.pfil_flags = flags;
 	pfilmsg.pfil_ph = ph;
 
-	return lwkt_domsg(PFIL_CFGPORT, &nmsg->nm_lmsg, 0);
+	error = lwkt_domsg(PFIL_CFGPORT, &nmsg->lmsg, 0);
+	return error;
 }
 
 static void
-pfil_remove_hook_dispatch(struct netmsg *nmsg)
+pfil_remove_hook_dispatch(netmsg_t nmsg)
 {
 	struct netmsg_pfil *pfilmsg = (struct netmsg_pfil *)nmsg;
 	pfil_func_t func = pfilmsg->pfil_func;
@@ -358,7 +360,7 @@ pfil_remove_hook_dispatch(struct netmsg *nmsg)
 	if (old_list_out != NULL)
 		pfil_list_free(old_list_out);
 reply:
-	lwkt_replymsg(&nmsg->nm_lmsg, err);
+	lwkt_replymsg(&nmsg->base.lmsg, err);
 }
 
 /*
@@ -369,9 +371,9 @@ int
 pfil_remove_hook(pfil_func_t func, void *arg, int flags, struct pfil_head *ph)
 {
 	struct netmsg_pfil pfilmsg;
-	struct netmsg *nmsg;
+	netmsg_base_t nmsg;
 
-	nmsg = &pfilmsg.pfil_nmsg;
+	nmsg = &pfilmsg.base;
 	netmsg_init(nmsg, NULL, &curthread->td_msgport,
 		    0, pfil_remove_hook_dispatch);
 	pfilmsg.pfil_func = func;
@@ -379,7 +381,7 @@ pfil_remove_hook(pfil_func_t func, void *arg, int flags, struct pfil_head *ph)
 	pfilmsg.pfil_flags = flags;
 	pfilmsg.pfil_ph = ph;
 
-	return lwkt_domsg(PFIL_CFGPORT, &nmsg->nm_lmsg, 0);
+	return lwkt_domsg(PFIL_CFGPORT, &nmsg->lmsg, 0);
 }
 
 static void

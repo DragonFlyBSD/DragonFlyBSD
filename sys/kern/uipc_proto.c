@@ -51,30 +51,40 @@
  */
 
 static struct protosw localsw[] = {
-{ SOCK_STREAM,	&localdomain,	0,	PR_CONNREQUIRED|PR_WANTRCVD|PR_RIGHTS,
-  NULL,		NULL,		NULL,		&uipc_ctloutput,
-  sync_soport,	NULL,
-  NULL,		NULL,		NULL,		NULL,
-  &uipc_usrreqs
-},
-{ SOCK_SEQPACKET, &localdomain,	0,	PR_CONNREQUIRED|PR_WANTRCVD|PR_RIGHTS|PR_ATOMIC,
-  NULL,		NULL,		NULL,		&uipc_ctloutput,
-  sync_soport,	NULL,
-  NULL,		NULL,		NULL,		NULL,
-  &uipc_usrreqs
-},
-{ SOCK_DGRAM,	&localdomain,	0,		PR_ATOMIC|PR_ADDR|PR_RIGHTS,
-  NULL,		NULL,		NULL,		NULL,
-  sync_soport,	NULL,
-  NULL,		NULL,		NULL,		NULL,
-  &uipc_usrreqs
-},
-{ 0,		NULL,		0,		0,
-  NULL,		NULL,		raw_ctlinput,	NULL,
-  sync_soport,	cpu0_ctlport,
-  raw_init,	NULL,		NULL,		NULL,
-  &raw_usrreqs
-}
+    {
+	.pr_type = SOCK_STREAM,
+	.pr_domain = &localdomain,
+	.pr_protocol = 0,
+	.pr_flags = PR_CONNREQUIRED|PR_WANTRCVD|PR_RIGHTS|PR_SYNC_PORT,
+	.pr_ctloutput = uipc_ctloutput,
+	.pr_usrreqs = &uipc_usrreqs
+    },
+    {
+	.pr_type = SOCK_SEQPACKET,
+	.pr_domain = &localdomain,
+	.pr_protocol = 0,
+	.pr_flags = PR_CONNREQUIRED|PR_WANTRCVD|PR_RIGHTS|PR_SYNC_PORT|
+		    PR_ATOMIC,
+	.pr_ctloutput = uipc_ctloutput,
+	.pr_usrreqs = &uipc_usrreqs
+    },
+    {
+	.pr_type = SOCK_DGRAM,
+	.pr_domain = &localdomain,
+	.pr_protocol = 0,
+	.pr_flags = PR_RIGHTS|PR_SYNC_PORT|PR_ATOMIC|PR_ADDR,
+	.pr_ctloutput = NULL,
+	.pr_usrreqs = &uipc_usrreqs
+    },
+    {
+	.pr_type = 0,
+	.pr_protocol = 0,
+	.pr_flags = PR_SYNC_PORT,
+	.pr_ctlinput = raw_ctlinput,
+	.pr_ctloutput = NULL,
+	.pr_init = raw_init,
+	.pr_usrreqs = &raw_usrreqs
+    }
 };
 
 struct domain localdomain = {
@@ -86,5 +96,6 @@ DOMAIN_SET(local);
 
 SYSCTL_NODE(_net, PF_LOCAL, local, CTLFLAG_RW, 0, "Local domain");
 SYSCTL_NODE(_net_local, SOCK_STREAM, stream, CTLFLAG_RW, 0, "SOCK_STREAM");
-SYSCTL_NODE(_net_local, SOCK_SEQPACKET, seqpacket, CTLFLAG_RW, 0, "SOCK_SEQPACKET");
+SYSCTL_NODE(_net_local, SOCK_SEQPACKET, seqpacket, CTLFLAG_RW, 0,
+			"SOCK_SEQPACKET");
 SYSCTL_NODE(_net_local, SOCK_DGRAM, dgram, CTLFLAG_RW, 0, "SOCK_DGRAM");

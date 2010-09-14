@@ -62,7 +62,10 @@
 #include <sys/socketvar.h>
 #include <sys/syslog.h>
 #include <sys/eventhandler.h>
+
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
+#include <sys/msgport2.h>
 
 #include <machine/clock.h>
 #include <vm/vm.h>

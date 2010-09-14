@@ -74,8 +74,10 @@ struct rawcb {
 #ifdef _KERNEL
 extern LIST_HEAD(rawcb_list_head, rawcb) rawcb_list;
 
+union netmsg;
+
 int	 raw_attach (struct socket *, int, struct rlimit *);
-void	 raw_ctlinput (int, struct sockaddr *, void *);
+void	 raw_ctlinput (union netmsg *);
 void	 raw_detach (struct rawcb *);
 void	 raw_disconnect (struct rawcb *);
 void	 raw_init (void);

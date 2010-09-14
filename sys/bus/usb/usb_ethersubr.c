@@ -75,9 +75,9 @@
 static int netisr_inited = 0;
 
 static void
-usbintr(struct netmsg *msg)
+usbintr(netmsg_t msg)
 {
-	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
+	struct mbuf *m = msg->packet.nm_packet;
 	struct ifnet *ifp;
 
 	/* not MPSAFE */
