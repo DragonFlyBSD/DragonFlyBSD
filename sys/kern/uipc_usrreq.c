@@ -411,6 +411,8 @@ uipc_send(netmsg_t msg)
 			from = (struct sockaddr *)unp->unp_addr;
 		else
 			from = &sun_noname;
+
+		lwkt_gettoken(&so2->so_rcv.ssb_token);
 		if (ssb_appendaddr(&so2->so_rcv, from, m, control)) {
 			sorwakeup(so2);
 			m = NULL;
@@ -420,6 +422,7 @@ uipc_send(netmsg_t msg)
 		}
 		if (msg->send.nm_addr)
 			unp_disconnect(unp);
+		lwkt_reltoken(&so2->so_rcv.ssb_token);
 		break;
 	}
 
@@ -455,6 +458,7 @@ uipc_send(netmsg_t msg)
 		 * send buffer hiwater marks to maintain backpressure.
 		 * Wake up readers.
 		 */
+		lwkt_gettoken(&so2->so_rcv.ssb_token);
 		if (control) {
 			if (ssb_appendcontrol(&so2->so_rcv, m, control)) {
 				control = NULL;
@@ -478,6 +482,7 @@ uipc_send(netmsg_t msg)
 		) {
 			atomic_set_int(&so->so_snd.ssb_flags, SSB_STOP);
 		}
+		lwkt_reltoken(&so2->so_rcv.ssb_token);
 		sorwakeup(so2);
 		break;
 
@@ -1610,9 +1615,11 @@ unp_gc_checkmarks(struct file *fp, void *data)
 	 * as accessible too.
 	 */
 	info->locked_fp = fp;
+	lwkt_gettoken(&so->so_rcv.ssb_token);
 /*	spin_lock_wr(&so->so_rcv.sb_spin); */
 	unp_scan(so->so_rcv.ssb_mb, unp_mark, info);
 /*	spin_unlock_wr(&so->so_rcv.sb_spin);*/
+	lwkt_reltoken(&so->so_rcv.ssb_token);
 	return (0);
 }
 
@@ -1682,6 +1689,7 @@ unp_revoke_gc_check(struct file *fps, void *vinfo)
 	 * Scan the mbufs for control messages and replace any revoked
 	 * descriptors we find.
 	 */
+	lwkt_gettoken(&so->so_rcv.ssb_token);
 	m0 = so->so_rcv.ssb_mb;
 	while (m0) {
 		for (m = m0; m; m = m->m_next) {
@@ -1716,6 +1724,7 @@ unp_revoke_gc_check(struct file *fps, void *vinfo)
 		if (info->fcount == REVOKE_GC_MAXFILES)
 			break;
 	}
+	lwkt_reltoken(&so->so_rcv.ssb_token);
 
 	/*
 	 * Stop the scan if we filled up our array.

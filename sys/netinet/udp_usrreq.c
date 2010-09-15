@@ -509,10 +509,14 @@ udp_input(struct mbuf **mp, int *offp, int proto)
 	} else
 #endif
 		append_sa = (struct sockaddr *)&udp_in;
+
+	lwkt_gettoken(&inp->inp_socket->so_rcv.ssb_token);
 	if (ssb_appendaddr(&inp->inp_socket->so_rcv, append_sa, m, opts) == 0) {
 		udpstat.udps_fullsock++;
+		lwkt_reltoken(&inp->inp_socket->so_rcv.ssb_token);
 		goto bad;
 	}
+	lwkt_reltoken(&inp->inp_socket->so_rcv.ssb_token);
 	sorwakeup(inp->inp_socket);
 	return(IPPROTO_DONE);
 bad:
@@ -578,13 +582,16 @@ udp_append(struct inpcb *last, struct ip *ip, struct mbuf *n, int off)
 #endif
 		append_sa = (struct sockaddr *)&udp_in;
 	m_adj(n, off);
+	lwkt_gettoken(&last->inp_socket->so_rcv.ssb_token);
 	if (ssb_appendaddr(&last->inp_socket->so_rcv, append_sa, n, opts) == 0) {
 		m_freem(n);
 		if (opts)
 			m_freem(opts);
 		udpstat.udps_fullsock++;
-	} else
+	} else {
 		sorwakeup(last->inp_socket);
+	}
+	lwkt_reltoken(&last->inp_socket->so_rcv.ssb_token);
 }
 
 /*
