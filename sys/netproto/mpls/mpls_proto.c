@@ -46,18 +46,21 @@ static struct domain mplsdomain;
 static struct pr_usrreqs nousrreqs;  /* XXX use this for something */
 
 struct protosw mplssw[] = {
-{ 0,		&mplsdomain,	0,	0,
-  0,		0,		0,	0,
-  cpu0_soport,	NULL,
-  mpls_init,	0,		0,	0,
-  &nousrreqs
-},
-{ SOCK_RAW,	&mplsdomain,	0,	PR_ATOMIC|PR_ADDR,
-  0,		0,		0,	0,
-  cpu0_soport,	NULL,
-  0,		0,		0,	0,
-  &nousrreqs
-},
+    {
+	.pr_type = 0,
+	.pr_domain = &mplsdomain,
+
+	.pr_init = mpls_init,
+	.pr_usrreqs = &nousrreqs
+    },
+    {
+	.pr_type = SOCK_RAW,
+	.pr_domain = &mplsdomain,
+	.pr_protocol = 0,
+	.pr_flags = PR_ATOMIC|PR_ADDR,
+
+	.pr_usrreqs = &nousrreqs
+    }
 };
 
 static	struct	domain mplsdomain = {

@@ -86,21 +86,23 @@ struct route;
 struct sockaddr;
 struct socket;
 struct sockopt;
+union netmsg;
 
 void	ipx_abort (struct ipxpcb *ipxp);
 u_short	ipx_cksum (struct mbuf *m, int len);
-int	ipx_control (struct socket *so, u_long cmd, caddr_t data,
+int	ipx_control_oncpu (struct socket *so, u_long cmd, caddr_t data,
 			 struct ifnet *ifp, struct thread *td);
-void	ipx_ctlinput (int cmd, struct sockaddr *arg_as_sa, void *dummy);
-int	ipx_ctloutput (struct socket *so, struct sockopt *sopt);
+void	ipx_ctlinput (union netmsg *);
+void	ipx_ctloutput (union netmsg *);
+void	ipx_control (union netmsg *);
+void	ipx_peeraddr (union netmsg *);
+void	ipx_sockaddr (union netmsg *);
 void	ipx_drop (struct ipxpcb *ipxp, int error);
 void	ipx_init (void);
 void	ipx_input (struct mbuf *m, struct ipxpcb *ipxp);
 int	ipx_outputfl (struct mbuf *m0, struct route *ro, int flags);
 int	ipx_output_type20 (struct mbuf *);
-int	ipx_peeraddr (struct socket *so, struct sockaddr **nam);
 void	ipx_printhost (struct ipx_addr *addr);
-int	ipx_sockaddr (struct socket *so, struct sockaddr **nam);
 void	ipx_watch_output (struct mbuf *m, struct ifnet *ifp);
 
 #endif /* _KERNEL */

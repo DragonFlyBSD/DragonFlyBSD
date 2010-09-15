@@ -63,7 +63,7 @@ static	int ipx_ifinit(struct ifnet *ifp, struct ipx_ifaddr *ia,
  * Generic internet control operations (ioctl's).
  */
 int
-ipx_control(struct socket *so, u_long cmd, caddr_t data,
+ipx_control_oncpu(struct socket *so, u_long cmd, caddr_t data,
 	struct ifnet *ifp, struct thread *td)
 {
 	struct ifreq *ifr = (struct ifreq *)data;

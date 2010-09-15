@@ -56,48 +56,30 @@
 static	struct domain natmdomain;
 
 static struct protosw natmsw[] = {
-{ SOCK_STREAM,	&natmdomain,	PROTO_NATMAAL5, PR_CONNREQUIRED,
-  0,	0,	0,	0,
-#ifdef FREEBSD_USRREQS
-  cpu0_soport,	NULL,
-#else
-  natm_usrreq,
-#endif
-  0,	0,	0,	0,	
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	natm5_sysctl
-#elif defined(FREEBSD_USRREQS)
-        &natm_usrreqs
-#endif
-},
-{ SOCK_DGRAM,	&natmdomain,	PROTO_NATMAAL5,	PR_CONNREQUIRED | PR_ATOMIC,
-  0,	0,	0,	0,
-#ifdef FREEBSD_USRREQS
-  cpu0_soport,	NULL,
-#else
-  natm_usrreq,
-#endif
-  0,	0,	0,	0,	
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	natm5_sysctl
-#elif defined(FREEBSD_USRREQS)
-        &natm_usrreqs
-#endif
-},
-{ SOCK_STREAM,	&natmdomain,	PROTO_NATMAAL0, PR_CONNREQUIRED,
-  0,	0,	0,	0,
-#ifdef FREEBSD_USRREQS
-  cpu0_soport,	NULL,
-#else
-  natm_usrreq,
-#endif
-  0,	0,	0,	0,	
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-	natm0_sysctl
-#elif defined(FREEBSD_USRREQS)
-        &natm_usrreqs
-#endif
-},
+    {
+	.pr_type = SOCK_STREAM,
+	.pr_domain = &natmdomain,
+	.pr_protocol = PROTO_NATMAAL5,
+	.pr_flags = PR_CONNREQUIRED,
+
+	.pr_usrreqs = &natm_usrreqs
+    },
+    {
+	.pr_type = SOCK_DGRAM,
+	.pr_domain = &natmdomain,
+	.pr_protocol = PROTO_NATMAAL5,
+	.pr_flags = PR_CONNREQUIRED | PR_ATOMIC,
+
+	.pr_usrreqs = &natm_usrreqs
+    },
+    {
+	.pr_type = SOCK_STREAM,
+	.pr_domain = &natmdomain,
+	.pr_protocol = PROTO_NATMAAL0,
+	.pr_flags = PR_CONNREQUIRED,
+
+	.pr_usrreqs = &natm_usrreqs
+    }
 };
 
 static struct domain natmdomain = {

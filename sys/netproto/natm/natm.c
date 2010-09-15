@@ -71,29 +71,17 @@ static u_long natm0_recvspace = 16*1024;
  * user requests
  */
 #ifdef FREEBSD_USRREQS
+
 /*
  * FreeBSD new usrreqs supersedes pr_usrreq.
  */
-static int natm_usr_attach (struct socket *, int, struct pru_attach_info *);
-static int natm_usr_detach (struct socket *);
-static int natm_usr_connect (struct socket *, struct sockaddr *,
-				 struct thread *);
-static int natm_usr_disconnect (struct socket *);
-static int natm_usr_shutdown (struct socket *);
-static int natm_usr_send (struct socket *, int, struct mbuf *,
-			      struct sockaddr *, struct mbuf *, 
-			      struct thread *);
-static int natm_usr_peeraddr (struct socket *, struct sockaddr **);
-static int natm_usr_control (struct socket *, u_long, caddr_t,
-				 struct ifnet *, struct thread *);
-static int natm_usr_abort (struct socket *);
-static int natm_usr_bind (struct socket *, struct sockaddr *, 
-			      struct thread *);
-static int natm_usr_sockaddr (struct socket *, struct sockaddr **);
 
-static int
-natm_usr_attach(struct socket *so, int proto, struct pru_attach_info *ai)
+static void
+natm_usr_attach(netmsg_t msg)
 {
+    struct socket *so = msg->base.nm_so;
+    struct pru_attach_info *ai = msg->attach.nm_ai;
+    int proto = msg->attach.nm_proto;
     struct natmpcb *npcb;
     int error = 0;
 
@@ -120,12 +108,13 @@ natm_usr_attach(struct socket *so, int proto, struct pru_attach_info *ai)
     npcb->npcb_socket = so;
  out:
     crit_exit();
-    return (error);
+    lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-natm_usr_detach(struct socket *so)
+static void
+natm_usr_detach(netmsg_t msg)
 {
+    struct socket *so = msg->base.nm_so;
     struct natmpcb *npcb;
     int error = 0;
 
@@ -144,12 +133,15 @@ natm_usr_detach(struct socket *so)
     sofree(so);				/* remove pcb ref */
  out:
     crit_exit();
-    return (error);
+    lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-natm_usr_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
+static void
+natm_usr_connect(netmsg_t msg)
 {
+    struct socket *so = msg->base.nm_so;
+    struct sockaddr *nam = msg->connect.nm_nam;
+    struct thread *td = msg->connect.nm_td;
     struct natmpcb *npcb;
     struct sockaddr_natm *snatm;
     struct atm_pseudoioctl api;
@@ -229,12 +221,13 @@ natm_usr_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 
  out:
     crit_exit();
-    return (error);
+    lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-natm_usr_disconnect(struct socket *so)
+static void
+natm_usr_disconnect(netmsg_t msg)
 {
+    struct socket *so = msg->base.nm_so;
     struct natmpcb *npcb;
     struct atm_pseudoioctl api;
     struct ifnet *ifp;
@@ -273,20 +266,25 @@ natm_usr_disconnect(struct socket *so)
 
  out:
     crit_exit();
-    return (error);
+    lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-natm_usr_shutdown(struct socket *so)
+static void
+natm_usr_shutdown(netmsg_t msg)
 {
+    struct socket *so = msg->base.nm_so;
+
     socantsendmore(so);
-    return 0;
+
+    lwkt_replymsg(&msg->lmsg, 0);
 }
 
-static int
-natm_usr_send(struct socket *so, int flags, struct mbuf *m, 
-	      struct sockaddr *nam, struct mbuf *control, struct thread *td)
+static void
+natm_usr_send(netmsg_t msg)
 {
+    struct socket *so = msg->base.nm_so;
+    struct mbuf *m = msg->send.nm_m;
+    struct mbuf *control = msg->send.nm_control;
     struct natmpcb *npcb;
     struct atm_pseudohdr *aph;
     int error = 0;
@@ -325,12 +323,15 @@ natm_usr_send(struct socket *so, int flags, struct mbuf *m,
 
  out:
     crit_exit();
-    return (error);
+    lwkt_replymsg(&msg->lmsg, error);
+
 }
 
-static int
-natm_usr_peeraddr(struct socket *so, struct sockaddr **nam)
+static void
+natm_usr_peeraddr(netmsg_t msg)
 {
+    struct socket *so = msg->base.nm_so;
+    struct sockaddr **nam = msg->peeraddr.nm_nam;
     struct natmpcb *npcb;
     struct sockaddr_natm *snatm, ssnatm;
     int error = 0;
@@ -354,13 +355,16 @@ natm_usr_peeraddr(struct socket *so, struct sockaddr **nam)
 
  out:
     crit_exit();
-    return (error);
+    lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-natm_usr_control(struct socket *so, u_long cmd, caddr_t arg,
-		 struct ifnet *ifp, struct thread *td)
+static void
+natm_usr_control(netmsg_t msg)
 {
+    struct socket *so = msg->base.nm_so;
+    u_long cmd = msg->control.nm_cmd;
+    caddr_t arg = msg->control.nm_data;
+    struct thread *td = msg->control.nm_td;
     struct natmpcb *npcb;
     struct atm_rawioctl ario;
     int error = 0;
@@ -393,58 +397,43 @@ natm_usr_control(struct socket *so, u_long cmd, caddr_t arg,
 	    else
 		npcb->npcb_flags &= ~(NPCB_RAW);
 	}
-    }
-    else
+    } else {
 	error = EOPNOTSUPP;
- out:
-    return (error);
+    }
+out:
+    lwkt_replymsg(&msg->lmsg, error);
 }
 
 /*
  * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
  *	 will sofree() it when we return.
  */
-static int
-natm_usr_abort(struct socket *so)
+static void
+natm_usr_abort(netmsg_t msg)
 {
-    int error;
-
-    error = natm_usr_shutdown(so);
-
-    return error;
-}
-
-static int
-natm_usr_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
-{
-    return EOPNOTSUPP;
-}
-
-static int
-natm_usr_sockaddr(struct socket *so, struct sockaddr **nam)
-{
-    return EOPNOTSUPP;
+    natm_usr_shutdown(msg);
+    /* msg now invalid */
 }
 
 /* xxx - should be const */
 struct pr_usrreqs natm_usrreqs = {
 	.pru_abort = natm_usr_abort,
-	.pru_accept = pru_accept_notsupp,
+	.pru_accept = pr_generic_notsupp,
 	.pru_attach = natm_usr_attach,
-	.pru_bind = natm_usr_bind,
+	.pru_bind = pr_generic_notsupp,
 	.pru_connect = natm_usr_connect,
-	.pru_connect2 = pru_connect2_notsupp,
+	.pru_connect2 = pr_generic_notsupp,
 	.pru_control = natm_usr_control,
 	.pru_detach = natm_usr_detach,
 	.pru_disconnect = natm_usr_disconnect,
-	.pru_listen = pru_listen_notsupp,
+	.pru_listen = pr_generic_notsupp,
 	.pru_peeraddr = natm_usr_peeraddr,
-	.pru_rcvd = pru_rcvd_notsupp,
-	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_rcvd = pr_generic_notsupp,
+	.pru_rcvoob = pr_generic_notsupp,
 	.pru_send = natm_usr_send,
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = natm_usr_shutdown,
-	.pru_sockaddr = natm_usr_sockaddr,
+	.pru_sockaddr = pr_generic_notsupp,
 	.pru_sosend = sosend,
 	.pru_soreceive = soreceive
 };
@@ -749,7 +738,7 @@ natm5_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp,
   return (ENOPROTOOPT);
 }
 
-static void natmintr(struct netmsg *);
+static void natmintr(netmsg_t);
 
 #if defined(__DragonFly__)
 static void
@@ -776,9 +765,9 @@ natm_init(void)
  * we really need it.
  */
 static void
-natmintr(struct netmsg *msg)
+natmintr(netmsg_t msg)
 {
-  struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
+  struct mbuf *m = msg->packet.nm_packet;
   struct socket *so;
   struct natmpcb *npcb;
 

@@ -175,8 +175,8 @@ struct spxpcb {
 extern struct pr_usrreqs spx_usrreqs;
 extern struct pr_usrreqs spx_usrreq_sps;
 
-void	spx_ctlinput (int cmd, struct sockaddr *arg_as_sa, void *dummy);
-int	spx_ctloutput (struct socket *so, struct sockopt *sopt);
+void	spx_ctlinput (union netmsg *);
+void	spx_ctloutput (union netmsg *);
 void	spx_fasttimo (void);
 void	spx_init (void);
 void	spx_input (struct mbuf *m, struct ipxpcb *ipxp);

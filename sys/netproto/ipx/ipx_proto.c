@@ -61,44 +61,90 @@ static	struct pr_usrreqs nousrreqs;
  */
 
 static struct protosw ipxsw[] = {
-{ 0,		&ipxdomain,	0,		0,
-  0,		0,		0,		0,
-  cpu0_soport,	NULL,
-  ipx_init,	0,		0,		0,
-  &nousrreqs
-},
-{ SOCK_DGRAM,	&ipxdomain,	0,		PR_ATOMIC|PR_ADDR,
-  0,		0,		ipx_ctlinput,	ipx_ctloutput,
-  cpu0_soport,	cpu0_ctlport,
-  0,		0,		0,		0,
-  &ipx_usrreqs
-},
-{ SOCK_STREAM,	&ipxdomain,	IPXPROTO_SPX,	PR_CONNREQUIRED|PR_WANTRCVD,
-  0,		0,		spx_ctlinput,	spx_ctloutput,
-  cpu0_soport,	cpu0_ctlport,
-  spx_init,	spx_fasttimo,	spx_slowtimo,	0,
-  &spx_usrreqs
-},
-{ SOCK_SEQPACKET,&ipxdomain,	IPXPROTO_SPX,	PR_CONNREQUIRED|PR_WANTRCVD|PR_ATOMIC,
-  0,		0,		spx_ctlinput,	spx_ctloutput,
-  cpu0_soport,	cpu0_ctlport,
-  0,		0,		0,		0,
-  &spx_usrreq_sps
-},
-{ SOCK_RAW,	&ipxdomain,	IPXPROTO_RAW,	PR_ATOMIC|PR_ADDR,
-  0,		0,		0,		ipx_ctloutput,
-  cpu0_soport,	NULL,
-  0,		0,		0,		0,
-  &ripx_usrreqs
-},
+    {
+	.pr_type = 0,
+	.pr_domain = &ipxdomain,
+	.pr_protocol = 0,
+	.pr_flags = 0,
+
+	.pr_init = ipx_init,
+	.pr_usrreqs = &nousrreqs
+    },
+    {
+	.pr_type = SOCK_DGRAM,
+	.pr_domain = &ipxdomain,
+	.pr_protocol = 0,
+	.pr_flags = PR_ATOMIC|PR_ADDR,
+
+	.pr_input = NULL,
+	.pr_output = NULL,
+	.pr_ctlinput = ipx_ctlinput,
+	.pr_ctloutput = ipx_ctloutput,
+
+	.pr_ctlport = cpu0_ctlport,
+	.pr_usrreqs = &ipx_usrreqs
+    },
+    {
+	.pr_type = SOCK_STREAM,
+	.pr_domain = &ipxdomain,
+	.pr_protocol = IPXPROTO_SPX,
+	.pr_flags = PR_CONNREQUIRED|PR_WANTRCVD,
+
+	.pr_input = NULL,
+	.pr_output = NULL,
+	.pr_ctlinput = spx_ctlinput,
+	.pr_ctloutput = spx_ctloutput,
+	.pr_ctlport = cpu0_ctlport,
+
+	.pr_init = spx_init,
+	.pr_fasttimo = spx_fasttimo,
+	.pr_slowtimo = spx_slowtimo,
+	.pr_drain = NULL,
+	.pr_usrreqs = &spx_usrreqs
+    },
+    {
+	.pr_type = SOCK_SEQPACKET,
+	.pr_domain = &ipxdomain,
+	.pr_protocol = IPXPROTO_SPX,
+	.pr_flags = PR_CONNREQUIRED|PR_WANTRCVD|PR_ATOMIC,
+
+	.pr_input = NULL,
+	.pr_output = NULL,
+	.pr_ctlinput = spx_ctlinput,
+	.pr_ctloutput = spx_ctloutput,
+
+	.pr_ctlport = cpu0_ctlport,
+	.pr_usrreqs = &spx_usrreq_sps
+    },
+    {
+	.pr_type = SOCK_RAW,
+	.pr_domain = &ipxdomain,
+	.pr_protocol = IPXPROTO_RAW,
+	.pr_flags = PR_ATOMIC|PR_ADDR,
+
+	.pr_input = NULL,
+	.pr_output = NULL,
+	.pr_ctlinput = NULL,
+	.pr_ctloutput = ipx_ctloutput,
+
+	.pr_usrreqs = &ripx_usrreqs
+    },
 #ifdef IPTUNNEL
 #if 0
-{ SOCK_RAW,	&ipxdomain,	IPPROTO_IPX,	PR_ATOMIC|PR_ADDR,
-  iptun_input,	rip_output,	iptun_ctlinput,	0,
-  cpu0_soport,	cpu0_ctlport,
-  0,		0,		0,		0,
-  &rip_usrreqs
-},
+    {
+	.pr_type = SOCK_RAW,
+	.pr_domain = &ipxdomain,
+	.pr_protocol = IPPROTO_IPX,
+	.pr_flags = PR_ATOMIC|PR_ADDR,
+
+	.pr_input = iptun_input,
+	.pr_output = rip_output,
+	.pr_ctlinput = iptun_ctlinput,
+	.pr_ctloutput = 0,
+
+	.pr_ctlport = cpu0_ctlport,
+	.pr_usrreqs = &rip_usrreqs
+    },
 #endif
 #endif
 };

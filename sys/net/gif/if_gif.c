@@ -329,7 +329,7 @@ gif_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		 */
 		uint32_t af = dst->sa_family;
 
-		bpf_ptap(ifp->if_bpf, m, &af, sizeof(4));
+		bpf_ptap(ifp->if_bpf, m, &af, sizeof(af));
 	}
 	ifp->if_opackets++;	
 	ifp->if_obytes += m->m_pkthdr.len;

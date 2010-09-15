@@ -58,6 +58,8 @@
 #include <sys/socketvar.h>
 #include <sys/sockio.h>
 
+#include <sys/msgport2.h>
+
 #include <net/if.h>
 #include <net/netisr.h>
 #include <net/route.h>
@@ -387,14 +389,14 @@ ipxip_route(struct socket *so, struct sockopt *sopt)
 	 */
 	ifr_ipxip.ifr_name[4] = '0' + ipxipif_units - 1;
 	ifr_ipxip.ifr_dstaddr = *(struct sockaddr *)ipx_dst;
-	ipx_control(so, (int)SIOCSIFDSTADDR, (caddr_t)&ifr_ipxip,
+	ipx_control_oncpu(so, (int)SIOCSIFDSTADDR, (caddr_t)&ifr_ipxip,
 			(struct ifnet *)ifn, sopt->sopt_td);
 
 	/* use any of our addresses */
 	satoipx_addr(ifr_ipxip.ifr_addr).x_host = 
 			ipx_ifaddr->ia_addr.sipx_addr.x_host;
 
-	return (ipx_control(so, (int)SIOCSIFADDR, (caddr_t)&ifr_ipxip,
+	return (ipx_control_oncpu(so, (int)SIOCSIFADDR, (caddr_t)&ifr_ipxip,
 			(struct ifnet *)ifn, sopt->sopt_td));
 }
 
@@ -416,7 +418,7 @@ void
 ipxip_ctlinput(netmsg_t msg)
 {
 	int cmd = msg->ctlinput.nm_cmd;
-	struct sockaddr *sa = msg->ctlinput.nm_data;
+	struct sockaddr *sa = msg->ctlinput.nm_arg;
 	struct sockaddr_in *sin;
 
 	if ((unsigned)cmd >= PRC_NCMDS)

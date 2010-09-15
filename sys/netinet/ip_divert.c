@@ -163,76 +163,6 @@ div_input(struct mbuf **mp, int *offp, int proto)
 	return(IPPROTO_DONE);
 }
 
-struct lwkt_port *
-div_soport(struct socket *so, struct sockaddr *nam, struct mbuf **mptr)
-{
-	struct sockaddr_in *sin;
-	struct mbuf *m;
-	int dir;
-
-	sin = (struct sockaddr_in *)nam;
-	m = *mptr;
-	M_ASSERTPKTHDR(m);
-
-	m->m_pkthdr.rcvif = NULL;
-	dir = DIV_IS_OUTPUT(sin) ? IP_MPORT_OUT : IP_MPORT_IN;
-
-	if (sin != NULL) {
-		int i;
-
-		/*
-		 * Try locating the interface, if we originally had one.
-		 * This is done even for outgoing packets, since for a
-		 * forwarded packet, there must be an interface attached.
-		 *
-		 * Find receive interface with the given name, stuffed
-		 * (if it exists) in the sin_zero[] field.
-		 * The name is user supplied data so don't trust its size
-		 * or that it is zero terminated.
-		 */
-		for (i = 0; sin->sin_zero[i] && i < sizeof(sin->sin_zero); i++)
-			;
-		if (i > 0 && i < sizeof(sin->sin_zero))
-			m->m_pkthdr.rcvif = ifunit(sin->sin_zero);
-	}
-
-	if (dir == IP_MPORT_IN && m->m_pkthdr.rcvif == NULL) {
-		/*
-		 * No luck with the name, check by IP address.
-		 * Clear the port and the ifname to make sure
-		 * there are no distractions for ifa_ifwithaddr.
-		 *
-		 * Be careful not to trash sin->sin_port; it will
-		 * be used later in div_output().
-		 */
-		struct ifaddr *ifa;
-		u_short sin_port;
-
-		bzero(sin->sin_zero, sizeof(sin->sin_zero));
-		sin_port = sin->sin_port; /* save */
-		sin->sin_port = 0;
-		ifa = ifa_ifwithaddr((struct sockaddr *)sin);
-		if (ifa == NULL) {
-			m_freem(m);
-			*mptr = NULL;
-			return NULL;
-		}
-		sin->sin_port = sin_port; /* restore */
-		m->m_pkthdr.rcvif = ifa->ifa_ifp;
-	}
-
-	/*
-	 * Recalculate the protocol thread.
-	 */
-	ip_cpufn(mptr, 0, dir);
-	m = *mptr;
-	if (m) {
-		KKASSERT(m->m_flags & M_HASH);
-		return(cpu_portfn(m->m_pkthdr.hash));
-	}
-	return(NULL);
-}
-
 /*
  * Divert a packet by passing it up to the divert socket at port 'port'.
  *
@@ -391,9 +321,12 @@ divert_packet(struct mbuf *m, int incoming)
 			nmp->base.lmsg.u.ms_result32 |= DIV_OUTPUT;
 
 		lwkt_sendmsg(cpu_portfn(0), &nmp->base.lmsg);
-	} else
-#endif
+	} else {
+		div_packet(m, incoming, port);
+	}
+#else
 	div_packet(m, incoming, port);
+#endif
 }
 
 /*
@@ -483,7 +416,7 @@ div_attach(netmsg_t msg)
 	if (error)
 		goto out;
 	lwkt_gettoken(&div_token);
-	so->so_port = cpu0_soport(so, NULL, NULL);
+	sosetport(so, cpu_portfn(0));
 	error = in_pcballoc(so, &divcbinfo);
 	if (error) {
 		lwkt_reltoken(&div_token);

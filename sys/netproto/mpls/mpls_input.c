@@ -57,7 +57,7 @@ SYSCTL_INT(_net_mpls, OID_AUTO, forwarding, CTLFLAG_RW,
     &mplsforwarding, 0, "Enable MPLS forwarding between interfaces");
 */
 
-static void	mpls_input_handler(struct netmsg *);
+static void	mpls_input_handler(netmsg_t);
 static void	mpls_forward(struct mbuf *);
 
 void
@@ -83,13 +83,14 @@ mpls_init(void)
 }
 
 static void
-mpls_input_handler(struct netmsg *msg0)
+mpls_input_handler(netmsg_t msg)
 {
-        struct mbuf *m = ((struct netmsg_packet *)msg0)->nm_packet;
+        struct mbuf *m = msg->packet.nm_packet;
 
 	get_mplock();
         mpls_input(m);
 	rel_mplock();
+	/* do not reply, msg embedded in mbuf */
 }
 
 void
