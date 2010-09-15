@@ -84,6 +84,18 @@ tunable to
 This
 .Tn MIB
 prevents the driver from attaching.
+.Pp
+If you see occasional iobuf errors on the console after
+.Xr sync 2
+or
+.Xr fsync 2
+are issued, you can try setting
+.Dl debug.ips.ignore_flush_cmd
+tunable to
+.Dq 1
+and see if that stops it.  You can also use
+.Xr sysctl 1
+command to change this setting after boot.
 .Sh DIAGNOSTICS
 Several error codes may be shown when the card initializes the
 .Tn IBM

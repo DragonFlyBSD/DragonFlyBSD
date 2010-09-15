@@ -29,8 +29,16 @@
  */
 
 #include <sys/devicestat.h>
+#include <sys/sysctl.h>
 #include <dev/raid/ips/ips.h>
 #include <dev/raid/ips/ips_disk.h>
+
+static int ips_debug_ignore_flush_cmd;
+TUNABLE_INT("debug.ips.ignore_flush_cmd", &ips_debug_ignore_flush_cmd);
+SYSCTL_NODE(_debug, OID_AUTO, ips, CTLFLAG_RD, 0, "");
+SYSCTL_INT(_debug_ips, OID_AUTO, ignore_flush_cmd, CTLFLAG_RW,
+	   &ips_debug_ignore_flush_cmd, 0,
+	   "Do not issue IPS_CACHE_FLUSH_CMD on BUF_CMD_FLUSH");
 
 int
 ips_timed_wait(ips_command_t *command, const char *id, int timo)
@@ -165,6 +173,56 @@ ips_io_request_callback(void *cmdptr, bus_dma_segment_t *segments, int segnum,
 	return;
 }
 
+static void
+ips_flush_request_finish(ips_command_t *command)
+{
+	ips_generic_cmd *gencmd = command->command_buffer;
+	struct bio *bio = command->arg;
+
+	if (COMMAND_ERROR(&command->status)) {
+		device_printf(command->sc->dev,
+			      "cmd=0x%x,st=0x%x,est=0x%x\n",
+			      gencmd->command,
+			      command->status.fields.basic_status,
+			      command->status.fields.extended_status);
+
+		bio->bio_buf->b_flags |= B_ERROR;
+		bio->bio_buf->b_error = EIO;
+	}
+	ips_insert_free_cmd(command->sc, command);
+	ipsd_finish(bio);
+}
+
+static int
+ips_send_flush_request(ips_command_t *command, struct bio *bio)
+{
+	command->arg = bio;
+	ips_generic_cmd *flush_cmd;
+	ipsdisk_softc_t *dsc;
+	ips_softc_t *sc = command->sc;
+
+	if (!ips_debug_ignore_flush_cmd) {
+		ips_insert_free_cmd(sc, command);
+		ipsd_finish(bio);
+		return 0;
+	}
+
+	command->callback = ips_flush_request_finish;
+	dsc = bio->bio_driver_info;
+	flush_cmd = command->command_buffer;
+	flush_cmd->command	= IPS_CACHE_FLUSH_CMD;
+	flush_cmd->id		= command->id;
+	flush_cmd->drivenum	= 0;
+	flush_cmd->buffaddr	= 0;
+	flush_cmd->lba		= 0;
+	bus_dmamap_sync(sc->command_dmatag, command->command_dmamap,
+			BUS_DMASYNC_PREWRITE);
+
+	sc->ips_issue_cmd(command);
+	return 0;
+}
+
+
 static int
 ips_send_io_request(ips_command_t *command, struct bio *bio)
 {
@@ -191,7 +249,10 @@ ips_start_io_request(ips_softc_t *sc)
 	if (ips_get_free_cmd(sc, &command, 0) != 0)
 		return;
 	bioq_remove(&sc->bio_queue, bio);
-	ips_send_io_request(command, bio);
+	if (bio->bio_buf->b_cmd == BUF_CMD_FLUSH)
+		ips_send_flush_request(command, bio);
+	else
+		ips_send_io_request(command, bio);
 }
 
 /*
