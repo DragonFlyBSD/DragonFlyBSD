@@ -58,6 +58,10 @@ ServeRAID 6i/6M
 ServeRAID 7t/7k/7M
 .El
 .Pp
+Newer ServeRAID controllers are supported by the
+.Xr aac 4
+driver.
+.Pp
 These cards come with a built in configuration utility stored in
 the firmware known as the
 .Tn ISPR .
@@ -168,6 +172,7 @@ driver does not use the
 .Tn SCSI
 subsystem.
 .Sh SEE ALSO
+.Xr aac 4 ,
 .Xr ch 4 ,
 .Xr da 4 ,
 .Xr sysctl 8
