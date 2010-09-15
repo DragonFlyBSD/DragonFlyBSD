@@ -194,7 +194,10 @@ static int
 command_loadall(int ac, char **av)
 {
 	char *argv[4];
-	dvar_t dvar;
+	char *mod_name;
+	char *mod_type;
+	char *tmp_str;
+	dvar_t dvar, dvar2;
 	int len;
 	int argc;
 	int res;
@@ -229,20 +232,46 @@ command_loadall(int ac, char **av)
 		    strcmp(dvar->data[0], "YES") != 0) {
 			continue;
 		}
+
+		mod_name = strdup(dvar->name);
+		mod_name[len - 5] = 0;
+		mod_type = NULL;
+
+		/* Check if there's a matching foo_type */
+		for (dvar2 = dvar_first();
+		     dvar2 && (mod_type == NULL);
+		     dvar2 = dvar_next(dvar2)) {
+			len = strlen(dvar2->name);
+			if (len <= 5 || strcmp(dvar2->name + len - 5, "_type"))
+				continue;
+			tmp_str = strdup(dvar2->name);
+			tmp_str[len - 5] = 0;
+			if (strcmp(tmp_str, mod_name) == 0)
+				mod_type = dvar2->data[0];
+
+			free(tmp_str);
+		}
+
 		argv[0] = "load";
-		argv[1] = strdup(dvar->name);
-		argv[1][len - 5] = 0;
-		tmp = perform(2, argv);
-		free(argv[1]);
+		if (mod_type) {
+			argc = 4;
+			argv[1] = "-t";
+			argv[2] = mod_type;
+			argv[3] = mod_name;
+		} else {
+			argc = 2;
+			argv[1] = mod_name;
+		}
+		tmp = perform(argc, argv);
 		if (tmp != CMD_OK) {
 			time_t t = time(NULL);
-			printf("Unable to load %s%s\n", DirBase, argv[1]);
+			printf("Unable to load %s%s\n", DirBase, mod_name);
 			while (time(NULL) == t)
 				;
 			/* don't kill the boot sequence */
 			/* res = tmp; */
 		}
-
+		free(mod_name);
 	}
 	return(res);
 }
