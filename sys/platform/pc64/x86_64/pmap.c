@@ -429,11 +429,22 @@ create_pagetables(vm_paddr_t *firstaddr)
 {
 	int i;
 
-	/* we are running (mostly) V=P at this point */
+	/*
+	 * We are running (mostly) V=P at this point
+	 *
+	 * Calculate NKPT - number of kernel page tables.  We have to
+	 * accomodoate prealloction of the vm_page_array, dump bitmap,
+	 * MSGBUF_SIZE, and other stuff.  Be generous.
+	 *
+	 * Maxmem is in pages.
+	 */
+	nkpt = (Maxmem * (sizeof(struct vm_page) * 2) + MSGBUF_SIZE) / NBPDR;
 
-	/* Allocate pages */
-	KPTbase = allocpages(firstaddr, NKPT);
-	KPTphys = allocpages(firstaddr, NKPT);
+	/*
+	 * Allocate pages
+	 */
+	KPTbase = allocpages(firstaddr, nkpt);
+	KPTphys = allocpages(firstaddr, nkpt);
 	KPML4phys = allocpages(firstaddr, 1);
 	KPDPphys = allocpages(firstaddr, NKPML4E);
 
@@ -471,11 +482,11 @@ create_pagetables(vm_paddr_t *firstaddr)
 	 * and another block is placed at KERNBASE to map the kernel binary,
 	 * data, bss, and initial pre-allocations.
 	 */
-	for (i = 0; i < NKPT; i++) {
+	for (i = 0; i < nkpt; i++) {
 		((pd_entry_t *)KPDbase)[i] = KPTbase + (i << PAGE_SHIFT);
 		((pd_entry_t *)KPDbase)[i] |= PG_RW | PG_V;
 	}
-	for (i = 0; i < NKPT; i++) {
+	for (i = 0; i < nkpt; i++) {
 		((pd_entry_t *)KPDphys)[i] = KPTphys + (i << PAGE_SHIFT);
 		((pd_entry_t *)KPDphys)[i] |= PG_RW | PG_V;
 	}
@@ -537,12 +548,6 @@ create_pagetables(vm_paddr_t *firstaddr)
 	((pdp_entry_t *)KPML4phys)[KPML4I] |= PG_RW | PG_V | PG_U;
 }
 
-void
-init_paging(vm_paddr_t *firstaddr)
-{
-	create_pagetables(firstaddr);
-}
-
 /*
  *	Bootstrap the system enough to run with virtual memory.
  *
@@ -598,7 +603,6 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	kernel_pmap.pm_count = 1;
 	kernel_pmap.pm_active = (cpumask_t)-1 & ~CPUMASK_LOCK;
 	TAILQ_INIT(&kernel_pmap.pm_pvlist);
-	nkpt = NKPT;
 
 	/*
 	 * Reserve some special page table entries/VA space for temporary
@@ -608,11 +612,7 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	v = (c)va; va += ((n)*PAGE_SIZE); p = pte; pte += (n);
 
 	va = virtual_start;
-#ifdef JG
-	pte = (pt_entry_t *) pmap_pte(&kernel_pmap, va);
-#else
 	pte = vtopte(va);
-#endif
 
 	/*
 	 * CMAP1/CMAP2 are used for zeroing and copying pages.
@@ -1011,16 +1011,35 @@ pmap_kmodify_nc(vm_offset_t va)
 }
 
 /*
- *	Used to map a range of physical addresses into kernel
- *	virtual address space.
+ * Used to map a range of physical addresses into kernel virtual
+ * address space during the low level boot, typically to map the
+ * dump bitmap, message buffer, and vm_page_array.
  *
- *	For now, VM is already on, we only need to map the
- *	specified memory.
+ * These mappings are typically made at some pointer after the end of the
+ * kernel text+data.
+ *
+ * We could return PHYS_TO_DMAP(start) here and not allocate any
+ * via (*virtp), but then kmem from userland and kernel dumps won't
+ * have access to the related pointers.
  */
 vm_offset_t
 pmap_map(vm_offset_t *virtp, vm_paddr_t start, vm_paddr_t end, int prot)
 {
-	return PHYS_TO_DMAP(start);
+	vm_offset_t va;
+	vm_offset_t va_start;
+
+	/*return PHYS_TO_DMAP(start);*/
+
+	va_start = *virtp;
+	va = va_start;
+
+	while (start < end) {
+		pmap_kenter_quick(va, start);
+		va += PAGE_SIZE;
+		start += PAGE_SIZE;
+	}
+	*virtp = va;
+	return va_start;
 }
 
 

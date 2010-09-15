@@ -67,13 +67,14 @@
 	((unsigned long)(l2) << PDRSHIFT) | \
 	((unsigned long)(l1) << PAGE_SHIFT))
 
-/* Initial number of kernel page tables. */
-#ifndef NKPT
-#define	NKPT		32
-#endif
-
+/*
+ * Initial number of kernel page tables.  NKPT is now calculated in the
+ * pmap code.
+ *
+ * Give NKPDPE a generous value, allowing the kernel to map up to 128G.
+ */
 #define NKPML4E		1		/* number of kernel PML4 slots */
-#define NKPDPE		howmany(NKPT, NPDEPG)/* number of kernel PDP slots */
+#define NKPDPE		128		/* number of kernel PDP slots */
 
 #define	NUPML4E		(NPML4EPG/2)	/* number of userland PML4 pages */
 #define	NUPDPE		(NUPML4E*NPDPEPG)/* number of userland PDP pages */

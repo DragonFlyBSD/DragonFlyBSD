@@ -1640,14 +1640,6 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	struct mdglobaldata *gd;
 	u_int64_t msr;
 
-#if JG
-	/*
-	 * This must be done before the first references
-	 * to CPU_prvspace[0] are made.
-	 */
-	init_paging(&physfree);
-#endif
-
 	/*
 	 * Prevent lowering of the ipl if we call tsleep() early.
 	 */

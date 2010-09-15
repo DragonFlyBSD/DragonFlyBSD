@@ -2232,10 +2232,6 @@ start_all_aps(u_int boot_addr)
 	 * NOTE!  The idlestack for the BSP was setup by locore.  Finish
 	 * up, clean out the P==V mapping we did earlier.
 	 */
-#if JGXXX
-	for (x = 0; x < NKPT; x++)
-		PTD[x] = 0;
-#endif
 	pmap_set_opt();
 
 	/* number of APs actually started */

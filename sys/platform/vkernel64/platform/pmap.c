@@ -392,12 +392,22 @@ create_pagetables(vm_paddr_t *firstaddr, int64_t ptov_offset)
 	int kpml4i = pmap_pml4e_index(ptov_offset);
 	int kpdpi = pmap_pdpe_index(ptov_offset);
 
+	/*
+         * Calculate NKPT - number of kernel page tables.  We have to
+         * accomodoate prealloction of the vm_page_array, dump bitmap,
+         * MSGBUF_SIZE, and other stuff.  Be generous.
+         *
+         * Maxmem is in pages.
+         */
+        nkpt = (Maxmem * (sizeof(struct vm_page) * 2) + MSGBUF_SIZE) / NBPDR;
 
-	/* Allocate pages */
+	/*
+	 * Allocate pages
+	 */
 	KPML4phys = allocpages(firstaddr, 1);
 	KPDPphys = allocpages(firstaddr, NKPML4E);
 	KPDphys = allocpages(firstaddr, NKPDPE);
-	KPTphys = allocpages(firstaddr, NKPT);
+	KPTphys = allocpages(firstaddr, nkpt);
 
 	KPML4virt = (pml4_entry_t *)PHYS_TO_DMAP(KPML4phys);
 	KPDPvirt = (pdp_entry_t *)PHYS_TO_DMAP(KPDPphys);
@@ -407,10 +417,10 @@ create_pagetables(vm_paddr_t *firstaddr, int64_t ptov_offset)
 	bzero(KPML4virt, 1 * PAGE_SIZE);
 	bzero(KPDPvirt, NKPML4E * PAGE_SIZE);
 	bzero(KPDvirt, NKPDPE * PAGE_SIZE);
-	bzero(KPTvirt, NKPT * PAGE_SIZE);
+	bzero(KPTvirt, nkpt * PAGE_SIZE);
 
 	/* Now map the page tables at their location within PTmap */
-	for (i = 0; i < NKPT; i++) {
+	for (i = 0; i < nkpt; i++) {
 		KPDvirt[i] = KPTphys + (i << PAGE_SHIFT);
 		KPDvirt[i] |= VPTE_R | VPTE_W | VPTE_V;
 	}
@@ -468,7 +478,6 @@ pmap_bootstrap(vm_paddr_t *firstaddr, int64_t ptov_offset)
 	kernel_pmap.pm_count = 1;
 	kernel_pmap.pm_active = (cpumask_t)-1;	/* don't allow deactivation */
 	TAILQ_INIT(&kernel_pmap.pm_pvlist);
-	nkpt = NKPT;
 
 	/*
 	 * Reserve some special page table entries/VA space for temporary

@@ -80,12 +80,8 @@
 	((unsigned long)(l1) << PAGE_SHIFT))
 
 /*
- * Initial number of kernel page tables x 2
+ * NOTE: We no longer hardwire NKPT, it is calculated in create_pagetables()
  */
-#ifndef NKPT
-#define	NKPT		64
-#endif
-
 #define NKPML4E		1		/* number of kernel PML4 slots */
 /* NKPDPE defined in vmparam.h */
 
@@ -255,7 +251,6 @@ extern vm_offset_t clean_eva;
 extern vm_offset_t clean_sva;
 extern char *ptvmmap;		/* poor name! */
 
-void	init_paging(vm_paddr_t *);
 void	pmap_interlock_wait (struct vmspace *);
 void	pmap_bootstrap (vm_paddr_t *);
 void	*pmap_mapdev (vm_paddr_t, vm_size_t);

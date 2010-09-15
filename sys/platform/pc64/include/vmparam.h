@@ -103,9 +103,9 @@
  *
  * The kernel address space can be up to (I think) 511 page directory
  * pages.  Each one represents 1G.  NKPDPE defines the size of the kernel
- * address space, curently set to 8G.
+ * address space, curently set to 128G.
  */
-#define NKPDPE			8
+#define NKPDPE			128
 #define	VM_MAX_KERNEL_ADDRESS	KVADDR(KPML4I, NPDPEPG-1, NPDEPG-1, NPTEPG-1)
 #define	VM_MIN_KERNEL_ADDRESS	KVADDR(KPML4I, NPDPEPG-NKPDPE, 0, 0)
 
