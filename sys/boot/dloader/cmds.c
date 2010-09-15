@@ -195,6 +195,7 @@ command_loadall(int ac, char **av)
 {
 	char *argv[4];
 	char *mod_name;
+	char *mod_fname;
 	char *mod_type;
 	char *tmp_str;
 	dvar_t dvar, dvar2;
@@ -236,6 +237,7 @@ command_loadall(int ac, char **av)
 		mod_name = strdup(dvar->name);
 		mod_name[len - 5] = 0;
 		mod_type = NULL;
+		mod_fname = NULL;
 
 		/* Check if there's a matching foo_type */
 		for (dvar2 = dvar_first();
@@ -248,6 +250,24 @@ command_loadall(int ac, char **av)
 			tmp_str[len - 5] = 0;
 			if (strcmp(tmp_str, mod_name) == 0)
 				mod_type = dvar2->data[0];
+
+			free(tmp_str);
+		}
+
+		/* Check if there's a matching foo_name */
+		for (dvar2 = dvar_first();
+		     dvar2 && (mod_fname == NULL);
+		     dvar2 = dvar_next(dvar2)) {
+			len = strlen(dvar2->name);
+			if (len <= 5 || strcmp(dvar2->name + len - 5, "_name"))
+				continue;
+			tmp_str = strdup(dvar2->name);
+			tmp_str[len - 5] = 0;
+			if (strcmp(tmp_str, mod_name) == 0) {
+				mod_fname = dvar2->data[0];
+				free(mod_name);
+				mod_name = strdup(mod_fname);
+			}
 
 			free(tmp_str);
 		}
