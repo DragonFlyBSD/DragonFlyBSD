@@ -78,4 +78,4 @@ copy_tools
 copy_content
 print_info
 destroy_vn
-mv initrd.img /boot/initrd.img
+mv initrd.img /boot/kernel/initrd.img
