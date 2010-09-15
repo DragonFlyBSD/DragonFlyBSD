@@ -79,6 +79,7 @@ static char *kenv_vars[] = {
 	"currdev",
 	"init_path",
 	"kernelname",
+	"kernel_options",
 	"loaddev",
 	"module_path",
 	NULL
@@ -212,10 +213,13 @@ command_loadall(int ac, char **av)
 	 */
 	argv[0] = "load";
 	argv[1] = getenv("kernelname");
+	argv[2] = getenv("kernel_options");
 	if (argv[1] == NULL)
 		argv[1] = strdup("kernel");
-	res = perform(2, argv);
+	res = perform((argv[2] == NULL)?2:3, argv);
 	free(argv[1]);
+	if (argv[2])
+		free(argv[2]);
 
 	if (res != CMD_OK) {
 		printf("Unable to load %s%s\n", DirBase, argv[1]);
