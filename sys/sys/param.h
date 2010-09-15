@@ -256,6 +256,28 @@
 #define MJUMPAGESIZE	PAGE_SIZE	/* jumbo cluster 4k */
 #define MJUM9BYTES	(9 * 1024)	/* jumbo cluster 9k */
 #define MJUM16BYTES	(16 * 1024)	/* jumbo cluster 16k */
+
+/*
+ * MBUF Management.
+ *
+ * MSIZE does not need to be a power of two but must be large enough
+ * to accomodate a reasonable small packet.  Due to m_hdr and m_pkthdr
+ * bloat 256 is not big enough any more.
+ *
+ * MCLBYTES must be a power of 2 and is typically significantly larger
+ * than MSIZE, sufficient to hold a standard-mtu packet.  2K is considered
+ * reasonable.
+ */
+#ifndef MSIZE
+#define MSIZE		384		/* size of an mbuf */
+#endif
+
+#ifndef MCLSHIFT
+#define MCLSHIFT        11              /* convert bytes to m_buf clusters */
+#endif
+#define MCLBYTES        (1 << MCLSHIFT) /* size of an m_buf cluster */
+#define MCLOFSET        (MCLBYTES - 1)  /* offset within an m_buf cluster */
+
 /*
  * Make this available for most of the kernel.  There were too many
  * things that included sys/systm.h just for panic().
