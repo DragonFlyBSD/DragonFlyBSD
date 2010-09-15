@@ -3457,13 +3457,13 @@ next_code:
 
 	    case DBG:
 #ifndef SC_DISABLE_DDBKEY
-		lwkt_reltoken(&tty_token);
 #ifdef DDB
+		lwkt_reltoken(&tty_token);
 		Debugger("manual escape to debugger");
+		lwkt_gettoken(&tty_token);
 #else
 		kprintf("No debugger in kernel\n");
 #endif
-		lwkt_gettoken(&tty_token);
 #else /* SC_DISABLE_DDBKEY */
 		/* do nothing */
 #endif /* SC_DISABLE_DDBKEY */
