@@ -819,6 +819,8 @@ udp6_send(netmsg_t msg)
 	}
 
 	error = udp6_output(inp, m, addr, control, td);
+	lwkt_replymsg(&msg->send.base.lmsg, error);
+	return;
 bad:
 	m_freem(m);
 	lwkt_replymsg(&msg->send.base.lmsg, error);
