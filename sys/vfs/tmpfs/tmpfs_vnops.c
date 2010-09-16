@@ -937,7 +937,7 @@ tmpfs_nrename(struct vop_nrename_args *v)
 	 */
 	if (fncp->nc_nlen != tncp->nc_nlen ||
 	    bcmp(fncp->nc_name, tncp->nc_name, fncp->nc_nlen) != 0) {
-		newname = kmalloc(tncp->nc_nlen + 1, M_TMPFSNAME, 
+		newname = kmalloc(tncp->nc_nlen + 1, tmp->tm_name_zone, 
 				  M_WAITOK | M_NULLOK);
 		if (newname == NULL) {
 			error = ENOSPC;
@@ -1026,7 +1026,7 @@ tmpfs_nrename(struct vop_nrename_args *v)
 	 * Finish up
 	 */
 	if (newname) {
-		kfree(newname, M_TMPFSNAME);
+		kfree(newname, tmp->tm_name_zone);
 		newname = NULL;
 	}
 	cache_rename(v->a_fnch, v->a_tnch);

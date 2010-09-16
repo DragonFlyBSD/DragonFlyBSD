@@ -157,7 +157,7 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 
 	case VLNK:
 		nnode->tn_size = strlen(target);
-		nnode->tn_link = kmalloc(nnode->tn_size + 1, M_TMPFSNAME,
+		nnode->tn_link = kmalloc(nnode->tn_size + 1, tmp->tm_name_zone,
 					 M_WAITOK | M_NULLOK);
 		if (nnode->tn_link == NULL) {
 			objcache_put(tmp->tm_node_pool, nnode);
@@ -276,7 +276,7 @@ tmpfs_free_node(struct tmpfs_mount *tmp, struct tmpfs_node *node)
 		break;
 
 	case VLNK:
-		kfree(node->tn_link, M_TMPFSNAME);
+		kfree(node->tn_link, tmp->tm_name_zone);
 		node->tn_link = NULL;
 		node->tn_size = 0;
 		break;
@@ -323,7 +323,7 @@ tmpfs_alloc_dirent(struct tmpfs_mount *tmp, struct tmpfs_node *node,
 	struct tmpfs_dirent *nde;
 
 	nde = objcache_get(tmp->tm_dirent_pool, M_WAITOK);
-	nde->td_name = kmalloc(len + 1, M_TMPFSNAME, M_WAITOK | M_NULLOK);
+	nde->td_name = kmalloc(len + 1, tmp->tm_name_zone, M_WAITOK | M_NULLOK);
 	if (nde->td_name == NULL) {
 		objcache_put(tmp->tm_dirent_pool, nde);
 		*de = NULL;
@@ -368,7 +368,7 @@ tmpfs_free_dirent(struct tmpfs_mount *tmp, struct tmpfs_dirent *de)
 	node->tn_links--;
 	TMPFS_NODE_UNLOCK(node);
 
-	kfree(de->td_name, M_TMPFSNAME);
+	kfree(de->td_name, tmp->tm_name_zone);
 	de->td_namelen = 0;
 	de->td_name = NULL;
 	de->td_node = NULL;

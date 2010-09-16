@@ -66,7 +66,6 @@
 #define TMPFS_DEFAULT_ROOT_MODE	(S_IRWXU|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH)
 
 MALLOC_DEFINE(M_TMPFSMNT, "tmpfs mount", "tmpfs mount structures");
-MALLOC_DEFINE(M_TMPFSNAME, "tmpfs name", "tmpfs file names");
 
 /* --------------------------------------------------------------------- */
 
@@ -223,6 +222,7 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 
 	kmalloc_create(&tmp->tm_node_zone, "tmpfs node");
 	kmalloc_create(&tmp->tm_dirent_zone, "tmpfs dirent");
+	kmalloc_create(&tmp->tm_name_zone, "tmpfs name zone");
 
 	kmalloc_raise_limit(tmp->tm_node_zone, sizeof(struct tmpfs_node) *
 			    tmp->tm_nodes_max);
@@ -394,6 +394,7 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 	objcache_destroy(tmp->tm_dirent_pool);
 	objcache_destroy(tmp->tm_node_pool);
 
+	kmalloc_destroy(&tmp->tm_name_zone);
 	kmalloc_destroy(&tmp->tm_dirent_zone);
 	kmalloc_destroy(&tmp->tm_node_zone);
 
