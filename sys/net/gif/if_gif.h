@@ -52,23 +52,16 @@ struct gif_softc {
 	struct ifnet	gif_if;	   /* common area - must be at the top */
 	struct sockaddr	*gif_psrc; /* Physical src addr */
 	struct sockaddr	*gif_pdst; /* Physical dst addr */
-	union {
-		struct route  gifscr_ro;    /* xxx */
+	struct route	gif_ro[SMP_MAXCPU];
 #ifdef INET6
-		struct route_in6 gifscr_ro6; /* xxx */
+	struct route_in6 gif_ro6[SMP_MAXCPU];
 #endif
-	} gifsc_gifscr;
 	int		gif_flags;
 	const struct encaptab *encap_cookie4;
 	const struct encaptab *encap_cookie6;
 	struct resource *r_unit;	/* resource allocated for this unit */
 	LIST_ENTRY(gif_softc) gif_list; /* all gif's are linked */
 };
-
-#define gif_ro gifsc_gifscr.gifscr_ro
-#ifdef INET6
-#define gif_ro6 gifsc_gifscr.gifscr_ro6
-#endif
 
 #define GIF_MTU		(1280)	/* Default MTU */
 #define	GIF_MTU_MIN	(1280)	/* Minimum MTU */

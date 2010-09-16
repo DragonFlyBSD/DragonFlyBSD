@@ -99,7 +99,8 @@ int
 in_gif_output(struct ifnet *ifp, int family, struct mbuf *m)
 {
 	struct gif_softc *sc = (struct gif_softc*)ifp;
-	struct sockaddr_in *dst = (struct sockaddr_in *)&sc->gif_ro.ro_dst;
+	struct route *ro = &sc->gif_ro[mycpu->gd_cpuid];
+	struct sockaddr_in *dst = (struct sockaddr_in *)&ro->ro_dst;
 	struct sockaddr_in *sin_src = (struct sockaddr_in *)sc->gif_psrc;
 	struct sockaddr_in *sin_dst = (struct sockaddr_in *)sc->gif_pdst;
 	struct ip iphdr;	/* capsule IP header, host byte ordered */
@@ -188,34 +189,33 @@ in_gif_output(struct ifnet *ifp, int family, struct mbuf *m)
 		dst->sin_family = sin_dst->sin_family;
 		dst->sin_len = sizeof(struct sockaddr_in);
 		dst->sin_addr = sin_dst->sin_addr;
-		if (sc->gif_ro.ro_rt != NULL) {
-			RTFREE(sc->gif_ro.ro_rt);
-			sc->gif_ro.ro_rt = NULL;
+		if (ro->ro_rt != NULL) {
+			RTFREE(ro->ro_rt);
+			ro->ro_rt = NULL;
 		}
 #if 0
 		sc->gif_if.if_mtu = GIF_MTU;
 #endif
 	}
 
-	if (sc->gif_ro.ro_rt == NULL) {
-		rtalloc(&sc->gif_ro);
-		if (sc->gif_ro.ro_rt == NULL) {
+	if (ro->ro_rt == NULL) {
+		rtalloc(ro);
+		if (ro->ro_rt == NULL) {
 			m_freem(m);
 			return ENETUNREACH;
 		}
 
 		/* if it constitutes infinite encapsulation, punt. */
-		if (sc->gif_ro.ro_rt->rt_ifp == ifp) {
+		if (ro->ro_rt->rt_ifp == ifp) {
 			m_freem(m);
 			return ENETUNREACH;	/* XXX */
 		}
 #if 0
-		ifp->if_mtu = sc->gif_ro.ro_rt->rt_ifp->if_mtu -
-		    sizeof(struct ip);
+		ifp->if_mtu = ro->ro_rt->rt_ifp->if_mtu - sizeof(struct ip);
 #endif
 	}
 
-	error = ip_output(m, NULL, &sc->gif_ro, 0, NULL, NULL);
+	error = ip_output(m, NULL, ro, 0, NULL, NULL);
 	return(error);
 }
 
