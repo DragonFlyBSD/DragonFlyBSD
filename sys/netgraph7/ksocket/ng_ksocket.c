@@ -56,6 +56,7 @@
 #include <sys/protosw.h>
 #include <sys/errno.h>
 #include <sys/socket.h>
+#include <sys/socketops.h>
 #include <sys/socketvar.h>
 #include <sys/socketvar2.h>
 #include <sys/thread2.h>
@@ -767,7 +768,6 @@ ng_ksocket_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		case NGM_KSOCKET_GETNAME:
 		case NGM_KSOCKET_GETPEERNAME:
 		    {
-			int (*func)(struct socket *so, struct sockaddr **nam);
 			struct sockaddr *sa = NULL;
 			int len;
 
@@ -782,12 +782,13 @@ ng_ksocket_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				if ((so->so_state
 				    & (SS_ISCONNECTED|SS_ISCONFIRMING)) == 0) 
 					ERROUT(ENOTCONN);
-				func = so->so_proto->pr_usrreqs->pru_peeraddr;
-			} else
-				func = so->so_proto->pr_usrreqs->pru_sockaddr;
+				error = so_pru_peeraddr(so, &sa);
+			} else {
+				error = so_pru_sockaddr(so, &sa);
+			}
 
 			/* Get local or peer address */
-			if ((error = (*func)(so, &sa)) != 0)
+			if (error != 0)
 				goto bail;
 			len = (sa == NULL) ? 0 : sa->sa_len;
 

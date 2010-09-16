@@ -49,16 +49,17 @@
  * parasitic on control sockets, and have no node of their own.
  */
 
-#include <sys/param.h>
 #include <sys/domain.h>
 #include <sys/kernel.h>
 #include <sys/linker.h>
 #include <sys/lock.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
+#include <sys/msgport2.h>
 /*
 #include <sys/mutex.h>
 */
+#include <sys/param.h>
 #include <sys/priv.h>
 #include <sys/proc.h>
 #include <sys/protosw.h>
@@ -70,6 +71,7 @@
 #include <sys/syscallsubr.h>
 */
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 #ifdef NOTYET
 #include <sys/vnode.h>
 #endif
@@ -170,32 +172,41 @@ SYSCTL_INT(_net_graph, OID_AUTO, recvspace, CTLFLAG_RW,
 	Control sockets
 ***************************************************************/
 
-static int
-ngc_attach(struct socket *so, int proto, struct pru_attach_info *ai)
+static void
+ngc_attach(netmsg_t msg)
 {
+	struct socket *so = msg->attach.base.nm_so;
+	struct pru_attach_info *ai = msg->attach.nm_ai;
 	struct ngpcb *const pcbp = sotongpcb(so);
+	int error;
 
 	if (priv_check_cred(ai->p_ucred, PRIV_ROOT, NULL_CRED_OKAY) != 0)
-		return (EPERM);
-	if (pcbp != NULL)
-		return (EISCONN);
-	return (ng_attach_cntl(so));
+		error = EPERM;
+	else if (pcbp != NULL)
+		error = EISCONN;
+	else
+		error = ng_attach_cntl(so);
+	lwkt_replymsg(&msg->attach.base.lmsg, error);
 }
 
-static int
-ngc_detach(struct socket *so)
+static void
+ngc_detach(netmsg_t msg)
 {
+	struct socket *so = msg->detach.base.nm_so;
 	struct ngpcb *const pcbp = sotongpcb(so);
 
 	KASSERT(pcbp != NULL, ("ngc_detach: pcbp == NULL"));
 	ng_detach_common(pcbp, NG_CONTROL);
-	return (0);
+	lwkt_replymsg(&msg->detach.base.lmsg, 0);
 }
 
-static int
-ngc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
-	 struct mbuf *control, struct thread *td)
+static void
+ngc_send(netmsg_t netmsg)
 {
+	struct socket *so = netmsg->send.base.nm_so;
+	struct mbuf *m = netmsg->send.nm_m;
+	struct sockaddr *addr = netmsg->send.nm_addr;
+	struct mbuf *control = netmsg->send.nm_control;
 	struct ngpcb *const pcbp = sotongpcb(so);
 	struct ngsock *const priv = NG_NODE_PRIVATE(pcbp->sockdata->node);
 	struct sockaddr_ng *const sap = (struct sockaddr_ng *) addr;
@@ -270,8 +281,10 @@ ngc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 			char filename[NG_TYPESIZ + 3];
 			linker_file_t fileid;
 
-			if (!linker_api_available())
-				return (ENXIO);
+			if (!linker_api_available()) {
+				error = ENXIO;
+				goto done;
+			}
 
 			/* Not found, try to load it as a loadable module. */
 			snprintf(filename, sizeof(filename), "ng_%s.ko",
@@ -344,58 +357,72 @@ release:
 		m_freem(control);
 	if (m != NULL)
 		m_freem(m);
-	return (error);
+done:
+	lwkt_replymsg(&netmsg->send.base.lmsg, error);
 }
 
-static int
-ngc_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
+static void
+ngc_bind(netmsg_t msg)
 {
+	struct socket *so = msg->connect.base.nm_so;
+	struct sockaddr *nam = msg->connect.nm_nam;
 	struct ngpcb *const pcbp = sotongpcb(so);
+	int error;
 
 	if (pcbp == NULL)
-		return (EINVAL);
-	return (ng_bind(nam, pcbp));
+		error = EINVAL;
+	else
+		error = ng_bind(nam, pcbp);
+	lwkt_replymsg(&msg->connect.base.lmsg, error);
 }
 
-static int
-ngc_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
+static void
+ngc_connect(netmsg_t msg)
 {
 	/*
 	 * At this time refuse to do this.. it used to
 	 * do something but it was undocumented and not used.
 	 */
 	printf("program tried to connect control socket to remote node\n");
-	return (EINVAL);
+	lwkt_replymsg(&msg->connect.base.lmsg, EINVAL);
 }
 
 /***************************************************************
 	Data sockets
 ***************************************************************/
 
-static int
-ngd_attach(struct socket *so, int proto, struct pru_attach_info *ai)
+static void
+ngd_attach(netmsg_t msg)
 {
+	struct socket *so = msg->attach.base.nm_so;
 	struct ngpcb *const pcbp = sotongpcb(so);
+	int error;
 
 	if (pcbp != NULL)
-		return (EISCONN);
-	return (ng_attach_data(so));
+		error =  EISCONN;
+	else
+		error = ng_attach_data(so);
+	lwkt_replymsg(&msg->connect.base.lmsg, error);
 }
 
-static int
-ngd_detach(struct socket *so)
+static void
+ngd_detach(netmsg_t msg)
 {
+	struct socket *so = msg->detach.base.nm_so;
 	struct ngpcb *const pcbp = sotongpcb(so);
 
 	KASSERT(pcbp != NULL, ("ngd_detach: pcbp == NULL"));
 	ng_detach_common(pcbp, NG_DATA);
-	return (0);
+	lwkt_replymsg(&msg->detach.base.lmsg, 0);
 }
 
-static int
-ngd_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
-	 struct mbuf *control, struct thread *td)
+static void
+ngd_send(netmsg_t msg)
 {
+	struct socket *so = msg->send.base.nm_so;
+	struct mbuf *m = msg->send.nm_m;
+	struct sockaddr *addr = msg->send.nm_addr;
+	struct mbuf *control = msg->send.nm_control;
 	struct ngpcb *const pcbp = sotongpcb(so);
 	struct sockaddr_ng *const sap = (struct sockaddr_ng *) addr;
 	int	len, error;
@@ -459,25 +486,32 @@ release:
 		m_freem(control);
 	if (m != NULL)
 		m_freem(m);
-	return (error);
+	lwkt_replymsg(&msg->send.base.lmsg, error);
 }
 
-static int
-ngd_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
+static void
+ngd_connect(netmsg_t msg)
 {
+	struct socket *so = msg->connect.base.nm_so;
+	struct sockaddr *nam = msg->connect.nm_nam;
 	struct ngpcb *const pcbp = sotongpcb(so);
+	int error;
 
 	if (pcbp == NULL)
-		return (EINVAL);
-	return (ng_connect_data(nam, pcbp));
+		error = EINVAL;
+	else
+		error = ng_connect_data(nam, pcbp);
+	lwkt_replymsg(&msg->connect.base.lmsg, error);
 }
 
 /*
  * Used for both data and control sockets
  */
-static int
-ng_getsockaddr(struct socket *so, struct sockaddr **addr)
+static void
+ng_getsockaddr(netmsg_t msg)
 {
+	struct socket *so = msg->sockaddr.base.nm_so;
+	struct sockaddr **addr = msg->sockaddr.nm_nam;
 	struct ngpcb *pcbp;
 	struct sockaddr_ng *sg;
 	int sg_len;
@@ -487,9 +521,11 @@ ng_getsockaddr(struct socket *so, struct sockaddr **addr)
 	sg_len = sizeof(struct sockaddr_ng) - sizeof(sg->sg_data) + 1;
 
 	pcbp = sotongpcb(so);
-	if ((pcbp == NULL) || (pcbp->sockdata == NULL))
+	if ((pcbp == NULL) || (pcbp->sockdata == NULL)) {
 		/* XXXGL: can this still happen? */
-		return (EINVAL);
+		error = EINVAL;
+		goto replymsg;
+	}
 
 	mtx_lock(&pcbp->sockdata->mtx);
 	if (pcbp->sockdata->node != NULL) {
@@ -513,7 +549,8 @@ ng_getsockaddr(struct socket *so, struct sockaddr **addr)
 		error = EINVAL;
 	}
 
-	return (error);
+replymsg:
+	lwkt_replymsg(&msg->sockaddr.base.lmsg, error);
 }
 
 /*
@@ -1042,11 +1079,6 @@ ng_socket_item_applied(void *context, int error)
 
 }
 
-static	int
-dummy_disconnect(struct socket *so)
-{
-	return (0);
-}
 /*
  * Control and data socket type descriptors
  *
@@ -1059,7 +1091,7 @@ static struct pr_usrreqs ngc_usrreqs = {
 	.pru_bind =		ngc_bind,
 	.pru_connect =		ngc_connect,
 	.pru_detach =		ngc_detach,
-	.pru_disconnect =	dummy_disconnect,
+	.pru_disconnect =	NULL,
 	.pru_peeraddr =		NULL,
 	.pru_send =		ngc_send,
 	.pru_shutdown =		NULL,
@@ -1075,7 +1107,7 @@ static struct pr_usrreqs ngd_usrreqs = {
 	.pru_bind =		NULL,
 	.pru_connect =		ngd_connect,
 	.pru_detach =		ngd_detach,
-	.pru_disconnect =	dummy_disconnect,
+	.pru_disconnect =	NULL,
 	.pru_peeraddr =		NULL,
 	.pru_send =		ngd_send,
 	.pru_shutdown =		NULL,
@@ -1097,7 +1129,6 @@ static struct protosw ngsw[] = {
 	.pr_domain =		&ngdomain,
 	.pr_protocol =		NG_CONTROL,
 	.pr_flags =		PR_ATOMIC | PR_ADDR /* | PR_RIGHTS */,
-	.pr_mport =		cpu0_soport,
 	.pr_usrreqs =		&ngc_usrreqs
 },
 {
@@ -1105,7 +1136,6 @@ static struct protosw ngsw[] = {
 	.pr_domain =		&ngdomain,
 	.pr_protocol =		NG_DATA,
 	.pr_flags =		PR_ATOMIC | PR_ADDR,
-	.pr_mport =		cpu0_soport,
 	.pr_usrreqs =		&ngd_usrreqs
 }
 };
