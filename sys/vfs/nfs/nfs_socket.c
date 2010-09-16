@@ -1289,6 +1289,7 @@ nfs_request_try(struct nfsreq *rep)
 	 */
 	crit_enter();
 	mtx_link_init(&rep->r_link);
+	KKASSERT((rep->r_flags & R_ONREQQ) == 0);
 	TAILQ_INSERT_TAIL(&nmp->nm_reqq, rep, r_chain);
 	rep->r_flags |= R_ONREQQ;
 	++nmp->nm_reqqlen;

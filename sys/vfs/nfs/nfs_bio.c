@@ -506,13 +506,18 @@ nfs_write(struct vop_write_args *ap)
 #endif
 	if (vp->v_type != VREG)
 		return (EIO);
+
+	lwkt_gettoken(&nmp->nm_token);
+
 	if (np->n_flag & NWRITEERR) {
 		np->n_flag &= ~NWRITEERR;
+		lwkt_reltoken(&nmp->nm_token);
 		return (np->n_error);
 	}
 	if ((nmp->nm_flag & NFSMNT_NFSV3) != 0 &&
-	    (nmp->nm_state & NFSSTA_GOTFSINFO) == 0)
+	    (nmp->nm_state & NFSSTA_GOTFSINFO) == 0) {
 		(void)nfs_fsinfo(nmp, vp, td);
+	}
 
 	/*
 	 * Synchronously flush pending buffers if we are in synchronous
@@ -524,7 +529,7 @@ nfs_write(struct vop_write_args *ap)
 			error = nfs_flush(vp, MNT_WAIT, td, 0);
 			/* error = nfs_vinvalbuf(vp, V_SAVE, 1); */
 			if (error)
-				return (error);
+				goto  done;
 		}
 	}
 
@@ -537,16 +542,22 @@ restart:
 		np->n_attrstamp = 0;
 		error = VOP_GETATTR(vp, &vattr);
 		if (error)
-			return (error);
+			goto done;
 		uio->uio_offset = np->n_size;
 	}
 
-	if (uio->uio_offset < 0)
-		return (EINVAL);
-	if ((uio->uio_offset + uio->uio_resid) > nmp->nm_maxfilesize)
-		return (EFBIG);
-	if (uio->uio_resid == 0)
-		return (0);
+	if (uio->uio_offset < 0) {
+		error = EINVAL;
+		goto done;
+	}
+	if ((uio->uio_offset + uio->uio_resid) > nmp->nm_maxfilesize) {
+		error = EFBIG;
+		goto done;
+	}
+	if (uio->uio_resid == 0) {
+		error = 0;
+		goto done;
+	}
 
 	/*
 	 * We need to obtain the rslock if we intend to modify np->n_size
@@ -570,7 +581,8 @@ restart:
 			/* not reached */
 		case EINTR:
 		case ERESTART:
-			return(EINTR);
+			error = EINTR;
+			goto done;
 			/* not reached */
 		default:
 			break;
@@ -587,7 +599,8 @@ restart:
 		lwpsignal(td->td_proc, td->td_lwp, SIGXFSZ);
 		if (haverslock)
 			nfs_rsunlock(np);
-		return (EFBIG);
+		error = EFBIG;
+		goto done;
 	}
 
 	biosize = vp->v_mount->mnt_stat.f_iosize;
@@ -773,6 +786,8 @@ again:
 	if (haverslock)
 		nfs_rsunlock(np);
 
+done:
+	lwkt_reltoken(&nmp->nm_token);
 	return (error);
 }
 
