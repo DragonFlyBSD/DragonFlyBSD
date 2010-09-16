@@ -93,6 +93,15 @@ This is typically used with the
 option to directly bridge
 .Nm
 into the host rather than operating it as a separate subnet.
+All IP protocols will be allowed through and no address checking
+will be done.
+.Pp
+When this option is not specified
+.Nm
+runs in secure mode and only allowed through ICMP, UDP, and TCP,
+and only IP addresses within the space defined on the command line.
+.Nm
+was started.
 .It Fl b Ar bridgeN
 The
 .Xr tap 4

@@ -89,7 +89,9 @@ filter_ok(u_int8_t *pkt, int bytes)
 		}
 		break;
 	default:
-		return(0);
+		if (SecureOpt)
+			return(0);
+		break;
 	}
 	return(1);
 }
