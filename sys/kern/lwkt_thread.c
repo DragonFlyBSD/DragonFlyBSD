@@ -153,6 +153,9 @@ static int fairq_enable = 1;
 SYSCTL_INT(_lwkt, OID_AUTO, fairq_enable, CTLFLAG_RW, &fairq_enable, 0, "");
 static int user_pri_sched = 0;
 SYSCTL_INT(_lwkt, OID_AUTO, user_pri_sched, CTLFLAG_RW, &user_pri_sched, 0, "");
+static int preempt_enable = 1;
+SYSCTL_INT(_lwkt, OID_AUTO, preempt_enable, CTLFLAG_RW, &preempt_enable, 0, "");
+
 
 /*
  * These helper procedures handle the runq, they can only be called from
@@ -963,6 +966,11 @@ lwkt_preempt(thread_t ntd, int critcount)
      * Set need_lwkt_resched() unconditionally for now YYY.
      */
     KASSERT(ntd->td_critcount, ("BADCRIT0 %d", ntd->td_pri));
+
+    if (preempt_enable == 0) {
+	++preempt_miss;
+	return;
+    }
 
     td = gd->gd_curthread;
     if (ntd->td_pri <= td->td_pri) {
