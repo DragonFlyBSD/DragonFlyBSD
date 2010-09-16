@@ -479,11 +479,15 @@ l2cap_saccept(netmsg_t msg)
 	lwkt_replymsg(&msg->accept.base.lmsg, error);
 }
 
-static int
-l2cap_slisten(struct socket *so, struct thread *td)
+static void
+l2cap_slisten(netmsg_t msg)
 {
+	struct socket *so = msg->listen.base.nm_so;
 	struct l2cap_channel *pcb = so->so_pcb;
-	return l2cap_listen(pcb);
+	int error;
+
+	error = l2cap_listen(pcb);
+	lwkt_replymsg(&msg->accept.base.lmsg, error);
 }
 
 
