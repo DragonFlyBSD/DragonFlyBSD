@@ -9,6 +9,12 @@ MOUNTFROM=$3
 VOLUME=$4
 OPTIONS=$5
 
+# Make sure that MOUNTFROM starts with /dev/
+substr="${MOUNTFROM##/dev/}"
+if [ "$substr" = "$MOUNTFROM" ]; then
+	MOUNTFROM="/dev/$MOUNTFROM"
+fi
+
 # Check if the volume is really a luks volume
 /sbin/cryptsetup isLuks $MOUNTFROM
 if [ "$?" -ne "0" ]; then
