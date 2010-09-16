@@ -155,7 +155,7 @@ soalloc(int waitok)
 		TAILQ_INIT(&so->so_rcv.ssb_kq.ki_mlist);
 		TAILQ_INIT(&so->so_snd.ssb_kq.ki_mlist);
 		lwkt_token_init(&so->so_rcv.ssb_token, 1, "rcvtok");
-		lwkt_token_init(&so->so_snd.ssb_token, 1, "rcvtok");
+		lwkt_token_init(&so->so_snd.ssb_token, 1, "sndtok");
 		so->so_state = SS_NOFDREF;
 		so->so_refs = 1;
 	}
