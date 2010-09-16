@@ -382,7 +382,6 @@ sco_ssend(netmsg_t msg)
 {
 	struct socket *so = msg->send.base.nm_so;
 	struct mbuf *m = msg->send.nm_m;
-	struct sockaddr *addr = msg->send.nm_addr;
 	struct mbuf *control = msg->send.nm_control;
 	struct sco_pcb *pcb = (struct sco_pcb *)so->so_pcb;
 	struct mbuf *m0;

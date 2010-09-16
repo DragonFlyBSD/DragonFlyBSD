@@ -1117,6 +1117,25 @@ net/route.c		standard
 net/rtsock.c		standard
 net/zlib.c		optional ppp_deflate
 net/zlib.c		optional ipsec
+netbt/bt_input.c	optional bluetooth
+netbt/bt_proto.c	optional bluetooth
+netbt/hci_event.c	optional bluetooth
+netbt/hci_ioctl.c	optional bluetooth
+netbt/hci_link.c	optional bluetooth
+netbt/hci_misc.c	optional bluetooth
+netbt/hci_socket.c	optional bluetooth
+netbt/hci_unit.c	optional bluetooth
+netbt/l2cap_lower.c	optional bluetooth
+netbt/l2cap_misc.c	optional bluetooth
+netbt/l2cap_signal.c	optional bluetooth
+netbt/l2cap_socket.c	optional bluetooth
+netbt/l2cap_upper.c	optional bluetooth
+netbt/rfcomm_dlc.c	optional bluetooth
+netbt/rfcomm_session.c	optional bluetooth
+netbt/rfcomm_socket.c	optional bluetooth
+netbt/rfcomm_upper.c	optional bluetooth
+netbt/sco_socket.c	optional bluetooth
+netbt/sco_upper.c	optional bluetooth
 netproto/802_11/wlan/ieee80211.c            optional wlan
 netproto/802_11/wlan_acl/ieee80211_acl.c    optional wlan_acl
 netproto/802_11/wlan/ieee80211_action.c     optional wlan
