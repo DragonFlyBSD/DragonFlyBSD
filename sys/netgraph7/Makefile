@@ -9,6 +9,7 @@ SUBDIR=	UI \
 	bridge \
 	cisco \
 	deflate \
+	echo \
 	ether \
 	hole \
 	iface \
@@ -18,7 +19,6 @@ SUBDIR=	UI \
 	socket \
 	tee \
 	vjc
-#	echo \
 #	eiface \
 #	etf \
 #	fec \

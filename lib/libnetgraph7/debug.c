@@ -63,8 +63,8 @@
 #include <netgraph/bridge/ng_bridge.h>
 #include <netgraph7/cisco/ng_cisco.h>
 #include <netgraph7/deflate/ng_deflate.h>
-/*
 #include <netgraph7/echo/ng_echo.h>
+/*
 #include <netgraph7/eiface/ng_eiface.h>
 #include <netgraph7/etf/ng_etf.h>
 */
@@ -139,8 +139,8 @@ static const struct ng_cookie cookies[] = {
 	COOKIE(BRIDGE),
 	COOKIE(CISCO),
 	COOKIE(DEFLATE),
-/*
 	COOKIE(ECHO),
+/*
 	COOKIE(EIFACE),
 	COOKIE(ETF),
 */
