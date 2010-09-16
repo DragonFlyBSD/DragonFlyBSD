@@ -535,11 +535,9 @@ usage(int exit_code)
 		"       [-f blkdevs] [-i delay] [-t seconds] [-S splitup]\n"
 		"	command [argument ...]\n"
 		"hammer synctid <filesystem> [quick]\n"
-		"hammer -f blkdevs blockmap\n"
 		"hammer bstats [interval]\n"
 		"hammer iostats [interval]\n"
 		"hammer history[@offset[,len]] <file> ...\n"
-		"hammer -f blkdevs [-qqq] show [lo:objid]\n"
 		"hammer namekey1 <path>\n"
 		"hammer namekey2 <path>\n"
 		"hammer namekey32 <path>\n"
@@ -590,6 +588,9 @@ usage(int exit_code)
 	fprintf(stderr, "\nHAMMER utility version 4+ commands:\n");
 
 	fprintf(stderr,
+		"hammer -f blkdevs blockmap\n"
+		"hammer -f blkdevs checkmap\n"
+		"hammer -f blkdevs [-qqq] show [lo:objid]\n"
 		"hammer -f blkdevs show-undo\n"
 		"hammer -f blkdevs recover <target_dir>\n"
 	);
