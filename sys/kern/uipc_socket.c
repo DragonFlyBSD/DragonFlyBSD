@@ -1170,6 +1170,11 @@ done:
 	return (error);
 }
 
+/*
+ * Shut a socket down.  Note that we do not get a frontend lock as we
+ * want to be able to shut the socket down even if another thread is
+ * blocked in a read(), thus waking it up.
+ */
 int
 soshutdown(struct socket *so, int how)
 {
@@ -1177,9 +1182,9 @@ soshutdown(struct socket *so, int how)
 		return (EINVAL);
 
 	if (how != SHUT_WR) {
-		ssb_lock(&so->so_rcv, M_WAITOK);	/* frontend lock */
+		/*ssb_lock(&so->so_rcv, M_WAITOK);*/
 		sorflush(so);
-		ssb_unlock(&so->so_rcv);
+		/*ssb_unlock(&so->so_rcv);*/
 	}
 	if (how != SHUT_RD)
 		return (so_pru_shutdown(so));
@@ -1210,11 +1215,11 @@ sorflush(struct socket *so)
 	ssb->ssb_mbmax = 0;
 	atomic_clear_int(&ssb->ssb_flags, SSB_CLEAR_MASK);
 
-	lwkt_reltoken(&ssb->ssb_token);
-
-	if (pr->pr_flags & PR_RIGHTS && pr->pr_domain->dom_dispose)
+	if ((pr->pr_flags & PR_RIGHTS) && pr->pr_domain->dom_dispose)
 		(*pr->pr_domain->dom_dispose)(asb.ssb_mb);
 	ssb_release(&asb, so);
+
+	lwkt_reltoken(&ssb->ssb_token);
 }
 
 #ifdef INET
