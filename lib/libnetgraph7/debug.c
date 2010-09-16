@@ -89,7 +89,9 @@
 #include <netgraph7/one2many/ng_one2many.h>
 #include <netgraph7/ppp/ng_ppp.h>
 #include <netgraph7/pppoe/ng_pppoe.h>
+*/
 #include <netgraph7/pptpgre/ng_pptpgre.h>
+/*
 #include <netgraph7/rfc1490/ng_rfc1490.h>
 #include <netgraph7/socket/ng_socket.h>
 #include <netgraph7/source/ng_source.h>
@@ -164,7 +166,9 @@ static const struct ng_cookie cookies[] = {
 	COOKIE(ONE2MANY),
 	COOKIE(PPP),
 	COOKIE(PPPOE),
+*/
 	COOKIE(PPTPGRE),
+/*
 	COOKIE(RFC1490),
 */
 	COOKIE(SOCKET),

@@ -14,6 +14,7 @@ SUBDIR=	UI \
 	iface \
 	ksocket \
 	netgraph \
+	pptpgre \
 	socket \
 	tee \
 	vjc
@@ -28,7 +29,6 @@ SUBDIR=	UI \
 #	one2many \
 #	ppp \
 #	pppoe \
-#	pptpgre \
 #	rfc1490 \
 #	socket \
 #	sync_ar \

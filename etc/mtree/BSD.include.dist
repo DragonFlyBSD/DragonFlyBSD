@@ -228,6 +228,8 @@
         ..
         ksocket
         ..
+        pptpgre
+        ..
         socket
         ..
         tee
