@@ -92,6 +92,7 @@ so_pru_abort_oncpu(struct socket *so)
 	msg.base.lmsg.ms_flags &= ~(MSGF_REPLY | MSGF_DONE);
 	msg.base.lmsg.ms_flags |= MSGF_SYNC;
 	func((netmsg_t)&msg);
+	KKASSERT(msg.base.lmsg.ms_flags & MSGF_DONE);
 }
 
 /*
@@ -108,6 +109,7 @@ so_pru_accept_direct(struct socket *so, struct sockaddr **nam)
 	msg.base.lmsg.ms_flags |= MSGF_SYNC;
 	msg.nm_nam = nam;
 	func((netmsg_t)&msg);
+	KKASSERT(msg.base.lmsg.ms_flags & MSGF_DONE);
 	return(msg.base.lmsg.ms_error);
 }
 
@@ -137,6 +139,7 @@ so_pru_attach_direct(struct socket *so, int proto, struct pru_attach_info *ai)
 	msg.nm_proto = proto;
 	msg.nm_ai = ai;
 	func((netmsg_t)&msg);
+	KKASSERT(msg.base.lmsg.ms_flags & MSGF_DONE);
 	return(msg.base.lmsg.ms_error);
 }
 
@@ -207,6 +210,7 @@ so_pru_control_direct(struct socket *so, u_long cmd, caddr_t data,
 	msg.nm_ifp = ifp;
 	msg.nm_td = curthread;
 	func((netmsg_t)&msg);
+	KKASSERT(msg.base.lmsg.ms_flags & MSGF_DONE);
 	return(msg.base.lmsg.ms_error);
 }
 
