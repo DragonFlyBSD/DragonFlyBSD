@@ -1482,6 +1482,9 @@ device		iwnfw
 device		ralfw
 device		wpifw
 
+# Bluetooth Protocols
+device		bluetooth
+
 #
 # ATM related options
 #
