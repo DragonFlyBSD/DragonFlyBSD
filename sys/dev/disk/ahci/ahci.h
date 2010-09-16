@@ -377,9 +377,10 @@ struct ahci_port {
 #define AP_F_SCAN_COMPLETED	0x0020
 #define AP_F_IGNORE_IFS		0x0040
 #define AP_F_IFS_IGNORED	0x0080
-#define AP_F_IFS_OCCURED	0x0100
+#define AP_F_UNUSED_0100	0x0100
 #define AP_F_EXCLUSIVE_ACCESS	0x0200
 #define AP_F_ERR_CCB_RESERVED	0x0400
+#define AP_F_HARSH_REINIT	0x0800
 	int			ap_signal;	/* os per-port thread sig */
 	thread_t		ap_thread;	/* os per-port thread */
 	struct lock		ap_lock;	/* os per-port lock */

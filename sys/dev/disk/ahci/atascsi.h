@@ -322,7 +322,9 @@ struct ata_xfer {
 #define ATA_F_TIMEOUT_EXPIRED		(1<<9)
 #define ATA_F_AUTOSENSE			(1<<10)
 #define ATA_F_EXCLUSIVE			(1<<11)
+#define ATA_F_SILENT			(1<<12)
 #define ATA_FMT_FLAGS			"\020" 				\
+					"\015SILENT"			\
 					"\014EXCLUSIVE"			\
 					"\013AUTOSENSE"			\
 					"\012EXPIRED"			\

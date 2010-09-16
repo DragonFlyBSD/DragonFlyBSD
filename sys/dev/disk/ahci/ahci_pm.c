@@ -119,7 +119,7 @@ retry:
 	 *	  the signature.
 	 */
 	ccb = ahci_get_err_ccb(ap);
-	ccb->ccb_xa.flags = ATA_F_POLL;
+	ccb->ccb_xa.flags = ATA_F_POLL | ATA_F_SILENT;
 	ccb->ccb_xa.complete = ahci_pm_dummy_done;
 	ccb->ccb_xa.at = ap->ap_ata[15];
 	cmd_slot = ccb->ccb_cmd_hdr;
@@ -151,11 +151,15 @@ retry:
 	 * The probing has to be done whether or not a device is probed on
 	 * target 0, because when a PM is attached target 0 represents
 	 * slot #0 behind the PM.
+	 *
+	 * Port multipliers are expected to answer more quickly than normal
+	 * devices, use a shorter timeout than normal.
+	 *
+	 * If there is no PM here this command can still succeed due to
+	 * the _C_
 	 */
-	if (ahci_poll(ccb, 1000, ahci_quick_timeout) != ATA_S_COMPLETE) {
-		kprintf("%s: PMPROBE First FIS failed,\n",
-			PORTNAME(ap));
-		kprintf("%s: PMPROBE No Port Multiplier was found.\n",
+	if (ahci_poll(ccb, 500, ahci_quick_timeout) != ATA_S_COMPLETE) {
+		kprintf("%s: PMPROBE(1) No Port Multiplier was found.\n",
 			PORTNAME(ap));
 		if (--count) {
 			ahci_put_err_ccb(ccb);
@@ -164,6 +168,7 @@ retry:
 		error = EBUSY;
 		goto err;
 	}
+
 	if (ahci_pwait_clr(ap, AHCI_PREG_TFD,
 			       AHCI_PREG_TFD_STS_BSY | AHCI_PREG_TFD_STS_DRQ)) {
 		kprintf("%s: PMPROBE Busy after first FIS\n", PORTNAME(ap));
@@ -172,7 +177,6 @@ retry:
 	/*
 	 * The device may have muffed up the PHY when it reset.
 	 */
-	ahci_os_sleep(100);
 	ahci_flush_tfd(ap);
 	ahci_pwrite(ap, AHCI_PREG_SERR, -1);
 	/* ahci_pm_phy_status(ap, 15, &cmd); */
@@ -188,7 +192,7 @@ retry:
 	 * It is unclear which other fields in the FIS are used.  Just zero
 	 * everything.
 	 */
-	ccb->ccb_xa.flags = ATA_F_POLL;
+	ccb->ccb_xa.flags = ATA_F_POLL | ATA_F_SILENT;
 
 	bzero(fis, sizeof(ccb->ccb_cmd_table->cfis));
 	fis[0] = ATA_FIS_TYPE_H2D;
@@ -211,9 +215,7 @@ retry:
 	 * slot #0 behind the PM.
 	 */
 	if (ahci_poll(ccb, 5000, ahci_quick_timeout) != ATA_S_COMPLETE) {
-		kprintf("%s: PMPROBE Second FIS failed,\n",
-			PORTNAME(ap));
-		kprintf("%s: PMPROBE No Port Multiplier was found.\n",
+		kprintf("%s: PMPROBE(2) No Port Multiplier was found.\n",
 			PORTNAME(ap));
 		if (--count) {
 			ahci_put_err_ccb(ccb);
@@ -508,9 +510,15 @@ ahci_pm_hardreset(struct ahci_port *ap, int target, int hard)
 		PORTNAME(ap), target, data);
 	/*
 	 * Clear SERR on the target so we get a new NOTIFY event if a hot-plug
-	 * or hot-unplug occurs.
+	 * or hot-unplug occurs.  Clear any spurious IFS that may have
+	 * occured during the probe.
+	 *
+	 * WARNING!  100ms seems to work in most cases but
 	 */
 	ahci_os_sleep(100);
+	ahci_pm_write(ap, target, SATA_PMREG_SERR, -1);
+	ahci_pwrite(ap, AHCI_PREG_SERR, -1);
+	ahci_pwrite(ap, AHCI_PREG_IS, AHCI_PREG_IS_IFS);
 
 	error = 0;
 err:
@@ -554,13 +562,11 @@ retry:
 	 * NOTE: This cannot be safely done between the first and second
 	 *	 softreset FISs.  It's now or never.
 	 */
-#if 1
 	if (ahci_pm_phy_status(ap, target, &data)) {
 		kprintf("%s: (B)Cannot clear phy status\n",
 			ATANAME(ap ,at));
 	}
 	ahci_pm_write(ap, target, SATA_PMREG_SERR, -1);
-#endif
 
 	/*
 	 * Prep first D2H command with SRST feature & clear busy/reset flags
@@ -594,25 +600,31 @@ retry:
 	ccb->ccb_xa.state = ATA_S_PENDING;
 
 	/*
-	 * XXX hack to ignore IFS errors which can occur during the target
-	 *     device's reset.
+	 * This soft reset of the AP target can cause a stream of IFS
+	 * errors to occur.  Setting AP_F_IGNORE_IFS prevents the port
+	 * from being hard reset (because its the target behind the
+	 * port that isn't happy).
 	 *
-	 *     If an IFS error occurs the target is probably powering up,
-	 *     so we try for a longer period of time.
+	 * The act of sending the soft reset can cause the target to
+	 * blow the port up and generate IFS errors.
 	 */
 	ap->ap_flags |= AP_F_IGNORE_IFS;
-	ap->ap_flags &= ~(AP_F_IFS_IGNORED | AP_F_IFS_OCCURED);
+	ap->ap_flags &= ~AP_F_IFS_IGNORED;
 
 	if (ahci_poll(ccb, 1000, ahci_ata_cmd_timeout) != ATA_S_COMPLETE) {
-		kprintf("%s: (PM) First FIS failed\n", ATANAME(ap, at));
-		if (ap->ap_flags & AP_F_IFS_OCCURED) {
-			if (tried_longer == 0)
-				count += 4;
-			++tried_longer;
-		}
+		kprintf("%s: Soft-reset through PM failed, %s\n",
+			ATANAME(ap, at),
+			(count > 1 ? "retrying" : "giving up"));
 		ahci_put_err_ccb(ccb);
-		if (--count)
+		if (--count) {
+			if (ap->ap_flags & AP_F_IFS_IGNORED)
+				ahci_os_sleep(5000);
+			else
+				ahci_os_sleep(1000);
+			ahci_pwrite(ap, AHCI_PREG_SERR, -1);
+			ahci_pwrite(ap, AHCI_PREG_IS, AHCI_PREG_IS_IFS);
 			goto retry;
+		}
 		goto err;
 	}
 
@@ -650,18 +662,27 @@ retry:
 	ccb->ccb_xa.state = ATA_S_PENDING;
 	ccb->ccb_xa.flags = ATA_F_POLL | ATA_F_EXCLUSIVE | ATA_F_AUTOSENSE;
 
+	ap->ap_flags &= ~AP_F_IFS_IGNORED;
+
 	if (ahci_poll(ccb, 1000, ahci_ata_cmd_timeout) != ATA_S_COMPLETE) {
-		kprintf("%s: (PM) Second FIS failed\n", ATANAME(ap, at));
-		ahci_put_err_ccb(ccb);
-#if 1
-		if (--count)
+		kprintf("%s: Soft-reset(2) through PM failed, %s\n",
+			ATANAME(ap, at),
+			(count > 1 ? "retrying" : "giving up"));
+		if (--count) {
+			ahci_os_sleep(1000);
+			ahci_put_err_ccb(ccb);
+			ahci_pwrite(ap, AHCI_PREG_SERR, -1);
+			ahci_pwrite(ap, AHCI_PREG_IS, AHCI_PREG_IS_IFS);
 			goto retry;
-#endif
+		}
 		goto err;
 	}
 
 	ahci_put_err_ccb(ccb);
 	ahci_os_sleep(100);
+	ahci_pwrite(ap, AHCI_PREG_SERR, -1);
+	ahci_pwrite(ap, AHCI_PREG_IS, AHCI_PREG_IS_IFS);
+
 	ahci_pm_write(ap, target, SATA_PMREG_SERR, -1);
 	if (ahci_pm_phy_status(ap, target, &data)) {
 		kprintf("%s: (C)Cannot clear phy status\n",
@@ -700,17 +721,19 @@ retry:
 	 * Who knows what kind of mess occured.  We have exclusive access
 	 * to the port so try to clean up potential problems.
 	 */
-	ahci_os_sleep(100);
 err:
+	ahci_os_sleep(100);
+
 	/*
 	 * Clear error status so we can detect removal.
 	 */
 	if (ahci_pm_write(ap, target, SATA_PMREG_SERR, -1)) {
 		kprintf("%s: ahci_pm_softreset unable to clear SERR\n",
 			ATANAME(ap, at));
-		ap->ap_flags &= ~AP_F_IGNORE_IFS;
 	}
-/*	ahci_pwrite(ap, AHCI_PREG_SERR, -1);*/
+	ahci_pwrite(ap, AHCI_PREG_SERR, -1);
+	ahci_pwrite(ap, AHCI_PREG_IS, AHCI_PREG_IS_IFS);
+	ap->ap_flags &= ~(AP_F_IGNORE_IFS | AP_F_IFS_IGNORED);
 
 	at->at_probe = error ? ATA_PROBE_FAILED : ATA_PROBE_NEED_IDENT;
 	return (error);
