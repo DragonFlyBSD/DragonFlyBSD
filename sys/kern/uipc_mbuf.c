@@ -669,8 +669,10 @@ updatestats(struct mbuf *m, int type)
 
 	m->m_type = type;
 	mbuftrack(m);
-	KKASSERT(m->m_next == NULL);
-	KKASSERT(m->m_nextpkt == NULL);
+#ifdef MBUF_DEBUG
+	KASSERT(m->m_next == NULL, ("mbuf %p: bad m_next in get", m));
+	KASSERT(m->m_nextpkt == NULL, ("mbuf %p: bad m_nextpkt in get", m));
+#endif
 
 	atomic_add_long_nonlocked(&mbtypes[gd->gd_cpuid][type], 1);
 	atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_mbufs, 1);
@@ -707,6 +709,9 @@ retryonce:
 		++mbstat[mycpu->gd_cpuid].m_drops;
 		return (NULL);
 	}
+#ifdef MBUF_DEBUG
+	KASSERT(m->m_data == m->m_dat, ("mbuf %p: bad m_data in get", m));
+#endif
 
 	updatestats(m, type);
 	return (m);
@@ -738,6 +743,9 @@ retryonce:
 		++mbstat[mycpu->gd_cpuid].m_drops;
 		return (NULL);
 	}
+#ifdef MBUF_DEBUG
+	KASSERT(m->m_data == m->m_pktdat, ("mbuf %p: bad m_data in get", m));
+#endif
 
 	updatestats(m, type);
 	return (m);
@@ -795,6 +803,10 @@ retryonce:
 		return (NULL);
 	}
 
+#ifdef MBUF_DEBUG
+	KASSERT(m->m_data == m->m_ext.ext_buf,
+		("mbuf %p: bad m_data in get", m));
+#endif
 	m->m_type = type;
 
 	mbuftrack(m);
@@ -915,8 +927,18 @@ m_mclfree(void *arg)
  * code does not call M_PREPEND properly.
  * (example: call to bpf_mtap from drivers)
  */
+
+#ifdef MBUF_DEBUG
+
+struct mbuf  *
+_m_free(struct mbuf *m, const char *func)
+
+#else
+
 struct mbuf *
 m_free(struct mbuf *m)
+
+#endif
 {
 	struct mbuf *n;
 	struct globaldata *gd = mycpu;
@@ -933,6 +955,9 @@ m_free(struct mbuf *m)
 	 */
 	m->m_next = NULL;
 	mbufuntrack(m);
+#ifdef MBUF_DEBUG
+	m->m_hdr.mh_lastfunc = func;
+#endif
 #ifdef notyet
 	KKASSERT(m->m_nextpkt == NULL);
 #else
@@ -1053,12 +1078,25 @@ m_free(struct mbuf *m)
 	return (n);
 }
 
+#ifdef MBUF_DEBUG
+
+void
+_m_freem(struct mbuf *m, const char *func)
+{
+	while (m)
+		m = _m_free(m, func);
+}
+
+#else
+
 void
 m_freem(struct mbuf *m)
 {
 	while (m)
 		m = m_free(m);
 }
+
+#endif
 
 /*
  * mbuf utility routines
