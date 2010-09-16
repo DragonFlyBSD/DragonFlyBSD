@@ -87,6 +87,9 @@ struct m_hdr {
 	int	mh_flags;		/* flags; see below */
 	short	mh_type;		/* type of data in this mbuf */
 	short	mh_pad;			/* padding */
+#ifdef MBUF_DEBUG
+	const char *mh_lastfunc;
+#endif
 	struct netmsg_packet mh_netmsg;	/* hardware->proto stack msg */
 };
 
@@ -474,8 +477,13 @@ struct	mbuf	*m_devget(char *, int, int, struct ifnet *,
 struct	mbuf	*m_dup(struct mbuf *, int);
 struct	mbuf	*m_dup_data(struct mbuf *, int);
 int		 m_dup_pkthdr(struct mbuf *, const struct mbuf *, int);
+#ifdef MBUF_DEBUG
+struct	mbuf	*_m_free(struct mbuf *, const char *name);
+void		 _m_freem(struct mbuf *, const char *name);
+#else
 struct	mbuf	*m_free(struct mbuf *);
 void		 m_freem(struct mbuf *);
+#endif
 struct	mbuf	*m_get(int, int);
 struct	mbuf	*m_getc(int len, int how, int type);
 struct	mbuf	*m_getcl(int how, short type, int flags);
@@ -498,9 +506,16 @@ void		m_chtype(struct mbuf *m, int type);
 int		m_devpad(struct mbuf *m, int padto);
 
 #ifdef MBUF_DEBUG
+
 void		mbuftrackid(struct mbuf *, int);
+
+#define m_free(m)	_m_free(m, __func__)
+#define m_freem(m)	_m_freem(m, __func__)
+
 #else
+
 #define mbuftrackid(m, id)	/* empty */
+
 #endif
 
 /*
