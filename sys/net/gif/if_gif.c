@@ -204,10 +204,12 @@ gif_clear_cache(struct gif_softc *sc)
 			RTFREE(sc->gif_ro[n].ro_rt);
 			sc->gif_ro[n].ro_rt = NULL;
 		}
+#ifdef INET6
 		if (sc->gif_ro6[n].ro_rt) {
 			RTFREE(sc->gif_ro6[n].ro_rt);
 			sc->gif_ro6[n].ro_rt = NULL;
 		}
+#endif
 	}
 }
 
