@@ -188,7 +188,7 @@ if [ $? -eq 0 ]; then
 		echo "kldstat" >> $file
 	fi
 	echo "quit" >> $file
-	( ulimit -t 15; kgdb $KERNEL $VMCORE < $file )
+	( ulimit -t 15; cat $file | kgdb $KERNEL $VMCORE )
 	rm -f $file
 	echo
 fi
