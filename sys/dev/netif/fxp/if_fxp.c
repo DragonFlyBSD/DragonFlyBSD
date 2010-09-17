@@ -1356,7 +1356,7 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 	for (;;) {
 		m = sc->rfa_headm;
 		rfa = (struct fxp_rfa *)(m->m_ext.ext_buf +
-		    RFA_ALIGNMENT_FUDGE);
+					 RFA_ALIGNMENT_FUDGE);
 
 #ifdef DEVICE_POLLING /* loop at most count times if count >=0 */
 		if (count >= 0 && count-- == 0) {
@@ -1376,6 +1376,8 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 		 * Remove first packet from the chain.
 		 */
 		sc->rfa_headm = m->m_next;
+		if (sc->rfa_headm == NULL)
+			sc->rfa_tailm = NULL;
 		m->m_next = NULL;
 
 		/*
@@ -1395,8 +1397,8 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 			total_len = rfa->actual_size & 0x3fff;
 			if (total_len < sizeof(struct ether_header) ||
 			    total_len > MCLBYTES - RFA_ALIGNMENT_FUDGE -
-				sizeof(struct fxp_rfa) ||
-			    rfa->rfa_status & FXP_RFA_STATUS_CRC) {
+					sizeof(struct fxp_rfa) ||
+			    (rfa->rfa_status & FXP_RFA_STATUS_CRC)) {
 				m_freem(m);
 				continue;
 			}

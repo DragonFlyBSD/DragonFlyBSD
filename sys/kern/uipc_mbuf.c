@@ -712,6 +712,7 @@ retryonce:
 #ifdef MBUF_DEBUG
 	KASSERT(m->m_data == m->m_dat, ("mbuf %p: bad m_data in get", m));
 #endif
+	m->m_len = 0;
 
 	updatestats(m, type);
 	return (m);
@@ -746,6 +747,8 @@ retryonce:
 #ifdef MBUF_DEBUG
 	KASSERT(m->m_data == m->m_pktdat, ("mbuf %p: bad m_data in get", m));
 #endif
+	m->m_len = 0;
+	m->m_pkthdr.len = 0;
 
 	updatestats(m, type);
 	return (m);
@@ -808,6 +811,8 @@ retryonce:
 		("mbuf %p: bad m_data in get", m));
 #endif
 	m->m_type = type;
+	m->m_len = 0;
+	m->m_pkthdr.len = 0;	/* just do it unconditonally */
 
 	mbuftrack(m);
 
