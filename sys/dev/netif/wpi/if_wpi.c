@@ -496,7 +496,7 @@ wpi_unload_firmware(struct wpi_softc *sc)
 static int
 wpi_attach(device_t dev)
 {
-	struct wpi_softc *sc = device_get_softc(dev);
+	struct wpi_softc *sc;
 	struct ifnet *ifp;
 	struct ieee80211com *ic;
 	int ac, error, supportsa = 1;
@@ -505,7 +505,7 @@ wpi_attach(device_t dev)
 	uint8_t macaddr[IEEE80211_ADDR_LEN];
 
 	wlan_serialize_enter();
-
+	sc = device_get_softc(dev);
 	sc->sc_dev = dev;
 
 	if (bootverbose || WPI_DEBUG_SET)
@@ -722,12 +722,14 @@ fail:
 static int
 wpi_detach(device_t dev)
 {
-	struct wpi_softc *sc = device_get_softc(dev);
-	struct ifnet *ifp = sc->sc_ifp;
+	struct wpi_softc *sc;
+	struct ifnet *ifp;
 	struct ieee80211com *ic;
 	int ac;
 
 	wlan_serialize_enter();
+	sc = device_get_softc(dev);
+	ifp = sc->sc_ifp;
 	if (ifp != NULL) {
 		ic = ifp->if_l2com;
 
@@ -1207,9 +1209,10 @@ wpi_free_tx_ring(struct wpi_softc *sc, struct wpi_tx_ring *ring)
 static int
 wpi_shutdown(device_t dev)
 {
-	struct wpi_softc *sc = device_get_softc(dev);
+	struct wpi_softc *sc;
 
 	wlan_serialize_enter();
+	sc = device_get_softc(dev);
 	wpi_stop_locked(sc);
 	wpi_unload_firmware(sc);
 	wlan_serialize_exit();
@@ -1220,9 +1223,10 @@ wpi_shutdown(device_t dev)
 static int
 wpi_suspend(device_t dev)
 {
-	struct wpi_softc *sc = device_get_softc(dev);
+	struct wpi_softc *sc;
 
 	wlan_serialize_enter();
+	sc = device_get_softc(dev);
 	wpi_stop(sc);
 	wlan_serialize_exit();
 	return 0;
@@ -1231,10 +1235,12 @@ wpi_suspend(device_t dev)
 static int
 wpi_resume(device_t dev)
 {
-	struct wpi_softc *sc = device_get_softc(dev);
-	struct ifnet *ifp = sc->sc_ifp;
+	struct wpi_softc *sc;
+	struct ifnet *ifp;
 
 	wlan_serialize_enter();
+	sc = device_get_softc(dev);
+	ifp = sc->sc_ifp;
 	pci_write_config(dev, 0x41, 0, 1);
 
 	if (ifp->if_flags & IFF_UP) {
@@ -3578,9 +3584,10 @@ wpi_scan_mindwell(struct ieee80211_scan_state *ss)
 static void
 wpi_hwreset_task(void *arg, int pending)
 {
-	struct wpi_softc *sc = arg;
+	struct wpi_softc *sc;
 
 	wlan_serialize_enter();
+	sc = arg;
 	wpi_init_locked(sc, 0);
 	wlan_serialize_exit();
 }
@@ -3588,9 +3595,10 @@ wpi_hwreset_task(void *arg, int pending)
 static void
 wpi_rfreset_task(void *arg, int pending)
 {
-	struct wpi_softc *sc = arg;
+	struct wpi_softc *sc;
 
 	wlan_serialize_enter();
+	sc = arg;
 	wpi_rfkill_resume(sc);
 	wlan_serialize_exit();
 }
@@ -3620,12 +3628,15 @@ wpi_free_fwmem(struct wpi_softc *sc)
 static void
 wpi_watchdog_callout(void *arg)
 {
-	struct wpi_softc *sc = arg;
-	struct ifnet *ifp = sc->sc_ifp;
-	struct ieee80211com *ic = ifp->if_l2com;
+	struct wpi_softc *sc;
+	struct ifnet *ifp;
+	struct ieee80211com *ic;
 	uint32_t tmp;
 
 	wlan_serialize_enter();
+	sc = arg;
+	ifp = sc->sc_ifp;
+	ic = ifp->if_l2com;
 	DPRINTFN(WPI_DEBUG_WATCHDOG,("Watchdog: tick\n"));
 
 	if (sc->flags & WPI_FLAG_HW_RADIO_OFF) {
