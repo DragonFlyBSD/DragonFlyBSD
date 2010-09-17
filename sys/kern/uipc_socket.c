@@ -319,23 +319,39 @@ solisten(struct socket *so, int backlog, struct thread *td)
 void
 sofree(struct socket *so)
 {
-	struct socket *head = so->so_head;
+	struct socket *head;
+
+	/*
+	 * This is a bit hackish at the moment.  We need to interlock
+	 * any accept queue we are on before we potentially lose the
+	 * last reference to avoid races against a re-reference from
+	 * someone operating on the queue.
+	 */
+	while ((head = so->so_head) != NULL) {
+		lwkt_getpooltoken(head);
+		if (so->so_head == head)
+			break;
+		lwkt_relpooltoken(head);
+	}
 
 	/*
 	 * Arbitrage the last free.
 	 */
 	KKASSERT(so->so_refs > 0);
-	if (atomic_fetchadd_int(&so->so_refs, -1) != 1)
+	if (atomic_fetchadd_int(&so->so_refs, -1) != 1) {
+		if (head)
+			lwkt_relpooltoken(head);
 		return;
+	}
 
 	KKASSERT(so->so_pcb == NULL && (so->so_state & SS_NOFDREF));
 	KKASSERT((so->so_state & SS_ASSERTINPROG) == 0);
 
 	/*
-	 * We're done, clean up
+	 * We're done, remove ourselves from the accept queue we are
+	 * on, if we are on one.
 	 */
 	if (head != NULL) {
-		lwkt_gettoken(&head->so_rcv.ssb_token);
 		if (so->so_state & SS_INCOMP) {
 			TAILQ_REMOVE(&head->so_incomp, so, so_list);
 			head->so_incqlen--;
@@ -346,14 +362,14 @@ sofree(struct socket *so)
 			 * accept(2) may hang after select(2) indicated
 			 * that the listening socket was ready.
 			 */
-			lwkt_reltoken(&head->so_rcv.ssb_token);
+			lwkt_relpooltoken(head);
 			return;
 		} else {
 			panic("sofree: not queued");
 		}
 		soclrstate(so, SS_INCOMP);
 		so->so_head = NULL;
-		lwkt_reltoken(&head->so_rcv.ssb_token);
+		lwkt_relpooltoken(head);
 	}
 	ssb_release(&so->so_snd, so);
 	sorflush(so);
@@ -400,7 +416,7 @@ drop:
 			error = error2;
 	}
 discard:
-	lwkt_gettoken(&so->so_rcv.ssb_token);
+	lwkt_getpooltoken(so);
 	if (so->so_options & SO_ACCEPTCONN) {
 		struct socket *sp;
 
@@ -419,7 +435,7 @@ discard:
 			soaborta(sp);
 		}
 	}
-	lwkt_reltoken(&so->so_rcv.ssb_token);
+	lwkt_relpooltoken(so);
 	if (so->so_state & SS_NOFDREF)
 		panic("soclose: NOFDREF");
 	sosetstate(so, SS_NOFDREF);	/* take ref */

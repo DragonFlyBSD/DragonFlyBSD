@@ -222,7 +222,14 @@ soisconnecting(struct socket *so)
 void
 soisconnected(struct socket *so)
 {
-	struct socket *head = so->so_head;
+	struct socket *head;
+
+	while ((head = so->so_head) != NULL) {
+		lwkt_getpooltoken(head);
+		if (so->so_head == head)
+			break;
+		lwkt_relpooltoken(head);
+	}
 
 	soclrstate(so, SS_ISCONNECTING | SS_ISDISCONNECTING | SS_ISCONFIRMING);
 	sosetstate(so, SS_ISCONNECTED);
@@ -233,20 +240,19 @@ soisconnected(struct socket *so)
 			atomic_set_int(&so->so_rcv.ssb_flags, SSB_UPCALL);
 			so->so_options &= ~SO_ACCEPTFILTER;
 			so->so_upcall(so, so->so_upcallarg, 0);
+			lwkt_relpooltoken(head);
 			return;
 		}
 
 		/*
 		 * Listen socket are not per-cpu.
 		 */
-		lwkt_gettoken(&head->so_rcv.ssb_token);
 		TAILQ_REMOVE(&head->so_incomp, so, so_list);
 		head->so_incqlen--;
 		TAILQ_INSERT_TAIL(&head->so_comp, so, so_list);
 		head->so_qlen++;
 		sosetstate(so, SS_COMP);
 		soclrstate(so, SS_INCOMP);
-		lwkt_reltoken(&head->so_rcv.ssb_token);
 
 		/*
 		 * XXX head may be on a different protocol thread.
@@ -259,6 +265,8 @@ soisconnected(struct socket *so)
 		sorwakeup(so);
 		sowwakeup(so);
 	}
+	if (head)
+		lwkt_relpooltoken(head);
 }
 
 void
@@ -381,7 +389,7 @@ sonewconn(struct socket *head, int connstatus)
 				(SSB_AUTOSIZE | SSB_AUTOLOWAT);
 	so->so_snd.ssb_flags |= head->so_snd.ssb_flags &
 				(SSB_AUTOSIZE | SSB_AUTOLOWAT);
-	lwkt_gettoken(&head->so_rcv.ssb_token);
+	lwkt_getpooltoken(head);
 	if (connstatus) {
 		TAILQ_INSERT_TAIL(&head->so_comp, so, so_list);
 		sosetstate(so, SS_COMP);
@@ -399,7 +407,7 @@ sonewconn(struct socket *head, int connstatus)
 		sosetstate(so, SS_INCOMP);
 		head->so_incqlen++;
 	}
-	lwkt_reltoken(&head->so_rcv.ssb_token);
+	lwkt_relpooltoken(head);
 	if (connstatus) {
 		/*
 		 * XXX head may be on a different protocol thread.
@@ -494,12 +502,16 @@ sowakeup(struct socket *so, struct signalsockbuf *ssb)
 	 * This is a bit of a hack.  Multiple threads can wind up scanning
 	 * ki_mlist concurrently due to the fact that this function can be
 	 * called on a foreign socket, so we can't afford to block here.
+	 *
+	 * We need the pool token for (so) (likely the listne socket if
+	 * SSB_MEVENT is set) because the predicate function may have
+	 * to access the accept queue.
 	 */
 	if (ssb->ssb_flags & SSB_MEVENT) {
 		struct netmsg_so_notify *msg, *nmsg;
 
 		lwkt_gettoken(&kq_token);
-		lwkt_gettoken_hard(&ssb->ssb_token);
+		lwkt_getpooltoken(so);
 		TAILQ_FOREACH_MUTABLE(msg, &kqinfo->ki_mlist, nm_list, nmsg) {
 			if (msg->nm_predicate(msg)) {
 				TAILQ_REMOVE(&kqinfo->ki_mlist, msg, nm_list);
@@ -509,7 +521,7 @@ sowakeup(struct socket *so, struct signalsockbuf *ssb)
 		}
 		if (TAILQ_EMPTY(&ssb->ssb_kq.ki_mlist))
 			atomic_clear_int(&ssb->ssb_flags, SSB_MEVENT);
-		lwkt_reltoken_hard(&ssb->ssb_token);
+		lwkt_relpooltoken(so);
 		lwkt_reltoken(&kq_token);
 	}
 }

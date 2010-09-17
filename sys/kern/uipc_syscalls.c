@@ -214,6 +214,10 @@ sys_listen(struct listen_args *uap)
 
 /*
  * Returns the accepted socket as well.
+ *
+ * NOTE!  The sockets sitting on so_comp/so_incomp might have 0 refs, the
+ *	  pool token is absolutely required to avoid a sofree() race,
+ *	  as well as to avoid tailq handling races.
  */
 static boolean_t
 soaccept_predicate(struct netmsg_so_notify *msg)
@@ -225,7 +229,7 @@ soaccept_predicate(struct netmsg_so_notify *msg)
 		msg->base.lmsg.ms_error = head->so_error;
 		return (TRUE);
 	}
-	lwkt_gettoken(&head->so_rcv.ssb_token);
+	lwkt_getpooltoken(head);
 	if (!TAILQ_EMPTY(&head->so_comp)) {
 		/* Abuse nm_so field as copy in/copy out parameter. XXX JH */
 		so = TAILQ_FIRST(&head->so_comp);
@@ -235,13 +239,13 @@ soaccept_predicate(struct netmsg_so_notify *msg)
 		so->so_head = NULL;
 		soreference(so);
 
-		lwkt_reltoken(&head->so_rcv.ssb_token);
+		lwkt_relpooltoken(head);
 
 		msg->base.lmsg.ms_error = 0;
 		msg->base.nm_so = so;
 		return (TRUE);
 	}
-	lwkt_reltoken(&head->so_rcv.ssb_token);
+	lwkt_relpooltoken(head);
 	if (head->so_state & SS_CANTRCVMORE) {
 		msg->base.lmsg.ms_error = ECONNABORTED;
 		return (TRUE);
