@@ -50,7 +50,7 @@ static void dsp_filter_detach(struct knote *);
 static int dsp_filter_read(struct knote *, long);
 static int dsp_filter_write(struct knote *, long);
 
-struct dev_ops dsp_cdevsw = {
+struct dev_ops dsp_ops = {
 	{ "dsp", SND_CDEV_MAJOR, 0},
 	/*.d_flags =	D_NEEDGIANT,*/
 	.d_open =	dsp_open,
@@ -1263,7 +1263,7 @@ retry_chnalloc:
 		    !(c->flags & CHN_F_BUSY)) {
 			CHN_UNLOCK(c);
 			pcm_lock(pcm_dev);
-			pcm_chan->dsp_dev = make_only_dev(&dsp_cdevsw,
+			pcm_chan->dsp_dev = make_only_dev(&dsp_ops,
 				PCMMKMINOR(PCMUNIT(i_dev), pcm_chan->chan_num),
 				UID_ROOT, GID_WHEEL,
 				0666,

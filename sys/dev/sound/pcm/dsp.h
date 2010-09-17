@@ -29,7 +29,7 @@
 
 #include <sys/device.h>
 
-extern struct dev_ops dsp_cdevsw;
+extern struct dev_ops dsp_ops;
 extern d_clone_t dsp_clone;
 
 struct snddev_info *dsp_get_info(struct cdev *dev);

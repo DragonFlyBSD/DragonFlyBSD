@@ -857,7 +857,7 @@ pcm_register(device_t dev, void *devinfo, int numplay, int numrec)
 
 	/* XXX use make_autoclone_dev? */
 	/* XXX PCMMAXCHAN can be created for regular channels */
-	d->dsp_clonedev = make_dev(&dsp_cdevsw,
+	d->dsp_clonedev = make_dev(&dsp_ops,
 			    PCMMKMINOR(device_get_unit(dev), PCMMAXCHAN),
 			    UID_ROOT, GID_WHEEL, 0666, "dsp%d",
 			    device_get_unit(dev));
