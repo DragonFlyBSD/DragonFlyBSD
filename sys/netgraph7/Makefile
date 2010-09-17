@@ -19,6 +19,7 @@ SUBDIR=	UI \
 	l2tp \
 	lmi \
 	netgraph \
+	ppp \
 	pptpgre \
 	socket \
 	tee \
@@ -27,7 +28,6 @@ SUBDIR=	UI \
 #	fec \
 #	netgraph \
 #	one2many \
-#	ppp \
 #	pppoe \
 #	rfc1490 \
 #	socket \

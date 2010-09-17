@@ -238,6 +238,8 @@
         ..
         lmi
         ..
+        ppp
+        ..
         pptpgre
         ..
         socket

@@ -87,7 +87,9 @@
 /*
 #include <netgraph7/mppc/ng_mppc.h>
 #include <netgraph7/one2many/ng_one2many.h>
+*/
 #include <netgraph7/ppp/ng_ppp.h>
+/*
 #include <netgraph7/pppoe/ng_pppoe.h>
 */
 #include <netgraph7/pptpgre/ng_pptpgre.h>

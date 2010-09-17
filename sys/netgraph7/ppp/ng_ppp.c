@@ -101,11 +101,11 @@
 #include <sys/errno.h>
 #include <sys/ctype.h>
 
-#include "ng_message.h"
-#include "netgraph.h"
-#include "ng_parse.h"
+#include <netgraph7/ng_message.h>
+#include <netgraph7/netgraph.h>
+#include <netgraph7/ng_parse.h>
 #include "ng_ppp.h"
-#include "ng_vjc.h"
+#include <netgraph7/vjc/ng_vjc.h>
 
 #ifdef NG_SEPARATE_MALLOC
 MALLOC_DEFINE(M_NETGRAPH_PPP, "netgraph_ppp", "netgraph ppp node");
@@ -320,7 +320,7 @@ static void	ng_ppp_frag_timeout(node_p node, hook_p hook, void *arg1,
 static void	ng_ppp_frag_checkstale(node_p node);
 static void	ng_ppp_frag_reset(node_p node);
 static void	ng_ppp_mp_strategy(node_p node, int len, int *distrib);
-static int	ng_ppp_intcmp(void *latency, const void *v1, const void *v2);
+static int	ng_ppp_intcmp(const void *v1, const void *v2);
 static struct mbuf *ng_ppp_addproto(struct mbuf *m, uint16_t proto, int compOK);
 static struct mbuf *ng_ppp_cutproto(struct mbuf *m, uint16_t *proto);
 static struct mbuf *ng_ppp_prepend(struct mbuf *m, const void *buf, int len);
@@ -468,6 +468,8 @@ static struct ng_type ng_ppp_typestruct = {
 	.cmdlist =	ng_ppp_cmds,
 };
 NETGRAPH_INIT(ppp, &ng_ppp_typestruct);
+
+static int *compareLatencies;			/* hack for ng_ppp_intcmp() */
 
 /* Address and control field header */
 static const uint8_t ng_ppp_acf[2] = { 0xff, 0x03 };
@@ -2287,8 +2289,10 @@ ng_ppp_mp_strategy(node_p node, int len, int *distrib)
 	}
 
 	/* Sort active links by latency */
-	qsort_r(sortByLatency,
-	    priv->numActiveLinks, sizeof(*sortByLatency), latency, ng_ppp_intcmp);
+	compareLatencies = latency;
+	kqsort(sortByLatency,
+	    priv->numActiveLinks, sizeof(*sortByLatency), ng_ppp_intcmp);
+	compareLatencies = NULL;
 
 	/* Find the interval we need (add links in sortByLatency[] order) */
 	for (numFragments = 1;
@@ -2373,12 +2377,12 @@ ng_ppp_mp_strategy(node_p node, int len, int *distrib)
  * Compare two integers
  */
 static int
-ng_ppp_intcmp(void *latency, const void *v1, const void *v2)
+ng_ppp_intcmp(const void *v1, const void *v2)
 {
 	const int index1 = *((const int *) v1);
 	const int index2 = *((const int *) v2);
 
-	return ((int *)latency)[index1] - ((int *)latency)[index2];
+	return (compareLatencies[index1] - compareLatencies[index2]);
 }
 
 /*
