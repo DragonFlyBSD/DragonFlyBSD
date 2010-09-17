@@ -261,7 +261,7 @@ smtp_auth_md5(int fd, char *login, char *password)
 	/* Send AUTH command according to RFC 2554 */
 	send_remote_command(fd, "AUTH CRAM-MD5");
 	if (read_remote(fd, sizeof(buffer), buffer) != 3) {
-		syslog(LOG_DEBUG, "smarthost authentification:"
+		syslog(LOG_DEBUG, "smarthost authentication:"
 		       " AUTH cram-md5 not available: %s", neterr);
 		/* if cram-md5 is not available */
 		return (-1);
