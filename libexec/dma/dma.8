@@ -31,7 +31,7 @@
 .\"
 .\" $DragonFly: src/libexec/dma/dma.8,v 1.10 2008/09/06 14:17:56 swildner Exp $
 .\"
-.Dd August 27, 2009
+.Dd September 17, 2010
 .Dt DMA 8
 .Os
 .Sh NAME
@@ -207,15 +207,15 @@ file.
 .It Ic VIRTUAL Xo
 (boolean, default=commented)
 .Xc
-Comment if you want virtual user support.
+Uncomment if you want virtual user support.
 .It Ic SECURETRANS Xo
 (boolean, default=commented)
 .Xc
-Comment if you want TLS/SSL secured transfer.
+Uncomment if you want TLS/SSL secured transfer.
 .It Ic STARTTLS Xo
 (boolean, default=commented)
 .Xc
-Comment if you want to use STARTTLS.
+Uncomment if you want to use STARTTLS.
 Only useful together with
 .Sq SECURETRANS .
 .It Ic CERTFILE Xo
@@ -233,7 +233,7 @@ password accidentally over an insecure connection.
 .It Ic DEFER Xo
 (boolean, default=commented)
 .Xc
-Comment if you want that
+Uncomment if you want that
 .Nm
 defers your mail.
 You have to flush your mail queue manually with the
