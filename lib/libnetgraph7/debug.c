@@ -71,8 +71,8 @@
 #include <netgraph7/ether/ng_ether.h>
 /*
 #include <netgraph7/fec/ng_fec.h>
-#include <netgraph7/frame_relay/ng_frame_relay.h>
 */
+#include <netgraph7/frame_relay/ng_frame_relay.h>
 #include <netgraph7/hole/ng_hole.h>
 /*
 #include <netgraph7/hub/ng_hub.h>
@@ -147,9 +147,9 @@ static const struct ng_cookie cookies[] = {
 	COOKIE(ETHER),
 /*
 	COOKIE(FEC),
+*/
 	COOKIE(FRAMERELAY),
 	COOKIE(GENERIC),
-*/
 	COOKIE(HOLE),
 /*
 	COOKIE(HUB),

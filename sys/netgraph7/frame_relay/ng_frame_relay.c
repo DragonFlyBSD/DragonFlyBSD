@@ -60,8 +60,8 @@
 #include <sys/syslog.h>
 #include <sys/ctype.h>
 
-#include "ng_message.h"
-#include "netgraph.h"
+#include <netgraph7/ng_message.h>
+#include <netgraph7/netgraph.h>
 #include "ng_frame_relay.h"
 
 /*

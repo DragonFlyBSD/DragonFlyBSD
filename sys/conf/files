@@ -1315,7 +1315,7 @@ netgraph7/ng_eiface.c		optional netgraph7_eiface
 netgraph7/etf/ng_etf.c		optional netgraph7_etf
 netgraph7/ether/ng_ether.c	optional netgraph7_ether
 netgraph7/ng_fec.c		optional netgraph7_fec
-netgraph7/ng_frame_relay.c	optional netgraph7_frame_relay
+netgraph7/frame_relay/ng_frame_relay.c			optional netgraph7_frame_relay
 netgraph7/ng_gif.c		optional netgraph7_gif
 netgraph7/ng_gif_demux.c	optional netgraph7_gif_demux
 netgraph7/hole/ng_hole.c	optional netgraph7_hole

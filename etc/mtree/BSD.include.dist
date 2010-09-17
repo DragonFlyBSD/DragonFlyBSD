@@ -226,6 +226,8 @@
         ..
         ether
         ..
+        frame_relay
+        ..
         hole
         ..
         iface

@@ -12,6 +12,7 @@ SUBDIR=	UI \
 	echo \
 	etf \
 	ether \
+	frame_relay \
 	hole \
 	iface \
 	ksocket \
@@ -22,7 +23,6 @@ SUBDIR=	UI \
 	vjc
 #	eiface \
 #	fec \
-#	frame_relay \
 #	l2tp \
 #	lmi \
 #	netgraph \
