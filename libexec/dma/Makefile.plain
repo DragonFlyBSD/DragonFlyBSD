@@ -30,7 +30,7 @@ clean:
 install: all
 	${INSTALL} -d ${DESTDIR}${SBIN} ${DESTDIR}${CONFDIR}
 	${INSTALL} -d ${DESTDIR}${MAN}/man8
-	${INSTALL} -m 0755 dma ${DESTDIR}${SBIN}
+	${INSTALL} -g mail -m 2755 dma ${DESTDIR}${SBIN}
 	${INSTALL} -m 0644 dma.8 ${DESTDIR}${MAN}/man8/
 
 aliases_parse.c: aliases_parse.y
