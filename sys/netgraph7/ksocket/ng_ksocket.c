@@ -79,9 +79,6 @@ MALLOC_DEFINE(M_NETGRAPH_KSOCKET, "netgraph_ksock", "netgraph ksock node ");
 #define OFFSETOF(s, e) ((char *)&((s *)0)->e - (char *)((s *)0))
 #define SADATA_OFFSET	(OFFSETOF(struct sockaddr, sa_data))
 
-#define ACCEPT_LOCK(s)
-#define ACCEPT_UNLOCK(s)
-
 /* Node private data */
 struct ng_ksocket_private {
 	node_p		node;
@@ -1190,23 +1187,18 @@ ng_ksocket_finish_accept(priv_p priv)
 	int len;
 	int error;
 
-	ACCEPT_LOCK();
+	lwkt_gettoken(&head->so_rcv.ssb_token);
 	so = TAILQ_FIRST(&head->so_comp);
 	if (so == NULL) {	/* Should never happen */
-		ACCEPT_UNLOCK();
+		lwkt_reltoken(&head->so_rcv.ssb_token);
 		return;
 	}
 	TAILQ_REMOVE(&head->so_comp, so, so_list);
 	head->so_qlen--;
-	so->so_state &= ~SS_COMP;
+	soclrstate(so, SS_COMP);
 	so->so_head = NULL;
-	/*
-	SOCK_LOCK(so);
-	soref(so);
-	sosetstate(so, SS_NBIO);
-	SOCK_UNLOCK(so);
-	ACCEPT_UNLOCK();
-	*/
+	soreference(so);
+	lwkt_reltoken(&head->so_rcv.ssb_token);
 
 	/* XXX KNOTE(&head->so_rcv.ssb_sel.si_note, 0); */
 
