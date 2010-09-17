@@ -1174,12 +1174,13 @@ ng_ksocket_finish_accept(priv_p priv, struct ng_mesg **rptr)
 	}
 	TAILQ_REMOVE(&head->so_comp, so, so_list);
 	head->so_qlen--;
+	soclrstate(so, SS_COMP);
+	so->so_head = NULL;
+	soreference(so);
+
 	lwkt_reltoken(&head->so_rcv.ssb_token);
 
 	/* XXX KNOTE(&head->so_rcv.ssb_sel.si_note, 0); */
-
-	soclrstate(so, SS_COMP);
-	so->so_head = NULL;
 
 	soaccept(so, &sa);
 

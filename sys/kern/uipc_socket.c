@@ -452,6 +452,10 @@ soabort_oncpu(struct socket *so)
 	so_pru_abort_oncpu(so);
 }
 
+/*
+ * so is passed in ref'd, which becomes owned by
+ * the cleared SS_NOFDREF flag.
+ */
 int
 soaccept(struct socket *so, struct sockaddr **nam)
 {
@@ -459,7 +463,6 @@ soaccept(struct socket *so, struct sockaddr **nam)
 
 	if ((so->so_state & SS_NOFDREF) == 0)
 		panic("soaccept: !NOFDREF");
-	soreference(so);		/* create ref */
 	soclrstate(so, SS_NOFDREF);	/* owned by lack of SS_NOFDREF */
 	error = so_pru_accept_direct(so, nam);
 	return (error);

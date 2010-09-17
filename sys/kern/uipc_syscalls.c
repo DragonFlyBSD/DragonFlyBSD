@@ -219,6 +219,7 @@ static boolean_t
 soaccept_predicate(struct netmsg_so_notify *msg)
 {
 	struct socket *head = msg->base.nm_so;
+	struct socket *so;
 
 	if (head->so_error != 0) {
 		msg->base.lmsg.ms_error = head->so_error;
@@ -227,12 +228,17 @@ soaccept_predicate(struct netmsg_so_notify *msg)
 	lwkt_gettoken(&head->so_rcv.ssb_token);
 	if (!TAILQ_EMPTY(&head->so_comp)) {
 		/* Abuse nm_so field as copy in/copy out parameter. XXX JH */
-		msg->base.nm_so = TAILQ_FIRST(&head->so_comp);
-		TAILQ_REMOVE(&head->so_comp, msg->base.nm_so, so_list);
+		so = TAILQ_FIRST(&head->so_comp);
+		TAILQ_REMOVE(&head->so_comp, so, so_list);
 		head->so_qlen--;
+		soclrstate(so, SS_COMP);
+		so->so_head = NULL;
+		soreference(so);
+
+		lwkt_reltoken(&head->so_rcv.ssb_token);
 
 		msg->base.lmsg.ms_error = 0;
-		lwkt_reltoken(&head->so_rcv.ssb_token);
+		msg->base.nm_so = so;
 		return (TRUE);
 	}
 	lwkt_reltoken(&head->so_rcv.ssb_token);
@@ -306,6 +312,9 @@ kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res)
 
 	/*
 	 * At this point we have the connection that's ready to be accepted.
+	 *
+	 * NOTE! soaccept_predicate() ref'd so for us, and soaccept() expects
+	 * 	 to eat the ref and turn it into a descriptor.
 	 */
 	so = msg.base.nm_so;
 
@@ -314,8 +323,6 @@ kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res)
 	/* connection has been removed from the listen queue */
 	KNOTE(&head->so_rcv.ssb_kq.ki_note, 0);
 
-	soclrstate(so, SS_COMP);
-	so->so_head = NULL;
 	if (head->so_sigio != NULL)
 		fsetown(fgetown(head->so_sigio), &so->so_sigio);
 
