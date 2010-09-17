@@ -57,9 +57,9 @@
 #include <sys/errno.h>
 #include <sys/libkern.h>
 
-#include "ng_message.h"
-#include "netgraph.h"
-#include "ng_parse.h"
+#include <netgraph7/ng_message.h>
+#include <netgraph7/netgraph.h>
+#include <netgraph7/ng_parse.h>
 #include "ng_l2tp.h"
 
 #ifdef NG_SEPARATE_MALLOC

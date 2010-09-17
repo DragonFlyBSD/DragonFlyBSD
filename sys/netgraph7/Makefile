@@ -16,6 +16,7 @@ SUBDIR=	UI \
 	hole \
 	iface \
 	ksocket \
+	l2tp \
 	netgraph \
 	pptpgre \
 	socket \
@@ -23,7 +24,6 @@ SUBDIR=	UI \
 	vjc
 #	eiface \
 #	fec \
-#	l2tp \
 #	lmi \
 #	netgraph \
 #	one2many \

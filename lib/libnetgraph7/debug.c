@@ -82,8 +82,8 @@
 #include <netgraph7/ip_input/ng_ip_input.h>
 */
 #include <netgraph7/ksocket/ng_ksocket.h>
-/*
 #include <netgraph7/l2tp/ng_l2tp.h>
+/*
 #include <netgraph7/lmi/ng_lmi.h>
 #include <netgraph7/mppc/ng_mppc.h>
 #include <netgraph7/one2many/ng_one2many.h>
