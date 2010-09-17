@@ -315,7 +315,7 @@ skip_item:
 		if (queuefn != NULL)
 			free(queuefn);
 		if (mailfn != NULL)
-			free(queuefn);
+			free(mailfn);
 	}
 	closedir(spooldir);
 	return (0);
