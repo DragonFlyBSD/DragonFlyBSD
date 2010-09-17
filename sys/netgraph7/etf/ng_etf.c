@@ -46,10 +46,10 @@
 
 #include <net/ethernet.h>
 
-#include "ng_message.h"
-#include "ng_parse.h"
+#include <netgraph7/ng_message.h>
+#include <netgraph7/ng_parse.h>
 #include "ng_etf.h"
-#include "netgraph.h"
+#include <netgraph7/netgraph.h>
 
 /* If you do complicated mallocs you may want to do this */
 /* and use it for your mallocs */

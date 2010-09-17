@@ -347,6 +347,7 @@ NETGRAPH7_DEFLATE	opt_netgraph.h
 NETGRAPH7_DEVICE	opt_netgraph.h
 NETGRAPH7_ECHO		opt_netgraph.h
 NETGRAPH7_EIFACE	opt_netgraph.h
+NETGRAPH7_ETF		opt_netgraph.h
 NETGRAPH7_ETHER		opt_netgraph.h
 NETGRAPH7_FEC		opt_netgraph.h
 NETGRAPH7_FRAME_RELAY	opt_netgraph.h

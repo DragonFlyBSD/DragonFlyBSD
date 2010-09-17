@@ -10,6 +10,7 @@ SUBDIR=	UI \
 	cisco \
 	deflate \
 	echo \
+	etf \
 	ether \
 	hole \
 	iface \
@@ -20,7 +21,6 @@ SUBDIR=	UI \
 	tee \
 	vjc
 #	eiface \
-#	etf \
 #	fec \
 #	frame_relay \
 #	l2tp \

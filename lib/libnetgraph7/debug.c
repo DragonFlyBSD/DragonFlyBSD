@@ -66,8 +66,8 @@
 #include <netgraph7/echo/ng_echo.h>
 /*
 #include <netgraph7/eiface/ng_eiface.h>
-#include <netgraph7/etf/ng_etf.h>
 */
+#include <netgraph7/etf/ng_etf.h>
 #include <netgraph7/ether/ng_ether.h>
 /*
 #include <netgraph7/fec/ng_fec.h>
@@ -142,8 +142,8 @@ static const struct ng_cookie cookies[] = {
 	COOKIE(ECHO),
 /*
 	COOKIE(EIFACE),
-	COOKIE(ETF),
 */
+	COOKIE(ETF),
 	COOKIE(ETHER),
 /*
 	COOKIE(FEC),
