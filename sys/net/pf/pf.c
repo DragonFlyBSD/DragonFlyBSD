@@ -3016,10 +3016,8 @@ pf_test_rule(struct pf_rule **rm, struct pf_state **sm, int direction,
 	if (inp != NULL)
 		pd->lookup.done = pf_socket_lookup(direction, pd);
 	else if (debug_pfugidhack) { 
-		crit_exit();
 		DPFPRINTF(PF_DEBUG_MISC, ("pf: unlocked lookup\n"));
 		pd->lookup.done = pf_socket_lookup(direction, pd);
-		crit_enter();
 	}
 
 	sport = dport = hdrlen = 0;
@@ -5239,15 +5237,11 @@ pf_route(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 		goto bad;
 
 	if (oifp != ifp) {
-		crit_exit();
 		if (pf_test(PF_OUT, ifp, &m0, NULL, NULL) != PF_PASS) {
-			crit_enter();
 			goto bad;
 		} else if (m0 == NULL) {
-			crit_enter();
 			goto done;
 		}
-		crit_enter();
 		if (m0->m_len < sizeof(struct ip)) {
 			DPFPRINTF(PF_DEBUG_URGENT,
 			    ("pf_route: m0->m_len < sizeof(struct ip)\n"));
@@ -5281,9 +5275,7 @@ pf_route(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 			}
 		}
 		lwkt_reltoken(&pf_token);
-		crit_exit();
 		error = ifp->if_output(ifp, m0, sintosa(dst), ro->ro_rt);
-		crit_enter();
 		lwkt_gettoken(&pf_token);
 		goto done;
 	}
@@ -5295,10 +5287,8 @@ pf_route(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 	if (ip->ip_off & IP_DF) {
 		ipstat.ips_cantfrag++;
 		if (r->rt != PF_DUPTO) {
-			crit_exit();
 			icmp_error(m0, ICMP_UNREACH, ICMP_UNREACH_NEEDFRAG, 0,
-			    ifp->if_mtu);
-			crit_enter();
+				   ifp->if_mtu);
 			goto done;
 		} else
 			goto bad;
@@ -5315,10 +5305,8 @@ pf_route(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 		m0->m_nextpkt = 0;
 		if (error == 0) {
 			lwkt_reltoken(&pf_token);
-			crit_exit();
 			error = (*ifp->if_output)(ifp, m0, sintosa(dst),
-			    NULL);
-			crit_enter();
+						  NULL);
 			lwkt_gettoken(&pf_token);
 		} else
 			m_freem(m0);
@@ -5423,15 +5411,11 @@ pf_route6(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 		goto bad;
 
 	if (oifp != ifp) {
-		crit_exit();
 		if (pf_test6(PF_OUT, ifp, &m0, NULL, NULL) != PF_PASS) {
-			crit_enter();
 			goto bad;
 		} else if (m0 == NULL) {
-			crit_enter();
 			goto done;
 		}
-		crit_enter();
 		if (m0->m_len < sizeof(struct ip6_hdr)) {
 			DPFPRINTF(PF_DEBUG_URGENT,
 			    ("pf_route6: m0->m_len < sizeof(struct ip6_hdr)\n"));
@@ -5447,15 +5431,11 @@ pf_route6(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 	if (IN6_IS_ADDR_LINKLOCAL(&dst->sin6_addr))
 		dst->sin6_addr.s6_addr16[1] = htons(ifp->if_index);
 	if ((u_long)m0->m_pkthdr.len <= ifp->if_mtu) {
-		crit_exit();
 		error = nd6_output(ifp, ifp, m0, dst, NULL);
-		crit_enter();
 	} else {
 		in6_ifstat_inc(ifp, ifs6_in_toobig);
 		if (r->rt != PF_DUPTO) {
-			crit_exit();
 			icmp6_error(m0, ICMP6_PACKET_TOO_BIG, 0, ifp->if_mtu);
-			crit_enter();
 		 } else
 			goto bad;
 	}
