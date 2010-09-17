@@ -70,8 +70,8 @@ LSUBDIRS=	bus/cam bus/cam/scsi \
 	netgraph7/UI netgraph7/async netgraph7/atmllc netgraph7/bpf \
 	netgraph7/bridge netgraph7/cisco netgraph7/deflate netgraph7/echo \
 	netgraph7/etf netgraph7/ether netgraph7/frame_relay netgraph7/hole \
-	netgraph7/iface netgraph7/ksocket netgraph7/l2tp netgraph7/pptpgre \
-	netgraph7/socket netgraph7/tee netgraph7/vjc \
+	netgraph7/iface netgraph7/ksocket netgraph7/l2tp netgraph7/lmi \
+	netgraph7/pptpgre netgraph7/socket netgraph7/tee netgraph7/vjc \
 	bus/cam bus/usb bus/pccard bus/pci bus/isa bus/ppbus bus/smbus \
 	netproto/atm netproto/ipsec netproto/ipx \
 	netproto/key netproto/natm netproto/ncp netproto/smb \

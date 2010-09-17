@@ -61,8 +61,8 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/syslog.h>
-#include "ng_message.h"
-#include "netgraph.h"
+#include <netgraph7/ng_message.h>
+#include <netgraph7/netgraph.h>
 #include "ng_lmi.h"
 
 /*

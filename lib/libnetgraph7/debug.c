@@ -83,8 +83,8 @@
 */
 #include <netgraph7/ksocket/ng_ksocket.h>
 #include <netgraph7/l2tp/ng_l2tp.h>
-/*
 #include <netgraph7/lmi/ng_lmi.h>
+/*
 #include <netgraph7/mppc/ng_mppc.h>
 #include <netgraph7/one2many/ng_one2many.h>
 #include <netgraph7/ppp/ng_ppp.h>
@@ -159,9 +159,9 @@ static const struct ng_cookie cookies[] = {
 	COOKIE(IP_INPUT),
 */
 	COOKIE(KSOCKET),
-/*
 	COOKIE(L2TP),
 	COOKIE(LMI),
+/*
 	COOKIE(MPPC),
 	COOKIE(ONE2MANY),
 	COOKIE(PPP),

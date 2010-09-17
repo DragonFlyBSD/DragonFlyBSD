@@ -236,6 +236,8 @@
         ..
         l2tp
         ..
+        lmi
+        ..
         pptpgre
         ..
         socket
