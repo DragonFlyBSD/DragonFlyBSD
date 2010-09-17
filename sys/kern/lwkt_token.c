@@ -548,6 +548,19 @@ lwkt_reltoken_hard(lwkt_token_t tok)
 }
 
 /*
+ * It is faster for users of lwkt_getpooltoken() to use the returned
+ * token and just call lwkt_reltoken(), but for convenience we provide
+ * this function which looks the token up based on the ident.
+ */
+void
+lwkt_relpooltoken(void *ptr)
+{
+	lwkt_token_t tok = _lwkt_token_pool_lookup(ptr);
+	lwkt_reltoken(tok);
+}
+
+
+/*
  * Pool tokens are used to provide a type-stable serializing token
  * pointer that does not race against disappearing data structures.
  *

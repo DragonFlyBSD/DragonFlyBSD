@@ -453,6 +453,7 @@ extern void lwkt_token_uninit(lwkt_token_t);
 extern void lwkt_token_pool_init(void);
 extern lwkt_token_t lwkt_token_pool_lookup(void *);
 extern lwkt_token_t lwkt_getpooltoken(void *);
+extern void lwkt_relpooltoken(void *);
 
 extern void lwkt_setpri(thread_t, int);
 extern void lwkt_setpri_initial(thread_t, int);
