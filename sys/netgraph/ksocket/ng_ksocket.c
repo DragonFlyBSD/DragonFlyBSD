@@ -1166,10 +1166,10 @@ ng_ksocket_finish_accept(priv_p priv, struct ng_mesg **rptr)
 	priv_p priv2;
 	int len;
 
-	lwkt_gettoken(&head->so_rcv.ssb_token);
+	lwkt_getpooltoken(head);
 	so = TAILQ_FIRST(&head->so_comp);
 	if (so == NULL)	{	/* Should never happen */
-		lwkt_reltoken(&head->so_rcv.ssb_token);
+		lwkt_relpooltoken(head);
 		return;
 	}
 	TAILQ_REMOVE(&head->so_comp, so, so_list);
@@ -1178,7 +1178,7 @@ ng_ksocket_finish_accept(priv_p priv, struct ng_mesg **rptr)
 	so->so_head = NULL;
 	soreference(so);
 
-	lwkt_reltoken(&head->so_rcv.ssb_token);
+	lwkt_relpooltoken(head);
 
 	/* XXX KNOTE(&head->so_rcv.ssb_sel.si_note, 0); */
 
