@@ -80,9 +80,9 @@ static struct Info {
 	long	*intrcnt;
 	int	bufspace;
 	int	desiredvnodes;
-	long	numvnodes;
-	long	freevnodes;
-	long	dirtybufspace;
+	int	numvnodes;
+	int	freevnodes;
+	int	dirtybufspace;
 } s, s1, s2, z;
 
 struct kinfo_cputime cp_time, old_cp_time;
@@ -780,8 +780,8 @@ getinfo(struct Info *ls)
 		err(1, "kinfo_get_sched_cputime");
 	NREAD(X_BUFFERSPACE, &ls->bufspace, sizeof(ls->bufspace));
 	NREAD(X_DESIREDVNODES, &ls->desiredvnodes, sizeof(ls->desiredvnodes));
-	NREAD(X_NUMVNODES, &ls->numvnodes, LONG);
-	NREAD(X_FREEVNODES, &ls->freevnodes, LONG);
+	NREAD(X_NUMVNODES, &ls->numvnodes, sizeof(ls->numvnodes));
+	NREAD(X_FREEVNODES, &ls->freevnodes, sizeof(ls->freevnodes));
 	NREAD(X_NUMDIRTYBUFFERS, &ls->dirtybufspace, sizeof(ls->dirtybufspace));
 
 	if (nintr) {
