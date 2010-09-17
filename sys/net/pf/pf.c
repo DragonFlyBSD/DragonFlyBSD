@@ -877,8 +877,8 @@ pf_insert_state(struct pfi_kif *kif, struct pf_state *s)
 	if (RB_INSERT(pf_state_tree_id, &tree_id, s) != NULL) {
 		if (pf_status.debug >= PF_DEBUG_MISC) {
 			kprintf("pf: state insert failed: "
-			    "id: %016llx creatorid: %08x",
-			    be64toh(s->id), ntohl(s->creatorid));
+			    "id: %016jx creatorid: %08x",
+			    (uintmax_t)be64toh(s->id), ntohl(s->creatorid));
 			if (s->sync_flags & PFSTATE_FROMSYNC)
 				kprintf(" (from sync)");
 			kprintf("\n");
