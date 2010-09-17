@@ -269,6 +269,7 @@ again:
 
 		case '<':
 			ps->brackets = 1;
+			ps->pos = 0;
 			goto skip;
 
 		case '>':
