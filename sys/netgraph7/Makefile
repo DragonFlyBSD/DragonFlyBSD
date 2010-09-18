@@ -22,6 +22,7 @@ SUBDIR=	UI \
 	netgraph \
 	one2many \
 	ppp \
+	pppoe \
 	pptpgre \
 	socket \
 	tee \
@@ -29,7 +30,6 @@ SUBDIR=	UI \
 #	eiface \
 #	fec \
 #	netgraph \
-#	pppoe \
 #	rfc1490 \
 #	socket \
 #	sync_ar \
