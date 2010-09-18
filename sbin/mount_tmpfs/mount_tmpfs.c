@@ -30,10 +30,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-#ifndef lint
-#endif /* not lint */
-
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
@@ -53,6 +49,7 @@
 #include <inttypes.h>
 #include <libutil.h>
 
+#include "defs.h"
 #include "mntopts.h"
 #include "mount_tmpfs.h"
 
@@ -72,6 +69,8 @@ static const struct mntopt mopts[] = {
 	MOPT_TMPFSOPTS,
 	MOPT_NULL
 };
+
+static int Cflag;
 
 /* --------------------------------------------------------------------- */
 
@@ -110,8 +109,11 @@ mount_tmpfs_parseargs(int argc, char *argv[],
 	modeset = 0; mode = 0;
 
 	optind = optreset = 1;
-	while ((ch = getopt(argc, argv, "f:g:m:n:o:s:u:")) != -1 ) {
+	while ((ch = getopt(argc, argv, "Cf:g:m:n:o:s:u:")) != -1 ) {
 		switch (ch) {
+		case 'C':
+			Cflag = 1;
+			break;
 		case 'f':
 			args->ta_maxfsize_max = a_number(optarg);
 			break;
@@ -289,7 +291,7 @@ a_uid(char *s)
 static mode_t
 a_mask(char *s)
 {
-	int done, rv=0;
+	int done, rv = 0;
 	char *ep;
 
 	done = 0;
@@ -305,7 +307,7 @@ a_mask(char *s)
 static int64_t
 a_number(char *s)
 {
-	int64_t rv=0;
+	int64_t rv = 0;
 
 	if (dehumanize_number(s, &rv) < 0 || rv < 0)
 		errx(EX_USAGE, "bad number for option: %s", s);
@@ -315,9 +317,9 @@ a_number(char *s)
 static void
 usage(void)
 {
-	(void)fprintf(stderr,
-	    "Usage: %s [-g group] [-m mode] [-n nodes] [-o options] [-s size]\n"
-	    "           [-u user] [-f maxfilesize]  tmpfs mountpoint\n", getprogname());
+	fprintf(stderr,
+	    "Usage: %s [-C] [-g group] [-m mode] [-n nodes] [-o options] [-s size]\n"
+	    "           [-u user] [-f maxfilesize] tmpfs mountpoint\n", getprogname());
 	exit(1);
 }
 
@@ -331,10 +333,10 @@ mount_tmpfs(int argc, char *argv[])
 	int mntflags;
 	struct vfsconf vfc;
 	int error;
+	fsnode_t copyroot = NULL, copyhlinks;
 
 	mount_tmpfs_parseargs(argc, argv, &args, &mntflags,
 	    canon_dev, canon_dir);
-
 
 	error = getvfsbyname("tmpfs", &vfc);
 	if (error && vfsisloadable("tmpfs")) {
@@ -346,8 +348,14 @@ mount_tmpfs(int argc, char *argv[])
 	if (error)
 		errx(EX_OSERR, "%s filesystem not available", "tmpfs");
 
+	if (Cflag)
+		copyroot = FSCopy(&copyhlinks, canon_dir);
+
 	if (mount(vfc.vfc_name, canon_dir, mntflags, &args) == -1)
 		err(EXIT_FAILURE, "tmpfs on %s", canon_dir);
+
+	if (Cflag)
+		FSPaste(canon_dir, copyroot, copyhlinks);
 
 	return EXIT_SUCCESS;
 }
@@ -356,7 +364,6 @@ mount_tmpfs(int argc, char *argv[])
 int
 main(int argc, char *argv[])
 {
-
 	setprogname(argv[0]);
 	return mount_tmpfs(argc, argv);
 }
