@@ -55,7 +55,6 @@ void		 fn_select_slice(struct i_fn_args *);
 
 void 		 fn_root_passwd(struct i_fn_args *);
 void 		 fn_add_user(struct i_fn_args *);
-void		 fn_cvsup_sources(struct i_fn_args *);
 void		 fn_install_packages(struct i_fn_args *);
 void		 fn_remove_packages(struct i_fn_args *);
 void		 fn_select_services(struct i_fn_args *);

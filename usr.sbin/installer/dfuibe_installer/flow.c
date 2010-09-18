@@ -445,9 +445,6 @@ state_configure_menu(struct i_fn_args *a)
 		    _("Set the password that the root (superuser) account will use"), "",
 		    "a", "add_user", _("Add a user"),
 		    _("Add a user to the system"), "",
-		    /*
-		    "a",	"cvsup_sources","Synchronize system sources", "", "",
-		    */
 		    "a", "assign_ip", _("Configure network interfaces"),
 		    _("Set up network interfaces (NICs, ethernet, TCP/IP, etc)"), "",
 		    "a", "assign_hostname_domain",
@@ -488,8 +485,6 @@ state_configure_menu(struct i_fn_args *a)
 			fn_root_passwd(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "add_user") == 0) {
 			fn_add_user(a);
-		} else if (strcmp(dfui_response_get_action_id(r), "cvsup_sources") == 0) {
-			fn_cvsup_sources(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "install_pkgs") == 0) {
 			fn_install_packages(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "remove_pkgs") == 0) {

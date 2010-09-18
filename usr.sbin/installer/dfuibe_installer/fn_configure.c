@@ -337,25 +337,6 @@ fn_root_passwd(struct i_fn_args *a)
 }
 
 void
-fn_cvsup_sources(struct i_fn_args *a)
-{
-	struct commands *cmds;
-
-	inform(a->c, _("The system has issued a cvsup command in the background.\n\nPlease tail /tmp/cvsupdate.log if you wish to follow the progress."));
-
-	// TODO: This needs a lot more work.
-
-	cmds = commands_new();
-	command_add(cmds, "%s%s -h cvsup.dragonflybsd.com -b /usr "
-	    "/usr/share/examples/cvsup/DragonFly-supfile >/tmp/cvsupdate.log",
-	    a->os_root, cmd_name(a, "CVSUP"));
-	if (!commands_execute(a, cmds))
-	    inform(a->c, _("Warning: could not launch cvsup"));
-
-	commands_free(cmds);
-}
-
-void
 fn_install_packages(struct i_fn_args *a)
 {
 	FILE *pipe;
