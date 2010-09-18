@@ -530,6 +530,7 @@ struct	mbuf	*m_pulldown(struct mbuf *, int, int, int *);
 struct	mbuf	*m_pullup(struct mbuf *, int);
 struct	mbuf	*m_split(struct mbuf *, int, int);
 struct	mbuf 	*m_uiomove(struct uio *);
+struct	mbuf	*m_unshare(struct mbuf *, int);
 void		m_mclget(struct mbuf *m, int how);
 int		m_sharecount(struct mbuf *m);
 void		m_chtype(struct mbuf *m, int type);

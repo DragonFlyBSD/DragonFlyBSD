@@ -25,7 +25,7 @@
 .\" $FreeBSD: src/share/man/man9/mbuf.9,v 1.27.2.1 2003/05/28 13:53:18 yar Exp $
 .\" $DragonFly: src/share/man/man9/mbuf.9,v 1.8 2007/08/18 18:58:20 swildner Exp $
 .\"
-.Dd August 18, 2007
+.Dd September 17, 2010
 .Dt MBUF 9
 .Os
 .\"
@@ -97,6 +97,8 @@
 .Fn m_cat "struct mbuf *m" "struct mbuf *n"
 .Ft struct mbuf *
 .Fn m_split "struct mbuf *mbuf" "int len" "int how"
+.Ft struct mbuf *
+.Fn m_unshare "struct mbuf *mbuf" "int how"
 .\"
 .Sh DESCRIPTION
 An mbuf is a basic unit of memory management in the kernel IPC subsystem.
@@ -459,6 +461,21 @@ bytes.
 In case of failure, it returns
 .Dv NULL
 and attempts to restore the chain to its original state.
+.It Fn m_unshare mbuf how
+Create a version of the specified mbuf chain whose
+contents can be safely modified without affecting other users.
+If allocation fails and this operation can not be completed,
+.Dv NULL
+will be returned.
+The original mbuf chain is always reclaimed and the reference
+count of any shared mbuf clusters is decremented.
+As a side-effect of this process the returned
+mbuf chain may be compacted.
+.Pp
+This function is especially useful in the transmit path of
+network code, when data must be encrypted or otherwise
+altered prior to transmission.
+.
 .El
 .Sh STRESS TESTING
 When running a kernel compiled with the option
