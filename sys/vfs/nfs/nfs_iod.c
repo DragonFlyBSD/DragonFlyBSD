@@ -53,7 +53,6 @@
 #include <sys/tprintf.h>
 #include <sys/sysctl.h>
 #include <sys/signalvar.h>
-#include <sys/mutex.h>
 
 #include <sys/signal2.h>
 #include <sys/thread2.h>

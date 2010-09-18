@@ -38,7 +38,6 @@
 #include <sys/sysctl.h>
 #include <sys/eventhandler.h>
 #include <sys/globaldata.h>
-#include <sys/mutex.h>
 #include <sys/mutex2.h>
 
 #include <bus/cam/cam.h>

@@ -254,7 +254,6 @@ struct _prop_object_iterator {
 #include <sys/objcache.h>
 #include <sys/systm.h>
 #include <sys/globaldata.h>
-#include <sys/mutex.h>
 #include <sys/mutex2.h>
 #include <sys/lock.h>
 

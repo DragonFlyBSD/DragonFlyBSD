@@ -53,7 +53,6 @@
 #include <sys/mbuf.h>
 #include <sys/bus.h>
 #include <sys/eventhandler.h>
-#include <sys/mutex.h>
 
 #include <sys/thread2.h>
 #include <sys/mutex2.h>

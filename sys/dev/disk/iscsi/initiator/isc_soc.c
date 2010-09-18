@@ -54,7 +54,6 @@
 #include <sys/user.h>
 #include <signal.h>
 #include <sys/eventhandler.h>
-#include <sys/mutex.h>
 #include <sys/socketops.h>
 
 #include <sys/thread2.h>

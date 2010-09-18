@@ -42,7 +42,6 @@
 #include <sys/sysctl.h>
 #include <sys/systm.h>
 #include <sys/globaldata.h>
-#include <sys/mutex.h>
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>

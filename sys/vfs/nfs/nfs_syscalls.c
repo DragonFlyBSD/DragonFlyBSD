@@ -58,7 +58,6 @@
 #include <sys/domain.h>
 #include <sys/protosw.h>
 #include <sys/nlookup.h>
-#include <sys/mutex.h>
 #include <vm/vm_zone.h>
 
 #include <sys/mutex2.h>

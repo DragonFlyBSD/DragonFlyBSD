@@ -49,7 +49,6 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/thread.h>
-#include <sys/mutex.h>
 
 #include <machine/cpufunc.h>
 
