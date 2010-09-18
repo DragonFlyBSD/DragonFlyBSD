@@ -573,47 +573,6 @@ fn_create_cdboot_floppy(struct i_fn_args *a)
 	}
 }
 
-void
-fn_create_memtest86_floppy(struct i_fn_args *a)
-{
-	struct commands *cmds;
-
-	switch (dfui_be_present_dialog(a->c, _("Create memtest86 Floppy"),
-	    "Create memtest86 Floppy|Return to Utilities Menu",
-	    "While this installer allows you to test memory "
-	    "on-line, the fact that the installer and operating "
-	    "system are already loaded means that the memory "
-	    "test has certain limits.  For a more thorough "
-	    "memory test, you can create a floppy containing "
-	    "the memtest86 program, which boots up independently "
-	    "of any operating system, allowing it access to "
-	    "almost the entire memory of the computer for testing.\n\n"
-	    "memtest86 is not a part of %s; "
-	    "the memtest86 project can be found here:\n\n"
-	    "http://www.memtest86.com/\n\n"
-	    "To create a memtest86 floppy, insert a blank floppy "
-	    "in unit 0 (``drive A:'') before proceeding."
-	    "", OPERATING_SYSTEM_NAME)) {
-	case 1:
-		cmds = commands_new();
-		command_add(cmds, "%s%s -c %sboot/memtest86.flp.bz2 | "
-		    "%s%s of=%sdev/fd0 bs=32k",
-		    a->os_root, cmd_name(a, "BUNZIP2"),
-		    a->os_root,
-		    a->os_root, cmd_name(a, "DD"),
-		    a->os_root);
-		if (commands_execute(a, cmds))
-			inform(a->c, _("memtest86 floppy successfully created!"));
-		else
-			inform(a->c, _("memtest86 floppy was not successfully created."));
-		break;
-	case 2:
-		return;
-	default:
-		abort_backend();
-	}
-}
-
 /**** NON-fn_ FUNCTIONS ***/
 
 int

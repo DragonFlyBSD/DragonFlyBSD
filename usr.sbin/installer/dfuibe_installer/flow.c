@@ -709,20 +709,6 @@ state_diagnostics_menu(struct i_fn_args *a)
 		    NULL
 		);
 
-		if (is_file("%sboot/memtest86.flp.bz2", a->os_root)) {
-			dfui_form_action_add(f, "memtest86",
-			    dfui_info_new(_("Create memtest86 Floppy"),
-			    _("Create a floppy which boots into a dedicated memory-test"),
-			    ""));
-		}
-
-		if (is_program("%susr/local/bin/memtest", a->os_root)) {
-			dfui_form_action_add(f, "memtest",
-			    dfui_info_new(_("Run On-Line Memory Test"),
-			    _("Test the memory in the machine while running"),
-			    ""));
-		}
-
 		k = dfui_form_action_add(f, "cancel",
 		    dfui_info_new(_("Return to Utilities Menu"), "", ""));
 		dfui_action_property_set(k, "accelerator", "ESC");
@@ -739,10 +725,6 @@ state_diagnostics_menu(struct i_fn_args *a)
 			fn_show_pnpinfo(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "natacontrol") == 0) {
 			fn_show_natacontrol(a);
-		} else if (strcmp(dfui_response_get_action_id(r), "memtest") == 0) {
-			fn_memtest(a);
-		} else if (strcmp(dfui_response_get_action_id(r), "memtest86") == 0) {
-			fn_create_memtest86_floppy(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "cancel") == 0) {
 			state = state_utilities_menu;
 			done = 1;
