@@ -157,10 +157,11 @@ MALLOC_DECLARE(M_IP6NDP); /* for INET6 */
 
 /*
  * kmemusage is an array of descriptors used to control oversized
- * kmalloc allocations.
+ * kmalloc allocations.  This also marks zones as having been freed
+ * when negative.
  */
 struct kmemusage {
-	u_int32_t	ku_pagecnt;
+	int32_t	ku_pagecnt;
 };
 
 #ifdef _KERNEL

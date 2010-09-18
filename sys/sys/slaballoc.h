@@ -77,22 +77,28 @@ typedef struct SLChunk {
 
 /*
  * The IN-BAND zone header is placed at the beginning of each zone.
+ *
+ * NOTE! All fields are cpu-local except z_RChunks.  Remote cpus free
+ *	 chunks using atomic ops to z_RChunks and then signal local
+ *	 cpus as necessary.
  */
 typedef struct SLZone {
     __int32_t	z_Magic;	/* magic number for sanity check */
     int		z_Cpu;		/* which cpu owns this zone? */
     struct globaldata *z_CpuGd;	/* which cpu owns this zone? */
-    int		z_NFree;	/* total free chunks / ualloc space in zone */
     struct SLZone *z_Next;	/* ZoneAry[] link if z_NFree non-zero */
+    int		z_NFree;	/* total free chunks / ualloc space in zone */
     int		z_NMax;		/* maximum free chunks */
     char	*z_BasePtr;	/* pointer to start of chunk array */
     int		z_UIndex;	/* current initial allocation index */
     int		z_UEndIndex;	/* last (first) allocation index */
     int		z_ChunkSize;	/* chunk size for validation */
-    int		z_FirstFreePg;	/* chunk list on a page-by-page basis */
     int		z_ZoneIndex;
     int		z_Flags;
-    SLChunk	*z_PageAry[ZALLOC_MAX_ZONE_SIZE / PAGE_SIZE];
+    SLChunk	*z_LChunks;	/* linked list of chunks current cpu */
+    SLChunk	**z_LChunksp;	/* tailp */
+    SLChunk	*z_RChunks;	/* linked list of chunks remote cpu */
+    int		z_RSignal;	/* signal interlock */
 #if defined(INVARIANTS)
     __uint32_t	z_Bitmap[];	/* bitmap of free chunks for sanity check */
 #endif
