@@ -1325,8 +1325,8 @@ netgraph7/ng_ipfw.c		optional netgraph7_ipfw
 netgraph7/ksocket/ng_ksocket.c	optional netgraph7_ksocket
 netgraph7/l2tp/ng_l2tp.c	optional netgraph7_l2tp
 netgraph7/lmi/ng_lmi.c		optional netgraph7_lmi
-netgraph7/ng_mppc.c		optional netgraph7_mppc_compression
-netgraph7/ng_mppc.c		optional netgraph7_mppc_encryption
+netgraph7/mppc/ng_mppc.c	optional netgraph7_mppc_compression
+netgraph7/mppc/ng_mppc.c	optional netgraph7_mppc_encryption
 netgraph7/ng_nat.c		optional netgraph7_nat
 netgraph7/ng_one2many.c		optional netgraph7_one2many
 netgraph7/netgraph/ng_parse.c	optional netgraph7

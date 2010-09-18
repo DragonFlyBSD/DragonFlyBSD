@@ -18,6 +18,7 @@ SUBDIR=	UI \
 	ksocket \
 	l2tp \
 	lmi \
+	mppc \
 	netgraph \
 	ppp \
 	pptpgre \
