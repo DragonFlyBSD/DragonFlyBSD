@@ -858,15 +858,18 @@ del_m6fc(struct mf6cctl *mfccp)
 }
 
 static int
-socket_send(struct socket *s, struct mbuf *mm, struct sockaddr_in6 *src)
+socket_send(struct socket *so, struct mbuf *mm, struct sockaddr_in6 *src)
 {
-	if (s) {
-		if (ssb_appendaddr(&s->so_rcv,
+	if (so) {
+		lwkt_gettoken(&so->so_rcv.ssb_token);
+		if (ssb_appendaddr(&so->so_rcv,
 				 (struct sockaddr *)src,
 				 mm, NULL) != 0) {
-			sorwakeup(s);
+			sorwakeup(so);
+			lwkt_reltoken(&so->so_rcv.ssb_token);
 			return 0;
 		}
+		lwkt_reltoken(&so->so_rcv.ssb_token);
 	}
 	m_freem(mm);
 	return -1;

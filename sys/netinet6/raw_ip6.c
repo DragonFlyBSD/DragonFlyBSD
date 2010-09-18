@@ -199,20 +199,27 @@ rip6_input(struct mbuf **mp, int *offp, int proto)
 			} else
 #endif /*FAST_IPSEC*/
 			if (n) {
-				if (last->in6p_flags & IN6P_CONTROLOPTS ||
-				    last->in6p_socket->so_options & SO_TIMESTAMP)
+				struct socket *so;
+
+				so = last->in6p_socket;
+				if ((last->in6p_flags & IN6P_CONTROLOPTS) ||
+				    (so->so_options & SO_TIMESTAMP)) {
 					ip6_savecontrol(last, &opts, ip6, n);
+				}
 				/* strip intermediate headers */
 				m_adj(n, *offp);
-				if (ssb_appendaddr(&last->in6p_socket->so_rcv,
+				lwkt_gettoken(&so->so_rcv.ssb_token);
+				if (ssb_appendaddr(&so->so_rcv,
 						(struct sockaddr *)&rip6src,
 						 n, opts) == 0) {
 					m_freem(n);
 					if (opts)
 						m_freem(opts);
 					rip6stat.rip6s_fullsock++;
-				} else
-					sorwakeup(last->in6p_socket);
+				} else {
+					sorwakeup(so);
+				}
+				lwkt_reltoken(&so->so_rcv.ssb_token);
 				opts = NULL;
 			}
 		}
@@ -240,19 +247,26 @@ rip6_input(struct mbuf **mp, int *offp, int proto)
 	} else
 #endif /*FAST_IPSEC*/
 	if (last) {
-		if (last->in6p_flags & IN6P_CONTROLOPTS ||
-		    last->in6p_socket->so_options & SO_TIMESTAMP)
+		struct socket *so;
+
+		so = last->in6p_socket;
+		if ((last->in6p_flags & IN6P_CONTROLOPTS) ||
+		    (so->so_options & SO_TIMESTAMP)) {
 			ip6_savecontrol(last, &opts, ip6, m);
+		}
 		/* strip intermediate headers */
 		m_adj(m, *offp);
-		if (ssb_appendaddr(&last->in6p_socket->so_rcv,
-				(struct sockaddr *)&rip6src, m, opts) == 0) {
+		lwkt_gettoken(&so->so_rcv.ssb_token);
+		if (ssb_appendaddr(&so->so_rcv, (struct sockaddr *)&rip6src,
+				   m, opts) == 0) {
 			m_freem(m);
 			if (opts)
 				m_freem(opts);
 			rip6stat.rip6s_fullsock++;
-		} else
-			sorwakeup(last->in6p_socket);
+		} else {
+			sorwakeup(so);
+		}
+		lwkt_reltoken(&so->so_rcv.ssb_token);
 	} else {
 		rip6stat.rip6s_nosock++;
 		if (m->m_flags & M_MCAST)

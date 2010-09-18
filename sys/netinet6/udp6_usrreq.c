@@ -156,6 +156,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 	int off = *offp;
 	int plen, ulen;
 	struct sockaddr_in6 udp_in6;
+	struct socket *so;
 
 	IP6_EXTHDR_CHECK(m, off, sizeof(struct udphdr), IPPROTO_DONE);
 
@@ -254,7 +255,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 			}
 
 			if (last != NULL) {
-				struct	mbuf *n;
+				struct mbuf *n;
 
 #ifdef IPSEC
 				/*
@@ -281,21 +282,25 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 					 * and m_copy() will copy M_PKTHDR
 					 * only if offset is 0.
 					 */
-					if (last->in6p_flags & IN6P_CONTROLOPTS
-					    || last->in6p_socket->so_options & SO_TIMESTAMP)
+					so = last->in6p_socket;
+					if ((last->in6p_flags & IN6P_CONTROLOPTS) ||
+					    (so->so_options & SO_TIMESTAMP)) {
 						ip6_savecontrol(last, &opts,
 								ip6, n);
-								
+					}
 					m_adj(n, off + sizeof(struct udphdr));
-					if (ssb_appendaddr(&last->in6p_socket->so_rcv,
-							(struct sockaddr *)&udp_in6,
-							n, opts) == 0) {
+					lwkt_gettoken(&so->so_rcv.ssb_token);
+					if (ssb_appendaddr(&so->so_rcv,
+						    (struct sockaddr *)&udp_in6,
+						    n, opts) == 0) {
 						m_freem(n);
 						if (opts)
 							m_freem(opts);
 						udpstat.udps_fullsock++;
-					} else
-						sorwakeup(last->in6p_socket);
+					} else {
+						sorwakeup(so);
+					}
+					lwkt_reltoken(&so->so_rcv.ssb_token);
 					opts = NULL;
 				}
 			}
@@ -345,13 +350,16 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 			ip6_savecontrol(last, &opts, ip6, m);
 
 		m_adj(m, off + sizeof(struct udphdr));
-		if (ssb_appendaddr(&last->in6p_socket->so_rcv,
-				(struct sockaddr *)&udp_in6,
-				m, opts) == 0) {
+		so = last->in6p_socket;
+		lwkt_gettoken(&so->so_rcv.ssb_token);
+		if (ssb_appendaddr(&so->so_rcv, (struct sockaddr *)&udp_in6,
+				   m, opts) == 0) {
 			udpstat.udps_fullsock++;
+			lwkt_reltoken(&so->so_rcv.ssb_token);
 			goto bad;
 		}
-		sorwakeup(last->in6p_socket);
+		sorwakeup(so);
+		lwkt_reltoken(&so->so_rcv.ssb_token);
 		return IPPROTO_DONE;
 	}
 	/*
@@ -407,13 +415,16 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 	    || in6p->in6p_socket->so_options & SO_TIMESTAMP)
 		ip6_savecontrol(in6p, &opts, ip6, m);
 	m_adj(m, off + sizeof(struct udphdr));
-	if (ssb_appendaddr(&in6p->in6p_socket->so_rcv,
-			(struct sockaddr *)&udp_in6,
-			m, opts) == 0) {
+	so = in6p->in6p_socket;
+	lwkt_gettoken(&so->so_rcv.ssb_token);
+	if (ssb_appendaddr(&so->so_rcv, (struct sockaddr *)&udp_in6,
+			   m, opts) == 0) {
 		udpstat.udps_fullsock++;
+		lwkt_reltoken(&so->so_rcv.ssb_token);
 		goto bad;
 	}
-	sorwakeup(in6p->in6p_socket);
+	sorwakeup(so);
+	lwkt_reltoken(&so->so_rcv.ssb_token);
 	return IPPROTO_DONE;
 bad:
 	if (m)

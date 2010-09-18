@@ -1464,14 +1464,15 @@ ip6_notify_pmtu(struct inpcb *in6p, struct sockaddr_in6 *dst, u_int32_t *mtu)
 	    IPV6_PATHMTU, IPPROTO_IPV6)) == NULL)
 		return;
 
+	lwkt_gettoken(&so->so_rcv.ssb_token);
 	if (sbappendaddr(&so->so_rcv.sb, (struct sockaddr *)dst, NULL, m_mtu)
 	    == 0) {
 		m_freem(m_mtu);
 		/* XXX: should count statistics */
-	} else
+	} else {
 		sorwakeup(so);
-
-	return;
+	}
+	lwkt_reltoken(&so->so_rcv.ssb_token);
 }
 
 #ifdef PULLDOWN_TEST

@@ -1859,39 +1859,50 @@ icmp6_rip6_input(struct	mbuf **mp, int	off)
 				 in6p->in6p_icmp6filt))
 			continue;
 		if (last) {
-			struct	mbuf *n;
+			struct socket *so;
+			struct mbuf *n;
+
 			if ((n = m_copy(m, 0, (int)M_COPYALL)) != NULL) {
 				if (last->in6p_flags & IN6P_CONTROLOPTS)
 					ip6_savecontrol(last, &opts, ip6, n);
 				/* strip intermediate headers */
 				m_adj(n, off);
-				if (ssb_appendaddr(&last->in6p_socket->so_rcv,
+				so = last->in6p_socket;
+				lwkt_gettoken(&so->so_rcv.ssb_token);
+				if (ssb_appendaddr(&so->so_rcv,
 						 (struct sockaddr *)&rip6src,
 						 n, opts) == 0) {
 					/* should notify about lost packet */
 					m_freem(n);
-					if (opts) {
+					if (opts)
 						m_freem(opts);
-					}
-				} else
-					sorwakeup(last->in6p_socket);
+				} else {
+					sorwakeup(so);
+				}
+				lwkt_reltoken(&so->so_rcv.ssb_token);
 				opts = NULL;
 			}
 		}
 		last = in6p;
 	}
 	if (last) {
+		struct socket *so;
+
 		if (last->in6p_flags & IN6P_CONTROLOPTS)
 			ip6_savecontrol(last, &opts, ip6, m);
 		/* strip intermediate headers */
 		m_adj(m, off);
-		if (ssb_appendaddr(&last->in6p_socket->so_rcv,
-				 (struct sockaddr *)&rip6src, m, opts) == 0) {
+		so = last->in6p_socket;
+		lwkt_gettoken(&so->so_rcv.ssb_token);
+		if (ssb_appendaddr(&so->so_rcv, (struct sockaddr *)&rip6src,
+				   m, opts) == 0) {
 			m_freem(m);
 			if (opts)
 				m_freem(opts);
-		} else
-			sorwakeup(last->in6p_socket);
+		} else {
+			sorwakeup(so);
+		}
+		lwkt_reltoken(&so->so_rcv.ssb_token);
 	} else {
 		m_freem(m);
 		ip6stat.ip6s_delivered--;
