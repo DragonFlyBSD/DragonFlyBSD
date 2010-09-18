@@ -20,6 +20,7 @@ SUBDIR=	UI \
 	lmi \
 	mppc \
 	netgraph \
+	one2many \
 	ppp \
 	pptpgre \
 	socket \
@@ -28,7 +29,6 @@ SUBDIR=	UI \
 #	eiface \
 #	fec \
 #	netgraph \
-#	one2many \
 #	pppoe \
 #	rfc1490 \
 #	socket \

@@ -1328,7 +1328,7 @@ netgraph7/lmi/ng_lmi.c		optional netgraph7_lmi
 netgraph7/mppc/ng_mppc.c	optional netgraph7_mppc_compression
 netgraph7/mppc/ng_mppc.c	optional netgraph7_mppc_encryption
 netgraph7/ng_nat.c		optional netgraph7_nat
-netgraph7/ng_one2many.c		optional netgraph7_one2many
+netgraph7/one2many/ng_one2many.c			optional netgraph7_one2many
 netgraph7/netgraph/ng_parse.c	optional netgraph7
 netgraph7/ppp/ng_ppp.c		optional netgraph7_ppp
 netgraph7/ng_pppoe.c		optional netgraph7_pppoe
