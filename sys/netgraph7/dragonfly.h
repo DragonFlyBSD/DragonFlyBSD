@@ -34,6 +34,7 @@
  * $DragonFly: src/sys/netgraph7/dragonfly.h,v 1.1 2008/06/26 23:05:35 dillon Exp $
  */
 
+#include <sys/globaldata.h>	/* curthread in mtx_assert() */
 #include <sys/lock.h>
 #include <sys/objcache.h>
 
