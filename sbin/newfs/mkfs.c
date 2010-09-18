@@ -1191,13 +1191,6 @@ started(__unused int signo)
 	exit(0);
 }
 
-#ifdef __ELF__
-extern char *_etext;
-#define etext _etext
-#else
-extern char *etext;
-#endif
-
 /*
  * read a block from the file system
  */
