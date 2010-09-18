@@ -134,8 +134,6 @@ ip_lengthcheck(struct mbuf **mp, int hoff)
 
 	/* The packet must be at least the size of an IP header. */
 	if (m->m_pkthdr.len < len) {
-		kprintf("pkthdr %d %d < %d\n", (m->m_flags & M_PKTHDR),
-			m->m_pkthdr.len, len);
 		ipstat.ips_tooshort++;
 		goto fail;
 	}
@@ -144,7 +142,6 @@ ip_lengthcheck(struct mbuf **mp, int hoff)
 	if (m->m_len < len) {
 		m = m_pullup(m, len);
 		if (m == NULL) {
-			kprintf("can't pullup %d\n", len);
 			ipstat.ips_toosmall++;
 			goto fail;
 		}
@@ -176,9 +173,6 @@ ip_lengthcheck(struct mbuf **mp, int hoff)
 	 * at least much as the IP header would have us expect.
 	 */
 	if (m->m_pkthdr.len < hoff + iplen) {
-		kprintf("data in buffer not enough %d -  %d vs %d+%d\n",
-			(m->m_flags & M_PKTHDR),
-			m->m_pkthdr.len, hoff, iplen);
 		ipstat.ips_tooshort++;
 		goto fail;
 	}
