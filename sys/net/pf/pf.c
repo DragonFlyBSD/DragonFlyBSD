@@ -5385,7 +5385,6 @@ pf_route6(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 	if (r->rt == PF_FASTROUTE) {
 		m0->m_pkthdr.pf.flags |= PF_TAG_GENERATED;
 		ip6_output(m0, NULL, NULL, 0, NULL, NULL, NULL);
-		crit_enter();
 		return;
 	}
 
