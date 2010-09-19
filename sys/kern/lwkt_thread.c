@@ -1370,6 +1370,7 @@ lwkt_acquire(thread_t td)
 #endif
 	    cpu_lfence();
 	}
+	cpu_mfence();
 	td->td_gd = mygd;
 	TAILQ_INSERT_TAIL(&mygd->gd_tdallq, td, td_allq);
 	td->td_flags &= ~TDF_MIGRATING;
@@ -1573,9 +1574,10 @@ lwkt_setcpu_remote(void *arg)
 	lwkt_process_ipiq();
 #endif
 	cpu_lfence();
+	cpu_pause();
     }
     td->td_gd = gd;
-    cpu_sfence();
+    cpu_mfence();
     td->td_flags &= ~TDF_MIGRATING;
     KKASSERT(td->td_lwp == NULL || (td->td_lwp->lwp_flag & LWP_ONRUNQ) == 0);
     _lwkt_enqueue(td);

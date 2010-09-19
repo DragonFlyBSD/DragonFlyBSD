@@ -537,22 +537,27 @@ lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip,
     ++mygd->gd_intr_nesting_level;
 
     /*
-     * Note: xindex is only updated after we are sure the function has
-     * finished execution.  Beware lwkt_process_ipiq() reentrancy!  The
-     * function may send an IPI which may block/drain.
+     * NOTE: xindex is only updated after we are sure the function has
+     *	     finished execution.  Beware lwkt_process_ipiq() reentrancy!
+     *	     The function may send an IPI which may block/drain.
      *
-     * Note: due to additional IPI operations that the callback function
-     * may make, it is possible for both rindex and windex to advance and
-     * thus for rindex to advance passed our cached windex.
+     * NOTE: Due to additional IPI operations that the callback function
+     *	     may make, it is possible for both rindex and windex to advance and
+     *	     thus for rindex to advance passed our cached windex.
+     *
+     * NOTE: A memory fence is required to prevent speculative loads prior
+     *	     to the loading of ip_rindex.  Even though stores might be
+     *	     ordered, loads are probably not.
      */
     while (wi - (ri = ip->ip_rindex) > 0) {
 	ri &= MAXCPUFIFO_MASK;
+	cpu_mfence();
 	copy_func = ip->ip_func[ri];
 	copy_arg1 = ip->ip_arg1[ri];
 	copy_arg2 = ip->ip_arg2[ri];
-	cpu_mfence();
 	++ip->ip_rindex;
-	KKASSERT((ip->ip_rindex & MAXCPUFIFO_MASK) == ((ri + 1) & MAXCPUFIFO_MASK));
+	KKASSERT((ip->ip_rindex & MAXCPUFIFO_MASK) ==
+		 ((ri + 1) & MAXCPUFIFO_MASK));
 	logipiq(receive, copy_func, copy_arg1, copy_arg2, sgd, mycpu);
 	copy_func(copy_arg1, copy_arg2, frame);
 	cpu_sfence();
