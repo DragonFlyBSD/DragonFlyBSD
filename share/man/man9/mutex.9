@@ -51,8 +51,8 @@
 .Nm mtx_islocked_ex ,
 .Nm mtx_notlocked ,
 .Nm mtx_notlocked_ex ,
-.Nm mtx_owner ,
-.Nm mtx_notowner ,
+.Nm mtx_owned ,
+.Nm mtx_notowned ,
 .Nm mtx_lockrefs ,
 .Nm mtx_hold ,
 .Nm mtx_drop
@@ -99,9 +99,9 @@
 .Ft int
 .Fn mtx_notlocked_ex "struct mtx *mtx"
 .Ft int
-.Fn mtx_owner "struct mtx *mtx"
+.Fn mtx_owned "struct mtx *mtx"
 .Ft int
-.Fn mtx_notowner "struct mtx *mtx"
+.Fn mtx_notowned "struct mtx *mtx"
 .Ft int
 .Fn mtx_lockrefs "struct mtx *mtx"
 .Ft void
