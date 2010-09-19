@@ -502,6 +502,8 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	for (i = ttl = 0; i < ncpus; ++i)
 	    ttl += type->ks_memuse[i];
 	type->ks_loosememuse = ttl;	/* not MP synchronized */
+	if ((ssize_t)ttl < 0)		/* deal with occassional race */
+		ttl = 0;
 	if (ttl >= type->ks_limit) {
 	    if (flags & M_NULLOK) {
 		logmemory(malloc_end, NULL, type, size, flags);
@@ -1110,11 +1112,13 @@ kfree(void *ptr, struct malloc_type *type)
 	/*
 	 * Making these adjustments now allow us to avoid passing (type)
 	 * to the remote cpu.  Note that ks_inuse/ks_memuse is being
-	 * adjusted on a different cpu, but it should all still sum up
-	 * properly and cancel out.
+	 * adjusted on OUR cpu, not the zone cpu, but it should all still
+	 * sum up properly and cancel out.
 	 */
-	--type->ks_inuse[z->z_Cpu];
-	type->ks_memuse[z->z_Cpu] -= z->z_ChunkSize;
+	crit_enter();
+	--type->ks_inuse[gd->gd_cpuid];
+	type->ks_memuse[gd->gd_cpuid] -= z->z_ChunkSize;
+	crit_exit();
 
 	/*
 	 * WARNING! This code competes with other cpus.  Once we
