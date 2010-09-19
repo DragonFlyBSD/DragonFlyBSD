@@ -1043,7 +1043,7 @@ syscall2(struct trapframe *frame)
 #endif
 
 	KTR_LOG(kernentry_syscall, p->p_pid, lp->lwp_tid,
-		frame->tf_eax);
+		frame->tf_rax);
 
 #ifdef SMP
 	KASSERT(td->td_mpcount == 0,

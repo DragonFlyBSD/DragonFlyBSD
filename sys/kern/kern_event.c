@@ -1287,16 +1287,14 @@ restart:
 			}
 
 			/*
-			 * If the note is not empty we have to wait.
+			 * If the hint is non-zero we have to wait or risk
+			 * losing the state the caller is trying to update.
 			 *
 			 * XXX This is a real problem, certain process
 			 *     and signal filters will bump kn_data for
 			 *     already-processed notes more than once if
 			 *     we restart the list scan.  FIXME.
 			 */
-			kprintf("Warning: knote() on busy "
-				"knote (ev=%d hint=%08lx)\n",
-				kn->kn_filter, hint);
 			kn->kn_status |= KN_WAITING | KN_REPROCESS;
 			tsleep(kn, 0, "knotec", hz);
 			goto restart;

@@ -471,9 +471,16 @@ print_entry(FILE *fo, int n, int row, struct ktr_entry *entry,
 	if (pflag) {
 		if (info == NULL)
 			info = kvm_ktrinfo(entry->ktr_info, &infoctx);
-		if (info)
+		if (info) {
+#ifdef __amd64__
+			/* XXX todo */
 			kvmfprintf(fo, kvm_string(info->kf_format, &fmtctx),
 				 (void *)&entry->ktr_data);
+#else
+			kvmfprintf(fo, kvm_string(info->kf_format, &fmtctx),
+				 (void *)&entry->ktr_data);
+#endif
+		}
 	}
 	fprintf(fo, "\n");
 	*last_timestamp = entry->ktr_timestamp;
@@ -978,6 +985,10 @@ kvmfprintf(FILE *fp, const char *ctl, va_list va)
 	static struct save_ctx strctx;
 	const char *s;
 
+#ifdef __amd64__
+	/* XXX todo crashes right now */
+	return;
+#endif
 	while (*ctl) {
 		for (n = 0; ctl[n]; ++n) {
 			fmt[n] = ctl[n];
