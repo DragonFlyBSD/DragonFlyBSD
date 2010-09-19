@@ -51,6 +51,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "truss.h"
 #include "extern.h"
 
 static int evflags = 0;
