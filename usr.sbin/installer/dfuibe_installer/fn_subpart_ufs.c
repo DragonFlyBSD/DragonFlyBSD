@@ -151,7 +151,7 @@ create_subpartitions(struct i_fn_args *a)
 	 */
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
-		if (subpartition_is_mfsbacked(sp)) {
+		if (subpartition_is_tmpfsbacked(sp)) {
 			continue;
 		}
 		if (subpartition_is_swap(sp)) {
@@ -192,7 +192,7 @@ create_subpartitions(struct i_fn_args *a)
 	 */
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
-		if (subpartition_is_swap(sp) || subpartition_is_mfsbacked(sp))
+		if (subpartition_is_swap(sp) || subpartition_is_tmpfsbacked(sp))
 			continue;
 
 		command_add(cmds, "%s%s%s -b %ld -f %ld %sdev/%s",
@@ -317,7 +317,7 @@ check_subpartition_selections(struct dfui_response *r, struct i_fn_args *a)
 	long capacity = 0;
 	long bsize, fsize;
 	int found_root = 0;
-	int softupdates, mfsbacked;
+	int softupdates, tmpfsbacked;
 	int valid = 1;
 
 	d = aura_dict_new(1, AURA_DICT_LIST);
@@ -340,10 +340,10 @@ check_subpartition_selections(struct dfui_response *r, struct i_fn_args *a)
 			    (strcmp(dfui_dataset_get_value(ds, "softupdates"), "Y") == 0);
 			fsize = atol(dfui_dataset_get_value(ds, "fsize"));
 			bsize = atol(dfui_dataset_get_value(ds, "bsize"));
-			mfsbacked = (strcmp(dfui_dataset_get_value(ds, "mfsbacked"), "Y") == 0);
+			tmpfsbacked = (strcmp(dfui_dataset_get_value(ds, "tmpfsbacked"), "Y") == 0);
 		} else {
 			softupdates = (strcmp(mountpoint, "/") == 0 ? 0 : 1);
-			mfsbacked = (strcmp(mountpoint, "/tmp") == 0 ? 0 : 1);
+			tmpfsbacked = (strcmp(mountpoint, "/tmp") == 0 ? 0 : 1);
 			fsize = -1;
 			bsize = -1;
 		}
@@ -429,7 +429,7 @@ static void
 save_subpartition_selections(struct dfui_response *r, struct i_fn_args *a)
 {
 	struct dfui_dataset *ds;
-	char mfsbacked;
+	char tmpfsbacked;
 	const char *mountpoint, *capstring;
 	long capacity;
 	long bsize, fsize;
@@ -448,17 +448,17 @@ save_subpartition_selections(struct dfui_response *r, struct i_fn_args *a)
 			    (strcmp(dfui_dataset_get_value(ds, "softupdates"), "Y") == 0);
 			fsize = atol(dfui_dataset_get_value(ds, "fsize"));
 			bsize = atol(dfui_dataset_get_value(ds, "bsize"));
-			mfsbacked = (strcmp(dfui_dataset_get_value(ds, "mfsbacked"), "Y") == 0);
+			tmpfsbacked = (strcmp(dfui_dataset_get_value(ds, "tmpfsbacked"), "Y") == 0);
 		} else {
 			softupdates = (strcmp(mountpoint, "/") == 0 ? 0 : 1);
-			mfsbacked = 0;
+			tmpfsbacked = 0;
 			fsize = -1;
 			bsize = -1;
 		}
 
 		if (string_to_capacity(capstring, &capacity)) {
 			subpartition_new(storage_get_selected_slice(a->s), mountpoint, capacity,
-			    softupdates, fsize, bsize, mfsbacked);
+			    softupdates, fsize, bsize, tmpfsbacked);
 		}
 	}
 }
@@ -487,8 +487,8 @@ populate_create_subpartitions_form(struct dfui_form *f, struct i_fn_args *a)
 			if (expert) {
 				dfui_dataset_celldata_add(ds, "softupdates",
 				    subpartition_is_softupdated(sp) ? "Y" : "N");
-				dfui_dataset_celldata_add(ds, "mfsbacked",
-				    subpartition_is_mfsbacked(sp) ? "Y" : "N");
+				dfui_dataset_celldata_add(ds, "tmpfsbacked",
+				    subpartition_is_tmpfsbacked(sp) ? "Y" : "N");
 				snprintf(temp, 32, "%ld", subpartition_get_fsize(sp));
 				dfui_dataset_celldata_add(ds, "fsize",
 				    temp);
@@ -515,7 +515,7 @@ populate_create_subpartitions_form(struct dfui_form *f, struct i_fn_args *a)
 			if (expert) {
 				dfui_dataset_celldata_add(ds, "softupdates",
 				    strcmp(def_mountpt[mtpt], "/") != 0 ? "Y" : "N");
-				dfui_dataset_celldata_add(ds, "mfsbacked",
+				dfui_dataset_celldata_add(ds, "tmpfsbacked",
 				    "N");
 				dfui_dataset_celldata_add(ds, "fsize",
 				    capacity < 1024 ? "1024" : "2048");
@@ -633,8 +633,8 @@ make_create_subpartitions_form(struct i_fn_args *a)
 		    dfui_info_new(_("Softupdates"), "", ""));
 		dfui_field_property_set(fi, "control", "checkbox");
 
-		fi = dfui_form_field_add(f, "mfsbacked",
-		    dfui_info_new(_("MFS"), "", ""));
+		fi = dfui_form_field_add(f, "tmpfsbacked",
+		    dfui_info_new(_("TMPFS"), "", ""));
 		dfui_field_property_set(fi, "control", "checkbox");
 
 		fi = dfui_form_field_add(f, "fsize",

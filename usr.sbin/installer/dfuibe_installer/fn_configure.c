@@ -76,7 +76,7 @@
 #include "pathnames.h"
 
 static const char	*yes_to_y(const char *);
-static char		*convert_swap_options(char *);
+static char		*convert_tmpfs_options(char *);
 
 /** CONFIGURE FUNCTIONS **/
 
@@ -1179,13 +1179,13 @@ fn_select_services(struct i_fn_args *a)
 	dfui_response_free(r);
 }
 
-/*** NON-fn_ FUnCTIONS ***/
+/*** NON-fn_ FUNCTIONS ***/
 
 /*
  * Caller is responsible for deallocation.
  */
 static char *
-convert_swap_options(char *line)
+convert_tmpfs_options(char *line)
 {
 	char *result, *word;
 	int i;
@@ -1347,21 +1347,21 @@ mount_target_system(struct i_fn_args *a)
 
 				/*
 				 * Don't mount it if device doesn't start
-				 * with /dev/ or /pfs and it isn't 'swap'.
+				 * with /dev/ or /pfs and it isn't 'tmpfs'.
 				 */
 				if (strstr(device, "/dev/") != NULL &&
 				     strstr(device, "/pfs/") != NULL &&
-				     strcmp(device, "swap") != 0)
+				     strcmp(device, "tmpfs") != 0)
 					continue;
 
 				/*
-				 * If the device is 'swap', mount_mfs it instead.
+				 * If the device is 'tmpfs', mount_tmpfs it instead.
 				 */
-				if (strcmp(device, "swap") == 0) {
-					cvtoptions = convert_swap_options(options);
+				if (strcmp(device, "tmpfs") == 0) {
+					cvtoptions = convert_tmpfs_options(options);
 					command_add(cmds,
-					    "%s%s %s swap %s%s%s",
-					    a->os_root, cmd_name(a, "MOUNT_MFS"),
+					    "%s%s %s tmpfs %s%s%s",
+					    a->os_root, cmd_name(a, "MOUNT_TMPFS"),
 					    cvtoptions, a->os_root, a->cfg_root, mtpt);
 					free(cvtoptions);
 				} else {

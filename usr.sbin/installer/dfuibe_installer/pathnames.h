@@ -20,7 +20,7 @@
 
 /*
  * Default directory in which temporary files are placed.
- * /tmp/ is generally MFS mounted when booting from a live CD,
+ * /tmp/ is generally TMPFS mounted when booting from a live CD,
  * so we can use it both in development and in production.
  * Note that this must include the trailing slash.
  * Note that this is NOT relative to the source file root dir.

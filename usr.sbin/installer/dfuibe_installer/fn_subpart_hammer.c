@@ -150,7 +150,7 @@ create_subpartitions(struct i_fn_args *a)
 	 */
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
-		if (subpartition_is_mfsbacked(sp)) {
+		if (subpartition_is_tmpfsbacked(sp)) {
 			continue;
 		}
 		if (subpartition_is_swap(sp)) {
@@ -196,7 +196,7 @@ create_subpartitions(struct i_fn_args *a)
 	 */
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
-		if (subpartition_is_swap(sp) || subpartition_is_mfsbacked(sp))
+		if (subpartition_is_swap(sp) || subpartition_is_tmpfsbacked(sp))
 			continue;
 
 		if (strcmp(subpartition_get_mountpoint(sp), "/boot") == 0) {
@@ -568,8 +568,8 @@ make_create_subpartitions_form(struct i_fn_args *a)
 		    dfui_info_new(_("Softupdates"), "", ""));
 		dfui_field_property_set(fi, "control", "checkbox");
 
-		fi = dfui_form_field_add(f, "mfsbacked",
-		    dfui_info_new(_("MFS"), "", ""));
+		fi = dfui_form_field_add(f, "tmpfsbacked",
+		    dfui_info_new(_("TMPFS"), "", ""));
 		dfui_field_property_set(fi, "control", "checkbox");
 
 		fi = dfui_form_field_add(f, "fsize",

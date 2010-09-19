@@ -79,14 +79,14 @@ storage_new(void)
 }
 
 int
-storage_get_mfs_status(const char *mountpoint, struct storage *s)
+storage_get_tmpfs_status(const char *mountpoint, struct storage *s)
 {
 	struct subpartition *sp;
 	sp = NULL;
 	for (sp = slice_subpartition_first(s->selected_slice);
 		sp != NULL; sp = subpartition_next(sp)) {
 		if(strcmp(subpartition_get_mountpoint(sp), mountpoint) == 0) {
-			if(subpartition_is_mfsbacked(sp) == 1) {
+			if(subpartition_is_tmpfsbacked(sp) == 1) {
 				return 1;
 			} else {
 				return 0;
@@ -567,7 +567,7 @@ subpartition_new_hammer(struct slice *s, const char *mountpoint, long capacity)
  */
 struct subpartition *
 subpartition_new(struct slice *s, const char *mountpoint, long capacity,
-		 int softupdates, long fsize, long bsize, int mfsbacked)
+		 int softupdates, long fsize, long bsize, int tmpfsbacked)
 {
 	struct subpartition *sp, *sptmp;
 	int letter='d';
@@ -607,7 +607,7 @@ subpartition_new(struct slice *s, const char *mountpoint, long capacity,
 		sp->softupdates = softupdates;
 	}
 
-	sp->mfsbacked = mfsbacked;
+	sp->tmpfsbacked = tmpfsbacked;
 
 	sp->is_swap = 0;
 	if (strcasecmp(mountpoint, "swap") == 0)
@@ -639,7 +639,7 @@ subpartition_new(struct slice *s, const char *mountpoint, long capacity,
 
 	for (sptmp = s->subpartition_head; sptmp != NULL;
 	     sptmp = sptmp->next) {
-		if (sptmp->mfsbacked)
+		if (sptmp->tmpfsbacked)
 			sptmp->letter = '@';
 		else if (strcmp(sptmp->mountpoint, "/") == 0 ||
 			 strcmp(sptmp->mountpoint, "/dummy") == 0)
@@ -801,9 +801,9 @@ subpartition_is_softupdated(const struct subpartition *sp)
 	return(sp->softupdates);
 }
 int
-subpartition_is_mfsbacked(const struct subpartition *sp)
+subpartition_is_tmpfsbacked(const struct subpartition *sp)
 {
-	return(sp->mfsbacked);
+	return(sp->tmpfsbacked);
 }
 
 int

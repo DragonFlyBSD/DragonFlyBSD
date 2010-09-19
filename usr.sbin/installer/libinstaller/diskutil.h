@@ -105,7 +105,7 @@ struct subpartition {
 	long fsize;			/* fragment size */
 	long bsize;			/* block size */
 	int is_swap;
-	int mfsbacked;			/* Memory File System Backed */
+	int tmpfsbacked;		/* TMPFS Backed */
 	int type;			/* FS type (UFS, HAMMER) */
 	int pfs;			/* HAMMER pseudo file system */
 };
@@ -123,7 +123,7 @@ void			 storage_set_selected_disk(struct storage *, struct disk *);
 struct disk		*storage_get_selected_disk(const struct storage *);
 void			 storage_set_selected_slice(struct storage *, struct slice *);
 struct slice		*storage_get_selected_slice(const struct storage *);
-int			 storage_get_mfs_status(const char *, struct storage *);
+int			 storage_get_tmpfs_status(const char *, struct storage *);
 
 struct disk		*disk_new(struct storage *, const char *);
 struct disk		*disk_find(const struct storage *, const char *);
@@ -175,7 +175,7 @@ unsigned long		 subpartition_get_bsize(const struct subpartition *);
 unsigned long		 subpartition_get_capacity(const struct subpartition *);
 int			 subpartition_is_swap(const struct subpartition *);
 int			 subpartition_is_softupdated(const struct subpartition *);
-int			 subpartition_is_mfsbacked(const struct subpartition *);
+int			 subpartition_is_tmpfsbacked(const struct subpartition *);
 
 long			 measure_activated_swap(const struct i_fn_args *);
 long			 measure_activated_swap_from_slice(const struct i_fn_args *,

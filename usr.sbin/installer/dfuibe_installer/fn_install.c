@@ -255,8 +255,8 @@ fn_install_os(struct i_fn_args *a)
 				    a->os_root, cmd_name(a, "MKDIR"),
 				    a->os_root,
 				    subpartition_get_mountpoint(sp));
-				/* Don't mount it if it's MFS-backed. */
-				if (subpartition_is_mfsbacked(sp))
+				/* Don't mount it if it's TMPFS-backed. */
+				if (subpartition_is_tmpfsbacked(sp))
 					continue;
 				command_add(cmds, "%s%s %sdev/%s %smnt%s",
 				    a->os_root, cmd_name(a, "MOUNT"),
@@ -295,12 +295,12 @@ fn_install_os(struct i_fn_args *a)
 		dest = cp_src[i];
 
 		/*
-		 * If dest would be on an MFS-backed
+		 * If dest would be on an TMPFS-backed
 		 * mountpoint, don't bother copying it.
 		 */
 		sp = subpartition_of(storage_get_selected_slice(a->s),
 				     "%s%s", a->os_root, &dest[1]);
-		if (sp != NULL && subpartition_is_mfsbacked(sp)) {
+		if (sp != NULL && subpartition_is_tmpfsbacked(sp)) {
 			continue;
 		}
 
@@ -351,10 +351,10 @@ fn_install_os(struct i_fn_args *a)
 	     sp != NULL; sp = subpartition_next(sp)) {
 		/*
 		 * If the subpartition is a swap subpartition or an
-		 * MFS-backed mountpoint, don't try to copy anything
+		 * TMPFS-backed mountpoint, don't try to copy anything
 		 * into it.
 		 */
-		if (subpartition_is_swap(sp) || subpartition_is_mfsbacked(sp))
+		if (subpartition_is_swap(sp) || subpartition_is_tmpfsbacked(sp))
 			continue;
 
 		/*
@@ -549,13 +549,11 @@ fn_install_os(struct i_fn_args *a)
 				    subpartition_get_device_name(sp),
 				    subpartition_get_mountpoint(sp),
 				    a->os_root);
-			} else if (subpartition_is_mfsbacked(sp)) {
-				command_add(cmds, "%s%s 'swap\t\t%s\t\t\tmfs\trw,-s%lu,-b%lu,-f%lu\t\t1\t1' >>%smnt/etc/fstab",
+			} else if (subpartition_is_tmpfsbacked(sp)) {
+				command_add(cmds, "%s%s 'tmpfs\t\t\t%s\t\ttmpfs\trw,-s%luM\t1\t1' >>%smnt/etc/fstab",
 					a->os_root, cmd_name(a, "ECHO"),
 					subpartition_get_mountpoint(sp),
-					subpartition_get_capacity(sp) * 2048,
-					subpartition_get_bsize(sp),
-					subpartition_get_fsize(sp),
+					subpartition_get_capacity(sp),
 					a->os_root);
 			} else {
 				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\tufs\trw\t\t2\t2' >>%smnt/etc/fstab",
