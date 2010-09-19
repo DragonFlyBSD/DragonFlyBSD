@@ -353,10 +353,10 @@ dumpbufs(kvm_t *kd, void *bufp, const char *id)
 		id, bufp,
 		buf.b_bio1.bio_offset,
 		buf.b_bio2.bio_offset);
-	printf(" q=%d lck=%d/%d flags=%08x dep=%p",
+	printf(" q=%d lck=%d/%d flags=%08x refs=%d dep=%p",
 		buf.b_qindex, buf.b_lock.lk_sharecount,
 		buf.b_lock.lk_exclusivecount,
-		buf.b_flags, buf.b_dep.lh_first);
+		buf.b_flags, buf.b_refs, buf.b_dep.lh_first);
 	printf("\n");
 
 	if (buf.b_rbnode.rbe_left)

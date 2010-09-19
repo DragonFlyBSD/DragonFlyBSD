@@ -138,7 +138,7 @@ reinstallkernel: mount
 	cd ${SRCDIR} && \
 	    make -j 4 DESTDIR=${VKDIR}/root KERNCONF=${USEKERNEL} \
 		 NO_MODULES= installkernel
-	cp ${VKDIR}/root/boot/kernel ${VKDIR}/vkernel
+	cp ${VKDIR}/root/boot/kernel/kernel ${VKDIR}/vkernel
 
 sysloader: mount
 	cp /boot/loader ${VKDIR}/root/boot/loader
