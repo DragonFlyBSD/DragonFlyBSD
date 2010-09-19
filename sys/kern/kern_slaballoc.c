@@ -461,7 +461,9 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 {
     SLZone *z;
     SLChunk *chunk;
+#ifdef SMP
     SLChunk *bchunk;
+#endif
     SLGlobalData *slgd;
     struct globaldata *gd;
     int zi;
@@ -1005,12 +1007,14 @@ kfree(void *ptr, struct malloc_type *type)
 {
     SLZone *z;
     SLChunk *chunk;
-    SLChunk *bchunk;
     SLGlobalData *slgd;
     struct globaldata *gd;
     struct kmemusage *kup;
     unsigned long size;
+#ifdef SMP
+    SLChunk *bchunk;
     int rsignal;
+#endif
 
     logmemory_quick(free_beg);
     gd = mycpu;
