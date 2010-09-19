@@ -87,6 +87,9 @@ int ahcidebug = AHCI_D_VERBOSE;
 #define  AHCI_REG_VS_1_0		0x00010000 /* 1.0 */
 #define  AHCI_REG_VS_1_1		0x00010100 /* 1.1 */
 #define  AHCI_REG_VS_1_2		0x00010200 /* 1.2 */
+#define  AHCI_REG_VS_1_3		0x00010300 /* 1.3 */
+#define  AHCI_REG_VS_1_4		0x00010400 /* 1.4 */
+#define  AHCI_REG_VS_1_5		0x00010500 /* 1.5 (future...) */
 
 #define AHCI_REG_CCC_CTL	0x014 /* Coalescing Control */
 #define  AHCI_REG_CCC_CTL_INT(_r)	(((_r) & 0xf8) >> 3) /* CCC INT slot */

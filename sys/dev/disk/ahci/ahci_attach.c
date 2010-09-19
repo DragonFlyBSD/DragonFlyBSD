@@ -339,6 +339,15 @@ ahci_pci_attach(device_t dev)
 	case AHCI_REG_VS_1_2:
 		revision = "AHCI 1.2";
 		break;
+	case AHCI_REG_VS_1_3:
+		revision = "AHCI 1.3";
+		break;
+	case AHCI_REG_VS_1_4:
+		revision = "AHCI 1.4";
+		break;
+	case AHCI_REG_VS_1_5:
+		revision = "AHCI 1.5";	/* future will catch up to us */
+		break;
 	default:
 		device_printf(sc->sc_dev,
 			      "Warning: Unknown AHCI revision 0x%08x\n", reg);
