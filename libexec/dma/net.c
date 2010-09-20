@@ -304,12 +304,13 @@ open_connection(struct mx_hostentry *h)
 static void
 close_connection(int fd)
 {
-	if (((config.features & SECURETRANS) != 0) &&
-	    ((config.features & NOSSL) == 0))
-		SSL_shutdown(config.ssl);
+	if (config.ssl != NULL) {
+		if (((config.features & SECURETRANS) != 0) &&
+		    ((config.features & NOSSL) == 0))
+			SSL_shutdown(config.ssl);
 
-	if (config.ssl != NULL)
 		SSL_free(config.ssl);
+	}
 
 	close(fd);
 }
