@@ -37,8 +37,6 @@
  * For questions and/or comments, please send mail to cbq@ee.lbl.gov
  */
 
-#ident "@(#)rm_class.c  1.48     97/12/05 SMI"
-
 #include "opt_altq.h"
 #include "opt_inet.h"
 #include "opt_inet6.h"
