@@ -57,7 +57,7 @@ CFLAGS+=-I${.CURDIR}/../libc/${MACHINE_ARCH}
 SRCS+=	_setjmp.S
 
 # decompression functionality from libbz2
-BZ2DIR=	${.CURDIR}/../../contrib/bzip2-1.0
+BZ2DIR=	${.CURDIR}/../../contrib/bzip2
 .PATH:	${BZ2DIR}
 CFLAGS+=-I${BZ2DIR} -DBZ_NO_STDIO -DBZ_NO_COMPRESS
 SRCS+=	bzlib.c crctable.c decompress.c huffman.c randtable.c bzlib.h \
