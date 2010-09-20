@@ -25,6 +25,8 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/dpt/dpt_scsi.c,v 1.28.2.3 2003/01/31 02:47:10 grog Exp $
  */
 
 /*
@@ -42,9 +44,6 @@
  *	       NiceTry, M$-Doze, Win-Dog, Slowlaris, etc., in recognizing RAID
  *	       arrays that span controllers (Wow!).
  */
-
-#ident "$FreeBSD: src/sys/dev/dpt/dpt_scsi.c,v 1.28.2.3 2003/01/31 02:47:10 grog Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.18 2008/05/18 20:30:23 pavalos Exp $"
 
 #define _DPT_C_
 

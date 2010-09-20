@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir_pci.c,v 1.20 2007/06/17 05:55:50 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir_pci.c,v 1.7 2006/12/22 23:26:23 swildner Exp $ */
+/* $Id: iir_pci.c 1.2 2003/08/26 12:29:55 achim Exp $ */
 /*-
  *       Copyright (c) 2000-03 ICP vortex GmbH
  *       Copyright (c) 2002-03 Intel Corporation
@@ -30,8 +30,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#ident "$Id: iir_pci.c 1.2 2003/08/26 12:29:55 achim Exp $"
 
 /*
  *  iir_pci.c:  PCI Bus Attachment for Intel Integrated RAID Controller driver
