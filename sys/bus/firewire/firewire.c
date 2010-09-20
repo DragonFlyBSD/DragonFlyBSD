@@ -639,7 +639,7 @@ fw_reset_crom(struct firewire_comm *fc)
 	crom_add_entry(root, CSRKEY_VENDOR, CSRVAL_VENDOR_PRIVATE);
 #ifdef __DragonFly__
 	crom_add_simple_text(src, root, &buf->vendor, "DragonFly Project");
-	crom_add_entry(root, CSRKEY_HW, __DragonFly_cc_version);
+	crom_add_entry(root, CSRKEY_HW, __DragonFly_version);
 #else
 	crom_add_simple_text(src, root, &buf->vendor, "FreeBSD Project");
 	crom_add_entry(root, CSRKEY_HW, __FreeBSD_version);

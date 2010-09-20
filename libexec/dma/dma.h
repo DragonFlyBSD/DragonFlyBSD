@@ -48,7 +48,9 @@
 
 #define BUF_SIZE	2048
 #define MIN_RETRY	300		/* 5 minutes */
+#define MIN_RETRY_LOCAL	30		/* 30 seconds */
 #define MAX_RETRY	(3*60*60)	/* retry at least every 3 hours */
+#define RETRY_JITTER	10
 #define MAX_TIMEOUT	(5*24*60*60)	/* give up after 5 days */
 #ifndef PATH_MAX
 #define PATH_MAX	1024		/* Max path len */
