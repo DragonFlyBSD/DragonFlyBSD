@@ -359,9 +359,10 @@ _find_processes()
 			warn "\$command_interpreter $_interpreter != $1"
 		fi
 		_interp="$* $_procname"		# cleanup spaces, add _procname
+		_interpbn="$1"			# the interpreter binary
 		_fp_args='_argv'
 		_fp_match='case "$_argv" in
-		    ${_interp}|"${_interp} "*)'
+		    "${_interpbn##*/}: "$_procname*|${_interp}|"${_interp} "*)'
 	else					# a normal daemon
 		_procnamebn=${_procname##*/}
 		_fp_args='_arg0 _argv'
