@@ -62,6 +62,7 @@ Boston, MA 02111-1307, USA.  */
 	  builtin_define ("__DragonFly__=1");			       	\
 	else								\
 	  builtin_define ("__DragonFly__");			       	\
+	builtin_define ("__DragonFly_cc_version=100001");		\
 	builtin_define_std ("unix");					\
 	builtin_define ("__KPRINTF_ATTRIBUTE__");		       	\
 	builtin_assert ("system=unix");					\
