@@ -2996,7 +2996,7 @@ nfs_lookitup(struct vnode *dvp, const char *name, int len, struct ucred *cred,
 				return (ENOENT);
 			}
 		} else {
-			ERROROUT(error = nfsm_loadattr(&info, newvp, NULL));
+			ERROROUT(nfsm_loadattr(&info, newvp, NULL));
 		}
 	}
 	m_freem(info.mrep);
