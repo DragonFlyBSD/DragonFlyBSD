@@ -19,27 +19,4 @@ LINKS=	${BINDIR}/bzip2 ${BINDIR}/bunzip2
 LINKS+=	${BINDIR}/bzip2 ${BINDIR}/bzcat
 MLINKS=	bzip2.1 bunzip2.1 bzip2.1 bzcat.1 bzip2.1 bzip2recover.1
 
-REFFILES=	sample1.ref sample2.ref sample3.ref 
-DREFFILES=	sample1.bz2 sample2.bz2 sample3.bz2 
-TESTFILES=	${REFFILES} ${DREFFILES}
-
-CLEANFILES+=	sample1.rb2 sample2.rb2 sample3.rb2 \
-		sample1.tst sample2.tst sample3.tst
-
-test:  bzip2 ${TESTFILES}
-	@cat ${BZ2DIR}/words1
-	./bzip2 -1  < ${BZ2DIR}/sample1.ref > sample1.rb2
-	./bzip2 -2  < ${BZ2DIR}/sample2.ref > sample2.rb2
-	./bzip2 -3  < ${BZ2DIR}/sample3.ref > sample3.rb2
-	./bzip2 -d  < ${BZ2DIR}/sample1.bz2 > sample1.tst
-	./bzip2 -d  < ${BZ2DIR}/sample2.bz2 > sample2.tst
-	./bzip2 -ds < ${BZ2DIR}/sample3.bz2 > sample3.tst
-	cmp ${BZ2DIR}/sample1.bz2 sample1.rb2 
-	cmp ${BZ2DIR}/sample2.bz2 sample2.rb2
-	cmp ${BZ2DIR}/sample3.bz2 sample3.rb2
-	cmp sample1.tst ${BZ2DIR}/sample1.ref
-	cmp sample2.tst ${BZ2DIR}/sample2.ref
-	cmp sample3.tst ${BZ2DIR}/sample3.ref
-	@cat ${BZ2DIR}/words3
-
 .include <bsd.prog.mk>
