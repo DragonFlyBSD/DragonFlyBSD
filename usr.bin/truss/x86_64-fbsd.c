@@ -33,7 +33,7 @@
  */
 
 /*
- * FreeBSD/386-specific system call handling.  This is probably the most
+ * FreeBSD/x86_64-specific system call handling.  This is probably the most
  * complex part of the entire truss program, although I've got lots of
  * it handled relatively cleanly now.  The system call names are generated
  * automatically, thanks to /usr/src/sys/kern/syscalls.master.  The
@@ -110,12 +110,11 @@ clear_fsc(void) {
  */
 
 void
-i386_syscall_entry(struct trussinfo *trussinfo, int nargs) {
+x86_64_syscall_entry(struct trussinfo *trussinfo, int nargs) {
   char *buf;
   struct reg regs = { .r_err = 0 };
   int syscall_num;
-  int i;
-  unsigned int parm_offset;
+  int i, reg;
   struct syscall *sc;
 
   if (fd == -1 || trussinfo->pid != cpid) {
@@ -134,24 +133,19 @@ i386_syscall_entry(struct trussinfo *trussinfo, int nargs) {
   clear_fsc();
   lseek(fd, 0L, 0);
   i = read(fd, &regs, sizeof(regs));
-  parm_offset = regs.r_esp + sizeof(int);
 
   /*
    * FreeBSD has two special kinds of system call redirctions --
    * SYS_syscall, and SYS___syscall.  The former is the old syscall()
    * routine, basicly; the latter is for quad-aligned arguments.
    */
-  syscall_num = regs.r_eax;
+  reg = 0;
+  syscall_num = regs.r_rax;
   switch (syscall_num) {
   case SYS_syscall:
-    lseek(Procfd, parm_offset, SEEK_SET);
-    read(Procfd, &syscall_num, sizeof(int));
-    parm_offset += sizeof(int);
-    break;
   case SYS___syscall:
-    lseek(Procfd, parm_offset, SEEK_SET);
-    read(Procfd, &syscall_num, sizeof(int));
-    parm_offset += sizeof(quad_t);
+    syscall_num = regs.r_rdi;
+    reg++;
     break;
   }
 
@@ -166,9 +160,21 @@ i386_syscall_entry(struct trussinfo *trussinfo, int nargs) {
     return;
 
   fsc.args = malloc((1+nargs) * sizeof(unsigned long));
-  lseek(Procfd, parm_offset, SEEK_SET);
-  if (read(Procfd, fsc.args, nargs * sizeof(unsigned long)) == -1)
-    return;
+  for (i = 0; i < nargs && reg < 6; i++, reg++) {
+    switch (reg) {
+    case 0: fsc.args[i] = regs.r_rdi; break;
+    case 1: fsc.args[i] = regs.r_rsi; break;
+    case 2: fsc.args[i] = regs.r_rdx; break;
+    case 3: fsc.args[i] = regs.r_rcx; break;
+    case 4: fsc.args[i] = regs.r_r8; break;
+    case 5: fsc.args[i] = regs.r_r9; break;
+    }
+  }
+  if (nargs > i) {
+    lseek(Procfd, regs.r_rsp + sizeof(register_t), SEEK_SET);
+    if (read(Procfd, &fsc.args[i], (nargs-i) * sizeof(register_t)) == -1)
+      return;
+  }
 
   sc = fsc.name ? get_syscall(fsc.name) : NULL;
   if (sc) {
@@ -242,7 +248,7 @@ i386_syscall_entry(struct trussinfo *trussinfo, int nargs) {
  */
 
 int
-i386_syscall_exit(struct trussinfo *trussinfo, int syscall_num __unused) {
+x86_64_syscall_exit(struct trussinfo *trussinfo, int syscall_num __unused) {
   char *buf;
   struct reg regs;
   int retval;
@@ -271,8 +277,8 @@ i386_syscall_exit(struct trussinfo *trussinfo, int syscall_num __unused) {
 	  fprintf(trussinfo->outfile, "\n");
 	  return 0;
   }
-  retval = regs.r_eax;
-  errorp = !!(regs.r_eflags & PSL_C);
+  retval = regs.r_rax;
+  errorp = !!(regs.r_rflags & PSL_C);
 
   /*
    * This code, while simpler than the initial versions I used, could

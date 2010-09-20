@@ -2,9 +2,9 @@
 # $DragonFly: src/usr.bin/truss/Makefile,v 1.8 2007/08/27 16:51:00 pavalos Exp $
 
 PROG=	truss
-SRCS=	main.c setup.c syscalls.c syscalls.h ioctl.c
+SRCS=	main.c setup.c syscalls.c syscalls.h ioctl.c ${MACHINE_ARCH}-fbsd.c
 .if (${MACHINE_ARCH} == "i386")
-SRCS+=	i386-fbsd.c i386-linux.c linux_syscalls.h
+SRCS+=	i386-linux.c linux_syscalls.h
 .endif
 
 CFLAGS+= -I${.CURDIR} -I${.CURDIR}/../../sys -I.

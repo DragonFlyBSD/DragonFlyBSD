@@ -53,6 +53,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "truss.h"
 #include "extern.h"
 
 /*
@@ -60,9 +61,6 @@
  * but this is the easiest way, right now, to deal with them.
  */
 
-int pid = 0;
-int nosigs = 0;
-FILE *outfile;
 int Procfd;
 
 static inline void
@@ -80,13 +78,16 @@ usage(void)
  */
 struct ex_types {
   const char *type;
-  void (*enter_syscall)(int, int);
-  void (*exit_syscall)(int, int);
+  void (*enter_syscall)(struct trussinfo *, int);
+  int (*exit_syscall)(struct trussinfo *, int);
 } ex_types[] = {
 #ifdef __i386__
   { "FreeBSD a.out", i386_syscall_entry, i386_syscall_exit },
-  { "FreeBSD ELF", i386_syscall_entry, i386_syscall_exit },
-  { "Linux ELF", i386_linux_syscall_entry, i386_linux_syscall_exit },
+  { "FreeBSD ELF32", i386_syscall_entry, i386_syscall_exit },
+  { "Linux ELF32", i386_linux_syscall_entry, i386_linux_syscall_exit },
+#endif
+#ifdef __x86_64__
+  { "FreeBSD ELF64", x86_64_syscall_entry, x86_64_syscall_exit },
 #endif
   { 0, 0, 0 },
 };
@@ -98,13 +99,13 @@ struct ex_types {
  */
 
 static struct ex_types *
-set_etype(void) {
+set_etype(struct trussinfo *trussinfo) {
   struct ex_types *funcs;
   char *etype;
   char progt[32];
   int fd;
 
-  asprintf(&etype, "%s/%d/etype", procfs_path, pid);
+  asprintf(&etype, "%s/%d/etype", procfs_path, trussinfo->pid);
   if (etype == NULL)
     err(1, "Out of memory");
   if ((fd = open(etype, O_RDONLY)) == -1) {
@@ -138,30 +139,37 @@ main(int ac, char **av) {
   int in_exec = 0;
   char *fname = NULL;
   int sigexit = 0;
+  struct trussinfo *trussinfo;
 
-	/* Check where procfs is mounted if it is mounted */
-	if ((mntsize = getmntinfo(&mntbuf, MNT_NOWAIT)) == 0)
-		err(1, "getmntinfo");
-	for (i = 0; i < mntsize; i++) {
-		if (strcasecmp(mntbuf[i].f_mntfromname, "procfs") == 0) {
-			strlcpy(procfs_path, mntbuf[i].f_mntonname, sizeof(procfs_path));
-			have_procfs = 1;
-			break;
-		}
-	}
-	if (!have_procfs) {
-		errno = 2;
-		err(1, "You must have a mounted procfs to use truss");
-	}
+  /* Initialize the trussinfo struct */
+  trussinfo = (struct trussinfo *)malloc(sizeof(struct trussinfo));
+  if (trussinfo == NULL)
+	  errx(1, "malloc() failed");
+  bzero(trussinfo, sizeof(struct trussinfo));
+  trussinfo->outfile = stderr;
 
-  outfile = stderr;
+  /* Check where procfs is mounted if it is mounted */
+  if ((mntsize = getmntinfo(&mntbuf, MNT_NOWAIT)) == 0)
+	  err(1, "getmntinfo");
+  for (i = 0; i < mntsize; i++) {
+	  if (strcasecmp(mntbuf[i].f_mntfromname, "procfs") == 0) {
+		  strlcpy(procfs_path, mntbuf[i].f_mntonname, sizeof(procfs_path));
+		  have_procfs = 1;
+		  break;
+	  }
+  }
+  if (!have_procfs) {
+	  errno = 2;
+	  err(1, "You must have a mounted procfs to use truss");
+  }
+
   while ((c = getopt(ac, av, "p:o:S")) != -1) {
     switch (c) {
     case 'p':	/* specified pid */
-      pid = atoi(optarg);
-      if (pid == getpid()) {
+      trussinfo->pid = atoi(optarg);
+      if (trussinfo->pid == getpid()) {
 	      /* make sure truss doesn't trace itself */
-	      fprintf(stderr, "truss: attempt to self trace: %d\n", pid);
+	      fprintf(stderr, "truss: attempt to self trace: %d\n", trussinfo->pid);
 	      exit(2);
       }
       break;
@@ -169,7 +177,7 @@ main(int ac, char **av) {
       fname = optarg;
       break;
     case 'S':	/* Don't trace signals */ 
-      nosigs = 1;
+      trussinfo->flags |= NOSIGS;
       break;
     default:
       usage();
@@ -177,11 +185,11 @@ main(int ac, char **av) {
   }
 
   ac -= optind; av += optind;
-  if ((pid == 0 && ac == 0) || (pid != 0 && ac != 0))
+  if ((trussinfo->pid == 0 && ac == 0) || (trussinfo->pid != 0 && ac != 0))
     usage();
 
   if (fname != NULL) { /* Use output file */
-    if ((outfile = fopen(fname, "w")) == NULL)
+    if ((trussinfo->outfile = fopen(fname, "w")) == NULL)
       errx(1, "cannot open %s", fname);
   }
 
@@ -192,9 +200,9 @@ main(int ac, char **av) {
    * then we restore the event mask on these same signals.
    */
 
-  if (pid == 0) {	/* Start a command ourselves */
+  if (trussinfo->pid == 0) {	/* Start a command ourselves */
     command = av;
-    pid = setup_and_wait(command);
+    trussinfo->pid = setup_and_wait(command);
     signal(SIGINT, SIG_IGN);
     signal(SIGTERM, SIG_IGN);
     signal(SIGQUIT, SIG_IGN);
@@ -210,14 +218,15 @@ main(int ac, char **av) {
    * be woken up, either in exit() or in execve().
    */
 
-  Procfd = start_tracing(pid, S_EXEC | S_SCE | S_SCX | S_CORE | S_EXIT |
-		     (nosigs ? 0 : S_SIG));
+  Procfd = start_tracing(
+      trussinfo->pid, S_EXEC | S_SCE | S_SCX | S_CORE | S_EXIT |
+		     ((trussinfo->flags & NOSIGS) ? 0 : S_SIG));
   if (Procfd == -1)
     return 0;
 
   pfs.why = 0;
 
-  funcs = set_etype();
+  funcs = set_etype(trussinfo);
   /*
    * At this point, it's a simple loop, waiting for the process to
    * stop, finding out why, printing out why, and then continuing it.
@@ -232,7 +241,7 @@ main(int ac, char **av) {
     else {
       switch(i = pfs.why) {
       case S_SCE:
-	funcs->enter_syscall(pid, pfs.val);
+	funcs->enter_syscall(trussinfo, pfs.val);
 	break;
       case S_SCX:
 	/*
@@ -246,32 +255,32 @@ main(int ac, char **av) {
 	  in_exec = 0;
 	  break;
 	}
-	funcs->exit_syscall(pid, pfs.val);
+	funcs->exit_syscall(trussinfo, pfs.val);
 	break;
       case S_SIG:
-	fprintf(outfile, "SIGNAL %lu\n", pfs.val);
+	fprintf(trussinfo->outfile, "SIGNAL %lu\n", pfs.val);
 	sigexit = pfs.val;
 	break;
       case S_EXIT:
-	fprintf (outfile, "process exit, rval = %lu\n", pfs.val);
+	fprintf (trussinfo->outfile, "process exit, rval = %lu\n", pfs.val);
 	break;
       case S_EXEC:
-	funcs = set_etype();
+	funcs = set_etype(trussinfo);
 	in_exec = 1;
 	break;
       default:
-	fprintf (outfile, "Process stopped because of:  %d\n", i);
+	fprintf (trussinfo->outfile, "Process stopped because of:  %d\n", i);
 	break;
       }
     }
     if (ioctl(Procfd, PIOCCONT, val) == -1) {
-      if (kill(pid, 0) == -1 && errno == ESRCH)
+      if (kill(trussinfo->pid, 0) == -1 && errno == ESRCH)
 	break;
       else
 	warn("PIOCCONT");
     }
   } while (pfs.why != S_EXIT);
-  fflush(outfile);
+  fflush(trussinfo->outfile);
   if (sigexit) {
     if (sigexit == SIGQUIT)
       exit(sigexit);

@@ -270,7 +270,7 @@ static void
 deliver(struct qitem *it)
 {
 	int error;
-	unsigned int backoff = MIN_RETRY;
+	unsigned int backoff = it->remote? MIN_RETRY: MIN_RETRY_LOCAL;
 	const char *errmsg = "unknown bounce reason";
 	struct timeval now;
 	struct stat st;
@@ -302,7 +302,13 @@ retry:
 			goto bounce;
 		}
 		sleep(backoff);
-		backoff *= 2;
+		backoff = backoff * 2 + (
+#ifdef HAVE_RANDOM
+			random()
+#else
+			rand()
+#endif
+			% RETRY_JITTER);
 		if (backoff > MAX_RETRY)
 			backoff = MAX_RETRY;
 		goto retry;

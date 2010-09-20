@@ -596,7 +596,7 @@ main(int argc, char *argv[])
 
 #ifdef __DragonFly__
 	crom_add_simple_text(&src, &root, &text1, "DragonFly");
-	crom_add_entry(&root, CSRKEY_HW, __DragonFly_cc_version);
+	crom_add_entry(&root, CSRKEY_HW, __DragonFly_version);
 	crom_add_simple_text(&src, &root, &text2, "DragonFly-1");
 #else
 	crom_add_simple_text(&src, &root, &text1, "FreeBSD");
