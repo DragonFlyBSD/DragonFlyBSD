@@ -92,7 +92,7 @@ newspoolf(struct queue *queue)
 	 */
 	if (fstat(fd, &st) != 0)
 		goto fail;
-	if (asprintf(&queue->id, "%"PRIxMAX, st.st_ino) < 0)
+	if (asprintf(&queue->id, "%"PRIxMAX, (uintmax_t)st.st_ino) < 0)
 		goto fail;
 
 	queue->mailf = fdopen(fd, "r+");
