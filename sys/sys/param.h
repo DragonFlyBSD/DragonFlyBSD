@@ -260,16 +260,18 @@
 /*
  * MBUF Management.
  *
- * MSIZE does not need to be a power of two but must be large enough
- * to accomodate a reasonable small packet.  Due to m_hdr and m_pkthdr
- * bloat 256 is not big enough any more.
+ * Because many drivers can't deal with multiple DMA segments all mbufs
+ * must avoid crossing a page boundary.  While we can accomodate mbufs
+ * which are not a power-of-2 sized kmalloc() will only guarantee
+ * non-crossing alignment if we use a power-of-2.  256 is no longer large
+ * enough due to m_hdr and m_pkthdr bloat.
  *
  * MCLBYTES must be a power of 2 and is typically significantly larger
  * than MSIZE, sufficient to hold a standard-mtu packet.  2K is considered
  * reasonable.
  */
 #ifndef MSIZE
-#define MSIZE		384		/* size of an mbuf */
+#define MSIZE		512		/* size of an mbuf */
 #endif
 
 #ifndef MCLSHIFT
