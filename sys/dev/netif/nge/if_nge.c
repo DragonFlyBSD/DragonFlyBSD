@@ -1922,7 +1922,7 @@ nge_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 			ifmr->ifm_status |= IFM_ACTIVE;
 		if (CSR_READ_4(sc, NGE_TBI_BMCR) & NGE_TBIBMCR_LOOPBACK)
 			ifmr->ifm_active |= IFM_LOOP;
-		if (!CSR_READ_4(sc, NGE_TBI_BMSR) & NGE_TBIBMSR_ANEG_DONE) {
+		if (!(CSR_READ_4(sc, NGE_TBI_BMSR) & NGE_TBIBMSR_ANEG_DONE)) {
 			ifmr->ifm_active |= IFM_NONE;
 			ifmr->ifm_status = 0;
 			return;

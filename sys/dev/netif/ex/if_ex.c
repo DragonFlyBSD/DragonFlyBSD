@@ -628,7 +628,7 @@ ex_tx_intr(struct ex_softc *sc)
 	while (sc->tx_head != sc->tx_tail) {
 		outw(iobase + HOST_ADDR_REG, sc->tx_head);
 
-		if (! inw(iobase + IO_PORT_REG) & Done_bit)
+		if (!(inw(iobase + IO_PORT_REG) & Done_bit))
 			break;
 
 		tx_status = inw(iobase + IO_PORT_REG);
