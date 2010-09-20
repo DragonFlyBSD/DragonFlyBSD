@@ -120,7 +120,6 @@ menuadd set autoboot_delay=NO
 menuitem 9 "Escape to loader prompt (also ESC)"
 menuadd optcd kernel
 menuadd set autoboot_delay=NO
-menuadd optcd kernel
 
 menuitem a "Boot Backup kernel kernel.alt"
 menuadd cd ${base}kernel.alt
