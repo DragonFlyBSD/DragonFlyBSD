@@ -148,25 +148,3 @@ done:
 	c->next = NULL;
 	free(file);
 }
-
-void
-fn_zt_list_free(struct zonetab *zt) {
-	struct zonetab *p;
-	for (p = zt; p->next != NULL; p = p->next) {
-		free(p->zt_cc);
-		free(p->zt_coords);
-		free(p->zt_region);
-		free(p->zt_locale);
-		if (p->zt_comments != NULL)
-			free(p->zt_comments);
-	}
-}
-
-struct zonetab *
-fn_zt_list(void) {
-	struct zonetab **zt;
-
-	*zt = malloc(sizeof(struct zonetab));
-	zt_parse(*zt);
-	return(*zt);
-}

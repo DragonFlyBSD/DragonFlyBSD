@@ -66,7 +66,6 @@ struct zt_parse {
 
 char	*zt_readfile(char *, int, FILE *);
 void	 zt_get_token(struct zt_parse *);
-void	 zt_list_free(struct zonetab *);
 void	 zt_parse(struct zonetab *);
 
 #endif
