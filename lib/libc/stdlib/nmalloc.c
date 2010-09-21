@@ -1328,7 +1328,7 @@ mtmagazine_alloc(int zi)
 
 	tp = &thread_mags;
 
-	do {
+	for (;;) {
 		/* If the loaded magazine has rounds, allocate and return */
 		if (((mp = tp->mags[zi].loaded) != NULL) &&
 		    MAGAZINE_NOTEMPTY(mp)) {
@@ -1364,8 +1364,8 @@ mtmagazine_alloc(int zi)
 		} else {
 			depot_unlock(d);
 		}
-
-	} while (0);
+		break;
+	} 
 
 	return (obj);
 }
@@ -1385,7 +1385,7 @@ mtmagazine_free(int zi, void *ptr)
 		tp->init = 1;
 	}
 
-	do {
+	for (;;) {
 		/* If the loaded magazine has space, free directly to it */
 		if (((mp = tp->mags[zi].loaded) != NULL) && 
 		    MAGAZINE_NOTFULL(mp)) {
@@ -1434,7 +1434,8 @@ mtmagazine_free(int zi, void *ptr)
 			depot_unlock(d);
 			rc = -1;
 		}
-	} while (0);
+		break;
+	} 
 
 	return rc;
 }
@@ -1507,6 +1508,11 @@ zone_alloc(int flags)
 			zone_magazine_unlock();
 
 		z = _vmem_alloc(ZoneSize * burst, ZoneSize, flags);
+		if (z == NULL) {
+			zone_magazine_unlock();
+			slgd_lock(slgd);
+			return (NULL);
+		}
 
 		for (i = 1; i < burst; i++) {
 			j = magazine_free(&zone_magazine,
