@@ -26,48 +26,6 @@ linker_api_available(void)
 	return 1;
 }
 
-int
-ng_load_module(const char *name)
-{
-	char *path, filename[NG_TYPESIZ + 3];
-	linker_file_t lf;
-	int error;
-
-	if (!linker_api_available())
-		return (ENXIO);
-
-	/* Not found, try to load it as a loadable module */
-	ksnprintf(filename, sizeof(filename), "ng_%s.ko", name);
-	if ((path = linker_search_path(filename)) == NULL)
-		return (ENXIO);
-	error = linker_load_file(path, &lf);
-	FREE(path, M_LINKER);
-	if (error == 0)
-		lf->userrefs++;		/* pretend kldload'ed */
-	return (error);
-}
-
-int
-ng_unload_module(const char *name)
-{
-	char filename[NG_TYPESIZ + 3];
-	linker_file_t lf;
-	int error;
-
-	if (!linker_api_available())
-		return (ENXIO);
-
-	/* Not found, try to load it as a loadable module */
-	ksnprintf(filename, sizeof(filename), "ng_%s.ko", name);
-	if ((lf = linker_find_file_by_name(filename)) == NULL)
-		return (ENXIO);
-	error = linker_file_unload(lf);
-
-	if (error == 0)
-		lf->userrefs--;		/* pretend kldunload'ed */
-	return (error);
-}
-
 
 
 /* Locking stuff. */

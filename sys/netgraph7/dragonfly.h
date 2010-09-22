@@ -46,8 +46,6 @@ typedef __va_list	va_list;
 #define va_end(ap)	__va_end(ap)
 
 int linker_api_available(void);
-int ng_load_module(const char *);
-int ng_unload_module(const char *);
 
 /* Temporary lock stuff */
 int lock_sleep(void *, int, const char *, int, struct lock *);
