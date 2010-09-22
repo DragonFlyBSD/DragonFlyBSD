@@ -343,8 +343,7 @@ ngc_send(netmsg_t netmsg)
 
 	mtx_lock(&priv->mtx);
 	if (priv->error == -1)
-		lock_sleep(priv, 0, "ngsock", 0,
-				(struct lock *)&priv->mtx);
+		lksleep(priv, (struct lock *)&priv->mtx, 0, "ngsock", 0);
 	mtx_unlock(&priv->mtx);
 	KASSERT(priv->error != -1,
 	    ("ng_socket: priv->error wasn't updated"));

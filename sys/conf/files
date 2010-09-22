@@ -1299,7 +1299,6 @@ netgraph7/bluetooth/socket/ng_btsocket_l2cap_raw.c	optional netgraph7_bluetooth_
 netgraph7/bluetooth/socket/ng_btsocket_rfcomm.c		optional netgraph7_bluetooth_socket
 netgraph7/netflow/netflow.c	optional netgraph7_netflow
 netgraph7/netflow/ng_netflow.c	optional netgraph7_netflow
-netgraph7/dragonfly.c		optional netgraph7
 netgraph7/UI/ng_UI.c		optional netgraph7_UI
 netgraph7/async/ng_async.c	optional netgraph7_async
 netgraph7/atmllc/ng_atmllc.c	optional netgraph7_atmllc
