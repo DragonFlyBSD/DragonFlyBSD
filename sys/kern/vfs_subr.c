@@ -726,8 +726,10 @@ vfsync(struct vnode *vp, int waitfor, int passes,
 			RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL,
 				vfsync_bp, &info);
 			error = vfsync_wait_output(vp, waitoutput);
-			if (info.skippedbufs)
-				kprintf("Warning: vfsync skipped %d dirty bufs in pass2!\n", info.skippedbufs);
+			if (info.skippedbufs) {
+				kprintf("Warning: vfsync skipped %d dirty "
+					"bufs in pass2!\n", info.skippedbufs);
+			}
 		}
 		while (error == 0 && passes > 0 &&
 		       !RB_EMPTY(&vp->v_rbdirty_tree)
@@ -806,7 +808,6 @@ vfsync_bp(struct buf *bp, void *data)
 	 * Ignore buffers that we cannot immediately lock.
 	 */
 	if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT)) {
-		kprintf("Warning: vfsync_bp skipping dirty buffer %p\n", bp);
 		++info->skippedbufs;
 		return(0);
 	}

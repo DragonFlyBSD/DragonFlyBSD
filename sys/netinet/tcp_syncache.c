@@ -413,7 +413,6 @@ syncache_destroy(struct tcpcb *tp)
 			}
 		}
 	}
-	kprintf("Warning: delete stale syncache for tp=%p, sc=%p\n", tp, sc);
 }
 
 static void
