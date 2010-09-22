@@ -64,17 +64,14 @@ star_saver(video_adapter_t *adp, int blank)
 				    FG_WHITE, FG_LIGHTCYAN};
 	static u_short 	stars[NUM_STARS][2];
 
-	lwkt_gettoken(&tty_token);
 	sc = sc_find_softc(adp, NULL);
 	if (sc == NULL) {
-		lwkt_reltoken(&tty_token);
 		return EAGAIN;
 	}
 	scp = sc->cur_scp;
 
 	if (blank) {
 		if (adp->va_info.vi_flags & V_INFO_GRAPHICS) {
-			lwkt_reltoken(&tty_token);
 			return EAGAIN;
 		}
 		if (!blanked) {
@@ -102,7 +99,6 @@ star_saver(video_adapter_t *adp, int blank)
 	else
 		blanked = FALSE;
 
-	lwkt_reltoken(&tty_token);
 	return 0;
 }
 

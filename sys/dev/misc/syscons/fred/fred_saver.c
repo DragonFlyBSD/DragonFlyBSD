@@ -120,14 +120,12 @@ clear_fred(sc_softc_t *sc, int xpos, int ypos, int dxdir, int xoff, int yoff,
 	if (xlen <= 0)
 		return;
 
-	lwkt_gettoken(&tty_token);
 	for (y = yoff; y < ylen; y++) {
 		sc_vtb_erase(&sc->cur_scp->scr,
 			     (ypos + y)*sc->cur_scp->xsize + xpos + xoff,
 			     xlen - xoff,
 			     sc->scr_map[0x20], (FG_LIGHTGREY | BG_BLACK) << 8);
 	}
-	lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -138,7 +136,6 @@ draw_fred(sc_softc_t *sc, int xpos, int ypos, int dxdir, int xoff, int yoff,
 	int px;
 	int attr;
 
-	lwkt_gettoken(&tty_token);
 	for (y = yoff; y < ylen; y++) {
 		if (dxdir < 0)
 			px = xoff;
@@ -169,7 +166,6 @@ draw_fred(sc_softc_t *sc, int xpos, int ypos, int dxdir, int xoff, int yoff,
 			}
 		}
 	}
-	lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -177,11 +173,9 @@ clear_string(sc_softc_t *sc, int xpos, int ypos, int xoff, char *s, int len)
 {
 	if (len <= 0)
 		return;
-	lwkt_gettoken(&tty_token);
 	sc_vtb_erase(&sc->cur_scp->scr,
 		     ypos*sc->cur_scp->xsize + xpos + xoff, len - xoff,
 		     sc->scr_map[0x20], (FG_LIGHTGREY | BG_BLACK) << 8);
-	lwkt_reltoken(&tty_token);
 }
 
 static void
@@ -189,13 +183,11 @@ draw_string(sc_softc_t *sc, int xpos, int ypos, int xoff, char *s, int len)
 {
 	int x;
 
-	lwkt_gettoken(&tty_token);
 	for (x = xoff; x < len; x++) {
 		sc_vtb_putc(&sc->cur_scp->scr,
 			    ypos*sc->cur_scp->xsize + xpos + x,
 			    sc->scr_map[(int)s[x]], (FG_LIGHTBLUE | BG_BLACK) << 8);
 	}
-	lwkt_reltoken(&tty_token);
 }
 
 static int
@@ -212,17 +204,14 @@ fred_saver(video_adapter_t *adp, int blank)
 	scr_stat *scp;
 	int min, max;
 
-	lwkt_gettoken(&tty_token);
 	sc = sc_find_softc(adp, NULL);
 	if (sc == NULL) {
-		lwkt_reltoken(&tty_token);
 		return EAGAIN;
 	}
 	scp = sc->cur_scp;
 
 	if (blank) {
 		if (adp->va_info.vi_flags & V_INFO_GRAPHICS) {
-			lwkt_reltoken(&tty_token);
 			return EAGAIN;
 		}
 		if (blanked == 0) {
@@ -234,7 +223,6 @@ fred_saver(video_adapter_t *adp, int blank)
 			xlen = ylen = tlen = 0;
 		}
 		if (blanked++ < 2) {
-			lwkt_reltoken(&tty_token);
 			return 0;
 		}
 		blanked = 1;
@@ -350,7 +338,6 @@ fred_saver(video_adapter_t *adp, int blank)
 	} else {
 		blanked = 0;
 	}
-	lwkt_reltoken(&tty_token);
 	return 0;
 }
 

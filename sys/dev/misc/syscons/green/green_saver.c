@@ -48,10 +48,8 @@ static int blanked;
 static int
 green_saver(video_adapter_t *adp, int blank)
 {
-	lwkt_gettoken(&tty_token);
 
 	if (blank == blanked) {
-		lwkt_reltoken(&tty_token);
 		return 0;
 	}
 
@@ -60,21 +58,17 @@ green_saver(video_adapter_t *adp, int blank)
 
 	blanked = blank;
 
-	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
 static int
 green_init(video_adapter_t *adp)
 {
-	lwkt_gettoken(&tty_token);
 
 	if ((*vidsw[adp->va_index]->blank_display)(adp, V_DISPLAY_ON) == 0) {
-		lwkt_reltoken(&tty_token);
 		return 0;
 	}
 
-	lwkt_reltoken(&tty_token);
 	return ENODEV;
 }
 

@@ -64,18 +64,15 @@ snake_saver(video_adapter_t *adp, int blank)
 #define	save	message
 #define	savs	messagep
 
-	lwkt_gettoken(&tty_token);
 
 	sc = sc_find_softc(adp, NULL);
 	if (sc == NULL) {
-		lwkt_reltoken(&tty_token);
 		return EAGAIN;
 	}
 	scp = sc->cur_scp;
 
 	if (blank) {
 		if (adp->va_info.vi_flags & V_INFO_GRAPHICS) {
-			lwkt_reltoken(&tty_token);
 			return EAGAIN;
 		}
 		if (blanked <= 0) {
@@ -93,7 +90,6 @@ snake_saver(video_adapter_t *adp, int blank)
 			blanked = 1;
 		}
 		if (blanked++ < 4) {
-			lwkt_reltoken(&tty_token);
 			return 0;
 		}
 		blanked = 1;
@@ -118,7 +114,6 @@ snake_saver(video_adapter_t *adp, int blank)
 		blanked = 0;
 	}
 
-	lwkt_reltoken(&tty_token);
 	return 0;
 }
 
