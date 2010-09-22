@@ -1,9 +1,6 @@
 Scripts and Tools to help with Debugging DragonFly.
-$DragonFly: src/test/debug/README,v 1.4 2004/12/14 23:58:32 dillon Exp $
 
 Files in this directory:
-
-	gdb.kernel -	Kernel debugging macro set for GDB
 
 	ncptrace.c -	Trace the kernel's namecache hierarchy.  Namecache
 			records are typically in one of three states:

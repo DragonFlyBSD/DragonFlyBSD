@@ -1,18 +1,10 @@
-# $DragonFly: src/test/debug/gdb.kernel,v 1.4 2005/07/28 15:48:56 hmp Exp $
 #
 # Command file for the GNU Debugger, for kernel debugging.
 #
 # This file can either be put in your home directory as ~/.gdbinit,
 # or selected at run time as:
 #
-#   	'gdb -k -q -x /usr/src/test/debug/gdb.kernel ...'
-#
-# Here is a list of macros and short one-line descriptions:
-#
-#    kldstat 	- kldstat(1) command style output of loaded modules 
-#    pcomm  	- print command name of arg0's (thread's) process pointer
-#    psx     	- process listing with wchan information
-#    running_threads - the current running thread on each CPU.
+#   	'gdb -k -q -x /usr/share/misc/gdbinit ...'
 #
 set print union
 set history expansion on
@@ -63,7 +55,7 @@ define kldstat
 	end
 end
 
-define psx 
+define psx
     set $cpu = 0
     printf "\ncpu  pid    thread    flags comm               wchan    wmesg\n"
     while ($cpu < ncpus)

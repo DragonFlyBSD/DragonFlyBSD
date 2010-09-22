@@ -177,16 +177,14 @@ echo
 file=`mktemp /tmp/crashinfo.XXXXXX`
 if [ $? -eq 0 ]; then
 	echo "bt" >> $file
-	if [ -e /usr/src/test/debug/gdb.kernel ]; then
-		echo "source /usr/src/test/debug/gdb.kernel" >> $file
-		echo "lstok" >> $file
-		echo "psx" >> $file
-		echo "running_threads" >> $file
-		echo "lsvfs" >> $file
-		echo "lsvfsops" >> $file
-		echo "lsmount" >> $file
-		echo "kldstat" >> $file
-	fi
+	echo "source /usr/share/misc/gdbinit" >> $file
+	echo "lstok" >> $file
+	echo "psx" >> $file
+	echo "running_threads" >> $file
+	echo "lsvfs" >> $file
+	echo "lsvfsops" >> $file
+	echo "lsmount" >> $file
+	echo "kldstat" >> $file
 	echo "quit" >> $file
 	( ulimit -t 15; cat $file | kgdb $KERNEL $VMCORE )
 	rm -f $file
