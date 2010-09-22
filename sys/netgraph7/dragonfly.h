@@ -45,8 +45,6 @@ typedef __va_list	va_list;
 #define va_start(ap,last)	__va_start(ap,last)
 #define va_end(ap)	__va_end(ap)
 
-int linker_api_available(void);
-
 /* Temporary lock stuff */
 int lock_sleep(void *, int, const char *, int, struct lock *);
 int lockstatus_owned(struct lock *, struct thread *);

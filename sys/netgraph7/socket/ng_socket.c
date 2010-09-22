@@ -72,9 +72,8 @@
 */
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
-#ifdef NOTYET
 #include <sys/vnode.h>
-#endif
+
 #include <netgraph7/ng_message.h>
 #include <netgraph7/netgraph.h>
 #include "ng_socketvar.h"
@@ -137,6 +136,7 @@ static int	ng_bind(struct sockaddr *nam, struct ngpcb *pcbp);
 
 static int	ngs_mod_event(module_t mod, int event, void *data);
 static void	ng_socket_item_applied(void *context, int error);
+static int	linker_api_available(void);
 
 /* Netgraph type descriptor */
 static struct ng_type typestruct = {
@@ -1175,6 +1175,21 @@ ngs_mod_event(module_t mod, int event, void *data)
 		break;
 	}
 	return (error);
+}
+
+static int
+linker_api_available(void)
+{
+	/* linker_* API won't work without a process context */
+	if (curproc == NULL)
+		return 0;
+	/*
+	 * nlookup_init() relies on namei_oc to be initialized,
+	 * but it's not when the netgraph module is loaded during boot.
+	 */
+	if (namei_oc == NULL)
+		return 0;
+	return 1;
 }
 
 SYSCTL_INT(_net_graph, OID_AUTO, family, CTLFLAG_RD, 0, AF_NETGRAPH, "");

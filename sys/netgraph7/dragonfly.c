@@ -11,21 +11,6 @@
 #include <sys/lock.h>
 /* End Temporary lock stuff. */
 
-int
-linker_api_available(void)
-{
-	/* linker_* API won't work without a process context */
-	if (curproc == NULL)
-		return 0;
-	/*
-	 * nlookup_init() relies on namei_oc to be initialized,
-	 * but it's not when the netgraph module is loaded during boot.
-	 */
-	if (namei_oc == NULL)
-		return 0;
-	return 1;
-}
-
 
 
 /* Locking stuff. */
