@@ -29480,7 +29480,8 @@ ix86_sse5_valid_op_p (rtx operands[], rtx insn ATTRIBUTE_UNUSED, int num,
          For the integer multiply/add instructions be more restrictive and
          require operands[2] and operands[3] to be the memory operands.  */
       if (commutative)
-	return (mem_mask == ((1 << 1) | (1 << 3)) || ((1 << 2) | (1 << 3)));
+	return (mem_mask == ((1 << 1) | (1 << 3)) ||
+		mem_mask == ((1 << 2) | (1 << 3)));
       else
 	return (mem_mask == ((1 << 2) | (1 << 3)));
     }
