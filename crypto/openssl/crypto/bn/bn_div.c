@@ -337,7 +337,7 @@ X) -> 0x%08X\n",
 				t2 -= d1;
 				}
 #else /* !BN_LLONG */
-			BN_ULONG t2l,t2h,ql,qh;
+			BN_ULONG t2l,t2h;
 
 			q=bn_div_words(n0,n1,d0);
 #ifdef BN_DEBUG_LEVITTE
@@ -355,9 +355,12 @@ X) -> 0x%08X\n",
 			t2l = d1 * q;
 			t2h = BN_UMULT_HIGH(d1,q);
 #else
+			{
+			BN_ULONG ql, qh;
 			t2l=LBITS(d1); t2h=HBITS(d1);
 			ql =LBITS(q);  qh =HBITS(q);
 			mul64(t2l,t2h,ql,qh); /* t2=(BN_ULLONG)d1*q; */
+			}
 #endif
 
 			for (;;)
@@ -561,7 +564,7 @@ X) -> 0x%08X\n",
 				t2 -= d1;
 				}
 #else /* !BN_LLONG */
-			BN_ULONG t2l,t2h,ql,qh;
+			BN_ULONG t2l,t2h;
 
 			q=bn_div_words(n0,n1,d0);
 #ifdef BN_DEBUG_LEVITTE
@@ -579,9 +582,12 @@ X) -> 0x%08X\n",
 			t2l = d1 * q;
 			t2h = BN_UMULT_HIGH(d1,q);
 #else
+			{
+			BN_ULONG ql, qh;
 			t2l=LBITS(d1); t2h=HBITS(d1);
 			ql =LBITS(q);  qh =HBITS(q);
 			mul64(t2l,t2h,ql,qh); /* t2=(BN_ULLONG)d1*q; */
+			}
 #endif
 
 			for (;;)
