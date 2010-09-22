@@ -263,7 +263,7 @@ struct mbuf {
 #define FW_MBUF_GENERATED	0x00000001
 #define	PF_MBUF_STRUCTURE	0x00000002	/* m_pkthdr.pf valid */
 #define	PF_MBUF_ROUTED		0x00000004	/* pf_routed field is valid */
-#define	XX_MBUF_UNUSED08	0x00000008
+#define	PF_MBUF_TAGGED		0x00000008
 #define	XX_MBUF_UNUSED10	0x00000010
 #define	XX_MBUF_UNUSED20	0x00000020
 #define IPFORWARD_MBUF_TAGGED	0x00000040
