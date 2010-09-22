@@ -59,8 +59,6 @@
 #include <sys/proc.h>
 #include <sys/kthread.h>
 
-#include <sys/mplock2.h>
-
 #include <machine/inttypes.h>
 
 #include <net/if.h>
@@ -581,10 +579,12 @@ pf_find_state(struct pfi_kif *kif, struct pf_state_key_cmp *key, u_int8_t tree)
 	}
 
 	/* list is sorted, if-bound states before floating ones */
-	if (sk != NULL)
-		TAILQ_FOREACH(s, &sk->states, next)
+	if (sk != NULL) {
+		TAILQ_FOREACH(s, &sk->states, next) {
 			if (s->kif == pfi_all || s->kif == kif)
 				return (s);
+		}
+	}
 
 	return (NULL);
 }
@@ -902,7 +902,7 @@ pf_purge_thread(void *v)
 	int nloops = 0;
 	int locked = 0;
 
-	get_mplock();
+	lwkt_gettoken(&pf_token);
 	for (;;) {
 		tsleep(pf_purge_thread, PWAIT, "pftm", 1 * hz);
 
@@ -939,7 +939,7 @@ pf_purge_thread(void *v)
 		crit_exit();
 		lockmgr(&pf_consistency_lock, LK_RELEASE);
 	}
-	rel_mplock();
+	lwkt_reltoken(&pf_token);
 }
 
 u_int32_t
@@ -1063,6 +1063,8 @@ pf_unlink_state(struct pf_state *cur)
 	pf_detach_state(cur, 0);
 }
 
+static struct pf_state	*purge_cur;
+
 /* callers should be at crit_enter() and hold the
  * write_lock on pf_consistency_lock */
 void
@@ -1087,7 +1089,17 @@ pf_free_state(struct pf_state *cur)
 			pf_rm_rule(NULL, cur->anchor.ptr);
 	pf_normalize_tcp_cleanup(cur);
 	pfi_kif_unref(cur->kif, PFI_KIF_REF_STATE);
+
+	/*
+	 * We may be freeing pf_purge_expired_states()'s saved scan entry,
+	 * adjust it if necessary.
+	 */
+	if (purge_cur == cur) {
+		kprintf("PURGE CONFLICT\n");
+		purge_cur = TAILQ_NEXT(purge_cur, entry_list);
+	}
 	TAILQ_REMOVE(&state_list, cur, entry_list);
+
 	if (cur->tag)
 		pf_tag_unref(cur->tag);
 	pool_put(&pf_state_pl, cur);
@@ -1098,20 +1110,26 @@ pf_free_state(struct pf_state *cur)
 int
 pf_purge_expired_states(u_int32_t maxcheck, int waslocked)
 {
-	static struct pf_state	*cur = NULL;
-	struct pf_state		*next;
+	struct pf_state		*cur;
 	int 			 locked = waslocked;
 
 	while (maxcheck--) {
-		/* wrap to start of list when we hit the end */
+		/*
+		 * Wrap to start of list when we hit the end
+		 */
+		cur = purge_cur;
 		if (cur == NULL) {
 			cur = TAILQ_FIRST(&state_list);
 			if (cur == NULL)
 				break;	/* list empty */
 		}
 
-		/* get next state, as cur may get deleted */
-		next = TAILQ_NEXT(cur, entry_list);
+		/*
+		 * Setup next (purge_cur) while we process this one.  If we block and
+		 * something else deletes purge_cur, pf_free_state() will adjust it further
+		 * ahead.
+		 */
+		purge_cur = TAILQ_NEXT(cur, entry_list);
 
 		if (cur->timeout == PFTM_UNLINKED) {
 			/* free unlinked state */
@@ -1130,7 +1148,6 @@ pf_purge_expired_states(u_int32_t maxcheck, int waslocked)
 			}
 			pf_free_state(cur);
 		}
-		cur = next;
 	}
 
 	if (locked)
@@ -1650,13 +1667,19 @@ pf_send_tcp(const struct pf_rule *r, sa_family_t af,
 #endif /* INET6 */
 	}
 
-	/* create outgoing mbuf */
+	/*
+	 * Create outgoing mbuf.
+	 *
+	 * DragonFly doesn't zero the auxillary pkghdr fields, only fw_flags,
+	 * so make sure pf.flags is clear.
+	 */
 	m = m_gethdr(MB_DONTWAIT, MT_HEADER);
 	if (m == NULL) {
 		return;
 	}
 	if (tag)
-		m->m_pkthdr.pf.flags |= PF_TAG_GENERATED;
+		m->m_pkthdr.fw_flags |= PF_MBUF_TAGGED;
+	m->m_pkthdr.pf.flags = 0;
 	m->m_pkthdr.pf.tag = rtag;
 
 	if (r != NULL && r->rtableid >= 0)
@@ -1785,8 +1808,13 @@ pf_send_icmp(struct mbuf *m, u_int8_t type, u_int8_t code, sa_family_t af,
 {
 	struct mbuf	*m0;
 
+	/*
+	 * DragonFly doesn't zero the auxillary pkghdr fields, only fw_flags,
+	 * so make sure pf.flags is clear.
+	 */
 	m0 = m_copy(m, 0, M_COPYALL);
-	m0->m_pkthdr.pf.flags |= PF_TAG_GENERATED;
+	m0->m_pkthdr.fw_flags |= PF_MBUF_TAGGED;
+	m0->m_pkthdr.pf.flags = 0;
 
 	if (r->rtableid >= 0)
 		m0->m_pkthdr.pf.rtableid = r->rtableid;
@@ -5381,9 +5409,15 @@ pf_route6(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 	dst->sin6_len = sizeof(*dst);
 	dst->sin6_addr = ip6->ip6_dst;
 
-	/* Cheat. XXX why only in the v6 case??? */
+	/*
+	 * DragonFly doesn't zero the auxillary pkghdr fields, only fw_flags,
+	 * so make sure pf.flags is clear.
+	 *
+	 * Cheat. XXX why only in the v6 case???
+	 */
 	if (r->rt == PF_FASTROUTE) {
-		m0->m_pkthdr.pf.flags |= PF_TAG_GENERATED;
+		m0->m_pkthdr.fw_flags |= PF_MBUF_TAGGED;
+		m0->m_pkthdr.pf.flags = 0;
 		ip6_output(m0, NULL, NULL, 0, NULL, NULL, NULL);
 		return;
 	}
@@ -5618,8 +5652,13 @@ pf_test(int dir, struct ifnet *ifp, struct mbuf **m0,
 		goto done;
 	}
 
-	if (m->m_pkthdr.pf.flags & PF_TAG_GENERATED)
+	/*
+	 * DragonFly doesn't zero the auxillary pkghdr fields, only fw_flags,
+	 * so make sure pf.flags is clear.
+	 */
+	if (m->m_pkthdr.fw_flags & PF_MBUF_TAGGED)
 		return (PF_PASS);
+	m->m_pkthdr.pf.flags = 0;
 
 	/* We do IP header normalization and packet reassembly here */
 	if (pf_normalize_ip(m0, dir, kif, &reason, &pd) != PF_PASS) {
@@ -5934,8 +5973,13 @@ pf_test6(int dir, struct ifnet *ifp, struct mbuf **m0,
 		goto done;
 	}
 
-	if (m->m_pkthdr.pf.flags & PF_TAG_GENERATED)
+	/*
+	 * DragonFly doesn't zero the auxillary pkghdr fields, only fw_flags,
+	 * so make sure pf.flags is clear.
+	 */
+	if (m->m_pkthdr.fw_flags & PF_MBUF_TAGGED)
 		return (PF_PASS);
+	m->m_pkthdr.pf.flags = 0;
 
 	/* We do IP header normalization and packet reassembly here */
 	if (pf_normalize_ip6(m0, dir, kif, &reason, &pd) != PF_PASS) {

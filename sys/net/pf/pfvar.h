@@ -1401,7 +1401,12 @@ struct pf_altq {
 	u_int32_t		 qid;		/* return value */
 };
 
-#define	PF_TAG_GENERATED		0x01
+/*
+ * DO NOT USE PF_TAG_GENERATED!  Set PF_MBUF_TAGGED in fw_flags instead and
+ * then clear pf.flags.  The mbuf allocator does not automatically clear
+ * the pf fields in the mbuf packet header.
+ */
+/*#define	PF_TAG_GENERATED		0x01*/
 #define	PF_TAG_FRAGCACHE		0x02
 #define	PF_TAG_TRANSLATE_LOCALHOST	0x04
 #define	PF_TAG_STATE_HASHED		0x08

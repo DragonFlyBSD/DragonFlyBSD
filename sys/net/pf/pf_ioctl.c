@@ -60,7 +60,6 @@
 #include <sys/lock.h>
 
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -3312,8 +3311,8 @@ hook_pf(void)
 		lwkt_reltoken(&pf_token);
 		return (ENODEV);
 	}
-	pfil_add_hook(pf_check_in, NULL, PFIL_IN, pfh_inet);
-	pfil_add_hook(pf_check_out, NULL, PFIL_OUT, pfh_inet);
+	pfil_add_hook(pf_check_in, NULL, PFIL_IN | PFIL_MPSAFE, pfh_inet);
+	pfil_add_hook(pf_check_out, NULL, PFIL_OUT | PFIL_MPSAFE, pfh_inet);
 #ifdef INET6
 	pfh_inet6 = pfil_head_get(PFIL_TYPE_AF, AF_INET6);
 	if (pfh_inet6 == NULL) {
@@ -3322,8 +3321,8 @@ hook_pf(void)
 		lwkt_reltoken(&pf_token);
 		return (ENODEV);
 	}
-	pfil_add_hook(pf_check6_in, NULL, PFIL_IN, pfh_inet6);
-	pfil_add_hook(pf_check6_out, NULL, PFIL_OUT, pfh_inet6);
+	pfil_add_hook(pf_check6_in, NULL, PFIL_IN | PFIL_MPSAFE, pfh_inet6);
+	pfil_add_hook(pf_check6_out, NULL, PFIL_OUT | PFIL_MPSAFE, pfh_inet6);
 #endif
 
 	pf_pfil_hooked = 1;
