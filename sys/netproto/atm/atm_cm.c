@@ -2717,18 +2717,18 @@ atm_cm_cpcs_data(Atm_connection *cop, KBuffer *m)
 		KB_HEADROOM(m, space);
 		if (space < llcp->v.llc_len) {
 			KBuffer		*n;
+			uint32_t len = llcp->v.llc_len; /* gcc workaround */
 
 			/*
 			 * We have to allocate another buffer and tack it
 			 * onto the front of the packet
 			 */
-			KB_ALLOCPKT(n, llcp->v.llc_len, KB_F_NOWAIT,
-					KB_T_HEADER);
+			KB_ALLOCPKT(n, len, KB_F_NOWAIT, KB_T_HEADER);
 			if (n == 0) {
 				err = ENOMEM;
 				goto done;
 			}
-			KB_TAILALIGN(n, llcp->v.llc_len);
+			KB_TAILALIGN(n, len);
 			KB_LINKHEAD(n, m);
 			m = n;
 		} else {
