@@ -46,6 +46,7 @@
 #define _NETGRAPH_NG_MESSAGE_H_
 
 #include <sys/ioccom.h>
+#include <sys/types.h>
 
 /* ASCII string size limits */
 #define	NG_TYPESIZ	32	/* max type name len (including null) */

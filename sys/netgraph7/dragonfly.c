@@ -1,4 +1,4 @@
-#include <netgraph/ng_message.h>
+#include <netgraph7/ng_message.h>
 
 #include <sys/malloc.h>
 #include <sys/linker.h>
