@@ -2,8 +2,9 @@
 # $FreeBSD: src/sys/modules/netgraph/mppc/Makefile,v 1.3.2.4 2001/12/21 09:00:49 ru Exp $
 # $DragonFly: src/sys/netgraph/mppc/Makefile,v 1.3 2006/09/16 18:39:13 swildner Exp $
 
-KMOD=		ng_mppc
+KMOD=		ng7_mppc
 SRCS= 		ng_mppc.c opt_netgraph.h
+KMODDEPS=	netgraph7
 
 NETGRAPH_MPPC_COMPRESSION?=	0
 NETGRAPH_MPPC_ENCRYPTION?=	1

@@ -2,8 +2,8 @@
 # $DragonFly$
 # $Whistle: Makefile,v 1.2 1999/01/19 19:39:20 archie Exp $
 
-KMOD=		ng_async
+KMOD=		ng7_async
 SRCS= 		ng_async.c
-KMODDEPS=	netgraph
+KMODDEPS=	netgraph7
 
 .include <bsd.kmod.mk>

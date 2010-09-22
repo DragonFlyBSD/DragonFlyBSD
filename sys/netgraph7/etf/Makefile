@@ -2,7 +2,9 @@
 # $DragonFly: src/sys/netgraph/etf/Makefile,v 1.2 2003/06/17 04:28:46 dillon Exp $
 # Ethertype filter
 
-KMOD=	ng_etf
-SRCS= 	ng_etf.c
+KMOD=		ng7_etf
+SRCS= 		ng_etf.c
+KMODDEPS=	netgraph7
+
 
 .include <bsd.kmod.mk>

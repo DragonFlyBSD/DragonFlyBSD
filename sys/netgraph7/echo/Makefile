@@ -2,7 +2,8 @@
 # $DragonFly: src/sys/netgraph/echo/Makefile,v 1.2 2003/06/17 04:28:46 dillon Exp $
 # $Whistle: Makefile,v 1.2 1999/01/19 19:39:20 archie Exp $
 
-KMOD=		ng_echo
+KMOD=		ng7_echo
 SRCS= 		ng_echo.c
+KMODDEPS=	netgraph7
 
 .include <bsd.kmod.mk>

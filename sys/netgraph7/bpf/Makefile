@@ -2,9 +2,9 @@
 # $DragonFly: src/sys/netgraph/bpf/Makefile,v 1.3 2003/08/14 23:26:36 dillon Exp $
 # $Whistle: Makefile,v 1.1 1999/12/03 01:44:28 archie Exp $
 
-KMOD=		ng_bpf
+KMOD=		ng7_bpf
 SRCS= 		ng_bpf.c bpf_filter.c
-KMODDEPS=	netgraph
+KMODDEPS=	netgraph7
 
 .PATH:		${.CURDIR}/../../net
 

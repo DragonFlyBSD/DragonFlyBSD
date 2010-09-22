@@ -2,8 +2,8 @@
 # $DragonFly: src/sys/netgraph/UI/Makefile,v 1.2 2003/06/17 04:28:45 dillon Exp $
 # $Whistle: Makefile,v 1.2 1999/01/19 19:39:20 archie Exp $
 
-KMOD=		ng_UI
+KMOD=		ng7_UI
 SRCS= 		ng_UI.c
-KMODDEPS=	netgraph
+KMODDEPS=	netgraph7
 
 .include <bsd.kmod.mk>

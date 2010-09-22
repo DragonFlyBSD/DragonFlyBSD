@@ -2,9 +2,9 @@
 # $DragonFly: src/sys/netgraph/iface/Makefile,v 1.4 2005/02/18 11:41:42 corecode Exp $
 # $Whistle: Makefile,v 1.2 1999/01/19 19:39:21 archie Exp $
 
-KMOD=		ng_iface
+KMOD=		ng7_iface
 SRCS= 		ng_iface.c opt_atalk.h opt_inet.h opt_inet6.h opt_ipx.h
-KMODDEPS=	netgraph
+KMODDEPS=	netgraph7
 
 .if !defined(BUILDING_WITH_KERNEL)
 opt_inet.h:

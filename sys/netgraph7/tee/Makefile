@@ -2,8 +2,8 @@
 # $DragonFly: src/sys/netgraph/tee/Makefile,v 1.2 2003/06/17 04:28:46 dillon Exp $
 # $Whistle: Makefile,v 1.2 1999/01/19 19:39:22 archie Exp $
 
-KMOD=		ng_tee
+KMOD=		ng7_tee
 SRCS= 		ng_tee.c
-KMODDEPS=	netgraph
+KMODDEPS=	netgraph7
 
 .include <bsd.kmod.mk>
