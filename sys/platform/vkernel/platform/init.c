@@ -80,6 +80,7 @@
 vm_paddr_t phys_avail[16];
 vm_paddr_t Maxmem;
 vm_paddr_t Maxmem_bytes;
+int physmem;
 int MemImageFd = -1;
 struct vkdisk_info DiskInfo[VKDISK_MAX];
 int DiskNum;
@@ -424,6 +425,7 @@ init_sys_memory(char *imageFile)
 
 	MemImageFd = fd;
 	Maxmem = Maxmem_bytes >> PAGE_SHIFT;
+	physmem = Maxmem;
 }
 
 /*
