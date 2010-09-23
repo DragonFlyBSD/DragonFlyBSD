@@ -929,7 +929,7 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 
 	if ((m->m_flags & M_HASH) == 0) {
 		++ip_dispatch_recheck;
-		ip->ip_len = htons(ip->ip_len);
+		ip->ip_len = htons(ip->ip_len + hlen);
 		ip->ip_off = htons(ip->ip_off);
 
 		ip_cpufn(&m, 0, IP_MPORT_IN);
@@ -937,7 +937,7 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 			return;
 
 		ip = mtod(m, struct ip *);
-		ip->ip_len = ntohs(ip->ip_len);
+		ip->ip_len = ntohs(ip->ip_len) - hlen;
 		ip->ip_off = ntohs(ip->ip_off);
 		KKASSERT(m->m_flags & M_HASH);
 	}
