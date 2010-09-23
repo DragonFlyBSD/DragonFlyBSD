@@ -903,3 +903,20 @@ measure_activated_swap_from_disk(const struct i_fn_args *a,
 
 	return(swap);
 }
+
+void *
+swapoff_all(const struct i_fn_args *a)
+{
+	FILE *p;
+
+	if ((p = aura_popen("%s%s off; %s%s | %s%s \"^/dev\" | %s%s '{print $1;}' | %s%s %s%s", "r",
+		    a->os_root, cmd_name(a, "DUMPON"),
+		    a->os_root, cmd_name(a, "SWAPINFO"),
+		    a->os_root, cmd_name(a, "GREP"),
+		    a->os_root, cmd_name(a, "AWK"),
+		    a->os_root, cmd_name(a, "XARGS"),
+		    a->os_root, cmd_name(a, "SWAPOFF"))) != NULL)
+		aura_pclose(p);
+
+	return(p);
+}
