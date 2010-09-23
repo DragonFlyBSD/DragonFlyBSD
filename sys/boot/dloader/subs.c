@@ -136,3 +136,17 @@ dvar_free(dvar_t *lastp)
 	free(dvar->data);
 	free(dvar);
 }
+
+int
+dvar_istrue(dvar_t var)
+{
+	int retval = 0;
+
+	if (var != NULL && (strcasecmp(var->data[0], "yes") == 0 ||
+			strcasecmp(var->data[0], "true") == 0 ||
+			strcasecmp(var->data[0], "on") == 0 ||
+			strcasecmp(var->data[0], "1") == 0))
+		retval = 1;
+
+	return (retval);
+}
