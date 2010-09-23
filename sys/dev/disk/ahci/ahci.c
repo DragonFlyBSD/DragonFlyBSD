@@ -2902,6 +2902,15 @@ failall:
 	 * Cleanup.  Will not be set if non-blocking.
 	 */
 	switch(need) {
+	case NEED_NOTHING:
+		/*
+		 * If operating normally and not stopped the interrupt was
+		 * probably just a normal completion and we may be able to
+		 * issue more commands.
+		 */
+		if (stopped == 0 && ap->ap_state != AP_S_FATAL_ERROR)
+			ahci_issue_pending_commands(ap, NULL);
+		break;
 	case NEED_RESTART:
 		/*
 		 * A recoverable error occured and we can restart outstanding
