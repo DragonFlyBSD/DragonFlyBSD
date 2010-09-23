@@ -1014,41 +1014,22 @@ out:
  * The vnode must be locked on entry and remain locked on exit.
  */
 int
-tmpfs_chflags(struct vnode *vp, int flags, struct ucred *cred)
+tmpfs_chflags(struct vnode *vp, int vaflags, struct ucred *cred)
 {
 	int error;
 	struct tmpfs_node *node;
-	int fmode, mode;
+	int flags;
 
 	KKASSERT(vn_islocked(vp));
 
 	node = VP_TO_TMPFS_NODE(vp);
+	flags = node->tn_flags;
 
 	/* Disallow this operation if the file system is mounted read-only. */
 	if (vp->v_mount->mnt_flag & MNT_RDONLY)
 		return EROFS;
+	error = vop_helper_setattr_flags(&flags, vaflags, node->tn_uid, cred);
 
-	fmode = FFLAGS(node->tn_flags);
-	mode = 0;
-	if (((fmode & (FREAD | FWRITE)) == 0) || (fmode & O_CREAT))
-		return EINVAL;
-	if (fmode & (FWRITE | O_TRUNC)) {
-		if (vp->v_type == VDIR) {
-			return EISDIR;
-		}
-		error = vn_writechk(vp, NULL);
-		if (error)
-			return (error);
-
-		mode |= VWRITE;
-	}
-	if (fmode & FREAD)
-		mode |= VREAD;
-	if (mode) {
-		error = VOP_ACCESS(vp, mode, cred);
-		if (error)
-			return (error);
-	}
 	/*
 	 * Unprivileged processes are not permitted to unset system
 	 * flags, or modify flags if any system flags are set.
@@ -1056,39 +1037,29 @@ tmpfs_chflags(struct vnode *vp, int flags, struct ucred *cred)
 	 * Silently enforce SF_NOCACHE on the root tmpfs vnode so
 	 * tmpfs data is not double-cached by swapcache.
 	 */
-	TMPFS_NODE_LOCK(node);
-	if (!priv_check_cred(cred, PRIV_VFS_SYSFLAGS, 0)) {
-#if 0
-		if (node->tn_flags
-		  & (SF_NOUNLINK | SF_IMMUTABLE | SF_APPEND)) {
-			error = securelevel_gt(cred, 0);
-			if (error)
-				return (error);
+	if (error == 0) {
+		TMPFS_NODE_LOCK(node);
+		if (!priv_check_cred(cred, PRIV_VFS_SYSFLAGS, 0)) {
+			if (vp->v_flag & VROOT)
+				flags |= SF_NOCACHE;
+			node->tn_flags = flags;
+		} else {
+			if (node->tn_flags & (SF_NOUNLINK | SF_IMMUTABLE |
+					      SF_APPEND) ||
+			    (flags & UF_SETTABLE) != flags) {
+				error = EPERM;
+			} else {
+				node->tn_flags &= SF_SETTABLE;
+				node->tn_flags |= (flags & UF_SETTABLE);
+			}
 		}
-		/* Snapshot flag cannot be set or cleared */
-		if (((flags & SF_SNAPSHOT) != 0 &&
-		  (node->tn_flags & SF_SNAPSHOT) == 0) ||
-		  ((flags & SF_SNAPSHOT) == 0 &&
-		  (node->tn_flags & SF_SNAPSHOT) != 0))
-			return (EPERM);
-#endif
-		if (vp->v_flag & VROOT)
-			flags |= SF_NOCACHE;
-		node->tn_flags = flags;
-	} else {
-		if (node->tn_flags
-		  & (SF_NOUNLINK | SF_IMMUTABLE | SF_APPEND) ||
-		  (flags & UF_SETTABLE) != flags)
-			return (EPERM);
-		node->tn_flags &= SF_SETTABLE;
-		node->tn_flags |= (flags & UF_SETTABLE);
+		node->tn_status |= TMPFS_NODE_CHANGED;
+		TMPFS_NODE_UNLOCK(node);
 	}
-	node->tn_status |= TMPFS_NODE_CHANGED;
-	TMPFS_NODE_UNLOCK(node);
 
 	KKASSERT(vn_islocked(vp));
 
-	return 0;
+	return error;
 }
 
 /* --------------------------------------------------------------------- */
@@ -1099,11 +1070,11 @@ tmpfs_chflags(struct vnode *vp, int flags, struct ucred *cred)
  * The vnode must be locked on entry and remain locked on exit.
  */
 int
-tmpfs_chmod(struct vnode *vp, mode_t mode, struct ucred *cred)
+tmpfs_chmod(struct vnode *vp, mode_t vamode, struct ucred *cred)
 {
-	int error;
 	struct tmpfs_node *node;
-	int fmode, accmode;
+	mode_t cur_mode;
+	int error;
 
 	KKASSERT(vn_islocked(vp));
 
@@ -1117,50 +1088,19 @@ tmpfs_chmod(struct vnode *vp, mode_t mode, struct ucred *cred)
 	if (node->tn_flags & (IMMUTABLE | APPEND))
 		return EPERM;
 
-	fmode = FFLAGS(node->tn_flags);
-	accmode = 0;
-	if (((fmode & (FREAD | FWRITE)) == 0) || (fmode & O_CREAT))
-		return EINVAL;
-	if (fmode & (FWRITE | O_TRUNC)) {
-		if (vp->v_type == VDIR) {
-			return EISDIR;
-		}
-		error = vn_writechk(vp, NULL);
-		if (error)
-			return (error);
+	cur_mode = node->tn_mode;
+	error = vop_helper_chmod(vp, vamode, cred, node->tn_uid, node->tn_gid,
+				 &cur_mode);
 
-		accmode |= VWRITE;
+	if (error == 0 &&
+	    (node->tn_mode & ALLPERMS) != (cur_mode & ALLPERMS)) {
+		TMPFS_NODE_LOCK(node);
+		node->tn_mode &= ~ALLPERMS;
+		node->tn_mode |= cur_mode & ALLPERMS;
+
+		node->tn_status |= TMPFS_NODE_CHANGED;
+		TMPFS_NODE_UNLOCK(node);
 	}
-	if (fmode & FREAD)
-		accmode |= VREAD;
-	if (accmode) {
-		error = VOP_ACCESS(vp, accmode, cred);
-		if (error)
-			return (error);
-	}
-
-	/*
-	 * Privileged processes may set the sticky bit on non-directories,
-	 * as well as set the setgid bit on a file with a group that the
-	 * process is not a member of.
-	 */
-	if (vp->v_type != VDIR && (mode & S_ISTXT)) {
-		if (priv_check_cred(cred, PRIV_VFS_STICKYFILE, 0))
-			return (EFTYPE);
-	}
-	if (!groupmember(node->tn_gid, cred) && (mode & S_ISGID)) {
-		error = priv_check_cred(cred, PRIV_VFS_SETGID, 0);
-		if (error)
-			return (error);
-	}
-
-
-	TMPFS_NODE_LOCK(node);
-	node->tn_mode &= ~ALLPERMS;
-	node->tn_mode |= mode & ALLPERMS;
-
-	node->tn_status |= TMPFS_NODE_CHANGED;
-	TMPFS_NODE_UNLOCK(node);
 
 	KKASSERT(vn_islocked(vp));
 
@@ -1285,9 +1225,8 @@ int
 tmpfs_chtimes(struct vnode *vp, struct timespec *atime, struct timespec *mtime,
 	int vaflags, struct ucred *cred)
 {
-	int error;
 	struct tmpfs_node *node;
-	int fmode, mode;
+	int error;
 
 	KKASSERT(vn_islocked(vp));
 
@@ -1300,35 +1239,6 @@ tmpfs_chtimes(struct vnode *vp, struct timespec *atime, struct timespec *mtime,
 	/* Immutable or append-only files cannot be modified, either. */
 	if (node->tn_flags & (IMMUTABLE | APPEND))
 		return EPERM;
-
-	/* Determine if the user have proper privilege to update time. */
-	fmode = FFLAGS(node->tn_flags);
-	mode = 0;
-	if (((fmode & (FREAD | FWRITE)) == 0) || (fmode & O_CREAT))
-		return EINVAL;
-	if (fmode & (FWRITE | O_TRUNC)) {
-		if (vp->v_type == VDIR) {
-			return EISDIR;
-		}
-		error = vn_writechk(vp, NULL);
-		if (error)
-			return (error);
-
-		mode |= VWRITE;
-	}
-	if (fmode & FREAD)
-		mode |= VREAD;
-
-	if (mode) {
-		if (vaflags & VA_UTIMES_NULL) {
-			error = VOP_ACCESS(vp, mode, cred);
-			if (error)
-				error = VOP_ACCESS(vp, VWRITE, cred);
-		} else
-			error = VOP_ACCESS(vp, mode, cred);
-		if (error)
-			return (error);
-	}
 
 	TMPFS_NODE_LOCK(node);
 	if (atime->tv_sec != VNOVAL && atime->tv_nsec != VNOVAL)
