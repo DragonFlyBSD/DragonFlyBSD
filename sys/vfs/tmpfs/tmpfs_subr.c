@@ -1226,7 +1226,6 @@ tmpfs_chtimes(struct vnode *vp, struct timespec *atime, struct timespec *mtime,
 	int vaflags, struct ucred *cred)
 {
 	struct tmpfs_node *node;
-	int error;
 
 	KKASSERT(vn_islocked(vp));
 
