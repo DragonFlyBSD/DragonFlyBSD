@@ -167,7 +167,9 @@ kernel-installable:
 	@if [ ! -f ${DESTDIR}/boot/dloader.rc ]; then \
 		echo "You need to install a new ${DESTDIR}/boot before you"; \
 		echo "can install a new kernel, kernels are now installed"; \
-		echo "into a subdirectory along with their modules"; \
+		echo "into a subdirectory along with their modules."; \
+		echo "You can do this with a buildworld / installworld"; \
+		echo "sequence."; \
 		exit 1; \
 	fi
 	@exit 0
