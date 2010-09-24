@@ -57,31 +57,7 @@ menuadd loadall
 menuadd boot
 menuadd set autoboot_delay=NO
 
-menuitem 3 "Boot DragonFly in single user mode"
-menuadd optcd kernel
-menuadd optinclude loader.conf
-menuadd optinclude loader.conf.local
-menuadd set boot_single="YES"
-menuadd lunsetif acpi_load hint.acpi.0.disabled
-menuadd lunsetif ehci_load hint.ehci.0.disabled
-menuadd lunsetif ahci_load hint.ahci.disabled
-menuadd loadall
-menuadd boot
-menuadd set autoboot_delay=NO
-
-menuitem 4 "Boot DragonFly with verbose logging"
-menuadd optcd kernel
-menuadd optinclude loader.conf
-menuadd optinclude loader.conf.local
-menuadd set boot_verbose=YES
-menuadd lunsetif acpi_load hint.acpi.0.disabled
-menuadd lunsetif ehci_load hint.ehci.0.disabled
-menuadd lunsetif ahci_load hint.ahci.disabled
-menuadd loadall
-menuadd boot
-menuadd set autoboot_delay=NO
-
-menuitem 5 "Boot DragonFly without AHCI driver"
+menuitem 3 "Boot DragonFly without AHCI driver"
 menuadd optcd kernel
 menuadd optinclude loader.conf
 menuadd optinclude loader.conf.local
@@ -93,23 +69,12 @@ menuadd loadall
 menuadd boot
 menuadd set autoboot_delay=NO
 
-menuitem 6 "Boot DragonFly without ACPI driver"
+menuitem 4 "Boot DragonFly without ACPI driver"
 menuadd cd ${base}kernel
 menuadd optinclude loader.conf
 menuadd optinclude loader.conf.local
 menuadd set hint.acpi.0.disabled=1
 menuadd set loader.acpi_disabled_by_user=1
-menuadd lunsetif acpi_load hint.acpi.0.disabled
-menuadd lunsetif ehci_load hint.ehci.0.disabled
-menuadd lunsetif ahci_load hint.ahci.disabled
-menuadd loadall
-menuadd boot
-menuadd set autoboot_delay=NO
-
-menuitem 7 "Boot DragonFly using kernel.old"
-menuadd cd ${base}kernel.old
-menuadd optinclude loader.conf
-menuadd optinclude loader.conf.local
 menuadd lunsetif acpi_load hint.acpi.0.disabled
 menuadd lunsetif ehci_load hint.ehci.0.disabled
 menuadd lunsetif ahci_load hint.ahci.disabled
@@ -136,6 +101,41 @@ menuitem b "Boot Backup kernel kernel.bak"
 menuadd cd ${base}kernel.bak
 menuadd optinclude loader.conf
 menuadd optinclude loader.conf.local
+menuadd lunsetif acpi_load hint.acpi.0.disabled
+menuadd lunsetif ehci_load hint.ehci.0.disabled
+menuadd lunsetif ahci_load hint.ahci.disabled
+menuadd loadall
+menuadd boot
+menuadd set autoboot_delay=NO
+
+menuitem o "Boot DragonFly using kernel.old"
+menuadd cd ${base}kernel.old
+menuadd optinclude loader.conf
+menuadd optinclude loader.conf.local
+menuadd lunsetif acpi_load hint.acpi.0.disabled
+menuadd lunsetif ehci_load hint.ehci.0.disabled
+menuadd lunsetif ahci_load hint.ahci.disabled
+menuadd loadall
+menuadd boot
+menuadd set autoboot_delay=NO
+
+menuitem s "Boot DragonFly in single user mode"
+menuadd optcd kernel
+menuadd optinclude loader.conf
+menuadd optinclude loader.conf.local
+menuadd set boot_single="YES"
+menuadd lunsetif acpi_load hint.acpi.0.disabled
+menuadd lunsetif ehci_load hint.ehci.0.disabled
+menuadd lunsetif ahci_load hint.ahci.disabled
+menuadd loadall
+menuadd boot
+menuadd set autoboot_delay=NO
+
+menuitem v "Boot DragonFly with verbose logging"
+menuadd optcd kernel
+menuadd optinclude loader.conf
+menuadd optinclude loader.conf.local
+menuadd set boot_verbose=YES
 menuadd lunsetif acpi_load hint.acpi.0.disabled
 menuadd lunsetif ehci_load hint.ehci.0.disabled
 menuadd lunsetif ahci_load hint.ahci.disabled
