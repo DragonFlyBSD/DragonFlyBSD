@@ -315,6 +315,14 @@ nfs_connect(struct nfsmount *nmp, struct nfsreq *rep)
 			sopt.sopt_valsize = sizeof val;
 			val = 1;
 			sosetopt(so, &sopt);
+
+			bzero(&sopt, sizeof sopt);
+			sopt.sopt_level = IPPROTO_TCP;
+			sopt.sopt_name = TCP_FASTKEEP;
+			sopt.sopt_val = &val;
+			sopt.sopt_valsize = sizeof val;
+			val = 1;
+			sosetopt(so, &sopt);
 		}
 	}
 	error = soreserve(so, nfs_soreserve, nfs_soreserve, NULL);
@@ -2637,9 +2645,12 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 	 * with it.
 	 */
 dorecs:
-	if (waitflag == MB_DONTWAIT && (slp->ns_numrec > 0
-	     || (slp->ns_flag & (SLP_NEEDQ | SLP_DISCONN)))) {
+	if (waitflag == MB_DONTWAIT &&
+	    (slp->ns_numrec > 0 ||
+	     (slp->ns_flag & (SLP_NEEDQ | SLP_DISCONN)))) {
+		lwkt_gettoken(&nfs_token);
 		nfsrv_wakenfsd(slp, nparallel_wakeup);
+		lwkt_reltoken(&nfs_token);
 	}
 }
 

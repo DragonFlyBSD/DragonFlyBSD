@@ -390,6 +390,14 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 		sopt.sopt_valsize = sizeof val;
 		val = 1;
 		sosetopt(so, &sopt);
+
+		bzero(&sopt, sizeof sopt);
+		sopt.sopt_level = IPPROTO_TCP;
+		sopt.sopt_name = TCP_FASTKEEP;
+		sopt.sopt_val = &val;
+		sopt.sopt_valsize = sizeof val;
+		val = 1;
+		sosetopt(so, &sopt);
 	}
 	atomic_clear_int(&so->so_rcv.ssb_flags, SSB_NOINTR);
 	so->so_rcv.ssb_timeo = 0;
