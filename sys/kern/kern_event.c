@@ -827,7 +827,7 @@ kqueue_register(struct kqueue *kq, struct kevent *kev)
 			kn->kn_status = KN_PROCESSING;
 			knote_attach(kn);
 			if ((error = filter_attach(kn)) != 0) {
-				kn->kn_status |= KN_DELETING;
+				kn->kn_status |= KN_DELETING | KN_REPROCESS;
 				knote_drop(kn);
 				goto done;
 			}
@@ -840,7 +840,7 @@ kqueue_register(struct kqueue *kq, struct kevent *kev)
 			 */
 			if ((fops->f_flags & FILTEROP_ISFD) &&
 			    checkfdclosed(fdp, kev->ident, kn->kn_fp)) {
-				kn->kn_status |= KN_DELETING;
+				kn->kn_status |= KN_DELETING | KN_REPROCESS;
 			}
 		} else {
 			/*
@@ -856,24 +856,30 @@ kqueue_register(struct kqueue *kq, struct kevent *kev)
 
 		/*
 		 * Execute the filter event to immediately activate the
-		 * knote if necessary.  We still own KN_PROCESSING so
-		 * process any KN_REPROCESS races as well.
+		 * knote if necessary.
+		 *
+		 * We have set KN_PROCESSING so we are the reprocessing
+		 * master.  We must deal with any reprocessing events prior
+		 * to running the filter.  The filter may block and we
+		 * could end up with a reprocessing request afterwords.
 		 */
-		for (;;) {
+		if ((kn->kn_status & KN_REPROCESS) == 0) {
+			if (filter_event(kn, 0))
+				KNOTE_ACTIVATE(kn);
+		}
+		while (kn->kn_status & KN_REPROCESS) {
+			kn->kn_status &= ~KN_REPROCESS;
 			if (kn->kn_status & KN_DELETING) {
 				error = EBADF;
 				knote_detach_and_drop_locked(kn);
 				goto done;
 			}
-			if (filter_event(kn, 0))
-				KNOTE_ACTIVATE(kn);
-			if ((kn->kn_status & KN_REPROCESS) == 0)
-				break;
 			if (kn->kn_status & KN_WAITING) {
 				kn->kn_status &= ~KN_WAITING;
 				wakeup(kn);
 			}
-			kn->kn_status &= ~KN_REPROCESS;
+			if (filter_event(kn, 0))
+				KNOTE_ACTIVATE(kn);
 		}
 		kn->kn_status &= ~KN_PROCESSING;
 	} else if (kev->flags & EV_DELETE) {
@@ -1068,13 +1074,13 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 		 */
 		while (kn->kn_status & KN_REPROCESS) {
 			kn->kn_status &= ~KN_REPROCESS;
-			if (kn->kn_status & KN_DELETING) {
-				knote_detach_and_drop_locked(kn);
-				goto skip;
-			}
 			if (kn->kn_status & KN_WAITING) {
 				kn->kn_status &= ~KN_WAITING;
 				wakeup(kn);
+			}
+			if (kn->kn_status & KN_DELETING) {
+				knote_detach_and_drop_locked(kn);
+				goto skip;
 			}
 			if (filter_event(kn, 0))
 				KNOTE_ACTIVATE(kn);
@@ -1220,7 +1226,7 @@ knote_detach_and_drop(struct knote *kn)
 		kn->kn_status |= KN_DELETING | KN_REPROCESS;
 		return;
 	}
-	kn->kn_status |= KN_PROCESSING | KN_DELETING;
+	kn->kn_status |= KN_PROCESSING | KN_DELETING | KN_REPROCESS;
 	knote_detach_and_drop_locked(kn);
 }
 
@@ -1302,19 +1308,27 @@ restart:
 
 		/*
 		 * Become the reprocessing master ourselves.
+		 *
+		 * If KN_REPROCESS is set we must handle reprocessing before
+		 * running the event.  If not we must run the filter event
+		 * and then check for reprocessing requests.  If the filter
+		 * event itself blocks IT must check for KN_REPROCESS and
+		 * return 0 if it finds it set.
 		 */
 		kn->kn_status |= KN_PROCESSING;
-		if (filter_event(kn, hint))
-			KNOTE_ACTIVATE(kn);
+		if ((kn->kn_status & KN_REPROCESS) == 0) {
+			if (filter_event(kn, hint))
+				KNOTE_ACTIVATE(kn);
+		}
 		while (kn->kn_status & KN_REPROCESS) {
 			kn->kn_status &= ~KN_REPROCESS;
-			if (kn->kn_status & KN_DELETING) {
-				knote_detach_and_drop_locked(kn);
-				goto restart;
-			}
 			if (kn->kn_status & KN_WAITING) {
 				kn->kn_status &= ~KN_WAITING;
 				wakeup(kn);
+			}
+			if (kn->kn_status & KN_DELETING) {
+				knote_detach_and_drop_locked(kn);
+				goto restart;
 			}
 			if (filter_event(kn, hint))
 				KNOTE_ACTIVATE(kn);
