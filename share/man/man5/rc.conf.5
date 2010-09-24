@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd June 29, 2010
+.Dd September 23, 2010
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -850,6 +850,35 @@ device via DHCP, it is possible to use something like:
 .Bd -literal
 ifconfig_ed0="DHCP"
 .Ed
+.Pp
+If a
+.Va wlans_ Ns Aq Ar interface
+variable is set,
+an
+.Xr wlan 4
+interface will be created for each item in the list with the
+.Ar wlandev
+argument set to
+.Ar interface .
+Further wlan cloning arguments may be passed to the
+.Xr ifconfig 8
+.Cm create
+command by setting the
+.Va create_args_ Ns Aq Ar interface
+variable.
+One or more
+.Xr wlan 4
+devices must be created for each wireless devices as of
+.Dx 2.5 .
+Debugging flags for
+.Xr wlan 4
+devices as set by
+.Xr wlandebug 8
+may be specified with an
+.Va wlandebug_ Ns Aq Ar interface
+variable.
+The contents of this variable will be passed directly to
+.Xr wlandebug 8 .
 .Pp
 Also, if your interface needs WPA authentication, it is possible to add
 .Dq Li WPA
