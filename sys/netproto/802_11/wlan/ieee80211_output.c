@@ -1409,6 +1409,7 @@ ieee80211_fragment(struct ieee80211vap *vap, struct mbuf *m0,
 		m->m_len = hdrsize + payload;
 		m->m_pkthdr.len = hdrsize + payload;
 		m->m_flags |= M_FRAG;
+		m->m_pkthdr.rcvif = m0->m_pkthdr.rcvif;
 
 		/* chain up the fragment */
 		prev->m_nextpkt = m;
