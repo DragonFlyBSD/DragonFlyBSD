@@ -326,6 +326,7 @@ tcp_timer_keep_handler(struct tcpcb *tp)
 #ifdef TCPDEBUG
 	int ostate;
 #endif
+	int keepidle = tcp_getkeepidle(tp);
 
 #ifdef TCPDEBUG
 	ostate = tp->t_state;
@@ -340,7 +341,7 @@ tcp_timer_keep_handler(struct tcpcb *tp)
 	if ((always_keepalive || (tp->t_flags & TF_KEEPALIVE) ||
 	     (tp->t_inpcb->inp_socket->so_options & SO_KEEPALIVE)) &&
 	    tp->t_state <= TCPS_CLOSING) {
-		if ((ticks - tp->t_rcvtime) >= tcp_keepidle + tcp_maxidle)
+		if ((ticks - tp->t_rcvtime) >= keepidle + tcp_maxidle)
 			goto dropit;
 		/*
 		 * Send a packet designed to force a response
@@ -365,7 +366,7 @@ tcp_timer_keep_handler(struct tcpcb *tp)
 		tcp_callout_reset(tp, tp->tt_keep, tcp_keepintvl,
 				  tcp_timer_keep);
 	} else {
-		tcp_callout_reset(tp, tp->tt_keep, tcp_keepidle,
+		tcp_callout_reset(tp, tp->tt_keep, keepidle,
 				  tcp_timer_keep);
 	}
 

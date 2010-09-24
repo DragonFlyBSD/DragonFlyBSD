@@ -1312,6 +1312,12 @@ tcp_ctloutput(netmsg_t msg)
 		if (error)
 			break;
 		switch (sopt->sopt_name) {
+		case TCP_FASTKEEP:
+			if (optval > 0)
+				tp->t_flags |= TF_FASTKEEP;
+			else
+				tp->t_flags &= ~TF_FASTKEEP;
+			break;
 #ifdef TCP_SIGNATURE
 		case TCP_SIGNATURE_ENABLE:
 			if (optval > 0)

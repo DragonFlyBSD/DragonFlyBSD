@@ -1124,7 +1124,8 @@ after_listen:
 		} else {
 			tp->t_rcvtime = ticks;
 			tp->t_flags &= ~TF_KEEPALIVE;
-			tcp_callout_reset(tp, tp->tt_keep, tcp_keepidle,
+			tcp_callout_reset(tp, tp->tt_keep,
+					  tcp_getkeepidle(tp),
 					  tcp_timer_keep);
 		}
 	}
@@ -1523,8 +1524,9 @@ after_listen:
 				thflags &= ~TH_SYN;
 			} else {
 				tp->t_state = TCPS_ESTABLISHED;
-				tcp_callout_reset(tp, tp->tt_keep, tcp_keepidle,
-				    tcp_timer_keep);
+				tcp_callout_reset(tp, tp->tt_keep,
+						  tcp_getkeepidle(tp),
+						  tcp_timer_keep);
 			}
 		} else {
 			/*
@@ -1896,8 +1898,9 @@ trimthenstep6:
 			tp->t_flags &= ~TF_NEEDFIN;
 		} else {
 			tp->t_state = TCPS_ESTABLISHED;
-			tcp_callout_reset(tp, tp->tt_keep, tcp_keepidle,
-			    tcp_timer_keep);
+			tcp_callout_reset(tp, tp->tt_keep,
+					  tcp_getkeepidle(tp),
+					  tcp_timer_keep);
 		}
 		/*
 		 * If segment contains data or ACK, will call tcp_reass()

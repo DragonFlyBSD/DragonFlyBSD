@@ -163,5 +163,6 @@ struct tcphdr {
 #define TCP_NOPUSH	0x04	/* don't push last block of write */
 #define TCP_NOOPT	0x08	/* don't use TCP options */
 #define TCP_SIGNATURE_ENABLE    0x10    /* use MD5 digests (RFC2385) */
+#define TCP_FASTKEEP	0x80
 
 #endif
