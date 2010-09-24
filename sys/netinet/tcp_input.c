@@ -1107,28 +1107,10 @@ after_listen:
 	 * Segment received on connection.
 	 *
 	 * Reset idle time and keep-alive timer.  Don't waste time if less
-	 * then a second has elapsed.  Only update t_rcvtime for non-SYN
-	 * packets.
-	 *
-	 * Handle the case where one side thinks the connection is established
-	 * but the other side has, say, rebooted without cleaning out the
-	 * connection.   The SYNs could be construed as an attack and wind
-	 * up ignored, but in case it isn't an attack we can validate the
-	 * connection by forcing a keepalive.
+	 * then a second has elapsed.
 	 */
-	if (TCPS_HAVEESTABLISHED(tp->t_state) && (ticks - tp->t_rcvtime) > hz) {
-		if ((thflags & (TH_SYN | TH_ACK)) == TH_SYN) {
-			tp->t_flags |= TF_KEEPALIVE;
-			tcp_callout_reset(tp, tp->tt_keep, hz / 2,
-					  tcp_timer_keep);
-		} else {
-			tp->t_rcvtime = ticks;
-			tp->t_flags &= ~TF_KEEPALIVE;
-			tcp_callout_reset(tp, tp->tt_keep,
-					  tcp_getkeepidle(tp),
-					  tcp_timer_keep);
-		}
-	}
+	if ((int)(ticks - tp->t_rcvtime) > hz)
+		tcp_timer_keep_activity(tp, thflags);
 
 	/*
 	 * Process options.
@@ -3188,4 +3170,35 @@ tcp_sack_rexmt(struct tcpcb *tp, struct tcphdr *th)
 	if (SEQ_GT(old_snd_nxt, tp->snd_nxt))
 		tp->snd_nxt = old_snd_nxt;
 	tp->snd_cwnd = ocwnd;
+}
+
+/*
+ * Reset idle time and keep-alive timer, typically called when a valid
+ * tcp packet is received but may also be called when FASTKEEP is set
+ * to prevent the previous long-timeout from calculating to a drop.
+ *
+ * Only update t_rcvtime for non-SYN packets.
+ *
+ * Handle the case where one side thinks the connection is established
+ * but the other side has, say, rebooted without cleaning out the
+ * connection.   The SYNs could be construed as an attack and wind
+ * up ignored, but in case it isn't an attack we can validate the
+ * connection by forcing a keepalive.
+ */
+void
+tcp_timer_keep_activity(struct tcpcb *tp, int thflags)
+{
+	if (TCPS_HAVEESTABLISHED(tp->t_state)) {
+		if ((thflags & (TH_SYN | TH_ACK)) == TH_SYN) {
+			tp->t_flags |= TF_KEEPALIVE;
+			tcp_callout_reset(tp, tp->tt_keep, hz / 2,
+					  tcp_timer_keep);
+		} else {
+			tp->t_rcvtime = ticks;
+			tp->t_flags &= ~TF_KEEPALIVE;
+			tcp_callout_reset(tp, tp->tt_keep,
+					  tcp_getkeepidle(tp),
+					  tcp_timer_keep);
+		}
+	}
 }
