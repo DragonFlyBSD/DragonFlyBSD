@@ -398,6 +398,7 @@ void	waitrunningbufspace(void);
 int	buf_dirty_count_severe (void);
 int	buf_runningbufspace_severe (void);
 void	initbufbio(struct buf *);
+void	uninitbufbio(struct buf *);
 void	reinitbufbio(struct buf *);
 void	clearbiocache(struct bio *);
 void	bremfree (struct buf *);

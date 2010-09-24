@@ -904,7 +904,7 @@ dsched_exit_proc(struct proc *p)
 	KKASSERT(tdctx != NULL);
 
 	tdctx->dead = 0xDEAD;
-	dsched_set_proc_priv(p, 0);
+	dsched_set_proc_priv(p, NULL);
 
 	dsched_thread_ctx_unref(tdctx); /* one for alloc, */
 	dsched_thread_ctx_unref(tdctx); /* one for ref */

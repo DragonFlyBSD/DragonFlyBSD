@@ -818,10 +818,9 @@ build_rq_buffer(struct rqelement *rqe, struct plex *plex)
     if (rqe->flags & XFR_BUFLOCKED)			    /* paranoia */
 	panic("build_rq_buffer: rqe already locked");	    /* XXX remove this when we're sure */
 #endif
-    BUF_LOCKINIT(bp);					    /* get a lock for the buffer */
+    initbufbio(bp);
     BUF_LOCK(bp, LK_EXCLUSIVE);				    /* and lock it */
     BUF_KERNPROC(bp);
-    initbufbio(bp);
     rqe->flags |= XFR_BUFLOCKED;
     bp->b_bio1.bio_done = complete_rqe;
     /*
@@ -949,10 +948,9 @@ sdio(struct bio *bio)
     sbp->b.b_bcount = bp->b_bcount;			    /* number of bytes to transfer */
     sbp->b.b_resid = bp->b_resid;			    /* and amount waiting */
     sbp->b.b_data = bp->b_data;				    /* data buffer */
-    BUF_LOCKINIT(&sbp->b);				    /* get a lock for the buffer */
+    initbufbio(&sbp->b);
     BUF_LOCK(&sbp->b, LK_EXCLUSIVE);			    /* and lock it */
     BUF_KERNPROC(&sbp->b);
-    initbufbio(&sbp->b);
     sbp->b.b_bio1.bio_offset = bio->bio_offset + ((off_t)sd->driveoffset << DEV_BSHIFT);
     sbp->b.b_bio1.bio_done = sdio_done;			    /* come here on completion */
     sbp->b.b_bio1.bio_flags |= BIO_SYNC;
@@ -966,7 +964,7 @@ sdio(struct bio *bio)
 	    bp->b_resid = bp->b_bcount;			    /* nothing transferred */
 	    biodone(bio);
 	    BUF_UNLOCK(&sbp->b);
-	    BUF_LOCKFREE(&sbp->b);
+	    uninitbufbio(&sbp->b);
 	    Free(sbp);
 	    return;
 	}

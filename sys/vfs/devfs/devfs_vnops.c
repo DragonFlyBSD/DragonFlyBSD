@@ -1688,7 +1688,6 @@ devfs_spec_strategy(struct vop_strategy_args *ap)
 	nbp = kmalloc(sizeof(*bp), M_DEVBUF, M_INTWAIT|M_ZERO);
 	initbufbio(nbp);
 	buf_dep_init(nbp);
-	BUF_LOCKINIT(nbp);
 	BUF_LOCK(nbp, LK_EXCLUSIVE);
 	BUF_KERNPROC(nbp);
 	nbp->b_vp = vp;
@@ -1762,8 +1761,6 @@ devfs_spec_strategy_done(struct bio *nbio)
 			    bp, bp->b_error, bp->b_bcount,
 			    bp->b_bcount - bp->b_resid);
 #endif
-		kfree(nbp, M_DEVBUF);
-		biodone(bio);
 	} else if (nbp->b_resid) {
 		/*
 		 * A short read or write terminates the chain
@@ -1777,8 +1774,6 @@ devfs_spec_strategy_done(struct bio *nbio)
 			    "bcount %d/%d\n",
 			    bp, bp->b_bcount - bp->b_resid, bp->b_bcount);
 #endif
-		kfree(nbp, M_DEVBUF);
-		biodone(bio);
 	} else if (nbp->b_bcount != nbp->b_bufsize) {
 		/*
 		 * A short read or write can also occur by truncating b_bcount
@@ -1792,8 +1787,6 @@ devfs_spec_strategy_done(struct bio *nbio)
 		bp->b_error = 0;
 		bp->b_bcount = nbp->b_bcount + boffset;
 		bp->b_resid = nbp->b_resid;
-		kfree(nbp, M_DEVBUF);
-		biodone(bio);
 	} else if (nbp->b_bcount + boffset == bp->b_bcount) {
 		/*
 		 * No more data terminates the chain
@@ -1805,8 +1798,6 @@ devfs_spec_strategy_done(struct bio *nbio)
 #endif
 		bp->b_error = 0;
 		bp->b_resid = 0;
-		kfree(nbp, M_DEVBUF);
-		biodone(bio);
 	} else {
 		/*
 		 * Continue the chain
@@ -1826,7 +1817,17 @@ devfs_spec_strategy_done(struct bio *nbio)
 #endif
 
 		dev_dstrategy(nbp->b_vp->v_rdev, &nbp->b_bio1);
+		return;
 	}
+
+	/*
+	 * Fall through to here on termination.  biodone(bp) and
+	 * clean up and free nbp.
+	 */
+	biodone(bio);
+	BUF_UNLOCK(nbp);
+	uninitbufbio(nbp);
+	kfree(nbp, M_DEVBUF);
 }
 
 /*

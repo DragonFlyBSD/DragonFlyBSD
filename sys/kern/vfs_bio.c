@@ -634,7 +634,6 @@ bufinit(void)
 		initbufbio(bp);
 		xio_init(&bp->b_xio);
 		buf_dep_init(bp);
-		BUF_LOCKINIT(bp);
 		TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_EMPTY], bp, b_freelist);
 	}
 
@@ -701,7 +700,8 @@ bufinit(void)
 }
 
 /*
- * Initialize the embedded bio structures
+ * Initialize the embedded bio structures, typically used by
+ * deprecated code which tries to allocate its own struct bufs.
  */
 void
 initbufbio(struct buf *bp)
@@ -719,6 +719,8 @@ initbufbio(struct buf *bp)
 	bp->b_bio2.bio_next = NULL;
 	bp->b_bio2.bio_done = NULL;
 	bp->b_bio2.bio_flags = 0;
+
+	BUF_LOCKINIT(bp);
 }
 
 /*
@@ -734,6 +736,16 @@ reinitbufbio(struct buf *bp)
 		bio->bio_done = NULL;
 		bio->bio_offset = NOOFFSET;
 	}
+}
+
+/*
+ * Undo the effects of an initbufbio().
+ */
+void
+uninitbufbio(struct buf *bp)
+{
+	dsched_exit_buf(bp);
+	BUF_LOCKFREE(bp);
 }
 
 /*

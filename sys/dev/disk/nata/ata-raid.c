@@ -885,9 +885,8 @@ ata_raid_dump(struct dev_dump_args *ap)
 	}
 
 	bzero(&dbuf, sizeof(struct buf));
-	BUF_LOCKINIT(&dbuf);
-	BUF_LOCK(&dbuf, LK_EXCLUSIVE);
 	initbufbio(&dbuf);
+	BUF_LOCK(&dbuf, LK_EXCLUSIVE);
 	/* bio_offset is byte granularity, convert block granularity a_blkno */
 	dbuf.b_bio1.bio_offset = ap->a_offset;
 	dbuf.b_bio1.bio_caller_info1.ptr = (void *)rdp;
@@ -903,6 +902,7 @@ ata_raid_dump(struct dev_dump_args *ap)
 	    return(dbuf.b_error ? dbuf.b_error : EIO);
 	}
 	BUF_UNLOCK(&dbuf);
+	uninitbufbio(&dbuf);
 
 	return 0;
 }

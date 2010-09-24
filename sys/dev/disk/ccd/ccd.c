@@ -277,7 +277,6 @@ getccdbuf(void)
 	 * independant struct buf initialization
 	 */
 	buf_dep_init(&cbp->cb_buf);
-	BUF_LOCKINIT(&cbp->cb_buf);
 	BUF_LOCK(&cbp->cb_buf, LK_EXCLUSIVE);
 	BUF_KERNPROC(&cbp->cb_buf);
 	cbp->cb_buf.b_flags = B_PAGING | B_BNOCLIP;
@@ -296,13 +295,13 @@ void
 putccdbuf(struct ccdbuf *cbp)
 {
 	BUF_UNLOCK(&cbp->cb_buf);
-	BUF_LOCKFREE(&cbp->cb_buf);
 
 	if (numccdfreebufs < NCCDFREEHIWAT) {
 		cbp->cb_freenext = ccdfreebufs;
 		ccdfreebufs = cbp;
 		++numccdfreebufs;
 	} else {
+		uninitbufbio(&cbp->cb_buf);
 		kfree((caddr_t)cbp, M_DEVBUF);
 	}
 }

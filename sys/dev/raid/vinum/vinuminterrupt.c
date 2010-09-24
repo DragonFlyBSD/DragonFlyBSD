@@ -250,7 +250,7 @@ freerq(struct request *rq)
 		Free(rqg->rqe[rqno].b.b_data);		    /* free it */
 	    if (rqg->rqe[rqno].flags & XFR_BUFLOCKED) {	    /* locked this buffer, */
 		BUF_UNLOCK(&rqg->rqe[rqno].b);		    /* unlock it again */
-		BUF_LOCKFREE(&rqg->rqe[rqno].b);
+		uninitbufbio(&rqg->rqe[rqno].b);
 	    }
 	}
 	nrqg = rqg->next;				    /* note the next one */
@@ -292,7 +292,7 @@ sdio_done(struct bio *bio)
     biodone_sync(bio);
     biodone(sbp->bio);					    /* complete the caller's I/O */
     BUF_UNLOCK(&sbp->b);
-    BUF_LOCKFREE(&sbp->b);
+    uninitbufbio(&sbp->b);
     Free(sbp);
     rel_mplock();
 }

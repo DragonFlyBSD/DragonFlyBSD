@@ -559,9 +559,8 @@ arstrategy(struct dev_strategy_args *ap)
 	}
 
 	buf1 = kmalloc(sizeof(struct ar_buf), M_AR, M_INTWAIT | M_ZERO);
-	BUF_LOCKINIT(&buf1->bp);
-	BUF_LOCK(&buf1->bp, LK_EXCLUSIVE);
 	initbufbio(&buf1->bp);
+	BUF_LOCK(&buf1->bp, LK_EXCLUSIVE);
 	buf1->bp.b_bio1.bio_offset = (off_t)lba << DEV_BSHIFT;
 	if ((buf1->drive = drv) > 0)
 	    buf1->bp.b_bio1.bio_offset += (off_t)rdp->offset << DEV_BSHIFT;
@@ -582,6 +581,8 @@ arstrategy(struct dev_strategy_args *ap)
 		!AD_SOFTC(rdp->disks[buf1->drive])->dev) {
 		rdp->disks[buf1->drive].flags &= ~AR_DF_ONLINE;
 		ar_config_changed(rdp, 1);
+		BUF_UNLOCK(&buf1->bp);
+		uninitbufbio(&buf1->bp);
 		kfree(buf1, M_AR);
 		bp->b_flags |= B_ERROR;
 		bp->b_error = EIO;
@@ -618,6 +619,8 @@ arstrategy(struct dev_strategy_args *ap)
 		ar_config_changed(rdp, 1);
 		
 	    if (!(rdp->flags & AR_F_READY)) {
+		BUF_UNLOCK(&buf1->bp);
+		uninitbufbio(&buf1->bp);
 		kfree(buf1, M_AR);
 		bp->b_flags |= B_ERROR;
 		bp->b_error = EIO;
@@ -643,9 +646,8 @@ arstrategy(struct dev_strategy_args *ap)
 			 buf1_blkno < rdp->lock_start)) {
 			buf2 = kmalloc(sizeof(struct ar_buf), M_AR, M_INTWAIT);
 			bcopy(buf1, buf2, sizeof(struct ar_buf));
-			BUF_LOCKINIT(&buf2->bp);
-			BUF_LOCK(&buf2->bp, LK_EXCLUSIVE);
 			initbufbio(&buf2->bp);
+			BUF_LOCK(&buf2->bp, LK_EXCLUSIVE);
 			buf2->bp.b_bio1.bio_offset = buf1->bp.b_bio1.bio_offset;
 			buf1->mirror = buf2;
 			buf2->mirror = buf1;
@@ -653,6 +655,7 @@ arstrategy(struct dev_strategy_args *ap)
 			dev_dstrategy(AD_SOFTC(rdp->disks[buf2->drive])->dev,
 				      &buf2->bp.b_bio1);
 			rdp->disks[buf2->drive].last_lba = buf1_blkno + chunk;
+			/* XXX free buf2? */
 		    }
 		    else
 			buf1->drive = buf1->drive + rdp->width;
@@ -745,6 +748,8 @@ ar_done(struct bio *bio)
     default:
 	kprintf("ar%d: unknown array type in ar_done\n", rdp->lun);
     }
+    BUF_UNLOCK(&buf->bp);
+    uninitbufbio(&buf->bp);
     kfree(buf, M_AR);
     rel_mplock();
 }
@@ -1396,6 +1401,8 @@ ar_rw_done(struct bio *bio)
 {
     struct buf *bp = bio->bio_buf;
 
+    BUF_UNLOCK(bp);
+    uninitbufbio(bp);
     kfree(bp->b_data, M_AR);
     kfree(bp, M_AR);
 }
@@ -1407,9 +1414,8 @@ ar_rw(struct ad_softc *adp, u_int32_t lba, int count, caddr_t data, int flags)
     int retry = 0, error = 0;
 
     bp = kmalloc(sizeof(struct buf), M_AR, M_INTWAIT|M_ZERO);
-    BUF_LOCKINIT(bp);
-    BUF_LOCK(bp, LK_EXCLUSIVE);
     initbufbio(bp);
+    BUF_LOCK(bp, LK_EXCLUSIVE);
     bp->b_data = data;
     bp->b_bio1.bio_offset = (off_t)lba << DEV_BSHIFT;
     bp->b_bcount = count;
@@ -1432,10 +1438,13 @@ ar_rw(struct ad_softc *adp, u_int32_t lba, int count, caddr_t data, int flags)
 	    error = biowait_timeout(&bp->b_bio1, "arrw", 10);
 	if (!error && (bp->b_flags & B_ERROR))
 	    error = bp->b_error;
-	if (error == EWOULDBLOCK)
+	if (error == EWOULDBLOCK) {
 	    bp->b_bio1.bio_done = ar_rw_done;
-	else
+	} else {
+	    BUF_UNLOCK(bp);
+	    uninitbufbio(bp);
 	    kfree(bp, M_AR);
+	}
     }
     return error;
 }
