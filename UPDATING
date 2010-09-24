@@ -11,6 +11,26 @@
 # $DragonFly: src/UPDATING,v 1.26 2008/09/15 20:03:36 thomas Exp $
 
 +-----------------------------------------------------------------------+
++         20100924
++         UPGRADING DRAGONFLY FROM 2.6 to 2.8 or HEAD
++-----------------------------------------------------------------------+
+
+A new loader (dloader) has been added which better handles booting from
+multiple kernel/module versions.
+
+To upgrade (Only for this upgrade, for post 2.8 upgrades see GENERAL below)
+
+	cd /usr/src
+	make buildworld
+	make installworld
+	make upgrade
+	make buildkernel KERNCONF=<KERNELNAME>
+	make installkernel KERNCONF=<KERNELNAME>
+
+Note that you must installworld and run the 'upgrade' target before
+installing the new kernel.
+
++-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY ON AN EXISTING DRAGONFLY SYSTEM		+
 +				GENERAL					+
 +-----------------------------------------------------------------------+
