@@ -1,4 +1,4 @@
-#!/usr/pkg/bin/python
+#!/usr/bin/env python
 
 #
 # Usage: fileDiffer <afile> <bfile> <list of disk changes>
