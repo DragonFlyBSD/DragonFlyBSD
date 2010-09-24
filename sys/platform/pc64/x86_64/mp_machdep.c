@@ -576,6 +576,12 @@ mp_enable(u_int boot_addr)
 
 		/* post scan cleanup */
 		mptable_fix();
+
+		/*
+		 * lapic not mapped yet (pmap_init is called too late)
+		 */
+		lapic = pmap_mapdev_uncacheable(cpu_apic_address,
+						sizeof(struct LAPIC));
 	} else {
 		vm_paddr_t madt_paddr;
 		int bsp_apic_id;
@@ -589,9 +595,12 @@ mp_enable(u_int boot_addr)
 			panic("mp_enable: no local apic (madt)!\n");
 
 		/*
+		 * lapic not mapped yet (pmap_init is called too late)
+		 *
 		 * XXX: where is the best place to set lapic?
 		 */
-		lapic = pmap_mapdev_uncacheable(cpu_apic_address, sizeof(struct LAPIC));
+		lapic = pmap_mapdev_uncacheable(cpu_apic_address,
+						sizeof(struct LAPIC));
 
 		bsp_apic_id = (lapic->id & 0xff000000) >> 24;
 		if (madt_pass2(madt_paddr, bsp_apic_id))
