@@ -278,7 +278,7 @@ DPADD		Additional dependencies for the program.  Usually used for
 
 		There are no special identifiers for profiled or shared
 		libraries or objects.  The identifiers for the standard
-		libraries are used in DPADD.  This works correctly if all
+		libraries are used in DPADD.  This works correctly iff all
 		the libraries are built at the same time.  Unfortunately,
 		it causes unnecessary relinks to shared libraries when
 		only the static libraries have changed.  Dependencies on
