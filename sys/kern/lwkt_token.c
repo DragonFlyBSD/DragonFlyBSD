@@ -450,6 +450,7 @@ lwkt_gettoken(lwkt_token_t tok)
 	ref = td->td_toks_stop;
 	KKASSERT(ref < &td->td_toks_end);
 	++td->td_toks_stop;
+	cpu_ccfence();
 	_lwkt_tokref_init(ref, tok, td);
 	_lwkt_gettokref(ref, td, (const void **)&tok);
 }
@@ -463,6 +464,7 @@ lwkt_gettoken_hard(lwkt_token_t tok)
 	ref = td->td_toks_stop;
 	KKASSERT(ref < &td->td_toks_end);
 	++td->td_toks_stop;
+	cpu_ccfence();
 	_lwkt_tokref_init(ref, tok, td);
 	_lwkt_gettokref(ref, td, (const void **)&tok);
 	crit_enter_hard_gd(td->td_gd);
@@ -478,6 +480,7 @@ lwkt_getpooltoken(void *ptr)
 	ref = td->td_toks_stop;
 	KKASSERT(ref < &td->td_toks_end);
 	++td->td_toks_stop;
+	cpu_ccfence();
 	tok = _lwkt_token_pool_lookup(ptr);
 	_lwkt_tokref_init(ref, tok, td);
 	_lwkt_gettokref(ref, td, (const void **)&ptr);
@@ -496,6 +499,7 @@ lwkt_trytoken(lwkt_token_t tok)
 	ref = td->td_toks_stop;
 	KKASSERT(ref < &td->td_toks_end);
 	++td->td_toks_stop;
+	cpu_ccfence();
 	_lwkt_tokref_init(ref, tok, td);
 	return(_lwkt_trytokref(ref, td));
 }
@@ -520,24 +524,29 @@ lwkt_reltoken(lwkt_token_t tok)
 	KKASSERT(ref >= &td->td_toks_base && ref->tr_tok == tok);
 
 	/*
-	 * If the token was not MPSAFE release the MP lock.
-	 */
-	if ((ref->tr_flags & LWKT_TOKEN_MPSAFE) == 0)
-		rel_mplock();
-	td->td_toks_stop = ref;
-
-	/*
-	 * Make sure the compiler does not reorder the clearing of
-	 * tok->t_ref.
-	 */
-	cpu_ccfence();
-
-	/*
 	 * Only clear the token if it matches ref.  If ref was a recursively
 	 * acquired token it may not match.
+	 *
+	 * If the token was not MPSAFE release the MP lock.
+	 *
+	 * NOTE: We have to do this before adjust td_toks_stop, otherwise
+	 *	 a fast interrupt can come along and reuse our ref while
+	 *	 tok is still attached to it.
 	 */
 	if (tok->t_ref == ref)
 		tok->t_ref = NULL;
+	cpu_ccfence();
+	if ((ref->tr_flags & LWKT_TOKEN_MPSAFE) == 0)
+		rel_mplock();
+
+	/*
+	 * Finally adjust td_toks_stop, be very sure that the compiler
+	 * does not reorder the clearing of tok->t_ref with the
+	 * decrementing of td->td_toks_stop.
+	 */
+	cpu_ccfence();
+	td->td_toks_stop = ref;
+	KKASSERT(tok->t_ref != ref);
 }
 
 void
