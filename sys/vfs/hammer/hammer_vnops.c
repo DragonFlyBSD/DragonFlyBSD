@@ -2035,14 +2035,29 @@ retry:
 
 	/*
 	 * Cleanup and tell the kernel that the rename succeeded.
+	 *
+	 * NOTE: ip->vp, if non-NULL, cannot be directly referenced
+	 *	 without formally acquiring the vp since the vp might
+	 *	 have zero refs on it, or in the middle of a reclaim,
+	 *	 etc.
 	 */
         hammer_done_cursor(&cursor);
 	if (error == 0) {
 		cache_rename(ap->a_fnch, ap->a_tnch);
 		hammer_knote(ap->a_fdvp, NOTE_WRITE);
 		hammer_knote(ap->a_tdvp, NOTE_WRITE);
-		if (ip->vp)
-			hammer_knote(ip->vp, NOTE_RENAME);
+		while (ip->vp) {
+			struct vnode *vp;
+
+			error = hammer_get_vnode(ip, &vp);
+			if (error == 0 && vp) {
+				vn_unlock(vp);
+				hammer_knote(ip->vp, NOTE_RENAME);
+				vrele(vp);
+				break;
+			}
+			kprintf("Debug: HAMMER ip/vp race2 avoided\n");
+		}
 	}
 
 failed:
@@ -3371,14 +3386,28 @@ retry:
 			cache_setvp(nch, NULL);
 
 			/*
-			 * XXX locking.  Note: ip->vp might get ripped out
-			 * when we setunresolved() the nch since we had
-			 * no other reference to it.  In that case ip->vp
-			 * will be NULL.
+			 * NOTE: ip->vp, if non-NULL, cannot be directly
+			 *	 referenced without formally acquiring the
+			 *	 vp since the vp might have zero refs on it,
+			 *	 or in the middle of a reclaim, etc.
+			 *
+			 * NOTE: The cache_setunresolved() can rip the vp
+			 *	 out from under us since the vp may not have
+			 *	 any refs, in which case ip->vp will be NULL
+			 *	 from the outset.
 			 */
-			if (ip && ip->vp) {
-				hammer_knote(ip->vp, NOTE_DELETE);
-				cache_inval_vp(ip->vp, CINV_DESTROY);
+			while (ip && ip->vp) {
+				struct vnode *vp;
+
+				error = hammer_get_vnode(ip, &vp);
+				if (error == 0 && vp) {
+					vn_unlock(vp);
+					hammer_knote(ip->vp, NOTE_DELETE);
+					cache_inval_vp(ip->vp, CINV_DESTROY);
+					vrele(vp);
+					break;
+				}
+				kprintf("Debug: HAMMER ip/vp race1 avoided\n");
 			}
 		}
 		if (ip)
