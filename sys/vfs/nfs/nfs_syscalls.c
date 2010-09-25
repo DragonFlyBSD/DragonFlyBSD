@@ -404,16 +404,15 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 	atomic_clear_int(&so->so_snd.ssb_flags, SSB_NOINTR);
 	so->so_snd.ssb_timeo = 0;
 
-	slp = (struct nfssvc_sock *)kmalloc(sizeof (struct nfssvc_sock),
-	    M_NFSSVC, M_WAITOK | M_ZERO);
+	slp = kmalloc(sizeof (struct nfssvc_sock), M_NFSSVC, M_WAITOK | M_ZERO);
 	mtx_init(&slp->ns_solock);
 	STAILQ_INIT(&slp->ns_rec);
 	TAILQ_INIT(&slp->ns_uidlruhead);
 	lwkt_token_init(&slp->ns_token, 1, "nfssrv_token");
 
 	lwkt_gettoken(&nfs_token);
-	TAILQ_INSERT_TAIL(&nfssvc_sockhead, slp, ns_chain);
 	nfsrv_slpref(slp);
+	TAILQ_INSERT_TAIL(&nfssvc_sockhead, slp, ns_chain);
 	lwkt_gettoken(&slp->ns_token);
 
 	slp->ns_so = so;
@@ -445,7 +444,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 	struct nfsd *nfsd = nsd->nsd_nfsd;
 	struct nfsrv_descript *nd = NULL;
 	struct mbuf *m, *mreq;
-	int error = 0, cacherep, sotype, writes_todo;
+	int error, cacherep, sotype, writes_todo;
 	int procrastinate;
 	u_quad_t cur_usec;
 
@@ -472,23 +471,22 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			    (nfsd_head_flag & NFSD_CHECKSLP) == 0) {
 				nfsd->nfsd_flag |= NFSD_WAITING;
 				nfsd_waiting++;
-				error = tsleep((caddr_t)nfsd, PCATCH, "nfsd", 0);
+				error = tsleep(nfsd, PCATCH, "nfsd", 0);
 				nfsd_waiting--;
-				if (error)
+				if (error && nfsd->nfsd_slp == NULL)
 					goto done;
 			}
 			if (nfsd->nfsd_slp == NULL &&
-			    (nfsd_head_flag & NFSD_CHECKSLP) != 0) {
+			    (nfsd_head_flag & NFSD_CHECKSLP)) {
 				TAILQ_FOREACH(slp, &nfssvc_sockhead, ns_chain) {
-				    if ((slp->ns_flag & (SLP_VALID | SLP_DOREC))
-					== (SLP_VALID | SLP_DOREC)) {
-					    slp->ns_flag &= ~SLP_DOREC;
+				    if ((slp->ns_flag & SLP_ACTION_MASK) ||
+					slp->ns_needq_upcall) {
 					    nfsrv_slpref(slp);
 					    nfsd->nfsd_slp = slp;
 					    break;
 				    }
 				}
-				if (slp == 0)
+				if (slp == NULL)
 					nfsd_head_flag &= ~NFSD_CHECKSLP;
 			}
 			if ((slp = nfsd->nfsd_slp) == NULL)
@@ -497,14 +495,25 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			lwkt_reltoken(&nfs_token);
 			lwkt_gettoken(&slp->ns_token);
 
+			if (slp->ns_needq_upcall) {
+				slp->ns_needq_upcall = 0;
+				slp->ns_flag |= SLP_NEEDQ;
+			}
+
 			if (slp->ns_flag & SLP_VALID) {
-				if (slp->ns_flag & SLP_DISCONN)
+				/*
+				 * We can both process additional received
+				 * data into new records and process existing
+				 * records.  This keeps the pipeline hot by
+				 * allowing the tcp socket to continue to
+				 * drain while we are processing records.
+				 */
+				if (slp->ns_flag & SLP_DISCONN) {
 					nfsrv_zapsock(slp);
-				else if (slp->ns_flag & SLP_NEEDQ) {
-					slp->ns_flag &= ~SLP_NEEDQ;
-					(void) nfs_slplock(slp, 1);
+				} else if (slp->ns_flag & SLP_NEEDQ) {
+					(void)nfs_slplock(slp, 1);
 					nfsrv_rcv(slp->ns_so, (caddr_t)slp,
-						MB_WAIT);
+						  MB_WAIT);
 					nfs_slpunlock(slp);
 				}
 				error = nfsrv_dorec(slp, nfsd, &nd);
@@ -514,15 +523,32 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 					error = 0;
 					cacherep = RC_DOIT;
 					writes_todo = 1;
-				} else
+				} else {
 					writes_todo = 0;
+				}
 				nfsd->nfsd_flag |= NFSD_REQINPROG;
+			} else {
+				slp->ns_flag &= ~SLP_ACTION_MASK;
+				error = 0;
 			}
 		} else {
 			error = 0;
 			slp = nfsd->nfsd_slp;
+
 			lwkt_reltoken(&nfs_token);
 			lwkt_gettoken(&slp->ns_token);
+
+			if (slp->ns_needq_upcall) {
+				slp->ns_needq_upcall = 0;
+				slp->ns_flag |= SLP_NEEDQ;
+			}
+			if (NFSRV_RECLIMIT(slp) == 0 &&
+			    (slp->ns_flag & SLP_NEEDQ)) {
+				(void)nfs_slplock(slp, 1);
+				nfsrv_rcv(slp->ns_so, (caddr_t)slp,
+					  MB_WAIT);
+				nfs_slpunlock(slp);
+			}
 		}
 
 		/*
@@ -533,15 +559,22 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 				kfree((caddr_t)nd, M_NFSRVDESC);
 				nd = NULL;
 			}
-			nfsd->nfsd_slp = NULL;
 			nfsd->nfsd_flag &= ~NFSD_REQINPROG;
-			lwkt_reltoken(&slp->ns_token);
-			lwkt_gettoken(&nfs_token);
-			nfsrv_slpderef(slp);
+			if (slp->ns_flag & SLP_ACTION_MASK) {
+				lwkt_reltoken(&slp->ns_token);
+				lwkt_gettoken(&nfs_token);
+			} else {
+				nfsd->nfsd_slp = NULL;
+				lwkt_reltoken(&slp->ns_token);
+				lwkt_gettoken(&nfs_token);
+				nfsrv_slpderef(slp);
+			}
 			continue;
 		}
 
 		/*
+		 * Execute the NFS request - handle the server side cache
+		 *
 		 * nfs_token not held here.  slp token is held.
 		 */
 		sotype = slp->ns_so->so_type;
@@ -600,6 +633,8 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 		}
 
 		/*
+		 * Execute the NFS request - direct execution
+		 *
 		 * Loop to get all the write rpc replies that have been
 		 * gathered together.
 		 *
@@ -616,10 +651,12 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			    procrastinate > 0)
 			) {
 			    error = nfsrv_writegather(&nd, slp,
-				nfsd->nfsd_td, &mreq);
+						      nfsd->nfsd_td, &mreq);
 			} else {
+			    /* NOT YET lwkt_reltoken(&slp->ns_token); */
 			    error = (*(nfsrv3_procs[nd->nd_procnum]))(nd,
-				slp, nfsd->nfsd_td, &mreq);
+						slp, nfsd->nfsd_td, &mreq);
+			    /* NOT YET lwkt_gettoken(&slp->ns_token); */
 			}
 			if (mreq == NULL)
 				break;
@@ -634,6 +671,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			nfsstats.srvrpccnt[nd->nd_procnum]++;
 			nfsrv_updatecache(nd, TRUE, mreq);
 			nd->nd_mrep = NULL;
+			/* FALL THROUGH */
 		    case RC_REPLY:
 			m = mreq;
 			siz = 0;
@@ -654,8 +692,10 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			 */
 			if (sotype == SOCK_STREAM) {
 				M_PREPEND(m, NFSX_UNSIGNED, MB_WAIT);
-				if (m == NULL)
-					return (ENOBUFS);
+				if (m == NULL) {
+					error = ENOBUFS;
+					goto skip;
+				}
 				*mtod(m, u_int32_t *) = htonl(0x80000000 | siz);
 			}
 			if (slp->ns_so->so_proto->pr_flags & PR_CONNREQUIRED)
@@ -666,13 +706,14 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			    error = EPIPE;
 			    m_freem(m);
 			}
+skip:
 			if (nfsrtton)
 				nfsd_rt(sotype, nd, cacherep);
 			if (nd->nd_nam2)
 				FREE(nd->nd_nam2, M_SONAME);
 			if (nd->nd_mrep)
 				m_freem(nd->nd_mrep);
-			if (error == EPIPE)
+			if (error == EPIPE || error == ENOBUFS)
 				nfsrv_zapsock(slp);
 			if (slp->ns_so->so_proto->pr_flags & PR_CONNREQUIRED)
 				nfs_slpunlock(slp);
@@ -680,6 +721,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 				kfree((caddr_t)nd, M_NFSRVDESC);
 				lwkt_reltoken(&slp->ns_token);
 				lwkt_gettoken(&nfs_token);
+				nfsd->nfsd_slp = NULL;
 				nfsrv_slpderef(slp);
 				goto done;
 			}
@@ -716,10 +758,15 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 		 */
 		if (nfsrv_dorec(slp, nfsd, &nd)) {
 			nfsd->nfsd_flag &= ~NFSD_REQINPROG;
-			nfsd->nfsd_slp = NULL;
-			lwkt_reltoken(&slp->ns_token);
-			lwkt_gettoken(&nfs_token);
-			nfsrv_slpderef(slp);
+			if (slp->ns_flag & SLP_ACTION_MASK) {
+				lwkt_reltoken(&slp->ns_token);
+				lwkt_gettoken(&nfs_token);
+			} else {
+				nfsd->nfsd_slp = NULL;
+				lwkt_reltoken(&slp->ns_token);
+				lwkt_gettoken(&nfs_token);
+				nfsrv_slpderef(slp);
+			}
 		} else {
 			lwkt_reltoken(&slp->ns_token);
 			lwkt_gettoken(&nfs_token);
@@ -773,6 +820,8 @@ nfsrv_zapsock(struct nfssvc_sock *slp)
 			m_freem(rec->nr_packet);
 			kfree(rec, M_NFSRVDESC);
 		}
+		KKASSERT(slp->ns_numrec == 0);
+
 		TAILQ_FOREACH_MUTABLE(nuidp, &slp->ns_uidlruhead, nu_lru,
 				      nnuidp) {
 			LIST_REMOVE(nuidp, nu_hash);
@@ -789,6 +838,7 @@ nfsrv_zapsock(struct nfssvc_sock *slp)
 		}
 		LIST_INIT(&slp->ns_tq);
 		crit_exit();
+		nfsrv_slpderef(slp);
 	}
 }
 
@@ -802,9 +852,13 @@ void
 nfsrv_slpderef(struct nfssvc_sock *slp)
 {
 	ASSERT_LWKT_TOKEN_HELD(&nfs_token);
-	if (--slp->ns_sref == 0 && (slp->ns_flag & SLP_VALID) == 0) {
+	if (slp->ns_sref == 1) {
+		KKASSERT((slp->ns_flag & SLP_VALID) == 0);
 		TAILQ_REMOVE(&nfssvc_sockhead, slp, ns_chain);
+		slp->ns_sref = 0;
 		kfree((caddr_t)slp, M_NFSSVC);
+	} else {
+		--slp->ns_sref;
 	}
 }
 
@@ -865,8 +919,10 @@ nfsrv_init(int terminating)
 		TAILQ_FOREACH_MUTABLE(slp, &nfssvc_sockhead, ns_chain, nslp) {
 			if (slp->ns_flag & SLP_VALID)
 				nfsrv_zapsock(slp);
+			/*
 			TAILQ_REMOVE(&nfssvc_sockhead, slp, ns_chain);
 			kfree((caddr_t)slp, M_NFSSVC);
+			*/
 		}
 		nfsrv_cleancache();	/* And clear out server cache */
 	} else {
