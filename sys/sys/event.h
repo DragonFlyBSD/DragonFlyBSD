@@ -229,6 +229,8 @@ extern void	knote(struct klist *list, long hint);
 extern void	knote_insert(struct klist *klist, struct knote *kn);
 extern void	knote_remove(struct klist *klist, struct knote *kn);
 extern void	knote_empty(struct klist *list);
+extern void	knote_assume_knotes(struct kqinfo *, struct kqinfo *,
+		    struct filterops *, void *);
 extern void	knote_fdclose(struct file *fp, struct filedesc *fdp, int fd);
 extern void	kqueue_init(struct kqueue *kq, struct filedesc *fdp);
 extern void	kqueue_terminate(struct kqueue *kq);
