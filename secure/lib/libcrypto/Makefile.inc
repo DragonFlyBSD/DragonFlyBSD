@@ -95,7 +95,7 @@ buildinf.h:
 
 openssl/opensslconf.h: openssl/.dummy ../../lib/libcrypto/opensslconf-${MACHINE_ARCH}.h
 .if defined(WANT_IDEA)
-	sed '/^#ifndef OPENSSL_NO_IDEA$$/,/^#endif$$/d' ${.ALLSRC:Nopenssl/.dummy} > ${.TARGET}
+	sed '/^# define OPENSSL_NO_IDEA$$/d;/^#  define NO_IDEA$$/d' ${.ALLSRC:Nopenssl/.dummy} > ${.TARGET}
 .else
 	cp ${.ALLSRC:Nopenssl/.dummy} ${.TARGET}
 .endif
