@@ -1388,6 +1388,26 @@ knote_empty(struct klist *list)
 	lwkt_reltoken(&kq_token);
 }
 
+void
+knote_assume_knotes(struct kqinfo *src, struct kqinfo *dst,
+		    struct filterops *ops, void *hook)
+{
+	struct knote *kn;
+
+	lwkt_gettoken(&kq_token);
+	while ((kn = SLIST_FIRST(&src->ki_note)) != NULL) {
+		if (knote_acquire(kn)) {
+			knote_remove(&src->ki_note, kn);
+			kn->kn_fop = ops;
+			kn->kn_hook = hook;
+			knote_insert(&dst->ki_note, kn);
+			knote_release(kn);
+			/* kn may be invalid now */
+		}
+	}
+	lwkt_reltoken(&kq_token);
+}
+
 /*
  * Remove all knotes referencing a specified fd
  */

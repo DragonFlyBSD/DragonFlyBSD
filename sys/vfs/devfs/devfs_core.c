@@ -2249,25 +2249,17 @@ static struct filterops devfs_detached_filterops =
 void
 devfs_assume_knotes(cdev_t dev, struct kqinfo *kqi)
 {
-	struct knote *kn;
-
-	lwkt_gettoken(&kq_token);
-
-	while (!SLIST_EMPTY(&kqi->ki_note)) {
-		kn = SLIST_FIRST(&kqi->ki_note);
-                knote_remove(&kqi->ki_note, kn);
-		kn->kn_fop = &devfs_detached_filterops;
-		kn->kn_hook = (caddr_t)dev;
-		knote_insert(&dev->si_kqinfo.ki_note, kn);
-        }
+	/*
+	 * Let kern/kern_event.c do the heavy lifting.
+	 */
+	knote_assume_knotes(kqi, &dev->si_kqinfo,
+			    &devfs_detached_filterops, (void *)dev);
 
 	/*
 	 * These should probably be activated individually, but doing so
 	 * would require refactoring kq's public in-kernel interface.
 	 */
 	KNOTE(&dev->si_kqinfo.ki_note, 0);
-
-	lwkt_reltoken(&kq_token);
 }
 
 /*
