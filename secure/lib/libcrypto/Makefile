@@ -160,6 +160,7 @@ INCS+=	hmac.h
 .if defined(WANT_IDEA)
 SRCS+=	i_cbc.c i_cfb64.c i_ecb.c i_ofb64.c i_skey.c
 INCS+=	idea.h
+_ideapath=	${LCRYPTO_SRC}/crypto/idea
 .endif
 
 # krb5
@@ -305,10 +306,6 @@ opensslconf.h: opensslconf-${MACHINE_ARCH}.h
 .endif
 
 .include <bsd.lib.mk>
-
-.if defined(WANT_IDEA)
-_ideapath=	${LCRYPTO_SRC}/crypto/idea
-.endif
 
 .PATH: \
 	${LCRYPTO_SRC}/crypto \
