@@ -304,8 +304,6 @@ opensslconf.h: opensslconf-${MACHINE_ARCH}.h
 	cp ${.ALLSRC} ${.TARGET}
 .endif
 
-MKDEP=	-DOPENSSL_DOING_MAKEDEPEND
-
 .include <bsd.lib.mk>
 
 .if defined(WANT_IDEA)
