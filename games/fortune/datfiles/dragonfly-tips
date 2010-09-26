@@ -472,11 +472,11 @@ accordingly.
 
 Example:
 
-	setenv BINPKG_SITES ftp://<mirror>/pub/DragonFly/packages/<rel>/stable/
+	setenv BINPKG_SITES ftp://<mirror>/pub/DragonFly/packages
 
 or if you use a bourne compatible shell:
 
-	export BINPKG_SITES=ftp://<mirror>/pub/DragonFly/packages/<rel>/stable/
+	export BINPKG_SITES=ftp://<mirror>/pub/DragonFly/packages
 
 %
 If you want to search for a particular package, use pkg_search(1):
@@ -495,7 +495,7 @@ Note: You need a full installation of the pkgsrc tree to make this work.
 Getting the latest pkgsrc tree in DragonFly BSD is fairly simple:
 
 	cd /usr
-	make pkgsrc-checkout
+	make pkgsrc-create
 
 If you want to update your pkgsrc installation issue:
 
@@ -505,22 +505,12 @@ If you want to update your pkgsrc installation issue:
 To download the DragonFly BSD git repository into /usr/src, issue:
 
 	cd /usr
-	make git-clone
+	make src-create
 
 To update the DragonFly BSD git repository in /usr/src, issue:
 
 	cd /usr
-	make git-update
-%
-Getting the latest pkgsrc WIP tree in DragonFly BSD is fairly simple:
-
-	cd /usr
-	make pkgsrc-wip-checkout
-
-If you want to update your pkgsrc WIP installation issue:
-
-	cd /usr
-	make pkgsrc-wip-update
+	make src-update
 %
 After enabling a service in rc.conf(5), you can use the rc* commands to
 start/stop/reload the service.  If you e.g. enabled dntpd(8) in /etc/rc.conf
