@@ -892,9 +892,11 @@ pmap_dispose_proc(struct proc *p)
  * No requirements.
  */
 void
-pmap_growkernel(vm_offset_t addr)
+pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 {
-	addr = (addr + PAGE_SIZE * NPTEPG) & ~(PAGE_SIZE * NPTEPG - 1);
+	vm_offset_t addr;
+
+	addr = (kend + PAGE_SIZE * NPTEPG) & ~(PAGE_SIZE * NPTEPG - 1);
 
 	lwkt_gettoken(&vm_token);
 	if (addr > virtual_end - SEG_SIZE)

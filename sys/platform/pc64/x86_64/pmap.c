@@ -1828,23 +1828,33 @@ pmap_release_callback(struct vm_page *p, void *data)
 
 /*
  * Grow the number of kernel page table entries, if needed.
+ *
+ * This routine is always called to validate any address space
+ * beyond KERNBASE (for kldloads).  kernel_vm_end only governs the address
+ * space below KERNBASE.
  */
 void
-pmap_growkernel(vm_offset_t addr)
+pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 {
 	vm_paddr_t paddr;
 	vm_offset_t ptppaddr;
 	vm_page_t nkpg;
 	pd_entry_t *pde, newpdir;
 	pdp_entry_t newpdp;
+	int update_kernel_vm_end;
 
 	crit_enter();
 	lwkt_gettoken(&vm_token);
+
+	/*
+	 * bootstrap kernel_vm_end on first real VM use
+	 */
 	if (kernel_vm_end == 0) {
 		kernel_vm_end = VM_MIN_KERNEL_ADDRESS;
 		nkpt = 0;
 		while ((*pmap_pde(&kernel_pmap, kernel_vm_end) & PG_V) != 0) {
-			kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) & ~(PAGE_SIZE * NPTEPG - 1);
+			kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) &
+					~(PAGE_SIZE * NPTEPG - 1);
 			nkpt++;
 			if (kernel_vm_end - 1 >= kernel_map.max_offset) {
 				kernel_vm_end = kernel_map.max_offset;
@@ -1852,32 +1862,54 @@ pmap_growkernel(vm_offset_t addr)
 			}
 		}
 	}
-	addr = roundup2(addr, PAGE_SIZE * NPTEPG);
-	if (addr - 1 >= kernel_map.max_offset)
-		addr = kernel_map.max_offset;
-	while (kernel_vm_end < addr) {
-		pde = pmap_pde(&kernel_pmap, kernel_vm_end);
+
+	/*
+	 * Fill in the gaps.  kernel_vm_end is only adjusted for ranges
+	 * below KERNBASE.  Ranges above KERNBASE are kldloaded and we
+	 * do not want to force-fill 128G worth of page tables.
+	 */
+	if (kstart < KERNBASE) {
+		if (kstart > kernel_vm_end)
+			kstart = kernel_vm_end;
+		KKASSERT(kend <= KERNBASE);
+		update_kernel_vm_end = 1;
+	} else {
+		update_kernel_vm_end = 0;
+	}
+
+	kstart = rounddown2(kstart, PAGE_SIZE * NPTEPG);
+	kend = roundup2(kend, PAGE_SIZE * NPTEPG);
+
+	if (kend - 1 >= kernel_map.max_offset)
+		kend = kernel_map.max_offset;
+
+	while (kstart < kend) {
+		pde = pmap_pde(&kernel_pmap, kstart);
 		if (pde == NULL) {
 			/* We need a new PDP entry */
 			nkpg = vm_page_alloc(kptobj, nkpt,
-			                     VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM
-					     | VM_ALLOC_INTERRUPT);
-			if (nkpg == NULL)
-				panic("pmap_growkernel: no memory to grow kernel");
+			                     VM_ALLOC_NORMAL |
+					     VM_ALLOC_SYSTEM |
+					     VM_ALLOC_INTERRUPT);
+			if (nkpg == NULL) {
+				panic("pmap_growkernel: no memory to grow "
+				      "kernel");
+			}
 			paddr = VM_PAGE_TO_PHYS(nkpg);
 			if ((nkpg->flags & PG_ZERO) == 0)
 				pmap_zero_page(paddr);
 			vm_page_flag_clear(nkpg, PG_ZERO);
 			newpdp = (pdp_entry_t)
 				(paddr | PG_V | PG_RW | PG_A | PG_M);
-			*pmap_pdpe(&kernel_pmap, kernel_vm_end) = newpdp;
+			*pmap_pdpe(&kernel_pmap, kstart) = newpdp;
 			nkpt++;
 			continue; /* try again */
 		}
 		if ((*pde & PG_V) != 0) {
-			kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) & ~(PAGE_SIZE * NPTEPG - 1);
-			if (kernel_vm_end - 1 >= kernel_map.max_offset) {
-				kernel_vm_end = kernel_map.max_offset;
+			kstart = (kstart + PAGE_SIZE * NPTEPG) &
+				 ~(PAGE_SIZE * NPTEPG - 1);
+			if (kstart - 1 >= kernel_map.max_offset) {
+				kstart = kernel_map.max_offset;
 				break;                       
 			}
 			continue;
@@ -1887,7 +1919,9 @@ pmap_growkernel(vm_offset_t addr)
 		 * This index is bogus, but out of the way
 		 */
 		nkpg = vm_page_alloc(kptobj, nkpt,
-			VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM | VM_ALLOC_INTERRUPT);
+				     VM_ALLOC_NORMAL |
+				     VM_ALLOC_SYSTEM |
+				     VM_ALLOC_INTERRUPT);
 		if (nkpg == NULL)
 			panic("pmap_growkernel: no memory to grow kernel");
 
@@ -1896,15 +1930,24 @@ pmap_growkernel(vm_offset_t addr)
 		pmap_zero_page(ptppaddr);
 		vm_page_flag_clear(nkpg, PG_ZERO);
 		newpdir = (pd_entry_t) (ptppaddr | PG_V | PG_RW | PG_A | PG_M);
-		*pmap_pde(&kernel_pmap, kernel_vm_end) = newpdir;
+		*pmap_pde(&kernel_pmap, kstart) = newpdir;
 		nkpt++;
 
-		kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) & ~(PAGE_SIZE * NPTEPG - 1);
-		if (kernel_vm_end - 1 >= kernel_map.max_offset) {
-			kernel_vm_end = kernel_map.max_offset;
+		kstart = (kstart + PAGE_SIZE * NPTEPG) &
+			  ~(PAGE_SIZE * NPTEPG - 1);
+
+		if (kstart - 1 >= kernel_map.max_offset) {
+			kstart = kernel_map.max_offset;
 			break;                       
 		}
 	}
+
+	/*
+	 * Only update kernel_vm_end for areas below KERNBASE.
+	 */
+	if (update_kernel_vm_end && kernel_vm_end < kstart)
+		kernel_vm_end = kstart;
+
 	lwkt_reltoken(&vm_token);
 	crit_exit();
 }

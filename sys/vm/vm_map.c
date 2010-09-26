@@ -1069,7 +1069,6 @@ vm_map_findspace(vm_map_t map, vm_offset_t start, vm_size_t length,
 	else
 		align_mask = align - 1;
 
-retry:
 	/*
 	 * Look for the first possible address; if there's already something
 	 * at this address, we have to start after it.
@@ -1138,12 +1137,23 @@ retry:
 		}
 	}
 	map->hint = entry;
+
+	/*
+	 * Grow the kernel_map if necessary.  pmap_growkernel() will panic
+	 * if it fails.  The kernel_map is locked and nothing can steal
+	 * our address space if pmap_growkernel() blocks.
+	 *
+	 * NOTE: This may be unconditionally called for kldload areas on
+	 *	 x86_64 because these do not bump kernel_vm_end (which would
+	 *	 fill 128G worth of page tables!).  Therefore we must not
+	 *	 retry.
+	 */
 	if (map == &kernel_map) {
-		vm_offset_t ksize;
-		if ((ksize = round_page(start + length)) > kernel_vm_end) {
-			pmap_growkernel(ksize);
-			goto retry;
-		}
+		vm_offset_t kstop;
+
+		kstop = round_page(start + length);
+		if (kstop > kernel_vm_end)
+			pmap_growkernel(start, kstop);
 	}
 	*addr = start;
 	return (0);

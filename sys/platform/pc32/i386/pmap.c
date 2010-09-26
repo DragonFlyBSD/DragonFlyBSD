@@ -1543,8 +1543,9 @@ pmap_release_callback(struct vm_page *p, void *data)
  * No requirements.
  */
 void
-pmap_growkernel(vm_offset_t addr)
+pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 {
+	vm_offset_t addr = kend;
 	struct pmap *pmap;
 	vm_offset_t ptppaddr;
 	vm_page_t nkpg;
