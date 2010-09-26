@@ -68,7 +68,7 @@
 #ifndef OPENSSL_NO_ENGINE
 #include <openssl/engine.h>
 #endif
-#include "asn1_locl.h"
+#include "../asn1/asn1_locl.h"
 
 int pem_check_suffix(const char *pem_str, const char *suffix);
 

@@ -64,7 +64,7 @@
 #ifndef OPENSSL_NO_CMS
 #include <openssl/cms.h>
 #endif
-#include "asn1_locl.h"
+#include "../asn1/asn1_locl.h"
 
 static int dsa_pub_decode(EVP_PKEY *pkey, X509_PUBKEY *pubkey)
 	{
