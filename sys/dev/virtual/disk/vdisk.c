@@ -155,7 +155,19 @@ vkdopen(struct dev_open_args *ap)
 
 	dev = ap->a_head.a_dev;
 	sc = dev->si_drv1;
-	if (fstat(sc->fd, &st) < 0 || st.st_size == 0)
+	if (fstat(sc->fd, &st) < 0)
+		return(ENXIO);
+
+	/*
+	 * Devices may return a st_size of 0, try to use
+	 * lseek.
+	 */
+	if (st.st_size == 0) {
+		st.st_size = lseek(sc->fd, 0L, SEEK_END);
+		if (st.st_size == -1)
+			st.st_size = 0;
+	}
+	if (st.st_size == 0)
 		return(ENXIO);
 
 /*
