@@ -2,6 +2,7 @@
 # $DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.18 2008/09/27 21:04:45 pavalos Exp $
 
 OSSLVERSION=	0.9.8m
+OSSLDATE=	2010-02-25
 LCRYPTO_SRC=	${.CURDIR}/../../../crypto/openssl
 LCRYPTO_DOC=	${LCRYPTO_SRC}/doc
 
@@ -24,7 +25,8 @@ man-update:
 	@(sec=${manpage:E}; \
 	pod=${manpage:R}.pod; \
 	cp ${LCRYPTO_DOC}/${_docs}/$$pod .; \
-	pod2man --section=$$sec --release="${OSSLVERSION}" --center="OpenSSL" \
+	pod2man --section=$$sec --release="${OSSLVERSION}" \
+	  --date="${OSSLDATE}" --center="OpenSSL" \
 	  $$pod > ${.CURDIR}/man/${manpage}; \
 	rm $$pod; \
 	${ECHO} ${manpage})
