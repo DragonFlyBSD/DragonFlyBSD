@@ -5,13 +5,9 @@ OSSLVERSION=	0.9.8m
 LCRYPTO_SRC=	${.CURDIR}/../../../crypto/openssl
 LCRYPTO_DOC=	${LCRYPTO_SRC}/doc
 
-CFLAGS+=	-DTERMIOS -DANSI_SOURCE
+CFLAGS+=	-DTERMIOS -DANSI_SOURCE -DL_ENDIAN
 CFLAGS+=	-I${LCRYPTO_SRC} -I${LCRYPTO_SRC}/crypto \
 		-I${LCRYPTO_SRC}/crypto/engine -I${.OBJDIR}
-
-.if ${MACHINE_ARCH} == "i386"
-CFLAGS+= -DL_ENDIAN
-.endif
 
 MANDIR=	${SHAREDIR}/openssl/man/man
 
