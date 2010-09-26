@@ -102,6 +102,16 @@ vkdinit(void *dummy __unused)
 		if (dsk->fd < 0 || fstat(dsk->fd, &st) < 0)
 			continue;
 
+		/*
+		 * Devices may return a st_size of 0, try to use
+		 * lseek.
+		 */
+		if (st.st_size == 0) {
+			st.st_size = lseek(dsk->fd, 0L, SEEK_END);
+			if (st.st_size == -1)
+				st.st_size = 0;
+		}
+
 		/* and create a new device */
 		sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
 		sc->unit = dsk->unit;

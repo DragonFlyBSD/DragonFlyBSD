@@ -691,18 +691,20 @@ init_disk(char *diskExp[], int diskFileNum, enum vkdisk_type type)
 			size_t l = 0;
 
 			if (type == VKD_DISK)
-			    fd = open(fname, O_RDWR|O_DIRECT|O_EXLOCK|O_NONBLOCK, 0644);
+			    fd = open(fname, O_RDWR|O_DIRECT, 0644);
 			else
 			    fd = open(fname, O_RDONLY|O_DIRECT, 0644);
 			if (fd < 0 || fstat(fd, &st) < 0) {
-				if (errno == EAGAIN)
-					fprintf(stderr, "You may already have a vkernel using this disk image!\n");
 				err(1, "Unable to open/create %s", fname);
 				/* NOT REACHED */
 			}
-			/* get rid of O_NONBLOCK, keep O_DIRECT */
-			if (type == VKD_DISK)
-				fcntl(fd, F_SETFL, O_DIRECT);
+			if (S_ISREG(st.st_mode)) {
+				if (flock(fd, LOCK_EX|LOCK_NB) < 0) {
+					errx(1, "Disk image %s is already "
+						"in use\n", fname);
+					/* NOT REACHED */
+				}
+			}
 
 			info = &DiskInfo[DiskNum];
 			l = strlen(fname);
