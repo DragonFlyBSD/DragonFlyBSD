@@ -441,6 +441,9 @@ state_configure_menu(struct i_fn_args *a)
 		    _("Set date and time"),
 		    _("Set the Time and Date of your machine"), "",
 
+		    "a", "set_kbdmap",
+		    _("Set keyboard map"),
+		    _("Set what kind of keyboard layout you have"), "",
 		    "a", "root_passwd",	_("Set root password"),
 		    _("Set the password that the root (superuser) account will use"), "",
 		    "a", "add_user", _("Add a user"),
@@ -454,9 +457,6 @@ state_configure_menu(struct i_fn_args *a)
 		    "a", "select_services", "Select Services",
 		    "Enable/Disable system services (servers, daemons, etc.)", "",
 		    */
-		    "a", "set_kbdmap",
-		    _("Set keyboard map"),
-		    _("Set what kind of keyboard layout you have"), "",
 		    "a", "set_vidfont",
 		    _("Set console font"),
 		    _("Set how the characters on your video console look"), "",
