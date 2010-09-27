@@ -2,7 +2,7 @@
 # $DragonFly: src/secure/lib/libcrypto/Makefile,v 1.11 2008/09/06 20:42:53 pavalos Exp $
 
 LIB=		crypto
-SHLIB_MAJOR=	4
+SHLIB_MAJOR=	5
 
 NOLINT=		true
 

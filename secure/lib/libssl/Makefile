@@ -2,7 +2,7 @@
 # $DragonFly: src/secure/lib/libssl/Makefile,v 1.6 2006/09/06 12:40:54 corecode Exp $
 
 LIB=		ssl
-SHLIB_MAJOR=	4
+SHLIB_MAJOR=	5
 WARNS?=		2
 
 NOLINT=		true
