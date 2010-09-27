@@ -70,4 +70,3 @@ LDADD+=		-lprop -ldevattr
 .PATH:	${LVM2_DISTDIR}/lib/dragonfly
 
 .include <bsd.lib.mk>
-#.include <bsd.subdir.mk>
