@@ -15,6 +15,9 @@
 +         UPGRADING DRAGONFLY FROM 2.6 to 2.8 or HEAD
 +-----------------------------------------------------------------------+
 
+Loader
+=======
+
 A new loader (dloader) has been added which better handles booting from
 multiple kernel/module versions.
 
@@ -29,6 +32,17 @@ To upgrade (Only for this upgrade, for post 2.8 upgrades see GENERAL below)
 
 Note that you must installworld and run the 'upgrade' target before
 installing the new kernel.
+
+BIND
+=====
+
+BIND has been removed from the base system.  The ldns and drill tools have 
+been added for basic functionality.  Use 'drill' where you would normally 
+use nslookup or dig, or install BIND from pkgsrc.  It's available as 
+net/bind95, net/bind96, or net/bind97 as of this writing.
+
+This only affects older systems upgrading to 2.8.  New 2.8+ installs 
+include BIND as a pkgsrc package.
 
 +-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY ON AN EXISTING DRAGONFLY SYSTEM		+
