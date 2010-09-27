@@ -2744,7 +2744,7 @@ _cache_cleanneg(int count)
 		_cache_hold(ncp);
 		spin_unlock(&ncspin);
 		if (_cache_lock_special(ncp) == 0) {
-			ncp = cache_zap(ncp, 0);
+			ncp = cache_zap(ncp, 1);
 			if (ncp)
 				_cache_drop(ncp);
 		} else {
