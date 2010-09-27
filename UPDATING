@@ -7,12 +7,10 @@
 #
 # If you discover any problem, please contact the bugs@lists.dragonflybsd.org
 # mailing list with the details.
-#
-# $DragonFly: src/UPDATING,v 1.26 2008/09/15 20:03:36 thomas Exp $
 
 +-----------------------------------------------------------------------+
-+         20100924
-+         UPGRADING DRAGONFLY FROM 2.6 to 2.8 or HEAD
++         20100924							+
++         UPGRADING DRAGONFLY FROM 2.6 to 2.8 or HEAD			+
 +-----------------------------------------------------------------------+
 
 Loader
