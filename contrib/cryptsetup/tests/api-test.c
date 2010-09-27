@@ -22,8 +22,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <linux/fs.h>
+//#include <linux/fs.h>
 #include <errno.h>
+#include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 
@@ -31,9 +32,9 @@
 
 #define DMDIR "/dev/mapper/"
 
-#define DEVICE_1 "/dev/loop5"
+#define DEVICE_1 "/dev/vn1"
 #define DEVICE_1_UUID "28632274-8c8a-493f-835b-da802e1c576b"
-#define DEVICE_2 "/dev/loop6"
+#define DEVICE_2 "/dev/vn2"
 #define DEVICE_EMPTY_name "crypt_zero"
 #define DEVICE_EMPTY DMDIR DEVICE_EMPTY_name
 #define DEVICE_ERROR_name "crypt_error"
@@ -153,11 +154,11 @@ static void _cleanup(void)
 	if (!stat(DEVICE_ERROR, &st))
 		r = system("dmsetup remove " DEVICE_ERROR_name);
 
-	if (!strncmp("/dev/loop", DEVICE_1, 9))
-		r = system("losetup -d " DEVICE_1);
+	if (!strncmp("/dev/vn", DEVICE_1, 7))
+		r = system("vnconfig -u " DEVICE_1);
 
-	if (!strncmp("/dev/loop", DEVICE_2, 9))
-		r = system("losetup -d " DEVICE_2);
+	if (!strncmp("/dev/vn", DEVICE_2, 7))
+		r = system("vnconfig -u " DEVICE_2);
 
 	r = system("rm -f " IMAGE_EMPTY);
 	_remove_keyfiles();
@@ -169,13 +170,13 @@ static void _setup(void)
 
 	r = system("dmsetup create " DEVICE_EMPTY_name " --table \"0 10000 zero\"");
 	r = system("dmsetup create " DEVICE_ERROR_name " --table \"0 10000 error\"");
-	if (!strncmp("/dev/loop", DEVICE_1, 9)) {
+	if (!strncmp("/dev/vn", DEVICE_1, 7)) {
 		r = system(" [ ! -e " IMAGE1 " ] && bzip2 -dk " IMAGE1 ".bz2");
-		r = system("losetup " DEVICE_1 " " IMAGE1);
+		r = system("vnconfig -S labels -T " DEVICE_1 " " IMAGE1);
 	}
-	if (!strncmp("/dev/loop", DEVICE_2, 9)) {
+	if (!strncmp("/dev/vn", DEVICE_2, 7)) {
 		r = system("dd if=/dev/zero of=" IMAGE_EMPTY " bs=1M count=4");
-		r = system("losetup " DEVICE_2 " " IMAGE_EMPTY);
+		r = system("vnconfig -S labels -T " DEVICE_2 " " IMAGE_EMPTY);
 	}
 
 }
@@ -434,6 +435,7 @@ static void LuksKeyGame(void)
 
 size_t _get_device_size(const char *device)
 {
+#if 0 /* XXX swildner */
 	unsigned long size = 0;
 	int fd;
 
@@ -444,6 +446,8 @@ size_t _get_device_size(const char *device)
 	close(fd);
 
 	return size;
+#endif
+	return DEV_BSIZE;
 }
 
 void DeviceResizeGame(void)
