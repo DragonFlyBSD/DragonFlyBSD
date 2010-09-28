@@ -9,9 +9,16 @@
 # mailing list with the details.
 
 +-----------------------------------------------------------------------+
-+         20100924							+
++         20100927							+
 +         UPGRADING DRAGONFLY FROM 2.6 to 2.8 or HEAD			+
 +-----------------------------------------------------------------------+
+
+OpenSSL
+========
+
+OpenSSL has been upgraded, and SHLIB_MAJOR was bumped for libssh and libcrypto.
+This shouldn't break any 3rd-party software, but you'll need to recompile your
+3rd-party software if you want it to link against the new version of OpenSSL.
 
 Loader
 =======
