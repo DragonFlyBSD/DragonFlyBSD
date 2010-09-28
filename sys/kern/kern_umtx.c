@@ -140,11 +140,11 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
 	crit_enter();
 	tsleep_interlock(waddr, PCATCH | PDOMAIN_UMTX);
 	if (*(int *)(lwbuf_kva(lwb) + offset) == uap->value) {
-	    vm_page_init_action(&action, umtx_sleep_page_action_cow, waddr);
-	    vm_page_register_action(m, &action, VMEVENT_COW);
+	    vm_page_init_action(m, &action, umtx_sleep_page_action_cow, waddr);
+	    vm_page_register_action(&action, VMEVENT_COW);
 	    error = tsleep(waddr, PCATCH | PINTERLOCKED | PDOMAIN_UMTX,
 			   "umtxsl", timeout);
-	    vm_page_unregister_action(m, &action);
+	    vm_page_unregister_action(&action);
 	} else {
 	    error = EBUSY;
 	}

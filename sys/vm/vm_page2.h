@@ -140,36 +140,18 @@ static __inline
 void
 vm_page_event(vm_page_t m, vm_page_event_t event)
 {
-    if (LIST_FIRST(&m->action_list))
+    if (m->flags & PG_ACTIONLIST)
 	vm_page_event_internal(m, event);
 }
 
 static __inline
 void
-vm_page_init_action(vm_page_action_t action,
+vm_page_init_action(vm_page_t m, vm_page_action_t action,
 		    void (*func)(vm_page_t, vm_page_action_t), void *data)
 {
+    action->m = m;
     action->func = func;
     action->data = data;
-}
-
-static __inline
-void
-vm_page_register_action(vm_page_t m, vm_page_action_t action,
-			vm_page_event_t event)
-{
-    action->event = event;
-    LIST_INSERT_HEAD(&m->action_list, action, entry);
-}
-
-static __inline
-void
-vm_page_unregister_action(vm_page_t m, vm_page_action_t action)
-{
-    if (action->event != VMEVENT_NONE) {
-	action->event = VMEVENT_NONE;
-	LIST_REMOVE(action, entry);
-    }
 }
 
 /*

@@ -96,12 +96,19 @@
 #include <vm/vm_page2.h>
 #include <sys/mplock2.h>
 
+#define VMACTION_HSIZE	256
+#define VMACTION_HMASK	(VMACTION_HSIZE - 1)
+
 static void vm_page_queue_init(void);
 static void vm_page_free_wakeup(void);
 static vm_page_t vm_page_select_cache(vm_object_t, vm_pindex_t);
 static vm_page_t _vm_page_list_find2(int basequeue, int index);
 
 struct vpgqueues vm_page_queues[PQ_COUNT]; /* Array of tailq lists */
+
+LIST_HEAD(vm_page_action_list, vm_page_action);
+struct vm_page_action_list	action_list[VMACTION_HSIZE];
+
 
 #define ASSERT_IN_CRIT_SECTION()	KKASSERT(crit_test(curthread));
 
@@ -125,6 +132,9 @@ vm_page_queue_init(void)
 
 	for (i = 0; i < PQ_COUNT; i++)
 		TAILQ_INIT(&vm_page_queues[i].pl);
+
+	for (i = 0; i < VMACTION_HSIZE; i++)
+		LIST_INIT(&action_list[i]);
 }
 
 /*
@@ -1870,21 +1880,82 @@ vm_page_test_dirty(vm_page_t m)
 }
 
 /*
+ * Register an action, associating it with its vm_page
+ */
+void
+vm_page_register_action(vm_page_action_t action, vm_page_event_t event)
+{
+	struct vm_page_action_list *list;
+	int hv;
+
+	hv = (int)((intptr_t)action->m >> 8) & VMACTION_HMASK;
+	list = &action_list[hv];
+
+	lwkt_gettoken(&vm_token);
+	vm_page_flag_set(action->m, PG_ACTIONLIST);
+	action->event = event;
+	LIST_INSERT_HEAD(list, action, entry);
+	lwkt_reltoken(&vm_token);
+}
+
+/*
+ * Unregister an action, disassociating it from its related vm_page
+ */
+void
+vm_page_unregister_action(vm_page_action_t action)
+{
+	struct vm_page_action_list *list;
+	int hv;
+
+	lwkt_gettoken(&vm_token);
+	if (action->event != VMEVENT_NONE) {
+		action->event = VMEVENT_NONE;
+		LIST_REMOVE(action, entry);
+
+		hv = (int)((intptr_t)action->m >> 8) & VMACTION_HMASK;
+		list = &action_list[hv];
+		if (LIST_EMPTY(list))
+			vm_page_flag_clear(action->m, PG_ACTIONLIST);
+	}
+	lwkt_reltoken(&vm_token);
+}
+
+/*
  * Issue an event on a VM page.  Corresponding action structures are
  * removed from the page's list and called.
+ *
+ * If the vm_page has no more pending action events we clear its
+ * PG_ACTIONLIST flag.
  */
 void
 vm_page_event_internal(vm_page_t m, vm_page_event_t event)
 {
-	struct vm_page_action *scan, *next;
+	struct vm_page_action_list *list;
+	struct vm_page_action *scan;
+	struct vm_page_action *next;
+	int hv;
+	int all;
 
-	LIST_FOREACH_MUTABLE(scan, &m->action_list, entry, next) {
-		if (scan->event == event) {
-			scan->event = VMEVENT_NONE;
-			LIST_REMOVE(scan, entry);
-			scan->func(m, scan);
+	hv = (int)((intptr_t)m >> 8) & VMACTION_HMASK;
+	list = &action_list[hv];
+	all = 1;
+
+	lwkt_gettoken(&vm_token);
+	LIST_FOREACH_MUTABLE(scan, list, entry, next) {
+		if (scan->m == m) {
+			if (scan->event == event) {
+				scan->event = VMEVENT_NONE;
+				LIST_REMOVE(scan, entry);
+				scan->func(m, scan);
+				/* XXX */
+			} else {
+				all = 0;
+			}
 		}
 	}
+	if (all)
+		vm_page_flag_clear(m, PG_ACTIONLIST);
+	lwkt_reltoken(&vm_token);
 }
 
 
