@@ -47,9 +47,10 @@
 
 char *
 zt_readfile(char *buf, int len, FILE *f) {
-	int i;
+	int i = 0;
 	char *cs;
 
+	/* XXX this is kinda ugly */
 	cs = buf;
 	while (--len > 0 && (i = getc(f)) != EOF)
 		*(cs++) = i;

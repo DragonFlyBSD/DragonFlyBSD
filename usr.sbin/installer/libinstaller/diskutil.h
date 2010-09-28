@@ -60,7 +60,7 @@ struct storage {
 	struct disk *disk_tail;
 	struct disk *selected_disk;
 	struct slice *selected_slice;
-	unsigned long ram;			/* amount of physical memory in MB */
+	long ram;			/* amount of physical memory in MB */
 };
 
 struct disk {
@@ -117,7 +117,7 @@ struct subpartition {
 struct storage		*storage_new(void);
 void			 storage_free(struct storage *);
 void			 storage_set_memsize(struct storage *, unsigned long);
-unsigned long		 storage_get_memsize(const struct storage *);
+long			 storage_get_memsize(const struct storage *);
 struct disk		*storage_disk_first(const struct storage *);
 void			 storage_set_selected_disk(struct storage *, struct disk *);
 struct disk		*storage_get_selected_disk(const struct storage *);
@@ -172,7 +172,7 @@ const char		*subpartition_get_device_name(const struct subpartition *);
 char			 subpartition_get_letter(const struct subpartition *);
 unsigned long		 subpartition_get_fsize(const struct subpartition *);
 unsigned long		 subpartition_get_bsize(const struct subpartition *);
-unsigned long		 subpartition_get_capacity(const struct subpartition *);
+long			 subpartition_get_capacity(const struct subpartition *);
 int			 subpartition_is_swap(const struct subpartition *);
 int			 subpartition_is_softupdated(const struct subpartition *);
 int			 subpartition_is_tmpfsbacked(const struct subpartition *);

@@ -109,7 +109,7 @@ storage_set_memsize(struct storage *s, unsigned long memsize)
 	s->ram = memsize;
 }
 
-unsigned long
+long
 storage_get_memsize(const struct storage *s)
 {
 	return(s->ram);
@@ -783,7 +783,7 @@ subpartition_get_bsize(const struct subpartition *sp)
 	return(sp->bsize);
 }
 
-unsigned long
+long
 subpartition_get_capacity(const struct subpartition *sp)
 {
 	return(sp->capacity);

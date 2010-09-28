@@ -262,7 +262,7 @@ static int
 check_capacity(struct i_fn_args *a)
 {
 	struct subpartition *sp;
-	unsigned long min_capacity[] = {128, 0, DISK_MIN - 128, 0};
+	long min_capacity[] = {128, 0, DISK_MIN - 128, 0};
 	unsigned long total_capacity = 0;
 	unsigned long remaining_capacity;
 	int mtpt, warn_smallpart = 0;
