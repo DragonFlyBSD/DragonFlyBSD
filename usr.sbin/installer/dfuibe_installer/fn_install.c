@@ -133,52 +133,19 @@ fn_install_os(struct i_fn_args *a)
 	char *string;
 	int lines = 0;
 
-	/*
-	 * If SOURCES_CONF_FILE exists, lets read in and
-	 * populate our copy sources.   If it does not exist
-	 * simply set the list by hand.
-	 */
-        if (!is_file("%s%s", a->os_root, SOURCES_CONF_FILE)) {
-		i_log(a, "Using internal copy sources table.");
-		strcpy(cp_src[0],"/COPYRIGHT");
-		strcpy(cp_src[1],"/bin");
-		strcpy(cp_src[2],"/boot");
-		strcpy(cp_src[3],"/cdrom");
-		strcpy(cp_src[4],"/dev");
-		strcpy(cp_src[5],"/etc");
-		strcpy(cp_src[6],"/root");
-		strcpy(cp_src[7],"/sbin");
-		strcpy(cp_src[9],"/tmp");
-		strcpy(cp_src[10],"/usr/Makefile");
-		strcpy(cp_src[11],"/usr/bin");
-		strcpy(cp_src[12],"/usr/games");
-		strcpy(cp_src[13],"/usr/include");
-		strcpy(cp_src[14],"/usr/lib");
-		strcpy(cp_src[15],"/usr/libdata");
-		strcpy(cp_src[16],"/usr/libexec");
-		strcpy(cp_src[17],"/usr/local");
-		strcpy(cp_src[18],"/usr/obj");
-		strcpy(cp_src[19],"/usr/pkg");
-		strcpy(cp_src[20],"/usr/sbin");
-		strcpy(cp_src[21],"/usr/share");
-		strcpy(cp_src[22],"/usr/src");
-		strcpy(cp_src[23],"/var");
-		strcpy(cp_src[24],"");
-	} else {
-		snprintf(file_path, 256, "%s%s", a->os_root, SOURCES_CONF_FILE);
-                sources_conf = fopen(file_path, "r");
-		i_log(a, "Reading %s%s", a->os_root, SOURCES_CONF_FILE);
-                while(fgets(line, 256, sources_conf) != NULL && lines < 63) {
-			if(strlen(line)>0)
-				line[strlen(line)-1] = '\0';
-			strlcpy(cp_src[lines], line, 256);
-			i_log(a,"Adding %s to copy source table.", cp_src[lines]);
-			lines++;
-                }
-		i_log(a,"Added %i total items to copy source table.", lines);
-		strcpy(cp_src[lines], "");
-		fclose(sources_conf);
+	snprintf(file_path, 256, "%s%s", a->os_root, SOURCES_CONF_FILE);
+	sources_conf = fopen(file_path, "r");
+	i_log(a, "Reading %s%s", a->os_root, SOURCES_CONF_FILE);
+	while(fgets(line, 256, sources_conf) != NULL && lines < 63) {
+		if(strlen(line)>0)
+			line[strlen(line)-1] = '\0';
+		strlcpy(cp_src[lines], line, 256);
+		i_log(a,"Adding %s to copy source table.", cp_src[lines]);
+		lines++;
 	}
+	i_log(a,"Added %i total items to copy source table.", lines);
+	strcpy(cp_src[lines], "");
+	fclose(sources_conf);
 
 	cmds = commands_new();
 
