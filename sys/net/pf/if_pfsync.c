@@ -558,11 +558,11 @@ pfsync_input(struct mbuf *m, ...)
 			if (sfail) {
 				if (pf_status.debug >= PF_DEBUG_MISC)
 					kprintf("pfsync: %s stale update "
-					    "(%d) id: %016llx "
+					    "(%d) id: %016jx "
 					    "creatorid: %08x\n",
 					    (sfail < 7 ?  "ignoring"
 					     : "partial"), sfail,
-					    be64toh(st->id),
+					    (uintmax_t)be64toh(st->id),
 					    ntohl(st->creatorid));
 				pfsyncstats.pfsyncs_badstate++;
 
