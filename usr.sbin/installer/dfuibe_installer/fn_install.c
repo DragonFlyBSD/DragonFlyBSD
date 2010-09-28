@@ -133,6 +133,9 @@ fn_install_os(struct i_fn_args *a)
 	char *string;
 	int lines = 0;
 
+	/*
+	 * Read SOURCES_CONF_FILE and populate our copy sources.
+	 */
 	snprintf(file_path, 256, "%s%s", a->os_root, SOURCES_CONF_FILE);
 	sources_conf = fopen(file_path, "r");
 	i_log(a, "Reading %s%s", a->os_root, SOURCES_CONF_FILE);
