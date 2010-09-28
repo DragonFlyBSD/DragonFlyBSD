@@ -3490,3 +3490,12 @@ pmap_get_pgeflag(void)
 {
 	return pgeflag;
 }
+
+/*
+ * Used by kmalloc/kfree, page already exists at va
+ */
+vm_page_t
+pmap_kvtom(vm_offset_t va)
+{
+	return(PHYS_TO_VM_PAGE(*vtopte(va) & PG_FRAME));
+}

@@ -185,6 +185,7 @@ struct vm_page {
 	u_short	dirty;			/* map of dirty DEV_BSIZE chunks */
 #endif
 	LIST_HEAD(,vm_page_action) action_list;
+	int	ku_pagecnt;		/* kmalloc helper */
 };
 
 #ifndef __VM_PAGE_T_DEFINED__

@@ -155,23 +155,9 @@ MALLOC_DECLARE(M_IP6NDP); /* for INET6 */
 
 #endif /* _KERNEL */
 
-/*
- * kmemusage is an array of descriptors used to control oversized
- * kmalloc allocations.  This also marks zones as having been freed
- * when negative.
- */
-struct kmemusage {
-	int32_t	ku_pagecnt;
-};
-
 #ifdef _KERNEL
 
 #define	MINALLOCSIZE	sizeof(void *)
-
-/*
- * Turn virtual addresses into kmem map indices
- */
-#define btokup(addr)	(&kmemusage[((vm_offset_t)(addr) - (vm_offset_t)KvaStart) >> PAGE_SHIFT])
 
 /*
  * Deprecated macro versions of not-quite-malloc() and free().

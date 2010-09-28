@@ -3272,3 +3272,15 @@ pmap_addr_hint(vm_object_t obj, vm_offset_t addr, vm_size_t size)
 	addr = (addr + (NBPDR - 1)) & ~(NBPDR - 1);
 	return addr;
 }
+
+/*
+ * Used by kmalloc/kfree, page already exists at va
+ */
+vm_page_t
+pmap_kvtom(vm_offset_t va)
+{
+	vpte_t *ptep;
+
+	KKASSERT(va >= KvaStart && va < KvaEnd);
+	return(PHYS_TO_VM_PAGE(vtopte(va) & PG_FRAME));
+}

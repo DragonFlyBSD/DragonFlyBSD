@@ -121,6 +121,8 @@
 
 #define arysize(ary)	(sizeof(ary)/sizeof((ary)[0]))
 
+#define btokup(z)	(&pmap_kvtom((vm_offset_t)(z))->ku_pagecnt)
+
 #define MEMORY_STRING	"ptr=%p type=%p size=%d flags=%04x"
 #define MEMORY_ARG_SIZE	(sizeof(void *) * 2 + sizeof(unsigned long) + 	\
 			sizeof(int))
@@ -158,7 +160,6 @@ static uintptr_t ZoneMask;
 static int ZoneBigAlloc;		/* in KB */
 static int ZoneGenAlloc;		/* in KB */
 struct malloc_type *kmemstatistics;	/* exported to vmstat */
-static struct kmemusage *kmemusage;
 static int32_t weirdary[16];
 
 static void *kmem_slab_alloc(vm_size_t bytes, vm_offset_t align, int flags);
@@ -233,7 +234,6 @@ kmeminit(void *dummy)
     size_t limsize;
     int usesize;
     int i;
-    vm_offset_t npg;
 
     limsize = (size_t)vmstats.v_page_count * PAGE_SIZE;
     if (limsize > KvaSize)
@@ -249,10 +249,6 @@ kmeminit(void *dummy)
 	ZoneLimit = ZALLOC_ZONE_LIMIT;
     ZoneMask = ~(uintptr_t)(ZoneSize - 1);
     ZonePageCount = ZoneSize / PAGE_SIZE;
-
-    npg = KvaSize / PAGE_SIZE;
-    kmemusage = kmem_slab_alloc(npg * sizeof(struct kmemusage), 
-				PAGE_SIZE, M_WAITOK|M_ZERO);
 
     for (i = 0; i < arysize(weirdary); ++i)
 	weirdary[i] = WEIRD_ADDR;
@@ -537,13 +533,13 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
     while (slgd->NFreeZones > ZONE_RELS_THRESH && (flags & M_RNOWAIT) == 0) {
 	crit_enter();
 	if (slgd->NFreeZones > ZONE_RELS_THRESH) {	/* crit sect race */
-	    struct kmemusage *kup;
+	    int *kup;
 
 	    z = slgd->FreeZones;
 	    slgd->FreeZones = z->z_Next;
 	    --slgd->NFreeZones;
 	    kup = btokup(z);
-	    kup->ku_pagecnt = 0;
+	    *kup = 0;
 	    kmem_slab_free(z, ZoneSize);	/* may block */
 	    atomic_add_int(&ZoneGenAlloc, -(int)ZoneSize / 1024);
 	}
@@ -576,7 +572,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
      * some efficiency.  XXX maybe fix mmio and the elf loader instead.
      */
     if (size >= ZoneLimit || ((size & PAGE_MASK) == 0 && size > PAGE_SIZE*2)) {
-	struct kmemusage *kup;
+	int *kup;
 
 	size = round_page(size);
 	chunk = kmem_slab_alloc(size, PAGE_SIZE, flags);
@@ -588,7 +584,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	flags &= ~M_ZERO;	/* result already zero'd if M_ZERO was set */
 	flags |= M_PASSIVE_ZERO;
 	kup = btokup(chunk);
-	kup->ku_pagecnt = size / PAGE_SIZE;
+	*kup = size / PAGE_SIZE;
 	crit_enter();
 	goto done;
     }
@@ -704,7 +700,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
      */
     {
 	int off;
-	struct kmemusage *kup;
+	int *kup;
 
 	if ((z = slgd->FreeZones) != NULL) {
 	    slgd->FreeZones = z->z_Next;
@@ -758,7 +754,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	    flags |= M_PASSIVE_ZERO;
 	}
 	kup = btokup(z);
-	kup->ku_pagecnt = -(z->z_Cpu + 1);	/* -1 to -(N+1) */
+	*kup = -(z->z_Cpu + 1);	/* -1 to -(N+1) */
 	chunk_mark_allocated(z, chunk);
 
 	/*
@@ -806,10 +802,10 @@ fail:
 void *
 krealloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
 {
-    struct kmemusage *kup;
+    unsigned long osize;
     SLZone *z;
     void *nptr;
-    unsigned long osize;
+    int *kup;
 
     KKASSERT((flags & M_ZERO) == 0);	/* not supported */
 
@@ -825,8 +821,8 @@ krealloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
      * size be passed to free() instead of this nonsense.
      */
     kup = btokup(ptr);
-    if (kup->ku_pagecnt > 0) {
-	osize = kup->ku_pagecnt << PAGE_SHIFT;
+    if (*kup > 0) {
+	osize = *kup << PAGE_SHIFT;
 	if (osize == round_page(size))
 	    return(ptr);
 	if ((nptr = kmalloc(size, type, flags)) == NULL)
@@ -842,7 +838,7 @@ krealloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
      */
     z = (SLZone *)((uintptr_t)ptr & ZoneMask);
     kup = btokup(z);
-    KKASSERT(kup->ku_pagecnt < 0);
+    KKASSERT(*kup < 0);
     KKASSERT(z->z_Magic == ZALLOC_SLAB_MAGIC);
 
     /*
@@ -912,11 +908,11 @@ static
 void
 kfree_remote(void *ptr)
 {
-    struct kmemusage *kup;
     SLGlobalData *slgd;
     SLChunk *bchunk;
     SLZone *z;
     int nfree;
+    int *kup;
 
     /*
      * Do not dereference (z) until we validate that its storage is
@@ -926,7 +922,7 @@ kfree_remote(void *ptr)
     z = ptr;
     kup = btokup(z);
 
-    if (kup->ku_pagecnt == -((int)mycpuid + 1)) {	/* -1 to -(N+1) */
+    if (*kup == -((int)mycpuid + 1)) {		/* -1 to -(N+1) */
 	logmemory(free_rem_beg, z, NULL, 0, 0);
 	KKASSERT(z->z_Magic == ZALLOC_SLAB_MAGIC);
 	KKASSERT(z->z_Cpu  == mycpu->gd_cpuid);
@@ -973,8 +969,8 @@ kfree_remote(void *ptr)
 	if (z->z_NFree == z->z_NMax &&
 	    (z->z_Next || slgd->ZoneAry[z->z_ZoneIndex] != z)
 	) {
-	    struct kmemusage *kup;
 	    SLZone **pz;
+	    int *kup;
 
 	    for (pz = &slgd->ZoneAry[z->z_ZoneIndex];
 		 z != *pz;
@@ -987,7 +983,7 @@ kfree_remote(void *ptr)
 	    slgd->FreeZones = z;
 	    ++slgd->NFreeZones;
 	    kup = btokup(z);
-	    kup->ku_pagecnt = 0;
+	    *kup = 0;
 	}
 	logmemory(free_rem_end, z, bchunk, 0, 0);
     }
@@ -1011,7 +1007,7 @@ kfree(void *ptr, struct malloc_type *type)
     SLChunk *chunk;
     SLGlobalData *slgd;
     struct globaldata *gd;
-    struct kmemusage *kup;
+    int *kup;
     unsigned long size;
 #ifdef SMP
     SLChunk *bchunk;
@@ -1047,9 +1043,9 @@ kfree(void *ptr, struct malloc_type *type)
      * This code is never called via an ipi.
      */
     kup = btokup(ptr);
-    if (kup->ku_pagecnt > 0) {
-	size = kup->ku_pagecnt << PAGE_SHIFT;
-	kup->ku_pagecnt = 0;
+    if (*kup > 0) {
+	size = *kup << PAGE_SHIFT;
+	*kup = 0;
 #ifdef INVARIANTS
 	KKASSERT(sizeof(weirdary) <= size);
 	bcopy(weirdary, ptr, sizeof(weirdary));
@@ -1093,7 +1089,7 @@ kfree(void *ptr, struct malloc_type *type)
      */
     z = (SLZone *)((uintptr_t)ptr & ZoneMask);
     kup = btokup(z);
-    KKASSERT(kup->ku_pagecnt < 0);
+    KKASSERT(*kup < 0);
     KKASSERT(z->z_Magic == ZALLOC_SLAB_MAGIC);
 
     /*
@@ -1225,7 +1221,7 @@ kfree(void *ptr, struct malloc_type *type)
 	(z->z_Next || slgd->ZoneAry[z->z_ZoneIndex] != z)
     ) {
 	SLZone **pz;
-	struct kmemusage *kup;
+	int *kup;
 
 	for (pz = &slgd->ZoneAry[z->z_ZoneIndex]; z != *pz; pz = &(*pz)->z_Next)
 	    ;
@@ -1235,7 +1231,7 @@ kfree(void *ptr, struct malloc_type *type)
 	slgd->FreeZones = z;
 	++slgd->NFreeZones;
 	kup = btokup(z);
-	kup->ku_pagecnt = 0;
+	*kup = 0;
     }
     logmemory_quick(free_end);
     crit_exit();
