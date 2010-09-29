@@ -32,6 +32,7 @@
 .Os
 .Dt MUTEX 9
 .Sh NAME
+.Nm mutex ,
 .Nm mtx_init ,
 .Nm mtx_uninit ,
 .Nm mtx_lock_sh ,
@@ -245,7 +246,9 @@ A return value of
 means that the current count is
 .Sq 0 .
 .Sh FILES
-The uncontended path of the spinlock implementation is in
+The uncontended path of the
+.Nm
+implementation is in
 .Pa /sys/sys/mutex2.h .
 The data structures are in
 .Pa /sys/sys/mutex.h .
@@ -262,6 +265,6 @@ Mutexes first appeared in
 .Sh AUTHORS
 .An -nosplit
 The
-.Nm mutex
+.Nm
 implementation was written by
 .An Matthew Dillon .
