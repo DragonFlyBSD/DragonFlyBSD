@@ -438,7 +438,14 @@ create_pagetables(vm_paddr_t *firstaddr)
 	 *
 	 * Maxmem is in pages.
 	 */
-	nkpt = (Maxmem * (sizeof(struct vm_page) * 2) + MSGBUF_SIZE) / NBPDR;
+	ndmpdp = (ptoa(Maxmem) + NBPDP - 1) >> PDPSHIFT;
+	if (ndmpdp < 4)		/* Minimum 4GB of dirmap */
+		ndmpdp = 4;
+
+	nkpt = (Maxmem * sizeof(struct vm_page) + NBPDR - 1) / NBPDR;
+	nkpt += ((nkpt + nkpt + 1 + NKPML4E + NKPDPE + NDMPML4E + ndmpdp) +
+		511) / 512;
+	nkpt += 128;
 
 	/*
 	 * Allocate pages
@@ -456,9 +463,6 @@ create_pagetables(vm_paddr_t *firstaddr)
 	KPDphys = allocpages(firstaddr, NKPDPE);
 	KPDbase = KPDphys + ((NKPDPE - (NPDPEPG - KPDPI)) << PAGE_SHIFT);
 
-	ndmpdp = (ptoa(Maxmem) + NBPDP - 1) >> PDPSHIFT;
-	if (ndmpdp < 4)		/* Minimum 4GB of dirmap */
-		ndmpdp = 4;
 	DMPDPphys = allocpages(firstaddr, NDMPML4E);
 	if ((amd_feature & AMDID_PAGE1GB) == 0)
 		DMPDphys = allocpages(firstaddr, ndmpdp);
