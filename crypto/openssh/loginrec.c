@@ -207,6 +207,7 @@ int syslogin_write_entry(struct logininfo *li);
 
 int getlast_entry(struct logininfo *li);
 int lastlog_get_entry(struct logininfo *li);
+int utmpx_get_entry(struct logininfo *li);
 int wtmp_get_entry(struct logininfo *li);
 int wtmpx_get_entry(struct logininfo *li);
 
@@ -508,6 +509,10 @@ getlast_entry(struct logininfo *li)
 #ifdef USE_LASTLOG
 	return(lastlog_get_entry(li));
 #else /* !USE_LASTLOG */
+#if defined(USE_UTMPX) && defined(HAVE_SETUTXDB) && \
+    defined(UTXDB_LASTLOGIN) && defined(HAVE_GETUTXUSER)
+	return (utmpx_get_entry(li));
+#endif
 
 #if defined(DISABLE_LASTLOG)
 	/* On some systems we shouldn't even try to obtain last login
@@ -758,8 +763,8 @@ construct_utmpx(struct logininfo *li, struct utmpx *utx)
 	utx->ut_pid = li->pid;
 
 	/* strncpy(): Don't necessarily want null termination */
-	strncpy(utx->ut_name, li->username,
-	    MIN_SIZEOF(utx->ut_name, li->username));
+	strncpy(utx->ut_user, li->username,
+	    MIN_SIZEOF(utx->ut_user, li->username));
 
 	if (li->type == LTYPE_LOGOUT)
 		return;
@@ -1316,8 +1321,8 @@ wtmpx_write_entry(struct logininfo *li)
 static int
 wtmpx_islogin(struct logininfo *li, struct utmpx *utx)
 {
-	if (strncmp(li->username, utx->ut_name,
-	    MIN_SIZEOF(li->username, utx->ut_name)) == 0 ) {
+	if (strncmp(li->username, utx->ut_user,
+	    MIN_SIZEOF(li->username, utx->ut_user)) == 0 ) {
 # ifdef HAVE_TYPE_IN_UTMPX
 		if (utx->ut_type == USER_PROCESS)
 			return (1);
@@ -1607,6 +1612,32 @@ lastlog_get_entry(struct logininfo *li)
 }
 #endif /* HAVE_GETLASTLOGXBYNAME */
 #endif /* USE_LASTLOG */
+
+#if defined(USE_UTMPX) && defined(HAVE_SETUTXDB) && \
+    defined(UTXDB_LASTLOGIN) && defined(HAVE_GETUTXUSER)
+int
+utmpx_get_entry(struct logininfo *li)
+{
+	struct utmpx *utx;
+
+	if (setutxdb(UTXDB_LASTLOGIN, NULL) != 0)
+		return (0);
+	utx = getutxuser(li->username);
+	if (utx == NULL) {
+		endutxent();
+		return (0);
+	}
+
+	line_fullname(li->line, utx->ut_line,
+	    MIN_SIZEOF(li->line, utx->ut_line));
+	strlcpy(li->hostname, utx->ut_host,
+	    MIN_SIZEOF(li->hostname, utx->ut_host));
+	li->tv_sec = utx->ut_tv.tv_sec;
+	li->tv_usec = utx->ut_tv.tv_usec;
+	endutxent();
+	return (1);
+}
+#endif /* USE_UTMPX && HAVE_SETUTXDB && UTXDB_LASTLOGIN && HAVE_GETUTXUSER */
 
 #ifdef USE_BTMP
   /*
