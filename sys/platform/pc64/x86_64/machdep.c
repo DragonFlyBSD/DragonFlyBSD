@@ -206,7 +206,8 @@ sysctl_hw_availpages(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_hw, OID_AUTO, availpages, CTLTYPE_INT|CTLFLAG_RD,
 	0, 0, sysctl_hw_availpages, "I", "");
 
-vm_paddr_t Maxmem = 0;
+vm_paddr_t Maxmem;
+vm_paddr_t Realmem;
 
 /*
  * The number of PHYSMAP entries must be one less than the number of
@@ -249,8 +250,8 @@ cpu_startup(void *dummy)
 	perfmon_init();
 #endif
 	kprintf("real memory  = %ju (%ju MB)\n",
-		(intmax_t)ptoa(Maxmem),
-		(intmax_t)ptoa(Maxmem) / 1024 / 1024);
+		(intmax_t)Realmem,
+		(intmax_t)Realmem / 1024 / 1024);
 	/*
 	 * Display any holes after the first chunk of extended memory.
 	 */
@@ -1372,12 +1373,15 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 
 		for (i = 0; i <= physmap_idx; i += 2) {
 			if (smap->base < physmap[i + 1]) {
-				if (boothowto & RB_VERBOSE)
-					kprintf(
-	"Overlapping or non-monotonic memory region, ignoring second region\n");
+				if (boothowto & RB_VERBOSE) {
+					kprintf("Overlapping or non-monotonic "
+						"memory region, ignoring "
+						"second region\n");
+				}
 				continue;
 			}
 		}
+		Realmem += smap->length;
 
 		if (smap->base == physmap[physmap_idx + 1]) {
 			physmap[physmap_idx + 1] += smap->length;
@@ -1386,8 +1390,8 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 
 		physmap_idx += 2;
 		if (physmap_idx == PHYSMAP_SIZE) {
-			kprintf(
-		"Too many segments in the physical address map, giving up\n");
+			kprintf("Too many segments in the physical "
+				"address map, giving up\n");
 			break;
 		}
 		physmap[physmap_idx] = smap->base;

@@ -192,7 +192,8 @@ sysctl_hw_availpages(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_hw, OID_AUTO, availpages, CTLTYPE_INT|CTLFLAG_RD,
 	0, 0, sysctl_hw_availpages, "I", "");
 
-vm_paddr_t Maxmem = 0;
+vm_paddr_t Maxmem;
+vm_paddr_t Realmem;
 
 vm_paddr_t phys_avail[PHYSMAP_ENTRIES*2+2];
 vm_paddr_t dump_avail[PHYSMAP_ENTRIES*2+2];
@@ -224,7 +225,8 @@ cpu_startup(void *dummy)
 	perfmon_init();
 #endif
 	kprintf("real memory  = %ju (%ju MB)\n",
-		(intmax_t)ptoa(Maxmem), (intmax_t)ptoa(Maxmem) / 1024 / 1024);
+		(intmax_t)Realmem,
+		(intmax_t)Realmem / 1024 / 1024);
 	/*
 	 * Display any holes after the first chunk of extended memory.
 	 */
@@ -1518,17 +1520,22 @@ int15e820:
 		if (smap->length == 0)
 			goto next_run;
 
-		if (smap->base >= 0xffffffff) {
+		Realmem += smap->length;
+
+		if (smap->base >= 0xffffffffLLU) {
 			kprintf("%ju MB of memory above 4GB ignored\n",
-			    (uintmax_t)(smap->length / 1024 / 1024));
+				(uintmax_t)(smap->length / 1024 / 1024));
 			goto next_run;
 		}
 
 		for (i = 0; i <= physmap_idx; i += 2) {
 			if (smap->base < physmap[i + 1]) {
-				if (boothowto & RB_VERBOSE)
-					kprintf(
-	"Overlapping or non-montonic memory region, ignoring second region\n");
+				if (boothowto & RB_VERBOSE) {
+					kprintf("Overlapping or non-montonic "
+						"memory region, ignoring "
+						"second region\n");
+				}
+				Realmem -= smap->length;
 				goto next_run;
 			}
 		}
@@ -1540,8 +1547,8 @@ int15e820:
 
 		physmap_idx += 2;
 		if (physmap_idx == PHYSMAP_ENTRIES*2) {
-			kprintf(
-		"Too many segments in the physical address map, giving up\n");
+			kprintf("Too many segments in the physical "
+				"address map, giving up\n");
 			break;
 		}
 		physmap[physmap_idx] = smap->base;
@@ -1566,8 +1573,8 @@ next_run:
 		}
 
 		if (basemem > 640) {
-			kprintf("Preposterous BIOS basemem of %uK, truncating to 640K\n",
-				basemem);
+			kprintf("Preposterous BIOS basemem of %uK, "
+				"truncating to 640K\n", basemem);
 			basemem = 640;
 		}
 
