@@ -14,10 +14,11 @@ SRCS=	sshd.c auth-rhosts.c auth-passwd.c auth-rsa.c auth-rh-rsa.c \
 	auth2-gss.c gss-serv.c gss-serv-krb5.c \
 	loginrec.c auth-pam.c auth-shadow.c auth-sia.c md5crypt.c \
 	audit.c audit-bsm.c platform.c sftp-server.c sftp-common.c \
-	roaming_common.c
+	roaming_common.c roaming_serv.c
+WARNS?=	0
 
 # Portability layer
-SRCS+=	xmmap.c
+SRCS+=	fmt_scaled.c xmmap.c
 MAN=	sshd.8 sshd_config.5
 
 # Passwd routine

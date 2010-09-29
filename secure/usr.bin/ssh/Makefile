@@ -10,7 +10,7 @@ WARNS?=	2
 
 SRCS=	ssh.c readconf.c clientloop.c sshtty.c \
 	sshconnect.c sshconnect1.c sshconnect2.c mux.c \
-	roaming_common.c
+	roaming_common.c roaming_client.c
 
 .if defined(X11BASE)
 CFLAGS+= -DXAUTH_PATH=\"${X11BASE}/bin/xauth\"

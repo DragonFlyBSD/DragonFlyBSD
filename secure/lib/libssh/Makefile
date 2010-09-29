@@ -11,8 +11,9 @@ SRCS=	acss.c authfd.c authfile.c bufaux.c bufbn.c buffer.c \
 	readpass.c rsa.c ttymodes.c xmalloc.c addrmatch.c \
 	atomicio.c key.c dispatch.c kex.c mac.c uidswap.c uuencode.c misc.c \
 	monitor_fdpass.c rijndael.c ssh-dss.c ssh-rsa.c dh.c kexdh.c \
-	kexgex.c kexdhc.c kexgexc.c scard.c msg.c progressmeter.c dns.c \
-	entropy.c scard-opensc.c gss-genr.c umac.c jpake.c schnorr.c
+	kexgex.c kexdhc.c kexgexc.c msg.c progressmeter.c dns.c \
+	entropy.c gss-genr.c umac.c jpake.c schnorr.c \
+	ssh-pkcs11.c
 # Portability layer
 SRCS+=	bsd-misc.c getrrsetbyname.c port-tun.c
 # FreeBSD additions
