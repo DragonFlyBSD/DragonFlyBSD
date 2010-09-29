@@ -3,7 +3,7 @@
 
 PROG=	sftp
 SRCS=	sftp.c sftp-client.c sftp-common.c sftp-glob.c roaming_dummy.c
-WARNS?=	2
+WARNS?=	0
 
 # Portability layer
 SRCS+=	fmt_scaled.c

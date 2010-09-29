@@ -706,7 +706,7 @@ blacklist_filename(const Key *key)
 
 /* Scan a blacklist of known-vulnerable keys. */
 int
-blacklisted_key(const Key *key)
+blacklisted_key(Key *key)
 {
 	char *blacklist_file;
 	int fd = -1;
