@@ -503,9 +503,11 @@ main(int argc, char **argv)
 				mbpr(nl[N_MBSTAT].n_value,
 				    nl[N_MBTYPES].n_value,
 				    nl[N_NMBCLUSTERS].n_value,
-				    nl[N_NMBUFS].n_value);
-		} else
-			mbpr(0, 0, 0, 0);
+				    nl[N_NMBUFS].n_value,
+				    nl[N_NCPUS].n_value);
+		} else {
+			mbpr(0, 0, 0, 0, 0);
+		}
 		exit(0);
 	}
 #if 0
