@@ -25,7 +25,7 @@
 #ifndef _DEFINES_H
 #define _DEFINES_H
 
-/* $Id: defines.h,v 1.156 2009/08/28 01:21:07 dtucker Exp $ */
+/* $Id: defines.h,v 1.160 2010/04/09 08:13:27 dtucker Exp $ */
 
 
 /* Constants */
@@ -674,7 +674,7 @@ struct winsize {
 #else
 /* Simply select your favourite login types. */
 /* Can't do if-else because some systems use several... <sigh> */
-#  if defined(UTMPX_FILE) && !defined(DISABLE_UTMPX)
+#  if !defined(DISABLE_UTMPX)
 #    define USE_UTMPX
 #  endif
 #  if defined(UTMP_FILE) && !defined(DISABLE_UTMP)
@@ -751,6 +751,14 @@ struct winsize {
 
 #ifndef SSH_IOBUFSZ
 # define SSH_IOBUFSZ 8192
+#endif
+
+#ifndef _NSIG
+# ifdef NSIG
+#  define _NSIG NSIG
+# else
+#  define _NSIG 128
+# endif
 #endif
 
 #endif /* _DEFINES_H */
