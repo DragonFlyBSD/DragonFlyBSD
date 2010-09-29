@@ -772,10 +772,10 @@ pmap_init(void)
 	if (initial_pvs < MINPV)
 		initial_pvs = MINPV;
 	pvzone = &pvzone_store;
-	pvinit = (struct pv_entry *) kmem_alloc(&kernel_map,
-		initial_pvs * sizeof (struct pv_entry));
-	zbootinit(pvzone, "PV ENTRY", sizeof (struct pv_entry), pvinit,
-		initial_pvs);
+	pvinit = (void *)kmem_alloc(&kernel_map,
+				    initial_pvs * sizeof (struct pv_entry));
+	zbootinit(pvzone, "PV ENTRY", sizeof (struct pv_entry),
+		  pvinit, initial_pvs);
 
 	/*
 	 * Now it is safe to enable pv_table recording.
@@ -795,12 +795,21 @@ void
 pmap_init2(void)
 {
 	int shpgperproc = PMAP_SHPGPERPROC;
+	int entry_max;
 
 	TUNABLE_INT_FETCH("vm.pmap.shpgperproc", &shpgperproc);
 	pv_entry_max = shpgperproc * maxproc + vm_page_array_size;
 	TUNABLE_INT_FETCH("vm.pmap.pv_entries", &pv_entry_max);
 	pv_entry_high_water = 9 * (pv_entry_max / 10);
-	zinitna(pvzone, &pvzone_obj, NULL, 0, pv_entry_max, ZONE_INTERRUPT, 1);
+
+	/*
+	 * Subtract out pages already installed in the zone (hack)
+	 */
+	entry_max = pv_entry_max - vm_page_array_size;
+	if (entry_max <= 0)
+		entry_max = 1;
+
+	zinitna(pvzone, &pvzone_obj, NULL, 0, entry_max, ZONE_INTERRUPT, 1);
 }
 
 
