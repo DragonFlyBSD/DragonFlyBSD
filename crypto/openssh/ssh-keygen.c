@@ -1448,9 +1448,10 @@ do_ca_sign(struct passwd *pw, int argc, char **argv)
 		fclose(f);
 
 		if (!quiet) {
-			logit("Signed %s key %s: id \"%s\" serial %llu%s%s "
+			logit("Signed %s key %s: id \"%s\" serial %ju%s%s "
 			    "valid %s", key_cert_type(public), 
-			    out, public->cert->key_id, public->cert->serial,
+			    out, public->cert->key_id,
+			    (intmax_t)public->cert->serial,
 			    cert_principals != NULL ? " for " : "",
 			    cert_principals != NULL ? cert_principals : "",
 			    fmt_validity(cert_valid_from, cert_valid_to));
@@ -1676,7 +1677,7 @@ do_show_cert(struct passwd *pw)
 	    key_type(key->cert->signature_key), ca_fp);
 	printf("        Key ID: \"%s\"\n", key->cert->key_id);
 	if (!v00)
-		printf("        Serial: %llu\n", key->cert->serial);
+		printf("        Serial: %ju\n", (intmax_t)key->cert->serial);
 	printf("        Valid: %s\n",
 	    fmt_validity(key->cert->valid_after, key->cert->valid_before));
 	printf("        Principals: ");
