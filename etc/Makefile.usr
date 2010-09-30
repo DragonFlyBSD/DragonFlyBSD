@@ -51,7 +51,7 @@ pkgsrc-create:
 	mkdir -p ${.CURDIR}/pkgsrc
 	cd ${.CURDIR}/pkgsrc && git init
 	cd ${.CURDIR}/pkgsrc && \
-		git remote add origin git://git.dragonflybsd.org/pkgsrc.git
+		git remote add origin git://git.dragonflybsd.org/pkgsrcv2.git
 	cd ${.CURDIR}/pkgsrc && git fetch origin
 	cd ${.CURDIR}/pkgsrc && git branch master origin/master
 	cd ${.CURDIR}/pkgsrc && git checkout master
