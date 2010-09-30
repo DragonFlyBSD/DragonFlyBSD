@@ -159,18 +159,15 @@ NRLOBJDIR?= /usr/obj
 #########################################################################
 
 release:	check clean buildworld1 buildkernel1 \
-		buildiso srcs customizeiso mklocatedb \
-		mkiso mkimg
+		buildiso srcs customizeiso mkiso mkimg
 
 quickrel:	check clean buildworld2 buildkernel2 \
-		buildiso srcs customizeiso mklocatedb \
-		mkiso mkimg
+		buildiso srcs customizeiso mkiso mkimg
 
 realquickrel:	check clean \
-		buildiso srcs customizeiso mklocatedb \
-		mkiso mkimg
+		buildiso srcs customizeiso mkiso mkimg
 
-restartpkgs:	check customizeiso mklocatedb mkiso mkimg
+restartpkgs:	check customizeiso mkiso mkimg
 
 quick:		quickrel
 
@@ -353,24 +350,18 @@ customizeiso:
 	    bmake ${PKGSRC_OPTIONS} clean build install)"
 .endfor
 	#
-	# Remove packages which nothing depends on and clean up
+	# Remove packages which nothing depends on, add a whatis database
+	# for pkgsrc manual pages, create an initial locate database and
+	# clean up
 	#
 	${CHROOT_CMD} "pkg_leaves | xargs pkg_delete -R"
+	${CHROOT_CMD} "makewhatis /usr/pkg/man"
 	-umount ${ISOROOT}/usr/pkgsrc/distfiles
-	umount ${ISOROOT}/dev
 	umount ${ISOROOT}/usr/pkgsrc
 	rm -rf ${ISOROOT}/usr/pkgobj
 	rm -f ${ISOROOT}/etc/resolv.conf
-	makewhatis ${ISOROOT}/usr/pkg/man
-
-# So locate works
-#
-mklocatedb:
-	( find -s ${ISOROOT} -path ${ISOROOT}/tmp -or \
-		-path ${ISOROOT}/usr/tmp -or -path ${ISOROOT}/var/tmp \
-		-prune -o -print | sed -e 's#^${ISOROOT}##g' | \
-		/usr/libexec/locate.mklocatedb \
-		-presort >${ISOROOT}/var/db/locate.database )
+	${CHROOT_CMD} /etc/periodic/weekly/310.locate
+	umount ${ISOROOT}/dev
 
 mkiso:
 	( cd ${ISOROOT}; ${PKGBIN_MKISOFS} -b boot/cdboot -no-emul-boot \
@@ -465,7 +456,7 @@ help all:
 .PHONY: installer
 .PHONY: quick realquick
 .PHONY: check buildworld1 buildworld2
-.PHONY: buildkernel1 buildkernel2 buildiso customizeiso mklocatedb mkiso mkimg
+.PHONY: buildkernel1 buildkernel2 buildiso customizeiso mkiso mkimg
 .PHONY: clean realclean help all srcs
 
 .include <bsd.prog.mk>
