@@ -276,26 +276,30 @@ check_capacity(struct i_fn_args *a)
 
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
-		if (subpartition_get_capacity(sp) == -1)
+		long subpart_capacity = subpartition_get_capacity(sp);
+		const char *mountpt = subpartition_get_mountpoint(sp);
+
+		if (subpart_capacity == -1)
 			total_capacity++;
 		else
-			total_capacity += subpartition_get_capacity(sp);
+			total_capacity += subpart_capacity;
 		for (mtpt = 0; def_mountpt[mtpt] != NULL; mtpt++) {
-			if (strcmp(subpartition_get_mountpoint(sp), def_mountpt[mtpt]) == 0 &&
-			    min_capacity[mtpt] > 0 &&
-			    subpartition_get_capacity(sp) < min_capacity[mtpt]) {
-				inform(a->c, _("WARNING: the %s subpartition should "
-				    "be at least %dM in size or you will "
+			if (strcmp(mountpt, def_mountpt[mtpt]) == 0 &&
+			    subpart_capacity < min_capacity[mtpt] &&
+			    subpart_capacity != -1) {
+				inform(a->c, _("WARNING: The size (%ldM) specified for "
+				    "the %s subpartition is too small. It "
+				    "should be at least %ldM or you will "
 				    "risk running out of space during "
 				    "the installation."),
-				    subpartition_get_mountpoint(sp), min_capacity[mtpt]);
+				    subpart_capacity, mountpt,
+				    min_capacity[mtpt]);
 			}
 		}
-		if (strcmp(subpartition_get_mountpoint(sp), "/boot") != 0 &&
-		    strcmp(subpartition_get_mountpoint(sp), "swap") != 0) {
-			if ((subpartition_get_capacity(sp) == -1 &&
-			     remaining_capacity < HAMMER_MIN) ||
-			    (subpartition_get_capacity(sp) < HAMMER_MIN))
+		if (strcmp(mountpt, "/boot") != 0 &&
+		    strcmp(mountpt, "swap") != 0) {
+			if ((subpart_capacity == -1 && remaining_capacity < HAMMER_MIN) ||
+			    (subpart_capacity != -1 && subpart_capacity < HAMMER_MIN))
 				warn_smallpart++;
 		}
 	}
