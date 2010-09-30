@@ -1,10 +1,10 @@
 .\"
 .\" Copyright (c) 2010, Venkatesh Srinivas <me@endeavour.zapto.org>
-.\" 
+.\"
 .\" Permission to use, copy, modify, or distribute this software for any
 .\" purpose with or without fee is hereby granted, provided that the above
 .\" copyright notice and this permission notice appear in all copies.
-.\" 
+.\"
 .\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
 .\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
 .\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
@@ -13,10 +13,11 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd Sept 29, 2010
+.Dd September 29, 2010
+.Os
 .Dt SYSINIT 9
 .Sh NAME
-.Nm SYSINIT 
+.Nm SYSINIT
 .Nd Subsystem initializalization
 .Sh SYNOPSIS
 .In sys/kernel.h
@@ -26,22 +27,22 @@
 is a mechanism used in the initialization of kernel subsystems. The function
 .Fa func
 is called with the argument
-.Fa ident 
+.Fa ident
 either when the kernel is booted or when a module is loaded, depending on where
 the invocation is found.
 .Pp
-The 
+The
 .Fa subsystem
 and
-.Fa order 
+.Fa order
 parameters control when the function is called during initialization. The kernel
 calls all of the functions in a subsystem before advancing to the next one.
 .Pp
-Most 
+Most
 .Nm
-invocations will use one of these identifiers for 
+invocations will use one of these identifiers for
 .Fa subsystem:
-.Bl -tag -width 
+.Bl -tag -width
 .It Dv SI_SUB_DRIVERS
 Device driver initialization
 .It Dv SI_SUB_VFS
@@ -54,23 +55,23 @@ VM daemon initialization
 Idle-time kernel threads
 .El
 .Pp
-These subsystems are initialized in the order they are listed. 
-For the complete list of subsystems, consult 
+These subsystems are initialized in the order they are listed.
+For the complete list of subsystems, consult
 .Bl -tag -width /sys/sys/kernel.h
 .It Pa sys/sys/kernel.h
 .El
 .Pp
-The 
+The
 .Fa order
-parameter controls when in a subsystem a function is called; the 
+parameter controls when in a subsystem a function is called; the
 SI_ORDER_FIRST parameter marks a function to be called first in subsystem. The
 SI_ORDER_SECOND and SI_ORDER_THIRD flags mark a function to be called second
 and third, respectively. The SI_ORDER_MIDDLE flag marks a function to be called
 somewhere in the middle of a subsystem's initialization. The SI_ORDER_ANY
 flag marks a function to be called after all other types of functions.
 .Pp
-The 
-.Fa uniquifier 
+The
+.Fa uniquifier
 parameter is unique a identifier for this SYSINIT invocation.
 .Sh EXAMPLE
 .Pp
@@ -79,4 +80,3 @@ at any point while initializing helper threads:
 .Bd -literal
 SYSINIT(rand, SI_SUB_HELPER_THREADS, SI_ORDER_ANY, rand_thread_init, NULL);
 .Ed
-
