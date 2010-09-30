@@ -901,8 +901,8 @@ kstrdup(const char *str, struct malloc_type *type)
 #ifdef SMP
 /*
  * Notify our cpu that a remote cpu has freed some chunks in a zone that
- * we own.  Due to MP races we might no longer own the zone, use the
- * kmemusage array to check.
+ * we own.  RCount will be bumped so the memory should be good, but validate
+ * that it really is.
  */
 static
 void
@@ -914,79 +914,81 @@ kfree_remote(void *ptr)
     int nfree;
     int *kup;
 
-    /*
-     * Do not dereference (z) until we validate that its storage is
-     * still around.
-     */
     slgd = &mycpu->gd_slab;
     z = ptr;
     kup = btokup(z);
+    KKASSERT(*kup == -((int)mycpuid + 1));
+    KKASSERT(z->z_RCount > 0);
+    atomic_subtract_int(&z->z_RCount, 1);
 
-    if (*kup == -((int)mycpuid + 1)) {		/* -1 to -(N+1) */
-	logmemory(free_rem_beg, z, NULL, 0, 0);
-	KKASSERT(z->z_Magic == ZALLOC_SLAB_MAGIC);
-	KKASSERT(z->z_Cpu  == mycpu->gd_cpuid);
-	nfree = z->z_NFree;
+    logmemory(free_rem_beg, z, NULL, 0, 0);
+    KKASSERT(z->z_Magic == ZALLOC_SLAB_MAGIC);
+    KKASSERT(z->z_Cpu  == mycpu->gd_cpuid);
+    nfree = z->z_NFree;
 
-	/*
-	 * Indicate that we will no longer be off of the ZoneAry by
-	 * clearing RSignal.
-	 */
-	if (z->z_RChunks)
-	    z->z_RSignal = 0;
+    /*
+     * Indicate that we will no longer be off of the ZoneAry by
+     * clearing RSignal.
+     */
+    if (z->z_RChunks)
+	z->z_RSignal = 0;
 
-	/*
-	 * Atomically extract the bchunks list and then process it back
-	 * into the lchunks list.  We want to append our bchunks to the
-	 * lchunks list and not prepend since we likely do not have
-	 * cache mastership of the related data (not that it helps since
-	 * we are using c_Next).
-	 */
-	while ((bchunk = z->z_RChunks) != NULL) {
-	    cpu_ccfence();
-	    if (atomic_cmpset_ptr(&z->z_RChunks, bchunk, NULL)) {
-		*z->z_LChunksp = bchunk;
-		while (bchunk) {
-			chunk_mark_free(z, bchunk);
-			z->z_LChunksp = &bchunk->c_Next;
-			bchunk = bchunk->c_Next;
-			++z->z_NFree;
-		}
-		break;
+    /*
+     * Atomically extract the bchunks list and then process it back
+     * into the lchunks list.  We want to append our bchunks to the
+     * lchunks list and not prepend since we likely do not have
+     * cache mastership of the related data (not that it helps since
+     * we are using c_Next).
+     */
+    while ((bchunk = z->z_RChunks) != NULL) {
+	cpu_ccfence();
+	if (atomic_cmpset_ptr(&z->z_RChunks, bchunk, NULL)) {
+	    *z->z_LChunksp = bchunk;
+	    while (bchunk) {
+		    chunk_mark_free(z, bchunk);
+		    z->z_LChunksp = &bchunk->c_Next;
+		    bchunk = bchunk->c_Next;
+		    ++z->z_NFree;
 	    }
+	    break;
 	}
-	if (z->z_NFree && nfree == 0) {
-	    z->z_Next = slgd->ZoneAry[z->z_ZoneIndex];
-	    slgd->ZoneAry[z->z_ZoneIndex] = z;
-	}
-
-	/*
-	 * If the zone becomes totally free, and there are other zones we
-	 * can allocate from, move this zone to the FreeZones list.  Since
-	 * this code can be called from an IPI callback, do *NOT* try to mess
-	 * with kernel_map here.  Hysteresis will be performed at malloc() time.
-	 */
-	if (z->z_NFree == z->z_NMax &&
-	    (z->z_Next || slgd->ZoneAry[z->z_ZoneIndex] != z)
-	) {
-	    SLZone **pz;
-	    int *kup;
-
-	    for (pz = &slgd->ZoneAry[z->z_ZoneIndex];
-		 z != *pz;
-		 pz = &(*pz)->z_Next) {
-		;
-	    }
-	    *pz = z->z_Next;
-	    z->z_Magic = -1;
-	    z->z_Next = slgd->FreeZones;
-	    slgd->FreeZones = z;
-	    ++slgd->NFreeZones;
-	    kup = btokup(z);
-	    *kup = 0;
-	}
-	logmemory(free_rem_end, z, bchunk, 0, 0);
     }
+    if (z->z_NFree && nfree == 0) {
+	z->z_Next = slgd->ZoneAry[z->z_ZoneIndex];
+	slgd->ZoneAry[z->z_ZoneIndex] = z;
+    }
+
+    /*
+     * If the zone becomes totally free, and there are other zones we
+     * can allocate from, move this zone to the FreeZones list.  Since
+     * this code can be called from an IPI callback, do *NOT* try to mess
+     * with kernel_map here.  Hysteresis will be performed at malloc() time.
+     *
+     * Do not move the zone if there is an IPI inflight, otherwise MP
+     * races can result in our free_remote code accessing a destroyed
+     * zone.
+     */
+    if (z->z_NFree == z->z_NMax &&
+	(z->z_Next || slgd->ZoneAry[z->z_ZoneIndex] != z) &&
+	z->z_RCount == 0
+    ) {
+	SLZone **pz;
+	int *kup;
+
+	for (pz = &slgd->ZoneAry[z->z_ZoneIndex];
+	     z != *pz;
+	     pz = &(*pz)->z_Next) {
+	    ;
+	}
+	*pz = z->z_Next;
+	z->z_Magic = -1;
+	z->z_Next = slgd->FreeZones;
+	slgd->FreeZones = z;
+	++slgd->NFreeZones;
+	kup = btokup(z);
+	*kup = 0;
+    }
+    logmemory(free_rem_end, z, bchunk, 0, 0);
 }
 
 #endif
@@ -1120,9 +1122,14 @@ kfree(void *ptr, struct malloc_type *type)
 	 * WARNING! This code competes with other cpus.  Once we
 	 *	    successfully link the chunk to RChunks the remote
 	 *	    cpu can rip z's storage out from under us.
+	 *
+	 *	    Bumping RCount prevents z's storage from getting
+	 *	    ripped out.
 	 */
 	rsignal = z->z_RSignal;
 	cpu_lfence();
+	if (rsignal)
+		atomic_add_int(&z->z_RCount, 1);
 
 	chunk = ptr;
 	for (;;) {
@@ -1134,7 +1141,6 @@ kfree(void *ptr, struct malloc_type *type)
 	    if (atomic_cmpset_ptr(&z->z_RChunks, bchunk, chunk))
 		break;
 	}
-	/* z cannot be dereferenced now */
 
 	/*
 	 * We have to signal the remote cpu if our actions will cause
@@ -1151,6 +1157,10 @@ kfree(void *ptr, struct malloc_type *type)
 	if (bchunk == NULL && rsignal) {
 	    logmemory(free_request, ptr, type, z->z_ChunkSize, 0);
 	    lwkt_send_ipiq_passive(z->z_CpuGd, kfree_remote, z);
+	    /* z can get ripped out from under us from this point on */
+	} else if (rsignal) {
+	    atomic_subtract_int(&z->z_RCount, 1);
+	    /* z can get ripped out from under us from this point on */
 	}
 #else
 	panic("Corrupt SLZone");
@@ -1218,7 +1228,8 @@ kfree(void *ptr, struct malloc_type *type)
      * with kernel_map here.  Hysteresis will be performed at malloc() time.
      */
     if (z->z_NFree == z->z_NMax && 
-	(z->z_Next || slgd->ZoneAry[z->z_ZoneIndex] != z)
+	(z->z_Next || slgd->ZoneAry[z->z_ZoneIndex] != z) &&
+	z->z_RCount == 0
     ) {
 	SLZone **pz;
 	int *kup;

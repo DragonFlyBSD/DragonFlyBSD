@@ -99,6 +99,7 @@ typedef struct SLZone {
     SLChunk	**z_LChunksp;	/* tailp */
     SLChunk	*z_RChunks;	/* linked list of chunks remote cpu */
     int		z_RSignal;	/* signal interlock */
+    int		z_RCount;	/* prevent local destruction w/inflight ipis */
 #if defined(INVARIANTS)
     __uint32_t	z_Bitmap[];	/* bitmap of free chunks for sanity check */
 #endif
