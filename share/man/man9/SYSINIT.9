@@ -18,13 +18,14 @@
 .Dt SYSINIT 9
 .Sh NAME
 .Nm SYSINIT
-.Nd Subsystem initializalization
+.Nd Subsystem initialization
 .Sh SYNOPSIS
 .In sys/kernel.h
 .Fn SYSINIT "uniquifier" "subsystem" "order" "func" "ident"
 .Sh DESCRIPTION
 .Nm
-is a mechanism used in the initialization of kernel subsystems. The function
+is a mechanism used in the initialization of kernel subsystems.
+The function
 .Fa func
 is called with the argument
 .Fa ident
@@ -35,14 +36,15 @@ The
 .Fa subsystem
 and
 .Fa order
-parameters control when the function is called during initialization. The kernel
+parameters control when the function is called during initialization.
+The kernel
 calls all of the functions in a subsystem before advancing to the next one.
 .Pp
 Most
 .Nm
 invocations will use one of these identifiers for
-.Fa subsystem:
-.Bl -tag -width
+.Fa subsystem :
+.Bl -tag -width ".Dv SI_SUB_HELPER_THREADS"
 .It Dv SI_SUB_DRIVERS
 Device driver initialization
 .It Dv SI_SUB_VFS
@@ -57,26 +59,38 @@ Idle-time kernel threads
 .Pp
 These subsystems are initialized in the order they are listed.
 For the complete list of subsystems, consult
-.Bl -tag -width /sys/sys/kernel.h
-.It Pa sys/sys/kernel.h
-.El
+.In sys/kernel.h .
 .Pp
 The
 .Fa order
-parameter controls when in a subsystem a function is called; the
-SI_ORDER_FIRST parameter marks a function to be called first in subsystem. The
-SI_ORDER_SECOND and SI_ORDER_THIRD flags mark a function to be called second
-and third, respectively. The SI_ORDER_MIDDLE flag marks a function to be called
-somewhere in the middle of a subsystem's initialization. The SI_ORDER_ANY
+parameter controls when in a subsystem a function is called.
+The
+.Dv SI_ORDER_FIRST
+parameter marks a function to be called first in subsystem.
+The
+.Dv SI_ORDER_SECOND
+and
+.Dv SI_ORDER_THIRD
+flags mark a function to be called second and third, respectively.
+The
+.Dv SI_ORDER_MIDDLE
+flag marks a function to be called somewhere in the middle of a
+subsystem's initialization.
+The
+.Dv SI_ORDER_ANY
 flag marks a function to be called after all other types of functions.
 .Pp
 The
 .Fa uniquifier
-parameter is unique a identifier for this SYSINIT invocation.
-.Sh EXAMPLE
-.Pp
-This example calls the function rand_thread_init with a NULL argument
-at any point while initializing helper threads:
+parameter is a unique identifier for this
+.Nm
+invocation.
+.Sh EXAMPLES
+This example calls the function
+.Fn rand_thread_init
+with a
+.Dv NULL
+argument at any point while initializing helper threads:
 .Bd -literal
 SYSINIT(rand, SI_SUB_HELPER_THREADS, SI_ORDER_ANY, rand_thread_init, NULL);
 .Ed
