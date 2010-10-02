@@ -734,9 +734,6 @@ static int lookup_bus_type	(char *name);
 /*
  * 1st pass on motherboard's Intel MP specification table.
  *
- * initializes:
- *	ncpus = 1
- *
  * determines:
  *	cpu_apic_address (common to all CPUs)
  *	io_apic_address[N]
@@ -744,6 +741,8 @@ static int lookup_bus_type	(char *name);
  *	mp_nbusses
  *	mp_napics
  *	nintrs
+ *	need_hyperthreading_fixup
+ *	logical_cpus
  */
 static void
 mptable_pass1(struct mptable_pos *mpt)
@@ -867,6 +866,7 @@ mptable_pass1(struct mptable_pos *mpt)
  *
  * sets:
  *	boot_cpu_id
+ *	logical_cpus_mask
  *	ID_TO_IO(N), phy APIC ID to log CPU/IO table
  *	CPU_TO_ID(N), logical CPU to APIC ID table
  *	IO_TO_ID(N), logical IO to APIC ID table
