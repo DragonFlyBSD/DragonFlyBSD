@@ -288,17 +288,18 @@ static u_int	boot_address;
 static u_int	base_memory;
 static int	mp_finish;
 
-static long	search_for_sig(u_int32_t target, int count);
 static void	mp_enable(u_int boot_addr);
 
 static int	mptable_probe(void);
+static long	mptable_search_sig(u_int32_t target, int count);
 static void	mptable_hyperthread_fixup(u_int id_mask);
 static void	mptable_pass1(struct mptable_pos *);
 static int	mptable_pass2(struct mptable_pos *);
-static void	default_mp_table(int type);
-static void	fix_mp_table(void);
+static void	mptable_default(int type);
+static void	mptable_fix(void);
 static void	mptable_map(struct mptable_pos *, vm_paddr_t);
 static void	mptable_unmap(struct mptable_pos *);
+
 #ifdef APIC_IO
 static void	setup_apic_irq_mapping(void);
 static int	apic_int_is_bus_type(int intr, int bus_type);
@@ -357,18 +358,18 @@ mptable_probe(void)
 	if (ebda_addr != 0) {
 		/* search first 1K of EBDA */
 		target = (u_int32_t)ebda_addr;
-		if ((x = search_for_sig(target, 1024 / 4)) > 0)
+		if ((x = mptable_search_sig(target, 1024 / 4)) > 0)
 			return x;
 	} else {
 		/* last 1K of base memory, effective 'top of base' passed in */
 		target = (u_int32_t)(base_memory - 0x400);
-		if ((x = search_for_sig(target, 1024 / 4)) > 0)
+		if ((x = mptable_search_sig(target, 1024 / 4)) > 0)
 			return x;
 	}
 
 	/* search the BIOS */
 	target = (u_int32_t)BIOS_BASE;
-	if ((x = search_for_sig(target, BIOS_COUNT)) > 0)
+	if ((x = mptable_search_sig(target, BIOS_COUNT)) > 0)
 		return x;
 
 	/* nothing found */
@@ -562,10 +563,10 @@ mp_enable(u_int boot_addr)
 
 	/* can't process default configs till the CPU APIC is pmapped */
 	if (x)
-		default_mp_table(x);
+		mptable_default(x);
 
 	/* post scan cleanup */
-	fix_mp_table();
+	mptable_fix();
 
 #if defined(APIC_IO)
 
@@ -622,7 +623,7 @@ mp_enable(u_int boot_addr)
 #define MP_SIG		0x5f504d5f	/* _MP_ */
 #define NEXT(X)		((X) += 4)
 static long
-search_for_sig(u_int32_t target, int count)
+mptable_search_sig(u_int32_t target, int count)
 {
 	vm_size_t map_size;
 	u_int32_t *addr;
@@ -1303,7 +1304,7 @@ io_apic_find_int_entry(int apic, int pin)
  * parse an Intel MP specification table
  */
 static void
-fix_mp_table(void)
+mptable_fix(void)
 {
 	int	x;
 #ifdef APIC_IO
@@ -1970,7 +1971,7 @@ apic_polarity(int apic, int pin)
  * FIXME: probably not complete yet...
  */
 static void
-default_mp_table(int type)
+mptable_default(int type)
 {
 	int     ap_cpu_id, boot_cpu_id;
 #if defined(APIC_IO)
