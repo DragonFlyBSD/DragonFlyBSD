@@ -277,7 +277,6 @@ extern inthand_t IDTVEC(fast_syscall), IDTVEC(fast_syscall32);
  * Local data and functions.
  */
 
-static int	mp_capable;
 static u_int	boot_address;
 static u_int	base_memory;
 static int	mp_finish;
@@ -366,7 +365,6 @@ mp_probe(void)
 
 	/* nothing found */
 	mpfps = (mpfps_t)0;
-	mp_capable = 0;
 	return 0;
 
 found:
@@ -377,8 +375,6 @@ found:
 	mpfps = (mpfps_t)x;
 	mptable_pass1();
 
-	/* flag fact that we are running multiple processors */
-	mp_capable = 1;
 	return 1;
 }
 
@@ -390,12 +386,7 @@ void
 mp_start(void)
 {
 	POSTCODE(MP_START_POST);
-
-	/* look for MP capable motherboard */
-	if (mp_capable)
-		mp_enable(boot_address);
-	else
-		panic("MP hardware not found!");
+	mp_enable(boot_address);
 }
 
 
