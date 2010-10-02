@@ -336,7 +336,6 @@ int
 mp_probe(void)
 {
 	long    x;
-	u_long  segment;
 	u_int32_t target;
  
 	/*
