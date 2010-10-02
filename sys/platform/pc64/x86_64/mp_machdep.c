@@ -538,6 +538,9 @@ mp_enable(u_int boot_addr)
 
 	POSTCODE(MP_ENABLE_POST);
 
+	if (!mp_probe())
+		panic("mp_enable: mp_probe failed\n");
+
 #if 0 /* JGXXX */
 	/* turn on 4MB of V == P addressing so we can get to MP table */
 	*(int *)PTD = PG_V | PG_RW | ((uintptr_t)(void *)KPTphys & PG_FRAME);
@@ -551,7 +554,7 @@ mp_enable(u_int boot_addr)
 	mptable_pass1();
 
 	if (cpu_apic_address == 0)
-		panic("mp_enable: no local apic!");
+		panic("mp_enable: no local apic!\n");
 
 	/* examine the MP table for needed info, uses physical addresses */
 	x = mptable_pass2();
@@ -625,15 +628,23 @@ mp_enable(u_int boot_addr)
 static long
 search_for_sig(u_int32_t target, int count)
 {
-	int     x;
-	u_int32_t *addr = (u_int32_t *) (KERNBASE + target);
+	vm_size_t map_size;
+	u_int32_t *addr;
+	int x, ret;
 
-	for (x = 0; x < count; NEXT(x))
-		if (addr[x] == MP_SIG)
+	map_size = count * sizeof(u_int32_t);
+	addr = pmap_mapdev((vm_paddr_t)target, map_size);
+
+	ret = -1;
+	for (x = 0; x < count; NEXT(x)) {
+		if (addr[x] == MP_SIG) {
 			/* make array index a byte index */
-			return (long)(&addr[x]);
-
-	return -1;
+			ret = target + (x * sizeof(u_int32_t));
+			break;
+		}
+	}
+	pmap_unmapdev((vm_offset_t)addr, map_size);
+	return ret;
 }
 
 

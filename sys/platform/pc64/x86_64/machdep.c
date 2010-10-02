@@ -1414,9 +1414,6 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 	/* Save EBDA address, if any */
 	ebda_addr = (u_long)(*(u_short *)(KERNBASE + 0x40e));
 	ebda_addr <<= 4;
-
-	/* look for the MP hardware - needed for apic addresses */
-	mp_probe();
 #endif
 
 	/*
