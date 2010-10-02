@@ -697,10 +697,6 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 #endif
 	}
 #endif
-#ifdef SMP
-	if (cpu_apic_address == 0)
-		panic("pmap_bootstrap: no local apic!");
-#endif
 
 	/*
 	 * We need to finish setting up the globaldata page for the BSP.

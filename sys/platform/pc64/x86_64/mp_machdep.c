@@ -550,6 +550,9 @@ mp_enable(u_int boot_addr)
 
 	POSTCODE(MP_ENABLE_POST);
 
+	if (cpu_apic_address == 0)
+		panic("pmap_bootstrap: no local apic!");
+
 #if 0 /* JGXXX */
 	/* turn on 4MB of V == P addressing so we can get to MP table */
 	*(int *)PTD = PG_V | PG_RW | ((uintptr_t)(void *)KPTphys & PG_FRAME);
