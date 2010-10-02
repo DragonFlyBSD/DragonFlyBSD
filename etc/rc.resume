@@ -24,14 +24,14 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: src/etc/rc.resume,v 1.7 2003/12/30 17:30:39 njl Exp $
+# $FreeBSD: src/etc/rc.resume,v 1.9 2008/07/21 22:55:40 thompsa Exp $
 # $DragonFly: src/etc/rc.resume,v 1.4 2007/12/27 20:00:51 matthias Exp $
 #
 
 # sample run command file for APM Resume Event
 
 if [ $# -ne 2 ]; then
-	echo "Usage: $0 [apm|acpi] [standby,suspend|1-5]"
+	echo "Usage: $0 [apm|acpi] [standby,suspend|1-4]"
 	exit 1
 fi
 
@@ -49,9 +49,13 @@ fi
 # pccardq | awk -F '~' '$5 == "inactive" \
 #	{ printf("pccardc power %d 1", $1); }' | sh
 
-# If a device driver has problems suspending, try unloading it before
+# If a device driver has problems resuming, try unloading it before
 # suspend and reloading it on resume.  Example:
 # kldload usb
+
+# wpa_supplicant(8) doesn't seem to reassociate during resume.  Uncomment
+# the following to signal it to reassociate.
+# /usr/sbin/wpa_cli reassociate
 
 logger -t $subsystem resumed at `date +'%Y%m%d %H:%M:%S'`
 sync && sync && sync
