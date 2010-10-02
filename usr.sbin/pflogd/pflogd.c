@@ -568,7 +568,7 @@ main(int argc, char **argv)
 	const char *errstr = NULL;
 	char *pidf = NULL;
 
-        ret = 0;
+	ret = 0;
 
 	/* Neither FreeBSD nor DFly have this; Max seems to think this may
 	 * be a paranoid check. Comment it out:
