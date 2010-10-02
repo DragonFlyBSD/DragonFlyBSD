@@ -90,7 +90,6 @@ extern struct pcb		stoppcbs[];
 /* functions in mp_machdep.c */
 void	*permanent_io_mapping(vm_paddr_t);
 u_int	mp_bootaddress		(u_int);
-int	mp_probe		(void);
 void	mp_start		(void);
 void	mp_announce		(void);
 u_int	isa_apic_mask		(u_int);

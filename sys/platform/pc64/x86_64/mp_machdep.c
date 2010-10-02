@@ -292,6 +292,7 @@ static int	mp_finish;
 static long	search_for_sig(u_int32_t target, int count);
 static void	mp_enable(u_int boot_addr);
 
+static int	mptable_probe(void);
 static void	mptable_hyperthread_fixup(u_int id_mask);
 static void	mptable_pass1(struct mptable_pos *);
 static int	mptable_pass2(struct mptable_pos *);
@@ -339,8 +340,8 @@ mp_bootaddress(u_int basemem)
 /*
  * Look for an Intel MP spec table (ie, SMP capable hardware).
  */
-int
-mp_probe(void)
+static int
+mptable_probe(void)
 {
 	long    x;
 	u_int32_t target;
@@ -540,9 +541,9 @@ mp_enable(u_int boot_addr)
 
 	POSTCODE(MP_ENABLE_POST);
 
-	mpfps_paddr = mp_probe();
+	mpfps_paddr = mptable_probe();
 	if (mpfps_paddr == 0)
-		panic("mp_enable: mp_probe failed\n");
+		panic("mp_enable: mptable_probe failed\n");
 
 	mptable_map(&mpt, mpfps_paddr);
 
