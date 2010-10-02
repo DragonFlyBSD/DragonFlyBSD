@@ -234,7 +234,6 @@ int	mp_nbusses;		/* # of busses */
 #ifdef APIC_IO
 int	mp_napics;		/* # of IO APICs */
 #endif
-int	boot_cpu_id;		/* designated BSP */
 vm_offset_t cpu_apic_address;
 #ifdef APIC_IO
 vm_offset_t io_apic_address[NAPICID];	/* NAPICID is more than enough */
@@ -865,7 +864,6 @@ mptable_pass1(struct mptable_pos *mpt)
  * 2nd pass on motherboard's Intel MP specification table.
  *
  * sets:
- *	boot_cpu_id
  *	logical_cpus_mask
  *	ID_TO_IO(N), phy APIC ID to log CPU/IO table
  *	CPU_TO_ID(N), logical CPU to APIC ID table
@@ -935,9 +933,6 @@ mptable_pass2(struct mptable_pos *mpt)
 	}
 #endif
 
-	/* setup the cpu/apic mapping arrays */
-	boot_cpu_id = -1;
-
 	/* record whether PIC or virtual-wire mode */
 	machintr_setvar_simple(MACHINTR_VAR_IMCR_PRESENT, fps->mpfb2 & 0x80);
 
@@ -1005,7 +1000,7 @@ mptable_pass2(struct mptable_pos *mpt)
 		position = (uint8_t *)position + basetable_entry_types[type].length;
 	}
 
-	if (boot_cpu_id == -1)
+	if (CPU_TO_ID(0) < 0)
 		panic("NO BSP found!");
 
 	/* report fact that its NOT a default configuration */
@@ -1511,6 +1506,8 @@ setup_apic_irq_mapping(void)
 static int
 processor_entry(proc_entry_ptr entry, int cpu)
 {
+	KKASSERT(cpu > 0);
+
 	/* check for usability */
 	if (!(entry->cpu_flags & PROCENTRY_FLAG_EN))
 		return 0;
@@ -1519,7 +1516,6 @@ processor_entry(proc_entry_ptr entry, int cpu)
 		panic("CPU APIC ID out of range (0..%d)", NAPICID - 1);
 	/* check for BSP flag */
 	if (entry->cpu_flags & PROCENTRY_FLAG_BP) {
-		boot_cpu_id = entry->apic_id;
 		CPU_TO_ID(0) = entry->apic_id;
 		ID_TO_CPU(entry->apic_id) = 0;
 		return 0;	/* its already been counted */
@@ -1976,7 +1972,7 @@ apic_polarity(int apic, int pin)
 static void
 default_mp_table(int type)
 {
-	int     ap_cpu_id;
+	int     ap_cpu_id, boot_cpu_id;
 #if defined(APIC_IO)
 	int     io_apic_id;
 	int     pin;

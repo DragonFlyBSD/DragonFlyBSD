@@ -69,7 +69,6 @@ extern int			bsp_apic_ready;
 extern int			mp_naps;
 extern int			mp_nbusses;
 extern int			mp_napics;
-extern int			boot_cpu_id;
 extern vm_offset_t		cpu_apic_address;
 extern vm_offset_t		io_apic_address[];
 extern u_int32_t		cpu_apic_versions[];
