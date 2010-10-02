@@ -839,12 +839,6 @@ mptable_pass1(void)
 
 	/* See if we need to fixup HT logical CPUs. */
 	mptable_hyperthread_fixup(id_mask);
-	
-	/*
-	 * Count the BSP.
-	 * This is also used as a counter while starting the APs.
-	 */
-	ncpus = 1;
 
 	--mp_naps;	/* subtract the BSP */
 }
