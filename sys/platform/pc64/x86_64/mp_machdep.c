@@ -370,12 +370,7 @@ mp_probe(void)
 	return 0;
 
 found:
-	/*
-	 * Calculate needed resources.  We can safely map physical
-	 * memory into SMPpt after mptable_pass1() completes.
-	 */
 	mpfps = (mpfps_t)x;
-	mptable_pass1();
 
 	return 1;
 }
@@ -543,14 +538,20 @@ mp_enable(u_int boot_addr)
 
 	POSTCODE(MP_ENABLE_POST);
 
-	if (cpu_apic_address == 0)
-		panic("pmap_bootstrap: no local apic!");
-
 #if 0 /* JGXXX */
 	/* turn on 4MB of V == P addressing so we can get to MP table */
 	*(int *)PTD = PG_V | PG_RW | ((uintptr_t)(void *)KPTphys & PG_FRAME);
 	cpu_invltlb();
 #endif
+
+	/*
+	 * We can safely map physical memory into SMPpt after
+	 * mptable_pass1() completes.
+	 */
+	mptable_pass1();
+
+	if (cpu_apic_address == 0)
+		panic("mp_enable: no local apic!");
 
 	/* examine the MP table for needed info, uses physical addresses */
 	x = mptable_pass2();
@@ -747,6 +748,9 @@ mptable_pass1(void)
 	u_int	id_mask;
 
 	POSTCODE(MPTABLE_PASS1_POST);
+
+	if (mpfps == NULL)
+		panic("mptable_pass1: MP float pointer is not found\n");
 
 #ifdef APIC_IO
 	/* clear various tables */
