@@ -108,7 +108,7 @@ hammer_cmd_volume_del(char **av, int ac)
 
         fd = open(filesystem, O_RDONLY);
 	if (fd < 0) {
-		fprintf(stderr, "hammer volume-add: unable to access %s: %s\n",
+		fprintf(stderr, "hammer volume-del: unable to access %s: %s\n",
 			filesystem, strerror(errno));
 		exit(1);
 	}
