@@ -91,6 +91,7 @@ void	*permanent_io_mapping(vm_paddr_t);
 u_int	mp_bootaddress		(u_int);
 void	mp_start		(void);
 void	mp_announce		(void);
+void	mp_set_cpuids		(int, int);
 u_int	isa_apic_mask		(u_int);
 int	isa_apic_irq		(int);
 int	pci_apic_irq		(int, int, int);

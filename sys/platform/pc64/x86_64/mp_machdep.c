@@ -1508,6 +1508,13 @@ setup_apic_irq_mapping(void)
 
 #endif
 
+void
+mp_set_cpuids(int cpu_id, int apic_id)
+{
+	CPU_TO_ID(cpu_id) = apic_id;
+	ID_TO_CPU(apic_id) = cpu_id;
+}
+
 static int
 processor_entry(proc_entry_ptr entry, int cpu)
 {
@@ -1521,15 +1528,13 @@ processor_entry(proc_entry_ptr entry, int cpu)
 		panic("CPU APIC ID out of range (0..%d)", NAPICID - 1);
 	/* check for BSP flag */
 	if (entry->cpu_flags & PROCENTRY_FLAG_BP) {
-		CPU_TO_ID(0) = entry->apic_id;
-		ID_TO_CPU(entry->apic_id) = 0;
+		mp_set_cpuids(0, entry->apic_id);
 		return 0;	/* its already been counted */
 	}
 
 	/* add another AP to list, if less than max number of CPUs */
 	else if (cpu < MAXCPU) {
-		CPU_TO_ID(cpu) = entry->apic_id;
-		ID_TO_CPU(entry->apic_id) = cpu;
+		mp_set_cpuids(cpu, entry->apic_id);
 		return 1;
 	}
 
