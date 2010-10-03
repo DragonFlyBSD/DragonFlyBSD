@@ -123,11 +123,11 @@ static void			*madt_sdth_map(vm_paddr_t);
 static void			madt_sdth_unmap(struct acpi_sdth *);
 static vm_paddr_t		madt_search_xsdt(vm_paddr_t);
 static vm_paddr_t		madt_search_rsdt(vm_paddr_t);
-static int			madt_parse(vm_paddr_t);
+static int			madt_check(vm_paddr_t);
 
 extern u_long	ebda_addr;
 
-int
+vm_paddr_t
 madt_probe(void)
 {
 	const struct acpi_rsdp *rsdp;
@@ -160,7 +160,7 @@ madt_probe(void)
 	if (rsdp == NULL) {
 		kprintf("madt_probe: no RSDP\n");
 		pmap_unmapdev((vm_offset_t)ptr, mapsz);
-		return ENOENT;
+		return 0;
 	} else {
 		kprintf("madt: RSDP in BIOS mem\n");
 	}
@@ -178,9 +178,13 @@ found_rsdp:
 	madt_paddr = search(search_paddr);
 	if (madt_paddr == 0) {
 		kprintf("madt_probe: can't locate MADT\n");
-		return ENOENT;
+		return 0;
 	}
-	return madt_parse(madt_paddr);
+
+	/* Preliminary checks */
+	if (madt_check(madt_paddr))
+		return 0;
+	return madt_paddr;
 }
 
 static const struct acpi_rsdp *
@@ -338,54 +342,58 @@ back:
 	return madt_paddr;
 }
 
-static int
-madt_parse(vm_paddr_t madt_paddr)
+vm_offset_t
+madt_pass1(vm_paddr_t madt_paddr)
 {
 	struct acpi_madt *madt;
-	int size, cur, error, cpu_count;
+	vm_offset_t lapic_addr;
 
 	KKASSERT(madt_paddr != 0);
 
 	madt = madt_sdth_map(madt_paddr);
 	KKASSERT(madt != NULL);
 
-	if (madt->madt_hdr.sdth_rev != 1 && madt->madt_hdr.sdth_rev != 2) {
-		kprintf("madt_parse: unsupported MADT revision %d\n",
-			madt->madt_hdr.sdth_rev);
-		error = EOPNOTSUPP;
-		goto back;
-	}
-
-	if (madt->madt_hdr.sdth_len <
-	    sizeof(*madt) - sizeof(madt->madt_ents)) {
-		kprintf("madt_parse: invalid MADT length %u\n",
-			madt->madt_hdr.sdth_len);
-		error = EINVAL;
-		goto back;
-	}
-
 	kprintf("madt: LAPIC address 0x%08x, flags %#x\n",
 		madt->madt_lapic_addr, madt->madt_flags);
-	cpu_apic_address = madt->madt_lapic_addr;
+	lapic_addr = madt->madt_lapic_addr;
+
+	madt_sdth_unmap(&madt->madt_hdr);
+
+	return lapic_addr;
+}
+
+int
+madt_pass2(vm_paddr_t madt_paddr, int bsp_apic_id)
+{
+	struct acpi_madt *madt;
+	int size, cur, error, cpu, found_bsp;
+
+	kprintf("madt: BSP apic id %d\n", bsp_apic_id);
+
+	KKASSERT(madt_paddr != 0);
+
+	madt = madt_sdth_map(madt_paddr);
+	KKASSERT(madt != NULL);
 
 	size = madt->madt_hdr.sdth_len -
 	       (sizeof(*madt) - sizeof(madt->madt_ents));
 	cur = 0;
 	error = 0;
-	cpu_count = 0;
+	found_bsp = 0;
+	cpu = 1;
 
 	while (size - cur > sizeof(struct acpi_madt_ent)) {
 		const struct acpi_madt_ent *ent;
 
 		ent = (const struct acpi_madt_ent *)&madt->madt_ents[cur];
 		if (ent->me_len < sizeof(*ent)) {
-			kprintf("madt_parse: invalid MADT entry len %d\n",
+			kprintf("madt_pass2: invalid MADT entry len %d\n",
 				ent->me_len);
 			error = EINVAL;
 			break;
 		}
 		if (ent->me_len > (size - cur)) {
-			kprintf("madt_parse: invalid MADT entry len %d, "
+			kprintf("madt_pass2: invalid MADT entry len %d, "
 				"> table length\n", ent->me_len);
 			error = EINVAL;
 			break;
@@ -397,7 +405,7 @@ madt_parse(vm_paddr_t madt_paddr)
 			const struct acpi_madt_lapic *lapic_ent;
 
 			if (ent->me_len < sizeof(*lapic_ent)) {
-				kprintf("madt_parse: invalid MADT lapic entry "
+				kprintf("madt_pass2: invalid MADT lapic entry "
 					"len %d\n", ent->me_len);
 				error = EINVAL;
 				break;
@@ -407,17 +415,60 @@ madt_parse(vm_paddr_t madt_paddr)
 				kprintf("madt: cpu_id %d, apic_id %d\n",
 					lapic_ent->ml_cpu_id,
 					lapic_ent->ml_apic_id);
-				mp_set_cpuids(lapic_ent->ml_cpu_id,
-					      lapic_ent->ml_apic_id);
-				++cpu_count;
+				if (lapic_ent->ml_apic_id == bsp_apic_id) {
+					mp_set_cpuids(0,
+					lapic_ent->ml_apic_id);
+					found_bsp = 1;
+				} else {
+					mp_set_cpuids(cpu,
+					lapic_ent->ml_apic_id);
+					++cpu;
+				}
 			}
 		}
 	}
-	if (cpu_count == 0)
+	if (!found_bsp) {
+		kprintf("madt_pass2: BSP is not found\n");
 		error = EINVAL;
+	}
+	if (cpu == 1) {
+		kprintf("madt_pass2: no APs\n");
+		error = EINVAL;
+	}
 	if (!error)
-		mp_naps = cpu_count - 1;
+		mp_naps = cpu - 1;
+
+	madt_sdth_unmap(&madt->madt_hdr);
+	return error;
+}
+
+static int
+madt_check(vm_paddr_t madt_paddr)
+{
+	struct acpi_madt *madt;
+	int error = 0;
+
+	KKASSERT(madt_paddr != 0);
+
+	madt = madt_sdth_map(madt_paddr);
+	KKASSERT(madt != NULL);
+
+	if (madt->madt_hdr.sdth_rev != 1 && madt->madt_hdr.sdth_rev != 2) {
+		kprintf("madt_check: unsupported MADT revision %d\n",
+			madt->madt_hdr.sdth_rev);
+		error = EOPNOTSUPP;
+		goto back;
+	}
+
+	if (madt->madt_hdr.sdth_len <
+	    sizeof(*madt) - sizeof(madt->madt_ents)) {
+		kprintf("madt_check: invalid MADT length %u\n",
+			madt->madt_hdr.sdth_len);
+		error = EINVAL;
+	}
 back:
 	madt_sdth_unmap(&madt->madt_hdr);
 	return error;
 }
+
+

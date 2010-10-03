@@ -132,7 +132,9 @@ int	io_apic_get_id		(int);
 int	ext_int_setup		(int, int);
 
 /* functions in mp_madt.c */
-int	madt_probe(void);
+vm_paddr_t	madt_probe(void);
+vm_offset_t	madt_pass1(vm_paddr_t);
+int		madt_pass2(vm_paddr_t, int);
 
 #if defined(READY)
 void	clr_io_apic_mask24	(int, u_int32_t);

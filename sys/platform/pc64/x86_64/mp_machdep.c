@@ -540,7 +540,6 @@ mp_enable(u_int boot_addr)
 	u_int   ux;
 #endif	/* APIC_IO */
 	vm_paddr_t mpfps_paddr;
-	struct mptable_pos mpt;
 
 	POSTCODE(MP_ENABLE_POST);
 
@@ -550,6 +549,8 @@ mp_enable(u_int boot_addr)
 		mpfps_paddr = mptable_probe();
 
 	if (mpfps_paddr) {
+		struct mptable_pos mpt;
+
 		mptable_map(&mpt, mpfps_paddr);
 
 		/*
@@ -576,11 +577,20 @@ mp_enable(u_int boot_addr)
 		/* post scan cleanup */
 		mptable_fix();
 	} else {
-		if (madt_probe())
+		vm_paddr_t madt_paddr;
+		int bsp_apic_id;
+
+		madt_paddr = madt_probe();
+		if (madt_paddr == 0)
 			panic("mp_enable: madt_probe failed\n");
 
+		cpu_apic_address = madt_pass1(madt_paddr);
 		if (cpu_apic_address == 0)
 			panic("mp_enable: no local apic (madt)!\n");
+
+		bsp_apic_id = (lapic.id & 0xff000000) >> 24;
+		if (madt_pass2(madt_paddr, bsp_apic_id))
+			panic("mp_enable: madt_pass2 failed\n");
 	}
 
 #if defined(APIC_IO)
