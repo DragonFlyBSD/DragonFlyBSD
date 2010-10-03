@@ -541,6 +541,10 @@ mp_enable(u_int boot_addr)
 
 	POSTCODE(MP_ENABLE_POST);
 
+#if 0
+	madt_probe();
+#endif
+
 	mpfps_paddr = mptable_probe();
 	if (mpfps_paddr == 0)
 		panic("mp_enable: mptable_probe failed\n");

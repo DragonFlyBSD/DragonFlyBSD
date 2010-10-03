@@ -130,6 +130,9 @@ void	io_apic_set_id		(int, int);
 int	io_apic_get_id		(int);
 int	ext_int_setup		(int, int);
 
+/* functions in mp_madt.c */
+int	madt_probe(void);
+
 #if defined(READY)
 void	clr_io_apic_mask24	(int, u_int32_t);
 void	set_io_apic_mask24	(int, u_int32_t);
