@@ -1515,9 +1515,11 @@ scstart(struct tty *tp)
 	    sc_puts(scp, buf, len);
 	}
 	tp->t_state &= ~TS_BUSY;
+	syscons_unlock();
 	ttwwakeup(tp);
+    } else {
+	syscons_unlock();
     }
-    syscons_unlock();
 }
 
 static void

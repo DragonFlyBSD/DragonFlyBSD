@@ -1020,7 +1020,6 @@ state_ask_fs(struct i_fn_args *a)
 void
 state_format_disk(struct i_fn_args *a)
 {
-
 	switch (dfui_be_present_dialog(a->c, _("How Much Disk?"),
 	    _("Use Entire Disk|Use Part of Disk|Return to Select Disk"),
 	    _("Select how much of this disk you want to use for %s.\n\n%s"),
@@ -1029,24 +1028,10 @@ state_format_disk(struct i_fn_args *a)
 	case 1:
 		/* Entire Disk */
 		if (measure_activated_swap_from_disk(a, storage_get_selected_disk(a->s)) > 0) {
-			switch(dfui_be_present_dialog(a->c,
-			    _("Swap already active"),
-			    _("Reboot|Return to Select Disk"),
-			    _("Some subpartitions on the primary partition "
-			    "of this disk are already activated as swap. "
-			    "Since there is no way to deactivate swap in "
-			    "%s once it is activated, in order "
-			    "to edit the subpartition layout of this "
-			    "primary partition, you must first reboot."),
-			    OPERATING_SYSTEM_NAME)) {
-			case 1:
-				state = state_reboot;
-				return;
-			case 2:
+			if (swapoff_all(a) == NULL) {
+				inform(a->c, _("Warning: swap could not be turned off."));
 				state = state_select_disk;
 				return;
-			default:
-				abort_backend();
 			}
 		}
 
@@ -1101,24 +1086,10 @@ state_select_slice(struct i_fn_args *a)
 	} else {
 		if (measure_activated_swap_from_slice(a, storage_get_selected_disk(a->s),
 		    storage_get_selected_slice(a->s)) > 0) {
-			switch(dfui_be_present_dialog(a->c,
-			    _("Swap already active"),
-			    _("Reboot|Return to Select Primary Partition"),
-			    _("Some subpartitions on the selected primary "
-			    "partition are already activated as swap. "
-			    "Since there is no way to deactivate swap in "
-			    "%s once it is activated, in order "
-			    "to edit the subpartition layout of this "
-			    "primary partition, you must first reboot."),
-			    OPERATING_SYSTEM_NAME)) {
-			case 1:
-				state = state_reboot;
-				return;
-			case 2:
+			if (swapoff_all(a) == NULL) {
+				inform(a->c, _("Warning: swap could not be turned off."));
 				state = state_select_slice;
 				return;
-			default:
-				abort_backend();
 			}
 		}
 
@@ -1163,33 +1134,15 @@ state_select_slice(struct i_fn_args *a)
 void
 state_create_subpartitions(struct i_fn_args *a)
 {
-	char msg_buf[1][1024];
 	struct commands *cmds;
 
 	if (measure_activated_swap_from_slice(a, storage_get_selected_disk(a->s),
 	    storage_get_selected_slice(a->s)) > 0) {
-		snprintf(msg_buf[0], sizeof(msg_buf[0]),
-		    _("Some subpartitions on the selected primary "
-		    "partition are already activated as swap. "
-		    "Since there is no way to deactivate swap in "
-		    "%s once it is activated, in order "
-		    "to edit the subpartition layout of this "
-		    "primary partition, you must first reboot."),
-		    OPERATING_SYSTEM_NAME);
-		switch(dfui_be_present_dialog(a->c, _("Swap already active"),
-		    disk_get_formatted(storage_get_selected_disk(a->s)) ?
-		    _("Reboot|Return to Select Disk") :
-		    _("Reboot|Return to Select Primary Partition"),
-		    msg_buf[0])) {
-		case 1:
-			state = state_reboot;
-			return;
-		case 2:
+		if (swapoff_all(a) == NULL) {
+			inform(a->c, _("Warning: swap could not be turned off."));
 			state = disk_get_formatted(storage_get_selected_disk(a->s)) ?
 			    state_select_disk : state_select_slice;
 			return;
-		default:
-			abort_backend();
 		}
 	}
 

@@ -223,7 +223,7 @@ mmrw(cdev_t dev, struct uio *uio, int flags)
 		}
 		case 2:
 			/*
-			 * minor device 2 is EOF/RATHOLE 
+			 * minor device 2 (/dev/null) is EOF/RATHOLE
 			 */
 			if (uio->uio_rw == UIO_READ)
 				return (0);
@@ -545,6 +545,12 @@ mm_filter_read(struct knote *kn, long hint)
 	return (1);
 }
 
+static int
+mm_filter_write(struct knote *kn, long hint)
+{
+	return (1);
+}
+
 static void
 dummy_filter_detach(struct knote *kn) {}
 
@@ -553,6 +559,9 @@ static struct filterops random_read_filtops =
 
 static struct filterops mm_read_filtops =
         { FILTEROP_ISFD, NULL, dummy_filter_detach, mm_filter_read };
+
+static struct filterops mm_write_filtops =
+        { FILTEROP_ISFD, NULL, dummy_filter_detach, mm_filter_write };
 
 int
 mmkqfilter(struct dev_kqfilter_args *ap)
@@ -571,6 +580,9 @@ mmkqfilter(struct dev_kqfilter_args *ap)
 			kn->kn_fop = &mm_read_filtops;
 			break;
 		}
+		break;
+	case EVFILT_WRITE:
+		kn->kn_fop = &mm_write_filtops;
 		break;
 	default:
 		ap->a_result = EOPNOTSUPP;

@@ -3283,7 +3283,8 @@ sctp_sbappendaddr_nocheck(struct signalsockbuf *ssb, struct sockaddr *asa, struc
 	}
 	if (((inp->sctp_flags & SCTP_PCB_FLAGS_TCPTYPE) == 0) ||
 	    ((inp->sctp_flags & SCTP_PCB_FLAGS_IN_TCPPOOL)== 0)) {
-		if (asa->sa_len > MHLEN)
+		uint32_t len = asa->sa_len;	/* workaround GCC stupidity */
+		if (len > MHLEN)
 			return (0);
  try_again:
 		MGETHDR(m, MB_DONTWAIT, MT_SONAME);

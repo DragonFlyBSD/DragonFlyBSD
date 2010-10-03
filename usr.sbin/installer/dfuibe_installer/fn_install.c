@@ -675,4 +675,10 @@ fn_install_os(struct i_fn_args *a)
 		inform(a->c, _("Warning: subpartitions were not correctly unmounted."));
 
 	commands_free(cmds);
+
+	/*
+	 * Finally, remove all swap.
+	 */
+	if (swapoff_all(a) == NULL)
+		inform(a->c, _("Warning: swap could not be turned off."));
 }
