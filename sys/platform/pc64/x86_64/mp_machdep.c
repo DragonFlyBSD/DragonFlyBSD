@@ -588,7 +588,12 @@ mp_enable(u_int boot_addr)
 		if (cpu_apic_address == 0)
 			panic("mp_enable: no local apic (madt)!\n");
 
-		bsp_apic_id = (lapic.id & 0xff000000) >> 24;
+		/*
+		 * XXX: where is the best place to set lapic?
+		 */
+		lapic = pmap_mapdev_uncacheable(cpu_apic_address, sizeof(struct LAPIC));
+
+		bsp_apic_id = (lapic->id & 0xff000000) >> 24;
 		if (madt_pass2(madt_paddr, bsp_apic_id))
 			panic("mp_enable: madt_pass2 failed\n");
 	}
