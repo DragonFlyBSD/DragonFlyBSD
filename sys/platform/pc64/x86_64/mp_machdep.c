@@ -232,7 +232,7 @@ int	current_postcode;
 extern struct region_descriptor r_gdt, r_idt;
 
 int	mp_naps;		/* # of Applications processors */
-int	mp_nbusses;		/* # of busses */
+static int	mp_nbusses;	/* # of busses */
 #ifdef APIC_IO
 int	mp_napics;		/* # of IO APICs */
 #endif

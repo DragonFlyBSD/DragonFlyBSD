@@ -66,7 +66,6 @@ void	io_apic_write		(int, int, u_int);
 
 /* global data in mp_machdep.c */
 extern int			mp_naps;
-extern int			mp_nbusses;
 extern int			mp_napics;
 extern vm_offset_t		cpu_apic_address;
 extern vm_offset_t		io_apic_address[];
