@@ -1063,14 +1063,82 @@ mptable_pass2(struct mptable_pos *mpt)
 static void
 mptable_hyperthread_fixup(u_int id_mask)
 {
-	u_int i, id;
+	int i, id, lcpus_max;
 
-	/* Nothing to do if there is no HTT support. */
 	if ((cpu_feature & CPUID_HTT) == 0)
 		return;
-	logical_cpus = (cpu_procinfo & CPUID_HTT_CORES) >> 16;
-	if (logical_cpus <= 1)
+
+	lcpus_max = (cpu_procinfo & CPUID_HTT_CORES) >> 16;
+	if (lcpus_max <= 1)
 		return;
+
+	if (strcmp(cpu_vendor, "GenuineIntel") == 0) {
+		/*
+		 * INSTRUCTION SET REFERENCE, A-M (#253666)
+		 * Page 3-181, Table 3-20
+		 * "The nearest power-of-2 integer that is not smaller
+		 *  than EBX[23:16] is the number of unique initial APIC
+		 *  IDs reserved for addressing different logical
+		 *  processors in a physical package."
+		 */
+		for (i = 0; ; ++i) {
+			if ((1 << i) >= lcpus_max) {
+				lcpus_max = 1 << i;
+				break;
+			}
+		}
+	}
+
+	if (mp_naps == lcpus_max) {
+		/* We have nothing to fix */
+		return;
+	} else if (mp_naps == 1) {
+		/* XXX this may be incorrect */
+		logical_cpus = lcpus_max;
+	} else {
+		int cur, prev, dist;
+
+		/*
+		 * Calculate the distances between two nearest
+		 * APIC IDs.  If all such distances are same,
+		 * then it is the number of missing cpus that
+		 * we are going to fill later.
+		 */
+		dist = cur = prev = -1;
+		for (id = 0; id < MAXCPU; ++id) {
+			if ((id_mask & 1 << id) == 0)
+				continue;
+
+			cur = id;
+			if (prev >= 0) {
+				int new_dist = cur - prev;
+
+				if (dist < 0)
+					dist = new_dist;
+
+				/*
+				 * Make sure that all distances
+				 * between two nearest APIC IDs
+				 * are same.
+				 */
+				if (dist != new_dist)
+					return;
+			}
+			prev = cur;
+		}
+		if (dist == 1)
+			return;
+
+		/* Must be power of 2 */
+		if (dist & (dist - 1))
+			return;
+
+		/* Can't exceed CPU package capacity */
+		if (dist > lcpus_max)
+			logical_cpus = lcpus_max;
+		else
+			logical_cpus = dist;
+	}
 
 	/*
 	 * For each APIC ID of a CPU that is set in the mask,
@@ -1078,7 +1146,7 @@ mptable_hyperthread_fixup(u_int id_mask)
 	 * physical processor.  If any of those ID's are
 	 * already in the table, then kill the fixup.
 	 */
-	for (id = 0; id <= MAXCPU; id++) {
+	for (id = 0; id < MAXCPU; id++) {
 		if ((id_mask & 1 << id) == 0)
 			continue;
 		/* First, make sure we are on a logical_cpus boundary. */
