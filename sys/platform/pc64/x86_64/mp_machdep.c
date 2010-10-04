@@ -232,8 +232,8 @@ int	current_postcode;
 extern struct region_descriptor r_gdt, r_idt;
 
 int	mp_naps;		/* # of Applications processors */
-static int	mp_nbusses;	/* # of busses */
 #ifdef APIC_IO
+static int	mp_nbusses;	/* # of busses */
 int	mp_napics;		/* # of IO APICs */
 #endif
 vm_offset_t cpu_apic_address;
@@ -751,18 +751,20 @@ static int default_data[7][5] =
 };
 
 
+#ifdef APIC_IO
+
 /* the bus data */
 static bus_datum *bus_data;
 
-#ifdef APIC_IO
 /* the IO INT data, one entry per possible APIC INTerrupt */
 static io_int  *io_apic_ints;
 static int nintrs;
+
 #endif
 
 static int processor_entry	(proc_entry_ptr entry, int cpu);
-static int bus_entry		(bus_entry_ptr entry, int bus);
 #ifdef APIC_IO
+static int bus_entry		(bus_entry_ptr entry, int bus);
 static int io_apic_entry	(io_apic_entry_ptr entry, int apic);
 static int int_entry		(int_entry_ptr entry, int intr);
 #endif
@@ -810,8 +812,8 @@ mptable_pass1(struct mptable_pos *mpt)
 
 	/* init everything to empty */
 	mp_naps = 0;
-	mp_nbusses = 0;
 #ifdef APIC_IO
+	mp_nbusses = 0;
 	mp_napics = 0;
 	nintrs = 0;
 #endif
@@ -827,8 +829,8 @@ mptable_pass1(struct mptable_pos *mpt)
 
 		/* fill in with defaults */
 		mp_naps = 2;		/* includes BSP */
-		mp_nbusses = default_data[fps->mpfb1 - 1][0];
 #if defined(APIC_IO)
+		mp_nbusses = default_data[fps->mpfb1 - 1][0];
 		mp_napics = 1;
 		nintrs = 16;
 #endif	/* APIC_IO */
@@ -856,7 +858,9 @@ mptable_pass1(struct mptable_pos *mpt)
 				}
 				break;
 			case 1: /* bus_entry */
+#ifdef APIC_IO
 				++mp_nbusses;
+#endif
 				break;
 			case 2: /* io_apic_entry */
 #ifdef APIC_IO
@@ -941,9 +945,9 @@ mptable_pass2(struct mptable_pos *mpt)
 	    M_DEVBUF, M_WAITOK | M_ZERO);
 	MALLOC(io_apic_ints, io_int *, sizeof(io_int) * (nintrs + FIXUP_EXTRA_APIC_INTS),
 	    M_DEVBUF, M_WAITOK);
-#endif
 	MALLOC(bus_data, bus_datum *, sizeof(bus_datum) * mp_nbusses,
 	    M_DEVBUF, M_WAITOK);
+#endif
 
 #ifdef APIC_IO
 	for (i = 0; i < mp_napics; i++) {
@@ -960,11 +964,11 @@ mptable_pass2(struct mptable_pos *mpt)
 #endif
 	}
 
+#ifdef APIC_IO
 	/* clear bus data table */
 	for (x = 0; x < mp_nbusses; ++x)
 		bus_data[x].bus_id = 0xff;
 
-#ifdef APIC_IO
 	/* clear IO APIC INT table */
 	for (x = 0; x < (nintrs + 1); ++x) {
 		io_apic_ints[x].int_type = 0xff;
@@ -1012,8 +1016,10 @@ mptable_pass2(struct mptable_pos *mpt)
 			}
 			break;
 		case 1:
+#ifdef APIC_IO
 			if (bus_entry(position, bus))
 				++bus;
+#endif
 			break;
 		case 2:
 #ifdef APIC_IO
@@ -1412,14 +1418,13 @@ io_apic_find_int_entry(int apic, int pin)
 static void
 mptable_fix(void)
 {
-	int	x;
 #ifdef APIC_IO
+	int	x;
 	int	id;
 	int	apic;		/* IO APIC unit number */
 	int     freeid;		/* Free physical APIC ID */
 	int	physid;		/* Current physical IO APIC ID */
 	io_int *io14;
-#endif
 	int	bus_0 = 0;	/* Stop GCC warning */
 	int	bus_pci = 0;	/* Stop GCC warning */
 	int	num_pci_bus;
@@ -1462,7 +1467,6 @@ mptable_fix(void)
 		bus_data[bus_pci].bus_type = bus_data[bus_0].bus_type;
 		bus_data[bus_0].bus_type = PCI;
 
-#ifdef APIC_IO
 		/* swap each relavant INTerrupt entry */
 		id = bus_data[bus_pci].bus_id;
 		for (x = 0; x < nintrs; ++x) {
@@ -1473,10 +1477,8 @@ mptable_fix(void)
 				io_apic_ints[x].src_bus_id = id;
 			}
 		}
-#endif
 	}
 
-#ifdef APIC_IO
 	/* Assign IO APIC IDs.
 	 * 
 	 * First try the existing ID. If a conflict is detected, try
@@ -1512,9 +1514,7 @@ mptable_fix(void)
 		panic("Free physical APIC ID not usable");
 	}
 	fix_id_to_io_mapping();
-#endif
 
-#ifdef APIC_IO
 	/* detect and fix broken Compaq MP table */
 	if (apic_int_type(0, 0) == -1) {
 		kprintf("APIC_IO: MP table broken: 8259->APIC entry missing!\n");
@@ -1643,6 +1643,7 @@ processor_entry(proc_entry_ptr entry, int cpu)
 	return 0;
 }
 
+#ifdef APIC_IO
 
 static int
 bus_entry(bus_entry_ptr entry, int bus)
@@ -1666,8 +1667,6 @@ bus_entry(bus_entry_ptr entry, int bus)
 
 	return 1;
 }
-
-#ifdef APIC_IO
 
 static int
 io_apic_entry(io_apic_entry_ptr entry, int apic)
@@ -1934,6 +1933,8 @@ undirect_pci_irq(int rirq)
 }
 
 
+#ifdef APIC_IO
+
 /*
  * given a bus ID, return:
  *  the bus type if found
@@ -1950,8 +1951,6 @@ apic_bus_type(int id)
 
 	return -1;
 }
-
-#ifdef APIC_IO
 
 /*
  * given a LOGICAL APIC# and pin#, return:
@@ -2161,10 +2160,12 @@ mptable_default(int type)
 	case 5:
 	case 6:
 	case 7:
+#ifdef APIC_IO
 		bus_data[0].bus_id = default_data[type - 1][1];
 		bus_data[0].bus_type = default_data[type - 1][2];
 		bus_data[1].bus_id = default_data[type - 1][3];
 		bus_data[1].bus_type = default_data[type - 1][4];
+#endif
 		break;
 
 	/* case 4: case 7:		   MCA NOT supported */
