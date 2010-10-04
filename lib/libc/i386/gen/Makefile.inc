@@ -4,6 +4,7 @@
 
 SRCS+=	fpclassifyl.c infinityl.c isfinitel.c isinfl.c isnanl.c \
 	ldexp.c makecontext.c nanf.c signbitl.c \
+	_gcc_hack.c \
 	_ctx_start.S _setjmp.S alloca.S fabs.S flt_rounds.S fpgetmask.S \
 	fpgetround.S \
 	fpgetsticky.S fpsetmask.S fpsetround.S fpsetsticky.S mcontext.S modf.S \

@@ -5,7 +5,7 @@
 # machine-independent gen sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/gen ${.CURDIR}/../libc/gen
 
-SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c _gcc_hack.c \
+SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	alarm.c arc4random.c assert.c basename.c \
 	clock.c closedir.c confstr.c \
 	ctermid.c ctype.c daemon.c devname.c dirname.c disklabel.c disktab.c \
