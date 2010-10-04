@@ -169,7 +169,8 @@ int  smb_put_asunistring(struct smb_rq *rqp, const char *src);
  * Compatibilty with 5.x functions
  */
 int smb_kthread_create(void (*func)(void *), void *arg,
-	struct proc **newpp, int flags, const char *fmt, ...);
+	struct proc **newpp, int flags, const char *fmt, ...)
+	__printflike(5, 6);
 void smb_kthread_exit(void);
 int smb_sleep(void *chan, struct smb_slock *sl, int slpflags, const char *wmesg, int timo);
 

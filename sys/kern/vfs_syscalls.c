@@ -82,7 +82,8 @@
 
 #include <vfs/union/union.h>
 
-static void mount_warning(struct mount *mp, const char *ctl, ...);
+static void mount_warning(struct mount *mp, const char *ctl, ...)
+		__printflike(2, 3);
 static int mount_path(struct proc *p, struct mount *mp, char **rb, char **fb);
 static int checkvp_chdir (struct vnode *vn, struct thread *td);
 static void checkdirs (struct nchandle *old_nch, struct nchandle *new_nch);

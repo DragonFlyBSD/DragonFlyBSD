@@ -59,7 +59,7 @@ typedef int pnp_scan_cb(device_t dev, u_char tag, u_char *res, int len,
 			struct isa_config *config, int ldn);
 
 char *pnp_eisaformat(u_int32_t id);
-void pnp_printf(u_int32_t id, char *fmt, ...);
+void pnp_printf(u_int32_t id, char *fmt, ...) __printflike(2, 3);
 void pnp_parse_resources(device_t dev, u_char *resources, int len, int ldn);
 u_char *pnp_parse_dependant(device_t dev, u_char *resources, int len,
 			    struct isa_config *config, int ldn);

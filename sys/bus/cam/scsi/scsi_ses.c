@@ -131,7 +131,7 @@ static int safte_set_objstat(ses_softc_t *, ses_objstat *, int);
 #define	MEMCPY(dest, src, amt)	bcopy(src, dest, amt)
 
 static int ses_runcmd(struct ses_softc *, char *, int, char *, int *);
-static void ses_log(struct ses_softc *, const char *, ...);
+static void ses_log(struct ses_softc *, const char *, ...) __printflike(2, 3);
 
 /*
  * Gerenal FreeBSD kernel stuff.

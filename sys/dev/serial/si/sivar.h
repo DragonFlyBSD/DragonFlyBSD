@@ -64,7 +64,8 @@ struct si_softc {
  * debugging stuff - manipulated using siconfig(8)
  */
 
-void	si_dprintf(struct si_port *pp, int flags, const char *fmt, ...);
+void	si_dprintf(struct si_port *pp, int flags, const char *fmt, ...)
+	    __printflike(3, 4);
 
 #define DPRINT(x)	si_dprintf x
 

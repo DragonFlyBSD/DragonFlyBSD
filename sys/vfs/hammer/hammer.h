@@ -1441,7 +1441,7 @@ int hammer_crc_test_blockmap(hammer_blockmap_t blockmap);
 int hammer_crc_test_volume(hammer_volume_ondisk_t ondisk);
 int hammer_crc_test_btree(hammer_node_ondisk_t ondisk);
 int hammer_crc_test_leaf(void *data, hammer_btree_leaf_elm_t leaf);
-void hkprintf(const char *ctl, ...);
+void hkprintf(const char *ctl, ...) __printflike(1, 2);
 udev_t hammer_fsid_to_udev(uuid_t *uuid);
 
 

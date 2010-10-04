@@ -46,6 +46,9 @@
 
 #include "rndtest.h"
 
+static	int rndtest_modevent(module_t, int, void *);
+static	void rndtest_report(struct rndtest_state *, int, const char *, ...)
+		 __printflike(3, 4);
 static	void rndtest_test(struct rndtest_state *);
 static	void rndtest_timeout(void *);
 

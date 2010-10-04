@@ -123,6 +123,7 @@ static void disk_probe(struct disk *dp, int reprobe);
 static void _setdiskinfo(struct disk *disk, struct disk_info *info);
 static void bioqwritereorder(struct bio_queue_head *bioq);
 static void disk_cleanserial(char *serno);
+static int disk_debug(int, char *, ...) __printflike(2, 3);
 
 static d_open_t diskopen;
 static d_close_t diskclose;
