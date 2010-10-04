@@ -290,7 +290,7 @@ siattach(device_t dev)
 	}
 #endif
 
-	DPRINT((0, DBG_AUTOBOOT, "si%d: type: %s paddr: %x maddr: %x\n", unit,
+	DPRINT((0, DBG_AUTOBOOT, "si%d: type: %s paddr: %p maddr: %p\n", unit,
 		sc->sc_typename, sc->sc_paddr, sc->sc_maddr));
 
 	sc->sc_ports = NULL;			/* mark as uninitialised */
@@ -456,7 +456,7 @@ siattach(device_t dev)
 	nport = 0;
 	modp = (struct si_module *)(maddr + 0x80);
 	for (;;) {
-		DPRINT((0, DBG_DOWNLOAD, "si%d: ccb addr 0x%x\n", unit, modp));
+		DPRINT((0, DBG_DOWNLOAD, "si%d: ccb addr %p\n", unit, modp));
 		switch (modp->sm_type) {
 		case TA4:
 			DPRINT((0, DBG_DOWNLOAD,
@@ -936,7 +936,7 @@ siwrite(struct dev_write_args *ap)
 	}
 	pp = MINOR2PP(mynor);
 	tp = pp->sp_tty;
-	DPRINT((pp, DBG_WRITE, "siwrite(%s,%x,%x)\n", devtoname(dev), ap->a_uio, ap->a_ioflag));
+	DPRINT((pp, DBG_WRITE, "siwrite(%s,%p,%x)\n", devtoname(dev), ap->a_uio, ap->a_ioflag));
 
 	crit_enter();
 	/*
@@ -984,7 +984,7 @@ siioctl(struct dev_ioctl_args *ap)
 	pp = MINOR2PP(mynor);
 	tp = pp->sp_tty;
 
-	DPRINT((pp, DBG_ENTRY|DBG_IOCTL, "siioctl(%s,%lx,%x,%x)\n",
+	DPRINT((pp, DBG_ENTRY|DBG_IOCTL, "siioctl(%s,%lx,%p,%x)\n",
 		devtoname(dev), cmd, data, ap->a_fflag));
 	if (IS_STATE(mynor)) {
 		struct termios *ct;
@@ -1158,13 +1158,13 @@ si_Sioctl(cdev_t dev, u_long cmd, caddr_t data, int flag, struct ucred *cred)
 	int card, port;
 	int mynor = minor(dev);
 
-	DPRINT((0, DBG_ENTRY|DBG_IOCTL, "si_Sioctl(%s,%lx,%x,%x)\n",
+	DPRINT((0, DBG_ENTRY|DBG_IOCTL, "si_Sioctl(%s,%lx,%p,%x)\n",
 		devtoname(dev), cmd, data, flag));
 
 #if 1
-	DPRINT((0, DBG_IOCTL, "TCSI_PORT=%x\n", TCSI_PORT));
-	DPRINT((0, DBG_IOCTL, "TCSI_CCB=%x\n", TCSI_CCB));
-	DPRINT((0, DBG_IOCTL, "TCSI_TTY=%x\n", TCSI_TTY));
+	DPRINT((0, DBG_IOCTL, "TCSI_PORT=%lx\n", TCSI_PORT));
+	DPRINT((0, DBG_IOCTL, "TCSI_CCB=%lx\n", TCSI_CCB));
+	DPRINT((0, DBG_IOCTL, "TCSI_TTY=%lx\n", TCSI_TTY));
 #endif
 
 	if (!IS_CONTROLDEV(mynor)) {
@@ -1308,7 +1308,7 @@ siparam(struct tty *tp, struct termios *t)
 	BYTE val;
 
 	lwkt_gettoken(&tty_token);
-	DPRINT((pp, DBG_ENTRY|DBG_PARAM, "siparam(%x,%x)\n", tp, t));
+	DPRINT((pp, DBG_ENTRY|DBG_PARAM, "siparam(%p,%p)\n", tp, t));
 	cflag = t->c_cflag;
 	iflag = t->c_iflag;
 	oflag = t->c_oflag;
@@ -1505,7 +1505,7 @@ si_modem(struct si_port *pp, enum si_mctl cmd, int bits)
 	int x;
 
 	ASSERT_LWKT_TOKEN_HELD(&tty_token);
-	DPRINT((pp, DBG_ENTRY|DBG_MODEM, "si_modem(%x,%s,%x)\n", pp, si_mctl2str(cmd), bits));
+	DPRINT((pp, DBG_ENTRY|DBG_MODEM, "si_modem(%p,%s,%x)\n", pp, si_mctl2str(cmd), bits));
 	ccbp = pp->sp_ccb;		/* Find channel address */
 	switch (cmd) {
 	case GET:
@@ -1953,7 +1953,7 @@ si_start(struct tty *tp)
 	pp = TP2PP(tp);
 
 	DPRINT((pp, DBG_ENTRY|DBG_START,
-		"si_start(%x) t_state %x sp_state %x t_outq.c_cc %d\n",
+		"si_start(%p) t_state %x sp_state %x t_outq.c_cc %d\n",
 		tp, tp->t_state, pp->sp_state, qp->c_cc));
 
 	if (tp->t_state & (TS_TIMEOUT|TS_TTSTOP))
@@ -2042,7 +2042,7 @@ si_lstart(void *arg)
 	struct si_port *pp = arg;
 	struct tty *tp;
 
-	DPRINT((pp, DBG_ENTRY|DBG_LSTART, "si_lstart(%x) sp_state %x\n",
+	DPRINT((pp, DBG_ENTRY|DBG_LSTART, "si_lstart(%p) sp_state %x\n",
 		pp, pp->sp_state));
 
 	crit_enter();
@@ -2082,7 +2082,7 @@ si_stop(struct tty *tp, int rw)
 	pp = TP2PP(tp);
 	ccbp = pp->sp_ccb;
 
-	DPRINT((TP2PP(tp), DBG_ENTRY|DBG_STOP, "si_stop(%x,%x)\n", tp, rw));
+	DPRINT((TP2PP(tp), DBG_ENTRY|DBG_STOP, "si_stop(%p,%x)\n", tp, rw));
 
 	/* XXX: must check (rw & FWRITE | FREAD) etc flushing... */
 	if (rw & FWRITE) {
@@ -2116,7 +2116,7 @@ si_command(struct si_port *pp, int cmd, int waitflag)
 	volatile struct si_channel *ccbp = pp->sp_ccb;
 	int x;
 
-	DPRINT((pp, DBG_ENTRY|DBG_PARAM, "si_command(%x,%x,%d): hi_stat 0x%x\n",
+	DPRINT((pp, DBG_ENTRY|DBG_PARAM, "si_command(%p,%x,%d): hi_stat 0x%x\n",
 		pp, cmd, waitflag, ccbp->hi_stat));
 
 	crit_enter();		/* Keep others out */

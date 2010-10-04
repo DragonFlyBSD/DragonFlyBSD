@@ -181,8 +181,8 @@ pst_attach(device_t dev)
 		      DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_IDE,
 		      DEVSTAT_PRIORITY_DISK);
 
-    kprintf("pst%d: %lluMB <%.40s> [%d/%d/%d] on %.16s\n", lun,
-	   info.d_media_size / (1024 * 1024), name,
+    kprintf("pst%d: %juMB <%.40s> [%d/%d/%d] on %.16s\n", lun,
+	   (uintmax_t)(info.d_media_size / (1024 * 1024)), name,
 	   info.d_ncylinders , info.d_nheads, info.d_secpertrack,
 	   device_get_nameunit(psc->iop->dev));
 #if 0

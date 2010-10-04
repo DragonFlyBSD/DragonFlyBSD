@@ -2025,7 +2025,7 @@ mesh_send_action_meshpeering_close(struct ieee80211_node *ni,
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
 	    "ieee80211_ref_node (%s:%u) %p<%6D> refcnt %d\n", __func__, __LINE__,
-	    ni, ni->ni_macaddr, ieee80211_node_refcnt(ni)+1);
+	    ni, ni->ni_macaddr, ":", ieee80211_node_refcnt(ni)+1);
 	ieee80211_ref_node(ni);
 
 	m = ieee80211_getmgtframe(&frm,
