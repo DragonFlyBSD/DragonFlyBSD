@@ -86,5 +86,6 @@ extern void (*__cleanup)(void);
 
 /* execve() with PATH processing to implement posix_spawnp() */
 int _execvpe(const char *, char * const *, char * const *);
+void _nmalloc_thr_init(void);
 
 #endif /* _LIBC_PRIVATE_H_ */

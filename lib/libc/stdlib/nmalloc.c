@@ -194,7 +194,6 @@ typedef struct slglobaldata {
 
 #define SLZF_UNOTZEROD		0x0001
 
-#define MAG_NORECURSE 		0x01
 #define FASTSLABREALLOC		0x02
 
 /*
@@ -303,7 +302,7 @@ typedef struct thr_mags {
  * this variable when the code is compiled -fPIC */
 #define TLS_ATTRIBUTE __attribute__ ((tls_model ("initial-exec")));
 
-static int mtmagazine_free_live = 0;
+static int mtmagazine_free_live;
 static __thread thr_mags thread_mags TLS_ATTRIBUTE;
 static pthread_key_t thread_mags_key;
 static pthread_once_t thread_mags_once = PTHREAD_ONCE_INIT;
@@ -413,6 +412,34 @@ malloc_init(void)
 		_SPINUNLOCK(&malloc_init_lock);
 
 	UTRACE((void *) -1, 0, NULL);
+}
+
+/*
+ * We have to install a handler for nmalloc thread teardowns when
+ * the thread is created.  We cannot delay this because destructors in
+ * sophisticated userland programs can call malloc() for the first time
+ * during their thread exit.
+ *
+ * This routine is called directly from pthreads.
+ */
+void
+_nmalloc_thr_init(void)
+{
+	thr_mags *tp;
+
+	/*
+	 * Disallow mtmagazine operations until the mtmagazine is
+	 * initialized.
+	 */
+	tp = &thread_mags;
+	tp->init = -1;
+
+	pthread_setspecific(thread_mags_key, tp);
+	if (mtmagazine_free_live == 0) {
+		mtmagazine_free_live = 1;
+		pthread_once(&thread_mags_once, mtmagazine_init);
+	}
+	tp->init = 1;
 }
 
 /*
@@ -1094,7 +1121,6 @@ _slabrealloc(void *ptr, size_t size)
  * checking memory limits in malloc.
  *
  * flags:
- *	MAG_NORECURSE		Skip magazine layer
  *	FASTSLABREALLOC		Fast call from realloc
  * MPSAFE
  */
@@ -1123,12 +1149,6 @@ _slabfree(void *ptr, int flags, bigalloc_t *rbigp)
 		return;
 	if (ptr == ZERO_LENGTH_PTR)
 		return;
-
-	/* Ensure that a destructor is in-place for thread-exit */
-	if (mtmagazine_free_live == 0) {
-		mtmagazine_free_live = 1;
-		pthread_once(&thread_mags_once, &mtmagazine_init);
-	}
 
 	/*
 	 * Handle oversized allocations.
@@ -1168,8 +1188,7 @@ fastslabrealloc:
 	if (g_malloc_flags & SAFLAG_ZERO)
 		bzero(ptr, size);
 
-	if (((flags & MAG_NORECURSE) == 0) && 
-	    (mtmagazine_free(zi, ptr) == 0))
+	if (mtmagazine_free(zi, ptr) == 0)
 		return;
 
 	pgno = ((char *)ptr - (char *)z) >> PAGE_SHIFT;
@@ -1326,8 +1345,17 @@ mtmagazine_alloc(int zi)
 	magazine_depot *d;
 	void *obj = NULL;
 
+	/*
+	 * Do not try to access per-thread magazines while the mtmagazine
+	 * is being initialized or destroyed.
+	 */
 	tp = &thread_mags;
+	if (tp->init < 0)
+		return(NULL);
 
+	/*
+	 * Primary per-thread allocation loop
+	 */
 	for (;;) {
 		/* If the loaded magazine has rounds, allocate and return */
 		if (((mp = tp->mags[zi].loaded) != NULL) &&
@@ -1378,13 +1406,17 @@ mtmagazine_free(int zi, void *ptr)
 	magazine_depot *d;
 	int rc = -1;
 
+	/*
+	 * Do not try to access per-thread magazines while the mtmagazine
+	 * is being initialized or destroyed.
+	 */
 	tp = &thread_mags;
+	if (tp->init < 0)
+		return(-1);
 
-	if (tp->init == 0) {
-		pthread_setspecific(thread_mags_key, tp);
-		tp->init = 1;
-	}
-
+	/*
+	 * Primary per-thread freeing loop
+	 */
 	for (;;) {
 		/* If the loaded magazine has space, free directly to it */
 		if (((mp = tp->mags[zi].loaded) != NULL) && 
@@ -1441,13 +1473,18 @@ mtmagazine_free(int zi, void *ptr)
 }
 
 static void 
-mtmagazine_init(void) {
-	int i = 0;
-	i = pthread_key_create(&thread_mags_key,&mtmagazine_destructor);
-	if (i != 0)
+mtmagazine_init(void)
+{
+	int error;
+
+	error = pthread_key_create(&thread_mags_key, mtmagazine_destructor);
+	if (error)
 		abort();
 }
 
+/*
+ * This function is only used by the thread exit destructor
+ */
 static void
 mtmagazine_drain(struct magazine *mp)
 {
@@ -1455,7 +1492,7 @@ mtmagazine_drain(struct magazine *mp)
 
 	while (MAGAZINE_NOTEMPTY(mp)) {
 		obj = magazine_alloc(mp, NULL);
-		_slabfree(obj, MAG_NORECURSE, NULL);
+		_slabfree(obj, 0, NULL);
 	}
 }
 
@@ -1464,6 +1501,10 @@ mtmagazine_drain(struct magazine *mp)
  *
  * When a thread exits, we reclaim all its resources; all its magazines are
  * drained and the structures are freed. 
+ *
+ * WARNING!  The destructor can be called multiple times if the larger user
+ *	     program has its own destructors which run after ours which
+ *	     allocate or free memory.
  */
 static void
 mtmagazine_destructor(void *thrp)
@@ -1472,16 +1513,25 @@ mtmagazine_destructor(void *thrp)
 	struct magazine *mp;
 	int i;
 
+	/*
+	 * Prevent further use of mtmagazines while we are destructing
+	 * them, as well as for any destructors which are run after us
+	 * prior to the thread actually being destroyed.
+	 */
+	tp->init = -1;
+
 	for (i = 0; i < NZONES; i++) {
 		mp = tp->mags[i].loaded;
+		tp->mags[i].loaded = NULL;
 		if (mp != NULL && MAGAZINE_NOTEMPTY(mp))
 			mtmagazine_drain(mp);
-		_slabfree(mp, MAG_NORECURSE, NULL);
+		_slabfree(mp, 0, NULL);
 
 		mp = tp->mags[i].prev;
+		tp->mags[i].prev = NULL;
 		if (mp != NULL && MAGAZINE_NOTEMPTY(mp))
 			mtmagazine_drain(mp);
-		_slabfree(mp, MAG_NORECURSE, NULL);
+		_slabfree(mp, 0, NULL);
 	}
 }
 
