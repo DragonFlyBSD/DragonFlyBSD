@@ -65,7 +65,6 @@ u_int	io_apic_read		(int, int);
 void	io_apic_write		(int, int, u_int);
 
 /* global data in mp_machdep.c */
-extern int			bsp_apic_ready;
 extern int			mp_naps;
 extern int			mp_nbusses;
 extern int			mp_napics;
