@@ -3282,5 +3282,6 @@ pmap_kvtom(vm_offset_t va)
 	vpte_t *ptep;
 
 	KKASSERT(va >= KvaStart && va < KvaEnd);
-	return(PHYS_TO_VM_PAGE(vtopte(va) & PG_FRAME));
+	ptep = vtopte(va);
+	return(PHYS_TO_VM_PAGE(*ptep & PG_FRAME));
 }
