@@ -166,6 +166,8 @@ struct mptable_pos {
 	vm_size_t	mp_cth_mapsz;	
 };
 
+typedef	int	(*mptable_iter_func)(void *, const void *, int);
+
 /*
  * this code MUST be enabled here and in mpboot.s.
  * it follows the very early stages of AP boot by placing values in CMOS ram.
@@ -282,6 +284,15 @@ struct pcb stoppcbs[MAXCPU];
 
 extern inthand_t IDTVEC(fast_syscall), IDTVEC(fast_syscall32);
 
+static basetable_entry basetable_entry_types[] =
+{
+	{0, 20, "Processor"},
+	{1, 8, "Bus"},
+	{2, 8, "I/O APIC"},
+	{3, 8, "I/O INT"},
+	{4, 8, "Local INT"}
+};
+
 /*
  * Local data and functions.
  */
@@ -292,14 +303,17 @@ static int	mp_finish;
 
 static void	mp_enable(u_int boot_addr);
 
+static int	mptable_iterate_entries(const mpcth_t,
+		    mptable_iter_func, void *);
 static int	mptable_probe(void);
+static int	mptable_check(vm_paddr_t);
 static long	mptable_search_sig(u_int32_t target, int count);
 static void	mptable_hyperthread_fixup(u_int id_mask);
 static void	mptable_pass1(struct mptable_pos *);
 static int	mptable_pass2(struct mptable_pos *);
 static void	mptable_default(int type);
 static void	mptable_fix(void);
-static void	mptable_map(struct mptable_pos *, vm_paddr_t);
+static int	mptable_map(struct mptable_pos *, vm_paddr_t);
 static void	mptable_unmap(struct mptable_pos *);
 
 #ifdef APIC_IO
@@ -375,6 +389,128 @@ mptable_probe(void)
 		return x;
 
 	/* nothing found */
+	return 0;
+}
+
+struct mptable_check_cbarg {
+	int	cpu_count;
+	int	found_bsp;
+};
+
+static int
+mptable_check_callback(void *xarg, const void *pos, int type)
+{
+	const struct PROCENTRY *ent;
+	struct mptable_check_cbarg *arg = xarg;
+
+	if (type != 0)
+		return 0;
+	ent = pos;
+
+	if ((ent->cpu_flags & PROCENTRY_FLAG_EN) == 0)
+		return 0;
+	arg->cpu_count++;
+
+	if (ent->cpu_flags & PROCENTRY_FLAG_BP) {
+		if (arg->found_bsp) {
+			kprintf("more than one BSP in base MP table\n");
+			return EINVAL;
+		}
+		arg->found_bsp = 1;
+	}
+	return 0;
+}
+
+static int
+mptable_check(vm_paddr_t mpfps_paddr)
+{
+	struct mptable_pos mpt;
+	struct mptable_check_cbarg arg;
+	mpcth_t cth;
+	int error;
+
+	if (mpfps_paddr == 0)
+		return EOPNOTSUPP;
+
+	error = mptable_map(&mpt, mpfps_paddr);
+	if (error)
+		return error;
+
+	if (mpt.mp_fps->mpfb1 != 0)
+		goto done;
+
+	error = EINVAL;
+
+	cth = mpt.mp_cth;
+	if (cth == NULL)
+		goto done;
+	if (cth->apic_address == 0)
+		goto done;
+
+	bzero(&arg, sizeof(arg));
+	error = mptable_iterate_entries(cth, mptable_check_callback, &arg);
+	if (!error) {
+		if (arg.cpu_count == 0) {
+			kprintf("MP table contains no processor entries\n");
+			error = EINVAL;
+		} else if (!arg.found_bsp) {
+			kprintf("MP table does not contains BSP entry\n");
+			error = EINVAL;
+		}
+	}
+done:
+	mptable_unmap(&mpt);
+	return error;
+}
+
+static int
+mptable_iterate_entries(const mpcth_t cth, mptable_iter_func func, void *arg)
+{
+	int count, total_size;
+	const void *position;
+
+	KKASSERT(cth->base_table_length >= sizeof(struct MPCTH));
+	total_size = cth->base_table_length - sizeof(struct MPCTH);
+	position = (const uint8_t *)cth + sizeof(struct MPCTH);
+	count = cth->entry_count;
+
+	while (count--) {
+		int type, error;
+
+		KKASSERT(total_size >= 0);
+		if (total_size == 0) {
+			kprintf("invalid base MP table, "
+				"entry count and length mismatch\n");
+			return EINVAL;
+		}
+
+		type = *(const uint8_t *)position;
+		switch (type) {
+		case 0: /* processor_entry */
+		case 1: /* bus_entry */
+		case 2: /* io_apic_entry */
+		case 3: /* int_entry */
+		case 4:	/* int_entry */
+			break;
+		default:
+			kprintf("unknown base MP table entry type %d\n", type);
+			return EINVAL;
+		}
+
+		if (total_size < basetable_entry_types[type].length) {
+			kprintf("invalid base MP table length, "
+				"does not contain all entries\n");
+			return EINVAL;
+		}
+		total_size -= basetable_entry_types[type].length;
+
+		error = func(arg, position, type);
+		if (error)
+			return error;
+
+		position = (const uint8_t *)position +
+		    basetable_entry_types[type].length;
+	}
 	return 0;
 }
 
@@ -542,10 +678,13 @@ mp_enable(u_int boot_addr)
 
 	POSTCODE(MP_ENABLE_POST);
 
-	if (madt_probe_test)
+	if (madt_probe_test) {
 		mpfps_paddr = 0;
-	else
+	} else {
 		mpfps_paddr = mptable_probe();
+		if (mptable_check(mpfps_paddr))
+			mpfps_paddr = 0;
+	}
 
 	if (mpfps_paddr) {
 		struct mptable_pos mpt;
@@ -685,15 +824,6 @@ mptable_search_sig(u_int32_t target, int count)
 	return ret;
 }
 
-
-static basetable_entry basetable_entry_types[] =
-{
-	{0, 20, "Processor"},
-	{1, 8, "Bus"},
-	{2, 8, "I/O APIC"},
-	{3, 8, "I/O INT"},
-	{4, 8, "Local INT"}
-};
 
 typedef struct BUSDATA {
 	u_char  bus_id;
@@ -1170,12 +1300,14 @@ mptable_hyperthread_fixup(u_int id_mask)
 	mp_naps *= logical_cpus;
 }
 
-static void
+static int
 mptable_map(struct mptable_pos *mpt, vm_paddr_t mpfps_paddr)
 {
 	mpfps_t fps = NULL;
 	mpcth_t cth = NULL;
 	vm_size_t cth_mapsz = 0;
+
+	bzero(mpt, sizeof(*mpt));
 
 	fps = pmap_mapdev(mpfps_paddr, sizeof(*fps));
 	if (fps->pap != 0) {
@@ -1187,6 +1319,13 @@ mptable_map(struct mptable_pos *mpt, vm_paddr_t mpfps_paddr)
 		cth_mapsz = cth->base_table_length;
 		pmap_unmapdev((vm_offset_t)cth, sizeof(*cth));
 
+		if (cth_mapsz < sizeof(*cth)) {
+			kprintf("invalid base MP table length %d\n",
+				(int)cth_mapsz);
+			pmap_unmapdev((vm_offset_t)fps, sizeof(*fps));
+			return EINVAL;
+		}
+
 		/*
 		 * Map the base table
 		 */
@@ -1196,6 +1335,8 @@ mptable_map(struct mptable_pos *mpt, vm_paddr_t mpfps_paddr)
 	mpt->mp_fps = fps;
 	mpt->mp_cth = cth;
 	mpt->mp_cth_mapsz = cth_mapsz;
+
+	return 0;
 }
 
 static void
