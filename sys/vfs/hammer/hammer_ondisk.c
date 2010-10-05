@@ -503,6 +503,33 @@ hammer_mountcheck_volumes(struct hammer_mount *hmp)
  * through to the big-block allocator, or routines like hammer_del_buffers()
  * will not be able to locate all potentially conflicting buffers.
  */
+
+/*
+ * Helper function returns whether a zone offset can be directly translated
+ * to a raw buffer index or not.  Really only the volume and undo zones
+ * can't be directly translated.  Volumes are special-cased and undo zones
+ * shouldn't be aliased accessed in read-only mode.
+ *
+ * This function is ONLY used to detect aliased zones during a read-only
+ * mount.
+ */
+static __inline int
+hammer_direct_zone(hammer_off_t buf_offset)
+{
+	switch(HAMMER_ZONE_DECODE(buf_offset)) {
+	case HAMMER_ZONE_RAW_BUFFER_INDEX:
+	case HAMMER_ZONE_FREEMAP_INDEX:
+	case HAMMER_ZONE_BTREE_INDEX:
+	case HAMMER_ZONE_META_INDEX:
+	case HAMMER_ZONE_LARGE_DATA_INDEX:
+	case HAMMER_ZONE_SMALL_DATA_INDEX:
+		return(1);
+	default:
+		return(0);
+	}
+	/* NOT REACHED */
+}
+
 hammer_buffer_t
 hammer_get_buffer(hammer_mount_t hmp, hammer_off_t buf_offset,
 		  int bytes, int isnew, int *errorp)
@@ -567,7 +594,7 @@ found_aliased:
 			lwkt_reltoken(&hmp->io_token);
 		}
 		goto found;
-	} else if (hmp->ronly) {
+	} else if (hmp->ronly && hammer_direct_zone(buf_offset)) {
 		/*
 		 * If this is a read-only mount there could be an alias
 		 * in the raw-zone.  If there is we use that buffer instead.
