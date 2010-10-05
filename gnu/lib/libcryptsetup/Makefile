@@ -2,6 +2,7 @@ CRYPTSETUP_DIR=	${.CURDIR}/../../../contrib/cryptsetup
 
 LIB=		cryptsetup
 SHLIB_MAJOR?=	0
+WARNS?=		1
 
 SRCS+=		backends.c libdevmapper.c setup.c utils.c \
 		utils_debug.c
