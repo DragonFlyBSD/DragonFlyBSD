@@ -102,7 +102,7 @@ static void allocinfo(struct Info *);
 static void copyinfo(struct Info *, struct Info *);
 static void dinfo(int, int, struct statinfo *, struct statinfo *);
 static void getinfo(struct Info *);
-static void putint(int, int, int, int, int);
+static void putlong(long, int, int, int, int);
 static void putfloat(double, int, int, int, int, int);
 static void putlongdouble(long double, int, int, int, int, int);
 static void putlongdoublez(long double, int, int, int, int, int);
@@ -383,7 +383,7 @@ labelkre(void)
 	if(state == TIME) s1.nchstats.fld = t;}
 #define PUTRATE(fld, l, c, w) \
 	Y(fld); \
-	putint((int)((float)s.fld/etime + 0.5), l, c, w, 'D')
+	putlong((long)((float)s.fld/etime + 0.5), l, c, w, 'D')
 #define MAXFAIL 5
 
 #define CPUSTATES 5
@@ -401,8 +401,10 @@ void
 showkre(void)
 {
 	float f1, f2;
-	int psiz, inttotal;
-	int i, l, lc;
+	int psiz;
+	int i, lc;
+	long inttotal;
+	long l;
 	static int failcnt = 0;
 	double total_time;
 
@@ -447,11 +449,11 @@ showkre(void)
 				intrname[i]);
 		}
 		X(intrcnt);
-		l = (int)((float)s.intrcnt[i]/etime + 0.5);
+		l = (long)((float)s.intrcnt[i]/etime + 0.5);
 		inttotal += l;
-		putint(l, intrloc[i], INTSCOL + 2, 6, 'D');
+		putlong(l, intrloc[i], INTSCOL + 2, 6, 'D');
 	}
-	putint(inttotal, INTSROW + 1, INTSCOL + 2, 6, 'D');
+	putlong(inttotal, INTSROW + 1, INTSCOL + 2, 6, 'D');
 	Z(ncs_goodhits); Z(ncs_badhits); Z(ncs_miss);
 	Z(ncs_longhits); Z(ncs_longmiss); Z(ncs_neghits);
 	s.nchcount = nchtotal.ncs_goodhits + nchtotal.ncs_badhits +
@@ -479,36 +481,36 @@ showkre(void)
 			addch(cpuchar[lc]);
 	}
 
-	putint(ucount(), STATROW, STATCOL, 3, 'D');
+	putlong(ucount(), STATROW, STATCOL, 3, 'D');
 	putfloat(avenrun[0], STATROW, STATCOL + 18, 6, 2, 0);
 	putfloat(avenrun[1], STATROW, STATCOL + 25, 6, 2, 0);
 	putfloat(avenrun[2], STATROW, STATCOL + 32, 6, 2, 0);
 	mvaddstr(STATROW, STATCOL + 53, buf);
-#define pgtokb(pg)	(int)((intmax_t)(pg) * vms.v_page_size / 1024)
-#define pgtomb(pg)	(int)((intmax_t)(pg) * vms.v_page_size / (1024 * 1024))
-	putint(pgtomb(total.t_arm), MEMROW + 2, MEMCOL + 3, 8, 'M');
-	putint(pgtomb(total.t_armshr), MEMROW + 2, MEMCOL + 11, 8, 'M');
-	putint(pgtomb(total.t_avm), MEMROW + 2, MEMCOL + 19, 9, 'M');
-	putint(pgtomb(total.t_avmshr), MEMROW + 2, MEMCOL + 28, 9, 'M');
-	putint(pgtomb(total.t_rm), MEMROW + 3, MEMCOL + 3, 8, 'M');
-	putint(pgtomb(total.t_rmshr), MEMROW + 3, MEMCOL + 11, 8, 'M');
-	putint(pgtomb(total.t_vm), MEMROW + 3, MEMCOL + 19, 9, 'M');
-	putint(pgtomb(total.t_vmshr), MEMROW + 3, MEMCOL + 28, 9, 'M');
-	putint(pgtomb(total.t_free), MEMROW + 2, MEMCOL + 37, 8, 'M');
-	putint(total.t_rq - 1, PROCSROW + 1, PROCSCOL + 0, 3, 'D');
-	putint(total.t_pw, PROCSROW + 1, PROCSCOL + 3, 3, 'D');
-	putint(total.t_dw, PROCSROW + 1, PROCSCOL + 6, 3, 'D');
-	putint(total.t_sl, PROCSROW + 1, PROCSCOL + 9, 3, 'D');
-	putint(total.t_sw, PROCSROW + 1, PROCSCOL + 12, 3, 'D');
+#define pgtokb(pg)	(long)((intmax_t)(pg) * vms.v_page_size / 1024)
+#define pgtomb(pg)	(long)((intmax_t)(pg) * vms.v_page_size / (1024 * 1024))
+	putlong(pgtomb(total.t_arm), MEMROW + 2, MEMCOL + 3, 8, 'M');
+	putlong(pgtomb(total.t_armshr), MEMROW + 2, MEMCOL + 11, 8, 'M');
+	putlong(pgtomb(total.t_avm), MEMROW + 2, MEMCOL + 19, 9, 'M');
+	putlong(pgtomb(total.t_avmshr), MEMROW + 2, MEMCOL + 28, 9, 'M');
+	putlong(pgtomb(total.t_rm), MEMROW + 3, MEMCOL + 3, 8, 'M');
+	putlong(pgtomb(total.t_rmshr), MEMROW + 3, MEMCOL + 11, 8, 'M');
+	putlong(pgtomb(total.t_vm), MEMROW + 3, MEMCOL + 19, 9, 'M');
+	putlong(pgtomb(total.t_vmshr), MEMROW + 3, MEMCOL + 28, 9, 'M');
+	putlong(pgtomb(total.t_free), MEMROW + 2, MEMCOL + 37, 8, 'M');
+	putlong(total.t_rq - 1, PROCSROW + 1, PROCSCOL + 0, 3, 'D');
+	putlong(total.t_pw, PROCSROW + 1, PROCSCOL + 3, 3, 'D');
+	putlong(total.t_dw, PROCSROW + 1, PROCSCOL + 6, 3, 'D');
+	putlong(total.t_sl, PROCSROW + 1, PROCSCOL + 9, 3, 'D');
+	putlong(total.t_sw, PROCSROW + 1, PROCSCOL + 12, 3, 'D');
 	if (extended_vm_stats == 0) {
 		PUTRATE(Vmm.v_zfod, VMSTATROW + 0, VMSTATCOL + 4, 5);
 	}
 	PUTRATE(Vmm.v_cow_faults, VMSTATROW + 1, VMSTATCOL + 3, 6);
-	putint(pgtokb(vms.v_wire_count), VMSTATROW + 2, VMSTATCOL, 9, 'K');
-	putint(pgtokb(vms.v_active_count), VMSTATROW + 3, VMSTATCOL, 9, 'K');
-	putint(pgtokb(vms.v_inactive_count), VMSTATROW + 4, VMSTATCOL, 9, 'K');
-	putint(pgtokb(vms.v_cache_count), VMSTATROW + 5, VMSTATCOL, 9, 'K');
-	putint(pgtokb(vms.v_free_count), VMSTATROW + 6, VMSTATCOL, 9, 'K');
+	putlong(pgtokb(vms.v_wire_count), VMSTATROW + 2, VMSTATCOL, 9, 'K');
+	putlong(pgtokb(vms.v_active_count), VMSTATROW + 3, VMSTATCOL, 9, 'K');
+	putlong(pgtokb(vms.v_inactive_count), VMSTATROW + 4, VMSTATCOL, 9, 'K');
+	putlong(pgtokb(vms.v_cache_count), VMSTATROW + 5, VMSTATCOL, 9, 'K');
+	putlong(pgtokb(vms.v_free_count), VMSTATROW + 6, VMSTATCOL, 9, 'K');
 	PUTRATE(Vmm.v_dfree, VMSTATROW + 7, VMSTATCOL, 9);
 	PUTRATE(Vmm.v_pfree, VMSTATROW + 8, VMSTATCOL, 9);
 	PUTRATE(Vmm.v_reactivated, VMSTATROW + 9, VMSTATCOL, 9);
@@ -520,17 +522,17 @@ showkre(void)
 		PUTRATE(Vmm.v_zfod, VMSTATROW + 11, VMSTATCOL - 16, 9);
 		PUTRATE(Vmm.v_ozfod, VMSTATROW + 12, VMSTATCOL - 16, 9);
 #define nz(x)	((x) ? (x) : 1)
-		putint((s.Vmm.v_zfod - s.Vmm.v_ozfod) * 100 / nz(s.Vmm.v_zfod),
+		putlong((s.Vmm.v_zfod - s.Vmm.v_ozfod) * 100 / nz(s.Vmm.v_zfod),
 		    VMSTATROW + 13, VMSTATCOL - 16, 9, 'D');
 #undef nz
 		PUTRATE(Vmm.v_tfree, VMSTATROW + 14, VMSTATCOL - 16, 9);
 	}
 
-	putint(s.bufspace/1024, VMSTATROW + 13, VMSTATCOL, 9, 'K');
-	putint(s.dirtybufspace/1024, VMSTATROW + 14, VMSTATCOL, 9, 'K');
-	putint(s.desiredvnodes, VMSTATROW + 15, VMSTATCOL, 9, 'D');
-	putint(s.numvnodes, VMSTATROW + 16, VMSTATCOL, 9, 'D');
-	putint(s.freevnodes, VMSTATROW + 17, VMSTATCOL, 9, 'D');
+	putlong(s.bufspace/1024, VMSTATROW + 13, VMSTATCOL, 9, 'K');
+	putlong(s.dirtybufspace/1024, VMSTATROW + 14, VMSTATCOL, 9, 'K');
+	putlong(s.desiredvnodes, VMSTATROW + 15, VMSTATCOL, 9, 'D');
+	putlong(s.numvnodes, VMSTATROW + 16, VMSTATCOL, 9, 'D');
+	putlong(s.freevnodes, VMSTATROW + 17, VMSTATCOL, 9, 'D');
 	PUTRATE(Vmm.v_vnodein, PAGEROW + 2, PAGECOL + 5, 5);
 	PUTRATE(Vmm.v_vnodeout, PAGEROW + 2, PAGECOL + 10, 5);
 	PUTRATE(Vmm.v_swapin, PAGEROW + 2, PAGECOL + 17, 5);
@@ -566,9 +568,9 @@ showkre(void)
 			}
 		}
 #define nz(x)	((x) ? (x) : 1)
-	putint(s.nchpathcount, NAMEIROW + 1, NAMEICOL + 3, 9, 'D');
+	putlong(s.nchpathcount, NAMEIROW + 1, NAMEICOL + 3, 9, 'D');
 
-	putint(nchtotal.ncs_longhits, NAMEIROW + 1, NAMEICOL + 12, 7, 'D');
+	putlong(nchtotal.ncs_longhits, NAMEIROW + 1, NAMEICOL + 12, 7, 'D');
 	putfloat(nchtotal.ncs_longhits * 100.0 / nz(s.nchpathcount),
 	    NAMEIROW + 1, NAMEICOL + 19, 4, 0, 0);
 
@@ -657,7 +659,7 @@ ucount(void)
 }
 
 static void
-putint(int n, int l, int lc, int w, int type)
+putlong(long n, int l, int lc, int w, int type)
 {
 	char b[128];
 	int xtype;
@@ -668,7 +670,7 @@ putint(int n, int l, int lc, int w, int type)
 			addch(' ');
 		return;
 	}
-	snprintf(b, sizeof(b), "%*d", w, n);
+	snprintf(b, sizeof(b), "%*ld", w, n);
 	if (strlen(b) > (size_t)w) {
 		if (type == 'D') {
 			n /= 1000;
@@ -677,7 +679,7 @@ putint(int n, int l, int lc, int w, int type)
 			n /= 1024;
 			xtype = 'M';
 		}
-		snprintf(b, sizeof(b), "%*d%c", w - 1, n, xtype);
+		snprintf(b, sizeof(b), "%*ld%c", w - 1, n, xtype);
 		if (strlen(b) > (size_t)w) {
 			if (type == 'D') {
 				n /= 1000;
@@ -686,7 +688,7 @@ putint(int n, int l, int lc, int w, int type)
 				n /= 1024;
 				xtype = 'G';
 			}
-			snprintf(b, sizeof(b), "%*d%c", w - 1, n, xtype);
+			snprintf(b, sizeof(b), "%*ld%c", w - 1, n, xtype);
 			if (strlen(b) > (size_t)w) {
 				while (w-- > 0)
 					addch('*');

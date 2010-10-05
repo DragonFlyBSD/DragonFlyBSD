@@ -126,7 +126,19 @@ do_vmtotal(SYSCTL_HANDLER_ARGS)
 			continue;
 		if (object->type == OBJT_DEVICE)
 			continue;
-		totalp->t_vm += object->size;
+		if (object->size >= 0x7FFFFFFF) {
+			/*
+			 * Probably unbounded anonymous memory (really
+			 * bounded by related vm_map_entry structures which
+			 * we do not have access to in this loop).
+			 */
+			totalp->t_vm += object->resident_page_count;
+		} else {
+			/*
+			 * It's questionable how useful this is but...
+			 */
+			totalp->t_vm += object->size;
+		}
 		totalp->t_rm += object->resident_page_count;
 		if (object->flags & OBJ_ACTIVE) {
 			totalp->t_avm += object->size;
