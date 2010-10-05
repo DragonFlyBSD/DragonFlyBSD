@@ -97,18 +97,16 @@ struct handle {
  */
 
 static char smp_header[] =
-"  PID %-*.*s PRI NICE  SIZE    RES   PRES  STATE  C   TIME   CTIME   CPU COMMAND";
+"  PID %-*.*s NICE  SIZE   PRES   STATE C    TIME   CTIME    CPU COMMAND";
 
 #define smp_Proc_format \
-	"%5d %-*.*s %3d %3d%7s %6s %6s  %-6.6s %1x%7s %7s %5.2f%% %.*s"
+	"%5d %-*.*s %3d%7s %6s %7.7s %1x %7s %7s %5.2f%% %.*s"
 
 static char up_header[] =
-"  PID %-*.*s PRI NICE  SIZE    RES   PRES  STATE    TIME   CTIME   CPU COMMAND";
+"  PID %-*.*s NICE  SIZE   PRES   STATE    TIME   CTIME    CPU COMMAND";
 
 #define up_Proc_format \
-	"%5d %-*.*s %3d %3d%7s %6s %6s  %-6.6s%.0d%7s%7s %5.2f%% %.*s"
-
-
+	"%5d %-*.*s %3d%7s %6s %7.7s%.0d %7s %7s %5.2f%% %.*s"
 
 
 /* process state names for the "STATE" column of the display */
@@ -625,11 +623,8 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 	    (int)PP(pp, pid),
 	    namelength, namelength,
 	    get_userid(PP(pp, ruid)),
-	    (int)((show_threads && (LP(pp, pid) == -1)) ?
-	    LP(pp, tdprio) : LP(pp, prio)),
 	    (int)xnice,
 	    format_k(PROCSIZE(pp)),
-	    format_k(pagetok(VP(pp, rssize))),
 	    format_k(pagetok(VP(pp, prssize))),
 	    status,
 	    (int)(smpmode ? LP(pp, cpuid) : 0),
