@@ -237,27 +237,27 @@ default_capacity(struct storage *s, int mtpt)
 		return(-1);
 	} else if (capacity < 4096) {
 		switch (mtpt) {
-		case MTPT_ROOT:	return(256);
+		case MTPT_ROOT:	return(320);
 		case MTPT_SWAP: return(swap);
 		case MTPT_VAR:	return(128);
 		case MTPT_TMP:	return(128);
-		case MTPT_USR:	return(1536);
+		case MTPT_USR:	return(1472);
 		}
 	} else if (capacity < 10240) {
 		switch (mtpt) {
-		case MTPT_ROOT:	return(256);
+		case MTPT_ROOT:	return(640);
 		case MTPT_SWAP: return(swap);
 		case MTPT_VAR:	return(256);
 		case MTPT_TMP:	return(256);
-		case MTPT_USR:	return(3072);
+		case MTPT_USR:	return(2688);
 		}
 	} else {
 		switch (mtpt) {
-		case MTPT_ROOT:	return(256);
+		case MTPT_ROOT:	return(768);
 		case MTPT_SWAP: return(swap);
 		case MTPT_VAR:	return(256);
 		case MTPT_TMP:	return(256);
-		case MTPT_USR:	return(8192);
+		case MTPT_USR:	return(7680);
 		}
 	}
 	/* shouldn't ever happen */
@@ -268,7 +268,7 @@ static int
 check_capacity(struct i_fn_args *a)
 {
 	struct subpartition *sp;
-	long min_capacity[] = {256, 0, 16, 0, 1536, 0, 0};
+	long min_capacity[] = {320, 0, 16, 0, 1472, 0, 0};
 	unsigned long total_capacity = 0;
 	int mtpt;
 
