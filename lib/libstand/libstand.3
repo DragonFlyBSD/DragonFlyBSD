@@ -85,7 +85,7 @@ Fn sbrk "int junk"
 .Pp
 Provides the behaviour of
 .Fn sbrk 0 ,
-ie. returns the highest point that the heap has reached.
+i.e.\& returns the highest point that the heap has reached.
 This value can
 be used during testing to determine the actual heap usage.
 The
@@ -216,6 +216,21 @@ If
 is less than 1, the function's behaviour is as for
 .Fn gets .
 .It \
+Ft char * \
+Fn fgets "char *buf" "int size" "int fd"
+.Pp
+Read a line of at most
+.Fa size Ns -1
+characters into
+.Fa buf .
+Line terminating characters are not stripped,
+and the buffer is always nul-terminated.
+Upon successful completion a pointer to the string is returned.
+If end-of-file occurs before any characters are read,
+NULL is returned and the buffer contents remain unchanged.
+If an error occurs,
+NULL is returned and the buffer contents are indeterminate.
+.It \
 Ft int \
 Fn fgetstr "char *buf" "int size" "int fd"
 .Pp
@@ -262,7 +277,7 @@ regval,
 );
 .Ed
 .Pp
-where <base> is the output expressed as a control character, e.g. \e10 gives
+where <base> is the output expressed as a control character, e.g.\& \e10 gives
 octal, \e20 gives hex.
 Each <arg> is a sequence of characters, the first of
 which gives the bit number to be inspected (origin 1) and the next characters
