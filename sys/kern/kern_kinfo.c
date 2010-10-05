@@ -147,6 +147,7 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 	if (p->p_vmspace) {
 		kp->kp_vm_map_size = p->p_vmspace->vm_map.size;
 		kp->kp_vm_rssize = vmspace_resident_count(p->p_vmspace);
+		kp->kp_vm_prssize = vmspace_president_count(p->p_vmspace);
 		kp->kp_vm_swrss = p->p_vmspace->vm_swrss;
 		kp->kp_vm_tsize = p->p_vmspace->vm_tsize;
 		kp->kp_vm_dsize = p->p_vmspace->vm_dsize;

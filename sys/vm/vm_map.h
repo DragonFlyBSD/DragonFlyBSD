@@ -93,6 +93,12 @@
 #ifndef _MACHINE_PMAP_H_
 #include <machine/pmap.h>
 #endif
+#ifndef _VM_VM_OBJECT_H_
+#include <vm/vm_object.h>
+#endif
+#ifndef _SYS_NULL_H_
+#include <sys/_null.h>
+#endif
 
 struct vm_map_rb_tree;
 RB_PROTOTYPE(vm_map_rb_tree, vm_map_entry, rb_entry, rb_vm_map_compare);
@@ -398,6 +404,38 @@ static __inline long
 vmspace_resident_count(struct vmspace *vmspace)
 {
 	return pmap_resident_count(vmspace_pmap(vmspace));
+}
+
+/* Calculates the proportional RSS and returning the
+ * accrued result.
+ */
+static __inline u_int
+vmspace_president_count(struct vmspace *vmspace)
+{
+	vm_map_t map = &vmspace->vm_map;
+	vm_map_entry_t cur;
+	vm_object_t object;
+	u_int count = 0;
+
+	for (cur = map->header.next; cur != &map->header; cur = cur->next) {
+		switch(cur->maptype) {
+		case VM_MAPTYPE_NORMAL:
+		case VM_MAPTYPE_VPAGETABLE:
+			if ((object = cur->object.vm_object) == NULL)
+				break;
+			if (object->type != OBJT_DEFAULT &&
+			    object->type != OBJT_SWAP) {
+				break;
+			}
+			if(object->agg_pv_list_count != 0) {
+					count += (object->resident_page_count / object->agg_pv_list_count);
+			}
+			break;
+		default:
+			break;
+		}
+	}
+	return(count);
 }
 
 /*

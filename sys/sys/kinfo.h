@@ -198,6 +198,7 @@ struct kinfo_proc {
 	segsz_t		kp_vm_tsize;		/* text size */
 	segsz_t		kp_vm_dsize;		/* data size */
 	segsz_t		kp_vm_ssize;		/* stack size */
+        u_int 		kp_vm_prssize;		/* proportional rss */
 
 	int		kp_jailid;
 

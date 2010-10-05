@@ -441,6 +441,12 @@ vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 	object->resident_page_count++;
 
 	/*
+	 * Add the pv_list_cout of the page when its inserted in
+	 * the object
+	*/
+	object->agg_pv_list_count = object->agg_pv_list_count + m->md.pv_list_count;
+
+	/*
 	 * Since we are inserting a new and possibly dirty page,
 	 * update the object's OBJ_WRITEABLE and OBJ_MIGHTBEDIRTY flags.
 	 */
@@ -489,6 +495,7 @@ vm_page_remove(vm_page_t m)
 	 */
 	vm_page_rb_tree_RB_REMOVE(&object->rb_memq, m);
 	object->resident_page_count--;
+	object->agg_pv_list_count = object->agg_pv_list_count - m->md.pv_list_count;
 	object->generation++;
 	m->object = NULL;
 

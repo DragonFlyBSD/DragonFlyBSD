@@ -161,6 +161,7 @@ struct vm_object {
 	u_short unused01;
 	int paging_in_progress;		/* Paging (in or out) so don't collapse or destroy */
 	int resident_page_count;	/* number of resident pages */
+        u_int agg_pv_list_count;        /* aggregate pv list count */
 	struct vm_object *backing_object; /* object that I'm a shadow of */
 	vm_ooffset_t backing_object_offset;/* Offset in backing object */
 	TAILQ_ENTRY(vm_object) pager_object_list; /* list of all objects of this pager type */
