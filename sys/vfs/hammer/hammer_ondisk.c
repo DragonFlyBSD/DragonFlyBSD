@@ -526,6 +526,7 @@ again:
 		 * any other action.  Shortcut the operation if the
 		 * ondisk structure is valid.
 		 */
+found_aliased:
 		if (hammer_ref_interlock(&buffer->io.lock) == 0) {
 			hammer_io_advance(&buffer->io);
 			KKASSERT(buffer->ondisk);
@@ -566,6 +567,24 @@ again:
 			lwkt_reltoken(&hmp->io_token);
 		}
 		goto found;
+	} else if (hmp->ronly) {
+		/*
+		 * If this is a read-only mount there could be an alias
+		 * in the raw-zone.  If there is we use that buffer instead.
+		 *
+		 * rw mounts will not have aliases.  Also note when going
+		 * from ro -> rw the recovered raw buffers are flushed and
+		 * reclaimed, so again there will not be any aliases once
+		 * the mount is rw.
+		 */
+		buffer = RB_LOOKUP(hammer_buf_rb_tree, &hmp->rb_bufs_root,
+				   (buf_offset & ~HAMMER_OFF_ZONE_MASK) |
+				   HAMMER_ZONE_RAW_BUFFER);
+		if (buffer) {
+			kprintf("HAMMER: recovered aliased %016jx\n",
+				(intmax_t)buf_offset);
+			goto found_aliased;
+		}
 	}
 
 	/*
