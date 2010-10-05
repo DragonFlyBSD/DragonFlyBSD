@@ -8,17 +8,7 @@ SHLIB_MAJOR?=	0
 LVM2_DISTDIR=	${LVM2_DIR}/dist
 
 CFLAGS+=	-D_XOPEN_SOURCE=600
-CFLAGS+=	-I${LVM2_DISTDIR}/lib -I${LVM2_DISTDIR}/include \
-		-I. 
-
-# Some parts of liblvm can't be protected because if its
-# alloca() usage.
-#
-.if defined(USE_SSP) && (${USE_SSP} != "no")
-CPPFLAGS+=	-Wno-stack-protector
-.endif
-
-CPPFLAGS.imLcLkup.c=-Wno-error
+CFLAGS+=	-I${LVM2_DISTDIR}/include
 
 SRCS+=		activate.c lvmcache.c toolcontext.c config.c btree.c \
 		str_list.c dev-cache.c dev-io.c dev-md.c device.c dev-swap.c \
@@ -39,6 +29,8 @@ SRCS+=		activate.c lvmcache.c toolcontext.c config.c btree.c \
 		lvm-globals.c dev.c
 
 LDADD+=		-lprop -ldevattr
+
+WARNS?=		1
 
 .PATH:	${LVM2_DISTDIR}/lib/
 .PATH:	${LVM2_DISTDIR}/lib/activate
