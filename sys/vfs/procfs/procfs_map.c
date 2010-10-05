@@ -14,10 +14,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -72,6 +68,8 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 {
 	struct proc *p = lp->lwp_proc;
 	int len;
+	struct vnode *vp;
+	char *fullpath, *freepath;
 	int error;
 	vm_map_t map = &p->p_vmspace->vm_map;
 	pmap_t pmap = vmspace_pmap(p->p_vmspace);
@@ -127,41 +125,50 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		for( lobj = tobj = obj; tobj; tobj = tobj->backing_object)
 			lobj = tobj;
 
+		freepath = NULL;
+		fullpath = "-";
 		if (lobj) {
 			switch(lobj->type) {
-
-default:
-case OBJT_DEFAULT:
+			default:
+			case OBJT_DEFAULT:
 				type = "default";
+				vp = NULL;
 				break;
-case OBJT_VNODE:
+			case OBJT_VNODE:
 				type = "vnode";
+				vp = lobj->handle;
+				vref(vp);
 				break;
-case OBJT_SWAP:
+			case OBJT_SWAP:
 				type = "swap";
+				vp = NULL;
 				break;
-case OBJT_DEVICE:
+			case OBJT_DEVICE:
 				type = "device";
+				vp = NULL;
 				break;
 			}
 			
 			flags = obj->flags;
 			ref_count = obj->ref_count;
 			shadow_count = obj->shadow_count;
+			if (vp != NULL) {
+				vn_fullpath(p, vp, &fullpath, &freepath, 0);
+				vrele(vp);
+			}
 		} else {
 			type = "none";
 			flags = 0;
 			ref_count = 0;
 			shadow_count = 0;
 		}
-			
 
 		/*
 		 * format:
-		 *  start, end, resident, private resident, cow, access, type.
+		 *  start, end, res, priv res, cow, access, type, (fullpath).
 		 */
 		ksnprintf(mebuffer, sizeof(mebuffer),
-		    "0x%lx 0x%lx %d %d %p %s%s%s %d %d 0x%x %s %s %s\n",
+		    "0x%lx 0x%lx %d %d %p %s%s%s %d %d 0x%x %s %s %s %s\n",
 			(u_long)entry->start, (u_long)entry->end,
 			resident, privateresident, obj,
 			(entry->protection & VM_PROT_READ)?"r":"-",
@@ -170,7 +177,12 @@ case OBJT_DEVICE:
 			ref_count, shadow_count, flags,
 			(entry->eflags & MAP_ENTRY_COW)?"COW":"NCOW",
 			(entry->eflags & MAP_ENTRY_NEEDS_COPY)?"NC":"NNC",
-			type);
+			type, fullpath);
+
+		if (freepath != NULL) {
+			kfree(freepath, M_TEMP);
+			freepath = NULL;
+		}
 
 		len = strlen(mebuffer);
 		if (len > uio->uio_resid) {
