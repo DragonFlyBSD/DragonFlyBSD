@@ -1764,9 +1764,14 @@ sccnupdate(scr_stat *scp)
     if (!run_scrn_saver)
 	scp->sc->flags &= ~SC_SCRN_IDLE;
 #if NSPLASH > 0
+    /*
+     * This is a hard path, we cannot call stop_scrn_saver() here.
+     */
     if ((saver_mode != CONS_LKM_SAVER) || !(scp->sc->flags & SC_SCRN_IDLE))
-	if (scp->sc->flags & SC_SCRN_BLANKED)
-            stop_scrn_saver(scp->sc, current_saver);
+	if (scp->sc->flags & SC_SCRN_BLANKED) {
+	    sc_touch_scrn_saver();
+            /*stop_scrn_saver(scp->sc, current_saver);*/
+	}
 #endif /* NSPLASH */
 
     if (scp != scp->sc->cur_scp || scp->sc->blink_in_progress
