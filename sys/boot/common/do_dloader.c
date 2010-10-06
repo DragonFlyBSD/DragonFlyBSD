@@ -29,8 +29,6 @@
 
 /*
  * Simple commandline interpreter, toplevel and misc.
- *
- * XXX may be obsoleted by BootFORTH or some other, better, interpreter.
  */
 
 #include <stand.h>
@@ -39,6 +37,8 @@
 #include "dloader.h"
 
 static void	prompt(void);
+static int	iseol(char c);
+static void	skipeol(int fd);
 
 /*
  * Perform the command
@@ -100,7 +100,7 @@ interact(void)
     /*
      * Read our default configuration
      */
-    if (include("dloader.rc")!=CMD_OK)
+    if (include("dloader.rc") != CMD_OK)
 	include("boot.conf");
     printf("\n");
     /*
@@ -115,10 +115,7 @@ interact(void)
      */
     printf("\nType '?' for a list of commands, 'help' for more detailed help.\n");
     if (getenv("prompt") == NULL)
-	setenv("prompt", "${interpret}", 1);
-    if (getenv("interpret") == NULL)
-        setenv("interpret", "OK", 1);
-
+	setenv("prompt", "OK", 1);
 
     for (;;) {
 	input[0] = '\0';
@@ -169,14 +166,15 @@ command_include(int argc, char *argv[])
 
     return(res);
 }
-COMMAND_SET(optinclude, "optinclude", "run commands from file",
+
+COMMAND_SET(optinclude, "optinclude",
+	    "run commands from file; ignore exit status",
 	    command_optinclude);
 
 static int
 command_optinclude(int argc, char *argv[])
 {
     int		i;
-    int		res;
     char	**argvbuf;
 
     /*
@@ -186,15 +184,14 @@ command_optinclude(int argc, char *argv[])
     for (i = 0; i < argc; i++)
 	argvbuf[i] = strdup(argv[i]);
 
-    res=CMD_OK;
-    for (i = 1; (i < argc) && (res == CMD_OK); i++)
+    for (i = 1; (i < argc); i++)
 	include(argvbuf[i]);
 
     for (i = 0; i < argc; i++)
 	free(argvbuf[i]);
     free(argvbuf);
 
-    return(res);
+    return(CMD_OK);
 }
 
 struct includeline
@@ -228,9 +225,16 @@ include(const char *filename)
     script = se = NULL;
     line = 0;
 
-    while (fgetstr(input, sizeof(input), fd) >= 0) {
+    while (fgets(input, sizeof(input), fd) != NULL) {
 	line++;
 	flags = 0;
+	if(strlen(input) == sizeof(input) - 1 &&
+	    !iseol(input[sizeof(input) - 2])) {
+	    printf("WARNING: %s: %s: Line too long: truncating; have:\n",
+		__func__, filename);
+	    printf("%s\n", input);
+	    skipeol(fd);
+	}
 	/* Discard comments */
 	if (strncmp(input+strspn(input, " "), "\\ ", 2) == 0)
 	    continue;
@@ -334,4 +338,21 @@ prompt(void)
     }
     putchar(' ');
     free(pr);
+}
+
+static int
+iseol(char c)
+{
+    return(c == '\n' || c == '\r');
+}
+
+static void
+skipeol(int fd)
+{
+    char c;
+
+    while (read(fd, &c, 1) == 1) {
+	if (iseol(c))
+	    break;
+    }
 }

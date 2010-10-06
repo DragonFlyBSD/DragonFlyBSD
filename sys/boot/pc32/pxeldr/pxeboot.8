@@ -27,7 +27,7 @@
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
-.Dd May 1, 2000
+.Dd October 6, 2010
 .Dt PXEBOOT 8
 .Os
 .Sh NAME
@@ -85,20 +85,20 @@ respectively, or the server to make TFTP requests to.
 Note that
 .Nm
 expects to fetch
-.Pa /boot/loader.rc
+.Pa /boot/dloader.rc
 from the specified server before loading any other files.
 .Pp
 .Nm
 uses
-.Pa /boot/kernel.BOOTP ,
-.Pa /boot/loader-bootp.conf ,
+.Pa /boot/kernel.BOOTP
+and
+.Pa /boot/loader-bootp.conf
 and
 .Pa nextboot-bootp.conf
 instead of
-.Pa /boot/kernel ,
-.Pa /boot/loader.conf ,
+.Pa /boot/kernel
 and
-.Pa nexboot.conf .
+.Pa /boot/loader.conf .
 Note that the TFTP version
 .Xr pxeboot_tftp 8
 uses the standard boot loader files.
@@ -128,6 +128,18 @@ Check with the device's manufacturer for their latest stable release.
 For further information on Intel's PXE specifications and Wired for
 Management (WfM) systems, see
 .Pa http://developer.intel.com/ial/wfm/ .
+.Sh FILES
+.Bl -tag -width ".Pa /boot/defaults/loader-bootp.conf" -compact
+.It Pa /boot/kernel.BOOTP
+Default kernel for
+.Nm .
+.It Pa /boot/defaults/loader-bootp.conf
+.Nm
+configuration file -- do not change this file.
+.It Pa /boot/loader-bootp.conf
+.Nm
+configuration file.
+.El
 .Sh SEE ALSO
 .Xr dhcpd 8 Pq Pa pkgsrc/net/isc-dhcpd4 ,
 .Xr diskless 8 ,

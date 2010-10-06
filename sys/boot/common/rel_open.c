@@ -41,23 +41,35 @@
 char *DirBase;
 
 COMMAND_SET(cd, "cd", "Change directory", command_chdir);
-COMMAND_SET(optcd, "optcd", "Change directory", command_optchdir);
+COMMAND_SET(optcd, "optcd",
+	    "Change directory; ignore exit status", command_optchdir);
 
 int
 command_chdir(int ac, char **av)
 {
-	if (ac != 2) {
-		sprintf(command_errbuf, "Missing path");
-		return(CMD_ERROR);
+	int result;
+
+	if (ac == 1) {
+		result = chdir(getenv("base"));
+	} else if (ac == 2) {
+		result = chdir(av[1]);
+	} else {
+		sprintf(command_errbuf, "usage: cd [<directory>]");
+		result = CMD_ERROR;
 	}
-	return(chdir(av[1]));
+	return result;
 }
 
 int
 command_optchdir(int ac, char **av)
 {
-	if (ac == 2)
+	if (ac == 1) {
+		chdir(getenv("base"));
+	} else if (ac == 2) {
 		chdir(av[1]);
+	} else {
+		sprintf(command_errbuf, "usage: optcd [<directory>]");
+	}
 	return(CMD_OK);
 }
 

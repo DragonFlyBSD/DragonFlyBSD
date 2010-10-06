@@ -132,9 +132,13 @@ command_help(int argc, char *argv[])
 
     /* page the help text from our load path */
     /* sprintf(buf, "%s/boot/loader.help", getenv("loaddev")); */
-    if ((hfd = rel_open("loader.help", NULL, O_RDONLY)) < 0) {
-	printf("Verbose help not available, use '?' to list commands\n");
-	return(CMD_OK);
+    /* page the help text from our base path */
+    snprintf(buf, sizeof(buf), "%sloader.help", getenv("base"));
+    if ((hfd = open(buf, O_RDONLY)) < 0) {
+	if ((hfd = rel_open("loader.help", NULL, O_RDONLY)) < 0) {
+	    printf("Verbose help not available, use '?' to list commands\n");
+	    return(CMD_OK);
+	}
     }
 
     /* pick up request from arguments */
@@ -212,12 +216,18 @@ static int
 command_commandlist(int argc, char *argv[])
 {
     struct bootblk_command	**cmdp;
+    char str[81];
     
+    pager_open();
     printf("Available commands:\n");
     SET_FOREACH(cmdp, Xcommand_set) {
-	if (((*cmdp)->c_name != NULL) && ((*cmdp)->c_desc != NULL))
-	    printf("  %-15s  %s\n", (*cmdp)->c_name, (*cmdp)->c_desc);
+	if (((*cmdp)->c_name != NULL) && ((*cmdp)->c_desc != NULL)) {
+	    snprintf(str, sizeof(str), "  %-15s  %s\n",
+		(*cmdp)->c_name, (*cmdp)->c_desc);
+	    pager_output(str);
+	}
     }
+    pager_close();
     return(CMD_OK);
 }
 
@@ -425,9 +435,16 @@ static int
 page_file(char *filename)
 {
     int result;
+    int fd;
+    char *fullpath;
 
-    result = pager_file(filename);
-
+    if ((fd = rel_open(filename, &fullpath, O_RDONLY)) != -1) {
+	close(fd);
+	result = pager_file(fullpath);
+	free(fullpath);
+    } else {
+	result = -1;
+    }
     if (result == -1)
 	sprintf(command_errbuf, "error showing %s", filename);
 

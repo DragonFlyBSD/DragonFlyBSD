@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/sys/boot/forth/loader.conf.5,v 1.18 2002/08/27 01:02:56 trhodes Exp $
 .\" $DragonFly: src/sys/boot/forth/loader.conf.5,v 1.13 2008/09/15 21:23:44 thomas Exp $
-.Dd September 6, 2008
+.Dd October 6, 2010
 .Dt LOADER.CONF 5
 .Os
 .Sh NAME
@@ -34,23 +34,24 @@
 The file
 .Nm
 contains descriptive information on bootstrapping the system.
-Through
-it you can specify the kernel to be booted, parameters to be passed to
-it, and additional modules to be loaded; and generally set all variables
-described in
+Through it you can specify the kernel to be booted,
+parameters to be passed to it,
+and additional kernel modules to be loaded;
+and generally set all variables described in
 .Xr loader 8 .
 .Pp
 A file
-.Pa loader.rc
-must contain the following two lines for
+.Pa dloader.rc
+must contain the following lines for
 .Nm
 to be automatically processed:
 .Pp
-.Dl include loader.4th
-.Dl start
+.Dl include defaults/loader.conf
+.Dl optinclude loader.conf
+.Dl optinclude loader.conf.local
 .Pp
 If no
-.Pa /boot/loader.rc
+.Pa /boot/dloader.rc
 exists at installworld time, one with the above lines will be installed.
 .Sh SYNTAX
 Though
@@ -60,8 +61,7 @@ format was defined explicitly to resemble
 and can be sourced by
 .Xr sh 1 ,
 some settings are treated in a special fashion.
-Also, the
-behavior of some settings is defined by the setting's suffix;
+Also, the behavior of some settings is defined by the setting's suffix;
 the prefix identifies which module the setting controls.
 .Pp
 The general parsing rules are:
@@ -80,31 +80,18 @@ All settings have the following format:
 .Pp
 .Dl variable="value"
 .Pp
-Unless it belongs to one of the classes of settings that receive special
-treatment, a setting will set the value of a
-.Xr loader 8
-environment variable.
-The settings that receive special
-treatment are listed below.
+This assigns value to a local variable.
+If variable is in a list of known kernel environment variables or
+is a kernel tunable,
+it is also assigned to the kernel environment variable of the given name.
+.Pp
+The settings that receive special treatment are listed below.
 Settings beginning with
 .Aq Ar module
-below define the modules to be loaded.
+below define the kernel modules to be loaded.
 All such settings sharing a common
 prefix refer to the same module.
-.Bl -tag -width Ar
-.It Ar exec
-Immediately executes a
-.Xr loader 8
-command.
-This type of setting cannot be processed by programs other
-than
-.Xr loader 8 ,
-so its use should be avoided.
-Multiple instances of it will be processed
-independently.
-.It Ar loader_conf_files
-Defines additional configuration files to be processed right after the
-present file.
+.Bl -tag -width indent
 .It Ar kernel
 Name of the kernel to be loaded.
 If no kernel name is set, no additional
@@ -112,9 +99,6 @@ modules will be loaded.
 .It Ar kernel_options
 Flags to be passed to the kernel (see
 .Xr boot 8 ) .
-.It Ar password
-Provides a password to be required by check-password before execution is
-allowed to continue.
 .It Ar verbose_loading
 If set to
 .Dq YES ,
@@ -122,7 +106,7 @@ module names will be displayed as they are loaded.
 .It Ao Ar module Ac Ns Ar _load
 If set to
 .Dq YES ,
-that module will be loaded.
+that kernel module will be loaded.
 If no
 .Ao Ar module Ac Ns Ar _name
 is defined (see below), the
@@ -132,7 +116,9 @@ module's name is taken to be
 Defines the name of the module.
 .It Ao Ar module Ac Ns Ar _type
 Defines the module's type.
-If none is given, it defaults to a kld module.
+If none is given, it defaults to a
+.Xr kld 4
+module.
 .It Ao Ar module Ac Ns Ar _flags
 Flags and parameters to be passed to the module.
 .It Ao Ar module Ac Ns Ar _before
@@ -151,12 +137,14 @@ special value
 which aborts the bootstrap process, use of this setting should be avoided.
 .El
 .Sh DEFAULT SETTINGS
-Most of
+See
+.Pa /boot/defaults/loader.conf
+for
 .Nm Ns 's
-default settings can be ignored.
+default settings.
 The few of them which are important
 or useful are:
-.Bl -tag -width bootfile -offset indent
+.Bl -tag -width indent
 .It Va bitmap_load
 .Pq Dq NO
 If set to
@@ -189,7 +177,7 @@ to
 .Pq Dq NO
 Shows Fred on the left side of the menu rather than the right side.
 .It Va kernel
-.Pq Dq kernel
+.Pq Dq kernel .
 .It Va loader_color
 .Pq Dq NO
 If set to
@@ -202,8 +190,6 @@ boot menu appears (remember to set
 to
 .Dq NO
 for this to work.)
-.It Va loader_conf_files
-.Pq Do loader.conf loader.conf.local Dc
 .It Va splash_bmp_load
 .Pq Dq NO
 If set to
@@ -229,19 +215,21 @@ the vesa module will be loaded, enabling bitmaps above VGA resolution to
 be displayed.
 .El
 .Sh FILES
-.Bl -tag -width /boot/defaults/loader.conf -compact
+.Bl -tag -width ".Pa /boot/defaults/dloader.menu" -compact
+.It Pa /boot/defaults/dloader.menu
+default settings for menu setup -- do not change this file.
 .It Pa /boot/defaults/loader.conf
 default settings -- do not change this file.
-.It Pa /boot/loader.4th
-defines the commands used by loader to read and process
-.Nm .
+.It Pa /boot/dloader.menu
+defines the commands used by
+.Nm loader
+to setup menus.
 .It Pa /boot/loader.conf
 user defined settings.
 .It Pa /boot/loader.conf.local
 machine-specific settings for sites with a common loader.conf.
-.It Pa /boot/loader.rc
-contains the instructions to automatically process
-.Nm .
+.It Pa /boot/dloader.rc
+contains the instructions to automatically process.
 .El
 .Sh SEE ALSO
 .Xr boot 8 ,
