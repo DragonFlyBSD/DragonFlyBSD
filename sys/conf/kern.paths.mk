@@ -19,4 +19,6 @@ OLDMODULESDIR?=		/boot/modules
 # not to shoot the real kernel installation.
 .if ${MACHINE_PLATFORM} == vkernel || ${MACHINE_PLATFORM} == vkernel64
 DESTDIR?=		/var/vkernel
+# Unset DESTKERNDIR as we install the kernel directly into $DESTDIR
+DESTKERNDIR=
 .endif
