@@ -118,6 +118,8 @@
 #include <sys/ptrace.h>
 #include <machine/sigframe.h>
 
+#include <sys/machintr.h>
+
 #define PHYSMAP_ENTRIES		10
 
 extern void init386(int first);
@@ -1841,6 +1843,15 @@ do_next:
 	avail_end = phys_avail[pa_indx];
 }
 
+#ifdef SMP
+int apic_io_enable = 1; /* Enabled by default */
+TUNABLE_INT("hw.apic_io_enable", &apic_io_enable);
+extern struct machintr_abi MachIntrABI_APIC;
+#endif
+
+extern struct machintr_abi MachIntrABI_ICU;
+struct machintr_abi MachIntrABI;
+
 /*
  * IDT VECTORS:
  *	0	Divide by zero
@@ -1893,6 +1904,17 @@ init386(int first)
 	}
 	if (bootinfo.bi_envp)
 		kern_envp = (caddr_t)bootinfo.bi_envp + KERNBASE;
+
+	/*
+	 * Setup MachIntrABI
+	 * XXX: Where is the correct place for it?
+	 */
+	MachIntrABI = MachIntrABI_ICU;
+#ifdef SMP
+	TUNABLE_INT_FETCH("hw.apic_io_enable", &apic_io_enable);
+	if (apic_io_enable)
+		MachIntrABI = MachIntrABI_APIC;
+#endif
 
 	/*
 	 * start with one cpu.  Note: with one cpu, ncpus2_shift, ncpus2_mask,

@@ -240,7 +240,7 @@ bus/pci/i386/legacy.c			optional	pci
 bus/pci/i386/pci_bus.c			optional	pci
 bus/pci/i386/pci_cfgreg.c		optional	pci
 bus/pci/i386/pci_pir.c			optional	pci
-bus/pci/i386/mptable_pci.c		optional	pci smp apic_io
+bus/pci/i386/mptable_pci.c		optional	pci smp
 platform/pc32/isa/pmtimer.c		optional	pmtimer acpi
 # XXX drhodus
 platform/pc32/isa/prof_machdep.c	optional	profiling-routine

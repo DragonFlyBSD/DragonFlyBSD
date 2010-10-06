@@ -161,20 +161,24 @@ nexus_probe(device_t dev)
 	irq_rman.rm_start = 0;
 	irq_rman.rm_type = RMAN_ARRAY;
 	irq_rman.rm_descr = "Interrupt request lines";
-#ifdef APIC_IO
+
+#if SMP /* APIC-IO */
+if (apic_io_enable) {
 	irq_rman.rm_end = APIC_INTMAPSIZE - 1;
 	if (rman_init(&irq_rman)
 	    || rman_manage_region(&irq_rman,
 				  irq_rman.rm_start, irq_rman.rm_end))
 		panic("nexus_probe irq_rman");
-#else
+} else {
+#endif
 	irq_rman.rm_end = 15;
 	if (rman_init(&irq_rman)
 	    || rman_manage_region(&irq_rman, irq_rman.rm_start, 1)
 	    || rman_manage_region(&irq_rman, 3, irq_rman.rm_end))
 		panic("nexus_probe irq_rman");
+#if SMP /* APIC-IO */
+}
 #endif
-
 	/*
 	 * ISA DMA on PCI systems is implemented in the ISA part of each
 	 * PCI->ISA bridge and the channels can be duplicated if there are
@@ -475,7 +479,8 @@ static int
 nexus_config_intr(device_t dev, device_t child, int irq, enum intr_trigger trig,
     enum intr_polarity pol)
 {
-#ifdef APIC_IO
+#ifdef SMP /* APIC-IO */
+if (apic_io_enable) {
 	int line;
 	int slot = pci_get_slot(child);
 	int bus = pci_get_bus(child);
@@ -488,9 +493,9 @@ nexus_config_intr(device_t dev, device_t child, int irq, enum intr_trigger trig,
 		return line;
 
 	return PCI_INVALID_IRQ;
-#else
-	return irq;
+}
 #endif
+	return irq;
 }
 
 /*

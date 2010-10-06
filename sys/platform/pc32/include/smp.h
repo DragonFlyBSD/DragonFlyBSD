@@ -147,6 +147,7 @@ int	io_apic_get_id		(int);
 int	ext_int_setup		(int, int);
 void	lapic_config(void);
 void	lapic_enumerator_register(struct lapic_enumerator *);
+extern int apic_io_enable;
 
 #if defined(READY)
 void	clr_io_apic_mask24	(int, u_int32_t);

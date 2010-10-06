@@ -29,7 +29,7 @@
 #ifndef _ARCH_APIC_IPL_H_
 #define	_ARCH_APIC_IPL_H_
 
-#ifdef APIC_IO
+#ifdef SMP /* APIC-IO */
 
 /* IDT vector base for regular (aka. slow) and fast interrupts */
 #define TPR_FAST_INTS	0x60
