@@ -27,7 +27,6 @@
  * FreeBSD: src/sys/crypto/aesni/aesni.c,v 1.1 2010/07/23 11:00:46 kib Exp
  */
 
-#include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>

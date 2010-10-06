@@ -33,7 +33,6 @@
 /*
  * tmpfs vnode interface for named pipes.
  */
-#include <sys/cdefs.h>
 
 #include <sys/kernel.h>
 #include <sys/param.h>

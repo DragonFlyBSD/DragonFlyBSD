@@ -33,7 +33,6 @@
 /*
  * tmpfs vnode interface.
  */
-#include <sys/cdefs.h>
 
 #include <sys/kernel.h>
 #include <sys/kern_syscall.h>

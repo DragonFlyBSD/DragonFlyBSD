@@ -33,7 +33,6 @@
 /*
  * Efficient memory file system supporting functions.
  */
-#include <sys/cdefs.h>
 
 #include <sys/kernel.h>
 #include <sys/param.h>

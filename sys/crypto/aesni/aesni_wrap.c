@@ -26,8 +26,6 @@
  * FreeBSD: src/sys/crypto/aesni/aesni_wrap.c,v 1.1 2010/07/23 11:00:46 kib Exp 
  */
 
-#include <sys/cdefs.h>
-
 #include <sys/param.h>
 #include <sys/libkern.h>
 #include <sys/malloc.h>

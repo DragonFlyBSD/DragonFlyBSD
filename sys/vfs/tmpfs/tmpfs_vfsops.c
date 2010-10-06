@@ -40,7 +40,7 @@
  * memory-specific data structures and algorithms to automatically
  * allocate and release resources.
  */
-#include <sys/cdefs.h>
+
 #include <sys/conf.h>
 #include <sys/param.h>
 #include <sys/limits.h>

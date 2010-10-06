@@ -26,10 +26,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * __FBSDID("$FreeBSD: src/sys/dev/iwi/if_iwi.c,v 1.72 2009/07/10 15:28:33 rpaulo Exp $");
+ * $FreeBSD: src/sys/dev/iwi/if_iwi.c,v 1.72 2009/07/10 15:28:33 rpaulo Exp $
  */
-
-#include <sys/cdefs.h>
 
 /*-
  * Intel(R) PRO/Wireless 2200BG/2225BG/2915ABG driver
