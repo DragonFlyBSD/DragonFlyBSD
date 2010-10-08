@@ -1,9 +1,6 @@
 #	$NetBSD: Makefile,v 1.17 2009/10/10 18:06:54 bad Exp $
 
-.include <bsd.own.mk>
-
-WARNS=0
-USE_SHLIBDIR=	yes
+WARNS?=3
 
 PROPLIBDIR=${.CURDIR}/../../sys/libprop
 .PATH: ${PROPLIBDIR}
