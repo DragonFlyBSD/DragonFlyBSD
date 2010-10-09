@@ -295,6 +295,7 @@ typedef struct magazine_depot {
 
 typedef struct thr_mags {
 	magazine_pair	mags[NZONES];
+	struct magazine	*newmag;
 	int		init;
 } thr_mags;
 
@@ -1303,6 +1304,8 @@ magazine_alloc(struct magazine *mp, int *burst)
 {
 	void *obj;
 
+	if (mp == NULL)
+		return(NULL);
 	if (MAGAZINE_NOTEMPTY(mp)) {
 		obj = mp->objects[--mp->rounds];
 		return(obj);
@@ -1344,7 +1347,7 @@ mtmagazine_alloc(int zi)
 	thr_mags *tp;
 	struct magazine *mp, *emptymag;
 	magazine_depot *d;
-	void *obj = NULL;
+	void *obj;
 
 	/*
 	 * Do not try to access per-thread magazines while the mtmagazine
@@ -1358,39 +1361,44 @@ mtmagazine_alloc(int zi)
 	 * Primary per-thread allocation loop
 	 */
 	for (;;) {
-		/* If the loaded magazine has rounds, allocate and return */
-		if (((mp = tp->mags[zi].loaded) != NULL) &&
-		    MAGAZINE_NOTEMPTY(mp)) {
-			obj = magazine_alloc(mp, NULL);
+		/*
+		 * If the loaded magazine has rounds, allocate and return
+		 */
+		mp = tp->mags[zi].loaded;
+		obj = magazine_alloc(mp, NULL);
+		if (obj)
 			break;
-		}
 
-		/* If the prev magazine is full, swap with loaded and retry */
-		if (((mp = tp->mags[zi].prev) != NULL) &&
-		    MAGAZINE_FULL(mp)) {
+		/*
+		 * If the prev magazine is full, swap with the loaded
+		 * magazine and retry.
+		 */
+		mp = tp->mags[zi].prev;
+		if (mp && MAGAZINE_FULL(mp)) {
+			MASSERT(mp->rounds != 0);
 			swap_mags(&tp->mags[zi]);
 			continue;
 		}
 
 		/*
-		 * Lock the depot and check if it has any full magazines; if
-		 * so we return the prev to the emptymag list, move loaded
-		 * to prev load a full magazine, and retry
+		 * Try to get a full magazine from the depot.  Cycle
+		 * through depot(full)->loaded->prev->depot(empty).
+		 * Retry if a full magazine was available from the depot.
+		 *
+		 * Return NULL (caller will fall through) if no magazines
+		 * can be found anywhere.
 		 */
 		d = &depots[zi];
 		depot_lock(d);
-
-		if (!SLIST_EMPTY(&d->full)) {
-			emptymag = tp->mags[zi].prev;
-			tp->mags[zi].prev = tp->mags[zi].loaded;
-			tp->mags[zi].loaded = SLIST_FIRST(&d->full);
+		emptymag = tp->mags[zi].prev;
+		if (emptymag)
+			SLIST_INSERT_HEAD(&d->empty, emptymag, nextmagazine);
+		tp->mags[zi].prev = tp->mags[zi].loaded;
+		mp = SLIST_FIRST(&d->full);	/* loaded magazine */
+		tp->mags[zi].loaded = mp;
+		if (mp) {
 			SLIST_REMOVE_HEAD(&d->full, nextmagazine);
-
-			/* Return emptymag to the depot */
-			if (emptymag != NULL) {
-				SLIST_INSERT_HEAD(&d->empty, emptymag,
-						  nextmagazine);
-			}
+			MASSERT(MAGAZINE_NOTEMPTY(mp));
 			depot_unlock(d);
 			continue;
 		}
@@ -1405,7 +1413,7 @@ static int
 mtmagazine_free(int zi, void *ptr)
 {
 	thr_mags *tp;
-	struct magazine *mp, *loadedmag, *newmag;
+	struct magazine *mp, *loadedmag;
 	magazine_depot *d;
 	int rc = -1;
 
@@ -1421,58 +1429,69 @@ mtmagazine_free(int zi, void *ptr)
 	 * Primary per-thread freeing loop
 	 */
 	for (;;) {
-		/* If the loaded magazine has space, free directly to it */
-		if (((mp = tp->mags[zi].loaded) != NULL) && 
-		    MAGAZINE_NOTFULL(mp)) {
-			rc = magazine_free(mp, ptr);
+		/*
+		 * If the loaded magazine has space, free directly to it
+		 */
+		rc = magazine_free(tp->mags[zi].loaded, ptr);
+		if (rc == 0)
 			break;
-		}
- 
-		/* If the prev magazine is empty, swap with loaded and retry */
-		if (((mp = tp->mags[zi].prev) != NULL) &&
-		    MAGAZINE_EMPTY(mp)) {
+
+		/*
+		 * If the prev magazine is empty, swap with the loaded
+		 * magazine and retry.
+		 */
+		mp = tp->mags[zi].prev;
+		if (mp && MAGAZINE_EMPTY(mp)) {
+			MASSERT(mp->rounds == 0);
 			swap_mags(&tp->mags[zi]);
 			continue;
 		}
 
-		/* Lock the depot; if there are any empty magazines, move the
-		 * prev to the depot's fullmag list, move loaded to previous,
-		 * and move a new emptymag to loaded, and retry. */
+		/*
+		 * Make sure a new magazine is available in case we have
+		 * to use it.  Staging the newmag allows us to avoid
+		 * some complexity.
+		 *
+		 * We have a lot of assumed state here so temporarily
+		 * disable the per-thread caches for this allocation
+		 * to avoid reentrancy.
+		 */
+		if (tp->newmag == NULL) {
+			tp->init = -1;
+			tp->newmag = _slaballoc(sizeof(struct magazine),
+						SAFLAG_ZERO);
+			tp->init = 1;
+			if (tp->newmag == NULL) {
+				rc = -1;
+				break;
+			}
+		}
 
+		/*
+		 * Try to get an empty magazine from the depot.  Cycle
+		 * through depot(empty)->loaded->prev->depot(full).
+		 * Retry if an empty magazine was available from the depot.
+		 */
 		d = &depots[zi];
 		depot_lock(d);
 
-		if (!SLIST_EMPTY(&d->empty)) {
-			loadedmag = tp->mags[zi].prev;
-			tp->mags[zi].prev = tp->mags[zi].loaded;
-			tp->mags[zi].loaded = SLIST_FIRST(&d->empty);
+		if ((loadedmag = tp->mags[zi].prev) != NULL)
+			SLIST_INSERT_HEAD(&d->full, loadedmag, nextmagazine);
+		tp->mags[zi].prev = tp->mags[zi].loaded;
+		mp = SLIST_FIRST(&d->empty);
+		if (mp) {
+			tp->mags[zi].loaded = mp;
 			SLIST_REMOVE_HEAD(&d->empty, nextmagazine);
-
-			/* Return loadedmag to the depot */
-			if (loadedmag != NULL) {
-				SLIST_INSERT_HEAD(&d->full, loadedmag, 
-						  nextmagazine);
-			}
-			depot_unlock(d);
-			continue;
-		} 
-
-		/*
-		 * Allocate an empty magazine, add it to the depot, retry
-		 */
-		depot_unlock(d);
-		newmag = _slaballoc(sizeof(struct magazine), SAFLAG_ZERO);
-		if (newmag != NULL) {
-			newmag->capacity = M_MAX_ROUNDS;
-			newmag->rounds = 0;
-
-			depot_lock(d);
-			SLIST_INSERT_HEAD(&d->empty, newmag, nextmagazine);
-			depot_unlock(d);
-			continue;
+			MASSERT(MAGAZINE_NOTFULL(mp));
+		} else {
+			mp = tp->newmag;
+			tp->newmag = NULL;
+			mp->capacity = M_MAX_ROUNDS;
+			mp->rounds = 0;
+			mp->flags = 0;
+			tp->mags[zi].loaded = mp;
 		}
-		rc = -1;
-		break;
+		depot_unlock(d);
 	} 
 
 	return rc;
@@ -1529,14 +1548,24 @@ mtmagazine_destructor(void *thrp)
 	for (i = 0; i < NZONES; i++) {
 		mp = tp->mags[i].loaded;
 		tp->mags[i].loaded = NULL;
-		if (mp != NULL && MAGAZINE_NOTEMPTY(mp))
-			mtmagazine_drain(mp);
-		_slabfree(mp, 0, NULL);
+		if (mp) {
+			if (MAGAZINE_NOTEMPTY(mp))
+				mtmagazine_drain(mp);
+			_slabfree(mp, 0, NULL);
+		}
 
 		mp = tp->mags[i].prev;
 		tp->mags[i].prev = NULL;
-		if (mp != NULL && MAGAZINE_NOTEMPTY(mp))
-			mtmagazine_drain(mp);
+		if (mp) {
+			if (MAGAZINE_NOTEMPTY(mp))
+				mtmagazine_drain(mp);
+			_slabfree(mp, 0, NULL);
+		}
+	}
+
+	if (tp->newmag) {
+		mp = tp->newmag;
+		tp->newmag = NULL;
 		_slabfree(mp, 0, NULL);
 	}
 }
