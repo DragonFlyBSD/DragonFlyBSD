@@ -1376,7 +1376,7 @@ mtmagazine_alloc(int zi)
 		mp = tp->mags[zi].prev;
 		if (mp && MAGAZINE_FULL(mp)) {
 			MASSERT(mp->rounds != 0);
-			swap_mags(&tp->mags[zi]);
+			swap_mags(&tp->mags[zi]);	/* prev now empty */
 			continue;
 		}
 
@@ -1430,6 +1430,27 @@ mtmagazine_free(int zi, void *ptr)
 	 */
 	for (;;) {
 		/*
+		 * Make sure a new magazine is available in case we have
+		 * to use it.  Staging the newmag allows us to avoid
+		 * some locking/reentrancy complexity.
+		 *
+		 * Temporarily disable the per-thread caches for this
+		 * allocation to avoid reentrancy and/or to avoid a
+		 * stack overflow if the [zi] happens to be the same that
+		 * would be used to allocate the new magazine.
+		 */
+		if (tp->newmag == NULL) {
+			tp->init = -1;
+			tp->newmag = _slaballoc(sizeof(struct magazine),
+						SAFLAG_ZERO);
+			tp->init = 1;
+			if (tp->newmag == NULL) {
+				rc = -1;
+				break;
+			}
+		}
+
+		/*
 		 * If the loaded magazine has space, free directly to it
 		 */
 		rc = magazine_free(tp->mags[zi].loaded, ptr);
@@ -1443,28 +1464,8 @@ mtmagazine_free(int zi, void *ptr)
 		mp = tp->mags[zi].prev;
 		if (mp && MAGAZINE_EMPTY(mp)) {
 			MASSERT(mp->rounds == 0);
-			swap_mags(&tp->mags[zi]);
+			swap_mags(&tp->mags[zi]);	/* prev now full */
 			continue;
-		}
-
-		/*
-		 * Make sure a new magazine is available in case we have
-		 * to use it.  Staging the newmag allows us to avoid
-		 * some complexity.
-		 *
-		 * We have a lot of assumed state here so temporarily
-		 * disable the per-thread caches for this allocation
-		 * to avoid reentrancy.
-		 */
-		if (tp->newmag == NULL) {
-			tp->init = -1;
-			tp->newmag = _slaballoc(sizeof(struct magazine),
-						SAFLAG_ZERO);
-			tp->init = 1;
-			if (tp->newmag == NULL) {
-				rc = -1;
-				break;
-			}
 		}
 
 		/*
