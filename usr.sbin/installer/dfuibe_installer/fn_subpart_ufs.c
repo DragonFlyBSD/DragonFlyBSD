@@ -286,8 +286,8 @@ check_capacity(struct i_fn_args *a)
 			total_capacity += subpart_capacity;
 		for (mtpt = 0; def_mountpt[mtpt] != NULL; mtpt++) {
 			if (strcmp(mountpt, def_mountpt[mtpt]) == 0 &&
-			    min_capacity[mtpt] > 0 &&
-			    subpart_capacity < min_capacity[mtpt]) {
+			    subpart_capacity < min_capacity[mtpt] &&
+			    subpart_capacity != -1) {
 				inform(a->c, _("WARNING: The size (%ldM) specified for "
 				    "the %s subpartition is too small. It "
 				    "should be at least %ldM or you will "
