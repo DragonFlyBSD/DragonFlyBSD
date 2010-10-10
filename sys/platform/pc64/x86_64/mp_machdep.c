@@ -845,6 +845,8 @@ typedef struct BUSTYPENAME {
 	char    name[7];
 }       bus_type_name;
 
+#ifdef APIC_IO
+
 static bus_type_name bus_type_table[] =
 {
 	{CBUS, "CBUS"},
@@ -867,6 +869,7 @@ static bus_type_name bus_type_table[] =
 	{XPRESS, "XPRESS"},
 	{UNKNOWN_BUSTYPE, "---"}
 };
+
 /* from MP spec v1.4, table 5-1 */
 static int default_data[7][5] =
 {
@@ -879,9 +882,6 @@ static int default_data[7][5] =
 	{2, 0, EISA, 1, PCI},
 	{2, 0, MCA, 1, PCI}
 };
-
-
-#ifdef APIC_IO
 
 /* the bus data */
 static bus_datum *bus_data;
@@ -897,8 +897,8 @@ static int processor_entry	(proc_entry_ptr entry, int cpu);
 static int bus_entry		(bus_entry_ptr entry, int bus);
 static int io_apic_entry	(io_apic_entry_ptr entry, int apic);
 static int int_entry		(int_entry_ptr entry, int intr);
-#endif
 static int lookup_bus_type	(char *name);
+#endif
 
 
 /*
@@ -1822,8 +1822,6 @@ io_apic_entry(io_apic_entry_ptr entry, int apic)
 	return 1;
 }
 
-#endif
-
 static int
 lookup_bus_type(char *name)
 {
@@ -1835,8 +1833,6 @@ lookup_bus_type(char *name)
 
 	return UNKNOWN_BUSTYPE;
 }
-
-#ifdef APIC_IO
 
 static int
 int_entry(int_entry_ptr entry, int intr)
