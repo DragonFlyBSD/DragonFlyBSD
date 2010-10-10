@@ -16,6 +16,8 @@
     lib
         debug
         ..
+        engines
+        ..
         gcc41
             debug
             ..

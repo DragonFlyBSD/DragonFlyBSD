@@ -6,6 +6,8 @@ SHLIB_MAJOR=	5
 
 NOLINT=		true
 
+SUBDIR=	engines
+
 .if exists(Makefile.man)
 .include "Makefile.man"
 .endif
@@ -133,17 +135,6 @@ SRCS+=	eng_all.c eng_cnf.c eng_cryptodev.c eng_ctrl.c eng_dyn.c eng_err.c \
 	tb_digest.c tb_dsa.c tb_ecdh.c tb_ecdsa.c \
 	tb_pkmeth.c tb_rand.c tb_rsa.c tb_store.c
 INCS+=	eng_int.h engine.h
-
-# engines
-CFLAGS+=-DOPENSSL_NO_DYNAMIC_ENGINE	# needs more hacking
-SRCS+=	e_4758cca.c e_aep.c e_atalla.c e_capi.c e_chil.c e_cswift.c e_gmp.c \
-	e_nuron.c e_padlock.c e_sureware.c e_ubsec.c
-
-# engines/ccgost
-SRCS+=	e_gost_err.c gost2001.c gost2001_keyx.c gost89.c gost94_keyx.c \
-	gost_ameth.c gost_asn1.c gost_crypt.c gost_ctl.c gost_eng.c \
-	gost_keywrap.c gost_md.c gost_params.c gost_pmeth.c gost_sign.c \
-	gosthash.c
 
 # err
 SRCS+=	err.c err_all.c err_prn.c
@@ -386,7 +377,5 @@ opensslconf.h: opensslconf-${MACHINE_ARCH}.h
 	${LCRYPTO_SRC}/crypto/whrlpool \
 	${LCRYPTO_SRC}/crypto/x509 \
 	${LCRYPTO_SRC}/crypto/x509v3 \
-	${LCRYPTO_SRC}/engines \
-	${LCRYPTO_SRC}/engines/ccgost \
 	${LCRYPTO_SRC} \
 	${.CURDIR}/man
