@@ -905,6 +905,11 @@ static struct umass_devdescr_t umass_devdescrs[] = {
 	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
 	  .quirks = FORCE_SHORT_INQUIRY | NO_START_STOP | IGNORE_RESIDUE
 	},
+	/* Western External USB HHD My Passport */
+	{ .vendor = 0x1058, .product = 0x0704, .release = WILDCARD_ID,
+	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
+	  .quirks = FORCE_SHORT_INQUIRY | NO_START_STOP | IGNORE_RESIDUE
+	},
 	/* Western External HDD  */
 	{ .vendor = 0x1058, .product = 0x0400, .release = WILDCARD_ID,
 	  .proto  = UMASS_PROTO_SCSI | UMASS_PROTO_BBB,
