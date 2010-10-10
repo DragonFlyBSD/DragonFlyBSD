@@ -126,6 +126,7 @@ SRCS+=	ecs_asn1.c ecs_err.c ecs_lib.c ecs_ossl.c ecs_sign.c ecs_vrf.c
 INCS+=	ecdsa.h
 
 # engine
+CFLAGS+=-DHAVE_CRYPTODEV
 SRCS+=	eng_all.c eng_cnf.c eng_cryptodev.c eng_ctrl.c eng_dyn.c eng_err.c \
 	eng_fat.c eng_init.c eng_lib.c eng_list.c eng_openssl.c \
 	eng_pkey.c eng_table.c tb_asnmth.c tb_cipher.c tb_dh.c \
