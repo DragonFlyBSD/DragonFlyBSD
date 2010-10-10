@@ -18,10 +18,13 @@ vkernel_start()
 	do
 		# Check if already running
 		eval pidfile="/var/run/vkernel.${_vkernel}.pid"
-		if [ -f "${_pidfile}" ]; then
-			echo
-			warn "Vkernel ${_vkernel} already running? (check ${pidfile})"
-			continue
+		if [ -f "${pidfile}" ]; then
+			eval pid=`cat ${pidfile}`
+			if [ ! -z "${pid}" -a ! -z "`ps axwwp ${pid} | grep -wE "^[ ]+${pid}" | grep -v grep | awk '{print $1}'`" ]; then
+				echo
+				warn "Vkernel ${_vkernel} already running? (check ${pidfile})"
+				continue
+			fi
 		fi
 
 		# Configure vkernel binary
