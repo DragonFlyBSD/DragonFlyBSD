@@ -861,7 +861,10 @@ fn_assign_hostname_domain(struct i_fn_args *a)
 
 		hostname = dfui_dataset_get_value(new_ds, "hostname");
 		domain = dfui_dataset_get_value(new_ds, "domain");
-		asprintf(&fqdn, "%s.%s", hostname, domain);
+		if (strlen(domain) == 0)
+			asprintf(&fqdn, "%s", hostname);
+		else
+			asprintf(&fqdn, "%s.%s", hostname, domain);
 
 		resolv_conf = config_vars_new();
 

@@ -28,13 +28,11 @@
 # LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
-# $DragonFly: src/usr.bin/pkg_radd/pkg_radd.sh,v 1.1 2008/01/05 10:14:26 matthias Exp $
 
 osver=`uname -r | awk -F - '{ print $1; }'`
 cpuver=`uname -p | awk -F - '{ print $1; }'`
 [ -f /etc/settings.conf ] && . /etc/settings.conf
-: ${BINPKG_BASE:=http://avalon.dragonflybsd.org/packages}
+: ${BINPKG_BASE:=http://mirror-master.dragonflybsd.org/packages}
 : ${BINPKG_SITES:=$BINPKG_BASE/$cpuver/DragonFly-$osver/stable}
 : ${PKG_PATH:=$BINPKG_SITES/All}
 

@@ -654,13 +654,16 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	/*
 	 * Make sure we have been removed from the sleepq.  This should
 	 * have been done for us already.
+	 *
+	 * However, it is possible for a scheduling IPI to be in flight
+	 * from a previous tsleep/tsleep_interlock or due to a straight-out
+	 * call to lwkt_schedule() (in the case of an interrupt thread).
+	 * So don't complain if DESCHEDULED is still set.
 	 */
 	_tsleep_remove(td);
 	td->td_wmesg = NULL;
 	if (td->td_flags & TDF_TSLEEP_DESCHEDULED) {
 		td->td_flags &= ~TDF_TSLEEP_DESCHEDULED;
-		kprintf("td %p (%s) unexpectedly rescheduled\n",
-			td, td->td_comm);
 	}
 
 	/*

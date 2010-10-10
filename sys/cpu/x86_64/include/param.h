@@ -166,9 +166,12 @@
  * Ceiling on size of buffer cache (really only effects write queueing,
  * the VM page cache is not effected), can be changed via
  * kern.maxbcache /boot/loader.conf variable.
+ *
+ * On x86_64 boxes this can also improve HAMMER's flushing and cache
+ * performance so use a much higher value than i386.
  */
 #ifndef VM_BCACHE_SIZE_MAX
-#define VM_BCACHE_SIZE_MAX	(400L * 1024 * 1024)
+#define VM_BCACHE_SIZE_MAX	(1000L * 1024 * 1024)
 #endif
 
 /*

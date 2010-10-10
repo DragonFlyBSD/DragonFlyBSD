@@ -21,7 +21,7 @@ SRCS=	alias.c arpadate.c bf.c collect.c conf.c control.c \
 	ratectrl.c readcf.c recipient.c savemail.c sasl.c sfsasl.c \
 	shmticklib.c sm_resolve.c srvrsmtp.c stab.c stats.c sysexits.c \
 	timers.c tls.c trace.c udb.c usersmtp.c util.c version.c ${PATCHES}
-WARNS?=	2
+WARNS?=	0
 BINOWN=	root
 BINGRP=	smmsp
 .ifdef SENDMAIL_SET_USER_ID

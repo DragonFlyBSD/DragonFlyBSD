@@ -27,9 +27,7 @@
 .\" NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 .\" SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/usr.bin/pkg_radd/pkg_radd.1,v 1.2 2008/02/08 10:41:43 swildner Exp $
-.\"
-.Dd January 3, 2008
+.Dd September 25, 2010
 .Dt PKG_RADD 1
 .Os
 .Sh NAME
@@ -84,11 +82,18 @@ to find the correct version.
 .Dl "# pkg_search fvwm2"
 .Dl "# pkg_radd -v fvwm-2.4.20nb1"
 .Pp
-Add the following line to
-.Pa /etc/settings.conf
-to fetch packages from the European mirror:
+If you add the following line
 .Pp
-.Dl "BINPKG_BASE=http://chlamydia.fs.ei.tum.de/pub/DragonFly/packages"
+.Dl "BINPKG_BASE=http://mirror-master.dragonflybsd.org/packages"
+.Pp
+to
+.Pa /etc/settings.conf ,
+.Nm
+fetches packages from the main
+.Dx
+server.
+If possible, replace the entry with one of the mirrors as listed in
+.Pa http://www.dragonflybsd.org/mirrors/ .
 .Sh SEE ALSO
 .Xr pkg_add 1 ,
 .Xr pkg_create 1 ,

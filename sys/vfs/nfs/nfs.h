@@ -477,7 +477,8 @@ struct nfssvc_sock {
 	STAILQ_HEAD(, nfsrv_rec) ns_rec;
 	struct mbuf	*ns_frag;
 	int		ns_numrec;
-	int		ns_flag;
+	u_int32_t	ns_flag;
+	u_int32_t	ns_needq_upcall;
 	struct mtx	ns_solock;
 	int		ns_cc;
 	int		ns_reclen;
@@ -490,13 +491,15 @@ struct nfssvc_sock {
 };
 
 /* Bits for "ns_flag" */
-#define	SLP_VALID	0x01
-#define	SLP_DOREC	0x02
-#define	SLP_NEEDQ	0x04
-#define	SLP_DISCONN	0x08
-#define	SLP_GETSTREAM	0x10
-#define	SLP_LASTFRAG	0x20
-#define SLP_ALLFLAGS	0xff
+#define	SLP_VALID	0x0001
+#define	SLP_DOREC	0x0002	/* socket holding at least one record */
+#define	SLP_NEEDQ	0x0004	/* socket needs general rx processing */
+#define	SLP_DISCONN	0x0008
+#define	SLP_GETSTREAM	0x0010	/* receive stream interlock */
+#define	SLP_LASTFRAG	0x0020
+
+#define SLP_ALLFLAGS		0xff
+#define SLP_ACTION_MASK		(SLP_NEEDQ | SLP_DOREC | SLP_DISCONN)
 
 extern TAILQ_HEAD(nfssvc_sockhead, nfssvc_sock) nfssvc_sockhead;
 extern int nfssvc_sockhead_flag;
@@ -529,6 +532,8 @@ struct nfsd {
 /* Bits for loadattrcache */
 #define NFS_LATTR_NOSHRINK	0x01
 #define NFS_LATTR_NOMTIMECHECK	0x02
+
+#define NFSRV_RECLIMIT(slp)	((slp)->ns_numrec >= nfsd_waiting + 4)
 
 /*
  * This structure is used by the server for describing each request.

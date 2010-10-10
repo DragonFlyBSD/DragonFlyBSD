@@ -1529,13 +1529,16 @@ pmap_release_callback(struct vm_page *p, void *data)
  * No requirements.
  */
 void
-pmap_growkernel(vm_offset_t addr)
+pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 {
+	vm_offset_t addr;
 	vm_paddr_t paddr;
 	vm_offset_t ptppaddr;
 	vm_page_t nkpg;
 	pd_entry_t *pde, newpdir;
 	pdp_entry_t newpdp;
+
+	addr = kend;
 
 	crit_enter();
 	lwkt_gettoken(&vm_token);
@@ -1561,20 +1564,23 @@ pmap_growkernel(vm_offset_t addr)
 			nkpg = vm_page_alloc(kptobj, nkpt,
 			                     VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM
 					     | VM_ALLOC_INTERRUPT);
-			if (nkpg == NULL)
-				panic("pmap_growkernel: no memory to grow kernel");
+			if (nkpg == NULL) {
+				panic("pmap_growkernel: no memory to "
+				      "grow kernel");
+			}
 			paddr = VM_PAGE_TO_PHYS(nkpg);
 			if ((nkpg->flags & PG_ZERO) == 0)
 				pmap_zero_page(paddr);
 			vm_page_flag_clear(nkpg, PG_ZERO);
-			newpdp = (pdp_entry_t)
-				(paddr | VPTE_V | VPTE_R | VPTE_W | VPTE_A | VPTE_M);
+			newpdp = (pdp_entry_t)(paddr | VPTE_V | VPTE_R |
+					       VPTE_W | VPTE_A | VPTE_M);
 			*pmap_pdpe(&kernel_pmap, kernel_vm_end) = newpdp;
 			nkpt++;
 			continue; /* try again */
 		}
 		if ((*pde & VPTE_V) != 0) {
-			kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) & ~(PAGE_SIZE * NPTEPG - 1);
+			kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) &
+					~(PAGE_SIZE * NPTEPG - 1);
 			if (kernel_vm_end - 1 >= kernel_map.max_offset) {
 				kernel_vm_end = kernel_map.max_offset;
 				break;
@@ -1586,7 +1592,9 @@ pmap_growkernel(vm_offset_t addr)
 		 * This index is bogus, but out of the way
 		 */
 		nkpg = vm_page_alloc(kptobj, nkpt,
-			VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM | VM_ALLOC_INTERRUPT);
+				     VM_ALLOC_NORMAL |
+				     VM_ALLOC_SYSTEM |
+				     VM_ALLOC_INTERRUPT);
 		if (nkpg == NULL)
 			panic("pmap_growkernel: no memory to grow kernel");
 
@@ -1594,11 +1602,13 @@ pmap_growkernel(vm_offset_t addr)
 		ptppaddr = VM_PAGE_TO_PHYS(nkpg);
 		pmap_zero_page(ptppaddr);
 		vm_page_flag_clear(nkpg, PG_ZERO);
-		newpdir = (pd_entry_t) (ptppaddr | VPTE_V | VPTE_R | VPTE_W | VPTE_A | VPTE_M);
+		newpdir = (pd_entry_t)(ptppaddr | VPTE_V | VPTE_R |
+				       VPTE_W | VPTE_A | VPTE_M);
 		*pmap_pde(&kernel_pmap, kernel_vm_end) = newpdir;
 		nkpt++;
 
-		kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) & ~(PAGE_SIZE * NPTEPG - 1);
+		kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) &
+				~(PAGE_SIZE * NPTEPG - 1);
 		if (kernel_vm_end - 1 >= kernel_map.max_offset) {
 			kernel_vm_end = kernel_map.max_offset;
 			break;
@@ -3261,4 +3271,16 @@ pmap_addr_hint(vm_object_t obj, vm_offset_t addr, vm_size_t size)
 
 	addr = (addr + (NBPDR - 1)) & ~(NBPDR - 1);
 	return addr;
+}
+
+/*
+ * Used by kmalloc/kfree, page already exists at va
+ */
+vm_page_t
+pmap_kvtom(vm_offset_t va)
+{
+	vpte_t *ptep;
+
+	KKASSERT(va >= KvaStart && va < KvaEnd);
+	return(PHYS_TO_VM_PAGE(vtopte(va) & PG_FRAME));
 }

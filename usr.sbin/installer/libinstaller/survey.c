@@ -296,7 +296,7 @@ survey_storage(struct i_fn_args *a)
 				disk_set_serno(d, line);
 		} else if (strcmp(line, "@SLICES") == 0) {
 			int cyl, hd, sec;
-			int number, type, flags;
+			int sliceno, type, flags;
 			unsigned long start, size;
 
 			/*
@@ -306,18 +306,19 @@ survey_storage(struct i_fn_args *a)
 			 */
 			while (d != NULL && strcmp(line, "@END") != 0 && fgets_chomp(line, 255, f)) {
 				if (strncmp(line, "/dev/", 5) == 0) {
+					cyl = hd = sec = 0;
 					parse_geometry_info(line, &cyl, &hd, &sec);
 					disk_set_geometry(d, cyl, hd, sec);
 				} else if (strncmp(line, "Part", 4) == 0) {
 					/* ignore it */
 				} else {
-					if (parse_slice_info(line, &number, &start, &size,
+					if (parse_slice_info(line, &sliceno, &start, &size,
 					    &type, &flags)) {
 						/*
 						fprintfo(log, "| Found slice #%d, sysid %d, "
-						    "start %ld, size %ld\n", number, type, start, size);
+						    "start %ld, size %ld\n", sliceno, type, start, size);
 						*/
-						slice_new(d, number, type, flags, start, size);
+						slice_new(d, sliceno, type, flags, start, size);
 					}
 				}
 			}

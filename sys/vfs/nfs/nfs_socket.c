@@ -1743,11 +1743,14 @@ nfs_timer_callout(void *arg /* never used */)
 	cur_usec = nfs_curusec();
 
 	TAILQ_FOREACH(slp, &nfssvc_sockhead, ns_chain) {
-	    /* XXX race against removal */
-	    lwkt_gettoken(&slp->ns_token);
-	    if (slp->ns_tq.lh_first && slp->ns_tq.lh_first->nd_time<=cur_usec)
-		nfsrv_wakenfsd(slp, 1);
-	    lwkt_reltoken(&slp->ns_token);
+		/* XXX race against removal */
+		if (lwkt_trytoken(&slp->ns_token)) {
+			if (slp->ns_tq.lh_first &&
+			    (slp->ns_tq.lh_first->nd_time <= cur_usec)) {
+				nfsrv_wakenfsd(slp, 1);
+			}
+			lwkt_reltoken(&slp->ns_token);
+		}
 	}
 #endif /* NFS_NOSERVER */
 
@@ -2484,21 +2487,32 @@ nfs_msg(struct thread *td, char *server, char *msg)
 
 #ifndef NFS_NOSERVER
 
+/*
+ * Socket upcall routine for nfsd sockets.  This runs in the protocol
+ * thread and passes waitflag == MB_DONTWAIT.
+ */
 void
 nfsrv_rcv_upcall(struct socket *so, void *arg, int waitflag)
 {
 	struct nfssvc_sock *slp = (struct nfssvc_sock *)arg;
 
+	if (slp->ns_needq_upcall == 0) {
+		slp->ns_needq_upcall = 1;	/* ok to race */
+		lwkt_gettoken(&nfs_token);
+		nfsrv_wakenfsd(slp, 1);
+		lwkt_reltoken(&nfs_token);
+	}
+#if 0
 	lwkt_gettoken(&slp->ns_token);
+	slp->ns_flag |= SLP_NEEDQ;
 	nfsrv_rcv(so, arg, waitflag);
 	lwkt_reltoken(&slp->ns_token);
+#endif
 }
 
 /*
- * Socket upcall routine for the nfsd sockets.
- * The caddr_t arg is a pointer to the "struct nfssvc_sock".
- * Essentially do as much as possible non-blocking, else punt and it will
- * be called with MB_WAIT from an nfsd.
+ * Process new data on a receive socket.  Essentially do as much as we can
+ * non-blocking, else punt and it will be called with MB_WAIT from an nfsd.
  *
  * slp->ns_token is held on call
  */
@@ -2523,19 +2537,15 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 	 * end up holding onto an unreasonable number of mbufs for requests
 	 * waiting for service.
 	 *
-	 * This should give pretty good feedback to the TCP
-	 * layer and prevents a memory crunch for other protocols.
+	 * This should give pretty good feedback to the TCP layer and
+	 * prevents a memory crunch for other protocols.
 	 *
 	 * Note that the same service socket can be dispatched to several
-	 * nfs servers simultaniously.
-	 *
-	 * the tcp protocol callback calls us with MB_DONTWAIT.  
-	 * nfsd calls us with MB_WAIT (typically).
+	 * nfs servers simultaniously.  The tcp protocol callback calls us
+	 * with MB_DONTWAIT.  nfsd calls us with MB_WAIT (typically).
 	 */
-	if (waitflag == MB_DONTWAIT && slp->ns_numrec >= nfsd_waiting / 2 + 1) {
-		slp->ns_flag |= SLP_NEEDQ;
-		goto dorecs;
-	}
+	if (NFSRV_RECLIMIT(slp))
+		return;
 
 	/*
 	 * Handle protocol specifics to parse an RPC request.  We always
@@ -2549,15 +2559,9 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 		 * entity is messing around with the TCP stream at any given
 		 * moment.  The receive sockbuf's lock in soreceive is not
 		 * sufficient.
-		 *
-		 * Note that this procedure can be called from any number of
-		 * NFS severs *OR* can be upcalled directly from a TCP
-		 * protocol thread without the lock.
 		 */
-		if (slp->ns_flag & SLP_GETSTREAM) {
-			slp->ns_flag |= SLP_NEEDQ;
-			goto dorecs;
-		}
+		if (slp->ns_flag & SLP_GETSTREAM)
+			return;
 		slp->ns_flag |= SLP_GETSTREAM;
 
 		/*
@@ -2568,12 +2572,10 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 		flags = MSG_DONTWAIT;
 		error = so_pru_soreceive(so, &nam, NULL, &sio, NULL, &flags);
 		if (error || sio.sb_mb == NULL) {
-			if (error == EWOULDBLOCK)
-				slp->ns_flag |= SLP_NEEDQ;
-			else
+			if (error != EWOULDBLOCK)
 				slp->ns_flag |= SLP_DISCONN;
-			slp->ns_flag &= ~SLP_GETSTREAM;
-			goto dorecs;
+			slp->ns_flag &= ~(SLP_GETSTREAM | SLP_NEEDQ);
+			goto done;
 		}
 		m = sio.sb_mb;
 		if (slp->ns_rawend) {
@@ -2589,15 +2591,11 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 
 		/*
 		 * Now try and parse as many record(s) as we can out of the
-		 * raw stream data.
+		 * raw stream data.  This will set SLP_DOREC.
 		 */
 		error = nfsrv_getstream(slp, waitflag, &nparallel_wakeup);
-		if (error) {
-			if (error == EPERM)
-				slp->ns_flag |= SLP_DISCONN;
-			else
-				slp->ns_flag |= SLP_NEEDQ;
-		}
+		if (error && error != EWOULDBLOCK)
+			slp->ns_flag |= SLP_DISCONN;
 		slp->ns_flag &= ~SLP_GETSTREAM;
 	} else {
 		/*
@@ -2626,28 +2624,32 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 				rec->nr_packet = sio.sb_mb;
 				STAILQ_INSERT_TAIL(&slp->ns_rec, rec, nr_link);
 				++slp->ns_numrec;
+				slp->ns_flag |= SLP_DOREC;
 				++nparallel_wakeup;
+			} else {
+				slp->ns_flag &= ~SLP_NEEDQ;
 			}
 			if (error) {
 				if ((so->so_proto->pr_flags & PR_CONNREQUIRED)
-					&& error != EWOULDBLOCK) {
+				    && error != EWOULDBLOCK) {
 					slp->ns_flag |= SLP_DISCONN;
-					goto dorecs;
+					break;
 				}
 			}
+			if (NFSRV_RECLIMIT(slp))
+				break;
 		} while (sio.sb_mb);
 	}
 
 	/*
 	 * If we were upcalled from the tcp protocol layer and we have
 	 * fully parsed records ready to go, or there is new data pending,
-	 * or something went wrong, try to wake up an nfsd thread to deal
+	 * or something went wrong, try to wake up a nfsd thread to deal
 	 * with it.
 	 */
-dorecs:
-	if (waitflag == MB_DONTWAIT &&
-	    (slp->ns_numrec > 0 ||
-	     (slp->ns_flag & (SLP_NEEDQ | SLP_DISCONN)))) {
+done:
+	/* XXX this code is currently not executed (nfsrv_rcv_upcall) */
+	if (waitflag == MB_DONTWAIT && (slp->ns_flag & SLP_ACTION_MASK)) {
 		lwkt_gettoken(&nfs_token);
 		nfsrv_wakenfsd(slp, nparallel_wakeup);
 		lwkt_reltoken(&nfs_token);
@@ -2775,6 +2777,7 @@ nfsrv_getstream(struct nfssvc_sock *slp, int waitflag, int *countp)
 		    rec->nr_packet = slp->ns_frag;
 		    STAILQ_INSERT_TAIL(&slp->ns_rec, rec, nr_link);
 		    ++slp->ns_numrec;
+		    slp->ns_flag |= SLP_DOREC;
 		    ++*countp;
 		}
 		slp->ns_frag = NULL;
@@ -2812,6 +2815,9 @@ nfs_checkpkt(struct mbuf *m __unused, int len __unused)
 
 /*
  * Parse an RPC header.
+ *
+ * If the socket is invalid or no records are pending we return ENOBUFS.
+ * The caller must deal with NEEDQ races.
  */
 int
 nfsrv_dorec(struct nfssvc_sock *slp, struct nfsd *nfsd,
@@ -2829,7 +2835,8 @@ nfsrv_dorec(struct nfssvc_sock *slp, struct nfsd *nfsd,
 	rec = STAILQ_FIRST(&slp->ns_rec);
 	STAILQ_REMOVE_HEAD(&slp->ns_rec, nr_link);
 	KKASSERT(slp->ns_numrec > 0);
-	--slp->ns_numrec;
+	if (--slp->ns_numrec == 0)
+		slp->ns_flag &= ~SLP_DOREC;
 	nam = rec->nr_address;
 	m = rec->nr_packet;
 	kfree(rec, M_NFSRVDESC);
@@ -2875,16 +2882,19 @@ nfsrv_wakenfsd(struct nfssvc_sock *slp, int nparallel)
 			nd->nfsd_flag &= ~NFSD_WAITING;
 			if (nd->nfsd_slp)
 				panic("nfsd wakeup");
-			slp->ns_sref++;
+			nfsrv_slpref(slp);
 			nd->nfsd_slp = slp;
 			wakeup((caddr_t)nd);
 			if (--nparallel == 0)
 				break;
 		}
 	}
-	if (nparallel) {
-		slp->ns_flag |= SLP_DOREC;
+
+	/*
+	 * If we couldn't assign slp then the NFSDs are all busy and
+	 * we set a flag indicating that there is pending work.
+	 */
+	if (nparallel)
 		nfsd_head_flag |= NFSD_CHECKSLP;
-	}
 }
 #endif /* NFS_NOSERVER */

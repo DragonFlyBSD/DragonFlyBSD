@@ -457,11 +457,19 @@ write clustering it does.
 The theoretical limit for the Intel X25V is 400TB (10,000 erase cycles
 per MLC cell, 40GB drive), but the firmware doesn't do perfect static
 wear leveling so the actual durability is less.
+In tests over several hundred days we have validated a write endurance
+greater than 200TB on the 40G Intel X25V using
+.Nm .
 .Pp
 In contrast, most filesystems directly stored on a SSD have
 fairly severe write amplification effects and will have durabilities
 ranging closer to the vendor-specified limit.
+.Pp
 Power-on hours, power cycles, and read operations do not really affect wear.
+There is something called read-disturb but it is unclear what sort of
+ratio would be needed.  Since the data is cached in ram and thus not
+re-read at a high rate there is no expectation of a practical effect.
+For all intents and purposes only write operations effect wear.
 .Pp
 SSD's with MLC-based flash technology are high-density, low-cost solutions
 with limited write durability.

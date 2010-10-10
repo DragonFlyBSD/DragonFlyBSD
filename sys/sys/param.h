@@ -200,6 +200,7 @@
 #define howmany(x, y)	(((x)+((y)-1))/(y))
 #endif
 #define rounddown(x, y)	(((x)/(y))*(y))
+#define rounddown2(x, y) ((x) & ~((y) - 1))	   /* y power of two */
 #define roundup(x, y)	((((x)+((y)-1))/(y))*(y))  /* to any y */
 #define roundup2(x, y)	(((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
 #define powerof2(x)	((((x)-1)&(x))==0)

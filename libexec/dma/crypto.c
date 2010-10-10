@@ -80,7 +80,7 @@ int
 smtp_init_crypto(int fd, int feature)
 {
 	SSL_CTX *ctx = NULL;
-	SSL_METHOD *meth = NULL;
+	const SSL_METHOD *meth = NULL;
 	X509 *cert;
 	int error;
 

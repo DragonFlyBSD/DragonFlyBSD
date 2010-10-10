@@ -4,6 +4,12 @@
 PROG=   sftp-server
 SRCS=   sftp-server.c sftp-common.c sftp-server-main.c roaming_dummy.c
 MAN=	sftp-server.8
+WARNS?=	0
+
+# Portability layer
+SRCS+=	fmt_scaled.c
 
 .include "../../Makefile.ssh.common"
 .include <bsd.prog.mk>
+
+.PATH:	${SSHDIR}/openbsd-compat

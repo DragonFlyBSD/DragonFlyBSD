@@ -161,14 +161,8 @@ SYSCTL_INT(_debug, OID_AUTO, ncnegfactor, CTLFLAG_RW, &ncnegfactor, 0, "");
 static int	nclockwarn;		/* warn on locked entries in ticks */
 SYSCTL_INT(_debug, OID_AUTO, nclockwarn, CTLFLAG_RW, &nclockwarn, 0, "");
 
-static int	numneg;			/* number of cache entries allocated */
-SYSCTL_INT(_debug, OID_AUTO, numneg, CTLFLAG_RD, &numneg, 0, "");
-
 static int	numdefered;		/* number of cache entries allocated */
 SYSCTL_INT(_debug, OID_AUTO, numdefered, CTLFLAG_RD, &numdefered, 0, "");
-
-static int	numcache;		/* number of cache entries allocated */
-SYSCTL_INT(_debug, OID_AUTO, numcache, CTLFLAG_RD, &numcache, 0, "");
 
 SYSCTL_INT(_debug, OID_AUTO, vnsize, CTLFLAG_RD, 0, sizeof(struct vnode), "");
 SYSCTL_INT(_debug, OID_AUTO, ncsize, CTLFLAG_RD, 0, sizeof(struct namecache), "");
@@ -189,8 +183,10 @@ static void _cache_cleandefered(void);
 SYSCTL_NODE(_vfs, OID_AUTO, cache, CTLFLAG_RW, 0, "Name cache statistics");
 #define STATNODE(mode, name, var) \
 	SYSCTL_ULONG(_vfs_cache, OID_AUTO, name, mode, var, 0, "");
-STATNODE(CTLFLAG_RD, numneg, &numneg);
-STATNODE(CTLFLAG_RD, numcache, &numcache);
+#define STATNODE_INT(mode, name, var) \
+	SYSCTL_UINT(_vfs_cache, OID_AUTO, name, mode, var, 0, "");
+static int numneg; STATNODE_INT(CTLFLAG_RD, numneg, &numneg);
+static int numcache; STATNODE_INT(CTLFLAG_RD, numcache, &numcache);
 static u_long numcalls; STATNODE(CTLFLAG_RD, numcalls, &numcalls);
 static u_long dothits; STATNODE(CTLFLAG_RD, dothits, &dothits);
 static u_long dotdothits; STATNODE(CTLFLAG_RD, dotdothits, &dotdothits);
@@ -2744,7 +2740,7 @@ _cache_cleanneg(int count)
 		_cache_hold(ncp);
 		spin_unlock(&ncspin);
 		if (_cache_lock_special(ncp) == 0) {
-			ncp = cache_zap(ncp, 0);
+			ncp = cache_zap(ncp, 1);
 			if (ncp)
 				_cache_drop(ncp);
 		} else {

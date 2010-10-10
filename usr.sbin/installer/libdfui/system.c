@@ -16,7 +16,7 @@
 #include "system.h"
 
 char *
-ostype()
+ostype(void)
 {
 	int mib[2];
 	size_t len;
@@ -31,7 +31,7 @@ ostype()
 }
 
 int
-has_caps()
+has_caps(void)
 {
 #ifdef HAS_CAPS
 	return 1;
@@ -40,7 +40,7 @@ has_caps()
 }
 
 int
-has_npipe()
+has_npipe(void)
 {
 #ifdef HAS_NPIPE
 	return 1;
@@ -50,7 +50,7 @@ has_npipe()
 }
 
 int
-has_tcp()
+has_tcp(void)
 {
 #ifdef HAS_TCP
 	return 1;

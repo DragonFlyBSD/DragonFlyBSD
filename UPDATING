@@ -7,8 +7,47 @@
 #
 # If you discover any problem, please contact the bugs@lists.dragonflybsd.org
 # mailing list with the details.
-#
-# $DragonFly: src/UPDATING,v 1.26 2008/09/15 20:03:36 thomas Exp $
+
++-----------------------------------------------------------------------+
++         20100927							+
++         UPGRADING DRAGONFLY FROM 2.6 to 2.8 or HEAD			+
++-----------------------------------------------------------------------+
+
+OpenSSL
+========
+
+OpenSSL has been upgraded, and SHLIB_MAJOR was bumped for libssh and libcrypto.
+This shouldn't break any 3rd-party software, but you'll need to recompile your
+3rd-party software if you want it to link against the new version of OpenSSL.
+
+Loader
+=======
+
+A new loader (dloader) has been added which better handles booting from
+multiple kernel/module versions.
+
+To upgrade (Only for this upgrade, for post 2.8 upgrades see GENERAL below)
+
+	cd /usr/src
+	make buildworld
+	make installworld
+	make upgrade
+	make buildkernel KERNCONF=<KERNELNAME>
+	make installkernel KERNCONF=<KERNELNAME>
+
+Note that you must installworld and run the 'upgrade' target before
+installing the new kernel.
+
+BIND
+=====
+
+BIND has been removed from the base system.  The ldns and drill tools have 
+been added for basic functionality.  Use 'drill' where you would normally 
+use nslookup or dig, or install BIND from pkgsrc.  It's available as 
+net/bind95, net/bind96, or net/bind97 as of this writing.
+
+This only affects older systems upgrading to 2.8.  New 2.8+ installs 
+include BIND as a pkgsrc package.
 
 +-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY ON AN EXISTING DRAGONFLY SYSTEM		+

@@ -1525,6 +1525,15 @@ TO_REMOVE+=/usr/share/man/cat9/mtx_notowner.9.gz
 TO_REMOVE+=/usr/share/man/cat9/mtx_owner.9.gz
 TO_REMOVE+=/usr/share/man/man9/mtx_notowner.9.gz
 TO_REMOVE+=/usr/share/man/man9/mtx_owner.9.gz
+TO_REMOVE+=/usr/include/openssl/fips_err.h
+TO_REMOVE+=/usr/include/openssl/krb5_asn.h
+TO_REMOVE+=/usr/include/openssl/md2.h
+TO_REMOVE+=/usr/include/openssl/pq_compat.h
+TO_REMOVE+=/usr/include/openssl/rc5.h
+TO_REMOVE+=/usr/include/openssl/store.h
+TO_REMOVE+=/usr/include/openssl/tmdiff.h
+TO_REMOVE+=/usr/share/openssl/man/cat3/CRYPTO_set_id_callback.3.gz
+TO_REMOVE+=/usr/share/openssl/man/man3/CRYPTO_set_id_callback.3.gz
 
 # XXX Remove when adjusted to the new 802.11 framework
 TO_REMOVE+=/boot/modules/if_acx.ko

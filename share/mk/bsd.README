@@ -269,7 +269,7 @@ DPADD		Additional dependencies for the program.  Usually used for
 		libraries.  For example, to depend on the compatibility and
 		utility libraries use:
 
-			SRCLIB=${LIBCOMPAT} ${LIBUTIL}
+			DPADD=	${LIBCOMPAT} ${LIBUTIL}
 
 		There is a predefined identifier for each (non-profiled,
 		non-shared) library and object.  Library file names are
