@@ -27,12 +27,14 @@ vkernel_start()
 		# Configure vkernel binary
 		eval _bin=\"\${vkernel_${_vkernel}_bin}\"
 		if [ -z "${_bin}" -o ! -x "${_bin}" ]; then
-			echo
-			warn "Missing or undefined binary for vkernel '${_vkernel}'. Skipping."
-			continue
-		else
-			bin=${_bin}
+			eval _bin=\"\${vkernel_bin}\"
+			if [ -z "${_bin}" -o ! -x "${_bin}" ]; then
+				echo
+				warn "Missing or undefined binary for vkernel '${_vkernel}'. Skipping."
+				continue
+			fi
 		fi
+		bin=${_bin}
 
 		# Configure vkernel memory
 		eval _memsize=\"\$vkernel_${_vkernel}_memsize\"
@@ -48,8 +50,7 @@ vkernel_start()
 		eval _rootimgs=\"\${vkernel_${_vkernel}_rootimg_list}\"
 		if [ -z "${_rootimgs}" ]; then
 			echo
-			warn "No root image has been defined for vkernel '${_vkernel}'. Skipping."
-			continue
+			warn "No root image has been defined for vkernel '${_vkernel}'."
 		else
 			for _rootimg in ${_rootimgs}
 			do
@@ -86,11 +87,6 @@ vkernel_stop()
 		eval pidfile="/var/run/vkernel.${_vkernel}.pid"
 		if [ -f "${pidfile}" ]; then
 			eval pid=`cat ${pidfile}`
-		else
-			eval _bin=\"\${vkernel_${_vkernel}_bin}\"
-			if [ -n "$_bin" ]; then
-				eval pid=`ps auxwww | grep ${_bin} | grep -v grep | awk '{print $2}'`
-			fi
 		fi
 		if [ -z "${pid}" ]; then
 			warn "vkernel '${_vkernel}' not running?"
