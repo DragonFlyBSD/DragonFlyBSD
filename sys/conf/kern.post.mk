@@ -123,11 +123,8 @@ kernel-install: kernel-installable
 	@if [ -f ${DESTDIR}${DESTKERNDIR}.old ]; then		\
 		rm -f ${DESTDIR}${DESTKERNDIR}.old;		\
 	fi
-# Skip this step for vkernels
-.if ${MACHINE_PLATFORM} != vkernel && ${MACHINE_PLATFORM} != vkernel64
 	mkdir -p ${DESTDIR}${DESTKERNDIR}.old
-.endif
-.  if exists(${DESTDIR}${DESTKERNDIR}/${DESTKERNNAME})
+.if exists(${DESTDIR}${DESTKERNDIR}/${DESTKERNNAME})
 .ifndef NOFSCHG
 	-chflags noschg ${DESTDIR}${DESTKERNDIR}/${DESTKERNNAME}
 .endif
@@ -136,7 +133,7 @@ kernel-install: kernel-installable
 .    else
 	${OBJCOPY} --strip-debug ${DESTDIR}${DESTKERNDIR}/${DESTKERNNAME} ${DESTDIR}${DESTKERNDIR}.old/${DESTKERNNAME}
 .    endif
-.  endif
+.endif
 	@if [ -f ${DESTDIR}${DESTKERNDIR} ]; then		\
 		chflags noschg ${DESTDIR}${DESTKERNDIR};	\
 		rm -f ${DESTDIR}${DESTKERNDIR};			\
