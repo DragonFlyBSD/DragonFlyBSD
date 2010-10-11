@@ -1089,7 +1089,7 @@ net/gif/if_gif.c		optional gif
 net/gre/if_gre.c		optional gre
 net/pfil.c			standard
 net/pf/if_pflog.c		optional pflog
-net/pf/if_pfsync.c		optional pfsync
+net/pf/if_pfsync.c		optional pf
 net/pf/pf.c			optional pf
 net/pf/pf_if.c			optional pf
 net/pf/pf_subr.c		optional pf
