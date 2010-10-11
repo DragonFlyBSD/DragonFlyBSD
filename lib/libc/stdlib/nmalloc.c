@@ -126,8 +126,6 @@
 #include "spinlock.h"
 #include "un-namespace.h"
 
-static char rcsid[] = "$Id: nmalloc.c,v 1.37 2010/07/23 08:20:35 sv5679 Exp $";
-
 /*
  * Linked list of large allocations
  */
@@ -290,7 +288,7 @@ typedef struct magazine_pair {
 typedef struct magazine_depot {
 	struct magazinelist full;
 	struct magazinelist empty;
-	pthread_spinlock_t lock;
+	spinlock_t	lock;
 } magazine_depot;
 
 typedef struct thr_mags {
@@ -464,14 +462,14 @@ static __inline void
 depot_lock(magazine_depot *dp) 
 {
 	if (__isthreaded)
-		pthread_spin_lock(&dp->lock);
+		_SPINLOCK(&dp->lock);
 }
 
 static __inline void
 depot_unlock(magazine_depot *dp)
 {
 	if (__isthreaded)
-		pthread_spin_unlock(&dp->lock);
+		_SPINUNLOCK(&dp->lock);
 }
 
 static __inline void
@@ -1035,12 +1033,13 @@ _slabrealloc(void *ptr, size_t size)
 	slzone_t z;
 	size_t chunking;
 
-	if (ptr == NULL || ptr == ZERO_LENGTH_PTR)
+	if (ptr == NULL || ptr == ZERO_LENGTH_PTR) {
 		return(_slaballoc(size, 0));
+	}
 
 	if (size == 0) {
-	    free(ptr);
-	    return(ZERO_LENGTH_PTR);
+		free(ptr);
+		return(ZERO_LENGTH_PTR);
 	}
 
 	/*
@@ -1096,8 +1095,9 @@ _slabrealloc(void *ptr, size_t size)
 	 */
 	if (size < ZoneLimit) {
 		zoneindex(&size, &chunking);
-		if (z->z_ChunkSize == size)
+		if (z->z_ChunkSize == size) {
 			return(ptr);
+		}
 	}
 
 	/*
