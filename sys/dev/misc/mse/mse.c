@@ -57,7 +57,7 @@
 #include <sys/thread2.h>
 
 #include <machine/clock.h>
-#include <machine/mouse.h>
+#include <sys/mouse.h>
 
 #include <bus/isa/isavar.h>
 

@@ -49,7 +49,7 @@
  * $DragonFly: src/usr.sbin/moused/moused.c,v 1.7 2008/11/12 21:44:59 swildner Exp $
  */
 #include <machine/console.h>
-#include <machine/mouse.h>
+#include <sys/mouse.h>
 #include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/consio.h>
