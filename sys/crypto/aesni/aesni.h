@@ -51,7 +51,6 @@
 #define	AES192_ROUNDS	12
 #define	AES256_ROUNDS	14
 #define	AES_SCHED_LEN	((AES256_ROUNDS + 1) * AES_BLOCK_LEN)
-#define	CPUID2_AESNI	0x02000000
 
 struct aesni_session {
 	uint8_t enc_schedule[AES_SCHED_LEN] __aligned(16);
