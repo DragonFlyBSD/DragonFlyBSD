@@ -181,6 +181,7 @@ ucom_attach(struct ucom_softc *sc)
 			UID_UUCP, GID_DIALER, 0660,
 			"ucom%d", unit);
 	dev->si_tty = tp;
+	sc->dev = dev;
 	lwkt_reltoken(&tty_token);
 
 	return (0);
@@ -194,6 +195,7 @@ ucom_detach(struct ucom_softc *sc)
 
 	DPRINTF(("ucom_detach: sc = %p, tp = %p\n", sc, sc->sc_tty));
 
+	destroy_dev(sc->dev);
 	lwkt_gettoken(&tty_token);
 	sc->sc_dying = 1;
 
