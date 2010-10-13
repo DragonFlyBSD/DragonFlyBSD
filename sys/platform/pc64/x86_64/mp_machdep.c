@@ -3036,7 +3036,7 @@ mptable_lapic_default(void)
  *     need_hyperthreading_fixup
  *     logical_cpus
  *     logical_cpus_mask
- *     ID_TO_IO(N), phy APIC ID to log CPU/IO table
+ *     ID_TO_CPU(N), APIC ID to logical CPU table
  *     CPU_TO_ID(N), logical CPU to APIC ID table
  */
 static void
