@@ -696,14 +696,9 @@ mp_enable(u_int boot_addr)
 		mptable_imcr(&mpt);
 
 		/*
-		 * We can safely map physical memory into SMPpt after
-		 * mptable_pass1() completes.
-		 */
-		mptable_pass1(&mpt);
-
-		/*
 		 * Examine the MP table for needed info
 		 */
+		mptable_pass1(&mpt);
 		mptable_pass2(&mpt);
 
 		mptable_unmap(&mpt);
@@ -880,9 +875,9 @@ static int nintrs;
 
 static int processor_entry	(const struct PROCENTRY *entry, int cpu);
 #ifdef APIC_IO
-static int bus_entry		(bus_entry_ptr entry, int bus);
-static int io_apic_entry	(io_apic_entry_ptr entry, int apic);
-static int int_entry		(int_entry_ptr entry, int intr);
+static int bus_entry		(const struct BUSENTRY *entry, int bus);
+static int io_apic_entry	(const struct IOAPICENTRY *entry, int apic);
+static int int_entry		(const struct INTENTRY *entry, int intr);
 static int lookup_bus_type	(char *name);
 #endif
 
@@ -961,6 +956,39 @@ mptable_pass1(struct mptable_pos *mpt)
 #endif	/* APIC_IO */
 }
 
+#ifdef APIC_IO
+
+struct mptable_ioapic2_cbarg {
+	int	bus;
+	int	apic;
+	int	intr;
+};
+
+static int
+mptable_ioapic_pass2_callback(void *xarg, const void *pos, int type)
+{
+	struct mptable_ioapic2_cbarg *arg = xarg;
+
+	switch (type) {
+	case 1:
+		if (bus_entry(pos, arg->bus))
+			++arg->bus;
+		break;
+
+	case 2:
+		if (io_apic_entry(pos, arg->apic))
+			++arg->apic;
+		break;
+
+	case 3:
+		if (int_entry(pos, arg->intr))
+			++arg->intr;
+		break;
+	}
+	return 0;
+}
+
+#endif	/* APIC_IO */
 
 /*
  * 2nd pass on motherboard's Intel MP specification table.
@@ -974,24 +1002,16 @@ mptable_pass1(struct mptable_pos *mpt)
 static void
 mptable_pass2(struct mptable_pos *mpt)
 {
-	int     x;
-	mpfps_t fps;
-	mpcth_t cth;
-	int     totalSize;
-	void*   position;
-	int     count;
-	int     type;
-	int     apic, bus, intr;
 #ifdef APIC_IO
-	int	i;
-#endif
+	struct mptable_ioapic2_cbarg arg;
+	mpfps_t fps;
+	int error, x;
 
 	POSTCODE(MPTABLE_PASS2_POST);
 
 	fps = mpt->mp_fps;
 	KKASSERT(fps != NULL);
 
-#ifdef APIC_IO
 	MALLOC(io_apic_versions, u_int32_t *, sizeof(u_int32_t) * mp_napics,
 	    M_DEVBUF, M_WAITOK);
 	MALLOC(ioapic, volatile ioapic_t **, sizeof(ioapic_t *) * mp_napics,
@@ -1000,23 +1020,16 @@ mptable_pass2(struct mptable_pos *mpt)
 	    M_DEVBUF, M_WAITOK);
 	MALLOC(bus_data, bus_datum *, sizeof(bus_datum) * mp_nbusses,
 	    M_DEVBUF, M_WAITOK);
-#endif
 
-#ifdef APIC_IO
-	for (i = 0; i < mp_napics; i++) {
-		ioapic[i] = permanent_io_mapping(io_apic_address[i]);
-	}
-#endif
+	for (x = 0; x < mp_napics; x++)
+		ioapic[x] = permanent_io_mapping(io_apic_address[x]);
 
 	/* clear various tables */
 	for (x = 0; x < NAPICID; ++x) {
-#ifdef APIC_IO
 		ID_TO_IO(x) = -1;	/* phy APIC ID to log CPU/IO table */
 		IO_TO_ID(x) = -1;	/* logical IO to APIC ID table */
-#endif
 	}
 
-#ifdef APIC_IO
 	/* clear bus data table */
 	for (x = 0; x < mp_nbusses; ++x)
 		bus_data[x].bus_id = 0xff;
@@ -1026,7 +1039,6 @@ mptable_pass2(struct mptable_pos *mpt)
 		io_apic_ints[x].int_type = 0xff;
 		io_apic_ints[x].int_vector = 0xff;
 	}
-#endif
 
 	/* check for use of 'default' configuration */
 	if (fps->mpfb1 != 0) {
@@ -1034,48 +1046,12 @@ mptable_pass2(struct mptable_pos *mpt)
 		return;
 	}
 
-	cth = mpt->mp_cth;
-	KKASSERT(cth != NULL);
-
-	/* walk the table, recording info of interest */
-	totalSize = cth->base_table_length - sizeof(struct MPCTH);
-	position = (u_char *) cth + sizeof(struct MPCTH);
-	count = cth->entry_count;
-	apic = bus = intr = 0;
-
-	while (count--) {
-		switch (type = *(u_char *) position) {
-		case 0:
-			break;
-		case 1:
-#ifdef APIC_IO
-			if (bus_entry(position, bus))
-				++bus;
+	bzero(&arg, sizeof(arg));
+	error = mptable_iterate_entries(mpt->mp_cth,
+		    mptable_ioapic_pass2_callback, &arg);
+	if (error)
+		panic("mptable_iterate_entries(ioapic_pass2) failed\n");
 #endif
-			break;
-		case 2:
-#ifdef APIC_IO
-			if (io_apic_entry(position, apic))
-				++apic;
-#endif
-			break;
-		case 3:
-#ifdef APIC_IO
-			if (int_entry(position, intr))
-				++intr;
-#endif
-			break;
-		case 4:
-			/* int_entry(position); */
-			break;
-		default:
-			panic("mpfps Base Table HOSED!");
-			/* NOTREACHED */
-		}
-
-		totalSize -= basetable_entry_types[type].length;
-		position = (uint8_t *)position + basetable_entry_types[type].length;
-	}
 }
 
 
@@ -1676,7 +1652,7 @@ processor_entry(const struct PROCENTRY *entry, int cpu)
 #ifdef APIC_IO
 
 static int
-bus_entry(bus_entry_ptr entry, int bus)
+bus_entry(const struct BUSENTRY *entry, int bus)
 {
 	int     x;
 	char    c, name[8];
@@ -1699,7 +1675,7 @@ bus_entry(bus_entry_ptr entry, int bus)
 }
 
 static int
-io_apic_entry(io_apic_entry_ptr entry, int apic)
+io_apic_entry(const struct IOAPICENTRY *entry, int apic)
 {
 	if (!(entry->apic_flags & IOAPICENTRY_FLAG_EN))
 		return 0;
@@ -1723,7 +1699,7 @@ lookup_bus_type(char *name)
 }
 
 static int
-int_entry(int_entry_ptr entry, int intr)
+int_entry(const struct INTENTRY *entry, int intr)
 {
 	int apic;
 
