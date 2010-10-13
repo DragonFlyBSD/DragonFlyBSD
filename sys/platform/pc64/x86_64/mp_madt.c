@@ -42,6 +42,12 @@
 #include <machine/specialreg.h>
 #include <machine_base/apic/mpapic.h>
 
+#define MADT_VPRINTF(fmt, arg...) \
+do { \
+	if (bootverbose) \
+		kprintf("ACPI MADT: " fmt , ##arg); \
+} while (0)
+
 #define ACPI_RSDP_EBDA_MAPSZ	1024
 #define ACPI_RSDP_BIOS_MAPSZ	0x20000
 #define ACPI_RSDP_BIOS_MAPADDR	0xe0000
@@ -180,13 +186,13 @@ madt_probe(void)
 
 		rsdp = madt_rsdp_search(ptr, mapsz);
 		if (rsdp == NULL) {
-			kprintf("madt: RSDP not in EBDA\n");
+			MADT_VPRINTF("RSDP not in EBDA\n");
 			pmap_unmapdev((vm_offset_t)ptr, mapsz);
 
 			ptr = NULL;
 			mapsz = 0;
 		} else {
-			kprintf("madt: RSDP in EBDA\n");
+			MADT_VPRINTF("RSDP in EBDA\n");
 			goto found_rsdp;
 		}
 	}
@@ -200,7 +206,7 @@ madt_probe(void)
 		pmap_unmapdev((vm_offset_t)ptr, mapsz);
 		return 0;
 	} else {
-		kprintf("madt: RSDP in BIOS mem\n");
+		MADT_VPRINTF("RSDP in BIOS mem\n");
 	}
 
 found_rsdp:
@@ -311,7 +317,7 @@ madt_search_xsdt(vm_paddr_t xsdt_paddr)
 			madt_sdth_unmap(sdth);
 
 			if (ret == 0) {
-				kprintf("madt: MADT in XSDT\n");
+				MADT_VPRINTF("MADT in XSDT\n");
 				madt_paddr = xsdt->xsdt_ents[i];
 				break;
 			}
@@ -369,7 +375,7 @@ madt_search_rsdt(vm_paddr_t rsdt_paddr)
 			madt_sdth_unmap(sdth);
 
 			if (ret == 0) {
-				kprintf("madt: MADT in RSDT\n");
+				MADT_VPRINTF("MADT in RSDT\n");
 				madt_paddr = rsdt->rsdt_ents[i];
 				break;
 			}
@@ -411,8 +417,8 @@ madt_pass1(vm_paddr_t madt_paddr)
 	madt = madt_sdth_map(madt_paddr);
 	KKASSERT(madt != NULL);
 
-	kprintf("madt: LAPIC address 0x%08x, flags %#x\n",
-		madt->madt_lapic_addr, madt->madt_flags);
+	MADT_VPRINTF("LAPIC address 0x%08x, flags %#x\n",
+		     madt->madt_lapic_addr, madt->madt_flags);
 	lapic_addr = madt->madt_lapic_addr;
 
 	lapic_addr64 = 0;
@@ -448,8 +454,8 @@ madt_pass2_callback(void *xarg, const struct acpi_madt_ent *ent)
 
 	lapic_ent = (const struct acpi_madt_lapic *)ent;
 	if (lapic_ent->ml_flags & MADT_LAPIC_ENABLED) {
-		kprintf("madt: cpu_id %d, apic_id %d\n",
-			lapic_ent->ml_cpu_id, lapic_ent->ml_apic_id);
+		MADT_VPRINTF("cpu_id %d, apic_id %d\n",
+			     lapic_ent->ml_cpu_id, lapic_ent->ml_apic_id);
 		if (lapic_ent->ml_apic_id == arg->bsp_apic_id) {
 			mp_set_cpuids(0, lapic_ent->ml_apic_id);
 			arg->bsp_found = 1;
@@ -468,7 +474,7 @@ madt_pass2(vm_paddr_t madt_paddr, int bsp_apic_id)
 	struct madt_pass2_cbarg arg;
 	int error;
 
-	kprintf("madt: BSP apic id %d\n", bsp_apic_id);
+	MADT_VPRINTF("BSP apic id %d\n", bsp_apic_id);
 
 	KKASSERT(madt_paddr != 0);
 
