@@ -891,6 +891,34 @@ static int int_entry		(int_entry_ptr entry, int intr);
 static int lookup_bus_type	(char *name);
 #endif
 
+#ifdef APIC_IO
+
+static int
+mptable_ioapic_pass1_callback(void *xarg, const void *pos, int type)
+{
+	const struct IOAPICENTRY *ioapic_ent;
+
+	switch (type) {
+	case 1: /* bus_entry */
+		++mp_nbusses;
+		break;
+
+	case 2: /* io_apic_entry */
+		ioapic_ent = pos;
+		if (ioapic_ent->apic_flags & IOAPICENTRY_FLAG_EN) {
+			io_apic_address[mp_napics++] =
+			    (vm_offset_t)ioapic_ent->apic_address;
+		}
+		break;
+
+	case 3: /* int_entry */
+		++nintrs;
+		break;
+	}
+	return 0;
+}
+
+#endif	/* APIC_IO */
 
 /*
  * 1st pass on motherboard's Intel MP specification table.
@@ -905,86 +933,37 @@ static void
 mptable_pass1(struct mptable_pos *mpt)
 {
 #ifdef APIC_IO
-	int	x;
-#endif
 	mpfps_t fps;
-	mpcth_t	cth;
-	int	totalSize;
-	void*	position;
-	int	count;
-	int	type;
+	int x;
 
 	POSTCODE(MPTABLE_PASS1_POST);
 
 	fps = mpt->mp_fps;
 	KKASSERT(fps != NULL);
 
-#ifdef APIC_IO
 	/* clear various tables */
-	for (x = 0; x < NAPICID; ++x) {
+	for (x = 0; x < NAPICID; ++x)
 		io_apic_address[x] = ~0;	/* IO APIC address table */
-	}
-#endif
 
-#ifdef APIC_IO
 	mp_nbusses = 0;
 	mp_napics = 0;
 	nintrs = 0;
-#endif
 
 	/* check for use of 'default' configuration */
 	if (fps->mpfb1 != 0) {
-#ifdef APIC_IO
 		io_apic_address[0] = DEFAULT_IO_APIC_BASE;
 		mp_nbusses = default_data[fps->mpfb1 - 1][0];
 		mp_napics = 1;
 		nintrs = 16;
+	} else {
+		int error;
+
+		error = mptable_iterate_entries(mpt->mp_cth,
+			    mptable_ioapic_pass1_callback, NULL);
+		if (error)
+			panic("mptable_iterate_entries(ioapic_pass1) failed\n");
+	}
 #endif	/* APIC_IO */
-	}
-	else {
-		cth = mpt->mp_cth;
-		KKASSERT(cth != NULL);
-
-		/* walk the table, recording info of interest */
-		totalSize = cth->base_table_length - sizeof(struct MPCTH);
-		position = (u_char *) cth + sizeof(struct MPCTH);
-		count = cth->entry_count;
-
-		while (count--) {
-			switch (type = *(u_char *) position) {
-			case 0: /* processor_entry */
-				break;
-			case 1: /* bus_entry */
-#ifdef APIC_IO
-				++mp_nbusses;
-#endif
-				break;
-			case 2: /* io_apic_entry */
-#ifdef APIC_IO
-				if (((io_apic_entry_ptr)position)->apic_flags
-					& IOAPICENTRY_FLAG_EN)
-					io_apic_address[mp_napics++] =
-					    (vm_offset_t)((io_apic_entry_ptr)
-						position)->apic_address;
-#endif
-				break;
-			case 3: /* int_entry */
-#ifdef APIC_IO
-				++nintrs;
-#endif
-				break;
-			case 4:	/* int_entry */
-				break;
-			default:
-				panic("mpfps Base Table HOSED!");
-				/* NOTREACHED */
-			}
-
-			totalSize -= basetable_entry_types[type].length;
-			position = (uint8_t *)position +
-			    basetable_entry_types[type].length;
-		}
-	}
 }
 
 
