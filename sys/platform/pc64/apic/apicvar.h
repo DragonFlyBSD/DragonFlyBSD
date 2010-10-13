@@ -137,7 +137,6 @@ void	lapic_dump(const char *str);
 void	lapic_enable_intr(u_int vector);
 void	lapic_eoi(void);
 int	lapic_id(void);
-void	lapic_init(uintptr_t addr);
 int	lapic_intr_pending(u_int vector);
 void	lapic_ipi_raw(register_t icrlo, u_int dest);
 void	lapic_ipi_vectored(u_int vector, int dest);

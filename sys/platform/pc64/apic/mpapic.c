@@ -32,6 +32,7 @@
 #include <machine/globaldata.h>
 #include <machine/smp.h>
 #include <machine/md_var.h>
+#include <machine/pmap.h>
 #include <machine_base/apic/mpapic.h>
 #include <machine/segments.h>
 #include <sys/thread2.h>
@@ -1002,4 +1003,21 @@ u_sleep(int count)
 	set_apic_timer(count);
 	while (read_apic_timer())
 		 /* spin */ ;
+}
+
+void
+lapic_init(vm_offset_t lapic_addr)
+{
+	/*
+	 * lapic not mapped yet (pmap_init is called too late)
+	 */
+	lapic = pmap_mapdev_uncacheable(lapic_addr, sizeof(struct LAPIC));
+
+#if 0
+	/* Local apic is mapped on last page */
+	SMPpt[NPTEPG - 1] = (pt_entry_t)(PG_V | PG_RW | PG_N |
+	    pmap_get_pgeflag() | (lapic_addr & PG_FRAME));
+#endif
+
+	kprintf("lapic: at 0x%08lx\n", lapic_addr);
 }
