@@ -53,9 +53,10 @@
  */
 #define APIC_POP_FRAME POP_FRAME
 
-/* sizeof(struct apic_intmapinfo) == 24 */
-#define IOAPICADDR(irq_num) CNAME(int_to_apicintpin) + 24 * (irq_num) + 8
-#define REDIRIDX(irq_num) CNAME(int_to_apicintpin) + 24 * (irq_num) + 16
+#define IOAPICADDR(irq_num) \
+	CNAME(int_to_apicintpin) + AIMI_SIZE * (irq_num) + AIMI_APIC_ADDRESS
+#define REDIRIDX(irq_num) \
+	CNAME(int_to_apicintpin) + AIMI_SIZE * (irq_num) + AIMI_REDIRINDEX
 
 #define MASK_IRQ(irq_num)						\
 	APIC_IMASK_LOCK ;			/* into critical reg */	\
