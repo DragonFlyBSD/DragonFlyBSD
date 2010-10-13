@@ -73,6 +73,7 @@
 #define WARMBOOT_SEG		(KERNBASE + 0x0469)
 
 #define BIOS_BASE		(0xf0000)
+#define BIOS_BASE2		(0xe0000)
 #define BIOS_SIZE		(0x10000)
 #define BIOS_COUNT		(BIOS_SIZE/4)
 
@@ -397,6 +398,11 @@ mptable_search(void)
 
 	/* search the BIOS */
 	target = (u_int32_t)BIOS_BASE;
+	if ((x = mptable_search_sig(target, BIOS_COUNT)) > 0)
+		return x;
+
+	/* search the extended BIOS */
+	target = (u_int32_t)BIOS_BASE2;
 	if ((x = mptable_search_sig(target, BIOS_COUNT)) > 0)
 		return x;
 
