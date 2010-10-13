@@ -110,6 +110,20 @@ void	ap_init			(void);
 int	restart_cpus		(u_int);
 void	forward_signal		(struct proc *);
 
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
+
+struct lapic_enumerator {
+	int	lapic_prio;
+	TAILQ_ENTRY(lapic_enumerator) lapic_link;
+	int	(*lapic_probe)(struct lapic_enumerator *);
+	void	(*lapic_enumerate)(struct lapic_enumerator *);
+};
+
+#define LAPIC_ENUM_PRIO_MPTABLE	20
+#define LAPIC_ENUM_PRIO_MADT	40
+
 /* global data in mpapic.c */
 extern volatile lapic_t		*lapic;
 extern volatile ioapic_t	**ioapic;
@@ -127,11 +141,8 @@ void	io_apic_setup_intpin	(int, int);
 void	io_apic_set_id		(int, int);
 int	io_apic_get_id		(int);
 int	ext_int_setup		(int, int);
-
-/* functions in mp_madt.c */
-vm_paddr_t	madt_probe(void);
-vm_offset_t	madt_pass1(vm_paddr_t);
-int		madt_pass2(vm_paddr_t, int);
+void	lapic_config(void);
+void	lapic_enumerator_register(struct lapic_enumerator *);
 
 #if defined(READY)
 void	clr_io_apic_mask24	(int, u_int32_t);

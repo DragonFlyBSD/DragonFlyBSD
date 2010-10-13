@@ -1021,3 +1021,37 @@ lapic_init(vm_offset_t lapic_addr)
 
 	kprintf("lapic: at 0x%08lx\n", lapic_addr);
 }
+
+static TAILQ_HEAD(, lapic_enumerator) lapic_enumerators =
+	TAILQ_HEAD_INITIALIZER(lapic_enumerators);
+
+void
+lapic_config(void)
+{
+	struct lapic_enumerator *e;
+	int error;
+
+	TAILQ_FOREACH(e, &lapic_enumerators, lapic_link) {
+		error = e->lapic_probe(e);
+		if (!error)
+			break;
+	}
+	if (e == NULL)
+		panic("can't config lapic\n");
+
+	e->lapic_enumerate(e);
+}
+
+void
+lapic_enumerator_register(struct lapic_enumerator *ne)
+{
+	struct lapic_enumerator *e;
+
+	TAILQ_FOREACH(e, &lapic_enumerators, lapic_link) {
+		if (e->lapic_prio < ne->lapic_prio) {
+			TAILQ_INSERT_BEFORE(e, ne, lapic_link);
+			return;
+		}
+	}
+	TAILQ_INSERT_TAIL(&lapic_enumerators, ne, lapic_link);
+}

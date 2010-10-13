@@ -33,12 +33,14 @@
  */
 
 #include <sys/param.h>
+#include <sys/kernel.h>
 #include <sys/systm.h>
 
 #include <machine/pmap.h>
 #include <machine/smp.h>
 #include <machine/md_var.h>
 #include <machine/specialreg.h>
+#include <machine_base/apic/mpapic.h>
 
 #define ACPI_RSDP_EBDA_MAPSZ	1024
 #define ACPI_RSDP_BIOS_MAPSZ	0x20000
@@ -136,6 +138,11 @@ struct acpi_madt_lapic_addr {
 	uint64_t		mla_lapic_addr;
 } __packed;
 
+struct madt_lapic_enumerator {
+	struct lapic_enumerator	enumerator;
+	vm_paddr_t		madt_paddr;
+};
+
 typedef	vm_paddr_t		(*madt_search_t)(vm_paddr_t);
 typedef int			(*madt_iter_t)(void *,
 				    const struct acpi_madt_ent *);
@@ -149,9 +156,16 @@ static int			madt_check(vm_paddr_t);
 static int			madt_iterate_entries(struct acpi_madt *,
 				    madt_iter_t, void *);
 
+static vm_paddr_t		madt_probe(void);
+static vm_offset_t		madt_pass1(vm_paddr_t);
+static int			madt_pass2(vm_paddr_t, int);
+
+static void			madt_lapic_enumerate(struct lapic_enumerator *);
+static int			madt_lapic_probe(struct lapic_enumerator *);
+
 extern u_long	ebda_addr;
 
-vm_paddr_t
+static vm_paddr_t
 madt_probe(void)
 {
 	const struct acpi_rsdp *rsdp;
@@ -384,7 +398,7 @@ madt_pass1_callback(void *xarg, const struct acpi_madt_ent *ent)
 	return 0;
 }
 
-vm_offset_t
+static vm_offset_t
 madt_pass1(vm_paddr_t madt_paddr)
 {
 	struct acpi_madt *madt;
@@ -447,7 +461,7 @@ madt_pass2_callback(void *xarg, const struct acpi_madt_ent *ent)
 	return 0;
 }
 
-int
+static int
 madt_pass2(vm_paddr_t madt_paddr, int bsp_apic_id)
 {
 	struct acpi_madt *madt;
@@ -611,5 +625,60 @@ madt_iterate_entries(struct acpi_madt *madt, madt_iter_t func, void *arg)
 	}
 	return error;
 }
+
+static int
+madt_lapic_probe(struct lapic_enumerator *e)
+{
+	vm_paddr_t madt_paddr;
+
+	madt_paddr = madt_probe();
+	if (madt_paddr == 0)
+		return ENXIO;
+
+	((struct madt_lapic_enumerator *)e)->madt_paddr = madt_paddr;
+	return 0;
+}
+
+static void
+madt_lapic_enumerate(struct lapic_enumerator *e)
+{
+	vm_paddr_t madt_paddr;
+	vm_offset_t lapic_addr;
+	int bsp_apic_id;
+
+	madt_paddr = ((struct madt_lapic_enumerator *)e)->madt_paddr;
+	KKASSERT(madt_paddr != 0);
+
+	lapic_addr = madt_pass1(madt_paddr);
+	if (lapic_addr == 0)
+		panic("madt_lapic_enumerate no local apic\n");
+
+	bsp_apic_id = (cpu_procinfo & CPUID_LOCAL_APIC_ID) >> 24;
+	if (madt_pass2(madt_paddr, bsp_apic_id))
+		panic("mp_enable: madt_pass2 failed\n");
+
+	lapic_init(lapic_addr);
+}
+
+static struct madt_lapic_enumerator	madt_lapic_enumerator = {
+	.enumerator = {
+		.lapic_prio = LAPIC_ENUM_PRIO_MADT,
+		.lapic_probe = madt_lapic_probe,
+		.lapic_enumerate = madt_lapic_enumerate
+	}
+};
+
+static void
+madt_apic_register(void)
+{
+	int prio;
+
+	prio = LAPIC_ENUM_PRIO_MADT;
+	kgetenv_int("hw.madt_lapic_prio", &prio);
+	madt_lapic_enumerator.enumerator.lapic_prio = prio;
+
+	lapic_enumerator_register(&madt_lapic_enumerator.enumerator);
+}
+SYSINIT(madt, SI_BOOT2_PRESMP, SI_ORDER_ANY, madt_apic_register, 0);
 
 
