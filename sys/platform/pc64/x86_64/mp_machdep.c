@@ -302,6 +302,7 @@ static void	mp_enable(u_int boot_addr);
 static int	mptable_iterate_entries(const mpcth_t,
 		    mptable_iter_func, void *);
 static int	mptable_probe(void);
+static int	mptable_search(void);
 static int	mptable_check(vm_paddr_t);
 static long	mptable_search_sig(u_int32_t target, int count);
 static int	mptable_hyperthread_fixup(u_int, int);
@@ -355,11 +356,23 @@ mp_bootaddress(u_int basemem)
 }
 
 
+static int
+mptable_probe(void)
+{
+	int mpfps_paddr;
+
+	mpfps_paddr = mptable_search();
+	if (mptable_check(mpfps_paddr))
+		return 0;
+
+	return mpfps_paddr;
+}
+
 /*
  * Look for an Intel MP spec table (ie, SMP capable hardware).
  */
 static int
-mptable_probe(void)
+mptable_search(void)
 {
 	long    x;
 	u_int32_t target;
@@ -683,8 +696,6 @@ mp_enable(u_int boot_addr)
 		mpfps_paddr = 0;
 	} else {
 		mpfps_paddr = mptable_probe();
-		if (mptable_check(mpfps_paddr))
-			mpfps_paddr = 0;
 	}
 
 	if (mpfps_paddr) {
