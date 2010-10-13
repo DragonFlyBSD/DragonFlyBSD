@@ -313,6 +313,7 @@ static int	mptable_map(struct mptable_pos *, vm_paddr_t);
 static void	mptable_unmap(struct mptable_pos *);
 static void	mptable_lapic_enumerate(struct mptable_pos *);
 static void	mptable_lapic_default(void);
+static void	mptable_imcr(struct mptable_pos *);
 
 #ifdef APIC_IO
 static void	setup_apic_irq_mapping(void);
@@ -692,6 +693,8 @@ mp_enable(u_int boot_addr)
 		mptable_lapic_enumerate(&mpt);
 		KKASSERT(lapic);
 
+		mptable_imcr(&mpt);
+
 		/*
 		 * We can safely map physical memory into SMPpt after
 		 * mptable_pass1() completes.
@@ -1024,9 +1027,6 @@ mptable_pass2(struct mptable_pos *mpt)
 		io_apic_ints[x].int_vector = 0xff;
 	}
 #endif
-
-	/* record whether PIC or virtual-wire mode */
-	machintr_setvar_simple(MACHINTR_VAR_IMCR_PRESENT, fps->mpfb2 & 0x80);
 
 	/* check for use of 'default' configuration */
 	if (fps->mpfb1 != 0) {
@@ -3065,6 +3065,14 @@ mptable_lapic_enumerate(struct mptable_pos *mpt)
 
 	/* Map local apic */
 	lapic_init(lapic_addr);
+}
+
+static void
+mptable_imcr(struct mptable_pos *mpt)
+{
+	/* record whether PIC or virtual-wire mode */
+	machintr_setvar_simple(MACHINTR_VAR_IMCR_PRESENT,
+			       mpt->mp_fps->mpfb2 & 0x80);
 }
 
 static void
