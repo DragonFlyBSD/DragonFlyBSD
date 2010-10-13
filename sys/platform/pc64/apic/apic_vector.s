@@ -62,9 +62,10 @@
  
 #define MASK_IRQ(irq_num)						\
 	APIC_IMASK_LOCK ;			/* into critical reg */	\
-	testl	$IRQ_LBIT(irq_num), apic_imen ;				\
+	testl	$AIMI_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
 	jne	7f ;			/* masked, don't mask */	\
-	orl	$IRQ_LBIT(irq_num), apic_imen ;	/* set the mask bit */	\
+	orl	$AIMI_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
+						/* set the mask bit */	\
 	movq	IOAPICADDR(irq_num), %rcx ;	/* ioapic addr */	\
 	movl	REDIRIDX(irq_num), %eax ;	/* get the index */	\
 	movl	%eax, (%rcx) ;			/* write the index */	\
@@ -90,9 +91,10 @@
 	cmpl	$0,%eax ;						\
 	jnz	8f ;							\
 	APIC_IMASK_LOCK ;			/* into critical reg */	\
-	testl	$IRQ_LBIT(irq_num), apic_imen ;				\
+	testl	$AIMI_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
 	je	7f ;			/* bit clear, not masked */	\
-	andl	$~IRQ_LBIT(irq_num), apic_imen ;/* clear mask bit */	\
+	andl	$~AIMI_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
+						/* clear mask bit */	\
 	movq	IOAPICADDR(irq_num),%rcx ;	/* ioapic addr */	\
 	movl	REDIRIDX(irq_num), %eax ;	/* get the index */	\
 	movl	%eax,(%rcx) ;			/* write the index */	\

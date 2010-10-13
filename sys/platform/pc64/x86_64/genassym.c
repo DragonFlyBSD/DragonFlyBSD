@@ -248,4 +248,5 @@ ASSYM(AIMI_REDIRINDEX, offsetof(struct apic_intmapinfo, redirindex));
 ASSYM(AIMI_FLAGS, offsetof(struct apic_intmapinfo, flags));
 ASSYM(AIMI_SIZE, sizeof(struct apic_intmapinfo));
 ASSYM(AIMI_FLAG_LEVEL, AIMI_FLAG_LEVEL);
+ASSYM(AIMI_FLAG_MASKED, AIMI_FLAG_MASKED);
 #endif

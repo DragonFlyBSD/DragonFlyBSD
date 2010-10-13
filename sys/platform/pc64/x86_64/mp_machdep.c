@@ -1555,6 +1555,9 @@ setup_apic_irq_mapping(void)
 		int_to_apicintpin[x].int_pin = 0;
 		int_to_apicintpin[x].apic_address = NULL;
 		int_to_apicintpin[x].redirindex = 0;
+
+		/* Default to masked */
+		int_to_apicintpin[x].flags = AIMI_FLAG_MASKED;
 	}
 
 	/* First assign ISA/EISA interrupts */

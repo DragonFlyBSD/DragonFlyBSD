@@ -800,19 +800,19 @@ bad:
 
 
 /*
- * Print contents of apic_imen.
+ * Print contents of unmasked IRQs.
  */
-extern	u_int apic_imen;		/* keep apic_imen 'opaque' */
 void
 imen_dump(void)
 {
 	int x;
 
 	kprintf("SMP: enabled INTs: ");
-	for (x = 0; x < 24; ++x)
-		if ((apic_imen & (1 << x)) == 0)
-        		kprintf("%d, ", x);
-	kprintf("apic_imen: 0x%08x\n", apic_imen);
+	for (x = 0; x < APIC_INTMAPSIZE; ++x) {
+		if ((int_to_apicintpin[x].flags & AIMI_FLAG_MASKED) == 0)
+        		kprintf("%d ", x);
+	}
+	kprintf("\n");
 }
 
 
