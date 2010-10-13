@@ -1697,8 +1697,6 @@ processor_entry(const struct PROCENTRY *entry, int cpu)
 	if (!(entry->cpu_flags & PROCENTRY_FLAG_EN))
 		return 0;
 
-	if(entry->apic_id >= NAPICID)
-		panic("CPU APIC ID out of range (0..%d)", NAPICID - 1);
 	/* check for BSP flag */
 	if (entry->cpu_flags & PROCENTRY_FLAG_BP) {
 		mp_set_cpuids(0, entry->apic_id);
@@ -1746,8 +1744,7 @@ io_apic_entry(io_apic_entry_ptr entry, int apic)
 		return 0;
 
 	IO_TO_ID(apic) = entry->apic_id;
-	if (entry->apic_id < NAPICID)
-		ID_TO_IO(entry->apic_id) = apic;
+	ID_TO_IO(entry->apic_id) = apic;
 
 	return 1;
 }

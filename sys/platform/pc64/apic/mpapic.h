@@ -38,7 +38,7 @@
  * Size of APIC ID list.
  * Also used a MAX size of various other arrays.
  */
-#define NAPICID		16
+#define NAPICID		256
 
 /* these don't really belong in here... */
 enum busTypes {
