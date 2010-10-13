@@ -234,7 +234,6 @@ int	mp_naps;		/* # of Applications processors */
 static int	mp_nbusses;	/* # of busses */
 int	mp_napics;		/* # of IO APICs */
 #endif
-static vm_offset_t cpu_apic_address;
 #ifdef APIC_IO
 vm_offset_t io_apic_address[NAPICID];	/* NAPICID is more than enough */
 u_int32_t *io_apic_versions;
@@ -553,12 +552,10 @@ mp_announce(void)
 
 	kprintf("DragonFly/MP: Multiprocessor motherboard\n");
 	kprintf(" cpu0 (BSP): apic id: %2d", CPU_TO_ID(0));
-	kprintf(", version: 0x%08x", cpu_apic_versions[0]);
-	kprintf(", at 0x%08jx\n", (intmax_t)cpu_apic_address);
+	kprintf(", version: 0x%08x\n", cpu_apic_versions[0]);
 	for (x = 1; x <= mp_naps; ++x) {
 		kprintf(" cpu%d (AP):  apic id: %2d", x, CPU_TO_ID(x));
-		kprintf(", version: 0x%08x", cpu_apic_versions[x]);
-		kprintf(", at 0x%08jx\n", (intmax_t)cpu_apic_address);
+		kprintf(", version: 0x%08x\n", cpu_apic_versions[x]);
 	}
 
 #if defined(APIC_IO)
@@ -2969,7 +2966,6 @@ mptable_lapic_default(void)
 
 /*
  * Configure:
- *     cpu_apic_address (common to all CPUs)
  *     mp_naps
  *     ID_TO_CPU(N), APIC ID to logical CPU table
  *     CPU_TO_ID(N), logical CPU to APIC ID table
@@ -3069,6 +3065,5 @@ lapic_init(vm_offset_t lapic_addr)
 	    pmap_get_pgeflag() | (lapic_addr & PG_FRAME));
 #endif
 
-	/* Just for printing */
-	cpu_apic_address = lapic_addr;
+	kprintf("lapic: at 0x%08lx\n", lapic_addr);
 }
