@@ -689,36 +689,22 @@ mp_enable(u_int boot_addr)
 	u_int   ux;
 #endif	/* APIC_IO */
 	vm_paddr_t mpfps_paddr;
+	struct mptable_pos mpt;
 
 	POSTCODE(MP_ENABLE_POST);
 
-	if (madt_probe_test) {
+	/*
+	 * Enumerate Local APIC
+	 */
+	if (madt_probe_test)
 		mpfps_paddr = 0;
-	} else {
+	else
 		mpfps_paddr = mptable_probe();
-	}
-
 	if (mpfps_paddr) {
-		struct mptable_pos mpt;
-
 		mptable_map(&mpt, mpfps_paddr);
-
 		mptable_lapic_enumerate(&mpt);
 		KKASSERT(lapic);
-
-		mptable_imcr(&mpt);
-
-		/*
-		 * Examine the MP table for needed info
-		 */
-		mptable_pass1(&mpt);
-		mptable_pass2(&mpt);
-
 		mptable_unmap(&mpt);
-
-		/* post scan cleanup */
-		mptable_fix();
-
 	} else {
 		vm_paddr_t madt_paddr;
 		vm_offset_t lapic_addr;
@@ -739,7 +725,29 @@ mp_enable(u_int boot_addr)
 			panic("mp_enable: madt_pass2 failed\n");
 	}
 
+	mpfps_paddr = mptable_probe();
+	if (mpfps_paddr) {
+		mptable_map(&mpt, mpfps_paddr);
+		mptable_imcr(&mpt);
+		mptable_unmap(&mpt);
+	}
 #if defined(APIC_IO)
+
+	if (!mpfps_paddr)
+		panic("no MP table, disable APIC_IO!\n");
+
+	mptable_map(&mpt, mpfps_paddr);
+
+	/*
+	 * Examine the MP table for needed info
+	 */
+	mptable_pass1(&mpt);
+	mptable_pass2(&mpt);
+
+	mptable_unmap(&mpt);
+
+	/* Post scan cleanup */
+	mptable_fix();
 
 	setup_apic_irq_mapping();
 
