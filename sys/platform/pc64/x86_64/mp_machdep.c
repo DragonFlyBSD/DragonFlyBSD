@@ -306,12 +306,12 @@ static int	mptable_search(void);
 static int	mptable_check(vm_paddr_t);
 static long	mptable_search_sig(u_int32_t target, int count);
 static int	mptable_hyperthread_fixup(u_int, int);
+#ifdef APIC_IO
 static void	mptable_pass1(struct mptable_pos *);
 static void	mptable_pass2(struct mptable_pos *);
-#ifdef APIC_IO
 static void	mptable_default(int type);
-#endif
 static void	mptable_fix(void);
+#endif
 static int	mptable_map(struct mptable_pos *, vm_paddr_t);
 static void	mptable_unmap(struct mptable_pos *);
 static void	mptable_lapic_enumerate(struct mptable_pos *);
@@ -929,8 +929,6 @@ mptable_ioapic_pass1_callback(void *xarg, const void *pos, int type)
 	return 0;
 }
 
-#endif	/* APIC_IO */
-
 /*
  * 1st pass on motherboard's Intel MP specification table.
  *
@@ -943,7 +941,6 @@ mptable_ioapic_pass1_callback(void *xarg, const void *pos, int type)
 static void
 mptable_pass1(struct mptable_pos *mpt)
 {
-#ifdef APIC_IO
 	mpfps_t fps;
 	int x;
 
@@ -974,10 +971,7 @@ mptable_pass1(struct mptable_pos *mpt)
 		if (error)
 			panic("mptable_iterate_entries(ioapic_pass1) failed\n");
 	}
-#endif	/* APIC_IO */
 }
-
-#ifdef APIC_IO
 
 struct mptable_ioapic2_cbarg {
 	int	bus;
@@ -1009,8 +1003,6 @@ mptable_ioapic_pass2_callback(void *xarg, const void *pos, int type)
 	return 0;
 }
 
-#endif	/* APIC_IO */
-
 /*
  * 2nd pass on motherboard's Intel MP specification table.
  *
@@ -1023,7 +1015,6 @@ mptable_ioapic_pass2_callback(void *xarg, const void *pos, int type)
 static void
 mptable_pass2(struct mptable_pos *mpt)
 {
-#ifdef APIC_IO
 	struct mptable_ioapic2_cbarg arg;
 	mpfps_t fps;
 	int error, x;
@@ -1072,9 +1063,9 @@ mptable_pass2(struct mptable_pos *mpt)
 		    mptable_ioapic_pass2_callback, &arg);
 	if (error)
 		panic("mptable_iterate_entries(ioapic_pass2) failed\n");
-#endif
 }
 
+#endif
 
 /*
  * Check if we should perform a hyperthreading "fix-up" to
@@ -1439,15 +1430,12 @@ io_apic_find_int_entry(int apic, int pin)
 	return NULL;
 }
 
-#endif
-
 /*
  * parse an Intel MP specification table
  */
 static void
 mptable_fix(void)
 {
-#ifdef APIC_IO
 	int	x;
 	int	id;
 	int	apic;		/* IO APIC unit number */
@@ -1581,10 +1569,7 @@ mptable_fix(void)
 		io_apic_ints[nintrs].dst_apic_int = 15;
 		nintrs++;
 	}
-#endif
 }
-
-#ifdef APIC_IO
 
 /* Assign low level interrupt handlers */
 static void
