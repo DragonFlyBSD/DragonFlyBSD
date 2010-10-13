@@ -2120,7 +2120,6 @@ mptable_default(int type)
 #if defined(APIC_IO)
 	int     io_apic_id;
 	int     pin;
-#endif	/* APIC_IO */
 
 #if 0
 	kprintf("  MP default config type: %d\n", type);
@@ -2153,7 +2152,6 @@ mptable_default(int type)
 	}
 #endif	/* 0 */
 
-#if defined(APIC_IO)
 	/* one and only IO APIC */
 	io_apic_id = (io_apic_read(0, IOAPIC_ID) & APIC_ID_MASK) >> 24;
 
@@ -2171,7 +2169,6 @@ mptable_default(int type)
 	}
 	IO_TO_ID(0) = io_apic_id;
 	ID_TO_IO(io_apic_id) = 0;
-#endif	/* APIC_IO */
 
 	/* fill out bus entries */
 	switch (type) {
@@ -2182,12 +2179,10 @@ mptable_default(int type)
 	case 5:
 	case 6:
 	case 7:
-#ifdef APIC_IO
 		bus_data[0].bus_id = default_data[type - 1][1];
 		bus_data[0].bus_type = default_data[type - 1][2];
 		bus_data[1].bus_id = default_data[type - 1][3];
 		bus_data[1].bus_type = default_data[type - 1][4];
-#endif
 		break;
 
 	/* case 4: case 7:		   MCA NOT supported */
@@ -2196,7 +2191,6 @@ mptable_default(int type)
 		/* NOTREACHED */
 	}
 
-#if defined(APIC_IO)
 	/* general cases from MP v1.4, table 5-2 */
 	for (pin = 0; pin < 16; ++pin) {
 		io_apic_ints[pin].int_type = 0;
