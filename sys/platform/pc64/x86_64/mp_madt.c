@@ -108,6 +108,7 @@ struct acpi_madt_ent {
 
 #define MADT_ENT_LAPIC		0
 #define MADT_ENT_IOAPIC		1
+#define MADT_ENT_LAPIC_ADDR	5
 
 /* MADT Processor Local APIC */
 struct acpi_madt_lapic {
@@ -126,6 +127,13 @@ struct acpi_madt_ioapic {
 	uint8_t			mio_reserved;
 	uint32_t		mio_addr;
 	uint32_t		mio_gsi_base;
+} __packed;
+
+/* MADT Local APIC Address Override */
+struct acpi_madt_lapic_addr {
+	struct acpi_madt_ent	mla_hdr;
+	uint16_t		mla_reserved;
+	uint64_t		mla_lapic_addr;
 } __packed;
 
 typedef	vm_paddr_t		(*madt_search_t)(vm_paddr_t);
@@ -358,11 +366,31 @@ back:
 	return madt_paddr;
 }
 
+static int
+madt_pass1_callback(void *xarg, const struct acpi_madt_ent *ent)
+{
+	const struct acpi_madt_lapic_addr *lapic_addr_ent;
+	uint64_t *addr64 = xarg;
+
+	if (ent->me_type != MADT_ENT_LAPIC_ADDR)
+		return 0;
+	if (ent->me_len < sizeof(*lapic_addr_ent)) {
+		kprintf("madt_pass1: invalid LAPIC address override length\n");
+		return 0;
+	}
+	lapic_addr_ent = (const struct acpi_madt_lapic_addr *)ent;
+
+	*addr64 = lapic_addr_ent->mla_lapic_addr;
+	return 0;
+}
+
 vm_offset_t
 madt_pass1(vm_paddr_t madt_paddr)
 {
 	struct acpi_madt *madt;
 	vm_offset_t lapic_addr;
+	uint64_t lapic_addr64;
+	int error;
 
 	KKASSERT(madt_paddr != 0);
 
@@ -372,6 +400,17 @@ madt_pass1(vm_paddr_t madt_paddr)
 	kprintf("madt: LAPIC address 0x%08x, flags %#x\n",
 		madt->madt_lapic_addr, madt->madt_flags);
 	lapic_addr = madt->madt_lapic_addr;
+
+	lapic_addr64 = 0;
+	error = madt_iterate_entries(madt, madt_pass1_callback, &lapic_addr64);
+	if (error)
+		panic("madt_iterate_entries(pass1) failed\n");
+
+	if (lapic_addr64 != 0) {
+		kprintf("Warning: 64bits lapic address 0x%llx\n", lapic_addr64);
+		/* XXX vm_offset_t is 32bits on i386 */
+		lapic_addr = lapic_addr64;
+	}
 
 	madt_sdth_unmap(&madt->madt_hdr);
 
