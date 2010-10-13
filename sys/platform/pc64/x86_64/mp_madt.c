@@ -105,6 +105,7 @@ struct acpi_madt_ent {
 } __packed;
 
 #define MADT_ENT_LAPIC		0
+#define MADT_ENT_IOAPIC		1
 
 /* MADT Processor Local APIC */
 struct acpi_madt_lapic {
@@ -116,7 +117,18 @@ struct acpi_madt_lapic {
 
 #define MADT_LAPIC_ENABLED	0x1
 
+/* MADT I/O APIC */
+struct acpi_madt_ioapic {
+	struct acpi_madt_ent	mio_hdr;
+	uint8_t			mio_apic_id;
+	uint8_t			mio_reserved;
+	uint32_t		mio_addr;
+	uint32_t		mio_gsi_base;
+} __packed;
+
 typedef	vm_paddr_t		(*madt_search_t)(vm_paddr_t);
+typedef int			(*madt_iter_t)(void *,
+				    const struct acpi_madt_ent *);
 
 static const struct acpi_rsdp	*madt_rsdp_search(const uint8_t *, int);
 static void			*madt_sdth_map(vm_paddr_t);
@@ -124,6 +136,8 @@ static void			madt_sdth_unmap(struct acpi_sdth *);
 static vm_paddr_t		madt_search_xsdt(vm_paddr_t);
 static vm_paddr_t		madt_search_rsdt(vm_paddr_t);
 static int			madt_check(vm_paddr_t);
+static int			madt_iterate_entries(struct acpi_madt *,
+				    madt_iter_t, void *);
 
 extern u_long	ebda_addr;
 
@@ -442,9 +456,29 @@ madt_pass2(vm_paddr_t madt_paddr, int bsp_apic_id)
 	return error;
 }
 
+struct madt_check_cbarg {
+	int	cpu_count;
+};
+
+static int
+madt_check_callback(void *xarg, const struct acpi_madt_ent *ent)
+{
+	struct madt_check_cbarg *arg = xarg;
+	const struct acpi_madt_lapic *lapic_ent;
+
+	if (ent->me_type != MADT_ENT_LAPIC)
+		return 0;
+	lapic_ent = (const struct acpi_madt_lapic *)ent;
+
+	if (lapic_ent->ml_flags & MADT_LAPIC_ENABLED)
+		arg->cpu_count++;
+	return 0;
+}
+
 static int
 madt_check(vm_paddr_t madt_paddr)
 {
+	struct madt_check_cbarg arg;
 	struct acpi_madt *madt;
 	int error = 0;
 
@@ -465,9 +499,77 @@ madt_check(vm_paddr_t madt_paddr)
 		kprintf("madt_check: invalid MADT length %u\n",
 			madt->madt_hdr.sdth_len);
 		error = EINVAL;
+		goto back;
+	}
+
+	bzero(&arg, sizeof(arg));
+	error = madt_iterate_entries(madt, madt_check_callback, &arg);
+	if (!error) {
+		if (arg.cpu_count <= 1)
+			error = EOPNOTSUPP;
 	}
 back:
 	madt_sdth_unmap(&madt->madt_hdr);
+	return error;
+}
+
+static int
+madt_iterate_entries(struct acpi_madt *madt, madt_iter_t func, void *arg)
+{
+	int size, cur, error;
+
+	size = madt->madt_hdr.sdth_len -
+	       (sizeof(*madt) - sizeof(madt->madt_ents));
+	cur = 0;
+	error = 0;
+
+	while (size - cur > sizeof(struct acpi_madt_ent)) {
+		const struct acpi_madt_ent *ent;
+
+		ent = (const struct acpi_madt_ent *)&madt->madt_ents[cur];
+		if (ent->me_len < sizeof(*ent)) {
+			kprintf("madt_iterate_entries: invalid MADT "
+				"entry len %d\n", ent->me_len);
+			error = EINVAL;
+			break;
+		}
+		if (ent->me_len > (size - cur)) {
+			kprintf("madt_iterate_entries: invalid MADT "
+				"entry len %d, > table length\n", ent->me_len);
+			error = EINVAL;
+			break;
+		}
+
+		cur += ent->me_len;
+
+		/*
+		 * Only Local APIC and I/O APIC are defined in
+		 * ACPI specification 1.0 - 3.0
+		 */
+		switch (ent->me_type) {
+		case MADT_ENT_LAPIC:
+			if (ent->me_len < sizeof(struct acpi_madt_lapic)) {
+				kprintf("madt_iterate_entries: invalid MADT "
+					"lapic entry len %d\n", ent->me_len);
+				error = EINVAL;
+			}
+			break;
+
+		case MADT_ENT_IOAPIC:
+			if (ent->me_len < sizeof(struct acpi_madt_ioapic)) {
+				kprintf("madt_iterate_entries: invalid MADT "
+					"ioapic entry len %d\n", ent->me_len);
+				error = EINVAL;
+			}
+			break;
+		}
+		if (error)
+			break;
+
+		error = func(arg, ent);
+		if (error)
+			break;
+	}
 	return error;
 }
 
