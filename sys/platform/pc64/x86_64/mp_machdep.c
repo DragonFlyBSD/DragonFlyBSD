@@ -307,7 +307,9 @@ static long	mptable_search_sig(u_int32_t target, int count);
 static int	mptable_hyperthread_fixup(u_int, int);
 static void	mptable_pass1(struct mptable_pos *);
 static void	mptable_pass2(struct mptable_pos *);
+#ifdef APIC_IO
 static void	mptable_default(int type);
+#endif
 static void	mptable_fix(void);
 static int	mptable_map(struct mptable_pos *, vm_paddr_t);
 static void	mptable_unmap(struct mptable_pos *);
@@ -2075,8 +2077,6 @@ apic_polarity(int apic, int pin)
 	return -1;		/* NOT found */
 }
 
-#endif
-
 /*
  * set data according to MP defaults
  * FIXME: probably not complete yet...
@@ -2084,7 +2084,6 @@ apic_polarity(int apic, int pin)
 static void
 mptable_default(int type)
 {
-#if defined(APIC_IO)
 	int     io_apic_id;
 	int     pin;
 
@@ -2184,8 +2183,9 @@ mptable_default(int type)
 		io_apic_ints[0].int_type = 0xff;	/* N/C */
 	else
 		io_apic_ints[0].int_type = 3;	/* vectored 8259 */
-#endif	/* APIC_IO */
 }
+
+#endif	/* APIC_IO */
 
 /*
  * Map a physical memory address representing I/O into KVA.  The I/O
