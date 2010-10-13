@@ -494,8 +494,6 @@ madt_pass2(vm_paddr_t madt_paddr, int bsp_apic_id)
 
 struct madt_check_cbarg {
 	int	cpu_count;
-	int	bsp_found;
-	int	bsp_apic_id;
 };
 
 static int
@@ -508,16 +506,8 @@ madt_check_callback(void *xarg, const struct acpi_madt_ent *ent)
 		return 0;
 	lapic_ent = (const struct acpi_madt_lapic *)ent;
 
-	if (lapic_ent->ml_flags & MADT_LAPIC_ENABLED) {
+	if (lapic_ent->ml_flags & MADT_LAPIC_ENABLED)
 		arg->cpu_count++;
-		if (lapic_ent->ml_apic_id == arg->bsp_apic_id) {
-			if (arg->bsp_found) {
-				kprintf("madt_check: more than one BSP?\n");
-				return EINVAL;
-			}
-			arg->bsp_found = 1;
-		}
-	}
 	return 0;
 }
 
@@ -549,16 +539,12 @@ madt_check(vm_paddr_t madt_paddr)
 	}
 
 	bzero(&arg, sizeof(arg));
-	arg.bsp_apic_id = (cpu_procinfo & CPUID_LOCAL_APIC_ID) >> 24;
 
 	error = madt_iterate_entries(madt, madt_check_callback, &arg);
 	if (!error) {
 		if (arg.cpu_count <= 1) {
 			kprintf("madt_check: less than 2 CPUs is found\n");
 			error = EOPNOTSUPP;
-		} else if (!arg.bsp_found) {
-			kprintf("madt_check: no BSP\n");
-			error = EINVAL;
 		}
 	}
 back:
@@ -653,11 +639,11 @@ madt_lapic_enumerate(struct lapic_enumerator *e)
 	if (lapic_addr == 0)
 		panic("madt_lapic_enumerate no local apic\n");
 
-	bsp_apic_id = (cpu_procinfo & CPUID_LOCAL_APIC_ID) >> 24;
+	lapic_init(lapic_addr);
+
+	bsp_apic_id = APIC_ID(lapic->id);
 	if (madt_pass2(madt_paddr, bsp_apic_id))
 		panic("mp_enable: madt_pass2 failed\n");
-
-	lapic_init(lapic_addr);
 }
 
 static struct madt_lapic_enumerator	madt_lapic_enumerator = {
