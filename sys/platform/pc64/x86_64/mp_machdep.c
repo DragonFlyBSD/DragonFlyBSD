@@ -220,10 +220,6 @@ typedef	int	(*mptable_iter_func)(void *, const void *, int);
 
 #define MP_ANNOUNCE_POST	0x19
 
-static int need_hyperthreading_fixup;
-static u_int logical_cpus;
-u_int	logical_cpus_mask;
-
 static int madt_probe_test;
 TUNABLE_INT("hw.madt_probe_test", &madt_probe_test);
 
@@ -308,7 +304,7 @@ static int	mptable_iterate_entries(const mpcth_t,
 static int	mptable_probe(void);
 static int	mptable_check(vm_paddr_t);
 static long	mptable_search_sig(u_int32_t target, int count);
-static void	mptable_hyperthread_fixup(u_int id_mask);
+static int	mptable_hyperthread_fixup(u_int, int);
 static void	mptable_pass1(struct mptable_pos *);
 static int	mptable_pass2(struct mptable_pos *);
 static void	mptable_default(int type);
@@ -1125,17 +1121,17 @@ mptable_pass2(struct mptable_pos *mpt)
  * the APIC ID's for a physical processor are aligned
  * with the number of logical CPU's in the processor.
  */
-static void
-mptable_hyperthread_fixup(u_int id_mask)
+static int
+mptable_hyperthread_fixup(u_int id_mask, int cpu_count)
 {
-	int i, id, lcpus_max;
+	int i, id, lcpus_max, logical_cpus;
 
 	if ((cpu_feature & CPUID_HTT) == 0)
-		return;
+		return 0;
 
 	lcpus_max = (cpu_procinfo & CPUID_HTT_CORES) >> 16;
 	if (lcpus_max <= 1)
-		return;
+		return 0;
 
 	if (strcmp(cpu_vendor, "GenuineIntel") == 0) {
 		/*
@@ -1154,10 +1150,11 @@ mptable_hyperthread_fixup(u_int id_mask)
 		}
 	}
 
-	if (mp_naps == lcpus_max) {
+	KKASSERT(cpu_count != 0);
+	if (cpu_count == lcpus_max) {
 		/* We have nothing to fix */
-		return;
-	} else if (mp_naps == 1) {
+		return 0;
+	} else if (cpu_count == 1) {
 		/* XXX this may be incorrect */
 		logical_cpus = lcpus_max;
 	} else {
@@ -1187,16 +1184,16 @@ mptable_hyperthread_fixup(u_int id_mask)
 				 * are same.
 				 */
 				if (dist != new_dist)
-					return;
+					return 0;
 			}
 			prev = cur;
 		}
 		if (dist == 1)
-			return;
+			return 0;
 
 		/* Must be power of 2 */
 		if (dist & (dist - 1))
-			return;
+			return 0;
 
 		/* Can't exceed CPU package capacity */
 		if (dist > lcpus_max)
@@ -1216,18 +1213,12 @@ mptable_hyperthread_fixup(u_int id_mask)
 			continue;
 		/* First, make sure we are on a logical_cpus boundary. */
 		if (id % logical_cpus != 0)
-			return;
+			return 0;
 		for (i = id + 1; i < id + logical_cpus; i++)
 			if ((id_mask & 1 << i) != 0)
-				return;
+				return 0;
 	}
-
-	/*
-	 * Ok, the ID's checked out, so enable the fixup.  We have to fixup
-	 * mp_naps right now.
-	 */
-	need_hyperthreading_fixup = 1;
-	mp_naps *= logical_cpus;
+	return logical_cpus;
 }
 
 static int
@@ -2939,7 +2930,8 @@ cpu_send_ipiq_passive(int dcpu)
 
 struct mptable_lapic_cbarg1 {
 	int	cpu_count;
-	u_int	id_mask;
+	int	ht_fixup;
+	u_int	ht_apicid_mask;
 };
 
 static int
@@ -2956,12 +2948,18 @@ mptable_lapic_pass1_callback(void *xarg, const void *pos, int type)
 		return 0;
 
 	arg->cpu_count++;
-	arg->id_mask |= 1 << ent->apic_id;
+	if (ent->apic_id < 32) {
+		arg->ht_apicid_mask |= 1 << ent->apic_id;
+	} else if (arg->ht_fixup) {
+		kprintf("MPTABLE: lapic id > 32, disable HTT fixup\n");
+		arg->ht_fixup = 0;
+	}
 	return 0;
 }
 
 struct mptable_lapic_cbarg2 {
 	int	cpu;
+	int	logical_cpus;
 	int	found_bsp;
 };
 
@@ -2983,7 +2981,7 @@ mptable_lapic_pass2_callback(void *xarg, const void *pos, int type)
 	if (processor_entry(ent, arg->cpu))
 		arg->cpu++;
 
-	if (need_hyperthreading_fixup) {
+	if (arg->logical_cpus) {
 		struct PROCENTRY proc;
 		int i;
 
@@ -2997,10 +2995,9 @@ mptable_lapic_pass2_callback(void *xarg, const void *pos, int type)
 		proc.cpu_flags = PROCENTRY_FLAG_EN;
 		proc.apic_id = ent->apic_id;
 
-		for (i = 1; i < logical_cpus; i++) {
+		for (i = 1; i < arg->logical_cpus; i++) {
 			proc.apic_id++;
 			processor_entry(&proc, arg->cpu);
-			logical_cpus_mask |= (1 << arg->cpu);
 			arg->cpu++;
 		}
 	}
@@ -3030,9 +3027,6 @@ mptable_lapic_default(void)
  * Configure:
  *     cpu_apic_address (common to all CPUs)
  *     mp_naps
- *     need_hyperthreading_fixup
- *     logical_cpus
- *     logical_cpus_mask
  *     ID_TO_CPU(N), APIC ID to logical CPU table
  *     CPU_TO_ID(N), logical CPU to APIC ID table
  */
@@ -3042,7 +3036,7 @@ mptable_lapic_enumerate(struct mptable_pos *mpt)
 	struct mptable_lapic_cbarg1 arg1;
 	struct mptable_lapic_cbarg2 arg2;
 	mpcth_t cth;
-	int error;
+	int error, logical_cpus = 0;
 	vm_offset_t lapic_addr;
 
 	KKASSERT(mpt->mp_fps != NULL);
@@ -3066,18 +3060,24 @@ mptable_lapic_enumerate(struct mptable_pos *mpt)
 	 * Find out how many CPUs do we have
 	 */
 	bzero(&arg1, sizeof(arg1));
+	arg1.ht_fixup = 1; /* Apply ht fixup by default */
+
 	error = mptable_iterate_entries(cth,
 		    mptable_lapic_pass1_callback, &arg1);
 	if (error)
 		panic("mptable_iterate_entries(lapic_pass1) failed\n");
-
 	KKASSERT(arg1.cpu_count != 0);
-	mp_naps = arg1.cpu_count;
  
 	/* See if we need to fixup HT logical CPUs. */
-	mptable_hyperthread_fixup(arg1.id_mask);
+	if (arg1.ht_fixup) {
+		logical_cpus = mptable_hyperthread_fixup(arg1.ht_apicid_mask,
+							 arg1.cpu_count);
+		if (logical_cpus != 0)
+			arg1.cpu_count *= logical_cpus;
+	}
+	mp_naps = arg1.cpu_count;
  
-	/* Qualify the numbers again, after hyperthreading fixup */
+	/* Qualify the numbers again, after possible HT fixup */
 	if (mp_naps > MAXCPU) {
 		kprintf("Warning: only using %d of %d available CPUs!\n",
 			MAXCPU, mp_naps);
@@ -3091,6 +3091,7 @@ mptable_lapic_enumerate(struct mptable_pos *mpt)
 	 */
 	bzero(&arg2, sizeof(arg2));
 	arg2.cpu = 1;
+	arg2.logical_cpus = logical_cpus;
 
 	error = mptable_iterate_entries(cth,
 		    mptable_lapic_pass2_callback, &arg2);
