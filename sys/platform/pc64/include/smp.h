@@ -78,7 +78,7 @@ struct apic_intmapinfo {
   	int ioapic;
 	int int_pin;
 	volatile void *apic_address;
-	int redirindex;
+	int32_t redirindex;
 	u_int32_t flags;	/* AIMI_FLAG */
 };
 
