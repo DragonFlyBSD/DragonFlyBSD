@@ -465,9 +465,6 @@ io_apic_get_id(int apic)
 /*
  * Setup the IO APIC.
  */
-
-extern int	apic_pin_trigger;	/* 'opaque' */
-
 void
 io_apic_setup_intpin(int apic, int pin)
 {
@@ -553,7 +550,7 @@ io_apic_setup_intpin(int apic, int pin)
 		flags = DEFAULT_FLAGS;
 		level = trigger(apic, pin, &flags);
 		if (level == 1)
-			apic_pin_trigger |= (1 << irq);
+			int_to_apicintpin[irq].flags |= AIMI_FLAG_LEVEL;
 		polarity(apic, pin, &flags, level);
 	}
 
@@ -598,9 +595,6 @@ io_apic_setup(int apic)
 {
 	int		maxpin;
 	int		pin;
-
-	if (apic == 0)
-		apic_pin_trigger = 0;	/* default to edge-triggered */
 
 	maxpin = REDIRCNT_IOAPIC(apic);		/* pins in APIC */
 	kprintf("Programming %d pins in IOAPIC #%d\n", maxpin, apic);

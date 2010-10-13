@@ -79,7 +79,11 @@ struct apic_intmapinfo {
 	int int_pin;
 	volatile void *apic_address;
 	int redirindex;
+	u_int flags;		/* AIMI_FLAG */
 };
+
+#define AIMI_FLAG_LEVEL	0x1	/* default to edge trigger */
+
 extern struct apic_intmapinfo	int_to_apicintpin[];
 extern struct pcb		stoppcbs[];
 

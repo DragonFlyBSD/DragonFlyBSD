@@ -57,7 +57,9 @@
 	CNAME(int_to_apicintpin) + AIMI_SIZE * (irq_num) + AIMI_APIC_ADDRESS
 #define REDIRIDX(irq_num) \
 	CNAME(int_to_apicintpin) + AIMI_SIZE * (irq_num) + AIMI_REDIRINDEX
-
+#define IOAPICFLAGS(irq_num) \
+	CNAME(int_to_apicintpin) + AIMI_SIZE * (irq_num) + AIMI_FLAGS
+ 
 #define MASK_IRQ(irq_num)						\
 	APIC_IMASK_LOCK ;			/* into critical reg */	\
 	testl	$IRQ_LBIT(irq_num), apic_imen ;				\
@@ -76,7 +78,7 @@
  *  and the EOI cycle would cause redundant INTs to occur.
  */
 #define MASK_LEVEL_IRQ(irq_num)						\
-	testl	$IRQ_LBIT(irq_num), apic_pin_trigger ;			\
+	testl	$AIMI_FLAG_LEVEL, IOAPICFLAGS(irq_num) ;		\
 	jz	9f ;				/* edge, don't mask */	\
 	MASK_IRQ(irq_num) ;						\
 9: ;									\
@@ -395,9 +397,5 @@ started_cpus:
 CNAME(cpustop_restartfunc):
 	.quad 0
 		
-	.globl	apic_pin_trigger
-apic_pin_trigger:
-	.long	0
-
 	.text
 
