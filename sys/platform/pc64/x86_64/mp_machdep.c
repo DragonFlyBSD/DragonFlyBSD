@@ -316,6 +316,7 @@ static void	mptable_fix(void);
 static int	mptable_map(struct mptable_pos *, vm_paddr_t);
 static void	mptable_unmap(struct mptable_pos *);
 static void	mptable_lapic_enumerate(struct mptable_pos *);
+static void	mptable_lapic_default(void);
 
 #ifdef APIC_IO
 static void	setup_apic_irq_mapping(void);
@@ -3009,6 +3010,25 @@ mptable_lapic_pass2_callback(void *xarg, const void *pos, int type)
 	return 0;
 }
 
+static void
+mptable_lapic_default(void)
+{
+	int ap_apicid, bsp_apicid;
+
+	mp_naps = 1; /* exclude BSP */
+
+	/* Map local apic before the id field is accessed */
+	lapic_init(DEFAULT_APIC_BASE);
+
+	bsp_apicid = APIC_ID(lapic->id);
+	ap_apicid = (bsp_apicid == 0) ? 1 : 0;
+
+	/* BSP */
+	mp_set_cpuids(0, bsp_apicid);
+	/* one and only AP */
+	mp_set_cpuids(1, ap_apicid);
+}
+
 /*
  * Configure:
  *     cpu_apic_address (common to all CPUs)
@@ -3022,89 +3042,67 @@ mptable_lapic_pass2_callback(void *xarg, const void *pos, int type)
 static void
 mptable_lapic_enumerate(struct mptable_pos *mpt)
 {
-	mpfps_t fps;
+	struct mptable_lapic_cbarg1 arg1;
+	struct mptable_lapic_cbarg2 arg2;
+	mpcth_t cth;
 	int error;
 	vm_offset_t lapic_addr;
 
-	fps = mpt->mp_fps;
-	KKASSERT(fps != NULL);
+	KKASSERT(mpt->mp_fps != NULL);
 
-	/* init everything to empty */
-	mp_naps = 0;
-
-	/* check for use of 'default' configuration */
-	if (fps->mpfb1 != 0) {
-		/* use default addresses */
-		lapic_addr = DEFAULT_APIC_BASE;
-
-		/* fill in with defaults */
-		mp_naps = 1; /* exclude BSP */
-	} else {
-		struct mptable_lapic_cbarg1 arg;
-		mpcth_t	cth;
-
-		cth = mpt->mp_cth;
-		KKASSERT(cth != NULL);
-
-		lapic_addr = (vm_offset_t)cth->apic_address;
-		KKASSERT(lapic_addr != 0);
-
-		bzero(&arg, sizeof(arg));
-		error = mptable_iterate_entries(cth,
-			    mptable_lapic_pass1_callback, &arg);
-		if (error)
-			panic("mptable_iterate_entries(lapic_pass1) failed\n");
-
-		KKASSERT(arg.cpu_count != 0);
-		mp_naps = arg.cpu_count;
-
-		/* Qualify the numbers */
-		if (mp_naps > MAXCPU) {
-			kprintf("Warning: only using %d of %d available CPUs!\n",
-				MAXCPU, mp_naps);
-			mp_naps = MAXCPU;
-		}
-
-		/* See if we need to fixup HT logical CPUs. */
-		mptable_hyperthread_fixup(arg.id_mask);
-
-		/* Qualify the numbers again, after hyperthreading fixup */
-		if (mp_naps > MAXCPU) {
-			kprintf("Warning: only using %d of %d available CPUs!\n",
-				MAXCPU, mp_naps);
-			mp_naps = MAXCPU;
-		}
-
-		--mp_naps;	/* subtract the BSP */
+	/*
+	 * Check for use of 'default' configuration
+	 */
+	if (mpt->mp_fps->mpfb1 != 0) {
+		mptable_lapic_default();
+		return;
 	}
+ 
+	cth = mpt->mp_cth;
+	KKASSERT(cth != NULL);
+ 
+	/* Save local apic address */
+	lapic_addr = (vm_offset_t)cth->apic_address;
+	KKASSERT(lapic_addr != 0);
+ 
+	/*
+	 * Find out how many CPUs do we have
+	 */
+	bzero(&arg1, sizeof(arg1));
+	error = mptable_iterate_entries(cth,
+		    mptable_lapic_pass1_callback, &arg1);
+	if (error)
+		panic("mptable_iterate_entries(lapic_pass1) failed\n");
 
+	KKASSERT(arg1.cpu_count != 0);
+	mp_naps = arg1.cpu_count;
+ 
+	/* See if we need to fixup HT logical CPUs. */
+	mptable_hyperthread_fixup(arg1.id_mask);
+ 
+	/* Qualify the numbers again, after hyperthreading fixup */
+	if (mp_naps > MAXCPU) {
+		kprintf("Warning: only using %d of %d available CPUs!\n",
+			MAXCPU, mp_naps);
+		mp_naps = MAXCPU;
+ 	}
+
+	--mp_naps;	/* subtract the BSP */
+
+	/*
+	 * Link logical CPU id to local apic id
+	 */
+	bzero(&arg2, sizeof(arg2));
+	arg2.cpu = 1;
+
+	error = mptable_iterate_entries(cth,
+		    mptable_lapic_pass2_callback, &arg2);
+	if (error)
+		panic("mptable_iterate_entries(lapic_pass2) failed\n");
+	KKASSERT(arg2.found_bsp);
+
+	/* Map local apic */
 	lapic_init(lapic_addr);
-
-	if (fps->mpfb1 != 0) {
-		int ap_cpu_id, boot_cpu_id;
-
-		boot_cpu_id = APIC_ID(lapic->id);
-		ap_cpu_id = (boot_cpu_id == 0) ? 1 : 0;
-
-		/* BSP */
-		CPU_TO_ID(0) = boot_cpu_id;
-		ID_TO_CPU(boot_cpu_id) = 0;
-
-		/* one and only AP */
-		CPU_TO_ID(1) = ap_cpu_id;
-		ID_TO_CPU(ap_cpu_id) = 1;
-	} else {
-		struct mptable_lapic_cbarg2 arg;
-
-		bzero(&arg, sizeof(arg));
-		arg.cpu = 1;
-
-		error = mptable_iterate_entries(mpt->mp_cth,
-			    mptable_lapic_pass2_callback, &arg);
-		if (error)
-			panic("mptable_iterate_entries(lapic_pass2) failed\n");
-		KKASSERT(arg.found_bsp);
-	}
 }
 
 static void
