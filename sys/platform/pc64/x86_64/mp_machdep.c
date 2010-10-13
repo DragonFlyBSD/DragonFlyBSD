@@ -734,7 +734,7 @@ mp_enable(u_int boot_addr)
 
 		lapic_init(lapic_addr);
 
-		bsp_apic_id = (lapic->id & 0xff000000) >> 24;
+		bsp_apic_id = APIC_ID(lapic->id);
 		if (madt_pass2(madt_paddr, bsp_apic_id))
 			panic("mp_enable: madt_pass2 failed\n");
 	}
@@ -3083,7 +3083,7 @@ mptable_lapic_enumerate(struct mptable_pos *mpt)
 	if (fps->mpfb1 != 0) {
 		int ap_cpu_id, boot_cpu_id;
 
-		boot_cpu_id = (lapic->id & APIC_ID_MASK) >> 24;
+		boot_cpu_id = APIC_ID(lapic->id);
 		ap_cpu_id = (boot_cpu_id == 0) ? 1 : 0;
 
 		/* BSP */
