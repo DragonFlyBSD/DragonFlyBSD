@@ -223,6 +223,7 @@ static symtab_t	rmodels[] = {
     { "IntelliMouse Explorer",	MOUSE_MODEL_EXPLORER },
     { "4D Mouse",		MOUSE_MODEL_4D },
     { "4D+ Mouse",		MOUSE_MODEL_4DPLUS },
+    { "Synaptics Touchpad",	MOUSE_MODEL_SYNAPTICS },
     { "generic",		MOUSE_MODEL_GENERIC },
     { NULL,			MOUSE_MODEL_UNKNOWN },
 };
