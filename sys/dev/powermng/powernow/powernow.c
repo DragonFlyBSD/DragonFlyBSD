@@ -39,6 +39,7 @@
 #include <machine/cpufunc.h>
 #include <machine/md_var.h>
 #include <machine/specialreg.h>
+#include <machine/vmparam.h>
 
 #define PN8_STA_MFID(x)                 (((x) >> 16) & 0x3f)
 #define PN8_STA_MVID(x)                 (((x) >> 48) & 0x1f)
