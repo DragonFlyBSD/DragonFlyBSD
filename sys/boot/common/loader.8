@@ -1,3 +1,4 @@
+.\"
 .\" Copyright (c) 1999 Daniel C. Sobral
 .\" All rights reserved.
 .\"
@@ -24,8 +25,6 @@
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
 .\"
-.\" Note: The date here should be updated whenever a non-trivial
-.\" change is made to the manual page.
 .Dd October 6, 2010
 .Dt LOADER 8
 .Os
@@ -40,8 +39,7 @@ is the final stage of
 kernel bootstrapping process.
 It is implemented as a
 .Tn BTX
-client and
-is linked statically to
+client and is linked statically to
 .Xr libstand 3
 and located in the
 .Pa /boot
@@ -125,21 +123,24 @@ Assign
 .Ar value
 to
 .Ar variable .
-Value is always assigned to local variable
+The value is always assigned to a local variable
 .Ar variable .
 If
 .Ar variable
-is in list of known kernel environment variables or
-is a kernel tunable,
-it is also assigned to the kernel environment variable of the given name.
-.Ar variable
-is unset if
-.Ar value ,
+is in the list of known kernel environment variables or is a kernel tunable,
+the value is also assigned to the kernel environment variable of the
+given name.
+Local variables are unset if
+.Ar value
 is empty.
+Kernel environment variables may have empty values.
 .Pp
-In other words,
-the assignment described above, will assign to a local variable and
-if it seems applicable, also snoop assignment to kernel environment variable.
+In other words, the assignment above will set a local variable and
+if it is applicable, also assign
+.Ar value
+to the kernel environment variable, even if
+.Ar value
+is empty.
 See also
 .Sx ENVIRONMENT VARIABLES AND LOCAL VARIABLES .
 .Pp
@@ -207,7 +208,7 @@ will be passed as arguments to that file.
 Currently, argument passing does not work for the kernel.
 .Pp
 .It Ic loadall
-Load kernel and all modules specified by MODULE_load variables.
+Load the kernel and all modules specified by MODULE_load variables.
 .Pp
 .It Ic local Op Ar local_variable ...
 Displays the specified variable's value, or all local variables and their
@@ -243,7 +244,8 @@ If
 is specified, more details are shown.
 .Pp
 .It Ic lunset Ar local_variable
-Unset local variable: discard value and remove variable.
+Unset a local variable.
+Discards the value and removes the variable.
 .Pp
 .It Ic lunsetif Ar local_variable env_variable
 Unset
@@ -257,18 +259,18 @@ is true, i.e.\& set to 1 or
 Run menu system.
 .Pp
 .It Ic menuadd Ar command_line
-Add script line for current menu bullet.
+Add script line for the current menu item.
 .Pp
 .It Ic menuclear
-Clear all menu bullets.
+Clear all menu items.
 .Pp
 .It Ic menuitem Ar key description
-Start new menu bullet.
-When running menu system, a line with
+Start a new menu item.
+When running the menu system, a line with
 .Ar key
 and
 .Ar description
-is displayed, and bullet is choosen by pressing
+is displayed, and an item is chosen by pressing
 .Ar key .
 .Pp
 .It Ic more Ar
@@ -277,13 +279,13 @@ Display the files specified, with a pause at each
 displayed.
 .Pp
 .It Ic optcd Op Ar directory
-Change working directory to
+Change the working directory to
 .Ar directory .
 Default is $base.
 Ignore errors.
 This command is like
 .Ic cd ,
-but ignores errors while changing directory.
+but ignores errors when changing the directory.
 .Pp
 .It Ic optinclude Ar
 Process script files.
@@ -297,7 +299,7 @@ Scans for Plug-and-Play devices.
 This is not functional at present.
 .Pp
 .It Ic pwd
-Show working directory.
+Prints the working directory.
 .Pp
 .It Ic read Oo Fl t Ar seconds Oc Oo Fl p Ar prompt Oc Op Ar env_variable
 Reads a line of input from the terminal, storing it in
@@ -326,7 +328,7 @@ or all variables and their values if
 is not specified.
 .Pp
 .It Ic unload
-Remove all modules from memory.
+Removes all modules from memory.
 .Pp
 .It Ic unset Ar env_variable
 Removes
@@ -334,14 +336,14 @@ Removes
 from the environment.
 .Pp
 .It Ic \&?
-List most available commands with short help.
+Lists most available commands with a short help text for each.
 .El
 .Ss ENVIRONMENT VARIABLES AND LOCAL VARIABLES
 The
 .Nm
 has actually two different kinds of variables.
 There are
-kernel environment variables, which is visible to the kernel when it is run,
+kernel environment variables, which are visible to the kernel when it is run,
 and a separate space of local variables used by
 .Nm ,
 which are not available to the kernel.
@@ -403,7 +405,7 @@ Requests that the kernel's interactive device configuration program
 be run when the kernel is booted.
 .It Va boot_verbose
 Setting this variable causes extra debugging information to be printed
-by the kernel especially during the boot phase.
+by the kernel during and after the boot phase.
 .It Va bootfile
 List of semicolon-separated search path for bootable kernels.
 The default is
@@ -482,7 +484,9 @@ Set irqX's destination to the given
 which starts from 0.
 If the specified value is larger than the last
 .Tn CPUID ,
-then the first CPUID will be used.
+then the first
+.Tn CPUID
+will be used.
 This variable should not be used if
 .Tn IO/APIC
 support is not compiled into kernel.
@@ -502,8 +506,7 @@ The USB keyboard will sometimes not attach properly unless you set this
 variable to 0.
 .It Va kern.emergency_intr_enable
 Setting this to 1 enables emergency interrupt polling.
-All interrupt
-handlers are executed periodically.
+All interrupt handlers are executed periodically.
 This mode is very expensive and should
 only be used to get a system accessible when interrupt routing is
 otherwise broken.
@@ -588,7 +591,7 @@ A semicolon separated list of file systems to try
 as the kernel root file system.
 File system format is file system type and disk store,
 separated by colon.
-This variable needs to be set when using boot-only partition, which is
+This variable needs to be set when using a boot-only partition, which is
 typically mounted on root file system as
 .Pa /boot .
 .Pp
@@ -610,7 +613,7 @@ If all fail, the
 prompt is displayed for manual entry.
 .Pp
 You may not specify devtab labels here but you can specify paths available to
-.Nm devfs
+.Xr devfs 5
 such as:
 .Dl hammer:serno/L41JYE0G.s1d
 .El
@@ -643,7 +646,7 @@ bootstrapping script.
 configuration files, see
 .Xr loader.conf 5 .
 .It Pa /boot/loader.help
-help messages, used by
+help messages, used by the
 .Ic help
 command.
 .El
@@ -694,7 +697,8 @@ The
 .Nm
 first appeared in
 .Fx 3.1 .
-dloader was introduced and
+.Nm dloader
+was introduced and
 .Tn FORTH
 removed in
 .Dx 2.7 .
@@ -705,5 +709,6 @@ The
 was written by
 .An Michael Smith Aq msmith@FreeBSD.org .
 .Pp
-dloader was written by
+.Nm dloader
+was written by
 .An Matthew Dillon Aq dillon@backplane.com .
