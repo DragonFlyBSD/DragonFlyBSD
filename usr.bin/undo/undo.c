@@ -265,8 +265,7 @@ doiterate(const char *filename, const char *outFileName,
 	collect_dir_history(filename, &error, &dir_tree);
 	RB_FOREACH(tse1, undo_hist_entry_rb_tree, &dir_tree) {
 		asprintf(&path, "%s@@0x%016jx", filename, (uintmax_t)tse1->tse.tid);
-		stat(path, &sb);
-		if (sb.st_mode & S_IFIFO) {
+		if (stat(path, &sb) == 0 && sb.st_mode & S_IFIFO) {
 			fprintf(stderr, "Warning: fake transaction id 0x%016jx\n", (uintmax_t)tse1->tse.tid);
 			continue;
 		}
