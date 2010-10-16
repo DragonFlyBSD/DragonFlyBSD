@@ -999,6 +999,11 @@ u_sleep(int count)
 		 /* spin */ ;
 }
 
+/*
+ * XXX: Hack: Used by pmap_init
+ */
+vm_offset_t cpu_apic_addr;
+
 void
 lapic_init(vm_offset_t lapic_addr)
 {
@@ -1012,6 +1017,8 @@ lapic_init(vm_offset_t lapic_addr)
 	SMPpt[NPTEPG - 1] = (pt_entry_t)(PG_V | PG_RW | PG_N |
 	    pmap_get_pgeflag() | (lapic_addr & PG_FRAME));
 #endif
+
+	cpu_apic_addr = lapic_addr;
 
 	kprintf("lapic: at 0x%08lx\n", lapic_addr);
 }
