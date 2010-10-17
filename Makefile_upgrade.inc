@@ -1500,6 +1500,7 @@ TO_REMOVE+=/usr/share/man/cat4/i386/amdpm.4.gz
 TO_REMOVE+=/usr/share/man/man4/i386/amdpm.4.gz
 TO_REMOVE+=/usr/include/machine/iic.h
 TO_REMOVE+=/usr/include/machine/smb.h
+TO_REMOVE+=/usr/include/machine/mouse.h
 TO_REMOVE+=/usr/share/man/cat9/spin_lock_rd.9.gz
 TO_REMOVE+=/usr/share/man/cat9/spin_lock_rd_quick.9.gz
 TO_REMOVE+=/usr/share/man/cat9/spin_lock_wr.9.gz
