@@ -262,6 +262,7 @@ padlock_freesession_one(struct padlock_softc *sc, struct padlock_session *ses,
     int locked)
 {
 	uint32_t sid = ses->ses_id;
+	void *freeaddr = ses->ses_freeaddr;
 
 	if (!locked)
 		spin_lock(&sc->sc_sessions_lock);
@@ -270,6 +271,7 @@ padlock_freesession_one(struct padlock_softc *sc, struct padlock_session *ses,
 	bzero(ses, sizeof(*ses));
 	ses->ses_used = 0;
 	ses->ses_id = sid;
+	ses->ses_freeaddr = freeaddr;
 	TAILQ_INSERT_HEAD(&sc->sc_sessions, ses, ses_next);
 	if (!locked)
 		spin_unlock(&sc->sc_sessions_lock);
