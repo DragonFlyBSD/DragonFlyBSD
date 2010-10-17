@@ -1985,6 +1985,7 @@ dev/powermng/aps/aps.c			optional aps isa
 dev/powermng/it/it.c			optional it isa
 dev/powermng/lm/lm78.c			optional lm isa
 dev/powermng/lm/lm78_isa.c		optional lm isa
+dev/powermng/uguru/uguru.c		optional uguru isa
 dev/powermng/wbsio/wbsio.c		optional wbsio isa
 emulation/43bsd/43bsd_socket.c		optional compat_43
 emulation/43bsd/43bsd_stats.c		optional compat_43

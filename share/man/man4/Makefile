@@ -316,6 +316,7 @@ MAN=	aac.4 \
 	uftdi.4 \
 	ugen.4 \
 	ugensa.4 \
+	uguru.4 \
 	uhci.4 \
 	uhid.4 \
 	uhidev.4 \
