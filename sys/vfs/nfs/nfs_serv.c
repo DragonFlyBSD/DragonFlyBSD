@@ -1374,6 +1374,7 @@ loop1:
 		LIST_REMOVE(nfsd, nd_hash);
 		crit_exit();
 		info.mrep = nfsd->nd_mrep;
+		info.mreq = NULL;
 		info.v3 = (nfsd->nd_flag & ND_NFSV3);
 		nfsd->nd_mrep = NULL;
 		cred = &nfsd->nd_cr;
@@ -1513,16 +1514,21 @@ loop1:
 	 * Search for a reply to return.
 	 */
 	crit_enter();
-	for (nfsd = slp->ns_tq.lh_first; nfsd; nfsd = nfsd->nd_tq.le_next)
+	for (nfsd = slp->ns_tq.lh_first; nfsd; nfsd = nfsd->nd_tq.le_next) {
 		if (nfsd->nd_mreq) {
 		    NFS_DPF(WG, ("X%03x", nfsd->nd_retxid & 0xfff));
 		    LIST_REMOVE(nfsd, nd_tq);
-		    *mrq = nfsd->nd_mreq;
-		    *ndp = nfsd;
 		    break;
 		}
+	}
 	crit_exit();
-	*mrq = info.mreq;
+	if (nfsd) {
+		*mrq = nfsd->nd_mreq;
+		*ndp = nfsd;
+	} else {
+		*mrq = NULL;
+		*ndp = NULL;
+	}
 	return (0);
 }
 
