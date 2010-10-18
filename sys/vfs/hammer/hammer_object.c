@@ -1978,7 +1978,7 @@ retry:
 		 * remember the key for a regular file record is (base + len),
 		 * NOT (base).
 		 *
-		 * Note that do to duplicates (mem & media) allowed by
+		 * Note that due to duplicates (mem & media) allowed by
 		 * DELETE_VISIBILITY, off can wind up less then ran_beg.
 		 */
 		if (leaf->base.rec_type == HAMMER_RECTYPE_DATA) {
