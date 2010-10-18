@@ -149,7 +149,8 @@ static int debug_commit;
 
 static struct thread *bufdaemon_td;
 static struct thread *bufdaemonhw_td;
-
+static u_int lowmempgallocs;
+static u_int lowmempgfails;
 
 /*
  * Sysctls for operational control of the buffer cache.
@@ -162,6 +163,10 @@ SYSCTL_INT(_vfs, OID_AUTO, lorunningspace, CTLFLAG_RW, &lorunningspace, 0,
 	"Minimum amount of buffer space required for active I/O");
 SYSCTL_INT(_vfs, OID_AUTO, hirunningspace, CTLFLAG_RW, &hirunningspace, 0,
 	"Maximum amount of buffer space to usable for active I/O");
+SYSCTL_UINT(_vfs, OID_AUTO, lowmempgallocs, CTLFLAG_RW, &lowmempgallocs, 0,
+	"Page allocations done during periods of very low free memory");
+SYSCTL_UINT(_vfs, OID_AUTO, lowmempgfails, CTLFLAG_RW, &lowmempgfails, 0,
+	"Page allocations which failed during periods of very low free memory");
 SYSCTL_UINT(_vfs, OID_AUTO, vm_cycle_point, CTLFLAG_RW, &vm_cycle_point, 0,
 	"Recycle pages to active or inactive queue transition pt 0-64");
 /*
@@ -4486,14 +4491,14 @@ bio_page_alloc(vm_object_t obj, vm_pindex_t pg, int deficit)
 				   VM_ALLOC_INTERRUPT);
 	if (p) {
 		if (vm_page_count_severe()) {
-			kprintf("bio_page_alloc: WARNING emergency page "
-				"allocation\n");
-			vm_wait(hz / 20);
+			++lowmempgallocs;
+			vm_wait(hz / 20 + 1);
 		}
 	} else {
-		kprintf("bio_page_alloc: WARNING emergency page "
-			"allocation failed\n");
-		vm_wait(hz * 5);
+		kprintf("bio_page_alloc: Memory exhausted during bufcache "
+			"page allocation\n");
+		++lowmempgfails;
+		vm_wait(hz);
 	}
 	lwkt_reltoken(&vm_token);
 	return(p);
