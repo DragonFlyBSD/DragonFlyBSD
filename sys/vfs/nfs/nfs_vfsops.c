@@ -769,12 +769,27 @@ nfs_decode_args(struct nfsmount *nmp, struct nfs_args *argp)
 	 * Silently clear NFSMNT_NOCONN if it's a TCP mount, it makes
 	 * no sense in that context.
 	 */
-	if (nmp->nm_sotype == SOCK_STREAM)
+	if (nmp->nm_sotype == SOCK_STREAM) {
 		nmp->nm_flag &= ~NFSMNT_NOCONN;
+		argp->flags &= ~NFSMNT_NOCONN;
+	}
 
-	/* Also clear RDIRPLUS if not NFSv3, it crashes some servers */
-	if ((argp->flags & NFSMNT_NFSV3) == 0)
+	/*
+	 * Ok, this is a problem.  bootp is NFSv2 and we will wind up
+	 * mounting a diskless root NFSv2 until we fix it.  However,
+	 * NFSv2 just doesn't work with HAMMER directories (the cookies
+	 * are only 32 bits).  The only way around this is to allow
+	 * the 'readdirplus' for NFSv2.
+	 *
+	 * If this is a problem the client needs to specify the 'nordirplus'
+	 * option for any NFSv2 NFS mount.
+	 */
+#if 0
+	if ((argp->flags & NFSMNT_NFSV3) == 0) {
 		nmp->nm_flag &= ~NFSMNT_RDIRPLUS;
+		argp->flags &= ~NFSMNT_RDIRPLUS;
+	}
+#endif
 
 	/*
 	 * Re-bind if rsrvd port flag has changed

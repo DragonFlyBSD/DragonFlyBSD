@@ -468,6 +468,7 @@ nfs_send(struct socket *so, struct sockaddr *nam, struct mbuf *top,
 	 */
 	error = so_pru_sosend(so, sendnam, NULL, top, NULL, flags,
 			      curthread /*XXX*/);
+
 	/*
 	 * ENOBUFS for dgram sockets is transient and non fatal.
 	 * No need to log, and no need to break a soft mount.
@@ -1272,9 +1273,6 @@ nfs_request_try(struct nfsreq *rep)
 		rep->r_flags |= R_LOCKED;
 	rep->r_mrep = NULL;
 
-	/*
-	 * Do the client side RPC.
-	 */
 	nfsstats.rpcrequests++;
 
 	if (nmp->nm_flag & NFSMNT_FORCE) {
@@ -1282,8 +1280,11 @@ nfs_request_try(struct nfsreq *rep)
 		rep->r_flags &= ~R_LOCKED;
 		return (0);
 	}
+	rep->r_flags |= R_NEEDSXMIT;	/* in case send lock races us */
 
 	/*
+	 * Do the client side RPC.
+	 *
 	 * Chain request into list of outstanding requests. Be sure
 	 * to put it LAST so timer finds oldest requests first.  Note
 	 * that our control of R_LOCKED prevents the request from
@@ -1314,20 +1315,17 @@ nfs_request_try(struct nfsreq *rep)
 	if (nmp->nm_so) {
 		if (nmp->nm_soflags & PR_CONNREQUIRED)
 			error = nfs_sndlock(nmp, rep);
-		if (error == 0) {
+		if (error == 0 && (rep->r_flags & R_NEEDSXMIT)) {
 			m2 = m_copym(rep->r_mreq, 0, M_COPYALL, MB_WAIT);
 			error = nfs_send(nmp->nm_so, nmp->nm_nam, m2, rep);
-			if (nmp->nm_soflags & PR_CONNREQUIRED)
-				nfs_sndunlock(nmp);
 			rep->r_flags &= ~R_NEEDSXMIT;
 			if ((rep->r_flags & R_SENT) == 0) {
 				rep->r_flags |= R_SENT;
 			}
-		} else {
-			rep->r_flags |= R_NEEDSXMIT;
+			if (nmp->nm_soflags & PR_CONNREQUIRED)
+				nfs_sndunlock(nmp);
 		}
 	} else {
-		rep->r_flags |= R_NEEDSXMIT;
 		rep->r_rtt = -1;
 	}
 	if (error == EPIPE)
