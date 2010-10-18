@@ -1319,6 +1319,8 @@ fdrevoke(void *f_data, short f_type, struct ucred *cred)
 
 /*
  * Locate matching file pointers directly.
+ *
+ * WARNING: allfiles_scan_exclusive() holds a spinlock through these calls!
  */
 static int
 fdrevoke_check_callback(struct file *fp, void *vinfo)
