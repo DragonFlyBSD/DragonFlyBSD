@@ -3074,9 +3074,11 @@ hammer_inode_unloadable_check(hammer_inode_t ip, int getvp)
 	 * one that was already flagged.  A previously set DELETING flag
 	 * may bounce around flags and sync_flags until the operation is
 	 * completely done.
+	 *
+	 * Do not attempt to modify a snapshot inode (one set to read-only).
 	 */
 	if (ip->ino_data.nlinks == 0 &&
-	    ((ip->flags | ip->sync_flags) & (HAMMER_INODE_DELETING|HAMMER_INODE_DELETED)) == 0) {
+	    ((ip->flags | ip->sync_flags) & (HAMMER_INODE_RO|HAMMER_INODE_DELETING|HAMMER_INODE_DELETED)) == 0) {
 		ip->flags |= HAMMER_INODE_DELETING;
 		ip->flags |= HAMMER_INODE_TRUNCATED;
 		ip->trunc_off = 0;
