@@ -591,15 +591,17 @@ bio_track_wait(struct bio_track *track, int slp_flags, int slp_timo)
 	/*
 	 * Full-on.  Note that the wait flag may only be atomically set if
 	 * the active count is non-zero.
+	 *
+	 * NOTE: We cannot optimize active == desired since a wakeup could
+	 *	 clear active prior to our tsleep_interlock().
 	 */
 	error = 0;
 	while ((active = track->bk_active) != 0) {
 		desired = active | 0x80000000;
 		tsleep_interlock(track, slp_flags);
-		if (active == desired ||
-		    atomic_cmpset_int(&track->bk_active, active, desired)) {
+		if (atomic_cmpset_int(&track->bk_active, active, desired)) {
 			error = tsleep(track, slp_flags | PINTERLOCKED,
-				       "iowait", slp_timo);
+				       "trwait", slp_timo);
 			if (error)
 				break;
 		}
