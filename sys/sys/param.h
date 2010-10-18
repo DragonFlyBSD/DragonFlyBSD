@@ -69,13 +69,15 @@
  * 200204 - suser() & suser_cred() removal
  * 200205 - devfs import
  * 200206 - *sleep() renames
- * 200400 - 2.4 branch
+ * 200400 - 2.4 release
  * 200500 - 2.5 master
- * 200600 - 2.6 branch
+ * 200600 - 2.6 release
  * 200700 - 2.7 master
+ * 200800 - 2.8 release		October 2010
+ * 200900 - 2.9 master
  */
 #undef __DragonFly_version
-#define __DragonFly_version 200700	/* propagated to newvers */
+#define __DragonFly_version 200800	/* propagated to newvers */
 
 #include <sys/_null.h>
 
