@@ -1425,13 +1425,21 @@ unp_gc(void)
 	lwkt_gettoken(&unp_token);
 
 	/* 
-	 * before going through all this, set all FDs to 
-	 * be NOT defered and NOT externally accessible
+	 * Before going through all this, set all FDs to be NOT defered
+	 * and NOT externally accessible (not marked).  During the scan
+	 * a fd can be marked externally accessible but we may or may not
+	 * be able to immediately process it (controlled by FDEFER).
+	 *
+	 * If we loop sleep a bit.  The complexity of the topology can cause
+	 * multiple loops.  Also failure to acquire the socket's so_rcv
+	 * token can cause us to loop.
 	 */
 	info.defer = 0;
 	allfiles_scan_exclusive(unp_gc_clearmarks, NULL);
 	do {
 		allfiles_scan_exclusive(unp_gc_checkmarks, &info);
+		if (info.defer)
+			tsleep(&info, 0, "gcagain", 1);
 	} while (info.defer);
 
 	/*
@@ -1547,10 +1555,17 @@ unp_gc_checkmarks(struct file *fp, void *data)
 	struct socket *so;
 
 	/*
-	 * If the file is not open, skip it
+	 * If the file is not open, skip it.  Make sure it isn't marked
+	 * defered or we could loop forever, in case we somehow race
+	 * something.
 	 */
-	if (fp->f_count == 0)
+	if (fp->f_count == 0) {
+		if (fp->f_flag & FDEFER) {
+			atomic_clear_int(&fp->f_flag, FDEFER);
+			--info->defer;
+		}
 		return(0);
+	}
 	/*
 	 * If we already marked it as 'defer'  in a
 	 * previous pass, then try process it this time
@@ -1586,40 +1601,31 @@ unp_gc_checkmarks(struct file *fp, void *data)
 	 * Now check if it is possibly one of OUR sockets.
 	 */ 
 	if (fp->f_type != DTYPE_SOCKET ||
-	    (so = (struct socket *)fp->f_data) == NULL)
+	    (so = (struct socket *)fp->f_data) == NULL) {
 		return(0);
-	if (so->so_proto->pr_domain != &localdomain ||
-	    !(so->so_proto->pr_flags & PR_RIGHTS))
-		return(0);
-#ifdef notdef
-	if (so->so_rcv.ssb_flags & SSB_LOCK) {
-		/*
-		 * This is problematical; it's not clear
-		 * we need to wait for the sockbuf to be
-		 * unlocked (on a uniprocessor, at least),
-		 * and it's also not clear what to do
-		 * if sbwait returns an error due to receipt
-		 * of a signal.  If sbwait does return
-		 * an error, we'll go into an infinite
-		 * loop.  Delete all of this for now.
-		 */
-		sbwait(&so->so_rcv);
-		goto restart;
 	}
-#endif
+	if (so->so_proto->pr_domain != &localdomain ||
+	    !(so->so_proto->pr_flags & PR_RIGHTS)) {
+		return(0);
+	}
+
 	/*
-	 * So, Ok, it's one of our sockets and it IS externally
-	 * accessible (or was defered). Now we look
-	 * to see if we hold any file descriptors in its
-	 * message buffers. Follow those links and mark them 
-	 * as accessible too.
+	 * So, Ok, it's one of our sockets and it IS externally accessible
+	 * (or was defered).  Now we look to see if we hold any file
+	 * descriptors in its message buffers.  Follow those links and mark
+	 * them as accessible too.
+	 *
+	 * We are holding multiple spinlocks here, if we cannot get the
+	 * token non-blocking defer until the next loop.
 	 */
 	info->locked_fp = fp;
-	lwkt_gettoken(&so->so_rcv.ssb_token);
-/*	spin_lock_wr(&so->so_rcv.sb_spin); */
-	unp_scan(so->so_rcv.ssb_mb, unp_mark, info);
-/*	spin_unlock_wr(&so->so_rcv.sb_spin);*/
-	lwkt_reltoken(&so->so_rcv.ssb_token);
+	if (lwkt_trytoken(&so->so_rcv.ssb_token)) {
+		unp_scan(so->so_rcv.ssb_mb, unp_mark, info);
+		lwkt_reltoken(&so->so_rcv.ssb_token);
+	} else {
+		atomic_set_int(&fp->f_flag, FDEFER);
+		++info->defer;
+	}
 	return (0);
 }
 
