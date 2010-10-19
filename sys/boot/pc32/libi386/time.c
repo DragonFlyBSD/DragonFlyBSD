@@ -38,13 +38,14 @@
  *
  * XXX uses undocumented BCD support from libstand.
  */
-
-time_t
-time(time_t *t)
+static int
+bios_seconds(void)
 {
-    static time_t	lasttime, now;
-    int			hr, minute, sec;
-    
+    time_t now;
+    int sec;
+    int minute;
+    int	hr;
+
     v86.ctl = 0;
     v86.addr = 0x1a;		/* int 0x1a, function 2 */
     v86.eax = 0x0200;
@@ -53,8 +54,25 @@ time(time_t *t)
     hr = bcd2bin((v86.ecx & 0xff00) >> 8);	/* hour in %ch */
     minute = bcd2bin(v86.ecx & 0xff);		/* minute in %cl */
     sec = bcd2bin((v86.edx & 0xff00) >> 8);	/* second in %dh */
-    
     now = hr * 3600 + minute * 60 + sec;
+
+    return (now);
+}
+
+time_t
+time(time_t *t)
+{
+    static time_t lasttime;
+    time_t now, check;
+    int try;
+
+    try = 0;
+    now = bios_seconds();
+    while (now != (check = bios_seconds())) {
+	now = check;
+	if (++try == 1000)
+		break;
+    }
     if (now < lasttime)
 	now += 24 * 3600;
     lasttime = now;
