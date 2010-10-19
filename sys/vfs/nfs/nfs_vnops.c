@@ -2679,7 +2679,7 @@ nfs_readdirplusrpc_uio(struct vnode *vp, struct uio *uiop)
 	while (more_dirs && bigenough) {
 		nfsstats.rpccnt[NFSPROC_READDIRPLUS]++;
 		nfsm_reqhead(&info, vp, NFSPROC_READDIRPLUS,
-			     NFSX_FH(1) + 6 * NFSX_UNSIGNED);
+			     NFSX_FH(info.v3) + 6 * NFSX_UNSIGNED);
 		ERROROUT(nfsm_fhtom(&info, vp));
 		tl = nfsm_build(&info, 6 * NFSX_UNSIGNED);
 		*tl++ = cookie.nfsuquad[0];

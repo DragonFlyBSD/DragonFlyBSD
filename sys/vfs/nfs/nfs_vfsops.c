@@ -252,9 +252,16 @@ nfs_convert_diskless(void)
 		sizeof(struct ifaliasreq));
 	bcopy(&nfs_diskless.mygateway, &nfsv3_diskless.mygateway,
 		sizeof(struct sockaddr_in));
-	nfs_convert_oargs(&nfsv3_diskless.swap_args,&nfs_diskless.swap_args);
+	nfs_convert_oargs(&nfsv3_diskless.swap_args, &nfs_diskless.swap_args);
 
-	bcopy(nfs_diskless.swap_fh,nfsv3_diskless.swap_fh,NFSX_V2FH);
+	/*
+	 * Copy the NFS handle passed from the diskless code.
+	 *
+	 * XXX CURRENTLY DISABLED - bootp passes us a NFSv2 handle which
+	 * will fail utterly with HAMMER due to limitations with NFSv2
+	 * directory cookies.
+	 */
+	bcopy(nfs_diskless.swap_fh, nfsv3_diskless.swap_fh, NFSX_V2FH);
 	nfsv3_diskless.swap_fhsize = NFSX_V2FH;
 	for (i = NFSX_V2FH - 1; i >= 0; --i) {
 		if (nfs_diskless.swap_fh[i])
@@ -262,6 +269,7 @@ nfs_convert_diskless(void)
 	}
 	if (i < 0)
 		nfsv3_diskless.swap_fhsize = 0;
+	nfsv3_diskless.swap_fhsize = 0;		/* FORCE DISABLE */
 
 	bcopy(&nfs_diskless.swap_saddr,&nfsv3_diskless.swap_saddr,
 		sizeof(struct sockaddr_in));
@@ -269,9 +277,16 @@ nfs_convert_diskless(void)
 	nfsv3_diskless.swap_nblks = nfs_diskless.swap_nblks;
 	bcopy(&nfs_diskless.swap_ucred, &nfsv3_diskless.swap_ucred,
 		sizeof(struct ucred));
-	nfs_convert_oargs(&nfsv3_diskless.root_args,&nfs_diskless.root_args);
+	nfs_convert_oargs(&nfsv3_diskless.root_args, &nfs_diskless.root_args);
 
-	bcopy(nfs_diskless.root_fh,nfsv3_diskless.root_fh,NFSX_V2FH);
+	/*
+	 * Copy the NFS handle passed from the diskless code.
+	 *
+	 * XXX CURRENTLY DISABLED - bootp passes us a NFSv2 handle which
+	 * will fail utterly with HAMMER due to limitations with NFSv2
+	 * directory cookies.
+	 */
+	bcopy(nfs_diskless.root_fh, nfsv3_diskless.root_fh, NFSX_V2FH);
 	nfsv3_diskless.root_fhsize = NFSX_V2FH;
 	for (i = NFSX_V2FH - 1; i >= 0; --i) {
 		if (nfs_diskless.root_fh[i])
@@ -279,6 +294,7 @@ nfs_convert_diskless(void)
 	}
 	if (i < 0)
 		nfsv3_diskless.root_fhsize = 0;
+	nfsv3_diskless.root_fhsize = 0;		/* FORCE DISABLE */
 
 	bcopy(&nfs_diskless.root_saddr,&nfsv3_diskless.root_saddr,
 		sizeof(struct sockaddr_in));
@@ -567,8 +583,15 @@ nfs_mountroot(struct mount *mp)
 	/*
 	 * The boot code may have passed us a diskless structure.
 	 */
+	kprintf("DISKLESS %d\n", nfs_diskless_valid);
 	if (nfs_diskless_valid == 1)
 		nfs_convert_diskless();
+
+	/*
+	 * NFSv3 is required.
+	 */
+	nd->root_args.flags |= NFSMNT_NFSV3 | NFSMNT_RDIRPLUS;
+	nd->swap_args.flags |= NFSMNT_NFSV3;
 
 #define SINP(sockaddr)	((struct sockaddr_in *)(sockaddr))
 	kprintf("nfs_mountroot: interface %s ip %s",
@@ -635,8 +658,9 @@ nfs_mountroot(struct mount *mp)
 		(l >> 24) & 0xff, (l >> 16) & 0xff,
 		(l >>  8) & 0xff, (l >>  0) & 0xff,nd->root_hostnam);
 	kprintf("NFS_ROOT: %s\n",buf);
-	if ((error = nfs_mountdiskless(buf, "/", MNT_RDONLY,
-	    &nd->root_saddr, &nd->root_args, td, &vp, &mp)) != 0) {
+	error = nfs_mountdiskless(buf, "/", MNT_RDONLY, &nd->root_saddr,
+				  &nd->root_args, td, &vp, &mp);
+	if (error) {
 		mp->mnt_vfc->vfc_refcount--;
 		crit_exit();
 		return (error);
@@ -659,8 +683,9 @@ nfs_mountroot(struct mount *mp)
 			(l >> 24) & 0xff, (l >> 16) & 0xff,
 			(l >>  8) & 0xff, (l >>  0) & 0xff,nd->swap_hostnam);
 		kprintf("NFS SWAP: %s\n",buf);
-		if ((error = nfs_mountdiskless(buf, "/swap", 0,
-		    &nd->swap_saddr, &nd->swap_args, td, &vp, &swap_mp)) != 0) {
+		error = nfs_mountdiskless(buf, "/swap", 0, &nd->swap_saddr,
+					  &nd->swap_args, td, &vp, &swap_mp);
+		if (error) {
 			crit_exit();
 			return (error);
 		}
@@ -727,7 +752,8 @@ nfs_mountdiskless(char *path, char *which, int mountflag,
 	if (args->fhsize == 0) {
 		char *xpath = path;
 
-		kprintf("NFS_ROOT: No FH passed from loader, attempting mount rpc...");
+		kprintf("NFS_ROOT: No FH passed from loader, attempting "
+			"mount rpc...");
 		while (*xpath && *xpath != ':')
 			++xpath;
 		if (*xpath)
@@ -775,21 +801,12 @@ nfs_decode_args(struct nfsmount *nmp, struct nfs_args *argp)
 	}
 
 	/*
-	 * Ok, this is a problem.  bootp is NFSv2 and we will wind up
-	 * mounting a diskless root NFSv2 until we fix it.  However,
-	 * NFSv2 just doesn't work with HAMMER directories (the cookies
-	 * are only 32 bits).  The only way around this is to allow
-	 * the 'readdirplus' for NFSv2.
-	 *
-	 * If this is a problem the client needs to specify the 'nordirplus'
-	 * option for any NFSv2 NFS mount.
+	 * readdirplus is NFSv3 only.
 	 */
-#if 0
 	if ((argp->flags & NFSMNT_NFSV3) == 0) {
 		nmp->nm_flag &= ~NFSMNT_RDIRPLUS;
 		argp->flags &= ~NFSMNT_RDIRPLUS;
 	}
-#endif
 
 	/*
 	 * Re-bind if rsrvd port flag has changed
