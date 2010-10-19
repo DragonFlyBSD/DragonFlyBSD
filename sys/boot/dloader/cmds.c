@@ -447,8 +447,6 @@ command_menu(int ac, char **av)
 #define FRED_LEFT 0
 #define FRED_RIGHT 1
 static char *logo_blank_line = "                                 ";
-static char *menu_header_left = "============================ DragonFly BSD ====================================\n";
-static char *menu_header_right = "==================================== DragonFly BSD ============================\n";
 static char *menu_footer = "===============================================================================\n";
 
 static char *logo_color[LOGO_LINES] = {
@@ -543,11 +541,10 @@ menu_display(void)
 
 	dvar = dvar_first();
 	i = 0;
-	
-	if (logo != NULL) {
-		printf(logo_left ? menu_header_left : menu_header_right);
+
+	if (logo != NULL)
 		printf(logo_left ? "%35s|%43s\n" : "%43s|%35s\n", " ", " ");
-	}
+
 
 	while (dvar || i < LOGO_LINES) {
 		if (logo_left)
@@ -574,9 +571,6 @@ menu_display(void)
 		printf("\n");
 		i++;
 	}
-
-	if (logo != NULL)
-		printf(menu_footer);
 }
 
 static int
