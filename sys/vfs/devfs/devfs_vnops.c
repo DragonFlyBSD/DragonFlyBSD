@@ -996,7 +996,7 @@ devfs_spec_open(struct vop_open_args *ap)
 
 	if (ap->a_fp) {
 		KKASSERT(ap->a_fp->f_type == DTYPE_VNODE);
-		KKASSERT(ap->a_fp->f_flag == (ap->a_mode & FMASK));
+		KKASSERT((ap->a_fp->f_flag & FMASK) == (ap->a_mode & FMASK));
 		ap->a_fp->f_ops = &devfs_dev_fileops;
 		KKASSERT(ap->a_fp->f_data == (void *)vp);
 	}
