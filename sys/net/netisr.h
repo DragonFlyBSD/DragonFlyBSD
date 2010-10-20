@@ -165,6 +165,7 @@ struct netisr {
 
 extern lwkt_port netisr_adone_rport;
 extern lwkt_port netisr_afree_rport;
+extern lwkt_port netisr_afree_free_so_rport;
 extern lwkt_port netisr_apanic_rport;
 extern lwkt_port netisr_sync_port;
 

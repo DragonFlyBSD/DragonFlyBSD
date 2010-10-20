@@ -79,6 +79,7 @@ static TAILQ_HEAD(,netmsg_rollup) netrulist;
 /* Per-CPU thread to handle any protocol.  */
 static struct thread netisr_cpu[MAXCPU];
 lwkt_port netisr_afree_rport;
+lwkt_port netisr_afree_free_so_rport;
 lwkt_port netisr_adone_rport;
 lwkt_port netisr_apanic_rport;
 lwkt_port netisr_sync_port;
@@ -94,6 +95,13 @@ SYSCTL_NODE(_net, OID_AUTO, netisr, CTLFLAG_RW, 0, "netisr");
 static void
 netisr_autofree_reply(lwkt_port_t port, lwkt_msg_t msg)
 {
+	kfree(msg, M_LWKTMSG);
+}
+
+static void
+netisr_autofree_free_so_reply(lwkt_port_t port, lwkt_msg_t msg)
+{
+	sofree(((netmsg_t)msg)->base.nm_so);
 	kfree(msg, M_LWKTMSG);
 }
 
@@ -172,6 +180,8 @@ netisr_init(void)
 	 * the message is replied to.
 	 */
 	lwkt_initport_replyonly(&netisr_afree_rport, netisr_autofree_reply);
+	lwkt_initport_replyonly(&netisr_afree_free_so_rport,
+				netisr_autofree_free_so_reply);
 	lwkt_initport_replyonly_null(&netisr_adone_rport);
 	lwkt_initport_panic(&netisr_apanic_rport);
 
