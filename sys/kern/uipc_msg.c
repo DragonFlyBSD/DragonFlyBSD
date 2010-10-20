@@ -51,7 +51,8 @@
 #include <net/netmsg.h>
 
 /*
- * Abort a socket and free it.  Called from soabort() only.
+ * Abort a socket and free it.  Called from soabort() only.  soabort()
+ * got a ref on the socket which we must free on reply.
  */
 void
 so_pru_abort(struct socket *so)
@@ -61,11 +62,13 @@ so_pru_abort(struct socket *so)
 	netmsg_init(&msg.base, so, &curthread->td_msgport,
 		    0, so->so_proto->pr_usrreqs->pru_abort);
 	(void)lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
+	sofree(msg.base.nm_so);
 }
 
 /*
  * Abort a socket and free it, asynchronously.  Called from
- * soaborta() only.
+ * soaborta() only.  soaborta() got a ref on the socket which we must
+ * free on reply.
  */
 void
 so_pru_aborta(struct socket *so)
@@ -73,7 +76,7 @@ so_pru_aborta(struct socket *so)
 	struct netmsg_pru_abort *msg;
 
 	msg = kmalloc(sizeof(*msg), M_LWKTMSG, M_WAITOK | M_ZERO);
-	netmsg_init(&msg->base, so, &netisr_afree_rport,
+	netmsg_init(&msg->base, so, &netisr_afree_free_so_rport,
 		    0, so->so_proto->pr_usrreqs->pru_abort);
 	lwkt_sendmsg(so->so_port, &msg->base.lmsg);
 }
@@ -93,6 +96,7 @@ so_pru_abort_oncpu(struct socket *so)
 	msg.base.lmsg.ms_flags |= MSGF_SYNC;
 	func((netmsg_t)&msg);
 	KKASSERT(msg.base.lmsg.ms_flags & MSGF_DONE);
+	sofree(msg.base.nm_so);
 }
 
 /*
