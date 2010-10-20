@@ -137,6 +137,14 @@ typedef char Char;
 #define	ismeta(c)	(((c)&M_QUOTE) != 0)
 
 
+#define	GLOB_LIMIT_MALLOC	65536
+#define	GLOB_LIMIT_STAT		128
+#define	GLOB_LIMIT_READDIR	16384
+
+#define	GLOB_INDEX_MALLOC	0
+#define	GLOB_INDEX_STAT		1
+#define	GLOB_INDEX_READDIR	2
+
 static int	 compare(const void *, const void *);
 static int	 g_Ctoc(const Char *, char *, size_t);
 static int	 g_lstat(const Char *, struct stat *, glob_t *);
@@ -161,6 +169,9 @@ static int	 match(const Char *, const Char *, const Char *);
 #ifdef DEBUG
 static void	 qprintf(const char *, const Char *);
 #endif
+
+/* 0 = malloc(), 1 = stat(), 2 = readdir() */
+static size_t limits[] = { 0, 0, 0 };
 
 int
 glob(const char *pattern, int flags, int (*errfunc)(const char *, int),
@@ -560,6 +571,14 @@ glob2(Char *pathbuf, Char *pathend, Char *pathend_last, const Char *pattern,
 			if (g_lstat(pathbuf, &sb, pglob))
 				return(0);
 
+			if ((pglob->gl_flags & GLOB_LIMIT) &&
+			    limits[GLOB_INDEX_STAT]++ >= GLOB_LIMIT_STAT) {
+				errno = 0;
+				*pathend++ = SEP;
+				*pathend = EOS;
+				return GLOB_NOSPACE;
+			}
+
 			if (((pglob->gl_flags & GLOB_MARK) &&
 			    pathend[-1] != SEP) && (S_ISDIR(sb.st_mode)
 			    || (S_ISLNK(sb.st_mode) &&
@@ -642,6 +661,14 @@ glob3(Char *pathbuf, Char *pathend, Char *pathend_last, const Char *pattern,
 		wchar_t wc;
 		size_t clen;
 		mbstate_t mbs;
+
+		if ((pglob->gl_flags & GLOB_LIMIT) &&
+		    limits[GLOB_INDEX_READDIR]++ >= GLOB_LIMIT_READDIR) {
+			errno = 0;
+			*pathend++ = SEP;
+			*pathend = EOS;
+			return GLOB_NOSPACE;
+		}
 
 		/* Initial DOT must be matched literally. */
 		if (dp->d_name[0] == DOT && *pattern != DOT &&
@@ -729,6 +756,7 @@ globextend(const Char *path, glob_t *pglob, size_t *limit)
 	for (p = path; *p++;)
 		continue;
 	len = MB_CUR_MAX * (size_t)(p - path);	/* XXX overallocation */
+	limits[GLOB_INDEX_MALLOC] += len;
 	if ((copy = malloc(len)) != NULL) {
 		if (g_Ctoc(path, copy, len)) {
 			free(copy);
@@ -737,6 +765,12 @@ globextend(const Char *path, glob_t *pglob, size_t *limit)
 		pathv[pglob->gl_offs + pglob->gl_pathc++] = copy;
 	}
 	pathv[pglob->gl_offs + pglob->gl_pathc] = NULL;
+	if ((pglob->gl_flags & GLOB_LIMIT) &&
+		(newsize + limits[GLOB_INDEX_MALLOC]) >= GLOB_LIMIT_MALLOC) {
+		errno = 0;
+		return GLOB_NOSPACE;
+	}
+
 	return(copy == NULL ? GLOB_NOSPACE : 0);
 }
 
