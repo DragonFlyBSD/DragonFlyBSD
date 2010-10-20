@@ -275,8 +275,11 @@ _mtx_lock_sh_quick(mtx_t mtx, const char *ident)
 	return (__mtx_lock_sh(mtx, ident, 0, 0));
 }
 
+/*
+ * Get an exclusive spinlock the hard way.
+ */
 void
-_mtx_spinlock_ex(mtx_t mtx)
+_mtx_spinlock(mtx_t mtx)
 {
 	u_int	lock;
 	u_int	nlock;
@@ -311,6 +314,49 @@ _mtx_spinlock_ex(mtx_t mtx)
 	}
 }
 
+/*
+ * Attempt to acquire a spinlock, if we fail we must undo the
+ * gd->gd_spinlocks_wr/gd->gd_curthead->td_critcount predisposition.
+ *
+ * Returns 0 on success, EAGAIN on failure.
+ */
+int
+_mtx_spinlock_try(mtx_t mtx)
+{
+	globaldata_t gd = mycpu;
+	u_int	lock;
+	u_int	nlock;
+	int	res = 0;
+
+	for (;;) {
+		lock = mtx->mtx_lock;
+		if (lock == 0) {
+			nlock = MTX_EXCLUSIVE | 1;
+			if (atomic_cmpset_int(&mtx->mtx_lock, 0, nlock)) {
+				mtx->mtx_owner = gd->gd_curthread;
+				break;
+			}
+		} else if ((lock & MTX_EXCLUSIVE) &&
+			   mtx->mtx_owner == gd->gd_curthread) {
+			KKASSERT((lock & MTX_MASK) != MTX_MASK);
+			nlock = lock + 1;
+			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock))
+				break;
+		} else {
+			--gd->gd_spinlocks_wr;
+			cpu_ccfence();
+			--gd->gd_curthread->td_critcount;
+			res = EAGAIN;
+			break;
+		}
+		cpu_pause();
+		++mtx_collision_count;
+	}
+	return res;
+}
+
+#if 0
+
 void
 _mtx_spinlock_sh(mtx_t mtx)
 {
@@ -339,6 +385,8 @@ _mtx_spinlock_sh(mtx_t mtx)
 		++mtx_collision_count;
 	}
 }
+
+#endif
 
 int
 _mtx_lock_ex_try(mtx_t mtx)
