@@ -508,12 +508,14 @@ dmsize(struct dev_psize_args *ap)
 	size = 0;
 
 	if ((dmv = dm_dev_lookup(NULL, NULL, minor(dev))) == NULL)
-			return -ENOENT;
+			return ENOENT;
 
 	size = dm_table_size(&dmv->table_head);
 	dm_dev_unbusy(dmv);
-	
-  	return size;
+
+	ap->a_result = (int64_t)size;
+
+	return 0;
 }
 
 #if 0
