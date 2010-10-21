@@ -55,6 +55,7 @@ static	d_open_t	dmopen;
 static	d_close_t	dmclose;
 static	d_psize_t	dmsize;
 static	d_strategy_t	dmstrategy;
+static	d_dump_t	dmdump;
 
 /* attach and detach routines */
 void dmattach(int);
@@ -80,6 +81,7 @@ struct dev_ops dm_ops = {
 	.d_ioctl	= dmioctl,
 	.d_strategy	= dmstrategy,
 	.d_psize	= dmsize,
+	.d_dump		= dmdump,
 /* D_DISK */
 };
 
@@ -496,6 +498,89 @@ dmstrategy(struct dev_strategy_args *ap)
 	dm_dev_unbusy(dmv);
 
 	return 0;
+}
+
+static int
+dmdump(struct dev_dump_args *ap)
+{
+	cdev_t dev = ap->a_head.a_dev;
+	dm_dev_t *dmv;
+	dm_table_t  *tbl;
+	dm_table_entry_t *table_en;
+	uint32_t dev_type;
+	uint64_t buf_start, buf_len, issued_len;
+	uint64_t table_start, table_end;
+	uint64_t start, end, data_offset;
+	off_t offset;
+	size_t length;
+	int error = 0;
+
+	buf_start = ap->a_offset;
+	buf_len = ap->a_length;
+
+	tbl = NULL; 
+
+	table_end = 0;
+	dev_type = 0;
+	issued_len = 0;
+
+	if ((dmv = dm_dev_lookup(NULL, NULL, minor(dev))) == NULL) {
+		return EIO;
+	} 
+
+	/* Select active table */
+	tbl = dm_table_get_entry(&dmv->table_head, DM_TABLE_ACTIVE);
+
+
+	/*
+	 * Find out what tables I want to select.
+	 */
+	SLIST_FOREACH(table_en, tbl, next) {
+		/*
+		 * I need need number of bytes not blocks.
+		 */
+		table_start = table_en->start * DEV_BSIZE;
+		table_end = table_start + (table_en->length) * DEV_BSIZE;
+
+		/*
+		 * Calculate the start and end
+		 */
+		start = MAX(table_start, buf_start);
+		end = MIN(table_end, buf_start + buf_len);
+
+		if (ap->a_length == 0) {
+			if (table_en->target->dump == NULL) {
+				error = ENXIO;
+				goto out;
+			}
+
+			table_en->target->dump(table_en, NULL, 0, 0);
+		} else if (start < end) {
+			data_offset = start - buf_start;
+			offset = start - table_start;
+			length = end - start;
+
+			if (table_en->target->dump == NULL) {
+				error = ENXIO;
+				goto out;
+			}
+
+			table_en->target->dump(table_en,
+			    (char *)ap->a_virtual + data_offset,
+			    length, offset);
+
+			issued_len += end - start;
+		}
+	}
+
+	if (issued_len < buf_len)
+		error = EINVAL;
+
+out:
+	dm_table_release(&dmv->table_head, DM_TABLE_ACTIVE);
+	dm_dev_unbusy(dmv);
+
+	return error;
 }
 
 static int

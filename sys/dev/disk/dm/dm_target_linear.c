@@ -147,6 +147,23 @@ dm_target_linear_strategy(dm_table_entry_t * table_en, struct buf * bp)
 	return 0;
 
 }
+
+int
+dm_target_linear_dump(dm_table_entry_t *table_en, void *data, size_t length, off_t offset)
+{
+	dm_target_linear_config_t *tlc;
+
+	tlc = table_en->target_config;
+
+	offset += tlc->offset * DEV_BSIZE;
+	offset = dm_pdev_correct_dump_offset(tlc->pdev, offset);
+
+	if (tlc->pdev->pdev_vnode->v_rdev == NULL)
+		return ENXIO;
+
+	return dev_ddump(tlc->pdev->pdev_vnode->v_rdev, data, 0, offset, length);
+}
+
 /*
  * Destroy target specific data. Decrement table pdevs.
  */

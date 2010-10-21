@@ -297,6 +297,7 @@ dm_target_init(void)
 	dmt->deps = &dm_target_linear_deps;
 	dmt->destroy = &dm_target_linear_destroy;
 	dmt->upcall = &dm_target_linear_upcall;
+	dmt->dump = &dm_target_linear_dump;
 
 	r = dm_target_insert(dmt);
 
@@ -310,6 +311,7 @@ dm_target_init(void)
 	dmt3->deps = &dm_target_stripe_deps;
 	dmt3->destroy = &dm_target_stripe_destroy;
 	dmt3->upcall = &dm_target_stripe_upcall;
+	dmt3->dump = &dm_target_stripe_dump;
 
 	r = dm_target_insert(dmt3);
 	
@@ -323,6 +325,7 @@ dm_target_init(void)
 	dmt5->deps = &dm_target_crypt_deps;
 	dmt5->destroy = &dm_target_crypt_destroy;
 	dmt5->upcall = &dm_target_crypt_upcall;
+	dmt5->dump = &dm_target_crypt_dump;
 
 	r = dm_target_insert(dmt5);
 
