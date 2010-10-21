@@ -396,7 +396,7 @@ dev_ddump(cdev_t dev, void *virtual, vm_offset_t physical, off_t offset,
 		get_mplock();
 	error = dev->si_ops->d_dump(&ap);
 	if (needmplock)
-		get_mplock();
+		rel_mplock();
 	return (error);
 }
 
