@@ -141,7 +141,14 @@ sys_get_tls_area(struct get_tls_area_args *uap)
 }
 
 /*
- * Install the TLS
+ * Install the TLS.
+ *
+ * It shouldn't be possible for a preemptive thread switch to do anything
+ * more than set gd_user_fs and wrmsr for us.  Even though there is a window
+ * where gd_user_fs/gd_user_gs do not match the MSRs no preemptive thread
+ * switch should ever switch to any heavy weight thread other than our own.
+ *
+ * Still, use a critical section to be safe.
  *
  * MPSAFE
  */
@@ -151,6 +158,7 @@ set_user_TLS(void)
 	struct mdglobaldata *gd = mdcpu;
 	thread_t td = gd->mi.gd_curthread;
 
+	crit_enter_quick(td);
 	td->td_pcb->pcb_fsbase = (register_t)td->td_tls.info[0].base;
 	td->td_pcb->pcb_gsbase = (register_t)td->td_tls.info[1].base;
 	if (gd->gd_user_fs != td->td_pcb->pcb_fsbase) {
@@ -161,5 +169,6 @@ set_user_TLS(void)
 		gd->gd_user_gs = td->td_pcb->pcb_gsbase;
 		wrmsr(MSR_KGSBASE, gd->gd_user_gs);
 	}
+	crit_exit_quick(td);
 }
 

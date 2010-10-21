@@ -1780,8 +1780,8 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 
 #if JG
 	finishidentcpu();	/* Final stage of CPU initialization */
-	setidt(6, &IDTVEC(ill),  SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-	setidt(13, &IDTVEC(prot),  SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+	setidt(6, &IDTVEC(ill),  SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+	setidt(13, &IDTVEC(prot),  SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 #endif
 	identify_cpu();		/* Final stage of CPU initialization */
 	initializecpu();	/* Initialize CPU registers */
@@ -1791,7 +1791,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 		(register_t)(thread0.td_kstack +
 			     KSTACK_PAGES * PAGE_SIZE - sizeof(struct pcb));
 	/* Ensure the stack is aligned to 16 bytes */
-	gd->gd_common_tss.tss_rsp0 &= ~0xFul;
+	gd->gd_common_tss.tss_rsp0 &= ~(register_t)0xF;
 	gd->gd_rsp0 = gd->gd_common_tss.tss_rsp0;
 
 	/* doublefault stack space, runs on ist1 */

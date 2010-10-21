@@ -198,16 +198,16 @@ doreti_next:
 	.globl	doreti_syscall_ret
 doreti_syscall_ret:
 	POP_FRAME		/* registers and %gs (+cli) */
-	/* special global also used by exception.S */
+	/* WARNING: special global doreti_iret is  also used by exception.S */
 doreti_iret:
 	iretq
 
 	/*
-	 * doreti_iret_fault.  Alternative return code for
-	 * the case where we get a fault in the doreti_exit code
-	 * above.  trap() (sys/platform/pc64/x86_64/trap.c) catches this specific
-	 * case, sends the process a signal and continues in the
-	 * corresponding place in the code below.
+	 * doreti_iret_fault.  Alternative return code for the case where
+	 * we get a fault in the doreti_exit code above.  trap()
+	 * (sys/platform/pc64/x86_64/trap.c) catches this specific * case,
+	 * sends the process a signal and continues in the corresponding
+	 * place in the code below.
 	 */
 	ALIGN_TEXT
 	.globl	doreti_iret_fault

@@ -281,6 +281,8 @@ recheck:
 	/*
 	 * Post any pending signals.  If running a virtual kernel be sure
 	 * to restore the virtual kernel's vmspace before posting the signal.
+	 *
+	 * WARNING!  postsig() can exit and not return.
 	 */
 	if ((sig = CURSIG_TRACE(lp)) != 0) {
 		get_mplock();

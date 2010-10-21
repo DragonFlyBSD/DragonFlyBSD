@@ -123,7 +123,7 @@
 	SUPERALIGN_TEXT ;						\
 IDTVEC(vec_name) ;							\
 	APIC_PUSH_FRAME ;						\
-	FAKE_MCOUNT(15*4(%esp)) ;					\
+	FAKE_MCOUNT(TF_RIP(%rsp)) ;					\
 	MASK_LEVEL_IRQ(irq_num) ;					\
 	movq	lapic, %rax ;						\
 	movl	$0, LA_EOI(%rax) ;					\
@@ -193,6 +193,7 @@ Xinvltlb:
 /*
  * Executed by a CPU when it receives an Xcpustop IPI from another CPU,
  *
+ *  - We cannot call doreti
  *  - Signals its receipt.
  *  - Waits for permission to restart.
  *  - Processing pending IPIQ events while waiting.
@@ -203,42 +204,16 @@ Xinvltlb:
 	SUPERALIGN_TEXT
 	.globl Xcpustop
 Xcpustop:
-	pushq	%rbp
-	movq	%rsp, %rbp
-	/* We save registers that are not preserved across function calls. */
-	/* JG can be re-written with mov's */
-	pushq	%rax
-	pushq	%rcx
-	pushq	%rdx
-	pushq	%rsi
-	pushq	%rdi
-	pushq	%r8
-	pushq	%r9
-	pushq	%r10
-	pushq	%r11
-
-#if JG
-	/* JGXXX switch to kernel %gs? */
-	pushl	%ds			/* save current data segment */
-	pushl	%fs
-
-	movl	$KDSEL, %eax
-	mov	%ax, %ds		/* use KERNEL data segment */
-	movl	$KPSEL, %eax
-	mov	%ax, %fs
-#endif
-
+	APIC_PUSH_FRAME
 	movq	lapic, %rax
 	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
 
-	/* JG */
 	movl	PCPU(cpuid), %eax
 	imull	$PCB_SIZE, %eax
 	leaq	CNAME(stoppcbs), %rdi
 	addq	%rax, %rdi
 	call	CNAME(savectx)		/* Save process context */
-	
-		
+
 	movl	PCPU(cpuid), %eax
 
 	/*
@@ -253,6 +228,7 @@ Xcpustop:
 	pushq	%rax
 	call	lwkt_smp_stopped
 	popq	%rax
+	pause
 	btl	%eax, started_cpus	/* while (!(started_cpus & (1<<id))) */
 	jnc	1b
 
@@ -271,22 +247,8 @@ Xcpustop:
 
 	call	*%rax
 2:
-	popq	%r11
-	popq	%r10
-	popq	%r9
-	popq	%r8
-	popq	%rdi
-	popq	%rsi
-	popq	%rdx
-	popq	%rcx
-	popq	%rax
-
-#if JG
-	popl	%fs
-	popl	%ds			/* restore previous data segment */
-#endif
-	movq	%rbp, %rsp
-	popq	%rbp
+	MEXITCOUNT
+	APIC_POP_FRAME
 	iretq
 
 	/*
@@ -301,7 +263,7 @@ Xipiq:
 	APIC_PUSH_FRAME
 	movq	lapic, %rax
 	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
-	FAKE_MCOUNT(15*4(%esp))
+	FAKE_MCOUNT(TF_RIP(%rsp))
 
 	incl    PCPU(cnt) + V_IPI
 	movq	PCPU(curthread),%rbx
@@ -330,7 +292,7 @@ Xtimer:
 	APIC_PUSH_FRAME
 	movq	lapic, %rax
 	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
-	FAKE_MCOUNT(15*4(%esp))
+	FAKE_MCOUNT(TF_RIP(%rsp))
 
 	incl    PCPU(cnt) + V_TIMER
 	movq	PCPU(curthread),%rbx
