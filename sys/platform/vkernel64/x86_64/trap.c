@@ -256,6 +256,8 @@ recheck:
 
 	/*
 	 * Post any pending signals
+	 *
+	 * WARNING!  postsig() can exit and not return.
 	 */
 	if ((sig = CURSIG_TRACE(lp)) != 0) {
 		get_mplock();

@@ -136,7 +136,7 @@
 	SUPERALIGN_TEXT ; 						\
 IDTVEC(vec_name) ; 							\
 	ICU_PUSH_FRAME ;						\
-	FAKE_MCOUNT(15*4(%esp)) ; 					\
+	FAKE_MCOUNT(TF_RIP(%rsp)) ; 					\
 	MASK_IRQ(icu, irq_num) ;					\
 	enable_icus ;							\
 	movq	PCPU(curthread),%rbx ;					\

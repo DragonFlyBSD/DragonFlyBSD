@@ -346,8 +346,8 @@ ENTRY(cpu_heavy_restore)
 	jnz	2f
 #endif
 
-	/* JG
-	 * Going back to the common_tss.  We may need to update TSS_ESP0
+	/*
+	 * Going back to the common_tss.  We may need to update TSS_RSP0
 	 * which sets the top of the supervisor stack when entering from
 	 * usermode.  The PCB is at the top of the stack but we need another
 	 * 16 bytes to take vm86 into account.

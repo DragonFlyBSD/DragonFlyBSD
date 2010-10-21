@@ -147,8 +147,9 @@ IDTVEC(align)
 	.globl	alltraps
 	.type	alltraps,@function
 alltraps:
-	testb	$SEL_RPL_MASK,TF_CS(%rsp) /* Did we come from kernel? */
-	jz	alltraps_testi		/* already running with kernel GS.base */
+	/* Fixup %gs if coming from userland */
+	testb	$SEL_RPL_MASK,TF_CS(%rsp)
+	jz	alltraps_testi
 	swapgs
 alltraps_testi:
 	testq	$PSL_I,TF_RFLAGS(%rsp)
@@ -189,8 +190,9 @@ calltrap:
 	.globl	alltraps_noen
 	.type	alltraps_noen,@function
 alltraps_noen:
-	testb	$SEL_RPL_MASK,TF_CS(%rsp) /* Did we come from kernel? */
-	jz	alltraps_pushregs	/* already running with kernel GS.base */
+	/* Fixup %gs if coming from userland */
+	testb	$SEL_RPL_MASK,TF_CS(%rsp)
+	jz	alltraps_pushregs
 	swapgs
 	jmp	alltraps_pushregs
 
@@ -215,8 +217,8 @@ IDTVEC(dblfault)
 	movq	%r13,TF_R13(%rsp)
 	movq	%r14,TF_R14(%rsp)
 	movq	%r15,TF_R15(%rsp)
-	testb	$SEL_RPL_MASK,TF_CS(%rsp) /* Did we come from kernel? */
-	jz	1f			/* already running with kernel GS.base */
+	testb	$SEL_RPL_MASK,TF_CS(%rsp)
+	jz	1f
 	swapgs
 1:	movq	%rsp, %rdi
 	call	dblfault_handler
@@ -226,8 +228,9 @@ IDTVEC(dblfault)
 IDTVEC(page)
 	subq	$TF_ERR,%rsp
 	movq	$T_PAGEFLT,TF_TRAPNO(%rsp)
-	testb	$SEL_RPL_MASK,TF_CS(%rsp) /* Did we come from kernel? */
-	jz	1f			/* already running with kernel GS.base */
+	/* Fixup %gs if coming from userland */
+	testb	$SEL_RPL_MASK,TF_CS(%rsp)
+	jz	1f
 	swapgs
 1:
 	movq	%rdi,TF_RDI(%rsp)	/* free up a GP register */
@@ -251,11 +254,16 @@ IDTVEC(prot)
 	movq	$0,TF_ADDR(%rsp)
 	movq	$0,TF_XFLAGS(%rsp)
 	movq	%rdi,TF_RDI(%rsp)	/* free up a GP register */
+
+	/*
+	 * Fixup %gs if coming from userland.  Handle the special case where
+	 * %fs faults in doreti at the iretq instruction itself.
+	 */
 	leaq	doreti_iret(%rip),%rdi
-	cmpq	%rdi,TF_RIP(%rsp)
-	je	2f			/* kernel but with user gsbase!! */
-	testb	$SEL_RPL_MASK,TF_CS(%rsp) /* Did we come from kernel? */
-	jz	1f			/* already running with kernel GS.base */
+	cmpq	%rdi,TF_RIP(%rsp)		/* special iretq fault case */
+	je	2f
+	testb	$SEL_RPL_MASK,TF_CS(%rsp)	/* check if from userland */
+	jz	1f
 2:
 	swapgs
 1:

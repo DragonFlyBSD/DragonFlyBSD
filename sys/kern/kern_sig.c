@@ -352,9 +352,10 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 			FOREACH_LWP_IN_PROC(lp, p) {
 				SIGDELSET(lp->lwp_siglist, sig);
 			}
-			if (sig != SIGCONT)
+			if (sig != SIGCONT) {
 				/* easier in ksignal */
 				SIGADDSET(p->p_sigignore, sig);
+			}
 			SIGDELSET(p->p_sigcatch, sig);
 		} else {
 			SIGDELSET(p->p_sigignore, sig);
@@ -1458,8 +1459,6 @@ proc_unstop(struct proc *p)
 
 /* 
  * No requirements.
- *
- * XXX: Holds the proc_token for longer than it probably needs to.
  */
 static int
 kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
@@ -1564,8 +1563,11 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 		info->si_signo = sig;
 		lwp_delsig(lp, sig);	/* take the signal! */
 
-		if (sig == SIGKILL)
+		if (sig == SIGKILL) {
+			lwkt_reltoken(&proc_token);
 			sigexit(lp, sig);
+			/* NOT REACHED */
+		}
 	}
 
 	lwkt_reltoken(&proc_token);
@@ -1990,6 +1992,8 @@ killproc(struct proc *p, char *why)
  * signal state.  Mark the accounting record with the signal termination.
  * If dumping core, save the signal number for the debugger.  Calls exit and
  * does not return.
+ *
+ * This routine does not return.
  */
 void
 sigexit(struct lwp *lp, int sig)

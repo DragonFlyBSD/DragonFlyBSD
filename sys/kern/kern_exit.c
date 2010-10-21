@@ -69,6 +69,7 @@
 #include <sys/caps.h>
 #include <sys/unistd.h>
 #include <sys/eventhandler.h>
+#include <sys/dsched.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -117,10 +118,8 @@ struct lwplist deadlwp_list[MAXCPU];
 int
 sys_exit(struct exit_args *uap)
 {
-	get_mplock();
 	exit1(W_EXITCODE(uap->rval, 0));
 	/* NOTREACHED */
-	rel_mplock();
 }
 
 /*
@@ -282,6 +281,8 @@ exit1(int rv)
 		    WTERMSIG(rv), WEXITSTATUS(rv));
 		panic("Going nowhere without my init!");
 	}
+
+	get_mplock();
 
 	varsymset_clean(&p->p_varsymset);
 	lockuninit(&p->p_varsymset.vx_lock);
@@ -610,6 +611,14 @@ lwp_exit(int masterexit)
 	PHOLD(p);
 
 	/*
+	 * Do any remaining work that might block on us.  We should be
+	 * coded such that further blocking is ok after decrementing
+	 * p_nthreads but don't take the chance.
+	 */
+	dsched_exit_thread(td);
+	biosched_done(curthread);
+
+	/*
 	 * We have to use the reaper for all the LWPs except the one doing
 	 * the master exit.  The LWP doing the master exit can just be
 	 * left on p_lwps and the process reaper will deal with it
@@ -620,11 +629,11 @@ lwp_exit(int masterexit)
 		--p->p_nthreads;
 		wakeup(&p->p_nthreads);
 		LIST_INSERT_HEAD(&deadlwp_list[mycpuid], lp, u.lwp_reap_entry);
-		taskqueue_enqueue(taskqueue_thread[mycpuid], deadlwp_task[mycpuid]);
+		taskqueue_enqueue(taskqueue_thread[mycpuid],
+				  deadlwp_task[mycpuid]);
 	} else {
 		--p->p_nthreads;
 	}
-	biosched_done(curthread);
 	cpu_lwp_exit();
 }
 

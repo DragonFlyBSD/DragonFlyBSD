@@ -404,10 +404,8 @@ sys_linux_exit_group(struct linux_exit_group_args *args)
 
 	if (em->s->refs == 1) {
 		EMUL_UNLOCK();
-		get_mplock();
 		exit1(W_EXITCODE(rval, 0));
-		/* notreached */
-		rel_mplock();
+		/* NOTREACHED */
 		return (0);
 	}
 	KKASSERT(em->proc == curproc);
@@ -431,10 +429,8 @@ sys_linux_exit_group(struct linux_exit_group_args *args)
 	}
 
 	EMUL_UNLOCK();
-	get_mplock();
 	exit1(W_EXITCODE(rval, 0));
-	rel_mplock();
-	/* notreached */
+	/* NOTREACHED */
 
 	return (0);
 }

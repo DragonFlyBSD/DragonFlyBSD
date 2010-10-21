@@ -1643,9 +1643,14 @@ lwkt_exit(void)
     thread_t std;
     globaldata_t gd;
 
+    /*
+     * Do any cleanup that might block here
+     */
     if (td->td_flags & TDF_VERBOSE)
 	kprintf("kthread %p %s has exited\n", td, td->td_comm);
     caps_exit(td);
+    biosched_done(td);
+    dsched_exit_thread(td);
 
     /*
      * Get us into a critical section to interlock gd_freetd and loop
@@ -1663,14 +1668,18 @@ lwkt_exit(void)
 
     /*
      * Remove thread resources from kernel lists and deschedule us for
-     * the last time.
+     * the last time.  We cannot block after this point or we may end
+     * up with a stale td on the tsleepq.
      */
     if (td->td_flags & TDF_TSLEEPQ)
 	tsleep_remove(td);
-    biosched_done(td);
-    dsched_exit_thread(td);
     lwkt_deschedule_self(td);
     lwkt_remove_tdallq(td);
+
+    /*
+     * Final cleanup
+     */
+    KKASSERT(gd->gd_freetd == NULL);
     if (td->td_flags & TDF_ALLOCATED_THREAD)
 	gd->gd_freetd = td;
     cpu_thread_exit();

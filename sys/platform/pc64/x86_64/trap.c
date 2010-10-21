@@ -144,6 +144,9 @@ static char *trap_msg[] = {
 static int ddb_on_nmi = 1;
 SYSCTL_INT(_machdep, OID_AUTO, ddb_on_nmi, CTLFLAG_RW,
 	&ddb_on_nmi, 0, "Go to DDB on NMI");
+static int ddb_on_seg_fault = 0;
+SYSCTL_INT(_machdep, OID_AUTO, ddb_on_seg_fault, CTLFLAG_RW,
+	&ddb_on_seg_fault, 0, "Go to DDB on user seg-fault");
 #endif
 static int panic_on_nmi = 1;
 SYSCTL_INT(_machdep, OID_AUTO, panic_on_nmi, CTLFLAG_RW,
@@ -241,6 +244,8 @@ recheck:
 	/*
 	 * Post any pending signals.  If running a virtual kernel be sure
 	 * to restore the virtual kernel's vmspace before posting the signal.
+	 *
+	 * WARNING!  postsig() can exit and not return.
 	 */
 	if ((sig = CURSIG_TRACE(lp)) != 0) {
 		get_mplock();
@@ -800,14 +805,18 @@ trap_pfault(struct trapframe *frame, int usermode)
 	vm_prot_t ftype;
 	thread_t td = curthread;
 	struct lwp *lp = td->td_lwp;
+	struct proc *p;
 
 	va = trunc_page(frame->tf_addr);
 	if (va >= VM_MIN_KERNEL_ADDRESS) {
 		/*
 		 * Don't allow user-mode faults in kernel address space.
 		 */
-		if (usermode)
+		if (usermode) {
+			fault_flags = -1;
+			ftype = -1;
 			goto nogo;
+		}
 
 		map = &kernel_map;
 	} else {
@@ -819,8 +828,11 @@ trap_pfault(struct trapframe *frame, int usermode)
 		if (lp != NULL)
 			vm = lp->lwp_vmspace;
 
-		if (vm == NULL)
+		if (vm == NULL) {
+			fault_flags = -1;
+			ftype = -1;
 			goto nogo;
+		}
 
 		map = &vm->vm_map;
 	}
@@ -863,6 +875,7 @@ trap_pfault(struct trapframe *frame, int usermode)
 		 * Don't have to worry about process locking or stacks
 		 * in the kernel.
 		 */
+		fault_flags = VM_FAULT_NORMAL;
 		rv = vm_fault(map, va, ftype, VM_FAULT_NORMAL);
 	}
 
@@ -883,10 +896,16 @@ nogo:
 	 * NOTE: on x86_64 we have a tf_addr field in the trapframe, no
 	 * kludge is needed to pass the fault address to signal handlers.
 	 */
-	struct proc *p = td->td_proc;
+	p = td->td_proc;
 	if (td->td_lwp->lwp_vkernel == NULL) {
-		kprintf("seg-fault accessing address %p rip=%p pid=%d p_comm=%s\n",
-			(void *)va, (void *)frame->tf_rip, p->p_pid, p->p_comm);
+		kprintf("seg-fault ft=%04x ff=%04x addr=%p rip=%p "
+			"pid=%d p_comm=%s\n",
+			ftype, fault_flags,
+			(void *)frame->tf_addr,
+			(void *)frame->tf_rip,
+			p->p_pid, p->p_comm);
+		if (ddb_on_seg_fault)
+			Debugger("ddb_on_seg_fault");
 	}
 	/* Debugger("seg-fault"); */
 

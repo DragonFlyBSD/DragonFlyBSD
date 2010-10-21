@@ -54,7 +54,6 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/unistd.h>
-#include <sys/dsched.h>
 
 #include <machine/clock.h>
 #include <machine/cpu.h>
@@ -257,17 +256,19 @@ cpu_lwp_exit(void)
 	struct pcb *pcb;
 	npxexit();
 	pcb = td->td_pcb;
-	KKASSERT(pcb->pcb_ext == NULL); /* Some i386 functionality was dropped */
+
+	/* Some i386 functionality was dropped */
+	KKASSERT(pcb->pcb_ext == NULL);
+
+	/*
+	 * disable all hardware breakpoints
+	 */
         if (pcb->pcb_flags & PCB_DBREGS) {
-                /*
-                 * disable all hardware breakpoints
-                 */
                 reset_dbregs();
                 pcb->pcb_flags &= ~PCB_DBREGS;
         }
 	td->td_gd->gd_cnt.v_swtch++;
 
-	dsched_exit_thread(td);
 	crit_enter_quick(td);
 	lwkt_deschedule_self(td);
 	lwkt_remove_tdallq(td);
