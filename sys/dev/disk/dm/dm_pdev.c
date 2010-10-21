@@ -101,6 +101,19 @@ dm_dk_lookup(const char *dev_name, struct vnode **vpp)
 	return 0;
 }
 
+off_t
+dm_pdev_correct_dump_offset(dm_pdev_t *pdev, off_t offset)
+{
+	off_t noffset;
+
+	noffset = pdev->pdev_pinfo.reserved_blocks +
+	    pdev->pdev_pinfo.media_offset / pdev->pdev_pinfo.media_blksize;
+	noffset *= DEV_BSIZE;
+	noffset += offset;
+
+	return noffset;
+}
+
 /*
  * Create entry for device with name dev_name and open vnode for it.
  * If entry already exists in global SLIST I will only increment
@@ -137,6 +150,14 @@ dm_pdev_insert(const char *dev_name)
 		return NULL;
 	}
 	dmp->ref_cnt = 1;
+
+	/*
+	 * Get us the partinfo from the underlying device, it's needed for
+	 * dumps.
+	 */
+	bzero(&dmp->pdev_pinfo, sizeof(dmp->pdev_pinfo));
+	error = dev_dioctl(dmp->pdev_vnode->v_rdev, DIOCGPART,
+	    (void *)&dmp->pdev_pinfo, 0, proc0.p_ucred, NULL);
 
 	lockmgr(&dm_pdev_mutex, LK_EXCLUSIVE);
 	SLIST_INSERT_HEAD(&dm_pdev_list, dmp, next_pdev);

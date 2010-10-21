@@ -313,6 +313,84 @@ dm_target_stripe_strategy(dm_table_entry_t *table_en, struct buf *bp)
 	return 0;
 }
 
+
+int
+dm_target_stripe_dump(dm_table_entry_t *table_en, void *data, size_t length, off_t offset)
+{
+	dm_target_stripe_config_t *tsc;
+	uint64_t blkno, blkoff;
+	uint64_t stripe, blknr;
+	uint32_t stripe_off, stripe_rest, num_blks, issue_blks;
+	uint64_t off2, len2;
+	int devnr;
+
+	tsc = table_en->target_config;
+	if (tsc == NULL)
+		return 0;
+
+	/* calculate extent of request */
+	KKASSERT(length % DEV_BSIZE == 0);
+
+	blkno = offset / DEV_BSIZE;
+	blkoff = 0;
+	num_blks = length / DEV_BSIZE;
+
+	/*
+	 * 0 length means flush buffers and return
+	 */
+	if (length == 0) {
+		for (devnr = 0; devnr < tsc->stripe_num; ++devnr) {
+			if (tsc->stripe_devs[devnr].pdev->pdev_vnode->v_rdev == NULL)
+				return ENXIO;
+
+			dev_ddump(tsc->stripe_devs[devnr].pdev->pdev_vnode->v_rdev,
+			    data, 0, offset, 0);
+		}
+		return 0;
+	}
+
+	while (num_blks > 0) {
+		/* blockno to strip piece nr */
+		stripe = blkno / tsc->stripe_chunksize;
+		stripe_off = blkno % tsc->stripe_chunksize;
+
+		/* where we are inside the strip */
+		devnr = stripe % tsc->stripe_num;
+		blknr = stripe / tsc->stripe_num;
+
+		/* how much is left before we hit a boundary */
+		stripe_rest = tsc->stripe_chunksize - stripe_off;
+
+		/* issue this piece on stripe `stripe' */
+		issue_blks = MIN(stripe_rest, num_blks);
+
+#if 0
+		nestiobuf_add(bio, nestbuf, blkoff,
+				issue_blks * DEV_BSIZE);
+#endif
+		len2 = issue_blks * DEV_BSIZE;
+
+		/* I need number of bytes. */
+		off2 = blknr * tsc->stripe_chunksize + stripe_off;
+		off2 += tsc->stripe_devs[devnr].offset;
+		off2 *= DEV_BSIZE;
+		off2 = dm_pdev_correct_dump_offset(tsc->stripe_devs[devnr].pdev,
+		    off2);
+
+		if (tsc->stripe_devs[devnr].pdev->pdev_vnode->v_rdev == NULL)
+			return ENXIO;
+
+		dev_ddump(tsc->stripe_devs[devnr].pdev->pdev_vnode->v_rdev,
+		    (char *)data + blkoff, 0, off2, len2);
+
+		blkno += issue_blks;
+		blkoff += issue_blks * DEV_BSIZE;
+		num_blks -= issue_blks;
+	}
+
+	return 0;
+}
+
 /*
  * Destroy a dm table entry for stripes.
  */

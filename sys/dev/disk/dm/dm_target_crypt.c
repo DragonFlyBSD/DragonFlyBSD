@@ -41,8 +41,11 @@
 
 #include <sys/bio.h>
 #include <sys/buf.h>
+#include <sys/globaldata.h>
+#include <sys/kerneldump.h>
 #include <sys/malloc.h>
 #include <sys/md5.h>
+#include <sys/mutex2.h>
 #include <sys/vnode.h>
 #include <crypto/sha1.h>
 #include <crypto/sha2/sha2.h>
@@ -84,7 +87,7 @@ typedef struct target_crypt_config {
 	int	crypto_alg;
 	int	crypto_klen;
 	u_int8_t	crypto_key[512>>3];
-	
+
 	u_int64_t	crypto_sid;
 	u_int64_t	block_offset;
 	int64_t		iv_offset;
@@ -102,13 +105,30 @@ struct dmtc_helper {
 	caddr_t data_buf;
 };
 
+struct dmtc_dump_helper {
+	dm_target_crypt_config_t *priv;
+	void *data;
+	size_t length;
+	off_t offset;
+
+	int sectors;
+	int *ident;
+
+	struct cryptodesc crd[128];
+	struct cryptop crp[128];
+	u_char space[65536];
+};
+
 static void dmtc_crypto_dispatch(void *arg);
+static void dmtc_crypto_dump_start(dm_target_crypt_config_t *priv,
+				struct dmtc_dump_helper *dump_helper);
 static void dmtc_crypto_read_start(dm_target_crypt_config_t *priv,
 				struct bio *bio);
 static void dmtc_crypto_write_start(dm_target_crypt_config_t *priv,
 				struct bio *bio);
 static void dmtc_bio_read_done(struct bio *bio);
 static void dmtc_bio_write_done(struct bio *bio);
+static int dmtc_crypto_cb_dump_done(struct cryptop *crp);
 static int dmtc_crypto_cb_read_done(struct cryptop *crp);
 static int dmtc_crypto_cb_write_done(struct cryptop *crp);
 
@@ -269,6 +289,7 @@ essiv_ivgen_done(struct cryptop *crp)
 	void *free_addr;
 	void *opaque;
 
+
 	if (crp->crp_etype == EAGAIN)
 		return crypto_dispatch(crp);
 
@@ -286,7 +307,7 @@ essiv_ivgen_done(struct cryptop *crp)
 	ivpriv = *((struct essiv_ivgen_priv **)crp->crp_opaque);
 	crp->crp_opaque += sizeof(void *);
 	opaque = *((void **)crp->crp_opaque);
-	
+
 	objcache_put(ivpriv->crp_crd_cache, free_addr);
 	dmtc_crypto_dispatch(opaque);
 	return 0;
@@ -1186,3 +1207,169 @@ dmtc_bio_write_done(struct bio *bio)
 	biodone(obio);
 }
 /* END OF STRATEGY WRITE SECTION */
+
+
+
+/* DUMPING MAGIC */
+
+extern int tsleep_crypto_dump;
+
+int
+dm_target_crypt_dump(dm_table_entry_t *table_en, void *data, size_t length, off_t offset)
+{
+	static struct dmtc_dump_helper dump_helper;
+	dm_target_crypt_config_t *priv;
+	int id;
+	static int first_call = 1;
+
+	priv = table_en->target_config;
+
+	if (first_call) {
+		first_call = 0;
+		dump_reactivate_cpus();
+	}
+
+	/* Magically enable tsleep */
+	tsleep_crypto_dump = 1;
+	id = 0;
+
+	/*
+	 * 0 length means flush buffers and return
+	 */
+	if (length == 0) {
+		if (priv->pdev->pdev_vnode->v_rdev == NULL) {
+			tsleep_crypto_dump = 0;
+			return ENXIO;
+		}
+		dev_ddump(priv->pdev->pdev_vnode->v_rdev,
+		    data, 0, offset, 0);
+		tsleep_crypto_dump = 0;
+		return 0;
+	}
+
+	bzero(&dump_helper, sizeof(dump_helper));
+	dump_helper.priv = priv;
+	dump_helper.data = data;
+	dump_helper.length = length;
+	dump_helper.offset = offset +
+	    priv->block_offset * DEV_BSIZE;
+	dump_helper.ident = &id;
+	dmtc_crypto_dump_start(priv, &dump_helper);
+
+	/*
+	 * Hackery to make stuff appear synchronous. The crypto callback will
+	 * set id to 1 and call wakeup on it. If the request completed
+	 * synchronously, id will be 1 and we won't bother to sleep. If not,
+	 * the crypto request will complete asynchronously and we sleep until
+	 * it's done.
+	 */
+	if (id == 0)
+		tsleep(&dump_helper, 0, "cryptdump", 0);
+
+	dump_helper.offset = dm_pdev_correct_dump_offset(priv->pdev,
+	    dump_helper.offset);
+
+	dev_ddump(priv->pdev->pdev_vnode->v_rdev,
+	    dump_helper.space, 0, dump_helper.offset,
+	    dump_helper.length);
+
+	tsleep_crypto_dump = 0;
+	return 0;
+}
+
+static void
+dmtc_crypto_dump_start(dm_target_crypt_config_t *priv, struct dmtc_dump_helper *dump_helper)
+{
+	struct cryptodesc *crd;
+	struct cryptop *crp;
+	struct cryptoini *cri;
+	int i, bytes, sectors;
+	off_t isector;
+
+	cri = &priv->crypto_session;
+
+	bytes = dump_helper->length;
+
+	isector = dump_helper->offset / DEV_BSIZE;	/* ivgen salt base? */
+	sectors = bytes / DEV_BSIZE;		/* Number of sectors */
+	dump_helper->sectors = sectors;
+#if 0
+	kprintf("Dump, bytes = %d, "
+		"sectors = %d, LENGTH=%zu\n", bytes, sectors, dump_helper->length);
+#endif
+	KKASSERT(dump_helper->length <= 65536);
+
+	memcpy(dump_helper->space, dump_helper->data, bytes);
+
+	cpu_sfence();
+
+	for (i = 0; i < sectors; i++) {
+		crp = &dump_helper->crp[i];
+		crd = &dump_helper->crd[i];
+
+		crp->crp_buf = dump_helper->space + i * DEV_BSIZE;
+
+		crp->crp_sid = priv->crypto_sid;
+		crp->crp_ilen = crp->crp_olen = DEV_BSIZE;
+
+		crp->crp_opaque = (void *)dump_helper;
+
+		crp->crp_callback = dmtc_crypto_cb_dump_done;
+		crp->crp_desc = crd;
+		crp->crp_etype = 0;
+		crp->crp_flags = CRYPTO_F_CBIFSYNC | CRYPTO_F_REL |
+				 CRYPTO_F_BATCH;
+
+		crd->crd_alg = priv->crypto_alg;
+
+		crd->crd_skip = 0;
+		crd->crd_len = DEV_BSIZE /* XXX */;
+		crd->crd_flags = CRD_F_IV_EXPLICIT | CRD_F_IV_PRESENT;
+		crd->crd_next = NULL;
+
+		crd->crd_flags |= CRD_F_ENCRYPT;
+
+		/*
+		 * Note: last argument is used to generate salt(?) and is
+		 *	 a 64 bit value, but the original code passed an
+		 *	 int.  Changing it now will break pre-existing
+		 *	 crypt volumes.
+		 */
+		priv->ivgen->gen_iv(priv, crd->crd_iv, sizeof(crd->crd_iv),
+				    isector + i, crp);
+	}
+}
+
+static int
+dmtc_crypto_cb_dump_done(struct cryptop *crp)
+{
+	struct dmtc_dump_helper *dump_helper;
+	dm_target_crypt_config_t *priv;
+	int n;
+
+	if (crp->crp_etype == EAGAIN)
+		return crypto_dispatch(crp);
+
+	dump_helper = (struct dmtc_dump_helper *)crp->crp_opaque;
+	KKASSERT(dump_helper != NULL);
+
+	if (crp->crp_etype != 0) {
+		kprintf("dm_target_crypt: dmtc_crypto_cb_dump_done "
+			"crp_etype = %d\n",
+		crp->crp_etype);
+		return crp->crp_etype;
+	}
+
+	/*
+	 * On the last chunk of the encryption we return control
+	 */
+	n = atomic_fetchadd_int(&dump_helper->sectors, -1);
+
+	if (n == 1) {
+		priv = (dm_target_crypt_config_t *)dump_helper->priv;
+		atomic_add_int(dump_helper->ident, 1);
+		wakeup(dump_helper);
+	}
+
+	return 0;
+}

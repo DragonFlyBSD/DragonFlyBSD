@@ -46,6 +46,7 @@
 #include <sys/queue.h>
 
 #include <sys/device.h>
+#include <sys/diskslice.h>
 #include <sys/disklabel.h>
 
 #include <libprop/proplib.h>
@@ -108,6 +109,7 @@ typedef struct dm_table_head {
 
 typedef struct dm_pdev {
 	char name[MAX_DEV_NAME];
+	struct partinfo pdev_pinfo; /* partinfo of the underlying device */
 
 	struct vnode *pdev_vnode;
 	int ref_cnt; /* reference counter for users ofthis pdev */
@@ -232,7 +234,8 @@ typedef struct dm_target {
 	char * (*status)(void *);
 	int (*strategy)(dm_table_entry_t *, struct buf *);
 	int (*upcall)(dm_table_entry_t *, struct buf *);
-	
+	int (*dump)(dm_table_entry_t *, void *data, size_t length, off_t offset);
+
 	uint32_t version[3];
 	int ref_cnt;
 	
@@ -315,6 +318,7 @@ int dm_target_linear_strategy(dm_table_entry_t *, struct buf *);
 int dm_target_linear_deps(dm_table_entry_t *, prop_array_t);
 int dm_target_linear_destroy(dm_table_entry_t *);
 int dm_target_linear_upcall(dm_table_entry_t *, struct buf *);
+int dm_target_linear_dump(dm_table_entry_t *, void *, size_t, off_t);
 
 /* dm_target_crypt.c */
 int dm_target_crypt_init(dm_dev_t *, void**, char *);
@@ -323,6 +327,7 @@ int dm_target_crypt_strategy(dm_table_entry_t *, struct buf *);
 int dm_target_crypt_deps(dm_table_entry_t *, prop_array_t);
 int dm_target_crypt_destroy(dm_table_entry_t *);
 int dm_target_crypt_upcall(dm_table_entry_t *, struct buf *);
+int dm_target_crypt_dump(dm_table_entry_t *, void *, size_t, off_t);
 
 /* Generic function used to convert char to string */
 uint64_t atoi64(const char *);
@@ -342,6 +347,7 @@ int dm_target_stripe_strategy(dm_table_entry_t *, struct buf *);
 int dm_target_stripe_deps(dm_table_entry_t *, prop_array_t);
 int dm_target_stripe_destroy(dm_table_entry_t *);
 int dm_target_stripe_upcall(dm_table_entry_t *, struct buf *);
+int dm_target_stripe_dump(dm_table_entry_t *, void *, size_t, off_t);
 
 /* dm_target_snapshot.c */
 int dm_target_snapshot_init(dm_dev_t *, void**, char *);
@@ -391,6 +397,7 @@ int dm_pdev_decr(dm_pdev_t *);
 int dm_pdev_destroy(void);
 int dm_pdev_init(void);
 dm_pdev_t* dm_pdev_insert(const char *);
+off_t dm_pdev_correct_dump_offset(dm_pdev_t *, off_t);
 
 extern int dm_debug_level;
 MALLOC_DECLARE(M_DM);
