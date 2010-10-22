@@ -97,7 +97,7 @@ remove-obsolete-files:
 		fi; \
 	done;
 	@for item in ${TO_REMOVE}; do \
-		if [ -e ${DESTDIR}$${item} ]; then \
+		if [ -e ${DESTDIR}$${item} -o -L ${DESTDIR}$${item} ]; then \
 			echo "${DESTDIR}$${item}"; \
 			rm -rf "${DESTDIR}$${item}"; \
 		fi; \
