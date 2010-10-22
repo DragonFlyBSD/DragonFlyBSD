@@ -51,6 +51,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/kerneldump.h>
 #include <sys/proc.h>
 #include <sys/pioctl.h>
 #include <sys/types.h>
@@ -222,7 +223,7 @@ recheck:
 	/*
 	 * Block here if we are in a stopped state.
 	 */
-	if (p->p_stat == SSTOP) {
+	if (p->p_stat == SSTOP || dump_stop_usertds) {
 		get_mplock();
 		tstop();
 		rel_mplock();
@@ -378,16 +379,7 @@ trap(struct trapframe *frame)
 #endif
 
 #ifdef DDB
-	if (db_active) {
-		++gd->gd_trap_nesting_level;
-		MAKEMPSAFE(have_mplock);
-		trap_fatal(frame, frame->tf_addr);
-		--gd->gd_trap_nesting_level;
-		goto out2;
-	}
-#endif
-#ifdef DDB
-	if (db_active) {
+	if (db_active && frame->tf_trapno != T_DNA) {
 		eva = (frame->tf_trapno == T_PAGEFLT ? frame->tf_addr : 0);
 		++gd->gd_trap_nesting_level;
 		MAKEMPSAFE(have_mplock);
