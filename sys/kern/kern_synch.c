@@ -82,6 +82,7 @@ int	ncpus2, ncpus2_shift, ncpus2_mask;
 int	ncpus_fit, ncpus_fit_mask;
 int	safepri;
 int	tsleep_now_works;
+int	tsleep_crypto_dump = 0;
 
 static struct callout loadav_callout;
 static struct callout schedcpu_callout;
@@ -477,7 +478,7 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	 * NOTE: removed KTRPOINT, it could cause races due to blocking
 	 * even in stable.  Just scrap it for now.
 	 */
-	if (tsleep_now_works == 0 || panicstr) {
+	if (!tsleep_crypto_dump && (tsleep_now_works == 0 || panicstr)) {
 		/*
 		 * After a panic, or before we actually have an operational
 		 * softclock, just give interrupts a chance, then just return;

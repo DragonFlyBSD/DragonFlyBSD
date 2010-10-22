@@ -57,6 +57,7 @@
 #include <sys/proc.h>
 #include <sys/pioctl.h>
 #include <sys/kernel.h>
+#include <sys/kerneldump.h>
 #include <sys/resourcevar.h>
 #include <sys/signalvar.h>
 #include <sys/signal2.h>
@@ -259,7 +260,7 @@ recheck:
 	/*
 	 * Block here if we are in a stopped state.
 	 */
-	if (p->p_stat == SSTOP) {
+	if (p->p_stat == SSTOP || dump_stop_usertds) {
 		get_mplock();
 		tstop();
 		rel_mplock();
@@ -405,7 +406,7 @@ trap(struct trapframe *frame)
 
 	p = td->td_proc;
 #ifdef DDB
-	if (db_active) {
+	if (db_active && frame->tf_trapno != T_DNA) {
 		eva = (frame->tf_trapno == T_PAGEFLT ? rcr2() : 0);
 		++gd->gd_trap_nesting_level;
 		MAKEMPSAFE(have_mplock);

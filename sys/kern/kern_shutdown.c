@@ -81,6 +81,7 @@
 #include <sys/buf2.h>
 #include <sys/mplock2.h>
 
+#include <machine/cpu.h>
 #include <machine/clock.h>
 #include <machine/md_var.h>
 #include <machine/smp.h>		/* smp_active_mask, cpuid */
@@ -879,4 +880,32 @@ dumpsys(void)
 		dumping++;
 		md_dumpsys(&dumper);
 	}
+}
+
+int dump_stop_usertds = 0;
+
+static
+void
+need_user_resched_remote(void *dummy)
+{
+	need_user_resched();
+}
+
+void
+dump_reactivate_cpus(void)
+{
+	globaldata_t gd;
+	int cpu, seq;
+
+	dump_stop_usertds = 1;
+
+	need_user_resched();
+
+	for (cpu = 0; cpu < ncpus; cpu++) {
+		gd = globaldata_find(cpu);
+		seq = lwkt_send_ipiq(gd, need_user_resched_remote, NULL);
+		lwkt_wait_ipiq(gd, seq);
+	}
+
+	restart_cpus(stopped_cpus);
 }
