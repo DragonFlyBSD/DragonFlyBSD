@@ -1,0 +1,67 @@
+#!/bin/sh
+
+# PROVIDE: cryptdisks
+# REQUIRE:
+# BEFORE:  mountcritlocal localswap dumpon
+
+$_rc_subr_loaded . /etc/rc.subr
+
+name="cryptdisks"
+rcvar=$name
+start_cmd="cryptdisks_start"
+stop_cmd="cryptdisks_stop"
+CRYPTTAB="/etc/crypttab"
+
+ifs_restore="$IFS";
+
+cryptdisks_start()
+{
+	if [ ! -f $CRYPTTAB ]; then
+		warn "$CRYPTTAB does not exist"
+		return 1;
+	fi
+
+	if [ -x /sbin/dmsetup ]; then
+		/sbin/dmsetup version >/dev/null
+		if [ $? -ne 0 ]; then 
+			warn "Device-mapper not present in kernel"
+			return 1;
+		fi
+	fi
+
+	if [ ! -x /sbin/cryptdisks ]; then
+		warn "cryptdisks is not executable"
+		return 1;
+	fi
+
+	echo "Configuring crypto disks."
+	/sbin/cryptdisks -1
+}
+
+cryptdisks_stop()
+{
+        if [ ! -f $CRYPTTAB ]; then
+                warn "$CRYPTTAB does not exist"
+                return 1;
+        fi
+ 
+        if [ -x /sbin/dmsetup ]; then
+                /sbin/dmsetup version >/dev/null
+                if [ $? -ne 0 ]; then
+                        warn "Device-mapper not present in kernel"
+                        return 1;
+                fi
+        fi
+ 
+        if [ ! -x /sbin/cryptdisks ]; then
+                warn "cryptdisks is not executable"
+                return 1;
+        fi
+
+        echo "Unconfiguring crypto disks."
+        /sbin/cryptdisks -0
+
+}
+
+load_rc_config $name
+run_rc_command "$1"

@@ -7,6 +7,7 @@ MAN=	acct.5 \
 	a.out.5 \
 	compilers.conf.5 \
 	core.5 \
+	crypttab.5 \
 	devfs.5 \
 	devtab.5 \
 	dir.5 \
