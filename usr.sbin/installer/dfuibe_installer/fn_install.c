@@ -40,7 +40,7 @@
 #include <libgen.h>
 #include <string.h>
 
-#define SOURCES_CONF_FILE "/usr/share/installer/sources.conf"
+#define SOURCES_CONF_FILE "usr/share/installer/sources.conf"
 
 #ifdef ENABLE_NLS
 #include <libintl.h>
@@ -138,7 +138,7 @@ fn_install_os(struct i_fn_args *a)
 	 */
 	snprintf(file_path, 256, "%s%s", a->os_root, SOURCES_CONF_FILE);
 	sources_conf = fopen(file_path, "r");
-	i_log(a, "Reading %s%s", a->os_root, SOURCES_CONF_FILE);
+	i_log(a, "Reading %s", file_path);
 	while(fgets(line, 256, sources_conf) != NULL && lines < 63) {
 		if(strlen(line)>0)
 			line[strlen(line)-1] = '\0';
