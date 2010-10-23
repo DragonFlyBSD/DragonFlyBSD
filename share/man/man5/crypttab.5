@@ -41,7 +41,6 @@ The
 file contains a list of the encrypted disk devices of the system. Each
 encrypted volume is described on a separate line; fields on each line are
 separated by tabs or spaces.
-
 .Pp
 The first field,
 .Pq Fa name ,
@@ -74,7 +73,14 @@ is currently unused on
 .Dx
 and should be either omitted or set to
 .It Pa none .
-
+.Pp
+Note that the
+.Nm
+file on
+.Dx
+currently only supports LUKS volumes and not raw
+.Xr cryptsetup 8
+volumes.
 .Sh FILES
 .Bl -tag -width ".Pa /etc/crypttab" -compact
 .It Pa /etc/crypttab
