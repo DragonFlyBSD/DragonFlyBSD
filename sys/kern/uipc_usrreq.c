@@ -1414,6 +1414,9 @@ unp_gc(void)
 	struct file **fpp;
 	int i;
 
+	/*
+	 * Only one gc can be in-progress at any given moment
+	 */
 	spin_lock(&unp_spin);
 	if (unp_gcing) {
 		spin_unlock(&unp_spin);
@@ -1434,9 +1437,9 @@ unp_gc(void)
 	 * multiple loops.  Also failure to acquire the socket's so_rcv
 	 * token can cause us to loop.
 	 */
-	info.defer = 0;
 	allfiles_scan_exclusive(unp_gc_clearmarks, NULL);
 	do {
+		info.defer = 0;
 		allfiles_scan_exclusive(unp_gc_checkmarks, &info);
 		if (info.defer)
 			tsleep(&info, 0, "gcagain", 1);
@@ -1560,10 +1563,8 @@ unp_gc_checkmarks(struct file *fp, void *data)
 	 * something.
 	 */
 	if (fp->f_count == 0) {
-		if (fp->f_flag & FDEFER) {
+		if (fp->f_flag & FDEFER)
 			atomic_clear_int(&fp->f_flag, FDEFER);
-			--info->defer;
-		}
 		return(0);
 	}
 	/*
@@ -1573,7 +1574,6 @@ unp_gc_checkmarks(struct file *fp, void *data)
 	 */
 	if (fp->f_flag & FDEFER) {
 		atomic_clear_int(&fp->f_flag, FDEFER);
-		--info->defer;
 	} else {
 		/*
 		 * if it's not defered, then check if it's
@@ -1791,6 +1791,9 @@ unp_scan(struct mbuf *m0, void (*op)(struct file *, void *), void *data)
 	}
 }
 
+/*
+ * Mark visibility.  info->defer is recalculated on every pass.
+ */
 static void
 unp_mark(struct file *fp, void *data)
 {
@@ -1799,6 +1802,8 @@ unp_mark(struct file *fp, void *data)
 	if ((fp->f_flag & FMARK) == 0) {
 		++info->defer;
 		atomic_set_int(&fp->f_flag, FMARK | FDEFER);
+	} else if (fp->f_flag & FDEFER) {
+		++info->defer;
 	}
 }
 
