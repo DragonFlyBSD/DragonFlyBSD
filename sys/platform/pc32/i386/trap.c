@@ -408,7 +408,7 @@ trap(struct trapframe *frame)
 #ifdef DDB
 	/*
 	 * We need to allow T_DNA faults when the debugger is active since
-	 * some dumping paths to large bcopy() which use the floating
+	 * some dumping paths do large bcopy() which use the floating
 	 * point registers for faster copying.
 	 */
 	if (db_active && frame->tf_trapno != T_DNA) {
