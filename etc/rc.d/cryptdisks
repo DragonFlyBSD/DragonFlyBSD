@@ -7,18 +7,14 @@
 $_rc_subr_loaded . /etc/rc.subr
 
 name="cryptdisks"
-rcvar=$name
 start_cmd="cryptdisks_start"
 stop_cmd="cryptdisks_stop"
 CRYPTTAB="/etc/crypttab"
 
-ifs_restore="$IFS";
-
 cryptdisks_start()
 {
 	if [ ! -f $CRYPTTAB ]; then
-		warn "$CRYPTTAB does not exist"
-		return 1;
+		return 0;
 	fi
 
 	if [ -x /sbin/dmsetup ]; then
@@ -41,8 +37,7 @@ cryptdisks_start()
 cryptdisks_stop()
 {
         if [ ! -f $CRYPTTAB ]; then
-                warn "$CRYPTTAB does not exist"
-                return 1;
+                return 0;
         fi
  
         if [ -x /sbin/dmsetup ]; then

@@ -2841,15 +2841,6 @@ to save
 to
 .Pa /var/run/dmesg.boot
 on boot.
-.It Va cryptdisks_enable
-.Pq Vt bool
-Set to
-.Dq Li YES
-to start all crypto volumes specified in the
-.Xr crypttab 5
-file during the boot sequence so they can be used during the local mounts
-specified in
-.Xr fstab 5 .
 .It Va rcshutdown_timeout
 .Pq Vt int
 If set, start a watchdog timer in the background which will terminate
