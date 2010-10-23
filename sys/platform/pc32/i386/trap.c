@@ -406,6 +406,11 @@ trap(struct trapframe *frame)
 
 	p = td->td_proc;
 #ifdef DDB
+	/*
+	 * We need to allow T_DNA faults when the debugger is active since
+	 * some dumping paths to large bcopy() which use the floating
+	 * point registers for faster copying.
+	 */
 	if (db_active && frame->tf_trapno != T_DNA) {
 		eva = (frame->tf_trapno == T_PAGEFLT ? rcr2() : 0);
 		++gd->gd_trap_nesting_level;
