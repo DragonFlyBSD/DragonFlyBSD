@@ -673,10 +673,10 @@ lwp_wait(struct lwp *lp)
 	 * and let the caller deal with sleeping and calling
 	 * us again.
 	 */
-	if ((td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK|TDF_EXITING)) !=
-	    TDF_EXITING)
+	if ((td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK|
+			     TDF_EXITING|TDF_RUNQ)) != TDF_EXITING) {
 		return (0);
-
+	}
 	return (1);
 }
 
