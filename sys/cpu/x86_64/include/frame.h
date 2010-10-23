@@ -119,7 +119,6 @@ struct intrframe {
 	register_t	if_rflags;
 	register_t	if_rsp;
 	register_t	if_ss;
-	register_t	if_gs;
 };
 
 int	kdb_trap(int, int, struct trapframe *);
