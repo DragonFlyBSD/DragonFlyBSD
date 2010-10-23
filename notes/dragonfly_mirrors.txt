@@ -1,0 +1,93 @@
+						DRAGONFLY MIRRORS
+
+	This document describes the basic steps how to deal with DragonFly
+	mirror servers.
+
+						ADDING A NEW MIRROR
+
+	If somebody wants to host an official DragonFly mirror, (s)he has to
+	follow some rules.  If the mirror is already setup, check the following
+	things to make sure that the setup is correct.
+
+	* Login to mirror-master.dragonflybsd.org and receive all df_timestamp.txt
+	  files (one for each rsync target, i.e. iso-images/, snapshots/ and
+	  packages/)
+
+	* Compare every time stamp with the appropriate time stamp on the new
+	  mirror.  If they match, the mirror is setup correctly.  If not, try
+	  to figure out what's wrong and notify the administrator.
+
+	If there is no mirror set up yet, let the administrator rsync from
+	mirror-master.dragonflybsd.org during the night in the US.  There are
+	three rsync targets available, one for the official ISO images, one
+	for the pkgsrc packages and one for the daily snapshots.  It is
+	preferably that a mirror syncs all three target, but it is also
+	possible to sync only a subset (e.g. due to space limitations).
+
+	If everything is correct, collect the following information from the
+	administrator:
+
+	* Name of the company/institute (for the credits on the website)
+
+	* Name of the country
+
+	* One ore more email contact addresses
+
+	* Provided bandwidth (a mirror on a DSL line makes not much sense)
+
+	Once you collected all that information, add the new mirror to the
+	mirrors/ section on the website and subscribe the contact address to
+	the mirrors@ mailing list.
+
+
+						DISK SPACE REQUIREMENTS
+
+	As of this writing (Oct 2010) a mirror need at least this much
+	disk space:
+
+	* iso-images/	 8 GB
+	* packages/		40 GB
+	* snapshots/	40 GB
+
+
+						ADD A NEW WEBSITE ENTRY
+
+	All mirrors are listed on the website under mirrors/.  If you want
+	to add a new one, please add the following information:
+
+	* Company/institute/etc which hosts the mirror
+
+	* Summary of all mirrored targets, e.g. (Binary pkgsrc packages,
+	  official ISOs, daily snapshots)
+
+	* All provided protocols with links, e.g. HTTP, FTP, rsync
+
+	All entries are sorted by continent, country and name.  Be sure to
+	keep that order!
+
+						MIRROR CHECK SCRIPT
+
+	All mirrors are automatically monitored by a script running on
+	uther.  The script runs every hour and checks all mirrors listed
+	on the mirrors/ website.  You can find the output here
+
+	http://uther.dragonflybsd.org:8080/pkg/
+
+	Check if the new mirror appears and that all entries for the three
+	rsync targets are marked with OK.  If an entry is marked with OUTD,
+	it means that the time stamp of this entry differs from the one on
+	mirror-master.  This might be because the time stamps on mirror-master
+	changed recently and the mirror was not synchronized yet or because
+	the content is really outdated.  If the mirror is marked as outdated
+	for a longer period of time, notify the administrator specified in
+	the last column of the table.
+
+	All administrators email address are stored in a file called
+	admin.conf on uther.  Poke matthias@ or any uther administrator to
+	add a new address to that file.
+
+						SUBSCRIBE AN ADMIN TO mirrors@
+
+	All mirror administrators are subscribed to the private mirrors@
+	mailing list which is currently maintained by dillon@ and matthias@.
+	To subscribe someone you need the list admin password!
