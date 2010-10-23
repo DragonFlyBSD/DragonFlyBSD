@@ -163,6 +163,7 @@ _kvm_initvtop(kvm_t *kd)
 	Elf_Ehdr	*ehdr;
 	size_t		hdrsz;
 	char		minihdr[8];
+	struct pcb	dumppcb;
 
 	if (pread(kd->pmfd, &minihdr, 8, 0) == 8)
 		if (memcmp(&minihdr, "minidump", 8) == 0)
@@ -200,18 +201,21 @@ _kvm_initvtop(kvm_t *kd)
 	else
 		kernbase = nlist[0].n_value;
 
-	nlist[0].n_name = "_IdlePTD";
+	nlist[0].n_name = "_dumppcb";
 	nlist[1].n_name = 0;
 
 	if (kvm_nlist(kd, nlist) != 0) {
 		_kvm_err(kd, kd->program, "bad namelist");
 		return (-1);
 	}
-	if (kvm_read(kd, (nlist[0].n_value - kernbase), &pa, sizeof(pa)) !=
-	    sizeof(pa)) {
-		_kvm_err(kd, kd->program, "cannot read IdlePTD");
+
+	if (kvm_read(kd, (nlist[0].n_value - kernbase), &dumppcb,
+		     sizeof(dumppcb)) != sizeof(dumppcb)) {
+		_kvm_err(kd, kd->program, "cannot read dumppcb");
 		return (-1);
 	}
+	pa = dumppcb.pcb_cr3 & PG_FRAME;
+
 	PTD = _kvm_malloc(kd, PAGE_SIZE);
 	if (kvm_read(kd, pa, PTD, PAGE_SIZE) != PAGE_SIZE) {
 		_kvm_err(kd, kd->program, "cannot read PTD");
@@ -279,7 +283,7 @@ _kvm_vatop(kvm_t *kd, u_long va, off_t *pa)
 #endif
 		pde_pa = ((u_long)pde & PG_FRAME4M) + (va & PAGE4M_MASK);
 		s = _kvm_pa2off(kd, pde_pa, &ofs);
-		if (s <= sizeof pde) {
+		if (s < sizeof pde) {
 			_kvm_syserr(kd, kd->program,
 			    "_kvm_vatop: pde_pa not found");
 			goto invalid;
@@ -293,7 +297,7 @@ _kvm_vatop(kvm_t *kd, u_long va, off_t *pa)
 	pte_pa = ((u_long)pde & PG_FRAME) + (pteindex * sizeof(pde));
 
 	s = _kvm_pa2off(kd, pte_pa, &ofs);
-	if (s <= sizeof pte) {
+	if (s < sizeof pte) {
 		_kvm_err(kd, kd->program, "_kvm_vatop: pdpe_pa not found");
 		goto invalid;
 	}
