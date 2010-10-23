@@ -325,7 +325,7 @@ doreti_timer:
 	incl	PCPU(intr_nesting_level)
 	andl	$~RQF_TIMER,PCPU(reqflags)
 	subq	$8,%rsp			/* trapframe->intrframe */
-	movq	%rsp,%rdi			/* pass frame by ref (C arg) */
+	movq	%rsp,%rdi		/* pass frame by ref (C arg) */
 	call	lapic_timer_process_frame
 	addq	$8,%rsp			/* intrframe->trapframe */
 	decl	PCPU(intr_nesting_level)
