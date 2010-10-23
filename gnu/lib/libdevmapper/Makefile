@@ -14,11 +14,8 @@ CFLAGS+=	-I${LIBDM_DISTDIR} -I${LIBDM_DISTDIR}/misc -I${LIBDM_DISTDIR}/mm \
 		-I${LVM2_DISTDIR}/include \
 		-I${.CURDIR}/../../../sys/dev/disk/dm
 
-
 CFLAGS+=	-D__LIB_DEVMAPPER__ -DDM_DEVICE_UID=0 \
 		-DDM_DEVICE_GID=0 -DDM_DEVICE_MODE=0600
-
-LDADD+=		-lprop
 
 INCS+=		${LIBDM_DISTDIR}/libdevmapper.h
 
