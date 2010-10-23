@@ -884,23 +884,28 @@ dumpsys(void)
 
 int dump_stop_usertds = 0;
 
+#ifdef SMP
 static
 void
 need_user_resched_remote(void *dummy)
 {
 	need_user_resched();
 }
+#endif
 
 void
 dump_reactivate_cpus(void)
 {
+#ifdef SMP
 	globaldata_t gd;
 	int cpu, seq;
+#endif
 
 	dump_stop_usertds = 1;
 
 	need_user_resched();
 
+#ifdef SMP
 	for (cpu = 0; cpu < ncpus; cpu++) {
 		gd = globaldata_find(cpu);
 		seq = lwkt_send_ipiq(gd, need_user_resched_remote, NULL);
@@ -908,4 +913,5 @@ dump_reactivate_cpus(void)
 	}
 
 	restart_cpus(stopped_cpus);
+#endif
 }
