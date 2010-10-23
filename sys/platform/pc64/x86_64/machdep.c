@@ -440,7 +440,7 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	}
 
 	/* Align to 16 bytes */
-	sfp = (struct sigframe *)((intptr_t)sp & ~0xFUL);
+	sfp = (struct sigframe *)((intptr_t)sp & ~(intptr_t)0xF);
 
 	/* Translate the signal is appropriate */
 	if (p->p_sysent->sv_sigtbl) {

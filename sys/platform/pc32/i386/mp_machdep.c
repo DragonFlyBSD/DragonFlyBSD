@@ -62,6 +62,7 @@
 #include <machine/tss.h>
 #include <machine/specialreg.h>
 #include <machine/globaldata.h>
+#include <machine/pmap_inval.h>
 
 #include <machine/md_var.h>		/* setidt() */
 #include <machine_base/icu/icu.h>		/* IPIs */
@@ -2605,12 +2606,20 @@ void
 smp_invltlb(void)
 {
 #ifdef SMP
+	pmap_inval_info info;
+
+	pmap_inval_init(&info);
+	pmap_inval_interlock(&info, &kernel_pmap, -1);
+	pmap_inval_deinterlock(&info, &kernel_pmap);
+	pmap_inval_done(&info);
+#if 0
 	if (smp_startup_mask == smp_active_mask) {
 		all_but_self_ipi(XINVLTLB_OFFSET);
 	} else {
 		selected_apic_ipi(smp_active_mask, XINVLTLB_OFFSET,
 			APIC_DELMODE_FIXED);
 	}
+#endif
 #endif
 }
 
