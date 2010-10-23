@@ -107,29 +107,6 @@ extern void cpu_lwkt_restore(void);
 extern void cpu_kthread_restore(void);
 extern void cpu_idle_restore(void);
 
-#ifdef __x86_64__
-
-static int
-jg_tos_ok(struct thread *td)
-{
-	void *tos;
-	int tos_ok;
-
-	if (td == NULL) {
-		return 1;
-	}
-	KKASSERT(td->td_sp != NULL);
-	tos = ((void **)td->td_sp)[0];
-	tos_ok = 0;
-	if ((tos == cpu_heavy_restore) || (tos == cpu_lwkt_restore) ||
-	    (tos == cpu_kthread_restore) || (tos == cpu_idle_restore)) {
-		tos_ok = 1;
-	}
-	return tos_ok;
-}
-
-#endif
-
 /*
  * We can make all thread ports use the spin backend instead of the thread
  * backend.  This should only be set to debug the spin backend.
@@ -312,10 +289,17 @@ lwkt_alloc_thread(struct thread *td, int stksize, int cpu, int flags)
      * thread intact through the exit.
      */
     if (td == NULL) {
-	if ((td = gd->gd_freetd) != NULL)
+	crit_enter_gd(gd);
+	if ((td = gd->gd_freetd) != NULL) {
+	    KKASSERT((td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK|
+				      TDF_RUNQ)) == 0);
 	    gd->gd_freetd = NULL;
-	else
+	} else {
 	    td = objcache_get(thread_cache, M_WAITOK);
+	    KKASSERT((td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK|
+				      TDF_RUNQ)) == 0);
+	}
+	crit_exit_gd(gd);
     	KASSERT((td->td_flags &
 		 (TDF_ALLOCATED_THREAD|TDF_RUNNING)) == TDF_ALLOCATED_THREAD,
 		("lwkt_alloc_thread: corrupted td flags 0x%X", td->td_flags));
@@ -452,9 +436,7 @@ lwkt_wait_free(thread_t td)
 void
 lwkt_free_thread(thread_t td)
 {
-    KASSERT((td->td_flags & TDF_RUNNING) == 0,
-	("lwkt_free_thread: did not exit! %p", td));
-
+    KKASSERT((td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK|TDF_RUNQ)) == 0);
     if (td->td_flags & TDF_ALLOCATED_THREAD) {
     	objcache_put(thread_cache, td);
     } else if (td->td_flags & TDF_ALLOCATED_STACK) {
@@ -896,12 +878,6 @@ haveidle:
 #endif
     if (td != ntd) {
 	++switch_count;
-#ifdef __x86_64__
-	{
-	    int tos_ok __debugvar = jg_tos_ok(ntd);
-	    KKASSERT(tos_ok);
-	}
-#endif
 	KTR_LOG(ctxsw_sw, gd->gd_cpuid, ntd);
 	td->td_switch(ntd);
     }
@@ -1262,7 +1238,8 @@ _lwkt_schedule(thread_t td, int reschedok)
 {
     globaldata_t mygd = mycpu;
 
-    KASSERT(td != &td->td_gd->gd_idlethread, ("lwkt_schedule(): scheduling gd_idlethread is illegal!"));
+    KASSERT(td != &td->td_gd->gd_idlethread,
+	    ("lwkt_schedule(): scheduling gd_idlethread is illegal!"));
     crit_enter_gd(mygd);
     KKASSERT(td->td_lwp == NULL || (td->td_lwp->lwp_flag & LWP_ONRUNQ) == 0);
     if (td == mygd->gd_curthread) {
@@ -1662,6 +1639,7 @@ lwkt_exit(void)
     gd = mycpu;
     crit_enter_quick(td);
     while ((std = gd->gd_freetd) != NULL) {
+	KKASSERT((std->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK)) == 0);
 	gd->gd_freetd = NULL;
 	objcache_put(thread_cache, std);
     }
