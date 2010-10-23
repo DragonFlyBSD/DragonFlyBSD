@@ -621,7 +621,6 @@ trap(struct trapframe *frame)
 			 * selectors and pointers when the user changes
 			 * them.
 			 */
-			kprintf("trap.c line %d\n", __LINE__);
 			if (mycpu->gd_intr_nesting_level == 0) {
 				if (td->td_pcb->pcb_onfault) {
 					frame->tf_rip = (register_t)
