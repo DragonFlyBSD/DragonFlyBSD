@@ -2606,13 +2606,14 @@ void
 smp_invltlb(void)
 {
 #ifdef SMP
+#if 0
 	pmap_inval_info info;
 
 	pmap_inval_init(&info);
 	pmap_inval_interlock(&info, &kernel_pmap, -1);
 	pmap_inval_deinterlock(&info, &kernel_pmap);
 	pmap_inval_done(&info);
-#if 0
+#else
 	if (smp_startup_mask == smp_active_mask) {
 		all_but_self_ipi(XINVLTLB_OFFSET);
 	} else {
