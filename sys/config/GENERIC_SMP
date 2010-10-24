@@ -1,18 +1,21 @@
 #
-# X86_64_GENERIC -- Generic kernel configuration file for DragonFly/x86_64
+# GENERIC_SMP -- Generic kernel configuration file for DragonFly/i386
 #
 # Check the LINT configuration file in sys/config, for an
 # exhaustive list of options.
-
-platform	pc64
-machine		x86_64
-machine_arch	x86_64
-cpu		HAMMER_CPU
-ident		X86_64_GENERIC
+#
+platform	pc32
+machine		i386
+machine_arch	i386
+cpu		I486_CPU
+cpu		I586_CPU
+cpu		I686_CPU
+ident		GENERIC_SMP
 maxusers	0
 
 makeoptions	DEBUG=-g		#Build kernel with gdb(1) debug symbols
 
+options 	MATH_EMULATE		#Support for x87 emulation
 options 	INET			#InterNETworking
 options 	INET6			#IPv6 communications protocols
 options 	HAMMER			#Hammer Filesystem
@@ -30,10 +33,13 @@ options 	MSDOSFS			#MSDOS Filesystem
 options 	CD9660			#ISO 9660 Filesystem
 options 	PROCFS			#Process filesystem
 options 	COMPAT_43		#Compatible with BSD 4.3 [KEEP THIS!]
+options		COMPAT_DF12		#Compatible with DragonFly 1.2 and earlier
 options 	SCSI_DELAY=5000		#Delay (in ms) before probing SCSI
 options		DEVICE_POLLING		# Support mixed interrupt-polling
 					# handling of network device drivers
 options 	UCONSOLE		#Allow users to grab the console
+options 	USERCONFIG		#boot -c editor
+options 	VISUAL_USERCONFIG	#visual boot -c editor
 options 	KTRACE			#ktrace(1) support
 options 	SYSVSHM			#SYSV-style shared memory
 options 	SYSVMSG			#SYSV-style message queues
@@ -46,27 +52,26 @@ options 	AHC_REG_PRETTY_PRINT	# Print register bitfields in debug
 					# output.  Adds ~128k to driver.
 options 	AHD_REG_PRETTY_PRINT	# Print register bitfields in debug
 					# output.  Adds ~215k to driver.
-options         DSCHED_FQ               # Fair-queuing disk scheduler
+options		DSCHED_FQ               # Fair-queuing disk scheduler
 
 # ALTQ
-options		ALTQ		#alternate queueing
-options		ALTQ_CBQ	#class based queueing
-options		ALTQ_RED	#random early detection
-options		ALTQ_RIO	#triple red for diffserv (needs RED)
-options		ALTQ_HFSC	#hierarchical fair service curve
-options		ALTQ_PRIQ	#priority queue
-options		ALTQ_FAIRQ	#fair queueing
-#options	ALTQ_NOPCC	#don't use processor cycle counter
-#options	ALTQ_DEBUG	#for debugging
-
+options         ALTQ            #alternate queueing
+options         ALTQ_CBQ        #class based queueing
+options         ALTQ_RED        #random early detection
+options         ALTQ_RIO        #triple red for diffserv (needs RED)
+options         ALTQ_HFSC       #hierarchical fair service curve
+options         ALTQ_PRIQ       #priority queue
+options         ALTQ_FAIRQ      #fair queueing
+#options        ALTQ_NOPCC      #don't use processor cycle counter
+#options        ALTQ_DEBUG      #for debugging
 
 # To make an SMP kernel both SMP and APIC_IO are usually
 # specified.  SMP boxes with severely broken BIOSes which
 # boot fine for non-SMP builds *might* work in SMP mode
 # if you define SMP and leave APIC_IO turned off.
 #
-#options 	SMP			# Symmetric MultiProcessor Kernel
-#options 	APIC_IO			# Symmetric (APIC) I/O
+options 	SMP			# Symmetric MultiProcessor Kernel
+options 	APIC_IO			# Symmetric (APIC) I/O
 
 # Debugging for Development
 options 	DDB
@@ -74,7 +79,17 @@ options 	DDB_TRACE
 options 	INVARIANTS
 
 device		isa
+device		eisa
 device		pci
+
+# Floppy drives
+device		fdc0	at isa? port IO_FD1 irq 6 drq 2
+device		fd0	at fdc0 drive 0
+device		fd1	at fdc0 drive 1
+#
+# If you have a Toshiba Libretto with its Y-E Data PCMCIA floppy,
+# don't use the above line for fdc0 but the following one:
+#device		fdc0
 
 # AHCI driver, this will override NATA for AHCI devices,
 # both drivers may be included.
@@ -156,6 +171,7 @@ device		amr		# AMI MegaRAID
 device		mlx		# Mylex DAC960 family
 device		twe		# 3ware Escalade 7000/8000's
 device		twa		# 3ware 9000 series PATA/SATA RAID
+device		pst		# Promise Supertrack
 
 #
 # Areca RAID (CAM is required).
@@ -180,6 +196,12 @@ device		sc0	at isa? flags 0x100
 options 	SC_PIXEL_MODE		# add support for the raster text mode
 
 device		agp		# support several AGP chipsets
+
+# Floating point support - do not disable.
+device		npx0	at nexus? port IO_NPX irq 13
+
+# Power management support (see LINT for more options)
+device		apm0	at nexus? disable flags 0x20 # Advanced Power Management
 
 # HW monitoring devices
 device		aps0	at isa? port 0x1600
@@ -210,7 +232,6 @@ device		lpt		# Printer
 device		plip		# TCP/IP over parallel
 device		ppi		# Parallel port interface device
 #device		vpo		# Requires scbus and da
-
 
 # PCI Ethernet NICs.
 device		de		# DEC/Intel DC21x4x (``Tulip'')
@@ -256,6 +277,8 @@ device		nfe		# NVIDIA nForce MCP 10/100/Gigabit Ethernet
 # 'device ed' requires 'device miibus'
 device		ed0	at isa? disable port 0x280 irq 10 iomem 0xd8000
 device		ex
+device		ep
+device		fe0	at isa? disable port 0x300
 # Xircom Ethernet
 device		xe
 
@@ -269,6 +292,7 @@ device		wlan_tkip	# 802.11 TKIP support
 device		wlan_wep	# 802.11 WEP support
 #device		wlan_amrr	# AMRR
 
+# All wireless NICs require wlan and wlan_amrr
 # Aironet 4500/4800 802.11 wireless NICs.  Note: the declaration below will
 # work for PCMCIA and PCI cards, as well as ISA cards set to ISA PnP
 # mode (the factory default). If you set the switches on your ISA
@@ -283,6 +307,7 @@ device		ral		# Ralink Technology 802.11 wireless NIC
 device		wi
 
 # The probe order of these is presently determined by i386/isa/isa_compat.c.
+device		ie0	at isa? disable port 0x300 irq 10 iomem 0xd0000
 #device		le0	at isa? disable port 0x300 irq 5 iomem 0xd0000
 device		lnc0	at isa? disable port 0x280 irq 10 drq 0
 device		cs0	at isa? disable port 0x300
@@ -304,6 +329,7 @@ pseudo-device	faith	1	# IPv6-to-IPv4 relaying (translation)
 pseudo-device	bpf		#Berkeley packet filter
 
 pseudo-device	crypto		# core crypto support, used by wlan
+pseudo-device	cryptodev
 
 # USB support
 device		uhci		# UHCI PCI->USB interface
