@@ -353,7 +353,7 @@ int main(int argc, char *argv[])
 		}
 	}
 	argc -= optind;
-	argv -= optind;
+	argv += optind;
 
 	TAILQ_INIT(&pdev_array_list);
 	TAILQ_INIT(&udev_monitor_list);

@@ -80,7 +80,7 @@ main(int ac, char **av)
 		}
 	}
 	ac -= optind;
-	av -= optind;
+	av += optind;
 
 	/*
 	 * Prime delta cputime calculation, make sure at least dom0 exists,
