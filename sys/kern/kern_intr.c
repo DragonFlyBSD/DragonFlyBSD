@@ -675,7 +675,7 @@ ithread_fast_handler(struct intrframe *frame)
     int got_mplock;
 #endif
     TD_INVARIANTS_DECLARE;
-    intrec_t rec, next_rec;
+    intrec_t rec, nrec;
     globaldata_t gd;
     thread_t td;
 
@@ -722,8 +722,9 @@ ithread_fast_handler(struct intrframe *frame)
     TD_INVARIANTS_GET(td);
     list = &info->i_reclist;
 
-    for (rec = *list; rec; rec = next_rec) {
-	next_rec = rec->next;	/* rec may be invalid after call */
+    for (rec = *list; rec; rec = nrec) {
+	/* rec may be invalid after call */
+	nrec = rec->next;
 
 	if (rec->intr_flags & INTR_CLOCK) {
 #ifdef SMP
@@ -856,6 +857,7 @@ ithread_handler(void *arg)
 		report_stray_interrupt(intr, info);
 
 	    for (rec = *list; rec; rec = nrec) {
+		/* rec may be invalid after call */
 		nrec = rec->next;
 		if (rec->serializer) {
 		    lwkt_serialize_handler_call(rec->serializer, rec->handler,
@@ -999,16 +1001,17 @@ ithread_emergency(void *arg __unused)
 	for (intr = 0; intr < max_installed_hard_intr; ++intr) {
 	    info = &intr_info_ary[intr];
 	    for (rec = info->i_reclist; rec; rec = nrec) {
+		/* rec may be invalid after call */
+		nrec = rec->next;
 		if ((rec->intr_flags & INTR_NOPOLL) == 0) {
 		    if (rec->serializer) {
-			lwkt_serialize_handler_call(rec->serializer,
+			lwkt_serialize_handler_try(rec->serializer,
 						rec->handler, rec->argument, NULL);
 		    } else {
 			rec->handler(rec->argument, NULL);
 		    }
 		    TD_INVARIANTS_TEST(td, rec->name);
 		}
-		nrec = rec->next;
 	    }
 	}
 	lwkt_deschedule_self(curthread);
