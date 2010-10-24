@@ -1535,6 +1535,11 @@ TO_REMOVE+=/usr/include/openssl/store.h
 TO_REMOVE+=/usr/include/openssl/tmdiff.h
 TO_REMOVE+=/usr/share/openssl/man/cat3/CRYPTO_set_id_callback.3.gz
 TO_REMOVE+=/usr/share/openssl/man/man3/CRYPTO_set_id_callback.3.gz
+TO_REMOVE+=/boot/beastie.4th
+TO_REMOVE+=/boot/frames.4th
+TO_REMOVE+=/boot/loader.4th
+TO_REMOVE+=/boot/screen.4th
+TO_REMOVE+=/boot/support.4th
 
 # XXX Remove when adjusted to the new 802.11 framework
 TO_REMOVE+=/boot/modules/if_acx.ko
