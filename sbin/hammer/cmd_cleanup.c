@@ -724,6 +724,8 @@ dividing_slash(const char *path)
  * Periods in minutes, hours, or days are assumed to have been crossed
  * if the local time crosses a minute, hour, or day boundary regardless
  * of how close the last operation actually was.
+ *
+ * If ForceOpt is set always return true.
  */
 static int
 check_period(const char *snapshots_path, const char *cmd, int arg1,
@@ -738,6 +740,12 @@ check_period(const char *snapshots_path, const char *cmd, int arg1,
 
 	time(savep);
 	localtime_r(savep, &tp1);
+
+	/*
+	 * Force run if -F
+	 */
+	if (ForceOpt)
+		return(1);
 
 	/*
 	 * Retrieve the start time of the last successful operation.
