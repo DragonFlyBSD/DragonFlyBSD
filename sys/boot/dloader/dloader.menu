@@ -28,8 +28,27 @@ acpi_load="YES"
 ahci_load="YES"
 ehci_load="YES"
 
-menuitem 1 "Boot DragonFly [default]"
-menuadd optcd kernel
+# Default boot /boot/kernel/ is the user-installed kernel and
+# is always checked first.  Otherwise fallback to generic kernels.
+#
+ifset default_kernel
+    # already selected a kernel
+elseifexists kernel
+    set default_kernel=kernel
+elseifexists kernel.GENERIC
+    set default_kernel=kernel.GENERIC
+elseifexists kernel.GENERIC_SMP
+    set default_kernel=kernel.GENERIC_SMP
+elseifexists kernel.X86_64_GENERIC
+    set default_kernel=kernel.X86_64_GENERIC
+elseifexists kernel.X86_64_GENERIC_SMP
+    set default_kernel=kernel.X86_64_GENERIC_SMP
+else
+    set default_kernel=kernel
+endif
+
+menuitem 1 "Boot DragonFly [${default_kernel}]"
+menuadd cd ${base}${default_kernel}
 menuadd optinclude loader.conf
 menuadd optinclude loader.conf.local
 menuadd lunsetif acpi_load hint.acpi.0.disabled
@@ -39,7 +58,7 @@ menuadd loadall
 menuadd boot
 
 menuitem 2 "Boot DragonFly in Safe Mode"
-menuadd optcd kernel
+menuadd cd ${base}${default_kernel}
 menuadd optinclude loader.conf
 menuadd optinclude loader.conf.local
 menuadd set hint.acpi.0.disabled=1
@@ -58,7 +77,7 @@ menuadd boot
 menuadd set autoboot_delay=NO
 
 menuitem 3 "Boot DragonFly without AHCI driver"
-menuadd optcd kernel
+menuadd cd ${base}${default_kernel}
 menuadd optinclude loader.conf
 menuadd optinclude loader.conf.local
 menuadd set hint.ahci.disabled=YES
@@ -70,7 +89,7 @@ menuadd boot
 menuadd set autoboot_delay=NO
 
 menuitem 4 "Boot DragonFly without ACPI driver"
-menuadd cd ${base}kernel
+menuadd cd ${base}${default_kernel}
 menuadd optinclude loader.conf
 menuadd optinclude loader.conf.local
 menuadd set hint.acpi.0.disabled=1
@@ -83,9 +102,10 @@ menuadd boot
 menuadd set autoboot_delay=NO
 
 menuitem 9 "Escape to loader prompt (also ESC)"
-menuadd optcd kernel
+menuadd optcd ${base}${default_kernel}
 menuadd set autoboot_delay=NO
 
+ifexists kernel.alt
 menuitem a "Boot Backup kernel kernel.alt"
 menuadd cd ${base}kernel.alt
 menuadd optinclude loader.conf
@@ -96,7 +116,9 @@ menuadd lunsetif ahci_load hint.ahci.disabled
 menuadd loadall
 menuadd boot
 menuadd set autoboot_delay=NO
+endif
 
+ifexists kernel.bak
 menuitem b "Boot Backup kernel kernel.bak"
 menuadd cd ${base}kernel.bak
 menuadd optinclude loader.conf
@@ -107,7 +129,9 @@ menuadd lunsetif ahci_load hint.ahci.disabled
 menuadd loadall
 menuadd boot
 menuadd set autoboot_delay=NO
+endif
 
+ifexists kernel.old
 menuitem o "Boot DragonFly using kernel.old"
 menuadd cd ${base}kernel.old
 menuadd optinclude loader.conf
@@ -118,9 +142,10 @@ menuadd lunsetif ahci_load hint.ahci.disabled
 menuadd loadall
 menuadd boot
 menuadd set autoboot_delay=NO
+endif
 
 menuitem s "Boot DragonFly in single user mode"
-menuadd optcd kernel
+menuadd cd ${base}${default_kernel}
 menuadd optinclude loader.conf
 menuadd optinclude loader.conf.local
 menuadd set boot_single="YES"
@@ -132,7 +157,7 @@ menuadd boot
 menuadd set autoboot_delay=NO
 
 menuitem v "Boot DragonFly with verbose logging"
-menuadd optcd kernel
+menuadd cd ${base}${default_kernel}
 menuadd optinclude loader.conf
 menuadd optinclude loader.conf.local
 menuadd set boot_verbose=YES
@@ -142,6 +167,30 @@ menuadd lunsetif ahci_load hint.ahci.disabled
 menuadd loadall
 menuadd boot
 menuadd set autoboot_delay=NO
+
+ifexists ${default_kernel}_SMP
+menuitem m "Select SMP kernel"
+menuadd set default_kernel=${default_kernel}_SMP
+menuadd include ${base}defaults/dloader.menu
+menuadd optinclude ${base}dloader.menu
+menuadd menu
+endif
+
+ifexists ${base}kernel.X86_64_GENERIC
+menuitem x "Select 64-bit UP kernel"
+menuadd set default_kernel=kernel.X86_64_GENERIC
+menuadd include ${base}defaults/dloader.menu
+menuadd optinclude ${base}dloader.menu
+menuadd menu
+endif
+
+ifexists ${base}kernel.X86_64_GENERIC_SMP
+menuitem y "Select 64-bit SMP kernel"
+menuadd set default_kernel=kernel.X86_64_GENERIC_SMP
+menuadd include ${base}defaults/dloader.menu
+menuadd optinclude ${base}dloader.menu
+menuadd menu
+endif
 
 menuitem R "Reboot"
 menuadd reboot

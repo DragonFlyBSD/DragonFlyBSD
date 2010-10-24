@@ -67,11 +67,16 @@ perform(int argc, char *argv[])
 
     /* search the command set for the command */
     SET_FOREACH(cmdp, Xcommand_set) {
-	if (((*cmdp)->c_name != NULL) && !strcmp(av0, (*cmdp)->c_name))
+	if (((*cmdp)->c_name != NULL) && !strcmp(av0, (*cmdp)->c_name)) {
 	    cmd = (*cmdp)->c_fn;
+	    break;
+	}
     }
     if (cmd != NULL) {
-	result = (cmd)(argc, argv);
+	if ((*cmdp)->c_cond || CurrentCondition != 0)
+		result = (cmd)(argc, argv);
+	else
+		result = CMD_OK;
     } else {
 	command_errmsg = "unknown command";
     }
