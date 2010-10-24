@@ -1,14 +1,14 @@
 #
-# X86_64_GENERIC -- Generic kernel configuration file for DragonFly/x86_64
+# X86_64_GENERIC_SMP -- Generic kernel configuration file for DragonFly/x86_64
 #
 # Check the LINT configuration file in sys/config, for an
 # exhaustive list of options.
-
+#
 platform	pc64
 machine		x86_64
 machine_arch	x86_64
 cpu		HAMMER_CPU
-ident		X86_64_GENERIC
+ident		X86_64_GENERIC_SMP
 maxusers	0
 
 makeoptions	DEBUG=-g		#Build kernel with gdb(1) debug symbols
@@ -65,8 +65,8 @@ options		ALTQ_FAIRQ	#fair queueing
 # boot fine for non-SMP builds *might* work in SMP mode
 # if you define SMP and leave APIC_IO turned off.
 #
-#options 	SMP			# Symmetric MultiProcessor Kernel
-#options 	APIC_IO			# Symmetric (APIC) I/O
+options 	SMP			# Symmetric MultiProcessor Kernel
+options 	APIC_IO			# Symmetric (APIC) I/O
 
 # Debugging for Development
 options 	DDB
