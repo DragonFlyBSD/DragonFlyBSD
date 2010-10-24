@@ -17,6 +17,7 @@ gui installer img:
 ISODIR?=	/usr/release
 ISOROOT?=	${ISODIR}/root
 OBJSYS=		${.OBJDIR}/../sys
+GITHOST?=	git.dragonflybsd.org
 
 MAKE_JOBS?=	$$(sysctl -n hw.ncpu)
 
@@ -29,9 +30,9 @@ MACHINE_ARCH=	x86_64
 # XXX makeshift fix to build the right kernel for the (target) architecture
 # We should configure this in the platform files somehow
 .if ${MACHINE_ARCH} == "i386"
-KERNCONF ?= GENERIC VKERNEL
+KERNCONF ?= GENERIC GENERIC_SMP
 .else
-KERNCONF ?= X86_64_GENERIC VKERNEL64
+KERNCONF ?= X86_64_GENERIC X86_64_GENERIC_SMP
 .endif
 
 PKGSRC_PREFIX?=		/usr/pkg
@@ -212,7 +213,6 @@ buildkernel1 buildkernel2:
 		${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} \
 			make -j ${MAKE_JOBS} ${.TARGET:C/build(.*)2/quick\1/:C/1//} \
 			KERNCONF=$${kernconf} \
-			$${first:+-DNO_MODULES}; \
 		first=done; \
 	done
 
@@ -223,6 +223,9 @@ buildkernel1 buildkernel2:
 #
 # Unconditionally clean out /usr/release/root so a previous img build
 # does not blow up a future quick iso build
+#
+# We install with INSTALLSTRIPPEDMODULES to make things fit into the ISO.
+# We leave the kernel's debug variables intact.
 #
 buildiso:
 	-rm -rf ${ISOROOT}
@@ -237,29 +240,35 @@ buildiso:
 	cd ${.CURDIR}/..; \
 	first=; \
 	for kernconf in ${KERNCONF}; do \
-		make DESTDIR=${ISOROOT} \
-			installkernel KERNCONF=$${kernconf} \
-			$${first:+DESTKERNNAME=kernel.$${kernconf}} \
-			$${first:+-DNO_MODULES}; \
+		make DESTDIR=${ISOROOT} installkernel \
+			KERNCONF=$${kernconf} \
+			DESTKERNDIR=/boot/kernel.$${kernconf} \
+			INSTALLSTRIPPEDMODULES=y; \
+		ln -s kernel ${ISOROOT}/boot/kernel.$${kernconf}/kernel.BOOTP; \
+		rm -rf ${ISOROOT}/boot/kernel.$${kernconf}.old; \
 		first=done; \
 	done
-	ln -s kernel ${ISOROOT}/boot/kernel.BOOTP
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.local.dist -p ${ISOROOT}/usr/local/
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
 
-# Release CD: Kernel sources (~16M) and the full pkgsrc tree (~27M)
-# Release DVD: Full sources (~90M) and the full pkgsrc tree (~27M)
+# The GUI build includes the pkgsrc tree (~1G+) while the nominal release
+# build does not.
+#
+# The GUI build includes full sources while the nominal release build
+# only includes kernel sources (~27MB).
 #
 srcs:
 .if !defined(WITHOUT_SRCS)
-	cd ${ISOROOT}/usr && make pkgsrc-create
 .if make(gui)
-	cd ${ISOROOT}/usr && make src-create
+	cd ${ISOROOT}/usr && make pkgsrc-create GITHOST=${GITHOST}
+	cd ${ISOROOT}/usr && make src-create GITHOST=${GITHOST}
 .else
 	rm -f ${ISOROOT}/usr/src-sys.tgz
+	rm -f ${ISOROOT}/usr/src-sys.tar.bz2
 	cd ${.CURDIR}/.. && tar --exclude .git -s '/^\./src/' \
-		-czf ${ISOROOT}/usr/src-sys.tgz ./Makefile ./Makefile.inc1 ./sys
+		-cf - ./Makefile ./Makefile.inc1 ./sys | \
+		bzip2 -9 > ${ISOROOT}/usr/src-sys.tar.bz2
 .endif
 .endif
 
@@ -373,10 +382,19 @@ mkimg:
 	if [ ! -d ${IMGMNT} ]; then mkdir -p ${IMGMNT}; fi
 	-if [ -f ${ISODIR}/vn.which ]; then umount ${IMGMNT}; 		\
 	    vnconfig -u `cat ${ISODIR}/vn.which`; fi
-	@echo "STEP: determine required image size"
+.ifdef IMGSIZE
+	@echo "STEP: use an image size of ${IMGSIZE} 512-byte sectors"
+	rm -f ${IMGFILE}
+	sz=`bc -e "((${IMGSIZE}) * 512)" -equit`; truncate -s $${sz} ${IMGFILE}
+.else
+	@echo "STEP: determine required image size in 1GB steps"
 	sz=`du -ck ${ISOROOT} | tail -n 1 | cut -f 1`;			\
-	    sz=`bc -e "(($${sz}) / 1024) * 1.15" -equit | cut -f1 -d.`;	\
-	    dd if=/dev/zero of=${IMGFILE} bs=1m count=$${sz};
+	    sz=`bc -e "(($${sz}) * 1.15 + 999999999) / 1000000000" -equit | \
+	    cut -f1 -d.`;						\
+	    sz=`bc -e "(($${sz}) * 976)" -equit | cut -f1 -d.`;		\
+	    rm -f ${IMGFILE};						\
+	    truncate -s $${sz}M ${IMGFILE};
+.endif
 	fdisk -IB -p ${IMGFILE}
 	@echo "STEP: determine free vn device"
 	vnconfig -l | grep "not in use" | head -n 1 | 			\
@@ -450,7 +468,9 @@ help all:
 	@echo "make [gui] realquick - attempt to restart after world & kernel"
 	@echo "make [gui] restartpkgs - attempt to restart at the pkg building stage"
 	@echo ""
-	@echo "Extra packages may be specified with PKGSRC_EXTRA_PACKAGES"
+	@echo "PKGSRC_EXTRA_PACKAGES may be used to add additional pkgs"
+	@echo "GITHOST may be used to override git.dragonflybsd.org"
+	@echo "IMGSIZE may be used to override the .img (in 512-byte sectors)"
 
 .PHONY: release quickrel realquickrel
 .PHONY: installer
