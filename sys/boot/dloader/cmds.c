@@ -411,9 +411,6 @@ command_menu(int ac, char **av)
 			}
 			if (c == 0x1b) {
 				setenv("autoboot_delay", "NO", 1);
-				argv[0] = "optcd";
-				argv[1] = "kernel";
-				(void)perform(2, argv);
 				return(CMD_OK);
 			}
 			res = menu_execute(c);
@@ -577,10 +574,10 @@ static int
 menu_execute(int c)
 {
 	dvar_t dvar;
+	dvar_t dvar_exec = NULL;
+	dvar_t *dvar_execp = &dvar_exec;
 	char namebuf[32];
 	int res;
-
-	printf("\n");
 
 	snprintf(namebuf, sizeof(namebuf), "item_%c_0", c);
 
@@ -592,16 +589,37 @@ menu_execute(int c)
 
 	snprintf(namebuf, sizeof(namebuf), "item_%c", c);
 	res = CMD_OK;
+	printf("\n");
+
+	/*
+	 * Copy the items to execute (the act of execution may modify our
+	 * local variables so we need to copy).
+	 */
 	for (dvar = dvar_first(); dvar; dvar = dvar_next(dvar)) {
 		if (strncmp(dvar->name, namebuf, 6) == 0) {
-			res = perform(dvar->count, dvar->data);
-			if (res != CMD_OK) {
-				printf("%s: %s\n",
-					dvar->data[0], command_errmsg);
-				setenv("autoboot_delay", "NO", 1);
-				break;
-			}
+			*dvar_execp = dvar_copy(dvar);
+			dvar_execp = &(*dvar_execp)->next;
 		}
 	}
+
+	/*
+	 * Execute items
+	 */
+	for (dvar = dvar_exec; dvar; dvar = dvar->next) {
+		res = perform(dvar->count, dvar->data);
+		if (res != CMD_OK) {
+			printf("%s: %s\n",
+				dvar->data[0], command_errmsg);
+			setenv("autoboot_delay", "NO", 1);
+			break;
+		}
+	}
+
+	/*
+	 * Free items
+	 */
+	while (dvar_exec)
+		dvar_free(&dvar_exec);
+
 	return(res);
 }

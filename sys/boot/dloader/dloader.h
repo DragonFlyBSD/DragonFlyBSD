@@ -49,4 +49,7 @@ void dvar_set(const char *name, char **data, int count);
 void dvar_unset(const char *name);
 dvar_t dvar_first(void);
 dvar_t dvar_next(dvar_t var);
+dvar_t dvar_copy(dvar_t var);
+void dvar_free(dvar_t *lastp);
+
 int perform(int ac, char **av);

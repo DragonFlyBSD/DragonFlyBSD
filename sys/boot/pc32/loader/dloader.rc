@@ -11,4 +11,5 @@ optinclude dloader.menu
 optinclude loader.conf
 optinclude loader.conf.local
 
+optcd ${base}${default_kernel}
 menu

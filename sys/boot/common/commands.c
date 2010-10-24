@@ -33,7 +33,8 @@
 #include "bootstrap.h"
 
 char		*command_errmsg;
-char		command_errbuf[256];	/* XXX should have procedural interface for setting, size limit? */
+char		command_errbuf[256];
+int		CurrentCondition = 1;
 
 static int page_file(char *filename);
 
@@ -496,3 +497,141 @@ command_lsdev(int argc, char *argv[])
     return(CMD_OK);
 }
 
+/*
+ * CONDITIONALS
+ */
+COMMAND_SET_COND(ifexists, "ifexists", "conditional f/d present",
+		 command_ifexists);
+
+struct cond {
+    char    inherit;
+    char    current;
+};
+
+static struct cond CondStack[32];
+static int CondIndex;
+
+static int
+command_ifexists(int argc, char *argv[])
+{
+	if (CondIndex + 1 == sizeof(CondStack)/sizeof(CondStack[0])) {
+		sprintf(command_errbuf, "if stack too deep");
+		return(-1);
+	} else if (argc != 2) {
+		sprintf(command_errbuf, "ifexists requires one argument");
+		return(-1);
+	} else {
+		struct stat sb;
+		struct cond *cond = &CondStack[CondIndex++];
+
+		cond->inherit = CurrentCondition;
+
+		if (rel_stat(argv[1], &sb)) {
+			cond->current = 0;
+		} else {
+			cond->current = 1;
+		}
+		CurrentCondition = (cond->inherit && cond->current);
+		return(CMD_OK);
+	}
+}
+
+COMMAND_SET_COND(ifset, "ifset", "conditional kenv present", command_ifset);
+
+static int
+command_ifset(int argc, char *argv[])
+{
+	if (CondIndex + 1 == sizeof(CondStack)/sizeof(CondStack[0])) {
+		sprintf(command_errbuf, "if stack too deep");
+		return(-1);
+	} else if (argc != 2) {
+		sprintf(command_errbuf, "ifexists requires one argument");
+		return(-1);
+	} else {
+		struct cond *cond = &CondStack[CondIndex++];
+
+		cond->inherit = CurrentCondition;
+
+		if (getenv(argv[1])) {
+			cond->current = 1;
+		} else {
+			cond->current = 0;
+		}
+		CurrentCondition = (cond->inherit && cond->current);
+		return(CMD_OK);
+	}
+}
+
+COMMAND_SET_COND(elseifexists, "elseifexists", "conditional f/d present",
+		 command_elseifexists);
+
+static int
+command_elseifexists(int argc, char *argv[])
+{
+	if (CondIndex == 0) {
+		sprintf(command_errbuf, "elseifexists without if");
+		return(-1);
+	} else if (argc != 2) {
+		sprintf(command_errbuf, "ifexists requires one argument");
+		return(-1);
+	} else {
+		struct stat sb;
+		struct cond *cond = &CondStack[CondIndex - 1];
+
+		if (cond->inherit == 0) {
+			CurrentCondition = 0;	/* already ran / can't run */
+		} else if (cond->current) {
+			cond->inherit = 0;	/* can't run any more */
+			cond->current = 0;
+			CurrentCondition = 0;
+		} else {
+			if (rel_stat(argv[1], &sb)) {
+				cond->current = 0;
+			} else {
+				cond->current = 1;
+			}
+			CurrentCondition = (cond->inherit && cond->current);
+		}
+		return(CMD_OK);
+	}
+}
+
+COMMAND_SET_COND(else, "else", "cond if/else/endif", command_else);
+
+static int
+command_else(int argc, char *argv[])
+{
+	struct cond *cond;
+
+	if (CondIndex) {
+		cond = &CondStack[CondIndex - 1];
+		cond->current = !cond->current;
+		CurrentCondition = (cond->inherit && cond->current);
+		return(CMD_OK);
+	} else {
+		sprintf(command_errbuf, "else without if");
+		return(-1);
+	}
+}
+
+COMMAND_SET_COND(endif, "endif", "cond if/else/endif", command_endif);
+
+static int
+command_endif(int argc, char *argv[])
+{
+	struct cond *cond;
+
+	if (CondIndex) {
+		--CondIndex;
+		if (CondIndex) {
+			cond = &CondStack[CondIndex - 1];
+			CurrentCondition = (cond->inherit && cond->current);
+		} else {
+			CurrentCondition = 1;
+		}
+		return(CMD_OK);
+	} else {
+		sprintf(command_errbuf, "endif without if");
+		return(-1);
+	}
+}
