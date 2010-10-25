@@ -374,15 +374,21 @@ customizeiso:
 	rm -f ${ISOROOT}/etc/resolv.conf
 	${CHROOT_CMD} /etc/periodic/weekly/310.locate
 	umount ${ISOROOT}/dev
-
-	# no iso is generated for gui builds, just img.
 	#
+	# Recopy files that pkgsrc may have updated in /etc into /etc.hdd
+	#
+	cpdup ${ISOROOT}/etc/shells ${ISOROOT}/etc.hdd/shells
+	cpdup ${ISOROOT}/etc/group ${ISOROOT}/etc.hdd/group
+
+# no iso is generated for gui builds, just img.
+#
 mkiso:
 .if !make(gui)
 	( cd ${ISOROOT}; ${PKGBIN_MKISOFS} -b boot/cdboot -no-emul-boot \
 		-R -J -o ${ISOFILE} \
 		-V "DragonFly `${.CURDIR}/../tools/gitrev.sh | cut -c -22`" . )
 .endif
+	@exit 0
 
 mkimg:
 	if [ ! -d ${IMGMNT} ]; then mkdir -p ${IMGMNT}; fi
