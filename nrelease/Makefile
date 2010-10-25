@@ -103,6 +103,13 @@ OLD_PKGSRC_PACKAGES?=	cdrtools-2.01.01.27nb1 \
 REQ_ROOTSKELS=	${.CURDIR}/root
 ROOTSKELS?=	${REQ_ROOTSKELS}
 
+# LIST OF PACKAGES NOT INCLUDED DUE TO BUILD ISSUES:
+#	chat/pidgin		textproc/enchant dependency is broken
+#	x11/rxvt-unicode	broken configure
+#	net/nmap		tries to access openssl/md2.h which does not
+#				exist.
+#	sysutils/idesk		dying on link __sync_fetch_and_add_4
+#
 .if make(gui)
 ISOFILE?=		${ISODIR}/dfly-gui.iso
 IMGFILE?=		${ISODIR}/dfly-gui.img
@@ -117,11 +124,9 @@ PKGSRC_PACKAGES+=	meta-pkgs/modular-xorg-apps \
 			shells/zsh \
 			editors/emacs \
 			editors/vim \
-			chat/pidgin \
 			chat/irssi \
 			chat/xchat \
 			x11/modular-xorg-server \
-			x11/rxvt-unicode \
 			x11/eterm \
 			lang/perl5 \
 			editors/nano \
@@ -130,11 +135,9 @@ PKGSRC_PACKAGES+=	meta-pkgs/modular-xorg-apps \
 			archivers/zip \
 			security/sudo \
 			www/links-gui \
-			net/nmap \
 			net/wget \
 			fonts/terminus-font \
 			net/rsync \
-			sysutils/idesk \
 			time/asclock \
 			misc/screen
 ROOTSKELS+=		${.CURDIR}/gui
@@ -372,11 +375,14 @@ customizeiso:
 	${CHROOT_CMD} /etc/periodic/weekly/310.locate
 	umount ${ISOROOT}/dev
 
+	# no iso is generated for gui builds, just img.
+	#
 mkiso:
+.if !make(gui)
 	( cd ${ISOROOT}; ${PKGBIN_MKISOFS} -b boot/cdboot -no-emul-boot \
 		-R -J -o ${ISOFILE} \
 		-V "DragonFly `${.CURDIR}/../tools/gitrev.sh | cut -c -22`" . )
-
+.endif
 
 mkimg:
 	if [ ! -d ${IMGMNT} ]; then mkdir -p ${IMGMNT}; fi
@@ -389,9 +395,9 @@ mkimg:
 .else
 	@echo "STEP: determine required image size in 1GB steps"
 	sz=`du -ck ${ISOROOT} | tail -n 1 | cut -f 1`;			\
-	    sz=`bc -e "(($${sz}) * 1.15 + 999999999) / 1000000000" -equit | \
+	    sz=`bc -e "(($${sz}) * 1.15 + 999999) / 1000000" -equit | \
 	    cut -f1 -d.`;						\
-	    sz=`bc -e "(($${sz}) * 976)" -equit | cut -f1 -d.`;		\
+	    sz=`bc -e "(($${sz}) * 953)" -equit | cut -f1 -d.`;		\
 	    rm -f ${IMGFILE};						\
 	    truncate -s $${sz}M ${IMGFILE};
 .endif
