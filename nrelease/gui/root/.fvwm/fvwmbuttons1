@@ -1,0 +1,8 @@
+Back bisque3
+Geometry -0+0
+Frame 2
+Padding 2 2
+Rows 1
+Columns 2
+(Title xterm, Icon up, Action `Exec exec xterm`)
+(Title Firefox, Icon up, Action `Exec exec firefox`)
