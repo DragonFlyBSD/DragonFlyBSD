@@ -37,6 +37,8 @@
 #ifndef _SYS_IMGACT_H_
 #define	_SYS_IMGACT_H_
 
+#include <sys/mount.h>
+
 #define MAXSHELLCMDLEN	128
 
 struct image_args {
@@ -71,7 +73,7 @@ enum	exec_path_segflg {PATH_SYSSPACE, PATH_USERSPACE};
 
 struct vmspace;
 int	exec_resident_imgact (struct image_params *);
-int	exec_check_permissions (struct image_params *);
+int	exec_check_permissions (struct image_params *, struct mount *);
 int	exec_new_vmspace (struct image_params *, struct vmspace *vmres);
 int	exec_shell_imgact (struct image_params *);
 int	exec_copyin_args(struct image_args *, char *, enum exec_path_segflg,

@@ -491,6 +491,7 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	struct vmspace *vmspace = p->p_vmspace;
 	struct vattr *attr;
 	struct image_params *imgp;
+	struct mount *topmnt;
 	vm_prot_t prot;
 	u_long rbase;
 	u_long base_addr = 0;
@@ -515,6 +516,7 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 		error = nlookup(nd);
 	if (error == 0)
 		error = cache_vget(&nd->nl_nch, nd->nl_cred, LK_EXCLUSIVE, &imgp->vp);
+	topmnt = nd->nl_nch.mount;
 	nlookup_done(nd);
 	if (error)
 		goto fail;
@@ -522,7 +524,7 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	/*
 	 * Check permissions, modes, uid, etc on the file, and "open" it.
 	 */
-	error = exec_check_permissions(imgp);
+	error = exec_check_permissions(imgp, topmnt);
 	if (error) {
 		vn_unlock(imgp->vp);
 		goto fail;

@@ -237,9 +237,10 @@ interpret:
 		goto exec_fail;
 
 	/*
-	 * Check file permissions (also 'opens' file)
+	 * Check file permissions (also 'opens' file).
+	 * Include also the top level mount in the check.
 	 */
-	error = exec_check_permissions(imgp);
+	error = exec_check_permissions(imgp, nd->nl_nch.mount);
 	if (error) {
 		vn_unlock(imgp->vp);
 		goto exec_fail_dealloc;
@@ -981,7 +982,7 @@ exec_copyout_strings(struct image_params *imgp)
  *	Return 0 for success or error code on failure.
  */
 int
-exec_check_permissions(struct image_params *imgp)
+exec_check_permissions(struct image_params *imgp, struct mount *topmnt)
 {
 	struct proc *p = imgp->proc;
 	struct vnode *vp = imgp->vp;
@@ -1002,6 +1003,7 @@ exec_check_permissions(struct image_params *imgp)
 	 * 3) Insure that the file is a regular file.
 	 */
 	if ((vp->v_mount->mnt_flag & MNT_NOEXEC) ||
+	    ((topmnt != NULL) && (topmnt->mnt_flag & MNT_NOEXEC)) ||
 	    ((attr->va_mode & 0111) == 0) ||
 	    (attr->va_type != VREG)) {
 		return (EACCES);
