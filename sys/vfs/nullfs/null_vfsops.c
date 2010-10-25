@@ -140,6 +140,8 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	if (xmp->nullm_vfs != rootvp->v_mount) {
 		if (xmp->nullm_vfs->mnt_flag & MNT_RDONLY)
 			mp->mnt_flag |= MNT_RDONLY;
+		if (xmp->nullm_vfs->mnt_flag & MNT_NOEXEC)
+			mp->mnt_flag |= MNT_NOEXEC;
 		xmp->nullm_vfs = rootvp->v_mount;
 	}
 
