@@ -88,6 +88,17 @@ struct in_addr {
 #define	_STRUCT_IN_ADDR_DECLARED
 #endif
 
+#ifndef _STRUCT_IN6_ADDR_DECLARED
+struct in6_addr {
+	union {
+		uint8_t   __u6_addr8[16];
+		uint16_t  __u6_addr16[8];
+		uint32_t  __u6_addr32[4];
+	} __u6_addr;                    /* 128-bit IP6 address */
+};
+#define _STRUCT_IN6_ADDR_DECLARED
+#endif
+
 /* XXX all new diversions!! argh!! */
 #if __BSD_VISIBLE
 #define	inet_addr	__inet_addr
