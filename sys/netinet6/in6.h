@@ -123,6 +123,7 @@ typedef __socklen_t	socklen_t;
 /*
  * IPv6 address
  */
+#ifndef _STRUCT_IN6_ADDR_DECLARED
 struct in6_addr {
 	union {
 		uint8_t   __u6_addr8[16];
@@ -130,6 +131,8 @@ struct in6_addr {
 		uint32_t  __u6_addr32[4];
 	} __u6_addr;			/* 128-bit IP6 address */
 };
+#define _STRUCT_IN6_ADDR_DECLARED
+#endif
 
 #define s6_addr		__u6_addr.__u6_addr8
 #define _s6_addr16	__u6_addr.__u6_addr16		/* internal use */
