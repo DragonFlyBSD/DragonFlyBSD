@@ -211,12 +211,10 @@ buildworld1 buildworld2:
 
 buildkernel1 buildkernel2:
 	cd ${.CURDIR}/..; \
-	first=; \
 	for kernconf in ${KERNCONF}; do \
 		${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} \
 			make -j ${MAKE_JOBS} ${.TARGET:C/build(.*)2/quick\1/:C/1//} \
 			KERNCONF=$${kernconf} \
-		first=done; \
 	done
 
 # note that we do not want to mess with any /usr/obj directories not related
@@ -241,7 +239,6 @@ buildiso:
 		make -m ${.CURDIR}/../share/mk DESTDIR=${ISOROOT} distribution )
 	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
 	cd ${.CURDIR}/..; \
-	first=; \
 	for kernconf in ${KERNCONF}; do \
 		make DESTDIR=${ISOROOT} installkernel \
 			KERNCONF=$${kernconf} \
@@ -249,7 +246,6 @@ buildiso:
 			INSTALLSTRIPPEDMODULES=y; \
 		ln -s kernel ${ISOROOT}/boot/kernel.$${kernconf}/kernel.BOOTP; \
 		rm -rf ${ISOROOT}/boot/kernel.$${kernconf}.old; \
-		first=done; \
 	done
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.local.dist -p ${ISOROOT}/usr/local/
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
