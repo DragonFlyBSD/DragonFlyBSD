@@ -545,7 +545,7 @@ command_ifset(int argc, char *argv[])
 		sprintf(command_errbuf, "if stack too deep");
 		return(-1);
 	} else if (argc != 2) {
-		sprintf(command_errbuf, "ifexists requires one argument");
+		sprintf(command_errbuf, "ifset requires one argument");
 		return(-1);
 	} else {
 		struct cond *cond = &CondStack[CondIndex++];
@@ -572,7 +572,7 @@ command_elseifexists(int argc, char *argv[])
 		sprintf(command_errbuf, "elseifexists without if");
 		return(-1);
 	} else if (argc != 2) {
-		sprintf(command_errbuf, "ifexists requires one argument");
+		sprintf(command_errbuf, "elseifexists requires one argument");
 		return(-1);
 	} else {
 		struct stat sb;
