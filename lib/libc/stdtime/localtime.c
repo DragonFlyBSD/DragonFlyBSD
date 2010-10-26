@@ -2,7 +2,7 @@
 ** This file is in the public domain, so clarified as of
 ** 1996-06-05 by Arthur David Olson.
 **
-** @(#)localtime.c	8.13
+** @(#)localtime.c	8.15
 ** $FreeBSD: src/lib/libc/stdtime/localtime.c,v 1.25.2.2 2002/08/13 16:08:07 bmilekic Exp $
 */
 
@@ -263,16 +263,6 @@ settzname(void)
 	daylight = 0;
 	timezone = 0;
 
-	for (i = 0; i < sp->typecnt; ++i) {
-		const struct ttinfo * const	ttisp = &sp->ttis[i];
-
-		tzname[ttisp->tt_isdst] =
-			&sp->chars[ttisp->tt_abbrind];
-		if (ttisp->tt_isdst)
-			daylight = 1;
-		if (i == 0 || !ttisp->tt_isdst)
-			timezone = -(ttisp->tt_gmtoff);
-	}
 	/*
 	** And to get the latest zone names into tzname. . .
 	*/
@@ -283,6 +273,10 @@ settzname(void)
 
 		tzname[ttisp->tt_isdst] =
 			&sp->chars[ttisp->tt_abbrind];
+		if (ttisp->tt_isdst)
+			daylight = 1;
+		if (!ttisp->tt_isdst)
+			timezone = -(ttisp->tt_gmtoff);
 	}
 	/*
 	** Finally, scrub the abbreviations.
@@ -888,10 +882,11 @@ tzparse(const char *name, struct state * const sp, const int lastditch)
 	size_t				dstlen;
 	long				stdoffset;
 	long				dstoffset;
-	time_t *		atp;
-	unsigned char *	typep;
-	char *			cp;
-	int			load_result;
+	time_t *			atp;
+	unsigned char *			typep;
+	char *				cp;
+	int				load_result;
+	static struct ttinfo		zttinfo;
 
 	INITIALIZE(dstname);
 	stdname = name;
@@ -964,6 +959,7 @@ tzparse(const char *name, struct state * const sp, const int lastditch)
 			/*
 			** Two transitions per year, from EPOCH_YEAR forward.
 			*/
+			sp->ttis[0] = sp->ttis[1] = zttinfo;
 			sp->ttis[0].tt_gmtoff = -dstoffset;
 			sp->ttis[0].tt_isdst = 1;
 			sp->ttis[0].tt_abbrind = stdlen + 1;
@@ -1077,8 +1073,8 @@ tzparse(const char *name, struct state * const sp, const int lastditch)
 			}
 			/*
 			** Finally, fill in ttis.
-			** ttisstd and ttisgmt need not be handled.
 			*/
+			sp->ttis[0] = sp->ttis[1] = zttinfo;
 			sp->ttis[0].tt_gmtoff = -stdoffset;
 			sp->ttis[0].tt_isdst = FALSE;
 			sp->ttis[0].tt_abbrind = 0;
@@ -1091,6 +1087,7 @@ tzparse(const char *name, struct state * const sp, const int lastditch)
 		dstlen = 0;
 		sp->typecnt = 1;		/* only standard time */
 		sp->timecnt = 0;
+		sp->ttis[0] = zttinfo;
 		sp->ttis[0].tt_gmtoff = -stdoffset;
 		sp->ttis[0].tt_isdst = 0;
 		sp->ttis[0].tt_abbrind = 0;
