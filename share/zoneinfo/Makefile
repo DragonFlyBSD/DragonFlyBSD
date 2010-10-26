@@ -1,5 +1,4 @@
 # $FreeBSD: src/share/zoneinfo/Makefile,v 1.16.2.3 2002/08/07 16:31:52 ru Exp $
-# $DragonFly: src/share/zoneinfo/Makefile,v 1.3 2008/03/02 14:28:37 swildner Exp $
 
 CLEANFILES+=	yearistype
 
@@ -10,7 +9,7 @@ LEAPFILE=
 .endif
 
 TZFILES=	africa antarctica asia australasia etcetera europe \
-		factory northamerica southamerica systemv
+		northamerica southamerica systemv
 POSIXRULES=	America/New_York
 
 .if defined(OLDTIMEZONES)
