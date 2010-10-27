@@ -247,6 +247,13 @@ buildiso:
 		ln -s kernel ${ISOROOT}/boot/kernel.$${kernconf}/kernel.BOOTP; \
 		rm -rf ${ISOROOT}/boot/kernel.$${kernconf}.old; \
 	done
+.if ${MACHINE_ARCH} == "i386"
+	mv ${ISOROOT}/boot/kernel.GENERIC ${ISOROOT}/boot/UP
+	mv ${ISOROOT}/boot/kernel.GENERIC_SMP ${ISOROOT}/boot/SMP
+.else
+	mv ${ISOROOT}/boot/kernel.X86_64_GENERIC ${ISOROOT}/boot/UP
+	mv ${ISOROOT}/boot/kernel.X86_64_GENERIC_SMP ${ISOROOT}/boot/SMP
+.endif
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.local.dist -p ${ISOROOT}/usr/local/
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev

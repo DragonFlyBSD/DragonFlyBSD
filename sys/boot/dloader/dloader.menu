@@ -31,22 +31,14 @@ ehci_load="YES"
 # Default boot /boot/kernel/ is the user-installed kernel and
 # is always checked first.  Otherwise fallback to generic kernels.
 #
-unset present64
 ifset default_kernel
     # already selected a kernel
 elseifexists kernel
     set default_kernel=kernel
-    set present64=1
-elseifexists kernel.GENERIC
-    set default_kernel=kernel.GENERIC
-    set present64=1
-elseifexists kernel.GENERIC_SMP
-    set default_kernel=kernel.GENERIC_SMP
-    set present64=1
-elseifexists kernel.X86_64_GENERIC
-    set default_kernel=kernel.X86_64_GENERIC
-elseifexists kernel.X86_64_GENERIC_SMP
-    set default_kernel=kernel.X86_64_GENERIC_SMP
+elseifexists UP
+    set default_kernel=UP
+elseifexists SMP
+    set default_kernel=SMP
 else
     set default_kernel=kernel
 endif
@@ -172,35 +164,13 @@ menuadd loadall
 menuadd boot
 menuadd set autoboot_delay=NO
 
-ifexists ${default_kernel}_SMP
+ifexists SMP
 menuitem m "Select SMP kernel"
-menuadd set default_kernel=${default_kernel}_SMP
+menuadd set default_kernel=SMP
 menuadd include ${base}defaults/dloader.menu
 menuadd optinclude ${base}dloader.menu
 menuadd menu
-endif
-
-ifset present64
-ifexists ${base}kernel.X86_64_GENERIC
-menuitem x "Select 64-bit UP kernel"
-menuadd set default_kernel=kernel.X86_64_GENERIC
-menuadd include ${base}defaults/dloader.menu
-menuadd optinclude ${base}dloader.menu
-menuadd menu
-endif
-endif
-
-ifset present64
-ifexists ${base}kernel.X86_64_GENERIC_SMP
-menuitem y "Select 64-bit SMP kernel"
-menuadd set default_kernel=kernel.X86_64_GENERIC_SMP
-menuadd include ${base}defaults/dloader.menu
-menuadd optinclude ${base}dloader.menu
-menuadd menu
-endif
 endif
 
 menuitem R "Reboot"
 menuadd reboot
-
-unset present64
