@@ -603,6 +603,25 @@ fn_install_os(struct i_fn_args *a)
 	command_add(cmds, "%s%s 600 %smnt/var/log/install.log",
 	    a->os_root, cmd_name(a, "CHMOD"), a->os_root);
 
+	/*
+	 * XXX
+	 * Move the kernel used for booting (UP or SMP) to /boot/kernel
+	 * and remove the other kernel
+	 */
+	command_add(cmds,
+	    "%s%s %smnt`%s%s $(%s%s -n kern.bootfile)` %smnt/boot/kernel",
+	    a->os_root, cmd_name(a, "MV"),
+	    a->os_root,
+	    a->os_root, cmd_name(a, "DIRNAME"),
+	    a->os_root, cmd_name(a, "SYSCTL"),
+	    a->os_root);
+	command_add(cmds,
+	    "%s%s -R noschg %smnt/boot/[A-Z][A-Z]*; %s%s -rf %smnt/boot/[A-Z][A-Z]*",
+	    a->os_root, cmd_name(a, "CHFLAGS"),
+	    a->os_root,
+	    a->os_root, cmd_name(a, "RM"),
+	    a->os_root);
+
 	/* Customize stuff here */
 	if(is_file("%susr/local/bin/after_installation_routines.sh", a->os_root)) {
 		command_add(cmds, "%susr/local/bin/after_installation_routines.sh",
