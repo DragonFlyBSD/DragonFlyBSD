@@ -684,8 +684,8 @@ fn_set_timezone(struct i_fn_args *a)
 
         switch (dfui_be_present_dialog(a->c, _("Local or UTC (Greenwich Mean Time) clock"),
 	    _("Yes|No"),
-            _("Is this machine's CMOS clock set to UTC?\n"),
-	    _("If it is set to local time, or you don't know, please choose NO here!"))) {
+            _("Is this machine's CMOS clock set to UTC?\n\n"
+	    "If it is set to local time, or you don't know, please choose NO here!"))) {
 		case 1:
 			cmds = commands_new();
 			command_add(cmds, "%s%s %s%setc/wall_cmos_clock",
@@ -1272,7 +1272,7 @@ mount_target_system(struct i_fn_args *a)
 		    a->os_root, cmd_name(a, "MOUNT"),
 		    a->os_root,
 		    subpartition_get_device_name(a_subpart),
-		    a->os_root, a->cfg_root);
+		    a->os_root);
 		command_add(cmds,
 		    "%s%s %sdev/`%s%s \"^vfs\\.root\\.mountfrom\" %sboot/loader.conf |"
 		    "%s%s -Fhammer: '{print $2;}' |"
@@ -1286,7 +1286,7 @@ mount_target_system(struct i_fn_args *a)
 		    a->os_root, a->cfg_root);
 		command_add(cmds, "%s%s %sboot",
 		    a->os_root, cmd_name(a, "UMOUNT"),
-		    a->os_root, a->cfg_root);
+		    a->os_root);
 	}
 	if (!commands_execute(a, cmds)) {
 		commands_free(cmds);

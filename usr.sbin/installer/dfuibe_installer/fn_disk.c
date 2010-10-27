@@ -377,7 +377,7 @@ ask_to_wipe_boot_sector(struct i_fn_args *a, struct commands *fcmds)
 			    "then try installing the bootblock again. "
 			    "Note that this should not affect the "
 			    "partition table of the disk."),
-			    disk, disk)) {
+			    disk)) {
 			case 1:
 				cmds = commands_new();
 				command_add(cmds,

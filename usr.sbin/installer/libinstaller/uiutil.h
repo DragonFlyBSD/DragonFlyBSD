@@ -41,7 +41,9 @@
 #ifndef __UIUTIL_H_
 #define __UIUTIL_H_
 
-void		inform(struct dfui_connection *, const char *, ...);
-int		confirm_dangerous_action(struct dfui_connection *, const char *, ...);
+void		inform(struct dfui_connection *, const char *, ...)
+		    __printflike(2, 3);
+int		confirm_dangerous_action(struct dfui_connection *, const char *, ...)
+		    __printflike(2, 3);
 
 #endif /* !__UIUTIL_H_ */

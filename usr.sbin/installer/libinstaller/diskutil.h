@@ -161,8 +161,10 @@ struct subpartition	*subpartition_new(struct slice *, const char *, long,
 					  int, long, long, int);
 struct subpartition	*subpartition_new_hammer(struct slice *, const char *, long);
 int			 subpartition_count(const struct slice *);
-struct subpartition	*subpartition_find(const struct slice *, const char *, ...);
-struct subpartition	*subpartition_of(const struct slice *, const char *, ...);
+struct subpartition	*subpartition_find(const struct slice *, const char *, ...)
+			     __printflike(2, 3);
+struct subpartition	*subpartition_of(const struct slice *, const char *, ...)
+			     __printflike(2, 3);
 struct subpartition	*subpartition_find_capacity(const struct slice *, long);
 void		 	 subpartitions_free(struct slice *);
 struct subpartition	*subpartition_next(const struct subpartition *);
