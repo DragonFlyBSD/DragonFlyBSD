@@ -604,9 +604,9 @@ fn_install_os(struct i_fn_args *a)
 	    a->os_root, cmd_name(a, "CHMOD"), a->os_root);
 
 	/* Customize stuff here */
-	if(is_file("%susr/local/bin/after_installation_routines.sh")) {
+	if(is_file("%susr/local/bin/after_installation_routines.sh", a->os_root)) {
 		command_add(cmds, "%susr/local/bin/after_installation_routines.sh",
-		a->os_root, _("Running after installation custom routines..."));
+		    a->os_root);
 	}
 
 	/*

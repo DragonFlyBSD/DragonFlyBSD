@@ -41,11 +41,11 @@
 
 /*** PROTOTYPES ***/
 
-int			 is_dir(const char *, ...);
-int			 is_file(const char *, ...);
-int			 is_program(const char *, ...);
-int			 is_device(const char *, ...);
-int			 is_named_pipe(const char *, ...);
+int			 is_dir(const char *, ...) __printflike(1, 2);
+int			 is_file(const char *, ...) __printflike(1, 2);
+int			 is_program(const char *, ...) __printflike(1, 2);
+int			 is_device(const char *, ...) __printflike(1, 2);
+int			 is_named_pipe(const char *, ...) __printflike(1, 2);
 int			 is_mountpoint_mounted(const char *);
 int			 is_device_mounted(const char *);
 int			 is_any_slice_mounted(const char *);

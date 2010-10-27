@@ -301,9 +301,9 @@ check_capacity(struct i_fn_args *a)
 
 	if (total_capacity > slice_get_capacity(storage_get_selected_slice(a->s))) {
 		inform(a->c, _("The space allocated to all of your selected "
-		    "subpartitions (%dM) exceeds the total "
+		    "subpartitions (%luM) exceeds the total "
 		    "capacity of the selected primary partition "
-		    "(%dM). Remove some subpartitions or choose "
+		    "(%luM). Remove some subpartitions or choose "
 		    "a smaller size for them and try again."),
 		    total_capacity, slice_get_capacity(storage_get_selected_slice(a->s)));
 		return(0);

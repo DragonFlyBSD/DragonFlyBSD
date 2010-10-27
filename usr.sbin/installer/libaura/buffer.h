@@ -61,8 +61,10 @@ void			 aura_buffer_append(struct aura_buffer *, const char *, size_t);
 
 void			 aura_buffer_cpy(struct aura_buffer *, const char *);
 void			 aura_buffer_cat(struct aura_buffer *, const char *);
-int			 aura_buffer_cat_file(struct aura_buffer *, const char *, ...);
-int			 aura_buffer_cat_pipe(struct aura_buffer *, const char *, ...);
+int			 aura_buffer_cat_file(struct aura_buffer *, const char *, ...)
+			     __printflike(2, 3);
+int			 aura_buffer_cat_pipe(struct aura_buffer *, const char *, ...)
+			     __printflike(2, 3);
 
 int			 aura_buffer_seek(struct aura_buffer *, size_t);
 size_t			 aura_buffer_tell(struct aura_buffer *);

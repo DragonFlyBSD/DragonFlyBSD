@@ -28,7 +28,7 @@ struct _langset {
 #define langcount (sizeof(langset) / sizeof(struct _langset))
 
 static int	get_lang_num(const char *langname);
-static int	system_fmt(const char *fmt, ...);
+static int	system_fmt(const char *fmt, ...) __printflike(1, 2);
 
 
 static int

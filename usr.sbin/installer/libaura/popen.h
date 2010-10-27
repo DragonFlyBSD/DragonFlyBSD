@@ -53,7 +53,8 @@
 #define	AURA_PGETS_EOF		3
 #define	AURA_PGETS_FGETS_ERR	4
 
-FILE			*aura_popen(const char *, const char *, ...);
+FILE			*aura_popen(const char *, const char *, ...)
+			     __printflike(1, 3);
 int			 aura_pclose(FILE *);
 pid_t			 aura_pgetpid(FILE *);
 int			 aura_pgets(FILE *, char *, size_t, long, int *);

@@ -76,7 +76,8 @@ struct i_fn_args {
 struct i_fn_args *i_fn_args_new(const char *, const char *, int, const char *);
 void		 i_fn_args_free(struct i_fn_args *);
 
-void		 i_log(struct i_fn_args *, const char *, ...);
+void		 i_log(struct i_fn_args *, const char *, ...)
+		     __printflike(2, 3);
 
 /* General Utilities */
 
