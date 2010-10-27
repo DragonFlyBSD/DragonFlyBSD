@@ -214,7 +214,7 @@ buildkernel1 buildkernel2:
 	for kernconf in ${KERNCONF}; do \
 		${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} \
 			make -j ${MAKE_JOBS} ${.TARGET:C/build(.*)2/quick\1/:C/1//} \
-			KERNCONF=$${kernconf} \
+			KERNCONF=$${kernconf}; \
 	done
 
 # note that we do not want to mess with any /usr/obj directories not related
