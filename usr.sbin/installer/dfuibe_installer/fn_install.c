@@ -604,9 +604,8 @@ fn_install_os(struct i_fn_args *a)
 	    a->os_root, cmd_name(a, "CHMOD"), a->os_root);
 
 	/*
-	 * XXX
-	 * Move the kernel used for booting (UP or SMP) to /boot/kernel
-	 * and remove the other kernel
+	 * Move the kernel used for booting (kernel.UP or kernel.SMP) to
+	 * /boot/kernel and remove the other kernel
 	 */
 	command_add(cmds,
 	    "%s%s %smnt`%s%s $(%s%s -n kern.bootfile)` %smnt/boot/kernel",
@@ -616,7 +615,7 @@ fn_install_os(struct i_fn_args *a)
 	    a->os_root, cmd_name(a, "SYSCTL"),
 	    a->os_root);
 	command_add(cmds,
-	    "%s%s -R noschg %smnt/boot/[A-Z][A-Z]*; %s%s -rf %smnt/boot/[A-Z][A-Z]*",
+	    "%s%s -R noschg %smnt/boot/kernel.[SU]M*P; %s%s -rf %smnt/boot/kernel.[SU]M*P",
 	    a->os_root, cmd_name(a, "CHFLAGS"),
 	    a->os_root,
 	    a->os_root, cmd_name(a, "RM"),
