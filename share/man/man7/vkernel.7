@@ -321,7 +321,7 @@ If the image is created on a UFS filesystem you might want to pre-zero it.
 On a HAMMER filesystem you should just truncate-extend to the image size
 as HAMMER does not re-use data blocks already present in the file.
 .Bd -literal
-vnconfig -c -s labels -S 2g -T vn0 /var/vkernel/rootimg.01
+vnconfig -c -S 2g -T vn0 /var/vkernel/rootimg.01
 disklabel -r -w vn0s0 auto
 disklabel -e vn0s0	# add `a' partition with fstype `4.2BSD'
 newfs /dev/vn0s0a
