@@ -195,17 +195,17 @@ Xspuriousint:
 	SUPERALIGN_TEXT
 	.globl	Xinvltlb
 Xinvltlb:
-	pushl	%eax
-
-	movl	%cr3, %eax		/* invalidate the TLB */
-	movl	%eax, %cr3
-
-	ss				/* stack segment, avoid %ds load */
+	PUSH_FRAME
 	movl	$0, lapic_eoi		/* End Of Interrupt to APIC */
+	FAKE_MCOUNT(15*4(%esp))
 
-	popl	%eax
-	iret
+	subl	$8,%esp			/* make same as interrupt frame */
+	pushl	%esp			/* pass frame by reference */
+	call	smp_invltlb_intr
+	addl	$12,%esp
 
+	MEXITCOUNT
+	jmp	doreti_syscall_ret
 
 /*
  * Executed by a CPU when it receives an Xcpustop IPI from another CPU,
@@ -315,8 +315,7 @@ Xipiq:
 1:
 	orl	$RQF_IPIQ,PCPU(reqflags)
 	MEXITCOUNT
-	POP_FRAME
-	iret
+	jmp	doreti_syscall_ret
 
 	.text
 	SUPERALIGN_TEXT
@@ -346,8 +345,7 @@ Xtimer:
 1:
 	orl	$RQF_TIMER,PCPU(reqflags)
 	MEXITCOUNT
-	POP_FRAME
-	iret
+	jmp	doreti_syscall_ret
 
 #ifdef APIC_IO
 

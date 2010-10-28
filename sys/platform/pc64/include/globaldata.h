@@ -99,6 +99,7 @@ struct mdglobaldata {
 	register_t	gd_rsp0;
 	register_t	gd_user_fs;	/* current user fs in MSR */
 	register_t	gd_user_gs;	/* current user gs in MSR */
+	cpumask_t	gd_invltlb_ret;
 };
 
 #define MDGLOBALDATA_BASEALLOC_SIZE	\

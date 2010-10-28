@@ -2602,27 +2602,62 @@ smitest(void)
  * If for some reason we were unable to start all cpus we cannot safely
  * use broadcast IPIs.
  */
+
+static cpumask_t smp_invltlb_req;
+
 void
 smp_invltlb(void)
 {
 #ifdef SMP
-#if 0
-	pmap_inval_info info;
+	struct mdglobaldata *md = mdcpu;
 
-	pmap_inval_init(&info);
-	pmap_inval_interlock(&info, &kernel_pmap, -1);
-	pmap_inval_deinterlock(&info, &kernel_pmap);
-	pmap_inval_done(&info);
-#else
+	crit_enter_gd(&md->mi);
+	md->gd_invltlb_ret = 0;
+	++md->mi.gd_cnt.v_smpinvltlb;
+	atomic_set_int(&smp_invltlb_req, md->mi.gd_cpumask);
 	if (smp_startup_mask == smp_active_mask) {
 		all_but_self_ipi(XINVLTLB_OFFSET);
 	} else {
-		selected_apic_ipi(smp_active_mask, XINVLTLB_OFFSET,
-			APIC_DELMODE_FIXED);
+		selected_apic_ipi(smp_active_mask & ~md->mi.gd_cpumask,
+				  XINVLTLB_OFFSET, APIC_DELMODE_FIXED);
 	}
-#endif
+	while ((md->gd_invltlb_ret & smp_active_mask & ~md->mi.gd_cpumask) !=
+	       (smp_active_mask & ~md->mi.gd_cpumask)) {
+		cpu_mfence();
+		cpu_pause();
+	}
+	atomic_clear_int(&smp_invltlb_req, md->mi.gd_cpumask);
+	crit_exit_gd(&md->mi);
 #endif
 }
+
+#ifdef SMP
+
+/*
+ * Called from Xinvltlb assembly with interrupts disabled.  We didn't
+ * bother to bump the critical section count or nested interrupt count
+ * so only do very low level operations here.
+ */
+void
+smp_invltlb_intr(void)
+{
+	struct mdglobaldata *md = mdcpu;
+	struct mdglobaldata *omd;
+	cpumask_t mask;
+	int cpu;
+
+	mask = smp_invltlb_req;
+	cpu_mfence();
+	cpu_invltlb();
+	while (mask) {
+		cpu = bsfl(mask);
+		mask &= ~(1 << cpu);
+		omd = (struct mdglobaldata *)globaldata_find(cpu);
+		atomic_set_int(&omd->gd_invltlb_ret, md->mi.gd_cpumask);
+	}
+}
+
+#endif
 
 /*
  * When called the executing CPU will send an IPI to all other CPUs
