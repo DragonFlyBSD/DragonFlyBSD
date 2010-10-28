@@ -35,10 +35,10 @@ ifset default_kernel
     # already selected a kernel
 elseifexists kernel
     set default_kernel=kernel
-elseifexists UP
-    set default_kernel=UP
-elseifexists SMP
-    set default_kernel=SMP
+elseifexists kernel.UP
+    set default_kernel=kernel.UP
+elseifexists kernel.SMP
+    set default_kernel=kernel.SMP
 else
     set default_kernel=kernel
 endif
@@ -164,9 +164,9 @@ menuadd loadall
 menuadd boot
 menuadd set autoboot_delay=NO
 
-ifexists SMP
+ifexists kernel.SMP
 menuitem m "Select SMP kernel"
-menuadd set default_kernel=SMP
+menuadd set default_kernel=kernel.SMP
 menuadd include ${base}defaults/dloader.menu
 menuadd optinclude ${base}dloader.menu
 menuadd menu
