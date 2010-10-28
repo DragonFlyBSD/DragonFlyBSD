@@ -25,3 +25,25 @@ urxvt*color11: #edd400
 urxvt*color12: #3465a4
 urxvt*color14: #05d2c1
 urxvt*color15: #d3d7cf
+
+! xterms
+
+*VT100.Translations:    #override \
+	Ctrl<Key>period:	insert-selection(PRIMARY, CUT_BUFFER0) \n\
+	Shift<Key>Prior:	scroll-back(1,fullpage) \n\
+	Shift<Key>Next:		scroll-forw(1,fullpage) \n\
+	Shift<Key>Up:		scroll-back(1,halfpage) \n\
+	Shift<Key>Down:		scroll-forw(1,halfpage) \n
+
+XTerm.VT100.eightBitInput:	true
+xterm*alwaysHighlight:		true
+xterm*cutToBeginningOfLine:	false
+xterm*background:		#000020002000
+xterm*foreground:		#0000DFFFDFFF
+xterm*cursorColor:		white
+xterm*font:			7x14
+xterm*scrollBar:		true
+xterm*saveLines:		1000
+xterm*scrollKey:		true
+xterm*scrollTtyOutput:		false
+xterm*toolBar:			false
