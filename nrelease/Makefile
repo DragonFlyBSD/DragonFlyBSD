@@ -340,20 +340,23 @@ customizeiso:
 	    ${CHROOT_CMD} "cd /usr/pkgsrc/bootstrap;    \
 		export share_dir=/usr/pkgobj/bootstrap/work/share; \
 		./bootstrap --workdir /usr/pkgobj/bootstrap/work"
-.if make(gui)
 	test -e ${ISODIR}/.didbootstrap || \
 	    echo ".ifdef BSD_PKG_MK	# added by nrelease" \
 		>> ${ISOROOT}/usr/pkg/etc/mk.conf
+	test -e ${ISODIR}/.didbootstrap || \
+	    echo "PKG_DEFAULT_OPTIONS='dri inet6'" \
+		>> ${ISOROOT}/usr/pkg/etc/mk.conf
+.if make(gui)
 	test -e ${ISODIR}/.didbootstrap || \
 	    echo "ACCEPTABLE_LICENSES+=openmotif-license" \
 		>> ${ISOROOT}/usr/pkg/etc/mk.conf
 	test -e ${ISODIR}/.didbootstrap || \
 	    echo "ACCEPTABLE_LICENSES+=vim-license" \
 		>> ${ISOROOT}/usr/pkg/etc/mk.conf
+.endif
 	test -e ${ISODIR}/.didbootstrap || \
 	    echo ".endif			# added by nrelease" \
 		>> ${ISOROOT}/usr/pkg/etc/mk.conf
-.endif
 	test -e ${ISODIR}/.didbootstrap || sync
 	test -e ${ISODIR}/.didbootstrap || touch ${ISODIR}/.didbootstrap
 	#
