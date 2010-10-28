@@ -604,6 +604,7 @@ dosum(void)
 	printf("%9u pages wired down\n", vms.v_wire_count);
 	printf("%9u pages free\n", vms.v_free_count);
 	printf("%9u bytes per page\n", vms.v_page_size);
+	printf("%9u global smp invltlbs\n", vmm.v_smpinvltlb);
 	
 	if ((nch_tmp = malloc(nch_size)) == NULL) {
 		perror("malloc");

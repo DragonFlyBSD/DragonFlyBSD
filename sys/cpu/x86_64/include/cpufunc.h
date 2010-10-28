@@ -378,6 +378,7 @@ invd(void)
  */
 #ifdef SMP
 void smp_invltlb(void);
+void smp_invltlb_intr(void);
 #else
 #define smp_invltlb()
 #endif

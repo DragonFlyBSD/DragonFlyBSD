@@ -96,6 +96,7 @@ struct mdglobaldata {
 	unsigned	*gd_GDADDR1;	/* per-cpu whole page table map va */
 	u_int		gd_acpi_id;
 	u_int		gd_apic_id;
+	cpumask_t	gd_invltlb_ret;
 };
 
 #define MDGLOBALDATA_BASEALLOC_SIZE	\

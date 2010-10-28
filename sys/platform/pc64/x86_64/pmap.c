@@ -1076,9 +1076,7 @@ pmap_qenter(vm_offset_t va, vm_page_t *m, int count)
 		va += PAGE_SIZE;
 		m++;
 	}
-#ifdef SMP
-	smp_invltlb();	/* XXX */
-#endif
+	smp_invltlb();
 }
 
 /*
@@ -1102,9 +1100,7 @@ pmap_qremove(vm_offset_t va, int count)
 		cpu_invlpg((void *)va);
 		va += PAGE_SIZE;
 	}
-#ifdef SMP
 	smp_invltlb();
-#endif
 }
 
 /*

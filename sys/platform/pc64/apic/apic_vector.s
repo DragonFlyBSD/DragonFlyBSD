@@ -168,7 +168,7 @@ Xspuriousint:
 
 	/* No EOI cycle used here */
 
-	iretq
+	jmp	doreti_iret
 
 
 /*
@@ -178,17 +178,17 @@ Xspuriousint:
 	SUPERALIGN_TEXT
 	.globl	Xinvltlb
 Xinvltlb:
-	pushq	%rax
-
-	movq	%cr3, %rax		/* invalidate the TLB */
-	movq	%rax, %cr3
-
+	APIC_PUSH_FRAME
 	movq	lapic, %rax
 	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
-
-	popq	%rax
-	iretq
-
+	FAKE_MCOUNT(TF_RIP(%rsp))
+	subq	$8,%rsp			/* make same as interrupt frame */
+	movq	%rsp,%rdi		/* pass frame by reference */
+	call	smp_invltlb_intr
+	addq	$8,%rsp			/* turn into trapframe */
+	MEXITCOUNT
+	APIC_POP_FRAME
+	jmp	doreti_iret
 
 /*
  * Executed by a CPU when it receives an Xcpustop IPI from another CPU,
@@ -249,7 +249,7 @@ Xcpustop:
 2:
 	MEXITCOUNT
 	APIC_POP_FRAME
-	iretq
+	jmp	doreti_iret
 
 	/*
 	 * For now just have one ipiq IPI, but what we really want is
@@ -283,7 +283,7 @@ Xipiq:
 	orl	$RQF_IPIQ,PCPU(reqflags)
 	MEXITCOUNT
 	APIC_POP_FRAME
-	iretq
+	jmp	doreti_iret
 
 	.text
 	SUPERALIGN_TEXT
@@ -314,7 +314,7 @@ Xtimer:
 	orl	$RQF_TIMER,PCPU(reqflags)
 	MEXITCOUNT
 	APIC_POP_FRAME
-	iretq
+	jmp	doreti_iret
 
 #ifdef APIC_IO
 

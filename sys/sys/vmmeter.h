@@ -100,7 +100,16 @@ struct vmmeter {
 	u_int v_forwarded_misses;
 	u_int v_sendsys;	/* calls to sendsys() */
 	u_int v_waitsys;	/* calls to waitsys() */
-#define vmmeter_uint_end	v_waitsys
+	u_int v_smpinvltlb;	/* nasty global invltlbs */
+	u_int v_reserved0;
+	u_int v_reserved1;
+	u_int v_reserved2;
+	u_int v_reserved3;
+	u_int v_reserved4;
+	u_int v_reserved5;
+	u_int v_reserved6;
+	u_int v_reserved7;
+#define vmmeter_uint_end	v_reserved7
 };
 
 struct vmstats {
