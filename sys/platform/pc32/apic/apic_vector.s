@@ -161,6 +161,7 @@ IDTVEC(vec_name) ;							\
 	pushl	$irq_num ;						\
 	pushl	%esp ;			 /* pass frame by reference */	\
 	incl	TD_CRITCOUNT(%ebx) ;					\
+	sti ;								\
 	call	ithread_fast_handler ;	 /* returns 0 to unmask */	\
 	decl	TD_CRITCOUNT(%ebx) ;					\
 	addl	$8, %esp ;						\
@@ -190,6 +191,8 @@ Xspuriousint:
 
 /*
  * Handle TLB shootdowns.
+ *
+ * NOTE: Interrupts remain disabled.
  */
 	.text
 	SUPERALIGN_TEXT
@@ -249,9 +252,13 @@ Xcpustop:
 	 * Indicate that we have stopped and loop waiting for permission
 	 * to start again.  We must still process IPI events while in a
 	 * stopped state.
+	 *
+	 * Interrupts must remain enabled for non-IPI'd per-cpu interrupts
+	 * (e.g. Xtimer, Xinvltlb).
 	 */
 	MPLOCKED
 	btsl	%eax, stopped_cpus	/* stopped_cpus |= (1<<id) */
+	sti
 1:
 	andl	$~RQF_IPIQ,PCPU(reqflags)
 	pushl	%eax
@@ -305,6 +312,7 @@ Xipiq:
 	pushl	%esp			/* pass frame by reference */
 	incl	PCPU(intr_nesting_level)
 	incl	TD_CRITCOUNT(%ebx)
+	sti
 	call	lwkt_process_ipiq_frame
 	decl	TD_CRITCOUNT(%ebx)
 	decl	PCPU(intr_nesting_level)
@@ -335,6 +343,7 @@ Xtimer:
 	pushl	%esp			/* pass frame by reference */
 	incl	PCPU(intr_nesting_level)
 	incl	TD_CRITCOUNT(%ebx)
+	sti
 	call	lapic_timer_process_frame
 	decl	TD_CRITCOUNT(%ebx)
 	decl	PCPU(intr_nesting_level)

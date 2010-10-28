@@ -928,6 +928,7 @@ lwkt_preempt(thread_t ntd, int critcount)
     int mpheld;
     int savecnt;
 #endif
+    int save_gd_intr_nesting_level;
 
     /*
      * The caller has put us in a critical section.  We can only preempt
@@ -1012,12 +1013,19 @@ lwkt_preempt(thread_t ntd, int critcount)
     /*
      * Since we are able to preempt the current thread, there is no need to
      * call need_lwkt_resched().
+     *
+     * We must temporarily clear gd_intr_nesting_level around the switch
+     * since switchouts from the target thread are allowed (they will just
+     * return to our thread), and since the target thread has its own stack.
      */
     ++preempt_hit;
     ntd->td_preempted = td;
     td->td_flags |= TDF_PREEMPT_LOCK;
     KTR_LOG(ctxsw_pre, gd->gd_cpuid, ntd);
+    save_gd_intr_nesting_level = gd->gd_intr_nesting_level;
+    gd->gd_intr_nesting_level = 0;
     td->td_switch(ntd);
+    gd->gd_intr_nesting_level = save_gd_intr_nesting_level;
 
     KKASSERT(ntd->td_preempted && (td->td_flags & TDF_PREEMPT_DONE));
 #ifdef SMP
