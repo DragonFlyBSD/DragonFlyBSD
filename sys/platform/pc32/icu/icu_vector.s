@@ -160,6 +160,7 @@ IDTVEC(vec_name) ; 							\
 	pushl	$irq_num ;						\
 	pushl	%esp ;			/* pass frame by reference */	\
 	incl	TD_CRITCOUNT(%ebx) ;					\
+	sti ;								\
 	call	ithread_fast_handler ;	/* returns 0 to unmask int */	\
 	decl	TD_CRITCOUNT(%ebx) ;					\
 	addl	$8,%esp ;						\

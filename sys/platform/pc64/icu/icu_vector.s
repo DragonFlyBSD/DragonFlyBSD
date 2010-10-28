@@ -155,6 +155,7 @@ IDTVEC(vec_name) ; 							\
 	pushq	$irq_num ;						\
 	movq	%rsp,%rdi ;		/* rdi = call argument */	\
 	incl	TD_CRITCOUNT(%rbx) ;					\
+	sti ;								\
 	call	ithread_fast_handler ;	/* returns 0 to unmask int */	\
 	decl	TD_CRITCOUNT(%rbx) ;					\
 	addq	$8,%rsp ;		/* intr frame -> trap frame */	\

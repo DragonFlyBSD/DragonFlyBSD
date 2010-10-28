@@ -2795,30 +2795,58 @@ smp_invltlb(void)
 {
 #ifdef SMP
 	struct mdglobaldata *md = mdcpu;
-#if 0
+#ifdef SMP_INVLTLB_DEBUG
 	long count = 0;
+	long xcount = 0;
 #endif
 
 	crit_enter_gd(&md->mi);
 	md->gd_invltlb_ret = 0;
 	++md->mi.gd_cnt.v_smpinvltlb;
 	atomic_set_int(&smp_invltlb_req, md->mi.gd_cpumask);
+#ifdef SMP_INVLTLB_DEBUG
+again:
+#endif
 	if (smp_startup_mask == smp_active_mask) {
 		all_but_self_ipi(XINVLTLB_OFFSET);
 	} else {
 		selected_apic_ipi(smp_active_mask & ~md->mi.gd_cpumask,
 				  XINVLTLB_OFFSET, APIC_DELMODE_FIXED);
 	}
+
+#ifdef SMP_INVLTLB_DEBUG
+	if (xcount)
+		kprintf("smp_invltlb: ipi sent\n");
+#endif
 	while ((md->gd_invltlb_ret & smp_active_mask & ~md->mi.gd_cpumask) !=
 	       (smp_active_mask & ~md->mi.gd_cpumask)) {
 		cpu_mfence();
 		cpu_pause();
-#if 0
+#ifdef SMP_INVLTLB_DEBUG
 		/* DEBUGGING */
 		if (++count == 400000000) {
-			panic("smp_invltlb: endless loop %08lx %08lx",
+			print_backtrace(-1);
+			kprintf("smp_invltlb: endless loop %08lx %08lx, "
+				"rflags %016jx retry",
 			      (long)md->gd_invltlb_ret,
-			      (long)smp_invltlb_req);
+			      (long)smp_invltlb_req,
+			      (intmax_t)read_rflags());
+			__asm __volatile ("sti");
+			++xcount;
+			if (xcount > 2)
+				lwkt_process_ipiq();
+			if (xcount > 3) {
+				int bcpu = bsfl(~md->gd_invltlb_ret & ~md->mi.gd_cpumask & smp_active_mask);
+				globaldata_t xgd;
+
+				kprintf("bcpu %d\n", bcpu);
+				xgd = globaldata_find(bcpu);
+				kprintf("thread %p %s\n", xgd->gd_curthread, xgd->gd_curthread->td_comm);
+			}
+			if (xcount > 5)
+				Debugger("giving up");
+			count = 0;
+			goto again;
 		}
 #endif
 	}
@@ -2842,8 +2870,8 @@ smp_invltlb_intr(void)
 	cpumask_t mask;
 	int cpu;
 
-	mask = smp_invltlb_req;
 	cpu_mfence();
+	mask = smp_invltlb_req;
 	cpu_invltlb();
 	while (mask) {
 		cpu = bsfl(mask);
