@@ -2,9 +2,8 @@
 ** This file is in the public domain, so clarified as of
 ** 2006-07-17 by Arthur David Olson.
 **
-** @(#)zic.c	8.20
+** @(#)zic.c	8.24
 ** $FreeBSD: src/usr.sbin/zic/zic.c,v 1.11 1999/08/28 01:21:20 peter Exp $
-** $DragonFly: src/usr.sbin/zic/zic.c,v 1.7 2008/10/19 20:15:58 swildner Exp $
 */
 
 #include <err.h>
@@ -1510,6 +1509,51 @@ writezone(const char * const name, const char * const string)
 			if (thistimei == 0)
 				writetype[0] = TRUE;
 		}
+		/*
+		** For some pre-2011 systems: if the last-to-be-written
+		** standard (or daylight) type has an offset different from the
+		** most recently used offset,
+		** append an (unused) copy of the most recently used type
+		** (to help get global "altzone" and "timezone" variables
+		** set correctly).
+		*/
+		{
+			int	mrudst, mrustd, hidst, histd, type;
+
+			hidst = histd = mrudst = mrustd = -1;
+			for (i = thistimei; i < thistimelim; ++i)
+				if (isdsts[types[i]])
+					mrudst = types[i];
+				else	mrustd = types[i];
+			for (i = 0; i < typecnt; ++i)
+				if (writetype[i]) {
+					if (isdsts[i])
+						hidst = i;
+					else	histd = i;
+				}
+			if (hidst >= 0 && mrudst >= 0 && hidst != mrudst &&
+				gmtoffs[hidst] != gmtoffs[mrudst]) {
+					isdsts[mrudst] = -1;
+					type = addtype(gmtoffs[mrudst],
+						&chars[abbrinds[mrudst]],
+						TRUE,
+						ttisstds[mrudst],
+						ttisgmts[mrudst]);
+					isdsts[mrudst] = TRUE;
+					writetype[type] = TRUE;
+			}
+			if (histd >= 0 && mrustd >= 0 && histd != mrustd &&
+				gmtoffs[histd] != gmtoffs[mrustd]) {
+					isdsts[mrustd] = -1;
+					type = addtype(gmtoffs[mrustd],
+						&chars[abbrinds[mrustd]],
+						FALSE,
+						ttisstds[mrustd],
+						ttisgmts[mrustd]);
+					isdsts[mrustd] = FALSE;
+					writetype[type] = TRUE;
+			}
+		}
 		thistypecnt = 0;
 		for (i = 0; i < typecnt; ++i)
 			typemap[i] = writetype[i] ?  thistypecnt++ : -1;
@@ -1718,16 +1762,16 @@ stringrule(char *result, const struct rule * const rp, const long dstoff,
 		int	week;
 
 		if (rp->r_dycode == DC_DOWGEQ) {
-			week = 1 + rp->r_dayofmonth / DAYSPERWEEK;
-			if ((week - 1) * DAYSPERWEEK + 1 != rp->r_dayofmonth)
+			if ((rp->r_dayofmonth % DAYSPERWEEK) != 1)
 				return -1;
+			week = 1 + rp->r_dayofmonth / DAYSPERWEEK;
 		} else if (rp->r_dycode == DC_DOWLEQ) {
 			if (rp->r_dayofmonth == len_months[1][rp->r_month])
 				week = 5;
 			else {
-				week = 1 + rp->r_dayofmonth / DAYSPERWEEK;
-				if (week * DAYSPERWEEK - 1 != rp->r_dayofmonth)
+				if ((rp->r_dayofmonth % DAYSPERWEEK) != 0)
 					return -1;
+				week = rp->r_dayofmonth / DAYSPERWEEK;
 			}
 		} else	return -1;	/* "cannot happen" */
 		sprintf(result, "M%d.%d.%d",
@@ -1851,6 +1895,7 @@ outzone(const struct zone * const zpfirst, const int zonecount)
 	char *envvar;
 	int max_abbr_len;
 	int max_envvar_len;
+	int prodstic; /* all rules are min to max */
 
 	max_abbr_len = 2 + max_format_len + max_abbrvar_len;
 	max_envvar_len = 2 * max_abbr_len + 5 * 9;
@@ -1865,6 +1910,7 @@ outzone(const struct zone * const zpfirst, const int zonecount)
 	timecnt = 0;
 	typecnt = 0;
 	charcnt = 0;
+	prodstic = zonecount == 1;
 	/*
 	** Thanks to Earl Chew
 	** for noting the need to unconditionally initialize startttisstd.
@@ -1886,6 +1932,8 @@ outzone(const struct zone * const zpfirst, const int zonecount)
 				updateminmax(rp->r_loyear);
 			if (rp->r_hiwasnum)
 				updateminmax(rp->r_hiyear);
+			if (rp->r_lowasnum || rp->r_hiwasnum)
+				prodstic = FALSE;
 		}
 	}
 	/*
@@ -1908,6 +1956,16 @@ wp = ecpyalloc(_("no POSIX environment variable for zone"));
 		if (max_year <= INT_MAX - YEARSPERREPEAT)
 			max_year += YEARSPERREPEAT;
 		else	max_year = INT_MAX;
+		/*
+		** Regardless of any of the above,
+		** for a "proDSTic" zone which specifies that its rules
+		** always have and always will be in effect,
+		** we only need one cycle to define the zone.
+		*/
+		if (prodstic) {
+			min_year = 1900;
+			max_year = min_year + YEARSPERREPEAT;
+		}
 	}
 	/*
 	** For the benefit of older systems,

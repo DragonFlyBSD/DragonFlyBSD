@@ -55,9 +55,9 @@ void			 config_vars_free(struct config_vars *);
 int			 config_var_set(struct config_vars *, const char *, const char *);
 const char		*config_var_get(const struct config_vars *, const char *);
 int			 config_vars_write(const struct config_vars *, int,
-					   const char *, ...);
+			     const char *, ...) __printflike(3, 4);
 int			 config_vars_read(struct i_fn_args *,
-					  struct config_vars *, int,
-					  const char *, ...);
+			     struct config_vars *, int, const char *, ...)
+			     __printflike(4, 5);
 
 #endif /* !__CONFED_H_ */

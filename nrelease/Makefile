@@ -211,12 +211,10 @@ buildworld1 buildworld2:
 
 buildkernel1 buildkernel2:
 	cd ${.CURDIR}/..; \
-	first=; \
 	for kernconf in ${KERNCONF}; do \
 		${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} \
 			make -j ${MAKE_JOBS} ${.TARGET:C/build(.*)2/quick\1/:C/1//} \
-			KERNCONF=$${kernconf} \
-		first=done; \
+			KERNCONF=$${kernconf}; \
 	done
 
 # note that we do not want to mess with any /usr/obj directories not related
@@ -241,7 +239,6 @@ buildiso:
 		make -m ${.CURDIR}/../share/mk DESTDIR=${ISOROOT} distribution )
 	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
 	cd ${.CURDIR}/..; \
-	first=; \
 	for kernconf in ${KERNCONF}; do \
 		make DESTDIR=${ISOROOT} installkernel \
 			KERNCONF=$${kernconf} \
@@ -249,8 +246,14 @@ buildiso:
 			INSTALLSTRIPPEDMODULES=y; \
 		ln -s kernel ${ISOROOT}/boot/kernel.$${kernconf}/kernel.BOOTP; \
 		rm -rf ${ISOROOT}/boot/kernel.$${kernconf}.old; \
-		first=done; \
 	done
+.if ${MACHINE_ARCH} == "i386"
+	mv ${ISOROOT}/boot/kernel.GENERIC ${ISOROOT}/boot/kernel.UP
+	mv ${ISOROOT}/boot/kernel.GENERIC_SMP ${ISOROOT}/boot/kernel.SMP
+.else
+	mv ${ISOROOT}/boot/kernel.X86_64_GENERIC ${ISOROOT}/boot/kernel.UP
+	mv ${ISOROOT}/boot/kernel.X86_64_GENERIC_SMP ${ISOROOT}/boot/kernel.SMP
+.endif
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.local.dist -p ${ISOROOT}/usr/local/
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
@@ -337,20 +340,23 @@ customizeiso:
 	    ${CHROOT_CMD} "cd /usr/pkgsrc/bootstrap;    \
 		export share_dir=/usr/pkgobj/bootstrap/work/share; \
 		./bootstrap --workdir /usr/pkgobj/bootstrap/work"
-.if make(gui)
 	test -e ${ISODIR}/.didbootstrap || \
 	    echo ".ifdef BSD_PKG_MK	# added by nrelease" \
 		>> ${ISOROOT}/usr/pkg/etc/mk.conf
+	test -e ${ISODIR}/.didbootstrap || \
+	    echo "PKG_DEFAULT_OPTIONS='dri inet6'" \
+		>> ${ISOROOT}/usr/pkg/etc/mk.conf
+.if make(gui)
 	test -e ${ISODIR}/.didbootstrap || \
 	    echo "ACCEPTABLE_LICENSES+=openmotif-license" \
 		>> ${ISOROOT}/usr/pkg/etc/mk.conf
 	test -e ${ISODIR}/.didbootstrap || \
 	    echo "ACCEPTABLE_LICENSES+=vim-license" \
 		>> ${ISOROOT}/usr/pkg/etc/mk.conf
+.endif
 	test -e ${ISODIR}/.didbootstrap || \
 	    echo ".endif			# added by nrelease" \
 		>> ${ISOROOT}/usr/pkg/etc/mk.conf
-.endif
 	test -e ${ISODIR}/.didbootstrap || sync
 	test -e ${ISODIR}/.didbootstrap || touch ${ISODIR}/.didbootstrap
 	#
