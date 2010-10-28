@@ -1540,6 +1540,7 @@ TO_REMOVE+=/boot/frames.4th
 TO_REMOVE+=/boot/loader.4th
 TO_REMOVE+=/boot/screen.4th
 TO_REMOVE+=/boot/support.4th
+TO_REMOVE+=/usr/freebsd_pkg
 
 # XXX Remove when adjusted to the new 802.11 framework
 TO_REMOVE+=/boot/modules/if_acx.ko
