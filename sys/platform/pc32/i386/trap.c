@@ -1139,19 +1139,37 @@ trap_fatal(struct trapframe *frame, vm_offset_t eva)
  * the machine was idle when the double fault occurred. The downside
  * of this is that "trace <ebp>" in ddb won't work.
  */
+static __inline
+int
+in_kstack_guard(register_t rptr)
+{
+	thread_t td = curthread;
+
+	if ((char *)rptr >= td->td_kstack &&
+	    (char *)rptr < td->td_kstack + PAGE_SIZE) {
+		return 1;
+	}
+	return 0;
+}
+
 void
 dblfault_handler(void)
 {
 	struct mdglobaldata *gd = mdcpu;
 
-	kprintf("\nFatal double fault:\n");
+	if (in_kstack_guard(gd->gd_common_tss.tss_esp) ||
+	    in_kstack_guard(gd->gd_common_tss.tss_ebp)) {
+		kprintf0("DOUBLE FAULT - KERNEL STACK GUARD HIT!\n");
+	} else {
+		kprintf0("DOUBLE FAULT:\n");
+	}
 	kprintf("eip = 0x%x\n", gd->gd_common_tss.tss_eip);
 	kprintf("esp = 0x%x\n", gd->gd_common_tss.tss_esp);
 	kprintf("ebp = 0x%x\n", gd->gd_common_tss.tss_ebp);
 #ifdef SMP
 	/* three separate prints in case of a trap on an unmapped page */
 	kprintf("mp_lock = %08x; ", mp_lock);
-	kprintf("cpuid = %d; ", mycpu->gd_cpuid);
+	kprintf("cpuid = %d; ", gd->mi.gd_cpuid);
 	kprintf("lapic.id = %08x\n", lapic.id);
 #endif
 	panic("double fault");

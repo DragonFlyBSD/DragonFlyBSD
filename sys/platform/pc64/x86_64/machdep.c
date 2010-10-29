@@ -1164,8 +1164,6 @@ struct region_descriptor r_gdt, r_idt;
 extern int has_f00f_bug;
 #endif
 
-static char dblfault_stack[PAGE_SIZE] __aligned(16);
-
 /* JG proc0paddr is a virtual address */
 void *proc0paddr;
 /* JG alignment? */
@@ -1810,8 +1808,10 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	gd->gd_common_tss.tss_rsp0 &= ~(register_t)0xF;
 	gd->gd_rsp0 = gd->gd_common_tss.tss_rsp0;
 
-	/* doublefault stack space, runs on ist1 */
-	gd->gd_common_tss.tss_ist1 = (long)&dblfault_stack[sizeof(dblfault_stack)];
+	/* double fault stack */
+	gd->gd_common_tss.tss_ist1 =
+		(long)&gd->mi.gd_prvspace->idlestack[
+			sizeof(gd->mi.gd_prvspace->idlestack)];
 
 	/* Set the IO permission bitmap (empty due to tss seg limit) */
 	gd->gd_common_tss.tss_iobase = sizeof(struct x86_64tss);

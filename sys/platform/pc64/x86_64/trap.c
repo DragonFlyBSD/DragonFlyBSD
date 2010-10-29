@@ -996,10 +996,33 @@ trap_fatal(struct trapframe *frame, vm_offset_t eva)
  * when the stack overflows (such is the case with infinite recursion,
  * for example).
  */
+static __inline
+int
+in_kstack_guard(register_t rptr)
+{
+	thread_t td = curthread;
+
+	if ((char *)rptr >= td->td_kstack &&
+	    (char *)rptr < td->td_kstack + PAGE_SIZE) {
+		return 1;
+	}
+	return 0;
+}
+
 void
 dblfault_handler(struct trapframe *frame)
 {
-	kprintf0("DOUBLE FAULT\n");
+	thread_t td = curthread;
+
+	if (in_kstack_guard(frame->tf_rsp) || in_kstack_guard(frame->tf_rbp)) {
+		kprintf0("DOUBLE FAULT - KERNEL STACK GUARD HIT!\n");
+		if (in_kstack_guard(frame->tf_rsp))
+			frame->tf_rsp = (register_t)(td->td_kstack + PAGE_SIZE);
+		if (in_kstack_guard(frame->tf_rbp))
+			frame->tf_rbp = (register_t)(td->td_kstack + PAGE_SIZE);
+	} else {
+		kprintf0("DOUBLE FAULT\n");
+	}
 	kprintf("\nFatal double fault\n");
 	kprintf("rip = 0x%lx\n", frame->tf_rip);
 	kprintf("rsp = 0x%lx\n", frame->tf_rsp);

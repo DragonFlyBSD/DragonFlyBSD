@@ -614,9 +614,12 @@ init_secondary(void)
 #endif
 	md->gd_tss_gdt = &gdt[myid * NGDT + GPROC0_SEL];
 	md->gd_common_tssd = *md->gd_tss_gdt;
-#if 0 /* JG XXX */
-	md->gd_common_tss.tss_ist1 = (long)&doublefault_stack[PAGE_SIZE];
-#endif
+
+	/* double fault stack */
+	md->gd_common_tss.tss_ist1 =
+		(long)&md->mi.gd_prvspace->idlestack[
+			sizeof(md->mi.gd_prvspace->idlestack)];
+
 	ltr(gsel_tss);
 
 	/*
