@@ -149,8 +149,10 @@ vm_offset_t
 kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 {
 	vm_offset_t addr;
+	vm_offset_t gstart;
 	vm_offset_t i;
 	int count;
+	int cow;
 
 	size = round_page(size);
 
@@ -158,6 +160,14 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 		count = vm_map_entry_kreserve(MAP_RESERVE_COUNT);
 	else
 		count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
+
+	if (kmflags & KM_STACK) {
+		cow = MAP_IS_KSTACK;
+		gstart = PAGE_SIZE;
+	} else {
+		cow = 0;
+		gstart = 0;
+	}
 
 	/*
 	 * Use the kernel object for wired-down kernel pages. Assume that no
@@ -181,7 +191,7 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 		      &kernel_object, addr, addr, addr + size,
 		      VM_MAPTYPE_NORMAL,
 		      VM_PROT_ALL, VM_PROT_ALL,
-		      0);
+		      cow);
 	vm_map_unlock(map);
 	if (kmflags & KM_KRESERVE)
 		vm_map_entry_krelease(count);
@@ -205,9 +215,8 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 	 * We're intentionally not activating the pages we allocate to prevent a
 	 * race with page-out.  vm_map_wire will wire the pages.
 	 */
-
 	lwkt_gettoken(&vm_token);
-	for (i = 0; i < size; i += PAGE_SIZE) {
+	for (i = gstart; i < size; i += PAGE_SIZE) {
 		vm_page_t mem;
 
 		mem = vm_page_grab(&kernel_object, OFF_TO_IDX(addr + i),
@@ -222,6 +231,8 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 
 	/*
 	 * And finally, mark the data as non-pageable.
+	 *
+	 * NOTE: vm_map_wire() handles any kstack guard.
 	 */
 	vm_map_wire(map, (vm_offset_t)addr, addr + size, kmflags);
 

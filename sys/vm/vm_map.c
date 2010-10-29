@@ -908,6 +908,8 @@ vm_map_insert(vm_map_t map, int *countp,
 		protoeflags |= MAP_ENTRY_NOCOREDUMP;
 	if (cow & MAP_IS_STACK)
 		protoeflags |= MAP_ENTRY_STACK;
+	if (cow & MAP_IS_KSTACK)
+		protoeflags |= MAP_ENTRY_KSTACK;
 
 	lwkt_gettoken(&vm_token);
 	lwkt_gettoken(&vmobj_token);

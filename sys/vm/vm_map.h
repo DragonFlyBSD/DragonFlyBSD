@@ -173,6 +173,7 @@ struct vm_map_entry {
 #define MAP_ENTRY_IN_TRANSITION		0x0100	/* entry being changed */
 #define MAP_ENTRY_NEEDS_WAKEUP		0x0200	/* waiter's in transition */
 #define MAP_ENTRY_NOCOREDUMP		0x0400	/* don't include in a core */
+#define MAP_ENTRY_KSTACK		0x0800	/* guarded kernel stack */
 
 /*
  * flags for vm_map_[un]clip_range()
@@ -455,6 +456,7 @@ vmspace_president_count(struct vmspace *vmspace)
 #define MAP_PREFAULT_PARTIAL	0x0010
 #define MAP_DISABLE_SYNCER	0x0020
 #define MAP_IS_STACK		0x0040
+#define MAP_IS_KSTACK		0x0080
 #define MAP_DISABLE_COREDUMP	0x0100
 #define MAP_PREFAULT_MADVISE	0x0200	/* from (user) madvise request */
 

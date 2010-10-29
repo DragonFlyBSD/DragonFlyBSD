@@ -44,6 +44,9 @@
 #ifndef _VM_VM_MAP_H_
 #include <vm/vm_map.h>
 #endif
+#ifndef _VM_VM_KERN_H_
+#include <vm/vm_kern.h>
+#endif
 #ifndef _MACHINE_TYPES_H_
 #include <machine/types.h>
 #endif
@@ -119,6 +122,13 @@ vm_offset_t
 kmem_alloc (vm_map_t map, vm_size_t size)
 {
 	return(kmem_alloc3(map, size, 0));
+}
+
+static __inline
+vm_offset_t
+kmem_alloc_stack (vm_map_t map, vm_size_t size)
+{
+	return(kmem_alloc3(map, size, KM_STACK));
 }
 
 #endif				/* _KERNEL */

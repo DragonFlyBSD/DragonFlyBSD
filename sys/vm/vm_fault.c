@@ -323,9 +323,17 @@ RetryFault:
 	 */
 	fs.map_generation = fs.map->timestamp;
 
-	if (fs.entry->eflags & MAP_ENTRY_NOFAULT) {
-		panic("vm_fault: fault on nofault entry, addr: %lx",
-		    (u_long)vaddr);
+	if (fs.entry->eflags & (MAP_ENTRY_NOFAULT | MAP_ENTRY_KSTACK)) {
+		if (fs.entry->eflags & MAP_ENTRY_NOFAULT) {
+			panic("vm_fault: fault on nofault entry, addr: %p",
+			      (void *)vaddr);
+		}
+		if ((fs.entry->eflags & MAP_ENTRY_KSTACK) &&
+		    vaddr >= fs.entry->start &&
+		    vaddr < fs.entry->start + PAGE_SIZE) {
+			panic("vm_fault: fault on stack guard, addr: %p",
+			      (void *)vaddr);
+		}
 	}
 
 	/*
@@ -1577,7 +1585,8 @@ vm_fault_wire(vm_map_t map, vm_map_entry_t entry, boolean_t user_wire)
 	end = entry->end;
 	fictitious = entry->object.vm_object &&
 			(entry->object.vm_object->type == OBJT_DEVICE);
-
+	if (entry->eflags & MAP_ENTRY_KSTACK)
+		start += PAGE_SIZE;
 	lwkt_gettoken(&vm_token);
 	vm_map_unlock(map);
 	map->timestamp++;
@@ -1632,6 +1641,8 @@ vm_fault_unwire(vm_map_t map, vm_map_entry_t entry)
 	end = entry->end;
 	fictitious = entry->object.vm_object &&
 			(entry->object.vm_object->type == OBJT_DEVICE);
+	if (entry->eflags & MAP_ENTRY_KSTACK)
+		start += PAGE_SIZE;
 
 	/*
 	 * Since the pages are wired down, we must be able to get their
