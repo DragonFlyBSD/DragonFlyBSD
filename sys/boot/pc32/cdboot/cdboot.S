@@ -66,8 +66,11 @@
 		.set SECTOR_SIZE,0x800		# size of a sector
 		.set SECTOR_SHIFT,11		# number of place to shift
 		.set BUFFER_LEN,0x100		# number of sectors in buffer
-		.set MAX_READ,0x10000		# max we can read at a time
-		.set MAX_READ_SEC,MAX_READ >> SECTOR_SHIFT
+# Some BIOSes just can't handle this
+#		.set MAX_READ,0x10000		# max we can read at a time
+#		.set MAX_READ_SEC,MAX_READ >> SECTOR_SHIFT
+		.set MAX_READ,0x800		# max we can read at a time
+		.set MAX_READ_SEC,1
 		.set MEM_READ_BUFFER,0x9000	# buffer to read from CD
 		.set MEM_VOLDESC,MEM_READ_BUFFER # volume descriptor
 		.set MEM_DIR,MEM_VOLDESC+SECTOR_SIZE # Lookup buffer
@@ -99,6 +102,7 @@ start:		cld				# string ops inc
 		mov %ax,%ds			# setup the
 		mov %ax,%es			#  data segments
 		mov %dl,drive			# Save BIOS boot device
+		sti				# make sure intrs are enabled
 		mov $msg_welcome,%si		# %ds:(%si) -> welcome message
 		call putstr			# display the welcome message
 
@@ -149,12 +153,12 @@ have_vd:					# Have Primary VD
 		 */
 		mov DIR_SIZE(%bx),%eax		# Read file length
 		add $SECTOR_SIZE-1,%eax		# Convert length to sectors
-		shr $11,%eax
+		shr $SECTOR_SHIFT,%eax
 		cmp $BUFFER_LEN,%eax
 		jbe load_sizeok
 		mov $msg_load2big,%si		# Error message
 		call error
-load_sizeok:	movzbw %al,%cx			# Num sectors to read
+load_sizeok:	mov	%al,%cl
 		mov DIR_EXTENT(%bx),%eax	# Load extent
 		xor %edx,%edx
 		mov DIR_EA_LEN(%bx),%dl
@@ -168,8 +172,8 @@ load_notrunc:	sub %dh,%cl			# Update count
 		call read			# Read it in
 		add $MAX_READ_SEC,%eax		# Update LBA
 		add $MAX_READ,%ebx		# Update dest addr
-		jcxz load_done			# Done?
-		jmp load_loop			# Keep going
+		testb %cl,%cl
+		jnz load_loop
 load_done:
 		/*
 		 * Turn on the A20 address line.
@@ -376,7 +380,8 @@ ff.nextblock:	subl $SECTOR_SIZE,rec_size	# Adjust size
 ff.checkname:	lea DIR_NAME(%bx),%di		# Address name in record
 		push %si			# Save
 		repe cmpsb			# Compare name
-		jcxz ff.match			# We have a winner!
+		testw %cx,%cx
+		jz ff.match			# We have a winner!
 		pop %si				# Restore
 		jmp ff.nextrec			# Keep looking.
 ff.match:	add $2,%sp			# Discard saved %si
@@ -393,19 +398,41 @@ read:		pushal				# dont screw around
 		mov %ebx,%eax			# Convert address
 		shr $4,%eax			#  to segment
 		mov %ax,edd_addr+0x2		#  and store
-read.retry:	call twiddle			# Entertain the user
-		push %dx			# Save
+		call twiddle			# Entertain the user
 		mov $edd_packet,%si		# Address Packet
 		mov %dh,edd_len			# Set length
 		mov drive,%dl			# BIOS Device
 		mov $0x42,%ah			# BIOS: Extended Read
 		int $0x13			# Call BIOS
-		pop %dx				# Restore
 		jc read.fail			# Worked?
 		popal
 		ret				# Return
-read.fail:	cmp $ERROR_TIMEOUT,%ah		# Timeout?
-		je read.retry			# Yes, Retry.
+read.fail:	cmp $ERROR_TIMEOUT,%ah
+		jne read.error
+
+		# Tell the user what is going on
+		#
+		mov $msg_timeout,%si
+		call putstr
+
+		# If an error occurs wait a second and try again.  Also
+		# reload the packet.  In early boot CDs can timeout for
+		# a lengthy period and if we do not delay the retry
+		# the BIOS can get seriously confused and wind up returning
+		# endless timeouts.
+		#
+		movw	$0200,%ax
+		int	$0x1a			# returns seconds in %dh
+		mov	%dx,%ax
+1:		push	%ax
+		movw	$0200,%ax		# returns seconds in %dh
+		int	$0x1a
+		pop	%ax
+		cmp	%ah,%dh			# wait for seconds to cycle
+		je	1b
+		popal
+		jmp	read
+
 read.error:	mov %ah,%al			# Save error
 		mov $hex_error,%di		# Format it
 		call hex8			#  as hex
@@ -564,13 +591,14 @@ msg_bootinfo:	.asciz	"Building the boot loader arguments\r\n"
 msg_relocate:	.asciz	"Relocating the loader and the BTX\r\n"
 msg_jump:	.asciz	"Starting the BTX loader\r\n"
 msg_badread:	.ascii  "Read Error: 0x"
-hex_error:	.ascii	"00\r\n"
+hex_error:	.asciz	"00\r\n"
 msg_novd:	.asciz  "Could not find Primary Volume Descriptor\r\n"
 msg_lookup:	.asciz  "Looking up "
 msg_lookup2:	.asciz  "... "
 msg_lookupok:	.asciz  "Found\r\n"
 msg_lookupfail:	.asciz  "File not found\r\n"
 msg_load2big:	.asciz  "File too big\r\n"
+msg_timeout:	.asciz  "Drive not ready, retry\r\n"
 loader_path:	.asciz  "/BOOT/LOADER"
 twiddle_chars:	.ascii	"|/-\\"
 
