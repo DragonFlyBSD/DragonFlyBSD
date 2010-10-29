@@ -369,15 +369,6 @@ trap(struct trapframe *frame)
 
 	p = td->td_proc;
 
-#ifdef JG
-	kprintf0("TRAP ");
-	kprintf0("\"%s\" type=%ld\n",
-		trap_msg[frame->tf_trapno], frame->tf_trapno);
-	kprintf0(" rip=%lx rsp=%lx\n", frame->tf_rip, frame->tf_rsp);
-	kprintf0(" err=%lx addr=%lx\n", frame->tf_err, frame->tf_addr);
-	kprintf0(" cs=%lx ss=%lx rflags=%lx\n", (unsigned long)frame->tf_cs, (unsigned long)frame->tf_ss, frame->tf_rflags);
-#endif
-
 #ifdef DDB
         /*
 	 * We need to allow T_DNA faults when the debugger is active since
@@ -1015,13 +1006,13 @@ dblfault_handler(struct trapframe *frame)
 	thread_t td = curthread;
 
 	if (in_kstack_guard(frame->tf_rsp) || in_kstack_guard(frame->tf_rbp)) {
-		kprintf0("DOUBLE FAULT - KERNEL STACK GUARD HIT!\n");
+		kprintf("DOUBLE FAULT - KERNEL STACK GUARD HIT!\n");
 		if (in_kstack_guard(frame->tf_rsp))
 			frame->tf_rsp = (register_t)(td->td_kstack + PAGE_SIZE);
 		if (in_kstack_guard(frame->tf_rbp))
 			frame->tf_rbp = (register_t)(td->td_kstack + PAGE_SIZE);
 	} else {
-		kprintf0("DOUBLE FAULT\n");
+		kprintf("DOUBLE FAULT\n");
 	}
 	kprintf("\nFatal double fault\n");
 	kprintf("rip = 0x%lx\n", frame->tf_rip);

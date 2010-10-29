@@ -1159,9 +1159,9 @@ dblfault_handler(void)
 
 	if (in_kstack_guard(gd->gd_common_tss.tss_esp) ||
 	    in_kstack_guard(gd->gd_common_tss.tss_ebp)) {
-		kprintf0("DOUBLE FAULT - KERNEL STACK GUARD HIT!\n");
+		kprintf("DOUBLE FAULT - KERNEL STACK GUARD HIT!\n");
 	} else {
-		kprintf0("DOUBLE FAULT:\n");
+		kprintf("DOUBLE FAULT:\n");
 	}
 	kprintf("eip = 0x%x\n", gd->gd_common_tss.tss_eip);
 	kprintf("esp = 0x%x\n", gd->gd_common_tss.tss_esp);

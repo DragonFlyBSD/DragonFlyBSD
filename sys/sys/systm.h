@@ -186,7 +186,6 @@ int	log (int, const char *, ...) __printflike(2, 3);
 void	logwakeup (void);
 void	log_console (struct uio *);
 int	kprintf (const char *, ...) __printflike(1, 2);
-int	kprintf0(const char *, ...) __printflike(1, 2);
 void	krateprintf (struct krate *, const char *, ...) __printflike(2, 3);
 int	ksnprintf (char *, size_t, const char *, ...) __printflike(3, 4);
 int	ksnrprintf (char *, size_t, int, const char *, ...) __printflike(4, 5);
