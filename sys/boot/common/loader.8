@@ -164,6 +164,11 @@ Any flags or arguments are passed to the kernel, but they
 must precede the kernel name, if a kernel name is provided.
 Flags are described in
 .Xr boot 8 .
+See also
+.Va boot_*
+and
+.Va kernel_options
+variables.
 .Pp
 .It Ic cd Op Ar directory
 Change working directory to
@@ -176,6 +181,17 @@ A new line will be printed unless
 .Fl n
 is specified.
 .Pp
+.It Ic else
+Conditional if/else/endif.
+.Pp
+.It Ic elseifexists Ar path
+Conditional
+.Ar path
+exists, i.e.\& file/dir present.
+.Pp
+.It Ic endif
+Conditional if/else/endif.
+.Pp
 .It Ic heap
 Displays memory usage statistics.
 For debugging purposes only.
@@ -187,6 +203,16 @@ The special
 .Ar topic
 .Cm index
 will list all topics available.
+.Pp
+.It Ic ifexists Ar path
+Conditional
+Ar path
+exists, i.e.\& file/dir present.
+.Pp
+.It Ic ifset Ar env_variable
+Conditional
+.Ar env_variable
+exists.
 .Pp
 .It Ic include Ar
 Process script files.
@@ -375,10 +401,10 @@ Unset this to disable automatic loading of the ACPI module.
 .It Va autoboot_delay
 Number of seconds
 .Ic autoboot
+and
+.Ic menu
 will wait before booting.
-If this variable is not defined,
-.Ic autoboot
-will default to 10 seconds.
+Default value is 10 seconds.
 .Pp
 If set to
 .Dq NO ,
@@ -409,12 +435,16 @@ by the kernel during and after the boot phase.
 .It Va bootfile
 List of semicolon-separated search path for bootable kernels.
 The default is
-.Dq Li kernel;kernel.old .
+.Dq Li kernel .
 .It Va console
 Defines the current console.
 .It Va currdev
 Selects the default device.
 Syntax for devices is odd.
+.It Va default_kernel
+Selects default kernel loaded by
+.Ic menu
+command.
 .It Va ehci_load
 Unset this to disable automatic loading of the EHCI module.
 .It Va init_path
@@ -423,6 +453,11 @@ process.
 The first matching binary is used.
 The default list is
 .Dq Li /sbin/init:/sbin/oinit:/sbin/init.bak .
+.It Va kernel_options
+Set kernel boot flags.
+See also
+.Ic boot
+command.
 .It Va LINES
 Define the number of lines on the screen, to be used by the pager.
 .It Va module_path

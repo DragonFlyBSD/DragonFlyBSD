@@ -65,6 +65,8 @@ static int curitem;
 static int curadd;
 
 static char *kenv_vars[] = {
+	"LINES",
+	"autoboot_delay",
 	"boot_askname",
 	"boot_cdrom",
 	"boot_ddb",
@@ -77,11 +79,13 @@ static char *kenv_vars[] = {
 	"bootfile",
 	"console",
 	"currdev",
+	"default_kernel",
 	"init_path",
-	"kernelname",
 	"kernel_options",
+	"kernelname",
 	"loaddev",
 	"module_path",
+	"root_disk_unit",
 	NULL
 };
 
@@ -444,7 +448,6 @@ command_menu(int ac, char **av)
 #define FRED_LEFT 0
 #define FRED_RIGHT 1
 static char *logo_blank_line = "                                 ";
-static char *menu_footer = "===============================================================================\n";
 
 static char *logo_color[LOGO_LINES] = {
 	"[37m ,--,           [31m|           [37m,--, [0m",
@@ -480,24 +483,6 @@ static char *logo_mono[LOGO_LINES] =  {
 	"               | |               ",
 	"               | |               ",
 	"               `|'               ",
-	"                                 " };
-
-static char *logo_blank[LOGO_LINES] =  {
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
 	"                                 " };
 
 static void

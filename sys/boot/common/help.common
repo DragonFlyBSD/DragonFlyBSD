@@ -45,18 +45,18 @@
 
 	<variable>=<value>
 
-	Assign value to variable.  Value is always assigned to local variable
-	<variable>.  If <variable> is in list of known kernel environment
-	variables or is a kernel tunable, it is also assigned to the kernel
-	environment variable of the given name.
-	<variable> is unset if <value> is empty.
+	Assign value to variable.  The value is always assigned to local
+	variable <variable>.  If <variable> is in the list of known kernel
+	environment variables or is a kernel tunable, the value is also
+	assigned to the kernel environment variable of the given name.
+	Local variables are unset if <value> is empty.  Kernel environment
+	variables may have empty values.
 
 	Two kinds of variables are maintained by this program (loader(8)):
 	local variables, that is for loader(8) use only, and kernel
 	environment variables, that kernel will have access to when it starts.
-	The assignment described above, will assign to a local variable and,
-	if it seems applicable, also snoop assignment to kernel environment
-	variable.
+	The assignment described above, will assign to a local variable and, if
+	it is applicable, also snoop assignment to kernel environment variable.
 
 ################################################################################
 # TAHCI DControl AHCI module behaviour
@@ -94,7 +94,7 @@
 
 	Displays <prompt> or a default prompt, and counts down <delay> seconds
 	before attempting to boot.  If <delay> is not specified, the default
-	value is 10.
+	value is $autoboot_delay.
 
 ################################################################################
 # Tboot DBoot immediately
@@ -226,11 +226,12 @@
 	kernel environment variables.
 
 ################################################################################
-# Tset Sautoboot_delay DSet the default autoboot delay
+# Tset Sautoboot_delay DSet the default autoboot / menu delay
 
 	set autoboot_delay=<value>
 
-	Sets the default delay for the autoboot command to <value> seconds.
+	Sets the default delay in seconds for the `autoboot' and `menu'
+	commands to wait before booting.  The default value is 10 seconds.
 
 ################################################################################
 # Tset Sbootfile DSet the default boot file set
@@ -239,8 +240,8 @@
 
 	Sets the default set of kernel boot filename(s).  It may be overridden
 	by setting the bootfile variable to a semicolon-separated list of
-	filenames, each of which will be searched for in the module_path
-	directories.  The default bootfile set is "kernel".
+	filenames, each of which will be searched for in the $module_path
+	directories.  The default value is "kernel".
 
 ################################################################################
 # Tset Sboot_askname DPrompt for root device
@@ -323,6 +324,14 @@
 	will be displayed.
 
 ################################################################################
+# Tset Sdefault_kernel DSet default kernel directory
+
+	set default_kernel=<path>
+
+	Selects the default kernel directory for `menu' command.  Default value
+	is "kernel".
+
+################################################################################
 # Tset Scurrdev DSet the current device
 
 	set currdev=<device>
@@ -345,8 +354,8 @@
 
 	Sets the list of directories which will be searched in for modules
 	named in a load command or implicitly required by a dependency.  An
-	Empty <path> specifies the current directory.  The default module_path
-	is ";modules".
+	empty <path> specifies the current directory.  The default value is
+	";modules".
 
 ################################################################################
 # Tset Sprompt DSet the command prompt
@@ -553,6 +562,41 @@
 	loadall
 
 	Load kernel and all modules specified by MODULE_load variables.
+
+################################################################################
+# Tifexists DConditional file/dir present
+
+	ifexists <path>
+
+	Conditional <path> exists, i.e. file/dir present.
+
+################################################################################
+# Tifset DConditional kenv variable present
+
+	ifset <env_variable>
+
+	Conditional <env_variable> exists.
+
+################################################################################
+# Telseifexists DConditional file/dir present
+
+	elseifexists <path>
+
+	Conditional <path> exists, i.e. file/dir present.
+
+################################################################################
+# Telse DConditional if/else/endif
+
+	else
+
+	Conditional if/else/endif.
+
+################################################################################
+# Tendif DConditional if/else/endif
+
+	endif
+
+	Conditional if/else/endif.
 
 ################################################################################
 # Tmenuclear DClear all menus
