@@ -1580,14 +1580,18 @@ vm_pageout_thread(void)
 		int error;
 
 		/*
-		 * Wait for an action request
+		 * Wait for an action request.  If we timeout check to
+		 * see if paging is needed (in case the normal wakeup
+		 * code raced us).
 		 */
 		crit_enter();
 		if (vm_pages_needed == 0) {
 			error = tsleep(&vm_pages_needed,
 				       0, "psleep",
 				       vm_pageout_stats_interval * hz);
-			if (error && vm_pages_needed == 0) {
+			if (error &&
+			    vm_paging_needed() == 0 &&
+			    vm_pages_needed == 0) {
 				vm_pageout_page_stats();
 				continue;
 			}
@@ -1663,9 +1667,9 @@ SYSINIT(pagedaemon, SI_SUB_KTHREAD_PAGE, SI_ORDER_FIRST, kproc_start, &page_kp)
  * to possibly wake the pagedaemon up to replentish our supply.
  *
  * We try to generate some hysteresis by waking the pagedaemon up
- * when our free+cache pages go below the severe level.  The pagedaemon
- * tries to get the count back up to at least the minimum, and through
- * to the target level if possible.
+ * when our free+cache pages go below the free_min+cache_min level.
+ * The pagedaemon tries to get the count back up to at least the
+ * minimum, and through to the target level if possible.
  *
  * If the pagedaemon is already active bump vm_pages_needed as a hint
  * that there are even more requests pending.
@@ -1676,12 +1680,12 @@ SYSINIT(pagedaemon, SI_SUB_KTHREAD_PAGE, SI_ORDER_FIRST, kproc_start, &page_kp)
 void
 pagedaemon_wakeup(void)
 {
-	if (vm_page_count_severe() && curthread != pagethread) {
+	if (vm_paging_needed() && curthread != pagethread) {
 		if (vm_pages_needed == 0) {
-			vm_pages_needed = 1;
+			vm_pages_needed = 1;	/* SMP race ok */
 			wakeup(&vm_pages_needed);
 		} else if (vm_page_count_min(0)) {
-			++vm_pages_needed;
+			++vm_pages_needed;	/* SMP race ok */
 		}
 	}
 }
