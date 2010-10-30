@@ -500,7 +500,7 @@ command_lsdev(int argc, char *argv[])
 /*
  * CONDITIONALS
  */
-COMMAND_SET_COND(ifexists, "ifexists", "conditional f/d present",
+COMMAND_SET_COND(ifexists, "ifexists", "conditional file/dir present",
 		 command_ifexists);
 
 struct cond {
@@ -536,7 +536,7 @@ command_ifexists(int argc, char *argv[])
 	}
 }
 
-COMMAND_SET_COND(ifset, "ifset", "conditional kenv present", command_ifset);
+COMMAND_SET_COND(ifset, "ifset", "conditional kenv variable present", command_ifset);
 
 static int
 command_ifset(int argc, char *argv[])
@@ -562,7 +562,7 @@ command_ifset(int argc, char *argv[])
 	}
 }
 
-COMMAND_SET_COND(elseifexists, "elseifexists", "conditional f/d present",
+COMMAND_SET_COND(elseifexists, "elseifexists", "conditional file/dir present",
 		 command_elseifexists);
 
 static int
@@ -596,7 +596,7 @@ command_elseifexists(int argc, char *argv[])
 	}
 }
 
-COMMAND_SET_COND(else, "else", "cond if/else/endif", command_else);
+COMMAND_SET_COND(else, "else", "conditional if/else/endif", command_else);
 
 static int
 command_else(int argc, char *argv[])
@@ -614,7 +614,7 @@ command_else(int argc, char *argv[])
 	}
 }
 
-COMMAND_SET_COND(endif, "endif", "cond if/else/endif", command_endif);
+COMMAND_SET_COND(endif, "endif", "conditional if/else/endif", command_endif);
 
 static int
 command_endif(int argc, char *argv[])
