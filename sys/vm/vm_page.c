@@ -77,6 +77,7 @@
 #include <sys/proc.h>
 #include <sys/vmmeter.h>
 #include <sys/vnode.h>
+#include <sys/kernel.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -108,6 +109,7 @@ struct vpgqueues vm_page_queues[PQ_COUNT]; /* Array of tailq lists */
 
 LIST_HEAD(vm_page_action_list, vm_page_action);
 struct vm_page_action_list	action_list[VMACTION_HSIZE];
+static volatile int vm_pages_waiting;
 
 
 #define ASSERT_IN_CRIT_SECTION()	KKASSERT(crit_test(curthread));
@@ -916,44 +918,68 @@ vm_test_nominal(void)
 /*
  * Block until free pages are available for allocation, called in various
  * places before memory allocations.
+ *
+ * The caller may loop if vm_page_count_min() == FALSE so we cannot be
+ * more generous then that.
  */
 void
 vm_wait(int timo)
 {
-	crit_enter();
+	/*
+	 * never wait forever
+	 */
+	if (timo == 0)
+		timo = hz;
 	lwkt_gettoken(&vm_token);
+
 	if (curthread == pagethread) {
-		vm_pageout_pages_needed = 1;
-		tsleep(&vm_pageout_pages_needed, 0, "VMWait", timo);
-	} else {
-		if (vm_pages_needed == 0) {
-			vm_pages_needed = 1;
-			wakeup(&vm_pages_needed);
+		/*
+		 * The pageout daemon itself needs pages, this is bad.
+		 */
+		if (vm_page_count_min(0)) {
+			vm_pageout_pages_needed = 1;
+			tsleep(&vm_pageout_pages_needed, 0, "VMWait", timo);
 		}
-		tsleep(&vmstats.v_free_count, 0, "vmwait", timo);
+	} else {
+		/*
+		 * Wakeup the pageout daemon if necessary and wait.
+		 */
+		if (vm_page_count_target()) {
+			if (vm_pages_needed == 0) {
+				vm_pages_needed = 1;
+				wakeup(&vm_pages_needed);
+			}
+			++vm_pages_waiting;	/* SMP race ok */
+			tsleep(&vmstats.v_free_count, 0, "vmwait", timo);
+		}
 	}
 	lwkt_reltoken(&vm_token);
-	crit_exit();
 }
 
 /*
  * Block until free pages are available for allocation
  *
- * Called only in vm_fault so that processes page faulting can be
+ * Called only from vm_fault so that processes page faulting can be
  * easily tracked.
  */
 void
 vm_waitpfault(void)
 {
-	crit_enter();
-	lwkt_gettoken(&vm_token);
-	if (vm_pages_needed == 0) {
-		vm_pages_needed = 1;
-		wakeup(&vm_pages_needed);
+	/*
+	 * Wakeup the pageout daemon if necessary and wait.
+	 */
+	if (vm_page_count_target()) {
+		lwkt_gettoken(&vm_token);
+		if (vm_page_count_target()) {
+			if (vm_pages_needed == 0) {
+				vm_pages_needed = 1;
+				wakeup(&vm_pages_needed);
+			}
+			++vm_pages_waiting;	/* SMP race ok */
+			tsleep(&vmstats.v_free_count, 0, "pfault", hz);
+		}
+		lwkt_reltoken(&vm_token);
 	}
-	tsleep(&vmstats.v_free_count, 0, "pfault", 0);
-	lwkt_reltoken(&vm_token);
-	crit_exit();
 }
 
 /*
@@ -1003,8 +1029,8 @@ static __inline void
 vm_page_free_wakeup(void)
 {
 	/*
-	 * if pageout daemon needs pages, then tell it that there are
-	 * some free.
+	 * If the pageout daemon itself needs pages, then tell it that
+	 * there are some free.
 	 */
 	if (vm_pageout_pages_needed &&
 	    vmstats.v_cache_count + vmstats.v_free_count >= 
@@ -1015,13 +1041,32 @@ vm_page_free_wakeup(void)
 	}
 
 	/*
-	 * wakeup processes that are waiting on memory if we hit a
-	 * high water mark. And wakeup scheduler process if we have
-	 * lots of memory. this process will swapin processes.
+	 * Wakeup processes that are waiting on memory.
+	 *
+	 * NOTE: vm_paging_target() is the pageout daemon's target, while
+	 *	 vm_page_count_target() is somewhere inbetween.  We want
+	 *	 to wake processes up prior to the pageout daemon reaching
+	 *	 its target to provide some hysteresis.
 	 */
-	if (vm_pages_needed && !vm_page_count_min(0)) {
-		vm_pages_needed = 0;
-		wakeup(&vmstats.v_free_count);
+	if (vm_pages_waiting) {
+		if (!vm_page_count_target()) {
+			/*
+			 * Plenty of pages are free, wakeup everyone.
+			 */
+			vm_pages_waiting = 0;
+			wakeup(&vmstats.v_free_count);
+			++mycpu->gd_cnt.v_ppwakeups;
+		} else if (!vm_page_count_min(0)) {
+			/*
+			 * Some pages are free, wakeup someone.
+			 */
+			int wcount = vm_pages_waiting;
+			if (wcount > 0)
+				--wcount;
+			vm_pages_waiting = wcount;
+			wakeup_one(&vmstats.v_free_count);
+			++mycpu->gd_cnt.v_ppwakeups;
+		}
 	}
 }
 

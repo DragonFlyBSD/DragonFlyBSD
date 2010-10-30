@@ -385,6 +385,8 @@ SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_reactivated, CTLTYPE_UINT|CTLFLAG_RD,
 	0, VMMETEROFF(v_reactivated), vcnt, "IU", "Reactivated pages");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_pdwakeups, CTLTYPE_UINT|CTLFLAG_RD,
 	0, VMMETEROFF(v_pdwakeups), vcnt, "IU", "Pagedaemon wakeups");
+SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_ppwakeups, CTLTYPE_UINT|CTLFLAG_RD,
+	0, VMMETEROFF(v_ppwakeups), vcnt, "IU", "vm_wait wakeups");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_pdpages, CTLTYPE_UINT|CTLFLAG_RD,
 	0, VMMETEROFF(v_pdpages), vcnt, "IU", "Pagedaemon page scans");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_dfree, CTLTYPE_UINT|CTLFLAG_RD,

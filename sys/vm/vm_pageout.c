@@ -1187,17 +1187,39 @@ rescan0:
 	}
 
 	/*
-	 * We try to maintain some *really* free pages, this allows interrupt
-	 * code to be guaranteed space.  Since both cache and free queues 
-	 * are considered basically 'free', moving pages from cache to free
-	 * does not effect other calculations.
+	 * The number of actually free pages can drop down to v_free_reserved,
+	 * we try to build the free count back above v_free_min.  Note that
+	 * vm_paging_needed() also returns TRUE if v_free_count is not at
+	 * least v_free_min so that is the minimum we must build the free
+	 * count to.
+	 *
+	 * We use a slightly higher target to improve hysteresis,
+	 * ((v_free_target + v_free_min) / 2).  Since v_free_target
+	 * is usually the same as v_cache_min this maintains about
+	 * half the pages in the free queue as are in the cache queue,
+	 * providing pretty good pipelining for pageout operation.
+	 *
+	 * The system operator can manipulate vm.v_cache_min and
+	 * vm.v_free_target to tune the pageout demon.  Be sure
+	 * to keep vm.v_free_min < vm.v_free_target.
+	 *
+	 * Note that the original paging target is to get at least
+	 * (free_min + cache_min) into (free + cache).  The slightly
+	 * higher target will shift additional pages from cache to free
+	 * without effecting the original paging target in order to
+	 * maintain better hysteresis and not have the free count always
+	 * be dead-on v_free_min.
 	 *
 	 * NOTE: we are still in a critical section.
 	 *
 	 * Pages moved from PQ_CACHE to totally free are not counted in the
 	 * pages_freed counter.
 	 */
-	while (vmstats.v_free_count < vmstats.v_free_reserved) {
+	while (vmstats.v_free_count <
+	       (vmstats.v_free_min + vmstats.v_free_target) / 2) {
+		/*
+		 *
+		 */
 		static int cache_rover = 0;
 		m = vm_page_list_find(PQ_CACHE, cache_rover, FALSE);
 		if (m == NULL)
@@ -1584,7 +1606,6 @@ vm_pageout_thread(void)
 		 * see if paging is needed (in case the normal wakeup
 		 * code raced us).
 		 */
-		crit_enter();
 		if (vm_pages_needed == 0) {
 			error = tsleep(&vm_pages_needed,
 				       0, "psleep",
@@ -1597,17 +1618,8 @@ vm_pageout_thread(void)
 			}
 			vm_pages_needed = 1;
 		}
-		crit_exit();
 
-		/*
-		 * If we have enough free memory, wakeup waiters.
-		 * (This is optional here)
-		 */
-		crit_enter();
-		if (!vm_page_count_min(0))
-			wakeup(&vmstats.v_free_count);
 		mycpu->gd_cnt.v_pdwakeups++;
-		crit_exit();
 
 		/*
 		 * Scan for pageout.  Try to avoid thrashing the system
