@@ -101,7 +101,7 @@ struct vmmeter {
 	u_int v_sendsys;	/* calls to sendsys() */
 	u_int v_waitsys;	/* calls to waitsys() */
 	u_int v_smpinvltlb;	/* nasty global invltlbs */
-	u_int v_reserved0;
+	u_int v_ppwakeups;	/* wakeups on processes stalled on VM */
 	u_int v_reserved1;
 	u_int v_reserved2;
 	u_int v_reserved3;
