@@ -498,7 +498,6 @@ sys_linux_fstatat64(struct linux_fstatat64_args *args)
 	if (ldebug(fstatat64))
 		kprintf(ARGS(fstatat64, "%s"), path);
 #endif
-	kprintf(ARGS(fstatat64, "%s"), path);
 	dfd = (args->dfd == LINUX_AT_FDCWD) ? AT_FDCWD : args->dfd;
 	flags = (args->flag & LINUX_AT_SYMLINK_NOFOLLOW) ? 0 : NLC_FOLLOW;
 
