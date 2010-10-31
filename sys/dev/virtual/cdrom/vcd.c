@@ -31,7 +31,6 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/virtual/cdrom/vcd.c,v 1.1 2007/05/25 02:21:13 dillon Exp $
  */
 
 /*
@@ -62,13 +61,11 @@ struct vcd_softc {
 	int fd;
 };
 
-#define CDEV_MAJOR	98
-
 static d_strategy_t	vcdstrategy;
 static d_open_t		vcdopen;
 
 static struct dev_ops vcd_ops = {
-	{ "vcd", CDEV_MAJOR, D_DISK },
+	{ "vcd", 0, D_DISK },
         .d_open =	vcdopen,
         .d_close =	nullclose,
         .d_read =	physread,

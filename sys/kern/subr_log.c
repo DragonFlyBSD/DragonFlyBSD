@@ -32,7 +32,6 @@
  *
  *	@(#)subr_log.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/subr_log.c,v 1.39.2.2 2001/06/02 08:11:25 phk Exp $
- * $DragonFly: src/sys/kern/subr_log.c,v 1.10 2006/07/28 02:17:40 dillon Exp $
  */
 
 /*
@@ -70,7 +69,7 @@ static	int  logfiltread(struct knote *kn, long hint);
 
 #define CDEV_MAJOR 7
 static struct dev_ops log_ops = {
-	{ "log", CDEV_MAJOR, 0 },
+	{ "log", 0, 0 },
 	.d_open =	logopen,
 	.d_close =	logclose,
 	.d_read =	logread,

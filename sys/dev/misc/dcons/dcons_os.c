@@ -34,7 +34,6 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/dcons/dcons_os.c,v 1.4 2004/10/24 12:41:04 simokawa Exp $
- * $DragonFly: src/sys/dev/misc/dcons/dcons_os.c,v 1.13 2007/08/07 13:14:11 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -89,14 +88,12 @@
 #define DCONS_FORCE_GDB	1
 #endif
 
-#define CDEV_MAJOR      184
-
 static d_open_t		dcons_open;
 static d_close_t	dcons_close;
 static d_ioctl_t	dcons_ioctl;
 
 static struct dev_ops dcons_ops = {
-	{ "dcons", CDEV_MAJOR, D_TTY },
+	{ "dcons", 0, D_TTY },
 	.d_open =	dcons_open,
 	.d_close =	dcons_close,
 	.d_read =	ttyread,

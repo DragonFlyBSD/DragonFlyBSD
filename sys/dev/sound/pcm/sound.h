@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sound.h,v 1.63.2.3 2007/05/13 20:53:39 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sound.h,v 1.14 2008/01/05 13:34:22 corecode Exp $
  */
 
 /*
@@ -145,11 +144,6 @@ nomenclature:
 
 struct pcm_channel *fkchan_setup(device_t dev);
 int fkchan_kill(struct pcm_channel *c);
-
-/*
- * Major nuber for the sound driver.
- */
-#define SND_CDEV_MAJOR 30
 
 /* XXX Flawed definition. I'll fix it someday. */
 #define	SND_MAXVCHANS	PCMMAXCHAN

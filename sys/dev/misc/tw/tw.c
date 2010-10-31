@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/tw.c,v 1.38 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.19 2008/08/02 01:14:42 dillon Exp $
  *
  */
 
@@ -219,9 +218,8 @@ static void twfilter_detach(struct knote *);
 static int twfilter_read(struct knote *, long);
 static int twfilter_write(struct knote *, long);
 
-#define CDEV_MAJOR 19
 static struct dev_ops tw_ops = {
-	{ "tw", CDEV_MAJOR, 0 },
+	{ "tw", 0, 0 },
 	.d_open	=	twopen,
 	.d_close =	twclose,
 	.d_read =	twread,

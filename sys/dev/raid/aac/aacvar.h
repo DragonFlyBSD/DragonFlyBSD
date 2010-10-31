@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aacvar.h,v 1.4.2.7 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.22 2008/06/10 17:20:48 dillon Exp $
  */
 
 #include <sys/buf.h>
@@ -91,11 +90,6 @@
  * controller.
  */
 #define AAC_PERIODIC_INTERVAL	20		/* seconds */
-
-/*
- * Character device major numbers.
- */
-#define AAC_DISK_MAJOR	200
 
 /*
  * Per-container data structure

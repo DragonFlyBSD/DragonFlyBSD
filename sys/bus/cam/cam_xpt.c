@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.68 2008/08/23 17:13:31 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -683,14 +682,12 @@ static struct periph_driver probe_driver =
 PERIPHDRIVER_DECLARE(xpt, xpt_driver);
 PERIPHDRIVER_DECLARE(probe, probe_driver);
 
-#define XPT_CDEV_MAJOR 104
-
 static d_open_t xptopen;
 static d_close_t xptclose;
 static d_ioctl_t xptioctl;
 
 static struct dev_ops xpt_ops = {
-	{ "xpt", XPT_CDEV_MAJOR, 0 },
+	{ "xpt", 0, 0 },
 	.d_open = xptopen,
 	.d_close = xptclose,
 	.d_ioctl = xptioctl

@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/sysmouse.c,v 1.2.2.2 2001/07/16 05:21:24 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/sysmouse.c,v 1.12 2006/09/10 01:26:35 dillon Exp $
  */
 
 /* MPSAFE NOTE: This file uses the tty_token mostly for the linesw access and
@@ -59,7 +58,7 @@ static d_close_t	smclose;
 static d_ioctl_t	smioctl;
 
 static struct dev_ops sm_ops = {
-	{ "sysmouse", CDEV_MAJOR, D_TTY },
+	{ "sysmouse", 0, D_TTY },
 	.d_open =	smopen,
 	.d_close =	smclose,
 	.d_read =	ttyread,

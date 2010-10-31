@@ -53,7 +53,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr.c,v 1.7.2.13 2003/01/15 13:41:18 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.28 2008/09/16 14:08:48 swildner Exp $
  */
 
 /*
@@ -82,14 +81,12 @@
 #define AMR_DEFINE_TABLES
 #include "amr_tables.h"
 
-#define AMR_CDEV_MAJOR	132
-
 static d_open_t         amr_open;
 static d_close_t        amr_close;
 static d_ioctl_t        amr_ioctl;
 
 static struct dev_ops amr_ops = {
-	{ "amr", AMR_CDEV_MAJOR, 0 },
+	{ "amr", 0, 0 },
 	.d_open =	amr_open,
 	.d_close =	amr_close,
 	.d_ioctl =	amr_ioctl

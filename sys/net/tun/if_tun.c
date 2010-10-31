@@ -14,7 +14,6 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.37 2008/06/05 18:06:32 swildner Exp $
  */
 
 #include "use_tun.h"
@@ -97,9 +96,8 @@ DEVFS_DECLARE_CLONE_BITMAP(tun);
 #define TUN_PREALLOCATED_UNITS	NTUN
 #endif
 
-#define CDEV_MAJOR 52
 static struct dev_ops tun_ops = {
-	{ "tun", CDEV_MAJOR, 0 },
+	{ "tun", 0, 0 },
 	.d_open =	tunopen,
 	.d_close =	tunclose,
 	.d_read =	tunread,

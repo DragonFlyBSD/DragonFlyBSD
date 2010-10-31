@@ -34,7 +34,6 @@
  *
  *	@(#)tty_pty.c	8.4 (Berkeley) 2/20/95
  * $FreeBSD: src/sys/kern/tty_pty.c,v 1.74.2.4 2002/02/20 19:58:13 dillon Exp $
- * $DragonFly: src/sys/kern/tty_pty.c,v 1.21 2008/08/13 10:29:38 swildner Exp $
  */
 
 /*
@@ -127,9 +126,8 @@ static struct dev_ops ptc98_ops = {
 };
 #endif
 
-#define	CDEV_MAJOR_S	5
 static struct dev_ops pts_ops = {
-	{ "pts", CDEV_MAJOR_S, D_TTY },
+	{ "pts", 0, D_TTY },
 	.d_open =	ptsopen,
 	.d_close =	ptsclose,
 	.d_read =	ptsread,
@@ -141,7 +139,7 @@ static struct dev_ops pts_ops = {
 
 #define	CDEV_MAJOR_C	6
 static struct dev_ops ptc_ops = {
-	{ "ptc", CDEV_MAJOR_C, D_TTY | D_MASTER },
+	{ "ptc", 0, D_TTY | D_MASTER },
 	.d_open =	ptcopen,
 	.d_close =	ptcclose,
 	.d_read =	ptcread,

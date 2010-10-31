@@ -2,7 +2,6 @@
  * $NetBSD: ugen.c,v 1.27 1999/10/28 12:08:38 augustss Exp $
  * $NetBSD: ugen.c,v 1.59 2002/07/11 21:14:28 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ugen.c,v 1.81 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.34 2008/05/13 08:35:12 hasso Exp $
  */
 
 /* 
@@ -144,10 +143,8 @@ static void ugen_filt_detach(struct knote *);
 static int ugen_filt_read(struct knote *, long);
 static int ugen_filt_write(struct knote *, long);
 
-#define UGEN_CDEV_MAJOR	114
-
 static struct dev_ops ugen_ops = {
-	{ "ugen", UGEN_CDEV_MAJOR, 0 },
+	{ "ugen", 0, 0 },
 	.d_open =	ugenopen,
 	.d_close =	ugenclose,
 	.d_read =	ugenread,

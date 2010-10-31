@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pass.c,v 1.19 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.27 2008/05/18 20:30:20 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -82,8 +81,6 @@ struct pass_softc {
 	struct devstat	device_stats;
 };
 
-#define PASS_CDEV_MAJOR 31
-
 static	d_open_t	passopen;
 static	d_close_t	passclose;
 static	d_ioctl_t	passioctl;
@@ -111,7 +108,7 @@ static struct periph_driver passdriver =
 PERIPHDRIVER_DECLARE(pass, passdriver);
 
 static struct dev_ops pass_ops = {
-	{ "pass", PASS_CDEV_MAJOR, 0 },
+	{ "pass", 0, 0 },
 	.d_open =	passopen,
 	.d_close =	passclose,
 	.d_read =	noread,

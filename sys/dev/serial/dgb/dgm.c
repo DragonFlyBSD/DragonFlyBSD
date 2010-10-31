@@ -1,6 +1,5 @@
 /*-
  * $FreeBSD: src/sys/dev/dgb/dgm.c,v 1.31.2.3 2001/10/07 09:02:25 brian Exp $
- * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.17 2008/04/30 17:28:16 dillon Exp $
  *
  *  This driver and the associated header files support the ISA PC/Xem
  *  Digiboards.  Its evolutionary roots are described below.
@@ -240,9 +239,8 @@ static driver_t dgmdriver = {
 
 static devclass_t dgmdevclass;
 
-#define	CDEV_MAJOR	101
 static struct dev_ops dgm_ops = {
-	{ "dgm", CDEV_MAJOR, D_TTY },
+	{ "dgm", 0, D_TTY },
 	.d_open =	dgmopen,
 	.d_close =	dgmclose,
 	.d_read =	ttyread,

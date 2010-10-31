@@ -95,7 +95,6 @@
 #if defined(__linux__) || defined(__NetBSD__)
 #define DRM_MAJOR       226
 #endif
-#define DRM_MAX_MINOR   15
 
 #define DRM_NAME	"drm"	  /**< Name in kernel, /dev, and /proc */
 #define DRM_MIN_ORDER	5	  /**< At least 2^5 bytes = 32 bytes */

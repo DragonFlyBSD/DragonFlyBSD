@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rc.c,v 1.53.2.1 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.24 2008/08/02 01:14:43 dillon Exp $
  *
  */
 
@@ -92,9 +91,8 @@ static	d_open_t	rcopen;
 static	d_close_t	rcclose;
 static	d_ioctl_t	rcioctl;
 
-#define	CDEV_MAJOR	63
 static struct dev_ops rc_ops = {
-	{ "rc", CDEV_MAJOR, D_TTY },
+	{ "rc", 0, D_TTY },
 	.d_open =	rcopen,
 	.d_close =	rcclose,
 	.d_read =	ttyread,

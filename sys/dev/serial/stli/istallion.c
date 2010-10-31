@@ -34,7 +34,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/istallion.c,v 1.36.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.23 2008/08/02 01:14:43 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -631,9 +630,8 @@ struct isa_driver	stlidriver = {
  *	FreeBSD-2.2+ kernel linkage.
  */
 
-#define	CDEV_MAJOR	75
 static struct dev_ops stli_ops = {
-	{ stli_drvname, CDEV_MAJOR, D_TTY },
+	{ stli_drvname, 0, D_TTY },
 	.d_open =	stliopen,
 	.d_close =	stliclose,
 	.d_read =	stliread,

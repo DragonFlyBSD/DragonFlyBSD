@@ -1,7 +1,6 @@
 /*
  * $NetBSD: uhid.c,v 1.46 2001/11/13 06:24:55 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uhid.c,v 1.65 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.33 2008/08/14 20:55:53 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -136,10 +135,8 @@ static void uhidfilt_detach(struct knote *);
 static int uhidfilt_read(struct knote *, long);
 static int uhidfilt_write(struct knote *, long);
 
-#define		UHID_CDEV_MAJOR 122
-
 static struct dev_ops uhid_ops = {
-	{ "uhid", UHID_CDEV_MAJOR, 0 },
+	{ "uhid", 0, 0 },
 	.d_open =	uhidopen,
 	.d_close =	uhidclose,
 	.d_read =	uhidread,

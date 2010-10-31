@@ -30,7 +30,6 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/urio.c,v 1.28 2003/08/25 22:01:06 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.27 2008/08/14 20:55:54 hasso Exp $
  */
 
 /*
@@ -94,10 +93,8 @@ d_read_t  urioread;
 d_write_t uriowrite;
 d_ioctl_t urioioctl;
 
-#define URIO_CDEV_MAJOR	143
-
 static struct dev_ops urio_ops = {
-	{ "urio", URIO_CDEV_MAJOR, 0 },
+	{ "urio", 0, 0 },
 	.d_open =	urioopen,
 	.d_close =	urioclose,
 	.d_read =	urioread,

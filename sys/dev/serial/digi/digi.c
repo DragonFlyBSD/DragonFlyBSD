@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/digi/digi.c,v 1.36 2003/09/26 09:05:57 phk Exp $
- * $DragonFly: src/sys/dev/serial/digi/digi.c,v 1.11 2008/04/30 17:28:17 dillon Exp $
  */
 
 /*-
@@ -64,8 +63,6 @@
 #include <dev/serial/digi/digi.h>
 #include <dev/serial/digi/digi_pci.h>
 #include <dev/serial/digi/digi_bios.h>
-
-#define	CDEV_MAJOR	162
 
 #define	CTRL_DEV		0x800000
 #define	CALLOUT_MASK		0x400000
@@ -149,7 +146,7 @@ const struct digi_control_signals digi_normal_signals = {
 };
 
 static struct dev_ops digi_ops = {
-	{ "dgm", CDEV_MAJOR, D_TTY },
+	{ "dgm", 0, D_TTY },
 	.d_open =	digiopen,
 	.d_close =	digiclose,
 	.d_read =	digiread,

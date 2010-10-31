@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbd.c,v 1.17.2.2 2001/07/30 16:46:43 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.23 2007/05/08 02:31:39 dillon Exp $
  */
 /*
  * Generic keyboard driver.
@@ -581,10 +580,8 @@ static d_kqfilter_t	genkbdkqfilter;
 static void genkbdfiltdetach(struct knote *);
 static int genkbdfilter(struct knote *, long);
 
-#define CDEV_MAJOR	112
-
 static struct dev_ops kbd_ops = {
-	{ "kbd", CDEV_MAJOR, 0 },
+	{ "kbd", 0, 0 },
 	.d_open =	genkbdopen,
 	.d_close =	genkbdclose,
 	.d_read =	genkbdread,

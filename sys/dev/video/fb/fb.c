@@ -28,7 +28,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/fb.c,v 1.11.2.2 2000/08/02 22:35:22 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.19 2008/01/09 21:29:11 swildner Exp $
  */
 
 #include "opt_fb.h"
@@ -370,10 +369,8 @@ fbattach(device_t dev)
 static d_default_t	fboperate;
 static d_open_t		fbopen;
 
-#define CDEV_MAJOR	123	/* XXX */
-
 static struct dev_ops fb_ops = {
-	{ FB_DRIVER_NAME, CDEV_MAJOR, 0 },
+	{ FB_DRIVER_NAME, 0, 0 },
 	.d_default =	fboperate,
 	.d_open =	fbopen
 };

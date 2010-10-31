@@ -28,7 +28,6 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_rbch.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.22 2006/12/22 23:44:55 swildner Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:57 2001]
  *
@@ -124,10 +123,8 @@ PDEVSTATIC void i4brbchkfilt_detach(struct knote *);
 PDEVSTATIC int i4brbchkfilt_read(struct knote *, long);
 PDEVSTATIC int i4brbchkfilt_write(struct knote *, long);
 
-#define CDEV_MAJOR 57
-
 static struct dev_ops i4brbch_ops = {
-	{ "i4brbch", CDEV_MAJOR, 0 },
+	{ "i4brbch", 0, 0 },
 	.d_open =	i4brbchopen,
 	.d_close =	i4brbchclose,
 	.d_read =	i4brbchread,

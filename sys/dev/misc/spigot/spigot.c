@@ -43,7 +43,6 @@
  * Version 1.7, December 1995.
  *
  * $FreeBSD: src/sys/i386/isa/spigot.c,v 1.44 2000/01/29 16:17:36 peter Exp $
- * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.16 2008/08/02 01:14:42 dillon Exp $
  *
  */
 
@@ -97,9 +96,8 @@ static	d_write_t	spigot_write;
 static	d_ioctl_t	spigot_ioctl;
 static	d_mmap_t	spigot_mmap;
 
-#define CDEV_MAJOR 11
 static struct dev_ops spigot_ops = {
-	{ "spigot", CDEV_MAJOR, 0 },
+	{ "spigot", 0, 0 },
 	.d_open =	spigot_open,
 	.d_close =	spigot_close,
 	.d_read =	spigot_read,

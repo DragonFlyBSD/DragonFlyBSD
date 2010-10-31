@@ -29,7 +29,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/meteor.c,v 1.49 1999/09/25 18:24:41 phk Exp $
- * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.22 2007/05/13 18:33:58 swildner Exp $
  */
 
 /*		Change History:
@@ -220,9 +219,8 @@ static	d_write_t	meteor_write;
 static	d_ioctl_t	meteor_ioctl;
 static	d_mmap_t	meteor_mmap;
 
-#define CDEV_MAJOR 67
 static struct dev_ops meteor_ops = {
-	{ "meteor", CDEV_MAJOR, 0 },
+	{ "meteor", 0, 0 },
 	.d_open =	meteor_open,
 	.d_close =	meteor_close,
 	.d_read =	meteor_read,

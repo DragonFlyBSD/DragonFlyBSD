@@ -34,7 +34,6 @@
  *
  *	@(#)tty_tty.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/tty_tty.c,v 1.30 1999/09/25 18:24:24 phk Exp $
- * $DragonFly: src/sys/kern/tty_tty.c,v 1.19 2007/07/03 17:22:14 dillon Exp $
  */
 
 /*
@@ -67,7 +66,7 @@ static int cttyfilt_write(struct knote *, long);
 
 #define	CDEV_MAJOR	1
 static struct dev_ops ctty_ops = {
-	{ "ctty", CDEV_MAJOR, D_TTY },
+	{ "ctty", 0, D_TTY },
 	.d_open =	cttyopen,
 	.d_close =	cttyclose,
 	.d_read =	cttyread,

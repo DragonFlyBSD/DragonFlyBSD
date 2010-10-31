@@ -30,7 +30,6 @@
  *	$Id: i4b_ctl.c,v 1.37 2000/05/31 08:04:43 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ctl.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ctl.c,v 1.14 2006/12/22 23:44:55 swildner Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:38 2001]
  *
@@ -66,10 +65,8 @@ static	d_open_t	i4bctlopen;
 static	d_close_t	i4bctlclose;
 static	d_ioctl_t	i4bctlioctl;
 
-#define CDEV_MAJOR 55
-
 static struct dev_ops i4bctl_ops = {
-	{ "i4bctl", CDEV_MAJOR, 0 },
+	{ "i4bctl", 0, 0 },
 	.d_open =      i4bctlopen,
 	.d_close =     i4bctlclose,
 	.d_ioctl =     i4bctlioctl,

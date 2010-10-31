@@ -16,7 +16,6 @@
  * Sep, 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/sys/i386/apm/apm.c,v 1.114.2.5 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/apm/apm.c,v 1.21 2006/12/23 00:27:03 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -87,9 +86,8 @@ static void apmfilter_detach(struct knote *);
 static int apmfilter_read(struct knote *, long);
 static int apmfilter_write(struct knote *, long);
 
-#define CDEV_MAJOR 39
 static struct dev_ops apm_ops = {
-	{ "apm", CDEV_MAJOR, 0 },
+	{ "apm", 0, 0 },
 	.d_open =	apmopen,
 	.d_close =	apmclose,
 	.d_write =	apmwrite,

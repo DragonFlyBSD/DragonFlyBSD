@@ -1,7 +1,6 @@
 /* 
  * $NetBSD: uscanner.c,v 1.30 2002/07/11 21:14:36 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uscanner.c,v 1.48 2003/12/22 19:58:27 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.27 2008/01/16 12:25:36 matthias Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -256,10 +255,8 @@ d_read_t  uscannerread;
 d_write_t uscannerwrite;
 d_kqfilter_t uscannerkqfilter;
 
-#define USCANNER_CDEV_MAJOR	156
-
 static struct dev_ops uscanner_ops = {
-	{ "uscanner", USCANNER_CDEV_MAJOR, 0 },
+	{ "uscanner", 0, 0 },
 	.d_open =	uscanneropen,
 	.d_close =	uscannerclose,
 	.d_read =	uscannerread,

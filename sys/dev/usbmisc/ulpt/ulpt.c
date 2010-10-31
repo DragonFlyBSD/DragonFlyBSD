@@ -1,7 +1,6 @@
 /*
  * $NetBSD: ulpt.c,v 1.55 2002/10/23 09:14:01 jdolecek Exp $
  * $FreeBSD: src/sys/dev/usb/ulpt.c,v 1.59 2003/09/28 20:48:13 phk Exp $
- * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.25 2008/02/11 16:56:53 dillon Exp $
  */
 
 /*
@@ -124,10 +123,8 @@ static d_close_t ulptclose;
 static d_write_t ulptwrite;
 static d_ioctl_t ulptioctl;
 
-#define ULPT_CDEV_MAJOR 113
-
 static struct dev_ops ulpt_ops = {
-	{ "ulpt", ULPT_CDEV_MAJOR, 0 },
+	{ "ulpt", 0, 0 },
 	.d_open =	ulptopen,
 	.d_close =	ulptclose,
 	.d_write =	ulptwrite,

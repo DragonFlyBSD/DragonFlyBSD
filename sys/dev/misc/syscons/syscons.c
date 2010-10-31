@@ -29,7 +29,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.35 2008/08/10 19:47:31 swildner Exp $
  */
 
 #include "use_splash.h"
@@ -217,8 +216,6 @@ syscons_unlock(void)
 /*
  * Console driver
  */
-#define	CDEV_MAJOR	12
-
 static cn_probe_t	sccnprobe;
 static cn_init_t	sccninit;
 static cn_init_t	sccninit_fini;
@@ -238,7 +235,7 @@ static	d_ioctl_t	scioctl;
 static	d_mmap_t	scmmap;
 
 static struct dev_ops sc_ops = {
-	{ "sc", CDEV_MAJOR, D_TTY },
+	{ "sc", 0, D_TTY },
 	.d_open =	scopen,
 	.d_close =	scclose,
 	.d_read =	scread,

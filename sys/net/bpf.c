@@ -38,7 +38,6 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.50 2008/09/23 11:28:49 sephe Exp $
  */
 
 #include "use_bpf.h"
@@ -141,7 +140,7 @@ static d_kqfilter_t	bpfkqfilter;
 
 #define CDEV_MAJOR 23
 static struct dev_ops bpf_ops = {
-	{ "bpf", CDEV_MAJOR, 0 },
+	{ "bpf", 0, 0 },
 	.d_open =	bpfopen,
 	.d_close =	bpfclose,
 	.d_read =	bpfread,

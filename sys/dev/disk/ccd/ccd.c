@@ -31,7 +31,6 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.50 2007/11/06 03:50:02 dillon Exp $
  */
 /*
  * Copyright (c) 1995 Jason R. Thorpe.
@@ -108,7 +107,6 @@
  * @(#)cd.c	8.2 (Berkeley) 11/16/93
  * $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $
  * $NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $
- * $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.50 2007/11/06 03:50:02 dillon Exp $
  */
 
 /*
@@ -207,10 +205,8 @@ static d_dump_t ccddump;
 
 #define NCCDFREEHIWAT	16
 
-#define CDEV_MAJOR 74
-
 static struct dev_ops ccd_ops = {
-	{ "ccd", CDEV_MAJOR, D_DISK },
+	{ "ccd", 0, D_DISK },
 	.d_open =	ccdopen,
 	.d_close =	ccdclose,
 	.d_read =	physread,

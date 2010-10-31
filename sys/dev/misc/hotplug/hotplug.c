@@ -35,8 +35,6 @@
 
 #define HOTPLUG_MAXEVENTS	16
 
-#define CDEV_MAJOR		82
-
 static d_open_t		hotplugopen;
 static d_close_t	hotplugclose;
 static d_read_t		hotplugread;
@@ -46,7 +44,7 @@ static void hotplugfiltdetach(struct knote *);
 static int hotplugfilt(struct knote *, long);
 
 static struct dev_ops hotplug_ops = {
-	{ "hotplug", CDEV_MAJOR, 0 },
+	{ "hotplug", 0, 0 },
 	.d_open =	hotplugopen,
 	.d_close =	hotplugclose,
 	.d_read =	hotplugread,

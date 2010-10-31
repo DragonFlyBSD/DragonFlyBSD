@@ -54,7 +54,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/amr/amr_disk.c,v 1.5.2.5 2002/12/20 15:12:04 emoore Exp $
- * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.15 2007/06/17 23:50:16 dillon Exp $
  */
 
 /*
@@ -94,10 +93,8 @@ static	d_strategy_t	amrd_strategy;
 static	d_ioctl_t	amrd_ioctl;
 static	d_dump_t	amrd_dump;
 
-#define AMRD_CDEV_MAJOR	133
-
 static struct dev_ops amrd_ops = {
-	{ "amrd", AMRD_CDEV_MAJOR, D_DISK },
+	{ "amrd", 0, D_DISK },
 	.d_open = amrd_open,
 	.d_close = amrd_close,
 	.d_read = physread,

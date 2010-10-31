@@ -33,7 +33,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.44 2008/07/23 16:39:33 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -251,9 +250,8 @@ static	d_read_t	sioread;
 static	d_write_t	siowrite;
 static	d_ioctl_t	sioioctl;
 
-#define	CDEV_MAJOR	28
 static struct dev_ops sio_ops = {
-	{ driver_name, CDEV_MAJOR, D_TTY },
+	{ driver_name, 0, D_TTY },
 	.d_open =	sioopen,
 	.d_close =	sioclose,
 	.d_read =	sioread,

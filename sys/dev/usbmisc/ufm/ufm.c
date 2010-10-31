@@ -30,7 +30,6 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/ufm.c,v 1.16 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.24 2008/08/14 20:55:53 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -72,10 +71,8 @@ d_open_t  ufmopen;
 d_close_t ufmclose;
 d_ioctl_t ufmioctl;
 
-#define UFM_CDEV_MAJOR	200
-
 static struct dev_ops ufm_ops = {
-	{ "ufm", UFM_CDEV_MAJOR, 0 },
+	{ "ufm", 0, 0 },
 	.d_open = ufmopen,
 	.d_close = ufmclose,
 	.d_ioctl = ufmioctl,

@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlx.c,v 1.14.2.5 2001/09/11 09:49:53 kris Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.25 2008/06/10 17:20:52 dillon Exp $
  */
 
 /*
@@ -50,10 +49,8 @@
 #include "mlxvar.h"
 #include "mlxreg.h"
 
-#define MLX_CDEV_MAJOR	130
-
 static struct dev_ops mlx_ops = {
-	{ "mlx", MLX_CDEV_MAJOR, 0 },
+	{ "mlx", 0, 0 },
 	.d_open =	mlx_open,
 	.d_close =	mlx_close,
 	.d_ioctl =	mlx_ioctl,

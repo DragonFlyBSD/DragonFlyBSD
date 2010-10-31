@@ -39,7 +39,6 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.38 2008/07/01 02:02:53 dillon Exp $
  */
 
 /*
@@ -101,8 +100,6 @@ DEVFS_DECLARE_CLONE_BITMAP(vn);
 #define VN_PREALLOCATED_UNITS	NVN
 #endif
 
-#define CDEV_MAJOR 43
-
 #define VN_BSIZE_BEST	8192
 
 /*
@@ -112,7 +109,7 @@ DEVFS_DECLARE_CLONE_BITMAP(vn);
  */
 
 static struct dev_ops vn_ops = {
-	{ "vn", CDEV_MAJOR, D_DISK | D_CANFREE },
+	{ "vn", 0, D_DISK | D_CANFREE },
 	.d_open =	vnopen,
 	.d_close =	vnclose,
 	.d_read =	physread,

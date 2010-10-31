@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/joy.c,v 1.38.2.1 2001/09/01 05:55:31 murray Exp $
- * $DragonFly: src/sys/dev/misc/joy/joy.c,v 1.12 2007/10/23 03:04:49 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -74,14 +73,13 @@ struct joy_softc {
 static int joy_probe (device_t);
 static int joy_attach (device_t);
 
-#define CDEV_MAJOR 51
 static	d_open_t	joyopen;
 static	d_close_t	joyclose;
 static	d_read_t	joyread;
 static	d_ioctl_t	joyioctl;
 
 static struct dev_ops joy_ops = {
-	{ "joy", CDEV_MAJOR, 0 },
+	{ "joy", 0, 0 },
 	.d_open =	joyopen,
 	.d_close =	joyclose,
 	.d_read =	joyread,

@@ -70,6 +70,4 @@
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
 
-#define SILI_CDEV_MAJOR		188
-
 #define SILI_IRQ_RID		0

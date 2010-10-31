@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.34 2008/01/20 03:40:35 pavalos Exp $
  */
 
 /*
@@ -225,11 +224,8 @@ static int		aac_query_disk(struct aac_softc *sc, caddr_t uptr);
 static int		aac_get_pci_info(struct aac_softc *sc, caddr_t uptr);
 static void		aac_ioctl_event(struct aac_softc *sc,
 				        struct aac_event *event, void *arg);
-
-#define AAC_CDEV_MAJOR	150
-
 static struct dev_ops aac_ops = {
-	{ "aac", AAC_CDEV_MAJOR, 0 },
+	{ "aac", 0, 0 },
 	.d_open =	aac_open,
 	.d_close =	aac_close,
 	.d_ioctl =	aac_ioctl,

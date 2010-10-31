@@ -31,7 +31,6 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/virtual/disk/vdisk.c,v 1.8 2008/03/20 02:14:56 dillon Exp $
  */
 
 /*
@@ -67,8 +66,6 @@ struct vkd_softc {
 	int fd;
 };
 
-#define CDEV_MAJOR	97
-
 static void vkd_io_thread(cothread_t cotd);
 static void vkd_io_intr(cothread_t cotd);
 static void vkd_doio(struct vkd_softc *sc, struct bio *bio);
@@ -77,7 +74,7 @@ static d_strategy_t	vkdstrategy;
 static d_open_t		vkdopen;
 
 static struct dev_ops vkd_ops = {
-	{ "vkd", CDEV_MAJOR, D_DISK },
+	{ "vkd", 0, D_DISK },
         .d_open =	vkdopen,
         .d_close =	nullclose,
         .d_read =	physread,

@@ -125,10 +125,8 @@ static	d_kqfilter_t	cxm_kqfilter;
 static void cxm_filter_detach(struct knote *);
 static int cxm_filter(struct knote *, long);
 
-#define CDEV_MAJOR 93
-
 static struct dev_ops cxm_ops = {
-	{ "cxm", CDEV_MAJOR, 0 },
+	{ "cxm", 0, 0 },
 	.d_open =	cxm_open,
 	.d_close =	cxm_close,
 	.d_read =	cxm_read,

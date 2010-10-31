@@ -7,7 +7,6 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/i386/elan-mmcr.c,v 1.6.2.1 2002/09/17 22:39:53 sam Exp $
- * $DragonFly: src/sys/platform/pc32/i386/elan-mmcr.c,v 1.10 2007/12/29 13:40:28 swildner Exp $
  * The AMD Elan sc520 is a system-on-chip gadget which is used in embedded
  * kind of things, see www.soekris.com for instance, and it has a few quirks
  * we need to deal with.
@@ -97,7 +96,7 @@ static d_mmap_t elan_mmap;
 
 #define CDEV_MAJOR 100
 static struct dev_ops elan_ops = {
-	{ "elan", CDEV_MAJOR, 0 },
+	{ "elan", 0, 0 },
 	.d_open =	elan_open,
 	.d_close =	elan_close,
 	.d_ioctl =	elan_ioctl,

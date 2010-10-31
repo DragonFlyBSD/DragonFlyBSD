@@ -33,7 +33,6 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si.c,v 1.101.2.1 2001/02/26 04:23:06 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/si/si.c,v 1.23 2006/12/22 23:26:24 swildner Exp $
  */
 
 #ifndef lint
@@ -120,9 +119,8 @@ static	d_close_t	siclose;
 static	d_write_t	siwrite;
 static	d_ioctl_t	siioctl;
 
-#define	CDEV_MAJOR	68
 static struct dev_ops si_ops = {
-	{ "si", CDEV_MAJOR, D_TTY },
+	{ "si", 0, D_TTY },
 	.d_open =	siopen,
 	.d_close =	siclose,
 	.d_read =	ttyread,

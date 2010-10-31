@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_target.c,v 1.22.2.7 2003/02/18 22:07:10 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.20 2008/07/18 00:07:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -109,9 +108,8 @@ static struct filterops targread_filtops =
 static struct filterops targwrite_filtops =
 	{ FILTEROP_ISFD, NULL, targfiltdetach, targwritefilt };
 
-#define TARG_CDEV_MAJOR 65
 static struct dev_ops targ_ops = {
-	{ "targ", TARG_CDEV_MAJOR, 0 },
+	{ "targ", 0, 0 },
 	.d_open = targopen,
 	.d_close = targclose,
 	.d_read = targread,

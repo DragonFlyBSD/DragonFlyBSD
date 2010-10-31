@@ -35,7 +35,6 @@
  */
 /*
  * $FreeBSD: src/sys/i386/isa/asc.c,v 1.42.2.2 2001/03/01 03:22:39 jlemon Exp $
- * $DragonFly: src/sys/platform/pc32/isa/asc.c,v 1.21 2008/08/02 01:14:43 dillon Exp $
  */
 
 #include "use_asc.h"
@@ -189,10 +188,8 @@ static d_kqfilter_t	asckqfilter;
 static void ascfilter_detach(struct knote *kn);
 static int ascfilter(struct knote *kn, long hint);
 
-#define CDEV_MAJOR 71
-
 static struct dev_ops asc_ops = {
-	{ "asc", CDEV_MAJOR, 0 },
+	{ "asc", 0, 0 },
 	.d_open =	ascopen,
 	.d_close =	ascclose,
 	.d_read =	ascread,

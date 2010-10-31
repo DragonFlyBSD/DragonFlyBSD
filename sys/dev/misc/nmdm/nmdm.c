@@ -33,7 +33,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nmdm/nmdm.c,v 1.5.2.1 2001/08/11 00:54:14 mp Exp $
- * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.16 2008/01/05 14:02:37 swildner Exp $
  */
 
 /*
@@ -76,7 +75,7 @@ static	d_ioctl_t	nmdmioctl;
 
 #define	CDEV_MAJOR	18
 static struct dev_ops nmdm_ops = {
-	{ "pts", CDEV_MAJOR, D_TTY },
+	{ "pts", 0, D_TTY },
 	.d_open =	nmdmopen,
 	.d_close =	nmdmclose,
 	.d_read =	nmdmread,

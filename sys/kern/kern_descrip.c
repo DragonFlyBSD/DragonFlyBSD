@@ -70,7 +70,6 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.79 2008/08/31 13:18:28 aggelos Exp $
  */
 
 #include "opt_compat.h"
@@ -125,7 +124,7 @@ static	 d_open_t  fdopen;
 
 #define CDEV_MAJOR 22
 static struct dev_ops fildesc_ops = {
-	{ "FD", CDEV_MAJOR, 0 },
+	{ "FD", 0, 0 },
 	.d_open =	fdopen,
 };
 

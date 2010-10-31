@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mlx/mlx_disk.c,v 1.8.2.4 2001/06/25 04:37:51 msmith Exp $
- * $DragonFly: src/sys/dev/raid/mlx/mlx_disk.c,v 1.13 2007/06/17 23:50:16 dillon Exp $
  */
 
 /*
@@ -57,10 +56,8 @@ static	d_close_t	mlxd_close;
 static	d_strategy_t	mlxd_strategy;
 static	d_ioctl_t	mlxd_ioctl;
 
-#define MLXD_CDEV_MAJOR	131
-
 static struct dev_ops mlxd_ops = {
-		{ "mlxd", MLXD_CDEV_MAJOR, D_DISK },
+		{ "mlxd", 0, D_DISK },
 		.d_open =	mlxd_open,
 		.d_close =	mlxd_close,
 		.d_read =	physread,

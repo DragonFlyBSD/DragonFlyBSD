@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/smbus/smb.c,v 1.34.8.2 2006/09/22 19:19:16 jhb Exp $
- * $DragonFly: src/sys/bus/smbus/smb.c,v 1.9 2006/09/10 01:26:33 dillon Exp $
  *
  */
 
@@ -88,9 +87,8 @@ static	d_open_t	smbopen;
 static	d_close_t	smbclose;
 static	d_ioctl_t	smbioctl;
 
-#define CDEV_MAJOR 106
 static struct dev_ops smb_ops = {
-	{ "smb", CDEV_MAJOR, 0 },
+	{ "smb", 0, 0 },
 	.d_open =	smbopen,
 	.d_close =	smbclose,
 	.d_ioctl =	smbioctl,

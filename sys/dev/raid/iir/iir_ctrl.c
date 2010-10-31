@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/dev/iir/iir_ctrl.c,v 1.17 2005/05/06 02:32:34 cperciva Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir_ctrl.c,v 1.13 2007/05/17 21:08:49 dillon Exp $ */
 /*-
  *       Copyright (c) 2000-03 ICP vortex GmbH
  *       Copyright (c) 2002-03 Intel Corporation
@@ -69,11 +68,8 @@ static d_write_t	iir_write;
 static d_read_t		iir_read;
 static d_ioctl_t	iir_ioctl;
 
-#define CDEV_MAJOR          IIR_CDEV_MAJOR
-
-/* Normally, this is a static structure.  But we need it in pci/iir_pci.c */
 static struct dev_ops iir_ops = {
-	{ "iir", CDEV_MAJOR, 0 },
+	{ "iir", 0, 0 },
         .d_open =	iir_open,
         .d_close =	iir_close,
         .d_read =	iir_read,

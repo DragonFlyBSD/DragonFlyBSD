@@ -4,7 +4,6 @@
  * $NetBSD: ucom.c,v 1.39 2001/08/16 22:31:24 augustss Exp $
  * $NetBSD: ucom.c,v 1.40 2001/11/13 06:24:54 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/ucom.c,v 1.35 2003/11/16 11:58:21 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.32 2007/11/05 19:09:43 hasso Exp $
  */
 /*-
  * Copyright (c) 2001-2002, Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
@@ -118,10 +117,8 @@ static d_read_t  ucomread;
 static d_write_t ucomwrite;
 static d_ioctl_t ucomioctl;
 
-#define UCOM_CDEV_MAJOR  138
-
 static struct dev_ops ucom_ops = {
-	{ "ucom", UCOM_CDEV_MAJOR, D_TTY },
+	{ "ucom", 0, D_TTY },
 	.d_open =	ucomopen,
 	.d_close =	ucomclose,
 	.d_read =	ucomread,

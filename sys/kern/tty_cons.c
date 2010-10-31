@@ -37,7 +37,6 @@
  *
  *	from: @(#)cons.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/kern/tty_cons.c,v 1.81.2.4 2001/12/17 18:44:41 guido Exp $
- * $DragonFly: src/sys/kern/tty_cons.c,v 1.21 2007/05/07 05:21:41 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -72,7 +71,7 @@ static int cnintercept(struct dev_generic_args *ap);
 
 #define	CDEV_MAJOR	0
 static struct dev_ops cn_ops = {
-	{ "console", CDEV_MAJOR, D_TTY },
+	{ "console", 0, D_TTY },
 	.d_open =	cnopen,
 	.d_close =	cnclose,
 	.d_read =	cnread,
@@ -82,7 +81,7 @@ static struct dev_ops cn_ops = {
 };
 
 static struct dev_ops cn_iops = {
-	{ "intercept", CDEV_MAJOR, D_TTY },
+	{ "intercept", 0, D_TTY },
 	.d_default =    cnintercept
 };
 

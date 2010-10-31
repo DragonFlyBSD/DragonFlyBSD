@@ -39,7 +39,6 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/kern/kern_memio.c,v 1.32 2008/07/23 16:39:28 dillon Exp $
  */
 
 /*
@@ -80,7 +79,7 @@ static	d_kqfilter_t	mmkqfilter;
 
 #define CDEV_MAJOR 2
 static struct dev_ops mem_ops = {
-	{ "mem", CDEV_MAJOR, D_MPSAFE },
+	{ "mem", 0, D_MPSAFE },
 	.d_open =	mmopen,
 	.d_close =	mmclose,
 	.d_read =	mmread,

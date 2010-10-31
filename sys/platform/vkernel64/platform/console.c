@@ -33,7 +33,6 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/platform/vkernel/platform/console.c,v 1.17 2007/07/02 04:19:14 dillon Exp $
  */
 
 #include <sys/systm.h>
@@ -60,8 +59,6 @@ static struct kqueue_info *kqueue_console_info;
  *
  */
 
-#define CDEV_MAJOR	12	/* steal the same major as /dev/ttyv* */
-
 static int vcons_tty_param(struct tty *tp, struct termios *tio);
 static void vcons_tty_start(struct tty *tp);
 static void vcons_intr(void *tpx, struct intrframe *frame __unused);
@@ -71,7 +68,7 @@ static d_close_t        vcons_close;
 static d_ioctl_t        vcons_ioctl;
 
 static struct dev_ops vcons_ops = {
-	{ "vcons", CDEV_MAJOR, D_TTY },
+	{ "vcons", 0, D_TTY },
 	.d_open =	vcons_open,
 	.d_close =	vcons_close,
 	.d_read =	ttyread,

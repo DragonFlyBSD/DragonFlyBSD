@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_freebsd.c,v 1.2.2.9 2004/06/11 18:57:31 vkashyap Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.27 2007/06/17 23:50:16 dillon Exp $
  */
 
 /*
@@ -64,7 +63,7 @@ static	d_close_t		twe_close;
 static	d_ioctl_t		twe_ioctl_wrapper;
 
 static struct dev_ops twe_ops = {
-	{ "twe", TWE_CDEV_MAJOR, 0 },
+	{ "twe", 0, 0 },
 	.d_open =	twe_open,
 	.d_close =	twe_close,
 	.d_ioctl =	twe_ioctl_wrapper,
@@ -607,7 +606,7 @@ static	d_strategy_t	twed_strategy;
 static	d_dump_t	twed_dump;
 
 static struct dev_ops twed_ops = {
-	{ "twed", TWED_CDEV_MAJOR, D_DISK },
+	{ "twed", 0, D_DISK },
 	.d_open =	twed_open,
 	.d_close =	twed_close,
 	.d_read =	physread,

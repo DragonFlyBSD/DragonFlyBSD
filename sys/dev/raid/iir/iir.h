@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/dev/iir/iir.h,v 1.16 2007/06/17 05:55:50 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir.h,v 1.7 2006/12/22 23:26:23 swildner Exp $ */
 /*-
  *       Copyright (c) 2000-04 ICP vortex GmbH
  *       Copyright (c) 2002-04 Intel Corporation
@@ -52,8 +51,6 @@
 
 #define IIR_DRIVER_VERSION      1
 #define IIR_DRIVER_SUBVERSION   5
-
-#define IIR_CDEV_MAJOR          164
 
 /* OEM IDs */
 #define OEM_ID_ICP              0x941c

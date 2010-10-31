@@ -48,7 +48,6 @@
  * also provided sample code upon which this driver was based.
  *
  * $FreeBSD: src/sys/i386/isa/spic.c,v 1.4.2.1 2002/04/15 00:52:12 will Exp $
- * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.17 2008/08/02 01:14:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -91,7 +90,7 @@ static void spicfilt_detach(struct knote *);
 static int spicfilt(struct knote *, long);
 
 static struct dev_ops spic_ops = {
-	{ "spic", CDEV_MAJOR, 0 },
+	{ "spic", 0, 0 },
         .d_open =	spicopen,
         .d_close =	spicclose,
         .d_read =	spicread,

@@ -27,13 +27,9 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twevar.h,v 1.1.2.8 2004/06/11 18:57:32 vkashyap Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twevar.h,v 1.11 2008/06/10 17:20:52 dillon Exp $
  */
 
 #define TWE_DRIVER_VERSION_STRING	"1.40.01.002"
-#define TWE_CDEV_MAJOR			146
-#define TWED_CDEV_MAJOR			147
-
 
 #ifdef TWE_DEBUG
 #define debug(level, fmt, args...)							\

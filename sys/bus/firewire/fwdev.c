@@ -32,7 +32,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwdev.c,v 1.36 2004/01/22 14:41:17 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.20 2008/01/06 16:55:49 swildner Exp $
  *
  */
 
@@ -70,7 +69,6 @@
 #include <dev/firewire/iec68113.h>
 #endif
 
-#define CDEV_MAJOR 127
 #define	FWNODE_INVAL 0xffff
 
 static	d_open_t	fw_open;
@@ -88,7 +86,7 @@ static int fwfilt_write(struct knote *, long);
 
 struct dev_ops firewire_ops = 
 {
-	{ "fw", CDEV_MAJOR, D_MEM },
+	{ "fw", 0, D_MEM },
 	.d_open =	fw_open,
 	.d_close =	fw_close,
 	.d_read =	fw_read,

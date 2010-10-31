@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.29 2008/05/18 20:30:20 pavalos Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -157,7 +156,6 @@ struct ses_softc {
 #define	SES_FLAG_INITIALIZED	0x04
 
 #define SESUNIT(x)       (minor((x)))
-#define SES_CDEV_MAJOR	110
 
 static	d_open_t	sesopen;
 static	d_close_t	sesclose;
@@ -180,7 +178,7 @@ static struct periph_driver sesdriver = {
 PERIPHDRIVER_DECLARE(ses, sesdriver);
 
 static struct dev_ops ses_ops = {
-	{ "ses", SES_CDEV_MAJOR, 0 }, 
+	{ "ses", 0, 0 },
 	.d_open =	sesopen,
 	.d_close =	sesclose,
 	.d_ioctl =	sesioctl,
