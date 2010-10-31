@@ -118,10 +118,9 @@ doreti:
 	jne	5f
 	incl	TD_CRITCOUNT(%ebx)	/* force all ints to pending */
 doreti_next:
-	sti				/* allow new interrupts */
+	cli				/* re-assert cli on loop */
 	movl	%eax,%ecx		/* irq mask unavailable due to BGL */
 	notl	%ecx
-	cli				/* disallow YYY remove */
 #ifdef SMP
 	testl	$RQF_IPIQ,PCPU(reqflags)
 	jnz	doreti_ipiq
@@ -187,6 +186,11 @@ doreti_popl_ds:
 doreti_iret:
 	iret
 
+	/*
+	 * Interrupts are likely disabled due to the above interlock
+	 * between cli/iretq.  We must enable them before calling any
+	 * high level function.
+	 */
 	ALIGN_TEXT
 	.globl	doreti_iret_fault
 doreti_iret_fault:
@@ -204,6 +208,7 @@ doreti_popl_fs_fault:
 	pushl	%gs
 	.globl	doreti_popl_gs_fault
 doreti_popl_gs_fault:
+	sti
 	movl	$0,TF_ERR(%esp)	/* XXX should be the error code */
 	movl	$T_PROTFLT,TF_TRAPNO(%esp)
 	jmp	alltraps_with_regs_pushed
@@ -215,6 +220,7 @@ doreti_popl_gs_fault:
 	ALIGN_TEXT
 doreti_fast:
 	andl	PCPU(fpending),%ecx	/* only check fast ints */
+	sti
 	bsfl	%ecx, %ecx		/* locate the next dispatchable int */
 	btrl	%ecx, PCPU(fpending)	/* is it really still pending? */
 	jnc	doreti_next
@@ -233,6 +239,7 @@ doreti_fast:
 	 */
 	ALIGN_TEXT
 doreti_soft:
+	sti
 	bsfl	%ecx,%ecx		/* locate the next pending softint */
 	btrl	%ecx,PCPU(spending)	/* make sure its still pending */
 	jnc	doreti_next
@@ -279,6 +286,7 @@ doreti_ipiq:
 	movl	%eax,%esi		/* save cpl (can't use stack) */
 	incl	PCPU(intr_nesting_level)
 	andl	$~RQF_IPIQ,PCPU(reqflags)
+	sti
 	subl	$8,%esp			/* add dummy vec and ppl */
 	pushl	%esp			/* pass frame by reference */
 	call	lwkt_process_ipiq_frame
@@ -291,6 +299,7 @@ doreti_timer:
 	movl	%eax,%esi		/* save cpl (can't use stack) */
 	incl	PCPU(intr_nesting_level)
 	andl	$~RQF_TIMER,PCPU(reqflags)
+	sti
 	subl	$8,%esp			/* add dummy vec and ppl */
 	pushl	%esp			/* pass frame by reference */
 	call	lapic_timer_process_frame
@@ -357,6 +366,7 @@ splz_next:
 	ALIGN_TEXT
 splz_fast:
 	andl	PCPU(fpending),%ecx	/* only check fast ints */
+	sti
 	bsfl	%ecx, %ecx		/* locate the next dispatchable int */
 	btrl	%ecx, PCPU(fpending)	/* is it really still pending? */
 	jnc	splz_next
@@ -373,11 +383,11 @@ splz_fast:
 	 */
 	ALIGN_TEXT
 splz_soft:
+	sti
 	bsfl	%ecx,%ecx		/* locate the next pending softint */
 	btrl	%ecx,PCPU(spending)	/* make sure its still pending */
 	jnc	splz_next
 	addl	$FIRST_SOFTINT,%ecx	/* actual intr number */
-	sti
 	pushl	%eax
 	pushl	%ecx
 	decl	TD_CRITCOUNT(%ebx)
@@ -392,6 +402,7 @@ splz_soft:
 #ifdef SMP
 splz_ipiq:
 	andl	$~RQF_IPIQ,PCPU(reqflags)
+	sti
 	pushl	%eax
 	call	lwkt_process_ipiq
 	popl	%eax
@@ -399,6 +410,7 @@ splz_ipiq:
 
 splz_timer:
 	andl	$~RQF_TIMER,PCPU(reqflags)
+	sti
 	pushl	%eax
 	call	lapic_timer_process
 	popl	%eax

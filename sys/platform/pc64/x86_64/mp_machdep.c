@@ -2790,6 +2790,8 @@ smitest(void)
 
 static cpumask_t smp_invltlb_req;
 
+#define SMP_INVLTLB_DEBUG
+
 void
 smp_invltlb(void)
 {
