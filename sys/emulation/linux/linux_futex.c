@@ -248,10 +248,8 @@ futex_get(uint32_t *uaddr, struct waiting_proc **wp, struct futex **f,
 	}
 	error = futex_get0(uaddr, f, flags);
 	if (error) {
-		if (flags & FUTEX_CREATE_WP) {
+		if (flags & FUTEX_CREATE_WP)
 			kfree(*wp, M_FUTEX_WP);
-			*wp = NULL;
-		}
 		return (error);
 	}
 	if (flags & FUTEX_CREATE_WP) {
@@ -263,18 +261,14 @@ futex_get(uint32_t *uaddr, struct waiting_proc **wp, struct futex **f,
 }
 
 static int
-futex_sleep(struct futex *f, struct waiting_proc *wp, unsigned long timeout)
+futex_sleep(struct futex *f, struct waiting_proc *wp, int timeout)
 {
 	int error;
 
 	FUTEX_ASSERT_LOCKED(f);
-	LINUX_CTR4(sys_futex, "futex_sleep enter uaddr %p wp %p timo %ld ref %d",
+	LINUX_CTR4(sys_futex, "futex_sleep enter uaddr %p wp %p timo %d ref %d",
 	    f->f_uaddr, wp, timeout, f->f_refcount);
 	error = FUTEX_SLEEP(f, wp, PCATCH, "futex", timeout);
-#if 0
-	error = ssleep(wp, &f->f_lck, PCATCH, "futex", timeout);
-	error = sx_sleep(wp, &f->f_lck, PCATCH, "futex", timeout);
-#endif 
 	if (wp->wp_flags & FUTEX_WP_REQUEUED) {
 		KASSERT(f != wp->wp_futex, ("futex != wp_futex"));
 		LINUX_CTR5(sys_futex, "futex_sleep out error %d uaddr %p w"
@@ -354,8 +348,8 @@ futex_requeue(struct futex *f, int n, struct futex *f2, int n2)
 static int
 futex_wait(struct futex *f, struct waiting_proc *wp, struct l_timespec *ts)
 {
-	struct l_timespec timeout = {0, 0};
-	struct timeval tv = {0, 0};
+	struct l_timespec timeout;
+	struct timeval tv;
 	int timeout_hz;
 	int error;
 
@@ -363,25 +357,14 @@ futex_wait(struct futex *f, struct waiting_proc *wp, struct l_timespec *ts)
 		error = copyin(ts, &timeout, sizeof(timeout));
 		if (error)
 			return (error);
-	}
-
-	tv.tv_usec = timeout.tv_sec * 1000000 + timeout.tv_nsec / 1000;
-	timeout_hz = tvtohz_high(&tv);
-
-	if (timeout.tv_sec == 0 && timeout.tv_nsec == 0)
+		TIMESPEC_TO_TIMEVAL(&tv, &timeout);
+		error = itimerfix(&tv);
+		if (error)
+			return (error);
+		timeout_hz = tvtohz_high(&tv);
+	} else {	
 		timeout_hz = 0;
-
-	/*
-	 * If the user process requests a non null timeout,
-	 * make sure we do not turn it into an infinite
-	 * timeout because timeout_hz gets null.
-	 *
-	 * We use a minimal timeout of 1/hz. Maybe it would
-	 * make sense to just return ETIMEDOUT without sleeping.
-	 */
-	if (((timeout.tv_sec != 0) || (timeout.tv_nsec != 0)) &&
-	    (timeout_hz == 0))
-		timeout_hz = 1;
+	}
 
 	error = futex_sleep(f, wp, timeout_hz);
 	if (error == EWOULDBLOCK)
@@ -457,7 +440,7 @@ sys_linux_sys_futex(struct linux_sys_futex_args *args)
 {
 	int op_ret, val, ret, nrwake;
 	struct waiting_proc *wp;
-	struct futex *f, *f2;
+	struct futex *f, *f2 = NULL;
 	int error = 0;
 
 	/*
@@ -846,11 +829,8 @@ release_futexes(struct proc *p)
 		if (!--limit)
 			break;
 
-#if 0
 		/* XXX: not sure about this yield, was sched_relinquish(curthread); */
-		lwkt_deschedule(curthread);
 		lwkt_yield();
-#endif
 	}
 
 	if (pending)
