@@ -260,7 +260,7 @@ tmpfs_access(struct vop_access_args *v)
 	case VLNK:
 		/* FALLTHROUGH */
 	case VREG:
-		if (VWRITE && vp->v_mount->mnt_flag & MNT_RDONLY) {
+		if ((v->a_mode & VWRITE) && (vp->v_mount->mnt_flag & MNT_RDONLY)) {
 			error = EROFS;
 			goto out;
 		}
@@ -280,7 +280,7 @@ tmpfs_access(struct vop_access_args *v)
 		goto out;
 	}
 
-	if (VWRITE && node->tn_flags & IMMUTABLE) {
+	if ((v->a_mode & VWRITE) && (node->tn_flags & IMMUTABLE)) {
 		error = EPERM;
 		goto out;
 	}
