@@ -582,6 +582,11 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg,
 
 	/*
 	 * Make a supreme effort to avoid reentrant panics or deadlocks.
+	 *
+	 * NOTE!  Do nothing that would access mycpu/gd/fs unless the
+	 *	  function is the normal kputchar(), which allows us to
+	 *	  use this function for very early debugging with a special
+	 *	  function.
 	 */
 	if (func == kputchar) {
 		if (mycpu->gd_flags & GDF_KPRINTF)
@@ -601,8 +606,8 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg,
 	if (radix < 2 || radix > 36)
 		radix = 10;
 
-	usespin = (panic_cpu_gd != mycpu &&
-		   func == kputchar &&
+	usespin = (func == kputchar &&
+		   panic_cpu_gd != mycpu &&
 		   (((struct putchar_arg *)arg)->flags & TOTTY) == 0);
 	if (usespin) {
 		crit_enter_hard();
