@@ -153,7 +153,7 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 			ref_count = obj->ref_count;
 			shadow_count = obj->shadow_count;
 			if (vp != NULL) {
-				vn_fullpath(p, vp, &fullpath, &freepath, 0);
+				vn_fullpath(p, vp, &fullpath, &freepath, 1);
 				vrele(vp);
 			}
 		} else {
