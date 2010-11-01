@@ -2537,9 +2537,7 @@ do_switch_scr(sc_softc_t *sc)
     lwkt_gettoken(&tty_token);
     vt_proc_alive(sc->new_scp);
 
-    crit_exit();
     exchange_scr(sc);
-    crit_enter();
     /* sc->cur_scp == sc->new_scp */
     wakeup((caddr_t)&sc->cur_scp->smode);
 
