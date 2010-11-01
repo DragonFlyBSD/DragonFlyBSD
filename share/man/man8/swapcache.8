@@ -383,6 +383,42 @@ For example, a system with a measly 192MB of RAM and SSD swap can run
 a -j 8 parallel build world in a little less than twice the time it
 would take if the system had 2GB of RAM, whereas it would take 5x to 10x
 as long with normal HD based swap.
+.Sh USING SWAPCACHE WITH NORMAL HARD DRIVES
+Although
+.Nm
+is designed to work with SSD-based storage it can also be used with
+HD-based storage as an aid for offloading the primary storage system.
+Here we need to make a distinction between using RAID for fanning out
+storage verses using RAID for redundancy.  There are numerous situations
+where RAID-based redundancy does not make sense.
+.Pp
+A good example would be in an environment where the servers themselves
+are redundant and can suffer a total failure without effecting
+ongoing operations.  When the primary storage requirements easily fit onto
+a single large-capacity drive it doesn't make a whole lot of sense to
+use RAID if your only desire is to improve performance.  If you had a farm
+of, say, 20 servers supporting the same facility adding RAID to each one
+would not accomplish anything other than to bloat your deployment and
+maintainance costs.
+.Pp
+In these sorts of situations it may be desireable and convenient to have
+the primary filesystem for each machine on a single large drive and then
+use the
+.Nm
+facility to offload the drive and make the machine more effective without
+actually distributing the filesystem itself across multiple drives.
+For the purposes of offloading while a SSD would be the most effective
+from a performance standpoint, a second medium sized HD with its much lower
+cost and higher capacity might actually be more cost effective.
+.Pp
+In cases where you might desire to use
+.Nm
+with a normal hard drive you should probably consider running a 64-bit
+.Dx
+instead of a 32-bit system.
+The 64-bit build is capable of supporting much larger swap configurations
+(upwards of 512G) and would be a more suitable match against a medium-sized
+HD.
 .Sh WARNINGS
 I am going to repeat and expand a bit on SSD wear.
 Wear on SSDs is a function of the write durability of the cells,
@@ -418,10 +454,6 @@ Keep in mind that if you use a larger portion of the SSD's advertised
 storage the SSD will not know if/when you decide to use less unless
 appropriate TRIM commands are sent (if supported), or a low level
 factory erase is issued.
-.Pp
-The swapcache is designed for use with SSDs configured as swap and
-will generally not improve performance when a normal hard drive is used
-for swap.
 .Pp
 .Nm smartctl
 (from pkgsrc's sysutils/smartmontools) may be used to retrieve
