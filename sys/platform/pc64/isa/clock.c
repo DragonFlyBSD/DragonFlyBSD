@@ -464,6 +464,33 @@ DELAY(int n)
 }
 
 /*
+ * Returns non-zero if the specified time period has elapsed.  Call
+ * first with last_clock set to 0.
+ */
+int
+CHECKTIMEOUT(TOTALDELAY *tdd)
+{
+	sysclock_t delta;
+	int us;
+
+	if (tdd->started == 0) {
+		if (timer0_state == RELEASED)
+			i8254_restore();
+		tdd->last_clock = sys_cputimer->count();
+		tdd->started = 1;
+		return(0);
+	}
+	delta = sys_cputimer->count() - tdd->last_clock;
+	us = (u_int64_t)delta * (u_int64_t)1000000 /
+	     (u_int64_t)sys_cputimer->freq;
+	tdd->last_clock += (u_int64_t)us * (u_int64_t)sys_cputimer->freq /
+			   1000000;
+	tdd->us -= us;
+	return (tdd->us < 0);
+}
+
+
+/*
  * DRIVERSLEEP() does not switch if called with a spinlock held or
  * from a hard interrupt.
  */

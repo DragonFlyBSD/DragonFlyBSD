@@ -15,6 +15,15 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#ifndef _SYS_SYSTIMER_H_
+#include <sys/systimer.h>
+#endif
+
+typedef struct TOTALDELAY {
+	int		us;
+	int		started;
+	sysclock_t	last_clock;
+} TOTALDELAY;
 
 /*
  * i386 to clock driver interface.
@@ -37,6 +46,7 @@ extern int	apic_8254_intr;
  * Driver to clock driver interface.
  */
 
+int	CHECKTIMEOUT(TOTALDELAY *);
 int	rtcin (int val);
 int	acquire_timer2 (int mode);
 int	release_timer2 (void);
