@@ -1718,13 +1718,28 @@ nfs_timer_callout(void *arg /* never used */)
 				continue;
 			if (req->r_flags & (R_SOFTTERM | R_LOCKED))
 				continue;
+
+			/*
+			 * Handle timeout/retry.  Be sure to process r_mrep
+			 * for async requests that completed while we had
+			 * the request locked or they will hang in the reqq
+			 * forever.
+			 */
 			req->r_flags |= R_LOCKED;
 			if (nfs_sigintr(nmp, req, req->r_td)) {
 				nfs_softterm(req, 1);
+				req->r_flags &= ~R_LOCKED;
 			} else {
 				nfs_timer_req(req);
+				if (req->r_flags & R_ASYNC) {
+					if (req->r_mrep)
+						nfs_hardterm(req, 1);
+					req->r_flags &= ~R_LOCKED;
+					nfssvc_iod_reader_wakeup(nmp);
+				} else {
+					req->r_flags &= ~R_LOCKED;
+				}
 			}
-			req->r_flags &= ~R_LOCKED;
 			if (req->r_flags & R_WANTED) {
 				req->r_flags &= ~R_WANTED;
 				wakeup(req);
