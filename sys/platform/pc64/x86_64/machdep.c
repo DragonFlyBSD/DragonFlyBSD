@@ -902,18 +902,10 @@ cpu_halt(void)
  *	 the possibility that no IPI will occur and in such cases
  *	 lwkt_switch() sets TDF_IDLE_NOHLT.
  *
- * WARNING: On a SMP system the ACPI halt code can sometimes cause IPIs
- *	    to be completely lost.  And I mean completely... vector never
- *	    gets delivered.  Because of this we default to NOT using the
- *	    ACPI halt code.  If you want to use the ACPI halt code anyway
- *	    use sysctl machdep.cpu_idle_hlt=2.
- *
- *	    This wasn't a huge deal before since our IPIs were queued, but
- *	    now that we have a separate per-cpu Xtimer IPI and now that
- *	    our Xinvltlb IPI is synchronous a missed IPI can cause total
- *	    havoc.
+ * NOTE: cpu_idle_hlt again defaults to 2 (use ACPI sleep states).  Set to
+ *	 1 to just use hlt and for debugging purposes.
  */
-static int	cpu_idle_hlt = 1;
+static int	cpu_idle_hlt = 2;
 static int	cpu_idle_hltcnt;
 static int	cpu_idle_spincnt;
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hlt, CTLFLAG_RW,
