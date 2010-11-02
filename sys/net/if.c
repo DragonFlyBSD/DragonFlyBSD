@@ -202,7 +202,7 @@ KTR_INFO(KTR_IF_START, if_start, chase_sched, 4,
 #endif
 #define logifstart(name, arg)	KTR_LOG(if_start_ ## name, arg)
 
-TAILQ_HEAD(, ifg_group) ifg_head;
+TAILQ_HEAD(, ifg_group) ifg_head = TAILQ_HEAD_INITIALIZER(ifg_head);
 
 /*
  * Network interface utility routines.
