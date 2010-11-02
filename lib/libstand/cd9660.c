@@ -261,18 +261,25 @@ dirmatch(struct open_file *f, const char *path, struct iso_directory_record *dp,
 	}
 	if (*path && *path != '/')
 		return 0;
+
 	/*
 	 * Allow stripping of trailing dots and the version number.
+	 *
 	 * Note that this will find the first instead of the last version
-	 * of a file.
+	 * of a file unless explicitly specified.
+	 *
+	 * For any inexact matches we ignore everything after and including
+	 * the semicolon in the directory entry name, assuming it is a
+	 * version number whether it is or not.
 	 */
-	if (i >= 0 && (*cp == ';' || *cp == '.')) {
-		/* This is to prevent matching of numeric extensions */
-		if (*cp == '.' && cp[1] != ';')
-			return 0;
-		while (--i >= 0)
-			if (*++cp != ';' && (*cp < '0' || *cp > '9'))
-				return 0;
+	if (i >= 0) {
+		if (cp[0] == ';')
+			return 1;	/* ignore version */
+		if (cp[0] == '.' && i == 0)
+			return 1;	/* ignore trailing dot */
+		if (cp[0] == '.' && i > 0 && cp[1] == ';')
+			return 1;	/* ignore trailing dot w/ version */
+		return 0;		/* else mismatch */
 	}
 	return 1;
 }
