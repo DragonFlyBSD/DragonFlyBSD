@@ -1134,7 +1134,6 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 	int error, i, n;
 	struct inpcb *marker;
 	struct inpcb *inp;
-	inp_gen_t gencnt;
 	globaldata_t gd;
 	int origcpu, ccpu;
 
@@ -1180,7 +1179,6 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 		rgd = globaldata_find(cpu_id);
 		lwkt_setcpu_self(rgd);
 
-		gencnt = tcbinfo[cpu_id].ipi_gencnt;
 		n = tcbinfo[cpu_id].ipi_count;
 
 		LIST_INSERT_HEAD(&tcbinfo[cpu_id].pcblisthead, marker, inp_list);
@@ -1194,8 +1192,6 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 			LIST_INSERT_AFTER(inp, marker, inp_list);
 
 			if (inp->inp_flags & INP_PLACEMARKER)
-				continue;
-			if (inp->inp_gencnt > gencnt)
 				continue;
 			if (prison_xinpcb(req->td, inp))
 				continue;
