@@ -67,10 +67,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/icu_ipl.s,v 1.6 1999/08/28 00:44:42 peter Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_ipl.s,v 1.18 2007/07/07 12:25:26 sephe Exp $
  */
-
-#include "use_npx.h"
 
 #include <machine/asmacros.h>
 #include <machine/segments.h>

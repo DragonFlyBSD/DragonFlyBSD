@@ -40,7 +40,6 @@
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
  */
 
-#include "use_ether.h"
 //#include "use_npx.h"
 #include "use_isa.h"
 #include "opt_atalk.h"

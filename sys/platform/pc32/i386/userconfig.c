@@ -47,7 +47,6 @@
  ** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **
  ** $FreeBSD: src/sys/i386/i386/userconfig.c,v 1.175.2.10 2002/10/05 18:31:48 scottl Exp $
- ** $DragonFly: src/sys/platform/pc32/i386/userconfig.c,v 1.15 2008/01/05 14:02:41 swildner Exp $
  **/
 
 /**
@@ -2418,8 +2417,6 @@ visuserconfig(void)
  *
  * $FreeBSD: src/sys/i386/i386/userconfig.c,v 1.175.2.10 2002/10/05 18:31:48 scottl Exp $
  */
-
-#include "use_scbus.h"
 
 #define PARM_DEVSPEC	0x1
 #define PARM_INT	0x2

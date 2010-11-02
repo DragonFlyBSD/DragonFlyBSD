@@ -1,10 +1,8 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.39 2008/08/02 01:14:43 dillon Exp $
  */
 
-#include "use_npx.h"
 #include "opt_auto_eoi.h"
 
 #include <machine/asmacros.h>

@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.38 2008/09/24 14:26:39 sephe Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -129,9 +128,6 @@
 #include <net/ip6fw/ip6_fw.h>
 
 #include <netinet6/ip6protosw.h>
-
-/* we need it for NLOOP. */
-#include "use_loop.h"
 
 #include <net/net_osdep.h>
 

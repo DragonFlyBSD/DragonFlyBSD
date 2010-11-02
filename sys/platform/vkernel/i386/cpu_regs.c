@@ -37,12 +37,9 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.29 2008/06/06 13:19:25 swildner Exp $
  */
 
-#include "use_ether.h"
 #include "use_npx.h"
-#include "use_isa.h"
 #include "opt_atalk.h"
 #include "opt_compat.h"
 #include "opt_ddb.h"

@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/in6_src.c,v 1.1.2.3 2002/02/26 18:02:06 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_src.c,v 1.13 2006/12/29 18:02:56 victor Exp $	*/
 /*	$KAME: in6_src.c,v 1.37 2001/03/29 05:34:31 itojun Exp $	*/
 
 /*
@@ -103,8 +102,6 @@
 #endif
 
 #include <net/net_osdep.h>
-
-#include "use_loop.h"
 
 #define ADDR_LABEL_NOTAPP (-1)
 struct in6_addrpolicy defaultaddrpolicy;

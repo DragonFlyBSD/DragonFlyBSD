@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/dev/asr/dptsig.h,v 1.1.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/dptsig.h,v 1.3 2003/08/07 21:17:08 dillon Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation.
@@ -25,9 +24,7 @@
 
 #ifndef __DPTSIG_H_
 #define __DPTSIG_H_
-#ifdef _SINIX_ADDON
-#include "use_dpt.h"
-#endif
+
 /* DPT SIGNATURE SPEC AND HEADER FILE                           */
 /* Signature Version 1 (sorry no 'A')                           */
 

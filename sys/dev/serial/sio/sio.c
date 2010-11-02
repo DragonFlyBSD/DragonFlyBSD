@@ -45,7 +45,6 @@
 #ifdef __i386__
 #include "use_puc.h"
 #endif
-#include "use_sio.h"
 
 /*
  * Serial driver, based on 386BSD-0.1 com driver.

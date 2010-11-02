@@ -1,13 +1,11 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.33 2008/08/02 01:14:43 dillon Exp $
  */
 /*
  * WARNING!  SMP builds can use the ICU now so this code must be MP safe.
  */
 
-#include "use_npx.h"
 #include "opt_auto_eoi.h"
 
 #include <machine/asmacros.h>

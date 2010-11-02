@@ -54,12 +54,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/apic_ipl.s,v 1.27.2.2 2000/09/30 02:49:35 ps Exp $
- * $DragonFly: src/sys/platform/pc64/apic/apic_ipl.s,v 1.1 2008/08/29 17:07:12 dillon Exp $
  */
-
-#if 0
-#include "use_npx.h"
-#endif
 
 #include <machine/asmacros.h>
 #include <machine/segments.h>

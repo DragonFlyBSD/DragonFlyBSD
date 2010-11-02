@@ -48,7 +48,7 @@
  * Pseudo-teletype Driver
  * (Actually two drivers, requiring two dev_ops structures)
  */
-#include "use_pty.h"		/* XXX */
+
 #include "opt_compat.h"
 
 #include <sys/param.h>

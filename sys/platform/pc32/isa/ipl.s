@@ -37,10 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.28 2007/01/22 19:37:04 corecode Exp $
  */
-
-#include "use_npx.h"
 
 #include <machine/asmacros.h>
 #include <machine/segments.h>

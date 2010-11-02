@@ -30,16 +30,12 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/platform/pc32/i386/bcopy.s,v 1.10 2008/05/09 06:35:11 dillon Exp $
  */
 /*
  * bcopy(source:%esi, target:%edi, count:%ecx)
  *
  *	note: esi, edi, eax, ecx, and edx may be destroyed
  */
-
-#include "use_npx.h"
 
 #include <machine/asmacros.h>
 #include <machine/cputypes.h>

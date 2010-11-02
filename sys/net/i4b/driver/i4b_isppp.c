@@ -37,7 +37,6 @@
  *	$Id: i4b_isppp.c,v 1.44 2000/08/31 07:07:26 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_isppp.c,v 1.7.2.3 2003/02/06 14:50:53 gj Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.16 2006/12/22 23:44:55 swildner Exp $
  *
  *	last edit-date: [Thu Aug 31 09:02:27 2000]
  *
@@ -64,8 +63,6 @@
 #include <net/if_types.h>
 #include <net/sppp/if_sppp.h>
 
-
-#include "use_bpf.h"
 #include <sys/time.h>
 #include <net/bpf.h>
 

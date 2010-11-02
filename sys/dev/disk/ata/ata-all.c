@@ -26,11 +26,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.38 2007/05/01 17:16:23 dillon Exp $
  */
 
 #include "opt_ata.h"
-#include "use_ata.h"
 #include "use_atadisk.h"
 #include "use_atapicd.h"
 #include "use_atapifd.h"
