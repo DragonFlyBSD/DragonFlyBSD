@@ -1335,7 +1335,6 @@ in_pcblist_global(SYSCTL_HANDLER_ARGS)
 	struct inpcb *inp, *marker;
 	struct xinpcb xi;
 	int error, i, n;
-	inp_gen_t gencnt;
 
 	/*
 	 * The process of preparing the TCB list is too time-consuming and
@@ -1354,7 +1353,6 @@ in_pcblist_global(SYSCTL_HANDLER_ARGS)
 	 * OK, now we're committed to doing something.  Re-fetch ipi_count
 	 * after obtaining the generation count.
 	 */
-	gencnt = pcbinfo->ipi_gencnt;
 	n = pcbinfo->ipi_count;
 
 	marker = kmalloc(sizeof(struct inpcb), M_TEMP, M_WAITOK|M_ZERO);
@@ -1369,8 +1367,6 @@ in_pcblist_global(SYSCTL_HANDLER_ARGS)
 		LIST_INSERT_AFTER(inp, marker, inp_list);
 
 		if (inp->inp_flags & INP_PLACEMARKER)
-			continue;
-		if (inp->inp_gencnt > gencnt)
 			continue;
 		if (prison_xinpcb(req->td, inp))
 			continue;
