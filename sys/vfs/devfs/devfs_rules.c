@@ -60,9 +60,9 @@ static d_ioctl_t     devfs_dev_ioctl;
 
 static struct devfs_rule *devfs_rule_alloc(struct devfs_rule_ioctl *);
 static void devfs_rule_free(struct devfs_rule *);
-static void devfs_rule_insert(struct devfs_rule_ioctl *);
+static int devfs_rule_insert(struct devfs_rule_ioctl *);
 static void devfs_rule_remove(struct devfs_rule *);
-static void devfs_rule_clear(struct devfs_rule_ioctl *);
+static int devfs_rule_clear(struct devfs_rule_ioctl *);
 static void devfs_rule_create_link(struct devfs_node *, struct devfs_rule *);
 static int devfs_rule_checkname(struct devfs_rule *, struct devfs_node *);
 
@@ -93,26 +93,44 @@ devfs_rule_alloc(struct devfs_rule_ioctl *templ)
 	rule = objcache_get(devfs_rule_cache, M_WAITOK);
 	memset(rule, 0, sizeof(struct devfs_rule));
 
+	if (templ->mntpoint == NULL)
+		goto error_out;
+		/* NOTREACHED */
+
 	len = strlen(templ->mntpoint);
-	if (len > 0) {
-		rule->mntpoint = kstrdup(templ->mntpoint, M_DEVFS);
-		rule->mntpointlen = len;
-	}
+	if (len == 0)
+		goto error_out;
+		/* NOTREACHED */
 
-	if (templ->rule_type == DEVFS_RULE_NAME) {
+	rule->mntpoint = kstrdup(templ->mntpoint, M_DEVFS);
+	rule->mntpointlen = len;
+
+	if (templ->rule_type & DEVFS_RULE_NAME) {
+		if (templ->name == NULL)
+			goto error_out;
+			/* NOTREACHED */
+
 		len = strlen(templ->name);
-		if (len > 0) {
-			rule->name = kstrdup(templ->name, M_DEVFS);
-			rule->namlen = len;
-		}
+		if (len == 0)
+			goto error_out;
+			/* NOTREACHED */
+
+		rule->name = kstrdup(templ->name, M_DEVFS);
+		rule->namlen = len;
 	}
 
-	if (templ->rule_cmd == DEVFS_RULE_LINK) {
+	if (templ->rule_cmd & DEVFS_RULE_LINK) {
+		if (templ->linkname == NULL)
+			goto error_out;
+			/* NOTREACHED */
+
 		len = strlen(templ->linkname);
-		if (len > 0) {
-			rule->linkname = kstrdup(templ->linkname, M_DEVFS);
-			rule->linknamlen = len;
-		}
+		if (len == 0)
+			goto error_out;
+			/* NOTREACHED */
+
+		rule->linkname = kstrdup(templ->linkname, M_DEVFS);
+		rule->linknamlen = len;
 	}
 
 	rule->rule_type = templ->rule_type;
@@ -123,6 +141,10 @@ devfs_rule_alloc(struct devfs_rule_ioctl *templ)
 	rule->gid = templ->gid;
 
 	return rule;
+
+error_out:
+	devfs_rule_free(rule);
+	return NULL;
 }
 
 
@@ -144,16 +166,20 @@ devfs_rule_free(struct devfs_rule *rule)
 }
 
 
-static void
+static int
 devfs_rule_insert(struct devfs_rule_ioctl *templ)
 {
 	struct devfs_rule *rule;
 
 	rule = devfs_rule_alloc(templ);
+	if (rule == NULL)
+		return EINVAL;
 
 	lockmgr(&devfs_rule_lock, LK_EXCLUSIVE);
 	TAILQ_INSERT_TAIL(&devfs_rule_list, rule, link);
 	lockmgr(&devfs_rule_lock, LK_RELEASE);
+
+	return 0;
 }
 
 
@@ -165,11 +191,18 @@ devfs_rule_remove(struct devfs_rule *rule)
 }
 
 
-static void
+static int
 devfs_rule_clear(struct devfs_rule_ioctl *templ)
 {
 	struct devfs_rule *rule1, *rule2;
-	size_t	mntpointlen = strlen(templ->mntpoint);
+	size_t mntpointlen;
+
+	if (templ->mntpoint == NULL)
+		return EINVAL;
+
+	mntpointlen = strlen(templ->mntpoint);
+	if (mntpointlen == 0)
+		return EINVAL;
 
 	lockmgr(&devfs_rule_lock, LK_EXCLUSIVE);
 	TAILQ_FOREACH_MUTABLE(rule1, &devfs_rule_list, link, rule2) {
@@ -180,6 +213,8 @@ devfs_rule_clear(struct devfs_rule_ioctl *templ)
 		}
 	}
 	lockmgr(&devfs_rule_lock, LK_RELEASE);
+
+	return 0;
 }
 
 
@@ -399,19 +434,25 @@ devfs_dev_ioctl(struct dev_ioctl_args *ap)
 
 	switch(ap->a_cmd) {
 	case DEVFS_RULE_ADD:
-		devfs_rule_insert(rule);
+		error = devfs_rule_insert(rule);
 		break;
 
 	case DEVFS_RULE_APPLY:
-		devfs_apply_rules(rule->mntpoint);
+		if (rule->mntpoint == NULL)
+			error = EINVAL;
+		else
+			devfs_apply_rules(rule->mntpoint);
 		break;
 
 	case DEVFS_RULE_CLEAR:
-		devfs_rule_clear(rule);
+		error = devfs_rule_clear(rule);
 		break;
 
 	case DEVFS_RULE_RESET:
-		devfs_reset_rules(rule->mntpoint);
+		if (rule->mntpoint == NULL)
+			error = EINVAL;
+		else
+			devfs_reset_rules(rule->mntpoint);
 		break;
 
 	default:
