@@ -73,7 +73,7 @@ newfs /dev/${disk}s1a
 # Load dm and setup a new encrypted root fs
 #
 kldload dm
-cryptsetup -y luksFormat /dev/${disk}s1
+cryptsetup -y luksFormat /dev/${disk}s1d
 cryptsetup luksOpen /dev/${disk}s1d root || exit 1
 
 newfs_hammer -L ROOT /dev/mapper/root
