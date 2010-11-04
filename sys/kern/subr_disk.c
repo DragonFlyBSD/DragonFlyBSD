@@ -3,6 +3,7 @@
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
+ * and Alex Hornung <ahornung@gmail.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -323,7 +324,7 @@ disk_probe(struct disk *dp, int reprobe)
 		if (i == WHOLE_DISK_SLICE)
 			continue;
 
-#if 0
+#if 1
 		/*
 		 * Ignore the compatibility slice s0 if it's a device mapper
 		 * volume.
@@ -988,7 +989,9 @@ diskioctl(struct dev_ioctl_args *ap)
 		return disk_dumpconf(dev, u);
 	}
 
-	if (&dp->d_slice == NULL || dp->d_slice == NULL) {
+	if (&dp->d_slice == NULL || dp->d_slice == NULL ||
+	    ((dp->d_info.d_dsflags & DSO_DEVICEMAPPER) &&
+	     dkslice(dev) == WHOLE_DISK_SLICE)) {
 		error = ENOIOCTL;
 	} else {
 		get_mplock();
@@ -1054,7 +1057,14 @@ diskpsize(struct dev_psize_args *ap)
 	dp = dev->si_disk;
 	if (dp == NULL)
 		return(ENODEV);
+
 	ap->a_result = dssize(dev, &dp->d_slice);
+
+	if ((ap->a_result == -1) &&
+	   (dp->d_info.d_dsflags & DSO_DEVICEMAPPER)) {
+		ap->a_head.a_dev = dp->d_rawdev;
+		return dev_doperate(&ap->a_head);
+	}
 	return(0);
 }
 
