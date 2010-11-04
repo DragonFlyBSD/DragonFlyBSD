@@ -83,6 +83,7 @@
 
 #include <sys/device.h>
 #include <sys/devicestat.h>
+#include <sys/devfs.h>
 #include <sys/disk.h>
 #include <sys/disklabel.h>
 #include <sys/malloc.h>
@@ -94,6 +95,7 @@
 
 static uint64_t sc_minor_num;
 extern struct dev_ops dm_ops;
+extern struct devfs_bitmap dm_minor_bitmap;
 uint64_t dm_dev_counter;
 
 #if 0
@@ -203,7 +205,7 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
 	dm_dev_t *dmv;
 	const char *name, *uuid;
 	char name_buf[MAXPATHLEN];
-	int r, flags;
+	int r, flags, dm_minor;
 
 	r = 0;
 	flags = 0;
@@ -240,7 +242,7 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
 	if (name)
 		strlcpy(dmv->name, name, DM_NAME_LEN);
 
-	dmv->minor = ++sc_minor_num; /* XXX: was atomic 64 */
+	dm_minor = devfs_clone_bitmap_get(&dm_minor_bitmap, 0);
 	dmv->flags = 0;		/* device flags are set when needed */
 	dmv->ref_cnt = 0;
 	dmv->event_nr = 0;
@@ -255,8 +257,6 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
 	if (flags & DM_READONLY_FLAG)
 		dmv->flags |= DM_READONLY_FLAG;
 
-	prop_dictionary_set_uint32(dm_dict, DM_IOCTL_MINOR, dmv->minor);
-
 	aprint_debug("Creating device dm/%s\n", name);
 	ksnprintf(name_buf, sizeof(name_buf), "mapper/%s", dmv->name);
 
@@ -265,7 +265,9 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
 	    DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_OTHER,
 	    DEVSTAT_PRIORITY_DISK);
 
-	dmv->devt = disk_create_named(name_buf, dmv->minor, dmv->diskp, &dm_ops);
+	dmv->devt = disk_create_named(name_buf, dm_minor, dmv->diskp, &dm_ops);
+	dmv->minor = minor(dmv->devt);
+	prop_dictionary_set_uint32(dm_dict, DM_IOCTL_MINOR, dmv->minor);
 	udev_dict_set_cstr(dmv->devt, "subsystem", "disk");
 
 	if ((r = dm_dev_insert(dmv)) != 0)

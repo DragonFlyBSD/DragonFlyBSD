@@ -39,6 +39,7 @@
 #include <sys/buf.h>
 #include <sys/conf.h>
 #include <sys/device.h>
+#include <sys/devfs.h>
 #include <sys/disk.h>
 #include <sys/disklabel.h>
 #include <sys/dtype.h>
@@ -70,6 +71,8 @@ static int dm_ioctl_switch(u_long);
 #if 0
 static void dmminphys(struct buf *);
 #endif
+
+struct devfs_bitmap dm_minor_bitmap;
 
 /* ***Variable-definitions*** */
 struct dev_ops dm_ops = {
@@ -140,6 +143,7 @@ dm_modcmd(module_t mod, int cmd, void *unused)
 
 	switch (cmd) {
 	case MOD_LOAD:
+		devfs_clone_bitmap_init(&dm_minor_bitmap);
 		dm_doinit();
 		kprintf("Device Mapper version %d.%d.%d loaded\n",
 		    DM_VERSION_MAJOR, DM_VERSION_MINOR, DM_VERSION_PATCHLEVEL);
@@ -178,6 +182,8 @@ dm_modcmd(module_t mod, int cmd, void *unused)
 int
 dm_detach(dm_dev_t *dmv)
 {
+	int minor;
+
 	disable_dev(dmv);
 
 	/* Destroy active table first.  */
@@ -188,8 +194,10 @@ dm_detach(dm_dev_t *dmv)
 
 	dm_table_head_destroy(&dmv->table_head);
 
+	minor = dkunit(dmv->devt);
 	disk_destroy(dmv->diskp);
 	devstat_remove_entry(&dmv->stats);
+	devfs_clone_bitmap_put(&dm_minor_bitmap, minor);
 
 	/* Destroy device */
 	(void)dm_dev_free(dmv);
@@ -406,7 +414,7 @@ dmstrategy(struct dev_strategy_args *ap)
 	dev_type = 0;
 	issued_len = 0;
 
-	if ((dmv = dm_dev_lookup(NULL, NULL, dkunit(dev))) == NULL) {
+	if ((dmv = dm_dev_lookup(NULL, NULL, minor(dev))) == NULL) {
 		bp->b_error = EIO;
 		bp->b_resid = bp->b_bcount;
 		biodone(bio);
