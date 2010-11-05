@@ -1,5 +1,4 @@
 # $FreeBSD: src/libexec/telnetd/Makefile,v 1.31 2006/07/31 19:15:09 yar Exp $
-# $DragonFly: src/libexec/telnetd/Makefile,v 1.2 2003/06/17 04:27:08 dillon Exp $
 
 # Do not define -DKLUDGELINEMODE, as it does not interact well with many
 # telnet implementations.
@@ -10,8 +9,7 @@ MAN=		telnetd.8
 SRCS=		global.c slc.c state.c sys_term.c telnetd.c \
 		termstat.c utility.c
 
-WARNS?=		0
-WFORMAT?=	0
+WARNS?=		2
 
 CFLAGS+=	-DLINEMODE -DUSE_TERMIO -DDIAGNOSTICS -DOLD_ENVIRON -DENV_HACK \
 		-I${.CURDIR}/../../lib

@@ -1,11 +1,13 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/libexec/talkd/Makefile,v 1.6.2.2 2001/10/18 12:30:42 des Exp $
-# $DragonFly: src/libexec/talkd/Makefile,v 1.2 2003/06/17 04:27:08 dillon Exp $
+
+.PATH:  ${.CURDIR}/../../usr.bin/wall
 
 PROG=	ntalkd
-CFLAGS+=-I${.CURDIR}/../../usr.bin/wall
 SRCS=	talkd.c announce.c process.c table.c print.c ttymsg.c
-.PATH:  ${.CURDIR}/../../usr.bin/wall
 MAN=	talkd.8
+WARNS?=	1
+
+CFLAGS+=-I${.CURDIR}/../../usr.bin/wall
 
 .include <bsd.prog.mk>

@@ -45,7 +45,6 @@
  *
  * @(#)utils.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/rbootd/utils.c,v 1.5 1999/08/28 00:09:46 peter Exp $
- * $DragonFly: src/libexec/rbootd/utils.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -163,7 +162,7 @@ DispPkt(rconn, direct)
 			GETWORD(rmp->r_rrpl.rmp_offset, t);
 			(void) fprintf(DbgFp, ReadFmt, rmp->r_rrpl.rmp_retcode,
 			        t, ntohs(rmp->r_rrpl.rmp_session));
-			(void) fprintf(DbgFp, "\t\tNoOfBytesSent: %d\n",
+			(void) fprintf(DbgFp, "\t\tNoOfBytesSent: %zd\n",
 			        rconn->rmplen - RMPREADSIZE(0));
 			break;
 		case RMP_BOOT_DONE:		/* boot complete */
