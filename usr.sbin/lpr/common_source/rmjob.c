@@ -32,7 +32,6 @@
  *
  * @(#)rmjob.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/common_source/rmjob.c,v 1.12.2.5 2001/06/25 01:00:56 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/common_source/rmjob.c,v 1.4 2004/12/18 22:48:03 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -378,7 +377,7 @@ rmremote(const struct printer *pp)
  * Return 1 if the filename begins with 'cf'
  */
 int
-iscf(struct dirent *d)
+iscf(const struct dirent *d)
 {
 	return(d->d_name[0] == 'c' && d->d_name[1] == 'f');
 }

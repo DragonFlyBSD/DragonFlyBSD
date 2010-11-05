@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/scandir.c,v 1.5.6.1 2001/03/05 09:52:13 obrien Exp $
- * $DragonFly: src/lib/libc/gen/scandir.c,v 1.7 2005/08/27 20:23:05 joerg Exp $
  *
  * @(#)scandir.c	8.3 (Berkeley) 1/2/94
  */
@@ -54,7 +53,8 @@
 
 int
 scandir(const char *dirname, struct dirent ***namelist,
-	int (*select)(struct dirent *), int (*dcomp)(const void *, const void *))
+	int (*select)(const struct dirent *),
+	int (*dcomp)(const struct dirent **, const struct dirent **))
 {
 	struct dirent *d, *p, **names = NULL;
 	size_t arraysz, nitems = 0;
@@ -112,7 +112,8 @@ scandir(const char *dirname, struct dirent ***namelist,
 	}
 	closedir(dirp);
 	if (nitems && dcomp != NULL)
-		qsort(names, nitems, sizeof(struct dirent *), dcomp);
+		qsort(names, nitems, sizeof(struct dirent *),
+		    (int (*)(const void *, const void *))dcomp);
 	*namelist = names;
 	return(nitems);
 
@@ -128,8 +129,7 @@ fail:
  * Alphabetic order comparison routine for those who want it.
  */
 int
-alphasort(const void *d1, const void *d2)
+alphasort(const struct dirent **d1, const struct dirent **d2)
 {
-	return(strcmp((*(const struct dirent * const *)d1)->d_name,
-	    (*(const struct dirent * const *)d2)->d_name));
+	return(strcmp((*d1)->d_name, (*d2)->d_name));
 }

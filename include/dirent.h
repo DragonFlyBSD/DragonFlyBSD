@@ -32,7 +32,6 @@
  *
  *	@(#)dirent.h	8.2 (Berkeley) 7/28/94
  * $FreeBSD: src/include/dirent.h,v 1.7 1999/12/29 05:01:20 peter Exp $
- * $DragonFly: src/include/dirent.h,v 1.10 2008/06/05 17:53:10 swildner Exp $
  */
 
 #ifndef _DIRENT_H_
@@ -88,6 +87,11 @@ DIR *fdopendir (int);
 struct dirent *readdir (DIR *);
 void rewinddir (DIR *);
 int closedir (DIR *);
+#if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE >= 700 || !defined(_POSIX_SOURCE)
+int alphasort (const struct dirent **, const struct dirent **);
+int scandir(const char *, struct dirent ***, int (*)(const struct dirent *),
+	int (*)(const struct dirent **, const struct dirent **));
+#endif
 #ifndef _POSIX_SOURCE
 DIR *__opendir2 (const char *, int);
 DIR *__fdopendir2 (int, int);
@@ -96,9 +100,6 @@ struct dirent *_readdir_unlocked(DIR *, int);
 void seekdir(DIR *, long);
 void _reclaim_telldir(DIR *);
 void _seekdir (DIR *, long);
-int scandir (const char *, struct dirent ***,
-    int (*)(struct dirent *), int (*)(const void *, const void *));
-int alphasort (const void *, const void *);
 int getdents (int, char *, int);
 int getdirentries (int, char *, int, long *);
 int readdir_r (DIR *, struct dirent *, struct dirent **);
