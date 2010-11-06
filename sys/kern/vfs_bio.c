@@ -602,6 +602,7 @@ bio_track_wait(struct bio_track *track, int slp_flags, int slp_timo)
 	 */
 	error = 0;
 	while ((active = track->bk_active) != 0) {
+		cpu_ccfence();
 		desired = active | 0x80000000;
 		tsleep_interlock(track, slp_flags);
 		if (atomic_cmpset_int(&track->bk_active, active, desired)) {
@@ -2606,9 +2607,14 @@ flushbufqueues(bufq_type_t q)
 			break;
 		}
 
+		spin_unlock(&bufqspin);
+		spun = 0;
+
 		if (LIST_FIRST(&bp->b_dep) != NULL &&
 		    (bp->b_flags & B_DEFERRED) == 0 &&
 		    buf_countdeps(bp, 0)) {
+			spin_lock(&bufqspin);
+			spun = 1;
 			TAILQ_REMOVE(&bufqueues[q], bp, b_freelist);
 			TAILQ_INSERT_TAIL(&bufqueues[q], bp, b_freelist);
 			bp->b_flags |= B_DEFERRED;
@@ -2626,9 +2632,6 @@ flushbufqueues(bufq_type_t q)
 		 *
 		 * NOTE: buf_checkwrite is MPSAFE.
 		 */
-		spin_unlock(&bufqspin);
-		spun = 0;
-
 		if (LIST_FIRST(&bp->b_dep) != NULL && buf_checkwrite(bp)) {
 			bremfree(bp);
 			brelse(bp);
