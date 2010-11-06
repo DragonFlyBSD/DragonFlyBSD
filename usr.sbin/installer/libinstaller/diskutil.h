@@ -101,6 +101,7 @@ struct subpartition {
 	char letter;			/* 'a' = root partition */
 	char *mountpoint;		/* includes leading slash */
 	long capacity;			/* in megabytes, -1 = "rest of disk" */
+	int encrypted;
 	int softupdates;
 	long fsize;			/* fragment size */
 	long bsize;			/* block size */
@@ -157,9 +158,10 @@ int			 slice_get_flags(const struct slice *);
 void			 slices_free(struct slice *);
 struct subpartition	*slice_subpartition_first(const struct slice *);
 
-struct subpartition	*subpartition_new(struct slice *, const char *, long,
-					  int, long, long, int);
-struct subpartition	*subpartition_new_hammer(struct slice *, const char *, long);
+struct subpartition	*subpartition_new_hammer(struct slice *, const char *,
+						 long, int);
+struct subpartition	*subpartition_new_ufs(struct slice *, const char *,
+					      long, int, int, long, long, int);
 int			 subpartition_count(const struct slice *);
 struct subpartition	*subpartition_find(const struct slice *, const char *, ...)
 			     __printflike(2, 3);
@@ -175,6 +177,7 @@ char			 subpartition_get_letter(const struct subpartition *);
 unsigned long		 subpartition_get_fsize(const struct subpartition *);
 unsigned long		 subpartition_get_bsize(const struct subpartition *);
 long			 subpartition_get_capacity(const struct subpartition *);
+int			 subpartition_is_encrypted(const struct subpartition *);
 int			 subpartition_is_swap(const struct subpartition *);
 int			 subpartition_is_softupdated(const struct subpartition *);
 int			 subpartition_is_tmpfsbacked(const struct subpartition *);

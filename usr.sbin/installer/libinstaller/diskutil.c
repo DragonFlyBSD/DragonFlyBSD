@@ -505,7 +505,8 @@ slices_free(struct slice *head)
 }
 
 struct subpartition *
-subpartition_new_hammer(struct slice *s, const char *mountpoint, long capacity)
+subpartition_new_hammer(struct slice *s, const char *mountpoint, long capacity,
+    int encrypted)
 {
 	struct subpartition *sp;
 
@@ -524,6 +525,7 @@ subpartition_new_hammer(struct slice *s, const char *mountpoint, long capacity)
 
 	sp->mountpoint = aura_strdup(mountpoint);
 	sp->capacity = capacity;
+	sp->encrypted = encrypted;
 	sp->type = FS_HAMMER;
 
 	/*
@@ -566,8 +568,8 @@ subpartition_new_hammer(struct slice *s, const char *mountpoint, long capacity)
  * "choose a reasonable default."
  */
 struct subpartition *
-subpartition_new(struct slice *s, const char *mountpoint, long capacity,
-		 int softupdates, long fsize, long bsize, int tmpfsbacked)
+subpartition_new_ufs(struct slice *s, const char *mountpoint, long capacity,
+    int encrypted, int softupdates, long fsize, long bsize, int tmpfsbacked)
 {
 	struct subpartition *sp, *sptmp;
 	int letter='d';
@@ -578,6 +580,7 @@ subpartition_new(struct slice *s, const char *mountpoint, long capacity,
 
 	sp->mountpoint = aura_strdup(mountpoint);
 	sp->capacity = capacity;
+	sp->encrypted = encrypted;
 	sp->type = FS_UFS;
 
 	if (fsize == -1) {
@@ -787,6 +790,12 @@ long
 subpartition_get_capacity(const struct subpartition *sp)
 {
 	return(sp->capacity);
+}
+
+int
+subpartition_is_encrypted(const struct subpartition *sp)
+{
+	return(sp->encrypted);
 }
 
 int

@@ -125,7 +125,7 @@ fn_install_os(struct i_fn_args *a)
 	struct subpartition *sp;
 	struct commands *cmds;
 	struct command *cmd;
-	int i, seen_it, prefix, j;
+	int i, seen_it, prefix, j, needcrypt;
 	FILE *sources_conf;
 	char line[256];
 	char cp_src[64][256];
@@ -164,7 +164,8 @@ fn_install_os(struct i_fn_args *a)
 			    a->os_root,
 			    cmd_name(a, "SWAPON"),
 			    a->os_root,
-			    subpartition_get_device_name(sp));
+			    subpartition_is_encrypted(sp) ?
+			    "mapper/swap" : subpartition_get_device_name(sp));
 		}
 	}
 
@@ -173,6 +174,16 @@ fn_install_os(struct i_fn_args *a)
 	 */
 	unmount_all_under(a, cmds, "%smnt", a->os_root);
 
+	/* Check if crypto support is needed */
+	needcrypt = 0;
+	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
+	     sp != NULL; sp = subpartition_next(sp)) {
+		if (subpartition_is_encrypted(sp)) {
+			needcrypt = 1;
+			break;
+		}
+	}
+
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
 		if (strcmp(subpartition_get_mountpoint(sp), "/") == 0) {
@@ -180,7 +191,8 @@ fn_install_os(struct i_fn_args *a)
 				command_add(cmds, "%s%s %sdev/%s %smnt%s",
 				    a->os_root, cmd_name(a, "MOUNT_HAMMER"),
 				    a->os_root,
-				    subpartition_get_device_name(sp),
+				    subpartition_is_encrypted(sp) ?
+				    "mapper/root" : subpartition_get_device_name(sp),
 				    a->os_root,
 				    subpartition_get_mountpoint(sp));
 			} else {
@@ -209,10 +221,12 @@ fn_install_os(struct i_fn_args *a)
 			command_add(cmds, "%s%s -v %sdev/%s",
 			    a->os_root, cmd_name(a, "DUMPON"),
 			    a->os_root,
-			    subpartition_get_device_name(sp));
+			    subpartition_is_encrypted(sp) ?
+			    "mapper/swap" : subpartition_get_device_name(sp));
 
 			asprintf(&string, "/dev/%s",
-			    subpartition_get_device_name(sp));
+			    subpartition_is_encrypted(sp) ?
+			    "mapper/swap" : subpartition_get_device_name(sp));
 			config_var_set(rc_conf, "dumpdev", string);
 			free(string);
 			continue;
@@ -228,12 +242,21 @@ fn_install_os(struct i_fn_args *a)
 				/* Don't mount it if it's TMPFS-backed. */
 				if (subpartition_is_tmpfsbacked(sp))
 					continue;
-				command_add(cmds, "%s%s %sdev/%s %smnt%s",
-				    a->os_root, cmd_name(a, "MOUNT"),
-				    a->os_root,
-				    subpartition_get_device_name(sp),
-				    a->os_root,
-				    subpartition_get_mountpoint(sp));
+				if (subpartition_is_encrypted(sp)) {
+					command_add(cmds, "%s%s %sdev/mapper/%s %smnt%s",
+					    a->os_root, cmd_name(a, "MOUNT"),
+					    a->os_root,
+					    subpartition_get_mountpoint(sp) + 1,
+					    a->os_root,
+					    subpartition_get_mountpoint(sp));
+				} else {
+					command_add(cmds, "%s%s %sdev/%s %smnt%s",
+					    a->os_root, cmd_name(a, "MOUNT"),
+					    a->os_root,
+					    subpartition_get_device_name(sp),
+					    a->os_root,
+					    subpartition_get_mountpoint(sp));
+				}
 			}
 		} else if (strcmp(subpartition_get_mountpoint(sp), "/boot") == 0) {
 			command_add(cmds, "%s%s -p %smnt%s",
@@ -432,6 +455,12 @@ fn_install_os(struct i_fn_args *a)
 	    a->os_root, cmd_name(a, "RM"), a->os_root);
 	command_add(cmds, "%s%s -f %smnt/tmp/install.log",
 	    a->os_root, cmd_name(a, "RM"), a->os_root);
+	command_add(cmds, "%s%s -f %smnt/tmp/t[12]",
+	    a->os_root, cmd_name(a, "RM"), a->os_root);
+	command_add(cmds, "%s%s -f %smnt/tmp/test_in",
+	    a->os_root, cmd_name(a, "RM"), a->os_root);
+	command_add(cmds, "%s%s -f %smnt/tmp/test_out",
+	    a->os_root, cmd_name(a, "RM"), a->os_root);
 
 	/*
 	 * Copy pristine versions over any files we might have installed.
@@ -510,6 +539,11 @@ fn_install_os(struct i_fn_args *a)
 		if (strcmp(subpartition_get_mountpoint(sp), "swap") == 0) {
 			command_add(cmds, "%s%s '/dev/%s\t\tnone\t\tswap\tsw\t\t0\t0' >>%smnt/etc/fstab",
 			    a->os_root, cmd_name(a, "ECHO"),
+			    subpartition_is_encrypted(sp) ?
+			    "mapper/swap" : subpartition_get_device_name(sp),
+			    a->os_root);
+			command_add(cmds, "%s%s 'swap\t/dev/%s\tnone\tnone' >>%smnt/etc/crypttab",
+			    a->os_root, cmd_name(a, "ECHO"),
 			    subpartition_get_device_name(sp),
 			    a->os_root);
 		} else if (use_hammer == 0) {
@@ -523,10 +557,21 @@ fn_install_os(struct i_fn_args *a)
 				    a->os_root, cmd_name(a, "ECHO"), a->os_root);
 			} else if (subpartition_is_tmpfsbacked(sp)) {
 				command_add(cmds, "%s%s 'tmpfs\t\t\t%s\t\ttmpfs\trw,-s%luM\t1\t1' >>%smnt/etc/fstab",
-					a->os_root, cmd_name(a, "ECHO"),
-					subpartition_get_mountpoint(sp),
-					subpartition_get_capacity(sp),
-					a->os_root);
+				    a->os_root, cmd_name(a, "ECHO"),
+				    subpartition_get_mountpoint(sp),
+				    subpartition_get_capacity(sp),
+				    a->os_root);
+			} else if (subpartition_is_encrypted(sp)) {
+				command_add(cmds, "%s%s '%s\t/dev/%s\tnone\tnone' >>%smnt/etc/crypttab",
+				    a->os_root, cmd_name(a, "ECHO"),
+				    subpartition_get_mountpoint(sp) + 1,
+				    subpartition_get_device_name(sp),
+				    a->os_root);
+				command_add(cmds, "%s%s '/dev/mapper/%s\t\t%s\t\tufs\trw\t\t2\t2' >>%smnt/etc/fstab",
+				    a->os_root, cmd_name(a, "ECHO"),
+				    subpartition_get_mountpoint(sp) + 1,
+				    subpartition_get_mountpoint(sp),
+				    a->os_root);
 			} else {
 				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\tufs\trw\t\t2\t2' >>%smnt/etc/fstab",
 				    a->os_root, cmd_name(a, "ECHO"),
@@ -541,12 +586,25 @@ fn_install_os(struct i_fn_args *a)
 				    subpartition_get_device_name(sp),
 				    subpartition_get_mountpoint(sp),
 				    a->os_root);
-				command_add(cmds, "%s%s 'vfs.root.mountfrom=\"hammer:%s\"' >>%smnt/boot/loader.conf",
-				    a->os_root, cmd_name(a, "ECHO"),
-				    subpartition_get_device_name(sp),
-				    a->os_root);
 				command_add(cmds, "%s%s 'kern.emergency_intr_enable=1' >>%smnt/boot/loader.conf",
 				    a->os_root, cmd_name(a, "ECHO"), a->os_root);
+				if (subpartition_is_encrypted(sp)) {
+					command_add(cmds,
+					    "%s%s 'vfs.root.mountfrom=\"ufs:md0s0\"' >>%smnt/boot/loader.conf",
+					    a->os_root, cmd_name(a, "ECHO"),
+					    a->os_root);
+					command_add(cmds,
+					    "%s%s 'vfs.root.realroot=\"crypt:hammer:%s:root\"' >>%smnt/boot/loader.conf",
+					    a->os_root, cmd_name(a, "ECHO"),
+					    subpartition_get_device_name(sp),
+					    a->os_root);
+				} else {
+					command_add(cmds,
+					    "%s%s 'vfs.root.mountfrom=\"hammer:%s\"' >>%smnt/boot/loader.conf",
+					    a->os_root, cmd_name(a, "ECHO"),
+					    subpartition_get_device_name(sp),
+					    a->os_root);
+				}
 			} else if (strcmp(subpartition_get_mountpoint(sp), "/boot") == 0) {
 				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\tufs\trw\t\t1\t1' >>%smnt/etc/fstab",
 				    a->os_root, cmd_name(a, "ECHO"),
@@ -620,6 +678,29 @@ fn_install_os(struct i_fn_args *a)
 	    a->os_root,
 	    a->os_root, cmd_name(a, "RM"),
 	    a->os_root);
+
+	/* Do some preparation if encrypted partitions were configured */
+	if (needcrypt) {
+		command_add(cmds,
+		    "%s%s 'dm_load=\"yes\"' >>%smnt/boot/loader.conf",
+		    a->os_root, cmd_name(a, "ECHO"),
+		    a->os_root);
+		if (use_hammer) {
+			command_add(cmds, "%s%s -b %smnt/boot -t %smnt/tmp",
+			    a->os_root, cmd_name(a, "MKINITRD"),
+			    a->os_root, a->os_root);
+			command_add(cmds, "%s%s -rf %smnt/tmp/initrd",
+			    a->os_root, cmd_name(a, "RM"), a->os_root);
+			command_add(cmds,
+			    "%s%s 'initrd.img_load=\"YES\"' >>%smnt/boot/loader.conf",
+			    a->os_root, cmd_name(a, "ECHO"),
+			    a->os_root);
+			command_add(cmds,
+			    "%s%s 'initrd.img_type=\"md_image\"' >>%smnt/boot/loader.conf",
+			    a->os_root, cmd_name(a, "ECHO"),
+			    a->os_root);
+		}
+	}
 
 	/* Customize stuff here */
 	if(is_file("%susr/local/bin/after_installation_routines.sh", a->os_root)) {

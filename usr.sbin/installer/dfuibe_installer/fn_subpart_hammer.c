@@ -72,6 +72,7 @@ static int	check_subpartition_selections(struct dfui_response *, struct i_fn_arg
 static void	save_subpartition_selections(struct dfui_response *, struct i_fn_args *);
 static void	populate_create_subpartitions_form(struct dfui_form *, struct i_fn_args *);
 static int	warn_subpartition_selections(struct i_fn_args *);
+static int	warn_encrypted_boot(struct i_fn_args *);
 static struct dfui_form *make_create_subpartitions_form(struct i_fn_args *);
 static int	show_create_subpartitions_form(struct dfui_form *, struct i_fn_args *);
 
@@ -192,12 +193,37 @@ create_subpartitions(struct i_fn_args *a)
 	    slice_get_device_name(storage_get_selected_slice(a->s)));
 
 	/*
+	 * If encryption was specified, load dm(4).
+	 */
+	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
+	     sp != NULL; sp = subpartition_next(sp)) {
+		if (subpartition_is_encrypted(sp)) {
+			fn_get_passphrase(a);
+			break;
+		}
+	}
+
+	/*
 	 * Create filesystems on the newly-created subpartitions.
 	 */
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
-		if (subpartition_is_swap(sp) || subpartition_is_tmpfsbacked(sp))
+		if (subpartition_is_swap(sp) || subpartition_is_tmpfsbacked(sp)) {
+			if (subpartition_is_swap(sp) &&
+			    subpartition_is_encrypted(sp)) {
+				command_add(cmds,
+				    "%s%s -d /tmp/t1 luksFormat %sdev/%s",
+				    a->os_root, cmd_name(a, "CRYPTSETUP"),
+				    a->os_root,
+				    subpartition_get_device_name(sp));
+				command_add(cmds,
+				    "%s%s -d /tmp/t1 luksOpen %sdev/%s swap",
+				    a->os_root, cmd_name(a, "CRYPTSETUP"),
+				    a->os_root,
+				    subpartition_get_device_name(sp));
+			}
 			continue;
+		}
 
 		if (strcmp(subpartition_get_mountpoint(sp), "/boot") == 0) {
 			command_add(cmds, "%s%s %sdev/%s",
@@ -205,10 +231,23 @@ create_subpartitions(struct i_fn_args *a)
 			    a->os_root,
 			    subpartition_get_device_name(sp));
 		} else {
+			if (subpartition_is_encrypted(sp)) {
+				command_add(cmds,
+				    "%s%s -d /tmp/t1 luksFormat %sdev/%s",
+				    a->os_root, cmd_name(a, "CRYPTSETUP"),
+				    a->os_root,
+				    subpartition_get_device_name(sp));
+				command_add(cmds,
+				    "%s%s -d /tmp/t1 luksOpen %sdev/%s root",
+				    a->os_root, cmd_name(a, "CRYPTSETUP"),
+				    a->os_root,
+				    subpartition_get_device_name(sp));
+			}
 			command_add(cmds, "%s%s -f -L ROOT %sdev/%s",
 			    a->os_root, cmd_name(a, "NEWFS_HAMMER"),
 			    a->os_root,
-			    subpartition_get_device_name(sp));
+			    subpartition_is_encrypted(sp) ?
+			    "mapper/root" : subpartition_get_device_name(sp));
 		}
 	}
 
@@ -445,7 +484,8 @@ save_subpartition_selections(struct dfui_response *r, struct i_fn_args *a)
 
 		if (string_to_capacity(capstring, &capacity)) {
 			subpartition_new_hammer(storage_get_selected_slice(a->s),
-			     mountpoint, capacity);
+			    mountpoint, capacity,
+			    strcasecmp(dfui_dataset_get_value(ds, "encrypted"), "Y") == 0);
 		}
 	}
 }
@@ -470,6 +510,8 @@ populate_create_subpartitions_form(struct dfui_form *f, struct i_fn_args *a)
 			    subpartition_get_mountpoint(sp));
 			dfui_dataset_celldata_add(ds, "capacity",
 			    capacity_to_string(subpartition_get_capacity(sp)));
+			dfui_dataset_celldata_add(ds, "encrypted",
+			    subpartition_is_encrypted(sp) ? "Y" : "N");
 			dfui_form_dataset_add(f, ds);
 		}
 	} else {
@@ -486,6 +528,7 @@ populate_create_subpartitions_form(struct dfui_form *f, struct i_fn_args *a)
 			    def_mountpt[i]);
 			dfui_dataset_celldata_add(ds, "capacity",
 			    capacity_to_string(capacity));
+			dfui_dataset_celldata_add(ds, "encrypted", "N");
 			dfui_form_dataset_add(f, ds);
 		}
 	}
@@ -510,6 +553,36 @@ warn_subpartition_selections(struct i_fn_args *a)
 			"and /var/tmp and must not be specified."));
 	} else {
 		valid = check_capacity(a);
+	}
+
+	return(!valid);
+}
+
+static int
+warn_encrypted_boot(struct i_fn_args *a)
+{
+	int valid = 1;
+
+	struct subpartition *sp;
+
+	sp = subpartition_find(storage_get_selected_slice(a->s), "/boot");
+	if (sp == NULL)
+		return(!valid);
+
+	if (subpartition_is_encrypted(sp)) {
+		switch (dfui_be_present_dialog(a->c, _("/boot cannot be encrypted"),
+		    _("Leave /boot unencrypted|Return to Create Subpartitions"),
+		    _("You have selected encryption for the /boot partition which "
+		    "is not supported."))) {
+		case 1:
+			valid = 1;
+			break;
+		case 2:
+			valid = 0;
+			break;
+		default:
+			abort_backend();
+		}
 	}
 
 	return(!valid);
@@ -549,6 +622,9 @@ make_create_subpartitions_form(struct i_fn_args *a)
 
 	    "f", "mountpoint", _("Mountpoint"), "", "",
 	    "f", "capacity", _("Capacity"), "", "",
+
+	    "f", "encrypted", _("Encrypted"), "", "",
+	    "p", "control", "checkbox",
 
 	    "a", "ok", _("Accept and Create"), "", "",
 	    "a", "cancel",
@@ -624,7 +700,8 @@ show_create_subpartitions_form(struct dfui_form *f, struct i_fn_args *a)
 		} else {
 			if (check_subpartition_selections(r, a)) {
 				save_subpartition_selections(r, a);
-				if (!warn_subpartition_selections(a)) {
+				if (!warn_subpartition_selections(a) &&
+				    !warn_encrypted_boot(a)) {
 					if (!create_subpartitions(a)) {
 						inform(a->c, _("The subpartitions you chose were "
 							"not correctly created, and the "
