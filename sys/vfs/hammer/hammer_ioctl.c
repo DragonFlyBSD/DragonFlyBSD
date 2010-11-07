@@ -538,6 +538,10 @@ hammer_ioc_get_version(hammer_transaction_t trans, hammer_inode_t ip,
 		ksnprintf(ver->description, sizeof(ver->description),
 			 "New undo/flush, faster flush/sync (DragonFly 2.5+)");
 		break;
+	case 5:
+		ksnprintf(ver->description, sizeof(ver->description),
+			 "Adjustments for dedup support (DragonFly 2.9+)");
+		break;
 	default:
 		ksnprintf(ver->description, sizeof(ver->description),
 			 "Unknown");

@@ -396,6 +396,11 @@ typedef struct hammer_blockmap_layer2 *hammer_blockmap_layer2_t;
  * (3) Data overwrite for nohistory operations covered by REDO records
  *     can be supported (instead of rolling a new block allocation),
  *     by rolling UNDO for the prior contents of the data.
+ *
+ *				HAMMER VERSION 5 CHANGES
+ *
+ * Hammer version 5 contains a minor adjustment making layer2's bytes_free
+ * field signed, allowing dedup to push it into the negative domain.
  */
 #define HAMMER_HEAD_ONDISK_SIZE		32
 #define HAMMER_HEAD_ALIGN		8
@@ -641,13 +646,14 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 
 #define HAMMER_VOL_VERSION_MIN		1	/* minimum supported version */
 #define HAMMER_VOL_VERSION_DEFAULT	4	/* newfs default version */
-#define HAMMER_VOL_VERSION_WIP		5	/* version >= this is WIP */
-#define HAMMER_VOL_VERSION_MAX		4	/* maximum supported version */
+#define HAMMER_VOL_VERSION_WIP		6	/* version >= this is WIP */
+#define HAMMER_VOL_VERSION_MAX		5	/* maximum supported version */
 
 #define HAMMER_VOL_VERSION_ONE		1
 #define HAMMER_VOL_VERSION_TWO		2	/* new dirent layout (2.3+) */
 #define HAMMER_VOL_VERSION_THREE	3	/* new snapshot layout (2.5+) */
 #define HAMMER_VOL_VERSION_FOUR		4	/* new undo/flush (2.5+) */
+#define HAMMER_VOL_VERSION_FIVE		5	/* dedup (2.9+) */
 
 /*
  * Record types are fairly straightforward.  The B-Tree includes the record
