@@ -339,6 +339,7 @@ validate_dedup_pair(hammer_btree_leaf_elm_t p, hammer_btree_leaf_elm_t q)
 #define DEDUP_CMP_FAILURE	2
 #define DEDUP_INVALID_ZONE	3
 #define DEDUP_UNDERFLOW		4
+#define DEDUP_VERS_FAILURE	5
 
 static __inline int
 deduplicate(hammer_btree_leaf_elm_t p, hammer_btree_leaf_elm_t q)
@@ -359,6 +360,10 @@ deduplicate(hammer_btree_leaf_elm_t p, hammer_btree_leaf_elm_t q)
 	dedup.elm2 = q->base;
 	RunningIoctl = 1;
 	if (ioctl(glob_fd, HAMMERIOC_DEDUP, &dedup) < 0) {
+		if (errno == EOPNOTSUPP) {
+			/* must be at least version 5 */
+			return (DEDUP_VERS_FAILURE);
+		}
 		/* Technical failure - locking or w/e */
 		return (DEDUP_TECH_FAILURE);
 	}
@@ -447,6 +452,8 @@ process_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags)
 		 */
 		error = deduplicate(&sha_de->leaf, scan_leaf);
 		switch(error) {
+		case 0:
+			goto upgrade_stats_sha;
 		case DEDUP_TECH_FAILURE:
 			goto pass2_insert;
 		case DEDUP_CMP_FAILURE:
@@ -458,8 +465,14 @@ process_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags)
 			sha_de->leaf = *scan_leaf;
 			memcpy(sha_de->sha_hash, temp.sha_hash, SHA256_DIGEST_LENGTH);
 			goto upgrade_stats_sha;
+		case DEDUP_VERS_FAILURE:
+			fprintf(stderr,
+				"HAMMER filesystem must be at least "
+				"version 5 to dedup\n");
+			exit (1);
 		default:
-			goto upgrade_stats_sha;
+			fprintf(stderr, "Unknown error\n");
+			goto terminate_early;
 		}
 
 		/*
@@ -483,6 +496,8 @@ sha256_failure:
 		 */
 		error = deduplicate(&de->leaf, scan_leaf);
 		switch(error) {
+		case 0:
+			goto upgrade_stats;
 		case DEDUP_TECH_FAILURE:
 			goto pass2_insert;
 		case DEDUP_CMP_FAILURE:
@@ -493,8 +508,14 @@ sha256_failure:
 			++dedup_underflows;
 			de->leaf = *scan_leaf;
 			goto upgrade_stats;
+		case DEDUP_VERS_FAILURE:
+			fprintf(stderr,
+				"HAMMER filesystem must be at least "
+				"version 5 to dedup\n");
+			exit (1);
 		default:
-			goto upgrade_stats;
+			fprintf(stderr, "Unknown error\n");
+			goto terminate_early;
 		}
 
 crc_failure:
