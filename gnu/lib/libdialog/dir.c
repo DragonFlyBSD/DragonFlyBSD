@@ -72,13 +72,7 @@ static int	_showdotfiles = TRUE;
  ****************************************************************************/
 
 int
-dir_select_nd(
-#if defined __linux__
-  const struct dirent *d
-#else
-  struct dirent *d
-#endif
-)
+dir_select_nd(const struct dirent *d)
 /*
  *	desc:	allways include a directory entry <d>, except
  *		for the current directory and other dot-files
@@ -97,13 +91,7 @@ dir_select_nd(
 
 
 int
-dir_select(
-#ifdef __linux__
-  const struct dirent *d
-#else
-  struct dirent *d
-#endif
-)
+dir_select(const struct dirent *d)
 /*
  *	desc:	allways include a directory entry <d>, except
  *		for the current directory
@@ -119,13 +107,7 @@ dir_select(
 } /* dir_select() */
 
 int
-dir_select_root_nd(
-#ifdef __linux__
-  const struct dirent *d
-#else
-  struct dirent *d
-#endif
-)
+dir_select_root_nd(const struct dirent *d)
 /*
  *	desc:	allways include a directory entry <d>, except
  *		for the current directory and the parent directory.
@@ -143,13 +125,7 @@ dir_select_root_nd(
 
 
 int
-dir_select_root(
-#ifdef __linux__
-  const struct dirent *d
-#else
-  struct dirent *d
-#endif
-)
+dir_select_root(const struct dirent *d)
 /*
  *	desc:	allways include a directory entry <d>, except
  *		for the current directory and the parent directory
