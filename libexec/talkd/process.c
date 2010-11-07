@@ -32,7 +32,6 @@
  *
  * @(#)process.c	8.2 (Berkeley) 11/16/93
  * $FreeBSD: src/libexec/talkd/process.c,v 1.9 1999/08/28 00:10:16 peter Exp $
- * $DragonFly: src/libexec/talkd/process.c,v 1.3 2003/11/14 03:54:31 dillon Exp $
  */
 
 /*
@@ -55,25 +54,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <syslog.h>
+#include <utmp.h>
 
-int announce (CTL_MSG *, char *);
-int delete_invite (int);
-void do_announce (CTL_MSG *, CTL_RESPONSE *);
-CTL_MSG *find_request();
-CTL_MSG *find_match();
-int find_user (char *, char *);
-void insert_table (CTL_MSG *, CTL_RESPONSE *);
-int new_id (void);
-void print_request (char *, CTL_MSG *);
-void print_response (char *, CTL_RESPONSE *);
+#include "extern.h"
+
+extern int debug;
 
 void
-process_request(mp, rp)
-	register CTL_MSG *mp;
-	register CTL_RESPONSE *rp;
+process_request(CTL_MSG *mp, CTL_RESPONSE *rp)
 {
-	register CTL_MSG *ptr;
-	extern int debug;
+	CTL_MSG *ptr;
 	char *s;
 
 	rp->vers = TALK_VERSION;
@@ -147,9 +137,7 @@ process_request(mp, rp)
 }
 
 void
-do_announce(mp, rp)
-	register CTL_MSG *mp;
-	CTL_RESPONSE *rp;
+do_announce(CTL_MSG *mp, CTL_RESPONSE *rp)
 {
 	struct hostent *hp;
 	CTL_MSG *ptr;
@@ -161,7 +149,7 @@ do_announce(mp, rp)
 		rp->answer = result;
 		return;
 	}
-#define	satosin(sa)	((struct sockaddr_in *)(sa))
+#define	satosin(sa)	((struct sockaddr_in *)(void *)(sa))
 	hp = gethostbyaddr(&satosin(&mp->ctl_addr)->sin_addr,
 		sizeof (struct in_addr), AF_INET);
 	if (hp == NULL) {
@@ -189,14 +177,11 @@ do_announce(mp, rp)
 	}
 }
 
-#include <utmp.h>
-
 /*
  * Search utmp for the local user
  */
 int
-find_user(name, tty)
-	char *name, *tty;
+find_user(const char *name, char *tty)
 {
 	struct utmp ubuf;
 	int status;

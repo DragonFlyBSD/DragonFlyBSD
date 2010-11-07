@@ -32,7 +32,6 @@
  *
  * @(#)announce.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/libexec/talkd/announce.c,v 1.11.2.3 2001/10/18 12:30:42 des Exp $
- * $DragonFly: src/libexec/talkd/announce.c,v 1.4 2008/08/23 22:26:56 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -53,11 +52,10 @@
 #include <unistd.h>
 #include <vis.h>
 
+#include "extern.h"
 #include "ttymsg.h"
 
 extern char hostname[];
-
-int print_mesg (char *, CTL_MSG *, char *);
 
 /*
  * Announce an invitation to talk.
@@ -68,9 +66,7 @@ int print_mesg (char *, CTL_MSG *, char *);
  * a talk is requested.
  */
 int
-announce(request, remote_machine)
-	CTL_MSG *request;
-	char *remote_machine;
+announce(CTL_MSG *request, const char *remote_machine)
 {
 	char full_tty[32];
 	struct stat stbuf;
@@ -90,18 +86,13 @@ announce(request, remote_machine)
  * Build a block of characters containing the message.
  * It is sent blank filled and in a single block to
  * try to keep the message in one piece if the recipient
- * in in vi at the time
+ * in vi at the time
  */
 int
-print_mesg(tty, request, remote_machine)
-	char *tty;
-	CTL_MSG *request;
-	char *remote_machine;
+print_mesg(const char *tty, CTL_MSG *request, const char *remote_machine)
 {
-	struct timeval clock;
+	struct timeval now;
 	time_t clock_sec;
-	struct timezone zone;
-	struct tm *localtime();
 	struct tm *localclock;
 	struct iovec iovec;
 	char line_buf[N_LINES][N_CHARS];
@@ -112,8 +103,8 @@ print_mesg(tty, request, remote_machine)
 
 	i = 0;
 	max_size = 0;
-	gettimeofday(&clock, &zone);
-	clock_sec = clock.tv_sec;
+	gettimeofday(&now, NULL);
+	clock_sec = now.tv_sec;
 	localclock = localtime(&clock_sec);
 	(void)snprintf(line_buf[i], N_CHARS, " ");
 	sizes[i] = strlen(line_buf[i]);
