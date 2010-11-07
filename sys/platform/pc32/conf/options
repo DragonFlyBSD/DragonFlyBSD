@@ -24,7 +24,6 @@ COMPAT_LINUX		opt_dontuse.h
 LINPROCFS		opt_dontuse.h	#Linux compatible procfs
 
 # i386 SMP options
-APIC_IO			opt_global.h
 
 # Change KVM size.  Changes things all over the kernel.
 KVA_PAGES		opt_global.h

@@ -67,7 +67,6 @@ void	io_apic_write		(int, int, u_int);
 /* global data in mp_machdep.c */
 extern int			mp_naps;
 extern int			mp_napics;
-extern vm_offset_t		cpu_apic_address;
 extern vm_offset_t		io_apic_address[];
 extern u_int32_t		cpu_apic_versions[];
 extern u_int32_t		*io_apic_versions;
@@ -79,8 +78,13 @@ struct apic_intmapinfo {
   	int ioapic;
 	int int_pin;
 	volatile void *apic_address;
-	int redirindex;
+	int32_t redirindex;
+	u_int32_t flags;	/* AIMI_FLAG */
 };
+
+#define AIMI_FLAG_LEVEL		0x1	/* default to edge trigger */
+#define AIMI_FLAG_MASKED	0x2
+
 extern struct apic_intmapinfo	int_to_apicintpin[];
 extern struct pcb		stoppcbs[];
 
@@ -111,6 +115,20 @@ void	ap_init			(void);
 int	restart_cpus		(u_int);
 void	forward_signal		(struct proc *);
 
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
+
+struct lapic_enumerator {
+	int	lapic_prio;
+	TAILQ_ENTRY(lapic_enumerator) lapic_link;
+	int	(*lapic_probe)(struct lapic_enumerator *);
+	void	(*lapic_enumerate)(struct lapic_enumerator *);
+};
+
+#define LAPIC_ENUM_PRIO_MPTABLE	20
+#define LAPIC_ENUM_PRIO_MADT	40
+
 /* global data in mpapic.c */
 extern volatile lapic_t		*lapic;
 extern volatile ioapic_t	**ioapic;
@@ -128,11 +146,8 @@ void	io_apic_setup_intpin	(int, int);
 void	io_apic_set_id		(int, int);
 int	io_apic_get_id		(int);
 int	ext_int_setup		(int, int);
-
-/* functions in mp_madt.c */
-vm_paddr_t	madt_probe(void);
-vm_offset_t	madt_pass1(vm_paddr_t);
-int		madt_pass2(vm_paddr_t, int);
+void	lapic_config(void);
+void	lapic_enumerator_register(struct lapic_enumerator *);
 
 #if defined(READY)
 void	clr_io_apic_mask24	(int, u_int32_t);

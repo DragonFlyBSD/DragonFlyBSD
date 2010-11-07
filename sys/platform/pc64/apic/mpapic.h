@@ -38,7 +38,7 @@
  * Size of APIC ID list.
  * Also used a MAX size of various other arrays.
  */
-#define NAPICID		16
+#define NAPICID		256
 
 /* these don't really belong in here... */
 enum busTypes {
@@ -78,5 +78,7 @@ all_but_self_ipi(int vector)
 }
 
 #endif
+
+void	lapic_init(vm_offset_t /* XXX should be vm_paddr_t */);
 
 #endif /* _MACHINE_MPAPIC_H */

@@ -231,6 +231,7 @@ apic_vectorctl(int op, int intr, int flags)
 	    imen_lock();
 	    select = int_to_apicintpin[intr].redirindex;
 	    value = io_apic_read(int_to_apicintpin[intr].ioapic, select);
+	    value |= IOART_INTMSET;
 	    io_apic_write(int_to_apicintpin[intr].ioapic,
 			  select, (value & ~APIC_TRIGMOD_MASK));
 	    io_apic_write(int_to_apicintpin[intr].ioapic,

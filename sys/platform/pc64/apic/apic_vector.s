@@ -51,21 +51,23 @@
  */
 #define APIC_POP_FRAME POP_FRAME
 
-/* sizeof(struct apic_intmapinfo) == 24 */
-#define IOAPICADDR(irq_num) CNAME(int_to_apicintpin) + 24 * (irq_num) + 8
-#define REDIRIDX(irq_num) CNAME(int_to_apicintpin) + 24 * (irq_num) + 16
-
+#define IOAPICADDR(irq_num) \
+	CNAME(int_to_apicintpin) + AIMI_SIZE * (irq_num) + AIMI_APIC_ADDRESS
+#define REDIRIDX(irq_num) \
+	CNAME(int_to_apicintpin) + AIMI_SIZE * (irq_num) + AIMI_REDIRINDEX
+#define IOAPICFLAGS(irq_num) \
+	CNAME(int_to_apicintpin) + AIMI_SIZE * (irq_num) + AIMI_FLAGS
+ 
 #define MASK_IRQ(irq_num)						\
 	APIC_IMASK_LOCK ;			/* into critical reg */	\
-	testl	$IRQ_LBIT(irq_num), apic_imen ;				\
+	testl	$AIMI_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
 	jne	7f ;			/* masked, don't mask */	\
-	orl	$IRQ_LBIT(irq_num), apic_imen ;	/* set the mask bit */	\
+	orl	$AIMI_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
+						/* set the mask bit */	\
 	movq	IOAPICADDR(irq_num), %rcx ;	/* ioapic addr */	\
 	movl	REDIRIDX(irq_num), %eax ;	/* get the index */	\
 	movl	%eax, (%rcx) ;			/* write the index */	\
-	movl	IOAPIC_WINDOW(%rcx), %eax ;	/* current value */	\
-	orl	$IOART_INTMASK, %eax ;		/* set the mask */	\
-	movl	%eax, IOAPIC_WINDOW(%rcx) ;	/* new value */		\
+	orl	$IOART_INTMASK,IOAPIC_WINDOW(%rcx) ;/* set the mask */	\
 7: ;						/* already masked */	\
 	APIC_IMASK_UNLOCK ;						\
 
@@ -75,7 +77,7 @@
  *  and the EOI cycle would cause redundant INTs to occur.
  */
 #define MASK_LEVEL_IRQ(irq_num)						\
-	testl	$IRQ_LBIT(irq_num), apic_pin_trigger ;			\
+	testl	$AIMI_FLAG_LEVEL, IOAPICFLAGS(irq_num) ;		\
 	jz	9f ;				/* edge, don't mask */	\
 	MASK_IRQ(irq_num) ;						\
 9: ;									\
@@ -87,15 +89,14 @@
 	cmpl	$0,%eax ;						\
 	jnz	8f ;							\
 	APIC_IMASK_LOCK ;			/* into critical reg */	\
-	testl	$IRQ_LBIT(irq_num), apic_imen ;				\
+	testl	$AIMI_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
 	je	7f ;			/* bit clear, not masked */	\
-	andl	$~IRQ_LBIT(irq_num), apic_imen ;/* clear mask bit */	\
+	andl	$~AIMI_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
+						/* clear mask bit */	\
 	movq	IOAPICADDR(irq_num),%rcx ;	/* ioapic addr */	\
 	movl	REDIRIDX(irq_num), %eax ;	/* get the index */	\
 	movl	%eax,(%rcx) ;			/* write the index */	\
-	movl	IOAPIC_WINDOW(%rcx),%eax ;	/* current value */	\
-	andl	$~IOART_INTMASK,%eax ;		/* clear the mask */	\
-	movl	%eax,IOAPIC_WINDOW(%rcx) ;	/* new value */		\
+	andl	$~IOART_INTMASK,IOAPIC_WINDOW(%rcx) ;/* clear the mask */ \
 7: ;									\
 	APIC_IMASK_UNLOCK ;						\
 8: ;									\
@@ -367,9 +368,5 @@ started_cpus:
 CNAME(cpustop_restartfunc):
 	.quad 0
 		
-	.globl	apic_pin_trigger
-apic_pin_trigger:
-	.long	0
-
 	.text
 

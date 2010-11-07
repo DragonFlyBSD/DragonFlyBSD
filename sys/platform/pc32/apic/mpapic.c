@@ -153,12 +153,16 @@ apic_initialize(boolean_t bsp)
 	 */
 	temp = lapic.tpr;
 	temp &= ~APIC_TPR_PRIO;		/* clear priority field */
-#ifndef APIC_IO
+#ifdef SMP /* APIC-IO */
+if (!apic_io_enable) {
+#endif
 	/*
 	 * If we are NOT running the IO APICs, the LAPIC will only be used
 	 * for IPIs.  Set the TPR to prevent any unintentional interrupts.
 	 */
 	temp |= TPR_IPI_ONLY;
+#ifdef SMP /* APIC-IO */
+}
 #endif
 
 	lapic.tpr = temp;
@@ -399,7 +403,7 @@ apic_dump(char* str)
 }
 
 
-#if defined(APIC_IO)
+#ifdef SMP /* APIC-IO */
 
 /*
  * IO APIC code,
@@ -813,7 +817,7 @@ imen_dump(void)
  * Inter Processor Interrupt functions.
  */
 
-#endif	/* APIC_IO */
+#endif	/* SMP APIC-IO */
 
 /*
  * Send APIC IPI 'vector' to 'destType' via 'deliveryMode'.

@@ -116,7 +116,7 @@
 	APIC_IMASK_UNLOCK ;						\
 8: ;									\
 
-#ifdef APIC_IO
+#ifdef SMP /* APIC-IO */
 
 /*
  * Fast interrupt call handlers run in the following sequence:
@@ -354,7 +354,7 @@ Xtimer:
 	MEXITCOUNT
 	jmp	doreti_syscall_ret
 
-#ifdef APIC_IO
+#ifdef SMP /* APIC-IO */
 
 MCOUNT_LABEL(bintr)
 	FAST_INTR(0,apic_fastintr0)

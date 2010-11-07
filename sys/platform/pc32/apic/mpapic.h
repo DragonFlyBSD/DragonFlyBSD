@@ -58,7 +58,7 @@ enum busTypes {
  */
 #define CPU_TO_ID(CPU)	(cpu_num_to_apic_id[CPU])
 #define ID_TO_CPU(ID)	(apic_id_to_logical[ID])
-#ifdef APIC_IO
+#ifdef SMP /* APIC-IO */
 #define IO_TO_ID(IO)	(io_num_to_apic_id[IO])
 #define ID_TO_IO(ID)	(apic_id_to_logical[ID])
 #endif

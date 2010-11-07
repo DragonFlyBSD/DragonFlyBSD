@@ -245,5 +245,8 @@ ASSYM(CPUMASK_LOCK, CPUMASK_LOCK);
 #ifdef SMP
 ASSYM(AIMI_APIC_ADDRESS, offsetof(struct apic_intmapinfo, apic_address));
 ASSYM(AIMI_REDIRINDEX, offsetof(struct apic_intmapinfo, redirindex));
+ASSYM(AIMI_FLAGS, offsetof(struct apic_intmapinfo, flags));
 ASSYM(AIMI_SIZE, sizeof(struct apic_intmapinfo));
+ASSYM(AIMI_FLAG_LEVEL, AIMI_FLAG_LEVEL);
+ASSYM(AIMI_FLAG_MASKED, AIMI_FLAG_MASKED);
 #endif
