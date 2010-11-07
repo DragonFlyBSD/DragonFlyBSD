@@ -3,9 +3,8 @@
 PROG=		watchdogd
 SRCS=		watchdogd.c
 
-CFLAGS+=	-Wall
 LINTFLAGS+=	-u -z
-LDSTATIC=	${STATIC}
+NOSHARED?=	yes
 
 MAN=		watchdogd.8
 
