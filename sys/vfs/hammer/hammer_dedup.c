@@ -44,6 +44,15 @@ hammer_ioc_dedup(hammer_transaction_t trans, hammer_inode_t ip,
 	int error;
 
 	/*
+	 * Enforce hammer filesystem version requirements
+	 */
+	if (trans->hmp->version < HAMMER_VOL_VERSION_FIVE) {
+		kprintf("hammer: Filesystem must be upgraded to v5 "
+			"before you can run dedup\n");
+		return (EOPNOTSUPP);
+	}
+
+	/*
 	 * Cursor1, return an error -> candidate goes to pass2 list
 	 */
 	error = hammer_init_cursor(trans, &cursor1, NULL, NULL);
