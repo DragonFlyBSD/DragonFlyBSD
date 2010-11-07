@@ -5,8 +5,7 @@
 SUBDIR=	TESTS
 
 PROG=   dialog
-
-CFLAGS+= -Wall -Wstrict-prototypes
+WARNS?=	3
 
 DPADD+= $(LIBDIALOG) $(LIBNCURSES) $(LIBMYTINFO)
 LDADD+= -ldialog -lncurses -lmytinfo
