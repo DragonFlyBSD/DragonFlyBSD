@@ -8,7 +8,7 @@
 #
 # img is now the default (produces both the .iso and .img)
 #
-gui installer img:
+gui installer img nopkgs:
 
 #########################################################################
 #				 SETUP		 			#
@@ -113,6 +113,8 @@ ROOTSKELS?=	${REQ_ROOTSKELS}
 .if make(gui)
 ISOFILE?=		${ISODIR}/dfly-gui.iso
 IMGFILE?=		${ISODIR}/dfly-gui.img
+
+.if !make(nopkgs)
 PKGSRC_PACKAGES+=	meta-pkgs/modular-xorg-apps \
 			meta-pkgs/modular-xorg-drivers \
 			meta-pkgs/modular-xorg-fonts \
@@ -140,6 +142,8 @@ PKGSRC_PACKAGES+=	meta-pkgs/modular-xorg-apps \
 			net/rsync \
 			time/asclock \
 			misc/screen
+.endif
+
 ROOTSKELS+=		${.CURDIR}/gui
 .endif
 
