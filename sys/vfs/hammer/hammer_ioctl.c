@@ -58,6 +58,8 @@ static int hammer_ioc_get_config(hammer_transaction_t trans, hammer_inode_t ip,
 				struct hammer_ioc_config *snap);
 static int hammer_ioc_set_config(hammer_transaction_t trans, hammer_inode_t ip,
 				struct hammer_ioc_config *snap);
+static int hammer_ioc_get_data(hammer_transaction_t trans, hammer_inode_t ip,
+				struct hammer_ioc_data *data);
 
 int
 hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
@@ -208,6 +210,18 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 		if (error == 0) {
 			error = hammer_ioc_set_config(
 					&trans, ip, (struct hammer_ioc_config *)data);
+		}
+		break;
+	case HAMMERIOC_DEDUP:
+		if (error == 0) {
+			error = hammer_ioc_dedup(
+					&trans, ip, (struct hammer_ioc_dedup *)data);
+		}
+		break;
+	case HAMMERIOC_GET_DATA:
+		if (error == 0) {
+			error = hammer_ioc_get_data(
+					&trans, ip, (struct hammer_ioc_data *)data);
 		}
 		break;
 	default:
@@ -990,4 +1004,39 @@ again:
 	config->head.error = error;
 	hammer_done_cursor(&cursor);
 	return(0);
+}
+
+static
+int
+hammer_ioc_get_data(hammer_transaction_t trans, hammer_inode_t ip,
+			struct hammer_ioc_data *data)
+{
+	struct hammer_cursor cursor;
+	int bytes;
+	int error;
+
+	/* XXX cached inode ? */
+	error = hammer_init_cursor(trans, &cursor, NULL, NULL);
+	if (error)
+		goto failed;
+
+	cursor.key_beg = data->elm;
+	cursor.flags |= HAMMER_CURSOR_BACKEND;
+
+	error = hammer_btree_lookup(&cursor);
+	if (error == 0) {
+		error = hammer_btree_extract(&cursor, HAMMER_CURSOR_GET_LEAF |
+						      HAMMER_CURSOR_GET_DATA);
+		if (error == 0) {
+			data->leaf = *cursor.leaf;
+			bytes = cursor.leaf->data_len;
+			if (bytes > data->size)
+				bytes = data->size;
+			error = copyout(cursor.data, data->ubuf, bytes);
+		}
+	}
+
+failed:
+	hammer_done_cursor(&cursor);
+	return (error);
 }

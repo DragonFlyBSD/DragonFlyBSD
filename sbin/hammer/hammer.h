@@ -116,6 +116,8 @@ void hammer_cmd_get_version(char **av, int ac);
 void hammer_cmd_set_version(char **av, int ac);
 void hammer_cmd_volume_add(char **av, int ac);
 void hammer_cmd_volume_del(char **av, int ac);
+void hammer_cmd_dedup_simulate(char **av, int ac);
+void hammer_cmd_dedup(char **av, int ac);
 
 void hammer_get_cycle(hammer_base_elm_t base, hammer_tid_t *tidp);
 void hammer_set_cycle(hammer_base_elm_t base, hammer_tid_t tid);
@@ -123,4 +125,3 @@ void hammer_reset_cycle(void);
 
 int getpfs(struct hammer_ioc_pseudofs_rw *pfs, const char *path);
 void relpfs(int fd, struct hammer_ioc_pseudofs_rw *pfs);
-

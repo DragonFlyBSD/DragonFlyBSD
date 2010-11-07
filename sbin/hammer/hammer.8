@@ -32,7 +32,7 @@
 .\"
 .\" $DragonFly: src/sbin/hammer/hammer.8,v 1.58 2008/11/13 02:04:27 dillon Exp $
 .\"
-.Dd February 12, 2010
+.Dd November 3, 2010
 .Dt HAMMER 8
 .Os
 .Sh NAME
@@ -290,9 +290,7 @@ through normal file system operations or through reblocking, before
 it can be reused.
 .Pp
 Data blocks can be shared by deducting the space used from the free byte
-count for each shared references, though
-.Nm HAMMER
-does not yet make use of this feature.
+count for each shared references.
 This means the free byte count can legally go negative.
 .Pp
 This command needs the
@@ -427,8 +425,8 @@ displays the mount point of the PFS is currently mounted on (if any).
 .El
 .\" ==== cleanup ====
 .It Cm cleanup Op Ar filesystem ...
-This is a meta-command which executes snapshot, prune, rebalance and reblock
-commands on the specified
+This is a meta-command which executes snapshot, prune, rebalance, dedup
+and reblock commands on the specified
 .Nm HAMMER
 file systems.
 If no
@@ -467,6 +465,7 @@ The format of the configuration file is:
 snapshots  <period> <retention-time> [any]
 prune      <period> <max-runtime>
 rebalance  <period> <max-runtime>
+dedup      <period> <max-runtime>
 reblock    <period> <max-runtime>
 recopy     <period> <max-runtime>
 .Ed
@@ -476,6 +475,7 @@ Defaults are:
 snapshots  1d 60d  # 0d 0d  for PFS /tmp, /var/tmp, /usr/obj
 prune      1d 5m
 rebalance  1d 5m
+dedup      1d 5m
 reblock    1d 5m
 recopy     30d 10m
 .Ed
@@ -527,12 +527,12 @@ nightly via
 .Xr periodic 8 .
 .Pp
 The default configuration file will create a daily snapshot, do a daily
-pruning, rebalancing and reblocking run and a monthly recopy run.
+pruning, rebalancing, deduping and reblocking run and a monthly recopy run.
 Reblocking is defragmentation with a level of 95%,
 and recopy is full defragmentation.
 .Pp
 By default prune and rebalance operations are time limited to 5 minutes,
-reblock operations to a bit over 5 minutes,
+dedup and reblock operations to a bit over 5 minutes,
 and recopy operations to a bit over 10 minutes.
 Reblocking and recopy runs are each broken down into four separate functions:
 btree, inodes, dirs and data.
@@ -854,6 +854,43 @@ suffix is not needed).
 Rebalancing is a per PFS operation, so a
 .Nm HAMMER
 file system and each PFS in it have to be rebalanced separately.
+.\" ==== dedup ====
+.It Cm dedup Ar filesystem
+.Nm ( HAMMER
+VERSION 5+)
+Perform offline (post-process) deduplication.  Deduplication occurs at
+the block level, currently only data blocks of the same size can be
+deduped, metadata blocks can not.  The hash function used for comparing
+data blocks is CRC-32 (CRCs are computed anyways as part of
+.Nm HAMMER
+data integrity features, so there's no additional overhead).  Since CRC
+is a weak hash function a byte-by-byte comparison is done before actual
+deduping.  In case of a CRC collision (two data blocks have the same CRC
+but different contents) the checksum is upgraded to SHA-256.
+.Pp
+Currently
+.Nm HAMMER
+reblocker may partially blow up (re-expand) dedup (reblocker's normal
+operation is to reallocate every record, so it's possible for deduped
+blocks to be re-expanded back).
+.Pp
+Deduplication is a per PFS operation, so a
+.Nm HAMMER
+file system and each PFS in it have to be deduped separately.  This also
+means that if you have duplicated data in two different PFSs that data
+won't be deduped, however the addition of such feature is planned.
+.\" ==== dedup-simulate ====
+.It Cm dedup-simulate Ar filesystem
+.Nm ( HAMMER
+VERSION 5+)
+Shows potential space savings (simulated dedup ratio) one can get after
+running
+.Cm dedup
+command.  If the estimated dedup ratio is greater than 1.00 you will see
+dedup space savings.  Remember that this is an estimated number, in
+practice real dedup ratio will be slightly smaller because of
+.Nm HAMMER
+bigblock underflows, B-Tree locking issues and other factors.
 .\" ==== reblock* ====
 .It Cm reblock Ar filesystem Op Ar fill_percentage
 .It Cm reblock-btree Ar filesystem Op Ar fill_percentage

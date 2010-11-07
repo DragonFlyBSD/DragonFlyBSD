@@ -206,7 +206,7 @@ hammer_lock_sh_try(struct hammer_lock *lock)
  * by someone else, this function will panic.
  */
 int
-hammer_lock_upgrade(struct hammer_lock *lock)
+hammer_lock_upgrade(struct hammer_lock *lock, int shcount)
 {
 	thread_t td = curthread;
 	u_int lv;
@@ -216,7 +216,7 @@ hammer_lock_upgrade(struct hammer_lock *lock)
 	for (;;) {
 		lv = lock->lockval;
 
-		if ((lv & ~HAMMER_LOCKF_WANTED) == 1) {
+		if ((lv & ~HAMMER_LOCKF_WANTED) == shcount) {
 			nlv = lv | HAMMER_LOCKF_EXCLUSIVE;
 			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
 				lock->lowner = td;
@@ -245,14 +245,14 @@ hammer_lock_upgrade(struct hammer_lock *lock)
  * Downgrade an exclusively held lock to a shared lock.
  */
 void
-hammer_lock_downgrade(struct hammer_lock *lock)
+hammer_lock_downgrade(struct hammer_lock *lock, int shcount)
 {
 	thread_t td __debugvar = curthread;
 	u_int lv;
 	u_int nlv;
 
 	KKASSERT((lock->lockval & ~HAMMER_LOCKF_WANTED) ==
-		 (HAMMER_LOCKF_EXCLUSIVE | 1));
+		 (HAMMER_LOCKF_EXCLUSIVE | shcount));
 	KKASSERT(lock->lowner == td);
 
 	/*
