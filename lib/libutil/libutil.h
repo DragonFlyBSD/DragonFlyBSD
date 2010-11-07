@@ -73,6 +73,9 @@ int	openpty(int *, int *, char *, struct termios *, struct winsize *);
 int	forkpty(int *, char *, struct termios *, struct winsize *);
 int	dehumanize_number(const char *, int64_t *);
 int	humanize_number(char *, size_t, int64_t, const char *, int, int);
+int	humanize_unsigned(char *buf, size_t len, uint64_t bytes,
+					const char *suffix, int divisor);
+int	format_bytes(char *buf, size_t len, uint64_t bytes);
 const char *uu_lockerr(int);
 int	uu_lock(const char *);
 int	uu_unlock(const char *);
