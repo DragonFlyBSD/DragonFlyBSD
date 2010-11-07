@@ -56,8 +56,6 @@
 #include "icu.h"
 #include "icu_ipl.h"
 
-#ifndef APIC_IO
-
 extern void ICU_INTREN(int);
 extern void ICU_INTRDIS(int);
 
@@ -88,7 +86,7 @@ static inthand_t *icu_fastintr[ICU_HWI_VECTORS] = {
 	&IDTVEC(icu_fastintr14), &IDTVEC(icu_fastintr15)
 };
 
-struct machintr_abi MachIntrABI = {
+struct machintr_abi MachIntrABI_ICU = {
     MACHINTR_ICU,
     .intrdis =	ICU_INTRDIS,
     .intren =	ICU_INTREN,
@@ -211,5 +209,3 @@ icu_vectorctl(int op, int intr, int flags)
     write_rflags(ef);
     return (error);
 }
-
-#endif

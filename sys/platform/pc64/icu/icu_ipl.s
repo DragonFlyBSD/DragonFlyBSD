@@ -84,8 +84,6 @@
  * WARNING!  SMP builds can use the ICU now so this code must be MP safe.
  */
 
-#ifndef APIC_IO
-
 	.data
 	ALIGN_DATA
 
@@ -130,5 +128,3 @@ ENTRY(ICU_INTREN)
 	outb	%al,$IO_ICU2+ICU_IMR_OFFSET
 	ICU_IMASK_UNLOCK
 	ret
-
-#endif
