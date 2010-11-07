@@ -66,7 +66,7 @@
 #include "apic_ipl.h"
 #include "assym.s"
 
-#ifdef APIC_IO
+#ifdef SMP /* APIC-IO */
 
 	.text
 	SUPERALIGN_TEXT

@@ -50,8 +50,6 @@
 #include "assym.s"
 #include "icu_ipl.h"
 
-#ifndef APIC_IO
-
 #define ICU_IMR_OFFSET		1	/* IO_ICU{1,2} + 1 */
 
 #define	ICU_EOI			0x20	/* XXX - define elsewhere */
@@ -203,5 +201,3 @@ MCOUNT_LABEL(eintr)
 	.data
 
 	.text
-
-#endif

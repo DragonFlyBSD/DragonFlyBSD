@@ -153,9 +153,10 @@ configure_final(void *dummy)
 	cninit_finish();
 
 	if (bootverbose) {
-#ifdef APIC_IO
+#ifdef SMP /* APIC-IO */
+	if (apic_io_enable)
 		imen_dump();
-#endif /* APIC_IO */
+#endif
 
 #if JG
 		/*

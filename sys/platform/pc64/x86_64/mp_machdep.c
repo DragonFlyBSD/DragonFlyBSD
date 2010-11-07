@@ -229,11 +229,9 @@ int	current_postcode;
 extern struct region_descriptor r_gdt, r_idt;
 
 int	mp_naps;		/* # of Applications processors */
-#ifdef APIC_IO
+#ifdef SMP /* APIC-IO */
 static int	mp_nbusses;	/* # of busses */
 int	mp_napics;		/* # of IO APICs */
-#endif
-#ifdef APIC_IO
 vm_offset_t io_apic_address[NAPICID];	/* NAPICID is more than enough */
 u_int32_t *io_apic_versions;
 #endif
@@ -245,7 +243,7 @@ extern int64_t tsc_offsets[];
 
 extern u_long ebda_addr;
 
-#ifdef APIC_IO
+#ifdef SMP /* APIC-IO */
 struct apic_intmapinfo	int_to_apicintpin[APIC_INTMAPSIZE];
 #endif
 
@@ -254,7 +252,7 @@ struct apic_intmapinfo	int_to_apicintpin[APIC_INTMAPSIZE];
  * We oversize these to simplify boot-time config.
  */
 int     cpu_num_to_apic_id[NAPICID];
-#ifdef APIC_IO
+#ifdef SMP /* APIC-IO */
 int     io_num_to_apic_id[NAPICID];
 #endif
 int     apic_id_to_logical[NAPICID];
@@ -304,7 +302,7 @@ static int	mptable_search(void);
 static int	mptable_check(vm_paddr_t);
 static long	mptable_search_sig(u_int32_t target, int count);
 static int	mptable_hyperthread_fixup(u_int, int);
-#ifdef APIC_IO
+#ifdef SMP /* APIC-IO */
 static void	mptable_pass1(struct mptable_pos *);
 static void	mptable_pass2(struct mptable_pos *);
 static void	mptable_default(int type);
@@ -318,7 +316,7 @@ static int	mptable_lapic_probe(struct lapic_enumerator *);
 static void	mptable_lapic_enumerate(struct lapic_enumerator *);
 static void	mptable_lapic_default(void);
 
-#ifdef APIC_IO
+#ifdef SMP /* APIC-IO */
 static void	setup_apic_irq_mapping(void);
 static int	apic_int_is_bus_type(int intr, int bus_type);
 #endif
@@ -563,15 +561,15 @@ mp_announce(void)
 		kprintf(", version: 0x%08x\n", cpu_apic_versions[x]);
 	}
 
-#if defined(APIC_IO)
+if (apic_io_enable) {
 	for (x = 0; x < mp_napics; ++x) {
 		kprintf(" io%d (APIC): apic id: %2d", x, IO_TO_ID(x));
 		kprintf(", version: 0x%08x", io_apic_versions[x]);
 		kprintf(", at 0x%08lx\n", io_apic_address[x]);
 	}
-#else
+} else {
 	kprintf(" Warning: APIC I/O disabled\n");
-#endif	/* APIC_IO */
+}
 }
 
 /*
@@ -689,10 +687,8 @@ init_secondary(void)
 static void
 mp_enable(u_int boot_addr)
 {
-#if defined(APIC_IO)
 	int     apic;
 	u_int   ux;
-#endif	/* APIC_IO */
 	vm_paddr_t mpfps_paddr;
 	struct mptable_pos mpt;
 
@@ -706,10 +702,10 @@ mp_enable(u_int boot_addr)
 		mptable_imcr(&mpt);
 		mptable_unmap(&mpt);
 	}
-#if defined(APIC_IO)
+if (apic_io_enable) {
 
 	if (!mpfps_paddr)
-		panic("no MP table, disable APIC_IO!\n");
+		panic("no MP table, disable APIC_IO! (set hw.apic_io_enable=0)\n");
 
 	mptable_map(&mpt, mpfps_paddr);
 
@@ -738,7 +734,7 @@ mp_enable(u_int boot_addr)
 		if (io_apic_setup(apic) < 0)
 			panic("IO APIC setup failure");
 
-#endif	/* APIC_IO */
+}
 
 	/*
 	 * These are required for SMP operation
@@ -822,8 +818,6 @@ typedef struct BUSTYPENAME {
 	char    name[7];
 }       bus_type_name;
 
-#ifdef APIC_IO
-
 static bus_type_name bus_type_table[] =
 {
 	{CBUS, "CBUS"},
@@ -867,17 +861,11 @@ static bus_datum *bus_data;
 static io_int  *io_apic_ints;
 static int nintrs;
 
-#endif
-
 static int processor_entry	(const struct PROCENTRY *entry, int cpu);
-#ifdef APIC_IO
 static int bus_entry		(const struct BUSENTRY *entry, int bus);
 static int io_apic_entry	(const struct IOAPICENTRY *entry, int apic);
 static int int_entry		(const struct INTENTRY *entry, int intr);
 static int lookup_bus_type	(char *name);
-#endif
-
-#ifdef APIC_IO
 
 static int
 mptable_ioapic_pass1_callback(void *xarg, const void *pos, int type)
@@ -1039,8 +1027,6 @@ mptable_pass2(struct mptable_pos *mpt)
 	if (error)
 		panic("mptable_iterate_entries(ioapic_pass2) failed\n");
 }
-
-#endif
 
 /*
  * Check if we should perform a hyperthreading "fix-up" to
@@ -1206,8 +1192,6 @@ mptable_unmap(struct mptable_pos *mpt)
 		mpt->mp_fps = NULL;
 	}
 }
-
-#ifdef APIC_IO
 
 void
 assign_apic_irq(int apic, int intpin, int irq)
@@ -1600,8 +1584,6 @@ setup_apic_irq_mapping(void)
 	}
 }
 
-#endif
-
 void
 mp_set_cpuids(int cpu_id, int apic_id)
 {
@@ -1632,8 +1614,6 @@ processor_entry(const struct PROCENTRY *entry, int cpu)
 
 	return 0;
 }
-
-#ifdef APIC_IO
 
 static int
 bus_entry(const struct BUSENTRY *entry, int bus)
@@ -1869,8 +1849,6 @@ next_apic_irq(int irq)
 #undef INTAPIC
 #undef INTTYPE
 
-#endif
-
 /*
  * Reprogram the MB chipset to NOT redirect an ISA INTerrupt.
  *
@@ -1917,8 +1895,6 @@ undirect_pci_irq(int rirq)
 #endif  /* READY */
 }
 
-
-#ifdef APIC_IO
 
 /*
  * given a bus ID, return:
@@ -2166,8 +2142,6 @@ mptable_default(int type)
 	else
 		io_apic_ints[0].int_type = 3;	/* vectored 8259 */
 }
-
-#endif	/* APIC_IO */
 
 /*
  * Map a physical memory address representing I/O into KVA.  The I/O

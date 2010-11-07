@@ -81,14 +81,6 @@
 /* XXX should be in suitable include files */
 #define	ICU_IMR_OFFSET		1		/* IO_ICU{1,2} + 1 */
 
-#ifdef APIC_IO
-/*
- * This is to accommodate "mixed-mode" programming for 
- * motherboards that don't connect the 8254 to the IO APIC.
- */
-#define	AUTO_EOI_1	1
-#endif
-
 static void	init_i8259(void);
 
 #define NMI_PARITY (1 << 7)
@@ -184,10 +176,16 @@ init_i8259(void)
 	outb(IO_ICU1+ICU_IMR_OFFSET, IDT_OFFSET);	/* starting at this vector index */
 	outb(IO_ICU1+ICU_IMR_OFFSET, 1 << ICU_IRQ_SLAVE); /* slave on line 2 */
 #ifdef AUTO_EOI_1
-	outb(IO_ICU1+ICU_IMR_OFFSET, 2 | 1);		/* auto EOI, 8086 mode */
+	int auto_eoi = 2;				/* auto EOI, 8086 mode */
 #else
-	outb(IO_ICU1+ICU_IMR_OFFSET, 1);		/* 8086 mode */
+	int auto_eoi = 0;				/* 8086 mode */
 #endif
+#ifdef SMP
+	if (apic_io_enable)
+		auto_eoi = 2;				/* auto EOI, 8086 mode */
+#endif
+	outb(IO_ICU1+ICU_IMR_OFFSET, auto_eoi | 1);
+
 	outb(IO_ICU1+ICU_IMR_OFFSET, 0xff);		/* leave interrupts masked */
 	outb(IO_ICU1, 0x0a);		/* default to IRR on read */
 	outb(IO_ICU1, 0xc0 | (3 - 1));	/* pri order 3-7, 0-2 (com2 first) */
