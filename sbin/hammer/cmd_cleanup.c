@@ -46,6 +46,7 @@
  *	snapshots 1d 60d	(0d 0d for /tmp, /var/tmp, /usr/obj)
  *	prune     1d 5m
  *	rebalance 1d 5m
+ *	#dedup	  1d 5m		(not enabled by default)
  *	reblock   1d 5m
  *	recopy    30d 10m
  *
@@ -92,6 +93,8 @@ static int cleanup_prune(const char *path, const char *snapshots_path,
 static int cleanup_reblock(const char *path, const char *snapshots_path,
 			int arg1, int arg2);
 static int cleanup_recopy(const char *path, const char *snapshots_path,
+			int arg1, int arg2);
+static int cleanup_dedup(const char *path, const char *snapshots_path,
 			int arg1, int arg2);
 
 static void runcmd(int *resp, const char *ctl, ...);
@@ -494,6 +497,17 @@ do_cleanup(const char *path)
 			} else {
 				printf("skip\n");
 			}
+		} else if (strcmp(cmd, "dedup") == 0) {
+			if (check_period(snapshots_path, cmd, arg1, &savet)) {
+				printf("run");
+				fflush(stdout);
+				if (VerboseOpt)
+					printf("\n");
+				r = cleanup_dedup(path, snapshots_path,
+						arg1, arg2);
+			} else {
+				printf("skip\n");
+			}
 		} else {
 			printf("unknown directive\n");
 			r = 1;
@@ -541,6 +555,7 @@ config_init(const char *path, struct hammer_ioc_config *config)
 		snapshots,
 		"prune     1d 5m\n"
 		"rebalance 1d 5m\n"
+		"#dedup	   1d 5m\n"
 		"reblock   1d 5m\n"
 		"recopy    30d 10m\n");
 }
@@ -1163,6 +1178,25 @@ cleanup_recopy(const char *path, const char *snapshots_path,
 	runcmd(NULL,
 	       "hammer -c %s/.recopy-3.cycle -t %d reblock-data %s",
 	       snapshots_path, arg2, path);
+	if (VerboseOpt == 0)
+		printf("\n");
+	return(0);
+}
+
+static int
+cleanup_dedup(const char *path, const char *snapshots_path __unused,
+		  int arg1 __unused, int arg2)
+{
+	if (VerboseOpt == 0) {
+		printf(".");
+		fflush(stdout);
+	}
+
+	runcmd(NULL, "hammer -t %d dedup %s", arg2, path);
+	if (VerboseOpt == 0) {
+		printf(".");
+		fflush(stdout);
+	}
 	if (VerboseOpt == 0)
 		printf("\n");
 	return(0);

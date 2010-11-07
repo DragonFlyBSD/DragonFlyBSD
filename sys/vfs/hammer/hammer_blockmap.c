@@ -898,6 +898,113 @@ failed:
 		hammer_rel_buffer(buffer2, 0);
 }
 
+int
+hammer_blockmap_dedup(hammer_transaction_t trans,
+		     hammer_off_t zone_offset, int bytes)
+{
+	hammer_mount_t hmp;
+	hammer_volume_t root_volume;
+	hammer_blockmap_t blockmap;
+	hammer_blockmap_t freemap;
+	struct hammer_blockmap_layer1 *layer1;
+	struct hammer_blockmap_layer2 *layer2;
+	hammer_buffer_t buffer1 = NULL;
+	hammer_buffer_t buffer2 = NULL;
+	hammer_off_t layer1_offset;
+	hammer_off_t layer2_offset;
+	int32_t temp;
+	int error;
+	int zone;
+
+	if (bytes == 0)
+		return (0);
+	hmp = trans->hmp;
+
+	/*
+	 * Alignment
+	 */
+	bytes = (bytes + 15) & ~15;
+	KKASSERT(bytes <= HAMMER_LARGEBLOCK_SIZE);
+	KKASSERT(((zone_offset ^ (zone_offset + (bytes - 1))) &
+		  ~HAMMER_LARGEBLOCK_MASK64) == 0);
+
+	/*
+	 * Basic zone validation & locking
+	 */
+	zone = HAMMER_ZONE_DECODE(zone_offset);
+	KKASSERT(zone >= HAMMER_ZONE_BTREE_INDEX && zone < HAMMER_MAX_ZONES);
+	root_volume = trans->rootvol;
+	error = 0;
+
+	blockmap = &hmp->blockmap[zone];
+	freemap = &hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
+
+	/*
+	 * Dive layer 1.
+	 */
+	layer1_offset = freemap->phys_offset +
+			HAMMER_BLOCKMAP_LAYER1_OFFSET(zone_offset);
+	layer1 = hammer_bread(hmp, layer1_offset, &error, &buffer1);
+	if (error)
+		goto failed;
+	KKASSERT(layer1->phys_offset &&
+		 layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
+	if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE)) {
+		hammer_lock_ex(&hmp->blkmap_lock);
+		if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE))
+			panic("CRC FAILED: LAYER1");
+		hammer_unlock(&hmp->blkmap_lock);
+	}
+
+	/*
+	 * Dive layer 2, each entry represents a large-block.
+	 */
+	layer2_offset = layer1->phys_offset +
+			HAMMER_BLOCKMAP_LAYER2_OFFSET(zone_offset);
+	layer2 = hammer_bread(hmp, layer2_offset, &error, &buffer2);
+	if (error)
+		goto failed;
+	if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE)) {
+		hammer_lock_ex(&hmp->blkmap_lock);
+		if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE))
+			panic("CRC FAILED: LAYER2");
+		hammer_unlock(&hmp->blkmap_lock);
+	}
+
+	hammer_lock_ex(&hmp->blkmap_lock);
+
+	hammer_modify_buffer(trans, buffer2, layer2, sizeof(*layer2));
+
+	/*
+	 * Free space previously allocated via blockmap_alloc().
+	 *
+	 * NOTE: bytes_free can be and remain negative due to de-dup ops
+	 *	 but can never become larger than HAMMER_LARGEBLOCK_SIZE.
+	 */
+	KKASSERT(layer2->zone == zone);
+	temp = layer2->bytes_free - HAMMER_LARGEBLOCK_SIZE * 2;
+	cpu_ccfence(); /* prevent gcc from optimizing temp out */
+	if (temp > layer2->bytes_free) {
+		error = ERANGE;
+		goto underflow;
+	}
+	layer2->bytes_free -= bytes;
+
+	KKASSERT(layer2->bytes_free <= HAMMER_LARGEBLOCK_SIZE);
+
+	layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
+underflow:
+	hammer_modify_buffer_done(buffer2);
+	hammer_unlock(&hmp->blkmap_lock);
+
+failed:
+	if (buffer1)
+		hammer_rel_buffer(buffer1, 0);
+	if (buffer2)
+		hammer_rel_buffer(buffer2, 0);
+	return (error);
+}
+
 /*
  * Backend function - finalize (offset, bytes) in a zone.
  *

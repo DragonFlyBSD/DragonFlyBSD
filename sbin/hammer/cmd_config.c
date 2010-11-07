@@ -131,6 +131,7 @@ hammer_cmd_viconfig(char **av, int ac)
                         "#snapshots 1d 60d\n"
                         "#prune     1d 5m\n"
                         "#rebalance 1d 5m\n"
+                        "#dedup     1d 5m\n"
                         "#reblock   1d 5m\n"
                         "#recopy    30d 10m\n");
 		config.head.error = 0;

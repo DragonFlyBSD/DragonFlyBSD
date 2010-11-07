@@ -1703,6 +1703,7 @@ vfs/hammer/hammer_undo.c	optional hammer
 vfs/hammer/hammer_redo.c	optional hammer
 vfs/hammer/hammer_vfsops.c	optional hammer
 vfs/hammer/hammer_vnops.c	optional hammer
+vfs/hammer/hammer_dedup.c	optional hammer
 #tmpfs static filesystem for debugging should be marked as optional tmpfs
 vfs/tmpfs/tmpfs_fifoops.c	standard
 vfs/tmpfs/tmpfs_subr.c		standard

@@ -1081,14 +1081,16 @@ int	hammer_cursor_down(hammer_cursor_t cursor);
 int	hammer_cursor_upgrade(hammer_cursor_t cursor);
 int	hammer_cursor_upgrade_node(hammer_cursor_t cursor);
 void	hammer_cursor_downgrade(hammer_cursor_t cursor);
+int	hammer_cursor_upgrade2(hammer_cursor_t c1, hammer_cursor_t c2);
+void	hammer_cursor_downgrade2(hammer_cursor_t c1, hammer_cursor_t c2);
 int	hammer_cursor_seek(hammer_cursor_t cursor, hammer_node_t node,
 			int index);
 void	hammer_lock_ex_ident(struct hammer_lock *lock, const char *ident);
 int	hammer_lock_ex_try(struct hammer_lock *lock);
 void	hammer_lock_sh(struct hammer_lock *lock);
 int	hammer_lock_sh_try(struct hammer_lock *lock);
-int	hammer_lock_upgrade(struct hammer_lock *lock);
-void	hammer_lock_downgrade(struct hammer_lock *lock);
+int	hammer_lock_upgrade(struct hammer_lock *lock, int shcount);
+void	hammer_lock_downgrade(struct hammer_lock *lock, int shcount);
 int	hammer_lock_status(struct hammer_lock *lock);
 void	hammer_unlock(struct hammer_lock *lock);
 void	hammer_ref(struct hammer_lock *lock);
@@ -1276,6 +1278,8 @@ void hammer_blockmap_reserve_complete(hammer_mount_t hmp,
 void hammer_reserve_clrdelay(hammer_mount_t hmp, hammer_reserve_t resv);
 void hammer_blockmap_free(hammer_transaction_t trans,
 			hammer_off_t bmap_off, int bytes);
+int hammer_blockmap_dedup(hammer_transaction_t trans,
+			hammer_off_t bmap_off, int bytes);
 int hammer_blockmap_finalize(hammer_transaction_t trans,
 			hammer_reserve_t resv,
 			hammer_off_t bmap_off, int bytes);
@@ -1410,6 +1414,8 @@ int hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
                         struct hammer_ioc_volume *ioc);
 int hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
                         struct hammer_ioc_volume *ioc);
+int hammer_ioc_dedup(hammer_transaction_t trans, hammer_inode_t ip,
+			struct hammer_ioc_dedup *dedup);
 
 int hammer_signal_check(hammer_mount_t hmp);
 
