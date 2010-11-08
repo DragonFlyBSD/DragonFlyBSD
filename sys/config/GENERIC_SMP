@@ -65,13 +65,7 @@ options         ALTQ_FAIRQ      #fair queueing
 #options        ALTQ_NOPCC      #don't use processor cycle counter
 #options        ALTQ_DEBUG      #for debugging
 
-# To make an SMP kernel both SMP and APIC_IO are usually
-# specified.  SMP boxes with severely broken BIOSes which
-# boot fine for non-SMP builds *might* work in SMP mode
-# if you define SMP and leave APIC_IO turned off.
-#
 options 	SMP			# Symmetric MultiProcessor Kernel
-options 	APIC_IO			# Symmetric (APIC) I/O
 
 # Debugging for Development
 options 	DDB
