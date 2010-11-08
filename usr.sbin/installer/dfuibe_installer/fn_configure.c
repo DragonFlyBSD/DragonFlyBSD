@@ -1316,6 +1316,7 @@ mount_target_system(struct i_fn_args *a)
 {
 	FILE *crypttab, *fstab;
 	struct commands *cmds;
+	struct command *cmd;
 	struct subpartition *a_subpart;
 	char name[256], device[256], mtpt[256], fstype[256], options[256];
 	char *filename, line[256];
@@ -1358,24 +1359,26 @@ mount_target_system(struct i_fn_args *a)
 		    a->os_root,
 		    subpartition_get_device_name(a_subpart),
 		    a->os_root, a->cfg_root);
-		command_add(cmds,
+		cmd = command_add(cmds,
 		    "%s%s -f %st2;"
 		    "%s%s \"^[^#]\" %s%s/etc/crypttab >%st2",
 		    a->os_root, cmd_name(a, "RM"), a->tmp,
 		    a->os_root, cmd_name(a, "GREP"),
 		    a->os_root, a->cfg_root, a->tmp);
+		command_set_failure_mode(cmd, COMMAND_FAILURE_IGNORE);
 	} else {
 		command_add(cmds, "%s%s %sdev/%s %sboot",
 		    a->os_root, cmd_name(a, "MOUNT"),
 		    a->os_root,
 		    subpartition_get_device_name(a_subpart),
 		    a->os_root);
-		command_add(cmds,
+		cmd = command_add(cmds,
 		    "%s%s -f %st2;"
 		    "%s%s \"^vfs\\.root\\.realroot=\" %sboot/loader.conf >%st2",
 		    a->os_root, cmd_name(a, "RM"), a->tmp,
 		    a->os_root, cmd_name(a, "GREP"),
 		    a->os_root, a->tmp);
+		command_set_failure_mode(cmd, COMMAND_FAILURE_IGNORE);
 	}
 	if (!commands_execute(a, cmds)) {
 		commands_free(cmds);
