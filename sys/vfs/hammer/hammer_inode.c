@@ -2301,9 +2301,20 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 		break;
 	case HAMMER_FST_FLUSH:
 		/* 
-		 * The flush_group should already match.
+		 * The record could be part of a previous flush group if the
+		 * inode is a directory (the record being a directory entry).
+		 * Once the flush group was closed a hammer_test_inode()
+		 * function can cause a new flush group to be setup, placing
+		 * the directory inode itself in a new flush group.
+		 *
+		 * When associated with a previous flush group we count it
+		 * as if it were in our current flush group, since it will
+		 * effectively be flushed by the time we flush our current
+		 * flush group.
 		 */
-		KKASSERT(rec->flush_group == flg);
+		KKASSERT(
+		    rec->ip->ino_data.obj_type == HAMMER_OBJTYPE_DIRECTORY ||
+		    rec->flush_group == flg);
 		r = 1;
 		break;
 	}
