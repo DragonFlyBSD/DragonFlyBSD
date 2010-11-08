@@ -3,8 +3,6 @@
 #
 # Check the LINT configuration file in sys/config, for an
 # exhaustive list of options.
-#
-# $DragonFly: src/sys/config/GENERIC,v 1.60 2008/07/26 14:26:30 sephe Exp $
 
 platform	pc32
 machine		i386
@@ -70,7 +68,7 @@ options         ALTQ_FAIRQ      #fair queueing
 # SMP boxes with severely broken BIOSes which
 # boot fine for non-SMP builds *might* work in SMP mode
 # if you disable APIC_IO by setting the loader tunable
-# hw.apic_io_enable to 0. 
+# hw.apic_io_enable to 0.
 #
 #options 	SMP			# Symmetric MultiProcessor Kernel
 

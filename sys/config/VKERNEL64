@@ -1,6 +1,4 @@
 # VKERNEL - configuration for a virtual kernel
-#
-# $DragonFly: src/sys/config/VKERNEL,v 1.14 2008/11/09 18:57:17 dillon Exp $
 
 platform	vkernel64	# platform architecture (i386, vkernel, etc)
 machine		x86_64
