@@ -164,6 +164,14 @@ menuadd loadall
 menuadd boot
 menuadd set autoboot_delay=NO
 
+ifexists kernel.UP
+menuitem u "Select UP kernel"
+menuadd set default_kernel=kernel.UP
+menuadd include ${base}defaults/dloader.menu
+menuadd optinclude ${base}dloader.menu
+menuadd menu
+endif
+
 ifexists kernel.SMP
 menuitem m "Select SMP kernel"
 menuadd set default_kernel=kernel.SMP
