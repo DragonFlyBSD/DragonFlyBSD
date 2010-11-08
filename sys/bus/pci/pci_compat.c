@@ -118,7 +118,7 @@ int
 pci_map_int_right(pcici_t cfg, pci_inthand_t *handler, void *arg, u_int intflags)
 {
 	int error;
-#ifdef APIC_IO
+#ifdef SMP /* APIC-IO */
 	int nextpin, muxcnt;
 #endif
 	if (cfg->intpin != 0) {
@@ -158,7 +158,8 @@ pci_map_int_right(pcici_t cfg, pci_inthand_t *handler, void *arg, u_int intflags
 		 */
 #endif
 
-#ifdef APIC_IO
+#ifdef SMP /* APIC-IO */
+if (apic_io_enable) {
 		nextpin = next_apic_irq(irq);
 		
 		if (nextpin < 0)
@@ -205,6 +206,7 @@ pci_map_int_right(pcici_t cfg, pci_inthand_t *handler, void *arg, u_int intflags
 			kprintf("Registered extra interrupt handler for int %d (in addition to int %d)\n", nextpin, irq);
 			nextpin = next_apic_irq(nextpin);
 		}
+}
 #endif
 	}
 	return (1);
