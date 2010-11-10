@@ -120,6 +120,15 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 		scan->prune.head.flags |= HAMMER_IOC_PRUNE_ALL;
 	} else {
 		hammer_softprune_scandir(&base, &template, *av);
+		if (base == NULL) {
+			const char *dummylink = "";
+			scan = hammer_softprune_addentry(&base, &template,
+							 *av, NULL, NULL,
+							 dummylink, dummylink);
+			if (scan == NULL)
+				softprune_usage(1);
+			scan->prune.nelms = 0;
+		}
 		++av;
 		--ac;
 	}
@@ -127,10 +136,6 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 	/*
 	 * XXX future (need to store separate cycles for each filesystem)
 	 */
-	if (base == NULL) {
-		fprintf(stderr, "No snapshot softlinks found\n");
-		exit(1);
-	}
 	if (base->next) {
 		fprintf(stderr, "Currently only one HAMMER filesystem may "
 				"be specified in the softlink scan\n");
@@ -185,6 +190,7 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 		}
 		if (scan->prune.nelms == 0 &&
 		    (scan->prune.head.flags & HAMMER_IOC_PRUNE_ALL) == 0) {
+			fprintf(stderr, "No snapshots found\n");
 			continue;
 		}
 
