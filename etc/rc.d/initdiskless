@@ -45,6 +45,11 @@ dummy_rc_command "$1"
 #	/conf/${ipbca}		modified based on the assigned broadcast IP
 #	/conf/${ipa}		modified based on the machine's assigned IP
 #
+# If a directory contains the file 'remount', the contents of the file is
+# used to remount the directory. For example, if /conf/base/remount contains
+# the string 'my.server.com:/new_conf' then my.server.com:/new_conf will be
+# mounted in place of the directory.
+#
 # Each of these directories may contain any number of subdirectories which
 # represent directories in / on the diskless machine.  The existence of
 # these subdirectories causes this script to create a MEMORY FILESYSTEM for
@@ -192,24 +197,33 @@ done
 #   relocated without needing to change the remount files.
 #
 for i in base default ${bootp_ipbca} ${bootp_ipa} ; do
-	for j in /conf/$i/* ; do
-	# memory filesystem size specification
-	#
-	subdir=${j##*/}
-	if [ -d $j -a -f $j/md_size ]; then
-		eval md_size_$subdir=`cat $j/md_size`
-	fi
-
-	# NFS remount
-	#
-	if [ -d $j -a -f $j/diskless_remount ]; then
-		nfspt=`/bin/cat $j/diskless_remount`
+	if [ -f /conf/$i/remount ]; then
+		nfspt=`/bin/cat /conf/$i/remount`
 		if [ `expr "$nfspt" : '\(.\)'` = "/" ]; then
 			nfspt="${nfsroot}${nfspt}"
 		fi
-		mount_nfs $nfspt $j
-		chkerr $? "mount_nfs $nfspt $j"
+		mount_nfs $nfspt /conf/$i
+		chkerr $? "mount_nfs $nfspt /conf/$i"
 	fi
+
+	for j in /conf/$i/* ; do
+		# memory filesystem size specification
+		#
+		subdir=${j##*/}
+		if [ -d $j -a -f $j/md_size ]; then
+			eval md_size_$subdir=`cat $j/md_size`
+		fi
+
+		# NFS remount
+		#
+		if [ -d $j -a -f $j/diskless_remount ]; then
+			nfspt=`/bin/cat $j/diskless_remount`
+			if [ `expr "$nfspt" : '\(.\)'` = "/" ]; then
+				nfspt="${nfsroot}${nfspt}"
+			fi
+			mount_nfs $nfspt $j
+			chkerr $? "mount_nfs $nfspt $j"
+		fi
 	done
 done
 
