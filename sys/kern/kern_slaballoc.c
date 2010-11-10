@@ -34,8 +34,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.55 2008/10/22 01:42:17 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -1313,6 +1311,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     vm_size_t i;
     vm_offset_t addr;
     int count, vmflags, base_vmflags;
+    vm_page_t mp[ZALLOC_MAX_ZONE_SIZE / PAGE_SIZE];
     thread_t td;
 
     size = round_page(size);
@@ -1389,6 +1388,8 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	}
 
 	m = vm_page_alloc(&kernel_object, OFF_TO_IDX(addr + i), vmflags);
+	if ((i / PAGE_SIZE) < (sizeof(mp) / sizeof(mp[0])))
+		mp[i / PAGE_SIZE] = m;
 
 	/*
 	 * If the allocation failed we either return NULL or we retry.
@@ -1448,11 +1449,13 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     /*
      * Enter the pages into the pmap and deal with PG_ZERO and M_ZERO.
      */
-    lwkt_gettoken(&vm_token);
     for (i = 0; i < size; i += PAGE_SIZE) {
 	vm_page_t m;
 
-	m = vm_page_lookup(&kernel_object, OFF_TO_IDX(addr + i));
+	if ((i / PAGE_SIZE) < (sizeof(mp) / sizeof(mp[0])))
+	   m = mp[i / PAGE_SIZE];
+	else 
+	   m = vm_page_lookup(&kernel_object, OFF_TO_IDX(addr + i));
 	m->valid = VM_PAGE_BITS_ALL;
 	/* page should already be busy */
 	vm_page_wire(m);
@@ -1464,7 +1467,6 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	KKASSERT(m->flags & (PG_WRITEABLE | PG_MAPPED));
 	vm_page_flag_set(m, PG_REFERENCED);
     }
-    lwkt_reltoken(&vm_token);
     vm_map_unlock(&kernel_map);
     vm_map_entry_release(count);
     lwkt_reltoken(&vm_token);
