@@ -494,11 +494,15 @@ directive has a period of 0 and a retention time of 0
 then snapshot generation is disabled, removal of old snapshots are
 disabled, and prunes will use
 .Cm prune-everything .
+.Pp
 If the
 .Cm snapshots
 directive has a period of 0 but a non-zero retention time
 then this command will not create any new snapshots but will remove old
-snapshots it finds based on the retention time.
+snapshots it finds based on the retention time.  This form should be
+used on PFS masters where you are generating your own snapshot softlinks
+manually and on PFS slaves when all you wish to do is prune away existing
+snapshots inherited via the mirroring stream.
 .Pp
 By default only snapshots in the form
 .Ql snap- Ns Ar yyyymmdd Ns Op - Ns Ar HHMM
