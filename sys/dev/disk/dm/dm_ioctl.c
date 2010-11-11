@@ -201,6 +201,7 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
 {
 	dm_dev_t *dmv;
 	const char *name, *uuid;
+	char name_buf[MAXPATHLEN];
 	int r, flags;
 
 	r = 0;
@@ -256,7 +257,9 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
 	prop_dictionary_set_uint32(dm_dict, DM_IOCTL_MINOR, dmv->minor);
 
 	aprint_debug("Creating device dm/%s\n", name);
-	dmv->devt = make_dev(&dm_ops, dmv->minor, UID_ROOT, GID_OPERATOR, 0640, "mapper/%s", dmv->name);
+	ksnprintf(name_buf, sizeof(name_buf), "mapper/%s", dmv->name);
+	dmv->devt = disk_create_named(name_buf, dmv->minor, dmv->diskp, &dm_ops);
+	//dmv->devt = make_dev(&dm_ops, dmv->minor, UID_ROOT, GID_OPERATOR, 0640, "mapper/%s", dmv->name);
 	udev_dict_set_cstr(dmv->devt, "subsystem", "disk");
 #if 0
 	disk_init(dmv->diskp, dmv->name, &dmdkdriver);

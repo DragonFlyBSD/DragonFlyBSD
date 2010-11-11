@@ -188,7 +188,10 @@ dm_detach(dm_dev_t *dmv)
 	
 	dm_table_head_destroy(&dmv->table_head);
 
+	disk_destroy(dmv->diskp);
+#if 0
 	destroy_dev(dmv->devt);
+#endif
 
 	/* Destroy device */
 	(void)dm_dev_free(dmv);
@@ -623,13 +626,17 @@ dmsetdiskinfo(struct disk *disk, dm_table_head_t *head)
 	bzero(&info, sizeof(struct disk_info));
 	info.d_media_blksize = DEV_BSIZE;
 	info.d_media_blocks = dmp_size;
+#if 0
+	/* XXX: this is set by disk_setdiskinfo */
 	info.d_media_size = dmp_size * DEV_BSIZE;
+#endif
 	info.d_dsflags = DSO_MBRQUIET; /* XXX */
 	info.d_secpertrack = 32;
 	info.d_nheads = 64;
 	info.d_secpercyl = info.d_secpertrack * info.d_nheads;
 	info.d_ncylinders = dmp_size / 2048;
-	bcopy(&info, &disk->d_info, sizeof(disk->d_info));
+
+	disk_setdiskinfo(disk, &info);
 }
 
 prop_dictionary_t
