@@ -437,13 +437,14 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 	lwkt_gettoken(&hmp->io_token);
 
 	/*
-	 * Warning: FINDBLK_TEST return stable storage but not stable
-	 *	    contents.  It happens to be ok in this case.
+	 * If a device buffer already exists for the specified physical
+	 * offset use that, otherwise instantiate a buffer to cover any
+	 * related VM pages, set BNOCACHE, and brelse().
 	 */
 	phys_offset = volume->ondisk->vol_buf_beg +
 		      (zone2_offset & HAMMER_OFF_SHORT_MASK);
-	if ((bp = findblk(volume->devvp, phys_offset, FINDBLK_TEST)) != NULL)
-		bp = getblk(volume->devvp, phys_offset, bp->b_bufsize, 0, 0);
+	if ((bp = findblk(volume->devvp, phys_offset, 0)) != NULL)
+		bremfree(bp);
 	else
 		bp = getblk(volume->devvp, phys_offset, HAMMER_BUFSIZE, 0, 0);
 
