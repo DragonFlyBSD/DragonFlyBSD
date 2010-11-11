@@ -527,34 +527,48 @@ disk_create_named(const char *name, int unit, struct disk *dp, struct dev_ops *r
 {
 	cdev_t rawdev;
 
-	if (name == NULL)
-		name = raw_ops->head.name;
-
 	disk_debug(1, "disk_create (begin): %s%d\n", name, unit);
 
-	rawdev = make_only_dev(raw_ops, dkmakewholedisk(unit),
-			    UID_ROOT, GID_OPERATOR, 0640,
-			    "%s%d", name, unit);
+	if (name) {
+		rawdev = make_only_dev(raw_ops, dkmakewholedisk(unit),
+		    UID_ROOT, GID_OPERATOR, 0640, "%s", name);
+	} else {
+		rawdev = make_only_dev(raw_ops, dkmakewholedisk(unit),
+		    UID_ROOT, GID_OPERATOR, 0640,
+		    "%s%d", raw_ops->head.name, unit);
+	}
 
 	bzero(dp, sizeof(*dp));
 
 	dp->d_rawdev = rawdev;
 	dp->d_raw_ops = raw_ops;
 	dp->d_dev_ops = &disk_ops;
-	dp->d_cdev = make_dev_covering(&disk_ops, dp->d_rawdev->si_ops,
-			    dkmakewholedisk(unit),
-			    UID_ROOT, GID_OPERATOR, 0640,
-			    "%s%d", name, unit);
+
+	if (name) {
+		dp->d_cdev = make_dev_covering(&disk_ops, dp->d_rawdev->si_ops,
+		    dkmakewholedisk(unit), UID_ROOT, GID_OPERATOR, 0640,
+		    "%s", name);
+	} else {
+		dp->d_cdev = make_dev_covering(&disk_ops, dp->d_rawdev->si_ops,
+		    dkmakewholedisk(unit),
+		    UID_ROOT, GID_OPERATOR, 0640,
+		    "%s%d", raw_ops->head.name, unit);
+	}
+
 	udev_dict_set_cstr(dp->d_cdev, "subsystem", "disk");
 	dp->d_cdev->si_disk = dp;
 
-	dsched_disk_create_callback(dp, name, unit);
+	if (name)
+		dsched_disk_create_callback(dp, name, unit);
+	else
+		dsched_disk_create_callback(dp, raw_ops->head.name, unit);
 
 	lwkt_gettoken(&disklist_token);
 	LIST_INSERT_HEAD(&disklist, dp, d_list);
 	lwkt_reltoken(&disklist_token);
 
-	disk_debug(1, "disk_create (end): %s%d\n", name, unit);
+	disk_debug(1, "disk_create (end): %s%d\n",
+	    (name != NULL)?(name):(raw_ops->head.name), unit);
 
 	return (dp->d_rawdev);
 }
