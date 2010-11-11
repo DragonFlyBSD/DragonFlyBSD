@@ -390,6 +390,7 @@ extern int	bioq_reorder_minor_interval;
 extern int	bioq_reorder_minor_bytes;
 
 struct uio;
+struct devstat;
 
 void	bufinit (void);
 int	bd_heatup (void);
@@ -457,9 +458,9 @@ struct	buf *trypbuf_kva (int *);
 void	bio_ops_sync(struct mount *mp);
 void	vm_hold_free_pages(struct buf *bp, vm_offset_t from, vm_offset_t to);
 void	vm_hold_load_pages(struct buf *bp, vm_offset_t from, vm_offset_t to);
-void	nestiobuf_done(struct bio *mbio, int donebytes, int error);
+void	nestiobuf_done(struct bio *mbio, int donebytes, int error, struct devstat *stats);
 void	nestiobuf_init(struct bio *mbio);
-void	nestiobuf_add(struct bio *mbio, struct buf *bp, int off, size_t size);
+void	nestiobuf_add(struct bio *mbio, struct buf *bp, int off, size_t size, struct devstat *stats);
 void	nestiobuf_start(struct bio *mbio);
 void	nestiobuf_error(struct bio *mbio, int error);
 #endif	/* _KERNEL */

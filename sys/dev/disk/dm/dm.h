@@ -46,6 +46,7 @@
 #include <sys/queue.h>
 
 #include <sys/device.h>
+#include <sys/devicestat.h>
 #include <sys/diskslice.h>
 #include <sys/disklabel.h>
 
@@ -122,7 +123,7 @@ typedef struct dm_pdev {
  * It points to SLIST of device tables and mirrored, snapshoted etc. devices.
  */
 TAILQ_HEAD(dm_dev_head, dm_dev);
-				
+
 typedef struct dm_dev {
 	char name[DM_NAME_LEN];
 	char uuid[DM_UUID_LEN];
@@ -133,7 +134,7 @@ typedef struct dm_dev {
 
 	struct lock dev_mtx; /* mutex for generall device lock */
 	struct cv dev_cv; /* cv for between ioctl synchronisation */
-	
+
 	uint32_t event_nr;
 	uint32_t ref_cnt;
 
@@ -142,10 +143,12 @@ typedef struct dm_dev {
 	dm_table_head_t table_head;
 
 	struct dm_dev_head upcalls;
-	
+
 	struct disk *diskp;
 	struct lock diskp_mtx;
-	
+
+	struct devstat stats;
+
 	TAILQ_ENTRY(dm_dev) next_upcall; /* LIST of mirrored, snapshoted devices. */
 
 	TAILQ_ENTRY(dm_dev) next_devlist; /* Major device list. */

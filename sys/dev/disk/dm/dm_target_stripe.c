@@ -273,7 +273,7 @@ dm_target_stripe_strategy(dm_table_entry_t *table_en, struct buf *bp)
 			nestbuf->b_flags |= bio->bio_buf->b_flags & B_HASBOGUS;
 
 			nestiobuf_add(bio, nestbuf, blkoff,
-					issue_blks * DEV_BSIZE);
+					issue_blks * DEV_BSIZE, NULL);
 
 			/* I need number of bytes. */
 			nestbuf->b_bio1.bio_offset =
@@ -297,7 +297,7 @@ dm_target_stripe_strategy(dm_table_entry_t *table_en, struct buf *bp)
 			nestbuf = getpbuf(NULL);
 			nestbuf->b_flags |= bio->bio_buf->b_flags & B_HASBOGUS;
 
-			nestiobuf_add(bio, nestbuf, 0, 0);
+			nestiobuf_add(bio, nestbuf, 0, 0, NULL);
 			nestbuf->b_bio1.bio_offset = 0;
 			vn_strategy(tsc->stripe_devs[devnr].pdev->pdev_vnode,
 				    &nestbuf->b_bio1);

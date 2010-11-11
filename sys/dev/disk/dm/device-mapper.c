@@ -185,13 +185,11 @@ dm_detach(dm_dev_t *dmv)
 
 	/* Destroy inactive table if exits, too. */
 	dm_table_destroy(&dmv->table_head, DM_TABLE_INACTIVE);
-	
+
 	dm_table_head_destroy(&dmv->table_head);
 
 	disk_destroy(dmv->diskp);
-#if 0
-	destroy_dev(dmv->devt);
-#endif
+	devstat_remove_entry(&dmv->stats);
 
 	/* Destroy device */
 	(void)dm_dev_free(dmv);
@@ -408,10 +406,11 @@ dmstrategy(struct dev_strategy_args *ap)
 	dev_type = 0;
 	issued_len = 0;
 
-	if ((dmv = dm_dev_lookup(NULL, NULL, minor(dev))) == NULL) {
+	if ((dmv = dm_dev_lookup(NULL, NULL, dkunit(dev))) == NULL) {
 		bp->b_error = EIO;
 		bp->b_resid = bp->b_bcount;
 		biodone(bio);
+		kprintf("dm_dev_lookup didn't find anything\n");
 		return 0;
 	} 
 
@@ -439,6 +438,8 @@ dmstrategy(struct dev_strategy_args *ap)
 		dm_dev_unbusy(dmv);
 		bp->b_resid = bp->b_bcount;
 		biodone(bio);
+		kprintf("bounds_check_with_mediasize failed, dmtsz=%ju\n",
+			dm_table_size(&dmv->table_head));
 		return 0;
 	}
 
@@ -446,6 +447,7 @@ dmstrategy(struct dev_strategy_args *ap)
 	tbl = dm_table_get_entry(&dmv->table_head, DM_TABLE_ACTIVE);
 
 	nestiobuf_init(bio);
+	devstat_start_transaction(&dmv->stats);
 
 	/*
 	 * Find out what tables I want to select.
@@ -478,7 +480,7 @@ dmstrategy(struct dev_strategy_args *ap)
 			nestbuf = getpbuf(NULL);
 			nestbuf->b_flags |= bio->bio_buf->b_flags & B_HASBOGUS;
 
-			nestiobuf_add(bio, nestbuf, 0, 0);
+			nestiobuf_add(bio, nestbuf, 0, 0, &dmv->stats);
 			nestbuf->b_bio1.bio_offset = 0;
 			table_en->target->strategy(table_en, nestbuf);
 		} else if (start < end) {
@@ -486,7 +488,8 @@ dmstrategy(struct dev_strategy_args *ap)
 			nestbuf->b_flags |= bio->bio_buf->b_flags & B_HASBOGUS;
 
 			nestiobuf_add(bio, nestbuf,
-				      start - buf_start, (end - start));
+				      start - buf_start, (end - start),
+				      &dmv->stats);
 			issued_len += end - start;
 
 			nestbuf->b_bio1.bio_offset = (start - table_start);
@@ -619,22 +622,25 @@ void
 dmsetdiskinfo(struct disk *disk, dm_table_head_t *head)
 {
 	struct disk_info info;
-	int dmp_size;
+	uint64_t dmp_size;
 
 	dmp_size = dm_table_size(head);
 
 	bzero(&info, sizeof(struct disk_info));
 	info.d_media_blksize = DEV_BSIZE;
 	info.d_media_blocks = dmp_size;
+	kprintf("d_media_blocks=%ju\n", dmp_size);
 #if 0
 	/* XXX: this is set by disk_setdiskinfo */
 	info.d_media_size = dmp_size * DEV_BSIZE;
 #endif
 	info.d_dsflags = DSO_MBRQUIET; /* XXX */
+#if 0
 	info.d_secpertrack = 32;
 	info.d_nheads = 64;
 	info.d_secpercyl = info.d_secpertrack * info.d_nheads;
 	info.d_ncylinders = dmp_size / 2048;
+#endif
 
 	disk_setdiskinfo(disk, &info);
 }

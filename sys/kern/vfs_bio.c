@@ -32,6 +32,7 @@
 #include <sys/systm.h>
 #include <sys/buf.h>
 #include <sys/conf.h>
+#include <sys/devicestat.h>
 #include <sys/eventhandler.h>
 #include <sys/lock.h>
 #include <sys/malloc.h>
@@ -4683,11 +4684,13 @@ nestiobuf_iodone(struct bio *bio)
 {
 	struct bio *mbio;
 	struct buf *mbp, *bp;
+	struct devstat *stats;
 	int error;
 	int donebytes;
 
 	bp = bio->bio_buf;
 	mbio = bio->bio_caller_info1.ptr;
+	stats = bio->bio_caller_info2.ptr;
 	mbp = mbio->bio_buf;
 
 	KKASSERT(bp->b_bcount <= bp->b_bufsize);
@@ -4706,11 +4709,12 @@ nestiobuf_iodone(struct bio *bio)
 	donebytes = bp->b_bufsize;
 
 	relpbuf(bp, NULL);
-	nestiobuf_done(mbio, donebytes, error);
+
+	nestiobuf_done(mbio, donebytes, error, stats);
 }
 
 void
-nestiobuf_done(struct bio *mbio, int donebytes, int error)
+nestiobuf_done(struct bio *mbio, int donebytes, int error, struct devstat *stats)
 {
 	struct buf *mbp;
 
@@ -4735,6 +4739,8 @@ nestiobuf_done(struct bio *mbio, int donebytes, int error)
 	 */
 	if (atomic_fetchadd_int((int *)&mbio->bio_driver_info, -1) == 1) {
 		mbp->b_resid = 0;
+		if (stats)
+			devstat_end_transaction_buf(stats, mbp);
 		biodone(mbio);
 	}
 }
@@ -4796,7 +4802,7 @@ nestiobuf_error(struct bio *mbio, int error)
  * => 'size' is a size in bytes of this nested buffer.
  */
 void
-nestiobuf_add(struct bio *mbio, struct buf *bp, int offset, size_t size)
+nestiobuf_add(struct bio *mbio, struct buf *bp, int offset, size_t size, struct devstat *stats)
 {
 	struct buf *mbp = mbio->bio_buf;
 	struct vnode *vp = mbp->b_vp;
@@ -4816,6 +4822,7 @@ nestiobuf_add(struct bio *mbio, struct buf *bp, int offset, size_t size)
 
 	bp->b_bio1.bio_track = NULL;
 	bp->b_bio1.bio_caller_info1.ptr = mbio;
+	bp->b_bio1.bio_caller_info2.ptr = stats;
 }
 
 /*

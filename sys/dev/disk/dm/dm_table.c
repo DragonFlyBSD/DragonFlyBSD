@@ -197,6 +197,7 @@ dm_table_size(dm_table_head_t * head)
 	 */
 	SLIST_FOREACH(table_en, tbl, next) {
 		length += table_en->length;
+		kprintf("table_en: tbl: length=%ju\n", length);
 	}
 
 	dm_table_unbusy(head);

@@ -82,6 +82,7 @@
 #include <sys/param.h>
 
 #include <sys/device.h>
+#include <sys/devicestat.h>
 #include <sys/disk.h>
 #include <sys/disklabel.h>
 #include <sys/malloc.h>
@@ -258,15 +259,14 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
 
 	aprint_debug("Creating device dm/%s\n", name);
 	ksnprintf(name_buf, sizeof(name_buf), "mapper/%s", dmv->name);
-	dmv->devt = disk_create_named(name_buf, dmv->minor, dmv->diskp, &dm_ops);
-	//dmv->devt = make_dev(&dm_ops, dmv->minor, UID_ROOT, GID_OPERATOR, 0640, "mapper/%s", dmv->name);
-	udev_dict_set_cstr(dmv->devt, "subsystem", "disk");
-#if 0
-	disk_init(dmv->diskp, dmv->name, &dmdkdriver);
-	disk_attach(dmv->diskp);
 
-	dmv->diskp->dk_info = NULL;
-#endif
+	devstat_add_entry(&dmv->stats, name, 0, DEV_BSIZE,
+	    DEVSTAT_NO_ORDERED_TAGS,
+	    DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_OTHER,
+	    DEVSTAT_PRIORITY_DISK);
+
+	dmv->devt = disk_create_named(name_buf, dmv->minor, dmv->diskp, &dm_ops);
+	udev_dict_set_cstr(dmv->devt, "subsystem", "disk");
 
 	if ((r = dm_dev_insert(dmv)) != 0)
 		dm_dev_free(dmv);
@@ -815,7 +815,11 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 	atomic_set_int(&dmv->flags, DM_INACTIVE_PRESENT_FLAG);
 
 	dm_table_release(&dmv->table_head, DM_TABLE_INACTIVE);
+
 	dm_dev_unbusy(dmv);
+#if 0
+	dmsetdiskinfo(dmv->diskp, &dmv->table_head);
+#endif
 	return 0;
 }
 /*
