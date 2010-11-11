@@ -1763,12 +1763,16 @@ vfs_vmio_release(struct buf *bp)
 			vm_page_unwire(m, 1);
 
 		/*
-		 * We don't mess with busy pages, it is
-		 * the responsibility of the process that
-		 * busied the pages to deal with them.
+		 * We don't mess with busy pages, it is the responsibility
+		 * of the process that busied the pages to deal with them.
+		 *
+		 * However, the caller may have marked the page invalid and
+		 * we must still make sure the page is no longer mapped.
 		 */
-		if ((m->flags & PG_BUSY) || (m->busy != 0))
+		if ((m->flags & PG_BUSY) || (m->busy != 0)) {
+			vm_page_protect(m, VM_PROT_NONE);
 			continue;
+		}
 			
 		if (m->wire_count == 0) {
 			vm_page_flag_clear(m, PG_ZERO);
