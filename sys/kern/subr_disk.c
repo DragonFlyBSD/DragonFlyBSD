@@ -618,7 +618,7 @@ _setdiskinfo(struct disk *disk, struct disk_info *info)
 	 * The caller may set d_media_size or d_media_blocks and we
 	 * calculate the other.
 	 */
-	KKASSERT(info->d_media_size == 0 || info->d_media_blksize == 0);
+	KKASSERT(info->d_media_size == 0 || info->d_media_blocks == 0);
 	if (info->d_media_size == 0 && info->d_media_blocks) {
 		info->d_media_size = (u_int64_t)info->d_media_blocks *
 				     info->d_media_blksize;
