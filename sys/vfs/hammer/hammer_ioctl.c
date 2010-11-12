@@ -186,6 +186,10 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 					    (struct hammer_ioc_volume *)data);
 		}
 		break;
+	case HAMMERIOC_LIST_VOLUMES:
+		error = hammer_ioc_volume_list(&trans, ip,
+		    (struct hammer_ioc_volume_list *)data);
+		break;
 	case HAMMERIOC_ADD_SNAPSHOT:
 		if (error == 0) {
 			error = hammer_ioc_add_snapshot(

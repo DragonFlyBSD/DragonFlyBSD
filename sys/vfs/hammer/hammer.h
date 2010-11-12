@@ -1414,6 +1414,8 @@ int hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
                         struct hammer_ioc_volume *ioc);
 int hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
                         struct hammer_ioc_volume *ioc);
+int hammer_ioc_volume_list(hammer_transaction_t trans, hammer_inode_t ip,
+			struct hammer_ioc_volume_list *ioc);
 int hammer_ioc_dedup(hammer_transaction_t trans, hammer_inode_t ip,
 			struct hammer_ioc_dedup *dedup);
 

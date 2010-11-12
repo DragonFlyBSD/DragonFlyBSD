@@ -345,6 +345,11 @@ struct hammer_ioc_volume {
 	int64_t			mem_area_size;
 };
 
+struct hammer_ioc_volume_list {
+	struct hammer_ioc_volume *vols;
+	int nvols;
+};
+
 union hammer_ioc_mrecord_any {
 	struct hammer_ioc_mrecord_head	head;
 	struct hammer_ioc_mrecord_rec	rec;
@@ -489,6 +494,7 @@ struct hammer_ioc_data {
 #define HAMMERIOC_DEL_VOLUME 	_IOWR('h',24,struct hammer_ioc_volume)
 #define HAMMERIOC_DEDUP		_IOWR('h',25,struct hammer_ioc_dedup)
 #define HAMMERIOC_GET_DATA	_IOWR('h',26,struct hammer_ioc_data)
+#define HAMMERIOC_LIST_VOLUMES	_IOWR('h',27,struct hammer_ioc_volume_list)
 
 #endif
 

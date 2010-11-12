@@ -116,6 +116,7 @@ void hammer_cmd_get_version(char **av, int ac);
 void hammer_cmd_set_version(char **av, int ac);
 void hammer_cmd_volume_add(char **av, int ac);
 void hammer_cmd_volume_del(char **av, int ac);
+void hammer_cmd_volume_list(char **av, int ac);
 void hammer_cmd_dedup_simulate(char **av, int ac);
 void hammer_cmd_dedup(char **av, int ac);
 

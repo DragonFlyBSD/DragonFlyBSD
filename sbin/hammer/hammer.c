@@ -440,6 +440,10 @@ main(int ac, char **av)
 		hammer_cmd_volume_del(av + 1, ac - 1);
 		exit(0);
 	}
+	if (strcmp(av[0], "volume-list") == 0) {
+		hammer_cmd_volume_list(av + 1, ac - 1);
+		exit(0);
+	}
 
 	uuid_name_lookup(&Hammer_FSType, "DragonFly HAMMER", &status);
 	if (status != uuid_s_ok) {
@@ -577,6 +581,7 @@ usage(int exit_code)
 		"hammer version-upgrade <filesystem> <version> [force]\n"
 		"hammer volume-add <device> <filesystem>\n"
 		"hammer volume-del <device> <filesystem>\n"
+		"hammer volume-list <filesystem>\n"
 	);
 
 	fprintf(stderr, "\nHAMMER utility version 3+ commands:\n");
