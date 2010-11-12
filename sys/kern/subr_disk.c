@@ -223,15 +223,18 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 					udev_dict_set_cstr(ndev, "subsystem", "disk");
 					/* Inherit parent's disk type */
 					if (dp->d_disktype) {
-						udev_dict_set_cstr(ndev, "disk-type", 
+						udev_dict_set_cstr(ndev, "disk-type",
 						    __DECONST(char *, dp->d_disktype));
 					}
+
+					/* Create serno alias */
 					if (dp->d_info.d_serialno) {
 						make_dev_alias(ndev,
 						    "serno/%s.s%d%c",
 						    dp->d_info.d_serialno,
 						    sno, 'a' + i);
 					}
+
 					ndev->si_flags |= SI_REPROBE_TEST;
 				}
 			}
@@ -292,6 +295,17 @@ disk_probe(struct disk *dp, int reprobe)
 		 */
 		if (i == WHOLE_DISK_SLICE)
 			continue;
+
+#if 0
+		/*
+		 * Ignore the compatibility slice s0 if it's a device mapper
+		 * volume.
+		 */
+		if ((i == COMPATIBILITY_SLICE) &&
+		    (info->d_dsflags & DSO_DEVICEMAPPER))
+			continue;
+#endif
+
 		sp = &dp->d_slice->dss_slices[i];
 
 		/*
@@ -331,17 +345,21 @@ disk_probe(struct disk *dp, int reprobe)
 			ndev = make_dev_covering(&disk_ops, dp->d_rawdev->si_ops,
 					dkmakewholeslice(dkunit(dev), i),
 					UID_ROOT, GID_OPERATOR, 0640,
-					"%ss%d", dev->si_name, sno);
+					(info->d_dsflags & DSO_DEVICEMAPPER)?
+					"%s.s%d" : "%ss%d", dev->si_name, sno);
 			udev_dict_set_cstr(ndev, "subsystem", "disk");
 			/* Inherit parent's disk type */
 			if (dp->d_disktype) {
-				udev_dict_set_cstr(ndev, "disk-type", 
+				udev_dict_set_cstr(ndev, "disk-type",
 				    __DECONST(char *, dp->d_disktype));
 			}
+
+			/* Create serno alias */
 			if (dp->d_info.d_serialno) {
 				make_dev_alias(ndev, "serno/%s.s%d",
 					       dp->d_info.d_serialno, sno);
 			}
+
 			ndev->si_disk = dp;
 			ndev->si_flags |= SI_REPROBE_TEST;
 		}

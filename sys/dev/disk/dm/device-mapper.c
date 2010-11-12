@@ -410,7 +410,6 @@ dmstrategy(struct dev_strategy_args *ap)
 		bp->b_error = EIO;
 		bp->b_resid = bp->b_bcount;
 		biodone(bio);
-		kprintf("dm_dev_lookup didn't find anything\n");
 		return 0;
 	} 
 
@@ -438,8 +437,6 @@ dmstrategy(struct dev_strategy_args *ap)
 		dm_dev_unbusy(dmv);
 		bp->b_resid = bp->b_bcount;
 		biodone(bio);
-		kprintf("bounds_check_with_mediasize failed, dmtsz=%ju\n",
-			dm_table_size(&dmv->table_head));
 		return 0;
 	}
 
@@ -629,18 +626,16 @@ dmsetdiskinfo(struct disk *disk, dm_table_head_t *head)
 	bzero(&info, sizeof(struct disk_info));
 	info.d_media_blksize = DEV_BSIZE;
 	info.d_media_blocks = dmp_size;
-	kprintf("d_media_blocks=%ju\n", dmp_size);
 #if 0
-	/* XXX: this is set by disk_setdiskinfo */
+	/* this is set by disk_setdiskinfo */
 	info.d_media_size = dmp_size * DEV_BSIZE;
 #endif
-	info.d_dsflags = DSO_MBRQUIET; /* XXX */
-#if 0
+	info.d_dsflags = DSO_MBRQUIET | DSO_DEVICEMAPPER;
+
 	info.d_secpertrack = 32;
 	info.d_nheads = 64;
 	info.d_secpercyl = info.d_secpertrack * info.d_nheads;
-	info.d_ncylinders = dmp_size / 2048;
-#endif
+	info.d_ncylinders = dmp_size / info.d_secpercyl;
 
 	disk_setdiskinfo(disk, &info);
 }

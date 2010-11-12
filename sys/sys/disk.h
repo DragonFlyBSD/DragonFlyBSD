@@ -102,11 +102,14 @@ struct disk_info {
  *		  cd's don't have disklabels and the default compat label
  *		  does not implement an 'a' partition.
  *
- * COMPARTMBR	- used by the vn device to request that one sector be
+ * COMPATMBR	- used by the vn device to request that one sector be
  *		  reserved as if an MBR were present even when one isn't.
  *
  * MBRQUIET	- silently ignore MBR probe if unable to read sector 0.
  *		  used by VN.
+ *
+ * DEVICEMAPPER	- used by the device mapper (dm). Adds a '.' between the
+ *		  device name and the slice/part stuff (i.e. foo.s0).
  */
 #define DSO_NOLABELS		0x0001
 #define DSO_ONESLICE		0x0002
@@ -115,6 +118,7 @@ struct disk_info {
 #define DSO_COMPATMBR		0x0010
 #define DSO_RAWEXTENSIONS	0x0020
 #define DSO_MBRQUIET		0x0040
+#define DSO_DEVICEMAPPER	0x0080
 
 /*
  * Disk management structure - automated disklabel support.
