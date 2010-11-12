@@ -126,6 +126,7 @@ dsched_disk_create_callback(struct disk *dp, const char *head_name, int unit)
 {
 	char tunable_key[SPECNAMELEN + 48];
 	char sched_policy[DSCHED_POLICY_NAME_LENGTH];
+	char *ptr;
 	struct dsched_policy *policy = NULL;
 
 	/* Also look for serno stuff? */
@@ -141,6 +142,10 @@ dsched_disk_create_callback(struct disk *dp, const char *head_name, int unit)
 
 	ksnprintf(tunable_key, sizeof(tunable_key), "dsched.policy.%s",
 	    head_name);
+	for (ptr = tunable_key; *ptr; ptr++) {
+		if (*ptr == '/')
+			*ptr = '-';
+	}
 	if (!policy && (TUNABLE_STR_FETCH(tunable_key, sched_policy,
 	    sizeof(sched_policy)) != 0)) {
 		policy = dsched_find_policy(sched_policy);
@@ -162,7 +167,14 @@ dsched_disk_create_callback(struct disk *dp, const char *head_name, int unit)
 		dsched_set_policy(dp, policy);
 	}
 
-	ksnprintf(tunable_key, sizeof(tunable_key), "%s%d", head_name, unit);
+	if (strncmp(head_name, "mapper/", strlen("mapper/")) == 0)
+		ksnprintf(tunable_key, sizeof(tunable_key), "%s", head_name);
+	else
+		ksnprintf(tunable_key, sizeof(tunable_key), "%s%d", head_name, unit);
+	for (ptr = tunable_key; *ptr; ptr++) {
+		if (*ptr == '/')
+			*ptr = '-';
+	}
 	dsched_sysctl_add_disk(
 	    (struct dsched_disk_ctx *)dsched_get_disk_priv(dp),
 	    tunable_key);
