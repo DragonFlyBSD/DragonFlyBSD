@@ -2586,6 +2586,8 @@ device 		ehci
 # General USB code (mandatory for USB)
 device		usb
 #
+# USB Bluetooth
+device		ubt
 # Fm Radio
 device		ufm
 # Generic USB device driver

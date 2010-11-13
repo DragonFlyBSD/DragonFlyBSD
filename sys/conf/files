@@ -1756,6 +1756,7 @@ bus/usb/usb_quirks.c		optional usb
 bus/usb/hid.c			optional usb
 bus/usb/uhub.c			optional usb
 dev/usbmisc/moscom/moscom.c	optional moscom ucom
+dev/usbmisc/ubt/ubt.c		optional ubt
 dev/usbmisc/uark/uark.c		optional uark ucom
 dev/usbmisc/uchcom/uchcom.c	optional uchcom ucom
 dev/usbmisc/ufm/ufm.c		optional ufm
