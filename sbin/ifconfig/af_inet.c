@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/af_inet.c,v 1.2 2005/06/16 19:37:09 ume Exp $
- * $DragonFly: src/sbin/ifconfig/af_inet.c,v 1.2 2006/06/24 07:51:37 sephe Exp $
  */
 
 #include <sys/types.h>

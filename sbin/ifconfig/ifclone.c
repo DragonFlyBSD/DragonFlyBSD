@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: head/sbin/ifconfig/ifclone.c 194799 2009-06-23 23:49:52Z delphij $
- * $DragonFly$
  */
 
 #include <sys/queue.h>

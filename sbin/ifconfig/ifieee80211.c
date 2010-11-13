@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: head/sbin/ifconfig/ifieee80211.c 203970 2010-02-16 21:39:20Z imp $
- * $DragonFly$
  */
 
 /*-
@@ -4350,8 +4349,6 @@ ieee80211_status(int s)
 
 	if (get80211val(s, IEEE80211_IOC_WEP, &wepmode) != -1 &&
 	    wepmode != IEEE80211_WEP_NOSUP) {
-		int firstkey;
-
 		switch (wepmode) {
 		case IEEE80211_WEP_OFF:
 			LINE_CHECK("privacy OFF");
@@ -4386,7 +4383,6 @@ ieee80211_status(int s)
 			goto end;
 		}
 
-		firstkey = 1;
 		for (i = 0; i < num; i++) {
 			struct ieee80211req_key ik;
 
@@ -4400,7 +4396,6 @@ ieee80211_status(int s)
 				if (verbose)
 					LINE_BREAK();
 				printkey(&ik);
-				firstkey = 0;
 			}
 		}
 end:

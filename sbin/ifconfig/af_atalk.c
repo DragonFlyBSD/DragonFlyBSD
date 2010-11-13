@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/af_atalk.c,v 1.1 2004/12/08 19:18:07 sam Exp $
- * $DragonFly: src/sbin/ifconfig/af_atalk.c,v 1.1 2006/04/02 03:33:59 sephe Exp $
  */
 
 #include <sys/types.h>

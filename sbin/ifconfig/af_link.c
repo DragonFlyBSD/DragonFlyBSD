@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/af_link.c,v 1.2 2004/12/31 19:46:27 sam Exp $
- * $DragonFly: src/sbin/ifconfig/af_link.c,v 1.2 2006/09/03 02:01:52 sephe Exp $
  */
 
 #include <sys/types.h>
