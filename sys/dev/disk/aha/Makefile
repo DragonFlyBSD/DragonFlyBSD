@@ -1,7 +1,5 @@
 # $FreeBSD: src/sys/modules/aha/Makefile,v 1.4 2000/01/28 11:26:23 bde Exp $
-# $DragonFly: src/sys/dev/disk/aha/Makefile,v 1.4 2005/02/18 11:41:42 corecode Exp $
 
-.PATH:	${.CURDIR}/../../dev/aha
 KMOD	= aha
 SRCS	= aha.c aha_isa.c ahareg.h opt_cam.h device_if.h bus_if.h use_aha.h \
 	opt_scsi.h isa_if.h

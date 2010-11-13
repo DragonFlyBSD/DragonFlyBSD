@@ -1,7 +1,4 @@
 # $FreeBSD: src/sys/modules/aic/Makefile,v 1.6 2004/05/26 00:53:00 imp Exp $
-# $DragonFly: src/sys/dev/disk/aic/Makefile,v 1.1 2008/01/05 08:16:04 pavalos Exp $
-
-.PATH: ${.CURDIR}/../../dev/aic
 
 KMOD=	aic
 SRCS=	aic.c aic_isa.c aic_pccard.c
