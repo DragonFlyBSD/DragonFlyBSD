@@ -30,9 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.58 2008/11/13 02:04:27 dillon Exp $
-.\"
-.Dd November 3, 2010
+.Dd November 13, 2010
 .Dt HAMMER 8
 .Os
 .Sh NAME
@@ -1294,6 +1292,9 @@ Also default snapshots directory has changed.
 .Dx 2.6
 default version.
 New undo/redo/flush, giving HAMMER a much faster sync and fsync.
+.It 5
+.Dx 2.9 .
+Offline deduplication support.
 .El
 .El
 .Sh PSEUDO-FILESYSTEM (PFS) NOTES
@@ -1438,6 +1439,13 @@ and removing 1 of the 2 disk syncs typically
 required for a flush sequence.
 Version 4 also implements the REDO log (see below) which is capable
 of fsync()ing with either one disk flush or zero disk flushes.
+.Sh UPGRADE INSTRUCTIONS HAMMER V4 TO V5
+This upgrade brings in offline deduplication support. It is possible to
+upgrade a V4 file system to V5 in place. Technically it makes the
+layer2
+.Fa bytes_free
+field a signed value instead of unsigned, allowing it
+to go negative. A version 5 filesystem is required for dedup operation.
 .Sh FSYNC FLUSH MODES
 .Nm HAMMER
 implements five different fsync flush modes via the
