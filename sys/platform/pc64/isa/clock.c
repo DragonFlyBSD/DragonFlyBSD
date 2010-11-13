@@ -1048,8 +1048,8 @@ i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 {
 	int diag;
 #ifdef SMP /* APIC-IO */
-	int apic_8254_trial;
-	void *clkdesc;
+	int apic_8254_trial = 0;
+	void *clkdesc = NULL;
 #endif
 
 	callout_init(&sysbeepstop_ch);
@@ -1078,7 +1078,6 @@ i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 #ifdef SMP /* APIC-IO */
 if (apic_io_enable) {
 	apic_8254_intr = isa_apic_irq(0);
-	apic_8254_trial = 0;
 	if (apic_8254_intr >= 0 ) {
 		if (apic_int_type(0, 0) == 3)
 			apic_8254_trial = 1;
