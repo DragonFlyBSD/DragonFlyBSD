@@ -49,20 +49,19 @@ ar5212UpdateTxTrigLevel(struct ath_hal *ah, HAL_BOOL bIncTrigLevel)
 	uint32_t txcfg, curLevel, newLevel;
 	HAL_INT omask;
 
-	if (AH_PRIVATE(ah)->ah_txtrig_level >=
-	    AH_PRIVATE(ah)->ah_max_txtrig_level)
+	if (ahp->ah_txTrigLev >= ahp->ah_maxTxTrigLev)
 		return AH_FALSE;
 
 	/*
 	 * Disable interrupts while futzing with the fifo level.
 	 */
-	omask = ah->ah_setInterrupts(ah, ahp->ah_maskReg &~ HAL_INT_GLOBAL);
+	omask = ath_hal_setInterrupts(ah, ahp->ah_maskReg &~ HAL_INT_GLOBAL);
 
 	txcfg = OS_REG_READ(ah, AR_TXCFG);
 	curLevel = MS(txcfg, AR_FTRIG);
 	newLevel = curLevel;
 	if (bIncTrigLevel) {		/* increase the trigger level */
-		if (curLevel < AH_PRIVATE(ah)->ah_max_txtrig_level)
+		if (curLevel < ahp->ah_maxTxTrigLev)
 			newLevel++;
 	} else if (curLevel > MIN_TX_FIFO_THRESHOLD)
 		newLevel--;
@@ -71,10 +70,10 @@ ar5212UpdateTxTrigLevel(struct ath_hal *ah, HAL_BOOL bIncTrigLevel)
 		OS_REG_WRITE(ah, AR_TXCFG,
 			(txcfg &~ AR_FTRIG) | SM(newLevel, AR_FTRIG));
 
-	AH_PRIVATE(ah)->ah_txtrig_level = newLevel;
+	ahp->ah_txTrigLev = newLevel;
 
 	/* re-enable chip interrupts */
-	ah->ah_setInterrupts(ah, omask);
+	ath_hal_setInterrupts(ah, omask);
 
 	return (newLevel != curLevel);
 }
@@ -526,7 +525,6 @@ ar5212StartTxDma(struct ath_hal *ah, u_int q)
 
 	HALDEBUG(ah, HAL_DEBUG_TXQUEUE, "%s: queue %u\n", __func__, q);
 
-	cpu_sfence();
 	/* Check to be sure we're not enabling a q that has its TXD bit set. */
 	HALASSERT((OS_REG_READ(ah, AR_Q_TXD) & (1 << q)) == 0);
 
@@ -860,7 +858,6 @@ ar5212ProcTxDesc(struct ath_hal *ah,
 	ts->ts_tstamp = MS(ads->ds_txstatus0, AR_SendTimestamp);
 	ts->ts_status = 0;
 	if ((ads->ds_txstatus0 & AR_FrmXmitOK) == 0) {
-		kprintf("bad status on tx queue\n");
 		if (ads->ds_txstatus0 & AR_ExcessiveRetries)
 			ts->ts_status |= HAL_TXERR_XRETRY;
 		if (ads->ds_txstatus0 & AR_Filtered)
