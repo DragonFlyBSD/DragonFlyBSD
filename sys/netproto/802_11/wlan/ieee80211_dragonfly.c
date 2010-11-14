@@ -59,8 +59,11 @@ SYSCTL_NODE(_net, OID_AUTO, wlan, CTLFLAG_RD, 0, "IEEE 80211 parameters");
 
 #ifdef IEEE80211_DEBUG
 int	ieee80211_debug = 0;
+int	ieee80211_force_swcrypto = 0;
 SYSCTL_INT(_net_wlan, OID_AUTO, debug, CTLFLAG_RW, &ieee80211_debug,
 	    0, "debugging printfs");
+SYSCTL_INT(_net_wlan, OID_AUTO, force_swcrypto, CTLFLAG_RW,
+	    &ieee80211_force_swcrypto, 0, "force software crypto");
 #endif
 
 MALLOC_DEFINE(M_80211_COM, "80211com", "802.11 com state");
