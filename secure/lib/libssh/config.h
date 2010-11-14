@@ -24,7 +24,7 @@
 /* #undef BROKEN_GETGROUPS */
 
 /* FreeBSD glob does not do what we need */
-#define BROKEN_GLOB 1
+/* #undef BROKEN_GLOB */
 
 /* Define if you system's inet_ntoa is busted (e.g. Irix gcc issue) */
 /* #undef BROKEN_INET_NTOA */
