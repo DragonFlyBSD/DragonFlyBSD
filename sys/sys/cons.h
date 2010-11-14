@@ -92,6 +92,7 @@ struct consdev {
 
 #ifdef _KERNEL
 extern	int cons_unavail;
+extern	int sysbeep_enable;		/* enable audio system beep */
 extern	struct consdev *cn_tab;	/* console device */
 extern  struct consdev *gdb_tab;/* gdb debugger device */
 

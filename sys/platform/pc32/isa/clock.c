@@ -511,6 +511,8 @@ sysbeep(int pitch, int period)
 {
 	if (acquire_timer2(TIMER_SQWAVE|TIMER_16BIT))
 		return(-1);
+	if (sysbeep_enable == 0)
+		return(-1);
 	/*
 	 * Nobody else is using timer2, we do not need the clock lock
 	 */

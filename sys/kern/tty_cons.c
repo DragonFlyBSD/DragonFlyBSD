@@ -100,6 +100,7 @@ int	cons_unavail = 0;	/* XXX:
 				 * physical console not available for
 				 * input (i.e., it is in graphics mode)
 				 */
+int	sysbeep_enable = 1;
 
 static u_char cn_is_open;		/* nonzero if logical console is open */
 static int openmode, openflag;		/* how /dev/console was openned */
@@ -111,6 +112,8 @@ static char *console_pausestr=
 
 struct consdev *cn_tab;		/* physical console device info */
 struct consdev *gdb_tab;	/* physical gdb debugger device info */
+
+SYSCTL_INT(_kern, OID_AUTO, sysbeep_enable, CTLFLAG_RW, &sysbeep_enable, 0, "");
 
 CONS_DRIVER(cons, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 SET_DECLARE(cons_set, struct consdev);
