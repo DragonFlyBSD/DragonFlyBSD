@@ -61,6 +61,7 @@
  * Global serializer (operates like a non-reentrant lockmgr lock)
  */
 extern struct lwkt_serialize wlan_global_serializer;
+extern int ieee80211_force_swcrypto;
 
 #define wlan_serialize_enter()	_wlan_serialize_enter(__FUNCTION__)
 #define wlan_serialize_exit()	_wlan_serialize_exit(__FUNCTION__)
