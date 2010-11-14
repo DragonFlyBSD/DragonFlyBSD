@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.58 2008/08/17 04:32:33 sephe Exp $
  */
 
 /*
@@ -48,6 +47,7 @@
  * Davicom DM9100, DM9102, DM9102A (www.davicom8.com)
  * Accton EN1217 (www.accton.com)
  * Xircom X3201 (www.xircom.com)
+ * Abocom FE2500
  * Conexant LANfinity (www.conexant.com)
  *
  * Datasheets for the 21143 are available at developer.intel.com.
@@ -192,6 +192,8 @@ static const struct dc_type dc_devs[] = {
 		"Conexant LANfinity MiniPCI 10/100BaseTX" },
 	{ DC_VENDORID_3COM, DC_DEVICEID_3CSOHOB,
 		"3Com OfficeConnect 10/100B" },
+	{ DC_VENDORID_ABOCOM, DC_DEVICEID_FE2500,
+		"Abocom FE2500 10/100BaseTX" },
 	{ 0, 0, NULL }
 };
 
@@ -1916,6 +1918,7 @@ dc_attach(device_t dev)
 		dc_read_srom(sc, sc->dc_romwidth);
 		break;
 	case DC_DEVICEID_AN985:
+	case DC_DEVICEID_FE2500:
 	case DC_DEVICEID_ADM9511:
 	case DC_DEVICEID_ADM9513:
 	case DC_DEVICEID_FA511:
