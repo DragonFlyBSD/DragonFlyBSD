@@ -502,7 +502,7 @@ phdr(__unused int signo)
 		 && (dev_select[i].selected <= maxshowdevs)) {
 			di = dev_select[i].position;
 			if (oflag > 0)
-				printf("%4s%d ", 
+				printf("%12.6s%d ", 
 					    cur.dinfo->devices[di].device_name,
 					    cur.dinfo->devices[di].unit_number);
 			else
@@ -511,7 +511,7 @@ phdr(__unused int signo)
 						    cur.dinfo->devices[di].device_name,
 						    cur.dinfo->devices[di].unit_number);
 				else
-					printf("%s%d ",
+					printf("%15.6s%d ",
 						    cur.dinfo->devices[di].device_name,
 						    cur.dinfo->devices[di].unit_number);
 			printed++;
