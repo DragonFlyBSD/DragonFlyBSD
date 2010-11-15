@@ -4,8 +4,8 @@
 #
 
 # PROVIDE: lvm
-# REQUIRE: udevd
-# BEFORE:  disks
+# REQUIRE: udevd_early
+# BEFORE:  mountcritlocal cryptdisks
 
 $_rc_subr_loaded . /etc/rc.subr
 
