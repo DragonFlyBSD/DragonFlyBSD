@@ -352,6 +352,22 @@ make_dev_alias(cdev_t target, const char *fmt, ...)
 	return 0;
 }
 
+int
+destroy_dev_alias(cdev_t target, const char *fmt, ...)
+{
+	__va_list ap;
+	char *name;
+
+	__va_start(ap, fmt);
+	kvasnrprintf(&name, PATH_MAX, 32, fmt, ap);
+	__va_end(ap);
+
+	devfs_destroy_alias(name, target);
+	kvasfree(&name);
+
+	return 0;
+}
+
 extern struct dev_ops default_dev_ops;
 
 cdev_t

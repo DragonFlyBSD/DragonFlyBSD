@@ -45,7 +45,6 @@
 #include <sys/systm.h>
 #include <sys/devfs.h>
 #include <sys/devfs_rules.h>
-#include <sys/hotplug.h>
 #include <sys/udev.h>
 
 #include <sys/msgport2.h>
@@ -136,9 +135,10 @@ static struct devfs_node *devfs_resolve_or_create_dir(struct devfs_node *,
 		char *, size_t, int);
 
 static int devfs_make_alias_worker(struct devfs_alias *);
+static int devfs_destroy_alias_worker(struct devfs_alias *);
 static int devfs_alias_remove(cdev_t);
 static int devfs_alias_reap(void);
-static int devfs_alias_propagate(struct devfs_alias *);
+static int devfs_alias_propagate(struct devfs_alias *, int);
 static int devfs_alias_apply(struct devfs_node *, struct devfs_alias *);
 static int devfs_alias_check_create(struct devfs_node *);
 
@@ -150,10 +150,6 @@ static void *devfs_gc_dirs_callback(struct devfs_node *, void *);
 static void *devfs_gc_links_callback(struct devfs_node *, struct devfs_node *);
 static void *
 devfs_inode_to_vnode_worker_callback(struct devfs_node *, ino_t *);
-
-/* hotplug */
-void (*devfs_node_added)(struct hotplug_device*) = NULL;
-void (*devfs_node_removed)(struct hotplug_device*) = NULL;
 
 /*
  * devfs_debug() is a SYSCTL and TUNABLE controlled debug output function
@@ -465,7 +461,6 @@ int
 devfs_unlinkp(struct devfs_node *node)
 {
 	struct devfs_node *parent;
-	struct hotplug_device *hpdev;
 	KKASSERT(node);
 
 	/*
@@ -484,15 +479,7 @@ devfs_unlinkp(struct devfs_node *node)
 		parent->nchildren--;
 		node->flags &= ~DEVFS_NODE_LINKED;
 	}
-	/* hotplug handler */
-	if(devfs_node_removed) {
-		hpdev = kmalloc(sizeof(struct hotplug_device), M_TEMP, M_WAITOK);
-		hpdev->dev = node->d_dev;
-		if(hpdev->dev)
-			hpdev->name = node->d_dev->si_name;
-		devfs_node_removed(hpdev);
-		kfree(hpdev, M_TEMP);
-	}
+
 	node->parent = NULL;
 	return 0;
 }
@@ -842,6 +829,28 @@ devfs_make_alias(const char *name, cdev_t dev_target)
 }
 
 /*
+ * devfs_destroy_alias is the asynchronous entry point to deregister an alias
+ * for a device.  It just sends a message with the relevant details to the
+ * devfs core.
+ */
+int
+devfs_destroy_alias(const char *name, cdev_t dev_target)
+{
+	struct devfs_alias *alias;
+	size_t len;
+
+	len = strlen(name);
+
+	alias = kmalloc(sizeof(struct devfs_alias), M_DEVFS, M_WAITOK);
+	alias->name = kstrdup(name, M_DEVFS);
+	alias->namlen = len;
+	alias->dev_target = dev_target;
+
+	devfs_msg_send_generic(DEVFS_DESTROY_ALIAS, alias);
+	return 0;
+}
+
+/*
  * devfs_apply_rules is the asynchronous entry point to trigger application
  * of all rules.  It just sends a message with the relevant details to the
  * devfs core.
@@ -1163,6 +1172,9 @@ devfs_msg_exec(devfs_msg_t msg)
 		break;
 	case DEVFS_MAKE_ALIAS:
 		devfs_make_alias_worker((struct devfs_alias *)msg->mdv_load);
+		break;
+	case DEVFS_DESTROY_ALIAS:
+		devfs_destroy_alias_worker((struct devfs_alias *)msg->mdv_load);
 		break;
 	case DEVFS_APPLY_RULES:
 		devfs_apply_reset_rules_caller(msg->mdv_name, 1);
@@ -1486,7 +1498,7 @@ devfs_make_alias_worker(struct devfs_alias *alias)
 		 * The alias doesn't exist yet, so we add it to the alias list
 		 */
 		TAILQ_INSERT_TAIL(&devfs_alias_list, alias, link);
-		devfs_alias_propagate(alias);
+		devfs_alias_propagate(alias, 0);
 		udev_event_attach(alias->dev_target, alias->name, 1);
 	} else {
 		devfs_debug(DEVFS_DEBUG_WARNING,
@@ -1494,6 +1506,49 @@ devfs_make_alias_worker(struct devfs_alias *alias)
 			    alias->name);
 		kfree(alias->name, M_DEVFS);
 		kfree(alias, M_DEVFS);
+	}
+
+	return 0;
+}
+
+/*
+ * Worker function that delete a given alias from the
+ * alias list, and propagates the removal to all mount
+ * points.
+ */
+static int
+devfs_destroy_alias_worker(struct devfs_alias *alias)
+{
+	struct devfs_alias *alias2;
+	int found = 0;
+
+	TAILQ_FOREACH(alias2, &devfs_alias_list, link) {
+		if (alias->dev_target != alias2->dev_target)
+			continue;
+
+		if (devfs_WildCmp(alias->name, alias2->name) == 0) {
+			found = 1;
+			break;
+		}
+	}
+
+	if (!found) {
+		devfs_debug(DEVFS_DEBUG_WARNING,
+		    "Warning: devfs_destroy_alias for inexistant alias: %s\n",
+		    alias->name);
+		kfree(alias->name, M_DEVFS);
+		kfree(alias, M_DEVFS);
+	} else {
+		/*
+		 * The alias exists, so we delete it from the alias list
+		 */
+		TAILQ_REMOVE(&devfs_alias_list, alias2, link);
+		devfs_alias_propagate(alias2, 1);
+		udev_event_detach(alias2->dev_target, alias2->name, 1);
+		kfree(alias->name, M_DEVFS);
+		kfree(alias, M_DEVFS);
+		kfree(alias2->name, M_DEVFS);
+		kfree(alias2, M_DEVFS);
 	}
 
 	return 0;
@@ -1509,6 +1564,7 @@ devfs_alias_reap(void)
 
 	TAILQ_FOREACH_MUTABLE(alias, &devfs_alias_list, link, alias2) {
 		TAILQ_REMOVE(&devfs_alias_list, alias, link);
+		kfree(alias->name, M_DEVFS);
 		kfree(alias, M_DEVFS);
 	}
 	return 0;
@@ -1527,6 +1583,7 @@ devfs_alias_remove(cdev_t dev)
 		if (alias->dev_target == dev) {
 			TAILQ_REMOVE(&devfs_alias_list, alias, link);
 			udev_event_detach(alias->dev_target, alias->name, 1);
+			kfree(alias->name, M_DEVFS);
 			kfree(alias, M_DEVFS);
 		}
 	}
@@ -1534,15 +1591,20 @@ devfs_alias_remove(cdev_t dev)
 }
 
 /*
- * This function propagates a new alias to all mount points.
+ * This function propagates an alias addition or removal to
+ * all mount points.
  */
 static int
-devfs_alias_propagate(struct devfs_alias *alias)
+devfs_alias_propagate(struct devfs_alias *alias, int remove)
 {
 	struct devfs_mnt_data *mnt;
 
 	TAILQ_FOREACH(mnt, &devfs_mnt_list, link) {
-		devfs_alias_apply(mnt->root_node, alias);
+		if (remove) {
+			devfs_destroy_node(mnt->root_node, alias->name);
+		} else {
+			devfs_alias_apply(mnt->root_node, alias);
+		}
 	}
 	return 0;
 }
@@ -1599,7 +1661,6 @@ devfs_alias_create(char *name_orig, struct devfs_node *target, int rule_based)
 	struct mount *mp = target->mp;
 	struct devfs_node *parent = DEVFS_MNTDATA(mp)->root_node;
 	struct devfs_node *linknode;
-	struct hotplug_device *hpdev;
 	char *create_path = NULL;
 	char *name;
 	char *name_buf;
@@ -1636,14 +1697,6 @@ devfs_alias_create(char *name_orig, struct devfs_node *target, int rule_based)
 		linknode->flags |= DEVFS_RULE_CREATED;
 
 done:
-	/* hotplug handler */
-	if(devfs_node_added) {
-		hpdev = kmalloc(sizeof(struct hotplug_device), M_TEMP, M_WAITOK);
-		hpdev->dev = target->d_dev;
-		hpdev->name = name_orig;
-		devfs_node_added(hpdev);
-		kfree(hpdev, M_TEMP);
-	}
 	kfree(name_buf, M_TEMP);
 	return (result);
 }
@@ -1811,7 +1864,6 @@ devfs_create_device_node(struct devfs_node *root, cdev_t dev,
 			 char *dev_name, char *path_fmt, ...)
 {
 	struct devfs_node *parent, *node = NULL;
-	struct hotplug_device *hpdev;
 	char *path = NULL;
 	char *name;
 	char *name_buf;
@@ -1874,14 +1926,6 @@ devfs_create_device_node(struct devfs_node *root, cdev_t dev,
 		}
 		if (found)
 			node->flags |= (DEVFS_PTY | DEVFS_INVISIBLE);
-	}
-	/* hotplug handler */
-	if(devfs_node_added) {
-		hpdev = kmalloc(sizeof(struct hotplug_device), M_TEMP, M_WAITOK);
-		hpdev->dev = node->d_dev;
-		hpdev->name = node->d_dev->si_name;
-		devfs_node_added(hpdev);
-		kfree(hpdev, M_TEMP);
 	}
 
 out:
@@ -1954,6 +1998,17 @@ devfs_inode_to_vnode_worker_callback(struct devfs_node *node, ino_t *inop)
 int
 devfs_destroy_device_node(struct devfs_node *root, cdev_t target)
 {
+	KKASSERT(target != NULL);
+	return devfs_destroy_node(root, target->si_name);
+}
+
+/*
+ * This function takes a path to a devfs node, resolves it and
+ * removes the devfs node from the given topology.
+ */
+int
+devfs_destroy_node(struct devfs_node *root, char *target)
+{
 	struct devfs_node *node, *parent;
 	char *name;
 	char *name_buf;
@@ -1962,9 +2017,9 @@ devfs_destroy_device_node(struct devfs_node *root, cdev_t target)
 	KKASSERT(target);
 
 	name_buf = kmalloc(PATH_MAX, M_TEMP, M_WAITOK);
-	ksnprintf(name_buf, PATH_MAX, "%s", target->si_name);
+	ksnprintf(name_buf, PATH_MAX, "%s", target);
 
-	devfs_resolve_name_path(target->si_name, name_buf, &create_path, &name);
+	devfs_resolve_name_path(target, name_buf, &create_path, &name);
 
 	if (create_path)
 		parent = devfs_resolve_or_create_path(root, create_path, 0);
@@ -2488,3 +2543,168 @@ SYSINIT(vfs_devfs_register, SI_SUB_PRE_DRIVERS, SI_ORDER_FIRST,
 		devfs_init, NULL);
 SYSUNINIT(vfs_devfs_register, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY,
 		devfs_uninit, NULL);
+
+/*
+ * WildCmp() - compare wild string to sane string
+ *
+ *	Returns 0 on success, -1 on failure.
+ */
+static int
+wildCmp(const char **mary, int d, const char *w, const char *s)
+{
+    int i;
+
+    /*
+     * skip fixed portion
+     */
+    for (;;) {
+	switch(*w) {
+	case '*':
+	    /*
+	     * optimize terminator
+	     */
+	    if (w[1] == 0)
+		return(0);
+	    if (w[1] != '?' && w[1] != '*') {
+		/*
+		 * optimize * followed by non-wild
+		 */
+		for (i = 0; s + i < mary[d]; ++i) {
+		    if (s[i] == w[1] && wildCmp(mary, d + 1, w + 1, s + i) == 0)
+			return(0);
+		}
+	    } else {
+		/*
+		 * less-optimal
+		 */
+		for (i = 0; s + i < mary[d]; ++i) {
+		    if (wildCmp(mary, d + 1, w + 1, s + i) == 0)
+			return(0);
+		}
+	    }
+	    mary[d] = s;
+	    return(-1);
+	case '?':
+	    if (*s == 0)
+		return(-1);
+	    ++w;
+	    ++s;
+	    break;
+	default:
+	    if (*w != *s)
+		return(-1);
+	    if (*w == 0)	/* terminator */
+		return(0);
+	    ++w;
+	    ++s;
+	    break;
+	}
+    }
+    /* not reached */
+    return(-1);
+}
+
+
+/*
+ * WildCaseCmp() - compare wild string to sane string, case insensitive
+ *
+ *	Returns 0 on success, -1 on failure.
+ */
+static int
+wildCaseCmp(const char **mary, int d, const char *w, const char *s)
+{
+    int i;
+
+    /*
+     * skip fixed portion
+     */
+    for (;;) {
+	switch(*w) {
+	case '*':
+	    /*
+	     * optimize terminator
+	     */
+	    if (w[1] == 0)
+		return(0);
+	    if (w[1] != '?' && w[1] != '*') {
+		/*
+		 * optimize * followed by non-wild
+		 */
+		for (i = 0; s + i < mary[d]; ++i) {
+		    if (s[i] == w[1] && wildCaseCmp(mary, d + 1, w + 1, s + i) == 0)
+			return(0);
+		}
+	    } else {
+		/*
+		 * less-optimal
+		 */
+		for (i = 0; s + i < mary[d]; ++i) {
+		    if (wildCaseCmp(mary, d + 1, w + 1, s + i) == 0)
+			return(0);
+		}
+	    }
+	    mary[d] = s;
+	    return(-1);
+	case '?':
+	    if (*s == 0)
+		return(-1);
+	    ++w;
+	    ++s;
+	    break;
+	default:
+	    if (*w != *s) {
+#define tolower(x)	((x >= 'A' && x <= 'Z')?(x+('a'-'A')):(x))
+		if (tolower(*w) != tolower(*s))
+		    return(-1);
+	    }
+	    if (*w == 0)	/* terminator */
+		return(0);
+	    ++w;
+	    ++s;
+	    break;
+	}
+    }
+    /* not reached */
+    return(-1);
+}
+
+int
+devfs_WildCmp(const char *w, const char *s)
+{
+    int i;
+    int c;
+    int slen = strlen(s);
+    const char **mary;
+
+    for (i = c = 0; w[i]; ++i) {
+	if (w[i] == '*')
+	    ++c;
+    }
+    mary = kmalloc(sizeof(char *) * (c + 1), M_DEVFS, M_WAITOK);
+    for (i = 0; i < c; ++i)
+	mary[i] = s + slen;
+    i = wildCmp(mary, 0, w, s);
+    kfree(mary, M_DEVFS);
+    return(i);
+}
+
+int
+devfs_WildCaseCmp(const char *w, const char *s)
+{
+    int i;
+    int c;
+    int slen = strlen(s);
+    const char **mary;
+
+    for (i = c = 0; w[i]; ++i) {
+	if (w[i] == '*')
+	    ++c;
+    }
+    mary = kmalloc(sizeof(char *) * (c + 1), M_DEVFS, M_WAITOK);
+    for (i = 0; i < c; ++i)
+	mary[i] = s + slen;
+    i = wildCaseCmp(mary, 0, w, s);
+    kfree(mary, M_DEVFS);
+    return(i);
+}
+
