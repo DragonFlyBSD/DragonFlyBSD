@@ -210,6 +210,8 @@ udev_init_dict_event(cdev_t dev, const char *key)
 		goto error_out;
 	if ((error = _udev_dict_set_uint(dict, "devnum", dev->si_inode)))
 		goto error_out;
+	if ((error = _udev_dict_set_uint(dict, "devtype", (dev->si_flags & D_TYPEMASK))))
+		goto error_out;
 	if ((error = _udev_dict_set_uint(dict, "kptr", kptr)))
 		goto error_out;
 	if ((error = _udev_dict_set_cstr(dict, "key", __DECONST(char *, key))))
@@ -356,6 +358,8 @@ udev_init_dict(cdev_t dev)
 	if ((error = _udev_dict_set_uint(dict, "devnum", dev->si_inode)))
 		goto error_out;
 	if ((error = _udev_dict_set_uint(dict, "kptr", kptr)))
+		goto error_out;
+	if ((error = _udev_dict_set_uint(dict, "devtype", (dev->si_flags & D_TYPEMASK))))
 		goto error_out;
 
 	/* XXX: The next 3 are marginallly useful, if at all */
