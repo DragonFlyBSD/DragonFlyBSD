@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam.c,v 1.4 2001/03/27 05:45:09 ken Exp $
- * $DragonFly: src/sys/bus/cam/cam.c,v 1.8 2007/12/02 03:16:52 pavalos Exp $
  */
 #include <sys/param.h>
 
@@ -395,10 +394,6 @@ cam_calc_geometry(struct ccb_calc_geometry *ccg, int extended)
 		ccg->secs_per_track = 32;
 	}
 	secs_per_cylinder = ccg->heads * ccg->secs_per_track;
-	if (secs_per_cylinder == 0) {
-		ccg->ccb_h.status = CAM_REQ_CMP_ERR;
-		return;
-	}
 	ccg->cylinders = ccg->volume_size / secs_per_cylinder;
 	ccg->ccb_h.status = CAM_REQ_CMP;
 }
