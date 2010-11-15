@@ -21,7 +21,6 @@
 
 #include <sys/types.h>
 #include <sys/device.h>
-#include <sys/hotplug.h>
 #include <sys/wait.h>
 
 #include <err.h>
@@ -35,6 +34,7 @@
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
+#include <devattr.h>
 #include "compat.h"
 
 #define _PATH_DEV_HOTPLUG		"/dev/hotplug"
@@ -45,13 +45,20 @@
 #define _LOG_FACILITY			LOG_DAEMON
 #define _LOG_OPT			(LOG_NDELAY | LOG_PID)
 
+enum obsd_devclass {
+	DV_DULL,		/* generic, no special info */
+	DV_CPU,			/* CPU (carries resource utilization) */
+	DV_DISK,		/* disk drive (label, etc) */
+	DV_IFNET,		/* network interface */
+	DV_TAPE,		/* tape device */
+	DV_TTY			/* serial line interface (???) */
+};
+
 extern char *__progname;
 
 volatile sig_atomic_t quit = 0;
-const char *device = _PATH_DEV_HOTPLUG;
-int devfd = -1;
 
-void exec_script(const char *, int, char *);
+void exec_script(const char *, int, const char *);
 void sigchild(int);
 void sigquit(int);
 __dead void usage(void);
@@ -59,15 +66,18 @@ __dead void usage(void);
 int
 main(int argc, char *argv[])
 {
-	int ch;
+	int ch, class, ret;
 	struct sigaction sact;
-	struct hotplug_event he;
+	struct udev *udev;
+	struct udev_enumerate *udev_enum;
+	struct udev_list_entry *udev_le, *udev_le_first;
+	struct udev_monitor *udev_monitor;
+	struct udev_device *udev_dev;
+	enum obsd_devclass devclass;
+	const char *prop;
 
-	while ((ch = getopt(argc, argv, "d:")) != -1)
+	while ((ch = getopt(argc, argv, "?")) != -1)
 		switch (ch) {
-		case 'd':
-			device = optarg;
-			break;
 		case '?':
 		default:
 			usage();
@@ -79,8 +89,9 @@ main(int argc, char *argv[])
 	if (argc > 0)
 		usage();
 
-	if ((devfd = open(device, O_RDONLY)) == -1)
-		err(1, "%s", device);
+	udev = udev_new();
+	if (udev == NULL)
+		err(1, "udev_new");
 
 	bzero(&sact, sizeof(sact));
 	sigemptyset(&sact.sa_mask);
@@ -96,48 +107,80 @@ main(int argc, char *argv[])
 	sigaction(SIGCHLD, &sact, NULL);
 
 	openlog(_LOG_TAG, _LOG_OPT, _LOG_FACILITY);
+
 	if (daemon(0, 0) == -1)
 		err(1, "daemon");
 
 	syslog(LOG_INFO, "started");
 
+	udev_enum = udev_enumerate_new(udev);
+	if (udev_enum == NULL)
+		err(1, "udev_enumerate_new");
+
+	ret = udev_enumerate_scan_devices(udev_enum);
+	if (ret != 0)
+		err(1, "udev_enumerate_scan_device ret = %d", ret);
+
+	udev_le_first = udev_enumerate_get_list_entry(udev_enum);
+	if (udev_le_first == NULL)
+		err(1, "udev_enumerate_get_list_entry error");
+
+	udev_list_entry_foreach(udev_le, udev_le_first) {
+		udev_dev = udev_list_entry_get_device(udev_le);
+
+		class = atoi(udev_device_get_property_value(udev_dev, "devtype"));
+		devclass = ((class == D_TTY) ? DV_TTY : ((class == D_TAPE) ? DV_TAPE : ((class == D_DISK) ? DV_DISK : DV_DULL)));
+
+		syslog(LOG_INFO, "%s attached, class %d",
+		    udev_device_get_devnode(udev_dev), devclass);
+		exec_script(_PATH_ETC_HOTPLUG_ATTACH, devclass,
+		   udev_device_get_devnode(udev_dev));
+	}
+
+	udev_enumerate_unref(udev_enum);
+	udev_monitor = udev_monitor_new(udev);
+
+	ret = udev_monitor_enable_receiving(udev_monitor);
+	if (ret != 0)
+		err(1, "udev_monitor_enable_receiving ret = %d", ret);
+
 	while (!quit) {
-		if (read(devfd, &he, sizeof(he)) == -1) {
-			if (errno == EINTR)
-				/* ignore */
-				continue;
+		if ((udev_dev = udev_monitor_receive_device(udev_monitor)) == NULL) {
 			syslog(LOG_ERR, "read: %m");
 			exit(1);
 		}
 
-		switch (he.he_type) {
-		case HOTPLUG_DEVAT:
+		prop = udev_device_get_action(udev_dev);
+		class = atoi(udev_device_get_property_value(udev_dev, "devtype"));
+		devclass = ((class == D_TTY) ? DV_TTY : ((class == D_TAPE) ? DV_TAPE : ((class == D_DISK) ? DV_DISK : DV_DULL)));
+
+		if (strcmp(prop, "attach") == 0) {
 			syslog(LOG_INFO, "%s attached, class %d",
-			    he.he_devname, he.he_devclass);
-			exec_script(_PATH_ETC_HOTPLUG_ATTACH, he.he_devclass,
-			    he.he_devname);
-			break;
-		case HOTPLUG_DEVDT:
+			    udev_device_get_devnode(udev_dev), devclass);
+			exec_script(_PATH_ETC_HOTPLUG_ATTACH, devclass,
+			    udev_device_get_devnode(udev_dev));
+		} else if (strcmp(prop, "detach") == 0) {
 			syslog(LOG_INFO, "%s detached, class %d",
-			    he.he_devname, he.he_devclass);
-			exec_script(_PATH_ETC_HOTPLUG_DETACH, he.he_devclass,
-			    he.he_devname);
-			break;
-		default:
-			syslog(LOG_NOTICE, "unknown event (0x%x)", he.he_type);
+			    udev_device_get_devnode(udev_dev), devclass);
+			exec_script(_PATH_ETC_HOTPLUG_DETACH, devclass,
+			    udev_device_get_devnode(udev_dev));
+		} else {
+			syslog(LOG_NOTICE, "unknown event (%s)", prop);
 		}
 	}
 
 	syslog(LOG_INFO, "terminated");
 
 	closelog();
-	close(devfd);
+
+	udev_monitor_unref(udev_monitor);
+	udev_unref(udev);
 
 	return (0);
 }
 
 void
-exec_script(const char *file, int class, char *name)
+exec_script(const char *file, int class, const char *name)
 {
 	char strclass[8];
 	pid_t pid;
