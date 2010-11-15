@@ -905,7 +905,6 @@ ae_init(void *xsc)
 	 * Init mailboxes.
 	 */
 	sc->txd_cur = sc->rxd_cur = 0;
-	sc->txd_cur = sc->rxd_cur = 0;
 	sc->txs_ack = sc->txd_ack = 0;
 	sc->rxd_cur = 0;
 	AE_WRITE_2(sc, AE_MB_TXD_IDX_REG, sc->txd_cur);
