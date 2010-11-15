@@ -107,6 +107,7 @@
 #include <sys/queue.h>
 #include <sys/lock.h>
 #include <sys/udev.h>
+#include <sys/uuid.h>
 
 #include <sys/buf2.h>
 #include <sys/mplock2.h>
@@ -178,6 +179,7 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 	disklabel_ops_t ops;
 	struct partinfo part;
 	const char *msg;
+	char uuid_buf[128];
 	cdev_t ndev;
 	int sno;
 	u_int i;
@@ -213,6 +215,21 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 					 * is still valid.
 					 */
 					ndev->si_flags |= SI_REPROBE_TEST;
+
+					/*
+					 * Destroy old UUID alias
+					 */
+					destroy_dev_alias(ndev, "part-by-uuid/*");
+
+					/* Create UUID alias */
+					if (!kuuid_is_nil(&part.storage_uuid)) {
+						snprintf_uuid(uuid_buf,
+						    sizeof(uuid_buf),
+						    &part.storage_uuid);
+						make_dev_alias(ndev,
+						    "part-by-uuid/%s",
+						    uuid_buf);
+					}
 				} else {
 					ndev = make_dev_covering(&disk_ops, dp->d_rawdev->si_ops,
 						dkmakeminor(dkunit(dp->d_cdev),
@@ -235,6 +252,15 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 						    sno, 'a' + i);
 					}
 
+					/* Create UUID alias */
+					if (!kuuid_is_nil(&part.storage_uuid)) {
+						snprintf_uuid(uuid_buf,
+						    sizeof(uuid_buf),
+						    &part.storage_uuid);
+						make_dev_alias(ndev,
+						    "part-by-uuid/%s",
+						    uuid_buf);
+					}
 					ndev->si_flags |= SI_REPROBE_TEST;
 				}
 			}
@@ -276,6 +302,7 @@ disk_probe(struct disk *dp, int reprobe)
 	int error, i, sno;
 	struct diskslices *osp;
 	struct diskslice *sp;
+	char uuid_buf[128];
 
 	KKASSERT (info->d_media_blksize != 0);
 
@@ -338,6 +365,19 @@ disk_probe(struct disk *dp, int reprobe)
 			 * Device already exists and is still valid
 			 */
 			ndev->si_flags |= SI_REPROBE_TEST;
+
+			/*
+			 * Destroy old UUID alias
+			 */
+			destroy_dev_alias(ndev, "slice-by-uuid/*");
+
+			/* Create UUID alias */
+			if (!kuuid_is_nil(&sp->ds_stor_uuid)) {
+				snprintf_uuid(uuid_buf, sizeof(uuid_buf),
+				    &sp->ds_stor_uuid);
+				make_dev_alias(ndev, "slice-by-uuid/%s",
+				    uuid_buf);
+			}
 		} else {
 			/*
 			 * Else create new device
@@ -358,6 +398,14 @@ disk_probe(struct disk *dp, int reprobe)
 			if (dp->d_info.d_serialno) {
 				make_dev_alias(ndev, "serno/%s.s%d",
 					       dp->d_info.d_serialno, sno);
+			}
+
+			/* Create UUID alias */
+			if (!kuuid_is_nil(&sp->ds_stor_uuid)) {
+				snprintf_uuid(uuid_buf, sizeof(uuid_buf),
+				    &sp->ds_stor_uuid);
+				make_dev_alias(ndev, "slice-by-uuid/%s",
+				    uuid_buf);
 			}
 
 			ndev->si_disk = dp;
