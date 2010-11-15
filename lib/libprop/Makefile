@@ -7,8 +7,8 @@ PROPLIBDIR=${.CURDIR}/../../sys/libprop
 
 CFLAGS+=-D_LIBPROP
 CFLAGS+=-D_REENTRANT -I${.CURDIR}/../../sys -I${.CURDIR}/../../../lib/libc/include
-LDADD+=-lpthread
-DPADD+=${LIBPTHREAD}
+#LDADD+=-lpthread
+#DPADD+=${LIBPTHREAD}
 
 SRCS+=  prop_array.c prop_array_util.c prop_bool.c prop_data.c \
         prop_dictionary.c prop_dictionary_util.c prop_ingest.c \
