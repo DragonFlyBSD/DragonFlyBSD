@@ -1541,6 +1541,10 @@ TO_REMOVE+=/boot/loader.4th
 TO_REMOVE+=/boot/screen.4th
 TO_REMOVE+=/boot/support.4th
 TO_REMOVE+=/usr/freebsd_pkg
+TO_REMOVE+=/boot/kernel/hotplug.ko
+TO_REMOVE+=/usr/include/sys/hotplug.h
+TO_REMOVE+=/usr/share/man/cat4/hotplug.4.gz
+TO_REMOVE+=/usr/share/man/man4/hotplug.4.gz
 
 # XXX Remove when adjusted to the new 802.11 framework
 TO_REMOVE+=/boot/modules/if_acx.ko
