@@ -93,7 +93,6 @@
 #include "netbsd-dm.h"
 #include "dm.h"
 
-static uint64_t sc_minor_num;
 extern struct dev_ops dm_ops;
 extern struct devfs_bitmap dm_minor_bitmap;
 uint64_t dm_dev_counter;
