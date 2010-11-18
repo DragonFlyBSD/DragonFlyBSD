@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "SMIME 1"
-.TH SMIME 1 "2010-06-01" "1.0.0a" "OpenSSL"
+.TH SMIME 1 "2010-11-16" "1.0.0b" "OpenSSL"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -418,7 +418,7 @@ Create a cleartext signed message:
 \&        \-signer mycert.pem
 .Ve
 .PP
-Create an opaque signed message
+Create an opaque signed message:
 .PP
 .Vb 2
 \& openssl smime \-sign \-in message.txt \-text \-out mail.msg \-nodetach \e
@@ -490,13 +490,13 @@ it with:
 \& \-\-\-\-\-END PKCS7\-\-\-\-\-
 .Ve
 .PP
-and using the command,
+and using the command:
 .PP
 .Vb 1
 \& openssl smime \-verify \-inform PEM \-in signature.pem \-content content.txt
 .Ve
 .PP
-alternatively you can base64 decode the signature and use
+Alternatively you can base64 decode the signature and use:
 .PP
 .Vb 1
 \& openssl smime \-verify \-inform DER \-in signature.der \-content content.txt
@@ -527,7 +527,7 @@ Ideally a database should be maintained of a certificates for each email
 address.
 .PP
 The code doesn't currently take note of the permitted symmetric encryption
-algorithms as supplied in the SMIMECapabilities signed attribute. this means the
+algorithms as supplied in the SMIMECapabilities signed attribute. This means the
 user has to manually include the correct encryption algorithm. It should store
 the list of permitted ciphers in a database and only use those.
 .PP
