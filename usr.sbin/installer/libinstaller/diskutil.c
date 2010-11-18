@@ -929,3 +929,19 @@ swapoff_all(const struct i_fn_args *a)
 
 	return(p);
 }
+
+void *
+remove_all_mappings(const struct i_fn_args *a)
+{
+	FILE *p;
+
+	if ((p = aura_popen("%s%s -1 %sdev/mapper | %s%s -vw control | %s%s -n 1 %s%s luksClose", "r",
+		    a->os_root, cmd_name(a, "LS"),
+		    a->os_root,
+		    a->os_root, cmd_name(a, "GREP"),
+		    a->os_root, cmd_name(a, "XARGS"),
+		    a->os_root, cmd_name(a, "CRYPTSETUP"))) != NULL)
+		aura_pclose(p);
+
+	return(p);
+}

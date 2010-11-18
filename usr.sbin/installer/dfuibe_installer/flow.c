@@ -527,12 +527,15 @@ state_configure_menu(struct i_fn_args *a)
 	rc_conf = config_vars_new();
 
 	/*
-	 * Finally, unmount the system we mounted on /mnt.
+	 * Finally, unmount the system we mounted on /mnt and remove mappings.
 	 */
 	cmds = commands_new();
 	unmount_all_under(a, cmds, "%smnt", a->os_root);
 	commands_execute(a, cmds);
 	commands_free(cmds);
+
+	if (remove_all_mappings(a) == NULL)
+		inform(a->c, _("Warning: mappings could not be removed."));
 }
 
 void

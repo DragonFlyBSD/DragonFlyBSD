@@ -188,6 +188,7 @@ long			 measure_activated_swap_from_slice(const struct i_fn_args *,
 long			 measure_activated_swap_from_disk(const struct i_fn_args *,
 				const struct disk *);
 void			*swapoff_all(const struct i_fn_args *);
+void			*remove_all_mappings(const struct i_fn_args *);
 
 int			 survey_storage(struct i_fn_args *);
 

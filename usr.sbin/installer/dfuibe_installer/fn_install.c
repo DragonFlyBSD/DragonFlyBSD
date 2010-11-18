@@ -750,8 +750,10 @@ fn_install_os(struct i_fn_args *a)
 	commands_free(cmds);
 
 	/*
-	 * Finally, remove all swap.
+	 * Finally, remove all swap and any mappings.
 	 */
 	if (swapoff_all(a) == NULL)
 		inform(a->c, _("Warning: swap could not be turned off."));
+	if (remove_all_mappings(a) == NULL)
+		inform(a->c, _("Warning: mappings could not be removed."));
 }
