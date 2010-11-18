@@ -68,6 +68,7 @@ crypto/Makefile
 crypto/aes/Makefile
 crypto/aes/aes_x86core.c
 crypto/aes/asm/
+crypto/alphacpuid.pl
 crypto/asn1/Makefile
 crypto/asn1/charmap.pl
 crypto/bf/INSTALL
