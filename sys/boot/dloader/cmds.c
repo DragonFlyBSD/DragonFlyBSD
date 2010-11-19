@@ -79,6 +79,7 @@ static char *kenv_vars[] = {
 	"bootfile",
 	"console",
 	"currdev",
+	"dumpdev",
 	"default_kernel",
 	"init_path",
 	"kernel_options",
