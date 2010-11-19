@@ -140,7 +140,7 @@ static LIST_HEAD(, disk) disklist = LIST_HEAD_INITIALIZER(&disklist);
 static struct lwkt_token disklist_token;
 
 static struct dev_ops disk_ops = {
-	{ "disk", 0, D_DISK | D_MPSAFE },
+	{ "disk", 0, D_DISK | D_MPSAFE | D_TRACKCLOSE },
 	.d_open = diskopen,
 	.d_close = diskclose,
 	.d_read = physread,
@@ -681,6 +681,12 @@ disk_setdisktype(struct disk *disk, const char *type)
 	return udev_dict_set_cstr(disk->d_cdev, "disk-type", __DECONST(char *, type));
 }
 
+int
+disk_getopencount(struct disk *disk)
+{
+	return disk->d_opencount;
+}
+
 static void
 _setdiskinfo(struct disk *disk, struct disk_info *info)
 {
@@ -959,6 +965,11 @@ out:
 	}
 	rel_mplock();
 
+	KKASSERT(dp->d_opencount >= 0);
+	/* If the open was successful, bump open count */
+	if (error == 0)
+		atomic_add_int(&dp->d_opencount, 1);
+
 	return(error);
 }
 
@@ -975,6 +986,11 @@ diskclose(struct dev_close_args *ap)
 
 	error = 0;
 	dp = dev->si_disk;
+
+	KKASSERT(dp->d_opencount >= 1);
+	/* If this is not the last close, just ignore it */
+	if ((atomic_fetchadd_int(&dp->d_opencount, -1)) > 1)
+		return 0;
 
 	get_mplock();
 	dsclose(dev, ap->a_devtype, dp->d_slice);

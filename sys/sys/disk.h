@@ -127,6 +127,7 @@ struct disk {
 	struct dev_ops		*d_dev_ops;	/* our device switch */
 	struct dev_ops		*d_raw_ops;	/* the raw device switch */
 	u_int			d_flags;
+	int			d_opencount;	/* The current open count */
 	cdev_t			d_rawdev;	/* backing raw device */
 	cdev_t			d_cdev;		/* special whole-disk part */
 	struct diskslices	*d_slice;
@@ -153,6 +154,7 @@ cdev_t disk_locate (const char *devname);
 void disk_destroy (struct disk *disk);
 void disk_setdiskinfo (struct disk *disk, struct disk_info *info);
 int disk_setdisktype(struct disk *disk, const char *type);
+int disk_getopencount(struct disk *disk);
 void disk_setdiskinfo_sync(struct disk *disk, struct disk_info *info);
 int disk_dumpcheck (cdev_t dev, u_int64_t *count, u_int64_t *blkno, u_int *secsize);
 int disk_dumpconf(cdev_t dev, u_int onoff);
