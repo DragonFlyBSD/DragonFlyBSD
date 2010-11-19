@@ -126,13 +126,14 @@ static void _setdiskinfo(struct disk *disk, struct disk_info *info);
 static void bioqwritereorder(struct bio_queue_head *bioq);
 static void disk_cleanserial(char *serno);
 static int disk_debug(int, char *, ...) __printflike(2, 3);
+static cdev_t _disk_create_named(const char *name, int unit, struct disk *dp,
+    struct dev_ops *raw_ops, int clone);
 
 static d_open_t diskopen;
 static d_close_t diskclose;
 static d_ioctl_t diskioctl;
 static d_strategy_t diskstrategy;
 static d_psize_t diskpsize;
-static d_clone_t diskclone;
 static d_dump_t diskdump;
 
 static LIST_HEAD(, disk) disklist = LIST_HEAD_INITIALIZER(&disklist);
@@ -148,7 +149,6 @@ static struct dev_ops disk_ops = {
 	.d_strategy = diskstrategy,
 	.d_dump = diskdump,
 	.d_psize = diskpsize,
-	.d_clone = diskclone
 };
 
 static struct objcache 	*disk_msg_cache;
@@ -468,7 +468,8 @@ disk_msg_core(void *arg)
 				    "DISK_DISK_DESTROY: %s\n",
 					dp->d_cdev->si_name);
 			devfs_destroy_subnames(dp->d_cdev->si_name);
-			devfs_destroy_dev(dp->d_cdev);
+			destroy_dev(dp->d_cdev);
+			destroy_only_dev(dp->d_rawdev);
 			lwkt_gettoken(&disklist_token);
 			LIST_REMOVE(dp, d_list);
 			lwkt_reltoken(&disklist_token);
@@ -586,11 +587,29 @@ disk_msg_send_sync(uint32_t cmd, void *load, void *load2)
 cdev_t
 disk_create(int unit, struct disk *dp, struct dev_ops *raw_ops)
 {
-	return disk_create_named(NULL, unit, dp, raw_ops);
+	return _disk_create_named(NULL, unit, dp, raw_ops, 0);
+}
+
+cdev_t
+disk_create_clone(int unit, struct disk *dp, struct dev_ops *raw_ops)
+{
+	return _disk_create_named(NULL, unit, dp, raw_ops, 1);
 }
 
 cdev_t
 disk_create_named(const char *name, int unit, struct disk *dp, struct dev_ops *raw_ops)
+{
+	return _disk_create_named(name, unit, dp, raw_ops, 0);
+}
+
+cdev_t
+disk_create_named_clone(const char *name, int unit, struct disk *dp, struct dev_ops *raw_ops)
+{
+	return _disk_create_named(name, unit, dp, raw_ops, 1);
+}
+
+static cdev_t
+_disk_create_named(const char *name, int unit, struct disk *dp, struct dev_ops *raw_ops, int clone)
 {
 	cdev_t rawdev;
 
@@ -612,14 +631,27 @@ disk_create_named(const char *name, int unit, struct disk *dp, struct dev_ops *r
 	dp->d_dev_ops = &disk_ops;
 
 	if (name) {
-		dp->d_cdev = make_dev_covering(&disk_ops, dp->d_rawdev->si_ops,
-		    dkmakewholedisk(unit), UID_ROOT, GID_OPERATOR, 0640,
-		    "%s", name);
+		if (clone) {
+			dp->d_cdev = make_only_dev_covering(&disk_ops, dp->d_rawdev->si_ops,
+			    dkmakewholedisk(unit), UID_ROOT, GID_OPERATOR, 0640,
+			    "%s", name);
+		} else {
+			dp->d_cdev = make_dev_covering(&disk_ops, dp->d_rawdev->si_ops,
+			    dkmakewholedisk(unit), UID_ROOT, GID_OPERATOR, 0640,
+			    "%s", name);
+		}
 	} else {
-		dp->d_cdev = make_dev_covering(&disk_ops, dp->d_rawdev->si_ops,
-		    dkmakewholedisk(unit),
-		    UID_ROOT, GID_OPERATOR, 0640,
-		    "%s%d", raw_ops->head.name, unit);
+		if (clone) {
+			dp->d_cdev = make_only_dev_covering(&disk_ops, dp->d_rawdev->si_ops,
+			    dkmakewholedisk(unit),
+			    UID_ROOT, GID_OPERATOR, 0640,
+			    "%s%d", raw_ops->head.name, unit);
+		} else {
+			dp->d_cdev = make_dev_covering(&disk_ops, dp->d_rawdev->si_ops,
+			    dkmakewholedisk(unit),
+			    UID_ROOT, GID_OPERATOR, 0640,
+			    "%s%d", raw_ops->head.name, unit);
+		}
 	}
 
 	udev_dict_set_cstr(dp->d_cdev, "subsystem", "disk");
@@ -911,13 +943,6 @@ diskopen(struct dev_open_args *ap)
 		error = dev_dopen(dp->d_rawdev, ap->a_oflags,
 				  ap->a_devtype, ap->a_cred);
 	}
-#if 0
-	/*
-	 * Inherit properties from the underlying device now that it is
-	 * open.
-	 */
-	dev_dclone(dev);
-#endif
 
 	if (error)
 		goto out;
@@ -1065,32 +1090,6 @@ diskpsize(struct dev_psize_args *ap)
 		ap->a_head.a_dev = dp->d_rawdev;
 		return dev_doperate(&ap->a_head);
 	}
-	return(0);
-}
-
-/*
- * When new device entries are instantiated, make sure they inherit our
- * si_disk structure and block and iosize limits from the raw device.
- *
- * This routine is always called synchronously in the context of the
- * client.
- *
- * XXX The various io and block size constraints are not always initialized
- * properly by devices.
- */
-static
-int
-diskclone(struct dev_clone_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	struct disk *dp;
-	dp = dev->si_disk;
-
-	KKASSERT(dp != NULL);
-	dev->si_disk = dp;
-	dev->si_iosize_max = dp->d_rawdev->si_iosize_max;
-	dev->si_bsize_phys = dp->d_rawdev->si_bsize_phys;
-	dev->si_bsize_best = dp->d_rawdev->si_bsize_best;
 	return(0);
 }
 

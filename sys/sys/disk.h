@@ -146,7 +146,9 @@ struct disk {
 
 #ifdef _KERNEL
 cdev_t disk_create (int unit, struct disk *disk, struct dev_ops *raw_ops);
+cdev_t disk_create_clone (int unit, struct disk *disk, struct dev_ops *raw_ops);
 cdev_t disk_create_named(const char *name, int unit, struct disk *dp, struct dev_ops *raw_ops);
+cdev_t disk_create_named_clone(const char *name, int unit, struct disk *dp, struct dev_ops *raw_ops);
 cdev_t disk_locate (const char *devname);
 void disk_destroy (struct disk *disk);
 void disk_setdiskinfo (struct disk *disk, struct disk_info *info);
