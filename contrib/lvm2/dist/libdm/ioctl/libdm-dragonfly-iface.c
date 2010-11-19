@@ -1067,8 +1067,8 @@ static struct dm_ioctl *_do_dm_ioctl(struct dm_task *dmt, unsigned command)
 
 			goto out;
 		} else {
-			log_error("ioctl %s call failed with errno %d\n", 
-					  _cmd_data_v4[dmt->type].name, errno);
+			log_error("ioctl %s call failed: %s\n",
+			    _cmd_data_v4[dmt->type].name, strerror(errno));
 
 			prop_object_release(dm_dict_in);
 			prop_object_release(dm_dict_out);
