@@ -2228,6 +2228,18 @@ devfs_new_cdev(struct dev_ops *ops, int minor, struct dev_ops *bops)
 	dev->si_umajor = 0;
 	dev->si_uminor = minor;
 	dev->si_bops = bops;
+
+	/*
+	 * Since the disk subsystem is in the way, we need to
+	 * propagate the D_CANFREE from bops (and ops) to
+	 * si_flags.
+	 */
+	if (bops && (bops->head.flags & D_CANFREE)) {
+		dev->si_flags |= SI_CANFREE;
+	} else if (ops->head.flags & D_CANFREE) {
+		dev->si_flags |= SI_CANFREE;
+	}
+
 	/* If there is a backing device, we reference its ops */
 	dev->si_inode = makeudev(
 		    devfs_reference_ops((bops)?(bops):(ops)),

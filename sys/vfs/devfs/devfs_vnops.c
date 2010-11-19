@@ -1843,7 +1843,7 @@ devfs_spec_freeblks(struct vop_freeblks_args *ap)
 	 * XXX: this may not be TRTTD.
 	 */
 	KKASSERT(ap->a_vp->v_rdev != NULL);
-	if ((dev_dflags(ap->a_vp->v_rdev) & D_CANFREE) == 0)
+	if ((ap->a_vp->v_rdev->si_flags & SI_CANFREE) == 0)
 		return (0);
 	bp = geteblk(ap->a_length);
 	bp->b_cmd = BUF_CMD_FREEBLKS;

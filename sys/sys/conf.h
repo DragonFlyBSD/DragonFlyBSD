@@ -114,6 +114,7 @@ struct cdev {
 #define SI_INTERCEPTED	0x0008	/* device ops was intercepted */
 #define SI_DEVFS_LINKED	0x0010
 #define	SI_REPROBE_TEST	0x0020
+#define SI_CANFREE	0x0040	/* basically just a propagated D_CANFREE */
 
 #define si_tty		__si_u.__si_tty.__sit_tty
 #define si_disk		__si_u.__si_disk.__sid_disk
