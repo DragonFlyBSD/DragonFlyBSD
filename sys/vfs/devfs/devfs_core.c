@@ -254,9 +254,6 @@ devfs_allocp(devfs_nodetype devfsnodetype, char *name,
 	/* Initialize the parent node element */
 	node->parent = parent;
 
-	/* Apply rules */
-	devfs_rule_check_apply(node, NULL);
-
 	/* Initialize *time members */
 	nanotime(&node->atime);
 	node->mtime = node->ctime = node->atime;
@@ -275,6 +272,9 @@ devfs_allocp(devfs_nodetype devfsnodetype, char *name,
 		/* This forces negative namecache lookups to clear */
 		++mp->mnt_namecache_gen;
 	}
+
+	/* Apply rules */
+	devfs_rule_check_apply(node, NULL);
 
 	atomic_add_long(&DEVFS_MNTDATA(mp)->file_count, 1);
 
