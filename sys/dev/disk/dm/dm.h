@@ -139,6 +139,7 @@ typedef struct dm_dev {
 	uint32_t ref_cnt;
 
 	uint32_t dev_type;
+	uint32_t is_open;
 
 	dm_table_head_t table_head;
 

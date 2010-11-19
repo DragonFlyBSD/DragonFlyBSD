@@ -246,6 +246,7 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
 	dmv->ref_cnt = 0;
 	dmv->event_nr = 0;
 	dmv->dev_type = 0;
+	dmv->is_open = 0;
 
 	dm_table_head_init(&dmv->table_head);
 
@@ -265,6 +266,8 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
 	    DEVSTAT_PRIORITY_DISK);
 
 	dmv->devt = disk_create_named(name_buf, dm_minor, dmv->diskp, &dm_ops);
+	reference_dev(dmv->devt);
+
 	dmv->minor = minor(dmv->devt);
 	prop_dictionary_set_uint32(dm_dict, DM_IOCTL_MINOR, dmv->minor);
 	udev_dict_set_cstr(dmv->devt, "subsystem", "disk");
@@ -408,6 +411,9 @@ dm_dev_remove_ioctl(prop_dictionary_t dm_dict)
 	}
 
 	dm_dev_unbusy(dmv);
+
+	if (dmv->is_open)
+		return EBUSY;
 
 	/*
 	 * This will call dm_detach routine which will actually removes

@@ -197,6 +197,8 @@ dm_detach(dm_dev_t *dmv)
 	minor = dkunit(dmv->devt);
 	disk_destroy(dmv->diskp);
 	devstat_remove_entry(&dmv->stats);
+
+	release_dev(dmv->devt);
 	devfs_clone_bitmap_put(&dm_minor_bitmap, minor);
 
 	/* Destroy device */
@@ -233,6 +235,18 @@ dmdestroy(void)
 static int
 dmopen(struct dev_open_args *ap)
 {
+	cdev_t dev = ap->a_head.a_dev;
+	dm_dev_t *dmv;
+
+	/* Shortcut for the control device */
+	if (minor(dev) == 0)
+		return 0;
+
+	if ((dmv = dm_dev_lookup(NULL, NULL, minor(dev))) == NULL)
+		return ENXIO;
+
+	dmv->is_open = 1;
+	dm_dev_unbusy(dmv);
 
 	aprint_debug("dm open routine called %" PRIu32 "\n",
 	    minor(ap->a_head.a_dev));
@@ -242,6 +256,18 @@ dmopen(struct dev_open_args *ap)
 static int
 dmclose(struct dev_close_args *ap)
 {
+	cdev_t dev = ap->a_head.a_dev;
+	dm_dev_t *dmv;
+
+	/* Shortcut for the control device */
+	if (minor(dev) == 0)
+		return 0;
+
+	if ((dmv = dm_dev_lookup(NULL, NULL, minor(dev))) == NULL)
+		return ENXIO;
+
+	dmv->is_open = 0;
+	dm_dev_unbusy(dmv);
 
 	aprint_debug("dm close routine called %" PRIu32 "\n",
 	    minor(ap->a_head.a_dev));
@@ -256,10 +282,10 @@ dmioctl(struct dev_ioctl_args *ap)
 	u_long cmd = ap->a_cmd;
 	void *data = ap->a_data;
 
-	int r;
+	int r, err;
 	prop_dictionary_t dm_dict_in;
 
-	r = 0;
+	err = r = 0;
 
 	aprint_debug("dmioctl called\n");
 	
@@ -280,7 +306,7 @@ dmioctl(struct dev_ioctl_args *ap)
 			goto cleanup_exit;
 
 		/* run ioctl routine */
-		if ((r = dm_cmd_to_fun(dm_dict_in)) != 0)
+		if ((err = dm_cmd_to_fun(dm_dict_in)) != 0)
 			goto cleanup_exit;
 
 cleanup_exit:
@@ -288,7 +314,12 @@ cleanup_exit:
 		prop_object_release(dm_dict_in);
 	}
 
-	return r;
+	/*
+	 * Return the error of the actual command if one one has
+	 * happened. Otherwise return 'r' which indicates errors
+	 * that occurred during helper operations.
+	 */
+	return (err != 0)?err:r;
 }
 
 /*
