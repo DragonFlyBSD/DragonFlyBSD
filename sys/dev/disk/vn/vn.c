@@ -92,6 +92,7 @@ static	d_psize_t	vnsize;
 static	d_strategy_t	vnstrategy;
 static	d_clone_t	vnclone;
 
+MALLOC_DEFINE(M_VN, "vn_softc", "vn driver structures");
 DEVFS_DECLARE_CLONE_BITMAP(vn);
 
 #if NVN <= 1
@@ -184,7 +185,7 @@ vnclose(struct dev_close_args *ap)
 		disk_destroy(&vn->sc_disk);
 		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(vn), dkunit(dev));
 		SLIST_REMOVE(&vn_list, vn, vn_softc, sc_list);
-		kfree(vn, M_DEVBUF);
+		kfree(vn, M_VN);
 	}
 	return (0);
 }
@@ -194,7 +195,7 @@ vncreatevn(void)
 {
 	struct vn_softc *vn;
 
-	vn = kmalloc(sizeof *vn, M_DEVBUF, M_WAITOK | M_ZERO);
+	vn = kmalloc(sizeof *vn, M_VN, M_WAITOK | M_ZERO);
 	return vn;
 }
 
@@ -900,7 +901,7 @@ vn_modevent(module_t mod, int type, void *data)
 			if (vn->sc_flags & VNF_INITED)
 				vnclear(vn);
 
-			kfree(vn, M_DEVBUF);
+			kfree(vn, M_VN);
 		}
 		destroy_autoclone_dev(dev, &DEVFS_CLONE_BITMAP(vn));
 		dev_ops_remove_all(&vn_ops);
