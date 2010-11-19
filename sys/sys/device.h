@@ -361,6 +361,8 @@ cdev_t make_dev_covering(struct dev_ops *ops,  struct dev_ops *bops, int minor,
 	    uid_t uid, gid_t gid, int perms, const char *fmt, ...) __printflike(7, 8);
 cdev_t make_only_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 		int perms, const char *fmt, ...) __printflike(6, 7);
+cdev_t make_only_dev_covering(struct dev_ops *ops, struct dev_ops *bops, int minor,
+    uid_t uid, gid_t gid, int perms, const char *fmt, ...) __printflike(7,8);
 cdev_t make_only_devfs_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 	   int perms, const char *fmt, ...) __printflike(6, 7);
 void destroy_only_dev(cdev_t dev);

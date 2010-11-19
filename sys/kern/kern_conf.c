@@ -259,7 +259,6 @@ make_only_devfs_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 	return (devfs_dev);
 }
 
-
 cdev_t
 make_only_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 	int perms, const char *fmt, ...)
@@ -272,6 +271,35 @@ make_only_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 	 */
 	compile_dev_ops(ops);
 	devfs_dev = devfs_new_cdev(ops, minor, NULL);
+	devfs_dev->si_perms = perms;
+	devfs_dev->si_uid = uid;
+	devfs_dev->si_gid = gid;
+
+	/*
+	 * Set additional fields (XXX DEVFS interface goes here)
+	 */
+	__va_start(ap, fmt);
+	kvsnrprintf(devfs_dev->si_name, sizeof(devfs_dev->si_name),
+		    32, fmt, ap);
+	__va_end(ap);
+
+	reference_dev(devfs_dev);
+
+	return (devfs_dev);
+}
+
+cdev_t
+make_only_dev_covering(struct dev_ops *ops, struct dev_ops *bops, int minor,
+	uid_t uid, gid_t gid, int perms, const char *fmt, ...)
+{
+	cdev_t	devfs_dev;
+	__va_list ap;
+
+	/*
+	 * compile the cdevsw and install the device
+	 */
+	compile_dev_ops(ops);
+	devfs_dev = devfs_new_cdev(ops, minor, bops);
 	devfs_dev->si_perms = perms;
 	devfs_dev->si_uid = uid;
 	devfs_dev->si_gid = gid;
