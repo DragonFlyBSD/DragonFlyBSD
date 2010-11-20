@@ -63,7 +63,7 @@
 #include <openssl/rsa.h>
 #include <openssl/bn.h>
 #include <openssl/evp.h>
-#include "../evp/evp_locl.h"
+#include "evp_locl.h"
 #include "rsa_locl.h"
 
 /* RSA pkey context structure */

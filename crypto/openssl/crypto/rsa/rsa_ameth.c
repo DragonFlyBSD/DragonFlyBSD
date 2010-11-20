@@ -65,7 +65,7 @@
 #ifndef OPENSSL_NO_CMS
 #include <openssl/cms.h>
 #endif
-#include "../asn1/asn1_locl.h"
+#include "asn1_locl.h"
 
 static int rsa_pub_encode(X509_PUBKEY *pk, const EVP_PKEY *pkey)
 	{
