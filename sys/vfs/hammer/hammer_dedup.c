@@ -43,6 +43,9 @@ hammer_ioc_dedup(hammer_transaction_t trans, hammer_inode_t ip,
 	struct hammer_cursor cursor1, cursor2;
 	int error;
 
+	kprintf("hammer: Dedup is not supported in the 2.8 release\n");
+	return (EOPNOTSUPP);
+
 	/*
 	 * Enforce hammer filesystem version requirements
 	 */

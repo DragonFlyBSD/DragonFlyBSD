@@ -467,8 +467,9 @@ process_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags)
 			goto upgrade_stats_sha;
 		case DEDUP_VERS_FAILURE:
 			fprintf(stderr,
-				"HAMMER filesystem must be at least "
-				"version 5 to dedup\n");
+				"The filesystem must be at least "
+				"version 5 to dedup and you have to run\n"
+				"at least 2.9-DEVELOPMENT to use it.\n");
 			exit (1);
 		default:
 			fprintf(stderr, "Unknown error\n");
@@ -510,8 +511,9 @@ sha256_failure:
 			goto upgrade_stats;
 		case DEDUP_VERS_FAILURE:
 			fprintf(stderr,
-				"HAMMER filesystem must be at least "
-				"version 5 to dedup\n");
+				"The filesystem must be at least "
+				"version 5 to dedup and you have to run\n"
+				"at least 2.9-DEVELOPMENT to use it.\n");
 			exit (1);
 		default:
 			fprintf(stderr, "Unknown error\n");
