@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/usr.sbin/mlxcontrol/command.c,v 1.2.2.1 2000/04/24 19:44:46 msmith Exp $
- *	$DragonFly: src/usr.sbin/mlxcontrol/command.c,v 1.3 2003/08/08 04:18:46 dillon Exp $
+ *	$FreeBSD: src/usr.sbin/mlxcontrol/command.c,v 1.3 2008/09/12 17:40:17 sepotvin Exp $
  */
 
 #include <fcntl.h>
@@ -49,16 +48,18 @@ static int	cmd_rebuild(int argc, char *argv[]);
 static int	cmd_pause(int argc, char *argv[]);
 #endif
 static int	cmd_help(int argc, char *argv[]);
+static int	cmd_config(int argc, char *argv[]);
 
-extern int	cmd_config(int argc, char *argv[]);
-
+static void	print_span(struct mlx_sys_drv_span *span, int arms);
+static void	print_sys_drive(struct conf_config *conf, int drvno);
+static void	print_phys_drive(struct conf_config *conf, int chn, int targ);
 
 struct 
 {
-    char	*cmd;
+    const char	*cmd;
     int		(*func)(int argc, char *argv[]);
-    char	*desc;
-    char	*text;
+    const char	*desc;
+    const char	*text;
 } commands[] = {
     {"status",	cmd_status, 
      "displays device status",
@@ -268,10 +269,86 @@ status_print(int unit, void *arg)
     close(fd);
 }
 
+/********************************************************************************
+ * Print details for the system drive (drvno) in a format that we will be
+ * able to parse later.
+ *
+ * drive?? <raidlevel> <writemode>
+ *   span? 0x????????-0x???????? ????MB on <disk> [...]
+ *   ...
+ */
+static void
+print_span(struct mlx_sys_drv_span *span, int arms)
+{
+    int		i;
+
+    printf("0x%08x-0x%08x %uMB on", span->sp_start_lba, span->sp_start_lba + span->sp_nblks, span->sp_nblks / 2048);
+    for (i = 0; i < arms; i++)
+	printf(" disk%02d%02d", span->sp_arm[i] >> 4, span->sp_arm[i] & 0x0f);
+    printf("\n");
+}
+
+static void
+print_sys_drive(struct conf_config *conf, int drvno)
+{
+    struct mlx_sys_drv	*drv = &conf->cc_cfg.cc_sys_drives[drvno];
+    int			i;
+
+    printf("drive%02d ", drvno);
+    switch(drv->sd_raidlevel & 0xf) {
+    case MLX_SYS_DRV_RAID0:
+	printf("RAID0");
+	break;
+    case MLX_SYS_DRV_RAID1:
+	printf("RAID1");
+	break;
+    case MLX_SYS_DRV_RAID3:
+	printf("RAID3");
+	break;
+    case MLX_SYS_DRV_RAID5:
+	printf("RAID5");
+	break;
+    case MLX_SYS_DRV_RAID6:
+	printf("RAID6");
+	break;
+    case MLX_SYS_DRV_JBOD:
+	printf("JBOD");
+	break;
+    default:
+	printf("RAID?");
+    }
+    printf(" write%s\n", drv->sd_raidlevel & MLX_SYS_DRV_WRITEBACK ? "back" : "through");
+
+    for (i = 0; i < drv->sd_valid_spans; i++) {
+	printf("  span%d ", i);
+	print_span(&drv->sd_span[i], drv->sd_valid_arms);
+    }
+}
+
+/********************************************************************************
+ * Print details for the physical drive at chn/targ in a format suitable for
+ * human consumption.
+ *
+ * <type>CCTT (<state>) "<vendor>/<model>"
+ *                       ????MB <features>
+ *
+ */
+static void
+print_phys_drive(struct conf_config *conf, int chn, int targ)
+{
+    struct mlx_phys_drv		*drv = &conf->cc_cfg.cc_phys_drives[chn * 16 + targ];
+
+    /* if the drive isn't present, don't print it */
+    if (!(drv->pd_flags1 & MLX_PHYS_DRV_PRESENT))
+	return;
+
+    mlx_print_phys_drv(drv, chn, targ, "# ", 1);
+}
+
 static struct 
 {
     int		hwid;
-    char	*name;
+    const char	*name;
 } mlx_controller_names[] = {
     {0x01,	"960P/PD"},
     {0x02,	"960PL"},
@@ -293,7 +370,7 @@ controller_print(int unit, void *arg)
     struct mlx_phys_drv	pd;
     int			verbosity = *(int *)arg;
     static char		buf[80];
-    char		*model;
+    const char		*model;
     int			i, channel, target;
 
     if (verbosity == 0)
@@ -305,7 +382,7 @@ controller_print(int unit, void *arg)
     } else {
 	
 	for (i = 0, model = NULL; mlx_controller_names[i].name != NULL; i++) {
-	    if ((enq.me_hardware_id & 0xff) == mlx_controller_names[i].hwid) {
+	    if ((int)(enq.me_hardware_id & 0xff) == mlx_controller_names[i].hwid) {
 		model = mlx_controller_names[i].name;
 		break;
 	    }
@@ -422,7 +499,7 @@ cmd_status(int argc, char *argv[])
  * rescan -a
  */
 static void
-rescan_ctrlr(int unit, void *junk)
+rescan_ctrlr(int unit, void *junk __unused)
 {
     int		fd;
     
@@ -480,7 +557,7 @@ cmd_rescan(int argc, char *argv[])
  *
  */
 static void
-detach_drive(int unit, void *arg)
+detach_drive(int unit, void *arg __unused)
 {
     int		fd;
     
@@ -629,8 +706,42 @@ cmd_rebuild(int argc, char *argv[])
 	    warnx("drive rebuild or consistency check is already in progress on this controller");
 	    break;
 	default:
-	    warn("ioctl MLXD_CHECKASYNC");
+	    warn("ioctl MLXD_REBUILDASYNC");
 	}
+    }
+    return(0);
+}
+
+/********************************************************************************
+ * Get the configuration from the selected controller.
+ *
+ * config <controller>
+ *		Print the configuration for <controller>
+ *
+ * XXX update to support adding/deleting drives.
+ */
+
+int
+cmd_config(int argc __unused, char *argv[] __unused)
+{
+    struct conf_config	conf;
+    int			unit = 0;	/* XXX */
+    int			i, j;
+
+    bzero(&conf.cc_cfg, sizeof(conf.cc_cfg));
+    if (mlx_read_configuration(unit, &conf.cc_cfg)) {
+	printf("mlx%d: error submitting READ CONFIGURATION\n", unit);
+    } else {
+
+	printf("# Controller <INSERT DETAILS HERE>\n");
+	printf("#\n# Physical devices connected:\n");
+	for (i = 0; i < 5; i++)
+	    for (j = 0; j < 16; j++)
+	    print_phys_drive(&conf, i, j);
+	printf("#\n# System Drives defined:\n");
+
+	for (i = 0; i < conf.cc_cfg.cc_num_sys_drives; i++)
+	    print_sys_drive(&conf, i);
     }
     return(0);
 }

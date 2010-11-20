@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/usr.sbin/mlxcontrol/util.c,v 1.2.2.1 2000/04/24 19:44:47 msmith Exp $
- *	$DragonFly: src/usr.sbin/mlxcontrol/util.c,v 1.3 2003/08/08 04:18:46 dillon Exp $
+ *	$FreeBSD: src/usr.sbin/mlxcontrol/util.c,v 1.2 2000/04/11 23:04:17 msmith Exp $
  */
 
 #include <sys/types.h>
@@ -108,9 +107,10 @@ driveunit(char *str)
  */
 
 void
-mlx_print_phys_drv(struct mlx_phys_drv *drv, int chn, int targ, char *prefix, int verbose)
+mlx_print_phys_drv(struct mlx_phys_drv *drv, int chn, int targ, const char *prefix, int verbose)
 {
-    char	*type, *device, *vendor, *revision;
+    const char	*type;
+    char	*device, *vendor, *revision;
 
     switch(drv->pd_flags2 & 0x03) {
     case MLX_PHYS_DRV_DISK:

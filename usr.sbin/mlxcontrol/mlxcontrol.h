@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/usr.sbin/mlxcontrol/mlxcontrol.h,v 1.1.1.1.2.1 2000/04/24 19:44:47 msmith Exp $
- *	$DragonFly: src/usr.sbin/mlxcontrol/mlxcontrol.h,v 1.3 2005/02/17 14:00:10 joerg Exp $
+ *	$FreeBSD: src/usr.sbin/mlxcontrol/mlxcontrol.h,v 1.4 2004/10/02 16:42:33 stefanf Exp $
  */
 
 #include <sys/queue.h>
@@ -55,7 +54,7 @@ extern char	*drivename(int unit);
 extern int	ctrlrunit(char *str);
 extern int	driveunit(char *str);
 
-extern void	mlx_print_phys_drv(struct mlx_phys_drv *drv, int channel, int target, char *prefix, int verbose);
+extern void	mlx_print_phys_drv(struct mlx_phys_drv *drv, int channel, int target, const char *prefix, int verbose);
 
 struct conf_phys_drv
 {
