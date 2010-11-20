@@ -61,7 +61,7 @@
 #include <openssl/x509v3.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
-#include "../evp/evp_locl.h"
+#include "evp_locl.h"
 
 /* HMAC pkey context structure */
 
