@@ -59,16 +59,12 @@
 #include <sys/priv.h>
 #include <sys/in_cksum.h>
 #include <sys/lock.h>
-#ifdef SMP
 #include <sys/msgport.h>
-#endif
 
 #include <net/if.h>
 #include <net/route.h>
 
-#ifdef SMP
 #include <net/netmsg2.h>
-#endif
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
 
