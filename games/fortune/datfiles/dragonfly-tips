@@ -553,8 +553,9 @@ arguments that make(1) accepts.
 If you would like easy access to your files as they looked yesterday, or a
 month ago, try the HAMMER file system.  See "man HAMMER" for more details.
 Historical file contents is typically accessed via snapshots, typically
-/hammer/snapshots/snap-<date>-<time>, if your HAMMER file system is /hammer.
-If you use HAMMER PFSs, then each one will have its own snapshots/ directory.
+/var/hammer/root/snap-<date>-<time>, for your root file system.
+If you use HAMMER PFSs, then each one will have its own directory as
+/var/hammer/<PFS>/snap-<date>-<time>.
 %
 Using HAMMER PFSs you can define history retention policy per directory tree.
 For example, if /home/userA and /home/userB are two PFSs, you can configure that
