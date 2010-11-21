@@ -632,6 +632,7 @@ dump_conf(void *dummy)
 
 	path = kmalloc(MNAMELEN, M_TEMP, M_WAITOK);
 	if (TUNABLE_STR_FETCH("dumpdev", path, MNAMELEN) != 0) {
+		sync_devs();
 		dev = kgetdiskbyname(path);
 		if (dev != NULL)
 			dumpdev = dev;
