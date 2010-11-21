@@ -8,6 +8,10 @@ NOLINT=		true
 
 SUBDIR=	engines
 
+.if ${MACHINE_ARCH} == "x86_64"
+LDFLAGS+=-Wl,-Bsymbolic
+.endif
+
 .if exists(Makefile.man)
 .include "Makefile.man"
 .endif
@@ -16,12 +20,22 @@ SUBDIR=	engines
 
 # base sources
 SRCS=	cpt_err.c cryptlib.c cversion.c ebcdic.c ex_data.c \
-	mem.c mem_clr.c mem_dbg.c o_dir.c o_time.c uid.c
+	mem.c mem_dbg.c o_dir.c o_time.c uid.c
+.if ${MACHINE_ARCH} == "i386"
+SRCS+=	x86cpuid.s
+.elif ${MACHINE_ARCH} == "x86_64"
+SRCS+=	x86_64cpuid.s
+.endif
 INCS=	../e_os.h ../e_os2.h crypto.h ebcdic.h opensslv.h ossl_typ.h symhacks.h
 
 # aes
-SRCS+=	aes_cbc.c aes_cfb.c aes_core.c aes_ctr.c aes_ecb.c aes_ige.c \
+SRCS+=	aes_cfb.c aes_ctr.c aes_ecb.c aes_ige.c \
 	aes_misc.c aes_ofb.c aes_wrap.c
+.if ${MACHINE_ARCH} == "i386"
+SRCS+=	aes-586.s
+.elif ${MACHINE_ARCH} == "x86_64"
+SRCS+=	aes-x86_64.s
+.endif
 INCS+=	aes.h aes_locl.h
 
 # asn1
@@ -42,7 +56,12 @@ SRCS+=	a_bitstr.c a_bool.c a_bytes.c a_d2i_fp.c a_digest.c \
 INCS+=	asn1.h asn1_mac.h asn1t.h
 
 # bf
-SRCS+=	bf_cfb64.c bf_ecb.c bf_enc.c bf_ofb64.c bf_skey.c
+SRCS+=	bf_cfb64.c bf_ecb.c bf_ofb64.c bf_skey.c
+.if ${MACHINE_ARCH} == "i386"
+SRCS+=	bf-586.s
+.elif ${MACHINE_ARCH} == "x86_64"
+SRCS+=	bf_enc.c
+.endif
 INCS+=	blowfish.h
 
 # bio
@@ -53,12 +72,17 @@ SRCS+=	b_dump.c b_print.c b_sock.c bf_buff.c bf_lbuf.c bf_nbio.c \
 INCS+=	bio.h
 
 # bn
-SRCS+=	bn_add.c bn_asm.c bn_blind.c bn_const.c bn_ctx.c bn_depr.c \
+SRCS+=	bn_add.c bn_blind.c bn_const.c bn_ctx.c bn_depr.c \
 	bn_div.c bn_err.c bn_exp.c \
 	bn_exp2.c bn_gcd.c bn_gf2m.c bn_kron.c bn_lib.c bn_mod.c bn_mont.c \
 	bn_mpi.c bn_mul.c bn_nist.c \
 	bn_prime.c bn_print.c bn_rand.c bn_recp.c \
 	bn_shift.c bn_sqr.c bn_sqrt.c bn_word.c
+.if ${MACHINE_ARCH} == "i386"
+SRCS+=	bn-586.s co-586.s x86-mont.s
+.elif ${MACHINE_ARCH} == "x86_64"
+SRCS+=	x86_64-gcc.c x86_64-mont.s
+.endif
 INCS+=	bn.h
 
 # buffer
@@ -66,8 +90,13 @@ SRCS+=	buf_err.c buffer.c
 INCS+=	buffer.h
 
 # camellia
-SRCS+=	camellia.c cmll_cbc.c cmll_cfb.c \
-	cmll_ctr.c cmll_ecb.c cmll_misc.c cmll_ofb.c
+SRCS+=	cmll_cfb.c \
+	cmll_ctr.c cmll_ecb.c cmll_ofb.c
+.if ${MACHINE_ARCH} == "i386"
+SRCS+=	cmll-x86.s
+.elif ${MACHINE_ARCH} == "x86_64"
+SRCS+=	cmll-x86_64.s cmll_misc.c
+.endif
 INCS+=	camellia.h
 
 # cast
@@ -89,11 +118,16 @@ INCS+=	conf.h conf_api.h
 
 # des
 SRCS+=	cbc3_enc.c cbc_cksm.c cbc_enc.c cfb64ede.c cfb64enc.c cfb_enc.c \
-	des_enc.c des_old.c des_old2.c \
+	des_old.c des_old2.c \
 	ecb3_enc.c ecb_enc.c ede_cbcm_enc.c \
-	enc_read.c enc_writ.c fcrypt.c fcrypt_b.c ofb64ede.c ofb64enc.c \
+	enc_read.c enc_writ.c fcrypt.c ofb64ede.c ofb64enc.c \
 	ofb_enc.c pcbc_enc.c qud_cksm.c rand_key.c read2pwd.c \
 	rpc_enc.c set_key.c str2key.c xcbc_enc.c
+.if ${MACHINE_ARCH} == "i386"
+SRCS+=	des-586.s crypt586.s
+.elif ${MACHINE_ARCH} == "x86_64"
+SRCS+=	des_enc.c fcrypt_b.c
+.endif
 INCS+=	des.h des_old.h
 
 # dh
@@ -182,6 +216,11 @@ INCS+=	md4.h
 
 # md5
 SRCS+=	md5_dgst.c md5_one.c
+.if ${MACHINE_ARCH} == "i386"
+SRCS+=	md5-586.s
+.elif ${MACHINE_ARCH} == "x86_64"
+SRCS+=	md5-x86_64.s
+.endif
 INCS+=	md5.h
 
 # mdc2
@@ -232,7 +271,11 @@ SRCS+=	rc2_cbc.c rc2_ecb.c rc2_skey.c rc2cfb64.c rc2ofb64.c
 INCS+=	rc2.h
 
 # rc4
-SRCS+=	rc4_enc.c rc4_skey.c
+.if ${MACHINE_ARCH} == "i386"
+SRCS+=	rc4-586.s
+.elif ${MACHINE_ARCH} == "x86_64"
+SRCS+=	rc4-x86_64.s
+.endif
 INCS+=	rc4.h
 
 # rc5
@@ -242,6 +285,9 @@ INCS+=	rc4.h
 
 # ripemd
 SRCS+=	rmd_dgst.c rmd_one.c
+.if ${MACHINE_ARCH} == "i386"
+SRCS+=	rmd-586.s
+.endif
 INCS+=	ripemd.h
 
 # rsa
@@ -258,6 +304,11 @@ INCS+=	seed.h
 
 # sha
 SRCS+=	sha1_one.c sha1dgst.c sha256.c sha512.c sha_dgst.c sha_one.c
+.if ${MACHINE_ARCH} == "i386"
+SRCS+=	sha1-586.s sha256-586.s sha512-586.s
+.elif ${MACHINE_ARCH} == "x86_64"
+SRCS+=	sha1-x86_64.s sha256-x86_64.s sha512-x86_64.s
+.endif
 INCS+=	sha.h
 
 # stack
@@ -283,7 +334,12 @@ SRCS+=	ui_compat.c ui_err.c ui_lib.c ui_openssl.c ui_util.c
 INCS+=	ui.h ui_compat.h ui_locl.h
 
 # whrlpool
-SRCS+=	wp_block.c wp_dgst.c
+SRCS+=	wp_dgst.c
+.if ${MACHINE_ARCH} == "i386"
+SRCS+=	wp_block.c wp-mmx.s
+.elif ${MACHINE_ARCH} == "x86_64"
+SRCS+=	wp-x86_64.s
+.endif
 INCS+=	whrlpool.h
 
 # x509
@@ -327,12 +383,14 @@ opensslconf.h: opensslconf-${MACHINE_ARCH}.h
 .include <bsd.lib.mk>
 
 .PATH: \
+	${.CURDIR}/asm \
 	${LCRYPTO_SRC}/crypto \
 	${LCRYPTO_SRC}/crypto/aes \
 	${LCRYPTO_SRC}/crypto/asn1 \
 	${LCRYPTO_SRC}/crypto/bf \
 	${LCRYPTO_SRC}/crypto/bio \
 	${LCRYPTO_SRC}/crypto/bn \
+	${LCRYPTO_SRC}/crypto/bn/asm \
 	${LCRYPTO_SRC}/crypto/buffer \
 	${LCRYPTO_SRC}/crypto/camellia \
 	${LCRYPTO_SRC}/crypto/cast \
