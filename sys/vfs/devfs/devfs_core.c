@@ -2259,8 +2259,15 @@ devfs_cdev_terminate(cdev_t dev)
 		locked = 1;
 	}
 
-	/* Propagate destruction, just in case */
-	devfs_propagate_dev(dev, 0);
+	/*
+	 * Make sure the node isn't linked anymore. Otherwise we've screwed
+	 * up somewhere, since normal devs are unlinked on the call to
+	 * destroy_dev and only-cdevs that have not been used for cloning
+	 * are not linked in the first place. only-cdevs used for cloning
+	 * will be linked in, too, and should only be destroyed via
+	 * destroy_dev, not destroy_only_dev, so we catch that problem, too.
+	 */
+	KKASSERT((dev->si_flags & SI_DEVFS_LINKED) == 0);
 
 	/* If we acquired the lock, we also get rid of it */
 	if (locked)
