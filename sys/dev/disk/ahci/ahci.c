@@ -496,7 +496,9 @@ ahci_port_init(struct ahci_port *ap)
 	ahci_pwrite(ap, AHCI_PREG_SERR, -1);
 
 	/*
-	 * If we are being harsh try to kill the port completely.
+	 * If we are being harsh try to kill the port completely.  Normally
+	 * we would want to hold on to some of the state the BIOS may have
+	 * set, such as SUD (spin up device).
 	 *
 	 * AP_F_HARSH_REINIT is cleared in the hard reset state
 	 */
@@ -1256,8 +1258,6 @@ ahci_port_softreset(struct ahci_port *ap)
 	 * Rev 2.6 and it is unclear how the second FIS should be set up
 	 * from the AHCI document.
 	 *
-	 * Give the device 3ms before sending the second FIS.
-	 *
 	 * It is unclear which other fields in the FIS are used.  Just zero
 	 * everything.
 	 */
@@ -1284,7 +1284,6 @@ ahci_port_softreset(struct ahci_port *ap)
 		error = EBUSY;
 		goto err;
 	}
-	ahci_os_sleep(10);
 
 	/*
 	 * If the softreset is trying to clear a BSY condition after a
@@ -1294,6 +1293,7 @@ ahci_port_softreset(struct ahci_port *ap)
 	 * processing code then report if the device signature changed
 	 * unexpectedly.
 	 */
+	ahci_os_sleep(100);
 	if (ap->ap_type == ATA_PORT_T_NONE) {
 		ap->ap_type = ahci_port_signature_detect(ap, NULL);
 	} else {
@@ -1347,82 +1347,90 @@ err:
 }
 
 /*
- * AHCI port reset, Section 10.4.2
+ * Issue just do the core COMRESET and basic device detection on a port.
  *
- * This function does a hard reset of the port.  Note that the device
- * connected to the port could still end-up hung.
+ * NOTE: Only called by ahci_port_hardreset().
  */
-int
-ahci_port_hardreset(struct ahci_port *ap, int hard)
+static int
+ahci_comreset(struct ahci_port *ap, int *pmdetectp)
 {
-	u_int32_t cmd, r;
-	u_int32_t data;
-	int	error;
-	int	loop;
-
-	if (bootverbose)
-		kprintf("%s: START HARDRESET\n", PORTNAME(ap));
-	ap->ap_flags |= AP_F_IN_RESET;
+	u_int32_t cmd;
+	u_int32_t r;
+	int error;
+	int loop;
 
 	/*
 	 * Idle the port,
 	 */
+	*pmdetectp = 0;
 	ahci_port_stop(ap, 0);
 	ap->ap_state = AP_S_NORMAL;
+	ahci_os_sleep(10);
 
 	/*
 	 * The port may have been quiescent with its SUD bit cleared, so
 	 * set the SUD (spin up device).
+	 *
+	 * NOTE: I do not know if SUD is a hardware pin/low-level signal
+	 *	 or if it is messaged.
 	 */
 	cmd = ahci_pread(ap, AHCI_PREG_CMD) & ~AHCI_PREG_CMD_ICC;
-	cmd |= AHCI_PREG_CMD_SUD;
+
+	cmd |= AHCI_PREG_CMD_SUD | AHCI_PREG_CMD_POD;
 	ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
+	ahci_os_sleep(10);
 
 	/*
-	 * Perform device detection.
+	 * Make sure that all power management is disabled.
 	 *
-	 * NOTE!  AHCi_PREG_SCTL_DET_DISABLE seems to be highly unreliable
+	 * NOTE!  AHCI_PREG_SCTL_DET_DISABLE seems to be highly unreliable
 	 *	  on multiple chipsets and can brick the chipset or even
 	 *	  the whole PC.  Never use it.
 	 */
 	ap->ap_type = ATA_PORT_T_NONE;
 
-	r = AHCI_PREG_SCTL_IPM_DISABLED;
+	r = AHCI_PREG_SCTL_IPM_DISABLED |
+	    AHCI_PREG_SCTL_SPM_DISABLED;
 	ahci_pwrite(ap, AHCI_PREG_SCTL, r);
 	ahci_os_sleep(10);
 
 	/*
-	 * Start transmitting COMRESET.  COMRESET must be sent for at
-	 * least 1ms.
+	 * Start transmitting COMRESET.  The spec says that COMRESET must
+	 * be sent for at least 1ms but in actual fact numerous devices
+	 * appear to take much longer.  Delay a whole second here.
+	 *
+	 * In addition, SATA-3 ports can take longer to train, so even
+	 * SATA-2 devices which would normally detect very quickly may
+	 * take longer when plugged into a SATA-3 port.
 	 */
-	r = AHCI_PREG_SCTL_IPM_DISABLED | AHCI_PREG_SCTL_DET_INIT;
+	r |= AHCI_PREG_SCTL_DET_INIT;
 	if (AhciForceGen1 & (1 << ap->ap_num))
 		r |= AHCI_PREG_SCTL_SPD_GEN1;
 	else
 		r |= AHCI_PREG_SCTL_SPD_ANY;
 	ahci_pwrite(ap, AHCI_PREG_SCTL, r);
+	ahci_os_sleep(1000);
+	r &= ~AHCI_PREG_SCTL_SPD;
 
-	/*
-	 * Through trial and error it seems to take around 100ms
-	 * for the detect logic to settle down.  If this is too
-	 * short the softreset code will fail.
-	 */
-	if (ap->ap_flags & AP_F_HARSH_REINIT)
-		ahci_os_sleep(1000);
-	else
-		ahci_os_sleep(200);
 	ap->ap_flags &= ~AP_F_HARSH_REINIT;
 
 	/*
 	 * Only SERR_DIAG_X needs to be cleared for TFD updates, but
 	 * since we are hard-resetting the port we might as well clear
-	 * the whole enchillada
+	 * the whole enchillada.
+	 *
+	 * Wait 1 whole second after clearing INIT before checking
+	 * the device detection bits in an attempt to work around chipsets
+	 * which do not properly mask PCS/PRCS during low level init.
 	 */
 	ahci_flush_tfd(ap);
 	ahci_pwrite(ap, AHCI_PREG_SERR, -1);
+	ahci_os_sleep(10);
+
 	r &= ~AHCI_PREG_SCTL_DET_INIT;
 	r |= AHCI_PREG_SCTL_DET_NONE;
 	ahci_pwrite(ap, AHCI_PREG_SCTL, r);
+	ahci_os_sleep(1000);
 
 	/*
 	 * Try to determine if there is a device on the port.
@@ -1449,9 +1457,13 @@ ahci_port_hardreset(struct ahci_port *ap, int hard)
 	}
 
 	/*
-	 * There is something on the port.  Give the device 3 seconds
-	 * to fully negotiate.
+	 * There is something on the port.  Regardless of what happens
+	 * after this tell the caller to try to detect a port multiplier.
+	 *
+	 * Give the device 3 seconds to fully negotiate.
 	 */
+	*pmdetectp = 1;
+
 	if (ahci_pwait_eq(ap, 3000, AHCI_PREG_SSTS,
 			  AHCI_PREG_SSTS_DET, AHCI_PREG_SSTS_DET_DEV)) {
 		if (bootverbose) {
@@ -1459,7 +1471,7 @@ ahci_port_hardreset(struct ahci_port *ap, int hard)
 				PORTNAME(ap));
 		}
 		error = ENODEV;
-		goto pmdetect;
+		goto done;
 	}
 
 	/*
@@ -1467,11 +1479,10 @@ ahci_port_hardreset(struct ahci_port *ap, int hard)
 	 * the device time to send us its first D2H FIS.  Waiting for
 	 * BSY to clear accomplishes this.
 	 *
-	 * NOTE that a port multiplier may or may not clear BSY here,
-	 * depending on what is sitting in target 0 behind it.
+	 * NOTE: A port multiplier may or may not clear BSY here,
+	 *	 depending on what is sitting in target 0 behind it.
 	 */
 	ahci_flush_tfd(ap);
-
 	if (ahci_pwait_clr_to(ap, 3000, AHCI_PREG_TFD,
 			    AHCI_PREG_TFD_STS_BSY | AHCI_PREG_TFD_STS_DRQ)) {
 		error = EBUSY;
@@ -1479,18 +1490,56 @@ ahci_port_hardreset(struct ahci_port *ap, int hard)
 		error = 0;
 	}
 
-pmdetect:
-	/*
-	 * Do the PM port probe regardless of how things turned out on
-	 * the BSY check.
-	 */
-	if (ap->ap_sc->sc_cap & AHCI_REG_CAP_SPM)
-		error = ahci_pm_port_probe(ap, error);
-
 done:
+	ahci_flush_tfd(ap);
+	return error;
+}
+
+
+/*
+ * AHCI port reset, Section 10.4.2
+ *
+ * This function does a hard reset of the port.  Note that the device
+ * connected to the port could still end-up hung.
+ */
+int
+ahci_port_hardreset(struct ahci_port *ap, int hard)
+{
+	u_int32_t data;
+	int	error;
+	int	pmdetect;
+
+	if (bootverbose)
+		kprintf("%s: START HARDRESET\n", PORTNAME(ap));
+	ap->ap_flags |= AP_F_IN_RESET;
+
+	error = ahci_comreset(ap, &pmdetect);
+
+	/*
+	 * We may be asked to perform a port multiplier check even if the
+	 * comreset failed.  This typically occurs when the PM has nothing
+	 * in slot 0, which can cause BSY to remain set.
+	 *
+	 * If the PM detection is successful it will override (error),
+	 * otherwise (error) is retained.  If an error does occur it
+	 * is possible that a normal device has blown up on us DUE to
+	 * the PM detection code, so re-run the comreset and assume
+	 * a normal device.
+	 */
+	if (pmdetect) {
+		if (ap->ap_sc->sc_cap & AHCI_REG_CAP_SPM) {
+			error = ahci_pm_port_probe(ap, error);
+			if (error) {
+				error = ahci_comreset(ap, &pmdetect);
+			}
+		}
+	}
+
 	/*
 	 * Finish up.
 	 */
+	ahci_os_sleep(500);
+
 	switch(error) {
 	case 0:
 		/*
@@ -1502,7 +1551,7 @@ done:
 			kprintf("%s: failed to start command DMA on port, "
 			        "disabling\n", PORTNAME(ap));
 			error = EBUSY;
-			goto done;
+			break;
 		}
 		if (ap->ap_type == ATA_PORT_T_PM)
 			ap->ap_probe = ATA_PROBE_GOOD;
@@ -2671,6 +2720,17 @@ finish_error:
 		ahci_pwrite(ap, AHCI_PREG_IS,
 			    is & (AHCI_PREG_IS_PCS | AHCI_PREG_IS_PRCS));
 
+		/*
+		 * Ignore PCS/PRCS errors during probes (but still clear the
+		 * interrupt to avoid a livelock).  The AMD 880/890/SB850
+		 * chipsets do not mask PCS/PRCS internally during reset
+		 * sequences.
+		 */
+		if (ap->ap_flags & AP_F_IN_RESET) {
+			kprintf("S");
+			goto skip_pcs;
+		}
+
 		if (ap->ap_probe == ATA_PROBE_NEED_INIT ||
 		    ap->ap_probe == ATA_PROBE_NEED_HARD_RESET) {
 			is &= ~(AHCI_PREG_IS_PCS | AHCI_PREG_IS_PRCS);
@@ -2719,6 +2779,8 @@ finish_error:
 			need = NEED_RESTART;
 			break;
 		}
+skip_pcs:
+		;
 	}
 
 	/*

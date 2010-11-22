@@ -283,13 +283,13 @@ err:
 	cmd = ahci_pread(ap, AHCI_PREG_CMD) & ~AHCI_PREG_CMD_ICC;
 	cmd &= ~AHCI_PREG_CMD_PMA;
 	ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
-	ahci_port_init(ap);
 	if (orig_error == 0) {
 		if (ahci_pwait_clr(ap, AHCI_PREG_TFD,
 			    AHCI_PREG_TFD_STS_BSY | AHCI_PREG_TFD_STS_DRQ)) {
 			kprintf("%s: PM probe: port will not come ready\n",
 				PORTNAME(ap));
 			orig_error = EBUSY;
+			ahci_port_init(ap);
 		}
 	}
 	return(orig_error);
