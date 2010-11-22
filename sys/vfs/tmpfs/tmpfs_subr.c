@@ -1146,8 +1146,8 @@ tmpfs_chown(struct vnode *vp, uid_t uid, gid_t gid, struct ucred *cred)
 		if (cur_uid != node->tn_uid ||
 		    cur_gid != node->tn_gid ||
 		    cur_mode != node->tn_mode) {
-			node->tn_uid = uid;
-			node->tn_gid = gid;
+			node->tn_uid = cur_uid;
+			node->tn_gid = cur_gid;
 			node->tn_mode = cur_mode;
 			node->tn_status |= TMPFS_NODE_CHANGED;
 		}
