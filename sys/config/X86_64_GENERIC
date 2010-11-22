@@ -60,12 +60,13 @@ options		ALTQ_FAIRQ	#fair queueing
 #options	ALTQ_DEBUG	#for debugging
 
 
-# SMP boxes with severely broken BIOSes which
-# boot fine for non-SMP builds *might* work in SMP mode
-# if you disable APIC_IO by setting the loader tunable
-# hw.apic_io_enable to 0.
+# SMP boxes should normally be build with SMP and APIC_IO.  If SMP has
+# interrupt routing problems in APIC_IO you can disable it with the
+# hw.apic_io_enable=0 tunable or by building without the APIC_IO option.
+#
 #
 #options 	SMP			# Symmetric MultiProcessor Kernel
+#options	APIC_IO			# hw.apic_io_enable = 1 by default
 
 # Debugging for Development
 options 	DDB
