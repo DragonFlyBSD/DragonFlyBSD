@@ -38,7 +38,7 @@
 ** History
 **
 **        REV#         DATE	            NAME	         DESCRIPTION
-**     1.00.00.00    3/31/2004	       Erich Chen	     First release
+**     1.00.00.00    3/31/2004	       Erich Chen	 First release
 **     1.20.00.02   11/29/2004         Erich Chen        bug fix with arcmsr_bus_reset when PHY error
 **     1.20.00.03    4/19/2005         Erich Chen        add SATA 24 Ports adapter type support
 **                                                       clean unused function
@@ -61,8 +61,11 @@
 **							 report CAM_DEV_NOT_THERE instead of CAM_SEL_TIMEOUT when device failed,
 **							 prevent cam_periph_error removing all LUN devices of one Target id
 **							 for any one LUN device failed
+**     1.20.00.18   10/14/2010         Ching Huang	 Fixed "inquiry data fails comparion at DV1 step"
+**	   	    10/25/2010         Ching Huang	 Fixed bad range input in bus_alloc_resource for ADAPTER_TYPE_B
+**     1.20.00.19   11/11/2010         Ching Huang	 Fixed arcmsr driver prevent arcsas support for Areca SAS HBA ARC13x0
 ******************************************************************************************
-* $FreeBSD: src/sys/dev/arcmsr/arcmsr.c,v 1.34 2010/07/21 18:50:24 delphij Exp $
+* $FreeBSD: src/sys/dev/arcmsr/arcmsr.c,v 1.35 2010/11/13 08:58:36 delphij Exp $
 */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -117,6 +120,7 @@ typedef struct lock		arcmsr_lock_t;
 #define	CAM_NEW_TRAN_CODE	1
 #endif
 
+#define ARCMSR_DRIVER_VERSION			"Driver Version 1.20.00.19 2010-11-11"
 #include <dev/raid/arcmsr/arcmsr.h>
 #define ARCMSR_SRBS_POOL_SIZE           ((sizeof(struct CommandControlBlock) * ARCMSR_MAX_FREESRB_NUM))
 /*
@@ -165,8 +169,8 @@ static void UDELAY(u_int32_t us) { DELAY(us); }
 **************************************************************************
 **************************************************************************
 */
-static bus_dmamap_callback_t arcmsr_map_freesrb;
-static bus_dmamap_callback_t arcmsr_executesrb;
+static bus_dmamap_callback_t arcmsr_map_free_srb;
+static bus_dmamap_callback_t arcmsr_execute_srb;
 /*
 **************************************************************************
 **************************************************************************
@@ -941,8 +945,8 @@ static void arcmsr_post_srb(struct AdapterControlBlock *acb, struct CommandContr
             {
 			    CHIP_REG_WRITE32(HBC_MessageUnit,0,inbound_queueport_low, ccb_post_stamp);
             }
-		}
-		break;
+        }
+        break;
 	}
 	return;
 }
@@ -2154,7 +2158,7 @@ message_out:
 *********************************************************************
 *********************************************************************
 */
-static void arcmsr_executesrb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
+static void arcmsr_execute_srb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 {
 	struct CommandControlBlock *srb=(struct CommandControlBlock *)arg;
 	struct AdapterControlBlock *acb=(struct AdapterControlBlock *)srb->acb;
@@ -2304,18 +2308,16 @@ static void arcmsr_handle_virtual_command(struct AdapterControlBlock *acb,
 			xpt_done(pccb);
 			return;
 		}
-		inqdata[0] = T_PROCESSOR;
-		/* Periph Qualifier & Periph Dev Type */
-		inqdata[1] = 0;
-		/* rem media bit & Dev Type Modifier */
-		inqdata[2] = 0;
-		/* ISO, ECMA, & ANSI versions */
-		inqdata[4] = 31;
-		/* length of additional data */
-		strncpy(&inqdata[8], "Areca   ", 8);
-		/* Vendor Identification */
-		strncpy(&inqdata[16], "RAID controller ", 16);
-		/* Product Identification */
+		inqdata[0] = T_PROCESSOR;	/* Periph Qualifier & Periph Dev Type */
+		inqdata[1] = 0;				/* rem media bit & Dev Type Modifier */
+		inqdata[2] = 0;				/* ISO, ECMA, & ANSI versions */
+		inqdata[3] = 0;
+		inqdata[4] = 31;			/* length of additional data */
+		inqdata[5] = 0;
+		inqdata[6] = 0;
+		inqdata[7] = 0;
+		strncpy(&inqdata[8], "Areca   ", 8);	/* Vendor Identification */
+		strncpy(&inqdata[16], "RAID controller ", 16);	/* Product Identification */
 		strncpy(&inqdata[32], "R001", 4); /* Product Revision */
 		memcpy(buffer, inqdata, sizeof(inqdata));
 		xpt_done(pccb);
@@ -2378,15 +2380,19 @@ static void arcmsr_action(struct cam_sim * psim, union ccb * pccb)
 							, srb->dm_segs_dmamap
 							, pccb->csio.data_ptr
 							, pccb->csio.dxfer_len
-							, arcmsr_executesrb, srb, /*flags*/0);
+							, arcmsr_execute_srb, srb, /*flags*/0);
 						if(error == EINPROGRESS) {
 							xpt_freeze_simq(acb->psim, 1);
 							pccb->ccb_h.status |= CAM_RELEASE_SIMQ;
 						}
 						crit_exit();
-					} else {
-						/* Buffer is physical */
-						panic("arcmsr: CAM_DATA_PHYS not supported");
+					}
+					else {		/* Buffer is physical */
+						struct bus_dma_segment seg;
+
+						seg.ds_addr = (bus_addr_t)pccb->csio.data_ptr;
+						seg.ds_len = pccb->csio.dxfer_len;
+						arcmsr_execute_srb(srb, &seg, 1, 0);
 					}
 				} else {
 					/* Scatter/gather list */
@@ -2400,10 +2406,10 @@ static void arcmsr_action(struct cam_sim * psim, union ccb * pccb)
 						return;
 					}
 					segs=(struct bus_dma_segment *)pccb->csio.data_ptr;
-					arcmsr_executesrb(srb, segs, pccb->csio.sglist_cnt, 0);
+					arcmsr_execute_srb(srb, segs, pccb->csio.sglist_cnt, 0);
 				}
 			} else {
-				arcmsr_executesrb(srb, NULL, 0, 0);
+				arcmsr_execute_srb(srb, NULL, 0, 0);
 			}
 			break;
 		}
@@ -3206,7 +3212,7 @@ static void arcmsr_iop_init(struct AdapterControlBlock *acb)
 **********************************************************************
 **********************************************************************
 */
-static void arcmsr_map_freesrb(void *arg, bus_dma_segment_t *segs, int nseg, int error)
+static void arcmsr_map_free_srb(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 {
 	struct AdapterControlBlock *acb=arg;
 	struct CommandControlBlock *srb_tmp;
@@ -3269,6 +3275,7 @@ static u_int32_t arcmsr_initialize(device_t dev)
 			max_coherent_size=ARCMSR_SRBS_POOL_SIZE;
 		}
 		break;
+	case PCIDevVenIDARC1200:
 	case PCIDevVenIDARC1201: {
 			acb->adapter_type=ACB_ADAPTER_TYPE_B;
 			max_coherent_size=ARCMSR_SRBS_POOL_SIZE+(sizeof(struct HBB_MessageUnit));
@@ -3282,7 +3289,9 @@ static u_int32_t arcmsr_initialize(device_t dev)
 	case PCIDevVenIDARC1210:
 	case PCIDevVenIDARC1220:
 	case PCIDevVenIDARC1230:
+	case PCIDevVenIDARC1231:
 	case PCIDevVenIDARC1260:
+	case PCIDevVenIDARC1261:
 	case PCIDevVenIDARC1270:
 	case PCIDevVenIDARC1280:
 	case PCIDevVenIDARC1212:
@@ -3325,7 +3334,7 @@ static u_int32_t arcmsr_initialize(device_t dev)
 				/*highaddr*/	BUS_SPACE_MAXADDR,
 				/*filter*/	NULL,
 				/*filterarg*/	NULL,
-				/*maxsize*/	MAXBSIZE,
+				/*maxsize*/	ARCMSR_MAX_SG_ENTRIES * PAGE_SIZE * ARCMSR_MAX_FREESRB_NUM,
 				/*nsegments*/	ARCMSR_MAX_SG_ENTRIES,
 				/*maxsegsz*/	BUS_SPACE_MAXSIZE_32BIT,
 				/*flags*/	0,
@@ -3363,7 +3372,7 @@ static u_int32_t arcmsr_initialize(device_t dev)
 		return ENXIO;
 	}
 	/* And permanently map them */
-	if(bus_dmamap_load(acb->srb_dmat, acb->srb_dmamap, acb->uncacheptr, max_coherent_size, arcmsr_map_freesrb, acb, /*flags*/0)) {
+	if(bus_dmamap_load(acb->srb_dmat, acb->srb_dmamap, acb->uncacheptr, max_coherent_size, arcmsr_map_free_srb, acb, /*flags*/0)) {
 		bus_dma_tag_destroy(acb->srb_dmat);
 		bus_dma_tag_destroy(acb->dm_segs_dmat);
 		bus_dma_tag_destroy(acb->parent_dmat);
@@ -3412,10 +3421,10 @@ static u_int32_t arcmsr_initialize(device_t dev)
 			for(i=0; i<2; i++) {
 				if(i==0) {
 					acb->sys_res_arcmsr[i]=bus_alloc_resource(dev,SYS_RES_MEMORY, &rid[i],
-											0x20400, 0x20400+sizeof(struct HBB_DOORBELL), sizeof(struct HBB_DOORBELL), RF_ACTIVE);
+											0ul, ~0ul, sizeof(struct HBB_DOORBELL), RF_ACTIVE);
 				} else {
 					acb->sys_res_arcmsr[i]=bus_alloc_resource(dev, SYS_RES_MEMORY, &rid[i],
-											0x0fa00, 0x0fa00+sizeof(struct HBB_RWBUFFER), sizeof(struct HBB_RWBUFFER), RF_ACTIVE);
+											0ul, ~0ul, sizeof(struct HBB_RWBUFFER), RF_ACTIVE);
 				}
 				if(acb->sys_res_arcmsr[i] == NULL) {
 					arcmsr_free_resource(acb);
@@ -3595,6 +3604,7 @@ static int arcmsr_probe(device_t dev)
 {
 	u_int32_t id;
 	static char buf[256];
+	char x_type[]={"X-TYPE"};
 	char *type;
 	int raid6 = 1;
 
@@ -3603,8 +3613,9 @@ static int arcmsr_probe(device_t dev)
 	}
 	switch(id=pci_get_devid(dev)) {
 	case PCIDevVenIDARC1110:
-	case PCIDevVenIDARC1210:
+	case PCIDevVenIDARC1200:
 	case PCIDevVenIDARC1201:
+	case PCIDevVenIDARC1210:
 		raid6 = 0;
 		/*FALLTHRU*/
 	case PCIDevVenIDARC1120:
@@ -3613,7 +3624,9 @@ static int arcmsr_probe(device_t dev)
 	case PCIDevVenIDARC1170:
 	case PCIDevVenIDARC1220:
 	case PCIDevVenIDARC1230:
+	case PCIDevVenIDARC1231:
 	case PCIDevVenIDARC1260:
+	case PCIDevVenIDARC1261:
 	case PCIDevVenIDARC1270:
 	case PCIDevVenIDARC1280:
 		type = "SATA";
@@ -3630,9 +3643,11 @@ static int arcmsr_probe(device_t dev)
 		type = "SAS 6G";
 		break;
 	default:
-		type = "X-TYPE";
+		type = x_type;
 		break;
 	}
+	if(type == x_type)
+		return(ENXIO);
 	ksprintf(buf, "Areca %s Host Adapter RAID Controller%s", type, raid6 ? " (RAID6 capable)" : "");
 	device_set_desc_copy(dev, buf);
 	return 0;
