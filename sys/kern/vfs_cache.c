@@ -125,6 +125,7 @@
  */
 #define NCHHASH(hash)	(&nchashtbl[(hash) & nchash])
 #define MINNEG		1024
+#define MINPOS		1024
 
 MALLOC_DEFINE(M_VFSCACHE, "vfscache", "VFS name cache entries");
 
@@ -164,6 +165,9 @@ SYSCTL_INT(_debug, OID_AUTO, nclockwarn, CTLFLAG_RW, &nclockwarn, 0, "");
 static int	numdefered;		/* number of cache entries allocated */
 SYSCTL_INT(_debug, OID_AUTO, numdefered, CTLFLAG_RD, &numdefered, 0, "");
 
+static int	ncposlimit;		/* number of cache entries allocated */
+SYSCTL_INT(_debug, OID_AUTO, ncposlimit, CTLFLAG_RW, &ncposlimit, 0, "");
+
 SYSCTL_INT(_debug, OID_AUTO, vnsize, CTLFLAG_RD, 0, sizeof(struct vnode), "");
 SYSCTL_INT(_debug, OID_AUTO, ncsize, CTLFLAG_RD, 0, sizeof(struct namecache), "");
 
@@ -175,6 +179,7 @@ static struct vnode *cache_dvpref(struct namecache *ncp);
 static void _cache_lock(struct namecache *ncp);
 static void _cache_setunresolved(struct namecache *ncp);
 static void _cache_cleanneg(int count);
+static void _cache_cleanpos(int count);
 static void _cache_cleandefered(void);
 
 /*
@@ -2118,20 +2123,25 @@ cache_zap(struct namecache *ncp, int nonblock)
  * Clean up dangling negative cache and defered-drop entries in the
  * namecache.
  */
-static enum { CHI_LOW, CHI_HIGH } cache_hysteresis_state = CHI_LOW;
+typedef enum { CHI_LOW, CHI_HIGH } cache_hs_t;
+
+static cache_hs_t neg_cache_hysteresis_state = CHI_LOW;
+static cache_hs_t pos_cache_hysteresis_state = CHI_LOW;
 
 void
 cache_hysteresis(void)
 {
+	int poslimit;
+
 	/*
 	 * Don't cache too many negative hits.  We use hysteresis to reduce
 	 * the impact on the critical path.
 	 */
-	switch(cache_hysteresis_state) {
+	switch(neg_cache_hysteresis_state) {
 	case CHI_LOW:
 		if (numneg > MINNEG && numneg * ncnegfactor > numcache) {
 			_cache_cleanneg(10);
-			cache_hysteresis_state = CHI_HIGH;
+			neg_cache_hysteresis_state = CHI_HIGH;
 		}
 		break;
 	case CHI_HIGH:
@@ -2140,7 +2150,34 @@ cache_hysteresis(void)
 		) {
 			_cache_cleanneg(10);
 		} else {
-			cache_hysteresis_state = CHI_LOW;
+			neg_cache_hysteresis_state = CHI_LOW;
+		}
+		break;
+	}
+
+	/*
+	 * Don't cache too many positive hits.  We use hysteresis to reduce
+	 * the impact on the critical path.
+	 *
+	 * Excessive positive hits can accumulate due to large numbers of
+	 * hardlinks (the vnode cache will not prevent hl ncps from growing
+	 * into infinity).
+	 */
+	if ((poslimit = ncposlimit) == 0)
+		poslimit = desiredvnodes * 2;
+
+	switch(pos_cache_hysteresis_state) {
+	case CHI_LOW:
+		if (numcache > poslimit && numcache > MINPOS) {
+			_cache_cleanpos(10);
+			pos_cache_hysteresis_state = CHI_HIGH;
+		}
+		break;
+	case CHI_HIGH:
+		if (numcache > poslimit * 5 / 6 && numcache > MINPOS) {
+			_cache_cleanpos(10);
+		} else {
+			pos_cache_hysteresis_state = CHI_LOW;
 		}
 		break;
 	}
@@ -2718,13 +2755,6 @@ _cache_cleanneg(int count)
 	struct namecache *ncp;
 
 	/*
-	 * Automode from the vnlru proc - clean out 10% of the negative cache
-	 * entries.
-	 */
-	if (count == 0)
-		count = numneg / 10 + 1;
-
-	/*
 	 * Attempt to clean out the specified number of negative cache
 	 * entries.
 	 */
@@ -2745,6 +2775,46 @@ _cache_cleanneg(int count)
 				_cache_drop(ncp);
 		} else {
 			_cache_drop(ncp);
+		}
+		--count;
+	}
+}
+
+/*
+ * Clean out positive cache entries when too many have accumulated.
+ *
+ * MPSAFE
+ */
+static void
+_cache_cleanpos(int count)
+{
+	static volatile int rover;
+	struct nchash_head *nchpp;
+	struct namecache *ncp;
+	int rover_copy;
+
+	/*
+	 * Attempt to clean out the specified number of negative cache
+	 * entries.
+	 */
+	while (count) {
+		rover_copy = ++rover;	/* MPSAFEENOUGH */
+		nchpp = NCHHASH(rover_copy);
+
+		spin_lock(&nchpp->spin);
+		ncp = LIST_FIRST(&nchpp->list);
+		if (ncp)
+			_cache_hold(ncp);
+		spin_unlock(&nchpp->spin);
+
+		if (ncp) {
+			if (_cache_lock_special(ncp) == 0) {
+				ncp = cache_zap(ncp, 1);
+				if (ncp)
+					_cache_drop(ncp);
+			} else {
+				_cache_drop(ncp);
+			}
 		}
 		--count;
 	}
@@ -2814,7 +2884,8 @@ nchinit(void)
 	}
 	TAILQ_INIT(&ncneglist);
 	spin_init(&ncspin);
-	nchashtbl = hashinit_ext(desiredvnodes*2, sizeof(struct nchash_head),
+	nchashtbl = hashinit_ext(desiredvnodes / 2,
+				 sizeof(struct nchash_head),
 				 M_VFSCACHE, &nchash);
 	for (i = 0; i <= (int)nchash; ++i) {
 		LIST_INIT(&nchashtbl[i].list);
