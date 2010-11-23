@@ -1666,44 +1666,39 @@ ahci_port_hardstop(struct ahci_port *ap)
 	}
 
 	/*
-	 * 10.10.3 DET must be set to 0 before setting SUD to 0.
 	 * 10.10.1 place us in the Listen state.
 	 *
-	 * Deactivating SUD only applies if the controller supports SUD.
+	 * 10.10.3 DET must be set to 0 and found to be 0 before
+	 * setting SUD to 0.
+	 *
+	 * Deactivating SUD only applies if the controller supports SUD, it
+	 * is a bit unclear what happens w/regards to detecting hotplug
+	 * if it doesn't.
 	 */
-	ahci_pwrite(ap, AHCI_PREG_SCTL, AHCI_PREG_SCTL_IPM_DISABLED);
-	ahci_os_sleep(1);
-	if (cmd & AHCI_PREG_CMD_SUD) {
-		cmd &= ~AHCI_PREG_CMD_SUD;
-		ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
-	}
-	ahci_os_sleep(1);
+	r = AHCI_PREG_SCTL_IPM_DISABLED |
+	    AHCI_PREG_SCTL_SPM_DISABLED;
+	ahci_pwrite(ap, AHCI_PREG_SCTL, r);
+	ahci_os_sleep(10);
+	cmd &= ~AHCI_PREG_CMD_SUD;
+	ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
+	ahci_os_sleep(10);
 
 	/*
-	 * Transition su to the spin-up state.  HVA shall send COMRESET and
-	 * begin initialization sequence (whatever that means).
+	 * 10.10.1
+	 *
+	 * Transition su to the spin-up state.  HBA shall send COMRESET and
+	 * begin initialization sequence (whatever that means).  Presumably
+	 * this is edge-triggered.  Following the spin-up state the HBA
+	 * will automatically transition to the Normal state.
 	 *
 	 * This only applies if the controller supports SUD.
 	 * NEVER use AHCI_PREG_DET_DISABLE.
 	 */
-	cmd |= AHCI_PREG_CMD_POD | AHCI_PREG_CMD_SUD;
-	cmd |= AHCI_PREG_CMD_ICC_ACTIVE;
+	cmd |= AHCI_PREG_CMD_POD |
+	       AHCI_PREG_CMD_SUD |
+	       AHCI_PREG_CMD_ICC_ACTIVE;
 	ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
-	ahci_os_sleep(1);
-
-	/*
-	 * Transition us to the Reset state.  Theoretically we send a
-	 * continuous stream of COMRESETs in this state.
-	 */
-	r = AHCI_PREG_SCTL_IPM_DISABLED | AHCI_PREG_SCTL_DET_INIT;
-	if (AhciForceGen1 & (1 << ap->ap_num)) {
-		kprintf("%s: Force 1.5Gbits\n", PORTNAME(ap));
-		r |= AHCI_PREG_SCTL_SPD_GEN1;
-	} else {
-		r |= AHCI_PREG_SCTL_SPD_ANY;
-	}
-	ahci_pwrite(ap, AHCI_PREG_SCTL, r);
-	ahci_os_sleep(1);
+	ahci_os_sleep(10);
 
 	/*
 	 * Flush SERR_DIAG_X so the TFD can update.
@@ -1755,19 +1750,38 @@ ahci_port_hardstop(struct ahci_port *ap)
 	}
 
 	/*
-	 * Leave us in COMRESET (both SUD and INIT active), the HBA should
-	 * hopefully send us a DIAG_X-related interrupt if it receives
-	 * a COMINIT, and if not that then at least a Phy transition
-	 * interrupt.
+	 * Hot-plug device detection should work at this point.  e.g. on
+	 * AMD chipsets Spin-Up/Normal state is sufficient for hot-plug
+	 * detection and entering RESET (continuous COMRESET by setting INIT)
+	 * will actually prevent hot-plug detection from working properly.
 	 *
-	 * If we transition INIT from 1->0 to begin the initalization
-	 * sequence it is unclear if that sequence will remain active
-	 * until the next device insertion.
-	 *
-	 * If we go back to the listen state it is unclear if the
-	 * device will actually send us a COMINIT, since we aren't
-	 * sending any COMRESET's
+	 * There may be cases where this will fail to work, I have some
+	 * additional code to place the HBA in RESET (send continuous
+	 * COMRESET) and hopefully get DIAG.X or other events when something
+	 * is plugged in.  Unfortunately this isn't universal and can
+	 * also prevent events from generating interrupts.
 	 */
+
+#if 0
+	/*
+	 * Transition us to the Reset state.  Theoretically we send a
+	 * continuous stream of COMRESETs in this state.
+	 */
+	r |= AHCI_PREG_SCTL_DET_INIT;
+	if (AhciForceGen1 & (1 << ap->ap_num)) {
+		kprintf("%s: Force 1.5Gbits\n", PORTNAME(ap));
+		r |= AHCI_PREG_SCTL_SPD_GEN1;
+	} else {
+		r |= AHCI_PREG_SCTL_SPD_ANY;
+	}
+	ahci_pwrite(ap, AHCI_PREG_SCTL, r);
+	ahci_os_sleep(10);
+
+	/*
+	 * Flush SERR_DIAG_X so the TFD can update.
+	 */
+	ahci_flush_tfd(ap);
+#endif
 	/* NOP */
 }
 
@@ -2726,10 +2740,8 @@ finish_error:
 		 * chipsets do not mask PCS/PRCS internally during reset
 		 * sequences.
 		 */
-		if (ap->ap_flags & AP_F_IN_RESET) {
-			kprintf("S");
+		if (ap->ap_flags & AP_F_IN_RESET)
 			goto skip_pcs;
-		}
 
 		if (ap->ap_probe == ATA_PROBE_NEED_INIT ||
 		    ap->ap_probe == ATA_PROBE_NEED_HARD_RESET) {
