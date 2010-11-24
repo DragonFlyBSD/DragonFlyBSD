@@ -75,6 +75,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
+#include <sys/serialize.h>
 #include <sys/lock.h>
 #include <sys/vmmeter.h>
 #include <sys/mman.h>
@@ -1418,12 +1419,12 @@ _vm_map_clip_end(vm_map_t map, vm_map_entry_t entry, vm_offset_t end,
  * Used to block when an in-transition collison occurs.  The map
  * is unlocked for the sleep and relocked before the return.
  */
-static
 void
 vm_map_transition_wait(vm_map_t map)
 {
+	tsleep_interlock(map, 0);
 	vm_map_unlock(map);
-	tsleep(map, 0, "vment", 0);
+	tsleep(map, PINTERLOCKED, "vment", 0);
 	vm_map_lock(map);
 }
 

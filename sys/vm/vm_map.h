@@ -529,6 +529,8 @@ int vm_map_growstack (struct proc *p, vm_offset_t addr);
 int vmspace_swap_count (struct vmspace *vmspace);
 int vmspace_anonymous_count (struct vmspace *vmspace);
 void vm_map_set_wired_quick(vm_map_t map, vm_offset_t addr, vm_size_t size, int *);
+void vm_map_transition_wait(vm_map_t map);
+
 
 #endif
 #endif				/* _VM_VM_MAP_H_ */
