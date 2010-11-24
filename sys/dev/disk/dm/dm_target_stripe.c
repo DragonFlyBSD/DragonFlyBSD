@@ -49,62 +49,6 @@ MALLOC_DEFINE(M_DMSTRIPE, "dm_stripe", "Device Mapper Target Stripe");
 
 static void dm_target_stripe_destroy_config(dm_target_stripe_config_t *tsc);
 
-#ifdef DM_TARGET_MODULE
-/*
- * Every target can be compiled directly to dm driver or as a
- * separate module this part of target is used for loading targets
- * to dm driver.
- * Target can be unloaded from kernel only if there are no users of
- * it e.g. there are no devices which uses that target.
- */
-#include <sys/kernel.h>
-#include <sys/module.h>
-
-static int
-dm_target_stripe_modcmd(modcmd_t cmd, void *arg)
-{
-	dm_target_t *dmt;
-	int r;
-	dmt = NULL;
-
-	switch (cmd) {
-	case MODULE_CMD_INIT:
-		if ((dmt = dm_target_lookup("stripe")) != NULL) {
-			dm_target_unbusy(dmt);
-			return EEXIST;
-		}
-		dmt = dm_target_alloc("stripe");
-
-		dmt->version[0] = 1;
-		dmt->version[1] = 0;
-		dmt->version[2] = 0;
-		strlcpy(dmt->name, "stripe", DM_MAX_TYPE_NAME);
-		dmt->init = &dm_target_stripe_init;
-		dmt->status = &dm_target_stripe_status;
-		dmt->strategy = &dm_target_stripe_strategy;
-		dmt->deps = &dm_target_stripe_deps;
-		dmt->destroy = &dm_target_stripe_destroy;
-		dmt->upcall = &dm_target_stripe_upcall;
-
-		r = dm_target_insert(dmt);
-
-		break;
-
-	case MODULE_CMD_FINI:
-		r = dm_target_rem("stripe");
-		break;
-
-	case MODULE_CMD_STAT:
-		return ENOTTY;
-
-	default:
-		return ENOTTY;
-	}
-
-	return r;
-}
-#endif
-
 /*
  * Init function called from dm_table_load_ioctl.
  *

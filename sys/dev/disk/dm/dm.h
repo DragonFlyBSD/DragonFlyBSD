@@ -324,15 +324,6 @@ int dm_target_linear_destroy(dm_table_entry_t *);
 int dm_target_linear_upcall(dm_table_entry_t *, struct buf *);
 int dm_target_linear_dump(dm_table_entry_t *, void *, size_t, off_t);
 
-/* dm_target_crypt.c */
-int dm_target_crypt_init(dm_dev_t *, void**, char *);
-char * dm_target_crypt_status(void *);
-int dm_target_crypt_strategy(dm_table_entry_t *, struct buf *);
-int dm_target_crypt_deps(dm_table_entry_t *, prop_array_t);
-int dm_target_crypt_destroy(dm_table_entry_t *);
-int dm_target_crypt_upcall(dm_table_entry_t *, struct buf *);
-int dm_target_crypt_dump(dm_table_entry_t *, void *, size_t, off_t);
-
 /* Generic function used to convert char to string */
 uint64_t atoi64(const char *);
 
@@ -409,6 +400,14 @@ MALLOC_DECLARE(M_DM);
 #define aprint_debug(format, ...)	\
     do { if (dm_debug_level) kprintf(format, ## __VA_ARGS__); } while(0)
 #define aprint_normal	kprintf
+
+#define DM_TARGET_MODULE(name, evh)				\
+    static moduledata_t name##_mod = {				\
+	    #name,						\
+	    evh,						\
+	    NULL						\
+    };								\
+    DECLARE_MODULE(name, name##_mod, SI_SUB_DM_TARGETS, SI_ORDER_ANY)
 
 #endif /*_KERNEL*/
 

@@ -276,7 +276,7 @@ dm_target_prop_list(void)
 int
 dm_target_init(void)
 {
-	dm_target_t *dmt, *dmt3, *dmt5;
+	dm_target_t *dmt, *dmt3;
 	int r;
 
 	r = 0;
@@ -285,7 +285,6 @@ dm_target_init(void)
 
 	dmt = dm_target_alloc("linear");
 	dmt3 = dm_target_alloc("striped");
-	dmt5 = dm_target_alloc("crypt");
 
 	dmt->version[0] = 1;
 	dmt->version[1] = 0;
@@ -314,21 +313,6 @@ dm_target_init(void)
 	dmt3->dump = &dm_target_stripe_dump;
 
 	r = dm_target_insert(dmt3);
-	
-	dmt5->version[0] = 1;
-	dmt5->version[1] = 6;
-	dmt5->version[2] = 0;
-	strlcpy(dmt5->name, "crypt", DM_MAX_TYPE_NAME);
-	dmt5->init = &dm_target_crypt_init;
-	dmt5->status = &dm_target_crypt_status;
-	dmt5->strategy = &dm_target_crypt_strategy;
-	dmt5->deps = &dm_target_crypt_deps;
-	dmt5->destroy = &dm_target_crypt_destroy;
-	dmt5->upcall = &dm_target_crypt_upcall;
-	dmt5->dump = &dm_target_crypt_dump;
-
-	r = dm_target_insert(dmt5);
-
 
 	return r;
 }
