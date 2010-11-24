@@ -1039,16 +1039,68 @@ sys_mlockall(struct mlockall_args *uap)
 }
 
 /*
- * munlockall_args(void)
+ * munlockall(void)
  *
- * Dummy routine, doesn't actually do anything.
+ *	Unwire all user-wired map entries, cancel MCL_FUTURE.
  *
  * No requirements
  */
 int
 sys_munlockall(struct munlockall_args *uap)
 {
-	return (ENOSYS);
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	vm_map_t map = &p->p_vmspace->vm_map;
+	vm_map_entry_t entry;
+	int rc = KERN_SUCCESS;
+
+	vm_map_lock(map);
+
+	/* Clear MAP_WIREFUTURE to cancel mlockall(MCL_FUTURE) */
+	map->flags &= ~MAP_WIREFUTURE;
+
+retry:
+	for (entry = map->header.next;
+	     entry != &map->header;
+	     entry = entry->next) {
+		if ((entry->eflags & MAP_ENTRY_USER_WIRED) == 0)
+			continue;
+
+		/*
+		 * If we encounter an in-transition entry, we release the 
+		 * map lock and retry the scan; we do not decrement any
+		 * wired_count more than once because we do not touch
+		 * any entries with MAP_ENTRY_USER_WIRED not set.
+		 *
+ 		 * There is a potential interleaving with concurrent
+		 * mlockall()s here -- if we abort a scan, an mlockall()
+		 * could start, wire a number of entries before our 
+		 * current position in, and then stall itself on this
+		 * or any other in-transition entry. If that occurs, when
+		 * we resume, we will unwire those entries. 
+ 		 */
+		if (entry->eflags & MAP_ENTRY_IN_TRANSITION) {
+			entry->eflags |= MAP_ENTRY_NEEDS_WAKEUP;
+			++mycpu->gd_cnt.v_intrans_coll;
+			++mycpu->gd_cnt.v_intrans_wait;
+			vm_map_transition_wait(map);
+			goto retry;
+		}
+
+		KASSERT(entry->wired_count > 0, 
+			("wired_count was 0 with USER_WIRED set! %p", entry));
+	
+		/* Drop wired count, if it hits zero, unwire the entry */
+		entry->eflags &= ~MAP_ENTRY_USER_WIRED;
+		entry->wired_count--;
+		if (entry->wired_count == 0)
+			vm_fault_unwire(map, entry);
+	}
+
+	map->timestamp++;
+	vm_map_unlock(map);
+
+	return (rc);
 }
 
 /*
