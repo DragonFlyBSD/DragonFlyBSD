@@ -1026,16 +1026,41 @@ sys_mlock(struct mlock_args *uap)
 }
 
 /*
- * mlockall_args(int how)
- *
- * Dummy routine, doesn't actually do anything.
+ * mlockall(int how)
  *
  * No requirements
  */
 int
 sys_mlockall(struct mlockall_args *uap)
 {
-	return (ENOSYS);
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	vm_map_t map = &p->p_vmspace->vm_map;
+	vm_map_entry_t entry;
+	int how = uap->how;
+	int rc = KERN_SUCCESS;
+
+	rc = priv_check_cred(td->td_ucred, PRIV_ROOT, 0);
+	if (rc) 
+		return (rc);
+
+	vm_map_lock(map);
+	do {
+		if (how & MCL_CURRENT) {
+			for(entry = map->header.next;
+			    entry != &map->header;
+			    entry = entry->next);
+
+			rc = ENOSYS;
+			break;
+		}
+	
+		if (how & MCL_FUTURE)
+			map->flags |= MAP_WIREFUTURE;
+	} while(0);
+	vm_map_unlock(map);
+
+	return (rc);
 }
 
 /*
