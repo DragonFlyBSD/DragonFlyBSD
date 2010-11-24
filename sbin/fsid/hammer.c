@@ -48,6 +48,7 @@ hammer_probe(const char *dev)
 		return 0;
 	}
 
+	bzero(buffer, sizeof(buffer));
 	ret = read(fd, &buffer, sizeof(buffer));
 	if (ret < 0) {
 		close(fd);
@@ -77,6 +78,7 @@ hammer_volname(const char *dev)
 		return NULL;
 	}
 
+	bzero(buffer, sizeof(buffer));
 	ret = read(fd, &buffer, sizeof(buffer));
 	if (ret < 0) {
 		close(fd);
