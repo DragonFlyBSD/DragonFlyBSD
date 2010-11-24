@@ -180,6 +180,7 @@ enum sysinit_sub_id {
 	SI_SUB_ROOT_CONF	= 0xb000000,	/* Find root devices */
 	SI_SUB_DUMP_CONF	= 0xb200000,	/* Find dump devices */
 	SI_SUB_RAID		= 0xb300000,	/* Configure vinum */
+	SI_SUB_DM_TARGETS	= 0xb3a0000,	/* configure dm targets */
 	SI_SUB_MOUNT_ROOT	= 0xb400000,	/* root mount*/
 	SI_SUB_PROC0_POST	= 0xd000000,	/* proc 0 cleanup*/
 	SI_SUB_KTHREAD_INIT	= 0xe000000,	/* init process*/
