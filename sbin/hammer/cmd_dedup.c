@@ -214,7 +214,8 @@ hammer_cmd_dedup_simulate(char **av, int ac)
 	}
 
 	printf("Simulated dedup ratio = %.2f\n",
-	    (double)dedup_ref_size / dedup_alloc_size);
+	    (dedup_alloc_size != 0) ?
+		(double)dedup_ref_size / dedup_alloc_size : 0);
 }
 
 /*
@@ -283,11 +284,11 @@ hammer_cmd_dedup(char **av, int ac)
 	}
 	assert(RB_EMPTY(&dedup_tree));
 
-	assert(dedup_alloc_size != 0);
 	humanize_unsigned(buf, sizeof(buf), dedup_ref_size, "B", 1024);
 	printf("Dedup ratio = %.2f\n"
 	       "    %8s referenced\n",
-	       (double)dedup_ref_size / dedup_alloc_size,
+	       ((dedup_alloc_size != 0) ?
+			(double)dedup_ref_size / dedup_alloc_size : 0),
 	       buf
 	);
 	humanize_unsigned(buf, sizeof(buf), dedup_alloc_size, "B", 1024);
