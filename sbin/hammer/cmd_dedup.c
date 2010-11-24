@@ -405,7 +405,7 @@ process_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags)
 	 */
 	if (de->flags & HAMMER_DEDUP_ENTRY_FICTITIOUS) {
 		/*
-		 * Entry in CRC tree is fictious, so we already had problems
+		 * Entry in CRC tree is fictitious, so we already had problems
 		 * with this CRC. Upgrade (compute SHA) the candidate and
 		 * dive into SHA subtree. If upgrade fails insert the candidate
 		 * into Pass2 list (it will be processed later).
@@ -485,7 +485,7 @@ sha256_failure:
 	} else {
 		/*
 		 * Candidate CRC is good for now (we found an entry in CRC
-		 * tree and it's not fictious). This means we have a
+		 * tree and it's not fictitious). This means we have a
 		 * potential dedup pair.
 		 */
 		if (validate_dedup_pair(&de->leaf, scan_leaf))
@@ -525,12 +525,12 @@ crc_failure:
 		 * dedup pair went bad. In all cases insert both blocks
 		 * into SHA subtree (this requires checksum upgrade) and mark
 		 * entry that corresponds to this CRC in the CRC tree
-		 * fictious, so that all futher operations with this CRC go
+		 * fictitious, so that all futher operations with this CRC go
 		 * through SHA subtree.
 		 */
 		++dedup_crc_failures;
 		/*
-		 * Insert block that was represented by now fictious dedup
+		 * Insert block that was represented by now fictitious dedup
 		 * entry (create a new SHA entry and preserve stats of the
 		 * old CRC one). If checksum upgrade fails insert the
 		 * candidate into Pass2 list and return - keep both trees
@@ -553,7 +553,7 @@ crc_failure:
 		RB_INSERT(sha_dedup_entry_rb_tree, &de->u.fict_root, sha_de);
 
 		/*
-		 * Mark entry in CRC tree fictious
+		 * Mark entry in CRC tree fictitious
 		 */
 		de->flags |= HAMMER_DEDUP_ENTRY_FICTITIOUS;
 
@@ -746,7 +746,7 @@ dump_real_dedup(void)
 	printf("=== Dumping dedup entries:\n");
 	RB_FOREACH(de, dedup_entry_rb_tree, &dedup_tree) {
 		if (de->flags & HAMMER_DEDUP_ENTRY_FICTITIOUS) {
-			printf("\tcrc=%08x fictious\n", de->leaf.data_crc);
+			printf("\tcrc=%08x fictitious\n", de->leaf.data_crc);
 
 			RB_FOREACH(sha_de, sha_dedup_entry_rb_tree, &de->u.fict_root) {
 				printf("\t\tcrc=%08x cnt=%ju size=%ju\n\t"
