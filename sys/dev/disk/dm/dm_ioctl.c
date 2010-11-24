@@ -765,6 +765,7 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 			    M_DM, M_WAITOK)) == NULL) {
 			dm_table_release(&dmv->table_head, DM_TABLE_INACTIVE);
 			dm_dev_unbusy(dmv);
+			dm_target_unbusy(target);
 			return ENOMEM;
 		}
 		prop_dictionary_get_uint64(target_dict, DM_TABLE_START,
@@ -811,6 +812,7 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 			kfree(str, M_TEMP);
 
 			dm_dev_unbusy(dmv);
+			dm_target_unbusy(target);
 			return ret;
 		}
 		last_table = table_en;
