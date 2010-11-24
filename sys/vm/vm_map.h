@@ -110,6 +110,7 @@ RB_PROTOTYPE(vm_map_rb_tree, vm_map_entry, rb_entry, rb_vm_map_compare);
  *	vm_map_entry_t		an entry in an address map.
  */
 
+typedef u_int vm_flags_t;
 typedef u_int vm_eflags_t;
 
 /*
@@ -224,10 +225,16 @@ struct vm_map {
 	vm_map_entry_t hint;		/* hint for quick lookups */
 	unsigned int timestamp;		/* Version number */
 	vm_map_entry_t first_free;	/* First free space hint */
+	vm_flags_t flags;		/* flags for this vm_map */
 	struct pmap *pmap;		/* Physical map */
 #define	min_offset		header.start
 #define max_offset		header.end
 };
+
+/*
+ * vm_flags_t values
+ */
+#define MAP_WIREFUTURE		0x01	/* wire all future pages */
 
 /*
  * Registered upcall
