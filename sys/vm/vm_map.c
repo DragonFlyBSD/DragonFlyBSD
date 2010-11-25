@@ -3405,6 +3405,10 @@ Retry:
 				vm->vm_ssize += btoc(new_stack_entry->end -
 						     new_stack_entry->start);
 		}
+
+		if (map->flags & MAP_WIREFUTURE)
+			vm_map_unwire(map, new_stack_entry->start,
+				      new_stack_entry->end, FALSE);
 	}
 
 done:

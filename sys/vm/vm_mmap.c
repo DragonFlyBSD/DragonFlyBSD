@@ -1391,6 +1391,10 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		}
 	}
 
+	/* If a process has marked all future mappings for wiring, do so */
+	if ((rv == KERN_SUCCESS) && (map->flags & MAP_WIREFUTURE))
+		vm_map_unwire(map, *addr, *addr + size, FALSE);
+
 	/*
 	 * Set the access time on the vnode
 	 */

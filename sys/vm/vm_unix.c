@@ -124,6 +124,9 @@ sys_obreak(struct obreak_args *uap)
 			error = ENOMEM;
 			goto done;
 		}
+		if (vm->vm_map.flags & MAP_WIREFUTURE)
+			vm_map_wire(&vm->vm_map, old, new, FALSE);
+
 		vm->vm_dsize += btoc(diff);
 	} else if (new < old) {
 		rv = vm_map_remove(&vm->vm_map, new, old);
