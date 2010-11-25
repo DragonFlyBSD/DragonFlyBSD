@@ -33,11 +33,11 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tr.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/tr/tr.c,v 1.8.2.2 2002/07/29 12:59:33 tjr Exp $
- * $DragonFly: src/usr.bin/tr/tr.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
  */
 
 #include <sys/types.h>
 
+#include <ctype.h>
 #include <err.h>
 #include <locale.h>
 #include <stdio.h>
@@ -46,6 +46,12 @@
 #include <unistd.h>
 
 #include "extern.h"
+
+/*
+ * For -C option: determine whether a byte is a valid character in the
+ * current character set (as defined by LC_CTYPE).
+ */
+#define ISCHAR(c) (iscntrl(c) || isprint(c))
 
 static int string1[NCHARS] = {
 	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,		/* ASCII */
@@ -85,22 +91,27 @@ static int string1[NCHARS] = {
 STR s1 = { STRING1, NORMAL, 0, OOBCH, { 0, OOBCH }, NULL, NULL };
 STR s2 = { STRING2, NORMAL, 0, OOBCH, { 0, OOBCH }, NULL, NULL };
 
-static void setup(int *, char *, STR *, int);
+static void setup(int *, char *, STR *, int, int);
 static void usage(void);
 
 int
 main(int argc, char **argv)
 {
 	int ch, cnt, lastch, *p;
-	int cflag, dflag, sflag, isstring2;
+	int Cflag, cflag, dflag, sflag, isstring2;
 
 	(void)setlocale(LC_ALL, "");
 
-	cflag = dflag = sflag = 0;
-	while ((ch = getopt(argc, argv, "cdsu")) != -1)
+	Cflag = cflag = dflag = sflag = 0;
+	while ((ch = getopt(argc, argv, "Ccdsu")) != -1)
 		switch((char)ch) {
+		case 'C':
+			Cflag = 1;
+			cflag = 0;
+			break;
 		case 'c':
 			cflag = 1;
+			Cflag = 0;
 			break;
 		case 'd':
 			dflag = 1;
@@ -132,7 +143,7 @@ main(int argc, char **argv)
 	}
 
 	/*
-	 * tr -ds [-c] string1 string2
+	 * tr -ds [-Cc] string1 string2
 	 * Delete all characters (or complemented characters) in string1.
 	 * Squeeze all characters in string2.
 	 */
@@ -140,8 +151,8 @@ main(int argc, char **argv)
 		if (!isstring2)
 			usage();
 
-		setup(string1, argv[0], &s1, cflag);
-		setup(string2, argv[1], &s2, 0);
+		setup(string1, argv[0], &s1, cflag, Cflag);
+		setup(string2, argv[1], &s2, 0, 0);
 
 		for (lastch = OOBCH; (ch = getchar()) != EOF;)
 			if (!string1[ch] && (!string2[ch] || lastch != ch)) {
@@ -152,14 +163,14 @@ main(int argc, char **argv)
 	}
 
 	/*
-	 * tr -d [-c] string1
+	 * tr -d [-Cc] string1
 	 * Delete all characters (or complemented characters) in string1.
 	 */
 	if (dflag) {
 		if (isstring2)
 			usage();
 
-		setup(string1, argv[0], &s1, cflag);
+		setup(string1, argv[0], &s1, cflag, Cflag);
 
 		while ((ch = getchar()) != EOF)
 			if (!string1[ch])
@@ -168,11 +179,11 @@ main(int argc, char **argv)
 	}
 
 	/*
-	 * tr -s [-c] string1
+	 * tr -s [-Cc] string1
 	 * Squeeze all characters (or complemented characters) in string1.
 	 */
 	if (sflag && !isstring2) {
-		setup(string1, argv[0], &s1, cflag);
+		setup(string1, argv[0], &s1, cflag, Cflag);
 
 		for (lastch = OOBCH; (ch = getchar()) != EOF;)
 			if (!string1[ch] || lastch != ch) {
@@ -183,7 +194,7 @@ main(int argc, char **argv)
 	}
 
 	/*
-	 * tr [-cs] string1 string2
+	 * tr [-Ccs] string1 string2
 	 * Replace all characters (or complemented characters) in string1 with
 	 * the character in the same position in string2.  If the -s option is
 	 * specified, squeeze all the characters in string2.
@@ -194,7 +205,7 @@ main(int argc, char **argv)
 	s1.str = argv[0];
 	s2.str = argv[1];
 
-	if (cflag)
+	if (cflag || Cflag)
 		for (cnt = NCHARS, p = string1; cnt--;)
 			*p++ = OOBCH;
 
@@ -218,6 +229,9 @@ main(int argc, char **argv)
 	if (cflag)
 		for (cnt = 0, p = string1; cnt < NCHARS; ++p, ++cnt)
 			*p = *p == OOBCH ? ch : cnt;
+	else if (Cflag)
+		for (cnt = 0, p = string1; cnt < NCHARS; ++p, ++cnt)
+			*p = *p == OOBCH && ISCHAR(cnt) ? ch : cnt;
 
 	if (sflag)
 		for (lastch = OOBCH; (ch = getchar()) != EOF;) {
@@ -234,7 +248,7 @@ main(int argc, char **argv)
 }
 
 static void
-setup(int *string, char *arg, STR *str, int cflag)
+setup(int *string, char *arg, STR *str, int cflag, int Cflag)
 {
 	int cnt, *p;
 
@@ -245,15 +259,18 @@ setup(int *string, char *arg, STR *str, int cflag)
 	if (cflag)
 		for (p = string, cnt = NCHARS; cnt--; ++p)
 			*p = !*p;
+	else if (Cflag)
+		for (cnt = 0; cnt < NCHARS; cnt++)
+			string[cnt] = !string[cnt] && ISCHAR(cnt);
 }
 
 static void
 usage(void)
 {
 	(void)fprintf(stderr, "%s\n%s\n%s\n%s\n",
-		"usage: tr [-csu] string1 string2",
-		"       tr [-cu] -d string1",
-		"       tr [-cu] -s string1",
-		"       tr [-cu] -ds string1 string2");
+		"usage: tr [-Ccsu] string1 string2",
+		"       tr [-Ccu] -d string1",
+		"       tr [-Ccu] -s string1",
+		"       tr [-Ccu] -ds string1 string2");
 	exit(1);
 }
