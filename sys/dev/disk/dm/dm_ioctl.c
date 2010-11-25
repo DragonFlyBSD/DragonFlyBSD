@@ -97,16 +97,6 @@ extern struct dev_ops dm_ops;
 extern struct devfs_bitmap dm_minor_bitmap;
 uint64_t dm_dev_counter;
 
-#if 0
-/* Generic cf_data for device-mapper driver */
-static struct cfdata dm_cfdata = {
-	.cf_name = "dm",
-	.cf_atname = "dm",
-	.cf_fstate = FSTATE_STAR,
-	.cf_unit = 0
-};
-#endif
-
 #define DM_REMOVE_FLAG(flag, name) do {					\
 		prop_dictionary_get_uint32(dm_dict,DM_IOCTL_FLAGS,&flag); \
 		flag &= ~name;						\
@@ -755,8 +745,7 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 		 * If we want to deny table with 2 or more different
 		 * target we should do it here
 		 */
-		if (((target = dm_target_lookup(type)) == NULL) &&
-		    ((target = dm_target_autoload(type)) == NULL)) {
+		if ((target = dm_target_lookup(type)) == NULL) {
 			dm_table_release(&dmv->table_head, DM_TABLE_INACTIVE);
 			dm_dev_unbusy(dmv);
 			return ENOENT;

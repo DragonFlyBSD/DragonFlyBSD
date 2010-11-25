@@ -79,8 +79,8 @@ struct dev_ops dm_ops = {
 	{ "dm", 0, D_DISK | D_MPSAFE },
 	.d_open		= dmopen,
 	.d_close	= dmclose,
-	.d_read 	= physread,
-	.d_write 	= physwrite,
+	.d_read		= physread,
+	.d_write	= physwrite,
 	.d_ioctl	= dmioctl,
 	.d_strategy	= dmstrategy,
 	.d_psize	= dmsize,
@@ -106,7 +106,7 @@ DECLARE_MODULE(dm, dm_mod, SI_SUB_RAID, SI_ORDER_ANY);
 /*
  * This array is used to translate cmd to function pointer.
  *
- * Interface between libdevmapper and lvm2tools uses different 
+ * Interface between libdevmapper and lvm2tools uses different
  * names for one IOCTL call because libdevmapper do another thing
  * then. When I run "info" or "mknodes" libdevmapper will send same
  * ioctl to kernel but will do another things in userspace.
@@ -117,10 +117,10 @@ static struct cmd_function cmd_fn[] = {
 		{ .cmd = "targets", .fn = dm_list_versions_ioctl},
 		{ .cmd = "create",  .fn = dm_dev_create_ioctl},
 		{ .cmd = "info",    .fn = dm_dev_status_ioctl},
-		{ .cmd = "mknodes", .fn = dm_dev_status_ioctl},		
+		{ .cmd = "mknodes", .fn = dm_dev_status_ioctl},
 		{ .cmd = "names",   .fn = dm_dev_list_ioctl},
 		{ .cmd = "suspend", .fn = dm_dev_suspend_ioctl},
-		{ .cmd = "remove",  .fn = dm_dev_remove_ioctl}, 
+		{ .cmd = "remove",  .fn = dm_dev_remove_ioctl},
 		{ .cmd = "rename",  .fn = dm_dev_rename_ioctl},
 		{ .cmd = "resume",  .fn = dm_dev_resume_ioctl},
 		{ .cmd = "clear",   .fn = dm_table_clear_ioctl},
@@ -128,7 +128,7 @@ static struct cmd_function cmd_fn[] = {
 		{ .cmd = "reload",  .fn = dm_table_load_ioctl},
 		{ .cmd = "status",  .fn = dm_table_status_ioctl},
 		{ .cmd = "table",   .fn = dm_table_status_ioctl},
-		{NULL, NULL}	
+		{NULL, NULL}
 };
 
 /* New module handle routine */
@@ -155,7 +155,7 @@ dm_modcmd(module_t mod, int cmd, void *unused)
 		 * defined in driver. This is probably too strong we need
 		 * to disable auto-unload only if there is mounted dm device
 		 * present.
-		 */ 
+		 */
 		if (dm_dev_counter > 0)
 			return EBUSY;
 
@@ -177,7 +177,7 @@ dm_modcmd(module_t mod, int cmd, void *unused)
  *
  *	Autoconfiguration detach function for pseudo-device glue.
  * This routine is called by dm_ioctl::dm_dev_remove_ioctl and by autoconf to
- * remove devices created in device-mapper. 
+ * remove devices created in device-mapper.
  */
 int
 dm_detach(dm_dev_t *dmv)
@@ -224,7 +224,7 @@ static int
 dmdestroy(void)
 {
 	destroy_dev(dmcdev);
-	
+
 	dm_dev_destroy();
 	dm_pdev_destroy();
 	dm_target_destroy();
@@ -288,9 +288,9 @@ dmioctl(struct dev_ioctl_args *ap)
 	err = r = 0;
 
 	aprint_debug("dmioctl called\n");
-	
+
 	KKASSERT(data != NULL);
-	
+
 	if (( r = disk_ioctl_switch(dev, cmd, data)) == ENOTTY) {
 		struct plistref *pref = (struct plistref *) data;
 
@@ -329,7 +329,7 @@ static int
 dm_cmd_to_fun(prop_dictionary_t dm_dict){
 	int i, r;
 	prop_string_t command;
-	
+
 	r = 0;
 
 	if ((command = prop_dictionary_get(dm_dict, DM_IOCTL_COMMAND)) == NULL)
@@ -439,7 +439,7 @@ dmstrategy(struct dev_strategy_args *ap)
 	buf_start = bio->bio_offset;
 	buf_len = bp->b_bcount;
 
-	tbl = NULL; 
+	tbl = NULL;
 
 	table_end = 0;
 	dev_type = 0;
@@ -450,7 +450,7 @@ dmstrategy(struct dev_strategy_args *ap)
 		bp->b_resid = bp->b_bcount;
 		biodone(bio);
 		return 0;
-	} 
+	}
 
 	switch(bp->b_cmd) {
 	case BUF_CMD_READ:
@@ -560,7 +560,7 @@ dmdump(struct dev_dump_args *ap)
 	buf_start = ap->a_offset;
 	buf_len = ap->a_length;
 
-	tbl = NULL; 
+	tbl = NULL;
 
 	table_end = 0;
 	dev_type = 0;
@@ -568,7 +568,7 @@ dmdump(struct dev_dump_args *ap)
 
 	if ((dmv = dm_dev_lookup(NULL, NULL, minor(dev))) == NULL) {
 		return EIO;
-	} 
+	}
 
 	/* Select active table */
 	tbl = dm_table_get_entry(&dmv->table_head, DM_TABLE_ACTIVE);
@@ -677,60 +677,6 @@ dmsetdiskinfo(struct disk *disk, dm_table_head_t *head)
 	info.d_ncylinders = dmp_size / info.d_secpercyl;
 
 	disk_setdiskinfo(disk, &info);
-}
-
-prop_dictionary_t
-dmgetdiskinfo(struct disk *disk)
-{
-	prop_dictionary_t disk_info, geom;
-	struct disk_info *pinfo;
-
-	pinfo = &disk->d_info;
-
-	disk_info = prop_dictionary_create();
-	geom = prop_dictionary_create();
-
-	prop_dictionary_set_cstring_nocopy(disk_info, "type", "ESDI");
-	prop_dictionary_set_uint64(geom, "sectors-per-unit", pinfo->d_media_blocks);
-	prop_dictionary_set_uint32(geom, "sector-size",
-	    DEV_BSIZE /* XXX 512? */);
-	prop_dictionary_set_uint32(geom, "sectors-per-track", 32);
-	prop_dictionary_set_uint32(geom, "tracks-per-cylinder", 64);
-	prop_dictionary_set_uint32(geom, "cylinders-per-unit",
-	    pinfo->d_media_blocks / 2048);
-	prop_dictionary_set(disk_info, "geometry", geom);
-	prop_object_release(geom);
-
-	return disk_info;
-}
-
-void
-dmgetproperties(struct disk *disk, dm_table_head_t *head)
-{
-#if 0
-	prop_dictionary_t disk_info, odisk_info, geom;
-	int dmp_size;
-
-	dmp_size = dm_table_size(head);
-	disk_info = prop_dictionary_create();
-	geom = prop_dictionary_create();
-
-	prop_dictionary_set_cstring_nocopy(disk_info, "type", "ESDI");
-	prop_dictionary_set_uint64(geom, "sectors-per-unit", dmp_size);
-	prop_dictionary_set_uint32(geom, "sector-size",
-	    DEV_BSIZE /* XXX 512? */);
-	prop_dictionary_set_uint32(geom, "sectors-per-track", 32);
-	prop_dictionary_set_uint32(geom, "tracks-per-cylinder", 64);
-	prop_dictionary_set_uint32(geom, "cylinders-per-unit", dmp_size / 2048);
-	prop_dictionary_set(disk_info, "geometry", geom);
-	prop_object_release(geom);
-
-	odisk_info = disk->dk_info;
-	disk->dk_info = disk_info;
-
-	if (odisk_info != NULL)
-		prop_object_release(odisk_info);
-#endif
 }
 
 TUNABLE_INT("debug.dm_debug", &dm_debug_level);

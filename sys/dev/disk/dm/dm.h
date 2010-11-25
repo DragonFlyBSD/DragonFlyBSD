@@ -261,8 +261,6 @@ struct cmd_function {
 
 /* device-mapper */
 void dmsetdiskinfo(struct disk *, dm_table_head_t *);
-prop_dictionary_t dmgetdiskinfo(struct disk *);
-void dmgetproperties(struct disk *, dm_table_head_t *);
 int dm_detach(dm_dev_t *);
 
 /* dm_ioctl.c */
@@ -285,7 +283,6 @@ int dm_table_status_ioctl(prop_dictionary_t);
 
 /* dm_target.c */
 dm_target_t* dm_target_alloc(const char *);
-dm_target_t* dm_target_autoload(const char *);
 int dm_target_destroy(void);
 int dm_target_insert(dm_target_t *);
 prop_array_t dm_target_prop_list(void);
@@ -299,31 +296,6 @@ int dm_target_init(void);
 
 #define DM_MAX_PARAMS_SIZE 1024
 
-/* dm_target_zero.c */
-int dm_target_zero_init(dm_dev_t *, void**,  char *);
-char * dm_target_zero_status(void *);
-int dm_target_zero_strategy(dm_table_entry_t *, struct buf *);
-int dm_target_zero_destroy(dm_table_entry_t *);
-int dm_target_zero_deps(dm_table_entry_t *, prop_array_t);
-int dm_target_zero_upcall(dm_table_entry_t *, struct buf *);
-
-/* dm_target_error.c */
-int dm_target_error_init(dm_dev_t *, void**, char *);
-char * dm_target_error_status(void *);
-int dm_target_error_strategy(dm_table_entry_t *, struct buf *);
-int dm_target_error_deps(dm_table_entry_t *, prop_array_t);
-int dm_target_error_destroy(dm_table_entry_t *);
-int dm_target_error_upcall(dm_table_entry_t *, struct buf *);
-
-/* dm_target_linear.c */
-int dm_target_linear_init(dm_dev_t *, void**, char *);
-char * dm_target_linear_status(void *);
-int dm_target_linear_strategy(dm_table_entry_t *, struct buf *);
-int dm_target_linear_deps(dm_table_entry_t *, prop_array_t);
-int dm_target_linear_destroy(dm_table_entry_t *);
-int dm_target_linear_upcall(dm_table_entry_t *, struct buf *);
-int dm_target_linear_dump(dm_table_entry_t *, void *, size_t, off_t);
-
 /* Generic function used to convert char to string */
 uint64_t atoi64(const char *);
 
@@ -334,15 +306,6 @@ int dm_target_mirror_strategy(dm_table_entry_t *, struct buf *);
 int dm_target_mirror_deps(dm_table_entry_t *, prop_array_t);
 int dm_target_mirror_destroy(dm_table_entry_t *);
 int dm_target_mirror_upcall(dm_table_entry_t *, struct buf *);
-
-/* dm_target_stripe.c */
-int dm_target_stripe_init(dm_dev_t *, void**, char *);
-char * dm_target_stripe_status(void *);
-int dm_target_stripe_strategy(dm_table_entry_t *, struct buf *);
-int dm_target_stripe_deps(dm_table_entry_t *, prop_array_t);
-int dm_target_stripe_destroy(dm_table_entry_t *);
-int dm_target_stripe_upcall(dm_table_entry_t *, struct buf *);
-int dm_target_stripe_dump(dm_table_entry_t *, void *, size_t, off_t);
 
 /* dm_target_snapshot.c */
 int dm_target_snapshot_init(dm_dev_t *, void**, char *);

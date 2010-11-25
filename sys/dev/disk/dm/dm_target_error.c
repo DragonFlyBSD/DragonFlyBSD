@@ -40,7 +40,7 @@
 #include "dm.h"
 
 /* Init function called from dm_table_load_ioctl. */
-int
+static int
 dm_target_error_init(dm_dev_t * dmv, void **target_config, char *argv)
 {
 
@@ -52,14 +52,16 @@ dm_target_error_init(dm_dev_t * dmv, void **target_config, char *argv)
 
 	return 0;
 }
+
 /* Status routine called to get params string. */
-char *
+static char *
 dm_target_error_status(void *target_config)
 {
 	return NULL;
 }
+
 /* Strategy routine called from dm_strategy. */
-int
+static int
 dm_target_error_strategy(dm_table_entry_t * table_en, struct buf * bp)
 {
 
@@ -72,8 +74,9 @@ dm_target_error_strategy(dm_table_entry_t * table_en, struct buf * bp)
 
 	return 0;
 }
+
 /* Doesn't do anything here. */
-int
+static int
 dm_target_error_destroy(dm_table_entry_t * table_en)
 {
 	table_en->target_config = NULL;
@@ -83,15 +86,62 @@ dm_target_error_destroy(dm_table_entry_t * table_en)
 
 	return 0;
 }
+
 /* Doesn't not need to do anything here. */
-int
+static int
 dm_target_error_deps(dm_table_entry_t * table_en, prop_array_t prop_array)
 {
 	return 0;
 }
+
 /* Unsupported for this target. */
-int
+static int
 dm_target_error_upcall(dm_table_entry_t * table_en, struct buf * bp)
 {
 	return 0;
 }
+
+static int
+dmte_mod_handler(module_t mod, int type, void *unused)
+{
+	dm_target_t *dmt = NULL;
+	int err = 0;
+
+	switch(type) {
+	case MOD_LOAD:
+		if ((dmt = dm_target_lookup("error")) != NULL) {
+			dm_target_unbusy(dmt);
+			return EEXIST;
+		}
+		dmt = dm_target_alloc("error");
+		dmt->version[0] = 1;
+		dmt->version[1] = 0;
+		dmt->version[2] = 0;
+		strlcpy(dmt->name, "error", DM_MAX_TYPE_NAME);
+		dmt->init = &dm_target_error_init;
+		dmt->status = &dm_target_error_status;
+		dmt->strategy = &dm_target_error_strategy;
+		dmt->deps = &dm_target_error_deps;
+		dmt->destroy = &dm_target_error_destroy;
+		dmt->upcall = &dm_target_error_upcall;
+		dmt->dump = NULL;
+
+		err = dm_target_insert(dmt);
+		if (err == 0)
+			kprintf("dm_target_error: Successfully initialized\n");
+		break;
+
+	case MOD_UNLOAD:
+		err = dm_target_rem("error");
+		if (err == 0)
+			kprintf("dm_target_error: unloaded\n");
+		break;
+
+	default:
+		break;
+	}
+
+	return err;
+}
+	
+DM_TARGET_MODULE(dm_target_error, dmte_mod_handler);

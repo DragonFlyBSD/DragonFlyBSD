@@ -1381,7 +1381,8 @@ dmtc_mod_handler(module_t mod, int type, void *unused)
 		err = dm_target_insert(dmt);
 		if (err)
 			dmtc_destroy_mpipe();
-		kprintf("dm_target_crypt: Successfully initialized\n");
+		else
+			kprintf("dm_target_crypt: Successfully initialized\n");
 		break;
 
 	case MOD_UNLOAD:

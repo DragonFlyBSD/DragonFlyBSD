@@ -82,13 +82,6 @@ dm_dk_lookup(const char *dev_name, struct vnode **vpp)
 	struct nlookupdata nd;
 	int error;
 
-#ifdef notyet
-	if (this is a root mount) {
-		error = vn_opendisk(dev_name, FREAD|FWRITE, vpp);
-		return error;
-	}
-#endif
-
 	error = nlookup_init(&nd, dev_name, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error)
 	    return error;
@@ -141,7 +134,6 @@ dm_pdev_insert(const char *dev_name)
 	if ((dmp = dm_pdev_alloc(dev_name)) == NULL)
 		return NULL;
 
-	/* XXX: nlookup and/or vn_opendisk */
 	error = dm_dk_lookup(dev_name, &dmp->pdev_vnode);
 	if (error) {
 		aprint_debug("dk_lookup on device: %s failed with error %d!\n",
@@ -267,18 +259,3 @@ dm_pdev_decr(dm_pdev_t * dmp)
 	lockmgr(&dm_pdev_mutex, LK_RELEASE);
 	return 0;
 }
-/*static int
-  dm_pdev_dump_list(void)
-  {
-  dm_pdev_t *dmp;
-	
-  aprint_verbose("Dumping dm_pdev_list \n");
-	
-  SLIST_FOREACH(dmp, &dm_pdev_list, next_pdev) {
-  aprint_verbose("dm_pdev_name %s ref_cnt %d list_rf_cnt %d\n",
-  dmp->name, dmp->ref_cnt, dmp->list_ref_cnt);
-  }
-	
-  return 0;
-	
-  }*/

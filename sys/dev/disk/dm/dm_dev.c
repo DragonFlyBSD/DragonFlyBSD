@@ -193,53 +193,6 @@ dm_dev_insert(dm_dev_t * dev)
 	lockmgr(&dm_dev_mutex, LK_RELEASE);
 	return r;
 }
-#ifdef notyet
-/*
- * Lookup device with its minor number.
- */
-int
-dm_dev_test_minor(int dm_dev_minor)
-{
-	dm_dev_t *dmv;
-
-	lockmgr(&dm_dev_mutex, LK_EXCLUSIVE);
-	TAILQ_FOREACH(dmv, &dm_dev_list, next_devlist) {
-		if (dm_dev_minor == dmv->minor) {
-			lockmgr(&dm_dev_mutex, LK_RELEASE);
-			return 1;
-		}
-	}
-	lockmgr(&dm_dev_mutex, LK_RELEASE);
-
-	return 0;
-}
-#endif
-
-#if 0
-/*
- * dm_dev_lookup_devt look for selected device_t. We keep this routine
- * outside of dm_dev_lookup because it is a temporally solution.
- *
- * TODO: This is a hack autoconf should be more flexible.
- */
-dm_dev_t *
-dm_dev_detach(device_t devt)
-{
-       dm_dev_t *dmv;
-
-       lockmgr(&dm_dev_mutex, LK_EXCLUSIVE);
-       TAILQ_FOREACH(dmv, &dm_dev_list, next_devlist) {
-               if (devt == dmv->devt) {
-                       disable_dev(dmv);
-                       lockmgr(&dm_dev_mutex, LK_RELEASE);
-                       return dmv;
-               }
-       }
-       lockmgr(&dm_dev_mutex, LK_RELEASE);
-
-       return NULL;
-}
-#endif
 
 /*
  * Remove device selected with dm_dev from global list of devices.
