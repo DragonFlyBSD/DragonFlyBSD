@@ -99,6 +99,8 @@
 
 #include <sys/thread2.h>
 #include <sys/sysref2.h>
+#include <sys/random.h>
+#include <sys/sysctl.h>
 
 /*
  * Virtual memory maps provide for the mapping, protection, and sharing
@@ -149,6 +151,10 @@ static struct vm_object mapentobj, mapobj;
 static struct vm_map_entry map_entry_init[MAX_MAPENT];
 static struct vm_map_entry cpu_map_entry_init[MAXCPU][VMEPERCPU];
 static struct vm_map map_init[MAX_KMAP];
+
+static int randomize_mmap;
+SYSCTL_INT(_vm, OID_AUTO, randomize_mmap, CTLFLAG_RW, &randomize_mmap, 0,
+    "Randomize mmap offsets");
 
 static void vm_map_entry_shadow(vm_map_entry_t entry);
 static vm_map_entry_t vm_map_entry_create(vm_map_t map, int *);
@@ -3480,6 +3486,56 @@ vmspace_unshare(struct proc *p)
 	pmap_replacevm(p, newvmspace, 0);
 	sysref_put(&oldvmspace->vm_sysref);
 	lwkt_reltoken(&vmspace_token);
+}
+
+/*
+ * vm_map_hint: return the beginning of the best area suitable for
+ * creating a new mapping with "prot" protection.
+ *
+ * No requirements.
+ */
+vm_offset_t
+vm_map_hint(struct proc *p, vm_offset_t addr, vm_prot_t prot)
+{
+	struct vmspace *vms = p->p_vmspace;
+
+	if (!randomize_mmap) {
+		/*
+		 * Set a reasonable start point for the hint if it was
+		 * not specified or if it falls within the heap space.
+		 * Hinted mmap()s do not allocate out of the heap space.
+		 */
+		if (addr == 0 ||
+		    (addr >= round_page((vm_offset_t)vms->vm_taddr) &&
+		     addr < round_page((vm_offset_t)vms->vm_daddr + maxdsiz))) {
+			addr = round_page((vm_offset_t)vms->vm_daddr + maxdsiz);
+		}
+
+		return addr;
+	}
+
+	if (addr != 0 && addr >= (vm_offset_t)vms->vm_daddr)
+		return addr;
+
+#ifdef notyet
+#ifdef __i386__
+	/*
+	 * If executable skip first two pages, otherwise start
+	 * after data + heap region.
+	 */
+	if ((prot & VM_PROT_EXECUTE) &&
+	    ((vm_offset_t)vms->vm_daddr >= I386_MAX_EXE_ADDR)) {
+		addr = (PAGE_SIZE * 2) +
+		    (karc4random() & (I386_MAX_EXE_ADDR / 2 - 1));
+		return (round_page(addr));
+	}
+#endif /* __i386__ */
+#endif /* notyet */
+
+	addr = (vm_offset_t)vms->vm_daddr + MAXDSIZ;
+	addr += karc4random() & (MIN((256 * 1024 * 1024), MAXDSIZ) - 1);
+
+	return (round_page(addr));
 }
 
 /*

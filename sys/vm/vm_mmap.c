@@ -249,14 +249,10 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 			return (EINVAL);
 	} else {
 		/*
-		 * Set a reasonable start point for the hint if it was
-		 * not specified or if it falls within the heap space.
-		 * Hinted mmap()s do not allocate out of the heap space.
+		 * Get a hint of where to map. It also provides mmap offset
+		 * randomization if enabled.
 		 */
-		if (addr == 0 ||
-		    (addr >= round_page((vm_offset_t)vms->vm_taddr) &&
-		     addr < round_page((vm_offset_t)vms->vm_daddr + maxdsiz)))
-			addr = round_page((vm_offset_t)vms->vm_daddr + maxdsiz);
+		addr = vm_map_hint(p, addr, prot);
 	}
 
 	if (flags & MAP_ANON) {
