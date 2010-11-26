@@ -96,17 +96,9 @@ static dm_target_t *
 dm_target_lookup_name(const char *dm_target_name)
 {
 	dm_target_t *dm_target;
-	int dlen;
-	int slen;
-
-	slen = strlen(dm_target_name) + 1;
 
 	TAILQ_FOREACH(dm_target, &dm_target_list, dm_target_next) {
-		dlen = strlen(dm_target->name) + 1;
-		if (dlen != slen)
-			continue;
-
-		if (strncmp(dm_target_name, dm_target->name, slen) == 0)
+		if (strcmp(dm_target_name, dm_target->name) == 0)
 			return dm_target;
 	}
 

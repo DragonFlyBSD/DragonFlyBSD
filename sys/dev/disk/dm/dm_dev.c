@@ -120,22 +120,9 @@ static dm_dev_t *
 dm_dev_lookup_name(const char *dm_dev_name)
 {
 	dm_dev_t *dmv;
-	int dlen;
-	int slen;
-
-	slen = strlen(dm_dev_name);
-
-	if (slen == 0)
-		return NULL;
 
 	TAILQ_FOREACH(dmv, &dm_dev_list, next_devlist) {
-
-		dlen = strlen(dmv->name);
-
-		if (slen != dlen)
-			continue;
-
-		if (strncmp(dm_dev_name, dmv->name, slen) == 0)
+		if (strcmp(dm_dev_name, dmv->name) == 0)
 			return dmv;
 	}
 
@@ -148,20 +135,9 @@ static dm_dev_t *
 dm_dev_lookup_uuid(const char *dm_dev_uuid)
 {
 	dm_dev_t *dmv;
-	size_t len;
-
-	len = 0;
-	len = strlen(dm_dev_uuid);
-
-	if (len == 0)
-		return NULL;
 
 	TAILQ_FOREACH(dmv, &dm_dev_list, next_devlist) {
-
-		if (strlen(dmv->uuid) != len)
-			continue;
-
-		if (strncmp(dm_dev_uuid, dmv->uuid, strlen(dmv->uuid)) == 0)
+		if (strcmp(dm_dev_uuid, dmv->uuid) == 0)
 			return dmv;
 	}
 
