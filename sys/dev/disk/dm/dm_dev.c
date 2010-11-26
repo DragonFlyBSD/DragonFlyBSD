@@ -50,7 +50,7 @@ TAILQ_HEAD_INITIALIZER(dm_dev_list);
 struct lock dm_dev_mutex;
 
 /* dm_dev_mutex must be holdby caller before using disable_dev. */
-void
+static void
 disable_dev(dm_dev_t * dmv)
 {
 	TAILQ_REMOVE(&dm_dev_list, dmv, next_devlist);
@@ -198,13 +198,15 @@ dm_dev_insert(dm_dev_t * dev)
  * Remove device selected with dm_dev from global list of devices.
  */
 dm_dev_t *
-dm_dev_rem(const char *dm_dev_name, const char *dm_dev_uuid,
+dm_dev_rem(dm_dev_t *dmv, const char *dm_dev_name, const char *dm_dev_uuid,
     int dm_dev_minor)
 {
-	dm_dev_t *dmv;
-	dmv = NULL;
-
 	lockmgr(&dm_dev_mutex, LK_EXCLUSIVE);
+
+	if (dmv != NULL) {
+		disable_dev(dmv);
+		return dmv;
+	}
 
 	if (dm_dev_minor > 0)
 		if ((dmv = dm_dev_lookup_minor(dm_dev_minor)) != NULL) {

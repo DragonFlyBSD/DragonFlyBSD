@@ -184,7 +184,8 @@ dm_detach(dm_dev_t *dmv)
 {
 	int minor;
 
-	disable_dev(dmv);
+	/* Remove device from list and wait for refcnt to drop to zero */
+	dm_dev_rem(dmv, NULL, NULL, -1);
 
 	/* Destroy active table first.  */
 	dm_table_destroy(&dmv->table_head, DM_TABLE_ACTIVE);
