@@ -95,7 +95,6 @@ typedef struct dm_table_head {
 	struct dm_table tables[2];
 
 	struct lock   table_mtx;
-	struct cv table_cv; /*IO waiting cv */
 
 	uint32_t io_cnt;
 } dm_table_head_t;
