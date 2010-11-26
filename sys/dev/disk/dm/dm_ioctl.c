@@ -158,7 +158,6 @@ dm_dbg_print_flags(int flags)
 int
 dm_get_version_ioctl(prop_dictionary_t dm_dict)
 {
-
 	return 0;
 }
 /*
@@ -214,12 +213,7 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
 		dm_dev_unbusy(dmv);
 		return EEXIST;
 	}
-#if 0
-	if ((devt = config_attach_pseudo(&dm_cfdata)) == NULL) {
-		aprint_error("Unable to attach pseudo device dm/%s\n", name);
-		return (ENOMEM);
-	}
-#endif
+
 	if ((dmv = dm_dev_alloc()) == NULL)
 		return ENOMEM;
 

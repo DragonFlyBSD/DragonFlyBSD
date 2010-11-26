@@ -173,11 +173,7 @@ dm_modcmd(module_t mod, int cmd, void *unused)
 }
 
 /*
- * dm_detach:
- *
- *	Autoconfiguration detach function for pseudo-device glue.
- * This routine is called by dm_ioctl::dm_dev_remove_ioctl and by autoconf to
- * remove devices created in device-mapper.
+ * dm_detach is called to completely destroy & remove a dm disk device.
  */
 int
 dm_detach(dm_dev_t *dmv)
