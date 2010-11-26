@@ -43,33 +43,25 @@
 
 SLIST_HEAD(dm_pdevs, dm_pdev) dm_pdev_list;
 
-	struct lock dm_pdev_mutex;
+struct lock dm_pdev_mutex;
 
-	static dm_pdev_t *dm_pdev_alloc(const char *);
-	static int dm_pdev_rem(dm_pdev_t *);
-	static dm_pdev_t *dm_pdev_lookup_name(const char *);
+static dm_pdev_t *dm_pdev_alloc(const char *);
+static int dm_pdev_rem(dm_pdev_t *);
+static dm_pdev_t *dm_pdev_lookup_name(const char *);
 
 /*
  * Find used pdev with name == dm_pdev_name.
+ * needs to be called with the dm_pdev_mutex held.
  */
-	dm_pdev_t *
-	          dm_pdev_lookup_name(const char *dm_pdev_name)
+static dm_pdev_t *
+dm_pdev_lookup_name(const char *dm_pdev_name)
 {
 	dm_pdev_t *dm_pdev;
-	int dlen;
-	int slen;
 
 	KKASSERT(dm_pdev_name != NULL);
 
-	slen = strlen(dm_pdev_name);
-
 	SLIST_FOREACH(dm_pdev, &dm_pdev_list, next_pdev) {
-		dlen = strlen(dm_pdev->name);
-
-		if (slen != dlen)
-			continue;
-
-		if (strncmp(dm_pdev_name, dm_pdev->name, slen) == 0)
+		if (strcmp(dm_pdev_name, dm_pdev->name) == 0)
 			return dm_pdev;
 	}
 
@@ -94,6 +86,16 @@ dm_dk_lookup(const char *dev_name, struct vnode **vpp)
 	return 0;
 }
 
+/*
+ * Since dm can have arbitrary stacking on any number of disks and any dm
+ * volume is at least stacked onto another disk, we need to adjust the
+ * dumping offset (which is a raw offset from the beginning of the lowest
+ * physical disk) taking into account the offset of the underlying device
+ * which in turn takes into account the offset below it, etc.
+ *
+ * This function adjusts the dumping offset that is passed to the next
+ * dev_ddump() so it is correct for that underlying device.
+ */
 off_t
 dm_pdev_correct_dump_offset(dm_pdev_t *pdev, off_t offset)
 {
