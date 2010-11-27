@@ -347,7 +347,7 @@ static void mtmagazine_destructor(void *);
 static slzone_t zone_alloc(int flags);
 static void zone_free(void *z);
 static void _mpanic(const char *ctl, ...);
-static void malloc_init(void);
+static void malloc_init(void) __constructor(0);
 #if defined(INVARIANTS)
 static void chunk_mark_allocated(slzone_t z, void *chunk);
 static void chunk_mark_free(slzone_t z, void *chunk);
@@ -809,9 +809,6 @@ _slaballoc(size_t size, int flags)
 #endif
 	int off;
 	void *obj;
-
-	if (!malloc_started) 
-		malloc_init();
 
 	/*
 	 * Handle the degenerate size == 0 case.  Yes, this does happen.

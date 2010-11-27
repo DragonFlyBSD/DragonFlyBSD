@@ -118,7 +118,7 @@ static struct afswtch af_ipx = {
 	.af_addreq	= &ipx_addreq,
 };
 
-static __constructor void
+static __constructor(100) void
 ipx_ctor(void)
 {
 	af_register(&af_ipx);
