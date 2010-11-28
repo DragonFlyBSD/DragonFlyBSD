@@ -1148,11 +1148,15 @@ buwrite(struct buf *bp)
 
 	/*
 	 * Set valid & dirty.
+	 *
+	 * WARNING! vfs_dirty_one_page() assumes vm_token is held for now.
 	 */
+	lwkt_gettoken(&vm_token);
 	for (i = 0; i < bp->b_xio.xio_npages; i++) {
 		m = bp->b_xio.xio_pages[i];
 		vfs_dirty_one_page(bp, i, m);
 	}
+	lwkt_reltoken(&vm_token);
 	bqrelse(bp);
 }
 
@@ -3611,6 +3615,8 @@ vn_strategy(struct vnode *vp, struct bio *bio)
         vop_strategy(*vp->v_ops, vp, bio);
 }
 
+static void vn_cache_strategy_callback(struct bio *bio);
+
 int
 vn_cache_strategy(struct vnode *vp, struct bio *bio)
 {
@@ -3656,17 +3662,33 @@ vn_cache_strategy(struct vnode *vp, struct bio *bio)
 	}
 
 	/*
-	 * If we are good then issue the I/O using swap_pager_strategy()
+	 * If we are good then issue the I/O using swap_pager_strategy().
 	 */
 	if (i == bp->b_xio.xio_npages) {
 		m = bp->b_xio.xio_pages[0];
 		nbio = push_bio(bio);
+		nbio->bio_done = vn_cache_strategy_callback;
 		nbio->bio_offset = ptoa(m->pindex);
 		KKASSERT(m->object == object);
 		swap_pager_strategy(object, nbio);
 		return(1);
 	}
 	return(0);
+}
+
+/*
+ * This is a bit of a hack but since the vn_cache_strategy() function can
+ * override a VFS's strategy function we must make sure that the bio, which
+ * is probably bio2, doesn't leak an unexpected offset value back to the
+ * filesystem.  The filesystem (e.g. UFS) might otherwise assume that the
+ * bio went through its own file strategy function and the the bio2 offset
+ * is a cached disk offset when, in fact, it isn't.
+ */
+static void
+vn_cache_strategy_callback(struct bio *bio)
+{
+	bio->bio_offset = NOOFFSET;
+	biodone(pop_bio(bio));
 }
 
 /*
@@ -4157,14 +4179,12 @@ retry:
 }
 
 /*
- * vfs_clean_pages:
- *	
- *	Tell the VM system that the pages associated with this buffer
- *	are clean.  This is used for delayed writes where the data is
- *	going to go to disk eventually without additional VM intevention.
+ * Tell the VM system that the pages associated with this buffer
+ * are clean.  This is used for delayed writes where the data is
+ * going to go to disk eventually without additional VM intevention.
  *
- *	Note that while we only really need to clean through to b_bcount, we
- *	just go ahead and clean through to b_bufsize.
+ * NOTE: While we only really need to clean through to b_bcount, we
+ *	 just go ahead and clean through to b_bufsize.
  */
 static void
 vfs_clean_pages(struct buf *bp)
@@ -4178,10 +4198,15 @@ vfs_clean_pages(struct buf *bp)
 	KASSERT(bp->b_loffset != NOOFFSET,
 		("vfs_clean_pages: no buffer offset"));
 
+	/*
+	 * vm_token must be held for vfs_clean_one_page() calls.
+	 */
+	lwkt_gettoken(&vm_token);
 	for (i = 0; i < bp->b_xio.xio_npages; i++) {
 		m = bp->b_xio.xio_pages[i];
 		vfs_clean_one_page(bp, i, m);
 	}
+	lwkt_reltoken(&vm_token);
 }
 
 /*
@@ -4200,6 +4225,9 @@ vfs_clean_pages(struct buf *bp)
  *	This routine is typically called after a read completes (dirty should
  *	be zero in that case as we are not called on bogus-replace pages),
  *	or before a write is initiated.
+ *
+ * NOTE: vm_token must be held by the caller, and vm_page_set_validclean()
+ *	 currently assumes the vm_token is held.
  */
 static void
 vfs_clean_one_page(struct buf *bp, int pageno, vm_page_t m)
@@ -4291,6 +4319,9 @@ vfs_clean_one_page(struct buf *bp, int pageno, vm_page_t m)
 	 *	     buffer flush might not be able to clear all the dirty
 	 *	     bits and still require a putpages from the VM system
 	 *	     to finish it off.
+	 *
+	 * WARNING!  vm_page_set_validclean() currently assumes vm_token
+	 *	     is held.  The page might not be busied (bdwrite() case).
 	 */
 	vm_page_set_validclean(m, soff & PAGE_MASK, eoff - soff);
 }
