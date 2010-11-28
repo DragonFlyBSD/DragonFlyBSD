@@ -426,7 +426,8 @@ trap(struct trapframe *frame)
 		userenter(td, p);
 
 		sticks = (int)td->td_sticks;
-		lp->lwp_md.md_regs = frame;
+		KASSERT(lp->lwp_md.md_regs == frame,
+			("Frame mismatch %p %p", lp->lwp_md.md_regs, frame));
 
 		switch (type) {
 		case T_PRIVINFLT:	/* privileged instruction fault */
@@ -1103,7 +1104,8 @@ syscall2(struct trapframe *frame)
 	/*
 	 * Get the system call parameters and account for time
 	 */
-	lp->lwp_md.md_regs = frame;
+	KASSERT(lp->lwp_md.md_regs == frame,
+		("Frame mismatch %p %p", lp->lwp_md.md_regs, frame));
 	params = (caddr_t)frame->tf_rsp + sizeof(register_t);
 	code = frame->tf_rax;
 

@@ -373,9 +373,9 @@ ENTRY(cpu_heavy_restore)
 	 * usermode.  The PCB is at the top of the stack but we need another
 	 * 16 bytes to take vm86 into account.
 	 */
-	leaq	-16(%rdx),%rbx
+	movq	%rdx,%rbx
+	/*leaq	-TF_SIZE(%rdx),%rbx*/
 	movq	%rbx, PCPU(common_tss) + TSS_RSP0
-	movq	%rbx, PCPU(rsp0)
 
 #if JG
 	cmpl	$0,PCPU(private_tss)	/* don't have to reload if      */

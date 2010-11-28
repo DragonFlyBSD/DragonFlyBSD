@@ -1139,10 +1139,11 @@ pmap_page_lookup(vm_object_t object, vm_pindex_t pindex)
 void
 pmap_init_thread(thread_t td)
 {
-	/* enforce pcb placement */
+	/* enforce pcb placement & alignment */
 	td->td_pcb = (struct pcb *)(td->td_kstack + td->td_kstack_size) - 1;
+	td->td_pcb = (struct pcb *)((intptr_t)td->td_pcb & ~(intptr_t)0xF);
 	td->td_savefpu = &td->td_pcb->pcb_save;
-	td->td_sp = (char *)td->td_pcb - 16; /* JG is -16 needed on x86_64? */
+	td->td_sp = (char *)td->td_pcb;	/* no -16 */
 }
 
 /*
