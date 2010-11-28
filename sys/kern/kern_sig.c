@@ -1319,18 +1319,34 @@ lwp_signotify(struct lwp *lp)
 
 /*
  * This function is called via an IPI.  We will be in a critical section but
- * the MP lock will NOT be held.  Also note that by the time the ipi message
- * gets to us the process 'p' (arg) may no longer be scheduled or even valid.
+ * the MP lock will NOT be held.  The passed lp will be held.
+ *
+ * We must essentially repeat the code at the end of lwp_signotify(),
+ * in particular rechecking all races.  If we are still not on the
+ * correct cpu we leave the lwp ref intact and continue the chase.
+ *
+ * XXX this may still not be entirely correct, since we are checking
+ *     lwp_stat asynchronously.
  */
 static void
 signotify_remote(void *arg)
 {
 	struct lwp *lp = arg;
+	thread_t td;
 
 	if (lp == lwkt_preempted_proc()) {
 		signotify();
-	} else {
-		struct thread *td = lp->lwp_thread;
+	} else if (lp->lwp_stat == LSRUN) {
+		/*
+		 * To prevent a MP race with TDF_SINTR we must
+		 * schedule the thread on the correct cpu.
+		 */
+		td = lp->lwp_thread;
+		if (td->td_gd != mycpu) {
+			lwkt_send_ipiq(td->td_gd, signotify_remote, lp);
+			return;
+			/* NOT REACHED */
+		}
 		if (td->td_flags & TDF_SINTR)
 			lwkt_schedule(td);
 	}
