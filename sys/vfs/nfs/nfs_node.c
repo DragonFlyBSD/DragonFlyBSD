@@ -59,6 +59,8 @@
 static vm_zone_t nfsnode_zone;
 static LIST_HEAD(nfsnodehashhead, nfsnode) *nfsnodehashtbl;
 static u_long nfsnodehash;
+static lwkt_token nfsnhash_token = LWKT_TOKEN_MP_INITIALIZER(nfsnhash_token);
+static struct lock nfsnhash_lock;
 
 #define TRUE	1
 #define	FALSE	0
@@ -74,6 +76,7 @@ nfs_nhinit(void)
 {
 	nfsnode_zone = zinit("NFSNODE", sizeof(struct nfsnode), 0, 0, 1);
 	nfsnodehashtbl = hashinit(desiredvnodes, M_NFSHASH, &nfsnodehash);
+	lockinit(&nfsnhash_lock, "nfsnht", 0, 0);
 }
 
 /*
@@ -82,7 +85,6 @@ nfs_nhinit(void)
  * In all cases, a pointer to a
  * nfsnode structure is returned.
  */
-static int nfs_node_hash_lock;
 
 int
 nfs_nget(struct mount *mntp, nfsfh_t *fhp, int fhsize, struct nfsnode **npp)
@@ -104,6 +106,8 @@ nfs_nget(struct mount *mntp, nfsfh_t *fhp, int fhsize, struct nfsnode **npp)
 		lkflags = LK_PCATCH;
 	else
 		lkflags = 0;
+
+	lwkt_gettoken(&nfsnhash_token);
 
 retry:
 	nhpp = NFSNOHASH(fnv_32_buf(fhp->fh_bytes, fhsize, FNV1_32_INIT));
@@ -129,20 +133,16 @@ loop:
 			goto loop;
 		}
 		*npp = np;
+		lwkt_reltoken(&nfsnhash_token);
 		return(0);
 	}
+
 	/*
 	 * Obtain a lock to prevent a race condition if the getnewvnode()
 	 * or MALLOC() below happens to block.
 	 */
-	if (nfs_node_hash_lock) {
-		while (nfs_node_hash_lock) {
-			nfs_node_hash_lock = -1;
-			tsleep(&nfs_node_hash_lock, 0, "nfsngt", 0);
-		}
+	if (lockmgr(&nfsnhash_lock, LK_EXCLUSIVE | LK_SLEEPFAIL))
 		goto loop;
-	}
-	nfs_node_hash_lock = 1;
 
 	/*
 	 * Allocate before getnewvnode since doing so afterward
@@ -153,11 +153,10 @@ loop:
 		
 	error = getnewvnode(VT_NFS, mntp, &nvp, 0, 0);
 	if (error) {
-		if (nfs_node_hash_lock < 0)
-			wakeup(&nfs_node_hash_lock);
-		nfs_node_hash_lock = 0;
+		lockmgr(&nfsnhash_lock, LK_RELEASE);
 		*npp = 0;
 		zfree(nfsnode_zone, np);
+		lwkt_reltoken(&nfsnhash_token);
 		return (error);
 	}
 	vp = nvp;
@@ -173,9 +172,7 @@ loop:
 		    bcmp((caddr_t)fhp, (caddr_t)np2->n_fhp, fhsize))
 			continue;
 		vx_put(vp);
-		if (nfs_node_hash_lock < 0)
-			wakeup(&nfs_node_hash_lock);
-		nfs_node_hash_lock = 0;
+		lockmgr(&nfsnhash_lock, LK_RELEASE);
 		zfree(nfsnode_zone, np);
 		goto retry;
 	}
@@ -193,9 +190,8 @@ loop:
 	 * nvp is locked & refd so effectively so is np.
 	 */
 	*npp = np;
-	if (nfs_node_hash_lock < 0)
-		wakeup(&nfs_node_hash_lock);
-	nfs_node_hash_lock = 0;
+	lockmgr(&nfsnhash_lock, LK_RELEASE);
+	lwkt_reltoken(&nfsnhash_token);
 
 	return (0);
 }
@@ -226,6 +222,9 @@ nfs_nget_nonblock(struct mount *mntp, nfsfh_t *fhp, int fhsize,
 		lkflags = 0;
 	vp = NULL;
 	*npp = NULL;
+
+	lwkt_gettoken(&nfsnhash_token);
+
 retry:
 	nhpp = NFSNOHASH(fnv_32_buf(fhp->fh_bytes, fhsize, FNV1_32_INIT));
 loop:
@@ -248,6 +247,7 @@ loop:
 			goto loop;
 		}
 		*npp = np;
+		lwkt_reltoken(&nfsnhash_token);
 		return(0);
 	}
 
@@ -264,14 +264,8 @@ loop:
 	 * Obtain a lock to prevent a race condition if the getnewvnode()
 	 * or MALLOC() below happens to block.
 	 */
-	if (nfs_node_hash_lock) {
-		while (nfs_node_hash_lock) {
-			nfs_node_hash_lock = -1;
-			tsleep(&nfs_node_hash_lock, 0, "nfsngt", 0);
-		}
+	if (lockmgr(&nfsnhash_lock, LK_EXCLUSIVE | LK_SLEEPFAIL))
 		goto loop;
-	}
-	nfs_node_hash_lock = 1;
 
 	/*
 	 * Entry not found, allocate a new entry.
@@ -284,10 +278,9 @@ loop:
 
 	error = getnewvnode(VT_NFS, mntp, &nvp, 0, 0);
 	if (error) {
-		if (nfs_node_hash_lock < 0)
-			wakeup(&nfs_node_hash_lock);
-		nfs_node_hash_lock = 0;
+		lockmgr(&nfsnhash_lock, LK_RELEASE);
 		zfree(nfsnode_zone, np);
+		lwkt_reltoken(&nfsnhash_token);
 		return (error);
 	}
 	vp = nvp;
@@ -305,9 +298,7 @@ loop:
 			continue;
 		}
 		vx_put(vp);
-		if (nfs_node_hash_lock < 0)
-			wakeup(&nfs_node_hash_lock);
-		nfs_node_hash_lock = 0;
+		lockmgr(&nfsnhash_lock, LK_RELEASE);
 		zfree(nfsnode_zone, np);
 		goto retry;
 	}
@@ -326,10 +317,9 @@ loop:
 	 */
 	*npp = np;
 	error = 0;
-	if (nfs_node_hash_lock < 0)
-		wakeup(&nfs_node_hash_lock);
-	nfs_node_hash_lock = 0;
+	lockmgr(&nfsnhash_lock, LK_RELEASE);
 fail:
+	lwkt_reltoken(&nfsnhash_token);
 	return (error);
 }
 
@@ -397,16 +387,21 @@ nfs_reclaim(struct vop_reclaim_args *ap)
 	if (prtactive && vp->v_sysref.refcnt > 1)
 		vprint("nfs_reclaim: pushing active", vp);
 
-	lwkt_gettoken(&nmp->nm_token);
 
+	/*
+	 * Remove from hash table
+	 */
+	lwkt_gettoken(&nfsnhash_token);
 	if (np->n_hash.le_prev != NULL)
 		LIST_REMOVE(np, n_hash);
+	lwkt_reltoken(&nfsnhash_token);
 
 	/*
 	 * Free up any directory cookie structures and
 	 * large file handle structures that might be associated with
 	 * this nfs node.
 	 */
+	lwkt_gettoken(&nmp->nm_token);
 	if (vp->v_type == VDIR) {
 		dp = np->n_cookies.lh_first;
 		while (dp) {
