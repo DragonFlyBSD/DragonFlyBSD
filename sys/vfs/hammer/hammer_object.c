@@ -415,6 +415,12 @@ hammer_rel_mem_record(struct hammer_record *record)
 					  record);
 				record->flags &= ~HAMMER_RECF_ONRBTREE;
 				KKASSERT(ip->rsv_recs > 0);
+				if (RB_EMPTY(&record->ip->rec_tree)) {
+					record->ip->flags &=
+							~HAMMER_INODE_XDIRTY;
+					record->ip->sync_flags &=
+							~HAMMER_INODE_XDIRTY;
+				}
 				diddrop = 1;
 			} else {
 				diddrop = 0;
@@ -439,11 +445,8 @@ hammer_rel_mem_record(struct hammer_record *record)
 				--ip->rsv_recs;
 				hmp->rsv_databytes -= record->leaf.data_len;
 
-				if (RB_EMPTY(&record->ip->rec_tree)) {
-					record->ip->flags &= ~HAMMER_INODE_XDIRTY;
-					record->ip->sync_flags &= ~HAMMER_INODE_XDIRTY;
+				if (RB_EMPTY(&record->ip->rec_tree))
 					hammer_test_inode(record->ip);
-				}
 				if (ip->rsv_recs == hammer_limit_inode_recs - 1)
 					wakeup(&ip->rsv_recs);
 			}
