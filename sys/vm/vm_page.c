@@ -1751,7 +1751,10 @@ vm_page_set_valid(vm_page_t m, int base, int size)
  *	 Also note that e.g. NFS may use a byte-granular base
  *	 and size.
  *
- * Page must be busied?
+ * WARNING: Page must be busied?  But vfs_clean_one_page() will call
+ *	    this without necessarily busying the page (via bdwrite()).
+ *	    So for now vm_token must also be held.
+ *
  * No other requirements.
  */
 void
@@ -1772,7 +1775,10 @@ vm_page_set_validclean(vm_page_t m, int base, int size)
 /*
  * Set valid & dirty.  Used by buwrite()
  *
- * Page must be busied?
+ * WARNING: Page must be busied?  But vfs_dirty_one_page() will
+ *	    call this function in buwrite() so for now vm_token must
+ * 	    be held.
+ *
  * No other requirements.
  */
 void
