@@ -294,7 +294,7 @@
 #endif
 
 /*
- * A convenient constructor macro, GCC 3.4.0 added priority support to
+ * A convenient constructor macro, GCC 4.3.0 added priority support to
  * constructors, provide a compatible interface for both.
  */
 #if __GNUC_PREREQ__(4, 3)
