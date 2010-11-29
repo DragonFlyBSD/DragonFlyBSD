@@ -96,7 +96,7 @@ typedef struct dm_table_head {
 
 	struct lock   table_mtx;
 
-	uint32_t io_cnt;
+	int	 io_cnt;
 } dm_table_head_t;
 
 #define MAX_DEV_NAME 32

@@ -73,7 +73,7 @@ dm_table_busy(dm_table_head_t * head, uint8_t table_id)
 	else
 		id = 1 - head->cur_active_table;
 
-	head->io_cnt++;
+	atomic_add_int(&head->io_cnt, 1);
 
 	return id;
 }
@@ -85,7 +85,7 @@ dm_table_unbusy(dm_table_head_t * head)
 {
 	KKASSERT(head->io_cnt != 0);
 
-	--head->io_cnt;
+	atomic_subtract_int(&head->io_cnt, 1);
 
 	lockmgr(&head->table_mtx, LK_RELEASE);
 }
