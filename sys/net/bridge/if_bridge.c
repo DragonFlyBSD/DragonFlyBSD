@@ -2184,6 +2184,18 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 		 */
 		KASSERT(bifp->if_bridge == NULL,
 			("loop created in bridge_input"));
+		if (pfil_member != 0) {
+			if (inet_pfil_hook.ph_hashooks > 0
+#ifdef INET6
+			    || inet6_pfil_hook.ph_hashooks > 0
+#endif
+			) {
+				if (bridge_pfil(&m, NULL, ifp, PFIL_IN) != 0)
+					goto out;
+				if (m == NULL)
+					goto out;
+			}
+		}
 		new_ifp = bifp;
 		goto out;
 	}
