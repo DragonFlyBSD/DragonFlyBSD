@@ -202,6 +202,12 @@ int	kvasnrprintf (char **, size_t, int, const char *,
 int     kvsprintf (char *buf, const char *,
 			__va_list) __printflike(2, 0);
 int	ttyprintf (struct tty *, const char *, ...) __printflike(2, 3);
+void	hexdump (const void *ptr, int length, const char *hdr, int flags);
+#define	HD_COLUMN_MASK	0xff
+#define	HD_DELIM_MASK	0xff00
+#define	HD_OMIT_COUNT	(1 << 16)
+#define	HD_OMIT_HEX	(1 << 17)
+#define	HD_OMIT_CHARS	(1 << 18)
 int	ksscanf (const char *, char const *, ...) __scanflike(2, 3);
 int	kvsscanf (const char *, char const *, __va_list) __scanflike(2, 0);
 void	kvasfree(char **);
