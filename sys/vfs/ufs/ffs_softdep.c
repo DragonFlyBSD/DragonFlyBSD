@@ -529,18 +529,30 @@ static int stat_dir_entry;	/* bufs redirtied as dir entry cannot write */
 #ifdef DEBUG
 #include <vm/vm.h>
 #include <sys/sysctl.h>
-SYSCTL_INT(_debug, OID_AUTO, max_softdeps, CTLFLAG_RW, &max_softdeps, 0, "");
-SYSCTL_INT(_debug, OID_AUTO, tickdelay, CTLFLAG_RW, &tickdelay, 0, "");
-SYSCTL_INT(_debug, OID_AUTO, worklist_push, CTLFLAG_RW, &stat_worklist_push, 0,"");
-SYSCTL_INT(_debug, OID_AUTO, blk_limit_push, CTLFLAG_RW, &stat_blk_limit_push, 0,"");
-SYSCTL_INT(_debug, OID_AUTO, ino_limit_push, CTLFLAG_RW, &stat_ino_limit_push, 0,"");
-SYSCTL_INT(_debug, OID_AUTO, blk_limit_hit, CTLFLAG_RW, &stat_blk_limit_hit, 0, "");
-SYSCTL_INT(_debug, OID_AUTO, ino_limit_hit, CTLFLAG_RW, &stat_ino_limit_hit, 0, "");
-SYSCTL_INT(_debug, OID_AUTO, sync_limit_hit, CTLFLAG_RW, &stat_sync_limit_hit, 0, "");
-SYSCTL_INT(_debug, OID_AUTO, indir_blk_ptrs, CTLFLAG_RW, &stat_indir_blk_ptrs, 0, "");
-SYSCTL_INT(_debug, OID_AUTO, inode_bitmap, CTLFLAG_RW, &stat_inode_bitmap, 0, "");
-SYSCTL_INT(_debug, OID_AUTO, direct_blk_ptrs, CTLFLAG_RW, &stat_direct_blk_ptrs, 0, "");
-SYSCTL_INT(_debug, OID_AUTO, dir_entry, CTLFLAG_RW, &stat_dir_entry, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, max_softdeps, CTLFLAG_RW, &max_softdeps, 0,
+    "Maximum soft dependencies before slowdown occurs");
+SYSCTL_INT(_debug, OID_AUTO, tickdelay, CTLFLAG_RW, &tickdelay, 0,
+    "Ticks to delay before allocating during slowdown");
+SYSCTL_INT(_debug, OID_AUTO, worklist_push, CTLFLAG_RW, &stat_worklist_push, 0,
+    "Number of worklist cleanups");
+SYSCTL_INT(_debug, OID_AUTO, blk_limit_push, CTLFLAG_RW, &stat_blk_limit_push, 0,
+    "Number of times block limit neared");
+SYSCTL_INT(_debug, OID_AUTO, ino_limit_push, CTLFLAG_RW, &stat_ino_limit_push, 0,
+    "Number of times inode limit neared");
+SYSCTL_INT(_debug, OID_AUTO, blk_limit_hit, CTLFLAG_RW, &stat_blk_limit_hit, 0,
+    "Number of times block slowdown imposed");
+SYSCTL_INT(_debug, OID_AUTO, ino_limit_hit, CTLFLAG_RW, &stat_ino_limit_hit, 0,
+    "Number of times inode slowdown imposed ");
+SYSCTL_INT(_debug, OID_AUTO, sync_limit_hit, CTLFLAG_RW, &stat_sync_limit_hit, 0,
+    "Number of synchronous slowdowns imposed");
+SYSCTL_INT(_debug, OID_AUTO, indir_blk_ptrs, CTLFLAG_RW, &stat_indir_blk_ptrs, 0,
+    "Bufs redirtied as indir ptrs not written");
+SYSCTL_INT(_debug, OID_AUTO, inode_bitmap, CTLFLAG_RW, &stat_inode_bitmap, 0,
+    "Bufs redirtied as inode bitmap not written");
+SYSCTL_INT(_debug, OID_AUTO, direct_blk_ptrs, CTLFLAG_RW, &stat_direct_blk_ptrs, 0,
+    "Bufs redirtied as direct ptrs not written");
+SYSCTL_INT(_debug, OID_AUTO, dir_entry, CTLFLAG_RW, &stat_dir_entry, 0,
+    "Bufs redirtied as dir entry cannot write");
 #endif /* DEBUG */
 
 /*

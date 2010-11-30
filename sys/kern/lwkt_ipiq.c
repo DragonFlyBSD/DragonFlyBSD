@@ -83,12 +83,18 @@ static int	panic_ipiq_count = 100;
 #endif
 
 #ifdef SMP
-SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_count, CTLFLAG_RW, &ipiq_count, 0, "");
-SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_fifofull, CTLFLAG_RW, &ipiq_fifofull, 0, "");
-SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_avoided, CTLFLAG_RW, &ipiq_avoided, 0, "");
-SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_passive, CTLFLAG_RW, &ipiq_passive, 0, "");
-SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_cscount, CTLFLAG_RW, &ipiq_cscount, 0, "");
-SYSCTL_INT(_lwkt, OID_AUTO, ipiq_optimized, CTLFLAG_RW, &ipiq_optimized, 0, "");
+SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_count, CTLFLAG_RW, &ipiq_count, 0,
+    "Number of IPI's sent");
+SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_fifofull, CTLFLAG_RW, &ipiq_fifofull, 0,
+    "Number of fifo full conditions detected");
+SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_avoided, CTLFLAG_RW, &ipiq_avoided, 0,
+    "Number of IPI's avoided by interlock with target cpu");
+SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_passive, CTLFLAG_RW, &ipiq_passive, 0,
+    "Number of passive IPI messages sent");
+SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_cscount, CTLFLAG_RW, &ipiq_cscount, 0,
+    "Number of cpu synchronizations");
+SYSCTL_INT(_lwkt, OID_AUTO, ipiq_optimized, CTLFLAG_RW, &ipiq_optimized, 0,
+    "");
 #ifdef PANIC_DEBUG
 SYSCTL_INT(_lwkt, OID_AUTO, panic_ipiq_cpu, CTLFLAG_RW, &panic_ipiq_cpu, 0, "");
 SYSCTL_INT(_lwkt, OID_AUTO, panic_ipiq_count, CTLFLAG_RW, &panic_ipiq_count, 0, "");

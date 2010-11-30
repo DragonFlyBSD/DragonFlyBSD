@@ -1312,7 +1312,8 @@ static const u_long	ncr_version = NCR_VERSION	* 11
 #ifdef _KERNEL
 
 static int ncr_debug = SCSI_NCR_DEBUG;
-SYSCTL_INT(_debug, OID_AUTO, ncr_debug, CTLFLAG_RW, &ncr_debug, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, ncr_debug, CTLFLAG_RW, &ncr_debug, 0,
+    "Driver debug flags");
 
 static int ncr_cache; /* to be aligned _NOT_ static */
 

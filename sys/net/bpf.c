@@ -99,10 +99,10 @@ DEVFS_DECLARE_CLONE_BITMAP(bpf);
  */
 static int bpf_bufsize = BPF_DEFAULTBUFSIZE;
 SYSCTL_INT(_debug, OID_AUTO, bpf_bufsize, CTLFLAG_RW,
-	   &bpf_bufsize, 0, "");
+   &bpf_bufsize, 0, "Current size of bpf buffer");
 int bpf_maxbufsize = BPF_MAXBUFSIZE;
 SYSCTL_INT(_debug, OID_AUTO, bpf_maxbufsize, CTLFLAG_RW,
-	   &bpf_maxbufsize, 0, "");
+   &bpf_maxbufsize, 0, "Maximum size of bpf buffer");
 
 /*
  *  bpf_iflist is the list of interfaces; each corresponds to an ifnet

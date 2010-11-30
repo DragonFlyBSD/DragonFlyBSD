@@ -151,25 +151,33 @@ static struct spinlock		ncspin;
  *	have a namecache record, even if it does have one.
  */
 static int	ncvp_debug;
-SYSCTL_INT(_debug, OID_AUTO, ncvp_debug, CTLFLAG_RW, &ncvp_debug, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, ncvp_debug, CTLFLAG_RW, &ncvp_debug, 0,
+    "Namecache debug level (0-3)");
 
 static u_long	nchash;			/* size of hash table */
-SYSCTL_ULONG(_debug, OID_AUTO, nchash, CTLFLAG_RD, &nchash, 0, "");
+SYSCTL_ULONG(_debug, OID_AUTO, nchash, CTLFLAG_RD, &nchash, 0,
+    "Size of namecache hash table");
 
 static int	ncnegfactor = 16;	/* ratio of negative entries */
-SYSCTL_INT(_debug, OID_AUTO, ncnegfactor, CTLFLAG_RW, &ncnegfactor, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, ncnegfactor, CTLFLAG_RW, &ncnegfactor, 0,
+    "Ratio of namecache negative entries");
 
 static int	nclockwarn;		/* warn on locked entries in ticks */
-SYSCTL_INT(_debug, OID_AUTO, nclockwarn, CTLFLAG_RW, &nclockwarn, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, nclockwarn, CTLFLAG_RW, &nclockwarn, 0,
+    "Warn on locked namecache entries in ticks");
 
 static int	numdefered;		/* number of cache entries allocated */
-SYSCTL_INT(_debug, OID_AUTO, numdefered, CTLFLAG_RD, &numdefered, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, numdefered, CTLFLAG_RD, &numdefered, 0,
+    "Number of cache entries allocated");
 
 static int	ncposlimit;		/* number of cache entries allocated */
-SYSCTL_INT(_debug, OID_AUTO, ncposlimit, CTLFLAG_RW, &ncposlimit, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, ncposlimit, CTLFLAG_RW, &ncposlimit, 0,
+    "Number of cache entries allocated");
 
-SYSCTL_INT(_debug, OID_AUTO, vnsize, CTLFLAG_RD, 0, sizeof(struct vnode), "");
-SYSCTL_INT(_debug, OID_AUTO, ncsize, CTLFLAG_RD, 0, sizeof(struct namecache), "");
+SYSCTL_INT(_debug, OID_AUTO, vnsize, CTLFLAG_RD, 0, sizeof(struct vnode),
+    "sizeof(struct vnode)");
+SYSCTL_INT(_debug, OID_AUTO, ncsize, CTLFLAG_RD, 0, sizeof(struct namecache),
+    "sizeof(struct namecache)");
 
 int cache_mpsafe = 1;
 SYSCTL_INT(_vfs, OID_AUTO, cache_mpsafe, CTLFLAG_RW, &cache_mpsafe, 0, "");
@@ -3003,7 +3011,8 @@ cache_purgevfs(struct mount *mp)
 #endif
 
 static int disablecwd;
-SYSCTL_INT(_debug, OID_AUTO, disablecwd, CTLFLAG_RW, &disablecwd, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, disablecwd, CTLFLAG_RW, &disablecwd, 0,
+    "Disable getcwd");
 
 static u_long numcwdcalls; STATNODE(CTLFLAG_RD, numcwdcalls, &numcwdcalls);
 static u_long numcwdfail1; STATNODE(CTLFLAG_RD, numcwdfail1, &numcwdfail1);
@@ -3154,7 +3163,8 @@ done:
 
 static int disablefullpath;
 SYSCTL_INT(_debug, OID_AUTO, disablefullpath, CTLFLAG_RW,
-    &disablefullpath, 0, "");
+    &disablefullpath, 0,
+    "Disable fullpath lookups");
 
 STATNODE(numfullpathcalls);
 STATNODE(numfullpathfail1);

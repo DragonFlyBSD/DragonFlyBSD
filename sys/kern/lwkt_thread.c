@@ -114,24 +114,30 @@ extern void cpu_idle_restore(void);
 TUNABLE_INT("lwkt.use_spin_port", &lwkt_use_spin_port);
 
 #ifdef	INVARIANTS
-SYSCTL_INT(_lwkt, OID_AUTO, panic_on_cscount, CTLFLAG_RW, &panic_on_cscount, 0, "");
+SYSCTL_INT(_lwkt, OID_AUTO, panic_on_cscount, CTLFLAG_RW, &panic_on_cscount, 0,
+    "Panic if attempting to switch lwkt's while mastering cpusync");
 #endif
-SYSCTL_QUAD(_lwkt, OID_AUTO, switch_count, CTLFLAG_RW, &switch_count, 0, "");
+SYSCTL_QUAD(_lwkt, OID_AUTO, switch_count, CTLFLAG_RW, &switch_count, 0,
+    "Number of switched threads");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_hit, CTLFLAG_RW, &preempt_hit, 0, 
-	    "Successful preemption events");
+    "Successful preemption events");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_miss, CTLFLAG_RW, &preempt_miss, 0, 
-	    "Failed preemption events");
-SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_weird, CTLFLAG_RW, &preempt_weird, 0, "");
+    "Failed preemption events");
+SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_weird, CTLFLAG_RW, &preempt_weird, 0,
+    "Number of preempted threads.");
 #ifdef	INVARIANTS
 SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count, CTLFLAG_RW,
 	&token_contention_count, 0, "spinning due to token contention");
 #endif
 static int fairq_enable = 1;
-SYSCTL_INT(_lwkt, OID_AUTO, fairq_enable, CTLFLAG_RW, &fairq_enable, 0, "");
+SYSCTL_INT(_lwkt, OID_AUTO, fairq_enable, CTLFLAG_RW, &fairq_enable, 0,
+    "Turn on fairq priority accumulators");
 static int user_pri_sched = 0;
-SYSCTL_INT(_lwkt, OID_AUTO, user_pri_sched, CTLFLAG_RW, &user_pri_sched, 0, "");
+SYSCTL_INT(_lwkt, OID_AUTO, user_pri_sched, CTLFLAG_RW, &user_pri_sched, 0,
+    "");
 static int preempt_enable = 1;
-SYSCTL_INT(_lwkt, OID_AUTO, preempt_enable, CTLFLAG_RW, &preempt_enable, 0, "");
+SYSCTL_INT(_lwkt, OID_AUTO, preempt_enable, CTLFLAG_RW, &preempt_enable, 0,
+    "Enable preemption");
 
 
 /*

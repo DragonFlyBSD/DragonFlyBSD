@@ -159,7 +159,8 @@ static volatile int bsd4_scancpu;
 static struct spinlock bsd4_spin;
 static struct usched_bsd4_pcpu bsd4_pcpu[MAXCPU];
 
-SYSCTL_INT(_debug, OID_AUTO, bsd4_runqcount, CTLFLAG_RD, &bsd4_runqcount, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, bsd4_runqcount, CTLFLAG_RD, &bsd4_runqcount, 0,
+    "Number of run queues");
 #ifdef INVARIANTS
 static int usched_nonoptimal;
 SYSCTL_INT(_debug, OID_AUTO, usched_nonoptimal, CTLFLAG_RW,
@@ -169,7 +170,8 @@ SYSCTL_INT(_debug, OID_AUTO, usched_optimal, CTLFLAG_RW,
         &usched_optimal, 0, "acquire_curproc() was optimal");
 #endif
 static int usched_debug = -1;
-SYSCTL_INT(_debug, OID_AUTO, scdebug, CTLFLAG_RW, &usched_debug, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, scdebug, CTLFLAG_RW, &usched_debug, 0,
+    "Print debug information for this pid");
 #ifdef SMP
 static int remote_resched_nonaffinity;
 static int remote_resched_affinity;

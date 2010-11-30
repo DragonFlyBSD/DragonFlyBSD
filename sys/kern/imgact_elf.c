@@ -88,7 +88,8 @@ static int elf_trace = 0;
 SYSCTL_INT(_debug, OID_AUTO, elf_trace, CTLFLAG_RW, &elf_trace, 0, "");
 static int elf_legacy_coredump = 0;
 SYSCTL_INT(_debug, OID_AUTO, elf_legacy_coredump, CTLFLAG_RW,
-    &elf_legacy_coredump, 0, "");
+    &elf_legacy_coredump, 0,
+    "Do not dump inaccessible mappings, legacy coredump mode");
 
 static int dragonfly_match_abi_note(const Elf_Note *);
 static int freebsd_match_abi_note(const Elf_Note *);

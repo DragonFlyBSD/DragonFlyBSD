@@ -115,7 +115,8 @@ static void vm86_clear_timer_fault(void);
 static int vm86_blew_up_timer;
 
 static int timer_warn = 1;
-SYSCTL_INT(_debug, OID_AUTO, timer_warn, CTLFLAG_RW, &timer_warn, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, timer_warn, CTLFLAG_RW, &timer_warn, 0,
+    "Warn if BIOS has played with the 8254 timer");
 
 static __inline caddr_t
 MAKE_ADDR(u_short sel, u_short off)

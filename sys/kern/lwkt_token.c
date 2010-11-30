@@ -81,10 +81,6 @@
 #endif
 #define LWKT_MASK_POOL_TOKENS	(LWKT_NUM_POOL_TOKENS - 1)
 
-#ifdef INVARIANTS
-static int token_debug = 0;
-#endif
-
 static lwkt_token	pool_tokens[LWKT_NUM_POOL_TOKENS];
 
 #define TOKEN_STRING	"REF=%p TOK=%p TD=%p"
@@ -110,10 +106,6 @@ KTR_INFO(KTR_TOKENS, tokens, contention_stop, 7, UNCONTENDED_STRING, sizeof(void
 #define logtoken(name, ref)						\
 	KTR_LOG(tokens_ ## name, ref, ref->tr_tok, curthread)
 
-#ifdef INVARIANTS
-SYSCTL_INT(_lwkt, OID_AUTO, token_debug, CTLFLAG_RW, &token_debug, 0, "");
-#endif
-
 /*
  * Global tokens.  These replace the MP lock for major subsystem locking.
  * These tokens are initially used to lockup both global and individual
@@ -138,46 +130,46 @@ struct lwkt_token tty_token = LWKT_TOKEN_UP_INITIALIZER(tty_token);
 struct lwkt_token vnode_token = LWKT_TOKEN_UP_INITIALIZER(vnode_token);
 struct lwkt_token vmobj_token = LWKT_TOKEN_UP_INITIALIZER(vmobj_token);
 
-SYSCTL_INT(_lwkt, OID_AUTO, pmap_mpsafe,
-	   CTLFLAG_RW, &pmap_token.t_flags, 0, "");
-SYSCTL_INT(_lwkt, OID_AUTO, dev_mpsafe,
-	   CTLFLAG_RW, &dev_token.t_flags, 0, "");
-SYSCTL_INT(_lwkt, OID_AUTO, vm_mpsafe,
-	   CTLFLAG_RW, &vm_token.t_flags, 0, "");
-SYSCTL_INT(_lwkt, OID_AUTO, vmspace_mpsafe,
-	   CTLFLAG_RW, &vmspace_token.t_flags, 0, "");
-SYSCTL_INT(_lwkt, OID_AUTO, kvm_mpsafe,
-	   CTLFLAG_RW, &kvm_token.t_flags, 0, "");
-SYSCTL_INT(_lwkt, OID_AUTO, proc_mpsafe,
-	   CTLFLAG_RW, &proc_token.t_flags, 0, "");
-SYSCTL_INT(_lwkt, OID_AUTO, tty_mpsafe,
-	   CTLFLAG_RW, &tty_token.t_flags, 0, "");
-SYSCTL_INT(_lwkt, OID_AUTO, vnode_mpsafe,
-	   CTLFLAG_RW, &vnode_token.t_flags, 0, "");
-SYSCTL_INT(_lwkt, OID_AUTO, vmobj_mpsafe,
-	   CTLFLAG_RW, &vmobj_token.t_flags, 0, "");
+SYSCTL_INT(_lwkt, OID_AUTO, pmap_mpsafe, CTLFLAG_RW,
+    &pmap_token.t_flags, 0, "Require MP lock for pmap_token");
+SYSCTL_INT(_lwkt, OID_AUTO, dev_mpsafe, CTLFLAG_RW,
+    &dev_token.t_flags, 0, "Require MP lock for dev_token");
+SYSCTL_INT(_lwkt, OID_AUTO, vm_mpsafe, CTLFLAG_RW,
+    &vm_token.t_flags, 0, "Require MP lock for vm_token");
+SYSCTL_INT(_lwkt, OID_AUTO, vmspace_mpsafe, CTLFLAG_RW,
+    &vmspace_token.t_flags, 0, "Require MP lock for vmspace_token");
+SYSCTL_INT(_lwkt, OID_AUTO, kvm_mpsafe, CTLFLAG_RW,
+    &kvm_token.t_flags, 0, "Require MP lock for kvm_token");
+SYSCTL_INT(_lwkt, OID_AUTO, proc_mpsafe, CTLFLAG_RW,
+    &proc_token.t_flags, 0, "Require MP lock for proc_token");
+SYSCTL_INT(_lwkt, OID_AUTO, tty_mpsafe, CTLFLAG_RW,
+    &tty_token.t_flags, 0, "Require MP lock for tty_token");
+SYSCTL_INT(_lwkt, OID_AUTO, vnode_mpsafe, CTLFLAG_RW,
+    &vnode_token.t_flags, 0, "Require MP lock for vnode_token");
+SYSCTL_INT(_lwkt, OID_AUTO, vmobj_mpsafe, CTLFLAG_RW,
+    &vmobj_token.t_flags, 0, "Require MP lock for vmobj_token");
 
 /*
  * The collision count is bumped every time the LWKT scheduler fails
  * to acquire needed tokens in addition to a normal lwkt_gettoken()
  * stall.
  */
-SYSCTL_LONG(_lwkt, OID_AUTO, pmap_collisions,
-	    CTLFLAG_RW, &pmap_token.t_collisions, 0, "");
-SYSCTL_LONG(_lwkt, OID_AUTO, dev_collisions,
-	    CTLFLAG_RW, &dev_token.t_collisions, 0, "");
-SYSCTL_LONG(_lwkt, OID_AUTO, vm_collisions,
-	    CTLFLAG_RW, &vm_token.t_collisions, 0, "");
-SYSCTL_LONG(_lwkt, OID_AUTO, vmspace_collisions,
-	    CTLFLAG_RW, &vmspace_token.t_collisions, 0, "");
-SYSCTL_LONG(_lwkt, OID_AUTO, kvm_collisions,
-	    CTLFLAG_RW, &kvm_token.t_collisions, 0, "");
-SYSCTL_LONG(_lwkt, OID_AUTO, proc_collisions,
-	    CTLFLAG_RW, &proc_token.t_collisions, 0, "");
-SYSCTL_LONG(_lwkt, OID_AUTO, tty_collisions,
-	    CTLFLAG_RW, &tty_token.t_collisions, 0, "");
-SYSCTL_LONG(_lwkt, OID_AUTO, vnode_collisions,
-	    CTLFLAG_RW, &vnode_token.t_collisions, 0, "");
+SYSCTL_LONG(_lwkt, OID_AUTO, pmap_collisions, CTLFLAG_RW,
+    &pmap_token.t_collisions, 0, "Collision counter of pmap_token");
+SYSCTL_LONG(_lwkt, OID_AUTO, dev_collisions, CTLFLAG_RW,
+    &dev_token.t_collisions, 0, "Collision counter of dev_token");
+SYSCTL_LONG(_lwkt, OID_AUTO, vm_collisions, CTLFLAG_RW,
+    &vm_token.t_collisions, 0, "Collision counter of vm_token");
+SYSCTL_LONG(_lwkt, OID_AUTO, vmspace_collisions, CTLFLAG_RW,
+    &vmspace_token.t_collisions, 0, "Collision counter of vmspace_token");
+SYSCTL_LONG(_lwkt, OID_AUTO, kvm_collisions, CTLFLAG_RW,
+    &kvm_token.t_collisions, 0, "Collision counter of kvm_token");
+SYSCTL_LONG(_lwkt, OID_AUTO, proc_collisions, CTLFLAG_RW,
+    &proc_token.t_collisions, 0, "Collision counter of proc_token");
+SYSCTL_LONG(_lwkt, OID_AUTO, tty_collisions, CTLFLAG_RW,
+    &tty_token.t_collisions, 0, "Collision counter of tty_token");
+SYSCTL_LONG(_lwkt, OID_AUTO, vnode_collisions, CTLFLAG_RW,
+    &vnode_token.t_collisions, 0, "Collision counter of vnode_token");
 
 /*
  * Return a pool token given an address

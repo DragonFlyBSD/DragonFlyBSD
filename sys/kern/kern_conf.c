@@ -53,10 +53,9 @@
 
 MALLOC_DEFINE(M_DEVT, "cdev_t", "dev_t storage");
 
-static int free_devt;
-SYSCTL_INT(_debug, OID_AUTO, free_devt, CTLFLAG_RW, &free_devt, 0, "");
 int dev_ref_debug = 0;
-SYSCTL_INT(_debug, OID_AUTO, dev_refs, CTLFLAG_RW, &dev_ref_debug, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, dev_refs, CTLFLAG_RW, &dev_ref_debug, 0,
+    "Toggle device reference debug output");
 
 /*
  * cdev_t and u_dev_t primitives.  Note that the major number is always

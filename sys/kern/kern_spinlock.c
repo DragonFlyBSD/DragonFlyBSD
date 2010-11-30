@@ -83,15 +83,18 @@ static int spin_lock_test_mode;
 
 static int64_t spinlocks_contested1;
 SYSCTL_QUAD(_debug, OID_AUTO, spinlocks_contested1, CTLFLAG_RD,
-	    &spinlocks_contested1, 0, "");
+    &spinlocks_contested1, 0,
+    "Spinlock contention count due to collisions with exclusive lock holders");
 
 static int64_t spinlocks_contested2;
 SYSCTL_QUAD(_debug, OID_AUTO, spinlocks_contested2, CTLFLAG_RD,
-	    &spinlocks_contested2, 0, "");
+    &spinlocks_contested2, 0,
+    "Serious spinlock contention count");
 
 static int spinlocks_backoff_limit = BACKOFF_LIMIT;
 SYSCTL_INT(_debug, OID_AUTO, spinlocks_bolim, CTLFLAG_RW,
-	   &spinlocks_backoff_limit, 0, "");
+    &spinlocks_backoff_limit, 0,
+    "Contested spinlock backoff limit");
 
 struct exponential_backoff {
 	int backoff;
@@ -236,7 +239,8 @@ exponential_backoff(struct exponential_backoff *bo)
 #ifdef INVARIANTS
 
 static int spin_test_count = 10000000;
-SYSCTL_INT(_debug, OID_AUTO, spin_test_count, CTLFLAG_RW, &spin_test_count, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, spin_test_count, CTLFLAG_RW, &spin_test_count, 0,
+    "Number of iterations to use for spinlock wait code test");
 
 static int
 sysctl_spin_lock_test(SYSCTL_HANDLER_ARGS)

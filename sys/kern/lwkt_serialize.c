@@ -104,16 +104,17 @@ static void lwkt_serialize_adaptive_sleep(void *bo);
 
 static int slz_backoff_limit = 128;
 SYSCTL_INT(_debug, OID_AUTO, serialize_bolimit, CTLFLAG_RW,
-	   &slz_backoff_limit, 0, "");
+    &slz_backoff_limit, 0, "Backoff limit");
 
 static int slz_backoff_shift = 1;
 SYSCTL_INT(_debug, OID_AUTO, serialize_boshift, CTLFLAG_RW,
-	   &slz_backoff_shift, 0, "");
+    &slz_backoff_shift, 0, "Backoff shift");
 
 static int slz_backoff_round;
 TUNABLE_INT("debug.serialize_boround", &slz_backoff_round);
 SYSCTL_INT(_debug, OID_AUTO, serialize_boround, CTLFLAG_RW,
-	   &slz_backoff_round, 0, "");
+    &slz_backoff_round, 0,
+    "Backoff rounding");
 #endif	/* SMP */
 
 void
