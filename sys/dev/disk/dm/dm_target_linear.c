@@ -53,7 +53,7 @@ MALLOC_DEFINE(M_DMLINEAR, "dm_linear", "Device Mapper Target Linear");
  * @argv[0] is name,
  * @argv[1] is physical data offset.
  */
-int
+static int
 dm_target_linear_init(dm_dev_t * dmv, void **target_config, char *params)
 {
 	dm_target_linear_config_t *tlc;
@@ -106,7 +106,7 @@ dm_target_linear_init(dm_dev_t * dmv, void **target_config, char *params)
  * specific. When dm_table_status_ioctl is called with flag
  * DM_STATUS_TABLE_FLAG I have to sent params string back.
  */
-char *
+static char *
 dm_target_linear_status(void *target_config)
 {
 	dm_target_linear_config_t *tlc;
@@ -127,7 +127,7 @@ dm_target_linear_status(void *target_config)
 /*
  * Do IO operation, called from dmstrategy routine.
  */
-int
+static int
 dm_target_linear_strategy(dm_table_entry_t * table_en, struct buf * bp)
 {
 	dm_target_linear_config_t *tlc;
@@ -148,7 +148,7 @@ dm_target_linear_strategy(dm_table_entry_t * table_en, struct buf * bp)
 
 }
 
-int
+static int
 dm_target_linear_dump(dm_table_entry_t *table_en, void *data, size_t length, off_t offset)
 {
 	dm_target_linear_config_t *tlc;
@@ -167,7 +167,7 @@ dm_target_linear_dump(dm_table_entry_t *table_en, void *data, size_t length, off
 /*
  * Destroy target specific data. Decrement table pdevs.
  */
-int
+static int
 dm_target_linear_destroy(dm_table_entry_t * table_en)
 {
 	dm_target_linear_config_t *tlc;
@@ -195,7 +195,7 @@ dm_target_linear_destroy(dm_table_entry_t * table_en)
 	return 0;
 }
 /* Add this target pdev dependiences to prop_array_t */
-int
+static int
 dm_target_linear_deps(dm_table_entry_t * table_en, prop_array_t prop_array)
 {
 	dm_target_linear_config_t *tlc;
@@ -221,7 +221,7 @@ dm_target_linear_deps(dm_table_entry_t * table_en, prop_array_t prop_array)
  * Linear target doesn't need any upcall devices but other targets like
  * mirror, snapshot, multipath, stripe will use this functionality.
  */
-int
+static int
 dm_target_linear_upcall(dm_table_entry_t * table_en, struct buf * bp)
 {
 	return 0;
@@ -245,3 +245,48 @@ atoi64(const char *s)
 
 	return n;
 }
+
+static int
+dmtl_mod_handler(module_t mod, int type, void *unused)
+{
+	dm_target_t *dmt = NULL;
+	int err = 0;
+
+	switch(type) {
+	case MOD_LOAD:
+		if ((dmt = dm_target_lookup("linear")) != NULL) {
+			dm_target_unbusy(dmt);
+			return EEXIST;
+		}
+		dmt = dm_target_alloc("linear");
+		dmt->version[0] = 1;
+		dmt->version[1] = 0;
+		dmt->version[2] = 2;
+		strlcpy(dmt->name, "linear", DM_MAX_TYPE_NAME);
+		dmt->init = &dm_target_linear_init;
+		dmt->status = &dm_target_linear_status;
+		dmt->strategy = &dm_target_linear_strategy;
+		dmt->deps = &dm_target_linear_deps;
+		dmt->destroy = &dm_target_linear_destroy;
+		dmt->upcall = &dm_target_linear_upcall;
+		dmt->dump = &dm_target_linear_dump;
+
+		err = dm_target_insert(dmt);
+		if (err == 0)
+			kprintf("dm_target_linear: Successfully initialized\n");
+		break;
+
+	case MOD_UNLOAD:
+		err = dm_target_rem("linear");
+		if (err == 0)
+			kprintf("dm_target_linear: unloaded\n");
+		break;
+
+	default:
+		break;
+	}
+
+	return err;
+}
+
+DM_TARGET_MODULE(dm_target_linear, dmtl_mod_handler);

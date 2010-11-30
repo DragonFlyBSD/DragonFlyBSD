@@ -1824,7 +1824,6 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 			     KSTACK_PAGES * PAGE_SIZE - sizeof(struct pcb));
 	/* Ensure the stack is aligned to 16 bytes */
 	gd->gd_common_tss.tss_rsp0 &= ~(register_t)0xF;
-	gd->gd_rsp0 = gd->gd_common_tss.tss_rsp0;
 
 	/* double fault stack */
 	gd->gd_common_tss.tss_ist1 =
@@ -1877,7 +1876,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	thread0.td_pcb->pcb_flags = 0;
 	thread0.td_pcb->pcb_cr3 = KPML4phys;
 	thread0.td_pcb->pcb_ext = 0;
-	lwp0.lwp_md.md_regs = &proc0_tf;
+	lwp0.lwp_md.md_regs = &proc0_tf;	/* XXX needed? */
 
 	/* Location of kernel stack for locore */
 	return ((u_int64_t)thread0.td_pcb);

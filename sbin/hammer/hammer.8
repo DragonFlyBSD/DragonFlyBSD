@@ -897,6 +897,14 @@ dedup space savings.  Remember that this is an estimated number, in
 practice real dedup ratio will be slightly smaller because of
 .Nm HAMMER
 bigblock underflows, B-Tree locking issues and other factors.
+.Pp
+Note that deduplication currently works only on bulk data so if you
+try to run
+.Cm dedup-simulate
+or
+.Cm dedup
+commands on a PFS that contains metadata only (directory entries,
+softlinks) you will get a 0.00 dedup ratio.
 .\" ==== reblock* ====
 .It Cm reblock Ar filesystem Op Ar fill_percentage
 .It Cm reblock-btree Ar filesystem Op Ar fill_percentage

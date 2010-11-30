@@ -281,7 +281,7 @@ IDTVEC(prot)
 IDTVEC(fast_syscall)
 	swapgs
 	movq	%rsp,PCPU(scratch_rsp)
-	movq	PCPU(rsp0),%rsp
+	movq    PCPU(common_tss) + TSS_RSP0, %rsp
 	/* Now emulate a trapframe. Make the 8 byte alignment odd for call. */
 	subq	$TF_SIZE,%rsp
 	/* defer TF_RSP till we have a spare register */

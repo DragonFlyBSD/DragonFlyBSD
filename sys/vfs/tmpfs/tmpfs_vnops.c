@@ -427,7 +427,6 @@ tmpfs_read (struct vop_read_args *ap)
 	off_t base_offset;
 	size_t offset;
 	size_t len;
-	int got_mplock;
 	int error;
 
 	error = 0;
@@ -442,15 +441,6 @@ tmpfs_read (struct vop_read_args *ap)
 	if (vp->v_type != VREG)
 		return (EINVAL);
 
-#ifdef SMP
-	if(curthread->td_mpcount)
-		got_mplock = -1;
-	else
-		got_mplock = 0;
-#else
-		got_mplock = -1;
-#endif
-
 	while (uio->uio_resid > 0 && uio->uio_offset < node->tn_size) {
 		/*
 		 * Use buffer cache I/O (via tmpfs_strategy)
@@ -460,22 +450,12 @@ tmpfs_read (struct vop_read_args *ap)
 		bp = getcacheblk(vp, base_offset);
 		if (bp == NULL)
 		{
-			if (got_mplock == 0) {
-				got_mplock = 1;
-				get_mplock();
-			}
-
 			error = bread(vp, base_offset, BSIZE, &bp);
 			if (error) {
 				brelse(bp);
 				kprintf("tmpfs_read bread error %d\n", error);
 				break;
 			}
-		}
-
-		if (got_mplock == 0) {
-			got_mplock = 1;
-			get_mplock();
 		}
 
 		/*
@@ -494,9 +474,6 @@ tmpfs_read (struct vop_read_args *ap)
 			break;
 		}
 	}
-
-	if (got_mplock > 0)
-		rel_mplock();
 
 	TMPFS_NODE_LOCK(node);
 	node->tn_status |= TMPFS_NODE_ACCESSED;

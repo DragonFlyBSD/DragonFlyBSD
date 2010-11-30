@@ -46,9 +46,8 @@
  * b) Writers such as
  *    dm_dev_remove_ioctl, dm_dev_resume_ioctl, dm_table_clear_ioctl
  *
- * Writers can work with table_head only when there are no readers. I
- * use reference counting on io_cnt.
- *
+ * Writers can work with table_head only when there are no readers. We
+ * simply use shared/exclusive locking to ensure this.
  */
 
 static int dm_table_busy(dm_table_head_t *, uint8_t);
@@ -67,16 +66,15 @@ dm_table_busy(dm_table_head_t * head, uint8_t table_id)
 
 	id = 0;
 
-	lockmgr(&head->table_mtx, LK_EXCLUSIVE);
+	lockmgr(&head->table_mtx, LK_SHARED);
 
 	if (table_id == DM_TABLE_ACTIVE)
 		id = head->cur_active_table;
 	else
 		id = 1 - head->cur_active_table;
 
-	head->io_cnt++;
+	atomic_add_int(&head->io_cnt, 1);
 
-	lockmgr(&head->table_mtx, LK_RELEASE);
 	return id;
 }
 /*
@@ -87,10 +85,7 @@ dm_table_unbusy(dm_table_head_t * head)
 {
 	KKASSERT(head->io_cnt != 0);
 
-	lockmgr(&head->table_mtx, LK_EXCLUSIVE);
-
-	if (--head->io_cnt == 0)
-		cv_broadcast(&head->table_cv);
+	atomic_subtract_int(&head->io_cnt, 1);
 
 	lockmgr(&head->table_mtx, LK_RELEASE);
 }
@@ -107,7 +102,7 @@ dm_table_get_entry(dm_table_head_t * head, uint8_t table_id)
 	return &head->tables[id];
 }
 /*
- * Decrement io reference counter and wake up all callers, with table_head cv.
+ * Decrement io reference counter and release shared lock.
  */
 void
 dm_table_release(dm_table_head_t * head, uint8_t table_id)
@@ -122,9 +117,6 @@ dm_table_switch_tables(dm_table_head_t * head)
 {
 	lockmgr(&head->table_mtx, LK_EXCLUSIVE);
 
-	while (head->io_cnt != 0)
-		cv_wait(&head->table_cv, &head->table_mtx);
-
 	head->cur_active_table = 1 - head->cur_active_table;
 
 	lockmgr(&head->table_mtx, LK_RELEASE);
@@ -132,8 +124,6 @@ dm_table_switch_tables(dm_table_head_t * head)
 /*
  * Destroy all table data. This function can run when there are no
  * readers on table lists.
- *
- * XXX Is it ok to call kmem_free and potentialy VOP_CLOSE with held mutex ?xs
  */
 int
 dm_table_destroy(dm_table_head_t * head, uint8_t table_id)
@@ -145,9 +135,6 @@ dm_table_destroy(dm_table_head_t * head, uint8_t table_id)
 	lockmgr(&head->table_mtx, LK_EXCLUSIVE);
 
 	aprint_debug("dm_Table_destroy called with %d--%d\n", table_id, head->io_cnt);
-
-	while (head->io_cnt != 0)
-		cv_wait(&head->table_cv, &head->table_mtx);
 
 	if (table_id == DM_TABLE_ACTIVE)
 		id = head->cur_active_table;
@@ -247,7 +234,6 @@ dm_table_head_init(dm_table_head_t * head)
 	SLIST_INIT(&head->tables[1]);
 
 	lockinit(&head->table_mtx, "dmtbl", 0, LK_CANRECURSE);
-	cv_init(&head->table_cv, "dm_io");
 }
 /*
  * Destroy all variables in table_head
@@ -256,13 +242,10 @@ void
 dm_table_head_destroy(dm_table_head_t * head)
 {
 	KKASSERT(lockcount(&head->table_mtx) == 0);
-#if 0
-	KKASSERT(!cv_has_waiters(&head->table_cv));
-#endif
+
 	/* tables doens't exists when I call this routine, therefore it
 	 * doesn't make sense to have io_cnt != 0 */
 	KKASSERT(head->io_cnt == 0);
 
-	cv_destroy(&head->table_cv);
 	lockuninit(&head->table_mtx);
 }

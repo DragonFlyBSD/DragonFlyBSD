@@ -65,40 +65,7 @@ dm_target_unbusy(dm_target_t * target)
 	KKASSERT(target->ref_cnt > 0);
 	atomic_subtract_int(&target->ref_cnt, 1);
 }
-/*
- * Try to autoload target module if it was not found in current
- * target list.
- */
-dm_target_t *
-dm_target_autoload(const char *dm_target_name)
-{
-#if 0
-	char name[30];
-	u_int gen;
-	dm_target_t *dmt;
 
-	ksnprintf(name, sizeof(name), "dm_target_%s", dm_target_name);
-	name[29] = '\0';
-
-	do {
-		gen = module_gen;
-
-		/* Try to autoload target module */
-		lockmgr(&module_lock, LK_EXCLUSIVE);
-		(void) module_autoload(name, MODULE_CLASS_MISC);
-		lockmgr(&module_lock, LK_RELEASE);
-	} while (gen != module_gen);
-
-	lockmgr(&dm_target_mutex, LK_EXCLUSIVE);
-	dmt = dm_target_lookup_name(dm_target_name);
-	if (dmt != NULL)
-		dm_target_busy(dmt);
-	lockmgr(&dm_target_mutex, LK_RELEASE);
-
-	return dmt;
-#endif
-	return NULL;
-}
 /*
  * Lookup for target in global target list.
  */
@@ -129,17 +96,9 @@ static dm_target_t *
 dm_target_lookup_name(const char *dm_target_name)
 {
 	dm_target_t *dm_target;
-	int dlen;
-	int slen;
-
-	slen = strlen(dm_target_name) + 1;
 
 	TAILQ_FOREACH(dm_target, &dm_target_list, dm_target_next) {
-		dlen = strlen(dm_target->name) + 1;
-		if (dlen != slen)
-			continue;
-
-		if (strncmp(dm_target_name, dm_target->name, slen) == 0)
+		if (strcmp(dm_target_name, dm_target->name) == 0)
 			return dm_target;
 	}
 
@@ -272,63 +231,12 @@ dm_target_prop_list(void)
 
 	return target_array;
 }
+
 /* Initialize dm_target subsystem. */
 int
 dm_target_init(void)
 {
-	dm_target_t *dmt, *dmt3, *dmt5;
-	int r;
-
-	r = 0;
-
 	lockinit(&dm_target_mutex, "dmtrgt", 0, LK_CANRECURSE);
 
-	dmt = dm_target_alloc("linear");
-	dmt3 = dm_target_alloc("striped");
-	dmt5 = dm_target_alloc("crypt");
-
-	dmt->version[0] = 1;
-	dmt->version[1] = 0;
-	dmt->version[2] = 2;
-	strlcpy(dmt->name, "linear", DM_MAX_TYPE_NAME);
-	dmt->init = &dm_target_linear_init;
-	dmt->status = &dm_target_linear_status;
-	dmt->strategy = &dm_target_linear_strategy;
-	dmt->deps = &dm_target_linear_deps;
-	dmt->destroy = &dm_target_linear_destroy;
-	dmt->upcall = &dm_target_linear_upcall;
-	dmt->dump = &dm_target_linear_dump;
-
-	r = dm_target_insert(dmt);
-
-	dmt3->version[0] = 1;
-	dmt3->version[1] = 0;
-	dmt3->version[2] = 3;
-	strlcpy(dmt3->name, "striped", DM_MAX_TYPE_NAME);
-	dmt3->init = &dm_target_stripe_init;
-	dmt3->status = &dm_target_stripe_status;
-	dmt3->strategy = &dm_target_stripe_strategy;
-	dmt3->deps = &dm_target_stripe_deps;
-	dmt3->destroy = &dm_target_stripe_destroy;
-	dmt3->upcall = &dm_target_stripe_upcall;
-	dmt3->dump = &dm_target_stripe_dump;
-
-	r = dm_target_insert(dmt3);
-	
-	dmt5->version[0] = 1;
-	dmt5->version[1] = 6;
-	dmt5->version[2] = 0;
-	strlcpy(dmt5->name, "crypt", DM_MAX_TYPE_NAME);
-	dmt5->init = &dm_target_crypt_init;
-	dmt5->status = &dm_target_crypt_status;
-	dmt5->strategy = &dm_target_crypt_strategy;
-	dmt5->deps = &dm_target_crypt_deps;
-	dmt5->destroy = &dm_target_crypt_destroy;
-	dmt5->upcall = &dm_target_crypt_upcall;
-	dmt5->dump = &dm_target_crypt_dump;
-
-	r = dm_target_insert(dmt5);
-
-
-	return r;
+	return 0;
 }

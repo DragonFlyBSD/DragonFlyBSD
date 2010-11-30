@@ -34,9 +34,8 @@
 .\"
 .\"     @(#)tr.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/tr/tr.1,v 1.5.2.7 2002/07/29 12:59:33 tjr Exp $
-.\" $DragonFly: src/usr.bin/tr/tr.1,v 1.4 2008/05/02 02:05:07 swildner Exp $
 .\"
-.Dd October 11, 1997
+.Dd November 25, 2010
 .Dt TR 1
 .Os
 .Sh NAME
@@ -44,18 +43,18 @@
 .Nd translate characters
 .Sh SYNOPSIS
 .Nm
-.Op Fl csu
+.Op Fl Ccsu
 .Ar string1 string2
 .Nm
-.Op Fl cu
+.Op Fl Ccu
 .Fl d
 .Ar string1
 .Nm
-.Op Fl cu
+.Op Fl Ccu
 .Fl s
 .Ar string1
 .Nm
-.Op Fl cu
+.Op Fl Ccu
 .Fl ds
 .Ar string1 string2
 .Sh DESCRIPTION
@@ -66,10 +65,20 @@ or deletion of selected characters.
 .Pp
 The following options are available:
 .Bl -tag -width Ds
-.It Fl c
-Complements the set of characters in
+.It Fl C
+Complement the set of characters in
 .Ar string1 ,
-that is ``-c ab'' includes every character except for ``a'' and ``b''.
+that is
+.Dq "-C ab"
+includes every character except for
+.Dq a
+and
+.Dq b .
+.It Fl c
+Same as
+.Fl C
+but complement the set of byte values in
+.Ar string1 .
 .It Fl d
 The
 .Fl d
@@ -292,9 +301,9 @@ This implementation will not permit illegal syntax.
 .Sh STANDARDS
 The
 .Nm
-utility is expected to be
-.St -p1003.2
-compatible.
+utility conforms to
+.St -p1003.1-2001 .
+.Pp
 It should be noted that the feature wherein the last character of
 .Ar string2
 is duplicated if
@@ -307,5 +316,5 @@ the ``[#*]'' convention instead of relying on this behavior.
 The
 .Fl u
 option is an extension to the
-.St -p1003.2
+.St -p1003.1-2001
 standard.

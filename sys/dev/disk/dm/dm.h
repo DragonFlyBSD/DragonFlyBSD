@@ -95,9 +95,8 @@ typedef struct dm_table_head {
 	struct dm_table tables[2];
 
 	struct lock   table_mtx;
-	struct cv table_cv; /*IO waiting cv */
 
-	uint32_t io_cnt;
+	int	 io_cnt;
 } dm_table_head_t;
 
 #define MAX_DEV_NAME 32
@@ -261,8 +260,6 @@ struct cmd_function {
 
 /* device-mapper */
 void dmsetdiskinfo(struct disk *, dm_table_head_t *);
-prop_dictionary_t dmgetdiskinfo(struct disk *);
-void dmgetproperties(struct disk *, dm_table_head_t *);
 int dm_detach(dm_dev_t *);
 
 /* dm_ioctl.c */
@@ -285,7 +282,6 @@ int dm_table_status_ioctl(prop_dictionary_t);
 
 /* dm_target.c */
 dm_target_t* dm_target_alloc(const char *);
-dm_target_t* dm_target_autoload(const char *);
 int dm_target_destroy(void);
 int dm_target_insert(dm_target_t *);
 prop_array_t dm_target_prop_list(void);
@@ -299,40 +295,6 @@ int dm_target_init(void);
 
 #define DM_MAX_PARAMS_SIZE 1024
 
-/* dm_target_zero.c */
-int dm_target_zero_init(dm_dev_t *, void**,  char *);
-char * dm_target_zero_status(void *);
-int dm_target_zero_strategy(dm_table_entry_t *, struct buf *);
-int dm_target_zero_destroy(dm_table_entry_t *);
-int dm_target_zero_deps(dm_table_entry_t *, prop_array_t);
-int dm_target_zero_upcall(dm_table_entry_t *, struct buf *);
-
-/* dm_target_error.c */
-int dm_target_error_init(dm_dev_t *, void**, char *);
-char * dm_target_error_status(void *);
-int dm_target_error_strategy(dm_table_entry_t *, struct buf *);
-int dm_target_error_deps(dm_table_entry_t *, prop_array_t);
-int dm_target_error_destroy(dm_table_entry_t *);
-int dm_target_error_upcall(dm_table_entry_t *, struct buf *);
-
-/* dm_target_linear.c */
-int dm_target_linear_init(dm_dev_t *, void**, char *);
-char * dm_target_linear_status(void *);
-int dm_target_linear_strategy(dm_table_entry_t *, struct buf *);
-int dm_target_linear_deps(dm_table_entry_t *, prop_array_t);
-int dm_target_linear_destroy(dm_table_entry_t *);
-int dm_target_linear_upcall(dm_table_entry_t *, struct buf *);
-int dm_target_linear_dump(dm_table_entry_t *, void *, size_t, off_t);
-
-/* dm_target_crypt.c */
-int dm_target_crypt_init(dm_dev_t *, void**, char *);
-char * dm_target_crypt_status(void *);
-int dm_target_crypt_strategy(dm_table_entry_t *, struct buf *);
-int dm_target_crypt_deps(dm_table_entry_t *, prop_array_t);
-int dm_target_crypt_destroy(dm_table_entry_t *);
-int dm_target_crypt_upcall(dm_table_entry_t *, struct buf *);
-int dm_target_crypt_dump(dm_table_entry_t *, void *, size_t, off_t);
-
 /* Generic function used to convert char to string */
 uint64_t atoi64(const char *);
 
@@ -343,15 +305,6 @@ int dm_target_mirror_strategy(dm_table_entry_t *, struct buf *);
 int dm_target_mirror_deps(dm_table_entry_t *, prop_array_t);
 int dm_target_mirror_destroy(dm_table_entry_t *);
 int dm_target_mirror_upcall(dm_table_entry_t *, struct buf *);
-
-/* dm_target_stripe.c */
-int dm_target_stripe_init(dm_dev_t *, void**, char *);
-char * dm_target_stripe_status(void *);
-int dm_target_stripe_strategy(dm_table_entry_t *, struct buf *);
-int dm_target_stripe_deps(dm_table_entry_t *, prop_array_t);
-int dm_target_stripe_destroy(dm_table_entry_t *);
-int dm_target_stripe_upcall(dm_table_entry_t *, struct buf *);
-int dm_target_stripe_dump(dm_table_entry_t *, void *, size_t, off_t);
 
 /* dm_target_snapshot.c */
 int dm_target_snapshot_init(dm_dev_t *, void**, char *);
@@ -386,13 +339,12 @@ void dm_table_head_destroy(dm_table_head_t *);
 dm_dev_t* dm_dev_alloc(void);
 void dm_dev_busy(dm_dev_t *);
 int dm_dev_destroy(void);
-void disable_dev(dm_dev_t *);
 int dm_dev_free(dm_dev_t *);
 int dm_dev_init(void);
 int dm_dev_insert(dm_dev_t *);
 dm_dev_t* dm_dev_lookup(const char *, const char *, int);
 prop_array_t dm_dev_prop_list(void);
-dm_dev_t* dm_dev_rem(const char *, const char *, int);
+dm_dev_t* dm_dev_rem(dm_dev_t *, const char *, const char *, int);
 /*int dm_dev_test_minor(int);*/
 void dm_dev_unbusy(dm_dev_t *);
 
@@ -409,6 +361,14 @@ MALLOC_DECLARE(M_DM);
 #define aprint_debug(format, ...)	\
     do { if (dm_debug_level) kprintf(format, ## __VA_ARGS__); } while(0)
 #define aprint_normal	kprintf
+
+#define DM_TARGET_MODULE(name, evh)				\
+    static moduledata_t name##_mod = {				\
+	    #name,						\
+	    evh,						\
+	    NULL						\
+    };								\
+    DECLARE_MODULE(name, name##_mod, SI_SUB_DM_TARGETS, SI_ORDER_ANY)
 
 #endif /*_KERNEL*/
 

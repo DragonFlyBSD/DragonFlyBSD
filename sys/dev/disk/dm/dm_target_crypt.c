@@ -44,6 +44,7 @@
 #include <sys/globaldata.h>
 #include <sys/kerneldump.h>
 #include <sys/malloc.h>
+#include <sys/mpipe.h>
 #include <sys/md5.h>
 #include <sys/mutex2.h>
 #include <sys/vnode.h>
@@ -119,6 +120,13 @@ struct dmtc_dump_helper {
 	u_char space[65536];
 };
 
+#define DMTC_BUF_SIZE_WRITE \
+    MAXPHYS + sizeof(struct dmtc_helper) + \
+    MAXPHYS/DEV_BSIZE*(sizeof(struct cryptop) + sizeof(struct cryptodesc))
+#define DMTC_BUF_SIZE_READ \
+    sizeof(struct dmtc_helper) + \
+    MAXPHYS/DEV_BSIZE*(sizeof(struct cryptop) + sizeof(struct cryptodesc))
+
 static void dmtc_crypto_dispatch(void *arg);
 static void dmtc_crypto_dump_start(dm_target_crypt_config_t *priv,
 				struct dmtc_dump_helper *dump_helper);
@@ -148,6 +156,34 @@ struct objcache_malloc_args essiv_ivgen_malloc_args = {
 		2*sizeof(void *) + (sizeof(struct cryptodesc) +
 		sizeof(struct cryptop)), M_DMCRYPT };
 
+static struct malloc_pipe dmtc_read_mpipe;
+static struct malloc_pipe dmtc_write_mpipe;
+
+static void
+dmtc_init_mpipe(void)
+{
+	int nmax;
+
+	nmax = (physmem*5/1000*PAGE_SIZE)/(DMTC_BUF_SIZE_WRITE + DMTC_BUF_SIZE_READ) + 1;
+
+	if (nmax < 2)
+		nmax = 2;
+
+	kprintf("dm_target_crypt: Setting min/max mpipe buffers: %d/%d\n", 2, nmax);
+
+	mpipe_init(&dmtc_write_mpipe, M_DMCRYPT, DMTC_BUF_SIZE_WRITE,
+	    2, nmax, MPF_NOZERO, NULL);
+	mpipe_init(&dmtc_read_mpipe, M_DMCRYPT, DMTC_BUF_SIZE_READ,
+	    2, nmax, MPF_NOZERO, NULL);
+}
+
+static void
+dmtc_destroy_mpipe(void)
+{
+	mpipe_done(&dmtc_write_mpipe);
+	mpipe_done(&dmtc_read_mpipe);
+}
+
 /*
  * Overwrite private information (in buf) to avoid leaking it
  */
@@ -161,7 +197,7 @@ dmtc_crypto_clear(void *buf, size_t len)
 /*
  * ESSIV IV Generator Routines
  */
-static int 
+static int
 essiv_ivgen_ctor(struct target_crypt_config *priv, char *iv_hash, void **p_ivpriv)
 {
 	struct essiv_ivgen_priv *ivpriv;
@@ -405,63 +441,6 @@ geli_ivgen(dm_target_crypt_config_t *priv, u_int8_t *iv,
 }
 #endif
 
-#ifdef DM_TARGET_MODULE
-/*
- * Every target can be compiled directly to dm driver or as a
- * separate module this part of target is used for loading targets
- * to dm driver.
- * Target can be unloaded from kernel only if there are no users of
- * it e.g. there are no devices which uses that target.
- */
-#include <sys/kernel.h>
-#include <sys/module.h>
-
-static int
-dm_target_crypt_modcmd(modcmd_t cmd, void *arg)
-{
-	dm_target_t *dmt;
-	int r;
-	dmt = NULL;
-
-	switch (cmd) {
-	case MODULE_CMD_INIT:
-		if ((dmt = dm_target_lookup("crypt")) != NULL) {
-			dm_target_unbusy(dmt);
-			return EEXIST;
-		}
-		dmt = dm_target_alloc("crypt");
-
-		dmt->version[0] = 1;
-		dmt->version[1] = 6;
-		dmt->version[2] = 0;
-		strlcpy(dmt->name, "crypt", DM_MAX_TYPE_NAME);
-		dmt->init = &dm_target_crypt_init;
-		dmt->status = &dm_target_crypt_status;
-		dmt->strategy = &dm_target_crypt_strategy;
-		dmt->deps = &dm_target_crypt_deps;
-		dmt->destroy = &dm_target_crypt_destroy;
-		dmt->upcall = &dm_target_crypt_upcall;
-
-		r = dm_target_insert(dmt);
-
-		break;
-
-	case MODULE_CMD_FINI:
-		r = dm_target_rem("crypt");
-		break;
-
-	case MODULE_CMD_STAT:
-		return ENOTTY;
-
-	default:
-		return ENOTTY;
-	}
-
-	return r;
-}
-
-#endif
-
 /*
  * Init function called from dm_table_load_ioctl.
  * cryptsetup actually passes us this:
@@ -485,7 +464,7 @@ hex2key(char *hex, size_t key_len, u_int8_t *key)
 	return 0;
 }
 
-int
+static int
 dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
 {
 	dm_target_crypt_config_t *priv;
@@ -694,7 +673,7 @@ notsup:
 }
 
 /* Status routine called to get params string. */
-char *
+static char *
 dm_target_crypt_status(void *target_config)
 {
 	dm_target_crypt_config_t *priv;
@@ -711,7 +690,7 @@ dm_target_crypt_status(void *target_config)
 	return params;
 }
 
-int
+static int
 dm_target_crypt_destroy(dm_table_entry_t * table_en)
 {
 	dm_target_crypt_config_t *priv;
@@ -749,7 +728,7 @@ dm_target_crypt_destroy(dm_table_entry_t * table_en)
 	return 0;
 }
 
-int
+static int
 dm_target_crypt_deps(dm_table_entry_t * table_en, prop_array_t prop_array)
 {
 	dm_target_crypt_config_t *priv;
@@ -772,7 +751,7 @@ dm_target_crypt_deps(dm_table_entry_t * table_en, prop_array_t prop_array)
 }
 
 /* Unsupported for this target. */
-int
+static int
 dm_target_crypt_upcall(dm_table_entry_t * table_en, struct buf * bp)
 {
 	return 0;
@@ -802,7 +781,7 @@ dmtc_crypto_dispatch(void *arg)
 /*
  * Start IO operation, called from dmstrategy routine.
  */
-int
+static int
 dm_target_crypt_strategy(dm_table_entry_t *table_en, struct buf *bp)
 {
 	struct bio *bio;
@@ -915,8 +894,7 @@ dmtc_crypto_read_start(dm_target_crypt_config_t *priv, struct bio *bio)
 	} else
 #endif
 	{
-		space = kmalloc(sizeof(struct dmtc_helper) + sz,
-				M_DMCRYPT, M_WAITOK);
+		space = mpipe_alloc_waitok(&dmtc_read_mpipe);
 		dmtc = (struct dmtc_helper *)space;
 		dmtc->free_addr = space;
 		space += sizeof(struct dmtc_helper);
@@ -1033,7 +1011,7 @@ dmtc_crypto_cb_read_done(struct cryptop *crp)
 			       bio->bio_buf->b_bcount);
 		}
 #endif
-		kfree(dmtc->free_addr, M_DMCRYPT);
+		mpipe_free(&dmtc_read_mpipe, dmtc->free_addr);
 		obio = pop_bio(bio);
 		biodone(obio);
 	}
@@ -1069,8 +1047,7 @@ dmtc_crypto_write_start(dm_target_crypt_config_t *priv, struct bio *bio)
 	/*
 	 * For writes and reads with bogus page don't decrypt in place.
 	 */
-	space = kmalloc(sizeof(struct dmtc_helper) + sz + bytes,
-			M_DMCRYPT, M_WAITOK);
+	space = mpipe_alloc_waitok(&dmtc_write_mpipe);
 	dmtc = (struct dmtc_helper *)space;
 	dmtc->free_addr = space;
 	space += sizeof(struct dmtc_helper);
@@ -1178,7 +1155,7 @@ dmtc_crypto_cb_write_done(struct cryptop *crp)
 
 		if (bio->bio_buf->b_error) {
 			bio->bio_buf->b_flags |= B_ERROR;
-			kfree(dmtc->free_addr, M_DMCRYPT);
+			mpipe_free(&dmtc_write_mpipe, dmtc->free_addr);
 			obio = pop_bio(bio);
 			biodone(obio);
 		} else {
@@ -1202,7 +1179,7 @@ dmtc_bio_write_done(struct bio *bio)
 
 	dmtc = bio->bio_caller_info2.ptr;
 	bio->bio_buf->b_data = dmtc->orig_buf;
-	kfree(dmtc->free_addr, M_DMCRYPT);
+	mpipe_free(&dmtc_write_mpipe, dmtc->free_addr);
 	obio = pop_bio(bio);
 	biodone(obio);
 }
@@ -1214,7 +1191,7 @@ dmtc_bio_write_done(struct bio *bio)
 
 extern int tsleep_crypto_dump;
 
-int
+static int
 dm_target_crypt_dump(dm_table_entry_t *table_en, void *data, size_t length, off_t offset)
 {
 	static struct dmtc_dump_helper dump_helper;
@@ -1373,3 +1350,53 @@ dmtc_crypto_cb_dump_done(struct cryptop *crp)
 
 	return 0;
 }
+
+static int
+dmtc_mod_handler(module_t mod, int type, void *unused)
+{
+	dm_target_t *dmt = NULL;
+	int err = 0;
+
+	switch (type) {
+	case MOD_LOAD:
+		if ((dmt = dm_target_lookup("crypt")) != NULL) {
+			dm_target_unbusy(dmt);
+			return EEXIST;
+		}
+		dmt = dm_target_alloc("crypt");
+		dmt->version[0] = 1;
+		dmt->version[1] = 6;
+		dmt->version[2] = 0;
+		strlcpy(dmt->name, "crypt", DM_MAX_TYPE_NAME);
+		dmt->init = &dm_target_crypt_init;
+		dmt->status = &dm_target_crypt_status;
+		dmt->strategy = &dm_target_crypt_strategy;
+		dmt->deps = &dm_target_crypt_deps;
+		dmt->destroy = &dm_target_crypt_destroy;
+		dmt->upcall = &dm_target_crypt_upcall;
+		dmt->dump = &dm_target_crypt_dump;
+
+		dmtc_init_mpipe();
+
+		err = dm_target_insert(dmt);
+		if (err)
+			dmtc_destroy_mpipe();
+		else
+			kprintf("dm_target_crypt: Successfully initialized\n");
+		break;
+
+	case MOD_UNLOAD:
+		err = dm_target_rem("crypt");
+		if (err == 0)
+			dmtc_destroy_mpipe();
+		kprintf("dm_target_crypt: unloaded\n");
+		break;
+
+	default:
+		break;
+	}
+
+	return err;
+}
+
+DM_TARGET_MODULE(dm_target_crypt, dmtc_mod_handler);

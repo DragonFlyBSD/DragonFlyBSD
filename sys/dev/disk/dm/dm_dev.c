@@ -50,7 +50,7 @@ TAILQ_HEAD_INITIALIZER(dm_dev_list);
 struct lock dm_dev_mutex;
 
 /* dm_dev_mutex must be holdby caller before using disable_dev. */
-void
+static void
 disable_dev(dm_dev_t * dmv)
 {
 	TAILQ_REMOVE(&dm_dev_list, dmv, next_devlist);
@@ -120,22 +120,9 @@ static dm_dev_t *
 dm_dev_lookup_name(const char *dm_dev_name)
 {
 	dm_dev_t *dmv;
-	int dlen;
-	int slen;
-
-	slen = strlen(dm_dev_name);
-
-	if (slen == 0)
-		return NULL;
 
 	TAILQ_FOREACH(dmv, &dm_dev_list, next_devlist) {
-
-		dlen = strlen(dmv->name);
-
-		if (slen != dlen)
-			continue;
-
-		if (strncmp(dm_dev_name, dmv->name, slen) == 0)
+		if (strcmp(dm_dev_name, dmv->name) == 0)
 			return dmv;
 	}
 
@@ -148,20 +135,9 @@ static dm_dev_t *
 dm_dev_lookup_uuid(const char *dm_dev_uuid)
 {
 	dm_dev_t *dmv;
-	size_t len;
-
-	len = 0;
-	len = strlen(dm_dev_uuid);
-
-	if (len == 0)
-		return NULL;
 
 	TAILQ_FOREACH(dmv, &dm_dev_list, next_devlist) {
-
-		if (strlen(dmv->uuid) != len)
-			continue;
-
-		if (strncmp(dm_dev_uuid, dmv->uuid, strlen(dmv->uuid)) == 0)
+		if (strcmp(dm_dev_uuid, dmv->uuid) == 0)
 			return dmv;
 	}
 
@@ -193,65 +169,20 @@ dm_dev_insert(dm_dev_t * dev)
 	lockmgr(&dm_dev_mutex, LK_RELEASE);
 	return r;
 }
-#ifdef notyet
-/*
- * Lookup device with its minor number.
- */
-int
-dm_dev_test_minor(int dm_dev_minor)
-{
-	dm_dev_t *dmv;
-
-	lockmgr(&dm_dev_mutex, LK_EXCLUSIVE);
-	TAILQ_FOREACH(dmv, &dm_dev_list, next_devlist) {
-		if (dm_dev_minor == dmv->minor) {
-			lockmgr(&dm_dev_mutex, LK_RELEASE);
-			return 1;
-		}
-	}
-	lockmgr(&dm_dev_mutex, LK_RELEASE);
-
-	return 0;
-}
-#endif
-
-#if 0
-/*
- * dm_dev_lookup_devt look for selected device_t. We keep this routine
- * outside of dm_dev_lookup because it is a temporally solution.
- *
- * TODO: This is a hack autoconf should be more flexible.
- */
-dm_dev_t *
-dm_dev_detach(device_t devt)
-{
-       dm_dev_t *dmv;
-
-       lockmgr(&dm_dev_mutex, LK_EXCLUSIVE);
-       TAILQ_FOREACH(dmv, &dm_dev_list, next_devlist) {
-               if (devt == dmv->devt) {
-                       disable_dev(dmv);
-                       lockmgr(&dm_dev_mutex, LK_RELEASE);
-                       return dmv;
-               }
-       }
-       lockmgr(&dm_dev_mutex, LK_RELEASE);
-
-       return NULL;
-}
-#endif
 
 /*
  * Remove device selected with dm_dev from global list of devices.
  */
 dm_dev_t *
-dm_dev_rem(const char *dm_dev_name, const char *dm_dev_uuid,
+dm_dev_rem(dm_dev_t *dmv, const char *dm_dev_name, const char *dm_dev_uuid,
     int dm_dev_minor)
 {
-	dm_dev_t *dmv;
-	dmv = NULL;
-
 	lockmgr(&dm_dev_mutex, LK_EXCLUSIVE);
+
+	if (dmv != NULL) {
+		disable_dev(dmv);
+		return dmv;
+	}
 
 	if (dm_dev_minor > 0)
 		if ((dmv = dm_dev_lookup_minor(dm_dev_minor)) != NULL) {

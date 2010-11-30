@@ -40,69 +40,11 @@
 
 #include "dm.h"
 
-#ifdef DM_TARGET_MODULE
-/*
- * Every target can be compiled directly to dm driver or as a
- * separate module this part of target is used for loading targets
- * to dm driver.
- * Target can be unloaded from kernel only if there are no users of
- * it e.g. there are no devices which uses that target.
- */
-#include <sys/kernel.h>
-#include <sys/module.h>
-
-MODULE(MODULE_CLASS_MISC, dm_target_zero, "dm");
-
-static int
-dm_target_zero_modcmd(modcmd_t cmd, void *arg)
-{
-	dm_target_t *dmt;
-	int r;
-	dmt = NULL;
-
-	switch (cmd) {
-	case MODULE_CMD_INIT:
-		if ((dmt = dm_target_lookup("zero")) != NULL) {
-			dm_target_unbusy(dmt);
-			return EEXIST;
-		}
-		dmt = dm_target_alloc("zero");
-
-		dmt->version[0] = 1;
-		dmt->version[1] = 0;
-		dmt->version[2] = 0;
-		strlcpy(dmt->name, "zero", DM_MAX_TYPE_NAME);
-		dmt->init = &dm_target_zero_init;
-		dmt->status = &dm_target_zero_status;
-		dmt->strategy = &dm_target_zero_strategy;
-		dmt->deps = &dm_target_zero_deps;
-		dmt->destroy = &dm_target_zero_destroy;
-		dmt->upcall = &dm_target_zero_upcall;
-
-		r = dm_target_insert(dmt);
-		break;
-
-	case MODULE_CMD_FINI:
-		r = dm_target_rem("zero");
-
-		break;
-
-	case MODULE_CMD_STAT:
-		return ENOTTY;
-
-	default:
-		return ENOTTY;
-	}
-
-	return r;
-}
-#endif
-
 /*
  * Zero target init function. This target doesn't need
  * target specific config area.
  */
-int
+static int
 dm_target_zero_init(dm_dev_t * dmv, void **target_config, char *argv)
 {
 
@@ -114,8 +56,9 @@ dm_target_zero_init(dm_dev_t * dmv, void **target_config, char *argv)
 
 	return 0;
 }
+
 /* Status routine called to get params string. */
-char *
+static char *
 dm_target_zero_status(void *target_config)
 {
 	return NULL;
@@ -125,7 +68,7 @@ dm_target_zero_status(void *target_config)
 /*
  * This routine does IO operations.
  */
-int
+static int
 dm_target_zero_strategy(dm_table_entry_t * table_en, struct buf * bp)
 {
 
@@ -137,8 +80,9 @@ dm_target_zero_strategy(dm_table_entry_t * table_en, struct buf * bp)
 
 	return 0;
 }
+
 /* Doesn't not need to do anything here. */
-int
+static int
 dm_target_zero_destroy(dm_table_entry_t * table_en)
 {
 	table_en->target_config = NULL;
@@ -148,15 +92,61 @@ dm_target_zero_destroy(dm_table_entry_t * table_en)
 
 	return 0;
 }
+
 /* Doesn't not need to do anything here. */
-int
+static int
 dm_target_zero_deps(dm_table_entry_t * table_en, prop_array_t prop_array)
 {
 	return 0;
 }
 /* Unsuported for this target. */
-int
+static int
 dm_target_zero_upcall(dm_table_entry_t * table_en, struct buf * bp)
 {
 	return 0;
 }
+
+static int
+dmtz_mod_handler(module_t mod, int type, void *unused)
+{
+	dm_target_t *dmt = NULL;
+	int err = 0;
+
+	switch(type) {
+	case MOD_LOAD:
+		if ((dmt = dm_target_lookup("zero")) != NULL) {
+			dm_target_unbusy(dmt);
+			return EEXIST;
+		}
+		dmt = dm_target_alloc("zero");
+		dmt->version[0] = 1;
+		dmt->version[1] = 0;
+		dmt->version[2] = 0;
+		strlcpy(dmt->name, "zero", DM_MAX_TYPE_NAME);
+		dmt->init = &dm_target_zero_init;
+		dmt->status = &dm_target_zero_status;
+		dmt->strategy = &dm_target_zero_strategy;
+		dmt->deps = &dm_target_zero_deps;
+		dmt->destroy = &dm_target_zero_destroy;
+		dmt->upcall = &dm_target_zero_upcall;
+		dmt->dump = NULL;
+
+		err = dm_target_insert(dmt);
+		if (err == 0)
+			kprintf("dm_target_zero: Successfully initialized\n");
+		break;
+
+	case MOD_UNLOAD:
+		err = dm_target_rem("zero");
+		if (err == 0)
+			kprintf("dm_target_zero: unloaded\n");
+		break;
+
+	default:
+		break;
+	}
+
+	return err;
+}
+	
+DM_TARGET_MODULE(dm_target_zero, dmtz_mod_handler);

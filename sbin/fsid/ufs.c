@@ -52,6 +52,7 @@ ufs_probe(const char *dev)
 	if (ret < 0)
 		return 0;
 
+	bzero(buffer, sizeof(buffer));
 	ret = read(fd, &buffer, SBSIZE);
 	if (ret < 0) {
 		close(fd);
@@ -84,6 +85,7 @@ ufs_volname(const char *dev)
 	if (ret < 0)
 		return NULL;
 
+	bzero(buffer, sizeof(buffer));
 	ret = read(fd, &buffer, SBSIZE);
 	if (ret < 0) {
 		close(fd);

@@ -97,16 +97,6 @@ extern struct dev_ops dm_ops;
 extern struct devfs_bitmap dm_minor_bitmap;
 uint64_t dm_dev_counter;
 
-#if 0
-/* Generic cf_data for device-mapper driver */
-static struct cfdata dm_cfdata = {
-	.cf_name = "dm",
-	.cf_atname = "dm",
-	.cf_fstate = FSTATE_STAR,
-	.cf_unit = 0
-};
-#endif
-
 #define DM_REMOVE_FLAG(flag, name) do {					\
 		prop_dictionary_get_uint32(dm_dict,DM_IOCTL_FLAGS,&flag); \
 		flag &= ~name;						\
@@ -168,7 +158,6 @@ dm_dbg_print_flags(int flags)
 int
 dm_get_version_ioctl(prop_dictionary_t dm_dict)
 {
-
 	return 0;
 }
 /*
@@ -224,12 +213,7 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
 		dm_dev_unbusy(dmv);
 		return EEXIST;
 	}
-#if 0
-	if ((devt = config_attach_pseudo(&dm_cfdata)) == NULL) {
-		aprint_error("Unable to attach pseudo device dm/%s\n", name);
-		return (ENOMEM);
-	}
-#endif
+
 	if ((dmv = dm_dev_alloc()) == NULL)
 		return ENOMEM;
 
@@ -358,7 +342,7 @@ dm_dev_rename_ioctl(prop_dictionary_t dm_dict)
 	if (strlen(n_name) + 1 > DM_NAME_LEN)
 		return EINVAL;
 
-	if ((dmv = dm_dev_rem(name, uuid, minor)) == NULL) {
+	if ((dmv = dm_dev_rem(NULL, name, uuid, minor)) == NULL) {
 		DM_REMOVE_FLAG(flags, DM_EXISTS_FLAG);
 		return ENOENT;
 	}
@@ -755,8 +739,7 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 		 * If we want to deny table with 2 or more different
 		 * target we should do it here
 		 */
-		if (((target = dm_target_lookup(type)) == NULL) &&
-		    ((target = dm_target_autoload(type)) == NULL)) {
+		if ((target = dm_target_lookup(type)) == NULL) {
 			dm_table_release(&dmv->table_head, DM_TABLE_INACTIVE);
 			dm_dev_unbusy(dmv);
 			return ENOENT;
@@ -765,6 +748,7 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 			    M_DM, M_WAITOK)) == NULL) {
 			dm_table_release(&dmv->table_head, DM_TABLE_INACTIVE);
 			dm_dev_unbusy(dmv);
+			dm_target_unbusy(target);
 			return ENOMEM;
 		}
 		prop_dictionary_get_uint64(target_dict, DM_TABLE_START,
@@ -811,6 +795,7 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 			kfree(str, M_TEMP);
 
 			dm_dev_unbusy(dmv);
+			dm_target_unbusy(target);
 			return ret;
 		}
 		last_table = table_en;

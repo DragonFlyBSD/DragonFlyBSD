@@ -82,7 +82,7 @@
 	.globl  gd_CADDR1, gd_CADDR2, gd_CADDR3, gd_PADDR1
 	.globl  gd_spending, gd_fpending
 	.globl	gd_cnt, gd_private_tss
-	.globl	gd_scratch_rsp, gd_rsp0
+	.globl	gd_scratch_rsp
 	.globl	gd_user_fs, gd_user_gs
 
 	.set    gd_cpuid,globaldata + GD_CPUID
@@ -103,7 +103,6 @@
 	.set	gd_spending,globaldata + GD_SPENDING
 	.set	gd_cnt,globaldata + GD_CNT
 	.set	gd_scratch_rsp,globaldata + GD_SCRATCH_RSP
-	.set	gd_rsp0,globaldata + GD_RSP0
 	.set	gd_user_fs,globaldata + GD_USER_FS
 	.set	gd_user_gs,globaldata + GD_USER_GS
 

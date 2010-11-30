@@ -1,0 +1,294 @@
+    Now that Alex has the basic lvm stuff in we need to add soft-raid-1 
+    to it.  I have some ideas on how it could be implemented.
+
+    This is not set in stone at all, this is just me rattling off my
+    RAID-1 implementation ideas.  It isn't quite as complex as it sounds,
+    really!  I swear it isn't!  But if we could implement something like
+    this we would have the best soft-raid-1 implementation around.
+
+    Here are the basic problems which need to be solved:
+
+	* Allow partial downtimes for pieces of the mirror such that
+	  when the mirror becomes whole again the entire drive does not
+	  have to be copied.  Instead only the segments of the drive that
+	  are out of sync would be resynchronized.
+
+	  We want to avoid having to completely resynchronize the entire
+	  contents of a potentitally multi-terrabyte drive if one is
+	  taken offline temporarily and then brought back online.
+
+	* Allow mixed I/O errors on both drives making up the mirror
+	  without taking the entire mirror offline.
+
+	* Allow I/O read or write errors on one drive to degrade only
+	  the related segment and not the whole drive.
+
+	* Allow most writes to be asynchronous to the two drives making
+	  up the mirror up to the synchronization point.  Avoid unnecessary
+	  writes to the segment array on-media even through a synchronization
+	  point.
+
+	* Detect out-of-sync mirrors that are out of sync due to a system
+	  crash occuring prior to a synchronization point (i.e. when the
+	  drives themselves are just fine).  When this case occurs either
+	  copy is valid and one must be selected, but then the selected
+	  copy must be resynchronized to the other drive in the mirror
+	  to prevent the read data from 'changing' randomly from the point
+	  of view of whoever is reading it.
+
+    And my idea on implementation:
+
+	* Implement a segment descriptor array for each drive in the
+	  mirror, breaking the drive down into large pieces.  For
+	  example, 128MB per segment.  The segment array would be stored
+	  on both disks making up the mirror.  In addition, each disk will
+	  store the segment state for BOTH disks.
+
+	  Thus a 1TBx2 mirror would have 8192x4 segments (4 segment
+	  descriptors for each logical segment).  The segment descriptor
+	  array would idealy be small enough to cache in-memory.  Being
+	  able to cache it in-memory simplifies lookups.
+
+	  A segment descriptor would be, oh I don't know... probably
+	  16 bytes.  Leave room for expansion :-)
+
+	  Why does each disk need to store a segment descriptor for both
+	  disks?  So we can 'remember' the state of the dead disk on the
+	  live disk in order to resolve mismatches later on when the
+	  dead disk comes back to life.
+
+	* The state of the segment descriptor must be consulted when reading
+	  or writing.  Some states are in-memory-only states while others
+	  can exist on-media or in-memory.  The states are represented by
+	  a set of bit flags:
+
+	  MEDIA_UNSTABLE	0: The content is stable on-media and
+				   fully synchronized.
+
+				1: The content is unstable on-media
+				   (writes have been made and have not
+				    been completely synchronized to both
+				    drives).
+
+	  MEDIA_READ_DEGRADED	0: No I/O read error occured on this segment
+				1: I/O read error(s) occured on this segment
+
+	  MEDIA_WRITE_DEGRADED	0: No I/O write error occured on this segment
+				1: I/O write error(s) occured on this segment
+
+	  MEDIA_MASTER		0: Normal operation
+
+				1: Mastership operation for this segment
+				   on this drive, which is set when the
+				   other drive in the mirror has failed
+				   and writes are made to the drive that
+				   is still operational.
+
+	  UNINITIALIZED		0: The segment contains normal data.
+
+				1: The entire segment is empty and should
+				   read all zeros regardless of the actual
+				   content on the media.
+
+				   (Use for newly initialized mirrors as
+				   a way to avoid formatting the whole
+				   drive or SSD?).
+
+	  OLD_UNSTABLE		Copy of original MEDIA_UNSTABLE bit initially
+				read from the media.  This bit is only
+				recopied after the related segment has been
+				fully synchronized.
+
+	  OLD_MASTER		Copy of original MEDIA_MASTER bit initially
+				read from the media.  This bit is only
+				recopied after the related segment has been
+				fully synchronized.
+
+	  We probably need room for a serial number or timestamp in the
+	  segment descriptor as well in order to resolve certain situations.
+
+	* Since updating a segment descriptor on-media is expensive
+	  (requiring at least one disk synchronization command and of
+	  course a nasty seek), segment descriptors on-media are updated
+	  synchronously only when going from a STABLE to an UNSTABLE state,
+	  meaning the segment is undergoing active writing.
+
+	  Changing a segment descriptor from unstable to stable can be
+	  delayed indefinitely (synchronized on a long timer, like
+	  30 or 60 seconds).  All that happens if a crash occurs in the
+	  mean time is a little extra copying of segments occurs on
+	  reboot.  Theoretically anyway.
+
+    Ok, now what actions need to be taken to satisfy a read or write?
+    The actions taken will be based on the segment state for the segment
+    involved in the I/O.  Any I/O which crosses a segment boundary would
+    be split into two or more I/Os and treated separately.
+
+    Remember there are four descriptors for each segment, two on each drive:
+
+	DISK1 STATE stored on disk1
+	DISK2 STATE stored on disk1
+
+	DISK1 STATE stored on disk2
+	DISK2 STATE stored on disk2
+
+    In order to simplify matters any inconstencies between e.g. the DISK2
+    state as stored on disk1 and the DISK2 state as stored on disk2 would
+    be resolved immediately prior to initiation of the actual I/O.  Otherwise
+    the combination of four states is just too complex.
+
+    So if both drives are operational this resolution must take place.  If
+    only one drive is operational then the state stored in the segment
+    descriptors on that one operational drive is consulted to obtain the
+    state of both drives.
+
+    This is the hard part.  Lets take the mismatched cases first.  That is,
+    when the DISK2 STATE stored on DISK1 is different from the DISK2 STATE
+    stored on DISK2 (or vise-versa... disk1 state stored on each drive):
+
+	* If one of the two conflicting states has the UNSTABLE or MASTER
+	  bits set then set the same bits in the other.
+
+	  Basically just OR some of the bits together and store to
+	  both copies.  But not all of the bits.
+
+	* If doing a write operation and the segment is marked UNITIALIZED
+	  the entire segment must be zero-filled and the bit cleared prior
+	  to the write operation. ????  (needs more thought, maybe even a
+	  sub-bitmap. See later on in this email).
+
+    Ok, now we have done that we can just consider two states, one for
+    DISK1 and one for DISK2, coupled with the I/O operation:
+
+    WHEN READING:
+
+	* If MASTER is NOT set on either drive the read may be
+	  sent to either drive.
+
+	* If MASTER is set on one of the drives the read must be sent
+	  only to that drive.
+
+	* If MASTER is set on both drives then we are screwed.  This case
+	  can occur if one of the mirror drives goes down and a bunch of
+	  writes are made to the other, then system is rebooted and the
+	  original mirror drive comes up but the other drive goes down.
+
+	  So this condition detects a conflict.  We must return an I/O
+	  error for the READ, presumably.  The only way to resolve this
+	  is for a manual intervention to explicitly select one or the
+	  other drive as the master.
+
+	* If READ_DEGRADED is set on one drive the read can be directed to
+	  the other.  If READ_DEGRADED is set on both drives then either
+	  drive can be selected.  If the read fails on any given drive
+	  it is of course redispatched to the other drive regardless.
+
+	  When READ_DEGRADED is set on one drive and only one drive is up
+	  we still issue the read to that drive, obviously, since we have
+	  no other choice.
+
+    WHEN WRITING:
+
+	* If MASTER is NOT set on either drive the write is directed to
+	  both drives.
+
+	* Otherwise a WRITE is directed only to the drive with MASTER set.
+
+	* If both drives are marked MASTER the write is directed to both
+	  drives.  This is a conflict situation on read but writing will
+	  still work just fine.  The MASTER bit is left alone.
+
+	* If an I/O error occurs on one of the drives the WRITE_DEGRADED
+	  bit is set for that drive and the other drive (where the write
+	  succeeded) is marked as MASTER.
+
+	  However, we can only do this if neither drive is already a MASTER. 
+
+	  If a drive is already marked MASTER we cannot mark the other drive
+	  as MASTER.  The failed write will cause an I/O error to be
+	  returned.
+
+    RESYNCHRONIZATION:
+
+	* A kernel thread is created manage mirror synchronization.
+
+	* Synchronization of out-of-sync mirror segments can occur
+	  asynchnronously, but must interlock against I/O operations
+	  that might conflict.
+
+	  The segment array on the drive(s) is used to determine what
+	  segments need to be resynchronized.
+
+	* Synchronization occurs when the segment for one drive is
+	  marked MASTER and the segment for the other drive is not.
+
+	* In a conflict situation (where both drives are marked MASTER
+	  for any given segment) a manual intervention is required to
+	  specify (e.g. through an ioctl) which of the two drives is
+	  the master.  This overrides the MASTER bits for all segments
+	  and allows synchronization to occur for all conflicting
+	  segments (or possibly all segments, period, in the case where
+	  a new mirror drive is being deployed).
+
+    Segment array on-media and header.
+
+	* The mirroring code must reserve some of the sectors on the
+	  drives to hold a header and the segment array, making the
+	  resulting logical mirror a bit smaller than it otherwise would
+	  be.
+
+	* The header must contain a unique serial number (the uuid code
+	  can be used to generate it).
+
+	* When manual intervention is required to specify a master a new
+	  unique serial number must be generated for that master to
+	  prevent 'old' mirror drives that were removed from the system
+	  from being improperly recognized as being part of the new mirror
+	  when they aren't any more.
+
+	* Automatic detection of the mirror status is possible by using
+	  the serial number in the header.
+
+	* If the serial numbers for the header(s) for the two drives
+	  making up the mirror do not match (when both drives are up and 
+	  both header read I/Os succeeded), manual intervention is required.
+
+	* Auto-detection of mirror segments ala Geom... using on-disk headers,
+	  is discouraged.  I think it is too dangerous and would much rather
+	  the detection be based on drive serial number rather than serial
+	  numbers stored on-media in headers.
+
+	  However, I guess this is a function of LVM?  So I might not have
+	  any control over it.
+
+    The UNINITIALIZED FLAG
+
+	When formatting a new mirror or when a drive is torn out and a new
+	drive is added the drive(s) in question must be formatted.  To
+	avoid actually writing to all sectors of the drive, which would
+	take too long on multi-terrabyte drives and create unnecesary
+	writes on things like SSDs we instead of an UNINITIALIZED flag
+	state in the descriptor.
+
+	If set any read I/O to the related segment is simply zero-filled.
+
+	When writing we have to zero-fill the segment (write zeros to the
+	whole 128MB segment) and then clear the UNINITIALIZED flag before
+	allowing the write I/O to proceed.
+
+	We might want to use some of the bits in the descriptor as a 
+	sub-bitmap.  e.g. if we reserve 4 bytes in the 16-byte descriptor
+	to be an 'UNINITIALIZED' sub-bitmap we can break the 128MB
+	segment down into 4MB pieces and only zero-fill/write portions
+	of the 128MB segment instead of having to do the whole segment.
+
+	I don't know how well this idea would work in real life.  Another
+	option is to just return random data for the uninitialized portions
+	of a new mirror but that kinda breaks the whole abstraction and
+	could blow up certain types of filesystems, like ZFS, which
+	assume any read data is stable on-media.
+
+
+						-Matt
+
+
