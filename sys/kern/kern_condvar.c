@@ -56,7 +56,7 @@ out:
 }
 
 int
-cv_has_waiters(struct cv *c)
+cv_has_waiters(const struct cv *c)
 {
 	return (c->cv_waiters);
 }
