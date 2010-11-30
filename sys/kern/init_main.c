@@ -100,7 +100,8 @@ extern	struct user *proc0paddr;
 extern int fallback_elf_brand;
 
 int	boothowto = 0;		/* initialized so that it can be patched */
-SYSCTL_INT(_debug, OID_AUTO, boothowto, CTLFLAG_RD, &boothowto, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, boothowto, CTLFLAG_RD, &boothowto, 0,
+    "Reboot flags, from console subsystem");
 
 /*
  * This ensures that there is at least one entry so that the sysinit_set

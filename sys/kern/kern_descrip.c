@@ -987,8 +987,8 @@ sys_fpathconf(struct fpathconf_args *uap)
 }
 
 static int fdexpand;
-SYSCTL_INT(_debug, OID_AUTO, fdexpand, CTLFLAG_RD, &fdexpand,
-	   0, "");
+SYSCTL_INT(_debug, OID_AUTO, fdexpand, CTLFLAG_RD, &fdexpand, 0,
+    "Number of times a file table has been expanded");
 
 /*
  * Grow the file table so it can hold through descriptor (want).

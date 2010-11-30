@@ -36,7 +36,8 @@ MALLOC_DEFINE(M_MD, "MD disk", "Memory Disk");
 MALLOC_DEFINE(M_MDSECT, "MD sectors", "Memory Disk Sectors");
 
 static int md_debug;
-SYSCTL_INT(_debug, OID_AUTO, mddebug, CTLFLAG_RW, &md_debug, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, mddebug, CTLFLAG_RW, &md_debug, 0,
+    "Enable debug output for memory disk devices");
 
 #if defined(MD_ROOT) && defined(MD_ROOT_SIZE)
 /* Image gets put here: */

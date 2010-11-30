@@ -87,7 +87,8 @@ static int tx_speed = 2;
 static int rx_queue_len = FWMAXQUEUE;
 
 MALLOC_DEFINE(M_FWE, "if_fwe", "Ethernet over FireWire interface");
-SYSCTL_INT(_debug, OID_AUTO, if_fwe_debug, CTLFLAG_RW, &fwedebug, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, if_fwe_debug, CTLFLAG_RW, &fwedebug, 0,
+	"Enable debug output");
 SYSCTL_DECL(_hw_firewire);
 SYSCTL_NODE(_hw_firewire, OID_AUTO, fwe, CTLFLAG_RD, 0,
 	"Ethernet emulation subsystem");

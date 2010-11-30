@@ -69,7 +69,8 @@ static void tuncreate (cdev_t dev);
 
 #define TUNDEBUG	if (tundebug) if_printf
 static int tundebug = 0;
-SYSCTL_INT(_debug, OID_AUTO, if_tun_debug, CTLFLAG_RW, &tundebug, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, if_tun_debug, CTLFLAG_RW, &tundebug, 0,
+    "Enable debug output");
 
 static int tunoutput (struct ifnet *, struct mbuf *, struct sockaddr *,
 	    struct rtentry *rt);

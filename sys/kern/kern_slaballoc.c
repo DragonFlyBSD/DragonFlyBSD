@@ -220,7 +220,8 @@ SYSINIT(kmem, SI_BOOT1_ALLOCATOR, SI_ORDER_FIRST, kmeminit, NULL)
  */
 static int  use_malloc_pattern;
 SYSCTL_INT(_debug, OID_AUTO, use_malloc_pattern, CTLFLAG_RW,
-		&use_malloc_pattern, 0, "");
+    &use_malloc_pattern, 0,
+    "Initialize memory to -1 if M_ZERO not specified");
 #endif
 
 SYSCTL_INT(_kern, OID_AUTO, zone_big_alloc, CTLFLAG_RD, &ZoneBigAlloc, 0, "");

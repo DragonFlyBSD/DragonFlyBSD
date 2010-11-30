@@ -59,8 +59,10 @@ static int chain_mplock = 0;
 static int bgl_yield = 10;
 static __int64_t mplock_contention_count = 0;
 
-SYSCTL_INT(_lwkt, OID_AUTO, chain_mplock, CTLFLAG_RW, &chain_mplock, 0, "");
-SYSCTL_INT(_lwkt, OID_AUTO, bgl_yield_delay, CTLFLAG_RW, &bgl_yield, 0, "");
+SYSCTL_INT(_lwkt, OID_AUTO, chain_mplock, CTLFLAG_RW, &chain_mplock, 0,
+    "Chain IPI's to other CPU's potentially needing the MP lock when it is yielded");
+SYSCTL_INT(_lwkt, OID_AUTO, bgl_yield_delay, CTLFLAG_RW, &bgl_yield, 0,
+    "Duration of delay when MP lock is temporarily yielded");
 SYSCTL_QUAD(_lwkt, OID_AUTO, mplock_contention_count, CTLFLAG_RW,
 	&mplock_contention_count, 0, "spinning due to MPLOCK contention");
 

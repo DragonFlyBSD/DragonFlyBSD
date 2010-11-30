@@ -55,7 +55,8 @@ static void ttcompatsetlflags	(struct tty	*tp, struct termios *t);
 static int ttcompatspeedtab	(int speed, struct speedtab *table);
 
 static int ttydebug = 0;
-SYSCTL_INT(_debug, OID_AUTO, ttydebug, CTLFLAG_RW, &ttydebug, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, ttydebug, CTLFLAG_RW, &ttydebug, 0,
+    "tty debugging");
 
 static struct speedtab compatspeeds[] = {
 #define MAX_SPEED	17
