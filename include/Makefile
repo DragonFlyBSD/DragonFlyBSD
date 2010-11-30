@@ -1,6 +1,5 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.42 2008/11/24 13:35:57 hasso Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -76,7 +75,7 @@ LSUBDIRS=	bus/cam bus/cam/scsi \
 	dev/disk/dm \
 	dev/misc/lpt dev/misc/ppi \
 	dev/netif/wi \
-	dev/raid/ciss \
+	dev/raid/ciss dev/raid/mfi \
 	dev/video/bktr dev/video/meteor libprop
 
 # For SHARED=symlinks, bus/cam and netproto/atm are symlinks, so cam/scsi

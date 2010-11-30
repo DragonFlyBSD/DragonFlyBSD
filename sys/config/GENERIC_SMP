@@ -169,6 +169,8 @@ device		ida		# Compaq Smart RAID
 device		ips		# IBM ServeRAID
 device		amr		# AMI MegaRAID
 device		mlx		# Mylex DAC960 family
+device		mfi		# LSI MegaRAID SAS
+device		mfip		# LSI MegaRAID SAS passthrough, requires CAM
 device		twe		# 3ware Escalade 7000/8000's
 device		twa		# 3ware 9000 series PATA/SATA RAID
 device		pst		# Promise Supertrack

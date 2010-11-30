@@ -1,5 +1,4 @@
 # $FreeBSD: src/etc/mtree/BSD.include.dist,v 1.32.2.14 2003/01/24 09:47:07 roam Exp $
-# $DragonFly: src/etc/mtree/BSD.include.dist,v 1.29 2008/11/24 10:27:25 hasso Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -81,6 +80,8 @@
         ..
         raid
             ciss
+            ..
+            mfi
             ..
         ..
         video

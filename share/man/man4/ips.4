@@ -24,9 +24,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/ips.4,v 1.2 2003/11/12 02:26:47 hmp Exp $
-.\" $DragonFly: src/share/man/man4/ips.4,v 1.3 2008/05/02 02:05:05 swildner Exp $
 .\"
-.Dd November 11, 2003
+.Dd November 30, 2010
 .Dt IPS 4
 .Os
 .Sh NAME
@@ -60,6 +59,8 @@ ServeRAID 7t/7k/7M
 .Pp
 Newer ServeRAID controllers are supported by the
 .Xr aac 4
+or
+.Xr mfi 4
 driver.
 .Pp
 These cards come with a built in configuration utility stored in
@@ -186,6 +187,7 @@ driver does not use the
 subsystem.
 .Sh SEE ALSO
 .Xr aac 4 ,
+.Xr mfi 4 ,
 .Xr ch 4 ,
 .Xr da 4 ,
 .Xr sysctl 8

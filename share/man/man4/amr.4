@@ -22,9 +22,8 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/amr.4,v 1.3.2.10 2003/05/26 12:41:05 hmp Exp $
-.\" $DragonFly: src/share/man/man4/amr.4,v 1.2 2003/06/17 04:36:58 dillon Exp $
 .\"
-.Dd January 23, 2000
+.Dd November 30, 2010
 .Dt AMR 4
 .Os
 .Sh NAME
@@ -39,6 +38,11 @@ The
 driver provides support for American Megatrends MegaRAID Express,
 Elite and Enterprise family SCSI RAID controllers,
 including models relabeled and sold by Hewlett-Packard and Dell.
+.Pp
+LSI MegaRAID SAS controllers are supported by
+.Xr mfi 4
+and will not work with this driver.
+.Pp
 Supported controllers include:
 .Bl -bullet
 .It
@@ -152,6 +156,7 @@ An I/O error has occurred.
 .Sh SEE ALSO
 .Xr cd 4 ,
 .Xr da 4 ,
+.Xr mfi 4 ,
 .Xr sa 4 ,
 .Xr scsi 4
 .Sh AUTHORS
