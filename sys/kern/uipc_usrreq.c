@@ -868,7 +868,7 @@ unp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		error = ENOTSOCK;
 		goto bad;
 	}
-	error = VOP_ACCESS(vp, VWRITE, p->p_ucred);
+	error = VOP_EACCESS(vp, VWRITE, p->p_ucred);
 	if (error)
 		goto bad;
 	so2 = vp->v_socket;
