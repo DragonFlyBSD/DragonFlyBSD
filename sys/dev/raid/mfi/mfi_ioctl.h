@@ -26,6 +26,8 @@
  * $FreeBSD: src/sys/dev/mfi/mfi_ioctl.h,v 1.9 2009/08/13 23:18:45 scottl Exp $
  */
 
+#include <sys/conf.h>
+
 #include <dev/raid/mfi/mfireg.h>
 
 #if defined(__x86_64__) /* Assume amd64 wants 32 bit Linux */

@@ -60,7 +60,6 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
-#include <sys/conf.h>
 #include <sys/eventhandler.h>
 #include <sys/rman.h>
 #include <sys/bus_dma.h>
