@@ -3,8 +3,9 @@
 SUBDIR= mfip
 
 #.if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "x86_64"
-#SUBDIR+= mfi_linux
-#.endif
+.if ${MACHINE_ARCH} == "i386"
+SUBDIR+= mfi_linux
+.endif
 
 KMOD=	mfi
 SRCS=	mfi.c mfi_pci.c mfi_disk.c mfi_debug.c
