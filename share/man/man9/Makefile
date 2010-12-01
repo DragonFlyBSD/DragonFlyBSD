@@ -80,6 +80,7 @@ MAN=	accept_filter.9 \
 	fetch.9 \
 	firmware.9 \
 	hash.9 \
+	hexdump.9 \
 	ieee80211.9 \
 	ieee80211_beacon.9 \
 	ieee80211_bmiss.9 \
