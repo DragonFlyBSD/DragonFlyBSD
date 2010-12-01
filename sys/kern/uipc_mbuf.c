@@ -74,6 +74,7 @@
 #include "opt_mbuf_stress_test.h"
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/file.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/kernel.h>
@@ -362,11 +363,15 @@ static void m_reclaim (void);
 static void m_mclref(void *arg);
 static void m_mclfree(void *arg);
 
+/*
+ * NOTE: Default NMBUFS must take into account a possible DOS attack
+ *	 using fd passing on unix domain sockets.
+ */
 #ifndef NMBCLUSTERS
 #define NMBCLUSTERS	(512 + maxusers * 16)
 #endif
 #ifndef NMBUFS
-#define NMBUFS		(nmbclusters * 2)
+#define NMBUFS		(nmbclusters * 2 + maxfiles)
 #endif
 
 /*
