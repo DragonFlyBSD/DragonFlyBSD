@@ -55,6 +55,7 @@
 #ifndef _MFIVAR_H
 #define _MFIVAR_H
 
+#include <sys/devicestat.h>
 #include <sys/disk.h>
 #include <sys/eventhandler.h>
 #include <sys/lock.h>
@@ -115,6 +116,7 @@ struct mfi_disk {
 	struct mfi_softc *ld_controller;
 	struct mfi_ld_info	*ld_info;
 	struct disk	ld_disk;
+	struct devstat	ld_devstat;
 	int		ld_flags;
 #define MFI_DISK_FLAGS_OPEN	0x01
 #define	MFI_DISK_FLAGS_DISABLED	0x02

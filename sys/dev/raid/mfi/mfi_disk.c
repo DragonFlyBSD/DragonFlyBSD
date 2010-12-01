@@ -139,6 +139,11 @@ mfi_disk_attach(device_t dev)
 		      ld_info->ld_config.properties.name,
 		      state);
 
+	devstat_add_entry(&sc->ld_devstat, "mfid", device_get_unit(dev),
+	    MFI_SECTOR_LEN, DEVSTAT_NO_ORDERED_TAGS,
+	    DEVSTAT_TYPE_STORARRAY | DEVSTAT_TYPE_IF_OTHER,
+	    DEVSTAT_PRIORITY_ARRAY);
+
 	sc->ld_disk.d_cdev = disk_create(sc->ld_unit, &sc->ld_disk,
 	    &mfi_disk_ops);
 	sc->ld_disk.d_cdev->si_drv1 = sc;
@@ -180,6 +185,7 @@ mfi_disk_detach(device_t dev)
 	lockmgr(&sc->ld_controller->mfi_io_lock, LK_RELEASE);
 
 	disk_destroy(&sc->ld_disk);
+	devstat_remove_entry(&sc->ld_devstat);
 	lockmgr(&sc->ld_controller->mfi_io_lock, LK_EXCLUSIVE);
 	TAILQ_REMOVE(&sc->ld_controller->mfi_ld_tqh, sc, ld_link);
 	lockmgr(&sc->ld_controller->mfi_io_lock, LK_RELEASE);
@@ -279,6 +285,7 @@ mfi_disk_strategy(struct dev_strategy_args *ap)
 	bio->bio_driver_info = sc;
 	lockmgr(&controller->mfi_io_lock, LK_EXCLUSIVE);
 	mfi_enqueue_bio(controller, bio);
+	devstat_start_transaction(&sc->ld_devstat);
 	mfi_startio(controller);
 	lockmgr(&controller->mfi_io_lock, LK_RELEASE);
 	return (0);
@@ -290,6 +297,7 @@ mfi_disk_complete(struct bio *bio)
 	struct mfi_disk *sc = bio->bio_driver_info;
 	struct buf *bp = bio->bio_buf;
 
+	devstat_end_transaction_buf(&sc->ld_devstat, bp);
 	if (bp->b_flags & B_ERROR) {
 		if (bp->b_error == 0)
 			bp->b_error = EIO;
