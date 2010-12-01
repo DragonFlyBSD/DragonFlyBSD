@@ -54,7 +54,7 @@
 #include <opencrypto/rmd160.h>
 #include <machine/cpufunc.h>
 
-#include "dm.h"
+#include <sys/dm.h>
 MALLOC_DEFINE(M_DMCRYPT, "dm_crypt", "Device Mapper Target Crypt");
 
 struct target_crypt_config;
@@ -1387,9 +1387,10 @@ dmtc_mod_handler(module_t mod, int type, void *unused)
 
 	case MOD_UNLOAD:
 		err = dm_target_rem("crypt");
-		if (err == 0)
+		if (err == 0) {
 			dmtc_destroy_mpipe();
-		kprintf("dm_target_crypt: unloaded\n");
+			kprintf("dm_target_crypt: unloaded\n");
+		}
 		break;
 
 	default:

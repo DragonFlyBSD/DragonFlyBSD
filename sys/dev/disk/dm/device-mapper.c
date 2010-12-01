@@ -47,9 +47,9 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/sysctl.h>
+#include <sys/dm.h>
 
 #include "netbsd-dm.h"
-#include "dm.h"
 
 static	d_ioctl_t	dmioctl;
 static	d_open_t	dmopen;
@@ -102,6 +102,7 @@ static moduledata_t dm_mod = {
     NULL
 };
 DECLARE_MODULE(dm, dm_mod, SI_SUB_RAID, SI_ORDER_ANY);
+MODULE_VERSION(dm, 1);
 
 /*
  * This array is used to translate cmd to function pointer.
@@ -674,6 +675,24 @@ dmsetdiskinfo(struct disk *disk, dm_table_head_t *head)
 	info.d_ncylinders = dmp_size / info.d_secpercyl;
 
 	disk_setdiskinfo(disk, &info);
+}
+
+void
+dm_builtin_init(void *arg)
+{
+	modeventhand_t evh = (modeventhand_t)arg;
+
+	KKASSERT(evh != NULL);
+	evh(NULL, MOD_LOAD, NULL);
+}
+
+void
+dm_builtin_uninit(void *arg)
+{
+	modeventhand_t evh = (modeventhand_t)arg;
+
+	KKASSERT(evh != NULL);
+	evh(NULL, MOD_UNLOAD, NULL);
 }
 
 TUNABLE_INT("debug.dm_debug", &dm_debug_level);

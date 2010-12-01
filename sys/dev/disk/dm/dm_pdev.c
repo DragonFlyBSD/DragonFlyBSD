@@ -39,7 +39,7 @@
 #include <sys/vnode.h>
 #include <sys/nlookup.h>
 
-#include "dm.h"
+#include <sys/dm.h>
 
 SLIST_HEAD(dm_pdevs, dm_pdev) dm_pdev_list;
 

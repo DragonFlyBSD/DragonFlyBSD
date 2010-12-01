@@ -67,13 +67,11 @@ dev/disk/dm/dm_ioctl.c			optional dm
 dev/disk/dm/dm_pdev.c			optional dm
 dev/disk/dm/dm_table.c			optional dm
 dev/disk/dm/dm_target.c			optional dm
-dev/disk/dm/dm_target_crypt.c		optional dm
 dev/disk/dm/dm_target_error.c		optional dm
-dev/disk/dm/dm_target_linear.c		optional dm
-#dev/disk/dm/dm_target_mirror.c		optional dm
-#dev/disk/dm/dm_target_snapshot.c	optional dm
-dev/disk/dm/dm_target_stripe.c		optional dm
 dev/disk/dm/dm_target_zero.c		optional dm
+dev/disk/dm/targets/crypt/dm_target_crypt.c	optional dm_target_crypt
+dev/disk/dm/targets/linear/dm_target_linear.c	optional dm_target_linear
+dev/disk/dm/targets/striped/dm_target_striped.c	optional dm_target_striped
 
 dev/disk/iscsi/initiator/isc_cam.c	optional iscsi_initiator scbus
 dev/disk/iscsi/initiator/isc_sm.c	optional iscsi_initiator scbus

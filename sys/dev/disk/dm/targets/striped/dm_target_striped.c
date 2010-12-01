@@ -44,7 +44,7 @@
 #include <sys/malloc.h>
 #include <sys/vnode.h>
 
-#include "dm.h"
+#include <sys/dm.h>
 MALLOC_DEFINE(M_DMSTRIPE, "dm_stripe", "Device Mapper Target Stripe");
 
 static void dm_target_stripe_destroy_config(dm_target_stripe_config_t *tsc);
@@ -446,4 +446,4 @@ dmts_mod_handler(module_t mod, int type, void *unused)
 	return err;
 }
 
-DM_TARGET_MODULE(dm_target_stripe, dmts_mod_handler);
+DM_TARGET_MODULE(dm_target_striped, dmts_mod_handler);

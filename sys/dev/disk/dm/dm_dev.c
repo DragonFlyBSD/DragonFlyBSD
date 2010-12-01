@@ -36,9 +36,9 @@
 #include <sys/disklabel.h>
 #include <sys/ioccom.h>
 #include <sys/malloc.h>
+#include <sys/dm.h>
 
 #include "netbsd-dm.h"
-#include "dm.h"
 
 static dm_dev_t *dm_dev_lookup_name(const char *);
 static dm_dev_t *dm_dev_lookup_uuid(const char *);

@@ -34,10 +34,10 @@
 
 #include <sys/malloc.h>
 #include <sys/module.h>
-
+#include <sys/linker.h>
+#include <sys/dm.h>
 
 #include "netbsd-dm.h"
-#include "dm.h"
 
 static dm_target_t *dm_target_lookup_name(const char *);
 
@@ -64,6 +64,37 @@ dm_target_unbusy(dm_target_t * target)
 {
 	KKASSERT(target->ref_cnt > 0);
 	atomic_subtract_int(&target->ref_cnt, 1);
+}
+
+/*
+ * Try to autoload the module for the requested target.
+ */
+dm_target_t *
+dm_target_autoload(const char *dm_target_name)
+{
+	char mod_name[128];
+	dm_target_t *dmt;
+	linker_file_t linker_file;
+	int error;
+
+	ksnprintf(mod_name, sizeof(mod_name), "dm_target_%s", dm_target_name);
+	error = linker_reference_module(mod_name, NULL, &linker_file);
+	if (error != 0) {
+		kprintf("dm: could not autoload module for target %s\n",
+		    dm_target_name);
+		return NULL;
+	}
+
+	dmt = dm_target_lookup(dm_target_name);
+	if (dmt == NULL) {
+		linker_release_module(NULL, NULL, linker_file);
+		return NULL;
+	}
+
+	/* XXX: extra-big hack to allow users to kldunload the module */
+	linker_file->userrefs = 1;
+
+	return dmt;
 }
 
 /*

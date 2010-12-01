@@ -38,7 +38,7 @@
 
 #include <sys/buf.h>
 
-#include "dm.h"
+#include <sys/dm.h>
 
 /*
  * Zero target init function. This target doesn't need
@@ -148,5 +148,5 @@ dmtz_mod_handler(module_t mod, int type, void *unused)
 
 	return err;
 }
-	
-DM_TARGET_MODULE(dm_target_zero, dmtz_mod_handler);
+
+DM_TARGET_BUILTIN(dm_target_zero, dmtz_mod_handler);

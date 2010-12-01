@@ -44,7 +44,7 @@
 #include <sys/uuid.h>
 #include <sys/vnode.h>
 
-#include "dm.h"
+#include <sys/dm.h>
 MALLOC_DEFINE(M_DMDMIRROR, "dm_dmirror", "Device Mapper Target DMIRROR");
 
 /* segdesc flags */

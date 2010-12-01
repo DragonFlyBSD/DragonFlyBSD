@@ -42,7 +42,7 @@
 #include <sys/malloc.h>
 #include <sys/vnode.h>
 
-#include "dm.h"
+#include <sys/dm.h>
 MALLOC_DEFINE(M_DMLINEAR, "dm_linear", "Device Mapper Target Linear");
 
 /*

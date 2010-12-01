@@ -34,7 +34,7 @@
 
 #include <sys/malloc.h>
 
-#include "dm.h"
+#include <sys/dm.h>
 
 /*
  * There are two types of users of this interface:

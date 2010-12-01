@@ -931,6 +931,9 @@ device		ses			#SCSI SES/SAF-TE driver
 
 # Options for device mapper
 device		dm
+device		dm_target_crypt
+device		dm_target_linear
+device		dm_target_striped
 
 # Options for iSCSI
 device	        iscsi_initiator

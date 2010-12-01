@@ -37,7 +37,7 @@
 
 #include <sys/buf.h>
 
-#include "dm.h"
+#include <sys/dm.h>
 
 /* Init function called from dm_table_load_ioctl. */
 static int
@@ -143,5 +143,5 @@ dmte_mod_handler(module_t mod, int type, void *unused)
 
 	return err;
 }
-	
-DM_TARGET_MODULE(dm_target_error, dmte_mod_handler);
+
+DM_TARGET_BUILTIN(dm_target_error, dmte_mod_handler);

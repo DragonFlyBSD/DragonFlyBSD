@@ -282,6 +282,7 @@ int dm_table_status_ioctl(prop_dictionary_t);
 
 /* dm_target.c */
 dm_target_t* dm_target_alloc(const char *);
+dm_target_t* dm_target_autoload(const char *);
 int dm_target_destroy(void);
 int dm_target_insert(dm_target_t *);
 prop_array_t dm_target_prop_list(void);
@@ -355,6 +356,10 @@ int dm_pdev_init(void);
 dm_pdev_t* dm_pdev_insert(const char *);
 off_t dm_pdev_correct_dump_offset(dm_pdev_t *, off_t);
 
+/* dm builtin magic */
+void dm_builtin_init(void *);
+void dm_builtin_uninit(void *);
+
 extern int dm_debug_level;
 MALLOC_DECLARE(M_DM);
 
@@ -368,7 +373,15 @@ MALLOC_DECLARE(M_DM);
 	    evh,						\
 	    NULL						\
     };								\
-    DECLARE_MODULE(name, name##_mod, SI_SUB_DM_TARGETS, SI_ORDER_ANY)
+    DECLARE_MODULE(name, name##_mod, SI_SUB_DM_TARGETS,		\
+		   SI_ORDER_ANY);				\
+    MODULE_DEPEND(name, dm, 1, 1, 1)
+
+#define DM_TARGET_BUILTIN(name, evh)				\
+    SYSINIT(name##module, SI_SUB_DM_TARGETS, SI_ORDER_ANY,	\
+	dm_builtin_init, evh);					\
+    SYSUNINIT(name##module, SI_SUB_DM_TARGETS, SI_ORDER_ANY,	\
+	dm_builtin_uninit, evh)
 
 #endif /*_KERNEL*/
 

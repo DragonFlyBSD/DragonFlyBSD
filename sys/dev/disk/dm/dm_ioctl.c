@@ -89,9 +89,9 @@
 #include <sys/malloc.h>
 #include <sys/udev.h>
 #include <sys/vnode.h>
+#include <sys/dm.h>
 
 #include "netbsd-dm.h"
-#include "dm.h"
 
 extern struct dev_ops dm_ops;
 extern struct devfs_bitmap dm_minor_bitmap;
@@ -739,7 +739,8 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 		 * If we want to deny table with 2 or more different
 		 * target we should do it here
 		 */
-		if ((target = dm_target_lookup(type)) == NULL) {
+		if (((target = dm_target_lookup(type)) == NULL) &&
+		    ((target = dm_target_autoload(type)) == NULL)) {
 			dm_table_release(&dmv->table_head, DM_TABLE_INACTIVE);
 			dm_dev_unbusy(dmv);
 			return ENOENT;
