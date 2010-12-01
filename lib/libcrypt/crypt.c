@@ -57,6 +57,16 @@ static const struct {
 	},
 #endif
 	{
+		"sha256",
+		crypt_sha256,
+		"$3$"
+	},
+	{
+		"sha512",
+		crypt_sha512,
+		"$4$"
+	},
+	{
 		NULL,
 		NULL
 	}
