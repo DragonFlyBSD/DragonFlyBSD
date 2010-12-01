@@ -351,6 +351,22 @@ kvtop(void *addr)
 	return (pa);
 }
 
+static void
+swi_vm(void *arg, void *frame)
+{
+	if (busdma_swi_pending != 0)
+		busdma_swi();
+}
+
+static void
+swi_vm_setup(void *arg)
+{
+	register_swi(SWI_VM, swi_vm, NULL, "swi_vm", NULL);
+}
+
+SYSINIT(vm_setup, SI_BOOT2_MACHDEP, SI_ORDER_ANY, swi_vm_setup, NULL);
+
+
 /*
  * Tell whether this address is in some physical memory region.
  * Currently used by the kernel coredump code in order to avoid

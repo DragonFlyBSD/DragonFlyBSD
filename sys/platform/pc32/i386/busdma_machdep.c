@@ -166,6 +166,8 @@ struct bus_dmamap {
 
 static STAILQ_HEAD(, bus_dmamap) bounce_map_callbacklist =
 	STAILQ_HEAD_INITIALIZER(bounce_map_callbacklist);
+static struct spinlock bounce_map_list_spin =
+	SPINLOCK_INITIALIZER(&bounce_map_list_spin);
 
 static struct bus_dmamap nobounce_dmamap;
 
@@ -1334,14 +1336,11 @@ get_map_waiting(bus_dma_tag_t dmat)
 static void
 add_map_callback(bus_dmamap_t map)
 {
-	/* XXX callbacklist is not MPSAFE */
-	crit_enter();
-	get_mplock();
+	spin_lock(&bounce_map_list_spin);
 	STAILQ_INSERT_TAIL(&bounce_map_callbacklist, map, links);
 	busdma_swi_pending = 1;
 	setsoftvm();
-	rel_mplock();
-	crit_exit();
+	spin_unlock(&bounce_map_list_spin);
 }
 
 void
@@ -1349,13 +1348,13 @@ busdma_swi(void)
 {
 	bus_dmamap_t map;
 
-	crit_enter();
+	spin_lock(&bounce_map_list_spin);
 	while ((map = STAILQ_FIRST(&bounce_map_callbacklist)) != NULL) {
 		STAILQ_REMOVE_HEAD(&bounce_map_callbacklist, links);
-		crit_exit();
+		spin_unlock(&bounce_map_list_spin);
 		bus_dmamap_load(map->dmat, map, map->buf, map->buflen,
 				map->callback, map->callback_arg, /*flags*/0);
-		crit_enter();
+		spin_lock(&bounce_map_list_spin);
 	}
-	crit_exit();
+	spin_unlock(&bounce_map_list_spin);
 }
