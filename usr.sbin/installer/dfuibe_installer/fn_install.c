@@ -685,6 +685,10 @@ fn_install_os(struct i_fn_args *a)
 		    "%s%s 'dm_load=\"yes\"' >>%smnt/boot/loader.conf",
 		    a->os_root, cmd_name(a, "ECHO"),
 		    a->os_root);
+		command_add(cmds,
+		    "%s%s 'dm_target_crypt_load=\"yes\"' >>%smnt/boot/loader.conf",
+		    a->os_root, cmd_name(a, "ECHO"),
+		    a->os_root);
 		if (use_hammer) {
 			command_add(cmds, "%s%s -b %smnt/boot -t %smnt/tmp",
 			    a->os_root, cmd_name(a, "MKINITRD"),
