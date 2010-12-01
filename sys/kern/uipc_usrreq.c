@@ -62,6 +62,11 @@
 #include <sys/socketvar2.h>
 #include <sys/msgport2.h>
 
+typedef struct unp_defdiscard {
+	struct unp_defdiscard *next;
+	struct file *fp;
+} *unp_defdiscard_t;
+
 static	MALLOC_DEFINE(M_UNPCB, "unpcb", "unpcb struct");
 static	unp_gen_t unp_gencnt;
 static	u_int unp_count;
@@ -69,6 +74,8 @@ static	u_int unp_count;
 static	struct unp_head unp_shead, unp_dhead;
 
 static struct lwkt_token unp_token = LWKT_TOKEN_MP_INITIALIZER(unp_token);
+static int unp_defdiscard_nest;
+static unp_defdiscard_t unp_defdiscard_base;
 
 /*
  * Unix communications domain.
@@ -1740,12 +1747,31 @@ unp_revoke_gc_check(struct file *fps, void *vinfo)
 	return(0);
 }
 
+/*
+ * Dispose of the fp's stored in a mbuf.
+ *
+ * The dds loop can cause additional fps to be entered onto the
+ * list while it is running, flattening out the operation and avoiding
+ * a deep kernel stack recursion.
+ */
 void
 unp_dispose(struct mbuf *m)
 {
+	unp_defdiscard_t dds;
+
 	lwkt_gettoken(&unp_token);
-	if (m)
+	++unp_defdiscard_nest;
+	if (m) {
 		unp_scan(m, unp_discard, NULL);
+	}
+	if (unp_defdiscard_nest == 1) {
+		while ((dds = unp_defdiscard_base) != NULL) {
+			unp_defdiscard_base = dds->next;
+			closef(dds->fp, NULL);
+			kfree(dds, M_UNPCB);
+		}
+	}
+	--unp_defdiscard_nest;
 	lwkt_reltoken(&unp_token);
 }
 
@@ -1807,13 +1833,30 @@ unp_mark(struct file *fp, void *data)
 	}
 }
 
+/*
+ * Discard a fp previously held in a unix domain socket mbuf.  To
+ * avoid blowing out the kernel stack due to contrived chain-reactions
+ * we may have to defer the operation to a higher procedural level.
+ *
+ * Caller holds unp_token
+ */
 static void
 unp_discard(struct file *fp, void *data __unused)
 {
+	unp_defdiscard_t dds;
+
 	spin_lock(&unp_spin);
 	fp->f_msgcount--;
 	unp_rights--;
 	spin_unlock(&unp_spin);
-	closef(fp, NULL);
+
+	if (unp_defdiscard_nest) {
+		dds = kmalloc(sizeof(*dds), M_UNPCB, M_WAITOK|M_ZERO);
+		dds->fp = fp;
+		dds->next = unp_defdiscard_base;
+		unp_defdiscard_base = dds;
+	} else {
+		closef(fp, NULL);
+	}
 }
 
