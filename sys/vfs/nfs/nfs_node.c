@@ -92,7 +92,6 @@ nfs_nget(struct mount *mntp, nfsfh_t *fhp, int fhsize, struct nfsnode **npp)
 	struct nfsnode *np, *np2;
 	struct nfsnodehashhead *nhpp;
 	struct vnode *vp;
-	struct vnode *nvp;
 	int error;
 	int lkflags;
 	struct nfsmount *nmp;
@@ -151,32 +150,19 @@ loop:
 	 */
 	np = zalloc(nfsnode_zone);
 		
-	error = getnewvnode(VT_NFS, mntp, &nvp, 0, 0);
+	error = getnewvnode(VT_NFS, mntp, &vp, 0, 0);
 	if (error) {
 		lockmgr(&nfsnhash_lock, LK_RELEASE);
-		*npp = 0;
+		*npp = NULL;
 		zfree(nfsnode_zone, np);
 		lwkt_reltoken(&nfsnhash_token);
 		return (error);
 	}
-	vp = nvp;
-	bzero((caddr_t)np, sizeof *np);
-	np->n_vnode = vp;
-	vp->v_data = np;
 
 	/*
-	 * Insert the nfsnode in the hash queue for its new file handle
+	 * Initialize most of (np).
 	 */
-	for (np2 = nhpp->lh_first; np2 != 0; np2 = np2->n_hash.le_next) {
-		if (mntp != NFSTOV(np2)->v_mount || np2->n_fhsize != fhsize ||
-		    bcmp((caddr_t)fhp, (caddr_t)np2->n_fhp, fhsize))
-			continue;
-		vx_put(vp);
-		lockmgr(&nfsnhash_lock, LK_RELEASE);
-		zfree(nfsnode_zone, np);
-		goto retry;
-	}
-	LIST_INSERT_HEAD(nhpp, np, n_hash);
+	bzero(np, sizeof (*np));
 	if (fhsize > NFS_SMALLFH) {
 		MALLOC(np->n_fhp, nfsfh_t *, fhsize, M_NFSBIGFH, M_WAITOK);
 	} else {
@@ -187,8 +173,33 @@ loop:
 	lockinit(&np->n_rslock, "nfrslk", 0, lkflags);
 
 	/*
+	 * Validate that we did not race another nfs_nget() due to blocking
+	 * here and there.
+	 */
+	for (np2 = nhpp->lh_first; np2 != 0; np2 = np2->n_hash.le_next) {
+		if (mntp != NFSTOV(np2)->v_mount || np2->n_fhsize != fhsize ||
+		    bcmp((caddr_t)fhp, (caddr_t)np2->n_fhp, fhsize)) {
+			continue;
+		}
+		vx_put(vp);
+		lockmgr(&nfsnhash_lock, LK_RELEASE);
+
+		if (np->n_fhsize > NFS_SMALLFH)
+			FREE((caddr_t)np->n_fhp, M_NFSBIGFH);
+		np->n_fhp = NULL;
+		zfree(nfsnode_zone, np);
+		goto retry;
+	}
+
+	/*
+	 * Finish connecting up (np, vp) and insert the nfsnode in the
+	 * hash for its new file handle.
+	 *
 	 * nvp is locked & refd so effectively so is np.
 	 */
+	np->n_vnode = vp;
+	vp->v_data = np;
+	LIST_INSERT_HEAD(nhpp, np, n_hash);
 	*npp = np;
 	lockmgr(&nfsnhash_lock, LK_RELEASE);
 	lwkt_reltoken(&nfsnhash_token);
@@ -206,7 +217,6 @@ nfs_nget_nonblock(struct mount *mntp, nfsfh_t *fhp, int fhsize,
 	struct nfsnode *np, *np2;
 	struct nfsnodehashhead *nhpp;
 	struct vnode *vp;
-	struct vnode *nvp;
 	int error;
 	int lkflags;
 	struct nfsmount *nmp;
@@ -243,7 +253,6 @@ loop:
 		}
 		if (NFSTOV(np) != vp) {
 			vput(vp);
-			vp = NULL;
 			goto loop;
 		}
 		*npp = np;
@@ -276,33 +285,18 @@ loop:
 	 */
 	np = zalloc(nfsnode_zone);
 
-	error = getnewvnode(VT_NFS, mntp, &nvp, 0, 0);
+	error = getnewvnode(VT_NFS, mntp, &vp, 0, 0);
 	if (error) {
 		lockmgr(&nfsnhash_lock, LK_RELEASE);
 		zfree(nfsnode_zone, np);
 		lwkt_reltoken(&nfsnhash_token);
 		return (error);
 	}
-	vp = nvp;
-	bzero(np, sizeof (*np));
-	np->n_vnode = vp;
-	vp->v_data = np;
 
 	/*
-	 * Insert the nfsnode in the hash queue for its new file handle.
-	 * If someone raced us we free np and vp and try again.
+	 * Initialize most of (np).
 	 */
-	for (np2 = nhpp->lh_first; np2 != 0; np2 = np2->n_hash.le_next) {
-		if (mntp != NFSTOV(np2)->v_mount || np2->n_fhsize != fhsize ||
-		    bcmp((caddr_t)fhp, (caddr_t)np2->n_fhp, fhsize)) {
-			continue;
-		}
-		vx_put(vp);
-		lockmgr(&nfsnhash_lock, LK_RELEASE);
-		zfree(nfsnode_zone, np);
-		goto retry;
-	}
-	LIST_INSERT_HEAD(nhpp, np, n_hash);
+	bzero(np, sizeof (*np));
 	if (fhsize > NFS_SMALLFH) {
 		MALLOC(np->n_fhp, nfsfh_t *, fhsize, M_NFSBIGFH, M_WAITOK);
 	} else {
@@ -311,6 +305,41 @@ loop:
 	bcopy((caddr_t)fhp, (caddr_t)np->n_fhp, fhsize);
 	np->n_fhsize = fhsize;
 	lockinit(&np->n_rslock, "nfrslk", 0, lkflags);
+
+	/*
+	 * Validate that we did not race another nfs_nget() due to blocking
+	 * here and there.
+	 */
+	for (np2 = nhpp->lh_first; np2 != 0; np2 = np2->n_hash.le_next) {
+		if (mntp != NFSTOV(np2)->v_mount || np2->n_fhsize != fhsize ||
+		    bcmp((caddr_t)fhp, (caddr_t)np2->n_fhp, fhsize)) {
+			continue;
+		}
+		vx_put(vp);
+		lockmgr(&nfsnhash_lock, LK_RELEASE);
+
+		if (np->n_fhsize > NFS_SMALLFH)
+			FREE((caddr_t)np->n_fhp, M_NFSBIGFH);
+		np->n_fhp = NULL;
+		zfree(nfsnode_zone, np);
+
+		/*
+		 * vp state is retained on retry/loop so we must NULL it
+		 * out here or fireworks may ensue.
+		 */
+		vp = NULL;
+		goto retry;
+	}
+
+	/*
+	 * Finish connecting up (np, vp) and insert the nfsnode in the
+	 * hash for its new file handle.
+	 *
+	 * nvp is locked & refd so effectively so is np.
+	 */
+	np->n_vnode = vp;
+	vp->v_data = np;
+	LIST_INSERT_HEAD(nhpp, np, n_hash);
 
 	/*
 	 * nvp is locked & refd so effectively so is np.
