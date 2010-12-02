@@ -37,7 +37,7 @@
 
 #include <sys/buf.h>
 
-#include <sys/dm.h>
+#include <dev/disk/dm/dm.h>
 
 /* Init function called from dm_table_load_ioctl. */
 static int

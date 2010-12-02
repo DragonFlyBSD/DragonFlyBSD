@@ -89,7 +89,7 @@
 #include <sys/malloc.h>
 #include <sys/udev.h>
 #include <sys/vnode.h>
-#include <sys/dm.h>
+#include <dev/disk/dm/dm.h>
 
 #include "netbsd-dm.h"
 

@@ -36,7 +36,7 @@
 #include <sys/disklabel.h>
 #include <sys/ioccom.h>
 #include <sys/malloc.h>
-#include <sys/dm.h>
+#include <dev/disk/dm/dm.h>
 
 #include "netbsd-dm.h"
 

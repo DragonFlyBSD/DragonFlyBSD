@@ -38,7 +38,7 @@
 
 #include <sys/buf.h>
 
-#include <sys/dm.h>
+#include <dev/disk/dm/dm.h>
 
 /*
  * Zero target init function. This target doesn't need

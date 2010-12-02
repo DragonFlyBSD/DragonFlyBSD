@@ -54,7 +54,7 @@
 #include <opencrypto/rmd160.h>
 #include <machine/cpufunc.h>
 
-#include <sys/dm.h>
+#include <dev/disk/dm/dm.h>
 MALLOC_DEFINE(M_DMCRYPT, "dm_crypt", "Device Mapper Target Crypt");
 
 struct target_crypt_config;

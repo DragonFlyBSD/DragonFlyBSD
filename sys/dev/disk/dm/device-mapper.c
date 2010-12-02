@@ -47,7 +47,7 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/sysctl.h>
-#include <sys/dm.h>
+#include <dev/disk/dm/dm.h>
 
 #include "netbsd-dm.h"
 
