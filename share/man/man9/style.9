@@ -720,6 +720,9 @@ placed in a single set of brackets.
 "usage: f [-a | -b] [-c [-dEe] [-n number]]\en"
 .Ed
 .Bd -literal
+void
+usage(void)
+{
 	fprintf(stderr, "usage: f [-ab]\en");
 	exit(EX_USAGE);
 }
