@@ -854,6 +854,7 @@ mfi_free(struct mfi_softc *sc)
 
 	if (sc->mfi_cdev != NULL)
 		destroy_dev(sc->mfi_cdev);
+	dev_ops_remove_minor(&mfi_ops, device_get_unit(sc->mfi_dev));
 
 	if (sc->mfi_total_cmds != 0) {
 		for (i = 0; i < sc->mfi_total_cmds; i++) {
