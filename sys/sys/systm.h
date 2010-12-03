@@ -98,6 +98,7 @@ extern int clocks_running;	/* timing/timeout subsystem is operational */
 /* XXX TGEN these don't belong here, they're MD on i386/x86_64 */
 extern u_int cpu_feature;	/* CPUID_* features */
 extern u_int cpu_feature2;	/* CPUID2_* features */
+extern u_int cpu_mi_feature;	/* CPU_MI_XXX machine-nonspecific features */
 
 extern int nfs_diskless_valid;	/* NFS diskless params were obtained */
 extern vm_paddr_t Maxmem;	/* Highest physical memory address in system */

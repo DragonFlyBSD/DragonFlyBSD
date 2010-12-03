@@ -96,6 +96,7 @@ struct lwp lwp0;
 struct thread thread0;
 
 int cmask = CMASK;
+u_int cpu_mi_feature;
 extern	struct user *proc0paddr;
 extern int fallback_elf_brand;
 

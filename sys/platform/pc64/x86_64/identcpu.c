@@ -481,6 +481,10 @@ identify_cpu(void)
 
 	/* XXX */
 	cpu = CPU_CLAWHAMMER;
+
+	if (cpu_feature & CPUID_SSE2)
+		cpu_mi_feature |= CPU_MI_BZERONT;
+
 }
 
 static u_int

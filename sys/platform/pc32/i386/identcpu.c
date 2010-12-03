@@ -1174,7 +1174,7 @@ finishidentcpu(void)
 				strcpy(cpu_vendor, "IBM");
 				cpu_vendor_id = CPU_VENDOR_IBM;
 				cpu = CPU_BLUE;
-				return;
+				goto finish;
 			}
 		}
 		switch (cpu_id & 0xf00) {
@@ -1248,9 +1248,17 @@ finishidentcpu(void)
 			strcpy(cpu_vendor, "IBM");
 			cpu_vendor_id = CPU_VENDOR_IBM;
 			cpu = CPU_BLUE;
-			return;
 		}
 	}
+
+	/*
+	 * Set MI flags for MI procedures implemented using machine-specific
+	 * features.
+	 */
+finish:
+	if (cpu_feature & CPUID_SSE2)
+		cpu_mi_feature |= CPU_MI_BZERONT;
+
 }
 
 static u_int

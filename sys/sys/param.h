@@ -153,6 +153,11 @@
 #endif
 
 /*
+ * cpu_mi_feature bits
+ */
+#define CPU_MI_BZERONT	0x00000001
+
+/*
  * File system parameters and macros.
  *
  * MAXBSIZE -	Filesystems are made out of blocks of at most MAXBSIZE bytes
