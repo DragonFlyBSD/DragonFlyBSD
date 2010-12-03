@@ -1643,7 +1643,6 @@ retry_lookup:
 		 *	interrupt can free the page) through to the
 		 *	vm_page_wire() call.
 		 */
-		crit_enter();
 		lwkt_gettoken(&vm_token);
 		pg = vm_page_lookup(obj, pindex);
 		if (pg == NULL) {
@@ -1662,7 +1661,6 @@ retry_lookup:
 		}
 		vm_page_wire(pg);
 		lwkt_reltoken(&vm_token);
-		crit_exit();
 
 		/*
 		 * If page is not valid for what we need, initiate I/O

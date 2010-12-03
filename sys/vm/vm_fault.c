@@ -1002,12 +1002,8 @@ vm_fault_object(struct faultstate *fs,
 		}
 
 		/*
-		 * See if page is resident.  spl protection is required
-		 * to avoid an interrupt unbusy/free race against our
-		 * lookup.  We must hold the protection through a page
-		 * allocation or busy.
+		 * See if the page is resident.
 		 */
-		crit_enter();
 		fs->m = vm_page_lookup(fs->object, pindex);
 		if (fs->m != NULL) {
 			int queue;
@@ -1034,7 +1030,6 @@ vm_fault_object(struct faultstate *fs,
 				vm_object_deallocate(fs->first_object);
 				fs->first_object = NULL;
 				lwkt_reltoken(&vm_token);
-				crit_exit();
 				return (KERN_TRY_AGAIN);
 			}
 
@@ -1051,7 +1046,6 @@ vm_fault_object(struct faultstate *fs,
 				unlock_and_deallocate(fs);
 				vm_waitpfault();
 				lwkt_reltoken(&vm_token);
-				crit_exit();
 				return (KERN_TRY_AGAIN);
 			}
 
@@ -1066,7 +1060,6 @@ vm_fault_object(struct faultstate *fs,
 			 * page busy.
 			 */
 			vm_page_busy(fs->m);
-			crit_exit();
 
 			if (fs->m->object != &kernel_object) {
 				if ((fs->m->valid & VM_PAGE_BITS_ALL) !=
@@ -1086,8 +1079,6 @@ vm_fault_object(struct faultstate *fs,
 		/*
 		 * Page is not resident, If this is the search termination
 		 * or the pager might contain the page, allocate a new page.
-		 *
-		 * NOTE: We are still in a critical section.
 		 */
 		if (TRYPAGER(fs) || fs->object == fs->first_object) {
 			/*
@@ -1095,7 +1086,6 @@ vm_fault_object(struct faultstate *fs,
 			 */
 			if (pindex >= fs->object->size) {
 				lwkt_reltoken(&vm_token);
-				crit_exit();
 				unlock_and_deallocate(fs);
 				return (KERN_PROTECTION_FAILURE);
 			}
@@ -1109,7 +1099,6 @@ vm_fault_object(struct faultstate *fs,
 				limticks = vm_fault_ratelimit(curproc->p_vmspace);
 				if (limticks) {
 					lwkt_reltoken(&vm_token);
-					crit_exit();
 					unlock_and_deallocate(fs);
 					tsleep(curproc, 0, "vmrate", limticks);
 					fs->didlimit = 1;
@@ -1127,13 +1116,11 @@ vm_fault_object(struct faultstate *fs,
 			}
 			if (fs->m == NULL) {
 				lwkt_reltoken(&vm_token);
-				crit_exit();
 				unlock_and_deallocate(fs);
 				vm_waitpfault();
 				return (KERN_TRY_AGAIN);
 			}
 		}
-		crit_exit();
 
 readrest:
 		/*
@@ -1191,7 +1178,6 @@ readrest:
 						scan_count = 16;
 				}
 
-				crit_enter();
 				while (scan_count) {
 					vm_page_t mt;
 
@@ -1222,7 +1208,6 @@ skip:
 					--scan_count;
 					--scan_pindex;
 				}
-				crit_exit();
 
 				seqaccess = 1;
 			}
@@ -1361,6 +1346,10 @@ skip:
 			if ((fs->m->flags & PG_ZERO) == 0) {
 				vm_page_zero_fill(fs->m);
 			} else {
+#ifdef PMAP_DEBUG
+				pmap_page_assertzero(VM_PAGE_TO_PHYS(fs->m));
+#endif
+				vm_page_flag_clear(fs->m, PG_ZERO);
 				mycpu->gd_cnt.v_ozfod++;
 			}
 			mycpu->gd_cnt.v_zfod++;
@@ -1531,10 +1520,8 @@ skip:
 		vm_object_set_writeable_dirty(fs->m->object);
 		vm_set_nosync(fs->m, fs->entry);
 		if (fs->fault_flags & VM_FAULT_DIRTY) {
-			crit_enter();
 			vm_page_dirty(fs->m);
 			swap_pager_unswapped(fs->m);
-			crit_exit();
 		}
 	}
 
@@ -1758,7 +1745,7 @@ vm_fault_copy_entry(vm_map_t dst_map, vm_map_t src_map,
 		 * memory.)
 		 */
 		src_m = vm_page_lookup(src_object,
-			OFF_TO_IDX(dst_offset + src_offset));
+				       OFF_TO_IDX(dst_offset + src_offset));
 		if (src_m == NULL)
 			panic("vm_fault_copy_wired: page missing");
 
@@ -1867,7 +1854,6 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
 			startpindex = pindex - rbehind;
 		}
 
-		crit_enter();
 		lwkt_gettoken(&vm_token);
 		for (tpindex = pindex; tpindex > startpindex; --tpindex) {
 			if (vm_page_lookup(object, tpindex - 1))
@@ -1879,7 +1865,6 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
 			rtm = vm_page_alloc(object, tpindex, VM_ALLOC_SYSTEM);
 			if (rtm == NULL) {
 				lwkt_reltoken(&vm_token);
-				crit_exit();
 				for (j = 0; j < i; j++) {
 					vm_page_free(marray[j]);
 				}
@@ -1892,7 +1877,6 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
 			++tpindex;
 		}
 		lwkt_reltoken(&vm_token);
-		crit_exit();
 	} else {
 		i = 0;
 	}
@@ -1912,7 +1896,6 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
 	if (endpindex > object->size)
 		endpindex = object->size;
 
-	crit_enter();
 	lwkt_gettoken(&vm_token);
 	while (tpindex < endpindex) {
 		if (vm_page_lookup(object, tpindex))
@@ -1925,7 +1908,6 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
 		++tpindex;
 	}
 	lwkt_reltoken(&vm_token);
-	crit_exit();
 
 	return (i);
 }
@@ -2016,12 +1998,6 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 	else if (starta > addra)
 		starta = 0;
 
-	/*
-	 * critical section protection is required to maintain the
-	 * page/object association, interrupts can free pages and remove
-	 * them from their objects.
-	 */
-	crit_enter();
 	lwkt_gettoken(&vm_token);
 	for (i = 0; i < PAGEORDER_SIZE; i++) {
 		vm_object_t lobject;
@@ -2073,6 +2049,9 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 				if ((m->flags & PG_ZERO) == 0) {
 					vm_page_zero_fill(m);
 				} else {
+#ifdef PMAP_DEBUG
+					pmap_page_assertzero(VM_PAGE_TO_PHYS(m));
+#endif
 					vm_page_flag_clear(m, PG_ZERO);
 					mycpu->gd_cnt.v_ozfod++;
 				}
@@ -2141,5 +2120,4 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 		}
 	}
 	lwkt_reltoken(&vm_token);
-	crit_exit();
 }

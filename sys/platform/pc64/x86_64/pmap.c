@@ -1371,6 +1371,10 @@ pmap_pinit(struct pmap *pmap)
 	}
 	if ((ptdpg->flags & PG_ZERO) == 0)
 		bzero(pmap->pm_pml4, PAGE_SIZE);
+#ifdef PMAP_DEBUG
+	else
+		pmap_page_assertzero(VM_PAGE_TO_PHYS(ptdpg));
+#endif
 
 	pmap->pm_pml4[KPML4I] = KPDPphys | PG_RW | PG_V | PG_U;
 	pmap->pm_pml4[DMPML4I] = DMPDPphys | PG_RW | PG_V | PG_U;
@@ -1571,6 +1575,11 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 	if ((m->flags & PG_ZERO) == 0) {
 		pmap_zero_page(VM_PAGE_TO_PHYS(m));
 	}
+#ifdef PMAP_DEBUG
+	else {
+		pmap_page_assertzero(VM_PAGE_TO_PHYS(m));
+	}
+#endif
 
 	KASSERT(m->queue == PQ_NONE,
 		("_pmap_allocpte: %p->queue != PQ_NONE", m));
@@ -1582,6 +1591,8 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 	m->hold_count++;
 	if (m->wire_count++ == 0)
 		vmstats.v_wire_count++;
+	m->valid = VM_PAGE_BITS_ALL;
+	vm_page_flag_clear(m, PG_ZERO);
 
 	/*
 	 * Map the pagetable page into the process address space, if
@@ -1720,8 +1731,10 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 	pmap->pm_ptphint = m;
 	++pmap->pm_stats.resident_count;
 
+#if 0
 	m->valid = VM_PAGE_BITS_ALL;
 	vm_page_flag_clear(m, PG_ZERO);
+#endif
 	vm_page_flag_set(m, PG_MAPPED);
 	vm_page_wakeup(m);
 
@@ -3187,13 +3200,14 @@ pmap_zero_page(vm_paddr_t phys)
 void
 pmap_page_assertzero(vm_paddr_t phys)
 {
-	vm_offset_t virt = PHYS_TO_DMAP(phys);
-	int i;
+	vm_offset_t va = PHYS_TO_DMAP(phys);
+	size_t i;
 
 	for (i = 0; i < PAGE_SIZE; i += sizeof(long)) {
-	    if (*(long *)((char *)virt + i) != 0) {
-		panic("pmap_page_assertzero() @ %p not zero!\n", (void *)virt);
-	    }
+		if (*(long *)((char *)va + i) != 0) {
+			panic("pmap_page_assertzero() @ %p not zero!\n",
+			      (void *)(intptr_t)va);
+		}
 	}
 }
 
