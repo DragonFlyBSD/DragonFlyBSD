@@ -1,7 +1,5 @@
 /*	$NetBSD: am79900.c,v 1.17 2005/12/24 20:27:29 perry Exp $	*/
 /*	$FreeBSD: src/sys/dev/le/am79900.c,v 1.3 2006/05/16 21:04:01 marius Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/lnc/am79900.c,v 1.5 2008/05/14 11:59:20 sephe Exp $	*/
-
 
 /*-
  * Copyright (c) 1997 The NetBSD Foundation, Inc.
@@ -258,7 +256,7 @@ am79900_rint(struct lance_softc *sc)
 	struct lermd rmd;
 	uint32_t rmd1;
 	int bix, rp;
-#if defined(__i386__) && !defined(PC98)
+#if defined(__i386__)
 	struct ether_header *eh;
 #endif
 

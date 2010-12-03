@@ -7,7 +7,6 @@
 # ----------------------------------------------------------------------------
 #
 # $FreeBSD: src/tools/tools/kerninclude/kerninclude.sh,v 1.1.2.1 2001/03/05 12:18:27 kris Exp $
-# $DragonFly: src/tools/tools/kerninclude/kerninclude.sh,v 1.2 2003/06/17 04:29:11 dillon Exp $
 #
 # This script tries to find #include statements which are not needed in
 # the FreeBSD kernel tree.
@@ -22,7 +21,7 @@ cd /sys
 init=false
 
 # Which kernels you want to check
-kernels="LINT GENERIC GENERIC98"
+kernels="LINT GENERIC"
 
 NO_MODULES=yes
 export NO_MODULES
@@ -62,15 +61,6 @@ echo "Configuring kernels"
 	else
 		config LINT
 		config GENERIC
-	fi
-)
-(
-	cd pc98/conf
-	cp -f GENERIC GENERIC98
-	if $init ; then
-		config -r GENERIC98
-	else
-		config GENERIC98
 	fi
 )
 

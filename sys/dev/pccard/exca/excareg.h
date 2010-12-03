@@ -1,6 +1,5 @@
 /*	$NetBSD: i82365reg.h,v 1.3 1998/12/20 17:53:28 nathanw Exp $	*/
 /* $FreeBSD: src/sys/dev/exca/excareg.h,v 1.5 2005/01/06 01:42:40 imp Exp $ */
-/* $DragonFly: src/sys/dev/pccard/exca/excareg.h,v 1.3 2007/07/05 12:08:54 sephe Exp $ */
 
 /*-
  * Copyright (c) 2002 M Warner Losh.  All rights reserved.
@@ -412,10 +411,6 @@
 #define EXCA_PNP_82365_CARDBUS	0x030ED041	/* PNP0E03 */
 #define EXCA_PNP_SCM_SWAPBOX	0x69046d4c	/* SMC0469 */
 
-/* C-Bus PnP Definitions */
-#define EXCA_NEC_PC9801_102	0x9180a3b8	/* NEC8091 PC-9801-102 */
-#define	EXCA_NEC_PC9821RA_E01	0x2181a3b8	/* NEC8121 PC-9821RA-E01 */
-
 /*
  *	Mask of allowable interrupts.
  *
@@ -438,10 +433,6 @@
  *	cbus add-in cards.  He has confirmed this routing with a visual
  *	inspection of his card or a VOM.
  */
-#ifdef PC98
-#define	EXCA_INT_MASK_ALLOWED	0x3E68		/* PC98 */
-#else
 #define	EXCA_INT_MASK_ALLOWED	0xDEB8		/* AT */
-#endif
 
 #endif /* !_SYS_DEV_EXCA_EXCAREG_H */
