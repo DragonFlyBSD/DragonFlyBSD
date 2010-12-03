@@ -21,36 +21,85 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/amr.4,v 1.3.2.10 2003/05/26 12:41:05 hmp Exp $
+.\" $FreeBSD: src/share/man/man4/amr.4,v 1.35 2006/06/18 14:45:28 brueffer Exp $
 .\"
-.Dd November 30, 2010
+.Dd December 3, 2010
 .Dt AMR 4
 .Os
 .Sh NAME
 .Nm amr
-.Nd AMI MegaRAID PCI-SCSI RAID driver
+.Nd MegaRAID SCSI/ATA/SATA RAID driver
 .Sh SYNOPSIS
-.Cd device pci
-.Cd device amr
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device pci"
+.Cd "device scbus"
+.Cd "device amr"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+amr_load="YES"
+.Ed
 .Sh DESCRIPTION
 The
 .Nm
-driver provides support for American Megatrends MegaRAID Express,
-Elite and Enterprise family SCSI RAID controllers,
-including models relabeled and sold by Hewlett-Packard and Dell.
+driver provides support for LSI Logic MegaRAID SCSI, ATA and SATA
+RAID controllers and legacy American Megatrends MegaRAID
+SCSI RAID controllers, including models relabeled
+and sold by Dell and Hewlett-Packard.
 .Pp
 LSI MegaRAID SAS controllers are supported by
 .Xr mfi 4
 and will not work with this driver.
+.Sh HARDWARE
+Controllers supported by the
+.Nm
+driver include:
 .Pp
-Supported controllers include:
-.Bl -bullet
+.Bl -bullet -compact
 .It
-MegaRAID 320-1
+MegaRAID SATA 150-4
 .It
-MegaRAID 320-2
+MegaRAID SATA 150-6
+.It
+MegaRAID SATA 300-4X
+.It
+MegaRAID SATA 300-8X
+.It
+MegaRAID SCSI 320-1E
+.It
+MegaRAID SCSI 320-2E
+.It
+MegaRAID SCSI 320-4E
+.It
+MegaRAID SCSI 320-0X
+.It
+MegaRAID SCSI 320-2X
+.It
+MegaRAID SCSI 320-4X
+.It
+MegaRAID SCSI 320-0
+.It
+MegaRAID SCSI 320-1
+.It
+MegaRAID SCSI 320-2
+.It
+MegaRAID SCSI 320-4
 .It
 MegaRAID Series 418
+.It
+MegaRAID i4 133 RAID
+.It
+MegaRAID Elite 1500 (Series 467)
+.It
+MegaRAID Elite 1600 (Series 493)
+.It
+MegaRAID Elite 1650 (Series 4xx)
 .It
 MegaRAID Enterprise 1200 (Series 428)
 .It
@@ -61,10 +110,6 @@ MegaRAID Enterprise 1400 (Series 438)
 MegaRAID Enterprise 1500 (Series 467)
 .It
 MegaRAID Enterprise 1600 (Series 471)
-.It
-MegaRAID Elite 1500 (Series 467)
-.It
-MegaRAID Elite 1600 (Series 493)
 .It
 MegaRAID Express 100 (Series 466WS)
 .It
@@ -80,11 +125,35 @@ Dell PERC 2/SC
 .It
 Dell PERC 2/DC
 .It
+Dell PERC 3/DCL
+.It
+Dell PERC 3/QC
+.It
+Dell PERC 4/DC
+.It
+Dell PERC 4/IM
+.It
+Dell PERC 4/SC
+.It
+Dell PERC 4/Di
+.It
+Dell PERC 4e/DC
+.It
+Dell PERC 4e/Di
+.It
+Dell PERC 4e/Si
+.It
+Dell PERC 4ei
+.It
 HP NetRAID-1/Si
 .It
-HP NetRAID-3/Si
+HP NetRAID-3/Si (D4943A)
 .It
 HP Embedded NetRAID
+.It
+Intel RAID Controller SRCS16
+.It
+Intel RAID Controller SRCU42X
 .El
 .Sh DIAGNOSTICS
 .Ss Driver initialisation/shutdown phase
@@ -164,12 +233,9 @@ An I/O error has occurred.
 The
 .Nm
 driver was written by
-.An Mike Smith
-.Aq msmith@FreeBSD.org .
+.An Mike Smith Aq msmith@FreeBSD.org .
 .Pp
 This manual page was written by
-.An Mike Smith
-.Aq msmith@FreeBSD.org
+.An Mike Smith Aq msmith@FreeBSD.org
 and
-.An Jeroen Ruigrok van der Werven
-.Aq asmodai@FreeBSD.org .
+.An Jeroen Ruigrok van der Werven Aq asmodai@FreeBSD.org .

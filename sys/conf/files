@@ -193,10 +193,11 @@ dev/disk/nata/atapi-cam.c		optional natapicam
 dev/disk/nata/atapi-cd.c		optional natapicd
 dev/disk/nata/atapi-fd.c		optional natapifd
 dev/disk/nata/atapi-tape.c		optional natapist
-dev/raid/amr/amr_cam.c			optional amr
-dev/raid/amr/amr_disk.c			optional amr
-dev/raid/amr/amr_pci.c			optional amr
 dev/raid/amr/amr.c			optional amr
+dev/raid/amr/amr_cam.c			optional amrp amr
+dev/raid/amr/amr_disk.c			optional amr
+#dev/raid/amr/amr_linux.c		optional amr compat_linux
+dev/raid/amr/amr_pci.c			optional amr pci
 dev/disk/aha/aha.c			optional aha
 dev/disk/aha/aha_isa.c			optional aha isa
 dev/disk/ahb/ahb.c			optional ahb eisa

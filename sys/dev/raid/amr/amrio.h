@@ -51,8 +51,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/amr/amrio.h,v 1.2.2.3 2002/11/11 13:19:10 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amrio.h,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ *
+ *	$FreeBSD: src/sys/dev/amr/amrio.h,v 1.7 2005/12/14 03:26:49 scottl Exp $
  */
 
 /*
@@ -60,11 +60,12 @@
  */
 
 #include <sys/ioccom.h>
+#include <sys/param.h>
 
 /*
  * Fetch the driver's interface version.
  */
-#define AMR_IO_VERSION_NUMBER	0x01
+#define AMR_IO_VERSION_NUMBER	153
 #define AMR_IO_VERSION	_IOR('A', 0x200, int)
 
 /*
@@ -107,3 +108,15 @@ struct amr_user_ioctl {
 
 #define AMR_IO_COMMAND	_IOWR('A', 0x201, struct amr_user_ioctl)
 
+#if defined(__amd64__) || defined(__ia64__)
+
+struct amr_user_ioctl32 {
+    unsigned char	au_cmd[32];	/* command text from userspace */
+    u_int32_t		au_buffer;	/* 32-bit pointer to uspace buf */
+    u_int32_t		au_length;	/* length of the uspace buffer */
+    int32_t		au_direction;	/* data transfer direction */
+    int32_t		au_status;	/* command status returned by adapter */
+};
+
+#	define AMR_IO_COMMAND32	_IOWR('A', 0x201, struct amr_user_ioctl32)
+#endif
