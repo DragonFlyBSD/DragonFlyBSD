@@ -825,6 +825,7 @@ lwkt_cpusync_remote2(lwkt_cpusync_t poll)
 	if (poll->cs_fin2_func) {
 	    savef = poll->cs_fin2_func;
 	    saved = poll->cs_data;
+	    cpu_ccfence();	/* required ordering for MP operation */
 	    atomic_add_int(&poll->cs_count, -1);
 	    savef(saved);
 	} else {
