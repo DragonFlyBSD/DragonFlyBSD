@@ -792,6 +792,12 @@ subpartition_get_capacity(const struct subpartition *sp)
 	return(sp->capacity);
 }
 
+void
+subpartition_clr_encrypted(struct subpartition *sp)
+{
+	sp->encrypted = 0;
+}
+
 int
 subpartition_is_encrypted(const struct subpartition *sp)
 {

@@ -654,6 +654,7 @@ warn_encrypted_root(struct i_fn_args *a)
 		    _("You have selected encryption for the root partition which "
 		    "is not supported."))) {
 		case 1:
+			subpartition_clr_encrypted(sp);
 			valid = 1;
 			break;
 		case 2:

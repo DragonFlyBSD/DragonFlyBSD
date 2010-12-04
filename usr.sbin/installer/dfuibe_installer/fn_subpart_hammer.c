@@ -575,6 +575,7 @@ warn_encrypted_boot(struct i_fn_args *a)
 		    _("You have selected encryption for the /boot partition which "
 		    "is not supported."))) {
 		case 1:
+			subpartition_clr_encrypted(sp);
 			valid = 1;
 			break;
 		case 2:

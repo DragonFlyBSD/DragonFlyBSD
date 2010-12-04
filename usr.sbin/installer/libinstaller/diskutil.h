@@ -177,6 +177,7 @@ char			 subpartition_get_letter(const struct subpartition *);
 unsigned long		 subpartition_get_fsize(const struct subpartition *);
 unsigned long		 subpartition_get_bsize(const struct subpartition *);
 long			 subpartition_get_capacity(const struct subpartition *);
+void			 subpartition_clr_encrypted(struct subpartition *);
 int			 subpartition_is_encrypted(const struct subpartition *);
 int			 subpartition_is_swap(const struct subpartition *);
 int			 subpartition_is_softupdated(const struct subpartition *);
