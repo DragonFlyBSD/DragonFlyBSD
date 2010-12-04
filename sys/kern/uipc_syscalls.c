@@ -1650,13 +1650,11 @@ retry_lookup:
 			if (pg == NULL) {
 				vm_wait(0);
 				lwkt_reltoken(&vm_token);
-				crit_exit();
 				goto retry_lookup;
 			}
 			vm_page_wakeup(pg);
 		} else if (vm_page_sleep_busy(pg, TRUE, "sfpbsy")) {
 			lwkt_reltoken(&vm_token);
-			crit_exit();
 			goto retry_lookup;
 		}
 		vm_page_wire(pg);
