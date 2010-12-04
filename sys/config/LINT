@@ -2847,6 +2847,7 @@ options		MBUF_DEBUG
 options 	METEOR_TEST_VIDEO
 options 	NETATALKDEBUG
 options 	PANIC_DEBUG
+options 	PMAP_DEBUG
 options 	PSM_DEBUG=4
 options 	SCSI_NCR_DEBUG
 options 	SCSI_NCR_MAX_SYNC=10000

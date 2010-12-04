@@ -639,7 +639,7 @@ ptbase_assert(struct pmap *pmap)
 	/* are we current address space or kernel? */
 	if (pmap == &kernel_pmap || frame == (((unsigned)PTDpde) & PG_FRAME))
 		return;
-	KKASSERT(frame == (*mycpu->gd_GDMAP1 & PG_FRAME));
+	KKASSERT(frame == (*mdcpu->gd_GDMAP1 & PG_FRAME));
 }
 
 #else
