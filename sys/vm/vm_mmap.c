@@ -1031,6 +1031,9 @@ sys_mlockall(struct mlockall_args *uap)
 	int how = uap->how;
 	int rc = KERN_SUCCESS;
 
+	if (((how & MCL_CURRENT) == 0) && ((how & MCL_FUTURE) == 0))
+		return (EINVAL);
+
 	rc = priv_check_cred(td->td_ucred, PRIV_ROOT, 0);
 	if (rc) 
 		return (rc);
