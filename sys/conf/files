@@ -858,6 +858,7 @@ vfs/isofs/cd9660/cd9660_rrip.c	optional cd9660
 vfs/isofs/cd9660/cd9660_util.c	optional cd9660
 vfs/isofs/cd9660/cd9660_vfsops.c	optional cd9660
 vfs/isofs/cd9660/cd9660_vnops.c	optional cd9660
+vfs/isofs/cd9660/cd9660_iconv/cd9660_iconv.c	optional cd9660_iconv
 vfs/udf/osta.c			optional udf
 vfs/udf/udf_vfsops.c		optional udf
 vfs/udf/udf_vnops.c		optional udf
@@ -1049,17 +1050,25 @@ vfs/procfs/procfs_rlimit.c	optional procfs
 vfs/union/union_subr.c		optional union
 vfs/union/union_vfsops.c	optional union
 vfs/union/union_vnops.c		optional union
+vfs/hpfs/hpfs_alsubr.c		optional hpfs
+vfs/hpfs/hpfs_hash.c		optional hpfs
+vfs/hpfs/hpfs_lookup.c		optional hpfs
+vfs/hpfs/hpfs_subr.c		optional hpfs
+vfs/hpfs/hpfs_vfsops.c		optional hpfs
+vfs/hpfs/hpfs_vnops.c		optional hpfs
 vfs/msdosfs/msdosfs_conv.c	optional nowerror msdosfs
 vfs/msdosfs/msdosfs_denode.c	optional msdosfs
 vfs/msdosfs/msdosfs_fat.c	optional msdosfs
 vfs/msdosfs/msdosfs_lookup.c	optional msdosfs
 vfs/msdosfs/msdosfs_vfsops.c	optional msdosfs
 vfs/msdosfs/msdosfs_vnops.c	optional msdosfs
-vfs/ntfs/ntfs_vfsops.c		optional ntfs
-vfs/ntfs/ntfs_vnops.c		optional ntfs
-vfs/ntfs/ntfs_subr.c		optional ntfs
+vfs/msdosfs/msdosfs_iconv/msdosfs_iconv.c	optional msdosfs_iconv
 vfs/ntfs/ntfs_compr.c		optional ntfs
 vfs/ntfs/ntfs_ihash.c		optional ntfs
+vfs/ntfs/ntfs_subr.c		optional ntfs
+vfs/ntfs/ntfs_vfsops.c		optional ntfs
+vfs/ntfs/ntfs_vnops.c		optional ntfs
+vfs/ntfs/ntfs_iconv/ntfs_iconv.c	optional ntfs_iconv
 net/altq/altq_cbq.c		optional altq
 net/altq/altq_hfsc.c		optional altq
 net/altq/altq_priq.c		optional altq

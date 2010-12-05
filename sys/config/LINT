@@ -745,6 +745,7 @@ options 	NFS			#Network filesystem
 #options 	NFS_NOSERVER		#Disable the NFS-server code.
 options 	CD9660			#ISO 9660 filesystem
 options 	FDESC			#File descriptor filesystem
+options 	HPFS			#OS/2 File system
 options 	MSDOSFS			#MS DOS filesystem
 options 	NTFS			#NT filesystem
 options 	NULLFS			#NULL filesystem
@@ -833,6 +834,12 @@ options 	EXT2FS
 # stability and security issues in the current aio code that make it
 # unsuitable for inclusion on machines with untrusted local users.
 options 	VFS_AIO
+
+# Optional character code conversion support with LIBICONV.
+# Each option requires their base file system and LIBICONV.
+options 	CD9660_ICONV
+options 	MSDOSFS_ICONV
+options 	NTFS_ICONV
 
 
 #####################################################################

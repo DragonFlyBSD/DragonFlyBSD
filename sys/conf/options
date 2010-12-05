@@ -142,6 +142,7 @@ INCLUDE_CONFIG_FILE	opt_config.h
 # options in a never-included header.
 EXT2FS		opt_dontuse.h
 FDESC		opt_dontuse.h
+HPFS		opt_dontuse.h
 MFS		opt_dontuse.h
 MSDOSFS		opt_dontuse.h
 NULLFS		opt_dontuse.h
@@ -163,6 +164,11 @@ NWFS
 USERFS
 TMPFS
 HAMMER
+
+# filesystems and libiconv bridge
+CD9660_ICONV	opt_dontuse.h
+MSDOSFS_ICONV	opt_dontuse.h
+NTFS_ICONV	opt_dontuse.h
 
 # If you are following the conditions in the copyright,
 # you can enable soft-updates which will speed up a lot of things
