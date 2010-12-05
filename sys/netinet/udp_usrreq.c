@@ -130,7 +130,7 @@ static int	udpcksum = 1;
 static int	udpcksum = 0;		/* XXX */
 #endif
 SYSCTL_INT(_net_inet_udp, UDPCTL_CHECKSUM, checksum, CTLFLAG_RW,
-		&udpcksum, 0, "");
+    &udpcksum, 0, "Enable checksumming of UDP packets");
 
 int	log_in_vain = 0;
 SYSCTL_INT(_net_inet_udp, OID_AUTO, log_in_vain, CTLFLAG_RW,

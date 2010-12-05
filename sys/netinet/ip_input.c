@@ -207,14 +207,16 @@ static int ip_dispatch_fast = 0;
 static int ip_dispatch_slow = 0;
 static int ip_dispatch_recheck = 0;
 static int ip_dispatch_software = 0;
-SYSCTL_INT(_net_inet_ip, OID_AUTO, dispatch_fast_count, CTLFLAG_RW,
-	   &ip_dispatch_fast, 0, "");
-SYSCTL_INT(_net_inet_ip, OID_AUTO, dispatch_slow_count, CTLFLAG_RW,
-	   &ip_dispatch_slow, 0, "");
-SYSCTL_INT(_net_inet_ip, OID_AUTO, dispatch_software_count, CTLFLAG_RW,
-	   &ip_dispatch_software, 0, "");
-SYSCTL_INT(_net_inet_ip, OID_AUTO, dispatch_recheck_count, CTLFLAG_RW,
-	   &ip_dispatch_recheck, 0, "");
+SYSCTL_INT(_net_inet_ip, OID_AUTO, dispatch_fast_count, CTLFLAG_RD,
+    &ip_dispatch_fast, 0,
+    "Number of IP dispatches handled on current CPU");
+SYSCTL_INT(_net_inet_ip, OID_AUTO, dispatch_slow_count, CTLFLAG_RD,
+    &ip_dispatch_slow, 0,
+    "Number of IP dispatches messaged to another CPU");
+SYSCTL_INT(_net_inet_ip, OID_AUTO, dispatch_software_count, CTLFLAG_RD,
+    &ip_dispatch_software, 0, "");
+SYSCTL_INT(_net_inet_ip, OID_AUTO, dispatch_recheck_count, CTLFLAG_RD,
+    &ip_dispatch_recheck, 0, "");
 
 static struct lwkt_token ipq_token = LWKT_TOKEN_MP_INITIALIZER(ipq_token);
 

@@ -684,18 +684,19 @@ static struct spinlock unp_spin = SPINLOCK_INITIALIZER(&unp_spin);
 SYSCTL_DECL(_net_local_seqpacket);
 SYSCTL_DECL(_net_local_stream);
 SYSCTL_INT(_net_local_stream, OID_AUTO, sendspace, CTLFLAG_RW, 
-	   &unpst_sendspace, 0, "");
+    &unpst_sendspace, 0, "Size of stream socket send buffer");
 SYSCTL_INT(_net_local_stream, OID_AUTO, recvspace, CTLFLAG_RW,
-	   &unpst_recvspace, 0, "");
+    &unpst_recvspace, 0, "Size of stream socket receive buffer");
 
 SYSCTL_DECL(_net_local_dgram);
 SYSCTL_INT(_net_local_dgram, OID_AUTO, maxdgram, CTLFLAG_RW,
-	   &unpdg_sendspace, 0, "");
+    &unpdg_sendspace, 0, "Max datagram socket size");
 SYSCTL_INT(_net_local_dgram, OID_AUTO, recvspace, CTLFLAG_RW,
-	   &unpdg_recvspace, 0, "");
+    &unpdg_recvspace, 0, "Size of datagram socket receive buffer");
 
 SYSCTL_DECL(_net_local);
-SYSCTL_INT(_net_local, OID_AUTO, inflight, CTLFLAG_RD, &unp_rights, 0, "");
+SYSCTL_INT(_net_local, OID_AUTO, inflight, CTLFLAG_RD, &unp_rights, 0,
+   "File descriptors in flight");
 
 static int
 unp_attach(struct socket *so, struct pru_attach_info *ai)

@@ -93,7 +93,7 @@ const struct protosw in_gif_protosw =
 
 int ip_gif_ttl = GIF_TTL;
 SYSCTL_INT(_net_inet_ip, IPCTL_GIF_TTL, gifttl, CTLFLAG_RW,
-	&ip_gif_ttl,	0, "");
+	&ip_gif_ttl, 0, "TTL of GIF packet");
 
 int
 in_gif_output(struct ifnet *ifp, int family, struct mbuf *m)

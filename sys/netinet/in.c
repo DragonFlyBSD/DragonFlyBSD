@@ -80,7 +80,8 @@ static void	in_scrubprefix(struct in_ifaddr *);
 
 static int subnetsarelocal = 0;
 SYSCTL_INT(_net_inet_ip, OID_AUTO, subnets_are_local, CTLFLAG_RW,
-	&subnetsarelocal, 0, "");
+    &subnetsarelocal, 0,
+    "Count all internet addresses of subnets of the local net as local");
 
 struct in_multihead in_multihead; /* XXX BSS initialization */
 
