@@ -2809,10 +2809,11 @@ ap_init(void)
 	kprintf("SMP: AP CPU #%d Launched!\n", mycpu->gd_cpuid);
 
 	/* A quick check from sanity claus */
-	apic_id = (apic_id_to_logical[(lapic->id & 0x0f000000) >> 24]);
+	apic_id = (apic_id_to_logical[(lapic->id & 0xff000000) >> 24]);
 	if (mycpu->gd_cpuid != apic_id) {
 		kprintf("SMP: cpuid = %d\n", mycpu->gd_cpuid);
-		kprintf("SMP: apic_id = %d\n", apic_id);
+		kprintf("SMP: apic_id = %d lapicid %d\n",
+			apic_id, (lapic->id & 0xff000000) >> 24);
 #if JGXXX
 		kprintf("PTD[MPPTDI] = %p\n", (void *)PTD[MPPTDI]);
 #endif
