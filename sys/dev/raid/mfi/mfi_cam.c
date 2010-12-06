@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/mfi/mfi_cam.c,v 1.4 2010/03/02 17:34:11 kib Exp $
+ * $FreeBSD: src/sys/dev/mfi/mfi_cam.c,v 1.5 2010/12/06 17:02:56 jhb Exp $
  */
 
 #include "opt_mfi.h"
@@ -338,7 +338,7 @@ mfip_done(struct mfi_command *cm)
 			device = csio->data_ptr[0] & 0x1f;
 			if ((device == T_DIRECT) || (device == T_PROCESSOR))
 				csio->data_ptr[0] =
-				     (device & 0xe0) | T_NODEVICE;
+				     (csio->data_ptr[0] & 0xe0) | T_NODEVICE;
 		}
 		break;
 	}

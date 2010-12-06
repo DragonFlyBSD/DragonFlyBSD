@@ -531,7 +531,8 @@ aac_cam_complete(struct aac_command *cm)
 				    (device == T_PROCESSOR) ||
 				    (sc->flags & AAC_FLAGS_CAM_PASSONLY))
 					ccb->csio.data_ptr[0] =
-					    ((device & 0xe0) | T_NODEVICE);
+					    ((ccb->csio.data_ptr[0] & 0xe0) |
+					    T_NODEVICE);
 			}
 		}
 	}
