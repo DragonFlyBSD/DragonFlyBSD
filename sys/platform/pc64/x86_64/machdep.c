@@ -1450,6 +1450,14 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 	if (Maxmem > atop(physmap[physmap_idx + 1]))
 		Maxmem = atop(physmap[physmap_idx + 1]);
 
+	/*
+	 *
+	 */
+	if (Maxmem > atop(DMAP_MAX_ADDRESS - DMAP_MIN_ADDRESS)) {
+		kprintf("Limiting Maxmem due to DMAP size\n");
+		Maxmem = atop(DMAP_MAX_ADDRESS - DMAP_MIN_ADDRESS);
+	}
+
 	if (atop(physmap[physmap_idx + 1]) != Maxmem &&
 	    (boothowto & RB_VERBOSE))
 		kprintf("Physical memory use set to %ldK\n", Maxmem * 4);

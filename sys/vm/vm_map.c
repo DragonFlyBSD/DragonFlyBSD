@@ -142,7 +142,11 @@ struct sysref_class vmspace_sysref_class = {
 	}
 };
 
-#define VMEPERCPU	2
+/*
+ * per-cpu page table cross mappings are initialized in early boot
+ * and might require a considerable number of vm_map_entry structures.
+ */
+#define VMEPERCPU	(MAXCPU+1)
 
 static struct vm_zone mapentzone_store, mapzone_store;
 static vm_zone_t mapentzone, mapzone;

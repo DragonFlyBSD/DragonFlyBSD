@@ -194,7 +194,7 @@ void		 pmap_replacevm (struct proc *, struct vmspace *, int);
 void		 pmap_setlwpvm (struct lwp *, struct vmspace *);
 
 vm_offset_t	 pmap_addr_hint (vm_object_t obj, vm_offset_t addr, vm_size_t size);
-void		*pmap_kenter_temporary (vm_paddr_t pa, int i);
+void		*pmap_kenter_temporary (vm_paddr_t pa, long i);
 void		 pmap_init2 (void);
 struct vm_page	*pmap_kvtom(vm_offset_t va);
 

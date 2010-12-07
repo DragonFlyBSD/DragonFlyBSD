@@ -748,7 +748,7 @@ pmap_kenter_quick(vm_offset_t va, vm_paddr_t pa)
  * to be used for panic dumps.
  */
 void *
-pmap_kenter_temporary(vm_paddr_t pa, int i)
+pmap_kenter_temporary(vm_paddr_t pa, long i)
 {
 	pmap_kenter(crashdumpmap + (i * PAGE_SIZE), pa);
 	return ((void *)crashdumpmap);

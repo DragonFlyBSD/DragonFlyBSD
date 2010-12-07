@@ -237,7 +237,7 @@ u_int32_t *io_apic_versions;
 #endif
 extern	int nkpt;
 
-u_int32_t cpu_apic_versions[MAXCPU];
+u_int32_t cpu_apic_versions[NAPICID];	/* populated during mptable scan */
 int64_t tsc0_offset;
 extern int64_t tsc_offsets[];
 
@@ -564,6 +564,7 @@ mp_announce(void)
 if (apic_io_enable) {
 	for (x = 0; x < mp_napics; ++x) {
 		kprintf(" io%d (APIC): apic id: %2d", x, IO_TO_ID(x));
+		kprintf("napics %d versions %p address %p\n", mp_napics, io_apic_versions, io_apic_address);
 		kprintf(", version: 0x%08x", io_apic_versions[x]);
 		kprintf(", at 0x%08lx\n", io_apic_address[x]);
 	}
@@ -995,6 +996,8 @@ mptable_pass2(struct mptable_pos *mpt)
 	    M_DEVBUF, M_WAITOK);
 	MALLOC(bus_data, bus_datum *, sizeof(bus_datum) * mp_nbusses,
 	    M_DEVBUF, M_WAITOK);
+
+	kprintf("xapics %d versions %p address %p\n", mp_napics, io_apic_versions, io_apic_address);
 
 	for (x = 0; x < mp_napics; x++)
 		ioapic[x] = permanent_io_mapping(io_apic_address[x]);
@@ -3087,6 +3090,7 @@ mptable_lapic_enumerate(struct lapic_enumerator *e)
 	if (mp_naps > MAXCPU) {
 		kprintf("Warning: only using %d of %d available CPUs!\n",
 			MAXCPU, mp_naps);
+		DELAY(1000000);
 		mp_naps = MAXCPU;
  	}
 

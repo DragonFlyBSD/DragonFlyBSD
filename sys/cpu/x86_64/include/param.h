@@ -88,7 +88,7 @@
  * Use SMP_MAXCPU instead of MAXCPU for structures that are intended to
  * remain compatible between UP and SMP builds.
  */
-#define SMP_MAXCPU	16
+#define SMP_MAXCPU	31
 #ifdef SMP
 #define MAXCPU		SMP_MAXCPU
 #else

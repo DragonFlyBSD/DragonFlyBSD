@@ -77,6 +77,9 @@ typedef __uint64_t	pt_entry_t;
 #endif
 typedef __uint32_t      cpumask_t;      /* mask representing a set of cpus */
 
+#define CPUMASK(cpu)	((__uint32_t)1 << (cpu))
+#define BSRCPUMASK(mask)	bsrq(mask)
+
 #define PML4SIZE	sizeof(pml4_entry_t) /* for assembly files */
 #define PDPSIZE		sizeof(pdp_entry_t) /* for assembly files */
 #define PDESIZE         sizeof(pd_entry_t) /* for assembly files */

@@ -413,7 +413,7 @@ vtopde(vm_offset_t va)
 }
 
 static uint64_t
-allocpages(vm_paddr_t *firstaddr, int n)
+allocpages(vm_paddr_t *firstaddr, long n)
 {
 	uint64_t ret;
 
@@ -427,7 +427,7 @@ static
 void
 create_pagetables(vm_paddr_t *firstaddr)
 {
-	int i;
+	long i;		/* must be 64 bits */
 
 	/*
 	 * We are running (mostly) V=P at this point
@@ -443,6 +443,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 		ndmpdp = 4;
 
 	nkpt = (Maxmem * sizeof(struct vm_page) + NBPDR - 1) / NBPDR;
+	nkpt += (Maxmem * sizeof(struct pv_entry) + NBPDR - 1) / NBPDR;
 	nkpt += ((nkpt + nkpt + 1 + NKPML4E + NKPDPE + NDMPML4E + ndmpdp) +
 		511) / 512;
 	nkpt += 128;
@@ -520,7 +521,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 	/* Preset PG_M and PG_A because demotion expects it */
 	if ((amd_feature & AMDID_PAGE1GB) == 0) {
 		for (i = 0; i < NPDEPG * ndmpdp; i++) {
-			((pd_entry_t *)DMPDphys)[i] = (vm_paddr_t)i << PDRSHIFT;
+			((pd_entry_t *)DMPDphys)[i] = i << PDRSHIFT;
 			((pd_entry_t *)DMPDphys)[i] |= PG_RW | PG_V | PG_PS |
 			    PG_G | PG_M | PG_A;
 		}
@@ -1051,6 +1052,8 @@ pmap_map(vm_offset_t *virtp, vm_paddr_t start, vm_paddr_t end, int prot)
 	va = va_start;
 
 	while (start < end) {
+		if ((start / PAGE_SIZE & 15) == 0)
+			kprintf("%p %p\n", (void *)va, (void *)start);
 		pmap_kenter_quick(va, start);
 		va += PAGE_SIZE;
 		start += PAGE_SIZE;
@@ -2846,7 +2849,7 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
  */
 /* JG Needed on x86_64? */
 void *
-pmap_kenter_temporary(vm_paddr_t pa, int i)
+pmap_kenter_temporary(vm_paddr_t pa, long i)
 {
 	pmap_kenter((vm_offset_t)crashdumpmap + (i * PAGE_SIZE), pa);
 	return ((void *)crashdumpmap);
