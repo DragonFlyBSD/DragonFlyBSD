@@ -1276,6 +1276,10 @@ options 	MFI_DEBUG
 device		arcmsr		# Areca SATA II RAID
 
 #
+# Highpoint RocketRaid 3xxx series SATA RAID
+device		hptiop
+
+#
 # 3ware ATA RAID
 #
 device		twe		# 3ware ATA RAID
