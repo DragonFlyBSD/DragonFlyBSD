@@ -13,6 +13,7 @@ SUBDIR=	adjkerntz \
 	clri \
 	comcontrol \
 	cryptdisks \
+	devattr \
 	devd \
 	devfsctl \
 	dhclient \
