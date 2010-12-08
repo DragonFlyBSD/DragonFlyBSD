@@ -162,6 +162,7 @@ device		dpt		# DPT Smartcache - See LINT for options!
 device		hptiop		# Highpoint RocketRaid 3xxx series
 device		iir		# Intel Integrated RAID
 device		mly		# Mylex AcceleRAID/eXtremeRAID
+device		twa		# 3ware 9000 series PATA/SATA RAID
 
 # RAID controllers
 device		aac		# Adaptec FSA RAID, Dell PERC2/PERC3
@@ -174,7 +175,6 @@ device		mlx		# Mylex DAC960 family
 device		mfi		# LSI MegaRAID SAS
 device		mfip		# LSI MegaRAID SAS passthrough, requires CAM
 device		pst		# Promise Supertrack
-device		twa		# 3ware 9000 series PATA/SATA RAID
 device		twe		# 3ware Escalade 7000/8000's
 
 # atkbdc0 controls both the keyboard and the PS/2 mouse
