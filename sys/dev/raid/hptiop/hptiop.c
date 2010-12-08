@@ -1260,7 +1260,7 @@ static int hptiop_probe(device_t dev)
 		pci_get_bus(dev), pci_get_slot(dev),
 		pci_get_function(dev), pci_get_irq(dev));
 
-	ksprintf(buf, "RocketRAID %x %s Controller\n",
+	ksprintf(buf, "RocketRAID %x %s Controller",
 				id, sas ? "SAS" : "SATA");
 	device_set_desc_copy(dev, buf);
 
