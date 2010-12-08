@@ -704,7 +704,8 @@ _setdiskinfo(struct disk *disk, struct disk_info *info)
 	 * The serial number is duplicated so the caller can throw
 	 * their copy away.
 	 */
-	if (info->d_serialno && info->d_serialno[0]) {
+	if (info->d_serialno && info->d_serialno[0] &&
+	    (info->d_serialno[0] != ' ' || strlen(info->d_serialno) > 1)) {
 		info->d_serialno = kstrdup(info->d_serialno, M_TEMP);
 		disk_cleanserial(info->d_serialno);
 		if (disk->d_cdev) {
