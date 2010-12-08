@@ -173,6 +173,7 @@ MAN=	accept_filter.9 \
 	VFS_VPTOFH.9 \
 	vget.9 \
 	vhold.9 \
+	vm_map_findspace.9 \
 	vn_fullpath.9 \
 	vnode.9 \
 	VOP_ACCESS.9 \
