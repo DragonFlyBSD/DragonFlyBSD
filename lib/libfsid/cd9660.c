@@ -2,7 +2,7 @@
  * Copyright (c) 2010 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
- * by Alex Hornung <ahornung@gmail.com>
+ * by Ákos Kovács <akoskovacs@gmx.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,22 +31,43 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#include <sys/types.h>
-#include <sys/queue.h>
-#include <sys/uio.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <err.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <string.h>
-#include <libfsid.h>
+#include "libfsid.h"
+#include <vfs/isofs/cd9660/iso.h>
 
-struct fsid_entry {
-	char	*dev_path;
-	char	*link_path;
+static char buffer[ISO_DEFAULT_BLOCK_SIZE];
 
-	TAILQ_ENTRY(fsid_entry) 	link;
-};
+int
+cd9660_probe(const char *dev)
+{
+	struct iso_primary_descriptor *pdsc;
 
-TAILQ_HEAD(fsid_head, fsid_entry);
+	if (fsid_dev_read(dev, 32768L, sizeof(buffer), buffer) != 0)
+		return 0;
+
+	pdsc = (struct iso_primary_descriptor *)&buffer;
+
+	if ((strncmp(pdsc->id, ISO_STANDARD_ID, 4)) == 0)
+		return 1;
+
+	return 0;
+}
+
+char *
+cd9660_volname(const char *dev)
+{
+	static struct iso_primary_descriptor *pdsc;
+
+	if (fsid_dev_read(dev, 32768L, sizeof(buffer), buffer) != 0)
+		return NULL;
+
+	pdsc = (struct iso_primary_descriptor *)&buffer;
+
+	if ((strncmp(pdsc->id, ISO_STANDARD_ID, 4)) != 0)
+		return NULL;
+
+	if (pdsc->volume_id[0] == '\0')
+		return NULL;
+
+	pdsc->volume_id[30] = '\0';
+	return pdsc->volume_id;
+}

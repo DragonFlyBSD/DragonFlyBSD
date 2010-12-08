@@ -1,6 +1,6 @@
 PROG=	fsid
-SRCS=	fsid.c ufs.c hammer.c
-LDADD=	-ldevattr -lprop
+SRCS=	fsid.c
+LDADD=	-ldevattr -lprop -lfsid
 NOMAN=
 
 .include <bsd.prog.mk>

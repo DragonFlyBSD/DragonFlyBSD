@@ -31,22 +31,46 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#include <sys/types.h>
-#include <sys/queue.h>
-#include <sys/uio.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <err.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <string.h>
-#include <libfsid.h>
+#include "libfsid.h"
+#include <vfs/hammer/hammer_disk.h>
 
-struct fsid_entry {
-	char	*dev_path;
-	char	*link_path;
+static char buffer[16384];
 
-	TAILQ_ENTRY(fsid_entry) 	link;
-};
+int
+hammer_probe(const char *dev)
+{
+	static struct hammer_volume_ondisk *fs;
 
-TAILQ_HEAD(fsid_head, fsid_entry);
+	if (fsid_dev_read(dev, 0L, sizeof(buffer), buffer) != 0)
+		return 0;
+
+	fs = (struct hammer_volume_ondisk *)&buffer;
+
+	if (fs->vol_signature != HAMMER_FSBUF_VOLUME) {
+		return 0;
+	}
+
+	return 1;
+}
+
+char *
+hammer_volname(const char *dev)
+{
+	static struct hammer_volume_ondisk *fs;
+
+	if (fsid_dev_read(dev, 0L, sizeof(buffer), buffer) != 0)
+		return NULL;
+
+	fs = (struct hammer_volume_ondisk *)&buffer;
+
+	if (fs->vol_signature != HAMMER_FSBUF_VOLUME) {
+		return NULL;
+	}
+
+	if (fs->vol_name[0] == '\0')
+		return NULL;
+
+	fs->vol_name[63] = '\0';
+	return fs->vol_name;
+}
+

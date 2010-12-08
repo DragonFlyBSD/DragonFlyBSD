@@ -31,22 +31,49 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#include <sys/types.h>
-#include <sys/queue.h>
-#include <sys/uio.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <err.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <string.h>
-#include <libfsid.h>
+#include "libfsid.h"
+#include <vfs/ufs/ufs_types.h>
+#include <vfs/ufs/fs.h>
 
-struct fsid_entry {
-	char	*dev_path;
-	char	*link_path;
+static char buffer[MAXBSIZE];
 
-	TAILQ_ENTRY(fsid_entry) 	link;
-};
+int
+ufs_probe(const char *dev)
+{
+	static struct fs *fs;
 
-TAILQ_HEAD(fsid_head, fsid_entry);
+	if(fsid_dev_read(dev, SBOFF, sizeof(buffer), buffer) != 0)
+		return 0;
+
+	fs = (struct fs *)&buffer;
+
+	if (fs->fs_magic != FS_MAGIC || fs->fs_bsize > MAXBSIZE ||
+		(unsigned)fs->fs_bsize < sizeof(struct fs)) {
+		return 0;
+	}
+
+	return 1;
+}
+
+char *
+ufs_volname(const char *dev)
+{
+	static struct fs *fs;
+
+	if(fsid_dev_read(dev, SBOFF, sizeof(buffer), buffer) != 0)
+		return NULL;
+
+	fs = (struct fs *)&buffer;
+
+	if (fs->fs_magic != FS_MAGIC || fs->fs_bsize > MAXBSIZE ||
+		(unsigned)fs->fs_bsize < sizeof(struct fs)) {
+		return NULL;
+	}
+
+	if (fs->fs_volname[0] == '\0')
+		return NULL;
+
+	fs->fs_volname[MAXVOLLEN - 1] = '\0';
+	return fs->fs_volname;
+}
+

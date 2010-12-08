@@ -2,7 +2,8 @@
  * Copyright (c) 2010 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
- * by Alex Hornung <ahornung@gmail.com>
+ * by Alex Hornung <ahornung@gmail.com
+ * and Ákos Kovács <akoskovacs@gmx.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,22 +32,78 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#include <sys/types.h>
-#include <sys/queue.h>
-#include <sys/uio.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <err.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <string.h>
-#include <libfsid.h>
+#include "libfsid.h"
+#include <vfs/msdosfs/bootsect.h>
 
-struct fsid_entry {
-	char	*dev_path;
-	char	*link_path;
+#define MSDOS_BOOT_BLOCK_SIZE 512
 
-	TAILQ_ENTRY(fsid_entry) 	link;
-};
+static char buffer[MSDOS_BOOT_BLOCK_SIZE * 4];
+static char *get_volname(char *buf);
 
-TAILQ_HEAD(fsid_head, fsid_entry);
+int
+msdosfs_probe(const char *dev)
+{
+	if (fsid_dev_read(dev, 0L, sizeof(buffer), buffer) != 0)
+		return 0;
+
+	if (get_volname(buffer) != NULL)
+		return 1;
+	else
+		return 0;
+}
+char *
+msdosfs_volname(const char *dev)
+{
+	char *volname;
+
+	if (fsid_dev_read(dev, 0L, sizeof(buffer), buffer) != 0)
+		return NULL;
+
+	volname = get_volname(buffer);
+	if (volname == NULL)
+		return NULL;
+
+	if (volname[0] == '\0')
+		return NULL;
+
+	volname[10] = '\0';
+	return volname;
+}
+
+/*
+ * This function used to get the offset address of
+ * the volume name, of the FAT partition.
+ * It also checks, that is a real FAT partition.
+*/
+static char *
+get_volname(char *buff)
+{
+	struct bootsector710 *bpb7;
+	struct bootsector50 *bpb4;
+	struct extboot *extb;
+
+	bpb7 = (struct bootsector710 *)buff;
+	bpb4 = (struct bootsector50 *)buff;
+
+	/*
+	 * First, assume BPB v7
+	 */
+	extb = (struct extboot *)bpb7->bsExt;
+	if ((extb->exBootSignature == 0x28 || extb->exBootSignature == 0x29) &&
+	    strncmp(extb->exFileSysType, "FAT", 3) == 0)
+		return extb->exVolumeLabel;
+
+	/*
+	 * If this is not a BPB v7, try it as a bpb v4.
+	 */
+	extb = (struct extboot *)bpb4->bsExt;
+	if ((extb->exBootSignature == 0x28 || extb->exBootSignature == 0x29) &&
+	    strncmp(extb->exFileSysType, "FAT", 3) == 0)
+		return extb->exVolumeLabel;
+
+	/*
+	 * If previous checks failed, it may not a FAT filesystem, or
+	 * it may an older one without a volume name.
+	 */
+	return NULL;
+}

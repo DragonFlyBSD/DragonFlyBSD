@@ -31,79 +31,57 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#include "fsid.h"
-#include <vfs/ufs/ufs_types.h>
-#include <vfs/ufs/fs.h>
+#ifndef LIBFSID_H
+#define LIBFSID_H
 
-static char buffer[MAXBSIZE];
+#include <sys/types.h>
+#include <sys/uio.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <err.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
 
-int
-ufs_probe(const char *dev)
-{
-	static struct fs *fs;
-	int ret, fd;
+#define FSID_HAMMER     0x01
+#define FSID_UFS        0x02
+#define FSID_CD9660     0x03
+#define FSID_EXT2       0x04
+#define FSID_MSDOSFS    0x05
 
-	fd = open(dev, O_RDONLY);
-	if (fd < 0) {
-		return 0;
-	}
+typedef int (probe_func_t)(const char *);
+typedef char *(volname_func_t)(const char *);
 
-	ret = lseek(fd, SBOFF, SEEK_SET);
-	if (ret < 0)
-		return 0;
+struct fs_type {
+	const char *fs_name;
+	probe_func_t	*fs_probe;
+	volname_func_t	*fs_volname;
+};
 
-	bzero(buffer, sizeof(buffer));
-	ret = read(fd, &buffer, SBSIZE);
-	if (ret < 0) {
-		close(fd);
-		return 0;
-	}
+probe_func_t hammer_probe;
+probe_func_t ufs_probe;
+probe_func_t cd9660_probe;
+probe_func_t ext2_probe;
+probe_func_t msdosfs_probe;
 
-	close(fd);
-	fs = (struct fs *)&buffer;
+volname_func_t hammer_volname;
+volname_func_t ufs_volname;
+volname_func_t cd9660_volname;
+volname_func_t ext2_volname;
+volname_func_t msdosfs_volname;
 
-	if (fs->fs_magic != FS_MAGIC || fs->fs_bsize > MAXBSIZE ||
-		(unsigned)fs->fs_bsize < sizeof(struct fs)) {
-		return 0;
-	}
+int fsid_probe(const char *dev, const char *fs_type);
+int fsid_probe_all(const char *dev);
 
-	return 1;
-}
+char *fsid_volname(const char *dev, const char *fs_type);
+char *fsid_volname_all(const char *dev);
 
-char *
-ufs_volname(const char *dev)
-{
-	static struct fs *fs;
-	int ret, fd;
+/* Extra functions */
+const char *fsid_fsname(int);
+int fsid_fs_count(void);
 
-	fd = open(dev, O_RDONLY);
-	if (fd < 0) {
-		return NULL;
-	}
 
-	ret = lseek(fd, SBOFF, SEEK_SET);
-	if (ret < 0)
-		return NULL;
-
-	bzero(buffer, sizeof(buffer));
-	ret = read(fd, &buffer, SBSIZE);
-	if (ret < 0) {
-		close(fd);
-		return NULL;
-	}
-
-	close(fd);
-	fs = (struct fs *)&buffer;
-
-	if (fs->fs_magic != FS_MAGIC || fs->fs_bsize > MAXBSIZE ||
-		(unsigned)fs->fs_bsize < sizeof(struct fs)) {
-		return NULL;
-	}
-
-	if (fs->fs_volname[0] == '\0')
-		return NULL;
-
-	fs->fs_volname[MAXVOLLEN - 1] = '\0';
-	return fs->fs_volname;
-}
-
+#ifdef _FSID_INTERNAL
+int fsid_dev_read(const char *dev, off_t off, size_t len, char *buf);
+#endif
+#endif /* LIBFSID_H */

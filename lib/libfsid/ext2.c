@@ -2,7 +2,7 @@
  * Copyright (c) 2010 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
- * by Alex Hornung <ahornung@gmail.com>
+ * by Ákos Kovács <akoskovacs@gmx.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,72 +31,44 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#include "fsid.h"
-#include <vfs/hammer/hammer_disk.h>
+#include "libfsid.h"
+#include <vfs/gnu/ext2fs/ext2_fs.h>
+#include <vfs/gnu/ext2fs/fs.h>
 
-static char buffer[16384];
+static char buffer[sizeof(struct ext2_super_block)*2];
 
 int
-hammer_probe(const char *dev)
+ext2_probe(const char *dev)
 {
-	static struct hammer_volume_ondisk *fs;
-	int ret, fd;
+	static struct ext2_super_block *fs;
 
-	fd = open(dev, O_RDONLY);
-	if (fd < 0) {
-		perror("open in hammer_probe failed");
+	if (fsid_dev_read(dev, SBOFF, sizeof(buffer), buffer) != 0)
 		return 0;
-	}
 
-	bzero(buffer, sizeof(buffer));
-	ret = read(fd, &buffer, sizeof(buffer));
-	if (ret < 0) {
-		close(fd);
-		perror("read in hammer_probe failed");
-		return 0;
-	}
+	fs = (struct ext2_super_block *)&buffer;
 
-	close(fd);
-	fs = (struct hammer_volume_ondisk *)&buffer;
+	if (fs->s_magic == EXT2_SUPER_MAGIC)
+		return 1;
 
-	if (fs->vol_signature != HAMMER_FSBUF_VOLUME) {
-		return 0;
-	}
-
-	return 1;
+	return 0;
 }
 
 char *
-hammer_volname(const char *dev)
+ext2_volname(const char *dev)
 {
-	static struct hammer_volume_ondisk *fs;
-	int ret, fd;
+	static struct ext2_super_block *fs;
 
-	fd = open(dev, O_RDONLY);
-	if (fd < 0) {
-		perror("open in hammer_volname failed");
-		return NULL;
-	}
-
-	bzero(buffer, sizeof(buffer));
-	ret = read(fd, &buffer, sizeof(buffer));
-	if (ret < 0) {
-		close(fd);
-		perror("read in hammer_volname failed");
-		return NULL;
-	}
-
-	close(fd);
-	fs = (struct hammer_volume_ondisk *)&buffer;
-
-	if (fs->vol_signature != HAMMER_FSBUF_VOLUME) {
-		return NULL;
-	}
-
-	if (fs->vol_name[0] == '\0')
+	if (fsid_dev_read(dev, SBOFF, sizeof(buffer), buffer) != 0)
 		return NULL;
 
-	fs->vol_name[63] = '\0';
-	return fs->vol_name;
+	fs = (struct ext2_super_block *)&buffer;
+
+	if (fs->s_magic != EXT2_SUPER_MAGIC)
+		return NULL;
+
+	if (fs->s_volume_name[0] == '\0')
+		return NULL;
+
+	fs->s_volume_name[15] = '\0';
+		return fs->s_volume_name;
 }
-
