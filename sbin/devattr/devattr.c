@@ -52,34 +52,37 @@ struct sl_entry {
 } *ent;
 
 static void
-usage(const char* name) {
-	fprintf(stderr, "Usage: %s [-Ah] [-p property] [-d device] [-m key:value] [-r key:value]\n"
-                    "Valid options are:\n"
-					" -A\n"
-					"	Don't display aliases.\n"
-					" -h\n"
-					"	Print this help message.\n\n"
-
-					"Valid options with their arguments are:\n"
-					" -p <property>\n"
-					"	Only display property; can be specified multiple times and\n"
-					"	combined with all other options.\n"
-					" -d <device>\n"
-					"	Only display devices with name `device'. When used with\n"
-					"	-p, only properties `-p' of device `-d' are listed. Can be\n"
-					"	specified multiple times. Allows wildcards.\n"
-					" -m <key:value>\n"
-                    "	Only display devices whose property `key' matches with wildcards\n"
-					"	value `value' unless the key-value pair starts with ~, in which\n"
-					"	case the match is inverted. Stacks with -p, -d, and -m.\n"
-					"	Can be specified multiple times.\n"
-					" -r <key:value>\n"
-					"	Behaves similarly to `-m', but matches with regex.\n"
-			, name);
+usage(const char *name)
+{
+	fprintf(stderr,
+	    "usage: %s [-Ah] [-p property] [-d device] [-m key:value] [-r key:value]\n"
+	    "Valid options are:\n"
+	    " -A\n"
+	    "	Don't display aliases.\n"
+	    " -h\n"
+	    "	Print this help message.\n\n"
+	    "Valid options with their arguments are:\n"
+	    " -p <property>\n"
+	    "	Only display property; can be specified multiple times and\n"
+	    "	combined with all other options.\n"
+	    " -d <device>\n"
+	    "	Only display devices with name `device'. When used with\n"
+	    "	-p, only properties `-p' of device `-d' are listed. Can be\n"
+	    "	specified multiple times. Allows wildcards.\n"
+	    " -m <key:value>\n"
+	    "	Only display devices whose property `key' matches with wildcards\n"
+	    "	value `value' unless the key-value pair starts with ~, in which\n"
+	    "	case the match is inverted. Stacks with -p, -d, and -m.\n"
+	    "	Can be specified multiple times.\n"
+	    " -r <key:value>\n"
+	    "	Behaves similarly to `-m', but matches with regex.\n",
+	    name);
+	exit(EX_USAGE);
 }
 
-static int
-parse_args(int argc, char* argv[], struct udev_enumerate *enumerate) {
+static void
+parse_args(int argc, char *argv[], struct udev_enumerate *enumerate)
+{
 	int ch, invert;
 	char *colon;
 
@@ -95,7 +98,8 @@ parse_args(int argc, char* argv[], struct udev_enumerate *enumerate) {
 
 		switch (ch) {
 		case 'A':
-			udev_enumerate_add_match_property(enumerate, "alias", "0");
+			udev_enumerate_add_match_property(enumerate, "alias",
+			    "0");
 			break;
 		case 'p':
 			ent = malloc(sizeof(struct sl_entry));
@@ -103,7 +107,8 @@ parse_args(int argc, char* argv[], struct udev_enumerate *enumerate) {
 			SLIST_INSERT_HEAD(&props, ent, entries);
 			break;
 		case 'd':
-			udev_enumerate_add_match_expr(enumerate, "name", optarg);
+			udev_enumerate_add_match_expr(enumerate, "name",
+			    optarg);
 			break;
 		case 'm':
 		case 'r':
@@ -116,7 +121,7 @@ parse_args(int argc, char* argv[], struct udev_enumerate *enumerate) {
 				fprintf(stderr,
 				    "Invalid property key/value pair `%s'.\n",
 				    optarg);
-				return (0);
+				return;
 			}
 
 			*colon = '\0';
@@ -137,18 +142,16 @@ parse_args(int argc, char* argv[], struct udev_enumerate *enumerate) {
 			}
 			break;
 		case 'h':
+		default:
 			usage(argv[0]);
-			return (-1);
-		case '?':
-			usage(argv[0]);
-			return (-1);
 		}
 	}
-	return (0);
+	return;
 }
 
 static void
-print_prop(const char* key, prop_object_t value) {
+print_prop(const char* key, prop_object_t value)
+{
 	char *val_str;
 
 	printf("\t%s = ", key);
@@ -156,15 +159,16 @@ print_prop(const char* key, prop_object_t value) {
 	prop_type_t val_type = prop_object_type(value);
 	switch (val_type) {
 	case PROP_TYPE_BOOL:
-		printf("%s\n", prop_bool_true((prop_bool_t) value) ? "true" : "false");
+		printf("%s\n", prop_bool_true((prop_bool_t)value) ?
+		    "true" : "false");
 		break;
 	case PROP_TYPE_NUMBER:
-		if (prop_number_unsigned((prop_number_t) value))
+		if (prop_number_unsigned((prop_number_t)value))
 			printf("%1$"PRIu64" (0x%1$"PRIx64")\n",
-			    prop_number_unsigned_integer_value((prop_number_t) value));
+			    prop_number_unsigned_integer_value((prop_number_t)value));
 		else
 			printf("%"PRId64"\n",
-			    prop_number_integer_value((prop_number_t) value));
+			    prop_number_integer_value((prop_number_t)value));
 		break;
 	case PROP_TYPE_STRING:
 		val_str = prop_string_cstring(value);
@@ -177,7 +181,8 @@ print_prop(const char* key, prop_object_t value) {
 }
 
 int
-main(int argc, char* argv[]) {
+main(int argc, char* argv[])
+{
 	struct udev *ctx;
 	struct udev_enumerate *enumerate;
 	struct udev_list_entry *current;
@@ -198,19 +203,18 @@ main(int argc, char* argv[]) {
 	if (enumerate == NULL)
 		err(EX_UNAVAILABLE, "udev_enumerate_new");
 
-	ret = parse_args(argc, argv, enumerate);
-	if (ret != 0)
-		return (EX_USAGE);
+	parse_args(argc, argv, enumerate);
 
 	ret = udev_enumerate_scan_devices(enumerate);
 	if (ret != 0)
-		err(EX_UNAVAILABLE, "udev_enumerate_scan_devices ret = %d", ret);
+		err(EX_UNAVAILABLE, "udev_enumerate_scan_devices ret = %d",
+		    ret);
 
 	current = udev_enumerate_get_list_entry(enumerate);
 	if (current == NULL) {
 		printf("No devices found.\n");
 	} else {
-		udev_list_entry_foreach (current, current) {
+		udev_list_entry_foreach(current, current) {
 			dev = udev_list_entry_get_device(current);
 			if (dev == NULL)
 				continue;
@@ -226,14 +230,16 @@ main(int argc, char* argv[]) {
 
 			if (!SLIST_EMPTY(&props)) {
 				SLIST_FOREACH(ent, &props, entries) {
-					key_val = prop_dictionary_get(dict, ent->val);
+					key_val = prop_dictionary_get(dict,
+					    ent->val);
 					if (key_val != NULL)
 						print_prop(ent->val, key_val);
 				}
 			} else {
-				while ((cur_key = (prop_dictionary_keysym_t) prop_object_iterator_next(iter)) != NULL) {
+				while ((cur_key = (prop_dictionary_keysym_t)prop_object_iterator_next(iter)) != NULL) {
 					key_str = prop_dictionary_keysym_cstring_nocopy(cur_key);
-					key_val = prop_dictionary_get_keysym(dict, cur_key);
+					key_val = prop_dictionary_get_keysym(dict,
+					    cur_key);
 					print_prop(key_str, key_val);
 				}
 			}

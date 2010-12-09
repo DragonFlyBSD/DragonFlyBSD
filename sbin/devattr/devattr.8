@@ -47,10 +47,10 @@
 The
 .Nm
 tool is for displaying a list of devices and some
-associated properties such as their name. This tool exposes the
-same functionality provided by the
+associated properties such as their name.
+This tool exposes the same functionality provided by the
 .Xr devattr 3
-library, namely the filtering capabilites offered.
+library, namely the filtering capabilities offered.
 .Pp
 The options are as follows:
 .Bl -tag -width indent
@@ -61,52 +61,53 @@ Excludes aliases from the listing.
 Displays a help message.
 .\"
 .It Fl p
-Only display property
-.Fl p .
+Only display the specified
+.Ar property .
 This can be can be specified multiple times and combined
 with all other options.
 .\"
 .It Fl d
 Only display devices with name
-.Fl d .
+.Ar device .
 When used with
 .Fl p ,
-only properties 
-.Fl p
-of device
-.Fl d
-are listed. Can be specified multiple times. Allows wildcards.
+only the specified properties of
+.Ar device
+are listed.
+Can be specified multiple times.
+Allows wildcards.
 .\"
 .It Fl m
-Only display devices whose property 
-.I key
+Only display devices whose property
+.Ar key
 matches with wildcards value
-.I value
+.Ar value
 unless the key\-value pair starts with ~, in which case
-the match is inverted. Stacks with
+the match is inverted.
+Stacks with
 .Fl p ,
 .Fl d ,
 .Fl m .
 Can be specified multiple times.
 .\"
 .It Fl r
-Behaves similarly to 
+Behaves similarly to
 .Fl m ,
 but matches with regex.
 .Sh EXAMPLES
-List all devices named 'pts/0'.
+List all devices named 'pts/0':
 .Bd -ragged -offset indent
-.Nm Fl d 
+.Nm Fl d
 pts/0
 .Ed
 .Pp
-List all devices whose major number is 64.
+List all devices whose major number is 64:
 .Bd -ragged -offset indent
 .Nm Fl m
 major:64
 .Ed
 .Pp
-List all devices whose name is 'pts/0' and major number is not 64.
+List all devices whose name is 'pts/0' and major number is not 64:
 .Bd -ragged -offset indent
 .Nm Fl d
 pts/0
@@ -115,7 +116,6 @@ pts/0
 .Ed
 .Sh SEE ALSO
 .Xr devattr 3 ,
-.Xr udevd 8 
+.Xr udevd 8
 .Sh AUTHORS
 .An Nolan Lum
-
