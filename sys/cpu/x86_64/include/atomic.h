@@ -69,7 +69,7 @@
  * This allows kernel modules to be portable between UP and SMP systems.
  */
 #if defined(KLD_MODULE)
-#define ATOMIC_ASM(NAME, TYPE, OP, V)			\
+#define ATOMIC_ASM(NAME, TYPE, OP, CONS, V)		\
 	extern void atomic_##NAME##_##TYPE(volatile u_##TYPE *p, u_##TYPE v); \
 	extern void atomic_##NAME##_##TYPE##_nonlocked(volatile u_##TYPE *p, u_##TYPE v);
 #else /* !KLD_MODULE */
@@ -90,47 +90,51 @@
  * iq - integer constant or %ax/%bx/%cx/%dx (ir = int constant or any reg)
  *	(Note: byte instructions only work on %ax,%bx,%cx, or %dx).  iq
  *	is good enough for our needs so don't get fancy.
+ * r  - any register.
+ *
+ * NOTE: 64-bit immediate values are not supported for most x86-64
+ *	 instructions so we have to use "r".
  */
 
 /* egcs 1.1.2+ version */
-#define ATOMIC_ASM(NAME, TYPE, OP, V)			\
+#define ATOMIC_ASM(NAME, TYPE, OP, CONS, V)		\
 static __inline void					\
 atomic_##NAME##_##TYPE(volatile u_##TYPE *p, u_##TYPE v)\
 {							\
 	__asm __volatile(MPLOCKED OP			\
 			 : "+m" (*p)			\
-			 : "iq" (V)); 			\
+			 : CONS (V)); 			\
 }							\
 static __inline void					\
 atomic_##NAME##_##TYPE##_nonlocked(volatile u_##TYPE *p, u_##TYPE v)\
 {							\
 	__asm __volatile(OP				\
 			 : "+m" (*p)			\
-			 : "iq" (V)); 			\
+			 : CONS (V)); 			\
 }
 
 #endif /* KLD_MODULE */
 
 /* egcs 1.1.2+ version */
-ATOMIC_ASM(set,	     char,  "orb %b1,%0",   v)
-ATOMIC_ASM(clear,    char,  "andb %b1,%0", ~v)
-ATOMIC_ASM(add,	     char,  "addb %b1,%0",  v)
-ATOMIC_ASM(subtract, char,  "subb %b1,%0",  v)
+ATOMIC_ASM(set,	     char,  "orb %b1,%0",  "iq",   v)
+ATOMIC_ASM(clear,    char,  "andb %b1,%0", "iq",   ~v)
+ATOMIC_ASM(add,	     char,  "addb %b1,%0", "iq",   v)
+ATOMIC_ASM(subtract, char,  "subb %b1,%0", "iq",   v)
 
-ATOMIC_ASM(set,	     short, "orw %w1,%0",   v)
-ATOMIC_ASM(clear,    short, "andw %w1,%0", ~v)
-ATOMIC_ASM(add,	     short, "addw %w1,%0",  v)
-ATOMIC_ASM(subtract, short, "subw %w1,%0",  v)
+ATOMIC_ASM(set,	     short, "orw %w1,%0",  "iq",   v)
+ATOMIC_ASM(clear,    short, "andw %w1,%0", "iq",  ~v)
+ATOMIC_ASM(add,	     short, "addw %w1,%0", "iq",   v)
+ATOMIC_ASM(subtract, short, "subw %w1,%0", "iq",   v)
 
-ATOMIC_ASM(set,	     int,   "orl %1,%0",   v)
-ATOMIC_ASM(clear,    int,   "andl %1,%0", ~v)
-ATOMIC_ASM(add,	     int,   "addl %1,%0",  v)
-ATOMIC_ASM(subtract, int,   "subl %1,%0",  v)
+ATOMIC_ASM(set,	     int,   "orl %1,%0",  "iq",   v)
+ATOMIC_ASM(clear,    int,   "andl %1,%0", "iq",  ~v)
+ATOMIC_ASM(add,	     int,   "addl %1,%0", "iq",   v)
+ATOMIC_ASM(subtract, int,   "subl %1,%0", "iq",   v)
 
-ATOMIC_ASM(set,	     long,  "orq %1,%0",   v)
-ATOMIC_ASM(clear,    long,  "andq %1,%0", ~v)
-ATOMIC_ASM(add,	     long,  "addq %1,%0",  v)
-ATOMIC_ASM(subtract, long,  "subq %1,%0",  v)
+ATOMIC_ASM(set,	     long,  "orq %1,%0",  "r",   v)
+ATOMIC_ASM(clear,    long,  "andq %1,%0", "r",  ~v)
+ATOMIC_ASM(add,	     long,  "addq %1,%0", "r",   v)
+ATOMIC_ASM(subtract, long,  "subq %1,%0", "r",   v)
 
 #if defined(KLD_MODULE)
 
@@ -552,6 +556,11 @@ ATOMIC_STORE_LOAD(long, "cmpxchgq %0,%1",  "xchgq %1,%0");
 #define	atomic_subtract_rel_long	atomic_subtract_long
 #define	atomic_cmpset_acq_long		atomic_cmpset_long
 #define	atomic_cmpset_rel_long		atomic_cmpset_long
+
+/* cpumask_t is 64-bits on x86-64 */
+#define atomic_set_cpumask		atomic_set_long
+#define atomic_clear_cpumask		atomic_clear_long
+#define atomic_cmpset_cpumask		atomic_cmpset_long
 
 /* Operations on 8-bit bytes. */
 #define	atomic_set_8		atomic_set_char

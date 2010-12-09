@@ -78,8 +78,8 @@ int	lbolt;
 int	lbolt_syncer;
 int	sched_quantum;		/* Roundrobin scheduling quantum in ticks. */
 int	ncpus;
-int	ncpus2, ncpus2_shift, ncpus2_mask;
-int	ncpus_fit, ncpus_fit_mask;
+int	ncpus2, ncpus2_shift, ncpus2_mask;	/* note: mask not cpumask_t */
+int	ncpus_fit, ncpus_fit_mask;		/* note: mask not cpumask_t */
 int	safepri;
 int	tsleep_now_works;
 int	tsleep_crypto_dump = 0;
@@ -360,13 +360,13 @@ _tsleep_interlock(globaldata_t gd, const volatile void *ident, int flags)
 		id = LOOKUP(td->td_wchan);
 		TAILQ_REMOVE(&gd->gd_tsleep_hash[id], td, td_sleepq);
 		if (TAILQ_FIRST(&gd->gd_tsleep_hash[id]) == NULL)
-			atomic_clear_int(&slpque_cpumasks[id], gd->gd_cpumask);
+			atomic_clear_cpumask(&slpque_cpumasks[id], gd->gd_cpumask);
 	} else {
 		td->td_flags |= TDF_TSLEEPQ;
 	}
 	id = LOOKUP(ident);
 	TAILQ_INSERT_TAIL(&gd->gd_tsleep_hash[id], td, td_sleepq);
-	atomic_set_int(&slpque_cpumasks[id], gd->gd_cpumask);
+	atomic_set_cpumask(&slpque_cpumasks[id], gd->gd_cpumask);
 	td->td_wchan = ident;
 	td->td_wdomain = flags & PDOMAIN_MASK;
 	crit_exit_quick(td);
@@ -393,7 +393,7 @@ _tsleep_remove(thread_t td)
 		id = LOOKUP(td->td_wchan);
 		TAILQ_REMOVE(&gd->gd_tsleep_hash[id], td, td_sleepq);
 		if (TAILQ_FIRST(&gd->gd_tsleep_hash[id]) == NULL)
-			atomic_clear_int(&slpque_cpumasks[id], gd->gd_cpumask);
+			atomic_clear_cpumask(&slpque_cpumasks[id], gd->gd_cpumask);
 		td->td_wchan = NULL;
 		td->td_wdomain = 0;
 	}

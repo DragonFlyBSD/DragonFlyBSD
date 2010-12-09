@@ -150,11 +150,7 @@ SYSINIT(cpu, SI_BOOT2_SMP, SI_ORDER_FIRST, cpu_startup, NULL)
 extern vm_offset_t ksym_start, ksym_end;
 #endif
 
-uint64_t SMPptpa;
-pt_entry_t *SMPpt;
-
-
-struct privatespace CPU_prvspace[MAXCPU];
+struct privatespace CPU_prvspace[MAXCPU] __aligned(4096); /* XXX */
 
 int	_udatasel, _ucodesel, _ucode32sel;
 u_long	atdevbase;
@@ -992,7 +988,7 @@ handle_cpu_contention_mask(void)
 
         mask = cpu_contention_mask;
         cpu_ccfence();
-        if (mask && bsfl(mask) != mycpu->gd_cpuid)
+        if (mask && BSFCPUMASK(mask) != mycpu->gd_cpuid)
                 DELAY(2);
 }
 

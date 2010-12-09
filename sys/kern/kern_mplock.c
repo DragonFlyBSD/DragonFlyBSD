@@ -87,7 +87,7 @@ KTR_INFO(KTR_GIANT_CONTENTION, giant, end, 1,
 		file, line)
 
 int	mp_lock;
-int	cpu_contention_mask;
+cpumask_t cpu_contention_mask;
 const char *mp_lock_holder_file;	/* debugging */
 int	mp_lock_holder_line;		/* debugging */
 
@@ -275,14 +275,14 @@ lwkt_mp_lock_uncontested(void)
 	gd = mycpu;
 	clr_mplock_contention_mask(gd);
 	mask = cpu_contention_mask;
-	tmpmask = ~((1 << gd->gd_cpuid) - 1);
+	tmpmask = ~(CPUMASK(gd->gd_cpuid) - 1);
 
 	if (mask) {
 	    if (mask & tmpmask)
-		    cpuid = bsfl(mask & tmpmask);
+		    cpuid = BSFCPUMASK(mask & tmpmask);
 	    else
-		    cpuid = bsfl(mask);
-	    atomic_clear_int(&cpu_contention_mask, 1 << cpuid);
+		    cpuid = BSFCPUMASK(mask);
+	    atomic_clear_cpumask(&cpu_contention_mask, CPUMASK(cpuid));
 	    dgd = globaldata_find(cpuid);
 	    lwkt_send_ipiq(dgd, lwkt_mp_lock_uncontested_remote, NULL);
 	}

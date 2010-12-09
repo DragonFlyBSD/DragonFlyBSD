@@ -45,8 +45,8 @@ extern int			bootMP_size;
 void	bootMP			(void);
 
 /* global data in apic_vector.s */
-extern volatile u_int		stopped_cpus;
-extern volatile u_int		started_cpus;
+extern volatile cpumask_t	stopped_cpus;
+extern volatile cpumask_t	started_cpus;
 
 extern volatile u_int		checkstate_probed_cpus;
 extern void (*cpustop_restartfunc) (void);
@@ -109,9 +109,9 @@ int	apic_polarity		(int, int);
 void	assign_apic_irq		(int apic, int intpin, int irq);
 void	revoke_apic_irq		(int irq);
 void	init_secondary		(void);
-int	stop_cpus		(u_int);
+int	stop_cpus		(cpumask_t);
 void	ap_init			(void);
-int	restart_cpus		(u_int);
+int	restart_cpus		(cpumask_t);
 void	forward_signal		(struct proc *);
 
 #ifndef _SYS_QUEUE_H_
@@ -137,7 +137,7 @@ void	apic_dump		(char*);
 void	apic_initialize		(boolean_t);
 void	imen_dump		(void);
 int	apic_ipi		(int, int, int);
-void	selected_apic_ipi	(u_int, int, int);
+void	selected_apic_ipi	(cpumask_t, int, int);
 void	single_apic_ipi(int cpu, int vector, int delivery_mode);
 int	single_apic_ipi_passive(int cpu, int vector, int delivery_mode);
 int	io_apic_setup		(int);

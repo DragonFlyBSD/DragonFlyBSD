@@ -150,8 +150,8 @@ ENTRY(cpu_heavy_switch)
 	cmpq	LWP_VMSPACE(%r13),%rcx		/* same vmspace? */
 	je	2f
 1:
-	movl	PCPU(cpuid), %eax
-	MPLOCKED btrl	%eax, VM_PMAP+PM_ACTIVE(%rcx)
+	movslq	PCPU(cpuid), %rax
+	MPLOCKED btrq	%rax, VM_PMAP+PM_ACTIVE(%rcx)
 2:
 
 	/*
@@ -252,9 +252,9 @@ ENTRY(cpu_exit_switch)
 	movq	TD_LWP(%rbx),%rcx
 	testq	%rcx,%rcx
 	jz	2f
-	movl	PCPU(cpuid), %eax
+	movslq	PCPU(cpuid), %rax
 	movq	LWP_VMSPACE(%rcx), %rcx		/* RCX = vmspace */
-	MPLOCKED btrl	%eax, VM_PMAP+PM_ACTIVE(%rcx)
+	MPLOCKED btrq	%rax, VM_PMAP+PM_ACTIVE(%rcx)
 2:
 	/*
 	 * Switch to the next thread.  RET into the restore function, which
@@ -318,11 +318,11 @@ ENTRY(cpu_heavy_restore)
 	 * wait for it to complete before we can continue.
 	 */
 	movq	LWP_VMSPACE(%rcx), %rcx		/* RCX = vmspace */
-	movl	PCPU(cpumask), %esi
-	MPLOCKED orl	%esi, VM_PMAP+PM_ACTIVE(%rcx)
+	movslq	PCPU(cpumask), %rsi
+	MPLOCKED orq	%rsi, VM_PMAP+PM_ACTIVE(%rcx)
 #ifdef SMP
-	testl	$CPUMASK_LOCK,VM_PMAP+PM_ACTIVE(%rcx)
-	jz	1f
+	btq	$CPUMASK_BIT,VM_PMAP+PM_ACTIVE(%rcx)
+	jnc	1f
 	pushq	%rax
 	movq	%rcx,%rdi
 	call	pmap_interlock_wait		/* pmap_interlock_wait(vm) */

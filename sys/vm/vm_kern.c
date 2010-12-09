@@ -362,22 +362,18 @@ kmem_free_wakeup(vm_map_t map, vm_offset_t addr, vm_size_t size)
 }
 
 /*
- * Create the kernel_map and insert mappings to cover areas already
- * allocated or reserved thus far.  That is, the area (KvaStart,start)
- * and (end,KvaEnd) must be marked as allocated.
+ * Create the kernel_ma for (KvaStart,KvaEnd) and insert mappings to
+ * cover areas already allocated or reserved thus far.
  *
- * virtual2_start/end is a cutout Between KvaStart and start,
- * for x86_64 due to the location of KERNBASE (at -2G).
- *
- * We could use a min_offset of 0 instead of KvaStart, but since the
- * min_offset is not used for any calculations other then a bounds check
- * it does not effect readability.  KvaStart is more appropriate.
+ * The areas (virtual_start, virtual_end) and (virtual2_start, virtual2_end)
+ * are available so the cutouts are the areas around these ranges between
+ * KvaStart and KvaEnd.
  *
  * Depend on the zalloc bootstrap cache to get our vm_map_entry_t.
  * Called from the low level boot code only.
  */
 void
-kmem_init(vm_offset_t start, vm_offset_t end)
+kmem_init(void)
 {
 	vm_offset_t addr;
 	vm_map_t m;
@@ -399,14 +395,14 @@ kmem_init(vm_offset_t start, vm_offset_t end)
 		}
 		addr = virtual2_end;
 	}
-	if (addr < start) {
+	if (addr < virtual_start) {
 		vm_map_insert(m, &count, NULL, (vm_offset_t) 0,
-			      addr, start,
+			      addr, virtual_start,
 			      VM_MAPTYPE_NORMAL,
 			      VM_PROT_ALL, VM_PROT_ALL,
 			      0);
 	}
-	addr = end;
+	addr = virtual_end;
 	if (addr < KvaEnd) {
 		vm_map_insert(m, &count, NULL, (vm_offset_t) 0,
 			      addr, KvaEnd,

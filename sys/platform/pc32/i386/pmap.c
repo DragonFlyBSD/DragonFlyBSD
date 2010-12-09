@@ -3447,7 +3447,7 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 		if (curthread->td_lwp == lp) {
 			pmap = vmspace_pmap(newvm);
 #if defined(SMP)
-			atomic_set_int(&pmap->pm_active, mycpu->gd_cpumask);
+			atomic_set_cpumask(&pmap->pm_active, mycpu->gd_cpumask);
 			if (pmap->pm_active & CPUMASK_LOCK)
 				pmap_interlock_wait(newvm);
 #else
@@ -3460,9 +3460,10 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 			load_cr3(curthread->td_pcb->pcb_cr3);
 			pmap = vmspace_pmap(oldvm);
 #if defined(SMP)
-			atomic_clear_int(&pmap->pm_active, mycpu->gd_cpumask);
+			atomic_clear_cpumask(&pmap->pm_active,
+					     mycpu->gd_cpumask);
 #else
-			pmap->pm_active &= ~1;
+			pmap->pm_active &= ~(cpumask_t)1;
 #endif
 		}
 	}

@@ -1076,7 +1076,7 @@ i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 		profhz = RTC_PROFRATE;
         }
 
-	/* Finish initializing 8253 timer 0. */
+	/* Finish initializing 8254 timer 0. */
 #ifdef SMP /* APIC-IO */
 if (apic_io_enable) {
 	apic_8254_intr = isa_apic_irq(0);

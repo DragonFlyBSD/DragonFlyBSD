@@ -932,12 +932,12 @@ single_apic_ipi_passive(int cpu, int vector, int delivery_mode)
  * APIC_DELMODE_FIXED or APIC_DELMODE_LOWPRIO.
  */
 void
-selected_apic_ipi(u_int target, int vector, int delivery_mode)
+selected_apic_ipi(cpumask_t target, int vector, int delivery_mode)
 {
 	crit_enter();
 	while (target) {
-		int n = bsfl(target);
-		target &= ~(1 << n);
+		int n = BSFCPUMASK(target);
+		target &= ~CPUMASK(n);
 		single_apic_ipi(n, vector, delivery_mode);
 	}
 	crit_exit();
@@ -1014,12 +1014,6 @@ lapic_init(vm_offset_t lapic_addr)
 	 * lapic not mapped yet (pmap_init is called too late)
 	 */
 	lapic = pmap_mapdev_uncacheable(lapic_addr, sizeof(struct LAPIC));
-
-#if 0
-	/* Local apic is mapped on last page */
-	SMPpt[NPTEPG - 1] = (pt_entry_t)(PG_V | PG_RW | PG_N |
-	    pmap_get_pgeflag() | (lapic_addr & PG_FRAME));
-#endif
 
 	cpu_apic_addr = lapic_addr;
 

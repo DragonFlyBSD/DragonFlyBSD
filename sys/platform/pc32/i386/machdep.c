@@ -966,7 +966,7 @@ handle_cpu_contention_mask(void)
 
 	mask = cpu_contention_mask;
 	cpu_ccfence();
-	if (mask && bsfl(mask) != mycpu->gd_cpuid)
+	if (mask && BSFCPUMASK(mask) != mycpu->gd_cpuid)
 		DELAY(2);
 }
 

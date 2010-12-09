@@ -262,13 +262,13 @@ lwkt_send_ipiq2(globaldata_t target, ipifunc2_t func, void *arg1, int arg2)
 }
 
 static __inline int
-lwkt_send_ipiq_mask(u_int32_t mask, ipifunc1_t func, void *arg)
+lwkt_send_ipiq_mask(cpumask_t mask, ipifunc1_t func, void *arg)
 {
     return(lwkt_send_ipiq3_mask(mask, (ipifunc3_t)func, arg, 0));
 }
 
 static __inline int
-lwkt_send_ipiq2_mask(u_int32_t mask, ipifunc2_t func, void *arg1, int arg2)
+lwkt_send_ipiq2_mask(cpumask_t mask, ipifunc2_t func, void *arg1, int arg2)
 {
     return(lwkt_send_ipiq3_mask(mask, (ipifunc3_t)func, arg1, arg2));
 }

@@ -201,18 +201,20 @@ vm_add_new_page(vm_paddr_t pa)
  *
  * Initializes the resident memory module.
  *
- * Allocates memory for the page cells, and for the object/offset-to-page
- * hash table headers.  Each page cell is initialized and placed on the
- * free list.
+ * Preallocates memory for critical VM structures and arrays prior to
+ * kernel_map becoming available.
  *
- * starta/enda represents the range of physical memory addresses available
- * for use (skipping memory already used by the kernel), subject to
- * phys_avail[].  Note that phys_avail[] has already mapped out memory
- * already in use by the kernel.
+ * Memory is allocated from (virtual2_start, virtual2_end) if available,
+ * otherwise memory is allocated from (virtual_start, virtual_end).
+ *
+ * On x86-64 (virtual_start, virtual_end) is only 2GB and may not be
+ * large enough to hold vm_page_array & other structures for machines with
+ * large amounts of ram, so we want to use virtual2* when available.
  */
-vm_offset_t
-vm_page_startup(vm_offset_t vaddr)
+void
+vm_page_startup(void)
 {
+	vm_offset_t vaddr = virtual2_start ? virtual2_start : virtual_start;
 	vm_offset_t mapped;
 	vm_size_t npages;
 	vm_paddr_t page_range;
@@ -331,7 +333,10 @@ vm_page_startup(vm_offset_t vaddr)
 			pa += PAGE_SIZE;
 		}
 	}
-	return (vaddr);
+	if (virtual2_start)
+		virtual2_start = vaddr;
+	else
+		virtual_start = vaddr;
 }
 
 /*

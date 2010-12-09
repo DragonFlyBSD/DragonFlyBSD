@@ -238,7 +238,8 @@ struct pmap {
 
 #define pmap_resident_count(pmap) (pmap)->pm_stats.resident_count
 
-#define CPUMASK_LOCK            (1 << SMP_MAXCPU)
+#define CPUMASK_LOCK		CPUMASK(SMP_MAXCPU)
+#define CPUMASK_BIT		SMP_MAXCPU	/* 1 << SMP_MAXCPU */
 
 typedef struct pmap	*pmap_t;
 

@@ -761,7 +761,7 @@ madt_set_ids(void *dummy)
 	if (madt == NULL)
 		return;
 	for (i = 0; i < ncpus; i++) {
-		if ((smp_active_mask & (1 << i)) == 0)
+		if ((smp_active_mask & CPUMASK(i)) == 0)
 			continue;
 		md = (struct mdglobaldata *)globaldata_find(i);
 		KKASSERT(md != NULL);

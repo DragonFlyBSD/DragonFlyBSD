@@ -221,11 +221,11 @@ sys_usched_set(struct usched_set_args *uap)
 			error = EFBIG;
 			break;
 		}
-		if ((smp_active_mask & (1 << cpuid)) == 0) {
+		if ((smp_active_mask & CPUMASK(cpuid)) == 0) {
 			error = EINVAL;
 			break;
 		}
-		lp->lwp_cpumask = 1 << cpuid;
+		lp->lwp_cpumask = CPUMASK(cpuid);
 		if (cpuid != mycpu->gd_cpuid)
 			lwkt_migratecpu(cpuid);
 		break;
@@ -251,11 +251,11 @@ sys_usched_set(struct usched_set_args *uap)
 			error = EFBIG;
 			break;
 		}
-		if (!(smp_active_mask & (1 << cpuid))) {
+		if (!(smp_active_mask & CPUMASK(cpuid))) {
 			error = EINVAL;
 			break;
 		}
-		lp->lwp_cpumask |= 1 << cpuid;
+		lp->lwp_cpumask |= CPUMASK(cpuid);
 		break;
 	case USCHED_DEL_CPU:
 		/* USCHED_DEL_CPU doesn't require special privileges. */
@@ -271,13 +271,14 @@ sys_usched_set(struct usched_set_args *uap)
 			break;
 		}
 		lp = curthread->td_lwp;
-		mask = lp->lwp_cpumask & smp_active_mask & ~(1 << cpuid);
+		mask = lp->lwp_cpumask & smp_active_mask & ~CPUMASK(cpuid);
 		if (mask == 0)
 			error = EPERM;
 		else {
-			lp->lwp_cpumask &= ~(1 << cpuid);
+			lp->lwp_cpumask &= ~CPUMASK(cpuid);
 			if ((lp->lwp_cpumask & mycpu->gd_cpumask) == 0) {
-				cpuid = bsfl(lp->lwp_cpumask & smp_active_mask);
+				cpuid = BSFCPUMASK(lp->lwp_cpumask &
+						   smp_active_mask);
 				lwkt_migratecpu(cpuid);
 			}
 		}

@@ -203,9 +203,6 @@ struct msgbuf *msgbufp=0;
 static pt_entry_t *pt_crashdumpmap;
 static caddr_t crashdumpmap;
 
-extern pt_entry_t *SMPpt;
-extern uint64_t SMPptpa;
-
 #define DISABLE_PSE
 
 static pv_entry_t get_pv_entry (void);
@@ -428,6 +425,8 @@ void
 create_pagetables(vm_paddr_t *firstaddr)
 {
 	long i;		/* must be 64 bits */
+	long nkpt_base;
+	long nkpt_phys;
 
 	/*
 	 * We are running (mostly) V=P at this point
@@ -442,26 +441,35 @@ create_pagetables(vm_paddr_t *firstaddr)
 	if (ndmpdp < 4)		/* Minimum 4GB of dirmap */
 		ndmpdp = 4;
 
-	nkpt = (Maxmem * sizeof(struct vm_page) + NBPDR - 1) / NBPDR;
-	nkpt += (Maxmem * sizeof(struct pv_entry) + NBPDR - 1) / NBPDR;
-	nkpt += ((nkpt + nkpt + 1 + NKPML4E + NKPDPE + NDMPML4E + ndmpdp) +
-		511) / 512;
-	nkpt += 128;
+	/*
+	 * Starting at the beginning of kvm (not KERNBASE).
+	 */
+	nkpt_phys = (Maxmem * sizeof(struct vm_page) + NBPDR - 1) / NBPDR;
+	nkpt_phys += (Maxmem * sizeof(struct pv_entry) + NBPDR - 1) / NBPDR;
+	nkpt_phys += ((nkpt + nkpt + 1 + NKPML4E + NKPDPE + NDMPML4E + ndmpdp) +
+		     511) / 512;
+	nkpt_phys += 128;
+
+	/*
+	 * Starting at KERNBASE - map 2G worth of page table pages.
+	 * KERNBASE is offset -2G from the end of kvm.
+	 */
+	nkpt_base = (NPDPEPG - KPDPI) * NPTEPG;	/* typically 2 x 512 */
 
 	/*
 	 * Allocate pages
 	 */
-	KPTbase = allocpages(firstaddr, nkpt);
-	KPTphys = allocpages(firstaddr, nkpt);
+	KPTbase = allocpages(firstaddr, nkpt_base);
+	KPTphys = allocpages(firstaddr, nkpt_phys);
 	KPML4phys = allocpages(firstaddr, 1);
 	KPDPphys = allocpages(firstaddr, NKPML4E);
+	KPDphys = allocpages(firstaddr, NKPDPE);
 
 	/*
 	 * Calculate the page directory base for KERNBASE,
 	 * that is where we start populating the page table pages.
 	 * Basically this is the end - 2.
 	 */
-	KPDphys = allocpages(firstaddr, NKPDPE);
 	KPDbase = KPDphys + ((NKPDPE - (NPDPEPG - KPDPI)) << PAGE_SHIFT);
 
 	DMPDPphys = allocpages(firstaddr, NDMPML4E);
@@ -487,11 +495,11 @@ create_pagetables(vm_paddr_t *firstaddr)
 	 * and another block is placed at KERNBASE to map the kernel binary,
 	 * data, bss, and initial pre-allocations.
 	 */
-	for (i = 0; i < nkpt; i++) {
+	for (i = 0; i < nkpt_base; i++) {
 		((pd_entry_t *)KPDbase)[i] = KPTbase + (i << PAGE_SHIFT);
 		((pd_entry_t *)KPDbase)[i] |= PG_RW | PG_V;
 	}
-	for (i = 0; i < nkpt; i++) {
+	for (i = 0; i < nkpt_phys; i++) {
 		((pd_entry_t *)KPDphys)[i] = KPTphys + (i << PAGE_SHIFT);
 		((pd_entry_t *)KPDphys)[i] |= PG_RW | PG_V;
 	}
@@ -710,14 +718,6 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	 */
 	pg = MDGLOBALDATA_BASEALLOC_PAGES;
 	gd = &CPU_prvspace[0].mdglobaldata;
-	gd->gd_CMAP1 = &SMPpt[pg + 0];
-	gd->gd_CMAP2 = &SMPpt[pg + 1];
-	gd->gd_CMAP3 = &SMPpt[pg + 2];
-	gd->gd_PMAP1 = &SMPpt[pg + 3];
-	gd->gd_CADDR1 = CPU_prvspace[0].CPAGE1;
-	gd->gd_CADDR2 = CPU_prvspace[0].CPAGE2;
-	gd->gd_CADDR3 = CPU_prvspace[0].CPAGE3;
-	gd->gd_PADDR1 = (pt_entry_t *)CPU_prvspace[0].PPAGE1;
 
 	cpu_invltlb();
 }
@@ -1052,8 +1052,6 @@ pmap_map(vm_offset_t *virtp, vm_paddr_t start, vm_paddr_t end, int prot)
 	va = va_start;
 
 	while (start < end) {
-		if ((start / PAGE_SIZE & 15) == 0)
-			kprintf("%p %p\n", (void *)va, (void *)start);
 		pmap_kenter_quick(va, start);
 		va += PAGE_SIZE;
 		start += PAGE_SIZE;
@@ -1809,7 +1807,8 @@ pmap_release(struct pmap *pmap)
 	vm_object_t object = pmap->pm_pteobj;
 	struct rb_vm_page_scan_info info;
 
-	KASSERT(pmap->pm_active == 0, ("pmap still active! %08x", pmap->pm_active));
+	KASSERT(pmap->pm_active == 0,
+		("pmap still active! %016jx", (uintmax_t)pmap->pm_active));
 #if defined(DIAGNOSTIC)
 	if (object->ref_count != 1)
 		panic("pmap_release: pteobj reference count != 1");
@@ -3867,7 +3866,7 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 		if (curthread->td_lwp == lp) {
 			pmap = vmspace_pmap(newvm);
 #if defined(SMP)
-			atomic_set_int(&pmap->pm_active, mycpu->gd_cpumask);
+			atomic_set_cpumask(&pmap->pm_active, mycpu->gd_cpumask);
 			if (pmap->pm_active & CPUMASK_LOCK)
 				pmap_interlock_wait(newvm);
 #else
@@ -3881,9 +3880,9 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 			load_cr3(curthread->td_pcb->pcb_cr3);
 			pmap = vmspace_pmap(oldvm);
 #if defined(SMP)
-			atomic_clear_int(&pmap->pm_active, mycpu->gd_cpumask);
+			atomic_clear_cpumask(&pmap->pm_active, mycpu->gd_cpumask);
 #else
-			pmap->pm_active &= ~1;
+			pmap->pm_active &= ~(cpumask_t)1;
 #endif
 		}
 	}

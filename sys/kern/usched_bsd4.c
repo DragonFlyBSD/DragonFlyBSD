@@ -205,7 +205,7 @@ rqinit(void *dummy)
 		TAILQ_INIT(&bsd4_rtqueues[i]);
 		TAILQ_INIT(&bsd4_idqueues[i]);
 	}
-	atomic_clear_int(&bsd4_curprocmask, 1);
+	atomic_clear_cpumask(&bsd4_curprocmask, 1);
 }
 SYSINIT(runqueue, SI_BOOT2_USCHED, SI_ORDER_FIRST, rqinit, NULL)
 
@@ -267,7 +267,7 @@ bsd4_acquire_curproc(struct lwp *lp)
 		if (dd->uschedcp == lp) {
 			dd->upri = lp->lwp_priority;
 		} else if (dd->uschedcp == NULL) {
-			atomic_set_int(&bsd4_curprocmask, gd->gd_cpumask);
+			atomic_set_cpumask(&bsd4_curprocmask, gd->gd_cpumask);
 			dd->uschedcp = lp;
 			dd->upri = lp->lwp_priority;
 		} else if (dd->upri > lp->lwp_priority) {
@@ -337,7 +337,7 @@ bsd4_release_curproc(struct lwp *lp)
 		KKASSERT((lp->lwp_flag & LWP_ONRUNQ) == 0);
 		dd->uschedcp = NULL;	/* don't let lp be selected */
 		dd->upri = PRIBASE_NULL;
-		atomic_clear_int(&bsd4_curprocmask, gd->gd_cpumask);
+		atomic_clear_cpumask(&bsd4_curprocmask, gd->gd_cpumask);
 		bsd4_select_curproc(gd);
 		crit_exit();
 	}
@@ -370,7 +370,7 @@ bsd4_select_curproc(globaldata_t gd)
 
 	spin_lock(&bsd4_spin);
 	if ((nlp = chooseproc_locked(dd->uschedcp)) != NULL) {
-		atomic_set_int(&bsd4_curprocmask, 1 << cpuid);
+		atomic_set_cpumask(&bsd4_curprocmask, CPUMASK(cpuid));
 		dd->upri = nlp->lwp_priority;
 		dd->uschedcp = nlp;
 		spin_unlock(&bsd4_spin);
@@ -378,8 +378,8 @@ bsd4_select_curproc(globaldata_t gd)
 		lwkt_acquire(nlp->lwp_thread);
 #endif
 		lwkt_schedule(nlp->lwp_thread);
-	} else if (bsd4_runqcount && (bsd4_rdyprocmask & (1 << cpuid))) {
-		atomic_clear_int(&bsd4_rdyprocmask, 1 << cpuid);
+	} else if (bsd4_runqcount && (bsd4_rdyprocmask & CPUMASK(cpuid))) {
+		atomic_clear_cpumask(&bsd4_rdyprocmask, CPUMASK(cpuid));
 		spin_unlock(&bsd4_spin);
 		lwkt_schedule(&dd->helper_thread);
 	} else {
@@ -446,7 +446,7 @@ bsd4_setrunqueue(struct lwp *lp)
 	 * the kernel.
 	 */
 	if (dd->uschedcp == NULL) {
-		atomic_set_int(&bsd4_curprocmask, gd->gd_cpumask);
+		atomic_set_cpumask(&bsd4_curprocmask, gd->gd_cpumask);
 		dd->uschedcp = lp;
 		dd->upri = lp->lwp_priority;
 		lwkt_schedule(lp->lwp_thread);
@@ -486,11 +486,11 @@ bsd4_setrunqueue(struct lwp *lp)
 	spin_unlock(&bsd4_spin);
 
 	while (mask) {
-		tmpmask = ~((1 << cpuid) - 1);
+		tmpmask = ~(CPUMASK(cpuid) - 1);
 		if (mask & tmpmask)
-			cpuid = bsfl(mask & tmpmask);
+			cpuid = BSFCPUMASK(mask & tmpmask);
 		else
-			cpuid = bsfl(mask);
+			cpuid = BSFCPUMASK(mask);
 		gd = globaldata_find(cpuid);
 		dd = &bsd4_pcpu[cpuid];
 
@@ -501,7 +501,7 @@ bsd4_setrunqueue(struct lwp *lp)
 				lwkt_send_ipiq(gd, need_user_resched_remote, NULL);
 			break;
 		}
-		mask &= ~(1 << cpuid);
+		mask &= ~CPUMASK(cpuid);
 	}
 #else
 	/*
@@ -953,7 +953,7 @@ need_user_resched_remote(void *dummy)
 	bsd4_pcpu_t  dd = &bsd4_pcpu[gd->gd_cpuid];
 
 	if (dd->uschedcp == NULL && (bsd4_rdyprocmask & gd->gd_cpumask)) {
-		atomic_clear_int(&bsd4_rdyprocmask, gd->gd_cpumask);
+		atomic_clear_cpumask(&bsd4_rdyprocmask, gd->gd_cpumask);
 		lwkt_schedule(&dd->helper_thread);
 	} else {
 		need_user_resched();
@@ -1114,7 +1114,7 @@ sched_thread(void *dummy)
 	crit_enter_gd(gd);
 	lwkt_deschedule_self(gd->gd_curthread);
 	spin_lock(&bsd4_spin);
-	atomic_set_int(&bsd4_rdyprocmask, cpumask);
+	atomic_set_cpumask(&bsd4_rdyprocmask, cpumask);
 
 	clear_user_resched();	/* This satisfied the reschedule request */
 	dd->rrcount = 0;	/* Reset the round-robin counter */
@@ -1125,7 +1125,7 @@ sched_thread(void *dummy)
 		 */
 		KKASSERT(dd->uschedcp == NULL);
 		if ((nlp = chooseproc_locked(NULL)) != NULL) {
-			atomic_set_int(&bsd4_curprocmask, cpumask);
+			atomic_set_cpumask(&bsd4_curprocmask, cpumask);
 			dd->upri = nlp->lwp_priority;
 			dd->uschedcp = nlp;
 			spin_unlock(&bsd4_spin);
@@ -1151,11 +1151,11 @@ sched_thread(void *dummy)
 			  ~bsd4_curprocmask;
 		if (tmpmask) {
 			if (tmpmask & ~(cpumask - 1))
-				tmpid = bsfl(tmpmask & ~(cpumask - 1));
+				tmpid = BSFCPUMASK(tmpmask & ~(cpumask - 1));
 			else
-				tmpid = bsfl(tmpmask);
+				tmpid = BSFCPUMASK(tmpmask);
 			bsd4_scancpu = tmpid;
-			atomic_clear_int(&bsd4_rdyprocmask, 1 << tmpid);
+			atomic_clear_cpumask(&bsd4_rdyprocmask, CPUMASK(tmpid));
 			spin_unlock_wr(&bsd4_spin);
 			lwkt_schedule(&bsd4_pcpu[tmpid].helper_thread);
 		} else {
@@ -1187,7 +1187,7 @@ sched_thread_cpu_init(void)
 
     for (i = 0; i < ncpus; ++i) {
 	bsd4_pcpu_t dd = &bsd4_pcpu[i];
-	cpumask_t mask = 1 << i;
+	cpumask_t mask = CPUMASK(i);
 
 	if ((mask & smp_active_mask) == 0)
 	    continue;
@@ -1203,8 +1203,8 @@ sched_thread_cpu_init(void)
 	 * been enabled in rqinit().
 	 */
 	if (i)
-	    atomic_clear_int(&bsd4_curprocmask, mask);
-	atomic_set_int(&bsd4_rdyprocmask, mask);
+	    atomic_clear_cpumask(&bsd4_curprocmask, mask);
+	atomic_set_cpumask(&bsd4_rdyprocmask, mask);
 	dd->upri = PRIBASE_NULL;
     }
     if (bootverbose)

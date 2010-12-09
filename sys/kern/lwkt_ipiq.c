@@ -381,16 +381,16 @@ lwkt_send_ipiq3_bycpu(int dcpu, ipifunc3_t func, void *arg1, int arg2)
  * The message will not be sent to stopped cpus.
  */
 int
-lwkt_send_ipiq3_mask(u_int32_t mask, ipifunc3_t func, void *arg1, int arg2)
+lwkt_send_ipiq3_mask(cpumask_t mask, ipifunc3_t func, void *arg1, int arg2)
 {
     int cpuid;
     int count = 0;
 
     mask &= ~stopped_cpus;
     while (mask) {
-	cpuid = bsfl(mask);
+	cpuid = BSFCPUMASK(mask);
 	lwkt_send_ipiq3(globaldata_find(cpuid), func, arg1, arg2);
-	mask &= ~(1 << cpuid);
+	mask &= ~CPUMASK(cpuid);
 	++count;
     }
     return(count);
@@ -601,7 +601,7 @@ lwkt_sync_ipiq(void *arg)
 {
     cpumask_t *cpumask = arg;
 
-    atomic_clear_int(cpumask, mycpu->gd_cpumask);
+    atomic_clear_cpumask(cpumask, mycpu->gd_cpumask);
     if (*cpumask == 0)
 	wakeup(cpumask);
 }
@@ -645,7 +645,7 @@ lwkt_cpusync_simple(cpumask_t mask, cpusync_func_t func, void *data)
     cmd.cs_fin2_func = NULL;
     cmd.cs_data = data;
     lwkt_cpusync_start(mask & mycpu->gd_other_cpus, &cmd);
-    if (mask & (1 << mycpu->gd_cpuid))
+    if (mask & CPUMASK(mycpu->gd_cpuid))
 	func(&cmd);
     lwkt_cpusync_finish(&cmd);
 }
@@ -675,7 +675,7 @@ lwkt_cpusync_fastdata(cpumask_t mask, cpusync_func2_t func, void *data)
     cmd.cs_fin2_func = func;
     cmd.cs_data = NULL;
     lwkt_cpusync_start(mask & mycpu->gd_other_cpus, &cmd);
-    if (mask & (1 << mycpu->gd_cpuid))
+    if (mask & CPUMASK(mycpu->gd_cpuid))
 	func(data);
     lwkt_cpusync_finish(&cmd);
 }

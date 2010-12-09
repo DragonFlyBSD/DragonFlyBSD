@@ -83,20 +83,20 @@ struct mdglobaldata {
 	int		gd_currentldt;
 	int		gd_private_tss;
 	u_int		unused002;
-	u_int		gd_other_cpus;
+	u_int		unused003;
 	u_int		gd_ss_eflags;
-	pt_entry_t	*gd_CMAP1;
-	pt_entry_t	*gd_CMAP2;
-	pt_entry_t	*gd_CMAP3;
-	pt_entry_t	*gd_PMAP1;
-	caddr_t		gd_CADDR1;
-	caddr_t		gd_CADDR2;
-	caddr_t		gd_CADDR3;
-	pt_entry_t	*gd_PADDR1;
+	pt_entry_t	*gd_cunused0;
+	pt_entry_t	*gd_cunused1;
+	pt_entry_t	*gd_cunused2;
+	pt_entry_t	*gd_cunused3;
+	caddr_t		gd_aunused0;
+	caddr_t		gd_aunused1;
+	caddr_t		gd_aunused2;
+	pt_entry_t	*gd_aunused3;
 	u_int		gd_acpi_id;
 	u_int		gd_apic_id;
 	register_t	gd_scratch_rsp;
-	register_t	unused003;
+	register_t	unused004;
 	register_t	gd_user_fs;	/* current user fs in MSR */
 	register_t	gd_user_gs;	/* current user gs in MSR */
 	cpumask_t	gd_invltlb_ret;
@@ -113,9 +113,6 @@ struct mdglobaldata {
  * This is the upper (0xff800000) address space layout that is per-cpu.
  * It is setup in locore.s and pmap.c for the BSP and in mp_machdep.c for
  * each AP.  genassym helps export this to the assembler code.
- *
- * JG WARNING!  page-bounded fields are hardwired for SMPpt[] setup in
- * i386/i386/mp_machdep.c and locore.s.
  */
 struct privatespace {
 	/* JG TODO: fix comments describing layout */
@@ -123,14 +120,14 @@ struct privatespace {
 	struct mdglobaldata mdglobaldata;
 	char		__filler0[MDGLOBALDATA_PAD];
 
-	/* page 1..4 - CPAGE1,CPAGE2,CPAGE3,PPAGE1 */
-	char		CPAGE1[PAGE_SIZE];		/* SMPpt[1] */
-	char		CPAGE2[PAGE_SIZE];		/* SMPpt[2] */
-	char		CPAGE3[PAGE_SIZE];		/* SMPpt[3] */
-	char		PPAGE1[PAGE_SIZE];		/* SMPpt[4] */
+	/* page 1..4 - CPAGE1,CPAGE2,CPAGE3,PPAGE1 (unused) */
+	char		unused1[PAGE_SIZE];
+	char		unused2[PAGE_SIZE];
+	char		unused3[PAGE_SIZE];
+	char		unused4[PAGE_SIZE];
 
 	/* page 5..4+UPAGES - idle stack (UPAGES pages) */
-	char		idlestack[UPAGES * PAGE_SIZE];	/* SMPpt[5..] */
+	char		idlestack[UPAGES * PAGE_SIZE];
 };
 #define mdcpu  		((struct mdglobaldata *)_get_mycpu())
 

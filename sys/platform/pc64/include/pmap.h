@@ -92,20 +92,30 @@
 #define	NDMPML4E	1		/* number of dmap PML4 slots */
 
 /*
- * The *PML4I values control the layout of virtual memory
+ * The *PML4I values control the layout of virtual memory.  Each PML4
+ * entry represents 512G.
  */
 #define	PML4PML4I	(NPML4EPG/2)	/* Index of recursive pml4 mapping */
 
 #define	KPML4I		(NPML4EPG-1)	/* Top 512GB for KVM */
 #define	DMPML4I		(KPML4I-1)	/* Next 512GB down for direct map */
 
+/*
+ * The location of KERNBASE in the last PD of the kernel's KVM (KPML4I)
+ * space.  Each PD represents 1GB.  The kernel must be placed here
+ * for the compile/link options to work properly so absolute 32-bit
+ * addressing can be used to access stuff.
+ */
 #define	KPDPI		(NPDPEPG-2)	/* kernbase at -2GB */
 
-/* per-CPU data is at -2MB */
-/* XXX can the kernel decide to use this memory for something else? */
+/*
+ * per-CPU data assume ~64K x SMP_MAXCPU, say up to 256 cpus
+ * in the future or 16MB of space.  Each PD represents 2MB so
+ * use NPDEPG-8 to place the per-CPU data.
+ */
 #define	MPPML4I		KPML4I
 #define	MPPDPI		KPDPI
-#define	MPPTDI		(NPDEPG-1)
+#define	MPPTDI		(NPDEPG-8)
 
 /*
  * XXX doesn't really belong here I guess...
@@ -210,7 +220,8 @@ struct pmap {
 	int			pm_generation;	/* detect pvlist deletions */
 };
 
-#define CPUMASK_LOCK		(1 << SMP_MAXCPU)
+#define CPUMASK_LOCK		CPUMASK(SMP_MAXCPU)
+#define CPUMASK_BIT		SMP_MAXCPU	/* for 1LLU << SMP_MAXCPU */
 
 #define pmap_resident_count(pmap) (pmap)->pm_stats.resident_count
 

@@ -216,7 +216,7 @@ Xcpustop:
 	addq	%rax, %rdi
 	call	CNAME(savectx)		/* Save process context */
 
-	movl	PCPU(cpuid), %eax
+	movslq	PCPU(cpuid), %rax
 
 	/*
 	 * Indicate that we have stopped and loop waiting for permission
@@ -227,7 +227,7 @@ Xcpustop:
 	 * (e.g. Xtimer, Xinvltlb).
 	 */
 	MPLOCKED
-	btsl	%eax, stopped_cpus	/* stopped_cpus |= (1<<id) */
+	btsq	%rax, stopped_cpus	/* stopped_cpus |= (1<<id) */
 	sti
 1:
 	andl	$~RQF_IPIQ,PCPU(reqflags)
@@ -235,13 +235,13 @@ Xcpustop:
 	call	lwkt_smp_stopped
 	popq	%rax
 	pause
-	btl	%eax, started_cpus	/* while (!(started_cpus & (1<<id))) */
+	btq	%rax, started_cpus	/* while (!(started_cpus & (1<<id))) */
 	jnc	1b
 
 	MPLOCKED
-	btrl	%eax, started_cpus	/* started_cpus &= ~(1<<id) */
+	btrq	%rax, started_cpus	/* started_cpus &= ~(1<<id) */
 	MPLOCKED
-	btrl	%eax, stopped_cpus	/* stopped_cpus &= ~(1<<id) */
+	btrq	%rax, stopped_cpus	/* stopped_cpus &= ~(1<<id) */
 
 	test	%eax, %eax
 	jnz	2f
@@ -360,9 +360,9 @@ MCOUNT_LABEL(eintr)
 /* variables used by stop_cpus()/restart_cpus()/Xcpustop */
 	.globl stopped_cpus, started_cpus
 stopped_cpus:
-	.long	0
+	.quad	0
 started_cpus:
-	.long	0
+	.quad	0
 
 	.globl CNAME(cpustop_restartfunc)
 CNAME(cpustop_restartfunc):

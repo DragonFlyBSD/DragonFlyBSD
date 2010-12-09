@@ -208,7 +208,7 @@ ASSYM(GD_TSS_GDT, offsetof(struct mdglobaldata, gd_tss_gdt));
 ASSYM(GD_NPXTHREAD, offsetof(struct mdglobaldata, gd_npxthread));
 ASSYM(GD_FPU_LOCK, offsetof(struct mdglobaldata, gd_fpu_lock));
 ASSYM(GD_SAVEFPU, offsetof(struct mdglobaldata, gd_savefpu));
-ASSYM(GD_OTHER_CPUS, offsetof(struct mdglobaldata, gd_other_cpus));
+ASSYM(GD_OTHER_CPUS, offsetof(struct mdglobaldata, mi.gd_other_cpus));
 ASSYM(GD_SS_EFLAGS, offsetof(struct mdglobaldata, gd_ss_eflags));
 ASSYM(GD_REQFLAGS, offsetof(struct mdglobaldata, mi.gd_reqflags));
 
@@ -239,6 +239,7 @@ ASSYM(MACHINTR_INTREN, offsetof(struct machintr_abi, intren));
 ASSYM(TDPRI_INT_SUPPORT, TDPRI_INT_SUPPORT);
 #ifdef SMP
 ASSYM(CPUMASK_LOCK, CPUMASK_LOCK);
+ASSYM(CPUMASK_BIT, CPUMASK_BIT);
 #endif
 
 #ifdef SMP

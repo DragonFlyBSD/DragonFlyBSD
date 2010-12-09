@@ -133,9 +133,9 @@ ENTRY(cpu_heavy_switch)
 
 	movq	%rcx,%rbx			/* RBX = curthread */
 	movq	TD_LWP(%rcx),%rcx
-	movl	PCPU(cpuid), %eax
+	movslq	PCPU(cpuid), %rax
 	movq	LWP_VMSPACE(%rcx), %rcx		/* RCX = vmspace */
-	MPLOCKED btrl	%eax, VM_PMAP+PM_ACTIVE(%rcx)
+	MPLOCKED btrq	%rax, VM_PMAP+PM_ACTIVE(%rcx)
 
 	/*
 	 * Push the LWKT switch restore function, which resumes a heavy
@@ -238,9 +238,9 @@ ENTRY(cpu_exit_switch)
 	movq	TD_LWP(%rbx),%rcx
 	testq	%rcx,%rcx
 	jz	2f
-	movl	PCPU(cpuid), %eax
+	movslq	PCPU(cpuid), %rax
 	movq	LWP_VMSPACE(%rcx), %rcx		/* RCX = vmspace */
-	MPLOCKED btrl	%eax, VM_PMAP+PM_ACTIVE(%rcx)
+	MPLOCKED btrq	%rax, VM_PMAP+PM_ACTIVE(%rcx)
 2:
 	/*
 	 * Switch to the next thread.  RET into the restore function, which
@@ -297,8 +297,8 @@ ENTRY(cpu_heavy_restore)
 	 * pmap (remember, we do not hold the MP lock in the switch code).
 	 */
 	movq	LWP_VMSPACE(%rcx), %rcx		/* RCX = vmspace */
-	movl	PCPU(cpuid), %esi
-	MPLOCKED btsl	%esi, VM_PMAP+PM_ACTIVE(%rcx)
+	movslq	PCPU(cpuid), %rsi
+	MPLOCKED btsq	%rsi, VM_PMAP+PM_ACTIVE(%rcx)
 
 	/*
 	 * Restore the MMU address space.  If it is the same as the last

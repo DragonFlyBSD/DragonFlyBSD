@@ -175,7 +175,7 @@ mi_proc0init(struct globaldata *gd, struct user *proc0paddr)
 	lwp0.lwp_thread = &thread0;
 	lwp0.lwp_proc = &proc0;
 	proc0.p_usched = usched_init();
-	lwp0.lwp_cpumask = 0xFFFFFFFF;
+	lwp0.lwp_cpumask = (cpumask_t)-1;
 	varsymset_init(&proc0.p_varsymset, NULL);
 	thread0.td_flags |= TDF_RUNNING;
 	thread0.td_proc = &proc0;
@@ -705,7 +705,7 @@ mi_gdinit(struct globaldata *gd, int cpuid)
 	TAILQ_INIT(&gd->gd_systimerq);
 	gd->gd_sysid_alloc = cpuid;	/* prime low bits for cpu lookup */
 	gd->gd_cpuid = cpuid;
-	gd->gd_cpumask = (cpumask_t)1 << cpuid;
+	gd->gd_cpumask = CPUMASK(cpuid);
 	lwkt_gdinit(gd);
 	vm_map_entry_reserve_cpu_init(gd);
 	sleep_gdinit(gd);

@@ -385,7 +385,7 @@ cpu_reset_proxy(void)
 	cpu_reset_proxy_active = 3;
 	while (cpu_reset_proxy_active == 3)
 		;	/* Wait for other cpu to enable interrupts */
-	stop_cpus((1<<cpu_reset_proxyid));
+	stop_cpus(CPUMASK(cpu_reset_proxyid));
 	kprintf("cpu_reset_proxy: Stopped CPU %d\n", cpu_reset_proxyid);
 	DELAY(1000000);
 	cpu_reset_real();
@@ -400,7 +400,7 @@ cpu_reset(void)
 		cpu_reset_real();
 		/* NOTREACHED */
 	} else {
-		u_int map;
+		cpumask_t map;
 		int cnt;
 		kprintf("cpu_reset called on cpu#%d\n",mycpu->gd_cpuid);
 

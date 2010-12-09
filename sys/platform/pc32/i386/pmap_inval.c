@@ -106,7 +106,7 @@ pmap_inval_interlock(pmap_inval_info_t info, pmap_t pmap, vm_offset_t va)
     for (;;) {
 	oactive = pmap->pm_active & ~CPUMASK_LOCK;
 	nactive = oactive | CPUMASK_LOCK;
-	if (atomic_cmpset_int(&pmap->pm_active, oactive, nactive))
+	if (atomic_cmpset_cpumask(&pmap->pm_active, oactive, nactive))
 		break;
 	crit_enter();
 	lwkt_process_ipiq();
@@ -151,7 +151,7 @@ void
 pmap_inval_deinterlock(pmap_inval_info_t info, pmap_t pmap)
 {
 #ifdef SMP
-    atomic_clear_int(&pmap->pm_active, CPUMASK_LOCK);
+    atomic_clear_cpumask(&pmap->pm_active, CPUMASK_LOCK);
 #endif
 }
 

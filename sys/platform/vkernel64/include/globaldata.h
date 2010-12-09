@@ -83,10 +83,10 @@ struct mdglobaldata {
 	int		gd_spending;	/* software interrupt pending */
 	int		gd_sdelayed;	/* delayed software ints */
 	int		gd_currentldt;
-	int		unused003;
+	int		unused001;
 	int		unused002;
-	u_int		unused001;
-	u_int		gd_other_cpus;
+	u_int		unused003;
+	cpumask_t	unused004;
 	u_int		gd_ss_eflags;
 };
 

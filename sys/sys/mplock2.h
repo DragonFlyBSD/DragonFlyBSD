@@ -32,7 +32,7 @@ void handle_cpu_contention_mask(void);
 void yield_mplock(struct thread *td);
 
 extern int mp_lock;
-extern int cpu_contention_mask;
+extern cpumask_t cpu_contention_mask;
 extern const char *mp_lock_holder_file;
 extern int mp_lock_holder_line;
 
@@ -162,7 +162,7 @@ static __inline
 void
 set_cpu_contention_mask(globaldata_t gd)
 {
-	atomic_set_int(&cpu_contention_mask, gd->gd_cpumask);
+	atomic_set_cpumask(&cpu_contention_mask, gd->gd_cpumask);
 }
 
 /*
@@ -176,7 +176,7 @@ static __inline
 void
 clr_cpu_contention_mask(globaldata_t gd)
 {
-	atomic_clear_int(&cpu_contention_mask, gd->gd_cpumask);
+	atomic_clear_cpumask(&cpu_contention_mask, gd->gd_cpumask);
 }
 
 static __inline

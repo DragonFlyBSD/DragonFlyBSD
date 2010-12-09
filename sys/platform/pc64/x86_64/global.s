@@ -78,8 +78,6 @@
 	 */
 	.globl  gd_cpuid, gd_cpumask, gd_other_cpus
 	.globl	gd_ss_eflags, gd_intr_nesting_level
-	.globl  gd_CMAP1, gd_CMAP2, gd_CMAP3, gd_PMAP1
-	.globl  gd_CADDR1, gd_CADDR2, gd_CADDR3, gd_PADDR1
 	.globl  gd_spending, gd_fpending
 	.globl	gd_cnt, gd_private_tss
 	.globl	gd_scratch_rsp
@@ -91,14 +89,6 @@
 	.set    gd_other_cpus,globaldata + GD_OTHER_CPUS
 	.set    gd_ss_eflags,globaldata + GD_SS_EFLAGS
 	.set    gd_intr_nesting_level,globaldata + GD_INTR_NESTING_LEVEL
-	.set    gd_CMAP1,globaldata + GD_PRV_CMAP1
-	.set    gd_CMAP2,globaldata + GD_PRV_CMAP2
-	.set    gd_CMAP3,globaldata + GD_PRV_CMAP3
-	.set    gd_PMAP1,globaldata + GD_PRV_PMAP1
-	.set    gd_CADDR1,globaldata + GD_PRV_CADDR1
-	.set    gd_CADDR2,globaldata + GD_PRV_CADDR2
-	.set    gd_CADDR3,globaldata + GD_PRV_CADDR3
-	.set    gd_PADDR1,globaldata + GD_PRV_PADDR1
 	.set	gd_fpending,globaldata + GD_FPENDING
 	.set	gd_spending,globaldata + GD_SPENDING
 	.set	gd_cnt,globaldata + GD_CNT

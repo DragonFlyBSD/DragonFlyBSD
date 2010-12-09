@@ -1174,7 +1174,7 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 		int cpu_id;
 
 		cpu_id = (origcpu + ccpu) % ncpus;
-		if ((smp_active_mask & (1 << cpu_id)) == 0)
+		if ((smp_active_mask & CPUMASK(cpu_id)) == 0)
 			continue;
 		rgd = globaldata_find(cpu_id);
 		lwkt_setcpu_self(rgd);

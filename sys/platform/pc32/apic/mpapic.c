@@ -926,12 +926,12 @@ single_apic_ipi_passive(int cpu, int vector, int delivery_mode)
  * APIC_DELMODE_FIXED or APIC_DELMODE_LOWPRIO.
  */
 void
-selected_apic_ipi(u_int target, int vector, int delivery_mode)
+selected_apic_ipi(cpumask_t target, int vector, int delivery_mode)
 {
 	crit_enter();
 	while (target) {
-		int n = bsfl(target);
-		target &= ~(1 << n);
+		int n = BSFCPUMASK(target);
+		target &= ~CPUMASK(n);
 		single_apic_ipi(n, vector, delivery_mode);
 	}
 	crit_exit();
