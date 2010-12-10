@@ -2227,6 +2227,7 @@ start_all_aps(u_int boot_addr)
 		kprintf("SMI Frequency (worst case): %d Hz (%d us)\n",
 			1000000 / smibest, smibest);
 
+	kprintf("SMP: Starting %d APs: ", mp_naps);
 	/* start each AP */
 	for (x = 1; x <= mp_naps; ++x) {
 
@@ -2264,7 +2265,8 @@ start_all_aps(u_int boot_addr)
 		/* attempt to start the Application Processor */
 		CHECK_INIT(99);	/* setup checkpoints */
 		if (!start_ap(gd, boot_addr, smibest)) {
-			kprintf("AP #%d (PHY# %d) failed!\n", x, CPU_TO_ID(x));
+			kprintf("\nAP #%d (PHY# %d) failed!\n",
+				x, CPU_TO_ID(x));
 			CHECK_PRINT("trace");	/* show checkpoints */
 			/* better panic as the AP may be running loose */
 			kprintf("panic y/n? [y] ");
@@ -2787,7 +2789,7 @@ ap_init(void)
 	/* Build our map of 'other' CPUs. */
 	mycpu->gd_other_cpus = smp_startup_mask & ~CPUMASK(mycpu->gd_cpuid);
 
-	kprintf("SMP: AP CPU #%d Launched!\n", mycpu->gd_cpuid);
+	kprintf(" %d", mycpu->gd_cpuid);
 
 	/* A quick check from sanity claus */
 	apic_id = (apic_id_to_logical[(lapic->id & 0xff000000) >> 24]);
@@ -2864,6 +2866,7 @@ ap_finish(void)
 	}
 	while (try_mplock() == 0)
 		;
+	kprintf("\n");
 	if (bootverbose) {
 		kprintf("Active CPU Mask: %016jx\n",
 			(uintmax_t)smp_active_mask);
