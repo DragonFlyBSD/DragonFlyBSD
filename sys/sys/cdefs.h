@@ -294,6 +294,16 @@
 #endif
 
 /*
+ * A convenient constructor macro, GCC 4.3.0 added priority support to
+ * constructors, provide a compatible interface for both.
+ */
+#if __GNUC_PREREQ__(4, 3)
+#define	__constructor(prio) __attribute__((constructor(prio)))
+#else
+#define	__constructor(prio) __attribute__((constructor))
+#endif
+
+/*
  * Handy GCC based macros:
  *
  * 	__cachealign:

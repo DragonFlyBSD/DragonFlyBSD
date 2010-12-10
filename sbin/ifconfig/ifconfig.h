@@ -34,8 +34,6 @@
  * $FreeBSD: src/sbin/ifconfig/ifconfig.h,v 1.16.2.1 2005/07/21 12:25:40 rwatson Exp $
  */
 
-#define	__constructor	__attribute__((constructor))
-
 struct afswtch;
 struct cmd;
 

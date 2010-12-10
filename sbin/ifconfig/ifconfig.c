@@ -36,6 +36,7 @@
 #include <sys/time.h>
 #include <sys/module.h>
 #include <sys/linker.h>
+#include <sys/cdefs.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -1138,7 +1139,7 @@ static struct cmd basic_cmds[] = {
 	DEF_CMD_ARG("pollcpu",			setifpollcpu)
 };
 
-static __constructor void
+static __constructor(100) void
 ifconfig_ctor(void)
 {
 #define	N(a)	(sizeof(a) / sizeof(a[0]))

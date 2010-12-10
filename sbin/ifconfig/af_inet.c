@@ -190,7 +190,7 @@ static struct afswtch af_inet = {
 	.af_addreq	= &in_addreq,
 };
 
-static __constructor void
+static __constructor(100) void
 inet_ctor(void)
 {
 	af_register(&af_inet);

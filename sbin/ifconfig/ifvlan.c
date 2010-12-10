@@ -152,7 +152,7 @@ static struct afswtch af_vlan = {
 	.af_other_status = vlan_status,
 };
 
-static __constructor void
+static __constructor(100) void
 vlan_ctor(void)
 {
 #define	N(a)	(sizeof(a) / sizeof(a[0]))
