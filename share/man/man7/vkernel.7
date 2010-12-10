@@ -46,7 +46,7 @@
 .Cd "device vke"
 .Pp
 .Pa /var/vkernel/boot/kernel
-.Op Fl sUv
+.Op Fl hsUv
 .Op Fl c Ar file
 .Op Fl e Ar name Ns = Ns Li value : Ns Ar name Ns = Ns Li value : Ns ...
 .Op Fl i Ar file
@@ -83,6 +83,8 @@ option specified on the command line will be the boot disk.
 The CD9660 filesystem is assumed when booting from this media.
 .It Fl e Ar name Ns = Ns Li value : Ns Ar name Ns = Ns Li value : Ns ...
 Specify an environment to be used by the kernel.
+.It Fl h
+Shows a list of available options, each with a short description.
 .It Fl i Ar file
 Specify a memory image
 .Ar file

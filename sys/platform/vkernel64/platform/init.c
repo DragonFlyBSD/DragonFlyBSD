@@ -70,12 +70,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
 #include <err.h>
 #include <errno.h>
 #include <assert.h>
+#include <sysexits.h>
 
 vm_paddr_t phys_avail[16];
 vm_paddr_t Maxmem;
@@ -122,10 +124,11 @@ static void init_globaldata(void);
 static void init_vkernel(void);
 static void init_disk(char *diskExp[], int diskFileNum, enum vkdisk_type type);
 static void init_netif(char *netifExp[], int netifFileNum);
-static void writepid( void );
-static void cleanpid( void );
+static void writepid(void);
+static void cleanpid(void);
 static int unix_connect(const char *path);
-static void usage(const char *ctl, ...);
+static void usage_err(const char *ctl, ...);
+static void usage_help(_Bool);
 
 static int save_ac;
 static char **save_av;
@@ -180,7 +183,10 @@ main(int ac, char **av)
 	vsize = sizeof(real_ncpus);
 	sysctlbyname("hw.ncpu", &real_ncpus, &vsize, NULL, 0);
 
-	while ((c = getopt(ac, av, "c:svl:m:n:r:e:i:p:I:U")) != -1) {
+	if (ac < 2)
+		usage_help(false);
+
+	while ((c = getopt(ac, av, "c:hsvl:m:n:r:e:i:p:I:U")) != -1) {
 		switch(c) {
 		case 'e':
 			/*
@@ -250,7 +256,7 @@ main(int ac, char **av)
 					break;
 				default:
 					Maxmem_bytes = 0;
-					usage("Bad maxmem option");
+					usage_err("Bad maxmem option");
 					/* NOT REACHED */
 					break;
 				}
@@ -263,21 +269,21 @@ main(int ac, char **av)
 				if (optarg[3] == ',') {
 					next_cpu = strtol(optarg+4, &endp, 0);
 					if (*endp != '\0')
-						usage("Bad target CPU number at '%s'", endp);
+						usage_err("Bad target CPU number at '%s'", endp);
 				} else {
 					next_cpu = 0;
 				}
 				if (next_cpu < 0 || next_cpu > real_ncpus - 1)
-					usage("Bad target CPU, valid range is 0-%d", real_ncpus - 1);
+					usage_err("Bad target CPU, valid range is 0-%d", real_ncpus - 1);
 			} else if (strncmp("any", optarg, 3) == 0) {
 				lwp_cpu_lock = LCL_NONE;
 			} else {
 				lwp_cpu_lock = LCL_SINGLE_CPU;
 				next_cpu = strtol(optarg, &endp, 0);
 				if (*endp != '\0')
-					usage("Bad target CPU number at '%s'", endp);
+					usage_err("Bad target CPU number at '%s'", endp);
 				if (next_cpu < 0 || next_cpu > real_ncpus - 1)
-					usage("Bad target CPU, valid range is 0-%d", real_ncpus - 1);
+					usage_err("Bad target CPU, valid range is 0-%d", real_ncpus - 1);
 			}
 			break;
 		case 'n':
@@ -288,10 +294,10 @@ main(int ac, char **av)
 #ifdef SMP
 			optcpus = strtol(optarg, NULL, 0);
 			if (optcpus < 1 || optcpus > MAXCPU)
-				usage("Bad ncpus, valid range is 1-%d", MAXCPU);
+				usage_err("Bad ncpus, valid range is 1-%d", MAXCPU);
 #else
 			if (strtol(optarg, NULL, 0) != 1) {
-				usage("You built a UP vkernel, only 1 cpu!");
+				usage_err("You built a UP vkernel, only 1 cpu!");
 			}
 #endif
 
@@ -302,6 +308,12 @@ main(int ac, char **av)
 		case 'U':
 			kernel_mem_readonly = 0;
 			break;
+		case 'h':
+			usage_help(true);
+			break;
+		case '?':
+		default:
+			usage_help(false);
 		}
 	}
 
@@ -348,7 +360,7 @@ main(int ac, char **av)
 	init_exceptions();
 	mi_startup();
 	/* NOT REACHED */
-	exit(1);
+	exit(EX_SOFTWARE);
 }
 
 /*
@@ -1198,7 +1210,7 @@ cleanpid( void )
 
 static
 void
-usage(const char *ctl, ...)
+usage_err(const char *ctl, ...)
 {
 	va_list va;
 
@@ -1206,7 +1218,34 @@ usage(const char *ctl, ...)
 	vfprintf(stderr, ctl, va);
 	va_end(va);
 	fprintf(stderr, "\n");
-	exit(1);
+	exit(EX_USAGE);
+}
+
+static
+void
+usage_help(_Bool help)
+{
+	fprintf(stderr, "Usage: %s [-hsUv] [-c file] [-e name=value:name=value:...]\n"
+	    "\t[-i file] [-I interface[:address1[:address2][/netmask]]] [-l cpulock]\n"
+	    "\t[-m size] [-n numcpus] [-p file] [-r file]\n", save_av[0]);
+
+	if (help)
+		fprintf(stderr, "\nArguments:\n"
+		    "\t-c\tSpecify a readonly CD-ROM image file to be used by the kernel.\n"
+		    "\t-e\tSpecify an environment to be used by the kernel.\n"
+		    "\t-h\tThis list of options.\n"
+		    "\t-i\tSpecify a memory image file to be used by the virtual kernel.\n"
+		    "\t-I\tCreate a virtual network device.\n"
+		    "\t-l\tSpecify which, if any, real CPUs to lock virtual CPUs to.\n"
+		    "\t-m\tSpecify the amount of memory to be used by the kernel in bytes.\n"
+		    "\t-n\tSpecify the number of CPUs you wish to emulate.\n"
+		    "\t-p\tSpecify a file in which to store the process ID.\n"
+		    "\t-r\tSpecify a R/W disk image file to be used by the kernel.\n"
+		    "\t-s\tBoot into single-user mode.\n"
+		    "\t-U\tEnable writing to kernel memory and module loading.\n"
+		    "\t-v\tTurn on verbose booting.\n");
+
+	exit(EX_USAGE);
 }
 
 void
@@ -1223,7 +1262,7 @@ cpu_halt(void)
 {
 	kprintf("cpu halt, exiting vkernel\n");
 	cleanpid();
-	exit(0);
+	exit(EX_OK);
 }
 
 void
