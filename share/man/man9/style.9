@@ -339,9 +339,7 @@ Elements in a
 .Ic switch
 statement that cascade should have a
 .Li FALLTHROUGH
-comment, unless they contain no code of their own, as in the
-.Ic case '?'
-element in the example below.
+comment, unless they contain no code of their own.
 Numerical arguments should be checked for accuracy.
 Code that cannot be reached should have a
 .Li NOTREACHED
@@ -363,7 +361,6 @@ comment.
 				usage();
 			}
 			break;
-		case '?':
 		default:
 			usage();
 			/* NOTREACHED */

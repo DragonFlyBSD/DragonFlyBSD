@@ -311,7 +311,6 @@ main(int ac, char **av)
 		case 'h':
 			usage_help(true);
 			break;
-		case '?':
 		default:
 			usage_help(false);
 		}
