@@ -318,7 +318,7 @@ ENTRY(cpu_heavy_restore)
 	 * wait for it to complete before we can continue.
 	 */
 	movq	LWP_VMSPACE(%rcx), %rcx		/* RCX = vmspace */
-	movslq	PCPU(cpumask), %rsi
+	movq	PCPU(cpumask), %rsi
 	MPLOCKED orq	%rsi, VM_PMAP+PM_ACTIVE(%rcx)
 #ifdef SMP
 	btq	$CPUMASK_BIT,VM_PMAP+PM_ACTIVE(%rcx)
