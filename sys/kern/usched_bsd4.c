@@ -252,7 +252,7 @@ bsd4_acquire_curproc(struct lwp *lp)
 		 * Reload after a switch or setrunqueue/switch possibly
 		 * moved us to another cpu.
 		 */
-		clear_lwkt_resched();
+		/*clear_lwkt_resched();*/
 		gd = mycpu;
 		dd = &bsd4_pcpu[gd->gd_cpuid];
 
@@ -276,6 +276,7 @@ bsd4_acquire_curproc(struct lwp *lp)
 			dd->upri = lp->lwp_priority;
 			lwkt_deschedule(olp->lwp_thread);
 			bsd4_setrunqueue(olp);
+			lwkt_switch();
 		} else {
 			lwkt_deschedule(lp->lwp_thread);
 			bsd4_setrunqueue(lp);
@@ -293,7 +294,10 @@ bsd4_acquire_curproc(struct lwp *lp)
 		 * the run queue.  When we are reactivated we will have
 		 * another chance.
 		 */
-		lwkt_switch();
+		if (lwkt_resched_wanted() ||
+		    lp->lwp_thread->td_fairq_accum < 0) {
+			lwkt_switch();
+		}
 	} while (dd->uschedcp != lp);
 
 	crit_exit();
