@@ -99,12 +99,10 @@ sys_ofstat(struct ofstat_args *uap)
 	struct stat st;
 	int error;
 
-	get_mplock();
 	error = kern_fstat(uap->fd, &st);
 
 	if (error == 0)
 		error = compat_43_copyout_stat(&st, uap->sb);
-	rel_mplock();
 	return (error);
 }
 
