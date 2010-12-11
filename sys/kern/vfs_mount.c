@@ -143,6 +143,7 @@ vfs_mount_init(void)
 	TAILQ_INIT(&mntvnodescan_list);
 	mount_init(&dummymount);
 	dummymount.mnt_flag |= MNT_RDONLY;
+	dummymount.mnt_kern_flag |= MNTK_ALL_MPSAFE;
 }
 
 /*

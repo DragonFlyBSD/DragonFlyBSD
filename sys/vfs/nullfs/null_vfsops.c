@@ -195,9 +195,13 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		mp->mnt_stat.f_mntfromname, mp->mnt_stat.f_mntfromname);
 
 	/*
-	 * So unmount won't complain about namecache refs still existing
+	 * Set NCALIASED so unmount won't complain about namecache refs
+	 * still existing.
+	 *
+	 * All NULLFS operations are MPSAFE, though it will be short-lived
+	 * if the underlying filesystem is not.
 	 */
-	mp->mnt_kern_flag |= MNTK_NCALIASED;
+	mp->mnt_kern_flag |= MNTK_NCALIASED | MNTK_ALL_MPSAFE;
 	return (0);
 fail2:
 	nlookup_done(&nd);

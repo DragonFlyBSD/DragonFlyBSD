@@ -830,7 +830,6 @@ vop_strategy(struct vop_ops *ops, struct vnode *vp, struct bio *bio)
 	ap.a_bio = bio;
 
 	if (vp->v_mount) {
-
 		VFS_MPLOCK_FLAG(vp->v_mount, MNTK_SG_MPSAFE);
 		DO_OPS(ops, error, &ap, vop_strategy);
 		VFS_MPUNLOCK(vp->v_mount);
