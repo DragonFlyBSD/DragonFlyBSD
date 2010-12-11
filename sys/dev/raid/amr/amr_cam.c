@@ -174,6 +174,7 @@ amr_cam_attach(device_t dev)
 		if ((sc->amr_cam_sim[chn] = cam_sim_alloc(amr_cam_action,
 		    amr_cam_poll, "amr", sc, device_get_unit(sc->amr_dev),
 		    &sc->amr_list_lock, 1, AMR_MAX_SCSI_CMDS, devq)) == NULL) {
+			cam_simq_release(devq);
 			device_printf(sc->amr_dev, "CAM SIM attach failed\n");
 			return(ENOMEM);
 		}
@@ -217,6 +218,10 @@ amr_cam_detach(device_t dev)
 		}
 	}
 	lockmgr(&sc->amr_list_lock, LK_RELEASE);
+
+	/* Now free the devq */
+	if (sc->amr_cam_devq != NULL)
+		cam_simq_release(sc->amr_cam_devq);
 
 	return (0);
 }

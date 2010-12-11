@@ -200,9 +200,11 @@ amrd_intr(void *data)
 {
     struct bio *bio = (struct bio *)data;
     struct buf *bp = bio->bio_buf;
+    struct amrd_softc *sc = (struct amrd_softc *)bio->bio_driver_info;
 
     debug_called(2);
 
+    devstat_end_transaction_buf(&sc->amrd_stats, bp);
     if (bp->b_flags & B_ERROR) {
 	bp->b_error = EIO;
 	debug(1, "i/o error\n");
