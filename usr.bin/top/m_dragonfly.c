@@ -100,7 +100,7 @@ static char smp_header[] =
 "  PID %-*.*s NICE  SIZE   PRES   STATE C    TIME   CTIME    CPU COMMAND";
 
 #define smp_Proc_format \
-	"%5d %-*.*s %3d%7s %6s %7.7s %1x %7s %7s %5.2f%% %.*s"
+	"%5d %-*.*s %3d%7s %6s %7.7s %02d %6s %7s %5.2f%% %.*s"
 
 static char up_header[] =
 "  PID %-*.*s NICE  SIZE   PRES   STATE    TIME   CTIME    CPU COMMAND";
