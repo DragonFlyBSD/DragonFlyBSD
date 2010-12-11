@@ -265,19 +265,32 @@ bsd4_acquire_curproc(struct lwp *lp)
 		 * must not be, so we can safely deschedule it.
 		 */
 		if (dd->uschedcp == lp) {
+			/*
+			 * We are already the current lwp (hot path).
+			 */
 			dd->upri = lp->lwp_priority;
 		} else if (dd->uschedcp == NULL) {
+			/*
+			 * We can trivially become the current lwp.
+			 */
 			atomic_set_cpumask(&bsd4_curprocmask, gd->gd_cpumask);
 			dd->uschedcp = lp;
 			dd->upri = lp->lwp_priority;
 		} else if (dd->upri > lp->lwp_priority) {
+			/*
+			 * We can steal the current lwp designation from the
+			 * olp that was previously assigned to this cpu.
+			 */
 			olp = dd->uschedcp;
 			dd->uschedcp = lp;
 			dd->upri = lp->lwp_priority;
 			lwkt_deschedule(olp->lwp_thread);
 			bsd4_setrunqueue(olp);
-			lwkt_switch();
 		} else {
+			/*
+			 * We cannot become the current lwp, place the lp
+			 * on the bsd4 run-queue and deschedule ourselves.
+			 */
 			lwkt_deschedule(lp->lwp_thread);
 			bsd4_setrunqueue(lp);
 			lwkt_switch();
@@ -382,6 +395,10 @@ bsd4_select_curproc(globaldata_t gd)
 		lwkt_acquire(nlp->lwp_thread);
 #endif
 		lwkt_schedule(nlp->lwp_thread);
+	} else {
+		spin_unlock(&bsd4_spin);
+	}
+#if 0
 	} else if (bsd4_runqcount && (bsd4_rdyprocmask & CPUMASK(cpuid))) {
 		atomic_clear_cpumask(&bsd4_rdyprocmask, CPUMASK(cpuid));
 		spin_unlock(&bsd4_spin);
@@ -389,6 +406,7 @@ bsd4_select_curproc(globaldata_t gd)
 	} else {
 		spin_unlock(&bsd4_spin);
 	}
+#endif
 	crit_exit_gd(gd);
 }
 
@@ -482,12 +500,16 @@ bsd4_setrunqueue(struct lwp *lp)
 	/*
 	 * Kick the scheduler helper on one of the other cpu's
 	 * and request a reschedule if appropriate.
+	 *
+	 * NOTE: We check all cpus whos rdyprocmask is set.  First we
+	 *	 look for cpus without designated lps, then we look for
+	 *	 cpus with designated lps with a worse priority than our
+	 *	 process.
 	 */
-	cpuid = (bsd4_scancpu & 0xFFFF) % ncpus;
 	++bsd4_scancpu;
-	mask = ~bsd4_curprocmask & bsd4_rdyprocmask &
-		lp->lwp_cpumask & smp_active_mask;
-	spin_unlock(&bsd4_spin);
+	cpuid = (bsd4_scancpu & 0xFFFF) % ncpus;
+	mask = ~bsd4_curprocmask & bsd4_rdyprocmask & lp->lwp_cpumask &
+	       smp_active_mask;
 
 	while (mask) {
 		tmpmask = ~(CPUMASK(cpuid) - 1);
@@ -498,14 +520,54 @@ bsd4_setrunqueue(struct lwp *lp)
 		gd = globaldata_find(cpuid);
 		dd = &bsd4_pcpu[cpuid];
 
-		if ((dd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK)) {
-			if (gd == mycpu)
-				need_user_resched_remote(NULL);
-			else
-				lwkt_send_ipiq(gd, need_user_resched_remote, NULL);
-			break;
-		}
+		if ((dd->upri & ~PPQMASK) >= (lp->lwp_priority & ~PPQMASK))
+			goto found;
 		mask &= ~CPUMASK(cpuid);
+	}
+
+	/*
+	 * Then cpus which might have a currently running lp
+	 */
+	mask = bsd4_curprocmask & bsd4_rdyprocmask &
+	       lp->lwp_cpumask & smp_active_mask;
+
+	while (mask) {
+		tmpmask = ~(CPUMASK(cpuid) - 1);
+		if (mask & tmpmask)
+			cpuid = BSFCPUMASK(mask & tmpmask);
+		else
+			cpuid = BSFCPUMASK(mask);
+		gd = globaldata_find(cpuid);
+		dd = &bsd4_pcpu[cpuid];
+
+		if ((dd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK))
+			goto found;
+		mask &= ~CPUMASK(cpuid);
+	}
+
+	/*
+	 * If we cannot find a suitable cpu we reload from bsd4_scancpu
+	 * and round-robin.  Other cpus will pickup as they release their
+	 * current lwps or become ready.
+	 *
+	 * We only kick the target helper thread in this case, we do not
+	 * set the user resched flag because
+	 */
+	cpuid = (bsd4_scancpu & 0xFFFF) % ncpus;
+	gd = globaldata_find(cpuid);
+	dd = &bsd4_pcpu[cpuid];
+found:
+	if (gd == mycpu) {
+		spin_unlock(&bsd4_spin);
+		if ((dd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK))
+			need_user_resched();
+	} else {
+		atomic_clear_cpumask(&bsd4_rdyprocmask, CPUMASK(cpuid));
+		spin_unlock(&bsd4_spin);
+		if ((dd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK))
+			lwkt_send_ipiq(gd, need_user_resched_remote, NULL);
+		else
+			lwkt_schedule(&dd->helper_thread);
 	}
 #else
 	/*
@@ -743,7 +805,6 @@ bsd4_resetpriority(struct lwp *lp)
 		lp->lwp_priority = newpriority;
 		reschedcpu = -1;
 	}
-	spin_unlock(&bsd4_spin);
 
 	/*
 	 * Determine if we need to reschedule the target cpu.  This only
@@ -760,19 +821,28 @@ bsd4_resetpriority(struct lwp *lp)
 	 */
 	if (reschedcpu >= 0) {
 		dd = &bsd4_pcpu[reschedcpu];
-		if ((dd->upri & ~PRIMASK) > (lp->lwp_priority & ~PRIMASK)) {
-			dd->upri = lp->lwp_priority;
+		if ((bsd4_rdyprocmask & CPUMASK(reschedcpu)) &&
+		    (dd->upri & ~PRIMASK) > (lp->lwp_priority & ~PRIMASK)) {
 #ifdef SMP
 			if (reschedcpu == mycpu->gd_cpuid) {
+				spin_unlock(&bsd4_spin);
 				need_user_resched();
 			} else {
+				spin_unlock(&bsd4_spin);
+				atomic_clear_cpumask(&bsd4_rdyprocmask,
+						     CPUMASK(reschedcpu));
 				lwkt_send_ipiq(lp->lwp_thread->td_gd,
 					       need_user_resched_remote, NULL);
 			}
 #else
+			spin_unlock(&bsd4_spin);
 			need_user_resched();
 #endif
+		} else {
+			spin_unlock(&bsd4_spin);
 		}
+	} else {
+		spin_unlock(&bsd4_spin);
 	}
 	crit_exit();
 }
@@ -942,13 +1012,6 @@ again:
 
 #ifdef SMP
 
-/*
- * Called via an ipi message to reschedule on another cpu.  If no
- * user thread is active on the target cpu we wake the scheduler
- * helper thread up to help schedule one.
- *
- * MPSAFE
- */
 static
 void
 need_user_resched_remote(void *dummy)
@@ -956,12 +1019,8 @@ need_user_resched_remote(void *dummy)
 	globaldata_t gd = mycpu;
 	bsd4_pcpu_t  dd = &bsd4_pcpu[gd->gd_cpuid];
 
-	if (dd->uschedcp == NULL && (bsd4_rdyprocmask & gd->gd_cpumask)) {
-		atomic_clear_cpumask(&bsd4_rdyprocmask, gd->gd_cpumask);
-		lwkt_schedule(&dd->helper_thread);
-	} else {
-		need_user_resched();
-	}
+	need_user_resched();
+	lwkt_schedule(&dd->helper_thread);
 }
 
 #endif
@@ -1091,16 +1150,16 @@ sched_thread(void *dummy)
     globaldata_t gd;
     bsd4_pcpu_t  dd;
     struct lwp *nlp;
-    cpumask_t cpumask;
+    cpumask_t mask;
     int cpuid;
-#if 0
+#ifdef SMP
     cpumask_t tmpmask;
     int tmpid;
 #endif
 
     gd = mycpu;
     cpuid = gd->gd_cpuid;	/* doesn't change */
-    cpumask = gd->gd_cpumask;	/* doesn't change */
+    mask = gd->gd_cpumask;	/* doesn't change */
     dd = &bsd4_pcpu[cpuid];
 
     /*
@@ -1118,18 +1177,18 @@ sched_thread(void *dummy)
 	crit_enter_gd(gd);
 	lwkt_deschedule_self(gd->gd_curthread);
 	spin_lock(&bsd4_spin);
-	atomic_set_cpumask(&bsd4_rdyprocmask, cpumask);
+	atomic_set_cpumask(&bsd4_rdyprocmask, mask);
 
 	clear_user_resched();	/* This satisfied the reschedule request */
 	dd->rrcount = 0;	/* Reset the round-robin counter */
 
-	if ((bsd4_curprocmask & cpumask) == 0) {
+	if ((bsd4_curprocmask & mask) == 0) {
 		/*
 		 * No thread is currently scheduled.
 		 */
 		KKASSERT(dd->uschedcp == NULL);
 		if ((nlp = chooseproc_locked(NULL)) != NULL) {
-			atomic_set_cpumask(&bsd4_curprocmask, cpumask);
+			atomic_set_cpumask(&bsd4_curprocmask, mask);
 			dd->upri = nlp->lwp_priority;
 			dd->uschedcp = nlp;
 			spin_unlock(&bsd4_spin);
@@ -1138,34 +1197,39 @@ sched_thread(void *dummy)
 		} else {
 			spin_unlock(&bsd4_spin);
 		}
-#if 0
-	/*
-	 * Disabled for now, this can create an infinite loop.
-	 */
 	} else if (bsd4_runqcount) {
-		/*
-		 * Someone scheduled us but raced.  In order to not lose
-		 * track of the fact that there may be a LWP ready to go,
-		 * forward the request to another cpu if available.
-		 *
-		 * Rotate through cpus starting with cpuid + 1.  Since cpuid
-		 * is already masked out by gd_other_cpus, just use ~cpumask.
-		 */
-		tmpmask = bsd4_rdyprocmask & mycpu->gd_other_cpus &
-			  ~bsd4_curprocmask;
-		if (tmpmask) {
-			if (tmpmask & ~(cpumask - 1))
-				tmpid = BSFCPUMASK(tmpmask & ~(cpumask - 1));
-			else
-				tmpid = BSFCPUMASK(tmpmask);
-			bsd4_scancpu = tmpid;
-			atomic_clear_cpumask(&bsd4_rdyprocmask, CPUMASK(tmpid));
-			spin_unlock_wr(&bsd4_spin);
-			lwkt_schedule(&bsd4_pcpu[tmpid].helper_thread);
+		if ((nlp = chooseproc_locked(dd->uschedcp)) != NULL) {
+			dd->upri = nlp->lwp_priority;
+			dd->uschedcp = nlp;
+			spin_unlock(&bsd4_spin);
+			lwkt_acquire(nlp->lwp_thread);
+			lwkt_schedule(nlp->lwp_thread);
 		} else {
-			spin_unlock_wr(&bsd4_spin);
+			/*
+			 * CHAINING CONDITION TRAIN
+			 *
+			 * We could not deal with the scheduler wakeup
+			 * request on this cpu, locate a ready scheduler
+			 * with no current lp assignment and chain to it.
+			 *
+			 * This ensures that a wakeup race which fails due
+			 * to priority test does not leave other unscheduled
+			 * cpus idle when the runqueue is not empty.
+			 */
+			tmpmask = ~bsd4_curprocmask & bsd4_rdyprocmask &
+				  smp_active_mask;
+			if (tmpmask) {
+				tmpid = BSFCPUMASK(tmpmask);
+				gd = globaldata_find(cpuid);
+				dd = &bsd4_pcpu[cpuid];
+				atomic_clear_cpumask(&bsd4_rdyprocmask,
+						     CPUMASK(tmpid));
+				spin_unlock(&bsd4_spin);
+				lwkt_schedule(&dd->helper_thread);
+			} else {
+				spin_unlock(&bsd4_spin);
+			}
 		}
-#endif
 	} else {
 		/*
 		 * The runq is empty.
