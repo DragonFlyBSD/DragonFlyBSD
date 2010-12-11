@@ -803,7 +803,13 @@ lwkt_switch(void)
 #endif
 		    goto havethread;
 	    }
+
+	    /*
+	     * Thread was runnable but we were unable to get the required
+	     * resources (tokens and/or mplock).
+	     */
 #ifdef SMP
+	    ntd->td_wmesg = lmsg;
 	    if (ntd->td_fairq_accum >= 0)
 		    set_cpu_contention_mask(gd);
 	    /*
@@ -857,6 +863,7 @@ lwkt_switch(void)
 havethread:
     ++gd->gd_cnt.v_swtch;
     --ntd->td_fairq_accum;
+    ntd->td_wmesg = NULL;
     xtd = TAILQ_FIRST(&gd->gd_tdrunq);
     if (ntd != xtd && ntd->td_pri >= xtd->td_pri) {
 	TAILQ_REMOVE(&gd->gd_tdrunq, ntd, td_threadq);
