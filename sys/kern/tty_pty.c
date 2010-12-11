@@ -104,7 +104,7 @@ static	d_clone_t 	ptyclone;
 static int	pty_debug_level = 0;
 
 static struct dev_ops pts98_ops = {
-	{ "pts98", 0, D_TTY },
+	{ "pts98", 0, D_TTY | D_MPSAFE },
 	.d_open =	ptsopen,
 	.d_close =	ptsclose,
 	.d_read =	ptsread,
@@ -115,7 +115,7 @@ static struct dev_ops pts98_ops = {
 };
 
 static struct dev_ops ptc98_ops = {
-	{ "ptc98", 0, D_TTY | D_MASTER },
+	{ "ptc98", 0, D_TTY | D_MASTER | D_MPSAFE },
 	.d_open =	ptcopen,
 	.d_close =	ptcclose,
 	.d_read =	ptcread,
@@ -127,7 +127,7 @@ static struct dev_ops ptc98_ops = {
 #endif
 
 static struct dev_ops pts_ops = {
-	{ "pts", 0, D_TTY },
+	{ "pts", 0, D_TTY | D_MPSAFE },
 	.d_open =	ptsopen,
 	.d_close =	ptsclose,
 	.d_read =	ptsread,
@@ -139,7 +139,7 @@ static struct dev_ops pts_ops = {
 
 #define	CDEV_MAJOR_C	6
 static struct dev_ops ptc_ops = {
-	{ "ptc", 0, D_TTY | D_MASTER },
+	{ "ptc", 0, D_TTY | D_MASTER | D_MPSAFE },
 	.d_open =	ptcopen,
 	.d_close =	ptcclose,
 	.d_read =	ptcread,
