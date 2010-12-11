@@ -56,13 +56,16 @@
 
 #ifdef SMP
 static int chain_mplock = 0;
-static int bgl_yield = 10;
+static int mplock_yield = 10;
+static int mplock_backtrace;
 static __int64_t mplock_contention_count = 0;
 
 SYSCTL_INT(_lwkt, OID_AUTO, chain_mplock, CTLFLAG_RW, &chain_mplock, 0,
     "Chain IPI's to other CPU's potentially needing the MP lock when it is yielded");
-SYSCTL_INT(_lwkt, OID_AUTO, bgl_yield_delay, CTLFLAG_RW, &bgl_yield, 0,
+SYSCTL_INT(_lwkt, OID_AUTO, mplock_yield_delay, CTLFLAG_RW, &mplock_yield, 0,
     "Duration of delay when MP lock is temporarily yielded");
+SYSCTL_INT(_lwkt, OID_AUTO, mplock_backtrace, CTLFLAG_RW, &mplock_backtrace, 0,
+    "Output backplane when mplock contention occurs");
 SYSCTL_QUAD(_lwkt, OID_AUTO, mplock_contention_count, CTLFLAG_RW,
 	&mplock_contention_count, 0, "spinning due to MPLOCK contention");
 
@@ -136,6 +139,10 @@ _get_mplock_contested(const char *file, int line)
 	int nv;
 	const void **stkframe = (const void **)&file;
 
+	if (mplock_backtrace > 0) {
+		--mplock_backtrace;
+		print_backtrace(-1);
+	}
 	++mplock_contention_count;
 	for (;;) {
 		ov = mp_lock;
@@ -240,11 +247,11 @@ yield_mplock(thread_t td)
 {
 	int savecnt;
 
-	if (td->td_xpcount == 0) {
+	if (td->td_xpcount == 0 && mplock_yield > 0) {
 		savecnt = td->td_mpcount;
 		td->td_mpcount = 1;
 		rel_mplock();
-		DELAY(bgl_yield);
+		DELAY(mplock_yield);
 		get_mplock();
 		td->td_mpcount = savecnt;
 	}
