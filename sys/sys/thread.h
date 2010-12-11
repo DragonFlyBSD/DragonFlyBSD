@@ -444,7 +444,7 @@ extern void lwkt_gettoken_hard(lwkt_token_t);
 extern int  lwkt_trytoken(lwkt_token_t);
 extern void lwkt_reltoken(lwkt_token_t);
 extern void lwkt_reltoken_hard(lwkt_token_t);
-extern int  lwkt_getalltokens(thread_t, const char **, const void **);
+extern int  lwkt_getalltokens(thread_t);
 extern void lwkt_relalltokens(thread_t);
 extern void lwkt_drain_token_requests(void);
 extern void lwkt_token_init(lwkt_token_t, int, const char *);

@@ -226,7 +226,7 @@ _lwkt_tokref_init(lwkt_tokref_t ref, lwkt_token_t tok, thread_t td)
  * Called from a critical section.
  */
 int
-lwkt_getalltokens(thread_t td, const char **msgp, const void **addrp)
+lwkt_getalltokens(thread_t td)
 {
 	lwkt_tokref_t scan;
 	lwkt_tokref_t ref;
@@ -267,8 +267,7 @@ lwkt_getalltokens(thread_t td, const char **msgp, const void **addrp)
 			 * Otherwise we failed to acquire all the tokens.
 			 * Undo and return.
 			 */
-			*msgp = tok->t_desc;
-			*addrp = scan->tr_stallpc;
+			td->td_wmesg = tok->t_desc;
 			atomic_add_long(&tok->t_collisions, 1);
 			lwkt_relalltokens(td);
 			return(FALSE);

@@ -498,8 +498,6 @@ lwkt_switch(void)
     int mpheld;
 #endif
     int didaccumulate;
-    const char *lmsg;	/* diagnostic - 'systat -pv 1' */
-    const void *laddr;
 
     /*
      * Switching from within a 'fast' (non thread switched) interrupt or IPI
@@ -672,9 +670,10 @@ lwkt_switch(void)
 	if (ntd->td_fairq_accum >= 0 &&
 #ifdef SMP
 	    (ntd->td_mpcount + ntd->td_xpcount == 0 ||
-	     mpheld || cpu_try_mplock()) &&
+	     mpheld || cpu_try_mplock_msg(&ntd->td_wmesg)) &&
 #endif
-	    (!TD_TOKS_HELD(ntd) || lwkt_getalltokens(ntd, &lmsg, &laddr))
+	    (!TD_TOKS_HELD(ntd) ||
+	     lwkt_getalltokens(ntd))
 	) {
 #ifdef SMP
 	    clr_cpu_contention_mask(gd);
@@ -682,18 +681,11 @@ lwkt_switch(void)
 	    goto havethread;
 	}
 
-	lmsg = NULL;
-	laddr = NULL;
-
 #ifdef SMP
 	if (ntd->td_fairq_accum >= 0)
 		set_cpu_contention_mask(gd);
 	/* Reload mpheld (it become stale after mplock/token ops) */
 	mpheld = MP_LOCK_HELD(gd);
-	if (ntd->td_mpcount + ntd->td_xpcount && mpheld == 0) {
-	    lmsg = "mplock";
-	    laddr = ntd->td_mplock_stallpc;
-	}
 #endif
 
 	/*
@@ -778,9 +770,6 @@ lwkt_switch(void)
 		 */
 		if (didaccumulate)
 			break;		/* try again from the top, almost */
-		if (lmsg)
-		    strlcpy(cpu_time.cp_msg, lmsg, sizeof(cpu_time.cp_msg));
-		cpu_time.cp_stallpc = (uintptr_t)laddr;
 		goto haveidle;
 	    }
 
@@ -794,9 +783,9 @@ lwkt_switch(void)
 		user_pri_sched) && ntd->td_fairq_accum >= 0 &&
 #ifdef SMP
 		(ntd->td_mpcount + ntd->td_xpcount == 0 ||
-		 mpheld || cpu_try_mplock()) &&
+		 mpheld || cpu_try_mplock_msg(&ntd->td_wmesg)) &&
 #endif
-		(!TD_TOKS_HELD(ntd) || lwkt_getalltokens(ntd, &lmsg, &laddr))
+		(!TD_TOKS_HELD(ntd) || lwkt_getalltokens(ntd))
 	    ) {
 #ifdef SMP
 		    clr_cpu_contention_mask(gd);
@@ -809,17 +798,12 @@ lwkt_switch(void)
 	     * resources (tokens and/or mplock).
 	     */
 #ifdef SMP
-	    ntd->td_wmesg = lmsg;
 	    if (ntd->td_fairq_accum >= 0)
 		    set_cpu_contention_mask(gd);
 	    /*
 	     * Reload mpheld (it become stale after mplock/token ops).
 	     */
 	    mpheld = MP_LOCK_HELD(gd);
-	    if (ntd->td_mpcount + ntd->td_xpcount && mpheld == 0) {
-		lmsg = "mplock";
-		laddr = ntd->td_mplock_stallpc;
-	    }
 	    if (ntd->td_pri >= TDPRI_KERN_LPSCHED && ntd->td_fairq_accum >= 0)
 		nquserok = 0;
 #endif

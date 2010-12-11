@@ -21,6 +21,7 @@
 #define get_mplock()		get_mplock_debug(__FILE__, __LINE__)
 #define try_mplock()		try_mplock_debug(__FILE__, __LINE__)
 #define cpu_try_mplock()	cpu_try_mplock_debug(__FILE__, __LINE__)
+#define cpu_try_mplock_msg(lmsg) cpu_try_mplock_msg_debug(lmsg, __FILE__, __LINE__)
 
 void _get_mplock_predisposed(const char *file, int line);
 void _get_mplock_contested(const char *file, int line);
@@ -149,6 +150,18 @@ cpu_try_mplock_debug(const char *file, int line)
 	mp_lock_holder_line = line;
 #endif
 	return(1);
+}
+
+static __inline
+int
+cpu_try_mplock_msg_debug(const char **lmsg, const char *file, int line)
+{
+	if (cpu_try_mplock_debug(file, line)) {
+		return(1);
+	} else {
+		*lmsg = "mplock";
+		return(0);
+	}
 }
 
 /*
