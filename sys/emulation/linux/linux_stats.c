@@ -481,7 +481,6 @@ sys_linux_fstat64(struct linux_fstat64_args *args)
 int
 sys_linux_fstatat64(struct linux_fstatat64_args *args)
 {
-	CACHE_MPLOCK_DECLARE;
 	struct nlookupdata nd;
 	struct file *fp;
 	struct stat st;
@@ -501,7 +500,6 @@ sys_linux_fstatat64(struct linux_fstatat64_args *args)
 	dfd = (args->dfd == LINUX_AT_FDCWD) ? AT_FDCWD : args->dfd;
 	flags = (args->flag & LINUX_AT_SYMLINK_NOFOLLOW) ? 0 : NLC_FOLLOW;
 
-	CACHE_GETMPLOCK1();
 	error = nlookup_init_at(&nd, &fp, dfd, path, UIO_SYSSPACE, flags);
 	if (error == 0) {
 		error = kern_stat(&nd, &st);
@@ -509,7 +507,6 @@ sys_linux_fstatat64(struct linux_fstatat64_args *args)
 			error = stat64_copyout(&st, args->statbuf);
 	}
 	nlookup_done_at(&nd, fp);
-	CACHE_RELMPLOCK();
 	linux_free_path(&path);
 	return (error);
 }

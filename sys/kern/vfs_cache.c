@@ -179,9 +179,6 @@ SYSCTL_INT(_debug, OID_AUTO, vnsize, CTLFLAG_RD, 0, sizeof(struct vnode),
 SYSCTL_INT(_debug, OID_AUTO, ncsize, CTLFLAG_RD, 0, sizeof(struct namecache),
     "sizeof(struct namecache)");
 
-int cache_mpsafe = 1;
-SYSCTL_INT(_vfs, OID_AUTO, cache_mpsafe, CTLFLAG_RW, &cache_mpsafe, 0, "");
-
 static int cache_resolve_mp(struct mount *mp);
 static struct vnode *cache_dvpref(struct namecache *ncp);
 static void _cache_lock(struct namecache *ncp);

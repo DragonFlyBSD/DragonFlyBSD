@@ -1978,18 +1978,15 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 int
 sys_open(struct open_args *uap)
 {
-	CACHE_MPLOCK_DECLARE;
 	struct nlookupdata nd;
 	int error;
 
-	CACHE_GETMPLOCK1();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
 		error = kern_open(&nd, uap->flags,
 				    uap->mode, &uap->sysmsg_result);
 	}
 	nlookup_done(&nd);
-	CACHE_RELMPLOCK();
 	return (error);
 }
 
@@ -2001,19 +1998,16 @@ sys_open(struct open_args *uap)
 int
 sys_openat(struct openat_args *uap)
 {
-	CACHE_MPLOCK_DECLARE;
 	struct nlookupdata nd;
 	int error;
 	struct file *fp;
 
-	CACHE_GETMPLOCK1();
 	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
 		error = kern_open(&nd, uap->flags, uap->mode, 
 					&uap->sysmsg_result);
 	}
 	nlookup_done_at(&nd, fp);
-	CACHE_RELMPLOCK();
 	return (error);
 }
 
@@ -2777,12 +2771,10 @@ again:
 int
 sys_stat(struct stat_args *uap)
 {
-	CACHE_MPLOCK_DECLARE;
 	struct nlookupdata nd;
 	struct stat st;
 	int error;
 
-	CACHE_GETMPLOCK1();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = kern_stat(&nd, &st);
@@ -2790,7 +2782,6 @@ sys_stat(struct stat_args *uap)
 			error = copyout(&st, uap->ub, sizeof(*uap->ub));
 	}
 	nlookup_done(&nd);
-	CACHE_RELMPLOCK();
 	return (error);
 }
 
@@ -2804,12 +2795,10 @@ sys_stat(struct stat_args *uap)
 int
 sys_lstat(struct lstat_args *uap)
 {
-	CACHE_MPLOCK_DECLARE;
 	struct nlookupdata nd;
 	struct stat st;
 	int error;
 
-	CACHE_GETMPLOCK1();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
 		error = kern_stat(&nd, &st);
@@ -2817,7 +2806,6 @@ sys_lstat(struct lstat_args *uap)
 			error = copyout(&st, uap->ub, sizeof(*uap->ub));
 	}
 	nlookup_done(&nd);
-	CACHE_RELMPLOCK();
 	return (error);
 }
 
@@ -2831,7 +2819,6 @@ sys_lstat(struct lstat_args *uap)
 int
 sys_fstatat(struct fstatat_args *uap)
 {
-	CACHE_MPLOCK_DECLARE;
 	struct nlookupdata nd;
 	struct stat st;
 	int error;
@@ -2843,7 +2830,6 @@ sys_fstatat(struct fstatat_args *uap)
 
 	flags = (uap->flags & AT_SYMLINK_NOFOLLOW) ? 0 : NLC_FOLLOW;
 
-	CACHE_GETMPLOCK1();
 	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, 
 				UIO_USERSPACE, flags);
 	if (error == 0) {
@@ -2852,7 +2838,6 @@ sys_fstatat(struct fstatat_args *uap)
 			error = copyout(&st, uap->sb, sizeof(*uap->sb));
 	}
 	nlookup_done_at(&nd, fp);
-	CACHE_RELMPLOCK();
 	return (error);
 }
 
