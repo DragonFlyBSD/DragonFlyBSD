@@ -85,38 +85,13 @@ int max_installed_soft_intr;
  * dangling tokens, spinlocks, or mp locks.
  */
 #ifdef INVARIANTS
-# ifdef SMP
-/* INVARIANTS & SMP */
-#  define SMP_INVARIANTS_DECLARE				\
-	int mpcount;
-
-#  define SMP_INVARIANTS_GET(td)				\
-	mpcount = (td)->td_mpcount
-
-#  define SMP_INVARIANTS_TEST(td, name)				\
-	KASSERT(mpcount == (td)->td_mpcount,			\
-		("mpcount mismatch after interrupt handler %s",	\
-		 name))
-
-#  define SMP_INVARIANTS_ADJMP(count)				\
-	mpcount += (count)
-
-# else 
-/* INVARIANTS & !SMP */
-#  define SMP_INVARIANTS_DECLARE
-#  define SMP_INVARIANTS_GET(td)
-#  define SMP_INVARIANTS_TEST(td, name)
-
-# endif /* ndef SMP */
 
 #define TD_INVARIANTS_DECLARE   \
-        SMP_INVARIANTS_DECLARE  \
         int spincount;          \
         lwkt_tokref_t curstop
 
 #define TD_INVARIANTS_GET(td)                                   \
         do {                                                    \
-                SMP_INVARIANTS_GET(td);                         \
                 spincount = (td)->td_gd->gd_spinlocks_wr;       \
                 curstop = (td)->td_toks_stop;                   \
         } while(0)
@@ -129,16 +104,11 @@ int max_installed_soft_intr;
                 KASSERT(curstop == (td)->td_toks_stop,                  \
                         ("token count mismatch after interrupt handler %s", \
                         name));                                         \
-                SMP_INVARIANTS_TEST(td, name);                          \
         } while(0)
 
 #else
-/* !INVARIANTS */
-# ifdef SMP
-/* !INVARIANTS & SMP */
-# define SMP_INVARIANTS_ADJMP(count)
 
-# endif
+/* !INVARIANTS */
 
 #define TD_INVARIANTS_DECLARE
 #define TD_INVARIANTS_GET(td)
@@ -735,7 +705,6 @@ ithread_fast_handler(struct intrframe *frame)
 		    break;
 		}
 		got_mplock = 1;
-		SMP_INVARIANTS_ADJMP(1);
 	    }
 #endif
 	    if (rec->serializer) {

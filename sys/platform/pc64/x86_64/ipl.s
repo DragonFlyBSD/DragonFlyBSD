@@ -130,8 +130,7 @@ fastunpend_count:	.long	0
 	 * checks the cpl for unmasked pending interrupts (fast, normal, or
 	 * soft) and schedules them if appropriate, then irets.
 	 *
-	 * If we are in a critical section we cannot run any pending ints
-	 * nor can be play with mp_lock.
+	 * If we are in a critical section we cannot run any pending ints.
 	 *
 	 * The stack contains a trapframe at the start of doreti.
 	 */

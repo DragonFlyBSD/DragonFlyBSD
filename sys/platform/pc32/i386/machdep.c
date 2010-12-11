@@ -2621,14 +2621,11 @@ struct spinlock_deprecated smp_rv_spinlock;
 static void
 init_locks(void)
 {
+#ifdef SMP
 	/*
-	 * mp_lock = 0;	BSP already owns the MP lock 
-	 */
-	/*
-	 * Get the initial mp_lock with a count of 1 for the BSP.
+	 * Get the initial mplock with a count of 1 for the BSP.
 	 * This uses a LOGICAL cpu ID, ie BSP == 0.
 	 */
-#ifdef SMP
 	cpu_get_initial_mplock();
 #endif
 	/* DEPRECATED */

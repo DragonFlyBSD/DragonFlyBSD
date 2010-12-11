@@ -440,20 +440,6 @@ ENTRY(fork_trampoline)
 	sti
 	call	splz
 
-#if defined(INVARIANTS) && defined(SMP)
-	movq	PCPU(curthread),%rax
-	cmpl	$0,TD_MPCOUNT(%rax)
-	je	1f
-	movq	$pmsg4, %rdi
-	movl	TD_MPCOUNT(%rax), %esi
-	movq	%rbx, %rdx
-	xorl	%eax, %eax
-	call	panic
-pmsg4:  .asciz	"fork_trampoline mpcount %d after calling %p"
-	/* JG what's the purpose of this alignment and is it enough on x86_64? */
-	.p2align 2
-1:
-#endif
 	/*
 	 * Return via doreti to handle ASTs.
 	 *

@@ -918,18 +918,6 @@ ENTRY(fork_trampoline)
 	sti
 	call	splz
 
-#if defined(INVARIANTS) && defined(SMP)
-	movl	PCPU(curthread),%eax
-	cmpl	$0,TD_MPCOUNT(%eax)
-	je	1f
-	pushl	%esi
-	pushl	TD_MPCOUNT(%eax)
-	pushl	$pmsg4
-	call	panic
-pmsg4:  .asciz	"fork_trampoline mpcount %d after calling %p"
-	.p2align 2
-1:
-#endif
 	/*
 	 * Return via doreti to handle ASTs.
 	 */

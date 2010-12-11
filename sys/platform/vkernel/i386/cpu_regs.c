@@ -704,9 +704,6 @@ cpu_idle(void)
 
 	crit_exit();
 	KKASSERT(td->td_critcount == 0);
-#ifdef SMP
-	KKASSERT(td->td_mpcount == 0);
-#endif
 	cpu_enable_intr();
 	for (;;) {
 		/*
@@ -714,9 +711,6 @@ cpu_idle(void)
 		 */
 		lwkt_switch();
 
-#ifdef SMP
-		KKASSERT(td->td_mpcount == 0);
-#endif
 		/*
 		 * The idle loop halts only if no threads are scheduleable
 		 * and no signals have occured.
@@ -725,8 +719,7 @@ cpu_idle(void)
 		    (td->td_flags & TDF_IDLE_NOHLT) == 0) {
 			splz();
 #ifdef SMP
-			KKASSERT(td->td_mpcount == 0);
-			KKASSERT(MP_LOCK_HELD(td->td_gd) == 0);
+			KKASSERT(MP_LOCK_HELD() == 0);
 #endif
 			if (!lwkt_runnable()) {
 #ifdef DEBUGIDLE

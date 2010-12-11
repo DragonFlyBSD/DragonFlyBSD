@@ -816,11 +816,6 @@ map_read_write:
 	movl	$1, %ecx		/* one private pt coming right up */
 	fillkpt(R(SMPptpa), $PG_RW)
 
-#ifdef SMP
-/* Initialize mp lock to allow early traps */
-	movl	$0, R(mp_lock)
-#endif	/* SMP */
-
 /* install a pde for temporary double map of bottom of VA */
 	movl	R(KPTphys), %eax
 	xorl	%ebx, %ebx

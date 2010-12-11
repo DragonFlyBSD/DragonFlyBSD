@@ -165,9 +165,6 @@ mi_proc0init(struct globaldata *gd, struct user *proc0paddr)
 {
 	lwkt_init_thread(&thread0, proc0paddr, LWKT_THREAD_STACK, 0, gd);
 	lwkt_set_comm(&thread0, "thread0");
-#ifdef SMP
-	thread0.td_mpcount = 1;	/* will hold mplock initially */
-#endif
 	RB_INIT(&proc0.p_lwp_tree);
 	spin_init(&proc0.p_spin);
 	proc0.p_lasttid = 0;	/* +1 = next TID */

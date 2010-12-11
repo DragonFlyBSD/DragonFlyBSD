@@ -2756,9 +2756,6 @@ ap_init(void)
 	 *
 	 * Note: We are in a critical section.
 	 *
-	 * Note: We have to synchronize td_mpcount to our desired MP state
-	 * before calling cpu_try_mplock().
-	 *
 	 * Note: we are the idle thread, we can only spin.
 	 *
 	 * Note: The load fence is memory volatile and prevents the compiler
@@ -2766,17 +2763,16 @@ ap_init(void)
 	 * caching it.
 	 */
 	while (mp_finish == 0)
-	    cpu_lfence();
-	++curthread->td_mpcount;
-	while (cpu_try_mplock() == 0)
-	    ;
+		cpu_lfence();
+	while (try_mplock() == 0)
+		;
 
 	if (cpu_feature & CPUID_TSC) {
-	    /*
-	     * The BSP is constantly updating tsc0_offset, figure out the
-	     * relative difference to synchronize ktrdump.
-	     */
-	    tsc_offsets[mycpu->gd_cpuid] = rdtsc() - tsc0_offset;
+		/*
+		 * The BSP is constantly updating tsc0_offset, figure out
+		 * the relative difference to synchronize ktrdump.
+		 */
+		tsc_offsets[mycpu->gd_cpuid] = rdtsc() - tsc0_offset;
 	}
 
 	/* BSP may have changed PTD while we're waiting for the lock */
@@ -2823,7 +2819,7 @@ ap_init(void)
 	 * The idle thread is never placed on the runq, make sure
 	 * nothing we've done put it there.
 	 */
-	KKASSERT(curthread->td_mpcount == 1);
+	KKASSERT(get_mplock_count(curthread) == 1);
 	smp_active_mask |= CPUMASK(mycpu->gd_cpuid);
 
 	/*

@@ -923,7 +923,6 @@ kern/kern_memio.c	standard
 kern/kern_udev.c	standard
 kern/kern_upcall.c	standard
 kern/kern_sfbuf.c	standard
-kern/kern_mplock.c	standard
 kern/kern_subr.c	standard
 kern/kern_iosched.c	standard
 kern/kern_usched.c	standard

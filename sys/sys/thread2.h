@@ -34,6 +34,16 @@
 #endif
 
 /*
+ * Is a token held by the specified thread?
+ */
+static __inline int
+_lwkt_token_held(lwkt_token_t tok, thread_t td)
+{
+	return (tok->t_ref >= &td->td_toks_base &&
+		tok->t_ref < td->td_toks_stop);
+}
+
+/*
  * Critical section debugging
  */
 #ifdef DEBUG_CRIT_SECTIONS
@@ -204,8 +214,7 @@ crit_test(thread_t td)
 }
 
 /*
- * Return whether any threads are runnable, whether they meet mp_lock
- * requirements or not.
+ * Return whether any threads are runnable.
  */
 static __inline int
 lwkt_runnable(void)

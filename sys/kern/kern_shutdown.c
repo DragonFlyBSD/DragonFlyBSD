@@ -767,7 +767,6 @@ panic(const char *fmt, ...)
 	kprintf("panic: %s\n", buf);
 #ifdef SMP
 	/* two separate prints in case of an unmapped page and trap */
-	kprintf("mp_lock = %08x; ", mp_lock);
 	kprintf("cpuid = %d\n", mycpu->gd_cpuid);
 #endif
 

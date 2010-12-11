@@ -92,8 +92,7 @@ fastunpend_count:	.long	0
 	 * checks the cpl for unmasked pending interrupts (fast, normal, or
 	 * soft) and schedules them if appropriate, then irets.
 	 *
-	 * If we are in a critical section we cannot run any pending ints
-	 * nor can be play with mp_lock.
+	 * If we are in a critical section we cannot run any pending ints.
 	 *
 	 * NOTE: Since SPLs no longer exist, all callers of this function
 	 * push $0 for the CPL.  HOWEVER, we *STILL* use the cpl mask within

@@ -182,9 +182,6 @@ ASSYM(TD_CRITCOUNT, offsetof(struct thread, td_critcount));
 ASSYM(TD_MACH, offsetof(struct thread, td_mach));
 ASSYM(TD_WCHAN, offsetof(struct thread, td_wchan));
 ASSYM(TD_NEST_COUNT, offsetof(struct thread, td_nest_count));
-#ifdef SMP
-ASSYM(TD_MPCOUNT, offsetof(struct thread, td_mpcount));
-#endif
 ASSYM(TD_FLAGS, offsetof(struct thread, td_flags));
 ASSYM(TD_SAVEFPU, offsetof(struct thread, td_savefpu));
 ASSYM(TDF_RUNNING, TDF_RUNNING);

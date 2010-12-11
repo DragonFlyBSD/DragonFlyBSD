@@ -133,10 +133,13 @@ typedef struct lwkt_token {
 /*
  * Assert that a particular token is held
  */
+#define LWKT_TOKEN_HELD(tok)		_lwkt_token_held(tok, curthread)
+
 #define ASSERT_LWKT_TOKEN_HELD(tok)	\
-	KKASSERT((tok)->t_ref && (tok)->t_ref->tr_owner == curthread)
+	KKASSERT(LWKT_TOKEN_HELD(tok))
+
 #define ASSERT_NO_TOKENS_HELD(td)	\
-	KKASSERT((td)->td_toks_stop == &td->toks_array[0])
+	KKASSERT((td)->td_toks_stop == &td->td_toks_array[0])
 
 /*
  * Assert that a particular token is held and we are in a hard
@@ -269,18 +272,14 @@ struct thread {
     void	*td_dsched_priv1;	/* priv data for I/O schedulers */
     int		td_refs;	/* hold position in gd_tdallq / hold free */
     int		td_nest_count;	/* prevent splz nesting */
+    int		td_unused01[2];	/* for future fields */
 #ifdef SMP
-    int		td_mpcount;	/* MP lock held (count) */
-    int		td_xpcount;	/* MP lock held inherited (count) */
     int		td_cscount;	/* cpu synchronization master */
-    int		td_unused02[4];	/* for future fields */
 #else
-    int		td_mpcount_unused;	/* filler so size matches */
-    int		td_xpcount_unused;
     int		td_cscount_unused;
-    int		td_unused02[4];
 #endif
-    int		td_unused03[4];		/* for future fields */
+    int		td_unused02[4];	/* for future fields */
+    int		td_unused03[4];	/* for future fields */
     struct iosched_data td_iosdata;	/* Dynamic I/O scheduling data */
     struct timeval td_start;	/* start time for a thread/process */
     char	td_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
@@ -403,6 +402,7 @@ struct thread {
 /*
  * Global tokens
  */
+extern struct lwkt_token mp_token;
 extern struct lwkt_token pmap_token;
 extern struct lwkt_token dev_token;
 extern struct lwkt_token vm_token;
@@ -444,6 +444,7 @@ extern void lwkt_gettoken_hard(lwkt_token_t);
 extern int  lwkt_trytoken(lwkt_token_t);
 extern void lwkt_reltoken(lwkt_token_t);
 extern void lwkt_reltoken_hard(lwkt_token_t);
+extern int  lwkt_cnttoken(lwkt_token_t, thread_t);
 extern int  lwkt_getalltokens(thread_t);
 extern void lwkt_relalltokens(thread_t);
 extern void lwkt_drain_token_requests(void);

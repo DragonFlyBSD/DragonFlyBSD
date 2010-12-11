@@ -197,12 +197,6 @@ dummy_acquire_curproc(struct lwp *lp)
  * This routine is also responsible for selecting a new thread to
  * make the current thread.
  *
- * WARNING!  The MP lock may be in an unsynchronized state due to the
- * way get_mplock() works and the fact that this function may be called
- * from a passive release during a lwkt_switch().   try_mplock() will deal 
- * with this for us but you should be aware that td_mpcount may not be
- * useable.
- *
  * MPSAFE
  */
 static void

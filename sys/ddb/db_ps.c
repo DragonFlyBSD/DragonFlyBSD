@@ -139,17 +139,12 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 	    TAILQ_FOREACH(td, &gd->gd_tdrunq, td_threadq) {
 		if (db_more(&nl) < 0)
 		    return;
-		db_printf("  %p %3d %08x %2d/%02d/%02d %p %8.8s %s\n",
+		db_printf("  %p %3d %08x %2d/%02d %p %8.8s %s\n",
 		    td,
 		    (td->td_proc ? td->td_proc->p_pid : -1),
 		    td->td_flags,
 		    td->td_pri,
 		    td->td_critcount,
-#ifdef SMP
-		    td->td_mpcount,
-#else
-		    0,
-#endif
 		    td->td_sp,
 		    td->td_wmesg ? td->td_wmesg : "-",
 		    td->td_proc ? td->td_proc->p_comm : td->td_comm);
@@ -166,17 +161,12 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 	    TAILQ_FOREACH(td, &gd->gd_tdallq, td_allq) {
 		if (db_more(&nl) < 0)
 		    return;
-		db_printf("  %3d %p %3d %08x %2d/%02d/%02d %p %8.8s %s\n",
+		db_printf("  %3d %p %3d %08x %2d/%02d %p %8.8s %s\n",
 		    np, td, 
 		    (td->td_proc ? td->td_proc->p_pid : -1),
 		    td->td_flags,
 		    td->td_pri,
 		    td->td_critcount,
-#ifdef SMP
-		    td->td_mpcount,
-#else
-		    0,
-#endif
 		    td->td_sp,
 		    td->td_wmesg ? td->td_wmesg : "-",
 		    td->td_proc ? td->td_proc->p_comm : td->td_comm);

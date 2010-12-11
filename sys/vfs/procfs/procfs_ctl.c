@@ -48,8 +48,11 @@
 #include <sys/vnode.h>
 #include <sys/ptrace.h>
 #include <sys/signalvar.h>
-#include <sys/signal2.h>
 #include <vfs/procfs/procfs.h>
+
+#include <sys/signal2.h>
+#include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #include <vm/vm.h>
 

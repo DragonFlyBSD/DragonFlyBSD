@@ -497,7 +497,6 @@ tmpfs_write (struct vop_write_args *ap)
 	size_t offset;
 	size_t len;
 	struct rlimit limit;
-	int got_mplock;
 	int trivial = 0;
 	int kflags = 0;
 
@@ -538,16 +537,8 @@ tmpfs_write (struct vop_write_args *ap)
 	 */
 	extended = ((uio->uio_offset + uio->uio_resid) > node->tn_size);
 
-#ifdef SMP
-	if (curthread->td_mpcount) {
-		got_mplock = -1;
-	} else {
-		got_mplock = 1;
-		get_mplock();
-	}
-#else
-	got_mplock = -1;
-#endif
+	get_mplock();
+
 	while (uio->uio_resid > 0) {
 		/*
 		 * Use buffer cache I/O (via tmpfs_strategy)
@@ -628,8 +619,7 @@ tmpfs_write (struct vop_write_args *ap)
 		}
 	}
 
-	if (got_mplock > 0)
-		rel_mplock();
+	rel_mplock();
 
 	if (error) {
 		if (extended) {

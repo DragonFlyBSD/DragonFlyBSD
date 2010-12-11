@@ -472,9 +472,6 @@ lwkt_free_thread(thread_t td)
  * different beast and LWKT priorities should not be confused with
  * user process priorities.
  *
- * The MP lock may be out of sync with the thread's td_mpcount + td_xpcount.
- * lwkt_switch() cleans it up.
- *
  * Note that the td_switch() function cannot do anything that requires
  * the MP lock since the MP lock will have already been setup for
  * the target thread (not the current thread).  It's nice to have a scheduler
@@ -494,9 +491,6 @@ lwkt_switch(void)
     thread_t xtd;
     thread_t nlast;
     int nquserok;
-#ifdef SMP
-    int mpheld;
-#endif
     int didaccumulate;
 
     /*
@@ -560,15 +554,6 @@ lwkt_switch(void)
 
 
 #ifdef SMP
-    /*
-     * td_mpcount + td_xpcount cannot be used to determine if we currently
-     * hold the MP lock because get_mplock() will increment it prior to
-     * attempting to get the lock, and switch out if it can't.  Our
-     * ownership of the actual lock will remain stable while we are
-     * in a critical section, and once we actually acquire the underlying
-     * lock as long as the count is greater than 0.
-     */
-    mpheld = MP_LOCK_HELD(gd);
 #ifdef	INVARIANTS
     if (td->td_cscount) {
 	kprintf("Diagnostic: attempt to switch while mastering cpusync: %p\n",
@@ -591,13 +576,6 @@ lwkt_switch(void)
      */
     if ((ntd = td->td_preempted) != NULL) {
 	KKASSERT(ntd->td_flags & TDF_PREEMPT_LOCK);
-#ifdef SMP
-	if (ntd->td_mpcount + ntd->td_xpcount && mpheld == 0) {
-	    panic("MPLOCK NOT HELD ON RETURN: %p %p %d %d",
-	       td, ntd, td->td_mpcount, ntd->td_mpcount + ntd->td_xpcount);
-	}
-	td->td_xpcount = 0;
-#endif
 	ntd->td_flags |= TDF_PREEMPT_DONE;
 
 	/*
@@ -641,19 +619,8 @@ lwkt_switch(void)
 	    if (gd->gd_reqflags & RQF_IDLECHECK_MASK)
 		    ntd->td_flags |= TDF_IDLE_NOHLT;
 #ifdef SMP
-	    KKASSERT(ntd->td_xpcount == 0);
-	    if (ntd->td_mpcount) {
-		if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
-		    panic("Idle thread %p was holding the BGL!", ntd);
-		if (mpheld == 0) {
-		    set_cpu_contention_mask(gd);
-		    handle_cpu_contention_mask();
-		    cpu_try_mplock();
-		    mpheld = MP_LOCK_HELD(gd);
-		    cpu_pause();
-		    continue;
-		}
-	    }
+	    if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
+		    ASSERT_NO_TOKENS_HELD(ntd);
 	    clr_cpu_contention_mask(gd);
 #endif
 	    cpu_time.cp_msg[0] = 0;
@@ -668,12 +635,7 @@ lwkt_switch(void)
 	 *	     always succeeds.
 	 */
 	if (ntd->td_fairq_accum >= 0 &&
-#ifdef SMP
-	    (ntd->td_mpcount + ntd->td_xpcount == 0 ||
-	     mpheld || cpu_try_mplock_msg(&ntd->td_wmesg)) &&
-#endif
-	    (!TD_TOKS_HELD(ntd) ||
-	     lwkt_getalltokens(ntd))
+	    (TD_TOKS_NOT_HELD(ntd) || lwkt_getalltokens(ntd))
 	) {
 #ifdef SMP
 	    clr_cpu_contention_mask(gd);
@@ -684,8 +646,6 @@ lwkt_switch(void)
 #ifdef SMP
 	if (ntd->td_fairq_accum >= 0)
 		set_cpu_contention_mask(gd);
-	/* Reload mpheld (it become stale after mplock/token ops) */
-	mpheld = MP_LOCK_HELD(gd);
 #endif
 
 	/*
@@ -747,20 +707,9 @@ lwkt_switch(void)
 		ntd = &gd->gd_idlethread;
 		ntd->td_flags |= TDF_IDLE_NOHLT;
 #ifdef SMP
-		KKASSERT(ntd->td_xpcount == 0);
-		if (ntd->td_mpcount) {
-		    mpheld = MP_LOCK_HELD(gd);
-		    if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
-			panic("Idle thread %p was holding the BGL!", ntd);
-		    if (mpheld == 0) {
-			set_cpu_contention_mask(gd);
-			handle_cpu_contention_mask();
-			cpu_try_mplock();
-			mpheld = MP_LOCK_HELD(gd);
-			cpu_pause();
-			break;		/* try again from the top, almost */
-		    }
-		}
+		if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
+		    ASSERT_NO_TOKENS_HELD(ntd);
+		/* contention case, do not clear contention mask */
 #endif
 
 		/*
@@ -781,11 +730,7 @@ lwkt_switch(void)
 	     */
 	    if ((ntd->td_pri >= TDPRI_KERN_LPSCHED || nquserok ||
 		user_pri_sched) && ntd->td_fairq_accum >= 0 &&
-#ifdef SMP
-		(ntd->td_mpcount + ntd->td_xpcount == 0 ||
-		 mpheld || cpu_try_mplock_msg(&ntd->td_wmesg)) &&
-#endif
-		(!TD_TOKS_HELD(ntd) || lwkt_getalltokens(ntd))
+		(TD_TOKS_NOT_HELD(ntd) || lwkt_getalltokens(ntd))
 	    ) {
 #ifdef SMP
 		    clr_cpu_contention_mask(gd);
@@ -800,10 +745,6 @@ lwkt_switch(void)
 #ifdef SMP
 	    if (ntd->td_fairq_accum >= 0)
 		    set_cpu_contention_mask(gd);
-	    /*
-	     * Reload mpheld (it become stale after mplock/token ops).
-	     */
-	    mpheld = MP_LOCK_HELD(gd);
 	    if (ntd->td_pri >= TDPRI_KERN_LPSCHED && ntd->td_fairq_accum >= 0)
 		nquserok = 0;
 #endif
@@ -816,26 +757,11 @@ lwkt_switch(void)
 	 * While we are looping in the scheduler be sure to service
 	 * any interrupts which were made pending due to our critical
 	 * section, otherwise we could livelock (e.g.) IPIs.
-	 *
-	 * NOTE: splz can enter and exit the mplock so mpheld is
-	 * stale after this call.
 	 */
 	splz_check();
-
-#ifdef SMP
-	/*
-	 * Our mplock can be cached and cause other cpus to livelock
-	 * if we loop due to e.g. not being able to acquire tokens.
-	 */
-	if (MP_LOCK_HELD(gd))
-	    cpu_rel_mplock(gd->gd_cpuid);
-	mpheld = 0;
-#endif
     }
 
     /*
-     * Do the actual switch.  WARNING: mpheld is stale here.
-     *
      * We must always decrement td_fairq_accum on non-idle threads just
      * in case a thread never gets a tick due to being in a continuous
      * critical section.  The page-zeroing code does that.
@@ -859,20 +785,12 @@ havethread_preempted:
      * If the new target does not need the MP lock and we are holding it,
      * release the MP lock.  If the new target requires the MP lock we have
      * already acquired it for the target.
-     *
-     * WARNING: mpheld is stale here.
      */
 haveidle:
     KASSERT(ntd->td_critcount,
-	    ("priority problem in lwkt_switch %d %d", td->td_pri, ntd->td_pri));
-#ifdef SMP
-    if (ntd->td_mpcount + ntd->td_xpcount == 0 ) {
-	if (MP_LOCK_HELD(gd))
-	    cpu_rel_mplock(gd->gd_cpuid);
-    } else {
-	ASSERT_MP_LOCK_HELD(ntd);
-    }
-#endif
+	    ("priority problem in lwkt_switch %d %d",
+	    td->td_critcount, ntd->td_critcount));
+
     if (td != ntd) {
 	++switch_count;
 	KTR_LOG(ctxsw_sw, gd->gd_cpuid, ntd);
@@ -907,24 +825,12 @@ haveidle:
  * preempted source thread will be resumed the instant the target blocks
  * whether or not the source is scheduled (i.e. preemption is supposed to
  * be as transparent as possible).
- *
- * The target thread inherits our MP count (added to its own) for the
- * duration of the preemption in order to preserve the atomicy of the
- * MP lock during the preemption.  Therefore, any preempting targets must be
- * careful in regards to MP assertions.  Note that the MP count may be
- * out of sync with the physical mp_lock, but we do not have to preserve
- * the original ownership of the lock if it was out of synch (that is, we
- * can leave it synchronized on return).
  */
 void
 lwkt_preempt(thread_t ntd, int critcount)
 {
     struct globaldata *gd = mycpu;
     thread_t td;
-#ifdef SMP
-    int mpheld;
-    int savecnt;
-#endif
     int save_gd_intr_nesting_level;
 
     /*
@@ -988,24 +894,6 @@ lwkt_preempt(thread_t ntd, int critcount)
 	need_lwkt_resched();
 	return;
     }
-#ifdef SMP
-    /*
-     * NOTE: An interrupt might have occured just as we were transitioning
-     * to or from the MP lock.  In this case td_mpcount will be pre-disposed
-     * (non-zero) but not actually synchronized with the mp_lock itself.
-     * We can use it to imply an MP lock requirement for the preemption but
-     * we cannot use it to test whether we hold the MP lock or not.
-     */
-    savecnt = td->td_mpcount;
-    mpheld = MP_LOCK_HELD(gd);
-    ntd->td_xpcount = td->td_mpcount + td->td_xpcount;
-    if (mpheld == 0 && ntd->td_mpcount + ntd->td_xpcount && !cpu_try_mplock()) {
-	ntd->td_xpcount = 0;
-	++preempt_miss;
-	need_lwkt_resched();
-	return;
-    }
-#endif
 
     /*
      * Since we are able to preempt the current thread, there is no need to
@@ -1025,14 +913,6 @@ lwkt_preempt(thread_t ntd, int critcount)
     gd->gd_intr_nesting_level = save_gd_intr_nesting_level;
 
     KKASSERT(ntd->td_preempted && (td->td_flags & TDF_PREEMPT_DONE));
-#ifdef SMP
-    KKASSERT(savecnt == td->td_mpcount);
-    mpheld = MP_LOCK_HELD(gd);
-    if (mpheld && td->td_mpcount == 0)
-	cpu_rel_mplock(gd->gd_cpuid);
-    else if (mpheld == 0 && td->td_mpcount + td->td_xpcount)
-	panic("lwkt_preempt(): MP lock was not held through");
-#endif
     ntd->td_preempted = NULL;
     td->td_flags &= ~(TDF_PREEMPT_LOCK|TDF_PREEMPT_DONE);
 }
@@ -1147,19 +1027,6 @@ lwkt_user_yield(void)
      */
     if ((gd->gd_reqflags & RQF_IDLECHECK_MASK) && td->td_nest_count < 2)
 	splz();
-
-#ifdef SMP
-    /*
-     * XXX SEVERE TEMPORARY HACK.  A cpu-bound operation running in the
-     * kernel can prevent other cpus from servicing interrupt threads
-     * which still require the MP lock (which is a lot of them).  This
-     * has a chaining effect since if the interrupt is blocked, so is
-     * the event, so normal scheduling will not pick up on the problem.
-     */
-    if (cpu_contention_mask && td->td_mpcount + td->td_xpcount) {
-	yield_mplock(td);
-    }
-#endif
 
     /*
      * Switch (which forces a release) if another kernel thread needs

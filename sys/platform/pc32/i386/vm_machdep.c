@@ -374,13 +374,9 @@ kvtop(void *addr)
 static void
 cpu_reset_proxy(void)
 {
-	u_int saved_mp_lock;
-
 	cpu_reset_proxy_active = 1;
 	while (cpu_reset_proxy_active == 1)
 		;	 /* Wait for other cpu to disable interupts */
-	saved_mp_lock = mp_lock;
-	mp_lock = 0;	/* BSP */
 	kprintf("cpu_reset_proxy: Grabbed mp lock for BSP\n");
 	cpu_reset_proxy_active = 3;
 	while (cpu_reset_proxy_active == 3)

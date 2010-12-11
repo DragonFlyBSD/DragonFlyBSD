@@ -608,10 +608,6 @@ restart:
 #endif
 
 out:
-#ifdef SMP
-	KASSERT(td->td_mpcount == have_mplock,
-		("badmpcount trap/end from %p", (void *)frame->tf_rip));
-#endif
 	userret(lp, frame, sticks);
 	userexit(lp);
 out2:	;
@@ -951,7 +947,6 @@ trap_fatal(struct trapframe *frame, int usermode, vm_offset_t eva)
 	}
 #ifdef SMP
 	/* two separate prints in case of a trap on an unmapped page */
-	kprintf("mp_lock = %08x; ", mp_lock);
 	kprintf("cpuid = %d\n", mycpu->gd_cpuid);
 #endif
 	if (type == T_PAGEFLT) {
@@ -1050,7 +1045,6 @@ dblfault_handler(void)
 #endif
 #ifdef SMP
 	/* two separate prints in case of a trap on an unmapped page */
-	kprintf("mp_lock = %08x; ", mp_lock);
 	kprintf("cpuid = %d\n", mycpu->gd_cpuid);
 #endif
 	panic("double fault");
@@ -1144,10 +1138,6 @@ syscall2(struct trapframe *frame)
 	KTR_LOG(kernentry_syscall, lp->lwp_proc->p_pid, lp->lwp_tid,
 		frame->tf_eax);
 
-#ifdef SMP
-	KASSERT(td->td_mpcount == 0,
-		("badmpcount syscall2 from %p", (void *)frame->tf_rip));
-#endif
 	userenter(td, p);	/* lazy raise our priority */
 
 	reg = 0;
@@ -1342,8 +1332,6 @@ bad:
 	/*
 	 * Release the MP lock if we had to get it
 	 */
-	KASSERT(td->td_mpcount == have_mplock,
-		("badmpcount syscall2/end from %p", (void *)frame->tf_rip));
 	if (have_mplock)
 		rel_mplock();
 #endif

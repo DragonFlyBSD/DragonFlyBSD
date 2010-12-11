@@ -49,6 +49,7 @@
 #include <sys/tty.h>
 #include <sys/conf.h>
 #include <sys/jail.h>
+#include <sys/mplock2.h>
 #include <sys/globaldata.h>
 #ifdef _KERNEL
 #include <sys/systm.h>
@@ -191,7 +192,7 @@ fill_kinfo_lwp(struct lwp *lwp, struct kinfo_lwp *kl)
 		}
 	}
 #ifdef SMP
-	kl->kl_mpcount = lwp->lwp_thread->td_mpcount;
+	kl->kl_mpcount = get_mplock_count(lwp->lwp_thread);
 #else
 	kl->kl_mpcount = 0;
 #endif
@@ -244,7 +245,7 @@ fill_kinfo_proc_kthread(struct thread *td, struct kinfo_proc *kp)
 	kp->kp_lwp.kl_tid = -1;
 	kp->kp_lwp.kl_tdflags = td->td_flags;
 #ifdef SMP
-	kp->kp_lwp.kl_mpcount = td->td_mpcount;
+	kp->kp_lwp.kl_mpcount = get_mplock_count(td);
 #else /* !SMP */
 	kp->kp_lwp.kl_mpcount = 0;
 #endif /* SMP */

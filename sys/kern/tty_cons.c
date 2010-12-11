@@ -189,9 +189,6 @@ done:
 	 * the SMP/AP boot will blow up on us.
 	 */
 	lwkt_reltoken(&tty_token);
-#ifdef SMP
-	KKASSERT(curthread->td_mpcount == 1);
-#endif
 }
 
 

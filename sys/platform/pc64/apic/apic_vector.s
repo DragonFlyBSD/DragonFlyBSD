@@ -109,8 +109,7 @@
  *	- Push the trap frame required by doreti
  *	- Mask the interrupt and reenable its source
  *	- If we cannot take the interrupt set its fpending bit and
- *	  doreti.  Note that we cannot mess with mp_lock at all
- *	  if we entered from a critical section!
+ *	  doreti.
  *	- If we can take the interrupt clear its fpending bit,
  *	  call the handler, then unmask and doreti.
  *
