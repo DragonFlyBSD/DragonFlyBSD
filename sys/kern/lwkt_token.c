@@ -107,11 +107,6 @@ KTR_INFO(KTR_TOKENS, tokens, contention_stop, 7, UNCONTENDED_STRING, sizeof(void
 	KTR_LOG(tokens_ ## name, ref, ref->tr_tok, curthread)
 
 /*
- * Cpu contention mask for directed wakeups.
- */
-cpumask_t cpu_contention_mask;
-
-/*
  * Global tokens.  These replace the MP lock for major subsystem locking.
  * These tokens are initially used to lockup both global and individual
  * operations.
@@ -251,6 +246,34 @@ _lwkt_tokref_init(lwkt_tokref_t ref, lwkt_token_t tok, thread_t td,
 }
 
 /*
+ * Force a LWKT reschedule on the target cpu when a requested token
+ * becomes available.
+ */
+static
+void
+lwkt_reltoken_mask_remote(void *arg, int arg2, struct intrframe *frame)
+{
+	need_lwkt_resched();
+}
+
+static __inline
+void
+_lwkt_reltoken_mask(lwkt_token_t tok)
+{
+#ifdef SMP
+	cpumask_t mask;
+
+	while ((mask = tok->t_collmask) != 0) {
+		if (atomic_cmpset_cpumask(&tok->t_collmask, mask, 0)) {
+			lwkt_send_ipiq3_mask(mask, lwkt_reltoken_mask_remote,
+					     NULL, 0);
+			break;
+		}
+	}
+#endif
+}
+
+/*
  * Obtain all the tokens required by the specified thread on the current
  * cpu, return 0 on failure and non-zero on success.  If a failure occurs
  * any partially acquired tokens will be released prior to return.
@@ -303,10 +326,20 @@ lwkt_getalltokens(thread_t td)
 			if (ref >= &td->td_toks_base && ref < td->td_toks_stop)
 				break;
 
+#ifdef SMP
 			/*
 			 * Otherwise we failed to acquire all the tokens.
-			 * Undo and return.
+			 * Undo and return.  We have to try once more after
+			 * setting cpumask to cover possible races.
 			 */
+			atomic_set_cpumask(&tok->t_collmask,
+					   td->td_gd->gd_cpumask);
+			if (atomic_cmpset_ptr(&tok->t_ref, NULL, scan)) {
+				atomic_clear_cpumask(&tok->t_collmask,
+						     td->td_gd->gd_cpumask);
+				break;
+			}
+#endif
 			td->td_wmesg = tok->t_desc;
 			atomic_add_long(&tok->t_collisions, 1);
 			lwkt_relalltokens(td);
@@ -336,8 +369,10 @@ lwkt_relalltokens(thread_t td)
 
 	for (scan = &td->td_toks_base; scan < td->td_toks_stop; ++scan) {
 		tok = scan->tr_tok;
-		if (tok->t_ref == scan)
+		if (tok->t_ref == scan) {
 			tok->t_ref = NULL;
+			_lwkt_reltoken_mask(tok);
+		}
 	}
 }
 
@@ -449,11 +484,20 @@ lwkt_gettoken(lwkt_token_t tok)
 		 * return tr_tok->t_ref should be assigned to this specific
 		 * ref.
 		 */
-		atomic_add_long(&ref->tr_tok->t_collisions, 1);
+#ifdef SMP
+		atomic_set_cpumask(&tok->t_collmask, td->td_gd->gd_cpumask);
+		if (atomic_cmpset_ptr(&tok->t_ref, NULL, ref)) {
+			atomic_clear_cpumask(&tok->t_collmask,
+					     td->td_gd->gd_cpumask);
+			return;
+		}
+#endif
+		td->td_wmesg = tok->t_desc;
+		atomic_add_long(&tok->t_collisions, 1);
 		logtoken(fail, ref);
 		lwkt_switch();
 		logtoken(succ, ref);
-		KKASSERT(ref->tr_tok->t_ref == ref);
+		KKASSERT(tok->t_ref == ref);
 	}
 }
 
@@ -486,12 +530,22 @@ lwkt_gettoken_hard(lwkt_token_t tok)
 		 * return tr_tok->t_ref should be assigned to this specific
 		 * ref.
 		 */
-		atomic_add_long(&ref->tr_tok->t_collisions, 1);
+#ifdef SMP
+		atomic_set_cpumask(&tok->t_collmask, td->td_gd->gd_cpumask);
+		if (atomic_cmpset_ptr(&tok->t_ref, NULL, ref)) {
+			atomic_clear_cpumask(&tok->t_collmask,
+					     td->td_gd->gd_cpumask);
+			goto success;
+		}
+#endif
+		td->td_wmesg = tok->t_desc;
+		atomic_add_long(&tok->t_collisions, 1);
 		logtoken(fail, ref);
 		lwkt_switch();
 		logtoken(succ, ref);
-		KKASSERT(ref->tr_tok->t_ref == ref);
+		KKASSERT(tok->t_ref == ref);
 	}
+success:
 	crit_enter_hard_gd(td->td_gd);
 }
 
@@ -526,12 +580,22 @@ lwkt_getpooltoken(void *ptr)
 		 * return tr_tok->t_ref should be assigned to this specific
 		 * ref.
 		 */
-		atomic_add_long(&ref->tr_tok->t_collisions, 1);
+#ifdef SMP
+		atomic_set_cpumask(&tok->t_collmask, td->td_gd->gd_cpumask);
+		if (atomic_cmpset_ptr(&tok->t_ref, NULL, ref)) {
+			atomic_clear_cpumask(&tok->t_collmask,
+					     td->td_gd->gd_cpumask);
+			goto success;
+		}
+#endif
+		td->td_wmesg = tok->t_desc;
+		atomic_add_long(&tok->t_collisions, 1);
 		logtoken(fail, ref);
 		lwkt_switch();
 		logtoken(succ, ref);
-		KKASSERT(ref->tr_tok->t_ref == ref);
+		KKASSERT(tok->t_ref == ref);
 	}
+success:
 	return(tok);
 }
 
@@ -608,8 +672,10 @@ lwkt_reltoken(lwkt_token_t tok)
 	 *
 	 * NOTE: The mplock is a token also so sequencing is a bit complex.
 	 */
-	if (tok->t_ref == ref)
+	if (tok->t_ref == ref) {
 		tok->t_ref = NULL;
+		_lwkt_reltoken_mask(tok);
+	}
 	cpu_sfence();
 	if ((ref->tr_flags & LWKT_TOKEN_MPSAFE) == 0) {
 		cpu_ccfence();
@@ -693,6 +759,7 @@ lwkt_token_init(lwkt_token_t tok, int mpsafe, const char *desc)
 	tok->t_ref = NULL;
 	tok->t_flags = mpsafe ? LWKT_TOKEN_MPSAFE : 0;
 	tok->t_collisions = 0;
+	tok->t_collmask = 0;
 	tok->t_desc = desc;
 }
 

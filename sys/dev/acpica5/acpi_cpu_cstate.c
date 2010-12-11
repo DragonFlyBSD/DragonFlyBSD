@@ -1192,12 +1192,12 @@ acpi_cpu_c1(void)
 #else
     splz();
 #ifdef SMP
-    if (!lwkt_runnable())
+    if ((mycpu->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0)
         __asm __volatile("sti; hlt");
     else
         __asm __volatile("sti; pause");
 #else
-    if (!lwkt_runnable())
+    if ((mycpu->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0)
         __asm __volatile("sti; hlt");
     else
         __asm __volatile("sti");

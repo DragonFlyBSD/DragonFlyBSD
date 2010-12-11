@@ -132,7 +132,7 @@ SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count, CTLFLAG_RW,
 static int fairq_enable = 1;
 SYSCTL_INT(_lwkt, OID_AUTO, fairq_enable, CTLFLAG_RW, &fairq_enable, 0,
     "Turn on fairq priority accumulators");
-static int user_pri_sched = 0;
+static int user_pri_sched = 1;
 SYSCTL_INT(_lwkt, OID_AUTO, user_pri_sched, CTLFLAG_RW, &user_pri_sched, 0,
     "");
 static int preempt_enable = 1;
@@ -183,8 +183,10 @@ _lwkt_enqueue(thread_t td)
 	xtd = TAILQ_FIRST(&gd->gd_tdrunq);
 	if (xtd == NULL) {
 		TAILQ_INSERT_TAIL(&gd->gd_tdrunq, td, td_threadq);
-		atomic_set_int_nonlocked(&gd->gd_reqflags, RQF_RUNNING);
+		atomic_set_int_nonlocked(&gd->gd_reqflags,
+					 RQF_RUNNING | RQF_WAKEUP);
 	} else {
+		atomic_set_int_nonlocked(&gd->gd_reqflags, RQF_WAKEUP);
 		while (xtd && xtd->td_pri > td->td_pri)
 			xtd = TAILQ_NEXT(xtd, td_threadq);
 		if (xtd)
@@ -490,7 +492,6 @@ lwkt_switch(void)
     thread_t ntd;
     thread_t xtd;
     thread_t nlast;
-    int nquserok;
     int didaccumulate;
 
     /*
@@ -605,6 +606,7 @@ lwkt_switch(void)
      * schedule the thread.
      */
     for (;;) {
+	atomic_clear_int_nonlocked(&mycpu->gd_reqflags, RQF_WAKEUP);
 	clear_lwkt_resched();
 	didaccumulate = 0;
 	ntd = TAILQ_FIRST(&gd->gd_tdrunq);
@@ -616,12 +618,9 @@ lwkt_switch(void)
 	 */
 	if (ntd == NULL) {
 	    ntd = &gd->gd_idlethread;
-	    if (gd->gd_reqflags & RQF_IDLECHECK_MASK)
-		    ntd->td_flags |= TDF_IDLE_NOHLT;
 #ifdef SMP
 	    if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
 		    ASSERT_NO_TOKENS_HELD(ntd);
-	    clr_cpu_contention_mask(gd);
 #endif
 	    cpu_time.cp_msg[0] = 0;
 	    cpu_time.cp_stallpc = 0;
@@ -637,30 +636,13 @@ lwkt_switch(void)
 	if (ntd->td_fairq_accum >= 0 &&
 	    (TD_TOKS_NOT_HELD(ntd) || lwkt_getalltokens(ntd))
 	) {
-#ifdef SMP
-	    clr_cpu_contention_mask(gd);
-#endif
 	    goto havethread;
 	}
 
-#ifdef SMP
-	if (ntd->td_fairq_accum >= 0)
-		set_cpu_contention_mask(gd);
-#endif
-
 	/*
 	 * Coldpath - unable to schedule ntd, continue looking for threads
-	 * to schedule.  This is only allowed of the (presumably) kernel
-	 * thread exhausted its fair share.  A kernel thread stuck on
-	 * resources does not currently allow a user thread to get in
-	 * front of it.
+	 * to schedule.
 	 */
-#ifdef SMP
-	nquserok = ((ntd->td_pri < TDPRI_KERN_LPSCHED) ||
-		    (ntd->td_fairq_accum < 0));
-#else
-	nquserok = 1;
-#endif
 	nlast = NULL;
 
 	for (;;) {
@@ -697,15 +679,12 @@ lwkt_switch(void)
 
 	    /*
 	     * If we exhausted the run list switch to the idle thread.
-	     * Since one or more threads had resource acquisition issues
-	     * we do not allow the idle thread to halt.
 	     *
 	     * NOTE: nlast can be NULL.
 	     */
 	    if (ntd == nlast) {
 		cpu_pause();
 		ntd = &gd->gd_idlethread;
-		ntd->td_flags |= TDF_IDLE_NOHLT;
 #ifdef SMP
 		if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
 		    ASSERT_NO_TOKENS_HELD(ntd);
@@ -728,26 +707,17 @@ lwkt_switch(void)
 	     * NOTE: For UP there is no mplock and lwkt_getalltokens()
 	     *	     always succeeds.
 	     */
-	    if ((ntd->td_pri >= TDPRI_KERN_LPSCHED || nquserok ||
-		user_pri_sched) && ntd->td_fairq_accum >= 0 &&
+	    if (ntd->td_fairq_accum >= 0 &&
 		(TD_TOKS_NOT_HELD(ntd) || lwkt_getalltokens(ntd))
 	    ) {
-#ifdef SMP
-		    clr_cpu_contention_mask(gd);
-#endif
 		    goto havethread;
 	    }
 
 	    /*
 	     * Thread was runnable but we were unable to get the required
-	     * resources (tokens and/or mplock).
+	     * resources (tokens and/or mplock), continue the scan.
 	     */
-#ifdef SMP
-	    if (ntd->td_fairq_accum >= 0)
-		    set_cpu_contention_mask(gd);
-	    if (ntd->td_pri >= TDPRI_KERN_LPSCHED && ntd->td_fairq_accum >= 0)
-		nquserok = 0;
-#endif
+	    /* */
 	}
 
 	/*

@@ -27,41 +27,9 @@
 #define get_mplock_count(td)	lwkt_cnttoken(&mp_token, td)
 
 void cpu_get_initial_mplock(void);
-void handle_cpu_contention_mask(void);
-
-extern cpumask_t cpu_contention_mask;
-
-/*
- * A cpu wanted the MP lock but could not get it.  This function is also
- * called directly from the LWKT scheduler.
- *
- * Reentrant, may be called even if the cpu is already contending the MP
- * lock.
- */
-static __inline
-void
-set_cpu_contention_mask(globaldata_t gd)
-{
-	atomic_set_cpumask(&cpu_contention_mask, gd->gd_cpumask);
-}
-
-/*
- * A cpu is no longer contending for the MP lock after previously contending
- * for it.
- *
- * Reentrant, may be called even if the cpu was not previously contending
- * the MP lock.
- */
-static __inline
-void
-clr_cpu_contention_mask(globaldata_t gd)
-{
-	atomic_clear_cpumask(&cpu_contention_mask, gd->gd_cpumask);
-}
 
 #define MP_LOCK_HELD()		LWKT_TOKEN_HELD(&mp_token)
 #define ASSERT_MP_LOCK_HELD()	ASSERT_LWKT_TOKEN_HELD(&mp_token)
-
 
 #else
 

@@ -876,7 +876,8 @@ cpu_halt(void)
  * NOTE: On an SMP system we rely on a scheduler IPI to wake a HLTed cpu up.
  *	 However, there are cases where the idlethread will be entered with
  *	 the possibility that no IPI will occur and in such cases
- *	 lwkt_switch() sets TDF_IDLE_NOHLT.
+ *	 lwkt_switch() sets RQF_WAKEUP. We usually check
+ *	 RQF_IDLECHECK_WK_MASK.
  *
  * NOTE: cpu_idle_hlt again defaults to 2 (use ACPI sleep states).  Set to
  *	 1 to just use hlt and for debugging purposes.
@@ -922,53 +923,27 @@ cpu_idle(void)
 		 * CLIing to catch any interrupt races.  Note that we are
 		 * at SPL0 and interrupts are enabled.
 		 */
-		if (cpu_idle_hlt && !lwkt_runnable() &&
-		    (td->td_flags & TDF_IDLE_NOHLT) == 0) {
+		if (cpu_idle_hlt &&
+		    (td->td_gd->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
 			__asm __volatile("cli");
 			splz();
-			if (!lwkt_runnable()) {
+			if ((td->td_gd->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
 				if (cpu_idle_hlt == 1)
 					cpu_idle_default_hook();
 				else
 					cpu_idle_hook();
 			}
-#ifdef SMP
-			else
-				handle_cpu_contention_mask();
-#endif
 			__asm __volatile("sti");
 			++cpu_idle_hltcnt;
 		} else {
-			td->td_flags &= ~TDF_IDLE_NOHLT;
 			splz();
-#ifdef SMP
 			__asm __volatile("sti");
-			handle_cpu_contention_mask();
-#else
-			__asm __volatile("sti");
-#endif
 			++cpu_idle_spincnt;
 		}
 	}
 }
 
 #ifdef SMP
-
-/*
- * This routine is called when the only runnable threads require
- * the MP lock, and the scheduler couldn't get it.  On a real cpu
- * we let the scheduler spin.
- */
-void
-handle_cpu_contention_mask(void)
-{
-	cpumask_t mask;
-
-	mask = cpu_contention_mask;
-	cpu_ccfence();
-	if (mask && BSFCPUMASK(mask) != mycpu->gd_cpuid)
-		DELAY(2);
-}
 
 /*
  * This routine is called if a spinlock has been held through the

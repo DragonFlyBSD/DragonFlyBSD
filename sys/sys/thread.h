@@ -104,6 +104,7 @@ typedef struct lwkt_token {
     struct lwkt_tokref	*t_ref;		/* Owning ref or NULL */
     intptr_t		t_flags;	/* MP lock required */
     long		t_collisions;	/* Collision counter */
+    cpumask_t		t_collmask;	/* Collision cpu mask for resched */
     const char		*t_desc;	/* Descriptive name */
 } lwkt_token;
 
@@ -119,6 +120,7 @@ typedef struct lwkt_token {
 	.t_ref = NULL,			\
 	.t_flags = 0,			\
 	.t_collisions = 0,		\
+	.t_collmask = 0,		\
 	.t_desc = #name			\
 }
 
@@ -127,6 +129,7 @@ typedef struct lwkt_token {
 	.t_ref = NULL,			\
 	.t_flags = LWKT_TOKEN_MPSAFE,	\
 	.t_collisions = 0,		\
+	.t_collmask = 0,		\
 	.t_desc = #name			\
 }
 
@@ -328,7 +331,7 @@ struct thread {
 #define TDF_RUNQ		0x0002	/* on an LWKT run queue */
 #define TDF_PREEMPT_LOCK	0x0004	/* I have been preempted */
 #define TDF_PREEMPT_DONE	0x0008	/* acknowledge preemption complete */
-#define TDF_IDLE_NOHLT		0x0010	/* we need to spin */
+#define TDF_UNUSED00000010	0x0010
 #define TDF_MIGRATING		0x0020	/* thread is being migrated */
 #define TDF_SINTR		0x0040	/* interruptability hint for 'ps' */
 #define TDF_TSLEEPQ		0x0080	/* on a tsleep wait queue */
