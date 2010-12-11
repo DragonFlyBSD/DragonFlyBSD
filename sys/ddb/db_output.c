@@ -39,6 +39,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/cons.h>
+#include <sys/ctype.h>
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
 
@@ -107,7 +108,12 @@ db_putchar(int c, void *arg)
 	 * the message buffer.
 	 */
 	if (!db_active) {
-		kprintf("%c", c);
+		if (c == '\r' || c == '\n' || c == '\t' ||
+		    isprint(c)) {
+			kprintf("%c", c);
+		} else {
+			kprintf("?");
+		}
 		if (!db_active)
 			return;
 		if (c == '\r' || c == '\n')
