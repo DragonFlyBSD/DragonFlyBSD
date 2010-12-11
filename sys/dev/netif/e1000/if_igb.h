@@ -297,7 +297,7 @@ struct igb_queue {
 struct tx_ring {
 	struct adapter		*adapter;
 	u32			me;
-	struct spinlock		tx_spin;
+	struct lwkt_token	tx_token;
 	char			spin_name[16];
 	struct igb_dma_alloc	txdma;
 	struct e1000_tx_desc	*tx_base;
@@ -333,7 +333,7 @@ struct rx_ring {
 	bool			lro_enabled;
 	bool			hdr_split;
 	bool			discard;
-	struct spinlock		rx_spin;
+	struct lwkt_token	rx_token;
 	char			spin_name[16];
 	u32			last_cleaned;
 	u32			next_to_check;
@@ -384,7 +384,7 @@ struct adapter {
 	int		if_flags;
 	int		max_frame_size;
 	int		min_frame_size;
-	struct spinlock	core_spin;
+	struct lwkt_token core_token;
 	int		igb_insert_vlan_header;
 	struct task     rxtx_task;
 	struct taskqueue *tq;	/* adapter task queue */
@@ -479,21 +479,26 @@ struct igb_rx_buf {
 	bus_dmamap_t	pack_map;	/* bus_dma map for packet */
 };
 
-#define	IGB_CORE_LOCK_INIT(_sc, _name)  spin_init(&(_sc)->core_spin)
-#define	IGB_CORE_LOCK_DESTROY(_sc)	spin_uninit(&(_sc)->core_spin)
-#define	IGB_CORE_LOCK(_sc)		spin_lock(&(_sc)->core_spin)
-#define	IGB_CORE_UNLOCK(_sc)		spin_unlock(&(_sc)->core_spin)
+#define	IGB_CORE_LOCK_INIT(_sc, _name)  lwkt_token_init(&(_sc)->core_token, \
+							1, "igb")
+#define	IGB_CORE_LOCK_DESTROY(_sc)	lwkt_token_uninit(&(_sc)->core_token)
+#define	IGB_CORE_LOCK(_sc)		lwkt_gettoken(&(_sc)->core_token)
+#define	IGB_CORE_UNLOCK(_sc)		lwkt_reltoken(&(_sc)->core_token)
 #define	IGB_CORE_LOCK_ASSERT(_sc) 	
 
-#define	IGB_TX_LOCK_DESTROY(_sc)	spin_uninit(&(_sc)->tx_spin)
-#define	IGB_TX_LOCK(_sc)		spin_lock(&(_sc)->tx_spin)
-#define	IGB_TX_UNLOCK(_sc)		spin_unlock(&(_sc)->tx_spin)
-#define	IGB_TX_TRYLOCK(_sc)		spin_trylock(&(_sc)->tx_spin)
+#define	IGB_TX_LOCK_INIT(_sc)		lwkt_token_init(&(_sc)->tx_token, \
+							1, "igbtx")
+#define	IGB_TX_LOCK_DESTROY(_sc)	lwkt_token_uninit(&(_sc)->tx_token)
+#define	IGB_TX_LOCK(_sc)		lwkt_gettoken(&(_sc)->tx_token)
+#define	IGB_TX_UNLOCK(_sc)		lwkt_reltoken(&(_sc)->tx_token)
+#define	IGB_TX_TRYLOCK(_sc)		lwkt_trytoken(&(_sc)->tx_token)
 #define	IGB_TX_LOCK_ASSERT(_sc)		
 
-#define	IGB_RX_LOCK_DESTROY(_sc)	spin_uninit(&(_sc)->rx_spin)
-#define	IGB_RX_LOCK(_sc)		spin_lock(&(_sc)->rx_spin)
-#define	IGB_RX_UNLOCK(_sc)		spin_unlock(&(_sc)->rx_spin)
+#define	IGB_RX_LOCK_INIT(_sc)		lwkt_token_init(&(_sc)->rx_token, \
+							1, "igbrx")
+#define	IGB_RX_LOCK_DESTROY(_sc)	lwkt_token_uninit(&(_sc)->rx_token)
+#define	IGB_RX_LOCK(_sc)		lwkt_gettoken(&(_sc)->rx_token)
+#define	IGB_RX_UNLOCK(_sc)		lwkt_reltoken(&(_sc)->rx_token)
 #define	IGB_TX_LOCK_ASSERT(_sc)		
 
 #endif /* _IGB_H_DEFINED_ */

@@ -303,7 +303,7 @@ TUNABLE_INT("hw.igb.enable_aim", &igb_enable_aim);
  * MSIX should be the default for best performance,
  * but this allows it to be forced off for testing.
  */         
-static int igb_enable_msix = 1;
+static int igb_enable_msix = 0;
 TUNABLE_INT("hw.igb.enable_msix", &igb_enable_msix);
 
 /*
@@ -2125,10 +2125,12 @@ igb_allocate_legacy(struct adapter *adapter)
 	/* Turn off all interrupts */
 	E1000_WRITE_REG(&adapter->hw, E1000_IMC, 0xffffffff);
 
+#if 0
 	/* MSI RID is 1 */
 	if (adapter->msix == 1)
 		rid = 1;
-
+#endif
+	rid = 0;
 	/* We allocate a single interrupt resource */
 	adapter->res = bus_alloc_resource_any(dev,
 	    SYS_RES_IRQ, &rid, RF_SHAREABLE | RF_ACTIVE);
@@ -2883,7 +2885,7 @@ igb_allocate_queues(struct adapter *adapter)
 		ksnprintf(txr->spin_name, sizeof(txr->spin_name), "%s:tx(%d)",
 		    device_get_nameunit(dev), txr->me);
 
-		spin_init(&txr->tx_spin);
+		IGB_TX_LOCK_INIT(txr);
 
 		if (igb_dma_malloc(adapter, tsize,
 			&txr->txdma, BUS_DMA_NOWAIT)) {
@@ -2923,7 +2925,7 @@ igb_allocate_queues(struct adapter *adapter)
 		ksnprintf(rxr->spin_name, sizeof(rxr->spin_name), "%s:rx(%d)",
 		    device_get_nameunit(dev), txr->me);
 
-		spin_init(&rxr->rx_spin);
+		IGB_RX_LOCK_INIT(rxr);
 
 		if (igb_dma_malloc(adapter, rsize,
 			&rxr->rxdma, BUS_DMA_NOWAIT)) {
@@ -4076,11 +4078,14 @@ igb_free_receive_structures(struct adapter *adapter)
 #ifdef NET_LRO 
 		struct lro_ctrl	*lro = &rxr->lro;
 #endif
+		IGB_RX_LOCK(rxr);
 		igb_free_receive_buffers(rxr);
 #ifdef NET_LRO
 		tcp_lro_free(lro);
 #endif
 		igb_dma_free(adapter, &rxr->rxdma);
+		IGB_RX_UNLOCK(rxr);
+		IGB_RX_LOCK_DESTROY(rxr);
 	}
 
 	kfree(adapter->rx_rings, M_DEVBUF);
