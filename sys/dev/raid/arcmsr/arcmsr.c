@@ -3553,6 +3553,7 @@ static int arcmsr_attach(device_t dev)
 	if(acb->psim == NULL) {
 		arcmsr_free_resource(acb);
 		bus_release_resource(dev, SYS_RES_IRQ, 0, acb->irqres);
+		cam_simq_release(devq);
 		ARCMSR_LOCK_DESTROY(&acb->qbuffer_lock);
 		kprintf("arcmsr%d: cam_sim_alloc failure!\n", unit);
 		return ENXIO;
@@ -3589,9 +3590,7 @@ static int arcmsr_attach(device_t dev)
 	acb->ioctl_dev=make_dev(&arcmsr_ops, unit, UID_ROOT, GID_WHEEL /* GID_OPERATOR */, S_IRUSR | S_IWUSR, "arcmsr%d", unit);
 
 	acb->ioctl_dev->si_drv1=acb;
-#if __FreeBSD_version > 500005	/* XXX swildner */
 	(void)make_dev_alias(acb->ioctl_dev, "arc%d", unit);
-#endif
 	callout_init(&acb->devmap_callout);
 	callout_reset(&acb->devmap_callout, 60 * hz, arcmsr_polling_devmap, acb);
 	return 0;
