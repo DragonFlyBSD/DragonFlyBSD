@@ -847,9 +847,9 @@ ptsunhold(struct tty *tp)
  * kqueue ops for pseudo-terminals.
  */
 static struct filterops ptcread_filtops =
-	{ FILTEROP_ISFD, NULL, filt_ptcrdetach, filt_ptcread };
+	{ FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, filt_ptcrdetach, filt_ptcread };
 static struct filterops ptcwrite_filtops =
-	{ FILTEROP_ISFD, NULL, filt_ptcwdetach, filt_ptcwrite };
+	{ FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, filt_ptcwdetach, filt_ptcwrite };
 
 static	int
 ptckqfilter(struct dev_kqfilter_args *ap)

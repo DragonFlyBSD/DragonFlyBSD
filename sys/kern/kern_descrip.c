@@ -816,7 +816,7 @@ sys_close(struct close_args *uap)
 }
 
 /*
- * MPALMOSTSAFE - acquires mplock around knote_fdclose() calls
+ * MPSAFE
  */
 int
 kern_close(int fd)
