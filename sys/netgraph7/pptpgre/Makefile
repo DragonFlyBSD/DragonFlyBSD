@@ -2,8 +2,7 @@
 # $DragonFly: src/sys/netgraph/pptpgre/Makefile,v 1.2 2003/06/17 04:28:46 dillon Exp $
 # $Whistle: Makefile,v 1.1 1999/11/29 23:14:33 archie Exp $
 
-KMOD=		ng7_pptpgre
+KMOD=		ng_pptpgre
 SRCS= 		ng_pptpgre.c
-KMODDEPS=	netgraph7
 
 .include <bsd.kmod.mk>
