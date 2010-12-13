@@ -113,7 +113,7 @@ int dm_init(struct crypt_device *context, int check_kernel)
 			check_kernel ? "" : " (NO kernel check requested)",
 			_dm_use_udev() ? "en" : "dis");
 		if (check_kernel && !_dm_check_versions()) {
-			log_err(context, _("Cannot initialize device-mapper. Is dm_mod kernel module loaded?\n"));
+			log_err(context, _("Cannot initialize device-mapper. Is dm kernel module loaded?\n"));
 			return -1;
 		}
 		if (getuid() || geteuid())
