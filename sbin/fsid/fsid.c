@@ -169,7 +169,7 @@ main(int argc, char *argv[])
 	ret = udev_enumerate_add_match_property(udev_enum, "subsystem", "disk");
 	if (ret != 0)
 		err(1, "udev_enumerate_add_match_property, out, ret=%d\n", ret);
-#if 1
+
 	ret = udev_enumerate_add_match_property(udev_enum, "alias", "0");
 	if (ret != 0)
 		err(1, "udev_enumerate_add_match_property, out, ret=%d\n", ret);
@@ -177,7 +177,8 @@ main(int argc, char *argv[])
 	ret = udev_enumerate_add_nomatch_property(udev_enum, "disk-type", "memory");
 	if (ret != 0)
 		err(1, "udev_enumerate_add_match_property, out, ret=%d\n", ret);
-#endif
+
+	ret = udev_enumerate_add_nomatch_property(udev_enum, "disk-type", "floppy");
 
 	ret = udev_enumerate_scan_devices(udev_enum);
 	if (ret != 0)
