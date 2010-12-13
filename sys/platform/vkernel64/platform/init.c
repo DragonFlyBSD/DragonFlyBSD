@@ -52,6 +52,7 @@
 #include <sys/sysctl.h>
 #include <sys/un.h>
 #include <vm/vm_page.h>
+#include <sys/mplock2.h>
 
 #include <machine/cpu.h>
 #include <machine/globaldata.h>
@@ -641,6 +642,13 @@ init_vkernel(void)
 	lwp0.lwp_md.md_regs = &proc0_tf;
 
 	/*init_locks();*/
+#ifdef SMP
+	/*
+	 * Get the initial mplock with a count of 1 for the BSP.
+	 * This uses a LOGICAL cpu ID, ie BSP == 0.
+	 */
+	cpu_get_initial_mplock();
+#endif
 	cninit();
 	rand_initialize();
 #if 0	/* #ifdef DDB */
