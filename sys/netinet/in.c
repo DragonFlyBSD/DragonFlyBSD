@@ -74,6 +74,8 @@ static int	in_ifinit(struct ifnet *, struct in_ifaddr *,
 
 static int	in_control_internal(u_long, caddr_t, struct ifnet *,
 		    struct thread *);
+static int	in_control_redispatch(u_long, caddr_t, struct ifnet *,
+		    struct thread *);
 
 static int	in_addprefix(struct in_ifaddr *, int);
 static void	in_scrubprefix(struct in_ifaddr *);
@@ -199,11 +201,57 @@ in_control_dispatch(netmsg_t msg)
 {
 	int error;
 
+	error = in_control_redispatch(msg->control.nm_cmd,
+				      msg->control.nm_data,
+				      msg->control.nm_ifp,
+				      msg->control.nm_td);
+	lwkt_replymsg(&msg->lmsg, error);
+}
+
+static void
+in_control_internal_dispatch(netmsg_t msg)
+{
+	int error;
+
 	error = in_control_internal(msg->control.nm_cmd,
 				    msg->control.nm_data,
 				    msg->control.nm_ifp,
 				    msg->control.nm_td);
 	lwkt_replymsg(&msg->lmsg, error);
+}
+
+static int
+in_control_redispatch(u_long cmd, caddr_t data, struct ifnet *ifp,
+		      struct thread *td)
+{
+	struct netmsg_pru_control msg;
+	int error;
+
+	/*
+	 * IFADDR alterations are serialized by netisr0
+	 */
+	switch (cmd) {
+	case SIOCSIFDSTADDR:
+	case SIOCSIFBRDADDR:
+	case SIOCSIFADDR:
+	case SIOCSIFNETMASK:
+	case SIOCAIFADDR:
+	case SIOCDIFADDR:
+		netmsg_init(&msg.base, NULL, &curthread->td_msgport,
+			    0, in_control_internal_dispatch);
+		msg.nm_cmd = cmd;
+		msg.nm_data = data;
+		msg.nm_ifp = ifp;
+		msg.nm_td = td;
+		lwkt_domsg(cpu_portfn(0), &msg.base.lmsg, 0);
+		error = msg.base.lmsg.ms_error;
+		break;
+
+	default:
+		error = in_control_internal(cmd, data, ifp, td);
+		break;
+	}
+	return error;
 }
 
 /*
@@ -217,7 +265,6 @@ int
 in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 	   struct thread *td)
 {
-	struct netmsg_pru_control msg;
 	int error;
 
 	switch (cmd) {
@@ -236,30 +283,7 @@ in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 		("recursive SIOC%cLIFADDR!\n",
 		 cmd == SIOCDLIFADDR ? 'D' : 'A'));
 
-	/*
-	 * IFADDR alterations are serialized by netisr0
-	 */
-	switch (cmd) {
-	case SIOCSIFDSTADDR:
-	case SIOCSIFBRDADDR:
-	case SIOCSIFADDR:
-	case SIOCSIFNETMASK:
-	case SIOCAIFADDR:
-	case SIOCDIFADDR:
-		netmsg_init(&msg.base, NULL, &curthread->td_msgport,
-			    0, in_control_dispatch);
-		msg.nm_cmd = cmd;
-		msg.nm_data = data;
-		msg.nm_ifp = ifp;
-		msg.nm_td = td;
-		lwkt_domsg(cpu_portfn(0), &msg.base.lmsg, 0);
-		error = msg.base.lmsg.ms_error;
-		break;
-	default:
-		error = in_control_internal(cmd, data, ifp, td);
-		break;
-	}
-	return error;
+	return in_control_redispatch(cmd, data, ifp, td);
 }
 
 static void
