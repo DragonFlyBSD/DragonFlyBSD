@@ -96,7 +96,7 @@ static void		tapdestroy(struct tap_softc *);
 
 /* clone */
 static int		tap_clone_create(struct if_clone *, int, caddr_t);
-static void		tap_clone_destroy(struct ifnet *);
+static int		tap_clone_destroy(struct ifnet *);
 
 
 /* network interface */
@@ -494,15 +494,19 @@ tapdestroy(struct tap_softc *tp)
  *
  *	Destroy a tap instance.
  */
-static void
+static int
 tap_clone_destroy(struct ifnet *ifp)
 {
 	struct tap_softc *tp = ifp->if_softc;
 	
+	if ((tp->tap_flags & TAP_CLONE) == 0)
+		return ENXIO;
+
 	TAPDEBUG(&tp->tap_if, "clone destroyed. minor = %#x tap_flags = 0x%x\n",
 		 minor(tp->tap_dev), tp->tap_flags);
-	if (tp->tap_flags & TAP_CLONE)
-		tapdestroy(tp);
+	tapdestroy(tp);
+
+	return 0;
 }
 
 /*

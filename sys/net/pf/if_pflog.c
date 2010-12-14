@@ -90,7 +90,7 @@ int	pflogioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 void	pflogrtrequest(int, struct rtentry *, struct sockaddr *);
 void	pflogstart(struct ifnet *);
 int	pflog_clone_create(struct if_clone *, int, caddr_t);
-void pflog_clone_destroy(struct ifnet *);
+int	pflog_clone_destroy(struct ifnet *);
 
 LIST_HEAD(, pflog_softc)	pflogif_list;
 struct if_clone	pflog_cloner =
@@ -153,7 +153,7 @@ pflog_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	return (0);
 }
 
-void
+int
 pflog_clone_destroy(struct ifnet *ifp)
 {
 	struct pflog_softc	*pflogif = ifp->if_softc;
@@ -173,6 +173,8 @@ pflog_clone_destroy(struct ifnet *ifp)
 	lwkt_gettoken(&pf_token);
 	kfree(pflogif, M_DEVBUF);
 	lwkt_reltoken(&pf_token);
+
+	return 0;
 }
 
 /*

@@ -128,7 +128,7 @@ static MALLOC_DEFINE(M_VLAN, "vlan", "802.1Q Virtual LAN Interface");
 static LIST_HEAD(, ifvlan) ifv_list;
 
 static int	vlan_clone_create(struct if_clone *, int, caddr_t);
-static void	vlan_clone_destroy(struct ifnet *);
+static int	vlan_clone_destroy(struct ifnet *);
 static void	vlan_ifdetach(void *, struct ifnet *);
 
 static void	vlan_init(void *);
@@ -417,7 +417,7 @@ vlan_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	return (0);
 }
 
-static void
+static int
 vlan_clone_destroy(struct ifnet *ifp)
 {
 	struct ifvlan *ifv = ifp->if_softc;
@@ -430,6 +430,8 @@ vlan_clone_destroy(struct ifnet *ifp)
 	ether_ifdetach(ifp);
 
 	kfree(ifv, M_VLAN);
+
+	return 0;
 }
 
 static void

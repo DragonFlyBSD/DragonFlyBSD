@@ -87,7 +87,7 @@ struct pfsync_softc	*pfsyncif = NULL;
 struct pfsyncstats	 pfsyncstats;
 
 void	pfsyncattach(int);
-static void	pfsync_clone_destroy(struct ifnet *);
+static int	pfsync_clone_destroy(struct ifnet *);
 static int	pfsync_clone_create(struct if_clone *, int, caddr_t);
 void	pfsync_setmtu(struct pfsync_softc *, int);
 int	pfsync_alloc_scrub_memory(struct pfsync_state_peer *,
@@ -177,7 +177,7 @@ pfsync_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	return (0);
 }
 
-static void
+static int
 pfsync_clone_destroy(struct ifnet *ifp)
 {
 	lwkt_gettoken(&pf_token);
@@ -189,6 +189,8 @@ pfsync_clone_destroy(struct ifnet *ifp)
 	lwkt_gettoken(&pf_token);
 	kfree(pfsyncif, M_DEVBUF);
 	pfsyncif = NULL;
+
+	return 0;
 }
 
 /*

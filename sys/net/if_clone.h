@@ -58,7 +58,7 @@ struct if_clone {
 	int 		ifc_bmlen;	/* bitmap length */
 
 	int		(*ifc_create)(struct if_clone *, int, caddr_t);
-	void		(*ifc_destroy)(struct ifnet *);
+	int		(*ifc_destroy)(struct ifnet *);
 };
 
 #define IF_CLONE_INITIALIZER(name, create, destroy, minifs, maxunit)	\

@@ -102,7 +102,7 @@ static MALLOC_DEFINE(M_GRE, GRENAME, "Generic Routing Encapsulation");
 struct gre_softc_head gre_softc_list;
 
 static int	gre_clone_create(struct if_clone *, int, caddr_t);
-static void	gre_clone_destroy(struct ifnet *);
+static int	gre_clone_destroy(struct ifnet *);
 static int	gre_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static int	gre_output(struct ifnet *, struct mbuf *, struct sockaddr *,
 		    struct rtentry *rt);
@@ -208,7 +208,7 @@ gre_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	return (0);
 }
 
-static void
+static int
 gre_clone_destroy(struct ifnet *ifp)
 {
 	struct gre_softc *sc = ifp->if_softc;
@@ -222,6 +222,8 @@ gre_clone_destroy(struct ifnet *ifp)
 	if_detach(ifp);
 
 	kfree(sc, M_GRE);
+
+	return 0;
 }
 
 /*
