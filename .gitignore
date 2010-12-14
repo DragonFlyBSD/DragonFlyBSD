@@ -12,6 +12,5 @@
 *.swap
 *~
 .*.sw[po]
-.depend
 .sw[po]
 cscope.*
