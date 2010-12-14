@@ -36,7 +36,6 @@
 
 #include <sys/types.h>
 #include <sys/param.h>
-#include <sys/ctype.h>
 
 #include <sys/buf.h>
 #include <sys/malloc.h>
