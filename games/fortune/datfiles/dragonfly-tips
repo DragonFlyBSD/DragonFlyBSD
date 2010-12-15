@@ -367,8 +367,8 @@ To quickly create an empty file, use "touch filename".
 %
 To find out the hostname associated with an IP address, use
 
-	dig -x IP_address
-		-- Dru <genesis@istar.ca>
+	drill -x IP_address
+		-- luxh
 %
 If you use the C shell, add the following line to the .cshrc file in your
 home directory to prevent core files from being written to disk:
