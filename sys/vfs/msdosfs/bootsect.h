@@ -40,6 +40,7 @@ struct extboot {
 	int8_t		exReserved1;		/* reserved */
 	int8_t		exBootSignature;	/* ext. boot signature (0x29) */
 #define	EXBOOTSIG	0x29
+#define	EXBOOTSIG2	0x28
 	int8_t		exVolumeID[4];		/* volume ID number */
 	int8_t		exVolumeLabel[11];	/* volume label */
 	int8_t		exFileSysType[8];	/* fs type (FAT12 or FAT16) */
