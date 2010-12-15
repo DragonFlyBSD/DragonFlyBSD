@@ -70,7 +70,7 @@ SYSCTL_INT(_net_wlan, OID_AUTO, force_swcrypto, CTLFLAG_RW,
 MALLOC_DEFINE(M_80211_COM, "80211com", "802.11 com state");
 
 
-static void	wlan_clone_destroy(struct ifnet *);
+static int	wlan_clone_destroy(struct ifnet *);
 static int	wlan_clone_create(struct if_clone *, int, caddr_t);
 
 static struct if_clone wlan_cloner = 
@@ -150,7 +150,7 @@ wlan_clone_create(struct if_clone *ifc, int unit, caddr_t params)
 	return (vap == NULL ? EIO : 0);
 }
 
-static void
+static int
 wlan_clone_destroy(struct ifnet *ifp)
 {
 	struct ieee80211vap *vap = ifp->if_softc;
@@ -159,6 +159,8 @@ wlan_clone_destroy(struct ifnet *ifp)
 	wlan_serialize_enter();	/* WARNING must be global serializer */
 	ic->ic_vap_delete(vap);
 	wlan_serialize_exit();
+
+	return 0;
 }
 
 const char *wlan_last_enter_func;

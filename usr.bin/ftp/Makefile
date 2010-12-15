@@ -23,6 +23,6 @@ LINKS=	${BINDIR}/ftp ${BINDIR}/pftp \
 MLINKS=	ftp.1 pftp.1 \
 	ftp.1 gate-ftp.1
 
-WARNS?=	2
+WARNS?=	3
 
 .include <bsd.prog.mk>

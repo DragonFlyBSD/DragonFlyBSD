@@ -40,15 +40,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
-
-typedef int (probe_func_t)(const char *);
-typedef char *(volname_func_t)(const char *);
-
-struct fs_type {
-	const char *fs_name;
-	probe_func_t	*fs_probe;
-	volname_func_t	*fs_volname;
-};
+#include <libfsid.h>
 
 struct fsid_entry {
 	char	*dev_path;
@@ -58,9 +50,3 @@ struct fsid_entry {
 };
 
 TAILQ_HEAD(fsid_head, fsid_entry);
-
-probe_func_t hammer_probe;
-probe_func_t ufs_probe;
-volname_func_t hammer_volname;
-volname_func_t ufs_volname;
-

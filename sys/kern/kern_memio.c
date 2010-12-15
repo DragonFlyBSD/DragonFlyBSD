@@ -553,14 +553,15 @@ mm_filter_write(struct knote *kn, long hint)
 static void
 dummy_filter_detach(struct knote *kn) {}
 
+/* Implemented in kern_nrandom.c */
 static struct filterops random_read_filtops =
-        { FILTEROP_ISFD, NULL, dummy_filter_detach, random_filter_read };
+        { FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, dummy_filter_detach, random_filter_read };
 
 static struct filterops mm_read_filtops =
-        { FILTEROP_ISFD, NULL, dummy_filter_detach, mm_filter_read };
+        { FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, dummy_filter_detach, mm_filter_read };
 
 static struct filterops mm_write_filtops =
-        { FILTEROP_ISFD, NULL, dummy_filter_detach, mm_filter_write };
+        { FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, dummy_filter_detach, mm_filter_write };
 
 int
 mmkqfilter(struct dev_kqfilter_args *ap)

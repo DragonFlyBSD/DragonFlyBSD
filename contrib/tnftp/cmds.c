@@ -1,7 +1,7 @@
-/*	$NetBSD: cmds.c,v 1.125 2008/05/10 00:05:31 skd Exp $	*/
+/*	$NetBSD: cmds.c,v 1.131 2010/01/12 06:50:04 lukem Exp $	*/
 
 /*-
- * Copyright (c) 1996-2007 The NetBSD Foundation, Inc.
+ * Copyright (c) 1996-2009 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This code is derived from software contributed to The NetBSD Foundation
@@ -96,7 +96,7 @@
 #if 0
 static char sccsid[] = "@(#)cmds.c	8.6 (Berkeley) 10/9/94";
 #else
-__RCSID("$NetBSD: cmds.c,v 1.125 2008/05/10 00:05:31 skd Exp $");
+__RCSID("$NetBSD: cmds.c,v 1.131 2010/01/12 06:50:04 lukem Exp $");
 #endif
 #endif /* not lint */
 
@@ -115,6 +115,7 @@ __RCSID("$NetBSD: cmds.c,v 1.125 2008/05/10 00:05:31 skd Exp $");
 #include <limits.h>
 #include <netdb.h>
 #include <paths.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <libutil.h>
 #include <stdlib.h>
@@ -126,17 +127,17 @@ __RCSID("$NetBSD: cmds.c,v 1.125 2008/05/10 00:05:31 skd Exp $");
 #include "version.h"
 
 static struct types {
-	char	*t_name;
-	char	*t_mode;
-	int	t_type;
-	char	*t_arg;
+	const char	*t_name;
+	const char	*t_mode;
+	int		t_type;
+	const char	*t_arg;
 } types[] = {
 	{ "ascii",	"A",	TYPE_A,	0 },
 	{ "binary",	"I",	TYPE_I,	0 },
 	{ "image",	"I",	TYPE_I,	0 },
 	{ "ebcdic",	"E",	TYPE_E,	0 },
 	{ "tenex",	"L",	TYPE_L,	bytename },
-	{ NULL }
+	{ NULL,		NULL,	0, NULL }
 };
 
 static sigjmp_buf	 jabort;
@@ -144,6 +145,7 @@ static sigjmp_buf	 jabort;
 static int	confirm(const char *, const char *);
 static void	mintr(int);
 static void	mabort(const char *);
+static void	set_type(const char *);
 
 static const char *doprocess(char *, size_t, const char *, int, int, int);
 static const char *domap(char *, size_t, const char *);
@@ -158,7 +160,7 @@ static int
 confirm(const char *cmd, const char *file)
 {
 	const char *errormsg;
-	char line[BUFSIZ];
+	char cline[BUFSIZ];
 	const char *promptleft, *promptright;
 
 	if (!interactive || confirmrest)
@@ -173,12 +175,12 @@ confirm(const char *cmd, const char *file)
 	while (1) {
 		fprintf(ttyout, "%s %s [anpqy?]? ", promptleft, promptright);
 		(void)fflush(ttyout);
-		if (getline(stdin, line, sizeof(line), &errormsg) < 0) {
+		if (get_line(stdin, cline, sizeof(cline), &errormsg) < 0) {
 			mflag = 0;
 			fprintf(ttyout, "%s; %s aborted\n", errormsg, cmd);
 			return (0);
 		}
-		switch (tolower((unsigned char)*line)) {
+		switch (tolower((unsigned char)*cline)) {
 			case 'a':
 				confirmrest = 1;
 				fprintf(ttyout,
@@ -218,10 +220,9 @@ void
 settype(int argc, char *argv[])
 {
 	struct types *p;
-	int comret;
 
 	if (argc == 0 || argc > 2) {
-		char *sep;
+		const char *sep;
 
 		UPRINTF("usage: %s [", argv[0]);
 		sep = " ";
@@ -238,11 +239,20 @@ settype(int argc, char *argv[])
 		code = 0;
 		return;
 	}
+	set_type(argv[1]);
+}
+
+void
+set_type(const char *ttype)
+{
+	struct types *p;
+	int comret;
+
 	for (p = types; p->t_name; p++)
-		if (strcmp(argv[1], p->t_name) == 0)
+		if (strcmp(ttype, p->t_name) == 0)
 			break;
 	if (p->t_name == 0) {
-		fprintf(ttyout, "%s: unknown mode.\n", argv[1]);
+		fprintf(ttyout, "%s: unknown mode.\n", ttype);
 		code = -1;
 		return;
 	}
@@ -288,12 +298,6 @@ changetype(int newtype, int show)
 	verbose = oldverbose;
 }
 
-char *stype[] = {
-	"type",
-	"",
-	0
-};
-
 /*
  * Set binary transfer type.
  */
@@ -307,8 +311,7 @@ setbinary(int argc, char *argv[])
 		code = -1;
 		return;
 	}
-	stype[1] = "binary";
-	settype(2, stype);
+	set_type("binary");
 }
 
 /*
@@ -324,8 +327,7 @@ setascii(int argc, char *argv[])
 		code = -1;
 		return;
 	}
-	stype[1] = "ascii";
-	settype(2, stype);
+	set_type("ascii");
 }
 
 /*
@@ -341,8 +343,7 @@ settenex(int argc, char *argv[])
 		code = -1;
 		return;
 	}
-	stype[1] = "tenex";
-	settype(2, stype);
+	set_type("tenex");
 }
 
 /*
@@ -403,7 +404,7 @@ void
 put(int argc, char *argv[])
 {
 	char buf[MAXPATHLEN];
-	char *cmd;
+	const char *cmd;
 	int loc = 0;
 	char *locfile;
 	const char *remfile;
@@ -572,7 +573,7 @@ get(int argc, char *argv[])
  * If restartit is -1, restart the xfer only if the remote file is newer.
  */
 int
-getit(int argc, char *argv[], int restartit, const char *mode)
+getit(int argc, char *argv[], int restartit, const char *gmode)
 {
 	int	loc, rval;
 	char	*remfile, *olocfile;
@@ -631,7 +632,7 @@ getit(int argc, char *argv[], int restartit, const char *mode)
 		}
 	}
 
-	recvrequest("RETR", locfile, remfile, mode,
+	recvrequest("RETR", locfile, remfile, gmode,
 	    remfile != argv[1] || locfile != argv[2], loc);
 	restart_point = 0;
  freegetit:
@@ -681,7 +682,7 @@ mget(int argc, char *argv[])
 	int ointer;
 	char *cp;
 	const char *tp;
-	int restartit;
+	int volatile restartit;
 
 	if (argc == 0 ||
 	    (argc == 1 && !another(&argc, &argv, "remote-files"))) {
@@ -748,9 +749,9 @@ mget(int argc, char *argv[])
 void
 fget(int argc, char *argv[])
 {
-	char	*mode;
+	const char *gmode;
 	FILE	*fp;
-	char	buf[MAXPATHLEN];
+	char	buf[MAXPATHLEN], cmdbuf[MAX_C_NAME];
 
 	if (argc != 2) {
 		UPRINTF("usage: %s localfile\n", argv[0]);
@@ -765,23 +766,24 @@ fget(int argc, char *argv[])
 		return;
 	}
 
-	argv[0] = "get";
-	mode = restart_point ? "r+" : "w";
+	(void)strlcpy(cmdbuf, "get", sizeof(cmdbuf));
+	argv[0] = cmdbuf;
+	gmode = restart_point ? "r+" : "w";
 
-	while (getline(fp, buf, sizeof(buf), NULL) >= 0) {
+	while (get_line(fp, buf, sizeof(buf), NULL) >= 0) {
 		if (buf[0] == '\0')
 			continue;
 		argv[1] = buf;
-		(void)getit(argc, argv, 0, mode);
+		(void)getit(argc, argv, 0, gmode);
 	}
 	fclose(fp);
 }
 
 const char *
-onoff(int bool)
+onoff(int val)
 {
 
-	return (bool ? "on" : "off");
+	return (val ? "on" : "off");
 }
 
 /*
@@ -1277,18 +1279,20 @@ renamefile(int argc, char *argv[])
  *	mlsd		MLSD
  *	nlist		NLST
  *	pdir, pls	LIST |$PAGER
- *	mmlsd		MLSD |$PAGER
+ *	pmlsd		MLSD |$PAGER
  */
 void
 ls(int argc, char *argv[])
 {
 	const char *cmd;
-	char *remdir, *locfile;
-	int freelocfile, pagecmd, mlsdcmd;
+	char *remdir, *locbuf;
+	const char *locfile;
+	int pagecmd, mlsdcmd;
 
 	remdir = NULL;
+	locbuf = NULL;
 	locfile = "-";
-	freelocfile = pagecmd = mlsdcmd = 0;
+	pagecmd = mlsdcmd = 0;
 			/*
 			 * the only commands that start with `p' are
 			 * the `pager' versions.
@@ -1329,29 +1333,29 @@ ls(int argc, char *argv[])
 	}
 
 	if (pagecmd) {
-		char *p;
+		const char *p;
 		size_t len;
 
 		p = getoptionvalue("pager");
 		if (EMPTYSTRING(p))
 			p = DEFAULTPAGER;
 		len = strlen(p) + 2;
-		locfile = ftp_malloc(len);
-		locfile[0] = '|';
-		(void)strlcpy(locfile + 1, p, len - 1);
-		freelocfile = 1;
+		locbuf = ftp_malloc(len);
+		locbuf[0] = '|';
+		(void)strlcpy(locbuf + 1, p, len - 1);
+		locfile = locbuf;
 	} else if ((strcmp(locfile, "-") != 0) && *locfile != '|') {
-		if ((locfile = globulize(locfile)) == NULL ||
-		    !confirm("output to local-file:", locfile)) {
+		if ((locbuf = globulize(locfile)) == NULL ||
+		    !confirm("output to local-file:", locbuf)) {
 			code = -1;
 			goto freels;
 		}
-		freelocfile = 1;
+		locfile = locbuf;
 	}
 	recvrequest(cmd, locfile, remdir, "w", 0, 0);
  freels:
-	if (freelocfile && locfile)
-		(void)free(locfile);
+	if (locbuf)
+		(void)free(locbuf);
 }
 
 /*
@@ -1362,8 +1366,9 @@ mls(int argc, char *argv[])
 {
 	sigfunc oldintr;
 	int ointer, i;
-	int dolist;
-	char *mode, *dest, *odest;
+	int volatile dolist;
+	char * volatile dest, *odest;
+	const char *lmode;
 
 	if (argc == 0)
 		goto usage;
@@ -1389,8 +1394,8 @@ mls(int argc, char *argv[])
 	if (sigsetjmp(jabort, 1))
 		mabort(argv[0]);
 	for (i = 1; mflag && i < argc-1 && connected; i++) {
-		mode = (i == 1) ? "w" : "a";
-		recvrequest(dolist ? "LIST" : "NLST", dest, argv[i], mode,
+		lmode = (i == 1) ? "w" : "a";
+		recvrequest(dolist ? "LIST" : "NLST", dest, argv[i], lmode,
 		    0, 0);
 		if (!mflag && fromatty) {
 			ointer = interactive;
@@ -1416,7 +1421,8 @@ shell(int argc, char *argv[])
 {
 	pid_t pid;
 	sigfunc oldintr;
-	char shellnam[MAXPATHLEN], *shell, *namep;
+	char shellnam[MAXPATHLEN];
+	const char *shellp, *namep;
 	int wait_status;
 
 	if (argc == 0) {
@@ -1429,26 +1435,26 @@ shell(int argc, char *argv[])
 		for (pid = 3; pid < 20; pid++)
 			(void)close(pid);
 		(void)xsignal(SIGINT, SIG_DFL);
-		shell = getenv("SHELL");
-		if (shell == NULL)
-			shell = _PATH_BSHELL;
-		namep = strrchr(shell, '/');
+		shellp = getenv("SHELL");
+		if (shellp == NULL)
+			shellp = _PATH_BSHELL;
+		namep = strrchr(shellp, '/');
 		if (namep == NULL)
-			namep = shell;
+			namep = shellp;
 		else
 			namep++;
 		(void)strlcpy(shellnam, namep, sizeof(shellnam));
 		if (ftp_debug) {
-			fputs(shell, ttyout);
+			fputs(shellp, ttyout);
 			putc('\n', ttyout);
 		}
 		if (argc > 1) {
-			execl(shell, shellnam, "-c", altarg, (char *)0);
+			execl(shellp, shellnam, "-c", altarg, (char *)0);
 		}
 		else {
-			execl(shell, shellnam, (char *)0);
+			execl(shellp, shellnam, (char *)0);
 		}
-		warn("Can't execute `%s'", shell);
+		warn("Can't execute `%s'", shellp);
 		code = -1;
 		exit(1);
 	}
@@ -1834,6 +1840,7 @@ doproxy(int argc, char *argv[])
 	struct cmd *c;
 	int cmdpos;
 	sigfunc oldintr;
+	char cmdbuf[MAX_C_NAME];
 
 	if (argc == 0 || (argc == 1 && !another(&argc, &argv, "command"))) {
 		UPRINTF("usage: %s command\n", argv[0]);
@@ -1872,7 +1879,8 @@ doproxy(int argc, char *argv[])
 	cmdpos = strcspn(line, " \t");
 	if (cmdpos > 0)		/* remove leading "proxy " from input buffer */
 		memmove(line, line + cmdpos + 1, strlen(line) - cmdpos + 1);
-	argv[1] = c->c_name;
+	(void)strlcpy(cmdbuf, c->c_name, sizeof(cmdbuf));
+	argv[1] = cmdbuf;
 	(*c->c_handler)(argc-1, argv+1);
 	if (connected) {
 		proxflag = 1;
@@ -1964,7 +1972,7 @@ dotrans(char *dst, size_t dlen, const char *src)
 				found++;
 				if (i < ostop) {
 					*cp2++ = *(ntout + i);
-					if (cp2 - dst >= dlen - 1)
+					if (cp2 - dst >= (ptrdiff_t)(dlen - 1))
 						goto out;
 				}
 				break;
@@ -2546,7 +2554,8 @@ void
 lpage(int argc, char *argv[])
 {
 	size_t len;
-	char *p, *pager, *locfile;
+	const char *p;
+	char *pager, *locfile;
 
 	if (argc == 0 || argc > 2 ||
 	    (argc == 1 && !another(&argc, &argv, "local-file"))) {
@@ -2580,7 +2589,8 @@ page(int argc, char *argv[])
 {
 	int ohash, orestart_point, overbose;
 	size_t len;
-	char *p, *pager;
+	const char *p;
+	char *pager;
 
 	if (argc == 0 || argc > 2 ||
 	    (argc == 1 && !another(&argc, &argv, "remote-file"))) {
@@ -2668,18 +2678,26 @@ setoption(int argc, char *argv[])
 			    o->name, o->value ? o->value : "");
 		}
 	} else {
-		o = getoption(argv[1]);
-		if (o == NULL) {
-			fprintf(ttyout, "No such option `%s'.\n", argv[1]);
-			return;
-		}
-		FREEPTR(o->value);
-		o->value = ftp_strdup(argv[2]);
-		if (verbose)
-			fprintf(ttyout, "Setting `%s' to `%s'.\n",
-			    o->name, o->value);
+		set_option(argv[1], argv[2], 1);
 	}
 	code = 0;
+}
+
+void
+set_option(const char * option, const char * value, int doverbose)
+{
+	struct option *o;
+
+	o = getoption(option);
+	if (o == NULL) {
+		fprintf(ttyout, "No such option `%s'.\n", option);
+		return;
+	}
+	FREEPTR(o->value);
+	o->value = ftp_strdup(value);
+	if (verbose && doverbose)
+		fprintf(ttyout, "Setting `%s' to `%s'.\n",
+		    o->name, o->value);
 }
 
 /*

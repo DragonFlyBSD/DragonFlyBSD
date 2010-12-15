@@ -191,32 +191,7 @@ dm_target_rem(char *dm_target_name)
 
 	return 0;
 }
-/*
- * Destroy all targets and remove them from queue.
- * This routine is called from dm_detach, before module
- * is unloaded.
- */
-int
-dm_target_destroy(void)
-{
-	dm_target_t *dm_target;
 
-	lockmgr(&dm_target_mutex, LK_EXCLUSIVE);
-	while (TAILQ_FIRST(&dm_target_list) != NULL) {
-
-		dm_target = TAILQ_FIRST(&dm_target_list);
-
-		TAILQ_REMOVE(&dm_target_list, TAILQ_FIRST(&dm_target_list),
-		    dm_target_next);
-
-		(void) kfree(dm_target, M_DM);
-	}
-	lockmgr(&dm_target_mutex, LK_RELEASE);
-
-	lockuninit(&dm_target_mutex);
-
-	return 0;
-}
 /*
  * Allocate new target entry.
  */
@@ -268,6 +243,33 @@ int
 dm_target_init(void)
 {
 	lockinit(&dm_target_mutex, "dmtrgt", 0, LK_CANRECURSE);
+
+	return 0;
+}
+
+/*
+ * Destroy all targets and remove them from queue.
+ * This routine is called from dm_detach, before module
+ * is unloaded.
+ */
+int
+dm_target_uninit(void)
+{
+	dm_target_t *dm_target;
+
+	lockmgr(&dm_target_mutex, LK_EXCLUSIVE);
+	while (TAILQ_FIRST(&dm_target_list) != NULL) {
+
+		dm_target = TAILQ_FIRST(&dm_target_list);
+
+		TAILQ_REMOVE(&dm_target_list, TAILQ_FIRST(&dm_target_list),
+		    dm_target_next);
+
+		(void) kfree(dm_target, M_DM);
+	}
+	lockmgr(&dm_target_mutex, LK_RELEASE);
+
+	lockuninit(&dm_target_mutex);
 
 	return 0;
 }

@@ -53,7 +53,7 @@ LDIRS=	net netbt netgraph netinet netinet6 sys vm
 #
 LSUBDIRS=	bus/cam bus/cam/scsi \
 	emulation/linux \
-	vfs/msdosfs vfs/nfs vfs/ntfs vfs/nwfs \
+	vfs/msdosfs vfs/nfs vfs/ntfs vfs/nwfs vfs/gnu/ext2fs \
 	vfs/smbfs vfs/udf vfs/ufs vfs/hammer \
 	net/vlan net/ipfw net/ip6fw net/dummynet net/sppp net/ip_mroute \
 	net/bridge net/tap net/tun net/ppp net/ppp_layer net/sl \

@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "EVP_PKEY_verifyrecover 3"
-.TH EVP_PKEY_verifyrecover 3 "2010-11-16" "1.0.0b" "OpenSSL"
+.TH EVP_PKEY_verifyrecover 3 "2010-12-02" "1.0.0c" "OpenSSL"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -200,7 +200,7 @@ Recover digest originally signed using PKCS#1 and \s-1SHA256\s0 digest:
 \&        /* Error */
 \&
 \& /* Determine buffer length */
-\& if (EVP_PKEY_verifyrecover(ctx, rout, &routlen, sig, siglen) <= 0)
+\& if (EVP_PKEY_verifyrecover(ctx, NULL, &routlen, sig, siglen) <= 0)
 \&        /* Error */
 \&
 \& rout = OPENSSL_malloc(routlen);

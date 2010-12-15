@@ -36,7 +36,6 @@
 
 #include <sys/types.h>
 #include <sys/param.h>
-#include <sys/ctype.h>
 
 #include <sys/buf.h>
 #include <sys/malloc.h>
@@ -225,25 +224,6 @@ static int
 dm_target_linear_upcall(dm_table_entry_t * table_en, struct buf * bp)
 {
 	return 0;
-}
-/*
- * Transform char s to uint64_t offset number.
- */
-uint64_t
-atoi64(const char *s)
-{
-	uint64_t n;
-	n = 0;
-
-	while (*s != '\0') {
-		if (!isdigit(*s))
-			break;
-
-		n = (10 * n) + (*s - '0');
-		s++;
-	}
-
-	return n;
 }
 
 static int

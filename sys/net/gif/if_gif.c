@@ -90,7 +90,7 @@ static MALLOC_DEFINE(M_GIF, "gif", "Generic Tunnel Interface");
 LIST_HEAD(, gif_softc) gif_softc_list;
 
 int	gif_clone_create (struct if_clone *, int, caddr_t);
-void	gif_clone_destroy (struct ifnet *);
+int	gif_clone_destroy (struct ifnet *);
 
 struct if_clone gif_cloner = IF_CLONE_INITIALIZER("gif", gif_clone_create,
     gif_clone_destroy, 0, IF_MAXUNIT);
@@ -166,7 +166,7 @@ gifattach0(struct gif_softc *sc)
 	bpfattach(&sc->gif_if, DLT_NULL, sizeof(u_int));
 }
 
-void
+int
 gif_clone_destroy(struct ifnet *ifp)
 {
 	struct gif_softc *sc = ifp->if_softc;
@@ -192,6 +192,8 @@ gif_clone_destroy(struct ifnet *ifp)
 	if_detach(ifp);
 
 	kfree(sc, M_GIF);
+
+	return 0;
 }
 
 static void

@@ -245,6 +245,7 @@ _lwkt_tokref_init(lwkt_tokref_t ref, lwkt_token_t tok, thread_t td,
 	ref->tr_flags = flags;
 }
 
+#ifdef SMP
 /*
  * Force a LWKT reschedule on the target cpu when a requested token
  * becomes available.
@@ -255,6 +256,7 @@ lwkt_reltoken_mask_remote(void *arg, int arg2, struct intrframe *frame)
 {
 	need_lwkt_resched();
 }
+#endif
 
 static __inline
 void
@@ -545,7 +547,9 @@ lwkt_gettoken_hard(lwkt_token_t tok)
 		logtoken(succ, ref);
 		KKASSERT(tok->t_ref == ref);
 	}
+#ifdef SMP
 success:
+#endif
 	crit_enter_hard_gd(td->td_gd);
 }
 
@@ -595,7 +599,9 @@ lwkt_getpooltoken(void *ptr)
 		logtoken(succ, ref);
 		KKASSERT(tok->t_ref == ref);
 	}
+#ifdef SMP
 success:
+#endif
 	return(tok);
 }
 

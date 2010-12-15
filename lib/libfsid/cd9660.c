@@ -2,7 +2,7 @@
  * Copyright (c) 2010 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
- * by Alex Hornung <ahornung@gmail.com>
+ * by Ákos Kovács <akoskovacs@gmx.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,79 +31,44 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#include "fsid.h"
-#include <vfs/ufs/ufs_types.h>
-#include <vfs/ufs/fs.h>
 
-static char buffer[MAXBSIZE];
+#include "libfsid.h"
 
-int
-ufs_probe(const char *dev)
+#include <vfs/isofs/cd9660/iso.h>
+
+static char buffer[ISO_DEFAULT_BLOCK_SIZE];
+
+fsid_t
+cd9660_probe(const char *dev)
 {
-	static struct fs *fs;
-	int ret, fd;
+	struct iso_primary_descriptor *pdsc;
 
-	fd = open(dev, O_RDONLY);
-	if (fd < 0) {
-		return 0;
-	}
+	if (fsid_dev_read(dev, 32768L, sizeof(buffer), buffer) != 0)
+		return FSID_UNKNOWN;
 
-	ret = lseek(fd, SBOFF, SEEK_SET);
-	if (ret < 0)
-		return 0;
+	pdsc = (struct iso_primary_descriptor *)&buffer;
 
-	bzero(buffer, sizeof(buffer));
-	ret = read(fd, &buffer, SBSIZE);
-	if (ret < 0) {
-		close(fd);
-		return 0;
-	}
+	if ((strncmp(pdsc->id, ISO_STANDARD_ID, 4)) == 0)
+		return FSID_CD9660;
 
-	close(fd);
-	fs = (struct fs *)&buffer;
-
-	if (fs->fs_magic != FS_MAGIC || fs->fs_bsize > MAXBSIZE ||
-		(unsigned)fs->fs_bsize < sizeof(struct fs)) {
-		return 0;
-	}
-
-	return 1;
+	return FSID_UNKNOWN;
 }
 
 char *
-ufs_volname(const char *dev)
+cd9660_volname(const char *dev)
 {
-	static struct fs *fs;
-	int ret, fd;
+	static struct iso_primary_descriptor *pdsc;
 
-	fd = open(dev, O_RDONLY);
-	if (fd < 0) {
-		return NULL;
-	}
-
-	ret = lseek(fd, SBOFF, SEEK_SET);
-	if (ret < 0)
+	if (fsid_dev_read(dev, 32768L, sizeof(buffer), buffer) != 0)
 		return NULL;
 
-	bzero(buffer, sizeof(buffer));
-	ret = read(fd, &buffer, SBSIZE);
-	if (ret < 0) {
-		close(fd);
-		return NULL;
-	}
+	pdsc = (struct iso_primary_descriptor *)&buffer;
 
-	close(fd);
-	fs = (struct fs *)&buffer;
-
-	if (fs->fs_magic != FS_MAGIC || fs->fs_bsize > MAXBSIZE ||
-		(unsigned)fs->fs_bsize < sizeof(struct fs)) {
-		return NULL;
-	}
-
-	if (fs->fs_volname[0] == '\0')
+	if (strncmp(pdsc->id, ISO_STANDARD_ID, 4) != 0 ||
+	    pdsc->volume_id[0] == '\0')
 		return NULL;
 
-	fs->fs_volname[MAXVOLLEN - 1] = '\0';
-	return fs->fs_volname;
+	pdsc->volume_id[sizeof(pdsc->volume_id) - 1] = '\0';
+
+	return pdsc->volume_id;
 }
-

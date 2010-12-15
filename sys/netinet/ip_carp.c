@@ -180,7 +180,7 @@ static int	carp_hmac_verify(struct carp_softc *, uint32_t *,
 static void	carp_setroute(struct carp_softc *, int);
 static void	carp_input_c(struct mbuf *, struct carp_header *, sa_family_t);
 static int 	carp_clone_create(struct if_clone *, int, caddr_t);
-static void 	carp_clone_destroy(struct ifnet *);
+static int 	carp_clone_destroy(struct ifnet *);
 static void	carp_detach(struct carp_softc *, int);
 static int	carp_prepare_ad(struct mbuf *, struct carp_softc *,
 		    struct carp_header *);
@@ -421,7 +421,7 @@ carp_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	return (0);
 }
 
-static void
+static int
 carp_clone_destroy(struct ifnet *ifp)
 {
 	struct carp_softc *sc = ifp->if_softc;
@@ -437,6 +437,8 @@ carp_clone_destroy(struct ifnet *ifp)
 
 	KASSERT(sc->sc_naddrs == 0, ("certain inet address is still active\n"));
 	kfree(sc, M_CARP);
+
+	return 0;
 }
 
 static void

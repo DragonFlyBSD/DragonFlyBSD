@@ -601,7 +601,6 @@ KTR_IPIQ			opt_ktr.h
 KTR_MSGPORT			opt_ktr.h
 KTR_ENTRIES			opt_global.h
 KTR_VERBOSE			opt_ktr.h
-KTR_GIANT_CONTENTION		opt_ktr.h
 KTR_SPIN_CONTENTION		opt_ktr.h
 KTR_IF_BGE			opt_ktr.h
 KTR_IF_EM			opt_ktr.h

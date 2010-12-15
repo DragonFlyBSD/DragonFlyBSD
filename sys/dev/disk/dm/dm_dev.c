@@ -31,14 +31,25 @@
 
 #include <sys/types.h>
 #include <sys/param.h>
+#include <machine/thread.h>
+#include <sys/thread2.h>
 
 #include <sys/disk.h>
 #include <sys/disklabel.h>
+#include <sys/devicestat.h>
+#include <sys/device.h>
+#include <sys/udev.h>
+#include <sys/devfs.h>
 #include <sys/ioccom.h>
 #include <sys/malloc.h>
 #include <dev/disk/dm/dm.h>
 
 #include "netbsd-dm.h"
+
+extern struct dev_ops dm_ops;
+
+struct devfs_bitmap dm_minor_bitmap;
+uint64_t dm_dev_counter;
 
 static dm_dev_t *dm_dev_lookup_name(const char *);
 static dm_dev_t *dm_dev_lookup_uuid(const char *);
@@ -49,13 +60,15 @@ TAILQ_HEAD_INITIALIZER(dm_dev_list);
 
 struct lock dm_dev_mutex;
 
-/* dm_dev_mutex must be holdby caller before using disable_dev. */
+/* dm_dev_mutex must be held by caller before using disable_dev. */
 static void
 disable_dev(dm_dev_t * dmv)
 {
+	KKASSERT(lockstatus(&dm_dev_mutex, curthread) == LK_EXCLUSIVE);
+
 	TAILQ_REMOVE(&dm_dev_list, dmv, next_devlist);
+
 	lockmgr(&dmv->dev_mtx, LK_EXCLUSIVE);
-	lockmgr(&dm_dev_mutex, LK_RELEASE);
 	while (dmv->ref_cnt != 0)
 		cv_wait(&dmv->dev_cv, &dmv->dev_mtx);
 	lockmgr(&dmv->dev_mtx, LK_RELEASE);
@@ -181,69 +194,145 @@ dm_dev_rem(dm_dev_t *dmv, const char *dm_dev_name, const char *dm_dev_uuid,
 
 	if (dmv != NULL) {
 		disable_dev(dmv);
-		return dmv;
+	} else if (dm_dev_minor > 0) {
+		if ((dmv = dm_dev_lookup_minor(dm_dev_minor)) != NULL)
+			disable_dev(dmv);
+	} else if (dm_dev_name != NULL) {
+		if ((dmv = dm_dev_lookup_name(dm_dev_name)) != NULL)
+			disable_dev(dmv);
+	} else if (dm_dev_uuid != NULL) {
+		if ((dmv = dm_dev_lookup_name(dm_dev_uuid)) != NULL)
+			disable_dev(dmv);
 	}
 
-	if (dm_dev_minor > 0)
-		if ((dmv = dm_dev_lookup_minor(dm_dev_minor)) != NULL) {
-			disable_dev(dmv);
-			return dmv;
-		}
-	if (dm_dev_name != NULL)
-		if ((dmv = dm_dev_lookup_name(dm_dev_name)) != NULL) {
-			disable_dev(dmv);
-			return dmv;
-		}
-	if (dm_dev_uuid != NULL)
-		if ((dmv = dm_dev_lookup_name(dm_dev_uuid)) != NULL) {
-			disable_dev(dmv);
-			return dmv;
-		}
 	lockmgr(&dm_dev_mutex, LK_RELEASE);
 
-	return NULL;
+	return dmv;
 }
-/*
- * Destroy all devices created in device-mapper. Remove all tables
- * free all allocated memmory.
- */
+
 int
-dm_dev_destroy(void)
+dm_dev_create(dm_dev_t **dmvp, const char *name, const char *uuid, int flags)
 {
 	dm_dev_t *dmv;
+	char name_buf[MAXPATHLEN];
+	int r, dm_minor;
+
+	if ((dmv = dm_dev_alloc()) == NULL)
+		return ENOMEM;
+
+	if (uuid)
+		strncpy(dmv->uuid, uuid, DM_UUID_LEN);
+	else
+		dmv->uuid[0] = '\0';
+
+	if (name)
+		strlcpy(dmv->name, name, DM_NAME_LEN);
+
+	dm_minor = devfs_clone_bitmap_get(&dm_minor_bitmap, 0);
+
+	dm_table_head_init(&dmv->table_head);
+
+	lockinit(&dmv->dev_mtx, "dmdev", 0, LK_CANRECURSE);
+	cv_init(&dmv->dev_cv, "dm_dev");
+
+	if (flags & DM_READONLY_FLAG)
+		dmv->flags |= DM_READONLY_FLAG;
+
+	aprint_debug("Creating device dm/%s\n", name);
+	ksnprintf(name_buf, sizeof(name_buf), "mapper/%s", dmv->name);
+
+	devstat_add_entry(&dmv->stats, name, 0, DEV_BSIZE,
+	    DEVSTAT_NO_ORDERED_TAGS,
+	    DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_OTHER,
+	    DEVSTAT_PRIORITY_DISK);
+
+	dmv->devt = disk_create_named(name_buf, dm_minor, dmv->diskp, &dm_ops);
+	reference_dev(dmv->devt);
+
+	dmv->minor = minor(dmv->devt);
+	udev_dict_set_cstr(dmv->devt, "subsystem", "disk");
+
+	if ((r = dm_dev_insert(dmv)) != 0)
+		dm_dev_destroy(dmv);
+
+	/* Increment device counter After creating device */
+	++dm_dev_counter; /* XXX: was atomic 64 */
+	*dmvp = dmv;
+
+	return r;
+}
+
+int
+dm_dev_destroy(dm_dev_t *dmv)
+{
+	int minor;
+
+	/* Destroy active table first.  */
+	dm_table_destroy(&dmv->table_head, DM_TABLE_ACTIVE);
+
+	/* Destroy inactive table if exits, too. */
+	dm_table_destroy(&dmv->table_head, DM_TABLE_INACTIVE);
+
+	dm_table_head_destroy(&dmv->table_head);
+
+	minor = dkunit(dmv->devt);
+	disk_destroy(dmv->diskp);
+	devstat_remove_entry(&dmv->stats);
+
+	release_dev(dmv->devt);
+	devfs_clone_bitmap_put(&dm_minor_bitmap, minor);
+
+	lockuninit(&dmv->dev_mtx);
+	cv_destroy(&dmv->dev_cv);
+
+	/* Destroy device */
+	(void)dm_dev_free(dmv);
+
+	/* Decrement device counter After removing device */
+	--dm_dev_counter; /* XXX: was atomic 64 */
+
+	return 0;
+}
+
+/*
+ * dm_detach is called to completely destroy & remove a dm disk device.
+ */
+int
+dm_dev_remove(dm_dev_t *dmv)
+{
+	/* Remove device from list and wait for refcnt to drop to zero */
+	dm_dev_rem(dmv, NULL, NULL, -1);
+
+	/* Destroy and free the device */
+	dm_dev_destroy(dmv);
+
+	return 0;
+}
+
+int
+dm_dev_remove_all(int gentle)
+{
+	dm_dev_t *dmv, *dmv2;
+	int r;
+
+	r = 0;
+
 	lockmgr(&dm_dev_mutex, LK_EXCLUSIVE);
 
-	while (TAILQ_FIRST(&dm_dev_list) != NULL) {
+	TAILQ_FOREACH_MUTABLE(dmv, &dm_dev_list, next_devlist, dmv2) {
+		if (gentle && dmv->is_open) {
+			r = EBUSY;
+			continue;
+		}
 
-		dmv = TAILQ_FIRST(&dm_dev_list);
-
-		TAILQ_REMOVE(&dm_dev_list, TAILQ_FIRST(&dm_dev_list),
-		    next_devlist);
-
-		lockmgr(&dmv->dev_mtx, LK_EXCLUSIVE);
-
-		while (dmv->ref_cnt != 0)
-			cv_wait(&dmv->dev_cv, &dmv->dev_mtx);
-
-		/* Destroy active table first.  */
-		dm_table_destroy(&dmv->table_head, DM_TABLE_ACTIVE);
-
-		/* Destroy inactive table if exits, too. */
-		dm_table_destroy(&dmv->table_head, DM_TABLE_INACTIVE);
-
-		dm_table_head_destroy(&dmv->table_head);
-
-		lockmgr(&dmv->dev_mtx, LK_RELEASE);
-		lockuninit(&dmv->dev_mtx);
-		cv_destroy(&dmv->dev_cv);
-
-		(void) kfree(dmv, M_DM);
+		disable_dev(dmv);
+		dm_dev_destroy(dmv);
 	}
 	lockmgr(&dm_dev_mutex, LK_RELEASE);
 
-	lockuninit(&dm_dev_mutex);
-	return 0;
+	return r;
 }
+
 /*
  * Allocate new device entry.
  */
@@ -266,10 +355,6 @@ int
 dm_dev_free(dm_dev_t * dmv)
 {
 	KKASSERT(dmv != NULL);
-
-	lockuninit(&dmv->dev_mtx);
-	lockuninit(&dmv->diskp_mtx);
-	cv_destroy(&dmv->dev_cv);
 
 	if (dmv->diskp != NULL)
 		(void) kfree(dmv->diskp, M_DM);
@@ -332,5 +417,20 @@ dm_dev_init(void)
 {
 	TAILQ_INIT(&dm_dev_list);	/* initialize global dev list */
 	lockinit(&dm_dev_mutex, "dmdevlist", 0, LK_CANRECURSE);
+	devfs_clone_bitmap_init(&dm_minor_bitmap);
+	return 0;
+}
+
+/*
+ * Destroy all devices created in device-mapper. Remove all tables
+ * free all allocated memmory.
+ */
+int
+dm_dev_uninit(void)
+{
+	/* Force removal of all devices */
+	dm_dev_remove_all(0);
+
+	lockuninit(&dm_dev_mutex);
 	return 0;
 }

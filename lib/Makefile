@@ -24,7 +24,7 @@ SUBDIR=	csu \
 	libncurses libradius librt libtacplus libutil libsbuf \
 	libalias libatm libbz2 libc ${_libc_r} \
 	libcalendar libcam libcompat libdevinfo libdevstat libedit \
-	libexpat libfetch \
+	libexpat libfetch libfsid \
 	libftpio libipsec libipx libldns libkcore libkiconv libkinfo \
 	libkvm libmagic \
 	${_libmilter} ${_libncp} libnetgraph libopie libpam \

@@ -13,7 +13,6 @@ cpu		HAMMER_CPU
 options		DEBUG_PCTRACK
 
 ##options		KTR
-##options		KTR_GIANT_CONTENTION
 ##options		KTR_SPIN_CONTENTION
 #options	DEBUG_CRIT_SECTIONS
 

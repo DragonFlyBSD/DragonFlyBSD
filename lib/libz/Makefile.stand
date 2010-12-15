@@ -9,12 +9,3 @@ ZLIBDIR= ${.CURDIR}/../../contrib/zlib-1.2
 CFLAGS+=-DHAVE_MEMCPY -I${ZLIBDIR}
 SRCS+=	adler32.c crc32.c deflate.c infback.c inffast.c inflate.c \
 	inftrees.c zutil.c
-
-ZLIB_PATCHES!= echo ${.CURDIR}/../libz/patches/*.patch
-.for patch in ${ZLIB_PATCHES}
-.for file in ${patch:R:T}
-CLEANFILES+=	${file}
-${file}: ${ZLIBDIR}/${file} ${patch}
-	patch -o ${.TARGET} -i ${patch} ${ZLIBDIR}/${file}
-.endfor
-.endfor

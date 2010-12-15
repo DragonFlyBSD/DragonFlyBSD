@@ -360,7 +360,7 @@ extern	void (*bridge_dn_p)(struct mbuf *, struct ifnet *);
 static int	bridge_rtable_prune_period = BRIDGE_RTABLE_PRUNE_PERIOD;
 
 static int	bridge_clone_create(struct if_clone *, int, caddr_t);
-static void	bridge_clone_destroy(struct ifnet *);
+static int	bridge_clone_destroy(struct ifnet *);
 
 static int	bridge_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	bridge_mutecaps(struct bridge_ifinfo *, struct ifnet *, int);
@@ -731,7 +731,7 @@ bridge_delete_dispatch(netmsg_t msg)
  *
  *	Destroy a bridge instance.
  */
-static void
+static int
 bridge_clone_destroy(struct ifnet *ifp)
 {
 	struct bridge_softc *sc = ifp->if_softc;
@@ -762,6 +762,8 @@ bridge_clone_destroy(struct ifnet *ifp)
 	kfree(sc->sc_iflists, M_DEVBUF);
 
 	kfree(sc, M_DEVBUF);
+
+	return 0;
 }
 
 /*

@@ -1,7 +1,7 @@
-/*	$NetBSD: ftp_var.h,v 1.79 2008/05/10 00:05:31 skd Exp $	*/
+/*	$NetBSD: ftp_var.h,v 1.81 2009/04/12 10:18:52 lukem Exp $	*/
 
 /*-
- * Copyright (c) 1996-2007 The NetBSD Foundation, Inc.
+ * Copyright (c) 1996-2009 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This code is derived from software contributed to The NetBSD Foundation
@@ -122,7 +122,7 @@
  * Format of command table.
  */
 struct cmd {
-	char		*c_name;	/* name of command */
+	const char	*c_name;	/* name of command */
 	const char	*c_help;	/* help string */
 	char		c_bell;		/* give bell when command completes */
 	char		c_conn;		/* must be connected to use command */
@@ -132,6 +132,8 @@ struct cmd {
 #endif /* !NO_EDITCOMPLETE */
 	void		(*c_handler)(int, char **); /* function to call */
 };
+
+#define MAX_C_NAME	12		/* maximum length of cmd.c_name */
 
 /*
  * Format of macro table
@@ -146,8 +148,8 @@ struct macel {
  * Format of option table
  */
 struct option {
-	char	*name;
-	char	*value;
+	const char	*name;
+	char		*value;
 };
 
 /*
@@ -211,7 +213,7 @@ GLOBAL	int	autologin;	/* establish user account on connection */
 GLOBAL	int	proxy;		/* proxy server connection active */
 GLOBAL	int	proxflag;	/* proxy connection exists */
 GLOBAL	int	gatemode;	/* use gate-ftp */
-GLOBAL	char   *gateserver;	/* server to use for gate-ftp */
+GLOBAL	const char *gateserver;	/* server to use for gate-ftp */
 GLOBAL	int	sunique;	/* store files on server with unique name */
 GLOBAL	int	runique;	/* store local files with unique name */
 GLOBAL	int	mcase;		/* map upper to lower case for mget names */
@@ -246,7 +248,7 @@ GLOBAL	int	rate_get_incr;	/* increment for get xfer rate */
 GLOBAL	int	rate_put;	/* maximum put xfer rate */
 GLOBAL	int	rate_put_incr;	/* increment for put xfer rate */
 GLOBAL	int	retry_connect;	/* seconds between retrying connection */
-GLOBAL	char   *tmpdir;		/* temporary directory */
+GLOBAL	const char *tmpdir;	/* temporary directory */
 GLOBAL	int	epsv4;		/* use EPSV/EPRT on IPv4 connections */
 GLOBAL	int	epsv4bad;	/* EPSV doesn't work on the current server */
 GLOBAL	int	epsv6;		/* use EPSV/EPRT on IPv6 connections */
@@ -262,8 +264,6 @@ GLOBAL	size_t	  cursor_argc;	/* location of cursor in margv */
 GLOBAL	size_t	  cursor_argo;	/* offset of cursor in margv[cursor_argc] */
 #endif /* !NO_EDITCOMPLETE */
 
-GLOBAL	char   *direction;	/* direction transfer is occurring */
-
 GLOBAL	char   *hostname;	/* name of host connected to */
 GLOBAL	int	unix_server;	/* server is unix, can use binary for ascii */
 GLOBAL	int	unix_proxy;	/* proxy is unix, can use binary for ascii */
@@ -272,9 +272,9 @@ GLOBAL	char	remotecwd[MAXPATHLEN];	/* remote dir */
 GLOBAL	char   *username;	/* name of user logged in as. (dynamic) */
 
 GLOBAL	sa_family_t family;	/* address family to use for connections */
-GLOBAL	char	*ftpport;	/* port number to use for FTP connections */
-GLOBAL	char	*httpport;	/* port number to use for HTTP connections */
-GLOBAL	char	*gateport;	/* port number to use for gateftp connections */
+GLOBAL	const char *ftpport;	/* port number to use for FTP connections */
+GLOBAL	const char *httpport;	/* port number to use for HTTP connections */
+GLOBAL	const char *gateport;	/* port number to use for gateftp connections */
 GLOBAL	struct addrinfo *bindai; /* local address to bind as */
 
 GLOBAL	char   *outfile;	/* filename to output URLs to */

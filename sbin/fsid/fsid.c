@@ -34,14 +34,8 @@
 #include <sys/stat.h>
 #include <devattr.h>
 #include <errno.h>
+#include <libfsid.h>
 #include "fsid.h"
-
-static struct fs_type fs_types[] = {
-	{ "HAMMER",	hammer_probe,	hammer_volname	},
-	{ "UFS",	ufs_probe,	ufs_volname	},
-	{ NULL,		NULL,		NULL		}
-};
-
 
 static struct fsid_head fsid_list =
 		TAILQ_HEAD_INITIALIZER(fsid_list);
@@ -72,38 +66,34 @@ fsid_check_create_alias(const char *dev)
 	char full_path[MAXPATHLEN];
 	char link_path[MAXPATHLEN];
 	char *volname;
-	int i;
 
 	if (fsid_alias_exists(dev))
 		return EEXIST;
 
 	sprintf(full_path, "/dev/%s", dev);
-	for (i = 0; fs_types[i].fs_name != NULL; i++) {
-		volname = fs_types[i].fs_volname(full_path);
-		if (volname == NULL)
-			continue;
+	volname = fsid_volname_all(full_path);
+	if (volname == NULL)
+		return 0;
 
-		printf("Volume name for %s is %s\n", dev, volname);
-		fsid = malloc(sizeof(struct fsid_entry));
-		if (fsid == NULL)
-			return ENOMEM;
+	printf("Volume name for %s is %s\n", dev, volname);
+	fsid = malloc(sizeof(struct fsid_entry));
+	if (fsid == NULL)
+		return ENOMEM;
 #if 1
-		sprintf(link_path, "/dev/vol-by-name/%s", volname);
+	sprintf(link_path, "/dev/vol-by-name/%s", volname);
 
-		fsid->dev_path = strdup(dev);
-		fsid->link_path = strdup(link_path);
-		if ((fsid->dev_path == NULL) || (fsid->link_path == NULL)) {
-			free(fsid);
-			return ENOMEM;
-		}
-
-		mkdir("/dev/vol-by-name", 0755);
-		symlink(full_path, link_path);
-
-		TAILQ_INSERT_TAIL(&fsid_list, fsid, link);
-#endif
-		break;
+	fsid->dev_path = strdup(dev);
+	fsid->link_path = strdup(link_path);
+	if ((fsid->dev_path == NULL) || (fsid->link_path == NULL)) {
+		free(fsid);
+		return ENOMEM;
 	}
+
+	mkdir("/dev/vol-by-name", 0755);
+	symlink(full_path, link_path);
+
+	TAILQ_INSERT_TAIL(&fsid_list, fsid, link);
+#endif
 
 	return 0;
 }
@@ -179,7 +169,7 @@ main(int argc, char *argv[])
 	ret = udev_enumerate_add_match_property(udev_enum, "subsystem", "disk");
 	if (ret != 0)
 		err(1, "udev_enumerate_add_match_property, out, ret=%d\n", ret);
-#if 1
+
 	ret = udev_enumerate_add_match_property(udev_enum, "alias", "0");
 	if (ret != 0)
 		err(1, "udev_enumerate_add_match_property, out, ret=%d\n", ret);
@@ -187,7 +177,8 @@ main(int argc, char *argv[])
 	ret = udev_enumerate_add_nomatch_property(udev_enum, "disk-type", "memory");
 	if (ret != 0)
 		err(1, "udev_enumerate_add_match_property, out, ret=%d\n", ret);
-#endif
+
+	ret = udev_enumerate_add_nomatch_property(udev_enum, "disk-type", "floppy");
 
 	ret = udev_enumerate_scan_devices(udev_enum);
 	if (ret != 0)

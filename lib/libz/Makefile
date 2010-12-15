@@ -7,16 +7,15 @@ LIB=		z
 MAN=		zlib.3
 WARNS?=		2
 
-PATCHES!=	echo ${.CURDIR}/patches/*.patch
 CONTRIBDIR=	${.CURDIR}/../../contrib/zlib-1.2
 
 .PATH: ${CONTRIBDIR}
 
-SRCS=	adler32.c compress.c crc32.c deflate.c gzio.c infback.c
+SRCS=	adler32.c compress.c crc32.c deflate.c gzclose.c gzlib.c gzread.c
+SRCS+=	gzwrite.c infback.c
 SRCS+=	inffast.c inflate.c inftrees.c trees.c uncompr.c zopen.c zutil.c
-SRCS+=	${PATCHES}
 
-CFLAGS+= -I${.OBJDIR} -I${CONTRIBDIR}
+CFLAGS+= -I${CONTRIBDIR}
 
 INCS=		zconf.h zlib.h
 

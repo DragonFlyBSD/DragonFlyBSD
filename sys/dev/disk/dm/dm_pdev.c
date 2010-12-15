@@ -159,17 +159,7 @@ dm_pdev_insert(const char *dev_name)
 
 	return dmp;
 }
-/*
- * Initialize pdev subsystem.
- */
-int
-dm_pdev_init(void)
-{
-	SLIST_INIT(&dm_pdev_list);	/* initialize global pdev list */
-	lockinit(&dm_pdev_mutex, "dmpdev", 0, LK_CANRECURSE);
 
-	return 0;
-}
 /*
  * Allocat new pdev structure if is not already present and
  * set name.
@@ -209,28 +199,7 @@ dm_pdev_rem(dm_pdev_t * dmp)
 
 	return 0;
 }
-/*
- * Destroy all existing pdev's in device-mapper.
- */
-int
-dm_pdev_destroy(void)
-{
-	dm_pdev_t *dm_pdev;
 
-	lockmgr(&dm_pdev_mutex, LK_EXCLUSIVE);
-	while (!SLIST_EMPTY(&dm_pdev_list)) {	/* List Deletion. */
-
-		dm_pdev = SLIST_FIRST(&dm_pdev_list);
-
-		SLIST_REMOVE_HEAD(&dm_pdev_list, next_pdev);
-
-		dm_pdev_rem(dm_pdev);
-	}
-	lockmgr(&dm_pdev_mutex, LK_RELEASE);
-
-	lockuninit(&dm_pdev_mutex);
-	return 0;
-}
 /*
  * This funcion is called from dm_dev_remove_ioctl.
  * When I'm removing device from list, I have to decrement
@@ -259,5 +228,40 @@ dm_pdev_decr(dm_pdev_t * dmp)
 		return 0;
 	}
 	lockmgr(&dm_pdev_mutex, LK_RELEASE);
+	return 0;
+}
+
+/*
+ * Initialize pdev subsystem.
+ */
+int
+dm_pdev_init(void)
+{
+	SLIST_INIT(&dm_pdev_list);	/* initialize global pdev list */
+	lockinit(&dm_pdev_mutex, "dmpdev", 0, LK_CANRECURSE);
+
+	return 0;
+}
+
+/*
+ * Destroy all existing pdev's in device-mapper.
+ */
+int
+dm_pdev_uninit(void)
+{
+	dm_pdev_t *dm_pdev;
+
+	lockmgr(&dm_pdev_mutex, LK_EXCLUSIVE);
+	while (!SLIST_EMPTY(&dm_pdev_list)) {	/* List Deletion. */
+
+		dm_pdev = SLIST_FIRST(&dm_pdev_list);
+
+		SLIST_REMOVE_HEAD(&dm_pdev_list, next_pdev);
+
+		dm_pdev_rem(dm_pdev);
+	}
+	lockmgr(&dm_pdev_mutex, LK_RELEASE);
+
+	lockuninit(&dm_pdev_mutex);
 	return 0;
 }

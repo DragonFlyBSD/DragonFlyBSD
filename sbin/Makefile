@@ -28,6 +28,7 @@ SUBDIR=	adjkerntz \
 	fsck \
 	fsck_msdosfs \
 	fsdb \
+	fsid \
 	fsirand \
 	getdevpath \
 	growfs \

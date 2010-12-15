@@ -2887,7 +2887,6 @@ options 	XBONEHACK
 options	KTR
 #options KTR_CTXSW
 #options KTR_ETHERNET
-#options KTR_GIANT_CONTENTION
 #options KTR_HAMMER
 #options KTR_IF_BGE
 #options KTR_IF_EM

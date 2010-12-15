@@ -44,6 +44,7 @@
 .ds doc-str-Lb-libdevinfo       Device and Resource Information Utility Library (libdevinfo, \-ldevinfo)
 .ds doc-str-Lb-libdevstat       Device Statistics Library (libdevstat, \-ldevstat)
 .ds doc-str-Lb-libfetch         File Transfer Library (libfetch, \-lfetch)
+.ds doc-str-Lb-libfsid          Filesystem Identification Library (libfsid, \-lfsid)
 .ds doc-str-Lb-libftpio         FTP Connection Management Library (libftpio, \-lftpio)
 .ds doc-str-Lb-libipx           IPX Address Conversion Support Library (libipx, \-lipx)
 .ds doc-str-Lb-libkcore         Kernel Memory Core Access Library (libkcore, \-lkcore)

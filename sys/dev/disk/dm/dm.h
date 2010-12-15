@@ -145,7 +145,6 @@ typedef struct dm_dev {
 	struct dm_dev_head upcalls;
 
 	struct disk *diskp;
-	struct lock diskp_mtx;
 
 	struct devstat stats;
 
@@ -266,6 +265,7 @@ int dm_detach(dm_dev_t *);
 int dm_dev_create_ioctl(prop_dictionary_t);
 int dm_dev_list_ioctl(prop_dictionary_t);
 int dm_dev_remove_ioctl(prop_dictionary_t);
+int dm_dev_remove_all_ioctl(prop_dictionary_t);
 int dm_dev_rename_ioctl(prop_dictionary_t);
 int dm_dev_resume_ioctl(prop_dictionary_t);
 int dm_dev_status_ioctl(prop_dictionary_t);
@@ -281,18 +281,16 @@ int dm_table_load_ioctl(prop_dictionary_t);
 int dm_table_status_ioctl(prop_dictionary_t);
 
 /* dm_target.c */
+int dm_target_init(void);
+int dm_target_uninit(void);
 dm_target_t* dm_target_alloc(const char *);
 dm_target_t* dm_target_autoload(const char *);
-int dm_target_destroy(void);
 int dm_target_insert(dm_target_t *);
 prop_array_t dm_target_prop_list(void);
 dm_target_t* dm_target_lookup(const char *);
 int dm_target_rem(char *);
 void dm_target_unbusy(dm_target_t *);
 void dm_target_busy(dm_target_t *);
-
-/* XXX temporally add */
-int dm_target_init(void);
 
 #define DM_MAX_PARAMS_SIZE 1024
 
@@ -337,11 +335,15 @@ void dm_table_head_init(dm_table_head_t *);
 void dm_table_head_destroy(dm_table_head_t *);
 
 /* dm_dev.c */
+int dm_dev_init(void);
+int dm_dev_uninit(void);
 dm_dev_t* dm_dev_alloc(void);
 void dm_dev_busy(dm_dev_t *);
-int dm_dev_destroy(void);
+int dm_dev_create(dm_dev_t **, const char *, const char *, int);
+int dm_dev_remove(dm_dev_t *);
+int dm_dev_remove_all(int);
+int dm_dev_destroy(dm_dev_t *);
 int dm_dev_free(dm_dev_t *);
-int dm_dev_init(void);
 int dm_dev_insert(dm_dev_t *);
 dm_dev_t* dm_dev_lookup(const char *, const char *, int);
 prop_array_t dm_dev_prop_list(void);
@@ -350,9 +352,9 @@ dm_dev_t* dm_dev_rem(dm_dev_t *, const char *, const char *, int);
 void dm_dev_unbusy(dm_dev_t *);
 
 /* dm_pdev.c */
-int dm_pdev_decr(dm_pdev_t *);
-int dm_pdev_destroy(void);
 int dm_pdev_init(void);
+int dm_pdev_uninit(void);
+int dm_pdev_decr(dm_pdev_t *);
 dm_pdev_t* dm_pdev_insert(const char *);
 off_t dm_pdev_correct_dump_offset(dm_pdev_t *, off_t);
 

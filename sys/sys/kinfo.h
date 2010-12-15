@@ -192,13 +192,13 @@ struct kinfo_proc {
 	int		kp_nice;
 	unsigned int	kp_swtime;
 
-	vm_size_t	kp_vm_map_size;	/* vmmap virtual size */
-	segsz_t		kp_vm_rssize;		/* resident set size */
-	segsz_t		kp_vm_swrss;		/* rss before last swap */
-	segsz_t		kp_vm_tsize;		/* text size */
-	segsz_t		kp_vm_dsize;		/* data size */
-	segsz_t		kp_vm_ssize;		/* stack size */
-        u_int 		kp_vm_prssize;		/* proportional rss */
+	vm_size_t	kp_vm_map_size;	/* vmmap virtual size in bytes */
+	segsz_t		kp_vm_rssize;		/* resident set size in pages */
+	segsz_t		kp_vm_swrss;		/* rss before last swap in pages */
+	segsz_t		kp_vm_tsize;		/* text size in pages */
+	segsz_t		kp_vm_dsize;		/* data size in pages */
+	segsz_t		kp_vm_ssize;		/* stack size in pages */
+        u_int		kp_vm_prssize;		/* proportional rss in pages */
 
 	int		kp_jailid;
 
