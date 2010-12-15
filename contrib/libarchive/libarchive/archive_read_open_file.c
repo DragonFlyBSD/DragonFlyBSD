@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_open_file.c,v 1.20 2007/06/26 03:06:48 kientzle Exp $");
+__FBSDID("$FreeBSD: head/lib/libarchive/archive_read_open_file.c 201093 2009-12-28 02:28:44Z kientzle $");
 
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
@@ -34,6 +34,9 @@ __FBSDID("$FreeBSD: src/lib/libarchive/archive_read_open_file.c,v 1.20 2007/06/2
 #endif
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
+#endif
+#ifdef HAVE_IO_H
+#include <io.h>
 #endif
 #ifdef HAVE_STDLIB_H
 #include <stdlib.h>
@@ -70,6 +73,7 @@ archive_read_open_FILE(struct archive *a, FILE *f)
 	size_t block_size = 128 * 1024;
 	void *b;
 
+	archive_clear_error(a);
 	mine = (struct read_FILE_data *)malloc(sizeof(*mine));
 	b = malloc(block_size);
 	if (mine == NULL || b == NULL) {
@@ -92,6 +96,10 @@ archive_read_open_FILE(struct archive *a, FILE *f)
 		mine->can_skip = 1;
 	} else
 		mine->can_skip = 0;
+
+#if defined(__CYGWIN__) || defined(_WIN32)
+	setmode(fileno(mine->f), O_BINARY);
+#endif
 
 	return (archive_read_open2(a, mine, NULL, file_read,
 		    file_skip, file_close));

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "cpio_platform.h"
+#include "lafe_platform.h"
 __FBSDID("$FreeBSD$");
 
 #ifdef HAVE_STRING_H
@@ -131,7 +131,6 @@ pm(const char *p, const char *s, int flags)
 				s = pm_slashskip(s);
 			}
 			return (*s == '\0');
-			break;
 		case '?':
 			/* ? always succeds, unless we hit end of 's' */
 			if (*s == '\0')
@@ -145,12 +144,11 @@ pm(const char *p, const char *s, int flags)
 			if (*p == '\0')
 				return (1);
 			while (*s) {
-				if (pathmatch(p, s, flags))
+				if (lafe_pathmatch(p, s, flags))
 					return (1);
 				++s;
 			}
 			return (0);
-			break;
 		case '[':
 			/*
 			 * Find the end of the [...] character class,
@@ -217,7 +215,7 @@ pm(const char *p, const char *s, int flags)
 
 /* Main entry point. */
 int
-pathmatch(const char *p, const char *s, int flags)
+lafe_pathmatch(const char *p, const char *s, int flags)
 {
 	/* Empty pattern only matches the empty string. */
 	if (p == NULL || *p == '\0')
@@ -229,9 +227,17 @@ pathmatch(const char *p, const char *s, int flags)
 		flags &= ~PATHMATCH_NO_ANCHOR_START;
 	}
 
-	/* Certain patterns anchor implicitly. */
-	if (*p == '*' || *p == '/')
+	if (*p == '/' && *s != '/')
+		return (0);
+
+	/* Certain patterns and file names anchor implicitly. */
+	if (*p == '*' || *p == '/' || *p == '/') {
+		while (*p == '/')
+			++p;
+		while (*s == '/')
+			++s;
 		return (pm(p, s, flags));
+	}
 
 	/* If start is unanchored, try to match start of each path element. */
 	if (flags & PATHMATCH_NO_ANCHOR_START) {

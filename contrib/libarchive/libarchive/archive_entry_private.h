@@ -22,8 +22,12 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libarchive/archive_entry_private.h,v 1.6 2008/09/30 03:53:03 kientzle Exp $
+ * $FreeBSD: head/lib/libarchive/archive_entry_private.h 201096 2009-12-28 02:41:27Z kientzle $
  */
+
+#ifndef __LIBARCHIVE_BUILD
+#error This header is only to be used internally to libarchive.
+#endif
 
 #ifndef ARCHIVE_ENTRY_PRIVATE_H_INCLUDED
 #define	ARCHIVE_ENTRY_PRIVATE_H_INCLUDED
@@ -115,7 +119,7 @@ struct archive_entry {
 		int64_t		aest_birthtime;
 		uint32_t	aest_birthtime_nsec;
 		gid_t		aest_gid;
-		ino_t		aest_ino;
+		int64_t		aest_ino;
 		mode_t		aest_mode;
 		uint32_t	aest_nlink;
 		uint64_t	aest_size;

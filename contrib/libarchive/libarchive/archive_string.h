@@ -22,9 +22,13 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libarchive/archive_string.h,v 1.13 2008/12/06 05:56:43 kientzle Exp $
+ * $FreeBSD: head/lib/libarchive/archive_string.h 201092 2009-12-28 02:26:06Z kientzle $
  *
  */
+
+#ifndef __LIBARCHIVE_BUILD
+#error This header is only to be used internally to libarchive.
+#endif
 
 #ifndef ARCHIVE_STRING_H_INCLUDED
 #define	ARCHIVE_STRING_H_INCLUDED

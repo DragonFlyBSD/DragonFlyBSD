@@ -6,8 +6,7 @@
  * modification, are permitted provided that the following conditions
  * are met:
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer
- *    in this position and unchanged.
+ *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
@@ -23,18 +22,34 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD$
+ * $FreeBSD: src/usr.bin/cpio/cpio_platform.h,v 1.2 2008/12/06 07:15:42 kientzle Exp $
  */
 
-#ifndef MATCHING_H
-#define MATCHING_H
+/*
+ * This header is the first thing included in any of the libarchive_fe
+ * source files.  As far as possible, platform-specific issues should
+ * be dealt with here and not within individual source files.
+ */
 
-#include "cpio.h"
+#ifndef LAFE_PLATFORM_H_INCLUDED
+#define	LAFE_PLATFORM_H_INCLUDED
 
-int	exclude(struct cpio *, const char *pattern);
-int	include(struct cpio *, const char *pattern);
-int	excluded(struct cpio *cpio, const char *pathname);
-void	cleanup_exclusions(struct cpio *cpio);
-int	unmatched_inclusions(struct cpio *cpio);
+#if defined(PLATFORM_CONFIG_H)
+/* Use hand-built config.h in environments that need it. */
+#include PLATFORM_CONFIG_H
+#else
+/* Read config.h or die trying. */
+#include "config.h"
+#endif
+
+/* Get a real definition for __FBSDID if we can */
+#if HAVE_SYS_CDEFS_H
+#include <sys/cdefs.h>
+#endif
+
+/* If not, define it so as to avoid dangling semicolons. */
+#ifndef __FBSDID
+#define	__FBSDID(a)     struct _undefined_hack
+#endif
 
 #endif
