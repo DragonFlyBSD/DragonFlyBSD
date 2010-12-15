@@ -31,28 +31,30 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
 #include "libfsid.h"
+
 #include <vfs/ufs/ufs_types.h>
 #include <vfs/ufs/fs.h>
 
 static char buffer[MAXBSIZE];
 
-int
+fsid_t
 ufs_probe(const char *dev)
 {
 	static struct fs *fs;
 
 	if(fsid_dev_read(dev, SBOFF, sizeof(buffer), buffer) != 0)
-		return 0;
+		return FSID_UNKNOWN;
 
 	fs = (struct fs *)&buffer;
 
 	if (fs->fs_magic != FS_MAGIC || fs->fs_bsize > MAXBSIZE ||
 		(unsigned)fs->fs_bsize < sizeof(struct fs)) {
-		return 0;
+		return FSID_UNKNOWN;
 	}
 
-	return 1;
+	return FSID_UFS;
 }
 
 char *
@@ -66,14 +68,13 @@ ufs_volname(const char *dev)
 	fs = (struct fs *)&buffer;
 
 	if (fs->fs_magic != FS_MAGIC || fs->fs_bsize > MAXBSIZE ||
-		(unsigned)fs->fs_bsize < sizeof(struct fs)) {
+	    (unsigned)fs->fs_bsize < sizeof(struct fs) ||
+	    fs->fs_volname[0] == '\0') {
 		return NULL;
 	}
 
-	if (fs->fs_volname[0] == '\0')
-		return NULL;
-
 	fs->fs_volname[MAXVOLLEN - 1] = '\0';
+
 	return fs->fs_volname;
 }
 

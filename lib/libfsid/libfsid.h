@@ -31,29 +31,34 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
 #ifndef LIBFSID_H
 #define LIBFSID_H
 
 #include <sys/types.h>
 #include <sys/uio.h>
-#include <stdlib.h>
-#include <stdio.h>
+
 #include <err.h>
 #include <fcntl.h>
-#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
-#define FSID_HAMMER     0x01
-#define FSID_UFS        0x02
-#define FSID_CD9660     0x03
-#define FSID_EXT2       0x04
-#define FSID_MSDOSFS    0x05
+typedef enum {
+	FSID_UNKNOWN,
+	FSID_HAMMER,
+	FSID_UFS,
+	FSID_CD9660,
+	FSID_EXT2,
+	FSID_MSDOSFS
+} fsid_t;
 
-typedef int (probe_func_t)(const char *);
+typedef fsid_t (probe_func_t)(const char *);
 typedef char *(volname_func_t)(const char *);
 
 struct fs_type {
-	const char *fs_name;
+	const char	*fs_name;
 	probe_func_t	*fs_probe;
 	volname_func_t	*fs_volname;
 };
@@ -70,18 +75,18 @@ volname_func_t cd9660_volname;
 volname_func_t ext2_volname;
 volname_func_t msdosfs_volname;
 
-int fsid_probe(const char *dev, const char *fs_type);
-int fsid_probe_all(const char *dev);
+fsid_t fsid_probe(const char *dev, const char *fs_name);
+fsid_t fsid_probe_all(const char *dev);
 
-char *fsid_volname(const char *dev, const char *fs_type);
+char *fsid_volname(const char *dev, const char *fs_name);
 char *fsid_volname_all(const char *dev);
 
 /* Extra functions */
-const char *fsid_fsname(int);
+const char *fsid_fsname(fsid_t);
 int fsid_fs_count(void);
-
 
 #ifdef _FSID_INTERNAL
 int fsid_dev_read(const char *dev, off_t off, size_t len, char *buf);
 #endif
+
 #endif /* LIBFSID_H */

@@ -1,7 +1,7 @@
 .\" Copyright (c) 2010 The DragonFly Project.  All rights reserved.
 .\" 
 .\" This code is derived from software contributed to The DragonFly Project
-.\" by Ákos Kovács <akoskovacs@gmx.com>
+.\" by Akos Kovacs <akoskovacs@gmx.com>
 .\" 
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -38,91 +38,132 @@
 .Nm fsid_probe_all ,
 .Nm fsid_volname ,
 .Nm fsid_volname_all ,
-.Nm fsid_fsname
+.Nm fsid_fsname ,
 .Nm fsid_fs_count
 .Nd general libfsid functions
 .Sh LIBRARY
-A simple interface for filesystem recognising.
-Programs should be linked with
-.Fl lfsid .
+.Lb libfsid
 .Sh SYNOPSIS
 .In libfsid.h
-.Ft int
-.Fn fsid_probe "const char *dev" "const char *fs_type"
-.Ft int
+.Ft fsid_t
+.Fn fsid_probe "const char *dev" "const char *fs_name"
+.Ft fsid_t
 .Fn fsid_probe_all "const char *dev"
 .Ft char *
-.Fn fsid_volname "const char *dev" "const char *fs_type"
+.Fn fsid_volname "const char *dev" "const char *fs_name"
 .Ft char *
 .Fn fsid_volname_all "const char *dev"
 .Ft char *
-.Fn fsid_fsname "int id"
+.Fn fsid_fsname "fsid_t id"
 .Ft int
 .Fn fsid_fs_count "void"
 .Sh DESCRIPTION
-.Pp
 .\" General description
-The 
+The
 .Lb libfsid
 provides an interface to determine several filesystems
 and to get their volume labels.
 .Pp
-Big part of the functions use the first parameter
+Most functions use the parameter
 .Fa dev
-as the full path of the device, some of them has additionally an
-.Fa fs_type
-parameter wich is the name of the choosen filesystem. It can be:
-.Pp
-.Bd -literal -offset indent -compact
-HAMMER		HAMMER
-UFS		UFS
-CD9660		ISO 9660
-EXT2		Extended 2
-MSDOSFS		FAT32, FAT16
-.Ed
-.Pp
+for specifying the full path of the device and some of them have an additional
+.Fa fs_name
+parameter wich is the name of the chosen filesystem.
+It can be:
+.Bl -tag -width ".Li MSDOSFS" -offset indent
+.It Li HAMMER
+A
+.Xr HAMMER 5
+filesystem
+.It Li UFS
+A
+.Xr UFS 5
+filesystem
+.It Li CD9660
+An ISO 9660 filesystem
+.It Li EXT2
+Linux' second extended filesystem
+.It Li MSDOSFS
+An
+.Xr msdos 5
+filesystem
+.El
 .Pp
 .\" fsid_probe function
 The
 .Fn fsid_probe
-returns 1 if the device has the filesystem type as expected by the
-.Fa fs_type
-parameter, otherwise 0.
+function returns one of
+.Dv FSID_CD9660 ,
+.Dv FSID_EXT2 ,
+.Dv FSID_HAMMER
+or
+.Dv FSID_UFS
+if the device has the filesystem type as expected by the
+.Fa fs_name
+parameter, otherwise
+.Dv FSID_UNKNOWN .
 .Pp
 .\" fsid_probe_all function
+The
 .Fn fsid_probe_all
-function try to identify the filesystem type, it returns 0 if the filesystem unknown, or the check fails. Otherwise the returned value is one of this macros:
+function tries to identify the filesystem type.
+It returns
+.Dv FSID_UNKNOWN
+if the filesystem is unknown, or the check fails.
+Otherwise the returned value is one of:
+.Bl -tag -width ".Dv FSID_MSDOSFS" -offset indent
+.It Dv FSID_HAMMER
+A
+.Xr HAMMER 5
+filesystem
+.It Dv FSID_UFS
+A
+.Xr UFS 5
+filesystem
+.It Dv FSID_CD9660
+An ISO 9660 filesystem
+.It Dv FSID_EXT2
+Linux' second extended filesystem
+.It Dv FSID_MSDOSFS
+An
+.Xr msdos 5
+filesystem
+.El
 .Pp
-.Bd -literal -offset indent -compact
-FSID_HAMMER	HAMMER
-FSID_UFS	UFS
-FSID_CD9660	ISO 9660
-FSID_EXT2	Extended 2
-FSID_MSDOSFS	FAT32, FAT16
-.Ed
-.Pp
-The name of the filesystem can easily queried with the
-.Fn fsid_fsname .
-.Pp
-.Fn fsid_volname
-function returns with the volume label, if the filesystem is the same as the
-.Fa fs_type ,
-if not just returns with 
-.Dv NULL .
-.Pp
-.Fn fsid_volname_all
-give back the volume label, if the filesystem known otherwise returns with
-.Dv NULL .
-.Pp
+The name of the filesystem can be easily queried with the
 .Fn fsid_fsname
-give back the name of the filesystem as a pointer to string. The
-.Fa id
-is mostly the return value of the
-.Fn fsid_probe_all .
+function.
 .Pp
+The
+.Fn fsid_volname
+function returns the volume label, if the filesystem name is the same
+as specified by
+.Fa fs_name .
+If not, it returns
+.Dv NULL .
+.Pp
+The
+.Fn fsid_volname_all
+function returns the volume label, if the filesystem is known.
+Otherwise it returns
+.Dv NULL .
+.Pp
+The
+.Fn fsid_fsname
+function returns the name of the filesystem as a pointer to string.
+The
+.Fa id
+is usually the return value of a
+.Fn fsid_probe_all
+call.
+.Pp
+The
 .Fn fsid_fs_count
-return with a number of supported filesystems.
-.Sh AUTHOR
-The library and the manual page wrote by Ákos Kovács <akoskovacs@gmx.com>.
+function returns the number of supported filesystems.
 .Sh SEE ALSO
-.Xr devattr 3 
+.Xr devattr 3
+.Sh AUTHOR
+.An -nosplit
+The library and the manual page were written by
+.An Akos Kovacs
+.Aq akoskovacs@gmx.com .

@@ -32,24 +32,26 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
 #include "libfsid.h"
+
 #include <vfs/msdosfs/bootsect.h>
 
 #define MSDOS_BOOT_BLOCK_SIZE 512
 
-static char buffer[MSDOS_BOOT_BLOCK_SIZE * 4];
 static char *get_volname(char *buf);
+static char buffer[MSDOS_BOOT_BLOCK_SIZE * 4];
 
-int
+fsid_t
 msdosfs_probe(const char *dev)
 {
 	if (fsid_dev_read(dev, 0L, sizeof(buffer), buffer) != 0)
-		return 0;
+		return FSID_UNKNOWN;
 
 	if (get_volname(buffer) != NULL)
-		return 1;
-	else
-		return 0;
+		return FSID_MSDOSFS;
+
+	return FSID_MSDOSFS;
 }
 char *
 msdosfs_volname(const char *dev)
@@ -60,13 +62,12 @@ msdosfs_volname(const char *dev)
 		return NULL;
 
 	volname = get_volname(buffer);
-	if (volname == NULL)
+
+	if (volname == NULL || volname[0] == '\0')
 		return NULL;
 
-	if (volname[0] == '\0')
-		return NULL;
+	volname[sizeof(volname) - 1] = '\0';
 
-	volname[10] = '\0';
 	return volname;
 }
 
@@ -97,7 +98,8 @@ get_volname(char *buff)
 	 * If this is not a BPB v7, try it as a bpb v4.
 	 */
 	extb = (struct extboot *)bpb4->bsExt;
-	if ((extb->exBootSignature == 0x28 || extb->exBootSignature == 0x29) &&
+	if ((extb->exBootSignature == EXBOOTSIG ||
+	     extb->exBootSignature == EXBOOTSIG2) &&
 	    strncmp(extb->exFileSysType, "FAT", 3) == 0)
 		return extb->exVolumeLabel;
 

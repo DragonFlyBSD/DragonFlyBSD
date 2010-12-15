@@ -31,25 +31,27 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
 #include "libfsid.h"
+
 #include <vfs/isofs/cd9660/iso.h>
 
 static char buffer[ISO_DEFAULT_BLOCK_SIZE];
 
-int
+fsid_t
 cd9660_probe(const char *dev)
 {
 	struct iso_primary_descriptor *pdsc;
 
 	if (fsid_dev_read(dev, 32768L, sizeof(buffer), buffer) != 0)
-		return 0;
+		return FSID_UNKNOWN;
 
 	pdsc = (struct iso_primary_descriptor *)&buffer;
 
 	if ((strncmp(pdsc->id, ISO_STANDARD_ID, 4)) == 0)
-		return 1;
+		return FSID_CD9660;
 
-	return 0;
+	return FSID_UNKNOWN;
 }
 
 char *
@@ -62,12 +64,11 @@ cd9660_volname(const char *dev)
 
 	pdsc = (struct iso_primary_descriptor *)&buffer;
 
-	if ((strncmp(pdsc->id, ISO_STANDARD_ID, 4)) != 0)
+	if (strncmp(pdsc->id, ISO_STANDARD_ID, 4) != 0 ||
+	    pdsc->volume_id[0] == '\0')
 		return NULL;
 
-	if (pdsc->volume_id[0] == '\0')
-		return NULL;
+	pdsc->volume_id[sizeof(pdsc->volume_id) - 1] = '\0';
 
-	pdsc->volume_id[30] = '\0';
 	return pdsc->volume_id;
 }

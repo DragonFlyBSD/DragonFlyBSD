@@ -31,26 +31,28 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#include "libfsid.h"
+
 #include <vfs/gnu/ext2fs/ext2_fs.h>
 #include <vfs/gnu/ext2fs/fs.h>
 
+#include "libfsid.h"
+
 static char buffer[sizeof(struct ext2_super_block)*2];
 
-int
+fsid_t
 ext2_probe(const char *dev)
 {
 	static struct ext2_super_block *fs;
 
 	if (fsid_dev_read(dev, SBOFF, sizeof(buffer), buffer) != 0)
-		return 0;
+		return FSID_UNKNOWN;
 
 	fs = (struct ext2_super_block *)&buffer;
 
 	if (fs->s_magic == EXT2_SUPER_MAGIC)
-		return 1;
+		return FSID_EXT2;
 
-	return 0;
+	return FSID_UNKNOWN;
 }
 
 char *
@@ -63,12 +65,10 @@ ext2_volname(const char *dev)
 
 	fs = (struct ext2_super_block *)&buffer;
 
-	if (fs->s_magic != EXT2_SUPER_MAGIC)
+	if (fs->s_magic != EXT2_SUPER_MAGIC || fs->s_volume_name[0] == '\0')
 		return NULL;
 
-	if (fs->s_volume_name[0] == '\0')
-		return NULL;
+	fs->s_volume_name[sizeof(fs->s_volume_name) - 1] = '\0';
 
-	fs->s_volume_name[15] = '\0';
-		return fs->s_volume_name;
+	return fs->s_volume_name;
 }

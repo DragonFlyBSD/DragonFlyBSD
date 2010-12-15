@@ -31,26 +31,27 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
 #include "libfsid.h"
+
 #include <vfs/hammer/hammer_disk.h>
 
-static char buffer[16384];
+static char buffer[HAMMER_BUFSIZE];
 
-int
+fsid_t
 hammer_probe(const char *dev)
 {
 	static struct hammer_volume_ondisk *fs;
 
 	if (fsid_dev_read(dev, 0L, sizeof(buffer), buffer) != 0)
-		return 0;
+		return FSID_UNKNOWN;
 
 	fs = (struct hammer_volume_ondisk *)&buffer;
 
-	if (fs->vol_signature != HAMMER_FSBUF_VOLUME) {
-		return 0;
-	}
+	if (fs->vol_signature != HAMMER_FSBUF_VOLUME)
+		return FSID_UNKNOWN;
 
-	return 1;
+	return FSID_HAMMER;
 }
 
 char *
@@ -63,14 +64,12 @@ hammer_volname(const char *dev)
 
 	fs = (struct hammer_volume_ondisk *)&buffer;
 
-	if (fs->vol_signature != HAMMER_FSBUF_VOLUME) {
-		return NULL;
-	}
-
-	if (fs->vol_name[0] == '\0')
+	if (fs->vol_signature != HAMMER_FSBUF_VOLUME ||
+	    fs->vol_name[0] == '\0')
 		return NULL;
 
-	fs->vol_name[63] = '\0';
+	fs->vol_name[sizeof(fs->vol_name) - 1] = '\0';
+
 	return fs->vol_name;
 }
 
