@@ -150,6 +150,10 @@ SYSCTL_INT(_lwkt, OID_AUTO, vnode_mpsafe, CTLFLAG_RW,
 SYSCTL_INT(_lwkt, OID_AUTO, vmobj_mpsafe, CTLFLAG_RW,
     &vmobj_token.t_flags, 0, "Require MP lock for vmobj_token");
 
+static int lwkt_token_ipi_dispatch = 4;
+SYSCTL_INT(_lwkt, OID_AUTO, token_ipi_dispatch, CTLFLAG_RW,
+    &lwkt_token_ipi_dispatch, 0, "Number of IPIs to dispatch on token release");
+
 /*
  * The collision count is bumped every time the LWKT scheduler fails
  * to acquire needed tokens in addition to a normal lwkt_gettoken()
@@ -258,20 +262,61 @@ lwkt_reltoken_mask_remote(void *arg, int arg2, struct intrframe *frame)
 }
 #endif
 
+/*
+ * This bit of code sends a LWKT reschedule request to whatever other cpus
+ * had contended on the token being released.  We could wake up all the cpus
+ * but generally speaking if there is a lot of contention we really only want
+ * to wake up a subset of cpus to avoid aggregating O(N^2) IPIs.  The current
+ * cpuid is used as a basis to select which other cpus to wake up.
+ *
+ * lwkt.token_ipi_dispatch specifies the maximum number of IPIs to dispatch
+ * on a token release.
+ */
 static __inline
 void
 _lwkt_reltoken_mask(lwkt_token_t tok)
 {
 #ifdef SMP
 	cpumask_t mask;
+	cpumask_t tmpmask;
+	cpumask_t wumask;	/* wakeup mask */
+	int wucount;		/* wakeup count */
+	int cpuid;
 
-	while ((mask = tok->t_collmask) != 0) {
-		if (atomic_cmpset_cpumask(&tok->t_collmask, mask, 0)) {
-			lwkt_send_ipiq3_mask(mask, lwkt_reltoken_mask_remote,
-					     NULL, 0);
-			break;
-		}
+	/*
+	 * Mask of contending cpus we want to wake up.
+	 */
+	mask = tok->t_collmask;
+	cpu_ccfence();
+	if (mask == 0)
+		return;
+
+	/*
+	 * Degenerate case - IPI to all contending cpus
+	 */
+	wucount = lwkt_token_ipi_dispatch;
+	if (wucount <= 0 || wucount >= ncpus) {
+		wucount = 0;
+		wumask = mask;
+	} else {
+		wumask = 0;
 	}
+
+	/*
+	 * Calculate which cpus to IPI to
+	 */
+	while (wucount && mask) {
+		tmpmask = mask & ~(CPUMASK(mycpu->gd_cpuid) - 1);
+		if (tmpmask)
+			cpuid = BSFCPUMASK(tmpmask);
+		else
+			cpuid = BSFCPUMASK(mask);
+		wumask |= CPUMASK(cpuid);
+		mask &= ~CPUMASK(cpuid);
+		--wucount;
+	}
+	atomic_clear_cpumask(&tok->t_collmask, wumask);
+	lwkt_send_ipiq3_mask(wumask, lwkt_reltoken_mask_remote, NULL, 0);
 #endif
 }
 
