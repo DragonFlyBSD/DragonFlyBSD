@@ -1,7 +1,7 @@
-/*	$NetBSD: util.c,v 1.147 2008/05/10 00:05:31 skd Exp $	*/
+/*	$NetBSD: util.c,v 1.155 2010/06/05 13:59:39 lukem Exp $	*/
 
 /*-
- * Copyright (c) 1997-2008 The NetBSD Foundation, Inc.
+ * Copyright (c) 1997-2009 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This code is derived from software contributed to The NetBSD Foundation
@@ -64,7 +64,7 @@
 
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: util.c,v 1.147 2008/05/10 00:05:31 skd Exp $");
+__RCSID("$NetBSD: util.c,v 1.155 2010/06/05 13:59:39 lukem Exp $");
 #endif /* not lint */
 
 /*
@@ -85,6 +85,7 @@ __RCSID("$NetBSD: util.c,v 1.147 2008/05/10 00:05:31 skd Exp $");
 #include <signal.h>
 #include <libgen.h>
 #include <limits.h>
+#include <locale.h>
 #include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -103,7 +104,7 @@ void
 setpeer(int argc, char *argv[])
 {
 	char *host;
-	char *port;
+	const char *port;
 
 	if (argc == 0)
 		goto usage;
@@ -163,25 +164,25 @@ setpeer(int argc, char *argv[])
 }
 
 static void
-parse_feat(const char *line)
+parse_feat(const char *fline)
 {
 
 			/*
 			 * work-around broken ProFTPd servers that can't
-			 * even obey RFC2389.
+			 * even obey RFC 2389.
 			 */
-	while (*line && isspace((int)*line))
-		line++;
+	while (*fline && isspace((int)*fline))
+		fline++;
 
-	if (strcasecmp(line, "MDTM") == 0)
+	if (strcasecmp(fline, "MDTM") == 0)
 		features[FEAT_MDTM] = 1;
-	else if (strncasecmp(line, "MLST", sizeof("MLST") - 1) == 0) {
+	else if (strncasecmp(fline, "MLST", sizeof("MLST") - 1) == 0) {
 		features[FEAT_MLST] = 1;
-	} else if (strcasecmp(line, "REST STREAM") == 0)
+	} else if (strcasecmp(fline, "REST STREAM") == 0)
 		features[FEAT_REST_STREAM] = 1;
-	else if (strcasecmp(line, "SIZE") == 0)
+	else if (strcasecmp(fline, "SIZE") == 0)
 		features[FEAT_SIZE] = 1;
-	else if (strcasecmp(line, "TVFS") == 0)
+	else if (strcasecmp(fline, "TVFS") == 0)
 		features[FEAT_TVFS] = 1;
 }
 
@@ -372,51 +373,51 @@ int
 ftp_login(const char *host, const char *luser, const char *lpass)
 {
 	char tmp[80];
-	char *user, *pass, *acct, *p;
+	char *fuser, *pass, *facct, *p;
 	char emptypass[] = "";
 	const char *errormsg;
 	int n, aflag, rval, nlen;
 
 	aflag = rval = 0;
-	user = pass = acct = NULL;
+	fuser = pass = facct = NULL;
 	if (luser)
-		user = ftp_strdup(luser);
+		fuser = ftp_strdup(luser);
 	if (lpass)
 		pass = ftp_strdup(lpass);
 
 	DPRINTF("ftp_login: user `%s' pass `%s' host `%s'\n",
-	    STRorNULL(user), STRorNULL(pass), STRorNULL(host));
+	    STRorNULL(fuser), STRorNULL(pass), STRorNULL(host));
 
 	/*
 	 * Set up arguments for an anonymous FTP session, if necessary.
 	 */
 	if (anonftp) {
-		FREEPTR(user);
-		user = ftp_strdup("anonymous");	/* as per RFC1635 */
+		FREEPTR(fuser);
+		fuser = ftp_strdup("anonymous");	/* as per RFC 1635 */
 		FREEPTR(pass);
 		pass = ftp_strdup(getoptionvalue("anonpass"));
 	}
 
-	if (ruserpass(host, &user, &pass, &acct) < 0) {
+	if (ruserpass(host, &fuser, &pass, &facct) < 0) {
 		code = -1;
 		goto cleanup_ftp_login;
 	}
 
-	while (user == NULL) {
+	while (fuser == NULL) {
 		if (localname)
 			fprintf(ttyout, "Name (%s:%s): ", host, localname);
 		else
 			fprintf(ttyout, "Name (%s): ", host);
 		errormsg = NULL;
-		nlen = getline(stdin, tmp, sizeof(tmp), &errormsg);
+		nlen = get_line(stdin, tmp, sizeof(tmp), &errormsg);
 		if (nlen < 0) {
 			fprintf(ttyout, "%s; %s aborted.\n", errormsg, "login");
 			code = -1;
 			goto cleanup_ftp_login;
 		} else if (nlen == 0) {
-			user = ftp_strdup(localname);
+			fuser = ftp_strdup(localname);
 		} else {
-			user = ftp_strdup(tmp);
+			fuser = ftp_strdup(tmp);
 		}
 	}
 
@@ -424,16 +425,16 @@ ftp_login(const char *host, const char *luser, const char *lpass)
 		char *nuser;
 		size_t len;
 
-		len = strlen(user) + 1 + strlen(host) + 1;
+		len = strlen(fuser) + 1 + strlen(host) + 1;
 		nuser = ftp_malloc(len);
-		(void)strlcpy(nuser, user, len);
+		(void)strlcpy(nuser, fuser, len);
 		(void)strlcat(nuser, "@",  len);
 		(void)strlcat(nuser, host, len);
-		FREEPTR(user);
-		user = nuser;
+		FREEPTR(fuser);
+		fuser = nuser;
 	}
 
-	n = command("USER %s", user);
+	n = command("USER %s", fuser);
 	if (n == CONTINUE) {
 		if (pass == NULL) {
 			p = getpass("Password: ");
@@ -447,27 +448,27 @@ ftp_login(const char *host, const char *luser, const char *lpass)
 	}
 	if (n == CONTINUE) {
 		aflag++;
-		if (acct == NULL) {
+		if (facct == NULL) {
 			p = getpass("Account: ");
 			if (p == NULL)
 				p = emptypass;
-			acct = ftp_strdup(p);
+			facct = ftp_strdup(p);
 			memset(p, 0, strlen(p));
 		}
-		if (acct[0] == '\0') {
+		if (facct[0] == '\0') {
 			warnx("Login failed");
 			goto cleanup_ftp_login;
 		}
-		n = command("ACCT %s", acct);
-		memset(acct, 0, strlen(acct));
+		n = command("ACCT %s", facct);
+		memset(facct, 0, strlen(facct));
 	}
 	if ((n != COMPLETE) ||
-	    (!aflag && acct != NULL && command("ACCT %s", acct) != COMPLETE)) {
+	    (!aflag && facct != NULL && command("ACCT %s", facct) != COMPLETE)) {
 		warnx("Login failed");
 		goto cleanup_ftp_login;
 	}
 	rval = 1;
-	username = ftp_strdup(user);
+	username = ftp_strdup(fuser);
 	if (proxy)
 		goto cleanup_ftp_login;
 
@@ -485,13 +486,13 @@ ftp_login(const char *host, const char *luser, const char *lpass)
 	updateremotecwd();
 
  cleanup_ftp_login:
-	FREEPTR(user);
+	FREEPTR(fuser);
 	if (pass != NULL)
 		memset(pass, 0, strlen(pass));
 	FREEPTR(pass);
-	if (acct != NULL)
-		memset(acct, 0, strlen(acct));
-	FREEPTR(acct);
+	if (facct != NULL)
+		memset(facct, 0, strlen(facct));
+	FREEPTR(facct);
 	return (rval);
 }
 
@@ -502,7 +503,7 @@ ftp_login(const char *host, const char *luser, const char *lpass)
  * Returns false if no new arguments have been added.
  */
 int
-another(int *pargc, char ***pargv, const char *prompt)
+another(int *pargc, char ***pargv, const char *aprompt)
 {
 	const char	*errormsg;
 	int		ret, nlen;
@@ -513,10 +514,10 @@ another(int *pargc, char ***pargv, const char *prompt)
 		fputs("Sorry, arguments too long.\n", ttyout);
 		intr(0);
 	}
-	fprintf(ttyout, "(%s) ", prompt);
+	fprintf(ttyout, "(%s) ", aprompt);
 	line[len++] = ' ';
 	errormsg = NULL;
-	nlen = getline(stdin, line + len, sizeof(line)-len, &errormsg);
+	nlen = get_line(stdin, line + len, sizeof(line)-len, &errormsg);
 	if (nlen < 0) {
 		fprintf(ttyout, "%s; %s aborted.\n", errormsg, "operation");
 		intr(0);
@@ -543,7 +544,7 @@ remglob(char *argv[], int doswitch, const char **errbuf)
 	char temp[MAXPATHLEN];
 	int oldverbose, oldhash, oldprogress, fd;
 	char *cp;
-	const char *mode;
+	const char *rmode;
 	size_t len;
 
 	if (!mflag || !connected) {
@@ -582,8 +583,8 @@ remglob(char *argv[], int doswitch, const char **errbuf)
 		progress = 0;
 		if (doswitch)
 			pswitch(!proxy);
-		for (mode = "w"; *++argv != NULL; mode = "a")
-			recvrequest("NLST", temp, *argv, mode, 0, 0);
+		for (rmode = "w"; *++argv != NULL; rmode = "a")
+			recvrequest("NLST", temp, *argv, rmode, 0, 0);
 		if ((code / 100) != COMPLETE) {
 			if (errbuf != NULL)
 				*errbuf = reply_string;
@@ -755,11 +756,12 @@ remotemodtime(const char *file, int noisy)
 				goto bad_parse_time;
 			else
 				goto cleanup_parse_time;
-		} else
-			DPRINTF("remotemodtime: parsed date `%s' as " LLF
+		} else {
+			DPRINTF("remotemodtime: parsed time `%s' as " LLF
 			    ", %s",
 			    timestr, (LLT)rtime,
 			    rfc2822time(localtime(&rtime)));
+		}
 	} else {
 		if (r == ERROR && code == 500 && features[FEAT_MDTM] == -1)
 			features[FEAT_MDTM] = 0;
@@ -776,7 +778,7 @@ remotemodtime(const char *file, int noisy)
 }
 
 /*
- * Format tm in an RFC2822 compatible manner, with a trailing \n.
+ * Format tm in an RFC 2822 compatible manner, with a trailing \n.
  * Returns a pointer to a static string containing the result.
  */
 const char *
@@ -786,8 +788,34 @@ rfc2822time(const struct tm *tm)
 
 	if (strftime(result, sizeof(result),
 	    "%a, %d %b %Y %H:%M:%S %z\n", tm) == 0)
-		errx(1, "Can't convert RFC2822 time: buffer too small");
+		errx(1, "Can't convert RFC 2822 time: buffer too small");
 	return result;
+}
+
+/*
+ * Parse HTTP-date as per RFC 2616.
+ * Return a pointer to the next character of the consumed date string,
+ * or NULL if failed.
+ */
+const char *
+parse_rfc2616time(struct tm *parsed, const char *httpdate)
+{
+	const char *t;
+	const char *curlocale;
+
+	/* The representation of %a depends on the current locale. */
+	curlocale = setlocale(LC_TIME, NULL);
+	(void)setlocale(LC_TIME, "C");
+								/* RFC 1123 */
+	if ((t = strptime(httpdate, "%a, %d %b %Y %H:%M:%S GMT", parsed)) ||
+								/* RFC 850 */
+	    (t = strptime(httpdate, "%a, %d-%b-%y %H:%M:%S GMT", parsed)) ||
+								/* asctime */
+	    (t = strptime(httpdate, "%a, %b %d %H:%M:%S %Y", parsed))) {
+		;			/* do nothing */
+	}
+	(void)setlocale(LC_TIME, curlocale);
+	return t;
 }
 
 /*
@@ -808,7 +836,8 @@ updatelocalcwd(void)
 void
 updateremotecwd(void)
 {
-	int	 overbose, ocode, i;
+	int	 overbose, ocode;
+	size_t	 i;
 	char	*cp;
 
 	overbose = verbose;
@@ -877,8 +906,8 @@ fileindir(const char *file, const char *dir)
 void
 list_vertical(StringList *sl)
 {
-	int i, j;
-	int columns, lines;
+	size_t i, j;
+	size_t columns, lines;
 	char *p;
 	size_t w, width;
 
@@ -1067,11 +1096,10 @@ setupsockbufsize(int sock)
 void
 ftpvis(char *dst, size_t dstlen, const char *src, size_t srclen)
 {
-	int	di, si;
+	size_t	di, si;
 
-	for (di = si = 0;
-	    src[si] != '\0' && di < dstlen && si < srclen;
-	    di++, si++) {
+	di = si = 0;
+	while (src[si] != '\0' && di < dstlen && si < srclen) {
 		switch (src[si]) {
 		case '\\':
 		case ' ':
@@ -1079,12 +1107,18 @@ ftpvis(char *dst, size_t dstlen, const char *src, size_t srclen)
 		case '\r':
 		case '\n':
 		case '"':
-			dst[di++] = '\\';
-			if (di >= dstlen)
+			/*
+			 * Need room for two characters and NUL, avoiding
+			 * incomplete escape sequences at end of dst.
+			 */
+			if (di >= dstlen - 3)
 				break;
+			dst[di++] = '\\';
 			/* FALLTHROUGH */
 		default:
-			dst[di] = src[si];
+			dst[di] = src[si++];
+			if (di < dstlen)
+				di++;
 		}
 	}
 	dst[di] = '\0';
@@ -1097,7 +1131,8 @@ void
 formatbuf(char *buf, size_t len, const char *src)
 {
 	const char	*p, *p2, *q;
-	int		 i, op, updirs, pdirs;
+	size_t		 i;
+	int		 op, updirs, pdirs;
 
 #define ADDBUF(x) do { \
 		if (i >= len - 1) \
@@ -1215,7 +1250,7 @@ isipv6addr(const char *addr)
 	struct addrinfo hints, *res;
 
 	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = PF_INET6;
+	hints.ai_family = AF_INET6;
 	hints.ai_socktype = SOCK_DGRAM;	/*dummy*/
 	hints.ai_flags = AI_NUMERICHOST;
 	if (getaddrinfo(addr, "0", &hints, &res) != 0)
@@ -1245,7 +1280,7 @@ isipv6addr(const char *addr)
  *	-3	line was too long
  */
 int
-getline(FILE *stream, char *buf, size_t buflen, const char **errormsg)
+get_line(FILE *stream, char *buf, size_t buflen, const char **errormsg)
 {
 	int	rv, ch;
 	size_t	len;
