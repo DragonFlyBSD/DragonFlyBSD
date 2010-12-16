@@ -1,4 +1,4 @@
-/*	$NetBSD: want.c,v 1.13 2009/04/12 13:07:21 lukem Exp $	*/
+/*	$NetBSD: last.c,v 1.15 2000/06/30 06:19:58 simonb Exp $	*/
 
 /*
  * Copyright (c) 1987, 1993, 1994
@@ -12,7 +12,11 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *	This product includes software developed by the University of
+ *	California, Berkeley and its contributors.
+ * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,149 +36,58 @@ static struct utmp *buf;
 
 static void onintr(int);
 static int want(struct utmp *, int);
-static const char *gethost(struct utmp *, const char *, int);
-
-static const char *
-/*ARGSUSED*/
-gethost(struct utmp *ut, const char *host, int numeric)
-{
-#if FIRSTVALID == 0
-	return numeric ? "" : host;
-#else
-	if (numeric) {
-		static char hbuf[512];
-		hbuf[0] = '\0';
-		(void)sockaddr_snprintf(hbuf, sizeof(hbuf), "%a",
-		    (struct sockaddr *)&ut->ut_ss);
-		return hbuf;
-	} else
-		return host;
-#endif
-}
-
-#define NULTERM(what) \
-	if (check ## what) \
-		(void)strlcpy(what ## p = what ## buf, bp->ut_ ## what, \
-		    sizeof(what ## buf)); \
-	else \
-		what ## p = bp->ut_ ## what
 
 /*
  * wtmp --
  *	read through the wtmp file
  */
 void
-wtmp(const char *file, int namesz, int linesz, int hostsz, int numeric)
+wtmp(const char *file, int namesz, int linesz, int hostsz)
 {
 	struct utmp	*bp;		/* current structure */
 	TTY	*T;			/* tty list entry */
 	struct stat	stb;		/* stat of file for sz */
-	off_t	offset;
-	int	wfd;
-	char	*ct;
-	const char *crmsg;
+	time_t	delta;			/* time difference */
+	off_t	bl;
+	int	bytes, wfd;
+	char	*ct, *crmsg;
 	size_t  len = sizeof(*buf) * MAXUTMP;
-	char namebuf[sizeof(bp->ut_name) + 1], *namep;
-	char linebuf[sizeof(bp->ut_line) + 1], *linep;
-	char hostbuf[sizeof(bp->ut_host) + 1], *hostp;
-	int checkname = namesz > (int)sizeof(bp->ut_name);
-	int checkline = linesz > (int)sizeof(bp->ut_line);
-	int checkhost = hostsz > (int)sizeof(bp->ut_host);
 
 	if ((buf = malloc(len)) == NULL)
-		err(EXIT_FAILURE, "Cannot allocate utmp buffer");
+		err(1, "Cannot allocate utmp buffer");
 
 	crmsg = NULL;
 
-	if (!strcmp(file, "-")) {
-		wfd = STDIN_FILENO;
-		file = "<stdin>";
-	} else if ((wfd = open(file, O_RDONLY, 0)) < 0) {
-		err(EXIT_FAILURE, "%s", file);
-	}
-
-	if (lseek(wfd, 0, SEEK_CUR) < 0) {
-		const char *dir;
-		char *tfile;
-		int tempfd;
-		ssize_t tlen;
-
-		if (ESPIPE != errno) {
-			err(EXIT_FAILURE, "lseek");
-		}
-		dir = getenv("TMPDIR");
-		if (asprintf(&tfile, "%s/last.XXXXXX", dir ? dir : _PATH_TMP) == -1)
-			err(EXIT_FAILURE, "asprintf");
-		tempfd = mkstemp(tfile);
-		if (tempfd < 0) {
-			err(EXIT_FAILURE, "mkstemp");
-		}
-		unlink(tfile);
-		for (;;) {
-			tlen = read(wfd, buf, len);
-			if (tlen < 0) {
-				err(1, "%s: read", file);
-			}
-			if (tlen == 0) {
-				break;
-			}
-			if (write(tempfd, buf, tlen) != tlen) {
-				err(1, "%s: write", tfile);
-			}
-		}
-		wfd = tempfd;
-	}
-
-	if (fstat(wfd, &stb) == -1)
-		err(EXIT_FAILURE, "%s: fstat", file);
-	if (!S_ISREG(stb.st_mode))
-		errx(EXIT_FAILURE, "%s: Not a regular file", file);
+	if ((wfd = open(file, O_RDONLY, 0)) < 0 || fstat(wfd, &stb) == -1)
+		err(1, "%s", file);
+	bl = (stb.st_size + len - 1) / len;
 
 	buf[FIRSTVALID].ut_timefld = time(NULL);
 	(void)signal(SIGINT, onintr);
 	(void)signal(SIGQUIT, onintr);
 
-	offset = stb.st_size;
-	/* Ignore trailing garbage or partial record */
-	offset -= offset % (off_t) sizeof(*buf);
-
-	while (offset >= (off_t) sizeof(*buf)) {
-		ssize_t ret, i;
-		size_t size;
-
-		size = MIN((off_t)len, offset);
-		offset -= size; /* Always a multiple of sizeof(*buf) */
-		ret = pread(wfd, buf, size, offset);
-		if (ret < 0) {
-			err(EXIT_FAILURE, "%s: pread", file);
-		} else if ((size_t) ret < size) {
-			err(EXIT_FAILURE, "%s: Unexpected end of file", file);
-		}
-
-		for (i = ret / sizeof(*buf) - 1; i >= 0; i--) {
-			bp = &buf[i];
-
-			NULTERM(name);
-			NULTERM(line);
-			NULTERM(host);
+	while (--bl >= 0) {
+		if (lseek(wfd, bl * len, SEEK_SET) == -1 ||
+		    (bytes = read(wfd, buf, len)) == -1)
+			err(1, "%s", file);
+		for (bp = &buf[bytes / sizeof(*buf) - 1]; bp >= buf; --bp) {
 			/*
 			 * if the terminal line is '~', the machine stopped.
 			 * see utmp(5) for more info.
 			 */
-			if (linep[0] == '~' && !linep[1]) {
+			if (bp->ut_line[0] == '~' && !bp->ut_line[1]) {
 				/* everybody just logged out */
 				for (T = ttylist; T; T = T->next)
 					T->logout = -bp->ut_timefld;
 				currentout = -bp->ut_timefld;
-				crmsg = strncmp(namep, "shutdown",
+				crmsg = strncmp(bp->ut_name, "shutdown",
 				    namesz) ? "crash" : "shutdown";
 				if (want(bp, NO)) {
 					ct = fmttime(bp->ut_timefld, fulltime);
 					printf("%-*.*s  %-*.*s %-*.*s %s\n",
-					    namesz, namesz, namep,
-					    linesz, linesz, linep,
-					    hostsz, hostsz,
-					    gethost(bp, hostp, numeric), ct);
+					    namesz, namesz, bp->ut_name,
+					    linesz, linesz, bp->ut_line,
+					    hostsz, hostsz, bp->ut_host, ct);
 					if (maxrec != -1 && !--maxrec)
 						return;
 				}
@@ -184,15 +97,18 @@ wtmp(const char *file, int namesz, int linesz, int hostsz, int numeric)
 			 * if the line is '{' or '|', date got set; see
 			 * utmp(5) for more info.
 			 */
-			if ((linep[0] == '{' || linep[0] == '|') && !linep[1]) {
+			if ((bp->ut_line[0] == '{' || bp->ut_line[0] == '|')
+			    && !bp->ut_line[1]) {
 				if (want(bp, NO)) {
 					ct = fmttime(bp->ut_timefld, fulltime);
-					printf("%-*.*s  %-*.*s %-*.*s %s\n",
-					    namesz, namesz, namep,
-					    linesz, linesz, linep,
-					    hostsz, hostsz,
-					    gethost(bp, hostp, numeric),
-					    ct);
+				printf("%-*.*s  %-*.*s %-*.*s %s\n",
+				    namesz, namesz,
+				    bp->ut_name,
+				    linesz, linesz,
+				    bp->ut_line,
+				    hostsz, hostsz,
+				    bp->ut_host,
+				    ct);
 					if (maxrec && !--maxrec)
 						return;
 				}
@@ -202,27 +118,24 @@ wtmp(const char *file, int namesz, int linesz, int hostsz, int numeric)
 			for (T = ttylist;; T = T->next) {
 				if (!T) {
 					/* add new one */
-					T = addtty(linep);
+					T = addtty(bp->ut_line);
 					break;
 				}
-				if (!strncmp(T->tty, linep, LINESIZE))
+				if (!strncmp(T->tty, bp->ut_line, LINESIZE))
 					break;
 			}
 			if (TYPE(bp) == SIGNATURE)
 				continue;
-			if (namep[0] && want(bp, YES)) {
+			if (bp->ut_name[0] && want(bp, YES)) {
 				ct = fmttime(bp->ut_timefld, fulltime);
 				printf("%-*.*s  %-*.*s %-*.*s %s ",
-				    namesz, namesz, namep,
-				    linesz, linesz, linep,
-				    hostsz, hostsz,
-				    gethost(bp, hostp, numeric),
+				    namesz, namesz, bp->ut_name,
+				    linesz, linesz, bp->ut_line,
+				    hostsz, hostsz, bp->ut_host,
 				    ct);
 				if (!T->logout)
 					puts("  still logged in");
 				else {
-					time_t	delta;			/* time difference */
-
 					if (T->logout < 0) {
 						T->logout = -T->logout;
 						printf("- %s", crmsg);
@@ -237,8 +150,7 @@ wtmp(const char *file, int namesz, int linesz, int hostsz, int numeric)
 						    fmttime(delta,
 						    fulltime | TIMEONLY | GMT));
 					else
-						printf(" (%lld+%s)\n",
-						    (long long)
+						printf(" (%ld+%s)\n",
 						    delta / SECSPERDAY,
 						    fmttime(delta,
 						    fulltime | TIMEONLY | GMT));
@@ -304,12 +216,10 @@ want(struct utmp *bp, int check)
 static void
 onintr(int signo)
 {
-	/* FIXME: None of this is allowed in a signal handler */
+
 	printf("\ninterrupted %s\n", fmttime(buf[FIRSTVALID].ut_timefld,
 	    FULLTIME));
-	if (signo == SIGINT) {
-		(void)raise_default_signal(signo);
-		exit(EXIT_FAILURE);
-	}
+	if (signo == SIGINT)
+		exit(1);
 	(void)fflush(stdout);		/* fix required for rsh */
 }
