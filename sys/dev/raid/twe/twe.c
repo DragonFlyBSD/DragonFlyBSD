@@ -1669,11 +1669,11 @@ twe_check_bits(struct twe_softc *sc, u_int32_t status_reg)
 	}
 	result = 1;
 	if (status_reg & TWE_STATUS_PCI_PARITY_ERROR) {
-	    twe_printf(sc, "PCI parity error: Reseat card, move card or buggy device present.");
+	    twe_printf(sc, "PCI parity error: Reseat card, move card or buggy device present.\n");
 	    twe_clear_pci_parity_error(sc);
 	}
 	if (status_reg & TWE_STATUS_PCI_ABORT) {
-	    twe_printf(sc, "PCI abort, clearing.");
+	    twe_printf(sc, "PCI abort, clearing.\n");
 	    twe_clear_pci_abort(sc);
 	}
     }
@@ -1762,11 +1762,11 @@ twe_report_request(struct twe_request *tr)
 	switch (cmd->generic.flags) {
 	case 0x1b:
 	    device_printf(sc->twe_drive[cmd->generic.unit].td_disk,
-			  "drive timeout");
+			  "drive timeout\n");
 	    break;
 	case 0x51:
 	    device_printf(sc->twe_drive[cmd->generic.unit].td_disk,
-			  "unrecoverable drive error");
+			  "unrecoverable drive error\n");
 	    break;
 	default:
 	    device_printf(sc->twe_drive[cmd->generic.unit].td_disk,
