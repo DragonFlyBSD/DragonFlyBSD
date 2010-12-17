@@ -680,11 +680,12 @@ static int vnlruproc_sig;
 void
 vnlru_proc_wait(void)
 {
+	tsleep_interlock(&vnlruproc_sig, 0);
 	if (vnlruproc_sig == 0) {
 		vnlruproc_sig = 1;      /* avoid unnecessary wakeups */
 		wakeup(vnlruthread);
 	}
-	tsleep(&vnlruproc_sig, 0, "vlruwk", hz);
+	tsleep(&vnlruproc_sig, PINTERLOCKED, "vlruwk", hz);
 }
 
 static void 
@@ -724,7 +725,7 @@ vnlru_proc(void)
 		if (numvnodes - freevnodes <= desiredvnodes * 9 / 10) {
 			vnlruproc_sig = 0;
 			wakeup(&vnlruproc_sig);
-			tsleep(td, 0, "vlruwt", hz);
+			tsleep(vnlruthread, 0, "vlruwt", hz);
 			continue;
 		}
 		cache_hysteresis();
@@ -752,7 +753,7 @@ vnlru_proc(void)
 		if (done == 0) {
 			++vnlru_nowhere;
 			if (vnlru_nowhere % 10 == 0)
-				tsleep(td, 0, "vlrup", hz * 3);
+				tsleep(vnlruthread, 0, "vlrup", hz * 3);
 			if (vnlru_nowhere % 100 == 0)
 				kprintf("vnlru_proc: vnode recycler stopped working!\n");
 			if (vnlru_nowhere == 1000)
