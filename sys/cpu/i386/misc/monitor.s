@@ -84,11 +84,11 @@ ENTRY(cpu_mmw_mwait)
 	pushl	%ebx
 	movl	8(%esp), %eax
 	movl	12(%esp), %ebx
-	xorl	%ecx, %ecx
 	xorl	%edx, %edx
 
 	.align	4
 1:
+	xorl	%ecx, %ecx
 	monitor
 	movl	(%eax), %ecx
 	cmpl	%ebx, %ecx

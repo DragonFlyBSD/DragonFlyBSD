@@ -315,8 +315,8 @@ void		setsofttq (void);
 void		schedsofttty (void);
 void		splz (void);
 void		splz_check (void);
-int		cpu_mmw_spin(int *, int);
-int		cpu_mmw_mwait(int *, int);
+long		cpu_mmw_spin(long*, long);
+long		cpu_mmw_mwait(long*, long);
 #endif /* __i386__ */
 
 /*
