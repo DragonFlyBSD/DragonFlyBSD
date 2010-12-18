@@ -51,7 +51,7 @@ ENTRY(cpu_mmw_pause)
 	monitor
 	cmpl	(%rax), %esi
 	jne	1f
-	xorl	%rax, %rax
+	xorq	%rax, %rax
 	mwait
 1:
 	ret
@@ -67,7 +67,7 @@ ENTRY(cpu_mmw_pausel)
 	monitor
 	cmpq	(%rax), %rsi
 	jne	1f
-	xorl	%rax, %rax
+	xorq	%rax, %rax
 	mwait
 1:
 	ret
