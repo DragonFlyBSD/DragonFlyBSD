@@ -41,64 +41,26 @@
 	.text
 
 /*
- * int cpu_mmw_spin(int *addr, int oldval)
- *
- *	Spin on addr, waiting for it to no longer contain oldval; 
- *	return newval.
+ * void cpu_mmw_pause(long *addr, long oldval)
  */
-ENTRY(cpu_mmw_spin)
+ENTRY(cpu_mmw_pausel)
+ENTRY(cpu_mmw_pause)
 	movl	4(%esp), %eax
-	movl	8(%esp), %edx
+	movl	8(%esp), %ecx
 
-	.align	4
-1:
-	movl	(%eax), %ecx
-	cmpl	%ecx, %edx
-	pause
-	je	1b
+	cmpl	(%eax), %ecx
+	jne	1f
 
-	movl	%ecx, %eax
-	ret
-
-/*
- * int cpu_mmw_mwait(int *addr, int oldval)
- *
- * 	Spin on addr, waiting for it to no longer contain oldval;
- *	return newval. Use the MONITOR/MWAIT instructions to wait
- *	for a state-change on the address.
- *	
- *	WARN 1: We receive wakeup events for much larger windows
- *		than a single address; CPUID EAX = 0x05 reports the
- *		windows; on an Intel Atom they seem to cacheline-sized.
- *		Synchronization variables should probably be 
- *		cacheline-aligned to avoid false wakeups.
- *
- *	WARN 2: This routine can be racy; when we wake from MWAIT, we must
- *		load the contents of the address; in the meantime, it
- *		is possible that it was swapped to the prior (or some other)
- *		value; care must be used -- CMPXCHG for wakeup, for example.
- *
- *	WARN 3: Use this routine only when cpu_mi_features & CPU_MI_MONITOR
- */	
-ENTRY(cpu_mmw_mwait)
 	pushl	%ebx
-	movl	8(%esp), %eax
-	movl	12(%esp), %ebx
-	xorl	%edx, %edx
-
-	.align	4
-1:
+	movl	%ecx, %ebx
 	xorl	%ecx, %ecx
+	xorl	%edx, %edx
 	monitor
-	movl	(%eax), %ecx
-	cmpl	%ebx, %ecx
+	cmpl	(%eax), %ebx
 	jne	2f
+	xchg	%eax, %edx
 	mwait
-	jmp	1b
-
-	.align	4
 2:
-	movl	%ecx, %eax
 	popl	%ebx
+1:
 	ret
-
