@@ -156,6 +156,7 @@
  * cpu_mi_feature bits
  */
 #define CPU_MI_BZERONT	0x00000001
+#define CPU_MI_MONITOR	0x00000010
 
 /*
  * File system parameters and macros.
