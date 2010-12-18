@@ -485,6 +485,8 @@ identify_cpu(void)
 	if (cpu_feature & CPUID_SSE2)
 		cpu_mi_feature |= CPU_MI_BZERONT;
 
+	if (cpu_feature2 & CPUID2_MON)
+		cpu_mi_feature |= CPU_MI_MONITOR;
 }
 
 static u_int
