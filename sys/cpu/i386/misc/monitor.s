@@ -41,10 +41,11 @@
 	.text
 
 /*
- * void cpu_mmw_pause(long *addr, long oldval)
+ * void cpu_mmw_pause_int(int *addr, int oldval)
+ * void cpu_mmw_pause_long(long *addr, long oldval)
  */
-ENTRY(cpu_mmw_pausel)
-ENTRY(cpu_mmw_pause)
+ENTRY(cpu_mmw_pause_int)
+ENTRY(cpu_mmw_pause_long)
 	movl	4(%esp), %eax
 	movl	8(%esp), %ecx
 

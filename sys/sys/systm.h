@@ -315,8 +315,8 @@ void		setsofttq (void);
 void		schedsofttty (void);
 void		splz (void);
 void		splz_check (void);
-void		cpu_mmw_pause(int*, int);
-void		cpu_mmw_pausel(long*, long);
+void		cpu_mmw_pause_int(int*, int);
+void		cpu_mmw_pause_long(long*, long);
 #endif /* __i386__ */
 
 /*
