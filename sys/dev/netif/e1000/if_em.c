@@ -2427,7 +2427,7 @@ em_set_multi(struct adapter *adapter)
 	/* Allocate temporary memory to setup array */
 	mta = kmalloc(sizeof(u8) *
 	    (ETH_ADDR_LEN * MAX_NUM_MULTICAST_ADDRESSES),
-	    M_DEVBUF, M_NOWAIT | M_ZERO);
+	    M_DEVBUF, M_INTWAIT | M_ZERO);
 	if (mta == NULL)
 		panic("em_set_multi memory failure\n");
 
@@ -2793,7 +2793,7 @@ em_allocate_legacy(struct adapter *adapter)
 	 */
 	TASK_INIT(&adapter->rxtx_task, 0, em_handle_rxtx, adapter);
 	TASK_INIT(&adapter->link_task, 0, em_handle_link, adapter);
-	adapter->tq = taskqueue_create("em_taskq", M_NOWAIT,
+	adapter->tq = taskqueue_create("em_taskq", M_INTWAIT,
 	    taskqueue_thread_enqueue, &adapter->tq);
 	taskqueue_start_threads(&adapter->tq, 1, TDPRI_KERN_DAEMON /*PI_NET*/, -1, "%s taskq",
 	    device_get_nameunit(adapter->dev));
@@ -2850,7 +2850,7 @@ em_allocate_msix(struct adapter *adapter)
 	 */
 	TASK_INIT(&adapter->rxtx_task, 0, em_handle_tx, adapter);
 	TASK_INIT(&adapter->link_task, 0, em_handle_link, adapter);
-	adapter->tq = taskqueue_create("em_taskq", M_NOWAIT,
+	adapter->tq = taskqueue_create("em_taskq", M_INTWAIT,
 	    taskqueue_thread_enqueue, &adapter->tq);
 	taskqueue_start_threads(&adapter->tq, 1, TDPRI_KERN_DAEMON /*PI_NET*/, -1, "%s taskq",
 	    device_get_nameunit(adapter->dev));
@@ -3350,7 +3350,7 @@ em_allocate_transmit_structures(struct adapter *adapter)
 	}
 
 	adapter->tx_buffer_area = kmalloc(sizeof(struct em_buffer) *
-	    adapter->num_tx_desc, M_DEVBUF, M_NOWAIT | M_ZERO);
+	    adapter->num_tx_desc, M_DEVBUF, M_INTWAIT | M_ZERO);
 	if (adapter->tx_buffer_area == NULL) {
 		device_printf(dev, "Unable to allocate tx_buffer memory\n");
 		error = ENOMEM;
@@ -4047,7 +4047,7 @@ em_allocate_receive_structures(struct adapter *adapter)
 	int i, error;
 
 	adapter->rx_buffer_area = kmalloc(sizeof(struct em_buffer) *
-	    adapter->num_rx_desc, M_DEVBUF, M_NOWAIT | M_ZERO);
+	    adapter->num_rx_desc, M_DEVBUF, M_INTWAIT | M_ZERO);
 	if (adapter->rx_buffer_area == NULL) {
 		device_printf(dev, "Unable to allocate rx_buffer memory\n");
 		return (ENOMEM);

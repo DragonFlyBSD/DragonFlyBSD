@@ -2147,7 +2147,7 @@ igb_allocate_legacy(struct adapter *adapter)
 	TASK_INIT(&adapter->rxtx_task, 0, igb_handle_rxtx, adapter);
 	/* Make tasklet for deferred link handling */
 	TASK_INIT(&adapter->link_task, 0, igb_handle_link, adapter);
-	adapter->tq = taskqueue_create("igb_taskq", M_NOWAIT,
+	adapter->tq = taskqueue_create("igb_taskq", M_INTWAIT,
 	    taskqueue_thread_enqueue, &adapter->tq);
 	taskqueue_start_threads(&adapter->tq, 1, TDPRI_KERN_DAEMON /*PI_NET*/, -1, "%s taskq",
 	    device_get_nameunit(adapter->dev));
@@ -2211,7 +2211,7 @@ igb_allocate_msix(struct adapter *adapter)
 #endif
 		/* Make tasklet for deferred handling */
 		TASK_INIT(&que->que_task, 0, igb_handle_que, que);
-		que->tq = taskqueue_create("igb_que", M_NOWAIT,
+		que->tq = taskqueue_create("igb_que", M_INTWAIT,
 		    taskqueue_thread_enqueue, &que->tq);
 		taskqueue_start_threads(&que->tq, 1, TDPRI_KERN_DAEMON /*PI_NET*/, -1, "%s que",
 		    device_get_nameunit(adapter->dev));
@@ -2237,7 +2237,7 @@ igb_allocate_msix(struct adapter *adapter)
 
 	/* Make tasklet for deferred handling */
 	TASK_INIT(&adapter->link_task, 0, igb_handle_link, adapter);
-	adapter->tq = taskqueue_create("igb_link", M_NOWAIT,
+	adapter->tq = taskqueue_create("igb_link", M_INTWAIT,
 	    taskqueue_thread_enqueue, &adapter->tq);
 	taskqueue_start_threads(&adapter->tq, 1, TDPRI_KERN_DAEMON /*PI_NET*/, -1, "%s link",
 	    device_get_nameunit(adapter->dev));
@@ -2844,7 +2844,7 @@ igb_allocate_queues(struct adapter *adapter)
 	/* First allocate the top level queue structs */
 	if (!(adapter->queues =
 	    (struct igb_queue *) kmalloc(sizeof(struct igb_queue) *
-	    adapter->num_queues, M_DEVBUF, M_NOWAIT | M_ZERO))) {
+	    adapter->num_queues, M_DEVBUF, M_INTWAIT | M_ZERO))) {
 		device_printf(dev, "Unable to allocate queue memory\n");
 		error = ENOMEM;
 		goto fail;
@@ -2853,7 +2853,7 @@ igb_allocate_queues(struct adapter *adapter)
 	/* Next allocate the TX ring struct memory */
 	if (!(adapter->tx_rings =
 	    (struct tx_ring *) kmalloc(sizeof(struct tx_ring) *
-	    adapter->num_queues, M_DEVBUF, M_NOWAIT | M_ZERO))) {
+	    adapter->num_queues, M_DEVBUF, M_INTWAIT | M_ZERO))) {
 		device_printf(dev, "Unable to allocate TX ring memory\n");
 		error = ENOMEM;
 		goto tx_fail;
@@ -2862,7 +2862,7 @@ igb_allocate_queues(struct adapter *adapter)
 	/* Now allocate the RX */
 	if (!(adapter->rx_rings =
 	    (struct rx_ring *) kmalloc(sizeof(struct rx_ring) *
-	    adapter->num_queues, M_DEVBUF, M_NOWAIT | M_ZERO))) {
+	    adapter->num_queues, M_DEVBUF, M_INTWAIT | M_ZERO))) {
 		device_printf(dev, "Unable to allocate RX ring memory\n");
 		error = ENOMEM;
 		goto rx_fail;
@@ -3010,7 +3010,7 @@ igb_allocate_transmit_buffers(struct tx_ring *txr)
 
 	if (!(txr->tx_buffers =
 	    (struct igb_tx_buffer *) kmalloc(sizeof(struct igb_tx_buffer) *
-	    adapter->num_tx_desc, M_DEVBUF, M_NOWAIT | M_ZERO))) {
+	    adapter->num_tx_desc, M_DEVBUF, M_INTWAIT | M_ZERO))) {
 		device_printf(dev, "Unable to allocate tx_buffer memory\n");
 		error = ENOMEM;
 		goto fail;
@@ -3673,7 +3673,7 @@ igb_allocate_receive_buffers(struct rx_ring *rxr)
 	bsize = sizeof(struct igb_rx_buf) * adapter->num_rx_desc;
 	if (!(rxr->rx_buffers =
 	    (struct igb_rx_buf *) kmalloc(bsize,
-	    M_DEVBUF, M_NOWAIT | M_ZERO))) {
+	    M_DEVBUF, M_INTWAIT | M_ZERO))) {
 		device_printf(dev, "Unable to allocate rx_buffer memory\n");
 		error = ENOMEM;
 		goto fail;
