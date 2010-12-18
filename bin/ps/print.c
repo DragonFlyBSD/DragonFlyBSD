@@ -194,7 +194,7 @@ state(const KINFO *k, const struct varent *vent)
 
 		case LSRUN:
 			*cp = 'R';
-			if (KI_LWP(k, tdflags) & TDF_RUNNING) {
+			if (KI_LWP(k, tdflags) & (TDF_RUNNING | TDF_RUNQ)) {
 			    ++cp;
 			    sprintf(cp, "%d", KI_LWP(k, cpuid));
 			    while (cp[1])
