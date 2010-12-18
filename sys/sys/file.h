@@ -85,8 +85,6 @@ struct	fileops {
 			 struct ucred *cred, int flags);
 	int (*fo_ioctl)	(struct file *fp, u_long com, caddr_t data,
 			 struct ucred *cred, struct sysmsg *msg);
-	int (*fo_poll)	(struct file *fp, int events,
-			 struct ucred *cred);
 	int (*fo_kqfilter)(struct file *fp, struct knote *kn);
 	int (*fo_stat)	(struct file *fp, struct stat *sb,
 			 struct ucred *cred);
@@ -176,7 +174,6 @@ int badfo_readwrite(struct file *fp, struct uio *uio,
 		    struct ucred *cred, int flags);
 int badfo_ioctl(struct file *fp, u_long com, caddr_t data,
 		struct ucred *cred, struct sysmsg *msg);
-int badfo_poll (struct file *fp, int events, struct ucred *cred);
 int badfo_kqfilter(struct file *fp, struct knote *kn);
 int badfo_stat(struct file *fp, struct stat *sb, struct ucred *cred);
 int badfo_close(struct file *fp);
