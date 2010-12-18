@@ -404,12 +404,17 @@ RetryFault:
 	 * mapping for a read fault if the memory is managed by a virtual
 	 * page table.
 	 */
+	/* BEFORE */
 	result = vm_fault_object(&fs, first_pindex, fault_type);
 
-	if (result == KERN_TRY_AGAIN)
+	if (result == KERN_TRY_AGAIN) {
+		/*lwkt_reltoken(&vm_token);*/
 		goto RetryFault;
-	if (result != KERN_SUCCESS)
+	}
+	if (result != KERN_SUCCESS) {
+		/*lwkt_reltoken(&vm_token);*/
 		return (result);
+	}
 
 	/*
 	 * On success vm_fault_object() does not unlock or deallocate, and fs.m
@@ -417,6 +422,7 @@ RetryFault:
 	 *
 	 * Enter the page into the pmap and do pmap-related adjustments.
 	 */
+	vm_page_flag_set(fs.m, PG_REFERENCED);
 	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot, fs.wired);
 
 	/*
@@ -429,10 +435,11 @@ RetryFault:
 			vm_prefault(fs.map->pmap, vaddr, fs.entry, fs.prot);
 		}
 	}
+	lwkt_gettoken(&vm_token);
 	unlock_things(&fs);
 
-	vm_page_flag_clear(fs.m, PG_ZERO);
-	vm_page_flag_set(fs.m, PG_REFERENCED);
+	KKASSERT(fs.m->queue == PQ_NONE);
+	KKASSERT(fs.m->flags & PG_BUSY);
 
 	/*
 	 * If the page is not wired down, then put it where the pageout daemon
@@ -441,15 +448,19 @@ RetryFault:
 	 * We do not really need to get vm_token here but since all the
 	 * vm_*() calls have to doing it here improves efficiency.
 	 */
-	lwkt_gettoken(&vm_token);
+	/*lwkt_gettoken(&vm_token);*/
+
 	if (fs.fault_flags & VM_FAULT_WIRE_MASK) {
+		lwkt_reltoken(&vm_token); /* before wire activate does not */
 		if (fs.wired)
 			vm_page_wire(fs.m);
 		else
 			vm_page_unwire(fs.m, 1);
 	} else {
 		vm_page_activate(fs.m);
+		lwkt_reltoken(&vm_token); /* before wire activate does not */
 	}
+	/*lwkt_reltoken(&vm_token); after wire/activate works */
 
 	if (curthread->td_lwp) {
 		if (fs.hardfault) {
@@ -464,7 +475,7 @@ RetryFault:
 	 */
 	vm_page_wakeup(fs.m);
 	vm_object_deallocate(fs.first_object);
-	lwkt_reltoken(&vm_token);
+	/*lwkt_reltoken(&vm_token);*/
 
 	return (KERN_SUCCESS);
 }
@@ -648,7 +659,6 @@ RetryFault:
 	 */
 	lwkt_gettoken(&vm_token);
 	vm_page_hold(fs.m);
-	vm_page_flag_clear(fs.m, PG_ZERO);
 	if (fault_type & VM_PROT_WRITE)
 		vm_page_dirty(fs.m);
 
@@ -795,7 +805,6 @@ RetryFault:
 	 */
 	lwkt_gettoken(&vm_token);
 	vm_page_hold(fs.m);
-	vm_page_flag_clear(fs.m, PG_ZERO);
 	if (fault_type & VM_PROT_WRITE)
 		vm_page_dirty(fs.m);
 
@@ -1543,6 +1552,7 @@ skip:
 		vm_page_zero_invalid(fs->m, TRUE);
 		kprintf("Warning: page %p partially invalid on fault\n", fs->m);
 	}
+	vm_page_flag_clear(fs->m, PG_ZERO);
 
 	return (KERN_SUCCESS);
 }

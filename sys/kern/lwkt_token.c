@@ -269,6 +269,10 @@ lwkt_reltoken_mask_remote(void *arg, int arg2, struct intrframe *frame)
  * to wake up a subset of cpus to avoid aggregating O(N^2) IPIs.  The current
  * cpuid is used as a basis to select which other cpus to wake up.
  *
+ * For the selected cpus we can avoid issuing the actual IPI if the target
+ * cpu's RQF_WAKEUP is already set.  In this case simply setting the
+ * reschedule flag RQF_AST_LWKT_RESCHED will be sufficient.
+ *
  * lwkt.token_ipi_dispatch specifies the maximum number of IPIs to dispatch
  * on a token release.
  */
@@ -277,11 +281,14 @@ void
 _lwkt_reltoken_mask(lwkt_token_t tok)
 {
 #ifdef SMP
+	globaldata_t ngd;
 	cpumask_t mask;
 	cpumask_t tmpmask;
 	cpumask_t wumask;	/* wakeup mask */
+	cpumask_t remask;	/* clear mask */
 	int wucount;		/* wakeup count */
 	int cpuid;
+	int reqflags;
 
 	/*
 	 * Mask of contending cpus we want to wake up.
@@ -298,12 +305,24 @@ _lwkt_reltoken_mask(lwkt_token_t tok)
 	if (wucount <= 0 || wucount >= ncpus) {
 		wucount = 0;
 		wumask = mask;
+		remask = mask;
 	} else {
 		wumask = 0;
+		remask = 0;
 	}
 
 	/*
-	 * Calculate which cpus to IPI to
+	 * Calculate which cpus to IPI.  These cpus are potentially in a
+	 * HLT state waiting for token contention to go away.
+	 *
+	 * Ask the cpu LWKT scheduler to reschedule by setting
+	 * RQF_AST_LWKT_RESCHEDULE.  Signal the cpu if RQF_WAKEUP is not
+	 * set (otherwise it has already been signalled or will check the
+	 * flag very soon anyway).  Both bits must be adjusted atomically
+	 * all in one go to avoid races.
+	 *
+	 * The collision mask is cleared for all cpus we set the resched
+	 * flag for, but we only IPI the ones that need signalling.
 	 */
 	while (wucount && mask) {
 		tmpmask = mask & ~(CPUMASK(mycpu->gd_cpuid) - 1);
@@ -311,12 +330,28 @@ _lwkt_reltoken_mask(lwkt_token_t tok)
 			cpuid = BSFCPUMASK(tmpmask);
 		else
 			cpuid = BSFCPUMASK(mask);
-		wumask |= CPUMASK(cpuid);
+		ngd = globaldata_find(cpuid);
+		for (;;) {
+			reqflags = ngd->gd_reqflags;
+			if (atomic_cmpset_int(&ngd->gd_reqflags, reqflags,
+					      reqflags |
+					      (RQF_WAKEUP |
+					       RQF_AST_LWKT_RESCHED))) {
+				break;
+			}
+		}
+		if ((reqflags & RQF_WAKEUP) == 0) {
+			wumask |= CPUMASK(cpuid);
+			--wucount;
+		}
+		remask |= CPUMASK(cpuid);
 		mask &= ~CPUMASK(cpuid);
-		--wucount;
 	}
-	atomic_clear_cpumask(&tok->t_collmask, wumask);
-	lwkt_send_ipiq3_mask(wumask, lwkt_reltoken_mask_remote, NULL, 0);
+	if (remask) {
+		atomic_clear_cpumask(&tok->t_collmask, remask);
+		lwkt_send_ipiq3_mask(wumask, lwkt_reltoken_mask_remote,
+				     NULL, 0);
+	}
 #endif
 }
 
@@ -328,10 +363,7 @@ _lwkt_reltoken_mask(lwkt_token_t tok)
  * lwkt_getalltokens is called by the LWKT scheduler to acquire all
  * tokens that the thread had acquired prior to going to sleep.
  *
- * The scheduler is responsible for maintaining the MP lock count, so
- * we don't need to deal with tr_flags here.  We also do not do any
- * logging here.  The logging done by lwkt_gettoken() is plenty good
- * enough to get a feel for it.
+ * We always clear the collision mask on token aquision.
  *
  * Called from a critical section.
  */
@@ -359,11 +391,19 @@ lwkt_getalltokens(thread_t td)
 			ref = tok->t_ref;
 			if (ref == NULL) {
 				if (atomic_cmpset_ptr(&tok->t_ref, NULL, scan))
+				{
+					if (tok->t_collmask & td->td_gd->gd_cpumask) {
+						atomic_clear_cpumask(&tok->t_collmask,
+								 td->td_gd->gd_cpumask);
+					}
 					break;
+				}
 				continue;
 			}
 
 			/*
+			 * Someone holds the token.
+			 *
 			 * Test if ref is already recursively held by this
 			 * thread.  We cannot safely dereference tok->t_ref
 			 * (it might belong to another thread and is thus
@@ -377,13 +417,16 @@ lwkt_getalltokens(thread_t td)
 			/*
 			 * Otherwise we failed to acquire all the tokens.
 			 * Undo and return.  We have to try once more after
-			 * setting cpumask to cover possible races.
+			 * setting cpumask to cover possible races against
+			 * the checking of t_collmask.
 			 */
 			atomic_set_cpumask(&tok->t_collmask,
 					   td->td_gd->gd_cpumask);
 			if (atomic_cmpset_ptr(&tok->t_ref, NULL, scan)) {
-				atomic_clear_cpumask(&tok->t_collmask,
-						     td->td_gd->gd_cpumask);
+				if (tok->t_collmask & td->td_gd->gd_cpumask) {
+					atomic_clear_cpumask(&tok->t_collmask,
+							 td->td_gd->gd_cpumask);
+				}
 				break;
 			}
 #endif
@@ -532,12 +575,19 @@ lwkt_gettoken(lwkt_token_t tok)
 		 * ref.
 		 */
 #ifdef SMP
+#if 0
+		/*
+		 * (DISABLED ATM) - Do not set t_collmask on a token
+		 * acquisition failure, the scheduler will spin at least
+		 * once and deal with hlt/spin semantics.
+		 */
 		atomic_set_cpumask(&tok->t_collmask, td->td_gd->gd_cpumask);
 		if (atomic_cmpset_ptr(&tok->t_ref, NULL, ref)) {
 			atomic_clear_cpumask(&tok->t_collmask,
 					     td->td_gd->gd_cpumask);
 			return;
 		}
+#endif
 #endif
 		td->td_wmesg = tok->t_desc;
 		atomic_add_long(&tok->t_collisions, 1);
@@ -578,12 +628,19 @@ lwkt_gettoken_hard(lwkt_token_t tok)
 		 * ref.
 		 */
 #ifdef SMP
+#if 0
+		/*
+		 * (DISABLED ATM) - Do not set t_collmask on a token
+		 * acquisition failure, the scheduler will spin at least
+		 * once and deal with hlt/spin semantics.
+		 */
 		atomic_set_cpumask(&tok->t_collmask, td->td_gd->gd_cpumask);
 		if (atomic_cmpset_ptr(&tok->t_ref, NULL, ref)) {
 			atomic_clear_cpumask(&tok->t_collmask,
 					     td->td_gd->gd_cpumask);
 			goto success;
 		}
+#endif
 #endif
 		td->td_wmesg = tok->t_desc;
 		atomic_add_long(&tok->t_collisions, 1);
@@ -593,7 +650,9 @@ lwkt_gettoken_hard(lwkt_token_t tok)
 		KKASSERT(tok->t_ref == ref);
 	}
 #ifdef SMP
+#if 0
 success:
+#endif
 #endif
 	crit_enter_hard_gd(td->td_gd);
 }
@@ -630,12 +689,19 @@ lwkt_getpooltoken(void *ptr)
 		 * ref.
 		 */
 #ifdef SMP
+#if 0
+		/*
+		 * (DISABLED ATM) - Do not set t_collmask on a token
+		 * acquisition failure, the scheduler will spin at least
+		 * once and deal with hlt/spin semantics.
+		 */
 		atomic_set_cpumask(&tok->t_collmask, td->td_gd->gd_cpumask);
 		if (atomic_cmpset_ptr(&tok->t_ref, NULL, ref)) {
 			atomic_clear_cpumask(&tok->t_collmask,
 					     td->td_gd->gd_cpumask);
 			goto success;
 		}
+#endif
 #endif
 		td->td_wmesg = tok->t_desc;
 		atomic_add_long(&tok->t_collisions, 1);
@@ -645,7 +711,9 @@ lwkt_getpooltoken(void *ptr)
 		KKASSERT(tok->t_ref == ref);
 	}
 #ifdef SMP
+#if 0
 success:
+#endif
 #endif
 	return(tok);
 }

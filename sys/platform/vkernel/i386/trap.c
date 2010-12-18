@@ -450,7 +450,7 @@ restart:
 	case T_ASTFLT:		/* Allow process switch */
 		mycpu->gd_cnt.v_soft++;
 		if (mycpu->gd_reqflags & RQF_AST_OWEUPC) {
-			atomic_clear_int_nonlocked(&mycpu->gd_reqflags,
+			atomic_clear_int(&mycpu->gd_reqflags,
 				    RQF_AST_OWEUPC);
 			addupc_task(p, p->p_prof.pr_addr,
 				    p->p_prof.pr_ticks);

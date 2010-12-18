@@ -458,8 +458,8 @@ trap(struct trapframe *frame)
 		case T_ASTFLT:		/* Allow process switch */
 			mycpu->gd_cnt.v_soft++;
 			if (mycpu->gd_reqflags & RQF_AST_OWEUPC) {
-				atomic_clear_int_nonlocked(&mycpu->gd_reqflags,
-					    RQF_AST_OWEUPC);
+				atomic_clear_int(&mycpu->gd_reqflags,
+						 RQF_AST_OWEUPC);
 				addupc_task(p, p->p_prof.pr_addr,
 					    p->p_prof.pr_ticks);
 			}
@@ -486,7 +486,6 @@ trap(struct trapframe *frame)
 			break;
 
 		case T_PAGEFLT:		/* page fault */
-			MAKEMPSAFE(have_mplock);
 			i = trap_pfault(frame, TRUE);
 			if (frame->tf_rip == 0)
 				kprintf("T_PAGEFLT: Warning %%rip == 0!\n");
@@ -584,7 +583,6 @@ trap(struct trapframe *frame)
 
 		switch (type) {
 		case T_PAGEFLT:			/* page fault */
-			MAKEMPSAFE(have_mplock);
 			trap_pfault(frame, FALSE);
 			goto out2;
 

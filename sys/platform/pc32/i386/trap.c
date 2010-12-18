@@ -544,8 +544,8 @@ restart:
 		case T_ASTFLT:		/* Allow process switch */
 			mycpu->gd_cnt.v_soft++;
 			if (mycpu->gd_reqflags & RQF_AST_OWEUPC) {
-				atomic_clear_int_nonlocked(&mycpu->gd_reqflags,
-					    RQF_AST_OWEUPC);
+				atomic_clear_int(&mycpu->gd_reqflags,
+						 RQF_AST_OWEUPC);
 				addupc_task(p, p->p_prof.pr_addr,
 					    p->p_prof.pr_ticks);
 			}
@@ -584,7 +584,6 @@ restart:
 			break;
 
 		case T_PAGEFLT:		/* page fault */
-			MAKEMPSAFE(have_mplock);
 			i = trap_pfault(frame, TRUE, eva);
 			if (i == -1)
 				goto out;
@@ -703,7 +702,6 @@ kernel_trap:
 
 		switch (type) {
 		case T_PAGEFLT:			/* page fault */
-			MAKEMPSAFE(have_mplock);
 			trap_pfault(frame, FALSE, eva);
 			goto out2;
 

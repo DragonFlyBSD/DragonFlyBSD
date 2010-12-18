@@ -130,15 +130,23 @@ SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count, CTLFLAG_RW,
 	&token_contention_count, 0, "spinning due to token contention");
 #endif
 static int fairq_enable = 1;
-SYSCTL_INT(_lwkt, OID_AUTO, fairq_enable, CTLFLAG_RW, &fairq_enable, 0,
-    "Turn on fairq priority accumulators");
-static int user_pri_sched = 1;
-SYSCTL_INT(_lwkt, OID_AUTO, user_pri_sched, CTLFLAG_RW, &user_pri_sched, 0,
-    "");
+SYSCTL_INT(_lwkt, OID_AUTO, fairq_enable, CTLFLAG_RW,
+	&fairq_enable, 0, "Turn on fairq priority accumulators");
+static int lwkt_spin_loops = 10;
+SYSCTL_INT(_lwkt, OID_AUTO, spin_loops, CTLFLAG_RW,
+	&lwkt_spin_loops, 0, "");
+static int lwkt_spin_delay = 1;
+SYSCTL_INT(_lwkt, OID_AUTO, spin_delay, CTLFLAG_RW,
+	&lwkt_spin_delay, 0, "Scheduler spin delay in microseconds 0=auto");
+static int lwkt_spin_method = 1;
+SYSCTL_INT(_lwkt, OID_AUTO, spin_method, CTLFLAG_RW,
+	&lwkt_spin_method, 0, "LWKT scheduler behavior when contended");
 static int preempt_enable = 1;
-SYSCTL_INT(_lwkt, OID_AUTO, preempt_enable, CTLFLAG_RW, &preempt_enable, 0,
-    "Enable preemption");
+SYSCTL_INT(_lwkt, OID_AUTO, preempt_enable, CTLFLAG_RW,
+	&preempt_enable, 0, "Enable preemption");
 
+static __cachealign int lwkt_cseq_rindex;
+static __cachealign int lwkt_cseq_windex;
 
 /*
  * These helper procedures handle the runq, they can only be called from
@@ -160,7 +168,7 @@ _lwkt_dequeue(thread_t td)
 	TAILQ_REMOVE(&gd->gd_tdrunq, td, td_threadq);
 	gd->gd_fairq_total_pri -= td->td_pri;
 	if (TAILQ_FIRST(&gd->gd_tdrunq) == NULL)
-		atomic_clear_int_nonlocked(&gd->gd_reqflags, RQF_RUNNING);
+		atomic_clear_int(&gd->gd_reqflags, RQF_RUNNING);
     }
 }
 
@@ -183,10 +191,8 @@ _lwkt_enqueue(thread_t td)
 	xtd = TAILQ_FIRST(&gd->gd_tdrunq);
 	if (xtd == NULL) {
 		TAILQ_INSERT_TAIL(&gd->gd_tdrunq, td, td_threadq);
-		atomic_set_int_nonlocked(&gd->gd_reqflags,
-					 RQF_RUNNING | RQF_WAKEUP);
+		atomic_set_int(&gd->gd_reqflags, RQF_RUNNING);
 	} else {
-		atomic_set_int_nonlocked(&gd->gd_reqflags, RQF_WAKEUP);
 		while (xtd && xtd->td_pri > td->td_pri)
 			xtd = TAILQ_NEXT(xtd, td_threadq);
 		if (xtd)
@@ -491,8 +497,9 @@ lwkt_switch(void)
     thread_t td = gd->gd_curthread;
     thread_t ntd;
     thread_t xtd;
-    thread_t nlast;
-    int didaccumulate;
+    int spinning = lwkt_spin_loops;	/* loops before HLTing */
+    int reqflags;
+    int cseq;
 
     /*
      * Switching from within a 'fast' (non thread switched) interrupt or IPI
@@ -606,141 +613,266 @@ lwkt_switch(void)
      * schedule the thread.
      */
     for (;;) {
-	atomic_clear_int_nonlocked(&mycpu->gd_reqflags, RQF_WAKEUP);
-	clear_lwkt_resched();
-	didaccumulate = 0;
-	ntd = TAILQ_FIRST(&gd->gd_tdrunq);
-
 	/*
-	 * Hotpath if we can get all necessary resources.
-	 *
-	 * If nothing is runnable switch to the idle thread
+	 * Clear RQF_AST_LWKT_RESCHED (we handle the reschedule request)
+	 * and set RQF_WAKEUP (prevent unnecessary IPIs from being
+	 * received).
 	 */
-	if (ntd == NULL) {
-	    ntd = &gd->gd_idlethread;
-#ifdef SMP
-	    if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
-		    ASSERT_NO_TOKENS_HELD(ntd);
-#endif
-	    cpu_time.cp_msg[0] = 0;
-	    cpu_time.cp_stallpc = 0;
-	    goto haveidle;
-	}
-
-	/*
-	 * Hotpath schedule
-	 *
-	 * NOTE: For UP there is no mplock and lwkt_getalltokens()
-	 *	     always succeeds.
-	 */
-	if (ntd->td_fairq_accum >= 0 &&
-	    (TD_TOKS_NOT_HELD(ntd) || lwkt_getalltokens(ntd))
-	) {
-	    goto havethread;
-	}
-
-	/*
-	 * Coldpath - unable to schedule ntd, continue looking for threads
-	 * to schedule.
-	 */
-	nlast = NULL;
-
 	for (;;) {
-	    /*
-	     * If the fair-share scheduler ran out ntd gets moved to the
-	     * end and its accumulator will be bumped, if it didn't we
-	     * maintain the same queue position.
-	     *
-	     * nlast keeps track of the last element prior to any moves.
-	     */
-	    if (ntd->td_fairq_accum < 0) {
-		lwkt_fairq_accumulate(gd, ntd);
-		didaccumulate = 1;
-
-		/*
-		 * Move to end
-		 */
-		xtd = TAILQ_NEXT(ntd, td_threadq);
-		TAILQ_REMOVE(&gd->gd_tdrunq, ntd, td_threadq);
-		TAILQ_INSERT_TAIL(&gd->gd_tdrunq, ntd, td_threadq);
-
-		/*
-		 * Set terminal element (nlast)
-		 */
-		if (nlast == NULL) {
-		    nlast = ntd;
-		    if (xtd == NULL)
-			xtd = ntd;
-		}
-		ntd = xtd;
-	    } else {
-		ntd = TAILQ_NEXT(ntd, td_threadq);
+	    reqflags = gd->gd_reqflags;
+	    if (atomic_cmpset_int(&gd->gd_reqflags, reqflags,
+				  (reqflags & ~RQF_AST_LWKT_RESCHED) |
+				  RQF_WAKEUP)) {
+		break;
 	    }
+	}
 
-	    /*
-	     * If we exhausted the run list switch to the idle thread.
-	     *
-	     * NOTE: nlast can be NULL.
-	     */
-	    if (ntd == nlast) {
-		cpu_pause();
+	/*
+	 * Hotpath - pull the head of the run queue and attempt to schedule
+	 * it.  Fairq exhaustion moves the task to the end of the list.  If
+	 * no threads are runnable we switch to the idle thread.
+	 */
+	for (;;) {
+	    ntd = TAILQ_FIRST(&gd->gd_tdrunq);
+
+	    if (ntd == NULL) {
+		/*
+		 * Runq is empty, switch to idle and clear RQF_WAKEUP
+		 * to allow it to halt.
+		 */
 		ntd = &gd->gd_idlethread;
 #ifdef SMP
 		if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
 		    ASSERT_NO_TOKENS_HELD(ntd);
-		/* contention case, do not clear contention mask */
 #endif
-
-		/*
-		 * If fairq accumulations occured we do not schedule the
-		 * idle thread.  This will cause us to try again from
-		 * the (almost) top.
-		 */
-		if (didaccumulate)
-			break;		/* try again from the top, almost */
+		cpu_time.cp_msg[0] = 0;
+		cpu_time.cp_stallpc = 0;
+		atomic_clear_int(&gd->gd_reqflags, RQF_WAKEUP);
 		goto haveidle;
 	    }
 
+	    if (ntd->td_fairq_accum >= 0)
+		    break;
+
+	    splz_check();
+	    lwkt_fairq_accumulate(gd, ntd);
+	    TAILQ_REMOVE(&gd->gd_tdrunq, ntd, td_threadq);
+	    TAILQ_INSERT_TAIL(&gd->gd_tdrunq, ntd, td_threadq);
+	}
+
+	/*
+	 * Hotpath - schedule ntd.  Leaves RQF_WAKEUP set to prevent
+	 *	     unwanted decontention IPIs.
+	 *
+	 * NOTE: For UP there is no mplock and lwkt_getalltokens()
+	 *	     always succeeds.
+	 */
+	if (TD_TOKS_NOT_HELD(ntd) || lwkt_getalltokens(ntd))
+	    goto havethread;
+
+	/*
+	 * Coldpath (SMP only since tokens always succeed on UP)
+	 *
+	 * We had some contention on the thread we wanted to schedule.
+	 * What we do now is try to find a thread that we can schedule
+	 * in its stead until decontention reschedules on our cpu.
+	 *
+	 * The coldpath scan does NOT rearrange threads in the run list
+	 * and it also ignores the accumulator.
+	 *
+	 * We do not immediately schedule a user priority thread, instead
+	 * we record it in xtd and continue looking for kernel threads.
+	 * A cpu can only have one user priority thread (normally) so just
+	 * record the first one.
+	 *
+	 * NOTE: This scan will also include threads whos fairq's were
+	 *	 accumulated in the first loop.
+	 */
+	++token_contention_count;
+	xtd = NULL;
+	while ((ntd = TAILQ_NEXT(ntd, td_threadq)) != NULL) {
 	    /*
-	     * Try to switch to this thread.
+	     * Try to switch to this thread.  If the thread is running at
+	     * user priority we clear WAKEUP to allow decontention IPIs
+	     * (since this thread is simply running until the one we wanted
+	     * decontends), and we make sure that LWKT_RESCHED is not set.
 	     *
-	     * NOTE: For UP there is no mplock and lwkt_getalltokens()
-	     *	     always succeeds.
+	     * Otherwise for kernel threads we leave WAKEUP set to avoid
+	     * unnecessary decontention IPIs.
 	     */
-	    if (ntd->td_fairq_accum >= 0 &&
-		(TD_TOKS_NOT_HELD(ntd) || lwkt_getalltokens(ntd))
-	    ) {
-		    goto havethread;
+	    if (ntd->td_pri < TDPRI_KERN_LPSCHED) {
+		if (xtd == NULL)
+		    xtd = ntd;
+		continue;
 	    }
 
 	    /*
-	     * Thread was runnable but we were unable to get the required
-	     * resources (tokens and/or mplock), continue the scan.
+	     * Do not let the fairq get too negative.  Even though we are
+	     * ignoring it atm once the scheduler decontends a very negative
+	     * thread will get moved to the end of the queue.
+	     */
+	    if (TD_TOKS_NOT_HELD(ntd) || lwkt_getalltokens(ntd)) {
+		if (ntd->td_fairq_accum < -TDFAIRQ_MAX(gd))
+		    ntd->td_fairq_accum = -TDFAIRQ_MAX(gd);
+		goto havethread;
+	    }
+
+	    /*
+	     * Well fubar, this thread is contended as well, loop
 	     */
 	    /* */
 	}
 
 	/*
-	 * All threads exhausted but we can loop due to a negative
-	 * accumulator.
+	 * We exhausted the run list but we may have recorded a user
+	 * thread to try.  We have three choices based on
+	 * lwkt.decontention_method.
 	 *
-	 * While we are looping in the scheduler be sure to service
-	 * any interrupts which were made pending due to our critical
-	 * section, otherwise we could livelock (e.g.) IPIs.
+	 * (0) Atomically clear RQF_WAKEUP in order to receive decontention
+	 *     IPIs (to interrupt the user process) and test
+	 *     RQF_AST_LWKT_RESCHED at the same time.
+	 *
+	 *     This results in significant decontention IPI traffic but may
+	 *     be more responsive.
+	 *
+	 * (1) Leave RQF_WAKEUP set so we do not receive a decontention IPI.
+	 *     An automatic LWKT reschedule will occur on the next hardclock
+	 *     (typically 100hz).
+	 *
+	 *     This results in no decontention IPI traffic but may be less
+	 *     responsive.  This is the default.
+	 *
+	 * (2) Refuse to schedule the user process at this time.
+	 *
+	 *     This is highly experimental and should not be used under
+	 *     normal circumstances.  This can cause a user process to
+	 *     get starved out in situations where kernel threads are
+	 *     fighting each other for tokens.
 	 */
+	if (xtd) {
+	    ntd = xtd;
+
+	    switch(lwkt_spin_method) {
+	    case 0:
+		for (;;) {
+		    reqflags = gd->gd_reqflags;
+		    if (atomic_cmpset_int(&gd->gd_reqflags,
+					  reqflags,
+					  reqflags & ~RQF_WAKEUP)) {
+			break;
+		    }
+		}
+		break;
+	    case 1:
+		reqflags = gd->gd_reqflags;
+		break;
+	    default:
+		goto skip;
+		break;
+	    }
+	    if ((reqflags & RQF_AST_LWKT_RESCHED) == 0 &&
+		(TD_TOKS_NOT_HELD(ntd) || lwkt_getalltokens(ntd))
+	    ) {
+		if (ntd->td_fairq_accum < -TDFAIRQ_MAX(gd))
+		    ntd->td_fairq_accum = -TDFAIRQ_MAX(gd);
+		goto havethread;
+	    }
+
+skip:
+	    /*
+	     * Make sure RQF_WAKEUP is set if we failed to schedule the
+	     * user thread to prevent the idle thread from halting.
+	     */
+	    atomic_set_int(&gd->gd_reqflags, RQF_WAKEUP);
+	}
+
+	/*
+	 * We exhausted the run list, meaning that all runnable threads
+	 * are contended.
+	 */
+	cpu_pause();
+	ntd = &gd->gd_idlethread;
+#ifdef SMP
+	if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
+	    ASSERT_NO_TOKENS_HELD(ntd);
+	/* contention case, do not clear contention mask */
+#endif
+
+	/*
+	 * Ok, we might want to spin a few times as some tokens are held for
+	 * very short periods of time and IPI overhead is 1uS or worse
+	 * (meaning it is usually better to spin).  Regardless we have to
+	 * call splz_check() to be sure to service any interrupts blocked
+	 * by our critical section, otherwise we could livelock e.g. IPIs.
+	 *
+	 * The IPI mechanic is really a last resort.  In nearly all other
+	 * cases RQF_WAKEUP is left set to prevent decontention IPIs.
+	 *
+	 * When we decide not to spin we clear RQF_WAKEUP and switch to
+	 * the idle thread.  Clearing RQF_WEAKEUP allows the idle thread
+	 * to halt and decontended tokens will issue an IPI to us.  The
+	 * idle thread will check for pending reschedules already set
+	 * (RQF_AST_LWKT_RESCHED) before actually halting so we don't have
+	 * to here.
+	 */
+	if (spinning <= 0) {
+	    atomic_clear_int(&gd->gd_reqflags, RQF_WAKEUP);
+	    goto haveidle;
+	}
+	--spinning;
+
+	/*
+	 * When spinning a delay is required both to avoid livelocks from
+	 * token order reversals (a thread may be trying to acquire multiple
+	 * tokens), and also to reduce cpu cache management traffic.
+	 *
+	 * In order to scale to a large number of CPUs we use a time slot
+	 * resequencer to force contending cpus into non-contending
+	 * time-slots.  The scheduler may still contend with the lock holder
+	 * but will not (generally) contend with all the other cpus trying
+	 * trying to get the same token.
+	 *
+	 * The resequencer uses a FIFO counter mechanic.  The owner of the
+	 * rindex at the head of the FIFO is allowed to pull itself off
+	 * the FIFO and fetchadd is used to enter into the FIFO.  This bit
+	 * of code is VERY cache friendly and forces all spinning schedulers
+	 * into their own time slots.
+	 *
+	 * This code has been tested to 48-cpus and caps the cache
+	 * contention load at ~1uS intervals regardless of the number of
+	 * cpus.  Scaling beyond 64 cpus might require additional smarts
+	 * (such as separate FIFOs for specific token cases).
+	 *
+	 * WARNING!  We can't call splz_check() or anything else here as
+	 *	     it could cause a deadlock.
+	 */
+	cseq = atomic_fetchadd_int(&lwkt_cseq_windex, 1);
+	while (lwkt_cseq_rindex != cseq) {
+	    DELAY(1);
+	    cpu_lfence();
+	}
+	cseq = lwkt_spin_delay;	/* don't trust the system operator */
+	cpu_ccfence();
+	if (cseq < 1)
+	    cseq = 1;
+	if (cseq > 1000)
+	    cseq = 1000;
+	DELAY(cseq);
+	atomic_add_int(&lwkt_cseq_rindex, 1);
 	splz_check();
+	/* highest level for(;;) loop */
     }
 
+havethread:
     /*
      * We must always decrement td_fairq_accum on non-idle threads just
      * in case a thread never gets a tick due to being in a continuous
-     * critical section.  The page-zeroing code does that.
+     * critical section.  The page-zeroing code does this, for example.
      *
      * If the thread we came up with is a higher or equal priority verses
      * the thread at the head of the queue we move our thread to the
      * front.  This way we can always check the front of the queue.
      */
-havethread:
     ++gd->gd_cnt.v_swtch;
     --ntd->td_fairq_accum;
     ntd->td_wmesg = NULL;
@@ -749,13 +881,14 @@ havethread:
 	TAILQ_REMOVE(&gd->gd_tdrunq, ntd, td_threadq);
 	TAILQ_INSERT_HEAD(&gd->gd_tdrunq, ntd, td_threadq);
     }
+
 havethread_preempted:
-    ;
     /*
      * If the new target does not need the MP lock and we are holding it,
      * release the MP lock.  If the new target requires the MP lock we have
      * already acquired it for the target.
      */
+    ;
 haveidle:
     KASSERT(ntd->td_critcount,
 	    ("priority problem in lwkt_switch %d %d",
@@ -1297,12 +1430,15 @@ lwkt_setpri_self(int pri)
 void
 lwkt_fairq_schedulerclock(thread_t td)
 {
+    globaldata_t gd;
+
     if (fairq_enable) {
 	while (td) {
-	    if (td != &td->td_gd->gd_idlethread) {
-		td->td_fairq_accum -= td->td_gd->gd_fairq_total_pri;
-		if (td->td_fairq_accum < -TDFAIRQ_MAX(td->td_gd))
-			td->td_fairq_accum = -TDFAIRQ_MAX(td->td_gd);
+	    gd = td->td_gd;
+	    if (td != &gd->gd_idlethread) {
+		td->td_fairq_accum -= gd->gd_fairq_total_pri;
+		if (td->td_fairq_accum < -TDFAIRQ_MAX(gd))
+			td->td_fairq_accum = -TDFAIRQ_MAX(gd);
 		if (td->td_fairq_accum < 0)
 			need_lwkt_resched();
 		td->td_fairq_lticks = ticks;

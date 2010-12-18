@@ -178,7 +178,7 @@ vnode_pager_alloc(void *handle, off_t length, vm_prot_t prot, off_t offset,
 		vp->v_object = object;
 		vp->v_filesize = length;
 		if (vp->v_mount && (vp->v_mount->mnt_kern_flag & MNTK_NOMSYNC))
-			object->flags |= OBJ_NOMSYNC;
+			vm_object_set_flag(object, OBJ_NOMSYNC);
 	} else {
 		object->ref_count++;	/* protected  by vmobj_token */
 		if (object->size != lsize) {

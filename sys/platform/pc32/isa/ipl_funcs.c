@@ -50,7 +50,7 @@ name(void)								\
 {									\
 	struct mdglobaldata *gd = mdcpu;				\
 	atomic_set_int_nonlocked(var, bits);				\
-	atomic_set_int_nonlocked(&gd->mi.gd_reqflags, RQF_INTPEND);	\
+	atomic_set_int(&gd->mi.gd_reqflags, RQF_INTPEND);	\
 }									\
 
 DO_SETBITS(setdelayed,   &gd->gd_spending, loadandclear(&gd->gd_sdelayed))

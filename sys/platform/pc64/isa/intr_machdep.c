@@ -265,7 +265,7 @@ forward_fastint_remote(void *arg)
     struct mdglobaldata *gd = mdcpu;
 
     atomic_set_int_nonlocked(&gd->gd_fpending, 1 << irq);
-    atomic_set_int_nonlocked(&gd->mi.gd_reqflags, RQF_INTPEND);
+    atomic_set_int(&gd->mi.gd_reqflags, RQF_INTPEND);
 }
 
 #endif
