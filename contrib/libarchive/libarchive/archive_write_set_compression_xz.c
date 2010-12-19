@@ -26,7 +26,7 @@
 
 #include "archive_platform.h"
 
-__FBSDID("$FreeBSD$");
+__FBSDID("$FreeBSD: head/lib/libarchive/archive_write_set_compression_xz.c 201108 2009-12-28 03:28:21Z kientzle $");
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
@@ -323,7 +323,6 @@ archive_compressor_xz_finish(struct archive_write *a)
 		block_length = state->stream.next_out - state->compressed;
 
 		/* Tricky calculation to determine size of last block. */
-		target_block_length = block_length;
 		if (a->bytes_in_last_block <= 0)
 			/* Default or Zero: pad to full block */
 			target_block_length = a->bytes_per_block;

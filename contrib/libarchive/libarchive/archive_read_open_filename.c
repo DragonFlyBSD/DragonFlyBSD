@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_open_filename.c,v 1.21 2008/02/19 06:10:48 kientzle Exp $");
+__FBSDID("$FreeBSD: head/lib/libarchive/archive_read_open_filename.c 201093 2009-12-28 02:28:44Z kientzle $");
 
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
@@ -34,6 +34,9 @@ __FBSDID("$FreeBSD: src/lib/libarchive/archive_read_open_filename.c,v 1.21 2008/
 #endif
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
+#endif
+#ifdef HAVE_IO_H
+#include <io.h>
 #endif
 #ifdef HAVE_STDLIB_H
 #include <stdlib.h>
@@ -84,6 +87,7 @@ archive_read_open_filename(struct archive *a, const char *filename,
 	void *b;
 	int fd;
 
+	archive_clear_error(a);
 	if (filename == NULL || filename[0] == '\0') {
 		/* We used to invoke archive_read_open_fd(a,0,block_size)
 		 * here, but that doesn't (and shouldn't) handle the
@@ -95,6 +99,9 @@ archive_read_open_filename(struct archive *a, const char *filename,
 		 */
 		filename = ""; /* Normalize NULL to "" */
 		fd = 0;
+#if defined(__CYGWIN__) || defined(_WIN32)
+		setmode(0, O_BINARY);
+#endif
 	} else {
 		fd = open(filename, O_RDONLY | O_BINARY);
 		if (fd < 0) {
@@ -153,15 +160,19 @@ file_read(struct archive *a, void *client_data, const void **buff)
 	ssize_t bytes_read;
 
 	*buff = mine->buffer;
-	bytes_read = read(mine->fd, mine->buffer, mine->block_size);
-	if (bytes_read < 0) {
-		if (mine->filename[0] == '\0')
-			archive_set_error(a, errno, "Error reading stdin");
-		else
-			archive_set_error(a, errno, "Error reading '%s'",
-			    mine->filename);
+	for (;;) {
+		bytes_read = read(mine->fd, mine->buffer, mine->block_size);
+		if (bytes_read < 0) {
+			if (errno == EINTR)
+				continue;
+			else if (mine->filename[0] == '\0')
+				archive_set_error(a, errno, "Error reading stdin");
+			else
+				archive_set_error(a, errno, "Error reading '%s'",
+				    mine->filename);
+		}
+		return (bytes_read);
 	}
-	return (bytes_read);
 }
 
 #if ARCHIVE_API_VERSION < 2

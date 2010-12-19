@@ -22,52 +22,21 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD$
  */
 
+#ifndef LAFE_PATHMATCH_H
+#define LAFE_PATHMATCH_H
 
-#include "cpio_platform.h"
-__FBSDID("$FreeBSD$");
+/* Don't anchor at beginning unless the pattern starts with "^" */
+#define PATHMATCH_NO_ANCHOR_START	1
+/* Don't anchor at end unless the pattern ends with "$" */
+#define PATHMATCH_NO_ANCHOR_END 	2
 
-#ifdef HAVE_STDARG_H
-#include <stdarg.h>
+/* Note that "^" and "$" are not special unless you set the corresponding
+ * flag above. */
+
+int lafe_pathmatch(const char *p, const char *s, int flags);
+
 #endif
-#include <stdio.h>
-#ifdef HAVE_STDLIB_H
-#include <stdlib.h>
-#endif
-#ifdef HAVE_STRING_H
-#include <string.h>
-#endif
-
-#include "cpio.h"
-
-static void
-cpio_vwarnc(int code, const char *fmt, va_list ap)
-{
-	fprintf(stderr, "%s: ", cpio_progname);
-	vfprintf(stderr, fmt, ap);
-	if (code != 0)
-		fprintf(stderr, ": %s", strerror(code));
-	fprintf(stderr, "\n");
-}
-
-void
-cpio_warnc(int code, const char *fmt, ...)
-{
-	va_list ap;
-
-	va_start(ap, fmt);
-	cpio_vwarnc(code, fmt, ap);
-	va_end(ap);
-}
-
-void
-cpio_errc(int eval, int code, const char *fmt, ...)
-{
-	va_list ap;
-
-	va_start(ap, fmt);
-	cpio_vwarnc(code, fmt, ap);
-	va_end(ap);
-	exit(eval);
-}

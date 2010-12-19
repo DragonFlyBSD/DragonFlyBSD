@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_string.c,v 1.17 2008/12/06 05:56:43 kientzle Exp $");
+__FBSDID("$FreeBSD: head/lib/libarchive/archive_string.c 201095 2009-12-28 02:33:22Z kientzle $");
 
 /*
  * Basic resizable string support, to simplify manipulating arbitrary-sized
@@ -291,12 +291,10 @@ __archive_string_utf8_w(struct archive_string *as)
 	int wc, wc2;/* Must be large enough for a 21-bit Unicode code point. */
 	const char *src;
 	int n;
-	int err;
 
 	ws = (wchar_t *)malloc((as->length + 1) * sizeof(wchar_t));
 	if (ws == NULL)
 		__archive_errx(1, "Out of memory");
-	err = 0;
 	dest = ws;
 	src = as->s;
 	while (*src != '\0') {
@@ -344,7 +342,7 @@ __archive_string_utf8_w(struct archive_string *as)
 		} else
 			*dest++ = wc;
 	}
-	*dest++ = L'\0';
+	*dest = L'\0';
 	return (ws);
 }
 

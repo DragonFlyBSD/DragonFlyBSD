@@ -22,8 +22,12 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libarchive/archive_private.h,v 1.32 2008/12/06 06:23:37 kientzle Exp $
+ * $FreeBSD: head/lib/libarchive/archive_private.h 201098 2009-12-28 02:58:14Z kientzle $
  */
+
+#ifndef __LIBARCHIVE_BUILD
+#error This header is only to be used internally to libarchive.
+#endif
 
 #ifndef ARCHIVE_PRIVATE_H_INCLUDED
 #define	ARCHIVE_PRIVATE_H_INCLUDED
@@ -90,6 +94,8 @@ struct archive {
 	int64_t		  file_position;
 	/* Position in COMPRESSED data stream. */
 	int64_t		  raw_position;
+	/* Number of file entries processed. */
+	int		  file_count;
 
 	int		  archive_error_number;
 	const char	 *error;
@@ -106,5 +112,13 @@ int	__archive_parse_options(const char *p, const char *fn,
 	    int keysize, char *key, int valsize, char *val);
 
 #define	err_combine(a,b)	((a) < (b) ? (a) : (b))
+
+#if defined(__BORLANDC__) || (defined(_MSC_VER) &&  _MSC_VER <= 1300)
+# define	ARCHIVE_LITERAL_LL(x)	x##i64
+# define	ARCHIVE_LITERAL_ULL(x)	x##ui64
+#else
+# define	ARCHIVE_LITERAL_LL(x)	x##ll
+# define	ARCHIVE_LITERAL_ULL(x)	x##ull
+#endif
 
 #endif

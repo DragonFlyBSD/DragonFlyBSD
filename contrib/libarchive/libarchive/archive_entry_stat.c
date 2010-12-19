@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_entry_stat.c,v 1.2 2008/09/30 03:53:03 kientzle Exp $");
+__FBSDID("$FreeBSD: head/lib/libarchive/archive_entry_stat.c 201100 2009-12-28 03:05:31Z kientzle $");
 
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
@@ -72,7 +72,7 @@ archive_entry_stat(struct archive_entry *entry)
 	st->st_dev = archive_entry_dev(entry);
 	st->st_gid = archive_entry_gid(entry);
 	st->st_uid = archive_entry_uid(entry);
-	st->st_ino = archive_entry_ino(entry);
+	st->st_ino = archive_entry_ino64(entry);
 	st->st_nlink = archive_entry_nlink(entry);
 	st->st_rdev = archive_entry_rdev(entry);
 	st->st_size = archive_entry_size(entry);
