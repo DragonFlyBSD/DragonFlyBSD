@@ -878,6 +878,9 @@ havethread:
      * If the thread we came up with is a higher or equal priority verses
      * the thread at the head of the queue we move our thread to the
      * front.  This way we can always check the front of the queue.
+     *
+     * Clear gd_idle_repeat when doing a normal switch to a non-idle
+     * thread.
      */
     ++gd->gd_cnt.v_swtch;
     --ntd->td_fairq_accum;
@@ -887,6 +890,7 @@ havethread:
 	TAILQ_REMOVE(&gd->gd_tdrunq, ntd, td_threadq);
 	TAILQ_INSERT_HEAD(&gd->gd_tdrunq, ntd, td_threadq);
     }
+    gd->gd_idle_repeat = 0;
 
 havethread_preempted:
     /*

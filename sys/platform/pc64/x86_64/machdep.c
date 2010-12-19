@@ -902,16 +902,22 @@ cpu_halt(void)
  *
  * NOTE: cpu_idle_hlt again defaults to 2 (use ACPI sleep states).  Set to
  *	 1 to just use hlt and for debugging purposes.
+ *
+ * NOTE: cpu_idle_repeat determines how many entries into the idle thread
+ *	 must occur before it starts using ACPI halt.
  */
 static int	cpu_idle_hlt = 2;
 static int	cpu_idle_hltcnt;
 static int	cpu_idle_spincnt;
+static u_int	cpu_idle_repeat = 4;
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hlt, CTLFLAG_RW,
     &cpu_idle_hlt, 0, "Idle loop HLT enable");
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hltcnt, CTLFLAG_RW,
     &cpu_idle_hltcnt, 0, "Idle loop entry halts");
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_spincnt, CTLFLAG_RW,
     &cpu_idle_spincnt, 0, "Idle loop entry spins");
+SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_repeat, CTLFLAG_RW,
+    &cpu_idle_repeat, 0, "Idle entries before acpi hlt");
 
 static void
 cpu_idle_default_hook(void)
@@ -932,6 +938,7 @@ cpu_idle(void)
 	globaldata_t gd = mycpu;
 	struct thread *td = gd->gd_curthread;
 	int reqflags;
+	int quick;
 
 	crit_exit();
 	KKASSERT(td->td_critcount == 0);
@@ -942,20 +949,48 @@ cpu_idle(void)
 		lwkt_switch();
 
 		/*
-		 * If we are going to halt call splz unconditionally after
-		 * CLIing to catch any interrupt races.  Note that we are
-		 * at SPL0 and interrupts are enabled.
+		 * When halting inside a cli we must check for reqflags
+		 * races, particularly [re]schedule requests.  Running
+		 * splz() does the job.
+		 *
+		 * cpu_idle_hlt:
+		 *	0	Never halt, just spin
+		 *
+		 *	1	Always use HLT (or MONITOR/MWAIT if avail).
+		 *		This typically eats more power than the
+		 *		ACPI halt.
+		 *
+		 *	2	Use HLT/MONITOR/MWAIT up to a point and then
+		 *		use the ACPI halt (default).  This is a hybrid
+		 *		approach.  See machdep.cpu_idle_repeat.
+		 *
+		 *	3	Always use the ACPI halt.  This typically
+		 *		eats the least amount of power but the cpu
+		 *		will be slow waking up.  Slows down e.g.
+		 *		compiles and other pipe/event oriented stuff.
+		 *
+		 * NOTE: Interrupts are enabled and we are not in a critical
+		 *	 section.
+		 *
+		 * NOTE: Preemptions do not reset gd_idle_repeat.   Also we
+		 *	 don't bother capping gd_idle_repeat, it is ok if
+		 *	 it overflows.
 		 */
+		++gd->gd_idle_repeat;
 		reqflags = gd->gd_reqflags;
-		if (cpu_idle_hlt == 1 &&
-		    (cpu_mi_feature & CPU_MI_MONITOR) &&
+		quick = (cpu_idle_hlt == 1) ||
+			(cpu_idle_hlt < 3 &&
+			 gd->gd_idle_repeat < cpu_idle_repeat);
+
+		if (quick && (cpu_mi_feature & CPU_MI_MONITOR) &&
 		    (reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
 			cpu_mmw_pause_int(&gd->gd_reqflags, reqflags);
+			++cpu_idle_hltcnt;
 		} else if (cpu_idle_hlt) {
 			__asm __volatile("cli");
 			splz();
 			if ((gd->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
-				if (cpu_idle_hlt == 1)
+				if (quick)
 					cpu_idle_default_hook();
 				else
 					cpu_idle_hook();

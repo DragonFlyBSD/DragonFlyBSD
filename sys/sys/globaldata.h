@@ -163,7 +163,9 @@ struct globaldata {
 	int		gd_spinlocks_wr;	/* Exclusive spinlocks held */
 	struct systimer	*gd_systimer_inprog;	/* in-progress systimer */
 	int		gd_timer_running;
-	void		*gd_reserved[11];	/* future fields */
+	u_int		gd_idle_repeat;		/* repeated switches to idle */
+	int		gd_ireserved[7];
+	void		*gd_preserved[11];	/* future fields */
 	/* extended by <machine/globaldata.h> */
 };
 
@@ -190,6 +192,7 @@ typedef struct globaldata *globaldata_t;
 #define RQF_AST_UPCALL		(1 << RQB_AST_UPCALL)
 #define RQF_RUNNING		(1 << RQB_RUNNING)
 #define RQF_WAKEUP		(1 << RQB_WAKEUP)
+
 #define RQF_AST_MASK		(RQF_AST_OWEUPC|RQF_AST_SIGNAL|\
 				RQF_AST_USER_RESCHED|RQF_AST_LWKT_RESCHED|\
 				RQF_AST_UPCALL)
