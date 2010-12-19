@@ -103,6 +103,8 @@
     ..
     libprop
     ..
+    lzma
+    ..
     machine
         pc
         ..

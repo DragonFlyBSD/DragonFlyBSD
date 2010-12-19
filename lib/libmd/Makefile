@@ -9,7 +9,7 @@ SRCS=	md2c.c md4c.c md5c.c md2hl.c md4hl.c md5hl.c \
 INCS=	md2.h md4.h md5.h ripemd.h sha.h sha256.h sha512.h
 WARNS?=	2
 
-MAN+=	md2.3 md4.3 md5.3 ripemd.3 sha.3 sha256.3 sha512.3
+MAN+=	md2.3 md4.3 md5.3 ripemd.3 sha.3 sha256.3 sha384.3 sha512.3
 MLINKS+=md2.3 MD2Init.3 md2.3 MD2Update.3 md2.3 MD2Pad.3 md2.3 MD2Final.3
 MLINKS+=md2.3 MD2End.3  md2.3 MD2File.3   md2.3 MD2FileChunk.3
 MLINKS+=md2.3 MD2Data.3
@@ -33,6 +33,8 @@ MLINKS+=sha256.3 SHA256_Init.3  sha256.3 SHA256_Update.3
 MLINKS+=sha256.3 SHA256_Final.3 sha256.3 SHA256_End.3
 MLINKS+=sha256.3 SHA256_File.3  sha256.3 SHA256_FileChunk.3
 MLINKS+=sha256.3 SHA256_Data.3
+MLINKS+=sha384.3 SHA384_Init.3 sha384.3 SHA384_Update.3
+MLINKS+=sha384.3 SHA384_Final.3
 MLINKS+=sha512.3 SHA512_Init.3  sha512.3 SHA512_Update.3
 MLINKS+=sha512.3 SHA512_Final.3 sha512.3 SHA512_End.3
 MLINKS+=sha512.3 SHA512_File.3  sha512.3 SHA512_FileChunk.3                                               

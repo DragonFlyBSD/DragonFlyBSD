@@ -2268,14 +2268,73 @@ jme_tick(void *xsc)
 static void
 jme_reset(struct jme_softc *sc)
 {
-#ifdef foo
-	/* Stop receiver, transmitter. */
-	jme_stop_rx(sc);
+	uint32_t val;
+
+	/* Make sure that TX and RX are stopped */
 	jme_stop_tx(sc);
-#endif
+	jme_stop_rx(sc);
+
+	/* Start reset */
 	CSR_WRITE_4(sc, JME_GHC, GHC_RESET);
-	DELAY(10);
+	DELAY(20);
+
+	/*
+	 * Hold reset bit before stop reset
+	 */
+
+	/* Disable TXMAC and TXOFL clock sources */
+	CSR_WRITE_4(sc, JME_GHC, GHC_RESET);
+	/* Disable RXMAC clock source */
+	val = CSR_READ_4(sc, JME_GPREG1);
+	CSR_WRITE_4(sc, JME_GPREG1, val | GPREG1_DIS_RXMAC_CLKSRC);
+	/* Flush */
+	CSR_READ_4(sc, JME_GHC);
+
+	/* Stop reset */
 	CSR_WRITE_4(sc, JME_GHC, 0);
+	/* Flush */
+	CSR_READ_4(sc, JME_GHC);
+
+	/*
+	 * Clear reset bit after stop reset
+	 */
+
+	/* Enable TXMAC and TXOFL clock sources */
+	CSR_WRITE_4(sc, JME_GHC, GHC_TXOFL_CLKSRC | GHC_TXMAC_CLKSRC);
+	/* Enable RXMAC clock source */
+	val = CSR_READ_4(sc, JME_GPREG1);
+	CSR_WRITE_4(sc, JME_GPREG1, val & ~GPREG1_DIS_RXMAC_CLKSRC);
+	/* Flush */
+	CSR_READ_4(sc, JME_GHC);
+
+	/* Disable TXMAC and TXOFL clock sources */
+	CSR_WRITE_4(sc, JME_GHC, 0);
+	/* Disable RXMAC clock source */
+	val = CSR_READ_4(sc, JME_GPREG1);
+	CSR_WRITE_4(sc, JME_GPREG1, val | GPREG1_DIS_RXMAC_CLKSRC);
+	/* Flush */
+	CSR_READ_4(sc, JME_GHC);
+
+	/* Enable TX and RX */
+	val = CSR_READ_4(sc, JME_TXCSR);
+	CSR_WRITE_4(sc, JME_TXCSR, val | TXCSR_TX_ENB);
+	val = CSR_READ_4(sc, JME_RXCSR);
+	CSR_WRITE_4(sc, JME_RXCSR, val | RXCSR_RX_ENB);
+	/* Flush */
+	CSR_READ_4(sc, JME_TXCSR);
+	CSR_READ_4(sc, JME_RXCSR);
+
+	/* Enable TXMAC and TXOFL clock sources */
+	CSR_WRITE_4(sc, JME_GHC, GHC_TXOFL_CLKSRC | GHC_TXMAC_CLKSRC);
+	/* Eisable RXMAC clock source */
+	val = CSR_READ_4(sc, JME_GPREG1);
+	CSR_WRITE_4(sc, JME_GPREG1, val & ~GPREG1_DIS_RXMAC_CLKSRC);
+	/* Flush */
+	CSR_READ_4(sc, JME_GHC);
+
+	/* Stop TX and RX */
+	jme_stop_tx(sc);
+	jme_stop_rx(sc);
 }
 
 static void

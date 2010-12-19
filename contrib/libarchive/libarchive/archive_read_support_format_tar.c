@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_tar.c,v 1.72 2008/12/06 06:45:15 kientzle Exp $");
+__FBSDID("$FreeBSD: head/lib/libarchive/archive_read_support_format_tar.c 201161 2009-12-29 05:44:39Z kientzle $");
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
@@ -552,7 +552,7 @@ tar_read_header(struct archive_read *a, struct tar *tar,
 		return (bytes);
 	if (bytes < 512) {  /* Short read or EOF. */
 		/* Try requesting just one byte and see what happens. */
-		h = __archive_read_ahead(a, 1, &bytes);
+		(void)__archive_read_ahead(a, 1, &bytes);
 		if (bytes == 0) {
 			/*
 			 * The archive ends at a 512-byte boundary but
@@ -732,6 +732,7 @@ header_Solaris_ACL(struct archive_read *a, struct tar *tar,
 	const struct archive_entry_header_ustar *header;
 	size_t size;
 	int err;
+	int64_t type;
 	char *acl, *p;
 	wchar_t *wp;
 
@@ -744,24 +745,57 @@ header_Solaris_ACL(struct archive_read *a, struct tar *tar,
 	err = read_body_to_string(a, tar, &(tar->acl_text), h);
 	if (err != ARCHIVE_OK)
 		return (err);
+	/* Recursively read next header */
 	err = tar_read_header(a, tar, entry);
 	if ((err != ARCHIVE_OK) && (err != ARCHIVE_WARN))
 		return (err);
 
-	/* Skip leading octal number. */
-	/* XXX TODO: Parse the octal number and sanity-check it. */
+	/* TODO: Examine the first characters to see if this
+	 * is an AIX ACL descriptor.  We'll likely never support
+	 * them, but it would be polite to recognize and warn when
+	 * we do see them. */
+
+	/* Leading octal number indicates ACL type and number of entries. */
 	p = acl = tar->acl_text.s;
-	while (*p != '\0' && p < acl + size)
+	type = 0;
+	while (*p != '\0' && p < acl + size) {
+		if (*p < '0' || *p > '7') {
+			archive_set_error(&a->archive, ARCHIVE_ERRNO_MISC,
+			    "Malformed Solaris ACL attribute (invalid digit)");
+			return(ARCHIVE_WARN);
+		}
+		type <<= 3;
+		type += *p - '0';
+		if (type > 077777777) {
+			archive_set_error(&a->archive, ARCHIVE_ERRNO_MISC,
+			    "Malformed Solaris ACL attribute (count too large)");
+			return (ARCHIVE_WARN);
+		}
 		p++;
+	}
+	switch ((int)type & ~0777777) {
+	case 01000000:
+		/* POSIX.1e ACL */
+		break;
+	case 03000000:
+		archive_set_error(&a->archive, ARCHIVE_ERRNO_MISC,
+		    "Solaris NFSv4 ACLs not supported");
+		return (ARCHIVE_WARN);
+	default:
+		archive_set_error(&a->archive, ARCHIVE_ERRNO_MISC,
+		    "Malformed Solaris ACL attribute (unsupported type %o)",
+		    (int)type);
+		return (ARCHIVE_WARN);
+	}
 	p++;
 
 	if (p >= acl + size) {
 		archive_set_error(&a->archive, ARCHIVE_ERRNO_MISC,
-		    "Malformed Solaris ACL attribute");
+		    "Malformed Solaris ACL attribute (body overflow)");
 		return(ARCHIVE_WARN);
 	}
 
-	/* Skip leading octal number. */
+	/* ACL text is null-terminated; find the end. */
 	size -= (p - acl);
 	acl = p;
 
@@ -771,6 +805,9 @@ header_Solaris_ACL(struct archive_read *a, struct tar *tar,
 	wp = utf8_decode(tar, acl, p - acl);
 	err = __archive_entry_acl_parse_w(entry, wp,
 	    ARCHIVE_ENTRY_ACL_TYPE_ACCESS);
+	if (err != ARCHIVE_OK)
+		archive_set_error(&a->archive, ARCHIVE_ERRNO_MISC,
+		    "Malformed Solaris ACL attribute (unparsable)");
 	return (err);
 }
 
@@ -1159,7 +1196,7 @@ pax_header(struct archive_read *a, struct tar *tar,
     struct archive_entry *entry, char *attr)
 {
 	size_t attr_length, l, line_length;
-	char *line, *p;
+	char *p;
 	char *key, *value;
 	int err, err2;
 
@@ -1175,7 +1212,7 @@ pax_header(struct archive_read *a, struct tar *tar,
 		/* Parse decimal length field at start of line. */
 		line_length = 0;
 		l = attr_length;
-		line = p = attr; /* Record start of line. */
+		p = attr; /* Record start of line. */
 		while (l>0) {
 			if (*p == ' ') {
 				p++;
@@ -1593,7 +1630,7 @@ pax_time(const char *p, int64_t *ps, long *pn)
 		digit = *p - '0';
 		if (s > limit ||
 		    (s == limit && digit > last_digit_limit)) {
-			s = UINT64_MAX;
+			s = INT64_MAX;
 			break;
 		}
 		s = (s * 10) + digit;
@@ -1892,7 +1929,7 @@ gnu_sparse_10_atol(struct archive_read *a, struct tar *tar,
 			return (ARCHIVE_WARN);
 		digit = *p - '0';
 		if (l > limit || (l == limit && digit > last_digit_limit))
-			l = UINT64_MAX; /* Truncate on overflow. */
+			l = INT64_MAX; /* Truncate on overflow. */
 		else
 			l = (l * base) + digit;
 		p++;
@@ -1998,7 +2035,7 @@ tar_atol8(const char *p, unsigned char_cnt)
 	digit = *p - '0';
 	while (digit >= 0 && digit < base  && char_cnt-- > 0) {
 		if (l>limit || (l == limit && digit > last_digit_limit)) {
-			l = UINT64_MAX; /* Truncate on overflow. */
+			l = INT64_MAX; /* Truncate on overflow. */
 			break;
 		}
 		l = (l * base) + digit;
@@ -2034,7 +2071,7 @@ tar_atol10(const char *p, unsigned char_cnt)
 	digit = *p - '0';
 	while (digit >= 0 && digit < base  && char_cnt-- > 0) {
 		if (l > limit || (l == limit && digit > last_digit_limit)) {
-			l = UINT64_MAX; /* Truncate on overflow. */
+			l = INT64_MAX; /* Truncate on overflow. */
 			break;
 		}
 		l = (l * base) + digit;
@@ -2152,7 +2189,7 @@ utf8_decode(struct tar *tar, const char *src, size_t length)
 
 	/* Ensure pax_entry buffer is big enough. */
 	if (tar->pax_entry_length <= length) {
-		wchar_t *old_entry = tar->pax_entry;
+		wchar_t *old_entry;
 
 		if (tar->pax_entry_length <= 0)
 			tar->pax_entry_length = 1024;
@@ -2180,7 +2217,7 @@ utf8_decode(struct tar *tar, const char *src, size_t length)
 		src += n;
 		length -= n;
 	}
-	*dest++ = L'\0';
+	*dest = L'\0';
 	return (tar->pax_entry);
 }
 
@@ -2281,7 +2318,7 @@ base64_decode(const char *s, size_t len, size_t *out_len)
 
 	/* If the decode table is not yet initialized, prepare it. */
 	if (decode_table[digits[1]] != 1) {
-		size_t i;
+		unsigned i;
 		memset(decode_table, 0xff, sizeof(decode_table));
 		for (i = 0; i < sizeof(digits); i++)
 			decode_table[digits[i]] = i;

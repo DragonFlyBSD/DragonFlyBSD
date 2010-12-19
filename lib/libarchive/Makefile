@@ -13,11 +13,6 @@ WARNS?=	6
 
 DPADD=	${LIBBZ2} ${LIBZ} ${LIBMD}
 LDADD=	-lbz2 -lz -lmd
-.if !defined(NO_OPENSSL)
-DPADD+=	${LIBCRYPTO}
-LDADD+=	-lcrypto
-CFLAGS+=	-DWITH_OPENSSL
-.endif
 
 INCS=	archive.h archive_entry.h
 
@@ -27,6 +22,7 @@ SRCS=	archive_check_magic.c				\
 	archive_entry_link_resolver.c			\
 	archive_entry_stat.c				\
 	archive_entry_strmode.c				\
+	archive_entry_xattr.c				\
 	archive_read.c					\
 	archive_read_data_into_fd.c			\
 	archive_read_disk.c				\
@@ -43,6 +39,8 @@ SRCS=	archive_check_magic.c				\
 	archive_read_support_compression_gzip.c		\
 	archive_read_support_compression_none.c		\
 	archive_read_support_compression_program.c	\
+	archive_read_support_compression_rpm.c		\
+	archive_read_support_compression_uu.c		\
 	archive_read_support_compression_xz.c		\
 	archive_read_support_format_all.c		\
 	archive_read_support_format_ar.c		\
@@ -50,7 +48,9 @@ SRCS=	archive_check_magic.c				\
 	archive_read_support_format_empty.c		\
 	archive_read_support_format_iso9660.c		\
 	archive_read_support_format_mtree.c		\
+	archive_read_support_format_raw.c		\
 	archive_read_support_format_tar.c		\
+	archive_read_support_format_xar.c		\
 	archive_read_support_format_zip.c		\
 	archive_string.c				\
 	archive_string_sprintf.c			\
@@ -78,6 +78,7 @@ SRCS=	archive_check_magic.c				\
 	archive_write_set_format_pax.c			\
 	archive_write_set_format_shar.c			\
 	archive_write_set_format_ustar.c		\
+	archive_write_set_format_zip.c			\
 	filter_fork.c
 
 MAN=	archive_entry.3					\
@@ -88,8 +89,8 @@ MAN=	archive_entry.3					\
 	archive_write_disk.3				\
 	cpio.5						\
 	libarchive.3					\
-	libarchive-formats.5				\
 	libarchive_internals.3				\
+	libarchive-formats.5				\
 	mtree.5						\
 	tar.5
 
@@ -189,12 +190,18 @@ MLINKS+=	archive_read.3 archive_read_support_compression_all.3
 MLINKS+=	archive_read.3 archive_read_support_compression_bzip2.3
 MLINKS+=	archive_read.3 archive_read_support_compression_compress.3
 MLINKS+=	archive_read.3 archive_read_support_compression_gzip.3
+MLINKS+=	archive_read.3 archive_read_support_compression_lzma.3
 MLINKS+=	archive_read.3 archive_read_support_compression_none.3
+MLINKS+=	archive_read.3 archive_read_support_compression_xz.3
 MLINKS+=	archive_read.3 archive_read_support_compression_program.3
+MLINKS+=	archive_read.3 archive_read_support_compression_program_signature.3
 MLINKS+=	archive_read.3 archive_read_support_format_all.3
+MLINKS+=	archive_read.3 archive_read_support_format_ar.3
 MLINKS+=	archive_read.3 archive_read_support_format_cpio.3
 MLINKS+=	archive_read.3 archive_read_support_format_empty.3
 MLINKS+=	archive_read.3 archive_read_support_format_iso9660.3
+MLINKS+=	archive_read.3 archive_read_support_format_mtree.3
+MLINKS+=	archive_read.3 archive_read_support_format_raw.3
 MLINKS+=	archive_read.3 archive_read_support_format_tar.3
 MLINKS+=	archive_read.3 archive_read_support_format_zip.3
 MLINKS+=	archive_read_disk.3 archive_read_close.3
@@ -214,6 +221,7 @@ MLINKS+=	archive_util.3 archive_compression.3
 MLINKS+=	archive_util.3 archive_compression_name.3
 MLINKS+=	archive_util.3 archive_errno.3
 MLINKS+=	archive_util.3 archive_error_string.3
+MLINKS+=	archive_util.3 archive_file_count.3
 MLINKS+=	archive_util.3 archive_format.3
 MLINKS+=	archive_util.3 archive_format_name.3
 MLINKS+=	archive_util.3 archive_set_error.3

@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_compression_all.c,v 1.7 2008/12/06 06:45:15 kientzle Exp $");
+__FBSDID("$FreeBSD: head/lib/libarchive/archive_read_support_compression_all.c 201248 2009-12-30 06:12:03Z kientzle $");
 
 #include "archive.h"
 
@@ -44,6 +44,10 @@ archive_read_support_compression_all(struct archive *a)
 	archive_read_support_compression_lzma(a);
 	/* Xz falls back to "unxz" command-line program. */
 	archive_read_support_compression_xz(a);
+	/* The decode code doesn't use an outside library. */
+	archive_read_support_compression_uu(a);
+	/* The decode code doesn't use an outside library. */
+	archive_read_support_compression_rpm(a);
 
 	/* Note: We always return ARCHIVE_OK here, even if some of the
 	 * above return ARCHIVE_WARN.  The intent here is to enable
