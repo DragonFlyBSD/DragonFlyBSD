@@ -771,12 +771,14 @@ void emulate_compile(struct thread *th)
 	sem_t *s = &th->sem.stop;
 	unsigned long i, threads[3];
 
+	bzero(threads, 3 * sizeof(threads[0]));
+
 	for (i = 0 ; i < THREADS ; i++) {
-		if (threadlist[i].label == "Burn")
+		if (strcmp(threadlist[i].label, "Burn") == 0)
 			threads[0] = i;
-		if (threadlist[i].label == "Write")
+		if (strcmp(threadlist[i].label, "Write") == 0)
 			threads[1] = i;
-		if (threadlist[i].label == "Read")
+		if (strcmp(threadlist[i].label, "Read") == 0)
 			threads[2] = i;
 	}
 	for (i = 0 ; i < 3 ; i++) {
@@ -1157,7 +1159,7 @@ void get_ram(void)
 		fprintf(stderr, "\nCould not get memory or swap size. ");
 		fprintf(stderr, "Will not perform mem_load\n");
 		for (i = 0 ; i < THREADS ; i++) {
-			if (threadlist[i].label == "Memload") {
+			if (strcmp(threadlist[i].label, "Memload") == 0) {
 				threadlist[i].load = 0;
 				threadlist[i].rtload = 0;
 			}
