@@ -500,6 +500,7 @@ lwkt_switch(void)
     int spinning = lwkt_spin_loops;	/* loops before HLTing */
     int reqflags;
     int cseq;
+    int oseq;
 
     /*
      * Switching from within a 'fast' (non thread switched) interrupt or IPI
@@ -847,9 +848,14 @@ skip:
 	 *	     it could cause a deadlock.
 	 */
 	cseq = atomic_fetchadd_int(&lwkt_cseq_windex, 1);
-	while (lwkt_cseq_rindex != cseq) {
-	    DELAY(1);
-	    cpu_lfence();
+	while ((oseq = lwkt_cseq_rindex) != cseq) {
+	    cpu_ccfence();
+	    if (cpu_mi_feature & CPU_MI_MONITOR) {
+		cpu_mmw_pause_int(&lwkt_cseq_rindex, oseq);
+	    } else {
+		DELAY(1);
+		cpu_lfence();
+	    }
 	}
 	cseq = lwkt_spin_delay;	/* don't trust the system operator */
 	cpu_ccfence();

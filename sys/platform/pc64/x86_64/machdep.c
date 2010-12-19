@@ -929,7 +929,9 @@ void (*cpu_idle_hook)(void) = cpu_idle_default_hook;
 void
 cpu_idle(void)
 {
-	struct thread *td = curthread;
+	globaldata_t gd = mycpu;
+	struct thread *td = gd->gd_curthread;
+	int reqflags;
 
 	crit_exit();
 	KKASSERT(td->td_critcount == 0);
@@ -944,11 +946,15 @@ cpu_idle(void)
 		 * CLIing to catch any interrupt races.  Note that we are
 		 * at SPL0 and interrupts are enabled.
 		 */
-		if (cpu_idle_hlt &&
-		    (td->td_gd->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
+		reqflags = gd->gd_reqflags;
+		if (cpu_idle_hlt == 1 &&
+		    (cpu_mi_feature & CPU_MI_MONITOR) &&
+		    (reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
+			cpu_mmw_pause_int(&gd->gd_reqflags, reqflags);
+		} else if (cpu_idle_hlt) {
 			__asm __volatile("cli");
 			splz();
-			if ((td->td_gd->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
+			if ((gd->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
 				if (cpu_idle_hlt == 1)
 					cpu_idle_default_hook();
 				else
