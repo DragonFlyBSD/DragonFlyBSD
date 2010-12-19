@@ -35,6 +35,7 @@
 #define JME_REV1_A1		0x10
 #define JME_REV1_A2		0x11	/* JMC250A2 */
 #define JME_REV2		0x20
+#define JME_REV5		0x50
 
 /* JMC250 PCI configuration register. */
 #define JME_PCIR_BAR		PCIR_BAR(0)
@@ -564,6 +565,7 @@
 #define	JME_GPREG1		0x080C
 #define GPREG1_WA_HDX		0x00000020 /* 250A2 only, for 10/100 mode */
 #define GPREG1_WA_IP6RSS	0x00000040 /* 250A2 only, for 10/100 mode */
+#define GPREG1_DIS_RXMAC_CLKSRC	0x04000000
 
 /* MSIX entry number of interrupt source. */
 #define	JME_MSINUM_BASE		0x0810
