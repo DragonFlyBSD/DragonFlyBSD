@@ -1,20 +1,17 @@
 # $DragonFly: src/usr.bin/tar/Makefile,v 1.16 2008/07/12 14:57:33 pavalos Exp $
 
 PROG=	bsdtar
-SRCS=	bsdtar.c cmdline.c getdate.c matching.c read.c siginfo.c subst.c \
+SRCS=	bsdtar.c cmdline.c err.c getdate.c line_reader.c matching.c \
+	pathmatch.c read.c subst.c \
 	tree.c util.c write.c
-DPADD=	${LIBARCHIVE} ${LIBBZ2} ${LIBZ} ${LIBMD}
-LDADD=	-larchive -lbz2 -lz -lmd
-.if !defined(NO_OPENSSL)
-DPADD+=	${LIBCRYPTO}
-LDADD+=	-lcrypto
-.endif
+DPADD=	${LIBARCHIVE} ${LIBBZ2} ${LIBLZMA} ${LIBMD} ${LIBZ}
+LDADD=	-larchive -lbz2 -llzma -lmd -lz
 
 CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive/tar
-.PATH: ${CONTRIBDIR}
+.PATH: ${CONTRIBDIR} ${CONTRIBDIR}/../libarchive_fe
 LIBARCHIVE_VERSION!=	cat ${CONTRIBDIR}/../build/version
 VERSION!=	echo $$((${LIBARCHIVE_VERSION} / 1000000)).$$((${LIBARCHIVE_VERSION} / 1000 % 1000)).$$((${LIBARCHIVE_VERSION} % 1000))
-CFLAGS+=	-I${.OBJDIR} -I${.CURDIR}/../../lib/libarchive -I${CONTRIBDIR}
+CFLAGS+=	-I${.CURDIR}/../../lib/libarchive -I${CONTRIBDIR} -I${CONTRIBDIR}/../libarchive_fe
 CFLAGS+=	-DPLATFORM_CONFIG_H=\"config.h\"
 CFLAGS+=	-DBSDTAR_VERSION_STRING=\"${VERSION}\"
 
