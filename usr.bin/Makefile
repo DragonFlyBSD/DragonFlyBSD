@@ -110,6 +110,7 @@ SUBDIR=	alias \
 	lorder \
 	lsvfs \
 	lt \
+	lzmainfo \
 	m4 \
 	mail \
 	make \
@@ -230,6 +231,8 @@ SUBDIR=	alias \
 	xinstall \
 	xlint \
 	xstr \
+	xz \
+	xzdec \
 	yacc \
 	yes \
 	ypcat \

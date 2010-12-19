@@ -59,6 +59,7 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libkinfo \
 	libkvm \
 	libldns \
+	liblzma \
 	libm \
 	libmagic \
 	${_libmilter} \
