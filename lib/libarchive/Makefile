@@ -11,8 +11,8 @@ CFLAGS+=	-DPLATFORM_CONFIG_H=\"config.h\"
 CFLAGS+=	-I${.OBJDIR} -I${.CURDIR} -I${CONTRIBDIR}
 WARNS?=	6
 
-DPADD=	${LIBBZ2} ${LIBZ} ${LIBMD}
-LDADD=	-lbz2 -lz -lmd
+DPADD=	${LIBBZ2} ${LIBLZMA} ${LIBMD} ${LIBZ}
+LDADD=	-lbz2 -llzma -lmd -lz
 
 INCS=	archive.h archive_entry.h
 
