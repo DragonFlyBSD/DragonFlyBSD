@@ -850,9 +850,12 @@ skip:
 	cseq = atomic_fetchadd_int(&lwkt_cseq_windex, 1);
 	while ((oseq = lwkt_cseq_rindex) != cseq) {
 	    cpu_ccfence();
+#if !defined(_KERNEL_VIRTUAL)
 	    if (cpu_mi_feature & CPU_MI_MONITOR) {
 		cpu_mmw_pause_int(&lwkt_cseq_rindex, oseq);
-	    } else {
+	    } else
+#endif
+	    {
 		DELAY(1);
 		cpu_lfence();
 	    }
