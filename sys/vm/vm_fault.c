@@ -438,7 +438,7 @@ RetryFault:
 	lwkt_gettoken(&vm_token);
 	unlock_things(&fs);
 
-	KKASSERT(fs.m->queue == PQ_NONE);
+	/*KKASSERT(fs.m->queue == PQ_NONE); page-in op may deactivate page */
 	KKASSERT(fs.m->flags & PG_BUSY);
 
 	/*
@@ -475,6 +475,8 @@ RetryFault:
 	 */
 	vm_page_wakeup(fs.m);
 	vm_object_deallocate(fs.first_object);
+	/*fs.m = NULL; */
+	/*fs.first_object = NULL; */
 	/*lwkt_reltoken(&vm_token);*/
 
 	return (KERN_SUCCESS);
@@ -689,6 +691,7 @@ RetryFault:
 	 */
 	vm_page_wakeup(fs.m);
 	vm_object_deallocate(fs.first_object);
+	/*fs.first_object = NULL; */
 	lwkt_reltoken(&vm_token);
 
 	*errorp = 0;
@@ -838,6 +841,7 @@ RetryFault:
 	 */
 	vm_page_wakeup(fs.m);
 	vm_object_deallocate(fs.first_object);
+	/*fs.first_object = NULL; */
 	lwkt_reltoken(&vm_token);
 
 	*errorp = 0;
@@ -934,6 +938,7 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 		vm_page_flag_set(fs->m, PG_REFERENCED);
 		vm_page_activate(fs->m);
 		vm_page_wakeup(fs->m);
+		fs->m = NULL;
 		cleanup_successful_fault(fs);
 	}
 	/*
@@ -1202,10 +1207,10 @@ readrest:
 					    mt->wire_count)  {
 						goto skip;
 					}
+					vm_page_busy(mt);
 					if (mt->dirty == 0)
 						vm_page_test_dirty(mt);
 					if (mt->dirty) {
-						vm_page_busy(mt);
 						vm_page_protect(mt,
 								VM_PROT_NONE);
 						vm_page_deactivate(mt);
@@ -2119,10 +2124,10 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 		    (m->busy == 0) &&
 		    (m->flags & (PG_BUSY | PG_FICTITIOUS)) == 0) {
 
+			vm_page_busy(m);
 			if ((m->queue - m->pc) == PQ_CACHE) {
 				vm_page_deactivate(m);
 			}
-			vm_page_busy(m);
 			if (pprot & VM_PROT_WRITE)
 				vm_set_nosync(m, entry);
 			pmap_enter(pmap, addr, m, pprot, 0);

@@ -466,14 +466,14 @@ vm_pageout_flush(vm_page_t *mc, int count, int flags)
 		 * might still be read-heavy.
 		 */
 		if (pageout_status[i] != VM_PAGER_PEND) {
-			vm_object_pip_wakeup(object);
-			vm_page_io_finish(mt);
 			if (vm_page_count_severe())
 				vm_page_deactivate(mt);
 #if 0
 			if (!vm_page_count_severe() || !vm_page_try_to_cache(mt))
 				vm_page_protect(mt, VM_PROT_READ);
 #endif
+			vm_page_io_finish(mt);
+			vm_object_pip_wakeup(object);
 		}
 	}
 	return numpagedout;
@@ -568,8 +568,8 @@ vm_pageout_object_deactivate_pages_callback(vm_page_t p, void *data)
 			if (!info->limit && (vm_pageout_algorithm || (p->act_count == 0))) {
 				vm_page_busy(p);
 				vm_page_protect(p, VM_PROT_NONE);
-				vm_page_wakeup(p);
 				vm_page_deactivate(p);
+				vm_page_wakeup(p);
 			} else {
 				TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
 				TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
@@ -675,6 +675,8 @@ vm_pageout_map_deactivate_pages(vm_map_t map, vm_pindex_t desired)
  * be trivially freed.
  *
  * The caller must hold vm_token.
+ *
+ * WARNING: vm_object_reference() can block.
  */
 static void
 vm_pageout_page_free(vm_page_t m) 
@@ -682,9 +684,9 @@ vm_pageout_page_free(vm_page_t m)
 	vm_object_t object = m->object;
 	int type = object->type;
 
+	vm_page_busy(m);
 	if (type == OBJT_SWAP || type == OBJT_DEFAULT)
 		vm_object_reference(object);
-	vm_page_busy(m);
 	vm_page_protect(m, VM_PROT_NONE);
 	vm_page_free(m);
 	if (type == OBJT_SWAP || type == OBJT_DEFAULT)
@@ -892,6 +894,7 @@ rescan0:
 			 * Clean pages can be placed onto the cache queue.
 			 * This effectively frees them.
 			 */
+			vm_page_busy(m);
 			vm_page_cache(m);
 			--inactive_shortage;
 		} else if ((m->flags & PG_WINATCFLS) == 0 && pass == 0) {
@@ -1167,13 +1170,13 @@ rescan0:
 						++recycle_count;
 					vm_page_busy(m);
 					vm_page_protect(m, VM_PROT_NONE);
-					vm_page_wakeup(m);
 					if (m->dirty == 0 &&
 					    inactive_shortage > 0) {
 						--inactive_shortage;
 						vm_page_cache(m);
 					} else {
 						vm_page_deactivate(m);
+						vm_page_wakeup(m);
 					}
 				} else {
 					vm_page_deactivate(m);
@@ -1450,8 +1453,8 @@ vm_pageout_page_stats(void)
 				 */
 				vm_page_busy(m);
 				vm_page_protect(m, VM_PROT_NONE);
-				vm_page_wakeup(m);
 				vm_page_deactivate(m);
+				vm_page_wakeup(m);
 			} else {
 				m->act_count -= min(m->act_count, ACT_DECLINE);
 				TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);

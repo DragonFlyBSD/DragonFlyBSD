@@ -3363,8 +3363,8 @@ allocbuf(struct buf *bp, int size)
 					m = bio_page_alloc(obj, pi, desiredpages - bp->b_xio.xio_npages);
 					if (m) {
 						vm_page_wire(m);
-						vm_page_wakeup(m);
 						vm_page_flag_clear(m, PG_ZERO);
+						vm_page_wakeup(m);
 						bp->b_flags &= ~B_CACHE;
 						bp->b_xio.xio_pages[bp->b_xio.xio_npages] = m;
 						++bp->b_xio.xio_npages;

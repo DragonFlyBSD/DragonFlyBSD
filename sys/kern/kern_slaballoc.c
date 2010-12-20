@@ -1460,13 +1460,13 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	m->valid = VM_PAGE_BITS_ALL;
 	/* page should already be busy */
 	vm_page_wire(m);
-	vm_page_wakeup(m);
 	pmap_enter(&kernel_pmap, addr + i, m, VM_PROT_ALL, 1);
 	if ((m->flags & PG_ZERO) == 0 && (flags & M_ZERO))
 	    bzero((char *)addr + i, PAGE_SIZE);
 	vm_page_flag_clear(m, PG_ZERO);
 	KKASSERT(m->flags & (PG_WRITEABLE | PG_MAPPED));
 	vm_page_flag_set(m, PG_REFERENCED);
+	vm_page_wakeup(m);
     }
     vm_map_unlock(&kernel_map);
     vm_map_entry_release(count);

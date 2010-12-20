@@ -175,8 +175,11 @@ vm_contig_pg_clean(int queue)
 				return (TRUE);
 			}
 		}
-		if ((m->dirty == 0) && (m->busy == 0) && (m->hold_count == 0))
+		KKASSERT(m->busy == 0);
+		if (m->dirty == 0 && m->hold_count == 0) {
+			vm_page_busy(m);
 			vm_page_cache(m);
+		}
 	}
 	return (FALSE);
 }

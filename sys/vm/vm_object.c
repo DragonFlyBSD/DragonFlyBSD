@@ -1038,6 +1038,7 @@ shadowlookup:
 			crit_exit();
   			goto relookup;
 		}
+		vm_page_busy(m);
 		crit_exit();
 
 		/*
@@ -1072,6 +1073,7 @@ shadowlookup:
 			if (tobject->type == OBJT_SWAP)
 				swap_pager_freespace(tobject, tpindex, 1);
 		}
+		vm_page_wakeup(m);
 	}	
 	lwkt_reltoken(&vm_token);
 }

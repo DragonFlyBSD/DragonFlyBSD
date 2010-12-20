@@ -698,7 +698,11 @@ vm_page_select_cache(vm_object_t object, vm_pindex_t pindex)
 		);
 		if (m && ((m->flags & (PG_BUSY|PG_UNMANAGED)) || m->busy ||
 			       m->hold_count || m->wire_count)) {
+			/* cache page found busy */
 			vm_page_deactivate(m);
+#ifdef INVARIANTS
+                        kprintf("Warning: busy page %p found in cache\n", m);
+#endif
 			continue;
 		}
 		return m;
@@ -1374,6 +1378,7 @@ vm_page_try_to_cache(vm_page_t m)
 		lwkt_reltoken(&vm_token);
 		return(0);
 	}
+	vm_page_busy(m);
 	vm_page_test_dirty(m);
 	if (m->dirty) {
 		lwkt_reltoken(&vm_token);
@@ -1418,15 +1423,18 @@ vm_page_try_to_free(vm_page_t m)
  *
  * The caller must hold vm_token.
  * This routine may not block.
+ * The page must be busy, and this routine will release the busy and
+ * possibly even free the page.
  */
 void
 vm_page_cache(vm_page_t m)
 {
 	ASSERT_LWKT_TOKEN_HELD(&vm_token);
 
-	if ((m->flags & (PG_BUSY|PG_UNMANAGED)) || m->busy ||
-			m->wire_count || m->hold_count) {
+	if ((m->flags & PG_UNMANAGED) || m->busy ||
+	    m->wire_count || m->hold_count) {
 		kprintf("vm_page_cache: attempting to cache busy/held page\n");
+		vm_page_wakeup(m);
 		return;
 	}
 
@@ -1435,6 +1443,7 @@ vm_page_cache(vm_page_t m)
 	 */
 	if ((m->queue - m->pc) == PQ_CACHE) {
 		KKASSERT((m->flags & PG_MAPPED) == 0);
+		vm_page_wakeup(m);
 		return;
 	}
 
@@ -1454,20 +1463,20 @@ vm_page_cache(vm_page_t m)
 	 * have blocked (especially w/ VM_PROT_NONE), so recheck
 	 * everything.
 	 */
-	vm_page_busy(m);
 	vm_page_protect(m, VM_PROT_NONE);
-	vm_page_wakeup(m);
-	if ((m->flags & (PG_BUSY|PG_UNMANAGED|PG_MAPPED)) || m->busy ||
+	if ((m->flags & (PG_UNMANAGED|PG_MAPPED)) || m->busy ||
 			m->wire_count || m->hold_count) {
-		/* do nothing */
+		vm_page_wakeup(m);
 	} else if (m->dirty) {
 		vm_page_deactivate(m);
+		vm_page_wakeup(m);
 	} else {
 		vm_page_unqueue_nowakeup(m);
 		m->queue = PQ_CACHE + m->pc;
 		vm_page_queues[m->queue].lcnt++;
 		TAILQ_INSERT_TAIL(&vm_page_queues[m->queue].pl, m, pageq);
 		vmstats.v_cache_count++;
+		vm_page_wakeup(m);
 		vm_page_free_wakeup();
 	}
 }

@@ -1864,13 +1864,13 @@ swp_pager_async_iodone(struct bio *bio)
 				vm_page_undirty(m);
 			vm_page_flag_clear(m, PG_SWAPINPROG);
 			vm_page_flag_set(m, PG_SWAPPED);
-			vm_page_io_finish(m);
 			if (vm_page_count_severe())
 				vm_page_deactivate(m);
 #if 0
 			if (!vm_page_count_severe() || !vm_page_try_to_cache(m))
 				vm_page_protect(m, VM_PROT_READ);
 #endif
+			vm_page_io_finish(m);
 		}
 	}
 

@@ -1652,12 +1652,14 @@ retry_lookup:
 				lwkt_reltoken(&vm_token);
 				goto retry_lookup;
 			}
+			vm_page_wire(pg);
 			vm_page_wakeup(pg);
 		} else if (vm_page_sleep_busy(pg, TRUE, "sfpbsy")) {
 			lwkt_reltoken(&vm_token);
 			goto retry_lookup;
+		} else {
+			vm_page_wire(pg);
 		}
-		vm_page_wire(pg);
 		lwkt_reltoken(&vm_token);
 
 		/*

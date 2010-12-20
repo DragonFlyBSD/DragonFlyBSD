@@ -2941,9 +2941,9 @@ pmap_object_init_pt_callback(vm_page_t p, void *data)
 	}
 	if (((p->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL) &&
 	    (p->busy == 0) && (p->flags & (PG_BUSY | PG_FICTITIOUS)) == 0) {
+		vm_page_busy(p);
 		if ((p->queue - p->pc) == PQ_CACHE)
 			vm_page_deactivate(p);
-		vm_page_busy(p);
 		rel_index = p->pindex - info->start_pindex;
 		pmap_enter_quick(info->pmap,
 				 info->addr + x86_64_ptob(rel_index), p);
