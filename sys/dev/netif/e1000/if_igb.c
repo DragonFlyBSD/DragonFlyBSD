@@ -32,11 +32,8 @@
 ******************************************************************************/
 
 
-#ifdef HAVE_KERNEL_OPTION_HEADERS
-#include "opt_device_polling.h"
+#include "opt_polling.h"
 #include "opt_inet.h"
-#include "opt_altq.h"
-#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -45,6 +42,7 @@
 #endif
 #include <sys/bus.h>
 #include <sys/endian.h>
+#include <sys/lock.h>
 #include <sys/kernel.h>
 #include <sys/kthread.h>
 #include <sys/malloc.h>
@@ -642,11 +640,6 @@ igb_detach(device_t dev)
 		return (EBUSY);
 	}
 
-#ifdef DEVICE_POLLING
-	if (adapter->ifp->if_capenable & IFCAP_POLLING)
-		ether_poll_deregister(adapter->ifp);
-#endif
-
 	IGB_CORE_LOCK(adapter);
 	adapter->in_detach = 1;
 	igb_stop(adapter);
@@ -1003,7 +996,7 @@ igb_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cred)
 			igb_disable_intr(adapter);
 			igb_set_multi(adapter);
 #ifdef DEVICE_POLLING
-			if (!(ifp->if_capenable & IFCAP_POLLING))
+			if ((ifp->if_flags & IFF_POLLING) == 0)
 #endif
 				igb_enable_intr(adapter);
 			IGB_CORE_UNLOCK(adapter);
@@ -1032,23 +1025,10 @@ igb_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cred)
 		reinit = 0;
 		mask = ifr->ifr_reqcap ^ ifp->if_capenable;
 #ifdef DEVICE_POLLING
-		if (mask & IFCAP_POLLING) {
-			if (ifr->ifr_reqcap & IFCAP_POLLING) {
-				error = ether_poll_register(igb_poll, ifp);
-				if (error)
-					return (error);
-				IGB_CORE_LOCK(adapter);
-				igb_disable_intr(adapter);
-				ifp->if_capenable |= IFCAP_POLLING;
-				IGB_CORE_UNLOCK(adapter);
-			} else {
-				error = ether_poll_deregister(ifp);
-				/* Enable interrupt even in error case */
-				IGB_CORE_LOCK(adapter);
-				igb_enable_intr(adapter);
-				ifp->if_capenable &= ~IFCAP_POLLING;
-				IGB_CORE_UNLOCK(adapter);
-			}
+		if (ifp->if_flags & IFF_POLLING) {
+			IGB_CORE_LOCK(adapter);
+			igb_disable_intr(adapter);
+			IGB_CORE_UNLOCK(adapter);
 		}
 #endif
 		if (mask & IFCAP_HWCSUM) {
@@ -1187,7 +1167,7 @@ igb_init_locked(struct adapter *adapter)
 	 * Only enable interrupts if we are not polling, make sure
 	 * they are off otherwise.
 	 */
-	if (ifp->if_capenable & IFCAP_POLLING)
+	if (ifp->if_flags & IFF_POLLING)
 		igb_disable_intr(adapter);
 	else
 #endif /* DEVICE_POLLING */
@@ -1272,9 +1252,9 @@ igb_handle_que(void *context, int pending)
 
 	/* Reenable this interrupt */
 #ifdef DEVICE_POLLING
-	if (!(ifp->if_capenable & IFCAP_POLLING))
+	if ((ifp->if_flags & IFF_POLLING) == 0)
 #endif
-	E1000_WRITE_REG(&adapter->hw, E1000_EIMS, que->eims);
+		E1000_WRITE_REG(&adapter->hw, E1000_EIMS, que->eims);
 }
 
 /* Deal with link in a sleepable context */
@@ -1927,9 +1907,9 @@ igb_local_timer(void *arg)
 
 	/* Trigger an RX interrupt on all queues */
 #ifdef DEVICE_POLLING
-	if (!(ifp->if_capenable & IFCAP_POLLING))
+	if ((ifp->if_flags & IFF_POLLING) == 0)
 #endif
-	E1000_WRITE_REG(&adapter->hw, E1000_EICS, adapter->rx_mask);
+		E1000_WRITE_REG(&adapter->hw, E1000_EICS, adapter->rx_mask);
 	callout_reset(&adapter->timer, hz, igb_local_timer, adapter);
 	IGB_CORE_UNLOCK(adapter);
 	return;
@@ -2677,6 +2657,9 @@ igb_setup_interface(device_t dev, struct adapter *adapter)
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = igb_ioctl;
 	ifp->if_start = igb_start;
+#ifdef DEVICE_POLLING
+	ifp->if_poll = igb_poll;
+#endif
 #if __FreeBSD_version >= 800000
 	ifp->if_transmit = igb_mq_start;
 	ifp->if_qflush = igb_qflush;
@@ -2699,9 +2682,6 @@ igb_setup_interface(device_t dev, struct adapter *adapter)
 #endif
 
 	ifp->if_capenable = ifp->if_capabilities;
-#ifdef DEVICE_POLLING
-	ifp->if_capabilities |= IFCAP_POLLING;
-#endif
 
 	/*
 	 * Tell the upper layer(s) we support long frames.
