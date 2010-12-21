@@ -115,7 +115,7 @@ static void	 newroute(int, char **);
 static void	 inet_makenetandmask(u_long, struct sockaddr_in *, u_long);
 static void	 interfaces(void);
 static void	 monitor(void);
-static void	 sockaddr(char *, struct sockaddr *);
+static void	 sockaddr(const char *, struct sockaddr *);
 static void	 sodump(sup, const char *);
 static void	 bprintf(FILE *, int, u_char *);
 static void	 print_getmsg(struct rt_msghdr *, int);
@@ -123,7 +123,7 @@ static void	 print_rtmsg(struct rt_msghdr *, int);
 static void	 pmsg_common(struct rt_msghdr *);
 static void	 pmsg_addrs(char *, int);
 static void	 mask_addr(void);
-static int	 getaddr(int, char *, struct hostent **);
+static int	 getaddr(int, const char *, struct hostent **);
 static int	 rtmsg(int, int);
 static int	 prefixlen(const char *);
 #ifdef INET6
@@ -989,7 +989,7 @@ inet6_makenetandmask(struct sockaddr_in6 *sin6, const char *plen)
  * returning 1 if a host address, 0 if a network address.
  */
 static int
-getaddr(int which, char *str, struct hostent **hpp)
+getaddr(int which, const char *str, struct hostent **hpp)
 {
 	sup su;
 	struct hostent *hp;
@@ -1783,7 +1783,7 @@ sodump(sup su, const char *which)
 #define DELIM	(4*2)
 
 static void
-sockaddr(char *addr, struct sockaddr *sa)
+sockaddr(const char *addr, struct sockaddr *sa)
 {
 	char *cp = (char *)sa;
 	int size = sa->sa_len;
