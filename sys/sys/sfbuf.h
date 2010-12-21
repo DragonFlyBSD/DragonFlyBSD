@@ -38,7 +38,9 @@
 #ifndef _CPU_LWBUF_H_
 #include <cpu/lwbuf.h>
 #endif
-
+#ifndef _SYS_REF_H
+#include <sys/ref.h>
+#endif
 
 #if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
 #error "This file should not be included by userland programs."
@@ -46,7 +48,7 @@
 
 struct sf_buf {
 	struct	lwbuf *lwbuf;	/* lightweight buffer */
-	int	refs;
+	struct	kref ref;
 };
 
 #define sf_buf_kva(sf)	(lwbuf_kva((sf)->lwbuf))

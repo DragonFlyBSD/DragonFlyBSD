@@ -23,8 +23,8 @@ struct kref {
 
 void kref_init(struct kref *ref, int count);
 void kref_inc(struct kref *ref);
-void kref_dec(struct kref *ref, void (*deconstruct)(void*, void*), 
-	      void *priv1, void *priv2);
+int kref_dec(struct kref *ref, void (*deconstruct)(void*, void*), 
+	     void *priv1, void *priv2);
 
 #endif 
 

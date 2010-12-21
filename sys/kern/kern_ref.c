@@ -35,20 +35,24 @@ kref_inc(struct kref *ref)
 
 /*
  * Decrement a reference count; on a 1 -> 0 transition, call the
- * deconstruct function (if any) with priv1 and priv2. 
+ * deconstruct function (if any) with priv1 and priv2. Returns 0
+ * if it sees a 1 -> 0 transition, 1 otherwise.
  *
  * "An object cannot synchronize its own visibility." It is not safe
  * to interleave kref_inc and kref_dec without other synchronization.
  */
-void
+int
 kref_dec(struct kref *ref, void (*deconstruct)(void *, void *),
 	 void *priv1, void *priv2)
 {
 	int val;
 
 	val = atomic_fetchadd_int(&ref->refcount, -1);
-	if (val == 1)
+	if (val == 1)  {
 		if (deconstruct)
 			deconstruct(priv1, priv2);
-}
+		return (0);
+	}
 
+	return (1);
+}
