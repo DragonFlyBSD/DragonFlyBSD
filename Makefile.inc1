@@ -875,7 +875,7 @@ _startup_libs41=	gnu/lib/gcc41/csu gnu/lib/gcc41/libgcc
 _startup_libs44=	gnu/lib/gcc44/csu gnu/lib/gcc44/libgcc
 _startup_libs=		lib/csu lib/libc lib/libc_rtld
 
-_prebuild_libs=		lib/libbz2 lib/libz
+_prebuild_libs=		lib/libbz2 lib/liblzma lib/libz
 _prebuild_libs+=	lib/libutil
 
 _generic_libs=	gnu/lib
