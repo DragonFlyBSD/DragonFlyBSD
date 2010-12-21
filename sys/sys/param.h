@@ -225,6 +225,9 @@
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
+/* Macro for array size */
+#define NELEM(ary) 	(sizeof(ary) / sizeof((ary))[0])
+
 /*
  * Constants for setting the parameters of the kernel memory allocator.
  *

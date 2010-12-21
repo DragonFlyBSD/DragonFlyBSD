@@ -705,7 +705,7 @@ retryonce:
 				mbufcluster_cache,
 				mbufphdrcluster_cache
 			};
-			const int nreclaims = __arysize(reclaimlist);
+			const int nreclaims = NELEM(reclaimlist);
 
 			if (!objcache_reclaimlist(reclaimlist, nreclaims, ocf))
 				m_reclaim();
@@ -740,7 +740,7 @@ retryonce:
 				mbuf_cache,
 				mbufcluster_cache, mbufphdrcluster_cache
 			};
-			const int nreclaims = __arysize(reclaimlist);
+			const int nreclaims = NELEM(reclaimlist);
 
 			if (!objcache_reclaimlist(reclaimlist, nreclaims, ocf))
 				m_reclaim();

@@ -117,8 +117,6 @@
 
 #include <sys/thread2.h>
 
-#define arysize(ary)	(sizeof(ary)/sizeof((ary)[0]))
-
 #define btokup(z)	(&pmap_kvtom((vm_offset_t)(z))->ku_pagecnt)
 
 #define MEMORY_STRING	"ptr=%p type=%p size=%d flags=%04x"
@@ -249,7 +247,7 @@ kmeminit(void *dummy)
     ZoneMask = ~(uintptr_t)(ZoneSize - 1);
     ZonePageCount = ZoneSize / PAGE_SIZE;
 
-    for (i = 0; i < arysize(weirdary); ++i)
+    for (i = 0; i < NELEM(weirdary); ++i)
 	weirdary[i] = WEIRD_ADDR;
 
     ZeroPage = kmem_slab_alloc(PAGE_SIZE, PAGE_SIZE, M_WAITOK|M_ZERO);
