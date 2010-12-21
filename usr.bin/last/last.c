@@ -143,7 +143,7 @@ main(int argc, char *argv[])
 {
 	int ch;
 	char *p;
-	char	*file = NULL;
+	const char *file = NULL;
 	int namesize = UT_NAMESIZE;
 	int linesize = UT_LINESIZE;
 	int hostsize = UT_HOSTSIZE;
@@ -267,7 +267,7 @@ addarg(int type, char *arg)
  *	add an entry to a linked list of ttys
  */
 static TTY *
-addtty(const char *ttyname)
+addtty(const char *tty)
 {
 	TTY *cur;
 
@@ -275,7 +275,7 @@ addtty(const char *ttyname)
 		err(1, "malloc failure");
 	cur->next = ttylist;
 	cur->logout = currentout;
-	memmove(cur->tty, ttyname, sizeof(cur->tty));
+	memmove(cur->tty, tty, sizeof(cur->tty));
 	return (ttylist = cur);
 }
 

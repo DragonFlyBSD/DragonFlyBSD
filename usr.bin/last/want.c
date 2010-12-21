@@ -50,7 +50,8 @@ wtmp(const char *file, int namesz, int linesz, int hostsz)
 	time_t	delta;			/* time difference */
 	off_t	bl;
 	int	bytes, wfd;
-	char	*ct, *crmsg;
+	char	*ct;
+	const char *crmsg;
 	size_t  len = sizeof(*buf) * MAXUTMP;
 
 	if ((buf = malloc(len)) == NULL)
