@@ -16,7 +16,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE, OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd August 16, 2010
+.Dd December 21, 2010
 .Dt MPIPE 9
 .Os
 .Sh NAME
@@ -73,6 +73,8 @@ argument controls allocation parameters:
 .Bl -tag -width ".Dv MPF_NOZERO" -offset indent
 .It Dv MPF_NOZERO
 Do not zero allocated buffers.
+.It Dv MPF_CACHEDATA
+By default, MPIPE buffers are zeroed on free; this flag disables that behavior.
 .It Dv MPF_INT
 Allocations may use the interrupt memory reserve.
 .El
@@ -112,12 +114,6 @@ function frees a buffer to the malloc pipeline.
 If the pipeline is full, it will free directly to the kernel allocator,
 calling the destructor as it does.
 This function may block.
-.Pp
-The mpipe functions do not synchronize access to a pipeline.
-It is up to higher-level code to use appropriate locks to ensure that
-multiple CPUs are not simultaneously accessing a pipeline.
-The pipeline functions do
-guard against preemption by entering critical sections.
 .Sh FILES
 The MPIPE implementation is in
 .Pa /sys/kern/kern_mpipe.c .
