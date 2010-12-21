@@ -933,7 +933,7 @@ send:
 		 */
 		int xlen = len;
 		if (flags & TH_SYN)
-			++xlen;
+			panic("tcp_output: persist timer to send SYN\n");
 		if (flags & TH_FIN) {
 			++xlen;
 			tp->t_flags |= TF_SENTFIN;
@@ -1080,6 +1080,9 @@ tcp_setpersist(struct tcpcb *tp)
 {
 	int t = ((tp->t_srtt >> 2) + tp->t_rttvar) >> 1;
 	int tt;
+
+	if (tp->t_state < TCPS_ESTABLISHED)
+		panic("tcp_setpersist: not established yet\n");
 
 	if (tcp_callout_active(tp, tp->tt_rexmt))
 		panic("tcp_setpersist: retransmit pending");
