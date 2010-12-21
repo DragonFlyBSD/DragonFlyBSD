@@ -99,8 +99,8 @@ kernel_from_dumpnr(int nr)
 
 	/*
 	 * If there's a kernel image right here in the crash directory, then
-	 * use it.  The kernel image is either called kernel.<nr> or is in a
-	 * subdirectory kernel.<nr> and called kernel.  The latter allows us
+	 * use it.  The kernel image is either called kern.<nr> or is in a
+	 * subdirectory kern.<nr> and called kernel.  The latter allows us
 	 * to collect the modules in the same place.
 	 */
 	snprintf(path, sizeof(path), "%s/kern.%d", crashdir, nr);
