@@ -62,7 +62,7 @@ It is the caller's responsibility to obtain a lock on the
 before calling this function.
 .Pp
 This routine may call
-.Xr pmap_growkernel 9
+.Fn pmap_growkernel
 to grow the kernel's address space, if and only if the mapping is being
 made within the kernel address space, and if insufficient space remains
 in the
