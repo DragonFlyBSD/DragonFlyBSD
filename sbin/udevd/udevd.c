@@ -307,6 +307,7 @@ killed(int sig __unused)
 	syslog(LOG_ERR, "udevd stopped");
 	unlink("/var/run/udevd.pid");
 	pdev_array_clean();
+	exit(0);
 }
 
 static void
