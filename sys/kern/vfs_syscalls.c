@@ -99,7 +99,8 @@ static int	usermount = 0;	/* if 1, non-root can mount fs. */
 
 int (*union_dircheckp) (struct thread *, struct vnode **, struct file *);
 
-SYSCTL_INT(_vfs, OID_AUTO, usermount, CTLFLAG_RW, &usermount, 0, "");
+SYSCTL_INT(_vfs, OID_AUTO, usermount, CTLFLAG_RW, &usermount, 0,
+    "Allow non-root users to mount filesystems");
 
 /*
  * Virtual File System System Calls

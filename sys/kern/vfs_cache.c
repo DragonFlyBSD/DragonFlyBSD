@@ -191,22 +191,18 @@ static void _cache_cleandefered(void);
  * The new name cache statistics
  */
 SYSCTL_NODE(_vfs, OID_AUTO, cache, CTLFLAG_RW, 0, "Name cache statistics");
-#define STATNODE(mode, name, var) \
-	SYSCTL_ULONG(_vfs_cache, OID_AUTO, name, mode, var, 0, "");
-#define STATNODE_INT(mode, name, var) \
-	SYSCTL_UINT(_vfs_cache, OID_AUTO, name, mode, var, 0, "");
-static int numneg; STATNODE_INT(CTLFLAG_RD, numneg, &numneg);
-static int numcache; STATNODE_INT(CTLFLAG_RD, numcache, &numcache);
-static u_long numcalls; STATNODE(CTLFLAG_RD, numcalls, &numcalls);
-static u_long dothits; STATNODE(CTLFLAG_RD, dothits, &dothits);
-static u_long dotdothits; STATNODE(CTLFLAG_RD, dotdothits, &dotdothits);
-static u_long numchecks; STATNODE(CTLFLAG_RD, numchecks, &numchecks);
-static u_long nummiss; STATNODE(CTLFLAG_RD, nummiss, &nummiss);
-static u_long nummisszap; STATNODE(CTLFLAG_RD, nummisszap, &nummisszap);
-static u_long numposzaps; STATNODE(CTLFLAG_RD, numposzaps, &numposzaps);
-static u_long numposhits; STATNODE(CTLFLAG_RD, numposhits, &numposhits);
-static u_long numnegzaps; STATNODE(CTLFLAG_RD, numnegzaps, &numnegzaps);
-static u_long numneghits; STATNODE(CTLFLAG_RD, numneghits, &numneghits);
+static int numneg;
+SYSCTL_ULONG(_vfs_cache, OID_AUTO, numneg, CTLFLAG_RD, &numneg, 0,
+    "Number of negative namecache entries");
+static int numcache;
+SYSCTL_ULONG(_vfs_cache, OID_AUTO, numcache, CTLFLAG_RD, &numcache, 0,
+    "Number of namecaches entries");
+static u_long numcalls;
+SYSCTL_ULONG(_vfs_cache, OID_AUTO, numcalls, CTLFLAG_RD, &numcalls, 0,
+    "Number of namecache lookups");
+static u_long numchecks;
+SYSCTL_ULONG(_vfs_cache, OID_AUTO, numchecks, CTLFLAG_RD, &numchecks, 0,
+    "Number of checked entries in namecache lookups");
 
 struct nchstats nchstats[SMP_MAXCPU];
 /*
@@ -3011,12 +3007,18 @@ static int disablecwd;
 SYSCTL_INT(_debug, OID_AUTO, disablecwd, CTLFLAG_RW, &disablecwd, 0,
     "Disable getcwd");
 
-static u_long numcwdcalls; STATNODE(CTLFLAG_RD, numcwdcalls, &numcwdcalls);
-static u_long numcwdfail1; STATNODE(CTLFLAG_RD, numcwdfail1, &numcwdfail1);
-static u_long numcwdfail2; STATNODE(CTLFLAG_RD, numcwdfail2, &numcwdfail2);
-static u_long numcwdfail3; STATNODE(CTLFLAG_RD, numcwdfail3, &numcwdfail3);
-static u_long numcwdfail4; STATNODE(CTLFLAG_RD, numcwdfail4, &numcwdfail4);
-static u_long numcwdfound; STATNODE(CTLFLAG_RD, numcwdfound, &numcwdfound);
+static u_long numcwdcalls;
+SYSCTL_ULONG(_vfs_cache, OID_AUTO, numcwdcalls, CTLFLAG_RD, &numcwdcalls, 0,
+    "Number of current directory resolution calls");
+static u_long numcwdfailnf;
+SYSCTL_ULONG(_vfs_cache, OID_AUTO, numcwdfailnf, CTLFLAG_RD, &numcwdfailnf, 0,
+    "Number of current directory failures due to lack of file");
+static u_long numcwdfailsz;
+SYSCTL_ULONG(_vfs_cache, OID_AUTO, numcwdfailsz, CTLFLAG_RD, &numcwdfailsz, 0,
+    "Number of current directory failures due to large result");
+static u_long numcwdfound;
+SYSCTL_ULONG(_vfs_cache, OID_AUTO, numcwdfound, CTLFLAG_RD, &numcwdfound, 0,
+    "Number of current directory resolution successes");
 
 /*
  * MPALMOSTSAFE
@@ -3092,7 +3094,7 @@ kern_getcwd(char *buf, size_t buflen, int *error)
 		 */
 		for (i = ncp->nc_nlen - 1; i >= 0; i--) {
 			if (bp == buf) {
-				numcwdfail4++;
+				numcwdfailsz++;
 				*error = ERANGE;
 				bp = NULL;
 				goto done;
@@ -3100,7 +3102,7 @@ kern_getcwd(char *buf, size_t buflen, int *error)
 			*--bp = ncp->nc_name[i];
 		}
 		if (bp == buf) {
-			numcwdfail4++;
+			numcwdfailsz++;
 			*error = ERANGE;
 			bp = NULL;
 			goto done;
@@ -3126,14 +3128,14 @@ kern_getcwd(char *buf, size_t buflen, int *error)
 		ncp = nch.ncp;
 	}
 	if (ncp == NULL) {
-		numcwdfail2++;
+		numcwdfailnf++;
 		*error = ENOENT;
 		bp = NULL;
 		goto done;
 	}
 	if (!slash_prefixed) {
 		if (bp == buf) {
-			numcwdfail4++;
+			numcwdfailsz++;
 			*error = ERANGE;
 			bp = NULL;
 			goto done;
@@ -3153,22 +3155,27 @@ done:
  *
  * The passed nchp is referenced but not locked.
  */
-#undef STATNODE
-#define STATNODE(name)							\
-	static u_int name;						\
-	SYSCTL_UINT(_vfs_cache, OID_AUTO, name, CTLFLAG_RD, &name, 0, "")
-
 static int disablefullpath;
 SYSCTL_INT(_debug, OID_AUTO, disablefullpath, CTLFLAG_RW,
     &disablefullpath, 0,
     "Disable fullpath lookups");
 
-STATNODE(numfullpathcalls);
-STATNODE(numfullpathfail1);
-STATNODE(numfullpathfail2);
-STATNODE(numfullpathfail3);
-STATNODE(numfullpathfail4);
-STATNODE(numfullpathfound);
+static u_int numfullpathcalls;
+SYSCTL_UINT(_vfs_cache, OID_AUTO, numfullpathcalls, CTLFLAG_RD,
+    &numfullpathcalls, 0,
+    "Number of full path resolutions in progress");
+static u_int numfullpathfailnf;
+SYSCTL_UINT(_vfs_cache, OID_AUTO, numfullpathfailnf, CTLFLAG_RD,
+    &numfullpathfailnf, 0,
+    "Number of full path resolution failures due to lack of file");
+static u_int numfullpathfailsz;
+SYSCTL_UINT(_vfs_cache, OID_AUTO, numfullpathfailsz, CTLFLAG_RD,
+    &numfullpathfailsz, 0,
+    "Number of full path resolution failures due to insufficient memory");
+static u_int numfullpathfound;
+SYSCTL_UINT(_vfs_cache, OID_AUTO, numfullpathfound, CTLFLAG_RD,
+    &numfullpathfound, 0,
+    "Number of full path resolution successes");
 
 int
 cache_fullpath(struct proc *p, struct nchandle *nchp,
@@ -3235,7 +3242,7 @@ cache_fullpath(struct proc *p, struct nchandle *nchp,
 		 */
 		for (i = ncp->nc_nlen - 1; i >= 0; i--) {
 			if (bp == buf) {
-				numfullpathfail4++;
+				numfullpathfailsz++;
 				kfree(buf, M_TEMP);
 				error = ENOMEM;
 				goto done;
@@ -3243,7 +3250,7 @@ cache_fullpath(struct proc *p, struct nchandle *nchp,
 			*--bp = ncp->nc_name[i];
 		}
 		if (bp == buf) {
-			numfullpathfail4++;
+			numfullpathfailsz++;
 			kfree(buf, M_TEMP);
 			error = ENOMEM;
 			goto done;
@@ -3271,7 +3278,7 @@ cache_fullpath(struct proc *p, struct nchandle *nchp,
 		ncp = nch.ncp;
 	}
 	if (ncp == NULL) {
-		numfullpathfail2++;
+		numfullpathfailnf++;
 		kfree(buf, M_TEMP);
 		error = ENOENT;
 		goto done;
@@ -3279,7 +3286,7 @@ cache_fullpath(struct proc *p, struct nchandle *nchp,
 
 	if (!slash_prefixed) {
 		if (bp == buf) {
-			numfullpathfail4++;
+			numfullpathfailsz++;
 			kfree(buf, M_TEMP);
 			error = ENOMEM;
 			goto done;

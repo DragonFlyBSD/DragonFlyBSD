@@ -104,23 +104,12 @@ int vttoif_tab[9] = {
 };
 
 static int reassignbufcalls;
-SYSCTL_INT(_vfs, OID_AUTO, reassignbufcalls, CTLFLAG_RW,
-		&reassignbufcalls, 0, "");
-static int reassignbufloops;
-SYSCTL_INT(_vfs, OID_AUTO, reassignbufloops, CTLFLAG_RW,
-		&reassignbufloops, 0, "");
-static int reassignbufsortgood;
-SYSCTL_INT(_vfs, OID_AUTO, reassignbufsortgood, CTLFLAG_RW,
-		&reassignbufsortgood, 0, "");
-static int reassignbufsortbad;
-SYSCTL_INT(_vfs, OID_AUTO, reassignbufsortbad, CTLFLAG_RW,
-		&reassignbufsortbad, 0, "");
-static int reassignbufmethod = 1;
-SYSCTL_INT(_vfs, OID_AUTO, reassignbufmethod, CTLFLAG_RW,
-		&reassignbufmethod, 0, "");
+SYSCTL_INT(_vfs, OID_AUTO, reassignbufcalls, CTLFLAG_RW, &reassignbufcalls,
+    0, "Number of times buffers have been reassigned to the proper list");
+
 static int check_buf_overlap = 2;	/* invasive check */
-SYSCTL_INT(_vfs, OID_AUTO, check_buf_overlap, CTLFLAG_RW,
-		&check_buf_overlap, 0, "");
+SYSCTL_INT(_vfs, OID_AUTO, check_buf_overlap, CTLFLAG_RW, &check_buf_overlap,
+    0, "Enable overlapping buffer checks");
 
 int	nfs_mount_type = -1;
 static struct lwkt_token spechash_token;
@@ -217,7 +206,7 @@ enum { TSP_SEC, TSP_HZ, TSP_USEC, TSP_NSEC };
 
 static int timestamp_precision = TSP_SEC;
 SYSCTL_INT(_vfs, OID_AUTO, timestamp_precision, CTLFLAG_RW,
-		&timestamp_precision, 0, "");
+		&timestamp_precision, 0, "Precision of file timestamps");
 
 /*
  * Get a current timestamp.

@@ -761,7 +761,8 @@ SYSCTL_OID(_kern_ipc, KIPC_MAXSOCKBUF, maxsockbuf, CTLTYPE_INT|CTLFLAG_RW,
 SYSCTL_INT(_kern_ipc, OID_AUTO, maxsockets, CTLFLAG_RD, 
     &maxsockets, 0, "Maximum number of sockets available");
 SYSCTL_INT(_kern_ipc, KIPC_SOCKBUF_WASTE, sockbuf_waste_factor, CTLFLAG_RW,
-    &sb_efficiency, 0, "");
+    &sb_efficiency, 0,
+    "Socket buffer limit scaler");
 
 /*
  * Initialize maxsockets 

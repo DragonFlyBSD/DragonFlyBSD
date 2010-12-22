@@ -120,11 +120,16 @@ int nfs_maxasyncbio = NFS_MAXASYNCBIO;
 
 SYSCTL_DECL(_vfs_nfs);
 
-SYSCTL_INT(_vfs_nfs, OID_AUTO, realign_test, CTLFLAG_RW, &nfs_realign_test, 0, "");
-SYSCTL_INT(_vfs_nfs, OID_AUTO, realign_count, CTLFLAG_RW, &nfs_realign_count, 0, "");
-SYSCTL_INT(_vfs_nfs, OID_AUTO, showrtt, CTLFLAG_RW, &nfs_showrtt, 0, "");
-SYSCTL_INT(_vfs_nfs, OID_AUTO, showrexmit, CTLFLAG_RW, &nfs_showrexmit, 0, "");
-SYSCTL_INT(_vfs_nfs, OID_AUTO, maxasyncbio, CTLFLAG_RW, &nfs_maxasyncbio, 0, "");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, realign_test, CTLFLAG_RW, &nfs_realign_test, 0,
+    "Number of times mbufs have been tested for bad alignment");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, realign_count, CTLFLAG_RW, &nfs_realign_count, 0,
+    "Number of realignments for badly aligned mbuf data");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, showrtt, CTLFLAG_RW, &nfs_showrtt, 0,
+    "Show round trip time output");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, showrexmit, CTLFLAG_RW, &nfs_showrexmit, 0,
+    "Show retransmits info");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, maxasyncbio, CTLFLAG_RW, &nfs_maxasyncbio, 0,
+    "Max number of asynchronous bio's");
 
 static int nfs_request_setup(nfsm_info_t info);
 static int nfs_request_auth(struct nfsreq *rep);

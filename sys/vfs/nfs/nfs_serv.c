@@ -131,11 +131,14 @@ static struct timespec	nfsver;
 SYSCTL_DECL(_vfs_nfs);
 
 int nfs_async;
-SYSCTL_INT(_vfs_nfs, OID_AUTO, async, CTLFLAG_RW, &nfs_async, 0, "");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, async, CTLFLAG_RW, &nfs_async, 0,
+    "Enable unstable and fast writes");
 static int nfs_commit_blks;
 static int nfs_commit_miss;
-SYSCTL_INT(_vfs_nfs, OID_AUTO, commit_blks, CTLFLAG_RW, &nfs_commit_blks, 0, "");
-SYSCTL_INT(_vfs_nfs, OID_AUTO, commit_miss, CTLFLAG_RW, &nfs_commit_miss, 0, "");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, commit_blks, CTLFLAG_RW, &nfs_commit_blks, 0,
+    "Number of commited blocks");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, commit_miss, CTLFLAG_RW, &nfs_commit_miss, 0,
+    "Number of nfs blocks committed from dirty buffers");
 
 static int nfsrv_access (struct mount *, struct vnode *, int,
 			struct ucred *, int, struct thread *, int);
@@ -3586,7 +3589,8 @@ nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 
 		if (vp->v_object &&
 		   (vp->v_object->flags & OBJ_MIGHTBEDIRTY)) {
-			vm_object_page_clean(vp->v_object, off / PAGE_SIZE, (cnt + PAGE_MASK) / PAGE_SIZE, OBJPC_SYNC);
+			vm_object_page_clean(vp->v_object, off / PAGE_SIZE,
+			    (cnt + PAGE_MASK) / PAGE_SIZE, OBJPC_SYNC);
 		}
 
 		crit_enter();

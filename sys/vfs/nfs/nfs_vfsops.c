@@ -1,4 +1,4 @@
-/*
+    /*
  * Copyright (c) 1989, 1993, 1995
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -95,11 +95,11 @@ vm_zone_t nfsmount_zone;
 
 struct nfsstats	nfsstats;
 SYSCTL_NODE(_vfs, OID_AUTO, nfs, CTLFLAG_RW, 0, "NFS filesystem");
-SYSCTL_STRUCT(_vfs_nfs, NFS_NFSSTATS, nfsstats, CTLFLAG_RD,
-	&nfsstats, nfsstats, "");
+SYSCTL_STRUCT(_vfs_nfs, NFS_NFSSTATS, nfsstats, CTLFLAG_RD, &nfsstats, nfsstats,
+    "Nfs stats structure");
 static int nfs_ip_paranoia = 1;
-SYSCTL_INT(_vfs_nfs, OID_AUTO, nfs_ip_paranoia, CTLFLAG_RW,
-	&nfs_ip_paranoia, 0, "");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, nfs_ip_paranoia, CTLFLAG_RW, &nfs_ip_paranoia, 0,
+    "Enable no-connection mode for protocols that support no-connection mode");
 #ifdef NFS_DEBUG
 int nfs_debug;
 SYSCTL_INT(_vfs_nfs, OID_AUTO, debug, CTLFLAG_RW, &nfs_debug, 0, "");
@@ -152,21 +152,24 @@ struct nfsv3_diskless nfsv3_diskless = { { { 0 } } };
 int nfs_diskless_valid = 0;
 
 SYSCTL_INT(_vfs_nfs, OID_AUTO, diskless_valid, CTLFLAG_RD,
-	&nfs_diskless_valid, 0, "");
+	&nfs_diskless_valid, 0,
+	"NFS diskless params were obtained");
 
 SYSCTL_STRING(_vfs_nfs, OID_AUTO, diskless_rootpath, CTLFLAG_RD,
-	nfsv3_diskless.root_hostnam, 0, "");
+	nfsv3_diskless.root_hostnam, 0,
+	"Host name for mount point");
 
 SYSCTL_OPAQUE(_vfs_nfs, OID_AUTO, diskless_rootaddr, CTLFLAG_RD,
 	&nfsv3_diskless.root_saddr, sizeof nfsv3_diskless.root_saddr,
-	"%Ssockaddr_in", "");
+	"%Ssockaddr_in", "Address of root server");
 
 SYSCTL_STRING(_vfs_nfs, OID_AUTO, diskless_swappath, CTLFLAG_RD,
-	nfsv3_diskless.swap_hostnam, 0, "");
+	nfsv3_diskless.swap_hostnam, 0,
+	"Host name for mount ppoint");
 
 SYSCTL_OPAQUE(_vfs_nfs, OID_AUTO, diskless_swapaddr, CTLFLAG_RD,
 	&nfsv3_diskless.swap_saddr, sizeof nfsv3_diskless.swap_saddr,
-	"%Ssockaddr_in","");
+	"%Ssockaddr_in", "Address of swap server");
 
 
 void nfsargs_ntoh (struct nfs_args *);

@@ -195,8 +195,10 @@ static struct spinlock bswspin = SPINLOCK_INITIALIZER(&bswspin);
 static int pbuf_raw_count;
 static int pbuf_kva_count;
 
-SYSCTL_INT(_vfs, OID_AUTO, pbuf_raw_count, CTLFLAG_RD, &pbuf_raw_count, 0, "");
-SYSCTL_INT(_vfs, OID_AUTO, pbuf_kva_count, CTLFLAG_RD, &pbuf_kva_count, 0, "");
+SYSCTL_INT(_vfs, OID_AUTO, pbuf_raw_count, CTLFLAG_RD, &pbuf_raw_count, 0,
+    "Kernel virtual address space reservations");
+SYSCTL_INT(_vfs, OID_AUTO, pbuf_kva_count, CTLFLAG_RD, &pbuf_kva_count, 0,
+    "Kernel raw address space reservations");
 
 /*
  * Initialize the swap buffer list.
