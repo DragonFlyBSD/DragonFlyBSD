@@ -250,6 +250,7 @@
 /* Header split codes for get_buf */
 #define IGB_CLEAN_HEADER		0x01
 #define IGB_CLEAN_PAYLOAD		0x02
+#define IGB_CLEAN_INITIAL		0x04
 #define IGB_CLEAN_BOTH			(IGB_CLEAN_HEADER | IGB_CLEAN_PAYLOAD)
 
 #define IGB_LINK_ITR            2000

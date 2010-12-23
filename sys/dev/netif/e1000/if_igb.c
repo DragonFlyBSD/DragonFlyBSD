@@ -756,11 +756,17 @@ igb_start_locked(struct tx_ring *txr, struct ifnet *ifp)
 
 	IGB_TX_LOCK_ASSERT(txr);
 
-	if ((ifp->if_flags & (IFF_RUNNING|IFF_OACTIVE)) !=
-	    IFF_RUNNING)
+	if ((ifp->if_flags & (IFF_RUNNING|IFF_OACTIVE)) != IFF_RUNNING)
 		return;
-	if (!adapter->link_active)
+
+	/*
+	 * Must purge on abort from this point on or the netif will call
+	 * us endlessly.  Either that or set IFF_OACTIVE.
+	 */
+	if (!adapter->link_active) {
+		ifq_purge(&ifp->if_snd);
 		return;
+	}
 
 	while (!ifq_is_empty(&ifp->if_snd)) {
 
@@ -1063,6 +1069,7 @@ igb_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cred)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
+	IOCTL_DEBUGOUT("ioctl done");
 
 	return (error);
 }
@@ -1178,6 +1185,7 @@ igb_init_locked(struct adapter *adapter)
 
 	/* Don't reset the phy next time init gets called */
 	adapter->hw.phy.reset_disable = TRUE;
+	INIT_DEBUGOUT("igb_init: end");
 }
 
 static void
@@ -1826,7 +1834,7 @@ igb_set_multi(struct adapter *adapter)
 	struct ifnet	*ifp = adapter->ifp;
 	struct ifmultiaddr *ifma;
 	u32 reg_rctl = 0;
-	u8  mta[MAX_NUM_MULTICAST_ADDRESSES * ETH_ADDR_LEN];
+	static u8  mta[MAX_NUM_MULTICAST_ADDRESSES * ETH_ADDR_LEN];
 
 	int mcnt = 0;
 
@@ -1863,8 +1871,9 @@ igb_set_multi(struct adapter *adapter)
 		reg_rctl = E1000_READ_REG(&adapter->hw, E1000_RCTL);
 		reg_rctl |= E1000_RCTL_MPE;
 		E1000_WRITE_REG(&adapter->hw, E1000_RCTL, reg_rctl);
-	} else
+	} else {
 		e1000_update_mc_addr_list(&adapter->hw, mta, mcnt);
+	}
 }
 
 
@@ -3541,12 +3550,19 @@ igb_get_buf(struct rx_ring *rxr, int i, u8 clean)
 	bus_dma_segment_t	pseg[1];
 	bus_dmamap_t		map;
 	int			nsegs, error;
+	int			mbflags;
 
+	/*
+	 * Init-time loads are allowed to use a blocking mbuf allocation,
+	 * otherwise the sheer number of mbufs allocated can lead to
+	 * failures.
+	 */
+	mbflags = (clean & IGB_CLEAN_INITIAL) ? MB_WAIT : MB_DONTWAIT;
 
 	rxbuf = &rxr->rx_buffers[i];
 	mh = mp = NULL;
 	if ((clean & IGB_CLEAN_HEADER) != 0) {
-		mh = m_gethdr(MB_DONTWAIT, MT_DATA);
+		mh = m_gethdr(mbflags, MT_DATA);
 		if (mh == NULL) {
 			adapter->mbuf_header_failed++;		
 			return (ENOBUFS);
@@ -3567,8 +3583,8 @@ igb_get_buf(struct rx_ring *rxr, int i, u8 clean)
 		mh->m_flags &= ~M_PKTHDR;
 	}
 	if ((clean & IGB_CLEAN_PAYLOAD) != 0) {
-		mp = m_getl(adapter->rx_mbuf_sz,
-		    MB_DONTWAIT, MT_DATA, M_PKTHDR, NULL);
+		mp = m_getl(adapter->rx_mbuf_sz, mbflags, MT_DATA,
+			    M_PKTHDR, NULL);
 #if 0
 		mp = m_getjcl(MB_DONTWAIT, MT_DATA, M_PKTHDR,
 		    adapter->rx_mbuf_sz);
@@ -3795,7 +3811,8 @@ igb_setup_receive_ring(struct rx_ring *rxr)
 
 	/* Now replenish the ring mbufs */
 	for (j = 0; j < adapter->num_rx_desc; j++) {
-		if ((error = igb_get_buf(rxr, j, IGB_CLEAN_BOTH)) != 0)
+		error = igb_get_buf(rxr, j, IGB_CLEAN_BOTH | IGB_CLEAN_INITIAL);
+		if (error)
 			goto fail;
 	}
 
