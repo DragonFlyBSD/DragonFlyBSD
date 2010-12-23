@@ -90,7 +90,8 @@ mpipe_init(malloc_pipe_t mpipe, malloc_type_t type, int bytes,
     while (mpipe->free_count < nnom) {
 	n = mpipe->free_count;
 	mpipe->array[n] = kmalloc(bytes, mpipe->type, M_WAITOK | mpipe->mflags);
-	construct(mpipe->array[n], priv);
+	if (construct)
+	    construct(mpipe->array[n], priv);
 	++mpipe->free_count;
 	++mpipe->total_count;
     }
@@ -161,7 +162,8 @@ mpipe_alloc_nowait(malloc_pipe_t mpipe)
 	buf = kmalloc(mpipe->bytes, mpipe->type, M_NOWAIT | mpipe->mflags);
 	if (buf) {
 	    ++mpipe->total_count; 
-	    mpipe->construct(buf, mpipe->priv);
+	    if (mpipe->construct)
+	        mpipe->construct(buf, mpipe->priv);
 	}
     }
     lwkt_reltoken(&mpipe->token);
@@ -207,7 +209,8 @@ mpipe_alloc_waitok(malloc_pipe_t mpipe)
 	buf = kmalloc(mpipe->bytes, mpipe->type, M_NOWAIT | mpipe->mflags);
 	if (buf) {
 	    ++mpipe->total_count;
-	    mpipe->construct(buf, mpipe->priv);
+	    if (mpipe->construct)
+	        mpipe->construct(buf, mpipe->priv);
 	    break;
 	}
 	mfailed = 1;
