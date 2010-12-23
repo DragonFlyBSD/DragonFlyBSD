@@ -58,6 +58,7 @@
 #include <netinet/in.h>
 #include <netinet/in_var.h>
 #include <netinet/in_pcb.h>
+#include <netinet/udp_var.h>
 
 #include <netinet/igmp_var.h>
 
@@ -88,7 +89,6 @@ SYSCTL_INT(_net_inet_ip, OID_AUTO, subnets_are_local, CTLFLAG_RW,
 struct in_multihead in_multihead; /* XXX BSS initialization */
 
 extern struct inpcbinfo ripcbinfo;
-extern struct inpcbinfo udbinfo;
 
 /*
  * Return 1 if an internet address is for a ``local'' host
@@ -1389,5 +1389,8 @@ void
 in_ifdetach(struct ifnet *ifp)
 {
 	in_pcbpurgeif0(LIST_FIRST(&ripcbinfo.pcblisthead), ifp);
+
+	udbinfo_lock();
 	in_pcbpurgeif0(LIST_FIRST(&udbinfo.pcblisthead), ifp);
+	udbinfo_unlock();
 }

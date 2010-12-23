@@ -234,8 +234,8 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 		 */
 		last = NULL;
 		LIST_FOREACH(in6p, &udbinfo.pcblisthead, inp_list) {
-			if (in6p->inp_flags & INP_PLACEMARKER)
-				continue;
+			KKASSERT((in6p->inp_flags & INP_PLACEMARKER) == 0);
+
 			if (!(in6p->inp_vflag & INP_IPV6))
 				continue;
 			if (in6p->in6p_lport != uh->uh_dport)

@@ -50,6 +50,7 @@
 #include <netinet/in_var.h>
 #include <netinet/if_ether.h>
 #include <netinet/in_pcb.h>
+#include <netinet/udp_var.h>
 
 #include <netinet/ip6.h>
 #include <netinet6/ip6_var.h>
@@ -72,7 +73,6 @@ int ip6_auto_linklocal = 1;	/* enable by default */
 
 struct callout in6_tmpaddrtimer_ch;
 
-extern struct inpcbinfo udbinfo;
 extern struct inpcbinfo ripcbinfo;
 
 static int get_rand_ifid (struct ifnet *, struct in6_addr *);
@@ -846,7 +846,10 @@ in6_ifdetach(struct ifnet *ifp)
 	}
 
 	/* leave from all multicast groups joined */
+	udbinfo_lock();
 	in6_pcbpurgeif0(LIST_FIRST(&udbinfo.pcblisthead), ifp);
+	udbinfo_unlock();
+
 	in6_pcbpurgeif0(LIST_FIRST(&ripcbinfo.pcblisthead), ifp);
 	for (in6m = LIST_FIRST(&in6_multihead); in6m; in6m = in6m_next) {
 		in6m_next = LIST_NEXT(in6m, in6m_entry);

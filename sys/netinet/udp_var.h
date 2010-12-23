@@ -158,6 +158,9 @@ void			udp_shutdown (union netmsg *);
 struct lwkt_port	*udp_ctlport (int, struct sockaddr *, void *);
 struct lwkt_port	*udp_cport (int);
 
+void			udbinfo_lock(void);
+void			udbinfo_unlock(void);
+
 #endif
 
 #endif

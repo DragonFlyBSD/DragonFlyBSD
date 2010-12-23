@@ -88,6 +88,7 @@
 
 #include <sys/thread2.h>
 #include <sys/socketvar2.h>
+#include <sys/serialize.h>
 
 #include <machine/stdarg.h>
 
@@ -147,6 +148,7 @@ SYSCTL_INT(_net_inet_udp, OID_AUTO, strict_mcast_mship, CTLFLAG_RW,
 struct	inpcbinfo udbinfo;
 
 static struct netisr_barrier *udbinfo_br;
+static struct lwkt_serialize udbinfo_slize = LWKT_SERIALIZE_INITIALIZER;
 
 #ifndef UDBHASHSIZE
 #define UDBHASHSIZE 16
@@ -357,8 +359,7 @@ udp_input(struct mbuf **mp, int *offp, int proto)
 		udp_in6.uin6_init_done = udp_ip6.uip6_init_done = 0;
 #endif
 		LIST_FOREACH(inp, &udbinfo.pcblisthead, inp_list) {
-			if (inp->inp_flags & INP_PLACEMARKER)
-				continue;
+			KKASSERT((inp->inp_flags & INP_PLACEMARKER) == 0);
 #ifdef INET6
 			if (!(inp->inp_vflag & INP_IPV4))
 				continue;
@@ -715,8 +716,19 @@ done:
 	lwkt_replymsg(&msg->lmsg, 0);
 }
 
+static int
+udp_pcblist(SYSCTL_HANDLER_ARGS)
+{
+	int error;
+
+	udbinfo_lock();
+	error = in_pcblist_global_nomarker(oidp, arg1, arg2, req);
+	udbinfo_unlock();
+
+	return error;
+}
 SYSCTL_PROC(_net_inet_udp, UDPCTL_PCBLIST, pcblist, CTLFLAG_RD, &udbinfo, 0,
-	    in_pcblist_global, "S,xinpcb", "List of active UDP sockets");
+	    udp_pcblist, "S,xinpcb", "List of active UDP sockets");
 
 static int
 udp_getcred(SYSCTL_HANDLER_ARGS)
@@ -731,6 +743,8 @@ udp_getcred(SYSCTL_HANDLER_ARGS)
 	error = SYSCTL_IN(req, addrs, sizeof addrs);
 	if (error)
 		return (error);
+
+	udbinfo_lock();
 	inp = in_pcblookup_hash(&udbinfo, addrs[1].sin_addr, addrs[1].sin_port,
 				addrs[0].sin_addr, addrs[0].sin_port, 1, NULL);
 	if (inp == NULL || inp->inp_socket == NULL) {
@@ -739,6 +753,7 @@ udp_getcred(SYSCTL_HANDLER_ARGS)
 	}
 	error = SYSCTL_OUT(req, inp->inp_socket->so_cred, sizeof(struct ucred));
 out:
+	udbinfo_unlock();
 	return (error);
 }
 
@@ -1240,15 +1255,29 @@ udp_shutdown(netmsg_t msg)
 	lwkt_replymsg(&msg->shutdown.base.lmsg, error);
 }
 
+void
+udbinfo_lock(void)
+{
+	lwkt_serialize_enter(&udbinfo_slize);
+}
+
+void
+udbinfo_unlock(void)
+{
+	lwkt_serialize_exit(&udbinfo_slize);
+}
+
 static void
 udbinfo_barrier_set(void)
 {
 	netisr_barrier_set(udbinfo_br);
+	udbinfo_lock();
 }
 
 static void
 udbinfo_barrier_rem(void)
 {
+	udbinfo_unlock();
 	netisr_barrier_rem(udbinfo_br);
 }
 
