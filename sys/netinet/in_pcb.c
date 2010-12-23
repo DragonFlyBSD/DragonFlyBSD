@@ -1419,3 +1419,40 @@ in_pcblist_global(SYSCTL_HANDLER_ARGS)
 	kfree(marker, M_TEMP);
 	return(error);
 }
+
+int
+in_pcblist_global_nomarker(SYSCTL_HANDLER_ARGS)
+{
+	struct inpcbinfo *pcbinfo = arg1;
+	struct inpcb *inp;
+	struct xinpcb xi;
+	int error;
+
+	/*
+	 * The process of preparing the PCB list is too time-consuming and
+	 * resource-intensive to repeat twice on every request.
+	 */
+	if (req->oldptr == NULL) {
+		int n = pcbinfo->ipi_count;
+
+		req->oldidx = (n + n/8 + 10) * sizeof(struct xinpcb);
+		return 0;
+	}
+
+	if (req->newptr != NULL)
+		return EPERM;
+
+	error = 0;
+	LIST_FOREACH(inp, &pcbinfo->pcblisthead, inp_list) {
+		if (prison_xinpcb(req->td, inp))
+			continue;
+		bzero(&xi, sizeof xi);
+		xi.xi_len = sizeof xi;
+		bcopy(inp, &xi.xi_inp, sizeof *inp);
+		if (inp->inp_socket)
+			sotoxsocket(inp->inp_socket, &xi.xi_socket);
+		if ((error = SYSCTL_OUT(req, &xi, sizeof xi)) != 0)
+			break;
+	}
+	return error;
+}

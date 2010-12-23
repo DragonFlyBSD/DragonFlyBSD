@@ -441,6 +441,7 @@ void	in_pcbremlists (struct inpcb *inp);
 int	prison_xinpcb (struct thread *p, struct inpcb *inp);
 
 int	in_pcblist_global(SYSCTL_HANDLER_ARGS);
+int	in_pcblist_global_nomarker(SYSCTL_HANDLER_ARGS);
 #endif /* _KERNEL */
 
 #endif /* !_NETINET_IN_PCB_H_ */
