@@ -172,9 +172,9 @@ dmtc_init_mpipe(void)
 	kprintf("dm_target_crypt: Setting min/max mpipe buffers: %d/%d\n", 2, nmax);
 
 	mpipe_init(&dmtc_write_mpipe, M_DMCRYPT, DMTC_BUF_SIZE_WRITE,
-	    2, nmax, MPF_NOZERO, NULL);
+	    2, nmax, MPF_NOZERO, NULL, NULL, NULL);
 	mpipe_init(&dmtc_read_mpipe, M_DMCRYPT, DMTC_BUF_SIZE_READ,
-	    2, nmax, MPF_NOZERO, NULL);
+	    2, nmax, MPF_NOZERO, NULL, NULL, NULL);
 }
 
 static void

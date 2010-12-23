@@ -44,7 +44,6 @@
 #include <sys/thread.h>
 #include <sys/globaldata.h>
 #include <sys/mpipe.h>
-
 #include <sys/thread2.h>
 
 #define arysize(ary)	(sizeof(ary)/sizeof((ary)[0]))
@@ -59,7 +58,10 @@ static MALLOC_DEFINE(M_MPIPEARY, "MPipe Array", "Auxillary MPIPE structure");
 void
 mpipe_init(malloc_pipe_t mpipe, malloc_type_t type, int bytes,
 	int nnom, int nmax, 
-	int mpflags, void (*deconstruct)(struct malloc_pipe *, void *))
+	int mpflags, 
+	void (*construct)(void *, void *),
+	void (*deconstruct)(void *, void *),
+	void *priv)
 {
     int n;
 
@@ -73,7 +75,9 @@ mpipe_init(malloc_pipe_t mpipe, malloc_type_t type, int bytes,
     mpipe->type = type;
     mpipe->bytes = bytes;
     mpipe->mpflags = mpflags;
+    mpipe->construct = construct;
     mpipe->deconstruct = deconstruct;
+    mpipe->priv = priv;
     if ((mpflags & MPF_NOZERO) == 0)
 	mpipe->mflags |= M_ZERO;
     if (mpflags & MPF_INT)
@@ -86,6 +90,7 @@ mpipe_init(malloc_pipe_t mpipe, malloc_type_t type, int bytes,
     while (mpipe->free_count < nnom) {
 	n = mpipe->free_count;
 	mpipe->array[n] = kmalloc(bytes, mpipe->type, M_WAITOK | mpipe->mflags);
+	construct(mpipe->array[n], priv);
 	++mpipe->free_count;
 	++mpipe->total_count;
     }
@@ -110,7 +115,7 @@ mpipe_done(malloc_pipe_t mpipe)
 	mpipe->array[n] = NULL;
 	KKASSERT(buf != NULL);
 	if (mpipe->deconstruct)
-	    mpipe->deconstruct(mpipe, buf);
+	    mpipe->deconstruct(buf, mpipe->priv);
 	kfree(buf, mpipe->type);
     }
     mpipe->free_count = 0;
@@ -154,8 +159,10 @@ mpipe_alloc_nowait(malloc_pipe_t mpipe)
 	 * Otherwise try to malloc() non-blocking.
 	 */
 	buf = kmalloc(mpipe->bytes, mpipe->type, M_NOWAIT | mpipe->mflags);
-	if (buf)
-	    ++mpipe->total_count;
+	if (buf) {
+	    ++mpipe->total_count; 
+	    mpipe->construct(buf, mpipe->priv);
+	}
     }
     lwkt_reltoken(&mpipe->token);
     return(buf);
@@ -200,6 +207,7 @@ mpipe_alloc_waitok(malloc_pipe_t mpipe)
 	buf = kmalloc(mpipe->bytes, mpipe->type, M_NOWAIT | mpipe->mflags);
 	if (buf) {
 	    ++mpipe->total_count;
+	    mpipe->construct(buf, mpipe->priv);
 	    break;
 	}
 	mfailed = 1;
@@ -244,7 +252,7 @@ mpipe_free(malloc_pipe_t mpipe, void *buf)
 	--mpipe->total_count;
 	KKASSERT(mpipe->total_count >= mpipe->free_count);
 	if (mpipe->deconstruct)
-	    mpipe->deconstruct(mpipe, buf);
+	    mpipe->deconstruct(buf, mpipe->priv);
 	lwkt_reltoken(&mpipe->token);
 	kfree(buf, mpipe->type);
     }

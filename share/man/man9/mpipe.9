@@ -31,7 +31,9 @@
 .Ft void
 .Fn mpipe_init "malloc_pipe_t mpipe" "malloc_type_t type" "int bytes" \
 "int nnom" "int nmax" "int mpflags" \
-"void (*destructor)(struct malloc_pipe *, void *)"
+"void (*construct)(void *, void *)" \
+"void (*deconstruct)(void *, void *)" \
+"void *priv"
 .Ft void
 .Fn mpipe_done "malloc_pipe_t mpipe"
 .Ft void *
@@ -64,9 +66,19 @@ The pipeline is prefilled with
 buffers and has a limit of
 .Fa nmax
 buffers.
+The 
+.Fa construct
+argument is a callback, invoked when a buffer is allocated from the system.
 The
-.Fa destructor
-argument is a callback, invoked when the malloc pipeline is destroyed.
+.Fa deconstruct
+argument is a callback, invoked when the malloc pipeline is destroyed or a
+buffer is freed to the system. Both 
+.Fa construct
+and 
+.Fa deconstruct
+are invoked with the buffer address as their first parameter and with
+.Fa priv
+as their second parameter.
 The
 .Fa flags
 argument controls allocation parameters:

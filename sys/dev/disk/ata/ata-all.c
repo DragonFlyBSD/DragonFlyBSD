@@ -153,9 +153,9 @@ ata_probe(device_t dev)
     TAILQ_INIT(&ch->atapi_queue);
 
     mpipe_init(&ch->req_mpipe, M_ATA, sizeof(union ata_request), 
-		4, ata_mpipe_size, 0, NULL);
+		4, ata_mpipe_size, 0, NULL, NULL, NULL);
     mpipe_init(&ch->dma_mpipe, M_DEVBUF, PAGE_SIZE, 
-		4, ata_mpipe_size, MPF_NOZERO, NULL);
+		4, ata_mpipe_size, MPF_NOZERO, NULL, NULL, NULL);
 
     return 0;
     

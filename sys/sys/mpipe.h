@@ -88,7 +88,9 @@ struct malloc_pipe {
     int		max_count;	/* maximum count (M_NOWAIT used beyond nom) */
     lwkt_token	token;
     void	**array;	/* array[ary_count] */
-    void	(*deconstruct)(struct malloc_pipe *, void *buf);
+    void	(*construct)(void *buf, void *priv);
+    void	(*deconstruct)(void *buf, void *priv);
+    void	*priv;
 };
 
 #define MPF_CACHEDATA		0x0001	/* cache old buffers (do not zero) */ 
@@ -101,7 +103,10 @@ typedef struct malloc_pipe *malloc_pipe_t;
 
 void mpipe_init(malloc_pipe_t mpipe, malloc_type_t type,
 		int bytes, int nnom, int nmax, 
-		int mpflags, void (*deconstruct)(struct malloc_pipe *, void *));
+		int mpflags, 
+		void (*construct)(void *, void *),
+		void (*deconstruct)(void *, void *),
+		void *priv);
 void mpipe_done(malloc_pipe_t mpipe);
 void *mpipe_alloc_waitok(malloc_pipe_t mpipe);
 void *mpipe_alloc_nowait(malloc_pipe_t mpipe);

@@ -331,7 +331,7 @@ tcp_init(void)
 	 * allocation to fail so do not specify MPF_INT.
 	 */
 	mpipe_init(&tcptemp_mpipe, M_TCPTEMP, sizeof(struct tcptemp),
-		    25, -1, 0, NULL);
+		    25, -1, 0, NULL, NULL, NULL);
 
 	tcp_delacktime = TCPTV_DELACK;
 	tcp_keepinit = TCPTV_KEEP_INIT;

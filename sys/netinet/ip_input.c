@@ -334,7 +334,7 @@ ip_init(void)
 	 * cap it at 4000 (XXX).
 	 */
 	mpipe_init(&ipq_mpipe, M_IPQ, sizeof(struct ipq),
-		    IFQ_MAXLEN, 4000, 0, NULL);
+		    IFQ_MAXLEN, 4000, 0, NULL, NULL, NULL);
 	for (i = 0; i < ncpus; ++i) {
 		TAILQ_INIT(&in_ifaddrheads[i]);
 		in_ifaddrhashtbls[i] =
