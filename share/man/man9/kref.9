@@ -28,7 +28,7 @@
 .In sys/ref.h
 .Ft void
 .Fn kref_init "struct kref *ref" "int count"
-.Ft void 
+.Ft void
 .Fn kref_inc "struct kref *ref"
 .Ft int
 .Fn kref_dec "struct kref *ref" "void (*deconstruct)(void *, void *)" \
@@ -36,7 +36,7 @@
 .Sh DESCRIPTION
 .Pp
 Kref is a lightweight reference counting system applicable to many dynamically
-allocated structures. The space overhead of a reference count is only one 
+allocated structures. The space overhead of a reference count is only one
 machine word.
 .Pp
 The
@@ -47,11 +47,11 @@ function initializes a reference to the value
 The
 .Fn kref_inc
 function increments a reference atomically with respect to preemption and to
-concurrent 
+concurrent
 .Fn kref_inc
 calls.
 .Pp
-The 
+The
 .Fn kref_dec
 function decrements a reference atomically with respect to preemption and to
 concurrent
@@ -60,11 +60,11 @@ calls. If the reference transitions from 1 to 0, the
 .Fa deconstruct
 function is called with
 .Fa priv1
-and 
-.Fa priv2 
+and
+.Fa priv2
 as arguments. The
-.Fa deconstruct 
-argument may be NULL. 
+.Fa deconstruct
+argument may be NULL.
 .Fn kref_dec
 returns 0 if it sees a 1 to 0 transition, 1 otherwise.
 .Sh NOTES
@@ -74,7 +74,7 @@ when interleaving calls to kref_inc and kref_dec; higher level synchronization
 is often required.
 .Sh EXAMPLE
 Simple use of kref with a
-.Xr kmalloc 9 
+.Xr kmalloc 9
 allocated structure:
 .Bd -literal
 struct interesting {

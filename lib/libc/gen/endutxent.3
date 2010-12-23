@@ -117,14 +117,13 @@ the default path for each of these is used as described in
 .Xr utmpx 5
 and
 .Xr wtmpx 5 .
-Otherwise the path specified in 
+Otherwise the path specified in
 .Ar fname
 is used as the database.
 .Ss The utmpx structure
 The
 .Nm utmpx
 structure has the following definition:
-.Pp
 .Bd -literal
 struct utmpx {
         char ut_name[_UTX_USERSIZE];    /* login name */
