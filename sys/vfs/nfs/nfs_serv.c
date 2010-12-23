@@ -136,7 +136,7 @@ SYSCTL_INT(_vfs_nfs, OID_AUTO, async, CTLFLAG_RW, &nfs_async, 0,
 static int nfs_commit_blks;
 static int nfs_commit_miss;
 SYSCTL_INT(_vfs_nfs, OID_AUTO, commit_blks, CTLFLAG_RW, &nfs_commit_blks, 0,
-    "Number of commited blocks");
+    "Number of committed blocks");
 SYSCTL_INT(_vfs_nfs, OID_AUTO, commit_miss, CTLFLAG_RW, &nfs_commit_miss, 0,
     "Number of nfs blocks committed from dirty buffers");
 

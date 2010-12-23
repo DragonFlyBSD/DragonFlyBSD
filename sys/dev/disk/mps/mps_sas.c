@@ -480,7 +480,7 @@ mpssas_prepare_remove(struct mpssas_softc *sassc, MPI2_EVENT_SAS_TOPO_PHY_ENTRY 
 	sc = sassc->sc;
 	cm = mps_alloc_command(sc);
 	if (cm == NULL) {
-		mps_printf(sc, "comand alloc failure in mpssas_prepare_remove\n");
+		mps_printf(sc, "command alloc failure in mpssas_prepare_remove\n");
 		return;
 	}
 
