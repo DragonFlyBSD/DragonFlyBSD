@@ -45,7 +45,7 @@
 .Cd "device vkd"
 .Cd "device vke"
 .Pp
-.Pa /var/vkernel/boot/kernel
+.Pa /var/vkernel/boot/kernel/kernel
 .Op Fl hsUv
 .Op Fl c Ar file
 .Op Fl e Ar name Ns = Ns Li value : Ns Ar name Ns = Ns Li value : Ns ...
@@ -396,7 +396,7 @@ ifconfig bridge0 up
 Finally, the virtual kernel can be run:
 .Bd -literal
 cd /var/vkernel
-\&./boot/kernel -m 64m -r rootimg.01 -I auto:bridge0
+\&./boot/kernel/kernel -m 64m -r rootimg.01 -I auto:bridge0
 .Ed
 .Pp
 You can issue the
