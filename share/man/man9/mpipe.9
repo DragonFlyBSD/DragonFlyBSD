@@ -66,15 +66,16 @@ The pipeline is prefilled with
 buffers and has a limit of
 .Fa nmax
 buffers.
-The 
+The
 .Fa construct
 argument is a callback, invoked when a buffer is allocated from the system.
 The
 .Fa deconstruct
 argument is a callback, invoked when the malloc pipeline is destroyed or a
-buffer is freed to the system. Both 
+buffer is freed to the system.
+Both
 .Fa construct
-and 
+and
 .Fa deconstruct
 are invoked with the buffer address as their first parameter and with
 .Fa priv
