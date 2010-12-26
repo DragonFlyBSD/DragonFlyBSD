@@ -302,6 +302,12 @@ struct thread {
     int		td_in_crit_report;	
 #endif
     struct md_thread td_mach;
+#ifdef DEBUG_LOCKS
+#define SPINLOCK_DEBUG_ARRAY_SIZE	32
+   int 	td_spinlock_stack_id[SPINLOCK_DEBUG_ARRAY_SIZE];
+   struct spinlock *td_spinlock_stack[SPINLOCK_DEBUG_ARRAY_SIZE];
+   void 	*td_spinlock_caller_pc[SPINLOCK_DEBUG_ARRAY_SIZE];
+#endif
 };
 
 #define td_toks_base		td_toks_array[0]
