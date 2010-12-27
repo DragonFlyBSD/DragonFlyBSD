@@ -216,6 +216,9 @@ static __inline
 bus_dma_segment_t *
 bus_dma_tag_lock(bus_dma_tag_t tag, bus_dma_segment_t *cache)
 {
+	if (tag->flags & BUS_DMA_PROTECTED)
+		return(tag->segments);
+
 	if (tag->nsegments <= BUS_DMA_CACHE_SEGMENTS)
 		return(cache);
 #ifdef SMP
@@ -229,6 +232,9 @@ void
 bus_dma_tag_unlock(bus_dma_tag_t tag)
 {
 #ifdef SMP
+	if (tag->flags & BUS_DMA_PROTECTED)
+		return;
+
 	if (tag->nsegments > BUS_DMA_CACHE_SEGMENTS)
 		spin_unlock(&tag->spin);
 #endif
@@ -835,6 +841,10 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 		KKASSERT((dmat->flags &
 			  (BUS_DMA_PRIVBZONE | BUS_DMA_ALLOCALL)) !=
 			 (BUS_DMA_PRIVBZONE | BUS_DMA_ALLOCALL));
+
+		if (dmat->flags & BUS_DMA_PROTECTED)
+			panic("protected dmamap callback will be defered\n");
+
 		bus_dma_tag_unlock(dmat);
 		return error;
 	}
