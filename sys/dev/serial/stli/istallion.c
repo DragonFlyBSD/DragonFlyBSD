@@ -332,15 +332,12 @@ static char	*stli_brdnames[] = {
 
 /*
  *	Hardware configuration info for ECP boards. These defines apply
- *	to the directly accessable io ports of the ECP. There is a set of
- *	defines for each ECP board type, ISA and EISA.
+ *	to the directly accessable io ports of the ECP.
  */
 #define	ECP_IOSIZE	4
 #define	ECP_MEMSIZE	(128 * 1024)
 #define	ECP_ATPAGESIZE	(4 * 1024)
 #define	ECP_EIPAGESIZE	(64 * 1024)
-
-#define	STL_EISAID	0x8c4e
 
 /*
  *	Important defines for the ISA class of ECP board.
@@ -355,26 +352,6 @@ static char	*stli_brdnames[] = {
 #define	ECP_ATDISABLE	0x00
 #define	ECP_ATADDRMASK	0x3f000
 #define	ECP_ATADDRSHFT	12
-
-/*
- *	Important defines for the EISA class of ECP board.
- */
-#define	ECP_EIIREG	0
-#define	ECP_EIMEMARL	1
-#define	ECP_EICONFR	2
-#define	ECP_EIMEMARH	3
-#define	ECP_EIENABLE	0x1
-#define	ECP_EIDISABLE	0x0
-#define	ECP_EISTOP	0x4
-#define	ECP_EIEDGE	0x00
-#define	ECP_EILEVEL	0x80
-#define	ECP_EIADDRMASKL	0x00ff0000
-#define	ECP_EIADDRSHFTL	16
-#define	ECP_EIADDRMASKH	0xff000000
-#define	ECP_EIADDRSHFTH	24
-#define	ECP_EIBRDENAB	0xc84
-
-#define	ECP_EISAID	0x4
 
 /*
  *	Important defines for the Micro-channel class of ECP board.
@@ -410,26 +387,6 @@ static char	*stli_brdnames[] = {
 #define	ONB_ATADDRSHFT	16
 
 #define	ONB_HIMEMENAB	0x02
-
-/*
- *	Important defines for the EISA class of ONboard board.
- */
-#define	ONB_EIIREG	0
-#define	ONB_EIMEMARL	1
-#define	ONB_EICONFR	2
-#define	ONB_EIMEMARH	3
-#define	ONB_EIENABLE	0x1
-#define	ONB_EIDISABLE	0x0
-#define	ONB_EISTOP	0x4
-#define	ONB_EIEDGE	0x00
-#define	ONB_EILEVEL	0x80
-#define	ONB_EIADDRMASKL	0x00ff0000
-#define	ONB_EIADDRSHFTL	16
-#define	ONB_EIADDRMASKH	0xff000000
-#define	ONB_EIADDRSHFTH	24
-#define	ONB_EIBRDENAB	0xc84
-
-#define	ONB_EISAID	0x1
 
 /*
  *	Important defines for the Brumby boards. They are pretty simple,
@@ -538,7 +495,6 @@ STATIC	d_ioctl_t	stliioctl;
  */
 static stliport_t *stli_dev2port(cdev_t dev);
 static int	stli_isaprobe(struct isa_device *idp);
-static int	stli_eisaprobe(struct isa_device *idp);
 static int	stli_brdinit(stlibrd_t *brdp);
 static int	stli_brdattach(stlibrd_t *brdp);
 static int	stli_initecp(stlibrd_t *brdp);
@@ -586,23 +542,11 @@ static void	stli_ecpreset(stlibrd_t *brdp);
 static char	*stli_ecpgetmemptr(stlibrd_t *brdp, unsigned long offset,
 			int line);
 static void	stli_ecpintr(stlibrd_t *brdp);
-static void	stli_ecpeiinit(stlibrd_t *brdp);
-static void	stli_ecpeienable(stlibrd_t *brdp);
-static void	stli_ecpeidisable(stlibrd_t *brdp);
-static void	stli_ecpeireset(stlibrd_t *brdp);
-static char	*stli_ecpeigetmemptr(stlibrd_t *brdp, unsigned long offset,
-			int line);
 static void	stli_onbinit(stlibrd_t *brdp);
 static void	stli_onbenable(stlibrd_t *brdp);
 static void	stli_onbdisable(stlibrd_t *brdp);
 static void	stli_onbreset(stlibrd_t *brdp);
 static char	*stli_onbgetmemptr(stlibrd_t *brdp, unsigned long offset,
-			int line);
-static void	stli_onbeinit(stlibrd_t *brdp);
-static void	stli_onbeenable(stlibrd_t *brdp);
-static void	stli_onbedisable(stlibrd_t *brdp);
-static void	stli_onbereset(stlibrd_t *brdp);
-static char	*stli_onbegetmemptr(stlibrd_t *brdp, unsigned long offset,
 			int line);
 static void	stli_bbyinit(stlibrd_t *brdp);
 static void	stli_bbyreset(stlibrd_t *brdp);
@@ -708,52 +652,6 @@ static int stli_isaprobe(struct isa_device *idp)
 /*****************************************************************************/
 
 /*
- *	Probe for an EISA board type. We should be able to read the EISA ID,
- *	that will tell us if a board is present or not...
- */
-
-static int stli_eisaprobe(struct isa_device *idp)
-{
-	int	btype, eid;
-
-#if STLDEBUG
-	kprintf("stli_eisaprobe(idp=%x): unit=%d iobase=%x flags=%x\n",
-		(int) idp, idp->id_unit, idp->id_iobase, idp->id_flags);
-#endif
-
-/*
- *	Firstly check if this is an EISA system. Do this by probing for
- *	the system board EISA ID. If this is not an EISA system then
- *	don't bother going any further!
- */
-	outb(0xc80, 0xff);
-	if (inb(0xc80) == 0xff)
-		return(0);
-
-/*
- *	Try and read the EISA ID from the board at specified address.
- *	If one is present it will tell us the board type as well.
- */
-	outb((idp->id_iobase + 0xc80), 0xff);
-	eid = inb(idp->id_iobase + 0xc80);
-	eid |= inb(idp->id_iobase + 0xc81) << 8;
-	if (eid != STL_EISAID)
-		return(0);
-
-	btype = 0;
-	eid = inb(idp->id_iobase + 0xc82);
-	if (eid == ECP_EISAID)
-		btype = BRD_ECPE;
-	else if (eid == ONB_EISAID)
-		btype = BRD_ONBOARDE;
-
-	outb((idp->id_iobase + 0xc84), 0x1);
-	return(btype);
-}
-
-/*****************************************************************************/
-
-/*
  *	Probe for a board. This is involved, since we need to enable the
  *	shared memory region to see if the board is really there or not...
  */
@@ -773,14 +671,11 @@ static int stliprobe(struct isa_device *idp)
 
 /*
  *	First up determine what bus type of board we might be dealing
- *	with. It is easy to separate out the ISA from the EISA
- *	boards, based on their IO addresses.
+ *	with.
  */
 	bclass = 0;
 	if ((idp->id_iobase > 0) && (idp->id_iobase < 0x400))
 		bclass |= BRD_ISA;
-	else if ((idp->id_iobase & ~0xf000) == 0)
-		bclass |= BRD_EISA;
 
 	if ((bclass == 0) || (idp->id_iobase == 0))
 		return(0);
@@ -791,8 +686,6 @@ static int stliprobe(struct isa_device *idp)
 	btype = 0;
 	if (bclass & BRD_ISA)
 		btype = stli_isaprobe(idp);
-	if ((btype == 0) && (bclass & BRD_EISA))
-		btype = stli_eisaprobe(idp);
 	if (btype == 0)
 		return(0);
 
@@ -2595,85 +2488,6 @@ static void stli_ecpintr(stlibrd_t *brdp)
 /*****************************************************************************/
 
 /*
- *	The following set of functions act on ECP EISA boards.
- */
-
-static void stli_ecpeiinit(stlibrd_t *brdp)
-{
-	unsigned long	memconf;
-
-#if STLDEBUG
-	kprintf("stli_ecpeiinit(brdp=%x)\n", (int) brdp);
-#endif
-
-	outb((brdp->iobase + ECP_EIBRDENAB), 0x1);
-	outb((brdp->iobase + ECP_EICONFR), ECP_EISTOP);
-	DELAY(10);
-	outb((brdp->iobase + ECP_EICONFR), ECP_EIDISABLE);
-	DELAY(500);
-
-	memconf = (brdp->paddr & ECP_EIADDRMASKL) >> ECP_EIADDRSHFTL;
-	outb((brdp->iobase + ECP_EIMEMARL), memconf);
-	memconf = (brdp->paddr & ECP_EIADDRMASKH) >> ECP_EIADDRSHFTH;
-	outb((brdp->iobase + ECP_EIMEMARH), memconf);
-}
-
-/*****************************************************************************/
-
-static void stli_ecpeienable(stlibrd_t *brdp)
-{	
-	outb((brdp->iobase + ECP_EICONFR), ECP_EIENABLE);
-}
-
-/*****************************************************************************/
-
-static void stli_ecpeidisable(stlibrd_t *brdp)
-{	
-	outb((brdp->iobase + ECP_EICONFR), ECP_EIDISABLE);
-}
-
-/*****************************************************************************/
-
-static char *stli_ecpeigetmemptr(stlibrd_t *brdp, unsigned long offset, int line)
-{	
-	void		*ptr;
-	unsigned char	val;
-
-#if STLDEBUG
-	kprintf("stli_ecpeigetmemptr(brdp=%x,offset=%x,line=%d)\n",
-		(int) brdp, (int) offset, line);
-#endif
-
-	if (offset > brdp->memsize) {
-		kprintf("STALLION: shared memory pointer=%x out of range at "
-			"line=%d(%d), brd=%d\n", (int) offset, line,
-			__LINE__, brdp->brdnr);
-		ptr = 0;
-		val = 0;
-	} else {
-		ptr = (char *) brdp->vaddr + (offset % ECP_EIPAGESIZE);
-		if (offset < ECP_EIPAGESIZE)
-			val = ECP_EIENABLE;
-		else
-			val = ECP_EIENABLE | 0x40;
-	}
-	outb((brdp->iobase + ECP_EICONFR), val);
-	return(ptr);
-}
-
-/*****************************************************************************/
-
-static void stli_ecpeireset(stlibrd_t *brdp)
-{	
-	outb((brdp->iobase + ECP_EICONFR), ECP_EISTOP);
-	DELAY(10);
-	outb((brdp->iobase + ECP_EICONFR), ECP_EIDISABLE);
-	DELAY(500);
-}
-
-/*****************************************************************************/
-
-/*
  *	The following routines act on ONboards.
  */
 
@@ -2753,102 +2567,6 @@ static void stli_onbreset(stlibrd_t *brdp)
 	outb((brdp->iobase + ONB_ATCONFR), ONB_ATSTOP);
 	DELAY(10);
 	outb((brdp->iobase + ONB_ATCONFR), ONB_ATDISABLE);
-	for (i = 0; (i < 1000); i++)
-		DELAY(1000);
-}
-
-/*****************************************************************************/
-
-/*
- *	The following routines act on ONboard EISA.
- */
-
-static void stli_onbeinit(stlibrd_t *brdp)
-{
-	unsigned long	memconf;
-	int		i;
-
-#if STLDEBUG
-	kprintf("stli_onbeinit(brdp=%d)\n", (int) brdp);
-#endif
-
-	outb((brdp->iobase + ONB_EIBRDENAB), 0x1);
-	outb((brdp->iobase + ONB_EICONFR), ONB_EISTOP);
-	DELAY(10);
-	outb((brdp->iobase + ONB_EICONFR), ONB_EIDISABLE);
-	for (i = 0; (i < 1000); i++)
-		DELAY(1000);
-
-	memconf = (brdp->paddr & ONB_EIADDRMASKL) >> ONB_EIADDRSHFTL;
-	outb((brdp->iobase + ONB_EIMEMARL), memconf);
-	memconf = (brdp->paddr & ONB_EIADDRMASKH) >> ONB_EIADDRSHFTH;
-	outb((brdp->iobase + ONB_EIMEMARH), memconf);
-	outb(brdp->iobase, 0x1);
-	DELAY(1000);
-}
-
-/*****************************************************************************/
-
-static void stli_onbeenable(stlibrd_t *brdp)
-{	
-#if STLDEBUG
-	kprintf("stli_onbeenable(brdp=%x)\n", (int) brdp);
-#endif
-	outb((brdp->iobase + ONB_EICONFR), ONB_EIENABLE);
-}
-
-/*****************************************************************************/
-
-static void stli_onbedisable(stlibrd_t *brdp)
-{	
-#if STLDEBUG
-	kprintf("stli_onbedisable(brdp=%x)\n", (int) brdp);
-#endif
-	outb((brdp->iobase + ONB_EICONFR), ONB_EIDISABLE);
-}
-
-/*****************************************************************************/
-
-static char *stli_onbegetmemptr(stlibrd_t *brdp, unsigned long offset, int line)
-{	
-	void		*ptr;
-	unsigned char	val;
-
-#if STLDEBUG
-	kprintf("stli_onbegetmemptr(brdp=%x,offset=%x,line=%d)\n", (int) brdp,
-		(int) offset, line);
-#endif
-
-	if (offset > brdp->memsize) {
-		kprintf("STALLION: shared memory pointer=%x out of range at "
-			"line=%d(%d), brd=%d\n", (int) offset, line,
-			__LINE__, brdp->brdnr);
-		ptr = 0;
-		val = 0;
-	} else {
-		ptr = (char *) brdp->vaddr + (offset % ONB_EIPAGESIZE);
-		if (offset < ONB_EIPAGESIZE)
-			val = ONB_EIENABLE;
-		else
-			val = ONB_EIENABLE | 0x40;
-	}
-	outb((brdp->iobase + ONB_EICONFR), val);
-	return(ptr);
-}
-
-/*****************************************************************************/
-
-static void stli_onbereset(stlibrd_t *brdp)
-{	
-	int	i;
-
-#if STLDEBUG
-	kprintf("stli_onbereset(brdp=%x)\n", (int) brdp);
-#endif
-
-	outb((brdp->iobase + ONB_EICONFR), ONB_EISTOP);
-	DELAY(10);
-	outb((brdp->iobase + ONB_EICONFR), ONB_EIDISABLE);
 	for (i = 0; (i < 1000); i++)
 		DELAY(1000);
 }
@@ -3020,18 +2738,6 @@ static int stli_initecp(stlibrd_t *brdp)
 		brdp->reset = stli_ecpreset;
 		break;
 
-	case BRD_ECPE:
-		brdp->memsize = ECP_MEMSIZE;
-		brdp->pagesize = ECP_EIPAGESIZE;
-		brdp->init = stli_ecpeiinit;
-		brdp->enable = stli_ecpeienable;
-		brdp->reenable = stli_ecpeienable;
-		brdp->disable = stli_ecpeidisable;
-		brdp->getmemptr = stli_ecpeigetmemptr;
-		brdp->intr = stli_ecpintr;
-		brdp->reset = stli_ecpeireset;
-		break;
-
 	default:
 		return(EINVAL);
 	}
@@ -3134,18 +2840,6 @@ static int stli_initonb(stlibrd_t *brdp)
 		brdp->intr = stli_ecpintr;
 		brdp->reset = stli_onbreset;
 		brdp->confbits = (brdp->paddr > 0x100000) ? ONB_HIMEMENAB : 0;
-		break;
-
-	case BRD_ONBOARDE:
-		brdp->memsize = ONB_EIMEMSIZE;
-		brdp->pagesize = ONB_EIPAGESIZE;
-		brdp->init = stli_onbeinit;
-		brdp->enable = stli_onbeenable;
-		brdp->reenable = stli_onbeenable;
-		brdp->disable = stli_onbedisable;
-		brdp->getmemptr = stli_onbegetmemptr;
-		brdp->intr = stli_ecpintr;
-		brdp->reset = stli_onbereset;
 		break;
 
 	case BRD_BRUMBY4:

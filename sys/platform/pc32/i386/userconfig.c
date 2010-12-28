@@ -2477,16 +2477,6 @@ static int set_pnp_parms(CmdParm *);
 
 static int lineno;
 
-#include "use_eisa.h"
-
-#if NEISA > 0
-
-#include <bus/eisa/eisaconf.h>
-
-static int set_num_eisa_slots(CmdParm *);
-
-#endif /* NEISA > 0 */
-
 static CmdParm addr_parms[] = {
     { PARM_DEVSPEC, {} },
     { PARM_ADDR, {} },
@@ -2511,20 +2501,10 @@ static CmdParm string_arg[] = {
 };
 #endif
 
-#if NEISA > 0
-static CmdParm int_arg[] = {
-    { PARM_INT, {} },
-    { -1, {} },
-};
-#endif /* NEISA > 0 */
-
 static Cmd CmdList[] = {
     { "?", 	helpfunc, 		NULL },		/* ? (help)	*/
     { "di",	set_device_disable,	dev_parms },	/* disable dev	*/
     { "dr",	set_device_drq,		int_parms },	/* drq dev #	*/
-#if NEISA > 0
-    { "ei",	set_num_eisa_slots,	int_arg },	/* # EISA slots */
-#endif /* NEISA > 0 */
     { "en",	set_device_enable,	dev_parms },	/* enable dev	*/
     { "ex", 	quitfunc, 		NULL },		/* exit (quit)	*/
     { "f",	set_device_flags,	int_parms },	/* flags dev mask */
@@ -2697,9 +2677,6 @@ list_devices(CmdParm *parms)
 #if NPNP > 0
     if (lspnp()) return 0;
 #endif
-#if NEISA > 0
-    kprintf("\nNumber of EISA slots to probe: %d\n", num_eisa_slots);
-#endif /* NEISA > 0 */
     return 0;
 }
 
@@ -2898,18 +2875,6 @@ set_pnp_parms(CmdParm *parms)
 }
 #endif /* NPNP */
 
-#if NEISA > 0
-static int
-set_num_eisa_slots(CmdParm *parms)
-{
-    int num_slots;
-
-    num_slots = parms[0].parm.iparm;
-    num_eisa_slots = (num_slots <= 16 ? num_slots : 10);
-    return 0;
-}
-#endif /* NEISA > 0 */
-
 static int
 quitfunc(CmdParm *parms)
 {
@@ -2947,9 +2912,6 @@ helpfunc(CmdParm *parms)
     "pnp <csn> <ldn> [irqX <number>]\tset irq X (0..1) to number, 0=unused\n"
     "pnp <csn> <ldn> [drqX <number>]\tset drq X (0..1) to number, 4=unused\n");
 #endif
-#if NEISA > 0
-    kprintf("eisa <number>\t\tSet the number of EISA slots to probe\n");
-#endif /* NEISA > 0 */
     kprintf(
     "quit\t\t\tExit this configuration utility\n"
     "reset\t\t\tReset CPU\n");

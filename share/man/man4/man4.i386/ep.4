@@ -41,7 +41,7 @@
 .Sh DESCRIPTION
 The
 .Nm
-device driver supports the 3c509 (ISA), 3c529 (MCA), 3c579 (EISA),
+device driver supports the 3c509 (ISA), 3c529 (MCA),
 and various PCMCIA cards including the 3c589.
 Various models of these cards come with a different assortment of
 connectors:
@@ -79,14 +79,6 @@ To find the card on the ISA bus, the kernel performs a complex
 scan operation at IO address 0x110.
 Beware!
 Avoid placing other cards at that address!
-.Pp
-Furthermore,
-the 3c509 should only
-be configured in EISA mode
-when installed in a computer that has actual EISA slots
-(and an EISA-aware BIOS).
-The normal driver auto-detection support
-is sufficient for non-EISA systems.
 .Sh DIAGNOSTICS
 .Bl -diag
 .It ep0: reset (status: %x)

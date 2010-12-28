@@ -22,7 +22,6 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/dpt.4,v 1.5.4.8 2002/01/12 04:08:50 bmah Exp $
-.\" $DragonFly: src/share/man/man4/dpt.4,v 1.5 2006/05/26 19:39:39 swildner Exp $
 .\"
 .Dd May 11, 2006
 .Dt DPT 4
@@ -31,11 +30,6 @@
 .Nm dpt
 .Nd DPT RAID Controller SCSI driver
 .Sh SYNOPSIS
-For one or more EISA Controllers
-.Cd "device eisa"
-.Cd "device dpt"
-.Pp
-For one or more PCI Controllers
 .Cd "device pci"
 .Cd "device dpt"
 .Sh DESCRIPTION
@@ -51,8 +45,6 @@ Core Driver Implementation
 Register Set and Core Driver Data Structures
 .It Pa /sys/dev/raid/dpt/dpt_pci.c
 PCI Bus Driver Attachment
-.It Pa /sys/dev/raid/dpt/dpt_eisa.c
-EISA Bus Driver Attachment
 .El
 .Sh SEE ALSO
 .Xr cd 4 ,

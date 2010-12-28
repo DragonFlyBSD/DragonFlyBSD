@@ -42,7 +42,6 @@
 
 #include <bus/cam/scsi/scsi_all.h>
 
-static	bus_dma_filter_t btvlbouncefilter;
 static	bus_dmamap_callback_t btmapsensebuffers;
 
 static int
@@ -205,30 +204,8 @@ bt_isa_attach(device_t dev)
 	filter = NULL;
 	filter_arg = NULL;
 	lowaddr = BUS_SPACE_MAXADDR_24BIT;
-	if (bt->model[0] == '4') {
-		/*
-		 * This is a VL adapter.  Typically, VL devices have access
-		 * to the full 32bit address space.  On BT-445S adapters
-		 * prior to revision E, there is a hardware bug that causes
-		 * corruption of transfers to/from addresses in the range of
-		 * the BIOS modulo 16MB.  The only properly functioning
-		 * BT-445S Host Adapters have firmware version 3.37.
-		 * If we encounter one of these adapters and the BIOS is
-		 * installed, install a filter function for our bus_dma_map
-		 * that will catch these accesses and bounce them to a safe
-		 * region of memory.
-		 */
-		if (bt->bios_addr != 0
-		 && strcmp(bt->model, "445S") == 0
-		 && strcmp(bt->firmware_ver, "3.37") < 0) {
-			filter = btvlbouncefilter;
-			filter_arg = bt;
-		} else {
-			lowaddr = BUS_SPACE_MAXADDR_32BIT;
-		}
-	}
-			
-	/* XXX Should be a child of the ISA or VL bus dma tag */
+
+	/* XXX Should be a child of the ISA bus dma tag */
 	if (bus_dma_tag_create(/*parent*/NULL, /*alignemnt*/1, /*boundary*/0,
                                lowaddr, /*highaddr*/BUS_SPACE_MAXADDR,
                                filter, filter_arg,
@@ -293,22 +270,6 @@ bt_isa_attach(device_t dev)
 }
 
 #define BIOS_MAP_SIZE (16 * 1024)
-
-static int
-btvlbouncefilter(void *arg, bus_addr_t addr)
-{
-	struct bt_softc *bt;
-
-	bt = (struct bt_softc *)arg;
-
-	addr &= BUS_SPACE_MAXADDR_24BIT;
-
-	if (addr == 0
-	 || (addr >= bt->bios_addr
-	  && addr < (bt->bios_addr + BIOS_MAP_SIZE)))
-		return (1);
-	return (0);
-}
 
 static void
 btmapsensebuffers(void *arg, bus_dma_segment_t *segs, int nseg, int error)

@@ -42,7 +42,6 @@
 .Cd "device stl"
 .Cd "device stl0 at isa? port <addr> irq <irq>"
 .Cd "device stli0 at isa? port <io-addr> iomem <mem-addr> iosiz <size> flags <type> "
-.Cd "device stli0 at eisa? port <io-addr> iomem <mem-addr> iosiz <size> flags <type> "
 .Sh DESCRIPTION
 This is a kernel driver for Stallion Technologies multiport serial boards.
 There are two drivers, each supporting a different class of boards.
@@ -54,7 +53,7 @@ EasyConnection 8/64-PCI boards,
 while the
 .Nm stli
 driver supports all other types, including
-ONboard, Brumby and EasyConnection 8/64 (ISA and EISA).
+ONboard, Brumby and EasyConnection 8/64 (ISA).
 .Sh CONFIGURATION
 Each non-PCI board installed in the system needs a configuration entry in the
 kernel configuration file.
@@ -156,7 +155,7 @@ families of boards use the
 .Nm stli
 driver.  The
 .Nm stli
-driver supports the ISA and EISA members of these families.
+driver supports the ISA members of these families.
 .Pp
 ISA board configuration entries for the
 .Nm stli
@@ -196,7 +195,6 @@ Brumby				  2	0x4000
 ONboard				  4	0x10000
 ONboard/E			  7	0x10000
 EasyConnection 8/64-AT		 23	0x1000
-EasyConnection 8/64-EISA	 24	0x10000
 .Ed
 .Pp
 Following are some examples of configuration entries for each of the
@@ -219,26 +217,6 @@ The
 parameter specifies a memory region size
 of 4 kbytes.
 .Pp
-The EasyConnection 8/64-EISA board requires a 64 kbyte region of
-memory space.
-This region can be anywhere in the 32 bit memory address space.
-A configuration entry would be like:
-.Pp
-.Cd "device stli0 at eisa? port 0x2000 iomem 0x80000000 iosiz 0x10000 flags 24"
-.Pp
-The flags field is used to specify that this is an EasyConnection 8/64-EISA
-board.
-The I/O (port) address resource is derived from the EISA slot that
-the board is in.
-Each EISA slot is allocated a section of the I/O address space by the
-hardware of the system.
-That address being 0xX000 where X is the slot number.
-The example board is at memory address 0x80000000 which is 2 Gbyte.
-The
-.Ar iosiz
-parameter specifies the size of the memory region,
-in this case 64 kbytes.
-.Pp
 Each ONboard ISA board requires 16 bytes of I/O space and a 64 kbyte
 section of memory address space.
 Valid ONboard I/O addresses are in the range 0x200 to 0x300.
@@ -249,15 +227,6 @@ A configuration entry for an ONboard ISA would look like:
 This entry specifies an ONboard ISA by setting flags to 4.
 It uses I/O address 0x240 and a memory region of 64 kbytes at memory
 address 0xd0000.
-.Pp
-Each ONboard/E board requires a 64 kbyte memory region, and this
-can be anywhere in the 32 bit address space (that is from 0 to 4 Gbyte).
-A configuration entry would look like:
-.Pp
-.Cd "device stli0 at eisa? port 0x3000 iomem 0xc0000000 iosiz 0x10000 flags 7"
-.Pp
-The specifies an ONboard/E in slot 3 using a shared memory address
-of 0xc0000000 (3 Gbyte).
 .Pp
 Each Brumby board requires 16 bytes of I/O address space and a 4 kbyte
 region of shared memory space.
@@ -276,7 +245,7 @@ so even though the port device names are the same for each driver,
 the major number of the device node is different.
 .Pp
 The intelligent board types (ONboard, Brumby and
-EasyConnection 8/64 (ISA and EISA))
+EasyConnection 8/64 (ISA))
 require a firmware download before the ports will be operational.
 This is achieved by using the
 .Nm stlload

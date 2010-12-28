@@ -134,7 +134,6 @@ dev/pccard/cardbus/cardbus.c		optional cardbus
 dev/pccard/cardbus/cardbus_cis.c	optional cardbus
 dev/pccard/exca/exca.c			optional cbb
 
-dev/disk/advansys/adv_eisa.c		optional adv eisa
 dev/disk/advansys/adv_pci.c		optional adv pci
 dev/disk/advansys/advansys.c		optional adv
 dev/disk/advansys/advlib.c		optional adv
@@ -200,12 +199,8 @@ dev/raid/amr/amr_disk.c			optional amr
 dev/raid/amr/amr_pci.c			optional amr pci
 dev/disk/aha/aha.c			optional aha
 dev/disk/aha/aha_isa.c			optional aha isa
-dev/disk/ahb/ahb.c			optional ahb eisa
 dev/disk/aic/aic.c			optional aic
 dev/disk/aic/aic_pccard.c		optional aic pccard
-dev/disk/aic7xxx/aic7770.c		optional ahc
-dev/disk/aic7xxx/ahc_eisa.c		optional ahc eisa
-dev/disk/aic7xxx/ahc_isa.c		optional ahc isa
 dev/disk/aic7xxx/ahc_pci.c		optional ahc pci
 dev/disk/aic7xxx/aic7xxx.c		optional ahc
 dev/disk/aic7xxx/aic7xxx_93cx6.c	optional ahc
@@ -312,7 +307,6 @@ dev/netif/bfe/if_bfe.c			optional bfe
 dev/netif/bge/if_bge.c			optional bge
 dev/disk/buslogic/bt.c			optional bt
 dev/disk/buslogic/bt_isa.c		optional bt isa
-dev/disk/buslogic/bt_eisa.c		optional bt eisa
 dev/disk/buslogic/bt_pci.c		optional bt pci
 dev/disk/ccd/ccd.c			optional ccd
 dev/raid/ciss/ciss.c			optional ciss
@@ -324,14 +318,12 @@ dev/misc/dcons/dcons_crom.c	optional dcons_crom
 dev/misc/dcons/dcons_os.c	optional dcons
 #dev/raid/dpt/dpt_control.c	optional dpt
 dev/raid/dpt/dpt_scsi.c	optional dpt
-dev/raid/dpt/dpt_eisa.c	optional dpt eisa
 dev/raid/dpt/dpt_pci.c	optional dpt pci
 dev/netif/ed/if_ed.c		optional nowerror ed
 dev/netif/ed/if_ed_pccard.c	optional ed pccard
 dev/netif/ed/if_ed_pci.c	optional ed pci
 dev/netif/ep/if_ep.c		optional ep
 dev/netif/ep/if_ep_isa.c	optional ep isa
-dev/netif/ep/if_ep_eisa.c	optional ep eisa
 dev/netif/ep/if_ep_pccard.c	optional ep pccard
 dev/netif/em/if_em.c		optional em
 dev/netif/emx/if_emx.c		optional emx
@@ -399,7 +391,6 @@ dev/powermng/kate/kate.c	optional kate pci
 dev/powermng/km/km.c		optional km pci
 dev/raid/ida/ida.c		optional ida
 dev/raid/ida/ida_disk.c	optional ida
-dev/raid/ida/ida_eisa.c	optional ida eisa
 dev/raid/ida/ida_pci.c	optional ida pci
 dev/disk/isp/isp_freebsd.c	optional isp
 dev/disk/isp/isp.c		optional isp
@@ -707,7 +698,6 @@ bus/smbus/smb.c			optional smb
 dev/serial/si/si.c		optional si
 dev/serial/si/si2_z280.c	optional si
 dev/serial/si/si3_t225.c	optional si
-dev/serial/si/si_eisa.c	optional si eisa
 dev/serial/si/si_isa.c		optional si isa
 dev/serial/si/si_pci.c		optional si pci
 dev/netif/sln/if_sln.c		optional sln pci
@@ -760,7 +750,6 @@ dev/raid/ips/ips_ioctl.c		optional ips
 dev/raid/ips/ips_pci.c			optional ips
 dev/disk/vn/vn.c			optional vn
 dev/netif/vx/if_vx.c			optional vx
-dev/netif/vx/if_vx_eisa.c		optional vx eisa
 dev/netif/vx/if_vx_pci.c		optional vx pci
 dev/netif/wi/if_wi.c			optional wi
 dev/netif/wi/if_wi_pccard.c		optional wi pccard
@@ -1649,7 +1638,6 @@ dev/video/meteor/meteor.c	optional meteor pci
 dev/disk/ncr/ncr.c		optional ncr
 dev/disk/sym/sym_hipd.c		optional sym				\
 	dependency	"$S/dev/disk/sym/sym_{conf,defs}.h"
-bus/pci/eisa_pci.c		optional pci eisa
 bus/pci/fixup_pci.c		optional pci
 bus/pci/hostb_pci.c		optional pci
 bus/pci/ignore_pci.c		optional pci
