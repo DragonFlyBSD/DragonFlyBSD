@@ -212,7 +212,7 @@ debuglockmgr(struct lock *lkp, u_int flags,
 		 * while there is an exclusive lock holder or while an
 		 * exclusive lock request or upgrade request is in progress.
 		 *
-		 * However, if P_DEADLKTREAT is set, we override exclusive
+		 * However, if TDF_DEADLKTREAT is set, we override exclusive
 		 * lock requests or upgrade requests ( but not the exclusive
 		 * lock itself ).
 		 */
@@ -301,9 +301,16 @@ debuglockmgr(struct lock *lkp, u_int flags,
 			 * We are first shared lock to request an upgrade, so
 			 * request upgrade and wait for the shared count to
 			 * drop to zero, then take exclusive lock.
+			 *
+			 * Although I don't think this can occur for
+			 * robustness we also wait for any exclusive locks
+			 * to be released.  LK_WANT_UPGRADE is supposed to
+			 * prevent new exclusive locks but might not in the
+			 * future.
 			 */
 			lkp->lk_flags |= LK_WANT_UPGRADE;
-			error = acquire(lkp, extflags, LK_SHARE_NONZERO);
+			error = acquire(lkp, extflags,
+					LK_HAVE_EXCL | LK_SHARE_NONZERO);
 			lkp->lk_flags &= ~LK_WANT_UPGRADE;
 
 			if (error)
