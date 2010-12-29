@@ -2,7 +2,6 @@
  * Fundamental constants relating to ethernet.
  *
  * $FreeBSD: src/sys/net/ethernet.h,v 1.12.2.8 2002/12/01 14:03:09 sobomax Exp $
- * $DragonFly: src/sys/net/ethernet.h,v 1.21 2008/09/17 07:51:59 sephe Exp $
  *
  */
 
@@ -53,6 +52,15 @@
 #define	ETHER_MAX_LEN_JUMBO	9018	/* max jumbo frame len, including CRC */
 
 #define ETHER_VLAN_ENCAP_LEN	4       /* len of 802.1Q VLAN encapsulation */
+
+/*
+ * Compute the maximum frame size based on ethertype (i.e. possible
+ * encapsulation) and whether or not an FCS is present.
+ */
+#define	ETHER_MAX_FRAME(ifp, etype, hasfcs)				\
+	((ifp)->if_mtu + ETHER_HDR_LEN +				\
+	 ((hasfcs) ? ETHER_CRC_LEN : 0) +				\
+	 (((etype) == ETHERTYPE_VLAN) ? ETHER_VLAN_ENCAP_LEN : 0))
 
 /*
  * Ethernet CRC32 polynomials (big- and little-endian verions).
