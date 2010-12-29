@@ -411,6 +411,22 @@ linker_find_file_by_id(int fileid)
     return lf;
 }
 
+int
+linker_file_foreach(linker_predicate_t *predicate, void *context)
+{
+    linker_file_t lf;
+    int retval = 0;
+
+    lockmgr(&lock, LK_SHARED);
+    TAILQ_FOREACH(lf, &linker_files, link) {
+	retval = predicate(lf, context);
+	if (retval != 0)
+	    break;
+    }
+    lockmgr(&lock, LK_RELEASE);
+    return (retval);
+}
+
 linker_file_t
 linker_make_file(const char* pathname, void* priv, struct linker_file_ops* ops)
 {

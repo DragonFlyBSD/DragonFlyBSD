@@ -156,6 +156,11 @@ struct linker_class {
 };
 
 /*
+ * Function type used when iterating over the list of linker files.
+ */
+typedef int linker_predicate_t(linker_file_t, void *);
+
+/*
  * The file which is currently loading.  Used to register modules with
  * the files which contain them.
  */
@@ -204,6 +209,13 @@ int linker_file_unload(linker_file_t _file);
 void linker_file_add_dependancy(linker_file_t _file, linker_file_t _dep);
 
 int linker_load_dependencies(linker_file_t lf);
+
+/*
+ * Iterate over all of the currently loaded linker files calling the
+ * predicate function while the function returns 0.  Returns the value
+ * returned by the last predicate function.
+ */
+int linker_file_foreach(linker_predicate_t *_predicate, void *_context);
 
 /*
  * Lookup a symbol in a file.  If deps is TRUE, look in dependancies
