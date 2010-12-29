@@ -104,7 +104,8 @@ udp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
  * If the packet is a valid IP datagram, upon returning of this function
  * following things are promised:
  *
- * o  IP header (including any possible IP options) is in one mbuf (m_len).
+ * o  IP header (including any possible IP options) and any data preceding
+ *    IP header (usually linker layer header) are in one mbuf (m_len).
  * o  IP header length is not less than the minimum (sizeof(struct ip)).
  * o  IP total length is not less than IP header length.
  * o  IP datagram resides completely in the mbuf chain,
