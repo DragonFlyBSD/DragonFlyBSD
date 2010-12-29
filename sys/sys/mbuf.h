@@ -69,9 +69,9 @@
 
 /*
  * Macros for type conversion:
- * mtod(m, t)	-- Convert mbuf pointer to data pointer of correct type.
- * mtocl(x) -	convert pointer within cluster to cluster index #
- * cltom(x) -	convert cluster # to ptr to beginning of cluster
+ * mtod(m, t)		-- Convert mbuf pointer to data pointer of correct type.
+ * mtodoff(m, t, off)	-- Convert mbuf pointer at the specified offset to data
+ *			   pointer of correct type.
  */
 #define	mtod(m, t)		((t)((m)->m_data))
 #define	mtodoff(m, t, off)	((t)((m)->m_data + (off)))
