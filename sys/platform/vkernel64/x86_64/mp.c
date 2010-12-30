@@ -190,12 +190,6 @@ mp_announce(void)
 }
 
 void
-forward_fastint_remote(void *arg)
-{
-	panic("XXX forward_fastint_remote()");
-}
-
-void
 cpu_send_ipiq(int dcpu)
 {
 	if (CPUMASK(dcpu) & smp_active_mask)

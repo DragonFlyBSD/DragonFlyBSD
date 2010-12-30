@@ -126,7 +126,6 @@ void register_randintr(int intr);
 void unregister_randintr(int intr);
 int next_registered_randintr(int intr);
 void sched_ithd(int intr);	/* procedure called from MD */
-void forward_fastint_remote(void *arg);		/* MD procedure (SMP) */
 int ithread_cpuid(int intr);
 
 extern char	eintrnames[];	/* end of intrnames[] */
