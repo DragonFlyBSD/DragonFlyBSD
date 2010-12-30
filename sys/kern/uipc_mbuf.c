@@ -1234,6 +1234,20 @@ m_freem(struct mbuf *m)
 
 #endif
 
+void
+m_extadd(struct mbuf *m, caddr_t buf, u_int size,  void (*reff)(void *),
+    void (*freef)(void *), void *arg)
+{
+	m->m_ext.ext_arg = arg;
+	m->m_ext.ext_buf = buf;
+	m->m_ext.ext_ref = reff;
+	m->m_ext.ext_free = freef;
+	m->m_ext.ext_size = size;
+	reff(arg);
+	m->m_data = buf;
+	m->m_flags |= M_EXT;
+}
+
 /*
  * mbuf utility routines
  */

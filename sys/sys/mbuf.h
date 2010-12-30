@@ -499,6 +499,8 @@ struct	mbuf	*m_devget(char *, int, int, struct ifnet *,
 struct	mbuf	*m_dup(struct mbuf *, int);
 struct	mbuf	*m_dup_data(struct mbuf *, int);
 int		 m_dup_pkthdr(struct mbuf *, const struct mbuf *, int);
+void		 m_extadd(struct mbuf *, caddr_t, u_int, void (*)(void *),
+		  void (*)(void *), void *);
 #ifdef MBUF_DEBUG
 struct	mbuf	*_m_free(struct mbuf *, const char *name);
 void		 _m_freem(struct mbuf *, const char *name);
