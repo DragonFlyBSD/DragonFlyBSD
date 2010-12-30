@@ -16,6 +16,10 @@
 #include <ldns/ldns.h>
 #include <sys/socket.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define LDNS_DEFAULT_TIMEOUT_SEC 2
 #define LDNS_DEFAULT_TIMEOUT_USEC 0
 
@@ -196,5 +200,9 @@ ldns_rdf * ldns_sockaddr_storage2rdf(struct sockaddr_storage *sock, uint16_t *po
  * \return ldns_status the status of the transfer
  */
 ldns_status ldns_axfr_start(ldns_resolver *resolver, ldns_rdf *domain, ldns_rr_class c);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  /* LDNS_NET_H */
