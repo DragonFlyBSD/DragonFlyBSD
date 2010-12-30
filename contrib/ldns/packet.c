@@ -412,9 +412,10 @@ ldns_pkt_empty(ldns_pkt *p)
 		return true; /* NULL is empty? */
 	}
 	if (ldns_pkt_section_count(p, LDNS_SECTION_ANY) > 0) {
-		return true;
-	} else
 		return false;
+	} else {
+		return true;
+    }
 }
 
 
@@ -454,14 +455,7 @@ ldns_pkt_set_id(ldns_pkt *packet, uint16_t id)
 void
 ldns_pkt_set_random_id(ldns_pkt *packet)
 {
-	uint16_t rid = 0;
-#ifdef HAVE_SSL
-	if (RAND_bytes((unsigned char*)&rid, 2) != 1) {
-		rid = (uint16_t) random();
-	}
-#else
-	rid = (uint16_t) random();
-#endif
+	uint16_t rid = ldns_get_random();
 	ldns_pkt_set_id(packet, rid);
 }
 
@@ -989,7 +983,7 @@ ldns_pkt_clone(ldns_pkt *pkt)
 	ldns_pkt_set_answerfrom(new_pkt, ldns_pkt_answerfrom(pkt));
 	ldns_pkt_set_querytime(new_pkt, ldns_pkt_querytime(pkt));
 	ldns_pkt_set_size(new_pkt, ldns_pkt_size(pkt));
-	ldns_pkt_set_tsig(new_pkt, ldns_pkt_tsig(pkt));
+	ldns_pkt_set_tsig(new_pkt, ldns_rr_clone(ldns_pkt_tsig(pkt)));
 	
 	ldns_pkt_set_edns_udp_size(new_pkt, ldns_pkt_edns_udp_size(pkt));
 	ldns_pkt_set_edns_extended_rcode(new_pkt, 

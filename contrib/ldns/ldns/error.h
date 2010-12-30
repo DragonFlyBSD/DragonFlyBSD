@@ -18,6 +18,10 @@
 
 #include <ldns/util.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum ldns_enum_status {
 	LDNS_STATUS_OK,	
 	LDNS_STATUS_EMPTY_LABEL,
@@ -75,6 +79,7 @@ enum ldns_enum_status {
 	LDNS_STATUS_SYNTAX_TYPE_ERR,
 	LDNS_STATUS_SYNTAX_CLASS_ERR,
 	LDNS_STATUS_SYNTAX_TTL_ERR,
+	LDNS_STATUS_SYNTAX_INCLUDE_ERR_NOTIMPL,
 	LDNS_STATUS_SYNTAX_RDATA_ERR,
 	LDNS_STATUS_SYNTAX_DNAME_ERR,
 	LDNS_STATUS_SYNTAX_VERSION_ERR,
@@ -82,6 +87,7 @@ enum ldns_enum_status {
 	LDNS_STATUS_SYNTAX_KEYWORD_ERR,
 	LDNS_STATUS_SYNTAX_TTL,
 	LDNS_STATUS_SYNTAX_ORIGIN,
+	LDNS_STATUS_SYNTAX_INCLUDE,
 	LDNS_STATUS_SYNTAX_EMPTY,
 	LDNS_STATUS_SYNTAX_ITERATIONS_OVERFLOW,
 	LDNS_STATUS_SYNTAX_MISSING_VALUE_ERR,
@@ -105,5 +111,9 @@ extern ldns_lookup_table ldns_error_str[];
  * \return the string for that error
  */
 const char *ldns_get_errorstr_by_id(ldns_status err);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LDNS_ERROR_H */

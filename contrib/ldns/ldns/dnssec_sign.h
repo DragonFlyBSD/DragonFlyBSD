@@ -5,6 +5,10 @@
 
 #include <ldns/dnssec.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* sign functions */
 
 /** Sign flag that makes DNSKEY type signed by all keys, not only by SEP keys*/
@@ -307,6 +311,8 @@ ldns_zone *ldns_zone_sign(const ldns_zone *zone, ldns_key_list *key_list);
  */
 ldns_zone *ldns_zone_sign_nsec3(ldns_zone *zone, ldns_key_list *key_list, uint8_t algorithm, uint8_t flags, uint16_t iterations, uint8_t salt_length, uint8_t *salt);
  
-
+#ifdef __cplusplus
+}
+#endif
 
 #endif

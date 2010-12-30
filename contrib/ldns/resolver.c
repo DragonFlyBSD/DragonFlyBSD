@@ -542,19 +542,22 @@ ldns_resolver_push_searchlist(ldns_resolver *r, ldns_rdf *d)
 void
 ldns_resolver_set_tsig_keyname(ldns_resolver *r, char *tsig_keyname)
 {
-	r->_tsig_keyname = tsig_keyname;
+	LDNS_FREE(r->_tsig_keyname);
+	r->_tsig_keyname = strdup(tsig_keyname);
 }
 
 void
 ldns_resolver_set_tsig_algorithm(ldns_resolver *r, char *tsig_algorithm)
 {
-	r->_tsig_algorithm = tsig_algorithm;
+	LDNS_FREE(r->_tsig_algorithm);
+	r->_tsig_algorithm = strdup(tsig_algorithm);
 }
 
 void
 ldns_resolver_set_tsig_keydata(ldns_resolver *r, char *tsig_keydata)
 {
-	r->_tsig_keydata = tsig_keydata;
+	LDNS_FREE(r->_tsig_keydata);
+	r->_tsig_keydata = strdup(tsig_keydata);
 }
 
 void
@@ -594,6 +597,9 @@ ldns_resolver_new(void)
 	ldns_resolver_set_dnssec_cd(r, false);
 	ldns_resolver_set_dnssec_anchors(r, NULL);
 	ldns_resolver_set_ip6(r, LDNS_RESOLV_INETANY);
+	ldns_resolver_set_igntc(r, false);
+	ldns_resolver_set_recursive(r, false);
+	ldns_resolver_set_dnsrch(r, true);
 
 	/* randomize the nameserver to be queried
 	 * when there are multiple
@@ -605,6 +611,8 @@ ldns_resolver_new(void)
 	r->_timeout.tv_sec = LDNS_DEFAULT_TIMEOUT_SEC;
 	r->_timeout.tv_usec = LDNS_DEFAULT_TIMEOUT_USEC;
 
+	/* TODO: fd=0 is actually a valid socket (stdin),
+           replace with -1 */
 	r->_socket = 0;
 	r->_axfr_soa_count = 0;
 	r->_axfr_i = 0;
@@ -634,8 +642,10 @@ ldns_resolver_new_frm_fp_l(ldns_resolver **res, FILE *fp, int *line_nr)
 #ifdef HAVE_SSL
 	ldns_rr *tmp_rr;
 #endif
-	ssize_t gtr;
+	ssize_t gtr, bgtr;
 	ldns_buffer *b;
+        int lnr = 0, oldline;
+        if(!line_nr) line_nr = &lnr;
 
 	/* do this better
 	 * expect =
@@ -661,25 +671,36 @@ ldns_resolver_new_frm_fp_l(ldns_resolver **res, FILE *fp, int *line_nr)
 
 	gtr = 1;
 	word[0] = 0;
+        oldline = *line_nr;
+        expect = LDNS_RESOLV_KEYWORD;
 	while (gtr > 0) {
 		/* check comments */
 		if (word[0] == '#') {
-			/* read the rest of the line, should be 1 word */
-			gtr = ldns_fget_token_l(fp, word, LDNS_PARSE_NORMAL, 0, line_nr);
-			/* prepare the next string for further parsing */
-			gtr = ldns_fget_token_l(fp, word, LDNS_PARSE_NORMAL, 0, line_nr);
+                        word[0]='x';
+                        if(oldline == *line_nr) {
+                                /* skip until end of line */
+                                int c;
+                                do {
+                                        c = fgetc(fp);
+                                } while(c != EOF && c != '\n');
+                                if(c=='\n' && line_nr) (*line_nr)++;
+                        }
+			/* and read next to prepare for further parsing */
+                        oldline = *line_nr;
 			continue;
 		}
+                oldline = *line_nr;
 		switch(expect) {
 			case LDNS_RESOLV_KEYWORD:
 				/* keyword */
 				gtr = ldns_fget_token_l(fp, word, LDNS_PARSE_NORMAL, 0, line_nr);
 				if (gtr != 0) {
+                                        if(word[0] == '#') continue;
 					for(i = 0; i < LDNS_RESOLV_KEYWORDS; i++) {
 						if (strcasecmp(keyword[i], word) == 0) {
 							/* chosen the keyword and
 							 * expect values carefully
-							 */
+	        					 */
 							expect = i;
 							break;
 						}
@@ -700,6 +721,10 @@ ldns_resolver_new_frm_fp_l(ldns_resolver **res, FILE *fp, int *line_nr)
 				if (gtr == 0) {
 					return LDNS_STATUS_SYNTAX_MISSING_VALUE_ERR;
 				}
+                                if(word[0] == '#') {
+                                        expect = LDNS_RESOLV_KEYWORD;
+                                        continue;
+                                }
 				tmp = ldns_rdf_new_frm_str(LDNS_RDF_TYPE_DNAME, word);
 				if (!tmp) {
 					ldns_resolver_deep_free(r);
@@ -716,6 +741,15 @@ ldns_resolver_new_frm_fp_l(ldns_resolver **res, FILE *fp, int *line_nr)
 				if (gtr == 0) {
 					return LDNS_STATUS_SYNTAX_MISSING_VALUE_ERR;
 				}
+                                if(word[0] == '#') {
+                                        expect = LDNS_RESOLV_KEYWORD;
+                                        continue;
+                                }
+                                if(strchr(word, '%')) {
+                                        /* snip off interface labels,
+                                         * fe80::222:19ff:fe31:4222%eth0 */
+                                        strchr(word, '%')[0]=0;
+                                }
 				tmp = ldns_rdf_new_frm_str(LDNS_RDF_TYPE_AAAA, word);
 				if (!tmp) {
 					/* try ip4 */
@@ -734,20 +768,37 @@ ldns_resolver_new_frm_fp_l(ldns_resolver **res, FILE *fp, int *line_nr)
 				/* search list domain dname */
 				gtr = ldns_fget_token_l(fp, word, LDNS_PARSE_SKIP_SPACE, 0, line_nr);
 				b = LDNS_MALLOC(ldns_buffer);
-				ldns_buffer_new_frm_data(b, word, (size_t) gtr);
+				if(!b) {
+					ldns_resolver_deep_free(r);
+					return LDNS_STATUS_MEM_ERR;
+				}
 
-				gtr = ldns_bget_token(b, word, LDNS_PARSE_NORMAL, (size_t) gtr);
-				while (gtr > 0) {
+				ldns_buffer_new_frm_data(b, word, (size_t) gtr);
+				if(ldns_buffer_status(b) != LDNS_STATUS_OK) {
+					LDNS_FREE(b);
+					ldns_resolver_deep_free(r);
+					return LDNS_STATUS_MEM_ERR;
+				}
+				bgtr = ldns_bget_token(b, word, LDNS_PARSE_NORMAL, (size_t) gtr + 1);
+				while (bgtr > 0) {
+					gtr -= bgtr;
+                                        if(word[0] == '#') {
+                                                expect = LDNS_RESOLV_KEYWORD;
+						ldns_buffer_free(b);
+                                                continue;
+                                        }
 					tmp = ldns_rdf_new_frm_str(LDNS_RDF_TYPE_DNAME, word);
 					if (!tmp) {
 						ldns_resolver_deep_free(r);
+						ldns_buffer_free(b);
 						return LDNS_STATUS_SYNTAX_DNAME_ERR;
 					}
 
 					ldns_resolver_push_searchlist(r, tmp);
 
 					ldns_rdf_deep_free(tmp);
-					gtr = ldns_bget_token(b, word, LDNS_PARSE_NORMAL, (size_t) gtr);
+					bgtr = ldns_bget_token(b, word, LDNS_PARSE_NORMAL,
+					    (size_t) gtr + 1);
 				}
 				ldns_buffer_free(b);
 				gtr = 1;
@@ -767,8 +818,13 @@ ldns_resolver_new_frm_fp_l(ldns_resolver **res, FILE *fp, int *line_nr)
 				/* a file containing a DNSSEC trust anchor */
 				gtr = ldns_fget_token_l(fp, word, LDNS_PARSE_NORMAL, 0, line_nr);
 				if (gtr == 0) {
+					ldns_resolver_deep_free(r);
 					return LDNS_STATUS_SYNTAX_MISSING_VALUE_ERR;
 				}
+                                if(word[0] == '#') {
+                                        expect = LDNS_RESOLV_KEYWORD;
+                                        continue;
+                                }
 
 #ifdef HAVE_SSL
 				tmp_rr = ldns_read_anchor_file(word);
@@ -784,6 +840,7 @@ ldns_resolver_new_frm_fp_l(ldns_resolver **res, FILE *fp, int *line_nr)
 		*res = r;
 		return LDNS_STATUS_OK;
 	} else {
+		ldns_resolver_deep_free(r);
 		return LDNS_STATUS_NULL;
 	}
 }
@@ -845,8 +902,14 @@ ldns_resolver_deep_free(ldns_resolver *res)
 		if (ldns_resolver_domain(res)) {
 			ldns_rdf_deep_free(ldns_resolver_domain(res));
 		}
-		if (ldns_resolver_tsig_keyname(res)) {
+		if (res->_tsig_keyname) {
 			LDNS_FREE(res->_tsig_keyname);
+		}
+		if (res->_tsig_keydata) {
+			LDNS_FREE(res->_tsig_keydata);
+		}
+		if (res->_tsig_algorithm) {
+			LDNS_FREE(res->_tsig_algorithm);
 		}
 
 		if (res->_cur_axfr_pkt) {
@@ -864,7 +927,7 @@ ldns_resolver_deep_free(ldns_resolver *res)
 }
 
 ldns_pkt *
-ldns_resolver_search(const ldns_resolver *r,const  ldns_rdf *name, 
+ldns_resolver_search(const ldns_resolver *r,const  ldns_rdf *name,
 	ldns_rr_type t, ldns_rr_class c, uint16_t flags)
 {
 
@@ -879,7 +942,7 @@ ldns_resolver_search(const ldns_resolver *r,const  ldns_rdf *name,
 	if (ldns_dname_str_absolute(str_dname)) {
 		/* query as-is */
 		return ldns_resolver_query(r, name, t, c, flags);
-	} else {
+	} else if (ldns_resolver_dnsrch(r)) {
 		search_list = ldns_resolver_searchlist(r);
 		for (i = 0; i < ldns_resolver_searchlist_count(r); i++) {
 			new_name = ldns_dname_cat_clone(name, search_list[i]);
@@ -887,7 +950,12 @@ ldns_resolver_search(const ldns_resolver *r,const  ldns_rdf *name,
 			p = ldns_resolver_query(r, new_name, t, c, flags);
 			ldns_rdf_free(new_name);
 			if (p) {
-				return p;
+				if (ldns_pkt_get_rcode(p) == LDNS_RCODE_NOERROR) {
+					return p;
+				} else {
+					ldns_pkt_free(p);
+					p = NULL;
+				}
 			}
 		}
 	}
@@ -895,7 +963,7 @@ ldns_resolver_search(const ldns_resolver *r,const  ldns_rdf *name,
 }
 
 ldns_pkt *
-ldns_resolver_query(const ldns_resolver *r, const ldns_rdf *name, 
+ldns_resolver_query(const ldns_resolver *r, const ldns_rdf *name,
 	ldns_rr_type t, ldns_rr_class c, uint16_t flags)
 {
 	ldns_rdf *newname;
@@ -905,7 +973,7 @@ ldns_resolver_query(const ldns_resolver *r, const ldns_rdf *name,
 	pkt = NULL;
 
 	if (!ldns_resolver_defnames(r)) {
-		status = ldns_resolver_send(&pkt, (ldns_resolver *)r, name, 
+		status = ldns_resolver_send(&pkt, (ldns_resolver *)r, name,
 				t, c, flags);
 		if (status == LDNS_STATUS_OK) {
 			return pkt;
@@ -913,7 +981,6 @@ ldns_resolver_query(const ldns_resolver *r, const ldns_rdf *name,
 			if (pkt) {
 				ldns_pkt_free(pkt);
 			}
-			fprintf(stderr, "error: %s\n", ldns_get_errorstr_by_id(status));
 			return NULL;
 		}
 	}
@@ -939,7 +1006,8 @@ ldns_resolver_query(const ldns_resolver *r, const ldns_rdf *name,
 		}
 		return NULL;
 	}
-	status = ldns_resolver_send(&pkt, (ldns_resolver *)r, newname, t, c,
+
+	(void)ldns_resolver_send(&pkt, (ldns_resolver *)r, newname, t, c,
 			flags);
 
 	ldns_rdf_free(newname);
@@ -961,7 +1029,6 @@ ldns_resolver_send_pkt(ldns_pkt **answer, ldns_resolver *r,
 			answer_pkt = NULL;
 		}
 	} else {
-
 		/* if tc=1 fall back to EDNS and/or TCP */
 		/* check for tcp first (otherwise we don't care about tc=1) */
 		if (!ldns_resolver_usevc(r) && ldns_resolver_fallback(r)) {
@@ -983,7 +1050,6 @@ ldns_resolver_send_pkt(ldns_pkt **answer, ldns_resolver *r,
 			}
 		}
 	}
-
 
 	if (answer) {
 		*answer = answer_pkt;
@@ -1087,6 +1153,7 @@ ldns_resolver_send(ldns_pkt **answer, ldns_resolver *r, const ldns_rdf *name,
 #else
 	return LDNS_STATUS_CRYPTO_TSIG_ERR;
 #endif /* HAVE_SSL */
+
 	status = ldns_resolver_send_pkt(&answer_pkt, r, query_pkt);
 	ldns_pkt_free(query_pkt);
 
@@ -1124,7 +1191,11 @@ ldns_axfr_next(ldns_resolver *resolver)
 		if (ldns_rr_get_type(cur_rr) == LDNS_RR_TYPE_SOA) {
 			resolver->_axfr_soa_count++;
 			if (resolver->_axfr_soa_count >= 2) {
+#ifndef USE_WINSOCK
 				close(resolver->_socket);
+#else
+				closesocket(resolver->_socket);
+#endif
 				resolver->_socket = 0;
 				ldns_pkt_free(resolver->_cur_axfr_pkt);
 				resolver->_cur_axfr_pkt = NULL;
@@ -1144,10 +1215,32 @@ ldns_axfr_next(ldns_resolver *resolver)
 		if (status != LDNS_STATUS_OK) {
 			/* TODO: make status return type of this function (...api change) */
 			fprintf(stderr, "Error parsing rr during AXFR: %s\n", ldns_get_errorstr_by_id(status));
+
+			/* RoRi: we must now also close the socket, otherwise subsequent uses of the
+			   same resolver structure will fail because the link is still open or
+			   in an undefined state */
+#ifndef USE_WINSOCK
+			close(resolver->_socket);
+#else
+			closesocket(resolver->_socket);
+#endif
+			resolver->_socket = 0;
+
 			return NULL;
 		} else if (ldns_pkt_get_rcode(resolver->_cur_axfr_pkt) != 0) {
 			rcode = ldns_lookup_by_id(ldns_rcodes, (int) ldns_pkt_get_rcode(resolver->_cur_axfr_pkt));
 			fprintf(stderr, "Error in AXFR: %s\n", rcode->name);
+
+			/* RoRi: we must now also close the socket, otherwise subsequent uses of the
+			   same resolver structure will fail because the link is still open or
+			   in an undefined state */
+#ifndef USE_WINSOCK
+			close(resolver->_socket);
+#else
+			closesocket(resolver->_socket);
+#endif
+			resolver->_socket = 0;
+
 			return NULL;
 		} else {
 			return ldns_axfr_next(resolver);
@@ -1174,16 +1267,15 @@ ldns_axfr_last_pkt(const ldns_resolver *res)
 void
 ldns_resolver_nameservers_randomize(ldns_resolver *r)
 {
-	uint8_t i, j;
+	uint16_t i, j;
 	ldns_rdf **ns, *tmp;
 
 	/* should I check for ldns_resolver_random?? */
 	assert(r != NULL);
 
 	ns = ldns_resolver_nameservers(r);
-
 	for (i = 0; i < ldns_resolver_nameserver_count(r); i++) {
-		j = random() % ldns_resolver_nameserver_count(r);
+		j = ldns_get_random() % ldns_resolver_nameserver_count(r);
 		tmp = ns[i];
 		ns[i] = ns[j];
 		ns[j] = tmp;

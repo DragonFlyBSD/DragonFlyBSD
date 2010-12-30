@@ -24,6 +24,10 @@
 #include <ldns/common.h>
 #include <ldns/error.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define LDNS_MAX_RDFLEN	8192
 
 #define LDNS_RDF_SIZE_BYTE              1
@@ -368,5 +372,9 @@ ldns_rdf *ldns_rdf_clone(const ldns_rdf *rd);
  * \return +1 if rd2 comes before rd1
  */
 int ldns_rdf_compare(const ldns_rdf *rd1, const ldns_rdf *rd2);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif	/* LDNS_RDATA_H */

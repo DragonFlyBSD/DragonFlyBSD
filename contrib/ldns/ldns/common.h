@@ -23,7 +23,7 @@
 
 /*@ignore@*/
 /* splint barfs on this construct */
-typedef unsigned char bool;
+typedef unsigned int bool;
 #define bool bool
 #define false 0
 #define true  1

@@ -42,7 +42,7 @@ ldns_dnssec_get_rrsig_for_name_and_type(const ldns_rdf *name,
 		if (ldns_rr_get_type(candidate) == LDNS_RR_TYPE_RRSIG) {
 			if (ldns_dname_compare(ldns_rr_owner(candidate),
 			                       name) == 0 &&
-			    ldns_rdf2native_int8(ldns_rr_rrsig_typecovered(candidate))
+			    ldns_rdf2rr_type(ldns_rr_rrsig_typecovered(candidate))
 			    == type
 			    ) {
 				return candidate;
@@ -148,6 +148,12 @@ ldns_dnssec_nsec3_closest_encloser(ldns_rdf *qname,
 									 salt);
 
 		status = ldns_dname_cat(hashed_sname, zone_name);
+                if(status != LDNS_STATUS_OK) {
+	                LDNS_FREE(salt);
+	                ldns_rdf_deep_free(zone_name);
+	                ldns_rdf_deep_free(sname);
+                        return NULL;
+                }
 
 		for (nsec_i = 0; nsec_i < ldns_rr_list_rr_count(nsec3s); nsec_i++) {
 			nsec = ldns_rr_list_rr(nsec3s, nsec_i);
@@ -506,7 +512,7 @@ ldns_key_rr2ds(const ldns_rr *key, ldns_hash h)
 			return NULL;
 		}
 		break;
-	case LDNS_HASH_GOST94:
+	case LDNS_HASH_GOST:
 #ifdef USE_GOST
 		(void)ldns_key_EVP_load_gost_id();
 		md = EVP_get_digestbyname("md_gost94");
@@ -519,12 +525,25 @@ ldns_key_rr2ds(const ldns_rr *key, ldns_hash h)
 			ldns_rr_free(ds);
 			return NULL;
 		}
+                break;
 #else
 		/* not implemented */
 		ldns_rr_free(ds);
 		return NULL;
 #endif
-		break;
+#ifdef USE_ECDSA
+	case LDNS_SHA384:
+		digest = LDNS_XMALLOC(uint8_t, SHA384_DIGEST_LENGTH);
+		if (!digest) {
+			ldns_rr_free(ds);
+			return NULL;
+		}
+                break;
+#else
+		/* not implemented */
+		ldns_rr_free(ds);
+		return NULL;
+#endif
 	}
 
 	data_buf = ldns_buffer_new(LDNS_MAX_PACKETLEN);
@@ -593,7 +612,7 @@ ldns_key_rr2ds(const ldns_rr *key, ldns_hash h)
 		                            digest);
 		ldns_rr_push_rdf(ds, tmp);
 		break;
-	case LDNS_HASH_GOST94:
+	case LDNS_HASH_GOST:
 #ifdef USE_GOST
 		if(!ldns_digest_evp((unsigned char *) ldns_buffer_begin(data_buf),
 				(unsigned int) ldns_buffer_position(data_buf),
@@ -609,6 +628,17 @@ ldns_key_rr2ds(const ldns_rr *key, ldns_hash h)
 		ldns_rr_push_rdf(ds, tmp);
 #endif
 		break;
+#ifdef USE_ECDSA
+	case LDNS_SHA384:
+		(void) SHA384((unsigned char *) ldns_buffer_begin(data_buf),
+		                 (unsigned int) ldns_buffer_position(data_buf),
+		                 (unsigned char *) digest);
+		tmp = ldns_rdf_new_frm_data(LDNS_RDF_TYPE_HEX,
+		                            SHA384_DIGEST_LENGTH,
+		                            digest);
+		ldns_rr_push_rdf(ds, tmp);
+		break;
+#endif
 	}
 
 	LDNS_FREE(digest);
@@ -807,6 +837,10 @@ ldns_dnssec_create_nsec3(ldns_dnssec_name *from,
 	                  salt_length,
 	                  salt));
 	status = ldns_dname_cat(ldns_rr_owner(nsec_rr), zone_name);
+        if(status != LDNS_STATUS_OK) {
+                ldns_rr_free(nsec_rr);
+                return NULL;
+        }
 	ldns_nsec3_add_param_rdfs(nsec_rr,
 	                          algorithm,
 	                          flags,
@@ -960,7 +994,7 @@ ldns_nsec3_hash_name(ldns_rdf *name,
                 (uint8_t *) hashed_owner_str,
                 hashed_owner_str_len,
                 hashed_owner_b32,
-                ldns_b32_ntop_calculate_size(hashed_owner_str_len));
+                ldns_b32_ntop_calculate_size(hashed_owner_str_len)+1);
 	if (hashed_owner_b32_len < 1) {
 		fprintf(stderr, "Error in base32 extended hex encoding ");
 		fprintf(stderr, "of hashed owner name (name: ");
@@ -970,7 +1004,6 @@ ldns_nsec3_hash_name(ldns_rdf *name,
 		LDNS_FREE(hashed_owner_b32);
 		return NULL;
 	}
-	hashed_owner_str_len = hashed_owner_b32_len;
 	hashed_owner_b32[hashed_owner_b32_len] = '\0';
 
 	status = ldns_str2rdf_dname(&hashed_owner, hashed_owner_b32);
@@ -1075,8 +1108,12 @@ ldns_create_nsec3(ldns_rdf *cur_owner,
 								 salt_length,
 								 salt);
 	status = ldns_dname_cat(hashed_owner, cur_zone);
+        if(status != LDNS_STATUS_OK)
+                return NULL;
 
 	nsec = ldns_rr_new_frm_type(LDNS_RR_TYPE_NSEC3);
+        if(!nsec)
+                return NULL;
 	ldns_rr_set_type(nsec, LDNS_RR_TYPE_NSEC3);
 	ldns_rr_set_owner(nsec, hashed_owner);
 
@@ -1530,14 +1567,14 @@ ldns_convert_dsa_rrsig_rdf2asn1(ldns_buffer *target_buffer,
 						  const ldns_rdf *sig_rdf)
 {
 	/* the EVP api wants the DER encoding of the signature... */
-	uint8_t t;
 	BIGNUM *R, *S;
 	DSA_SIG *dsasig;
 	unsigned char *raw_sig = NULL;
 	int raw_sig_len;
 
+        if(ldns_rdf_size(sig_rdf) < 1 + 2*SHA_DIGEST_LENGTH)
+                return LDNS_STATUS_SYNTAX_RDATA_ERR;
 	/* extract the R and S field from the sig buffer */
-	t = ldns_rdf_data(sig_rdf)[0];
 	R = BN_new();
 	if(!R) return LDNS_STATUS_MEM_ERR;
 	(void) BN_bin2bn((unsigned char *) ldns_rdf_data(sig_rdf) + 1,
@@ -1575,4 +1612,65 @@ ldns_convert_dsa_rrsig_rdf2asn1(ldns_buffer *target_buffer,
 
 	return ldns_buffer_status(target_buffer);
 }
+
+#ifdef USE_ECDSA
+ldns_rdf *
+ldns_convert_ecdsa_rrsig_asn12rdf(const ldns_buffer *sig, const long sig_len)
+{
+        ECDSA_SIG* ecdsa_sig;
+	unsigned char *data = (unsigned char*)ldns_buffer_begin(sig);
+        ldns_rdf* rdf;
+	ecdsa_sig = d2i_ECDSA_SIG(NULL, (const unsigned char **)&data, sig_len);
+        if(!ecdsa_sig) return NULL;
+
+        /* "r | s". */
+        data = LDNS_XMALLOC(unsigned char,
+                BN_num_bytes(ecdsa_sig->r) + BN_num_bytes(ecdsa_sig->s));
+        if(!data) {
+                ECDSA_SIG_free(ecdsa_sig);
+                return NULL;
+        }
+        BN_bn2bin(ecdsa_sig->r, data);
+        BN_bn2bin(ecdsa_sig->s, data+BN_num_bytes(ecdsa_sig->r));
+	rdf = ldns_rdf_new(LDNS_RDF_TYPE_B64,
+                BN_num_bytes(ecdsa_sig->r) + BN_num_bytes(ecdsa_sig->s), data);
+        ECDSA_SIG_free(ecdsa_sig);
+        return rdf;
+}
+
+ldns_status
+ldns_convert_ecdsa_rrsig_rdf2asn1(ldns_buffer *target_buffer,
+        const ldns_rdf *sig_rdf)
+{
+        ECDSA_SIG* sig;
+	int raw_sig_len;
+        long bnsize = ldns_rdf_size(sig_rdf) / 2;
+        /* if too short, or not even length, do not bother */
+        if(bnsize < 16 || (size_t)bnsize*2 != ldns_rdf_size(sig_rdf))
+                return LDNS_STATUS_ERR;
+        
+        /* use the raw data to parse two evenly long BIGNUMs, "r | s". */
+        sig = ECDSA_SIG_new();
+        if(!sig) return LDNS_STATUS_MEM_ERR;
+        sig->r = BN_bin2bn((const unsigned char*)ldns_rdf_data(sig_rdf),
+                bnsize, sig->r);
+        sig->s = BN_bin2bn((const unsigned char*)ldns_rdf_data(sig_rdf)+bnsize,
+                bnsize, sig->s);
+        if(!sig->r || !sig->s) {
+                ECDSA_SIG_free(sig);
+                return LDNS_STATUS_MEM_ERR;
+        }
+
+	raw_sig_len = i2d_ECDSA_SIG(sig, NULL);
+	if (ldns_buffer_reserve(target_buffer, (size_t) raw_sig_len)) {
+                unsigned char* pp = ldns_buffer_current(target_buffer);
+	        raw_sig_len = i2d_ECDSA_SIG(sig, &pp);
+                ldns_buffer_skip(target_buffer, (size_t) raw_sig_len);
+	}
+        ECDSA_SIG_free(sig);
+
+	return ldns_buffer_status(target_buffer);
+}
+
+#endif /* USE_ECDSA */
 #endif /* HAVE_SSL */
