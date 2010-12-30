@@ -19,6 +19,10 @@
 #include <ldns/buffer.h>
 #include <ctype.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * \file
  *
@@ -239,5 +243,9 @@ ldns_status ldns_str2rdf_ipseckey(ldns_rdf **rd, const char *str);
  * \return ldns_status
  */
 ldns_status ldns_str2rdf_dname(ldns_rdf **rd, const char *str);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LDNS_2HOST_H */

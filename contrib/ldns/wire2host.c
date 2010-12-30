@@ -88,7 +88,7 @@ ldns_wire2dname(ldns_rdf **dname, const uint8_t *wire, size_t max, size_t *pos)
 
 			if (pointer_target == 0) {
 				return LDNS_STATUS_INVALID_POINTER;
-			} else if (pointer_target > max) {
+			} else if (pointer_target >= max) {
 				return LDNS_STATUS_INVALID_POINTER;
 			} else if (pointer_count > LDNS_MAX_POINTERS) {
 				return LDNS_STATUS_INVALID_POINTER;
@@ -101,7 +101,7 @@ ldns_wire2dname(ldns_rdf **dname, const uint8_t *wire, size_t max, size_t *pos)
 		if (label_size > LDNS_MAX_LABELLEN) {
 			return LDNS_STATUS_LABEL_OVERFLOW;
 		}
-		if (*pos + label_size > max) {
+		if (*pos + 1 + label_size > max) {
 			return LDNS_STATUS_LABEL_OVERFLOW;
 		}
 
@@ -433,7 +433,7 @@ ldns_wire2pkt(ldns_pkt **packet_p, const uint8_t *wire, size_t max)
 				ldns_pkt_set_edns_data(packet, ldns_rdf_clone(ldns_rr_rdf(rr, 0)));
 			}
 			ldns_rr_free(rr);
-			have_edns = 1;
+			have_edns += 1;
 		} else if (ldns_rr_get_type(rr) == LDNS_RR_TYPE_TSIG) {
 			ldns_pkt_set_tsig(packet, rr);
 			ldns_pkt_set_arcount(packet, ldns_pkt_arcount(packet) - 1);
@@ -444,7 +444,8 @@ ldns_wire2pkt(ldns_pkt **packet_p, const uint8_t *wire, size_t max)
 	}
 	ldns_pkt_set_size(packet, max);
 	if(have_edns)
-		ldns_pkt_set_arcount(packet, ldns_pkt_arcount(packet) - 1);
+		ldns_pkt_set_arcount(packet, ldns_pkt_arcount(packet)
+                        - have_edns);
 
 	*packet_p = packet;
 	return status;

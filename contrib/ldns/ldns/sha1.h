@@ -1,5 +1,9 @@
 #ifndef LDNS_SHA1_H
 #define LDNS_SHA1_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
  
 #define LDNS_SHA1_BLOCK_LENGTH               64
 #define LDNS_SHA1_DIGEST_LENGTH              20
@@ -26,4 +30,9 @@ void ldns_sha1_final(unsigned char digest[LDNS_SHA1_DIGEST_LENGTH], ldns_sha1_ct
  * \return the SHA1 digest of the given data
  */
 unsigned char *ldns_sha1(unsigned char *data, unsigned int data_len, unsigned char *digest);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* LDNS_SHA1_H */

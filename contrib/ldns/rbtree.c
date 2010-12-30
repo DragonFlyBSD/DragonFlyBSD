@@ -546,18 +546,22 @@ ldns_rbtree_find_less_equal(ldns_rbtree_t *rbtree, const void *key, ldns_rbnode_
 ldns_rbnode_t *
 ldns_rbtree_first (ldns_rbtree_t *rbtree)
 {
-	ldns_rbnode_t *node;
+	ldns_rbnode_t *node = rbtree->root;
 
-	for (node = rbtree->root; node->left != LDNS_RBTREE_NULL; node = node->left);
+	if (rbtree->root != LDNS_RBTREE_NULL) {
+		for (node = rbtree->root; node->left != LDNS_RBTREE_NULL; node = node->left);
+	}
 	return node;
 }
 
 ldns_rbnode_t *
 ldns_rbtree_last (ldns_rbtree_t *rbtree)
 {
-	ldns_rbnode_t *node;
+	ldns_rbnode_t *node = rbtree->root;
 
-	for (node = rbtree->root; node->right != LDNS_RBTREE_NULL; node = node->right);
+	if (rbtree->root != LDNS_RBTREE_NULL) {
+		for (node = rbtree->root; node->right != LDNS_RBTREE_NULL; node = node->right);
+	}
 	return node;
 }
 

@@ -132,34 +132,46 @@ ldns_rdf *
 ldns_native2rdf_int16(ldns_rdf_type type, uint16_t value)
 {
 	uint16_t *rdf_data = LDNS_XMALLOC(uint16_t, 1);
+        ldns_rdf* rdf;
 	if (!rdf_data) {
 		return NULL;
 	}
 	ldns_write_uint16(rdf_data, value);
-	return ldns_rdf_new(type, LDNS_RDF_SIZE_WORD, rdf_data);
+	rdf = ldns_rdf_new(type, LDNS_RDF_SIZE_WORD, rdf_data);
+        if(!rdf)
+                LDNS_FREE(rdf_data);
+        return rdf;
 }
 
 ldns_rdf *
 ldns_native2rdf_int32(ldns_rdf_type type, uint32_t value)
 {
 	uint32_t *rdf_data = LDNS_XMALLOC(uint32_t, 1);
+        ldns_rdf* rdf;
 	if (!rdf_data) {
 		return NULL;
 	}
 	ldns_write_uint32(rdf_data, value);
-	return ldns_rdf_new(type, LDNS_RDF_SIZE_DOUBLEWORD, rdf_data);
+	rdf = ldns_rdf_new(type, LDNS_RDF_SIZE_DOUBLEWORD, rdf_data);
+        if(!rdf)
+                LDNS_FREE(rdf_data);
+        return rdf;
 }
 
 ldns_rdf *
 ldns_native2rdf_int16_data(size_t size, uint8_t *data)
 {
 	uint8_t *rdf_data = LDNS_XMALLOC(uint8_t, size + 2);
+        ldns_rdf* rdf;
 	if (!rdf_data) {
 		return NULL;
 	}
 	ldns_write_uint16(rdf_data, size);
 	memcpy(rdf_data + 2, data, size);
-	return ldns_rdf_new(LDNS_RDF_TYPE_INT16_DATA, size + 2, rdf_data);
+	rdf = ldns_rdf_new(LDNS_RDF_TYPE_INT16_DATA, size + 2, rdf_data);
+        if(!rdf)
+                LDNS_FREE(rdf_data);
+        return rdf;
 }
 
 /* note: data must be allocated memory */
@@ -359,7 +371,7 @@ ldns_rdf_new_frm_fp_l(ldns_rdf **rdf, ldns_rdf_type type, FILE *fp, int *line_nr
 	}
 
 	/* read an entire line in from the file */
-	if ((t = ldns_fget_token_l(fp, line, LDNS_PARSE_SKIP_SPACE, 0, line_nr)) == -1) {
+	if ((t = ldns_fget_token_l(fp, line, LDNS_PARSE_SKIP_SPACE, 0, line_nr)) == -1 || t == 0) {
 		LDNS_FREE(line);
 		return LDNS_STATUS_SYNTAX_RDATA_ERR;
 	}

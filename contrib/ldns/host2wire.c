@@ -75,7 +75,7 @@ ldns_rr_list2buffer_wire(ldns_buffer *buffer,const ldns_rr_list *rr_list)
 
 	rr_count = ldns_rr_list_rr_count(rr_list);
 	for(i = 0; i < rr_count; i++) {
-		(void)ldns_rr2buffer_wire(buffer, ldns_rr_list_rr(rr_list, i), 
+		ldns_rr2buffer_wire(buffer, ldns_rr_list_rr(rr_list, i), 
 					  LDNS_SECTION_ANY);
 	}
 	return ldns_buffer_status(buffer);
@@ -308,6 +308,7 @@ ldns_pkt2buffer_wire(ldns_buffer *buffer, const ldns_pkt *packet)
 	/* add EDNS to additional if it is needed */
 	if (ldns_pkt_edns(packet)) {
 		edns_rr = ldns_rr_new();
+		if(!edns_rr) return LDNS_STATUS_MEM_ERR;
 		ldns_rr_set_owner(edns_rr,
 				ldns_rdf_new_frm_str(LDNS_RDF_TYPE_DNAME, "."));
 		ldns_rr_set_type(edns_rr, LDNS_RR_TYPE_OPT);
@@ -343,17 +344,23 @@ ldns_rdf2wire(uint8_t **dest, const ldns_rdf *rdf, size_t *result_size)
 	ldns_status status;
 	*result_size = 0;
 	*dest = NULL;
+	if(!buffer) return LDNS_STATUS_MEM_ERR;
 	
 	status = ldns_rdf2buffer_wire(buffer, rdf);
 	if (status == LDNS_STATUS_OK) {
 		*result_size =  ldns_buffer_position(buffer);
 		result = (uint8_t *) ldns_buffer_export(buffer);
 	} else {
+		ldns_buffer_free(buffer);
 		return status;
 	}
 	
 	if (result) {
 		*dest = LDNS_XMALLOC(uint8_t, ldns_buffer_position(buffer));
+		if(!*dest) {
+			ldns_buffer_free(buffer);
+			return LDNS_STATUS_MEM_ERR;
+		}
 		memcpy(*dest, result, ldns_buffer_position(buffer));
 	}
 	
@@ -369,17 +376,23 @@ ldns_rr2wire(uint8_t **dest, const ldns_rr *rr, int section, size_t *result_size
 	ldns_status status;
 	*result_size = 0;
 	*dest = NULL;
+	if(!buffer) return LDNS_STATUS_MEM_ERR;
 	
 	status = ldns_rr2buffer_wire(buffer, rr, section);
 	if (status == LDNS_STATUS_OK) {
 		*result_size =  ldns_buffer_position(buffer);
 		result = (uint8_t *) ldns_buffer_export(buffer);
 	} else {
+		ldns_buffer_free(buffer);
 		return status;
 	}
 	
 	if (result) {
 		*dest = LDNS_XMALLOC(uint8_t, ldns_buffer_position(buffer));
+		if(!*dest) {
+			ldns_buffer_free(buffer);
+			return LDNS_STATUS_MEM_ERR;
+		}
 		memcpy(*dest, result, ldns_buffer_position(buffer));
 	}
 	
@@ -395,17 +408,23 @@ ldns_pkt2wire(uint8_t **dest, const ldns_pkt *packet, size_t *result_size)
 	ldns_status status;
 	*result_size = 0;
 	*dest = NULL;
+	if(!buffer) return LDNS_STATUS_MEM_ERR;
 	
 	status = ldns_pkt2buffer_wire(buffer, packet);
 	if (status == LDNS_STATUS_OK) {
 		*result_size =  ldns_buffer_position(buffer);
 		result = (uint8_t *) ldns_buffer_export(buffer);
 	} else {
+		ldns_buffer_free(buffer);
 		return status;
 	}
 	
 	if (result) {
 		*dest = LDNS_XMALLOC(uint8_t, ldns_buffer_position(buffer));
+		if(!*dest) {
+			ldns_buffer_free(buffer);
+			return LDNS_STATUS_MEM_ERR;
+		}
 		memcpy(*dest, result, ldns_buffer_position(buffer));
 	}
 	

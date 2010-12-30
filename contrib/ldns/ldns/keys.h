@@ -28,6 +28,10 @@
 #include <ldns/util.h>
 #include <errno.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern ldns_lookup_table ldns_signing_algorithms[];
 
 #define LDNS_KEY_ZONE_KEY 0x0100   /* rfc 4034 */
@@ -48,7 +52,13 @@ enum ldns_enum_algorithm
         LDNS_RSASHA1_NSEC3      = 7,
         LDNS_RSASHA256          = 8,   /* RFC 5702 */
         LDNS_RSASHA512          = 10,  /* RFC 5702 */
-        LDNS_GOST               = 249, /* not official */
+        LDNS_ECC_GOST           = 12,  /* RFC 5933 */
+#ifdef USE_ECDSA
+	/* this ifdef has to be removed once it is no longer experimental,
+	 * to be able to use these values outside of the ldns library itself */
+        LDNS_ECDSAP256SHA256    = 13,  /* draft-hoffman-dnssec-ecdsa */
+        LDNS_ECDSAP384SHA384    = 14,  /* EXPERIMENTAL */
+#endif
         LDNS_INDIRECT           = 252,
         LDNS_PRIVATEDNS         = 253,
         LDNS_PRIVATEOID         = 254
@@ -62,7 +72,12 @@ enum ldns_enum_hash
 {
         LDNS_SHA1               = 1,  /* RFC 4034 */
         LDNS_SHA256             = 2,  /* RFC 4509 */
-        LDNS_HASH_GOST94        = 203 /* not official */
+        LDNS_HASH_GOST          = 3   /* RFC 5933 */
+#ifdef USE_ECDSA
+	/* this ifdef has to be removed once it is no longer experimental,
+	 * to be able to use these values outside of the ldns library itself */
+        ,LDNS_SHA384             = 4   /* draft-hoffman-dnssec-ecdsa EXPERIMENTAL */
+#endif
 };
 typedef enum ldns_enum_hash ldns_hash;
 
@@ -78,7 +93,13 @@ enum ldns_enum_signing_algorithm
 	LDNS_SIGN_RSASHA256	 = LDNS_RSASHA256,
 	LDNS_SIGN_RSASHA512	 = LDNS_RSASHA512,
 	LDNS_SIGN_DSA_NSEC3	 = LDNS_DSA_NSEC3,
-	LDNS_SIGN_GOST		 = LDNS_GOST,
+	LDNS_SIGN_ECC_GOST       = LDNS_ECC_GOST,
+#ifdef USE_ECDSA
+	/* this ifdef has to be removed once it is no longer experimental,
+	 * to be able to use these values outside of the ldns library itself */
+        LDNS_SIGN_ECDSAP256SHA256 = LDNS_ECDSAP256SHA256,
+        LDNS_SIGN_ECDSAP384SHA384 = LDNS_ECDSAP384SHA384,
+#endif
 	LDNS_SIGN_HMACMD5	 = 157,	/* not official! This type is for TSIG, not DNSSEC */
 	LDNS_SIGN_HMACSHA1	 = 158,	/* not official! This type is for TSIG, not DNSSEC */
 	LDNS_SIGN_HMACSHA256 = 159  /* ditto */
@@ -307,6 +328,9 @@ void ldns_key_set_dsa_key(ldns_key *k, DSA *d);
  * \return the gost id for EVP_CTX creation.
  */
 int ldns_key_EVP_load_gost_id(void);
+
+/** Release the engine reference held for the GOST engine. */
+void ldns_key_EVP_unload_gost(void);
 #endif /* HAVE_SSL */
 
 /**
@@ -575,5 +599,16 @@ char *ldns_key_get_file_base_name(ldns_key *key);
  * \returns true if supported.
  */
 int ldns_key_algo_supported(int algo);
+
+/**
+ * Get signing algorithm by name.  Comparison is case insensitive.
+ * \param[in] name string with the name.
+ * \returns 0 on parse failure or the algorithm number.
+ */
+ldns_signing_algorithm ldns_get_signing_algorithm_by_name(const char* name);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LDNS_KEYS_H */

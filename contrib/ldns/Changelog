@@ -1,3 +1,91 @@
+1.6.7	2010-11-08
+	* EXPERIMENTAL ecdsa implementation, please do not enable on real
+	  servers.
+	* GOST code enabled by default (RFC 5933).
+	* bugfix #326: ignore whitespace between directives and their values.
+	* Header comment to advertise ldns_axfr_complete to check for
+	  successfully completed zone transfers.
+	* read resolv.conf skips interface labels, e.g. %eth0.
+	* Fix drill verify NSEC3 denials.
+	* Use closesocket() on windows.
+	* Add ldns_get_signing_algorithm_by_name that understand aliases,
+	  names changed to RFC names and aliases for compatibility added.
+	* bugfix: don't print final dot if the domain is relative.
+	* bugfix: resolver search continue when packet rcode != NOERROR.
+	* bugfix: resolver push all domains in search directive to list.
+	* bugfix: resolver search by default includes the root domain.
+	* bugfix: tcp read could fail on single octet recv.
+	* bugfix: read of RR in unknown syntax with missing fields.
+	* added ldns_pkt_tsig_sign_next() and ldns_pkt_tsig_verify_next()
+	  to sign and verify TSIG RRs on subsequent messages
+	  (section 4.4, RFC 2845).
+	* bugfix: signer sigs nsecs with zsks only.
+	* bugfix #333: fix ldns_dname_absolute for name ending with backslash.
+
+1.6.6	2010-08-09
+	* Fix ldns_rr_clone to copy question rrs properly.
+	* Fix ldns_sign_zone(_nsec3) to clone the soa for the new zone.
+	* Fix ldns_wire2dname size check from reading 1 byte beyond buffer end.
+	* Fix ldns_wire2dname from reading 1 byte beyond end for pointer.
+	* Fix crash using GOST for particular platform configurations.
+	* extern C declarations used in the header file.
+	* Removed debug fprintf from resolver.c.
+	* ldns-signzone checks if public key file is for the right zone.
+	* NETLDNS, .NET port of ldns functionality, by Alex Nicoll, in contrib.
+	* Fix handling of comments in resolv.conf parse.
+	* GOST code enabled if SSL recent, RFC 5933.
+	* bugfix #317: segfault util.c ldns_init_random() fixed.
+	* Fix ldns_tsig_mac_new: allocate enough memory for the hash, fix use of
+	  b64_pton_calculate_size.
+	* Fix ldns_dname_cat: size calculation and handling of realloc().
+	* Fix ldns_rr_pop_rdf: fix handling of realloc().
+	* Fix ldns-signzone for single type key scheme: sign whole zone if there
+	  are only KSKs.
+	* Fix ldns_resolver: also close socket if AXFR failed (if you don't,
+          it would block subsequent transfers (thanks Roland van Rijswijk).
+        * Fix drill: allow for a secure trace if you use DS records as trust
+	  anchors (thanks Jan Komissar).
+
+1.6.5	2010-06-15
+	* Catch \X where X is a digit as an error.
+	* Fix segfault when ip6 ldns resolver only has ip4 servers.
+	* Fix NSEC record after DNSKEY at zone apex not properly signed.
+	* Fix syntax error if last label too long and no dot at end of domain. 
+	* Fix parse of \# syntax with space for type LOC.
+	* Fix ldns_dname_absolute for escape sequences, fixes some parse errs.
+	* bugfix #297: linking ssl, bug due to patch submitted as #296.
+	* bugfix #299: added missing declarations to host2str.h
+	* ldns-compare-zones -s to not exclude SOA record from comparison.
+	* --disable-rpath fix
+	* fix ldns_pkt_empty(), reported by Alex Nicoll.
+	* fix ldns_resolver_new_frm_fp not ignore lines after a comment.
+	* python code for ldns_rr.new_question_frm_str()
+	* Fix ldns_dnssec_verify_denial: the signature selection routine.
+	* Type TALINK parsed (draft-ietf-dnsop-trust-history).
+	* bugfix #304: fixed dead loop in ldns_tcp_read_wire() and
+	  ldns_tcp_read_wire_timeout().
+	* GOST support with correct algorithm numbers.  The plan is to make it
+	  enabled if openssl support is detected, but it is disabled by
+	  default in this release because the RFC is not ready.
+	* Fixed comment in rbtree.h about being first member and data ptr.
+	* Fixed possibly leak in case of out of memory in ldns_native2rdf...
+	* ldns_dname_is_wildcard added.
+	* Fixed: signatures over wildcards had the wrong labelcount.
+	* Fixed ldns_verify() inconsistent return values.
+	* Fixed ldns_resolver to copy and free tsig name, data and algorithm.
+	* Fixed ldns_resolver to push search onto searchlist.
+	* A ldns resolver now defaults to a non-recursive resolver that handles
+	  the TC bit.
+	* ldns_resolver_print() prints more details.
+	* Fixed ldns_rdf2buffer_str_time(), which did not print timestamps
+	  on 64bit systems.
+	* Make ldns_resolver_nameservers_randomize() more random.
+	* bugfix #310: POSIX specifies NULL second argument of gettimeofday.
+	* fix compiler warnings from llvm clang compiler.
+	* bugfix #309: ldns_pkt_clone did not clone the tsig_rr.
+	* Fix gentoo ebuild for drill, 'no m4 directory'.
+	* bugfix #313: drill trace on an empty nonterminal continuation.
+
 1.6.4	2010-01-20
 	* Imported pyldns contribution by Zdenek Vasicek and Karel Slany.
 	  Changed its configure and Makefile to fit into ldns.

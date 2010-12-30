@@ -8,6 +8,7 @@ Contents:
 	INFORMATION FOR SPECIFIC OPERATING SYSTEMS
 		Mac OS X
 		Solaris
+        Your Support
 
 Project page:
 http://www.nlnetlabs.nl/ldns/
@@ -64,10 +65,11 @@ commands may be a little bit different on your machine. Most notable, you'll nee
 * Developers
 ldns is developed by the ldns team at NLnet Labs. This team currently
 consists of:
-  o Jelte Jansen
   o Wouter Wijngaards
+  o Matthijs Mekking
 
 Former main developers:
+  o Jelte Jansen
   o Miek Gieben
 
 * Credits
@@ -100,4 +102,28 @@ In Solaris multi-architecture systems (that have both 32-bit and
 compile in 64-bit mode. Jakob Schlyter has kindly contributed a build
 script that sets the right build and link options. You can find it in
 contrib/build-solaris.sh
+
+
+Your Support
+NLnet Labs offers all of its software products as open source, most are
+published under a BDS license. You can download them, not only from the
+NLnet Labs website but also through the various OS distributions for
+which NSD, ldns, and Unbound are packaged. We therefore have little idea
+who uses our software in production environments and have no direct ties
+with 'our customers'.
+
+Therefore, we ask you to contact us at users@NLnetLabs.nl and tell us
+whether you use one of our products in your production environment,
+what that environment looks like, and maybe even share some praise.
+We would like to refer to the fact that your organization is using our
+products. We will only do that if you explicitly allow us. In all other
+cases we will keep the information you share with us to ourselves.
+
+In addition to the moral support you can also support us
+financially. NLnet Labs is a recognized not-for-profit charity foundation
+that is chartered to develop open-source software and open-standards
+for the Internet. If you use our software to satisfaction please express
+that by giving us a donation. For small donations PayPal can be used. For
+larger and regular donations please contact us at users@NLnetLabs.nl. Also
+see http://www.nlnetlabs.nl/labs/contributors/.
 
