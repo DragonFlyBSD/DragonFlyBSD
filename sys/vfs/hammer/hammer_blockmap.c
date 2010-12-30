@@ -767,7 +767,6 @@ hammer_blockmap_free(hammer_transaction_t trans,
 {
 	hammer_mount_t hmp;
 	hammer_volume_t root_volume;
-	hammer_blockmap_t blockmap;
 	hammer_blockmap_t freemap;
 	struct hammer_blockmap_layer1 *layer1;
 	struct hammer_blockmap_layer2 *layer2;
@@ -799,7 +798,6 @@ hammer_blockmap_free(hammer_transaction_t trans,
 	root_volume = trans->rootvol;
 	error = 0;
 
-	blockmap = &hmp->blockmap[zone];
 	freemap = &hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 
 	/*
@@ -904,7 +902,6 @@ hammer_blockmap_dedup(hammer_transaction_t trans,
 {
 	hammer_mount_t hmp;
 	hammer_volume_t root_volume;
-	hammer_blockmap_t blockmap;
 	hammer_blockmap_t freemap;
 	struct hammer_blockmap_layer1 *layer1;
 	struct hammer_blockmap_layer2 *layer2;
@@ -936,7 +933,6 @@ hammer_blockmap_dedup(hammer_transaction_t trans,
 	root_volume = trans->rootvol;
 	error = 0;
 
-	blockmap = &hmp->blockmap[zone];
 	freemap = &hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 
 	/*
@@ -1017,7 +1013,6 @@ hammer_blockmap_finalize(hammer_transaction_t trans,
 {
 	hammer_mount_t hmp;
 	hammer_volume_t root_volume;
-	hammer_blockmap_t blockmap;
 	hammer_blockmap_t freemap;
 	struct hammer_blockmap_layer1 *layer1;
 	struct hammer_blockmap_layer2 *layer2;
@@ -1047,7 +1042,6 @@ hammer_blockmap_finalize(hammer_transaction_t trans,
 	root_volume = trans->rootvol;
 	error = 0;
 
-	blockmap = &hmp->blockmap[zone];
 	freemap = &hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 
 	/*
