@@ -95,14 +95,7 @@
  */
 
 /* Local APIC Task Priority Register */
-#define TPR_BLOCK_HWI		0x4f		/* hardware INTs */
-#define TPR_IGNORE_HWI		0x5f		/* ignore INTs */
-#define TPR_BLOCK_FHWI		0x7f		/* hardware FAST INTs */
-#define TPR_IGNORE_FHWI		0x8f		/* ignore FAST INTs */
-#define TPR_IPI_ONLY		0xdf		/* ignore FAST INTs */
-#define TPR_BLOCK_XINVLTLB	0xef		/* block most IPIs */
-#define TPR_BLOCK_XCPUSTOP	0xf0		/* block Xcpustop */
-#define TPR_BLOCK_ALL		0xff		/* all INTs */
+#define TPR_IPI			0xdf
 
 /* TLB shootdowns */
 #define XINVLTLB_OFFSET		(IDT_OFFSET + 192)
