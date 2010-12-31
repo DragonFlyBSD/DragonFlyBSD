@@ -363,10 +363,12 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 		}
 	}
 back:
-	if (error)
+	if (error) {
+		free_bounce_zone(newtag);
 		kfree(newtag, M_DEVBUF);
-	else
+	} else {
 		*dmat = newtag;
+	}
 	return error;
 }
 
