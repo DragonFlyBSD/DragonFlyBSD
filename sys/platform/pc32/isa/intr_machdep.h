@@ -55,49 +55,46 @@
 #define IDT_OFFSET	32
 
 #if defined(SMP)
-/*
- * XXX FIXME: rethink location for all IPI vectors.
- */
 
 /*
-    APIC TPR priority vector levels:
-
-	0xff (255) +-------------+
-		   |             | 15 (IPIs: Xcpustop, Xspuriousint)
-	0xf0 (240) +-------------+
-		   |             | 14 (IPIs: Xinvltlb, Xipiq, Xtimer)
-	0xe0 (224) +-------------+
-		   |             | 13
-	0xd0 (208) +-------------+
-		   |             | 12
-	0xc0 (192) +-------------+
-		   |             | 11
-	0xb0 (176) +-------------+
-		   |             | 10
-	0xa0 (160) +-------------+
-		   |             |  9
-	0x90 (144) +-------------+
-		   |             |  8 (linux/BSD syscall, IGNORE FAST HW INTS)
-	0x80 (128) +-------------+
-		   |             |  7 (FAST_INTR 16-23)
-	0x70 (112) +-------------+
-		   |             |  6 (FAST_INTR 0-15)
-	0x60 (96)  +-------------+
-		   |             |  5 (IGNORE HW INTS)
-	0x50 (80)  +-------------+
-		   |             |  4 (2nd IO APIC)
-	0x40 (64)  +------+------+
-		   |      |      |  3 (upper APIC hardware INTs: PCI)
-	0x30 (48)  +------+------+
-		   |             |  2 (start of hardware INTs: ISA)
-	0x20 (32)  +-------------+
-		   |             |  1 (exceptions, traps, etc.)
-	0x10 (16)  +-------------+
-		   |             |  0 (exceptions, traps, etc.)
-	0x00 (0)   +-------------+
+ * Local APIC TPR priority vector levels:
+ *
+ *	0xff (255) +-------------+
+ *		   |             | 15 (IPIs: Xcpustop, Xspuriousint)
+ *	0xf0 (240) +-------------+
+ *		   |             | 14 (IPIs: Xinvltlb, Xipiq, Xtimer)
+ *	0xe0 (224) +-------------+
+ *		   |             | 13
+ *	0xd0 (208) +-------------+
+ *		   |             | 12
+ *	0xc0 (192) +-------------+
+ *		   |             | 11
+ *	0xb0 (176) +-------------+
+ *		   |             | 10
+ *	0xa0 (160) +-------------+
+ *		   |             |  9
+ *	0x90 (144) +-------------+
+ *		   |             |  8 (syscall at 0x80)
+ *	0x80 (128) +-------------+
+ *		   |             |  7
+ *	0x70 (112) +-------------+
+ *		   |             |  6
+ *	0x60 (96)  +-------------+
+ *		   |             |  5
+ *	0x50 (80)  +-------------+
+ *		   |             |  4
+ *	0x40 (64)  +-------------+
+ *		   |             |  3
+ *	0x30 (48)  +-------------+
+ *		   |             |  2 (8259A compat hardware INTs)
+ *	0x20 (32)  +-------------+
+ *		   |             |  1 (exceptions, traps, etc.)
+ *	0x10 (16)  +-------------+
+ *		   |             |  0 (exceptions, traps, etc.)
+ *	0x00 (0)   +-------------+
  */
 
-/* blocking values for local APIC Task Priority Register */
+/* Local APIC Task Priority Register */
 #define TPR_BLOCK_HWI		0x4f		/* hardware INTs */
 #define TPR_IGNORE_HWI		0x5f		/* ignore INTs */
 #define TPR_BLOCK_FHWI		0x7f		/* hardware FAST INTs */
