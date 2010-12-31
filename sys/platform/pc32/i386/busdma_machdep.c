@@ -480,8 +480,12 @@ bus_dmamap_create(bus_dma_tag_t dmat, int flags, bus_dmamap_t *mapp)
 	} else {
 		*mapp = NULL;
 	}
-	if (!error)
+	if (!error) {
 		dmat->map_count++;
+	} else {
+		kfree(*mapp, M_DEVBUF);
+		*mapp = NULL;
+	}
 	return error;
 }
 
