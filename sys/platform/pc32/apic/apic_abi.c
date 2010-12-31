@@ -225,7 +225,7 @@ apic_vectorctl(int op, int intr, int flags)
 
     switch(op) {
     case MACHINTR_VECTOR_SETUP:
-	vector = TPR_FAST_INTS + intr;
+	vector = IDT_OFFSET_HWINT + intr;
 	setidt(vector, apic_fastintr[intr],
 	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 
@@ -255,7 +255,7 @@ apic_vectorctl(int op, int intr, int flags)
 	 * installed in the cpu's IDT, but make sure.
 	 */
 	machintr_intrdis(intr);
-	vector = TPR_FAST_INTS + intr;
+	vector = IDT_OFFSET_HWINT + intr;
 	setidt(vector, apic_fastintr[intr], SDT_SYS386IGT, SEL_KPL,
 		GSEL(GCODE_SEL, SEL_KPL));
 
