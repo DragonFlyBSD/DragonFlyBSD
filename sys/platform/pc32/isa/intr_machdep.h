@@ -128,7 +128,6 @@
  * Type of the first (asm) part of an interrupt handler.
  */
 typedef void inthand_t(u_int cs, u_int ef, u_int esp, u_int ss);
-typedef void unpendhand_t(void);
 
 #define	IDTVEC(name)	__CONCAT(X,name)
 
