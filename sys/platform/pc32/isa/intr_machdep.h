@@ -52,7 +52,8 @@
 
 #ifdef _KERNEL
 
-#define IDT_OFFSET	32
+#define IDT_OFFSET		0x20
+#define IDT_OFFSET_IPI		0xe0
 
 #if defined(SMP)
 
@@ -93,32 +94,44 @@
  *		   |             |  0 (exceptions, traps, etc.)
  *	0x00 (0)   +-------------+
  */
+#define TPR_STEP		0x10
 
 /* Local APIC Task Priority Register */
-#define TPR_IPI			0xdf
+#define TPR_IPI			(IDT_OFFSET_IPI - 1)
 
-/* TLB shootdowns */
-#define XINVLTLB_OFFSET		(IDT_OFFSET + 192)
-
-/* unused/open (was inter-cpu clock handling) */
-#define XUNUSED113_OFFSET	(IDT_OFFSET + 193)
-
-/* unused/open (was inter-cpu rendezvous) */
-#define XUNUSED114_OFFSET	(IDT_OFFSET + 194)
-
-/* IPIQ */
-#define XIPIQ_OFFSET		(IDT_OFFSET + 195)
-
-/* Local APIC TIMER */
-#define XTIMER_OFFSET		(IDT_OFFSET + 196)
-
-/* IPI to signal CPUs to stop and wait for another CPU to restart them */
-#define XCPUSTOP_OFFSET		(IDT_OFFSET + 208)
 
 /*
- * Note: this vector MUST be xxxx1111, 32 + 223 = 255 = 0xff:
+ * IPI group1
  */
-#define XSPURIOUSINT_OFFSET	(IDT_OFFSET + 223)
+#define IDT_OFFSET_IPIG1	IDT_OFFSET_IPI
+
+/* TLB shootdowns */
+#define XINVLTLB_OFFSET		(IDT_OFFSET_IPIG1 + 0)
+
+/* IPI group1 1: unused (was inter-cpu clock handling) */
+/* IPI group1 2: unused (was inter-cpu rendezvous) */
+
+/* IPIQ */
+#define XIPIQ_OFFSET		(IDT_OFFSET_IPIG1 + 3)
+
+/* Local APIC TIMER */
+#define XTIMER_OFFSET		(IDT_OFFSET_IPIG1 + 4)
+
+/* IPI group1 5 ~ 15: unused */
+
+
+/*
+ * IPI group2
+ */
+#define IDT_OFFSET_IPIG2	(IDT_OFFSET_IPIG1 + TPR_STEP)
+
+/* IPI to signal CPUs to stop and wait for another CPU to restart them */
+#define XCPUSTOP_OFFSET		(IDT_OFFSET_IPIG2 + 0)
+
+/* IPI group2 1 ~ 14: unused */
+
+/* NOTE: this vector MUST be xxxx1111 */
+#define XSPURIOUSINT_OFFSET	(IDT_OFFSET_IPIG2 + 15)
 
 #endif /* SMP */
 
