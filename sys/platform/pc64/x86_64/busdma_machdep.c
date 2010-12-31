@@ -1281,7 +1281,8 @@ free_bounce_zone(bus_dma_tag_t dmat)
 	free_bounce_pages_all(dmat);
 	dmat->bounce_zone = NULL;
 
-	sysctl_ctx_free(&bz->sysctl_ctx);
+	if (bz->sysctl_tree != NULL)
+		sysctl_ctx_free(&bz->sysctl_ctx);
 	kfree(bz, M_DEVBUF);
 }
 
