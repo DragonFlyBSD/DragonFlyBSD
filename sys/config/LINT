@@ -633,7 +633,6 @@ options 	IPSTEALTH		#support for stealth forwarding
 options 	TCPDEBUG
 
 device		pf
-device		pfsync
 device		pflog
 
 #CARP
