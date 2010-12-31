@@ -53,7 +53,6 @@
 #ifdef _KERNEL
 
 #define IDT_OFFSET		0x20
-#define IDT_OFFSET_HWINT	0x60
 #define IDT_OFFSET_IPI		0xe0
 
 #if defined(SMP)
@@ -88,7 +87,7 @@
  *	0x40 (64)  +-------------+
  *		   |             |  3
  *	0x30 (48)  +-------------+
- *		   |             |  2 (8259A compat hardware INTs)
+ *		   |             |  2 (hardware INTs)
  *	0x20 (32)  +-------------+
  *		   |             |  1 (exceptions, traps, etc.)
  *	0x10 (16)  +-------------+
