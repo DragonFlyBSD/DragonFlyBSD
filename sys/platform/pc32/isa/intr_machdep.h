@@ -156,7 +156,6 @@ inthand_t
 	Xipiq;		/* handle lwkt_send_ipiq() requests */
 #endif /* SMP */
 
-void	call_fast_unpend(int irq);
 void	isa_defaultirq (void);
 int	isa_nmi (int cd);
 void	icu_reinit (void);
