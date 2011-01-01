@@ -58,6 +58,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <md5.h>
+#include <inttypes.h>
 
 #include "pfctl_parser.h"
 #include "pfctl.h"
@@ -716,7 +717,7 @@ varstring	: numberstring varstring 		{
 
 numberstring	: NUMBER				{
 			char	*s;
-			if (asprintf(&s, "%lld", $1) == -1) {
+			if (asprintf(&s, "%" PRId64, $1) == -1) {
 				yyerror("string: asprintf");
 				YYERROR;
 			}
@@ -2878,7 +2879,7 @@ host		: STRING			{
 		| STRING '/' NUMBER		{
 			char	*buf;
 
-			if (asprintf(&buf, "%s/%lld", $1, $3) == -1)
+			if (asprintf(&buf, "%s/%" PRId64, $1, $3) == -1)
 				err(1, "host: asprintf");
 			free($1);
 			if (($$ = host(buf)) == NULL)	{
@@ -2893,7 +2894,7 @@ host		: STRING			{
 			char	*buf;
 
 			/* ie. for 10/8 parsing */
-			if (asprintf(&buf, "%lld/%lld", $1, $3) == -1)
+			if (asprintf(&buf, "%" PRId64 "/%" PRId64, $1, $3) == -1)
 				err(1, "host: asprintf");
 			if (($$ = host(buf)) == NULL)	{
 				/* error. "any" is handled elsewhere */

@@ -38,6 +38,7 @@
 #include <netinet/tcp_fsm.h>
 #include <net/pf/pfvar.h>
 #include <arpa/inet.h>
+#include <inttypes.h>
 #include <netdb.h>
 
 #include <stdio.h>
@@ -315,7 +316,7 @@ print_state(struct pfsync_state *s, int opts)
 		bcopy(s->packets[1], &packets[1], sizeof(u_int64_t));
 		bcopy(s->bytes[0], &bytes[0], sizeof(u_int64_t));
 		bcopy(s->bytes[1], &bytes[1], sizeof(u_int64_t));
-		printf(", %llu:%llu pkts, %llu:%llu bytes",
+		printf(", %" PRIu64 ":%" PRIu64 " pkts, %" PRIu64 ":%" PRIu64 " bytes",
 		    be64toh(packets[0]),
 		    be64toh(packets[1]),
 		    be64toh(bytes[0]),

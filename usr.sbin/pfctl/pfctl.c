@@ -47,6 +47,7 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <netdb.h>
 #include <stdio.h>
@@ -678,10 +679,10 @@ pfctl_id_kill_states(int dev, const char *iface, int opts)
 	}
 
 	memset(&psk, 0, sizeof(psk));
-	if ((sscanf(state_kill[1], "%llx/%x",
+	if ((sscanf(state_kill[1], "%" SCNx64 "/%x",
 	    &psk.psk_pfcmp.id, &psk.psk_pfcmp.creatorid)) == 2)
 		psk.psk_pfcmp.creatorid=htonl(psk.psk_pfcmp.creatorid);
-	else if ((sscanf(state_kill[1], "%llx", &psk.psk_pfcmp.id)) == 1) {
+	else if ((sscanf(state_kill[1], "%" SCNx64, &psk.psk_pfcmp.id)) == 1) {
 		psk.psk_pfcmp.creatorid = 0;
 	} else {
 		warnx("wrong id format specified");

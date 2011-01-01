@@ -804,7 +804,7 @@ pfsync_input(struct mbuf *m, ...)
 			if (sfail) {
 				if (pf_status.debug >= PF_DEBUG_MISC)
 					kprintf("pfsync: ignoring stale update "
-					    "(%d) id: %016llx "
+					    "(%d) id: %016" PRIx64 " "
 					    "creatorid: %08x\n", sfail,
 					    be64toh(st->id),
 					    ntohl(st->creatorid));
