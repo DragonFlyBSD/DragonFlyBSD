@@ -94,11 +94,6 @@
 #include <netproto/ipx/ipx_ip.h>
 #endif
 
-#ifdef NSIP
-#include <netns/ns.h>
-#include <netns/ns_if.h>
-#endif
-
 #ifdef SCTP
 #include <netinet/in_pcb.h>
 #include <netinet/sctp_pcb.h>
@@ -453,22 +448,6 @@ struct protosw inetsw[] = {
 	.pr_input = ipxip_input,
 	.pr_output = NULL,
 	.pr_ctlinput = ipxip_ctlinput,
-	.pr_ctloutput = NULL,
-
-	.pr_ctlport = cpu0_ctlport,
-	.pr_usrreqs = &rip_usrreqs
-    },
-#endif
-#ifdef NSIP
-    {
-	.pr_type = SOCK_RAW,
-	.pr_domain = &inetdomain,
-	.pr_protocol = IPPROTO_IDP,
-	.pr_flags = PR_ATOMIC|PR_ADDR|PR_LASTHDR,
-
-	.pr_input = idpip_input,
-	.pr_output = NULL,
-	.pr_ctlinput = nsip_ctlinput,
 	.pr_ctloutput = NULL,
 
 	.pr_ctlport = cpu0_ctlport,

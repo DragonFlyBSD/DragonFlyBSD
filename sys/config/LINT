@@ -464,10 +464,6 @@ options 	MPLS			#Multi-Protocol Label Switching
 
 options 	NETATALK		#Appletalk communications protocols
 
-# These are currently broken but are shipped due to interest.
-#options 	NS			#Xerox NS protocols
-#options 	NSIP			#XNS over IP
-
 #
 # SMB/CIFS requester
 # NETSMB enables support for SMB protocol, it requires LIBMCHAIN and LIBICONV

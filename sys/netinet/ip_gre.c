@@ -1,6 +1,5 @@
 /*
  * $NetBSD: ip_gre.c,v 1.21 2002/08/14 00:23:30 itojun Exp $
- * $DragonFly: src/sys/netinet/ip_gre.c,v 1.10 2006/01/14 11:33:50 swildner Exp $
  *
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -44,7 +43,6 @@
  */
 
 #include "opt_inet.h"
-#include "opt_ns.h"
 #include "opt_atalk.h"
 
 #include <sys/param.h>
@@ -74,11 +72,6 @@
 #include <netinet/ip_gre.h>
 #else
 #error ip_gre input without IP?
-#endif
-
-#ifdef NS
-#include <netproto/ns/ns.h>
-#include <netproto/ns/ns_if.h>
 #endif
 
 #ifdef NETATALK
@@ -180,11 +173,6 @@ gre_input2(struct mbuf *m ,int hlen, u_char proto)
 		case WCCP_PROTOCOL_TYPE:
 			isr = NETISR_IP;
 			break;
-#ifdef NS
-		case ETHERTYPE_NS:
-			isr = NETISR_NS;
-			break;
-#endif
 #ifdef NETATALK
 		case ETHERTYPE_ATALK:
 			isr = NETISR_ATALK1;

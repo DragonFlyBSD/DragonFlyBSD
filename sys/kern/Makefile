@@ -28,7 +28,7 @@ DGEN=	conf \
 	vfs/nullfs vfs/portal vfs/procfs \
 	vfs/specfs vfs/union \
 	vfs/ufs vfs/mfs vfs/nfs vfs/tmpfs \
-	net netinet netns sys \
+	net netinet sys \
 	vm
 
 .include <bsd.subdir.mk>

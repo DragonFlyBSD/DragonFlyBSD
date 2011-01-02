@@ -46,6 +46,3 @@ char	*routename(struct sockaddr *);
 char	*netname(struct sockaddr *);
 int	 keyword(const char *);
 void	 usage(const char *) __dead2;
-#ifdef NS
-char	*ns_print(struct sockaddr_ns *);
-#endif

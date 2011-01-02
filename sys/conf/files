@@ -1545,17 +1545,6 @@ netproto/ncp/ncp_nls.c		optional ncp
 netproto/ncp/ncp_rq.c		optional ncp
 netproto/ncp/ncp_sock.c		optional ncp
 netproto/ncp/ncp_subr.c		optional ncp
-netproto/ns/idp_usrreq.c	optional ns
-netproto/ns/ns.c		optional ns
-netproto/ns/ns_error.c		optional ns
-netproto/ns/ns_input.c		optional ns
-netproto/ns/ns_ip.c		optional ns
-netproto/ns/ns_output.c		optional ns
-netproto/ns/ns_pcb.c		optional ns
-netproto/ns/ns_proto.c		optional nowerror ns
-netproto/ns/ns_cksum.c		optional ns
-netproto/ns/spp_debug.c		optional ns
-netproto/ns/spp_usrreq.c	optional ns
 vfs/nfs/nfs_bio.c		optional nfs
 vfs/nfs/nfs_node.c		optional nfs
 vfs/nfs/nfs_serv.c		optional nfs

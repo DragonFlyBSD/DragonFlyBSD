@@ -81,11 +81,6 @@
 #include <netinet/ip6.h>
 #endif
 
-#ifdef NS
-#include <netns/ns.h>
-#include <netns/ns_if.h>
-#endif
-
 #ifdef NETATALK
 #include <netproto/atalk/at.h>
 #include <netproto/atalk/at_var.h>
@@ -288,11 +283,6 @@ rel:
 		isr = NETISR_IPX;
 		break;
 #endif
-#ifdef NS
-	case AF_NS:
-		isr = NETISR_NS;
-		break;
-#endif
 #ifdef NETATALK
 	case AF_APPLETALK:
 		isr = NETISR_ATALK2;
@@ -344,11 +334,6 @@ lo_altqstart(struct ifnet *ifp)
 #ifdef IPX
 		case AF_IPX:
 			isr = NETISR_IPX;
-			break;
-#endif
-#ifdef NS
-		case AF_NS:
-			isr = NETISR_NS;
 			break;
 #endif
 #ifdef ISO

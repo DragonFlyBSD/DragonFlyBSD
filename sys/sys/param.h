@@ -76,9 +76,10 @@
  * 200800 - 2.8 release			October 2010
  * 200900 - 2.9 master
  * 200901 - prototype changes for alphasort(3) and scandir(3)
+ * 200902 - Xerox NS protocol removal
  */
 #undef __DragonFly_version
-#define __DragonFly_version 200901	/* propagated to newvers */
+#define __DragonFly_version 200902	/* propagated to newvers */
 
 #include <sys/_null.h>
 

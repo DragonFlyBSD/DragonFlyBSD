@@ -248,19 +248,6 @@ struct protox ipxprotox[] = {
 	  0,		NULL,		0,	0 }
 };
 
-#ifdef NS
-struct protox nsprotox[] = {
-	{ N_IDP,	N_IDPSTAT,	1,	nsprotopr,
-	  idp_stats,	NULL,		"idp" },
-	{ N_IDP,	N_SPPSTAT,	1,	nsprotopr,
-	  spp_stats,	NULL,		"spp" },
-	{ -1,		N_NSERR,	1,	0,
-	  nserr_stats,	NULL,		"ns_err" },
-	{ -1,		-1,		0,	0,
-	  0,		NULL,		0 }
-};
-#endif
-
 #ifdef ISO
 struct protox isoprotox[] = {
 	{ ISO_TP,	N_TPSTAT,	1,	iso_protopr,
@@ -285,9 +272,6 @@ struct protox *protoprotox[] = {
 					 pfkeyprotox,
 #endif
 					 ipxprotox, atalkprotox,
-#ifdef NS
-					 nsprotox, 
-#endif
 #ifdef ISO
 					 isoprotox, 
 #endif
@@ -359,11 +343,6 @@ main(int argc, char **argv)
 			dflag = 1;
 			break;
 		case 'f':
-#ifdef NS
-			if (strcmp(optarg, "ns") == 0)
-				af = AF_NS;
-			else
-#endif
 			if (strcmp(optarg, "ipx") == 0)
 				af = AF_IPX;
 			else if (strcmp(optarg, "inet") == 0)
@@ -588,11 +567,6 @@ main(int argc, char **argv)
 	if (af == AF_NETGRAPH || af == AF_UNSPEC)
 		for (tp = netgraphprotox; tp->pr_name; tp++)
 			printproto(tp, tp->pr_name);
-#ifdef NS
-	if (af == AF_NS || af == AF_UNSPEC)
-		for (tp = nsprotox; tp->pr_name; tp++)
-			printproto(tp, tp->pr_name);
-#endif
 #ifdef ISO
 	if (af == AF_ISO || af == AF_UNSPEC)
 		for (tp = isoprotox; tp->pr_name; tp++)

@@ -42,7 +42,6 @@
 #include <net/if_types.h>
 #include <net/route.h>
 #include <netinet/in.h>
-#include <netns/ns.h>
 #include <arpa/inet.h>
 
 #include <sys/sysctl.h>
@@ -365,12 +364,6 @@ p_sockaddr(struct sockaddr *sa, int flags, int width)
 		break;
 	    }
 #endif /* INET6 */
-
-#ifdef NS
-	case AF_NS:
-		cp = ns_print((struct sockaddr_ns *)sa);
-		break;
-#endif
 
 	default:
 	    {

@@ -68,7 +68,7 @@ LSUBDIRS=	bus/cam bus/cam/scsi \
 	netgraph/tee netgraph/tty netgraph/vjc \
 	bus/cam bus/usb bus/pccard bus/pci bus/isa bus/ppbus bus/smbus \
 	netproto/atalk netproto/atm netproto/ipsec netproto/ipx \
-	netproto/key netproto/natm netproto/ncp netproto/ns netproto/smb \
+	netproto/key netproto/natm netproto/ncp netproto/smb \
 	netproto/atm/ipatm netproto/atm/sigpvc netproto/atm/spans \
 	netproto/atm/uni netproto/802_11 netproto/mpls \
 	vfs/isofs/cd9660 net/i4b/include \
@@ -134,7 +134,6 @@ INCSLINKS+=	netproto/ipx ${INCLUDEDIR}/netipx
 INCSLINKS+=	netproto/key ${INCLUDEDIR}/netkey
 INCSLINKS+=	netproto/natm ${INCLUDEDIR}/netnatm
 INCSLINKS+=	netproto/ncp ${INCLUDEDIR}/netncp
-INCSLINKS+=	netproto/ns ${INCLUDEDIR}/netns
 INCSLINKS+=	netproto/smb ${INCLUDEDIR}/netsmb
 INCSLINKS+=	bus/pccard ${INCLUDEDIR}/pccard
 

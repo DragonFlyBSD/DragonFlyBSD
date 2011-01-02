@@ -72,11 +72,6 @@
 #include <netproto/ipx/ipx_if.h>
 #endif
 
-#ifdef NS
-#include <netproto/ns/ns.h>
-#include <netproto/ns/ns_if.h>
-#endif
-
 #include <vm/vm.h>
 
 #include <net/if_var.h>
@@ -3747,27 +3742,6 @@ tulip_ifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred * cr)
 		    break;
 		}
 #endif /* IPX */
-
-#ifdef NS
-		/*
-		 * This magic copied from if_is.c; I don't use XNS,
-		 * so I have no way of telling if this actually
-		 * works or not.
-		 */
-		case AF_NS: {
-		    struct ns_addr *ina = &(IA_SNS(ifa)->sns_addr);
-		    if (ns_nullhost(*ina)) {
-			ina->x_host = *(union ns_host *)(sc->tulip_enaddr);
-		    } else {
-			ifp->if_flags &= ~IFF_RUNNING;
-			bcopy((caddr_t)ina->x_host.c_host,
-			      (caddr_t)sc->tulip_enaddr,
-			      sizeof(sc->tulip_enaddr));
-		    }
-		    tulip_init(sc);
-		    break;
-		}
-#endif /* NS */
 
 		default: {
 		    tulip_init(sc);
