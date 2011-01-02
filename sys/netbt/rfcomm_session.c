@@ -42,7 +42,6 @@
 #include <sys/endian.h>
 
 #include <net/if.h>
-#include <net/pf/pfvar.h>
 
 #include <netbt/bluetooth.h>
 #include <netbt/hci.h>
@@ -243,7 +242,7 @@ rfcomm_session_free(struct rfcomm_session *rs)
 	/* throw away any remaining credit notes */
 	while ((credit = STAILQ_FIRST(&rs->rs_credits)) != NULL) {
 		STAILQ_REMOVE_HEAD(&rs->rs_credits, rc_next);
-		pool_put(&rfcomm_credit_pool, credit);
+		zfree(rfcomm_credit_pool, credit);
 	}
 
 	KKASSERT(STAILQ_EMPTY(&rs->rs_credits));
@@ -482,7 +481,7 @@ rfcomm_session_complete(void *arg, int count)
 		}
 
 		STAILQ_REMOVE_HEAD(&rs->rs_credits, rc_next);
-		pool_put(&rfcomm_credit_pool, credit);
+		zfree(rfcomm_credit_pool, credit);
 	}
 
 	/*
@@ -1459,13 +1458,13 @@ rfcomm_session_send_frame(struct rfcomm_session *rs, int type, int dlci)
 	struct mbuf *m;
 	uint8_t fcs, cr;
 
-	credit = pool_get(&rfcomm_credit_pool, PR_NOWAIT);
+	credit = zalloc(rfcomm_credit_pool);
 	if (credit == NULL)
 		return ENOMEM;
 
 	m = m_gethdr(MB_DONTWAIT, MT_DATA);
 	if (m == NULL) {
-		pool_put(&rfcomm_credit_pool, credit);
+		zfree(rfcomm_credit_pool, credit);
 		return ENOMEM;
 	}
 
@@ -1530,7 +1529,7 @@ rfcomm_session_send_uih(struct rfcomm_session *rs, struct rfcomm_dlc *dlc,
 	/*
 	 * Make a credit note for the completion notification
 	 */
-	credit = pool_get(&rfcomm_credit_pool, PR_NOWAIT);
+	credit = zalloc(rfcomm_credit_pool);
 	if (credit == NULL)
 		goto nomem;
 
@@ -1621,7 +1620,7 @@ nomem:
 
 fail:
 	if (credit != NULL)
-		pool_put(&rfcomm_credit_pool, credit);
+		zfree(rfcomm_credit_pool, credit);
 
 	return err;
 }

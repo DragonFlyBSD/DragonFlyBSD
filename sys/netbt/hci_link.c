@@ -42,7 +42,6 @@
 #include <sys/endian.h>
 #include <sys/callout.h>
 #include <net/if.h>
-#include <net/pf/pfvar.h>
 #include <sys/bus.h>
 
 #include <netbt/bluetooth.h>
@@ -550,7 +549,7 @@ hci_acl_send(struct mbuf *m, struct hci_link *link,
 		return ENETDOWN;
 	}
 
-	pdu = pool_get(&l2cap_pdu_pool, PR_NOWAIT);
+	pdu = zalloc(l2cap_pdu_pool);
 	if (pdu == NULL)
 		goto nomem;
 
@@ -595,7 +594,7 @@ nomem:
 	if (m) m_freem(m);
 	if (pdu) {
 		IF_DRAIN(&pdu->lp_data);
-		pool_put(&l2cap_pdu_pool, pdu);
+		zfree(l2cap_pdu_pool, pdu);
 	}
 
 	return ENOMEM;
@@ -741,7 +740,7 @@ hci_acl_complete(struct hci_link *link, int num)
 						l2cap_start(chan);
 				}
 
-				pool_put(&l2cap_pdu_pool, pdu);
+				zfree(l2cap_pdu_pool, pdu);
 			}
 		} else {
 			pdu->lp_pending -= num;
@@ -966,7 +965,7 @@ hci_link_free(struct hci_link *link, int err)
 		if (pdu->lp_pending)
 			link->hl_unit->hci_num_acl_pkts += pdu->lp_pending;
 
-		pool_put(&l2cap_pdu_pool, pdu);
+		zfree(l2cap_pdu_pool, pdu);
 	}
 
 	KKASSERT(TAILQ_EMPTY(&link->hl_txq));
