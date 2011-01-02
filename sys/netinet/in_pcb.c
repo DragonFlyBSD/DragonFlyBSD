@@ -107,6 +107,7 @@
 #ifdef IPSEC
 #include <netinet6/ipsec.h>
 #include <netproto/key/key.h>
+#include <netproto/ipsec/esp_var.h>
 #endif
 
 #ifdef FAST_IPSEC
@@ -137,6 +138,9 @@ int ipport_hilastauto = IPPORT_HILASTAUTO;	/* 65535 */
 #define RANGECHK(var, min, max) \
 	if ((var) < (min)) { (var) = (min); } \
 	else if ((var) > (max)) { (var) = (max); }
+
+int udpencap_enable = 1;	/* enabled by default */
+int udpencap_port = 4500;	/* triggers decapsulation */
 
 static int
 sysctl_net_ipport_check(SYSCTL_HANDLER_ARGS)
@@ -193,6 +197,30 @@ in_pcbinfo_init(struct inpcbinfo *pcbinfo)
 	pcbinfo->portsave = kmalloc(sizeof(*pcbinfo->portsave), M_PCB,
 				    M_WAITOK | M_ZERO);
 }
+
+struct baddynamicports baddynamicports;
+
+/*
+ * Check if the specified port is invalid for dynamic allocation.
+ */
+int
+in_baddynamic(u_int16_t port, u_int16_t proto)
+{
+	switch (proto) {
+	case IPPROTO_TCP:
+		return (DP_ISSET(baddynamicports.tcp, port));
+	case IPPROTO_UDP:
+#ifdef IPSEC
+		/* Cannot preset this as it is a sysctl */
+		if (port == udpencap_port)
+			return (1);
+#endif
+		return (DP_ISSET(baddynamicports.udp, port));
+	default:
+		return (0);
+	}
+}
+
 
 /*
  * Allocate a PCB and associate it with the socket.

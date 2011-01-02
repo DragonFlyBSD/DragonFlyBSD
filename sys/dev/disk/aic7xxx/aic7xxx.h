@@ -893,14 +893,6 @@ typedef enum {
 /*********************** Software Configuration Structure *********************/
 TAILQ_HEAD(scb_tailq, scb);
 
-struct ahc_aic7770_softc {
-	/*
-	 * Saved register state used for chip_init().
-	 */
-	uint8_t busspd;
-	uint8_t bustime;
-};
-
 struct ahc_pci_softc {
 	/*
 	 * Saved register state used for chip_init().
@@ -918,7 +910,6 @@ struct ahc_pci_softc {
 };
 
 union ahc_bus_softc {
-	struct ahc_aic7770_softc aic7770_softc;
 	struct ahc_pci_softc pci_softc;
 };
 
@@ -1171,20 +1162,6 @@ struct ahc_pci_identity {
 extern struct ahc_pci_identity ahc_pci_ident_table[];
 extern const u_int ahc_num_pci_devs;
 
-/***************************** VL/EISA Declarations ***************************/
-struct aic7770_identity {
-	uint32_t		 full_id;
-	uint32_t		 id_mask;
-	const char		*name;
-	ahc_device_setup_t	*setup;
-};
-extern struct aic7770_identity aic7770_ident_table[];
-extern const int ahc_num_aic7770_devs;
-
-#define AHC_EISA_SLOT_SIZE	0x1000
-#define AHC_EISA_SLOT_OFFSET	0xc00
-#define AHC_EISA_IOSIZE		0x100
-
 /*************************** Function Declarations ****************************/
 /******************************************************************************/
 u_int			ahc_index_busy_tcl(struct ahc_softc *ahc, u_int tcl);
@@ -1197,12 +1174,6 @@ struct ahc_pci_identity	*ahc_find_pci_device(aic_dev_softc_t);
 int			 ahc_pci_config(struct ahc_softc *,
 					struct ahc_pci_identity *);
 int			 ahc_pci_test_register_access(struct ahc_softc *);
-
-/*************************** EISA/VL Front End ********************************/
-struct aic7770_identity *aic7770_find_device(uint32_t);
-int			 aic7770_config(struct ahc_softc *ahc,
-					struct aic7770_identity *,
-					u_int port);
 
 /************************** SCB and SCB queue management **********************/
 int		ahc_probe_scbs(struct ahc_softc *);

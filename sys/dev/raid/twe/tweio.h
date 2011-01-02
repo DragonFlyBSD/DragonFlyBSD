@@ -26,8 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/twe/tweio.h,v 1.1.2.4 2004/04/07 22:18:01 vkashyap Exp $
- *	$DragonFly: src/sys/dev/raid/twe/tweio.h,v 1.4 2005/08/22 21:16:20 hmp Exp $
+ *	$FreeBSD: src/sys/dev/twe/tweio.h,v 1.5 2005/02/17 19:05:42 vkashyap Exp $
  */
 
 #include <sys/ioccom.h>

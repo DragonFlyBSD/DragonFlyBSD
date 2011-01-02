@@ -1,7 +1,5 @@
 /*-
  * Copyright (c) 2000 Michael Smith
- * Copyright (c) 2003 Paul Saab
- * Copyright (c) 2003 Vinod Kashyap
  * Copyright (c) 2000 BSDi
  * All rights reserved.
  *
@@ -26,10 +24,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/twe/twevar.h,v 1.1.2.8 2004/06/11 18:57:32 vkashyap Exp $
+ *	$FreeBSD: src/sys/dev/twe/twevar.h,v 1.15 2009/12/25 17:34:43 mav Exp $
  */
 
-#define TWE_DRIVER_VERSION_STRING	"1.40.01.002"
+#define TWE_DRIVER_VERSION_STRING	"1.50.01.002"
 
 #ifdef TWE_DEBUG
 #define debug(level, fmt, args...)							\
@@ -55,10 +53,8 @@ struct twe_drive
     int			td_cylinders;
     int			td_heads;
     int			td_sectors;
-    int			td_sys_unit; /* Unit #, as seen by the system
-				     (the 0 in twed0, the 1 in twed1 etc.) */
-    int			td_twe_unit; /* Unit #, as seen by us, and our ctlr
-				     (index into sc->twe_drive[]) */
+    int			td_sys_unit; /* device unit number */
+    int			td_twe_unit; /* index into sc->twe_drive[] */
 
     /* unit state and type */
     u_int8_t		td_state;
@@ -71,7 +67,7 @@ struct twe_drive
 /*
  * Disk device softc
  */
-struct twed_softc 
+struct twed_softc
 {
     device_t		twed_dev;
     cdev_t		twed_dev_t;
@@ -92,9 +88,7 @@ struct twed_softc
  */
 struct twe_request
 {
-    /* controller command */
-    TWE_Command			tr_command;	/* command as submitted to controller */
-
+    int				tr_tag;
     /* command payload */
     void			*tr_data;	/* data buffer */
     void			*tr_realdata;	/* copy of real data buffer pointer for alignment fixup */
@@ -112,13 +106,20 @@ struct twe_request
 #define TWE_CMD_DATAOUT		(1<<1)
 #define TWE_CMD_ALIGNBUF	(1<<2)	/* data in bio is misaligned, have to copy to/from private buffer */
 #define TWE_CMD_SLEEPER		(1<<3)	/* owner is sleeping on this command */
-#define TWE_CMD_MAPPED		(1<<4)	/* cmd has been mapped */
-#define TWE_CMD_IN_PROGRESS	(1<<5)	/* bus_dmamap_load returned EINPROGRESS */
+#define TWE_CMD_IMMEDIATE	(1<<4)	/* immediate request */
+#define TWE_CMD_MAPPED		(1<<5)
+#define TWE_CMD_IN_PROGRESS	(1<<6)	/* bus_dmamap_load returned EINPROGRESS */
     void			(* tr_complete)(struct twe_request *tr);	/* completion handler */
     void			*tr_private;	/* submitter-private data or wait channel */
 
     TWE_PLATFORM_REQUEST	/* platform-specific request elements */
 };
+
+#define TWE_FIND_COMMAND(tr)					\
+	(TWE_Command *)((u_int8_t *)(tr)->tr_sc->twe_cmd +	\
+			((tr)->tr_tag * sizeof(TWE_Command)))
+#define TWE_FIND_COMMANDPHYS(tr)	((tr)->tr_sc->twe_cmdphys +	\
+					 ((tr)->tr_tag * sizeof(TWE_Command)))
 
 /*
  * Per-controller state.
@@ -164,10 +165,9 @@ extern void	twe_startio(struct twe_softc *sc);
 extern int	twe_start(struct twe_request *tr);
 extern int	twe_dump_blocks(struct twe_softc *sc, int unit,	/* crashdump block write */
 				u_int64_t lba, void *data, int nblks);
-extern int	twe_ioctl(struct twe_softc *sc, int cmd,
+extern int	twe_ioctl(struct twe_softc *sc, u_long cmd,
 				  void *addr);			/* handle user request */
 extern void	twe_describe_controller(struct twe_softc *sc);	/* print controller info */
-extern char	*twe_describe_code(struct twe_code_lookup *table, u_int32_t code);
 extern void	twe_print_controller(struct twe_softc *sc);
 extern void	twe_enable_interrupts(struct twe_softc *sc);	/* enable controller interrupts */
 extern void	twe_disable_interrupts(struct twe_softc *sc);	/* disable controller interrupts */
@@ -179,7 +179,8 @@ extern int	twe_detach_drive(struct twe_softc *sc,
 extern void	twe_clear_pci_parity_error(struct twe_softc *sc);
 extern void	twe_clear_pci_abort(struct twe_softc *sc);
 extern void	twed_intr(twe_bio *bp);				/* return bio from core */
-extern struct	twe_request *twe_allocate_request(struct twe_softc *sc);/* allocate request structure */
+extern struct twe_request *twe_allocate_request(struct twe_softc *sc, int tag);	/* allocate request structure */
+extern void	twe_free_request(struct twe_request *tr);	/* free request structure */
 extern int	twe_map_request(struct twe_request *tr);	/* make request visible to controller, do s/g */
 extern void	twe_unmap_request(struct twe_request *tr);	/* cleanup after transfer, unmap */
 
@@ -204,11 +205,11 @@ extern void	twe_unmap_request(struct twe_request *tr);	/* cleanup after transfer
 		qs->q_min = qs->q_length;			\
 	} while(0)
 
-#define TWEQ_INIT(sc, qname)				\
-	do {						\
-	    sc->twe_qstat[qname].q_length = 0;		\
-	    sc->twe_qstat[qname].q_max = 0;		\
-	    sc->twe_qstat[qname].q_min = 0xFFFFFFFF;	\
+#define TWEQ_INIT(sc, qname)					\
+	do {							\
+	    sc->twe_qstat[qname].q_length = 0;			\
+	    sc->twe_qstat[qname].q_max = 0;			\
+	    sc->twe_qstat[qname].q_min = 0xFFFFFFFF;		\
 	} while(0)
 
 
@@ -261,7 +262,6 @@ TWEQ_REQUEST_QUEUE(free, TWEQ_FREE)
 TWEQ_REQUEST_QUEUE(ready, TWEQ_READY)
 TWEQ_REQUEST_QUEUE(busy, TWEQ_BUSY)
 TWEQ_REQUEST_QUEUE(complete, TWEQ_COMPLETE)
-
 
 /*
  * outstanding bio queue

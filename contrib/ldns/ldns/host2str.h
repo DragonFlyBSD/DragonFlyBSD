@@ -30,6 +30,10 @@
 
 #include "ldns/util.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define LDNS_APL_IP4            1
 #define LDNS_APL_IP6            2
 #define LDNS_APL_MASK           0x7f
@@ -151,6 +155,14 @@ ldns_status ldns_rdf2buffer_str_str(ldns_buffer *output, const ldns_rdf *rdf);
 ldns_status ldns_rdf2buffer_str_b64(ldns_buffer *output, const ldns_rdf *rdf);
 
 /** 
+ * Converts an LDNS_RDF_TYPE_B32_EXT rdata element to string format and adds it to the output buffer 
+ * \param[in] *rdf The rdata to convert
+ * \param[in] *output The buffer to add the data to
+ * \return LDNS_STATUS_OK on success, and error status on failure
+ */
+ldns_status ldns_rdf2buffer_str_b32_ext(ldns_buffer *output, const ldns_rdf *rdf);
+
+/** 
  * Converts an LDNS_RDF_TYPE_HEX rdata element to string format and adds it to the output buffer 
  * \param[in] *rdf The rdata to convert
  * \param[in] *output The buffer to add the data to
@@ -256,6 +268,14 @@ ldns_status ldns_rdf2buffer_str_unknown(ldns_buffer *output, const ldns_rdf *rdf
 ldns_status ldns_rdf2buffer_str_nsap(ldns_buffer *output, const ldns_rdf *rdf);
 
 /** 
+ * Converts an LDNS_RDF_TYPE_ATMA rdata element to string format and adds it to the output buffer 
+ * \param[in] *rdf The rdata to convert
+ * \param[in] *output The buffer to add the data to
+ * \return LDNS_STATUS_OK on success, and error status on failure
+ */
+ldns_status ldns_rdf2buffer_str_atma(ldns_buffer *output, const ldns_rdf *rdf);
+
+/** 
  * Converts an LDNS_RDF_TYPE_WKS rdata element to string format and adds it to the output buffer 
  * \param[in] *rdf The rdata to convert
  * \param[in] *output The buffer to add the data to
@@ -350,6 +370,15 @@ ldns_status ldns_rr2buffer_str(ldns_buffer *output, const ldns_rr *rr);
  */
 ldns_status ldns_pkt2buffer_str(ldns_buffer *output, const ldns_pkt *pkt);
 
+/** 
+ * Converts an LDNS_RDF_TYPE_NSEC3_SALT rdata element to string format and adds it to the output buffer 
+ * \param[in] *rdf The rdata to convert
+ * \param[in] *output The buffer to add the data to
+ * \return LDNS_STATUS_OK on success, and error status on failure
+ */
+ldns_status ldns_rdf2buffer_str_nsec3_salt(ldns_buffer *output, const ldns_rdf *rdf);
+
+
 /**
  * Converts the data in the DNS packet to presentation
  * format (as char *) and appends it to the given buffer
@@ -361,14 +390,36 @@ ldns_status ldns_pkt2buffer_str(ldns_buffer *output, const ldns_pkt *pkt);
 ldns_status ldns_key2buffer_str(ldns_buffer *output, const ldns_key *k);
 
 /**
- * Converts the data in the int16 typed rdata field to presentation
- * format (as char *) and appends it to the given buffer
- *
- * \param[in] output pointer to the buffer to append the data to
- * \param[in] rdf the pointer to the rdafa field containing the data
- * \return status
+ * Converts an LDNS_RDF_TYPE_INT8 rdata element to string format and adds it to the output buffer
+ * \param[in] *rdf The rdata to convert
+ * \param[in] *output The buffer to add the data to
+ * \return LDNS_STATUS_OK on success, and error status on failure
+ */
+ldns_status ldns_rdf2buffer_str_int8(ldns_buffer *output, const ldns_rdf *rdf);
+
+/**
+ * Converts an LDNS_RDF_TYPE_INT16 rdata element to string format and adds it to the output buffer
+ * \param[in] *rdf The rdata to convert
+ * \param[in] *output The buffer to add the data to
+ * \return LDNS_STATUS_OK on success, and error status on failure
  */
 ldns_status ldns_rdf2buffer_str_int16(ldns_buffer *output, const ldns_rdf *rdf);
+
+/**
+ * Converts an LDNS_RDF_TYPE_INT32 rdata element to string format and adds it to the output buffer
+ * \param[in] *rdf The rdata to convert
+ * \param[in] *output The buffer to add the data to
+ * \return LDNS_STATUS_OK on success, and error status on failure
+ */
+ldns_status ldns_rdf2buffer_str_int32(ldns_buffer *output, const ldns_rdf *rdf);
+
+/**
+ * Converts an LDNS_RDF_TYPE_TIME rdata element to string format and adds it to the output buffer
+ * \param[in] *rdf The rdata to convert
+ * \param[in] *output The buffer to add the data to
+ * \return LDNS_STATUS_OK on success, and error status on failure
+ */
+ldns_status ldns_rdf2buffer_str_time(ldns_buffer *output, const ldns_rdf *rdf);
 
 /**
  * Converts the data in the rdata field to presentation format and
@@ -508,5 +559,8 @@ void ldns_zone_print(FILE *output, const ldns_zone *z);
  */
 ldns_status ldns_rdf2buffer_str_dname(ldns_buffer *output, const ldns_rdf *dname);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LDNS_HOST2STR_H */

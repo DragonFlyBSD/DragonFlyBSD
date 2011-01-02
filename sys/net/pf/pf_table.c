@@ -1,7 +1,7 @@
-/*	$OpenBSD: pf_table.c,v 1.70 2007/05/23 11:53:45 markus Exp $	*/
+/*	$OpenBSD: pf_table.c,v 1.78 2008/06/14 03:50:14 art Exp $	*/
 
 /*
- * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2010 The DragonFly Project.  All rights reserved.
  *
  * Copyright (c) 2002 Cedric Berger
  * All rights reserved.
@@ -49,7 +49,7 @@
 #include <netinet/in.h>
 #include <net/pf/pfvar.h>
 
-#define ACCEPT_FLAGS(flags, oklist)			\
+#define ACCEPT_FLAGS(flags, oklist)		\
 	do {					\
 		if ((flags & ~(oklist)) &	\
 		    PFR_FLAG_ALLMASK)		\
@@ -133,6 +133,7 @@ struct pfr_walktree {
 vm_zone_t		 pfr_ktable_pl;
 vm_zone_t		 pfr_kentry_pl;
 vm_zone_t		 pfr_kentry_pl2;
+vm_zone_t		pfr_kcounters_pl;
 struct sockaddr_in	 pfr_sin;
 struct sockaddr_in6	 pfr_sin6;
 union sockaddr_union	 pfr_mask;
@@ -806,12 +807,11 @@ pfr_create_kentry(struct pfr_addr *ad, int intr)
 	struct pfr_kentry	*ke;
 
 	if (intr)
-		ke = pool_get(&pfr_kentry_pl2, PR_NOWAIT);
+		ke = pool_get(&pfr_kentry_pl2, PR_NOWAIT | PR_ZERO);
 	else
-		ke = pool_get(&pfr_kentry_pl, PR_NOWAIT);
+		ke = pool_get(&pfr_kentry_pl, PR_NOWAIT|PR_ZERO|PR_LIMITFAIL);
 	if (ke == NULL)
 		return (NULL);
-	bzero(ke, sizeof(*ke));
 
 	if (ad->pfra_af == AF_INET)
 		FILLIN_SIN(ke->pfrke_sa.sin, ad->pfra_ip4addr);
@@ -838,6 +838,8 @@ pfr_destroy_kentries(struct pfr_kentryworkq *workq)
 void
 pfr_destroy_kentry(struct pfr_kentry *ke)
 {
+	if (ke->pfrke_counters)
+		pool_put(&pfr_kcounters_pl, ke->pfrke_counters);
 	if (ke->pfrke_intrpool)
 		pool_put(&pfr_kentry_pl2, ke);
 	else
@@ -921,8 +923,10 @@ pfr_clstats_kentries(struct pfr_kentryworkq *workq, long tzero, int negchange)
 		crit_enter();
 		if (negchange)
 			p->pfrke_not = !p->pfrke_not;
-		bzero(p->pfrke_packets, sizeof(p->pfrke_packets));
-		bzero(p->pfrke_bytes, sizeof(p->pfrke_bytes));
+		if (p->pfrke_counters) {
+			pool_put(&pfr_kcounters_pl, p->pfrke_counters);
+			p->pfrke_counters = NULL;
+		}
 		crit_exit();
 		p->pfrke_tzero = tzero;
 	}
@@ -1072,10 +1076,16 @@ pfr_walktree(struct radix_node *rn, void *arg)
 			pfr_copyout_addr(&as.pfras_a, ke);
 
 			crit_enter();
-			bcopy(ke->pfrke_packets, as.pfras_packets,
-			    sizeof(as.pfras_packets));
-			bcopy(ke->pfrke_bytes, as.pfras_bytes,
-			    sizeof(as.pfras_bytes));
+			if (ke->pfrke_counters) {
+				bcopy(ke->pfrke_counters->pfrkc_packets,
+				    as.pfras_packets, sizeof(as.pfras_packets));
+				bcopy(ke->pfrke_counters->pfrkc_bytes,
+				    as.pfras_bytes, sizeof(as.pfras_bytes));
+			} else {
+				bzero(as.pfras_packets, sizeof(as.pfras_packets));
+				bzero(as.pfras_bytes, sizeof(as.pfras_bytes));
+				as.pfras_a.pfra_fback = PFR_FB_NOCOUNT;
+			}
 			crit_exit();
 			as.pfras_tzero = ke->pfrke_tzero;
 
@@ -1884,10 +1894,9 @@ pfr_create_ktable(struct pfr_table *tbl, long tzero, int attachruleset)
 	struct pfr_ktable	*kt;
 	struct pf_ruleset	*rs;
 
-	kt = pool_get(&pfr_ktable_pl, PR_NOWAIT);
+	kt = pool_get(&pfr_ktable_pl, PR_NOWAIT| PR_ZERO | PR_LIMITFAIL);
 	if (kt == NULL)
 		return (NULL);
-	bzero(kt, sizeof(*kt));
 	kt->pfrkt_t = *tbl;
 
 	if (attachruleset) {
@@ -1935,9 +1944,10 @@ pfr_destroy_ktable(struct pfr_ktable *kt, int flushaddr)
 	}
 	if (kt->pfrkt_ip4 != NULL)
 		kfree((caddr_t)kt->pfrkt_ip4, M_RTABLE);
+
 	if (kt->pfrkt_ip6 != NULL)
 		kfree((caddr_t)kt->pfrkt_ip6, M_RTABLE);
-	if (kt->pfrkt_shadow != NULL)
+	if (kt->pfrkt_shadow != NULL) 
 		pfr_destroy_ktable(kt->pfrkt_shadow, flushaddr);
 	if (kt->pfrkt_rs != NULL) {
 		kt->pfrkt_rs->tables--;
@@ -2043,9 +2053,15 @@ pfr_update_stats(struct pfr_ktable *kt, struct pf_addr *a, sa_family_t af,
 	}
 	kt->pfrkt_packets[dir_out][op_pass]++;
 	kt->pfrkt_bytes[dir_out][op_pass] += len;
-	if (ke != NULL && op_pass != PFR_OP_XPASS) {
-		ke->pfrke_packets[dir_out][op_pass]++;
-		ke->pfrke_bytes[dir_out][op_pass] += len;
+	if (ke != NULL && op_pass != PFR_OP_XPASS &&
+	    (kt->pfrkt_flags & PFR_TFLAG_COUNTERS)) {
+		if (ke->pfrke_counters == NULL)
+			ke->pfrke_counters = pool_get(&pfr_kcounters_pl,
+			    PR_NOWAIT | PR_ZERO);
+		if (ke->pfrke_counters != NULL) {
+			ke->pfrke_counters->pfrkc_packets[dir_out][op_pass]++;
+			ke->pfrke_counters->pfrkc_bytes[dir_out][op_pass] += len;
+		}
 	}
 }
 
@@ -2122,8 +2138,10 @@ pfr_pool_get(struct pfr_ktable *kt, int *pidx, struct pf_addr *counter,
 
 _next_block:
 	ke = pfr_kentry_byidx(kt, idx, af);
-	if (ke == NULL)
+	if (ke == NULL) {
+		kt->pfrkt_nomatch++;
 		return (1);
+	}
 	pfr_prepare_network(&pfr_mask, af, ke->pfrke_net);
 	*raddr = SUNION2PF(&ke->pfrke_sa, af);
 	*rmask = SUNION2PF(&pfr_mask, af);
@@ -2146,6 +2164,7 @@ _next_block:
 		/* this is a single IP address - no possible nested block */
 		PF_ACPY(counter, addr, af);
 		*pidx = idx;
+		kt->pfrkt_match++;
 		return (0);
 	}
 	for (;;) {
@@ -2161,6 +2180,7 @@ _next_block:
 			/* lookup return the same block - perfect */
 			PF_ACPY(counter, addr, af);
 			*pidx = idx;
+			kt->pfrkt_match++;
 			return (0);
 		}
 

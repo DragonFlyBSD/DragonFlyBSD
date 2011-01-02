@@ -121,6 +121,10 @@ Or you can just use the menu above to browse through the API docs.
 #include <ldns/sha1.h>
 #include <ldns/sha2.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define LDNS_IP4ADDRLEN      (32/8)
 #define LDNS_IP6ADDRLEN      (128/8)
 #define LDNS_PORT	53
@@ -143,5 +147,9 @@ extern ldns_lookup_table ldns_rcodes[];
 extern ldns_lookup_table ldns_opcodes[];
 /** EDNS flags */
 extern ldns_lookup_table ldns_edns_flags[];
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LDNS_DNS_H */

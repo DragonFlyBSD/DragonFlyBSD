@@ -41,8 +41,6 @@
  */
 #include <ldns/config.h>
 
-#include <ldns/ldns.h>
-
 #include <sys/types.h>
 #include <sys/param.h>
 #ifdef HAVE_SYS_SOCKET_H
@@ -256,41 +254,56 @@ ldns_b32_ntop_ar(uint8_t const *src, size_t srclength, char *target, size_t targ
 		}
 		target[datalength++] = B32_ar[output[0]];
 		if (srclength >= 1) {
+			if (datalength + 1 > targsize) { return (-2); }
 			target[datalength++] = B32_ar[output[1]];
 			if (srclength == 1 && output[2] == 0) {
+				if (datalength + 1 > targsize) { return (-2); }
 				target[datalength++] = Pad32;
 			} else {
+				if (datalength + 1 > targsize) { return (-2); }
 				target[datalength++] = B32_ar[output[2]];
 			}
 		} else {
+			if (datalength + 1 > targsize) { return (-2); }
 			target[datalength++] = Pad32;
+			if (datalength + 1 > targsize) { return (-2); }
 			target[datalength++] = Pad32;
 		}
 		if (srclength >= 2) {
+			if (datalength + 1 > targsize) { return (-2); }
 			target[datalength++] = B32_ar[output[3]];
 		} else {
+			if (datalength + 1 > targsize) { return (-2); }
 			target[datalength++] = Pad32;
 		}
 		if (srclength >= 3) {
+			if (datalength + 1 > targsize) { return (-2); }
 			target[datalength++] = B32_ar[output[4]];
 			if (srclength == 3 && output[5] == 0) {
+				if (datalength + 1 > targsize) { return (-2); }
 				target[datalength++] = Pad32;
 			} else {
+				if (datalength + 1 > targsize) { return (-2); }
 				target[datalength++] = B32_ar[output[5]];
 			}
 		} else {
+			if (datalength + 1 > targsize) { return (-2); }
 			target[datalength++] = Pad32;
+			if (datalength + 1 > targsize) { return (-2); }
 			target[datalength++] = Pad32;
 		}
 		if (srclength >= 4) {
+			if (datalength + 1 > targsize) { return (-2); }
 			target[datalength++] = B32_ar[output[6]];
 		} else {
+			if (datalength + 1 > targsize) { return (-2); }
 			target[datalength++] = Pad32;
 		}
+		if (datalength + 1 > targsize) { return (-2); }
 		target[datalength++] = Pad32;
 	}
-	if (datalength > targsize) {
-		return (-3);
+	if (datalength+1 > targsize) {
+		return (int) (datalength);
 	}
 	target[datalength] = '\0';	/* Returned value doesn't count \0. */
 	return (int) (datalength);

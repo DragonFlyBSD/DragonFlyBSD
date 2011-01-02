@@ -177,56 +177,15 @@ dohooks(struct hook_desc_head *head, int flags)
 #define ISN_STATIC_INCREMENT 4096
 #define ISN_RANDOM_INCREMENT (4096 - 1)
 
-static u_char pf_isn_secret[32];
-static int pf_isn_last_reseed;
-static u_int32_t pf_isn_offset;
-
-u_int32_t
-pf_new_isn(struct pf_state_key *sk)	/* From FreeBSD */
+/* wrapper functions for pool_* */
+void *
+pool_get(vm_zone_t *pp, int flags)
 {
-	MD5_CTX isn_ctx;
-	u_int32_t md5_buffer[4];
-	u_int32_t new_isn;
-	struct pf_state_host *src, *dst;
+	void *retval;
+	retval = zalloc(*(pp));
 
-	/* Seed if this is the first use, reseed if requested. */
-	if (pf_isn_last_reseed == 0) {
-		read_random_unlimited(&pf_isn_secret, sizeof(pf_isn_secret));
-		pf_isn_last_reseed = ticks;
-	}
+	if (flags & PR_ZERO)
+		bzero(retval, (*pp)->zsize);
 
-	if (sk->direction == PF_IN) {
-		src = &sk->ext;
-		dst = &sk->gwy;
-	} else {
-		src = &sk->lan;
-		dst = &sk->ext;
-	}
-
-	/* Compute the md5 hash and return the ISN. */
-	MD5Init(&isn_ctx);
-	MD5Update(&isn_ctx, (u_char *) &dst->port, sizeof(u_short));
-	MD5Update(&isn_ctx, (u_char *) &src->port, sizeof(u_short));
-#ifdef INET6
-	if (sk->af == AF_INET6) {
-		MD5Update(&isn_ctx, (u_char *) &dst->addr,
-			  sizeof(struct in6_addr));
-		MD5Update(&isn_ctx, (u_char *) &src->addr,
-			  sizeof(struct in6_addr));
-	} else
-#endif
-	{
-		MD5Update(&isn_ctx, (u_char *) &dst->addr,
-			  sizeof(struct in_addr));
-		MD5Update(&isn_ctx, (u_char *) &src->addr,
-			  sizeof(struct in_addr));
-	}
-	MD5Update(&isn_ctx, (u_char *) &pf_isn_secret, sizeof(pf_isn_secret));
-	MD5Final((u_char *) &md5_buffer, &isn_ctx);
-	new_isn = (tcp_seq) md5_buffer[0];
-	pf_isn_offset += ISN_STATIC_INCREMENT +
-		(karc4random() & ISN_RANDOM_INCREMENT);
-	new_isn += pf_isn_offset;
-	return (new_isn);
+	return retval;
 }
-

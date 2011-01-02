@@ -3,7 +3,6 @@
  * MultiMaster SCSI host adapters.  Product specific probe and
  * attach routines can be found in:
  * sys/dev/buslogic/bt_isa.c	BT-54X, BT-445 cards
- * sys/dev/buslogic/bt_eisa.c	BT-74X, BT-75x cards, SDC3222F
  * sys/dev/buslogic/bt_pci.c	BT-946, BT-948, BT-956, BT-958 cards
  *
  * Copyright (c) 1998, 1999 Justin T. Gibbs.
@@ -31,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/btreg.h,v 1.10.2.2 2001/09/03 02:45:22 peter Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/btreg.h,v 1.3 2005/06/11 09:03:48 swildner Exp $
  */
 
 #ifndef _BTREG_H_

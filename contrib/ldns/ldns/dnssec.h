@@ -34,6 +34,10 @@
 #include <ldns/resolver.h>
 #include <ldns/dnssec_zone.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define LDNS_MAX_KEYLEN		2048
 #define LDNS_DNSSEC_KEYPROTO	3
 /* default time before sigs expire */
@@ -158,6 +162,16 @@ int ldns_digest_evp(unsigned char* data, unsigned int len,
  * \return the key or NULL on error.
  */
 EVP_PKEY* ldns_gost2pkey_raw(unsigned char* key, size_t keylen);
+
+/**
+ * Converts a holding buffer with key material to EVP PKEY in openssl.
+ * Only available if ldns was compiled with ECDSA.
+ * \param[in] key data to convert
+ * \param[in] keylen length of the key data
+ * \param[in] algo precise algorithm to initialize ECC group values.
+ * \return the key or NULL on error.
+ */
+EVP_PKEY* ldns_ecdsa2pkey_raw(unsigned char* key, size_t keylen, uint8_t algo);
 
 #endif /* HAVE_SSL */
 
@@ -363,7 +377,7 @@ bool ldns_nsec_covers_name(const ldns_rr *nsec, const ldns_rdf *name);
  * verify a packet 
  * \param[in] p the packet
  * \param[in] t the rr set type to check
- * \param[in] o the rr set name to ckeck
+ * \param[in] o the rr set name to check
  * \param[in] k list of keys
  * \param[in] s list of sigs (may be null)
  * \param[out] good_keys keys which validated the packet
@@ -449,6 +463,35 @@ ldns_status
 ldns_convert_dsa_rrsig_rdf2asn1(ldns_buffer *target_buffer,
 						  const ldns_rdf *sig_rdf);
 
+/**
+ * Converts the ECDSA signature from ASN1 representation (as 
+ * used by OpenSSL) to raw signature data as used in DNS
+ * This routine is only present if ldns is compiled with ecdsa support.
+ *
+ * \param[in] sig The signature in ASN1 format
+ * \param[in] sig_len The length of the signature
+ * \return a new rdf with the signature
+ */
+ldns_rdf *
+ldns_convert_ecdsa_rrsig_asn12rdf(const ldns_buffer *sig, const long sig_len);
+
+/**
+ * Converts the RRSIG signature RDF (from DNS) to a buffer with the 
+ * signature in ASN1 format as openssl uses it.
+ * This routine is only present if ldns is compiled with ecdsa support.
+ *
+ * \param[out] target_buffer buffer to place the signature data in ASN1.
+ * \param[in] sig_rdf The signature rdf to convert
+ * \return LDNS_STATUS_OK on success, error code otherwise
+ */
+ldns_status
+ldns_convert_ecdsa_rrsig_rdf2asn1(ldns_buffer *target_buffer,
+        const ldns_rdf *sig_rdf);
+
 #endif /* HAVE_SSL */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LDNS_DNSSEC_H */

@@ -44,9 +44,13 @@ ldns_buffer_new_frm_data(ldns_buffer *buffer, void *data, size_t size)
 
 	buffer->_position = 0; 
 	buffer->_limit = buffer->_capacity = size;
-	buffer->_data = LDNS_XMALLOC(uint8_t, size);
-	memcpy(buffer->_data, data, size);
 	buffer->_fixed = 0;
+	buffer->_data = LDNS_XMALLOC(uint8_t, size);
+	if(!buffer->_data) {
+		buffer->_status = LDNS_STATUS_MEM_ERR;
+		return;
+	}
+	memcpy(buffer->_data, data, size);
 	buffer->_status = LDNS_STATUS_OK;
 	
 	ldns_buffer_invariant(buffer);

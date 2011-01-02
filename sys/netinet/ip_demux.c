@@ -104,7 +104,8 @@ udp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
  * If the packet is a valid IP datagram, upon returning of this function
  * following things are promised:
  *
- * o  IP header (including any possible IP options) is in one mbuf (m_len).
+ * o  IP header (including any possible IP options) and any data preceding
+ *    IP header (usually linker layer header) are in one mbuf (m_len).
  * o  IP header length is not less than the minimum (sizeof(struct ip)).
  * o  IP total length is not less than IP header length.
  * o  IP datagram resides completely in the mbuf chain,
@@ -395,18 +396,25 @@ tcp_ctlport(int cmd, struct sockaddr *sa, void *vip)
 		return(NULL);
 	if (ip == NULL || PRC_IS_REDIRECT(cmd) || cmd == PRC_HOSTDEAD) {
 		/*
-		 * Message will be forwarded to all TCP protocol threads
-		 * in following way:
+		 * A new message will be allocated later to save necessary
+		 * information and will be forwarded to all network protocol
+		 * threads in the following way:
 		 *
-		 * netisr0 (the msgport we return here)
-		 *    |
-		 *    |
-		 *    | domsg <----------------------------+
-		 *    |                                    |
-		 *    |                                    | replymsg
-		 *    |                                    |
-		 *    V   forwardmsg         forwardmsg    |
-		 *  tcp0 ------------> tcp1 ------------> tcpN
+		 * (the the thread owns the msgport that we return here)
+		 * netisr0 <--+
+		 *    |       |
+		 *    |       |
+		 *    |       |
+		 *    +-------+
+		 *     sendmsg
+		 *     [msg is kmalloc()ed]
+		 *    
+		 *
+		 * Later on, when the msg is received by netisr0:
+		 *
+		 *         forwardmsg         forwardmsg
+		 * netisr0 ---------> netisr1 ---------> netisrN
+		 *                                       [msg is kfree()ed]
 		 */
 		return cpu0_ctlport(cmd, sa, vip);
 	} else {

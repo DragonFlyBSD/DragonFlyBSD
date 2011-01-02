@@ -17,6 +17,10 @@ drill/drill.h.in
 drill/install-sh
 examples/
 install-sh
+ldns/config.h.in
+ldns/ldns.h
+ldns/net.h.in
+ldns/util.h.in
 ldns_symbols.def
 libdns.doxygen
 libdns.vim

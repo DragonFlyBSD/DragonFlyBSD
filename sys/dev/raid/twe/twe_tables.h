@@ -26,8 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/twe/twe_tables.h,v 1.1.2.4 2004/04/07 22:18:01 vkashyap Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twe_tables.h,v 1.4 2005/08/22 21:16:20 hmp Exp $
+ *	$FreeBSD: src/sys/dev/twe/twe_tables.h,v 1.4 2003/12/02 07:57:20 ps Exp $
  */
 
 /*
@@ -37,6 +36,8 @@ struct twe_code_lookup {
     char	*string;
     u_int32_t	code;
 };
+
+extern char	*twe_describe_code(struct twe_code_lookup *table, u_int32_t code);
 
 #ifndef TWE_DEFINE_TABLES
 extern struct twe_code_lookup twe_table_status[];

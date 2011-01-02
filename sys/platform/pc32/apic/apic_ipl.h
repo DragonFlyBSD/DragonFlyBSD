@@ -31,9 +31,6 @@
 
 #ifdef SMP /* APIC-IO */
 
-/* IDT vector base for regular (aka. slow) and fast interrupts */
-#define TPR_FAST_INTS	0x60
-
 #define APIC_HWI_VECTORS 32
 
 #endif

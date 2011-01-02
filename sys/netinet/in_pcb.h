@@ -249,6 +249,8 @@ struct inpcb {
 #define	in6p_lport	inp_lport  /* for KAME src sync over BSD*'s */
 #define	in6p_fport	inp_fport  /* for KAME src sync over BSD*'s */
 #define	in6p_ppcb	inp_ppcb  /* for KAME src sync over BSD*'s */
+
+	void	*inp_pf_sk;
 };
 /*
  * The range of the generation count, as used in this implementation,
@@ -367,6 +369,26 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 #define	sotoinpcb(so)	((struct inpcb *)(so)->so_pcb)
 #define	sotoin6pcb(so)	sotoinpcb(so) /* for KAME src sync over BSD*'s */
 
+/* macros for handling bitmap of ports not to allocate dynamically */
+#define	DP_MAPBITS	(sizeof(u_int32_t) * NBBY)
+#define	DP_MAPSIZE	(howmany(65536, DP_MAPBITS))
+#define	DP_SET(m, p)	((m)[(p) / DP_MAPBITS] |= (1 << ((p) % DP_MAPBITS)))
+#define	DP_CLR(m, p)	((m)[(p) / DP_MAPBITS] &= ~(1 << ((p) % DP_MAPBITS)))
+#define	DP_ISSET(m, p)	((m)[(p) / DP_MAPBITS] & (1 << ((p) % DP_MAPBITS)))
+
+/* default values for baddynamicports [see ip_init()] */
+#define	DEFBADDYNAMICPORTS_TCP	{ \
+	587, 749, 750, 751, 871, 2049, \
+	6000, 6001, 6002, 6003, 6004, 6005, 6006, 6007, 6008, 6009, 6010, \
+	0 }
+#define	DEFBADDYNAMICPORTS_UDP	{ 623, 664, 749, 750, 751, 2049, 0 }
+
+struct baddynamicports {
+	u_int32_t tcp[DP_MAPSIZE];
+	u_int32_t udp[DP_MAPSIZE];
+};
+
+
 #define	INP_SOCKAF(so) so->so_proto->pr_domain->dom_family
 
 #define	INP_CHECK_SOCKAF(so, af)	(INP_SOCKAF(so) == af)
@@ -411,6 +433,7 @@ int	in_setpeeraddr (struct socket *so, struct sockaddr **nam);
 void	in_setpeeraddr_dispatch(union netmsg *);
 int	in_setsockaddr (struct socket *so, struct sockaddr **nam);
 void	in_setsockaddr_dispatch(netmsg_t msg);
+int	in_baddynamic(u_int16_t, u_int16_t);
 void	in_pcbremwildcardhash(struct inpcb *inp);
 void	in_pcbremwildcardhash_oncpu(struct inpcb *, struct inpcbinfo *);
 void	in_pcbremconnhash(struct inpcb *inp);

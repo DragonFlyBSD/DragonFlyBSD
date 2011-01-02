@@ -74,6 +74,9 @@ struct espstat {
 
 #ifdef _KERNEL
 extern	int esp_enable;
+extern int udpencap_enable;
+extern int udpencap_port;
+
 extern	struct espstat espstat;
 #endif /* _KERNEL */
 #endif /*_NETIPSEC_ESP_VAR_H_*/

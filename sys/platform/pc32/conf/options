@@ -113,8 +113,6 @@ USERCONFIG		opt_userconfig.h
 VISUAL_USERCONFIG	opt_userconfig.h
 INTRO_USERCONFIG	opt_userconfig.h
 
-EISA_SLOTS		opt_eisa.h
-
 FE_8BIT_SUPPORT		opt_fe.h
 
 # Video spigot

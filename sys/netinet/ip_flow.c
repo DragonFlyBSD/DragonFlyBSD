@@ -433,7 +433,7 @@ void
 ipflow_slowtimo(void)
 {
 #ifdef SMP
-	uint32_t mask = 0;
+	cpumask_t mask = 0;
 	int i;
 
 	for (i = 0; i < ncpus; ++i) {

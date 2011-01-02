@@ -3,7 +3,6 @@
  * Product specific probe and attach routines can be found in:
  * 
  * i386/isa/adv_isa.c	ABP5140, ABP542, ABP5150, ABP842, ABP852
- * i386/eisa/adv_eisa.c	ABP742, ABP752
  * pci/adv_pci.c	ABP920, ABP930, ABP930U, ABP930UA, ABP940, ABP940U,
  *			ABP940UA, ABP950, ABP960, ABP960U, ABP960UA,
  *			ABP970, ABP970U
@@ -33,7 +32,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/advansys.c,v 1.14.2.4 2002/01/06 21:21:42 dwmalone Exp $
- * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.15 2008/05/18 20:30:20 pavalos Exp $
  */
 /*
  * Ported from:

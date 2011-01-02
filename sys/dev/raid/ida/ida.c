@@ -34,8 +34,7 @@
  * Generic driver for Compaq SMART RAID adapters.
  *
  * Specific probe routines are in:
- *	pci/ida_pci.c		
- *	i386/eisa/ida_eisa.c
+ *	dev/raid/ida/ida_pci.c
  */
 
 #include <sys/param.h>

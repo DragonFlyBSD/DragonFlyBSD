@@ -24,6 +24,10 @@
 #include <ldns/rr.h>
 #include <ldns/packet.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* The length of the header */
 #define	LDNS_HEADER_SIZE	12
 
@@ -185,5 +189,9 @@ ldns_status ldns_wire2rdf(ldns_rr *rr, const uint8_t *wire, size_t max, size_t *
  * \return LDNS_STATUS_OK if everything succeeds, error otherwise
  */
 ldns_status ldns_wire2rr(ldns_rr **rr, const uint8_t *wire, size_t max, size_t *pos, ldns_pkt_section section);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LDNS_WIRE2HOST_H */

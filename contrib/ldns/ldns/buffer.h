@@ -22,6 +22,10 @@
 
 #include "ldns/util.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * number of initial bytes in buffer of
  * which we cannot tell the size before hand
@@ -632,5 +636,9 @@ void *ldns_buffer_export(ldns_buffer *buffer);
  * \param[in] *from what to copy to result.
  */
 void ldns_buffer_copy(ldns_buffer* result, ldns_buffer* from);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LDNS_BUFFER_H */

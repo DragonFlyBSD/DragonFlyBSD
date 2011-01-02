@@ -11,6 +11,10 @@
 #include <ldns/ldns.h>
 #include <ldns/rbtree.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Singly linked list of rrs
  */
@@ -354,5 +358,9 @@ void ldns_dnssec_zone_print(FILE *out, ldns_dnssec_zone *zone);
  * return LDNS_STATUS_OK on success.
  */
 ldns_status ldns_dnssec_zone_add_empty_nonterminals(ldns_dnssec_zone *zone);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

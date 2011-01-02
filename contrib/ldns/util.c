@@ -262,7 +262,6 @@ ldns_init_random(FILE *fd, unsigned int size)
 	size_t read = 0;
 	unsigned int seed_i;
 	struct timeval tv;
-	struct timezone tz;
 
 	/* we'll need at least sizeof(unsigned int) bytes for the
 	   standard prng seed */
@@ -279,7 +278,7 @@ ldns_init_random(FILE *fd, unsigned int size)
 				/* no readable /dev/random either, and no entropy
 				   source given. we'll have to improvise */
 				for (read = 0; read < size; read++) {
-					gettimeofday(&tv, &tz);
+					gettimeofday(&tv, NULL);
 					seed[read] = (uint8_t) (tv.tv_usec % 256);
 				}
 			} else {
@@ -312,10 +311,28 @@ ldns_init_random(FILE *fd, unsigned int size)
 	}
 
 	if (!fd) {
-		fclose(rand_f);
+                if (rand_f) fclose(rand_f);
 	}
 
 	return 0;
+}
+
+/**
+ * Get random number.
+ *
+ */
+uint16_t
+ldns_get_random(void)
+{
+        uint16_t rid = 0;
+#ifdef HAVE_SSL
+        if (RAND_bytes((unsigned char*)&rid, 2) != 1) {
+                rid = (uint16_t) random();
+        }
+#else
+        rid = (uint16_t) random();
+#endif
+	return rid;
 }
 
 /*
@@ -333,6 +350,7 @@ ldns_bubblebabble(uint8_t *data, size_t len)
 
 	rounds = (len / 2) + 1;
 	retval = LDNS_XMALLOC(char, rounds * 6);
+	if(!retval) return NULL;
 	retval[j++] = 'x';
 	for (i = 0; i < rounds; i++) {
 		size_t idx0, idx1, idx2, idx3, idx4;

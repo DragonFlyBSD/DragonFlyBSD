@@ -20,6 +20,10 @@
 
 #include <ldns/resolver.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * create an update packet from zone name, class and the rr lists
  * \param[in] zone_rdf name of the zone
@@ -103,5 +107,9 @@ ldns_status ldns_update_soa_mname(ldns_rdf *zone, ldns_resolver *r, ldns_rr_clas
  * not documented
  */
 ldns_status ldns_update_soa_zone_mname(const char *fqdn, ldns_resolver *r, ldns_rr_class c, ldns_rdf **zone_rdf, ldns_rdf **mname_rdf);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  /* LDNS_UPDATE_H */

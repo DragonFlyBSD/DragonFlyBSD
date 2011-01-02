@@ -110,9 +110,7 @@ ldns_get_rr_list_name_by_addr(ldns_resolver *res, ldns_rdf *addr, ldns_rr_class 
 	ldns_pkt *pkt;
 	ldns_rr_list *names;
 	ldns_rdf *name;
-	size_t i;
 
-	i = 0; 
 	names = NULL;
 
 	if (!res || !addr) {
@@ -166,6 +164,14 @@ ldns_get_rr_list_hosts_frm_fp_l(FILE *fp, int *line_nr)
 	ip6 = false;
 	list = ldns_rr_list_new();
 	rr = NULL;
+	if(!line || !word || !addr || !rr_str || !list) {
+		LDNS_FREE(line);
+		LDNS_FREE(word);
+		LDNS_FREE(addr);
+		LDNS_FREE(rr_str);
+		ldns_rr_list_free(list);
+		return NULL;
+	}
 
 	for(i = ldns_fget_token_l(fp, line, "\n", 0, line_nr);
 			i > 0; i = ldns_fget_token_l(fp, line, "\n", 0, line_nr)) {
@@ -175,6 +181,14 @@ ldns_get_rr_list_hosts_frm_fp_l(FILE *fp, int *line_nr)
 		}
 		/* put it in a buffer for further processing */
 		linebuf = LDNS_MALLOC(ldns_buffer);
+		if(!linebuf) {
+			LDNS_FREE(line);
+			LDNS_FREE(word);
+			LDNS_FREE(addr);
+			LDNS_FREE(rr_str);
+			ldns_rr_list_deep_free(list);
+			return NULL;
+		}
 
 		ldns_buffer_new_frm_data(linebuf, line, (size_t) i);
 		for(cnt = 0, j = ldns_bget_token(linebuf, word, LDNS_PARSE_NO_NL, 0);

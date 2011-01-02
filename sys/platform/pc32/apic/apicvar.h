@@ -37,57 +37,6 @@
  * Local && I/O APIC variable definitions.
  */
 
-/*
- * Layout of local APIC interrupt vectors:
- *
- *	0xff (255)  +-------------+
- *                  |             | 15 (Spurious / IPIs / Local Interrupts)
- *	0xf0 (240)  +-------------+
- *                  |             | 14 (I/O Interrupts)
- *	0xe0 (224)  +-------------+
- *                  |             | 13 (I/O Interrupts)
- *	0xd0 (208)  +-------------+
- *                  |             | 12 (I/O Interrupts)
- *	0xc0 (192)  +-------------+
- *                  |             | 11 (I/O Interrupts)
- *	0xb0 (176)  +-------------+
- *                  |             | 10 (I/O Interrupts)
- *	0xa0 (160)  +-------------+
- *                  |             | 9 (I/O Interrupts)
- *	0x90 (144)  +-------------+
- *                  |             | 8 (I/O Interrupts / System Calls)
- *	0x80 (128)  +-------------+
- *                  |             | 7 (I/O Interrupts)
- *	0x70 (112)  +-------------+
- *                  |             | 6 (I/O Interrupts)
- *	0x60 (96)   +-------------+
- *                  |             | 5 (I/O Interrupts)
- *	0x50 (80)   +-------------+
- *                  |             | 4 (I/O Interrupts)
- *	0x40 (64)   +-------------+
- *                  |             | 3 (I/O Interrupts)
- *	0x30 (48)   +-------------+
- *                  |             | 2 (ATPIC Interrupts)
- *	0x20 (32)   +-------------+
- *                  |             | 1 (Exceptions, traps, faults, etc.)
- *	0x10 (16)   +-------------+
- *                  |             | 0 (Exceptions, traps, faults, etc.)
- *	0x00 (0)    +-------------+
- *
- * Note: 0x80 needs to be handled specially and not allocated to an
- * I/O device!
- */
-
-#define	APIC_ID_ALL	0xff
-#define	APIC_IO_INTS	(IDT_IO_INTS + 16)
-#define	APIC_NUM_IOINTS	192
-
-#define	APIC_LOCAL_INTS	240
-
-/* XXX put APIC interrupt and IPI assignments here */
-
-#define	APIC_SPURIOUS_INT 255
-
 #define	LVT_LINT0	0
 #define	LVT_LINT1	1
 #define	LVT_TIMER	2

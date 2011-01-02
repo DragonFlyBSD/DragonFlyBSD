@@ -116,27 +116,6 @@ ahc_map_int(struct ahc_softc *ahc)
 	return (error);
 }
 
-int
-aic7770_map_registers(struct ahc_softc *ahc, u_int unused_ioport_arg)
-{
-	struct	resource *regs;
-	int	rid;
-
-	rid = 0;
-	regs = bus_alloc_resource_any(ahc->dev_softc, SYS_RES_IOPORT, &rid,
-				      RF_ACTIVE);
-	if (regs == NULL) {
-		device_printf(ahc->dev_softc, "Unable to map I/O space?!\n");
-		return ENOMEM;
-	}
-	ahc->platform_data->regs_res_type = SYS_RES_IOPORT;
-	ahc->platform_data->regs_res_id = rid,
-	ahc->platform_data->regs = regs;
-	ahc->tag = rman_get_bustag(regs);
-	ahc->bsh = rman_get_bushandle(regs);
-	return (0);
-}
-
 /*
  * Attach all the sub-devices we can find
  */

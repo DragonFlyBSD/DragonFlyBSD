@@ -219,22 +219,6 @@ int ahc_pci_map_registers(struct ahc_softc *ahc);
 #define ahc_pci_map_int ahc_map_int
 #endif /*AIC_PCI_CONFIG*/
 
-/******************************** VL/EISA *************************************/
-int aic7770_map_registers(struct ahc_softc *ahc, u_int port);
-static __inline int aic7770_map_int(struct ahc_softc *, int);
-
-static __inline int
-aic7770_map_int(struct ahc_softc *ahc, int irq)
-{
-	/*
-	 * The IRQ is unused in the FreeBSD
-	 * implementation since the EISA and
-	 * ISA attachments register the IRQ
-	 * with newbus before the core is called.
-	 */
-	return ahc_map_int(ahc);
-}
-
 /********************************* Debug **************************************/
 static __inline void	ahc_print_path(struct ahc_softc *, struct scb *);
 static __inline void	ahc_platform_dump_card_state(struct ahc_softc *ahc);

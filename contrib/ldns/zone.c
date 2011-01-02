@@ -81,7 +81,7 @@ ldns_zone_strip_glue_rrs(const ldns_rdf *zone_name, const ldns_rr_list *rrs, ldn
 	ldns_rr_list *zone_cuts;
 	ldns_rr_list *addr;
 	ldns_rr *r, *ns, *a;
-	ldns_rdf *dname_a, *dname_ns, *ns_owner;
+	ldns_rdf *dname_a, *ns_owner;
 	uint16_t i,j;
 
 	new_list = NULL;
@@ -120,7 +120,6 @@ ldns_zone_strip_glue_rrs(const ldns_rdf *zone_name, const ldns_rr_list *rrs, ldn
 	for(i = 0; i < ldns_rr_list_rr_count(zone_cuts); i++) {
 		ns = ldns_rr_list_rr(zone_cuts, i);
 		ns_owner = ldns_rr_owner(ns);
-		dname_ns = ldns_rr_ns_nsdname(ns);
 		for(j = 0; j < ldns_rr_list_rr_count(addr); j++) {
 			a = ldns_rr_list_rr(addr, j);
 			dname_a = ldns_rr_owner(a);
@@ -180,7 +179,7 @@ ldns_zone_glue_rr_list(const ldns_zone *z)
 	ldns_rr_list *addr;
 	ldns_rr_list *glue;
 	ldns_rr *r, *ns, *a;
-	ldns_rdf *dname_a, *dname_ns, *ns_owner;
+	ldns_rdf *dname_a, *ns_owner;
 	size_t i,j;
 
 	zone_cuts = NULL;
@@ -225,7 +224,6 @@ ldns_zone_glue_rr_list(const ldns_zone *z)
 		ns = ldns_rr_list_rr(zone_cuts, i);
 		ns_owner = ldns_rr_owner(ns);
 
-		dname_ns = ldns_rr_ns_nsdname(ns);
 		for(j = 0; j < ldns_rr_list_rr_count(addr); j++) {
 			a = ldns_rr_list_rr(addr, j);
 			dname_a = ldns_rr_owner(a);
@@ -290,13 +288,12 @@ ldns_zone_new_frm_fp(ldns_zone **z, FILE *fp, ldns_rdf *origin, uint32_t ttl, ld
 
 /* XXX: class is never used */
 ldns_status
-ldns_zone_new_frm_fp_l(ldns_zone **z, FILE *fp, ldns_rdf *origin, uint32_t ttl, ldns_rr_class c, 
-		int *line_nr)
+ldns_zone_new_frm_fp_l(ldns_zone **z, FILE *fp, ldns_rdf *origin, uint32_t ttl, 
+        ldns_rr_class ATTR_UNUSED(c), int *line_nr)
 {
 	ldns_zone *newzone;
 	ldns_rr *rr;
 	uint32_t my_ttl;
-	ldns_rr_class my_class;
 	ldns_rdf *my_origin;
 	ldns_rdf *my_prev;
 	bool soa_seen = false; 	/* 2 soa are an error */
@@ -311,7 +308,6 @@ ldns_zone_new_frm_fp_l(ldns_zone **z, FILE *fp, ldns_rdf *origin, uint32_t ttl, 
 	my_prev = NULL;
 
 	my_ttl    = ttl;
-	my_class  = c;
 	
 	if (origin) {
 		my_origin = ldns_rdf_clone(origin);
@@ -350,7 +346,6 @@ ldns_zone_new_frm_fp_l(ldns_zone **z, FILE *fp, ldns_rdf *origin, uint32_t ttl, 
 
 			/*my_origin = ldns_rr_owner(rr);*/
 			my_ttl    = ldns_rr_ttl(rr); 	/* XXX: this seems like an error */
-			my_class  = ldns_rr_get_class(rr);
 		case LDNS_STATUS_SYNTAX_EMPTY:
 			/* empty line was seen */
 		case LDNS_STATUS_SYNTAX_TTL:
@@ -358,6 +353,9 @@ ldns_zone_new_frm_fp_l(ldns_zone **z, FILE *fp, ldns_rdf *origin, uint32_t ttl, 
 			break;
 		case LDNS_STATUS_SYNTAX_ORIGIN:
 			/* the function set the origin */
+			break;
+		case LDNS_STATUS_SYNTAX_INCLUDE:
+			ret = LDNS_STATUS_SYNTAX_INCLUDE_ERR_NOTIMPL;
 			break;
 		default:
 			ret = s;

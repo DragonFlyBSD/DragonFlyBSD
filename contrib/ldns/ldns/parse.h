@@ -13,6 +13,10 @@
 #include <ldns/common.h>
 #include <ldns/buffer.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define LDNS_PARSE_SKIP_SPACE		"\f\n\r\v"
 #define LDNS_PARSE_NORMAL		" \f\n\r\t\v"
 #define LDNS_PARSE_NO_NL		" \t"
@@ -155,5 +159,9 @@ void ldns_fskipcs(FILE *fp, const char *s);
  * \return void
  */
 void ldns_fskipcs_l(FILE *fp, const char *s, int *line_nr);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LDNS_PARSE_H */

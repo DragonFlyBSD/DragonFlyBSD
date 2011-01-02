@@ -64,7 +64,6 @@ options 	DDB_TRACE
 options 	INVARIANTS
 
 device		isa
-device		eisa
 device		pci
 
 # NEW-ATA (NATA) and ATAPI devices

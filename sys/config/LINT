@@ -633,7 +633,6 @@ options 	IPSTEALTH		#support for stealth forwarding
 options 	TCPDEBUG
 
 device		pf
-device		pfsync
 device		pflog
 
 #CARP
@@ -1052,8 +1051,7 @@ options 	MSGBUF_SIZE=40960
 #####################################################################
 # HARDWARE DEVICE CONFIGURATION
 
-# ISA and EISA devices:
-# EISA support is available for some device, so they can be auto-probed.
+# ISA devices:
 
 #
 # Mandatory ISA devices: isa, npx
@@ -1220,7 +1218,7 @@ device		npx0	at nexus? port IO_NPX flags 0x0 irq 13
 #
 
 #
-# Optional ISA and EISA devices:
+# Optional ISA devices:
 #
 
 #
@@ -1596,7 +1594,7 @@ device		"snd_uaudio"
 # si: Specialix SI/XIO 4-32 port terminal multiplexor
 # spic: Sony Programmable I/O controller (VAIO notebooks)
 # stl: Stallion EasyIO and EasyConnection 8/32 (ISA and PCI), EasyConnection 8/64 PCI
-# stli: Stallion EasyConnection 8/64 ISA/EISA, ONboard, Brumby (intelligent)
+# stli: Stallion EasyConnection 8/64 ISA, ONboard, Brumby (intelligent)
 # nmdm: nullmodem terminal driver (see nmdm(4))
 
 # Notes on APM
@@ -1662,9 +1660,7 @@ device		"snd_uaudio"
 #     to change src/sys/dev/serial/stl/stallion.c if you reconfigure this on the boards.
 #  The "flags" and "iosiz" settings on the stli driver depend on the board:
 #	EasyConnection 8/64 ISA:     flags 23         iosiz 0x1000
-#	EasyConnection 8/64 EISA:    flags 24         iosiz 0x10000
 #	ONboard ISA:                 flags 4          iosiz 0x10000
-#	ONboard EISA:                flags 7          iosiz 0x10000
 #	Brumby:                      flags 2          iosiz 0x4000
 #	Stallion:                    flags 1          iosiz 0x10000
 #  For the PCI cards, "device stl" will suffice.
@@ -1695,18 +1691,8 @@ device		stli0	at isa? port 0x2a0 iomem 0xcc000 flags 23 iosiz 0x1000
 # nullmodem terminal driver
 device		nmdm
 
-#
-# EISA devices:
-#
-# The EISA bus device is `eisa'.  It provides auto-detection and
-# configuration support for all devices on the EISA bus.
-#
-# The `ahb' device provides support for the Adaptec 174X adapter.
-#
 # The `ahc' device provides support for the Adaptec 274X and 284X
-# adapters.  The 284X, although a VLB card, responds to EISA probes.
-device		eisa
-device		ahb
+# adapters.
 device		ahc
 
 # The aic7xxx driver will attempt to use memory mapped I/O for all PCI
@@ -1718,14 +1704,6 @@ options 	AHC_ALLOW_MEMIO
 # The adw driver will attempt to use memory mapped I/O for all PCI
 # controllers that have it configured only if this option is set.
 options 	ADW_ALLOW_MEMIO
-
-# By default, only 10 EISA slots are probed, since the slot numbers
-# above clash with the configuration address space of the PCI subsystem,
-# and the EISA probe is not very smart about this.  This is sufficient
-# for most machines, but in particular the HP NetServer LC series comes
-# with an onboard AIC7770 dual-channel SCSI controller on EISA slot #11,
-# thus you need to bump this figure to 12 for them.
-options 	EISA_SLOTS=12
 
 #
 # PCI devices & PCI options:

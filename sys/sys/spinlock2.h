@@ -81,6 +81,20 @@ spin_trylock(struct spinlock *mtx)
 	++gd->gd_spinlocks_wr;
 	if ((value = atomic_swap_int(&mtx->lock, SPINLOCK_EXCLUSIVE)) != 0)
 		return (spin_trylock_wr_contested2(gd));
+#ifdef SMP
+#ifdef DEBUG_LOCKS
+	int i;
+	for (i = 0; i < SPINLOCK_DEBUG_ARRAY_SIZE; i++) {
+		if (gd->gd_curthread->td_spinlock_stack_id[i] == 0) {
+			gd->gd_curthread->td_spinlock_stack_id[i] = 1;
+			gd->gd_curthread->td_spinlock_stack[i] = mtx;
+			gd->gd_curthread->td_spinlock_caller_pc[i] =
+						__builtin_return_address(0);
+			break;
+		}
+	}
+#endif
+#endif
 	return (TRUE);
 }
 
@@ -115,6 +129,18 @@ spin_lock_quick(globaldata_t gd, struct spinlock *mtx)
 #ifdef SMP
 	if ((value = atomic_swap_int(&mtx->lock, SPINLOCK_EXCLUSIVE)) != 0)
 		spin_lock_wr_contested2(mtx);
+#ifdef DEBUG_LOCKS
+	int i;
+	for (i = 0; i < SPINLOCK_DEBUG_ARRAY_SIZE; i++) {
+		if (gd->gd_curthread->td_spinlock_stack_id[i] == 0) {
+			gd->gd_curthread->td_spinlock_stack_id[i] = 1;
+			gd->gd_curthread->td_spinlock_stack[i] = mtx;
+			gd->gd_curthread->td_spinlock_caller_pc[i] =
+				__builtin_return_address(0);
+			break;
+		}
+	}
+#endif
 #endif
 }
 
@@ -133,6 +159,18 @@ static __inline void
 spin_unlock_quick(globaldata_t gd, struct spinlock *mtx)
 {
 #ifdef SMP
+#ifdef DEBUG_LOCKS
+	int i;
+	for (i = 0; i < SPINLOCK_DEBUG_ARRAY_SIZE; i++) {
+		if ((gd->gd_curthread->td_spinlock_stack_id[i] == 1) &&
+		    (gd->gd_curthread->td_spinlock_stack[i] == mtx)) {
+			gd->gd_curthread->td_spinlock_stack_id[i] = 0;
+			gd->gd_curthread->td_spinlock_stack[i] = NULL;
+			gd->gd_curthread->td_spinlock_caller_pc[i] = NULL;
+			break;
+		}
+	}
+#endif
 	mtx->lock = 0;
 #endif
 	KKASSERT(gd->gd_spinlocks_wr > 0);

@@ -2,24 +2,24 @@
  * rbtree.h -- generic red-black tree
  *
  * Copyright (c) 2001-2008, NLnet Labs. All rights reserved.
- * 
+ *
  * This software is open source.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
- * 
+ *
  * Redistributions in binary form must reproduce the above copyright notice,
  * this list of conditions and the following disclaimer in the documentation
  * and/or other materials provided with the distribution.
- * 
+ *
  * Neither the name of the NLNET LABS nor the names of its contributors may
  * be used to endorse or promote products derived from this software without
  * specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
  * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
@@ -43,10 +43,15 @@
 #ifndef LDNS_RBTREE_H_
 #define	LDNS_RBTREE_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * This structure must be the first member of the data structure in
  * the rbtree.  This allows easy casting between an rbnode_t and the
  * user data (poor man's inheritance).
+ * Or you can use the data pointer member to get to your data item.
  */
 typedef struct ldns_rbnode_t ldns_rbnode_t;
 /**
@@ -82,15 +87,15 @@ struct ldns_rbtree_t {
 	/** The number of the nodes in the tree */
 	size_t       count;
 
-	/** 
-	 * Key compare function. <0,0,>0 like strcmp. 
-	 * Return 0 on two NULL ptrs. 
+	/**
+	 * Key compare function. <0,0,>0 like strcmp.
+	 * Return 0 on two NULL ptrs.
 	 */
 	int (*cmp) (const void *, const void *);
 };
 
-/** 
- * Create new tree (malloced) with given key compare function. 
+/**
+ * Create new tree (malloced) with given key compare function.
  * @param cmpf: compare function (like strcmp) takes pointers to two keys.
  * @return: new tree, empty.
  */
@@ -102,18 +107,18 @@ ldns_rbtree_t *ldns_rbtree_create(int (*cmpf)(const void *, const void *));
  */
 void ldns_rbtree_free(ldns_rbtree_t *rbtree);
 
-/** 
- * Init a new tree (malloced by caller) with given key compare function. 
+/**
+ * Init a new tree (malloced by caller) with given key compare function.
  * @param rbtree: uninitialised memory for new tree, returned empty.
  * @param cmpf: compare function (like strcmp) takes pointers to two keys.
  */
 void ldns_rbtree_init(ldns_rbtree_t *rbtree, int (*cmpf)(const void *, const void *));
 
-/** 
- * Insert data into the tree. 
+/**
+ * Insert data into the tree.
  * @param rbtree: tree to insert to.
- * @param data: element to insert. 
- * @return: data ptr or NULL if key already present. 
+ * @param data: element to insert.
+ * @return: data ptr or NULL if key already present.
  */
 ldns_rbnode_t *ldns_rbtree_insert(ldns_rbtree_t *rbtree, ldns_rbnode_t *data);
 
@@ -129,8 +134,8 @@ void ldns_rbtree_insert_vref(ldns_rbnode_t *data, void *rbtree);
  * Delete element from tree.
  * @param rbtree: tree to delete from.
  * @param key: key of item to delete.
- * @return: node that is now unlinked from the tree. User to delete it. 
- * returns 0 if node not present 
+ * @return: node that is now unlinked from the tree. User to delete it.
+ * returns 0 if node not present
  */
 ldns_rbnode_t *ldns_rbtree_delete(ldns_rbtree_t *rbtree, const void *key);
 
@@ -149,9 +154,9 @@ ldns_rbnode_t *ldns_rbtree_search(ldns_rbtree_t *rbtree, const void *key);
  * @param result: set to the exact node if present, otherwise to element that
  *   precedes the position of key in the tree. NULL if no smaller element.
  * @return: true if exact match in result. Else result points to <= element,
- * or NULL if key is smaller than the smallest key. 
+ * or NULL if key is smaller than the smallest key.
  */
-int ldns_rbtree_find_less_equal(ldns_rbtree_t *rbtree, const void *key, 
+int ldns_rbtree_find_less_equal(ldns_rbtree_t *rbtree, const void *key,
 	ldns_rbnode_t **result);
 
 /**
@@ -197,7 +202,7 @@ void ldns_rbtree_join(ldns_rbtree_t *tree1, ldns_rbtree_t *tree2);
 
 /**
  * Call with node=variable of struct* with rbnode_t as first element.
- * with type is the type of a pointer to that struct. 
+ * with type is the type of a pointer to that struct.
  */
 #define LDNS_RBTREE_FOR(node, type, rbtree) \
 	for(node=(type)ldns_rbtree_first(rbtree); \
@@ -215,7 +220,11 @@ void ldns_rbtree_join(ldns_rbtree_t *tree1, ldns_rbtree_t *tree2);
  * 	The function must not alter the rbtree.
  * @param arg: user argument.
  */
-void ldns_traverse_postorder(ldns_rbtree_t* tree, 
+void ldns_traverse_postorder(ldns_rbtree_t* tree,
 	void (*func)(ldns_rbnode_t*, void*), void* arg);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* UTIL_RBTREE_H_ */

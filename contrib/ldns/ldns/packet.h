@@ -37,6 +37,10 @@
 #include <ldns/rr.h>
 #include <sys/time.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* opcodes for pkt's */
 enum ldns_enum_pkt_opcode {
 	LDNS_PACKET_QUERY = 0,
@@ -840,8 +844,12 @@ bool ldns_pkt_safe_push_rr_list(ldns_pkt *pkt, ldns_pkt_section sec, ldns_rr_lis
 /**
  * check if a packet is empty
  * \param[in] p packet
- * \return true: empty, false: empty
+ * \return true: empty, false: not empty
  */
 bool ldns_pkt_empty(ldns_pkt *p);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  /* LDNS_PACKET_H */
