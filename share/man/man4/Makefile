@@ -211,7 +211,6 @@ MAN=	aac.4 \
 	pcn.4 \
 	pf.4 \
 	pflog.4 \
-	pfsync.4 \
 	pim.4 \
 	polling.4 \
 	powernow.4 \
