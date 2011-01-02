@@ -1766,7 +1766,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		if (so->so_proto == 0)
 			return (EOPNOTSUPP);
 #ifndef COMPAT_43
-		error = so_pru_control(so, cmd, data, ifp);
+		error = so_pru_control_direct(so, cmd, data, ifp);
 #else
 	    {
 		int ocmd = cmd;
