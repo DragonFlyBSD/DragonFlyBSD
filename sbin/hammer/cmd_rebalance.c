@@ -63,12 +63,14 @@ hammer_cmd_rebalance(char **av, int ac)
 		rebalance_usage(1);
 	filesystem = av[0];
 	if (ac == 1) {
-		perc = 75;
+		perc = 85;
 	} else {
 		perc = strtol(av[1], NULL, 0);
 		if (perc < 50 || perc > 100)
 			rebalance_usage(1);
 	}
+	rebal.saturation = HAMMER_BTREE_INT_ELMS * perc / 100;
+
 	printf("rebalance start %016jx:%04x\n",
 		(uintmax_t)rebal.key_beg.obj_id,
 		rebal.key_beg.localization);
