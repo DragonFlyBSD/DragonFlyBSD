@@ -1551,6 +1551,10 @@ TO_REMOVE+=/usr/share/man/man4/ahb.4.gz
 TO_REMOVE+=/boot/kernel/ahc_eisa.ko
 TO_REMOVE+=/boot/kernel/ahc_isa.ko
 
+# XXX Remove when pfsync(4) has been fixed
+TO_REMOVE+=/usr/share/man/cat4/pfsync.4.gz
+TO_REMOVE+=/usr/share/man/man4/pfsync.4.gz
+
 # XXX Remove when adjusted to the new 802.11 framework
 TO_REMOVE+=/boot/modules/if_acx.ko
 TO_REMOVE+=/usr/share/man/cat4/acx.4.gz
@@ -1576,5 +1580,3 @@ TO_REMOVE+=/usr/share/man/man4/i386/ndis.4.gz
 TO_REMOVE+=/usr/sbin/ndiscvt
 TO_REMOVE+=/usr/share/man/cat8/ndiscvt.8.gz
 TO_REMOVE+=/usr/share/man/man8/ndiscvt.8.gz
-TO_REMOVE+=/usr/src/share/man/man4/pfsync.4
-TO_REMOVE+=/usr/share/man/man4/pfsync.4.gz

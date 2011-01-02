@@ -360,8 +360,11 @@ MAN=	aac.4 \
 	xpt.4 \
 	zero.4
 
+# XXX re-add when pfsync(4) has been fixed
+#	pfsync.4 \
+
 # XXX re-add when adjusted to the new 802.11 framework
-#MAN+=	acx.4 \
+#	acx.4 \
 #	bwi.4 \
 #	iwl.4 \
 #	rtw.4 \
