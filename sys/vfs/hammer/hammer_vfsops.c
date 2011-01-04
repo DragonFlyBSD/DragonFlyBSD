@@ -159,7 +159,7 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, cluster_enable, CTLFLAG_RW,
  * 2 - dedup cache is populated on both reads and writes
  */
 SYSCTL_INT(_vfs_hammer, OID_AUTO, live_dedup, CTLFLAG_RW,
-	   &hammer_live_dedup, 0, "");
+	   &hammer_live_dedup, 0, "Enable live dedup");
 
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_dirtybufspace, CTLFLAG_RW,
 	   &hammer_limit_dirtybufspace, 0, "");
@@ -236,13 +236,17 @@ SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_redo, CTLFLAG_RD,
 	   &hammer_stats_redo, 0, "");
 
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, live_dedup_vnode_bcmps, CTLFLAG_RW,
-	    &hammer_live_dedup_vnode_bcmps, 0, "");
+	    &hammer_live_dedup_vnode_bcmps, 0,
+	    "successful vnode buffer comparisons");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, live_dedup_device_bcmps, CTLFLAG_RW,
-	    &hammer_live_dedup_device_bcmps, 0, "");
+	    &hammer_live_dedup_device_bcmps, 0,
+	    "successful device buffer comparisons");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, live_dedup_findblk_failures, CTLFLAG_RW,
-	    &hammer_live_dedup_findblk_failures, 0, "");
+	    &hammer_live_dedup_findblk_failures, 0,
+	    "block lookup failures for comparison");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, live_dedup_bmap_saves, CTLFLAG_RW,
-	    &hammer_live_dedup_bmap_saves, 0, "");
+	    &hammer_live_dedup_bmap_saves, 0,
+	    "useful physical block lookups");
 
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_dirtybufspace, CTLFLAG_RD,
 	   &hammer_count_dirtybufspace, 0, "");
