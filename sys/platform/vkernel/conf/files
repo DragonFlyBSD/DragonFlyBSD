@@ -18,8 +18,8 @@ bf_enc.o			optional	crypto		\
 crypto/des/arch/i386/des_enc.S		optional	crypto
 crypto/des/des_ecb.c			optional	crypto
 crypto/des/des_setkey.c			optional	crypto
-emulation/dragonfly12/dfbsd12_getdirentries.c	nonoptional	compat_df12
-emulation/dragonfly12/dfbsd12_stat.c		nonoptional	compat_df12
+emulation/dragonfly12/dfbsd12_getdirentries.c	optional	compat_df12
+emulation/dragonfly12/dfbsd12_stat.c		optional	compat_df12
 emulation/linux/i386/linprocfs/linprocfs_misc.c		optional	linprocfs
 emulation/linux/i386/linprocfs/linprocfs_subr.c		optional	linprocfs
 emulation/linux/i386/linprocfs/linprocfs_vfsops.c	optional	linprocfs

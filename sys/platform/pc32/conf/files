@@ -39,8 +39,8 @@ hptmvraid.o			optional	hptmv			\
 	compile-with	"uudecode < $S/dev/raid/hptmv/i386-elf.raid.o.uu" \
 	no-implicit-rule
 #
-emulation/dragonfly12/dfbsd12_getdirentries.c	nonoptional compat_df12
-emulation/dragonfly12/dfbsd12_stat.c	nonoptional compat_df12
+emulation/dragonfly12/dfbsd12_getdirentries.c	optional compat_df12
+emulation/dragonfly12/dfbsd12_stat.c	optional compat_df12
 #
 emulation/linux/linux_emuldata.c	optional	compat_linux
 emulation/linux/linux_epoll.c	optional	compat_linux
