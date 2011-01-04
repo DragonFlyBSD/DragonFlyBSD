@@ -3477,10 +3477,12 @@ pf_test_rule(struct pf_rule **rm, struct pf_state **sm, int direction,
 				h4 = mtod(m, struct ip *);
 				len = h4->ip_len - off;
 				break;
+#ifdef INET6
 			case AF_INET6:
 				h6 = mtod(m, struct ip6_hdr *);
 				len = h6->ip6_plen - (off - sizeof(*h6));
 				break;
+#endif
 			}
 
 			if (pf_check_proto_cksum(m, off, len, IPPROTO_TCP, af))
