@@ -950,6 +950,8 @@ hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset, void *data, int bytes,
 		   int *errorp)
 {
 	hammer_record_t record;
+	hammer_dedup_cache_t dcp;
+	hammer_crc_t crc;
 	int zone;
 
 	/*
@@ -966,14 +968,39 @@ hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset, void *data, int bytes,
 	record = hammer_alloc_mem_record(ip, 0);
 	zone = (bytes >= HAMMER_BUFSIZE) ? HAMMER_ZONE_LARGE_DATA_INDEX :
 					   HAMMER_ZONE_SMALL_DATA_INDEX;
-	record->resv = hammer_blockmap_reserve(ip->hmp, zone, bytes,
-					       &record->leaf.data_offset,
-					       errorp);
-	if (record->resv == NULL) {
-		kprintf("hammer_ip_add_bulk: reservation failed\n");
-		hammer_rel_mem_record(record);
-		return(NULL);
+	if (bytes == 0)
+		crc = 0;
+	else
+		crc = crc32(data, bytes);
+
+	if (hammer_live_dedup == 0)
+		goto nodedup;
+	if ((dcp = hammer_dedup_cache_lookup(ip->hmp, crc)) != NULL) {
+		struct hammer_dedup_cache tmp = *dcp;
+
+		record->resv = hammer_blockmap_reserve_dedup(ip->hmp, zone,
+			bytes, tmp.data_offset, errorp);
+		if (record->resv == NULL)
+			goto nodedup;
+
+		if (!hammer_dedup_validate(&tmp, zone, bytes, data)) {
+			hammer_blockmap_reserve_complete(ip->hmp, record->resv);
+			goto nodedup;
+		}
+
+		record->leaf.data_offset = tmp.data_offset;
+		record->flags |= HAMMER_RECF_DEDUPED;
+	} else {
+nodedup:
+		record->resv = hammer_blockmap_reserve(ip->hmp, zone, bytes,
+		       &record->leaf.data_offset, errorp);
+		if (record->resv == NULL) {
+			kprintf("hammer_ip_add_bulk: reservation failed\n");
+			hammer_rel_mem_record(record);
+			return(NULL);
+		}
 	}
+
 	record->type = HAMMER_MEM_RECORD_DATA;
 	record->leaf.base.rec_type = HAMMER_RECTYPE_DATA;
 	record->leaf.base.obj_type = ip->ino_leaf.base.obj_type;
@@ -982,7 +1009,7 @@ hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset, void *data, int bytes,
 	record->leaf.base.localization = ip->obj_localization +
 					 HAMMER_LOCALIZE_MISC;
 	record->leaf.data_len = bytes;
-	hammer_crc_set_leaf(data, &record->leaf);
+	record->leaf.data_crc = crc;
 	KKASSERT(*errorp == 0);
 
 	return(record);
@@ -1262,6 +1289,11 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 						 record->resv,
 						 record->leaf.data_offset,
 						 record->leaf.data_len);
+
+		if (hammer_live_dedup == 2 &&
+		    (record->flags & HAMMER_RECF_DEDUPED) == 0) {
+			hammer_dedup_cache_add(record->ip, &record->leaf);
+		}
 	} else if (record->data && record->leaf.data_len) {
 		/*
 		 * Wholely cached record, with data.  Allocate the data.

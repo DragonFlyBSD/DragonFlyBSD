@@ -2622,6 +2622,9 @@ hammer_vop_strategy(struct vop_strategy_args *ap)
 		biodone(ap->a_bio);
 		break;
 	}
+
+	/* hammer_dump_dedup_cache(((hammer_inode_t)ap->a_vp->v_data)->hmp); */
+
 	return (error);
 }
 
@@ -2818,6 +2821,8 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 				 HAMMER_ZONE_LARGE_DATA);
 			nbio->bio_offset = disk_offset;
 			error = hammer_io_direct_read(hmp, nbio, cursor.leaf);
+			if (hammer_live_dedup)
+				hammer_dedup_cache_add(ip, cursor.leaf);
 			goto done;
 		} else if (n) {
 			error = hammer_ip_resolve_data(&cursor);
@@ -2828,6 +2833,13 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		}
 		if (error)
 			break;
+
+		/*
+		 * We have to be sure that the only elements added to the
+		 * dedup cache are those which are already on-media.
+		 */
+		if (hammer_live_dedup && hammer_cursor_ondisk(&cursor))
+			hammer_dedup_cache_add(ip, cursor.leaf);
 
 		/*
 		 * Iterate until we have filled the request.
@@ -3043,7 +3055,11 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 			}
 			last_offset = rec_offset + rec_len;
 			last_disk_offset = disk_offset + rec_len;
+
+			if (hammer_live_dedup)
+				hammer_dedup_cache_add(ip, cursor.leaf);
 		}
+		
 		error = hammer_ip_next(&cursor);
 	}
 
@@ -3216,7 +3232,13 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 			record->flags |= HAMMER_RECF_REDO;
 			bp->b_flags &= ~B_VFSFLAG1;
 		}
-		hammer_io_direct_write(hmp, bio, record);
+		if (record->flags & HAMMER_RECF_DEDUPED) {
+			bp->b_resid = 0;
+			hammer_ip_replace_bulk(hmp, record);
+			biodone(ap->a_bio);
+		} else {
+			hammer_io_direct_write(hmp, bio, record);
+		}
 		if (ip->rsv_recs > 1 && hmp->rsv_recs > hammer_limit_recs)
 			hammer_flush_inode(ip, 0);
 	} else {
