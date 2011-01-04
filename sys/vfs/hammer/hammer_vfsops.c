@@ -173,7 +173,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_inode_recs, CTLFLAG_RW,
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_reclaim, CTLFLAG_RW,
 	   &hammer_limit_reclaim, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, live_dedup_cache_size, CTLFLAG_RW,
-	   &hammer_live_dedup_cache_size, 0, "");
+	   &hammer_live_dedup_cache_size, 0,
+	   "Number of cache entries");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_redo, CTLFLAG_RW,
 	   &hammer_limit_redo, 0, "");
 
