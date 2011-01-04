@@ -106,6 +106,7 @@ int hammer_limit_running_io;		/* per-mount */
 int hammer_limit_recs;			/* as a whole XXX */
 int hammer_limit_inode_recs = 1024;	/* per inode */
 int hammer_limit_reclaim = HAMMER_RECLAIM_WAIT;
+int hammer_live_dedup_cache_size = DEDUP_CACHE_SIZE;
 int hammer_limit_redo = 4096 * 1024;	/* per inode */
 int hammer_autoflush = 2000;		/* auto flush */
 int hammer_bio_count;
@@ -171,6 +172,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_inode_recs, CTLFLAG_RW,
 	   &hammer_limit_inode_recs, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_reclaim, CTLFLAG_RW,
 	   &hammer_limit_reclaim, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, live_dedup_cache_size, CTLFLAG_RW,
+	   &hammer_live_dedup_cache_size, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_redo, CTLFLAG_RW,
 	   &hammer_limit_redo, 0, "");
 

@@ -1048,6 +1048,7 @@ extern int hammer_limit_running_io;
 extern int hammer_limit_recs;
 extern int hammer_limit_inode_recs;
 extern int hammer_limit_reclaim;
+extern int hammer_live_dedup_cache_size;
 extern int hammer_limit_redo;
 extern int hammer_bio_count;
 extern int hammer_verify_zone;

@@ -309,7 +309,7 @@ hammer_dedup_cache_add(hammer_inode_t ip, hammer_btree_leaf_elm_t leaf)
 		goto populate;
 	}
 
-	if (hmp->dedup_cache_count < DEDUP_CACHE_SIZE) {
+	if (hmp->dedup_cache_count < hammer_live_dedup_cache_size) {
 		dcp = hmp->dedup_free_cache;
 		hmp->dedup_free_cache = NULL;
 		++hmp->dedup_cache_count;
