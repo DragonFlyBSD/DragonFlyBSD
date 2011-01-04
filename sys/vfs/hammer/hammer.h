@@ -244,7 +244,7 @@ typedef struct hammer_pseudofs_inmem *hammer_pseudofs_inmem_t;
  * directories to retain fairly localized object ids which in turn
  * improves reblocking performance and layout.
  */
-#define OBJID_CACHE_SIZE	1024
+#define OBJID_CACHE_SIZE	2048
 #define OBJID_CACHE_BULK_BITS	10		/* 10 bits (1024)	*/
 #define OBJID_CACHE_BULK	(32 * 32)	/* two level (1024)	*/
 #define OBJID_CACHE_BULK_MASK	(OBJID_CACHE_BULK - 1)
