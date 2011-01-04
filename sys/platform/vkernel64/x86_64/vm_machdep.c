@@ -270,6 +270,8 @@ cpu_lwp_exit(void)
 	td->td_gd->gd_cnt.v_swtch++;
 
 	crit_enter_quick(td);
+	if (td->td_flags & TDF_TSLEEPQ)
+		tsleep_remove(td);
 	lwkt_deschedule_self(td);
 	lwkt_remove_tdallq(td);
 	cpu_thread_exit();

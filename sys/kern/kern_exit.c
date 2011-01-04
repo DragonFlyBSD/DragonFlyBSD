@@ -677,6 +677,8 @@ lwp_wait(struct lwp *lp)
 			     TDF_EXITING|TDF_RUNQ)) != TDF_EXITING) {
 		return (0);
 	}
+	KASSERT((td->td_flags & TDF_TSLEEPQ) == 0,
+		("lwp_wait: td %p (%s) still on sleep queue", td, td->td_comm));
 	return (1);
 }
 

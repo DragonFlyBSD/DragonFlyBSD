@@ -430,14 +430,14 @@ lwkt_set_comm(thread_t td, const char *ctl, ...)
 void
 lwkt_hold(thread_t td)
 {
-    ++td->td_refs;
+    atomic_add_int(&td->td_refs, 1);
 }
 
 void
 lwkt_rele(thread_t td)
 {
     KKASSERT(td->td_refs > 0);
-    --td->td_refs;
+    atomic_add_int(&td->td_refs, -1);
 }
 
 void
@@ -450,6 +450,7 @@ lwkt_wait_free(thread_t td)
 void
 lwkt_free_thread(thread_t td)
 {
+    KKASSERT(td->td_refs == 0);
     KKASSERT((td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK|TDF_RUNQ)) == 0);
     if (td->td_flags & TDF_ALLOCATED_THREAD) {
     	objcache_put(thread_cache, td);
@@ -1644,6 +1645,7 @@ lwkt_exit(void)
 	tsleep_remove(td);
     lwkt_deschedule_self(td);
     lwkt_remove_tdallq(td);
+    KKASSERT(td->td_refs == 0);
 
     /*
      * Final cleanup

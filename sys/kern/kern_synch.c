@@ -119,7 +119,7 @@ static void	endtsleep (void *);
 static void	loadav (void *arg);
 static void	schedcpu (void *arg);
 #ifdef SMP
-static void	tsleep_wakeup(struct thread *td);
+static void	tsleep_wakeup_remote(struct thread *td);
 #endif
 
 /*
@@ -413,6 +413,11 @@ tsleep_remove(thread_t td)
  * This function mus be called while in a critical section but if the
  * target thread is sleeping on a different cpu we cannot safely probe
  * td_flags.
+ *
+ * This function is only called from a different cpu via setrunnable()
+ * when the thread is in a known sleep.  However, multiple wakeups are
+ * possible and we must hold the td to prevent a race against the thread
+ * exiting.
  */
 static __inline
 void
@@ -422,7 +427,8 @@ _tsleep_wakeup(struct thread *td)
 	globaldata_t gd = mycpu;
 
 	if (td->td_gd != gd) {
-		lwkt_send_ipiq(td->td_gd, (ipifunc1_t)tsleep_wakeup, td);
+		lwkt_hold(td);
+		lwkt_send_ipiq(td->td_gd, (ipifunc1_t)tsleep_wakeup_remote, td);
 		return;
 	}
 #endif
@@ -436,9 +442,10 @@ _tsleep_wakeup(struct thread *td)
 #ifdef SMP
 static
 void
-tsleep_wakeup(struct thread *td)
+tsleep_wakeup_remote(struct thread *td)
 {
 	_tsleep_wakeup(td);
+	lwkt_rele(td);
 }
 #endif
 
@@ -1041,8 +1048,8 @@ wakeup_domain_one(const volatile void *ident, int domain)
  * has an effect if we are in SSLEEP.  We only break out of the
  * tsleep if LWP_BREAKTSLEEP is set, otherwise we just fix-up the state.
  *
- * NOTE: With the MP lock held we can only safely manipulate the process
- * structure.  We cannot safely manipulate the thread structure.
+ * NOTE: With proc_token held we can only safely manipulate the process
+ * structure and the lp's lwp_stat.
  */
 void
 setrunnable(struct lwp *lp)
