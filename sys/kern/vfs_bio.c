@@ -2043,7 +2043,8 @@ restart:
 		/*
 		 * Sanity Checks
 		 */
-		KASSERT(bp->b_qindex == qindex, ("getnewbuf: inconsistent queue %d bp %p", qindex, bp));
+		KASSERT(bp->b_qindex == qindex,
+			("getnewbuf: inconsistent queue %d bp %p", qindex, bp));
 
 		/*
 		 * Note: we no longer distinguish between VMIO and non-VMIO
@@ -2081,7 +2082,7 @@ restart:
 
 		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) != 0) {
 			spin_unlock(&bufqspin);
-			tsleep(&bd_request, 0, "gnbxxx", hz / 100);
+			tsleep(&bd_request, 0, "gnbxxx", (hz + 99) / 100);
 			goto restart;
 		}
 		if (bp->b_qindex != qindex) {
