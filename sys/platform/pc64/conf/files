@@ -1,9 +1,6 @@
 # This file tells config what files go into building a kernel,
 # files marked standard are always included.
 #
-# $DragonFly: src/sys/platform/pc64/conf/files,v 1.4 2008/11/17 11:55:19 swildner Exp $
-#
-
 linux32_genassym.o		optional	compat_linux32			\
 	dependency 	"$S/emulation/linux/x86_64/linux32_genassym.c ${FORWARD_HEADERS_COOKIE}" \
 	compile-with	"${CC} ${CFLAGS:N-fno-common} ${WERROR} -c ${.IMPSRC}" \
@@ -30,6 +27,11 @@ ukbdmap.h			optional	ukbd_dflt_keymap	\
 	compile-with	"/usr/sbin/kbdcontrol -L ${UKBD_DFLT_KEYMAP} | sed -e 's/^static keymap_t.* = /static keymap_t key_map = /' -e 's/^static accentmap_t.* = /static accentmap_t accent_map = /' > ukbdmap.h"				\
 	no-obj no-implicit-rule before-depend				\
 	clean		"ukbdmap.h"
+#
+hptmvraid.o			optional	hptmv			\
+	dependency	"$S/dev/raid/hptmv/x86_64-elf.raid.o.uu"	\
+	compile-with	"uudecode < $S/dev/raid/hptmv/x86_64-elf.raid.o.uu" \
+	no-implicit-rule
 #
 emulation/linux/linux_file.c	optional	compat_linux32
 emulation/linux/linux_getcwd.c	optional	compat_linux32

@@ -99,6 +99,7 @@ MAN=	aac.4 \
 	gusc.4 \
 	hifn.4 \
 	hptiop.4 \
+	hptmv.4 \
 	ichsmb.4 \
 	icmp.4 \
 	icmp6.4 \

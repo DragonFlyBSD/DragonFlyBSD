@@ -145,6 +145,7 @@ device		asr		# DPT SmartRAID V, VI and Adaptec SCSI RAID
 device		ciss		# Compaq SmartRAID 5* series
 device		dpt		# DPT Smartcache - See LINT for options!
 device		hptiop		# Highpoint RocketRaid 3xxx series
+device		hptmv		# Highpoint RocketRAID 182x
 device		iir		# Intel Integrated RAID
 device		mly		# Mylex AcceleRAID/eXtremeRAID
 device		twa		# 3ware 9000 series PATA/SATA RAID

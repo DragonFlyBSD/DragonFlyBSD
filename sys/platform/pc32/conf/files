@@ -34,6 +34,11 @@ ukbdmap.h			optional	ukbd_dflt_keymap	\
 	no-obj no-implicit-rule before-depend				\
 	clean		"ukbdmap.h"
 #
+hptmvraid.o			optional	hptmv			\
+	dependency	"$S/dev/raid/hptmv/i386-elf.raid.o.uu"		\
+	compile-with	"uudecode < $S/dev/raid/hptmv/i386-elf.raid.o.uu" \
+	no-implicit-rule
+#
 emulation/dragonfly12/dfbsd12_getdirentries.c	nonoptional compat_df12
 emulation/dragonfly12/dfbsd12_stat.c	nonoptional compat_df12
 #
