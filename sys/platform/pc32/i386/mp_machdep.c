@@ -1237,7 +1237,6 @@ allocate_apic_irq(int intr)
 	intpin = io_apic_ints[intr].dst_apic_int;
 	
 	assign_apic_irq(apic, intpin, irq);
-	io_apic_setup_intpin(apic, intpin);
 }
 
 
@@ -1537,7 +1536,14 @@ setup_apic_irq_mapping(void)
 			break;
 		}
 	}
-	/* PCI interrupt assignment is deferred */
+
+	/* Assign PCI interrupts */
+	for (x = 0; x < nintrs; ++x) {
+		if (io_apic_ints[x].int_type == 0 &&
+		    io_apic_ints[x].int_vector == 0xff && 
+		    apic_int_is_bus_type(x, PCI))
+			allocate_apic_irq(x);
+	}
 }
 
 void
@@ -1736,10 +1742,11 @@ pci_apic_irq(int pciBus, int pciDevice, int pciInt)
 		    && (SRCBUSDEVICE(intr) == pciDevice)
 		    && (SRCBUSLINE(intr) == pciInt)) {	/* a candidate IRQ */
 			if (apic_int_is_bus_type(intr, PCI)) {
-				if (INTIRQ(intr) == 0xff)
-					allocate_apic_irq(intr);
-				if (INTIRQ(intr) == 0xff)
+				if (INTIRQ(intr) == 0xff) {
+					kprintf("IOAPIC: pci_apic_irq() "
+						"failed\n");
 					return -1;	/* unassigned */
+				}
 				return INTIRQ(intr);	/* exact match */
 			}
 		}

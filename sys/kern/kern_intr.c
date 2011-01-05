@@ -326,16 +326,8 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 
     /*
      * Setup the machine level interrupt vector
-     *
-     * XXX temporary workaround for some ACPI brokedness.  ACPI installs
-     * its interrupt too early, before the IOAPICs have been configured,
-     * which means the IOAPIC is not enabled by the registration of the
-     * ACPI interrupt.  Anything else sharing that IRQ will wind up not
-     * being enabled.  Temporarily work around the problem by always
-     * installing and enabling on every new interrupt handler, even
-     * if one has already been setup on that irq.
      */
-    if (intr < FIRST_SOFTINT /* && info->i_slow + info->i_fast == 1*/) {
+    if (intr < FIRST_SOFTINT && info->i_slow + info->i_fast == 1) {
 	if (machintr_vector_setup(intr, intr_flags))
 	    kprintf("machintr_vector_setup: failed on irq %d\n", intr);
     }

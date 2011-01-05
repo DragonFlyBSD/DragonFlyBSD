@@ -237,6 +237,8 @@ apic_vectorctl(int op, int intr, int flags)
 	 * clear the IRR bit.
 	 */
 	if (int_to_apicintpin[intr].ioapic >= 0) {
+	    if (bootverbose)
+	    	kprintf("IOAPIC: try clearing IRR for irq %d\n", intr);
 	    imen_lock();
 	    select = int_to_apicintpin[intr].redirindex;
 	    value = io_apic_read(int_to_apicintpin[intr].ioapic, select);
