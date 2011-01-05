@@ -51,8 +51,8 @@
 
 
 
-extern intrmask_t lock_driver(void);
-extern void unlock_driver(intrmask_t spl);
+extern void lock_driver(void);
+extern void unlock_driver(void);
 
 typedef struct
 {

@@ -59,7 +59,7 @@ static int event_queue_head=0, event_queue_tail=0;
 
 static int hpt_get_event(PHPT_EVENT pEvent);
 static int hpt_set_array_state(DEVICEID idArray, DWORD state);
-static intrmask_t lock_driver_idle(IAL_ADAPTER_T *pAdapter);
+static void lock_driver_idle(IAL_ADAPTER_T *pAdapter);
 static void HPTLIBAPI thread_io_done(_VBUS_ARG PCommand pCmd);
 static int HPTLIBAPI R1ControlSgl(_VBUS_ARG PCommand pCmd,
     FPSCAT_GATH pSgTable, int logical);
@@ -188,22 +188,20 @@ hpt_delete_array(_VBUS_ARG DEVICEID id, DWORD options)
 /* just to prevent driver from sending more commands */
 static void HPTLIBAPI nothing(_VBUS_ARG void *notused){}
 
-intrmask_t
+void
 lock_driver_idle(IAL_ADAPTER_T *pAdapter)
 {
-	intrmask_t oldspl;
 	_VBUS_INST(&pAdapter->VBus)
-	oldspl = lock_driver();
+	lock_driver();
 	while (pAdapter->outstandingCommands) {
 		KdPrint(("outstandingCommands is %d, wait..\n", pAdapter->outstandingCommands));
 		if (!mWaitingForIdle(_VBUS_P0)) CallWhenIdle(_VBUS_P nothing, 0);
-		unlock_driver(oldspl);
+		unlock_driver();
 /*Schedule out*/
 		tsleep(lock_driver_idle, 0, "switch", 1);
-		oldspl = lock_driver();
+		lock_driver();
 	}
 	CheckIdleCall(_VBUS_P0);
-	return oldspl;
 }
 
 int Kernel_DeviceIoControl(_VBUS_ARG
@@ -314,9 +312,6 @@ int Kernel_DeviceIoControl(_VBUS_ARG
 		default:
 		{
 			PVDevice pVDev;
-#ifdef SUPPORT_ARRAY
-			intrmask_t oldspl;
-#endif
 			switch(dwIoControlCode) {
 			/* read-only ioctl functions can be called directly. */
 			case HPT_IOCTL_GET_VERSION:
@@ -367,13 +362,13 @@ int Kernel_DeviceIoControl(_VBUS_ARG
 					 * create_array, and other functions can't be executed while channel is
 					 * perform I/O commands. Wait until driver is idle.
 					 */
-					oldspl = lock_driver_idle(pAdapter);
+					lock_driver_idle(pAdapter);
 					if (hpt_default_ioctl(_VBUS_P dwIoControlCode, lpInBuffer, nInBufferSize,
 						lpOutBuffer, nOutBufferSize, lpBytesReturned) == -1) {
-						unlock_driver(oldspl);
+						unlock_driver();
 						return -1;
 					}
-					unlock_driver(oldspl);
+					unlock_driver();
 				}
 				else
 					return -1;
@@ -386,7 +381,7 @@ int Kernel_DeviceIoControl(_VBUS_ARG
 				case HPT_IOCTL_CREATE_ARRAY:
 				{
 					pAdapter=(IAL_ADAPTER_T *)(ID_TO_VDEV(*(DEVICEID *)lpOutBuffer))->pVBus->OsExt;
-					oldspl = lock_driver();
+					lock_driver();
                     if(((PCREATE_ARRAY_PARAMS)lpInBuffer)->CreateFlags & CAF_CREATE_AND_DUPLICATE)
 				    {
 						  (ID_TO_VDEV(*(DEVICEID *)lpOutBuffer))->u.array.rf_auto_rebuild = 0;
@@ -400,7 +395,7 @@ int Kernel_DeviceIoControl(_VBUS_ARG
 				    {
                           hpt_queue_dpc((HPT_DPC)hpt_rebuild_data_block, pAdapter, ID_TO_VDEV(*(DEVICEID *)lpOutBuffer), REBUILD_PARITY);
 					}
-					unlock_driver(oldspl);
+					unlock_driver();
                     break;
 				}
 
@@ -408,7 +403,7 @@ int Kernel_DeviceIoControl(_VBUS_ARG
 				case HPT_IOCTL_CREATE_ARRAY_V2:
 				{
 					pAdapter=(IAL_ADAPTER_T *)(ID_TO_VDEV(*(DEVICEID *)lpOutBuffer))->pVBus->OsExt;
-					oldspl = lock_driver();
+					lock_driver();
 				             if(((PCREATE_ARRAY_PARAMS_V2)lpInBuffer)->CreateFlags & CAF_CREATE_AND_DUPLICATE) {
 						  (ID_TO_VDEV(*(DEVICEID *)lpOutBuffer))->u.array.rf_auto_rebuild = 0;
 				                          hpt_queue_dpc((HPT_DPC)hpt_rebuild_data_block, pAdapter, ID_TO_VDEV(*(DEVICEID *)lpOutBuffer), DUPLICATE);
@@ -417,7 +412,7 @@ int Kernel_DeviceIoControl(_VBUS_ARG
 					} else if(((PCREATE_ARRAY_PARAMS_V2)lpInBuffer)->CreateFlags & CAF_CREATE_R5_BUILD_PARITY) {
 				                          hpt_queue_dpc((HPT_DPC)hpt_rebuild_data_block, pAdapter, ID_TO_VDEV(*(DEVICEID *)lpOutBuffer), REBUILD_PARITY);
 					}
-					unlock_driver(oldspl);
+					unlock_driver();
 					break;
 				}
 				case HPT_IOCTL_ADD_DISK_TO_ARRAY:
@@ -427,11 +422,11 @@ int Kernel_DeviceIoControl(_VBUS_ARG
 					if(pArray->u.array.rf_rebuilding == 0)
 					{
 						DWORD timeout = 0;
-						oldspl = lock_driver();
+						lock_driver();
 						pArray->u.array.rf_auto_rebuild = 0;
 						pArray->u.array.rf_abort_rebuild = 0;
 						hpt_queue_dpc((HPT_DPC)hpt_rebuild_data_block, pAdapter, pArray, DUPLICATE);
-						unlock_driver(oldspl);
+						unlock_driver();
 						while (!pArray->u.array.rf_rebuilding)
 						{
 							tsleep((caddr_t)Kernel_DeviceIoControl, 0, "pause", 1);
@@ -456,9 +451,9 @@ int Kernel_DeviceIoControl(_VBUS_ARG
 static int
 hpt_get_event(PHPT_EVENT pEvent)
 {
-	intrmask_t oldspl = lock_driver();
+	lock_driver();
 	int ret = event_queue_remove(pEvent);
-	unlock_driver(oldspl);
+	unlock_driver();
 	return ret;
 }
 
@@ -469,7 +464,6 @@ hpt_set_array_state(DEVICEID idArray, DWORD state)
 	PVDevice pVDevice = ID_TO_VDEV(idArray);
 	int	i;
 	DWORD timeout = 0;
-	intrmask_t oldspl;
 
 	if(idArray == 0 || check_VDevice_valid(pVDevice))	return -1;
 	if(!mIsArray(pVDevice))
@@ -487,7 +481,7 @@ hpt_set_array_state(DEVICEID idArray, DWORD state)
 				pVDevice->u.array.rf_initializing)
 				return -1;
 
-			oldspl = lock_driver();
+			lock_driver();
 
 			pVDevice->u.array.rf_auto_rebuild = 0;
 			pVDevice->u.array.rf_abort_rebuild = 0;
@@ -495,7 +489,7 @@ hpt_set_array_state(DEVICEID idArray, DWORD state)
 			hpt_queue_dpc((HPT_DPC)hpt_rebuild_data_block, pAdapter, pVDevice,
 				(UCHAR)((pVDevice->u.array.CriticalMembers || pVDevice->VDeviceType == VD_RAID_1)? DUPLICATE : REBUILD_PARITY));
 
-			unlock_driver(oldspl);
+			unlock_driver();
 
 			while (!pVDevice->u.array.rf_rebuilding)
 			{
@@ -518,9 +512,9 @@ hpt_set_array_state(DEVICEID idArray, DWORD state)
 			if(pVDevice->u.array.rf_rebuilding != 1)
 				return -1;
 
-			oldspl = lock_driver();
+			lock_driver();
 			pVDevice->u.array.rf_abort_rebuild = 1;
-			unlock_driver(oldspl);
+			unlock_driver();
 
 			while (pVDevice->u.array.rf_abort_rebuild)
 			{
@@ -541,10 +535,10 @@ hpt_set_array_state(DEVICEID idArray, DWORD state)
 				pVDevice->u.array.rf_initializing)
 				return -1;
 
-			oldspl = lock_driver();
+			lock_driver();
             pVDevice->u.array.RebuildSectors = 0;
 			hpt_queue_dpc((HPT_DPC)hpt_rebuild_data_block, pAdapter, pVDevice, VERIFY);
-			unlock_driver(oldspl);
+			unlock_driver();
 
 			while (!pVDevice->u.array.rf_verifying)
 			{
@@ -561,9 +555,9 @@ hpt_set_array_state(DEVICEID idArray, DWORD state)
 			if(pVDevice->u.array.rf_verifying != 1)
 				return -1;
 
-			oldspl = lock_driver();
+			lock_driver();
 			pVDevice->u.array.rf_abort_rebuild = 1;
-			unlock_driver(oldspl);
+			unlock_driver();
 
 			while (pVDevice->u.array.rf_abort_rebuild)
 			{
@@ -582,9 +576,9 @@ hpt_set_array_state(DEVICEID idArray, DWORD state)
 				pVDevice->u.array.rf_initializing)
 				return -1;
 
-			oldspl = lock_driver();
+			lock_driver();
 			hpt_queue_dpc((HPT_DPC)hpt_rebuild_data_block, pAdapter, pVDevice, VERIFY);
-			unlock_driver(oldspl);
+			unlock_driver();
 
 			while (!pVDevice->u.array.rf_initializing)
 			{
@@ -601,9 +595,9 @@ hpt_set_array_state(DEVICEID idArray, DWORD state)
 			if(pVDevice->u.array.rf_initializing != 1)
 				return -1;
 
-			oldspl = lock_driver();
+			lock_driver();
 			pVDevice->u.array.rf_abort_rebuild = 1;
-			unlock_driver(oldspl);
+			unlock_driver();
 
 			while (pVDevice->u.array.rf_abort_rebuild)
 			{
@@ -702,7 +696,6 @@ hpt_rebuild_data_block(IAL_ADAPTER_T *pAdapter, PVDevice pArray, UCHAR flags)
 	UINT result;
 	int needsync=0, retry=0, needdelete=0;
 	void *buffer = 0;
-	intrmask_t oldspl;
 
 	_VBUS_INST(&pAdapter->VBus)
 
@@ -710,7 +703,7 @@ hpt_rebuild_data_block(IAL_ADAPTER_T *pAdapter, PVDevice pArray, UCHAR flags)
 	pArray->u.array.RebuildSectors>=capacity)
 		return;
 
-	oldspl = lock_driver();
+	lock_driver();
 
 	switch(flags)
 	{
@@ -754,9 +747,9 @@ retry_cmd:
 		#define MAX_REBUILD_SECTORS 0x40
 
 		/* take care for discontinuous buffer in R1ControlSgl */
-		unlock_driver(oldspl);
+		unlock_driver();
 		buffer = kmalloc(SECTOR_TO_BYTE(MAX_REBUILD_SECTORS), M_DEVBUF, M_NOWAIT);
-		oldspl = lock_driver();
+		lock_driver();
 		if(!buffer) {
 			FreeCommand(_VBUS_P pCmd);
 			hpt_printk(("can't allocate rebuild buffer\n"));
@@ -811,12 +804,12 @@ retry_cmd:
 	CheckPendingCall(_VBUS_P0);
 
 	if (!End_Job) {
-		unlock_driver(oldspl);
+		unlock_driver();
 		while (!End_Job) {
 			tsleep((caddr_t)pCmd, 0, "pause", hz);
 			if (timeout++>60) break;
 		}
-		oldspl = lock_driver();
+		lock_driver();
 		if (!End_Job) {
 			hpt_printk(("timeout, reset\n"));
 			fResetVBus(_VBUS_P0);
@@ -825,9 +818,9 @@ retry_cmd:
 
 	result = pCmd->Result;
 	FreeCommand(_VBUS_P pCmd);
-	unlock_driver(oldspl);
+	unlock_driver();
 	if (buffer) kfree(buffer, M_DEVBUF);
-	oldspl = lock_driver();
+	lock_driver();
 	KdPrintI(("cmd finished %d", result));
 
 	switch(result)
@@ -957,10 +950,10 @@ fail:
 		KdPrintI(("currcmds is %d, wait..\n", pAdapter->outstandingCommands));
 		/* put this to have driver stop processing system commands quickly */
 		if (!mWaitingForIdle(_VBUS_P0)) CallWhenIdle(_VBUS_P nothing, 0);
-		unlock_driver(oldspl);
+		unlock_driver();
 		/*Schedule out*/
 		tsleep(hpt_rebuild_data_block, 0, "switch", 1);
-		oldspl = lock_driver();
+		lock_driver();
 	}
 
 	if (needsync) SyncArrayInfo(pArray);
@@ -968,5 +961,5 @@ fail:
 		fDeleteArray(_VBUS_P pArray, TRUE);
 
 	Check_Idle_Call(pAdapter);
-	unlock_driver(oldspl);
+	unlock_driver();
 }

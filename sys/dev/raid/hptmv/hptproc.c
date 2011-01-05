@@ -65,7 +65,6 @@ hpt_set_asc_info(IAL_ADAPTER_T *pAdapter, char *buffer,int length)
 	PVDevice pSubArray, pVDev;
 	UINT	i, iarray, ichan;
 	struct cam_periph *periph = NULL;
-	intrmask_t oldspl;
 
 #ifdef SUPPORT_ARRAY
 	if (length>=8 && strncmp(buffer, "rebuild ", 8)==0)
@@ -74,7 +73,7 @@ hpt_set_asc_info(IAL_ADAPTER_T *pAdapter, char *buffer,int length)
 		length-=8;
 		if (length>=5 && strncmp(buffer, "start", 5)==0)
 		{
-			oldspl = lock_driver();
+			lock_driver();
 			for(i = 0; i < MAX_ARRAY_PER_VBUS; i++)
 				if ((pArray=ArrayTables(i))->u.array.dArStamp==0)
 					continue;
@@ -83,12 +82,12 @@ hpt_set_asc_info(IAL_ADAPTER_T *pAdapter, char *buffer,int length)
 	                    hpt_queue_dpc((HPT_DPC)hpt_rebuild_data_block, pAdapter, pArray,
 							(UCHAR)((pArray->u.array.CriticalMembers || pArray->VDeviceType == VD_RAID_1)? DUPLICATE : REBUILD_PARITY));
 				}
-			unlock_driver(oldspl);
+			unlock_driver();
 			return orig_length;
 		}
 		else if (length>=4 && strncmp(buffer, "stop", 4)==0)
 		{
-			oldspl = lock_driver();
+			lock_driver();
 			for(i = 0; i < MAX_ARRAY_PER_VBUS; i++)
 				if ((pArray=ArrayTables(i))->u.array.dArStamp==0)
 					continue;
@@ -96,7 +95,7 @@ hpt_set_asc_info(IAL_ADAPTER_T *pAdapter, char *buffer,int length)
 					if (pArray->u.array.rf_rebuilding)
 					    pArray->u.array.rf_abort_rebuild = 1;
 				}
-			unlock_driver(oldspl);
+			unlock_driver();
 			return orig_length;
 		}
 		else if (length>=3 && buffer[1]==','&& buffer[0]>='1'&& buffer[2]>='1')
@@ -139,15 +138,15 @@ rebuild:
 				{
 					pSubArray = pArray;
 loop:
-					oldspl = lock_driver();
+					lock_driver();
 					if(hpt_add_disk_to_array(_VBUS_P VDEV_TO_ID(pSubArray), VDEV_TO_ID(pVDev)) == -1) {
-						unlock_driver(oldspl);
+						unlock_driver();
 						return -EINVAL;
 					}
 					pSubArray->u.array.rf_auto_rebuild = 0;
 					pSubArray->u.array.rf_abort_rebuild = 0;
 					hpt_queue_dpc((HPT_DPC)hpt_rebuild_data_block, pAdapter, pSubArray, DUPLICATE);
-					unlock_driver(oldspl);
+					unlock_driver();
 					break;
 				}
 				case VD_RAID_0:
@@ -188,10 +187,10 @@ loop:
 					pArray->u.array.rf_verifying ||
 					pArray->u.array.rf_initializing))
 				{
-					oldspl = lock_driver();
+					lock_driver();
 					pArray->u.array.RebuildSectors = 0;
 					hpt_queue_dpc((HPT_DPC)hpt_rebuild_data_block, pAdapter, pArray, VERIFY);
-					unlock_driver(oldspl);
+					unlock_driver();
 				}
                 return orig_length;
 			}
@@ -209,9 +208,9 @@ loop:
 				if (!pArray || (pArray->vf_online == 0)) return -EINVAL;
 				if(pArray->u.array.rf_verifying)
 				{
-					oldspl = lock_driver();
+					lock_driver();
 				    pArray->u.array.rf_abort_rebuild = 1;
-				    unlock_driver(oldspl);
+				    unlock_driver();
 				}
 			    return orig_length;
 			}
@@ -487,10 +486,10 @@ hpt_get_info(IAL_ADAPTER_T *pAdapter, HPT_GET_INFO *pinfo)
 
 #ifndef FOR_DEMO
 	if (pAdapter->beeping) {
-		intrmask_t oldspl = lock_driver();
+		lock_driver();
 		pAdapter->beeping = 0;
 		BeepOff(pAdapter->mvSataAdapter.adapterIoBaseAddress);
-		unlock_driver(oldspl);
+		unlock_driver();
 	}
 #endif
 

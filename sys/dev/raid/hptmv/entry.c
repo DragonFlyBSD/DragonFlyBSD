@@ -154,14 +154,11 @@ static int DpcQueue_Last = 0;
 char DRIVER_VERSION[] = "v1.16";
 
 static struct lock driver_lock;
-intrmask_t lock_driver()
+void lock_driver(void)
 {
-
-	intrmask_t spl = 0;
 	lockmgr(&driver_lock, LK_EXCLUSIVE);
-	return spl;
 }
-void unlock_driver(intrmask_t spl)
+void unlock_driver(void)
 {
 	lockmgr(&driver_lock, LK_RELEASE);
 }
@@ -1271,7 +1268,7 @@ init_adapter(IAL_ADAPTER_T *pAdapter)
 
 	PVDevice pVDev;
 
-	intrmask_t oldspl = lock_driver();
+	lock_driver();
 
 	pAdapter->next = 0;
 
@@ -1309,7 +1306,7 @@ init_adapter(IAL_ADAPTER_T *pAdapter)
 	if (hptmv_allocate_edma_queues(pAdapter))
 	{
 		MV_ERROR("RR18xx: Failed to allocate memory for EDMA queues\n");
-		unlock_driver(oldspl);
+		unlock_driver();
 		return ENOMEM;
 	}
 
@@ -1322,7 +1319,7 @@ init_adapter(IAL_ADAPTER_T *pAdapter)
 	{
 		MV_ERROR("RR18xx: Failed to remap memory space\n");
 		hptmv_free_edma_queues(pAdapter);
-		unlock_driver(oldspl);
+		unlock_driver();
 		return ENXIO;
 	}
 	else
@@ -1352,7 +1349,7 @@ init_adapter(IAL_ADAPTER_T *pAdapter)
 unregister:
 		bus_release_resource(pAdapter->hpt_dev, SYS_RES_MEMORY, rid, pAdapter->mem_res);
 		hptmv_free_edma_queues(pAdapter);
-		unlock_driver(oldspl);
+		unlock_driver();
 		return ENXIO;
 	}
 	pAdapter->ver_601 = pMvSataAdapter->pcbVersion;
@@ -1495,7 +1492,7 @@ unregister:
 #endif
 
 	mvSataUnmaskAdapterInterrupt(pMvSataAdapter);
-	unlock_driver(oldspl);
+	unlock_driver();
 	return 0;
 }
 
@@ -2125,8 +2122,8 @@ static void
 hpt_intr(void *arg)
 {
 	IAL_ADAPTER_T *pAdapter = (IAL_ADAPTER_T *)arg;
-	intrmask_t oldspl = lock_driver();
 
+	lock_driver();
 	/* KdPrintI(("----- Entering Isr() -----\n")); */
 	if (mvSataInterruptServiceRoutine(&pAdapter->mvSataAdapter) == MV_TRUE)
 	{
@@ -2135,7 +2132,7 @@ hpt_intr(void *arg)
 	}
 
 	/* KdPrintI(("----- Leaving Isr() -----\n")); */
-	unlock_driver(oldspl);
+	unlock_driver();
 }
 
 /**********************************************************
@@ -2251,7 +2248,6 @@ ccb_done(union ccb *ccb)
 void
 hpt_action(struct cam_sim *sim, union ccb *ccb)
 {
-	intrmask_t oldspl;
 	IAL_ADAPTER_T * pAdapter = (IAL_ADAPTER_T *) cam_sim_softc(sim);
 	PBUS_DMAMAP  pmap;
 	_VBUS_INST(&pAdapter->VBus)
@@ -2277,7 +2273,7 @@ hpt_action(struct cam_sim *sim, union ccb *ccb)
 				return;
 			}
 
-			oldspl = lock_driver();
+			lock_driver();
 			if (pAdapter->outstandingCommands==0 && DPC_Request_Nums==0)
 				Check_Idle_Call(pAdapter);
 
@@ -2290,7 +2286,7 @@ hpt_action(struct cam_sim *sim, union ccb *ccb)
 				hpt_queue_ccb(&pAdapter->pending_Q, ccb);
 			else
 				OsSendCommand(_VBUS_P ccb);
-			unlock_driver(oldspl);
+			unlock_driver();
 
 			/* KdPrint(("leave scsiio\n")); */
 			break;
@@ -2298,9 +2294,9 @@ hpt_action(struct cam_sim *sim, union ccb *ccb)
 
 		case XPT_RESET_BUS:
 			KdPrint(("reset bus\n"));
-			oldspl = lock_driver();
+			lock_driver();
 			fResetVBus(_VBUS_P0);
-			unlock_driver(oldspl);
+			unlock_driver();
 			xpt_done(ccb);
 			break;
 
@@ -2428,20 +2424,18 @@ hpt_free_ccb(union ccb **ccb_Q, union ccb *ccb)
  ***************************************************************************/
 static void hpt_worker_thread(void)
 {
-	intrmask_t oldspl;
-
 	for(;;)	{
 		while (DpcQueue_First!=DpcQueue_Last) {
 			ST_HPT_DPC p;
-			oldspl = lock_driver();
+			lock_driver();
 			p = DpcQueue[DpcQueue_First];
 			DpcQueue_First++;
 			DpcQueue_First %= MAX_DPC;
 			DPC_Request_Nums++;
-			unlock_driver(oldspl);
+			unlock_driver();
 			p.dpc(p.pAdapter, p.arg, p.flags);
 
-			oldspl = lock_driver();
+			lock_driver();
 			DPC_Request_Nums--;
 			/* since we may have prevented Check_Idle_Call, do it here */
 			if (DPC_Request_Nums==0) {
@@ -2451,7 +2445,7 @@ static void hpt_worker_thread(void)
 					CheckPendingCall(_VBUS_P0);
 				}
 			}
-			unlock_driver(oldspl);
+			unlock_driver();
 
 			/*Schedule out*/
 			tsleep((caddr_t)hpt_worker_thread, 0, "sched", 1);
@@ -2652,9 +2646,9 @@ static void
 hpt_timeout(void *arg)
 {
 	_VBUS_INST(&((PBUS_DMAMAP)((union ccb *)arg)->ccb_adapter)->pAdapter->VBus)
-	intrmask_t oldspl = lock_driver();
+	lock_driver();
 	fResetVBus(_VBUS_P0);
-	unlock_driver(oldspl);
+	unlock_driver();
 }
 
 static void
