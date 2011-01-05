@@ -142,10 +142,8 @@ enter_lastlog(PERSON *pn)
 	if (doit) {
 		w = walloc(pn);
 		w->info = LASTLOG;
-		bcopy(ll.ll_line, w->tty, UT_LINESIZE);
-		w->tty[UT_LINESIZE] = 0;
-		bcopy(ll.ll_host, w->host, UT_HOSTSIZE);
-		w->host[UT_HOSTSIZE] = 0;
+		asprintf(&w->tty, "%s", ll.ll_line);
+		asprintf(&w->host, "%s", ll.ll_host);
 		w->loginat = ll.ll_time;
 	}
 }
@@ -244,9 +242,10 @@ walloc(PERSON *pn)
 
 	if ((w = malloc(sizeof(WHERE))) == NULL)
 		err(1, NULL);
-	if (pn->whead == NULL)
+	bzero(w, sizeof(WHERE));
+	if (pn->whead == NULL) {
 		pn->whead = pn->wtail = w;
-	else {
+	} else {
 		pn->wtail->next = w;
 		pn->wtail = w;
 	}
