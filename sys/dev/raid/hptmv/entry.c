@@ -78,6 +78,8 @@ static void hpt_intr(void *arg);
 static void hpt_async(void *callback_arg, u_int32_t code, struct cam_path *path, void *arg);
 static void hpt_action(struct cam_sim *sim, union ccb *ccb);
 
+static struct thread *hptdaemonproc;
+
 static device_method_t driver_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		hpt_probe),
@@ -2085,6 +2087,13 @@ hpt_attach(device_t dev)
 	if (device_get_unit(dev) == 0) {
 		/* Start the work thread.  XXX */
 		launch_worker_thread();
+
+		/*
+		 * hpt_worker_thread needs to be suspended after shutdown
+		 * sync, when fs sync finished.
+		 */
+		pAdapter->eh = EVENTHANDLER_REGISTER(shutdown_post_sync,
+		    shutdown_kproc, hptdaemonproc, SHUTDOWN_PRI_FIRST);
 	}
 
 	return 0;
@@ -2172,7 +2181,7 @@ hpt_shutdown(device_t dev)
 		if (pAdapter == NULL)
 			return (EINVAL);
 
-		EVENTHANDLER_DEREGISTER(shutdown_final, pAdapter->eh);
+		EVENTHANDLER_DEREGISTER(shutdown_post_sync, pAdapter->eh);
 		FlushAdapter(pAdapter);
 		  /* give the flush some time to happen,
 		    *otherwise "shutdown -p now" will make file system corrupted */
@@ -2486,7 +2495,6 @@ static void hpt_worker_thread(void)
 	}
 }
 
-static struct thread *hptdaemonproc;
 static struct kproc_desc hpt_kp = {
 	"hpt_wt",
 	hpt_worker_thread,
@@ -2516,11 +2524,6 @@ launch_worker_thread(void)
 					(UCHAR)((pVDev->u.array.CriticalMembers || pVDev->VDeviceType == VD_RAID_1)? DUPLICATE : REBUILD_PARITY));
 			}
 	}
-
-	/*
-	 * hpt_worker_thread needs to be suspended after shutdown sync, when fs sync finished.
-	 */
-	EVENTHANDLER_REGISTER(shutdown_post_sync, shutdown_kproc, hptdaemonproc, SHUTDOWN_PRI_FIRST);
 }
 /*
  *SYSINIT(hptwt, SI_SUB_KTHREAD_IDLE, SI_ORDER_FIRST, launch_worker_thread, NULL);
