@@ -50,7 +50,6 @@
 #include <machine/smp.h>
 #include <machine/segments.h>
 #include <machine/md_var.h>
-#include <machine/clock.h>	/* apic_8254_intr */
 #include <machine_base/isa/intr_machdep.h>
 #include <machine_base/icu/icu.h>
 #include <machine/globaldata.h>
@@ -273,11 +272,6 @@ apic_vectorctl(int op, int intr, int flags)
 		       GSEL(GCODE_SEL, SEL_KPL));
 
 		/*
-		 * And then reprogram the IO APIC to point to the SLOW vector
-		 * (it may have previously been pointed to the FAST version of
-		 * the vector).  This will allow us to keep track of spurious
-		 * interrupts.
-		 *
 		 * In order to avoid losing an EOI for a level interrupt, which
 		 * is vector based, make sure that the IO APIC is programmed for
 		 * edge-triggering first, then reprogrammed with the new vector.
