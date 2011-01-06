@@ -20,7 +20,7 @@
 #include <sys/param.h>
 #include <sys/socket.h>
 #ifdef _KERNEL
-# include <sys/systm.h>
+#include <sys/systm.h>
 #endif /* _KERNEL */
 #include <sys/mbuf.h>
 
@@ -42,7 +42,6 @@
 # define DPFPRINTF(format, x...)		\
 	if (pf_status.debug >= PF_DEBUG_NOISY)	\
 		kprintf(format , ##x)
-typedef vm_zone_t pool_t;
 
 #else
 /* Userland equivalents so we can lend code to tcpdump et al. */
@@ -53,10 +52,6 @@ typedef vm_zone_t pool_t;
 # include <stdlib.h>
 # include <string.h>
 # include <netdb.h>
-# define pool_t			int
-# define pool_get(pool, flags)	malloc(*(pool))
-# define pool_put(pool, item)	free(item)
-# define pool_init(pool, size, a, ao, f, m, p)	(*(pool)) = (size)
 
 # ifdef PFDEBUG
 #  include <sys/stdarg.h>
@@ -66,10 +61,10 @@ typedef vm_zone_t pool_t;
 # endif /* PFDEBUG */
 #endif /* _KERNEL */
 
+static MALLOC_DEFINE(M_PFOSFPENTRYPL, "pfospfen", "pf OS finger printing pool list");
+static MALLOC_DEFINE(M_PFOSFPPL, "pfosfp", "pf OS finger printing pool list");
 
 SLIST_HEAD(pf_osfp_list, pf_os_fingerprint) pf_osfp_list;
-pool_t pf_osfp_entry_pl;
-pool_t pf_osfp_pl;
 
 struct pf_os_fingerprint	*pf_osfp_find(struct pf_osfp_list *,
 				    struct pf_os_fingerprint *, u_int8_t);
@@ -288,38 +283,11 @@ pf_osfp_match(struct pf_osfp_enlist *list, pf_osfp_t os)
 }
 
 /* Initialize the OS fingerprint system */
-int
+void
 pf_osfp_initialize(void)
 {
-	int error = 0;
-
-#ifdef _KERNEL
-	do {
-		error = ENOMEM;
-		pf_osfp_entry_pl = pf_osfp_pl = NULL;
-		ZONE_CREATE(pf_osfp_entry_pl, struct pf_osfp_entry, "pfospfen");
-		ZONE_CREATE(pf_osfp_pl, struct pf_os_fingerprint, "pfosfp");
-		error = 0;
-	} while(0);
-#else
-	pool_init(&pf_osfp_entry_pl, sizeof(struct pf_osfp_entry), 0, 0, 0,
-	    "pfosfpen", NULL);
-	pool_init(&pf_osfp_pl, sizeof(struct pf_os_fingerprint), 0, 0, 0,
-	    "pfosfp", NULL);
-#endif
 	SLIST_INIT(&pf_osfp_list);
-
-	return (error);
 }
-
-#ifdef _KERNEL
-void
-pf_osfp_cleanup(void)
-{
-	ZONE_DESTROY(pf_osfp_entry_pl);
-	ZONE_DESTROY(pf_osfp_pl);
-}
-#endif
 
 /* Flush the fingerprint list */
 void
@@ -332,9 +300,9 @@ pf_osfp_flush(void)
 		SLIST_REMOVE_HEAD(&pf_osfp_list, fp_next);
 		while ((entry = SLIST_FIRST(&fp->fp_oses))) {
 			SLIST_REMOVE_HEAD(&fp->fp_oses, fp_entry);
-			pool_put(&pf_osfp_entry_pl, entry);
+			kfree(entry, M_PFOSFPENTRYPL);
 		}
-		pool_put(&pf_osfp_pl, fp);
+		kfree(fp, M_PFOSFPPL);
 	}
 }
 
@@ -387,12 +355,12 @@ pf_osfp_add(struct pf_osfp_ioctl *fpioc)
 			if (PF_OSFP_ENTRY_EQ(entry, &fpioc->fp_os))
 				return (EEXIST);
 		}
-		if ((entry = pool_get(&pf_osfp_entry_pl,
-		    PR_WAITOK|PR_LIMITFAIL)) == NULL)
+		if ((entry = kmalloc(sizeof(struct pf_osfp_entry),
+		    M_PFOSFPENTRYPL, M_WAITOK|M_NULLOK)) == NULL)
 			return (ENOMEM);
 	} else {
-		if ((fp = pool_get(&pf_osfp_pl,
-		    PR_WAITOK|PR_LIMITFAIL)) == NULL)
+		if ((fp = kmalloc(sizeof(struct pf_os_fingerprint),
+		    M_PFOSFPPL, M_WAITOK|M_NULLOK)) == NULL)
 			return (ENOMEM);
 		memset(fp, 0, sizeof(*fp));
 		fp->fp_tcpopts = fpioc->fp_tcpopts;
@@ -404,9 +372,9 @@ pf_osfp_add(struct pf_osfp_ioctl *fpioc)
 		fp->fp_wscale = fpioc->fp_wscale;
 		fp->fp_ttl = fpioc->fp_ttl;
 		SLIST_INIT(&fp->fp_oses);
-		if ((entry = pool_get(&pf_osfp_entry_pl,
-		    PR_WAITOK|PR_LIMITFAIL)) == NULL) {
-			pool_put(&pf_osfp_pl, fp);
+		if ((entry = kmalloc(sizeof(struct pf_osfp_entry),
+		    M_PFOSFPENTRYPL, M_WAITOK|M_NULLOK)) == NULL) {
+			kfree(fp, M_PFOSFPPL);
 			return (ENOMEM);
 		}
 		pf_osfp_insert(&pf_osfp_list, fp);

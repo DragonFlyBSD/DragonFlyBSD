@@ -46,7 +46,6 @@
 #include <sys/kernel.h>
 #include <sys/thread2.h>
 #include <sys/time.h>
-#include <vm/vm_zone.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -65,7 +64,6 @@
 #endif /* INET6 */
 
 struct pfi_kif		 *pfi_all = NULL;
-vm_zone_t		  pfi_addr_pl;
 struct pfi_ifhead	  pfi_ifs;
 long			  pfi_update = 1;
 struct pfr_addr		 *pfi_buffer;
@@ -97,6 +95,8 @@ RB_GENERATE(pfi_ifhead, pfi_kif, pfik_tree, pfi_if_compare);
 
 #define PFI_BUFFER_MAX		0x10000
 MALLOC_DEFINE(PFI_MTYPE, "pf_if", "pf interface table");
+static MALLOC_DEFINE(M_PFIADDRPL, "pfiaddrpl", "pf interface address pool list");
+
 
 void
 pfi_initialize(void)
@@ -417,7 +417,7 @@ pfi_dynaddr_setup(struct pf_addr_wrap *aw, sa_family_t af)
 
 	if (aw->type != PF_ADDR_DYNIFTL)
 		return (0);
-	if ((dyn = pool_get(&pfi_addr_pl, PR_WAITOK | PR_LIMITFAIL | PR_ZERO))
+	if ((dyn = kmalloc(sizeof(struct pfi_dynaddr), M_PFIADDRPL, M_WAITOK|M_NULLOK|M_ZERO))
 	    == NULL)
 		return (1);
 
@@ -474,7 +474,7 @@ _bad:
 		pf_remove_if_empty_ruleset(ruleset);
 	if (dyn->pfid_kif != NULL)
 		pfi_kif_unref(dyn->pfid_kif, PFI_KIF_REF_RULE);
-	pool_put(&pfi_addr_pl, dyn);
+	kfree(dyn, M_PFIADDRPL);
 	crit_exit();
 	return (rv);
 }
@@ -664,7 +664,7 @@ pfi_dynaddr_remove(struct pf_addr_wrap *aw)
 	aw->p.dyn->pfid_kif = NULL;
 	pfr_detach_table(aw->p.dyn->pfid_kt);
 	aw->p.dyn->pfid_kt = NULL;
-	pool_put(&pfi_addr_pl, aw->p.dyn);
+	kfree(aw->p.dyn, M_PFIADDRPL);
 	aw->p.dyn = NULL;
 	crit_exit();
 }

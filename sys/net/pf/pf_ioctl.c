@@ -56,7 +56,6 @@
 #include <sys/proc.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
-#include <vm/vm_zone.h>
 #include <sys/lock.h>
 
 #include <sys/thread2.h>
@@ -97,9 +96,7 @@
 
 u_int rt_numfibs = RT_NUMFIBS;
 
-void			 init_zone_var(void);
-void			 cleanup_pf_zone(void);
-int			 pfattach(void);
+void			 pfattach(void);
 struct pf_pool		*pf_get_pool(char *, u_int32_t, u_int8_t, u_int32_t,
 			    u_int8_t, u_int8_t, u_int8_t);
 
@@ -145,6 +142,12 @@ void			 pf_rtlabel_copyout(struct pf_addr_wrap *);
 #define DPFPRINTF(n, x) if (pf_status.debug >= (n)) kprintf x
 
 static cdev_t	pf_dev;
+
+static MALLOC_DEFINE(M_PFRULEPL, "pfrulepl", "pf rule pool list");
+static MALLOC_DEFINE(M_PFALTQPL, "pfaltqpl", "pf altq pool list");
+static MALLOC_DEFINE(M_PFPOOLADDRPL, "pfpooladdrpl", "pf pool address pool list");
+static MALLOC_DEFINE(M_PFFRENTPL, "pffrent", "pf frent pool list");
+
 
 /*
  * XXX - These are new and need to be checked when moveing to a new version
@@ -196,85 +199,30 @@ SYSCTL_INT(_debug, OID_AUTO, pfugidhack, CTLFLAG_RW, &debug_pfugidhack, 0,
 	"Enable/disable pf user/group rules mpsafe hack");
 
 void
-init_zone_var(void)
-{
-	pf_src_tree_pl = pf_rule_pl = NULL;
-	pf_state_pl = pf_altq_pl = pf_pooladdr_pl = NULL;
-	pf_frent_pl = pf_frag_pl = pf_cache_pl = pf_cent_pl = NULL;
-	pf_state_scrub_pl = NULL;
-	pfr_ktable_pl = pfr_kentry_pl = NULL;
-}
-
-void
-cleanup_pf_zone(void)
-{
-	ZONE_DESTROY(pf_src_tree_pl);
-	ZONE_DESTROY(pf_rule_pl);
-	ZONE_DESTROY(pf_state_pl);
-	ZONE_DESTROY(pf_altq_pl);
-	ZONE_DESTROY(pf_pooladdr_pl);
-	ZONE_DESTROY(pf_frent_pl);
-	ZONE_DESTROY(pf_frag_pl);
-	ZONE_DESTROY(pf_cache_pl);
-	ZONE_DESTROY(pf_cent_pl);
-	ZONE_DESTROY(pfr_ktable_pl);
-	ZONE_DESTROY(pfr_kentry_pl);
-	ZONE_DESTROY(pfr_kentry_pl2);
-	ZONE_DESTROY(pf_state_scrub_pl);
-	ZONE_DESTROY(pfi_addr_pl);
-}
-
-int
 pfattach(void)
 {
 	u_int32_t *my_timeout = pf_default_rule.timeout;
-	int error = 1;
+
 
 	if (!rn_inithead((void **)&pf_maskhead, NULL, 0)) {
 		kprintf("pf mask radix tree create failed\n");
 		return ENOMEM;
 	}
-
-	do {
-		ZONE_CREATE(pf_src_tree_pl,struct pf_src_node, "pfsrctrpl");
-		ZONE_CREATE(pf_rule_pl,    struct pf_rule, "pfrulepl");
-		ZONE_CREATE(pf_state_pl,   struct pf_state, "pfstatepl");
-		ZONE_CREATE(pf_state_key_pl, struct pf_state_key, "pfstatekeypl");
-		ZONE_CREATE(pf_state_item_pl, struct pf_state_item, "pfstateitempl");
-		ZONE_CREATE(pf_altq_pl,    struct pf_altq, "pfaltqpl");
-		ZONE_CREATE(pf_pooladdr_pl,struct pf_pooladdr, "pfpooladdrpl");
-		ZONE_CREATE(pfr_ktable_pl, struct pfr_ktable, "pfrktable");
-		ZONE_CREATE(pfr_kentry_pl, struct pfr_kentry, "pfrkentry");
-		ZONE_CREATE(pfr_kentry_pl2, struct pfr_kentry, "pfrkentry2");
-		ZONE_CREATE(pf_frent_pl,   struct pf_frent, "pffrent");
-		ZONE_CREATE(pf_frag_pl,    struct pf_fragment, "pffrag");
-		ZONE_CREATE(pf_cache_pl,   struct pf_fragment, "pffrcache");
-		ZONE_CREATE(pf_cent_pl,    struct pf_frcache, "pffrcent");
-		ZONE_CREATE(pf_state_scrub_pl, struct pf_state_scrub, 
-		    "pfstatescrub");
-		ZONE_CREATE(pfi_addr_pl,   struct pfi_dynaddr, "pfiaddrpl");
-		error = 0;
-	} while(0);
-	if (error) {
-		cleanup_pf_zone();
-		return (error);
-	}
+	kmalloc_create(&pf_state_pl, "pf state pool list");
+	kmalloc_raise_limit(pf_state_pl, 0);
+	kmalloc_create(&pf_frent_pl, "pf fragment pool list");
+	kmalloc_raise_limit(pf_frent_pl, 0);
+	kmalloc_create(&pf_cent_pl, "pf cent pool list");
+        kmalloc_raise_limit(pf_cent_pl, 0);
+	
 	pfr_initialize();
 	pfi_initialize();
-	error = pf_osfp_initialize();
-	if (error) {
-		cleanup_pf_zone();
-		pf_osfp_cleanup();
-		return (error);
-	}
+	pf_osfp_initialize();
 
 	pf_pool_limits[PF_LIMIT_STATES].pp = pf_state_pl;
 	pf_pool_limits[PF_LIMIT_STATES].limit = PFSTATE_HIWAT;
 	pf_pool_limits[PF_LIMIT_FRAGS].pp = pf_frent_pl;
 	pf_pool_limits[PF_LIMIT_FRAGS].limit = PFFRAG_FRENT_HIWAT;
-	/* XXX uma_zone_set_max(pf_pool_limits[PF_LIMIT_STATES].pp,
-		pf_pool_limits[PF_LIMIT_STATES].limit);
-	*/
 	if (ctob(physmem) <= 100*1024*1024)
 		pf_pool_limits[PF_LIMIT_TABLE_ENTRIES].limit =
 		    PFR_KENTRY_HIWAT_SMALL;
@@ -320,14 +268,11 @@ pfattach(void)
 	pf_normalize_init();
 	bzero(&pf_status, sizeof(pf_status));
 	pf_status.debug = PF_DEBUG_URGENT;
-
 	/* XXX do our best to avoid a conflict */
 	pf_status.hostid = karc4random();
 
 	if (kthread_create(pf_purge_thread, NULL, NULL, "pfpurge"))
 		panic("pfpurge thread");
-
-	return (error);
 }
 
 int
@@ -421,7 +366,7 @@ pf_empty_pool(struct pf_palist *poola)
 		pf_tbladdr_remove(&empty_pool_pa->addr);
 		pfi_kif_unref(empty_pool_pa->kif, PFI_KIF_REF_RULE);
 		TAILQ_REMOVE(poola, empty_pool_pa, entries);
-		pool_put(&pf_pooladdr_pl, empty_pool_pa);
+		kfree(empty_pool_pa, M_PFPOOLADDRPL);
 	}
 }
 
@@ -468,7 +413,7 @@ pf_rm_rule(struct pf_rulequeue *rulequeue, struct pf_rule *rule)
 	pfi_kif_unref(rule->kif, PFI_KIF_REF_RULE);
 	pf_anchor_remove(rule);
 	pf_empty_pool(&rule->rpool.list);
-	pool_put(&pf_rule_pl, rule);
+	kfree(rule, M_PFRULEPL);
 }
 
 u_int16_t
@@ -627,7 +572,7 @@ pf_begin_altq(u_int32_t *ticket)
 			error = altq_remove(altq);
 		} else
 			pf_qid_unref(altq->qid);
-		pool_put(&pf_altq_pl, altq);
+		kfree(altq, M_PFALTQPL);
 	}
 	if (error)
 		return (error);
@@ -652,7 +597,7 @@ pf_rollback_altq(u_int32_t ticket)
 			error = altq_remove(altq);
 		} else
 			pf_qid_unref(altq->qid);
-		pool_put(&pf_altq_pl, altq);
+		kfree(altq, M_PFALTQPL);
 	}
 	altqs_inactive_open = 0;
 	return (error);
@@ -702,7 +647,7 @@ pf_commit_altq(u_int32_t ticket)
 				error = err;
 		} else
 			pf_qid_unref(altq->qid);
-		pool_put(&pf_altq_pl, altq);
+		kfree(altq, M_PFALTQPL);
 	}
 	crit_exit();
 
@@ -1191,7 +1136,7 @@ pfioctl(struct dev_ioctl_args *ap)
 			error = EBUSY;
 			break;
 		}
-		rule = pool_get(&pf_rule_pl, PR_WAITOK|PR_LIMITFAIL);
+		rule = kmalloc(sizeof(struct pf_rule), M_PFRULEPL,M_WAITOK);
 		if (rule == NULL) {
 			error = ENOMEM;
 			break;
@@ -1208,14 +1153,14 @@ pfioctl(struct dev_ioctl_args *ap)
 		rule->entries.tqe_prev = NULL;
 #ifndef INET
 		if (rule->af == AF_INET) {
-			pool_put(&pf_rule_pl, rule);
+			kfree(rule, M_PFRULEPL);
 			error = EAFNOSUPPORT;
 			break;
 		}
 #endif /* INET */
 #ifndef INET6
 		if (rule->af == AF_INET6) {
-			pool_put(&pf_rule_pl, rule);
+			kfree(rule, M_PFRULEPL);
 			error = EAFNOSUPPORT;
 			break;
 		}
@@ -1229,7 +1174,7 @@ pfioctl(struct dev_ioctl_args *ap)
 		if (rule->ifname[0]) {
 			rule->kif = pfi_kif_get(rule->ifname);
 			if (rule->kif == NULL) {
-				pool_put(&pf_rule_pl, rule);
+				kfree(rule, M_PFRULEPL);
 				error = EINVAL;
 				break;
 			}
@@ -1433,7 +1378,7 @@ pfioctl(struct dev_ioctl_args *ap)
 		}
 
 		if (pcr->action != PF_CHANGE_REMOVE) {
-			newrule = pool_get(&pf_rule_pl, PR_WAITOK|PR_LIMITFAIL);
+			newrule = kmalloc(sizeof(struct pf_rule), M_PFRULEPL, M_WAITOK|M_NULLOK);
 			if (newrule == NULL) {
 				error = ENOMEM;
 				break;
@@ -1447,14 +1392,14 @@ pfioctl(struct dev_ioctl_args *ap)
 			newrule->entries.tqe_prev = NULL;
 #ifndef INET
 			if (newrule->af == AF_INET) {
-				pool_put(&pf_rule_pl, newrule);
+				kfree(newrule, M_PFRULEPL);
 				error = EAFNOSUPPORT;
 				break;
 			}
 #endif /* INET */
 #ifndef INET6
 			if (newrule->af == AF_INET6) {
-				pool_put(&pf_rule_pl, newrule);
+				kfree(newrule, M_PFRULEPL);
 				error = EAFNOSUPPORT;
 				break;
 			}
@@ -1462,7 +1407,7 @@ pfioctl(struct dev_ioctl_args *ap)
 			if (newrule->ifname[0]) {
 				newrule->kif = pfi_kif_get(newrule->ifname);
 				if (newrule->kif == NULL) {
-					pool_put(&pf_rule_pl, newrule);
+					kfree(newrule, M_PFRULEPL);
 					error = EINVAL;
 					break;
 				}
@@ -1968,7 +1913,7 @@ pfioctl(struct dev_ioctl_args *ap)
 			error = EBUSY;
 			break;
 		}
-		altq = pool_get(&pf_altq_pl, PR_WAITOK|PR_LIMITFAIL);
+		altq = kmalloc(sizeof(struct pf_altq), M_PFALTQPL, M_WAITOK|M_NULLOK);
 		if (altq == NULL) {
 			error = ENOMEM;
 			break;
@@ -1982,7 +1927,7 @@ pfioctl(struct dev_ioctl_args *ap)
 		if (altq->qname[0] != 0) {
 			if ((altq->qid = pf_qname2qid(altq->qname)) == 0) {
 				error = EBUSY;
-				pool_put(&pf_altq_pl, altq);
+				kfree(altq, M_PFALTQPL);
 				break;
 			}
 			altq->altq_disc = NULL;
@@ -1997,7 +1942,7 @@ pfioctl(struct dev_ioctl_args *ap)
 
 		error = altq_add(altq);
 		if (error) {
-			pool_put(&pf_altq_pl, altq);
+			kfree(altq, M_PFALTQPL);
 			break;
 		}
 
@@ -2108,7 +2053,7 @@ pfioctl(struct dev_ioctl_args *ap)
 			error = EINVAL;
 			break;
 		}
-		pa = pool_get(&pf_pooladdr_pl, PR_WAITOK|PR_LIMITFAIL);
+		pa = kmalloc(sizeof(struct pf_altq), M_PFPOOLADDRPL, M_WAITOK|M_NULLOK);
 		if (pa == NULL) {
 			error = ENOMEM;
 			break;
@@ -2117,7 +2062,7 @@ pfioctl(struct dev_ioctl_args *ap)
 		if (pa->ifname[0]) {
 			pa->kif = pfi_kif_get(pa->ifname);
 			if (pa->kif == NULL) {
-				pool_put(&pf_pooladdr_pl, pa);
+				kfree(ap, M_PFPOOLADDRPL);
 				error = EINVAL;
 				break;
 			}
@@ -2126,7 +2071,7 @@ pfioctl(struct dev_ioctl_args *ap)
 		if (pfi_dynaddr_setup(&pa->addr, pp->af)) {
 			pfi_dynaddr_remove(&pa->addr);
 			pfi_kif_unref(pa->kif, PFI_KIF_REF_RULE);
-			pool_put(&pf_pooladdr_pl, pa);
+			kfree(pa, M_PFPOOLADDRPL);
 			error = EINVAL;
 			break;
 		}
@@ -2202,8 +2147,8 @@ pfioctl(struct dev_ioctl_args *ap)
 			break;
 		}
 		if (pca->action != PF_CHANGE_REMOVE) {
-			newpa = pool_get(&pf_pooladdr_pl,
-			    PR_WAITOK|PR_LIMITFAIL);
+			newpa = kmalloc(sizeof(struct pf_pooladdr),
+				M_PFPOOLADDRPL, M_WAITOK|M_NULLOK);
 			if (newpa == NULL) {
 				error = ENOMEM;
 				break;
@@ -2211,14 +2156,14 @@ pfioctl(struct dev_ioctl_args *ap)
 			bcopy(&pca->addr, newpa, sizeof(struct pf_pooladdr));
 #ifndef INET
 			if (pca->af == AF_INET) {
-				pool_put(&pf_pooladdr_pl, newpa);
+				kfree(newpa, M_PFPOOLADDRPL);
 				error = EAFNOSUPPORT;
 				break;
 			}
 #endif /* INET */
 #ifndef INET6
 			if (pca->af == AF_INET6) {
-				pool_put(&pf_pooladdr_pl, newpa);
+				kfree(newpa, M_PFPOOLADDRPL);
 				error = EAFNOSUPPORT;
 				break;
 			}
@@ -2226,7 +2171,7 @@ pfioctl(struct dev_ioctl_args *ap)
 			if (newpa->ifname[0]) {
 				newpa->kif = pfi_kif_get(newpa->ifname);
 				if (newpa->kif == NULL) {
-					pool_put(&pf_pooladdr_pl, newpa);
+					kfree(newpa, M_PFPOOLADDRPL);
 					error = EINVAL;
 					break;
 				}
@@ -2237,7 +2182,7 @@ pfioctl(struct dev_ioctl_args *ap)
 			    pf_tbladdr_setup(ruleset, &newpa->addr)) {
 				pfi_dynaddr_remove(&newpa->addr);
 				pfi_kif_unref(newpa->kif, PFI_KIF_REF_RULE);
-				pool_put(&pf_pooladdr_pl, newpa);
+				kfree(newpa, M_PFPOOLADDRPL);
 				error = EINVAL;
 				break;
 			}
@@ -2266,7 +2211,7 @@ pfioctl(struct dev_ioctl_args *ap)
 			pfi_dynaddr_remove(&oldpa->addr);
 			pf_tbladdr_remove(&oldpa->addr);
 			pfi_kif_unref(oldpa->kif, PFI_KIF_REF_RULE);
-			pool_put(&pf_pooladdr_pl, oldpa);
+			kfree(oldpa, M_PFPOOLADDRPL);
 		} else {
 			if (oldpa == NULL)
 				TAILQ_INSERT_TAIL(&pool->list, newpa, entries);
@@ -2963,15 +2908,19 @@ fail:
 static void
 pf_clear_states(void)
 {
-	struct pf_state		*state;
+	struct pf_state		*s, *nexts;
+	u_int			killed = 0;
 
-	RB_FOREACH(state, pf_state_tree_id, &tree_id) {
-		state->timeout = PFTM_PURGE;
+	for (s = RB_MIN(pf_state_tree_id, &tree_id); s; s = nexts) {
+		nexts = RB_NEXT(pf_state_tree_id, &tree_id, s);
+
 		/* don't send out individual delete messages */
-		state->sync_flags = PFSTATE_NOSYNC;
-		pf_unlink_state(state);
+		s->sync_flags = PFSTATE_NOSYNC;
+		pf_unlink_state(s);
+		killed++;
+                        
 	}
-	pf_status.states = 0;
+
 #if 0 /* PFSYNC */
 /*
  * XXX This is called on module unload, we do not want to sync that over? */
@@ -3011,6 +2960,7 @@ pf_clear_srcnodes(void)
 	pf_purge_expired_src_nodes(0);
 	pf_status.src_nodes = 0;
 }
+
 /*
  * XXX - Check for version missmatch!!!
  */
@@ -3027,6 +2977,13 @@ shutdown_pf(void)
 
 
 	pf_status.running = 0;
+	error = dehook_pf();
+	if (error) {
+		pf_status.running = 1;
+		DPFPRINTF(PF_DEBUG_MISC,
+		    ("pf: pfil unregistration failed\n"));
+		return(error);
+	}
 	do {
 		if ((error = pf_begin_rules(&t[0], PF_RULESET_SCRUB, &nn)) != 0) {
 			DPFPRINTF(PF_DEBUG_MISC, ("shutdown_pf: SCRUB\n"));
@@ -3068,13 +3025,11 @@ shutdown_pf(void)
 		pf_commit_altq(t[0]);
 #endif
 		pf_clear_states();
-
 		pf_clear_srcnodes();
 
 		/* status does not use malloced mem so no need to cleanup */
 		/* fingerprints and interfaces have their own cleanup code */
 	} while(0);
-
         return (error);
 }
 
@@ -3253,16 +3208,9 @@ pf_load(void)
 
 	lwkt_gettoken(&pf_token);
 
-	init_zone_var();
 	lockinit(&pf_mod_lck, "pf task lck", 0, LK_CANRECURSE);
 	pf_dev = make_dev(&pf_ops, 0, 0, 0, 0600, PF_NAME);
-	error = pfattach();
-	if (error) {
-		dev_ops_remove_all(&pf_ops);
-		lockuninit(&pf_mod_lck);
-		lwkt_reltoken(&pf_token);
-		return (error);
-	}
+	pfattach();
 	lockinit(&pf_consistency_lock, "pfconslck", 0, LK_CANRECURSE);
 	lwkt_reltoken(&pf_token);
 	return (0);
@@ -3306,8 +3254,6 @@ pf_unload(void)
 	}
 	pfi_cleanup();
 	pf_osfp_flush();
-	pf_osfp_cleanup();
-	cleanup_pf_zone();
 	dev_ops_remove_all(&pf_ops);
 	lockuninit(&pf_consistency_lock);
 	lockuninit(&pf_mod_lck);
@@ -3319,6 +3265,9 @@ pf_unload(void)
 		Free(pf_maskhead);
 		pf_maskhead = NULL;
 	}
+	kmalloc_destroy(&pf_state_pl);
+	kmalloc_destroy(&pf_frent_pl);
+	kmalloc_destroy(&pf_cent_pl);
 	return 0;
 }
 

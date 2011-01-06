@@ -59,9 +59,12 @@
 # define DPFPRINTF(format, x...)		\
 	if (pf_status.debug >= PF_DEBUG_NOISY)	\
 		kprintf(format , ##x)
-#define rs_malloc(x)		kmalloc(x, M_TEMP, M_WAITOK)
-#define rs_free(x)		kfree(x, M_TEMP)
+#define rs_malloc(x)		kmalloc(x, M_PFRS, M_WAITOK)
+#define rs_free(x)		kfree(x, M_PFRS)
 #define printf	kprintf
+
+static MALLOC_DEFINE(M_PFRS, "pfrulesetpl", "pf ruleset pool list");
+
 #else
 /* Userland equivalents so we can lend code to pfctl et al. */
 
@@ -80,7 +83,6 @@
 #  define DPFPRINTF(format, x...)	((void)0)
 # endif /* PFDEBUG */
 #endif /* _KERNEL */
-
 
 struct pf_anchor_global	 pf_anchors;
 struct pf_anchor	 pf_main_anchor;

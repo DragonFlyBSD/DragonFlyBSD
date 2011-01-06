@@ -51,7 +51,6 @@
 #include <sys/time.h>
 #include <sys/sysctl.h>
 #include <sys/endian.h>
-#include <vm/vm_zone.h>
 #include <sys/proc.h>
 #include <sys/kthread.h>
 
@@ -141,9 +140,9 @@ struct pf_anchor_stackframe {
 	struct pf_anchor			*child;
 } pf_anchor_stack[64];
 
-vm_zone_t		 pf_src_tree_pl, pf_rule_pl, pf_pooladdr_pl;
-vm_zone_t		 pf_state_pl, pf_state_key_pl, pf_state_item_pl;
-vm_zone_t		 pf_altq_pl;
+struct malloc_type	 *pf_src_tree_pl, *pf_rule_pl, *pf_pooladdr_pl;
+struct malloc_type	 *pf_state_pl, *pf_state_key_pl, *pf_state_item_pl;
+struct malloc_type	 *pf_altq_pl;
 
 void			 pf_print_host(struct pf_addr *, u_int16_t, u_int8_t);
 
@@ -314,6 +313,11 @@ struct pf_pool_limit pf_pool_limits[PF_LIMIT_MAX] = {
 			s->anchor.ptr->states_cur--;	\
 		s->rule.ptr->states_cur--;		\
 	} while (0)
+
+static MALLOC_DEFINE(M_PFSTATEPL, "pfstatepl", "pf state pool list");
+static MALLOC_DEFINE(M_PFSRCTREEPL, "pfsrctpl", "pf source tree pool list");
+static MALLOC_DEFINE(M_PFSTATEKEYPL, "pfstatekeypl", "pf state key pool list");
+static MALLOC_DEFINE(M_PFSTATEITEMPL, "pfstateitempl", "pf state item pool list");
 
 static __inline int pf_src_compare(struct pf_src_node *, struct pf_src_node *);
 static __inline int pf_state_compare_key(struct pf_state_key *,
@@ -553,7 +557,7 @@ pf_insert_src_node(struct pf_src_node **sn, struct pf_rule *rule,
 	if (*sn == NULL) {
 		if (!rule->max_src_nodes ||
 		    rule->src_nodes < rule->max_src_nodes)
-			(*sn) = pool_get(&pf_src_tree_pl, PR_NOWAIT | PR_ZERO);
+			(*sn) = kmalloc(sizeof(struct pf_src_node), M_PFSRCTREEPL, M_NOWAIT|M_ZERO);
 		else
 			pf_status.lcounters[LCNT_SRCNODES]++;
 		if ((*sn) == NULL)
@@ -577,7 +581,7 @@ pf_insert_src_node(struct pf_src_node **sn, struct pf_rule *rule,
 				pf_print_host(&(*sn)->addr, 0, af);
 				kprintf("\n");
 			}
-			pool_put(&pf_src_tree_pl, *sn);
+			kfree(*sn, M_PFSRCTREEPL);
 			return (-1);
 		}
 		(*sn)->creation = time_second;
@@ -705,15 +709,16 @@ pf_state_key_attach(struct pf_state_key *sk, struct pf_state *s, int idx)
 					    (idx == PF_SK_STACK) ? sk : NULL);
 					kprintf("\n");
 				}
-				pool_put(&pf_state_key_pl, sk);
+				kfree(sk, M_PFSTATEKEYPL);
 				return (-1);	/* collision! */
 			}
-		pool_put(&pf_state_key_pl, sk);
+		kfree(sk, M_PFSTATEKEYPL);
+
 		s->key[idx] = cur;
 	} else
 		s->key[idx] = sk;
 
-	if ((si = pool_get(&pf_state_item_pl, PR_NOWAIT)) == NULL) {
+	if ((si = kmalloc(sizeof(struct pf_state_item), M_PFSTATEITEMPL, M_NOWAIT)) == NULL) {
 		pf_state_key_detach(s, idx);
 		return (-1);
 	}
@@ -744,14 +749,13 @@ void
 pf_state_key_detach(struct pf_state *s, int idx)
 {
 	struct pf_state_item	*si;
-
 	si = TAILQ_FIRST(&s->key[idx]->states);
 	while (si && si->s != s)
 	    si = TAILQ_NEXT(si, entry);
 
 	if (si) {
 		TAILQ_REMOVE(&s->key[idx]->states, si, entry);
-		pool_put(&pf_state_item_pl, si);
+		kfree(si, M_PFSTATEITEMPL);
 	}
 
 	if (TAILQ_EMPTY(&s->key[idx]->states)) {
@@ -760,7 +764,7 @@ pf_state_key_detach(struct pf_state *s, int idx)
 			s->key[idx]->reverse->reverse = NULL;
 		if (s->key[idx]->inp)
 			s->key[idx]->inp->inp_pf_sk = NULL;
-		pool_put(&pf_state_key_pl, s->key[idx]);
+		kfree(s->key[idx], M_PFSTATEKEYPL);
 	}
 	s->key[idx] = NULL;
 }
@@ -770,8 +774,8 @@ pf_alloc_state_key(int pool_flags)
 {
 	struct pf_state_key	*sk;
 
-	if ((sk = pool_get(&pf_state_key_pl, pool_flags)) == NULL)
-		return (NULL);
+	if ((sk = kmalloc(sizeof(struct pf_state_key), M_PFSTATEKEYPL, pool_flags)) == NULL)
+			return (NULL);
 	TAILQ_INIT(&sk->states);
 
 	return (sk);
@@ -786,7 +790,7 @@ pf_state_key_setup(struct pf_pdesc *pd, struct pf_rule *nr,
 {
 	KKASSERT((*skp == NULL && *nkp == NULL));
 
-	if ((*skp = pf_alloc_state_key(PR_NOWAIT | PR_ZERO)) == NULL)
+	if ((*skp = pf_alloc_state_key(M_NOWAIT | M_ZERO)) == NULL)
 		return (ENOMEM);
 
 	PF_ACPY(&(*skp)->addr[pd->sidx], saddr, pd->af);
@@ -797,7 +801,7 @@ pf_state_key_setup(struct pf_pdesc *pd, struct pf_rule *nr,
 	(*skp)->af = pd->af;
 
 	if (nr != NULL) {
-		if ((*nkp = pf_alloc_state_key(PR_NOWAIT | PR_ZERO)) == NULL)
+		if ((*nkp = pf_alloc_state_key(M_NOWAIT | M_ZERO)) == NULL)
 			return (ENOMEM); /* caller must handle cleanup */
 
 		/* XXX maybe just bcopy and TAILQ_INIT(&(*nkp)->states) */
@@ -833,7 +837,7 @@ pf_state_insert(struct pfi_kif *kif, struct pf_state_key *skw,
 		s->key[PF_SK_STACK] = s->key[PF_SK_WIRE];
 	} else {
 		if (pf_state_key_attach(skw, s, PF_SK_WIRE)) {
-			pool_put(&pf_state_key_pl, sks);
+			kfree(sks, M_PFSTATEKEYPL);
 			return (-1);
 		}
 		if (pf_state_key_attach(sks, s, PF_SK_STACK)) {
@@ -1054,7 +1058,7 @@ pf_purge_expired_src_nodes(int waslocked)
 			 RB_REMOVE(pf_src_tree, &tree_src_tracking, cur);
 			 pf_status.scounters[SCNT_SRC_NODE_REMOVALS]++;
 			 pf_status.src_nodes--;
-			 pool_put(&pf_src_tree_pl, cur);
+			 kfree(cur, M_PFSRCTREEPL);
 		 }
 	 }
 
@@ -1149,7 +1153,7 @@ pf_free_state(struct pf_state *cur)
 	TAILQ_REMOVE(&state_list, cur, entry_list);
 	if (cur->tag)
 		pf_tag_unref(cur->tag);
-	pool_put(&pf_state_pl, cur);
+	kfree(cur, M_PFSTATEPL);
 	pf_status.fcounters[FCNT_STATE_REMOVALS]++;
 	pf_status.states--;
 }
@@ -3579,9 +3583,9 @@ pf_test_rule(struct pf_rule **rm, struct pf_state **sm, int direction,
 
 cleanup:
 	if (sk != NULL)
-		pool_put(&pf_state_key_pl, sk);
+		kfree(sk, M_PFSTATEKEYPL);
 	if (nk != NULL)
-		pool_put(&pf_state_key_pl, nk);
+		kfree(nk, M_PFSTATEKEYPL);
 	return (PF_DROP);
 }
 
@@ -3618,7 +3622,7 @@ pf_create_state(struct pf_rule *r, struct pf_rule *nr, struct pf_rule *a,
 		REASON_SET(&reason, PFRES_SRCLIMIT);
 		goto csfailed;
 	}
-	s = pool_get(&pf_state_pl, PR_NOWAIT | PR_ZERO);
+	s = kmalloc(sizeof(struct pf_state), M_PFSTATEPL, M_NOWAIT|M_ZERO);
 	if (s == NULL) {
 		REASON_SET(&reason, PFRES_MEMORY);
 		goto csfailed;
@@ -3708,7 +3712,7 @@ pf_create_state(struct pf_rule *r, struct pf_rule *nr, struct pf_rule *a,
 			REASON_SET(&reason, PFRES_MEMORY);
 			pf_src_tree_remove_state(s);
 			STATE_DEC_COUNTERS(s);
-			pool_put(&pf_state_pl, s);
+			kfree(s, M_PFSTATEPL);
 			return (PF_DROP);
 		}
 		if ((pd->flags & PFDESC_TCP_NORM) && s->src.scrub &&
@@ -3720,7 +3724,7 @@ pf_create_state(struct pf_rule *r, struct pf_rule *nr, struct pf_rule *a,
 			pf_normalize_tcp_cleanup(s);
 			pf_src_tree_remove_state(s);
 			STATE_DEC_COUNTERS(s);
-			pool_put(&pf_state_pl, s);
+			kfree(s, M_PFSTATEPL);
 			return (PF_DROP);
 		}
 	}
@@ -3736,7 +3740,7 @@ pf_create_state(struct pf_rule *r, struct pf_rule *nr, struct pf_rule *a,
 		REASON_SET(&reason, PFRES_STATEINS);
 		pf_src_tree_remove_state(s);
 		STATE_DEC_COUNTERS(s);
-		pool_put(&pf_state_pl, s);
+		kfree(s, M_PFSTATEPL);
 		return (PF_DROP);
 	} else
 		*sm = s;
@@ -3783,21 +3787,21 @@ pf_create_state(struct pf_rule *r, struct pf_rule *nr, struct pf_rule *a,
 
 csfailed:
 	if (sk != NULL)
-		pool_put(&pf_state_key_pl, sk);
+		kfree(sk, M_PFSTATEKEYPL);
 	if (nk != NULL)
-		pool_put(&pf_state_key_pl, nk);
+		kfree(nk, M_PFSTATEKEYPL);
 
 	if (sn != NULL && sn->states == 0 && sn->expire == 0) {
 		RB_REMOVE(pf_src_tree, &tree_src_tracking, sn);
 		pf_status.scounters[SCNT_SRC_NODE_REMOVALS]++;
 		pf_status.src_nodes--;
-		pool_put(&pf_src_tree_pl, sn);
+		kfree(sn, M_PFSRCTREEPL);
 	}
 	if (nsn != sn && nsn != NULL && nsn->states == 0 && nsn->expire == 0) {
 		RB_REMOVE(pf_src_tree, &tree_src_tracking, nsn);
 		pf_status.scounters[SCNT_SRC_NODE_REMOVALS]++;
 		pf_status.src_nodes--;
-		pool_put(&pf_src_tree_pl, nsn);
+		kfree(nsn, M_PFSRCTREEPL);
 	}
 	return (PF_DROP);
 }

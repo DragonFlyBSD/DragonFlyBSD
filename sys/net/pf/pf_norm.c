@@ -38,7 +38,6 @@
 #include <sys/socket.h>
 #include <sys/kernel.h>
 #include <sys/time.h>
-#include <vm/vm_zone.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -97,9 +96,15 @@ int			 pf_normalize_tcpopt(struct pf_rule *, struct mbuf *,
 	}						\
 } while(0)
 
+static MALLOC_DEFINE(M_PFFRAGPL, "pffrag", "pf fragment pool list");
+static MALLOC_DEFINE(M_PFCACHEPL, "pffrcache", "pf fragment cache pool list");
+static MALLOC_DEFINE(M_PFFRENTPL, "pffrent", "pf frent pool list");
+static MALLOC_DEFINE(M_PFCENTPL, "pffrcent", "pf fragment cent pool list");
+static MALLOC_DEFINE(M_PFSTATESCRUBPL, "pfstatescrub", "pf state scrub pool list");
+
 /* Globals */
-vm_zone_t		 pf_frent_pl, pf_frag_pl, pf_cache_pl, pf_cent_pl;
-vm_zone_t		 pf_state_scrub_pl;
+struct malloc_type	 *pf_frent_pl, *pf_frag_pl, *pf_cache_pl, *pf_cent_pl;
+struct malloc_type	 *pf_state_scrub_pl;
 int			 pf_nfrents, pf_ncache;
 
 void
@@ -215,7 +220,7 @@ pf_free_fragment(struct pf_fragment *frag)
 			LIST_REMOVE(frent, fr_next);
 
 			m_freem(frent->fr_m);
-			pool_put(&pf_frent_pl, frent);
+			kfree(frent, M_PFFRENTPL);
 			pf_nfrents--;
 		}
 	} else {
@@ -229,7 +234,7 @@ pf_free_fragment(struct pf_fragment *frag)
 			    ("! (LIST_EMPTY() || LIST_FIRST()->fr_off >"
                              " frcache->fr_end): %s", __func__));
 
-			pool_put(&pf_cent_pl, frcache);
+			kfree(frcache, M_PFCENTPL);
 			pf_ncache--;
 		}
 	}
@@ -278,11 +283,11 @@ pf_remove_fragment(struct pf_fragment *frag)
 	if (BUFFER_FRAGMENTS(frag)) {
 		RB_REMOVE(pf_frag_tree, &pf_frag_tree, frag);
 		TAILQ_REMOVE(&pf_fragqueue, frag, frag_next);
-		pool_put(&pf_frag_pl, frag);
+		kfree(frag, M_PFFRAGPL);
 	} else {
 		RB_REMOVE(pf_frag_tree, &pf_cache_tree, frag);
 		TAILQ_REMOVE(&pf_cachequeue, frag, frag_next);
-		pool_put(&pf_cache_pl, frag);
+		kfree(frag, M_PFCACHEPL);
 	}
 }
 
@@ -309,10 +314,10 @@ pf_reassemble(struct mbuf **m0, struct pf_fragment **frag,
 
 	/* Create a new reassembly queue for this packet */
 	if (*frag == NULL) {
-		*frag = pool_get(&pf_frag_pl, PR_NOWAIT);
+		*frag = kmalloc(sizeof(struct pf_fragment), M_PFFRAGPL, M_NOWAIT);
 		if (*frag == NULL) {
 			pf_flush_fragments();
-			*frag = pool_get(&pf_frag_pl, PR_NOWAIT);
+			*frag = kmalloc(sizeof(struct pf_fragment), M_PFFRAGPL, M_NOWAIT);
 			if (*frag == NULL)
 				goto drop_fragment;
 		}
@@ -388,7 +393,7 @@ pf_reassemble(struct mbuf **m0, struct pf_fragment **frag,
 		next = LIST_NEXT(frea, fr_next);
 		m_freem(frea->fr_m);
 		LIST_REMOVE(frea, fr_next);
-		pool_put(&pf_frent_pl, frea);
+		kfree(frea, M_PFFRENTPL);
 		pf_nfrents--;
 	}
 
@@ -445,13 +450,13 @@ pf_reassemble(struct mbuf **m0, struct pf_fragment **frag,
 	m2 = m->m_next;
 	m->m_next = NULL;
 	m_cat(m, m2);
-	pool_put(&pf_frent_pl, frent);
+	kfree(frent, M_PFFRENTPL);
 	pf_nfrents--;
 	for (frent = next; frent != NULL; frent = next) {
 		next = LIST_NEXT(frent, fr_next);
 
 		m2 = frent->fr_m;
-		pool_put(&pf_frent_pl, frent);
+		kfree(frent, M_PFFRENTPL);
 		pf_nfrents--;
 		m_cat(m, m2);
 	}
@@ -482,7 +487,7 @@ pf_reassemble(struct mbuf **m0, struct pf_fragment **frag,
 
  drop_fragment:
 	/* Oops - fail safe - drop packet */
-	pool_put(&pf_frent_pl, frent);
+	kfree(frent, M_PFFRENTPL);
 	pf_nfrents--;
 	m_freem(m);
 	return (NULL);
@@ -504,18 +509,18 @@ pf_fragcache(struct mbuf **m0, struct ip *h, struct pf_fragment **frag, int mff,
 
 	/* Create a new range queue for this packet */
 	if (*frag == NULL) {
-		*frag = pool_get(&pf_cache_pl, PR_NOWAIT);
+		*frag = kmalloc(sizeof(struct pf_fragment), M_PFCACHEPL, M_NOWAIT);
 		if (*frag == NULL) {
 			pf_flush_fragments();
-			*frag = pool_get(&pf_cache_pl, PR_NOWAIT);
+			*frag = kmalloc(sizeof(struct pf_fragment), M_PFCACHEPL, M_NOWAIT);
 			if (*frag == NULL)
 				goto no_mem;
 		}
 
 		/* Get an entry for the queue */
-		cur = pool_get(&pf_cent_pl, PR_NOWAIT);
+		cur = kmalloc(sizeof(struct pf_frcache), M_PFCENTPL, M_NOWAIT);
 		if (cur == NULL) {
-			pool_put(&pf_cache_pl, *frag);
+			kfree(*frag, M_PFCACHEPL);
 			*frag = NULL;
 			goto no_mem;
 		}
@@ -636,7 +641,7 @@ pf_fragcache(struct mbuf **m0, struct ip *h, struct pf_fragment **frag, int mff,
 			    h->ip_id, -precut, frp->fr_off, frp->fr_end, off,
 			    max));
 
-			cur = pool_get(&pf_cent_pl, PR_NOWAIT);
+			cur = kmalloc(sizeof(struct pf_frcache), M_PFCENTPL, M_NOWAIT);
 			if (cur == NULL)
 				goto no_mem;
 			pf_ncache++;
@@ -691,7 +696,7 @@ pf_fragcache(struct mbuf **m0, struct ip *h, struct pf_fragment **frag, int mff,
 			    h->ip_id, -aftercut, off, max, fra->fr_off,
 			    fra->fr_end));
 
-			cur = pool_get(&pf_cent_pl, PR_NOWAIT);
+			cur = kmalloc(sizeof(struct pf_frcache), M_PFCENTPL, M_NOWAIT);
 			if (cur == NULL)
 				goto no_mem;
 			pf_ncache++;
@@ -712,7 +717,7 @@ pf_fragcache(struct mbuf **m0, struct ip *h, struct pf_fragment **frag, int mff,
 				    max, fra->fr_off, fra->fr_end));
 				fra->fr_off = cur->fr_off;
 				LIST_REMOVE(cur, fr_next);
-				pool_put(&pf_cent_pl, cur);
+				kfree(cur, M_PFCENTPL);
 				pf_ncache--;
 				cur = NULL;
 
@@ -726,7 +731,7 @@ pf_fragcache(struct mbuf **m0, struct ip *h, struct pf_fragment **frag, int mff,
 				    max, fra->fr_off, fra->fr_end));
 				fra->fr_off = frp->fr_off;
 				LIST_REMOVE(frp, fr_next);
-				pool_put(&pf_cent_pl, frp);
+				kfree(frp, M_PFCENTPL);
 				pf_ncache--;
 				frp = NULL;
 
@@ -898,7 +903,7 @@ pf_normalize_ip(struct mbuf **m0, int dir, struct pfi_kif *kif, u_short *reason,
 			goto bad;
 
 		/* Get an entry for the fragment queue */
-		frent = pool_get(&pf_frent_pl, PR_NOWAIT);
+		frent = kmalloc(sizeof(struct pf_frent), M_PFFRENTPL, M_NOWAIT);
 		if (frent == NULL) {
 			REASON_SET(reason, PFRES_MEMORY);
 			return (PF_DROP);
@@ -1349,7 +1354,7 @@ pf_normalize_tcp_init(struct mbuf *m, int off, struct pf_pdesc *pd,
 	KASSERT((src->scrub == NULL), 
 	    ("pf_normalize_tcp_init: src->scrub != NULL"));
 
-	src->scrub = pool_get(&pf_state_scrub_pl, PR_NOWAIT);
+	src->scrub = kmalloc(sizeof(struct pf_state_scrub), M_PFSTATESCRUBPL, M_NOWAIT);
 	if (src->scrub == NULL)
 		return (1);
 	bzero(src->scrub, sizeof(*src->scrub));
@@ -1425,9 +1430,9 @@ void
 pf_normalize_tcp_cleanup(struct pf_state *state)
 {
 	if (state->src.scrub)
-		pool_put(&pf_state_scrub_pl, state->src.scrub);
+		kfree(state->src.scrub, M_PFSTATESCRUBPL);
 	if (state->dst.scrub)
-		pool_put(&pf_state_scrub_pl, state->dst.scrub);
+		kfree(state->dst.scrub, M_PFSTATESCRUBPL);
 
 	/* Someday... flush the TCP segment reassembly descriptors. */
 }

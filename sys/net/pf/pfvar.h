@@ -48,9 +48,6 @@
 #include <netinet/in.h>
 #include <netinet/in_pcb.h>
 
-#ifdef _KERNEL
-#include <vm/vm_zone.h>
-#endif
 
 /*
  * XXX
@@ -227,15 +224,6 @@ struct pfi_dynaddr {
  * Address manipulation macros
  */
 
-/* XXX correct values for zinit? */
-#define	ZONE_CREATE(var, type, desc)					\
-	var = zinit(desc, sizeof(type), 1, ZONE_DESTROYABLE, 1);	\
-	if (var == NULL) break
-#define	ZONE_DESTROY(a) zdestroy(a)
-
-/* #define	pool_get(p, f)	zalloc(*(p)) */
-#define	pool_put(p, o)	zfree(*(p), (o))
-
 #define	NTOHS(x)	(x) = ntohs((__uint16_t)(x))
 #define HTONS(x)	(x) = htons((__uint16_t)(x))
 
@@ -263,7 +251,6 @@ TAILQ_HEAD(hook_desc_head, hook_desc);
 void *hook_establish(struct hook_desc_head *, int, void (*)(void *), void *);
 void hook_disestablish(struct hook_desc_head *, void *);
 void dohooks(struct hook_desc_head *, int);
-void *pool_get (vm_zone_t *, int);
 
 #define	HOOK_REMOVE     0x01
 #define	HOOK_FREE       0x02
@@ -418,7 +405,6 @@ void *pool_get (vm_zone_t *, int);
 		    &(aw)->v.a.mask, (x), (af))))) !=			\
 		(neg)							\
 	)
-
 
 struct pf_rule_uid {
 	uid_t		 uid[2];
@@ -1769,14 +1755,14 @@ extern int			 pf_tbladdr_setup(struct pf_ruleset *,
 extern void			 pf_tbladdr_remove(struct pf_addr_wrap *);
 extern void			 pf_tbladdr_copyout(struct pf_addr_wrap *);
 extern void			 pf_calc_skip_steps(struct pf_rulequeue *);
-extern vm_zone_t		 pf_src_tree_pl, pf_rule_pl;
-extern vm_zone_t		 pf_state_pl, pf_state_key_pl, pf_state_item_pl,
-						pf_altq_pl, pf_pooladdr_pl;
-extern vm_zone_t		 pfr_ktable_pl, pfr_kentry_pl;
-extern vm_zone_t		 pfr_kentry_pl2;
-extern vm_zone_t		 pf_cache_pl, pf_cent_pl;
-extern vm_zone_t		 pf_state_scrub_pl;
-extern vm_zone_t		 pfi_addr_pl;
+extern struct malloc_type	*pf_src_tree_pl, *pf_rule_pl;
+extern struct malloc_type	*pf_state_pl, *pf_state_key_pl, *pf_state_item_pl,
+					*pf_altq_pl, *pf_pooladdr_pl;
+extern struct malloc_type	*pfr_ktable_pl, *pfr_kentry_pl;
+extern struct malloc_type	*pfr_kentry_pl2;
+extern struct malloc_type	*pf_cache_pl, *pf_cent_pl;
+extern struct malloc_type	*pf_state_scrub_pl;
+extern struct malloc_type	*pfi_addr_pl;
 extern void			 pf_purge_thread(void *);
 extern int			 pf_purge_expired_src_nodes(int);
 extern int			 pf_purge_expired_states(u_int32_t, int);
@@ -1928,7 +1914,7 @@ void		 pf_qid2qname(u_int32_t, char *);
 void		 pf_qid_unref(u_int32_t);
 
 extern struct pf_status	pf_status;
-extern vm_zone_t	pf_frent_pl, pf_frag_pl;
+extern struct malloc_type	*pf_frent_pl, *pf_frag_pl;
 extern struct lock	pf_consistency_lock;
 
 struct pf_pool_limit {
@@ -2000,8 +1986,7 @@ struct pf_osfp_enlist *
 	    const struct tcphdr *);
 void	pf_osfp_flush(void);
 int	pf_osfp_get(struct pf_osfp_ioctl *);
-int	pf_osfp_initialize(void);
-void	pf_osfp_cleanup(void);
+void	pf_osfp_initialize(void);
 int	pf_osfp_match(struct pf_osfp_enlist *, pf_osfp_t);
 struct pf_os_fingerprint *
 	pf_osfp_validate(void);

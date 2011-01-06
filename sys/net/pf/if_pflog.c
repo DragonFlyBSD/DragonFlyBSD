@@ -49,7 +49,6 @@
 #include <sys/module.h>
 #include <sys/sockio.h>
 #include <sys/thread2.h>
-#include <vm/vm_zone.h>
 
 #include <net/if.h>
 #include <net/if_types.h>

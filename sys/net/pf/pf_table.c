@@ -42,7 +42,6 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/thread2.h>
-#include <vm/vm_zone.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -101,6 +100,11 @@
 #define ENQUEUE_UNMARKED_ONLY	(1)
 #define INVERT_NEG_FLAG		(1)
 
+static MALLOC_DEFINE(M_PFRKTABLEPL, "pfrktable", "pf radix table pool list");
+static MALLOC_DEFINE(M_PFRKENTRYPL, "pfrkentry", "pf radix entry pool list");
+static MALLOC_DEFINE(M_PFRKENTRYPL2, "pfrkentry2", "pf radix entry 2 pool list");
+static MALLOC_DEFINE(M_PFRKCOUNTERSPL, "pfrkcounters", "pf radix counters");
+
 struct pfr_walktree {
 	enum pfrw_op {
 		PFRW_MARK,
@@ -129,11 +133,9 @@ struct pfr_walktree {
 #define pfrw_cnt	pfrw_free
 
 #define senderr(e)	do { rv = (e); goto _bad; } while (0)
-
-vm_zone_t		 pfr_ktable_pl;
-vm_zone_t		 pfr_kentry_pl;
-vm_zone_t		 pfr_kentry_pl2;
-vm_zone_t		pfr_kcounters_pl;
+struct malloc_type	*pfr_ktable_pl;
+struct malloc_type	*pfr_kentry_pl;
+struct malloc_type	*pfr_kentry_pl2;
 struct sockaddr_in	 pfr_sin;
 struct sockaddr_in6	 pfr_sin6;
 union sockaddr_union	 pfr_mask;
@@ -807,9 +809,9 @@ pfr_create_kentry(struct pfr_addr *ad, int intr)
 	struct pfr_kentry	*ke;
 
 	if (intr)
-		ke = pool_get(&pfr_kentry_pl2, PR_NOWAIT | PR_ZERO);
+		ke = kmalloc(sizeof(struct pfr_kentry), M_PFRKENTRYPL2, M_NOWAIT|M_ZERO);
 	else
-		ke = pool_get(&pfr_kentry_pl, PR_NOWAIT|PR_ZERO|PR_LIMITFAIL);
+		ke = kmalloc(sizeof(struct pfr_kentry), M_PFRKENTRYPL, M_NOWAIT|M_ZERO|M_NULLOK);
 	if (ke == NULL)
 		return (NULL);
 
@@ -839,11 +841,11 @@ void
 pfr_destroy_kentry(struct pfr_kentry *ke)
 {
 	if (ke->pfrke_counters)
-		pool_put(&pfr_kcounters_pl, ke->pfrke_counters);
+		kfree(ke->pfrke_counters, M_PFRKCOUNTERSPL);
 	if (ke->pfrke_intrpool)
-		pool_put(&pfr_kentry_pl2, ke);
+		kfree(ke, M_PFRKENTRYPL2);
 	else
-		pool_put(&pfr_kentry_pl, ke);
+		kfree(ke, M_PFRKENTRYPL);
 }
 
 void
@@ -924,7 +926,7 @@ pfr_clstats_kentries(struct pfr_kentryworkq *workq, long tzero, int negchange)
 		if (negchange)
 			p->pfrke_not = !p->pfrke_not;
 		if (p->pfrke_counters) {
-			pool_put(&pfr_kcounters_pl, p->pfrke_counters);
+			kfree(p->pfrke_counters, M_PFRKCOUNTERSPL);
 			p->pfrke_counters = NULL;
 		}
 		crit_exit();
@@ -1894,7 +1896,7 @@ pfr_create_ktable(struct pfr_table *tbl, long tzero, int attachruleset)
 	struct pfr_ktable	*kt;
 	struct pf_ruleset	*rs;
 
-	kt = pool_get(&pfr_ktable_pl, PR_NOWAIT| PR_ZERO | PR_LIMITFAIL);
+	kt = kmalloc(sizeof(struct pfr_ktable), M_PFRKTABLEPL, M_NOWAIT|M_ZERO|M_NULLOK);
 	if (kt == NULL)
 		return (NULL);
 	kt->pfrkt_t = *tbl;
@@ -1954,7 +1956,7 @@ pfr_destroy_ktable(struct pfr_ktable *kt, int flushaddr)
 		kt->pfrkt_rs->tables--;
 		pf_remove_if_empty_ruleset(kt->pfrkt_rs);
 	}
-	pool_put(&pfr_ktable_pl, kt);
+	kfree(kt, M_PFRKTABLEPL);
 }
 
 int
@@ -2057,8 +2059,8 @@ pfr_update_stats(struct pfr_ktable *kt, struct pf_addr *a, sa_family_t af,
 	if (ke != NULL && op_pass != PFR_OP_XPASS &&
 	    (kt->pfrkt_flags & PFR_TFLAG_COUNTERS)) {
 		if (ke->pfrke_counters == NULL)
-			ke->pfrke_counters = pool_get(&pfr_kcounters_pl,
-			    PR_NOWAIT | PR_ZERO);
+			ke->pfrke_counters = kmalloc(sizeof(struct pfr_kcounters),
+			    M_PFRKCOUNTERSPL, M_NOWAIT|M_ZERO);
 		if (ke->pfrke_counters != NULL) {
 			ke->pfrke_counters->pfrkc_packets[dir_out][op_pass]++;
 			ke->pfrke_counters->pfrkc_bytes[dir_out][op_pass] += len;

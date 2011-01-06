@@ -45,7 +45,6 @@
 #include <sys/queue.h>
 #include <sys/kernel.h>
 #include <sys/resourcevar.h>
-#include <vm/vm_zone.h>
 
 #include <net/if.h>
 
@@ -176,16 +175,3 @@ dohooks(struct hook_desc_head *head, int flags)
 #define ISN_BYTES_PER_SECOND 1048576
 #define ISN_STATIC_INCREMENT 4096
 #define ISN_RANDOM_INCREMENT (4096 - 1)
-
-/* wrapper functions for pool_* */
-void *
-pool_get(vm_zone_t *pp, int flags)
-{
-	void *retval;
-	retval = zalloc(*(pp));
-
-	if (flags & PR_ZERO)
-		bzero(retval, (*pp)->zsize);
-
-	return retval;
-}
