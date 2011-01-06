@@ -204,7 +204,7 @@ apic_finalize(void)
 static void
 apic_cleanup(void)
 {
-	mdcpu->gd_fpending = 0;
+	bzero(mdcpu->gd_ipending, sizeof(mdcpu->gd_ipending));
 }
 
 static int

@@ -172,7 +172,7 @@ icu_finalize(void)
 static void
 icu_cleanup(void)
 {
-	mdcpu->gd_fpending = 0;
+	bzero(mdcpu->gd_ipending, sizeof(mdcpu->gd_ipending));
 }
 
 

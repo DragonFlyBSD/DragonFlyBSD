@@ -20,11 +20,11 @@
 #include <machine/smp.h>
 #include <machine_base/isa/intr_machdep.h>
 
-/* convert an absolute IRQ# into a bitmask */
-#define IRQ_LBIT(irq_num)	(1 << (irq_num))
+/* convert an absolute IRQ# into bitmask */
+#define IRQ_LBIT(irq_num)	(1 << ((irq_num) & 0x1f))
 
-/* make an index into the IO APIC from the IRQ# */
-#define REDTBL_IDX(irq_num)	(0x10 + ((irq_num) * 2))
+/* convert an absolute IRQ# into ipending index */
+#define IRQ_LIDX(irq_num)	((irq_num) >> 5)
 
 #ifdef SMP
 #define MPLOCKED     lock ;
@@ -123,9 +123,9 @@
  *
  *	- Push the trap frame required by doreti
  *	- Mask the interrupt and reenable its source
- *	- If we cannot take the interrupt set its fpending bit and
+ *	- If we cannot take the interrupt set its ipending bit and
  *	  doreti.
- *	- If we can take the interrupt clear its fpending bit,
+ *	- If we can take the interrupt clear its ipending bit,
  *	  call the handler, then unmask and doreti.
  *
  * YYY can cache gd base opitner instead of using hidden %fs prefixes.
@@ -149,12 +149,14 @@ IDTVEC(apic_intr##irq_num) ;						\
 1: ;									\
 	/* in critical section, make interrupt pending */		\
 	/* set the pending bit and return, leave interrupt masked */	\
-	orl	$IRQ_LBIT(irq_num),PCPU(fpending) ;			\
+	movl	$IRQ_LIDX(irq_num),%edx ;				\
+	orl	$IRQ_LBIT(irq_num),PCPU_E4(ipending,%edx) ;		\
 	orl	$RQF_INTPEND,PCPU(reqflags) ;				\
 	jmp	5f ;							\
 2: ;									\
 	/* clear pending bit, run handler */				\
-	andl	$~IRQ_LBIT(irq_num),PCPU(fpending) ;			\
+	movl	$IRQ_LIDX(irq_num),%edx ;				\
+	andl	$~IRQ_LBIT(irq_num),PCPU_E4(ipending,%edx) ;		\
 	pushl	$irq_num ;						\
 	pushl	%esp ;			 /* pass frame by reference */	\
 	incl	TD_CRITCOUNT(%ebx) ;					\

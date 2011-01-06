@@ -122,9 +122,9 @@
  *
  *	- Push the trap frame required by doreti.
  *	- Mask the interrupt and reenable its source.
- *	- If we cannot take the interrupt set its fpending bit and
+ *	- If we cannot take the interrupt set its ipending bit and
  *	  doreti.
- *	- If we can take the interrupt clear its fpending bit,
+ *	- If we can take the interrupt clear its ipending bit,
  *	  call the handler, then unmask the interrupt and doreti.
  *
  *	YYY can cache gd base pointer instead of using hidden %fs
@@ -147,12 +147,14 @@ IDTVEC(icu_intr##irq_num) ; 						\
 	je	2f ;							\
 1: ;									\
 	/* set pending bit and return, leave interrupt masked */	\
-	orl	$IRQ_LBIT(irq_num),PCPU(fpending) ;			\
+	movl	$0,%edx ;						\
+	orl	$IRQ_LBIT(irq_num),PCPU_E4(ipending,%edx) ;		\
 	orl	$RQF_INTPEND, PCPU(reqflags) ;				\
 	jmp	5f ;							\
 2: ;									\
 	/* clear pending bit, run handler */				\
-	andl	$~IRQ_LBIT(irq_num),PCPU(fpending) ;			\
+	movl	$0,%edx ;						\
+	andl	$~IRQ_LBIT(irq_num),PCPU_E4(ipending,%edx) ;		\
 	pushl	$irq_num ;						\
 	pushl	%esp ;			/* pass frame by reference */	\
 	incl	TD_CRITCOUNT(%ebx) ;					\
