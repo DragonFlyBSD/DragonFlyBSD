@@ -35,10 +35,9 @@
 .\"
 .\"	@(#)xargs.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/xargs/xargs.1,v 1.6.2.12 2003/06/01 21:40:35 mux Exp $
-.\" $DragonFly: src/usr.bin/xargs/xargs.1,v 1.6 2007/09/02 19:30:47 swildner Exp $
 .\" $xMach: xargs.1,v 1.2 2002/02/23 05:23:37 tim Exp $
 .\"
-.Dd May 7, 2001
+.Dd January 6, 2011
 .Dt XARGS 1
 .Os
 .Sh NAME
@@ -58,6 +57,7 @@
 .Fl n Ar number
 .Op Fl x
 .Oc
+.Op Fl P Ar maxjobs
 .Op Fl s Ar size
 .Op Ar utility Op Ar argument ...
 .Sh DESCRIPTION
@@ -199,6 +199,12 @@ in the child process before executing the command.
 This is useful if you want
 .Nm
 to run an interactive application.
+.It Fl P Ar maxprocs
+Parallel mode: run at most
+.Ar maxprocs
+invocations of
+.Ar utility
+at once.
 .It Fl p
 Echo each command to be executed and ask the user whether it should be
 executed.
@@ -285,7 +291,7 @@ utility is expected to be
 .St -p1003.2
 compliant.
 The
-.Fl J , o
+.Fl J , o , P
 and
 .Fl R
 options are non-standard

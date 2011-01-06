@@ -38,7 +38,6 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)xargs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/xargs/xargs.c,v 1.9.2.6 2003/06/01 21:40:35 mux Exp $
- * $DragonFly: src/usr.bin/xargs/xargs.c,v 1.3 2004/07/27 21:42:48 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -66,6 +65,7 @@ static int	prompt(void);
 static void	run(char **);
 static void	usage(void);
 void		strnsubst(char **, const char *, const char *, size_t);
+static void	waitchildren(const char *, int);
 
 static char echo[] = _PATH_ECHO;
 static char **av, **bxp, **ep, **expx, **xp;
@@ -73,6 +73,8 @@ static char *argp, *bbp, *ebp, *inpline, *p, *replstr;
 static const char *eofstr;
 static int count, insingle, indouble, oflag, pflag, tflag, Rflag, rval, zflag;
 static int cnt, Iflag, jfound, Lflag, wasquoted, xflag;
+static int curprocs, maxprocs;
+static volatile int childerr;
 
 extern char **environ;
 
@@ -112,7 +114,9 @@ main(int argc, char *argv[])
 		/* 1 byte for each '\0' */
 		nline -= strlen(*ep++) + 1 + sizeof(*ep);
 	}
-	while ((ch = getopt(argc, argv, "0E:I:J:L:n:opR:s:tx")) != -1)
+
+	maxprocs = 1;
+	while ((ch = getopt(argc, argv, "0E:I:J:L:n:opP:R:s:tx")) != -1)
 		switch(ch) {
 		case 'E':
 			eofstr = optarg;
@@ -143,6 +147,10 @@ main(int argc, char *argv[])
 			break;
 		case 'p':
 			pflag = 1;
+			break;
+		case 'P':
+			if ((maxprocs = atoi(optarg)) <= 0)
+				errx(1, "max.processes must be >0");
 			break;
 		case 'R':
 			if ((Rflag = atoi(optarg)) <= 0)
@@ -245,8 +253,10 @@ parse_input(int argc, char *argv[])
 	switch(ch = getchar()) {
 	case EOF:
 		/* No arguments since last exec. */
-		if (p == bbp)
+		if (p == bbp) {
+			waitchildren(*argv, 1);
 			exit(rval);
+		}
 		goto arg1;
 	case ' ':
 	case '\t':
@@ -323,8 +333,10 @@ arg2:
 					*xp++ = *avj;
 			}
 			prerun(argc, av);
-			if (ch == EOF || foundeof)
+			if (ch == EOF || foundeof) {
+				waitchildren(*argv, 1);
 				exit(rval);
+			}
 			p = bbp;
 			xp = bxp;
 			count = 0;
@@ -463,10 +475,8 @@ prerun(int argc, char *argv[])
 static void
 run(char **argv)
 {
-	volatile int childerr;
 	char **avec;
 	pid_t pid;
-	int status;
 
 	/*
 	 * If the user wants to be notified of each command before it is
@@ -516,17 +526,40 @@ exec:
 		childerr = errno;
 		_exit(1);
 	}
-	pid = waitpid(pid, &status, 0);
-	if (pid == -1)
-		err(1, "waitpid");
-	/* If we couldn't invoke the utility, exit. */
-	if (childerr != 0)
-		err(childerr == ENOENT ? 127 : 126, "%s", *argv);
-	/* If utility signaled or exited with a value of 255, exit 1-125. */
-	if (WIFSIGNALED(status) || WEXITSTATUS(status) == 255)
-		exit(1);
-	if (WEXITSTATUS(status))
-		rval = 1;
+	curprocs++;
+	waitchildren(*argv, 0);
+}
+
+/*
+ * Handle child processes.
+ */
+static void
+waitchildren(const char *name, int waitall)
+{
+	pid_t pid;
+	int status;
+
+	while ((pid = wait3(&status, !waitall && curprocs < maxprocs ?
+		WNOHANG : 0, NULL)) > 0) {
+		curprocs--;
+
+		/* If we couldn't invoke the utility, exit. */
+		if (childerr != 0) {
+			errno = childerr;
+			err(errno == ENOENT ? 127 : 126, "%s", name);
+		}
+
+		/*
+		 * If utility signaled or exited with a value of 255,
+		 * exit 1-125.
+		 */
+		if (WIFSIGNALED(status) || WEXITSTATUS(status) == 255)
+			exit(1);
+		if (WEXITSTATUS(status))
+			rval = 1;
+        }
+	if (pid == -1 && errno != ECHILD)
+		err(1, "wait3");
 }
 
 /*
@@ -567,6 +600,7 @@ usage(void)
 {
 	fprintf(stderr,
 "usage: xargs [-0opt] [-E eofstr] [-I replstr [-R replacements]] [-J replstr]\n"
-"             [-L number] [-n number [-x] [-s size] [utility [argument ...]]\n");
+"             [-L number] [-n number [-x] [-P maxprocs] [-s size]\n"
+"             [utility [argument ...]]\n");
 	exit(1);
 }
