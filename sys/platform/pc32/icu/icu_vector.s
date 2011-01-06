@@ -118,7 +118,7 @@
 8: ;									\
 	
 /*
- * Fast interrupt call handlers run in the following sequence:
+ * Interrupt call handlers run in the following sequence:
  *
  *	- Push the trap frame required by doreti.
  *	- Mask the interrupt and reenable its source.
@@ -131,7 +131,7 @@
  *	prefixes.
  */
 
-#define	FAST_INTR(irq_num, vec_name, icu, enable_icus)			 \
+#define	INTR_HANDLER(irq_num, vec_name, icu, enable_icus)		\
 	.text ; 							\
 	SUPERALIGN_TEXT ; 						\
 IDTVEC(vec_name) ; 							\
@@ -183,22 +183,22 @@ IDTVEC(vec_name) ;							\
 	ret ;								\
 
 MCOUNT_LABEL(bintr)
-	FAST_INTR(0,icu_fastintr0, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(1,icu_fastintr1, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(2,icu_fastintr2, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(3,icu_fastintr3, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(4,icu_fastintr4, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(5,icu_fastintr5, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(6,icu_fastintr6, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(7,icu_fastintr7, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(8,icu_fastintr8, IO_ICU2, ENABLE_ICU1_AND_2)
-	FAST_INTR(9,icu_fastintr9, IO_ICU2, ENABLE_ICU1_AND_2)
-	FAST_INTR(10,icu_fastintr10, IO_ICU2, ENABLE_ICU1_AND_2)
-	FAST_INTR(11,icu_fastintr11, IO_ICU2, ENABLE_ICU1_AND_2)
-	FAST_INTR(12,icu_fastintr12, IO_ICU2, ENABLE_ICU1_AND_2)
-	FAST_INTR(13,icu_fastintr13, IO_ICU2, ENABLE_ICU1_AND_2)
-	FAST_INTR(14,icu_fastintr14, IO_ICU2, ENABLE_ICU1_AND_2)
-	FAST_INTR(15,icu_fastintr15, IO_ICU2, ENABLE_ICU1_AND_2)
+	INTR_HANDLER(0, icu_intr0, IO_ICU1, ENABLE_ICU1)
+	INTR_HANDLER(1, icu_intr1, IO_ICU1, ENABLE_ICU1)
+	INTR_HANDLER(2, icu_intr2, IO_ICU1, ENABLE_ICU1)
+	INTR_HANDLER(3, icu_intr3, IO_ICU1, ENABLE_ICU1)
+	INTR_HANDLER(4, icu_intr4, IO_ICU1, ENABLE_ICU1)
+	INTR_HANDLER(5, icu_intr5, IO_ICU1, ENABLE_ICU1)
+	INTR_HANDLER(6, icu_intr6, IO_ICU1, ENABLE_ICU1)
+	INTR_HANDLER(7, icu_intr7, IO_ICU1, ENABLE_ICU1)
+	INTR_HANDLER(8, icu_intr8, IO_ICU2, ENABLE_ICU1_AND_2)
+	INTR_HANDLER(9, icu_intr9, IO_ICU2, ENABLE_ICU1_AND_2)
+	INTR_HANDLER(10, icu_intr10, IO_ICU2, ENABLE_ICU1_AND_2)
+	INTR_HANDLER(11, icu_intr11, IO_ICU2, ENABLE_ICU1_AND_2)
+	INTR_HANDLER(12, icu_intr12, IO_ICU2, ENABLE_ICU1_AND_2)
+	INTR_HANDLER(13, icu_intr13, IO_ICU2, ENABLE_ICU1_AND_2)
+	INTR_HANDLER(14, icu_intr14, IO_ICU2, ENABLE_ICU1_AND_2)
+	INTR_HANDLER(15, icu_intr15, IO_ICU2, ENABLE_ICU1_AND_2)
 MCOUNT_LABEL(eintr)
 
 	.data
