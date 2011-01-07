@@ -608,22 +608,22 @@ aac_initq_bio(struct aac_softc *sc)
 }
 
 static __inline void
-aac_enqueue_bio(struct aac_softc *sc, struct bio *bp)
+aac_enqueue_bio(struct aac_softc *sc, struct bio *bio)
 {
-	bioq_insert_tail(&sc->aac_bioq, bp);
+	bioq_insert_tail(&sc->aac_bioq, bio);
 	AACQ_ADD(sc, AACQ_BIO);
 }
 
 static __inline struct bio *
 aac_dequeue_bio(struct aac_softc *sc)
 {
-	struct bio *bp;
+	struct bio *bio;
 
-	if ((bp = bioq_first(&sc->aac_bioq)) != NULL) {
-		bioq_remove(&sc->aac_bioq, bp);
+	if ((bio = bioq_first(&sc->aac_bioq)) != NULL) {
+		bioq_remove(&sc->aac_bioq, bio);
 		AACQ_REMOVE(sc, AACQ_BIO);
 	}
-	return(bp);
+	return(bio);
 }
 
 static __inline void
