@@ -1,8 +1,5 @@
 /*-
- * Copyright (c) 2000 Michael Smith
- * Copyright (c) 2001 Scott Long
- * Copyright (c) 2000 BSDi
- * Copyright (c) 2001 Adaptec, Inc.
+ * Copyright (c) 2002 Scott Long
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,8 +23,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/aac/aac_linux.c,v 1.1.4.1 2003/03/28 19:50:17 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_linux.c,v 1.7 2008/01/20 03:40:35 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aac/aac_linux.c,v 1.4 2006/12/20 17:10:53 delphij Exp $
+ */
+
+/*
+ * Linux ioctl handler for the aac device driver
  */
 
 #include <sys/param.h>
@@ -38,13 +38,17 @@
 #include <sys/file.h>
 #include <sys/mapped_ioctl.h>
 #include <sys/proc.h>
-#include <sys/file2.h>
+#ifdef __amd64__
+#include <machine/../linux32/linux.h>
+#include <machine/../linux32/linux32_proto.h>
+#else
 #include <emulation/linux/i386/linux.h>
 #include <emulation/linux/i386/linux_proto.h>
+#endif
 #include <emulation/linux/linux_ioctl.h>
 
-#include "aacreg.h"		/* needed by aac_ioctl.h */
-#include "aac_ioctl.h"
+#include <dev/raid/aac/aacreg.h>	/* needed by aac_ioctl.h */
+#include <dev/raid/aac/aac_ioctl.h>
 
 /* Define ioctl mappings */
 static struct ioctl_map_range aac_linux_ioctl_cmds[] = {
@@ -93,4 +97,4 @@ aac_linux_modevent(module_t mod, int type, void *data)
 }
 
 DEV_MODULE(aac_linux, aac_linux_modevent, NULL);
-MODULE_DEPEND(aac, linux, 1, 1, 1);
+MODULE_DEPEND(aac_linux, linux, 1, 1, 1);

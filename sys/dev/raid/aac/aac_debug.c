@@ -26,8 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/aac/aac_debug.c,v 1.2.2.5 2003/01/11 18:39:39 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_debug.c,v 1.8 2008/01/20 03:40:35 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aac/aac_debug.c,v 1.26 2010/04/13 00:33:07 emaste Exp $
  */
 
 /*
@@ -38,19 +37,17 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/conf.h>
 
 #include <sys/bus.h>
-#include <sys/devicestat.h>
-#include <sys/disk.h>
 
-#include "aacreg.h"
-#include "aac_ioctl.h"
-#include "aacvar.h"
+#include <dev/raid/aac/aacreg.h>
+#include <dev/raid/aac/aac_ioctl.h>
+#include <dev/raid/aac/aacvar.h>
 
 #ifdef AAC_DEBUG
+int	aac_debug_enable = 0;
 void	aac_printstate0(void);
-
-static void	aac_print_queues(struct aac_softc *sc);
 
 /*
  * Dump the command queue indices
@@ -61,66 +58,63 @@ aac_print_queues(struct aac_softc *sc)
 	device_printf(sc->aac_dev, "FIB queue header at %p  queues at %p\n",
 	    &sc->aac_queues->qt_qindex[AAC_HOST_NORM_CMD_QUEUE][0],
 	    &sc->aac_queues->qt_HostNormCmdQueue[0]);
-	device_printf(sc->aac_dev, "HOST_NORM_CMD  %d/%d (%d)\n", 
+	device_printf(sc->aac_dev, "HOST_NORM_CMD  %d/%d (%d)\n",
 	    sc->aac_queues->qt_qindex[AAC_HOST_NORM_CMD_QUEUE][
 				      AAC_PRODUCER_INDEX],
 	    sc->aac_queues->qt_qindex[AAC_HOST_NORM_CMD_QUEUE][
-				      AAC_CONSUMER_INDEX], 
+				      AAC_CONSUMER_INDEX],
 	    AAC_HOST_NORM_CMD_ENTRIES);
-	device_printf(sc->aac_dev, "HOST_HIGH_CMD  %d/%d (%d)\n", 
+	device_printf(sc->aac_dev, "HOST_HIGH_CMD  %d/%d (%d)\n",
 	    sc->aac_queues->qt_qindex[AAC_HOST_HIGH_CMD_QUEUE][
 				      AAC_PRODUCER_INDEX],
 	    sc->aac_queues->qt_qindex[AAC_HOST_HIGH_CMD_QUEUE][
-				      AAC_CONSUMER_INDEX], 
+				      AAC_CONSUMER_INDEX],
 	    AAC_HOST_HIGH_CMD_ENTRIES);
-	device_printf(sc->aac_dev, "ADAP_NORM_CMD  %d/%d (%d)\n", 
+	device_printf(sc->aac_dev, "ADAP_NORM_CMD  %d/%d (%d)\n",
 	    sc->aac_queues->qt_qindex[AAC_ADAP_NORM_CMD_QUEUE][
 				      AAC_PRODUCER_INDEX],
 	    sc->aac_queues->qt_qindex[AAC_ADAP_NORM_CMD_QUEUE][
-				      AAC_CONSUMER_INDEX], 
+				      AAC_CONSUMER_INDEX],
 	    AAC_ADAP_NORM_CMD_ENTRIES);
-	device_printf(sc->aac_dev, "ADAP_HIGH_CMD  %d/%d (%d)\n", 
+	device_printf(sc->aac_dev, "ADAP_HIGH_CMD  %d/%d (%d)\n",
 	    sc->aac_queues->qt_qindex[AAC_ADAP_HIGH_CMD_QUEUE][
 				      AAC_PRODUCER_INDEX],
 	    sc->aac_queues->qt_qindex[AAC_ADAP_HIGH_CMD_QUEUE][
-				      AAC_CONSUMER_INDEX], 
+				      AAC_CONSUMER_INDEX],
 	    AAC_ADAP_HIGH_CMD_ENTRIES);
-	device_printf(sc->aac_dev, "HOST_NORM_RESP %d/%d (%d)\n", 
+	device_printf(sc->aac_dev, "HOST_NORM_RESP %d/%d (%d)\n",
 	    sc->aac_queues->qt_qindex[AAC_HOST_NORM_RESP_QUEUE][
 				      AAC_PRODUCER_INDEX],
 	    sc->aac_queues->qt_qindex[AAC_HOST_NORM_RESP_QUEUE][
 				      AAC_CONSUMER_INDEX],
 	    AAC_HOST_NORM_RESP_ENTRIES);
-	device_printf(sc->aac_dev, "HOST_HIGH_RESP %d/%d (%d)\n", 
+	device_printf(sc->aac_dev, "HOST_HIGH_RESP %d/%d (%d)\n",
 	    sc->aac_queues->qt_qindex[AAC_HOST_HIGH_RESP_QUEUE][
 				      AAC_PRODUCER_INDEX],
 	    sc->aac_queues->qt_qindex[AAC_HOST_HIGH_RESP_QUEUE][
 				      AAC_CONSUMER_INDEX],
 	    AAC_HOST_HIGH_RESP_ENTRIES);
-	device_printf(sc->aac_dev, "ADAP_NORM_RESP %d/%d (%d)\n", 
+	device_printf(sc->aac_dev, "ADAP_NORM_RESP %d/%d (%d)\n",
 	    sc->aac_queues->qt_qindex[AAC_ADAP_NORM_RESP_QUEUE][
 				      AAC_PRODUCER_INDEX],
 	    sc->aac_queues->qt_qindex[AAC_ADAP_NORM_RESP_QUEUE][
 				      AAC_CONSUMER_INDEX],
 	    AAC_ADAP_NORM_RESP_ENTRIES);
-	device_printf(sc->aac_dev, "ADAP_HIGH_RESP %d/%d (%d)\n", 
+	device_printf(sc->aac_dev, "ADAP_HIGH_RESP %d/%d (%d)\n",
 	    sc->aac_queues->qt_qindex[AAC_ADAP_HIGH_RESP_QUEUE][
 				      AAC_PRODUCER_INDEX],
 	    sc->aac_queues->qt_qindex[AAC_ADAP_HIGH_RESP_QUEUE][
 				      AAC_CONSUMER_INDEX],
 	    AAC_ADAP_HIGH_RESP_ENTRIES);
-	device_printf(sc->aac_dev, "AACQ_FREE      %d/%d\n", 
+	device_printf(sc->aac_dev, "AACQ_FREE      %d/%d\n",
 	    sc->aac_qstat[AACQ_FREE].q_length, sc->aac_qstat[AACQ_FREE].q_max);
-	device_printf(sc->aac_dev, "AACQ_BIO       %d/%d\n", 
+	device_printf(sc->aac_dev, "AACQ_BIO       %d/%d\n",
 	    sc->aac_qstat[AACQ_BIO].q_length, sc->aac_qstat[AACQ_BIO].q_max);
-	device_printf(sc->aac_dev, "AACQ_READY     %d/%d\n", 
+	device_printf(sc->aac_dev, "AACQ_READY     %d/%d\n",
 	    sc->aac_qstat[AACQ_READY].q_length,
 	    sc->aac_qstat[AACQ_READY].q_max);
-	device_printf(sc->aac_dev, "AACQ_BUSY      %d/%d\n", 
+	device_printf(sc->aac_dev, "AACQ_BUSY      %d/%d\n",
 	    sc->aac_qstat[AACQ_BUSY].q_length, sc->aac_qstat[AACQ_BUSY].q_max);
-	device_printf(sc->aac_dev, "AACQ_COMPLETE  %d/%d\n", 
-	    sc->aac_qstat[AACQ_COMPLETE].q_length,
-	    sc->aac_qstat[AACQ_COMPLETE].q_max);
 }
 
 /*
@@ -131,27 +125,38 @@ aac_printstate0(void)
 {
 	struct aac_softc *sc;
 
-	sc = devclass_get_softc(aac_devclass, 0);
+	sc = devclass_get_softc(devclass_find("aac"), 0);
 
 	aac_print_queues(sc);
 	switch (sc->aac_hwif) {
 	case AAC_HWIF_I960RX:
+	case AAC_HWIF_NARK:
 		device_printf(sc->aac_dev, "IDBR 0x%08x  IIMR 0x%08x  "
-		    "IISR 0x%08x\n", AAC_GETREG4(sc, AAC_RX_IDBR),
-		    AAC_GETREG4(sc, AAC_RX_IIMR), AAC_GETREG4(sc, AAC_RX_IISR));
+		    "IISR 0x%08x\n", AAC_MEM0_GETREG4(sc, AAC_RX_IDBR),
+		    AAC_MEM0_GETREG4(sc, AAC_RX_IIMR), AAC_MEM0_GETREG4(sc, AAC_RX_IISR));
 		device_printf(sc->aac_dev, "ODBR 0x%08x  OIMR 0x%08x  "
-		    "OISR 0x%08x\n", AAC_GETREG4(sc, AAC_RX_ODBR),
-		    AAC_GETREG4(sc, AAC_RX_OIMR), AAC_GETREG4(sc, AAC_RX_OISR));
-		AAC_SETREG4(sc, AAC_RX_OIMR, 0/*~(AAC_DB_COMMAND_READY |
+		    "OISR 0x%08x\n", AAC_MEM0_GETREG4(sc, AAC_RX_ODBR),
+		    AAC_MEM0_GETREG4(sc, AAC_RX_OIMR), AAC_MEM0_GETREG4(sc, AAC_RX_OISR));
+		AAC_MEM0_SETREG4(sc, AAC_RX_OIMR, 0/*~(AAC_DB_COMMAND_READY |
 			    AAC_DB_RESPONSE_READY | AAC_DB_PRINTF)*/);
 		device_printf(sc->aac_dev, "ODBR 0x%08x  OIMR 0x%08x  "
-		    "OISR 0x%08x\n", AAC_GETREG4(sc, AAC_RX_ODBR),
-		    AAC_GETREG4(sc, AAC_RX_OIMR), AAC_GETREG4(sc, AAC_RX_OISR));
+		    "OISR 0x%08x\n", AAC_MEM0_GETREG4(sc, AAC_RX_ODBR),
+		    AAC_MEM0_GETREG4(sc, AAC_RX_OIMR), AAC_MEM0_GETREG4(sc, AAC_RX_OISR));
 		break;
 	case AAC_HWIF_STRONGARM:
 		/* XXX implement */
 		break;
 	}
+}
+
+/*
+ * Panic in a slightly informative fashion
+ */
+void
+aac_panic(struct aac_softc *sc, char *reason)
+{
+	aac_print_queues(sc);
+	panic(reason);
 }
 
 /*
@@ -216,8 +221,8 @@ aac_print_fib(struct aac_softc *sc, struct aac_fib *fib, const char *caller)
 
 		if (br->Command == VM_CtBlockRead) {
 			device_printf(sc->aac_dev,
-				      "  BlockRead: container %d  0x%x/%d\n", 
-				      br->ContainerId, br->BlockNumber, 
+				      "  BlockRead: container %d  0x%x/%d\n",
+				      br->ContainerId, br->BlockNumber,
 				      br->ByteCount);
 			sg = &br->SgMap;
 		}
@@ -225,7 +230,7 @@ aac_print_fib(struct aac_softc *sc, struct aac_fib *fib, const char *caller)
 			device_printf(sc->aac_dev,
 				      "  BlockWrite: container %d  0x%x/%d "
 				      "(%s)\n", bw->ContainerId,
-				      bw->BlockNumber, bw->ByteCount, 
+				      bw->BlockNumber, bw->ByteCount,
 				      bw->Stable == CSTABLE ? "stable" :
 				      "unstable");
 			sg = &bw->SgMap;
@@ -258,7 +263,7 @@ aac_print_aif(struct aac_softc *sc, struct aac_aif_command *aif)
 		device_printf(sc->aac_dev, "EventNotify(%d)\n", aif->seqNumber);
 		switch(aif->data.EN.type) {
 		case AifEnGeneric:		/* Generic notification */
-			device_printf(sc->aac_dev, "(Generic) %.*s\n", 
+			device_printf(sc->aac_dev, "(Generic) %.*s\n",
 				  (int)sizeof(aif->data.EN.data.EG),
 				  aif->data.EN.data.EG.text);
 			break;
@@ -272,21 +277,21 @@ aac_print_aif(struct aac_softc *sc, struct aac_aif_command *aif)
 		case AifEnContainerChange:	/* Adapter specific container
 						 * configuration change */
 			device_printf(sc->aac_dev, "(ContainerChange) "
-				      "container %d,%d\n", 
-				      aif->data.EN.data.ECC.container[0], 
+				      "container %d,%d\n",
+				      aif->data.EN.data.ECC.container[0],
 				      aif->data.EN.data.ECC.container[1]);
 			break;
 		case AifEnDeviceFailure:	/* SCSI device failed */
 			device_printf(sc->aac_dev, "(DeviceFailure) "
-				      "handle %d\n", 
+				      "handle %d\n",
 				      aif->data.EN.data.EDF.deviceHandle);
 			break;
 		case AifEnMirrorFailover:	/* Mirror failover started */
 			device_printf(sc->aac_dev, "(MirrorFailover) "
 				      "container %d failed, "
 				      "migrating from slice %d to %d\n",
-				      aif->data.EN.data.EMF.container, 
-				      aif->data.EN.data.EMF.failedSlice, 
+				      aif->data.EN.data.EMF.container,
+				      aif->data.EN.data.EMF.failedSlice,
 				      aif->data.EN.data.EMF.creatingSlice);
 			break;
 		case AifEnContainerEvent:	/* Significant container
@@ -316,7 +321,7 @@ aac_print_aif(struct aac_softc *sc, struct aac_aif_command *aif)
 			device_printf(sc->aac_dev, "(EnclosureManagement) "
 				      "EMPID %d unit %d "
 				      "event %d\n", aif->data.EN.data.EEE.empID,
-				      aif->data.EN.data.EEE.unitID, 
+				      aif->data.EN.data.EEE.unitID,
 				      aif->data.EN.data.EEE.eventType);
 			break;
 		case AifEnBatteryEvent:		/* Significant NV battery
@@ -339,14 +344,14 @@ aac_print_aif(struct aac_softc *sc, struct aac_aif_command *aif)
 			device_printf(sc->aac_dev, "(BatteryNeedsRecond)\n");
 			break;
 		case AifEnClusterEvent:		/* Some cluster event */
-			device_printf(sc->aac_dev, "(ClusterEvent) event %d\n", 
+			device_printf(sc->aac_dev, "(ClusterEvent) event %d\n",
 				      aif->data.EN.data.ECLE.eventType);
 			break;
 		case AifEnDiskSetEvent:		/* A disk set event occured. */
 			device_printf(sc->aac_dev, "(DiskSetEvent) event %d "
 				      "diskset %jd creator %jd\n",
-				      aif->data.EN.data.EDS.eventType, 
-				      (intmax_t)aif->data.EN.data.EDS.DsNum, 
+				      aif->data.EN.data.EDS.eventType,
+				      (intmax_t)aif->data.EN.data.EDS.DsNum,
 				      (intmax_t)aif->data.EN.data.EDS.CreatorId);
 			break;
 		case AifDenMorphComplete: 	/* A morph operation
@@ -383,7 +388,7 @@ aac_print_aif(struct aac_softc *sc, struct aac_aif_command *aif)
 		}		
 	
 		device_printf(sc->aac_dev, "JobProgress (%d) - %s (%d, %d)\n",
-			      aif->seqNumber, status, 
+			      aif->seqNumber, status,
 			      aif->data.PR[0].currentTick,
 			      aif->data.PR[0].finalTick);
 		switch(aif->data.PR[0].jd.type) {
@@ -409,12 +414,12 @@ aac_print_aif(struct aac_softc *sc, struct aac_aif_command *aif)
 			break;
 		case AifJobCtrZero:		/* Container clear operation */
 			device_printf(sc->aac_dev,
-				      "(ContainerZero) container %d\n", 
+				      "(ContainerZero) container %d\n",
 				      aif->data.PR[0].jd.client.container.src);
 			break;
 		case AifJobCtrCopy:		/* Container copy operation */
 			device_printf(sc->aac_dev,
-				      "(ContainerCopy) container %d to %d\n", 
+				      "(ContainerCopy) container %d to %d\n",
 				      aif->data.PR[0].jd.client.container.src,
 				      aif->data.PR[0].jd.client.container.dst);
 			break;
@@ -447,12 +452,12 @@ aac_print_aif(struct aac_softc *sc, struct aac_aif_command *aif)
 		case AifJobCtrScrubRaid5:	/* Container Scrub Raid5
 						 * operation */
 			device_printf(sc->aac_dev,
-				      "(ContainerScrubRaid5) container %d\n", 
+				      "(ContainerScrubRaid5) container %d\n",
 				      aif->data.PR[0].jd.client.container.src);
 			break;
 		case AifJobCtrMorph:		/* Container morph operation */
 			device_printf(sc->aac_dev,
-				      "(ContainerMorph) container %d\n", 
+				      "(ContainerMorph) container %d\n",
 				      aif->data.PR[0].jd.client.container.src);
 				      /* XXX two containers? */
 			break;
@@ -467,13 +472,13 @@ aac_print_aif(struct aac_softc *sc, struct aac_aif_command *aif)
 		case AifJobCtrRebuildMirror:	/* Container Rebuild Mirror
 						 * operation */
 			device_printf(sc->aac_dev,
-				      "(ContainerRebuildMirror) container " 
+				      "(ContainerRebuildMirror) container "
 				      "%d\n",
 				      aif->data.PR[0].jd.client.container.src);
 			break;
 		case AifJobCtrCrazyCache:	/* crazy cache */
 			device_printf(sc->aac_dev,
-				      "(ContainerCrazyCache) container %d\n", 
+				      "(ContainerCrazyCache) container %d\n",
 				      aif->data.PR[0].jd.client.container.src);
 				      /* XXX two containers? */
 			break;

@@ -1248,7 +1248,7 @@ device		stg0	at isa? port 0x140 irq 11
 # the Dell PERC 2/QC and the HP NetRAID-4M
 #
 device		aac
-options		AAC_DEBUG=4
+options		AAC_DEBUG
 device		aacp	# SCSI Passthrough interface (optional, CAM required)
 
 #

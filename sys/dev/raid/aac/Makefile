@@ -1,12 +1,15 @@
-# $FreeBSD: src/sys/modules/aac/Makefile,v 1.2.2.4 2003/03/28 19:51:37 scottl Exp $
+# $FreeBSD: src/sys/modules/aac/Makefile,v 1.9 2010/08/23 06:13:29 imp Exp $
 
+.if ${MACHINE_ARCH} == "i386"
 SUBDIR= aac_linux
+.endif
 
 KMOD=	aac
 SRCS=	aac.c aac_pci.c aac_disk.c aac_cam.c
 SRCS+=	opt_scsi.h opt_cam.h opt_aac.h
 SRCS+=	device_if.h bus_if.h pci_if.h
 
+# To enable debug output from the driver, uncomment these two lines.
 #CFLAGS+= -DAAC_DEBUG=2
 #SRCS+=	aac_debug.c
 
