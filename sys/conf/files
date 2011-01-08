@@ -732,6 +732,11 @@ dev/raid/twa/tw_osl_cam.c		optional twa
 dev/raid/twa/tw_osl_freebsd.c		optional twa
 dev/raid/twe/twe.c			optional twe
 dev/raid/twe/twe_freebsd.c		optional twe
+dev/raid/tws/tws.c			optional tws
+dev/raid/tws/tws_cam.c			optional tws
+dev/raid/tws/tws_hdm.c			optional tws
+dev/raid/tws/tws_services.c		optional tws
+dev/raid/tws/tws_user.c			optional tws
 dev/netif/tx/if_tx.c			optional tx
 dev/netif/txp/if_txp.c		optional txp
 dev/raid/vinum/vinum.c		optional vinum

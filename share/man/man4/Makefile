@@ -306,6 +306,7 @@ MAN=	aac.4 \
 	tun.4 \
 	twa.4 \
 	twe.4 \
+	tws.4 \
 	txp.4 \
 	uark.4 \
 	ubsa.4 \

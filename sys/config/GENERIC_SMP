@@ -163,6 +163,7 @@ device		hptmv		# Highpoint RocketRAID 182x
 device		iir		# Intel Integrated RAID
 device		mly		# Mylex AcceleRAID/eXtremeRAID
 device		twa		# 3ware 9000 series PATA/SATA RAID
+device		tws		# 3ware 9750 series SATA/SAS RAID
 
 # RAID controllers
 device		aac		# Adaptec FSA RAID, Dell PERC2/PERC3
