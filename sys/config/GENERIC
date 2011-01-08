@@ -166,7 +166,7 @@ device		tws		# 3ware 9750 series SATA/SAS RAID
 
 # RAID controllers
 device		aac		# Adaptec FSA RAID, Dell PERC2/PERC3
-#device		aacp		# SCSI passthrough for aac (requires CAM)
+device		aacp		# SCSI passthrough for aac (requires CAM)
 device		amr		# AMI MegaRAID
 device		amrp		# SCSI Passthrough interface (optional, CAM req.)
 device		ida		# Compaq Smart RAID
