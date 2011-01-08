@@ -161,20 +161,16 @@ int		pthread_barrier_init(pthread_barrier_t *,
 int		pthread_barrier_wait(pthread_barrier_t *);
 int		pthread_barrierattr_destroy(pthread_barrierattr_t *);
 int		pthread_barrierattr_init(pthread_barrierattr_t *);
-#if defined(_POSIX_THREAD_PROCESS_SHARED)
 int		pthread_barrierattr_getpshared(const pthread_barrierattr_t *,
 			int *);
 int		pthread_barrierattr_setpshared(pthread_barrierattr_t *, int);
-#endif
 void		pthread_cleanup_pop(int);
 void		pthread_cleanup_push(void (*) (void *), void *);
 int		pthread_condattr_destroy(pthread_condattr_t *);
 int		pthread_condattr_init(pthread_condattr_t *);
 
-#if defined(_POSIX_THREAD_PROCESS_SHARED)
-int		pthread_condattr_getpshared(pthread_condattr_t *, int *);
+int		pthread_condattr_getpshared(const pthread_condattr_t *, int *);
 int		pthread_condattr_setpshared(pthread_condattr_t *, int);
-#endif
 
 int		pthread_condattr_getclock(const pthread_condattr_t *, clockid_t *);
 int		pthread_condattr_setclock(pthread_condattr_t *, clockid_t);
@@ -244,10 +240,8 @@ int		pthread_getprio(pthread_t);
 int		pthread_setprio(pthread_t, int);
 void		pthread_yield(void);
 
-#if defined(_POSIX_THREAD_PROCESS_SHARED)
-int		pthread_mutexattr_getpshared(pthread_mutexattr_t *, int *);
+int		pthread_mutexattr_getpshared(const pthread_mutexattr_t *, int *);
 int		pthread_mutexattr_setpshared(pthread_mutexattr_t *, int);
-#endif
 
 int		pthread_mutexattr_getprioceiling(pthread_mutexattr_t *, int *);
 int		pthread_mutexattr_setprioceiling(pthread_mutexattr_t *, int);
