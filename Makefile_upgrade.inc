@@ -1552,9 +1552,6 @@ TO_REMOVE+=/boot/kernel/ahc_eisa.ko
 TO_REMOVE+=/boot/kernel/ahc_isa.ko
 TO_REMOVE+=/usr/include/netproto/ns
 TO_REMOVE+=/usr/include/netns
-TO_REMOVE+=/usr/sbin/burncd
-TO_REMOVE+=/usr/share/man/cat8/burncd.8.gz
-TO_REMOVE+=/usr/share/man/man8/burncd.8.gz
 
 # XXX Remove when pfsync(4) has been fixed
 TO_REMOVE+=/usr/share/man/cat4/pfsync.4.gz

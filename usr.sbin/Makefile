@@ -19,6 +19,7 @@ SUBDIR= 802_11 \
 	bootparamd \
 	btconfig \
 	bthcid \
+	burncd \
 	cdcontrol \
 	chkgrp \
 	chown \
