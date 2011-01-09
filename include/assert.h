@@ -71,7 +71,7 @@
 #endif
 
 __BEGIN_DECLS
-void	__assert(const char *, const char *, int, const char *);
+void	__assert(const char *, const char *, int, const char *) __dead2;
 void	__diagassert(const char *, int, const char *, const char *);
 __END_DECLS
 
