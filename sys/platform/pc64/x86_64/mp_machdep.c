@@ -993,7 +993,7 @@ mptable_pass2(struct mptable_pos *mpt)
 		bus_data[x].bus_id = 0xff;
 
 	/* clear IO APIC INT table */
-	for (x = 0; x < (nintrs + 1); ++x) {
+	for (x = 0; x < nintrs + FIXUP_EXTRA_APIC_INTS; ++x) {
 		io_apic_ints[x].int_type = 0xff;
 		io_apic_ints[x].int_vector = 0xff;
 	}

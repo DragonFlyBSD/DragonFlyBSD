@@ -53,84 +53,86 @@
 
 #ifdef _KERNEL
 
-#define IDT_OFFSET	32
+#define IDT_OFFSET		0x20
+#define IDT_OFFSET_IPI		0xe0
 
 #if defined(SMP)
-/*
- * XXX FIXME: rethink location for all IPI vectors.
- */
 
 /*
-    APIC TPR priority vector levels:
-
-	0xff (255) +-------------+
-		   |             | 15 (IPIs: Xspuriousint)
-	0xf0 (240) +-------------+
-		   |             | 14
-	0xe0 (224) +-------------+
-		   |             | 13
-	0xd0 (208) +-------------+
-		   |             | 12
-	0xc0 (192) +-------------+
-		   |             | 11
-	0xb0 (176) +-------------+
-		   |             | 10 (IPIs: Xcpustop)
-	0xa0 (160) +-------------+
-		   |             |  9 (IPIs: Xinvltlb)
-	0x90 (144) +-------------+
-		   |             |  8 (linux/BSD syscall, IGNORE FAST HW INTS)
-	0x80 (128) +-------------+
-		   |             |  7 (FAST_INTR 16-23)
-	0x70 (112) +-------------+
-		   |             |  6 (FAST_INTR 0-15)
-	0x60 (96)  +-------------+
-		   |             |  5 (IGNORE HW INTS)
-	0x50 (80)  +-------------+
-		   |             |  4 (2nd IO APIC)
-	0x40 (64)  +------+------+
-		   |      |      |  3 (upper APIC hardware INTs: PCI)
-	0x30 (48)  +------+------+
-		   |             |  2 (start of hardware INTs: ISA)
-	0x20 (32)  +-------------+
-		   |             |  1 (exceptions, traps, etc.)
-	0x10 (16)  +-------------+
-		   |             |  0 (exceptions, traps, etc.)
-	0x00 (0)   +-------------+
+ * Local APIC TPR priority vector levels:
+ *
+ *	0xff (255) +-------------+
+ *		   |             | 15 (IPIs: Xcpustop, Xspuriousint)
+ *	0xf0 (240) +-------------+
+ *		   |             | 14 (IPIs: Xinvltlb, Xipiq, Xtimer)
+ *	0xe0 (224) +-------------+
+ *		   |             | 13
+ *	0xd0 (208) +-------------+
+ *		   |             | 12
+ *	0xc0 (192) +-------------+
+ *		   |             | 11
+ *	0xb0 (176) +-------------+
+ *		   |             | 10
+ *	0xa0 (160) +-------------+
+ *		   |             |  9
+ *	0x90 (144) +-------------+
+ *		   |             |  8 (syscall at 0x80)
+ *	0x80 (128) +-------------+
+ *		   |             |  7
+ *	0x70 (112) +-------------+
+ *		   |             |  6
+ *	0x60 (96)  +-------------+
+ *		   |             |  5
+ *	0x50 (80)  +-------------+
+ *		   |             |  4
+ *	0x40 (64)  +-------------+
+ *		   |             |  3
+ *	0x30 (48)  +-------------+
+ *		   |             |  2 (hardware INTs)
+ *	0x20 (32)  +-------------+
+ *		   |             |  1 (exceptions, traps, etc.)
+ *	0x10 (16)  +-------------+
+ *		   |             |  0 (exceptions, traps, etc.)
+ *	0x00 (0)   +-------------+
  */
+#define TPR_STEP		0x10
 
-/* blocking values for local APIC Task Priority Register */
-#define TPR_BLOCK_HWI		0x4f		/* hardware INTs */
-#define TPR_IGNORE_HWI		0x5f		/* ignore INTs */
-#define TPR_BLOCK_FHWI		0x7f		/* hardware FAST INTs */
-#define TPR_IGNORE_FHWI		0x8f		/* ignore FAST INTs */
-#define TPR_IPI_ONLY		0x8f		/* ignore FAST INTs */
-#define TPR_BLOCK_XINVLTLB	0x9f		/*  */
-#define TPR_BLOCK_XCPUSTOP	0xaf		/*  */
-#define TPR_BLOCK_ALL		0xff		/* all INTs */
+/* Local APIC Task Priority Register */
+#define TPR_IPI			(IDT_OFFSET_IPI - 1)
 
+
+/*
+ * IPI group1
+ */
+#define IDT_OFFSET_IPIG1	IDT_OFFSET_IPI
 
 /* TLB shootdowns */
-#define XINVLTLB_OFFSET		(IDT_OFFSET + 112)
+#define XINVLTLB_OFFSET		(IDT_OFFSET_IPIG1 + 0)
 
-/* unused/open (was inter-cpu clock handling) */
-#define XUNUSED113_OFFSET	(IDT_OFFSET + 113)
-
-/* inter-CPU rendezvous */
-#define XUNUSED114_OFFSET	(IDT_OFFSET + 114)
+/* IPI group1 1: unused (was inter-cpu clock handling) */
+/* IPI group1 2: unused (was inter-cpu rendezvous) */
 
 /* IPIQ rendezvous */
-#define XIPIQ_OFFSET		(IDT_OFFSET + 115)
+#define XIPIQ_OFFSET		(IDT_OFFSET_IPIG1 + 3)
 
 /* TIMER rendezvous */
-#define XTIMER_OFFSET		(IDT_OFFSET + 116)
+#define XTIMER_OFFSET		(IDT_OFFSET_IPIG1 + 4)
 
-/* IPI to signal CPUs to stop and wait for another CPU to restart them */
-#define XCPUSTOP_OFFSET		(IDT_OFFSET + 128)
+/* IPI group1 5 ~ 15: unused */
+
 
 /*
- * Note: this vector MUST be xxxx1111, 32 + 223 = 255 = 0xff:
+ * IPI group2
  */
-#define XSPURIOUSINT_OFFSET	(IDT_OFFSET + 223)
+#define IDT_OFFSET_IPIG2	(IDT_OFFSET_IPIG1 + TPR_STEP)
+
+/* IPI to signal CPUs to stop and wait for another CPU to restart them */
+#define XCPUSTOP_OFFSET		(IDT_OFFSET_IPIG2 + 0)
+
+/* IPI group2 1 ~ 14: unused */
+
+/* NOTE: this vector MUST be xxxx1111 */
+#define XSPURIOUSINT_OFFSET	(IDT_OFFSET_IPIG2 + 15)
 
 #endif /* SMP */
 
@@ -142,7 +144,6 @@
 #ifndef JG_defined_inthand_t
 #define JG_defined_inthand_t
 typedef void inthand_t(u_int cs, u_int ef, u_int esp, u_int ss);
-typedef void unpendhand_t(void);
 #endif
 
 #define	IDTVEC(name)	__CONCAT(X,name)
@@ -158,7 +159,6 @@ inthand_t
 	Xipiq;		/* handle lwkt_send_ipiq() requests */
 #endif /* SMP */
 
-void	call_fast_unpend(int irq);
 void	isa_defaultirq (void);
 int	isa_nmi (int cd);
 void	icu_reinit (void);
