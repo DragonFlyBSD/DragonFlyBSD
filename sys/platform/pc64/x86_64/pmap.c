@@ -1198,7 +1198,6 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t m,
 	 * page so it cannot be freed out from under us.
 	 */
 	if (m->flags & PG_BUSY) {
-		pmap_inval_flush(info);
 		while (vm_page_sleep_busy(m, FALSE, "pmuwpt"))
 			;
 	}
@@ -1301,7 +1300,6 @@ pmap_unuse_pt(pmap_t pmap, vm_offset_t va, vm_page_t mpte,
 			mpte = pmap->pm_ptphint;
 		} else {
 #endif
-			pmap_inval_flush(info);
 			mpte = pmap_page_lookup(pmap->pm_pteobj, ptepindex);
 			pmap->pm_ptphint = mpte;
 #if JGHINT
@@ -2496,10 +2494,7 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 			vm_page_t m;
 
 			/*
-			 * XXX non-optimal.  Note also that there can be
-			 * no pmap_inval_flush() calls until after we modify
-			 * ptbase[sindex] (or otherwise we have to do another
-			 * pmap_inval_add() call).
+			 * XXX non-optimal.
 			 */
 			pmap_inval_interlock(&info, pmap, sva);
 again:

@@ -141,6 +141,9 @@ SYSCTL_INT(_lwkt, OID_AUTO, spin_delay, CTLFLAG_RW,
 static int lwkt_spin_method = 1;
 SYSCTL_INT(_lwkt, OID_AUTO, spin_method, CTLFLAG_RW,
 	&lwkt_spin_method, 0, "LWKT scheduler behavior when contended");
+static int lwkt_spin_fatal = 0;	/* disabled */
+SYSCTL_INT(_lwkt, OID_AUTO, spin_fatal, CTLFLAG_RW,
+	&lwkt_spin_fatal, 0, "LWKT scheduler spin loops till fatal panic");
 static int preempt_enable = 1;
 SYSCTL_INT(_lwkt, OID_AUTO, preempt_enable, CTLFLAG_RW,
 	&preempt_enable, 0, "Enable preemption");
@@ -502,6 +505,7 @@ lwkt_switch(void)
     int reqflags;
     int cseq;
     int oseq;
+    int fatal_count;
 
     /*
      * Switching from within a 'fast' (non thread switched) interrupt or IPI
@@ -848,7 +852,14 @@ skip:
 	 * WARNING!  We can't call splz_check() or anything else here as
 	 *	     it could cause a deadlock.
 	 */
+#ifdef __amd64__
+	if ((read_rflags() & PSL_I) == 0) {
+		cpu_enable_intr();
+		panic("lwkt_switch() called with interrupts disabled");
+	}
+#endif
 	cseq = atomic_fetchadd_int(&lwkt_cseq_windex, 1);
+	fatal_count = lwkt_spin_fatal;
 	while ((oseq = lwkt_cseq_rindex) != cseq) {
 	    cpu_ccfence();
 #if !defined(_KERNEL_VIRTUAL)
@@ -860,6 +871,8 @@ skip:
 		DELAY(1);
 		cpu_lfence();
 	    }
+	    if (fatal_count && --fatal_count == 0)
+		panic("lwkt_switch: fatal spin wait");
 	}
 	cseq = lwkt_spin_delay;	/* don't trust the system operator */
 	cpu_ccfence();

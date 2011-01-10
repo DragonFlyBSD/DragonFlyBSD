@@ -206,17 +206,13 @@ typedef struct lwkt_ipiq {
  * CPU Synchronization structure.  See lwkt_cpusync_start() and
  * lwkt_cpusync_finish() for more information.
  */
-typedef void (*cpusync_func_t)(lwkt_cpusync_t poll);
-typedef void (*cpusync_func2_t)(void *data);
+typedef void (*cpusync_func_t)(void *arg);
 
 struct lwkt_cpusync {
-    cpusync_func_t cs_run_func;		/* run (tandem w/ acquire) */
-    cpusync_func_t cs_fin1_func;	/* fin1 (synchronized) */
-    cpusync_func2_t cs_fin2_func;	/* fin2 (tandem w/ release) */
-    void	*cs_data;
-    int		cs_maxcount;
-    volatile int cs_count;
-    cpumask_t	cs_mask;
+    cpumask_t	cs_mask;		/* cpus running the sync */
+    cpumask_t	cs_mack;		/* mask acknowledge */
+    cpusync_func_t cs_func;		/* function to execute */
+    void	*cs_data;		/* function data */
 };
 
 /*
@@ -496,11 +492,10 @@ extern void lwkt_synchronize_ipiqs(const char *);
 
 #endif /* SMP */
 
+/* lwkt_cpusync_init() - inline function in sys/thread2.h */
 extern void lwkt_cpusync_simple(cpumask_t, cpusync_func_t, void *);
-extern void lwkt_cpusync_fastdata(cpumask_t, cpusync_func2_t, void *);
-extern void lwkt_cpusync_start(cpumask_t, lwkt_cpusync_t);
-extern void lwkt_cpusync_add(cpumask_t, lwkt_cpusync_t);
-extern void lwkt_cpusync_finish(lwkt_cpusync_t);
+extern void lwkt_cpusync_interlock(lwkt_cpusync_t);
+extern void lwkt_cpusync_deinterlock(lwkt_cpusync_t);
 
 extern void crit_panic(void) __dead2;
 extern struct lwp *lwkt_preempted_proc(void);

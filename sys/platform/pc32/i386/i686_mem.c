@@ -97,8 +97,8 @@ static int	i686_mtrrconflict(int flag1, int flag2);
 static void	i686_mrstore(struct mem_range_softc *sc);
 static void	i686_mrstoreone(void *arg);
 #ifdef SMP
-static void	i686_mrstoreone_cpusync(struct lwkt_cpusync *cmd);
-static void	i686_mrAPinit_cpusync(struct lwkt_cpusync *cmd);
+static void	i686_mrstoreone_cpusync(void *arg);
+static void	i686_mrAPinit_cpusync(void *arg);
 #endif
 static struct mem_range_desc *i686_mtrrfixsearch(struct mem_range_softc *sc,
 		    u_int64_t addr);
@@ -296,9 +296,9 @@ i686_mrstore(struct mem_range_softc *sc)
 #ifdef SMP
 
 static void
-i686_mrstoreone_cpusync(struct lwkt_cpusync *cmd)
+i686_mrstoreone_cpusync(void *arg)
 {
-	i686_mrstoreone(cmd->cs_data);
+	i686_mrstoreone(arg);
 }
 
 #endif
@@ -676,9 +676,9 @@ i686_mrinit(struct mem_range_softc *sc)
 #ifdef SMP
 
 static void
-i686_mrAPinit_cpusync(struct lwkt_cpusync *cmd)
+i686_mrAPinit_cpusync(void *arg)
 {
-	i686_mrAPinit(cmd->cs_data);
+	i686_mrAPinit(arg);
 }
 
 #endif

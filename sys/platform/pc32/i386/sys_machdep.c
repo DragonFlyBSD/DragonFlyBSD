@@ -268,9 +268,9 @@ set_user_TLS(void)
 #ifdef SMP
 static
 void
-set_user_ldt_cpusync(struct lwkt_cpusync *cmd)
+set_user_ldt_cpusync(void *arg)
 {
-	set_user_ldt(cmd->cs_data);
+	set_user_ldt(arg);
 }
 #endif
 
