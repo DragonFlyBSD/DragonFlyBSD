@@ -645,7 +645,7 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 	 sizeof(hammer_crc_t))
 
 #define HAMMER_VOL_VERSION_MIN		1	/* minimum supported version */
-#define HAMMER_VOL_VERSION_DEFAULT	4	/* newfs default version */
+#define HAMMER_VOL_VERSION_DEFAULT	5	/* newfs default version */
 #define HAMMER_VOL_VERSION_WIP		6	/* version >= this is WIP */
 #define HAMMER_VOL_VERSION_MAX		6	/* maximum supported version */
 
