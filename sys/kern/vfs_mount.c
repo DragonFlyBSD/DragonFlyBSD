@@ -1005,7 +1005,7 @@ vmntvnodescan(
 	struct vmntvnodescan_info info;
 	struct vnode *vp;
 	int r = 0;
-	int maxcount = 1000000;
+	int maxcount = mp->mnt_nvnodelistsize * 2;
 	int stopcount = 0;
 	int count = 0;
 
@@ -1018,13 +1018,15 @@ vmntvnodescan(
 	 * so this isn't perfect.  Create a slop factor of 2x.
 	 */
 	if (flags & VMSC_ONEPASS)
-		stopcount = mp->mnt_nvnodelistsize * 2;
+		stopcount = mp->mnt_nvnodelistsize;
 
 	info.vp = TAILQ_FIRST(&mp->mnt_nvnodelist);
 	TAILQ_INSERT_TAIL(&mntvnodescan_list, &info, entry);
 	while ((vp = info.vp) != NULL) {
-		if (--maxcount == 0)
-			panic("maxcount reached during vmntvnodescan");
+		if (--maxcount == 0) {
+			kprintf("Warning: excessive fssync iteration\n");
+			maxcount = mp->mnt_nvnodelistsize * 2;
+		}
 
 		/*
 		 * Skip if visible but not ready, or special (e.g.
