@@ -54,6 +54,7 @@ static void	lapic_timer_restart_handler(void *);
 
 void		lapic_timer_process(void);
 void		lapic_timer_process_frame(struct intrframe *);
+void		lapic_timer_always(struct intrframe *);
 
 static int	lapic_timer_enable = 1;
 TUNABLE_INT("hw.lapic_timer_enable", &lapic_timer_enable);
@@ -284,6 +285,36 @@ void
 lapic_timer_process_frame(struct intrframe *frame)
 {
 	lapic_timer_process_oncpu(mycpu, frame);
+}
+
+/*
+ * This manual debugging code is called unconditionally from Xtimer
+ * (the lapic timer interrupt) whether the current thread is in a
+ * critical section or not) and can be useful in tracking down lockups.
+ */
+void
+lapic_timer_always(struct intrframe *frame)
+{
+#if 0
+	globaldata_t gd = mycpu;
+	int cpu = gd->gd_cpuid;
+	int i;
+	char buf[64];
+	short *gptr;
+
+	if (cpu > 20)
+		return;
+
+	gptr = (short *)0xFFFFFFFF800b8000 + 80 * cpu;
+	*gptr = ((*gptr + 1) & 0x00FF) | 0x0700;
+	++gptr;
+
+	ksnprintf(buf, sizeof(buf), " %p %16.16s",
+		(void *)frame->if_rip, gd->gd_curthread->td_comm);
+	for (i = 0; buf[i]; ++i) {
+		gptr[i] = 0x0700 | (unsigned char)buf[i];
+	}
+#endif
 }
 
 static void

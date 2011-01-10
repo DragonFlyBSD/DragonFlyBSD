@@ -829,7 +829,7 @@ typedef struct IOAPIC ioapic_t;
  * Destination mode.
  *
  * In physical mode the destination APIC is identified by its ID.
- * Bits 56-59 specify the 4 bit APIC ID.  
+ * Bits 56-63 specify the 8 bit APIC ID.
  *
  * In logical mode destinations are identified by matching on the logical
  * destination under the control of the destination format register and 

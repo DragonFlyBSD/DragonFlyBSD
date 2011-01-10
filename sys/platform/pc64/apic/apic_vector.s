@@ -300,6 +300,11 @@ Xtimer:
 	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
 	FAKE_MCOUNT(TF_RIP(%rsp))
 
+	subq	$8,%rsp			/* make same as interrupt frame */
+	movq	%rsp,%rdi		/* pass frame by reference */
+	call	lapic_timer_always
+	addq	$8,%rsp			/* turn into trapframe */
+
 	incl    PCPU(cnt) + V_TIMER
 	movq	PCPU(curthread),%rbx
 	testl	$-1,TD_CRITCOUNT(%rbx)
