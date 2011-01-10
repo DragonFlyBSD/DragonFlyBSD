@@ -810,6 +810,12 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 				HAMMER_INODE_CAP_DIR_LOCAL_INO;
 		}
 	}
+	if (trans->hmp->version >= HAMMER_VOL_VERSION_SIX) {
+		if (ip->ino_leaf.base.obj_type == HAMMER_OBJTYPE_DIRECTORY) {
+			ip->ino_data.cap_flags |=
+				HAMMER_INODE_CAP_DIRHASH_ALG1;
+		}
+	}
 
 	/*
 	 * Setup the ".." pointer.  This only needs to be done for directories

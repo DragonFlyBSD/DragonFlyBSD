@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007-2008 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2007-2011 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -909,7 +909,7 @@ hammer_nohistory(hammer_inode_t ip)
 }
 
 /*
- * ALGORITHM VERSION 1:
+ * ALGORITHM VERSION 0:
  *	Return a namekey hash.   The 64 bit namekey hash consists of a 32 bit
  *	crc in the MSB and 0 in the LSB.  The caller will use the low 32 bits
  *	to generate a unique key and will scan all entries with the same upper
@@ -917,30 +917,30 @@ hammer_nohistory(hammer_inode_t ip)
  *
  *	0hhhhhhhhhhhhhhh hhhhhhhhhhhhhhhh 0000000000000000 0000000000000000
  *
- * ALGORITHM VERSION 2:
+ * ALGORITHM VERSION 1:
  *
- *	The 64 bit hash key is generated from the following components.  The
- *	first three characters are encoded as 5-bit quantities, the middle
- *	N characters are hashed into a 6 bit quantity, and the last two
- *	characters are encoded as 5-bit quantities.  A 32 bit hash of the
- *	entire filename is encoded in the low 32 bits.  Bit 0 is set to
- *	0 to guarantee us a 2^24 bit iteration space.
+ *	This algorithm breaks the filename down into a separate 32-bit crcs
+ *	for each filename segment separated by a special character (dot,
+ *	underscore, underline, or tilde).  The CRCs are then added together.
+ *	This allows temporary names.  A full-filename 16 bit crc is also
+ *	generated to deal with degenerate conditions.
  *
- *	0aaaaabbbbbccccc mmmmmmyyyyyzzzzz hhhhhhhhhhhhhhhh hhhhhhhhhhhhhhh0
+ *	The algorithm is designed to handle create/rename situations such
+ *	that a create with an extention to a rename without an extention
+ *	only shifts the key space rather than randomizes it.
  *
- *	This gives us a domain sort for the first three characters, the last
- *	two characters, and breaks the middle space into 64 random domains.
- *	The domain sort folds upper case, lower case, digits, and punctuation
- *	spaces together, the idea being the filenames tend to not be a mix
- *	of those domains.
+ *	NOTE: The inode allocator cache can only match 10 bits so we do
+ *	      not really have any room for a partial sorted name, and
+ *	      numbers don't sort well in that situation anyway.
  *
- *	The 64 random domains act as a sub-sort for the middle characters
- *	but may cause a random seek.  If the filesystem is being accessed
- *	in sorted order we should tend to get very good linearity for most
- *	filenames and devolve into more random seeks otherwise.
+ *	0mmmmmmmmmmmmmmm mmmmmmmmmmmmmmmm llllllllllllllll 0000000000000000
+ *
  *
  * We strip bit 63 in order to provide a positive key, this way a seek
  * offset of 0 will represent the base of the directory.
+ *
+ * We usually strip bit 0 (set it to 0) in order to provide a consistent
+ * iteration space for collisions.
  *
  * This function can never return 0.  We use the MSB-0 space to synthesize
  * artificial directory entries such as "." and "..".
@@ -949,43 +949,77 @@ int64_t
 hammer_directory_namekey(hammer_inode_t dip, const void *name, int len,
 			 u_int32_t *max_iterationsp)
 {
-	int64_t key;
-	int32_t crcx;
 	const char *aname = name;
+	int32_t crcx;
+	int64_t key;
+	int i;
+	int j;
 
 	switch (dip->ino_data.cap_flags & HAMMER_INODE_CAP_DIRHASH_MASK) {
 	case HAMMER_INODE_CAP_DIRHASH_ALG0:
+		/*
+		 * Original algorithm
+		 */
 		key = (int64_t)(crc32(aname, len) & 0x7FFFFFFF) << 32;
 		if (key == 0)
 			key |= 0x100000000LL;
 		*max_iterationsp = 0xFFFFFFFFU;
 		break;
 	case HAMMER_INODE_CAP_DIRHASH_ALG1:
-		key = (u_int32_t)crc32(aname, len) & 0xFFFFFFFEU;
+		/*
+		 * Filesystem version 6 or better will create directories
+		 * using the ALG1 dirhash.  This hash breaks the filename
+		 * up into domains separated by special characters and
+		 * hashes each domain independently.
+		 *
+		 * We also do a simple sub-sort using the first character
+		 * of the filename in the top 5-bits.
+		 */
+		key = 0;
 
-		switch(len) {
-		default:
-			crcx = crc32(aname + 3, len - 5);
-			crcx = crcx ^ (crcx >> 6) ^ (crcx >> 12);
-			key |=  (int64_t)(crcx & 0x3F) << 42;
-			/* fall through */
-		case 5:
-		case 4:
-			/* fall through */
-		case 3:
-			key |= ((int64_t)(aname[2] & 0x1F) << 48);
-			/* fall through */
-		case 2:
-			key |= ((int64_t)(aname[1] & 0x1F) << 53) |
-			       ((int64_t)(aname[len-2] & 0x1F) << 37);
-			/* fall through */
-		case 1:
-			key |= ((int64_t)(aname[0] & 0x1F) << 58) |
-			       ((int64_t)(aname[len-1] & 0x1F) << 32);
-			/* fall through */
-		case 0:
-			break;
+		/*
+		 * m32
+		 */
+		crcx = 0;
+		for (i = j = 0; i < len; ++i) {
+			if (aname[i] == '.' ||
+			    aname[i] == '-' ||
+			    aname[i] == '_' ||
+			    aname[i] == '~') {
+				if (i != j)
+					crcx += crc32(aname + j, i - j);
+				j = i + 1;
+			}
 		}
+		if (i != j)
+			crcx += crc32(aname + j, i - j);
+
+#if 0
+		/*
+		 * xor top 5 bits 0mmmm into low bits and steal the top 5
+		 * bits as a semi sub sort using the first character of
+		 * the filename.  bit 63 is always left as 0 so directory
+		 * keys are positive numbers.
+		 */
+		crcx ^= (uint32_t)crcx >> (32 - 5);
+		crcx = (crcx & 0x07FFFFFF) | ((aname[0] & 0x0F) << (32 - 5));
+#endif
+		crcx &= 0x7FFFFFFFU;
+
+		key |= (uint64_t)crcx << 32;
+
+		/*
+		 * l16 - crc of entire filename
+		 *
+		 * This crc reduces degenerate hash collision conditions
+		 */
+		crcx = crc32(aname, len);
+		crcx = crcx ^ (crcx << 16);
+		key |= crcx & 0xFFFF0000U;
+
+		/*
+		 * Cleanup
+		 */
 		if ((key & 0xFFFFFFFF00000000LL) == 0)
 			key |= 0x100000000LL;
 		if (hammer_debug_general & 0x0400) {
