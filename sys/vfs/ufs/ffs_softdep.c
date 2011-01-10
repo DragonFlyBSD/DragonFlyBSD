@@ -4377,7 +4377,7 @@ top:
 	 * The brief unlock is to allow any pent up dependency
 	 * processing to be done.  Then proceed with the second pass.
 	 */
-	if (waitfor == MNT_NOWAIT) {
+	if (waitfor & MNT_NOWAIT) {
 		waitfor = MNT_WAIT;
 		FREE_LOCK(&lk);
 		ACQUIRE_LOCK(&lk);
@@ -4451,7 +4451,7 @@ softdep_sync_metadata_bp(struct buf *bp, void *data)
 			if (getdirtybuf(&nbp, info->waitfor) == 0)
 				break;
 			FREE_LOCK(&lk);
-			if (info->waitfor == MNT_NOWAIT) {
+			if (info->waitfor & MNT_NOWAIT) {
 				bawrite(nbp);
 			} else if ((error = bwrite(nbp)) != 0) {
 				bawrite(bp);
@@ -4469,7 +4469,7 @@ softdep_sync_metadata_bp(struct buf *bp, void *data)
 			if (getdirtybuf(&nbp, info->waitfor) == 0)
 				break;
 			FREE_LOCK(&lk);
-			if (info->waitfor == MNT_NOWAIT) {
+			if (info->waitfor & MNT_NOWAIT) {
 				bawrite(nbp);
 			} else if ((error = bwrite(nbp)) != 0) {
 				bawrite(bp);
@@ -4545,7 +4545,7 @@ softdep_sync_metadata_bp(struct buf *bp, void *data)
 			if (getdirtybuf(&nbp, info->waitfor) == 0)
 				break;
 			FREE_LOCK(&lk);
-			if (info->waitfor == MNT_NOWAIT) {
+			if (info->waitfor & MNT_NOWAIT) {
 				bawrite(nbp);
 			} else if ((error = bwrite(nbp)) != 0) {
 				bawrite(bp);
@@ -4573,7 +4573,7 @@ softdep_sync_metadata_bp(struct buf *bp, void *data)
 			if (getdirtybuf(&nbp, info->waitfor) == 0)
 				break;
 			FREE_LOCK(&lk);
-			if (info->waitfor == MNT_NOWAIT) {
+			if (info->waitfor & MNT_NOWAIT) {
 				bawrite(nbp);
 			} else if ((error = bwrite(nbp)) != 0) {
 				bawrite(bp);
@@ -4631,12 +4631,12 @@ flush_inodedep_deps(struct fs *fs, ino_t ino)
 				continue;
 			bp = adp->ad_buf;
 			if (getdirtybuf(&bp, waitfor) == 0) {
-				if (waitfor == MNT_NOWAIT)
+				if (waitfor & MNT_NOWAIT)
 					continue;
 				break;
 			}
 			FREE_LOCK(&lk);
-			if (waitfor == MNT_NOWAIT) {
+			if (waitfor & MNT_NOWAIT) {
 				bawrite(bp);
 			} else if ((error = bwrite(bp)) != 0) {
 				ACQUIRE_LOCK(&lk);
@@ -4652,12 +4652,12 @@ flush_inodedep_deps(struct fs *fs, ino_t ino)
 				continue;
 			bp = adp->ad_buf;
 			if (getdirtybuf(&bp, waitfor) == 0) {
-				if (waitfor == MNT_NOWAIT)
+				if (waitfor & MNT_NOWAIT)
 					continue;
 				break;
 			}
 			FREE_LOCK(&lk);
-			if (waitfor == MNT_NOWAIT) {
+			if (waitfor & MNT_NOWAIT) {
 				bawrite(bp);
 			} else if ((error = bwrite(bp)) != 0) {
 				ACQUIRE_LOCK(&lk);

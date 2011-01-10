@@ -395,7 +395,7 @@ loop:
 		if (vp->v_mount != mp)
 			goto loop;
 		if (vn_islocked(vp) || RB_EMPTY(&vp->v_rbdirty_tree) ||
-		    waitfor == MNT_LAZY)
+		    (waitfor & MNT_LAZY))
 			continue;
 		if (vget(vp, LK_EXCLUSIVE))
 			goto loop;

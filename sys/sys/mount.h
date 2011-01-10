@@ -373,9 +373,9 @@ struct mount {
  *
  * waitfor flags to vfs_sync() and getfsstat()
  */
-#define MNT_WAIT	1	/* synchronously wait for I/O to complete */
-#define MNT_NOWAIT	2	/* start all I/O, but do not wait for it */
-#define MNT_LAZY	4	/* be lazy and do not necessarily push it all */
+#define MNT_WAIT	0x0001	/* synchronously wait for I/O to complete */
+#define MNT_NOWAIT	0x0002	/* start all I/O, but do not wait for it */
+#define MNT_LAZY	0x0004	/* be lazy and do not necessarily push it all */
 
 #define VOP_FSYNC_SYSCALL	0x0001	/* from system call */
 

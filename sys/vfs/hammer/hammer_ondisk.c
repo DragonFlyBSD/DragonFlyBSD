@@ -1713,19 +1713,28 @@ hammer_queue_inodes_flusher(hammer_mount_t hmp, int waitfor)
  * the vnodes in case any were already flushing during the first pass,
  * and activate the flusher twice (the second time brings the UNDO FIFO's
  * start position up to the end position after the first call).
+ *
+ * If doing a lazy sync make just one pass on the vnode list, ignoring
+ * any new vnodes added to the list while the sync is in progress.
  */
 int
 hammer_sync_hmp(hammer_mount_t hmp, int waitfor)
 {
 	struct hammer_sync_info info;
+	int flags;
+
+	flags = VMSC_GETVP;
+	if (waitfor & MNT_LAZY)
+		flags |= VMSC_ONEPASS;
 
 	info.error = 0;
 	info.waitfor = MNT_NOWAIT;
-	vmntvnodescan(hmp->mp, VMSC_GETVP|VMSC_NOWAIT,
+	vmntvnodescan(hmp->mp, flags | VMSC_NOWAIT,
 		      hammer_sync_scan1, hammer_sync_scan2, &info);
-	if (info.error == 0 && waitfor == MNT_WAIT) {
+
+	if (info.error == 0 && (waitfor & MNT_WAIT)) {
 		info.waitfor = waitfor;
-		vmntvnodescan(hmp->mp, VMSC_GETVP,
+		vmntvnodescan(hmp->mp, flags,
 			      hammer_sync_scan1, hammer_sync_scan2, &info);
 	}
         if (waitfor == MNT_WAIT) {

@@ -1374,7 +1374,7 @@ nfs_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
 
     if (vn_islocked(vp) || RB_EMPTY(&vp->v_rbdirty_tree))
 	return(-1);
-    if (info->waitfor == MNT_LAZY)
+    if (info->waitfor & MNT_LAZY)
 	return(-1);
     return(0);
 }

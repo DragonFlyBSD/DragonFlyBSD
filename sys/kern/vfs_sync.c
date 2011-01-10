@@ -413,7 +413,7 @@ sync_fsync(struct vop_fsync_args *ap)
 	/*
 	 * We only need to do something if this is a lazy evaluation.
 	 */
-	if (ap->a_waitfor != MNT_LAZY)
+	if ((ap->a_waitfor & MNT_LAZY) == 0)
 		return (0);
 
 	/*
@@ -436,7 +436,7 @@ sync_fsync(struct vop_fsync_args *ap)
 		asyncflag = mp->mnt_flag & MNT_ASYNC;
 		mp->mnt_flag &= ~MNT_ASYNC;	/* ZZZ hack */
 		vfs_msync(mp, MNT_NOWAIT);
-		VFS_SYNC(mp, MNT_LAZY);
+		VFS_SYNC(mp, MNT_NOWAIT | MNT_LAZY);
 		if (asyncflag)
 			mp->mnt_flag |= MNT_ASYNC;
 	}

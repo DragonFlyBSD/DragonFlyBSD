@@ -93,6 +93,9 @@ static MALLOC_DEFINE(M_NETADDR, "Export Host", "Export host address structure");
 int numvnodes;
 SYSCTL_INT(_debug, OID_AUTO, numvnodes, CTLFLAG_RD, &numvnodes, 0,
     "Number of vnodes allocated");
+int verbose_reclaims;
+SYSCTL_INT(_debug, OID_AUTO, verbose_reclaims, CTLFLAG_RD, &verbose_reclaims, 0,
+    "Output filename of reclaimed vnode(s)");
 
 enum vtype iftovt_tab[16] = {
 	VNON, VFIFO, VCHR, VNON, VDIR, VNON, VBLK, VNON,
@@ -667,6 +670,7 @@ vfsync(struct vnode *vp, int waitfor, int passes,
 	lwkt_gettoken(&vp->v_token);
 
 	switch(waitfor) {
+	case MNT_LAZY | MNT_NOWAIT:
 	case MNT_LAZY:
 		/*
 		 * Lazy (filesystem syncer typ) Asynchronous plus limit the
@@ -1161,6 +1165,7 @@ vclean_vxlocked(struct vnode *vp, int flags)
 	int active;
 	int n;
 	vm_object_t object;
+	struct namecache *ncp;
 
 	/*
 	 * If the vnode has already been reclaimed we have nothing to do.
@@ -1169,11 +1174,17 @@ vclean_vxlocked(struct vnode *vp, int flags)
 		return;
 	vsetflags(vp, VRECLAIMED);
 
+	if (verbose_reclaims) {
+		if ((ncp = TAILQ_FIRST(&vp->v_namecache)) != NULL)
+			kprintf("Debug: reclaim %p %s\n", vp, ncp->nc_name);
+	}
+
 	/*
 	 * Scrap the vfs cache
 	 */
 	while (cache_inval_vp(vp, 0) != 0) {
-		kprintf("Warning: vnode %p clean/cache_resolution race detected\n", vp);
+		kprintf("Warning: vnode %p clean/cache_resolution "
+			"race detected\n", vp);
 		tsleep(vp, 0, "vclninv", 2);
 	}
 
