@@ -563,11 +563,11 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 
 	hmp->ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
 
-	TAILQ_INIT(&hmp->volu_list);
-	TAILQ_INIT(&hmp->undo_list);
-	TAILQ_INIT(&hmp->data_list);
-	TAILQ_INIT(&hmp->meta_list);
-	TAILQ_INIT(&hmp->lose_list);
+	RB_INIT(&hmp->volu_root);
+	RB_INIT(&hmp->undo_root);
+	RB_INIT(&hmp->data_root);
+	RB_INIT(&hmp->meta_root);
+	RB_INIT(&hmp->lose_root);
 	TAILQ_INIT(&hmp->iorun_list);
 
 	lwkt_token_init(&hmp->fs_token, 1, "hammerfs");

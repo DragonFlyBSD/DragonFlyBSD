@@ -526,12 +526,12 @@ hammer_flusher_clean_loose_ios(hammer_mount_t hmp)
 	 *
 	 * The io_token is needed to protect the list.
 	 */
-	if ((io = TAILQ_FIRST(&hmp->lose_list)) != NULL) {
+	if ((io = RB_ROOT(&hmp->lose_root)) != NULL) {
 		lwkt_gettoken(&hmp->io_token);
-		while ((io = TAILQ_FIRST(&hmp->lose_list)) != NULL) {
-			KKASSERT(io->mod_list == &hmp->lose_list);
-			TAILQ_REMOVE(&hmp->lose_list, io, mod_entry);
-			io->mod_list = NULL;
+		while ((io = RB_ROOT(&hmp->lose_root)) != NULL) {
+			KKASSERT(io->mod_root == &hmp->lose_root);
+			RB_REMOVE(hammer_mod_rb_tree, io->mod_root, io);
+			io->mod_root = NULL;
 			hammer_ref(&io->lock);
 			buffer = (void *)io;
 			hammer_rel_buffer(buffer, 0);
@@ -658,7 +658,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 * related inode(s) getting queued to the flush group.
 	 */
 	count = 0;
-	while ((io = TAILQ_FIRST(&hmp->data_list)) != NULL) {
+	while ((io = RB_FIRST(hammer_mod_rb_tree, &hmp->data_root)) != NULL) {
 		if (io->ioerror)
 			break;
 		hammer_ref(&io->lock);
@@ -802,7 +802,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 * meta data buffers.
 	 */
 	count = 0;
-	while ((io = TAILQ_FIRST(&hmp->meta_list)) != NULL) {
+	while ((io = RB_FIRST(hammer_mod_rb_tree, &hmp->meta_root)) != NULL) {
 		if (io->ioerror)
 			break;
 		KKASSERT(io->modify_refs == 0);
@@ -894,7 +894,7 @@ hammer_flusher_flush_undos(hammer_mount_t hmp, int mode)
 	int count;
 
 	count = 0;
-	while ((io = TAILQ_FIRST(&hmp->undo_list)) != NULL) {
+	while ((io = RB_FIRST(hammer_mod_rb_tree, &hmp->undo_root)) != NULL) {
 		if (io->ioerror)
 			break;
 		hammer_ref(&io->lock);
@@ -958,10 +958,10 @@ hammer_flusher_haswork(hammer_mount_t hmp)
 	if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR)
 		return(0);
 	if (TAILQ_FIRST(&hmp->flush_group_list) ||	/* dirty inodes */
-	    TAILQ_FIRST(&hmp->volu_list) ||		/* dirty buffers */
-	    TAILQ_FIRST(&hmp->undo_list) ||
-	    TAILQ_FIRST(&hmp->data_list) ||
-	    TAILQ_FIRST(&hmp->meta_list) ||
+	    RB_ROOT(&hmp->volu_root) ||			/* dirty buffers */
+	    RB_ROOT(&hmp->undo_root) ||
+	    RB_ROOT(&hmp->data_root) ||
+	    RB_ROOT(&hmp->meta_root) ||
 	    (hmp->hflags & HMNT_UNDO_DIRTY)		/* UNDO FIFO sync */
 	) {
 		return(1);

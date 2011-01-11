@@ -584,6 +584,7 @@ RB_HEAD(hammer_buf_rb_tree, hammer_buffer);
 RB_HEAD(hammer_nod_rb_tree, hammer_node);
 RB_HEAD(hammer_und_rb_tree, hammer_undo);
 RB_HEAD(hammer_res_rb_tree, hammer_reserve);
+RB_HEAD(hammer_mod_rb_tree, hammer_io);
 
 RB_PROTOTYPE2(hammer_vol_rb_tree, hammer_volume, rb_node,
 	      hammer_vol_rb_compare, int32_t);
@@ -595,6 +596,8 @@ RB_PROTOTYPE2(hammer_und_rb_tree, hammer_undo, rb_node,
 	      hammer_und_rb_compare, hammer_off_t);
 RB_PROTOTYPE2(hammer_res_rb_tree, hammer_reserve, rb_node,
 	      hammer_res_rb_compare, hammer_off_t);
+RB_PROTOTYPE2(hammer_mod_rb_tree, hammer_io, rb_node,
+	      hammer_mod_rb_compare, hammer_off_t);
 
 /*
  * IO management - embedded at the head of various in-memory structures
@@ -631,9 +634,9 @@ struct hammer_io {
 	enum hammer_io_type	type;
 	struct hammer_mount	*hmp;
 	struct hammer_volume	*volume;
-	TAILQ_ENTRY(hammer_io)	mod_entry; /* list entry if modified */
+	RB_ENTRY(hammer_io)	rb_node;     /* if modified */
 	TAILQ_ENTRY(hammer_io)	iorun_entry; /* iorun_list */
-	hammer_io_list_t	mod_list;
+	struct hammer_mod_rb_tree *mod_root;
 	struct buf		*bp;
 	int64_t			offset;	   /* zone-2 offset */
 	int			bytes;	   /* buffer cache buffer size */
@@ -904,12 +907,11 @@ struct hammer_mount {
 	u_int	check_interrupt;
 	u_int	check_yield;
 	uuid_t	fsid;
-	struct hammer_io_list volu_list;	/* dirty undo buffers */
-	struct hammer_io_list undo_list;	/* dirty undo buffers */
-	struct hammer_io_list data_list;	/* dirty data buffers */
-	struct hammer_io_list alt_data_list;	/* dirty data buffers */
-	struct hammer_io_list meta_list;	/* dirty meta bufs    */
-	struct hammer_io_list lose_list;	/* loose buffers      */
+	struct hammer_mod_rb_tree volu_root;	/* dirty undo buffers */
+	struct hammer_mod_rb_tree undo_root;	/* dirty undo buffers */
+	struct hammer_mod_rb_tree data_root;	/* dirty data buffers */
+	struct hammer_mod_rb_tree meta_root;	/* dirty meta bufs    */
+	struct hammer_mod_rb_tree lose_root;	/* loose buffers      */
 	int	locked_dirty_space;		/* meta/volu count    */
 	int	io_running_space;		/* io_token */
 	int	io_running_wakeup;		/* io_token */

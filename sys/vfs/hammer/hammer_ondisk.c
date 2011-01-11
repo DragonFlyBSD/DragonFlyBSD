@@ -583,12 +583,12 @@ found_aliased:
 		 * lose_list can be modified via a biodone() interrupt
 		 * so the io_token must be held.
 		 */
-		if (buffer->io.mod_list == &hmp->lose_list) {
+		if (buffer->io.mod_root == &hmp->lose_root) {
 			lwkt_gettoken(&hmp->io_token);
-			if (buffer->io.mod_list == &hmp->lose_list) {
-				TAILQ_REMOVE(buffer->io.mod_list, &buffer->io,
-					     mod_entry);
-				buffer->io.mod_list = NULL;
+			if (buffer->io.mod_root == &hmp->lose_root) {
+				RB_REMOVE(hammer_mod_rb_tree,
+					  buffer->io.mod_root, &buffer->io);
+				buffer->io.mod_root = NULL;
 				KKASSERT(buffer->io.modified == 0);
 			}
 			lwkt_reltoken(&hmp->io_token);
@@ -967,12 +967,12 @@ hammer_ref_buffer(hammer_buffer_t buffer)
 	 *
 	 * No longer loose.  lose_list requires the io_token.
 	 */
-	if (buffer->io.mod_list == &hmp->lose_list) {
+	if (buffer->io.mod_root == &hmp->lose_root) {
 		lwkt_gettoken(&hmp->io_token);
-		if (buffer->io.mod_list == &hmp->lose_list) {
-			TAILQ_REMOVE(buffer->io.mod_list, &buffer->io,
-				     mod_entry);
-			buffer->io.mod_list = NULL;
+		if (buffer->io.mod_root == &hmp->lose_root) {
+			RB_REMOVE(hammer_mod_rb_tree,
+				  buffer->io.mod_root, &buffer->io);
+			buffer->io.mod_root = NULL;
 		}
 		lwkt_reltoken(&hmp->io_token);
 	}
