@@ -372,7 +372,7 @@ hammer_vop_read(struct vop_read_args *ap)
 		/*
 		 * MPSAFE
 		 */
-		bp = getcacheblk(ap->a_vp, base_offset);
+		bp = getcacheblk(ap->a_vp, base_offset, blksize);
 		if (bp) {
 			error = 0;
 			goto skip;

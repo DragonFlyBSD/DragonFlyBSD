@@ -2807,20 +2807,41 @@ unrefblk(struct buf *bp)
  *	If B_RAM is set the buffer might be just fine, but we return
  *	NULL anyway because we want the code to fall through to the
  *	cluster read.  Otherwise read-ahead breaks.
+ *
+ *	If blksize is 0 the buffer cache buffer must already be fully
+ *	cached.
+ *
+ *	If blksize is non-zero getblk() will be used, allowing a buffer
+ *	to be reinstantiated from its VM backing store.  The buffer must
+ *	still be fully cached after reinstantiation to be returned.
  */
 struct buf *
-getcacheblk(struct vnode *vp, off_t loffset)
+getcacheblk(struct vnode *vp, off_t loffset, int blksize)
 {
 	struct buf *bp;
 
-	bp = findblk(vp, loffset, 0);
-	if (bp) {
-		if ((bp->b_flags & (B_INVAL | B_CACHE | B_RAM)) == B_CACHE) {
-			bp->b_flags &= ~B_AGE;
-			bremfree(bp);
-		} else {
-			BUF_UNLOCK(bp);
-			bp = NULL;
+	if (blksize) {
+		bp = getblk(vp, loffset, blksize, 0, 0);
+		if (bp) {
+			if ((bp->b_flags & (B_INVAL | B_CACHE | B_RAM)) ==
+			    B_CACHE) {
+				bp->b_flags &= ~B_AGE;
+			} else {
+				brelse(bp);
+				bp = NULL;
+			}
+		}
+	} else {
+		bp = findblk(vp, loffset, 0);
+		if (bp) {
+			if ((bp->b_flags & (B_INVAL | B_CACHE | B_RAM)) ==
+			    B_CACHE) {
+				bp->b_flags &= ~B_AGE;
+				bremfree(bp);
+			} else {
+				BUF_UNLOCK(bp);
+				bp = NULL;
+			}
 		}
 	}
 	return (bp);

@@ -422,7 +422,7 @@ struct buf *getpbuf_kva (int *);
 int	inmem (struct vnode *, off_t);
 struct buf *findblk (struct vnode *, off_t, int);
 struct buf *getblk (struct vnode *, off_t, int, int, int);
-struct buf *getcacheblk (struct vnode *, off_t);
+struct buf *getcacheblk (struct vnode *, off_t, int);
 struct buf *geteblk (int);
 void unrefblk(struct buf *bp);
 void regetblk(struct buf *bp);
