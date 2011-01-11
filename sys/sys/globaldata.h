@@ -165,7 +165,8 @@ struct globaldata {
 	int		gd_timer_running;
 	u_int		gd_idle_repeat;		/* repeated switches to idle */
 	int		gd_ireserved[7];
-	void		*gd_preserved[11];	/* future fields */
+	const char	*gd_infomsg;		/* debugging */
+	void		*gd_preserved[10];	/* future fields */
 	/* extended by <machine/globaldata.h> */
 };
 
@@ -203,6 +204,29 @@ typedef struct globaldata *globaldata_t;
  * globaldata flags
  */
 #define GDF_KPRINTF		0x0001	/* kprintf() reentrancy */
+
+#endif
+
+/*
+ * MANUAL DEBUG CODE FOR DEBUGGING LOCKUPS
+ */
+#ifdef _KERNEL
+
+#if 0
+
+#define DEBUG_PUSH_INFO(msg)				\
+	const char *save_infomsg;			\
+	save_infomsg = mycpu->gd_infomsg;		\
+	mycpu->gd_infomsg = msg				\
+
+#define DEBUG_POP_INFO()	mycpu->gd_infomsg = save_infomsg
+
+#else
+
+#define DEBUG_PUSH_INFO(msg)
+#define DEBUG_POP_INFO()
+
+#endif
 
 #endif
 

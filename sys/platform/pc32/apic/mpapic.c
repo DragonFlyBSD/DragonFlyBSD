@@ -842,9 +842,11 @@ apic_ipi(int dest_type, int vector, int delivery_mode)
 	if ((lapic.icr_lo & APIC_DELSTAT_MASK) != 0) {
 	    unsigned int eflags = read_eflags();
 	    cpu_enable_intr();
+	    DEBUG_PUSH_INFO("apic_ipi");
 	    while ((lapic.icr_lo & APIC_DELSTAT_MASK) != 0) {
 		lwkt_process_ipiq();
 	    }
+	    DEBUG_POP_INFO();
 	    write_eflags(eflags);
 	}
 
@@ -865,9 +867,11 @@ single_apic_ipi(int cpu, int vector, int delivery_mode)
 	if ((lapic.icr_lo & APIC_DELSTAT_MASK) != 0) {
 	    unsigned int eflags = read_eflags();
 	    cpu_enable_intr();
+	    DEBUG_PUSH_INFO("single_apic_ipi");
 	    while ((lapic.icr_lo & APIC_DELSTAT_MASK) != 0) {
 		lwkt_process_ipiq();
 	    }
+	    DEBUG_POP_INFO();
 	    write_eflags(eflags);
 	}
 	icr_hi = lapic.icr_hi & ~APIC_ID_MASK;

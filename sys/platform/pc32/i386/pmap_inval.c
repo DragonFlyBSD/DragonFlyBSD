@@ -87,6 +87,7 @@ pmap_inval_interlock(pmap_inval_info_t info, pmap_t pmap, vm_offset_t va)
 #ifdef SMP
     cpumask_t nactive;
 
+    DEBUG_PUSH_INFO("pmap_inval_interlock");
     for (;;) {
 	oactive = pmap->pm_active & ~CPUMASK_LOCK;
 	nactive = oactive | CPUMASK_LOCK;
@@ -95,6 +96,7 @@ pmap_inval_interlock(pmap_inval_info_t info, pmap_t pmap, vm_offset_t va)
 	lwkt_process_ipiq();
 	cpu_pause();
     }
+    DEBUG_POP_INFO();
 #else
     oactive = pmap->pm_active & ~CPUMASK_LOCK;
 #endif

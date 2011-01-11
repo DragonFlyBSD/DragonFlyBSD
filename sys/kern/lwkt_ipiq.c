@@ -193,10 +193,12 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 	}
 	cpu_enable_intr();
 	++ipiq_fifofull;
+	DEBUG_PUSH_INFO("send_ipiq3");
 	while (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 4) {
 	    KKASSERT(ip->ip_windex - ip->ip_rindex != MAXCPUFIFO - 1);
 	    lwkt_process_ipiq();
 	}
+	DEBUG_POP_INFO();
 #if defined(__i386__)
 	write_eflags(eflags);
 #elif defined(__x86_64__)
@@ -284,10 +286,12 @@ lwkt_send_ipiq3_passive(globaldata_t target, ipifunc3_t func,
 	}
 	cpu_enable_intr();
 	++ipiq_fifofull;
+	DEBUG_PUSH_INFO("send_ipiq3_passive");
 	while (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 4) {
 	    KKASSERT(ip->ip_windex - ip->ip_rindex != MAXCPUFIFO - 1);
 	    lwkt_process_ipiq();
 	}
+	DEBUG_POP_INFO();
 #if defined(__i386__)
 	write_eflags(eflags);
 #elif defined(__x86_64__)
@@ -425,6 +429,7 @@ lwkt_wait_ipiq(globaldata_t target, int seq)
 	    unsigned long rflags = read_rflags();
 #endif
 	    cpu_enable_intr();
+	    DEBUG_PUSH_INFO("wait_ipiq");
 	    while ((int)(ip->ip_xindex - seq) < 0) {
 		crit_enter();
 		lwkt_process_ipiq();
@@ -440,6 +445,7 @@ lwkt_wait_ipiq(globaldata_t target, int seq)
 		 */
 		cpu_lfence();
 	    }
+	    DEBUG_POP_INFO();
 #if defined(__i386__)
 	    write_eflags(eflags);
 #elif defined(__x86_64__)
@@ -527,6 +533,14 @@ again:
     }
 }
 
+#if 0
+static int iqticks[SMP_MAXCPU];
+static int iqcount[SMP_MAXCPU];
+#endif
+#if 0
+static int iqterm[SMP_MAXCPU];
+#endif
+
 static int
 lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip, 
 		       struct intrframe *frame)
@@ -537,6 +551,30 @@ lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip,
     ipifunc3_t copy_func;
     void *copy_arg1;
     int copy_arg2;
+
+#if 0
+    if (iqticks[mygd->gd_cpuid] != ticks) {
+	    iqticks[mygd->gd_cpuid] = ticks;
+	    iqcount[mygd->gd_cpuid] = 0;
+    }
+    if (++iqcount[mygd->gd_cpuid] > 3000000) {
+	kprintf("cpu %d ipiq maxed cscount %d spin %d\n",
+		mygd->gd_cpuid,
+		mygd->gd_curthread->td_cscount,
+		mygd->gd_spinlocks_wr);
+	iqcount[mygd->gd_cpuid] = 0;
+#if 0
+	if (++iqterm[mygd->gd_cpuid] > 10)
+		panic("cpu %d ipiq maxed", mygd->gd_cpuid);
+#endif
+	int i;
+	for (i = 0; i < ncpus; ++i) {
+		if (globaldata_find(i)->gd_infomsg)
+			kprintf(" %s", globaldata_find(i)->gd_infomsg);
+	}
+	kprintf("\n");
+    }
+#endif
 
     /*
      * Obtain the current write index, which is modified by a remote cpu.
@@ -682,6 +720,7 @@ lwkt_cpusync_interlock(lwkt_cpusync_t cs)
     cs->cs_mack = 0;
     crit_enter_id("cpusync");
     if (mask) {
+	DEBUG_PUSH_INFO("cpusync_interlock");
 	++ipiq_cscount;
 	++gd->gd_curthread->td_cscount;
 	lwkt_send_ipiq_mask(mask, (ipifunc1_t)lwkt_cpusync_remote1, cs);
@@ -690,6 +729,7 @@ lwkt_cpusync_interlock(lwkt_cpusync_t cs)
 	    lwkt_process_ipiq();
 	    cpu_pause();
 	}
+	DEBUG_POP_INFO();
     }
 #else
     cs->cs_mack = 0;
@@ -724,10 +764,17 @@ lwkt_cpusync_deinterlock(lwkt_cpusync_t cs)
     if (cs->cs_func && (cs->cs_mask & gd->gd_cpumask))
 	    cs->cs_func(cs->cs_data);
     if (mask) {
+	DEBUG_PUSH_INFO("cpusync_deinterlock");
 	while (cs->cs_mack != mask) {
 	    lwkt_process_ipiq();
 	    cpu_pause();
 	}
+	DEBUG_POP_INFO();
+	/*
+	 * cpusyncq ipis may be left queued without the RQF flag set due to
+	 * a non-zero td_cscount, so be sure to process any laggards after
+	 * decrementing td_cscount.
+	 */
 	--gd->gd_curthread->td_cscount;
 	lwkt_process_ipiq();
 	logipiq2(sync_end, mask);
@@ -783,6 +830,11 @@ lwkt_cpusync_remote2(lwkt_cpusync_t cs)
 	ip->ip_arg2[wi] = 0;
 	cpu_sfence();
 	++ip->ip_windex;
+	if ((ip->ip_windex & 0xFFFFFF) == 0)
+		kprintf("cpu %d cm=%016jx %016jx f=%p\n",
+			gd->gd_cpuid,
+			(intmax_t)cs->cs_mask, (intmax_t)cs->cs_mack,
+			cs->cs_func);
     }
 }
 

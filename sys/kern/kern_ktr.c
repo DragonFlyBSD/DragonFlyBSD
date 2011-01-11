@@ -311,8 +311,10 @@ ktr_resync_callback(void *dummy __unused)
 	ktr_sync_tsc = rdtsc();
 	count = lwkt_send_ipiq_mask(mycpu->gd_other_cpus & smp_active_mask,
 				    (ipifunc1_t)ktr_resync_remote, NULL);
+	DEBUG_PUSH_INFO("ktrsync1");
 	while (ktr_sync_count != count)
 		lwkt_process_ipiq();
+	DEBUG_POP_INFO();
 
 	/*
 	 * Continuously update the TSC for cpu 0 while waiting for all other
@@ -351,9 +353,11 @@ ktr_resync_remote(void *dummy __unused)
 	 */
 	KKASSERT(ktr_sync_state == 1);
 	atomic_add_int(&ktr_sync_count, 1);
+	DEBUG_PUSH_INFO("ktrsync2");
 	while (ktr_sync_state == 1) {
 		lwkt_process_ipiq();
 	}
+	DEBUG_POP_INFO();
 
 	/*
 	 * Now the master is in a hard loop, synchronize the TSC and

@@ -3481,11 +3481,13 @@ pmap_interlock_wait(struct vmspace *vm)
 	struct pmap *pmap = &vm->vm_pmap;
 
 	if (pmap->pm_active & CPUMASK_LOCK) {
+		DEBUG_PUSH_INFO("pmap_interlock_wait");
 		while (pmap->pm_active & CPUMASK_LOCK) {
 			cpu_pause();
 			cpu_ccfence();
 			lwkt_process_ipiq();
 		}
+		DEBUG_POP_INFO();
 	}
 }
 

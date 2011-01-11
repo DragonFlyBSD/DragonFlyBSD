@@ -291,29 +291,57 @@ lapic_timer_process_frame(struct intrframe *frame)
  * This manual debugging code is called unconditionally from Xtimer
  * (the lapic timer interrupt) whether the current thread is in a
  * critical section or not) and can be useful in tracking down lockups.
+ *
+ * NOTE: MANUAL DEBUG CODE
  */
+#if 0
+static int saveticks[SMP_MAXCPU];
+static int savecounts[SMP_MAXCPU];
+#endif
+
 void
 lapic_timer_always(struct intrframe *frame)
 {
 #if 0
 	globaldata_t gd = mycpu;
 	int cpu = gd->gd_cpuid;
-	int i;
 	char buf[64];
 	short *gptr;
+	int i;
 
-	if (cpu > 20)
-		return;
+	if (cpu <= 20) {
+		gptr = (short *)0xFFFFFFFF800b8000 + 80 * cpu;
+		*gptr = ((*gptr + 1) & 0x00FF) | 0x0700;
+		++gptr;
 
-	gptr = (short *)0xFFFFFFFF800b8000 + 80 * cpu;
-	*gptr = ((*gptr + 1) & 0x00FF) | 0x0700;
-	++gptr;
-
-	ksnprintf(buf, sizeof(buf), " %p %16.16s",
-		(void *)frame->if_rip, gd->gd_curthread->td_comm);
-	for (i = 0; buf[i]; ++i) {
-		gptr[i] = 0x0700 | (unsigned char)buf[i];
+		ksnprintf(buf, sizeof(buf), " %p %16s %d %16s ",
+		    (void *)frame->if_rip, gd->gd_curthread->td_comm, ticks,
+		    gd->gd_infomsg);
+		for (i = 0; buf[i]; ++i) {
+			gptr[i] = 0x0700 | (unsigned char)buf[i];
+		}
 	}
+#if 0
+	if (saveticks[gd->gd_cpuid] != ticks) {
+		saveticks[gd->gd_cpuid] = ticks;
+		savecounts[gd->gd_cpuid] = 0;
+	}
+	++savecounts[gd->gd_cpuid];
+	if (savecounts[gd->gd_cpuid] > 2000 && panicstr == NULL) {
+		panic("cpud %d panicing on ticks failure",
+			gd->gd_cpuid);
+	}
+	for (i = 0; i < ncpus; ++i) {
+		int delta;
+		if (saveticks[i] && panicstr == NULL) {
+			delta = saveticks[i] - ticks;
+			if (delta < -10 || delta > 10) {
+				panic("cpu %d panicing on cpu %d watchdog",
+				      gd->gd_cpuid, i);
+			}
+		}
+	}
+#endif
 #endif
 }
 
@@ -879,9 +907,11 @@ apic_ipi(int dest_type, int vector, int delivery_mode)
 	if ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
 	    unsigned long rflags = read_rflags();
 	    cpu_enable_intr();
+	    DEBUG_PUSH_INFO("apic_ipi");
 	    while ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
 		lwkt_process_ipiq();
 	    }
+	    DEBUG_POP_INFO();
 	    write_rflags(rflags);
 	}
 
@@ -902,9 +932,11 @@ single_apic_ipi(int cpu, int vector, int delivery_mode)
 	if ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
 	    unsigned long rflags = read_rflags();
 	    cpu_enable_intr();
+	    DEBUG_PUSH_INFO("single_apic_ipi");
 	    while ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
 		lwkt_process_ipiq();
 	    }
+	    DEBUG_POP_INFO();
 	    write_rflags(rflags);
 	}
 	icr_hi = lapic->icr_hi & ~APIC_ID_MASK;
