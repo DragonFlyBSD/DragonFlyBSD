@@ -105,10 +105,10 @@ int hammer_limit_dirtybufspace;		/* per-mount */
 int hammer_limit_running_io;		/* per-mount */
 int hammer_limit_recs;			/* as a whole XXX */
 int hammer_limit_inode_recs = 1024;	/* per inode */
-int hammer_limit_reclaim = HAMMER_RECLAIM_WAIT;
+int hammer_limit_reclaim;
 int hammer_live_dedup_cache_size = DEDUP_CACHE_SIZE;
 int hammer_limit_redo = 4096 * 1024;	/* per inode */
-int hammer_autoflush = 2000;		/* auto flush */
+int hammer_autoflush = 500;		/* auto flush (typ on reclaim) */
 int hammer_bio_count;
 int hammer_verify_zone;
 int hammer_verify_data = 1;
@@ -355,6 +355,15 @@ hammer_vfs_init(struct vfsconf *conf)
 		hammer_limit_running_io = hammer_limit_dirtybufspace;
 	if (hammer_limit_running_io > 10 * 1024 * 1024)
 		hammer_limit_running_io = 10 * 1024 * 1024;
+
+	/*
+	 * The hammer_inode structure detaches from the vnode on reclaim.
+	 * This limits the number of inodes in this state to prevent a
+	 * memory pool blowout.
+	 */
+	if (hammer_limit_reclaim == 0)
+		hammer_limit_reclaim = desiredvnodes / 10;
+
 	return(0);
 }
 

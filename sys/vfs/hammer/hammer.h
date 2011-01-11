@@ -312,7 +312,7 @@ RB_PROTOTYPE(hammer_fls_rb_tree, hammer_inode, rb_flsnode,
 struct hammer_flush_group {
 	TAILQ_ENTRY(hammer_flush_group)	flush_entry;
 	struct hammer_fls_rb_tree	flush_tree;
-	int				unused01;
+	int				seq;		/* our seq no */
 	int				total_count;	/* record load */
 	int				running;	/* group is running */
 	int				closed;
@@ -482,8 +482,6 @@ struct hammer_reclaim {
 	TAILQ_ENTRY(hammer_reclaim) entry;
 	int	count;
 };
-
-#define HAMMER_RECLAIM_WAIT	4000	/* default vfs.hammer.limit_reclaim */
 
 /*
  * Track who is creating the greatest burden on the
@@ -840,7 +838,7 @@ struct hammer_flusher {
 	int		signal;		/* flusher thread sequencer */
 	int		act;		/* currently active flush group */
 	int		done;		/* set to act when complete */
-	int		next;		/* next flush group */
+	int		next;		/* next unallocated flg seqno */
 	int		group_lock;	/* lock sequencing of the next flush */
 	int		exiting;	/* request master exit */
 	thread_t	td;		/* master flusher thread */
@@ -941,6 +939,7 @@ struct hammer_mount {
 	TAILQ_HEAD(, hammer_undo)  undo_lru_list;
 	TAILQ_HEAD(, hammer_reserve) delay_list;
 	struct hammer_flush_group_list	flush_group_list;
+	hammer_flush_group_t	fill_flush_group;
 	hammer_flush_group_t	next_flush_group;
 	TAILQ_HEAD(, hammer_objid_cache) objid_cache_list;
 	TAILQ_HEAD(, hammer_dedup_cache) dedup_lru_list;
