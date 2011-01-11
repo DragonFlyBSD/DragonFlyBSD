@@ -26,5 +26,13 @@ void kref_inc(struct kref *ref);
 int kref_dec(struct kref *ref, void (*deconstruct)(void*, void*), 
 	     void *priv1, void *priv2);
 
+#define KREF_DEC(refp, deconstruct)					\
+	({								\
+		int _val = atomic_fetchadd_int(&(refp)->refcount, -1);	\
+		if (_val == 1)						\
+			deconstruct;					\
+		(_val != 1);						\
+	})
+
 #endif 
 
