@@ -111,14 +111,6 @@ sf_buf_ref(void *arg)
 	kref_inc(&sf->ref);
 }
 
-static void
-sf_buf_teardown(void *sfp, void *unused)
-{
-	struct sf_buf *sf = sfp;
-	lwbuf_free(sf->lwbuf);
-	objcache_put(sf_buf_cache, sf);
-}
-
 /*
  * Detach mapped page and release resources back to the system.
  */
@@ -128,7 +120,11 @@ sf_buf_free(void *arg)
 	struct sf_buf *sf = arg;
 	int rc;
 
-	rc = kref_dec(&sf->ref, sf_buf_teardown, sf, NULL);
+	rc = KREF_DEC((&sf->ref), {
+		lwbuf_free(sf->lwbuf);
+		objcache_put(sf_buf_cache, sf);
+		sf = NULL;
+	});
 
 	return (rc);
 }
