@@ -424,7 +424,11 @@ skip:
 			n = uio->uio_resid;
 		if (n > ip->ino_data.size - uio->uio_offset)
 			n = (int)(ip->ino_data.size - uio->uio_offset);
+		if (got_fstoken)
+			lwkt_reltoken(&hmp->fs_token);
 		error = uiomove((char *)bp->b_data + offset, n, uio);
+		if (got_fstoken)
+			lwkt_gettoken(&hmp->fs_token);
 
 		/* data has a lower priority then meta-data */
 		bp->b_flags |= B_AGE;
@@ -695,8 +699,11 @@ hammer_vop_write(struct vop_write_args *ap)
 			if (error == 0)
 				bheavy(bp);
 		}
-		if (error == 0)
+		if (error == 0) {
+			lwkt_reltoken(&hmp->fs_token);
 			error = uiomove(bp->b_data + offset, n, uio);
+			lwkt_gettoken(&hmp->fs_token);
+		}
 
 		/*
 		 * Generate REDO records if enabled and redo_count will not
