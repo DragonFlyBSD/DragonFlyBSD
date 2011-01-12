@@ -69,7 +69,7 @@
 .\" $FreeBSD: /repoman/r/ncvs/src/share/man/man9/bus_dma.9,v 1.7 2003/07/27 14:05:29 mux Exp $
 .\" $NetBSD: bus_dma.9,v 1.25 2002/10/14 13:43:16 wiz Exp $
 .\"
-.Dd March 17, 2004
+.Dd January 11, 2010
 .Dt BUS_DMA 9
 .Os
 .Sh NAME
@@ -391,7 +391,7 @@ with
 .Fa dmat .
 .It Fa flags
 Are as follows:
-.Bl -tag -width ".Dv BUS_DMA_ALLOCNOW" -compact
+.Bl -tag -width ".Dv BUS_DMA_PRIVBZONE" -compact
 .It Dv BUS_DMA_ALLOCNOW
 Allocate the minimum resources necessary to guarantee that all map load
 operations associated with this tag may not block.
@@ -429,6 +429,19 @@ will be allocated due to the
 constraint.
 If unaligned memory was loaded into the DMA maps associated with this DMA tag,
 system will panic.
+.It Dv BUS_DMA_PRIVBZONE
+Uses a private bounce zone instead of a shared one.
+A private bounce zone will vanish if the DMA tag is destroyed.
+.It Dv BUS_DMA_ALLOCALL
+Allocate all required resources (mainly the bounce buffer).
+If any allocation fails,
+.Fn bus_dma_tag_create
+fails.
+.It Dv BUS_DMA_PROTECTED
+All of the functions called with the DMA tag are already protected by the
+caller, so the
+.Nm
+code need not protect the internal data structures.
 .El
 .It Fa dmat
 Pointer to a bus_dma_tag_t where the resulting DMA tag will
