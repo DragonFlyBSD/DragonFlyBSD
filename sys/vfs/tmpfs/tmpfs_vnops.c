@@ -450,12 +450,15 @@ tmpfs_read (struct vop_read_args *ap)
 		bp = getcacheblk(vp, base_offset, BSIZE);
 		if (bp == NULL)
 		{
+			lwkt_gettoken(&vp->v_mount->mnt_token);
 			error = bread(vp, base_offset, BSIZE, &bp);
 			if (error) {
 				brelse(bp);
+				lwkt_reltoken(&vp->v_mount->mnt_token);
 				kprintf("tmpfs_read bread error %d\n", error);
 				break;
 			}
+			lwkt_reltoken(&vp->v_mount->mnt_token);
 		}
 
 		/*
@@ -672,6 +675,7 @@ tmpfs_strategy(struct vop_strategy_args *ap)
 		return(0);
 	}
 
+	lwkt_gettoken(&vp->v_mount->mnt_token);
 	node = VP_TO_TMPFS_NODE(vp);
 
 	uobj = node->tn_reg.tn_aobj;
@@ -682,6 +686,7 @@ tmpfs_strategy(struct vop_strategy_args *ap)
 	 */
 	swap_pager_strategy(uobj, bio);
 
+	lwkt_reltoken(&vp->v_mount->mnt_token);
 	return 0;
 }
 
