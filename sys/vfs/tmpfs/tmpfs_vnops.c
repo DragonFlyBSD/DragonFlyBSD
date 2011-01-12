@@ -450,12 +450,15 @@ tmpfs_read (struct vop_read_args *ap)
 		bp = getcacheblk(vp, base_offset, BSIZE);
 		if (bp == NULL)
 		{
+			lwkt_gettoken(&vp->v_mount->mnt_token);
 			error = bread(vp, base_offset, BSIZE, &bp);
 			if (error) {
 				brelse(bp);
+				lwkt_reltoken(&vp->v_mount->mnt_token);
 				kprintf("tmpfs_read bread error %d\n", error);
 				break;
 			}
+			lwkt_reltoken(&vp->v_mount->mnt_token);
 		}
 
 		/*
