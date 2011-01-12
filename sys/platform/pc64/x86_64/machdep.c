@@ -936,7 +936,7 @@ void
 cpu_idle(void)
 {
 	globaldata_t gd = mycpu;
-	struct thread *td = gd->gd_curthread;
+	struct thread *td __debugvar = gd->gd_curthread;
 	int reqflags;
 	int quick;
 
