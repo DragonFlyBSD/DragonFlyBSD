@@ -1576,8 +1576,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	 * modifications until we know the whole operation will work.
 	 */
 	if (ondisk->parent == 0) {
-		parent = hammer_alloc_btree(cursor->trans, node->node_offset,
-					    &error);
+		parent = hammer_alloc_btree(cursor->trans, 0, &error);
 		if (parent == NULL)
 			goto done;
 		hammer_lock_ex(&parent->lock);
@@ -1627,7 +1626,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	 *  B O O O B    B N N B	<--- inner boundary points are 'P'
 	 *   0 1 2 3      4 5 6  
 	 */
-	new_node = hammer_alloc_btree(cursor->trans, hint, &error);
+	new_node = hammer_alloc_btree(cursor->trans, 0, &error);
 	if (new_node == NULL) {
 		if (made_root) {
 			hammer_unlock(&parent->lock);
@@ -1845,8 +1844,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	 * until we know the whole operation will work.
 	 */
 	if (ondisk->parent == 0) {
-		parent = hammer_alloc_btree(cursor->trans, leaf->node_offset,
-					    &error);
+		parent = hammer_alloc_btree(cursor->trans, 0, &error);
 		if (parent == NULL)
 			goto done;
 		hammer_lock_ex(&parent->lock);
@@ -1901,7 +1899,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	 *         /   \
 	 *  L L L L     L L L L
 	 */
-	new_leaf = hammer_alloc_btree(cursor->trans, hint, &error);
+	new_leaf = hammer_alloc_btree(cursor->trans, 0, &error);
 	if (new_leaf == NULL) {
 		if (made_root) {
 			hammer_unlock(&parent->lock);

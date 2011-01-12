@@ -1055,6 +1055,7 @@ extern int hammer_bio_count;
 extern int hammer_verify_zone;
 extern int hammer_verify_data;
 extern int hammer_write_mode;
+extern int hammer_double_buffer;
 extern int hammer_yield_check;
 extern int hammer_fsync_mode;
 extern int hammer_autoflush;

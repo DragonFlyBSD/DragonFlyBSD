@@ -2667,6 +2667,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	int boff;
 	int roff;
 	int n;
+	int isdedupable;
 
 	bio = ap->a_bio;
 	bp = bio->bio_buf;
@@ -2678,9 +2679,14 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	 * a BMAP operation, or else should be NOOFFSET.
 	 *
 	 * Checking the high bits for a match against zone-2 should suffice.
+	 *
+	 * In cases where a lot of data duplication is present it may be
+	 * more beneficial to drop through and doubule-buffer through the
+	 * device.
 	 */
 	nbio = push_bio(bio);
-	if ((nbio->bio_offset & HAMMER_OFF_ZONE_MASK) ==
+	if (hammer_double_buffer == 0 &&
+	    (nbio->bio_offset & HAMMER_OFF_ZONE_MASK) ==
 	    HAMMER_ZONE_LARGE_DATA) {
 		lwkt_gettoken(&hmp->fs_token);
 		error = hammer_io_direct_read(hmp, nbio, NULL);
@@ -2821,19 +2827,23 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		 * truncation point from above.
 		 */
 		disk_offset = cursor.leaf->data_offset + roff;
-		if (boff == 0 && n == bp->b_bufsize &&
-		    hammer_cursor_ondisk(&cursor) &&
-		    (disk_offset & HAMMER_BUFMASK) == 0) {
+		isdedupable = (boff == 0 && n == bp->b_bufsize &&
+			       hammer_cursor_ondisk(&cursor) &&
+			       ((int)disk_offset & HAMMER_BUFMASK) == 0);
+
+		if (isdedupable && hammer_double_buffer == 0) {
 			KKASSERT((disk_offset & HAMMER_OFF_ZONE_MASK) ==
 				 HAMMER_ZONE_LARGE_DATA);
 			nbio->bio_offset = disk_offset;
 			error = hammer_io_direct_read(hmp, nbio, cursor.leaf);
-			if (hammer_live_dedup)
+			if (hammer_live_dedup && error == 0)
 				hammer_dedup_cache_add(ip, cursor.leaf);
 			goto done;
 		} else if (n) {
 			error = hammer_ip_resolve_data(&cursor);
 			if (error == 0) {
+				if (hammer_live_dedup && isdedupable)
+					hammer_dedup_cache_add(ip, cursor.leaf);
 				bcopy((char *)cursor.data + roff,
 				      (char *)bp->b_data + boff, n);
 			}

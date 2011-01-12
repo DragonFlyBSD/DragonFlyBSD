@@ -550,7 +550,7 @@ hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
 		hint = onode->ondisk->elms[0].internal.subtree_offset;
 	else
 		hint = 0;
-	nnode = hammer_alloc_btree(cursor->trans, hint, &error);
+	nnode = hammer_alloc_btree(cursor->trans, 0, &error);
 
 	if (nnode == NULL)
 		goto done;
