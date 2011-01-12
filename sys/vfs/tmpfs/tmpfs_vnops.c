@@ -675,6 +675,7 @@ tmpfs_strategy(struct vop_strategy_args *ap)
 		return(0);
 	}
 
+	lwkt_gettoken(&vp->v_mount->mnt_token);
 	node = VP_TO_TMPFS_NODE(vp);
 
 	uobj = node->tn_reg.tn_aobj;
@@ -685,6 +686,7 @@ tmpfs_strategy(struct vop_strategy_args *ap)
 	 */
 	swap_pager_strategy(uobj, bio);
 
+	lwkt_reltoken(&vp->v_mount->mnt_token);
 	return 0;
 }
 
