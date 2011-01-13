@@ -5605,6 +5605,8 @@ pf_route6(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 	if (r->rt == PF_FASTROUTE) {
 		m0->m_pkthdr.fw_flags |= PF_MBUF_TAGGED;
 		m0->m_pkthdr.pf.flags = 0;
+		/* XXX Re-Check when Upgrading to > 4.4 */
+		m0->m_pkthdr.pf.statekey = NULL;
 		ip6_output(m0, NULL, NULL, 0, NULL, NULL, NULL);
 		return;
 	}
@@ -6187,6 +6189,8 @@ pf_test6(int dir, struct ifnet *ifp, struct mbuf **m0,
 	if (m->m_pkthdr.fw_flags & PF_MBUF_TAGGED)
 		return (PF_PASS);
 	m->m_pkthdr.pf.flags = 0;
+	/* Re-Check when updating to > 4.4 */
+	m->m_pkthdr.pf.statekey = NULL;
 
 	/* We do IP header normalization and packet reassembly here */
 	if (pf_normalize_ip6(m0, dir, kif, &reason, &pd) != PF_PASS) {
