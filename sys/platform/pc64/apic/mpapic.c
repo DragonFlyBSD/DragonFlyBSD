@@ -612,7 +612,7 @@ io_apic_setup_intpin(int apic, int pin)
 		flags = DEFAULT_FLAGS;
 		level = trigger(apic, pin, &flags);
 		if (level == 1)
-			int_to_apicintpin[irq].flags |= AIMI_FLAG_LEVEL;
+			int_to_apicintpin[irq].flags |= IOAPIC_IM_FLAG_LEVEL;
 		polarity(apic, pin, &flags, level);
 	}
 
@@ -871,7 +871,7 @@ imen_dump(void)
 
 	kprintf("SMP: enabled INTs: ");
 	for (x = 0; x < APIC_INTMAPSIZE; ++x) {
-		if ((int_to_apicintpin[x].flags & AIMI_FLAG_MASKED) == 0)
+		if ((int_to_apicintpin[x].flags & IOAPIC_IM_FLAG_MASKED) == 0)
         		kprintf("%d ", x);
 	}
 	kprintf("\n");

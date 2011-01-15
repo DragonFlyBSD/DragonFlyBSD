@@ -52,17 +52,17 @@
 #define APIC_POP_FRAME POP_FRAME
 
 #define IOAPICADDR(irq_num) \
-	CNAME(int_to_apicintpin) + AIMI_SIZE * (irq_num) + AIMI_APIC_ADDRESS
+	CNAME(int_to_apicintpin) + IOAPIC_IM_SIZE * (irq_num) + IOAPIC_IM_ADDR
 #define REDIRIDX(irq_num) \
-	CNAME(int_to_apicintpin) + AIMI_SIZE * (irq_num) + AIMI_REDIRINDEX
+	CNAME(int_to_apicintpin) + IOAPIC_IM_SIZE * (irq_num) + IOAPIC_IM_ENTIDX
 #define IOAPICFLAGS(irq_num) \
-	CNAME(int_to_apicintpin) + AIMI_SIZE * (irq_num) + AIMI_FLAGS
+	CNAME(int_to_apicintpin) + IOAPIC_IM_SIZE * (irq_num) + IOAPIC_IM_FLAGS
  
 #define MASK_IRQ(irq_num)						\
 	APIC_IMASK_LOCK ;			/* into critical reg */	\
-	testl	$AIMI_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
+	testl	$IOAPIC_IM_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
 	jne	7f ;			/* masked, don't mask */	\
-	orl	$AIMI_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
+	orl	$IOAPIC_IM_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
 						/* set the mask bit */	\
 	movq	IOAPICADDR(irq_num), %rcx ;	/* ioapic addr */	\
 	movl	REDIRIDX(irq_num), %eax ;	/* get the index */	\
@@ -77,7 +77,7 @@
  *  and the EOI cycle would cause redundant INTs to occur.
  */
 #define MASK_LEVEL_IRQ(irq_num)						\
-	testl	$AIMI_FLAG_LEVEL, IOAPICFLAGS(irq_num) ;		\
+	testl	$IOAPIC_IM_FLAG_LEVEL, IOAPICFLAGS(irq_num) ;		\
 	jz	9f ;				/* edge, don't mask */	\
 	MASK_IRQ(irq_num) ;						\
 9: ;									\
@@ -89,9 +89,9 @@
 	cmpl	$0,%eax ;						\
 	jnz	8f ;							\
 	APIC_IMASK_LOCK ;			/* into critical reg */	\
-	testl	$AIMI_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
+	testl	$IOAPIC_IM_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
 	je	7f ;			/* bit clear, not masked */	\
-	andl	$~AIMI_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
+	andl	$~IOAPIC_IM_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
 						/* clear mask bit */	\
 	movq	IOAPICADDR(irq_num),%rcx ;	/* ioapic addr */	\
 	movl	REDIRIDX(irq_num), %eax ;	/* get the index */	\

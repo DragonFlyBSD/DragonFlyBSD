@@ -240,10 +240,10 @@ ASSYM(CPUMASK_BIT, CPUMASK_BIT);
 #endif
 
 #ifdef SMP
-ASSYM(AIMI_APIC_ADDRESS, offsetof(struct apic_intmapinfo, apic_address));
-ASSYM(AIMI_REDIRINDEX, offsetof(struct apic_intmapinfo, redirindex));
-ASSYM(AIMI_FLAGS, offsetof(struct apic_intmapinfo, flags));
-ASSYM(AIMI_SIZE, sizeof(struct apic_intmapinfo));
-ASSYM(AIMI_FLAG_LEVEL, AIMI_FLAG_LEVEL);
-ASSYM(AIMI_FLAG_MASKED, AIMI_FLAG_MASKED);
+ASSYM(IOAPIC_IM_ADDR, offsetof(struct apic_intmapinfo, apic_address));
+ASSYM(IOAPIC_IM_ENTIDX, offsetof(struct apic_intmapinfo, redirindex));
+ASSYM(IOAPIC_IM_FLAGS, offsetof(struct apic_intmapinfo, flags));
+ASSYM(IOAPIC_IM_SIZE, sizeof(struct apic_intmapinfo));
+ASSYM(IOAPIC_IM_FLAG_LEVEL, IOAPIC_IM_FLAG_LEVEL);
+ASSYM(IOAPIC_IM_FLAG_MASKED, IOAPIC_IM_FLAG_MASKED);
 #endif

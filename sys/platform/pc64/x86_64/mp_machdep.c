@@ -1532,7 +1532,7 @@ setup_apic_irq_mapping(void)
 		int_to_apicintpin[x].redirindex = 0;
 
 		/* Default to masked */
-		int_to_apicintpin[x].flags = AIMI_FLAG_MASKED;
+		int_to_apicintpin[x].flags = IOAPIC_IM_FLAG_MASKED;
 	}
 
 	/* First assign ISA/EISA interrupts */
