@@ -689,7 +689,7 @@ tw_cl_ioctl(struct tw_cl_ctlr_handle *ctlr_handle, u_long cmd, TW_VOID *buf)
 	default:
 		/* Unknown opcode. */
 		tw_cli_dbg_printf(3, ctlr_handle, tw_osl_cur_func(),
-			"Unknown ioctl cmd 0x%x", cmd);
+			"Unknown ioctl cmd 0x%lx", cmd);
 		error = TW_OSL_ENOTTY;
 	}
 
@@ -1341,8 +1341,8 @@ tw_cli_send_scsi_cmd(struct tw_cli_req_context *req, TW_INT32 cmd)
 		if (error != TW_OSL_EBUSY) {
 			tw_cli_dbg_printf(1, ctlr->ctlr_handle,
 				tw_osl_cur_func(),
-				"Failed to start SCSI command",
-				"request = %p, error = %d", req, error);
+				"Failed to start SCSI command "
+				"(request = %p, error = %d)", req, error);
 			return(TW_OSL_EIO);
 		}
 	return(TW_OSL_ESUCCESS);
@@ -1376,8 +1376,8 @@ tw_cli_get_aen(struct tw_cli_ctlr_context *ctlr)
 	req->tw_cli_callback = tw_cli_aen_callback;
 	if ((error = tw_cli_send_scsi_cmd(req, 0x03 /* REQUEST_SENSE */))) {
 		tw_cli_dbg_printf(1, ctlr->ctlr_handle, tw_osl_cur_func(),
-			"Could not send SCSI command",
-			"request = %p, error = %d", req, error);
+			"Could not send SCSI command "
+			"(request = %p, error = %d)", req, error);
 		if (req->data)
 			ctlr->internal_req_busy = TW_CL_FALSE;
 		tw_cli_req_q_insert_tail(req, TW_CLI_FREE_Q);
