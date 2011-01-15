@@ -56,7 +56,7 @@ extern  bool		quiet;			/* if suppress random mess */
 
 extern  char		explstr[];		/* string for explanation */
 
-void	 addmsg(const char *, ...);
+void	 addmsg(const char *, ...) __printflike(1, 2);
 int	 adjust(CARD []);
 bool	 anymove(CARD [], int, int);
 void	 bye(void);
@@ -75,7 +75,7 @@ void	 intr(int);
 bool	 isone(CARD, CARD [], int);
 void	 makedeck(CARD []);
 void	 makeknown(CARD [], int);
-void	 msg(const char *, ...);
+void	 msg(const char *, ...) __printflike(1, 2);
 bool	 msgcard(CARD, bool);
 int	 number(int, int, const char *);
 int	 pegscore(CARD, CARD [], int, int);

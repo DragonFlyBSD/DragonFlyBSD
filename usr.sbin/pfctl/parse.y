@@ -89,7 +89,7 @@ int		 popfile(void);
 int		 check_file_secrecy(int, const char *);
 int		 yyparse(void);
 int		 yylex(void);
-int		 yyerror(const char *, ...);
+int		 yyerror(const char *, ...) __printflike(1, 2);
 int		 kw_cmp(const void *, const void *);
 int		 lookup(char *);
 int		 lgetc(int);
@@ -563,7 +563,7 @@ optimizer	: string	{
 			else if (!strcmp($1, "profile"))
 				$$ = PF_OPTIMIZE_BASIC | PF_OPTIMIZE_PROFILE;
 			else {
-				yyerror("unknown ruleset-optimization %s", $$);
+				yyerror("unknown ruleset-optimization %s", $1);
 				YYERROR;
 			}
 		}
@@ -609,7 +609,7 @@ option		: SET OPTIMIZATION STRING		{
 				YYERROR;
 			}
 			if (pfctl_set_hostid(pf, $3) != 0) {
-				yyerror("error setting hostid %08x", $3);
+				yyerror("error setting hostid %08" PRId64, $3);
 				YYERROR;
 			}
 		}
@@ -1123,7 +1123,7 @@ scrub_opt	: NODF	{
 				YYERROR;
 			}
 			if ($2 < 0 || $2 > 255) {
-				yyerror("illegal min-ttl value %d", $2);
+				yyerror("illegal min-ttl value %" PRId64, $2);
 				YYERROR;
 			}
 			scrub_opts.marker |= SOM_MINTTL;
@@ -1135,7 +1135,7 @@ scrub_opt	: NODF	{
 				YYERROR;
 			}
 			if ($2 < 0 || $2 > 65535) {
-				yyerror("illegal max-mss value %d", $2);
+				yyerror("illegal max-mss value %" PRId64, $2);
 				YYERROR;
 			}
 			scrub_opts.marker |= SOM_MAXMSS;
@@ -1884,7 +1884,7 @@ qassign_item	: STRING			{
 			if (strlcpy($$->queue, $1, sizeof($$->queue)) >=
 			    sizeof($$->queue)) {
 				yyerror("queue name '%s' too long (max "
-				    "%d chars)", $1, sizeof($$->queue)-1);
+				    "%zd chars)", $1, sizeof($$->queue)-1);
 				free($1);
 				free($$);
 				YYERROR;
@@ -2268,7 +2268,7 @@ pfrule		: action dir logquick interface route af proto fromto
 				if (strlcpy(r.qname, $9.queues.qname,
 				    sizeof(r.qname)) >= sizeof(r.qname)) {
 					yyerror("rule qname too long (max "
-					    "%d chars)", sizeof(r.qname)-1);
+					    "%zd chars)", sizeof(r.qname)-1);
 					YYERROR;
 				}
 				free($9.queues.qname);
@@ -2277,7 +2277,7 @@ pfrule		: action dir logquick interface route af proto fromto
 				if (strlcpy(r.pqname, $9.queues.pqname,
 				    sizeof(r.pqname)) >= sizeof(r.pqname)) {
 					yyerror("rule pqname too long (max "
-					    "%d chars)", sizeof(r.pqname)-1);
+					    "%zd chars)", sizeof(r.pqname)-1);
 					YYERROR;
 				}
 				free($9.queues.pqname);
@@ -2480,7 +2480,7 @@ blockspec	: /* empty */		{
 		}
 		| RETURNRST '(' TTL NUMBER ')'	{
 			if ($4 < 0 || $4 > 255) {
-				yyerror("illegal ttl value %d", $4);
+				yyerror("illegal ttl value %" PRId64, $4);
 				YYERROR;
 			}
 			$$.b2 = PFRULE_RETURNRST;
@@ -2530,7 +2530,7 @@ reticmpspec	: STRING			{
 			u_int8_t		icmptype;
 
 			if ($1 < 0 || $1 > 255) {
-				yyerror("invalid icmp code %lu", $1);
+				yyerror("invalid icmp code %" PRId64, $1);
 				YYERROR;
 			}
 			icmptype = returnicmpdefault >> 8;
@@ -2549,7 +2549,7 @@ reticmp6spec	: STRING			{
 			u_int8_t		icmptype;
 
 			if ($1 < 0 || $1 > 255) {
-				yyerror("invalid icmp code %lu", $1);
+				yyerror("invalid icmp code %" PRId64, $1);
 				YYERROR;
 			}
 			icmptype = returnicmp6default >> 8;
@@ -2944,7 +2944,7 @@ host		: STRING			{
 			if (strlcpy($$->addr.v.rtlabelname, $2,
 			    sizeof($$->addr.v.rtlabelname)) >=
 			    sizeof($$->addr.v.rtlabelname)) {
-				yyerror("route label too long, max %u chars",
+				yyerror("route label too long, max %zd chars",
 				    sizeof($$->addr.v.rtlabelname) - 1);
 				free($2);
 				free($$);
@@ -3170,7 +3170,7 @@ uid		: STRING			{
 		}
 		| NUMBER			{
 			if ($1 < 0 || $1 >= UID_MAX) {
-				yyerror("illegal uid value %lu", $1);
+				yyerror("illegal uid value %" PRId64, $1);
 				YYERROR;
 			}
 			$$ = $1;
@@ -3248,7 +3248,7 @@ gid		: STRING			{
 		}
 		| NUMBER			{
 			if ($1 < 0 || $1 >= GID_MAX) {
-				yyerror("illegal gid value %lu", $1);
+				yyerror("illegal gid value %" PRId64, $1);
 				YYERROR;
 			}
 			$$ = $1;
@@ -3326,7 +3326,7 @@ icmp_item	: icmptype		{
 		}
 		| icmptype CODE NUMBER	{
 			if ($3 < 0 || $3 > 255) {
-				yyerror("illegal icmp-code %lu", $3);
+				yyerror("illegal icmp-code %" PRId64, $3);
 				YYERROR;
 			}
 			$$ = calloc(1, sizeof(struct node_icmp));
@@ -3371,7 +3371,7 @@ icmp6_item	: icmp6type		{
 		}
 		| icmp6type CODE NUMBER	{
 			if ($3 < 0 || $3 > 255) {
-				yyerror("illegal icmp-code %lu", $3);
+				yyerror("illegal icmp-code %" PRId64, $3);
 				YYERROR;
 			}
 			$$ = calloc(1, sizeof(struct node_icmp));
@@ -3398,7 +3398,7 @@ icmptype	: STRING			{
 		}
 		| NUMBER			{
 			if ($1 < 0 || $1 > 255) {
-				yyerror("illegal icmp-type %lu", $1);
+				yyerror("illegal icmp-type %" PRId64, $1);
 				YYERROR;
 			}
 			$$ = $1 + 1;
@@ -3419,7 +3419,7 @@ icmp6type	: STRING			{
 		}
 		| NUMBER			{
 			if ($1 < 0 || $1 > 255) {
-				yyerror("illegal icmp6-type %lu", $1);
+				yyerror("illegal icmp6-type %" PRId64, $1);
 				YYERROR;
 			}
 			$$ = $1 + 1;
@@ -3447,7 +3447,7 @@ tos	: STRING			{
 		| NUMBER			{
 			$$ = $1;
 			if (!$$ || $$ > 255) {
-				yyerror("illegal tos value %s", $1);
+				yyerror("illegal tos value %" PRId64, $1);
 				YYERROR;
 			}
 		}
@@ -4343,7 +4343,7 @@ limit_spec	: STRING NUMBER
 				YYERROR;
 			}
 			if (pfctl_set_limit(pf, $1, $2) != 0) {
-				yyerror("unable to set limit %s %u", $1, $2);
+				yyerror("unable to set limit %s %" PRId64, $1, $2);
 				free($1);
 				YYERROR;
 			}
@@ -6014,7 +6014,7 @@ rule_label(struct pf_rule *r, char *s)
 	if (s) {
 		if (strlcpy(r->label, s, sizeof(r->label)) >=
 		    sizeof(r->label)) {
-			yyerror("rule label too long (max %d chars)",
+			yyerror("rule label too long (max %zd chars)",
 			    sizeof(r->label)-1);
 			return (-1);
 		}

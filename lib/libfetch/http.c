@@ -128,6 +128,8 @@ struct httpio
 #endif
 };
 
+static int http_cmd(conn_t *, const char *, ...) __printflike(2, 3);
+
 /*
  * Get next chunk header
  */
@@ -933,7 +935,7 @@ http_request(struct url *URL, const char *op, struct url_stat *us,
 		if (url->offset > 0)
 			http_cmd(conn, "Range: bytes=%lld-", (long long)url->offset);
 		http_cmd(conn, "Connection: close");
-		http_cmd(conn, "");
+		http_cmd(conn, "%s", "");
 
 		/*
 		 * Force the queued request to be dispatched.  Normally, one

@@ -142,7 +142,7 @@ typedef int handler_t(isess_t *sess, pdu_t *pp);
 int	authenticateLogin(isess_t *sess);
 int	fsm(isc_opt_t *op);
 int	sendPDU(isess_t *sess, pdu_t *pp, handler_t *hdlr);
-int	addText(pdu_t *pp, char *fmt, ...);
+int	addText(pdu_t *pp, char *fmt, ...) __printflike(2, 3);
 void	freePDU(pdu_t *pp);
 int	xmitpdu(isess_t *sess, pdu_t *pp);
 int	recvpdu(isess_t *sess, pdu_t *pp);

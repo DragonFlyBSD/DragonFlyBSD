@@ -746,7 +746,8 @@ DoCopy(copy_info_t info, struct stat *stat1, int depth)
                 hltdelete(hln);
                 hln = NULL;
 		if (tryrelink) {
-		    logerr("%-20s hardlink: will attempt to copy normally\n");
+		    logerr("%-20s hardlink: will attempt to copy normally\n",
+			(dpath ? dpath : spath));
 		    goto relink;
 		}
 		++r;

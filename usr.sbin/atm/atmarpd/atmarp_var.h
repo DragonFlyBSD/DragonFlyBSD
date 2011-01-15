@@ -184,11 +184,7 @@ extern FILE		*atmarp_log_file;
 extern int	atmarp_cfg_netif(char *);
 
 /* atmarp_log.c */
-#if __STDC__
-extern void	atmarp_log(const int, const char *, ...);
-#else
-extern void	atmarp_log(int, char *, va_alist);
-#endif
+extern void	atmarp_log(const int, const char *, ...) __printflike(2, 3);
 extern void	atmarp_mem_err(char *);
 
 /* atmarp_scsp.c */

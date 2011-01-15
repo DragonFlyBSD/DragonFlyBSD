@@ -118,7 +118,7 @@ static void seekx(int, off_t);
 static unsigned int optfmt(const char *);
 static uint32_t optaddr(const char *);
 static int optpage(const char *, int);
-static void Warn(const char *, const char *, ...);
+static void Warn(const char *, const char *, ...) __printflike(2, 3);
 static void usage(void);
 
 /*

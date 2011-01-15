@@ -46,6 +46,8 @@
 #define CRYPTDISKS_START	1
 #define CRYPTDISKS_STOP		2
 
+static void syntax_error(const char *, ...) __printflike(1, 2);
+
 static int line_no = 1;
 
 static int yesDialog(char *msg __unused)

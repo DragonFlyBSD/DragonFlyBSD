@@ -348,6 +348,8 @@ get_disk_name(char *name, PDevice pDev)
 	name[20] = '\0';
 }
 
+static int hpt_copy_info(HPT_GET_INFO *, char *, ...) __printf0like(2, 3);
+
 static int
 hpt_copy_info(HPT_GET_INFO *pinfo, char *fmt, ...)
 {
@@ -391,7 +393,7 @@ hpt_copy_disk_info(HPT_GET_INFO *pinfo, PVDevice pVDev, UINT iChan)
 #endif
 		arrayname[0]=0;
 
-	hpt_copy_info(pinfo, "Channel %d  %s  %5dMB  %s %s\n",
+	hpt_copy_info(pinfo, "Channel %d  %s  %5lluMB  %s %s\n",
 		iChan+1,
 		name, pVDev->VDeviceCapacity>>11, status, arrayname);
 }
@@ -534,7 +536,7 @@ hpt_get_info(IAL_ADAPTER_T *pAdapter, HPT_GET_INFO *pinfo)
 #endif
 				get_disk_name(name, &pVDev->u.disk);
 
-				hpt_copy_info(pinfo, "%2d  %s  %s  %5dMB  %-16s",
+				hpt_copy_info(pinfo, "%2d  %s  %s  %5lluMB  %-16s",
 					j, "Single disk", name, pVDev->VDeviceCapacity>>11,
 					/* gmm 2001-6-19: Check if pDev has been added to an array. */
 					((pVDev->pParent) ? "Unavailable" : "Normal"));

@@ -353,8 +353,7 @@ void	wwinsline(struct ww *, int);
 void	wwiomux(void);
 void	wwlabel(struct ww *, struct ww *, int, char *, int);
 void	wwmove(struct ww *, int, int);
-void	wwprintf(struct ww *, const char *, ...)
-    __attribute__((__format__(__printf__, 2, 3)));
+void	wwprintf(struct ww *, const char *, ...) __printflike(2, 3);
 void	wwputc(char, struct ww *);
 void	wwputs(const char *, struct ww *);
 void	wwredraw(void);
@@ -377,7 +376,7 @@ void	wwsuspend(void);
 void	wwunframe(struct ww *);
 void	wwupdate1(int, int);
 int	wwvisible(struct ww *);
-void	wwvprintf(struct ww *, const char *, va_list);
+void	wwvprintf(struct ww *, const char *, va_list) __printflike(2, 0);
 int	wwwrite(struct ww *, const char *, int);
 #ifdef TERMINFO
 int	wwterminfoinit(void);

@@ -59,8 +59,8 @@ int	NgRecvAsciiMsg(int, struct ng_mesg *, size_t, char *);
 int	NgSendData(int, const char *, const u_char *, size_t);
 int	NgRecvData(int, u_char *, size_t, char *);
 int	NgSetDebug(int);
-void	NgSetErrLog(void (*)(const char *fmt, ...),
-	    void (*)(const char *fmt, ...));
+void	NgSetErrLog(void (*)(const char *fmt, ...) __printflike(1, 2),
+	    void (*)(const char *fmt, ...) __printflike(1, 2));
 __END_DECLS
 
 #endif

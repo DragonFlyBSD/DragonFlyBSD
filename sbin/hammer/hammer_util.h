@@ -158,5 +158,5 @@ void hammer_cache_del(struct cache_info *cache);
 void hammer_cache_used(struct cache_info *cache);
 void hammer_cache_flush(void);
 
-void panic(const char *ctl, ...);
+void panic(const char *ctl, ...) __printflike(1, 2);
 

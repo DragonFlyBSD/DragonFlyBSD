@@ -90,7 +90,7 @@ typedef void DirectiveHandler(Parser *, char *, int, int);
 #define	FPREFIX		"*F"	/* file part of PREFIX */
 #define	DPREFIX		"*D"	/* directory part of PREFIX */
 
-void Parse_Error(int, const char *, ...);
+void Parse_Error(int, const char *, ...) __printflike(2, 3);
 bool Parse_AnyExport(void);
 bool Parse_IsVar(char *);
 void Parse_DoVar(char *, struct GNode *);

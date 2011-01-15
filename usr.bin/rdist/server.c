@@ -64,7 +64,7 @@ static void	comment(char *);
 static void	dospecial(char *);
 static int	fchog(int, char *, char *, char *, int);
 static void	hardlink(char *);
-static void	note(const char *, ...);
+static void	note(const char *, ...) __printflike(1, 2);
 static void	query(char *);
 static void	recvf(char *, int);
 static void	removeit(struct stat *);

@@ -90,8 +90,8 @@ gid_t real_gid, effective_gid;
 static const char * const atrun = "atrun"; /* service name for syslog etc. */
 static int debug = 0;
 
-void		perr(const char *fmt, ...);
-void		perrx(const char *fmt, ...);
+void		perr(const char *fmt, ...) __printflike(1, 2);
+void		perrx(const char *fmt, ...) __printflike(1, 2);
 static void	usage(void);
 
 /* Local functions */
@@ -238,12 +238,12 @@ run_file(const char *filename, uid_t uid, gid_t gid)
     mailname = mailbuf;
 
     if (nuid != uid)
-	perrx("Job %s - userid %ld does not match file uid %lu",
-		filename, nuid, (unsigned long)uid);
+	perrx("Job %s - userid %u does not match file uid %u",
+		filename, nuid, uid);
 
     if (ngid != gid)
-	perrx("Job %s - groupid %ld does not match file gid %lu",
-		filename, ngid, (unsigned long)gid);
+	perrx("Job %s - groupid %u does not match file gid %u",
+		filename, ngid, gid);
 
     fclose(stream);
 

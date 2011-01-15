@@ -73,7 +73,7 @@ void add_rule(struct rule *);
 int rule_apply(void);
 void dump_config(void);
 int read_config(const char *, int);
-int syntax_error(const char *fmt, ...);
+int syntax_error(const char *fmt, ...) __printflike(1, 2);
 void rule_tab(void);
 void delete_rules(void);
 #endif

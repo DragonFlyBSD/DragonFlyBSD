@@ -178,7 +178,7 @@ int dns_get_mx_list(const char *, int, struct mx_hostentry **, int);
 /* net.c */
 char *ssl_errstr(void);
 int read_remote(int, int, char *);
-ssize_t send_remote_command(int, const char*, ...);
+ssize_t send_remote_command(int, const char*, ...) __printflike(2, 3);
 int deliver_remote(struct qitem *, const char **);
 
 /* base64.c */
@@ -206,9 +206,9 @@ int readmail(struct queue *, int, int);
 
 /* util.c */
 const char *hostname(void);
-void setlogident(const char *, ...);
-void errlog(int, const char *, ...);
-void errlogx(int, const char *, ...);
+void setlogident(const char *, ...) __printf0like(1, 2);
+void errlog(int, const char *, ...) __printf0like(2, 3);
+void errlogx(int, const char *, ...) __printf0like(2, 3);
 void set_username(void);
 void deltmp(void);
 int open_locked(const char *, int, ...);

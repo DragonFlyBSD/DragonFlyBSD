@@ -362,7 +362,7 @@ static int	fifoMaster;
 #define	W_SETTERMSIG(st, val) W_SETMASKED(st, val, WTERMSIG)
 #define	W_SETEXITSTATUS(st, val) W_SETMASKED(st, val, WEXITSTATUS)
 
-typedef void AbortProc(const char [], ...);
+typedef void AbortProc(const char [], ...) __printflike(1, 2);
 
 static void JobRestart(Job *);
 static int JobStart(GNode *, int, Job *);

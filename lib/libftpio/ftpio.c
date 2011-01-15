@@ -29,6 +29,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <ftpio.h>
+#include <inttypes.h>
 #include <netdb.h>
 #include <signal.h>
 #include <stdarg.h>
@@ -58,7 +59,7 @@ static int	writes(int fd, const char *s);
 static char	*get_a_line(FTP_t ftp);
 static int	get_a_number(FTP_t ftp, char **q);
 static int	botch(const char *func, const char *botch_state);
-static int	cmd(FTP_t ftp, const char *fmt, ...);
+static int	cmd(FTP_t ftp, const char *fmt, ...) __printflike(2, 3);
 static int	ftp_login_session(FTP_t ftp, const char *host, int af,
 				  const char *user, const char *passwd,
 				  int port, int verbose);
@@ -928,7 +929,7 @@ ftp_file_op(FTP_t ftp, const char *operation, const char *file, FILE **fp,
 	}
 
 	if (seekto && *seekto) {
-	    i = cmd(ftp, "REST %d", *seekto);
+	    i = cmd(ftp, "REST %" PRId64, *seekto);
 	    if (i < 0 || FTP_TIMEOUT(i)) {
 		close(s);
 		ftp->error = i;
@@ -985,7 +986,7 @@ ftp_file_op(FTP_t ftp, const char *operation, const char *file, FILE **fp,
 	if (sin.sin4.sin_family == AF_INET) {
             u_long a;
 	    a = ntohl(sin.sin4.sin_addr.s_addr);
-	    i = cmd(ftp, "PORT %d,%d,%d,%d,%d,%d",
+	    i = cmd(ftp, "PORT %ld,%ld,%ld,%ld,%d,%d",
 		    (a                   >> 24) & 0xff,
 		    (a                   >> 16) & 0xff,
 		    (a                   >>  8) & 0xff,
@@ -1029,7 +1030,7 @@ try_lprt:
 	    }
 	}
 	if (seekto && *seekto) {
-	    i = cmd(ftp, "REST %d", *seekto);
+	    i = cmd(ftp, "REST %" PRId64, *seekto);
 	    if (i < 0 || FTP_TIMEOUT(i)) {
 		close(s);
 		ftp->error = i;

@@ -67,6 +67,8 @@ err_set_exit(void (*ef)(int))
 
 __weak_reference(_err, err);
 
+void _err(int, const char *, ...) __printflike(2, 3);
+
 void
 _err(int eval, const char *fmt, ...)
 {
@@ -131,6 +133,8 @@ verrx(int eval, const char *fmt, va_list ap)
 }
 
 __weak_reference(_warn, warn);
+
+void _warn(const char *, ...) __printflike(1, 2);
 
 void
 _warn(const char *fmt, ...)

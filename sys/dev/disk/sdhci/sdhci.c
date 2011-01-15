@@ -203,6 +203,9 @@ WR4(struct sdhci_slot *slot, bus_size_t off, uint32_t val)
 	bus_write_4(slot->mem_res, off, val);
 }
 
+static int slot_printf(struct sdhci_slot *, const char *, ...)
+	       __printflike(2, 3);
+
 /* bus entry points */
 static int sdhci_probe(device_t dev);
 static int sdhci_attach(device_t dev);

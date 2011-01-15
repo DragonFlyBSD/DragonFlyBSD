@@ -66,6 +66,7 @@
 #define	HISMACADDR		"HISMACADDR"
 #define	SESSION_ID		"SESSION_ID"
 
+static void nglog(const char *, ...) __printflike(1, 2);
 static void nglogx(const char *, ...) __printflike(1, 2);
 
 static int ReceivedSignal;

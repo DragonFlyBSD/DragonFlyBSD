@@ -95,8 +95,8 @@
 int     _gNgDebugLevel = 0;
 
 /* Debug printing functions */
-void    (*_NgLog) (const char *fmt,...) = warn;
-void    (*_NgLogx) (const char *fmt,...) = warnx;
+void    (*_NgLog) (const char *fmt,...) __printflike(1, 2) = warn;
+void    (*_NgLogx) (const char *fmt,...) __printflike(1, 2) = warnx;
 
 /* Internal functions */
 static const	char *NgCookie(int cookie);
@@ -200,8 +200,8 @@ _NgDebugMsg(const struct ng_mesg *msg, const char *path)
 	NGLOGX("NG_MESG :");
 	NGLOGX("  vers   %d", msg->header.version);
 	NGLOGX("  arglen %d", msg->header.arglen);
-	NGLOGX("  flags  %ld", msg->header.flags);
-	NGLOGX("  token  %lu", (u_long)msg->header.token);
+	NGLOGX("  flags  %u", msg->header.flags);
+	NGLOGX("  token  %u", msg->header.token);
 	NGLOGX("  cookie %s (%d)",
 	    NgCookie(msg->header.typecookie), msg->header.typecookie);
 
