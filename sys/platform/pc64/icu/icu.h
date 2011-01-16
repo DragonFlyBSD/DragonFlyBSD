@@ -48,14 +48,6 @@
 #define	_ARCH_ICU_ICU_H_
 
 /*
- * Note: The APIC uses different values for IRQxxx.
- *	 Unfortunately many drivers use the 8259 values as indexes
- *	 into tables, etc.  The APIC equivilants are kept as APIC_IRQxxx.
- *	 The 8259 versions have to be used in SMP for legacy operation
- *	 of the drivers.
- */
-
-/*
  * Interrupt enable bit numbers - in normal order of priority 
  * (which we change)
  */
