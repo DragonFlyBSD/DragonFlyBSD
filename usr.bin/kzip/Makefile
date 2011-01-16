@@ -3,6 +3,6 @@
 
 PROG=	kzip
 MAN=	kzip.8
-WARNS?=	1
+WARNS?=	2
 
 .include <bsd.prog.mk>
