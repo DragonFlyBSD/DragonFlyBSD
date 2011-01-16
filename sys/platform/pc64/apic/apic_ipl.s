@@ -79,7 +79,7 @@ ENTRY(APIC_INTRDIS)
 	APIC_IMASK_LOCK			/* enter critical reg */
 	movl	%edi, %eax
 1:
-	imull	$IOAPIC_IM_SIZE, %eax
+	shll	$IOAPIC_IM_SZSHIFT, %eax
 	orl	$IOAPIC_IM_FLAG_MASKED, CNAME(int_to_apicintpin) + IOAPIC_IM_FLAGS(%rax)
 	movq	CNAME(int_to_apicintpin) + IOAPIC_IM_ADDR(%rax), %rdx
 	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ENTIDX(%rax), %ecx
@@ -96,7 +96,7 @@ ENTRY(APIC_INTREN)
 	APIC_IMASK_LOCK			/* enter critical reg */
 	movl	%edi, %eax
 1:
-	imull	$IOAPIC_IM_SIZE, %eax
+	shll	$IOAPIC_IM_SZSHIFT, %eax
 	andl	$~IOAPIC_IM_FLAG_MASKED, CNAME(int_to_apicintpin) + IOAPIC_IM_FLAGS(%rax)
 	movq	CNAME(int_to_apicintpin) + IOAPIC_IM_ADDR(%rax), %rdx
 	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ENTIDX(%rax), %ecx

@@ -244,6 +244,7 @@ ASSYM(IOAPIC_IM_ADDR, offsetof(struct apic_intmapinfo, apic_address));
 ASSYM(IOAPIC_IM_ENTIDX, offsetof(struct apic_intmapinfo, redirindex));
 ASSYM(IOAPIC_IM_FLAGS, offsetof(struct apic_intmapinfo, flags));
 ASSYM(IOAPIC_IM_SIZE, sizeof(struct apic_intmapinfo));
+ASSYM(IOAPIC_IM_SZSHIFT, IOAPIC_IM_SZSHIFT);
 ASSYM(IOAPIC_IM_FLAG_LEVEL, IOAPIC_IM_FLAG_LEVEL);
 ASSYM(IOAPIC_IM_FLAG_MASKED, IOAPIC_IM_FLAG_MASKED);
 #endif

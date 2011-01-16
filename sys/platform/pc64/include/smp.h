@@ -75,13 +75,20 @@ extern int			cpu_num_to_apic_id[];
 extern int			io_num_to_apic_id[];
 extern int			apic_id_to_logical[];
 #define APIC_INTMAPSIZE 24
+/*
+ * NOTE:
+ * - Keep size of apic_intmapinfo power of 2
+ * - Update IOAPIC_IM_SZSHIFT after changing apic_intmapinfo size
+ */
 struct apic_intmapinfo {
   	int ioapic;
 	int int_pin;
 	volatile void *apic_address;
-	int32_t redirindex;
-	u_int32_t flags;	/* AIMI_FLAG */
+	int redirindex;
+	uint32_t flags;		/* IOAPIC_IM_FLAG_ */
+	uint32_t pad[2];
 };
+#define IOAPIC_IM_SZSHIFT	5
 
 #define IOAPIC_IM_FLAG_LEVEL	0x1	/* default to edge trigger */
 #define IOAPIC_IM_FLAG_MASKED	0x2
