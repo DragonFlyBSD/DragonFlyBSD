@@ -14,6 +14,6 @@ I4B_EXTERNAL_MONITOR	=	1
 # at all
 #I4B_NOTCPIP_MONITOR	=	1
 
-WARNS?=	0
+WARNS?=	1
 
 .include "${.CURDIR}/../../Makefile.inc"
