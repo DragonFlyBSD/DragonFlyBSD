@@ -56,7 +56,7 @@ CXX		?=	c++
 CXX_LINK	?=	${CXX}
 NXCXX		?=	${NXENV} ${CXX}
 NXCXX_LINK	?=	${NXENV} ${CXX_LINK}
-CXXFLAGS	?=	${CXXINCLUDES} ${CFLAGS}
+CXXFLAGS	?=	${CXXINCLUDES} ${CFLAGS:N-std=*:N-Wnested-externs:N-W*-prototypes:N-Wno-pointer-sign:N-Wold-style-definition}
 
 CPP		?=	cpp
 
