@@ -9,6 +9,8 @@ LIBDM_SRCDIR= ${LVM2_DIR}/lib/libdevmapper
 
 PROG=		lvm
 
+CSTD?=		gnu89
+
 SRCS=		dumpconfig.c formats.c lvchange.c lvconvert.c lvcreate.c \
 		lvdisplay.c lvextend.c lvmchange.c lvmcmdline.c \
 		lvmdiskscan.c lvreduce.c lvremove.c lvrename.c lvresize.c \

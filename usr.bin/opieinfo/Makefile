@@ -8,6 +8,7 @@ PROG=	opieinfo
 CFLAGS+=-I${.CURDIR}/../../lib/libopie
 CFLAGS+=-I${OPIE_DIST}
 CFLAGS+=-DINSECURE_OVERRIDE
+CSTD?=	gnu89
 WARNS?=	0
 
 DPADD=	${LIBOPIE} ${LIBMD}

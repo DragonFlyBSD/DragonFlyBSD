@@ -1,3 +1,5 @@
+CSTD?=		gnu89
+
 BASEDIR=	${.CURDIR}/${RELATIVE}../../../../contrib/gdb-7
 
 GDBLIBS+=	${.OBJDIR}/../libopcodes/libopcodes.a

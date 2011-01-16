@@ -3,6 +3,8 @@
 
 LIB=		smb
 
+CSTD?=		gnu89
+
 SHLIB_MAJOR=	2
 
 NOMAN=

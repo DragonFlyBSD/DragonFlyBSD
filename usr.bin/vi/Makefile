@@ -5,6 +5,7 @@
 
 SRCDIR=		${.CURDIR}/../../contrib/nvi
 CONTRIBDIR=	${SRCDIR}
+CSTD?=	gnu89
 WARNS?=	0
 
 APISTUFF=	ex_tcl.c ex_perl.c
