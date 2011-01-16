@@ -47,6 +47,7 @@ typedef struct dvar {
 dvar_t dvar_get(const char *name);
 void dvar_set(const char *name, char **data, int count);
 void dvar_unset(const char *name);
+int dvar_istrue(dvar_t var);
 dvar_t dvar_first(void);
 dvar_t dvar_next(dvar_t var);
 dvar_t dvar_copy(dvar_t var);
