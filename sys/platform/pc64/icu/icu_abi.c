@@ -60,14 +60,14 @@ extern void	ICU_INTREN(int);
 extern void	ICU_INTRDIS(int);
 
 extern inthand_t
-	IDTVEC(icu_fastintr0), IDTVEC(icu_fastintr1),
-	IDTVEC(icu_fastintr2), IDTVEC(icu_fastintr3),
-	IDTVEC(icu_fastintr4), IDTVEC(icu_fastintr5),
-	IDTVEC(icu_fastintr6), IDTVEC(icu_fastintr7),
-	IDTVEC(icu_fastintr8), IDTVEC(icu_fastintr9),
-	IDTVEC(icu_fastintr10), IDTVEC(icu_fastintr11),
-	IDTVEC(icu_fastintr12), IDTVEC(icu_fastintr13),
-	IDTVEC(icu_fastintr14), IDTVEC(icu_fastintr15);
+	IDTVEC(icu_intr0),	IDTVEC(icu_intr1),
+	IDTVEC(icu_intr2),	IDTVEC(icu_intr3),
+	IDTVEC(icu_intr4),	IDTVEC(icu_intr5),
+	IDTVEC(icu_intr6),	IDTVEC(icu_intr7),
+	IDTVEC(icu_intr8),	IDTVEC(icu_intr9),
+	IDTVEC(icu_intr10),	IDTVEC(icu_intr11),
+	IDTVEC(icu_intr12),	IDTVEC(icu_intr13),
+	IDTVEC(icu_intr14),	IDTVEC(icu_intr15);
 
 static int	icu_vectorctl(int, int, int);
 static int	icu_setvar(int, const void *);
@@ -75,15 +75,15 @@ static int	icu_getvar(int, void *);
 static void	icu_finalize(void);
 static void	icu_cleanup(void);
 
-static inthand_t *icu_fastintr[ICU_HWI_VECTORS] = {
-	&IDTVEC(icu_fastintr0), &IDTVEC(icu_fastintr1),
-	&IDTVEC(icu_fastintr2), &IDTVEC(icu_fastintr3),
-	&IDTVEC(icu_fastintr4), &IDTVEC(icu_fastintr5),
-	&IDTVEC(icu_fastintr6), &IDTVEC(icu_fastintr7),
-	&IDTVEC(icu_fastintr8), &IDTVEC(icu_fastintr9),
-	&IDTVEC(icu_fastintr10), &IDTVEC(icu_fastintr11),
-	&IDTVEC(icu_fastintr12), &IDTVEC(icu_fastintr13),
-	&IDTVEC(icu_fastintr14), &IDTVEC(icu_fastintr15)
+static inthand_t *icu_intr[ICU_HWI_VECTORS] = {
+	&IDTVEC(icu_intr0),	&IDTVEC(icu_intr1),
+	&IDTVEC(icu_intr2),	&IDTVEC(icu_intr3),
+	&IDTVEC(icu_intr4),	&IDTVEC(icu_intr5),
+	&IDTVEC(icu_intr6),	&IDTVEC(icu_intr7),
+	&IDTVEC(icu_intr8),	&IDTVEC(icu_intr9),
+	&IDTVEC(icu_intr10),	&IDTVEC(icu_intr11),
+	&IDTVEC(icu_intr12),	&IDTVEC(icu_intr13),
+	&IDTVEC(icu_intr14),	&IDTVEC(icu_intr15)
 };
 
 struct machintr_abi MachIntrABI_ICU = {
@@ -191,14 +191,14 @@ icu_vectorctl(int op, int intr, int flags)
 
 	switch(op) {
 	case MACHINTR_VECTOR_SETUP:
-		setidt(IDT_OFFSET + intr, icu_fastintr[intr], SDT_SYSIGT,
+		setidt(IDT_OFFSET + intr, icu_intr[intr], SDT_SYSIGT,
 		       SEL_KPL, 0);
 		machintr_intren(intr);
 		break;
 
 	case MACHINTR_VECTOR_TEARDOWN:
 	case MACHINTR_VECTOR_SETDEFAULT:
-		setidt(IDT_OFFSET + intr, icu_fastintr[intr], SDT_SYSIGT,
+		setidt(IDT_OFFSET + intr, icu_intr[intr], SDT_SYSIGT,
 		       SEL_KPL, 0);
 		machintr_intrdis(intr);
 		break;

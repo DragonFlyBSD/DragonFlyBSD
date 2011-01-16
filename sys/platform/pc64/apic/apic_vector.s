@@ -104,7 +104,7 @@
 #ifdef SMP /* APIC-IO */
 
 /*
- * Fast interrupt call handlers run in the following sequence:
+ * Interrupt call handlers run in the following sequence:
  *
  *	- Push the trap frame required by doreti
  *	- Mask the interrupt and reenable its source
@@ -116,7 +116,7 @@
  * YYY can cache gd base opitner instead of using hidden %fs prefixes.
  */
 
-#define	FAST_INTR(irq_num, vec_name)					\
+#define	INTR_HANDLER(irq_num, vec_name)					\
 	.text ;								\
 	SUPERALIGN_TEXT ;						\
 IDTVEC(vec_name) ;							\
@@ -331,30 +331,30 @@ Xtimer:
 #ifdef SMP /* APIC-IO */
 
 MCOUNT_LABEL(bintr)
-	FAST_INTR(0,apic_fastintr0)
-	FAST_INTR(1,apic_fastintr1)
-	FAST_INTR(2,apic_fastintr2)
-	FAST_INTR(3,apic_fastintr3)
-	FAST_INTR(4,apic_fastintr4)
-	FAST_INTR(5,apic_fastintr5)
-	FAST_INTR(6,apic_fastintr6)
-	FAST_INTR(7,apic_fastintr7)
-	FAST_INTR(8,apic_fastintr8)
-	FAST_INTR(9,apic_fastintr9)
-	FAST_INTR(10,apic_fastintr10)
-	FAST_INTR(11,apic_fastintr11)
-	FAST_INTR(12,apic_fastintr12)
-	FAST_INTR(13,apic_fastintr13)
-	FAST_INTR(14,apic_fastintr14)
-	FAST_INTR(15,apic_fastintr15)
-	FAST_INTR(16,apic_fastintr16)
-	FAST_INTR(17,apic_fastintr17)
-	FAST_INTR(18,apic_fastintr18)
-	FAST_INTR(19,apic_fastintr19)
-	FAST_INTR(20,apic_fastintr20)
-	FAST_INTR(21,apic_fastintr21)
-	FAST_INTR(22,apic_fastintr22)
-	FAST_INTR(23,apic_fastintr23)
+	INTR_HANDLER(0, apic_intr0)
+	INTR_HANDLER(1, apic_intr1)
+	INTR_HANDLER(2, apic_intr2)
+	INTR_HANDLER(3, apic_intr3)
+	INTR_HANDLER(4, apic_intr4)
+	INTR_HANDLER(5, apic_intr5)
+	INTR_HANDLER(6, apic_intr6)
+	INTR_HANDLER(7, apic_intr7)
+	INTR_HANDLER(8, apic_intr8)
+	INTR_HANDLER(9, apic_intr9)
+	INTR_HANDLER(10, apic_intr10)
+	INTR_HANDLER(11, apic_intr11)
+	INTR_HANDLER(12, apic_intr12)
+	INTR_HANDLER(13, apic_intr13)
+	INTR_HANDLER(14, apic_intr14)
+	INTR_HANDLER(15, apic_intr15)
+	INTR_HANDLER(16, apic_intr16)
+	INTR_HANDLER(17, apic_intr17)
+	INTR_HANDLER(18, apic_intr18)
+	INTR_HANDLER(19, apic_intr19)
+	INTR_HANDLER(20, apic_intr20)
+	INTR_HANDLER(21, apic_intr21)
+	INTR_HANDLER(22, apic_intr22)
+	INTR_HANDLER(23, apic_intr23)
 MCOUNT_LABEL(eintr)
 
 #endif
