@@ -1,10 +1,11 @@
 # $FreeBSD: src/sys/boot/i386/boot2/Makefile,v 1.47 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/pc32/boot2/Makefile,v 1.18 2008/09/13 11:45:45 corecode Exp $
 
 BINDIR?=	/boot
 BINMODE=	444
 CLEANFILES=	boot \
 		sio.o
+
+CSTD?=		c99
 
 NM?=		nm
 NXCFLAGS=
@@ -45,7 +46,6 @@ ORG2=	`${.OBJDIR}/bootasmdef.nx BOOT2_VORIGIN`
 #	-mno-align-long-strings
 CFLAGS=	-elf -ffreestanding -Os -fno-builtin \
 	-fomit-frame-pointer \
-	-std=c99 \
 	-DBOOT2 \
 	-I${.CURDIR}/../../common \
 	-I${.CURDIR}/../../../../lib/libstand \

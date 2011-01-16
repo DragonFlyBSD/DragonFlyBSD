@@ -35,7 +35,7 @@ SRCS+=	tuklib_open_stdxxx.c \
 	tuklib_mbstr_fw.c
 
 WARNS?=	3
-CSTD?=	gnu99
+
 CFLAGS+= -DHAVE_CONFIG_H
 CFLAGS+= -I${.CURDIR}/../../lib/liblzma -I${XZDIR}/common
 

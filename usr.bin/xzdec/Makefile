@@ -11,7 +11,6 @@ SRCS=	xzdec.c
 .PATH: ${XZDIR}/common
 SRCS+=	tuklib_progname.c tuklib_exit.c
 
-CSTD?=	gnu99
 CFLAGS+= -DHAVE_CONFIG_H
 CFLAGS+= -I${.CURDIR}/../../lib/liblzma -I${XZDIR}/common
 

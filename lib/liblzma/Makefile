@@ -109,7 +109,7 @@ SRCS+=	simple_coder.c \
 	sparc.c
 
 WARNS?=	3
-CSTD=	gnu99
+
 CFLAGS+= -DHAVE_CONFIG_H -DTUKLIB_SYMBOL_PREFIX=lzma_ \
 	-I${.CURDIR} \
 	-I${LZMADIR}/api \
