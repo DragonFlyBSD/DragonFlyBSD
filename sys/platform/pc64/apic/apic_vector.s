@@ -116,10 +116,10 @@
  * YYY can cache gd base opitner instead of using hidden %fs prefixes.
  */
 
-#define	INTR_HANDLER(irq_num, vec_name)					\
+#define	INTR_HANDLER(irq_num)						\
 	.text ;								\
 	SUPERALIGN_TEXT ;						\
-IDTVEC(vec_name) ;							\
+IDTVEC(apic_intr##irq_num) ;						\
 	APIC_PUSH_FRAME ;						\
 	FAKE_MCOUNT(TF_RIP(%rsp)) ;					\
 	MASK_LEVEL_IRQ(irq_num) ;					\
@@ -331,30 +331,30 @@ Xtimer:
 #ifdef SMP /* APIC-IO */
 
 MCOUNT_LABEL(bintr)
-	INTR_HANDLER(0, apic_intr0)
-	INTR_HANDLER(1, apic_intr1)
-	INTR_HANDLER(2, apic_intr2)
-	INTR_HANDLER(3, apic_intr3)
-	INTR_HANDLER(4, apic_intr4)
-	INTR_HANDLER(5, apic_intr5)
-	INTR_HANDLER(6, apic_intr6)
-	INTR_HANDLER(7, apic_intr7)
-	INTR_HANDLER(8, apic_intr8)
-	INTR_HANDLER(9, apic_intr9)
-	INTR_HANDLER(10, apic_intr10)
-	INTR_HANDLER(11, apic_intr11)
-	INTR_HANDLER(12, apic_intr12)
-	INTR_HANDLER(13, apic_intr13)
-	INTR_HANDLER(14, apic_intr14)
-	INTR_HANDLER(15, apic_intr15)
-	INTR_HANDLER(16, apic_intr16)
-	INTR_HANDLER(17, apic_intr17)
-	INTR_HANDLER(18, apic_intr18)
-	INTR_HANDLER(19, apic_intr19)
-	INTR_HANDLER(20, apic_intr20)
-	INTR_HANDLER(21, apic_intr21)
-	INTR_HANDLER(22, apic_intr22)
-	INTR_HANDLER(23, apic_intr23)
+	INTR_HANDLER(0)
+	INTR_HANDLER(1)
+	INTR_HANDLER(2)
+	INTR_HANDLER(3)
+	INTR_HANDLER(4)
+	INTR_HANDLER(5)
+	INTR_HANDLER(6)
+	INTR_HANDLER(7)
+	INTR_HANDLER(8)
+	INTR_HANDLER(9)
+	INTR_HANDLER(10)
+	INTR_HANDLER(11)
+	INTR_HANDLER(12)
+	INTR_HANDLER(13)
+	INTR_HANDLER(14)
+	INTR_HANDLER(15)
+	INTR_HANDLER(16)
+	INTR_HANDLER(17)
+	INTR_HANDLER(18)
+	INTR_HANDLER(19)
+	INTR_HANDLER(20)
+	INTR_HANDLER(21)
+	INTR_HANDLER(22)
+	INTR_HANDLER(23)
 MCOUNT_LABEL(eintr)
 
 #endif
