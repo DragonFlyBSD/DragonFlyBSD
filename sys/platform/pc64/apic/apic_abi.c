@@ -61,8 +61,8 @@
 
 #ifdef SMP /* APIC-IO */
 
-extern void APIC_INTREN(int);
-extern void APIC_INTRDIS(int);
+extern void	APIC_INTREN(int);
+extern void	APIC_INTRDIS(int);
 
 extern inthand_t
 	IDTVEC(apic_fastintr0), IDTVEC(apic_fastintr1),
@@ -78,11 +78,11 @@ extern inthand_t
 	IDTVEC(apic_fastintr20), IDTVEC(apic_fastintr21),
 	IDTVEC(apic_fastintr22), IDTVEC(apic_fastintr23);
 
-static int apic_setvar(int, const void *);
-static int apic_getvar(int, void *);
-static int apic_vectorctl(int, int, int);
-static void apic_finalize(void);
-static void apic_cleanup(void);
+static int	apic_setvar(int, const void *);
+static int	apic_getvar(int, void *);
+static int	apic_vectorctl(int, int, int);
+static void	apic_finalize(void);
+static void	apic_cleanup(void);
 
 static inthand_t *apic_fastintr[APIC_HWI_VECTORS] = {
 	&IDTVEC(apic_fastintr0), &IDTVEC(apic_fastintr1),
@@ -99,49 +99,51 @@ static inthand_t *apic_fastintr[APIC_HWI_VECTORS] = {
 	&IDTVEC(apic_fastintr22), &IDTVEC(apic_fastintr23)
 };
 
-static int apic_imcr_present;
+static int	apic_imcr_present;
 
 struct machintr_abi MachIntrABI_APIC = {
 	MACHINTR_APIC,
-	.intrdis =	APIC_INTRDIS,
-	.intren =	APIC_INTREN,
-	.vectorctl =	apic_vectorctl,
-	.setvar =	apic_setvar,
-	.getvar =	apic_getvar,
-	.finalize =	apic_finalize,
-	.cleanup =	apic_cleanup
+	.intrdis	= APIC_INTRDIS,
+	.intren		= APIC_INTREN,
+	.vectorctl	= apic_vectorctl,
+	.setvar		= apic_setvar,
+	.getvar		= apic_getvar,
+	.finalize	= apic_finalize,
+	.cleanup	= apic_cleanup
 };
 
 static int
 apic_setvar(int varid, const void *buf)
 {
-    int error = 0;
+	int error = 0;
 
-    switch(varid) {
-    case MACHINTR_VAR_IMCR_PRESENT:
-	apic_imcr_present = *(const int *)buf;
-	break;
-    default:
-	error = ENOENT;
-	break;
-    }
-    return (error);
+	switch(varid) {
+	case MACHINTR_VAR_IMCR_PRESENT:
+		apic_imcr_present = *(const int *)buf;
+		break;
+
+	default:
+		error = ENOENT;
+		break;
+	}
+	return error;
 }
 
 static int
 apic_getvar(int varid, void *buf)
 {
-    int error = 0;
+	int error = 0;
 
-    switch(varid) {
-    case MACHINTR_VAR_IMCR_PRESENT:
-	*(int *)buf = apic_imcr_present;
-	break;
-    default:
-	error = ENOENT;
-	break;
-    }
-    return (error);
+	switch(varid) {
+	case MACHINTR_VAR_IMCR_PRESENT:
+		*(int *)buf = apic_imcr_present;
+		break;
+
+	default:
+		error = ENOENT;
+		break;
+	}
+	return error;
 }
 
 /*
@@ -155,36 +157,36 @@ apic_getvar(int varid, void *buf)
 static void
 apic_finalize(void)
 {
-    u_int32_t	temp;
+	uint32_t temp;
 
-    /*
-     * If an IMCR is present, program bit 0 to disconnect the 8259
-     * from the BSP.  The 8259 may still be connected to LINT0 on
-     * the BSP's LAPIC.
-     */
-    if (apic_imcr_present) {
-	outb(0x22, 0x70);	/* select IMCR */
-	outb(0x23, 0x01);	/* disconnect 8259 */
-    }
+	/*
+	 * If an IMCR is present, program bit 0 to disconnect the 8259
+	 * from the BSP.  The 8259 may still be connected to LINT0 on
+	 * the BSP's LAPIC.
+	 */
+	if (apic_imcr_present) {
+		outb(0x22, 0x70);	/* select IMCR */
+		outb(0x23, 0x01);	/* disconnect 8259 */
+	}
 
-    /*
-     * Setup lint0 (the 8259 'virtual wire' connection).  We
-     * mask the interrupt, completing the disconnection of the
-     * 8259.
-     */
-    temp = lapic->lvt_lint0;
-    temp |= APIC_LVT_MASKED;
-    lapic->lvt_lint0 = temp;
+	/*
+	 * Setup lint0 (the 8259 'virtual wire' connection).  We
+	 * mask the interrupt, completing the disconnection of the
+	 * 8259.
+	 */
+	temp = lapic->lvt_lint0;
+	temp |= APIC_LVT_MASKED;
+	lapic->lvt_lint0 = temp;
 
-    /*
-     * setup lint1 to handle an NMI 
-     */
-    temp = lapic->lvt_lint1;
-    temp &= ~APIC_LVT_MASKED;
-    lapic->lvt_lint1 = temp;
+	/*
+	 * Setup lint1 to handle an NMI 
+	 */
+	temp = lapic->lvt_lint1;
+	temp &= ~APIC_LVT_MASKED;
+	lapic->lvt_lint1 = temp;
 
-    if (bootverbose)
-	apic_dump("bsp_apic_configure()");
+	if (bootverbose)
+		apic_dump("bsp_apic_configure()");
 }
 
 /*
@@ -198,97 +200,109 @@ apic_cleanup(void)
 	mdcpu->gd_fpending = 0;
 }
 
-static
-int
+static int
 apic_vectorctl(int op, int intr, int flags)
 {
-    int error;
-    int vector;
-    int select;
-    u_int32_t value;
-    u_long ef;
+	int error;
+	int vector;
+	int select;
+	uint32_t value;
+	u_long ef;
 
-    if (intr < 0 || intr >= APIC_HWI_VECTORS)
-	return (EINVAL);
+	if (intr < 0 || intr >= APIC_HWI_VECTORS)
+		return EINVAL;
 
-    ef = read_rflags();
-    cpu_disable_intr();
-    error = 0;
+	ef = read_rflags();
+	cpu_disable_intr();
+	error = 0;
 
-    switch(op) {
-    case MACHINTR_VECTOR_SETUP:
-	vector = IDT_OFFSET + intr;
-	setidt(vector, apic_fastintr[intr], SDT_SYSIGT, SEL_KPL, 0);
+	switch(op) {
+	case MACHINTR_VECTOR_SETUP:
+		vector = IDT_OFFSET + intr;
+		setidt(vector, apic_fastintr[intr], SDT_SYSIGT, SEL_KPL, 0);
 
-	/*
-	 * Now reprogram the vector in the IO APIC.  In order to avoid
-	 * losing an EOI for a level interrupt, which is vector based,
-	 * make sure that the IO APIC is programmed for edge-triggering
-	 * first, then reprogrammed with the new vector.  This should
-	 * clear the IRR bit.
-	 */
-	if (int_to_apicintpin[intr].ioapic >= 0) {
-	    imen_lock();
-	    select = int_to_apicintpin[intr].redirindex;
-	    value = io_apic_read(int_to_apicintpin[intr].ioapic, select);
-	    value |= IOART_INTMSET;
-	    io_apic_write(int_to_apicintpin[intr].ioapic,
-			  select, (value & ~APIC_TRIGMOD_MASK));
-	    io_apic_write(int_to_apicintpin[intr].ioapic,
-			  select, (value & ~IOART_INTVEC) | vector);
-	    imen_unlock();
+		/*
+		 * Now reprogram the vector in the IO APIC.  In order to avoid
+		 * losing an EOI for a level interrupt, which is vector based,
+		 * make sure that the IO APIC is programmed for edge-triggering
+		 * first, then reprogrammed with the new vector.  This should
+		 * clear the IRR bit.
+		 */
+		if (int_to_apicintpin[intr].ioapic >= 0) {
+			imen_lock();
+
+			select = int_to_apicintpin[intr].redirindex;
+			value = io_apic_read(int_to_apicintpin[intr].ioapic,
+					     select);
+			value |= IOART_INTMSET;
+
+			io_apic_write(int_to_apicintpin[intr].ioapic,
+				      select, (value & ~APIC_TRIGMOD_MASK));
+			io_apic_write(int_to_apicintpin[intr].ioapic,
+				      select, (value & ~IOART_INTVEC) | vector);
+
+			imen_unlock();
+		}
+
+		machintr_intren(intr);
+		break;
+
+	case MACHINTR_VECTOR_TEARDOWN:
+		/*
+		 * Teardown an interrupt vector.  The vector should already be
+		 * installed in the cpu's IDT, but make sure.
+		 */
+		machintr_intrdis(intr);
+
+		vector = IDT_OFFSET + intr;
+		setidt(vector, apic_fastintr[intr], SDT_SYSIGT, SEL_KPL, 0);
+
+		/*
+		 * And then reprogram the IO APIC to point to the SLOW vector
+		 * (it may have previously been pointed to the FAST version of
+		 * the vector).  This will allow us to keep track of spurious
+		 * interrupts.
+		 *
+		 * In order to avoid losing an EOI for a level interrupt, which
+		 * is vector based, make sure that the IO APIC is programmed for
+		 * edge-triggering first, then reprogrammed with the new vector.
+		 * This should clear the IRR bit.
+		 */
+		if (int_to_apicintpin[intr].ioapic >= 0) {
+			imen_lock();
+
+			select = int_to_apicintpin[intr].redirindex;
+			value = io_apic_read(int_to_apicintpin[intr].ioapic,
+					     select);
+
+			io_apic_write(int_to_apicintpin[intr].ioapic,
+				      select, (value & ~APIC_TRIGMOD_MASK));
+			io_apic_write(int_to_apicintpin[intr].ioapic,
+				      select, (value & ~IOART_INTVEC) | vector);
+
+			imen_unlock();
+		}
+		break;
+
+	case MACHINTR_VECTOR_SETDEFAULT:
+		/*
+		 * This is a just-in-case an int pin is running through the 8259
+		 * when we don't expect it to, or an IO APIC pin somehow wound
+		 * up getting enabled without us specifically programming it in
+		 * this ABI.  Note that IO APIC pins are by default programmed
+		 * to IDT_OFFSET + intr.
+		 */
+		vector = IDT_OFFSET + intr;
+		setidt(vector, apic_fastintr[intr], SDT_SYSIGT, SEL_KPL, 0);
+		break;
+
+	default:
+		error = EOPNOTSUPP;
+		break;
 	}
-	machintr_intren(intr);
-	break;
-    case MACHINTR_VECTOR_TEARDOWN:
-	/*
-	 * Teardown an interrupt vector.  The vector should already be
-	 * installed in the cpu's IDT, but make sure.
-	 */
-	machintr_intrdis(intr);
-	vector = IDT_OFFSET + intr;
-	setidt(vector, apic_fastintr[intr], SDT_SYSIGT, SEL_KPL, 0);
 
-	/*
-	 * And then reprogram the IO APIC to point to the SLOW vector (it may
-	 * have previously been pointed to the FAST version of the vector).
-	 * This will allow us to keep track of spurious interrupts.
-	 *
-	 * In order to avoid losing an EOI for a level interrupt, which is
-	 * vector based, make sure that the IO APIC is programmed for 
-	 * edge-triggering first, then reprogrammed with the new vector.
-	 * This should clear the IRR bit.
-	 */
-	if (int_to_apicintpin[intr].ioapic >= 0) {
-	    imen_lock();
-	    select = int_to_apicintpin[intr].redirindex;
-	    value = io_apic_read(int_to_apicintpin[intr].ioapic, select);
-	    io_apic_write(int_to_apicintpin[intr].ioapic,
-			  select, (value & ~APIC_TRIGMOD_MASK));
-	    io_apic_write(int_to_apicintpin[intr].ioapic,
-			  select, (value & ~IOART_INTVEC) | vector);
-	    imen_unlock();
-	}
-	break;
-    case MACHINTR_VECTOR_SETDEFAULT:
-	/*
-	 * This is a just-in-case an int pin is running through the 8259
-	 * when we don't expect it to, or an IO APIC pin somehow wound
-	 * up getting enabled without us specifically programming it in
-	 * this ABI.  Note that IO APIC pins are by default programmed
-	 * to IDT_OFFSET + intr.
-	 */
-	vector = IDT_OFFSET + intr;
-	setidt(vector, apic_fastintr[intr], SDT_SYSIGT, SEL_KPL, 0);
-	break;
-    default:
-	error = EOPNOTSUPP;
-	break;
-    }
-
-    write_rflags(ef);
-    return (error);
+	write_rflags(ef);
+	return error;
 }
 
-#endif
-
+#endif	/* SMP */
