@@ -1,1 +1,1 @@
-WARNS?=	1
+WARNS?=	0

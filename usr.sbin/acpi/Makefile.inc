@@ -18,7 +18,7 @@ SRCS+=		${.OBJDIR}/acpi.h ${.OBJDIR}/platform/acenv.h
 CLEANFILES+=	${.OBJDIR}/acpi.h
 CLEANDIRS+=	${.OBJDIR}/platform
 
-WARNS?=		1
+WARNS?=		0
 
 .if exists(${.CURDIR}/../../Makefile.inc)
 .include "${.CURDIR}/../../Makefile.inc"
