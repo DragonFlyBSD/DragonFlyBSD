@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.ypxfrd/ypxfrd_main.c,v 1.8.2.3 2002/02/15 00:46:58 des Exp $
- * $DragonFly: src/usr.sbin/rpc.ypxfrd/ypxfrd_main.c,v 1.5 2005/11/25 00:32:49 swildner Exp $
  */
 
 #include "ypxfrd.h"
@@ -41,6 +40,7 @@
 #include <stdlib.h> /* getenv, exit */
 #include <unistd.h>
 #include <rpc/pmap_clnt.h> /* for pmap_unset */
+#include <rpc/rpc_com.h>
 #include <string.h> /* strcmp */
 #include <signal.h>
 #include <sys/ttycom.h> /* TIOCNOTTY */
