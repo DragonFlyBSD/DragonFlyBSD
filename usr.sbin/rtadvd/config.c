@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/config.c,v 1.3.2.5 2003/04/22 09:40:57 suz Exp $
- * $DragonFly: src/usr.sbin/rtadvd/config.c,v 1.6 2005/12/05 00:56:37 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -61,9 +60,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
-#if defined(__NetBSD__) || defined(__OpenBSD__)
 #include <search.h>
-#endif
 #include <unistd.h>
 #include <ifaddrs.h>
 
