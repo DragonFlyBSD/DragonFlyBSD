@@ -4,18 +4,18 @@
 # This file contains common settings used for building DragonFly
 # sources.
 
-.if defined(CSTD)
-. if ${CSTD} == "k&r"
+CSTD?=	gnu99
+
+.if ${CSTD} == "k&r"
 CFLAGS		+= -traditional
-. elif ${CSTD} == "c89" || ${CSTD} == "c90"
+.elif ${CSTD} == "c89" || ${CSTD} == "c90"
 CFLAGS		+= -std=iso9899:1990
-. elif ${CSTD} == "c94" || ${CSTD} == "c95"
+.elif ${CSTD} == "c94" || ${CSTD} == "c95"
 CFLAGS		+= -std=iso9899:199409
-. elif ${CSTD} == "c99"
+.elif ${CSTD} == "c99"
 CFLAGS		+= -std=iso9899:1999
-. else
+.else
 CFLAGS		+= -std=${CSTD}
-. endif
 .endif
 
 # Enable various levels of compiler warning checks.  These may be
