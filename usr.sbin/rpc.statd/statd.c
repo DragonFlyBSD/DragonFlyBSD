@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.statd/statd.c,v 1.6 1999/10/05 14:40:38 marcel Exp $
- * $DragonFly: src/usr.sbin/rpc.statd/statd.c,v 1.5 2005/11/25 00:32:49 swildner Exp $
  */
 
 /* main() function for status monitor daemon.  Some of the code in this	*/
@@ -40,6 +39,7 @@
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <rpc/rpc.h>
 #include <rpc/pmap_clnt.h>
 #include <syslog.h>
