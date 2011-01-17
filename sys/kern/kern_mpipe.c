@@ -46,8 +46,6 @@
 #include <sys/mpipe.h>
 #include <sys/thread2.h>
 
-#define arysize(ary)	(sizeof(ary)/sizeof((ary)[0]))
-
 static MALLOC_DEFINE(M_MPIPEARY, "MPipe Array", "Auxillary MPIPE structure");
 
 /*
