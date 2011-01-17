@@ -27,8 +27,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/netproto/mpls/mpls_proto.c,v 1.2 2008/11/01 04:22:16 sephe Exp $
  */
 
 #include <sys/domain.h>
@@ -70,7 +68,7 @@ static	struct	domain mplsdomain = {
 	NULL,				/* dom_externalize */
 	NULL,				/* dom_dispose */
 	mplssw,				/* dom_protosw */
-	&mplssw[sizeof(mplssw) / sizeof(mplssw[0])],
+	&mplssw[NELEM(mplssw)],
 					/* dom_protoswNPROTOSW */
 	SLIST_ENTRY_INITIALIZER,	/* dom_next */
 	rn_inithead,			/* dom_rtattach */

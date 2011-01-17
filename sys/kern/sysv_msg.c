@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/kern/sysv_msg.c,v 1.23.2.5 2002/12/31 08:54:53 maxim Exp $ */
-/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.18 2008/01/06 16:55:51 swildner Exp $ */
 
 /*
  * Implementation of SVID messages
@@ -207,7 +206,7 @@ sys_msgsys(struct msgsys_args *uap)
 	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
-	if (which >= sizeof(msgcalls)/sizeof(msgcalls[0]))
+	if (which >= NELEM(msgcalls))
 		return (EINVAL);
 	bcopy(&uap->a2, &uap->which,
 	      sizeof(struct msgsys_args) - offsetof(struct msgsys_args, a2));

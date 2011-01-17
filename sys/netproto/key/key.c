@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netkey/key.c,v 1.16.2.13 2002/07/24 18:17:40 ume Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/key.c,v 1.21 2008/06/08 08:38:05 sephe Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -760,10 +759,10 @@ key_allocsa_policy(struct secasindex *saidx)
 	 */
 	if (key_preferred_oldsa) {
 		saorder_state_valid = saorder_state_valid_prefer_old;
-		arraysize = _ARRAYLEN(saorder_state_valid_prefer_old);
+		arraysize = NELEM(saorder_state_valid_prefer_old);
 	} else {
 		saorder_state_valid = saorder_state_valid_prefer_new;
-		arraysize = _ARRAYLEN(saorder_state_valid_prefer_new);
+		arraysize = NELEM(saorder_state_valid_prefer_new);
 	}
 
 	for (stateidx = 0; stateidx < arraysize; stateidx++) {
@@ -941,10 +940,10 @@ key_allocsa(u_int family, caddr_t src, caddr_t dst, u_int proto,
 	 */
 	if (key_preferred_oldsa) {
 		saorder_state_valid = saorder_state_valid_prefer_old;
-		arraysize = _ARRAYLEN(saorder_state_valid_prefer_old);
+		arraysize = NELEM(saorder_state_valid_prefer_old);
 	} else {
 		saorder_state_valid = saorder_state_valid_prefer_new;
-		arraysize = _ARRAYLEN(saorder_state_valid_prefer_new);
+		arraysize = NELEM(saorder_state_valid_prefer_new);
 	}
 
 	/*
@@ -2604,7 +2603,7 @@ key_delsah(struct secashead *sah)
 
 	/* searching all SA registerd in the secindex. */
 	for (stateidx = 0;
-	     stateidx < _ARRAYLEN(saorder_state_any);
+	     stateidx < NELEM(saorder_state_any);
 	     stateidx++) {
 
 		state = saorder_state_any[stateidx];
@@ -2864,7 +2863,7 @@ key_getsavbyspi(struct secashead *sah, u_int32_t spi)
 
 	/* search all status */
 	for (stateidx = 0;
-	     stateidx < _ARRAYLEN(saorder_state_alive);
+	     stateidx < NELEM(saorder_state_alive);
 	     stateidx++) {
 
 		state = saorder_state_alive[stateidx];
@@ -3369,7 +3368,7 @@ key_setdumpsa(struct secasvar *sav, u_int8_t type, u_int8_t satype,
 		goto fail;
 	result = m;
 
-	for (i = sizeof(dumporder)/sizeof(dumporder[0]) - 1; i >= 0; i--) {
+	for (i = NELEM(dumporder) - 1; i >= 0; i--) {
 		m = NULL;
 		p = NULL;
 		switch (dumporder[i]) {
@@ -5306,7 +5305,7 @@ key_delete_all(struct socket *so, struct mbuf *m,
 
 		/* Delete all non-LARVAL SAs. */
 		for (stateidx = 0;
-		     stateidx < _ARRAYLEN(saorder_state_alive);
+		     stateidx < NELEM(saorder_state_alive);
 		     stateidx++) {
 			state = saorder_state_alive[stateidx];
 			if (state == SADB_SASTATE_LARVAL)
@@ -6119,7 +6118,7 @@ key_register(struct socket *so, struct mbuf *m,
 		panic("key_register: NULL pointer is passed.\n");
 
 	/* check for invalid register message */
-	if (mhp->msg->sadb_msg_satype >= sizeof(regtree)/sizeof(regtree[0]))
+	if (mhp->msg->sadb_msg_satype >= NELEM(regtree))
 		return key_senderror(so, m, EINVAL);
 
 	/* When SATYPE_UNSPEC is specified, only return sabd_supported. */
@@ -6465,7 +6464,7 @@ key_flush(struct socket *so, struct mbuf *m,
 			continue;
 
 		for (stateidx = 0;
-		     stateidx < _ARRAYLEN(saorder_state_alive);
+		     stateidx < NELEM(saorder_state_alive);
 		     stateidx++) {
 			state = saorder_state_any[stateidx];
 			for (sav = LIST_FIRST(&sah->savtree[state]);
@@ -6543,7 +6542,7 @@ key_dump(struct socket *so, struct mbuf *m,
 			continue;
 
 		for (stateidx = 0;
-		     stateidx < _ARRAYLEN(saorder_state_any);
+		     stateidx < NELEM(saorder_state_any);
 		     stateidx++) {
 			state = saorder_state_any[stateidx];
 			LIST_FOREACH(sav, &sah->savtree[state], chain) {
@@ -6569,7 +6568,7 @@ key_dump(struct socket *so, struct mbuf *m,
 		}
 
 		for (stateidx = 0;
-		     stateidx < _ARRAYLEN(saorder_state_any);
+		     stateidx < NELEM(saorder_state_any);
 		     stateidx++) {
 			state = saorder_state_any[stateidx];
 			LIST_FOREACH(sav, &sah->savtree[state], chain) {
@@ -6916,7 +6915,7 @@ key_parse(struct mbuf *m, struct socket *so)
 		 */
 	}
 
-	if (msg->sadb_msg_type >= sizeof(key_typesw)/sizeof(key_typesw[0]) ||
+	if (msg->sadb_msg_type >= NELEM(key_typesw) ||
 	    key_typesw[msg->sadb_msg_type] == NULL) {
 		pfkeystat.out_invmsgtype++;
 		error = EINVAL;
@@ -7069,8 +7068,8 @@ key_validate_ext(const struct sadb_ext *ext, int len)
 		return EINVAL;
 
 	/* if it does not match minimum/maximum length, bail */
-	if (ext->sadb_ext_type >= sizeof(minsize) / sizeof(minsize[0]) ||
-	    ext->sadb_ext_type >= sizeof(maxsize) / sizeof(maxsize[0]))
+	if (ext->sadb_ext_type >= NELEM(minsize) ||
+	    ext->sadb_ext_type >= NELEM(maxsize))
 		return EINVAL;
 	if (!minsize[ext->sadb_ext_type] || len < minsize[ext->sadb_ext_type])
 		return EINVAL;

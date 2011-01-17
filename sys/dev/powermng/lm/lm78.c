@@ -385,7 +385,7 @@ lm_probe(struct lm_softc *sc)
 {
 	int i;
 	
-	for (i = 0; i < sizeof(lm_chips) / sizeof(lm_chips[0]); i++)
+	for (i = 0; i < NELEM(lm_chips); i++)
 		if (lm_chips[i].chip_match(sc))
 			break;
 }

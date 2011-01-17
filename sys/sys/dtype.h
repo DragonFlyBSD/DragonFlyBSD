@@ -32,7 +32,6 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
- * $DragonFly: src/sys/sys/dtype.h,v 1.2 2008/03/22 20:52:00 dillon Exp $
  */
 
 #ifndef _SYS_DTYPE_H_
@@ -74,7 +73,7 @@ static const char *dktypenames[] = {
 	"DOC2K",
 	NULL
 };
-#define DKMAXTYPES	(sizeof(dktypenames) / sizeof(dktypenames[0]) - 1)
+#define DKMAXTYPES	(NELEM(dktypenames) - 1)
 #endif
 
 /*
@@ -141,7 +140,7 @@ static const char *fstypenames[] = {
 	"ZFS",
 	NULL
 };
-#define FSMAXTYPES	(sizeof(fstypenames) / sizeof(fstypenames[0]) - 1)
+#define FSMAXTYPES	(NELEM(fstypenames) - 1)
 #endif
 
 #endif /* SYS_DTYPE_H_ */

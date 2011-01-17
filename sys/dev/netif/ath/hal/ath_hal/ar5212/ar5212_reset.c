@@ -109,7 +109,6 @@ ar5212Reset(struct ath_hal *ah, HAL_OPMODE opmode,
 	struct ieee80211_channel *chan,
 	HAL_BOOL bChannelChange, HAL_STATUS *status)
 {
-#define	N(a)	(sizeof (a) / sizeof (a[0]))
 #define	FAIL(_code)	do { ecode = _code; goto bad; } while (0)
 	struct ath_hal_5212 *ahp = AH5212(ah);
 	HAL_CHANNEL_INTERNAL *ichan = AH_NULL;
@@ -686,7 +685,6 @@ bad:
 		*status = ecode;
 	return AH_FALSE;
 #undef FAIL
-#undef N
 }
 
 /*
@@ -1859,7 +1857,6 @@ ar5212SetTransmitPower(struct ath_hal *ah,
 {
 #define	POW_OFDM(_r, _s)	(((0 & 1)<< ((_s)+6)) | (((_r) & 0x3f) << (_s)))
 #define	POW_CCK(_r, _s)		(((_r) & 0x3f) << (_s))
-#define	N(a)			(sizeof (a) / sizeof (a[0]))
 	static const uint16_t tpcScaleReductionTable[5] =
 		{ 0, 3, 6, 9, MAX_RATE_POWER };
 	struct ath_hal_5212 *ahp = AH5212(ah);
@@ -1901,7 +1898,7 @@ ar5212SetTransmitPower(struct ath_hal *ah,
 	 * txPowerIndexOffset is set by the SetPowerTable() call -
 	 *  adjust the rate table 
 	 */
-	for (i = 0; i < N(ahp->ah_ratesArray); i++) {
+	for (i = 0; i < NELEM(ahp->ah_ratesArray); i++) {
 		ahp->ah_ratesArray[i] += ahp->ah_txPowerIndexOffset;
 		if (ahp->ah_ratesArray[i] > 63) 
 			ahp->ah_ratesArray[i] = 63;
@@ -1973,7 +1970,6 @@ ar5212SetTransmitPower(struct ath_hal *ah,
 		(ahp->ah_tpcEnabled ? AR_PHY_POWER_TX_RATE_MAX_TPC_ENABLE : 0));
 
 	return AH_TRUE;
-#undef N
 #undef POW_CCK
 #undef POW_OFDM
 }
@@ -2268,10 +2264,9 @@ ar5212GetChipPowerLimits(struct ath_hal *ah, struct ieee80211_channel *chan)
 static void
 ar5212CorrectGainDelta(struct ath_hal *ah, int twiceOfdmCckDelta)
 {
-#define	N(_a)	(sizeof(_a) / sizeof(_a[0]))
 	struct ath_hal_5212 *ahp = AH5212(ah);
 	const HAL_EEPROM *ee = AH_PRIVATE(ah)->ah_eeprom;
-	int16_t ratesIndex[N(ahp->ah_ratesArray)];
+	int16_t ratesIndex[NELEM(ahp->ah_ratesArray)];
 	uint16_t ii, jj, iter;
 	int32_t cckIndex;
 	int16_t gainDeltaAdjust;
@@ -2334,7 +2329,6 @@ ar5212CorrectGainDelta(struct ath_hal *ah, int twiceOfdmCckDelta)
 	/* Override rate per power table with new values */
 	for (ii = 8; ii < 15; ii++)
 		ahp->ah_ratesArray[ii] = ratesIndex[ii];
-#undef N
 }
 
 /*

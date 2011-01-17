@@ -303,7 +303,7 @@ nsclpcsio_isa_attach(struct  device *dev)
 	    nsread(sc->sc_iot, sc->sc_ioh, SIO_REG_SRID));
 
 	/* Configure all supported logical devices */
-	for (i = 0; i < sizeof(sio_ld) / sizeof(sio_ld[0]); i++) {
+	for (i = 0; i < NELEM(sio_ld); i++) {
 		sc->sc_ld_en[sio_ld[i].ld_num] = 0;
 
 		/* Select the device and check if it's activated */

@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/kern/sysv_shm.c,v 1.45.2.6 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.21 2008/01/06 16:55:51 swildner Exp $ */
 /*	$NetBSD: sysv_shm.c,v 1.23 1994/07/04 23:25:12 glass Exp $	*/
 
 /*
@@ -654,7 +653,7 @@ sys_shmsys(struct shmsys_args *uap)
 	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
-	if (which >= sizeof(shmcalls)/sizeof(shmcalls[0]))
+	if (which >= NELEM(shmcalls))
 		return EINVAL;
 	get_mplock();
 	bcopy(&uap->a2, &uap->which,

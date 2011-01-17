@@ -64,7 +64,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pager.c,v 1.54.2.2 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.c,v 1.24 2007/11/06 03:50:01 dillon Exp $
  */
 
 /*
@@ -167,7 +166,7 @@ struct pagerops *pagertab[] = {
 	&deadpagerops		/* OBJT_DEAD */
 };
 
-int npagers = sizeof(pagertab) / sizeof(pagertab[0]);
+int npagers = NELEM(pagertab);
 
 /*
  * Kernel address space for mapping pages.

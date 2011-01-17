@@ -211,7 +211,6 @@ void
 ar5212InitState(struct ath_hal_5212 *ahp, uint16_t devid, HAL_SOFTC sc,
 	HAL_BUS_TAG st, HAL_BUS_HANDLE sh, HAL_STATUS *status)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 	static const uint8_t defbssidmask[IEEE80211_ADDR_LEN] =
 		{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 	struct ath_hal *ah;
@@ -253,7 +252,6 @@ ar5212InitState(struct ath_hal_5212 *ahp, uint16_t devid, HAL_SOFTC sc,
 	ahp->ah_maxTxTrigLev = MAX_TX_FIFO_THRESHOLD,
 
 	OS_MEMCPY(&ahp->ah_bssidmask, defbssidmask, IEEE80211_ADDR_LEN);
-#undef N
 }
 
 /*
@@ -262,7 +260,6 @@ ar5212InitState(struct ath_hal_5212 *ahp, uint16_t devid, HAL_SOFTC sc,
 static HAL_BOOL
 ar5212IsMacSupported(uint8_t macVersion, uint8_t macRev)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 	static const struct {
 		uint8_t	version;
 		uint8_t	revMin, revMax;
@@ -282,12 +279,11 @@ ar5212IsMacSupported(uint8_t macVersion, uint8_t macRev)
 	};
 	int i;
 
-	for (i = 0; i < N(macs); i++)
+	for (i = 0; i < NELEM(macs); i++)
 		if (macs[i].version == macVersion &&
 		    macs[i].revMin <= macRev && macRev <= macs[i].revMax)
 			return AH_TRUE;
 	return AH_FALSE;
-#undef N
 }
        
 /*

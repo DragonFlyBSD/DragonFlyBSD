@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/dev/netif/bwi/bwiphy.c,v 1.5 2008/01/15 09:01:13 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -182,19 +180,17 @@ bwi_phy_attach(struct bwi_mac *mac)
 		phy->phy_tbl_data_hi = BWI_PHYR_TBL_DATA_HI_11A;
 		break;
 	case BWI_PHYINFO_TYPE_11B:
-#define N(arr)	(int)(sizeof(arr) / sizeof(arr[0]))
-		for (i = 0; i < N(bwi_sup_bphy); ++i) {
+		for (i = 0; i < NELEM(bwi_sup_bphy); ++i) {
 			if (phyrev == bwi_sup_bphy[i].rev) {
 				phy->phy_init = bwi_sup_bphy[i].init;
 				break;
 			}
 		}
-		if (i == N(bwi_sup_bphy)) {
+		if (i == NELEM(bwi_sup_bphy)) {
 			device_printf(sc->sc_dev, "unsupported 11B PHY, "
 				      "rev %u\n", phyrev);
 			return ENXIO;
 		}
-#undef N
 		phy->phy_mode = IEEE80211_MODE_11B;
 		break;
 	case BWI_PHYINFO_TYPE_11G:
@@ -733,8 +729,6 @@ bwi_phy_init_11b_rev6(struct bwi_mac *mac)
 	}
 }
 
-#define N(arr)	(int)(sizeof(arr) / sizeof(arr[0]))
-
 static void
 bwi_phy_config_11g(struct bwi_mac *mac)
 {
@@ -751,19 +745,19 @@ bwi_phy_config_11g(struct bwi_mac *mac)
 		PHY_WRITE(mac, 0x427, 0x1a);
 
 		/* Fill frequency table */
-		for (i = 0; i < N(bwi_phy_freq_11g_rev1); ++i) {
+		for (i = 0; i < NELEM(bwi_phy_freq_11g_rev1); ++i) {
 			bwi_tbl_write_2(mac, BWI_PHYTBL_FREQ + i,
 					bwi_phy_freq_11g_rev1[i]);
 		}
 
 		/* Fill noise table */
-		for (i = 0; i < N(bwi_phy_noise_11g_rev1); ++i) {
+		for (i = 0; i < NELEM(bwi_phy_noise_11g_rev1); ++i) {
 			bwi_tbl_write_2(mac, BWI_PHYTBL_NOISE + i,
 					bwi_phy_noise_11g_rev1[i]);
 		}
 
 		/* Fill rotor table */
-		for (i = 0; i < N(bwi_phy_rotor_11g_rev1); ++i) {
+		for (i = 0; i < NELEM(bwi_phy_rotor_11g_rev1); ++i) {
 			/* NB: data length is 4 bytes */
 			bwi_tbl_write_4(mac, BWI_PHYTBL_ROTOR + i,
 					bwi_phy_rotor_11g_rev1[i]);
@@ -797,13 +791,13 @@ bwi_phy_config_11g(struct bwi_mac *mac)
 	 */
 	if (phy->phy_rev <= 2) {
 		tbl = bwi_phy_noise_scale_11g_rev2;
-		n = N(bwi_phy_noise_scale_11g_rev2);
+		n = NELEM(bwi_phy_noise_scale_11g_rev2);
 	} else if (phy->phy_rev >= 7 && (PHY_READ(mac, 0x449) & 0x200)) {
 		tbl = bwi_phy_noise_scale_11g_rev7;
-		n = N(bwi_phy_noise_scale_11g_rev7);
+		n = NELEM(bwi_phy_noise_scale_11g_rev7);
 	} else {
 		tbl = bwi_phy_noise_scale_11g;
-		n = N(bwi_phy_noise_scale_11g);
+		n = NELEM(bwi_phy_noise_scale_11g);
 	}
 	for (i = 0; i < n; ++i)
 		bwi_tbl_write_2(mac, BWI_PHYTBL_NOISE_SCALE + i, tbl[i]);
@@ -813,10 +807,10 @@ bwi_phy_config_11g(struct bwi_mac *mac)
 	 */
 	if (phy->phy_rev == 2) {
 		tbl = bwi_phy_sigma_sq_11g_rev2;
-		n = N(bwi_phy_sigma_sq_11g_rev2);
+		n = NELEM(bwi_phy_sigma_sq_11g_rev2);
 	} else if (phy->phy_rev > 2 && phy->phy_rev <= 8) {
 		tbl = bwi_phy_sigma_sq_11g_rev7;
-		n = N(bwi_phy_sigma_sq_11g_rev7);
+		n = NELEM(bwi_phy_sigma_sq_11g_rev7);
 	} else {
 		tbl = NULL;
 		n = 0;
@@ -826,7 +820,7 @@ bwi_phy_config_11g(struct bwi_mac *mac)
 
 	if (phy->phy_rev == 1) {
 		/* Fill delay table */
-		for (i = 0; i < N(bwi_phy_delay_11g_rev1); ++i) {
+		for (i = 0; i < NELEM(bwi_phy_delay_11g_rev1); ++i) {
 			bwi_tbl_write_4(mac, BWI_PHYTBL_DELAY + i,
 					bwi_phy_delay_11g_rev1[i]);
 		}
@@ -864,8 +858,6 @@ bwi_phy_config_11g(struct bwi_mac *mac)
 	if (sc->sc_card_flags & BWI_CARD_F_PA_GPIO9)
 		PHY_WRITE(mac, 0x46e, 0x3cf);
 }
-
-#undef N
 
 /*
  * Configure Automatic Gain Controller

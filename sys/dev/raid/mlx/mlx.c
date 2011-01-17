@@ -1074,7 +1074,7 @@ mlx_periodic_enquiry(struct mlx_command *mc)
 	int				i;
 
 	/* convert data in-place to new format */
-	for (i = (sizeof(me->me_dead) / sizeof(me->me_dead[0])) - 1; i >= 0; i--) {
+	for (i = NELEM(me->me_dead) - 1; i >= 0; i--) {
 	    me->me_dead[i].dd_chan = meo->me_dead[i].dd_chan;
 	    me->me_dead[i].dd_targ = meo->me_dead[i].dd_targ;
 	}
@@ -1090,8 +1090,8 @@ mlx_periodic_enquiry(struct mlx_command *mc)
 	me->me_fwminor           = meo->me_fwminor;
 	me->me_status_flags      = meo->me_status_flags;
 	me->me_flash_age         = meo->me_flash_age;
-	for (i = (sizeof(me->me_drvsize) / sizeof(me->me_drvsize[0])) - 1; i >= 0; i--) {
-	    if (i > ((sizeof(meo->me_drvsize) / sizeof(meo->me_drvsize[0])) - 1)) {
+	for (i = NELEM(me->me_drvsize) - 1; i >= 0; i--) {
+	    if (i > (NELEM(meo->me_drvsize) - 1)) {
 		me->me_drvsize[i] = 0;		/* drive beyond supported range */
 	    } else {
 		me->me_drvsize[i] = meo->me_drvsize[i];
@@ -1257,7 +1257,7 @@ mlx_periodic_eventlog_respond(struct mlx_command *mc)
 	    /* Mylex vendor-specific message indicating a drive was killed? */
 	    if ((el->el_sensekey == 9) &&
 		(el->el_asc == 0x80)) {
-		if (el->el_asq < (sizeof(mlx_sense_messages) / sizeof(mlx_sense_messages[0]))) {
+		if (el->el_asq < NELEM(mlx_sense_messages)) {
 		    reason = mlx_sense_messages[el->el_asq];
 		} else {
 		    reason = "for unknown reason";

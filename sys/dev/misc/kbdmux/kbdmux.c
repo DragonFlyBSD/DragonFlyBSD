@@ -363,7 +363,7 @@ kbdmux_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		keymap = kmalloc(sizeof(key_map), M_KBDMUX, M_NOWAIT);
 		accmap = kmalloc(sizeof(accent_map), M_KBDMUX, M_NOWAIT);
 		fkeymap = kmalloc(sizeof(fkey_tab), M_KBDMUX, M_NOWAIT);
-		fkeymap_size = sizeof(fkey_tab)/sizeof(fkey_tab[0]);
+		fkeymap_size = NELEM(fkey_tab);
 		needfree = 1;
 
 		if ((kbd == NULL) || (state == NULL) || (keymap == NULL) ||
@@ -1036,13 +1036,13 @@ kbdmux_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 			int	i;
 
 			/* lookup delay */
-			for (i = sizeof(delays)/sizeof(delays[0]) - 1; i > 0; i --)
+			for (i = NELEM(delays) - 1; i > 0; i --)
 				if (((int *)arg)[0] >= delays[i])
 					break;
 			mode = i << 5;
 
 			/* lookup rate */
-			for (i = sizeof(rates)/sizeof(rates[0]) - 1; i > 0; i --)
+			for (i = NELEM(rates) - 1; i > 0; i --)
 				if (((int *)arg)[1] >= rates[i])
 					break;
 			mode |= i;

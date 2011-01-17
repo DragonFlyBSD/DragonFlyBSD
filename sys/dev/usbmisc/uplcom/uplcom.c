@@ -1,7 +1,6 @@
 /*
  * $NetBSD: uplcom.c,v 1.21 2001/11/13 06:24:56 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uplcom.c,v 1.39 2006/09/07 00:06:42 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.26 2008/01/13 16:04:02 hasso Exp $
  */
 
 /*-
@@ -580,7 +579,7 @@ static const struct pl2303x_init pl2303x[] = {
 	{ UT_WRITE_VENDOR_DEVICE, UPLCOM_SET_REQUEST,      1,    0, 0 },
 	{ UT_WRITE_VENDOR_DEVICE, UPLCOM_SET_REQUEST,      2, 0x44, 0 }
 };
-#define N_PL2302X_INIT	(sizeof(pl2303x)/sizeof(pl2303x[0]))
+#define N_PL2302X_INIT	NELEM(pl2303x)
 
 static usbd_status
 uplcom_pl2303x_init(struct uplcom_softc *sc)
@@ -763,7 +762,7 @@ static const int uplcom_rates[] = {
 	 */
 	230400, 460800, 614400, 921600,	1228800
 };
-#define N_UPLCOM_RATES	(sizeof(uplcom_rates)/sizeof(uplcom_rates[0]))
+#define N_UPLCOM_RATES	NELEM(uplcom_rates)
 
 static int
 uplcom_param(void *addr, int portno, struct termios *t)

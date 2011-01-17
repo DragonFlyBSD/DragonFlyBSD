@@ -118,7 +118,7 @@ static int i686_mtrrtomrt[] = {
 	MDF_WRITEBACK
 };
 
-#define	MTRRTOMRTLEN (sizeof(i686_mtrrtomrt) / sizeof(i686_mtrrtomrt[0]))
+#define	MTRRTOMRTLEN NELEM(i686_mtrrtomrt)
 
 static int
 i686_mtrr2mrt(int val)

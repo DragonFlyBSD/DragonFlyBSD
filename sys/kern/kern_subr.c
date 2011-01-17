@@ -37,7 +37,6 @@
  *
  *	@(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_subr.c,v 1.31.2.2 2002/04/21 08:09:37 bde Exp $
- * $DragonFly: src/sys/kern/kern_subr.c,v 1.27 2007/01/29 20:44:02 tgen Exp $
  */
 
 #include "opt_ddb.h"
@@ -290,7 +289,7 @@ hashinit_ext(int elements, size_t size, struct malloc_type *type,
 static int primes[] = { 1, 13, 31, 61, 127, 251, 509, 761, 1021, 1531, 2039,
 			2557, 3067, 3583, 4093, 4603, 5119, 5623, 6143, 6653,
 			7159, 7673, 8191, 12281, 16381, 24571, 32749 };
-#define NPRIMES (sizeof(primes) / sizeof(primes[0]))
+#define NPRIMES NELEM(primes)
 
 /*
  * General routine to allocate a prime number sized hash table.

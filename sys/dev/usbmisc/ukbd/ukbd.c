@@ -1,6 +1,5 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ukbd.c,v 1.45 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.27 2008/08/14 20:55:53 hasso Exp $
  */
 
 /*
@@ -535,15 +534,14 @@ ukbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		keymap = &default_keymap;
 		accmap = &default_accentmap;
 		fkeymap = default_fkeytab;
-		fkeymap_size =
-			sizeof(default_fkeytab)/sizeof(default_fkeytab[0]);
+		fkeymap_size = NELEM(default_fkeytab);
 	} else if (*kbdp == NULL) {
 		*kbdp = kbd = kmalloc(sizeof(*kbd), M_DEVBUF, M_INTWAIT | M_ZERO);
 		state = kmalloc(sizeof(*state), M_DEVBUF, M_INTWAIT);
 		keymap = kmalloc(sizeof(key_map), M_DEVBUF, M_INTWAIT);
 		accmap = kmalloc(sizeof(accent_map), M_DEVBUF, M_INTWAIT);
 		fkeymap = kmalloc(sizeof(fkey_tab), M_DEVBUF, M_INTWAIT);
-		fkeymap_size = sizeof(fkey_tab)/sizeof(fkey_tab[0]);
+		fkeymap_size = NELEM(fkey_tab);
 		if ((state == NULL) || (keymap == NULL) || (accmap == NULL)
 		     || (fkeymap == NULL)) {
 			if (state != NULL)
@@ -1518,7 +1516,7 @@ keycode2scancode(int keycode, int shift, int up)
 	int scancode;
 
 	scancode = keycode;
-	if ((keycode >= 89) && (keycode < 89 + sizeof(scan)/sizeof(scan[0])))
+	if ((keycode >= 89) && (keycode < 89 + NELEM(scan)))
 		scancode = scan[keycode - 89] | SCAN_PREFIX_E0;
 	/* Pause/Break */
 	if ((keycode == 104) && !(shift & (MOD_CONTROL_L | MOD_CONTROL_R)))

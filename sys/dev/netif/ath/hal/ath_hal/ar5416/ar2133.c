@@ -28,8 +28,6 @@
 #include "ar5416/ar5416reg.h"
 #include "ar5416/ar5416phy.h"
 
-#define N(a)    (sizeof(a)/sizeof(a[0]))
-
 struct ar2133State {
 	RF_HAL_FUNCS	base;		/* public state, must be first */
 	uint16_t	pcdacTable[1];

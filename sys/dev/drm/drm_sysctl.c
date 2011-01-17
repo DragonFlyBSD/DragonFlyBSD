@@ -47,7 +47,7 @@ struct drm_sysctl_list {
 	{"bufs",    drm_bufs_info},
 	{"vblank",    drm_vblank_info},
 };
-#define DRM_SYSCTL_ENTRIES (sizeof(drm_sysctl_list)/sizeof(drm_sysctl_list[0]))
+#define DRM_SYSCTL_ENTRIES NELEM(drm_sysctl_list)
 
 struct drm_sysctl_info {
 	struct sysctl_ctx_list ctx;

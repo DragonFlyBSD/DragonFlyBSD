@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbd.c,v 1.25.2.4 2002/04/08 19:21:38 asmodai Exp $
- * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.14 2007/04/22 10:43:00 y0netan1 Exp $
  */
 /*
  * NOTE: All locks are handled by the kbd wrappers.
@@ -368,15 +367,14 @@ atkbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		keymap = &default_keymap;
 		accmap = &default_accentmap;
 		fkeymap = default_fkeytab;
-		fkeymap_size =
-			sizeof(default_fkeytab)/sizeof(default_fkeytab[0]);
+		fkeymap_size = NELEM(default_fkeytab);
 	} else if (*kbdp == NULL) {
 		*kbdp = kbd = kmalloc(sizeof(*kbd), M_DEVBUF, M_WAITOK|M_ZERO);
 		state = kmalloc(sizeof(*state), M_DEVBUF, M_WAITOK|M_ZERO);
 		keymap = kmalloc(sizeof(key_map), M_DEVBUF, M_WAITOK);
 		accmap = kmalloc(sizeof(accent_map), M_DEVBUF, M_WAITOK);
 		fkeymap = kmalloc(sizeof(fkey_tab), M_DEVBUF, M_WAITOK);
-		fkeymap_size = sizeof(fkey_tab)/sizeof(fkey_tab[0]);
+		fkeymap_size = NELEM(fkey_tab);
 	} else if (KBD_IS_INITIALIZED(*kbdp) && KBD_IS_CONFIGURED(*kbdp)) {
 		return 0;
 	} else {
@@ -1405,12 +1403,12 @@ typematic(int delay, int rate)
 	int value;
 	int i;
 
-	for (i = sizeof(delays)/sizeof(delays[0]) - 1; i > 0; --i) {
+	for (i = NELEM(delays) - 1; i > 0; --i) {
 		if (delay >= delays[i])
 			break;
 	}
 	value = i << 5;
-	for (i = sizeof(rates)/sizeof(rates[0]) - 1; i > 0; --i) {
+	for (i = NELEM(rates) - 1; i > 0; --i) {
 		if (rate >= rates[i])
 			break;
 	}

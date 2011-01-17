@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/dev/netif/acx/acx100.c,v 1.13 2008/06/08 10:06:05 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -285,13 +283,11 @@ static __inline int
 acx100_check_rate(struct ifnet *ifp, u_int rate, int rate_idx,
 		  const char *fname)
 {
-#define N(arr)	(sizeof(arr) / sizeof(arr[0]))
-	if (rate >= N(acx100_rate_map)) {
+	if (rate >= NELEM(acx100_rate_map)) {
 		if_printf(ifp, "%s rate out of range %u (idx %d)\n",
 			  fname, rate, rate_idx);
 		return -1;
 	}
-#undef N
 
 	if (acx100_rate_map[rate] == 0) {
 		if_printf(ifp, "%s invalid rate %u (idx %d)\n",

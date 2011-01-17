@@ -1,4 +1,3 @@
-/* $DragonFly: src/sys/netbt/bt_proto.c,v 1.7 2008/11/01 04:22:15 sephe Exp $ */
 /* $OpenBSD: bt_proto.c,v 1.4 2007/06/24 20:55:27 uwe Exp $ */
 
 /*
@@ -170,7 +169,7 @@ struct domain btdomain = {
 	.dom_externalize = NULL,
 	.dom_dispose = netbt_dispose,
 	.dom_protosw = btsw,
-	.dom_protoswNPROTOSW = &btsw[sizeof(btsw)/sizeof(btsw[0])],
+	.dom_protoswNPROTOSW = &btsw[NELEM(btsw)],
 	.dom_next = SLIST_ENTRY_INITIALIZER,
 	.dom_rtattach = 0,
 	.dom_rtoffset = 32,

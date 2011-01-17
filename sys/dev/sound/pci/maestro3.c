@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/maestro3.c,v 1.28.2.2 2007/03/12 02:03:25 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.12 2007/06/16 20:07:19 dillon Exp $
  */
 
 /*
@@ -63,8 +62,6 @@
 
 #include <dev/sound/pci/gnu/maestro3_reg.h>
 #include <dev/sound/pci/gnu/maestro3_dsp.h>
-
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.12 2007/06/16 20:07:19 dillon Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -459,7 +456,7 @@ m3_pchan_init(kobj_t kobj, void *devinfo, struct snd_dbuf *b, struct pcm_channel
 			DMAC_BLOCKF_SELECTOR);
 
 	/* set an armload of static initializers */
-	for(i = 0 ; i < (sizeof(pv) / sizeof(pv[0])) ; i++) {
+	for(i = 0 ; i < NELEM(pv) ; i++) {
 		m3_wr_assp_data(sc, ch->dac_data + pv[i].addr, pv[i].val);
 	}
 
@@ -803,7 +800,7 @@ m3_rchan_init(kobj_t kobj, void *devinfo, struct snd_dbuf *b, struct pcm_channel
 			DMAC_PAGE3_SELECTOR + DMAC_BLOCKF_SELECTOR);
 
 	/* set an armload of static initializers */
-	for(i = 0 ; i < (sizeof(rv) / sizeof(rv[0])) ; i++) {
+	for(i = 0 ; i < NELEM(rv) ; i++) {
 		m3_wr_assp_data(sc, ch->adc_data + rv[i].addr, rv[i].val);
 	}
 

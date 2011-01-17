@@ -126,7 +126,7 @@ struct db_variable db_regs[] = {
 	{ "dr6",	NULL,		     db_dr6 },
 	{ "dr7",	NULL,		     db_dr7 },
 };
-struct db_variable *db_eregs = db_regs + sizeof(db_regs)/sizeof(db_regs[0]);
+struct db_variable *db_eregs = db_regs + NELEM(db_regs);
 
 /*
  * Stack trace.

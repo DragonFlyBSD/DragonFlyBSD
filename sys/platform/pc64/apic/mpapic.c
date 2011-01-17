@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mpapic.c,v 1.37.2.7 2003/01/25 02:31:47 peter Exp $
- * $DragonFly: src/sys/platform/pc32/apic/mpapic.c,v 1.22 2008/04/20 13:44:26 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -90,8 +89,7 @@ static const uint32_t	lapic_timer_divisors[] = {
 	APIC_TDCR_2,	APIC_TDCR_4,	APIC_TDCR_8,	APIC_TDCR_16,
 	APIC_TDCR_32,	APIC_TDCR_64,	APIC_TDCR_128,	APIC_TDCR_1
 };
-#define APIC_TIMER_NDIVISORS \
-	(int)(sizeof(lapic_timer_divisors) / sizeof(lapic_timer_divisors[0]))
+#define APIC_TIMER_NDIVISORS (int)(NELEM(lapic_timer_divisors))
 
 
 void

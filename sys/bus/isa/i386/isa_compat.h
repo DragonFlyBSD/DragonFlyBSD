@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa_compat.h,v 1.27.2.11 2002/10/05 18:31:48 scottl Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_compat.h,v 1.13 2008/07/28 01:21:39 swildner Exp $
  */
 
 #include "use_el.h"
@@ -139,5 +138,5 @@ static struct old_isa_driver old_drivers[] = {
 
 };
 
-#define old_drivers_count (sizeof(old_drivers) / sizeof(old_drivers[0]))
+#define old_drivers_count NELEM(old_drivers)
 

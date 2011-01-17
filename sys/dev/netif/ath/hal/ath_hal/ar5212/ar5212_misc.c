@@ -907,7 +907,6 @@ HAL_BOOL
 ar5212SetCapability(struct ath_hal *ah, HAL_CAPABILITY_TYPE type,
 	uint32_t capability, uint32_t setting, HAL_STATUS *status)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 	struct ath_hal_5212 *ahp = AH5212(ah);
 	const HAL_CAPABILITIES *pCap = &AH_PRIVATE(ah)->ah_caps;
 	uint32_t v;
@@ -983,7 +982,7 @@ ar5212SetCapability(struct ath_hal *ah, HAL_CAPABILITY_TYPE type,
 			HAL_ANI_FIRSTEP_LEVEL,
 			HAL_ANI_SPUR_IMMUNITY_LEVEL,
 		};
-		return capability < N(cmds) ?
+		return capability < NELEM(cmds) ?
 			ar5212AniControl(ah, cmds[capability], setting) :
 			AH_FALSE;
 	}
@@ -1000,7 +999,6 @@ ar5212SetCapability(struct ath_hal *ah, HAL_CAPABILITY_TYPE type,
 		return ath_hal_setcapability(ah, type, capability,
 				setting, status);
 	}
-#undef N
 }
 
 HAL_BOOL

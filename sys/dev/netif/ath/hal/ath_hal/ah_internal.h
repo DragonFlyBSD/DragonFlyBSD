@@ -758,7 +758,7 @@ typedef struct {
 
 #define HAL_INI_WRITE_ARRAY(ah, regArray, col, regWr) do {             	\
 	int r;								\
-	for (r = 0; r < N(regArray); r++) {				\
+	for (r = 0; r < NELEM(regArray); r++) {				\
 		OS_REG_WRITE(ah, (regArray)[r][0], (regArray)[r][col]);	\
 		DMA_YIELD(regWr);					\
 	}								\
@@ -766,7 +766,7 @@ typedef struct {
 
 #define HAL_INI_WRITE_BANK(ah, regArray, bankData, regWr) do {		\
 	int r;								\
-	for (r = 0; r < N(regArray); r++) {				\
+	for (r = 0; r < NELEM(regArray); r++) {				\
 		OS_REG_WRITE(ah, (regArray)[r][0], (bankData)[r]);	\
 		DMA_YIELD(regWr);					\
 	}								\

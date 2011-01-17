@@ -1,7 +1,6 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/ncr.c,v 1.155.2.3 2001/03/05 13:09:10 obrien Exp $
-** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.22 2008/05/18 20:30:22 pavalos Exp $
 **
 **  Device driver for the   NCR 53C8XX   PCI-SCSI-Controller Family.
 **
@@ -3257,7 +3256,7 @@ static int ncr_chip_lookup(u_long device_id, u_char revision_id)
 	int i, found;
 	
 	found = -1;
-	for (i = 0; i < sizeof(ncr_chip_table)/sizeof(ncr_chip_table[0]); i++) {
+	for (i = 0; i < NELEM(ncr_chip_table); i++) {
 		if (device_id	== ncr_chip_table[i].device_id &&
 		    ncr_chip_table[i].minrevid <= revision_id) {
 			if (found < 0 || 

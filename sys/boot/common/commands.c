@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/commands.c,v 1.19 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/commands.c,v 1.4 2008/09/02 17:21:12 dillon Exp $
  */
 
 #include <stand.h>
@@ -514,7 +513,7 @@ static int CondIndex;
 static int
 command_ifexists(int argc, char *argv[])
 {
-	if (CondIndex + 1 == sizeof(CondStack)/sizeof(CondStack[0])) {
+	if (CondIndex + 1 == NELEM(CondStack)) {
 		sprintf(command_errbuf, "if stack too deep");
 		return(-1);
 	} else if (argc != 2) {
@@ -541,7 +540,7 @@ COMMAND_SET_COND(ifset, "ifset", "conditional kenv variable present", command_if
 static int
 command_ifset(int argc, char *argv[])
 {
-	if (CondIndex + 1 == sizeof(CondStack)/sizeof(CondStack[0])) {
+	if (CondIndex + 1 == NELEM(CondStack)) {
 		sprintf(command_errbuf, "if stack too deep");
 		return(-1);
 	} else if (argc != 2) {

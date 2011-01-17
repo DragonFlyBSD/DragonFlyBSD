@@ -29,7 +29,6 @@
  *
  * $Id: ng_btsocket.c,v 1.4 2003/09/14 23:29:06 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/socket/ng_btsocket.c,v 1.13 2006/07/21 17:11:13 rwatson Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/socket/ng_btsocket.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -180,8 +179,7 @@ static struct protosw		ng_btsocket_protosw[] = {
 	.pr_usrreqs =		&ng_btsocket_rfcomm_usrreqs,
 }
 };
-#define ng_btsocket_protosw_size \
-	(sizeof(ng_btsocket_protosw)/sizeof(ng_btsocket_protosw[0]))
+#define ng_btsocket_protosw_size NELEM(ng_btsocket_protosw)
 #define ng_btsocket_protosw_end \
 	&ng_btsocket_protosw[ng_btsocket_protosw_size]
 

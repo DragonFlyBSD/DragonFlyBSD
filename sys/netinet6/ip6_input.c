@@ -271,7 +271,7 @@ ip6_input(netmsg_t msg)
 		else
 			ip6stat.ip6s_mext1++;
 	} else {
-#define M2MMAX	(sizeof(ip6stat.ip6s_m2m)/sizeof(ip6stat.ip6s_m2m[0]))
+#define M2MMAX	NELEM(ip6stat.ip6s_m2m)
 		if (m->m_next) {
 			if (m->m_flags & M_LOOP) {
 				ip6stat.ip6s_m2m[loif[0].if_index]++;	/* XXX */

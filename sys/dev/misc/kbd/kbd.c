@@ -1209,7 +1209,7 @@ get_kbd_type_name(int type)
 	};
 	int i;
 
-	for (i = 0; i < sizeof(name_table)/sizeof(name_table[0]); ++i) {
+	for (i = 0; i < NELEM(name_table); ++i) {
 		if (type == name_table[i].type)
 			return name_table[i].name;
 	}

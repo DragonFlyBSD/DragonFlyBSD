@@ -38,7 +38,6 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_socket.c,v 1.85 2008/03/11 21:58:48 mav Exp $
- * $DragonFly: src/sys/netgraph7/ng_socket.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_socket.c,v 1.28 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -1100,7 +1099,7 @@ struct domain ngdomain = {
 	.dom_family =		AF_NETGRAPH,
 	.dom_name =		"netgraph",
 	.dom_protosw =		ngsw,
-	.dom_protoswNPROTOSW =	&ngsw[sizeof(ngsw) / sizeof(ngsw[0])]
+	.dom_protoswNPROTOSW =	&ngsw[NELEM(ngsw)]
 };
 
 /*

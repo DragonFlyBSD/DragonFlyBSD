@@ -450,7 +450,6 @@ ar5416DetectMacHang(struct ath_hal *ah)
 static int
 ar5416DetectBBHang(struct ath_hal *ah)
 {
-#define N(a) (sizeof(a)/sizeof(a[0]))
 	/*
 	 * Check the PCU Observation Bus 1 register (0x806c)
 	 * NUM_STATUS_READS times
@@ -483,7 +482,7 @@ ar5416DetectBBHang(struct ath_hal *ah)
 		if (hang_sig != OS_REG_READ(ah, AR_OBSERV_1))
 			return 0;
 	}
-	for (i = 0; i < N(hang_list); i++)
+	for (i = 0; i < NELEM(hang_list); i++)
 		if ((hang_sig & hang_list[i].mask) == hang_list[i].val) {
 			HALDEBUG(ah, HAL_DEBUG_ANY,
 			    "%s BB hang, signature 0x%x, code 0x%x\n",
@@ -495,6 +494,5 @@ ar5416DetectBBHang(struct ath_hal *ah)
 	    "<0x806c>=0x%x\n", __func__, hang_sig);
 
 	return HAL_BB_HANG_UNKNOWN;
-#undef N
 }
 #undef NUM_STATUS_READS

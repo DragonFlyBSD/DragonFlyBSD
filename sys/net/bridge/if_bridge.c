@@ -66,7 +66,6 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.60 2008/11/26 12:49:43 sephe Exp $
  */
 
 /*
@@ -573,8 +572,7 @@ const struct bridge_control bridge_control_table[] = {
 	{ bridge_ioctl_delspan,		sizeof(struct ifbreq),
 	  BC_F_COPYIN|BC_F_SUSER },
 };
-static const int bridge_control_table_size =
-    sizeof(bridge_control_table) / sizeof(bridge_control_table[0]);
+static const int bridge_control_table_size = NELEM(bridge_control_table);
 
 LIST_HEAD(, bridge_softc) bridge_list;
 

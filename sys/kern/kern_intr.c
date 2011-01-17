@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.55 2008/09/01 12:49:00 sephe Exp $
  *
  */
 
@@ -125,7 +124,7 @@ static void report_stray_interrupt(int intr, struct intr_info *info);
 static void int_moveto_destcpu(int *, int *, int);
 static void int_moveto_origcpu(int, int);
 
-int intr_info_size = sizeof(intr_info_ary) / sizeof(intr_info_ary[0]);
+int intr_info_size = NELEM(intr_info_ary);
 
 static struct systimer emergency_intr_timer;
 static struct thread emergency_intr_thread;

@@ -1,7 +1,6 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.49 2008/08/17 04:32:33 sephe Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -3323,7 +3322,7 @@ tulip_print_abnormal_interrupt(tulip_softc_t *sc, uint32_t csr)
     uint32_t mask;
     const char thrsh[] = "72|128\0\0\0" "96|256\0\0\0" "128|512\0\0" "160|1024";
 
-    csr &= (1 << (sizeof(tulip_status_bits)/sizeof(tulip_status_bits[0]))) - 1;
+    csr &= (1 << (NELEM(tulip_status_bits))) - 1;
     if_printf(&sc->tulip_if, "abnormal interrupt:");
     for (sep = " ", mask = 1; mask <= csr; mask <<= 1, msgp++) {
 	if ((csr & mask) && *msgp != NULL) {

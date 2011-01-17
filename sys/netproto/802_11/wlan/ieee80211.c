@@ -1467,7 +1467,6 @@ findmedia(const struct ratemedia rates[], int n, u_int match)
 int
 ieee80211_rate2media(struct ieee80211com *ic, int rate, enum ieee80211_phymode mode)
 {
-#define	N(a)	(sizeof(a) / sizeof(a[0]))
 	static const struct ratemedia rates[] = {
 		{   2 | IFM_IEEE80211_FH, IFM_IEEE80211_FH1 },
 		{   4 | IFM_IEEE80211_FH, IFM_IEEE80211_FH2 },
@@ -1527,7 +1526,7 @@ ieee80211_rate2media(struct ieee80211com *ic, int rate, enum ieee80211_phymode m
 	if (mode == IEEE80211_MODE_11NA) {
 		if (rate & IEEE80211_RATE_MCS) {
 			rate &= ~IEEE80211_RATE_MCS;
-			m = findmedia(htrates, N(htrates), rate);
+			m = findmedia(htrates, NELEM(htrates), rate);
 			if (m != IFM_AUTO)
 				return m | IFM_IEEE80211_11NA;
 		}
@@ -1535,7 +1534,7 @@ ieee80211_rate2media(struct ieee80211com *ic, int rate, enum ieee80211_phymode m
 		/* NB: 12 is ambiguous, it will be treated as an MCS */
 		if (rate & IEEE80211_RATE_MCS) {
 			rate &= ~IEEE80211_RATE_MCS;
-			m = findmedia(htrates, N(htrates), rate);
+			m = findmedia(htrates, NELEM(htrates), rate);
 			if (m != IFM_AUTO)
 				return m | IFM_IEEE80211_11NG;
 		}
@@ -1548,31 +1547,29 @@ ieee80211_rate2media(struct ieee80211com *ic, int rate, enum ieee80211_phymode m
 	case IEEE80211_MODE_11NA:
 	case IEEE80211_MODE_TURBO_A:
 	case IEEE80211_MODE_STURBO_A:
-		return findmedia(rates, N(rates), rate | IFM_IEEE80211_11A);
+		return findmedia(rates, NELEM(rates), rate | IFM_IEEE80211_11A);
 	case IEEE80211_MODE_11B:
-		return findmedia(rates, N(rates), rate | IFM_IEEE80211_11B);
+		return findmedia(rates, NELEM(rates), rate | IFM_IEEE80211_11B);
 	case IEEE80211_MODE_FH:
-		return findmedia(rates, N(rates), rate | IFM_IEEE80211_FH);
+		return findmedia(rates, NELEM(rates), rate | IFM_IEEE80211_FH);
 	case IEEE80211_MODE_AUTO:
 		/* NB: ic may be NULL for some drivers */
 		if (ic != NULL && ic->ic_phytype == IEEE80211_T_FH)
-			return findmedia(rates, N(rates),
+			return findmedia(rates, NELEM(rates),
 			    rate | IFM_IEEE80211_FH);
 		/* NB: hack, 11g matches both 11b+11a rates */
 		/* fall thru... */
 	case IEEE80211_MODE_11G:
 	case IEEE80211_MODE_11NG:
 	case IEEE80211_MODE_TURBO_G:
-		return findmedia(rates, N(rates), rate | IFM_IEEE80211_11G);
+		return findmedia(rates, NELEM(rates), rate | IFM_IEEE80211_11G);
 	}
 	return IFM_AUTO;
-#undef N
 }
 
 int
 ieee80211_media2rate(int mword)
 {
-#define	N(a)	(sizeof(a) / sizeof(a[0]))
 	static const int ieeerates[] = {
 		-1,		/* IFM_AUTO */
 		0,		/* IFM_MANUAL */
@@ -1600,9 +1597,8 @@ ieee80211_media2rate(int mword)
 		54,		/* IFM_IEEE80211_OFDM27 */
 		-1,		/* IFM_IEEE80211_MCS */
 	};
-	return IFM_SUBTYPE(mword) < N(ieeerates) ?
+	return IFM_SUBTYPE(mword) < NELEM(ieeerates) ?
 		ieeerates[IFM_SUBTYPE(mword)] : 0;
-#undef N
 }
 
 /*

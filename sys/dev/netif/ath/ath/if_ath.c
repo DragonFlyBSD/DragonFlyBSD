@@ -2011,7 +2011,6 @@ static int
 ath_keyset(struct ath_softc *sc, const struct ieee80211_key *k,
 	struct ieee80211_node *bss)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 	static const u_int8_t ciphermap[] = {
 		HAL_CIPHER_WEP,		/* IEEE80211_CIPHER_WEP */
 		HAL_CIPHER_TKIP,	/* IEEE80211_CIPHER_TKIP */
@@ -2034,7 +2033,7 @@ ath_keyset(struct ath_softc *sc, const struct ieee80211_key *k,
 	 * so that rx frames have an entry to match.
 	 */
 	if ((k->wk_flags & IEEE80211_KEY_SWCRYPT) == 0) {
-		KASSERT(cip->ic_cipher < N(ciphermap),
+		KASSERT(cip->ic_cipher < NELEM(ciphermap),
 			("invalid cipher type %u", cip->ic_cipher));
 		hk.kv_type = ciphermap[cip->ic_cipher];
 		hk.kv_len = k->wk_keylen;
@@ -2061,7 +2060,6 @@ ath_keyset(struct ath_softc *sc, const struct ieee80211_key *k,
 		KEYPRINTF(sc, k->wk_keyix, &hk, mac);
 		return ath_hal_keyset(ah, k->wk_keyix, &hk, mac);
 	}
-#undef N
 }
 
 /*
@@ -2072,12 +2070,11 @@ static u_int16_t
 key_alloc_2pair(struct ath_softc *sc,
 	ieee80211_keyix *txkeyix, ieee80211_keyix *rxkeyix)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 	u_int i, keyix;
 
 	KASSERT(sc->sc_splitmic, ("key cache !split"));
 	/* XXX could optimize */
-	for (i = 0; i < N(sc->sc_keymap)/4; i++) {
+	for (i = 0; i < NELEM(sc->sc_keymap)/4; i++) {
 		u_int8_t b = sc->sc_keymap[i];
 		if (b != 0xff) {
 			/*
@@ -2116,7 +2113,6 @@ key_alloc_2pair(struct ath_softc *sc,
 	}
 	DPRINTF(sc, ATH_DEBUG_KEYCACHE, "%s: out of pair space\n", __func__);
 	return 0;
-#undef N
 }
 
 /*
@@ -2127,12 +2123,11 @@ static u_int16_t
 key_alloc_pair(struct ath_softc *sc,
 	ieee80211_keyix *txkeyix, ieee80211_keyix *rxkeyix)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 	u_int i, keyix;
 
 	KASSERT(!sc->sc_splitmic, ("key cache split"));
 	/* XXX could optimize */
-	for (i = 0; i < N(sc->sc_keymap)/4; i++) {
+	for (i = 0; i < NELEM(sc->sc_keymap)/4; i++) {
 		u_int8_t b = sc->sc_keymap[i];
 		if (b != 0xff) {
 			/*
@@ -2164,7 +2159,6 @@ key_alloc_pair(struct ath_softc *sc,
 	}
 	DPRINTF(sc, ATH_DEBUG_KEYCACHE, "%s: out of pair space\n", __func__);
 	return 0;
-#undef N
 }
 
 /*
@@ -2174,11 +2168,10 @@ static int
 key_alloc_single(struct ath_softc *sc,
 	ieee80211_keyix *txkeyix, ieee80211_keyix *rxkeyix)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 	u_int i, keyix;
 
 	/* XXX try i,i+32,i+64,i+32+64 to minimize key pair conflicts */
-	for (i = 0; i < N(sc->sc_keymap); i++) {
+	for (i = 0; i < NELEM(sc->sc_keymap); i++) {
 		u_int8_t b = sc->sc_keymap[i];
 		if (b != 0xff) {
 			/*
@@ -2196,7 +2189,6 @@ key_alloc_single(struct ath_softc *sc,
 	}
 	DPRINTF(sc, ATH_DEBUG_KEYCACHE, "%s: out of space\n", __func__);
 	return 0;
-#undef N
 }
 
 /*
@@ -4100,7 +4092,6 @@ ath_txq_init(struct ath_softc *sc, struct ath_txq *txq, int qnum)
 static struct ath_txq *
 ath_txq_setup(struct ath_softc *sc, int qtype, int subtype)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 	struct ath_hal *ah = sc->sc_ah;
 	HAL_TXQ_INFO qi;
 	int qnum;
@@ -4131,10 +4122,10 @@ ath_txq_setup(struct ath_softc *sc, int qtype, int subtype)
 		 */
 		return NULL;
 	}
-	if (qnum >= N(sc->sc_txq)) {
+	if (qnum >= NELEM(sc->sc_txq)) {
 		device_printf(sc->sc_dev,
 			"hal qnum %u out of range, max %zu!\n",
-			qnum, N(sc->sc_txq));
+			qnum, NELEM(sc->sc_txq));
 		ath_hal_releasetxqueue(ah, qnum);
 		return NULL;
 	}
@@ -4143,7 +4134,6 @@ ath_txq_setup(struct ath_softc *sc, int qtype, int subtype)
 		sc->sc_txqsetup |= 1<<qnum;
 	}
 	return &sc->sc_txq[qnum];
-#undef N
 }
 
 /*
@@ -4158,12 +4148,11 @@ ath_txq_setup(struct ath_softc *sc, int qtype, int subtype)
 static int
 ath_tx_setup(struct ath_softc *sc, int ac, int haltype)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 	struct ath_txq *txq;
 
-	if (ac >= N(sc->sc_ac2q)) {
+	if (ac >= NELEM(sc->sc_ac2q)) {
 		device_printf(sc->sc_dev, "AC %u out of range, max %zu!\n",
-			ac, N(sc->sc_ac2q));
+			ac, NELEM(sc->sc_ac2q));
 		return 0;
 	}
 	txq = ath_txq_setup(sc, HAL_TX_QUEUE_DATA, haltype);
@@ -4173,7 +4162,6 @@ ath_tx_setup(struct ath_softc *sc, int ac, int haltype)
 		return 1;
 	} else
 		return 0;
-#undef N
 }
 
 /*
@@ -5989,7 +5977,6 @@ ath_rate_setup(struct ath_softc *sc, u_int mode)
 static void
 ath_setcurmode(struct ath_softc *sc, enum ieee80211_phymode mode)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 	/* NB: on/off times from the Atheros NDIS driver, w/ permission */
 	static const struct {
 		u_int		rate;		/* tx/rx 802.11 rate */
@@ -6026,7 +6013,7 @@ ath_setcurmode(struct ath_softc *sc, enum ieee80211_phymode mode)
 			sc->sc_rixmap[ieeerate | IEEE80211_RATE_MCS] = i;
 	}
 	memset(sc->sc_hwmap, 0, sizeof(sc->sc_hwmap));
-	for (i = 0; i < N(sc->sc_hwmap); i++) {
+	for (i = 0; i < NELEM(sc->sc_hwmap); i++) {
 		if (i >= rt->rateCount) {
 			sc->sc_hwmap[i].ledon = (500 * hz) / 1000;
 			sc->sc_hwmap[i].ledoff = (130 * hz) / 1000;
@@ -6041,7 +6028,7 @@ ath_setcurmode(struct ath_softc *sc, enum ieee80211_phymode mode)
 		    rt->info[i].phy == IEEE80211_T_OFDM)
 			sc->sc_hwmap[i].txflags |= IEEE80211_RADIOTAP_F_SHORTPRE;
 		sc->sc_hwmap[i].rxflags = sc->sc_hwmap[i].txflags;
-		for (j = 0; j < N(blinkrates)-1; j++)
+		for (j = 0; j < NELEM(blinkrates)-1; j++)
 			if (blinkrates[j].rate == sc->sc_hwmap[i].ieeerate)
 				break;
 		/* NB: this uses the last entry if the rate isn't found */
@@ -6060,7 +6047,6 @@ ath_setcurmode(struct ath_softc *sc, enum ieee80211_phymode mode)
 	else
 		sc->sc_protrix = ath_tx_findrix(sc, 2*1);
 	/* NB: caller is responsible for reseting rate control state */
-#undef N
 }
 
 #ifdef ATH_DEBUG
