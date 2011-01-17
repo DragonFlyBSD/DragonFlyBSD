@@ -23,11 +23,15 @@
 #include <machine/smp.h>
 #include <machine_base/isa/intr_machdep.h>
 
-/* convert an absolute IRQ# into a bitmask */
-#define IRQ_LBIT(irq_num)	(1 << (irq_num))
+#ifdef foo
+/* convert an absolute IRQ# into bitmask */
+#define IRQ_LBIT(irq_num)	(1UL << (irq_num & 0x3f))
+#endif
 
-/* make an index into the IO APIC from the IRQ# */
-#define REDTBL_IDX(irq_num)	(0x10 + ((irq_num) * 2))
+#define IRQ_SBITS(irq_num)	((irq_num) & 0x3f)
+
+/* convert an absolute IRQ# into gd_ipending index */
+#define IRQ_LIDX(irq_num)	((irq_num) >> 6)
 
 #ifdef SMP
 #define MPLOCKED     lock ;
@@ -108,9 +112,9 @@
  *
  *	- Push the trap frame required by doreti
  *	- Mask the interrupt and reenable its source
- *	- If we cannot take the interrupt set its fpending bit and
+ *	- If we cannot take the interrupt set its ipending bit and
  *	  doreti.
- *	- If we can take the interrupt clear its fpending bit,
+ *	- If we can take the interrupt clear its ipending bit,
  *	  call the handler, then unmask and doreti.
  *
  * YYY can cache gd base opitner instead of using hidden %fs prefixes.
@@ -133,12 +137,19 @@ IDTVEC(apic_intr##irq_num) ;						\
 1: ;									\
 	/* in critical section, make interrupt pending */		\
 	/* set the pending bit and return, leave interrupt masked */	\
-	orl	$IRQ_LBIT(irq_num),PCPU(fpending) ;			\
+	movq	$1,%rcx ;						\
+	shlq	$IRQ_SBITS(irq_num),%rcx ;				\
+	movl	$IRQ_LIDX(irq_num),%edx ;				\
+	orq	%rcx,PCPU_E8(ipending,%edx) ;				\
 	orl	$RQF_INTPEND,PCPU(reqflags) ;				\
 	jmp	5f ;							\
 2: ;									\
 	/* clear pending bit, run handler */				\
-	andl	$~IRQ_LBIT(irq_num),PCPU(fpending) ;			\
+	movq	$1,%rcx ;						\
+	shlq	$IRQ_SBITS(irq_num),%rcx ;				\
+	notq	%rcx ;							\
+	movl	$IRQ_LIDX(irq_num),%edx ;				\
+	andq	%rcx,PCPU_E8(ipending,%edx) ;				\
 	pushq	$irq_num ;		/* trapframe -> intrframe */	\
 	movq	%rsp, %rdi ;		/* pass frame by reference */	\
 	incl	TD_CRITCOUNT(%rbx) ;					\

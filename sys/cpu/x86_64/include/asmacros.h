@@ -197,7 +197,8 @@
 /*
  * Access per-CPU data.
  */
-#define	PCPU(member)	%gs:gd_ ## member
+#define	PCPU(member)		%gs:gd_ ## member
+#define PCPU_E8(member,idx)	%gs:gd_ ## member(,idx,8)
 #define	PCPU_ADDR(member, reg)					\
 	movq %gs:PC_PRVSPACE, reg ;				\
 	addq $PC_ ## member, reg

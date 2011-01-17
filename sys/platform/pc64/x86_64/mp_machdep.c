@@ -2829,7 +2829,7 @@ ap_init(void)
 	 * section.
 	 */
 	__asm __volatile("sti; pause; pause"::);
-	mdcpu->gd_fpending = 0;
+	bzero(mdcpu->gd_ipending, sizeof(mdcpu->gd_ipending));
 
 	initclocks_pcpu();	/* clock interrupts (via IPIs) */
 	lwkt_process_ipiq();
