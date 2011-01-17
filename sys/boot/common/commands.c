@@ -513,7 +513,7 @@ static int CondIndex;
 static int
 command_ifexists(int argc, char *argv[])
 {
-	if (CondIndex + 1 == NELEM(CondStack)) {
+	if (CondIndex + 1 == sizeof(CondStack)/sizeof(CondStack[0])) {
 		sprintf(command_errbuf, "if stack too deep");
 		return(-1);
 	} else if (argc != 2) {
@@ -540,7 +540,7 @@ COMMAND_SET_COND(ifset, "ifset", "conditional kenv variable present", command_if
 static int
 command_ifset(int argc, char *argv[])
 {
-	if (CondIndex + 1 == NELEM(CondStack)) {
+	if (CondIndex + 1 == sizeof(CondStack)/sizeof(CondStack[0])) {
 		sprintf(command_errbuf, "if stack too deep");
 		return(-1);
 	} else if (argc != 2) {
