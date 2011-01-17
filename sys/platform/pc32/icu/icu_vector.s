@@ -167,23 +167,6 @@ IDTVEC(icu_intr##irq_num) ; 						\
 	MEXITCOUNT ;							\
 	jmp	doreti ;						\
 
-/*
- * Unmask a slow interrupt.  This function is used by interrupt threads
- * after they have descheduled themselves to reenable interrupts and
- * possibly cause a reschedule to occur.
- */
-
-#define INTR_UNMASK(irq_num, vec_name, icu)				\
-	.text ;								\
-	SUPERALIGN_TEXT ;						\
-IDTVEC(vec_name) ;							\
-	pushl %ebp ;	 /* frame for ddb backtrace */			\
-	movl	%esp, %ebp ;						\
-	subl	%eax, %eax ;						\
-	UNMASK_IRQ(icu, irq_num) ;					\
-	popl %ebp ;							\
-	ret ;								\
-
 MCOUNT_LABEL(bintr)
 	INTR_HANDLER(0, IO_ICU1, ENABLE_ICU1)
 	INTR_HANDLER(1, IO_ICU1, ENABLE_ICU1)
