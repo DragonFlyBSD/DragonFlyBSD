@@ -79,8 +79,6 @@ static const char nomatch = '?';
 static const char attach = '+';
 static const char detach = '-';
 
-static struct pidfh *pfh;
-
 int Dflag;
 int dflag;
 int nflag;
