@@ -118,7 +118,7 @@ ptsname(int fd)
 int
 posix_openpt(int oflag)
 {
-	return open("/dev/ptmx", oflag);
+	return _open("/dev/ptmx", oflag);
 }
 
 int

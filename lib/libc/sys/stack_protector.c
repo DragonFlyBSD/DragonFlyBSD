@@ -24,7 +24,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $OpenBSD: stack_protector.c,v 1.3 2002/12/10 08:53:42 etoh Exp $
- * $DragonFly: src/lib/libc/sys/stack_protector.c,v 1.4 2008/04/15 23:41:28 hasso Exp $
  */
 
 #include "namespace.h"
@@ -32,10 +31,13 @@
 #include <sys/sysctl.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <stdio.h>
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
 #include "un-namespace.h"
+
+extern int __sys_sigaction(int, const struct sigaction *, struct sigaction *);
 
 static void __guard_setup(void) __attribute__ ((constructor));
 static void __fail(const char *);
@@ -83,7 +85,7 @@ __fail(const char *msg)
     /* Immediately block all signal handlers from running code */
     sigfillset(&mask);
     sigdelset(&mask, SIGABRT);
-    sigprocmask(SIG_BLOCK, &mask, NULL);
+    _sigprocmask(SIG_BLOCK, &mask, NULL);
 
     /* This may fail on a chroot jail... */
     syslog(LOG_CRIT, msg);
