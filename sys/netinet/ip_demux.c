@@ -96,8 +96,11 @@ tcp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 int
 udp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 {
-	/*return (INP_MPORT_HASH_UDP(faddr, laddr, fport, lport));*/
+#ifdef notyet
+	return (INP_MPORT_HASH_UDP(faddr, laddr, fport, lport));
+#else
 	return 0;
+#endif
 }
 
 /*
@@ -474,8 +477,8 @@ udp_ctlport(int cmd, struct sockaddr *sa, void *vip)
 	} else {
 		uh = (struct udphdr *)((caddr_t)ip + (ip->ip_hl << 2));
 
-		cpu = INP_MPORT_HASH_UDP(faddr.s_addr, ip->ip_src.s_addr,
-					 uh->uh_dport, uh->uh_sport);
+		cpu = udp_addrcpu(faddr.s_addr, ip->ip_src.s_addr,
+				  uh->uh_dport, uh->uh_sport);
 	}
 	return (cpu_portfn(cpu));
 }
