@@ -1347,7 +1347,9 @@ brelse(struct buf *bp)
 	}
 
 	/*
-	 * We must clear B_RELBUF if B_DELWRI or B_LOCKED is set.
+	 * We must clear B_RELBUF if B_DELWRI or B_LOCKED is set,
+	 * or if b_refs is non-zero.
+	 *
 	 * If vfs_vmio_release() is called with either bit set, the
 	 * underlying pages may wind up getting freed causing a previous
 	 * write (bdwrite()) to get 'lost' because pages associated with
@@ -1364,7 +1366,7 @@ brelse(struct buf *bp)
 	 * If B_DELWRI is not set we may have to set B_RELBUF if we are low
 	 * on pages to return pages to the VM page queues.
 	 */
-	if (bp->b_flags & (B_DELWRI | B_LOCKED)) {
+	if ((bp->b_flags & (B_DELWRI | B_LOCKED)) || bp->b_refs) {
 		bp->b_flags &= ~B_RELBUF;
 	} else if (vm_page_count_severe()) {
 		if (LIST_FIRST(&bp->b_dep) != NULL)
@@ -1717,6 +1719,34 @@ bqrelse(struct buf *bp)
 	bp->b_flags &= ~(B_ORDERED | B_NOCACHE | B_RELBUF);
 	dsched_exit_buf(bp);
 	BUF_UNLOCK(bp);
+}
+
+/*
+ * Hold a buffer, preventing it from being reused.  This will prevent
+ * normal B_RELBUF operations on the buffer but will not prevent B_INVAL
+ * operations.  If a B_INVAL operation occurs the buffer will remain held
+ * but the underlying pages may get ripped out.
+ *
+ * These functions are typically used in VOP_READ/VOP_WRITE functions
+ * to hold a buffer during a copyin or copyout, preventing deadlocks
+ * or recursive lock panics when read()/write() is used over mmap()'d
+ * space.
+ *
+ * NOTE: bqhold() requires that the buffer be locked at the time of the
+ *	 hold.  bqdrop() has no requirements other than the buffer having
+ *	 previously been held.
+ */
+void
+bqhold(struct buf *bp)
+{
+	atomic_add_int(&bp->b_refs, 1);
+}
+
+void
+bqdrop(struct buf *bp)
+{
+	KKASSERT(bp->b_refs > 0);
+	atomic_add_int(&bp->b_refs, -1);
 }
 
 /*
@@ -2078,19 +2108,26 @@ restart:
 		 * on the clean list must be disassociated from their 
 		 * current vnode.  Buffers on the empty[kva] lists have
 		 * already been disassociated.
+		 *
+		 * b_refs is checked after locking along with queue changes.
+		 * We must check here to deal with zero->nonzero transitions
+		 * made by the owner of the buffer lock, which is used by
+		 * VFS's to hold the buffer while issuing an unlocked
+		 * uiomove()s.  We cannot invalidate the buffer's pages
+		 * for this case.  Once we successfully lock a buffer the
+		 * only 0->1 transitions of b_refs will occur via findblk().
+		 *
+		 * We must also check for queue changes after successful
+		 * locking as the current lock holder may dispose of the
+		 * buffer and change its queue.
 		 */
-
 		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) != 0) {
 			spin_unlock(&bufqspin);
 			tsleep(&bd_request, 0, "gnbxxx", (hz + 99) / 100);
 			goto restart;
 		}
-		if (bp->b_qindex != qindex) {
+		if (bp->b_qindex != qindex || bp->b_refs) {
 			spin_unlock(&bufqspin);
-			kprintf("getnewbuf: warning, BUF_LOCK blocked "
-				"unexpectedly on buf %p index %d->%d, "
-				"race corrected\n",
-				bp, qindex, bp->b_qindex);
 			BUF_UNLOCK(bp);
 			goto restart;
 		}
@@ -2130,8 +2167,10 @@ restart:
 		 * Get the rest of the buffer freed up.  b_kva* is still
 		 * valid after this operation.
 		 */
-
-		KASSERT(bp->b_vp == NULL, ("bp3 %p flags %08x vnode %p qindex %d unexpectededly still associated!", bp, bp->b_flags, bp->b_vp, qindex));
+		KASSERT(bp->b_vp == NULL,
+			("bp3 %p flags %08x vnode %p qindex %d "
+			 "unexpectededly still associated!",
+			 bp, bp->b_flags, bp->b_vp, qindex));
 		KKASSERT((bp->b_flags & B_HASHED) == 0);
 
 		/*
@@ -2185,11 +2224,13 @@ restart:
 			flushingbufs = 0;
 
 		/*
-		 * The brelvp() above interlocked the buffer, test b_refs
-		 * to determine if the buffer can be reused.  b_refs
-		 * interlocks lookup/blocking-lock operations and allowing
-		 * buffer reuse can create deadlocks depending on what
-		 * (vp,loffset) is assigned to the reused buffer (see getblk).
+		 * b_refs can transition to a non-zero value while we hold
+		 * the buffer locked due to a findblk().  Our brelvp() above
+		 * interlocked any future possible transitions due to
+		 * findblk()s.
+		 *
+		 * If we find b_refs to be non-zero we can destroy the
+		 * buffer's contents but we cannot yet reuse the buffer.
 		 */
 		if (bp->b_refs) {
 			bp->b_flags |= B_INVAL;
@@ -2197,7 +2238,6 @@ restart:
 			brelse(bp);
 			goto restart;
 		}
-
 		break;
 		/* NOT REACHED, bufqspin not held */
 	}
@@ -2724,9 +2764,9 @@ inmem(struct vnode *vp, off_t loffset)
  *			  to acquire the lock we return NULL, even if the
  *			  buffer exists.
  *
- *	FINDBLK_REF	- Returns the buffer ref'd, which prevents reuse
- *			  by getnewbuf() but does not prevent disassociation
- *			  while we are locked.  Used to avoid deadlocks
+ *	FINDBLK_REF	- Returns the buffer ref'd, which prevents normal
+ *			  reuse by getnewbuf() but does not prevent
+ *			  disassociation (B_INVAL).  Used to avoid deadlocks
  *			  against random (vp,loffset)s due to reassignment.
  *
  *	(0)		- Lock the buffer blocking.
@@ -2754,7 +2794,7 @@ findblk(struct vnode *vp, off_t loffset, int flags)
 			lwkt_reltoken(&vp->v_token);
 			return(NULL);
 		}
-		atomic_add_int(&bp->b_refs, 1);
+		bqhold(bp);
 		lwkt_reltoken(&vp->v_token);
 
 		/*
@@ -2789,12 +2829,6 @@ findblk(struct vnode *vp, off_t loffset, int flags)
 	if ((flags & FINDBLK_REF) == 0)
 		atomic_subtract_int(&bp->b_refs, 1);
 	return(bp);
-}
-
-void
-unrefblk(struct buf *bp)
-{
-	atomic_subtract_int(&bp->b_refs, 1);
 }
 
 /*
@@ -2924,7 +2958,7 @@ loop:
 		 */
 		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT)) {
 			if (blkflags & GETBLK_NOWAIT) {
-				unrefblk(bp);
+				bqdrop(bp);
 				return(NULL);
 			}
 			lkflags = LK_EXCLUSIVE | LK_SLEEPFAIL;
@@ -2932,14 +2966,14 @@ loop:
 				lkflags |= LK_PCATCH;
 			error = BUF_TIMELOCK(bp, lkflags, "getblk", slptimeo);
 			if (error) {
-				unrefblk(bp);
+				bqdrop(bp);
 				if (error == ENOLCK)
 					goto loop;
 				return (NULL);
 			}
 			/* buffer may have changed on us */
 		}
-		unrefblk(bp);
+		bqdrop(bp);
 
 		/*
 		 * Once the buffer has been locked, make sure we didn't race

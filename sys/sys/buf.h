@@ -177,7 +177,7 @@ struct buf {
 	int	b_kvasize;		/* size of kva for buffer */
 	int	b_dirtyoff;		/* Offset in buffer of dirty region. */
 	int	b_dirtyend;		/* Offset of end of dirty region. */
-	int	b_refs;			/* FINDBLK_REF / unrefblk() */
+	int	b_refs;			/* FINDBLK_REF/bqhold()/bqdrop() */
 	struct	xio b_xio;  		/* data buffer page list management */
 	struct  bio_ops *b_ops;		/* bio_ops used w/ b_dep */
 	struct	workhead b_dep;		/* List of filesystem dependencies. */
@@ -424,8 +424,9 @@ struct buf *findblk (struct vnode *, off_t, int);
 struct buf *getblk (struct vnode *, off_t, int, int, int);
 struct buf *getcacheblk (struct vnode *, off_t, int);
 struct buf *geteblk (int);
-void unrefblk(struct buf *bp);
-void regetblk(struct buf *bp);
+void	bqhold(struct buf *bp);
+void	bqdrop(struct buf *bp);
+void	regetblk(struct buf *bp);
 struct bio *push_bio(struct bio *);
 struct bio *pop_bio(struct bio *);
 int	biowait (struct bio *, const char *);

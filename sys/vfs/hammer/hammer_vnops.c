@@ -426,13 +426,23 @@ skip:
 			n = (int)(ip->ino_data.size - uio->uio_offset);
 		if (got_fstoken)
 			lwkt_reltoken(&hmp->fs_token);
+
+		/*
+		 * Set B_AGE, data has a lower priority than meta-data.
+		 *
+		 * Use a hold/unlock/drop sequence to run the uiomove
+		 * with the buffer unlocked, avoiding deadlocks against
+		 * read()s on mmap()'d spaces.
+		 */
+		bp->b_flags |= B_AGE;
+		bqhold(bp);
+		bqrelse(bp);
 		error = uiomove((char *)bp->b_data + offset, n, uio);
+		bqdrop(bp);
+
 		if (got_fstoken)
 			lwkt_gettoken(&hmp->fs_token);
 
-		/* data has a lower priority then meta-data */
-		bp->b_flags |= B_AGE;
-		bqrelse(bp);
 		if (error)
 			break;
 		hammer_stats_file_read += n;
