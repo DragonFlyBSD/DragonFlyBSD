@@ -46,7 +46,7 @@
 .Sh SYNOPSIS
 .In sys/thread.h
 .Ft void
-.Fn lwkt_token_init "struct lwkt_token *tok" "int mpsafe"
+.Fn lwkt_token_init "struct lwkt_token *tok" "char *desc"
 .Ft void
 .Fn lwkt_token_uninit "struct lwkt_token *tok"
 .Ft void
@@ -77,11 +77,9 @@ is implemented by a set of statically allocated tokens and a hash function.
 .Pp
 The
 .Fn lwkt_token_init
-function is called to initialize a token.
-If
-.Fa mpsafe
-is 0 the MP lock is taken before acquiring the token and released after
-releasing the token.
+function is called to initialize a token. The
+.Fa desc
+argument specifies the wait string displayed when waiting for the token.
 The
 .Fn lwkt_token_uninit
 function is called to de-initialize one.
@@ -124,7 +122,7 @@ struct protected_data pdata;
 void
 init(void)
 {
-	lwkt_token_init(&pdata.tok ,1);
+	lwkt_token_init(&pdata.tok, "example");
 	pdata.data = 0;
 }
 
