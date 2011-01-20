@@ -2805,6 +2805,7 @@ struct netmsg_hashlookup {
 	sa_family_t		nm_af;
 };
 
+#ifdef PF_SOCKET_LOOKUP_DOMSG
 static void
 in_pcblookup_hash_handler(netmsg_t msg)
 {
@@ -2822,6 +2823,8 @@ in_pcblookup_hash_handler(netmsg_t msg)
 #endif /* INET6 */
 	lwkt_replymsg(&rmsg->base.lmsg, 0);
 }
+#endif	/* PF_SOCKET_LOOKUP_DOMSG */
+
 #endif /* SMP */
 
 int
@@ -2833,7 +2836,9 @@ pf_socket_lookup(int direction, struct pf_pdesc *pd)
 	struct inpcb		*inp;
 #ifdef SMP
 	struct netmsg_hashlookup *msg = NULL;
+#ifdef PF_SOCKET_LOOKUP_DOMSG
 	struct netmsg_hashlookup msg0;
+#endif
 #endif
 	int			 pi_cpu = 0;
 
@@ -2870,6 +2875,21 @@ pf_socket_lookup(int direction, struct pf_pdesc *pd)
 		 * Prepare a msg iff data belongs to another CPU.
 		 */
 		if (pi_cpu != mycpu->gd_cpuid) {
+#ifdef PF_SOCKET_LOOKUP_DOMSG
+			/*
+			 * NOTE:
+			 *
+			 * Following lwkt_domsg() is dangerous and could
+			 * lockup the network system, e.g.
+			 *
+			 * On 2 CPU system:
+			 * netisr0 domsg to netisr1 (due to lookup)
+			 * netisr1 domsg to netisr0 (due to lookup)
+			 *
+			 * We simply return -1 here, since we are probably
+			 * called before NAT, so the TCP packet should
+			 * already be on the correct CPU.
+			 */
 			msg = &msg0;
 			netmsg_init(&msg->base, NULL, &curthread->td_msgport,
 				    0, in_pcblookup_hash_handler);
@@ -2880,6 +2900,13 @@ pf_socket_lookup(int direction, struct pf_pdesc *pd)
 			msg->nm_daddr = daddr;
 			msg->nm_dport = dport;
 			msg->nm_af = pd->af;
+#else	/* !PF_SOCKET_LOOKUP_DOMSG */
+			kprintf("pf_socket_lookup: tcp packet not on the "
+				"correct cpu %d, cur cpu %d\n",
+				pi_cpu, mycpuid);
+			print_backtrace(-1);
+			return -1;
+#endif	/* PF_SOCKET_LOOKUP_DOMSG */
 		}
 #endif /* SMP */
 		break;
