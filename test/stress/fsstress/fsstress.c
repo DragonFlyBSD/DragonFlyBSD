@@ -1408,8 +1408,8 @@ allocsp_f(int opno, long r)
 	fl.l_len = 0;
 	e = ioctl(fd, XFS_IOC_ALLOCSP64, &fl) < 0 ? errno : 0;
 	if (v)
-		printf("%d/%d: ioctl(XFS_IOC_ALLOCSP64) %s %lld 0 %d\n",
-			procid, opno, f.path, off, e);
+		printf("%d/%d: ioctl(XFS_IOC_ALLOCSP64) %s %jd 0 %d\n",
+			procid, opno, f.path, (intmax_t)off, e);
 	free_pathname(&f);
 	close(fd);
 }
@@ -1543,8 +1543,8 @@ bulkstat_f(int opno, long r)
 		total += count;
 	free(t);
 	if (verbose)
-		printf("%d/%d: bulkstat nent %d total %lld\n",
-			procid, opno, nent, total);
+		printf("%d/%d: bulkstat nent %d total %jd\n",
+			procid, opno, nent, (intmax_t)total);
 	close(fd);
 }
 
@@ -1598,8 +1598,8 @@ bulkstat1_f(int opno, long r)
         
 	e = ioctl(fd, XFS_IOC_FSBULKSTAT_SINGLE, &bsr) < 0 ? errno : 0;
 	if (v)
-		printf("%d/%d: bulkstat1 %s ino %lld %d\n", 
-                    procid, opno, good?"real":"random", (int64_t)ino, e);
+		printf("%d/%d: bulkstat1 %s ino %jd %d\n",
+                    procid, opno, good?"real":"random", (intmax_t)ino, e);
 	close(fd);
 }
 
@@ -1803,8 +1803,8 @@ dread_f(int opno, long r)
 	e = read(fd, buf, len) < 0 ? errno : 0;
 	free(buf);
 	if (v)
-		printf("%d/%d: dread %s [%lld,%d] %d\n",
-			procid, opno, f.path, off, len, e);
+		printf("%d/%d: dread %s [%jd,%zd] %d\n",
+			procid, opno, f.path, (intmax_t)off, len, e);
 	free_pathname(&f);
 	close(fd);
 }
@@ -1886,8 +1886,8 @@ dwrite_f(int opno, long r)
 	e = write(fd, buf, len) < 0 ? errno : 0;
 	free(buf);
 	if (v)
-		printf("%d/%d: dwrite %s [%lld,%d] %d\n",
-			procid, opno, f.path, off, len, e);
+		printf("%d/%d: dwrite %s [%jd,%zd] %d\n",
+			procid, opno, f.path, (intmax_t)off, len, e);
 	free_pathname(&f);
 	close(fd);
 }
@@ -1971,8 +1971,8 @@ freesp_f(int opno, long r)
 	fl.l_len = 0;
 	e = ioctl(fd, XFS_IOC_FREESP64, &fl) < 0 ? errno : 0;
 	if (v)
-		printf("%d/%d: ioctl(XFS_IOC_FREESP64) %s %lld 0 %d\n",
-			procid, opno, f.path, off, e);
+		printf("%d/%d: ioctl(XFS_IOC_FREESP64) %s %jd 0 %d\n",
+			procid, opno, f.path, (intmax_t)off, e);
 	free_pathname(&f);
 	close(fd);
 }
@@ -2213,8 +2213,8 @@ read_f(int opno, long r)
 	e = read(fd, buf, len) < 0 ? errno : 0;
 	free(buf);
 	if (v)
-		printf("%d/%d: read %s [%lld,%d] %d\n",
-			procid, opno, f.path, off, len, e);
+		printf("%d/%d: read %s [%jd,%zd] %d\n",
+			procid, opno, f.path, (intmax_t)off, len, e);
 	free_pathname(&f);
 	close(fd);
 }
@@ -2344,8 +2344,9 @@ resvsp_f(int opno, long r)
 	fl.l_len = (off64_t)(random() % (1024 * 1024));
 	e = ioctl(fd, XFS_IOC_RESVSP64, &fl) < 0 ? errno : 0;
 	if (v)
-		printf("%d/%d: ioctl(XFS_IOC_RESVSP64) %s %lld %lld %d\n",
-			procid, opno, f.path, off, fl.l_len, e);
+		printf("%d/%d: ioctl(XFS_IOC_RESVSP64) %s %jd %jd %d\n",
+			procid, opno, f.path, (intmax_t)off,
+			(intmax_t)fl.l_len, e);
 	free_pathname(&f);
 	close(fd);
 }
@@ -2485,8 +2486,8 @@ truncate_f(int opno, long r)
 	e = truncate64_path(&f, off) < 0 ? errno : 0;
 	check_cwd();
 	if (v)
-		printf("%d/%d: truncate %s %lld %d\n", procid, opno, f.path,
-			off, e);
+		printf("%d/%d: truncate %s %jd %d\n",
+			procid, opno, f.path, (intmax_t)off, e);
 	free_pathname(&f);
 }
 
@@ -2561,8 +2562,9 @@ unresvsp_f(int opno, long r)
 	fl.l_len = (off64_t)(random() % (1 << 20));
 	e = ioctl(fd, XFS_IOC_UNRESVSP64, &fl) < 0 ? errno : 0;
 	if (v)
-		printf("%d/%d: ioctl(XFS_IOC_UNRESVSP64) %s %lld %lld %d\n",
-			procid, opno, f.path, off, fl.l_len, e);
+		printf("%d/%d: ioctl(XFS_IOC_UNRESVSP64) %s %jd %jd %d\n",
+			procid, opno, f.path, (intmax_t)off,
+			(intmax_t)fl.l_len, e);
 	free_pathname(&f);
 	close(fd);
 }
@@ -2616,8 +2618,8 @@ write_f(int opno, long r)
 	e = write(fd, buf, len) < 0 ? errno : 0;
 	free(buf);
 	if (v)
-		printf("%d/%d: write %s [%lld,%d] %d\n",
-			procid, opno, f.path, off, len, e);
+		printf("%d/%d: write %s [%jd,%zd] %d\n",
+			procid, opno, f.path, (intmax_t)off, len, e);
 	free_pathname(&f);
 	close(fd);
 }
