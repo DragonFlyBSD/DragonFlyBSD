@@ -2833,6 +2833,7 @@ pf_socket_lookup(int direction, struct pf_pdesc *pd)
 	struct inpcb		*inp;
 #ifdef SMP
 	struct netmsg_hashlookup *msg = NULL;
+	struct netmsg_hashlookup msg0;
 #endif
 	int			 pi_cpu = 0;
 
@@ -2869,8 +2870,8 @@ pf_socket_lookup(int direction, struct pf_pdesc *pd)
 		 * Prepare a msg iff data belongs to another CPU.
 		 */
 		if (pi_cpu != mycpu->gd_cpuid) {
-			msg = kmalloc(sizeof(*msg), M_LWKTMSG, M_INTWAIT);
-			netmsg_init(&msg->base, NULL, &netisr_afree_rport,
+			msg = &msg0;
+			netmsg_init(&msg->base, NULL, &curthread->td_msgport,
 				    0, in_pcblookup_hash_handler);
 			msg->nm_pinp = &inp;
 			msg->nm_pcbinfo = pi;
