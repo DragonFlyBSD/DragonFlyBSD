@@ -38,6 +38,7 @@
 #define	_SYS_IMGACT_H_
 
 #include <sys/mount.h>
+#include <cpu/lwbuf.h>
 
 #define MAXSHELLCMDLEN	128
 
@@ -65,6 +66,7 @@ struct image_params {
 	char interpreter_name[MAXSHELLCMDLEN]; /* name of the interpreter */
 	void *auxargs;		/* ELF Auxinfo structure pointer */
 	struct lwbuf *firstpage;	/* first page that we mapped */
+	struct lwbuf firstpage_cache;
 	unsigned long ps_strings; /* PS_STRINGS for BSD/OS binaries */
 };
 

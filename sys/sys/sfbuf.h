@@ -47,8 +47,9 @@
 #endif
 
 struct sf_buf {
-	struct	lwbuf *lwbuf;	/* lightweight buffer */
-	struct	kref ref;
+	struct lwbuf *lwbuf;	/* lightweight buffer */
+	struct kref ref;
+	struct lwbuf lwbuf_cache;
 };
 
 #define sf_buf_kva(sf)	(lwbuf_kva((sf)->lwbuf))

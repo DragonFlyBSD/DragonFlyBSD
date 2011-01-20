@@ -149,7 +149,8 @@ static void
 vm_pagezero(void __unused *arg)
 {
 	vm_page_t m = NULL;
-	struct lwbuf *buf = NULL;
+	struct lwbuf *lwb = NULL;
+	struct lwbuf lwb_cache;
 	enum zeroidle_state state = STATE_IDLE;
 	char *pg = NULL;
 	int npages = 0;
@@ -198,8 +199,8 @@ vm_pagezero(void __unused *arg)
 					state = STATE_IDLE;
 				} else {
 					state = STATE_ZERO_PAGE;
-					buf = lwbuf_alloc(m);
-					pg = (char *)lwbuf_kva(buf);
+					lwb = lwbuf_alloc(m, &lwb_cache);
+					pg = (char *)lwbuf_kva(lwb);
 					i = 0;
 				}
 			}
@@ -219,7 +220,7 @@ vm_pagezero(void __unused *arg)
 			state = STATE_RELEASE_PAGE;
 			break;
 		case STATE_RELEASE_PAGE:
-			lwbuf_free(buf);
+			lwbuf_free(lwb);
 			vm_page_flag_set(m, PG_ZERO);
 			vm_page_free_toq(m);
 			state = STATE_GET_PAGE;

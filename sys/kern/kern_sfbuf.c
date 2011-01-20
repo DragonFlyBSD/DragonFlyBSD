@@ -87,7 +87,7 @@ sf_buf_alloc(struct vm_page *m)
 	if ((sf = objcache_get(sf_buf_cache, M_WAITOK)) == NULL)
 		goto done;
 
-	if ((sf->lwbuf = lwbuf_alloc(m)) == NULL) {
+	if ((sf->lwbuf = lwbuf_alloc(m, &sf->lwbuf_cache)) == NULL) {
 		objcache_put(sf_buf_cache, sf);
 		sf = NULL;
 		goto done;

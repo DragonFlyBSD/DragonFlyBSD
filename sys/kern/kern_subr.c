@@ -448,6 +448,7 @@ iovec_copyin(struct iovec *uiov, struct iovec **kiov, struct iovec *siov,
 int
 uiomove_fromphys(vm_page_t *ma, vm_offset_t offset, size_t n, struct uio *uio)
 {
+	struct lwbuf lwb_cache;
 	struct lwbuf *lwb;
 	struct thread *td = curthread;
 	struct iovec *iov;
@@ -481,7 +482,7 @@ uiomove_fromphys(vm_page_t *ma, vm_offset_t offset, size_t n, struct uio *uio)
 		page_offset = offset & PAGE_MASK;
 		cnt = min(cnt, PAGE_SIZE - page_offset);
 		m = ma[offset >> PAGE_SHIFT];
-		lwb = lwbuf_alloc(m);
+		lwb = lwbuf_alloc(m, &lwb_cache);
 		cp = (char *)lwbuf_kva(lwb) + page_offset;
 		switch (uio->uio_segflg) {
 		case UIO_USERSPACE:

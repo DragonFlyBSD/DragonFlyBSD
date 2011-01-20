@@ -100,13 +100,14 @@ static void umtx_sleep_page_action_cow(vm_page_t m, vm_page_action_t action);
 int
 sys_umtx_sleep(struct umtx_sleep_args *uap)
 {
-    int error = EBUSY;
+    struct lwbuf lwb_cache;
     struct lwbuf *lwb;
     struct vm_page_action action;
     vm_page_t m;
     void *waddr;
     int offset;
     int timeout;
+    int error = EBUSY;
 
     if (uap->timeout < 0)
 	return (EINVAL);
@@ -124,7 +125,7 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
 	error = EFAULT;
 	goto done;
     }
-    lwb = lwbuf_alloc(m);
+    lwb = lwbuf_alloc(m, &lwb_cache);
     offset = (vm_offset_t)uap->ptr & PAGE_MASK;
 
     /*
