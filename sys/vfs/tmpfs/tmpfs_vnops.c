@@ -303,6 +303,7 @@ tmpfs_getattr(struct vop_getattr_args *v)
 
 	node = VP_TO_TMPFS_NODE(vp);
 
+	lwkt_gettoken(&vp->v_mount->mnt_token);
 	tmpfs_update(vp);
 
 	vap->va_type = vp->v_type;
@@ -329,6 +330,8 @@ tmpfs_getattr(struct vop_getattr_args *v)
 	}
 	vap->va_bytes = round_page(node->tn_size);
 	vap->va_filerev = 0;
+
+	lwkt_reltoken(&vp->v_mount->mnt_token);
 
 	return 0;
 }
