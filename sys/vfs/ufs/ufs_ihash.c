@@ -68,7 +68,7 @@ ufs_ihashinit(void)
 		ihash <<= 1;
 	ihashtbl = kmalloc(sizeof(void *) * ihash, M_UFSIHASH, M_WAITOK|M_ZERO);
 	--ihash;
-	lwkt_token_init(&ufs_ihash_token, 1, "ufsihash");
+	lwkt_token_init(&ufs_ihash_token, "ufsihash");
 }
 
 int

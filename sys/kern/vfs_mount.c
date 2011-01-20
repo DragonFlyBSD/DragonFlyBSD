@@ -136,9 +136,9 @@ static TAILQ_HEAD(,bio_ops) bio_ops_list = TAILQ_HEAD_INITIALIZER(bio_ops_list);
 void
 vfs_mount_init(void)
 {
-	lwkt_token_init(&mountlist_token, 1, "mntlist");
-	lwkt_token_init(&mntvnode_token, 1, "mntvnode");
-	lwkt_token_init(&mntid_token, 1, "mntid");
+	lwkt_token_init(&mountlist_token, "mntlist");
+	lwkt_token_init(&mntvnode_token, "mntvnode");
+	lwkt_token_init(&mntid_token, "mntid");
 	TAILQ_INIT(&mountscan_list);
 	TAILQ_INIT(&mntvnodescan_list);
 	mount_init(&dummymount);
@@ -322,7 +322,7 @@ void
 mount_init(struct mount *mp)
 {
 	lockinit(&mp->mnt_lock, "vfslock", 0, 0);
-	lwkt_token_init(&mp->mnt_token, 1, "permnt");
+	lwkt_token_init(&mp->mnt_token, "permnt");
 
 	TAILQ_INIT(&mp->mnt_nvnodelist);
 	TAILQ_INIT(&mp->mnt_reservedvnlist);

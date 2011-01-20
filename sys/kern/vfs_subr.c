@@ -194,7 +194,7 @@ vfs_subr_init(void)
 		     KvaSize / factor2);
 	desiredvnodes = imax(desiredvnodes, maxproc * 8);
 
-	lwkt_token_init(&spechash_token, 1, "spechash");
+	lwkt_token_init(&spechash_token, "spechash");
 }
 
 /*

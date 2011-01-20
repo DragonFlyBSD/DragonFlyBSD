@@ -123,7 +123,7 @@ vfs_sync_init(void)
 	syncer_workitem_pending = hashinit(syncer_maxdelay, M_DEVBUF,
 					    &syncer_mask);
 	syncer_maxdelay = syncer_mask + 1;
-	lwkt_token_init(&syncer_token, 1, "syncer");
+	lwkt_token_init(&syncer_token, "syncer");
 }
 
 /*

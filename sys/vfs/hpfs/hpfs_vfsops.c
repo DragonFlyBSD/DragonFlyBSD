@@ -500,7 +500,7 @@ hpfs_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 	if (ino == (ino_t)hpmp->hpm_su.su_rootfno) 
 		vsetflags(vp, VROOT);
 
-	lwkt_token_init(&hp->h_interlock, 1, "hpfsilock");
+	lwkt_token_init(&hp->h_interlock, "hpfsilock");
 
 	hp->h_flag = H_INVAL;
 	hp->h_vp = vp;

@@ -249,7 +249,7 @@ ndis_create_kthreads(void)
 	struct ndis_req		*r;
 	int			i, error = 0;
 
-	lwkt_token_init(&ndis_thr_token, 1, "ndis");
+	lwkt_token_init(&ndis_thr_token, "ndis");
 
 	STAILQ_INIT(&ndis_ttodo);
 	STAILQ_INIT(&ndis_itodo);

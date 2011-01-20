@@ -91,7 +91,7 @@ rman_init(struct rman *rm)
 	if (once == 0) {
 		once = 1;
 		TAILQ_INIT(&rman_head);
-		lwkt_token_init(&rman_tok, 1, "rman");
+		lwkt_token_init(&rman_tok, "rman");
 	}
 
 	if (rm->rm_type == RMAN_UNINIT)
@@ -103,7 +103,7 @@ rman_init(struct rman *rm)
 	rm->rm_slock = kmalloc(sizeof *rm->rm_slock, M_RMAN, M_NOWAIT);
 	if (rm->rm_slock == NULL)
 		return ENOMEM;
-	lwkt_token_init(rm->rm_slock, 1, "rmanslock");
+	lwkt_token_init(rm->rm_slock, "rmanslock");
 
 	lwkt_gettoken(&rman_tok);
 	TAILQ_INSERT_TAIL(&rman_head, rm, rm_link);

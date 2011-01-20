@@ -139,7 +139,7 @@ struct bounce_zone {
 #endif
 
 static struct lwkt_token bounce_zone_tok =
-	LWKT_TOKEN_MP_INITIALIZER(bounce_zone_tok);
+	LWKT_TOKEN_INITIALIZER(bounce_zone_tok);
 static int busdma_zonecount;
 static STAILQ_HEAD(, bounce_zone) bounce_zone_list =
 	STAILQ_HEAD_INITIALIZER(bounce_zone_list);

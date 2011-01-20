@@ -1047,7 +1047,7 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 		TAILQ_INIT(&nmp->nm_reqtxq);
 		TAILQ_INIT(&nmp->nm_reqrxq);
 		mp->mnt_data = (qaddr_t)nmp;
-		lwkt_token_init(&nmp->nm_token, 1, "nfs_token");
+		lwkt_token_init(&nmp->nm_token, "nfs_token");
 	}
 	vfs_getnewfsid(mp);
 	nmp->nm_mountp = mp;

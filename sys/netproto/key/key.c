@@ -152,7 +152,7 @@ static LIST_HEAD(_acqtree, secacq) acqtree;		/* acquiring list */
 #endif
 static LIST_HEAD(_spacqtree, secspacq) spacqtree;	/* SP acquiring list */
 
-struct lwkt_token key_token = LWKT_TOKEN_MP_INITIALIZER(key_token);
+struct lwkt_token key_token = LWKT_TOKEN_INITIALIZER(key_token);
 
 struct key_cb key_cb;
 

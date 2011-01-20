@@ -218,7 +218,7 @@ SYSCTL_INT(_net_inet_ip, OID_AUTO, dispatch_software_count, CTLFLAG_RD,
 SYSCTL_INT(_net_inet_ip, OID_AUTO, dispatch_recheck_count, CTLFLAG_RD,
     &ip_dispatch_recheck, 0, "");
 
-static struct lwkt_token ipq_token = LWKT_TOKEN_MP_INITIALIZER(ipq_token);
+static struct lwkt_token ipq_token = LWKT_TOKEN_INITIALIZER(ipq_token);
 
 #ifdef DIAGNOSTIC
 static int ipprintfs = 0;

@@ -86,7 +86,7 @@ struct	inpcbinfo ripcbinfo;
 ip_fw_ctl_t *ip_fw_ctl_ptr;
 ip_dn_ctl_t *ip_dn_ctl_ptr;
 
-static struct lwkt_token raw_token = LWKT_TOKEN_MP_INITIALIZER(raw_token);
+static struct lwkt_token raw_token = LWKT_TOKEN_INITIALIZER(raw_token);
 
 
 /*

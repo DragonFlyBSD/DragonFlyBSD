@@ -104,7 +104,7 @@
 extern int ip_optcopy(struct ip *, struct ip *);
 extern int debug_pfugidhack;
 
-struct lwkt_token pf_token = LWKT_TOKEN_MP_INITIALIZER(pf_token);
+struct lwkt_token pf_token = LWKT_TOKEN_INITIALIZER(pf_token);
 
 #define DPFPRINTF(n, x)	if (pf_status.debug >= (n)) kprintf x
 

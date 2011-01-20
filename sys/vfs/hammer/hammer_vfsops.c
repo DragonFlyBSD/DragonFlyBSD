@@ -573,8 +573,8 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	RB_INIT(&hmp->lose_root);
 	TAILQ_INIT(&hmp->iorun_list);
 
-	lwkt_token_init(&hmp->fs_token, 1, "hammerfs");
-	lwkt_token_init(&hmp->io_token, 1, "hammerio");
+	lwkt_token_init(&hmp->fs_token, "hammerfs");
+	lwkt_token_init(&hmp->io_token, "hammerio");
 
 	lwkt_gettoken(&hmp->fs_token);
 

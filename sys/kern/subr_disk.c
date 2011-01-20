@@ -1379,7 +1379,7 @@ disk_init(void)
 					 objcache_malloc_free,
 					 &disk_msg_malloc_args);
 
-	lwkt_token_init(&disklist_token, 1, "disks");
+	lwkt_token_init(&disklist_token, "disks");
 
 	/*
 	 * Initialize the reply-only port which acts as a message drain

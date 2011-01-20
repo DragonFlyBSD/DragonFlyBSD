@@ -59,7 +59,7 @@
 static vm_zone_t nfsnode_zone;
 static LIST_HEAD(nfsnodehashhead, nfsnode) *nfsnodehashtbl;
 static u_long nfsnodehash;
-static lwkt_token nfsnhash_token = LWKT_TOKEN_MP_INITIALIZER(nfsnhash_token);
+static lwkt_token nfsnhash_token = LWKT_TOKEN_INITIALIZER(nfsnhash_token);
 static struct lock nfsnhash_lock;
 
 #define TRUE	1

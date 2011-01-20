@@ -103,7 +103,7 @@ int nfs_ticks;
  * Protect master lists only.  Primary protection uses the per-mount
  * and per nfssvc_sock tokens.
  */
-struct lwkt_token nfs_token = LWKT_TOKEN_MP_INITIALIZER(unp_token);
+struct lwkt_token nfs_token = LWKT_TOKEN_INITIALIZER(unp_token);
 
 static int nfs_pbuf_freecnt = -1;	/* start out unlimited */
 

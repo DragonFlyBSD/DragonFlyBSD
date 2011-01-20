@@ -94,7 +94,7 @@ mpipe_init(malloc_pipe_t mpipe, malloc_type_t type, int bytes,
 	++mpipe->total_count;
     }
 
-    lwkt_token_init(&mpipe->token, 1, "mpipe token");
+    lwkt_token_init(&mpipe->token, "mpipe token");
 }
 
 /*

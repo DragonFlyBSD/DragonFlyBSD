@@ -412,7 +412,7 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 	mtx_init(&slp->ns_solock);
 	STAILQ_INIT(&slp->ns_rec);
 	TAILQ_INIT(&slp->ns_uidlruhead);
-	lwkt_token_init(&slp->ns_token, 1, "nfssrv_token");
+	lwkt_token_init(&slp->ns_token, "nfssrv_token");
 
 	lwkt_gettoken(&nfs_token);
 	nfsrv_slpref(slp);

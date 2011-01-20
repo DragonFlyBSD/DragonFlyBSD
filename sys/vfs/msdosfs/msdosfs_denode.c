@@ -122,7 +122,7 @@ msdosfs_init(struct vfsconf *vfsp)
 	dehashtbl = kmalloc(sizeof(void *) * dehash, M_MSDOSFSMNT,
 			   M_WAITOK|M_ZERO);
 	--dehash;
-	lwkt_token_init(&dehash_token, 1, "msdosihash");
+	lwkt_token_init(&dehash_token, "msdosihash");
 	return (0);
 }
 
