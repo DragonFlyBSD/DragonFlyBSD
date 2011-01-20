@@ -54,7 +54,6 @@
 #include <cpu/lwbuf.h>
 
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
 
 /*
  * Implement the pre-zeroed page mechanism.

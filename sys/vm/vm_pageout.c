@@ -99,7 +99,6 @@
 #include <vm/vm_extern.h>
 
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
 #include <vm/vm_page2.h>
 
 /*

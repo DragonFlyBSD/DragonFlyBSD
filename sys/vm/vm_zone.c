@@ -35,7 +35,6 @@
 #include <vm/vm_zone.h>
 
 #include <sys/spinlock2.h>
-#include <sys/mplock2.h>
 
 static MALLOC_DEFINE(M_ZONE, "ZONE", "Zone header");
 
