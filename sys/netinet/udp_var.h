@@ -160,6 +160,8 @@ struct lwkt_port	*udp_cport (int);
 
 void			udbinfo_lock(void);
 void			udbinfo_unlock(void);
+void			udbinfo_barrier_set(void);
+void			udbinfo_barrier_rem(void);
 
 #endif
 

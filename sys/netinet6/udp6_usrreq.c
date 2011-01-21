@@ -556,7 +556,10 @@ udp6_abort(netmsg_t msg)
 	inp = so->so_pcb;
 	if (inp) {
 		soisdisconnected(so);
+
+		udbinfo_barrier_set();
 		in6_pcbdetach(inp);
+		udbinfo_barrier_rem();
 		error = 0;
 	} else {
 		error = EINVAL;
@@ -584,11 +587,14 @@ udp6_attach(netmsg_t msg)
 		if (error)
 			goto out;
 	}
-	crit_enter();
+
+	udbinfo_barrier_set();
 	error = in_pcballoc(so, &udbinfo);
-	crit_exit();
+	udbinfo_barrier_rem();
+
 	if (error)
 		goto out;
+
 	sosetport(so, cpu_portfn(0));
 	inp = (struct inpcb *)so->so_pcb;
 	inp->inp_vflag |= INP_IPV6;
@@ -648,7 +654,10 @@ udp6_bind(netmsg_t msg)
 	if (error == 0) {
 		if (IN6_IS_ADDR_UNSPECIFIED(&sin6_p->sin6_addr))
 			inp->inp_flags |= INP_WASBOUND_NOTANY;
+
+		udbinfo_barrier_set();
 		in_pcbinswildcardhash(inp);
+		udbinfo_barrier_rem();
 	}
 out:
 	lwkt_replymsg(&msg->bind.base.lmsg, error);
@@ -662,6 +671,8 @@ udp6_connect(netmsg_t msg)
 	struct thread *td = msg->connect.nm_td;
 	struct inpcb *inp;
 	int error;
+
+	udbinfo_barrier_set();
 
 	inp = so->so_pcb;
 	if (inp == NULL) {
@@ -722,6 +733,7 @@ udp6_connect(netmsg_t msg)
 		in_pcbinswildcardhash(inp);
 	}
 out:
+	udbinfo_barrier_rem();
 	lwkt_replymsg(&msg->connect.base.lmsg, error);
 }
 
@@ -734,9 +746,9 @@ udp6_detach(netmsg_t msg)
 
 	inp = so->so_pcb;
 	if (inp) {
-		crit_enter();
+		udbinfo_barrier_set();
 		in6_pcbdetach(inp);
-		crit_exit();
+		udbinfo_barrier_rem();
 		error = 0;
 	} else {
 		error = EINVAL;
@@ -768,9 +780,9 @@ udp6_disconnect(netmsg_t msg)
 	if (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_faddr)) {
 		error = ENOTCONN;
 	} else {
-		crit_enter();
+		udbinfo_barrier_set();
 		in6_pcbdisconnect(inp);
-		crit_exit();
+		udbinfo_barrier_rem();
 		soclrstate(so, SS_ISCONNECTED);		/* XXX */
 		error = 0;
 	}

@@ -183,8 +183,6 @@ static int udp_connect_oncpu(struct socket *so, struct thread *td,
 			struct sockaddr_in *sin, struct sockaddr_in *if_sin);
 static int udp_output (struct inpcb *, struct mbuf *, struct sockaddr *,
 			struct mbuf *, struct thread *);
-static void udbinfo_barrier_set(void);
-static void udbinfo_barrier_rem(void);
 
 void
 udp_init(void)
@@ -1291,14 +1289,14 @@ udbinfo_unlock(void)
 	lwkt_serialize_exit(&udbinfo_slize);
 }
 
-static void
+void
 udbinfo_barrier_set(void)
 {
 	netisr_barrier_set(udbinfo_br);
 	udbinfo_lock();
 }
 
-static void
+void
 udbinfo_barrier_rem(void)
 {
 	udbinfo_unlock();
