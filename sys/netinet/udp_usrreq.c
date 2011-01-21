@@ -719,11 +719,28 @@ done:
 static int
 udp_pcblist(SYSCTL_HANDLER_ARGS)
 {
-	int error;
+	struct xinpcb *xi;
+	int error, nxi, i;
 
 	udbinfo_lock();
-	error = in_pcblist_global_nomarker(oidp, arg1, arg2, req);
+	error = in_pcblist_global_nomarker(oidp, arg1, arg2, req, &xi, &nxi);
 	udbinfo_unlock();
+
+	if (error) {
+		KKASSERT(xi == NULL);
+		return error;
+	}
+	if (nxi == 0) {
+		KKASSERT(xi == NULL);
+		return 0;
+	}
+
+	for (i = 0; i < nxi; ++i) {
+		error = SYSCTL_OUT(req, &xi[i], sizeof(xi[i]));
+		if (error)
+			break;
+	}
+	kfree(xi, M_TEMP);
 
 	return error;
 }
