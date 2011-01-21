@@ -830,11 +830,12 @@ lwkt_cpusync_remote2(lwkt_cpusync_t cs)
 	ip->ip_arg2[wi] = 0;
 	cpu_sfence();
 	++ip->ip_windex;
-	if ((ip->ip_windex & 0xFFFFFF) == 0)
+	if (ipiq_debug && (ip->ip_windex & 0xFFFFFF) == 0) {
 		kprintf("cpu %d cm=%016jx %016jx f=%p\n",
 			gd->gd_cpuid,
 			(intmax_t)cs->cs_mask, (intmax_t)cs->cs_mack,
 			cs->cs_func);
+	}
     }
 }
 
