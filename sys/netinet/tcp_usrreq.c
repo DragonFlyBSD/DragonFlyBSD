@@ -381,6 +381,7 @@ tcp_usr_listen(netmsg_t msg)
 	}
 
 	tp->t_state = TCPS_LISTEN;
+	tp->t_flags |= TF_SYNCACHE;
 	tp->tt_msg = NULL; /* Catch any invalid timer usage */
 #ifdef SMP
 	/*
