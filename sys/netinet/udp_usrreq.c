@@ -734,6 +734,7 @@ static int
 udp_getcred(SYSCTL_HANDLER_ARGS)
 {
 	struct sockaddr_in addrs[2];
+	struct ucred cred0, *cred = NULL;
 	struct inpcb *inp;
 	int error;
 
@@ -749,12 +750,18 @@ udp_getcred(SYSCTL_HANDLER_ARGS)
 				addrs[0].sin_addr, addrs[0].sin_port, 1, NULL);
 	if (inp == NULL || inp->inp_socket == NULL) {
 		error = ENOENT;
-		goto out;
+	} else {
+		if (inp->inp_socket->so_cred != NULL) {
+			cred0 = *(inp->inp_socket->so_cred);
+			cred = &cred0;
+		}
 	}
-	error = SYSCTL_OUT(req, inp->inp_socket->so_cred, sizeof(struct ucred));
-out:
 	udbinfo_unlock();
-	return (error);
+
+	if (error)
+		return error;
+
+	return SYSCTL_OUT(req, cred, sizeof(struct ucred));
 }
 
 SYSCTL_PROC(_net_inet_udp, OID_AUTO, getcred, CTLTYPE_OPAQUE|CTLFLAG_RW,
