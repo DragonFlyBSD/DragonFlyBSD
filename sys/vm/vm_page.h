@@ -459,10 +459,6 @@ vm_page_io_finish(vm_page_t m)
 #define VM_PAGE_BITS_ALL 0xff
 #endif
 
-#if PAGE_SIZE == 8192
-#define VM_PAGE_BITS_ALL 0xffff
-#endif
-
 /*
  * Note: the code will always use nominally free pages from the free list
  * before trying other flag-specified sources. 
