@@ -1184,7 +1184,7 @@ struct hshentry * delta;
 
         num=delta->num;
 	for (trail = &Locks;  (next = *trail);  trail = &next->nextlock)
-	    if (next->delta == delta)
+	    if (next->delta == delta) {
 		if (strcmp(getcaller(), next->login) == 0) {
 		    /* We found a lock on delta by caller; delete it.  */
 		    *trail = next->nextlock;
@@ -1194,6 +1194,7 @@ struct hshentry * delta;
 		    rcserror("revision %s locked by %s", num, next->login);
 		    return -1;
                 }
+	    }
 	if (!StrictLocks && myself(RCSstat.st_uid))
 	    return 0;
 	rcserror("no lock set by %s for revision %s", getcaller(), num);
