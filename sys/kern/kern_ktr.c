@@ -228,7 +228,9 @@ void
 ktr_resync_callback(void *dummy __unused)
 {
 	struct lwkt_cpusync cs;
+#if KTR_TESTLOG
 	int count;
+#endif
 
 	KKASSERT(mycpu->gd_cpuid == 0);
 
