@@ -132,9 +132,10 @@ madt_map(vm_paddr_t pa, int offset, vm_offset_t length)
 		va += PAGE_SIZE;
 		pa += PAGE_SIZE;
 		length -= PAGE_SIZE;
-		pmap_kenter(va, pa);
+		pmap_kenter_quick(va, pa);
 		cpu_invlpg((void *)va);
 	}
+	smp_invltlb();
 	return (data);
 }
 

@@ -135,6 +135,7 @@ madt_map(vm_paddr_t pa, int offset, vm_offset_t length)
 		pmap_kenter(va, pa);
 		cpu_invlpg((void *)va);
 	}
+	smp_invltlb();
 	return (data);
 }
 

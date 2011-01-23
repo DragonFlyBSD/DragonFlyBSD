@@ -140,8 +140,11 @@ blk_write(struct dumperinfo *di, char *ptr, vm_paddr_t pa, size_t sz)
 			ptr += len;
 			sz -= len;
 		} else {
-			for (i = 0; i < len; i += PAGE_SIZE)
-				dump_va = pmap_kenter_temporary(pa + i, (i + fragsz) >> PAGE_SHIFT);
+			for (i = 0; i < len; i += PAGE_SIZE) {
+				dump_va = pmap_kenter_temporary(pa + i,
+						(i + fragsz) >> PAGE_SHIFT);
+			}
+			smp_invltlb();
 			fragsz += len;
 			pa += len;
 			sz -= len;
@@ -216,6 +219,7 @@ minidumpsys(struct dumperinfo *di)
 		if ((pd[j] & PG_V) == PG_V) {
 			/* set bit for each valid page in this 2MB block */
 			pt = pmap_kenter_temporary(pd[j] & PG_FRAME, 0);
+			smp_invltlb();
 			for (k = 0; k < NPTEPG; k++) {
 				if ((pt[k] & PG_V) == PG_V) {
 					pa = pt[k] & PG_FRAME;

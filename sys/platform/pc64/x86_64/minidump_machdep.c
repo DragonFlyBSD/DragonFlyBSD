@@ -106,7 +106,7 @@ blk_write(struct dumperinfo *di, char *ptr, vm_paddr_t pa, size_t sz)
 	int error, i, c;
 
 	error = 0;
-	if ((sz % PAGE_SIZE) != 0) {
+	if ((sz & PAGE_MASK)) {
 		kprintf("size not page aligned\n");
 		return (EINVAL);
 	}
@@ -114,12 +114,15 @@ blk_write(struct dumperinfo *di, char *ptr, vm_paddr_t pa, size_t sz)
 		kprintf("can't have both va and pa!\n");
 		return (EINVAL);
 	}
-	if (pa != 0 && (((uintptr_t)ptr) % PAGE_SIZE) != 0) {
+	if (pa != 0 && (((uintptr_t)pa) & PAGE_MASK) != 0) {
 		kprintf("address not page aligned\n");
 		return (EINVAL);
 	}
 	if (ptr != NULL) {
-		/* If we're doing a virtual dump, flush any pre-existing pa pages */
+		/*
+		 * If we're doing a virtual dump, flush any
+		 * pre-existing pa pages
+		 */
 		error = blk_flush(di);
 		if (error)
 			return (error);
@@ -135,15 +138,20 @@ blk_write(struct dumperinfo *di, char *ptr, vm_paddr_t pa, size_t sz)
 			counter &= (1<<24) - 1;
 		}
 		if (ptr) {
+			/*kprintf("s");*/
 			error = dev_ddump(di->priv, ptr, 0, dumplo, len);
+			/* kprintf("t");*/
 			if (error)
 				return (error);
 			dumplo += len;
 			ptr += len;
 			sz -= len;
 		} else {
-			for (i = 0; i < len; i += PAGE_SIZE)
-				dump_va = pmap_kenter_temporary(pa + i, (i + fragsz) >> PAGE_SHIFT);
+			for (i = 0; i < len; i += PAGE_SIZE) {
+				dump_va = pmap_kenter_temporary(pa + i,
+						(i + fragsz) >> PAGE_SHIFT);
+			}
+			smp_invltlb();
 			fragsz += len;
 			pa += len;
 			sz -= len;
@@ -153,14 +161,14 @@ blk_write(struct dumperinfo *di, char *ptr, vm_paddr_t pa, size_t sz)
 					return (error);
 			}
 		}
-
-		/* Check for user abort. */
-		c = cncheckc();
-		if (c == 0x03)
-			return (ECANCELED);
-		if (c != -1)
-			kprintf(" (CTRL-C to abort) ");
 	}
+
+	/* Check for user abort. */
+	c = cncheckc();
+	if (c == 0x03)
+		return (ECANCELED);
+	if (c != -1)
+		kprintf(" (CTRL-C to abort) ");
 
 	return (0);
 }

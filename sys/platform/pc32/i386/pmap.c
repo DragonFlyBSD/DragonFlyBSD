@@ -2485,12 +2485,14 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
  * Make a temporary mapping for a physical address.  This is only intended
  * to be used for panic dumps.
  *
+ * The caller is responsible for calling smp_invltlb().
+ *
  * No requirements.
  */
 void *
 pmap_kenter_temporary(vm_paddr_t pa, long i)
 {
-	pmap_kenter((vm_offset_t)crashdumpmap + (i * PAGE_SIZE), pa);
+	pmap_kenter_quick((vm_offset_t)crashdumpmap + (i * PAGE_SIZE), pa);
 	return ((void *)crashdumpmap);
 }
 

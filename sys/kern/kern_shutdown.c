@@ -790,8 +790,12 @@ panic(const char *fmt, ...)
 		Debugger("panic");
 	else
 #endif
+#ifdef SMP
 	if (newpanic)
 		stop_cpus(mycpu->gd_other_cpus);
+#else
+	;
+#endif
 	boot(bootopt);
 }
 
