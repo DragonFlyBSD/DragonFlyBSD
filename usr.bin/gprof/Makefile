@@ -7,6 +7,7 @@ SRCS=	gprof.c aout.c arcs.c dfn.c elf.c lookup.c i386.c hertz.c \
 	printgprof.c printlist.c
 FILES=	gprof.flat gprof.callg
 FILESDIR=	${SHAREDIR}/misc
+CSTD?=	gnu89
 WARNS?=	0
 
 .include <bsd.prog.mk>
