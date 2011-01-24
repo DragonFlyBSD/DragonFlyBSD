@@ -31,7 +31,6 @@ typedef struct TOTALDELAY {
  */
 extern int	adjkerntz;
 extern int	disable_rtc_set;
-extern int	statclock_disable;
 extern u_int	timer_freq;
 extern int	timer0_max_count;
 extern int	tsc_present;

@@ -112,7 +112,6 @@ static uint16_t i8254_walltimer_cntr;
 
 int	adjkerntz;		/* local offset from GMT in seconds */
 int	disable_rtc_set;	/* disable resettodr() if != 0 */
-int	statclock_disable = 1;	/* we don't use the statclock right now */
 int	tsc_present;
 int64_t	tsc_frequency;
 int	tsc_is_broken;
@@ -1035,7 +1034,7 @@ resettodr(void)
 /*
  * Start both clocks running.  DragonFly note: the stat clock is no longer
  * used.  Instead, 8254 based systimers are used for all major clock
- * interrupts.  statclock_disable is set by default.
+ * interrupts.
  */
 static void
 i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
@@ -1054,19 +1053,13 @@ i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 		return;
 	}
 
-	if (statclock_disable) {
-		/*
-		 * The stat interrupt mask is different without the
-		 * statistics clock.  Also, don't set the interrupt
-		 * flag which would normally cause the RTC to generate
-		 * interrupts.
-		 */
-		rtc_statusb = RTCSB_24HR;
-	} else {
-	        /* Setting stathz to nonzero early helps avoid races. */
-		stathz = RTC_NOPROFRATE;
-		profhz = RTC_PROFRATE;
-        }
+	/*
+	 * The stat interrupt mask is different without the
+	 * statistics clock.  Also, don't set the interrupt
+	 * flag which would normally cause the RTC to generate
+	 * interrupts.
+	 */
+	rtc_statusb = RTCSB_24HR;
 
 	/* Finish initializing 8253 timer 0. */
 #ifdef SMP /* APIC-IO */
@@ -1104,26 +1097,6 @@ if (apic_io_enable) {
 	/* Initialize RTC. */
 	writertc(RTC_STATUSA, rtc_statusa);
 	writertc(RTC_STATUSB, RTCSB_24HR);
-
-	if (statclock_disable == 0) {
-		diag = rtcin(RTC_DIAG);
-		if (diag != 0)
-			kprintf("RTC BIOS diagnostic error %b\n", diag, RTCDG_BITS);
-
-#ifdef SMP /* APIC-IO */
-if (apic_io_enable) {
-		if (isa_apic_irq(8) != 8)
-			panic("APIC RTC != 8");
-}
-#endif
-
-		register_int(8, (inthand2_t *)rtcintr, NULL, "rtc", NULL,
-			     INTR_EXCL | INTR_CLOCK | INTR_NOPOLL |
-			     INTR_NOENTROPY);
-		machintr_intren(8);
-
-		writertc(RTC_STATUSB, rtc_statusb);
-	}
 
 #ifdef SMP /* APIC-IO */
 if (apic_io_enable) {
