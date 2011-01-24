@@ -381,7 +381,7 @@ tcp_usr_listen(netmsg_t msg)
 	COMMON_START(so, inp, 0);
 	if (inp->inp_lport == 0) {
 		error = in_pcbbind(inp, NULL, td);
-		if (error != 0)
+		if (error)
 			goto out;
 	}
 
@@ -430,9 +430,14 @@ tcp6_usr_listen(netmsg_t msg)
 		else
 			inp->inp_vflag &= ~INP_IPV4;
 		error = in6_pcbbind(inp, NULL, td);
+		if (error)
+			goto out;
 	}
-	if (error == 0)
-		tp->t_state = TCPS_LISTEN;
+
+	tp->t_state = TCPS_LISTEN;
+	tp->t_flags |= TF_SYNCACHE;
+	tp->tt_msg = NULL; /* Catch any invalid timer usage */
+
 #ifdef SMP
 	/*
 	 * We have to set the flag because we can't have other cpus
