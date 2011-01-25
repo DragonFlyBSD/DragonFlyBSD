@@ -73,8 +73,8 @@ struct netmsg_rollup {
 
 struct netmsg_barrier {
 	struct netmsg_base	base;
-	cpumask_t		*br_cpumask;
-	int			br_done;
+	volatile cpumask_t	*br_cpumask;
+	volatile int		br_done;
 };
 
 struct netisr_barrier {
@@ -583,7 +583,7 @@ void
 netisr_barrier_set(struct netisr_barrier *br)
 {
 #ifdef SMP
-	cpumask_t other_cpumask;
+	volatile cpumask_t other_cpumask;
 	int i, cur_cpuid;
 
 	KKASSERT(&curthread->td_msgport == cpu_portfn(0));
