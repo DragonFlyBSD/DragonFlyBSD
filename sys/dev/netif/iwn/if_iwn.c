@@ -3417,7 +3417,7 @@ iwn_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
 			if (!(ifp->if_flags & IFF_RUNNING)) {
-				iwn_init_locked(sc);
+				iwn_init(sc);
 				if (IWN_READ(sc, IWN_GP_CNTRL) & IWN_GP_CNTRL_RFKILL)
 					startall = 1;
 				else
@@ -3425,7 +3425,7 @@ iwn_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 			}
 		} else {
 			if (ifp->if_flags & IFF_RUNNING)
-				iwn_stop_locked(sc);
+				iwn_stop(sc);
 		}
 		if (startall)
 			ieee80211_start_all(ic);
@@ -6180,7 +6180,9 @@ iwn_init(void *arg)
 	struct ifnet *ifp = sc->sc_ifp;
 	struct ieee80211com *ic = ifp->if_l2com;
 
+	wlan_serialize_enter();
 	iwn_init_locked(sc);
+	wlan_serialize_exit();
 
 	if (ifp->if_flags & IFF_RUNNING)
 		ieee80211_start_all(ic);
@@ -6202,7 +6204,9 @@ iwn_stop_locked(struct iwn_softc *sc)
 static void
 iwn_stop(struct iwn_softc *sc)
 {
+	wlan_serialize_enter();
 	iwn_stop_locked(sc);
+	wlan_serialize_exit();
 }
 
 /*
@@ -6328,8 +6332,8 @@ iwn_hw_reset_task(void *arg0, int pending)
 	wlan_serialize_enter();
 	ifp = sc->sc_ifp;
 	ic = ifp->if_l2com;
-	iwn_stop(sc);
-	iwn_init(sc);
+	iwn_stop_locked(sc);
+	iwn_init_locked(sc);
 	ieee80211_notify_radio(ic, 1);
 	wlan_serialize_exit();
 }
@@ -6347,7 +6351,7 @@ iwn_radio_on_task(void *arg0, int pending)
 	ic = ifp->if_l2com;
 	vap = TAILQ_FIRST(&ic->ic_vaps);
 	if (vap != NULL) {
-		iwn_init(sc);
+		iwn_init_locked(sc);
 		ieee80211_init(vap);
 	}
 	wlan_serialize_exit();
@@ -6365,7 +6369,7 @@ iwn_radio_off_task(void *arg0, int pending)
 	ifp = sc->sc_ifp;
 	ic = ifp->if_l2com;
 	vap = TAILQ_FIRST(&ic->ic_vaps);
-	iwn_stop(sc);
+	iwn_stop_locked(sc);
 	if (vap != NULL)
 		ieee80211_stop(vap);
 
@@ -6416,7 +6420,7 @@ iwn_pci_suspend(device_t dev)
 	struct ieee80211vap *vap = TAILQ_FIRST(&ic->ic_vaps);
 
 	wlan_serialize_enter();
-	iwn_stop(sc);
+	iwn_stop_locked(sc);
 	if (vap != NULL)
 		ieee80211_stop(vap);
 	wlan_serialize_exit();
@@ -6440,7 +6444,7 @@ iwn_pci_resume(device_t dev)
 	pci_write_config(dev, 0x41, 0, 1);
 
 	if (ifp->if_flags & IFF_UP) {
-		iwn_init(sc);
+		iwn_init_locked(sc);
 		if (vap != NULL)
 			ieee80211_init(vap);
 		if (ifp->if_flags & IFF_RUNNING)
