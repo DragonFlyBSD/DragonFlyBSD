@@ -1199,7 +1199,7 @@ next_matching_driver(devclass_t dc, device_t dev, driverlink_t last)
 		return(TAILQ_NEXT(last, link));
 }
 
-static int
+int
 device_probe_child(device_t dev, device_t child)
 {
 	devclass_t dc;
