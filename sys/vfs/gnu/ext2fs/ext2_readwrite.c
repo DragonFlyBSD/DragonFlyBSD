@@ -66,11 +66,9 @@ ext2_read(struct vop_read_args *ap)
 	long size, xfersize, blkoffset;
 	int error, orig_resid;
 	int seqcount = ap->a_ioflag >> 16;
-	u_short mode;
 
 	vp = ap->a_vp;
 	ip = VTOI(vp);
-	mode = ip->i_mode;
 	uio = ap->a_uio;
 
 #ifdef DIAGNOSTIC

@@ -128,7 +128,6 @@ ext2_bmaparray(struct vnode *vp, ext2_daddr_t bn, ext2_daddr_t *bnp,
 	struct buf *bp;
 	struct ext2mount *ump;
 	struct mount *mp;
-	struct vnode *devvp;
 	struct ext2_sb_info *fs;
 	struct indir a[NIADDR+1], *xap;
 	ext2_daddr_t daddr;
@@ -138,7 +137,6 @@ ext2_bmaparray(struct vnode *vp, ext2_daddr_t bn, ext2_daddr_t *bnp,
 	ip = VTOI(vp);
 	mp = vp->v_mount;
 	ump = VFSTOEXT2(mp);
-	devvp = ump->um_devvp;
 	fs = ip->i_e2fs;
 #ifdef DIAGNOSTIC
 	if ((ap != NULL && nump == NULL) || (ap == NULL && nump != NULL))
