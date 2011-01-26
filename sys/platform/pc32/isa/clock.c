@@ -250,35 +250,6 @@ release_timer2(void)
 	return (0);
 }
 
-/*
- * This routine receives statistical clock interrupts from the RTC.
- * As explained above, these occur at 128 interrupts per second.
- * When profiling, we receive interrupts at a rate of 1024 Hz.
- *
- * This does not actually add as much overhead as it sounds, because
- * when the statistical clock is active, the hardclock driver no longer
- * needs to keep (inaccurate) statistics on its own.  This decouples
- * statistics gathering from scheduling interrupts.
- *
- * The RTC chip requires that we read status register C (RTC_INTR)
- * to acknowledge an interrupt, before it will generate the next one.
- * Under high interrupt load, rtcintr() can be indefinitely delayed and
- * the clock can tick immediately after the read from RTC_INTR.  In this
- * case, the mc146818A interrupt signal will not drop for long enough
- * to register with the 8259 PIC.  If an interrupt is missed, the stat
- * clock will halt, considerably degrading system performance.  This is
- * why we use 'while' rather than a more straightforward 'if' below.
- * Stat clock ticks can still be lost, causing minor loss of accuracy
- * in the statistics, but the stat clock will no longer stop.
- */
-static void
-rtcintr(void *dummy, void *frame)
-{
-	while (rtcin(RTC_INTR) & RTCIR_PERIOD)
-		;
-		/* statclock(frame); no longer used */
-}
-
 #include "opt_ddb.h"
 #ifdef DDB
 #include <ddb/ddb.h>
@@ -1039,7 +1010,6 @@ resettodr(void)
 static void
 i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 {
-	int diag;
 #ifdef SMP /* APIC-IO */
 	int apic_8254_trial = 0;
 	void *clkdesc = NULL;
