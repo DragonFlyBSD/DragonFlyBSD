@@ -170,7 +170,9 @@ platform/pc32/i386/elan-mmcr.c		optional	cpu_elan
 platform/pc32/i386/geode.c		optional	cpu_geode
 platform/pc32/i386/cs5536.c		optional	cpu_geode
 platform/pc32/i386/exception.s		standard
-platform/pc32/isa/ipl.s			standard
+platform/pc32/i386/ipl.s		standard
+platform/pc32/i386/ipl_funcs.c		standard		   \
+	compile-with	"${CC} -c ${CFLAGS} ${WERROR} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
 platform/pc32/i386/globals.s		standard
 platform/pc32/i386/i686_mem.c		standard
 platform/pc32/i386/identcpu.c		standard
@@ -232,8 +234,6 @@ dev/netif/le/if_le.c			optional	le
 dev/netif/rdp/if_rdp.c			optional nowerror	rdp
 dev/netif/wl/if_wl.c			optional	wl
 platform/pc32/isa/intr_machdep.c	standard
-platform/pc32/isa/ipl_funcs.c		standard		   \
-	compile-with	"${CC} -c ${CFLAGS} ${WERROR} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
 bus/isa/i386/isa.c			optional	isa
 bus/isa/i386/isa_compat.c		optional nowerror	isa compat_oldisa
 bus/isa/i386/isa_dma.c			optional	isa
