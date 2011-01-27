@@ -31,7 +31,7 @@
 
 #ifdef SMP /* APIC-IO */
 
-#define APIC_HWI_VECTORS 32
+#define APIC_HWI_VECTORS 192
 
 #endif
 

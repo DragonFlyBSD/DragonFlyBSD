@@ -74,7 +74,7 @@ extern u_int32_t		*io_apic_versions;
 extern int			cpu_num_to_apic_id[];
 extern int			io_num_to_apic_id[];
 extern int			apic_id_to_logical[];
-#define APIC_INTMAPSIZE 24
+#define APIC_INTMAPSIZE 192
 /*
  * NOTE:
  * - Keep size of apic_intmapinfo power of 2
