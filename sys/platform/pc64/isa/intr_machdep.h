@@ -54,6 +54,7 @@
 #ifdef _KERNEL
 
 #define IDT_OFFSET		0x20
+#define IDT_OFFSET_SYSCALL	0x80
 #define IDT_OFFSET_IPI		0xe0
 
 #if defined(SMP)

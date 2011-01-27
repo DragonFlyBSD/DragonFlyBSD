@@ -208,7 +208,8 @@ apic_vectorctl(int op, int intr, int flags)
 	uint32_t value;
 	u_long ef;
 
-	if (intr < 0 || intr >= APIC_HWI_VECTORS)
+	if (intr < 0 || intr >= APIC_HWI_VECTORS ||
+	    intr == IDT_OFFSET_SYSCALL - IDT_OFFSET)
 		return EINVAL;
 
 	ef = read_rflags();
