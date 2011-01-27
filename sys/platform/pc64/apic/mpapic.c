@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mpapic.c,v 1.37.2.7 2003/01/25 02:31:47 peter Exp $
- * $DragonFly: src/sys/platform/pc32/apic/mpapic.c,v 1.22 2008/04/20 13:44:26 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -54,6 +53,7 @@ static void	lapic_timer_restart_handler(void *);
 
 void		lapic_timer_process(void);
 void		lapic_timer_process_frame(struct intrframe *);
+void		lapic_timer_always(struct intrframe *);
 
 static int	lapic_timer_enable = 1;
 TUNABLE_INT("hw.lapic_timer_enable", &lapic_timer_enable);
@@ -89,8 +89,7 @@ static const uint32_t	lapic_timer_divisors[] = {
 	APIC_TDCR_2,	APIC_TDCR_4,	APIC_TDCR_8,	APIC_TDCR_16,
 	APIC_TDCR_32,	APIC_TDCR_64,	APIC_TDCR_128,	APIC_TDCR_1
 };
-#define APIC_TIMER_NDIVISORS \
-	(int)(sizeof(lapic_timer_divisors) / sizeof(lapic_timer_divisors[0]))
+#define APIC_TIMER_NDIVISORS (int)(NELEM(lapic_timer_divisors))
 
 
 void
@@ -156,7 +155,7 @@ apic_initialize(boolean_t bsp)
 	 * Set the Task Priority Register as needed.   At the moment allow
 	 * interrupts on all cpus (the APs will remain CLId until they are
 	 * ready to deal).  We could disable all but IPIs by setting
-	 * temp |= TPR_IPI_ONLY for cpu != 0.
+	 * temp |= TPR_IPI for cpu != 0.
 	 */
 	temp = lapic->tpr;
 	temp &= ~APIC_TPR_PRIO;		/* clear priority field */
@@ -167,7 +166,7 @@ if (!apic_io_enable) {
  	 * If we are NOT running the IO APICs, the LAPIC will only be used
 	 * for IPIs.  Set the TPR to prevent any unintentional interrupts.
  	 */
-	temp |= TPR_IPI_ONLY;
+	temp |= TPR_IPI;
 #ifdef SMP /* APIC-IO */
 }
 #endif
@@ -284,6 +283,64 @@ void
 lapic_timer_process_frame(struct intrframe *frame)
 {
 	lapic_timer_process_oncpu(mycpu, frame);
+}
+
+/*
+ * This manual debugging code is called unconditionally from Xtimer
+ * (the lapic timer interrupt) whether the current thread is in a
+ * critical section or not) and can be useful in tracking down lockups.
+ *
+ * NOTE: MANUAL DEBUG CODE
+ */
+#if 0
+static int saveticks[SMP_MAXCPU];
+static int savecounts[SMP_MAXCPU];
+#endif
+
+void
+lapic_timer_always(struct intrframe *frame)
+{
+#if 0
+	globaldata_t gd = mycpu;
+	int cpu = gd->gd_cpuid;
+	char buf[64];
+	short *gptr;
+	int i;
+
+	if (cpu <= 20) {
+		gptr = (short *)0xFFFFFFFF800b8000 + 80 * cpu;
+		*gptr = ((*gptr + 1) & 0x00FF) | 0x0700;
+		++gptr;
+
+		ksnprintf(buf, sizeof(buf), " %p %16s %d %16s ",
+		    (void *)frame->if_rip, gd->gd_curthread->td_comm, ticks,
+		    gd->gd_infomsg);
+		for (i = 0; buf[i]; ++i) {
+			gptr[i] = 0x0700 | (unsigned char)buf[i];
+		}
+	}
+#if 0
+	if (saveticks[gd->gd_cpuid] != ticks) {
+		saveticks[gd->gd_cpuid] = ticks;
+		savecounts[gd->gd_cpuid] = 0;
+	}
+	++savecounts[gd->gd_cpuid];
+	if (savecounts[gd->gd_cpuid] > 2000 && panicstr == NULL) {
+		panic("cpud %d panicing on ticks failure",
+			gd->gd_cpuid);
+	}
+	for (i = 0; i < ncpus; ++i) {
+		int delta;
+		if (saveticks[i] && panicstr == NULL) {
+			delta = saveticks[i] - ticks;
+			if (delta < -10 || delta > 10) {
+				panic("cpu %d panicing on cpu %d watchdog",
+				      gd->gd_cpuid, i);
+			}
+		}
+	}
+#endif
+#endif
 }
 
 static void
@@ -553,7 +610,7 @@ io_apic_setup_intpin(int apic, int pin)
 		flags = DEFAULT_FLAGS;
 		level = trigger(apic, pin, &flags);
 		if (level == 1)
-			int_to_apicintpin[irq].flags |= AIMI_FLAG_LEVEL;
+			int_to_apicintpin[irq].flags |= IOAPIC_IM_FLAG_LEVEL;
 		polarity(apic, pin, &flags, level);
 	}
 
@@ -812,7 +869,7 @@ imen_dump(void)
 
 	kprintf("SMP: enabled INTs: ");
 	for (x = 0; x < APIC_INTMAPSIZE; ++x) {
-		if ((int_to_apicintpin[x].flags & AIMI_FLAG_MASKED) == 0)
+		if ((int_to_apicintpin[x].flags & IOAPIC_IM_FLAG_MASKED) == 0)
         		kprintf("%d ", x);
 	}
 	kprintf("\n");
@@ -848,9 +905,11 @@ apic_ipi(int dest_type, int vector, int delivery_mode)
 	if ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
 	    unsigned long rflags = read_rflags();
 	    cpu_enable_intr();
+	    DEBUG_PUSH_INFO("apic_ipi");
 	    while ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
 		lwkt_process_ipiq();
 	    }
+	    DEBUG_POP_INFO();
 	    write_rflags(rflags);
 	}
 
@@ -871,9 +930,11 @@ single_apic_ipi(int cpu, int vector, int delivery_mode)
 	if ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
 	    unsigned long rflags = read_rflags();
 	    cpu_enable_intr();
+	    DEBUG_PUSH_INFO("single_apic_ipi");
 	    while ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
 		lwkt_process_ipiq();
 	    }
+	    DEBUG_POP_INFO();
 	    write_rflags(rflags);
 	}
 	icr_hi = lapic->icr_hi & ~APIC_ID_MASK;

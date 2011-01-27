@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbdc.c,v 1.5.2.2 2002/03/31 11:02:02 murray Exp $
- * $DragonFly: src/sys/dev/misc/kbd/atkbdc.c,v 1.11 2007/04/22 10:54:43 y0netan1 Exp $
  * from kbdio.c,v 1.13 1998/09/25 11:55:46 yokota Exp
  */
 
@@ -112,7 +111,7 @@ atkbdc_get_softc(int unit)
 {
 	atkbdc_softc_t *sc;
 
-	if (unit >= sizeof(atkbdc_softc)/sizeof(atkbdc_softc[0]))
+	if (unit >= NELEM(atkbdc_softc))
 		return NULL;
 	sc = atkbdc_softc[unit];
 	if (sc == NULL) {

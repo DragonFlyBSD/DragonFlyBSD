@@ -91,7 +91,6 @@ ar9285SetTransmitPower(struct ath_hal *ah,
 	const struct ieee80211_channel *chan, uint16_t *rfXpdGain)
 {
 #define POW_SM(_r, _s)     (((_r) & 0x3f) << (_s))
-#define N(a)            (sizeof (a) / sizeof (a[0]))
 
     MODAL_EEP4K_HEADER	*pModal;
     struct ath_hal_5212 *ahp = AH5212(ah);
@@ -154,7 +153,7 @@ ar9285SetTransmitPower(struct ath_hal *ah,
      * txPowerIndexOffset is set by the SetPowerTable() call -
      *  adjust the rate table (0 offset if rates EEPROM not loaded)
      */
-    for (i = 0; i < N(ratesArray); i++) {
+    for (i = 0; i < NELEM(ratesArray); i++) {
         ratesArray[i] = (int16_t)(txPowerIndexOffset + ratesArray[i]);
         if (ratesArray[i] > AR5416_MAX_RATE_POWER)
             ratesArray[i] = AR5416_MAX_RATE_POWER;
@@ -237,7 +236,6 @@ ar9285SetTransmitPower(struct ath_hal *ah,
 
     return AH_TRUE;
 #undef POW_SM
-#undef N
 }
 
 HAL_BOOL
@@ -315,7 +313,6 @@ ar9285SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom_4k *pEepData,
                            uint16_t twiceMaxRegulatoryPower,
                            uint16_t powerLimit)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 /* Local defines to distinguish between extension and control CTL's */
 #define EXT_ADDITIVE (0x8000)
 #define CTL_11G_EXT (CTL_11G | EXT_ADDITIVE)
@@ -356,7 +353,7 @@ ar9285SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom_4k *pEepData,
 
 	/* Get target powers from EEPROM - our baseline for TX Power */
 	/* Setup for CTL modes */
-	numCtlModes = N(ctlModesFor11g) - SUB_NUM_CTL_MODES_AT_2G_40; /* CTL_11B, CTL_11G, CTL_2GHT20 */
+	numCtlModes = NELEM(ctlModesFor11g) - SUB_NUM_CTL_MODES_AT_2G_40; /* CTL_11B, CTL_11G, CTL_2GHT20 */
 	pCtlMode = ctlModesFor11g;
 
 	ar5416GetTargetPowersLeg(ah,  chan, pEepData->calTargetPowerCck,
@@ -367,7 +364,7 @@ ar9285SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom_4k *pEepData,
 			AR5416_4K_NUM_2G_20_TARGET_POWERS, &targetPowerHt20, 8, AH_FALSE);
 
 	if (IEEE80211_IS_CHAN_HT40(chan)) {
-		numCtlModes = N(ctlModesFor11g);    /* All 2G CTL's */
+		numCtlModes = NELEM(ctlModesFor11g);    /* All 2G CTL's */
 
 		ar5416GetTargetPowers(ah,  chan, pEepData->calTargetPower2GHT40,
 			AR5416_4K_NUM_2G_40_TARGET_POWERS, &targetPowerHt40, 8, AH_TRUE);
@@ -424,19 +421,19 @@ ar9285SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom_4k *pEepData,
 		/* Apply ctl mode to correct target power set */
 		switch(pCtlMode[ctlMode]) {
 		case CTL_11B:
-			for (i = 0; i < N(targetPowerCck.tPow2x); i++) {
+			for (i = 0; i < NELEM(targetPowerCck.tPow2x); i++) {
 				targetPowerCck.tPow2x[i] = (uint8_t)AH_MIN(targetPowerCck.tPow2x[i], minCtlPower);
 			}
 			break;
 		case CTL_11A:
 		case CTL_11G:
-			for (i = 0; i < N(targetPowerOfdm.tPow2x); i++) {
+			for (i = 0; i < NELEM(targetPowerOfdm.tPow2x); i++) {
 				targetPowerOfdm.tPow2x[i] = (uint8_t)AH_MIN(targetPowerOfdm.tPow2x[i], minCtlPower);
 			}
 			break;
 		case CTL_5GHT20:
 		case CTL_2GHT20:
-			for (i = 0; i < N(targetPowerHt20.tPow2x); i++) {
+			for (i = 0; i < NELEM(targetPowerHt20.tPow2x); i++) {
 				targetPowerHt20.tPow2x[i] = (uint8_t)AH_MIN(targetPowerHt20.tPow2x[i], minCtlPower);
 			}
 			break;
@@ -448,7 +445,7 @@ ar9285SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom_4k *pEepData,
 			break;
 		case CTL_5GHT40:
 		case CTL_2GHT40:
-			for (i = 0; i < N(targetPowerHt40.tPow2x); i++) {
+			for (i = 0; i < NELEM(targetPowerHt40.tPow2x); i++) {
 				targetPowerHt40.tPow2x[i] = (uint8_t)AH_MIN(targetPowerHt40.tPow2x[i], minCtlPower);
 			}
 			break;
@@ -465,7 +462,7 @@ ar9285SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom_4k *pEepData,
 	ratesArray[rate54mb] = targetPowerOfdm.tPow2x[3];
 	ratesArray[rateXr] = targetPowerOfdm.tPow2x[0];
 
-	for (i = 0; i < N(targetPowerHt20.tPow2x); i++) {
+	for (i = 0; i < NELEM(targetPowerHt20.tPow2x); i++) {
 		ratesArray[rateHt20_0 + i] = targetPowerHt20.tPow2x[i];
 	}
 
@@ -474,7 +471,7 @@ ar9285SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom_4k *pEepData,
 	ratesArray[rate5_5s] = ratesArray[rate5_5l] = targetPowerCck.tPow2x[2];
 	ratesArray[rate11s] = ratesArray[rate11l] = targetPowerCck.tPow2x[3];
 	if (IEEE80211_IS_CHAN_HT40(chan)) {
-		for (i = 0; i < N(targetPowerHt40.tPow2x); i++) {
+		for (i = 0; i < NELEM(targetPowerHt40.tPow2x); i++) {
 			ratesArray[rateHt40_0 + i] = targetPowerHt40.tPow2x[i];
 		}
 		ratesArray[rateDupOfdm] = targetPowerHt40.tPow2x[0];
@@ -489,7 +486,6 @@ ar9285SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom_4k *pEepData,
 #undef CTL_11G_EXT
 #undef CTL_11B_EXT
 #undef SUB_NUM_CTL_MODES_AT_2G_40
-#undef N
 }
 
 /**************************************************************************

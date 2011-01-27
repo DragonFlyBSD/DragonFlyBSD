@@ -52,7 +52,7 @@
  * AT/386
  * Vector interrupt control section
  *
- *  fpending	- Pending interrupts (set when a masked interrupt occurs)
+ *  ipending	- Pending interrupts (set when a masked interrupt occurs)
  *  spending	- Pending software interrupts
  */
 	.data
@@ -67,8 +67,7 @@ fastunpend_count:	.long	0
 	/*
 	 * GENERAL NOTES
 	 *
-	 *	- fast interrupts are always called with a critical section
-	 *	  held
+	 *	- interrupts are always called with a critical section held
 	 *
 	 *	- we release our critical section when scheduling interrupt
 	 *	  or softinterrupt threads in order so they can preempt
@@ -89,14 +88,14 @@ fastunpend_count:	.long	0
 	 * DORETI
 	 *
 	 * Handle return from interrupts, traps and syscalls.  This function
-	 * checks the cpl for unmasked pending interrupts (fast, normal, or
-	 * soft) and schedules them if appropriate, then irets.
+	 * checks the cpl for unmasked pending interrupts (hardware or soft)
+	 * and schedules them if appropriate, then irets.
 	 *
 	 * If we are in a critical section we cannot run any pending ints.
 	 *
 	 * NOTE: Since SPLs no longer exist, all callers of this function
 	 * push $0 for the CPL.  HOWEVER, we *STILL* use the cpl mask within
-	 * this function to mark fast interrupts which could not be dispatched
+	 * this function to mark interrupts which could not be dispatched
 	 * do to the unavailability of the BGL.
 	 */
 	SUPERALIGN_TEXT
@@ -123,7 +122,31 @@ doreti_next:
 	testl	$RQF_TIMER,PCPU(reqflags)
 	jnz	doreti_timer
 #endif
-	testl	PCPU(fpending),%ecx	/* check for an unmasked fast int */
+	/*
+	 * check for an unmasked int (6 groups)
+	 */
+	movl	$0,%edx
+	testl	PCPU_E4(ipending,%edx),%ecx
+	jnz	doreti_fast
+
+	movl	$1,%edx
+	testl	PCPU_E4(ipending,%edx),%ecx
+	jnz	doreti_fast
+
+	movl	$2,%edx
+	testl	PCPU_E4(ipending,%edx),%ecx
+	jnz	doreti_fast
+
+	movl	$3,%edx
+	testl	PCPU_E4(ipending,%edx),%ecx
+	jnz	doreti_fast
+
+	movl	$4,%edx
+	testl	PCPU_E4(ipending,%edx),%ecx
+	jnz	doreti_fast
+
+	movl	$5,%edx
+	testl	PCPU_E4(ipending,%edx),%ecx
 	jnz	doreti_fast
 
 	movl	PCPU(spending),%ecx	/* check for a pending software int */
@@ -210,19 +233,24 @@ doreti_popl_gs_fault:
 	jmp	alltraps_with_regs_pushed
 
 	/*
-	 * FAST interrupt pending.  NOTE: stack context holds frame structure
-	 * for fast interrupt procedure, do not do random pushes or pops!
+	 * Interrupt pending.  NOTE: stack context holds frame structure
+	 * for interrupt procedure, do not do random pushes or pops!
 	 */
 	ALIGN_TEXT
 doreti_fast:
-	andl	PCPU(fpending),%ecx	/* only check fast ints */
+	andl	PCPU_E4(ipending,%edx),%ecx
 	sti
 	bsfl	%ecx, %ecx		/* locate the next dispatchable int */
-	btrl	%ecx, PCPU(fpending)	/* is it really still pending? */
+	btrl	%ecx, PCPU_E4(ipending,%edx)
+					/* is it really still pending? */
 	jnc	doreti_next
+
+	shll	$5, %edx
+	orl	%edx, %ecx		/* form intr number */
+
 	pushl	%eax			/* save IRQ mask unavailable for BGL */
 					/* NOTE: is also CPL in frame */
-	call	dofastunpend		/* unpend fast intr %ecx */
+	call	dofastunpend		/* unpend intr %ecx */
 	popl	%eax
 	jmp	doreti_next
 
@@ -333,7 +361,31 @@ splz_next:
 	testl	$RQF_TIMER,PCPU(reqflags)
 	jnz	splz_timer
 #endif
-	testl	PCPU(fpending),%ecx	/* check for an unmasked fast int */
+	/*
+	 * check for an unmasked int (6 groups)
+	 */
+	movl	$0,%edx
+	testl	PCPU_E4(ipending,%edx),%ecx
+	jnz	splz_fast
+
+	movl	$1,%edx
+	testl	PCPU_E4(ipending,%edx),%ecx
+	jnz	splz_fast
+
+	movl	$2,%edx
+	testl	PCPU_E4(ipending,%edx),%ecx
+	jnz	splz_fast
+
+	movl	$3,%edx
+	testl	PCPU_E4(ipending,%edx),%ecx
+	jnz	splz_fast
+
+	movl	$4,%edx
+	testl	PCPU_E4(ipending,%edx),%ecx
+	jnz	splz_fast
+
+	movl	$5,%edx
+	testl	PCPU_E4(ipending,%edx),%ecx
 	jnz	splz_fast
 
 	movl	PCPU(spending),%ecx
@@ -357,17 +409,22 @@ splz_next:
 	ret
 
 	/*
-	 * FAST interrupt pending
+	 * Interrupt pending
 	 */
 	ALIGN_TEXT
 splz_fast:
-	andl	PCPU(fpending),%ecx	/* only check fast ints */
+	andl	PCPU_E4(ipending,%edx),%ecx
 	sti
 	bsfl	%ecx, %ecx		/* locate the next dispatchable int */
-	btrl	%ecx, PCPU(fpending)	/* is it really still pending? */
+	btrl	%ecx, PCPU_E4(ipending,%edx)
+					/* is it really still pending? */
 	jnc	splz_next
+
+	shll	$5, %edx
+	orl	%edx, %ecx		/* form intr number */
+
 	pushl	%eax
-	call	dofastunpend		/* unpend fast intr %ecx */
+	call	dofastunpend		/* unpend intr %ecx */
 	popl	%eax
 	jmp	splz_next
 
@@ -416,7 +473,7 @@ splz_timer:
 	/*
 	 * dofastunpend(%ecx:intr)
 	 *
-	 * A FAST interrupt previously made pending can now be run,
+	 * An interrupt previously made pending can now be run,
 	 * execute it by pushing a dummy interrupt frame and 
 	 * calling ithread_fast_handler to execute or schedule it.
 	 * 

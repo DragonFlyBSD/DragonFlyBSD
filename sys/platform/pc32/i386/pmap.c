@@ -1042,7 +1042,6 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_page_t m, pmap_inval_info_t info)
 	 * any active flushes if we block.
 	 */
 	if (m->flags & PG_BUSY) {
-		pmap_inval_flush(info);
 		while (vm_page_sleep_busy(m, FALSE, "pmuwpt"))
 			;
 	}
@@ -1130,7 +1129,6 @@ pmap_unuse_pt(pmap_t pmap, vm_offset_t va, vm_page_t mpte,
 			(pmap->pm_ptphint->pindex == ptepindex)) {
 			mpte = pmap->pm_ptphint;
 		} else {
-			pmap_inval_flush(info);
 			mpte = pmap_page_lookup( pmap->pm_pteobj, ptepindex);
 			pmap->pm_ptphint = mpte;
 		}
@@ -2129,10 +2127,7 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 			vm_page_t m;
 
 			/*
-			 * XXX non-optimal.  Note also that there can be
-			 * no pmap_inval_flush() calls until after we modify
-			 * ptbase[sindex] (or otherwise we have to do another
-			 * pmap_inval_interlock() call).
+			 * XXX non-optimal.
 			 */
 			pmap_inval_interlock(&info, pmap, i386_ptob(sindex));
 again:
@@ -2490,12 +2485,14 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
  * Make a temporary mapping for a physical address.  This is only intended
  * to be used for panic dumps.
  *
+ * The caller is responsible for calling smp_invltlb().
+ *
  * No requirements.
  */
 void *
 pmap_kenter_temporary(vm_paddr_t pa, long i)
 {
-	pmap_kenter((vm_offset_t)crashdumpmap + (i * PAGE_SIZE), pa);
+	pmap_kenter_quick((vm_offset_t)crashdumpmap + (i * PAGE_SIZE), pa);
 	return ((void *)crashdumpmap);
 }
 
@@ -3486,11 +3483,13 @@ pmap_interlock_wait(struct vmspace *vm)
 	struct pmap *pmap = &vm->vm_pmap;
 
 	if (pmap->pm_active & CPUMASK_LOCK) {
+		DEBUG_PUSH_INFO("pmap_interlock_wait");
 		while (pmap->pm_active & CPUMASK_LOCK) {
 			cpu_pause();
 			cpu_ccfence();
 			lwkt_process_ipiq();
 		}
+		DEBUG_POP_INFO();
 	}
 }
 

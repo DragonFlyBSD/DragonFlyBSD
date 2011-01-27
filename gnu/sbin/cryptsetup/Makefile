@@ -7,6 +7,8 @@ CRYPTSETUP_LIBDIR=	${CRYPTSETUP_DIR}/lib
 
 PROG=		cryptsetup
 
+CSTD?=		gnu89
+
 # Add a backend...
 SRCS+=		backends.c libdevmapper.c setup.c utils.c \
 		utils_debug.c

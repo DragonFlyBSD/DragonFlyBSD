@@ -141,6 +141,9 @@ SYSCTL_INT(_lwkt, OID_AUTO, spin_delay, CTLFLAG_RW,
 static int lwkt_spin_method = 1;
 SYSCTL_INT(_lwkt, OID_AUTO, spin_method, CTLFLAG_RW,
 	&lwkt_spin_method, 0, "LWKT scheduler behavior when contended");
+static int lwkt_spin_fatal = 0;	/* disabled */
+SYSCTL_INT(_lwkt, OID_AUTO, spin_fatal, CTLFLAG_RW,
+	&lwkt_spin_fatal, 0, "LWKT scheduler spin loops till fatal panic");
 static int preempt_enable = 1;
 SYSCTL_INT(_lwkt, OID_AUTO, preempt_enable, CTLFLAG_RW,
 	&preempt_enable, 0, "Enable preemption");
@@ -250,6 +253,7 @@ lwkt_init(void)
 void
 lwkt_schedule_self(thread_t td)
 {
+    KKASSERT((td->td_flags & TDF_MIGRATING) == 0);
     crit_enter_quick(td);
     KASSERT(td != &td->td_gd->gd_idlethread,
 	    ("lwkt_schedule_self(): scheduling gd_idlethread is illegal!"));
@@ -481,15 +485,18 @@ lwkt_free_thread(thread_t td)
  * different beast and LWKT priorities should not be confused with
  * user process priorities.
  *
- * Note that the td_switch() function cannot do anything that requires
- * the MP lock since the MP lock will have already been setup for
- * the target thread (not the current thread).  It's nice to have a scheduler
- * that does not need the MP lock to work because it allows us to do some
- * really cool high-performance MP lock optimizations.
- *
  * PREEMPTION NOTE: Preemption occurs via lwkt_preempt().  lwkt_switch()
  * is not called by the current thread in the preemption case, only when
  * the preempting thread blocks (in order to return to the original thread).
+ *
+ * SPECIAL NOTE ON SWITCH ATOMICY: Certain operations such as thread
+ * migration and tsleep deschedule the current lwkt thread and call
+ * lwkt_switch().  In particular, the target cpu of the migration fully
+ * expects the thread to become non-runnable and can deadlock against
+ * cpusync operations if we run any IPIs prior to switching the thread out.
+ *
+ * WE MUST BE VERY CAREFUL NOT TO RUN SPLZ DIRECTLY OR INDIRECTLY IF
+ * THE CURRENET THREAD HAS BEEN DESCHEDULED!
  */
 void
 lwkt_switch(void)
@@ -502,6 +509,7 @@ lwkt_switch(void)
     int reqflags;
     int cseq;
     int oseq;
+    int fatal_count;
 
     /*
      * Switching from within a 'fast' (non thread switched) interrupt or IPI
@@ -605,14 +613,11 @@ lwkt_switch(void)
      * Implement round-robin fairq with priority insertion.  The priority
      * insertion is handled by _lwkt_enqueue()
      *
-     * We have to adjust the MP lock for the target thread.  If we
-     * need the MP lock and cannot obtain it we try to locate a
-     * thread that does not need the MP lock.  If we cannot, we spin
-     * instead of HLT.
-     *
-     * A similar issue exists for the tokens held by the target thread.
      * If we cannot obtain ownership of the tokens we cannot immediately
-     * schedule the thread.
+     * schedule the target thread.
+     *
+     * Reminder: Again, we cannot afford to run any IPIs in this path if
+     * the current thread has been descheduled.
      */
     for (;;) {
 	/*
@@ -656,7 +661,7 @@ lwkt_switch(void)
 	    if (ntd->td_fairq_accum >= 0)
 		    break;
 
-	    splz_check();
+	    /*splz_check(); cannot do this here, see above */
 	    lwkt_fairq_accumulate(gd, ntd);
 	    TAILQ_REMOVE(&gd->gd_tdrunq, ntd, td_threadq);
 	    TAILQ_INSERT_TAIL(&gd->gd_tdrunq, ntd, td_threadq);
@@ -816,8 +821,12 @@ skip:
 	 * idle thread will check for pending reschedules already set
 	 * (RQF_AST_LWKT_RESCHED) before actually halting so we don't have
 	 * to here.
+	 *
+	 * Also, if TDF_RUNQ is not set the current thread is trying to
+	 * deschedule, possibly in an atomic fashion.  We cannot afford to
+	 * stay here.
 	 */
-	if (spinning <= 0) {
+	if (spinning <= 0 || (td->td_flags & TDF_RUNQ) == 0) {
 	    atomic_clear_int(&gd->gd_reqflags, RQF_WAKEUP);
 	    goto haveidle;
 	}
@@ -848,7 +857,14 @@ skip:
 	 * WARNING!  We can't call splz_check() or anything else here as
 	 *	     it could cause a deadlock.
 	 */
+#ifdef __amd64__
+	if ((read_rflags() & PSL_I) == 0) {
+		cpu_enable_intr();
+		panic("lwkt_switch() called with interrupts disabled");
+	}
+#endif
 	cseq = atomic_fetchadd_int(&lwkt_cseq_windex, 1);
+	fatal_count = lwkt_spin_fatal;
 	while ((oseq = lwkt_cseq_rindex) != cseq) {
 	    cpu_ccfence();
 #if !defined(_KERNEL_VIRTUAL)
@@ -860,6 +876,8 @@ skip:
 		DELAY(1);
 		cpu_lfence();
 	    }
+	    if (fatal_count && --fatal_count == 0)
+		panic("lwkt_switch: fatal spin wait");
 	}
 	cseq = lwkt_spin_delay;	/* don't trust the system operator */
 	cpu_ccfence();
@@ -869,7 +887,7 @@ skip:
 	    cseq = 1000;
 	DELAY(cseq);
 	atomic_add_int(&lwkt_cseq_rindex, 1);
-	splz_check();
+	splz_check();	/* ok, we already checked that td is still scheduled */
 	/* highest level for(;;) loop */
     }
 
@@ -1229,6 +1247,7 @@ _lwkt_schedule(thread_t td, int reschedok)
 
     KASSERT(td != &td->td_gd->gd_idlethread,
 	    ("lwkt_schedule(): scheduling gd_idlethread is illegal!"));
+    KKASSERT((td->td_flags & TDF_MIGRATING) == 0);
     crit_enter_gd(mygd);
     KKASSERT(td->td_lwp == NULL || (td->td_lwp->lwp_flag & LWP_ONRUNQ) == 0);
     if (td == mygd->gd_curthread) {
@@ -1330,12 +1349,14 @@ lwkt_acquire(thread_t td)
 	cpu_lfence();
 	KKASSERT((td->td_flags & TDF_RUNQ) == 0);
 	crit_enter_gd(mygd);
+	DEBUG_PUSH_INFO("lwkt_acquire");
 	while (td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK)) {
 #ifdef SMP
 	    lwkt_process_ipiq();
 #endif
 	    cpu_lfence();
 	}
+	DEBUG_POP_INFO();
 	cpu_mfence();
 	td->td_gd = mygd;
 	TAILQ_INSERT_TAIL(&mygd->gd_tdallq, td, td_allq);
@@ -1537,14 +1558,22 @@ lwkt_setcpu_remote(void *arg)
 {
     thread_t td = arg;
     globaldata_t gd = mycpu;
+    int retry = 10000000;
 
+    DEBUG_PUSH_INFO("lwkt_setcpu_remote");
     while (td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK)) {
 #ifdef SMP
 	lwkt_process_ipiq();
 #endif
 	cpu_lfence();
 	cpu_pause();
+	if (--retry == 0) {
+		kprintf("lwkt_setcpu_remote: td->td_flags %08x\n",
+			td->td_flags);
+		retry = 10000000;
+	}
     }
+    DEBUG_POP_INFO();
     td->td_gd = gd;
     cpu_mfence();
     td->td_flags &= ~TDF_MIGRATING;

@@ -45,6 +45,7 @@
 #include <sys/time.h>
 #include <sys/cdefs.h>
 #include <sys/queue.h>
+#include <sys/rtprio.h>
 #include <machine/atomic.h>
 #include <errno.h>
 #include <limits.h>
@@ -686,6 +687,10 @@ void	_thread_bp_death(void);
 int	_thr_getscheduler(lwpid_t, int *, struct sched_param *);
 int	_thr_setscheduler(lwpid_t, int, const struct sched_param *);
 int	_thr_set_sched_other_prio(struct pthread *, int);
+int	_rtp_to_schedparam(const struct rtprio *rtp, int *policy,
+	    struct sched_param *param);
+int	_schedparam_to_rtp(int policy, const struct sched_param *param,
+	    struct rtprio *rtp);
 int 	_umtx_sleep_err(volatile const int *, int, int);
 int 	_umtx_wakeup_err(volatile const int *, int);
 
@@ -698,6 +703,7 @@ int	__sys_aio_suspend(const struct aiocb * const[], int, const struct timespec *
 #ifdef  _SYS_FCNTL_H_
 int     __sys_fcntl(int, int, ...);
 int     __sys_open(const char *, int, ...);
+int     __sys_openat(int, const char *, int, ...);
 #endif
 
 /* #include <sys/ioctl.h> */

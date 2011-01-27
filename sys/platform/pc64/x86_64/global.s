@@ -78,7 +78,7 @@
 	 */
 	.globl  gd_cpuid, gd_cpumask, gd_other_cpus
 	.globl	gd_ss_eflags, gd_intr_nesting_level
-	.globl  gd_spending, gd_fpending
+	.globl  gd_spending, gd_ipending
 	.globl	gd_cnt, gd_private_tss
 	.globl	gd_scratch_rsp
 	.globl	gd_user_fs, gd_user_gs
@@ -89,7 +89,7 @@
 	.set    gd_other_cpus,globaldata + GD_OTHER_CPUS
 	.set    gd_ss_eflags,globaldata + GD_SS_EFLAGS
 	.set    gd_intr_nesting_level,globaldata + GD_INTR_NESTING_LEVEL
-	.set	gd_fpending,globaldata + GD_FPENDING
+	.set	gd_ipending,globaldata + GD_IPENDING
 	.set	gd_spending,globaldata + GD_SPENDING
 	.set	gd_cnt,globaldata + GD_CNT
 	.set	gd_scratch_rsp,globaldata + GD_SCRATCH_RSP

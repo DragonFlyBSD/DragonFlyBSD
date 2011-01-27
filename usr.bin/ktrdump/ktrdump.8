@@ -24,7 +24,6 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.bin/ktrdump/ktrdump.8,v 1.7 2005/03/08 06:58:56 hmp Exp $
-.\" $DragonFly: src/usr.bin/ktrdump/ktrdump.8,v 1.16 2008/11/10 02:05:31 swildner Exp $
 .\"
 .Dd November 9, 2008
 .Dt KTRDUMP 8
@@ -138,7 +137,7 @@ Users using the
 .Fl s
 option should be aware that events for each cpu are independently logged
 and one cpu might have more events logged then another, causing earlier
-events to be discarded sooner then other cpus.
+events to be discarded sooner than other cpus.
 The beginning portion of
 the sorted output may thus show MP related events for one cpu with no
 corresponding events for other cpus.

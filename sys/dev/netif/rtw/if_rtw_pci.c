@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  *
  * $NetBSD: if_rtw_pci.c,v 1.4 2005/12/04 17:44:02 christos Exp $
- * $DragonFly: src/sys/dev/netif/rtw/if_rtw_pci.c,v 1.5 2008/01/15 09:01:13 sephe Exp $
  */
 
 /*
@@ -212,8 +211,7 @@ rtw_pci_attach(device_t dev)
 	pci_enable_busmaster(dev);
 
 	/* Allocate IO memory/port */
-#define N(arr)	sizeof(arr) / sizeof(arr[0])
-	for (i = 0; i < N(rtw_pci_regs); ++i) {
+	for (i = 0; i < NELEM(rtw_pci_regs); ++i) {
 		regs->r_rid = rtw_pci_regs[i].reg_rid;
 		regs->r_type = rtw_pci_regs[i].reg_type;
 		regs->r_res = bus_alloc_resource_any(dev, regs->r_type,
@@ -221,7 +219,6 @@ rtw_pci_attach(device_t dev)
 		if (regs->r_res != NULL)
 			break;
 	}
-#undef N
 	if (regs->r_res == NULL) {
 		device_printf(dev, "can't allocate IO mem/port\n");
 		return ENXIO;

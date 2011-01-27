@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic.c,v 1.8 2000/01/14 23:42:35 imp Exp $
- * $DragonFly: src/sys/dev/disk/aic/aic.c,v 1.14 2008/05/18 20:30:21 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -1439,7 +1438,7 @@ aic_init(struct aic_softc *aic)
 	aic->chip_type = AIC6260;
 	aic_insb(aic, ID, chip_id, sizeof(chip_id) - 1);
 	chip_id[sizeof(chip_id) - 1] = '\0';
-	for (i = 0; i < sizeof(aic_chip_ids) / sizeof(aic_chip_ids[0]); i++) {
+	for (i = 0; i < NELEM(aic_chip_ids); i++) {
 		if (!strcmp(chip_id, aic_chip_ids[i].idstring)) {
 			aic->chip_type = aic_chip_ids[i].type;
 			break;

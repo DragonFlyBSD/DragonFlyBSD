@@ -22,10 +22,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/lib/libc/gen/ucontext.c,v 1.1 2007/01/16 07:16:23 dillon Exp $
  */
 
+#include "namespace.h"
 #include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/signal.h>
@@ -36,6 +35,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+#include "un-namespace.h"
 
 /* Prototypes */
 __weak_reference(_swapcontext, swapcontext);

@@ -630,7 +630,7 @@ exec_map_page(struct image_params *imgp, vm_pindex_t pageno,
 	vm_page_wakeup(m);	/* unbusy the page */
 	lwkt_reltoken(&vm_token);
 
-	*plwb = lwbuf_alloc(m);
+	*plwb = lwbuf_alloc(m, *plwb);
 	*pdata = (void *)lwbuf_kva(*plwb);
 
 	return (0);
@@ -644,6 +644,7 @@ exec_map_first_page(struct image_params *imgp)
 	if (imgp->firstpage)
 		exec_unmap_first_page(imgp);
 
+	imgp->firstpage = &imgp->firstpage_cache;
 	err = exec_map_page(imgp, 0, &imgp->firstpage, &imgp->image_header);
 
 	if (err)

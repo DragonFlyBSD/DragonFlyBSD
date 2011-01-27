@@ -623,16 +623,21 @@ lwp_exit(int masterexit)
 	 * the master exit.  The LWP doing the master exit can just be
 	 * left on p_lwps and the process reaper will deal with it
 	 * synchronously, which is much faster.
+	 *
+	 * Wakeup anyone waiting on p_nthreads to drop to 1 or 0.
 	 */
 	if (masterexit == 0) {
 		lwp_rb_tree_RB_REMOVE(&p->p_lwp_tree, lp);
 		--p->p_nthreads;
-		wakeup(&p->p_nthreads);
+		if (p->p_nthreads <= 1)
+			wakeup(&p->p_nthreads);
 		LIST_INSERT_HEAD(&deadlwp_list[mycpuid], lp, u.lwp_reap_entry);
 		taskqueue_enqueue(taskqueue_thread[mycpuid],
 				  deadlwp_task[mycpuid]);
 	} else {
 		--p->p_nthreads;
+		if (p->p_nthreads <= 1)
+			wakeup(&p->p_nthreads);
 	}
 	cpu_lwp_exit();
 }

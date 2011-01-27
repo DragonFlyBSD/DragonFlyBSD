@@ -53,6 +53,7 @@
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <paths.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -81,7 +82,7 @@ struct mntopt mopts[] = {
 	MOPT_NULL,
 };
 
-void	fatal(const char *fmt, ...);
+void	fatal(const char *fmt, ...) __printflike(1, 2);
 
 #define	COMPAT			/* allow non-labeled disks */
 
@@ -518,7 +519,7 @@ havelabel:
 	if (fssize == 0)
 		fssize = geom.d_media_blocks;
 	if ((u_long)fssize > geom.d_media_blocks && !mfs) {
-	       fatal("%s: maximum file system size is %lld blocks",
+	       fatal("%s: maximum file system size is %" PRIu64 " blocks",
 		     argv[0], geom.d_media_blocks);
 	}
 	if (rpm == 0) {

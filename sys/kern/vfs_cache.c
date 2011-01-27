@@ -2800,6 +2800,7 @@ _cache_cleanpos(int count)
 	 */
 	while (count) {
 		rover_copy = ++rover;	/* MPSAFEENOUGH */
+		cpu_ccfence();
 		nchpp = NCHHASH(rover_copy);
 
 		spin_lock(&nchpp->spin);

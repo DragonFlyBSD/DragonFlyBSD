@@ -123,7 +123,7 @@ static u_long	div_recvspace = DIVRCVQ;	/* XXX sysctl ? */
 
 static struct mbuf *ip_divert(struct mbuf *, int, int);
 
-static struct lwkt_token div_token = LWKT_TOKEN_MP_INITIALIZER(div_token);
+static struct lwkt_token div_token = LWKT_TOKEN_INITIALIZER(div_token);
 
 /*
  * Initialize divert connection block queue.

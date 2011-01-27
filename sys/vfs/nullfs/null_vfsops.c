@@ -216,15 +216,11 @@ static int
 nullfs_unmount(struct mount *mp, int mntflags)
 {
 	struct null_mount *xmp;
-	int flags = 0;
 
 	NULLFSDEBUG("nullfs_unmount: mp = %p\n", (void *)mp);
 
-	if (mntflags & MNT_FORCE)
-		flags |= FORCECLOSE;
-
 	/*
-	 * Finally, throw away the null_mount structure
+	 * Throw away the null_mount structure
 	 */
 	xmp = (void *)mp->mnt_data;
 	mp->mnt_data = 0;

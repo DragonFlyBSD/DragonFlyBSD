@@ -527,7 +527,7 @@ vesa_translate_flags(uint16_t vflags)
 	int flags;
 	int i;
 
-	for (flags = 0, i = 0; i < sizeof(ftable)/sizeof(ftable[0]); ++i) {
+	for (flags = 0, i = 0; i < NELEM(ftable); ++i) {
 		flags |= (vflags & ftable[i].mask) ? 
 			 ftable[i].set : ftable[i].reset;
 	}

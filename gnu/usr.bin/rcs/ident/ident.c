@@ -136,7 +136,7 @@ mainProg(identId, "ident", "$DragonFly: src/gnu/usr.bin/rcs/ident/ident.c,v 1.2 
 		    break;
 	    }
 
-   if (0 <= quiet)
+   if (0 <= quiet) {
        if (!a)
 	    VOID scanfile(stdin, (char*)0, quiet);
        else
@@ -150,6 +150,7 @@ mainProg(identId, "ident", "$DragonFly: src/gnu/usr.bin/rcs/ident/ident.c,v 1.2 
 		)
 		    break;
 	    } while ((a = *++argv));
+   }
 
    if (ferror(stdout) || fclose(stdout)!=0) {
       reportError("standard output");

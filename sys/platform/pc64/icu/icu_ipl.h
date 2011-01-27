@@ -50,6 +50,4 @@
 
 #endif	/* LOCORE */
 
-
 #endif /* !_ARCH_ICU_ICU_IPL_H_ */
-

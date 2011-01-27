@@ -1181,7 +1181,7 @@ readmessage(void)
 void
 error(const char *whichfile)
 {
-	int (*funcp)(const char *, ...);
+	int (*funcp)(const char *, ...) __printflike(1, 2);
 
 	if (Windows) {
 		funcp = (void *)printw;

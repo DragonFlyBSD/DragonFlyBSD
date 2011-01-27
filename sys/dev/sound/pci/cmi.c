@@ -40,7 +40,6 @@
  * those that don't.
  *
  * $FreeBSD: src/sys/dev/sound/pci/cmi.c,v 1.32.2.2 2006/01/24 18:54:22 joel Exp $
- * $DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.10 2007/06/16 20:07:19 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -53,8 +52,6 @@
 #include <sys/sysctl.h>
 
 #include "mixer_if.h"
-
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.10 2007/06/16 20:07:19 dillon Exp $");
 
 /* Supported chip ID's */
 #define CMI8338A_PCI_ID   0x010013f6
@@ -201,7 +198,7 @@ cmi_set4(struct sc_info *sc, int reg, u_int32_t mask)
 
 static int cmi_rates[] = {5512, 8000, 11025, 16000,
 			  22050, 32000, 44100, 48000};
-#define NUM_CMI_RATES (sizeof(cmi_rates)/sizeof(cmi_rates[0]))
+#define NUM_CMI_RATES NELEM(cmi_rates)
 
 /* cmpci_rate_to_regvalue returns sampling freq selector for FCR1
  * register - reg order is 5k,11k,22k,44k,8k,16k,32k,48k */

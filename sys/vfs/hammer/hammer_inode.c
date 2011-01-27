@@ -810,6 +810,12 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 				HAMMER_INODE_CAP_DIR_LOCAL_INO;
 		}
 	}
+	if (trans->hmp->version >= HAMMER_VOL_VERSION_SIX) {
+		if (ip->ino_leaf.base.obj_type == HAMMER_OBJTYPE_DIRECTORY) {
+			ip->ino_data.cap_flags |=
+				HAMMER_INODE_CAP_DIRHASH_ALG1;
+		}
+	}
 
 	/*
 	 * Setup the ".." pointer.  This only needs to be done for directories
@@ -1649,21 +1655,29 @@ hammer_flush_inode(hammer_inode_t ip, int flags)
 	int good;
 
 	/*
-	 * next_flush_group is the first flush group we can place the inode
-	 * in.  It may be NULL.  If it becomes full we append a new flush
-	 * group and make that the next_flush_group.
+	 * fill_flush_group is the first flush group we may be able to
+	 * continue filling, it may be open or closed but it will always
+	 * be past the currently flushing (running) flg.
+	 *
+	 * next_flush_group is the next open flush group.
 	 */
 	hmp = ip->hmp;
-	while ((flg = hmp->next_flush_group) != NULL) {
+	while ((flg = hmp->fill_flush_group) != NULL) {
 		KKASSERT(flg->running == 0);
-		if (flg->total_count + flg->refs <= ip->hmp->undo_rec_limit)
+		if (flg->total_count + flg->refs <= ip->hmp->undo_rec_limit &&
+		    flg->total_count <= hammer_autoflush) {
 			break;
-		hmp->next_flush_group = TAILQ_NEXT(flg, flush_entry);
+		}
+		hmp->fill_flush_group = TAILQ_NEXT(flg, flush_entry);
 		hammer_flusher_async(ip->hmp, flg);
 	}
 	if (flg == NULL) {
 		flg = kmalloc(sizeof(*flg), hmp->m_misc, M_WAITOK|M_ZERO);
-		hmp->next_flush_group = flg;
+		flg->seq = hmp->flusher.next++;
+		if (hmp->next_flush_group == NULL)
+			hmp->next_flush_group = flg;
+		if (hmp->fill_flush_group == NULL)
+			hmp->fill_flush_group = flg;
 		RB_INIT(&flg->flush_tree);
 		TAILQ_INSERT_TAIL(&hmp->flush_group_list, flg, flush_entry);
 	}
@@ -1967,6 +1981,7 @@ hammer_setup_parent_inodes_helper(hammer_record_t record, int depth,
 static void
 hammer_flush_inode_core(hammer_inode_t ip, hammer_flush_group_t flg, int flags)
 {
+	hammer_mount_t hmp = ip->hmp;
 	int go_count;
 
 	/*
@@ -1979,23 +1994,11 @@ hammer_flush_inode_core(hammer_inode_t ip, hammer_flush_group_t flg, int flags)
 		hammer_ref(&ip->lock);
 	ip->flush_state = HAMMER_FST_FLUSH;
 	ip->flush_group = flg;
-	++ip->hmp->flusher.group_lock;
-	++ip->hmp->count_iqueued;
+	++hmp->flusher.group_lock;
+	++hmp->count_iqueued;
 	++hammer_count_iqueued;
 	++flg->total_count;
 	hammer_redo_fifo_start_flush(ip);
-
-	/*
-	 * If the flush group reaches the autoflush limit we want to signal
-	 * the flusher.  This is particularly important for remove()s.
-	 *
-	 * If the default hammer_limit_reclaim is changed via sysctl
-	 * make sure we don't hit a degenerate case where we don't start
-	 * a flush but blocked on further inode ops.
-	 */
-	if (flg->total_count == hammer_autoflush ||
-	    flg->total_count >= hammer_limit_reclaim / 4)
-		flags |= HAMMER_FLUSH_SIGNAL;
 
 #if 0
 	/*
@@ -2058,12 +2061,18 @@ hammer_flush_inode_core(hammer_inode_t ip, hammer_flush_group_t flg, int flags)
 	 */
 	if (go_count == 0) {
 		if ((ip->flags & HAMMER_INODE_MODMASK_NOXDIRTY) == 0) {
-			--ip->hmp->count_iqueued;
+			--hmp->count_iqueued;
 			--hammer_count_iqueued;
 
 			--flg->total_count;
 			ip->flush_state = HAMMER_FST_SETUP;
 			ip->flush_group = NULL;
+			if (flags & HAMMER_FLUSH_SIGNAL) {
+				ip->flags |= HAMMER_INODE_REFLUSH |
+					     HAMMER_INODE_RESIGNAL;
+			} else {
+				ip->flags |= HAMMER_INODE_REFLUSH;
+			}
 #if 0
 			if (ip->flags & HAMMER_INODE_VHELD) {
 				ip->flags &= ~HAMMER_INODE_VHELD;
@@ -2076,12 +2085,8 @@ hammer_flush_inode_core(hammer_inode_t ip, hammer_flush_group_t flg, int flags)
 			 * when an inode is in SETUP.
 			 */
 			ip->flags |= HAMMER_INODE_REFLUSH;
-			if (flags & HAMMER_FLUSH_SIGNAL) {
-				ip->flags |= HAMMER_INODE_RESIGNAL;
-				hammer_flusher_async(ip->hmp, flg);
-			}
-			if (--ip->hmp->flusher.group_lock == 0)
-				wakeup(&ip->hmp->flusher.group_lock);
+			if (--hmp->flusher.group_lock == 0)
+				wakeup(&hmp->flusher.group_lock);
 			return;
 		}
 	}
@@ -2128,11 +2133,18 @@ hammer_flush_inode_core(hammer_inode_t ip, hammer_flush_group_t flg, int flags)
 	 */
 	KKASSERT(flg->running == 0);
 	RB_INSERT(hammer_fls_rb_tree, &flg->flush_tree, ip);
-	if (--ip->hmp->flusher.group_lock == 0)
-		wakeup(&ip->hmp->flusher.group_lock);
+	if (--hmp->flusher.group_lock == 0)
+		wakeup(&hmp->flusher.group_lock);
 
-	if (flags & HAMMER_FLUSH_SIGNAL) {
-		hammer_flusher_async(ip->hmp, flg);
+	/*
+	 * Auto-flush the group if it grows too large.  Make sure the
+	 * inode reclaim wait pipeline continues to work.
+	 */
+	if (flg->total_count >= hammer_autoflush ||
+	    flg->total_count >= hammer_limit_reclaim / 4) {
+		if (hmp->fill_flush_group == flg)
+			hmp->fill_flush_group = TAILQ_NEXT(flg, flush_entry);
+		hammer_flusher_async(hmp, flg);
 	}
 }
 
@@ -3150,13 +3162,12 @@ hammer_inode_wakereclaims(hammer_inode_t ip)
 	--hmp->inode_reclaims;
 	ip->flags &= ~HAMMER_INODE_RECLAIM;
 
-	while ((reclaim = TAILQ_FIRST(&hmp->reclaim_list)) != NULL) {
-		if (reclaim->count > 0 && --reclaim->count == 0) {
+	if ((reclaim = TAILQ_FIRST(&hmp->reclaim_list)) != NULL) {
+		KKASSERT(reclaim->count > 0);
+		if (--reclaim->count == 0) {
 			TAILQ_REMOVE(&hmp->reclaim_list, reclaim, entry);
 			wakeup(reclaim);
 		}
-		if (hmp->inode_reclaims > hammer_limit_reclaim / 2)
-			break;
 	}
 }
 
@@ -3167,19 +3178,25 @@ hammer_inode_wakereclaims(hammer_inode_t ip)
  *
  * When we block we don't care *which* inode has finished reclaiming,
  * as lone as one does.
+ *
+ * The reclaim pipeline is primary governed by the auto-flush which is
+ * 1/4 hammer_limit_reclaim.  We don't want to block if the count is
+ * less than 1/2 hammer_limit_reclaim.  From 1/2 to full count is
+ * dynamically governed.
  */
 void
 hammer_inode_waitreclaims(hammer_transaction_t trans)
 {
 	hammer_mount_t hmp = trans->hmp;
 	struct hammer_reclaim reclaim;
+	int lower_limit;
 
 	/*
-	 * Track inode load
+	 * Track inode load, delay if the number of reclaiming inodes is
+	 * between 2/4 and 4/4 hammer_limit_reclaim, depending.
 	 */
 	if (curthread->td_proc) {
 		struct hammer_inostats *stats;
-		int lower_limit;
 
 		stats = hammer_inode_inostats(hmp, curthread->td_proc->p_pid);
 		++stats->count;
@@ -3187,23 +3204,20 @@ hammer_inode_waitreclaims(hammer_transaction_t trans)
 		if (stats->count > hammer_limit_reclaim / 2)
 			stats->count = hammer_limit_reclaim / 2;
 		lower_limit = hammer_limit_reclaim - stats->count;
-		if (hammer_debug_general & 0x10000)
-			kprintf("pid %5d limit %d\n", (int)curthread->td_proc->p_pid, lower_limit);
-
-		if (hmp->inode_reclaims < lower_limit)
-			return;
+		if (hammer_debug_general & 0x10000) {
+			kprintf("pid %5d limit %d\n",
+				(int)curthread->td_proc->p_pid, lower_limit);
+		}
 	} else {
-		/*
-		 * Default mode
-		 */
-		if (hmp->inode_reclaims < hammer_limit_reclaim)
-			return;
+		lower_limit = hammer_limit_reclaim * 3 / 4;
 	}
-	reclaim.count = 1;
-	TAILQ_INSERT_TAIL(&hmp->reclaim_list, &reclaim, entry);
-	tsleep(&reclaim, 0, "hmrrcm", hz);
-	if (reclaim.count > 0)
-		TAILQ_REMOVE(&hmp->reclaim_list, &reclaim, entry);
+	if (hmp->inode_reclaims >= lower_limit) {
+		reclaim.count = 1;
+		TAILQ_INSERT_TAIL(&hmp->reclaim_list, &reclaim, entry);
+		tsleep(&reclaim, 0, "hmrrcm", hz);
+		if (reclaim.count > 0)
+			TAILQ_REMOVE(&hmp->reclaim_list, &reclaim, entry);
+	}
 }
 
 /*

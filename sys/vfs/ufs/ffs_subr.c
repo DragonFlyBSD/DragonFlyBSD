@@ -32,7 +32,6 @@
  *
  *	@(#)ffs_subr.c	8.5 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_subr.c,v 1.25 1999/12/29 04:55:04 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_subr.c,v 1.13 2006/05/26 19:57:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,6 +39,7 @@
 #ifndef _KERNEL
 #include "dinode.h"
 #include "fs.h"
+extern void panic(const char *, ...);
 #else
 #include "opt_ddb.h"
 

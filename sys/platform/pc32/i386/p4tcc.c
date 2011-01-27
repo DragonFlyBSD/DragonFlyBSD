@@ -72,7 +72,7 @@ static struct {
 	{ 0,  13,  1 }
 };
 
-#define TCC_LEVELS	sizeof(tcc) / sizeof(tcc[0])
+#define TCC_LEVELS	NELEM(tcc)
 
 static u_short
 p4tcc_getperf(void)

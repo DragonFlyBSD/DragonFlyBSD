@@ -76,6 +76,7 @@ static __int64_t ipiq_avoided;	/* interlock with target avoids cpu ipi */
 static __int64_t ipiq_passive;	/* passive IPI messages */
 static __int64_t ipiq_cscount;	/* number of cpu synchronizations */
 static int ipiq_optimized = 1;	/* XXX temporary sysctl */
+static int ipiq_debug;		/* set to 1 for debug */
 #ifdef PANIC_DEBUG
 static int	panic_ipiq_cpu = -1;
 static int	panic_ipiq_count = 100;
@@ -95,6 +96,8 @@ SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_cscount, CTLFLAG_RW, &ipiq_cscount, 0,
     "Number of cpu synchronizations");
 SYSCTL_INT(_lwkt, OID_AUTO, ipiq_optimized, CTLFLAG_RW, &ipiq_optimized, 0,
     "");
+SYSCTL_INT(_lwkt, OID_AUTO, ipiq_debug, CTLFLAG_RW, &ipiq_debug, 0,
+    "");
 #ifdef PANIC_DEBUG
 SYSCTL_INT(_lwkt, OID_AUTO, panic_ipiq_cpu, CTLFLAG_RW, &panic_ipiq_cpu, 0, "");
 SYSCTL_INT(_lwkt, OID_AUTO, panic_ipiq_count, CTLFLAG_RW, &panic_ipiq_count, 0, "");
@@ -113,7 +116,7 @@ KTR_INFO(KTR_IPIQ, ipiq, send_nbio, 2, IPIQ_STRING, IPIQ_ARG_SIZE);
 KTR_INFO(KTR_IPIQ, ipiq, send_fail, 3, IPIQ_STRING, IPIQ_ARG_SIZE);
 KTR_INFO(KTR_IPIQ, ipiq, receive, 4, IPIQ_STRING, IPIQ_ARG_SIZE);
 KTR_INFO(KTR_IPIQ, ipiq, sync_start, 5, "cpumask=%08x", sizeof(cpumask_t));
-KTR_INFO(KTR_IPIQ, ipiq, sync_add, 6, "cpumask=%08x", sizeof(cpumask_t));
+KTR_INFO(KTR_IPIQ, ipiq, sync_end, 6, "cpumask=%08x", sizeof(cpumask_t));
 KTR_INFO(KTR_IPIQ, ipiq, cpu_send, 7, IPIQ_STRING, IPIQ_ARG_SIZE);
 KTR_INFO(KTR_IPIQ, ipiq, send_end, 8, IPIQ_STRING, IPIQ_ARG_SIZE);
 
@@ -128,8 +131,8 @@ KTR_INFO(KTR_IPIQ, ipiq, send_end, 8, IPIQ_STRING, IPIQ_ARG_SIZE);
 
 static int lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip, 
 				  struct intrframe *frame);
-static void lwkt_cpusync_remote1(lwkt_cpusync_t poll);
-static void lwkt_cpusync_remote2(lwkt_cpusync_t poll);
+static void lwkt_cpusync_remote1(lwkt_cpusync_t cs);
+static void lwkt_cpusync_remote2(lwkt_cpusync_t cs);
 
 /*
  * Send a function execution request to another cpu.  The request is queued
@@ -190,10 +193,12 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 	}
 	cpu_enable_intr();
 	++ipiq_fifofull;
+	DEBUG_PUSH_INFO("send_ipiq3");
 	while (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 4) {
 	    KKASSERT(ip->ip_windex - ip->ip_rindex != MAXCPUFIFO - 1);
 	    lwkt_process_ipiq();
 	}
+	DEBUG_POP_INFO();
 #if defined(__i386__)
 	write_eflags(eflags);
 #elif defined(__x86_64__)
@@ -281,10 +286,12 @@ lwkt_send_ipiq3_passive(globaldata_t target, ipifunc3_t func,
 	}
 	cpu_enable_intr();
 	++ipiq_fifofull;
+	DEBUG_PUSH_INFO("send_ipiq3_passive");
 	while (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 4) {
 	    KKASSERT(ip->ip_windex - ip->ip_rindex != MAXCPUFIFO - 1);
 	    lwkt_process_ipiq();
 	}
+	DEBUG_POP_INFO();
 #if defined(__i386__)
 	write_eflags(eflags);
 #elif defined(__x86_64__)
@@ -422,6 +429,7 @@ lwkt_wait_ipiq(globaldata_t target, int seq)
 	    unsigned long rflags = read_rflags();
 #endif
 	    cpu_enable_intr();
+	    DEBUG_PUSH_INFO("wait_ipiq");
 	    while ((int)(ip->ip_xindex - seq) < 0) {
 		crit_enter();
 		lwkt_process_ipiq();
@@ -437,6 +445,7 @@ lwkt_wait_ipiq(globaldata_t target, int seq)
 		 */
 		cpu_lfence();
 	    }
+	    DEBUG_POP_INFO();
 #if defined(__i386__)
 	    write_eflags(eflags);
 #elif defined(__x86_64__)
@@ -464,6 +473,11 @@ lwkt_seq_ipiq(globaldata_t target)
  * There are two versions, one where no interrupt frame is available (when
  * called from the send code and from splz, and one where an interrupt
  * frame is available.
+ *
+ * When the current cpu is mastering a cpusync we do NOT internally loop
+ * on the cpusyncq poll.  We also do not re-flag a pending ipi due to
+ * the cpusyncq poll because this can cause doreti/splz to loop internally.
+ * The cpusync master's own loop must be allowed to run to avoid a deadlock.
  */
 void
 lwkt_process_ipiq(void)
@@ -488,7 +502,6 @@ again:
 	if (lwkt_process_ipiq_core(gd, &gd->gd_cpusyncq, NULL)) {
 	    if (gd->gd_curthread->td_cscount == 0)
 		goto again;
-	    need_ipiq();
 	}
     }
 }
@@ -516,10 +529,17 @@ again:
 	if (lwkt_process_ipiq_core(gd, &gd->gd_cpusyncq, frame)) {
 	    if (gd->gd_curthread->td_cscount == 0)
 		goto again;
-	    need_ipiq();
 	}
     }
 }
+
+#if 0
+static int iqticks[SMP_MAXCPU];
+static int iqcount[SMP_MAXCPU];
+#endif
+#if 0
+static int iqterm[SMP_MAXCPU];
+#endif
 
 static int
 lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip, 
@@ -531,6 +551,30 @@ lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip,
     ipifunc3_t copy_func;
     void *copy_arg1;
     int copy_arg2;
+
+#if 0
+    if (iqticks[mygd->gd_cpuid] != ticks) {
+	    iqticks[mygd->gd_cpuid] = ticks;
+	    iqcount[mygd->gd_cpuid] = 0;
+    }
+    if (++iqcount[mygd->gd_cpuid] > 3000000) {
+	kprintf("cpu %d ipiq maxed cscount %d spin %d\n",
+		mygd->gd_cpuid,
+		mygd->gd_curthread->td_cscount,
+		mygd->gd_spinlocks_wr);
+	iqcount[mygd->gd_cpuid] = 0;
+#if 0
+	if (++iqterm[mygd->gd_cpuid] > 10)
+		panic("cpu %d ipiq maxed", mygd->gd_cpuid);
+#endif
+	int i;
+	for (i = 0; i < ncpus; ++i) {
+		if (globaldata_find(i)->gd_infomsg)
+			kprintf(" %s", globaldata_find(i)->gd_infomsg);
+	}
+	kprintf("\n");
+    }
+#endif
 
     /*
      * Obtain the current write index, which is modified by a remote cpu.
@@ -551,20 +595,36 @@ lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip,
      *	     may make, it is possible for both rindex and windex to advance and
      *	     thus for rindex to advance passed our cached windex.
      *
-     * NOTE: A memory fence is required to prevent speculative loads prior
+     * NOTE: A load fence is required to prevent speculative loads prior
      *	     to the loading of ip_rindex.  Even though stores might be
-     *	     ordered, loads are probably not.
+     *	     ordered, loads are probably not.  A memory fence is required
+     *	     to prevent reordering of the loads after the ip_rindex update.
      */
     while (wi - (ri = ip->ip_rindex) > 0) {
 	ri &= MAXCPUFIFO_MASK;
-	cpu_mfence();
+	cpu_lfence();
 	copy_func = ip->ip_func[ri];
 	copy_arg1 = ip->ip_arg1[ri];
 	copy_arg2 = ip->ip_arg2[ri];
+	cpu_mfence();
 	++ip->ip_rindex;
 	KKASSERT((ip->ip_rindex & MAXCPUFIFO_MASK) ==
 		 ((ri + 1) & MAXCPUFIFO_MASK));
 	logipiq(receive, copy_func, copy_arg1, copy_arg2, sgd, mycpu);
+#ifdef INVARIANTS
+	if (ipiq_debug && (ip->ip_rindex & 0xFFFFFF) == 0) {
+		kprintf("cpu %d ipifunc %p %p %d (frame %p)\n",
+			mycpu->gd_cpuid,
+			copy_func, copy_arg1, copy_arg2,
+#if defined(__i386__)
+			(frame ? (void *)frame->if_eip : NULL));
+#elif defined(__amd64__)
+			(frame ? (void *)frame->if_rip : NULL));
+#else
+			NULL);
+#endif
+	}
+#endif
 	copy_func(copy_arg1, copy_arg2, frame);
 	cpu_sfence();
 	ip->ip_xindex = ip->ip_rindex;
@@ -626,164 +686,103 @@ lwkt_synchronize_ipiqs(const char *wmesg)
 /*
  * CPU Synchronization Support
  *
- * lwkt_cpusync_simple()
+ * lwkt_cpusync_interlock()	- Place specified cpus in a quiescent state.
+ *				  The current cpu is placed in a hard critical
+ *				  section.
  *
- *	The function is executed synchronously before return on remote cpus.
- *	A lwkt_cpusync_t pointer is passed as an argument.  The data can
- *	be accessed via arg->cs_data.
- *
- *	XXX should I just pass the data as an argument to be consistent?
+ * lwkt_cpusync_deinterlock()	- Execute cs_func on specified cpus, including
+ *				  current cpu if specified, then return.
  */
-
 void
-lwkt_cpusync_simple(cpumask_t mask, cpusync_func_t func, void *data)
+lwkt_cpusync_simple(cpumask_t mask, cpusync_func_t func, void *arg)
 {
-    struct lwkt_cpusync cmd;
+    struct lwkt_cpusync cs;
 
-    cmd.cs_run_func = NULL;
-    cmd.cs_fin1_func = func;
-    cmd.cs_fin2_func = NULL;
-    cmd.cs_data = data;
-    lwkt_cpusync_start(mask & mycpu->gd_other_cpus, &cmd);
-    if (mask & CPUMASK(mycpu->gd_cpuid))
-	func(&cmd);
-    lwkt_cpusync_finish(&cmd);
+    lwkt_cpusync_init(&cs, mask, func, arg);
+    lwkt_cpusync_interlock(&cs);
+    lwkt_cpusync_deinterlock(&cs);
 }
 
-/*
- * lwkt_cpusync_fastdata()
- *
- *	The function is executed in tandem with return on remote cpus.
- *	The data is directly passed as an argument.  Do not pass pointers to
- *	temporary storage as the storage might have
- *	gone poof by the time the target cpu executes
- *	the function.
- *
- *	At the moment lwkt_cpusync is declared on the stack and we must wait
- *	for all remote cpus to ack in lwkt_cpusync_finish(), but as a future
- *	optimization we should be able to put a counter in the globaldata
- *	structure (if it is not otherwise being used) and just poke it and
- *	return without waiting. XXX
- */
-void
-lwkt_cpusync_fastdata(cpumask_t mask, cpusync_func2_t func, void *data)
-{
-    struct lwkt_cpusync cmd;
 
-    cmd.cs_run_func = NULL;
-    cmd.cs_fin1_func = NULL;
-    cmd.cs_fin2_func = func;
-    cmd.cs_data = NULL;
-    lwkt_cpusync_start(mask & mycpu->gd_other_cpus, &cmd);
-    if (mask & CPUMASK(mycpu->gd_cpuid))
-	func(data);
-    lwkt_cpusync_finish(&cmd);
-}
-
-/*
- * lwkt_cpusync_start()
- *
- *	Start synchronization with a set of target cpus, return once they are
- *	known to be in a synchronization loop.  The target cpus will execute
- *	poll->cs_run_func() IN TANDEM WITH THE RETURN.
- *
- *	XXX future: add lwkt_cpusync_start_quick() and require a call to
- *	lwkt_cpusync_add() or lwkt_cpusync_wait(), allowing the caller to
- *	potentially absorb the IPI latency doing something useful.
- */
 void
-lwkt_cpusync_start(cpumask_t mask, lwkt_cpusync_t poll)
+lwkt_cpusync_interlock(lwkt_cpusync_t cs)
 {
+#ifdef SMP
     globaldata_t gd = mycpu;
+    cpumask_t mask;
 
-    poll->cs_count = 0;
-    poll->cs_mask = mask;
-#ifdef SMP
-    logipiq2(sync_start, mask & gd->gd_other_cpus);
-    poll->cs_maxcount = lwkt_send_ipiq_mask(
-		mask & gd->gd_other_cpus & smp_active_mask,
-		(ipifunc1_t)lwkt_cpusync_remote1, poll);
-#endif
-    if (mask & gd->gd_cpumask) {
-	if (poll->cs_run_func)
-	    poll->cs_run_func(poll);
-    }
-#ifdef SMP
-    if (poll->cs_maxcount) {
+    /*
+     * mask acknowledge (cs_mack):  0->mask for stage 1
+     *
+     * mack does not include the current cpu.
+     */
+    mask = cs->cs_mask & gd->gd_other_cpus & smp_active_mask;
+    cs->cs_mack = 0;
+    crit_enter_id("cpusync");
+    if (mask) {
+	DEBUG_PUSH_INFO("cpusync_interlock");
 	++ipiq_cscount;
 	++gd->gd_curthread->td_cscount;
-	while (poll->cs_count != poll->cs_maxcount) {
-	    crit_enter();
+	lwkt_send_ipiq_mask(mask, (ipifunc1_t)lwkt_cpusync_remote1, cs);
+	logipiq2(sync_start, mask);
+	while (cs->cs_mack != mask) {
 	    lwkt_process_ipiq();
-	    crit_exit();
+	    cpu_pause();
 	}
+	DEBUG_POP_INFO();
     }
-#endif
-}
-
-void
-lwkt_cpusync_add(cpumask_t mask, lwkt_cpusync_t poll)
-{
-    globaldata_t gd = mycpu;
-#ifdef SMP
-    int count;
-#endif
-
-    mask &= ~poll->cs_mask;
-    poll->cs_mask |= mask;
-#ifdef SMP
-    logipiq2(sync_add, mask & gd->gd_other_cpus);
-    count = lwkt_send_ipiq_mask(
-		mask & gd->gd_other_cpus & smp_active_mask,
-		(ipifunc1_t)lwkt_cpusync_remote1, poll);
-#endif
-    if (mask & gd->gd_cpumask) {
-	if (poll->cs_run_func)
-	    poll->cs_run_func(poll);
-    }
-#ifdef SMP
-    poll->cs_maxcount += count;
-    if (poll->cs_maxcount) {
-	if (poll->cs_maxcount == count)
-	    ++gd->gd_curthread->td_cscount;
-	while (poll->cs_count != poll->cs_maxcount) {
-	    crit_enter();
-	    lwkt_process_ipiq();
-	    crit_exit();
-	}
-    }
+#else
+    cs->cs_mack = 0;
 #endif
 }
 
 /*
- * Finish synchronization with a set of target cpus.  The target cpus will
- * execute cs_fin1_func(poll) prior to this function returning, and will
- * execute cs_fin2_func(data) IN TANDEM WITH THIS FUNCTION'S RETURN.
+ * Interlocked cpus have executed remote1 and are polling in remote2.
+ * To deinterlock we clear cs_mack and wait for the cpus to execute
+ * the func and set their bit in cs_mack again.
  *
- * If cs_maxcount is non-zero then we are mastering a cpusync with one or
- * more remote cpus and must account for it in our thread structure.
  */
 void
-lwkt_cpusync_finish(lwkt_cpusync_t poll)
+lwkt_cpusync_deinterlock(lwkt_cpusync_t cs)
 {
     globaldata_t gd = mycpu;
-
-    poll->cs_count = -1;
-    if (poll->cs_mask & gd->gd_cpumask) {
-	if (poll->cs_fin1_func)
-	    poll->cs_fin1_func(poll);
-	if (poll->cs_fin2_func)
-	    poll->cs_fin2_func(poll->cs_data);
-    }
 #ifdef SMP
-    if (poll->cs_maxcount) {
-	while (poll->cs_count != -(poll->cs_maxcount + 1)) {
-	    crit_enter();
+    cpumask_t mask;
+
+    /*
+     * mask acknowledge (cs_mack):  mack->0->mack for stage 2
+     *
+     * Clearing cpu bits for polling cpus in cs_mack will cause them to
+     * execute stage 2, which executes the cs_func(cs_data) and then sets
+     * their bit in cs_mack again.
+     *
+     * mack does not include the current cpu.
+     */
+    mask = cs->cs_mack;
+    cpu_ccfence();
+    cs->cs_mack = 0;
+    if (cs->cs_func && (cs->cs_mask & gd->gd_cpumask))
+	    cs->cs_func(cs->cs_data);
+    if (mask) {
+	DEBUG_PUSH_INFO("cpusync_deinterlock");
+	while (cs->cs_mack != mask) {
 	    lwkt_process_ipiq();
-	    crit_exit();
+	    cpu_pause();
 	}
+	DEBUG_POP_INFO();
+	/*
+	 * cpusyncq ipis may be left queued without the RQF flag set due to
+	 * a non-zero td_cscount, so be sure to process any laggards after
+	 * decrementing td_cscount.
+	 */
 	--gd->gd_curthread->td_cscount;
+	lwkt_process_ipiq();
+	logipiq2(sync_end, mask);
     }
+    crit_exit_id("cpusync");
+#else
+    if (cs->cs_func && (cs->cs_mask & gd->gd_cpumask))
+	cs->cs_func(cs->cs_data);
 #endif
 }
 
@@ -797,52 +796,46 @@ lwkt_cpusync_finish(lwkt_cpusync_t poll)
  * the request so we spin on it.
  */
 static void
-lwkt_cpusync_remote1(lwkt_cpusync_t poll)
+lwkt_cpusync_remote1(lwkt_cpusync_t cs)
 {
-    atomic_add_int(&poll->cs_count, 1);
-    if (poll->cs_run_func)
-	poll->cs_run_func(poll);
-    lwkt_cpusync_remote2(poll);
+    globaldata_t gd = mycpu;
+
+    atomic_set_cpumask(&cs->cs_mack, gd->gd_cpumask);
+    lwkt_cpusync_remote2(cs);
 }
 
 /*
  * helper IPI remote messaging function.
  *
  * Poll for the originator telling us to finish.  If it hasn't, requeue
- * our request so we spin on it.  When the originator requests that we
- * finish we execute cs_fin1_func(poll) synchronously and cs_fin2_func(data)
- * in tandem with the release.
+ * our request so we spin on it.
  */
 static void
-lwkt_cpusync_remote2(lwkt_cpusync_t poll)
+lwkt_cpusync_remote2(lwkt_cpusync_t cs)
 {
-    if (poll->cs_count < 0) {
-	cpusync_func2_t savef;
-	void *saved;
+    globaldata_t gd = mycpu;
 
-	if (poll->cs_fin1_func)
-	    poll->cs_fin1_func(poll);
-	if (poll->cs_fin2_func) {
-	    savef = poll->cs_fin2_func;
-	    saved = poll->cs_data;
-	    cpu_ccfence();	/* required ordering for MP operation */
-	    atomic_add_int(&poll->cs_count, -1);
-	    savef(saved);
-	} else {
-	    atomic_add_int(&poll->cs_count, -1);
-	}
+    if ((cs->cs_mack & gd->gd_cpumask) == 0) {
+	if (cs->cs_func)
+		cs->cs_func(cs->cs_data);
+	atomic_set_cpumask(&cs->cs_mack, gd->gd_cpumask);
     } else {
-	globaldata_t gd = mycpu;
 	lwkt_ipiq_t ip;
 	int wi;
 
 	ip = &gd->gd_cpusyncq;
 	wi = ip->ip_windex & MAXCPUFIFO_MASK;
 	ip->ip_func[wi] = (ipifunc3_t)(ipifunc1_t)lwkt_cpusync_remote2;
-	ip->ip_arg1[wi] = poll;
+	ip->ip_arg1[wi] = cs;
 	ip->ip_arg2[wi] = 0;
 	cpu_sfence();
 	++ip->ip_windex;
+	if (ipiq_debug && (ip->ip_windex & 0xFFFFFF) == 0) {
+		kprintf("cpu %d cm=%016jx %016jx f=%p\n",
+			gd->gd_cpuid,
+			(intmax_t)cs->cs_mask, (intmax_t)cs->cs_mack,
+			cs->cs_func);
+	}
     }
 }
 

@@ -70,7 +70,7 @@ static mode_t mode;
 static u_long flags = 0xffffffff;
 
 static int	dsort(const FTSENT * const *, const FTSENT * const *);
-static void	output(int, int *, const char *, ...);
+static void	output(int, int *, const char *, ...) __printflike(3, 4);
 static int	statd(FTS *, FTSENT *, uid_t *, gid_t *, mode_t *,
 			   u_long *);
 static void	statf(int, FTSENT *);
@@ -194,7 +194,8 @@ statf(int indent, FTSENT *p)
 	if (keys & F_NLINK && p->fts_statp->st_nlink != 1)
 		output(indent, &offset, "nlink=%u", p->fts_statp->st_nlink);
 	if (keys & F_SIZE)
-		output(indent, &offset, "size=%qd", p->fts_statp->st_size);
+		output(indent, &offset, "size=%jd",
+		    (uintmax_t)p->fts_statp->st_size);
 	if (keys & F_TIME)
 		output(indent, &offset, "time=%ld.%ld",
 		    p->fts_statp->st_mtimespec.tv_sec,

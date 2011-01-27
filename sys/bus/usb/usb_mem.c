@@ -1,7 +1,6 @@
 /*
  * $NetBSD: usb_mem.c,v 1.26 2003/02/01 06:23:40 thorpej Exp $
  * $FreeBSD: src/sys/dev/usb/usb_mem.c,v 1.5 2003/10/04 22:13:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_mem.c,v 1.12 2007/06/28 13:55:12 hasso Exp $
  */
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -166,9 +165,7 @@ usb_block_allocmem(bus_dma_tag_t tag, size_t size, size_t align,
 
 	if (bus_dma_tag_create(tag, align, 0,
 	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
-	    size, sizeof(p->segs) / sizeof(p->segs[0]), size,
-	    BUS_DMA_ALLOCNOW, &p->tag) == ENOMEM)
-	{
+	    size, NELEM(p->segs), size, BUS_DMA_ALLOCNOW, &p->tag) == ENOMEM) {
 		goto free;
 	}
 

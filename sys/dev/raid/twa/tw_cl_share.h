@@ -484,7 +484,8 @@ extern TW_INT32	tw_osl_strlen(TW_VOID *str);
 
 #ifndef tw_osl_vsprintf
 /* Standard vsprintf. */
-extern TW_INT32	tw_osl_vsprintf(TW_INT8 *dest, const TW_INT8 *fmt, va_list ap);
+extern TW_INT32	tw_osl_vsprintf(TW_INT8 *dest, const TW_INT8 *fmt, va_list ap)
+		    __printflike(2, 0);
 #endif
 
 

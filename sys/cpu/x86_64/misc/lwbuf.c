@@ -45,6 +45,11 @@
 #include <cpu/lwbuf.h>
 #include <machine/param.h>
 
+#if 0
+/*
+ * NO LONGER USED - See inlines
+ */
+
 static void lwbuf_init(void *);
 SYSINIT(sock_lwb, SI_BOOT2_MACHDEP, SI_ORDER_ANY, lwbuf_init, NULL);
 
@@ -74,13 +79,17 @@ lwbuf_init(void *arg)
 	&lwbuf_malloc_args);
 }
 
-struct lwbuf *
-lwbuf_alloc(vm_page_t m)
-{
-    struct lwbuf *lwb;
+#endif
 
-    if ((lwb = objcache_get(lwbuf_cache, M_WAITOK)) == NULL)
-        return (NULL);
+#if 0
+/*
+ * NO LONGER USED - See inlines
+ */
+
+struct lwbuf *
+lwbuf_alloc(vm_page_t m, struct lwbuf *lwb_cache)
+{
+    struct lwbuf *lwb = lwb_cache;
 
     lwb->m = m;
     lwb->kva = PHYS_TO_DMAP(VM_PAGE_TO_PHYS(lwb->m));
@@ -91,7 +100,7 @@ lwbuf_alloc(vm_page_t m)
 void
 lwbuf_free(struct lwbuf *lwb)
 {
-    lwb->m = NULL;
-
-    objcache_put(lwbuf_cache, lwb);
+    lwb->m = NULL;	/* safety */
 }
+
+#endif

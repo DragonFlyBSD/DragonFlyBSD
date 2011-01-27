@@ -48,8 +48,6 @@
 #include <vm/vm_extern.h>
 #include <vfs/fifofs/fifo.h>
 
-#include <sys/mplock2.h>
-
 #include "hammer.h"
 
 /*
@@ -372,7 +370,7 @@ hammer_vop_read(struct vop_read_args *ap)
 		/*
 		 * MPSAFE
 		 */
-		bp = getcacheblk(ap->a_vp, base_offset);
+		bp = getcacheblk(ap->a_vp, base_offset, blksize);
 		if (bp) {
 			error = 0;
 			goto skip;
@@ -424,11 +422,25 @@ skip:
 			n = uio->uio_resid;
 		if (n > ip->ino_data.size - uio->uio_offset)
 			n = (int)(ip->ino_data.size - uio->uio_offset);
-		error = uiomove((char *)bp->b_data + offset, n, uio);
+		if (got_fstoken)
+			lwkt_reltoken(&hmp->fs_token);
 
-		/* data has a lower priority then meta-data */
+		/*
+		 * Set B_AGE, data has a lower priority than meta-data.
+		 *
+		 * Use a hold/unlock/drop sequence to run the uiomove
+		 * with the buffer unlocked, avoiding deadlocks against
+		 * read()s on mmap()'d spaces.
+		 */
 		bp->b_flags |= B_AGE;
+		bqhold(bp);
 		bqrelse(bp);
+		error = uiomove((char *)bp->b_data + offset, n, uio);
+		bqdrop(bp);
+
+		if (got_fstoken)
+			lwkt_gettoken(&hmp->fs_token);
+
 		if (error)
 			break;
 		hammer_stats_file_read += n;
@@ -695,8 +707,11 @@ hammer_vop_write(struct vop_write_args *ap)
 			if (error == 0)
 				bheavy(bp);
 		}
-		if (error == 0)
+		if (error == 0) {
+			lwkt_reltoken(&hmp->fs_token);
 			error = uiomove(bp->b_data + offset, n, uio);
+			lwkt_gettoken(&hmp->fs_token);
+		}
 
 		/*
 		 * Generate REDO records if enabled and redo_count will not
@@ -2660,6 +2675,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	int boff;
 	int roff;
 	int n;
+	int isdedupable;
 
 	bio = ap->a_bio;
 	bp = bio->bio_buf;
@@ -2671,9 +2687,14 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	 * a BMAP operation, or else should be NOOFFSET.
 	 *
 	 * Checking the high bits for a match against zone-2 should suffice.
+	 *
+	 * In cases where a lot of data duplication is present it may be
+	 * more beneficial to drop through and doubule-buffer through the
+	 * device.
 	 */
 	nbio = push_bio(bio);
-	if ((nbio->bio_offset & HAMMER_OFF_ZONE_MASK) ==
+	if (hammer_double_buffer == 0 &&
+	    (nbio->bio_offset & HAMMER_OFF_ZONE_MASK) ==
 	    HAMMER_ZONE_LARGE_DATA) {
 		lwkt_gettoken(&hmp->fs_token);
 		error = hammer_io_direct_read(hmp, nbio, NULL);
@@ -2814,19 +2835,23 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		 * truncation point from above.
 		 */
 		disk_offset = cursor.leaf->data_offset + roff;
-		if (boff == 0 && n == bp->b_bufsize &&
-		    hammer_cursor_ondisk(&cursor) &&
-		    (disk_offset & HAMMER_BUFMASK) == 0) {
+		isdedupable = (boff == 0 && n == bp->b_bufsize &&
+			       hammer_cursor_ondisk(&cursor) &&
+			       ((int)disk_offset & HAMMER_BUFMASK) == 0);
+
+		if (isdedupable && hammer_double_buffer == 0) {
 			KKASSERT((disk_offset & HAMMER_OFF_ZONE_MASK) ==
 				 HAMMER_ZONE_LARGE_DATA);
 			nbio->bio_offset = disk_offset;
 			error = hammer_io_direct_read(hmp, nbio, cursor.leaf);
-			if (hammer_live_dedup)
+			if (hammer_live_dedup && error == 0)
 				hammer_dedup_cache_add(ip, cursor.leaf);
 			goto done;
 		} else if (n) {
 			error = hammer_ip_resolve_data(&cursor);
 			if (error == 0) {
+				if (hammer_live_dedup && isdedupable)
+					hammer_dedup_cache_add(ip, cursor.leaf);
 				bcopy((char *)cursor.data + roff,
 				      (char *)bp->b_data + boff, n);
 			}

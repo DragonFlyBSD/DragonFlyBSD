@@ -62,7 +62,6 @@
 
 #include <sys/buf2.h>
 #include <sys/signal2.h>
-#include <sys/mplock2.h>
 #include "hammer_disk.h"
 #include "hammer_mount.h"
 #include "hammer_ioctl.h"
@@ -312,7 +311,7 @@ RB_PROTOTYPE(hammer_fls_rb_tree, hammer_inode, rb_flsnode,
 struct hammer_flush_group {
 	TAILQ_ENTRY(hammer_flush_group)	flush_entry;
 	struct hammer_fls_rb_tree	flush_tree;
-	int				unused01;
+	int				seq;		/* our seq no */
 	int				total_count;	/* record load */
 	int				running;	/* group is running */
 	int				closed;
@@ -483,8 +482,6 @@ struct hammer_reclaim {
 	int	count;
 };
 
-#define HAMMER_RECLAIM_WAIT	4000	/* default vfs.hammer.limit_reclaim */
-
 /*
  * Track who is creating the greatest burden on the
  * inode cache.
@@ -586,6 +583,7 @@ RB_HEAD(hammer_buf_rb_tree, hammer_buffer);
 RB_HEAD(hammer_nod_rb_tree, hammer_node);
 RB_HEAD(hammer_und_rb_tree, hammer_undo);
 RB_HEAD(hammer_res_rb_tree, hammer_reserve);
+RB_HEAD(hammer_mod_rb_tree, hammer_io);
 
 RB_PROTOTYPE2(hammer_vol_rb_tree, hammer_volume, rb_node,
 	      hammer_vol_rb_compare, int32_t);
@@ -597,6 +595,8 @@ RB_PROTOTYPE2(hammer_und_rb_tree, hammer_undo, rb_node,
 	      hammer_und_rb_compare, hammer_off_t);
 RB_PROTOTYPE2(hammer_res_rb_tree, hammer_reserve, rb_node,
 	      hammer_res_rb_compare, hammer_off_t);
+RB_PROTOTYPE2(hammer_mod_rb_tree, hammer_io, rb_node,
+	      hammer_mod_rb_compare, hammer_off_t);
 
 /*
  * IO management - embedded at the head of various in-memory structures
@@ -633,9 +633,9 @@ struct hammer_io {
 	enum hammer_io_type	type;
 	struct hammer_mount	*hmp;
 	struct hammer_volume	*volume;
-	TAILQ_ENTRY(hammer_io)	mod_entry; /* list entry if modified */
+	RB_ENTRY(hammer_io)	rb_node;     /* if modified */
 	TAILQ_ENTRY(hammer_io)	iorun_entry; /* iorun_list */
-	hammer_io_list_t	mod_list;
+	struct hammer_mod_rb_tree *mod_root;
 	struct buf		*bp;
 	int64_t			offset;	   /* zone-2 offset */
 	int			bytes;	   /* buffer cache buffer size */
@@ -840,7 +840,7 @@ struct hammer_flusher {
 	int		signal;		/* flusher thread sequencer */
 	int		act;		/* currently active flush group */
 	int		done;		/* set to act when complete */
-	int		next;		/* next flush group */
+	int		next;		/* next unallocated flg seqno */
 	int		group_lock;	/* lock sequencing of the next flush */
 	int		exiting;	/* request master exit */
 	thread_t	td;		/* master flusher thread */
@@ -906,12 +906,11 @@ struct hammer_mount {
 	u_int	check_interrupt;
 	u_int	check_yield;
 	uuid_t	fsid;
-	struct hammer_io_list volu_list;	/* dirty undo buffers */
-	struct hammer_io_list undo_list;	/* dirty undo buffers */
-	struct hammer_io_list data_list;	/* dirty data buffers */
-	struct hammer_io_list alt_data_list;	/* dirty data buffers */
-	struct hammer_io_list meta_list;	/* dirty meta bufs    */
-	struct hammer_io_list lose_list;	/* loose buffers      */
+	struct hammer_mod_rb_tree volu_root;	/* dirty undo buffers */
+	struct hammer_mod_rb_tree undo_root;	/* dirty undo buffers */
+	struct hammer_mod_rb_tree data_root;	/* dirty data buffers */
+	struct hammer_mod_rb_tree meta_root;	/* dirty meta bufs    */
+	struct hammer_mod_rb_tree lose_root;	/* loose buffers      */
 	int	locked_dirty_space;		/* meta/volu count    */
 	int	io_running_space;		/* io_token */
 	int	io_running_wakeup;		/* io_token */
@@ -941,6 +940,7 @@ struct hammer_mount {
 	TAILQ_HEAD(, hammer_undo)  undo_lru_list;
 	TAILQ_HEAD(, hammer_reserve) delay_list;
 	struct hammer_flush_group_list	flush_group_list;
+	hammer_flush_group_t	fill_flush_group;
 	hammer_flush_group_t	next_flush_group;
 	TAILQ_HEAD(, hammer_objid_cache) objid_cache_list;
 	TAILQ_HEAD(, hammer_dedup_cache) dedup_lru_list;
@@ -1054,6 +1054,7 @@ extern int hammer_bio_count;
 extern int hammer_verify_zone;
 extern int hammer_verify_data;
 extern int hammer_write_mode;
+extern int hammer_double_buffer;
 extern int hammer_yield_check;
 extern int hammer_fsync_mode;
 extern int hammer_autoflush;

@@ -38,6 +38,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <netinet/in.h>
 #include <netipx/ipx.h>
 #include <errno.h>
 #include <unistd.h>

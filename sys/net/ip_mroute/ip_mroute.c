@@ -100,7 +100,7 @@ SYSCTL_OPAQUE(_net_inet_ip, OID_AUTO, viftable, CTLFLAG_RD,
 
 static u_char		nexpire[MFCTBLSIZ];
 
-struct lwkt_token mroute_token = LWKT_TOKEN_MP_INITIALIZER(mroute_token);
+struct lwkt_token mroute_token = LWKT_TOKEN_INITIALIZER(mroute_token);
 
 
 static struct callout expire_upcalls_ch;

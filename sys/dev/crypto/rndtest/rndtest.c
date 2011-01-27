@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/dev/rndtest/rndtest.c,v 1.1.4.1 2003/06/04 17:10:30 sam Exp $	*/
-/*	$DragonFly: src/sys/dev/crypto/rndtest/rndtest.c,v 1.9 2006/12/18 20:41:01 dillon Exp $	*/
 /*	$OpenBSD$	*/
 
 /*
@@ -70,7 +69,7 @@ static const struct rndtest_testfunc {
 	{ rndtest_longruns },
 };
 
-#define	RNDTEST_NTESTS	(sizeof(rndtest_funcs)/sizeof(rndtest_funcs[0]))
+#define	RNDTEST_NTESTS	NELEM(rndtest_funcs)
 
 SYSCTL_NODE(_kern, OID_AUTO, rndtest, CTLFLAG_RD, 0, "RNG test parameters");
 

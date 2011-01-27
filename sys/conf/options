@@ -31,15 +31,7 @@
 # opt_<name-of-option-in-lower-case>.h
 
 # Adaptec Array Controller driver options
-AAC_DEBUG		opt_aac.h	# Debugging levels:
-					# 0 - quiet, only emit warnings
-					# 1 - noisy, emit major function
-					#     points and things done
-					# 2 - noisier, emit trace items
-					#     in loops, etc.
-					# 3 - even more noisy, more function
-					#     points
-					# 4 - noisiest
+AAC_DEBUG		opt_aac.h
 
 # Adaptec aic7xxx SCSI controller options
 AHC_ALLOW_MEMIO		opt_aic7xxx.h	# Allow PCI devices to use memory
@@ -482,7 +474,6 @@ DEBUG_LOCKS		opt_global.h
 DEBUG_CRIT_SECTIONS	opt_global.h
 DIAGNOSTIC		opt_global.h
 INVARIANTS		opt_global.h
-SIMPLELOCK_DEBUG	opt_global.h
 VFS_BIO_DEBUG		opt_global.h
 DEBUG_INTERRUPTS	opt_global.h
 SOCKBUF_DEBUG		opt_global.h

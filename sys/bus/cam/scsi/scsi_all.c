@@ -626,7 +626,7 @@ scsi_op_desc(u_int16_t opcode, struct scsi_inquiry_data *inq_data)
 		table[0] = ((struct scsi_op_quirk_entry *)match)->op_table;
 		num_ops[0] = ((struct scsi_op_quirk_entry *)match)->num_ops;
 		table[1] = scsi_op_codes;
-		num_ops[1] = sizeof(scsi_op_codes)/sizeof(scsi_op_codes[0]);
+		num_ops[1] = NELEM(scsi_op_codes);
 		num_tables = 2;
 	} else {
 		/*	
@@ -637,7 +637,7 @@ scsi_op_desc(u_int16_t opcode, struct scsi_inquiry_data *inq_data)
 			return("Vendor Specific Command");
 
 		table[0] = scsi_op_codes;
-		num_ops[0] = sizeof(scsi_op_codes)/sizeof(scsi_op_codes[0]);
+		num_ops[0] = NELEM(scsi_op_codes);
 		num_tables = 1;
 	}
 
@@ -707,8 +707,7 @@ const struct sense_key_table_entry sense_key_table[] =
 	{ SSD_KEY_RESERVED, SS_FATAL|EIO, "RESERVED" }
 };
 
-const int sense_key_table_size =
-    sizeof(sense_key_table)/sizeof(sense_key_table[0]);
+const int sense_key_table_size = NELEM(sense_key_table);
 
 static struct asc_table_entry quantum_fireball_entries[] = {
 	{ SST(0x04, 0x0b, SS_START | SSQ_DECREMENT_COUNT | ENXIO, 
@@ -745,8 +744,7 @@ static struct scsi_sense_quirk_entry sense_quirk_table[] = {
 	}
 };
 
-const int sense_quirk_table_size =
-    sizeof(sense_quirk_table)/sizeof(sense_quirk_table[0]);
+const int sense_quirk_table_size = NELEM(sense_quirk_table);
 
 static struct asc_table_entry asc_table[] = {
 	/*
@@ -2646,7 +2644,7 @@ static struct asc_table_entry asc_table[] = {
 	    "Security conflict in translated device") }
 };
 
-const int asc_table_size = sizeof(asc_table)/sizeof(asc_table[0]);
+const int asc_table_size = NELEM(asc_table);
 
 struct asc_key
 {
@@ -3493,7 +3491,7 @@ scsi_calc_syncsrate(u_int period_factor)
 		return (3300);
 	}
 
-	num_syncrates = sizeof(scsi_syncrates) / sizeof(scsi_syncrates[0]);
+	num_syncrates = NELEM(scsi_syncrates);
 	/* See if the period is in the "exception" table */
 	for (i = 0; i < num_syncrates; i++) {
 
@@ -3525,7 +3523,7 @@ scsi_calc_syncparam(u_int period)
 
 	/* Adjust for exception table being in 100ths. */
 	period *= 10;
-	num_syncrates = sizeof(scsi_syncrates) / sizeof(scsi_syncrates[0]);
+	num_syncrates = NELEM(scsi_syncrates);
 	/* See if the period is in the "exception" table */
 	for (i = 0; i < num_syncrates; i++) {
 

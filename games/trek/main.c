@@ -188,7 +188,7 @@ main(int argc, char **argv)
 		av++;
 	}
 	if (ac > 2)
-		syserr(0, "arg count");
+		syserr("arg count");
 #if 0
 	if (ac > 1)
 		f_log = fopen(av[0], opencode);

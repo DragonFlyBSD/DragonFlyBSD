@@ -67,7 +67,7 @@
  * System hard and soft interrupt limits.  Note that the architecture may
  * further limit available hardware and software interrupts.
  */
-#define MAX_HARDINTS	64
+#define MAX_HARDINTS	192
 #define MAX_SOFTINTS	64
 #define FIRST_SOFTINT	MAX_HARDINTS
 #define MAX_INTS	(MAX_HARDINTS + MAX_SOFTINTS)

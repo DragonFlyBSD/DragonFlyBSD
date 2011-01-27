@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/commands.c,v 1.19 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/commands.c,v 1.4 2008/09/02 17:21:12 dillon Exp $
  */
 
 #include <stand.h>

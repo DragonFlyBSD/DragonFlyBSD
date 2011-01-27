@@ -29,7 +29,6 @@
  *
  * $Id: ng_hci_misc.c,v 1.5 2003/09/08 18:57:51 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/hci/ng_hci_misc.c,v 1.10 2005/01/07 01:45:43 imp Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/hci/ng_hci_misc.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -446,7 +445,7 @@ ng_hci_con_untimeout(ng_hci_unit_con_p con)
 char const * const
 ng_hci_str_error(u_int16_t code)
 {
-#define	LAST_ERROR_CODE			((sizeof(s)/sizeof(s[0]))-1)
+#define	LAST_ERROR_CODE			(NELEM(s)-1)
 	static char const * const	s[] = {
 	/* 0x00 */ "No error",
 	/* 0x01 */ "Unknown HCI command",

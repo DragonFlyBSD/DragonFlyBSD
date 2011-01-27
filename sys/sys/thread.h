@@ -28,6 +28,9 @@
 #ifndef _SYS_TIME_H_
 #include <sys/time.h>   	/* struct timeval */
 #endif
+#ifndef _SYS_LOCK_H
+#include <sys/lock.h>
+#endif
 #ifndef _SYS_SPINLOCK_H_
 #include <sys/spinlock.h>
 #endif
@@ -108,26 +111,13 @@ typedef struct lwkt_token {
     const char		*t_desc;	/* Descriptive name */
 } lwkt_token;
 
-#define LWKT_TOKEN_MPSAFE	0x0001
-
 /*
  * Static initialization for a lwkt_token.
- *	UP - Not MPSAFE (full MP lock will also be acquired)
- *	MP - Is MPSAFE  (only the token will be acquired)
  */
-#define LWKT_TOKEN_UP_INITIALIZER(name)	\
+#define LWKT_TOKEN_INITIALIZER(name)	\
 {					\
 	.t_ref = NULL,			\
 	.t_flags = 0,			\
-	.t_collisions = 0,		\
-	.t_collmask = 0,		\
-	.t_desc = #name			\
-}
-
-#define LWKT_TOKEN_MP_INITIALIZER(name)	\
-{					\
-	.t_ref = NULL,			\
-	.t_flags = LWKT_TOKEN_MPSAFE,	\
 	.t_collisions = 0,		\
 	.t_collmask = 0,		\
 	.t_desc = #name			\
@@ -206,17 +196,13 @@ typedef struct lwkt_ipiq {
  * CPU Synchronization structure.  See lwkt_cpusync_start() and
  * lwkt_cpusync_finish() for more information.
  */
-typedef void (*cpusync_func_t)(lwkt_cpusync_t poll);
-typedef void (*cpusync_func2_t)(void *data);
+typedef void (*cpusync_func_t)(void *arg);
 
 struct lwkt_cpusync {
-    cpusync_func_t cs_run_func;		/* run (tandem w/ acquire) */
-    cpusync_func_t cs_fin1_func;	/* fin1 (synchronized) */
-    cpusync_func2_t cs_fin2_func;	/* fin2 (tandem w/ release) */
-    void	*cs_data;
-    int		cs_maxcount;
-    volatile int cs_count;
-    cpumask_t	cs_mask;
+    cpumask_t	cs_mask;		/* cpus running the sync */
+    cpumask_t	cs_mack;		/* mask acknowledge */
+    cpusync_func_t cs_func;		/* function to execute */
+    void	*cs_data;		/* function data */
 };
 
 /*
@@ -307,6 +293,13 @@ struct thread {
    int 	td_spinlock_stack_id[SPINLOCK_DEBUG_ARRAY_SIZE];
    struct spinlock *td_spinlock_stack[SPINLOCK_DEBUG_ARRAY_SIZE];
    void 	*td_spinlock_caller_pc[SPINLOCK_DEBUG_ARRAY_SIZE];
+
+    /*
+     * Track lockmgr locks held; lk->lk_filename:lk->lk_lineno is the holder
+     */
+#define LOCKMGR_DEBUG_ARRAY_SIZE	8
+    int		td_lockmgr_stack_id[LOCKMGR_DEBUG_ARRAY_SIZE];
+    struct lock	*td_lockmgr_stack[LOCKMGR_DEBUG_ARRAY_SIZE];
 #endif
 };
 
@@ -457,7 +450,7 @@ extern int  lwkt_cnttoken(lwkt_token_t, thread_t);
 extern int  lwkt_getalltokens(thread_t);
 extern void lwkt_relalltokens(thread_t);
 extern void lwkt_drain_token_requests(void);
-extern void lwkt_token_init(lwkt_token_t, int, const char *);
+extern void lwkt_token_init(lwkt_token_t, const char *);
 extern void lwkt_token_uninit(lwkt_token_t);
 
 extern void lwkt_token_pool_init(void);
@@ -496,11 +489,10 @@ extern void lwkt_synchronize_ipiqs(const char *);
 
 #endif /* SMP */
 
+/* lwkt_cpusync_init() - inline function in sys/thread2.h */
 extern void lwkt_cpusync_simple(cpumask_t, cpusync_func_t, void *);
-extern void lwkt_cpusync_fastdata(cpumask_t, cpusync_func2_t, void *);
-extern void lwkt_cpusync_start(cpumask_t, lwkt_cpusync_t);
-extern void lwkt_cpusync_add(cpumask_t, lwkt_cpusync_t);
-extern void lwkt_cpusync_finish(lwkt_cpusync_t);
+extern void lwkt_cpusync_interlock(lwkt_cpusync_t);
+extern void lwkt_cpusync_deinterlock(lwkt_cpusync_t);
 
 extern void crit_panic(void) __dead2;
 extern struct lwp *lwkt_preempted_proc(void);

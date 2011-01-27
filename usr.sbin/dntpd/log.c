@@ -36,7 +36,8 @@
 
 #include "defs.h"
 
-static void vlogline(int level, int newline, const char *ctl, va_list va);
+static void vlogline(int level, int newline, const char *ctl, va_list va)
+		__printflike(3, 0);
 
 int log_stderr = 1;
 

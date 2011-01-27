@@ -105,14 +105,15 @@ int hammer_limit_dirtybufspace;		/* per-mount */
 int hammer_limit_running_io;		/* per-mount */
 int hammer_limit_recs;			/* as a whole XXX */
 int hammer_limit_inode_recs = 1024;	/* per inode */
-int hammer_limit_reclaim = HAMMER_RECLAIM_WAIT;
+int hammer_limit_reclaim;
 int hammer_live_dedup_cache_size = DEDUP_CACHE_SIZE;
 int hammer_limit_redo = 4096 * 1024;	/* per inode */
-int hammer_autoflush = 2000;		/* auto flush */
+int hammer_autoflush = 500;		/* auto flush (typ on reclaim) */
 int hammer_bio_count;
 int hammer_verify_zone;
 int hammer_verify_data = 1;
 int hammer_write_mode;
+int hammer_double_buffer;
 int hammer_yield_check = 16;
 int hammer_fsync_mode = 3;
 int64_t hammer_contention_count;
@@ -276,6 +277,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, verify_data, CTLFLAG_RW,
 	   &hammer_verify_data, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, write_mode, CTLFLAG_RW,
 	   &hammer_write_mode, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, double_buffer, CTLFLAG_RW,
+	   &hammer_double_buffer, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, yield_check, CTLFLAG_RW,
 	   &hammer_yield_check, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, fsync_mode, CTLFLAG_RW,
@@ -355,6 +358,15 @@ hammer_vfs_init(struct vfsconf *conf)
 		hammer_limit_running_io = hammer_limit_dirtybufspace;
 	if (hammer_limit_running_io > 10 * 1024 * 1024)
 		hammer_limit_running_io = 10 * 1024 * 1024;
+
+	/*
+	 * The hammer_inode structure detaches from the vnode on reclaim.
+	 * This limits the number of inodes in this state to prevent a
+	 * memory pool blowout.
+	 */
+	if (hammer_limit_reclaim == 0)
+		hammer_limit_reclaim = desiredvnodes / 10;
+
 	return(0);
 }
 
@@ -554,15 +566,15 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 
 	hmp->ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
 
-	TAILQ_INIT(&hmp->volu_list);
-	TAILQ_INIT(&hmp->undo_list);
-	TAILQ_INIT(&hmp->data_list);
-	TAILQ_INIT(&hmp->meta_list);
-	TAILQ_INIT(&hmp->lose_list);
+	RB_INIT(&hmp->volu_root);
+	RB_INIT(&hmp->undo_root);
+	RB_INIT(&hmp->data_root);
+	RB_INIT(&hmp->meta_root);
+	RB_INIT(&hmp->lose_root);
 	TAILQ_INIT(&hmp->iorun_list);
 
-	lwkt_token_init(&hmp->fs_token, 1, "hammerfs");
-	lwkt_token_init(&hmp->io_token, 1, "hammerio");
+	lwkt_token_init(&hmp->fs_token, "hammerfs");
+	lwkt_token_init(&hmp->io_token, "hammerio");
 
 	lwkt_gettoken(&hmp->fs_token);
 

@@ -249,6 +249,19 @@ lwkt_passive_recover(thread_t td)
     td->td_release = NULL;
 }
 
+/*
+ * cpusync support
+ */
+static __inline void
+lwkt_cpusync_init(lwkt_cpusync_t cs, cpumask_t mask,
+		  cpusync_func_t func, void *data)
+{
+	cs->cs_mask = mask;
+	/* cs->cs_mack = 0; handled by _interlock */
+	cs->cs_func = func;
+	cs->cs_data = data;
+}
+
 #ifdef SMP
 
 /*

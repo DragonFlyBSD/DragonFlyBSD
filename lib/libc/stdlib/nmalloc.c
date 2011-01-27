@@ -344,7 +344,7 @@ static void mtmagazine_init(void);
 static void mtmagazine_destructor(void *);
 static slzone_t zone_alloc(int flags);
 static void zone_free(void *z);
-static void _mpanic(const char *ctl, ...);
+static void _mpanic(const char *ctl, ...) __printflike(1, 2);
 static void malloc_init(void) __constructor(0);
 #if defined(INVARIANTS)
 static void chunk_mark_allocated(slzone_t z, void *chunk);

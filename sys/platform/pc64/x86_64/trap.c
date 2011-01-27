@@ -878,12 +878,13 @@ nogo:
 	 */
 	p = td->td_proc;
 	if (td->td_lwp->lwp_vkernel == NULL) {
-		kprintf("seg-fault ft=%04x ff=%04x addr=%p rip=%p "
-			"pid=%d p_comm=%s\n",
-			ftype, fault_flags,
-			(void *)frame->tf_addr,
-			(void *)frame->tf_rip,
-			p->p_pid, p->p_comm);
+		if (bootverbose)
+			kprintf("seg-fault ft=%04x ff=%04x addr=%p rip=%p "
+			    "pid=%d p_comm=%s\n",
+			    ftype, fault_flags,
+			    (void *)frame->tf_addr,
+			    (void *)frame->tf_rip,
+			    p->p_pid, p->p_comm);
 		if (ddb_on_seg_fault)
 			Debugger("ddb_on_seg_fault");
 	}

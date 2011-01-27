@@ -350,8 +350,8 @@ pipe_create(struct pipe **cpipep)
 	vfs_timestamp(&cpipe->pipe_ctime);
 	cpipe->pipe_atime = cpipe->pipe_ctime;
 	cpipe->pipe_mtime = cpipe->pipe_ctime;
-	lwkt_token_init(&cpipe->pipe_rlock, 1, "piper");
-	lwkt_token_init(&cpipe->pipe_wlock, 1, "pipew");
+	lwkt_token_init(&cpipe->pipe_rlock, "piper");
+	lwkt_token_init(&cpipe->pipe_wlock, "pipew");
 	return (0);
 }
 

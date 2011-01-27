@@ -29,7 +29,6 @@
  * contributed towards power management.
  *
  * $FreeBSD: src/sys/dev/sound/pci/cs4281.c,v 1.22 2005/03/01 08:58:05 imp Exp $
- * $DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.10 2007/01/04 21:47:02 corecode Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -39,8 +38,6 @@
 #include <bus/pci/pcivar.h>
 
 #include <dev/sound/pci/cs4281.h>
-
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.10 2007/01/04 21:47:02 corecode Exp $");
 
 #define CS4281_DEFAULT_BUFSZ 16384
 
@@ -201,7 +198,7 @@ cs4281_waitclr(struct sc_info *sc, int regno, u_int32_t mask, int tries)
 /* Register value mapping functions */
 
 static u_int32_t cs4281_rates[] = {48000, 44100, 22050, 16000, 11025, 8000};
-#define CS4281_NUM_RATES sizeof(cs4281_rates)/sizeof(cs4281_rates[0])
+#define CS4281_NUM_RATES NELEM(cs4281_rates)
 
 static u_int8_t
 cs4281_rate_to_rv(u_int32_t rate)

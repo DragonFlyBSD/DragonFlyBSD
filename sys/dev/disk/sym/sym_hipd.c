@@ -8799,8 +8799,7 @@ static struct sym_pci_chip sym_pci_dev_table[] = {
  FE_RAM|FE_IO256|FE_LEDC}
 };
 
-#define sym_pci_num_devs \
-	(sizeof(sym_pci_dev_table) / sizeof(sym_pci_dev_table[0]))
+#define sym_pci_num_devs NELEM(sym_pci_dev_table)
 
 /*
  *  Look up the chip table.

@@ -1,4 +1,3 @@
-/* $DragonFly: src/sys/netbt/hci_socket.c,v 1.3 2008/06/20 20:52:29 aggelos Exp $ */
 /* $OpenBSD: src/sys/netbt/hci_socket.c,v 1.5 2008/02/24 21:34:48 uwe Exp $ */
 /* $NetBSD: hci_socket.c,v 1.14 2008/02/10 17:40:54 plunky Exp $ */
 
@@ -395,7 +394,7 @@ hci_security_check_opcode(struct hci_unit *unit, uint16_t opcode)
 {
 	int i;
 
-	for (i = 0 ; i < sizeof(hci_cmds) / sizeof(hci_cmds[0]); i++) {
+	for (i = 0 ; i < NELEM(hci_cmds); i++) {
 		if (opcode != hci_cmds[i].opcode)
 			continue;
 

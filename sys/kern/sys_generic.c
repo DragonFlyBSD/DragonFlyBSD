@@ -108,7 +108,7 @@ struct poll_kevent_copyin_args {
 	int		error;
 };
 
-static struct lwkt_token mioctl_token = LWKT_TOKEN_MP_INITIALIZER(mioctl_token);
+static struct lwkt_token mioctl_token = LWKT_TOKEN_INITIALIZER(mioctl_token);
 
 static int 	doselect(int nd, fd_set *in, fd_set *ou, fd_set *ex,
 			 struct timespec *ts, int *res);

@@ -32,7 +32,6 @@
  *
  *	@(#)uipc_proto.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_proto.c,v 1.21.2.1 2002/03/09 05:22:23 dd Exp $
- * $DragonFly: src/sys/kern/uipc_proto.c,v 1.7 2008/10/27 02:56:30 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -89,7 +88,7 @@ static struct protosw localsw[] = {
 
 struct domain localdomain = {
 	AF_LOCAL, "local", unp_init, unp_externalize, unp_dispose,
-	localsw, &localsw[sizeof(localsw)/sizeof(localsw[0])],
+	localsw, &localsw[NELEM(localsw)],
 };
 
 DOMAIN_SET(local);

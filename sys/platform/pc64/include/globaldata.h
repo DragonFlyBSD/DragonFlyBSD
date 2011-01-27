@@ -76,7 +76,7 @@ struct mdglobaldata {
 	struct x86_64tss gd_common_tss;
 	union savefpu	gd_savefpu;	/* fast bcopy/zero temp fpu save area */
 	int		gd_fpu_lock;	/* fast bcopy/zero cpu lock */
-	int		gd_fpending;	/* fast interrupt pending */
+	int		unused005;
 	int		unused001;
 	int		gd_spending;	/* software interrupt pending */
 	int		gd_sdelayed;	/* delayed software ints */
@@ -100,6 +100,7 @@ struct mdglobaldata {
 	register_t	gd_user_fs;	/* current user fs in MSR */
 	register_t	gd_user_gs;	/* current user gs in MSR */
 	cpumask_t	gd_invltlb_ret;
+	u_long		gd_ipending[3];
 };
 
 #define MDGLOBALDATA_BASEALLOC_SIZE	\

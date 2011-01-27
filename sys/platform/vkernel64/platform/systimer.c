@@ -31,7 +31,6 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.17 2008/06/06 13:19:25 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -124,7 +123,7 @@ cpu_initclocks(void *arg __unused)
 		         NULL, 0) < 0) {
 		panic("cpu_initclocks: can't get kern.cputimer.freq!");
 	}
-	len = sizeof(cputimer_mib)/sizeof(cputimer_mib[0]);
+	len = NELEM(cputimer_mib);
 	if (sysctlnametomib("kern.cputimer.clock", cputimer_mib, &len) < 0)
 		panic("cpu_initclocks: can't get kern.cputimer.clock!");
 	cputimer_miblen = len;

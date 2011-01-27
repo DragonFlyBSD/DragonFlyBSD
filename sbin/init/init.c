@@ -130,9 +130,9 @@ typedef struct init_session {
 static void	 handle(sig_t, ...);
 static void	 delset(sigset_t *, ...);
 
-static void	 stall(const char *, ...);
-static void	 warning(const char *, ...);
-static void	 emergency(const char *, ...);
+static void	 stall(const char *, ...) __printflike(1, 2);
+static void	 warning(const char *, ...) __printflike(1, 2);
+static void	 emergency(const char *, ...) __printflike(1, 2);
 static void	 disaster(int);
 static void	 badsys(int);
 static int	 runshutdown(void);

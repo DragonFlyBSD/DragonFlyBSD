@@ -28,7 +28,7 @@
 
 #include "opt_inet.h"
 #include "opt_inet6.h"
-#include "use_carp.h"
+#include "opt_carp.h"
 
 #include <sys/param.h>
 #include <sys/endian.h>

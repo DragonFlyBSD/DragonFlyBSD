@@ -79,10 +79,10 @@ ENTRY(APIC_INTRDIS)
 	APIC_IMASK_LOCK			/* enter critical reg */
 	movl	%edi, %eax
 1:
-	imull	$AIMI_SIZE, %eax
-	orl	$AIMI_FLAG_MASKED, CNAME(int_to_apicintpin) + AIMI_FLAGS(%rax)
-	movq	CNAME(int_to_apicintpin) + AIMI_APIC_ADDRESS(%rax), %rdx
-	movl	CNAME(int_to_apicintpin) + AIMI_REDIRINDEX(%rax), %ecx
+	shll	$IOAPIC_IM_SZSHIFT, %eax
+	orl	$IOAPIC_IM_FLAG_MASKED, CNAME(int_to_apicintpin) + IOAPIC_IM_FLAGS(%rax)
+	movq	CNAME(int_to_apicintpin) + IOAPIC_IM_ADDR(%rax), %rdx
+	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ENTIDX(%rax), %ecx
 	testq	%rdx, %rdx
 	jz	2f
 	movl	%ecx, (%rdx)		/* target register index */
@@ -96,10 +96,10 @@ ENTRY(APIC_INTREN)
 	APIC_IMASK_LOCK			/* enter critical reg */
 	movl	%edi, %eax
 1:
-	imull	$AIMI_SIZE, %eax
-	andl	$~AIMI_FLAG_MASKED, CNAME(int_to_apicintpin) + AIMI_FLAGS(%rax)
-	movq	CNAME(int_to_apicintpin) + AIMI_APIC_ADDRESS(%rax), %rdx
-	movl	CNAME(int_to_apicintpin) + AIMI_REDIRINDEX(%rax), %ecx
+	shll	$IOAPIC_IM_SZSHIFT, %eax
+	andl	$~IOAPIC_IM_FLAG_MASKED, CNAME(int_to_apicintpin) + IOAPIC_IM_FLAGS(%rax)
+	movq	CNAME(int_to_apicintpin) + IOAPIC_IM_ADDR(%rax), %rdx
+	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ENTIDX(%rax), %ecx
 	testq	%rdx, %rdx
 	jz	2f
 	movl	%ecx, (%rdx)		/* write the target register index */

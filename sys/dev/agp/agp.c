@@ -178,7 +178,7 @@ static u_int agp_max[][2] = {
 	{2048,	1920},
 	{4096,	3932}
 };
-#define agp_max_size	(sizeof(agp_max) / sizeof(agp_max[0]))
+#define agp_max_size	NELEM(agp_max)
 
 /**
  * Sets the PCI resource which represents the AGP aperture.

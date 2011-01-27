@@ -87,7 +87,7 @@ cd9660_init(struct vfsconf *vfsp)
 	isohashtbl = kmalloc(sizeof(void *) * isohash,
 			    M_ISOFSMNT, M_WAITOK|M_ZERO);
 	--isohash;
-	lwkt_token_init(&cd9660_ihash_token, 1, "cd9660ihash");
+	lwkt_token_init(&cd9660_ihash_token, "cd9660ihash");
 	return (0);
 }
 

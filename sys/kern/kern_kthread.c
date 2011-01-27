@@ -41,7 +41,7 @@
 
 #include <machine/stdarg.h>
 
-static struct lwkt_token kpsus_token = LWKT_TOKEN_MP_INITIALIZER(kpsus_token);
+static struct lwkt_token kpsus_token = LWKT_TOKEN_INITIALIZER(kpsus_token);
 
 
 /*

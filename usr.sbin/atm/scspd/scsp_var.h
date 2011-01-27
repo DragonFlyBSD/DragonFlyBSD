@@ -360,11 +360,7 @@ extern int	set_log_file(char *);
 extern int	yylex(void);
 
 /* scsp_config_parse.y */
-#if __STDC__
-extern void	parse_error(const char *, ...);
-#else
-extern void	parse_error(char *, va_alist);
-#endif
+extern void	parse_error(const char *, ...) __printflike(1, 2);
 
 /* scsp_hfsm.c */
 extern int	scsp_hfsm(Scsp_dcs *, int, Scsp_msg *);
@@ -378,13 +374,8 @@ extern void	scsp_free_msg(Scsp_msg *);
 extern Scsp_msg	*scsp_parse_msg(char *, int);
 
 /* scsp_log.c */
-#if __STDC__
-extern void	scsp_log(const int, const char *, ...);
-extern void	scsp_trace(const char *, ...);
-#else
-extern void	scsp_log(int, char *, va_alist);
-extern void	scsp_trace(const char *, va_alist);
-#endif
+extern void	scsp_log(const int, const char *, ...) __printflike(2, 3);
+extern void	scsp_trace(const char *, ...) __printflike(1, 2);
 extern void	scsp_open_trace();
 extern void	scsp_trace_msg(Scsp_dcs *, Scsp_msg *, int);
 extern void	scsp_mem_err(char *);

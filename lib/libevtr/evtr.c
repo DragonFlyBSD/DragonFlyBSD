@@ -333,9 +333,9 @@ evtr_cpu(evtr_t evtr, int c)
 	return &evtr->cpus[c];
 }
 
-static
-int
-parse_format_data(evtr_event_t ev, const char *fmt, ...) __attribute__((format (scanf, 2, 3)));
+static int parse_format_data(evtr_event_t ev, const char *fmt, ...)
+	       __printflike(2, 3) __scanflike(2, 3);
+
 static
 int
 parse_format_data(evtr_event_t ev, const char *fmt, ...)

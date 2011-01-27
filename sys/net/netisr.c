@@ -34,8 +34,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/net/netisr.c,v 1.49 2008/11/01 10:29:31 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -321,7 +319,7 @@ netisr_queue(int num, struct mbuf *m)
 	struct netmsg_packet *pmsg;
 	lwkt_port_t port;
 
-	KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
+	KASSERT((num > 0 && num <= NELEM(netisrs)),
 		("Bad isr %d", num));
 
 	ni = &netisrs[num];
@@ -420,7 +418,7 @@ netisr_register(int num, netisr_fn_t handler, netisr_cpufn_t cpufn)
 {
 	struct netisr *ni;
 
-	KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
+	KASSERT((num > 0 && num <= NELEM(netisrs)),
 		("netisr_register: bad isr %d", num));
 	KKASSERT(handler != NULL);
 
@@ -521,7 +519,7 @@ schednetisr_remote(void *data)
 void
 schednetisr(int num)
 {
-	KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
+	KASSERT((num > 0 && num <= NELEM(netisrs)),
 		("schednetisr: bad isr %d", num));
 	KKASSERT(netisrs[num].ni_handler != NULL);
 #ifdef SMP

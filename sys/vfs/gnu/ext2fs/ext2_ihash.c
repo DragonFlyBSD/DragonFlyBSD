@@ -69,7 +69,7 @@ ext2_ihashinit(void)
 		ext2_ihash <<= 1;
 	ext2_ihashtbl = kmalloc(sizeof(void *) * ext2_ihash, M_EXT2IHASH, M_WAITOK|M_ZERO);
 	--ext2_ihash;
-	lwkt_token_init(&ext2_ihash_token, 1, "ext2ihash");
+	lwkt_token_init(&ext2_ihash_token, "ext2ihash");
 }
 
 int

@@ -24,9 +24,9 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/wordexp.c,v 1.6 2004/06/30 13:55:08 tjr Exp $
- * $DragonFly: src/lib/libc/gen/wordexp.c,v 1.1 2008/10/06 21:01:37 swildner Exp $
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
@@ -36,6 +36,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <wordexp.h>
+#include "un-namespace.h"
 
 static int	we_askshell(const char *, wordexp_t *, int);
 static int	we_check(const char *, int);

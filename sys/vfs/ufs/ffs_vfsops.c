@@ -992,7 +992,7 @@ ffs_sync(struct mount *mp, int waitfor)
 	/*
 	 * Force stale filesystem control information to be flushed.
 	 */
-	if (waitfor != MNT_LAZY) {
+	if ((waitfor & MNT_LAZY) == 0) {
 		if (ump->um_mountp->mnt_flag & MNT_SOFTDEP)
 			waitfor = MNT_NOWAIT;
 		vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY);

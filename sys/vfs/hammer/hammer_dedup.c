@@ -410,7 +410,9 @@ hammer_dedup_validate(hammer_dedup_cache_t dcp, int zone, int bytes,
 	 * device-based buffer (for large-zone data blocks it will
 	 * generate a separate read).
 	 */
-	if (_vnode_validate(dcp, data, &error)) {
+	if (hammer_double_buffer) {
+		error = 1;
+	} else if (_vnode_validate(dcp, data, &error)) {
 		hammer_live_dedup_vnode_bcmps++;
 		return (1);
 	} else {

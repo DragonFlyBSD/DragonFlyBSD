@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netipsec/keysock.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/keysock.c,v 1.19 2008/11/01 04:22:15 sephe Exp $	*/
 /*	$KAME: keysock.c,v 1.25 2001/08/13 20:07:41 itojun Exp $	*/
 
 /*
@@ -579,7 +578,7 @@ key_init0(void)
 
 struct domain keydomain = {
 	PF_KEY, "key", key_init0, NULL, NULL,
-	keysw, &keysw[sizeof(keysw)/sizeof(keysw[0])],
+	keysw, &keysw[NELEM(keysw)],
 };
 
 DOMAIN_SET(key);

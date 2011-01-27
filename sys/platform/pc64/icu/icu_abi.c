@@ -56,84 +56,84 @@
 #include "icu.h"
 #include "icu_ipl.h"
 
-extern void ICU_INTREN(int);
-extern void ICU_INTRDIS(int);
+extern void	ICU_INTREN(int);
+extern void	ICU_INTRDIS(int);
 
 extern inthand_t
-	IDTVEC(icu_fastintr0), IDTVEC(icu_fastintr1),
-	IDTVEC(icu_fastintr2), IDTVEC(icu_fastintr3),
-	IDTVEC(icu_fastintr4), IDTVEC(icu_fastintr5),
-	IDTVEC(icu_fastintr6), IDTVEC(icu_fastintr7),
-	IDTVEC(icu_fastintr8), IDTVEC(icu_fastintr9),
-	IDTVEC(icu_fastintr10), IDTVEC(icu_fastintr11),
-	IDTVEC(icu_fastintr12), IDTVEC(icu_fastintr13),
-	IDTVEC(icu_fastintr14), IDTVEC(icu_fastintr15);
+	IDTVEC(icu_intr0),	IDTVEC(icu_intr1),
+	IDTVEC(icu_intr2),	IDTVEC(icu_intr3),
+	IDTVEC(icu_intr4),	IDTVEC(icu_intr5),
+	IDTVEC(icu_intr6),	IDTVEC(icu_intr7),
+	IDTVEC(icu_intr8),	IDTVEC(icu_intr9),
+	IDTVEC(icu_intr10),	IDTVEC(icu_intr11),
+	IDTVEC(icu_intr12),	IDTVEC(icu_intr13),
+	IDTVEC(icu_intr14),	IDTVEC(icu_intr15);
 
-static int icu_vectorctl(int, int, int);
-static int icu_setvar(int, const void *);
-static int icu_getvar(int, void *);
-static void icu_finalize(void);
-static void icu_cleanup(void);
+static int	icu_vectorctl(int, int, int);
+static int	icu_setvar(int, const void *);
+static int	icu_getvar(int, void *);
+static void	icu_finalize(void);
+static void	icu_cleanup(void);
 
-static inthand_t *icu_fastintr[ICU_HWI_VECTORS] = {
-	&IDTVEC(icu_fastintr0), &IDTVEC(icu_fastintr1),
-	&IDTVEC(icu_fastintr2), &IDTVEC(icu_fastintr3),
-	&IDTVEC(icu_fastintr4), &IDTVEC(icu_fastintr5),
-	&IDTVEC(icu_fastintr6), &IDTVEC(icu_fastintr7),
-	&IDTVEC(icu_fastintr8), &IDTVEC(icu_fastintr9),
-	&IDTVEC(icu_fastintr10), &IDTVEC(icu_fastintr11),
-	&IDTVEC(icu_fastintr12), &IDTVEC(icu_fastintr13),
-	&IDTVEC(icu_fastintr14), &IDTVEC(icu_fastintr15)
+static inthand_t *icu_intr[ICU_HWI_VECTORS] = {
+	&IDTVEC(icu_intr0),	&IDTVEC(icu_intr1),
+	&IDTVEC(icu_intr2),	&IDTVEC(icu_intr3),
+	&IDTVEC(icu_intr4),	&IDTVEC(icu_intr5),
+	&IDTVEC(icu_intr6),	&IDTVEC(icu_intr7),
+	&IDTVEC(icu_intr8),	&IDTVEC(icu_intr9),
+	&IDTVEC(icu_intr10),	&IDTVEC(icu_intr11),
+	&IDTVEC(icu_intr12),	&IDTVEC(icu_intr13),
+	&IDTVEC(icu_intr14),	&IDTVEC(icu_intr15)
 };
 
 struct machintr_abi MachIntrABI_ICU = {
-    MACHINTR_ICU,
-    .intrdis =	ICU_INTRDIS,
-    .intren =	ICU_INTREN,
-    .vectorctl =icu_vectorctl,
-    .setvar =	icu_setvar,
-    .getvar =	icu_getvar,
-    .finalize =	icu_finalize,
-    .cleanup =	icu_cleanup
+	MACHINTR_ICU,
+	.intrdis	= ICU_INTRDIS,
+	.intren		= ICU_INTREN,
+	.vectorctl	= icu_vectorctl,
+	.setvar		= icu_setvar,
+	.getvar		= icu_getvar,
+	.finalize	= icu_finalize,
+	.cleanup	= icu_cleanup
 };
 
-static int icu_imcr_present;
+static int	icu_imcr_present;
 
 /*
  * WARNING!  SMP builds can use the ICU now so this code must be MP safe.
  */
-static 
-int
+static int
 icu_setvar(int varid, const void *buf)
 {
-    int error = 0;
+	int error = 0;
 	
-    switch(varid) {
-    case MACHINTR_VAR_IMCR_PRESENT:
-	icu_imcr_present = *(const int *)buf;
-	break;
-    default:
-	error = ENOENT;
-	break;
-    }
-    return (error);
+	switch(varid) {
+	case MACHINTR_VAR_IMCR_PRESENT:
+		icu_imcr_present = *(const int *)buf;
+		break;
+
+	default:
+		error = ENOENT;
+		break;
+	}
+	return error;
 }
 
-static
-int
+static int
 icu_getvar(int varid, void *buf)
 {
-    int error = 0;
+	int error = 0;
 	
-    switch(varid) {
-    case MACHINTR_VAR_IMCR_PRESENT:
-	*(int *)buf = icu_imcr_present;
-	break;
-    default:
-	error = ENOENT;
-	break;
-    }
-    return (error);
+	switch(varid) {
+	case MACHINTR_VAR_IMCR_PRESENT:
+		*(int *)buf = icu_imcr_present;
+		break;
+
+	default:
+		error = ENOENT;
+		break;
+	}
+	return error;
 }
 
 /*
@@ -142,70 +142,71 @@ icu_getvar(int varid, void *buf)
 static void
 icu_finalize(void)
 {
-    int intr;
+	int intr;
 
-    for (intr = 0; intr < ICU_HWI_VECTORS; ++intr) {
-	machintr_intrdis(intr);
-    }
-    machintr_intren(ICU_IRQ_SLAVE);
+	for (intr = 0; intr < ICU_HWI_VECTORS; ++intr)
+		machintr_intrdis(intr);
+	machintr_intren(ICU_IRQ_SLAVE);
 
-    /*
-     * If an IMCR is present, programming bit 0 disconnects the 8259
-     * from the BSP.  The 8259 may still be connected to LINT0 on the BSP's
-     * LAPIC.
-     *
-     * If we are running SMP the LAPIC is active, try to use virtual wire
-     * mode so we can use other interrupt sources within the LAPIC in
-     * addition to the 8259.
-     */
-    if (icu_imcr_present) {
 #if defined(SMP)
-	outb(0x22, 0x70);
-	outb(0x23, 0x01);
+	/*
+	 * If an IMCR is present, programming bit 0 disconnects the 8259
+	 * from the BSP.  The 8259 may still be connected to LINT0 on the
+	 * BSP's LAPIC.
+	 *
+	 * If we are running SMP the LAPIC is active, try to use virtual
+	 * wire mode so we can use other interrupt sources within the LAPIC
+	 * in addition to the 8259.
+	 */
+	if (icu_imcr_present) {
+		outb(0x22, 0x70);
+		outb(0x23, 0x01);
+	}
 #endif
-    }
 }
 
 /*
  * Called after interrupts physically enabled but before the
  * critical section is released.
  */
-static
-void
+static void
 icu_cleanup(void)
 {
-	mdcpu->gd_fpending = 0;
+	bzero(mdcpu->gd_ipending, sizeof(mdcpu->gd_ipending));
 }
 
 
-static
-int
+static int
 icu_vectorctl(int op, int intr, int flags)
 {
-    int error;
-    register_t ef;
+	int error;
+	register_t ef;
 
-    if (intr < 0 || intr >= ICU_HWI_VECTORS || intr == ICU_IRQ_SLAVE)
-	return (EINVAL);
+	if (intr < 0 || intr >= ICU_HWI_VECTORS || intr == ICU_IRQ_SLAVE)
+		return EINVAL;
 
-    ef = read_rflags();
-    cpu_disable_intr();
-    error = 0;
+	ef = read_rflags();
+	cpu_disable_intr();
+	error = 0;
 
-    switch(op) {
-    case MACHINTR_VECTOR_SETUP:
-	setidt(IDT_OFFSET + intr, icu_fastintr[intr], SDT_SYSIGT, SEL_KPL, 0);
-	machintr_intren(intr);
-	break;
-    case MACHINTR_VECTOR_TEARDOWN:
-    case MACHINTR_VECTOR_SETDEFAULT:
-	setidt(IDT_OFFSET + intr, icu_fastintr[intr], SDT_SYSIGT, SEL_KPL, 0);
-	machintr_intrdis(intr);
-	break;
-    default:
-	error = EOPNOTSUPP;
-	break;
-    }
-    write_rflags(ef);
-    return (error);
+	switch(op) {
+	case MACHINTR_VECTOR_SETUP:
+		setidt(IDT_OFFSET + intr, icu_intr[intr], SDT_SYSIGT,
+		       SEL_KPL, 0);
+		machintr_intren(intr);
+		break;
+
+	case MACHINTR_VECTOR_TEARDOWN:
+	case MACHINTR_VECTOR_SETDEFAULT:
+		setidt(IDT_OFFSET + intr, icu_intr[intr], SDT_SYSIGT,
+		       SEL_KPL, 0);
+		machintr_intrdis(intr);
+		break;
+
+	default:
+		error = EOPNOTSUPP;
+		break;
+	}
+	write_rflags(ef);
+	return error;
 }

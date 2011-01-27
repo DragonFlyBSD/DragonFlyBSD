@@ -1081,8 +1081,12 @@ tcp_setpersist(struct tcpcb *tp)
 	int t = ((tp->t_srtt >> 2) + tp->t_rttvar) >> 1;
 	int tt;
 
-	if (tp->t_state < TCPS_ESTABLISHED)
-		panic("tcp_setpersist: not established yet\n");
+	if (tp->t_state == TCPS_SYN_SENT ||
+	    tp->t_state == TCPS_SYN_RECEIVED) {
+		panic("tcp_setpersist: not established yet, current %s\n",
+		      tp->t_state == TCPS_SYN_SENT ?
+		      "SYN_SENT" : "SYN_RECEIVED");
+	}
 
 	if (tcp_callout_active(tp, tp->tt_rexmt))
 		panic("tcp_setpersist: retransmit pending");

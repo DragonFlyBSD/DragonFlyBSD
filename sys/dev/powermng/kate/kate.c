@@ -132,7 +132,7 @@ kate_probe(struct device *dev)
 	 * when the temperature readings were officially introduced.
 	 */
 	c = pci_read_config(dev, K_CPUID_FAMILY_MODEL_R, 4);
-	for (i = 0; i < sizeof(kate_proc) / sizeof(kate_proc[0]); i++)
+	for (i = 0; i < NELEM(kate_proc); i++)
 		for (j = 0; kate_proc[i].cpuid[j] != 0; j++)
 			if ((c & ~0xf) == kate_proc[i].cpuid[j])
 				return 0;
@@ -165,8 +165,7 @@ kate_attach(struct device *dev)
 	sc->sc_dev = dev;
 
 	c = pci_read_config(dev, K_CPUID_FAMILY_MODEL_R, 4);
-	for (i = 0; i < sizeof(kate_proc) / sizeof(kate_proc[0]) &&
-	    sc->sc_rev == '\0'; i++)
+	for (i = 0; i < NELEM(kate_proc) && sc->sc_rev == '\0'; i++)
 		for (j = 0; kate_proc[i].cpuid[j] != 0; j++)
 			if ((c & ~0xf) == kate_proc[i].cpuid[j]) {
 				sc->sc_rev = kate_proc[i].rev[3];

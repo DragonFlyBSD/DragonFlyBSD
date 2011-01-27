@@ -5,7 +5,6 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_lookup.c,v 1.21.2.3 2002/11/17 02:02:42 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.27 2007/11/20 21:03:50 dillon Exp $
  */
 /*
  * Copyright (c) 1989, 1993
@@ -84,7 +83,7 @@ static u_char ext2_ft_to_dt[] = {
 	DT_LNK,			/* EXT2_FT_SYMLINK */
 };
 #define	FTTODT(ft)						\
-    ((ft) > sizeof(ext2_ft_to_dt) / sizeof(ext2_ft_to_dt[0]) ?	\
+    ((ft) > NELEM(ext2_ft_to_dt) ?	\
     DT_UNKNOWN : ext2_ft_to_dt[(ft)])
 
 static u_char dt_to_ext2_ft[] = {
@@ -105,7 +104,7 @@ static u_char dt_to_ext2_ft[] = {
 	EXT2_FT_UNKNOWN,	/* DT_WHT */
 };
 #define	DTTOFT(dt)						\
-    ((dt) > sizeof(dt_to_ext2_ft) / sizeof(dt_to_ext2_ft[0]) ?	\
+    ((dt) > NELEM(dt_to_ext2_ft) ?	\
     EXT2_FT_UNKNOWN : dt_to_ext2_ft[(dt)])
 
 static int	ext2_dirbadentry (struct vnode *dp,

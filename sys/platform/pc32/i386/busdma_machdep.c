@@ -139,10 +139,12 @@ struct bounce_zone {
 #endif
 
 static struct lwkt_token bounce_zone_tok =
-	LWKT_TOKEN_MP_INITIALIZER(bounce_zone_tok);
+	LWKT_TOKEN_INITIALIZER(bounce_zone_tok);
 static int busdma_zonecount;
 static STAILQ_HEAD(, bounce_zone) bounce_zone_list =
 	STAILQ_HEAD_INITIALIZER(bounce_zone_list);
+
+static int busdma_priv_zonecount = -1;
 
 int busdma_swi_pending;
 static int total_bounce_pages;
@@ -173,6 +175,8 @@ static struct bus_dmamap nobounce_dmamap;
 
 static int		alloc_bounce_zone(bus_dma_tag_t);
 static int		alloc_bounce_pages(bus_dma_tag_t, u_int, int);
+static void		free_bounce_pages_all(bus_dma_tag_t);
+static void		free_bounce_zone(bus_dma_tag_t);
 static int		reserve_bounce_pages(bus_dma_tag_t, bus_dmamap_t, int);
 static void		return_bounce_pages(bus_dma_tag_t, bus_dmamap_t);
 static bus_addr_t	add_bounce_page(bus_dma_tag_t, bus_dmamap_t,
@@ -212,6 +216,9 @@ static __inline
 bus_dma_segment_t *
 bus_dma_tag_lock(bus_dma_tag_t tag, bus_dma_segment_t *cache)
 {
+	if (tag->flags & BUS_DMA_PROTECTED)
+		return(tag->segments);
+
 	if (tag->nsegments <= BUS_DMA_CACHE_SEGMENTS)
 		return(cache);
 #ifdef SMP
@@ -225,6 +232,9 @@ void
 bus_dma_tag_unlock(bus_dma_tag_t tag)
 {
 #ifdef SMP
+	if (tag->flags & BUS_DMA_PROTECTED)
+		return;
+
 	if (tag->nsegments > BUS_DMA_CACHE_SEGMENTS)
 		spin_unlock(&tag->spin);
 #endif
@@ -332,7 +342,8 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 			goto back;
 		bz = newtag->bounce_zone;
 
-		if (ptoa(bz->total_bpages) < maxsize) {
+		if ((newtag->flags & BUS_DMA_ALLOCALL) == 0 &&
+		    ptoa(bz->total_bpages) < maxsize) {
 			int pages;
 
 			if (flags & BUS_DMA_ONEBPAGE) {
@@ -352,10 +363,12 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 		}
 	}
 back:
-	if (error)
+	if (error) {
+		free_bounce_zone(newtag);
 		kfree(newtag, M_DEVBUF);
-	else
+	} else {
 		*dmat = newtag;
+	}
 	return error;
 }
 
@@ -372,6 +385,7 @@ bus_dma_tag_destroy(bus_dma_tag_t dmat)
 			parent = dmat->parent;
 			dmat->ref_count--;
 			if (dmat->ref_count == 0) {
+				free_bounce_zone(dmat);
 				if (dmat->segments != NULL)
 					kfree(dmat->segments, M_DEVBUF);
 				kfree(dmat, M_DEVBUF);
@@ -433,15 +447,16 @@ bus_dmamap_create(bus_dma_tag_t dmat, int flags, bus_dmamap_t *mapp)
 		 * Attempt to add pages to our pool on a per-instance
 		 * basis up to a sane limit.
 		 */
-		if (dmat->flags & BUS_DMA_BOUNCE_ALIGN) {
+		if (dmat->flags & BUS_DMA_ALLOCALL) {
+			maxpages = Maxmem - atop(dmat->lowaddr);
+		} else if (dmat->flags & BUS_DMA_BOUNCE_ALIGN) {
 			maxpages = max_bounce_pages;
 		} else {
 			maxpages = MIN(max_bounce_pages,
 				       Maxmem - atop(dmat->lowaddr));
 		}
-		if ((dmat->flags & BUS_DMA_MIN_ALLOC_COMP) == 0
-		 || (dmat->map_count > 0
-		  && bz->total_bpages < maxpages)) {
+		if ((dmat->flags & BUS_DMA_MIN_ALLOC_COMP) == 0 ||
+		    (dmat->map_count > 0 && bz->total_bpages < maxpages)) {
 			int pages;
 
 			if (flags & BUS_DMA_ONEBPAGE) {
@@ -455,7 +470,8 @@ bus_dmamap_create(bus_dma_tag_t dmat, int flags, bus_dmamap_t *mapp)
 				error = ENOMEM;
 
 			if ((dmat->flags & BUS_DMA_MIN_ALLOC_COMP) == 0) {
-				if (!error)
+				if (!error &&
+				    (dmat->flags & BUS_DMA_ALLOCALL) == 0)
 					dmat->flags |= BUS_DMA_MIN_ALLOC_COMP;
 			} else {
 				error = 0;
@@ -464,8 +480,12 @@ bus_dmamap_create(bus_dma_tag_t dmat, int flags, bus_dmamap_t *mapp)
 	} else {
 		*mapp = NULL;
 	}
-	if (!error)
+	if (!error) {
 		dmat->map_count++;
+	} else {
+		kfree(*mapp, M_DEVBUF);
+		*mapp = NULL;
+	}
 	return error;
 }
 
@@ -824,6 +844,13 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 			segments, dmat->nsegments,
 			NULL, flags, &lastaddr, &nsegs, 1);
 	if (error == EINPROGRESS) {
+		KKASSERT((dmat->flags &
+			  (BUS_DMA_PRIVBZONE | BUS_DMA_ALLOCALL)) !=
+			 (BUS_DMA_PRIVBZONE | BUS_DMA_ALLOCALL));
+
+		if (dmat->flags & BUS_DMA_PROTECTED)
+			panic("protected dmamap callback will be defered\n");
+
 		bus_dma_tag_unlock(dmat);
 		return error;
 	}
@@ -1083,15 +1110,20 @@ alloc_bounce_zone(bus_dma_tag_t dmat)
 
 	lwkt_gettoken(&bounce_zone_tok);
 
-	/* Check to see if we already have a suitable zone */
-	STAILQ_FOREACH(bz, &bounce_zone_list, links) {
-		if (dmat->alignment <= bz->alignment &&
-		    dmat->lowaddr >= bz->lowaddr) {
-			lwkt_reltoken(&bounce_zone_tok);
+	if ((dmat->flags & BUS_DMA_PRIVBZONE) == 0) {
+		/*
+		 * For shared bounce zone, check to see
+		 * if we already have a suitable zone
+		 */
+		STAILQ_FOREACH(bz, &bounce_zone_list, links) {
+			if (dmat->alignment <= bz->alignment &&
+			    dmat->lowaddr >= bz->lowaddr) {
+				lwkt_reltoken(&bounce_zone_tok);
 
-			dmat->bounce_zone = bz;
-			kfree(new_bz, M_DEVBUF);
-			return 0;
+				dmat->bounce_zone = bz;
+				kfree(new_bz, M_DEVBUF);
+				return 0;
+			}
 		}
 	}
 	bz = new_bz;
@@ -1106,10 +1138,16 @@ alloc_bounce_zone(bus_dma_tag_t dmat)
 	bz->active_bpages = 0;
 	bz->lowaddr = dmat->lowaddr;
 	bz->alignment = round_page(dmat->alignment);
-	ksnprintf(bz->zoneid, 8, "zone%d", busdma_zonecount);
-	busdma_zonecount++;
 	ksnprintf(bz->lowaddrid, 18, "%#jx", (uintmax_t)bz->lowaddr);
-	STAILQ_INSERT_TAIL(&bounce_zone_list, bz, links);
+
+	if ((dmat->flags & BUS_DMA_PRIVBZONE) == 0) {
+		ksnprintf(bz->zoneid, 8, "zone%d", busdma_zonecount);
+		busdma_zonecount++;
+		STAILQ_INSERT_TAIL(&bounce_zone_list, bz, links);
+	} else {
+		ksnprintf(bz->zoneid, 8, "zone%d", busdma_priv_zonecount);
+		busdma_priv_zonecount--;
+	}
 
 	lwkt_reltoken(&bounce_zone_tok);
 
@@ -1199,6 +1237,57 @@ alloc_bounce_pages(bus_dma_tag_t dmat, u_int numpages, int flags)
 		numpages--;
 	}
 	return count;
+}
+
+static void
+free_bounce_pages_all(bus_dma_tag_t dmat)
+{
+	struct bounce_zone *bz = dmat->bounce_zone;
+	struct bounce_page *bpage;
+
+	BZ_LOCK(bz);
+
+	while ((bpage = STAILQ_FIRST(&bz->bounce_page_list)) != NULL) {
+		STAILQ_REMOVE_HEAD(&bz->bounce_page_list, links);
+
+		KKASSERT(total_bounce_pages > 0);
+		total_bounce_pages--;
+
+		KKASSERT(bz->total_bpages > 0);
+		bz->total_bpages--;
+
+		KKASSERT(bz->free_bpages > 0);
+		bz->free_bpages--;
+
+		contigfree((void *)bpage->vaddr, PAGE_SIZE, M_DEVBUF);
+		kfree(bpage, M_DEVBUF);
+	}
+	if (bz->total_bpages) {
+		kprintf("#%d bounce pages are still in use\n",
+			bz->total_bpages);
+		print_backtrace(-1);
+	}
+
+	BZ_UNLOCK(bz);
+}
+
+static void
+free_bounce_zone(bus_dma_tag_t dmat)
+{
+	struct bounce_zone *bz = dmat->bounce_zone;
+
+	if (bz == NULL)
+		return;
+
+	if ((dmat->flags & BUS_DMA_PRIVBZONE) == 0)
+		return;
+
+	free_bounce_pages_all(dmat);
+	dmat->bounce_zone = NULL;
+
+	if (bz->sysctl_tree != NULL)
+		sysctl_ctx_free(&bz->sysctl_ctx);
+	kfree(bz, M_DEVBUF);
 }
 
 /* Assume caller holds bounce zone spinlock */

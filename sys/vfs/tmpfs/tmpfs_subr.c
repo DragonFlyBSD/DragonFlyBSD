@@ -45,8 +45,6 @@
 #include <sys/vnode.h>
 #include <sys/vmmeter.h>
 
-#include <sys/mplock2.h>
-
 #include <vm/vm.h>
 #include <vm/vm_object.h>
 #include <vm/vm_page.h>

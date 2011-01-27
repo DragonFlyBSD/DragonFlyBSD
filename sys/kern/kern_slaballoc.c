@@ -1387,7 +1387,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	}
 
 	m = vm_page_alloc(&kernel_object, OFF_TO_IDX(addr + i), vmflags);
-	if ((i / PAGE_SIZE) < (sizeof(mp) / sizeof(mp[0])))
+	if (i / PAGE_SIZE < NELEM(mp))
 		mp[i / PAGE_SIZE] = m;
 
 	/*
@@ -1451,7 +1451,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     for (i = 0; i < size; i += PAGE_SIZE) {
 	vm_page_t m;
 
-	if ((i / PAGE_SIZE) < (sizeof(mp) / sizeof(mp[0])))
+	if (i / PAGE_SIZE < NELEM(mp))
 	   m = mp[i / PAGE_SIZE];
 	else 
 	   m = vm_page_lookup(&kernel_object, OFF_TO_IDX(addr + i));

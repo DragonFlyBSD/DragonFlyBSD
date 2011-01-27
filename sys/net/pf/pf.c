@@ -104,7 +104,7 @@
 extern int ip_optcopy(struct ip *, struct ip *);
 extern int debug_pfugidhack;
 
-struct lwkt_token pf_token = LWKT_TOKEN_MP_INITIALIZER(pf_token);
+struct lwkt_token pf_token = LWKT_TOKEN_INITIALIZER(pf_token);
 
 #define DPFPRINTF(n, x)	if (pf_status.debug >= (n)) kprintf x
 
@@ -2805,6 +2805,7 @@ struct netmsg_hashlookup {
 	sa_family_t		nm_af;
 };
 
+#ifdef PF_SOCKET_LOOKUP_DOMSG
 static void
 in_pcblookup_hash_handler(netmsg_t msg)
 {
@@ -2822,6 +2823,8 @@ in_pcblookup_hash_handler(netmsg_t msg)
 #endif /* INET6 */
 	lwkt_replymsg(&rmsg->base.lmsg, 0);
 }
+#endif	/* PF_SOCKET_LOOKUP_DOMSG */
+
 #endif /* SMP */
 
 int
@@ -2833,6 +2836,9 @@ pf_socket_lookup(int direction, struct pf_pdesc *pd)
 	struct inpcb		*inp;
 #ifdef SMP
 	struct netmsg_hashlookup *msg = NULL;
+#ifdef PF_SOCKET_LOOKUP_DOMSG
+	struct netmsg_hashlookup msg0;
+#endif
 #endif
 	int			 pi_cpu = 0;
 
@@ -2869,8 +2875,23 @@ pf_socket_lookup(int direction, struct pf_pdesc *pd)
 		 * Prepare a msg iff data belongs to another CPU.
 		 */
 		if (pi_cpu != mycpu->gd_cpuid) {
-			msg = kmalloc(sizeof(*msg), M_LWKTMSG, M_INTWAIT);
-			netmsg_init(&msg->base, NULL, &netisr_afree_rport,
+#ifdef PF_SOCKET_LOOKUP_DOMSG
+			/*
+			 * NOTE:
+			 *
+			 * Following lwkt_domsg() is dangerous and could
+			 * lockup the network system, e.g.
+			 *
+			 * On 2 CPU system:
+			 * netisr0 domsg to netisr1 (due to lookup)
+			 * netisr1 domsg to netisr0 (due to lookup)
+			 *
+			 * We simply return -1 here, since we are probably
+			 * called before NAT, so the TCP packet should
+			 * already be on the correct CPU.
+			 */
+			msg = &msg0;
+			netmsg_init(&msg->base, NULL, &curthread->td_msgport,
 				    0, in_pcblookup_hash_handler);
 			msg->nm_pinp = &inp;
 			msg->nm_pcbinfo = pi;
@@ -2879,6 +2900,13 @@ pf_socket_lookup(int direction, struct pf_pdesc *pd)
 			msg->nm_daddr = daddr;
 			msg->nm_dport = dport;
 			msg->nm_af = pd->af;
+#else	/* !PF_SOCKET_LOOKUP_DOMSG */
+			kprintf("pf_socket_lookup: tcp packet not on the "
+				"correct cpu %d, cur cpu %d\n",
+				pi_cpu, mycpuid);
+			print_backtrace(-1);
+			return -1;
+#endif	/* PF_SOCKET_LOOKUP_DOMSG */
 		}
 #endif /* SMP */
 		break;
@@ -5605,6 +5633,8 @@ pf_route6(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 	if (r->rt == PF_FASTROUTE) {
 		m0->m_pkthdr.fw_flags |= PF_MBUF_TAGGED;
 		m0->m_pkthdr.pf.flags = 0;
+		/* XXX Re-Check when Upgrading to > 4.4 */
+		m0->m_pkthdr.pf.statekey = NULL;
 		ip6_output(m0, NULL, NULL, 0, NULL, NULL, NULL);
 		return;
 	}
@@ -6187,6 +6217,8 @@ pf_test6(int dir, struct ifnet *ifp, struct mbuf **m0,
 	if (m->m_pkthdr.fw_flags & PF_MBUF_TAGGED)
 		return (PF_PASS);
 	m->m_pkthdr.pf.flags = 0;
+	/* Re-Check when updating to > 4.4 */
+	m->m_pkthdr.pf.statekey = NULL;
 
 	/* We do IP header normalization and packet reassembly here */
 	if (pf_normalize_ip6(m0, dir, kif, &reason, &pd) != PF_PASS) {

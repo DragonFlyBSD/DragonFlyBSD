@@ -168,9 +168,8 @@ devstat_start_transaction(struct devstat *ds)
 	 * to busy.  The start time is really the start of the latest busy
 	 * period.
 	 */
-	if (ds->busy_count == 0)
+	if (atomic_fetchadd_int(&ds->busy_count, 1) == 0)
 		getmicrouptime(&ds->start_time);
-	ds->busy_count++;
 }
 
 /*
@@ -181,13 +180,14 @@ devstat_end_transaction(struct devstat *ds, u_int32_t bytes,
 			devstat_tag_type tag_type, devstat_trans_flags flags)
 {
 	struct timeval busy_time;
+	int busy_count;
 
 	/* sanity check */
 	if (ds == NULL)
 		return;
 
 	getmicrouptime(&ds->last_comp_time);
-	ds->busy_count--;
+	busy_count = atomic_fetchadd_int(&ds->busy_count, -1) - 1;
 
 	/*
 	 * There might be some transactions (DEVSTAT_NO_DATA) that don't
@@ -216,17 +216,18 @@ devstat_end_transaction(struct devstat *ds, u_int32_t bytes,
 	 * We only update the busy time when we go idle.  Otherwise, this
 	 * calculation would require many more clock cycles.
 	 */
-	if (ds->busy_count == 0) {
+	if (busy_count == 0) {
 		/* Calculate how long we were busy */
 		busy_time = ds->last_comp_time;
 		timevalsub(&busy_time, &ds->start_time);
 
 		/* Add our busy time to the total busy time. */
 		timevaladd(&ds->busy_time, &busy_time);
-	} else if (ds->busy_count < 0)
+	} else if (busy_count < 0) {
 		kprintf("devstat_end_transaction: HELP!! busy_count "
 		       "for %s%d is < 0 (%d)!\n", ds->device_name,
 		       ds->unit_number, ds->busy_count);
+	}
 }
 
 void

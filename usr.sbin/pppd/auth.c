@@ -47,10 +47,12 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <utmp.h>
+#include <err.h>
 #include <fcntl.h>
 #if defined(_PATH_LASTLOG) && defined(_linux_)
 #include <lastlog.h>
 #endif
+#include <libutil.h>
 
 #include <netdb.h>
 #include <netinet/in.h>

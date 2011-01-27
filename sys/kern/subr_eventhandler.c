@@ -41,7 +41,7 @@ MALLOC_DEFINE(M_EVENTHANDLER, "eventhandler", "Event handler records");
 
 /* List of 'slow' lists */
 static TAILQ_HEAD(, eventhandler_list)	eventhandler_lists = TAILQ_HEAD_INITIALIZER(eventhandler_lists);
-static struct lwkt_token evlist_token = LWKT_TOKEN_MP_INITIALIZER(evlist_token);
+static struct lwkt_token evlist_token = LWKT_TOKEN_INITIALIZER(evlist_token);
 
 struct eventhandler_entry_generic 
 {

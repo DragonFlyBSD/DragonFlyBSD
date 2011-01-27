@@ -309,6 +309,7 @@ xio_copy_xtou(xio_t xio, int uoffset, void *uptr, int bytes)
     int offset;
     vm_page_t m;
     struct lwbuf *lwb;
+    struct lwbuf lwb_cache;
 
     if (uoffset + bytes > xio->xio_bytes)
 	return(EFAULT);
@@ -323,7 +324,7 @@ xio_copy_xtou(xio_t xio, int uoffset, void *uptr, int bytes)
 	 ++i
     ) {
 	m = xio->xio_pages[i];
-	lwb = lwbuf_alloc(m);
+	lwb = lwbuf_alloc(m, &lwb_cache);
 	error = copyout((char *)lwbuf_kva(lwb) + offset, uptr, n);
 	lwbuf_free(lwb);
 	if (error)
@@ -357,6 +358,7 @@ xio_copy_xtok(xio_t xio, int uoffset, void *kptr, int bytes)
     int offset;
     vm_page_t m;
     struct lwbuf *lwb;
+    struct lwbuf lwb_cache;
 
     if (bytes + uoffset > xio->xio_bytes)
 	return(EFAULT);
@@ -371,7 +373,7 @@ xio_copy_xtok(xio_t xio, int uoffset, void *kptr, int bytes)
 	 ++i
     ) {
 	m = xio->xio_pages[i];
-	lwb = lwbuf_alloc(m);
+	lwb = lwbuf_alloc(m, &lwb_cache);
 	bcopy((char *)lwbuf_kva(lwb) + offset, kptr, n);
 	lwbuf_free(lwb);
 	bytes -= n;
@@ -403,6 +405,7 @@ xio_copy_utox(xio_t xio, int uoffset, const void *uptr, int bytes)
     int offset;
     vm_page_t m;
     struct lwbuf *lwb;
+    struct lwbuf lwb_cache;
 
     if (uoffset + bytes > xio->xio_bytes)
 	return(EFAULT);
@@ -417,7 +420,7 @@ xio_copy_utox(xio_t xio, int uoffset, const void *uptr, int bytes)
 	 ++i
     ) {
 	m = xio->xio_pages[i];
-	lwb = lwbuf_alloc(m);
+	lwb = lwbuf_alloc(m, &lwb_cache);
 	error = copyin(uptr, (char *)lwbuf_kva(lwb) + offset, n);
 	lwbuf_free(lwb);
 	if (error)
@@ -451,6 +454,7 @@ xio_copy_ktox(xio_t xio, int uoffset, const void *kptr, int bytes)
     int offset;
     vm_page_t m;
     struct lwbuf *lwb;
+    struct lwbuf lwb_cache;
 
     if (uoffset + bytes > xio->xio_bytes)
 	return(EFAULT);
@@ -465,7 +469,7 @@ xio_copy_ktox(xio_t xio, int uoffset, const void *kptr, int bytes)
 	 ++i
     ) {
 	m = xio->xio_pages[i];
-	lwb = lwbuf_alloc(m);
+	lwb = lwbuf_alloc(m, &lwb_cache);
 	bcopy(kptr, (char *)lwbuf_kva(lwb) + offset, n);
 	lwbuf_free(lwb);
 	bytes -= n;

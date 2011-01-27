@@ -95,7 +95,6 @@
 #include <machine/md_var.h>
 
 #include <vm/vm_page2.h>
-#include <sys/mplock2.h>
 
 #define VMACTION_HSIZE	256
 #define VMACTION_HMASK	(VMACTION_HSIZE - 1)

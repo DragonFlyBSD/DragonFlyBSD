@@ -600,13 +600,14 @@ putadelta(node,editscript,trunk)
 		node->author, node->state
 	);
 
-        if ( editscript )
+        if ( editscript ) {
            if(trunk)
 	      aprintf(out, insDelFormat,
                              editscript->deletelns, editscript->insertlns);
            else
 	      aprintf(out, insDelFormat,
                              editscript->insertlns, editscript->deletelns);
+	}
 
 	if ( node->commitid )
 	   aprintf(out, "%s commitid: %s", (editscript) ? ";" : "",
@@ -792,7 +793,7 @@ char   *argv;
 /*              and store in authorlist                   */
 
 {
-        register    c;
+        register int c;
         struct     authors  * newauthor;
 
         argv--;

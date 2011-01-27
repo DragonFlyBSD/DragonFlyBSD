@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/agp/agp_amd64.c,v 1.16 2007/11/12 21:51:36 jhb Exp $
- * $DragonFly: src/sys/dev/agp/agp_amd64.c,v 1.3 2008/01/07 01:34:58 corecode Exp $
  */
 
 #include "opt_bus.h"
@@ -277,8 +276,7 @@ static uint32_t agp_amd64_table[] = {
 	0x80000000,	/* 2048 MB */
 };
 
-#define AGP_AMD64_TABLE_SIZE \
-	(sizeof(agp_amd64_table) / sizeof(agp_amd64_table[0]))
+#define AGP_AMD64_TABLE_SIZE NELEM(agp_amd64_table)
 
 static uint32_t
 agp_amd64_get_aperture(device_t dev)

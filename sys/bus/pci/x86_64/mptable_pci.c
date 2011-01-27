@@ -89,6 +89,8 @@ mptable_pci_route_interrupt(device_t pcib, device_t dev, int pin)
 static int
 mptable_hostb_probe(device_t dev)
 {
+	if (!apic_io_enable)
+		return (ENXIO);
 
 	if (pci_cfgregopen() == 0)
 		return (ENXIO);
@@ -183,6 +185,9 @@ static int
 mptable_pcib_probe(device_t dev)
 {
 	int bus;
+
+	if (!apic_io_enable)
+		return (ENXIO);
 
 	if ((pci_get_class(dev) != PCIC_BRIDGE) ||
 	    (pci_get_subclass(dev) != PCIS_BRIDGE_PCI))

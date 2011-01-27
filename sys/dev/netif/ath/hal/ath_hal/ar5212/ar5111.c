@@ -31,18 +31,16 @@
 #define AH_5212_5111
 #include "ar5212/ar5212.ini"
 
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
-
 struct ar5111State {
 	RF_HAL_FUNCS	base;		/* public state, must be first */
 	uint16_t	pcdacTable[PWR_TABLE_SIZE];
 
-	uint32_t	Bank0Data[N(ar5212Bank0_5111)];
-	uint32_t	Bank1Data[N(ar5212Bank1_5111)];
-	uint32_t	Bank2Data[N(ar5212Bank2_5111)];
-	uint32_t	Bank3Data[N(ar5212Bank3_5111)];
-	uint32_t	Bank6Data[N(ar5212Bank6_5111)];
-	uint32_t	Bank7Data[N(ar5212Bank7_5111)];
+	uint32_t	Bank0Data[NELEM(ar5212Bank0_5111)];
+	uint32_t	Bank1Data[NELEM(ar5212Bank1_5111)];
+	uint32_t	Bank2Data[NELEM(ar5212Bank2_5111)];
+	uint32_t	Bank3Data[NELEM(ar5212Bank3_5111)];
+	uint32_t	Bank6Data[NELEM(ar5212Bank6_5111)];
+	uint32_t	Bank7Data[NELEM(ar5212Bank7_5111)];
 };
 #define	AR5111(ah)	((struct ar5111State *) AH5212(ah)->ah_rfHal)
 
@@ -224,7 +222,7 @@ ar5111SetRfRegs(struct ath_hal *ah, const struct ieee80211_channel *chan,
 	const HAL_EEPROM *ee = AH_PRIVATE(ah)->ah_eeprom;
 	uint16_t rfXpdGainFixed, rfPloSel, rfPwdXpd, gainI;
 	uint16_t tempOB, tempDB;
-	uint32_t ob2GHz, db2GHz, rfReg[N(ar5212Bank6_5111)];
+	uint32_t ob2GHz, db2GHz, rfReg[NELEM(ar5212Bank6_5111)];
 	int i, regWrites = 0;
 
 	HALDEBUG(ah, HAL_DEBUG_RFPARAM, "%s: chan %u/0x%x modesIndex %u\n",
@@ -289,7 +287,7 @@ ar5111SetRfRegs(struct ath_hal *ah, const struct ieee80211_channel *chan,
 	HALASSERT(1 <= tempDB && tempDB <= 5);
 
 	/* Bank 0 Write */
-	for (i = 0; i < N(ar5212Bank0_5111); i++)
+	for (i = 0; i < NELEM(ar5212Bank0_5111); i++)
 		rfReg[i] = ar5212Bank0_5111[i][modesIndex];
 	if (IEEE80211_IS_CHAN_2GHZ(chan)) {
 		ar5212ModifyRfBuffer(rfReg, ob2GHz, 3, 119, 0);
@@ -307,7 +305,7 @@ ar5111SetRfRegs(struct ath_hal *ah, const struct ieee80211_channel *chan,
 	HAL_INI_WRITE_ARRAY(ah, ar5212Bank3_5111, modesIndex, regWrites);
 
 	/* Bank 6 Write */
-	for (i = 0; i < N(ar5212Bank6_5111); i++)
+	for (i = 0; i < NELEM(ar5212Bank6_5111); i++)
 		rfReg[i] = ar5212Bank6_5111[i][modesIndex];
 	if (IEEE80211_IS_CHAN_A(chan)) {	/* NB: CHANNEL_A | CHANNEL_T */
 		ar5212ModifyRfBuffer(rfReg, ee->ee_cornerCal.pd84, 1, 51, 3);
@@ -321,7 +319,7 @@ ar5111SetRfRegs(struct ath_hal *ah, const struct ieee80211_channel *chan,
 	HAL_INI_WRITE_BANK(ah, ar5212Bank6_5111, rfReg, regWrites);
 
 	/* Bank 7 Write */
-	for (i = 0; i < N(ar5212Bank7_5111); i++)
+	for (i = 0; i < NELEM(ar5212Bank7_5111); i++)
 		rfReg[i] = ar5212Bank7_5111[i][modesIndex];
 	ar5212ModifyRfBuffer(rfReg, gainI, 6, 29, 0);   
 	ar5212ModifyRfBuffer(rfReg, rfPloSel, 1, 4, 0);   

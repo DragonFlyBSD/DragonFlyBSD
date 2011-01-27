@@ -82,8 +82,8 @@ const char *ip_whois[] = { LNICHOST, RNICHOST, PNICHOST, BNICHOST, NULL };
 const char *port = DEFAULT_PORT;
 
 static char	*choose_server(const char *);
-static struct addrinfo *gethostinfo(const char *host, int exit_on_error);
-static void	s_asprintf(char **ret, const char *format, ...);
+static struct addrinfo *gethostinfo(const char *, int);
+static void	s_asprintf(char **, const char *, ...) __printflike(2, 3);
 static void	usage(void);
 static void	whois(const char *, const char *, int);
 

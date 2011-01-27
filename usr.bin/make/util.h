@@ -100,11 +100,11 @@ do {						\
  */
 #define FILENO(a) ((unsigned)fileno(a))
 
-void Debug(const char *, ...);
-void DebugM(const char *, ...);
-void Error(const char *, ...);
-void Fatal(const char *, ...) __dead2;
-void Punt(const char *, ...) __dead2;
+void Debug(const char *, ...) __printflike(1, 2);
+void DebugM(const char *, ...) __printflike(1, 2);
+void Error(const char *, ...) __printflike(1, 2);
+void Fatal(const char *, ...) __dead2 __printflike(1, 2);
+void Punt(const char *, ...) __dead2 __printflike(1, 2);
 void DieHorribly(void) __dead2;
 void Finish(int) __dead2;
 char *estrdup(const char *);

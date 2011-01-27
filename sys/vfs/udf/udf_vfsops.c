@@ -384,7 +384,7 @@ udf_mountfs(struct vnode *devvp, struct mount *mp)
 	brelse(bp);
 	bp = NULL;
 
-	lwkt_token_init(&udfmp->hash_token, 1, "udfihash");
+	lwkt_token_init(&udfmp->hash_token, "udfihash");
 	udfmp->hashtbl = phashinit(UDF_HASHTBLSIZE, M_UDFMOUNT, &udfmp->hashsz);
 
 	return(0);

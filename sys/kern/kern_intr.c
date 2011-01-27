@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.55 2008/09/01 12:49:00 sephe Exp $
  *
  */
 
@@ -125,7 +124,7 @@ static void report_stray_interrupt(int intr, struct intr_info *info);
 static void int_moveto_destcpu(int *, int *, int);
 static void int_moveto_origcpu(int, int);
 
-int intr_info_size = sizeof(intr_info_ary) / sizeof(intr_info_ary[0]);
+int intr_info_size = NELEM(intr_info_ary);
 
 static struct systimer emergency_intr_timer;
 static struct thread emergency_intr_thread;
@@ -326,16 +325,8 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 
     /*
      * Setup the machine level interrupt vector
-     *
-     * XXX temporary workaround for some ACPI brokedness.  ACPI installs
-     * its interrupt too early, before the IOAPICs have been configured,
-     * which means the IOAPIC is not enabled by the registration of the
-     * ACPI interrupt.  Anything else sharing that IRQ will wind up not
-     * being enabled.  Temporarily work around the problem by always
-     * installing and enabling on every new interrupt handler, even
-     * if one has already been setup on that irq.
      */
-    if (intr < FIRST_SOFTINT /* && info->i_slow + info->i_fast == 1*/) {
+    if (intr < FIRST_SOFTINT && info->i_slow + info->i_fast == 1) {
 	if (machintr_vector_setup(intr, intr_flags))
 	    kprintf("machintr_vector_setup: failed on irq %d\n", intr);
     }

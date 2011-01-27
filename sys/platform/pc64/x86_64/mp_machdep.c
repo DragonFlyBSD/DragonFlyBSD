@@ -993,7 +993,7 @@ mptable_pass2(struct mptable_pos *mpt)
 		bus_data[x].bus_id = 0xff;
 
 	/* clear IO APIC INT table */
-	for (x = 0; x < (nintrs + 1); ++x) {
+	for (x = 0; x < nintrs + FIXUP_EXTRA_APIC_INTS; ++x) {
 		io_apic_ints[x].int_type = 0xff;
 		io_apic_ints[x].int_vector = 0xff;
 	}
@@ -1532,7 +1532,7 @@ setup_apic_irq_mapping(void)
 		int_to_apicintpin[x].redirindex = 0;
 
 		/* Default to masked */
-		int_to_apicintpin[x].flags = AIMI_FLAG_MASKED;
+		int_to_apicintpin[x].flags = IOAPIC_IM_FLAG_MASKED;
 	}
 
 	/* First assign ISA/EISA interrupts */
@@ -2829,7 +2829,7 @@ ap_init(void)
 	 * section.
 	 */
 	__asm __volatile("sti; pause; pause"::);
-	mdcpu->gd_fpending = 0;
+	bzero(mdcpu->gd_ipending, sizeof(mdcpu->gd_ipending));
 
 	initclocks_pcpu();	/* clock interrupts (via IPIs) */
 	lwkt_process_ipiq();

@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cardbus/cardbus_cis.c,v 1.50 2005/02/20 20:36:16 imp Exp $
- * $DragonFly: src/sys/dev/pccard/cardbus/cardbus_cis.c,v 1.8 2008/01/11 10:53:46 sephe Exp $
  */
 
 /*
@@ -213,7 +212,7 @@ decode_tuple_funcid(device_t cbdev, device_t child, int id,
     struct tuple_callbacks *info)
 {
 	struct cardbus_devinfo *dinfo = device_get_ivars(child);
-	int numnames = sizeof(funcnames) / sizeof(funcnames[0]);
+	int numnames = NELEM(funcnames);
 	int i;
 
 	if (cardbus_cis_debug) {

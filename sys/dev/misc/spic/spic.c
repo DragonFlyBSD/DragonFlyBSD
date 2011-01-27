@@ -75,8 +75,7 @@
 
 static int spic_pollrate;
 
-SYSCTL_INT(_machdep, OID_AUTO, spic_pollrate, CTLFLAG_RW, &spic_pollrate, 0, "")
-;
+SYSCTL_INT(_machdep, OID_AUTO, spic_pollrate, CTLFLAG_RW, &spic_pollrate, 0, "");
 
 devclass_t spic_devclass;
 

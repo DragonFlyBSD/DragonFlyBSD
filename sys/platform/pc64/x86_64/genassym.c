@@ -197,7 +197,7 @@ ASSYM(GD_USER_FS, offsetof(struct mdglobaldata, gd_user_fs));
 ASSYM(GD_USER_GS, offsetof(struct mdglobaldata, gd_user_gs));
 ASSYM(GD_INTR_NESTING_LEVEL, offsetof(struct mdglobaldata, mi.gd_intr_nesting_level));
 
-ASSYM(GD_FPENDING, offsetof(struct mdglobaldata, gd_fpending));
+ASSYM(GD_IPENDING, offsetof(struct mdglobaldata, gd_ipending));
 ASSYM(GD_SPENDING, offsetof(struct mdglobaldata, gd_spending));
 ASSYM(GD_COMMON_TSS, offsetof(struct mdglobaldata, gd_common_tss));
 ASSYM(GD_COMMON_TSSD, offsetof(struct mdglobaldata, gd_common_tssd));
@@ -240,10 +240,11 @@ ASSYM(CPUMASK_BIT, CPUMASK_BIT);
 #endif
 
 #ifdef SMP
-ASSYM(AIMI_APIC_ADDRESS, offsetof(struct apic_intmapinfo, apic_address));
-ASSYM(AIMI_REDIRINDEX, offsetof(struct apic_intmapinfo, redirindex));
-ASSYM(AIMI_FLAGS, offsetof(struct apic_intmapinfo, flags));
-ASSYM(AIMI_SIZE, sizeof(struct apic_intmapinfo));
-ASSYM(AIMI_FLAG_LEVEL, AIMI_FLAG_LEVEL);
-ASSYM(AIMI_FLAG_MASKED, AIMI_FLAG_MASKED);
+ASSYM(IOAPIC_IM_ADDR, offsetof(struct apic_intmapinfo, apic_address));
+ASSYM(IOAPIC_IM_ENTIDX, offsetof(struct apic_intmapinfo, redirindex));
+ASSYM(IOAPIC_IM_FLAGS, offsetof(struct apic_intmapinfo, flags));
+ASSYM(IOAPIC_IM_SIZE, sizeof(struct apic_intmapinfo));
+ASSYM(IOAPIC_IM_SZSHIFT, IOAPIC_IM_SZSHIFT);
+ASSYM(IOAPIC_IM_FLAG_LEVEL, IOAPIC_IM_FLAG_LEVEL);
+ASSYM(IOAPIC_IM_FLAG_MASKED, IOAPIC_IM_FLAG_MASKED);
 #endif

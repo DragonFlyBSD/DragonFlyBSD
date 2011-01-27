@@ -25,7 +25,6 @@
  * capi/capi_l4if.c	The CAPI i4b L4/device interface.
  *
  * $FreeBSD: src/sys/i4b/capi/capi_l4if.c,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/capi_l4if.c,v 1.10 2006/12/22 23:44:55 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -192,7 +191,7 @@ capi_ll_attach(capi_softc_t *sc)
 {
     int i;
 
-    if (ncapi == (sizeof(capi_sc) / sizeof(capi_sc[0]))) {
+    if (ncapi == NELEM(capi_sc)) {
 	kprintf("capi%d: too many units, increase MAX_CONTROLLERS\n", ncapi);
 	return (ENXIO);
     }

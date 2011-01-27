@@ -754,7 +754,7 @@ findlines (struct buffer *buf, struct lines *lines)
 static int
 fraccompare (register const char *a, register const char *b)
 {
-  register tmpa = UCHAR (*a), tmpb = UCHAR (*b);
+  register int tmpa = UCHAR (*a), tmpb = UCHAR (*b);
 
 #ifdef __DragonFly__
   if (tmpa == decimal_point && tmpb == decimal_point)
@@ -1451,7 +1451,7 @@ mergefps (FILE **fps, register int nfps, FILE *ofp)
 	}
 
       /* Check if we need to read more lines into core. */
-      if (++cur[ord[0]] == lines[ord[0]].used)
+      if (++cur[ord[0]] == lines[ord[0]].used) {
 	if (fillbuf (&buffer[ord[0]], fps[ord[0]]))
 	  {
 	    findlines (&buffer[ord[0]], &lines[ord[0]]);
@@ -1478,7 +1478,7 @@ mergefps (FILE **fps, register int nfps, FILE *ofp)
 	      ord[i] = ord[i + 1];
 	    continue;
 	  }
-
+      }
       /* The new line just read in may be larger than other lines
 	 already in core; push it back in the queue until we encounter
 	 a line larger than it. */

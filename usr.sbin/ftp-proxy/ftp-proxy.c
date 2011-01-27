@@ -103,7 +103,7 @@ int	getline(char *, size_t *);
 void	handle_connection(const int);
 void	handle_signal(int);
 struct session * init_session(void);
-void	logmsg(int, const char *, ...);
+void	logmsg(int, const char *, ...) __printflike(2, 3);
 u_int16_t parse_port(int);
 u_int16_t pick_proxy_port(void);
 void	proxy_reply(int, struct sockaddr *, u_int16_t);

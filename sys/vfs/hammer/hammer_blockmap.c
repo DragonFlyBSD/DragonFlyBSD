@@ -241,6 +241,7 @@ again:
 		goto again;
 	}
 
+#if 0
 	/*
 	 * If operating in the current non-hint blockmap block, do not
 	 * allow it to get over-full.  Also drop any active hinting so
@@ -260,6 +261,7 @@ again:
 			goto again;
 		}
 	}
+#endif
 
 	/*
 	 * We need the lock from this point on.  We have to re-check zone

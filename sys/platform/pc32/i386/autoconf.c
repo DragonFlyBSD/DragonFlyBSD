@@ -236,7 +236,7 @@ boot_translate_majdev(int bmajor)
 {
 	static int conv[] = { BOOTMAJOR_CONVARY };
 
-	if (bmajor >= 0 && bmajor < sizeof(conv)/sizeof(conv[0]))
+	if (bmajor >= 0 && bmajor < NELEM(conv))
 		return(conv[bmajor]);
 	return(-1);
 }

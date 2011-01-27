@@ -52,7 +52,6 @@ extern volatile u_int		checkstate_probed_cpus;
 extern void (*cpustop_restartfunc) (void);
 
 /* functions in apic_ipl.s */
-void	apic_eoi		(void);
 u_int	io_apic_read		(int, int);
 void	io_apic_write		(int, int, u_int);
 
@@ -65,7 +64,7 @@ extern u_int32_t		*io_apic_versions;
 extern int			cpu_num_to_apic_id[];
 extern int			io_num_to_apic_id[];
 extern int			apic_id_to_logical[];
-#define APIC_INTMAPSIZE 32
+#define APIC_INTMAPSIZE 192
 /*
  * NOTE:
  * - Keep size of apic_intmapinfo power of 2

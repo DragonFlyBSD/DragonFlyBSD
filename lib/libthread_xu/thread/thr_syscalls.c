@@ -148,7 +148,7 @@ ssize_t	__writev(int, const struct iovec *, int);
 int	_aio_suspend(const struct aiocb * const iocbs[], int,
 		const struct timespec *);
 int	_pause(void);
-int	_pselect(int, fd_set *, fd_set *, fd_set *, 
+int	__pselect(int, fd_set *, fd_set *, fd_set *,
 		const struct timespec *, const sigset_t *);
 int	_raise(int);
 unsigned	_sleep(unsigned);

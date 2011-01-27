@@ -865,6 +865,7 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 		    vpte_t vpte, int fault_type)
 {
 	struct lwbuf *lwb;
+	struct lwbuf lwb_cache;
 	int vshift = VPTE_FRAME_END - PAGE_SHIFT; /* index bits remaining */
 	int result = KERN_SUCCESS;
 	vpte_t *ptep;
@@ -907,7 +908,7 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 		 * entry in the page table page.
 		 */
 		vshift -= VPTE_PAGE_BITS;
-		lwb = lwbuf_alloc(fs->m);
+		lwb = lwbuf_alloc(fs->m, &lwb_cache);
 		ptep = ((vpte_t *)lwbuf_kva(lwb) +
 		        ((*pindex >> vshift) & VPTE_PAGE_MASK));
 		vpte = *ptep;

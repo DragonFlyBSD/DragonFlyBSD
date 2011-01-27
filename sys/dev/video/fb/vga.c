@@ -496,7 +496,7 @@ map_mode_num(int mode)
     };
     int i;
 
-    for (i = 0; i < sizeof(mode_map)/sizeof(mode_map[0]); ++i) {
+    for (i = 0; i < NELEM(mode_map); ++i) {
         if (mode_map[i].from == mode)
             return mode_map[i].to;
     }
@@ -523,7 +523,7 @@ map_bios_mode_num(int bios_mode)
 	M_VGA_CG320,
     };
 
-    if (bios_mode < sizeof(vga_modes)/sizeof(vga_modes[0]))
+    if (bios_mode < NELEM(vga_modes))
 	return vga_modes[bios_mode];
 
     return M_VGA_C80x25;

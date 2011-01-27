@@ -61,7 +61,7 @@ static void	print_addrx(const struct pfr_addr *, const struct pfr_addr *,
 			    int);
 static void	print_astats(const struct pfr_astats *, int);
 static void	radix_perror(void);
-static void	xprintf(int, const char *, ...);
+static void	xprintf(int, const char *, ...) __printflike(2, 3);
 static void	print_iface(const struct pfi_kif *, int);
 
 static const char	*stats_text[PFR_DIR_MAX][PFR_OP_TABLE_MAX] = {

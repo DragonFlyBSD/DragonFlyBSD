@@ -401,6 +401,7 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 				int base = (int)nsize & PAGE_MASK;
 				int size = PAGE_SIZE - base;
 				struct lwbuf *lwb;
+				struct lwbuf lwb_cache;
 
 				/*
 				 * Clear out partial-page garbage in case
@@ -409,7 +410,7 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 				 * This is byte aligned.
 				 */
 				vm_page_busy(m);
-				lwb = lwbuf_alloc(m);
+				lwb = lwbuf_alloc(m, &lwb_cache);
 				kva = lwbuf_kva(lwb);
 				bzero((caddr_t)kva + base, size);
 				lwbuf_free(lwb);

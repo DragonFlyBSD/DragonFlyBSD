@@ -373,8 +373,8 @@ tzload(const char *name, struct state * const sp, const int doextend)
 			return -1;
 		}
 	}
-	nread = read(fid, u.buf, sizeof u.buf);
-	if (close(fid) < 0 || nread <= 0)
+	nread = _read(fid, u.buf, sizeof u.buf);
+	if (_close(fid) < 0 || nread <= 0)
 		return -1;
 	for (stored = 4; stored <= 8; stored *= 2) {
 		int		ttisstdcnt;

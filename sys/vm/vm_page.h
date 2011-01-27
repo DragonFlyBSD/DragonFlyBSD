@@ -180,13 +180,9 @@ struct vm_page {
 	 * NOTE that these must support one bit per DEV_BSIZE in a page!!!
 	 * so, on normal X86 kernels, they must be at least 8 bits wide.
 	 */
-#if PAGE_SIZE == 4096
 	u_char	valid;			/* map of valid DEV_BSIZE chunks */
 	u_char	dirty;			/* map of dirty DEV_BSIZE chunks */
-#elif PAGE_SIZE == 8192
-	u_short	valid;			/* map of valid DEV_BSIZE chunks */
-	u_short	dirty;			/* map of dirty DEV_BSIZE chunks */
-#endif
+
 	int	ku_pagecnt;		/* kmalloc helper */
 };
 
@@ -461,10 +457,6 @@ vm_page_io_finish(vm_page_t m)
 
 #if PAGE_SIZE == 4096
 #define VM_PAGE_BITS_ALL 0xff
-#endif
-
-#if PAGE_SIZE == 8192
-#define VM_PAGE_BITS_ALL 0xffff
 #endif
 
 /*

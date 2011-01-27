@@ -32,17 +32,15 @@
 #define AH_5212_2417
 #include "ar5212/ar5212.ini"
 
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
-
 struct ar2425State {
 	RF_HAL_FUNCS	base;		/* public state, must be first */
 	uint16_t	pcdacTable[PWR_TABLE_SIZE_2413];
 
-	uint32_t	Bank1Data[N(ar5212Bank1_2425)];
-	uint32_t	Bank2Data[N(ar5212Bank2_2425)];
-	uint32_t	Bank3Data[N(ar5212Bank3_2425)];
-	uint32_t	Bank6Data[N(ar5212Bank6_2425)];	/* 2417 is same size */
-	uint32_t	Bank7Data[N(ar5212Bank7_2425)];
+	uint32_t	Bank1Data[NELEM(ar5212Bank1_2425)];
+	uint32_t	Bank2Data[NELEM(ar5212Bank2_2425)];
+	uint32_t	Bank3Data[NELEM(ar5212Bank3_2425)];
+	uint32_t	Bank6Data[NELEM(ar5212Bank6_2425)];	/* 2417 is same size */
+	uint32_t	Bank7Data[NELEM(ar5212Bank7_2425)];
 };
 #define	AR2425(ah)	((struct ar2425State *) AH5212(ah)->ah_rfHal)
 
@@ -156,7 +154,7 @@ ar2425SetRfRegs(struct ath_hal *ah,
 {
 #define	RF_BANK_SETUP(_priv, _ix, _col) do {				    \
 	int i;								    \
-	for (i = 0; i < N(ar5212Bank##_ix##_2425); i++)			    \
+	for (i = 0; i < NELEM(ar5212Bank##_ix##_2425); i++)		    \
 		(_priv)->Bank##_ix##Data[i] = ar5212Bank##_ix##_2425[i][_col];\
 } while (0)
 	struct ath_hal_5212 *ahp = AH5212(ah);
@@ -202,7 +200,7 @@ ar2425SetRfRegs(struct ath_hal *ah,
 	HAL_INI_WRITE_BANK(ah, ar5212Bank2_2425, priv->Bank2Data, regWrites);
 	HAL_INI_WRITE_BANK(ah, ar5212Bank3_2425, priv->Bank3Data, regWrites);
 	if (IS_2417(ah)) {
-		HALASSERT(N(ar5212Bank6_2425) == N(ar5212Bank6_2417));
+		HALASSERT(NELEM(ar5212Bank6_2425) == NELEM(ar5212Bank6_2417));
 		HAL_INI_WRITE_BANK(ah, ar5212Bank6_2417, priv->Bank6Data,
 		    regWrites);
 	} else

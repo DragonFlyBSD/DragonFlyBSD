@@ -31,7 +31,7 @@
 #define PFLOGD_MAXSNAPLEN	INT_MAX
 #define PFLOGD_BUFSIZE		65536	/* buffer size for incoming packets */
 
-void  logmsg(int priority, const char *message, ...);
+void  logmsg(int priority, const char *message, ...) __printflike(2, 3);
 
 /* Privilege separation */
 int	priv_init(void);

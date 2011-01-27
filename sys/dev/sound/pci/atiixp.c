@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/atiixp.c,v 1.2.2.8 2007/11/06 02:08:25 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/atiixp.c,v 1.6 2007/11/30 08:01:43 hasso Exp $
  */
 
 /*
@@ -65,8 +64,6 @@
 #include <sys/endian.h>
 
 #include <dev/sound/pci/atiixp.h>
-
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/atiixp.c,v 1.6 2007/11/30 08:01:43 hasso Exp $");
 
 struct atiixp_dma_op {
 	volatile uint32_t addr;
@@ -885,7 +882,7 @@ atiixp_pci_probe(device_t dev)
 
 	vendor = pci_get_vendor(dev);
 	devid = pci_get_device(dev);
-	for (i = 0; i < sizeof(atiixp_hw)/sizeof(atiixp_hw[0]); i++) {
+	for (i = 0; i < NELEM(atiixp_hw); i++) {
 		if (vendor == atiixp_hw[i].vendor &&
 					devid == atiixp_hw[i].devid) {
 			device_set_desc(dev, atiixp_hw[i].desc);

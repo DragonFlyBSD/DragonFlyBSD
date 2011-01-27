@@ -346,7 +346,7 @@ void	mklev(void);
 /* hack.main.c */
 void	glo(int);
 void	askname(void);
-void	impossible(const char *, ...);
+void	impossible(const char *, ...) __printflike(1, 2);
 void	stop_occupation(void);
 
 /* hack.makemon.c */
@@ -456,7 +456,7 @@ int	dodip(void);
 
 /* hack.pri.c */
 void	swallowed(void);
-void	panic(const char *, ...);
+void	panic(const char *, ...) __printflike(1, 2);
 void	atl(int, int, char);
 void	on_scr(int, int);
 void	tmp_at(schar, schar);
@@ -588,8 +588,8 @@ void	addtopl(const char *);
 void	more(void);
 void	cmore(const char *);
 void	clrlin(void);
-void	pline(const char *, ...);
-void	vpline(const char *, va_list);
+void	pline(const char *, ...) __printflike(1, 2);
+void	vpline(const char *, va_list) __printflike(1, 0);
 void	putsym(char);
 void	putstr(const char *);
 
@@ -616,7 +616,7 @@ void		 drown(void);
 void	 gettty(void);
 void	 settty(const char *);
 void	 setftty(void);
-void	 error(const char *, ...);
+void	 error(const char *, ...) __printflike(1, 2);
 void	 getlin(char *);
 void	 getret(void);
 void	 cgetret(const char *);

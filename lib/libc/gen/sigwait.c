@@ -21,14 +21,14 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/lib/libc/gen/sigwait.c,v 1.1 2005/02/20 01:52:25 davidxu Exp $
  */
 
 #include "namespace.h"
 #include <signal.h>
 #include <errno.h>
 #include "un-namespace.h"
+
+extern int __sys_sigwaitinfo(const sigset_t *, siginfo_t *);
 
 __weak_reference(_sigwait, sigwait);
 

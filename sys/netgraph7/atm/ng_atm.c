@@ -27,8 +27,6 @@
  * Author: Hartmut Brandt <harti@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/atm/ng_atm.c,v 1.15 2005/08/10 06:25:40 obrien Exp $
- * $DragonFly: src/sys/netgraph7/atm/ng_atm.c,v 1.2 2008/06/26 23:05:37 dillon Exp $
- * $DragonFly: src/sys/netgraph7/atm/ng_atm.c,v 1.2 2008/06/26 23:05:37 dillon Exp $
  */
 
 /*
@@ -869,7 +867,7 @@ text_status(node_p node, char *arg, u_int len)
 	sbuf_new(&sbuf, arg, len, SBUF_FIXEDLEN);
 	sbuf_printf(&sbuf, "interface: %s\n", priv->ifp->if_xname);
 
-	if (mib->device >= sizeof(devices) / sizeof(devices[0]))
+	if (mib->device >= NELEM(devices))
 		sbuf_printf(&sbuf, "device=unknown\nvendor=unknown\n");
 	else
 		sbuf_printf(&sbuf, "device=%s\nvendor=%s\n",

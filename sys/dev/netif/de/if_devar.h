@@ -1,7 +1,6 @@
 /*	$NetBSD: if_devar.h,v 1.32 1999/04/01 14:55:25 tsubai Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_devar.h,v 1.23.2.1 2000/08/04 23:25:10 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.16 2006/12/22 23:26:19 swildner Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -658,8 +657,7 @@ static const struct {
 		TULIP_SROM_ATTR_AUTOSENSE|TULIP_SROM_ATTR_NWAY },
     { TULIP_SROM_CONNTYPE_NOT_USED,		TULIP_MEDIA_UNKNOWN }
 };
-#define	TULIP_SROM_LASTCONNIDX	\
-		(sizeof(tulip_srom_conninfo)/sizeof(tulip_srom_conninfo[0]) - 1)
+#define	TULIP_SROM_LASTCONNIDX	(NELEM(tulip_srom_conninfo) - 1)
 
 static const struct {
     tulip_media_t sm_type;

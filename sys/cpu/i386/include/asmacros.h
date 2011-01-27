@@ -47,6 +47,7 @@
  * Access to a per-cpu data element
  */
 #define PCPU(x) %fs:gd_ ## x
+#define PCPU_E4(x, idx) %fs:gd_ ## x(,idx,4)
 #define MYCPU	%fs:0
 
 #endif

@@ -102,7 +102,7 @@ union sockunion {
 #define su_port		su_si.si_port
 
 void	 doit(union sockunion *);
-void	 error(const char *, ...);
+void	 error(const char *, ...) __printflike(1, 2);
 void	 getstr(char *, int, const char *);
 int	 local_domain(char *);
 char	*topdomain(char *);

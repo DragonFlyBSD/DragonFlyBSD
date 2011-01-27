@@ -546,6 +546,10 @@ hammer_ioc_get_version(hammer_transaction_t trans, hammer_inode_t ip,
 		ksnprintf(ver->description, sizeof(ver->description),
 			 "Adjustments for dedup support (DragonFly 2.9+)");
 		break;
+	case 6:
+		ksnprintf(ver->description, sizeof(ver->description),
+			  "Directory Hash ALG1 (tmp/rename resistance)");
+		break;
 	default:
 		ksnprintf(ver->description, sizeof(ver->description),
 			 "Unknown");

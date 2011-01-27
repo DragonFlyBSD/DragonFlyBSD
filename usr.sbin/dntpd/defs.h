@@ -93,10 +93,11 @@ double tv_delta_double(struct timeval *tv1, struct timeval *tv2);
 void tv_to_ts(struct timeval *tv, struct timespec *ts);
 void ts_to_tv(struct timespec *ts, struct timeval *tv);
 
-void logerr(const char *ctl, ...);
-void logerrstr(const char *ctl, ...);
-void _logdebug(int level, const char *ctl, ...);
-void _logdebuginfo(server_info_t info, int level, const char *ctl, ...);
+void logerr(const char *ctl, ...) __printflike(1, 2);
+void logerrstr(const char *ctl, ...) __printflike(1, 2);
+void _logdebug(int level, const char *ctl, ...) __printflike(2, 3);
+void _logdebuginfo(server_info_t info, int level, const char *ctl, ...)
+	  __printflike(3, 4);
 
 void sysntp_getbasetime(struct timeval *tvp);
 int sysntp_offset_correction_is_running(void);

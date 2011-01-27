@@ -125,6 +125,7 @@ copyin(const void *udaddr, void *kaddr, size_t len)
 {
 	struct vmspace *vm = curproc->p_vmspace;
 	struct lwbuf *lwb;
+	struct lwbuf_cache lwb_cache;
 	vm_page_t m;
 	int error;
 	size_t n;
@@ -139,7 +140,7 @@ copyin(const void *udaddr, void *kaddr, size_t len)
 		n = PAGE_SIZE - ((vm_offset_t)udaddr & PAGE_MASK);
 		if (n > len)
 			n = len;
-		lwb = lwbuf_alloc(m);
+		lwb = lwbuf_alloc(m, &lwb_cache);
 		bcopy((char *)lwbuf_kva(lwb)+((vm_offset_t)udaddr & PAGE_MASK),
 		      kaddr, n);
 		len -= n;
@@ -161,6 +162,7 @@ copyout(const void *kaddr, void *udaddr, size_t len)
 {
 	struct vmspace *vm = curproc->p_vmspace;
 	struct lwbuf *lwb;
+	struct lwbuf lwb_cache;
 	vm_page_t m;
 	int error;
 	size_t n;
@@ -175,7 +177,7 @@ copyout(const void *kaddr, void *udaddr, size_t len)
 		n = PAGE_SIZE - ((vm_offset_t)udaddr & PAGE_MASK);
 		if (n > len)
 			n = len;
-		lwb = lwbuf_alloc(m);
+		lwb = lwbuf_alloc(m, &lwb_cache);
 		bcopy(kaddr, (char *)lwbuf_kva(lwb) +
 			     ((vm_offset_t)udaddr & PAGE_MASK), n);
 		len -= n;

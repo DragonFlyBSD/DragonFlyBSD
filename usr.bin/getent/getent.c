@@ -61,6 +61,8 @@
 
 static int	usage(void);
 static int	parsenum(const char *, unsigned long *);
+static void	printfmtstrings(char **, const char *, const char *,
+		    const char *fmt, ...) __printflike(4, 5);
 static int	ethers(int, char *[]);
 static int	group(int, char *[]);
 static int	hosts(int, char *[]);

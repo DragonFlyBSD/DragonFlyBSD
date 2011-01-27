@@ -28,7 +28,6 @@
  *
  * @(#)auth_des.c	2.2 88/07/29 4.0 RPCSRC; from 1.9 88/02/08 SMI
  * $FreeBSD: src/lib/libc/rpc/auth_des.c,v 1.10 2006/02/27 22:10:58 deischen Exp $
- * $DragonFly: src/lib/libc/rpc/auth_des.c,v 1.5 2005/11/13 12:27:04 swildner Exp $
  */
 /*
  * Copyright (c) 1988 by Sun Microsystems, Inc.
@@ -68,6 +67,7 @@
 
 extern bool_t	xdr_authdes_cred(XDR *, struct authdes_cred *);
 extern bool_t	xdr_authdes_verf(XDR *, struct authdes_verf *);
+extern int	key_encryptsession_pk(char *, netobj *, des_block *);
 
 extern bool_t	__rpc_get_time_offset(struct timeval *, nis_server *, char *,
 				      char **, char **);

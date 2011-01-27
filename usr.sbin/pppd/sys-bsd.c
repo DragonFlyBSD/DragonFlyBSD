@@ -38,6 +38,7 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <signal.h>
+#include <libutil.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/socket.h>

@@ -59,7 +59,7 @@
  * Locks provide shared/exclusive sychronization.
  */
 
-#ifdef SIMPLELOCK_DEBUG
+#ifdef DEBUG_LOCKS
 #define COUNT(td, x) (td)->td_locks += (x)
 #else
 #define COUNT(td, x)
@@ -163,6 +163,9 @@ debuglockmgr(struct lock *lkp, u_int flags,
 	int error;
 	int extflags;
 	int dowakeup;
+#ifdef DEBUG_LOCKS
+	int i;
+#endif
 
 	error = 0;
 	dowakeup = 0;
@@ -250,6 +253,18 @@ debuglockmgr(struct lock *lkp, u_int flags,
 			spin_unlock(&lkp->lk_spinlock);
 			panic("lockmgr: not holding exclusive lock");
 		}
+
+#ifdef DEBUG_LOCKS
+		for (i = 0; i < LOCKMGR_DEBUG_ARRAY_SIZE; i++) {
+			if (td->td_lockmgr_stack[i] == lkp &&
+			    td->td_lockmgr_stack_id[i] > 0
+			) {
+				td->td_lockmgr_stack_id[i]--;
+				break;
+			}
+		}
+#endif
+
 		sharelock(lkp, lkp->lk_exclusivecount);
 		lkp->lk_exclusivecount = 0;
 		lkp->lk_flags &= ~LK_HAVE_EXCL;
@@ -326,6 +341,31 @@ debuglockmgr(struct lock *lkp, u_int flags,
 			lkp->lk_filename = file;
 			lkp->lk_lineno = line;
 			lkp->lk_lockername = name;
+
+        	        for (i = 0; i < LOCKMGR_DEBUG_ARRAY_SIZE; i++) {
+				/*
+				 * Recursive lockmgr path
+			 	 */
+				if (td->td_lockmgr_stack[i] == lkp &&
+				    td->td_lockmgr_stack_id[i] != 0
+				) {
+					td->td_lockmgr_stack_id[i]++;
+					goto lkmatch2;
+				}
+ 	               }
+
+			for (i = 0; i < LOCKMGR_DEBUG_ARRAY_SIZE; i++) {
+				/*
+				 * Use new lockmgr tracking slot
+			 	 */
+        	        	if (td->td_lockmgr_stack_id[i] == 0) {
+                	        	td->td_lockmgr_stack_id[i]++;
+                        		td->td_lockmgr_stack[i] = lkp;
+                        		break;
+                        	}
+			}
+lkmatch2:
+			;
 #endif
 			COUNT(td, 1);
 			break;
@@ -395,9 +435,34 @@ debuglockmgr(struct lock *lkp, u_int flags,
 		}
 		lkp->lk_exclusivecount = 1;
 #if defined(DEBUG_LOCKS)
-			lkp->lk_filename = file;
-			lkp->lk_lineno = line;
-			lkp->lk_lockername = name;
+		lkp->lk_filename = file;
+		lkp->lk_lineno = line;
+		lkp->lk_lockername = name;
+
+                for (i = 0; i < LOCKMGR_DEBUG_ARRAY_SIZE; i++) {
+			/*
+			 * Recursive lockmgr path
+			 */
+			if (td->td_lockmgr_stack[i] == lkp &&
+			    td->td_lockmgr_stack_id[i] != 0
+			) {
+				td->td_lockmgr_stack_id[i]++;
+				goto lkmatch1;
+			}
+                }
+
+		for (i = 0; i < LOCKMGR_DEBUG_ARRAY_SIZE; i++) {
+			/*
+			 * Use new lockmgr tracking slot
+			 */
+                	if (td->td_lockmgr_stack_id[i] == 0) {
+                        	td->td_lockmgr_stack_id[i]++;
+                        	td->td_lockmgr_stack[i] = lkp;
+                        	break;
+                        }
+		}
+lkmatch1:
+		;
 #endif
 		COUNT(td, 1);
 		break;
@@ -422,6 +487,16 @@ debuglockmgr(struct lock *lkp, u_int flags,
 			} else {
 				lkp->lk_exclusivecount--;
 			}
+#ifdef DEBUG_LOCKS
+			for (i = 0; i < LOCKMGR_DEBUG_ARRAY_SIZE; i++) {
+				if (td->td_lockmgr_stack[i] == lkp &&
+				    td->td_lockmgr_stack_id[i] > 0
+				) {
+					td->td_lockmgr_stack_id[i]--;
+					break;
+				}
+			}
+#endif
 		} else if (lkp->lk_flags & LK_SHARE_NONZERO) {
 			dowakeup += shareunlock(lkp, 1);
 			COUNT(td, -1);

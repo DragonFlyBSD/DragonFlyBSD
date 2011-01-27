@@ -80,7 +80,7 @@ md_pa_init(void)
 	int n, idx;
 
 	bzero(dump_map, sizeof(dump_map));
-	for (n = 0; n < sizeof(dump_map) / sizeof(dump_map[0]); n++) {
+	for (n = 0; n < NELEM(dump_map); n++) {
 		idx = n * 2;
 		if (dump_avail[idx] == 0 && dump_avail[idx + 1] == 0)
 			break;
@@ -181,6 +181,7 @@ cb_dumpdata(struct md_pa *mdp, int seqnr, void *arg)
 			a = pa + i * PAGE_SIZE;
 			va = pmap_kenter_temporary(trunc_page(a), i);
 		}
+		smp_invltlb();
 		error = dev_ddump(di->priv, va, 0, dumplo, sz);
 		if (error)
 			break;

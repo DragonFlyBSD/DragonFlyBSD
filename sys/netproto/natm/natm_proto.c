@@ -32,7 +32,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netnatm/natm_proto.c,v 1.4.2.2 2000/08/03 18:56:28 peter Exp $
- * $DragonFly: src/sys/netproto/natm/natm_proto.c,v 1.11 2008/11/01 04:22:16 sephe Exp $
  */
 
 /*
@@ -84,7 +83,7 @@ static struct protosw natmsw[] = {
 
 static struct domain natmdomain = {
 	AF_NATM, "natm", natm_init, NULL, NULL,
-	natmsw, &natmsw[sizeof(natmsw)/sizeof(natmsw[0])],
+	natmsw, &natmsw[NELEM(natmsw)],
 };
 
 #ifdef NATM_STAT

@@ -73,7 +73,7 @@ static u_long nfsrvhash;
 #define	NETFAMILY(rp) \
 		(((rp)->rc_flag & RC_INETADDR) ? AF_INET : AF_ISO)
 
-struct lwkt_token srvcache_token = LWKT_TOKEN_MP_INITIALIZER(srvcache_token);
+struct lwkt_token srvcache_token = LWKT_TOKEN_INITIALIZER(srvcache_token);
 
 /*
  * Static array that defines which nfs rpc's are nonidempotent

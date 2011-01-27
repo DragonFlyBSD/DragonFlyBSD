@@ -18,6 +18,7 @@ SRCS+=		${.OBJDIR}/acpi.h ${.OBJDIR}/platform/acenv.h
 CLEANFILES+=	${.OBJDIR}/acpi.h
 CLEANDIRS+=	${.OBJDIR}/platform
 
+CSTD?=		gnu89
 WARNS?=		1
 
 .if exists(${.CURDIR}/../../Makefile.inc)

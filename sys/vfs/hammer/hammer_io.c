@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.55 2008/09/15 17:02:49 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -65,6 +63,26 @@ static void hammer_io_direct_write_complete(struct bio *nbio);
 static int hammer_io_direct_uncache_callback(hammer_inode_t ip, void *data);
 static void hammer_io_set_modlist(struct hammer_io *io);
 static void hammer_io_flush_mark(hammer_volume_t volume);
+
+static int
+hammer_mod_rb_compare(hammer_io_t io1, hammer_io_t io2)
+{
+	hammer_off_t io1_offset;
+	hammer_off_t io2_offset;
+
+	io1_offset = ((io1->offset & HAMMER_OFF_SHORT_MASK) << 8) |
+		     HAMMER_VOL_DECODE(io1->offset);
+	io2_offset = ((io2->offset & HAMMER_OFF_SHORT_MASK) << 8) |
+		     HAMMER_VOL_DECODE(io2->offset);
+
+	if (io1_offset < io2_offset)
+		return(-1);
+	if (io1_offset > io2_offset)
+		return(1);
+	return(0);
+}
+
+RB_GENERATE(hammer_mod_rb_tree, hammer_io, rb_node, hammer_mod_rb_compare);
 
 /*
  * Initialize a new, already-zero'd hammer_io structure, or reinitialize
@@ -906,7 +924,7 @@ hammer_io_clear_modify(struct hammer_io *io, int inval)
 	hammer_mount_t hmp;
 
 	/*
-	 * io_token is needed to avoid races on mod_list
+	 * io_token is needed to avoid races on mod_root
 	 */
 	if (io->modified == 0)
 		return;
@@ -920,14 +938,14 @@ hammer_io_clear_modify(struct hammer_io *io, int inval)
 	/*
 	 * Take us off the mod-list and clear the modified bit.
 	 */
-	KKASSERT(io->mod_list != NULL);
-	if (io->mod_list == &io->hmp->volu_list ||
-	    io->mod_list == &io->hmp->meta_list) {
+	KKASSERT(io->mod_root != NULL);
+	if (io->mod_root == &io->hmp->volu_root ||
+	    io->mod_root == &io->hmp->meta_root) {
 		io->hmp->locked_dirty_space -= io->bytes;
 		atomic_add_int(&hammer_count_dirtybufspace, -io->bytes);
 	}
-	TAILQ_REMOVE(io->mod_list, io, mod_entry);
-	io->mod_list = NULL;
+	RB_REMOVE(hammer_mod_rb_tree, io->mod_root, io);
+	io->mod_root = NULL;
 	io->modified = 0;
 
 	lwkt_reltoken(&hmp->io_token);
@@ -966,10 +984,10 @@ restart:
 
 /*
  * Clear the IO's modify list.  Even though the IO is no longer modified
- * it may still be on the lose_list.  This routine is called just before
+ * it may still be on the lose_root.  This routine is called just before
  * the governing hammer_buffer is destroyed.
  *
- * mod_list requires io_token protection.
+ * mod_root requires io_token protection.
  */
 void
 hammer_io_clear_modlist(struct hammer_io *io)
@@ -977,12 +995,12 @@ hammer_io_clear_modlist(struct hammer_io *io)
 	hammer_mount_t hmp = io->hmp;
 
 	KKASSERT(io->modified == 0);
-	if (io->mod_list) {
+	if (io->mod_root) {
 		lwkt_gettoken(&hmp->io_token);
-		if (io->mod_list) {
-			KKASSERT(io->mod_list == &io->hmp->lose_list);
-			TAILQ_REMOVE(io->mod_list, io, mod_entry);
-			io->mod_list = NULL;
+		if (io->mod_root) {
+			KKASSERT(io->mod_root == &io->hmp->lose_root);
+			RB_REMOVE(hammer_mod_rb_tree, io->mod_root, io);
+			io->mod_root = NULL;
 		}
 		lwkt_reltoken(&hmp->io_token);
 	}
@@ -994,30 +1012,33 @@ hammer_io_set_modlist(struct hammer_io *io)
 	struct hammer_mount *hmp = io->hmp;
 
 	lwkt_gettoken(&hmp->io_token);
-	KKASSERT(io->mod_list == NULL);
+	KKASSERT(io->mod_root == NULL);
 
 	switch(io->type) {
 	case HAMMER_STRUCTURE_VOLUME:
-		io->mod_list = &hmp->volu_list;
+		io->mod_root = &hmp->volu_root;
 		hmp->locked_dirty_space += io->bytes;
 		atomic_add_int(&hammer_count_dirtybufspace, io->bytes);
 		break;
 	case HAMMER_STRUCTURE_META_BUFFER:
-		io->mod_list = &hmp->meta_list;
+		io->mod_root = &hmp->meta_root;
 		hmp->locked_dirty_space += io->bytes;
 		atomic_add_int(&hammer_count_dirtybufspace, io->bytes);
 		break;
 	case HAMMER_STRUCTURE_UNDO_BUFFER:
-		io->mod_list = &hmp->undo_list;
+		io->mod_root = &hmp->undo_root;
 		break;
 	case HAMMER_STRUCTURE_DATA_BUFFER:
-		io->mod_list = &hmp->data_list;
+		io->mod_root = &hmp->data_root;
 		break;
 	case HAMMER_STRUCTURE_DUMMY:
-		panic("hammer_io_disassociate: bad io type");
-		break;
+		panic("hammer_io_set_modlist: bad io type");
+		break; /* NOT REACHED */
 	}
-	TAILQ_INSERT_TAIL(io->mod_list, io, mod_entry);
+	if (RB_INSERT(hammer_mod_rb_tree, io->mod_root, io)) {
+		panic("hammer_io_set_modlist: duplicate entry");
+		/* NOT REACHED */
+	}
 	lwkt_reltoken(&hmp->io_token);
 }
 
@@ -1196,9 +1217,12 @@ hammer_io_deallocate(struct buf *bp)
 		hammer_io_disassociate(iou);
 		if (iou->io.type != HAMMER_STRUCTURE_VOLUME) {
 			KKASSERT(iou->io.bp == NULL);
-			KKASSERT(iou->io.mod_list == NULL);
-			iou->io.mod_list = &hmp->lose_list;
-			TAILQ_INSERT_TAIL(iou->io.mod_list, &iou->io, mod_entry);
+			KKASSERT(iou->io.mod_root == NULL);
+			iou->io.mod_root = &hmp->lose_root;
+			if (RB_INSERT(hammer_mod_rb_tree, iou->io.mod_root,
+				      &iou->io)) {
+				panic("hammer_io_deallocate: duplicate entry");
+			}
 		}
 		hammer_put_interlock(&iou->io.lock, 1);
 	}

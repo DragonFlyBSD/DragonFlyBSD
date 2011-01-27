@@ -118,23 +118,23 @@
 8: ;									\
 	
 /*
- * Fast interrupt call handlers run in the following sequence:
+ * Interrupt call handlers run in the following sequence:
  *
  *	- Push the trap frame required by doreti.
  *	- Mask the interrupt and reenable its source.
- *	- If we cannot take the interrupt set its fpending bit and
+ *	- If we cannot take the interrupt set its ipending bit and
  *	  doreti.
- *	- If we can take the interrupt clear its fpending bit,
+ *	- If we can take the interrupt clear its ipending bit,
  *	  call the handler, then unmask the interrupt and doreti.
  *
  *	YYY can cache gd base pointer instead of using hidden %fs
  *	prefixes.
  */
 
-#define	FAST_INTR(irq_num, vec_name, icu, enable_icus)			 \
+#define	INTR_HANDLER(irq_num, icu, enable_icus)				\
 	.text ; 							\
 	SUPERALIGN_TEXT ; 						\
-IDTVEC(vec_name) ; 							\
+IDTVEC(icu_intr##irq_num) ; 						\
 	PUSH_FRAME ;							\
 	FAKE_MCOUNT(15*4(%esp)) ; 					\
 	MASK_IRQ(icu, irq_num) ;					\
@@ -147,12 +147,14 @@ IDTVEC(vec_name) ; 							\
 	je	2f ;							\
 1: ;									\
 	/* set pending bit and return, leave interrupt masked */	\
-	orl	$IRQ_LBIT(irq_num),PCPU(fpending) ;			\
+	movl	$0,%edx ;						\
+	orl	$IRQ_LBIT(irq_num),PCPU_E4(ipending,%edx) ;		\
 	orl	$RQF_INTPEND, PCPU(reqflags) ;				\
 	jmp	5f ;							\
 2: ;									\
 	/* clear pending bit, run handler */				\
-	andl	$~IRQ_LBIT(irq_num),PCPU(fpending) ;			\
+	movl	$0,%edx ;						\
+	andl	$~IRQ_LBIT(irq_num),PCPU_E4(ipending,%edx) ;		\
 	pushl	$irq_num ;						\
 	pushl	%esp ;			/* pass frame by reference */	\
 	incl	TD_CRITCOUNT(%ebx) ;					\
@@ -165,40 +167,23 @@ IDTVEC(vec_name) ; 							\
 	MEXITCOUNT ;							\
 	jmp	doreti ;						\
 
-/*
- * Unmask a slow interrupt.  This function is used by interrupt threads
- * after they have descheduled themselves to reenable interrupts and
- * possibly cause a reschedule to occur.
- */
-
-#define INTR_UNMASK(irq_num, vec_name, icu)				\
-	.text ;								\
-	SUPERALIGN_TEXT ;						\
-IDTVEC(vec_name) ;							\
-	pushl %ebp ;	 /* frame for ddb backtrace */			\
-	movl	%esp, %ebp ;						\
-	subl	%eax, %eax ;						\
-	UNMASK_IRQ(icu, irq_num) ;					\
-	popl %ebp ;							\
-	ret ;								\
-
 MCOUNT_LABEL(bintr)
-	FAST_INTR(0,icu_fastintr0, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(1,icu_fastintr1, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(2,icu_fastintr2, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(3,icu_fastintr3, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(4,icu_fastintr4, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(5,icu_fastintr5, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(6,icu_fastintr6, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(7,icu_fastintr7, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(8,icu_fastintr8, IO_ICU2, ENABLE_ICU1_AND_2)
-	FAST_INTR(9,icu_fastintr9, IO_ICU2, ENABLE_ICU1_AND_2)
-	FAST_INTR(10,icu_fastintr10, IO_ICU2, ENABLE_ICU1_AND_2)
-	FAST_INTR(11,icu_fastintr11, IO_ICU2, ENABLE_ICU1_AND_2)
-	FAST_INTR(12,icu_fastintr12, IO_ICU2, ENABLE_ICU1_AND_2)
-	FAST_INTR(13,icu_fastintr13, IO_ICU2, ENABLE_ICU1_AND_2)
-	FAST_INTR(14,icu_fastintr14, IO_ICU2, ENABLE_ICU1_AND_2)
-	FAST_INTR(15,icu_fastintr15, IO_ICU2, ENABLE_ICU1_AND_2)
+	INTR_HANDLER(0, IO_ICU1, ENABLE_ICU1)
+	INTR_HANDLER(1, IO_ICU1, ENABLE_ICU1)
+	INTR_HANDLER(2, IO_ICU1, ENABLE_ICU1)
+	INTR_HANDLER(3, IO_ICU1, ENABLE_ICU1)
+	INTR_HANDLER(4, IO_ICU1, ENABLE_ICU1)
+	INTR_HANDLER(5, IO_ICU1, ENABLE_ICU1)
+	INTR_HANDLER(6, IO_ICU1, ENABLE_ICU1)
+	INTR_HANDLER(7, IO_ICU1, ENABLE_ICU1)
+	INTR_HANDLER(8, IO_ICU2, ENABLE_ICU1_AND_2)
+	INTR_HANDLER(9, IO_ICU2, ENABLE_ICU1_AND_2)
+	INTR_HANDLER(10, IO_ICU2, ENABLE_ICU1_AND_2)
+	INTR_HANDLER(11, IO_ICU2, ENABLE_ICU1_AND_2)
+	INTR_HANDLER(12, IO_ICU2, ENABLE_ICU1_AND_2)
+	INTR_HANDLER(13, IO_ICU2, ENABLE_ICU1_AND_2)
+	INTR_HANDLER(14, IO_ICU2, ENABLE_ICU1_AND_2)
+	INTR_HANDLER(15, IO_ICU2, ENABLE_ICU1_AND_2)
 MCOUNT_LABEL(eintr)
 
 	.data

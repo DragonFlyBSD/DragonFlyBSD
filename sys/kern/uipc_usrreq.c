@@ -73,7 +73,7 @@ static	u_int unp_count;
 
 static	struct unp_head unp_shead, unp_dhead;
 
-static struct lwkt_token unp_token = LWKT_TOKEN_MP_INITIALIZER(unp_token);
+static struct lwkt_token unp_token = LWKT_TOKEN_INITIALIZER(unp_token);
 static int unp_defdiscard_nest;
 static unp_defdiscard_t unp_defdiscard_base;
 

@@ -645,15 +645,16 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 	 sizeof(hammer_crc_t))
 
 #define HAMMER_VOL_VERSION_MIN		1	/* minimum supported version */
-#define HAMMER_VOL_VERSION_DEFAULT	4	/* newfs default version */
+#define HAMMER_VOL_VERSION_DEFAULT	5	/* newfs default version */
 #define HAMMER_VOL_VERSION_WIP		6	/* version >= this is WIP */
-#define HAMMER_VOL_VERSION_MAX		5	/* maximum supported version */
+#define HAMMER_VOL_VERSION_MAX		6	/* maximum supported version */
 
 #define HAMMER_VOL_VERSION_ONE		1
 #define HAMMER_VOL_VERSION_TWO		2	/* new dirent layout (2.3+) */
 #define HAMMER_VOL_VERSION_THREE	3	/* new snapshot layout (2.5+) */
 #define HAMMER_VOL_VERSION_FOUR		4	/* new undo/flush (2.5+) */
 #define HAMMER_VOL_VERSION_FIVE		5	/* dedup (2.9+) */
+#define HAMMER_VOL_VERSION_SIX		6	/* DIRHASH_ALG1 */
 
 /*
  * Record types are fairly straightforward.  The B-Tree includes the record

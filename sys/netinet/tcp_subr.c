@@ -163,7 +163,7 @@ struct inpcbinfo tcbinfo[MAXCPU];
 struct tcpcbackqhead tcpcbackq[MAXCPU];
 
 static struct lwkt_token tcp_port_token =
-		LWKT_TOKEN_MP_INITIALIZER(tcp_port_token);
+		LWKT_TOKEN_INITIALIZER(tcp_port_token);
 
 int tcp_mssdflt = TCP_MSS;
 SYSCTL_INT(_net_inet_tcp, TCPCTL_MSSDFLT, mssdflt, CTLFLAG_RW,

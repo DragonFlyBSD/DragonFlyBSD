@@ -22,12 +22,13 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
- *
- * $DragonFly: src/sys/libkern/stack_protector.c,v 1.5 2005/04/15 18:07:13 joerg Exp $
  */
 
 #include <sys/param.h>
 #include <sys/endian.h>
+#ifndef _KERNEL
+extern void panic(const char *, ...);
+#endif
 
 void __stack_smash_handler(char[], int);
 

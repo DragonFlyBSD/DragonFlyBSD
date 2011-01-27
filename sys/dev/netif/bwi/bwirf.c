@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/dev/netif/bwi/bwirf.c,v 1.9 2008/08/21 12:19:33 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1004,7 +1002,7 @@ bwi_rf_calibval(struct bwi_mac *mac)
 
 	val = RF_READ(mac, BWI_RFR_BBP_ATTEN);
 	idx = __SHIFTOUT(val, BWI_RFR_BBP_ATTEN_CALIB_IDX);
-	KKASSERT(idx < (int)(sizeof(rf_calibvals) / sizeof(rf_calibvals[0])));
+	KKASSERT(idx < (int)(NELEM(rf_calibvals)));
 
 	calib = rf_calibvals[idx] << 1;
 	if (val & BWI_RFR_BBP_ATTEN_CALIB_BIT)
@@ -1140,7 +1138,6 @@ bwi_rf_map_txpower(struct bwi_mac *mac)
 	}
 
 #define IS_VALID_PA_PARAM(p)	((p) != 0 && (p) != -1)
-#define N(arr)	(int)(sizeof(arr) / sizeof(arr[0]))
 
 	/*
 	 * Extract PA parameters
@@ -1149,10 +1146,10 @@ bwi_rf_map_txpower(struct bwi_mac *mac)
 		sprom_ofs = BWI_SPROM_PA_PARAM_11A;
 	else
 		sprom_ofs = BWI_SPROM_PA_PARAM_11BG;
-	for (i = 0; i < N(pa_params); ++i)
+	for (i = 0; i < NELEM(pa_params); ++i)
 		pa_params[i] = (int16_t)bwi_read_sprom(sc, sprom_ofs + (i * 2));
 
-	for (i = 0; i < N(pa_params); ++i) {
+	for (i = 0; i < NELEM(pa_params); ++i) {
 		/*
 		 * If one of the PA parameters from SPROM is not valid,
 		 * fall back to the default values, if there are any.
@@ -1184,8 +1181,6 @@ bwi_rf_map_txpower(struct bwi_mac *mac)
 			goto back;
 		}
 	}
-
-#undef N
 
 	/*
 	 * All of the PA parameters from SPROM are valid.

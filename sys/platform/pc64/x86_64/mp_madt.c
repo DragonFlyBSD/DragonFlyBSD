@@ -427,8 +427,8 @@ madt_pass1(vm_paddr_t madt_paddr)
 		panic("madt_iterate_entries(pass1) failed\n");
 
 	if (lapic_addr64 != 0) {
-		kprintf("Warning: 64bits lapic address 0x%lx\n", lapic_addr64);
-		/* XXX vm_offset_t is 32bits on i386 */
+		kprintf("ACPI MADT: 64bits lapic address 0x%lx\n",
+			lapic_addr64);
 		lapic_addr = lapic_addr64;
 	}
 

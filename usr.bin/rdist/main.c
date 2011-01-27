@@ -301,17 +301,3 @@ prnames(struct namelist *nl)
 	}
 	printf(")\n");
 }
-
-
-void
-warn(const char *fmt, ...)
-{
-	extern int yylineno;
-	va_list ap;
-
-	va_start(ap, fmt);
-	fprintf(stderr, "rdist: line %d: Warning: ", yylineno);
-	vfprintf(stderr, fmt, ap);
-	fprintf(stderr, "\n");
-	va_end(ap);
-}

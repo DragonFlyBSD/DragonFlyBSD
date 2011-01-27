@@ -39,6 +39,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <camlib.h>
 
 #define kbsearch	bsearch
 

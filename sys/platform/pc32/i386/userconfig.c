@@ -3228,9 +3228,7 @@ find_device(char *devname, int unit)
 static struct uc_device *
 search_devtable(struct uc_device *dt, char *devname, int unit)
 {
-    int i;
-
-    for (i = 0; dt->id_id != 0; dt++)
+    for (; dt->id_id != 0; dt++)
         if (!strcmp(dt->id_name, devname) && dt->id_unit == unit)
 	    return dt;
     return NULL;

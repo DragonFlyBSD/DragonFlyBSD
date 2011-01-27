@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/kern/subr_diskgpt.c,v 1.4 2007/07/20 17:21:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,8 +45,6 @@
 #include <sys/bus.h>
 #include <sys/device.h>
 #include <sys/gpt.h>
-
-#define arysize(ary)	(sizeof(ary)/sizeof((ary)[0]))
 
 static void gpt_setslice(const char *sname, struct disk_info *info,
 			 struct diskslice *sp, struct gpt_ent *sent);
@@ -182,7 +178,7 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 		sent.ent_lba_end = le64toh(ent->ent_lba_end);
 		sent.ent_attr = le64toh(ent->ent_attr);
 
-		for (j = 0; j < arysize(ent->ent_name); ++j)
+		for (j = 0; j < NELEM(ent->ent_name); ++j)
 			sent.ent_name[j] = le16toh(ent->ent_name[j]);
 
 		/*
