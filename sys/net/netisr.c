@@ -644,6 +644,7 @@ netisr_barrier_rem(struct netisr_barrier *br)
 			continue;
 
 		msg->br_done = 1;
+		cpu_mfence();
 		wakeup(&msg->br_done);
 	}
 #endif
