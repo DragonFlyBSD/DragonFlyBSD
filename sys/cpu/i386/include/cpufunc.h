@@ -181,7 +181,11 @@ static __inline void
 cpu_mfence(void)
 {
 #ifdef SMP
+#ifdef CPU_HAS_SSE2
+	__asm __volatile("mfence" : : : "memory");
+#else
 	__asm __volatile("lock; addl $0,(%%esp)" : : : "memory");
+#endif
 #else
 	__asm __volatile("" : : : "memory");
 #endif
@@ -199,7 +203,11 @@ static __inline void
 cpu_lfence(void)
 {
 #ifdef SMP
+#ifdef CPU_HAS_SSE2
+	__asm __volatile("lfence" : : : "memory");
+#else
 	__asm __volatile("lock; addl $0,(%%esp)" : : : "memory");
+#endif
 #else
 	__asm __volatile("" : : : "memory");
 #endif
@@ -213,7 +221,13 @@ cpu_lfence(void)
 static __inline void
 cpu_sfence(void)
 {
+#ifdef SMP
+#ifdef CPU_HAS_FXSR
+	__asm __volatile("sfence" : : : "memory");
+#endif
+#else
 	__asm __volatile("" : : : "memory");
+#endif
 }
 
 /*
