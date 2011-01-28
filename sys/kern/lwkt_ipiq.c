@@ -659,7 +659,7 @@ lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip,
 static void
 lwkt_sync_ipiq(void *arg)
 {
-    cpumask_t *cpumask = arg;
+    volatile cpumask_t *cpumask = arg;
 
     atomic_clear_cpumask(cpumask, mycpu->gd_cpumask);
     if (*cpumask == 0)
@@ -669,10 +669,11 @@ lwkt_sync_ipiq(void *arg)
 void
 lwkt_synchronize_ipiqs(const char *wmesg)
 {
-    cpumask_t other_cpumask;
+    volatile cpumask_t other_cpumask;
 
     other_cpumask = mycpu->gd_other_cpus & smp_active_mask;
-    lwkt_send_ipiq_mask(other_cpumask, lwkt_sync_ipiq, &other_cpumask);
+    lwkt_send_ipiq_mask(other_cpumask, lwkt_sync_ipiq,
+    	__DEVOLATILE(void *, &other_cpumask));
 
     while (other_cpumask != 0) {
 	tsleep_interlock(&other_cpumask, 0);
