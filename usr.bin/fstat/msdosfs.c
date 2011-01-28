@@ -34,7 +34,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/fstat/msdosfs.c,v 1.1.2.2 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/msdosfs.c,v 1.7 2006/04/25 16:37:44 dillon Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -109,7 +108,7 @@ msdosfs_filestat(struct vnode *vp, struct filestat *fsp)
 		}
 	}
 
-	fsp->fsid = dev2udev(denode.de_dev);
+	fsp->fsid = fsp->rdev = dev2udev(denode.de_dev);
 	fsp->mode = 0555;
 	fsp->mode |= denode.de_Attributes & ATTR_READONLY ? 0 : 0222;
 	fsp->mode &= mnt->data.pm_mask;
@@ -118,7 +117,6 @@ msdosfs_filestat(struct vnode *vp, struct filestat *fsp)
 	fsp->mode |= denode.de_Attributes & ATTR_DIRECTORY ? S_IFDIR : S_IFREG;
 
 	fsp->size = denode.de_FileSize;
-	fsp->rdev = denode.de_dev;
 
 	/*
 	 * XXX -
