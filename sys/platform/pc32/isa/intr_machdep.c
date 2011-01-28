@@ -80,7 +80,7 @@
 /* XXX should be in suitable include files */
 #define	ICU_IMR_OFFSET		1		/* IO_ICU{1,2} + 1 */
 
-static void	init_i8259(void);
+static void	icu_init(void);
 
 #define NMI_PARITY (1 << 7)
 #define NMI_IOCHAN (1 << 6)
@@ -144,7 +144,7 @@ icu_reinit(void)
 {
 	int i;
 
-	init_i8259();
+	icu_init();
 	for (i = 0; i < MAX_HARDINTS; ++i) {
 		if (count_registered_ints(i))
 			machintr_intren(i);
@@ -163,11 +163,11 @@ isa_defaultirq(void)
 	/* icu vectors */
 	for (i = 0; i < MAX_HARDINTS; i++)
 		machintr_vector_setdefault(i);
-	init_i8259();
+	icu_init();
 }
 
 static void
-init_i8259(void)
+icu_init(void)
 {
 
 	/* initialize 8259's */
