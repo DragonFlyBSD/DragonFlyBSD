@@ -169,34 +169,45 @@ isa_defaultirq(void)
 static void
 icu_init(void)
 {
-
-	/* initialize 8259's */
-	outb(IO_ICU1, 0x11);		/* reset; program device, four bytes */
-	outb(IO_ICU1+ICU_IMR_OFFSET, IDT_OFFSET);	/* starting at this vector index */
-	outb(IO_ICU1+ICU_IMR_OFFSET, 1 << ICU_IRQ_SLAVE); /* slave on line 2 */
 #ifdef AUTO_EOI_1
-	int auto_eoi = 2;				/* auto EOI, 8086 mode */
+	int auto_eoi = 2;		/* auto EOI, 8086 mode */
 #else
-	int auto_eoi = 0;				/* 8086 mode */
+	int auto_eoi = 0;		/* 8086 mode */
 #endif
+
 #ifdef SMP
 	if (apic_io_enable)
-		auto_eoi = 2;				/* auto EOI, 8086 mode */
+		auto_eoi = 2;		/* auto EOI, 8086 mode */
 #endif
-	outb(IO_ICU1+ICU_IMR_OFFSET, auto_eoi | 1);
 
-	outb(IO_ICU1+ICU_IMR_OFFSET, 0xff);		/* leave interrupts masked */
+	/*
+	 * Program master
+	 */
+	outb(IO_ICU1, 0x11);		/* reset; program device, four bytes */
+	outb(IO_ICU1 + ICU_IMR_OFFSET, IDT_OFFSET);
+					/* starting at this vector index */
+	outb(IO_ICU1 + ICU_IMR_OFFSET, 1 << ICU_IRQ_SLAVE);
+					/* slave on line 2 */
+	outb(IO_ICU1 + ICU_IMR_OFFSET, auto_eoi | 1); /* 8086 mode */
+
+	outb(IO_ICU1 + ICU_IMR_OFFSET, 0xff); /* leave interrupts masked */
 	outb(IO_ICU1, 0x0a);		/* default to IRR on read */
 	outb(IO_ICU1, 0xc0 | (3 - 1));	/* pri order 3-7, 0-2 (com2 first) */
+
+	/*
+	 * Program slave
+	 */
 	outb(IO_ICU2, 0x11);		/* reset; program device, four bytes */
-	outb(IO_ICU2+ICU_IMR_OFFSET, IDT_OFFSET+8); /* staring at this vector index */
-	outb(IO_ICU2+ICU_IMR_OFFSET, ICU_IRQ_SLAVE);
+	outb(IO_ICU2 + ICU_IMR_OFFSET, IDT_OFFSET + 8);
+					/* staring at this vector index */
+	outb(IO_ICU2 + ICU_IMR_OFFSET, ICU_IRQ_SLAVE);
 #ifdef AUTO_EOI_2
-	outb(IO_ICU2+ICU_IMR_OFFSET, 2 | 1);		/* auto EOI, 8086 mode */
+	outb(IO_ICU2 + ICU_IMR_OFFSET, 2 | 1); /* auto EOI, 8086 mode */
 #else
-	outb(IO_ICU2+ICU_IMR_OFFSET,1);		/* 8086 mode */
+	outb(IO_ICU2 + ICU_IMR_OFFSET, 1); /* 8086 mode */
 #endif
-	outb(IO_ICU2+ICU_IMR_OFFSET, 0xff);          /* leave interrupts masked */
+
+	outb(IO_ICU2 + ICU_IMR_OFFSET, 0xff); /* leave interrupts masked */
 	outb(IO_ICU2, 0x0a);		/* default to IRR on read */
 }
 
