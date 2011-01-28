@@ -272,7 +272,8 @@ main(int argc, char **argv)
 	exit(0);
 }
 
-char	*Uname, *Comm;
+const char *Uname;
+char	*Comm;
 int	Pid;
 
 #define PREFIX(i) \
@@ -628,6 +629,7 @@ nfs_filestat(struct vnode *vp, struct filestat *fsp)
 		break;
 	case VDATABASE:
 		break;
+	case VINT:
 	case VNON:
 	case VBAD:
 		return 0;
