@@ -753,11 +753,7 @@ cs4281_pci_attach(device_t dev)
     u_int32_t data;
     char status[SND_STATUSLEN];
 
-    if ((sc = kmalloc(sizeof(*sc), M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
-	device_printf(dev, "cannot allocate softc\n");
-	return ENXIO;
-    }
-
+    sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
     sc->dev = dev;
     sc->type = pci_get_devid(dev);
 

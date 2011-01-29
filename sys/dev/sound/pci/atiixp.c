@@ -899,11 +899,7 @@ atiixp_pci_attach(device_t dev)
 	struct atiixp_info *sc;
 	int i;
 
-	if ((sc = kmalloc(sizeof(*sc), M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
-		device_printf(dev, "cannot allocate softc\n");
-		return ENXIO;
-	}
-
+	sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
 	sc->lock = snd_mtxcreate(device_get_nameunit(dev), "sound softc");
 	sc->dev = dev;
 	/*

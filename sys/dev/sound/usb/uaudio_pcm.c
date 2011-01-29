@@ -75,9 +75,7 @@ ua_chan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *
 
 	pa_dev = device_get_parent(sc->sc_dev);
 
-	ch->buf = kmalloc(sc->bufsz, M_DEVBUF, M_NOWAIT);
-	if (ch->buf == NULL)
-		return NULL;
+	ch->buf = kmalloc(sc->bufsz, M_DEVBUF, M_WAITOK);
 	if (sndbuf_setup(b, ch->buf, sc->bufsz) != 0) {
 		kfree(ch->buf, M_DEVBUF);
 		return NULL;
@@ -327,9 +325,7 @@ ua_attach(device_t dev)
 	u_int32_t nplay, nrec;
 	int i;
 
-	ua = (struct ua_info *)kmalloc(sizeof *ua, M_DEVBUF, M_ZERO | M_NOWAIT);
-	if (ua == NULL)
-		return ENXIO;
+	ua = kmalloc(sizeof *ua, M_DEVBUF, M_ZERO | M_WAITOK);
 
 	ua->sc_dev = dev;
 

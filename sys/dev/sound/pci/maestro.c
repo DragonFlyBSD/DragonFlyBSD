@@ -1772,11 +1772,7 @@ agg_attach(device_t dev)
 	char	status[SND_STATUSLEN];
 	int	ret = 0;
 
-	if ((ess = kmalloc(sizeof *ess, M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
-		device_printf(dev, "cannot allocate softc\n");
-		ret = ENOMEM;
-		goto bad;
-	}
+	ess = kmalloc(sizeof *ess, M_DEVBUF, M_WAITOK | M_ZERO);
 	ess->dev = dev;
 
 #ifdef USING_MUTEX

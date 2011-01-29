@@ -1792,13 +1792,8 @@ hdac_scan_codecs(struct hdac_softc *sc, int num)
 	for (i = num; i < HDAC_CODEC_MAX; i++) {
 		if (HDAC_STATESTS_SDIWAKE(statests, i)) {
 			/* We have found a codec. */
-			codec = (struct hdac_codec *)kmalloc(sizeof(*codec),
-			    M_HDAC, M_ZERO | M_NOWAIT);
-			if (codec == NULL) {
-				device_printf(sc->dev,
-				    "Unable to allocate memory for codec\n");
-				continue;
-			}
+			codec = kmalloc(sizeof(*codec), M_HDAC,
+					M_ZERO | M_WAITOK);
 			codec->commands = NULL;
 			codec->responses_received = 0;
 			codec->verbs_sent = 0;
@@ -1891,14 +1886,7 @@ hdac_probe_function(struct hdac_codec *codec, nid_t nid)
 	if (fctgrptype != HDA_PARAM_FCT_GRP_TYPE_NODE_TYPE_AUDIO)
 		return (NULL);
 
-	devinfo = (struct hdac_devinfo *)kmalloc(sizeof(*devinfo), M_HDAC,
-	    M_NOWAIT | M_ZERO);
-	if (devinfo == NULL) {
-		device_printf(sc->dev, "%s: Unable to allocate ivar\n",
-		    __func__);
-		return (NULL);
-	}
-
+	devinfo = kmalloc(sizeof(*devinfo), M_HDAC, M_WAITOK | M_ZERO);
 	devinfo->nid = nid;
 	devinfo->node_type = fctgrptype;
 	devinfo->codec = codec;
@@ -4015,9 +4003,9 @@ hdac_audio_parse(struct hdac_devinfo *devinfo)
 	devinfo->function.audio.inamp_cap = res;
 
 	if (devinfo->nodecnt > 0)
-		devinfo->widget = (struct hdac_widget *)kmalloc(
-		    sizeof(*(devinfo->widget)) * devinfo->nodecnt, M_HDAC,
-		    M_NOWAIT | M_ZERO);
+		devinfo->widget = kmalloc(
+		    sizeof(*(devinfo->widget)) * devinfo->nodecnt,
+		    M_HDAC, M_WAITOK | M_ZERO);
 	else
 		devinfo->widget = NULL;
 
@@ -4086,16 +4074,7 @@ hdac_audio_ctl_parse(struct hdac_devinfo *devinfo)
 	if (max < 1)
 		return;
 
-	ctls = (struct hdac_audio_ctl *)kmalloc(
-	    sizeof(*ctls) * max, M_HDAC, M_ZERO | M_NOWAIT);
-
-	if (ctls == NULL) {
-		/* Blekh! */
-		device_printf(sc->dev, "unable to allocate ctls!\n");
-		devinfo->function.audio.ctlcnt = 0;
-		return;
-	}
-
+	ctls = kmalloc(sizeof(*ctls) * max, M_HDAC, M_ZERO | M_WAITOK);
 	cnt = 0;
 	for (i = devinfo->startnode; cnt < max && i < devinfo->endnode; i++) {
 		if (cnt >= max) {

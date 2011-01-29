@@ -616,13 +616,7 @@ envy24ht_rom2cfg(struct sc_info *sc)
 #if(0)
 		device_printf(sc->dev, "envy24ht_rom2cfg(): ENVY24HT_E2PROM_SIZE-->%d\n", size);
 #endif
-        buff = kmalloc(sizeof(*buff), M_ENVY24HT, M_NOWAIT);
-        if (buff == NULL) {
-#if(0)
-                device_printf(sc->dev, "envy24ht_rom2cfg(): kmalloc()\n");
-#endif
-                return NULL;
-        }
+        buff = kmalloc(sizeof(*buff), M_ENVY24HT, M_WAITOK);
         buff->free = 1;
 
 	/* no valid e2prom, using default values */
@@ -656,13 +650,7 @@ i++)
 		return NULL;
 #endif
 	}
-	buff = kmalloc(sizeof(*buff), M_ENVY24HT, M_NOWAIT);
-	if (buff == NULL) {
-#if(0)
-		device_printf(sc->dev, "envy24ht_rom2cfg(): kmalloc()\n");
-#endif
-		return NULL;
-	}
+	buff = kmalloc(sizeof(*buff), M_ENVY24HT, M_WAITOK);
 	buff->free = 1;
 
 	buff->subvendor = envy24ht_rdrom(sc, ENVY24HT_E2PROM_SUBVENDOR) << 8;
@@ -910,9 +898,7 @@ envy24ht_spi_create(device_t dev, void *info, int dir, int num)
 	device_printf(sc->dev, "envy24ht_spi_create(dev, sc, %d, %d)\n", dir, num);
 #endif
 	
-	buff = kmalloc(sizeof(*buff), M_ENVY24HT, M_NOWAIT);
-	if (buff == NULL)
-		return NULL;
+	buff = kmalloc(sizeof(*buff), M_ENVY24HT, M_WAITOK);
 
 	if (dir == PCMDIR_REC && sc->adc[num] != NULL)
 		buff->info = ((struct envy24ht_spi_codec *)sc->adc[num])->info;
@@ -1488,12 +1474,8 @@ envy24htchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_chan
 
 	ch = &sc->chan[num];
 	ch->size = 8 * ENVY24HT_SAMPLE_NUM;
-	ch->data = kmalloc(ch->size, M_ENVY24HT, M_NOWAIT);
-	if (ch->data == NULL) {
-		ch->size = 0;
-		ch = NULL;
-	}
-	else {
+	ch->data = kmalloc(ch->size, M_ENVY24HT, M_WAITOK);
+	{
 		ch->buffer = b;
 		ch->channel = c;
 		ch->parent = sc;
@@ -2461,13 +2443,9 @@ envy24ht_pci_attach(device_t dev)
 	device_printf(dev, "envy24ht_pci_attach()\n");
 #endif
 	/* get sc_info data area */
-	if ((sc = kmalloc(sizeof(*sc), M_ENVY24HT, M_NOWAIT | M_ZERO)) == NULL) {
-		device_printf(dev, "cannot allocate softc\n");
-		return ENXIO;
-	}
-
+	sc = kmalloc(sizeof(*sc), M_ENVY24HT, M_WAITOK | M_ZERO);
 	sc->lock = snd_mtxcreate(device_get_nameunit(dev),
-	    "snd_envy24ht softc");
+				 "snd_envy24ht softc");
 	sc->dev = dev;
 
 	/* initialize PCI interface */
