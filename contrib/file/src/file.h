@@ -27,7 +27,7 @@
  */
 /*
  * file.h - definitions for file(1) program
- * @(#)$File: file.h,v 1.124 2010/01/16 17:45:12 chl Exp $
+ * @(#)$File: file.h,v 1.130 2011/01/04 19:29:32 rrt Exp $
  */
 
 #ifndef __file_h__
@@ -35,6 +35,18 @@
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
+#endif
+
+#ifdef WIN32
+  #ifdef _WIN64
+    #define SIZE_T_FORMAT "I64"
+  #else
+    #define SIZE_T_FORMAT ""
+  #endif
+  #define INT64_T_FORMAT "I64"
+#else
+  #define SIZE_T_FORMAT "z"
+  #define INT64_T_FORMAT "ll"
 #endif
 
 #include <stdio.h>	/* Include that here, to make sure __P gets defined */
@@ -62,7 +74,7 @@
 #define MAGIC "/etc/magic"
 #endif
 
-#ifdef __EMX__
+#if defined(__EMX__) || defined (WIN32)
 #define PATHSEP	';'
 #else
 #define PATHSEP	':'
@@ -104,15 +116,16 @@
 #define MAXMAGIS 8192		/* max entries in any one magic file
 				   or directory */
 #define MAXDESC	64		/* max leng of text description/MIME type */
-#define MAXstring 32		/* max leng of "string" types */
+#define MAXstring 64		/* max leng of "string" types */
 
 #define MAGICNO		0xF11E041C
-#define VERSIONNO	7
-#define FILE_MAGICSIZE	200
+#define VERSIONNO	8
+#define FILE_MAGICSIZE	232
 
 #define	FILE_LOAD	0
 #define FILE_CHECK	1
 #define FILE_COMPILE	2
+#define FILE_LIST	3
 
 union VALUETYPE {
 	uint8_t b;
@@ -265,11 +278,11 @@ struct magic {
 #define str_flags _u._s._flags
 	/* Words 9-16 */
 	union VALUETYPE value;	/* either number or string */
-	/* Words 17-24 */
+	/* Words 17-32 */
 	char desc[MAXDESC];	/* description */
-	/* Words 25-32 */
+	/* Words 33-48 */
 	char mimetype[MAXDESC]; /* MIME type */
-	/* Words 33-34 */
+	/* Words 49-50 */
 	char apple[8];
 };
 
@@ -281,6 +294,15 @@ struct magic {
 #define REGEX_OFFSET_START			BIT(4)
 #define STRING_TEXTTEST				BIT(5)
 #define STRING_BINTEST				BIT(6)
+#define PSTRING_1_BE				BIT(7)
+#define PSTRING_1_LE				BIT(7)
+#define PSTRING_2_BE				BIT(8)
+#define PSTRING_2_LE				BIT(9)
+#define PSTRING_4_BE				BIT(10)
+#define PSTRING_4_LE				BIT(11)
+#define PSTRING_LEN	\
+    (PSTRING_1_BE|PSTRING_2_LE|PSTRING_2_BE|PSTRING_4_LE|PSTRING_4_BE)
+#define PSTRING_LENGTH_INCLUDES_ITSELF		BIT(12)
 #define CHAR_COMPACT_WHITESPACE			'W'
 #define CHAR_COMPACT_OPTIONAL_WHITESPACE	'w'
 #define CHAR_IGNORE_LOWERCASE			'c'
@@ -288,6 +310,13 @@ struct magic {
 #define CHAR_REGEX_OFFSET_START			's'
 #define CHAR_TEXTTEST				't'
 #define CHAR_BINTEST				'b'
+#define CHAR_PSTRING_1_BE			'B'
+#define CHAR_PSTRING_1_LE			'B'
+#define CHAR_PSTRING_2_BE			'H'
+#define CHAR_PSTRING_2_LE			'h'
+#define CHAR_PSTRING_4_BE			'L'
+#define CHAR_PSTRING_4_LE			'l'
+#define CHAR_PSTRING_LENGTH_INCLUDES_ITSELF     'J'
 #define STRING_IGNORE_CASE		(STRING_IGNORE_LOWERCASE|STRING_IGNORE_UPPERCASE)
 #define STRING_DEFAULT_RANGE		100
 
@@ -364,8 +393,10 @@ protected int file_tryelf(struct magic_set *, int, const unsigned char *,
     size_t);
 protected int file_trycdf(struct magic_set *, int, const unsigned char *,
     size_t);
+#if HAVE_FORK
 protected int file_zmagic(struct magic_set *, int, const char *,
     const unsigned char *, size_t);
+#endif
 protected int file_ascmagic(struct magic_set *, const unsigned char *, size_t);
 protected int file_ascmagic_with_encoding(struct magic_set *,
     const unsigned char *, size_t, unichar *, size_t, const char *,
@@ -396,6 +427,8 @@ protected ssize_t sread(int, void *, size_t, int);
 protected int file_check_mem(struct magic_set *, unsigned int);
 protected int file_looks_utf8(const unsigned char *, size_t, unichar *,
     size_t *);
+protected size_t file_pstring_length_size(const struct magic *);
+protected size_t file_pstring_get_length(const struct magic *, const char *);
 #ifdef __EMX__
 protected int file_os2_apptype(struct magic_set *, const char *, const void *,
     size_t);

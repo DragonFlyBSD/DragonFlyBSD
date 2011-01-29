@@ -1,6 +1,6 @@
 
 #------------------------------------------------------------------------------
-# $File: filesystems,v 1.55 2010/01/16 17:45:12 chl Exp $
+# $File: filesystems,v 1.61 2011/01/10 14:01:10 christos Exp $
 # filesystems:  file(1) magic for different filesystems
 #
 0	string	\366\366\366\366	PC formatted floppy with no filesystem
@@ -884,15 +884,19 @@
 
 # Minix filesystems - Juan Cespedes <cespedes@debian.org>
 0x410	leshort		0x137f
+!:strength / 2
 >0x402	beshort		< 100		Minix filesystem, V1, %d zones
 >0x1e	string		minix		\b, bootable
 0x410	beshort		0x137f
+!:strength / 2
 >0x402	beshort		< 100		Minix filesystem, V1 (big endian), %d zones
 >0x1e	string		minix		\b, bootable
 0x410	leshort		0x138f
+!:strength / 2
 >0x402	beshort		< 100		Minix filesystem, V1, 30 char names, %d zones
 >0x1e	string		minix		\b, bootable
 0x410	beshort		0x138f
+!:strength / 2
 >0x402	beshort		< 100		Minix filesystem, V1, 30 char names (big endian), %d zones
 >0x1e	string		minix		\b, bootable
 0x410	leshort		0x2468
@@ -1109,6 +1113,8 @@
 
 # ext2/ext3 filesystems - Andreas Dilger <adilger@dilger.ca>
 # ext4 filesystem - Eric Sandeen <sandeen@sandeen.net>
+# volume label and UUID Russell Coker
+# http://etbe.coker.com.au/2008/07/08/label-vs-uuid-vs-device/
 0x438   leshort         0xEF53          Linux
 >0x44c  lelong          x               rev %d
 >0x43e  leshort         x               \b.%d
@@ -1124,25 +1130,32 @@
 #   else large RO_COMPAT?
 >>>0x464 lelong         >0x0000007      ext4 filesystem data
 #  else large INCOMPAT?
->>0x460 lelong          >0x000003f      ext4 filesystem data
+>>0x460	lelong          >0x000003f      ext4 filesystem data
+>0x468	belong		x		\b, UUID=%08x
+>0x46c	beshort		x		\b-%04x
+>0x46e	beshort		x		\b-%04x
+>0x470	beshort		x		\b-%04x
+>0x472	belong		x		\b-%08x
+>0x476	beshort		x		\b%04x
+>0x478	string		>0		\b, volume name "%s"
 # General flags for any ext* fs
->0x460  lelong          &0x0000004      (needs journal recovery)
->0x43a  leshort         &0x0000002      (errors)
+>0x460	lelong          &0x0000004      (needs journal recovery)
+>0x43a	leshort         &0x0000002      (errors)
 # INCOMPAT flags
->0x460  lelong          &0x0000001      (compressed)
-#>0x460 lelong          &0x0000002      (filetype)
-#>0x460 lelong          &0x0000010      (meta bg)
->0x460  lelong          &0x0000040      (extents)
->0x460  lelong          &0x0000080      (64bit)
-#>0x460 lelong          &0x0000100      (mmp)
-#>0x460 lelong          &0x0000200      (flex bg)
+>0x460	lelong          &0x0000001      (compressed)
+#>0x460	lelong          &0x0000002      (filetype)
+#>0x460	lelong          &0x0000010      (meta bg)
+>0x460	lelong          &0x0000040      (extents)
+>0x460	lelong          &0x0000080      (64bit)
+#>0x460	lelong          &0x0000100      (mmp)
+#>0x460	lelong          &0x0000200      (flex bg)
 # RO_INCOMPAT flags
-#>0x464 lelong          &0x0000001      (sparse super)
->0x464  lelong          &0x0000002      (large files)
->0x464  lelong          &0x0000008      (huge files)
-#>0x464 lelong          &0x0000010      (gdt checksum)
-#>0x464 lelong          &0x0000020      (many subdirs)
-#>0x463 lelong          &0x0000040      (extra isize)
+#>0x464	lelong          &0x0000001      (sparse super)
+>0x464	lelong          &0x0000002      (large files)
+>0x464	lelong          &0x0000008      (huge files)
+#>0x464	lelong          &0x0000010      (gdt checksum)
+#>0x464	lelong          &0x0000020      (many subdirs)
+#>0x463	lelong          &0x0000040      (extra isize)
 
 # SGI disk labels - Nathan Scott <nathans@debian.org>
 0	belong		0x0BE5A941	SGI disk label (volume header)
@@ -1220,7 +1233,7 @@
 
 # CDROM Filesystems
 # Modified for UDF by gerardo.cacciari@gmail.com
-32769	string    CD001
+32769	string    CD001     #
 !:mime	application/x-iso9660-image
 >38913	string   !NSR0      ISO 9660 CD-ROM filesystem data
 >38913	string    NSR0      UDF filesystem data
@@ -1263,6 +1276,7 @@
 # reiserfs - russell@coker.com.au
 0x10034		string	ReIsErFs	ReiserFS V3.5
 0x10034		string	ReIsEr2Fs	ReiserFS V3.6
+0x10034		string	ReIsEr3Fs	ReiserFS V3.6.19
 >0x1002c 	leshort	x		block size %d
 >0x10032	leshort	&2		(mounted or unclean)
 >0x10000	lelong	x		num blocks %d
@@ -1359,28 +1373,46 @@
 >28	beshort <3
 >>8	belong	x	%d bytes,
 >28	beshort >2
->>63	bequad x	%lld bytes,
+>>28 beshort <4
+>>>63	bequad x	%lld bytes,
+>>28 beshort >3
+>>>40	bequad x	%lld bytes,
 #>>67	belong	x	%d bytes,
 >4	belong	x	%d inodes,
 >28	beshort <2
 >>32	beshort	x	blocksize: %d bytes,
 >28	beshort >1
->>51	belong	x	blocksize: %d bytes,
->39	bedate	x	created: %s
+>>28 beshort <4
+>>>51	belong	x	blocksize: %d bytes,
+>>28 beshort >3
+>>>12	belong	x	blocksize: %d bytes,
+>28 beshort <4
+>>39	bedate	x	created: %s
+>28 beshort >3
+>>8	bedate	x	created: %s
 0	string	hsqs	Squashfs filesystem, little endian,
 >28	leshort	x	version %d.
 >30	leshort	x	\b%d,
 >28	leshort <3
 >>8	lelong	x	%d bytes,
 >28	leshort >2
->>63	lequad x	%lld bytes,
+>>28 leshort <4
+>>>63	lequad x	%lld bytes,
+>>28 leshort >3
+>>>40	lequad x	%lld bytes,
 #>>63	lelong	x	%d bytes,
 >4	lelong	x	%d inodes,
 >28	leshort <2
 >>32	leshort	x	blocksize: %d bytes,
 >28	leshort >1
->>51	lelong	x	blocksize: %d bytes,
->39	ledate	x	created: %s
+>>28 leshort <4
+>>>51	lelong	x	blocksize: %d bytes,
+>>28 leshort >3
+>>>12	lelong	x	blocksize: %d bytes,
+>28 leshort <4
+>>39	ledate	x	created: %s
+>28 leshort >3
+>>8	ledate	x	created: %s
 
 0	string		td\000		floppy image data (TeleDisk)
 
@@ -1447,13 +1479,17 @@
 0	string	CPQRFBLO	Compaq/HP RILOE floppy image
 
 #------------------------------------------------------------------------------
-# Files-11 On-Disk Structure (OpenVMS file system) - gerardo.cacciari@gmail.com
-# These bits come from LBN 1 (home block) of ODS-2 and ODS-5 volumes, which is
-# mapped to VBN 2 of [000000]INDEXF.SYS;1
+# Files-11 On-Disk Structure (File system for various RSX-11 and VMS flavours).
+# These bits come from LBN 1 (home block) of ODS-1, ODS-2 and ODS-5 volumes,
+# which is mapped to VBN 2 of [000000]INDEXF.SYS;1 - gerardo.cacciari@gmail.com
 #
-1008    string          DECFILE11B      Files-11 On-Disk Structure
+1008    string          DECFILE11       Files-11 On-Disk Structure
 >525    byte            x               Level %d
->525    byte            x               (ODS-%d OpenVMS file system),
+>525    byte            x               (ODS-%d);
+>1017   string          A               RSX-11, VAX/VMS or OpenVMS VAX file system;
+>1017   string          B
+>>525   byte            2               VAX/VMS or OpenVMS file system;
+>>525   byte            5               OpenVMS Alpha or Itanium file system;
 >984    string          x               volume label is '%-12.12s'
 
 # From: Thomas Klausner <wiz@NetBSD.org>
@@ -1468,9 +1504,13 @@
 
 # From Eric Sandeen
 # GFS2
-0x10000         belong          0x01161970      GFS2 Filesystem
->0x10024        belong          x               (blocksize %d,
->0x10060        string          >\0             lockproto %s)
+0x10000         belong          0x01161970
+>0x10018        belong          0x0000051d      GFS1 Filesystem
+>>0x10024        belong          x               (blocksize %d,
+>>0x10060        string          >\0             lockproto %s)
+>0x10018        belong          0x00000709      GFS2 Filesystem
+>>0x10024        belong          x               (blocksize %d,
+>>0x10060        string          >\0             lockproto %s)
 
 # BTRFS
 0x10040         string          _BHRfS_M        BTRFS Filesystem
@@ -1490,3 +1530,42 @@
 0	string XFSM
 >0x200	string XFSB	XFS filesystem metadump image
 
+# Type:	CROM filesystem
+# From:	Werner Fink <werner@suse.de>
+0	string	CROMFS	CROMFS
+>6	string	>\0	\b version %2.2s,
+>8	ulequad	>0	\b block data at %lld,
+>16	ulequad	>0	\b fblock table at %lld,
+>24	ulequad	>0	\b inode table at %lld,
+>32	ulequad	>0	\b root at %lld,
+>40	ulelong	>0	\b fblock size = %ld,
+>44	ulelong	>0	\b block size = %ld,
+>48	ulequad	>0	\b bytes = %lld
+
+# Type:	xfs metadump image
+# From:	Daniel Novotny <dnovotny@redhat.com>
+# mb_magic XFSM at 0; superblock magic XFSB at 1 << mb_blocklog
+# but can we do the << ? For now it's always 512 (0x200) anyway.
+0	string	XFSM
+>0x200	string	XFSB	XFS filesystem metadump image
+
+# Type:	delta ISO
+# From:	Daniel Novotny <dnovotny@redhat.com>
+0	string	DISO	Delta ISO data,
+>4	belong	x	version %d
+
+# JFS2 (Journaling File System) image. (Old JFS1 has superblock at 0x1000.)
+# See linux/fs/jfs/jfs_superblock.h for layout; see jfs_filsys.h for flags.
+# From: Adam Buchbinder <adam.buchbinder@gmail.com>
+0x8000	string	JFS1
+# Because it's text-only magic, check a binary value (version) to be sure.
+# Should always be 2, but mkfs.jfs writes it as 1. Needs to be 2 or 1 to be
+# mountable.
+>&0	lelong	<3	JFS2 filesystem image
+# Label is followed by a UUID; we have to limit string length to avoid
+# appending the UUID in the case of a 16-byte label.
+>>&144	regex	[\x20-\x7E]{1,16}	(label "%s")
+>>&0	lequad	x	\b, %lld blocks
+>>&8	lelong	x	\b, blocksize %d
+>>&32	lelong&0x00000006	>0	(dirty)
+>>&36	lelong	>0	(compressed)
