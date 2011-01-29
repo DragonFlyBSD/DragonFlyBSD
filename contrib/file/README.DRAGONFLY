@@ -2,9 +2,6 @@ This directory contains most of the file distribution. The original
 source can be obtained from:
 	ftp://ftp.astron.com/pub/file/
 
-	MD5 (file-5.04.tar.gz) = accade81ff1cc774904b47c72c8aeea0
-	SHA1 (file-5.04.tar.gz) = 56ddf7135471aa656334ed8fefe1112bcccc2cc3
-
 A list of the omitted files and directories can be found in
 README.DELETED.
 
