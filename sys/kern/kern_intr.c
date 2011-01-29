@@ -927,7 +927,7 @@ ithread_handler(void *arg)
 	    break;
 	}
     }
-    /* not reached */
+    /* NOT REACHED */
 }
 
 /*
@@ -948,14 +948,15 @@ ithread_handler(void *arg)
 static void
 ithread_emergency(void *arg __unused)
 {
+    globaldata_t gd = mycpu;
     struct intr_info *info;
     intrec_t rec, nrec;
     int intr;
-    thread_t td __debugvar = curthread;
     TD_INVARIANTS_DECLARE;
 
     get_mplock();
-    TD_INVARIANTS_GET(td);
+    crit_enter_gd(gd);
+    TD_INVARIANTS_GET(gd->gd_curthread);
 
     for (;;) {
 	for (intr = 0; intr < max_installed_hard_intr; ++intr) {
@@ -970,13 +971,14 @@ ithread_emergency(void *arg __unused)
 		    } else {
 			rec->handler(rec->argument, NULL);
 		    }
-		    TD_INVARIANTS_TEST(td, rec->name);
+		    TD_INVARIANTS_TEST(gd->gd_curthread, rec->name);
 		}
 	    }
 	}
-	lwkt_deschedule_self(curthread);
+	lwkt_deschedule_self(gd->gd_curthread);
 	lwkt_switch();
     }
+    /* NOT REACHED */
 }
 
 /*
