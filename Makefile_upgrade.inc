@@ -1552,6 +1552,10 @@ TO_REMOVE+=/boot/kernel/ahc_eisa.ko
 TO_REMOVE+=/boot/kernel/ahc_isa.ko
 TO_REMOVE+=/usr/include/netproto/ns
 TO_REMOVE+=/usr/include/netns
+TO_REMOVE+=/usr/share/man/cat3/magic_errno.3.gz
+TO_REMOVE+=/usr/share/man/man3/magic_errno.3.gz
+TO_REMOVE+=/usr/share/man/cat3/magic_file.3.gz
+TO_REMOVE+=/usr/share/man/man3/magic_file.3.gz
 
 # XXX Remove when pfsync(4) has been fixed
 TO_REMOVE+=/usr/share/man/cat4/pfsync.4.gz
