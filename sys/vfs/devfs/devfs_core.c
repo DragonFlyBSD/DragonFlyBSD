@@ -2225,6 +2225,7 @@ devfs_new_cdev(struct dev_ops *ops, int minor, struct dev_ops *bops)
 	dev->si_dict = NULL;
 	dev->si_ops = ops;
 	dev->si_flags = 0;
+	dev->si_umajor = 0;
 	dev->si_uminor = minor;
 	dev->si_bops = bops;
 
@@ -2240,8 +2241,9 @@ devfs_new_cdev(struct dev_ops *ops, int minor, struct dev_ops *bops)
 	}
 
 	/* If there is a backing device, we reference its ops */
-	dev->si_umajor = devfs_reference_ops((bops)?(bops):(ops));
-	dev->si_inode = makeudev(dev->si_umajor, minor);
+	dev->si_inode = makeudev(
+		    devfs_reference_ops((bops)?(bops):(ops)),
+		    minor );
 
 	return dev;
 }
