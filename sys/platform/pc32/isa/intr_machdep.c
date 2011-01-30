@@ -45,39 +45,15 @@
  */
 
 #include "use_isa.h"
-#include "opt_auto_eoi.h"
 
 #include <sys/param.h>
-#ifndef SMP
-#include <machine/lock.h>
-#endif
 #include <sys/systm.h>
 #include <sys/syslog.h>
-#include <sys/malloc.h>
-#include <sys/errno.h>
-#include <sys/interrupt.h>
-#include <machine/ipl.h>
-#include <machine/md_var.h>
-#include <machine/segments.h>
-#include <sys/bus.h> 
-#include <machine/globaldata.h>
-#include <sys/proc.h>
-#include <sys/thread2.h>
-#include <sys/machintr.h>
-
-#include <machine/smp.h>
-#include <bus/isa/isa.h>
-#include <machine_base/icu/icu.h>
-
-#if NISA > 0
+#include <sys/bus.h>
 #include <bus/isa/isavar.h>
-#endif
-#include <machine_base/isa/intr_machdep.h>
-#include <sys/interrupt.h>
-#include <machine/clock.h>
-#include <machine/cpu.h>
 
-static void	icu_init(void);
+#include <machine_base/icu/icu_var.h>
+#include <machine_base/isa/intr_machdep.h>
 
 #define NMI_PARITY (1 << 7)
 #define NMI_IOCHAN (1 << 6)
@@ -134,103 +110,21 @@ isa_nmi(int cd)
 }
 
 /*
- *  ICU reinitialize when ICU configuration has lost.
- */
-void
-icu_reinit(void)
-{
-	int i;
-
-	icu_init();
-	for (i = 0; i < MAX_HARDINTS; ++i) {
-		if (count_registered_ints(i))
-			machintr_intren(i);
-	}
-}
-
-/*
  * Fill in default interrupt table (in case of spurious interrupt
  * during configuration of kernel, setup interrupt control unit
  */
 void
 isa_defaultirq(void)
 {
-	u_long ef;
-
-	KKASSERT(MachIntrABI.type == MACHINTR_ICU);
-
-	ef = read_eflags();
-	cpu_disable_intr();
-
-	/* Leave interrupts masked */
-	outb(IO_ICU1 + ICU_IMR_OFFSET, 0xff);
-	outb(IO_ICU2 + ICU_IMR_OFFSET, 0xff);
-
-	MachIntrABI.setdefault();
-	icu_init();
-
-	write_eflags(ef);
-}
-
-static void
-icu_init(void)
-{
-#ifdef AUTO_EOI_1
-	int auto_eoi = 2;		/* auto EOI, 8086 mode */
-#else
-	int auto_eoi = 0;		/* 8086 mode */
-#endif
-
-#ifdef SMP
-	if (apic_io_enable)
-		auto_eoi = 2;		/* auto EOI, 8086 mode */
-#endif
-
-	/*
-	 * Program master
-	 */
-	outb(IO_ICU1, 0x11);		/* reset; program device, four bytes */
-	outb(IO_ICU1 + ICU_IMR_OFFSET, IDT_OFFSET);
-					/* starting at this vector index */
-	outb(IO_ICU1 + ICU_IMR_OFFSET, 1 << ICU_IRQ_SLAVE);
-					/* slave on line 2 */
-	outb(IO_ICU1 + ICU_IMR_OFFSET, auto_eoi | 1); /* 8086 mode */
-
-	outb(IO_ICU1 + ICU_IMR_OFFSET, 0xff); /* leave interrupts masked */
-	outb(IO_ICU1, 0x0a);		/* default to IRR on read */
-	outb(IO_ICU1, 0xc0 | (3 - 1));	/* pri order 3-7, 0-2 (com2 first) */
-
-	/*
-	 * Program slave
-	 */
-	outb(IO_ICU2, 0x11);		/* reset; program device, four bytes */
-	outb(IO_ICU2 + ICU_IMR_OFFSET, IDT_OFFSET + 8);
-					/* staring at this vector index */
-	outb(IO_ICU2 + ICU_IMR_OFFSET, ICU_IRQ_SLAVE);
-#ifdef AUTO_EOI_2
-	outb(IO_ICU2 + ICU_IMR_OFFSET, 2 | 1); /* auto EOI, 8086 mode */
-#else
-	outb(IO_ICU2 + ICU_IMR_OFFSET, 1); /* 8086 mode */
-#endif
-
-	outb(IO_ICU2 + ICU_IMR_OFFSET, 0xff); /* leave interrupts masked */
-	outb(IO_ICU2, 0x0a);		/* default to IRR on read */
+	icu_definit();
 }
 
 #if NISA > 0
-/*
- * Return a bitmap of the current interrupt requests.  This is 8259-specific
- * and is only suitable for use at probe time.
- */
+
 intrmask_t
 isa_irq_pending(void)
 {
-	u_char irr1;
-	u_char irr2;
-
-	irr1 = inb(IO_ICU1);
-	irr2 = inb(IO_ICU2);
-	return ((irr2 << 8) | irr1);
+	return icu_irq_pending();
 }
 
 #endif

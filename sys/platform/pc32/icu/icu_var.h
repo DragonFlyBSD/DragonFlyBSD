@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2001 Doug Rabson
+ * Copyright (c) 1991 The Regents of the University of California.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -10,11 +10,18 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *	This product includes software developed by the University of
+ *	California, Berkeley and its contributors.
+ * 4. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -22,38 +29,18 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/ia64/acpica/acpi_wakeup.c,v 1.4 2009/06/05 18:44:36 jkim Exp $
  */
 
-#include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/kernel.h>
-#include <sys/bus.h>
-#include <sys/lock.h>
-#include <sys/proc.h>
-#include <sys/sysctl.h>
+#ifndef _ARCH_ICU_ICU_VAR_H_
+#define	_ARCH_ICU_ICU_VAR_H_
 
-#include <vm/vm.h>
-#include <vm/pmap.h>
-#include <vm/vm_object.h>
-#include <vm/vm_page.h>
-#include <vm/vm_map.h>
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
-#include <machine/cpufunc.h>
-#include <machine/segments.h>
-#include <machine_base/icu/icu_var.h>
+void		icu_definit(void);
+void		icu_reinit(void);
 
-#include "acpi.h"
-#include <dev/acpica5/acpivar.h>
+intrmask_t	icu_irq_pending(void);
 
-int
-acpi_sleep_machdep(struct acpi_softc *sc, int state)
-{
-	return (0);
-}
-
-void
-acpi_install_wakeup_handler(struct acpi_softc *sc)
-{
-}
+#endif /* !_ARCH_ICU_ICU_VAR_H_ */

@@ -31,11 +31,11 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
+#include <sys/interrupt.h>
 #include <sys/proc.h>
 #include <machine/ipl.h>
 #include <machine/globaldata.h>
 #include <machine/pcb.h>
-#include <machine_base/isa/intr_machdep.h>
 
 /*
  * Bits in the spending bitmap variable must be set atomically because

@@ -70,6 +70,7 @@
 #include <sys/thread2.h>
 #include <sys/systimer.h>
 #include <sys/machintr.h>
+#include <sys/interrupt.h>
 
 #include <machine/clock.h>
 #ifdef CLK_CALIBRATION_LOOP
