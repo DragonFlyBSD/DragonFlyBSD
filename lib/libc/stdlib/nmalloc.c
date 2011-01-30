@@ -418,11 +418,11 @@ _nmalloc_thr_init(void)
 	tp = &thread_mags;
 	tp->init = -1;
 
-	pthread_setspecific(thread_mags_key, tp);
 	if (mtmagazine_free_live == 0) {
 		mtmagazine_free_live = 1;
 		pthread_once(&thread_mags_once, mtmagazine_init);
 	}
+	pthread_setspecific(thread_mags_key, tp);
 	tp->init = 1;
 }
 
