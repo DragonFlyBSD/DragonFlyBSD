@@ -221,13 +221,12 @@ cpu_lfence(void)
 static __inline void
 cpu_sfence(void)
 {
-#ifdef SMP
-#ifdef CPU_HAS_FXSR
-	__asm __volatile("sfence" : : : "memory");
-#endif
-#else
+	/*
+	 * NOTE:
+	 * Don't use 'sfence' here, as it will create a lot of
+	 * unnecessary stalls.
+	 */
 	__asm __volatile("" : : : "memory");
-#endif
 }
 
 /*
