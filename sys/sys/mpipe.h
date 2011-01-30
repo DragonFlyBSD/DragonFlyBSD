@@ -43,6 +43,9 @@
 #ifndef _SYS_THREAD_H_
 #include <sys/thread.h>
 #endif
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
 
 /*
  * Pipeline memory allocations with persistent store capabilities.  This
@@ -75,6 +78,7 @@
  * MPF_INT		Use the interrupt reserve if necessary.
  */
 struct mpipe_buf;
+struct mpipe_callback;
 
 struct malloc_pipe {
     malloc_type_t type;		/* malloc bucket */
@@ -91,11 +95,16 @@ struct malloc_pipe {
     void	(*construct)(void *buf, void *priv);
     void	(*deconstruct)(void *buf, void *priv);
     void	*priv;
+    struct thread *thread;	/* support thread for mpipe */
+    STAILQ_HEAD(, mpipe_callback) queue;
 };
 
 #define MPF_CACHEDATA		0x0001	/* cache old buffers (do not zero) */ 
 #define MPF_NOZERO		0x0002	/* do not zero-out new allocations */
 #define MPF_INT			0x0004	/* use the interrupt memory reserve */
+#define MPF_QUEUEWAIT		0x0008
+#define MPF_CALLBACK		0x0010	/* callback will be used */
+#define MPF_EXITING		0x80000000
 
 typedef struct malloc_pipe *malloc_pipe_t;
 
@@ -110,6 +119,9 @@ void mpipe_init(malloc_pipe_t mpipe, malloc_type_t type,
 void mpipe_done(malloc_pipe_t mpipe);
 void *mpipe_alloc_waitok(malloc_pipe_t mpipe);
 void *mpipe_alloc_nowait(malloc_pipe_t mpipe);
+void *mpipe_alloc_callback(malloc_pipe_t mpipe,
+		void (*func)(void *arg1, void *arg2), void *arg1, void *arg2);
+void mpipe_wait(malloc_pipe_t mpipe);
 void mpipe_free(malloc_pipe_t mpipe, void *vbuf);
 
 #endif
