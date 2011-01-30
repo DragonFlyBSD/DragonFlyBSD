@@ -77,9 +77,6 @@
 #include <machine/clock.h>
 #include <machine/cpu.h>
 
-/* XXX should be in suitable include files */
-#define	ICU_IMR_OFFSET		1		/* IO_ICU{1,2} + 1 */
-
 static void	icu_init(void);
 
 #define NMI_PARITY (1 << 7)

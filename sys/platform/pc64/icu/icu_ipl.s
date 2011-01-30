@@ -75,10 +75,12 @@
 #include <machine/lock.h>
 #include <machine/psl.h>
 #include <machine/trap.h>
+#include <machine_base/icu/icu.h>
+#include <machine_base/icu/icu_ipl.h>
 
 #include <bus/isa/isareg.h>
+
 #include "assym.s"
-#include "icu_ipl.h"
 
 /*
  * WARNING!  SMP builds can use the ICU now so this code must be MP safe.

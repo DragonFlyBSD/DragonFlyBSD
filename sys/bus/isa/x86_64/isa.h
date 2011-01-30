@@ -52,8 +52,6 @@
 #ifndef IO_ISABEGIN
 #define	IO_ISABEGIN	0x000		/* 0x000 - Beginning of I/O Registers */
 
-#define ICU_IMR_OFFSET	1		/* IO_ICU{1,2} + 1 */
-
 		/* CPU Board */
 #define	IO_DMA1		0x000		/* 8237A DMA Controller #1 */
 #define	IO_ICU1		0x020		/* 8259A Interrupt Controller #1 */
