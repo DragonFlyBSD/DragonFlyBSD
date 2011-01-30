@@ -103,15 +103,6 @@ struct utmpx {
 	uint8_t ut_unused2[16];		/* reserved for future use */
 };
 
-
-void          endutxent(void);
-struct utmpx *getutxent(void);
-struct utmpx *getutxid(const struct utmpx *);
-struct utmpx *getutxline(const struct utmpx *);
-struct utmpx *pututxline(const struct utmpx *);
-void          setutxent(void);
-
-/* NON-STANDARD functions, NetBSD specific stuff */
 struct lastlogx {
 	struct timeval ll_tv;		/* time entry was created */
 	char ll_line[_UTX_LINESIZE];	/* tty name */
@@ -119,6 +110,15 @@ struct lastlogx {
 	struct sockaddr_storage ll_ss;	/* address where entry was made from */
 };
 
+__BEGIN_DECLS
+void          endutxent(void);
+struct utmpx *getutxent(void);
+struct utmpx *getutxid(const struct utmpx *);
+struct utmpx *getutxline(const struct utmpx *);
+struct utmpx *pututxline(const struct utmpx *);
+void          setutxent(void);
+
+#ifdef __BSD_VISIBLE
 int updwtmpx(const char *, const struct utmpx *);
 struct lastlogx *getlastlogx(const char *, uid_t, struct lastlogx *);
 int updlastlogx(const char *, uid_t, struct lastlogx *);
@@ -127,6 +127,8 @@ void getutmp(const struct utmpx *, struct utmp *);
 void getutmpx(const struct utmp *, struct utmpx *);
 int utmpxname(const char *);
 int setutxdb(utx_db_t, char *);
+#endif
+__END_DECLS
 
 #endif /* _UTMPX_H_ */
 
