@@ -50,14 +50,14 @@
 #include <machine/md_var.h>
 #include <machine_base/isa/intr_machdep.h>
 #include <machine/globaldata.h>
+#include <machine/smp.h>
 
 #include <sys/thread2.h>
 
 #include "icu.h"
 #include "icu_ipl.h"
 
-extern void	ICU_INTREN(int);
-extern void	ICU_INTRDIS(int);
+extern struct machintr_abi MachIntrABI_APIC;
 
 extern inthand_t
 	IDTVEC(icu_intr0),	IDTVEC(icu_intr1),
@@ -68,12 +68,6 @@ extern inthand_t
 	IDTVEC(icu_intr10),	IDTVEC(icu_intr11),
 	IDTVEC(icu_intr12),	IDTVEC(icu_intr13),
 	IDTVEC(icu_intr14),	IDTVEC(icu_intr15);
-
-static int	icu_vectorctl(int, int, int);
-static int	icu_setvar(int, const void *);
-static int	icu_getvar(int, void *);
-static void	icu_finalize(void);
-static void	icu_cleanup(void);
 
 static inthand_t *icu_intr[ICU_HWI_VECTORS] = {
 	&IDTVEC(icu_intr0),	&IDTVEC(icu_intr1),
@@ -86,6 +80,16 @@ static inthand_t *icu_intr[ICU_HWI_VECTORS] = {
 	&IDTVEC(icu_intr14),	&IDTVEC(icu_intr15)
 };
 
+extern void	ICU_INTREN(int);
+extern void	ICU_INTRDIS(int);
+
+static int	icu_vectorctl(int, int, int);
+static int	icu_setvar(int, const void *);
+static int	icu_getvar(int, void *);
+static void	icu_finalize(void);
+static void	icu_cleanup(void);
+static void	icu_setdefault(void);
+
 struct machintr_abi MachIntrABI_ICU = {
 	MACHINTR_ICU,
 	.intrdis	= ICU_INTRDIS,
@@ -94,7 +98,8 @@ struct machintr_abi MachIntrABI_ICU = {
 	.setvar		= icu_setvar,
 	.getvar		= icu_getvar,
 	.finalize	= icu_finalize,
-	.cleanup	= icu_cleanup
+	.cleanup	= icu_cleanup,
+	.setdefault	= icu_setdefault
 };
 
 static int	icu_imcr_present;
@@ -144,6 +149,16 @@ icu_finalize(void)
 {
 	int intr;
 
+#ifdef SMP
+	if (apic_io_enable) {
+		KKASSERT(MachIntrABI.type == MACHINTR_ICU);
+		MachIntrABI_APIC.setvar(MACHINTR_VAR_IMCR_PRESENT,
+					&icu_imcr_present);
+		MachIntrABI_APIC.finalize();
+		return;
+	}
+#endif
+
 	for (intr = 0; intr < ICU_HWI_VECTORS; ++intr)
 		machintr_intrdis(intr);
 	machintr_intren(ICU_IRQ_SLAVE);
@@ -175,7 +190,6 @@ icu_cleanup(void)
 	bzero(mdcpu->gd_ipending, sizeof(mdcpu->gd_ipending));
 }
 
-
 static int
 icu_vectorctl(int op, int intr, int flags)
 {
@@ -197,10 +211,9 @@ icu_vectorctl(int op, int intr, int flags)
 		break;
 
 	case MACHINTR_VECTOR_TEARDOWN:
-	case MACHINTR_VECTOR_SETDEFAULT:
+		machintr_intrdis(intr);
 		setidt(IDT_OFFSET + intr, icu_intr[intr], SDT_SYSIGT,
 		       SEL_KPL, 0);
-		machintr_intrdis(intr);
 		break;
 
 	default:
@@ -209,4 +222,17 @@ icu_vectorctl(int op, int intr, int flags)
 	}
 	write_rflags(ef);
 	return error;
+}
+
+static void
+icu_setdefault(void)
+{
+	int intr;
+
+	for (intr = 0; intr < ICU_HWI_VECTORS; ++intr) {
+		if (intr == ICU_IRQ_SLAVE)
+			continue;
+		setidt(IDT_OFFSET + intr, icu_intr[intr], SDT_SYSIGT,
+		       SEL_KPL, 0);
+	}
 }

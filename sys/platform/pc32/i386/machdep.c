@@ -1931,14 +1931,11 @@ init386(int first)
 		kern_envp = (caddr_t)bootinfo.bi_envp + KERNBASE;
 
 	/*
-	 * Setup MachIntrABI
-	 * XXX: Where is the correct place for it?
+	 * Default MachIntrABI to ICU
 	 */
 	MachIntrABI = MachIntrABI_ICU;
 #ifdef SMP
 	TUNABLE_INT_FETCH("hw.apic_io_enable", &apic_io_enable);
-	if (apic_io_enable)
-		MachIntrABI = MachIntrABI_APIC;
 #endif
 
 	/*

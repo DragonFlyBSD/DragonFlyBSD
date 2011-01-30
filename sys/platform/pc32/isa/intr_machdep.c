@@ -158,12 +158,21 @@ icu_reinit(void)
 void
 isa_defaultirq(void)
 {
-	int i;
+	u_long ef;
 
-	/* icu vectors */
-	for (i = 0; i < MAX_HARDINTS; i++)
-		machintr_vector_setdefault(i);
+	KKASSERT(MachIntrABI.type == MACHINTR_ICU);
+
+	ef = read_eflags();
+	cpu_disable_intr();
+
+	/* Leave interrupts masked */
+	outb(IO_ICU1 + ICU_IMR_OFFSET, 0xff);
+	outb(IO_ICU2 + ICU_IMR_OFFSET, 0xff);
+
+	MachIntrABI.setdefault();
 	icu_init();
+
+	write_eflags(ef);
 }
 
 static void

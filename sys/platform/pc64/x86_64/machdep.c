@@ -1729,14 +1729,11 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 #endif
 
 	/*
-	 * Setup MachIntrABI
-	 * XXX: Where is the correct place for it?
+	 * Default MachIntrABI to ICU
 	 */
 	MachIntrABI = MachIntrABI_ICU;
 #ifdef SMP
 	TUNABLE_INT_FETCH("hw.apic_io_enable", &apic_io_enable);
-	if (apic_io_enable)
-		MachIntrABI = MachIntrABI_APIC;
 #endif
 
 	/*

@@ -60,9 +60,6 @@
 
 #ifdef SMP /* APIC-IO */
 
-extern void	APIC_INTREN(int);
-extern void	APIC_INTRDIS(int);
-
 extern inthand_t
 	IDTVEC(apic_intr0),
 	IDTVEC(apic_intr1),
@@ -452,11 +449,15 @@ static inthand_t *apic_intr[APIC_HWI_VECTORS] = {
 	&IDTVEC(apic_intr191)
 };
 
+extern void	APIC_INTREN(int);
+extern void	APIC_INTRDIS(int);
+
 static int	apic_setvar(int, const void *);
 static int	apic_getvar(int, void *);
 static int	apic_vectorctl(int, int, int);
 static void	apic_finalize(void);
 static void	apic_cleanup(void);
+static void	apic_setdefault(void);
 
 static int	apic_imcr_present;
 
@@ -468,7 +469,8 @@ struct machintr_abi MachIntrABI_APIC = {
 	.setvar		= apic_setvar,
 	.getvar		= apic_getvar,
 	.finalize	= apic_finalize,
-	.cleanup	= apic_cleanup
+	.cleanup	= apic_cleanup,
+	.setdefault	= apic_setdefault
 };
 
 static int
@@ -518,6 +520,9 @@ apic_finalize(void)
 {
 	uint32_t temp;
 
+	KKASSERT(MachIntrABI.type == MACHINTR_ICU);
+	KKASSERT(apic_io_enable);
+
 	/*
 	 * If an IMCR is present, program bit 0 to disconnect the 8259
 	 * from the BSP.  The 8259 may still be connected to LINT0 on
@@ -536,6 +541,13 @@ apic_finalize(void)
 	temp = lapic.lvt_lint0;
 	temp |= APIC_LVT_MASKED;
 	lapic.lvt_lint0 = temp;
+
+	/*
+	 * 8259 is completely disconnected; switch to IOAPIC MachIntrABI
+	 * and reconfigure the default IDT entries.
+	 */
+	MachIntrABI = MachIntrABI_APIC;
+	MachIntrABI.setdefault();
 
 	/*
 	 * Setup lint1 to handle NMI
@@ -646,19 +658,6 @@ apic_vectorctl(int op, int intr, int flags)
 		}
 		break;
 
-	case MACHINTR_VECTOR_SETDEFAULT:
-		/*
-		 * This is a just-in-case an int pin is running through the 8259
-		 * when we don't expect it to, or an IO APIC pin somehow wound
-		 * up getting enabled without us specifically programming it in
-		 * this ABI.  Note that IO APIC pins are by default programmed
-		 * to IDT_OFFSET + intr.
-		 */
-		vector = IDT_OFFSET + intr;
-		setidt(vector, apic_intr[intr], SDT_SYS386IGT, SEL_KPL,
-		       GSEL(GCODE_SEL, SEL_KPL));
-		break;
-
 	default:
 		error = EOPNOTSUPP;
 		break;
@@ -666,6 +665,19 @@ apic_vectorctl(int op, int intr, int flags)
 
 	write_eflags(ef);
 	return error;
+}
+
+static void
+apic_setdefault(void)
+{
+	int intr;
+
+	for (intr = 0; intr < APIC_HWI_VECTORS; ++intr) {
+		if (intr == IDT_OFFSET_SYSCALL - IDT_OFFSET)
+			continue;
+		setidt(IDT_OFFSET + intr, apic_intr[intr], SDT_SYS386IGT,
+		       SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+	}
 }
 
 #endif	/* SMP */
