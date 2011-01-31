@@ -553,8 +553,13 @@ bsd4_setrunqueue(struct lwp *lp)
 found:
 	if (gd == mycpu) {
 		spin_unlock(&bsd4_spin);
-		if ((dd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK))
-			need_user_resched();
+		if ((dd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK)) {
+			if (dd->uschedcp == NULL) {
+				lwkt_schedule(&dd->helper_thread);
+			} else {
+				need_user_resched();
+			}
+		}
 	} else {
 		atomic_clear_cpumask(&bsd4_rdyprocmask, CPUMASK(cpuid));
 		spin_unlock(&bsd4_spin);
