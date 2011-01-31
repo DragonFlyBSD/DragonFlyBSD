@@ -951,17 +951,24 @@ no_valid_rt:
 		FREE(q, M_TSEGQ);
 		atomic_add_int(&tcp_reass_qsize, -1);
 	}
-	/* throw away SACK blocks in scoreboard*/
+	/*
+	 * Throw away SACK blocks in scoreboard
+	 */
 	if (TCP_DO_SACK(tp))
 		tcp_sack_cleanup(&tp->scb);
 
-	inp->inp_ppcb = NULL;
+	/*
+	 * Indicate a disconnected state.  The PCB is detached later on.
+	 *
+	 * NOTE: We do not clear inp->inp_ppcb until after the syncache
+	 *	 has been destroyed, else we risk racing syncache completions
+	 *	 on another cpu which need to dive the listen socket's tcpcb.
+	 */
 	soisdisconnected(so);
-	/* note: pcb detached later on */
-
 	tcp_destroy_timermsg(tp);
 	if (tp->t_flags & TF_SYNCACHE)
 		syncache_destroy(tp);
+	inp->inp_ppcb = NULL;
 
 	/*
 	 * Discard the inp.  In the SMP case a wildcard inp's hash (created
