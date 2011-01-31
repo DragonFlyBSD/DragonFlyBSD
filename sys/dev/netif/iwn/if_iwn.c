@@ -3359,7 +3359,9 @@ iwn_start(struct ifnet *ifp)
 
 	sc = ifp->if_softc;
 
+	wlan_serialize_enter();
 	iwn_start_locked(ifp);
+	wlan_serialize_exit();
 }
 
 static void
@@ -6405,7 +6407,7 @@ iwn_pci_shutdown(device_t dev)
 	struct iwn_softc *sc = device_get_softc(dev);
 
 	wlan_serialize_enter();
-	iwn_stop(sc);
+	iwn_stop_locked(sc);
 	wlan_serialize_exit();
 
 	return 0;
@@ -6448,7 +6450,7 @@ iwn_pci_resume(device_t dev)
 		if (vap != NULL)
 			ieee80211_init(vap);
 		if (ifp->if_flags & IFF_RUNNING)
-			iwn_start(ifp);
+			iwn_start_locked(ifp);
 	}
 	wlan_serialize_exit();
 
