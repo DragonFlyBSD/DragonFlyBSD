@@ -77,9 +77,8 @@ struct netmsg_barrier {
 	volatile uint32_t	br_done;
 };
 
-#define NETISR_BR_NOTDONE	0
-#define NETISR_BR_DONE		1
-#define NETISR_BR_WAITDONE	2
+#define NETISR_BR_NOTDONE	0x1
+#define NETISR_BR_WAITDONE	0x80000000
 
 struct netisr_barrier {
 	struct netmsg_barrier	*br_msgs[MAXCPU];
@@ -565,11 +564,16 @@ netisr_barrier_dispatch(netmsg_t nmsg)
 	if (*msg->br_cpumask == 0)
 		wakeup(msg->br_cpumask);
 
-	while (msg->br_done == NETISR_BR_NOTDONE) {
+	for (;;) {
+		uint32_t done = msg->br_done;
+
 		cpu_ccfence();
+		if ((done & NETISR_BR_NOTDONE) == 0)
+			break;
+
 		tsleep_interlock(&msg->br_done, 0);
 		if (atomic_cmpset_int(&msg->br_done,
-		    NETISR_BR_NOTDONE, NETISR_BR_WAITDONE))
+		    done, done | NETISR_BR_WAITDONE))
 			tsleep(&msg->br_done, PINTERLOCKED, "nbrdsp", 0);
 	}
 
@@ -644,6 +648,7 @@ netisr_barrier_rem(struct netisr_barrier *br)
 	cur_cpuid = mycpuid;
 	for (i = 0; i < ncpus; ++i) {
 		struct netmsg_barrier *msg = br->br_msgs[i];
+		uint32_t done;
 
 		msg = br->br_msgs[i];
 		br->br_msgs[i] = NULL;
@@ -651,13 +656,9 @@ netisr_barrier_rem(struct netisr_barrier *br)
 		if (i == cur_cpuid)
 			continue;
 
-		for (;;) {
-			if (atomic_cmpset_int(&msg->br_done,
-			    NETISR_BR_WAITDONE, NETISR_BR_DONE)) {
-				wakeup(&msg->br_done);
-				break;
-			}
-		}
+		done = atomic_swap_int(&msg->br_done, 0);
+		if (done & NETISR_BR_WAITDONE)
+			wakeup(&msg->br_done);
 	}
 #endif
 	br->br_isset = 0;
