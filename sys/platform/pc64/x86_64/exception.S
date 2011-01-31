@@ -79,7 +79,11 @@
 MCOUNT_LABEL(user)
 MCOUNT_LABEL(btrap)
 
-/* Traps that we leave interrupts disabled for.. */
+/*
+ * Interrupts are enabled for all traps, otherwise horrible livelocks
+ * can occur with the smp_invltlb and cpusync ode.
+ */
+#if 0
 #define	TRAP_NOEN(a)	\
 	subq $TF_RIP,%rsp; \
 	movq $0,TF_XFLAGS(%rsp) ; \
@@ -87,10 +91,7 @@ MCOUNT_LABEL(btrap)
 	movq $0,TF_ADDR(%rsp) ; \
 	movq $0,TF_ERR(%rsp) ; \
 	jmp alltraps_noen
-IDTVEC(dbg)
-	TRAP_NOEN(T_TRCTRAP)
-IDTVEC(bpt)
-	TRAP_NOEN(T_BPTFLT)
+#endif
 
 /* Regular traps; The cpu does not supply tf_err for these. */
 #define	TRAP(a)	 \
@@ -100,6 +101,10 @@ IDTVEC(bpt)
 	movq $0,TF_ADDR(%rsp) ; \
 	movq $0,TF_ERR(%rsp) ; \
 	jmp alltraps
+IDTVEC(dbg)
+	TRAP(T_TRCTRAP)
+IDTVEC(bpt)
+	TRAP(T_BPTFLT)
 IDTVEC(div)
 	TRAP(T_DIVIDE)
 IDTVEC(ofl)
