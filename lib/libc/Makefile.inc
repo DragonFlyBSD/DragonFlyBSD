@@ -65,4 +65,4 @@ SRCS+=	${_src}
 .endif
 
 # Disable warnings in contributed sources.
-CWARNFLAGS:=	${.IMPSRC:Ngdtoa_*.c:C/^.+$/${CWARNFLAGS}/}
+CWARNFLAGS:=	${.IMPSRC:Ngdtoa_*.c:C/^.+$/${CWARNFLAGS}/:C/^$/-w/}
