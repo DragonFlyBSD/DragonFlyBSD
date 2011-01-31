@@ -778,11 +778,23 @@ panic(const char *fmt, ...)
 	wdog_disable();
 #endif
 
+	/*
+	 * Enter the debugger or fall through & dump.  Entering the
+	 * debugger will stop cpus.  If not entering the debugger stop
+	 * cpus here.
+	 */
 #if defined(DDB)
 	if (newpanic && trace_on_panic)
 		print_backtrace(-1);
 	if (debugger_on_panic)
 		Debugger("panic");
+	else
+#endif
+#ifdef SMP
+	if (newpanic)
+		stop_cpus(mycpu->gd_other_cpus);
+#else
+	;
 #endif
 	boot(bootopt);
 }

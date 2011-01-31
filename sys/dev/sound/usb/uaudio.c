@@ -509,11 +509,8 @@ uaudio_mixer_add_ctl(struct uaudio_softc *sc, struct mixerctl *mc)
 	}
 
 	len = sizeof(*mc) * (sc->sc_nctls + 1);
-	nmc = kmalloc(len, M_USBDEV, M_NOWAIT);
-	if (nmc == NULL) {
-		kprintf("uaudio_mixer_add_ctl: no memory\n");
-		return;
-	}
+	nmc = kmalloc(len, M_USBDEV, M_WAITOK);
+
 	/* Copy old data, if there was any */
 	if (sc->sc_nctls != 0) {
 		memcpy(nmc, sc->sc_ctls, sizeof(*mc) * (sc->sc_nctls));
@@ -1205,11 +1202,7 @@ uaudio_merge_terminal_list(const struct io_terminal *iot)
 		if (iot->inputs[i] != NULL)
 			len += iot->inputs[i]->size;
 	}
-	tml = kmalloc(TERMINAL_LIST_SIZE(len), M_TEMP, M_NOWAIT);
-	if (tml == NULL) {
-		kprintf("uaudio_merge_terminal_list: no memory\n");
-		return NULL;
-	}
+	tml = kmalloc(TERMINAL_LIST_SIZE(len), M_TEMP, M_WAITOK);
 	tml->size = 0;
 	ptm = tml->terminals;
 	for (i = 0; i < iot->inputs_size; i++) {
@@ -1240,11 +1233,7 @@ uaudio_io_terminaltype(int outtype, struct io_terminal *iot, int id)
 			if (it->output->terminals[i] == outtype)
 				return uaudio_merge_terminal_list(it);
 		tml = kmalloc(TERMINAL_LIST_SIZE(it->output->size + 1),
-			     M_TEMP, M_NOWAIT);
-		if (tml == NULL) {
-			kprintf("uaudio_io_terminaltype: no memory\n");
-			return uaudio_merge_terminal_list(it);
-		}
+			     M_TEMP, M_WAITOK);
 		memcpy(tml, it->output, TERMINAL_LIST_SIZE(it->output->size));
 		tml->terminals[it->output->size] = outtype;
 		tml->size++;
@@ -1261,11 +1250,7 @@ uaudio_io_terminaltype(int outtype, struct io_terminal *iot, int id)
 	} else {		/* end `iot[id] != NULL' */
 		it->inputs_size = 0;
 		it->inputs = NULL;
-		it->output = kmalloc(TERMINAL_LIST_SIZE(1), M_TEMP, M_NOWAIT);
-		if (it->output == NULL) {
-			kprintf("uaudio_io_terminaltype: no memory\n");
-			return NULL;
-		}
+		it->output = kmalloc(TERMINAL_LIST_SIZE(1), M_TEMP, M_WAITOK);
 		it->output->terminals[0] = outtype;
 		it->output->size = 1;
 		it->direct = FALSE;
@@ -1273,18 +1258,9 @@ uaudio_io_terminaltype(int outtype, struct io_terminal *iot, int id)
 
 	switch (it->d.desc->bDescriptorSubtype) {
 	case UDESCSUB_AC_INPUT:
-		it->inputs = kmalloc(sizeof(struct terminal_list *), M_TEMP, M_NOWAIT);
-		if (it->inputs == NULL) {
-			kprintf("uaudio_io_terminaltype: no memory\n");
-			return NULL;
-		}
-		tml = kmalloc(TERMINAL_LIST_SIZE(1), M_TEMP, M_NOWAIT);
-		if (tml == NULL) {
-			kprintf("uaudio_io_terminaltype: no memory\n");
-			kfree(it->inputs, M_TEMP);
-			it->inputs = NULL;
-			return NULL;
-		}
+		it->inputs = kmalloc(sizeof(struct terminal_list *),
+				     M_TEMP, M_WAITOK);
+		tml = kmalloc(TERMINAL_LIST_SIZE(1), M_TEMP, M_WAITOK);
 		it->inputs[0] = tml;
 		tml->terminals[0] = UGETW(it->d.it->wTerminalType);
 		tml->size = 1;
@@ -1292,20 +1268,14 @@ uaudio_io_terminaltype(int outtype, struct io_terminal *iot, int id)
 		return uaudio_merge_terminal_list(it);
 	case UDESCSUB_AC_FEATURE:
 		src_id = it->d.fu->bSourceId;
-		it->inputs = kmalloc(sizeof(struct terminal_list *), M_TEMP, M_NOWAIT);
-		if (it->inputs == NULL) {
-			kprintf("uaudio_io_terminaltype: no memory\n");
-			return uaudio_io_terminaltype(outtype, iot, src_id);
-		}
+		it->inputs = kmalloc(sizeof(struct terminal_list *),
+				     M_TEMP, M_WAITOK);
 		it->inputs[0] = uaudio_io_terminaltype(outtype, iot, src_id);
 		it->inputs_size = 1;
 		return uaudio_merge_terminal_list(it);
 	case UDESCSUB_AC_OUTPUT:
-		it->inputs = kmalloc(sizeof(struct terminal_list *), M_TEMP, M_NOWAIT);
-		if (it->inputs == NULL) {
-			kprintf("uaudio_io_terminaltype: no memory\n");
-			return NULL;
-		}
+		it->inputs = kmalloc(sizeof(struct terminal_list *),
+				     M_TEMP, M_WAITOK);
 		src_id = it->d.ot->bSourceId;
 		it->inputs[0] = uaudio_io_terminaltype(outtype, iot, src_id);
 		it->inputs_size = 1;
@@ -1313,12 +1283,8 @@ uaudio_io_terminaltype(int outtype, struct io_terminal *iot, int id)
 		return NULL;
 	case UDESCSUB_AC_MIXER:
 		it->inputs_size = 0;
-		it->inputs = kmalloc(sizeof(struct terminal_list *)
-				    * it->d.mu->bNrInPins, M_TEMP, M_NOWAIT);
-		if (it->inputs == NULL) {
-			kprintf("uaudio_io_terminaltype: no memory\n");
-			return NULL;
-		}
+		it->inputs = kmalloc(sizeof(struct terminal_list *) *
+				     it->d.mu->bNrInPins, M_TEMP, M_WAITOK);
 		for (i = 0; i < it->d.mu->bNrInPins; i++) {
 			src_id = it->d.mu->baSourceId[i];
 			it->inputs[i] = uaudio_io_terminaltype(outtype, iot,
@@ -1328,12 +1294,8 @@ uaudio_io_terminaltype(int outtype, struct io_terminal *iot, int id)
 		return uaudio_merge_terminal_list(it);
 	case UDESCSUB_AC_SELECTOR:
 		it->inputs_size = 0;
-		it->inputs = kmalloc(sizeof(struct terminal_list *)
-				    * it->d.su->bNrInPins, M_TEMP, M_NOWAIT);
-		if (it->inputs == NULL) {
-			kprintf("uaudio_io_terminaltype: no memory\n");
-			return NULL;
-		}
+		it->inputs = kmalloc(sizeof(struct terminal_list *) *
+				     it->d.su->bNrInPins, M_TEMP, M_WAITOK);
 		for (i = 0; i < it->d.su->bNrInPins; i++) {
 			src_id = it->d.su->baSourceId[i];
 			it->inputs[i] = uaudio_io_terminaltype(outtype, iot,
@@ -1343,12 +1305,8 @@ uaudio_io_terminaltype(int outtype, struct io_terminal *iot, int id)
 		return uaudio_merge_terminal_list(it);
 	case UDESCSUB_AC_PROCESSING:
 		it->inputs_size = 0;
-		it->inputs = kmalloc(sizeof(struct terminal_list *)
-				    * it->d.pu->bNrInPins, M_TEMP, M_NOWAIT);
-		if (it->inputs == NULL) {
-			kprintf("uaudio_io_terminaltype: no memory\n");
-			return NULL;
-		}
+		it->inputs = kmalloc(sizeof(struct terminal_list *) *
+				     it->d.pu->bNrInPins, M_TEMP, M_WAITOK);
 		for (i = 0; i < it->d.pu->bNrInPins; i++) {
 			src_id = it->d.pu->baSourceId[i];
 			it->inputs[i] = uaudio_io_terminaltype(outtype, iot,
@@ -1358,12 +1316,8 @@ uaudio_io_terminaltype(int outtype, struct io_terminal *iot, int id)
 		return uaudio_merge_terminal_list(it);
 	case UDESCSUB_AC_EXTENSION:
 		it->inputs_size = 0;
-		it->inputs = kmalloc(sizeof(struct terminal_list *)
-				    * it->d.eu->bNrInPins, M_TEMP, M_NOWAIT);
-		if (it->inputs == NULL) {
-			kprintf("uaudio_io_terminaltype: no memory\n");
-			return NULL;
-		}
+		it->inputs = kmalloc(sizeof(struct terminal_list *) *
+				     it->d.eu->bNrInPins, M_TEMP, M_WAITOK);
 		for (i = 0; i < it->d.eu->bNrInPins; i++) {
 			src_id = it->d.eu->baSourceId[i];
 			it->inputs[i] = uaudio_io_terminaltype(outtype, iot,
@@ -1395,11 +1349,8 @@ uaudio_add_alt(struct uaudio_softc *sc, const struct as_info *ai)
 	struct as_info *nai;
 
 	len = sizeof(*ai) * (sc->sc_nalts + 1);
-	nai = kmalloc(len, M_USBDEV, M_NOWAIT);
-	if (nai == NULL) {
-		kprintf("uaudio_add_alt: no memory\n");
-		return;
-	}
+	nai = kmalloc(len, M_USBDEV, M_WAITOK);
+
 	/* Copy old data, if there was any */
 	if (sc->sc_nalts != 0) {
 		memcpy(nai, sc->sc_alts, sizeof(*ai) * (sc->sc_nalts));
@@ -1759,11 +1710,8 @@ uaudio_identify_ac(struct uaudio_softc *sc, const usb_config_descriptor_t *cdesc
 	ibufend = ibuf + aclen;
 	dp = (const usb_descriptor_t *)ibuf;
 	ndps = 0;
-	iot = kmalloc(sizeof(struct io_terminal) * 256, M_TEMP, M_NOWAIT | M_ZERO);
-	if (iot == NULL) {
-		kprintf("%s: no memory\n", __func__);
-		return USBD_NOMEM;
-	}
+	iot = kmalloc(sizeof(struct io_terminal) * 256,
+		      M_TEMP, M_WAITOK | M_ZERO);
 	for (;;) {
 		ibuf += dp->bLength;
 		if (ibuf >= ibufend)
@@ -3183,9 +3131,7 @@ audio_attach_mi(device_t dev)
 
 	/* Attach the children. */
 	/* PCM Audio */
-	func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
-	if (func == NULL)
-		return (ENOMEM);
+	func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF, M_WAITOK | M_ZERO);
 	func->func = SCF_PCM;
 	child = device_add_child(dev, "pcm", -1);
 	device_set_ivars(child, func);

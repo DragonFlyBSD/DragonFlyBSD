@@ -50,7 +50,6 @@ enum machintr_type { MACHINTR_GENERIC, MACHINTR_ICU, MACHINTR_APIC };
 
 #define MACHINTR_VECTOR_SETUP		1
 #define MACHINTR_VECTOR_TEARDOWN	2
-#define MACHINTR_VECTOR_SETDEFAULT	3
 
 /*
  * Machine interrupt ABIs - registered at boot-time
@@ -64,6 +63,7 @@ struct machintr_abi {
     int		(*getvar)(int, void *);		/* get miscellanious info */
     void	(*finalize)(void);		/* final before ints enabled */
     void	(*cleanup)(void);		/* cleanup */
+    void	(*setdefault)(void);		/* set default vectors */
 };
 
 #define machintr_intren(intr)	MachIntrABI.intren(intr)
@@ -72,8 +72,6 @@ struct machintr_abi {
 	    MachIntrABI.vectorctl(MACHINTR_VECTOR_SETUP, intr, flags)
 #define machintr_vector_teardown(intr)		\
 	    MachIntrABI.vectorctl(MACHINTR_VECTOR_TEARDOWN, intr, 0)
-#define machintr_vector_setdefault(intr)	\
-	    MachIntrABI.vectorctl(MACHINTR_VECTOR_SETDEFAULT, intr, 0)
 
 #ifdef _KERNEL
 

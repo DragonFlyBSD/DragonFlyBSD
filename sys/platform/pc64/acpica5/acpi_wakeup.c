@@ -42,7 +42,7 @@
 
 #include <machine/cpufunc.h>
 #include <machine/segments.h>
-#include <machine_base/isa/intr_machdep.h>
+#include <machine_base/icu/icu_var.h>
 
 #include "acpi.h"
 #include <dev/acpica5/acpivar.h>

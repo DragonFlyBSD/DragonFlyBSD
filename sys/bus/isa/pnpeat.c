@@ -49,18 +49,8 @@
 #include <sys/module.h>
 #include <sys/rman.h>
 
-#include <machine/vmparam.h>
-#include <vm/vm.h>
-#include <vm/pmap.h>
-#include <machine/pmap.h>
-
-#include <machine/nexusvar.h>
-#include <machine/smp.h>
-#include <machine_base/apic/mpapic.h>
-
-#include "isavar.h"
-#include "isa.h"
-#include <machine_base/isa/intr_machdep.h>
+#include <bus/isa/isavar.h>
+#include <bus/isa/isa.h>
 
 /*
  * Placeholder which claims PnP 'devices' which describe system

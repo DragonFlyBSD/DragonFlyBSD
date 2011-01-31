@@ -634,7 +634,7 @@ static void setup_catchsig P((int const*,int));
 #			if has_sa_sigaction
 			    act.sa_sigaction = catchsigaction;
 #			else
-			    act.sa_handler = catchsigaction;
+			    act.sa_handler = catchsig;
 #			endif
 			act.sa_flags |= SA_SIGINFO;
 		    }

@@ -141,9 +141,7 @@ spicds_create(device_t dev, void *devinfo, int num, spicds_ctrl ctrl)
 #if(0)
 	device_printf(dev, "spicds_create(dev, devinfo, %d, ctrl)\n", num);
 #endif
-	codec = (struct spicds_info *)kmalloc(sizeof *codec, M_SPICDS, M_NOWAIT);
-	if (codec == NULL)
-		return NULL;
+	codec = kmalloc(sizeof *codec, M_SPICDS, M_WAITOK);
 
 	ksnprintf(codec->name, SPICDS_NAMELEN, "%s:spicds%d", device_get_nameunit(dev), num);
 	codec->lock = snd_mtxcreate(codec->name, codec->name);

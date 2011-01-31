@@ -113,7 +113,7 @@ _thr_get_tid(void)
  * falls into implementation defined behavior or not.
  */
 int
-_thr_set_sched_other_prio(struct pthread *pth, int prio)
+_thr_set_sched_other_prio(struct pthread *pth __unused, int prio)
 {
 	static int max, min, init_status;
 

@@ -138,11 +138,4 @@ ENTRY(io_apic_write)
 	movl	%eax, IOAPIC_WINDOW(%edx) /* write the APIC register data */
 	ret				/* %eax = void */
 
-/*
- * Send an EOI to the local APIC.
- */
-ENTRY(apic_eoi)
-	movl	$0, lapic+0xb0
-	ret
-
 #endif

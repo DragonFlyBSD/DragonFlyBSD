@@ -43,7 +43,7 @@ __weak_reference(_pthread_set_name_np, pthread_set_name_np);
 
 /* Set the thread name for debug. */
 void
-_pthread_set_name_np(pthread_t thread, const char *name)
+_pthread_set_name_np(pthread_t thread __unused, const char *name __unused)
 {
 #if 0
 	struct pthread *curthread = _get_curthread();

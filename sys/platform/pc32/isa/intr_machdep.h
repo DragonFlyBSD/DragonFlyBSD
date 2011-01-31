@@ -38,11 +38,8 @@
 #define	_ARCH_ISA_INTR_MACHDEP_H_
 
 #ifndef LOCORE
-#ifndef _SYS_INTERRUPT_H_
-#include <sys/interrupt.h>
-#endif
-#ifndef _SYS_SERIALIZE_H_
-#include <sys/serialize.h>
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
 #endif
 #endif
 
@@ -53,6 +50,7 @@
 #ifdef _KERNEL
 
 #define IDT_OFFSET		0x20
+#define IDT_OFFSET_SYSCALL	0x80
 #define IDT_OFFSET_IPI		0xe0
 
 #if defined(SMP)
@@ -155,9 +153,8 @@ inthand_t
 	Xipiq;		/* handle lwkt_send_ipiq() requests */
 #endif /* SMP */
 
-void	isa_defaultirq (void);
-int	isa_nmi (int cd);
-void	icu_reinit (void);
+void	isa_defaultirq(void);
+int	isa_nmi(int);
 
 #endif /* LOCORE */
 

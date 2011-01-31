@@ -11,3 +11,5 @@ LIBRCS=	${.CURDIR}/../lib/librcs.a
 .if RCS_EMIT_COMMITID
 CFLAGS+=	-DRCS_EMIT_COMMITID
 .endif
+
+WARNS?=	2

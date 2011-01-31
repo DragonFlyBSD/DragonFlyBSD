@@ -28,6 +28,9 @@
 #ifndef _SYS_TIME_H_
 #include <sys/time.h>   	/* struct timeval */
 #endif
+#ifndef _SYS_LOCK_H
+#include <sys/lock.h>
+#endif
 #ifndef _SYS_SPINLOCK_H_
 #include <sys/spinlock.h>
 #endif
@@ -290,6 +293,13 @@ struct thread {
    int 	td_spinlock_stack_id[SPINLOCK_DEBUG_ARRAY_SIZE];
    struct spinlock *td_spinlock_stack[SPINLOCK_DEBUG_ARRAY_SIZE];
    void 	*td_spinlock_caller_pc[SPINLOCK_DEBUG_ARRAY_SIZE];
+
+    /*
+     * Track lockmgr locks held; lk->lk_filename:lk->lk_lineno is the holder
+     */
+#define LOCKMGR_DEBUG_ARRAY_SIZE	8
+    int		td_lockmgr_stack_id[LOCKMGR_DEBUG_ARRAY_SIZE];
+    struct lock	*td_lockmgr_stack[LOCKMGR_DEBUG_ARRAY_SIZE];
 #endif
 };
 

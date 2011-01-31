@@ -128,8 +128,8 @@
  */
 #define EM_TX_TIMEOUT			5
 
-/* One for TX csum offloading desc, the other is reserved */
-#define EM_TX_RESERVED			2
+/* One for TX csum offloading desc, the other 2 are reserved */
+#define EM_TX_RESERVED			3
 
 /* Large enough for 16K jumbo frame */
 #define EM_TX_SPARE			8

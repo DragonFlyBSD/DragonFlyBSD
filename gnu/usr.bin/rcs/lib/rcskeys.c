@@ -163,7 +163,6 @@ setRCSLocalId(string)
 {
 	static char local_id[keylength+1];
 	char *copy, *next, *key;
-	int j;
 
 	copy = strdup(string);
 	next = copy;
@@ -174,7 +173,7 @@ setRCSLocalId(string)
 	Keyword[LocalId] = local_id;
 
 	/* options? */
-	while (key = strtok(NULL, ",")) {
+	while ((key = strtok(NULL, ","))) {
 		if (!strcmp(key, Keyword[Id]))
 			LocalIdMode=Id;
 		else if (!strcmp(key, Keyword[Header]))

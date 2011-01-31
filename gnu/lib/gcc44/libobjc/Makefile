@@ -7,6 +7,7 @@ CFLAGS+=	-I${GCCDIR}/libobjc/objc -I. -DIN_TARGET_LIBS
 LIB=		objc
 SHLIB_MAJOR=	2
 
+CSTD?=	gnu89
 
 OBJC_THREAD_FILE=thr-objc
 SRCS= \

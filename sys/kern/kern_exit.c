@@ -530,13 +530,19 @@ exit1(int rv)
 			wakeup((caddr_t)pp);
 	}
 
-	if (p->p_sigparent && p->p_pptr != initproc) {
-	        ksignal(p->p_pptr, p->p_sigparent);
+	/* lwkt_gettoken(&proc_token); */
+	q = p->p_pptr;
+	if (p->p_sigparent && q != initproc) {
+		PHOLD(q);
+	        ksignal(q, p->p_sigparent);
+		PRELE(q);
 	} else {
-	        ksignal(p->p_pptr, SIGCHLD);
+	        ksignal(q, SIGCHLD);
 	}
+	/* lwkt_reltoken(&proc_token); */
+	/* NOTE: p->p_pptr can get ripped out */
 
-	wakeup((caddr_t)p->p_pptr);
+	wakeup(p->p_pptr);
 	/*
 	 * cpu_exit is responsible for clearing curproc, since
 	 * it is heavily integrated with the thread/switching sequence.

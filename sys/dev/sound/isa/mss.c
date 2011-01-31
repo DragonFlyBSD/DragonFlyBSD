@@ -1276,9 +1276,7 @@ mss_probe(device_t dev)
 
     	if (isa_get_logicalid(dev)) return ENXIO; /* not yet */
 
-    	mss = (struct mss_info *)kmalloc(sizeof *mss, M_DEVBUF, M_NOWAIT | M_ZERO);
-    	if (!mss) return ENXIO;
-
+	mss = kmalloc(sizeof *mss, M_DEVBUF, M_WAITOK | M_ZERO);
     	mss->io_rid = 0;
     	mss->conf_rid = -1;
     	mss->irq_rid = 0;
@@ -1776,9 +1774,7 @@ mss_attach(device_t dev)
     	struct mss_info *mss;
     	int flags = device_get_flags(dev);
 
-    	mss = (struct mss_info *)kmalloc(sizeof *mss, M_DEVBUF, M_NOWAIT | M_ZERO);
-    	if (!mss) return ENXIO;
-
+	mss = kmalloc(sizeof *mss, M_DEVBUF, M_WAITOK | M_ZERO);
     	mss->io_rid = 0;
     	mss->conf_rid = -1;
     	mss->irq_rid = 0;
@@ -1957,10 +1953,7 @@ pnpmss_attach(device_t dev)
 {
 	struct mss_info *mss;
 
-	mss = (struct mss_info *)kmalloc(sizeof *mss, M_DEVBUF, M_NOWAIT | M_ZERO);
-	if (!mss)
-	    return ENXIO;
-
+	mss = kmalloc(sizeof *mss, M_DEVBUF, M_WAITOK | M_ZERO);
 	mss->io_rid = 0;
 	mss->conf_rid = -1;
 	mss->irq_rid = 0;
@@ -2227,10 +2220,7 @@ guspcm_attach(device_t dev)
 	int base, flags;
 	unsigned char ctl;
 
-	mss = (struct mss_info *)kmalloc(sizeof *mss, M_DEVBUF, M_NOWAIT | M_ZERO);
-	if (mss == NULL)
-		return ENOMEM;
-
+	mss = kmalloc(sizeof *mss, M_DEVBUF, M_WAITOK | M_ZERO);
 	mss->bd_flags = BD_F_MSS_OFFSET;
 	mss->io_rid = 2;
 	mss->conf_rid = 1;

@@ -177,6 +177,7 @@ bus/isa/x86_64/isa_dma.c			optional	isa
 
 platform/pc64/x86_64/nexus.c		standard
 
+platform/pc64/icu/icu.c                 standard
 platform/pc64/icu/icu_abi.c             standard
 platform/pc64/icu/icu_ipl.s             standard
 platform/pc64/icu/icu_vector.s          standard

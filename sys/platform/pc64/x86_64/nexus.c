@@ -48,6 +48,7 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/rman.h>
+#include <sys/interrupt.h>
 
 #include <machine/vmparam.h>
 #include <vm/vm.h>

@@ -47,7 +47,7 @@ CC_LINK		?=	${CC}
 # The system cc frontend is not subject to the path, e.g. when buildworld
 # is doing cross compiles it may still need the native compiler for things.
 #
-NXENV		?=	CCVER=${HOST_CCVER} BINUTILSVER=${HOST_BINUTILSVER} OBJFORMAT_PATH=/ PATH=/usr/bin:/bin:/usr/sbin:/sbin
+NXENV		?=	CCVER=${HOST_CCVER} BINUTILSVER=${HOST_BINUTILSVER} OBJFORMAT_PATH=/ PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/pkg/bin
 NXCC		?=	${NXENV} ${CC}
 NXCC_LINK	?=	${NXENV} ${CC_LINK}
 CFLAGS		?=	-O -pipe

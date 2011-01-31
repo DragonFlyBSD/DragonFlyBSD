@@ -41,6 +41,9 @@
 
 #include "thr_private.h"
 
+int _pthread_timedjoin_np(pthread_t pthread, void **thread_return,
+	const struct timespec *abstime);
+
 static int join_common(pthread_t, void **, const struct timespec *);
 
 static void backout_join(void *arg)

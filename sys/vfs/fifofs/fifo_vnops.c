@@ -278,7 +278,7 @@ fifo_read(struct vop_read_args *ap)
 	struct uio *uio = ap->a_uio;
 	struct vnode *vp = ap->a_vp;
 	struct socket *rso = vp->v_fifoinfo->fi_readsock;
-	int error, startresid;
+	int error;
 	int flags;
 
 #ifdef DIAGNOSTIC
@@ -291,7 +291,6 @@ fifo_read(struct vop_read_args *ap)
 		flags = MSG_FNONBLOCKING;
 	else
 		flags = 0;
-	startresid = uio->uio_resid;
 	vn_unlock(vp);
 	lwkt_gettoken(&vp->v_token);
 	error = soreceive(rso, NULL, uio, NULL, NULL, &flags);

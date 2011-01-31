@@ -46,6 +46,8 @@
 #ifndef _ARCH_ICU_ICU_H_
 #define	_ARCH_ICU_ICU_H_
 
+#define	ICU_IMR_OFFSET		1	/* IO_ICU{1,2} + 1 */
+
 /*
  * Interrupt enable bit numbers - in normal order of priority 
  * (which we change)

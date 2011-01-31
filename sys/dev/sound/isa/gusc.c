@@ -122,27 +122,24 @@ gusc_probe(device_t dev)
 	switch (logical_id) {
 	case LOGICALID_PCM:
 		s = "Gravis UltraSound Plug & Play PCM";
-		func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
-		if (func == NULL)
-			return (ENOMEM);
+		func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF,
+				M_WAITOK | M_ZERO);
 		func->func = SCF_PCM;
 		child = device_add_child(dev, "pcm", -1);
 		device_set_ivars(child, func);
 		break;
 	case LOGICALID_OPL:
 		s = "Gravis UltraSound Plug & Play OPL";
-		func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
-		if (func == NULL)
-			return (ENOMEM);
+		func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF,
+				M_WAITOK | M_ZERO);
 		func->func = SCF_SYNTH;
 		child = device_add_child(dev, "midi", -1);
 		device_set_ivars(child, func);
 		break;
 	case LOGICALID_MIDI:
 		s = "Gravis UltraSound Plug & Play MIDI";
-		func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
-		if (func == NULL)
-			return (ENOMEM);
+		func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF,
+				M_WAITOK | M_ZERO);
 		func->func = SCF_MIDI;
 		child = device_add_child(dev, "midi", -1);
 		device_set_ivars(child, func);
@@ -268,17 +265,15 @@ gusisa_probe(device_t dev)
 
 		/* We can support the CS4231 and MIDI devices.  */
 
-		func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
-		if (func == NULL)
-			return ENOMEM;
+		func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF,
+				M_WAITOK | M_ZERO);
 		func->func = SCF_MIDI;
 		child = device_add_child(dev, "midi", -1);
 		device_set_ivars(child, func);
 
-		func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
-		if (func == NULL)
-			kprintf("xxx: gus pcm not attached, out of memory\n");
-		else {
+		func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF,
+				M_WAITOK | M_ZERO);
+		{
 			func->func = SCF_PCM;
 			child = device_add_child(dev, "pcm", -1);
 			device_set_ivars(child, func);

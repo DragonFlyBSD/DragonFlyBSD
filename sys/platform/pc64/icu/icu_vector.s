@@ -43,14 +43,12 @@
 #include <machine/psl.h>
 #include <machine/trap.h>
 #include <machine/segments.h>
-
 #include <machine_base/icu/icu.h>
+#include <machine_base/icu/icu_ipl.h>
+
 #include <bus/isa/i386/isa.h>
 
 #include "assym.s"
-#include "icu_ipl.h"
-
-#define ICU_IMR_OFFSET		1	/* IO_ICU{1,2} + 1 */
 
 #define	ICU_EOI			0x20	/* XXX - define elsewhere */
 

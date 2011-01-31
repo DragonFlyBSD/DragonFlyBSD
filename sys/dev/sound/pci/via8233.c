@@ -875,10 +875,7 @@ via_attach(device_t dev)
 	int i, via_dxs_disabled, via_dxs_src, via_dxs_chnum, via_sgd_chnum;
 	uint32_t revid;
 
-	if ((via = kmalloc(sizeof *via, M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
-		device_printf(dev, "cannot allocate softc\n");
-		return ENXIO;
-	}
+	via = kmalloc(sizeof *via, M_DEVBUF, M_WAITOK | M_ZERO);
 	via->lock = snd_mtxcreate(device_get_nameunit(dev), "sound softc");
 
 	pci_set_powerstate(dev, PCI_POWERSTATE_D0);

@@ -89,8 +89,6 @@ SYSCTL_INT(_hw_usb_ukbd, OID_AUTO, debug, CTLFLAG_RW,
 #define DPRINTFN(n,x)
 #endif
 
-#define UPROTO_BOOT_KEYBOARD 1
-
 #define NKEYCODE 6
 
 struct ukbd_data {
@@ -1422,7 +1420,7 @@ probe_keyboard(struct usb_attach_arg *uaa, int flags)
 	if (id
 	    && id->bInterfaceClass == UICLASS_HID
 	    && id->bInterfaceSubClass == UISUBCLASS_BOOT
-	    && id->bInterfaceProtocol == UPROTO_BOOT_KEYBOARD)
+	    && id->bInterfaceProtocol == UIPROTO_BOOT_KEYBOARD)
 		return 0;	/* found it */
 
 	return EINVAL;

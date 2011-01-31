@@ -446,7 +446,7 @@ getsstdin(option, name, note, buf)
 	   c = getcstdin(),  !feof(stdin);
 	   bufrealloc(buf, i+1),  p = buf->string,  p[i++] = c
 	)
-		if (c == '\n')
+		if (c == '\n') {
 			if (i  &&  p[i-1]=='.'  &&  (i==1 || p[i-2]=='\n')) {
 				/* Remove trailing '.'.  */
 				--i;
@@ -455,6 +455,7 @@ getsstdin(option, name, note, buf)
 				aputs(">> ", stderr);
 				eflush();
 			}
+		}
 	return cleanlogmsg(p, i);
 }
 

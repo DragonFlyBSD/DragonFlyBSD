@@ -172,9 +172,9 @@ dmtc_init_mpipe(void)
 	kprintf("dm_target_crypt: Setting min/max mpipe buffers: %d/%d\n", 2, nmax);
 
 	mpipe_init(&dmtc_write_mpipe, M_DMCRYPT, DMTC_BUF_SIZE_WRITE,
-	    2, nmax, MPF_NOZERO, NULL, NULL, NULL);
+		   2, nmax, MPF_NOZERO | MPF_CALLBACK, NULL, NULL, NULL);
 	mpipe_init(&dmtc_read_mpipe, M_DMCRYPT, DMTC_BUF_SIZE_READ,
-	    2, nmax, MPF_NOZERO, NULL, NULL, NULL);
+		   2, nmax, MPF_NOZERO | MPF_CALLBACK, NULL, NULL, NULL);
 }
 
 static void
@@ -852,6 +852,15 @@ dmtc_bio_read_done(struct bio *bio)
  * STRATEGY READ PATH PART 2/3
  */
 static void
+dmtc_crypto_read_retry(void *arg1, void *arg2)
+{
+	dm_target_crypt_config_t *priv = arg1;
+	struct bio *bio = arg2;
+
+	dmtc_crypto_read_start(priv, bio);
+}
+
+static void
 dmtc_crypto_read_start(dm_target_crypt_config_t *priv, struct bio *bio)
 {
 	struct dmtc_helper *dmtc;
@@ -881,26 +890,16 @@ dmtc_crypto_read_start(dm_target_crypt_config_t *priv, struct bio *bio)
 	 * read already completed and threw crypted data into the buffer
 	 * cache buffer.  Disable for now.
 	 */
-#if 0
-	if (bio->bio_buf->b_flags & B_HASBOGUS) {
-		space = kmalloc(sizeof(struct dmtc_helper) + sz + bytes,
-				M_DMCRYPT, M_WAITOK);
-		dmtc = (struct dmtc_helper *)space;
-		dmtc->free_addr = space;
-		space += sizeof(struct dmtc_helper);
-		dmtc->orig_buf = NULL;
-		dmtc->data_buf = space + sz;
-		memcpy(dmtc->data_buf, bio->bio_buf->b_data, bytes);
-	} else
-#endif
-	{
-		space = mpipe_alloc_waitok(&dmtc_read_mpipe);
-		dmtc = (struct dmtc_helper *)space;
-		dmtc->free_addr = space;
-		space += sizeof(struct dmtc_helper);
-		dmtc->orig_buf = NULL;
-		dmtc->data_buf = bio->bio_buf->b_data;
-	}
+	space = mpipe_alloc_callback(&dmtc_read_mpipe,
+				     dmtc_crypto_read_retry, priv, bio);
+	if (space == NULL)
+		return;
+
+	dmtc = (struct dmtc_helper *)space;
+	dmtc->free_addr = space;
+	space += sizeof(struct dmtc_helper);
+	dmtc->orig_buf = NULL;
+	dmtc->data_buf = bio->bio_buf->b_data;
 	bio->bio_caller_info2.ptr = dmtc;
 	bio->bio_buf->b_error = 0;
 
@@ -1022,6 +1021,16 @@ dmtc_crypto_cb_read_done(struct cryptop *crp)
 /*
  * STRATEGY WRITE PATH PART 1/3
  */
+
+static void
+dmtc_crypto_write_retry(void *arg1, void *arg2)
+{
+	dm_target_crypt_config_t *priv = arg1;
+	struct bio *bio = arg2;
+
+	dmtc_crypto_write_start(priv, bio);
+}
+
 static void
 dmtc_crypto_write_start(dm_target_crypt_config_t *priv, struct bio *bio)
 {
@@ -1047,7 +1056,11 @@ dmtc_crypto_write_start(dm_target_crypt_config_t *priv, struct bio *bio)
 	/*
 	 * For writes and reads with bogus page don't decrypt in place.
 	 */
-	space = mpipe_alloc_waitok(&dmtc_write_mpipe);
+	space = mpipe_alloc_callback(&dmtc_write_mpipe,
+				     dmtc_crypto_write_retry, priv, bio);
+	if (space == NULL)
+		return;
+
 	dmtc = (struct dmtc_helper *)space;
 	dmtc->free_addr = space;
 	space += sizeof(struct dmtc_helper);

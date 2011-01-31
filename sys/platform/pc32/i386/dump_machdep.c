@@ -182,6 +182,7 @@ cb_dumpdata(struct md_pa *mdp, int seqnr, void *arg)
 			a = pa + i * PAGE_SIZE;
 			va = pmap_kenter_temporary(trunc_page(a), i);
 		}
+		smp_invltlb();
 		error = dev_ddump(di->priv, va, 0, dumplo, sz);
 		if (error)
 			break;
