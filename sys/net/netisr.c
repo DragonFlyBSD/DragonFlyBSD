@@ -74,8 +74,12 @@ struct netmsg_rollup {
 struct netmsg_barrier {
 	struct netmsg_base	base;
 	volatile cpumask_t	*br_cpumask;
-	volatile int		br_done;
+	volatile uint32_t	br_done;
 };
+
+#define NETISR_BR_NOTDONE	0
+#define NETISR_BR_DONE		1
+#define NETISR_BR_WAITDONE	2
 
 struct netisr_barrier {
 	struct netmsg_barrier	*br_msgs[MAXCPU];
@@ -561,9 +565,13 @@ netisr_barrier_dispatch(netmsg_t nmsg)
 	if (*msg->br_cpumask == 0)
 		wakeup(msg->br_cpumask);
 
-	tsleep_interlock(&msg->br_done, 0);
-	if (!msg->br_done)
-		tsleep(&msg->br_done, PINTERLOCKED, "nbrdsp", 0);
+	while (msg->br_done == NETISR_BR_NOTDONE) {
+		cpu_ccfence();
+		tsleep_interlock(&msg->br_done, 0);
+		if (atomic_cmpset_int(&msg->br_done,
+		    NETISR_BR_NOTDONE, NETISR_BR_WAITDONE))
+			tsleep(&msg->br_done, PINTERLOCKED, "nbrdsp", 0);
+	}
 
 	lwkt_replymsg(&nmsg->lmsg, 0);
 }
@@ -603,7 +611,7 @@ netisr_barrier_set(struct netisr_barrier *br)
 		netmsg_init(&msg->base, NULL, &netisr_afree_rport,
 			    MSGF_PRIORITY, netisr_barrier_dispatch);
 		msg->br_cpumask = &other_cpumask;
-		msg->br_done = 0;
+		msg->br_done = NETISR_BR_NOTDONE;
 
 		KKASSERT(br->br_msgs[i] == NULL);
 		br->br_msgs[i] = msg;
@@ -643,9 +651,13 @@ netisr_barrier_rem(struct netisr_barrier *br)
 		if (i == cur_cpuid)
 			continue;
 
-		msg->br_done = 1;
-		cpu_mfence();
-		wakeup(&msg->br_done);
+		for (;;) {
+			if (atomic_cmpset_int(&msg->br_done,
+			    NETISR_BR_WAITDONE, NETISR_BR_DONE)) {
+				wakeup(&msg->br_done);
+				break;
+			}
+		}
 	}
 #endif
 	br->br_isset = 0;
