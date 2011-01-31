@@ -390,20 +390,22 @@ tcp_usr_listen(netmsg_t msg)
 	tp->tt_msg = NULL; /* Catch any invalid timer usage */
 
 #ifdef SMP
-	/*
-	 * We have to set the flag because we can't have other cpus
-	 * messing with our inp's flags.
-	 */
-	inp->inp_flags |= INP_WILDCARD_MP;
+	if (ncpus > 1) {
+		/*
+		 * We have to set the flag because we can't have other cpus
+		 * messing with our inp's flags.
+		 */
+		inp->inp_flags |= INP_WILDCARD_MP;
 
-	KKASSERT(so->so_port == cpu_portfn(0));
-	KKASSERT(&curthread->td_msgport == cpu_portfn(0));
-	KKASSERT(inp->inp_pcbinfo == &tcbinfo[0]);
+		KKASSERT(so->so_port == cpu_portfn(0));
+		KKASSERT(&curthread->td_msgport == cpu_portfn(0));
+		KKASSERT(inp->inp_pcbinfo == &tcbinfo[0]);
 
-	netmsg_init(&nm.base, NULL, &curthread->td_msgport,
-		    MSGF_PRIORITY, in_pcbinswildcardhash_handler);
-	nm.nm_inp = inp;
-	lwkt_domsg(cpu_portfn(1), &nm.base.lmsg, 0);
+		netmsg_init(&nm.base, NULL, &curthread->td_msgport,
+			    MSGF_PRIORITY, in_pcbinswildcardhash_handler);
+		nm.nm_inp = inp;
+		lwkt_domsg(cpu_portfn(1), &nm.base.lmsg, 0);
+	}
 #endif
 	in_pcbinswildcardhash(inp);
 	COMMON_END(PRU_LISTEN);
@@ -439,20 +441,22 @@ tcp6_usr_listen(netmsg_t msg)
 	tp->tt_msg = NULL; /* Catch any invalid timer usage */
 
 #ifdef SMP
-	/*
-	 * We have to set the flag because we can't have other cpus
-	 * messing with our inp's flags.
-	 */
-	inp->inp_flags |= INP_WILDCARD_MP;
+	if (ncpus > 1) {
+		/*
+		 * We have to set the flag because we can't have other cpus
+		 * messing with our inp's flags.
+		 */
+		inp->inp_flags |= INP_WILDCARD_MP;
 
-	KKASSERT(so->so_port == cpu_portfn(0));
-	KKASSERT(&curthread->td_msgport == cpu_portfn(0));
-	KKASSERT(inp->inp_pcbinfo == &tcbinfo[0]);
+		KKASSERT(so->so_port == cpu_portfn(0));
+		KKASSERT(&curthread->td_msgport == cpu_portfn(0));
+		KKASSERT(inp->inp_pcbinfo == &tcbinfo[0]);
 
-	netmsg_init(&nm.base, NULL, &curthread->td_msgport,
-		    MSGF_PRIORITY, in_pcbinswildcardhash_handler);
-	nm.nm_inp = inp;
-	lwkt_domsg(cpu_portfn(1), &nm.base.lmsg, 0);
+		netmsg_init(&nm.base, NULL, &curthread->td_msgport,
+			    MSGF_PRIORITY, in_pcbinswildcardhash_handler);
+		nm.nm_inp = inp;
+		lwkt_domsg(cpu_portfn(1), &nm.base.lmsg, 0);
+	}
 #endif
 	in_pcbinswildcardhash(inp);
 	COMMON_END(PRU_LISTEN);

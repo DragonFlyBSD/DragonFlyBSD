@@ -801,6 +801,7 @@ tcp_close(struct tcpcb *tp)
 	 * - A wildcard inp's hash is replicated for each protocol thread.
 	 * - Syncache for this inp grows independently in each protocol
 	 *   thread.
+	 * - There is more than one cpu
 	 *
 	 * We have to chain a message to the rest of the protocol threads
 	 * to cleanup the wildcard hash and the syncache.  The cleanup
