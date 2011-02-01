@@ -160,9 +160,9 @@ static const VAR var[] = {
 	{"rlink", "RLINK", NULL, 0, pvar, NULL, 8, POFF(p_lwp.lwp_procq.tqe_prev), KPTR, "lx",
 		NULL},
 #endif
-	{"rss", "RSS", NULL, 0, p_rssize, NULL, 4, 0, 0, NULL, NULL},
+	{"rss", "RSS", NULL, 0, p_rssize, NULL, 7, 0, 0, NULL, NULL},
 	{"rssize", "", "rsz", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
-	{"rsz", "RSZ", NULL, 0, rssize, NULL, 4, 0, 0, NULL, NULL},
+	{"rsz", "RSZ", NULL, 0, rssize, NULL, 7, 0, 0, NULL, NULL},
 	{"rtprio", "RTPRIO", NULL, 0, rtprior, NULL, 7, 0, 0, NULL, NULL},
 	{"ruid", "RUID", NULL, 0, pvar, NULL, UIDLEN, POFF(ruid),
 		UINT, UIDFMT, NULL},
@@ -179,7 +179,7 @@ static const VAR var[] = {
 	{"sl", "SL", NULL, 0, lpvar, NULL, 3, LPOFF(slptime), UINT, "d", NULL},
 	{"start", "STARTED", NULL, LJUST|USER, started, NULL, 7, 0, 0, NULL, NULL},
 	{"stat", "", "state", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
-	{"state", "STAT", NULL, 0, state, NULL, 4, 0, 0, NULL, NULL},
+	{"state", "STAT", NULL, 0, state, NULL, 7, 0, 0, NULL, NULL},
 	{"svgid", "SVGID", NULL, 0, pvar, NULL, UIDLEN, POFF(svgid), UINT,
 		UIDFMT, NULL},
 	{"svuid", "SVUID", NULL, 0, pvar, NULL, UIDLEN, POFF(svuid), UINT,
@@ -200,9 +200,9 @@ static const VAR var[] = {
 		UINT, UIDFMT, NULL},
 	{"user", "USER", NULL, LJUST|DSIZ, uname, s_uname, USERLEN, 0, 0, NULL, NULL},
 	{"vsize", "", "vsz", 0, 0, NULL, 0, 0, 0, NULL, NULL},
-	{"vsz", "VSZ", NULL, 0, vsize, NULL, 5, 0, 0, NULL, NULL},
+	{"vsz", "VSZ", NULL, 0, vsize, NULL, 7, 0, 0, NULL, NULL},
 	{"wchan", "WCHAN", NULL, LJUST, wchan, NULL, 6, 0, 0, NULL, NULL},
-	{"xstat", "XSTAT", NULL, 0, pvar, NULL, 4, POFF(exitstat), USHORT, "x", NULL},
+	{"xstat", "XSTAT", NULL, 0, pvar, NULL, 7, POFF(exitstat), USHORT, "x", NULL},
 	{"", NULL, NULL, 0, NULL, NULL, 0, 0, 0, NULL, NULL},
 };
 
