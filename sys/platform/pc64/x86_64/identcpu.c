@@ -53,7 +53,6 @@
 #include <machine/clock.h>
 #include <machine/cputypes.h>
 #include <machine/frame.h>
-#include <machine_base/isa/intr_machdep.h>
 #include <machine/segments.h>
 #include <machine/specialreg.h>
 #include <machine/md_var.h>

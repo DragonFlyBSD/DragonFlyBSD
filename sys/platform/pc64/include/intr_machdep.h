@@ -35,8 +35,8 @@
  * $DragonFly: src/sys/platform/pc64/isa/intr_machdep.h,v 1.1 2008/08/29 17:07:19 dillon Exp $
  */
 
-#ifndef _ARCH_ISA_INTR_MACHDEP_H_
-#define	_ARCH_ISA_INTR_MACHDEP_H_
+#ifndef _ARCH_INTR_MACHDEP_H_
+#define	_ARCH_INTR_MACHDEP_H_
 
 #ifndef LOCORE
 #ifndef _SYS_TYPES_H_
@@ -157,11 +157,8 @@ inthand_t
 	Xipiq;		/* handle lwkt_send_ipiq() requests */
 #endif /* SMP */
 
-void	isa_defaultirq(void);
-int	isa_nmi(int);
-
 #endif /* LOCORE */
 
 #endif /* _KERNEL */
 
-#endif /* !_ARCH_ISA_INTR_MACHDEP_H_ */
+#endif /* !_ARCH_INTR_MACHDEP_H_ */

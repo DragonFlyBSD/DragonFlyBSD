@@ -34,7 +34,6 @@
 #include "opt_ddb.h"
 
 #include <machine/asmacros.h>
-#include <machine_base/isa/intr_machdep.h>
 #include <machine/pmap.h>
 
 #include "assym.s"
