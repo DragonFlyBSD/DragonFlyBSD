@@ -65,8 +65,8 @@
 #include <machine/pmap_inval.h>
 
 #include <machine/md_var.h>		/* setidt() */
-#include <machine_base/icu/icu.h>		/* IPIs */
-#include <machine_base/isa/intr_machdep.h>	/* IPIs */
+#include <machine_base/icu/icu.h>	/* IPIs */
+#include <machine/intr_machdep.h>	/* IPIs */
 
 #define FIXUP_EXTRA_APIC_INTS	8	/* additional entries we may create */
 

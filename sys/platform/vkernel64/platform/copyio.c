@@ -125,7 +125,7 @@ copyin(const void *udaddr, void *kaddr, size_t len)
 {
 	struct vmspace *vm = curproc->p_vmspace;
 	struct lwbuf *lwb;
-	struct lwbuf_cache lwb_cache;
+	struct lwbuf lwb_cache;
 	vm_page_t m;
 	int error;
 	size_t n;

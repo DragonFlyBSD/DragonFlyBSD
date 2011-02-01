@@ -48,7 +48,7 @@
 
 #include <machine/segments.h>
 #include <machine/md_var.h>
-#include <machine_base/isa/intr_machdep.h>
+#include <machine/intr_machdep.h>
 #include <machine/globaldata.h>
 #include <machine/smp.h>
 

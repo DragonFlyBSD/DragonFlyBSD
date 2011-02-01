@@ -88,6 +88,7 @@
 
 #include <sys/thread2.h>
 #include <sys/socketvar2.h>
+#include <sys/serialize.h>
 
 #include <machine/stdarg.h>
 
@@ -146,6 +147,9 @@ SYSCTL_INT(_net_inet_udp, OID_AUTO, strict_mcast_mship, CTLFLAG_RW,
 
 struct	inpcbinfo udbinfo;
 
+static struct netisr_barrier *udbinfo_br;
+static struct lwkt_serialize udbinfo_slize = LWKT_SERIALIZE_INITIALIZER;
+
 #ifndef UDBHASHSIZE
 #define UDBHASHSIZE 16
 #endif
@@ -190,6 +194,8 @@ udp_init(void)
 	udbinfo.wildcardhashbase = hashinit(UDBHASHSIZE, M_PCB,
 					    &udbinfo.wildcardhashmask);
 	udbinfo.ipi_size = sizeof(struct inpcb);
+
+	udbinfo_br = netisr_barrier_create();
 }
 
 /*
@@ -351,8 +357,7 @@ udp_input(struct mbuf **mp, int *offp, int proto)
 		udp_in6.uin6_init_done = udp_ip6.uip6_init_done = 0;
 #endif
 		LIST_FOREACH(inp, &udbinfo.pcblisthead, inp_list) {
-			if (inp->inp_flags & INP_PLACEMARKER)
-				continue;
+			KKASSERT((inp->inp_flags & INP_PLACEMARKER) == 0);
 #ifdef INET6
 			if (!(inp->inp_vflag & INP_IPV4))
 				continue;
@@ -664,6 +669,8 @@ udp_ctlinput(netmsg_t msg)
 	struct in_addr faddr;
 	struct inpcb *inp;
 
+	KKASSERT(&curthread->td_msgport == cpu_portfn(0));
+
 	faddr = ((struct sockaddr_in *)sa)->sin_addr;
 	if (sa->sa_family != AF_INET || faddr.s_addr == INADDR_ANY)
 		goto done;
@@ -707,13 +714,42 @@ done:
 	lwkt_replymsg(&msg->lmsg, 0);
 }
 
+static int
+udp_pcblist(SYSCTL_HANDLER_ARGS)
+{
+	struct xinpcb *xi;
+	int error, nxi, i;
+
+	udbinfo_lock();
+	error = in_pcblist_global_nomarker(oidp, arg1, arg2, req, &xi, &nxi);
+	udbinfo_unlock();
+
+	if (error) {
+		KKASSERT(xi == NULL);
+		return error;
+	}
+	if (nxi == 0) {
+		KKASSERT(xi == NULL);
+		return 0;
+	}
+
+	for (i = 0; i < nxi; ++i) {
+		error = SYSCTL_OUT(req, &xi[i], sizeof(xi[i]));
+		if (error)
+			break;
+	}
+	kfree(xi, M_TEMP);
+
+	return error;
+}
 SYSCTL_PROC(_net_inet_udp, UDPCTL_PCBLIST, pcblist, CTLFLAG_RD, &udbinfo, 0,
-	    in_pcblist_global, "S,xinpcb", "List of active UDP sockets");
+	    udp_pcblist, "S,xinpcb", "List of active UDP sockets");
 
 static int
 udp_getcred(SYSCTL_HANDLER_ARGS)
 {
 	struct sockaddr_in addrs[2];
+	struct ucred cred0, *cred = NULL;
 	struct inpcb *inp;
 	int error;
 
@@ -723,15 +759,24 @@ udp_getcred(SYSCTL_HANDLER_ARGS)
 	error = SYSCTL_IN(req, addrs, sizeof addrs);
 	if (error)
 		return (error);
+
+	udbinfo_lock();
 	inp = in_pcblookup_hash(&udbinfo, addrs[1].sin_addr, addrs[1].sin_port,
 				addrs[0].sin_addr, addrs[0].sin_port, 1, NULL);
 	if (inp == NULL || inp->inp_socket == NULL) {
 		error = ENOENT;
-		goto out;
+	} else {
+		if (inp->inp_socket->so_cred != NULL) {
+			cred0 = *(inp->inp_socket->so_cred);
+			cred = &cred0;
+		}
 	}
-	error = SYSCTL_OUT(req, inp->inp_socket->so_cred, sizeof(struct ucred));
-out:
-	return (error);
+	udbinfo_unlock();
+
+	if (error)
+		return error;
+
+	return SYSCTL_OUT(req, cred, sizeof(struct ucred));
 }
 
 SYSCTL_PROC(_net_inet_udp, OID_AUTO, getcred, CTLTYPE_OPAQUE|CTLFLAG_RW,
@@ -755,7 +800,10 @@ udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
 		error = in_pcbbind(inp, NULL, td);
 		if (error)
 			goto release;
+
+		udbinfo_barrier_set();
 		in_pcbinswildcardhash(inp);
+		udbinfo_barrier_rem();
 		lport_any = 1;
 	}
 
@@ -866,11 +914,15 @@ udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
 	if (lport_any) {
 		if (udp_addrcpu(inp->inp_faddr.s_addr, inp->inp_fport,
 		    inp->inp_laddr.s_addr, inp->inp_lport) != mycpuid) {
+#ifdef notyet
 			struct route *ro = &inp->inp_route;
 
 			if (ro->ro_rt != NULL)
 				RTFREE(ro->ro_rt);
 			bzero(ro, sizeof(*ro));
+#else
+			panic("UDP activity should only be in netisr0");
+#endif
 		}
 	}
 	return (error);
@@ -906,10 +958,15 @@ udp_abort(netmsg_t msg)
 	struct inpcb *inp;
 	int error;
 
+	KKASSERT(&curthread->td_msgport == cpu_portfn(0));
+
 	inp = so->so_pcb;
 	if (inp) {
 		soisdisconnected(so);
+
+		udbinfo_barrier_set();
 		in_pcbdetach(inp);
+		udbinfo_barrier_rem();
 		error = 0;
 	} else {
 		error = EINVAL;
@@ -925,6 +982,8 @@ udp_attach(netmsg_t msg)
 	struct inpcb *inp;
 	int error;
 
+	KKASSERT(&curthread->td_msgport == cpu_portfn(0));
+
 	inp = so->so_pcb;
 	if (inp != NULL) {
 		error = EINVAL;
@@ -933,7 +992,11 @@ udp_attach(netmsg_t msg)
 	error = soreserve(so, udp_sendspace, udp_recvspace, ai->sb_rlimit);
 	if (error)
 		goto out;
+
+	udbinfo_barrier_set();
 	error = in_pcballoc(so, &udbinfo);
+	udbinfo_barrier_rem();
+
 	if (error)
 		goto out;
 
@@ -966,7 +1029,10 @@ udp_bind(netmsg_t msg)
 		if (error == 0) {
 			if (sin->sin_addr.s_addr != INADDR_ANY)
 				inp->inp_flags |= INP_WASBOUND_NOTANY;
+
+			udbinfo_barrier_set();
 			in_pcbinswildcardhash(inp);
+			udbinfo_barrier_rem();
 		}
 	} else {
 		error = EINVAL;
@@ -986,6 +1052,8 @@ udp_connect(netmsg_t msg)
 	lwkt_port_t port;
 	int error;
 
+	KKASSERT(&curthread->td_msgport == cpu_portfn(0));
+
 	inp = so->so_pcb;
 	if (inp == NULL) {
 		error = EINVAL;
@@ -993,8 +1061,11 @@ udp_connect(netmsg_t msg)
 	}
 
 	if (msg->connect.nm_reconnect & NMSG_RECONNECT_RECONNECT) {
+		panic("UDP does not support RECONNECT\n");
+#ifdef notyet
 		msg->connect.nm_reconnect &= ~NMSG_RECONNECT_RECONNECT;
 		in_pcblink(inp, &udbinfo);
+#endif
 	}
 
 	if (inp->inp_faddr.s_addr != INADDR_ANY) {
@@ -1029,10 +1100,8 @@ udp_connect(netmsg_t msg)
 			    inp->inp_laddr.s_addr, inp->inp_lport);
 #ifdef SMP
 	if (port != &curthread->td_msgport) {
+#ifdef notyet
 		struct route *ro = &inp->inp_route;
-
-		panic("UDP should only be in one protocol thread %p %p",
-			port, &curthread->td_msgport);
 
 		/*
 		 * in_pcbladdr() may have allocated a route entry for us
@@ -1057,6 +1126,9 @@ udp_connect(netmsg_t msg)
 		lwkt_forwardmsg(port, &msg->connect.base.lmsg);
 		/* msg invalid now */
 		return;
+#else
+		panic("UDP activity should only be in netisr0");
+#endif
 	}
 #endif
 	KKASSERT(port == &curthread->td_msgport);
@@ -1072,6 +1144,8 @@ udp_connect_oncpu(struct socket *so, struct thread *td,
 {
 	struct inpcb *inp;
 	int error;
+
+	udbinfo_barrier_set();
 
 	inp = so->so_pcb;
 	if (inp->inp_flags & INP_WILDCARD)
@@ -1096,6 +1170,8 @@ udp_connect_oncpu(struct socket *so, struct thread *td,
 			inp->inp_laddr.s_addr = INADDR_ANY;
 		in_pcbinswildcardhash(inp);
 	}
+
+	udbinfo_barrier_rem();
 	return error;
 }
 
@@ -1106,9 +1182,13 @@ udp_detach(netmsg_t msg)
 	struct inpcb *inp;
 	int error;
 
+	KKASSERT(&curthread->td_msgport == cpu_portfn(0));
+
 	inp = so->so_pcb;
 	if (inp) {
+		udbinfo_barrier_set();
 		in_pcbdetach(inp);
+		udbinfo_barrier_rem();
 		error = 0;
 	} else {
 		error = EINVAL;
@@ -1124,6 +1204,8 @@ udp_disconnect(netmsg_t msg)
 	struct inpcb *inp;
 	int error;
 
+	KKASSERT(&curthread->td_msgport == cpu_portfn(0));
+
 	inp = so->so_pcb;
 	if (inp == NULL) {
 		error = EINVAL;
@@ -1135,7 +1217,11 @@ udp_disconnect(netmsg_t msg)
 	}
 
 	soreference(so);
+
+	udbinfo_barrier_set();
 	in_pcbdisconnect(inp);
+	udbinfo_barrier_rem();
+
 	soclrstate(so, SS_ISCONNECTED);		/* XXX */
 	sofree(so);
 
@@ -1154,6 +1240,8 @@ udp_send(netmsg_t msg)
 	struct socket *so = msg->send.base.nm_so;
 	struct inpcb *inp;
 	int error;
+
+	KKASSERT(&curthread->td_msgport == cpu_portfn(0));
 
 	inp = so->so_pcb;
 	if (inp) {
@@ -1177,6 +1265,8 @@ udp_shutdown(netmsg_t msg)
 	struct inpcb *inp;
 	int error;
 
+	KKASSERT(&curthread->td_msgport == cpu_portfn(0));
+
 	inp = so->so_pcb;
 	if (inp) {
 		socantsendmore(so);
@@ -1185,6 +1275,32 @@ udp_shutdown(netmsg_t msg)
 		error = EINVAL;
 	}
 	lwkt_replymsg(&msg->shutdown.base.lmsg, error);
+}
+
+void
+udbinfo_lock(void)
+{
+	lwkt_serialize_enter(&udbinfo_slize);
+}
+
+void
+udbinfo_unlock(void)
+{
+	lwkt_serialize_exit(&udbinfo_slize);
+}
+
+void
+udbinfo_barrier_set(void)
+{
+	netisr_barrier_set(udbinfo_br);
+	udbinfo_lock();
+}
+
+void
+udbinfo_barrier_rem(void)
+{
+	udbinfo_unlock();
+	netisr_barrier_rem(udbinfo_br);
 }
 
 struct pr_usrreqs udp_usrreqs = {

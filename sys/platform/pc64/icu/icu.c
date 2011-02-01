@@ -53,7 +53,7 @@
 #include <bus/isa/isareg.h>
 #include <cpu/cpufunc.h>
 #include <machine/smp.h>
-#include <machine_base/isa/intr_machdep.h>
+#include <machine/intr_machdep.h>
 #include <machine_base/icu/icu.h>
 #include <machine_base/icu/icu_var.h>
 

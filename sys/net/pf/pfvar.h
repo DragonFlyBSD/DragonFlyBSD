@@ -1969,6 +1969,7 @@ struct pf_fragment {
 
 #endif /* _KERNEL */
 
+extern struct radix_node_head	*pf_maskhead;
 extern struct pf_anchor_global  pf_anchors;
 extern struct pf_anchor        pf_main_anchor;
 #define pf_main_ruleset	pf_main_anchor.ruleset

@@ -857,7 +857,7 @@ skip:
 	 * WARNING!  We can't call splz_check() or anything else here as
 	 *	     it could cause a deadlock.
 	 */
-#ifdef __amd64__
+#if defined(INVARIANTS) && defined(__amd64__)
 	if ((read_rflags() & PSL_I) == 0) {
 		cpu_enable_intr();
 		panic("lwkt_switch() called with interrupts disabled");

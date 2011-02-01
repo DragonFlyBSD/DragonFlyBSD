@@ -18,7 +18,7 @@
 #include "apicreg.h"
 #include "apic_ipl.h"
 #include <machine/smp.h>
-#include <machine_base/isa/intr_machdep.h>
+#include <machine/intr_machdep.h>
 
 /* convert an absolute IRQ# into bitmask */
 #define IRQ_LBIT(irq_num)	(1 << ((irq_num) & 0x1f))

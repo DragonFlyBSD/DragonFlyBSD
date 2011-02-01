@@ -222,6 +222,7 @@ platform/pc32/i386/vm_machdep.c		standard
 platform/pc32/i386/cpufreq_machdep.c	standard
 platform/pc32/isa/asc.c			optional	asc
 platform/pc32/isa/clock.c		standard nowerror
+platform/pc32/isa/elcr.c		standard
 dev/video/ctx/ctx.c			optional	ctx
 dev/serial/cy/cy.c			optional	cy
 dev/netif/elink_layer/elink.c		optional	ep
@@ -234,7 +235,7 @@ dev/netif/el/if_el.c			optional	el
 dev/netif/le/if_le.c			optional	le
 dev/netif/rdp/if_rdp.c			optional nowerror	rdp
 dev/netif/wl/if_wl.c			optional	wl
-platform/pc32/isa/intr_machdep.c	standard
+platform/pc32/isa/isa_intr.c		standard
 bus/isa/i386/isa.c			optional	isa
 bus/isa/i386/isa_compat.c		optional nowerror	isa compat_oldisa
 bus/isa/i386/isa_dma.c			optional	isa

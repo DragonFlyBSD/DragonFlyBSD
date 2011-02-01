@@ -84,13 +84,12 @@
 #include <machine/segments.h>
 #include <machine/smp.h>
 #include <machine/specialreg.h>
+#include <machine/intr_machdep.h>
 
 #include <machine_base/icu/icu.h>
 #include <bus/isa/isa.h>
 #include <bus/isa/rtc.h>
 #include <machine_base/isa/timerreg.h>
-
-#include <machine_base/isa/intr_machdep.h>
 
 #ifdef SMP /* APIC-IO */
 /* The interrupt triggered by the 8254 (timer) chip */

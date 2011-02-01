@@ -153,9 +153,6 @@ inthand_t
 	Xipiq;		/* handle lwkt_send_ipiq() requests */
 #endif /* SMP */
 
-void	isa_defaultirq(void);
-int	isa_nmi(int);
-
 #endif /* LOCORE */
 
 #endif /* _KERNEL */

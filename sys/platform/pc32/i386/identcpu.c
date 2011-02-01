@@ -52,8 +52,7 @@
 #include <machine/segments.h>
 #include <machine/specialreg.h>
 #include <machine/md_var.h>
-
-#include <machine_base/isa/intr_machdep.h>
+#include <machine/intr_machdep.h>
 
 #define	IDENTBLUE_CYRIX486	0
 #define	IDENTBLUE_IBMCPU	1

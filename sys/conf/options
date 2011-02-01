@@ -687,3 +687,5 @@ TDMA_TXRATE_11NA_DEFAULT	opt_tdma.h
 TDMA_TXRATE_11NG_DEFAULT	opt_tdma.h
 
 PANIC_REBOOT_WAIT_TIME	opt_panic.h
+
+MCLSHIFT		opt_global.h

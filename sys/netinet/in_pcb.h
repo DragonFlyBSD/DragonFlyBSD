@@ -402,6 +402,7 @@ extern int	ipport_hifirstauto;
 extern int	ipport_hilastauto;
 
 union netmsg;
+struct xinpcb;
 
 void	in_pcbpurgeif0 (struct inpcb *, struct ifnet *);
 void	in_losing (struct inpcb *);
@@ -441,6 +442,8 @@ void	in_pcbremlists (struct inpcb *inp);
 int	prison_xinpcb (struct thread *p, struct inpcb *inp);
 
 int	in_pcblist_global(SYSCTL_HANDLER_ARGS);
+int	in_pcblist_global_nomarker(SYSCTL_HANDLER_ARGS,
+	    struct xinpcb **, int *);
 #endif /* _KERNEL */
 
 #endif /* !_NETINET_IN_PCB_H_ */

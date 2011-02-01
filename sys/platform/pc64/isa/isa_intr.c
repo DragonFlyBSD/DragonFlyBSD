@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 1991 The Regents of the University of California.
+ * Copyright (c) 2008 The DragonFly Project.
  * All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
@@ -35,7 +36,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.48 2008/08/02 01:14:43 dillon Exp $
+ * $DragonFly: src/sys/platform/pc64/isa/intr_machdep.c,v 1.1 2008/08/29 17:07:19 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -53,7 +54,7 @@
 #include <bus/isa/isavar.h>
 
 #include <machine_base/icu/icu_var.h>
-#include <machine_base/isa/intr_machdep.h>
+#include <machine_base/isa/isa_intr.h>
 
 #define NMI_PARITY (1 << 7)
 #define NMI_IOCHAN (1 << 6)

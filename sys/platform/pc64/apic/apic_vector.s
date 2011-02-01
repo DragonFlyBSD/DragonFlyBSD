@@ -21,7 +21,7 @@
 #include "apicreg.h"
 #include "apic_ipl.h"
 #include <machine/smp.h>
-#include <machine_base/isa/intr_machdep.h>
+#include <machine/intr_machdep.h>
 
 #ifdef foo
 /* convert an absolute IRQ# into bitmask */

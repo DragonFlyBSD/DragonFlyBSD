@@ -75,7 +75,7 @@
 
 #ifndef SMP
 #include <machine_base/icu/icu.h>
-#include <machine_base/isa/intr_machdep.h>
+#include <machine/intr_machdep.h>
 #include <bus/isa/isa.h>
 #endif
 

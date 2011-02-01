@@ -37,7 +37,7 @@
 #include <machine/segments.h>
 #include <sys/thread2.h>
 
-#include <machine_base/isa/intr_machdep.h>	/* Xspuriousint() */
+#include <machine/intr_machdep.h>
 
 /* XXX */
 extern pt_entry_t *SMPpt;

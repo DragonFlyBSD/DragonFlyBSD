@@ -1909,9 +1909,10 @@ pfr_create_ktable(struct pfr_table *tbl, long tzero, int attachruleset)
 		rs->tables++;
 	}
 
-	if (!rn_inithead((void **)&kt->pfrkt_ip4,
+	KKASSERT(pf_maskhead != NULL);
+	if (!rn_inithead((void **)&kt->pfrkt_ip4, pf_maskhead,
 	    offsetof(struct sockaddr_in, sin_addr) * 8) ||
-	    !rn_inithead((void **)&kt->pfrkt_ip6,
+	    !rn_inithead((void **)&kt->pfrkt_ip6, pf_maskhead,
 	    offsetof(struct sockaddr_in6, sin6_addr) * 8)) {
 		pfr_destroy_ktable(kt, 0);
 		return (NULL);
