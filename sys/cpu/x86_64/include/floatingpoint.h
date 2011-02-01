@@ -31,8 +31,7 @@
  * SUCH DAMAGE.
  *
  *	from: @(#) floatingpoint.h	1.0 (Berkeley) 9/23/93
- * $FreeBSD: src/sys/i386/include/floatingpoint.h,v 1.10.2.1 2002/06/30 00:55:09 bde Exp $
- * $DragonFly: src/sys/cpu/i386/include/floatingpoint.h,v 1.5 2006/11/07 17:51:21 dillon Exp $
+ * $FreeBSD: src/sys/amd64/include/floatingpoint.h,v 1.14 2005/04/02 17:31:42 netchild Exp $
  */
 
 #ifndef _CPU_FLOATINGPOINT_H_
