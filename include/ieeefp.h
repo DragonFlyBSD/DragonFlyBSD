@@ -18,12 +18,12 @@
 #else /* !__i386__ */
 #if !defined(_IEEEFP_INLINED_)
 __BEGIN_DECLS
-extern fp_rnd_t    fpgetround (void);
-extern fp_rnd_t    fpsetround (fp_rnd_t);
-extern fp_except_t fpgetmask (void);
-extern fp_except_t fpsetmask (fp_except_t);
-extern fp_except_t fpgetsticky (void);
-extern fp_except_t fpsetsticky (fp_except_t);
+extern fp_rnd_t    fpgetround(void);
+extern fp_rnd_t    fpsetround(fp_rnd_t);
+extern fp_except_t fpgetmask(void);
+extern fp_except_t fpsetmask(fp_except_t);
+extern fp_except_t fpgetsticky(void);
+extern fp_except_t fpsetsticky(fp_except_t);
 __END_DECLS
 #endif /* !_IEEEFP_INLINED_ */
 #endif /* __i386__ */
