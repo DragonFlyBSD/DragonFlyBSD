@@ -230,6 +230,11 @@ pfattach(void)
 	u_int32_t *my_timeout = pf_default_rule.timeout;
 	int error = 1;
 
+	if (!rn_inithead((void **)&pf_maskhead, NULL, 0)) {
+		kprintf("pf mask radix tree create failed\n");
+		return ENOMEM;
+	}
+
 	do {
 		ZONE_CREATE(pf_src_tree_pl,struct pf_src_node, "pfsrctrpl");
 		ZONE_CREATE(pf_rule_pl,    struct pf_rule, "pfrulepl");
@@ -3264,6 +3269,16 @@ pf_load(void)
 }
 
 static int
+pf_mask_del(struct radix_node *rn, void *arg)
+{
+	struct radix_node_head *rnh = rnh;
+
+	rnh->rnh_deladdr(rn->rn_key, rn->rn_mask, rnh);
+	Free(rn);
+	return 0;
+}
+
+static int
 pf_unload(void)
 {
 	int error;
@@ -3297,6 +3312,12 @@ pf_unload(void)
 	lockuninit(&pf_consistency_lock);
 	lockuninit(&pf_mod_lck);
 	lwkt_reltoken(&pf_token);
+
+	if (pf_maskhead != NULL) {
+		pf_maskhead->rnh_walktree(pf_maskhead,
+			pf_mask_del, pf_maskhead);
+		Free(pf_maskhead);
+	}
 	return 0;
 }
 

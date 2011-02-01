@@ -466,7 +466,7 @@ in6_inithead(void **head, int off)
 {
 	struct radix_node_head *rnh;
 
-	if (!rn_inithead(head, off))
+	if (!rn_inithead(head, rn_cpumaskhead(mycpuid), off))
 		return 0;
 
 	if (head != (void **)&rt_tables[mycpuid][AF_INET6]) /* BOGUS! */

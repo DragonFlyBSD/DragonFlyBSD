@@ -1788,7 +1788,7 @@ _rtmask_lookup(struct sockaddr *mask, boolean_t search)
 	struct radix_node *n;
 
 #define	clen(s)	(*(u_char *)(s))
-	n = rn_addmask((char *)mask, search, 1);
+	n = rn_addmask((char *)mask, search, 1, rn_cpumaskhead(mycpuid));
 	if (n != NULL &&
 	    mask->sa_len >= clen(n->rn_key) &&
 	    bcmp((char *)mask + 1,

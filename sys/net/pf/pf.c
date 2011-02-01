@@ -112,6 +112,9 @@ struct lwkt_token pf_token = LWKT_TOKEN_INITIALIZER(pf_token);
  * Global variables
  */
 
+/* mask radix tree */
+struct radix_node_head	*pf_maskhead;
+
 /* state tables */
 struct pf_state_tree	 pf_statetbl;
 
