@@ -53,7 +53,7 @@
 #include <bus/isa/isavar.h>
 
 #include <machine_base/icu/icu_var.h>
-#include <machine_base/isa/intr_machdep.h>
+#include <machine_base/isa/isa_intr.h>
 
 #define NMI_PARITY (1 << 7)
 #define NMI_IOCHAN (1 << 6)

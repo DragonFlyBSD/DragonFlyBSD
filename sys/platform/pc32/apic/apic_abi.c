@@ -50,7 +50,7 @@
 #include <machine/smp.h>
 #include <machine/segments.h>
 #include <machine/md_var.h>
-#include <machine_base/isa/intr_machdep.h>
+#include <machine/intr_machdep.h>
 #include <machine_base/icu/icu.h>
 #include <machine/globaldata.h>
 

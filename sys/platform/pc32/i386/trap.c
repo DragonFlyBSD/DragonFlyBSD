@@ -92,8 +92,9 @@
 #include <machine/tss.h>
 #include <machine/specialreg.h>
 #include <machine/globaldata.h>
+#include <machine/intr_machdep.h>
 
-#include <machine_base/isa/intr_machdep.h>
+#include <machine_base/isa/isa_intr.h>
 
 #ifdef POWERFAIL_NMI
 #include <sys/syslog.h>
