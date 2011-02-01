@@ -208,5 +208,6 @@ dev/serial/sio/sio.c			optional	sio
 bus/isa/syscons_isa.c			optional	sc
 bus/isa/vga_isa.c			optional	vga
 platform/pc64/isa/clock.c		standard nowerror
+platform/pc64/isa/elcr.c		standard
 platform/pc64/isa/intr_machdep.c	standard
 platform/pc64/x86_64/spinlock.s		standard

@@ -114,6 +114,7 @@
 #include <bus/isa/isa_device.h>
 #endif
 #include <machine_base/isa/intr_machdep.h>
+#include <machine_base/isa/elcr_var.h>
 #include <bus/isa/rtc.h>
 #include <sys/random.h>
 #include <sys/ptrace.h>
@@ -376,6 +377,9 @@ again:
 	 */
 	bufinit();
 	vm_pager_bufferinit();
+
+	/* Log ELCR information */
+	elcr_dump();
 
 #ifdef SMP
 	/*
@@ -1816,6 +1820,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 #endif
 
 #if	NISA >0
+	elcr_probe();
 	isa_defaultirq();
 #endif
 	rand_initialize();
