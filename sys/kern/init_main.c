@@ -97,12 +97,15 @@ struct thread thread0;
 
 int cmask = CMASK;
 u_int cpu_mi_feature;
+cpumask_t usched_global_cpumask;
 extern	struct user *proc0paddr;
 extern int fallback_elf_brand;
 
 int	boothowto = 0;		/* initialized so that it can be patched */
 SYSCTL_INT(_debug, OID_AUTO, boothowto, CTLFLAG_RD, &boothowto, 0,
     "Reboot flags, from console subsystem");
+SYSCTL_ULONG(_kern, OID_AUTO, usched_global_cpumask, CTLFLAG_RW,
+    &usched_global_cpumask, 0, "global user scheduler cpumask");
 
 /*
  * This ensures that there is at least one entry so that the sysinit_set
@@ -706,5 +709,6 @@ mi_gdinit(struct globaldata *gd, int cpuid)
 	lwkt_gdinit(gd);
 	vm_map_entry_reserve_cpu_init(gd);
 	sleep_gdinit(gd);
+	usched_global_cpumask |= CPUMASK(cpuid);
 }
 

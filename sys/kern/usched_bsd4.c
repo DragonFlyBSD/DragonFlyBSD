@@ -503,7 +503,7 @@ bsd4_setrunqueue(struct lwp *lp)
 	++bsd4_scancpu;
 	cpuid = (bsd4_scancpu & 0xFFFF) % ncpus;
 	mask = ~bsd4_curprocmask & bsd4_rdyprocmask & lp->lwp_cpumask &
-	       smp_active_mask;
+	       smp_active_mask & usched_global_cpumask;
 
 	while (mask) {
 		tmpmask = ~(CPUMASK(cpuid) - 1);
@@ -523,7 +523,7 @@ bsd4_setrunqueue(struct lwp *lp)
 	 * Then cpus which might have a currently running lp
 	 */
 	mask = bsd4_curprocmask & bsd4_rdyprocmask &
-	       lp->lwp_cpumask & smp_active_mask;
+	       lp->lwp_cpumask & smp_active_mask & usched_global_cpumask;
 
 	while (mask) {
 		tmpmask = ~(CPUMASK(cpuid) - 1);
@@ -544,10 +544,16 @@ bsd4_setrunqueue(struct lwp *lp)
 	 * and round-robin.  Other cpus will pickup as they release their
 	 * current lwps or become ready.
 	 *
+	 * Avoid a degenerate system lockup case if usched_global_cpumask
+	 * is set to 0 or otherwise does not cover lwp_cpumask.
+	 *
 	 * We only kick the target helper thread in this case, we do not
 	 * set the user resched flag because
 	 */
 	cpuid = (bsd4_scancpu & 0xFFFF) % ncpus;
+	if ((CPUMASK(cpuid) & usched_global_cpumask) == 0) {
+		cpuid = 0;
+	}
 	gd = globaldata_find(cpuid);
 	dd = &bsd4_pcpu[cpuid];
 found:
