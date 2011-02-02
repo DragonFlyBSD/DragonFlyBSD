@@ -100,7 +100,7 @@ lapic_eoi(void)
 }
 
 /*
- * Enable APIC, configure interrupts.
+ * Enable LAPIC, configure interrupts.
  */
 void
 apic_initialize(boolean_t bsp)
@@ -109,14 +109,14 @@ apic_initialize(boolean_t bsp)
 	u_int   temp;
 
 	/*
-	 * setup LVT1 as ExtINT on the BSP.  This is theoretically an
+	 * Setup LINT0 as ExtINT on the BSP.  This is theoretically an
 	 * aggregate interrupt input from the 8259.  The INTA cycle
 	 * will be routed to the external controller (the 8259) which
 	 * is expected to supply the vector.
 	 *
 	 * Must be setup edge triggered, active high.
 	 *
-	 * Disable LVT1 on the APs.  It doesn't matter what delivery
+	 * Disable LINT0 on the APs.  It doesn't matter what delivery
 	 * mode we use because we leave it masked.
 	 */
 	temp = lapic->lvt_lint0;
@@ -129,7 +129,8 @@ apic_initialize(boolean_t bsp)
 	lapic->lvt_lint0 = temp;
 
 	/*
-	 * setup LVT2 as NMI, masked till later.  Edge trigger, active high.
+	 * Setup LINT1 as NMI, masked till later.
+	 * Edge trigger, active high.
 	 */
 	temp = lapic->lvt_lint1;
 	temp &= ~(APIC_LVT_MASKED | APIC_LVT_TRIG_MASK | 
@@ -138,13 +139,15 @@ apic_initialize(boolean_t bsp)
 	lapic->lvt_lint1 = temp;
 
 	/*
-	 * Mask the apic error interrupt, apic performance counter
+	 * Mask the LAPIC error interrupt, LAPIC performance counter
 	 * interrupt.
 	 */
 	lapic->lvt_error = lapic->lvt_error | APIC_LVT_MASKED;
 	lapic->lvt_pcint = lapic->lvt_pcint | APIC_LVT_MASKED;
 
-	/* Set apic timer vector and mask the apic timer interrupt. */
+	/*
+	 * Set LAPIC timer vector and mask the LAPIC timer interrupt.
+	 */
 	timer = lapic->lvt_timer;
 	timer &= ~APIC_LVTT_VECTOR;
 	timer |= XTIMER_OFFSET;
@@ -173,10 +176,10 @@ if (!apic_io_enable) {
 	lapic->tpr = temp;
 
 	/* 
-	 * enable the local APIC 
+	 * Enable the LAPIC 
 	 */
 	temp = lapic->svr;
-	temp |= APIC_SVR_ENABLE;	/* enable the APIC */
+	temp |= APIC_SVR_ENABLE;	/* enable the LAPIC */
 	temp &= ~APIC_SVR_FOCUS_DISABLE; /* enable lopri focus processor */
 
 	/*
@@ -211,7 +214,6 @@ if (!apic_io_enable) {
 	if (bootverbose)
 		apic_dump("apic_initialize()");
 }
-
 
 static void
 lapic_timer_set_divisor(int divisor_idx)
