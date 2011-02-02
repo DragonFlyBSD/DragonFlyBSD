@@ -2168,6 +2168,9 @@ start_all_aps(u_int boot_addr)
 	/* Initialize BSP's local APIC */
 	apic_initialize(TRUE);
 
+	/* Finalize PIC */
+	MachIntrABI.finalize();
+
 	/* install the AP 1st level boot code */
 	install_ap_tramp(boot_addr);
 

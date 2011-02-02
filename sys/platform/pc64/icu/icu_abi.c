@@ -89,6 +89,7 @@ static int	icu_getvar(int, void *);
 static void	icu_finalize(void);
 static void	icu_cleanup(void);
 static void	icu_setdefault(void);
+static void	icu_stabilize(void);
 
 struct machintr_abi MachIntrABI_ICU = {
 	MACHINTR_ICU,
@@ -99,7 +100,8 @@ struct machintr_abi MachIntrABI_ICU = {
 	.getvar		= icu_getvar,
 	.finalize	= icu_finalize,
 	.cleanup	= icu_cleanup,
-	.setdefault	= icu_setdefault
+	.setdefault	= icu_setdefault,
+	.stabilize	= icu_stabilize
 };
 
 static int	icu_imcr_present;
@@ -145,39 +147,13 @@ icu_getvar(int varid, void *buf)
  * Called before interrupts are physically enabled
  */
 static void
-icu_finalize(void)
+icu_stabilize(void)
 {
 	int intr;
-
-#ifdef SMP
-	if (apic_io_enable) {
-		KKASSERT(MachIntrABI.type == MACHINTR_ICU);
-		MachIntrABI_IOAPIC.setvar(MACHINTR_VAR_IMCR_PRESENT,
-					  &icu_imcr_present);
-		MachIntrABI_IOAPIC.finalize();
-		return;
-	}
-#endif
 
 	for (intr = 0; intr < ICU_HWI_VECTORS; ++intr)
 		machintr_intrdis(intr);
 	machintr_intren(ICU_IRQ_SLAVE);
-
-#if defined(SMP)
-	/*
-	 * If an IMCR is present, programming bit 0 disconnects the 8259
-	 * from the BSP.  The 8259 may still be connected to LINT0 on the
-	 * BSP's LAPIC.
-	 *
-	 * If we are running SMP the LAPIC is active, try to use virtual
-	 * wire mode so we can use other interrupt sources within the LAPIC
-	 * in addition to the 8259.
-	 */
-	if (icu_imcr_present) {
-		outb(0x22, 0x70);
-		outb(0x23, 0x01);
-	}
-#endif
 }
 
 /*
@@ -188,6 +164,57 @@ static void
 icu_cleanup(void)
 {
 	bzero(mdcpu->gd_ipending, sizeof(mdcpu->gd_ipending));
+}
+
+/*
+ * Called after stablize and cleanup; critical section is not
+ * held and interrupts are not physically disabled.
+ *
+ * For SMP:
+ * Further delayed after BSP's LAPIC is initialized
+ */
+static void
+icu_finalize(void)
+{
+	KKASSERT(MachIntrABI.type == MACHINTR_ICU);
+
+#ifdef SMP
+	if (apic_io_enable) {
+		/*
+		 * MachIntrABI switching will happen in
+		 * MachIntrABI_IOAPIC.finalize()
+		 */
+		MachIntrABI_IOAPIC.setvar(MACHINTR_VAR_IMCR_PRESENT,
+					  &icu_imcr_present);
+		MachIntrABI_IOAPIC.finalize();
+		return;
+	}
+
+	/*
+	 * If an IMCR is present, programming bit 0 disconnects the 8259
+	 * from the BSP.  The 8259 may still be connected to LINT0 on the
+	 * BSP's LAPIC.
+	 *
+	 * If we are running SMP the LAPIC is active, try to use virtual
+	 * wire mode so we can use other interrupt sources within the LAPIC
+	 * in addition to the 8259.
+	 */
+	if (icu_imcr_present) {
+		register_t ef;
+
+		crit_enter();
+
+		ef = read_rflags();
+		cpu_disable_intr();
+
+		outb(0x22, 0x70);
+		outb(0x23, 0x01);
+
+		write_rflags(ef);
+
+		crit_exit();
+	}
+#endif	/* SMP */
 }
 
 static int

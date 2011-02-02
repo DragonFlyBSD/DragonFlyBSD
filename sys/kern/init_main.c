@@ -299,7 +299,7 @@ SYSINIT(announce, SI_BOOT1_COPYRIGHT, SI_ORDER_FIRST, print_caddr_t, copyright)
 static void
 leavecrit(void *dummy __unused)
 {
-	MachIntrABI.finalize();
+	MachIntrABI.stabilize();
 	cpu_enable_intr();
 	MachIntrABI.cleanup();
 	crit_exit();

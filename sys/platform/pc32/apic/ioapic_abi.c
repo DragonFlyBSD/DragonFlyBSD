@@ -458,6 +458,7 @@ static int	ioapic_vectorctl(int, int, int);
 static void	ioapic_finalize(void);
 static void	ioapic_cleanup(void);
 static void	ioapic_setdefault(void);
+static void	ioapic_stabilize(void);
 
 static int	ioapic_imcr_present;
 
@@ -470,7 +471,8 @@ struct machintr_abi MachIntrABI_IOAPIC = {
 	.getvar		= ioapic_getvar,
 	.finalize	= ioapic_finalize,
 	.cleanup	= ioapic_cleanup,
-	.setdefault	= ioapic_setdefault
+	.setdefault	= ioapic_setdefault,
+	.stabilize	= ioapic_stabilize
 };
 
 static int
@@ -508,16 +510,18 @@ ioapic_getvar(int varid, void *buf)
 }
 
 /*
- * Called before interrupts are physically enabled, this routine does the
- * final configuration of the BSP's local APIC:
+ * Called from ICU's finalize if I/O APIC is enabled, after BSP's LAPIC
+ * is initialized; some of the BSP's LAPIC configuration are adjusted.
  *
- *  - disable 'pic mode'.
- *  - disable 'virtual wire mode'.
- *  - enable NMI.
+ * - disable 'pic mode'.
+ * - switch MachIntrABI.
+ * - disable 'virtual wire mode'.
+ * - enable NMI.
  */
 static void
 ioapic_finalize(void)
 {
+	u_long ef;
 	uint32_t temp;
 
 	KKASSERT(MachIntrABI.type == MACHINTR_ICU);
@@ -534,13 +538,18 @@ ioapic_finalize(void)
 	}
 
 	/*
-	 * Setup lint0 (the 8259 'virtual wire' connection).  We
+	 * Setup LINT0 (the 8259 'virtual wire' connection).  We
 	 * mask the interrupt, completing the disconnection of the
 	 * 8259.
 	 */
 	temp = lapic.lvt_lint0;
 	temp |= APIC_LVT_MASKED;
 	lapic.lvt_lint0 = temp;
+
+	crit_enter();
+
+	ef = read_eflags();
+	cpu_disable_intr();
 
 	/*
 	 * 8259 is completely disconnected; switch to IOAPIC MachIntrABI
@@ -549,15 +558,21 @@ ioapic_finalize(void)
 	MachIntrABI = MachIntrABI_IOAPIC;
 	MachIntrABI.setdefault();
 
+	write_eflags(ef);
+
+	MachIntrABI.cleanup();
+
+	crit_exit();
+
 	/*
-	 * Setup lint1 to handle NMI
+	 * Setup LINT1 to handle NMI
 	 */
 	temp = lapic.lvt_lint1;
 	temp &= ~APIC_LVT_MASKED;
 	lapic.lvt_lint1 = temp;
 
 	if (bootverbose)
-		apic_dump("bsp_apic_configure()");
+		apic_dump("ioapic_finalize()");
 }
 
 /*
@@ -569,6 +584,13 @@ static void
 ioapic_cleanup(void)
 {
 	bzero(mdcpu->gd_ipending, sizeof(mdcpu->gd_ipending));
+}
+
+/* Must never be called */
+static void
+ioapic_stabilize(void)
+{
+	panic("ioapic_stabilize() is called\n");
 }
 
 static int

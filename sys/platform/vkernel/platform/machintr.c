@@ -59,6 +59,7 @@ static int dummy_setvar(int, const void *);
 static int dummy_getvar(int, void *);
 static void dummy_finalize(void);
 static void dummy_intrcleanup(void);
+static void dummy_stabilize(void);
 
 struct machintr_abi MachIntrABI = {
 	MACHINTR_GENERIC,
@@ -68,7 +69,8 @@ struct machintr_abi MachIntrABI = {
 	.setvar =	dummy_setvar,
 	.getvar =	dummy_getvar,
 	.finalize =	dummy_finalize,
-	.cleanup =	dummy_intrcleanup
+	.cleanup =	dummy_intrcleanup,
+	.stabilize =	dummy_stabilize
 };
 
 static void
@@ -107,6 +109,11 @@ dummy_finalize(void)
 
 static void
 dummy_intrcleanup(void)
+{
+}
+
+static void
+dummy_stabilize(void)
 {
 }
 
