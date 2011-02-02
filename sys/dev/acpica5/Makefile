@@ -31,6 +31,10 @@ CFLAGS+=	-DACPI_DEBUG_CACHE=1
 KMOD	= acpi
 
 # ACPI CA sources
+SRCS+=	dbcmds.c dbdisply.c dbexec.c dbfileio.c dbhistry.c
+SRCS+=	dbinput.c dbstats.c dbutils.c dbxface.c
+SRCS+=	dmbuffer.c dmnames.c dmobject.c dmopcode.c dmresrc.c dmresrcl.c
+SRCS+=	dmresrcs.c dmutils.c dmwalk.c
 SRCS+=	dsfield.c dsinit.c dsmethod.c dsmthdat.c
 SRCS+=	dsobject.c dsopcode.c dsutils.c dswexec.c dswload.c
 SRCS+=	dswscope.c dswstate.c evevent.c evgpe.c evgpeblk.c
@@ -73,18 +77,11 @@ SRCS+=  device_if.h bus_if.h pci_if.h pcib_if.h isa_if.h acpi_if.h acpi_wmi_if.h
 MFILES = kern/device_if.m kern/bus_if.m bus/pci/pci_if.m bus/pci/pcib_if.m
 MFILES+= bus/isa/isa_if.m dev/acpica5/acpi_if.m dev/acpica5/acpi_wmi_if.m
 
-# Debugging support
-DBSRC=	dbcmds.c dbdisply.c dbexec.c dbfileio.c dbhistry.c
-DBSRC+=	dbinput.c dbstats.c dbutils.c dbxface.c
-DBSRC+=	dmbuffer.c dmnames.c dmopcode.c dmobject.c dmresrc.c dmresrcl.c
-DBSRC+=	dmresrcs.c dmutils.c dmwalk.c
-
 .if ACPI_NO_SEMAPHORES
 CFLAGS+=-DACPI_NO_SEMAPHORES
 .endif
 .if ACPI_DEBUG
 CFLAGS+=-DACPI_DEBUG
-SRCS+=	${DBSRC}
 opt_ddb.h: Makefile
 	echo "#define DDB 1" > ${.TARGET}
 .else
