@@ -216,12 +216,24 @@ vfs_mountroot_devfs(void)
 	struct vfsconf *vfsp;
 	int error;
 	struct ucred *cred = proc0.p_ucred;
+	const char *devfs_path, *init_chroot;
+	char *dev_malloced = NULL;
 
+	if ((init_chroot = kgetenv("init_chroot")) != NULL) {
+		size_t l;
+
+		l = strlen(init_chroot) + sizeof("/dev");
+		dev_malloced = kmalloc(l, M_MOUNT, M_WAITOK);
+		ksnprintf(dev_malloced, l, "%s/dev", init_chroot);
+		devfs_path = dev_malloced;
+	} else {
+		devfs_path = "/dev";
+	}
 	/*
 	 * Lookup the requested path and extract the nch and vnode.
 	 */
 	error = nlookup_init_raw(&nd,
-	     "/dev", UIO_SYSSPACE, NLC_FOLLOW,
+	     devfs_path, UIO_SYSSPACE, NLC_FOLLOW,
 	     cred, &rootnch);
 
 	if (error == 0) {
@@ -234,6 +246,9 @@ vfs_mountroot_devfs(void)
 			}
 		}
 	}
+	if (dev_malloced != NULL)
+		kfree(dev_malloced, M_MOUNT), dev_malloced = NULL;
+	devfs_path = NULL;
 	if (error) {
 		nlookup_done(&nd);
 		devfs_debug(DEVFS_DEBUG_SHOW, "vfs_mountroot_devfs: nlookup failed, error: %d\n", error);
