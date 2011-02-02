@@ -33,6 +33,8 @@
 #include <sys/kernel.h>		/* SYSINIT via DOMAIN_SET */
 #include <sys/protosw.h>
 #include <sys/socket.h>
+#include <sys/globaldata.h>
+#include <sys/thread.h>
 
 #include <net/radix.h>		/* rn_inithead */
 
@@ -61,6 +63,12 @@ struct protosw mplssw[] = {
     }
 };
 
+static int
+mpls_inithead(void **head, int off)
+{
+	return rn_inithead(head, rn_cpumaskhead(mycpuid), off);
+}
+
 static	struct	domain mplsdomain = {
 	AF_MPLS,			/* dom_family */
 	"mpls",				/* dom_name */
@@ -71,7 +79,7 @@ static	struct	domain mplsdomain = {
 	&mplssw[NELEM(mplssw)],
 					/* dom_protoswNPROTOSW */
 	SLIST_ENTRY_INITIALIZER,	/* dom_next */
-	rn_inithead,			/* dom_rtattach */
+	mpls_inithead,			/* dom_rtattach */
 	32,				/* dom_rtoffset */
 	sizeof(struct sockaddr_mpls),	/* dom_maxrtkey */
 	NULL,				/* dom_ifattach */

@@ -34,6 +34,8 @@
 #include "ddp_var.h"
 #include "at_extern.h"
 
+extern int at_inithead(void **, int);
+
 static struct domain atalkdomain;
 
 static struct protosw atalksw[] = {
@@ -66,7 +68,7 @@ static struct domain atalkdomain = {
 	AF_APPLETALK, "appletalk", NULL, NULL, NULL,
 	atalksw, &atalksw[NELEM(atalksw)],
 	SLIST_ENTRY_INITIALIZER,
-	rn_inithead, 8 * offsetof(struct sockaddr_at, sat_addr),
+	at_inithead, 8 * offsetof(struct sockaddr_at, sat_addr),
 	sizeof(struct sockaddr_at),
 };
 
