@@ -120,6 +120,7 @@
 #include <machine/sigframe.h>
 
 #include <sys/machintr.h>
+#include <machine_base/icu/icu_abi.h>
 
 #define PHYSMAP_ENTRIES		10
 
@@ -1879,7 +1880,6 @@ TUNABLE_INT("hw.apic_io_enable", &apic_io_enable);
 extern struct machintr_abi MachIntrABI_APIC;
 #endif
 
-extern struct machintr_abi MachIntrABI_ICU;
 struct machintr_abi MachIntrABI;
 
 /*
