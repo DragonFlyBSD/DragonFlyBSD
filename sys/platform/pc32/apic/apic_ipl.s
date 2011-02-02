@@ -75,8 +75,8 @@
 	 * Functions to enable and disable a hardware interrupt.  The
 	 * IRQ number is passed as an argument.
 	 */
-ENTRY(APIC_INTRDIS)
-	APIC_IMASK_LOCK			/* enter critical reg */
+ENTRY(IOAPIC_INTRDIS)
+	IOAPIC_IMASK_LOCK		/* enter critical reg */
 	movl	4(%esp),%eax
 1:
 	shll	$IOAPIC_IM_SZSHIFT, %eax
@@ -89,11 +89,11 @@ ENTRY(APIC_INTRDIS)
 	orl	$IOART_INTMASK, IOAPIC_WINDOW(%edx)
 					/* set intmask in target apic reg */
 2:
-	APIC_IMASK_UNLOCK		/* exit critical reg */
+	IOAPIC_IMASK_UNLOCK		/* exit critical reg */
 	ret
 
-ENTRY(APIC_INTREN)
-	APIC_IMASK_LOCK			/* enter critical reg */
+ENTRY(IOAPIC_INTREN)
+	IOAPIC_IMASK_LOCK		/* enter critical reg */
 	movl	4(%esp), %eax		/* mask into %eax */
 1:
 	shll	$IOAPIC_IM_SZSHIFT, %eax
@@ -106,7 +106,7 @@ ENTRY(APIC_INTREN)
 	andl	$~IOART_INTMASK, IOAPIC_WINDOW(%edx)
 					/* clear mask bit */
 2:	
-	APIC_IMASK_UNLOCK		/* exit critical reg */
+	IOAPIC_IMASK_UNLOCK		/* exit critical reg */
 	ret
 
 /******************************************************************************
@@ -114,28 +114,28 @@ ENTRY(APIC_INTREN)
  */
 
 /*
- * u_int io_apic_write(int apic, int select);
+ * u_int ioapic_write(int apic, int select);
  */
-ENTRY(io_apic_read)
-	movl	4(%esp), %ecx		/* APIC # */
+ENTRY(ioapic_read)
+	movl	4(%esp), %ecx		/* IOAPIC # */
 	movl	ioapic, %eax
-	movl	(%eax,%ecx,4), %edx	/* APIC base register address */
+	movl	(%eax,%ecx,4), %edx	/* IOAPIC base register address */
 	movl	8(%esp), %eax		/* target register index */
 	movl	%eax, (%edx)		/* write the target register index */
-	movl	IOAPIC_WINDOW(%edx), %eax /* read the APIC register data */
+	movl	IOAPIC_WINDOW(%edx), %eax /* read the IOAPIC register data */
 	ret				/* %eax = register value */
 
 /*
- * void io_apic_write(int apic, int select, int value);
+ * void ioapic_write(int apic, int select, int value);
  */
-ENTRY(io_apic_write)
-	movl	4(%esp), %ecx		/* APIC # */
+ENTRY(ioapic_write)
+	movl	4(%esp), %ecx		/* IOAPIC # */
 	movl	ioapic, %eax
-	movl	(%eax,%ecx,4), %edx	/* APIC base register address */
+	movl	(%eax,%ecx,4), %edx	/* IOAPIC base register address */
 	movl	8(%esp), %eax		/* target register index */
 	movl	%eax, (%edx)		/* write the target register index */
 	movl	12(%esp), %eax		/* target register value */
-	movl	%eax, IOAPIC_WINDOW(%edx) /* write the APIC register data */
+	movl	%eax, IOAPIC_WINDOW(%edx) /* write the IOAPIC register data */
 	ret				/* %eax = void */
 
 #endif

@@ -31,7 +31,7 @@
 
 #ifdef SMP /* APIC-IO */
 
-#define APIC_HWI_VECTORS 192
+#define IOAPIC_HWI_VECTORS 192
 
 #endif
 
@@ -40,10 +40,10 @@
 /*
  * Interrupts may or may not be disabled when using these functions.
  */
-#define APIC_IMASK_LOCK							\
+#define IOAPIC_IMASK_LOCK						\
         SPIN_LOCK(imen_spinlock) ;					\
 
-#define APIC_IMASK_UNLOCK						\
+#define IOAPIC_IMASK_UNLOCK						\
         SPIN_UNLOCK(imen_spinlock) ;					\
 
 #endif

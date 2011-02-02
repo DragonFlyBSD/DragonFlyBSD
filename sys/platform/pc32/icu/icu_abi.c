@@ -54,10 +54,10 @@
 
 #include <sys/thread2.h>
 
+#include <machine_base/apic/ioapic_abi.h>
+
 #include "icu.h"
 #include "icu_ipl.h"
-
-extern struct machintr_abi MachIntrABI_APIC;
 
 extern inthand_t
 	IDTVEC(icu_intr0),	IDTVEC(icu_intr1),
@@ -152,9 +152,9 @@ icu_finalize(void)
 #ifdef SMP
 	if (apic_io_enable) {
 		KKASSERT(MachIntrABI.type == MACHINTR_ICU);
-		MachIntrABI_APIC.setvar(MACHINTR_VAR_IMCR_PRESENT,
-					&icu_imcr_present);
-		MachIntrABI_APIC.finalize();
+		MachIntrABI_IOAPIC.setvar(MACHINTR_VAR_IMCR_PRESENT,
+					  &icu_imcr_present);
+		MachIntrABI_IOAPIC.finalize();
 		return;
 	}
 #endif

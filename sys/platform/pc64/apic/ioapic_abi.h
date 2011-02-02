@@ -1,8 +1,14 @@
 /*
- * Copyright (c) 2005 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 1991 The Regents of the University of California.
+ * Copyright (c) 1996, by Steve Passe.  All rights reserved.
+ * Copyright (c) 2005,2008 The DragonFly Project.  All rights reserved.
+ * All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
+ *
+ * This code is derived from software contributed to Berkeley by
+ * William Jolitz.
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,52 +36,11 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/sys/machintr.h,v 1.7 2007/04/30 16:46:01 dillon Exp $
- */
-/*
- * This module defines the ABI for the machine-independant cpu interrupt
- * vector and masking layer.
  */
 
-#ifndef _SYS_QUEUE_H_
-#include <sys/queue.h>
-#endif
+#ifndef _ARCH_APIC_IOAPIC_ABI_H_
+#define _ARCH_APIC_IOAPIC_ABI_H_
 
-enum machintr_type { MACHINTR_GENERIC, MACHINTR_ICU, MACHINTR_IOAPIC };
+extern struct machintr_abi MachIntrABI_IOAPIC;
 
-#define MACHINTR_VAR_SIZEMASK	0xFFFF
-
-#define MACHINTR_VAR_IMCR_PRESENT	(0x00010000|sizeof(int))
-
-#define MACHINTR_VECTOR_SETUP		1
-#define MACHINTR_VECTOR_TEARDOWN	2
-
-/*
- * Machine interrupt ABIs - registered at boot-time
- */
-struct machintr_abi {
-    enum machintr_type type;
-    void	(*intrdis)(int);		/* hardware disable irq */
-    void	(*intren)(int);			/* hardware enable irq */
-    int		(*vectorctl)(int, int, int);	/* hardware intr vector ctl */
-    int		(*setvar)(int, const void *);	/* set miscellanious info */
-    int		(*getvar)(int, void *);		/* get miscellanious info */
-    void	(*finalize)(void);		/* final before ints enabled */
-    void	(*cleanup)(void);		/* cleanup */
-    void	(*setdefault)(void);		/* set default vectors */
-};
-
-#define machintr_intren(intr)	MachIntrABI.intren(intr)
-#define machintr_intrdis(intr)	MachIntrABI.intrdis(intr)
-#define machintr_vector_setup(intr, flags)	\
-	    MachIntrABI.vectorctl(MACHINTR_VECTOR_SETUP, intr, flags)
-#define machintr_vector_teardown(intr)		\
-	    MachIntrABI.vectorctl(MACHINTR_VECTOR_TEARDOWN, intr, 0)
-
-#ifdef _KERNEL
-
-extern struct machintr_abi MachIntrABI;
-extern int machintr_setvar_simple(int, int);
-
-#endif
+#endif	/* !_ARCH_APIC_IOAPIC_ABI_H_ */

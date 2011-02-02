@@ -686,7 +686,7 @@ if (apic_io_enable) {
 
 	/* fill the LOGICAL io_apic_versions table */
 	for (apic = 0; apic < mp_napics; ++apic) {
-		ux = io_apic_read(apic, IOAPIC_VER);
+		ux = ioapic_read(apic, IOAPIC_VER);
 		io_apic_versions[apic] = ux;
 		io_apic_set_id(apic, IO_TO_ID(apic));
 	}
@@ -1637,7 +1637,7 @@ int_entry(const struct INTENTRY *entry, int intr)
 		/* This signal goes to all IO APICS.  Select an IO APIC
 		   with sufficient number of interrupt pins */
 		for (apic = 0; apic < mp_napics; apic++)
-			if (((io_apic_read(apic, IOAPIC_VER) & 
+			if (((ioapic_read(apic, IOAPIC_VER) & 
 			      IOART_VER_MAXREDIR) >> MAXREDIRSHIFT) >= 
 			    entry->dst_apic_int)
 				break;
@@ -2039,7 +2039,7 @@ mptable_default(int type)
 #endif	/* 0 */
 
 	/* one and only IO APIC */
-	io_apic_id = (io_apic_read(0, IOAPIC_ID) & APIC_ID_MASK) >> 24;
+	io_apic_id = (ioapic_read(0, IOAPIC_ID) & APIC_ID_MASK) >> 24;
 
 	/*
 	 * sanity check, refer to MP spec section 3.6.6, last paragraph

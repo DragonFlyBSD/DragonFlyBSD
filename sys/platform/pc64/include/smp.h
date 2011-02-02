@@ -61,8 +61,8 @@ extern volatile u_int		checkstate_probed_cpus;
 extern void (*cpustop_restartfunc) (void);
 
 /* functions in apic_ipl.s */
-u_int	io_apic_read		(int, int);
-void	io_apic_write		(int, int, u_int);
+u_int	ioapic_read		(int, int);
+void	ioapic_write		(int, int, u_int);
 
 /* global data in mp_machdep.c */
 extern int			apic_io_enable;
