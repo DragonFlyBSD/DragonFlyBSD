@@ -27,8 +27,8 @@
  * $DragonFly: src/sys/platform/pc64/apic/apic_ipl.h,v 1.1 2008/08/29 17:07:12 dillon Exp $
  */
 
-#ifndef _ARCH_APIC_IPL_H_
-#define	_ARCH_APIC_IPL_H_
+#ifndef _ARCH_APIC_IOAPIC_IPL_H_
+#define	_ARCH_APIC_IOAPIC_IPL_H_
 
 #ifdef SMP /* APIC-IO */
 
@@ -49,4 +49,4 @@
 
 #endif
 
-#endif /* !_ARCH_APIC_IPL_H_ */
+#endif /* !_ARCH_APIC_IOAPIC_IPL_H_ */

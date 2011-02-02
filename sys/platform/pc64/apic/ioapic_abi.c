@@ -56,7 +56,7 @@
 
 #include <sys/thread2.h>
 
-#include "apic_ipl.h"
+#include <machine_base/apic/ioapic_ipl.h>
 
 #ifdef SMP /* APIC-IO */
 

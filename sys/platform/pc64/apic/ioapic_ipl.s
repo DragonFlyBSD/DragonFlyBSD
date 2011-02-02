@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003,2004,2008 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -63,7 +63,7 @@
 #include <machine/trap.h>
 
 #include "apicreg.h"
-#include "apic_ipl.h"
+#include <machine_base/apic/ioapic_ipl.h>
 #include "assym.s"
 
 #ifdef SMP /* APIC-IO */
@@ -77,33 +77,33 @@
 	 */
 ENTRY(IOAPIC_INTRDIS)
 	IOAPIC_IMASK_LOCK		/* enter critical reg */
-	movl	4(%esp),%eax
+	movl	%edi, %eax
 1:
 	shll	$IOAPIC_IM_SZSHIFT, %eax
-	orl	$IOAPIC_IM_FLAG_MASKED, CNAME(int_to_apicintpin) + IOAPIC_IM_FLAGS(%eax)
-	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ADDR(%eax), %edx
-	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ENTIDX(%eax), %ecx
-	testl	%edx, %edx
+	orl	$IOAPIC_IM_FLAG_MASKED, CNAME(int_to_apicintpin) + IOAPIC_IM_FLAGS(%rax)
+	movq	CNAME(int_to_apicintpin) + IOAPIC_IM_ADDR(%rax), %rdx
+	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ENTIDX(%rax), %ecx
+	testq	%rdx, %rdx
 	jz	2f
-	movl	%ecx, (%edx)		/* target register index */
-	orl	$IOART_INTMASK, IOAPIC_WINDOW(%edx)
-					/* set intmask in target apic reg */
+	movl	%ecx, (%rdx)		/* target register index */
+	orl	$IOART_INTMASK, IOAPIC_WINDOW(%rdx)
+					/* set intmask in target ioapic reg */
 2:
 	IOAPIC_IMASK_UNLOCK		/* exit critical reg */
 	ret
 
 ENTRY(IOAPIC_INTREN)
 	IOAPIC_IMASK_LOCK		/* enter critical reg */
-	movl	4(%esp), %eax		/* mask into %eax */
+	movl	%edi, %eax
 1:
 	shll	$IOAPIC_IM_SZSHIFT, %eax
-	andl	$~IOAPIC_IM_FLAG_MASKED, CNAME(int_to_apicintpin) + IOAPIC_IM_FLAGS(%eax)
-	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ADDR(%eax), %edx
-	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ENTIDX(%eax), %ecx
-	testl	%edx, %edx
+	andl	$~IOAPIC_IM_FLAG_MASKED, CNAME(int_to_apicintpin) + IOAPIC_IM_FLAGS(%rax)
+	movq	CNAME(int_to_apicintpin) + IOAPIC_IM_ADDR(%rax), %rdx
+	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ENTIDX(%rax), %ecx
+	testq	%rdx, %rdx
 	jz	2f
-	movl	%ecx, (%edx)		/* write the target register index */
-	andl	$~IOART_INTMASK, IOAPIC_WINDOW(%edx)
+	movl	%ecx, (%rdx)		/* write the target register index */
+	andl	$~IOART_INTMASK, IOAPIC_WINDOW(%rdx)
 					/* clear mask bit */
 2:	
 	IOAPIC_IMASK_UNLOCK		/* exit critical reg */
@@ -114,28 +114,24 @@ ENTRY(IOAPIC_INTREN)
  */
 
 /*
- * u_int ioapic_write(int apic, int select);
+ * u_int ioapic_read(int apic, int select);
  */
 ENTRY(ioapic_read)
-	movl	4(%esp), %ecx		/* IOAPIC # */
-	movl	ioapic, %eax
-	movl	(%eax,%ecx,4), %edx	/* IOAPIC base register address */
-	movl	8(%esp), %eax		/* target register index */
-	movl	%eax, (%edx)		/* write the target register index */
-	movl	IOAPIC_WINDOW(%edx), %eax /* read the IOAPIC register data */
+	movl	%edi, %ecx		/* IOAPIC # */
+	movq	ioapic, %rax
+	movq	(%rax,%rcx,8), %rdx	/* IOAPIC base register address */
+	movl	%esi, (%rdx)		/* write the target register index */
+	movl	IOAPIC_WINDOW(%rdx), %eax /* read the IOAPIC register data */
 	ret				/* %eax = register value */
 
 /*
- * void ioapic_write(int apic, int select, int value);
+ * void ioapic_write(int apic, int select, u_int value);
  */
 ENTRY(ioapic_write)
-	movl	4(%esp), %ecx		/* IOAPIC # */
-	movl	ioapic, %eax
-	movl	(%eax,%ecx,4), %edx	/* IOAPIC base register address */
-	movl	8(%esp), %eax		/* target register index */
-	movl	%eax, (%edx)		/* write the target register index */
-	movl	12(%esp), %eax		/* target register value */
-	movl	%eax, IOAPIC_WINDOW(%edx) /* write the IOAPIC register data */
+	movl	%edi, %ecx		/* IOAPIC # */
+	movq	ioapic, %rax
+	movq	(%rax,%rcx,8), %r8	/* IOAPIC base register address */
+	movl	%esi, (%r8)		/* write the target register index */
+	movl	%edx, IOAPIC_WINDOW(%r8) /* write the IOAPIC register data */
 	ret				/* %eax = void */
-
 #endif
