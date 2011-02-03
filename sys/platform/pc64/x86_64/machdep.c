@@ -1626,7 +1626,7 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 				phys_avail[pa_indx++] = pa;
 				phys_avail[pa_indx] = pa + PHYSMAP_ALIGN;
 			}
-			physmem++;
+			physmem += PHYSMAP_ALIGN / PAGE_SIZE;
 do_dump_avail:
 			if (dump_avail[da_indx] == pa) {
 				dump_avail[da_indx] += PHYSMAP_ALIGN;
