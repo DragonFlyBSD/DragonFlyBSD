@@ -13,6 +13,8 @@ STOPDIR=	${.CURDIR}/${TOP_PREFIX}/..
 TOOLDIR=	${OTOPDIR}/cc_tools
 SRC_TOOLDIR=	${STOPDIR}/cc_tools
 
+CSTD?=		gnu89
+
 CFLAGS+=	-I${OTOPDIR}/cc_prep -I${STOPDIR}/cc_prep -I${STOPDIR}/cc_prep/config
 CFLAGS+=	-I${GCCDIR}/gcc -I${GCCDIR}/gcc/config -I${GCCDIR}/include
 CFLAGS+=	-I${GCCDIR}/libcpp/include
