@@ -140,7 +140,7 @@ sysctl_hw_physmem(SYSCTL_HANDLER_ARGS)
 }
 
 SYSCTL_PROC(_hw, HW_PHYSMEM, physmem, CTLTYPE_ULONG|CTLFLAG_RD,
-	0, 0, sysctl_hw_physmem, "LU", "Size in bytes of system's memory pages");
+	0, 0, sysctl_hw_physmem, "LU", "Total system memory in bytes (number of pages * page size)");
 
 static int
 sysctl_hw_usermem(SYSCTL_HANDLER_ARGS)
