@@ -184,6 +184,10 @@ struct vm_page {
 	u_char	dirty;			/* map of dirty DEV_BSIZE chunks */
 
 	int	ku_pagecnt;		/* kmalloc helper */
+#ifdef VM_PAGE_DEBUG
+	const char *busy_func;
+	int	busy_line;
+#endif
 };
 
 #ifndef __VM_PAGE_T_DEFINED__
@@ -395,6 +399,23 @@ vm_page_flag_clear(vm_page_t m, unsigned int bits)
 	atomic_clear_int(&(m)->flags, bits);
 }
 
+#ifdef VM_PAGE_DEBUG
+
+static __inline void
+_vm_page_busy(vm_page_t m, const char *func, int lineno)
+{
+	ASSERT_LWKT_TOKEN_HELD(&vm_token);
+	KASSERT((m->flags & PG_BUSY) == 0,
+		("vm_page_busy: page already busy!!!"));
+	vm_page_flag_set(m, PG_BUSY);
+	m->busy_func = func;
+	m->busy_line = lineno;
+}
+
+#define vm_page_busy(m)	_vm_page_busy(m, __func__, __LINE__)
+
+#else
+
 static __inline void
 vm_page_busy(vm_page_t m)
 {
@@ -403,6 +424,8 @@ vm_page_busy(vm_page_t m)
 		("vm_page_busy: page already busy!!!"));
 	vm_page_flag_set(m, PG_BUSY);
 }
+
+#endif
 
 /*
  *	vm_page_flash:

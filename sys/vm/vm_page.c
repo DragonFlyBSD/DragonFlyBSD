@@ -1130,11 +1130,11 @@ vm_page_free_toq(vm_page_t m)
 	 * Clear the UNMANAGED flag when freeing an unmanaged page.
 	 */
 	if (m->flags & PG_UNMANAGED) {
-	    m->flags &= ~PG_UNMANAGED;
+	    vm_page_flag_clear(m, PG_UNMANAGED);
 	}
 
 	if (m->hold_count != 0) {
-		m->flags &= ~PG_ZERO;
+		vm_page_flag_clear(m, PG_ZERO);
 		m->queue = PQ_HOLD;
 	} else {
 		m->queue = PQ_FREE + m->pc;

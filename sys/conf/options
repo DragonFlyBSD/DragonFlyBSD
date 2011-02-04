@@ -480,6 +480,7 @@ SOCKBUF_DEBUG		opt_global.h
 PANIC_DEBUG		opt_global.h
 MBUF_DEBUG		opt_global.h
 PMAP_DEBUG		opt_global.h
+VM_PAGE_DEBUG		opt_global.h
 
 # Sample system/interrupt PC
 DEBUG_PCTRACK		opt_pctrack.h
