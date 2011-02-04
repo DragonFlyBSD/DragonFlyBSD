@@ -392,8 +392,8 @@ init_sys_memory(char *imageFile)
 	/*
 	 * Maxmem must be known at this time
 	 */
-	if (Maxmem_bytes < 32 * 1024 * 1024 || (Maxmem_bytes & SEG_MASK)) {
-		errx(1, "Bad maxmem specification: 32MB minimum, "
+	if (Maxmem_bytes < 64 * 1024 * 1024 || (Maxmem_bytes & SEG_MASK)) {
+		errx(1, "Bad maxmem specification: 64MB minimum, "
 		       "multiples of %dMB only",
 		       SEG_SIZE / 1024 / 1024);
 		/* NOT REACHED */
