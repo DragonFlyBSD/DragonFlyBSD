@@ -72,7 +72,7 @@ extern int selwait;		/* select timeout address */
 
 extern u_char curpriority;	/* priority of current process */
 
-extern int physmem;		/* physical memory */
+extern long physmem;		/* physical memory */
 
 extern cdev_t dumpdev;		/* dump device */
 extern u_int64_t dumplo64;	/* block number into dumpdev, start of dump */
