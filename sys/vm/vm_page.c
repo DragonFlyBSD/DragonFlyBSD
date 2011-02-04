@@ -1380,6 +1380,7 @@ vm_page_try_to_cache(vm_page_t m)
 	vm_page_busy(m);
 	vm_page_test_dirty(m);
 	if (m->dirty) {
+		vm_page_wakeup(m);
 		lwkt_reltoken(&vm_token);
 		return(0);
 	}
