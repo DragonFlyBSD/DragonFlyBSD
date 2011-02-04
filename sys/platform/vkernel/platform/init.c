@@ -385,7 +385,7 @@ init_sys_memory(char *imageFile)
 		Maxmem_bytes = (vm_paddr_t)st.st_size;
 	if ((imageFile == NULL || stat(imageFile, &st) < 0) && 
 	    Maxmem_bytes == 0) {
-		err(1, "Cannot create new memory file %s unless "
+		errx(1, "Cannot create new memory file %s unless "
 		       "system memory size is specified with -m",
 		       imageFile);
 		/* NOT REACHED */
@@ -395,7 +395,7 @@ init_sys_memory(char *imageFile)
 	 * Maxmem must be known at this time
 	 */
 	if (Maxmem_bytes < 32 * 1024 * 1024 || (Maxmem_bytes & SEG_MASK)) {
-		err(1, "Bad maxmem specification: 32MB minimum, "
+		errx(1, "Bad maxmem specification: 32MB minimum, "
 		       "multiples of %dMB only",
 		       SEG_SIZE / 1024 / 1024);
 		/* NOT REACHED */
