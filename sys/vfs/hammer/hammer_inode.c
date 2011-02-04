@@ -2370,6 +2370,21 @@ hammer_wait_inode(hammer_inode_t ip)
 		       (ip->hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR) == 0) {
 			if (ip->flush_state == HAMMER_FST_SETUP)
 				hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+
+			/*
+			 * If the inode was already being flushed its flg
+			 * may not have been queued to the backend.  We have
+			 * to make sure it gets queued or we can wind up
+			 * blocked or deadlocked (particularly if we are
+			 * the vnlru thread).
+			 */
+			KKASSERT(ip->flush_group);
+			if (ip->flush_group->closed == 0) {
+				kprintf("hammer: debug: forcing async "
+					"flush ip %016jx\n",
+					(intmax_t)ip->obj_id);
+				hammer_flusher_async(ip->hmp, ip->flush_group);
+			}
 			if (ip->flush_state != HAMMER_FST_IDLE) {
 				ip->flags |= HAMMER_INODE_FLUSHW;
 				tsleep(&ip->flags, 0, "hmrwin", 0);
