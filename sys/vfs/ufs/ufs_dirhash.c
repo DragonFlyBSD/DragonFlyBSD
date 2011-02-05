@@ -43,7 +43,7 @@
 #include <sys/vnode.h>
 #include <sys/mount.h>
 #include <sys/sysctl.h>
-#include <vm/vm_zone.h>
+#include <sys/objcache.h>
 
 #include "quota.h"
 #include "inode.h"
@@ -86,7 +86,7 @@ static doff_t ufsdirhash_getprev(struct direct *dp, doff_t offset);
 static void ufsdirhash_init(void);
 static int ufsdirhash_recycle(int wanted);
 
-static vm_zone_t	ufsdirhash_zone;
+static struct objcache  *ufsdirhash_oc;
 
 /* Dirhash list; recently-used entries are near the tail. */
 static TAILQ_HEAD(, dirhash) ufsdirhash_list;
@@ -165,7 +165,7 @@ ufsdirhash_build(struct inode *ip)
 	if (dh->dh_hash == NULL || dh->dh_blkfree == NULL)
 		goto fail;
 	for (i = 0; i < narrays; i++) {
-		if ((dh->dh_hash[i] = zalloc(ufsdirhash_zone)) == NULL)
+		if ((dh->dh_hash[i] = objcache_get(ufsdirhash_oc, M_WAITOK)) == NULL)
 			goto fail;
 		for (j = 0; j < DH_NBLKOFF; j++)
 			dh->dh_hash[i][j] = DIRHASH_EMPTY;
@@ -227,7 +227,7 @@ fail:
 	if (dh->dh_hash != NULL) {
 		for (i = 0; i < narrays; i++)
 			if (dh->dh_hash[i] != NULL)
-				zfree(ufsdirhash_zone, dh->dh_hash[i]);
+				objcache_put(ufsdirhash_oc, dh->dh_hash[i]);
 		FREE(dh->dh_hash, M_DIRHASH);
 	}
 	if (dh->dh_blkfree != NULL)
@@ -257,7 +257,7 @@ ufsdirhash_free(struct inode *ip)
 	mem = sizeof(*dh);
 	if (dh->dh_hash != NULL) {
 		for (i = 0; i < dh->dh_narrays; i++)
-			zfree(ufsdirhash_zone, dh->dh_hash[i]);
+			objcache_put(ufsdirhash_oc, dh->dh_hash[i]);
 		FREE(dh->dh_hash, M_DIRHASH);
 		FREE(dh->dh_blkfree, M_DIRHASH);
 		mem += dh->dh_narrays * sizeof(*dh->dh_hash) +
@@ -959,7 +959,7 @@ ufsdirhash_recycle(int wanted)
 
 		/* Free the detached memory. */
 		for (i = 0; i < narrays; i++)
-			zfree(ufsdirhash_zone, hash[i]);
+			objcache_put(ufsdirhash_oc, hash[i]);
 		FREE(hash, M_DIRHASH);
 		FREE(blkfree, M_DIRHASH);
 
@@ -974,8 +974,8 @@ ufsdirhash_recycle(int wanted)
 static void
 ufsdirhash_init(void)
 {
-	ufsdirhash_zone = zinit("DIRHASH", DH_NBLKOFF * sizeof(daddr_t), 0,
-	    0, 1);
+	ufsdirhash_oc = objcache_create_simple(M_DIRHASH,
+	    DH_NBLKOFF * sizeof(daddr_t));
 	TAILQ_INIT(&ufsdirhash_list);
 }
 SYSINIT(ufsdirhash, SI_SUB_PSEUDO, SI_ORDER_ANY, ufsdirhash_init, NULL)
