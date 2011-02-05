@@ -1850,7 +1850,7 @@ sys_lio_listio(struct lio_listio_args *uap)
 		goto done;
 	}
 
-	lj = objcache_get(aiolio_oc);
+	lj = objcache_get(aiolio_oc, M_WAITOK);
 	if (lj == NULL) {
 		error = EAGAIN;
 		goto done;
