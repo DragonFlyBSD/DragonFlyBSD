@@ -50,8 +50,6 @@
 #include <sys/socketvar.h>
 #include <sys/protosw.h>
 
-#include <vm/vm_zone.h>
-
 #include <netinet/in.h>
 #include "rpcv2.h"
 #include "nfsproto.h"

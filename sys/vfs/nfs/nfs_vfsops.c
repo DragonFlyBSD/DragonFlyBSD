@@ -54,10 +54,10 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/systm.h>
+#include <sys/objcache.h>
 
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
-#include <vm/vm_zone.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -91,7 +91,7 @@ MALLOC_DEFINE(M_NFSRVDESC, "NFSV3 srvdesc", "NFS server socket descriptor");
 MALLOC_DEFINE(M_NFSUID, "NFS uid", "Nfs uid mapping structure");
 MALLOC_DEFINE(M_NFSHASH, "NFS hash", "NFS hash tables");
 
-vm_zone_t nfsmount_zone;
+struct objcache *nfsmount_objcache;
 
 struct nfsstats	nfsstats;
 SYSCTL_NODE(_vfs, OID_AUTO, nfs, CTLFLAG_RW, 0, "NFS filesystem");
@@ -1037,7 +1037,7 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 		FREE(nam, M_SONAME);
 		return (0);
 	} else {
-		nmp = zalloc(nfsmount_zone);
+		nmp = objcache_get(nfsmount_objcache, M_WAITOK);
 		bzero((caddr_t)nmp, sizeof (struct nfsmount));
 		mtx_init(&nmp->nm_rxlock);
 		mtx_init(&nmp->nm_txlock);
@@ -1267,7 +1267,7 @@ nfs_free_mount(struct nfsmount *nmp)
 		FREE(nmp->nm_nam, M_SONAME);
 		nmp->nm_nam = NULL;
 	}
-	zfree(nfsmount_zone, nmp);
+	objcache_put(nfsmount_objcache, nmp);
 }
 
 /*
