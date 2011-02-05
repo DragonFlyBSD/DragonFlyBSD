@@ -102,12 +102,12 @@ typedef enum {
 
 #ifdef __GNUC__
 
-#define	__fldcw(addr)	__asm __volatile("fldcw %0" : : "m" (*(addr)))
-#define	__fldenv(addr)	__asm __volatile("fldenv %0" : : "m" (*(addr)))
-#define	__fnclex()	__asm __volatile("fnclex")
-#define	__fnstcw(addr)	__asm __volatile("fnstcw %0" : "=m" (*(addr)))
-#define	__fnstenv(addr)	__asm __volatile("fnstenv %0" : "=m" (*(addr)))
-#define	__fnstsw(addr)	__asm __volatile("fnstsw %0" : "=m" (*(addr)))
+#define	_fldcw(addr)	__asm __volatile("fldcw %0" : : "m" (*(addr)))
+#define	_fldenv(addr)	__asm __volatile("fldenv %0" : : "m" (*(addr)))
+#define	_fnclex()	__asm __volatile("fnclex")
+#define	_fnstcw(addr)	__asm __volatile("fnstcw %0" : "=m" (*(addr)))
+#define	_fnstenv(addr)	__asm __volatile("fnstenv %0" : "=m" (*(addr)))
+#define	_fnstsw(addr)	__asm __volatile("fnstsw %0" : "=m" (*(addr)))
 
 /*
  * Load the control word.  Be careful not to trap if there is a currently
@@ -117,7 +117,7 @@ typedef enum {
  * is very inefficient, so only do it when necessary.
  */
 static __inline void
-__fnldcw(unsigned short _cw, unsigned short _newcw)
+_fnldcw(unsigned short _cw, unsigned short _newcw)
 {
 	struct {
 		unsigned _cw;
@@ -126,15 +126,15 @@ __fnldcw(unsigned short _cw, unsigned short _newcw)
 	unsigned short _sw;
 
 	if ((_cw & FP_MSKS_FLD) != FP_MSKS_FLD) {
-		__fnstsw(&_sw);
+		_fnstsw(&_sw);
 		if (((_sw & ~_cw) & FP_STKY_FLD) != 0) {
-			__fnstenv(&_env);
+			_fnstenv(&_env);
 			_env._cw = _newcw;
-			__fldenv(&_env);
+			_fldenv(&_env);
 			return;
 		}
 	}
-	__fldcw(&_newcw);
+	_fldcw(&_newcw);
 }
 
 static __inline fp_rnd_t
@@ -142,7 +142,7 @@ fpgetround(void)
 {
 	unsigned short _cw;
 
-	__fnstcw(&_cw);
+	_fnstcw(&_cw);
 	return ((fp_rnd_t)((_cw & FP_RND_FLD) >> FP_RND_OFF));
 }
 
@@ -152,11 +152,11 @@ fpsetround(fp_rnd_t _m)
 	fp_rnd_t _p;
 	unsigned short _cw, _newcw;
 
-	__fnstcw(&_cw);
+	_fnstcw(&_cw);
 	_p = (fp_rnd_t)((_cw & FP_RND_FLD) >> FP_RND_OFF);
 	_newcw = _cw & ~FP_RND_FLD;
 	_newcw |= (_m << FP_RND_OFF) & FP_RND_FLD;
-	__fnldcw(_cw, _newcw);
+	_fnldcw(_cw, _newcw);
 	return (_p);
 }
 
@@ -165,7 +165,7 @@ fpgetprec(void)
 {
 	unsigned short _cw;
 
-	__fnstcw(&_cw);
+	_fnstcw(&_cw);
 	return ((fp_prec_t)((_cw & FP_PRC_FLD) >> FP_PRC_OFF));
 }
 
@@ -175,11 +175,11 @@ fpsetprec(fp_prec_t _m)
 	fp_prec_t _p;
 	unsigned short _cw, _newcw;
 
-	__fnstcw(&_cw);
+	_fnstcw(&_cw);
 	_p = (fp_prec_t)((_cw & FP_PRC_FLD) >> FP_PRC_OFF);
 	_newcw = _cw & ~FP_PRC_FLD;
 	_newcw |= (_m << FP_PRC_OFF) & FP_PRC_FLD;
-	__fnldcw(_cw, _newcw);
+	_fnldcw(_cw, _newcw);
 	return (_p);
 }
 
@@ -194,7 +194,7 @@ fpgetmask(void)
 {
 	unsigned short _cw;
 
-	__fnstcw(&_cw);
+	_fnstcw(&_cw);
 	return ((~_cw & FP_MSKS_FLD) >> FP_MSKS_OFF);
 }
 
@@ -204,11 +204,11 @@ fpsetmask(fp_except_t _m)
 	fp_except_t _p;
 	unsigned short _cw, _newcw;
 
-	__fnstcw(&_cw);
+	_fnstcw(&_cw);
 	_p = (~_cw & FP_MSKS_FLD) >> FP_MSKS_OFF;
 	_newcw = _cw & ~FP_MSKS_FLD;
 	_newcw |= (~_m << FP_MSKS_OFF) & FP_MSKS_FLD;
-	__fnldcw(_cw, _newcw);
+	_fnldcw(_cw, _newcw);
 	return (_p);
 }
 
@@ -218,7 +218,7 @@ fpgetsticky(void)
 	unsigned _ex;
 	unsigned short _sw;
 
-	__fnstsw(&_sw);
+	_fnstsw(&_sw);
 	_ex = (_sw & FP_STKY_FLD) >> FP_STKY_OFF;
 	return ((fp_except_t)_ex);
 }
@@ -238,12 +238,12 @@ fpresetsticky(fp_except_t _m)
 	if ((_p & ~_m) == _p)
 		return (_p);
 	if ((_p & ~_m) == 0) {
-		__fnclex();
+		_fnclex();
 		return (_p);
 	}
-	__fnstenv(&_env);
+	_fnstenv(&_env);
 	_env._sw &= ~_m;
-	__fldenv(&_env);
+	_fldenv(&_env);
 	return (_p);
 }
 
