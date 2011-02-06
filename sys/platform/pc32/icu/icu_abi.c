@@ -55,6 +55,7 @@
 #include <sys/thread2.h>
 
 #include <machine_base/apic/ioapic_abi.h>
+#include <machine_base/isa/elcr_var.h>
 
 #include "icu.h"
 #include "icu_ipl.h"
@@ -80,6 +81,15 @@ static inthand_t *icu_intr[ICU_HWI_VECTORS] = {
 	&IDTVEC(icu_intr14),	&IDTVEC(icu_intr15)
 };
 
+static struct icu_irqmap {
+	int			im_type;	/* ICU_IMT_ */
+	enum intr_trigger	im_trig;
+} icu_irqmaps[MAX_HARDINTS];	/* XXX MAX_HARDINTS may not be correct */
+
+#define ICU_IMT_UNUSED		0	/* KEEP THIS */
+#define ICU_IMT_RESERVED	1
+#define ICU_IMT_LINE		2
+
 extern void	ICU_INTREN(int);
 extern void	ICU_INTRDIS(int);
 
@@ -90,6 +100,7 @@ static void	icu_finalize(void);
 static void	icu_cleanup(void);
 static void	icu_setdefault(void);
 static void	icu_stabilize(void);
+static void	icu_initmap(void);
 
 struct machintr_abi MachIntrABI_ICU = {
 	MACHINTR_ICU,
@@ -101,7 +112,8 @@ struct machintr_abi MachIntrABI_ICU = {
 	.finalize	= icu_finalize,
 	.cleanup	= icu_cleanup,
 	.setdefault	= icu_setdefault,
-	.stabilize	= icu_stabilize
+	.stabilize	= icu_stabilize,
+	.initmap	= icu_initmap
 };
 
 static int	icu_imcr_present;
@@ -261,5 +273,36 @@ icu_setdefault(void)
 			continue;
 		setidt(IDT_OFFSET + intr, icu_intr[intr], SDT_SYS386IGT,
 		       SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+	}
+}
+
+static void
+icu_initmap(void)
+{
+	int i;
+
+	for (i = 0; i < ICU_HWI_VECTORS; ++i)
+		icu_irqmaps[i].im_type = ICU_IMT_LINE;
+	icu_irqmaps[ICU_IRQ_SLAVE].im_type = ICU_IMT_RESERVED;
+
+	if (elcr_found) {
+		for (i = 0; i < ICU_HWI_VECTORS; ++i)
+			icu_irqmaps[i].im_trig = elcr_read_trigger(i);
+	} else {
+		for (i = 0; i < ICU_HWI_VECTORS; ++i) {
+			switch (i) {
+			case 0:
+			case 1:
+			case 2:
+			case 8:
+			case 13:
+				icu_irqmaps[i].im_trig = INTR_TRIGGER_EDGE;
+				break;
+
+			default:
+				icu_irqmaps[i].im_trig = INTR_TRIGGER_LEVEL;
+				break;
+			}
+		}
 	}
 }

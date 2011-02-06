@@ -449,6 +449,16 @@ static inthand_t *ioapic_intr[IOAPIC_HWI_VECTORS] = {
 	&IDTVEC(ioapic_intr191)
 };
 
+static struct ioapic_irqmap {
+	int			im_type;	/* IOAPIC_IMT_ */
+	enum intr_trigger	im_trig;
+	int			im_gsi;
+} ioapic_irqmaps[MAX_HARDINTS];	/* XXX MAX_HARDINTS may not be correct */
+
+#define IOAPIC_IMT_UNUSED	0
+#define IOAPIC_IMT_RESERVED	1
+#define IOAPIC_IMT_LINE		2
+
 extern void	IOAPIC_INTREN(int);
 extern void	IOAPIC_INTRDIS(int);
 
@@ -459,6 +469,7 @@ static void	ioapic_finalize(void);
 static void	ioapic_cleanup(void);
 static void	ioapic_setdefault(void);
 static void	ioapic_stabilize(void);
+static void	ioapic_initmap(void);
 
 static int	ioapic_imcr_present;
 
@@ -472,7 +483,8 @@ struct machintr_abi MachIntrABI_IOAPIC = {
 	.finalize	= ioapic_finalize,
 	.cleanup	= ioapic_cleanup,
 	.setdefault	= ioapic_setdefault,
-	.stabilize	= ioapic_stabilize
+	.stabilize	= ioapic_stabilize,
+	.initmap	= ioapic_initmap
 };
 
 static int
@@ -699,6 +711,21 @@ ioapic_setdefault(void)
 			continue;
 		setidt(IDT_OFFSET + intr, ioapic_intr[intr], SDT_SYS386IGT,
 		       SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+	}
+}
+
+/* XXX magic number */
+static void
+ioapic_initmap(void)
+{
+	int i;
+
+	for (i = 0; i < 16; ++i) {
+		struct ioapic_irqmap *map = &ioapic_irqmaps[i];
+
+		map->im_type = IOAPIC_IMT_LINE;
+		map->im_trig = INTR_TRIGGER_EDGE;
+		map->im_gsi = i;
 	}
 }
 

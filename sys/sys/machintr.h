@@ -65,6 +65,7 @@ struct machintr_abi {
     void	(*cleanup)(void);		/* cleanup */
     void	(*setdefault)(void);		/* set default vectors */
     void	(*stabilize)(void);		/* stable before ints enabled */
+    void	(*initmap)(void);		/* init irq mapping */
 };
 
 #define machintr_intren(intr)	MachIntrABI.intren(intr)
