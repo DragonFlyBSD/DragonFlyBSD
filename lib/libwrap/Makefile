@@ -1,6 +1,4 @@
-#
 # $FreeBSD: src/lib/libwrap/Makefile,v 1.5.2.3 2002/07/22 14:21:50 ru Exp $
-# $DragonFly: src/lib/libwrap/Makefile,v 1.5 2005/09/24 02:50:47 sephe Exp $
 #
 
 LIB=	wrap
@@ -9,6 +7,7 @@ INCS=	tcpd.h
 MAN=	hosts_access.3
 MAN+=	hosts_access.5 hosts_options.5
 CSTD?=	gnu89
+WARNS?=	1
 
 .PATH:	${.CURDIR}/../../contrib/tcp_wrappers
 

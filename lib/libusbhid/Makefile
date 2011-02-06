@@ -1,10 +1,8 @@
 #	$NetBSD: Makefile,v 1.5 1999/07/23 09:44:38 mrg Exp $
 #	$FreeBSD: src/lib/libusbhid/Makefile,v 1.6 2002/03/28 18:44:24 joe Exp $
-#	$DragonFly: src/lib/libusbhid/Makefile,v 1.7 2008/11/24 17:15:17 hasso Exp $
 
 LIB=	usbhid
 MAN=	usbhid.3
-WARNS?=	6
 
 SHLIB_MAJOR= 2
 

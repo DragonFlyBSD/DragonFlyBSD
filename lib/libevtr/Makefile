@@ -3,8 +3,7 @@ SHLIB_MAJOR=1
 
 SRCS=evtr.c ktrfmt.yy.c ktrfmt.tab.c
 INCS=evtr.h
-
-CFLAGS+= -W -Wall
+WARNS?=	2
 
 #ktrfmt.yy.c: ktrfmt.l ktrfmt.tab.h
 #	flex ktrfmt.l

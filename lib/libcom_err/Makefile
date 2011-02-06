@@ -1,5 +1,4 @@
 # $FreeBSD: src/lib/libcom_err/Makefile,v 1.11.2.1 2001/04/25 10:04:22 ru Exp $
-# $DragonFly: src/lib/libcom_err/Makefile,v 1.2 2003/06/17 04:26:48 dillon Exp $
 
 LIB=	com_err
 SRCS=	com_err.c error.c
@@ -7,7 +6,6 @@ INCS=	${COM_ERRDIR}/com_err.h ${COM_ERRDIR}/com_right.h
 MAN=	com_err.3
 COM_ERRDIR=	${.CURDIR}/../../contrib/com_err
 CFLAGS+=	-I${COM_ERRDIR}
-WARNS?=	6
 
 SUBDIR=	doc
 

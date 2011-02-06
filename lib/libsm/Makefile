@@ -1,5 +1,4 @@
 # $FreeBSD: src/lib/libsm/Makefile,v 1.1.2.2 2002/07/19 18:46:26 ru Exp $
-# $DragonFly: src/lib/libsm/Makefile,v 1.12 2007/04/14 17:43:48 gshapiro Exp $
 
 SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.14
 .PATH:	${SENDMAIL_DIR}/libsm
@@ -11,6 +10,7 @@ CFLAGS+=-DNETINET6 -DNEWDB -DNIS -DMAP_REGEX -DNOT_SENDMAIL
 CFLAGS+=${SENDMAIL_CFLAGS}
 
 LIB=	sm
+WARNS?=	0
 
 SRCS+=	sm_os.h
 SRCS+=	assert.c debug.c errstring.c exc.c heap.c match.c rpool.c \

@@ -10,8 +10,6 @@ MDASM=
 MIASM=
 NOASM=
 
-WARNS=6
-
 .include "${.CURDIR}/../libc/${MACHINE_ARCH}/Makefile.inc"
 
 .include "${.CURDIR}/../libc/citrus/Makefile.inc"

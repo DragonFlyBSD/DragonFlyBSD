@@ -4,6 +4,7 @@ SRCS+=		crt1.c crti.S crtn.S
 OBJS+=		gcrt1.o
 INSTALLOBJS+=	crt1.o crti.o crtn.o gcrt1.o
 CLEANFILES+=	crt1.o crti.o crtn.o gcrt1.o
+WARNS?=		2
 
 CFLAGS+=	-I${CSUDIR}/../common \
 		-I${CSUDIR}/../../libc/include

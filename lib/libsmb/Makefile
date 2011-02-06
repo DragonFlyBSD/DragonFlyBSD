@@ -1,9 +1,9 @@
 # $FreeBSD: src/lib/libsmb/Makefile,v 1.1.2.2 2001/12/20 09:21:31 sheldonh Exp $
-# $DragonFly: src/lib/libsmb/Makefile,v 1.3 2005/04/21 13:42:34 joerg Exp $
 
 LIB=		smb
 
 CSTD?=		gnu89
+WARNS?=		0
 
 SHLIB_MAJOR=	2
 

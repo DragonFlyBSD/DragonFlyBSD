@@ -1,12 +1,9 @@
-# $DragonFly: src/lib/libpthread/Makefile,v 1.6 2008/01/20 19:14:09 corecode Exp $
-
 LIBNAME=	libpthread
 SHLIB_MAJOR=	0
 SHLIB_NAME=	${LIBNAME}.so
 SONAME=		${SHLIB_NAME}.${SHLIB_MAJOR}
 
 SRCS=		dummy.c
-WARNS?=		6
 
 MAN+=	\
 	pthread.3 \
