@@ -65,10 +65,10 @@ static int	elcr_status;
 void
 elcr_probe(void)
 {
-	int enable;
+	int disable;
 
-	TUNABLE_INT_FETCH("hw.elcr_enable", &enable);
-	if (!enable)
+	TUNABLE_INT_FETCH("hw.elcr_disable", &disable);
+	if (disable)
 		return;
 
 	elcr_status = inb(ELCR_PORT) | inb(ELCR_PORT + 1) << 8;
