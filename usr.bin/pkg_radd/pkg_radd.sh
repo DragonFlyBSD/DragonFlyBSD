@@ -31,7 +31,7 @@
 
 osver=`uname -r | awk -F - '{ print $1; }'`
 cpuver=`uname -p | awk -F - '{ print $1; }'`
-[ -f /etc/settings.conf ] && . /etc/settings.conf
+[ -f /etc/pkg_radd.conf ] && . /etc/pkg_radd.conf
 : ${BINPKG_BASE:=http://mirror-master.dragonflybsd.org/packages}
 : ${BINPKG_SITES:=$BINPKG_BASE/$cpuver/DragonFly-$osver/stable}
 : ${PKG_PATH:=$BINPKG_SITES/All}
