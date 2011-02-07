@@ -6,8 +6,6 @@
  *
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
- * 
- * $DragonFly: src/sys/sys/thread.h,v 1.97 2008/09/20 04:31:02 sephe Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -37,9 +35,7 @@
 #ifndef _SYS_IOSCHED_H_
 #include <sys/iosched.h>
 #endif
-#ifndef _MACHINE_THREAD_H_
 #include <machine/thread.h>
-#endif
 
 struct globaldata;
 struct lwp;

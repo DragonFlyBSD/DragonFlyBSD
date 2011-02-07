@@ -28,7 +28,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/ddb.h,v 1.24.2.2 2002/08/30 22:27:49 gibbs Exp $
- * $DragonFly: src/sys/ddb/ddb.h,v 1.12 2007/05/07 05:21:38 dillon Exp $
  */
 
 /*
@@ -42,9 +41,7 @@
 #include <sys/queue.h>
 #endif
 
-#ifndef _MACHINE_DB_MACHDEP_H_
 #include <machine/db_machdep.h>		/* type definitions */
-#endif
 
 #ifndef _MACHINE_GLOBALDATA_H_
 #include <machine/globaldata.h>

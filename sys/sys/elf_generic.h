@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf_generic.h,v 1.4 1999/08/28 00:51:42 peter Exp $
- * $DragonFly: src/sys/sys/elf_generic.h,v 1.6 2006/10/23 21:50:33 dillon Exp $
  */
 
 #ifndef _SYS_ELF_GENERIC_H_
@@ -33,9 +32,7 @@
 #ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
 #endif
-#ifndef _MACHINE_ENDIAN_H_
 #include <machine/endian.h>
-#endif
 
 /*
  * Definitions of generic ELF names which relieve applications from

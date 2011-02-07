@@ -25,16 +25,12 @@
  * SUCH DAMAGE.
  *
  *	Machine independant code should not directly include this file.
- *
- * $DragonFly: src/sys/platform/pc64/include/thread.h,v 1.3 2008/08/29 17:07:17 dillon Exp $
  */
 
 #ifndef	_MACHINE_THREAD_H_
 #define	_MACHINE_THREAD_H_
 
-#ifndef _MACHINE_SEGMENTS_H_
 #include <machine/segments.h>
-#endif
 
 struct md_thread {
     unsigned int	mtd_cpl;

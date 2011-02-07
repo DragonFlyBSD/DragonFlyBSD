@@ -51,9 +51,7 @@
 #ifndef _VM_VM_PAGE_H_
 #include <vm/vm_page.h>
 #endif
-#ifndef _MACHINE_ATOMIC_H_
 #include <machine/atomic.h>
-#endif
 
 #if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
 #error "This file should not be included by userland programs."

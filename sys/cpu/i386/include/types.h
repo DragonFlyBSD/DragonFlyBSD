@@ -32,15 +32,12 @@
  *
  * @(#)types.h	8.3 (Berkeley) 1/5/94
  * $FreeBSD: src/sys/i386/include/types.h,v 1.19.2.1 2001/03/21 10:50:58 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/types.h,v 1.11 2006/11/07 06:43:23 dillon Exp $
  */
 
 #ifndef _CPU_TYPES_H_
 #define	_CPU_TYPES_H_
 
-#ifndef _MACHINE_STDINT_H_
 #include <machine/stdint.h>
-#endif
 
 typedef	unsigned long	vm_offset_t;	/* address space bounded offset */
 typedef	unsigned long	vm_size_t;	/* address space bounded size */

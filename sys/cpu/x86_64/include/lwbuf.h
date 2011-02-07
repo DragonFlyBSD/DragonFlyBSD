@@ -48,9 +48,7 @@
 #ifndef _VM_VM_PAGE_H_
 #include <vm/vm_page.h>
 #endif
-#ifndef _MACHINE_ATOMIC_H_
 #include <machine/atomic.h>
-#endif
 #ifndef _MACHINE_VMPARAM_H_
 #include <machine/vmparam.h>
 #endif

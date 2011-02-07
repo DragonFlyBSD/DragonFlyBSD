@@ -32,7 +32,6 @@
  *
  *	@(#)ip.h	8.2 (Berkeley) 6/1/94
  * $FreeBSD: src/sys/netinet/ip.h,v 1.17 1999/12/22 19:13:20 shin Exp $
- * $DragonFly: src/sys/netinet/ip.h,v 1.5 2006/05/20 02:42:12 dillon Exp $
  */
 
 #ifndef _NETINET_IP_H_
@@ -47,9 +46,7 @@
 #ifndef _NETINET_IN_SYSTM_H_
 #include <netinet/in_systm.h>
 #endif
-#ifndef _MACHINE_ENDIAN_H_
 #include <machine/endian.h>
-#endif
 
 /*
  * Definitions for internet protocol version 4.

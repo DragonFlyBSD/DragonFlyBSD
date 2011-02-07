@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/sys/sysref2.h,v 1.2 2007/05/06 19:23:33 dillon Exp $
  */
 /*
  * System resource registration, reference counter, and allocation
@@ -50,9 +48,7 @@
 #ifndef _SYS_SYSREF_H_
 #include <sys/sysref.h>
 #endif
-#ifndef _MACHINE_ATOMIC_H_
 #include <machine/atomic.h>
-#endif
 
 void _sysref_put(struct sysref *);
 

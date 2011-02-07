@@ -42,9 +42,7 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
-#ifndef _MACHINE_STDINT_H_
 #include <machine/stdint.h>
-#endif
 
 #define _NO_NAMESPACE_POLLUTION
 #include <machine/param.h>

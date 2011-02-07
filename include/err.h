@@ -32,7 +32,6 @@
  *
  *	@(#)err.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/include/err.h,v 1.8 1999/08/27 23:44:49 peter Exp $
- * $DragonFly: src/include/err.h,v 1.4 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef _ERR_H_
@@ -46,12 +45,8 @@
  * __va_list from <machine/stdint.h> and use it.
  */
 #include <sys/cdefs.h>
-#ifndef _MACHINE_STDINT_H_
 #include <machine/stdint.h>
-#endif
-#ifndef _MACHINE_STDARG_H_
 #include <machine/stdarg.h>
-#endif
 
 __BEGIN_DECLS
 void	err (int, const char *, ...) __dead2 __printf0like(2, 3);

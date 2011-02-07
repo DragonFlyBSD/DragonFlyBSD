@@ -30,19 +30,13 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/cpu/i386/include/vframe.h,v 1.2 2007/01/09 23:34:01 dillon Exp $
  */
 
 #ifndef _CPU_VFRAME_H_
 #define _CPU_VFRAME_H_
 
-#ifndef _MACHINE_NPX_H_
 #include <machine/npx.h>
-#endif
-#ifndef _MACHINE_SEGMENTS_H_
 #include <machine/segments.h>
-#endif
 
 /*
  * Virtualized external frame.  This is used by the virtual kernel in

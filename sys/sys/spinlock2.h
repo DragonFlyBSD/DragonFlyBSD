@@ -28,8 +28,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/sys/spinlock2.h,v 1.12 2008/06/04 04:34:54 nth Exp $
  */
 
 #ifndef _SYS_SPINLOCK2_H_
@@ -50,12 +48,8 @@
 #ifndef _SYS_GLOBALDATA_H_
 #include <sys/globaldata.h>
 #endif
-#ifndef _MACHINE_ATOMIC_H_
 #include <machine/atomic.h>
-#endif
-#ifndef _MACHINE_CPUFUNC_H_
 #include <machine/cpufunc.h>
-#endif
 
 #ifdef SMP
 

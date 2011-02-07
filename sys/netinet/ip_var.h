@@ -32,7 +32,6 @@
  *
  *	@(#)ip_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/ip_var.h,v 1.50.2.13 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/ip_var.h,v 1.27 2008/09/13 08:48:42 sephe Exp $
  */
 
 #ifndef _NETINET_IP_VAR_H_
@@ -50,9 +49,7 @@
 
 #ifdef _KERNEL
 
-#ifndef _MACHINE_ENDIAN_H_
 #include <machine/endian.h>
-#endif
 #ifndef _MACHINE_PARAM_H_
 #include <machine/param.h>
 #endif

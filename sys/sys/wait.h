@@ -32,7 +32,6 @@
  *
  *	@(#)wait.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/wait.h,v 1.11 1999/12/29 04:24:50 peter Exp $
- * $DragonFly: src/sys/sys/wait.h,v 1.6 2007/08/30 20:41:00 pavalos Exp $
  */
 
 #ifndef _SYS_WAIT_H_
@@ -93,9 +92,7 @@
 #define	WAIT_ANY	(-1)	/* any process */
 #define	WAIT_MYPGRP	0	/* any process in my process group */
 
-#ifndef _MACHINE_ENDIAN_H_
 #include <machine/endian.h>
-#endif
 
 /*
  * Deprecated:

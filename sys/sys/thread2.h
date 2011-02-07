@@ -7,8 +7,6 @@
  * with the current cpu.  For example, a higher priority thread pending
  * on a different cpu will not be immediately scheduled by a yield() on
  * this cpu.
- *
- * $DragonFly: src/sys/sys/thread2.h,v 1.28 2006/12/23 00:27:03 swildner Exp $
  */
 
 #ifndef _SYS_THREAD2_H_
@@ -29,9 +27,7 @@
 #ifndef _SYS_GLOBALDATA_H_
 #include <sys/globaldata.h>
 #endif
-#ifndef _MACHINE_CPUFUNC_H_
 #include <machine/cpufunc.h>
-#endif
 
 /*
  * Is a token held by the specified thread?

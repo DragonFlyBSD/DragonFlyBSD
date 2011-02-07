@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet/ip6.h,v 1.2.2.2 2001/07/03 11:01:46 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet/ip6.h,v 1.8 2008/09/04 09:08:22 hasso Exp $	*/
 /*	$KAME: ip6.h,v 1.18 2001/03/29 05:34:30 itojun Exp $	*/
 
 /*
@@ -75,9 +74,7 @@
 #ifndef _NETINET_IN_H_
 #include <netinet/in.h>
 #endif
-#ifndef _MACHINE_ENDIAN_H_
 #include <machine/endian.h>
-#endif
 
 
 /*
