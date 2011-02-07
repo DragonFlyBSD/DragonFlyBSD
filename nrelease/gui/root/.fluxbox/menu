@@ -15,8 +15,8 @@
 #   you can change the menu name in .fluxbox/init to:
 #     session.menuFile: /home/you/.fluxbox/my-menu
 [begin] ()
-	[exec] (Terminal) {urxvt} <~/.fluxbox/icons/terminal.png>
-	[exec] (Firefox) {firefox3} <~/.fluxbox/icons/firefox.png>
+	[exec] (Terminal) {xterm} <~/.fluxbox/icons/terminal.png>
+	[exec] (Firefox) {firefox} <~/.fluxbox/icons/firefox.png>
 	[exec] (Pidgin) {pidgin} <~/.fluxbox/icons/pidgin.png>
 	[exec] (Xchat) {xchat} <~/.fluxbox/icons/xchat.png>
     [exec] (xpdf) {xpdf} <~/.fluxbox/icons/xpdf.png>

@@ -22,9 +22,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/smp.4,v 1.7.2.4 2001/08/17 13:08:39 ru Exp $
-.\" $DragonFly: src/share/man/man4/smp.4,v 1.4 2007/10/27 18:45:00 swildner Exp $
 .\"
-.Dd August 4, 1997
+.Dd November 8, 2010
 .Dt SMP 4
 .Os
 .Sh NAME
@@ -32,11 +31,13 @@
 .Nd description of the Symmetric MultiProcessor kernel
 .Sh SYNOPSIS
 .Cd options SMP
-.Cd options APIC_IO
 .Sh DESCRIPTION
 The
 .Nm
 kernel implements symmetric multiprocessor support.
+APIC I/O can be enabled or disabled by setting the
+.Dv hw.apic_io_enable
+loader tunable (default is enabled).
 .Sh COMPATIBILITY
 The
 .Nm

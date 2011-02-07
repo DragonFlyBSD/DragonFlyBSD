@@ -66,6 +66,7 @@
 extern int	mfs;		/* run as the memory based filesystem */
 extern char	*mfs_mtpt;	/* mount point for mfs          */ 
 extern struct stat mfs_mtstat;	/* stat prior to mount          */
+extern int	Lflag;		/* add a volume label */
 extern int	Nflag;		/* run mkfs without writing file system */
 extern int	Oflag;		/* format as an 4.3BSD file system */
 extern int	Uflag;		/* enable soft updates for file system */
@@ -96,6 +97,7 @@ extern int	avgfilesize;	/* expected average file size */
 extern int	avgfilesperdir;	/* expected number of files per directory */
 extern caddr_t	membase;	/* start address of memory based filesystem */
 extern char *	filename;
+extern u_char	*volumelabel;	/* volume label for filesystem */
 extern struct disktab geom;
 
 extern void fatal(const char *fmt, ...);
@@ -232,6 +234,8 @@ mkfs(char *fsys, int fi, int fo, const char *mfscopy)
 	}
 	if (Uflag)
 		sblock.fs_flags |= FS_DOSOFTDEP;
+	if (Lflag)
+		strlcpy(sblock.fs_volname, volumelabel, MAXVOLLEN);
 	/*
 	 * Validate the given file system size.
 	 * Verify that its last block can actually be accessed.

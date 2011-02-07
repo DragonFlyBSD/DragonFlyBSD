@@ -1,0 +1,121 @@
+.\"
+.\" Copyright (c) 2010 The DragonFly Project.	All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Nolan Lum <nol888@gmail.com>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.	 IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.Dd December 6, 2010
+.Os
+.Dt DEVATTR 8
+.Sh NAME
+.Nm devattr
+.Nd tool for displaying devices and their associated properties
+.Sh SYNOPSIS
+.Nm
+.Op Fl Ah
+.Op Fl p Ar property
+.Op Fl d Ar device
+.Op Fl m Ar key:value
+.Op Fl r Ar key:value
+.Sh DESCRIPTION
+The
+.Nm
+tool is for displaying a list of devices and some
+associated properties such as their name.
+This tool exposes the same functionality provided by the
+.Xr devattr 3
+library, namely the filtering capabilities offered.
+.Pp
+The options are as follows:
+.Bl -tag -width indent
+.It Fl A
+Excludes aliases from the listing.
+.\"
+.It Fl h
+Displays a help message.
+.\"
+.It Fl p
+Only display the specified
+.Ar property .
+This can be can be specified multiple times and combined
+with all other options.
+.\"
+.It Fl d
+Only display devices with name
+.Ar device .
+When used with
+.Fl p ,
+only the specified properties of
+.Ar device
+are listed.
+Can be specified multiple times.
+Allows wildcards.
+.\"
+.It Fl m
+Only display devices whose property
+.Ar key
+matches with wildcards value
+.Ar value
+unless the key\-value pair starts with ~, in which case
+the match is inverted.
+Stacks with
+.Fl p ,
+.Fl d ,
+.Fl m .
+Can be specified multiple times.
+.\"
+.It Fl r
+Behaves similarly to
+.Fl m ,
+but matches with regex.
+.Sh EXAMPLES
+List all devices named 'pts/0':
+.Bd -ragged -offset indent
+.Nm Fl d
+pts/0
+.Ed
+.Pp
+List all devices whose major number is 64:
+.Bd -ragged -offset indent
+.Nm Fl m
+major:64
+.Ed
+.Pp
+List all devices whose name is 'pts/0' and major number is not 64:
+.Bd -ragged -offset indent
+.Nm Fl d
+pts/0
+.Fl m
+~major:64
+.Ed
+.Sh SEE ALSO
+.Xr devattr 3 ,
+.Xr udevd 8
+.Sh AUTHORS
+.An Nolan Lum

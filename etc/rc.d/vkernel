@@ -18,21 +18,26 @@ vkernel_start()
 	do
 		# Check if already running
 		eval pidfile="/var/run/vkernel.${_vkernel}.pid"
-		if [ -f "${_pidfile}" ]; then
-			echo
-			warn "Vkernel ${_vkernel} already running? (check ${pidfile})"
-			continue
+		if [ -f "${pidfile}" ]; then
+			eval pid=`cat ${pidfile}`
+			if [ ! -z "${pid}" -a ! -z "`ps axwwp ${pid} | grep -wE "^[ ]*${pid}" | grep -v grep | awk '{print $1}'`" ]; then
+				echo
+				warn "Vkernel ${_vkernel} already running? (check ${pidfile})"
+				continue
+			fi
 		fi
 
 		# Configure vkernel binary
 		eval _bin=\"\${vkernel_${_vkernel}_bin}\"
 		if [ -z "${_bin}" -o ! -x "${_bin}" ]; then
-			echo
-			warn "Missing or undefined binary for vkernel '${_vkernel}'. Skipping."
-			continue
-		else
-			bin=${_bin}
+			eval _bin=\"\${vkernel_bin}\"
+			if [ -z "${_bin}" -o ! -x "${_bin}" ]; then
+				echo
+				warn "Missing or undefined binary for vkernel '${_vkernel}'. Skipping."
+				continue
+			fi
 		fi
+		bin=${_bin}
 
 		# Configure vkernel memory
 		eval _memsize=\"\$vkernel_${_vkernel}_memsize\"
@@ -48,8 +53,7 @@ vkernel_start()
 		eval _rootimgs=\"\${vkernel_${_vkernel}_rootimg_list}\"
 		if [ -z "${_rootimgs}" ]; then
 			echo
-			warn "No root image has been defined for vkernel '${_vkernel}'. Skipping."
-			continue
+			warn "No root image has been defined for vkernel '${_vkernel}'."
 		else
 			for _rootimg in ${_rootimgs}
 			do
@@ -73,7 +77,7 @@ vkernel_start()
 		# Configure optional flags
 		eval flags=\"\${vkernel_${_vkernel}_flags}\"
 
-		eval "daemon ${bin} ${memsize} ${rootimgs} ${ifaces} ${flags} -p ${pidfile} >>${logfile} 2>&1"
+		eval "daemon ${bin} ${memsize} ${rootimgs} ${ifaces} ${flags} -p ${pidfile} >>${logfile} 2>&1 </dev/null"
 		echo -n " ${_vkernel}"
 	done
 	echo '.'
@@ -86,16 +90,33 @@ vkernel_stop()
 		eval pidfile="/var/run/vkernel.${_vkernel}.pid"
 		if [ -f "${pidfile}" ]; then
 			eval pid=`cat ${pidfile}`
-		else
-			eval _bin=\"\${vkernel_${_vkernel}_bin}\"
-			if [ -n "$_bin" ]; then
-				eval pid=`ps auxwww | grep ${_bin} | grep -v grep | awk '{print $2}'`
-			fi
 		fi
 		if [ -z "${pid}" ]; then
 			warn "vkernel '${_vkernel}' not running?"
-		else
-			eval kill -TERM ${pid}
+			continue
+		fi
+		eval kill -TERM ${pid}
+
+		eval _kill_timeout=\"\${vkernel_${_vkernel}_kill_timeout}\"
+		if [ -z "${_kill_timeout}" ]; then
+			eval _kill_timeout=\"\${vkernel_kill_timeout}\"
+			if [ -z "${_kill_timeout}" ]; then
+				_kill_timeout=60
+			fi
+		fi
+
+		# Check that the vkernel ended properly
+		cnt=1
+		eval temp_pid=`ps axwwp ${pid} | grep -wE "^[ ]*${pid}" | grep -v grep | awk '{print $1}'`
+		while [ ! -z "${temp_pid}" -a "${cnt}" -lt "${_kill_timeout}" ]; do
+			eval temp_pid=`ps axwwp ${pid} | grep -wE "^[ ]*${pid}" | grep -v grep | awk '{print $1}'`
+			cnt=`expr $cnt + 1`
+			sleep 1
+		done
+
+		if [ ! -z "${temp_pid}" ]; then
+			eval kill -KILL ${pid}
+			warn "'${_vkernel}' had to be forcefully killed."
 		fi
 	done
 }

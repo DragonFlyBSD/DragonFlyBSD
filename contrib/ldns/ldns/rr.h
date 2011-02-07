@@ -23,6 +23,10 @@
 #include <ldns/buffer.h>
 #include <ldns/error.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Maximum length of a dname label */
 #define LDNS_MAX_LABELLEN     63
 /** Maximum length of a complete dname */
@@ -33,7 +37,7 @@
 #define LDNS_RR_OVERHEAD	10
 
 /* The first fields are 'common' and can be referenced instantly */
-#define LDNS_RDATA_FIELD_DESCRIPTORS_COMMON 51
+#define LDNS_RDATA_FIELD_DESCRIPTORS_COMMON 52
 
 
 
@@ -173,6 +177,9 @@ enum ldns_enum_rr_type
 
 	LDNS_RR_TYPE_NSEC3 = 50,
 	LDNS_RR_TYPE_NSEC3PARAMS = 51,
+
+        /** draft-ietf-dnsop-trust-history */
+        LDNS_RR_TYPE_TALINK = 58,
 
 	LDNS_RR_TYPE_SPF = 99,
 
@@ -870,5 +877,9 @@ ldns_rr_list_type(const ldns_rr_list *rr_list);
  */
 ldns_rdf *
 ldns_rr_list_owner(const ldns_rr_list *rr_list);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LDNS_RR_H */

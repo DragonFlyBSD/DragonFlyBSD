@@ -1,9 +1,6 @@
 # This file tells config what files go into building a kernel,
 # files marked standard are always included.
 #
-# $DragonFly: src/sys/platform/pc64/conf/files,v 1.4 2008/11/17 11:55:19 swildner Exp $
-#
-
 linux32_genassym.o		optional	compat_linux32			\
 	dependency 	"$S/emulation/linux/x86_64/linux32_genassym.c ${FORWARD_HEADERS_COOKIE}" \
 	compile-with	"${CC} ${CFLAGS:N-fno-common} ${WERROR} -c ${.IMPSRC}" \
@@ -30,6 +27,11 @@ ukbdmap.h			optional	ukbd_dflt_keymap	\
 	compile-with	"/usr/sbin/kbdcontrol -L ${UKBD_DFLT_KEYMAP} | sed -e 's/^static keymap_t.* = /static keymap_t key_map = /' -e 's/^static accentmap_t.* = /static accentmap_t accent_map = /' > ukbdmap.h"				\
 	no-obj no-implicit-rule before-depend				\
 	clean		"ukbdmap.h"
+#
+hptmvraid.o			optional	hptmv			\
+	dependency	"$S/dev/raid/hptmv/x86_64-elf.raid.o.uu"	\
+	compile-with	"uudecode < $S/dev/raid/hptmv/x86_64-elf.raid.o.uu" \
+	no-implicit-rule
 #
 emulation/linux/linux_file.c	optional	compat_linux32
 emulation/linux/linux_getcwd.c	optional	compat_linux32
@@ -65,6 +67,26 @@ crypto/des/des_enc.c			optional	crypto
 crypto/des/des_ecb.c			optional	crypto
 crypto/des/des_setkey.c			optional	crypto
 
+${OSACPI_MD_DIR}/OsdEnvironment.c	optional        acpi
+${OSACPI_MD_DIR}/acpi_machdep.c		optional        acpi
+${OSACPI_MD_DIR}/acpi_pstate_machdep.c	optional	acpi
+${OSACPI_MD_DIR}/acpi_wakeup.c		optional        acpi
+acpi.h					optional	acpi		\
+	dependency	"$S/${ACPICA_DIR}/include/acpi.h"		\
+	compile-with	"cp $S/${ACPICA_DIR}/include/acpi.h ${.OBJDIR}/"	\
+	no-obj no-implicit-rule before-depend				\
+	clean		"acpi.h"
+platform/acenv.h			optional	acpi		\
+	dependency	"$S/${ACPICA_DIR}/include/platform/acenv.h"	\
+	compile-with	"mkdir -p ${.OBJDIR}/platform; cat ${.ALLSRC} | sed -e 's/__FreeBSD__/__DragonFly__/' -e 's/acfreebsd.h/acdragonfly.h/' > ${.TARGET}" \
+	no-obj no-implicit-rule before-depend				\
+	clean		"acenv.h"
+acpi_wakecode.h				optional        acpi		\
+	dependency	"$S/${OSACPI_MD_DIR}/acpi_wakecode.S"		\
+	compile-with	"${MAKE} -f $S/${OSACPI_MD_DIR}/Makefile MAKESRCPATH=$S/${OSACPI_MD_DIR}" \
+       no-obj no-implicit-rule before-depend				\
+       clean           "acpi_wakecode.h acpi_wakecode.o acpi_wakecode.bin"
+#
 dev/video/fb/fb.c			optional	vga
 dev/video/fb/splash.c			optional	splash
 dev/video/fb/vga.c			optional	vga
@@ -109,6 +131,7 @@ cpu/x86_64/misc/in_cksum2.s		optional	inet
 cpu/x86_64/misc/ktr.c			optional	ktr
 cpu/x86_64/misc/db_disasm.c		optional	ddb
 cpu/x86_64/misc/bzeront.s		standard
+cpu/x86_64/misc/monitor.s		standard
 #
 # DOS mbr and gpt
 kern/subr_diskmbr.c			standard
@@ -143,9 +166,9 @@ platform/pc64/x86_64/initcpu.c		standard
 platform/pc64/x86_64/identcpu.c		standard
 platform/pc64/x86_64/cpufreq_machdep.c    standard
 
-platform/pc64/apic/apic_abi.c		optional	smp
+platform/pc64/apic/ioapic_abi.c		optional	smp
 platform/pc64/apic/mpapic.c		optional	smp
-platform/pc64/apic/apic_ipl.s		optional	smp
+platform/pc64/apic/ioapic_ipl.s		optional	smp
 platform/pc64/apic/apic_vector.s	optional	smp
 
 bus/isa/x86_64/isa.c			optional	isa
@@ -154,6 +177,7 @@ bus/isa/x86_64/isa_dma.c			optional	isa
 
 platform/pc64/x86_64/nexus.c		standard
 
+platform/pc64/icu/icu.c                 standard
 platform/pc64/icu/icu_abi.c             standard
 platform/pc64/icu/icu_ipl.s             standard
 platform/pc64/icu/icu_vector.s          standard
@@ -161,7 +185,7 @@ platform/pc64/icu/icu_vector.s          standard
 bus/pci/x86_64/legacy.c			optional	pci
 bus/pci/x86_64/pci_bus.c			optional	pci
 bus/pci/x86_64/pci_cfgreg.c		optional	pci
-bus/pci/x86_64/mptable_pci.c		optional	pci smp apic_io
+bus/pci/x86_64/mptable_pci.c		optional	pci smp
 # notyet (BIOS struct and functions)
 #bus/pci/x86_64/pci_pir.c			optional	pci
 
@@ -171,7 +195,6 @@ platform/pc64/x86_64/pmap.c		standard
 platform/pc64/x86_64/pmap_inval.c		standard
 platform/pc64/x86_64/busdma_machdep.c standard
 platform/pc64/x86_64/sysarch.c	standard
-platform/pc64/x86_64/systimer.c	standard
 platform/pc64/x86_64/console.c	standard
 platform/pc64/x86_64/ipl_funcs.c	standard
 kern/syscalls.c			standard
@@ -185,5 +208,6 @@ dev/serial/sio/sio.c			optional	sio
 bus/isa/syscons_isa.c			optional	sc
 bus/isa/vga_isa.c			optional	vga
 platform/pc64/isa/clock.c		standard nowerror
-platform/pc64/isa/intr_machdep.c	standard
+platform/pc64/isa/elcr.c		standard
+platform/pc64/isa/isa_intr.c		standard
 platform/pc64/x86_64/spinlock.s		standard

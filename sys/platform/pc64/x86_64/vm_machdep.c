@@ -53,7 +53,6 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/unistd.h>
-#include <sys/dsched.h>
 
 #include <machine/clock.h>
 #include <machine/cpu.h>
@@ -253,19 +252,22 @@ cpu_lwp_exit(void)
 {
 	struct thread *td = curthread;
 	struct pcb *pcb;
+
 	npxexit();
 	pcb = td->td_pcb;
-	KKASSERT(pcb->pcb_ext == NULL); /* Some i386 functionality was dropped */
+
+	/* Some i386 functionality was dropped */
+	KKASSERT(pcb->pcb_ext == NULL);
+
+	/*
+	 * disable all hardware breakpoints
+	 */
         if (pcb->pcb_flags & PCB_DBREGS) {
-                /*
-                 * disable all hardware breakpoints
-                 */
                 reset_dbregs();
                 pcb->pcb_flags &= ~PCB_DBREGS;
         }
 	td->td_gd->gd_cnt.v_swtch++;
 
-	dsched_exit_thread(td);
 	crit_enter_quick(td);
 	if (td->td_flags & TDF_TSLEEPQ)
 		tsleep_remove(td);
@@ -348,6 +350,22 @@ kvtop(void *addr)
 		panic("kvtop: zero page frame");
 	return (pa);
 }
+
+static void
+swi_vm(void *arg, void *frame)
+{
+	if (busdma_swi_pending != 0)
+		busdma_swi();
+}
+
+static void
+swi_vm_setup(void *arg)
+{
+	register_swi(SWI_VM, swi_vm, NULL, "swi_vm", NULL);
+}
+
+SYSINIT(vm_setup, SI_BOOT2_MACHDEP, SI_ORDER_ANY, swi_vm_setup, NULL);
+
 
 /*
  * Tell whether this address is in some physical memory region.

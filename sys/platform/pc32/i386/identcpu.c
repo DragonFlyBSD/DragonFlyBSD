@@ -52,8 +52,7 @@
 #include <machine/segments.h>
 #include <machine/specialreg.h>
 #include <machine/md_var.h>
-
-#include <machine_base/isa/intr_machdep.h>
+#include <machine/intr_machdep.h>
 
 #define	IDENTBLUE_CYRIX486	0
 #define	IDENTBLUE_IBMCPU	1
@@ -729,7 +728,7 @@ printcpuinfo(void)
 				kprintf("\n  Features2=0x%b", cpu_feature2,
 				"\020"
 				"\001SSE3"	/* SSE3 */
-				"\002PCLMULDQ"  /* PCLMULDQ instruction */
+				"\002PCLMULQDQ"	/* Carry-Less Mul Quadword */
 				"\003DTES64"	/* 64-bit Debug Trace */
 				"\004MON"	/* MONITOR/MWAIT Instructions */
 				"\005DS_CPL"	/* CPL Qualified Debug Store */
@@ -753,7 +752,7 @@ printcpuinfo(void)
 				"\027MOVBE"	/* MOVBE Instruction */
 				"\030POPCNT"
 				"\031<b24>"
-				"\032AES"	/* AES Instruction */
+				"\032AESNI"	/* AES Crypto*/
 				"\033XSAVE"
 				"\034OSXSAVE"
 				"\035<b28>"
@@ -936,6 +935,13 @@ printcpuinfo(void)
 		print_INTEL_info();
 	else if (cpu_vendor_id == CPU_VENDOR_TRANSMETA)
 		print_transmeta_info();
+
+#ifdef CPU_HAS_SSE2
+	kprintf("Use SSE2 (lfence, mfence)\n");
+#endif
+#ifdef CPU_HAS_FXSR
+	kprintf("Use FXSR (sfence)\n");
+#endif
 }
 
 void
@@ -1174,7 +1180,7 @@ finishidentcpu(void)
 				strcpy(cpu_vendor, "IBM");
 				cpu_vendor_id = CPU_VENDOR_IBM;
 				cpu = CPU_BLUE;
-				return;
+				goto finish;
 			}
 		}
 		switch (cpu_id & 0xf00) {
@@ -1248,9 +1254,28 @@ finishidentcpu(void)
 			strcpy(cpu_vendor, "IBM");
 			cpu_vendor_id = CPU_VENDOR_IBM;
 			cpu = CPU_BLUE;
-			return;
 		}
 	}
+
+	/*
+	 * Set MI flags for MI procedures implemented using machine-specific
+	 * features.
+	 */
+finish:
+	if (cpu_feature & CPUID_SSE2)
+		cpu_mi_feature |= CPU_MI_BZERONT;
+
+	if (cpu_feature2 & CPUID2_MON)
+		cpu_mi_feature |= CPU_MI_MONITOR;
+
+#ifdef CPU_HAS_SSE2
+	if ((cpu_feature & CPUID_SSE2) == 0)
+		panic("CPU does not has SSE2, remove options CPU_HAS_SSE2\n");
+#endif
+#ifdef CPU_HAS_FXSR
+	if ((cpu_feature & CPUID_FXSR) == 0)
+		panic("CPU does not has FXSR, remove options CPU_HAS_FXSR\n");
+#endif
 }
 
 static u_int
@@ -1258,7 +1283,7 @@ find_cpu_vendor_id(void)
 {
 	int	i;
 
-	for (i = 0; i < sizeof(cpu_vendors) / sizeof(cpu_vendors[0]); i++)
+	for (i = 0; i < NELEM(cpu_vendors); i++)
 		if (strcmp(cpu_vendor, cpu_vendors[i].vendor) == 0)
 			return (cpu_vendors[i].vendor_id);
 	return (0);

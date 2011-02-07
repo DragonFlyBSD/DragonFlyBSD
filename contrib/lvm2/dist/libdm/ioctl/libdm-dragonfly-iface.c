@@ -35,11 +35,6 @@
 #include <netbsd-dm.h>
 #include <dm-ioctl.h>
 
-#ifdef RUMP_ACTION
-#include <rump/rump.h>
-#include <rump/rump_syscalls.h>
-#endif
-
 /*
  * Ensure build compatibility.  
  * The hard-coded versions here are the highest present 
@@ -107,9 +102,9 @@ static int _control_device_number(uint32_t *major, uint32_t *minor)
 {
 
 	nbsd_get_dm_major(major, DM_CHAR_MAJOR);
-	
+
 	*minor = 0;
-	
+
 	return 1;
 }
 
@@ -181,7 +176,7 @@ int dm_is_dm_major(uint32_t major)
 	uint32_t dm_major;
 
 	nbsd_get_dm_major(&dm_major, DM_BLOCK_MAJOR);
-	
+
 	if (major == dm_major)
 		return 1;
 
@@ -197,21 +192,10 @@ static int _open_control(void)
 	if (_control_fd != -1)
 		return 1;
 
-#ifdef RUMP_ACTION	
-	rump_init();
-#endif
 	snprintf(control, sizeof(control), "%s/control", dm_dir());
 
 	if (!_control_device_number(&major, &minor))
 		log_error("Is device-mapper driver missing from kernel?");
-
-#if 0
-	if (!_control_exists(control, major, minor) &&
-	    !_create_control(control, major, minor)) {
-		log_error("create_control or control_exists");
-		goto error;
-	}
-#endif
 
 	if ((_control_fd = open(control, O_RDWR)) < 0) {
 		log_sys_error("open", control);
@@ -455,10 +439,10 @@ int dm_task_get_info(struct dm_task *dmt, struct dm_info *info)
 	info->target_count = dmt->dmi.v4->target_count;
 	info->open_count = dmt->dmi.v4->open_count;
 	info->event_nr = dmt->dmi.v4->event_nr;
-	
+
 	nbsd_get_dm_major(&info->major, DM_BLOCK_MAJOR); /* get netbsd dm device major number */
 	info->minor = MINOR(dmt->dmi.v4->dev);
-	
+
 	return 1;
 }
 
@@ -627,17 +611,17 @@ static int _flatten(struct dm_task *dmt, prop_dictionary_t dm_dict)
 {
 	prop_array_t cmd_array;
 	prop_dictionary_t target_spec;
-	
+
 	struct target *t;
-	
+
 	size_t len;
 	char type[DM_MAX_TYPE_NAME];
-	
+
 	uint32_t major, flags;
 	int count = 0;
 	char *str = NULL;
 	const int (*version)[3];
-	
+
 	flags = 0;
 	version = &_cmd_data_v4[dmt->type].version;
 
@@ -660,11 +644,11 @@ static int _flatten(struct dm_task *dmt, prop_dictionary_t dm_dict)
 		prop_array_set(cmd_array,count,target_spec);
 
 		prop_object_release(target_spec);
-		
+
 		count++;
 	}
 
-	
+
 	if (count && (dmt->sector || dmt->message)) {
 		log_error("targets and message are incompatible");
 		return -1;
@@ -710,7 +694,7 @@ static int _flatten(struct dm_task *dmt, prop_dictionary_t dm_dict)
 		len += strlen(dmt->geometry) + 1;
 
 	nbsd_dmi_add_version((*version), dm_dict);
-	    
+
 	nbsd_get_dm_major(&major, DM_BLOCK_MAJOR);
 	/* 
 	 * Only devices with major which is equal to netbsd dm major 
@@ -718,10 +702,10 @@ static int _flatten(struct dm_task *dmt, prop_dictionary_t dm_dict)
 	 */
 	if (dmt->major != major && dmt->major != -1)
 		return -1;
-		
+
 	if (dmt->minor >= 0) {
 		flags |= DM_PERSISTENT_DEV_FLAG;
-		
+
 		prop_dictionary_set_uint32(dm_dict, DM_IOCTL_MINOR, dmt->minor);
 	}
 
@@ -731,7 +715,7 @@ static int _flatten(struct dm_task *dmt, prop_dictionary_t dm_dict)
 
 	if (dmt->uuid)
 		prop_dictionary_set_cstring(dm_dict, DM_IOCTL_UUID, dmt->uuid);
-	
+
 	if (dmt->type == DM_DEVICE_SUSPEND)
 		flags |= DM_SUSPEND_FLAG;
 	if (dmt->no_flush)
@@ -747,18 +731,18 @@ static int _flatten(struct dm_task *dmt, prop_dictionary_t dm_dict)
 				 "by kernel.  It will use live table.");
 		flags |= DM_QUERY_INACTIVE_TABLE_FLAG;
 	}
-	
+
 	prop_dictionary_set_uint32(dm_dict, DM_IOCTL_FLAGS, flags);
 
 	prop_dictionary_set_uint32(dm_dict, DM_IOCTL_EVENT, dmt->event_nr);
 
 	if (dmt->newname)
 		prop_array_set_cstring(cmd_array, 0, dmt->newname);
-	
+
 	/* Add array for all COMMAND specific data. */
 	prop_dictionary_set(dm_dict, DM_IOCTL_CMD_DATA, cmd_array);
 	prop_object_release(cmd_array);
-	
+
 	return 0;
 }
 
@@ -844,7 +828,7 @@ static int _create_and_load_v4(struct dm_task *dmt)
 	int r;
 
 	log_verbose("create and load called");
-	
+
 	/* Use new task struct to create the device */
 	if (!(task = dm_task_create(DM_DEVICE_CREATE))) {
 		log_error("Failed to create device-mapper task struct");
@@ -908,7 +892,7 @@ static int _create_and_load_v4(struct dm_task *dmt)
 		return r;
 
       revert:
- 	dmt->type = DM_DEVICE_REMOVE;
+	dmt->type = DM_DEVICE_REMOVE;
 	dm_free(dmt->uuid);
 	dmt->uuid = NULL;
 
@@ -928,7 +912,7 @@ static int _reload_with_suppression_v4(struct dm_task *dmt)
 	struct dm_task *task;
 	struct target *t1, *t2;
 	int r;
-	
+
 	/* New task to get existing table information */
 	if (!(task = dm_task_create(DM_DEVICE_TABLE))) {
 		log_error("Failed to create device-mapper task struct");
@@ -961,7 +945,7 @@ static int _reload_with_suppression_v4(struct dm_task *dmt)
 	while (t2 && t2->next)
 		t2 = t2->next;
 	dmt->existing_table_size = t2 ? t2->start + t2->length : 0;
-	
+
 	if ((task->dmi.v4->flags & DM_READONLY_FLAG) ? 1 : 0 != dmt->read_only)
 		goto no_match;
 
@@ -979,7 +963,7 @@ static int _reload_with_suppression_v4(struct dm_task *dmt)
 		t1 = t1->next;
 		t2 = t2->next;
 	}
-	
+
 	if (!t1 && !t2) {
 		dmt->dmi.v4 = task->dmi.v4;
 		task->dmi.v4 = NULL;
@@ -1008,11 +992,11 @@ static struct dm_ioctl *_do_dm_ioctl(struct dm_task *dmt, unsigned command)
 {
 	struct dm_ioctl *dmi;
 	prop_dictionary_t dm_dict_in, dm_dict_out;
-	
+
 	uint32_t flags;
 
 	dm_dict_in = NULL;
-	
+
 	dm_dict_in = prop_dictionary_create(); /* Dictionary send to kernel */
 	dm_dict_out = prop_dictionary_create(); /* Dictionary received from kernel */
 
@@ -1025,7 +1009,7 @@ static struct dm_ioctl *_do_dm_ioctl(struct dm_task *dmt, unsigned command)
 		goto bad;
 
 	prop_dictionary_get_uint32(dm_dict_in, DM_IOCTL_FLAGS, &flags);
-		
+
 	if (dmt->type == DM_DEVICE_TABLE)
 		flags |= DM_STATUS_TABLE_FLAG;
 
@@ -1033,12 +1017,9 @@ static struct dm_ioctl *_do_dm_ioctl(struct dm_task *dmt, unsigned command)
 		flags |= DM_SKIP_BDGET_FLAG;
 
 	flags |= DM_EXISTS_FLAG;
-	
+
 	/* Set flags to dictionary. */
 	prop_dictionary_set_uint32(dm_dict_in,DM_IOCTL_FLAGS,flags);
-	
-	prop_dictionary_externalize_to_file(dm_dict_in,"/tmp/test_in");
-	
 	log_very_verbose("Ioctl type  %s --- flags %d",_cmd_data_v4[dmt->type].name,flags);
 	//printf("name %s, major %d minor %d\n uuid %s\n", 
         //dm_task_get_name(dmt), dmt->minor, dmt->major, dm_task_get_uuid(dmt));
@@ -1057,18 +1038,18 @@ static struct dm_ioctl *_do_dm_ioctl(struct dm_task *dmt, unsigned command)
 			 * for nonexisting device after info, deps, mknodes call.
 			 * It returns dmi sent to kernel with DM_EXISTS_FLAG = 0;
 			 */
-			
+
 			dmi = nbsd_dm_dict_to_dmi(dm_dict_in,_cmd_data_v4[dmt->type].cmd);
 
-			dmi->flags &= ~DM_EXISTS_FLAG; 
+			dmi->flags &= ~DM_EXISTS_FLAG;
 
 			prop_object_release(dm_dict_in);
 			prop_object_release(dm_dict_out);
 
 			goto out;
 		} else {
-			log_error("ioctl %s call failed with errno %d\n", 
-					  _cmd_data_v4[dmt->type].name, errno);
+			log_error("ioctl %s call failed: %s\n",
+			    _cmd_data_v4[dmt->type].name, strerror(errno));
 
 			prop_object_release(dm_dict_in);
 			prop_object_release(dm_dict_out);
@@ -1077,17 +1058,12 @@ static struct dm_ioctl *_do_dm_ioctl(struct dm_task *dmt, unsigned command)
 		}
 	}
 
-#ifdef RUMP_ACTION
-	dm_dict_out = prop_dictionary_internalize(prefp.pref_plist);
-#endif	
-	prop_dictionary_externalize_to_file(dm_dict_out,"/tmp/test_out");
-
 	/* Parse kernel dictionary to dmi structure and return it to libdevmapper. */
 	dmi = nbsd_dm_dict_to_dmi(dm_dict_out,_cmd_data_v4[dmt->type].cmd);
 
 	prop_object_release(dm_dict_in);
 	prop_object_release(dm_dict_out);
-out:	
+out:
 	return dmi;
 bad:
 	return NULL;
@@ -1145,7 +1121,7 @@ int dm_task_run(struct dm_task *dmt)
 
 	if ((dmt->type == DM_DEVICE_RELOAD) && dmt->suppress_identical_reload)
 		return _reload_with_suppression_v4(dmt);
-	
+
 	if (!_open_control())
 		return 0;
 
@@ -1155,31 +1131,18 @@ int dm_task_run(struct dm_task *dmt)
 	switch (dmt->type) {
 	case DM_DEVICE_CREATE:
 		log_verbose("create dmt->dev_name = %s", dmt->dev_name);
-		/* XXX: ideally kernel takes care of this */
-#if 0
-		add_dev_node(dmt->dev_name, MAJOR(dmi->dev), MINOR(dmi->dev),
-		    dmt->uid, dmt->gid, dmt->mode, 0);
-#endif
+		/* kernel takes care of this */
 		break;
 
 	case DM_DEVICE_REMOVE:
 		log_verbose("remove dmt->dev_name = %s", dmt->dev_name);
-		/* XXX: ideally kernel takes care of this */
-#if 0
-		/* FIXME Kernel needs to fill in dmi->name */
-		if (dmt->dev_name)
-			rm_dev_node(dmt->dev_name, 0);
-#endif
+		/* kernel takes care of this */
 		break;
 
 	case DM_DEVICE_RENAME:
 		/* FIXME Kernel needs to fill in dmi->name */
 		log_verbose("rename dmt->dev_name = %s", dmt->dev_name);
 		 _dm_rename_kern(dmt);
-#if 0
-		if (dmt->dev_name)
-			rename_dev_node(dmt->dev_name, dmt->newname, 0);
-#endif
 		break;
 
 	case DM_DEVICE_RESUME:
@@ -1187,17 +1150,9 @@ int dm_task_run(struct dm_task *dmt)
 		set_dev_node_read_ahead(dmt->dev_name, dmt->read_ahead,
 					dmt->read_ahead_flags);
 		break;
-	
+
 	case DM_DEVICE_MKNODES:
 		log_verbose("mknodes dmt->dev_name = %s", dmt->dev_name);
-#if 0
-		if (dmi->flags & DM_EXISTS_FLAG)
-			add_dev_node(dmi->name, MAJOR(dmi->dev),
-				     MINOR(dmi->dev),
-			    dmt->uid, dmt->gid, dmt->mode, 0);
-		else if (dmt->dev_name)
-			rm_dev_node(dmt->dev_name, 0);
-#endif
 		break;
 
 	case DM_DEVICE_STATUS:

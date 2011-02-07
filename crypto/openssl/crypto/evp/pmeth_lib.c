@@ -64,7 +64,7 @@
 #ifndef OPENSSL_NO_ENGINE
 #include <openssl/engine.h>
 #endif
-#include "../asn1/asn1_locl.h"
+#include "asn1_locl.h"
 #include "evp_locl.h"
 
 typedef int sk_cmp_fn_type(const char * const *a, const char * const *b);
@@ -134,6 +134,8 @@ static EVP_PKEY_CTX *int_ctx_new(EVP_PKEY *pkey, ENGINE *e, int id)
 		id = pkey->ameth->pkey_id;
 		}
 #ifndef OPENSSL_NO_ENGINE
+	if (pkey && pkey->engine)
+		e = pkey->engine;
 	/* Try to find an ENGINE which implements this method */
 	if (e)
 		{

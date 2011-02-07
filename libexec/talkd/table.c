@@ -32,7 +32,6 @@
  *
  * @(#)table.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/talkd/table.c,v 1.7 1999/08/28 00:10:17 peter Exp $
- * $DragonFly: src/libexec/talkd/table.c,v 1.3 2003/11/14 03:54:31 dillon Exp $
  */
 
 /*
@@ -53,11 +52,12 @@
 #include <syslog.h>
 #include <unistd.h>
 
+#include "extern.h"
+
 #define MAX_ID 16000	/* << 2^15 so I don't have sign troubles */
 
 extern	int debug;
 struct	timeval tp;
-struct	timezone txp;
 
 typedef struct table_entry TABLE_ENTRY;
 
@@ -68,26 +68,21 @@ struct table_entry {
 	TABLE_ENTRY *last;
 };
 
-TABLE_ENTRY *table = NULL;
+static void delete(TABLE_ENTRY *);
 
-void delete (TABLE_ENTRY *);
-CTL_MSG *find_request();
-CTL_MSG *find_match();
-int new_id (void);
-void print_request (char *, CTL_MSG *);
+TABLE_ENTRY *table = NULL;
 
 /*
  * Look in the table for an invitation that matches the current
  * request looking for an invitation
  */
 CTL_MSG *
-find_match(request)
-	register CTL_MSG *request;
+find_match(CTL_MSG *request)
 {
-	register TABLE_ENTRY *ptr;
+	TABLE_ENTRY *ptr;
 	time_t current_time;
 
-	gettimeofday(&tp, &txp);
+	gettimeofday(&tp, NULL);
 	current_time = tp.tv_sec;
 	if (debug)
 		print_request("find_match", request);
@@ -115,13 +110,12 @@ find_match(request)
  * one as find_match does
  */
 CTL_MSG *
-find_request(request)
-	register CTL_MSG *request;
+find_request(CTL_MSG *request)
 {
-	register TABLE_ENTRY *ptr;
+	TABLE_ENTRY *ptr;
 	time_t current_time;
 
-	gettimeofday(&tp, &txp);
+	gettimeofday(&tp, NULL);
 	current_time = tp.tv_sec;
 	/*
 	 * See if this is a repeated message, and check for
@@ -153,14 +147,12 @@ find_request(request)
 }
 
 void
-insert_table(request, response)
-	CTL_MSG *request;
-	CTL_RESPONSE *response;
+insert_table(CTL_MSG *request, CTL_RESPONSE *response)
 {
-	register TABLE_ENTRY *ptr;
+	TABLE_ENTRY *ptr;
 	time_t current_time;
 
-	gettimeofday(&tp, &txp);
+	gettimeofday(&tp, NULL);
 	current_time = tp.tv_sec;
 	request->id_num = new_id();
 	response->id_num = htonl(request->id_num);
@@ -183,7 +175,7 @@ insert_table(request, response)
  * Generate a unique non-zero sequence number
  */
 int
-new_id()
+new_id(void)
 {
 	static int current_id = 0;
 
@@ -198,10 +190,9 @@ new_id()
  * Delete the invitation with id 'id_num'
  */
 int
-delete_invite(id_num)
-	int id_num;
+delete_invite(unsigned int id_num)
 {
-	register TABLE_ENTRY *ptr;
+	TABLE_ENTRY *ptr;
 
 	ptr = table;
 	if (debug)
@@ -222,9 +213,8 @@ delete_invite(id_num)
 /*
  * Classic delete from a double-linked list
  */
-void
-delete(ptr)
-	register TABLE_ENTRY *ptr;
+static void
+delete(TABLE_ENTRY *ptr)
 {
 
 	if (debug)

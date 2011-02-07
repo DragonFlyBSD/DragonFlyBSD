@@ -29,6 +29,7 @@ SUBDIR=	atrun \
 	tcpd \
 	telnetd \
 	tftpd \
+	utmp_update \
 	xtend \
 	ypxfr
 

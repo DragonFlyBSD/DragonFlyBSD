@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.224 2003/12/08 07:54:12 obrien Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.35 2008/05/14 11:59:19 sephe Exp $
  */
 
 /*
@@ -1362,7 +1361,7 @@ ed_probe_HP_pclanp(device_t dev, int port_rid, int flags)
  	 * Check for impossible IRQ.
 	 */
 
-	if (irq >= (sizeof(ed_hpp_intr_val) / sizeof(ed_hpp_intr_val[0])))
+	if (irq >= NELEM(ed_hpp_intr_val))
 		return ENXIO;
 
 	/* 

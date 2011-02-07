@@ -1,4 +1,3 @@
-/* $DragonFly: src/sys/netbt/bt_proto.c,v 1.7 2008/11/01 04:22:15 sephe Exp $ */
 /* $OpenBSD: bt_proto.c,v 1.4 2007/06/24 20:55:27 uwe Exp $ */
 
 /*
@@ -29,7 +28,6 @@
 #include <sys/bus.h>
 #include <sys/malloc.h>
 #include <net/if.h>
-#include <net/pf/pfvar.h>
 
 #include <netbt/bluetooth.h>
 #include <netbt/hci.h>
@@ -138,27 +136,30 @@ struct protosw btsw[] = {
 static void
 netbt_dispose(struct mbuf* m)
 {
-	ZONE_DESTROY(l2cap_pdu_pool);
-	ZONE_DESTROY(l2cap_req_pool);
-	ZONE_DESTROY(rfcomm_credit_pool);
+	zdestroy(l2cap_pdu_pool);
+	zdestroy(l2cap_req_pool);
+	zdestroy(rfcomm_credit_pool);
 }
 
 static void
 netbt_init(void)
 {
-	int error = 1;
-	do {
-		ZONE_CREATE(l2cap_pdu_pool, struct l2cap_pdu, "l2cap_pdu");
-		ZONE_CREATE(l2cap_req_pool, struct l2cap_req, "l2cap_req");
-		ZONE_CREATE(rfcomm_credit_pool, struct rfcomm_credit,
-		    "rfcomm_credit");
-		error = 0;
-	} while(0); 
-
-	if (error) {
-		netbt_dispose(NULL);
-		panic("Can't create vm_zones");
-	}
+	l2cap_pdu_pool = zinit("l2cap_pdu", sizeof(struct l2cap_pdu), 1,
+	    ZONE_DESTROYABLE, 1);
+	if (l2cap_pdu_pool == NULL)
+		goto fail;
+	l2cap_req_pool = zinit("l2cap_req", sizeof(struct l2cap_req), 1,
+	    ZONE_DESTROYABLE, 1);
+	if (l2cap_req_pool == NULL)
+		goto fail;
+	rfcomm_credit_pool = zinit("rfcomm_credit",
+	    sizeof(struct rfcomm_credit), 1, ZONE_DESTROYABLE, 1);
+	if (rfcomm_credit_pool == NULL)
+		goto fail;
+	return;
+fail:
+	netbt_dispose(NULL);
+	panic("Can't create vm_zones");
 }
 
 struct domain btdomain = {
@@ -168,7 +169,7 @@ struct domain btdomain = {
 	.dom_externalize = NULL,
 	.dom_dispose = netbt_dispose,
 	.dom_protosw = btsw,
-	.dom_protoswNPROTOSW = &btsw[sizeof(btsw)/sizeof(btsw[0])],
+	.dom_protoswNPROTOSW = &btsw[NELEM(btsw)],
 	.dom_next = SLIST_ENTRY_INITIALIZER,
 	.dom_rtattach = 0,
 	.dom_rtoffset = 32,

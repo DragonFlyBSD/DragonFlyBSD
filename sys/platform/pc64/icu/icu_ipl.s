@@ -75,16 +75,16 @@
 #include <machine/lock.h>
 #include <machine/psl.h>
 #include <machine/trap.h>
+#include <machine_base/icu/icu.h>
+#include <machine_base/icu/icu_ipl.h>
 
 #include <bus/isa/isareg.h>
+
 #include "assym.s"
-#include "icu_ipl.h"
 
 /*
  * WARNING!  SMP builds can use the ICU now so this code must be MP safe.
  */
-
-#ifndef APIC_IO
 
 	.data
 	ALIGN_DATA
@@ -130,5 +130,3 @@ ENTRY(ICU_INTREN)
 	outb	%al,$IO_ICU2+ICU_IMR_OFFSET
 	ICU_IMASK_UNLOCK
 	ret
-
-#endif

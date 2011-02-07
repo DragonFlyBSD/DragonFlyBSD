@@ -80,30 +80,12 @@
 
 #include <sys/types.h>
 #include <sys/param.h>
-
 #include <sys/device.h>
-#include <sys/disk.h>
-#include <sys/disklabel.h>
 #include <sys/malloc.h>
-#include <sys/udev.h>
 #include <sys/vnode.h>
+#include <dev/disk/dm/dm.h>
 
 #include "netbsd-dm.h"
-#include "dm.h"
-
-static uint64_t sc_minor_num;
-extern struct dev_ops dm_ops;
-uint64_t dm_dev_counter;
-
-#if 0
-/* Generic cf_data for device-mapper driver */
-static struct cfdata dm_cfdata = {
-	.cf_name = "dm",
-	.cf_atname = "dm",
-	.cf_fstate = FSTATE_STAR,
-	.cf_unit = 0
-};
-#endif
 
 #define DM_REMOVE_FLAG(flag, name) do {					\
 		prop_dictionary_get_uint32(dm_dict,DM_IOCTL_FLAGS,&flag); \
@@ -166,7 +148,6 @@ dm_dbg_print_flags(int flags)
 int
 dm_get_version_ioctl(prop_dictionary_t dm_dict)
 {
-
 	return 0;
 }
 /*
@@ -221,58 +202,14 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
 		dm_dev_unbusy(dmv);
 		return EEXIST;
 	}
-#if 0
-	if ((devt = config_attach_pseudo(&dm_cfdata)) == NULL) {
-		aprint_error("Unable to attach pseudo device dm/%s\n", name);
-		return (ENOMEM);
+
+	r = dm_dev_create(&dmv, name, uuid, flags);
+	
+	if (r == 0) {
+		prop_dictionary_set_uint32(dm_dict, DM_IOCTL_MINOR, dmv->minor);
+		DM_ADD_FLAG(flags, DM_EXISTS_FLAG);
+		DM_REMOVE_FLAG(flags, DM_INACTIVE_PRESENT_FLAG);
 	}
-#endif
-	if ((dmv = dm_dev_alloc()) == NULL)
-		return ENOMEM;
-
-	if (uuid)
-		strncpy(dmv->uuid, uuid, DM_UUID_LEN);
-	else
-		dmv->uuid[0] = '\0';
-
-	if (name)
-		strlcpy(dmv->name, name, DM_NAME_LEN);
-
-	dmv->minor = ++sc_minor_num; /* XXX: was atomic 64 */
-	dmv->flags = 0;		/* device flags are set when needed */
-	dmv->ref_cnt = 0;
-	dmv->event_nr = 0;
-	dmv->dev_type = 0;
-
-	dm_table_head_init(&dmv->table_head);
-
-	lockinit(&dmv->dev_mtx, "dmdev", 0, LK_CANRECURSE);
-	lockinit(&dmv->diskp_mtx, "dmdisk", 0, LK_CANRECURSE);
-	cv_init(&dmv->dev_cv, "dm_dev");
-
-	if (flags & DM_READONLY_FLAG)
-		dmv->flags |= DM_READONLY_FLAG;
-
-	prop_dictionary_set_uint32(dm_dict, DM_IOCTL_MINOR, dmv->minor);
-
-	aprint_debug("Creating device dm/%s\n", name);
-	dmv->devt = make_dev(&dm_ops, dmv->minor, UID_ROOT, GID_OPERATOR, 0640, "mapper/%s", dmv->name);
-	udev_dict_set_cstr(dmv->devt, "subsystem", "disk");
-#if 0
-	disk_init(dmv->diskp, dmv->name, &dmdkdriver);
-	disk_attach(dmv->diskp);
-
-	dmv->diskp->dk_info = NULL;
-#endif
-
-	if ((r = dm_dev_insert(dmv)) != 0)
-		dm_dev_free(dmv);
-
-	DM_ADD_FLAG(flags, DM_EXISTS_FLAG);
-	DM_REMOVE_FLAG(flags, DM_INACTIVE_PRESENT_FLAG);
-
-	/* Increment device counter After creating device */
-	++dm_dev_counter; /* XXX: was atomic 64 */
 
 	return r;
 }
@@ -326,6 +263,7 @@ dm_dev_list_ioctl(prop_dictionary_t dm_dict)
 int
 dm_dev_rename_ioctl(prop_dictionary_t dm_dict)
 {
+#if 0
 	prop_array_t cmd_array;
 	dm_dev_t *dmv;
 
@@ -351,7 +289,7 @@ dm_dev_rename_ioctl(prop_dictionary_t dm_dict)
 	if (strlen(n_name) + 1 > DM_NAME_LEN)
 		return EINVAL;
 
-	if ((dmv = dm_dev_rem(name, uuid, minor)) == NULL) {
+	if ((dmv = dm_dev_rem(NULL, name, uuid, minor)) == NULL) {
 		DM_REMOVE_FLAG(flags, DM_EXISTS_FLAG);
 		return ENOENT;
 	}
@@ -368,12 +306,19 @@ dm_dev_rename_ioctl(prop_dictionary_t dm_dict)
 	prop_dictionary_set_cstring(dm_dict, DM_IOCTL_UUID, dmv->uuid);
 
 	dm_dev_insert(dmv);
+#endif
 
+	/*
+	 * XXX: the rename is not yet implemented. The main complication
+	 *	here is devfs. We'd probably need a new function, rename_dev()
+	 *	that would trigger a node rename in devfs.
+	 */
+	kprintf("dm_dev_rename_ioctl called, but not implemented!\n");
 	return 0;
 }
+
 /*
- * Remove device from global list I have to remove active
- * and inactive tables first.
+ * Remove device
  */
 int
 dm_dev_remove_ioctl(prop_dictionary_t dm_dict)
@@ -405,12 +350,33 @@ dm_dev_remove_ioctl(prop_dictionary_t dm_dict)
 
 	dm_dev_unbusy(dmv);
 
+	if (dmv->is_open)
+		return EBUSY;
+
 	/*
-	 * This will call dm_detach routine which will actually removes
+	 * This will call dm_detach routine which will actually remove
 	 * device.
 	 */
-	return dm_detach(dmv);
+	return dm_dev_remove(dmv);
 }
+
+/*
+ * Try to remove all devices
+ */
+int
+dm_dev_remove_all_ioctl(prop_dictionary_t dm_dict)
+{
+	uint32_t flags = 0;
+
+	/* Get needed values from dictionary. */
+	prop_dictionary_get_uint32(dm_dict, DM_IOCTL_FLAGS, &flags);
+
+	dm_dbg_print_flags(flags);
+
+	/* Gently remove all devices, if possible */
+	return dm_dev_remove_all(1);
+}
+
 /*
  * Return actual state of device to libdevmapper.
  */
@@ -755,6 +721,7 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 			    M_DM, M_WAITOK)) == NULL) {
 			dm_table_release(&dmv->table_head, DM_TABLE_INACTIVE);
 			dm_dev_unbusy(dmv);
+			dm_target_unbusy(target);
 			return ENOMEM;
 		}
 		prop_dictionary_get_uint64(target_dict, DM_TABLE_START,
@@ -801,6 +768,7 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 			kfree(str, M_TEMP);
 
 			dm_dev_unbusy(dmv);
+			dm_target_unbusy(target);
 			return ret;
 		}
 		last_table = table_en;
@@ -812,7 +780,11 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 	atomic_set_int(&dmv->flags, DM_INACTIVE_PRESENT_FLAG);
 
 	dm_table_release(&dmv->table_head, DM_TABLE_INACTIVE);
+
 	dm_dev_unbusy(dmv);
+#if 0
+	dmsetdiskinfo(dmv->diskp, &dmv->table_head);
+#endif
 	return 0;
 }
 /*

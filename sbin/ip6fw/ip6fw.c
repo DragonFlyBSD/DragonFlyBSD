@@ -108,7 +108,7 @@ static struct icmpcode icmp6codes[] = {
 
 static char ntop_buf[INET6_ADDRSTRLEN];
 
-static void show_usage(const char *fmt, ...);
+static void show_usage(const char *fmt, ...) __printf0like(1, 2);
 
 static int
 mask_bits(u_char *m_ad, int m_len)

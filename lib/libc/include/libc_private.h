@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/include/libc_private.h,v 1.3 1999/08/27 23:59:47 peter Exp $
- * $DragonFly: src/lib/libc/include/libc_private.h,v 1.8 2008/06/01 19:27:32 dillon Exp $
  *
  * Private definitions for libc, libc_r and libpthread.
  *
@@ -74,6 +73,13 @@ struct statfs;
 struct statvfs;
 
 /*
+ * yplib internal interfaces
+ */
+#ifdef YP
+int _yp_check(char **);
+#endif
+
+/*
  * This is a pointer in the C run-time startup code. It is used
  * by getprogname() and setprogname().
  */
@@ -86,5 +92,6 @@ extern void (*__cleanup)(void);
 
 /* execve() with PATH processing to implement posix_spawnp() */
 int _execvpe(const char *, char * const *, char * const *);
+void _nmalloc_thr_init(void);
 
 #endif /* _LIBC_PRIVATE_H_ */

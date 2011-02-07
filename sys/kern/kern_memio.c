@@ -39,7 +39,6 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/kern/kern_memio.c,v 1.32 2008/07/23 16:39:28 dillon Exp $
  */
 
 /*
@@ -80,7 +79,7 @@ static	d_kqfilter_t	mmkqfilter;
 
 #define CDEV_MAJOR 2
 static struct dev_ops mem_ops = {
-	{ "mem", CDEV_MAJOR, D_MPSAFE },
+	{ "mem", 0, D_MPSAFE },
 	.d_open =	mmopen,
 	.d_close =	mmclose,
 	.d_read =	mmread,
@@ -554,14 +553,15 @@ mm_filter_write(struct knote *kn, long hint)
 static void
 dummy_filter_detach(struct knote *kn) {}
 
+/* Implemented in kern_nrandom.c */
 static struct filterops random_read_filtops =
-        { FILTEROP_ISFD, NULL, dummy_filter_detach, random_filter_read };
+        { FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, dummy_filter_detach, random_filter_read };
 
 static struct filterops mm_read_filtops =
-        { FILTEROP_ISFD, NULL, dummy_filter_detach, mm_filter_read };
+        { FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, dummy_filter_detach, mm_filter_read };
 
 static struct filterops mm_write_filtops =
-        { FILTEROP_ISFD, NULL, dummy_filter_detach, mm_filter_write };
+        { FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, dummy_filter_detach, mm_filter_write };
 
 int
 mmkqfilter(struct dev_kqfilter_args *ap)

@@ -95,7 +95,6 @@ ar5416Reset(struct ath_hal *ah, HAL_OPMODE opmode,
 	struct ieee80211_channel *chan,
 	HAL_BOOL bChannelChange, HAL_STATUS *status)
 {
-#define	N(a)	(sizeof (a) / sizeof (a[0]))
 #define	FAIL(_code)	do { ecode = _code; goto bad; } while (0)
 	struct ath_hal_5212 *ahp = AH5212(ah);
 	HAL_CHANNEL_INTERNAL *ichan;
@@ -171,6 +170,15 @@ ar5416Reset(struct ath_hal *ah, HAL_OPMODE opmode,
 	OS_REG_WRITE(ah, AR_RSSI_THR, rssiThrReg);
 
 	OS_MARK(ah, AH_MARK_RESET_LINE, __LINE__);
+	if (AR_SREV_MERLIN_10_OR_LATER(ah))
+		OS_REG_SET_BIT(ah, AR_GPIO_INPUT_EN_VAL, AR_GPIO_JTAG_DISABLE);
+
+	if (AR_SREV_KITE(ah)) {
+		uint32_t val;
+		val = OS_REG_READ(ah, AR_PHY_HEAVY_CLIP_FACTOR_RIFS);
+		val &= ~AR_PHY_RIFS_INIT_DELAY;
+		OS_REG_WRITE(ah, AR_PHY_HEAVY_CLIP_FACTOR_RIFS, val);
+	}
 
 	AH5416(ah)->ah_writeIni(ah, chan);
 
@@ -342,7 +350,6 @@ bad:
 		*status = ecode;
 	return AH_FALSE;
 #undef FAIL
-#undef N
 }
 
 #if 0
@@ -437,6 +444,7 @@ ar5416ChannelChange(struct ath_hal *ah, const structu ieee80211_channel *chan)
 static void
 ar5416InitDMA(struct ath_hal *ah)
 {
+	struct ath_hal_5212 *ahp = AH5212(ah);
 
 	/*
 	 * set AHB_MODE not to do cacheline prefetches
@@ -458,7 +466,7 @@ ar5416InitDMA(struct ath_hal *ah)
 	/* restore TX trigger level */
 	OS_REG_WRITE(ah, AR_TXCFG,
 		(OS_REG_READ(ah, AR_TXCFG) &~ AR_FTRIG) |
-		    SM(AH_PRIVATE(ah)->ah_txtrig_level, AR_FTRIG));
+		    SM(ahp->ah_txTrigLev, AR_FTRIG));
 
 	/*
 	 * Setup receive FIFO threshold to hold off TX activities
@@ -790,7 +798,6 @@ ar5416SetTransmitPower(struct ath_hal *ah,
 	const struct ieee80211_channel *chan, uint16_t *rfXpdGain)
 {
 #define POW_SM(_r, _s)     (((_r) & 0x3f) << (_s))
-#define N(a)            (sizeof (a) / sizeof (a[0]))
 
     MODAL_EEP_HEADER	*pModal;
     struct ath_hal_5212 *ahp = AH5212(ah);
@@ -856,7 +863,7 @@ ar5416SetTransmitPower(struct ath_hal *ah,
      * txPowerIndexOffset is set by the SetPowerTable() call -
      *  adjust the rate table (0 offset if rates EEPROM not loaded)
      */
-    for (i = 0; i < N(ratesArray); i++) {
+    for (i = 0; i < NELEM(ratesArray); i++) {
         ratesArray[i] = (int16_t)(txPowerIndexOffset + ratesArray[i]);
         if (ratesArray[i] > AR5416_MAX_RATE_POWER)
             ratesArray[i] = AR5416_MAX_RATE_POWER;
@@ -945,7 +952,6 @@ ar5416SetTransmitPower(struct ath_hal *ah,
     );
     return AH_TRUE;
 #undef POW_SM
-#undef N
 }
 
 /*
@@ -1019,8 +1025,11 @@ ar5416SetResetPowerOn(struct ath_hal *ah)
     /*
      * RTC reset and clear
      */
+    OS_REG_WRITE(ah, AR_RC, AR_RC_AHB);
     OS_REG_WRITE(ah, AR_RTC_RESET, 0);
     OS_DELAY(20);
+    OS_REG_WRITE(ah, AR_RC, 0);
+
     OS_REG_WRITE(ah, AR_RTC_RESET, 1);
 
     /*
@@ -1312,7 +1321,6 @@ ar5416SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom *pEepData,
                            uint16_t twiceMaxRegulatoryPower,
                            uint16_t powerLimit)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 /* Local defines to distinguish between extension and control CTL's */
 #define EXT_ADDITIVE (0x8000)
 #define CTL_11A_EXT (CTL_11A | EXT_ADDITIVE)
@@ -1396,7 +1404,7 @@ ar5416SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom *pEepData,
 	/* Get target powers from EEPROM - our baseline for TX Power */
 	if (IEEE80211_IS_CHAN_2GHZ(chan)) {
 		/* Setup for CTL modes */
-		numCtlModes = N(ctlModesFor11g) - SUB_NUM_CTL_MODES_AT_2G_40; /* CTL_11B, CTL_11G, CTL_2GHT20 */
+		numCtlModes = NELEM(ctlModesFor11g) - SUB_NUM_CTL_MODES_AT_2G_40; /* CTL_11B, CTL_11G, CTL_2GHT20 */
 		pCtlMode = ctlModesFor11g;
 
 		ar5416GetTargetPowersLeg(ah,  chan, pEepData->calTargetPowerCck,
@@ -1407,7 +1415,7 @@ ar5416SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom *pEepData,
 				AR5416_NUM_2G_20_TARGET_POWERS, &targetPowerHt20, 8, AH_FALSE);
 
 		if (IEEE80211_IS_CHAN_HT40(chan)) {
-			numCtlModes = N(ctlModesFor11g);    /* All 2G CTL's */
+			numCtlModes = NELEM(ctlModesFor11g);    /* All 2G CTL's */
 
 			ar5416GetTargetPowers(ah,  chan, pEepData->calTargetPower2GHT40,
 				AR5416_NUM_2G_40_TARGET_POWERS, &targetPowerHt40, 8, AH_TRUE);
@@ -1419,7 +1427,7 @@ ar5416SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom *pEepData,
 		}
 	} else {
 		/* Setup for CTL modes */
-		numCtlModes = N(ctlModesFor11a) - SUB_NUM_CTL_MODES_AT_5G_40; /* CTL_11A, CTL_5GHT20 */
+		numCtlModes = NELEM(ctlModesFor11a) - SUB_NUM_CTL_MODES_AT_5G_40; /* CTL_11A, CTL_5GHT20 */
 		pCtlMode = ctlModesFor11a;
 
 		ar5416GetTargetPowersLeg(ah,  chan, pEepData->calTargetPower5G,
@@ -1428,7 +1436,7 @@ ar5416SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom *pEepData,
 				AR5416_NUM_5G_20_TARGET_POWERS, &targetPowerHt20, 8, AH_FALSE);
 
 		if (IEEE80211_IS_CHAN_HT40(chan)) {
-			numCtlModes = N(ctlModesFor11a); /* All 5G CTL's */
+			numCtlModes = NELEM(ctlModesFor11a); /* All 5G CTL's */
 
 			ar5416GetTargetPowers(ah,  chan, pEepData->calTargetPower5GHT40,
 				AR5416_NUM_5G_40_TARGET_POWERS, &targetPowerHt40, 8, AH_TRUE);
@@ -1483,19 +1491,19 @@ ar5416SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom *pEepData,
 		/* Apply ctl mode to correct target power set */
 		switch(pCtlMode[ctlMode]) {
 		case CTL_11B:
-			for (i = 0; i < N(targetPowerCck.tPow2x); i++) {
+			for (i = 0; i < NELEM(targetPowerCck.tPow2x); i++) {
 				targetPowerCck.tPow2x[i] = (uint8_t)AH_MIN(targetPowerCck.tPow2x[i], minCtlPower);
 			}
 			break;
 		case CTL_11A:
 		case CTL_11G:
-			for (i = 0; i < N(targetPowerOfdm.tPow2x); i++) {
+			for (i = 0; i < NELEM(targetPowerOfdm.tPow2x); i++) {
 				targetPowerOfdm.tPow2x[i] = (uint8_t)AH_MIN(targetPowerOfdm.tPow2x[i], minCtlPower);
 			}
 			break;
 		case CTL_5GHT20:
 		case CTL_2GHT20:
-			for (i = 0; i < N(targetPowerHt20.tPow2x); i++) {
+			for (i = 0; i < NELEM(targetPowerHt20.tPow2x); i++) {
 				targetPowerHt20.tPow2x[i] = (uint8_t)AH_MIN(targetPowerHt20.tPow2x[i], minCtlPower);
 			}
 			break;
@@ -1508,7 +1516,7 @@ ar5416SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom *pEepData,
 			break;
 		case CTL_5GHT40:
 		case CTL_2GHT40:
-			for (i = 0; i < N(targetPowerHt40.tPow2x); i++) {
+			for (i = 0; i < NELEM(targetPowerHt40.tPow2x); i++) {
 				targetPowerHt40.tPow2x[i] = (uint8_t)AH_MIN(targetPowerHt40.tPow2x[i], minCtlPower);
 			}
 			break;
@@ -1525,7 +1533,7 @@ ar5416SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom *pEepData,
 	ratesArray[rate54mb] = targetPowerOfdm.tPow2x[3];
 	ratesArray[rateXr] = targetPowerOfdm.tPow2x[0];
 
-	for (i = 0; i < N(targetPowerHt20.tPow2x); i++) {
+	for (i = 0; i < NELEM(targetPowerHt20.tPow2x); i++) {
 		ratesArray[rateHt20_0 + i] = targetPowerHt20.tPow2x[i];
 	}
 
@@ -1536,7 +1544,7 @@ ar5416SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom *pEepData,
 		ratesArray[rate11s] = ratesArray[rate11l] = targetPowerCck.tPow2x[3];
 	}
 	if (IEEE80211_IS_CHAN_HT40(chan)) {
-		for (i = 0; i < N(targetPowerHt40.tPow2x); i++) {
+		for (i = 0; i < NELEM(targetPowerHt40.tPow2x); i++) {
 			ratesArray[rateHt40_0 + i] = targetPowerHt40.tPow2x[i];
 		}
 		ratesArray[rateDupOfdm] = targetPowerHt40.tPow2x[0];
@@ -1553,7 +1561,6 @@ ar5416SetPowerPerRateTable(struct ath_hal *ah, struct ar5416eeprom *pEepData,
 #undef CTL_11B_EXT
 #undef SUB_NUM_CTL_MODES_AT_5G_40
 #undef SUB_NUM_CTL_MODES_AT_2G_40
-#undef N
 }
 
 /**************************************************************************
@@ -1996,7 +2003,7 @@ ar5416GetGainBoundariesAndPdadcs(struct ath_hal *ah,
          * for last gain, pdGainBoundary == Pmax_t2, so will
          * have to extrapolate
          */
-        if (tgtIndex > maxIndex) {  /* need to extrapolate above */
+        if (tgtIndex >= maxIndex) {  /* need to extrapolate above */
             while ((ss <= tgtIndex) && (k < (AR5416_NUM_PDADC_VALUES - 1))) {
                 tmpVal = (int16_t)((vpdTableI[i][sizeCurrVpdTable - 1] +
                           (ss - maxIndex +1) * vpdStep));

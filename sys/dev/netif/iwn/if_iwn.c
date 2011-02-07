@@ -1892,8 +1892,6 @@ iwn_read_eeprom_channels(struct iwn_softc *sc, int n, uint32_t addr)
 	ieee80211_sort_channels(ic->ic_channels, ic->ic_nchans);
 }
 
-#define nitems(_a)	(sizeof((_a)) / sizeof((_a)[0]))
-
 static void
 iwn_read_eeprom_enhinfo(struct iwn_softc *sc)
 {
@@ -1908,7 +1906,7 @@ iwn_read_eeprom_enhinfo(struct iwn_softc *sc)
 	    enhinfo, sizeof enhinfo);
 
 	memset(sc->enh_maxpwr, 0, sizeof sc->enh_maxpwr);
-	for (i = 0; i < nitems(enhinfo); i++) {
+	for (i = 0; i < NELEM(enhinfo); i++) {
 		if (enhinfo[i].chan == 0 || enhinfo[i].reserved != 0)
 			continue;	/* Skip invalid entries. */
 
@@ -2702,7 +2700,7 @@ iwn_fatal_intr(struct iwn_softc *sc)
 	}
 	kprintf("firmware error log:\n");
 	kprintf("  error type      = \"%s\" (0x%08X)\n",
-	    (dump.id < nitems(iwn_fw_errmsg)) ?
+	    (dump.id < NELEM(iwn_fw_errmsg)) ?
 		iwn_fw_errmsg[dump.id] : "UNKNOWN",
 	    dump.id);
 	kprintf("  program counter = 0x%08X\n", dump.pc);

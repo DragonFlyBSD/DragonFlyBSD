@@ -134,7 +134,7 @@ do_secure_trace(ldns_resolver *local_res, ldns_rdf *name, ldns_rr_type t,
 	ldns_rr_list *new_nss;
 	ldns_rr_list *ns_addr;
 	uint16_t loop_count;
-	ldns_rdf *pop; 
+	ldns_rdf *pop;
 	ldns_rdf **labels = NULL;
 	ldns_status status, st;
 	ssize_t i;
@@ -157,7 +157,7 @@ do_secure_trace(ldns_resolver *local_res, ldns_rdf *name, ldns_rr_type t,
 
 	ldns_rr_list *nsec_rrs = NULL;
 	ldns_rr_list *nsec_rr_sigs = NULL;
-	
+
 	/* empty non-terminal check */
 	bool ent;
 
@@ -165,9 +165,9 @@ do_secure_trace(ldns_resolver *local_res, ldns_rdf *name, ldns_rr_type t,
 	ldns_rr_list *new_ns_addr;
 	ldns_rr_list *old_ns_addr;
 	ldns_rr *ns_rr;
-	
+
 	int result = 0;
-	
+
 	/* printing niceness */
 	const ldns_rr_descriptor *descriptor;
 
@@ -187,13 +187,13 @@ do_secure_trace(ldns_resolver *local_res, ldns_rdf *name, ldns_rr_type t,
 	res = ldns_resolver_new();
 	key_sig_list = NULL;
 	ds_sig_list = NULL;
-	
+
 	if (!res) {
 		error("Memory allocation failed");
 		result = -1;
 		return result;
 	}
-	
+
 	correct_key_list = ldns_rr_list_new();
 	if (!correct_key_list) {
 		error("Memory allocation failed");
@@ -202,25 +202,31 @@ do_secure_trace(ldns_resolver *local_res, ldns_rdf *name, ldns_rr_type t,
 	}
 
 	trusted_ds_rrs = ldns_rr_list_new();
-
 	if (!trusted_ds_rrs) {
 		error("Memory allocation failed");
 		result = -1;
 		return result;
 	}
+        /* Add all preset trusted DS signatures to the list of trusted DS RRs. */
+        for (j = 0; j < ldns_rr_list_rr_count(trusted_keys); j++) {
+            ldns_rr* one_rr = ldns_rr_list_rr(trusted_keys, j);
+            if (ldns_rr_get_type(one_rr)  == LDNS_RR_TYPE_DS) {
+                ldns_rr_list_push_rr(trusted_ds_rrs, ldns_rr_clone(one_rr));
+            }
+        }
 
 	/* transfer some properties of local_res to res */
-	ldns_resolver_set_ip6(res, 
+	ldns_resolver_set_ip6(res,
 			ldns_resolver_ip6(local_res));
-	ldns_resolver_set_port(res, 
+	ldns_resolver_set_port(res,
 			ldns_resolver_port(local_res));
-	ldns_resolver_set_debug(res, 
+	ldns_resolver_set_debug(res,
 			ldns_resolver_debug(local_res));
-	ldns_resolver_set_fail(res, 
+	ldns_resolver_set_fail(res,
 			ldns_resolver_fail(local_res));
-	ldns_resolver_set_usevc(res, 
+	ldns_resolver_set_usevc(res,
 			ldns_resolver_usevc(local_res));
-	ldns_resolver_set_random(res, 
+	ldns_resolver_set_random(res,
 			ldns_resolver_random(local_res));
 	ldns_resolver_set_recursive(local_res, true);
 
@@ -264,7 +270,7 @@ do_secure_trace(ldns_resolver *local_res, ldns_rdf *name, ldns_rr_type t,
 	}
 
 	/* get the nameserver for the label
-	 * ask: dnskey and ds for the label 
+	 * ask: dnskey and ds for the label
 	 */
 	for(i = (ssize_t)labels_count + 1; i > 0; i--) {
 		status = ldns_resolver_send(&local_p, res, labels[i], LDNS_RR_TYPE_NS, c, 0);
@@ -313,14 +319,14 @@ do_secure_trace(ldns_resolver *local_res, ldns_rdf *name, ldns_rr_type t,
 				ldns_rr_list_deep_free(new_ns_addr);
 			}
 			ldns_rr_list_deep_free(new_nss);
-			
+
 			if (ns_addr) {
 				remove_resolver_nameservers(res);
 
-				if (ldns_resolver_push_nameserver_rr_list(res, ns_addr) != 
+				if (ldns_resolver_push_nameserver_rr_list(res, ns_addr) !=
 						LDNS_STATUS_OK) {
 					error("Error adding new nameservers");
-					ldns_pkt_free(local_p); 
+					ldns_pkt_free(local_p);
 					goto done;
 				}
 				ldns_rr_list_deep_free(ns_addr);
@@ -336,7 +342,7 @@ do_secure_trace(ldns_resolver *local_res, ldns_rdf *name, ldns_rr_type t,
 					printf("correct keys:\n");
 					ldns_rr_list_print(stdout, correct_key_list);
 				}
-				
+
 				if (status == LDNS_STATUS_OK) {
 					if ((st = ldns_verify(nsec_rrs, nsec_rr_sigs, trusted_keys, NULL)) == LDNS_STATUS_OK) {
 						fprintf(stdout, "%s ", TRUST);
@@ -382,7 +388,7 @@ do_secure_trace(ldns_resolver *local_res, ldns_rdf *name, ldns_rr_type t,
 					ldns_rdf_print(stdout, labels[i]);
 					printf("NS: %s\n", ldns_get_errorstr_by_id(status));
 				}
-				
+
 				/* there might be an empty non-terminal, in which case we need to continue */
 				ent = false;
 				for (j = 0; j < ldns_rr_list_rr_count(nsec_rrs); j++) {
@@ -397,10 +403,11 @@ do_secure_trace(ldns_resolver *local_res, ldns_rdf *name, ldns_rr_type t,
 					goto done;
 				} else {
 					printf(";; There is an empty non-terminal here, continue\n");
+					continue;
 				}
 				goto done;
 			}
-			
+
 			if (ldns_resolver_nameserver_count(res) == 0) {
 				error("No nameservers found for this node");
 				goto done;
@@ -414,7 +421,7 @@ do_secure_trace(ldns_resolver *local_res, ldns_rdf *name, ldns_rr_type t,
 
 		/* retrieve keys for current domain, and verify them
 		   if they match an already trusted DS, or if one of the
-		   keys used to sign these is trusted, add the keys to 
+		   keys used to sign these is trusted, add the keys to
 		   the trusted list */
 		p = get_dnssec_pkt(res, labels[i], LDNS_RR_TYPE_DNSKEY);
 		pt = get_key(p, labels[i], &key_list, &key_sig_list);
@@ -428,9 +435,9 @@ do_secure_trace(ldns_resolver *local_res, ldns_rdf *name, ldns_rr_type t,
 					for (j = 0; j < ldns_rr_list_rr_count(key_list); j++) {
 						ldns_rr_list_push_rr(correct_key_list, ldns_rr_clone(ldns_rr_list_rr(key_list, j)));
 					}
-					
+
 					/* check whether these keys were signed
-					 * by a trusted keys. if so, these 
+					 * by a trusted keys. if so, these
 					 * keys are also trusted */
 					new_keys_trusted = false;
 					for (k = 0; k < ldns_rr_list_rr_count(current_correct_keys); k++) {

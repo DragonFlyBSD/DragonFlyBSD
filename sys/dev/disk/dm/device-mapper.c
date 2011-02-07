@@ -35,6 +35,7 @@
 
 #include <sys/types.h>
 #include <sys/param.h>
+#include <sys/ctype.h>
 
 #include <sys/buf.h>
 #include <sys/conf.h>
@@ -46,15 +47,16 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/sysctl.h>
+#include <dev/disk/dm/dm.h>
 
 #include "netbsd-dm.h"
-#include "dm.h"
 
 static	d_ioctl_t	dmioctl;
 static	d_open_t	dmopen;
 static	d_close_t	dmclose;
 static	d_psize_t	dmsize;
 static	d_strategy_t	dmstrategy;
+static	d_dump_t	dmdump;
 
 /* attach and detach routines */
 void dmattach(int);
@@ -75,11 +77,12 @@ struct dev_ops dm_ops = {
 	{ "dm", 0, D_DISK | D_MPSAFE },
 	.d_open		= dmopen,
 	.d_close	= dmclose,
-	.d_read 	= physread,
-	.d_write 	= physwrite,
+	.d_read		= physread,
+	.d_write	= physwrite,
 	.d_ioctl	= dmioctl,
 	.d_strategy	= dmstrategy,
 	.d_psize	= dmsize,
+	.d_dump		= dmdump,
 /* D_DISK */
 };
 
@@ -97,11 +100,12 @@ static moduledata_t dm_mod = {
     NULL
 };
 DECLARE_MODULE(dm, dm_mod, SI_SUB_RAID, SI_ORDER_ANY);
+MODULE_VERSION(dm, 1);
 
 /*
  * This array is used to translate cmd to function pointer.
  *
- * Interface between libdevmapper and lvm2tools uses different 
+ * Interface between libdevmapper and lvm2tools uses different
  * names for one IOCTL call because libdevmapper do another thing
  * then. When I run "info" or "mknodes" libdevmapper will send same
  * ioctl to kernel but will do another things in userspace.
@@ -112,10 +116,11 @@ static struct cmd_function cmd_fn[] = {
 		{ .cmd = "targets", .fn = dm_list_versions_ioctl},
 		{ .cmd = "create",  .fn = dm_dev_create_ioctl},
 		{ .cmd = "info",    .fn = dm_dev_status_ioctl},
-		{ .cmd = "mknodes", .fn = dm_dev_status_ioctl},		
+		{ .cmd = "mknodes", .fn = dm_dev_status_ioctl},
 		{ .cmd = "names",   .fn = dm_dev_list_ioctl},
 		{ .cmd = "suspend", .fn = dm_dev_suspend_ioctl},
-		{ .cmd = "remove",  .fn = dm_dev_remove_ioctl}, 
+		{ .cmd = "remove",  .fn = dm_dev_remove_ioctl},
+		{ .cmd = "remove_all", .fn = dm_dev_remove_all_ioctl},
 		{ .cmd = "rename",  .fn = dm_dev_rename_ioctl},
 		{ .cmd = "resume",  .fn = dm_dev_resume_ioctl},
 		{ .cmd = "clear",   .fn = dm_table_clear_ioctl},
@@ -123,7 +128,7 @@ static struct cmd_function cmd_fn[] = {
 		{ .cmd = "reload",  .fn = dm_table_load_ioctl},
 		{ .cmd = "status",  .fn = dm_table_status_ioctl},
 		{ .cmd = "table",   .fn = dm_table_status_ioctl},
-		{NULL, NULL}	
+		{NULL, NULL}
 };
 
 /* New module handle routine */
@@ -149,7 +154,7 @@ dm_modcmd(module_t mod, int cmd, void *unused)
 		 * defined in driver. This is probably too strong we need
 		 * to disable auto-unload only if there is mounted dm device
 		 * present.
-		 */ 
+		 */
 		if (dm_dev_counter > 0)
 			return EBUSY;
 
@@ -166,37 +171,6 @@ dm_modcmd(module_t mod, int cmd, void *unused)
 	return error;
 }
 
-/*
- * dm_detach:
- *
- *	Autoconfiguration detach function for pseudo-device glue.
- * This routine is called by dm_ioctl::dm_dev_remove_ioctl and by autoconf to
- * remove devices created in device-mapper. 
- */
-int
-dm_detach(dm_dev_t *dmv)
-{
-	disable_dev(dmv);
-
-	/* Destroy active table first.  */
-	dm_table_destroy(&dmv->table_head, DM_TABLE_ACTIVE);
-
-	/* Destroy inactive table if exits, too. */
-	dm_table_destroy(&dmv->table_head, DM_TABLE_INACTIVE);
-	
-	dm_table_head_destroy(&dmv->table_head);
-
-	destroy_dev(dmv->devt);
-
-	/* Destroy device */
-	(void)dm_dev_free(dmv);
-
-	/* Decrement device counter After removing device */
-	--dm_dev_counter; /* XXX: was atomic 64 */
-
-	return 0;
-}
-
 static void
 dm_doinit(void)
 {
@@ -211,10 +185,10 @@ static int
 dmdestroy(void)
 {
 	destroy_dev(dmcdev);
-	
-	dm_dev_destroy();
-	dm_pdev_destroy();
-	dm_target_destroy();
+
+	dm_dev_uninit();
+	dm_pdev_uninit();
+	dm_target_uninit();
 
 	return 0;
 }
@@ -222,6 +196,18 @@ dmdestroy(void)
 static int
 dmopen(struct dev_open_args *ap)
 {
+	cdev_t dev = ap->a_head.a_dev;
+	dm_dev_t *dmv;
+
+	/* Shortcut for the control device */
+	if (minor(dev) == 0)
+		return 0;
+
+	if ((dmv = dm_dev_lookup(NULL, NULL, minor(dev))) == NULL)
+		return ENXIO;
+
+	dmv->is_open = 1;
+	dm_dev_unbusy(dmv);
 
 	aprint_debug("dm open routine called %" PRIu32 "\n",
 	    minor(ap->a_head.a_dev));
@@ -231,6 +217,18 @@ dmopen(struct dev_open_args *ap)
 static int
 dmclose(struct dev_close_args *ap)
 {
+	cdev_t dev = ap->a_head.a_dev;
+	dm_dev_t *dmv;
+
+	/* Shortcut for the control device */
+	if (minor(dev) == 0)
+		return 0;
+
+	if ((dmv = dm_dev_lookup(NULL, NULL, minor(dev))) == NULL)
+		return ENXIO;
+
+	dmv->is_open = 0;
+	dm_dev_unbusy(dmv);
 
 	aprint_debug("dm close routine called %" PRIu32 "\n",
 	    minor(ap->a_head.a_dev));
@@ -245,15 +243,15 @@ dmioctl(struct dev_ioctl_args *ap)
 	u_long cmd = ap->a_cmd;
 	void *data = ap->a_data;
 
-	int r;
+	int r, err;
 	prop_dictionary_t dm_dict_in;
 
-	r = 0;
+	err = r = 0;
 
 	aprint_debug("dmioctl called\n");
-	
+
 	KKASSERT(data != NULL);
-	
+
 	if (( r = disk_ioctl_switch(dev, cmd, data)) == ENOTTY) {
 		struct plistref *pref = (struct plistref *) data;
 
@@ -269,7 +267,7 @@ dmioctl(struct dev_ioctl_args *ap)
 			goto cleanup_exit;
 
 		/* run ioctl routine */
-		if ((r = dm_cmd_to_fun(dm_dict_in)) != 0)
+		if ((err = dm_cmd_to_fun(dm_dict_in)) != 0)
 			goto cleanup_exit;
 
 cleanup_exit:
@@ -277,7 +275,12 @@ cleanup_exit:
 		prop_object_release(dm_dict_in);
 	}
 
-	return r;
+	/*
+	 * Return the error of the actual command if one one has
+	 * happened. Otherwise return 'r' which indicates errors
+	 * that occurred during helper operations.
+	 */
+	return (err != 0)?err:r;
 }
 
 /*
@@ -287,7 +290,7 @@ static int
 dm_cmd_to_fun(prop_dictionary_t dm_dict){
 	int i, r;
 	prop_string_t command;
-	
+
 	r = 0;
 
 	if ((command = prop_dictionary_get(dm_dict, DM_IOCTL_COMMAND)) == NULL)
@@ -397,7 +400,7 @@ dmstrategy(struct dev_strategy_args *ap)
 	buf_start = bio->bio_offset;
 	buf_len = bp->b_bcount;
 
-	tbl = NULL; 
+	tbl = NULL;
 
 	table_end = 0;
 	dev_type = 0;
@@ -408,7 +411,7 @@ dmstrategy(struct dev_strategy_args *ap)
 		bp->b_resid = bp->b_bcount;
 		biodone(bio);
 		return 0;
-	} 
+	}
 
 	switch(bp->b_cmd) {
 	case BUF_CMD_READ:
@@ -441,6 +444,7 @@ dmstrategy(struct dev_strategy_args *ap)
 	tbl = dm_table_get_entry(&dmv->table_head, DM_TABLE_ACTIVE);
 
 	nestiobuf_init(bio);
+	devstat_start_transaction(&dmv->stats);
 
 	/*
 	 * Find out what tables I want to select.
@@ -473,7 +477,7 @@ dmstrategy(struct dev_strategy_args *ap)
 			nestbuf = getpbuf(NULL);
 			nestbuf->b_flags |= bio->bio_buf->b_flags & B_HASBOGUS;
 
-			nestiobuf_add(bio, nestbuf, 0, 0);
+			nestiobuf_add(bio, nestbuf, 0, 0, &dmv->stats);
 			nestbuf->b_bio1.bio_offset = 0;
 			table_en->target->strategy(table_en, nestbuf);
 		} else if (start < end) {
@@ -481,7 +485,8 @@ dmstrategy(struct dev_strategy_args *ap)
 			nestbuf->b_flags |= bio->bio_buf->b_flags & B_HASBOGUS;
 
 			nestiobuf_add(bio, nestbuf,
-				      start - buf_start, (end - start));
+				      start - buf_start, (end - start),
+				      &dmv->stats);
 			issued_len += end - start;
 
 			nestbuf->b_bio1.bio_offset = (start - table_start);
@@ -499,6 +504,89 @@ dmstrategy(struct dev_strategy_args *ap)
 }
 
 static int
+dmdump(struct dev_dump_args *ap)
+{
+	cdev_t dev = ap->a_head.a_dev;
+	dm_dev_t *dmv;
+	dm_table_t  *tbl;
+	dm_table_entry_t *table_en;
+	uint32_t dev_type;
+	uint64_t buf_start, buf_len, issued_len;
+	uint64_t table_start, table_end;
+	uint64_t start, end, data_offset;
+	off_t offset;
+	size_t length;
+	int error = 0;
+
+	buf_start = ap->a_offset;
+	buf_len = ap->a_length;
+
+	tbl = NULL;
+
+	table_end = 0;
+	dev_type = 0;
+	issued_len = 0;
+
+	if ((dmv = dm_dev_lookup(NULL, NULL, minor(dev))) == NULL) {
+		return EIO;
+	}
+
+	/* Select active table */
+	tbl = dm_table_get_entry(&dmv->table_head, DM_TABLE_ACTIVE);
+
+
+	/*
+	 * Find out what tables I want to select.
+	 */
+	SLIST_FOREACH(table_en, tbl, next) {
+		/*
+		 * I need need number of bytes not blocks.
+		 */
+		table_start = table_en->start * DEV_BSIZE;
+		table_end = table_start + (table_en->length) * DEV_BSIZE;
+
+		/*
+		 * Calculate the start and end
+		 */
+		start = MAX(table_start, buf_start);
+		end = MIN(table_end, buf_start + buf_len);
+
+		if (ap->a_length == 0) {
+			if (table_en->target->dump == NULL) {
+				error = ENXIO;
+				goto out;
+			}
+
+			table_en->target->dump(table_en, NULL, 0, 0);
+		} else if (start < end) {
+			data_offset = start - buf_start;
+			offset = start - table_start;
+			length = end - start;
+
+			if (table_en->target->dump == NULL) {
+				error = ENXIO;
+				goto out;
+			}
+
+			table_en->target->dump(table_en,
+			    (char *)ap->a_virtual + data_offset,
+			    length, offset);
+
+			issued_len += end - start;
+		}
+	}
+
+	if (issued_len < buf_len)
+		error = EINVAL;
+
+out:
+	dm_table_release(&dmv->table_head, DM_TABLE_ACTIVE);
+	dm_dev_unbusy(dmv);
+
+	return error;
+}
+
+static int
 dmsize(struct dev_psize_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
@@ -508,12 +596,14 @@ dmsize(struct dev_psize_args *ap)
 	size = 0;
 
 	if ((dmv = dm_dev_lookup(NULL, NULL, minor(dev))) == NULL)
-			return -ENOENT;
+			return ENOENT;
 
 	size = dm_table_size(&dmv->table_head);
 	dm_dev_unbusy(dmv);
-	
-  	return size;
+
+	ap->a_result = (int64_t)size;
+
+	return 0;
 }
 
 #if 0
@@ -529,74 +619,63 @@ void
 dmsetdiskinfo(struct disk *disk, dm_table_head_t *head)
 {
 	struct disk_info info;
-	int dmp_size;
+	uint64_t dmp_size;
 
 	dmp_size = dm_table_size(head);
 
 	bzero(&info, sizeof(struct disk_info));
 	info.d_media_blksize = DEV_BSIZE;
 	info.d_media_blocks = dmp_size;
+#if 0
+	/* this is set by disk_setdiskinfo */
 	info.d_media_size = dmp_size * DEV_BSIZE;
-	info.d_dsflags = DSO_MBRQUIET; /* XXX */
+#endif
+	info.d_dsflags = DSO_MBRQUIET | DSO_DEVICEMAPPER;
+
 	info.d_secpertrack = 32;
 	info.d_nheads = 64;
 	info.d_secpercyl = info.d_secpertrack * info.d_nheads;
-	info.d_ncylinders = dmp_size / 2048;
-	bcopy(&info, &disk->d_info, sizeof(disk->d_info));
+	info.d_ncylinders = dmp_size / info.d_secpercyl;
+
+	disk_setdiskinfo(disk, &info);
 }
 
-prop_dictionary_t
-dmgetdiskinfo(struct disk *disk)
+/*
+ * Transform char s to uint64_t offset number.
+ */
+uint64_t
+atoi64(const char *s)
 {
-	prop_dictionary_t disk_info, geom;
-	struct disk_info *pinfo;
+	uint64_t n;
+	n = 0;
 
-	pinfo = &disk->d_info;
+	while (*s != '\0') {
+		if (!isdigit(*s))
+			break;
 
-	disk_info = prop_dictionary_create();
-	geom = prop_dictionary_create();
+		n = (10 * n) + (*s - '0');
+		s++;
+	}
 
-	prop_dictionary_set_cstring_nocopy(disk_info, "type", "ESDI");
-	prop_dictionary_set_uint64(geom, "sectors-per-unit", pinfo->d_media_blocks);
-	prop_dictionary_set_uint32(geom, "sector-size",
-	    DEV_BSIZE /* XXX 512? */);
-	prop_dictionary_set_uint32(geom, "sectors-per-track", 32);
-	prop_dictionary_set_uint32(geom, "tracks-per-cylinder", 64);
-	prop_dictionary_set_uint32(geom, "cylinders-per-unit",
-	    pinfo->d_media_blocks / 2048);
-	prop_dictionary_set(disk_info, "geometry", geom);
-	prop_object_release(geom);
-
-	return disk_info;
+	return n;
 }
 
 void
-dmgetproperties(struct disk *disk, dm_table_head_t *head)
+dm_builtin_init(void *arg)
 {
-#if 0
-	prop_dictionary_t disk_info, odisk_info, geom;
-	int dmp_size;
+	modeventhand_t evh = (modeventhand_t)arg;
 
-	dmp_size = dm_table_size(head);
-	disk_info = prop_dictionary_create();
-	geom = prop_dictionary_create();
+	KKASSERT(evh != NULL);
+	evh(NULL, MOD_LOAD, NULL);
+}
 
-	prop_dictionary_set_cstring_nocopy(disk_info, "type", "ESDI");
-	prop_dictionary_set_uint64(geom, "sectors-per-unit", dmp_size);
-	prop_dictionary_set_uint32(geom, "sector-size",
-	    DEV_BSIZE /* XXX 512? */);
-	prop_dictionary_set_uint32(geom, "sectors-per-track", 32);
-	prop_dictionary_set_uint32(geom, "tracks-per-cylinder", 64);
-	prop_dictionary_set_uint32(geom, "cylinders-per-unit", dmp_size / 2048);
-	prop_dictionary_set(disk_info, "geometry", geom);
-	prop_object_release(geom);
+void
+dm_builtin_uninit(void *arg)
+{
+	modeventhand_t evh = (modeventhand_t)arg;
 
-	odisk_info = disk->dk_info;
-	disk->dk_info = disk_info;
-
-	if (odisk_info != NULL)
-		prop_object_release(odisk_info);
-#endif
+	KKASSERT(evh != NULL);
+	evh(NULL, MOD_UNLOAD, NULL);
 }
 
 TUNABLE_INT("debug.dm_debug", &dm_debug_level);

@@ -50,6 +50,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <libutil.h>
+#include <utmpx.h>
 #include <paths.h>
 #include <signal.h>
 #include <stdio.h>
@@ -109,7 +110,7 @@ static void	setctty(const char *);
 typedef struct init_session {
 	int	se_index;		/* index of entry in ttys file */
 	pid_t	se_process;		/* controlling process */
-	time_t	se_started;		/* used to avoid thrashing */
+	struct timeval	se_started;		/* used to avoid thrashing */
 	int	se_flags;		/* status of session */
 #define	SE_SHUTDOWN	0x1		/* session won't be restarted */
 #define	SE_PRESENT	0x2		/* session is in /etc/ttys */
@@ -129,13 +130,21 @@ typedef struct init_session {
 static void	 handle(sig_t, ...);
 static void	 delset(sigset_t *, ...);
 
-static void	 stall(const char *, ...);
-static void	 warning(const char *, ...);
-static void	 emergency(const char *, ...);
+static void	 stall(const char *, ...) __printflike(1, 2);
+static void	 warning(const char *, ...) __printflike(1, 2);
+static void	 emergency(const char *, ...) __printflike(1, 2);
 static void	 disaster(int);
 static void	 badsys(int);
 static int	 runshutdown(void);
 static char	*strk(char *);
+
+#define	DEATH		'd'
+#define	SINGLE_USER	's'
+#define	RUNCOM		'r'
+#define	READ_TTYS	't'
+#define	MULTI_USER	'm'
+#define	CLEAN_TTYS	'T'
+#define	CATATONIA	'c'
 
 static state_func_t	single_user(void);
 static state_func_t	runcom(void);
@@ -171,6 +180,16 @@ static void	add_session(session_t *);
 static void	del_session(session_t *);
 static session_t *find_session(pid_t);
 
+#ifdef SUPPORT_UTMPX
+static struct timeval boot_time;
+state_t current_state = death;
+static void session_utmpx(const session_t *, int);
+static void make_utmpx(const char *, const char *, int, pid_t,
+    const struct timeval *, int);
+static char get_runlevel(const state_t);
+static void utmpx_set_runlevel(char, char);
+#endif
+
 static int Reboot = FALSE;
 static int howto = RB_AUTOBOOT;
 
@@ -178,6 +197,7 @@ static DB *session_db;
 static volatile sig_atomic_t clang;
 static session_t *sessions;
 state_t requested_transition = runcom;
+
 
 /*
  * The mother of all processes.
@@ -191,6 +211,9 @@ main(int argc, char **argv)
 	sigset_t mask;
 	struct stat sts;
 
+#ifdef SUPPORT_UTMPX
+	(void)gettimeofday(&boot_time, NULL);
+#endif /* SUPPORT_UTMPX */
 
 	/* Dispose of random users. */
 	if (getuid() != 0)
@@ -560,8 +583,14 @@ setsecuritylevel(int newlevel)
 static void
 transition(state_t s)
 {
-	for (;;)
+	for (;;) {
+#ifdef SUPPORT_UTMPX
+		utmpx_set_runlevel(get_runlevel(current_state),
+		    get_runlevel(s));
+		current_state = s;
+#endif
 		s = (state_t) (*s)();
+	}
 }
 
 /*
@@ -573,6 +602,10 @@ clear_session_logs(session_t *sp)
 {
 	char *line = sp->se_device + sizeof(_PATH_DEV) - 1;
 
+#ifdef SUPPORT_UTMPX
+	if (logoutx(line, 0, DEAD_PROCESS))
+		 logwtmpx(line, "", "", 0, DEAD_PROCESS);
+#endif
 	if (logout(line))
 		logwtmp(line, "", "");
 }
@@ -836,6 +869,9 @@ runcom(void)
 
 	runcom_mode = AUTOBOOT;		/* the default */
 	/* NB: should send a message to the session logger to avoid blocking. */
+#ifdef SUPPORT_UTMPX
+	logwtmpx("~", "reboot", "", 0, INIT_PROCESS);
+#endif
 	logwtmp("~", "reboot", "");
 	return (state_func_t) read_ttys;
 }
@@ -874,6 +910,9 @@ add_session(session_t *sp)
 
 	if ((*session_db->put)(session_db, &key, &data, 0))
 		emergency("insert %d: %s", sp->se_process, strerror(errno));
+#ifdef SUPPORT_UTMPX
+	session_utmpx(sp, 1);
+#endif
 }
 
 /*
@@ -889,6 +928,9 @@ del_session(session_t *sp)
 
 	if ((*session_db->del)(session_db, &key, 0))
 		emergency("delete %d: %s", sp->se_process, strerror(errno));
+#ifdef SUPPORT_UTMPX
+	session_utmpx(sp, 0);
+#endif
 }
 
 /*
@@ -1061,6 +1103,25 @@ read_ttys(void)
 	session_t *sp, *snext;
 	struct ttyent *typ;
 
+#ifdef SUPPORT_UTMPX
+	if (sessions == NULL) {
+		struct stat st;
+
+		make_utmpx("", BOOT_MSG, BOOT_TIME, 0, &boot_time, 0);
+
+		/*
+		 * If wtmpx is not empty, pick the down time from there
+		 */
+		if (stat(_PATH_WTMPX, &st) != -1 && st.st_size != 0) {
+			struct timeval down_time;
+
+			TIMESPEC_TO_TIMEVAL(&down_time, 
+			    st.st_atime > st.st_mtime ?
+			    &st.st_atimespec : &st.st_mtimespec);
+			make_utmpx("", DOWN_MSG, DOWN_TIME, 0, &down_time, 0);
+		}
+	}
+#endif
 	/*
 	 * Destroy any previous session state.
 	 * There shouldn't be any, but just in case...
@@ -1144,8 +1205,8 @@ start_getty(session_t *sp)
 	int too_quick = 0;
 	char term[64], *env[2];
 
-	if (current_time >= sp->se_started &&
-	    current_time - sp->se_started < GETTY_SPACING) {
+	if (current_time >= sp->se_started.tv_sec &&
+	    current_time - sp->se_started.tv_sec < GETTY_SPACING) {
 		if (++sp->se_nspace > GETTY_NSPACE) {
 			sp->se_nspace = 0;
 			too_quick = 1;
@@ -1233,7 +1294,7 @@ collect_child(pid_t pid)
 	}
 
 	sp->se_process = pid;
-	sp->se_started = time(NULL);
+	gettimeofday(&sp->se_started, NULL);
 	add_session(sp);
 }
 
@@ -1295,7 +1356,7 @@ multi_user(void)
 			break;
 		}
 		sp->se_process = pid;
-		sp->se_started = time(NULL);
+		gettimeofday(&sp->se_started, NULL);
 		add_session(sp);
 	}
 
@@ -1373,7 +1434,7 @@ clean_ttys(void)
 				) {
 				/* Don't set SE_SHUTDOWN here */
 				sp->se_nspace = 0;
-				sp->se_started = 0;
+				sp->se_started.tv_sec = sp->se_started.tv_usec = 0;
 				kill(sp->se_process, SIGHUP);
 			}
 			if (old_getty)
@@ -1439,6 +1500,9 @@ death(void)
 	static const int death_sigs[2] = { SIGTERM, SIGKILL };
 
 	/* NB: should send a message to the session logger to avoid blocking. */
+#ifdef SUPPORT_UTMPX
+	logwtmpx("~", "shutdown", "", 0, INIT_PROCESS);
+#endif
 	logwtmp("~", "shutdown", "");
 
 	for (sp = sessions; sp; sp = sp->se_next) {
@@ -1661,5 +1725,88 @@ setprocresources(const char *cname)
 		setusercontext(lc, NULL, 0, LOGIN_SETPRIORITY|LOGIN_SETRESOURCES);
 		login_close(lc);
 	}
+}
+#endif
+
+#ifdef SUPPORT_UTMPX
+static void
+session_utmpx(const session_t *sp, int add)
+{
+	const char *name = sp->se_getty ? sp->se_getty :
+	    (sp->se_window ? sp->se_window : "");
+	const char *line = sp->se_device + sizeof(_PATH_DEV) - 1;
+
+	make_utmpx(name, line, add ? LOGIN_PROCESS : DEAD_PROCESS,
+	    sp->se_process, &sp->se_started, sp->se_index);
+}
+
+static void
+make_utmpx(const char *name, const char *line, int type, pid_t pid,
+    const struct timeval *tv, int session)
+{
+	struct utmpx ut;
+	const char *eline;
+
+	(void)memset(&ut, 0, sizeof(ut));
+	(void)strlcpy(ut.ut_name, name, sizeof(ut.ut_name));
+	ut.ut_type = type;
+	(void)strlcpy(ut.ut_line, line, sizeof(ut.ut_line));
+	ut.ut_pid = pid;
+	if (tv)
+		ut.ut_tv = *tv;
+	else
+		(void)gettimeofday(&ut.ut_tv, NULL);
+	ut.ut_session = session;
+
+	eline = line + strlen(line);
+	if ((size_t)(eline - line) >= sizeof(ut.ut_id))
+		line = eline - sizeof(ut.ut_id);
+	(void)strncpy(ut.ut_id, line, sizeof(ut.ut_id));
+
+	if (pututxline(&ut) == NULL)
+		warning("can't add utmpx record for `%s': %m", ut.ut_line);
+	endutxent();
+}
+
+static char
+get_runlevel(const state_t s)
+{
+	if (s == (state_t)single_user)
+		return SINGLE_USER;
+	if (s == (state_t)runcom)
+		return RUNCOM;
+	if (s == (state_t)read_ttys)
+		return READ_TTYS;
+	if (s == (state_t)multi_user)
+		return MULTI_USER;
+	if (s == (state_t)clean_ttys)
+		return CLEAN_TTYS;
+	if (s == (state_t)catatonia)
+		return CATATONIA;
+	return DEATH;
+}
+
+static void
+utmpx_set_runlevel(char old, char new)
+{
+	struct utmpx ut;
+
+	/*
+	 * Don't record any transitions until we did the first transition
+	 * to read ttys, which is when we are guaranteed to have a read-write
+	 * /var. Perhaps use a different variable for this?
+	 */
+	if (sessions == NULL)
+		return;
+
+	(void)memset(&ut, 0, sizeof(ut));
+	(void)snprintf(ut.ut_line, sizeof(ut.ut_line), RUNLVL_MSG, new);
+	ut.ut_type = RUN_LVL;
+	(void)gettimeofday(&ut.ut_tv, NULL);
+	ut.ut_exit.e_exit = old;
+	ut.ut_exit.e_termination = new;
+	if (pututxline(&ut) == NULL)
+		warning("can't add utmpx record for `runlevel': %m");
+	endutxent();
 }
 #endif

@@ -47,22 +47,15 @@
 
 MALLOC_DECLARE(M_DEVFS);
 
-#if 0
-static int WildCmp(const char *w, const char *s);
-#endif
-static int WildCaseCmp(const char *w, const char *s);
-static int wildCmp(const char **mary, int d, const char *w, const char *s);
-static int wildCaseCmp(const char **mary, int d, const char *w, const char *s);
-
 static d_open_t      devfs_dev_open;
 static d_close_t     devfs_dev_close;
 static d_ioctl_t     devfs_dev_ioctl;
 
 static struct devfs_rule *devfs_rule_alloc(struct devfs_rule_ioctl *);
 static void devfs_rule_free(struct devfs_rule *);
-static void devfs_rule_insert(struct devfs_rule_ioctl *);
+static int devfs_rule_insert(struct devfs_rule_ioctl *);
 static void devfs_rule_remove(struct devfs_rule *);
-static void devfs_rule_clear(struct devfs_rule_ioctl *);
+static int devfs_rule_clear(struct devfs_rule_ioctl *);
 static void devfs_rule_create_link(struct devfs_node *, struct devfs_rule *);
 static int devfs_rule_checkname(struct devfs_rule *, struct devfs_node *);
 
@@ -93,26 +86,44 @@ devfs_rule_alloc(struct devfs_rule_ioctl *templ)
 	rule = objcache_get(devfs_rule_cache, M_WAITOK);
 	memset(rule, 0, sizeof(struct devfs_rule));
 
+	if (templ->mntpoint == NULL)
+		goto error_out;
+		/* NOTREACHED */
+
 	len = strlen(templ->mntpoint);
-	if (len > 0) {
-		rule->mntpoint = kstrdup(templ->mntpoint, M_DEVFS);
-		rule->mntpointlen = len;
-	}
+	if (len == 0)
+		goto error_out;
+		/* NOTREACHED */
 
-	if (templ->rule_type == DEVFS_RULE_NAME) {
+	rule->mntpoint = kstrdup(templ->mntpoint, M_DEVFS);
+	rule->mntpointlen = len;
+
+	if (templ->rule_type & DEVFS_RULE_NAME) {
+		if (templ->name == NULL)
+			goto error_out;
+			/* NOTREACHED */
+
 		len = strlen(templ->name);
-		if (len > 0) {
-			rule->name = kstrdup(templ->name, M_DEVFS);
-			rule->namlen = len;
-		}
+		if (len == 0)
+			goto error_out;
+			/* NOTREACHED */
+
+		rule->name = kstrdup(templ->name, M_DEVFS);
+		rule->namlen = len;
 	}
 
-	if (templ->rule_cmd == DEVFS_RULE_LINK) {
+	if (templ->rule_cmd & DEVFS_RULE_LINK) {
+		if (templ->linkname == NULL)
+			goto error_out;
+			/* NOTREACHED */
+
 		len = strlen(templ->linkname);
-		if (len > 0) {
-			rule->linkname = kstrdup(templ->linkname, M_DEVFS);
-			rule->linknamlen = len;
-		}
+		if (len == 0)
+			goto error_out;
+			/* NOTREACHED */
+
+		rule->linkname = kstrdup(templ->linkname, M_DEVFS);
+		rule->linknamlen = len;
 	}
 
 	rule->rule_type = templ->rule_type;
@@ -123,6 +134,10 @@ devfs_rule_alloc(struct devfs_rule_ioctl *templ)
 	rule->gid = templ->gid;
 
 	return rule;
+
+error_out:
+	devfs_rule_free(rule);
+	return NULL;
 }
 
 
@@ -144,16 +159,20 @@ devfs_rule_free(struct devfs_rule *rule)
 }
 
 
-static void
+static int
 devfs_rule_insert(struct devfs_rule_ioctl *templ)
 {
 	struct devfs_rule *rule;
 
 	rule = devfs_rule_alloc(templ);
+	if (rule == NULL)
+		return EINVAL;
 
 	lockmgr(&devfs_rule_lock, LK_EXCLUSIVE);
 	TAILQ_INSERT_TAIL(&devfs_rule_list, rule, link);
 	lockmgr(&devfs_rule_lock, LK_RELEASE);
+
+	return 0;
 }
 
 
@@ -165,11 +184,18 @@ devfs_rule_remove(struct devfs_rule *rule)
 }
 
 
-static void
+static int
 devfs_rule_clear(struct devfs_rule_ioctl *templ)
 {
 	struct devfs_rule *rule1, *rule2;
-	size_t	mntpointlen = strlen(templ->mntpoint);
+	size_t mntpointlen;
+
+	if (templ->mntpoint == NULL)
+		return EINVAL;
+
+	mntpointlen = strlen(templ->mntpoint);
+	if (mntpointlen == 0)
+		return EINVAL;
 
 	lockmgr(&devfs_rule_lock, LK_EXCLUSIVE);
 	TAILQ_FOREACH_MUTABLE(rule1, &devfs_rule_list, link, rule2) {
@@ -180,6 +206,8 @@ devfs_rule_clear(struct devfs_rule_ioctl *templ)
 		}
 	}
 	lockmgr(&devfs_rule_lock, LK_RELEASE);
+
+	return 0;
 }
 
 
@@ -354,7 +382,7 @@ devfs_rule_checkname(struct devfs_rule *rule, struct devfs_node *node)
 		no_match = memcmp(name, node->d_dir.d_name, strlen(name));
 	else
 #endif
-	no_match = WildCaseCmp(name, node->d_dir.d_name);
+	no_match = devfs_WildCaseCmp(name, node->d_dir.d_name);
 
 	return !no_match;
 }
@@ -399,19 +427,25 @@ devfs_dev_ioctl(struct dev_ioctl_args *ap)
 
 	switch(ap->a_cmd) {
 	case DEVFS_RULE_ADD:
-		devfs_rule_insert(rule);
+		error = devfs_rule_insert(rule);
 		break;
 
 	case DEVFS_RULE_APPLY:
-		devfs_apply_rules(rule->mntpoint);
+		if (rule->mntpoint == NULL)
+			error = EINVAL;
+		else
+			devfs_apply_rules(rule->mntpoint);
 		break;
 
 	case DEVFS_RULE_CLEAR:
-		devfs_rule_clear(rule);
+		error = devfs_rule_clear(rule);
 		break;
 
 	case DEVFS_RULE_RESET:
-		devfs_reset_rules(rule->mntpoint);
+		if (rule->mntpoint == NULL)
+			error = EINVAL;
+		else
+			devfs_reset_rules(rule->mntpoint);
 		break;
 
 	default:
@@ -455,170 +489,3 @@ devfs_dev_uninit(void *unused)
 SYSINIT(devfsdev,SI_SUB_DRIVERS,SI_ORDER_FIRST,devfs_dev_init,NULL)
 SYSUNINIT(devfsdev, SI_SUB_DRIVERS,SI_ORDER_FIRST,devfs_dev_uninit, NULL);
 
-#if 0
-
-static int
-WildCmp(const char *w, const char *s)
-{
-    int i;
-    int c;
-    int slen = strlen(s);
-    const char **mary;
-
-    for (i = c = 0; w[i]; ++i) {
-	if (w[i] == '*')
-	    ++c;
-    }
-    mary = kmalloc(sizeof(char *) * (c + 1), M_DEVFS, M_WAITOK);
-    for (i = 0; i < c; ++i)
-	mary[i] = s + slen;
-    i = wildCmp(mary, 0, w, s);
-    kfree(mary, M_DEVFS);
-    return(i);
-}
-
-#endif
-
-static int
-WildCaseCmp(const char *w, const char *s)
-{
-    int i;
-    int c;
-    int slen = strlen(s);
-    const char **mary;
-
-    for (i = c = 0; w[i]; ++i) {
-	if (w[i] == '*')
-	    ++c;
-    }
-    mary = kmalloc(sizeof(char *) * (c + 1), M_DEVFS, M_WAITOK);
-    for (i = 0; i < c; ++i)
-	mary[i] = s + slen;
-    i = wildCaseCmp(mary, 0, w, s);
-    kfree(mary, M_DEVFS);
-    return(i);
-}
-
-/*
- * WildCmp() - compare wild string to sane string
- *
- *	Returns 0 on success, -1 on failure.
- */
-static int
-wildCmp(const char **mary, int d, const char *w, const char *s)
-{
-    int i;
-
-    /*
-     * skip fixed portion
-     */
-    for (;;) {
-	switch(*w) {
-	case '*':
-	    /*
-	     * optimize terminator
-	     */
-	    if (w[1] == 0)
-		return(0);
-	    if (w[1] != '?' && w[1] != '*') {
-		/*
-		 * optimize * followed by non-wild
-		 */
-		for (i = 0; s + i < mary[d]; ++i) {
-		    if (s[i] == w[1] && wildCmp(mary, d + 1, w + 1, s + i) == 0)
-			return(0);
-		}
-	    } else {
-		/*
-		 * less-optimal
-		 */
-		for (i = 0; s + i < mary[d]; ++i) {
-		    if (wildCmp(mary, d + 1, w + 1, s + i) == 0)
-			return(0);
-		}
-	    }
-	    mary[d] = s;
-	    return(-1);
-	case '?':
-	    if (*s == 0)
-		return(-1);
-	    ++w;
-	    ++s;
-	    break;
-	default:
-	    if (*w != *s)
-		return(-1);
-	    if (*w == 0)	/* terminator */
-		return(0);
-	    ++w;
-	    ++s;
-	    break;
-	}
-    }
-    /* not reached */
-    return(-1);
-}
-
-
-/*
- * WildCaseCmp() - compare wild string to sane string, case insensitive
- *
- *	Returns 0 on success, -1 on failure.
- */
-static int
-wildCaseCmp(const char **mary, int d, const char *w, const char *s)
-{
-    int i;
-
-    /*
-     * skip fixed portion
-     */
-    for (;;) {
-	switch(*w) {
-	case '*':
-	    /*
-	     * optimize terminator
-	     */
-	    if (w[1] == 0)
-		return(0);
-	    if (w[1] != '?' && w[1] != '*') {
-		/*
-		 * optimize * followed by non-wild
-		 */
-		for (i = 0; s + i < mary[d]; ++i) {
-		    if (s[i] == w[1] && wildCaseCmp(mary, d + 1, w + 1, s + i) == 0)
-			return(0);
-		}
-	    } else {
-		/*
-		 * less-optimal
-		 */
-		for (i = 0; s + i < mary[d]; ++i) {
-		    if (wildCaseCmp(mary, d + 1, w + 1, s + i) == 0)
-			return(0);
-		}
-	    }
-	    mary[d] = s;
-	    return(-1);
-	case '?':
-	    if (*s == 0)
-		return(-1);
-	    ++w;
-	    ++s;
-	    break;
-	default:
-	    if (*w != *s) {
-#define tolower(x)	((x >= 'A' && x <= 'Z')?(x+('a'-'A')):(x))
-		if (tolower(*w) != tolower(*s))
-		    return(-1);
-	    }
-	    if (*w == 0)	/* terminator */
-		return(0);
-	    ++w;
-	    ++s;
-	    break;
-	}
-    }
-    /* not reached */
-    return(-1);
-}

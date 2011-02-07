@@ -1,0 +1,13 @@
+#!/bin/sh
+# PROVIDE: udevd_early
+# BEFORE: mountcritlocal
+
+. /etc/rc.subr
+
+name="udevd_early"
+rcvar=`set_rcvar`
+command="/sbin/udevd"
+
+load_rc_config $name
+run_rc_command "$1"
+

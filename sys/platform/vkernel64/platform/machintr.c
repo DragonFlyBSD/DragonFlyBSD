@@ -59,6 +59,7 @@ static int dummy_setvar(int, const void *);
 static int dummy_getvar(int, void *);
 static void dummy_finalize(void);
 static void dummy_intrcleanup(void);
+static void dummy_stabilize(void);
 
 struct machintr_abi MachIntrABI = {
 	MACHINTR_GENERIC,
@@ -68,7 +69,8 @@ struct machintr_abi MachIntrABI = {
 	.setvar =	dummy_setvar,
 	.getvar =	dummy_getvar,
 	.finalize =	dummy_finalize,
-	.cleanup =	dummy_intrcleanup
+	.cleanup =	dummy_intrcleanup,
+	.stabilize =	dummy_stabilize
 };
 
 static void
@@ -110,6 +112,11 @@ dummy_intrcleanup(void)
 {
 }
 
+static void
+dummy_stabilize(void)
+{
+}
+
 /*
  * Process pending interrupts
  */
@@ -124,14 +131,12 @@ splz(void)
 		crit_enter_quick(td);
 #ifdef SMP
 		if (gd->mi.gd_reqflags & RQF_IPIQ) {
-			atomic_clear_int_nonlocked(&gd->mi.gd_reqflags,
-						   RQF_IPIQ);
+			atomic_clear_int(&gd->mi.gd_reqflags, RQF_IPIQ);
 			lwkt_process_ipiq();
 		}
 #endif
 		if (gd->mi.gd_reqflags & RQF_INTPEND) {
-			atomic_clear_int_nonlocked(&gd->mi.gd_reqflags,
-						   RQF_INTPEND);
+			atomic_clear_int(&gd->mi.gd_reqflags, RQF_INTPEND);
 			while ((irq = ffs(gd->gd_spending)) != 0) {
 				--irq;
 				atomic_clear_int(&gd->gd_spending, 1 << irq);
@@ -162,7 +167,7 @@ signalintr(int intr)
 
 	if (td->td_critcount || td->td_nest_count) {
 		atomic_set_int_nonlocked(&gd->gd_fpending, 1 << intr);
-		atomic_set_int_nonlocked(&gd->mi.gd_reqflags, RQF_INTPEND);
+		atomic_set_int(&gd->mi.gd_reqflags, RQF_INTPEND);
 	} else {
 		++td->td_nest_count;
 		atomic_clear_int(&gd->gd_fpending, 1 << intr);

@@ -47,4 +47,6 @@
 //#include <unistd.h>
 #include <sys/stat.h>
 
+#define alloca(sz) __builtin_alloca(sz)
+
 #endif

@@ -50,6 +50,6 @@ ENTRY(bzeront)
 1:
 	movnti %rax,(%rdi)
 	addq $8,%rdi
-	subq $8,%rsi
+	subq $1,%rsi
 	jne 1b
-	ret
+	retq

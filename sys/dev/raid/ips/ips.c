@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.c,v 1.12 2004/05/30 04:01:29 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.19 2006/12/22 23:26:23 swildner Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -42,7 +41,7 @@ static d_ioctl_t ips_ioctl;
 MALLOC_DEFINE(M_IPSBUF, "ipsbuf", "IPS driver buffer");
 
 static struct dev_ops ips_ops = {
-	{ "ips", IPS_CDEV_MAJOR, D_DISK },
+	{ "ips", 0, D_DISK },
 	.d_open	= 	ips_open,
 	.d_close =	ips_close,
 	.d_ioctl =	ips_ioctl,

@@ -60,7 +60,7 @@ struct storage {
 	struct disk *disk_tail;
 	struct disk *selected_disk;
 	struct slice *selected_slice;
-	unsigned long ram;			/* amount of physical memory in MB */
+	long ram;			/* amount of physical memory in MB */
 };
 
 struct disk {
@@ -101,6 +101,7 @@ struct subpartition {
 	char letter;			/* 'a' = root partition */
 	char *mountpoint;		/* includes leading slash */
 	long capacity;			/* in megabytes, -1 = "rest of disk" */
+	int encrypted;
 	int softupdates;
 	long fsize;			/* fragment size */
 	long bsize;			/* block size */
@@ -117,7 +118,7 @@ struct subpartition {
 struct storage		*storage_new(void);
 void			 storage_free(struct storage *);
 void			 storage_set_memsize(struct storage *, unsigned long);
-unsigned long		 storage_get_memsize(const struct storage *);
+long			 storage_get_memsize(const struct storage *);
 struct disk		*storage_disk_first(const struct storage *);
 void			 storage_set_selected_disk(struct storage *, struct disk *);
 struct disk		*storage_get_selected_disk(const struct storage *);
@@ -157,12 +158,15 @@ int			 slice_get_flags(const struct slice *);
 void			 slices_free(struct slice *);
 struct subpartition	*slice_subpartition_first(const struct slice *);
 
-struct subpartition	*subpartition_new(struct slice *, const char *, long,
-					  int, long, long, int);
-struct subpartition	*subpartition_new_hammer(struct slice *, const char *, long);
+struct subpartition	*subpartition_new_hammer(struct slice *, const char *,
+						 long, int);
+struct subpartition	*subpartition_new_ufs(struct slice *, const char *,
+					      long, int, int, long, long, int);
 int			 subpartition_count(const struct slice *);
-struct subpartition	*subpartition_find(const struct slice *, const char *, ...);
-struct subpartition	*subpartition_of(const struct slice *, const char *, ...);
+struct subpartition	*subpartition_find(const struct slice *, const char *, ...)
+			     __printflike(2, 3);
+struct subpartition	*subpartition_of(const struct slice *, const char *, ...)
+			     __printflike(2, 3);
 struct subpartition	*subpartition_find_capacity(const struct slice *, long);
 void		 	 subpartitions_free(struct slice *);
 struct subpartition	*subpartition_next(const struct subpartition *);
@@ -172,7 +176,9 @@ const char		*subpartition_get_device_name(const struct subpartition *);
 char			 subpartition_get_letter(const struct subpartition *);
 unsigned long		 subpartition_get_fsize(const struct subpartition *);
 unsigned long		 subpartition_get_bsize(const struct subpartition *);
-unsigned long		 subpartition_get_capacity(const struct subpartition *);
+long			 subpartition_get_capacity(const struct subpartition *);
+void			 subpartition_clr_encrypted(struct subpartition *);
+int			 subpartition_is_encrypted(const struct subpartition *);
 int			 subpartition_is_swap(const struct subpartition *);
 int			 subpartition_is_softupdated(const struct subpartition *);
 int			 subpartition_is_tmpfsbacked(const struct subpartition *);
@@ -183,6 +189,7 @@ long			 measure_activated_swap_from_slice(const struct i_fn_args *,
 long			 measure_activated_swap_from_disk(const struct i_fn_args *,
 				const struct disk *);
 void			*swapoff_all(const struct i_fn_args *);
+void			*remove_all_mappings(const struct i_fn_args *);
 
 int			 survey_storage(struct i_fn_args *);
 

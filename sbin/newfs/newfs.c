@@ -53,6 +53,7 @@
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <paths.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -81,7 +82,7 @@ struct mntopt mopts[] = {
 	MOPT_NULL,
 };
 
-void	fatal(const char *fmt, ...);
+void	fatal(const char *fmt, ...) __printflike(1, 2);
 
 #define	COMPAT			/* allow non-labeled disks */
 
@@ -157,6 +158,7 @@ void	fatal(const char *fmt, ...);
 int	mfs;			/* run as the memory based filesystem */
 char	*mfs_mtpt;		/* mount point for mfs		*/
 struct stat mfs_mtstat;		/* stat prior to mount		*/
+int	Lflag;			/* add a volume label */
 int	Nflag;			/* run without writing file system */
 int	Oflag;			/* format as an 4.3BSD file system */
 int	Cflag;			/* copy underlying filesystem (mfs only) */
@@ -194,6 +196,7 @@ int	mntflags = MNT_ASYNC;	/* flags to be passed to mount */
 int	t_or_u_flag = 0;	/* user has specified -t or -u */
 caddr_t	membase;		/* start address of memory based filesystem */
 char	*filename;
+u_char	*volumelabel = NULL;	/* volume label for filesystem */
 #ifdef COMPAT
 char	*disktype;
 int	unlabeled;
@@ -208,7 +211,7 @@ static void mfsintr(int signo);
 int
 main(int argc, char **argv)
 {
-	int ch;
+	int ch, i;
 	struct disktab geom;		/* disk geometry data */
 	struct stat st;
 	struct statfs *mp;
@@ -233,10 +236,22 @@ main(int argc, char **argv)
 	}
 
 	opstring = mfs ?
-	    "NCF:T:Ua:b:c:d:e:f:g:h:i:m:o:s:v" :
-	    "NOS:T:Ua:b:c:d:e:f:g:h:i:k:l:m:n:o:p:r:s:t:u:vx:";
+	    "L:NCF:T:Ua:b:c:d:e:f:g:h:i:m:o:s:v" :
+	    "L:NOS:T:Ua:b:c:d:e:f:g:h:i:k:l:m:n:o:p:r:s:t:u:vx:";
 	while ((ch = getopt(argc, argv, opstring)) != -1) {
 		switch (ch) {
+		case 'L':
+			volumelabel = optarg;
+			i = -1;
+			while (isalnum(volumelabel[++i]))
+				;
+			if (volumelabel[i] != '\0')
+				errx(1, "bad volume label. Valid characters are alphanumerics.");
+			if (strlen(volumelabel) >= MAXVOLLEN)
+				errx(1, "bad volume label. Length is longer than %d.",
+				    MAXVOLLEN);
+			Lflag = 1;
+			break;
 		case 'N':
 			Nflag = 1;
 			break;
@@ -504,7 +519,7 @@ havelabel:
 	if (fssize == 0)
 		fssize = geom.d_media_blocks;
 	if ((u_long)fssize > geom.d_media_blocks && !mfs) {
-	       fatal("%s: maximum file system size is %lld blocks",
+	       fatal("%s: maximum file system size is %" PRIu64 " blocks",
 		     argv[0], geom.d_media_blocks);
 	}
 	if (rpm == 0) {
@@ -701,6 +716,7 @@ usage(void)
 #endif
 	fprintf(stderr, "where fsoptions are:\n");
 	fprintf(stderr, "\t-C (mfs) Copy the underlying filesystem to the MFS mount\n");
+	fprintf(stderr, "\t-L volume name\n");
 	fprintf(stderr,
 	    "\t-N do not create file system, just print out parameters\n");
 	fprintf(stderr, "\t-O create a 4.3BSD format filesystem\n");

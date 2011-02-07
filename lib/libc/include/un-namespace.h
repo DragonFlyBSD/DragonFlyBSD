@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: /repoman/r/ncvs/src/lib/libc/include/un-namespace.h,v 1.1 2001/01/24 13:00:09 deischen Exp $
- * $DragonFly: src/lib/libc/include/un-namespace.h,v 1.2 2006/04/06 13:02:12 davidxu Exp $
  */
 
 #ifndef _UN_NAMESPACE_H_
@@ -196,7 +195,9 @@
 #undef		sigsuspend
 #undef		socket
 #undef		socketpair
+#undef		usleep
 #undef		wait4
+#undef		waitpid
 #undef		write
 #undef		writev
 
@@ -221,7 +222,6 @@
 #undef		system
 #undef		tcdrain
 #undef		wait
-#undef		waitpid
 #endif	/* 0 */
 
 #ifdef _SIGNAL_H_
@@ -237,6 +237,8 @@ int		_kevent(int, const struct kevent *, int, struct kevent *,
 int		_flock(int, int);
 #endif
 
+#undef		err
+#undef		warn
 #undef		nsdispatch
 
 #endif	/* _UN_NAMESPACE_H_ */

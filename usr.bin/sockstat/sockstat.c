@@ -86,6 +86,8 @@ struct sock {
 	struct sock *next;
 };
 
+static int xprintf(const char *, ...) __printflike(1, 2);
+
 #define HASHSIZE 1009
 static struct sock *sockhash[HASHSIZE];
 

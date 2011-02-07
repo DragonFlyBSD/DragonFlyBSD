@@ -37,8 +37,6 @@
 #include "bootstrap.h"
 #include "dloader.h"
 
-static void dvar_free(dvar_t *lastp);
-
 dvar_t dvbase;
 dvar_t *dvlastp = &dvbase;
 
@@ -83,6 +81,24 @@ dvar_set(const char *name, char **data, int count)
 		var->data[count] = strdup(data[count]);
 }
 
+dvar_t
+dvar_copy(dvar_t ovar)
+{
+	dvar_t var;
+	int count;
+
+	var = malloc(sizeof(*var));
+	bzero(var, sizeof(*var));
+	count = ovar->count;
+
+	var->count = count;
+	var->data = malloc(sizeof(char *) * (count + 1));
+	var->data[count] = NULL;
+	while (--count >= 0)
+		var->data[count] = strdup(ovar->data[count]);
+	return (var);
+}
+
 void
 dvar_unset(const char *name)
 {
@@ -123,7 +139,19 @@ dvar_next(dvar_t var)
 	return(var->next);
 }
 
-static void
+dvar_t *
+dvar_firstp(void)
+{
+	return(&dvbase);
+}
+
+dvar_t *
+dvar_nextp(dvar_t var)
+{
+	return(&var->next);
+}
+
+void
 dvar_free(dvar_t *lastp)
 {
 	dvar_t dvar = *lastp;
@@ -143,9 +171,9 @@ dvar_istrue(dvar_t var)
 	int retval = 0;
 
 	if (var != NULL && (strcasecmp(var->data[0], "yes") == 0 ||
-			strcasecmp(var->data[0], "true") == 0 ||
-			strcasecmp(var->data[0], "on") == 0 ||
-			strcasecmp(var->data[0], "1") == 0))
+	    strcasecmp(var->data[0], "true") == 0 ||
+	    strcasecmp(var->data[0], "on") == 0 ||
+	    strcasecmp(var->data[0], "1") == 0))
 		retval = 1;
 
 	return (retval);

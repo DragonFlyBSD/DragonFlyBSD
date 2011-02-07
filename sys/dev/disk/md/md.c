@@ -7,7 +7,6 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/md/md.c,v 1.8.2.2 2002/08/19 17:43:34 jdp Exp $
- * $DragonFly: src/sys/dev/disk/md/md.c,v 1.20 2008/09/07 08:09:39 swildner Exp $
  *
  */
 
@@ -37,7 +36,8 @@ MALLOC_DEFINE(M_MD, "MD disk", "Memory Disk");
 MALLOC_DEFINE(M_MDSECT, "MD sectors", "Memory Disk Sectors");
 
 static int md_debug;
-SYSCTL_INT(_debug, OID_AUTO, mddebug, CTLFLAG_RW, &md_debug, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, mddebug, CTLFLAG_RW, &md_debug, 0,
+    "Enable debug output for memory disk devices");
 
 #if defined(MD_ROOT) && defined(MD_ROOT_SIZE)
 /* Image gets put here: */
@@ -47,8 +47,6 @@ static u_char end_mfs_root[] __unused = "MFS Filesystem had better STOP here";
 
 static int mdrootready;
 
-#define CDEV_MAJOR	95
-
 static d_strategy_t mdstrategy;
 static d_strategy_t mdstrategy_preload;
 static d_strategy_t mdstrategy_malloc;
@@ -57,7 +55,7 @@ static d_close_t mdclose;
 static d_ioctl_t mdioctl;
 
 static struct dev_ops md_ops = {
-	{ "md", CDEV_MAJOR, D_DISK | D_CANFREE | D_MEMDISK | D_TRACKCLOSE},
+	{ "md", 0, D_DISK | D_CANFREE | D_MEMDISK | D_TRACKCLOSE},
         .d_open =	mdopen,
         .d_close =	mdclose,
         .d_read =	physread,

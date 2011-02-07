@@ -402,7 +402,6 @@ int
 match_event_filter(struct udev_monitor *udm, prop_dictionary_t ev_dict)
 {
 	struct event_filter *evf;
-	int all_negative = 1;
 
 	pthread_mutex_lock(&udm->q_lock);
 
@@ -410,19 +409,15 @@ match_event_filter(struct udev_monitor *udm, prop_dictionary_t ev_dict)
 		return 1;
 
 	TAILQ_FOREACH(evf, &udm->ev_filt, link) {
-		//printf("match_event_filter 3\n");
-		if (evf->neg == 0)
-			all_negative = 0;
-
-		if (match_filter(evf, ev_dict)) {
+		if ((evf->neg == 0 && !match_filter(evf, ev_dict)) ||
+		   (evf->neg == 1 && match_filter(evf, ev_dict))) {
 			pthread_mutex_unlock(&udm->q_lock);
-			return (1 ^ evf->neg); /* return 1; or 0 for 'nomatch' hit */
+			return 0;
 		}
-		//printf("match_event_filter 5\n");
 	}
 
 	pthread_mutex_unlock(&udm->q_lock);
-	return (all_negative == 1)?1:0;
+	return 1;
 }
 
 static int

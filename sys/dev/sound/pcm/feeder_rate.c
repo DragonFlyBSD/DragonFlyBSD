@@ -509,7 +509,7 @@ feed_rate_init(struct pcm_feeder *f)
 {
 	struct feed_rate_info *info;
 
-	info = kmalloc(sizeof(*info), M_RATEFEEDER, M_NOWAIT | M_ZERO);
+	info = kmalloc(sizeof(*info), M_RATEFEEDER, M_WAITOK | M_ZERO);
 	if (info == NULL)
 		return ENOMEM;
 	/*
@@ -517,7 +517,7 @@ feed_rate_init(struct pcm_feeder *f)
 	 */
 	info->bufsz = 2 + feeder_rate_buffersize;
 	info->buffer = kmalloc(sizeof(*info->buffer) * info->bufsz,
-					M_RATEFEEDER, M_NOWAIT | M_ZERO);
+					M_RATEFEEDER, M_WAITOK | M_ZERO);
 	if (info->buffer == NULL) {
 		kfree(info, M_RATEFEEDER);
 		return ENOMEM;

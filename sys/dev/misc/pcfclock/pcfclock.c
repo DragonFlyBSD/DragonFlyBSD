@@ -22,7 +22,6 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/pcfclock.c,v 1.3.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/misc/pcfclock/pcfclock.c,v 1.12 2006/12/22 23:26:18 swildner Exp $
  *
  */
 
@@ -67,9 +66,8 @@ static	d_open_t		pcfclock_open;
 static	d_close_t		pcfclock_close;
 static	d_read_t		pcfclock_read;
 
-#define CDEV_MAJOR 140
 static struct dev_ops pcfclock_ops = {
-	{ PCFCLOCK_NAME, CDEV_MAJOR, 0 },
+	{ PCFCLOCK_NAME, 0, 0 },
 	.d_open =	pcfclock_open,
 	.d_close =	pcfclock_close,
 	.d_read =	pcfclock_read,

@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/catman/catman.c,v 1.9 2003/06/10 02:18:00 ache Exp $
- * $DragonFly: src/usr.bin/catman/catman.c,v 1.4 2008/11/10 16:10:34 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -599,9 +598,15 @@ process_section(char *mandir, char *section)
 }
 
 static int
-select_sections(struct dirent *entry)
+select_sections(const struct dirent *entry)
 {
-	return(directory_type(entry->d_name) == MAN_SECTION_DIR);
+	char *name;
+	int ret;
+
+	name = strdup(entry->d_name);
+	ret = directory_type(name) == MAN_SECTION_DIR;
+	free(name);
+	return(ret);
 }
 
 /*

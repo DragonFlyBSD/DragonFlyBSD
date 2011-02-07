@@ -73,6 +73,7 @@ static int	check_subpartition_selections(struct dfui_response *, struct i_fn_arg
 static void	save_subpartition_selections(struct dfui_response *, struct i_fn_args *);
 static void	populate_create_subpartitions_form(struct dfui_form *, struct i_fn_args *);
 static int	warn_subpartition_selections(struct i_fn_args *);
+static int	warn_encrypted_root(struct i_fn_args *);
 static struct dfui_form *make_create_subpartitions_form(struct i_fn_args *);
 static int	show_create_subpartitions_form(struct dfui_form *, struct i_fn_args *);
 
@@ -188,20 +189,67 @@ create_subpartitions(struct i_fn_args *a)
 	    slice_get_device_name(storage_get_selected_slice(a->s)));
 
 	/*
+	 * If encryption was specified, load dm(4).
+	 */
+	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
+	     sp != NULL; sp = subpartition_next(sp)) {
+		if (subpartition_is_encrypted(sp)) {
+			fn_get_passphrase(a);
+			break;
+		}
+	}
+
+	/*
 	 * Create filesystems on the newly-created subpartitions.
 	 */
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
-		if (subpartition_is_swap(sp) || subpartition_is_tmpfsbacked(sp))
+		if (subpartition_is_swap(sp) || subpartition_is_tmpfsbacked(sp)) {
+			if (subpartition_is_swap(sp) &&
+			    subpartition_is_encrypted(sp)) {
+				command_add(cmds,
+				    "%s%s -d /tmp/t1 luksFormat %sdev/%s",
+				    a->os_root, cmd_name(a, "CRYPTSETUP"),
+				    a->os_root,
+				    subpartition_get_device_name(sp));
+				command_add(cmds,
+				    "%s%s -d /tmp/t1 luksOpen %sdev/%s swap",
+				    a->os_root, cmd_name(a, "CRYPTSETUP"),
+				    a->os_root,
+				    subpartition_get_device_name(sp));
+			}
 			continue;
+		}
 
-		command_add(cmds, "%s%s%s -b %ld -f %ld %sdev/%s",
-		    a->os_root, cmd_name(a, "NEWFS"),
-		    subpartition_is_softupdated(sp) ? " -U" : "",
-		    subpartition_get_bsize(sp),
-		    subpartition_get_fsize(sp),
-		    a->os_root,
-		    subpartition_get_device_name(sp));
+		if (subpartition_is_encrypted(sp) &&
+		    strcmp(subpartition_get_mountpoint(sp), "/") != 0) {
+			command_add(cmds,
+			    "%s%s -d /tmp/t1 luksFormat %sdev/%s",
+			    a->os_root, cmd_name(a, "CRYPTSETUP"),
+			    a->os_root,
+			    subpartition_get_device_name(sp));
+			command_add(cmds,
+			    "%s%s -d /tmp/t1 luksOpen %sdev/%s %s",
+			    a->os_root, cmd_name(a, "CRYPTSETUP"),
+			    a->os_root,
+			    subpartition_get_device_name(sp),
+			    subpartition_get_mountpoint(sp) + 1);
+			command_add(cmds, "%s%s%s -b %ld -f %ld %sdev/mapper/%s",
+			    a->os_root, cmd_name(a, "NEWFS"),
+			    subpartition_is_softupdated(sp) ? " -U" : "",
+			    subpartition_get_bsize(sp),
+			    subpartition_get_fsize(sp),
+			    a->os_root,
+			    subpartition_get_mountpoint(sp) + 1);
+		} else {
+			command_add(cmds, "%s%s%s -b %ld -f %ld %sdev/%s",
+			    a->os_root, cmd_name(a, "NEWFS"),
+			    subpartition_is_softupdated(sp) ? " -U" : "",
+			    subpartition_get_bsize(sp),
+			    subpartition_get_fsize(sp),
+			    a->os_root,
+			    subpartition_get_device_name(sp));
+		}
 	}
 
 	result = commands_execute(a, cmds);
@@ -237,27 +285,27 @@ default_capacity(struct storage *s, int mtpt)
 		return(-1);
 	} else if (capacity < 4096) {
 		switch (mtpt) {
-		case MTPT_ROOT:	return(256);
+		case MTPT_ROOT:	return(320);
 		case MTPT_SWAP: return(swap);
 		case MTPT_VAR:	return(128);
 		case MTPT_TMP:	return(128);
-		case MTPT_USR:	return(1536);
+		case MTPT_USR:	return(1472);
 		}
 	} else if (capacity < 10240) {
 		switch (mtpt) {
-		case MTPT_ROOT:	return(256);
+		case MTPT_ROOT:	return(640);
 		case MTPT_SWAP: return(swap);
 		case MTPT_VAR:	return(256);
 		case MTPT_TMP:	return(256);
-		case MTPT_USR:	return(3072);
+		case MTPT_USR:	return(2688);
 		}
 	} else {
 		switch (mtpt) {
-		case MTPT_ROOT:	return(256);
+		case MTPT_ROOT:	return(768);
 		case MTPT_SWAP: return(swap);
 		case MTPT_VAR:	return(256);
 		case MTPT_TMP:	return(256);
-		case MTPT_USR:	return(8192);
+		case MTPT_USR:	return(7680);
 		}
 	}
 	/* shouldn't ever happen */
@@ -268,7 +316,7 @@ static int
 check_capacity(struct i_fn_args *a)
 {
 	struct subpartition *sp;
-	unsigned long min_capacity[] = {256, 0, 16, 0, 1536, 0, 0};
+	long min_capacity[] = {320, 0, 16, 0, 1472, 0, 0};
 	unsigned long total_capacity = 0;
 	int mtpt;
 
@@ -277,28 +325,33 @@ check_capacity(struct i_fn_args *a)
 
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
-		if (subpartition_get_capacity(sp) == -1)
+		long subpart_capacity = subpartition_get_capacity(sp);
+		const char *mountpt = subpartition_get_mountpoint(sp);
+
+		if (subpart_capacity == -1)
 			total_capacity++;
 		else
-			total_capacity += subpartition_get_capacity(sp);
+			total_capacity += subpart_capacity;
 		for (mtpt = 0; def_mountpt[mtpt] != NULL; mtpt++) {
-			if (strcmp(subpartition_get_mountpoint(sp), def_mountpt[mtpt]) == 0 &&
-			    min_capacity[mtpt] > 0 &&
-			    subpartition_get_capacity(sp) < min_capacity[mtpt]) {
-				inform(a->c, _("WARNING: the %s subpartition should "
-				    "be at least %dM in size or you will "
+			if (strcmp(mountpt, def_mountpt[mtpt]) == 0 &&
+			    subpart_capacity < min_capacity[mtpt] &&
+			    subpart_capacity != -1) {
+				inform(a->c, _("WARNING: The size (%ldM) specified for "
+				    "the %s subpartition is too small. It "
+				    "should be at least %ldM or you will "
 				    "risk running out of space during "
 				    "the installation."),
-				    subpartition_get_mountpoint(sp), min_capacity[mtpt]);
+				    subpart_capacity, mountpt,
+				    min_capacity[mtpt]);
 			}
 		}
 	}
 
 	if (total_capacity > slice_get_capacity(storage_get_selected_slice(a->s))) {
 		inform(a->c, _("The space allocated to all of your selected "
-		    "subpartitions (%dM) exceeds the total "
+		    "subpartitions (%luM) exceeds the total "
 		    "capacity of the selected primary partition "
-		    "(%dM). Remove some subpartitions or choose "
+		    "(%luM). Remove some subpartitions or choose "
 		    "a smaller size for them and try again."),
 		    total_capacity, slice_get_capacity(storage_get_selected_slice(a->s)));
 		return(0);
@@ -395,8 +448,12 @@ check_subpartition_selections(struct dfui_response *r, struct i_fn_args *a)
 			valid = 0;
 		}
 
-		if ((strcasecmp(mountpoint, "swap") == 0) && (capacity > 8192)) {
-			inform(a->c, _("Swap capacity is limited to 8G."));
+		/*
+		 * Maybe remove this limit entirely?
+		 */
+		if ((strcasecmp(mountpoint, "swap") == 0) &&
+		    (capacity > 512*1024)) {
+			inform(a->c, _("Swap capacity is limited to 512G."));
 			valid = 0;
 		}
 
@@ -457,7 +514,9 @@ save_subpartition_selections(struct dfui_response *r, struct i_fn_args *a)
 		}
 
 		if (string_to_capacity(capstring, &capacity)) {
-			subpartition_new(storage_get_selected_slice(a->s), mountpoint, capacity,
+			subpartition_new_ufs(storage_get_selected_slice(a->s),
+			    mountpoint, capacity,
+			    strcasecmp(dfui_dataset_get_value(ds, "encrypted"), "Y") == 0,
 			    softupdates, fsize, bsize, tmpfsbacked);
 		}
 	}
@@ -484,6 +543,8 @@ populate_create_subpartitions_form(struct dfui_form *f, struct i_fn_args *a)
 			    subpartition_get_mountpoint(sp));
 			dfui_dataset_celldata_add(ds, "capacity",
 			    capacity_to_string(subpartition_get_capacity(sp)));
+			dfui_dataset_celldata_add(ds, "encrypted",
+			    subpartition_is_encrypted(sp) ? "Y" : "N");
 			if (expert) {
 				dfui_dataset_celldata_add(ds, "softupdates",
 				    subpartition_is_softupdated(sp) ? "Y" : "N");
@@ -512,6 +573,7 @@ populate_create_subpartitions_form(struct dfui_form *f, struct i_fn_args *a)
 			    def_mountpt[mtpt]);
 			dfui_dataset_celldata_add(ds, "capacity",
 			    capacity_to_string(capacity));
+			dfui_dataset_celldata_add(ds, "encrypted", "N");
 			if (expert) {
 				dfui_dataset_celldata_add(ds, "softupdates",
 				    strcmp(def_mountpt[mtpt], "/") != 0 ? "Y" : "N");
@@ -580,6 +642,36 @@ warn_subpartition_selections(struct i_fn_args *a)
 	return(!valid);
 }
 
+static int
+warn_encrypted_root(struct i_fn_args *a)
+{
+	int valid = 1;
+	struct subpartition *sp;
+
+	sp = subpartition_find(storage_get_selected_slice(a->s), "/");
+	if (sp == NULL)
+		return(!valid);
+
+	if (subpartition_is_encrypted(sp)) {
+		switch (dfui_be_present_dialog(a->c, _("root cannot be encrypted"),
+		    _("Leave root unencrypted|Return to Create Subpartitions"),
+		    _("You have selected encryption for the root partition which "
+		    "is not supported."))) {
+		case 1:
+			subpartition_clr_encrypted(sp);
+			valid = 1;
+			break;
+		case 2:
+			valid = 0;
+			break;
+		default:
+			abort_backend();
+		}
+	}
+
+	return(!valid);
+}
+
 static struct dfui_form *
 make_create_subpartitions_form(struct i_fn_args *a)
 {
@@ -614,6 +706,9 @@ make_create_subpartitions_form(struct i_fn_args *a)
 
 	    "f", "mountpoint", _("Mountpoint"), "", "",
 	    "f", "capacity", _("Capacity"), "", "",
+
+	    "f", "encrypted", _("Encrypted"), "", "",
+	    "p", "control", "checkbox",
 
 	    "a", "ok", _("Accept and Create"), "", "",
 	    "a", "cancel",
@@ -685,7 +780,8 @@ show_create_subpartitions_form(struct dfui_form *f, struct i_fn_args *a)
 		} else {
 			if (check_subpartition_selections(r, a)) {
 				save_subpartition_selections(r, a);
-				if (!warn_subpartition_selections(a)) {
+				if (!warn_subpartition_selections(a) &&
+				    !warn_encrypted_root(a)) {
 					if (!create_subpartitions(a)) {
 						inform(a->c, _("The subpartitions you chose were "
 							"not correctly created, and the "

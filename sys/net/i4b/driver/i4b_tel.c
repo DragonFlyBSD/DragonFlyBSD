@@ -28,7 +28,6 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_tel.c,v 1.10.2.4 2001/12/16 15:12:57 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.15 2006/12/22 23:44:55 swildner Exp $
  *
  *	last edit-date: [Sat Aug 11 18:07:05 2001]
  *
@@ -147,10 +146,8 @@ PDEVSTATIC void i4btelfilt_detach(struct knote *);
 PDEVSTATIC int i4btelfilt_read(struct knote *, long);
 PDEVSTATIC int i4btelfilt_write(struct knote *, long);
 
-#define CDEV_MAJOR 56
-
 static struct dev_ops i4btel_ops = {
-	{ "i4btel", CDEV_MAJOR, 0 },
+	{ "i4btel", 0, 0 },
 	.d_open =	i4btelopen,
 	.d_close =	i4btelclose,
 	.d_read =	i4btelread,

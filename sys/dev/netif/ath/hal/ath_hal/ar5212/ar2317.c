@@ -31,8 +31,6 @@
 #define AH_5212_2317
 #include "ar5212/ar5212.ini"
 
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
-
 typedef	RAW_DATA_STRUCT_2413 RAW_DATA_STRUCT_2317;
 typedef RAW_DATA_PER_CHANNEL_2413 RAW_DATA_PER_CHANNEL_2317;
 #define PWR_TABLE_SIZE_2317 PWR_TABLE_SIZE_2413
@@ -41,11 +39,11 @@ struct ar2317State {
 	RF_HAL_FUNCS	base;		/* public state, must be first */
 	uint16_t	pcdacTable[PWR_TABLE_SIZE_2317];
 
-	uint32_t	Bank1Data[N(ar5212Bank1_2317)];
-	uint32_t	Bank2Data[N(ar5212Bank2_2317)];
-	uint32_t	Bank3Data[N(ar5212Bank3_2317)];
-	uint32_t	Bank6Data[N(ar5212Bank6_2317)];
-	uint32_t	Bank7Data[N(ar5212Bank7_2317)];
+	uint32_t	Bank1Data[NELEM(ar5212Bank1_2317)];
+	uint32_t	Bank2Data[NELEM(ar5212Bank2_2317)];
+	uint32_t	Bank3Data[NELEM(ar5212Bank3_2317)];
+	uint32_t	Bank6Data[NELEM(ar5212Bank6_2317)];
+	uint32_t	Bank7Data[NELEM(ar5212Bank7_2317)];
 
 	/*
 	 * Private state for reduced stack usage.
@@ -146,7 +144,7 @@ ar2317SetRfRegs(struct ath_hal *ah,
 {
 #define	RF_BANK_SETUP(_priv, _ix, _col) do {				    \
 	int i;								    \
-	for (i = 0; i < N(ar5212Bank##_ix##_2317); i++)			    \
+	for (i = 0; i < NELEM(ar5212Bank##_ix##_2317); i++)		    \
 		(_priv)->Bank##_ix##Data[i] = ar5212Bank##_ix##_2317[i][_col];\
 } while (0)
 	struct ath_hal_5212 *ahp = AH5212(ah);

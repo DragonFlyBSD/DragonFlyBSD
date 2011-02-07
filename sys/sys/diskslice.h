@@ -422,7 +422,6 @@ int64_t	dssize (cdev_t dev, struct diskslices **sspp);
 
 void	diskerr (struct bio *bio, cdev_t dev, const char *what, int pri,
 		    int donecnt);
-void	disksort (struct buf *ap, struct buf *bp);
 void	bioqdisksort (struct bio_queue_head *ap, struct bio *bio);
 
 #endif /* _KERNEL */

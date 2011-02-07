@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/aac/aac_cam.c,v 1.2.2.4 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_cam.c,v 1.10 2008/05/18 20:30:23 pavalos Exp $
+ * $FreeBSD: src/sys/dev/aac/aac_cam.c,v 1.40 2010/12/06 17:06:21 jhb Exp $
  */
 
 /*
@@ -37,33 +36,33 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
+#include <sys/lock.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
 #include <bus/cam/cam_debug.h>
+#include <bus/cam/cam_periph.h>
 #include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt_periph.h>
 #include <bus/cam/cam_xpt_sim.h>
 #include <bus/cam/scsi/scsi_all.h>
 #include <bus/cam/scsi/scsi_message.h>
 
 #include <sys/bus.h>
 #include <sys/conf.h>
-#include <sys/devicestat.h>
 #include <sys/disk.h>
-#include <sys/rman.h>
 
 #include <machine/md_var.h>
-
-#include <sys/mplock2.h>
+#include <sys/rman.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
-#include "aacreg.h"
-#include "aac_ioctl.h"
-#include "aacvar.h"
+#include <dev/raid/aac/aacreg.h>
+#include <dev/raid/aac/aac_ioctl.h>
+#include <dev/raid/aac/aacvar.h>
 
 struct aac_cam {
 	device_t		dev;
@@ -78,6 +77,10 @@ static int aac_cam_detach(device_t dev);
 static void aac_cam_action(struct cam_sim *, union ccb *);
 static void aac_cam_poll(struct cam_sim *);
 static void aac_cam_complete(struct aac_command *);
+static void aac_cam_rescan(struct aac_softc *sc, uint32_t channel,
+    uint32_t target_id);
+static void aac_bus_scan_cb(struct cam_periph *periph, union ccb *ccb);
+
 static u_int32_t aac_cam_reset_bus(struct cam_sim *, union ccb *);
 static u_int32_t aac_cam_abort_ccb(struct cam_sim *, union ccb *);
 static u_int32_t aac_cam_term_io(struct cam_sim *, union ccb *);
@@ -103,15 +106,70 @@ MODULE_DEPEND(aacp, cam, 1, 1, 1);
 MALLOC_DEFINE(M_AACCAM, "aaccam", "AAC CAM info");
 
 static void
+aac_cam_rescan(struct aac_softc *sc, uint32_t channel, uint32_t target_id)
+{
+	union ccb *ccb;
+	struct aac_sim *sim;
+	struct aac_cam *camsc;
+
+	if (target_id == AAC_CAM_TARGET_WILDCARD)
+		target_id = CAM_TARGET_WILDCARD;
+
+	TAILQ_FOREACH(sim, &sc->aac_sim_tqh, sim_link) {
+		camsc = sim->aac_cam;
+		if (camsc == NULL || camsc->inf == NULL ||
+		    camsc->inf->BusNumber != channel)
+			continue;
+
+		ccb = xpt_alloc_ccb();
+		if (ccb == NULL) {
+			device_printf(sc->aac_dev,
+			    "Cannot allocate ccb for bus rescan.\n");
+			return;
+		}
+
+		if (xpt_create_path(&ccb->ccb_h.path, xpt_periph,
+		    cam_sim_path(camsc->sim),
+		    target_id, CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
+			xpt_free_ccb(ccb);
+			device_printf(sc->aac_dev,
+			    "Cannot create path for bus rescan.\n");
+			return;
+		}
+		xpt_setup_ccb(&ccb->ccb_h, ccb->ccb_h.path, 5/*priority (low)*/);
+		ccb->ccb_h.func_code = XPT_SCAN_BUS;
+		ccb->ccb_h.cbfcnp = aac_bus_scan_cb;
+		ccb->crcn.flags = CAM_FLAG_NONE;
+		xpt_action(ccb);
+		break;
+	}
+}
+
+static void
+aac_bus_scan_cb(struct cam_periph *periph, union ccb *ccb)
+{
+	if (ccb->ccb_h.status != CAM_REQ_CMP)
+		kprintf("cam_scan_callback: failure status = %x\n",
+			ccb->ccb_h.status);
+
+	xpt_free_path(ccb->ccb_h.path);
+	kfree(ccb, M_TEMP);
+}
+
+static void
 aac_cam_event(struct aac_softc *sc, struct aac_event *event, void *arg)
 {
+	union ccb *ccb;
 	struct aac_cam *camsc;
 
 	switch (event->ev_type) {
 	case AAC_EVENT_CMFREE:
-		camsc = arg;
+		ccb = arg;
+		camsc = ccb->ccb_h.sim_priv.entries[0].ptr;
 		kfree(event, M_AACCAM);
 		xpt_release_simq(camsc->sim, 1);
+		ccb->ccb_h.status = CAM_REQUEUE_REQ;
+		xpt_done(ccb);
 		break;
 	default:
 		device_printf(sc->aac_dev, "unknown event %d in aac_cam\n",
@@ -125,7 +183,7 @@ aac_cam_event(struct aac_softc *sc, struct aac_event *event, void *arg)
 static int
 aac_cam_probe(device_t dev)
 {
-	debug_called(2);
+	fwprintf(NULL, HBA_FLAGS_DBG_FUNCTION_ENTRY_B, "");
 
 	return (0);
 }
@@ -133,19 +191,24 @@ aac_cam_probe(device_t dev)
 static int
 aac_cam_detach(device_t dev)
 {
+	struct aac_softc *sc;
 	struct aac_cam *camsc;
-	debug_called(2);
+	fwprintf(NULL, HBA_FLAGS_DBG_FUNCTION_ENTRY_B, "");
 
 	camsc = (struct aac_cam *)device_get_softc(dev);
+	sc = camsc->inf->aac_sc;
+	camsc->inf->aac_cam = NULL;
 
-	get_mplock();
+	lockmgr(&sc->aac_io_lock, LK_EXCLUSIVE);
 
 	xpt_async(AC_LOST_DEVICE, camsc->path, NULL);
 	xpt_free_path(camsc->path);
 	xpt_bus_deregister(cam_sim_path(camsc->sim));
 	cam_sim_free(camsc->sim);
 
-	rel_mplock();
+	sc->cam_rescan_cb = NULL;
+
+	lockmgr(&sc->aac_io_lock, LK_RELEASE);
 
 	return (0);
 }
@@ -162,26 +225,28 @@ aac_cam_attach(device_t dev)
 	struct aac_cam *camsc;
 	struct aac_sim *inf;
 
-	debug_called(1);
+	fwprintf(NULL, HBA_FLAGS_DBG_FUNCTION_ENTRY_B, "");
 
 	camsc = (struct aac_cam *)device_get_softc(dev);
 	inf = (struct aac_sim *)device_get_ivars(dev);
 	camsc->inf = inf;
+	camsc->inf->aac_cam = camsc;
 
 	devq = cam_simq_alloc(inf->TargetsPerBus);
 	if (devq == NULL)
 		return (EIO);
 
 	sim = cam_sim_alloc(aac_cam_action, aac_cam_poll, "aacp", camsc,
-	    device_get_unit(dev), &sim_mplock, 1, 1, devq);
+	    device_get_unit(dev), &inf->aac_sc->aac_io_lock, 1, 1, devq);
 	cam_simq_release(devq);
-	if (sim == NULL) {
+	if (sim == NULL)
 		return (EIO);
-	}
 
 	/* Since every bus has it's own sim, every bus 'appears' as bus 0 */
+	lockmgr(&inf->aac_sc->aac_io_lock, LK_EXCLUSIVE);
 	if (xpt_bus_register(sim, 0) != CAM_SUCCESS) {
 		cam_sim_free(sim);
+		lockmgr(&inf->aac_sc->aac_io_lock, LK_RELEASE);
 		return (EIO);
 	}
 
@@ -189,8 +254,11 @@ aac_cam_attach(device_t dev)
 	    CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 		xpt_bus_deregister(cam_sim_path(sim));
 		cam_sim_free(sim);
+		lockmgr(&inf->aac_sc->aac_io_lock, LK_RELEASE);
 		return (EIO);
 	}
+	inf->aac_sc->cam_rescan_cb = aac_cam_rescan;
+	lockmgr(&inf->aac_sc->aac_io_lock, LK_RELEASE);
 
 	camsc->sim = sim;
 	camsc->path = path;
@@ -203,14 +271,13 @@ aac_cam_action(struct cam_sim *sim, union ccb *ccb)
 {
 	struct	aac_cam *camsc;
 	struct	aac_softc *sc;
-	struct	aac_srb32 *srb;
+	struct	aac_srb *srb;
 	struct	aac_fib *fib;
 	struct	aac_command *cm;
 
-	debug_called(2);
-
 	camsc = (struct aac_cam *)cam_sim_softc(sim);
 	sc = camsc->inf->aac_sc;
+	fwprintf(sc, HBA_FLAGS_DBG_FUNCTION_ENTRY_B, "");
 
 	/* Synchronous ops, and ops that don't require communication with the
 	 * controller */
@@ -253,8 +320,11 @@ aac_cam_action(struct cam_sim *sim, union ccb *ccb)
 		cpi->hba_inquiry = PI_WIDE_16;
 		cpi->target_sprt = 0;
 
-		/* Resetting via the passthrough causes problems. */
-		cpi->hba_misc = PIM_NOBUSRESET;
+		/*
+		 * Resetting via the passthrough or parallel bus scan
+		 * causes problems.
+		 */
+		cpi->hba_misc = PIM_NOBUSRESET | PIM_SEQSCAN;
 		cpi->hba_eng_cnt = 0;
 		cpi->max_target = camsc->inf->TargetsPerBus;
 		cpi->max_lun = 8;	/* Per the controller spec */
@@ -265,10 +335,10 @@ aac_cam_action(struct cam_sim *sim, union ccb *ccb)
 		strncpy(cpi->hba_vid, "Adaptec", HBA_IDLEN);
 		strncpy(cpi->dev_name, cam_sim_name(sim), DEV_IDLEN);
 		cpi->unit_number = cam_sim_unit(sim);
-                cpi->transport = XPORT_SPI;
-                cpi->transport_version = 2;
-                cpi->protocol = PROTO_SCSI;
-                cpi->protocol_version = SCSI_REV_2;
+		cpi->transport = XPORT_SPI;
+		cpi->transport_version = 2;
+		cpi->protocol = PROTO_SCSI;
+		cpi->protocol_version = SCSI_REV_2;
 		ccb->ccb_h.status = CAM_REQ_CMP;
 		xpt_done(ccb);
 		return;
@@ -323,25 +393,23 @@ aac_cam_action(struct cam_sim *sim, union ccb *ccb)
 
 	/* Async ops that require communcation with the controller */
 
-	AAC_LOCK_ACQUIRE(&sc->aac_io_lock);
 	if (aac_alloc_command(sc, &cm)) {
 		struct aac_event *event;
 
 		xpt_freeze_simq(sim, 1);
-		ccb->ccb_h.status = CAM_REQUEUE_REQ;
-		xpt_done(ccb);
+		ccb->ccb_h.status = CAM_RESRC_UNAVAIL;
+		ccb->ccb_h.sim_priv.entries[0].ptr = camsc;
 		event = kmalloc(sizeof(struct aac_event), M_AACCAM,
 				M_INTWAIT | M_ZERO);
 		event->ev_callback = aac_cam_event;
-		event->ev_arg = camsc;
+		event->ev_arg = ccb;
 		event->ev_type = AAC_EVENT_CMFREE;
 		aac_add_event(sc, event);
-		AAC_LOCK_RELEASE(&sc->aac_io_lock);
 		return;
 	}
 
 	fib = cm->cm_fib;
-	srb = (struct aac_srb32 *)&fib->data[0];
+	srb = (struct aac_srb *)&fib->data[0];
 	cm->cm_datalen = 0;
 
 	switch (ccb->ccb_h.flags & CAM_DIR_MASK) {
@@ -381,20 +449,21 @@ aac_cam_action(struct cam_sim *sim, union ccb *ccb)
 			bcopy(csio->cdb_io.cdb_bytes, (u_int8_t *)&srb->cdb[0],
 			    srb->cdb_len);
 
+		/* Set command */
+		fib->Header.Command = (sc->flags & AAC_FLAGS_SG_64BIT) ?
+			ScsiPortCommandU64 : ScsiPortCommand;
+
 		/* Map the s/g list. XXX 32bit addresses only! */
 		if ((ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE) {
 			if ((ccb->ccb_h.flags & CAM_SCATTER_VALID) == 0) {
 				srb->data_len = csio->dxfer_len;
 				if (ccb->ccb_h.flags & CAM_DATA_PHYS) {
-					/*
-					 * XXX This isn't 64-bit clean.
-					 * However, this condition is not
-					 * normally used in CAM.
-					 */
-					srb->sg_map32.SgCount = 1;
-					srb->sg_map32.SgEntry[0].SgAddress =
+					/* Send a 32bit command */
+					fib->Header.Command = ScsiPortCommand;
+					srb->sg_map.SgCount = 1;
+					srb->sg_map.SgEntry[0].SgAddress =
 					    (uint32_t)(uintptr_t)csio->data_ptr;
-					srb->sg_map32.SgEntry[0].SgByteCount =
+					srb->sg_map.SgEntry[0].SgByteCount =
 					    csio->dxfer_len;
 				} else {
 					/*
@@ -403,15 +472,15 @@ aac_cam_action(struct cam_sim *sim, union ccb *ccb)
 					 */
 					cm->cm_data = (void *)csio->data_ptr;
 					cm->cm_datalen = csio->dxfer_len;
-					cm->cm_sgtable = &srb->sg_map32;
+					cm->cm_sgtable = &srb->sg_map;
 				}
 			} else {
 				/* XXX Need to handle multiple s/g elements */
 				panic("aac_cam: multiple s/g elements");
 			}
 		} else {
-			srb->sg_map32.SgCount = 0;
-			srb->sg_map32.SgEntry[0].SgByteCount = 0;
+			srb->sg_map.SgCount = 0;
+			srb->sg_map.SgEntry[0].SgByteCount = 0;
 			srb->data_len = 0;
 		}
 
@@ -424,7 +493,6 @@ aac_cam_action(struct cam_sim *sim, union ccb *ccb)
 		} else {
 			ccb->ccb_h.status = CAM_REQ_CMP;
 			xpt_done(ccb);
-			AAC_LOCK_RELEASE(&sc->aac_io_lock);
 			return;
 		}
 	default:
@@ -440,7 +508,6 @@ aac_cam_action(struct cam_sim *sim, union ccb *ccb)
 	cm->cm_complete = aac_cam_complete;
 	cm->cm_private = ccb;
 	cm->cm_timestamp = time_second;
-	cm->cm_queue = AAC_ADAP_NORM_CMD_QUEUE;
 
 	fib->Header.XferState =
 	    AAC_FIBSTATE_HOSTOWNED	|
@@ -448,14 +515,11 @@ aac_cam_action(struct cam_sim *sim, union ccb *ccb)
 	    AAC_FIBSTATE_FROMHOST	|
 	    AAC_FIBSTATE_REXPECTED	|
 	    AAC_FIBSTATE_NORM;
-	fib->Header.Command = ScsiPortCommand;
 	fib->Header.Size = sizeof(struct aac_fib_header) +
-	    sizeof(struct aac_srb32);
+	    sizeof(struct aac_srb);
 
 	aac_enqueue_ready(cm);
 	aac_startio(cm->cm_sc);
-
-	AAC_LOCK_RELEASE(&sc->aac_io_lock);
 
 	return;
 }
@@ -476,9 +540,8 @@ aac_cam_complete(struct aac_command *cm)
 	struct 	aac_srb_response *srbr;
 	struct	aac_softc *sc;
 
-	debug_called(2);
-
 	sc = cm->cm_sc;
+	fwprintf(sc, HBA_FLAGS_DBG_FUNCTION_ENTRY_B, "");
 	ccb = cm->cm_private;
 	srbr = (struct aac_srb_response *)&cm->cm_fib->data[0];
 
@@ -504,14 +567,14 @@ aac_cam_complete(struct aac_command *cm)
 
 				scsi_sense_len = sizeof(struct scsi_sense_data);
 				bzero(&ccb->csio.sense_data, scsi_sense_len);
-				sense_len = (srbr->sense_len > 
+				sense_len = (srbr->sense_len >
 				    scsi_sense_len) ? scsi_sense_len :
 				    srbr->sense_len;
 				bcopy(&srbr->sense[0], &ccb->csio.sense_data,
 				    srbr->sense_len);
 				ccb->csio.sense_len = sense_len;
 				ccb->ccb_h.status |= CAM_AUTOSNS_VALID;
-				/* scsi_sense_print(&ccb->csio); */
+				// scsi_sense_print(&ccb->csio);
 			}
 
 			/* If this is an inquiry command, fake things out */
@@ -520,8 +583,8 @@ aac_cam_complete(struct aac_command *cm)
 			else
 				command = ccb->csio.cdb_io.cdb_bytes[0];
 
-			if ((command == INQUIRY) &&
-			    (ccb->ccb_h.status == CAM_REQ_CMP)) {
+			if (command == INQUIRY) {
+				if (ccb->ccb_h.status == CAM_REQ_CMP) {
 				device = ccb->csio.data_ptr[0] & 0x1f;
 				/*
 				 * We want DASD and PROC devices to only be
@@ -531,7 +594,13 @@ aac_cam_complete(struct aac_command *cm)
 				    (device == T_PROCESSOR) ||
 				    (sc->flags & AAC_FLAGS_CAM_PASSONLY))
 					ccb->csio.data_ptr[0] =
-					    ((device & 0xe0) | T_NODEVICE);
+					    ((ccb->csio.data_ptr[0] & 0xe0) |
+					    T_NODEVICE);
+				} else if (ccb->ccb_h.status == CAM_SEL_TIMEOUT &&
+					ccb->ccb_h.target_lun != 0) {
+					/* fix for INQUIRYs on Lun>0 */
+					ccb->ccb_h.status = CAM_DEV_NOT_THERE;
+				}
 			}
 		}
 	}
@@ -556,11 +625,10 @@ aac_cam_reset_bus(struct cam_sim *sim, union ccb *ccb)
 	sc = camsc->inf->aac_sc;
 
 	if (sc == NULL) {
-		kprintf("Null sc?\n");
+		kprintf("aac: Null sc?\n");
 		return (CAM_REQ_ABORTED);
 	}
 
-	AAC_LOCK_ACQUIRE(&sc->aac_io_lock);
 	aac_alloc_sync_fib(sc, &fib);
 
 	vmi = (struct aac_vmioctl *)&fib->data[0];
@@ -581,12 +649,10 @@ aac_cam_reset_bus(struct cam_sim *sim, union ccb *ccb)
 		device_printf(sc->aac_dev,"Error %d sending ResetBus command\n",
 		    e);
 		aac_release_sync_fib(sc);
-		AAC_LOCK_RELEASE(&sc->aac_io_lock);
 		return (CAM_REQ_ABORTED);
 	}
 
 	aac_release_sync_fib(sc);
-	AAC_LOCK_RELEASE(&sc->aac_io_lock);
 	return (CAM_REQ_CMP);
 }
 

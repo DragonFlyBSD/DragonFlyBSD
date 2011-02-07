@@ -21,10 +21,9 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.sbin/mlxcontrol/mlxcontrol.8,v 1.3.2.5 2001/08/16 15:56:07 ru Exp $
-.\" $DragonFly: src/usr.sbin/mlxcontrol/mlxcontrol.8,v 1.5 2008/05/02 02:05:08 swildner Exp $
+.\" $FreeBSD: src/usr.sbin/mlxcontrol/mlxcontrol.8,v 1.10 2010/10/08 12:40:16 uqs Exp $
 .\"
-.Dd April 10, 2000
+.Dd November 20, 2010
 .Dt MLXCONTROL 8
 .Os
 .Sh NAME
@@ -72,7 +71,7 @@ where N is the unit number of the controller.
 Drive names are of the form "mlxdN"
 where N is the unit number of the drive.
 Do not specify the path to a device node.
-.Bl -tag -width status
+.Bl -tag -width rebuild
 .It status
 Print the status of controllers and system drives.
 If one or more drives are specified,
@@ -91,7 +90,7 @@ This command returns
 2 if one or more are offline.
 .It rescan
 Rescan one or more controllers for non-attached system drives
-(eg. drives that have been
+(e.g.\& drives that have been
 detached or created subsequent to driver initialisation).
 If the
 .Fl a
@@ -105,12 +104,28 @@ If the
 flag is supplied, detach all system drives from the nominated controller.
 .It check
 Initiate a consistency check and repair pass on a redundant system drive
-(eg. RAID1 or RAID5).
+(e.g.\& RAID1 or RAID5).
 The controller will scan the system drive and repair any inconsistencies.
 This command returns immediately;
 use the
 .Ar status
 command to monitor the progress of the check.
+.It rebuild
+Requires two arguments,
+.Ar controller
+and
+.Ar physdrive
+as specified in the
+output of the
+.Ar status
+command.
+All system drives using space on the physical drive
+.Ar physdrive
+are rebuilt, reconstructing all data on the drive.
+Note that each controller can only perform one rebuild at a time.
+This command returns immediately; use the
+.Ar status
+command to monitor the progress of the rebuild.
 .It config
 Print the current configuration from the nominated controller.
 This command will be updated

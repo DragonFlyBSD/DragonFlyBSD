@@ -63,7 +63,8 @@ int
 vm_page_count_severe(void)
 {
     return (vmstats.v_free_severe >
-	    vmstats.v_free_count + vmstats.v_cache_count);
+	    vmstats.v_free_count + vmstats.v_cache_count ||
+	    vmstats.v_free_reserved > vmstats.v_free_count);
 }
 
 /*
@@ -91,13 +92,20 @@ int
 vm_page_count_target(void)
 {
     return (vmstats.v_free_target >
-	    (vmstats.v_free_count + vmstats.v_cache_count));
+	    (vmstats.v_free_count + vmstats.v_cache_count) ||
+	    vmstats.v_free_reserved > vmstats.v_free_count);
 }
 
 /*
  * Return the number of pages the pageout daemon needs to move into the
  * cache or free lists.  A negative number means we have sufficient free
  * pages.
+ *
+ * The target free+cache is greater than vm_page_count_target().  The
+ * frontend uses vm_page_count_target() while the backend continue freeing
+ * based on vm_paging_target().
+ *
+ * This function DOES NOT return TRUE or FALSE.
  */
 static __inline 
 int
@@ -110,66 +118,42 @@ vm_paging_target(void)
 }
 
 /*
- * Return TRUE if we need to start paging.  This routine should not be
- * used to determine when to block on the VM system.  It supplies hysteresis
- * to the pageout code.
+ * Return TRUE if hysteresis dictates we should nominally wakeup the
+ * pageout daemon to start working on freeing up some memory.  This
+ * routine should NOT be used to determine when to block on the VM system.
+ * We want to wakeup the pageout daemon before we might otherwise block.
  *
- * XXX this triggers a wakeup of the pagedaemon.  As part of its work
- * the pagedaemon tries to maintain v_free_reserved worth of truely
- * free pages.  Set the trigger point a bit lower so we have some hystereis.
+ * Paging begins when cache+free drops below cache_min + free_min.
  */
 static __inline 
 int
 vm_paging_needed(void)
 {
-    int trigger;
-
-    trigger = vmstats.v_interrupt_free_min +
-	      (vmstats.v_free_reserved - vmstats.v_interrupt_free_min) / 2;
-    if (trigger < 10)	/* safety */
-	trigger = 10;
-
-    return (
-	(vmstats.v_free_min + vmstats.v_cache_min) >
-	(vmstats.v_free_count + vmstats.v_cache_count) ||
-	trigger > vmstats.v_free_count
-    );
+    if (vmstats.v_free_min + vmstats.v_cache_min >
+	vmstats.v_free_count + vmstats.v_cache_count) {
+		return 1;
+    }
+    if (vmstats.v_free_min > vmstats.v_free_count)
+		return 1;
+    return 0;
 }
 
 static __inline
 void
 vm_page_event(vm_page_t m, vm_page_event_t event)
 {
-    if (LIST_FIRST(&m->action_list))
+    if (m->flags & PG_ACTIONLIST)
 	vm_page_event_internal(m, event);
 }
 
 static __inline
 void
-vm_page_init_action(vm_page_action_t action,
+vm_page_init_action(vm_page_t m, vm_page_action_t action,
 		    void (*func)(vm_page_t, vm_page_action_t), void *data)
 {
+    action->m = m;
     action->func = func;
     action->data = data;
-}
-
-static __inline
-void
-vm_page_register_action(vm_page_t m, vm_page_action_t action,
-			vm_page_event_t event)
-{
-    action->event = event;
-    LIST_INSERT_HEAD(&m->action_list, action, entry);
-}
-
-static __inline
-void
-vm_page_unregister_action(vm_page_t m, vm_page_action_t action)
-{
-    if (action->event != VMEVENT_NONE) {
-	action->event = VMEVENT_NONE;
-	LIST_REMOVE(action, entry);
-    }
 }
 
 /*

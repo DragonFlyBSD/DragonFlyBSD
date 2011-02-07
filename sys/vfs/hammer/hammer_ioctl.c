@@ -58,6 +58,8 @@ static int hammer_ioc_get_config(hammer_transaction_t trans, hammer_inode_t ip,
 				struct hammer_ioc_config *snap);
 static int hammer_ioc_set_config(hammer_transaction_t trans, hammer_inode_t ip,
 				struct hammer_ioc_config *snap);
+static int hammer_ioc_get_data(hammer_transaction_t trans, hammer_inode_t ip,
+				struct hammer_ioc_data *data);
 
 int
 hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
@@ -184,6 +186,10 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 					    (struct hammer_ioc_volume *)data);
 		}
 		break;
+	case HAMMERIOC_LIST_VOLUMES:
+		error = hammer_ioc_volume_list(&trans, ip,
+		    (struct hammer_ioc_volume_list *)data);
+		break;
 	case HAMMERIOC_ADD_SNAPSHOT:
 		if (error == 0) {
 			error = hammer_ioc_add_snapshot(
@@ -208,6 +214,18 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 		if (error == 0) {
 			error = hammer_ioc_set_config(
 					&trans, ip, (struct hammer_ioc_config *)data);
+		}
+		break;
+	case HAMMERIOC_DEDUP:
+		if (error == 0) {
+			error = hammer_ioc_dedup(
+					&trans, ip, (struct hammer_ioc_dedup *)data);
+		}
+		break;
+	case HAMMERIOC_GET_DATA:
+		if (error == 0) {
+			error = hammer_ioc_get_data(
+					&trans, ip, (struct hammer_ioc_data *)data);
 		}
 		break;
 	default:
@@ -523,6 +541,14 @@ hammer_ioc_get_version(hammer_transaction_t trans, hammer_inode_t ip,
 	case 4:
 		ksnprintf(ver->description, sizeof(ver->description),
 			 "New undo/flush, faster flush/sync (DragonFly 2.5+)");
+		break;
+	case 5:
+		ksnprintf(ver->description, sizeof(ver->description),
+			 "Adjustments for dedup support (DragonFly 2.9+)");
+		break;
+	case 6:
+		ksnprintf(ver->description, sizeof(ver->description),
+			  "Directory Hash ALG1 (tmp/rename resistance)");
 		break;
 	default:
 		ksnprintf(ver->description, sizeof(ver->description),
@@ -990,4 +1016,39 @@ again:
 	config->head.error = error;
 	hammer_done_cursor(&cursor);
 	return(0);
+}
+
+static
+int
+hammer_ioc_get_data(hammer_transaction_t trans, hammer_inode_t ip,
+			struct hammer_ioc_data *data)
+{
+	struct hammer_cursor cursor;
+	int bytes;
+	int error;
+
+	/* XXX cached inode ? */
+	error = hammer_init_cursor(trans, &cursor, NULL, NULL);
+	if (error)
+		goto failed;
+
+	cursor.key_beg = data->elm;
+	cursor.flags |= HAMMER_CURSOR_BACKEND;
+
+	error = hammer_btree_lookup(&cursor);
+	if (error == 0) {
+		error = hammer_btree_extract(&cursor, HAMMER_CURSOR_GET_LEAF |
+						      HAMMER_CURSOR_GET_DATA);
+		if (error == 0) {
+			data->leaf = *cursor.leaf;
+			bytes = cursor.leaf->data_len;
+			if (bytes > data->size)
+				bytes = data->size;
+			error = copyout(cursor.data, data->ubuf, bytes);
+		}
+	}
+
+failed:
+	hammer_done_cursor(&cursor);
+	return (error);
 }

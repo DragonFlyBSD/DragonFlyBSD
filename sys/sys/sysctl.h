@@ -432,6 +432,7 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 #define	KERN_PROC_UID		5	/* by effective uid */
 #define	KERN_PROC_RUID		6	/* by real uid */
 #define	KERN_PROC_ARGS		7	/* get/set arguments/proctitle */
+#define	KERN_PROC_CWD		8	/* get cwd */
 
 #define KERN_PROC_FLAGMASK	0x10
 #define KERN_PROC_FLAG_LWP	0x10
@@ -473,7 +474,7 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 	{ "model", CTLTYPE_STRING }, \
 	{ "ncpu", CTLTYPE_INT }, \
 	{ "byteorder", CTLTYPE_INT }, \
-	{ "physmem", CTLTYPE_UINT }, \
+	{ "physmem", CTLTYPE_ULONG }, \
 	{ "usermem", CTLTYPE_UINT }, \
 	{ "pagesize", CTLTYPE_INT }, \
 	{ "disknames", CTLTYPE_STRUCT }, \

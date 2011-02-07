@@ -812,7 +812,7 @@ lf_alloc_range(void)
 	struct lockf_range *range;
 
 #ifdef INVARIANTS
-	lf_global_counter++;
+	atomic_add_int(&lf_global_counter, 1);
 #endif
 	range = kmalloc(sizeof(struct lockf_range), M_LOCKF, M_WAITOK);
 	range->lf_owner = NULL;
@@ -853,8 +853,8 @@ lf_destroy_range(struct lockf_range *range)
 		  range->lf_start, range->lf_end);
 	kfree(range, M_LOCKF);
 #ifdef INVARIANTS
-	lf_global_counter--;
-	KKASSERT(lf_global_counter>=0);
+	atomic_add_int(&lf_global_counter, -1);
+	KKASSERT(lf_global_counter >= 0);
 #endif
 }
 

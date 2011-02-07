@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * 	from: @(#) ieeefp.h 	1.0 (Berkeley) 9/23/93
- * $FreeBSD: src/sys/amd64/include/ieeefp.h,v 1.11 2003/11/08 04:39:22 peter Exp $
+ * $FreeBSD: src/sys/amd64/include/ieeefp.h,v 1.19 2008/01/11 17:11:32 bde Exp $
  */
 
 #ifndef _CPU_IEEEFP_H_
@@ -120,13 +120,13 @@ typedef enum {
 
 #if defined(__GNUC__) && !defined(__cplusplus)
 
-#define	__fldcw(addr)	__asm __volatile("fldcw %0" : : "m" (*(addr)))
-#define	__fldenv(addr)	__asm __volatile("fldenv %0" : : "m" (*(addr)))
-#define	__fnstcw(addr)	__asm __volatile("fnstcw %0" : "=m" (*(addr)))
-#define	__fnstenv(addr)	__asm __volatile("fnstenv %0" : "=m" (*(addr)))
-#define	__fnstsw(addr)	__asm __volatile("fnstsw %0" : "=m" (*(addr)))
-#define	__ldmxcsr(addr)	__asm __volatile("ldmxcsr %0" : : "m" (*(addr)))
-#define	__stmxcsr(addr)	__asm __volatile("stmxcsr %0" : "=m" (*(addr)))
+#define	_fldcw(addr)	__asm __volatile("fldcw %0" : : "m" (*(addr)))
+#define	_fldenv(addr)	__asm __volatile("fldenv %0" : : "m" (*(addr)))
+#define	_fnstcw(addr)	__asm __volatile("fnstcw %0" : "=m" (*(addr)))
+#define	_fnstenv(addr)	__asm __volatile("fnstenv %0" : "=m" (*(addr)))
+#define	_fnstsw(addr)	__asm __volatile("fnstsw %0" : "=m" (*(addr)))
+#define	_ldmxcsr(addr)	__asm __volatile("ldmxcsr %0" : : "m" (*(addr)))
+#define	_stmxcsr(addr)	__asm __volatile("stmxcsr %0" : "=m" (*(addr)))
 
 /*
  * Load the control word.  Be careful not to trap if there is a currently
@@ -136,7 +136,7 @@ typedef enum {
  * is very inefficient, so only do it when necessary.
  */
 static __inline void
-__fnldcw(unsigned short _cw, unsigned short _newcw)
+_fnldcw(unsigned short _cw, unsigned short _newcw)
 {
 	struct {
 		unsigned _cw;
@@ -145,15 +145,15 @@ __fnldcw(unsigned short _cw, unsigned short _newcw)
 	unsigned short _sw;
 
 	if ((_cw & FP_MSKS_FLD) != FP_MSKS_FLD) {
-		__fnstsw(&_sw);
+		_fnstsw(&_sw);
 		if (((_sw & ~_cw) & FP_STKY_FLD) != 0) {
-			__fnstenv(&_env);
+			_fnstenv(&_env);
 			_env._cw = _newcw;
-			__fldenv(&_env);
+			_fldenv(&_env);
 			return;
 		}
 	}
-	__fldcw(&_newcw);
+	_fldcw(&_newcw);
 }
 
 /*
@@ -168,30 +168,30 @@ __fnldcw(unsigned short _cw, unsigned short _newcw)
  */
 
 static __inline fp_rnd_t
-__fpgetround(void)
+_fpgetround(void)
 {
 	unsigned short _cw;
 
-	__fnstcw(&_cw);
+	_fnstcw(&_cw);
 	return ((fp_rnd_t)((_cw & FP_RND_FLD) >> FP_RND_OFF));
 }
 
 static __inline fp_rnd_t
-__fpsetround(fp_rnd_t _m)
+_fpsetround(fp_rnd_t _m)
 {
 	fp_rnd_t _p;
 	unsigned _mxcsr;
 	unsigned short _cw, _newcw;
 
-	__fnstcw(&_cw);
+	_fnstcw(&_cw);
 	_p = (fp_rnd_t)((_cw & FP_RND_FLD) >> FP_RND_OFF);
 	_newcw = _cw & ~FP_RND_FLD;
 	_newcw |= (_m << FP_RND_OFF) & FP_RND_FLD;
-	__fnldcw(_cw, _newcw);
-	__stmxcsr(&_mxcsr);
+	_fnldcw(_cw, _newcw);
+	_stmxcsr(&_mxcsr);
 	_mxcsr &= ~SSE_RND_FLD;
 	_mxcsr |= (_m << SSE_RND_OFF) & SSE_RND_FLD;
-	__ldmxcsr(&_mxcsr);
+	_ldmxcsr(&_mxcsr);
 	return (_p);
 }
 
@@ -201,25 +201,25 @@ __fpsetround(fp_rnd_t _m)
  */
 
 static __inline fp_prec_t
-__fpgetprec(void)
+_fpgetprec(void)
 {
 	unsigned short _cw;
 
-	__fnstcw(&_cw);
+	_fnstcw(&_cw);
 	return ((fp_prec_t)((_cw & FP_PRC_FLD) >> FP_PRC_OFF));
 }
 
 static __inline fp_prec_t
-__fpsetprec(fp_prec_t _m)
+_fpsetprec(fp_prec_t _m)
 {
 	fp_prec_t _p;
 	unsigned short _cw, _newcw;
 
-	__fnstcw(&_cw);
+	_fnstcw(&_cw);
 	_p = (fp_prec_t)((_cw & FP_PRC_FLD) >> FP_PRC_OFF);
 	_newcw = _cw & ~FP_PRC_FLD;
 	_newcw |= (_m << FP_PRC_OFF) & FP_PRC_FLD;
-	__fnldcw(_cw, _newcw);
+	_fnldcw(_cw, _newcw);
 	return (_p);
 }
 
@@ -230,43 +230,43 @@ __fpsetprec(fp_prec_t _m)
  */
 
 static __inline fp_except_t
-__fpgetmask(void)
+_fpgetmask(void)
 {
 	unsigned short _cw;
 
-	__fnstcw(&_cw);
+	_fnstcw(&_cw);
 	return ((~_cw & FP_MSKS_FLD) >> FP_MSKS_OFF);
 }
 
 static __inline fp_except_t
-__fpsetmask(fp_except_t _m)
+_fpsetmask(fp_except_t _m)
 {
 	fp_except_t _p;
 	unsigned _mxcsr;
 	unsigned short _cw, _newcw;
 
-	__fnstcw(&_cw);
+	_fnstcw(&_cw);
 	_p = (~_cw & FP_MSKS_FLD) >> FP_MSKS_OFF;
 	_newcw = _cw & ~FP_MSKS_FLD;
 	_newcw |= (~_m << FP_MSKS_OFF) & FP_MSKS_FLD;
-	__fnldcw(_cw, _newcw);
-	__stmxcsr(&_mxcsr);
+	_fnldcw(_cw, _newcw);
+	_stmxcsr(&_mxcsr);
 	/* XXX should we clear non-ieee SSE_DAZ_FLD and SSE_FZ_FLD ? */
 	_mxcsr &= ~SSE_MSKS_FLD;
 	_mxcsr |= (~_m << SSE_MSKS_OFF) & SSE_MSKS_FLD;
-	__ldmxcsr(&_mxcsr);
+	_ldmxcsr(&_mxcsr);
 	return (_p);
 }
 
 static __inline fp_except_t
-__fpgetsticky(void)
+_fpgetsticky(void)
 {
 	unsigned _ex, _mxcsr;
 	unsigned short _sw;
 
-	__fnstsw(&_sw);
+	_fnstsw(&_sw);
 	_ex = (_sw & FP_STKY_FLD) >> FP_STKY_OFF;
-	__stmxcsr(&_mxcsr);
+	_stmxcsr(&_mxcsr);
 	_ex |= (_mxcsr & SSE_STKY_FLD) >> SSE_STKY_OFF;
 	return ((fp_except_t)_ex);
 }
@@ -275,13 +275,13 @@ __fpgetsticky(void)
 
 #if !defined(__IEEEFP_NOINLINES__) && !defined(__cplusplus) && defined(__GNUC__)
 
-#define	fpgetmask()	__fpgetmask()
-#define	fpgetprec()	__fpgetprec()
-#define	fpgetround()	__fpgetround()
-#define	fpgetsticky()	__fpgetsticky()
-#define	fpsetmask(m)	__fpsetmask(m)
-#define	fpsetprec(m)	__fpsetprec(m)
-#define	fpsetround(m)	__fpsetround(m)
+#define	fpgetmask()	_fpgetmask()
+#define	fpgetprec()	_fpgetprec()
+#define	fpgetround()	_fpgetround()
+#define	fpgetsticky()	_fpgetsticky()
+#define	fpsetmask(m)	_fpsetmask(m)
+#define	fpsetprec(m)	_fpsetprec(m)
+#define	fpsetround(m)	_fpsetround(m)
 
 /* Suppress prototypes in the MI header. */
 #define	_IEEEFP_INLINED_	1

@@ -40,7 +40,6 @@
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
  */
 
-#include "use_ether.h"
 //#include "use_npx.h"
 #include "use_isa.h"
 #include "opt_atalk.h"
@@ -52,6 +51,7 @@
 #include "opt_ipx.h"
 #include "opt_msgbuf.h"
 #include "opt_swap.h"
+#include "opt_apic.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -109,20 +109,24 @@
 #include <machine/perfmon.h>
 #endif
 #include <machine/cputypes.h>
+#include <machine/intr_machdep.h>
 
 #ifdef OLD_BUS_ARCH
 #include <bus/isa/isa_device.h>
 #endif
-#include <machine_base/isa/intr_machdep.h>
+#include <machine_base/isa/isa_intr.h>
+#include <machine_base/isa/elcr_var.h>
 #include <bus/isa/rtc.h>
 #include <sys/random.h>
 #include <sys/ptrace.h>
 #include <machine/sigframe.h>
 
+#include <sys/machintr.h>
+#include <machine_base/icu/icu_abi.h>
+#include <machine_base/apic/ioapic_abi.h>
+
 #define PHYSMAP_ENTRIES		10
 
-extern void init386(int first);
-extern void dblfault_handler(void);
 extern u_int64_t hammer_time(u_int64_t, u_int64_t);
 
 extern void printcpuinfo(void);	/* XXX header file */
@@ -148,11 +152,7 @@ SYSINIT(cpu, SI_BOOT2_SMP, SI_ORDER_FIRST, cpu_startup, NULL)
 extern vm_offset_t ksym_start, ksym_end;
 #endif
 
-uint64_t SMPptpa;
-pt_entry_t *SMPpt;
-
-
-struct privatespace CPU_prvspace[MAXCPU];
+struct privatespace CPU_prvspace[MAXCPU] __aligned(4096); /* XXX */
 
 int	_udatasel, _ucodesel, _ucode32sel;
 u_long	atdevbase;
@@ -170,19 +170,21 @@ SYSCTL_INT(_debug, OID_AUTO, tlb_flush_count,
 	CTLFLAG_RD, &tlb_flush_count, 0, "");
 #endif
 
-int physmem = 0;
+long physmem = 0;
 
 u_long ebda_addr = 0;
 
 static int
 sysctl_hw_physmem(SYSCTL_HANDLER_ARGS)
 {
-	int error = sysctl_handle_int(oidp, 0, ctob(physmem), req);
+	u_long pmem = ctob(physmem);
+
+	int error = sysctl_handle_long(oidp, &pmem, 0, req);
 	return (error);
 }
 
-SYSCTL_PROC(_hw, HW_PHYSMEM, physmem, CTLTYPE_INT|CTLFLAG_RD,
-	0, 0, sysctl_hw_physmem, "IU", "");
+SYSCTL_PROC(_hw, HW_PHYSMEM, physmem, CTLTYPE_ULONG|CTLFLAG_RD,
+	0, 0, sysctl_hw_physmem, "LU", "Total system memory in bytes (number of pages * page size)");
 
 static int
 sysctl_hw_usermem(SYSCTL_HANDLER_ARGS)
@@ -206,7 +208,8 @@ sysctl_hw_availpages(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_hw, OID_AUTO, availpages, CTLTYPE_INT|CTLFLAG_RD,
 	0, 0, sysctl_hw_availpages, "I", "");
 
-vm_paddr_t Maxmem = 0;
+vm_paddr_t Maxmem;
+vm_paddr_t Realmem;
 
 /*
  * The number of PHYSMAP entries must be one less than the number of
@@ -220,8 +223,8 @@ vm_paddr_t phys_avail[PHYSMAP_SIZE + 2];
 vm_paddr_t dump_avail[PHYSMAP_SIZE + 2];
 
 /* must be 2 less so 0 0 can signal end of chunks */
-#define PHYS_AVAIL_ARRAY_END ((sizeof(phys_avail) / sizeof(phys_avail[0])) - 2)
-#define DUMP_AVAIL_ARRAY_END ((sizeof(dump_avail) / sizeof(dump_avail[0])) - 2)
+#define PHYS_AVAIL_ARRAY_END (NELEM(phys_avail) - 2)
+#define DUMP_AVAIL_ARRAY_END (NELEM(dump_avail) - 2)
 
 static vm_offset_t buffer_sva, buffer_eva;
 vm_offset_t clean_sva, clean_eva;
@@ -249,8 +252,8 @@ cpu_startup(void *dummy)
 	perfmon_init();
 #endif
 	kprintf("real memory  = %ju (%ju MB)\n",
-		(intmax_t)ptoa(Maxmem),
-		(intmax_t)ptoa(Maxmem) / 1024 / 1024);
+		(intmax_t)Realmem,
+		(intmax_t)Realmem / 1024 / 1024);
 	/*
 	 * Display any holes after the first chunk of extended memory.
 	 */
@@ -378,12 +381,17 @@ again:
 	bufinit();
 	vm_pager_bufferinit();
 
+	/* Log ELCR information */
+	elcr_dump();
+
 #ifdef SMP
 	/*
 	 * OK, enough kmem_alloc/malloc state should be up, lets get on with it!
 	 */
 	mp_start();			/* fire up the APs and APICs */
 	mp_announce();
+#else
+	MachIntrABI.finalize();
 #endif  /* SMP */
 	cpu_setregs();
 }
@@ -439,7 +447,7 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	}
 
 	/* Align to 16 bytes */
-	sfp = (struct sigframe *)((intptr_t)sp & ~0xFUL);
+	sfp = (struct sigframe *)((intptr_t)sp & ~(intptr_t)0xF);
 
 	/* Translate the signal is appropriate */
 	if (p->p_sysent->sv_sigtbl) {
@@ -896,20 +904,29 @@ cpu_halt(void)
  * check for pending interrupts due to entering and exiting its own 
  * critical section.
  *
- * Note on cpu_idle_hlt:  On an SMP system we rely on a scheduler IPI
- * to wake a HLTed cpu up.  However, there are cases where the idlethread
- * will be entered with the possibility that no IPI will occur and in such
- * cases lwkt_switch() sets TDF_IDLE_NOHLT.
+ * NOTE: On an SMP system we rely on a scheduler IPI to wake a HLTed cpu up.
+ *	 However, there are cases where the idlethread will be entered with
+ *	 the possibility that no IPI will occur and in such cases
+ *	 lwkt_switch() sets TDF_IDLE_NOHLT.
+ *
+ * NOTE: cpu_idle_hlt again defaults to 2 (use ACPI sleep states).  Set to
+ *	 1 to just use hlt and for debugging purposes.
+ *
+ * NOTE: cpu_idle_repeat determines how many entries into the idle thread
+ *	 must occur before it starts using ACPI halt.
  */
-static int	cpu_idle_hlt = 1;
+static int	cpu_idle_hlt = 2;
 static int	cpu_idle_hltcnt;
 static int	cpu_idle_spincnt;
+static u_int	cpu_idle_repeat = 4;
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hlt, CTLFLAG_RW,
     &cpu_idle_hlt, 0, "Idle loop HLT enable");
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hltcnt, CTLFLAG_RW,
     &cpu_idle_hltcnt, 0, "Idle loop entry halts");
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_spincnt, CTLFLAG_RW,
     &cpu_idle_spincnt, 0, "Idle loop entry spins");
+SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_repeat, CTLFLAG_RW,
+    &cpu_idle_repeat, 0, "Idle entries before acpi hlt");
 
 static void
 cpu_idle_default_hook(void)
@@ -927,7 +944,10 @@ void (*cpu_idle_hook)(void) = cpu_idle_default_hook;
 void
 cpu_idle(void)
 {
-	struct thread *td = curthread;
+	globaldata_t gd = mycpu;
+	struct thread *td __debugvar = gd->gd_curthread;
+	int reqflags;
+	int quick;
 
 	crit_exit();
 	KKASSERT(td->td_critcount == 0);
@@ -938,52 +958,63 @@ cpu_idle(void)
 		lwkt_switch();
 
 		/*
-		 * If we are going to halt call splz unconditionally after
-		 * CLIing to catch any interrupt races.  Note that we are
-		 * at SPL0 and interrupts are enabled.
+		 * When halting inside a cli we must check for reqflags
+		 * races, particularly [re]schedule requests.  Running
+		 * splz() does the job.
+		 *
+		 * cpu_idle_hlt:
+		 *	0	Never halt, just spin
+		 *
+		 *	1	Always use HLT (or MONITOR/MWAIT if avail).
+		 *		This typically eats more power than the
+		 *		ACPI halt.
+		 *
+		 *	2	Use HLT/MONITOR/MWAIT up to a point and then
+		 *		use the ACPI halt (default).  This is a hybrid
+		 *		approach.  See machdep.cpu_idle_repeat.
+		 *
+		 *	3	Always use the ACPI halt.  This typically
+		 *		eats the least amount of power but the cpu
+		 *		will be slow waking up.  Slows down e.g.
+		 *		compiles and other pipe/event oriented stuff.
+		 *
+		 * NOTE: Interrupts are enabled and we are not in a critical
+		 *	 section.
+		 *
+		 * NOTE: Preemptions do not reset gd_idle_repeat.   Also we
+		 *	 don't bother capping gd_idle_repeat, it is ok if
+		 *	 it overflows.
 		 */
-		if (cpu_idle_hlt && !lwkt_runnable() &&
-		    (td->td_flags & TDF_IDLE_NOHLT) == 0) {
+		++gd->gd_idle_repeat;
+		reqflags = gd->gd_reqflags;
+		quick = (cpu_idle_hlt == 1) ||
+			(cpu_idle_hlt < 3 &&
+			 gd->gd_idle_repeat < cpu_idle_repeat);
+
+		if (quick && (cpu_mi_feature & CPU_MI_MONITOR) &&
+		    (reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
+			cpu_mmw_pause_int(&gd->gd_reqflags, reqflags);
+			++cpu_idle_hltcnt;
+		} else if (cpu_idle_hlt) {
 			__asm __volatile("cli");
 			splz();
-			if (!lwkt_runnable())
-				cpu_idle_hook();
-#ifdef SMP
-			else
-				handle_cpu_contention_mask();
-#endif
+			if ((gd->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
+				if (quick)
+					cpu_idle_default_hook();
+				else
+					cpu_idle_hook();
+			}
+			__asm __volatile("sti");
 			++cpu_idle_hltcnt;
 		} else {
-			td->td_flags &= ~TDF_IDLE_NOHLT;
 			splz();
-#ifdef SMP
 			__asm __volatile("sti");
-			handle_cpu_contention_mask();
-#else
-			__asm __volatile("sti");
-#endif
 			++cpu_idle_spincnt;
 		}
 	}
 }
 
 #ifdef SMP
-
-/*
- * This routine is called when the only runnable threads require
- * the MP lock, and the scheduler couldn't get it.  On a real cpu
- * we let the scheduler spin.
- */
-void
-handle_cpu_contention_mask(void)
-{
-        cpumask_t mask;
-
-        mask = cpu_contention_mask;
-        cpu_ccfence();
-        if (mask && bsfl(mask) != mycpu->gd_cpuid)
-                DELAY(2);
-}
 
 /*
  * This routine is called if a spinlock has been held through the
@@ -1146,8 +1177,6 @@ struct region_descriptor r_gdt, r_idt;
 #if defined(I586_CPU) && !defined(NO_F00F_HACK)
 extern int has_f00f_bug;
 #endif
-
-static char dblfault_stack[PAGE_SIZE] __aligned(16);
 
 /* JG proc0paddr is a virtual address */
 void *proc0paddr;
@@ -1314,8 +1343,6 @@ ssdtosyssd(struct soft_segment_descriptor *ssd,
 	sd->sd_gran  = ssd->ssd_gran;
 }
 
-u_int basemem;
-
 /*
  * Populate the (physmap) array with base/bound pairs describing the
  * available physical memory in the system, then test this memory and
@@ -1327,13 +1354,24 @@ u_int basemem;
  * Total memory size may be set by the kernel environment variable
  * hw.physmem or the compile-time define MAXMEM.
  *
+ * Memory is aligned to PHYSMAP_ALIGN which must be a multiple
+ * of PAGE_SIZE.  This also greatly reduces the memory test time
+ * which would otherwise be excessive on machines with > 8G of ram.
+ *
  * XXX first should be vm_paddr_t.
  */
+
+#define PHYSMAP_ALIGN		(vm_paddr_t)(128 * 1024)
+#define PHYSMAP_ALIGN_MASK	(vm_paddr_t)(PHYSMAP_ALIGN - 1)
+
 static void
 getmemsize(caddr_t kmdp, u_int64_t first)
 {
-	int i, off, physmap_idx, pa_indx, da_indx;
-	vm_paddr_t pa, physmap[PHYSMAP_SIZE];
+	int off, physmap_idx, pa_indx, da_indx;
+	int i, j;
+	vm_paddr_t physmap[PHYSMAP_SIZE];
+	vm_paddr_t pa;
+	vm_paddr_t msgbuf_size;
 	u_long physmem_tunable;
 	pt_entry_t *pte;
 	struct bios_smap *smapbase, *smap, *smapend;
@@ -1341,7 +1379,6 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 	quad_t dcons_addr, dcons_size;
 
 	bzero(physmap, sizeof(physmap));
-	basemem = 0;
 	physmap_idx = 0;
 
 	/*
@@ -1372,12 +1409,15 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 
 		for (i = 0; i <= physmap_idx; i += 2) {
 			if (smap->base < physmap[i + 1]) {
-				if (boothowto & RB_VERBOSE)
-					kprintf(
-	"Overlapping or non-monotonic memory region, ignoring second region\n");
+				if (boothowto & RB_VERBOSE) {
+					kprintf("Overlapping or non-monotonic "
+						"memory region, ignoring "
+						"second region\n");
+				}
 				continue;
 			}
 		}
+		Realmem += smap->length;
 
 		if (smap->base == physmap[physmap_idx + 1]) {
 			physmap[physmap_idx + 1] += smap->length;
@@ -1386,26 +1426,13 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 
 		physmap_idx += 2;
 		if (physmap_idx == PHYSMAP_SIZE) {
-			kprintf(
-		"Too many segments in the physical address map, giving up\n");
+			kprintf("Too many segments in the physical "
+				"address map, giving up\n");
 			break;
 		}
 		physmap[physmap_idx] = smap->base;
 		physmap[physmap_idx + 1] = smap->base + smap->length;
 	}
-
-	/*
-	 * Find the 'base memory' segment for SMP
-	 */
-	basemem = 0;
-	for (i = 0; i <= physmap_idx; i += 2) {
-		if (physmap[i] == 0x00000000) {
-			basemem = physmap[i + 1] / 1024;
-			break;
-		}
-	}
-	if (basemem == 0)
-		panic("BIOS smap did not include a basemem segment!");
 
 #ifdef SMP
 	/* make hole for AP bootstrap code */
@@ -1438,17 +1465,54 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 	if (Maxmem > atop(physmap[physmap_idx + 1]))
 		Maxmem = atop(physmap[physmap_idx + 1]);
 
-	if (atop(physmap[physmap_idx + 1]) != Maxmem &&
-	    (boothowto & RB_VERBOSE))
-		kprintf("Physical memory use set to %ldK\n", Maxmem * 4);
+	/*
+	 * Blowing out the DMAP will blow up the system.
+	 */
+	if (Maxmem > atop(DMAP_MAX_ADDRESS - DMAP_MIN_ADDRESS)) {
+		kprintf("Limiting Maxmem due to DMAP size\n");
+		Maxmem = atop(DMAP_MAX_ADDRESS - DMAP_MIN_ADDRESS);
+	}
 
-	/* call pmap initialization to make new kernel address space */
+	if (atop(physmap[physmap_idx + 1]) != Maxmem &&
+	    (boothowto & RB_VERBOSE)) {
+		kprintf("Physical memory use set to %ldK\n", Maxmem * 4);
+	}
+
+	/*
+	 * Call pmap initialization to make new kernel address space
+	 *
+	 * Mask off page 0.
+	 */
 	pmap_bootstrap(&first);
+	physmap[0] = PAGE_SIZE;
+
+	/*
+	 * Align the physmap to PHYSMAP_ALIGN and cut out anything
+	 * exceeding Maxmem.
+	 */
+	for (i = j = 0; i <= physmap_idx; i += 2) {
+		if (physmap[i+1] > ptoa((vm_paddr_t)Maxmem))
+			physmap[i+1] = ptoa((vm_paddr_t)Maxmem);
+		physmap[i] = (physmap[i] + PHYSMAP_ALIGN_MASK) &
+			     ~PHYSMAP_ALIGN_MASK;
+		physmap[i+1] = physmap[i+1] & ~PHYSMAP_ALIGN_MASK;
+
+		physmap[j] = physmap[i];
+		physmap[j+1] = physmap[i+1];
+
+		if (physmap[i] < physmap[i+1])
+			j += 2;
+	}
+	physmap_idx = j - 2;
+
+	/*
+	 * Align anything else used in the validation loop.
+	 */
+	first = (first + PHYSMAP_ALIGN_MASK) & ~PHYSMAP_ALIGN_MASK;
 
 	/*
 	 * Size up each available chunk of physical memory.
 	 */
-	physmap[0] = PAGE_SIZE;		/* mask off page 0 */
 	pa_indx = 0;
 	da_indx = 1;
 	phys_avail[pa_indx++] = physmap[0];
@@ -1464,16 +1528,16 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 		dcons_addr = 0;
 
 	/*
-	 * physmap is in bytes, so when converting to page boundaries,
-	 * round up the start address and round down the end address.
+	 * Validate the physical memory.  The physical memory segments
+	 * have already been aligned to PHYSMAP_ALIGN which is a multiple
+	 * of PAGE_SIZE.
 	 */
 	for (i = 0; i <= physmap_idx; i += 2) {
 		vm_paddr_t end;
 
-		end = ptoa((vm_paddr_t)Maxmem);
-		if (physmap[i + 1] < end)
-			end = trunc_page(physmap[i + 1]);
-		for (pa = round_page(physmap[i]); pa < end; pa += PAGE_SIZE) {
+		end = physmap[i + 1];
+
+		for (pa = physmap[i]; pa < end; pa += PHYSMAP_ALIGN) {
 			int tmp, page_bad, full;
 			int *ptr = (int *)CADDR1;
 
@@ -1489,8 +1553,9 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 			 */
 			if (dcons_addr > 0
 			    && pa >= trunc_page(dcons_addr)
-			    && pa < dcons_addr + dcons_size)
+			    && pa < dcons_addr + dcons_size) {
 				goto do_dump_avail;
+			}
 
 			page_bad = FALSE;
 
@@ -1505,24 +1570,28 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 			 * Test for alternating 1's and 0's
 			 */
 			*(volatile int *)ptr = 0xaaaaaaaa;
+			cpu_mfence();
 			if (*(volatile int *)ptr != 0xaaaaaaaa)
 				page_bad = TRUE;
 			/*
 			 * Test for alternating 0's and 1's
 			 */
 			*(volatile int *)ptr = 0x55555555;
+			cpu_mfence();
 			if (*(volatile int *)ptr != 0x55555555)
 				page_bad = TRUE;
 			/*
 			 * Test for all 1's
 			 */
 			*(volatile int *)ptr = 0xffffffff;
+			cpu_mfence();
 			if (*(volatile int *)ptr != 0xffffffff)
 				page_bad = TRUE;
 			/*
 			 * Test for all 0's
 			 */
 			*(volatile int *)ptr = 0x0;
+			cpu_mfence();
 			if (*(volatile int *)ptr != 0x0)
 				page_bad = TRUE;
 			/*
@@ -1547,7 +1616,7 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 			 * will terminate the loop.
 			 */
 			if (phys_avail[pa_indx] == pa) {
-				phys_avail[pa_indx] += PAGE_SIZE;
+				phys_avail[pa_indx] += PHYSMAP_ALIGN;
 			} else {
 				pa_indx++;
 				if (pa_indx == PHYS_AVAIL_ARRAY_END) {
@@ -1557,21 +1626,21 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 					full = TRUE;
 					goto do_dump_avail;
 				}
-				phys_avail[pa_indx++] = pa;	/* start */
-				phys_avail[pa_indx] = pa + PAGE_SIZE; /* end */
+				phys_avail[pa_indx++] = pa;
+				phys_avail[pa_indx] = pa + PHYSMAP_ALIGN;
 			}
-			physmem++;
+			physmem += PHYSMAP_ALIGN / PAGE_SIZE;
 do_dump_avail:
 			if (dump_avail[da_indx] == pa) {
-				dump_avail[da_indx] += PAGE_SIZE;
+				dump_avail[da_indx] += PHYSMAP_ALIGN;
 			} else {
 				da_indx++;
 				if (da_indx == DUMP_AVAIL_ARRAY_END) {
 					da_indx--;
 					goto do_next;
 				}
-				dump_avail[da_indx++] = pa; /* start */
-				dump_avail[da_indx] = pa + PAGE_SIZE; /* end */
+				dump_avail[da_indx++] = pa;
+				dump_avail[da_indx] = pa + PHYSMAP_ALIGN;
 			}
 do_next:
 			if (full)
@@ -1582,13 +1651,14 @@ do_next:
 	cpu_invltlb();
 
 	/*
-	 * XXX
 	 * The last chunk must contain at least one page plus the message
 	 * buffer to avoid complicating other code (message buffer address
 	 * calculation, etc.).
 	 */
-	while (phys_avail[pa_indx - 1] + PAGE_SIZE +
-	    round_page(MSGBUF_SIZE) >= phys_avail[pa_indx]) {
+	msgbuf_size = (MSGBUF_SIZE + PHYSMAP_ALIGN_MASK) & ~PHYSMAP_ALIGN_MASK;
+
+	while (phys_avail[pa_indx - 1] + PHYSMAP_ALIGN +
+	       msgbuf_size >= phys_avail[pa_indx]) {
 		physmem -= atop(phys_avail[pa_indx] - phys_avail[pa_indx - 1]);
 		phys_avail[pa_indx--] = 0;
 		phys_avail[pa_indx--] = 0;
@@ -1597,15 +1667,27 @@ do_next:
 	Maxmem = atop(phys_avail[pa_indx]);
 
 	/* Trim off space for the message buffer. */
-	phys_avail[pa_indx] -= round_page(MSGBUF_SIZE);
+	phys_avail[pa_indx] -= msgbuf_size;
 
 	avail_end = phys_avail[pa_indx];
 
 	/* Map the message buffer. */
-	for (off = 0; off < round_page(MSGBUF_SIZE); off += PAGE_SIZE)
-		pmap_kenter((vm_offset_t)msgbufp + off, phys_avail[pa_indx] +
-		    off);
+	for (off = 0; off < msgbuf_size; off += PAGE_SIZE) {
+		pmap_kenter((vm_offset_t)msgbufp + off,
+			    phys_avail[pa_indx] + off);
+	}
 }
+
+#ifdef SMP
+#ifdef APIC_IO
+int apic_io_enable = 1; /* Enabled by default for kernels compiled w/APIC_IO */
+#else
+int apic_io_enable = 0; /* Disabled by default for kernels compiled without */
+#endif
+TUNABLE_INT("hw.apic_io_enable", &apic_io_enable);
+#endif
+
+struct machintr_abi MachIntrABI;
 
 /*
  * IDT VECTORS:
@@ -1682,6 +1764,14 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 #ifdef DDB
 	ksym_start = MD_FETCH(kmdp, MODINFOMD_SSYM, uintptr_t);
 	ksym_end = MD_FETCH(kmdp, MODINFOMD_ESYM, uintptr_t);
+#endif
+
+	/*
+	 * Default MachIntrABI to ICU
+	 */
+	MachIntrABI = MachIntrABI_ICU;
+#ifdef SMP
+	TUNABLE_INT_FETCH("hw.apic_io_enable", &apic_io_enable);
 #endif
 
 	/*
@@ -1764,9 +1854,21 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 #endif
 
 #if	NISA >0
+	elcr_probe();
 	isa_defaultirq();
 #endif
 	rand_initialize();
+
+	/*
+	 * Initialize IRQ mapping
+	 *
+	 * NOTE:
+	 * SHOULD be after elcr_probe()
+	 */
+	MachIntrABI_ICU.initmap();
+#ifdef SMP
+	MachIntrABI_IOAPIC.initmap();
+#endif
 
 #ifdef DDB
 	kdb_init();
@@ -1776,8 +1878,8 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 
 #if JG
 	finishidentcpu();	/* Final stage of CPU initialization */
-	setidt(6, &IDTVEC(ill),  SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-	setidt(13, &IDTVEC(prot),  SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+	setidt(6, &IDTVEC(ill),  SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+	setidt(13, &IDTVEC(prot),  SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 #endif
 	identify_cpu();		/* Final stage of CPU initialization */
 	initializecpu();	/* Initialize CPU registers */
@@ -1787,11 +1889,12 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 		(register_t)(thread0.td_kstack +
 			     KSTACK_PAGES * PAGE_SIZE - sizeof(struct pcb));
 	/* Ensure the stack is aligned to 16 bytes */
-	gd->gd_common_tss.tss_rsp0 &= ~0xFul;
-	gd->gd_rsp0 = gd->gd_common_tss.tss_rsp0;
+	gd->gd_common_tss.tss_rsp0 &= ~(register_t)0xF;
 
-	/* doublefault stack space, runs on ist1 */
-	gd->gd_common_tss.tss_ist1 = (long)&dblfault_stack[sizeof(dblfault_stack)];
+	/* double fault stack */
+	gd->gd_common_tss.tss_ist1 =
+		(long)&gd->mi.gd_prvspace->idlestack[
+			sizeof(gd->mi.gd_prvspace->idlestack)];
 
 	/* Set the IO permission bitmap (empty due to tss seg limit) */
 	gd->gd_common_tss.tss_iobase = sizeof(struct x86_64tss);
@@ -1839,7 +1942,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	thread0.td_pcb->pcb_flags = 0;
 	thread0.td_pcb->pcb_cr3 = KPML4phys;
 	thread0.td_pcb->pcb_ext = 0;
-	lwp0.lwp_md.md_regs = &proc0_tf;
+	lwp0.lwp_md.md_regs = &proc0_tf;	/* XXX needed? */
 
 	/* Location of kernel stack for locore */
 	return ((u_int64_t)thread0.td_pcb);
@@ -2315,14 +2418,11 @@ struct spinlock_deprecated clock_spinlock;
 static void
 init_locks(void)
 {
+#ifdef SMP
 	/*
-	 * mp_lock = 0;	BSP already owns the MP lock 
-	 */
-	/*
-	 * Get the initial mp_lock with a count of 1 for the BSP.
+	 * Get the initial mplock with a count of 1 for the BSP.
 	 * This uses a LOGICAL cpu ID, ie BSP == 0.
 	 */
-#ifdef SMP
 	cpu_get_initial_mplock();
 #endif
 	/* DEPRECATED */

@@ -30,6 +30,7 @@ quick: quickkernel reinstallkernel
 help:
 	@echo "Setup Instructions:"
 	@echo ""
+	@echo "    setenv ROOTSIZE size (optional)"
 	@echo "    setenv VKDIR target_dir"
 	@echo ""
 	@echo "Meta target components:"

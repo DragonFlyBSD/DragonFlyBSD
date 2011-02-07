@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/agp/agp.c,v 1.58 2007/11/12 21:51:36 jhb Exp $
- *	$DragonFly: src/sys/dev/agp/agp.c,v 1.30 2008/01/07 01:34:58 corecode Exp $
  */
 
 #include "opt_bus.h"
@@ -59,15 +58,13 @@ MODULE_VERSION(agp, 1);
 
 MALLOC_DEFINE(M_AGP, "agp", "AGP data structures");
 
-#define CDEV_MAJOR	148
-				/* agp_drv.c */
 static d_open_t agp_open;
 static d_close_t agp_close;
 static d_ioctl_t agp_ioctl;
 static d_mmap_t agp_mmap;
 
 static struct dev_ops agp_ops = {
-	{ "agp", CDEV_MAJOR, D_TTY },
+	{ "agp", 0, D_TTY },
 	.d_open =	agp_open,
 	.d_close =	agp_close,
 	.d_ioctl =	agp_ioctl,
@@ -181,7 +178,7 @@ static u_int agp_max[][2] = {
 	{2048,	1920},
 	{4096,	3932}
 };
-#define agp_max_size	(sizeof(agp_max) / sizeof(agp_max[0]))
+#define agp_max_size	NELEM(agp_max)
 
 /**
  * Sets the PCI resource which represents the AGP aperture.

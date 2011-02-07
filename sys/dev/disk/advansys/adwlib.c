@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adwlib.c,v 1.6.2.1 2000/04/14 13:32:50 nyan Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adwlib.c,v 1.6 2006/12/22 23:26:15 swildner Exp $
  */
 /*
  * Ported from:
@@ -158,7 +157,7 @@ const struct adw_syncrate adw_syncrates[] =
 	{ ADW_MC_SDTR_ASYNC,	    0,	     "async" }
 };
 
-const int adw_num_syncrates = sizeof(adw_syncrates) / sizeof(adw_syncrates[0]);
+const int adw_num_syncrates = NELEM(adw_syncrates);
 
 static u_int16_t	adw_eeprom_read_16(struct adw_softc *adw, int addr);
 static void		adw_eeprom_write_16(struct adw_softc *adw, int addr,

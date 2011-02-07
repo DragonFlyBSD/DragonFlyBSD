@@ -60,8 +60,8 @@ typedef struct where {
 	short writable;			/* tty is writable */
 	time_t loginat;			/* time of (last) login */
 	time_t idletime;		/* how long idle (if logged in) */
-	char tty[UT_LINESIZE+1];	/* null terminated tty line */
-	char host[UT_HOSTSIZE+1];	/* null terminated remote host name */
+	char *tty;	/* null terminated tty line */
+	char *host;	/* null terminated remote host name */
 } WHERE;
 
 #define UNPRIV_NAME	"nobody"	/* Preferred privilege level */

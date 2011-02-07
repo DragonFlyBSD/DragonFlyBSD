@@ -77,6 +77,7 @@
 #include <sys/proc.h>
 #include <sys/vmmeter.h>
 #include <sys/vnode.h>
+#include <sys/kernel.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -94,7 +95,9 @@
 #include <machine/md_var.h>
 
 #include <vm/vm_page2.h>
-#include <sys/mplock2.h>
+
+#define VMACTION_HSIZE	256
+#define VMACTION_HMASK	(VMACTION_HSIZE - 1)
 
 static void vm_page_queue_init(void);
 static void vm_page_free_wakeup(void);
@@ -103,7 +106,10 @@ static vm_page_t _vm_page_list_find2(int basequeue, int index);
 
 struct vpgqueues vm_page_queues[PQ_COUNT]; /* Array of tailq lists */
 
-#define ASSERT_IN_CRIT_SECTION()	KKASSERT(crit_test(curthread));
+LIST_HEAD(vm_page_action_list, vm_page_action);
+struct vm_page_action_list	action_list[VMACTION_HSIZE];
+static volatile int vm_pages_waiting;
+
 
 RB_GENERATE2(vm_page_rb_tree, vm_page, rb_entry, rb_vm_page_compare,
 	     vm_pindex_t, pindex);
@@ -125,6 +131,9 @@ vm_page_queue_init(void)
 
 	for (i = 0; i < PQ_COUNT; i++)
 		TAILQ_INIT(&vm_page_queues[i].pl);
+
+	for (i = 0; i < VMACTION_HSIZE; i++)
+		LIST_INIT(&action_list[i]);
 }
 
 /*
@@ -191,18 +200,20 @@ vm_add_new_page(vm_paddr_t pa)
  *
  * Initializes the resident memory module.
  *
- * Allocates memory for the page cells, and for the object/offset-to-page
- * hash table headers.  Each page cell is initialized and placed on the
- * free list.
+ * Preallocates memory for critical VM structures and arrays prior to
+ * kernel_map becoming available.
  *
- * starta/enda represents the range of physical memory addresses available
- * for use (skipping memory already used by the kernel), subject to
- * phys_avail[].  Note that phys_avail[] has already mapped out memory
- * already in use by the kernel.
+ * Memory is allocated from (virtual2_start, virtual2_end) if available,
+ * otherwise memory is allocated from (virtual_start, virtual_end).
+ *
+ * On x86-64 (virtual_start, virtual_end) is only 2GB and may not be
+ * large enough to hold vm_page_array & other structures for machines with
+ * large amounts of ram, so we want to use virtual2* when available.
  */
-vm_offset_t
-vm_page_startup(vm_offset_t vaddr)
+void
+vm_page_startup(void)
 {
+	vm_offset_t vaddr = virtual2_start ? virtual2_start : virtual_start;
 	vm_offset_t mapped;
 	vm_size_t npages;
 	vm_paddr_t page_range;
@@ -321,7 +332,10 @@ vm_page_startup(vm_offset_t vaddr)
 			pa += PAGE_SIZE;
 		}
 	}
-	return (vaddr);
+	if (virtual2_start)
+		virtual2_start = vaddr;
+	else
+		virtual_start = vaddr;
 }
 
 /*
@@ -408,7 +422,6 @@ vm_page_unhold(vm_page_t m)
 void
 vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 {
-	ASSERT_IN_CRIT_SECTION();
 	ASSERT_LWKT_TOKEN_HELD(&vm_token);
 	if (m->object != NULL)
 		panic("vm_page_insert: already inserted");
@@ -429,6 +442,12 @@ vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 	 * show that the object has one more resident page.
 	 */
 	object->resident_page_count++;
+
+	/*
+	 * Add the pv_list_cout of the page when its inserted in
+	 * the object
+	*/
+	object->agg_pv_list_count = object->agg_pv_list_count + m->md.pv_list_count;
 
 	/*
 	 * Since we are inserting a new and possibly dirty page,
@@ -461,11 +480,9 @@ vm_page_remove(vm_page_t m)
 {
 	vm_object_t object;
 
-	crit_enter();
 	lwkt_gettoken(&vm_token);
 	if (m->object == NULL) {
 		lwkt_reltoken(&vm_token);
-		crit_exit();
 		return;
 	}
 
@@ -479,11 +496,11 @@ vm_page_remove(vm_page_t m)
 	 */
 	vm_page_rb_tree_RB_REMOVE(&object->rb_memq, m);
 	object->resident_page_count--;
+	object->agg_pv_list_count = object->agg_pv_list_count - m->md.pv_list_count;
 	object->generation++;
 	m->object = NULL;
 
 	lwkt_reltoken(&vm_token);
-	crit_exit();
 }
 
 /*
@@ -501,9 +518,7 @@ vm_page_lookup(vm_object_t object, vm_pindex_t pindex)
 	 * Search the hash table for this object/offset pair
 	 */
 	ASSERT_LWKT_TOKEN_HELD(&vm_token);
-	crit_enter();
 	m = vm_page_rb_tree_RB_LOOKUP(&object->rb_memq, pindex);
-	crit_exit();
 	KKASSERT(m == NULL || (m->object == object && m->pindex == pindex));
 	return(m);
 }
@@ -534,7 +549,6 @@ vm_page_lookup(vm_object_t object, vm_pindex_t pindex)
 void
 vm_page_rename(vm_page_t m, vm_object_t new_object, vm_pindex_t new_pindex)
 {
-	crit_enter();
 	lwkt_gettoken(&vm_token);
 	vm_page_remove(m);
 	vm_page_insert(m, new_object, new_pindex);
@@ -543,7 +557,6 @@ vm_page_rename(vm_page_t m, vm_object_t new_object, vm_pindex_t new_pindex)
 	vm_page_dirty(m);
 	vm_page_wakeup(m);
 	lwkt_reltoken(&vm_token);
-	crit_exit();
 }
 
 /*
@@ -684,7 +697,11 @@ vm_page_select_cache(vm_object_t object, vm_pindex_t pindex)
 		);
 		if (m && ((m->flags & (PG_BUSY|PG_UNMANAGED)) || m->busy ||
 			       m->hold_count || m->wire_count)) {
+			/* cache page found busy */
 			vm_page_deactivate(m);
+#ifdef INVARIANTS
+                        kprintf("Warning: busy page %p found in cache\n", m);
+#endif
 			continue;
 		}
 		return m;
@@ -740,7 +757,6 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 {
 	vm_page_t m = NULL;
 
-	crit_enter();
 	lwkt_gettoken(&vm_token);
 	
 	KKASSERT(object != NULL);
@@ -803,7 +819,6 @@ loop:
 		 * On failure return NULL
 		 */
 		lwkt_reltoken(&vm_token);
-		crit_exit();
 #if defined(DIAGNOSTIC)
 		if (vmstats.v_cache_count > 0)
 			kprintf("vm_page_alloc(NORMAL): missing pages on cache queue: %d\n", vmstats.v_cache_count);
@@ -816,7 +831,6 @@ loop:
 		 * No pages available, wakeup the pageout daemon and give up.
 		 */
 		lwkt_reltoken(&vm_token);
-		crit_exit();
 		vm_pageout_deficit++;
 		pagedaemon_wakeup();
 		return (NULL);
@@ -852,7 +866,7 @@ loop:
 	m->valid = 0;
 
 	/*
-	 * vm_page_insert() is safe prior to the crit_exit().  Note also that
+	 * vm_page_insert() is safe while holding vm_token.  Note also that
 	 * inserting a page here does not insert it into the pmap (which
 	 * could cause us to block allocating memory).  We cannot block 
 	 * anywhere.
@@ -866,7 +880,6 @@ loop:
 	pagedaemon_wakeup();
 
 	lwkt_reltoken(&vm_token);
-	crit_exit();
 
 	/*
 	 * A PG_BUSY page is returned.
@@ -899,44 +912,68 @@ vm_test_nominal(void)
 /*
  * Block until free pages are available for allocation, called in various
  * places before memory allocations.
+ *
+ * The caller may loop if vm_page_count_min() == FALSE so we cannot be
+ * more generous then that.
  */
 void
 vm_wait(int timo)
 {
-	crit_enter();
+	/*
+	 * never wait forever
+	 */
+	if (timo == 0)
+		timo = hz;
 	lwkt_gettoken(&vm_token);
+
 	if (curthread == pagethread) {
-		vm_pageout_pages_needed = 1;
-		tsleep(&vm_pageout_pages_needed, 0, "VMWait", timo);
-	} else {
-		if (vm_pages_needed == 0) {
-			vm_pages_needed = 1;
-			wakeup(&vm_pages_needed);
+		/*
+		 * The pageout daemon itself needs pages, this is bad.
+		 */
+		if (vm_page_count_min(0)) {
+			vm_pageout_pages_needed = 1;
+			tsleep(&vm_pageout_pages_needed, 0, "VMWait", timo);
 		}
-		tsleep(&vmstats.v_free_count, 0, "vmwait", timo);
+	} else {
+		/*
+		 * Wakeup the pageout daemon if necessary and wait.
+		 */
+		if (vm_page_count_target()) {
+			if (vm_pages_needed == 0) {
+				vm_pages_needed = 1;
+				wakeup(&vm_pages_needed);
+			}
+			++vm_pages_waiting;	/* SMP race ok */
+			tsleep(&vmstats.v_free_count, 0, "vmwait", timo);
+		}
 	}
 	lwkt_reltoken(&vm_token);
-	crit_exit();
 }
 
 /*
  * Block until free pages are available for allocation
  *
- * Called only in vm_fault so that processes page faulting can be
+ * Called only from vm_fault so that processes page faulting can be
  * easily tracked.
  */
 void
 vm_waitpfault(void)
 {
-	crit_enter();
-	lwkt_gettoken(&vm_token);
-	if (vm_pages_needed == 0) {
-		vm_pages_needed = 1;
-		wakeup(&vm_pages_needed);
+	/*
+	 * Wakeup the pageout daemon if necessary and wait.
+	 */
+	if (vm_page_count_target()) {
+		lwkt_gettoken(&vm_token);
+		if (vm_page_count_target()) {
+			if (vm_pages_needed == 0) {
+				vm_pages_needed = 1;
+				wakeup(&vm_pages_needed);
+			}
+			++vm_pages_waiting;	/* SMP race ok */
+			tsleep(&vmstats.v_free_count, 0, "pfault", hz);
+		}
+		lwkt_reltoken(&vm_token);
 	}
-	tsleep(&vmstats.v_free_count, 0, "pfault", 0);
-	lwkt_reltoken(&vm_token);
-	crit_exit();
 }
 
 /*
@@ -949,7 +986,6 @@ vm_waitpfault(void)
 void
 vm_page_activate(vm_page_t m)
 {
-	crit_enter();
 	lwkt_gettoken(&vm_token);
 	if (m->queue != PQ_ACTIVE) {
 		if ((m->queue - m->pc) == PQ_CACHE)
@@ -971,7 +1007,6 @@ vm_page_activate(vm_page_t m)
 			m->act_count = ACT_INIT;
 	}
 	lwkt_reltoken(&vm_token);
-	crit_exit();
 }
 
 /*
@@ -986,8 +1021,8 @@ static __inline void
 vm_page_free_wakeup(void)
 {
 	/*
-	 * if pageout daemon needs pages, then tell it that there are
-	 * some free.
+	 * If the pageout daemon itself needs pages, then tell it that
+	 * there are some free.
 	 */
 	if (vm_pageout_pages_needed &&
 	    vmstats.v_cache_count + vmstats.v_free_count >= 
@@ -998,13 +1033,32 @@ vm_page_free_wakeup(void)
 	}
 
 	/*
-	 * wakeup processes that are waiting on memory if we hit a
-	 * high water mark. And wakeup scheduler process if we have
-	 * lots of memory. this process will swapin processes.
+	 * Wakeup processes that are waiting on memory.
+	 *
+	 * NOTE: vm_paging_target() is the pageout daemon's target, while
+	 *	 vm_page_count_target() is somewhere inbetween.  We want
+	 *	 to wake processes up prior to the pageout daemon reaching
+	 *	 its target to provide some hysteresis.
 	 */
-	if (vm_pages_needed && !vm_page_count_min(0)) {
-		vm_pages_needed = 0;
-		wakeup(&vmstats.v_free_count);
+	if (vm_pages_waiting) {
+		if (!vm_page_count_target()) {
+			/*
+			 * Plenty of pages are free, wakeup everyone.
+			 */
+			vm_pages_waiting = 0;
+			wakeup(&vmstats.v_free_count);
+			++mycpu->gd_cnt.v_ppwakeups;
+		} else if (!vm_page_count_min(0)) {
+			/*
+			 * Some pages are free, wakeup someone.
+			 */
+			int wcount = vm_pages_waiting;
+			if (wcount > 0)
+				--wcount;
+			vm_pages_waiting = wcount;
+			wakeup_one(&vmstats.v_free_count);
+			++mycpu->gd_cnt.v_ppwakeups;
+		}
 	}
 }
 
@@ -1025,7 +1079,6 @@ vm_page_free_toq(vm_page_t m)
 {
 	struct vpgqueues *pq;
 
-	crit_enter();
 	lwkt_gettoken(&vm_token);
 	mycpu->gd_cnt.v_tfree++;
 
@@ -1058,7 +1111,6 @@ vm_page_free_toq(vm_page_t m)
 	if ((m->flags & PG_FICTITIOUS) != 0) {
 		vm_page_wakeup(m);
 		lwkt_reltoken(&vm_token);
-		crit_exit();
 		return;
 	}
 
@@ -1078,11 +1130,11 @@ vm_page_free_toq(vm_page_t m)
 	 * Clear the UNMANAGED flag when freeing an unmanaged page.
 	 */
 	if (m->flags & PG_UNMANAGED) {
-	    m->flags &= ~PG_UNMANAGED;
+	    vm_page_flag_clear(m, PG_UNMANAGED);
 	}
 
 	if (m->hold_count != 0) {
-		m->flags &= ~PG_ZERO;
+		vm_page_flag_clear(m, PG_ZERO);
 		m->queue = PQ_HOLD;
 	} else {
 		m->queue = PQ_FREE + m->pc;
@@ -1104,7 +1156,6 @@ vm_page_free_toq(vm_page_t m)
 	vm_page_wakeup(m);
 	vm_page_free_wakeup();
 	lwkt_reltoken(&vm_token);
-	crit_exit();
 }
 
 /*
@@ -1122,12 +1173,12 @@ vm_page_free_fromq_fast(void)
 	vm_page_t m;
 	int i;
 
-	crit_enter();
 	lwkt_gettoken(&vm_token);
 	for (i = 0; i < PQ_L2_SIZE; ++i) {
 		m = vm_page_list_find(PQ_FREE, qi, FALSE);
 		qi = (qi + PQ_PRIME2) & PQ_L2_MASK;
 		if (m && (m->flags & PG_ZERO) == 0) {
+			KKASSERT(m->busy == 0 && (m->flags & PG_BUSY) == 0);
 			vm_page_unqueue_nowakeup(m);
 			vm_page_busy(m);
 			break;
@@ -1135,7 +1186,6 @@ vm_page_free_fromq_fast(void)
 		m = NULL;
 	}
 	lwkt_reltoken(&vm_token);
-	crit_exit();
 	return (m);
 }
 
@@ -1163,7 +1213,6 @@ vm_page_free_fromq_fast(void)
 void
 vm_page_unmanage(vm_page_t m)
 {
-	ASSERT_IN_CRIT_SECTION();
 	ASSERT_LWKT_TOKEN_HELD(&vm_token);
 	if ((m->flags & PG_UNMANAGED) == 0) {
 		if (m->wire_count == 0)
@@ -1188,7 +1237,6 @@ vm_page_wire(vm_page_t m)
 	 * it is already off the queues).  Don't do anything with fictitious
 	 * pages because they are always wired.
 	 */
-	crit_enter();
 	lwkt_gettoken(&vm_token);
 	if ((m->flags & PG_FICTITIOUS) == 0) {
 		if (m->wire_count == 0) {
@@ -1201,7 +1249,6 @@ vm_page_wire(vm_page_t m)
 			("vm_page_wire: wire_count overflow m=%p", m));
 	}
 	lwkt_reltoken(&vm_token);
-	crit_exit();
 }
 
 /*
@@ -1232,7 +1279,6 @@ vm_page_wire(vm_page_t m)
 void
 vm_page_unwire(vm_page_t m, int activate)
 {
-	crit_enter();
 	lwkt_gettoken(&vm_token);
 	if (m->flags & PG_FICTITIOUS) {
 		/* do nothing */
@@ -1261,7 +1307,6 @@ vm_page_unwire(vm_page_t m, int activate)
 		}
 	}
 	lwkt_reltoken(&vm_token);
-	crit_exit();
 }
 
 
@@ -1312,11 +1357,9 @@ _vm_page_deactivate(vm_page_t m, int athead)
 void
 vm_page_deactivate(vm_page_t m)
 {
-	crit_enter();
 	lwkt_gettoken(&vm_token);
 	_vm_page_deactivate(m, 0);
 	lwkt_reltoken(&vm_token);
-	crit_exit();
 }
 
 /*
@@ -1328,23 +1371,21 @@ vm_page_deactivate(vm_page_t m)
 int
 vm_page_try_to_cache(vm_page_t m)
 {
-	crit_enter();
 	lwkt_gettoken(&vm_token);
 	if (m->dirty || m->hold_count || m->busy || m->wire_count ||
 	    (m->flags & (PG_BUSY|PG_UNMANAGED))) {
 		lwkt_reltoken(&vm_token);
-		crit_exit();
 		return(0);
 	}
+	vm_page_busy(m);
 	vm_page_test_dirty(m);
 	if (m->dirty) {
+		vm_page_wakeup(m);
 		lwkt_reltoken(&vm_token);
-		crit_exit();
 		return(0);
 	}
 	vm_page_cache(m);
 	lwkt_reltoken(&vm_token);
-	crit_exit();
 	return(1);
 }
 
@@ -1357,25 +1398,21 @@ vm_page_try_to_cache(vm_page_t m)
 int
 vm_page_try_to_free(vm_page_t m)
 {
-	crit_enter();
 	lwkt_gettoken(&vm_token);
 	if (m->dirty || m->hold_count || m->busy || m->wire_count ||
 	    (m->flags & (PG_BUSY|PG_UNMANAGED))) {
 		lwkt_reltoken(&vm_token);
-		crit_exit();
 		return(0);
 	}
 	vm_page_test_dirty(m);
 	if (m->dirty) {
 		lwkt_reltoken(&vm_token);
-		crit_exit();
 		return(0);
 	}
 	vm_page_busy(m);
 	vm_page_protect(m, VM_PROT_NONE);
 	vm_page_free(m);
 	lwkt_reltoken(&vm_token);
-	crit_exit();
 	return(1);
 }
 
@@ -1386,16 +1423,18 @@ vm_page_try_to_free(vm_page_t m)
  *
  * The caller must hold vm_token.
  * This routine may not block.
+ * The page must be busy, and this routine will release the busy and
+ * possibly even free the page.
  */
 void
 vm_page_cache(vm_page_t m)
 {
-	ASSERT_IN_CRIT_SECTION();
 	ASSERT_LWKT_TOKEN_HELD(&vm_token);
 
-	if ((m->flags & (PG_BUSY|PG_UNMANAGED)) || m->busy ||
-			m->wire_count || m->hold_count) {
+	if ((m->flags & PG_UNMANAGED) || m->busy ||
+	    m->wire_count || m->hold_count) {
 		kprintf("vm_page_cache: attempting to cache busy/held page\n");
+		vm_page_wakeup(m);
 		return;
 	}
 
@@ -1404,6 +1443,7 @@ vm_page_cache(vm_page_t m)
 	 */
 	if ((m->queue - m->pc) == PQ_CACHE) {
 		KKASSERT((m->flags & PG_MAPPED) == 0);
+		vm_page_wakeup(m);
 		return;
 	}
 
@@ -1423,20 +1463,20 @@ vm_page_cache(vm_page_t m)
 	 * have blocked (especially w/ VM_PROT_NONE), so recheck
 	 * everything.
 	 */
-	vm_page_busy(m);
 	vm_page_protect(m, VM_PROT_NONE);
-	vm_page_wakeup(m);
-	if ((m->flags & (PG_BUSY|PG_UNMANAGED|PG_MAPPED)) || m->busy ||
+	if ((m->flags & (PG_UNMANAGED|PG_MAPPED)) || m->busy ||
 			m->wire_count || m->hold_count) {
-		/* do nothing */
+		vm_page_wakeup(m);
 	} else if (m->dirty) {
 		vm_page_deactivate(m);
+		vm_page_wakeup(m);
 	} else {
 		vm_page_unqueue_nowakeup(m);
 		m->queue = PQ_CACHE + m->pc;
 		vm_page_queues[m->queue].lcnt++;
 		TAILQ_INSERT_TAIL(&vm_page_queues[m->queue].pl, m, pageq);
 		vmstats.v_cache_count++;
+		vm_page_wakeup(m);
 		vm_page_free_wakeup();
 	}
 }
@@ -1476,7 +1516,6 @@ vm_page_dontneed(vm_page_t m)
 	/*
 	 * occassionally leave the page alone
 	 */
-	crit_enter();
 	lwkt_gettoken(&vm_token);
 	if ((dnw & 0x01F0) == 0 ||
 	    m->queue == PQ_INACTIVE || 
@@ -1485,7 +1524,6 @@ vm_page_dontneed(vm_page_t m)
 		if (m->act_count >= ACT_INIT)
 			--m->act_count;
 		lwkt_reltoken(&vm_token);
-		crit_exit();
 		return;
 	}
 
@@ -1507,7 +1545,6 @@ vm_page_dontneed(vm_page_t m)
 	}
 	_vm_page_deactivate(m, head);
 	lwkt_reltoken(&vm_token);
-	crit_exit();
 }
 
 /*
@@ -1537,7 +1574,6 @@ vm_page_grab(vm_object_t object, vm_pindex_t pindex, int allocflags)
 
 	KKASSERT(allocflags &
 		(VM_ALLOC_NORMAL|VM_ALLOC_INTERRUPT|VM_ALLOC_SYSTEM));
-	crit_enter();
 	lwkt_gettoken(&vm_token);
 retrylookup:
 	if ((m = vm_page_lookup(object, pindex)) != NULL) {
@@ -1568,7 +1604,6 @@ retrylookup:
 	}
 done:
 	lwkt_reltoken(&vm_token);
-	crit_exit();
 	return(m);
 }
 
@@ -1689,7 +1724,10 @@ vm_page_set_valid(vm_page_t m, int base, int size)
  *	 Also note that e.g. NFS may use a byte-granular base
  *	 and size.
  *
- * Page must be busied?
+ * WARNING: Page must be busied?  But vfs_clean_one_page() will call
+ *	    this without necessarily busying the page (via bdwrite()).
+ *	    So for now vm_token must also be held.
+ *
  * No other requirements.
  */
 void
@@ -1710,7 +1748,10 @@ vm_page_set_validclean(vm_page_t m, int base, int size)
 /*
  * Set valid & dirty.  Used by buwrite()
  *
- * Page must be busied?
+ * WARNING: Page must be busied?  But vfs_dirty_one_page() will
+ *	    call this function in buwrite() so for now vm_token must
+ * 	    be held.
+ *
  * No other requirements.
  */
 void
@@ -1870,21 +1911,82 @@ vm_page_test_dirty(vm_page_t m)
 }
 
 /*
+ * Register an action, associating it with its vm_page
+ */
+void
+vm_page_register_action(vm_page_action_t action, vm_page_event_t event)
+{
+	struct vm_page_action_list *list;
+	int hv;
+
+	hv = (int)((intptr_t)action->m >> 8) & VMACTION_HMASK;
+	list = &action_list[hv];
+
+	lwkt_gettoken(&vm_token);
+	vm_page_flag_set(action->m, PG_ACTIONLIST);
+	action->event = event;
+	LIST_INSERT_HEAD(list, action, entry);
+	lwkt_reltoken(&vm_token);
+}
+
+/*
+ * Unregister an action, disassociating it from its related vm_page
+ */
+void
+vm_page_unregister_action(vm_page_action_t action)
+{
+	struct vm_page_action_list *list;
+	int hv;
+
+	lwkt_gettoken(&vm_token);
+	if (action->event != VMEVENT_NONE) {
+		action->event = VMEVENT_NONE;
+		LIST_REMOVE(action, entry);
+
+		hv = (int)((intptr_t)action->m >> 8) & VMACTION_HMASK;
+		list = &action_list[hv];
+		if (LIST_EMPTY(list))
+			vm_page_flag_clear(action->m, PG_ACTIONLIST);
+	}
+	lwkt_reltoken(&vm_token);
+}
+
+/*
  * Issue an event on a VM page.  Corresponding action structures are
  * removed from the page's list and called.
+ *
+ * If the vm_page has no more pending action events we clear its
+ * PG_ACTIONLIST flag.
  */
 void
 vm_page_event_internal(vm_page_t m, vm_page_event_t event)
 {
-	struct vm_page_action *scan, *next;
+	struct vm_page_action_list *list;
+	struct vm_page_action *scan;
+	struct vm_page_action *next;
+	int hv;
+	int all;
 
-	LIST_FOREACH_MUTABLE(scan, &m->action_list, entry, next) {
-		if (scan->event == event) {
-			scan->event = VMEVENT_NONE;
-			LIST_REMOVE(scan, entry);
-			scan->func(m, scan);
+	hv = (int)((intptr_t)m >> 8) & VMACTION_HMASK;
+	list = &action_list[hv];
+	all = 1;
+
+	lwkt_gettoken(&vm_token);
+	LIST_FOREACH_MUTABLE(scan, list, entry, next) {
+		if (scan->m == m) {
+			if (scan->event == event) {
+				scan->event = VMEVENT_NONE;
+				LIST_REMOVE(scan, entry);
+				scan->func(m, scan);
+				/* XXX */
+			} else {
+				all = 0;
+			}
 		}
 	}
+	if (all)
+		vm_page_flag_clear(m, PG_ACTIONLIST);
+	lwkt_reltoken(&vm_token);
 }
 
 

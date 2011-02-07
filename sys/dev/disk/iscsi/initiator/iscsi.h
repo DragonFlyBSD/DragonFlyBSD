@@ -41,8 +41,6 @@ typedef int boolean_t;
 
 #define ISCSIDEV	"iscsi"
 
-#define ISCSI_CDEV_MAJOR	115
-
 #define ISCSI_MAX_TARGETS	4 //64
 
 #define ISCSI_MAX_LUNS		4

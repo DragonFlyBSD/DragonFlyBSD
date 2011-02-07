@@ -71,7 +71,7 @@
 
 #include "dpt.h"
 
-/* dpt_isa.c, dpt_eisa.c, and dpt_pci.c need this in a central place */
+/* dpt_isa.c and dpt_pci.c need this in a central place */
 int dpt_controllers_present;
 
 u_long	dpt_unit;	/* Next unit number to use */

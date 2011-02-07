@@ -85,7 +85,6 @@
  *   ACPI objects: _PCT is MSR location, _PSS is freq/voltage, _PPC is caps.
  *
  * $NetBSD: est.c,v 1.25 2006/06/18 16:39:56 nonaka Exp $
- * $DragonFly: src/sys/platform/pc32/i386/est.c,v 1.11 2008/06/05 18:06:32 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -533,27 +532,27 @@ struct est_cpu {
 static const struct est_cpu est_cpus[] = {
 	{
 		"Intel(R) Pentium(R) M processor ", "MHz",
-		(sizeof(pentium_m) / sizeof(pentium_m[0])),
+		NELEM(pentium_m),
 		pentium_m
 	},
 	{
 		"Intel(R) Pentium(R) M processor ", "GHz",
-		(sizeof(pentium_m_dothan) / sizeof(pentium_m_dothan[0])),
+		NELEM(pentium_m_dothan),
 		pentium_m_dothan
 	},
 	{
 		"Genuine Intel(R) CPU           T2300  @ ", "GHz",
-		(sizeof(pentium_yonah) / sizeof(pentium_yonah[0])),
+		NELEM(pentium_yonah),
 		pentium_yonah
 	},
 	{
 		"Intel(R) Core(TM)2 Duo CPU     T7500  @ ", "GHz",
-		(sizeof(pentium_merom) / sizeof(pentium_merom[0])),
+		NELEM(pentium_merom),
 		pentium_merom
 	},
 };
 
-#define NESTCPUS  (sizeof(est_cpus) / sizeof(est_cpus[0]))
+#define NESTCPUS  (NELEM(est_cpus))
 
 #define MSR2MV(msr)	(((int) (msr) & 0xff) * 16 + 700)
 #define MSR2MHZ(msr)	(((((int) (msr) >> 8) & 0xff) * 100 * fsbmult + 1)/ 3)

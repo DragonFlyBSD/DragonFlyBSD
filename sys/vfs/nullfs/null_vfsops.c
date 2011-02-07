@@ -140,6 +140,8 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	if (xmp->nullm_vfs != rootvp->v_mount) {
 		if (xmp->nullm_vfs->mnt_flag & MNT_RDONLY)
 			mp->mnt_flag |= MNT_RDONLY;
+		if (xmp->nullm_vfs->mnt_flag & MNT_NOEXEC)
+			mp->mnt_flag |= MNT_NOEXEC;
 		xmp->nullm_vfs = rootvp->v_mount;
 	}
 
@@ -193,9 +195,13 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		mp->mnt_stat.f_mntfromname, mp->mnt_stat.f_mntfromname);
 
 	/*
-	 * So unmount won't complain about namecache refs still existing
+	 * Set NCALIASED so unmount won't complain about namecache refs
+	 * still existing.
+	 *
+	 * All NULLFS operations are MPSAFE, though it will be short-lived
+	 * if the underlying filesystem is not.
 	 */
-	mp->mnt_kern_flag |= MNTK_NCALIASED;
+	mp->mnt_kern_flag |= MNTK_NCALIASED | MNTK_ALL_MPSAFE;
 	return (0);
 fail2:
 	nlookup_done(&nd);
@@ -210,15 +216,11 @@ static int
 nullfs_unmount(struct mount *mp, int mntflags)
 {
 	struct null_mount *xmp;
-	int flags = 0;
 
 	NULLFSDEBUG("nullfs_unmount: mp = %p\n", (void *)mp);
 
-	if (mntflags & MNT_FORCE)
-		flags |= FORCECLOSE;
-
 	/*
-	 * Finally, throw away the null_mount structure
+	 * Throw away the null_mount structure
 	 */
 	xmp = (void *)mp->mnt_data;
 	mp->mnt_data = 0;

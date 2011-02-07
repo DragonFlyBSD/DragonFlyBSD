@@ -212,6 +212,7 @@ static void	ath_sysctlattach(struct ath_softc *);
 static int	ath_raw_xmit(struct ieee80211_node *,
 			struct mbuf *, const struct ieee80211_bpf_params *);
 static void	ath_announce(struct ath_softc *);
+static void	ath_sysctl_stats_attach(struct ath_softc *sc);
 
 #ifdef IEEE80211_SUPPORT_TDMA
 static void	ath_tdma_settimers(struct ath_softc *sc, u_int32_t nexttbtt,
@@ -738,6 +739,7 @@ ath_attach(u_int16_t devid, struct ath_softc *sc)
 	 * regdomain are available from the hal.
 	 */
 	ath_sysctlattach(sc);
+	ath_sysctl_stats_attach(sc);
 
 	if (bootverbose)
 		ieee80211_announce(ic);
@@ -2009,7 +2011,6 @@ static int
 ath_keyset(struct ath_softc *sc, const struct ieee80211_key *k,
 	struct ieee80211_node *bss)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 	static const u_int8_t ciphermap[] = {
 		HAL_CIPHER_WEP,		/* IEEE80211_CIPHER_WEP */
 		HAL_CIPHER_TKIP,	/* IEEE80211_CIPHER_TKIP */
@@ -2032,7 +2033,7 @@ ath_keyset(struct ath_softc *sc, const struct ieee80211_key *k,
 	 * so that rx frames have an entry to match.
 	 */
 	if ((k->wk_flags & IEEE80211_KEY_SWCRYPT) == 0) {
-		KASSERT(cip->ic_cipher < N(ciphermap),
+		KASSERT(cip->ic_cipher < NELEM(ciphermap),
 			("invalid cipher type %u", cip->ic_cipher));
 		hk.kv_type = ciphermap[cip->ic_cipher];
 		hk.kv_len = k->wk_keylen;
@@ -2059,7 +2060,6 @@ ath_keyset(struct ath_softc *sc, const struct ieee80211_key *k,
 		KEYPRINTF(sc, k->wk_keyix, &hk, mac);
 		return ath_hal_keyset(ah, k->wk_keyix, &hk, mac);
 	}
-#undef N
 }
 
 /*
@@ -2070,12 +2070,11 @@ static u_int16_t
 key_alloc_2pair(struct ath_softc *sc,
 	ieee80211_keyix *txkeyix, ieee80211_keyix *rxkeyix)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 	u_int i, keyix;
 
 	KASSERT(sc->sc_splitmic, ("key cache !split"));
 	/* XXX could optimize */
-	for (i = 0; i < N(sc->sc_keymap)/4; i++) {
+	for (i = 0; i < NELEM(sc->sc_keymap)/4; i++) {
 		u_int8_t b = sc->sc_keymap[i];
 		if (b != 0xff) {
 			/*
@@ -2114,7 +2113,6 @@ key_alloc_2pair(struct ath_softc *sc,
 	}
 	DPRINTF(sc, ATH_DEBUG_KEYCACHE, "%s: out of pair space\n", __func__);
 	return 0;
-#undef N
 }
 
 /*
@@ -2125,12 +2123,11 @@ static u_int16_t
 key_alloc_pair(struct ath_softc *sc,
 	ieee80211_keyix *txkeyix, ieee80211_keyix *rxkeyix)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 	u_int i, keyix;
 
 	KASSERT(!sc->sc_splitmic, ("key cache split"));
 	/* XXX could optimize */
-	for (i = 0; i < N(sc->sc_keymap)/4; i++) {
+	for (i = 0; i < NELEM(sc->sc_keymap)/4; i++) {
 		u_int8_t b = sc->sc_keymap[i];
 		if (b != 0xff) {
 			/*
@@ -2162,7 +2159,6 @@ key_alloc_pair(struct ath_softc *sc,
 	}
 	DPRINTF(sc, ATH_DEBUG_KEYCACHE, "%s: out of pair space\n", __func__);
 	return 0;
-#undef N
 }
 
 /*
@@ -2172,11 +2168,10 @@ static int
 key_alloc_single(struct ath_softc *sc,
 	ieee80211_keyix *txkeyix, ieee80211_keyix *rxkeyix)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 	u_int i, keyix;
 
 	/* XXX try i,i+32,i+64,i+32+64 to minimize key pair conflicts */
-	for (i = 0; i < N(sc->sc_keymap); i++) {
+	for (i = 0; i < NELEM(sc->sc_keymap); i++) {
 		u_int8_t b = sc->sc_keymap[i];
 		if (b != 0xff) {
 			/*
@@ -2194,7 +2189,6 @@ key_alloc_single(struct ath_softc *sc,
 	}
 	DPRINTF(sc, ATH_DEBUG_KEYCACHE, "%s: out of space\n", __func__);
 	return 0;
-#undef N
 }
 
 /*
@@ -4098,7 +4092,6 @@ ath_txq_init(struct ath_softc *sc, struct ath_txq *txq, int qnum)
 static struct ath_txq *
 ath_txq_setup(struct ath_softc *sc, int qtype, int subtype)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 	struct ath_hal *ah = sc->sc_ah;
 	HAL_TXQ_INFO qi;
 	int qnum;
@@ -4129,10 +4122,10 @@ ath_txq_setup(struct ath_softc *sc, int qtype, int subtype)
 		 */
 		return NULL;
 	}
-	if (qnum >= N(sc->sc_txq)) {
+	if (qnum >= NELEM(sc->sc_txq)) {
 		device_printf(sc->sc_dev,
 			"hal qnum %u out of range, max %zu!\n",
-			qnum, N(sc->sc_txq));
+			qnum, NELEM(sc->sc_txq));
 		ath_hal_releasetxqueue(ah, qnum);
 		return NULL;
 	}
@@ -4141,7 +4134,6 @@ ath_txq_setup(struct ath_softc *sc, int qtype, int subtype)
 		sc->sc_txqsetup |= 1<<qnum;
 	}
 	return &sc->sc_txq[qnum];
-#undef N
 }
 
 /*
@@ -4156,12 +4148,11 @@ ath_txq_setup(struct ath_softc *sc, int qtype, int subtype)
 static int
 ath_tx_setup(struct ath_softc *sc, int ac, int haltype)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 	struct ath_txq *txq;
 
-	if (ac >= N(sc->sc_ac2q)) {
+	if (ac >= NELEM(sc->sc_ac2q)) {
 		device_printf(sc->sc_dev, "AC %u out of range, max %zu!\n",
-			ac, N(sc->sc_ac2q));
+			ac, NELEM(sc->sc_ac2q));
 		return 0;
 	}
 	txq = ath_txq_setup(sc, HAL_TX_QUEUE_DATA, haltype);
@@ -4171,7 +4162,6 @@ ath_tx_setup(struct ath_softc *sc, int ac, int haltype)
 		return 1;
 	} else
 		return 0;
-#undef N
 }
 
 /*
@@ -5987,7 +5977,6 @@ ath_rate_setup(struct ath_softc *sc, u_int mode)
 static void
 ath_setcurmode(struct ath_softc *sc, enum ieee80211_phymode mode)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 	/* NB: on/off times from the Atheros NDIS driver, w/ permission */
 	static const struct {
 		u_int		rate;		/* tx/rx 802.11 rate */
@@ -6024,7 +6013,7 @@ ath_setcurmode(struct ath_softc *sc, enum ieee80211_phymode mode)
 			sc->sc_rixmap[ieeerate | IEEE80211_RATE_MCS] = i;
 	}
 	memset(sc->sc_hwmap, 0, sizeof(sc->sc_hwmap));
-	for (i = 0; i < N(sc->sc_hwmap); i++) {
+	for (i = 0; i < NELEM(sc->sc_hwmap); i++) {
 		if (i >= rt->rateCount) {
 			sc->sc_hwmap[i].ledon = (500 * hz) / 1000;
 			sc->sc_hwmap[i].ledoff = (130 * hz) / 1000;
@@ -6039,7 +6028,7 @@ ath_setcurmode(struct ath_softc *sc, enum ieee80211_phymode mode)
 		    rt->info[i].phy == IEEE80211_T_OFDM)
 			sc->sc_hwmap[i].txflags |= IEEE80211_RADIOTAP_F_SHORTPRE;
 		sc->sc_hwmap[i].rxflags = sc->sc_hwmap[i].txflags;
-		for (j = 0; j < N(blinkrates)-1; j++)
+		for (j = 0; j < NELEM(blinkrates)-1; j++)
 			if (blinkrates[j].rate == sc->sc_hwmap[i].ieeerate)
 				break;
 		/* NB: this uses the last entry if the rate isn't found */
@@ -6058,7 +6047,6 @@ ath_setcurmode(struct ath_softc *sc, enum ieee80211_phymode mode)
 	else
 		sc->sc_protrix = ath_tx_findrix(sc, 2*1);
 	/* NB: caller is responsible for reseting rate control state */
-#undef N
 }
 
 #ifdef ATH_DEBUG
@@ -7418,3 +7406,195 @@ ath_tdma_beacon_send(struct ath_softc *sc, struct ieee80211vap *vap)
 	}
 }
 #endif /* IEEE80211_SUPPORT_TDMA */
+
+static int
+ath_sysctl_clearstats(SYSCTL_HANDLER_ARGS)
+{
+	struct ath_softc *sc = arg1;
+	int val = 0;
+	int error;
+
+	error = sysctl_handle_int(oidp, &val, 0, req);
+	if (error || !req->newptr)
+		return error;
+	if (val == 0)
+		return 0;       /* Not clearing the stats is still valid */
+	memset(&sc->sc_stats, 0, sizeof(sc->sc_stats));
+	val = 0;
+	return 0;
+}
+
+static void
+ath_sysctl_stats_attach(struct ath_softc *sc)
+{
+	struct sysctl_oid *tree;
+	struct sysctl_ctx_list *ctx;
+	struct sysctl_oid_list *child;
+
+	ctx = &sc->sc_sysctl_ctx;
+	tree = sc->sc_sysctl_tree;
+	child = SYSCTL_CHILDREN(tree);
+
+	/* Create "clear" node */
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
+	    "clear_stats", CTLTYPE_INT | CTLFLAG_RW, sc, 0,
+	    ath_sysctl_clearstats, "I", "clear stats");
+
+	/* Create stats node */
+	tree = SYSCTL_ADD_NODE(ctx, child, OID_AUTO, "stats", CTLFLAG_RD,
+	    NULL, "Statistics");
+	child = SYSCTL_CHILDREN(tree);
+
+	/* This was generated from if_athioctl.h */
+
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_watchdog", CTLFLAG_RD,
+	    &sc->sc_stats.ast_watchdog, 0, "device reset by watchdog");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_hardware", CTLFLAG_RD,
+	    &sc->sc_stats.ast_hardware, 0, "fatal hardware error interrupts");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_bmiss", CTLFLAG_RD,
+	    &sc->sc_stats.ast_bmiss, 0, "beacon miss interrupts");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_bmiss_phantom", CTLFLAG_RD,
+	    &sc->sc_stats.ast_bmiss_phantom, 0, "beacon miss interrupts");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_bstuck", CTLFLAG_RD,
+	    &sc->sc_stats.ast_bstuck, 0, "beacon stuck interrupts");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_rxorn", CTLFLAG_RD,
+	    &sc->sc_stats.ast_rxorn, 0, "rx overrun interrupts");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_rxeol", CTLFLAG_RD,
+	    &sc->sc_stats.ast_rxeol, 0, "rx eol interrupts");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_txurn", CTLFLAG_RD,
+	    &sc->sc_stats.ast_txurn, 0, "tx underrun interrupts");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_mib", CTLFLAG_RD,
+	    &sc->sc_stats.ast_mib, 0, "mib interrupts");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_intrcoal", CTLFLAG_RD,
+	    &sc->sc_stats.ast_intrcoal, 0, "interrupts coalesced");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_packets", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_packets, 0, "packet sent on the interface");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_mgmt", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_mgmt, 0, "management frames transmitted");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_discard", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_discard, 0, "frames discarded prior to assoc");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_qstop", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_qstop, 0, "output stopped 'cuz no buffer");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_encap", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_encap, 0, "tx encapsulation failed");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_nonode", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_nonode, 0, "tx failed 'cuz no node");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_nombuf", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_nombuf, 0, "tx failed 'cuz no mbuf");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_nomcl", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_nomcl, 0, "tx failed 'cuz no cluster");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_linear", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_linear, 0, "tx linearized to cluster");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_nodata", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_nodata, 0, "tx discarded empty frame");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_busdma", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_busdma, 0, "tx failed for dma resrcs");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_xretries", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_xretries, 0, "tx failed 'cuz too many retries");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_fifoerr", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_fifoerr, 0, "tx failed 'cuz FIFO underrun");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_filtered", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_filtered, 0, "tx failed 'cuz xmit filtered");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_shortretry", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_shortretry, 0, "tx on-chip retries (short)");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_longretry", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_longretry, 0, "tx on-chip retries (long)");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_badrate", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_badrate, 0, "tx failed 'cuz bogus xmit rate");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_noack", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_noack, 0, "tx frames with no ack marked");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_rts", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_rts, 0, "tx frames with rts enabled");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_cts", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_cts, 0, "tx frames with cts enabled");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_shortpre", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_shortpre, 0, "tx frames with short preamble");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_altrate", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_altrate, 0, "tx frames with alternate rate");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_protect", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_protect, 0, "tx frames with protection");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_ctsburst", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_ctsburst, 0, "tx frames with cts and bursting");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_ctsext", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_ctsext, 0, "tx frames with cts extension");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_rx_nombuf", CTLFLAG_RD,
+	    &sc->sc_stats.ast_rx_nombuf, 0, "rx setup failed 'cuz no mbuf");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_rx_busdma", CTLFLAG_RD,
+	    &sc->sc_stats.ast_rx_busdma, 0, "rx setup failed for dma resrcs");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_rx_orn", CTLFLAG_RD,
+	    &sc->sc_stats.ast_rx_orn, 0, "rx failed 'cuz of desc overrun");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_rx_crcerr", CTLFLAG_RD,
+	    &sc->sc_stats.ast_rx_crcerr, 0, "rx failed 'cuz of bad CRC");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_rx_fifoerr", CTLFLAG_RD,
+	    &sc->sc_stats.ast_rx_fifoerr, 0, "rx failed 'cuz of FIFO overrun");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_rx_badcrypt", CTLFLAG_RD,
+	    &sc->sc_stats.ast_rx_badcrypt, 0, "rx failed 'cuz decryption");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_rx_badmic", CTLFLAG_RD,
+	    &sc->sc_stats.ast_rx_badmic, 0, "rx failed 'cuz MIC failure");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_rx_phyerr", CTLFLAG_RD,
+	    &sc->sc_stats.ast_rx_phyerr, 0, "rx failed 'cuz of PHY err");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_rx_tooshort", CTLFLAG_RD,
+	    &sc->sc_stats.ast_rx_tooshort, 0, "rx discarded 'cuz frame too short");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_rx_toobig", CTLFLAG_RD,
+	    &sc->sc_stats.ast_rx_toobig, 0, "rx discarded 'cuz frame too large");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_rx_packets", CTLFLAG_RD,
+	    &sc->sc_stats.ast_rx_packets, 0, "packet recv on the interface");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_rx_mgt", CTLFLAG_RD,
+	    &sc->sc_stats.ast_rx_mgt, 0, "management frames received");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_rx_ctl", CTLFLAG_RD,
+	    &sc->sc_stats.ast_rx_ctl, 0, "rx discarded 'cuz ctl frame");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_be_xmit", CTLFLAG_RD,
+	    &sc->sc_stats.ast_be_xmit, 0, "beacons transmitted");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_be_nombuf", CTLFLAG_RD,
+	    &sc->sc_stats.ast_be_nombuf, 0, "beacon setup failed 'cuz no mbuf");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_per_cal", CTLFLAG_RD,
+	    &sc->sc_stats.ast_per_cal, 0, "periodic calibration calls");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_per_calfail", CTLFLAG_RD,
+	    &sc->sc_stats.ast_per_calfail, 0, "periodic calibration failed");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_per_rfgain", CTLFLAG_RD,
+	    &sc->sc_stats.ast_per_rfgain, 0, "periodic calibration rfgain reset");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_rate_calls", CTLFLAG_RD,
+	    &sc->sc_stats.ast_rate_calls, 0, "rate control checks");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_rate_raise", CTLFLAG_RD,
+	    &sc->sc_stats.ast_rate_raise, 0, "rate control raised xmit rate");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_rate_drop", CTLFLAG_RD,
+	    &sc->sc_stats.ast_rate_drop, 0, "rate control dropped xmit rate");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_ant_defswitch", CTLFLAG_RD,
+	    &sc->sc_stats.ast_ant_defswitch, 0, "rx/default antenna switches");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_ant_txswitch", CTLFLAG_RD,
+	    &sc->sc_stats.ast_ant_txswitch, 0, "tx antenna switches");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_cabq_xmit", CTLFLAG_RD,
+	    &sc->sc_stats.ast_cabq_xmit, 0, "cabq frames transmitted");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_cabq_busy", CTLFLAG_RD,
+	    &sc->sc_stats.ast_cabq_busy, 0, "cabq found busy");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_raw", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_raw, 0, "tx frames through raw api");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_ff_txok", CTLFLAG_RD,
+	    &sc->sc_stats.ast_ff_txok, 0, "fast frames tx'd successfully");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_ff_txerr", CTLFLAG_RD,
+	    &sc->sc_stats.ast_ff_txerr, 0, "fast frames tx'd w/ error");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_ff_rx", CTLFLAG_RD,
+	    &sc->sc_stats.ast_ff_rx, 0, "fast frames rx'd");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_ff_flush", CTLFLAG_RD,
+	    &sc->sc_stats.ast_ff_flush, 0, "fast frames flushed from staging q");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_qfull", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_qfull, 0, "tx dropped 'cuz of queue limit");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_nobuf", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_nobuf, 0, "tx dropped 'cuz no ath buffer");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tdma_update", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tdma_update, 0, "TDMA slot timing updates");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tdma_timers", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tdma_timers, 0, "TDMA slot update set beacon timers");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tdma_tsf", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tdma_tsf, 0, "TDMA slot update set TSF");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tdma_ack", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tdma_ack, 0, "TDMA tx failed 'cuz ACK required");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_raw_fail", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_raw_fail, 0, "raw tx failed 'cuz h/w down");
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_tx_nofrag", CTLFLAG_RD,
+	    &sc->sc_stats.ast_tx_nofrag, 0, "tx dropped 'cuz no ath frag buffer");
+#if 0
+	SYSCTL_ADD_UINT(ctx, child, OID_AUTO, "ast_be_missed", CTLFLAG_RD,
+	    &sc->sc_stats.ast_be_missed, 0, "number of -missed- beacons");
+#endif
+}

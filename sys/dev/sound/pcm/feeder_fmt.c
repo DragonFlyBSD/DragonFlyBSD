@@ -324,7 +324,7 @@ FEEDER_DECLARE(feeder_u8toalaw, 0, u8_to_alaw_tbl);
 static int
 feed_common_init(struct pcm_feeder *f)
 {
-	f->data = kmalloc(FEEDBUFSZ, M_FMTFEEDER, M_NOWAIT|M_ZERO);
+	f->data = kmalloc(FEEDBUFSZ, M_FMTFEEDER, M_WAITOK|M_ZERO);
 	if (f->data == NULL)
 		return ENOMEM;
 	return 0;

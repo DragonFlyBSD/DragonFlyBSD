@@ -1,17 +1,14 @@
 #	$NetBSD: Makefile,v 1.17 2009/10/10 18:06:54 bad Exp $
 
-.include <bsd.own.mk>
-
-WARNS=0
-USE_SHLIBDIR=	yes
+WARNS?=3
 
 PROPLIBDIR=${.CURDIR}/../../sys/libprop
 .PATH: ${PROPLIBDIR}
 
 CFLAGS+=-D_LIBPROP
 CFLAGS+=-D_REENTRANT -I${.CURDIR}/../../sys -I${.CURDIR}/../../../lib/libc/include
-LDADD+=-lpthread
-DPADD+=${LIBPTHREAD}
+#LDADD+=-lpthread
+#DPADD+=${LIBPTHREAD}
 
 SRCS+=  prop_array.c prop_array_util.c prop_bool.c prop_data.c \
         prop_dictionary.c prop_dictionary_util.c prop_ingest.c \

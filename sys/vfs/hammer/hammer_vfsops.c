@@ -63,6 +63,7 @@ int hammer_debug_recover;		/* -1 will disable, +1 will force */
 int hammer_debug_recover_faults;
 int hammer_debug_critical;		/* non-zero enter debugger on error */
 int hammer_cluster_enable = 1;		/* enable read clustering by default */
+int hammer_live_dedup = 0;
 int hammer_count_fsyncs;
 int hammer_count_inodes;
 int hammer_count_iqueued;
@@ -104,19 +105,32 @@ int hammer_limit_dirtybufspace;		/* per-mount */
 int hammer_limit_running_io;		/* per-mount */
 int hammer_limit_recs;			/* as a whole XXX */
 int hammer_limit_inode_recs = 1024;	/* per inode */
-int hammer_limit_reclaim = HAMMER_RECLAIM_WAIT;
+int hammer_limit_reclaim;
+int hammer_live_dedup_cache_size = DEDUP_CACHE_SIZE;
 int hammer_limit_redo = 4096 * 1024;	/* per inode */
-int hammer_autoflush = 2000;		/* auto flush */
+int hammer_autoflush = 500;		/* auto flush (typ on reclaim) */
 int hammer_bio_count;
 int hammer_verify_zone;
 int hammer_verify_data = 1;
 int hammer_write_mode;
+int hammer_double_buffer;
 int hammer_yield_check = 16;
 int hammer_fsync_mode = 3;
 int64_t hammer_contention_count;
 int64_t hammer_zone_limit;
 
+/*
+ * Live dedup debug counters (sysctls are writable so that counters
+ * can be reset from userspace).
+ */
+int64_t hammer_live_dedup_vnode_bcmps = 0;
+int64_t hammer_live_dedup_device_bcmps = 0;
+int64_t hammer_live_dedup_findblk_failures = 0;
+int64_t hammer_live_dedup_bmap_saves = 0;
+
+
 SYSCTL_NODE(_vfs, OID_AUTO, hammer, CTLFLAG_RW, 0, "HAMMER filesystem");
+
 SYSCTL_INT(_vfs_hammer, OID_AUTO, supported_version, CTLFLAG_RD,
 	   &hammer_supported_version, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_general, CTLFLAG_RW,
@@ -141,6 +155,13 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_critical, CTLFLAG_RW,
 	   &hammer_debug_critical, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, cluster_enable, CTLFLAG_RW,
 	   &hammer_cluster_enable, 0, "");
+/*
+ * 0 - live dedup is disabled
+ * 1 - dedup cache is populated on reads only
+ * 2 - dedup cache is populated on both reads and writes
+ */
+SYSCTL_INT(_vfs_hammer, OID_AUTO, live_dedup, CTLFLAG_RW,
+	   &hammer_live_dedup, 0, "Enable live dedup");
 
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_dirtybufspace, CTLFLAG_RW,
 	   &hammer_limit_dirtybufspace, 0, "");
@@ -152,6 +173,9 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_inode_recs, CTLFLAG_RW,
 	   &hammer_limit_inode_recs, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_reclaim, CTLFLAG_RW,
 	   &hammer_limit_reclaim, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, live_dedup_cache_size, CTLFLAG_RW,
+	   &hammer_live_dedup_cache_size, 0,
+	   "Number of cache entries");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_redo, CTLFLAG_RW,
 	   &hammer_limit_redo, 0, "");
 
@@ -216,6 +240,19 @@ SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_undo, CTLFLAG_RD,
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_redo, CTLFLAG_RD,
 	   &hammer_stats_redo, 0, "");
 
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, live_dedup_vnode_bcmps, CTLFLAG_RW,
+	    &hammer_live_dedup_vnode_bcmps, 0,
+	    "successful vnode buffer comparisons");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, live_dedup_device_bcmps, CTLFLAG_RW,
+	    &hammer_live_dedup_device_bcmps, 0,
+	    "successful device buffer comparisons");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, live_dedup_findblk_failures, CTLFLAG_RW,
+	    &hammer_live_dedup_findblk_failures, 0,
+	    "block lookup failures for comparison");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, live_dedup_bmap_saves, CTLFLAG_RW,
+	    &hammer_live_dedup_bmap_saves, 0,
+	    "useful physical block lookups");
+
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_dirtybufspace, CTLFLAG_RD,
 	   &hammer_count_dirtybufspace, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_refedbufs, CTLFLAG_RD,
@@ -240,6 +277,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, verify_data, CTLFLAG_RW,
 	   &hammer_verify_data, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, write_mode, CTLFLAG_RW,
 	   &hammer_write_mode, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, double_buffer, CTLFLAG_RW,
+	   &hammer_double_buffer, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, yield_check, CTLFLAG_RW,
 	   &hammer_yield_check, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, fsync_mode, CTLFLAG_RW,
@@ -319,6 +358,15 @@ hammer_vfs_init(struct vfsconf *conf)
 		hammer_limit_running_io = hammer_limit_dirtybufspace;
 	if (hammer_limit_running_io > 10 * 1024 * 1024)
 		hammer_limit_running_io = 10 * 1024 * 1024;
+
+	/*
+	 * The hammer_inode structure detaches from the vnode on reclaim.
+	 * This limits the number of inodes in this state to prevent a
+	 * memory pool blowout.
+	 */
+	if (hammer_limit_reclaim == 0)
+		hammer_limit_reclaim = desiredvnodes / 10;
+
 	return(0);
 }
 
@@ -445,6 +493,10 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		TAILQ_INIT(&hmp->objid_cache_list);
 		TAILQ_INIT(&hmp->undo_lru_list);
 		TAILQ_INIT(&hmp->reclaim_list);
+
+		RB_INIT(&hmp->rb_dedup_crc_root);
+		RB_INIT(&hmp->rb_dedup_off_root);	
+		TAILQ_INIT(&hmp->dedup_lru_list);
 	}
 	hmp->hflags &= ~HMNT_USERFLAGS;
 	hmp->hflags |= info.hflags & HMNT_USERFLAGS;
@@ -514,15 +566,15 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 
 	hmp->ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
 
-	TAILQ_INIT(&hmp->volu_list);
-	TAILQ_INIT(&hmp->undo_list);
-	TAILQ_INIT(&hmp->data_list);
-	TAILQ_INIT(&hmp->meta_list);
-	TAILQ_INIT(&hmp->lose_list);
+	RB_INIT(&hmp->volu_root);
+	RB_INIT(&hmp->undo_root);
+	RB_INIT(&hmp->data_root);
+	RB_INIT(&hmp->meta_root);
+	RB_INIT(&hmp->lose_root);
 	TAILQ_INIT(&hmp->iorun_list);
 
-	lwkt_token_init(&hmp->fs_token, 1, "hammerfs");
-	lwkt_token_init(&hmp->io_token, 1, "hammerio");
+	lwkt_token_init(&hmp->fs_token, "hammerfs");
+	lwkt_token_init(&hmp->io_token, "hammerio");
 
 	lwkt_gettoken(&hmp->fs_token);
 
@@ -872,6 +924,11 @@ hammer_free_hmp(struct mount *mp)
 	mp->mnt_flag &= ~MNT_LOCAL;
 	hmp->mp = NULL;
 	hammer_destroy_objid_cache(hmp);
+	hammer_destroy_dedup_cache(hmp);
+	if (hmp->dedup_free_cache != NULL) {
+		kfree(hmp->dedup_free_cache, hmp->m_misc);
+		hmp->dedup_free_cache = NULL;
+	}
 	kmalloc_destroy(&hmp->m_misc);
 	kmalloc_destroy(&hmp->m_inodes);
 	lwkt_reltoken(&hmp->fs_token);

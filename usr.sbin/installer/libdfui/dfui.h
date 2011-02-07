@@ -372,7 +372,8 @@ void			 dfui_connection_free(struct dfui_connection *);
  */
 
 int			 dfui_be_present_dialog(struct dfui_connection *,
-						const char *, const char *, const char *, ...);
+			     const char *, const char *, const char *, ...)
+			     __printflike(4, 5);
 
 /*
  * BACKEND HIGH LEVEL INTERFACE

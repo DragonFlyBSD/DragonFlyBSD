@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppi.c,v 1.21.2.3 2000/08/07 18:24:43 peter Exp $
- * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.15 2006/12/22 23:26:18 swildner Exp $
  *
  */
 #include "opt_ppb_1284.h"
@@ -89,9 +88,8 @@ static	d_ioctl_t	ppiioctl;
 static	d_write_t	ppiwrite;
 static	d_read_t	ppiread;
 
-#define CDEV_MAJOR 82
 static struct dev_ops ppi_ops = {
-	{ "ppi", CDEV_MAJOR, 0 },
+	{ "ppi", 0, 0 },
 	.d_open =	ppiopen,
 	.d_close =	ppiclose,
 	.d_read =	ppiread,

@@ -39,7 +39,6 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.38 2008/07/01 02:02:53 dillon Exp $
  */
 
 /*
@@ -93,6 +92,7 @@ static	d_psize_t	vnsize;
 static	d_strategy_t	vnstrategy;
 static	d_clone_t	vnclone;
 
+MALLOC_DEFINE(M_VN, "vn_softc", "vn driver structures");
 DEVFS_DECLARE_CLONE_BITMAP(vn);
 
 #if NVN <= 1
@@ -100,8 +100,6 @@ DEVFS_DECLARE_CLONE_BITMAP(vn);
 #else
 #define VN_PREALLOCATED_UNITS	NVN
 #endif
-
-#define CDEV_MAJOR 43
 
 #define VN_BSIZE_BEST	8192
 
@@ -112,7 +110,7 @@ DEVFS_DECLARE_CLONE_BITMAP(vn);
  */
 
 static struct dev_ops vn_ops = {
-	{ "vn", CDEV_MAJOR, D_DISK | D_CANFREE },
+	{ "vn", 0, D_DISK | D_CANFREE },
 	.d_open =	vnopen,
 	.d_close =	vnclose,
 	.d_read =	physread,
@@ -134,7 +132,7 @@ struct vn_softc {
 	int		 sc_maxactive;	/* max # of active requests 	*/
 	struct buf	 sc_tab;	/* transfer queue 		*/
 	u_long		 sc_options;	/* options 			*/
-	cdev_t		 sc_devlist;	/* devices that refer to this unit */
+	cdev_t		 sc_dev;	/* devices that refer to this unit */
 	SLIST_ENTRY(vn_softc) sc_list;
 };
 
@@ -143,6 +141,8 @@ static SLIST_HEAD(, vn_softc) vn_list;
 /* sc_flags */
 #define VNF_INITED	0x01
 #define	VNF_READONLY	0x02
+#define VNF_OPENED	0x10
+#define	VNF_DESTROY	0x20
 
 static u_long	vn_options;
 
@@ -155,7 +155,7 @@ static int	vnget (cdev_t dev, struct vn_softc *vn , struct vn_user *vnu);
 static int	vn_modevent (module_t, int, void *);
 static int 	vniocattach_file (struct vn_softc *, struct vn_ioctl *, cdev_t dev, int flag, struct ucred *cred);
 static int 	vniocattach_swap (struct vn_softc *, struct vn_ioctl *, cdev_t dev, int flag, struct ucred *cred);
-static cdev_t	vn_create(int unit, struct devfs_bitmap *bitmap);
+static cdev_t	vn_create(int unit, struct devfs_bitmap *bitmap, int clone);
 
 static int
 vnclone(struct dev_clone_args *ap)
@@ -163,7 +163,7 @@ vnclone(struct dev_clone_args *ap)
 	int unit;
 
 	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(vn), 0);
-	ap->a_dev = vn_create(unit, &DEVFS_CLONE_BITMAP(vn));
+	ap->a_dev = vn_create(unit, &DEVFS_CLONE_BITMAP(vn), 1);
 
 	return 0;
 }
@@ -171,6 +171,22 @@ vnclone(struct dev_clone_args *ap)
 static	int
 vnclose(struct dev_close_args *ap)
 {
+	cdev_t dev = ap->a_head.a_dev;
+	struct vn_softc *vn;
+
+	vn = dev->si_drv1;
+	KKASSERT(vn != NULL);
+
+	vn->sc_flags &= ~VNF_OPENED;
+
+	/* The disk has been detached and can now be safely destroyed */
+	if (vn->sc_flags & VNF_DESTROY) {
+		KKASSERT(disk_getopencount(&vn->sc_disk) == 0);
+		disk_destroy(&vn->sc_disk);
+		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(vn), dkunit(dev));
+		SLIST_REMOVE(&vn_list, vn, vn_softc, sc_list);
+		kfree(vn, M_VN);
+	}
 	return (0);
 }
 
@@ -179,7 +195,7 @@ vncreatevn(void)
 {
 	struct vn_softc *vn;
 
-	vn = kmalloc(sizeof *vn, M_DEVBUF, M_WAITOK | M_ZERO);
+	vn = kmalloc(sizeof *vn, M_VN, M_WAITOK | M_ZERO);
 	return vn;
 }
 
@@ -194,45 +210,9 @@ vninitvn(struct vn_softc *vn, cdev_t dev)
 
 	vn->sc_unit = unit;
 	dev->si_drv1 = vn;
-	vn->sc_devlist = dev;
-	if (vn->sc_devlist->si_drv1 == NULL) {
-		reference_dev(vn->sc_devlist);
-		vn->sc_devlist->si_drv1 = vn;
-		vn->sc_devlist->si_drv2 = NULL;
-	}
-	if (vn->sc_devlist != dev) {
-		dev->si_drv1 = vn;
-		dev->si_drv2 = vn->sc_devlist;
-		vn->sc_devlist = dev;
-		reference_dev(dev);
-	}
+	vn->sc_dev = dev;
+
 	SLIST_INSERT_HEAD(&vn_list, vn, sc_list);
-}
-
-/*
- * Called only when si_drv1 is NULL.  Locate the associated vn node and
- * attach the device to it.
- */
-static struct vn_softc *
-vnfindvn(cdev_t dev)
-{
-	int unit;
-	struct vn_softc *vn;
-
-	unit = dkunit(dev);
-	SLIST_FOREACH(vn, &vn_list, sc_list) {
-		if (vn->sc_unit == unit) {
-			dev->si_drv1 = vn;
-			dev->si_drv2 = vn->sc_devlist;
-			vn->sc_devlist = dev;
-			reference_dev(dev);
-			break;
-		}
-	}
-
-	KKASSERT(vn != NULL);
-
-	return vn;
 }
 
 static	int
@@ -245,8 +225,8 @@ vnopen(struct dev_open_args *ap)
 	 * Locate preexisting device
 	 */
 
-	if ((vn = dev->si_drv1) == NULL)
-		vn = vnfindvn(dev);
+	vn = dev->si_drv1;
+	KKASSERT(vn != NULL);
 
 	/*
 	 * Update si_bsize fields for device.  This data will be overriden by
@@ -268,6 +248,7 @@ vnopen(struct dev_open_args *ap)
 		kprintf("vnopen(%s, 0x%x, 0x%x)\n",
 		    devtoname(dev), ap->a_oflags, ap->a_devtype);
 
+	vn->sc_flags |= VNF_OPENED;
 	return(0);
 }
 
@@ -290,8 +271,8 @@ vnstrategy(struct dev_strategy_args *ap)
 	int error;
 
 	unit = dkunit(dev);
-	if ((vn = dev->si_drv1) == NULL)
-		vn = vnfindvn(dev);
+	vn = dev->si_drv1;
+	KKASSERT(vn != NULL);
 
 	bp = bio->bio_buf;
 
@@ -449,6 +430,9 @@ vnioctl(struct dev_ioctl_args *ap)
 		if (vn->sc_flags & VNF_INITED)
 			return(EBUSY);
 
+		if (vn->sc_flags & VNF_DESTROY)
+			return(ENXIO);
+
 		if (vio->vn_file == NULL)
 			error = vniocattach_swap(vn, vio, dev, ap->a_fflag, ap->a_cred);
 		else
@@ -466,7 +450,7 @@ vnioctl(struct dev_ioctl_args *ap)
 		 * How are these problems handled for removable and failing
 		 * hardware devices? (Hint: They are not)
 		 */
-		if (count_dev(vn->sc_devlist) > 1)
+		if ((disk_getopencount(&vn->sc_disk)) > 1)
 			return (EBUSY);
 
 		vnclear(vn);
@@ -474,9 +458,7 @@ vnioctl(struct dev_ioctl_args *ap)
 			kprintf("vnioctl: CLRed\n");
 
 		if (dkunit(dev) >= VN_PREALLOCATED_UNITS) {
-			devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(vn), dkunit(dev));
-			disk_destroy(&vn->sc_disk);
-			SLIST_REMOVE(&vn_list, vn, vn_softc, sc_list);
+			vn->sc_flags |= VNF_DESTROY;
 		}
 
 		break;
@@ -847,14 +829,23 @@ vnsize(struct dev_psize_args *ap)
 }
 
 static cdev_t
-vn_create(int unit, struct devfs_bitmap *bitmap)
+vn_create(int unit, struct devfs_bitmap *bitmap, int clone)
 {
 	struct vn_softc *vn;
 	struct disk_info info;
-	cdev_t dev;
+	cdev_t dev, ret_dev;
 
 	vn = vncreatevn();
-	dev = disk_create(unit, &vn->sc_disk, &vn_ops);
+	if (clone) {
+		/*
+		 * For clone devices we need to return the top-level cdev,
+		 * not the raw dev we'd normally work with.
+		 */
+		dev = disk_create_clone(unit, &vn->sc_disk, &vn_ops);
+		ret_dev = vn->sc_disk.d_cdev;
+	} else {
+		ret_dev = dev = disk_create(unit, &vn->sc_disk, &vn_ops);
+	}
 	vninitvn(vn, dev);
 
 	bzero(&info, sizeof(struct disk_info));
@@ -870,7 +861,7 @@ vn_create(int unit, struct devfs_bitmap *bitmap)
 	if (bitmap != NULL)
 		devfs_clone_bitmap_set(bitmap, unit);
 
-	return dev;
+	return ret_dev;
 }
 
 static int 
@@ -886,26 +877,33 @@ vn_modevent(module_t mod, int type, void *data)
 		    GID_OPERATOR, 0640, "vn");
 
 		for (i = 0; i < VN_PREALLOCATED_UNITS; i++) {
-			vn_create(i, &DEVFS_CLONE_BITMAP(vn));
+			vn_create(i, &DEVFS_CLONE_BITMAP(vn), 0);
 		}
 		break;
+
 	case MOD_UNLOAD:
-		destroy_autoclone_dev(dev, &DEVFS_CLONE_BITMAP(vn));
-		/* fall through */
 	case MOD_SHUTDOWN:
 		while ((vn = SLIST_FIRST(&vn_list)) != NULL) {
+			/*
+			 * XXX: no idea if we can return EBUSY even in the
+			 *	shutdown case, so err on the side of caution
+			 *	and just rip stuff out on shutdown.
+			 */
+			if (type != MOD_SHUTDOWN) {
+				if (vn->sc_flags & VNF_OPENED)
+					return (EBUSY);
+			}
+
+			disk_destroy(&vn->sc_disk);
+
 			SLIST_REMOVE_HEAD(&vn_list, sc_list);
+
 			if (vn->sc_flags & VNF_INITED)
 				vnclear(vn);
-			/* Cleanup all cdev_t's that refer to this unit */
-			disk_destroy(&vn->sc_disk);
-			while ((dev = vn->sc_devlist) != NULL) {
-				vn->sc_devlist = dev->si_drv2;
-				dev->si_drv1 = dev->si_drv2 = NULL;
-				destroy_dev(dev);
-			}
-			kfree(vn, M_DEVBUF);
+
+			kfree(vn, M_VN);
 		}
+		destroy_autoclone_dev(dev, &DEVFS_CLONE_BITMAP(vn));
 		dev_ops_remove_all(&vn_ops);
 		break;
 	default:

@@ -53,7 +53,7 @@ dloader_init_cmds(void)
  * This intercepts lines of the form 'a=b'
  */
 COMMAND_SET(local, "local", "List local variables", command_local);
-COMMAND_SET(lunset, "lunset", "Unset local variables", command_lunset);
+COMMAND_SET(lunset, "lunset", "Unset local variable", command_lunset);
 COMMAND_SET(lunsetif, "lunsetif", "Unset local if envvar set to 1 or YES", command_lunsetif);
 COMMAND_SET(loadall, "loadall", "Load kernel + modules", command_loadall);
 COMMAND_SET(menuclear, "menuclear", "Clear all menus", command_menuclear);
@@ -65,6 +65,8 @@ static int curitem;
 static int curadd;
 
 static char *kenv_vars[] = {
+	"LINES",
+	"autoboot_delay",
 	"boot_askname",
 	"boot_cdrom",
 	"boot_ddb",
@@ -77,18 +79,24 @@ static char *kenv_vars[] = {
 	"bootfile",
 	"console",
 	"currdev",
+	"dumpdev",
+	"default_kernel",
 	"init_path",
-	"kernelname",
 	"kernel_options",
+	"kernelname",
 	"loaddev",
 	"module_path",
+	"root_disk_unit",
 	NULL
 };
 
 /*
- * Set local variable.  Sniff "module_path"
+ * List or set local variable.  Sniff assignment of kenv_vars[] and
+ * loader tunables (recognized by '.' in name).
  *
- * format a=b (one argument) - in av[0]
+ * format for av[0]:
+ *  - List: local
+ *  - Set:  var=val
  */
 static int
 command_local(int ac, char **av)
@@ -103,6 +111,7 @@ command_local(int ac, char **av)
 	 * local command executed directly.
 	 */
 	if (strcmp(av[0], "local") == 0) {
+		pager_open();
 		for (dvar = dvar_first(); dvar; dvar = dvar_next(dvar)) {
 			for (j = 1; j < ac; ++j) {
 				if (!strncmp(dvar->name, av[j], strlen(av[j])))
@@ -111,19 +120,23 @@ command_local(int ac, char **av)
 			if (ac > 1 && j == ac)
 				continue;
 
-			printf("%s=", dvar->name);
+			pager_output(dvar->name);
+			pager_output("=");
 			for (i = 0; i < dvar->count; ++i) {
 				if (i)
-					printf(",");
-				printf("\"%s\"", dvar->data[i]);
+					pager_output(",");
+				pager_output("\"");
+				pager_output(dvar->data[i]);
+				pager_output("\"");
 			}
-			printf("\n");
+			pager_output("\n");
 		}
+		pager_close();
 		return(CMD_OK);
 	}
 
 	/*
-	 * local command intercept for blah=blah
+	 * local command intercept for 'var=val'
 	 */
 	name = av[0];
 	data = strchr(name, '=');
@@ -189,7 +202,7 @@ command_lunsetif(int ac, char **av)
 }
 
 /*
- * Load the kernel + all modules specified with
+ * Load the kernel + all modules specified with MODULE_load="YES"
  */
 static int
 command_loadall(int ac, char **av)
@@ -373,6 +386,7 @@ command_menu(int ac, char **av)
 	int c;
 	int res;
 	int counting = 1;
+	char *argv[4];
 
 	menu_display();
 	if ((cp = getenv("autoboot_delay")) != NULL)
@@ -431,16 +445,12 @@ command_menu(int ac, char **av)
 	return (res);
 }
 
-#define LOGO_LINES 17
+#define LOGO_LINES 16
 #define FRED_LEFT 0
 #define FRED_RIGHT 1
 static char *logo_blank_line = "                                 ";
-static char *menu_header_left = "============================ DragonFly BSD ====================================\n";
-static char *menu_header_right = "==================================== DragonFly BSD ============================\n";
-static char *menu_footer = "===============================================================================\n";
 
 static char *logo_color[LOGO_LINES] = {
-	"                                 ",
 	"[37m ,--,           [31m|           [37m,--, [0m",
 	"[37m |   `-,       [31m,^,       [37m,-'   | [0m",
 	"[37m  `,    `-,   [32m([31m/ \\[32m)   [37m,-'    ,'  [0m",
@@ -459,7 +469,6 @@ static char *logo_color[LOGO_LINES] = {
 	"                                 " };
 
 static char *logo_mono[LOGO_LINES] =  {
-	"                                 ",
 	" ,--,           |           ,--, ",
 	" |   `-,       ,^,       ,-'   | ",
 	"  `,    `-,   (/ \\)   ,-'    ,'  ",
@@ -475,25 +484,6 @@ static char *logo_mono[LOGO_LINES] =  {
 	"               | |               ",
 	"               | |               ",
 	"               `|'               ",
-	"                                 " };
-
-static char *logo_blank[LOGO_LINES] =  {
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
-	"                                 ",
 	"                                 " };
 
 static void
@@ -534,20 +524,19 @@ menu_display(void)
 
 	dvar = dvar_first();
 	i = 0;
-	
-	if (logo != NULL) {
-		printf(logo_left ? menu_header_left : menu_header_right);
+
+	if (logo != NULL)
 		printf(logo_left ? "%35s|%43s\n" : "%43s|%35s\n", " ", " ");
-	}
+
 
 	while (dvar || i < LOGO_LINES) {
 		if (logo_left)
 			logo_display(logo, i, FRED_LEFT);
-		i++;
 
 		while (dvar) {
 			if (strncmp(dvar->name, "menu_", 5) == 0) {
-				printf(" %c. %-38.38s", dvar->name[5], dvar->data[0]);
+				printf(" %c. %-38.38s",
+				    dvar->name[5], dvar->data[0]);
 				dvar = dvar_next(dvar);
 				break;
 			}
@@ -557,17 +546,13 @@ menu_display(void)
 		 * Pad when the number of menu entries is less than
                  * LOGO_LINES.
 		 */
-		if (dvar == NULL) {
+		if (dvar == NULL)
 			printf("    %38.38s", " ");
-		}
 
 		if (!logo_left)
 			logo_display(logo, i, FRED_RIGHT);
 		printf("\n");
-	}
-
-	if (logo != NULL) {
-		printf(menu_footer);
+		i++;
 	}
 }
 
@@ -575,10 +560,10 @@ static int
 menu_execute(int c)
 {
 	dvar_t dvar;
+	dvar_t dvar_exec = NULL;
+	dvar_t *dvar_execp = &dvar_exec;
 	char namebuf[32];
 	int res;
-
-	printf("\n");
 
 	snprintf(namebuf, sizeof(namebuf), "item_%c_0", c);
 
@@ -590,16 +575,37 @@ menu_execute(int c)
 
 	snprintf(namebuf, sizeof(namebuf), "item_%c", c);
 	res = CMD_OK;
+	printf("\n");
+
+	/*
+	 * Copy the items to execute (the act of execution may modify our
+	 * local variables so we need to copy).
+	 */
 	for (dvar = dvar_first(); dvar; dvar = dvar_next(dvar)) {
 		if (strncmp(dvar->name, namebuf, 6) == 0) {
-			res = perform(dvar->count, dvar->data);
-			if (res != CMD_OK) {
-				printf("%s: %s\n",
-					dvar->data[0], command_errmsg);
-				setenv("autoboot_delay", "NO", 1);
-				break;
-			}
+			*dvar_execp = dvar_copy(dvar);
+			dvar_execp = &(*dvar_execp)->next;
 		}
 	}
+
+	/*
+	 * Execute items
+	 */
+	for (dvar = dvar_exec; dvar; dvar = dvar->next) {
+		res = perform(dvar->count, dvar->data);
+		if (res != CMD_OK) {
+			printf("%s: %s\n",
+				dvar->data[0], command_errmsg);
+			setenv("autoboot_delay", "NO", 1);
+			break;
+		}
+	}
+
+	/*
+	 * Free items
+	 */
+	while (dvar_exec)
+		dvar_free(&dvar_exec);
+
 	return(res);
 }

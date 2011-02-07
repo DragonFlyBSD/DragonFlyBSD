@@ -12,7 +12,6 @@
  * without express or implied warranty.
  *
  * $FreeBSD: src/sys/i386/isa/mse.c,v 1.49.2.1 2000/03/20 13:58:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.20 2006/12/22 23:26:17 swildner Exp $
  */
 /*
  * Driver for the Logitech and ATI Inport Bus mice for use with 386bsd and
@@ -57,7 +56,7 @@
 #include <sys/thread2.h>
 
 #include <machine/clock.h>
-#include <machine/mouse.h>
+#include <sys/mouse.h>
 
 #include <bus/isa/isavar.h>
 
@@ -138,9 +137,8 @@ static	d_kqfilter_t	msekqfilter;
 static void msefilter_detach(struct knote *);
 static int msefilter(struct knote *, long);
 
-#define CDEV_MAJOR 27
 static struct dev_ops mse_ops = {
-	{ "mse", CDEV_MAJOR, 0 },
+	{ "mse", 0, 0 },
 	.d_open =	mseopen,
 	.d_close =	mseclose,
 	.d_read =	mseread,

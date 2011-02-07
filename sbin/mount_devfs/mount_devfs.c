@@ -145,14 +145,14 @@ main(int argc, char **argv)
 	if (!mounted) {
 		if (mount(vfc.vfc_name, mntpoint, mntflags, &info))
 			err(1, NULL);
-	}
-
-	if (fork() == 0) {
-		execlp("devfsctl", "devfsctl",
-		    "-m", mntpoint,
-			"-c",
-			"-r",
-			NULL);
+	} else {
+		if (fork() == 0) {
+			execlp("devfsctl", "devfsctl",
+			    "-m", mntpoint,
+				"-c",
+				"-r",
+				NULL);
+		}
 	}
 
 	if (info.flags & DEVFS_MNT_RULESET) {

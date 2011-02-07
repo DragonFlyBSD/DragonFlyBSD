@@ -32,7 +32,6 @@
  *
  * @(#)process.c	8.2 (Berkeley) 11/16/93
  * $FreeBSD: src/libexec/talkd/process.c,v 1.9 1999/08/28 00:10:16 peter Exp $
- * $DragonFly: src/libexec/talkd/process.c,v 1.3 2003/11/14 03:54:31 dillon Exp $
  */
 
 /*
@@ -55,25 +54,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <syslog.h>
+#include "utmpentry.h"
 
-int announce (CTL_MSG *, char *);
-int delete_invite (int);
-void do_announce (CTL_MSG *, CTL_RESPONSE *);
-CTL_MSG *find_request();
-CTL_MSG *find_match();
-int find_user (char *, char *);
-void insert_table (CTL_MSG *, CTL_RESPONSE *);
-int new_id (void);
-void print_request (char *, CTL_MSG *);
-void print_response (char *, CTL_RESPONSE *);
+#include "extern.h"
+
+extern int debug;
 
 void
-process_request(mp, rp)
-	register CTL_MSG *mp;
-	register CTL_RESPONSE *rp;
+process_request(CTL_MSG *mp, CTL_RESPONSE *rp)
 {
-	register CTL_MSG *ptr;
-	extern int debug;
+	CTL_MSG *ptr;
 	char *s;
 
 	rp->vers = TALK_VERSION;
@@ -147,9 +137,7 @@ process_request(mp, rp)
 }
 
 void
-do_announce(mp, rp)
-	register CTL_MSG *mp;
-	CTL_RESPONSE *rp;
+do_announce(CTL_MSG *mp, CTL_RESPONSE *rp)
 {
 	struct hostent *hp;
 	CTL_MSG *ptr;
@@ -161,7 +149,7 @@ do_announce(mp, rp)
 		rp->answer = result;
 		return;
 	}
-#define	satosin(sa)	((struct sockaddr_in *)(sa))
+#define	satosin(sa)	((struct sockaddr_in *)(void *)(sa))
 	hp = gethostbyaddr(&satosin(&mp->ctl_addr)->sin_addr,
 		sizeof (struct in_addr), AF_INET);
 	if (hp == NULL) {
@@ -189,56 +177,47 @@ do_announce(mp, rp)
 	}
 }
 
-#include <utmp.h>
-
 /*
  * Search utmp for the local user
  */
 int
-find_user(name, tty)
-	char *name, *tty;
+find_user(const char *name, char *tty)
 {
-	struct utmp ubuf;
+	struct utmpentry *ep;
 	int status;
-	FILE *fd;
 	struct stat statb;
 	time_t best = 0;
-	char line[sizeof(ubuf.ut_line) + 1];
-	char ftty[sizeof(_PATH_DEV) - 1 + sizeof(line)];
+	char ftty[sizeof(_PATH_DEV) + sizeof(ep->line)];
 
-	if ((fd = fopen(_PATH_UTMP, "r")) == NULL) {
-		warnx("can't read %s", _PATH_UTMP);
-		return (FAILED);
-	}
+	getutentries(NULL, &ep);
+
 #define SCMPN(a, b)	strncmp(a, b, sizeof (a))
 	status = NOT_HERE;
 	(void) strcpy(ftty, _PATH_DEV);
-	while (fread((char *) &ubuf, sizeof ubuf, 1, fd) == 1)
-		if (SCMPN(ubuf.ut_name, name) == 0) {
-			strncpy(line, ubuf.ut_line, sizeof(ubuf.ut_line));
-			line[sizeof(ubuf.ut_line)] = '\0';
+	for (; ep; ep = ep->next)
+		if (SCMPN(ep->name, name) == 0) {
 			if (*tty == '\0' || best != 0) {
 				if (best == 0)
 					status = PERMISSION_DENIED;
 				/* no particular tty was requested */
 				(void) strcpy(ftty + sizeof(_PATH_DEV) - 1,
-				    line);
+				    ep->line);
 				if (stat(ftty, &statb) == 0) {
 					if (!(statb.st_mode & 020))
 						continue;
 					if (statb.st_atime > best) {
 						best = statb.st_atime;
-						(void) strcpy(tty, line);
+						(void) strcpy(tty, ep->line);
 						status = SUCCESS;
 						continue;
 					}
 				}
 			}
-			if (strcmp(line, tty) == 0) {
+			if (strcmp(ep->line, tty) == 0) {
 				status = SUCCESS;
 				break;
 			}
 		}
-	fclose(fd);
+
 	return (status);
 }

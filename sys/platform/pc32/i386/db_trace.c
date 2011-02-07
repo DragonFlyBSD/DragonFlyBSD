@@ -24,7 +24,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_trace.c,v 1.35.2.3 2002/02/21 22:31:25 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/db_trace.c,v 1.18 2007/02/02 15:57:51 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -87,7 +86,7 @@ struct db_variable db_regs[] = {
 	{ "dr6",	NULL,		     db_dr6 },
 	{ "dr7",	NULL,		     db_dr7 },
 };
-struct db_variable *db_eregs = db_regs + sizeof(db_regs)/sizeof(db_regs[0]);
+struct db_variable *db_eregs = db_regs + NELEM(db_regs);
 
 /*
  * Stack trace.

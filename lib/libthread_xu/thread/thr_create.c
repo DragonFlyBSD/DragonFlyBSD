@@ -236,6 +236,7 @@ thread_start(void *arg)
 
 	if (curthread->flags & THR_FLAGS_NEED_SUSPEND)
 		_thr_suspend_check(curthread);
+	_nmalloc_thr_init();
 
 	/* Run the current thread's start routine with argument: */
 	_pthread_exit(curthread->start_routine(curthread->arg));

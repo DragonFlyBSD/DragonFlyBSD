@@ -32,7 +32,6 @@
  *
  * 	From: @(#)lp.h	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/common_source/lp.h,v 1.9.2.12 2002/07/14 23:56:40 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/common_source/lp.h,v 1.3 2005/08/08 18:58:56 joerg Exp $
  */
 
 #include <sys/queue.h>
@@ -281,7 +280,7 @@ void	 inform(const struct printer *_pp, char *_cf);
 void	 init_printer(struct printer *_pp);
 void	 init_request(struct request *_rp);
 int	 inlist(char *_uname, char *_cfile);
-int	 iscf(struct dirent *_d);
+int	 iscf(const struct dirent *_d);
 int	 isowner(char *_owner, char *_file);
 void	 ldump(const char *_nfile, const char *_datafile, int _copies);
 void	 lastprinter(void);

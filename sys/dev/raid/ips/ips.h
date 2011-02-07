@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.h,v 1.10 2004/05/30 20:08:34 phk Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips.h,v 1.13 2006/12/22 23:26:23 swildner Exp $
  */
 
 
@@ -484,6 +483,3 @@ extern void ips_copperhead_intr(void *sc);
 extern void ips_issue_copperhead_cmd(ips_command_t *command);
 extern void ips_copperhead_poll(ips_command_t *command);
 int ips_timed_wait(ips_command_t *, const char *, int);
-
-#define IPS_CDEV_MAJOR 175
-#define IPSD_CDEV_MAJOR 176

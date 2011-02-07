@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/msun/i387/fenv.c,v 1.3 2007/01/05 07:15:26 das Exp $
+ * $FreeBSD: src/lib/msun/i387/fenv.c,v 1.4 2010/02/03 20:23:47 kib Exp $
  */
 
 #include <sys/cdefs.h>
@@ -86,7 +86,7 @@ int
 fesetexceptflag(const fexcept_t *flagp, int excepts)
 {
 	fenv_t env;
-	int mxcsr;
+	__uint32_t mxcsr;
 
 	__fnstenv(&env);
 	env.__status &= ~excepts;
@@ -116,7 +116,7 @@ feraiseexcept(int excepts)
 int
 fegetenv(fenv_t *envp)
 {
-	int mxcsr;
+	__uint32_t mxcsr;
 
 	__fnstenv(envp);
 	/*
@@ -134,7 +134,7 @@ fegetenv(fenv_t *envp)
 int
 feholdexcept(fenv_t *envp)
 {
-	int mxcsr;
+	__uint32_t mxcsr;
 
 	__fnstenv(envp);
 	__fnclex();
@@ -167,7 +167,8 @@ feupdateenv(const fenv_t *envp)
 int
 __feenableexcept(int mask)
 {
-	int mxcsr, control, omask;
+	__uint32_t mxcsr, omask;
+	__uint16_t control;
 
 	mask &= FE_ALL_EXCEPT;
 	__fnstcw(&control);

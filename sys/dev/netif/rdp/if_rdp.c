@@ -90,11 +90,6 @@
 #include <netinet/if_ether.h>
 #endif
 
-#ifdef NS
-#include <netns/ns.h>
-#include <netns/ns_if.h>
-#endif
-
 #include <net/bpf.h>
 
 #include <machine/clock.h>
@@ -102,9 +97,8 @@
 
 #include <bus/isa/isavar.h>
 #include <bus/isa/isa_device.h>
-#include <machine_base/icu/icu.h>
+
 #include "if_rdpreg.h"
-#include <machine_base/isa/intr_machdep.h>
 
 #define IOCTL_CMD_T u_long
 

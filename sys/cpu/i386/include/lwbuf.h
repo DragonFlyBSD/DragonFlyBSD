@@ -75,7 +75,7 @@ lwbuf_page(struct lwbuf *lwb)
 
 #if defined(_KERNEL)
 
-struct lwbuf	*lwbuf_alloc(vm_page_t);
+struct lwbuf	*lwbuf_alloc(vm_page_t, struct lwbuf *);
 void		 lwbuf_free(struct lwbuf *);
 vm_offset_t	 lwbuf_kva(struct lwbuf *lwb);
 void		 lwbuf_set_global(struct lwbuf *);

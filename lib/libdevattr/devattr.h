@@ -105,11 +105,11 @@ int udev_enumerate_add_match_regex(struct udev_enumerate *udev_enum,
 int udev_enumerate_add_nomatch_regex(struct udev_enumerate *udev_enum,
 			        const char *key,
 			        char *expr);
-#define udev_enumerate_add_match_property(a, b) \
-	udev_enumerate_add_match_expr((a), __DECONST(char *, (b)))
+#define udev_enumerate_add_match_property(x, a, b) \
+	udev_enumerate_add_match_expr((x), (a), __DECONST(char *, (b)))
 
-#define udev_enumerate_add_nomatch_property(a, b) \
-	udev_enumerate_add_nomatch_expr((a), __DECONST(char *, (b)))
+#define udev_enumerate_add_nomatch_property(x, a, b) \
+	udev_enumerate_add_nomatch_expr((x), (a), __DECONST(char *, (b)))
 
 struct udev_monitor *udev_monitor_new(struct udev *udev_ctx);
 struct udev_monitor *udev_monitor_ref(struct udev_monitor *udev_monitor);
@@ -133,6 +133,12 @@ int udev_monitor_filter_add_match_regex(struct udev_monitor *udev_monitor,
 int udev_monitor_filter_add_nomatch_regex(struct udev_monitor *udev_monitor,
 			      	     const char *key,
 			      	     char *expr);
+#define udev_monitor_filter_add_match_property(x, a, b) \
+	udev_monitor_filter_add_match_expr((x), (a), __DECONST(char *, (b)))
+
+#define udev_monitor_filter_add_nomatch_property(x, a, b) \
+	udev_monitor_filter_add_nomatch_expr((x), (a), __DECONST(char *, (b)))
+
 #ifdef LIBDEVATTR_INTERNAL
 int _udev_monitor_filter_add_match_gen(struct udev_monitor *udev_monitor,
 				   int type,

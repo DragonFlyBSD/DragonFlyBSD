@@ -46,7 +46,6 @@ COMM=	${SYS}/conf/*.[ch] \
 	${SYS}/netproto/ipx/*.[ch] \
 	${SYS}/netproto/key/*.[ch] \
 	${SYS}/netproto/natm/*.[ch] \
-	${SYS}/netproto/ns/*.[ch] \
 	${SYS}/vfs/nfs/*.[ch] \
 	${SYS}/bus/pci/*.[ch] \
 	${SYS}/emulation/posix4/*.[ch] \

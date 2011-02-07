@@ -788,6 +788,7 @@ void msg_dialout ( msg_dialout_ind_t *mp );
 void msg_dialoutnumber(msg_dialoutnumber_ind_t *mp);
 void msg_disconnect_ind ( msg_disconnect_ind_t *mp );
 void msg_idle_timeout_ind ( msg_idle_timeout_ind_t *mp );
+void msg_keypad(msg_keypad_ind_t *mp);
 void msg_l12stat_ind(msg_l12stat_ind_t *ml);
 void msg_teiasg_ind(msg_teiasg_ind_t *mt);
 void msg_proceeding_ind ( msg_proceeding_ind_t *mp );

@@ -164,6 +164,7 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 		vm_object_set_flag(object, OBJ_ONEMAPPING);
 	object->paging_in_progress = 0;
 	object->resident_page_count = 0;
+	object->agg_pv_list_count = 0;
 	object->shadow_count = 0;
 	object->pg_color = next_index;
 	if ( size > (PQ_L2_SIZE / 3 + PQ_PRIME1))
@@ -1037,6 +1038,7 @@ shadowlookup:
 			crit_exit();
   			goto relookup;
 		}
+		vm_page_busy(m);
 		crit_exit();
 
 		/*
@@ -1071,6 +1073,7 @@ shadowlookup:
 			if (tobject->type == OBJT_SWAP)
 				swap_pager_freespace(tobject, tpindex, 1);
 		}
+		vm_page_wakeup(m);
 	}	
 	lwkt_reltoken(&vm_token);
 }

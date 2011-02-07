@@ -1,6 +1,5 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.42 2008/11/24 13:35:57 hasso Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -25,7 +24,8 @@ INCS=	a.out.h ar.h assert.h bitstring.h complex.h cpio.h ctype.h db.h \
 	stddef.h stdint.h stdio.h stdlib.h \
 	string.h stringlist.h strings.h struct.h sysexits.h tar.h time.h \
 	timeconv.h \
-	timers.h ttyent.h unistd.h ulimit.h utime.h utmp.h uuid.h vis.h \
+	timers.h ttyent.h tzfile.h unistd.h ulimit.h utime.h utmp.h utmpx.h \
+	uuid.h vis.h \
 	wchar.h wctype.h wordexp.h
 
 .if defined(WANT_HESIOD)
@@ -54,7 +54,7 @@ LDIRS=	net netbt netgraph netinet netinet6 sys vm
 #
 LSUBDIRS=	bus/cam bus/cam/scsi \
 	emulation/linux \
-	vfs/msdosfs vfs/nfs vfs/ntfs vfs/nwfs \
+	vfs/msdosfs vfs/nfs vfs/ntfs vfs/nwfs vfs/gnu/ext2fs \
 	vfs/smbfs vfs/udf vfs/ufs vfs/hammer \
 	net/vlan net/ipfw net/ip6fw net/dummynet net/sppp net/ip_mroute \
 	net/bridge net/tap net/tun net/ppp net/ppp_layer net/sl \
@@ -68,7 +68,7 @@ LSUBDIRS=	bus/cam bus/cam/scsi \
 	netgraph/tee netgraph/tty netgraph/vjc \
 	bus/cam bus/usb bus/pccard bus/pci bus/isa bus/ppbus bus/smbus \
 	netproto/atalk netproto/atm netproto/ipsec netproto/ipx \
-	netproto/key netproto/natm netproto/ncp netproto/ns netproto/smb \
+	netproto/key netproto/natm netproto/ncp netproto/smb \
 	netproto/atm/ipatm netproto/atm/sigpvc netproto/atm/spans \
 	netproto/atm/uni netproto/802_11 netproto/mpls \
 	vfs/isofs/cd9660 net/i4b/include \
@@ -76,7 +76,7 @@ LSUBDIRS=	bus/cam bus/cam/scsi \
 	dev/disk/dm \
 	dev/misc/lpt dev/misc/ppi \
 	dev/netif/wi \
-	dev/raid/ciss \
+	dev/raid/ciss dev/raid/mfi \
 	dev/video/bktr dev/video/meteor libprop
 
 # For SHARED=symlinks, bus/cam and netproto/atm are symlinks, so cam/scsi
@@ -134,7 +134,6 @@ INCSLINKS+=	netproto/ipx ${INCLUDEDIR}/netipx
 INCSLINKS+=	netproto/key ${INCLUDEDIR}/netkey
 INCSLINKS+=	netproto/natm ${INCLUDEDIR}/netnatm
 INCSLINKS+=	netproto/ncp ${INCLUDEDIR}/netncp
-INCSLINKS+=	netproto/ns ${INCLUDEDIR}/netns
 INCSLINKS+=	netproto/smb ${INCLUDEDIR}/netsmb
 INCSLINKS+=	bus/pccard ${INCLUDEDIR}/pccard
 

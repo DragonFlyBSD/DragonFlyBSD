@@ -824,7 +824,7 @@ ac97_create(device_t dev, void *devinfo, kobj_class_t cls)
 {
 	struct ac97_info *codec;
 
-	codec = (struct ac97_info *)kmalloc(sizeof *codec, M_AC97, M_NOWAIT);
+	codec = (struct ac97_info *)kmalloc(sizeof *codec, M_AC97, M_WAITOK);
 	if (codec == NULL)
 		return NULL;
 

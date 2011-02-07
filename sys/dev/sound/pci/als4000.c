@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/als4000.c,v 1.18.2.1 2005/12/30 19:55:53 netchild Exp $
- * $DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.11 2007/06/16 20:07:19 dillon Exp $
  */
 
 /*
@@ -44,8 +43,6 @@
 #include <bus/pci/pcivar.h>
 
 #include "mixer_if.h"
-
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/als4000.c,v 1.11 2007/06/16 20:07:19 dillon Exp $");
 
 /* Debugging macro's */
 #undef DEB
@@ -330,7 +327,7 @@ als_get_playback_command(u_int32_t format)
 {
 	u_int32_t i, n;
 
-	n = sizeof(playback_cmds) / sizeof(playback_cmds[0]);
+	n = NELEM(playback_cmds);
 	for (i = 0; i < n; i++) {
 		if (playback_cmds[i].pcm_format == format) {
 			return &playback_cmds[i];
@@ -801,11 +798,7 @@ als_pci_attach(device_t dev)
 	u_int32_t data;
 	char status[SND_STATUSLEN];
 
-	if ((sc = kmalloc(sizeof(*sc), M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
-		device_printf(dev, "cannot allocate softc\n");
-		return ENXIO;
-	}
-
+	sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
 	sc->lock = snd_mtxcreate(device_get_nameunit(dev), "sound softc");
 	sc->dev = dev;
 

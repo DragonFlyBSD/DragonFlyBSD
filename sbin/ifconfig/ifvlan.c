@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifvlan.c,v 1.7.2.4 2006/02/09 10:48:43 yar Exp $
- * $DragonFly: src/sbin/ifconfig/ifvlan.c,v 1.8 2006/04/02 03:33:59 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -153,7 +152,7 @@ static struct afswtch af_vlan = {
 	.af_other_status = vlan_status,
 };
 
-static __constructor void
+static __constructor(100) void
 vlan_ctor(void)
 {
 #define	N(a)	(sizeof(a) / sizeof(a[0]))

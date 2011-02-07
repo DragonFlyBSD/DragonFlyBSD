@@ -862,9 +862,7 @@ static const struct inst db_inst_table[256] = {
 /*ff*/	{ "",	   TRUE,  NONE,  0,	     db_Grp5 },
 };
 
-static const struct inst db_bad_inst =
-	{ "???",   FALSE, NONE,  0,	      0 }
-;
+static const struct inst db_bad_inst = { "???", FALSE, NONE, 0, 0 };
 
 #define	f_mod(rex, byte)	((byte)>>6)
 #define	f_reg(rex, byte)	((((byte)>>3)&0x7) | (rex & REX_R ? 0x8 : 0x0))

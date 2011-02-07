@@ -39,7 +39,6 @@
  * dufault@hda.com
  *
  * $FreeBSD: src/sys/i386/isa/labpc.c,v 1.35 1999/09/25 18:24:08 phk Exp $
- * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.23 2008/08/02 01:14:42 dillon Exp $
  *
  */
 
@@ -289,9 +288,8 @@ static	d_close_t	labpcclose;
 static	d_ioctl_t	labpcioctl;
 static	d_strategy_t	labpcstrategy;
 
-#define CDEV_MAJOR 66
 static struct dev_ops labpc_ops = {
-	{ "labpc", CDEV_MAJOR, 0 },
+	{ "labpc", 0, 0 },
 	.d_open =	labpcopen,
 	.d_close =	labpcclose,
 	.d_read =	physread,

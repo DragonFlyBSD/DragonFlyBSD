@@ -593,11 +593,13 @@ cmd_number(globalstate *gstate)
     newval = readline(tmpbuf, 8, Yes);
     if (newval > -1)
     {
+#if 0
 	if (newval > gstate->max_topn)
 	{
 	    message_error(" This terminal can only display %d processes",
 			  gstate->max_topn);
 	}
+#endif
 
 	if (newval == 0)
 	{

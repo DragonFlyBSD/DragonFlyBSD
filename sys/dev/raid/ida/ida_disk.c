@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida_disk.c,v 1.12.2.6 2001/11/27 20:21:02 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.16 2007/06/17 23:50:16 dillon Exp $
  */
 
 /*
@@ -65,11 +64,8 @@ static	d_close_t	idad_close;
 static	d_strategy_t	idad_strategy;
 static	d_dump_t	idad_dump;
 
-#define IDAD_BDEV_MAJOR	29
-#define IDAD_CDEV_MAJOR	109
-
 static struct dev_ops id_ops = {
-	{ "idad", IDAD_CDEV_MAJOR, D_DISK },
+	{ "idad", 0, D_DISK },
 	.d_open =	idad_open,
 	.d_close =	idad_close,
 	.d_read =	physread,

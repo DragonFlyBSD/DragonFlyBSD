@@ -120,11 +120,16 @@ int nfs_maxasyncbio = NFS_MAXASYNCBIO;
 
 SYSCTL_DECL(_vfs_nfs);
 
-SYSCTL_INT(_vfs_nfs, OID_AUTO, realign_test, CTLFLAG_RW, &nfs_realign_test, 0, "");
-SYSCTL_INT(_vfs_nfs, OID_AUTO, realign_count, CTLFLAG_RW, &nfs_realign_count, 0, "");
-SYSCTL_INT(_vfs_nfs, OID_AUTO, showrtt, CTLFLAG_RW, &nfs_showrtt, 0, "");
-SYSCTL_INT(_vfs_nfs, OID_AUTO, showrexmit, CTLFLAG_RW, &nfs_showrexmit, 0, "");
-SYSCTL_INT(_vfs_nfs, OID_AUTO, maxasyncbio, CTLFLAG_RW, &nfs_maxasyncbio, 0, "");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, realign_test, CTLFLAG_RW, &nfs_realign_test, 0,
+    "Number of times mbufs have been tested for bad alignment");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, realign_count, CTLFLAG_RW, &nfs_realign_count, 0,
+    "Number of realignments for badly aligned mbuf data");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, showrtt, CTLFLAG_RW, &nfs_showrtt, 0,
+    "Show round trip time output");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, showrexmit, CTLFLAG_RW, &nfs_showrexmit, 0,
+    "Show retransmits info");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, maxasyncbio, CTLFLAG_RW, &nfs_maxasyncbio, 0,
+    "Max number of asynchronous bio's");
 
 static int nfs_request_setup(nfsm_info_t info);
 static int nfs_request_auth(struct nfsreq *rep);
@@ -468,6 +473,7 @@ nfs_send(struct socket *so, struct sockaddr *nam, struct mbuf *top,
 	 */
 	error = so_pru_sosend(so, sendnam, NULL, top, NULL, flags,
 			      curthread /*XXX*/);
+
 	/*
 	 * ENOBUFS for dgram sockets is transient and non fatal.
 	 * No need to log, and no need to break a soft mount.
@@ -1272,9 +1278,6 @@ nfs_request_try(struct nfsreq *rep)
 		rep->r_flags |= R_LOCKED;
 	rep->r_mrep = NULL;
 
-	/*
-	 * Do the client side RPC.
-	 */
 	nfsstats.rpcrequests++;
 
 	if (nmp->nm_flag & NFSMNT_FORCE) {
@@ -1282,8 +1285,11 @@ nfs_request_try(struct nfsreq *rep)
 		rep->r_flags &= ~R_LOCKED;
 		return (0);
 	}
+	rep->r_flags |= R_NEEDSXMIT;	/* in case send lock races us */
 
 	/*
+	 * Do the client side RPC.
+	 *
 	 * Chain request into list of outstanding requests. Be sure
 	 * to put it LAST so timer finds oldest requests first.  Note
 	 * that our control of R_LOCKED prevents the request from
@@ -1314,20 +1320,17 @@ nfs_request_try(struct nfsreq *rep)
 	if (nmp->nm_so) {
 		if (nmp->nm_soflags & PR_CONNREQUIRED)
 			error = nfs_sndlock(nmp, rep);
-		if (error == 0) {
+		if (error == 0 && (rep->r_flags & R_NEEDSXMIT)) {
 			m2 = m_copym(rep->r_mreq, 0, M_COPYALL, MB_WAIT);
 			error = nfs_send(nmp->nm_so, nmp->nm_nam, m2, rep);
-			if (nmp->nm_soflags & PR_CONNREQUIRED)
-				nfs_sndunlock(nmp);
 			rep->r_flags &= ~R_NEEDSXMIT;
 			if ((rep->r_flags & R_SENT) == 0) {
 				rep->r_flags |= R_SENT;
 			}
-		} else {
-			rep->r_flags |= R_NEEDSXMIT;
+			if (nmp->nm_soflags & PR_CONNREQUIRED)
+				nfs_sndunlock(nmp);
 		}
 	} else {
-		rep->r_flags |= R_NEEDSXMIT;
 		rep->r_rtt = -1;
 	}
 	if (error == EPIPE)
@@ -1720,13 +1723,28 @@ nfs_timer_callout(void *arg /* never used */)
 				continue;
 			if (req->r_flags & (R_SOFTTERM | R_LOCKED))
 				continue;
+
+			/*
+			 * Handle timeout/retry.  Be sure to process r_mrep
+			 * for async requests that completed while we had
+			 * the request locked or they will hang in the reqq
+			 * forever.
+			 */
 			req->r_flags |= R_LOCKED;
 			if (nfs_sigintr(nmp, req, req->r_td)) {
 				nfs_softterm(req, 1);
+				req->r_flags &= ~R_LOCKED;
 			} else {
 				nfs_timer_req(req);
+				if (req->r_flags & R_ASYNC) {
+					if (req->r_mrep)
+						nfs_hardterm(req, 1);
+					req->r_flags &= ~R_LOCKED;
+					nfssvc_iod_reader_wakeup(nmp);
+				} else {
+					req->r_flags &= ~R_LOCKED;
+				}
 			}
-			req->r_flags &= ~R_LOCKED;
 			if (req->r_flags & R_WANTED) {
 				req->r_flags &= ~R_WANTED;
 				wakeup(req);

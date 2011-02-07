@@ -282,8 +282,6 @@ struct ath_hal_private {
 	uint16_t	ah_maxPowerLevel;	/* calculated max tx power */
 	u_int		ah_tpScale;		/* tx power scale factor */
 	uint32_t	ah_11nCompat;		/* 11n compat controls */
-	uint8_t		ah_txtrig_level;	/* current Tx trigger level */
-	uint8_t		ah_max_txtrig_level;	/* max tx trigger level */
 
 	/*
 	 * State for regulatory domain handling.
@@ -337,6 +335,8 @@ struct ath_hal_private {
 	(_ah)->ah_configPCIE(_ah, _reset)
 #define	ath_hal_disablePCIE(_ah) \
 	(_ah)->ah_disablePCIE(_ah)
+#define	ath_hal_setInterrupts(_ah, _mask) \
+	(_ah)->ah_setInterrupts(_ah, _mask)
 
 #define	ath_hal_eepromDetach(_ah) do {				\
 	if (AH_PRIVATE(_ah)->ah_eepromDetach != AH_NULL)	\
@@ -758,7 +758,7 @@ typedef struct {
 
 #define HAL_INI_WRITE_ARRAY(ah, regArray, col, regWr) do {             	\
 	int r;								\
-	for (r = 0; r < N(regArray); r++) {				\
+	for (r = 0; r < NELEM(regArray); r++) {				\
 		OS_REG_WRITE(ah, (regArray)[r][0], (regArray)[r][col]);	\
 		DMA_YIELD(regWr);					\
 	}								\
@@ -766,7 +766,7 @@ typedef struct {
 
 #define HAL_INI_WRITE_BANK(ah, regArray, bankData, regWr) do {		\
 	int r;								\
-	for (r = 0; r < N(regArray); r++) {				\
+	for (r = 0; r < NELEM(regArray); r++) {				\
 		OS_REG_WRITE(ah, (regArray)[r][0], (bankData)[r]);	\
 		DMA_YIELD(regWr);					\
 	}								\

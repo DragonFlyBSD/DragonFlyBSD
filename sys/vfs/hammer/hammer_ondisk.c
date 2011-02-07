@@ -503,6 +503,33 @@ hammer_mountcheck_volumes(struct hammer_mount *hmp)
  * through to the big-block allocator, or routines like hammer_del_buffers()
  * will not be able to locate all potentially conflicting buffers.
  */
+
+/*
+ * Helper function returns whether a zone offset can be directly translated
+ * to a raw buffer index or not.  Really only the volume and undo zones
+ * can't be directly translated.  Volumes are special-cased and undo zones
+ * shouldn't be aliased accessed in read-only mode.
+ *
+ * This function is ONLY used to detect aliased zones during a read-only
+ * mount.
+ */
+static __inline int
+hammer_direct_zone(hammer_off_t buf_offset)
+{
+	switch(HAMMER_ZONE_DECODE(buf_offset)) {
+	case HAMMER_ZONE_RAW_BUFFER_INDEX:
+	case HAMMER_ZONE_FREEMAP_INDEX:
+	case HAMMER_ZONE_BTREE_INDEX:
+	case HAMMER_ZONE_META_INDEX:
+	case HAMMER_ZONE_LARGE_DATA_INDEX:
+	case HAMMER_ZONE_SMALL_DATA_INDEX:
+		return(1);
+	default:
+		return(0);
+	}
+	/* NOT REACHED */
+}
+
 hammer_buffer_t
 hammer_get_buffer(hammer_mount_t hmp, hammer_off_t buf_offset,
 		  int bytes, int isnew, int *errorp)
@@ -526,6 +553,7 @@ again:
 		 * any other action.  Shortcut the operation if the
 		 * ondisk structure is valid.
 		 */
+found_aliased:
 		if (hammer_ref_interlock(&buffer->io.lock) == 0) {
 			hammer_io_advance(&buffer->io);
 			KKASSERT(buffer->ondisk);
@@ -555,17 +583,35 @@ again:
 		 * lose_list can be modified via a biodone() interrupt
 		 * so the io_token must be held.
 		 */
-		if (buffer->io.mod_list == &hmp->lose_list) {
+		if (buffer->io.mod_root == &hmp->lose_root) {
 			lwkt_gettoken(&hmp->io_token);
-			if (buffer->io.mod_list == &hmp->lose_list) {
-				TAILQ_REMOVE(buffer->io.mod_list, &buffer->io,
-					     mod_entry);
-				buffer->io.mod_list = NULL;
+			if (buffer->io.mod_root == &hmp->lose_root) {
+				RB_REMOVE(hammer_mod_rb_tree,
+					  buffer->io.mod_root, &buffer->io);
+				buffer->io.mod_root = NULL;
 				KKASSERT(buffer->io.modified == 0);
 			}
 			lwkt_reltoken(&hmp->io_token);
 		}
 		goto found;
+	} else if (hmp->ronly && hammer_direct_zone(buf_offset)) {
+		/*
+		 * If this is a read-only mount there could be an alias
+		 * in the raw-zone.  If there is we use that buffer instead.
+		 *
+		 * rw mounts will not have aliases.  Also note when going
+		 * from ro -> rw the recovered raw buffers are flushed and
+		 * reclaimed, so again there will not be any aliases once
+		 * the mount is rw.
+		 */
+		buffer = RB_LOOKUP(hammer_buf_rb_tree, &hmp->rb_bufs_root,
+				   (buf_offset & ~HAMMER_OFF_ZONE_MASK) |
+				   HAMMER_ZONE_RAW_BUFFER);
+		if (buffer) {
+			kprintf("HAMMER: recovered aliased %016jx\n",
+				(intmax_t)buf_offset);
+			goto found_aliased;
+		}
 	}
 
 	/*
@@ -921,12 +967,12 @@ hammer_ref_buffer(hammer_buffer_t buffer)
 	 *
 	 * No longer loose.  lose_list requires the io_token.
 	 */
-	if (buffer->io.mod_list == &hmp->lose_list) {
+	if (buffer->io.mod_root == &hmp->lose_root) {
 		lwkt_gettoken(&hmp->io_token);
-		if (buffer->io.mod_list == &hmp->lose_list) {
-			TAILQ_REMOVE(buffer->io.mod_list, &buffer->io,
-				     mod_entry);
-			buffer->io.mod_list = NULL;
+		if (buffer->io.mod_root == &hmp->lose_root) {
+			RB_REMOVE(hammer_mod_rb_tree,
+				  buffer->io.mod_root, &buffer->io);
+			buffer->io.mod_root = NULL;
 		}
 		lwkt_reltoken(&hmp->io_token);
 	}
@@ -1667,19 +1713,28 @@ hammer_queue_inodes_flusher(hammer_mount_t hmp, int waitfor)
  * the vnodes in case any were already flushing during the first pass,
  * and activate the flusher twice (the second time brings the UNDO FIFO's
  * start position up to the end position after the first call).
+ *
+ * If doing a lazy sync make just one pass on the vnode list, ignoring
+ * any new vnodes added to the list while the sync is in progress.
  */
 int
 hammer_sync_hmp(hammer_mount_t hmp, int waitfor)
 {
 	struct hammer_sync_info info;
+	int flags;
+
+	flags = VMSC_GETVP;
+	if (waitfor & MNT_LAZY)
+		flags |= VMSC_ONEPASS;
 
 	info.error = 0;
 	info.waitfor = MNT_NOWAIT;
-	vmntvnodescan(hmp->mp, VMSC_GETVP|VMSC_NOWAIT,
+	vmntvnodescan(hmp->mp, flags | VMSC_NOWAIT,
 		      hammer_sync_scan1, hammer_sync_scan2, &info);
-	if (info.error == 0 && waitfor == MNT_WAIT) {
+
+	if (info.error == 0 && (waitfor & MNT_WAIT)) {
 		info.waitfor = waitfor;
-		vmntvnodescan(hmp->mp, VMSC_GETVP,
+		vmntvnodescan(hmp->mp, flags,
 			      hammer_sync_scan1, hammer_sync_scan2, &info);
 	}
         if (waitfor == MNT_WAIT) {

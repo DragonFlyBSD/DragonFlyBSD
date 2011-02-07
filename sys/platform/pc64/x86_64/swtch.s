@@ -82,9 +82,6 @@
 #endif
 #include <machine/lock.h>
 
-#define CHECKNZ(expr, scratch_reg) \
-	movq expr, scratch_reg; testq scratch_reg, scratch_reg; jnz 7f; int $3; 7:
-
 #include "assym.s"
 
 #if defined(SMP)
@@ -134,11 +131,28 @@ ENTRY(cpu_heavy_switch)
 	movq	%r14,PCB_R14(%rdx)
 	movq	%r15,PCB_R15(%rdx)
 
-	movq	%rcx,%rbx			/* RBX = curthread */
-	movq	TD_LWP(%rcx),%rcx
-	movl	PCPU(cpuid), %eax
-	movq	LWP_VMSPACE(%rcx), %rcx		/* RCX = vmspace */
-	MPLOCKED btrl	%eax, VM_PMAP+PM_ACTIVE(%rcx)
+	/*
+	 * Clear the cpu bit in the pmap active mask.  The restore
+	 * function will set the bit in the pmap active mask.
+	 *
+	 * Special case: when switching between threads sharing the
+	 * same vmspace if we avoid clearing the bit we do not have
+	 * to reload %cr3 (if we clear the bit we could race page
+	 * table ops done by other threads and would have to reload
+	 * %cr3, because those ops will not know to IPI us).
+	 */
+	movq	%rcx,%rbx			/* RBX = oldthread */
+	movq	TD_LWP(%rcx),%rcx		/* RCX = oldlwp	*/
+	movq	TD_LWP(%rdi),%r13		/* R13 = newlwp */
+	movq	LWP_VMSPACE(%rcx), %rcx		/* RCX = oldvmspace */
+	testq	%r13,%r13			/* might not be a heavy */
+	jz	1f
+	cmpq	LWP_VMSPACE(%r13),%rcx		/* same vmspace? */
+	je	2f
+1:
+	movslq	PCPU(cpuid), %rax
+	MPLOCKED btrq	%rax, VM_PMAP+PM_ACTIVE(%rcx)
+2:
 
 	/*
 	 * Push the LWKT switch restore function, which resumes a heavy
@@ -205,7 +219,6 @@ ENTRY(cpu_heavy_switch)
 	movq	%rdi,%rax		/* RAX = newtd, RBX = oldtd */
 	movq	%rax,PCPU(curthread)
 	movq	TD_SP(%rax),%rsp
-	CHECKNZ((%rsp), %r9)
 	ret
 
 /*
@@ -239,9 +252,9 @@ ENTRY(cpu_exit_switch)
 	movq	TD_LWP(%rbx),%rcx
 	testq	%rcx,%rcx
 	jz	2f
-	movl	PCPU(cpuid), %eax
+	movslq	PCPU(cpuid), %rax
 	movq	LWP_VMSPACE(%rcx), %rcx		/* RCX = vmspace */
-	MPLOCKED btrl	%eax, VM_PMAP+PM_ACTIVE(%rcx)
+	MPLOCKED btrq	%rax, VM_PMAP+PM_ACTIVE(%rcx)
 2:
 	/*
 	 * Switch to the next thread.  RET into the restore function, which
@@ -254,7 +267,6 @@ ENTRY(cpu_exit_switch)
 	movq	%rdi,%rax
 	movq	%rax,PCPU(curthread)
 	movq	TD_SP(%rax),%rsp
-	CHECKNZ((%rsp), %r9)
 	ret
 
 /*
@@ -295,13 +307,22 @@ ENTRY(cpu_heavy_restore)
 	 * Tell the pmap that our cpu is using the VMSPACE now.  We cannot
 	 * safely test/reload %cr3 until after we have set the bit in the
 	 * pmap (remember, we do not hold the MP lock in the switch code).
+	 *
+	 * Also note that when switching between two lwps sharing the
+	 * same vmspace we have already avoided clearing the cpu bit
+	 * in pm_active.  If we had cleared it other cpus would not know
+	 * to IPI us and we would have to unconditionally reload %cr3.
+	 *
+	 * Also note that if the pmap is undergoing an atomic inval/mod
+	 * that is unaware that our cpu has been added to it we have to
+	 * wait for it to complete before we can continue.
 	 */
 	movq	LWP_VMSPACE(%rcx), %rcx		/* RCX = vmspace */
-	movl	PCPU(cpumask), %esi
-	MPLOCKED orl	%esi, VM_PMAP+PM_ACTIVE(%rcx)
+	movq	PCPU(cpumask), %rsi
+	MPLOCKED orq	%rsi, VM_PMAP+PM_ACTIVE(%rcx)
 #ifdef SMP
-	testl	$CPUMASK_LOCK,VM_PMAP+PM_ACTIVE(%rcx)
-	jz	1f
+	btq	$CPUMASK_BIT,VM_PMAP+PM_ACTIVE(%rcx)
+	jnc	1f
 	pushq	%rax
 	movq	%rcx,%rdi
 	call	pmap_interlock_wait		/* pmap_interlock_wait(vm) */
@@ -346,15 +367,15 @@ ENTRY(cpu_heavy_restore)
 	jnz	2f
 #endif
 
-	/* JG
-	 * Going back to the common_tss.  We may need to update TSS_ESP0
+	/*
+	 * Going back to the common_tss.  We may need to update TSS_RSP0
 	 * which sets the top of the supervisor stack when entering from
 	 * usermode.  The PCB is at the top of the stack but we need another
 	 * 16 bytes to take vm86 into account.
 	 */
-	leaq	-16(%rdx),%rbx
+	movq	%rdx,%rbx
+	/*leaq	-TF_SIZE(%rdx),%rbx*/
 	movq	%rbx, PCPU(common_tss) + TSS_RSP0
-	movq	%rbx, PCPU(rsp0)
 
 #if JG
 	cmpl	$0,PCPU(private_tss)	/* don't have to reload if      */
@@ -482,8 +503,6 @@ ENTRY(cpu_heavy_restore)
 	popq	%rbx
 	movq    %rax,%dr7
 1:
-
-	CHECKNZ((%rsp), %r9)
 	ret
 
 /*
@@ -546,7 +565,6 @@ ENTRY(savectx)
 #endif
 
 1:
-	CHECKNZ((%rsp), %r9)
 	ret
 
 /*
@@ -569,7 +587,7 @@ ENTRY(cpu_idle_restore)
 	/* cli */
 	movq	KPML4phys,%rcx
 	/* JG xor? */
-	movl	$0,%ebp
+	movq	$0,%rbp
 	/* JG push RBP? */
 	pushq	$0
 	movq	%rcx,%cr3
@@ -604,7 +622,7 @@ ENTRY(cpu_kthread_restore)
 	movq	KPML4phys,%rcx
 	movq	TD_PCB(%rax),%rdx
 	/* JG "movq $0, %rbp"? "xorq %rbp, %rbp"? */
-	movl	$0,%ebp
+	movq	$0,%rbp
 	movq	%rcx,%cr3
 	/* rax and rbx come from the switchout code */
 	andl	$~TDF_RUNNING,TD_FLAGS(%rbx)
@@ -613,7 +631,6 @@ ENTRY(cpu_kthread_restore)
 	movq	PCB_R12(%rdx),%rdi	/* argument to RBX function */
 	movq	PCB_RBX(%rdx),%rax	/* thread function */
 	/* note: top of stack return address inherited by function */
-	CHECKNZ(%rax, %r9)
 	jmp	*%rax
 
 /*
@@ -627,12 +644,9 @@ ENTRY(cpu_kthread_restore)
  *	There is a one-instruction window where curthread is the new
  *	thread but %rsp still points to the old thread's stack, but
  *	we are protected by a critical section so it is ok.
- *
- *	YYY BGL, SPL
  */
 ENTRY(cpu_lwkt_switch)
-	pushq	%rbp	/* JG note: GDB hacked to locate ebp relative to td_sp */
-	/* JG we've got more registers on x86_64 */
+	pushq	%rbp	/* JG note: GDB hacked to locate ebp rel to td_sp */
 	pushq	%rbx
 	movq	PCPU(curthread),%rbx
 	pushq	%r12
@@ -668,7 +682,6 @@ ENTRY(cpu_lwkt_switch)
 	/*
 	 * %rax contains new thread, %rbx contains old thread.
 	 */
-	CHECKNZ((%rsp), %r9)
 	ret
 
 /*

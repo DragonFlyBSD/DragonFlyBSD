@@ -25,8 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/aac/aac_ioctl.h,v 1.2.2.2 2001/09/19 19:09:11 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_ioctl.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ *	$FreeBSD: src/sys/sys/aac_ioctl.h,v 1.14 2009/10/29 17:21:41 emaste Exp $
  */
 
 #include <sys/ioccom.h>
@@ -38,8 +37,7 @@
 #define AACQ_BIO	1
 #define AACQ_READY	2
 #define AACQ_BUSY	3
-#define AACQ_COMPLETE	4
-#define AACQ_COUNT	5	/* total number of queues */
+#define AACQ_COUNT	4	/* total number of queues */
 
 struct aac_qstat {
 	u_int32_t	q_length;
@@ -73,6 +71,8 @@ union aac_statrequest {
 
 #define FSACTL_LNX_SENDFIB		CTL_CODE(FILE_DEVICE_CONTROLLER, 2050, \
 					METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSACTL_LNX_SEND_RAW_SRB		CTL_CODE(FILE_DEVICE_CONTROLLER, 2067, \
+					METHOD_BUFFERED, FILE_ANY_ACCESS)
 #define FSACTL_LNX_GET_COMM_PERF_DATA	CTL_CODE(FILE_DEVICE_CONTROLLER, 2084, \
 					METHOD_BUFFERED, FILE_ANY_ACCESS)
 #define FSACTL_LNX_OPENCLS_COMM_PERF_DATA CTL_CODE(FILE_DEVICE_CONTROLLER, \
@@ -97,6 +97,10 @@ union aac_statrequest {
 					METHOD_NEITHER, FILE_ANY_ACCESS)
 #define FSACTL_LNX_AIF_THREAD		CTL_CODE(FILE_DEVICE_CONTROLLER, 2127, \
 					METHOD_NEITHER, FILE_ANY_ACCESS)
+#define FSACTL_LNX_SEND_LARGE_FIB	CTL_CODE(FILE_DEVICE_CONTROLLER, 2138, \
+					METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define	FSACTL_LNX_GET_FEATURES		CTL_CODE(FILE_DEVICE_CONTROLLER, 2139, \
+					METHOD_BUFFERED, FILE_ANY_ACCESS)
 
 /* Why these don't follow the previous convention, I don't know */
 #define FSACTL_LNX_NULL_IO_TEST		0x43
@@ -120,6 +124,7 @@ union aac_statrequest {
  * command number.  9 is used for the odd overflow case.
  */
 #define FSACTL_SENDFIB			_IO('8', 2)
+#define FSACTL_SEND_RAW_SRB		_IO('8', 19)
 #define FSACTL_GET_COMM_PERF_DATA	_IO('8', 36)
 #define FSACTL_OPENCLS_COMM_PERF_DATA	_IO('8', 37)
 #define FSACTL_OPEN_GET_ADAPTER_FIB	_IO('8', 52)
@@ -132,6 +137,8 @@ union aac_statrequest {
 #define FSACTL_GET_PCI_INFO		_IO('8', 71)
 #define FSACTL_FORCE_DELETE_DISK	_IO('8', 72)
 #define FSACTL_AIF_THREAD		_IO('8', 79)
+#define FSACTL_SEND_LARGE_FIB		_IO('8', 90)
+#define	FSACTL_GET_FEATURES		_IO('8', 91)
 
 #define FSACTL_NULL_IO_TEST		_IO('8', 67)
 #define FSACTL_SIM_IO_TEST		_IO('8', 83)
@@ -145,7 +152,7 @@ union aac_statrequest {
 
 #define FSACTL_PROBE_CONTAINERS		_IO('9', 83)	/* Just guessing */
 
-
+#ifdef _KERNEL
 /*
  * Support for faking the "miniport" version.
  */
@@ -180,3 +187,24 @@ struct aac_query_disk {
 	char		diskDeviceName[10];
 	u_int32_t	UnMapped;
 };
+
+/* Features, asked from the tools to know if the driver
+ * supports drives >2TB
+ */
+typedef union {
+	struct {
+		u_int32_t largeLBA  : 1;	/* disk support greater 2TB */
+		u_int32_t IoctlBuf  : 1;	/* ARCIOCTL call support */
+		u_int32_t AIFSupport: 1;	/* AIF support */
+		u_int32_t JBODSupport:1;	/* fw + driver support JBOD */
+		u_int32_t fReserved : 28;
+	} fBits;
+	u_int32_t fValue;
+} featuresState;
+
+struct aac_features {
+	featuresState feat;
+	u_int32_t data[31];
+	u_int32_t reserved[32];
+} __packed;
+#endif

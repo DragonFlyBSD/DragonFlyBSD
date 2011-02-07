@@ -90,41 +90,71 @@ hammer_flusher_sync(hammer_mount_t hmp)
 }
 
 /*
- * Sync all inodes pending on the flusher - return immediately.
+ * Sync all flush groups through to close_flg - return immediately.
+ * If close_flg is NULL all flush groups are synced.
  *
- * All flush groups will be flushed.
+ * Returns the sequence number of the last closed flush group,
+ * which may be close_flg.  When syncing to the end if there
+ * are no flush groups pending we still cycle the flusher, so
+ * we return the next seq number not yet allocated.
  */
 int
 hammer_flusher_async(hammer_mount_t hmp, hammer_flush_group_t close_flg)
 {
 	hammer_flush_group_t flg;
-	int seq = hmp->flusher.next;
+	int seq;
 
-	TAILQ_FOREACH(flg, &hmp->flush_group_list, flush_entry) {
-		if (flg->running == 0)
-			++seq;
+	/*
+	 * Already closed
+	 */
+	if (close_flg && close_flg->closed)
+		return(close_flg->seq);
+
+	/*
+	 * Close flush groups until we hit the end of the list
+	 * or close_flg.
+	 */
+	while ((flg = hmp->next_flush_group) != NULL) {
+		KKASSERT(flg->closed == 0 && flg->running == 0);
 		flg->closed = 1;
+		hmp->next_flush_group = TAILQ_NEXT(flg, flush_entry);
 		if (flg == close_flg)
 			break;
 	}
+
 	if (hmp->flusher.td) {
 		if (hmp->flusher.signal++ == 0)
 			wakeup(&hmp->flusher.signal);
+		seq = flg ? flg->seq : hmp->flusher.next;
 	} else {
 		seq = hmp->flusher.done;
 	}
 	return(seq);
 }
 
+/*
+ * Flush the current/next flushable flg.  This function is typically called
+ * in a loop along with hammer_flusher_wait(hmp, returned_seq) to iterate
+ * flush groups until specific conditions are met.
+ *
+ * If a flush is currently in progress its seq is returned.
+ *
+ * If no flush is currently in progress the next available flush group
+ * will be flushed and its seq returned.
+ *
+ * If no flush groups are present a dummy seq will be allocated and
+ * returned and the flusher will be activated (e.g. to flush the
+ * undo/redo and the volume header).
+ */
 int
 hammer_flusher_async_one(hammer_mount_t hmp)
 {
+	hammer_flush_group_t flg;
 	int seq;
 
 	if (hmp->flusher.td) {
-		seq = hmp->flusher.next;
-		if (hmp->flusher.signal++ == 0)
-			wakeup(&hmp->flusher.signal);
+		flg = TAILQ_FIRST(&hmp->flush_group_list);
+		seq = hammer_flusher_async(hmp, flg);
 	} else {
 		seq = hmp->flusher.done;
 	}
@@ -139,7 +169,7 @@ void
 hammer_flusher_wait(hammer_mount_t hmp, int seq)
 {
 	while ((int)(seq - hmp->flusher.done) > 0) {
-		if (hmp->flusher.act != seq) {
+		if ((int)(seq - hmp->flusher.act) > 0) {
 			if (hmp->flusher.signal++ == 0)
 				wakeup(&hmp->flusher.signal);
 		}
@@ -226,14 +256,13 @@ hammer_flusher_master_thread(void *arg)
 
 	for (;;) {
 		/*
-		 * Do at least one flush cycle.  We may have to update the
-		 * UNDO FIFO even if no inodes are queued.
+		 * Flush all closed flgs.  If no flg's are closed we still
+		 * do at least one flush cycle as we may have to update
+		 * the UNDO FIFO even if no inodes are queued.
 		 */
 		for (;;) {
 			while (hmp->flusher.group_lock)
 				tsleep(&hmp->flusher.group_lock, 0, "hmrhld", 0);
-			hmp->flusher.act = hmp->flusher.next;
-			++hmp->flusher.next;
 			hammer_flusher_clean_loose_ios(hmp);
 			hammer_flusher_flush(hmp);
 			hmp->flusher.done = hmp->flusher.act;
@@ -287,19 +316,41 @@ hammer_flusher_flush(hammer_mount_t hmp)
 	/*
 	 * Just in-case there's a flush race on mount
 	 */
-	if (TAILQ_FIRST(&hmp->flusher.ready_list) == NULL)
+	if (TAILQ_FIRST(&hmp->flusher.ready_list) == NULL) {
 		return;
+	}
+
+	/*
+	 * Set the actively flushing sequence number.  If no flushable
+	 * groups are present allocate a dummy sequence number for the
+	 * operation.
+	 */
+	flg = TAILQ_FIRST(&hmp->flush_group_list);
+	if (flg == NULL) {
+		hmp->flusher.act = hmp->flusher.next;
+		++hmp->flusher.next;
+	} else if (flg->closed) {
+		KKASSERT(flg->running == 0);
+		flg->running = 1;
+		hmp->flusher.act = flg->seq;
+		if (hmp->fill_flush_group == flg)
+			hmp->fill_flush_group = TAILQ_NEXT(flg, flush_entry);
+	}
 
 	/*
 	 * We only do one flg but we may have to loop/retry.
+	 *
+	 * Due to various races it is possible to come across a flush
+	 * group which as not yet been closed.
 	 */
 	count = 0;
-	while ((flg = TAILQ_FIRST(&hmp->flush_group_list)) != NULL) {
+	while (flg && flg->running) {
 		++count;
 		if (hammer_debug_general & 0x0001) {
 			kprintf("hammer_flush %d ttl=%d recs=%d\n",
 				hmp->flusher.act,
-				flg->total_count, flg->refs);
+				flg->total_count,
+				flg->refs);
 		}
 		if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR)
 			break;
@@ -314,13 +365,7 @@ hammer_flusher_flush(hammer_mount_t hmp)
 		if (hammer_flusher_undo_exhausted(&hmp->flusher.trans, 3))
 			hammer_flusher_finalize(&hmp->flusher.trans, 0);
 
-		/*
-		 * Ok, we are running this flush group now (this prevents new
-		 * additions to it).
-		 */
-		flg->running = 1;
-		if (hmp->next_flush_group == flg)
-			hmp->next_flush_group = TAILQ_NEXT(flg, flush_entry);
+		KKASSERT(hmp->next_flush_group != flg);
 
 		/*
 		 * Iterate the inodes in the flg's flush_tree and assign
@@ -400,6 +445,7 @@ hammer_flusher_flush(hammer_mount_t hmp)
 			kfree(flg, hmp->m_misc);
 			break;
 		}
+		KKASSERT(TAILQ_FIRST(&hmp->flush_group_list) == flg);
 	}
 
 	/*
@@ -480,12 +526,12 @@ hammer_flusher_clean_loose_ios(hammer_mount_t hmp)
 	 *
 	 * The io_token is needed to protect the list.
 	 */
-	if ((io = TAILQ_FIRST(&hmp->lose_list)) != NULL) {
+	if ((io = RB_ROOT(&hmp->lose_root)) != NULL) {
 		lwkt_gettoken(&hmp->io_token);
-		while ((io = TAILQ_FIRST(&hmp->lose_list)) != NULL) {
-			KKASSERT(io->mod_list == &hmp->lose_list);
-			TAILQ_REMOVE(&hmp->lose_list, io, mod_entry);
-			io->mod_list = NULL;
+		while ((io = RB_ROOT(&hmp->lose_root)) != NULL) {
+			KKASSERT(io->mod_root == &hmp->lose_root);
+			RB_REMOVE(hammer_mod_rb_tree, io->mod_root, io);
+			io->mod_root = NULL;
 			hammer_ref(&io->lock);
 			buffer = (void *)io;
 			hammer_rel_buffer(buffer, 0);
@@ -612,7 +658,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 * related inode(s) getting queued to the flush group.
 	 */
 	count = 0;
-	while ((io = TAILQ_FIRST(&hmp->data_list)) != NULL) {
+	while ((io = RB_FIRST(hammer_mod_rb_tree, &hmp->data_root)) != NULL) {
 		if (io->ioerror)
 			break;
 		hammer_ref(&io->lock);
@@ -756,7 +802,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 * meta data buffers.
 	 */
 	count = 0;
-	while ((io = TAILQ_FIRST(&hmp->meta_list)) != NULL) {
+	while ((io = RB_FIRST(hammer_mod_rb_tree, &hmp->meta_root)) != NULL) {
 		if (io->ioerror)
 			break;
 		KKASSERT(io->modify_refs == 0);
@@ -848,7 +894,7 @@ hammer_flusher_flush_undos(hammer_mount_t hmp, int mode)
 	int count;
 
 	count = 0;
-	while ((io = TAILQ_FIRST(&hmp->undo_list)) != NULL) {
+	while ((io = RB_FIRST(hammer_mod_rb_tree, &hmp->undo_root)) != NULL) {
 		if (io->ioerror)
 			break;
 		hammer_ref(&io->lock);
@@ -912,10 +958,10 @@ hammer_flusher_haswork(hammer_mount_t hmp)
 	if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR)
 		return(0);
 	if (TAILQ_FIRST(&hmp->flush_group_list) ||	/* dirty inodes */
-	    TAILQ_FIRST(&hmp->volu_list) ||		/* dirty buffers */
-	    TAILQ_FIRST(&hmp->undo_list) ||
-	    TAILQ_FIRST(&hmp->data_list) ||
-	    TAILQ_FIRST(&hmp->meta_list) ||
+	    RB_ROOT(&hmp->volu_root) ||			/* dirty buffers */
+	    RB_ROOT(&hmp->undo_root) ||
+	    RB_ROOT(&hmp->data_root) ||
+	    RB_ROOT(&hmp->meta_root) ||
 	    (hmp->hflags & HMNT_UNDO_DIRTY)		/* UNDO FIFO sync */
 	) {
 		return(1);

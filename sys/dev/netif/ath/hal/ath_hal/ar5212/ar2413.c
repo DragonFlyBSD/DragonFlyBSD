@@ -31,17 +31,15 @@
 #define AH_5212_2413
 #include "ar5212/ar5212.ini"
 
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
-
 struct ar2413State {
 	RF_HAL_FUNCS	base;		/* public state, must be first */
 	uint16_t	pcdacTable[PWR_TABLE_SIZE_2413];
 
-	uint32_t	Bank1Data[N(ar5212Bank1_2413)];
-	uint32_t	Bank2Data[N(ar5212Bank2_2413)];
-	uint32_t	Bank3Data[N(ar5212Bank3_2413)];
-	uint32_t	Bank6Data[N(ar5212Bank6_2413)];
-	uint32_t	Bank7Data[N(ar5212Bank7_2413)];
+	uint32_t	Bank1Data[NELEM(ar5212Bank1_2413)];
+	uint32_t	Bank2Data[NELEM(ar5212Bank2_2413)];
+	uint32_t	Bank3Data[NELEM(ar5212Bank3_2413)];
+	uint32_t	Bank6Data[NELEM(ar5212Bank6_2413)];
+	uint32_t	Bank7Data[NELEM(ar5212Bank7_2413)];
 
 	/*
 	 * Private state for reduced stack usage.
@@ -162,7 +160,7 @@ ar2413SetRfRegs(struct ath_hal *ah,
 {
 #define	RF_BANK_SETUP(_priv, _ix, _col) do {				    \
 	int i;								    \
-	for (i = 0; i < N(ar5212Bank##_ix##_2413); i++)			    \
+	for (i = 0; i < NELEM(ar5212Bank##_ix##_2413); i++)		    \
 		(_priv)->Bank##_ix##Data[i] = ar5212Bank##_ix##_2413[i][_col];\
 } while (0)
 	struct ath_hal_5212 *ahp = AH5212(ah);

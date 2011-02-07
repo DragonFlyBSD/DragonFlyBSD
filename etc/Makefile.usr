@@ -2,6 +2,8 @@
 #
 # Provides simple targets to download and maintain /usr/src, /usr/pkgsrc etc.
 
+GITHOST?=git.dragonflybsd.org
+
 help all:
 	@echo "HELP:"
 	@echo ""
@@ -51,14 +53,15 @@ pkgsrc-create:
 	mkdir -p ${.CURDIR}/pkgsrc
 	cd ${.CURDIR}/pkgsrc && git init
 	cd ${.CURDIR}/pkgsrc && \
-		git remote add origin git://git.dragonflybsd.org/pkgsrc.git
+		git remote add origin git://${GITHOST}/pkgsrcv2.git
 	cd ${.CURDIR}/pkgsrc && git fetch origin
 	cd ${.CURDIR}/pkgsrc && git branch master origin/master
-	cd ${.CURDIR}/pkgsrc && git checkout master
+	cd ${.CURDIR}/pkgsrc && git branch pkgsrc-2010Q3 origin/pkgsrc-2010Q3
+	cd ${.CURDIR}/pkgsrc && git checkout pkgsrc-2010Q3
 	cd ${.CURDIR}/pkgsrc && git pull
 
 pkgsrc-checkout:
-	cd ${.CURDIR}/pkgsrc && git checkout master
+	cd ${.CURDIR}/pkgsrc && git checkout pkgsrc-2010Q3
 
 pkgsrc-update:
 	cd ${.CURDIR}/pkgsrc && git pull
@@ -69,7 +72,7 @@ src-create:
 	mkdir -p ${.CURDIR}/src
 	cd ${.CURDIR}/src && git init
 	cd ${.CURDIR}/src && \
-		git remote add origin git://git.dragonflybsd.org/dragonfly.git
+		git remote add origin git://${GITHOST}/dragonfly.git
 	cd ${.CURDIR}/src && git fetch origin
 	cd ${.CURDIR}/src && git branch master origin/master
 	cd ${.CURDIR}/src && git checkout master

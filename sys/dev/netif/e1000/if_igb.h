@@ -250,6 +250,7 @@
 /* Header split codes for get_buf */
 #define IGB_CLEAN_HEADER		0x01
 #define IGB_CLEAN_PAYLOAD		0x02
+#define IGB_CLEAN_INITIAL		0x04
 #define IGB_CLEAN_BOTH			(IGB_CLEAN_HEADER | IGB_CLEAN_PAYLOAD)
 
 #define IGB_LINK_ITR            2000
@@ -297,7 +298,7 @@ struct igb_queue {
 struct tx_ring {
 	struct adapter		*adapter;
 	u32			me;
-	struct spinlock		tx_spin;
+	struct lock		tx_lock;
 	char			spin_name[16];
 	struct igb_dma_alloc	txdma;
 	struct e1000_tx_desc	*tx_base;
@@ -333,7 +334,7 @@ struct rx_ring {
 	bool			lro_enabled;
 	bool			hdr_split;
 	bool			discard;
-	struct spinlock		rx_spin;
+	struct lock		rx_lock;
 	char			spin_name[16];
 	u32			last_cleaned;
 	u32			next_to_check;
@@ -384,7 +385,7 @@ struct adapter {
 	int		if_flags;
 	int		max_frame_size;
 	int		min_frame_size;
-	struct spinlock	core_spin;
+	struct lock	core_lock;
 	int		igb_insert_vlan_header;
 	struct task     rxtx_task;
 	struct taskqueue *tq;	/* adapter task queue */
@@ -479,21 +480,26 @@ struct igb_rx_buf {
 	bus_dmamap_t	pack_map;	/* bus_dma map for packet */
 };
 
-#define	IGB_CORE_LOCK_INIT(_sc, _name)  spin_init(&(_sc)->core_spin)
-#define	IGB_CORE_LOCK_DESTROY(_sc)	spin_uninit(&(_sc)->core_spin)
-#define	IGB_CORE_LOCK(_sc)		spin_lock(&(_sc)->core_spin)
-#define	IGB_CORE_UNLOCK(_sc)		spin_unlock(&(_sc)->core_spin)
+#define	IGB_CORE_LOCK_INIT(_sc, _name)  lockinit(&(_sc)->core_lock, \
+							"igb", 0, 0)
+#define	IGB_CORE_LOCK_DESTROY(_sc)	lockuninit(&(_sc)->core_lock)
+#define	IGB_CORE_LOCK(_sc)		lockmgr(&(_sc)->core_lock, LK_EXCLUSIVE)
+#define	IGB_CORE_UNLOCK(_sc)		lockmgr(&(_sc)->core_lock, LK_RELEASE)
 #define	IGB_CORE_LOCK_ASSERT(_sc) 	
 
-#define	IGB_TX_LOCK_DESTROY(_sc)	spin_uninit(&(_sc)->tx_spin)
-#define	IGB_TX_LOCK(_sc)		spin_lock(&(_sc)->tx_spin)
-#define	IGB_TX_UNLOCK(_sc)		spin_unlock(&(_sc)->tx_spin)
-#define	IGB_TX_TRYLOCK(_sc)		spin_trylock(&(_sc)->tx_spin)
+#define	IGB_TX_LOCK_INIT(_sc)		lockinit(&(_sc)->tx_lock, \
+							"igbtx", 0, 0)
+#define	IGB_TX_LOCK_DESTROY(_sc)	lockuninit(&(_sc)->tx_lock)
+#define	IGB_TX_LOCK(_sc)		lockmgr(&(_sc)->tx_lock, LK_EXCLUSIVE)
+#define	IGB_TX_UNLOCK(_sc)		lockmgr(&(_sc)->tx_lock, LK_RELEASE)
+#define	IGB_TX_TRYLOCK(_sc)		lockmgr(&(_sc)->tx_lock, LK_EXCLUSIVE|LK_NOWAIT)
 #define	IGB_TX_LOCK_ASSERT(_sc)		
 
-#define	IGB_RX_LOCK_DESTROY(_sc)	spin_uninit(&(_sc)->rx_spin)
-#define	IGB_RX_LOCK(_sc)		spin_lock(&(_sc)->rx_spin)
-#define	IGB_RX_UNLOCK(_sc)		spin_unlock(&(_sc)->rx_spin)
+#define	IGB_RX_LOCK_INIT(_sc)		lockinit(&(_sc)->rx_lock, \
+							"igbrx", 0, 0)
+#define	IGB_RX_LOCK_DESTROY(_sc)	lockuninit(&(_sc)->rx_lock)
+#define	IGB_RX_LOCK(_sc)		lockmgr(&(_sc)->rx_lock, LK_EXCLUSIVE)
+#define	IGB_RX_UNLOCK(_sc)		lockmgr(&(_sc)->rx_lock, LK_RELEASE)
 #define	IGB_TX_LOCK_ASSERT(_sc)		
 
 #endif /* _IGB_H_DEFINED_ */

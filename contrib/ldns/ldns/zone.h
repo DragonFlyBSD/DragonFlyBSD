@@ -28,6 +28,10 @@
 #include <ldns/rr.h>
 #include <ldns/error.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** 
  * DNS Zone
  *
@@ -163,5 +167,9 @@ void ldns_zone_deep_free(ldns_zone *zone);
  * \param[in] zone the zone to sort
  */
 void ldns_zone_sort(ldns_zone *zone);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LDNS_ZONE_H */

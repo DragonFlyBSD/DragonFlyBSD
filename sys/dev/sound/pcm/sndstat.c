@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sndstat.c,v 1.20.2.2 2005/12/30 19:55:54 netchild Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.13 2008/01/06 16:55:51 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -33,7 +32,6 @@
 #include <sys/lock.h>
 #endif
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.13 2008/01/06 16:55:51 swildner Exp $");
 
 #define	SS_TYPE_MODULE		0
 #define	SS_TYPE_FIRST		1
@@ -47,7 +45,7 @@ static d_close_t sndstat_close;
 static d_read_t sndstat_read;
 
 static struct dev_ops sndstat_cdevsw = {
-	{ "sndstat", SND_CDEV_MAJOR, 0 },
+	{ "sndstat", 0, 0 },
 	/* .d_flags =	D_NEEDGIANT, */
 	.d_open =	sndstat_open,
 	.d_close =	sndstat_close,

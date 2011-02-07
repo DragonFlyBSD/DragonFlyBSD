@@ -892,8 +892,10 @@ main(int argc, char *argv[])
     }
     else if (gstate->topn > gstate->max_topn)
     {
+#if 0
 	message_error(" This terminal can only display %d processes",
 		      gstate->max_topn);
+#endif
     }
 
 #ifdef ENABLE_COLOR

@@ -1,0 +1,112 @@
+.\"
+.\" Copyright (c) 2010
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd October 22, 2010
+.Dt CRYPTTAB 5
+.Os
+.Sh NAME
+.Nm crypttab
+.Nd encrypted disk device table
+.Sh DESCRIPTION
+The
+.Nm
+file contains a list of the encrypted disk devices of the system. Each
+encrypted volume is described on a separate line; fields on each line are
+separated by tabs or spaces.
+.Pp
+The first field,
+.Pq Fa name ,
+contains the name of the resultant crypto volume device, which will
+be a node in
+.Pa /dev/mapper
+with the given
+.Pa name .
+.Pp
+The second field,
+.Pq Fa device ,
+is the underlying device on which the crypto volume resides and must be
+a full device path to a node in
+.Pa /dev .
+.Pp
+The third field,
+.Pq Fa keyfile ,
+is either the value
+.Pa none
+or the full path on the file system to a keyfile to unlock the crypto
+volume.
+If
+.Pa none
+is specified, the system will prompt for a password during the boot
+sequence.
+.Pp
+The fourth field,
+.Pq Fa options ,
+is currently unused on
+.Dx
+and should be either omitted or set to
+.Pa none .
+.Pp
+Note that the
+.Nm
+file on
+.Dx
+currently only supports LUKS volumes and not raw
+.Xr cryptsetup 8
+volumes.
+.Sh FILES
+.Bl -tag -width ".Pa /etc/crypttab" -compact
+.It Pa /etc/crypttab
+The
+.Nm
+file resides in
+.Pa /etc .
+.El
+.Sh EXAMPLES
+The following line specifies a crypto volume without a keyfile, so
+that a password will be prompted during the boot sequence. Upon
+successful entry of the password the device
+.Pa /dev/mapper/vol1
+will be created.
+.Pp
+.Dl "vol1        /dev/da0s1b        none        none"
+.Pp
+The next example is as the one before but using a keyfile on
+.Pa /boot
+instead of an interactive password prompt.
+.Pp
+.Dl "vol1        /dev/da0s1b        /boot/keyfile.0      none"
+.Sh SEE ALSO
+.Xr cryptsetup 8
+.Sh HISTORY
+The
+.Nm
+file format appeared in
+.Dx 2.9 .

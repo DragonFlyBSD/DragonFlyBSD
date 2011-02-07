@@ -22,25 +22,85 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/twe.4,v 1.1.2.7 2001/07/21 09:16:47 schweikh Exp $
-.\" $DragonFly: src/share/man/man4/twe.4,v 1.3 2006/02/17 19:37:09 swildner Exp $
+.\" $FreeBSD: src/share/man/man4/twe.4,v 1.17 2006/05/20 09:39:28 brueffer Exp $
 .\"
-.Dd April 10, 2000
+.Dd December 31, 2010
 .Dt TWE 4
 .Os
 .Sh NAME
 .Nm twe
-.Nd 3ware Escalade ATA RAID adapter driver
+.Nd 3ware 5000/6000/7000/8000 series PATA/SATA RAID adapter driver
 .Sh SYNOPSIS
-.Cd device pci
-.Cd device twe
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device pci"
+.Cd "device twe"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+twe_load="YES"
+.Ed
 .Sh DESCRIPTION
 The
 .Nm
-driver provides support for the Escalade 3W-5x00 and 3W-6x00 series
-of ATA RAID controllers.
-These devices support 2, 4 or 8 ATA disk drives
+driver provides support for AMCC's 3ware 5000/6000/7000/8000 series
+PATA/SATA RAID adapters.
+These adapters were formerly known as
+.Dq 3ware Escalade .
+.Pp
+These devices support 2, 4, 8, or 12 ATA disk drives
 and provide RAID0 (striping) and RAID1 (mirroring) functionality.
+.Sh HARDWARE
+The
+.Nm
+driver supports the following PATA/SATA RAID
+controllers:
+.Pp
+.Bl -bullet -compact
+.It
+AMCC's 3ware 5000 series
+.It
+AMCC's 3ware 6000 series
+.It
+AMCC's 3ware 7000-2
+.It
+AMCC's 3ware 7006-2
+.It
+AMCC's 3ware 7500-4LP
+.It
+AMCC's 3ware 7500-8
+.It
+AMCC's 3ware 7500-12
+.It
+AMCC's 3ware 7506-4LP
+.It
+AMCC's 3ware 7506-8
+.It
+AMCC's 3ware 7506-12
+.It
+AMCC's 3ware 8006-2LP
+.It
+AMCC's 3ware 8500-4LP
+.It
+AMCC's 3ware 8500-8
+.It
+AMCC's 3ware 8500-12
+.It
+AMCC's 3ware 8506-4LP
+.It
+AMCC's 3ware 8506-8
+.It
+AMCC's 3ware 8506-8MI
+.It
+AMCC's 3ware 8506-12
+.It
+AMCC's 3ware 8506-12MI
+.El
 .Sh DIAGNOSTICS
 .Ss Controller initialisation phase
 .Bl -diag
@@ -87,7 +147,7 @@ Fetching the list of attached units failed; initialisation has failed.
 .It twe%d: device_add_child failed
 .It twe%d: bus_generic_attach returned %d
 .Pp
-Creation of the disk devices failed, either due to communications
+Creation of the disk devices failed, either due to communication
 problems with the adapter or due to resource shortage;
 attachment of one or more units may have been aborted.
 .El
@@ -193,12 +253,23 @@ No further I/O will be handled.
 The controller was successfully reset,
 and outstanding commands were restarted.
 .El
+.Sh SEE ALSO
+.Xr twa 4 ,
+.Xr tws 4
 .Sh AUTHORS
+.An -nosplit
 The
 .Nm
-driver and manpage were written by
+driver and manual page were written by
 .An Michael Smith
 .Aq msmith@FreeBSD.org .
+.Pp
+Extensive work done on the driver by
+.An Vinod Kashyap
+.Aq vkashyap@FreeBSD.org
+and
+.An Paul Saab
+.Aq ps@FreeBSD.org .
 .Sh BUGS
 The controller cannot handle I/O transfers
 that are not aligned to a 512-byte boundary.

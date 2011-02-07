@@ -96,6 +96,10 @@
 #define	BUS_DMA_ALIGNED		0x0200	/* no bpage should be allocated due to
 					 * alignment requirement; all to-be-
 					 * loaded memory is properly aligned */
+#define BUS_DMA_PRIVBZONE	0x0400	/* need private bounce zone */
+#define BUS_DMA_ALLOCALL	0x0800	/* allocate all needed resources */
+#define BUS_DMA_PROTECTED	0x1000	/* all busdma functions are already
+					 * protected */
 
 /* Forwards needed by prototypes below. */
 struct mbuf;

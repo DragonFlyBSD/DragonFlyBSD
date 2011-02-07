@@ -38,7 +38,7 @@
  * Size of APIC ID list.
  * Also used a MAX size of various other arrays.
  */
-#define NAPICID		16
+#define NAPICID		256
 
 /* these don't really belong in here... */
 enum busTypes {
@@ -59,7 +59,7 @@ enum busTypes {
  */
 #define CPU_TO_ID(CPU)	(cpu_num_to_apic_id[CPU])
 #define ID_TO_CPU(ID)	(apic_id_to_logical[ID])
-#ifdef APIC_IO
+#ifdef SMP /* APIC-IO */
 #define IO_TO_ID(IO)	(io_num_to_apic_id[IO])
 #define ID_TO_IO(ID)	(apic_id_to_logical[ID])
 #endif
@@ -78,5 +78,7 @@ all_but_self_ipi(int vector)
 }
 
 #endif
+
+void	lapic_init(vm_offset_t /* XXX should be vm_paddr_t */);
 
 #endif /* _MACHINE_MPAPIC_H */

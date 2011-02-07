@@ -28,6 +28,9 @@
 #ifndef _SYS_TIME_H_
 #include <sys/time.h>   	/* struct timeval */
 #endif
+#ifndef _SYS_LOCK_H
+#include <sys/lock.h>
+#endif
 #ifndef _SYS_SPINLOCK_H_
 #include <sys/spinlock.h>
 #endif
@@ -104,39 +107,32 @@ typedef struct lwkt_token {
     struct lwkt_tokref	*t_ref;		/* Owning ref or NULL */
     intptr_t		t_flags;	/* MP lock required */
     long		t_collisions;	/* Collision counter */
+    cpumask_t		t_collmask;	/* Collision cpu mask for resched */
     const char		*t_desc;	/* Descriptive name */
 } lwkt_token;
 
-#define LWKT_TOKEN_MPSAFE	0x0001
-
 /*
  * Static initialization for a lwkt_token.
- *	UP - Not MPSAFE (full MP lock will also be acquired)
- *	MP - Is MPSAFE  (only the token will be acquired)
  */
-#define LWKT_TOKEN_UP_INITIALIZER(name)	\
+#define LWKT_TOKEN_INITIALIZER(name)	\
 {					\
 	.t_ref = NULL,			\
 	.t_flags = 0,			\
 	.t_collisions = 0,		\
-	.t_desc = #name			\
-}
-
-#define LWKT_TOKEN_MP_INITIALIZER(name)	\
-{					\
-	.t_ref = NULL,			\
-	.t_flags = LWKT_TOKEN_MPSAFE,	\
-	.t_collisions = 0,		\
+	.t_collmask = 0,		\
 	.t_desc = #name			\
 }
 
 /*
  * Assert that a particular token is held
  */
+#define LWKT_TOKEN_HELD(tok)		_lwkt_token_held(tok, curthread)
+
 #define ASSERT_LWKT_TOKEN_HELD(tok)	\
-	KKASSERT((tok)->t_ref && (tok)->t_ref->tr_owner == curthread)
+	KKASSERT(LWKT_TOKEN_HELD(tok))
+
 #define ASSERT_NO_TOKENS_HELD(td)	\
-	KKASSERT((td)->td_toks_stop == &td->toks_array[0])
+	KKASSERT((td)->td_toks_stop == &td->td_toks_array[0])
 
 /*
  * Assert that a particular token is held and we are in a hard
@@ -200,17 +196,13 @@ typedef struct lwkt_ipiq {
  * CPU Synchronization structure.  See lwkt_cpusync_start() and
  * lwkt_cpusync_finish() for more information.
  */
-typedef void (*cpusync_func_t)(lwkt_cpusync_t poll);
-typedef void (*cpusync_func2_t)(void *data);
+typedef void (*cpusync_func_t)(void *arg);
 
 struct lwkt_cpusync {
-    cpusync_func_t cs_run_func;		/* run (tandem w/ acquire) */
-    cpusync_func_t cs_fin1_func;	/* fin1 (synchronized) */
-    cpusync_func2_t cs_fin2_func;	/* fin2 (tandem w/ release) */
-    void	*cs_data;
-    int		cs_maxcount;
-    volatile int cs_count;
-    cpumask_t	cs_mask;
+    cpumask_t	cs_mask;		/* cpus running the sync */
+    cpumask_t	cs_mack;		/* mask acknowledge */
+    cpusync_func_t cs_func;		/* function to execute */
+    void	*cs_data;		/* function data */
 };
 
 /*
@@ -269,18 +261,14 @@ struct thread {
     void	*td_dsched_priv1;	/* priv data for I/O schedulers */
     int		td_refs;	/* hold position in gd_tdallq / hold free */
     int		td_nest_count;	/* prevent splz nesting */
+    int		td_unused01[2];	/* for future fields */
 #ifdef SMP
-    int		td_mpcount;	/* MP lock held (count) */
-    int		td_xpcount;	/* MP lock held inherited (count) */
     int		td_cscount;	/* cpu synchronization master */
-    int		td_unused02[4];	/* for future fields */
 #else
-    int		td_mpcount_unused;	/* filler so size matches */
-    int		td_xpcount_unused;
     int		td_cscount_unused;
-    int		td_unused02[4];
 #endif
-    int		td_unused03[4];		/* for future fields */
+    int		td_unused02[4];	/* for future fields */
+    int		td_unused03[4];	/* for future fields */
     struct iosched_data td_iosdata;	/* Dynamic I/O scheduling data */
     struct timeval td_start;	/* start time for a thread/process */
     char	td_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
@@ -300,6 +288,19 @@ struct thread {
     int		td_in_crit_report;	
 #endif
     struct md_thread td_mach;
+#ifdef DEBUG_LOCKS
+#define SPINLOCK_DEBUG_ARRAY_SIZE	32
+   int 	td_spinlock_stack_id[SPINLOCK_DEBUG_ARRAY_SIZE];
+   struct spinlock *td_spinlock_stack[SPINLOCK_DEBUG_ARRAY_SIZE];
+   void 	*td_spinlock_caller_pc[SPINLOCK_DEBUG_ARRAY_SIZE];
+
+    /*
+     * Track lockmgr locks held; lk->lk_filename:lk->lk_lineno is the holder
+     */
+#define LOCKMGR_DEBUG_ARRAY_SIZE	8
+    int		td_lockmgr_stack_id[LOCKMGR_DEBUG_ARRAY_SIZE];
+    struct lock	*td_lockmgr_stack[LOCKMGR_DEBUG_ARRAY_SIZE];
+#endif
 };
 
 #define td_toks_base		td_toks_array[0]
@@ -329,7 +330,7 @@ struct thread {
 #define TDF_RUNQ		0x0002	/* on an LWKT run queue */
 #define TDF_PREEMPT_LOCK	0x0004	/* I have been preempted */
 #define TDF_PREEMPT_DONE	0x0008	/* acknowledge preemption complete */
-#define TDF_IDLE_NOHLT		0x0010	/* we need to spin */
+#define TDF_UNUSED00000010	0x0010
 #define TDF_MIGRATING		0x0020	/* thread is being migrated */
 #define TDF_SINTR		0x0040	/* interruptability hint for 'ps' */
 #define TDF_TSLEEPQ		0x0080	/* on a tsleep wait queue */
@@ -403,6 +404,7 @@ struct thread {
 /*
  * Global tokens
  */
+extern struct lwkt_token mp_token;
 extern struct lwkt_token pmap_token;
 extern struct lwkt_token dev_token;
 extern struct lwkt_token vm_token;
@@ -444,10 +446,11 @@ extern void lwkt_gettoken_hard(lwkt_token_t);
 extern int  lwkt_trytoken(lwkt_token_t);
 extern void lwkt_reltoken(lwkt_token_t);
 extern void lwkt_reltoken_hard(lwkt_token_t);
-extern int  lwkt_getalltokens(thread_t, const char **, const void **);
+extern int  lwkt_cnttoken(lwkt_token_t, thread_t);
+extern int  lwkt_getalltokens(thread_t);
 extern void lwkt_relalltokens(thread_t);
 extern void lwkt_drain_token_requests(void);
-extern void lwkt_token_init(lwkt_token_t, int, const char *);
+extern void lwkt_token_init(lwkt_token_t, const char *);
 extern void lwkt_token_uninit(lwkt_token_t);
 
 extern void lwkt_token_pool_init(void);
@@ -486,11 +489,10 @@ extern void lwkt_synchronize_ipiqs(const char *);
 
 #endif /* SMP */
 
+/* lwkt_cpusync_init() - inline function in sys/thread2.h */
 extern void lwkt_cpusync_simple(cpumask_t, cpusync_func_t, void *);
-extern void lwkt_cpusync_fastdata(cpumask_t, cpusync_func2_t, void *);
-extern void lwkt_cpusync_start(cpumask_t, lwkt_cpusync_t);
-extern void lwkt_cpusync_add(cpumask_t, lwkt_cpusync_t);
-extern void lwkt_cpusync_finish(lwkt_cpusync_t);
+extern void lwkt_cpusync_interlock(lwkt_cpusync_t);
+extern void lwkt_cpusync_deinterlock(lwkt_cpusync_t);
 
 extern void crit_panic(void) __dead2;
 extern struct lwp *lwkt_preempted_proc(void);

@@ -48,6 +48,7 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/rman.h>
+#include <sys/interrupt.h>
 
 #include <machine/vmparam.h>
 #include <vm/vm.h>
@@ -57,7 +58,6 @@
 #include <machine/nexusvar.h>
 #include <machine/smp.h>
 #include <machine_base/apic/mpapic.h>
-#include <machine_base/isa/intr_machdep.h>
 
 #define I386_BUS_SPACE_IO       0       /* space is i/o space */
 #define I386_BUS_SPACE_MEM      1       /* space is mem space */
@@ -154,18 +154,22 @@ nexus_probe(device_t dev)
 	irq_rman.rm_start = 0;
 	irq_rman.rm_type = RMAN_ARRAY;
 	irq_rman.rm_descr = "Interrupt request lines";
-#ifdef APIC_IO
+#ifdef SMP /* APIC-IO */
+if (apic_io_enable) {
 	irq_rman.rm_end = APIC_INTMAPSIZE - 1;
 	if (rman_init(&irq_rman)
 	    || rman_manage_region(&irq_rman,
 				  irq_rman.rm_start, irq_rman.rm_end))
 		panic("nexus_probe irq_rman");
-#else
+} else {
+#endif
 	irq_rman.rm_end = 15;
 	if (rman_init(&irq_rman)
 	    || rman_manage_region(&irq_rman, irq_rman.rm_start, 1)
 	    || rman_manage_region(&irq_rman, 3, irq_rman.rm_end))
 		panic("nexus_probe irq_rman");
+#ifdef SMP /* APIC-IO */
+}
 #endif
 
 	/*
@@ -552,42 +556,5 @@ nexus_delete_resource(device_t dev, device_t child, int type, int rid)
 	struct resource_list	*rl = &ndev->nx_resources;
 
 	resource_list_delete(rl, type, rid);
-}
-
-/*
- * Temporary Debugging
- */
-
-static void PCHAR_(int, void * __unused);
- 
-int
-kprintf0(const char *fmt, ...)
-{
-	return 0;
-        __va_list ap;
-        int retval;
- 
-        __va_start(ap, fmt);
-        retval = kvcprintf(fmt, PCHAR_, NULL, 10, ap);
-        __va_end(ap);
-        return (retval);
-}
-
-static void
-PCHAR_(int c, void *dummy __unused)
-{
-        const int COMC_TXWAIT = 0x40000;
-        const int COMPORT = 0x3f8;
-        const int LSR_TXRDY = 0x20;
-        const int com_lsr = 5;
-        const int com_data = 0;
-    int wait;
-
-    for (wait = COMC_TXWAIT; wait > 0; wait--) {
-        if (inb(COMPORT + com_lsr) & LSR_TXRDY) {
-            outb(COMPORT + com_data, (u_char)c);
-            break;
-        }
-    }
 }
 

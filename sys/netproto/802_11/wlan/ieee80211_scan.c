@@ -479,7 +479,7 @@ ieee80211_check_scan(struct ieee80211vap *vap, int flags,
 	scan = ieee80211_scanner_get(vap->iv_opmode);
 	if (scan == NULL) {
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_SCAN,
-		    "%s: no scanner support for %s mode\n",
+		    "%s: no scanner support for %d mode\n",
 		    __func__, vap->iv_opmode);
 		/* XXX stat */
 		return 0;
@@ -575,7 +575,7 @@ ieee80211_bg_scan(struct ieee80211vap *vap, int flags)
 	scan = ieee80211_scanner_get(vap->iv_opmode);
 	if (scan == NULL) {
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_SCAN,
-		    "%s: no scanner support for %s mode\n",
+		    "%s: no scanner support for %d mode\n",
 		    __func__, vap->iv_opmode);
 		/* XXX stat */
 		return 0;
@@ -592,7 +592,7 @@ ieee80211_bg_scan(struct ieee80211vap *vap, int flags)
 		duration = IEEE80211_SCAN_OFFCHANNEL;
 
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_SCAN,
-		    "%s: %s scan, ticks %u duration %lu\n", __func__,
+		    "%s: %s scan, ticks %u duration %u\n", __func__,
 		    ss->ss_flags & IEEE80211_SCAN_ACTIVE ? "active" : "passive",
 		    ticks, duration);
 
@@ -1207,7 +1207,7 @@ ieee80211_scan_pickchannel(struct ieee80211com *ic, int flags)
 	if (ss->ss_ops->scan_pickchan == NULL) {
 		IEEE80211_DPRINTF(ss->ss_vap, IEEE80211_MSG_SCAN,
 		    "%s: scan module does not support picking a channel, "
-		    "opmode %s\n", __func__, ss->ss_vap->iv_opmode);
+		    "opmode %d\n", __func__, ss->ss_vap->iv_opmode);
 		return NULL;
 	}
 	return ss->ss_ops->scan_pickchan(ss, flags);

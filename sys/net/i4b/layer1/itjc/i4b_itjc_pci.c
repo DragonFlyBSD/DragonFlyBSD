@@ -34,14 +34,12 @@
  *	----------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.1.2.1 2001/08/10 14:08:39 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.17 2006/12/22 23:44:56 swildner Exp $
  *
  *      last edit-date: [Thu Jan 11 11:29:38 2001]
  *
  *---------------------------------------------------------------------------*/
 
 #include "use_itjc.h"
-#include "use_pci.h"
 #include "opt_i4b.h"
 
 #if (NITJC > 0)

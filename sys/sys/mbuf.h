@@ -69,9 +69,9 @@
 
 /*
  * Macros for type conversion:
- * mtod(m, t)	-- Convert mbuf pointer to data pointer of correct type.
- * mtocl(x) -	convert pointer within cluster to cluster index #
- * cltom(x) -	convert cluster # to ptr to beginning of cluster
+ * mtod(m, t)		-- Convert mbuf pointer to data pointer of correct type.
+ * mtodoff(m, t, off)	-- Convert mbuf pointer at the specified offset to data
+ *			   pointer of correct type.
  */
 #define	mtod(m, t)		((t)((m)->m_data))
 #define	mtodoff(m, t, off)	((t)((m)->m_data + (off)))
@@ -96,6 +96,7 @@ struct m_hdr {
 /* pf stuff */
 struct pkthdr_pf {
 	void            *hdr;           /* saved hdr pos in mbuf, for ECN */
+	void		*statekey;	/* pf stackside statekey */
 	u_int            rtableid;      /* alternate routing table id */
 	u_int32_t        qid;           /* queue id */
 	u_int16_t        tag;           /* tag id */
@@ -107,6 +108,15 @@ struct pkthdr_pf {
 	uint8_t		unused02;
 	uint8_t		unused03;
 };
+
+/* pkthdr_pf.flags */
+#define	PF_TAG_GENERATED		0x01
+#define	PF_TAG_FRAGCACHE		0x02
+#define	PF_TAG_TRANSLATE_LOCALHOST	0x04
+#define	PF_TAG_DIVERTED			0x08
+#define	PF_TAG_DIVERTED_PACKET		0x10
+#define	PF_TAG_REROUTE			0x20
+
 
 /*
  * Packet tag structure (see below for details).
@@ -633,6 +643,9 @@ m_getb(int len, int how, int type, int flags)
 #define	PACKET_TAG_CARP                         28 /* CARP info */
 /* struct pf_mtag */
 #define PACKET_TAG_PF				29 /* PF info */
+
+#define PACKET_TAG_PF_DIVERT			0x0200 /* pf(4) diverted packet */
+	
 
 /* Packet tag routines */
 struct	m_tag 	*m_tag_alloc(u_int32_t, int, int, int);

@@ -44,7 +44,6 @@ ldns_send(ldns_pkt **result_packet, ldns_resolver *r, const ldns_pkt *query_pkt)
 		tsig_mac = ldns_rr_rdf(ldns_pkt_tsig(query_pkt), 3);
 	}
 
-
 	if (!query_pkt ||
 	    ldns_pkt2buffer_wire(qb, query_pkt) != LDNS_STATUS_OK) {
 		result = LDNS_STATUS_ERR;
@@ -53,7 +52,7 @@ ldns_send(ldns_pkt **result_packet, ldns_resolver *r, const ldns_pkt *query_pkt)
 	}
 
 	ldns_buffer_free(qb);
-	
+
 	return result;
 }
 
@@ -97,7 +96,6 @@ ldns_send_buffer(ldns_pkt **result, ldns_resolver *r, ldns_buffer *qb, ldns_rdf 
 			/* not reachable nameserver! */
 			continue;
 		}
-		all_servers_rtt_inf = false;
 
 		/* maybe verbosity setting?
 		printf("Sending to ");
@@ -106,16 +104,20 @@ ldns_send_buffer(ldns_pkt **result, ldns_resolver *r, ldns_buffer *qb, ldns_rdf 
 		*/
 		ns = ldns_rdf2native_sockaddr_storage(ns_array[i],
 				ldns_resolver_port(r), &ns_len);
-		
-		if ((ns->ss_family == AF_INET) && 
+
+		if ((ns->ss_family == AF_INET) &&
 				(ldns_resolver_ip6(r) == LDNS_RESOLV_INET6)) {
+			/* not reachable */
 			continue;
 		}
 
 		if ((ns->ss_family == AF_INET6) &&
 				 (ldns_resolver_ip6(r) == LDNS_RESOLV_INET)) {
+			/* not reachable */
 			continue;
 		}
+
+		all_servers_rtt_inf = false;
 
 		gettimeofday(&tv_s, NULL);
 
@@ -210,7 +212,7 @@ ldns_send_buffer(ldns_pkt **result, ldns_resolver *r, ldns_buffer *qb, ldns_rdf 
 #else
 	(void)tsig_mac;
 #endif /* HAVE_SSL */
-	
+
 	LDNS_FREE(reply_bytes);
 	if (result) {
 		*result = reply;
@@ -281,7 +283,7 @@ ldns_sock_wait(int sockfd, struct timeval timeout, int write)
 }
 
 ldns_status
-ldns_udp_send(uint8_t **result, ldns_buffer *qbin, const struct sockaddr_storage *to, 
+ldns_udp_send(uint8_t **result, ldns_buffer *qbin, const struct sockaddr_storage *to,
 		socklen_t tolen, struct timeval timeout, size_t *answer_size)
 {
 	int sockfd;
@@ -295,12 +297,20 @@ ldns_udp_send(uint8_t **result, ldns_buffer *qbin, const struct sockaddr_storage
 
 	/* wait for an response*/
 	if(!ldns_sock_wait(sockfd, timeout, 0)) {
+#ifndef USE_WINSOCK
 		close(sockfd);
+#else
+                closesocket(sockfd);
+#endif
 		return LDNS_STATUS_NETWORK_ERR;
 	}
-	
+
 	answer = ldns_udp_read_wire(sockfd, answer_size, NULL, NULL);
+#ifndef USE_WINSOCK
 	close(sockfd);
+#else
+        closesocket(sockfd);
+#endif
 
 	if (*answer_size == 0) {
 		/* oops */
@@ -333,7 +343,7 @@ int
 ldns_udp_connect(const struct sockaddr_storage *to, struct timeval ATTR_UNUSED(timeout))
 {
 	int sockfd;
-	
+
 	if ((sockfd = socket((int)((struct sockaddr*)to)->sa_family, SOCK_DGRAM, 
 					IPPROTO_UDP)) 
 			== -1) {
@@ -347,7 +357,7 @@ ldns_tcp_connect(const struct sockaddr_storage *to, socklen_t tolen,
 		struct timeval timeout)
 {
 	int sockfd;
-	
+
 	if ((sockfd = socket((int)((struct sockaddr*)to)->sa_family, SOCK_STREAM, 
 					IPPROTO_TCP)) == -1) {
 		return 0;
@@ -381,7 +391,11 @@ ldns_tcp_connect(const struct sockaddr_storage *to, socklen_t tolen,
 		socklen_t len = (socklen_t)sizeof(error);
 
 		if(!ldns_sock_wait(sockfd, timeout, 1)) {
+#ifndef USE_WINSOCK
 			close(sockfd);
+#else
+			closesocket(sockfd);
+#endif
 			return 0;
 		}
 
@@ -435,6 +449,7 @@ ldns_tcp_send_query(ldns_buffer *qbin, int sockfd,
 
 	/* add length of packet */
 	sendbuf = LDNS_XMALLOC(uint8_t, ldns_buffer_position(qbin) + 2);
+	if(!sendbuf) return 0;
 	ldns_write_uint16(sendbuf, ldns_buffer_position(qbin));
 	memcpy(sendbuf + 2, ldns_buffer_export(qbin), ldns_buffer_position(qbin));
 
@@ -472,7 +487,7 @@ uint8_t *
 ldns_udp_read_wire(int sockfd, size_t *size, struct sockaddr_storage *from,
 		socklen_t *fromlen)
 {
-	uint8_t *wire;
+	uint8_t *wire, *wireout;
 	ssize_t wire_size;
 
 	wire = LDNS_XMALLOC(uint8_t, LDNS_MAX_PACKETLEN);
@@ -492,9 +507,10 @@ ldns_udp_read_wire(int sockfd, size_t *size, struct sockaddr_storage *from,
 	}
 
 	*size = (size_t)wire_size;
-	wire = LDNS_XREALLOC(wire, uint8_t, (size_t)wire_size);
+	wireout = LDNS_XREALLOC(wire, uint8_t, (size_t)wire_size);
+	if(!wireout) LDNS_FREE(wire);
 
-	return wire;
+	return wireout;
 }
 
 uint8_t *
@@ -502,7 +518,7 @@ ldns_tcp_read_wire_timeout(int sockfd, size_t *size, struct timeval timeout)
 {
 	uint8_t *wire;
 	uint16_t wire_size;
-	ssize_t bytes = 0;
+	ssize_t bytes = 0, rc = 0;
 
 	wire = LDNS_XMALLOC(uint8_t, 2);
 	if (!wire) {
@@ -516,12 +532,14 @@ ldns_tcp_read_wire_timeout(int sockfd, size_t *size, struct timeval timeout)
 			LDNS_FREE(wire);
 			return NULL;
 		}
-		bytes = recv(sockfd, (void*)wire, 2, 0);
-		if (bytes == -1 || bytes == 0) {
+		rc = recv(sockfd, (void*) (wire + bytes), 
+				(size_t) (2 - bytes), 0);
+		if (rc == -1 || rc == 0) {
 			*size = 0;
 			LDNS_FREE(wire);
 			return NULL;
 		}
+                bytes += rc;
 	}
 
 	wire_size = ldns_read_uint16(wire);
@@ -536,13 +554,14 @@ ldns_tcp_read_wire_timeout(int sockfd, size_t *size, struct timeval timeout)
 			LDNS_FREE(wire);
 			return NULL;
 		}
-		bytes += recv(sockfd, (void*) (wire + bytes), 
+		rc = recv(sockfd, (void*) (wire + bytes), 
 				(size_t) (wire_size - bytes), 0);
-		if (bytes == -1 || bytes == 0) {
+		if (rc == -1 || rc == 0) {
 			LDNS_FREE(wire);
 			*size = 0;
 			return NULL;
 		}
+                bytes += rc;
 	}
 	
 	*size = (size_t) bytes;
@@ -554,7 +573,7 @@ ldns_tcp_read_wire(int sockfd, size_t *size)
 {
 	uint8_t *wire;
 	uint16_t wire_size;
-	ssize_t bytes = 0;
+	ssize_t bytes = 0, rc = 0;
 
 	wire = LDNS_XMALLOC(uint8_t, 2);
 	if (!wire) {
@@ -563,12 +582,14 @@ ldns_tcp_read_wire(int sockfd, size_t *size)
 	}
 	
 	while (bytes < 2) {
-		bytes = recv(sockfd, (void*)wire, 2, 0);
-		if (bytes == -1 || bytes == 0) {
+		rc = recv(sockfd, (void*) (wire + bytes), 
+				(size_t) (2 - bytes), 0);
+		if (rc == -1 || rc == 0) {
 			*size = 0;
 			LDNS_FREE(wire);
 			return NULL;
 		}
+                bytes += rc;
 	}
 
 	wire_size = ldns_read_uint16(wire);
@@ -578,13 +599,14 @@ ldns_tcp_read_wire(int sockfd, size_t *size)
 	bytes = 0;
 
 	while (bytes < (ssize_t) wire_size) {
-		bytes += recv(sockfd, (void*) (wire + bytes), 
+		rc = recv(sockfd, (void*) (wire + bytes), 
 				(size_t) (wire_size - bytes), 0);
-		if (bytes == -1 || bytes == 0) {
+		if (rc == -1 || rc == 0) {
 			LDNS_FREE(wire);
 			*size = 0;
 			return NULL;
 		}
+                bytes += rc;
 	}
 	
 	*size = (size_t) bytes;
@@ -608,7 +630,11 @@ ldns_tcp_send(uint8_t **result,  ldns_buffer *qbin, const struct sockaddr_storag
 	}
 
 	answer = ldns_tcp_read_wire_timeout(sockfd, answer_size, timeout);
+#ifndef USE_WINSOCK
 	close(sockfd);
+#else
+	closesocket(sockfd);
+#endif
 
 	if (*answer_size == 0) {
 		/* oops */
@@ -734,7 +760,7 @@ ldns_axfr_start(ldns_resolver *resolver, ldns_rdf *domain, ldns_rr_class class)
                 return LDNS_STATUS_ADDRESS_ERR;
         }
         /* For AXFR, we have to make the connection ourselves */
-        /* try all nameservers (which usually would mean v4 fallback if 
+        /* try all nameservers (which usually would mean v4 fallback if
          * @hostname is used */
         for (ns_i = 0;
              ns_i < ldns_resolver_nameserver_count(resolver) &&
@@ -743,8 +769,8 @@ ldns_axfr_start(ldns_resolver *resolver, ldns_rdf *domain, ldns_rr_class class)
 	        ns = ldns_rdf2native_sockaddr_storage(
 	        	resolver->_nameservers[ns_i],
 			ldns_resolver_port(resolver), &ns_len);
-	
-		resolver->_socket = ldns_tcp_connect(ns, (socklen_t)ns_len, 
+
+		resolver->_socket = ldns_tcp_connect(ns, (socklen_t)ns_len,
 				ldns_resolver_timeout(resolver));
 	}
 
@@ -761,26 +787,58 @@ ldns_axfr_start(ldns_resolver *resolver, ldns_rdf *domain, ldns_rr_class class)
 		                            ldns_resolver_tsig_keydata(resolver),
 		                            300, ldns_resolver_tsig_algorithm(resolver), NULL);
 		if (status != LDNS_STATUS_OK) {
+			/* RoRi: to prevent problems on subsequent calls to ldns_axfr_start
+			   we have to close the socket here! */
+#ifndef USE_WINSOCK
+			close(resolver->_socket);
+#else
+			closesocket(resolver->_socket);
+#endif
+			resolver->_socket = 0;
+
 			return LDNS_STATUS_CRYPTO_TSIG_ERR;
 		}
 	}
 #endif /* HAVE_SSL */
 
-        /* Convert the query to a buffer          * Is this necessary?
+        /* Convert the query to a buffer
+         * Is this necessary?
          */
         query_wire = ldns_buffer_new(LDNS_MAX_PACKETLEN);
         status = ldns_pkt2buffer_wire(query_wire, query);
         if (status != LDNS_STATUS_OK) {
                 ldns_pkt_free(query);
+		ldns_buffer_free(query_wire);
                 LDNS_FREE(ns);
+
+		/* RoRi: to prevent problems on subsequent calls to ldns_axfr_start
+		    we have to close the socket here! */
+#ifndef USE_WINSOCK
+		close(resolver->_socket);
+#else
+		closesocket(resolver->_socket);
+#endif
+		resolver->_socket = 0;
+
                 return status;
         }
         /* Send the query */
-        if (ldns_tcp_send_query(query_wire, resolver->_socket, ns, 
+        if (ldns_tcp_send_query(query_wire, resolver->_socket, ns,
 				(socklen_t)ns_len) == 0) {
                 ldns_pkt_free(query);
                 ldns_buffer_free(query_wire);
                 LDNS_FREE(ns);
+
+		/* RoRi: to prevent problems on subsequent calls to ldns_axfr_start
+		         we have to close the socket here! */
+
+#ifndef USE_WINSOCK
+		close(resolver->_socket);
+#else
+		closesocket(resolver->_socket);
+#endif
+		resolver->_socket = 0;
+
                 return LDNS_STATUS_NETWORK_ERR;
         }
 

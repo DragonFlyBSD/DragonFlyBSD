@@ -58,7 +58,6 @@
 #include <sys/domain.h>
 #include <sys/protosw.h>
 #include <sys/nlookup.h>
-#include <vm/vm_zone.h>
 
 #include <sys/mutex2.h>
 #include <sys/thread2.h>
@@ -101,11 +100,15 @@ static int	nfssvc_addsock (struct file *, struct sockaddr *,
 static int	nfssvc_nfsd (struct nfsd_srvargs *,caddr_t,struct thread *);
 
 static int nfs_privport = 0;
-SYSCTL_INT(_vfs_nfs, NFS_NFSPRIVPORT, nfs_privport, CTLFLAG_RW, &nfs_privport, 0, "");
-SYSCTL_INT(_vfs_nfs, OID_AUTO, gatherdelay, CTLFLAG_RW, &nfsrvw_procrastinate, 0, "");
-SYSCTL_INT(_vfs_nfs, OID_AUTO, gatherdelay_v3, CTLFLAG_RW, &nfsrvw_procrastinate_v3, 0, "");
+SYSCTL_INT(_vfs_nfs, NFS_NFSPRIVPORT, nfs_privport, CTLFLAG_RW, &nfs_privport,
+    0, "Enable privileged source port checks");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, gatherdelay, CTLFLAG_RW, &nfsrvw_procrastinate, 0,
+    "Enable NFS request procrastination");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, gatherdelay_v3, CTLFLAG_RW, &nfsrvw_procrastinate_v3, 0,
+    "Enable NFSv3 request procrastination");
 int	nfs_soreserve = NFS_MAXPACKET * NFS_MAXASYNCBIO;
-SYSCTL_INT(_vfs_nfs, OID_AUTO, soreserve, CTLFLAG_RW, &nfs_soreserve, 0, "");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, soreserve, CTLFLAG_RW, &nfs_soreserve, 0,
+    "Minimum NFS socket buffer size reservation");
 
 /*
  * NFS server system calls
@@ -408,7 +411,7 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 	mtx_init(&slp->ns_solock);
 	STAILQ_INIT(&slp->ns_rec);
 	TAILQ_INIT(&slp->ns_uidlruhead);
-	lwkt_token_init(&slp->ns_token, 1, "nfssrv_token");
+	lwkt_token_init(&slp->ns_token, "nfssrv_token");
 
 	lwkt_gettoken(&nfs_token);
 	nfsrv_slpref(slp);
@@ -987,9 +990,6 @@ nfsd_rt(int sotype, struct nfsrv_descript *nd, int cacherep)
 	nfsdrt.pos = (nfsdrt.pos + 1) % NFSRTTLOGSIZ;
 }
 #endif /* NFS_NOSERVER */
-
-static int nfs_defect = 0;
-SYSCTL_INT(_vfs_nfs, OID_AUTO, defect, CTLFLAG_RW, &nfs_defect, 0, "");
 
 /*
  * Get an authorization string for the uid by having the mount_nfs sitting

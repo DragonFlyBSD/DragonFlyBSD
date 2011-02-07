@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly.c,v 1.3.2.3 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.21 2008/05/18 20:30:23 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -147,10 +146,8 @@ static driver_t mly_pci_driver = {
 static devclass_t	mly_devclass;
 DRIVER_MODULE(mly, pci, mly_pci_driver, mly_devclass, 0, 0);
 
-#define MLY_CDEV_MAJOR  158
-
 static struct dev_ops mly_ops = {
-    { "mly", MLY_CDEV_MAJOR, 0 },
+    { "mly", 0, 0 },
     .d_open =	mly_user_open,
     .d_close =	mly_user_close,
     .d_ioctl =	mly_user_ioctl,

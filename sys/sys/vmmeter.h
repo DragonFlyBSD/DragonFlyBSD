@@ -100,7 +100,16 @@ struct vmmeter {
 	u_int v_forwarded_misses;
 	u_int v_sendsys;	/* calls to sendsys() */
 	u_int v_waitsys;	/* calls to waitsys() */
-#define vmmeter_uint_end	v_waitsys
+	u_int v_smpinvltlb;	/* nasty global invltlbs */
+	u_int v_ppwakeups;	/* wakeups on processes stalled on VM */
+	u_int v_reserved1;
+	u_int v_reserved2;
+	u_int v_reserved3;
+	u_int v_reserved4;
+	u_int v_reserved5;
+	u_int v_reserved6;
+	u_int v_reserved7;
+#define vmmeter_uint_end	v_reserved7
 };
 
 struct vmstats {
@@ -135,20 +144,20 @@ extern struct vmstats vmstats;
 /* systemwide totals computed every five seconds */
 struct vmtotal
 {
-	int16_t	t_rq;		/* length of the run queue */
-	int16_t	t_dw;		/* jobs in ``disk wait'' (neg priority) */
-	int16_t	t_pw;		/* jobs in page wait */
-	int16_t	t_sl;		/* jobs sleeping in core */
-	int16_t	t_sw;		/* swapped out runnable/short block jobs */
-	int32_t	t_vm;		/* total virtual memory */
-	int32_t	t_avm;		/* active virtual memory */
-	int32_t	t_rm;		/* total real memory in use */
-	int32_t	t_arm;		/* active real memory */
-	int32_t	t_vmshr;	/* shared virtual memory */
-	int32_t	t_avmshr;	/* active shared virtual memory */
-	int32_t	t_rmshr;	/* shared real memory */
-	int32_t	t_armshr;	/* active shared real memory */
-	int32_t	t_free;		/* free memory pages */
+	long	t_rq;		/* length of the run queue */
+	long	t_dw;		/* jobs in ``disk wait'' (neg priority) */
+	long	t_pw;		/* jobs in page wait */
+	long	t_sl;		/* jobs sleeping in core */
+	long	t_sw;		/* swapped out runnable/short block jobs */
+	int64_t	t_vm;		/* total virtual memory */
+	int64_t	t_avm;		/* active virtual memory */
+	long	t_rm;		/* total real memory in use */
+	long	t_arm;		/* active real memory */
+	int64_t	t_vmshr;	/* shared virtual memory */
+	int64_t	t_avmshr;	/* active shared virtual memory */
+	long	t_rmshr;	/* shared real memory */
+	long	t_armshr;	/* active shared real memory */
+	long	t_free;		/* free memory pages */
 };
 
 #ifdef PGINPROF

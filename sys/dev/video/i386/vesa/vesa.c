@@ -207,18 +207,6 @@ static int vesa_probe_dpms(void);
 static int vesa_get_origin(video_adapter_t *adp, off_t *offset);
 #endif
 
-static void
-dump_buffer(u_char *buf, size_t len)
-{
-	int i;
-
-	for (i = 0; i < len;) {
-		kprintf("%02x ", buf[i]);
-		if ((++i % 16) == 0)
-			kprintf("\n");
-	}
-}
-
 /* INT 10 BIOS calls */
 static int
 int10_set_mode(int mode)
@@ -539,7 +527,7 @@ vesa_translate_flags(uint16_t vflags)
 	int flags;
 	int i;
 
-	for (flags = 0, i = 0; i < sizeof(ftable)/sizeof(ftable[0]); ++i) {
+	for (flags = 0, i = 0; i < NELEM(ftable); ++i) {
 		flags |= (vflags & ftable[i].mask) ? 
 			 ftable[i].set : ftable[i].reset;
 	}
@@ -624,7 +612,7 @@ vesa_bios_init(void)
 	vesa_adp_info = (struct vesa_info *)buf;
 	if (bootverbose) {
 		kprintf("VESA: information block\n");
-		dump_buffer(buf, 64);
+		hexdump(buf, 64, NULL, HD_OMIT_CHARS | HD_OMIT_COUNT);
 	}
 	if (vesa_adp_info->v_version < 0x0102) {
 		kprintf("VESA: VBE version %d.%d is not supported; "

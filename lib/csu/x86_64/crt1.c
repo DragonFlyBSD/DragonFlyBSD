@@ -32,6 +32,7 @@
 #endif
 #endif /* lint */
 
+#include <machine/tls.h>
 #include <stdlib.h>
 
 #include "libc_private.h"

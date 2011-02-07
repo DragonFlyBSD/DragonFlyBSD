@@ -30,9 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.58 2008/11/13 02:04:27 dillon Exp $
-.\"
-.Dd February 12, 2010
+.Dd January 2, 2011
 .Dt HAMMER 8
 .Os
 .Sh NAME
@@ -290,9 +288,7 @@ through normal file system operations or through reblocking, before
 it can be reused.
 .Pp
 Data blocks can be shared by deducting the space used from the free byte
-count for each shared references, though
-.Nm HAMMER
-does not yet make use of this feature.
+count for each shared references.
 This means the free byte count can legally go negative.
 .Pp
 This command needs the
@@ -367,7 +363,7 @@ entire image is scanned linearly looking for B-Tree nodes.  Any node
 found which passes its crc test is scanned for file, inode, and directory
 fragments and the target directory is populated with the resulting data.
 files and directories in the target directory are initially named after
-the object id and are renamed as fragmentory information is processed.
+the object id and are renamed as fragmentary information is processed.
 .Pp
 This command keeps track of filename/objid translations and may eat a
 considerably amount of memory while operating.
@@ -427,8 +423,8 @@ displays the mount point of the PFS is currently mounted on (if any).
 .El
 .\" ==== cleanup ====
 .It Cm cleanup Op Ar filesystem ...
-This is a meta-command which executes snapshot, prune, rebalance and reblock
-commands on the specified
+This is a meta-command which executes snapshot, prune, rebalance, dedup
+and reblock commands on the specified
 .Nm HAMMER
 file systems.
 If no
@@ -467,6 +463,7 @@ The format of the configuration file is:
 snapshots  <period> <retention-time> [any]
 prune      <period> <max-runtime>
 rebalance  <period> <max-runtime>
+dedup      <period> <max-runtime>
 reblock    <period> <max-runtime>
 recopy     <period> <max-runtime>
 .Ed
@@ -476,6 +473,7 @@ Defaults are:
 snapshots  1d 60d  # 0d 0d  for PFS /tmp, /var/tmp, /usr/obj
 prune      1d 5m
 rebalance  1d 5m
+dedup      1d 5m
 reblock    1d 5m
 recopy     30d 10m
 .Ed
@@ -494,11 +492,15 @@ directive has a period of 0 and a retention time of 0
 then snapshot generation is disabled, removal of old snapshots are
 disabled, and prunes will use
 .Cm prune-everything .
+.Pp
 If the
 .Cm snapshots
 directive has a period of 0 but a non-zero retention time
 then this command will not create any new snapshots but will remove old
-snapshots it finds based on the retention time.
+snapshots it finds based on the retention time.  This form should be
+used on PFS masters where you are generating your own snapshot softlinks
+manually and on PFS slaves when all you wish to do is prune away existing
+snapshots inherited via the mirroring stream.
 .Pp
 By default only snapshots in the form
 .Ql snap- Ns Ar yyyymmdd Ns Op - Ns Ar HHMM
@@ -527,12 +529,12 @@ nightly via
 .Xr periodic 8 .
 .Pp
 The default configuration file will create a daily snapshot, do a daily
-pruning, rebalancing and reblocking run and a monthly recopy run.
+pruning, rebalancing, deduping and reblocking run and a monthly recopy run.
 Reblocking is defragmentation with a level of 95%,
 and recopy is full defragmentation.
 .Pp
 By default prune and rebalance operations are time limited to 5 minutes,
-reblock operations to a bit over 5 minutes,
+dedup and reblock operations to a bit over 5 minutes,
 and recopy operations to a bit over 10 minutes.
 Reblocking and recopy runs are each broken down into four separate functions:
 btree, inodes, dirs and data.
@@ -626,6 +628,10 @@ from the colon-separated list in
 .Pa /etc/fstab
 and
 .Xr mount_hammer 8 .
+.\" ==== volume-list ====
+.It Cm volume-list Ar filesystem
+This command will list the volumes that make up
+.Ar filesystem .
 .\" ==== snapshot ====
 .It Cm snapshot Oo Ar filesystem Oc Ar snapshot-dir
 .It Cm snapshot Ar filesystem Ar snapshot-dir Op Ar note
@@ -847,13 +853,58 @@ elements will be combined and element counts will be smoothed out
 between nodes.
 .Pp
 The saturation percentage is between 50% and 100%.
-The default is 75% (the
+The default is 85% (the
 .Sq %
 suffix is not needed).
 .Pp
 Rebalancing is a per PFS operation, so a
 .Nm HAMMER
 file system and each PFS in it have to be rebalanced separately.
+.\" ==== dedup ====
+.It Cm dedup Ar filesystem
+.Nm ( HAMMER
+VERSION 5+)
+Perform offline (post-process) deduplication.  Deduplication occurs at
+the block level, currently only data blocks of the same size can be
+deduped, metadata blocks can not.  The hash function used for comparing
+data blocks is CRC-32 (CRCs are computed anyways as part of
+.Nm HAMMER
+data integrity features, so there's no additional overhead).  Since CRC
+is a weak hash function a byte-by-byte comparison is done before actual
+deduping.  In case of a CRC collision (two data blocks have the same CRC
+but different contents) the checksum is upgraded to SHA-256.
+.Pp
+Currently
+.Nm HAMMER
+reblocker may partially blow up (re-expand) dedup (reblocker's normal
+operation is to reallocate every record, so it's possible for deduped
+blocks to be re-expanded back).
+.Pp
+Deduplication is a per PFS operation, so a
+.Nm HAMMER
+file system and each PFS in it have to be deduped separately.  This also
+means that if you have duplicated data in two different PFSs that data
+won't be deduped, however the addition of such feature is planned.
+.\" ==== dedup-simulate ====
+.It Cm dedup-simulate Ar filesystem
+.Nm ( HAMMER
+VERSION 5+)
+Shows potential space savings (simulated dedup ratio) one can get after
+running
+.Cm dedup
+command.  If the estimated dedup ratio is greater than 1.00 you will see
+dedup space savings.  Remember that this is an estimated number, in
+practice real dedup ratio will be slightly smaller because of
+.Nm HAMMER
+bigblock underflows, B-Tree locking issues and other factors.
+.Pp
+Note that deduplication currently works only on bulk data so if you
+try to run
+.Cm dedup-simulate
+or
+.Cm dedup
+commands on a PFS that contains metadata only (directory entries,
+softlinks) you will get a 0.00 dedup ratio.
 .\" ==== reblock* ====
 .It Cm reblock Ar filesystem Op Ar fill_percentage
 .It Cm reblock-btree Ar filesystem Op Ar fill_percentage
@@ -1249,6 +1300,9 @@ Also default snapshots directory has changed.
 .Dx 2.6
 default version.
 New undo/redo/flush, giving HAMMER a much faster sync and fsync.
+.It 5
+.Dx 2.9 .
+Offline deduplication support.
 .El
 .El
 .Sh PSEUDO-FILESYSTEM (PFS) NOTES
@@ -1393,6 +1447,13 @@ and removing 1 of the 2 disk syncs typically
 required for a flush sequence.
 Version 4 also implements the REDO log (see below) which is capable
 of fsync()ing with either one disk flush or zero disk flushes.
+.Sh UPGRADE INSTRUCTIONS HAMMER V4 TO V5
+This upgrade brings in offline deduplication support. It is possible to
+upgrade a V4 file system to V5 in place. Technically it makes the
+layer2
+.Fa bytes_free
+field a signed value instead of unsigned, allowing it
+to go negative. A version 5 filesystem is required for dedup operation.
 .Sh FSYNC FLUSH MODES
 .Nm HAMMER
 implements five different fsync flush modes via the

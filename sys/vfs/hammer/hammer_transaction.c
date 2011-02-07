@@ -184,7 +184,6 @@ hammer_alloc_objid(hammer_mount_t hmp, hammer_inode_t dip, int64_t namekey)
 {
 	hammer_objid_cache_t ocp;
 	hammer_tid_t tid;
-	int incluster;
 	u_int32_t n;
 
 	while ((ocp = dip->objid_cache) == NULL) {
@@ -195,12 +194,15 @@ hammer_alloc_objid(hammer_mount_t hmp, hammer_inode_t dip, int64_t namekey)
 							OBJID_CACHE_BULK * 2);
 			ocp->base_tid += OBJID_CACHE_BULK_MASK64;
 			ocp->base_tid &= ~OBJID_CACHE_BULK_MASK64;
-			TAILQ_INSERT_HEAD(&hmp->objid_cache_list, ocp, entry);
-			++hmp->objid_cache_count;
 			/* may have blocked, recheck */
 			if (dip->objid_cache == NULL) {
+				TAILQ_INSERT_TAIL(&hmp->objid_cache_list,
+						  ocp, entry);
+				++hmp->objid_cache_count;
 				dip->objid_cache = ocp;
 				ocp->dip = dip;
+			} else {
+				kfree(ocp, hmp->m_misc);
 			}
 		} else {
 			/*
@@ -213,6 +215,8 @@ hammer_alloc_objid(hammer_mount_t hmp, hammer_inode_t dip, int64_t namekey)
 			if (ocp->dip)
 				ocp->dip->objid_cache = NULL;
 			if (ocp->count >= OBJID_CACHE_BULK / 2) {
+				TAILQ_REMOVE(&hmp->objid_cache_list,
+					     ocp, entry);
 				--hmp->objid_cache_count;
 				kfree(ocp, hmp->m_misc);
 			} else {
@@ -224,10 +228,9 @@ hammer_alloc_objid(hammer_mount_t hmp, hammer_inode_t dip, int64_t namekey)
 	TAILQ_REMOVE(&hmp->objid_cache_list, ocp, entry);
 
 	/*
-	 * Allocate a bit based on our namekey for the low bits of our
-	 * objid.
+	 * Allocate inode numbers uniformly.
 	 */
-	incluster = (hmp->master_id >= 0);
+
 	n = (namekey >> (63 - OBJID_CACHE_BULK_BITS)) & OBJID_CACHE_BULK_MASK;
 	n = ocp_allocbit(ocp, n);
 	tid = ocp->base_tid + n;
@@ -239,7 +242,7 @@ hammer_alloc_objid(hammer_mount_t hmp, hammer_inode_t dip, int64_t namekey)
 	 */
 	ocp->next_tid += (hmp->master_id < 0) ? 1 : HAMMER_MAX_MASTERS;
 #endif
-	if (ocp->count >= OBJID_CACHE_BULK / 2) {
+	if (ocp->count >= OBJID_CACHE_BULK * 3 / 4) {
 		dip->objid_cache = NULL;
 		--hmp->objid_cache_count;
 		ocp->dip = NULL;
@@ -303,6 +306,8 @@ hammer_destroy_objid_cache(hammer_mount_t hmp)
 		if (ocp->dip)
 			ocp->dip->objid_cache = NULL;
 		kfree(ocp, hmp->m_misc);
+		--hmp->objid_cache_count;
 	}
+	KKASSERT(hmp->objid_cache_count == 0);
 }
 

@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/kern/sysv_shm.c,v 1.45.2.6 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.21 2008/01/06 16:55:51 swildner Exp $ */
 /*	$NetBSD: sysv_shm.c,v 1.23 1994/07/04 23:25:12 glass Exp $	*/
 
 /*
@@ -138,12 +137,18 @@ TUNABLE_INT("kern.ipc.shmseg", &shminfo.shmseg);
 TUNABLE_INT("kern.ipc.shmmaxpgs", &shminfo.shmall);
 TUNABLE_INT("kern.ipc.shm_use_phys", &shm_use_phys);
 
-SYSCTL_INT(_kern_ipc, OID_AUTO, shmmax, CTLFLAG_RW, &shminfo.shmmax, 0, "");
-SYSCTL_INT(_kern_ipc, OID_AUTO, shmmin, CTLFLAG_RW, &shminfo.shmmin, 0, "");
-SYSCTL_INT(_kern_ipc, OID_AUTO, shmmni, CTLFLAG_RD, &shminfo.shmmni, 0, "");
-SYSCTL_INT(_kern_ipc, OID_AUTO, shmseg, CTLFLAG_RW, &shminfo.shmseg, 0, "");
-SYSCTL_INT(_kern_ipc, OID_AUTO, shmall, CTLFLAG_RW, &shminfo.shmall, 0, "");
-SYSCTL_INT(_kern_ipc, OID_AUTO, shm_use_phys, CTLFLAG_RW, &shm_use_phys, 0, "");
+SYSCTL_INT(_kern_ipc, OID_AUTO, shmmax, CTLFLAG_RW, &shminfo.shmmax, 0,
+    "Max shared memory segment size");
+SYSCTL_INT(_kern_ipc, OID_AUTO, shmmin, CTLFLAG_RW, &shminfo.shmmin, 0,
+    "Min shared memory segment size");
+SYSCTL_INT(_kern_ipc, OID_AUTO, shmmni, CTLFLAG_RD, &shminfo.shmmni, 0,
+    "Max number of shared memory identifiers");
+SYSCTL_INT(_kern_ipc, OID_AUTO, shmseg, CTLFLAG_RW, &shminfo.shmseg, 0,
+    "Max shared memory segments per process");
+SYSCTL_INT(_kern_ipc, OID_AUTO, shmall, CTLFLAG_RW, &shminfo.shmall, 0,
+    "Max pages of shared memory");
+SYSCTL_INT(_kern_ipc, OID_AUTO, shm_use_phys, CTLFLAG_RW, &shm_use_phys, 0,
+    "Use phys pager allocation instead of swap pager allocation");
 
 static int
 shm_find_segment_by_key(key_t key)
@@ -648,7 +653,7 @@ sys_shmsys(struct shmsys_args *uap)
 	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
-	if (which >= sizeof(shmcalls)/sizeof(shmcalls[0]))
+	if (which >= NELEM(shmcalls))
 		return EINVAL;
 	get_mplock();
 	bcopy(&uap->a2, &uap->which,

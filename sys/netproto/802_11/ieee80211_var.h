@@ -839,18 +839,23 @@ ieee80211_htchanflags(const struct ieee80211_channel *c)
 	"\23POWER\24STATE\25OUTPUT\26SCAN\27AUTH\30ASSOC\31NODE\32ELEMID" \
 	"\33XRATE\34INPUT\35CRYPTO\36DUPMPKTS\37DEBUG\04011N"
 
-void	ieee80211_note(const struct ieee80211vap *, const char *, ...);
+void	ieee80211_note(const struct ieee80211vap *, const char *, ...)
+		__printflike(2, 3);
 void	ieee80211_note_mac(const struct ieee80211vap *,
-		const uint8_t mac[IEEE80211_ADDR_LEN], const char *, ...);
+		const uint8_t mac[IEEE80211_ADDR_LEN], const char *, ...)
+		__printflike(3, 4);
 void	ieee80211_note_frame(const struct ieee80211vap *,
-		const struct ieee80211_frame *, const char *, ...);
+		const struct ieee80211_frame *, const char *, ...)
+		__printflike(3, 4);
 void ieee80211_discard_frame(const struct ieee80211vap *,
-	const struct ieee80211_frame *, const char *type, const char *fmt, ...);
+	const struct ieee80211_frame *, const char *type, const char *fmt, ...)
+	__printflike(4, 5);
 void ieee80211_discard_ie(const struct ieee80211vap *,
-	const struct ieee80211_frame *, const char *type, const char *fmt, ...);
+	const struct ieee80211_frame *, const char *type, const char *fmt, ...)
+	__printflike(4, 5);
 void ieee80211_discard_mac(const struct ieee80211vap *,
 	const uint8_t mac[IEEE80211_ADDR_LEN], const char *type,
-	const char *fmt, ...);
+	const char *fmt, ...) __printflike(4, 5);
 
 #ifdef IEEE80211_DEBUG
 #define	ieee80211_msg(_vap, _m)	((_vap)->iv_debug & (_m))

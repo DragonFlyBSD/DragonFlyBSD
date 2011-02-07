@@ -39,8 +39,6 @@
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
  */
 
-#include "use_ether.h"
-#include "use_isa.h"
 #include "opt_atalk.h"
 #include "opt_compat.h"
 #include "opt_ddb.h"
@@ -135,13 +133,14 @@ SYSCTL_INT(_debug, OID_AUTO, tlb_flush_count,
 static int
 sysctl_hw_physmem(SYSCTL_HANDLER_ARGS)
 {
-	/* JG */
-	int error = sysctl_handle_int(oidp, 0, ctob((int)Maxmem), req);
+	u_long pmem = ctob(physmem);
+
+	int error = sysctl_handle_long(oidp, &pmem, 0, req);
 	return (error);
 }
 
-SYSCTL_PROC(_hw, HW_PHYSMEM, physmem, CTLTYPE_INT|CTLFLAG_RD,
-	0, 0, sysctl_hw_physmem, "IU", "");
+SYSCTL_PROC(_hw, HW_PHYSMEM, physmem, CTLTYPE_ULONG|CTLFLAG_RD,
+	0, 0, sysctl_hw_physmem, "LU", "Total system memory in bytes (number of pages * page size)");
 
 static int
 sysctl_hw_usermem(SYSCTL_HANDLER_ARGS)
@@ -690,7 +689,8 @@ fetchupcall(struct vmupcall *vu, int morepending, void *rsp)
  * Note on cpu_idle_hlt:  On an SMP system we rely on a scheduler IPI
  * to wake a HLTed cpu up.  However, there are cases where the idlethread
  * will be entered with the possibility that no IPI will occur and in such
- * cases lwkt_switch() sets TDF_IDLE_NOHLT.
+ * cases lwkt_switch() sets RQF_WAKEUP and we nominally check
+ * RQF_IDLECHECK_WK_MASK.
  */
 static int	cpu_idle_hlt = 1;
 static int	cpu_idle_hltcnt;
@@ -722,16 +722,16 @@ cpu_idle(void)
 		 * The idle loop halts only if no threads are scheduleable
 		 * and no signals have occured.
 		 */
-		if (cpu_idle_hlt && !lwkt_runnable() &&
-		    (td->td_flags & TDF_IDLE_NOHLT) == 0) {
+		if (cpu_idle_hlt &&
+		    (td->td_gd->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
 			splz();
-			if (!lwkt_runnable()) {
+			if ((td->td_gd->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
 #ifdef DEBUGIDLE
 				struct timeval tv1, tv2;
 				gettimeofday(&tv1, NULL);
 #endif
 				reqflags = gd->mi.gd_reqflags &
-					   ~RQF_IDLECHECK_MASK;
+					   ~RQF_IDLECHECK_WK_MASK;
 				umtx_sleep(&gd->mi.gd_reqflags, reqflags,
 					   1000000);
 #ifdef DEBUGIDLE
@@ -746,17 +746,10 @@ cpu_idle(void)
 				}
 #endif
 			}
-#ifdef SMP
-			else {
-				handle_cpu_contention_mask();
-			}
-#endif
 			++cpu_idle_hltcnt;
 		} else {
-			td->td_flags &= ~TDF_IDLE_NOHLT;
 			splz();
 #ifdef SMP
-			handle_cpu_contention_mask();
 			__asm __volatile("pause");
 #endif
 			++cpu_idle_spincnt;
@@ -765,23 +758,6 @@ cpu_idle(void)
 }
 
 #ifdef SMP
-
-/*
- * Called by the LWKT switch core with a critical section held if the only
- * schedulable thread needs the MP lock and we couldn't get it.  On
- * a real cpu we just spin in the scheduler.  In the virtual kernel
- * we sleep for a bit.
- */
-void
-handle_cpu_contention_mask(void)
-{
-	cpumask_t mask;
-
-	mask = cpu_contention_mask;
-	cpu_ccfence();
-	if (mask && bsfl(mask) != mycpu->gd_cpuid)
-		pthread_yield();
-}
 
 /*
  * Called by the spinlock code with or without a critical section held

@@ -1,7 +1,6 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.49 2008/08/17 04:32:33 sephe Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -70,11 +69,6 @@
 #ifdef IPX
 #include <netproto/ipx/ipx.h>
 #include <netproto/ipx/ipx_if.h>
-#endif
-
-#ifdef NS
-#include <netproto/ns/ns.h>
-#include <netproto/ns/ns_if.h>
 #endif
 
 #include <vm/vm.h>
@@ -3328,7 +3322,7 @@ tulip_print_abnormal_interrupt(tulip_softc_t *sc, uint32_t csr)
     uint32_t mask;
     const char thrsh[] = "72|128\0\0\0" "96|256\0\0\0" "128|512\0\0" "160|1024";
 
-    csr &= (1 << (sizeof(tulip_status_bits)/sizeof(tulip_status_bits[0]))) - 1;
+    csr &= (1 << (NELEM(tulip_status_bits))) - 1;
     if_printf(&sc->tulip_if, "abnormal interrupt:");
     for (sep = " ", mask = 1; mask <= csr; mask <<= 1, msgp++) {
 	if ((csr & mask) && *msgp != NULL) {
@@ -3747,27 +3741,6 @@ tulip_ifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred * cr)
 		    break;
 		}
 #endif /* IPX */
-
-#ifdef NS
-		/*
-		 * This magic copied from if_is.c; I don't use XNS,
-		 * so I have no way of telling if this actually
-		 * works or not.
-		 */
-		case AF_NS: {
-		    struct ns_addr *ina = &(IA_SNS(ifa)->sns_addr);
-		    if (ns_nullhost(*ina)) {
-			ina->x_host = *(union ns_host *)(sc->tulip_enaddr);
-		    } else {
-			ifp->if_flags &= ~IFF_RUNNING;
-			bcopy((caddr_t)ina->x_host.c_host,
-			      (caddr_t)sc->tulip_enaddr,
-			      sizeof(sc->tulip_enaddr));
-		    }
-		    tulip_init(sc);
-		    break;
-		}
-#endif /* NS */
 
 		default: {
 		    tulip_init(sc);

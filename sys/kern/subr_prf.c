@@ -582,6 +582,11 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg,
 
 	/*
 	 * Make a supreme effort to avoid reentrant panics or deadlocks.
+	 *
+	 * NOTE!  Do nothing that would access mycpu/gd/fs unless the
+	 *	  function is the normal kputchar(), which allows us to
+	 *	  use this function for very early debugging with a special
+	 *	  function.
 	 */
 	if (func == kputchar) {
 		if (mycpu->gd_flags & GDF_KPRINTF)
@@ -601,8 +606,8 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg,
 	if (radix < 2 || radix > 36)
 		radix = 10;
 
-	usespin = (panic_cpu_gd != mycpu &&
-		   func == kputchar &&
+	usespin = (func == kputchar &&
+		   panic_cpu_gd != mycpu &&
 		   (((struct putchar_arg *)arg)->flags & TOTTY) == 0);
 	if (usespin) {
 		crit_enter_hard();
@@ -1176,3 +1181,57 @@ DB_SHOW_COMMAND(msgbuf, db_show_msgbuf)
 }
 
 #endif /* DDB */
+
+
+void
+hexdump(const void *ptr, int length, const char *hdr, int flags)
+{
+	int i, j, k;
+	int cols;
+	const unsigned char *cp;
+	char delim;
+
+	if ((flags & HD_DELIM_MASK) != 0)
+		delim = (flags & HD_DELIM_MASK) >> 8;
+	else
+		delim = ' ';
+
+	if ((flags & HD_COLUMN_MASK) != 0)
+		cols = flags & HD_COLUMN_MASK;
+	else
+		cols = 16;
+
+	cp = ptr;
+	for (i = 0; i < length; i+= cols) {
+		if (hdr != NULL)
+			kprintf("%s", hdr);
+
+		if ((flags & HD_OMIT_COUNT) == 0)
+			kprintf("%04x  ", i);
+
+		if ((flags & HD_OMIT_HEX) == 0) {
+			for (j = 0; j < cols; j++) {
+				k = i + j;
+				if (k < length)
+					kprintf("%c%02x", delim, cp[k]);
+				else
+					kprintf("   ");
+			}
+		}
+
+		if ((flags & HD_OMIT_CHARS) == 0) {
+			kprintf("  |");
+			for (j = 0; j < cols; j++) {
+				k = i + j;
+				if (k >= length)
+					kprintf(" ");
+				else if (cp[k] >= ' ' && cp[k] <= '~')
+					kprintf("%c", cp[k]);
+				else
+					kprintf(".");
+			}
+			kprintf("|");
+		}
+		kprintf("\n");
+	}
+}

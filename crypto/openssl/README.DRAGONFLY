@@ -2,9 +2,9 @@ Original source can be downloaded from OpenSSL at
 <http://www.openssl.org/source/>.
 
 Here's some hints to upgrading:
-./Configure shared no-asm no-idea --prefix=/usr --openssldir=/etc/ssl BSD-x86-elf
+./Configure shared no-idea --prefix=/usr --openssldir=/etc/ssl BSD-x86-elf
 cp crypto/opensslconf.h ../../secure/lib/libcrypto/opensslconf-i386.h
-./Configure shared no-asm no-idea --prefix=/usr --openssldir=/etc/ssl BSD-x86_64
+./Configure shared no-idea --prefix=/usr --openssldir=/etc/ssl BSD-x86_64
 cp crypto/opensslconf.h ../../secure/lib/libcrypto/opensslconf-x86_64.h
 cd ../../secure/lib/libcrypto
 # Update the version in Makefile.inc

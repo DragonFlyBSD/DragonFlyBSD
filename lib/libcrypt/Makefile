@@ -7,7 +7,9 @@ SHLIB_MAJOR=	3
 LIB=		crypt
 
 .PATH:		${.CURDIR}/../libmd
-SRCS=		crypt.c crypt-md5.c md5c.c misc.c
+SRCS=		crypt.c crypt-md5.c crypt-sha256.c crypt-sha512.c \
+            md5c.c sha256c.c sha512c.c misc.c
+INCS=		crypt.h
 WARNS?=		2
 MAN=		crypt.3
 MLINKS=		crypt.3 crypt_get_format.3 crypt.3 crypt_set_format.3
@@ -24,7 +26,9 @@ CFLAGS+=	-I${.CURDIR} -DHAS_DES -DHAS_BLOWFISH
 .PATH:		${.CURDIR}/../libutil
 SRCS+=		auth.c property.c
 .for sym in MD5Init MD5Final MD5Update MD5Pad auth_getval \
-	    property_find properties_read properties_free
+	    property_find properties_read properties_free \
+	    SHA256_Init SHA256_Update SHA256_Final \
+	    SHA512_Init SHA512_Update SHA512_Final
 CFLAGS+=	-D${sym}=__${sym}
 .endfor
 PRECIOUSLIB=	yes

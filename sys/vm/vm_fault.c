@@ -323,9 +323,17 @@ RetryFault:
 	 */
 	fs.map_generation = fs.map->timestamp;
 
-	if (fs.entry->eflags & MAP_ENTRY_NOFAULT) {
-		panic("vm_fault: fault on nofault entry, addr: %lx",
-		    (u_long)vaddr);
+	if (fs.entry->eflags & (MAP_ENTRY_NOFAULT | MAP_ENTRY_KSTACK)) {
+		if (fs.entry->eflags & MAP_ENTRY_NOFAULT) {
+			panic("vm_fault: fault on nofault entry, addr: %p",
+			      (void *)vaddr);
+		}
+		if ((fs.entry->eflags & MAP_ENTRY_KSTACK) &&
+		    vaddr >= fs.entry->start &&
+		    vaddr < fs.entry->start + PAGE_SIZE) {
+			panic("vm_fault: fault on stack guard, addr: %p",
+			      (void *)vaddr);
+		}
 	}
 
 	/*
@@ -396,12 +404,17 @@ RetryFault:
 	 * mapping for a read fault if the memory is managed by a virtual
 	 * page table.
 	 */
+	/* BEFORE */
 	result = vm_fault_object(&fs, first_pindex, fault_type);
 
-	if (result == KERN_TRY_AGAIN)
+	if (result == KERN_TRY_AGAIN) {
+		/*lwkt_reltoken(&vm_token);*/
 		goto RetryFault;
-	if (result != KERN_SUCCESS)
+	}
+	if (result != KERN_SUCCESS) {
+		/*lwkt_reltoken(&vm_token);*/
 		return (result);
+	}
 
 	/*
 	 * On success vm_fault_object() does not unlock or deallocate, and fs.m
@@ -409,6 +422,7 @@ RetryFault:
 	 *
 	 * Enter the page into the pmap and do pmap-related adjustments.
 	 */
+	vm_page_flag_set(fs.m, PG_REFERENCED);
 	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot, fs.wired);
 
 	/*
@@ -421,10 +435,11 @@ RetryFault:
 			vm_prefault(fs.map->pmap, vaddr, fs.entry, fs.prot);
 		}
 	}
+	lwkt_gettoken(&vm_token);
 	unlock_things(&fs);
 
-	vm_page_flag_clear(fs.m, PG_ZERO);
-	vm_page_flag_set(fs.m, PG_REFERENCED);
+	/*KKASSERT(fs.m->queue == PQ_NONE); page-in op may deactivate page */
+	KKASSERT(fs.m->flags & PG_BUSY);
 
 	/*
 	 * If the page is not wired down, then put it where the pageout daemon
@@ -433,15 +448,19 @@ RetryFault:
 	 * We do not really need to get vm_token here but since all the
 	 * vm_*() calls have to doing it here improves efficiency.
 	 */
-	lwkt_gettoken(&vm_token);
+	/*lwkt_gettoken(&vm_token);*/
+
 	if (fs.fault_flags & VM_FAULT_WIRE_MASK) {
+		lwkt_reltoken(&vm_token); /* before wire activate does not */
 		if (fs.wired)
 			vm_page_wire(fs.m);
 		else
 			vm_page_unwire(fs.m, 1);
 	} else {
 		vm_page_activate(fs.m);
+		lwkt_reltoken(&vm_token); /* before wire activate does not */
 	}
+	/*lwkt_reltoken(&vm_token); after wire/activate works */
 
 	if (curthread->td_lwp) {
 		if (fs.hardfault) {
@@ -456,7 +475,9 @@ RetryFault:
 	 */
 	vm_page_wakeup(fs.m);
 	vm_object_deallocate(fs.first_object);
-	lwkt_reltoken(&vm_token);
+	/*fs.m = NULL; */
+	/*fs.first_object = NULL; */
+	/*lwkt_reltoken(&vm_token);*/
 
 	return (KERN_SUCCESS);
 }
@@ -640,7 +661,6 @@ RetryFault:
 	 */
 	lwkt_gettoken(&vm_token);
 	vm_page_hold(fs.m);
-	vm_page_flag_clear(fs.m, PG_ZERO);
 	if (fault_type & VM_PROT_WRITE)
 		vm_page_dirty(fs.m);
 
@@ -671,6 +691,7 @@ RetryFault:
 	 */
 	vm_page_wakeup(fs.m);
 	vm_object_deallocate(fs.first_object);
+	/*fs.first_object = NULL; */
 	lwkt_reltoken(&vm_token);
 
 	*errorp = 0;
@@ -787,7 +808,6 @@ RetryFault:
 	 */
 	lwkt_gettoken(&vm_token);
 	vm_page_hold(fs.m);
-	vm_page_flag_clear(fs.m, PG_ZERO);
 	if (fault_type & VM_PROT_WRITE)
 		vm_page_dirty(fs.m);
 
@@ -821,6 +841,7 @@ RetryFault:
 	 */
 	vm_page_wakeup(fs.m);
 	vm_object_deallocate(fs.first_object);
+	/*fs.first_object = NULL; */
 	lwkt_reltoken(&vm_token);
 
 	*errorp = 0;
@@ -844,6 +865,7 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 		    vpte_t vpte, int fault_type)
 {
 	struct lwbuf *lwb;
+	struct lwbuf lwb_cache;
 	int vshift = VPTE_FRAME_END - PAGE_SHIFT; /* index bits remaining */
 	int result = KERN_SUCCESS;
 	vpte_t *ptep;
@@ -886,7 +908,7 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 		 * entry in the page table page.
 		 */
 		vshift -= VPTE_PAGE_BITS;
-		lwb = lwbuf_alloc(fs->m);
+		lwb = lwbuf_alloc(fs->m, &lwb_cache);
 		ptep = ((vpte_t *)lwbuf_kva(lwb) +
 		        ((*pindex >> vshift) & VPTE_PAGE_MASK));
 		vpte = *ptep;
@@ -917,6 +939,7 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 		vm_page_flag_set(fs->m, PG_REFERENCED);
 		vm_page_activate(fs->m);
 		vm_page_wakeup(fs->m);
+		fs->m = NULL;
 		cleanup_successful_fault(fs);
 	}
 	/*
@@ -994,12 +1017,8 @@ vm_fault_object(struct faultstate *fs,
 		}
 
 		/*
-		 * See if page is resident.  spl protection is required
-		 * to avoid an interrupt unbusy/free race against our
-		 * lookup.  We must hold the protection through a page
-		 * allocation or busy.
+		 * See if the page is resident.
 		 */
-		crit_enter();
 		fs->m = vm_page_lookup(fs->object, pindex);
 		if (fs->m != NULL) {
 			int queue;
@@ -1026,7 +1045,6 @@ vm_fault_object(struct faultstate *fs,
 				vm_object_deallocate(fs->first_object);
 				fs->first_object = NULL;
 				lwkt_reltoken(&vm_token);
-				crit_exit();
 				return (KERN_TRY_AGAIN);
 			}
 
@@ -1043,7 +1061,6 @@ vm_fault_object(struct faultstate *fs,
 				unlock_and_deallocate(fs);
 				vm_waitpfault();
 				lwkt_reltoken(&vm_token);
-				crit_exit();
 				return (KERN_TRY_AGAIN);
 			}
 
@@ -1058,7 +1075,6 @@ vm_fault_object(struct faultstate *fs,
 			 * page busy.
 			 */
 			vm_page_busy(fs->m);
-			crit_exit();
 
 			if (fs->m->object != &kernel_object) {
 				if ((fs->m->valid & VM_PAGE_BITS_ALL) !=
@@ -1078,8 +1094,6 @@ vm_fault_object(struct faultstate *fs,
 		/*
 		 * Page is not resident, If this is the search termination
 		 * or the pager might contain the page, allocate a new page.
-		 *
-		 * NOTE: We are still in a critical section.
 		 */
 		if (TRYPAGER(fs) || fs->object == fs->first_object) {
 			/*
@@ -1087,7 +1101,6 @@ vm_fault_object(struct faultstate *fs,
 			 */
 			if (pindex >= fs->object->size) {
 				lwkt_reltoken(&vm_token);
-				crit_exit();
 				unlock_and_deallocate(fs);
 				return (KERN_PROTECTION_FAILURE);
 			}
@@ -1101,7 +1114,6 @@ vm_fault_object(struct faultstate *fs,
 				limticks = vm_fault_ratelimit(curproc->p_vmspace);
 				if (limticks) {
 					lwkt_reltoken(&vm_token);
-					crit_exit();
 					unlock_and_deallocate(fs);
 					tsleep(curproc, 0, "vmrate", limticks);
 					fs->didlimit = 1;
@@ -1119,13 +1131,11 @@ vm_fault_object(struct faultstate *fs,
 			}
 			if (fs->m == NULL) {
 				lwkt_reltoken(&vm_token);
-				crit_exit();
 				unlock_and_deallocate(fs);
 				vm_waitpfault();
 				return (KERN_TRY_AGAIN);
 			}
 		}
-		crit_exit();
 
 readrest:
 		/*
@@ -1183,7 +1193,6 @@ readrest:
 						scan_count = 16;
 				}
 
-				crit_enter();
 				while (scan_count) {
 					vm_page_t mt;
 
@@ -1199,10 +1208,10 @@ readrest:
 					    mt->wire_count)  {
 						goto skip;
 					}
+					vm_page_busy(mt);
 					if (mt->dirty == 0)
 						vm_page_test_dirty(mt);
 					if (mt->dirty) {
-						vm_page_busy(mt);
 						vm_page_protect(mt,
 								VM_PROT_NONE);
 						vm_page_deactivate(mt);
@@ -1214,7 +1223,6 @@ skip:
 					--scan_count;
 					--scan_pindex;
 				}
-				crit_exit();
 
 				seqaccess = 1;
 			}
@@ -1353,6 +1361,10 @@ skip:
 			if ((fs->m->flags & PG_ZERO) == 0) {
 				vm_page_zero_fill(fs->m);
 			} else {
+#ifdef PMAP_DEBUG
+				pmap_page_assertzero(VM_PAGE_TO_PHYS(fs->m));
+#endif
+				vm_page_flag_clear(fs->m, PG_ZERO);
 				mycpu->gd_cnt.v_ozfod++;
 			}
 			mycpu->gd_cnt.v_zfod++;
@@ -1523,10 +1535,8 @@ skip:
 		vm_object_set_writeable_dirty(fs->m->object);
 		vm_set_nosync(fs->m, fs->entry);
 		if (fs->fault_flags & VM_FAULT_DIRTY) {
-			crit_enter();
 			vm_page_dirty(fs->m);
 			swap_pager_unswapped(fs->m);
-			crit_exit();
 		}
 	}
 
@@ -1548,6 +1558,7 @@ skip:
 		vm_page_zero_invalid(fs->m, TRUE);
 		kprintf("Warning: page %p partially invalid on fault\n", fs->m);
 	}
+	vm_page_flag_clear(fs->m, PG_ZERO);
 
 	return (KERN_SUCCESS);
 }
@@ -1577,7 +1588,8 @@ vm_fault_wire(vm_map_t map, vm_map_entry_t entry, boolean_t user_wire)
 	end = entry->end;
 	fictitious = entry->object.vm_object &&
 			(entry->object.vm_object->type == OBJT_DEVICE);
-
+	if (entry->eflags & MAP_ENTRY_KSTACK)
+		start += PAGE_SIZE;
 	lwkt_gettoken(&vm_token);
 	vm_map_unlock(map);
 	map->timestamp++;
@@ -1632,6 +1644,8 @@ vm_fault_unwire(vm_map_t map, vm_map_entry_t entry)
 	end = entry->end;
 	fictitious = entry->object.vm_object &&
 			(entry->object.vm_object->type == OBJT_DEVICE);
+	if (entry->eflags & MAP_ENTRY_KSTACK)
+		start += PAGE_SIZE;
 
 	/*
 	 * Since the pages are wired down, we must be able to get their
@@ -1747,7 +1761,7 @@ vm_fault_copy_entry(vm_map_t dst_map, vm_map_t src_map,
 		 * memory.)
 		 */
 		src_m = vm_page_lookup(src_object,
-			OFF_TO_IDX(dst_offset + src_offset));
+				       OFF_TO_IDX(dst_offset + src_offset));
 		if (src_m == NULL)
 			panic("vm_fault_copy_wired: page missing");
 
@@ -1856,7 +1870,6 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
 			startpindex = pindex - rbehind;
 		}
 
-		crit_enter();
 		lwkt_gettoken(&vm_token);
 		for (tpindex = pindex; tpindex > startpindex; --tpindex) {
 			if (vm_page_lookup(object, tpindex - 1))
@@ -1868,7 +1881,6 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
 			rtm = vm_page_alloc(object, tpindex, VM_ALLOC_SYSTEM);
 			if (rtm == NULL) {
 				lwkt_reltoken(&vm_token);
-				crit_exit();
 				for (j = 0; j < i; j++) {
 					vm_page_free(marray[j]);
 				}
@@ -1881,7 +1893,6 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
 			++tpindex;
 		}
 		lwkt_reltoken(&vm_token);
-		crit_exit();
 	} else {
 		i = 0;
 	}
@@ -1901,7 +1912,6 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
 	if (endpindex > object->size)
 		endpindex = object->size;
 
-	crit_enter();
 	lwkt_gettoken(&vm_token);
 	while (tpindex < endpindex) {
 		if (vm_page_lookup(object, tpindex))
@@ -1914,7 +1924,6 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
 		++tpindex;
 	}
 	lwkt_reltoken(&vm_token);
-	crit_exit();
 
 	return (i);
 }
@@ -2005,12 +2014,6 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 	else if (starta > addra)
 		starta = 0;
 
-	/*
-	 * critical section protection is required to maintain the
-	 * page/object association, interrupts can free pages and remove
-	 * them from their objects.
-	 */
-	crit_enter();
 	lwkt_gettoken(&vm_token);
 	for (i = 0; i < PAGEORDER_SIZE; i++) {
 		vm_object_t lobject;
@@ -2062,6 +2065,9 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 				if ((m->flags & PG_ZERO) == 0) {
 					vm_page_zero_fill(m);
 				} else {
+#ifdef PMAP_DEBUG
+					pmap_page_assertzero(VM_PAGE_TO_PHYS(m));
+#endif
 					vm_page_flag_clear(m, PG_ZERO);
 					mycpu->gd_cnt.v_ozfod++;
 				}
@@ -2119,10 +2125,10 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 		    (m->busy == 0) &&
 		    (m->flags & (PG_BUSY | PG_FICTITIOUS)) == 0) {
 
+			vm_page_busy(m);
 			if ((m->queue - m->pc) == PQ_CACHE) {
 				vm_page_deactivate(m);
 			}
-			vm_page_busy(m);
 			if (pprot & VM_PROT_WRITE)
 				vm_set_nosync(m, entry);
 			pmap_enter(pmap, addr, m, pprot, 0);
@@ -2130,5 +2136,4 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 		}
 	}
 	lwkt_reltoken(&vm_token);
-	crit_exit();
 }

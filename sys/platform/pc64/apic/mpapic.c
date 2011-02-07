@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mpapic.c,v 1.37.2.7 2003/01/25 02:31:47 peter Exp $
- * $DragonFly: src/sys/platform/pc32/apic/mpapic.c,v 1.22 2008/04/20 13:44:26 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -32,11 +31,12 @@
 #include <machine/globaldata.h>
 #include <machine/smp.h>
 #include <machine/md_var.h>
+#include <machine/pmap.h>
 #include <machine_base/apic/mpapic.h>
 #include <machine/segments.h>
 #include <sys/thread2.h>
 
-#include <machine_base/isa/intr_machdep.h>	/* Xspuriousint() */
+#include <machine/intr_machdep.h>
 
 #include "apicvar.h"
 
@@ -53,6 +53,7 @@ static void	lapic_timer_restart_handler(void *);
 
 void		lapic_timer_process(void);
 void		lapic_timer_process_frame(struct intrframe *);
+void		lapic_timer_always(struct intrframe *);
 
 static int	lapic_timer_enable = 1;
 TUNABLE_INT("hw.lapic_timer_enable", &lapic_timer_enable);
@@ -88,8 +89,7 @@ static const uint32_t	lapic_timer_divisors[] = {
 	APIC_TDCR_2,	APIC_TDCR_4,	APIC_TDCR_8,	APIC_TDCR_16,
 	APIC_TDCR_32,	APIC_TDCR_64,	APIC_TDCR_128,	APIC_TDCR_1
 };
-#define APIC_TIMER_NDIVISORS \
-	(int)(sizeof(lapic_timer_divisors) / sizeof(lapic_timer_divisors[0]))
+#define APIC_TIMER_NDIVISORS (int)(NELEM(lapic_timer_divisors))
 
 
 void
@@ -100,7 +100,7 @@ lapic_eoi(void)
 }
 
 /*
- * Enable APIC, configure interrupts.
+ * Enable LAPIC, configure interrupts.
  */
 void
 apic_initialize(boolean_t bsp)
@@ -109,14 +109,14 @@ apic_initialize(boolean_t bsp)
 	u_int   temp;
 
 	/*
-	 * setup LVT1 as ExtINT on the BSP.  This is theoretically an
+	 * Setup LINT0 as ExtINT on the BSP.  This is theoretically an
 	 * aggregate interrupt input from the 8259.  The INTA cycle
 	 * will be routed to the external controller (the 8259) which
 	 * is expected to supply the vector.
 	 *
 	 * Must be setup edge triggered, active high.
 	 *
-	 * Disable LVT1 on the APs.  It doesn't matter what delivery
+	 * Disable LINT0 on the APs.  It doesn't matter what delivery
 	 * mode we use because we leave it masked.
 	 */
 	temp = lapic->lvt_lint0;
@@ -129,7 +129,8 @@ apic_initialize(boolean_t bsp)
 	lapic->lvt_lint0 = temp;
 
 	/*
-	 * setup LVT2 as NMI, masked till later.  Edge trigger, active high.
+	 * Setup LINT1 as NMI, masked till later.
+	 * Edge trigger, active high.
 	 */
 	temp = lapic->lvt_lint1;
 	temp &= ~(APIC_LVT_MASKED | APIC_LVT_TRIG_MASK | 
@@ -138,13 +139,15 @@ apic_initialize(boolean_t bsp)
 	lapic->lvt_lint1 = temp;
 
 	/*
-	 * Mask the apic error interrupt, apic performance counter
+	 * Mask the LAPIC error interrupt, LAPIC performance counter
 	 * interrupt.
 	 */
 	lapic->lvt_error = lapic->lvt_error | APIC_LVT_MASKED;
 	lapic->lvt_pcint = lapic->lvt_pcint | APIC_LVT_MASKED;
 
-	/* Set apic timer vector and mask the apic timer interrupt. */
+	/*
+	 * Set LAPIC timer vector and mask the LAPIC timer interrupt.
+	 */
 	timer = lapic->lvt_timer;
 	timer &= ~APIC_LVTT_VECTOR;
 	timer |= XTIMER_OFFSET;
@@ -155,25 +158,28 @@ apic_initialize(boolean_t bsp)
 	 * Set the Task Priority Register as needed.   At the moment allow
 	 * interrupts on all cpus (the APs will remain CLId until they are
 	 * ready to deal).  We could disable all but IPIs by setting
-	 * temp |= TPR_IPI_ONLY for cpu != 0.
+	 * temp |= TPR_IPI for cpu != 0.
 	 */
 	temp = lapic->tpr;
 	temp &= ~APIC_TPR_PRIO;		/* clear priority field */
-#ifndef APIC_IO
-	/*
-	 * If we are NOT running the IO APICs, the LAPIC will only be used
-	 * for IPIs.  Set the TPR to prevent any unintentional interrupts.
-	 */
-	temp |= TPR_IPI_ONLY;
+#ifdef SMP /* APIC-IO */
+if (!apic_io_enable) {
 #endif
-
+	/*
+ 	 * If we are NOT running the IO APICs, the LAPIC will only be used
+	 * for IPIs.  Set the TPR to prevent any unintentional interrupts.
+ 	 */
+	temp |= TPR_IPI;
+#ifdef SMP /* APIC-IO */
+}
+#endif
 	lapic->tpr = temp;
 
 	/* 
-	 * enable the local APIC 
+	 * Enable the LAPIC 
 	 */
 	temp = lapic->svr;
-	temp |= APIC_SVR_ENABLE;	/* enable the APIC */
+	temp |= APIC_SVR_ENABLE;	/* enable the LAPIC */
 	temp &= ~APIC_SVR_FOCUS_DISABLE; /* enable lopri focus processor */
 
 	/*
@@ -208,7 +214,6 @@ apic_initialize(boolean_t bsp)
 	if (bootverbose)
 		apic_dump("apic_initialize()");
 }
-
 
 static void
 lapic_timer_set_divisor(int divisor_idx)
@@ -280,6 +285,64 @@ void
 lapic_timer_process_frame(struct intrframe *frame)
 {
 	lapic_timer_process_oncpu(mycpu, frame);
+}
+
+/*
+ * This manual debugging code is called unconditionally from Xtimer
+ * (the lapic timer interrupt) whether the current thread is in a
+ * critical section or not) and can be useful in tracking down lockups.
+ *
+ * NOTE: MANUAL DEBUG CODE
+ */
+#if 0
+static int saveticks[SMP_MAXCPU];
+static int savecounts[SMP_MAXCPU];
+#endif
+
+void
+lapic_timer_always(struct intrframe *frame)
+{
+#if 0
+	globaldata_t gd = mycpu;
+	int cpu = gd->gd_cpuid;
+	char buf[64];
+	short *gptr;
+	int i;
+
+	if (cpu <= 20) {
+		gptr = (short *)0xFFFFFFFF800b8000 + 80 * cpu;
+		*gptr = ((*gptr + 1) & 0x00FF) | 0x0700;
+		++gptr;
+
+		ksnprintf(buf, sizeof(buf), " %p %16s %d %16s ",
+		    (void *)frame->if_rip, gd->gd_curthread->td_comm, ticks,
+		    gd->gd_infomsg);
+		for (i = 0; buf[i]; ++i) {
+			gptr[i] = 0x0700 | (unsigned char)buf[i];
+		}
+	}
+#if 0
+	if (saveticks[gd->gd_cpuid] != ticks) {
+		saveticks[gd->gd_cpuid] = ticks;
+		savecounts[gd->gd_cpuid] = 0;
+	}
+	++savecounts[gd->gd_cpuid];
+	if (savecounts[gd->gd_cpuid] > 2000 && panicstr == NULL) {
+		panic("cpud %d panicing on ticks failure",
+			gd->gd_cpuid);
+	}
+	for (i = 0; i < ncpus; ++i) {
+		int delta;
+		if (saveticks[i] && panicstr == NULL) {
+			delta = saveticks[i] - ticks;
+			if (delta < -10 || delta > 10) {
+				panic("cpu %d panicing on cpu %d watchdog",
+				      gd->gd_cpuid, i);
+			}
+		}
+	}
+#endif
+#endif
 }
 
 static void
@@ -405,7 +468,7 @@ apic_dump(char* str)
 }
 
 
-#if defined(APIC_IO)
+#ifdef SMP /* APIC-IO */
 
 /*
  * IO APIC code,
@@ -437,15 +500,15 @@ io_apic_set_id(int apic, int id)
 {
 	u_int32_t ux;
 	
-	ux = io_apic_read(apic, IOAPIC_ID);	/* get current contents */
+	ux = ioapic_read(apic, IOAPIC_ID);	/* get current contents */
 	if (((ux & APIC_ID_MASK) >> 24) != id) {
 		kprintf("Changing APIC ID for IO APIC #%d"
 		       " from %d to %d on chip\n",
 		       apic, ((ux & APIC_ID_MASK) >> 24), id);
 		ux &= ~APIC_ID_MASK;	/* clear the ID field */
 		ux |= (id << 24);
-		io_apic_write(apic, IOAPIC_ID, ux);	/* write new value */
-		ux = io_apic_read(apic, IOAPIC_ID);	/* re-read && test */
+		ioapic_write(apic, IOAPIC_ID, ux);	/* write new value */
+		ux = ioapic_read(apic, IOAPIC_ID);	/* re-read && test */
 		if (((ux & APIC_ID_MASK) >> 24) != id)
 			panic("can't control IO APIC #%d ID, reg: 0x%08x",
 			      apic, ux);
@@ -456,7 +519,7 @@ io_apic_set_id(int apic, int id)
 int
 io_apic_get_id(int apic)
 {
-  return (io_apic_read(apic, IOAPIC_ID) & APIC_ID_MASK) >> 24;
+  return (ioapic_read(apic, IOAPIC_ID) & APIC_ID_MASK) >> 24;
 }
   
 
@@ -464,9 +527,6 @@ io_apic_get_id(int apic)
 /*
  * Setup the IO APIC.
  */
-
-extern int	apic_pin_trigger;	/* 'opaque' */
-
 void
 io_apic_setup_intpin(int apic, int pin)
 {
@@ -495,17 +555,17 @@ io_apic_setup_intpin(int apic, int pin)
 	 */
 	imen_lock();
 
-	flags = io_apic_read(apic, select) & IOART_RESV;
+	flags = ioapic_read(apic, select) & IOART_RESV;
 	flags |= IOART_INTMSET | IOART_TRGREDG | IOART_INTAHI;
 	flags |= IOART_DESTPHY | IOART_DELFIXED;
 
-	target = io_apic_read(apic, select + 1) & IOART_HI_DEST_RESV;
+	target = ioapic_read(apic, select + 1) & IOART_HI_DEST_RESV;
 	target |= 0;	/* fixed mode cpu mask of 0 - don't deliver anywhere */
 
 	vector = 0;
 
-	io_apic_write(apic, select, flags | vector);
-	io_apic_write(apic, select + 1, target);
+	ioapic_write(apic, select, flags | vector);
+	ioapic_write(apic, select + 1, target);
 
 	imen_unlock();
 
@@ -552,7 +612,7 @@ io_apic_setup_intpin(int apic, int pin)
 		flags = DEFAULT_FLAGS;
 		level = trigger(apic, pin, &flags);
 		if (level == 1)
-			apic_pin_trigger |= (1 << irq);
+			int_to_apicintpin[irq].flags |= IOAPIC_IM_FLAG_LEVEL;
 		polarity(apic, pin, &flags, level);
 	}
 
@@ -581,13 +641,13 @@ io_apic_setup_intpin(int apic, int pin)
 	imen_lock();
 
 	vector = IDT_OFFSET + irq;			/* IDT vec */
-	target = io_apic_read(apic, select + 1) & IOART_HI_DEST_RESV;
+	target = ioapic_read(apic, select + 1) & IOART_HI_DEST_RESV;
 	/* Deliver all interrupts to CPU0 (BSP) */
 	target |= (CPU_TO_ID(cpuid) << IOART_HI_DEST_SHIFT) &
 		  IOART_HI_DEST_MASK;
-	flags |= io_apic_read(apic, select) & IOART_RESV;
-	io_apic_write(apic, select, flags | vector);
-	io_apic_write(apic, select + 1, target);
+	flags |= ioapic_read(apic, select) & IOART_RESV;
+	ioapic_write(apic, select, flags | vector);
+	ioapic_write(apic, select + 1, target);
 
 	imen_unlock();
 }
@@ -597,9 +657,6 @@ io_apic_setup(int apic)
 {
 	int		maxpin;
 	int		pin;
-
-	if (apic == 0)
-		apic_pin_trigger = 0;	/* default to edge-triggered */
 
 	maxpin = REDIRCNT_IOAPIC(apic);		/* pins in APIC */
 	kprintf("Programming %d pins in IOAPIC #%d\n", maxpin, apic);
@@ -662,8 +719,8 @@ ext_int_setup(int apic, int intr)
 	vector = IDT_OFFSET + intr;
 	flags = DEFAULT_EXTINT_FLAGS;
 
-	io_apic_write(apic, select, flags | vector);
-	io_apic_write(apic, select + 1, target);
+	ioapic_write(apic, select, flags | vector);
+	ioapic_write(apic, select + 1, target);
 
 	return 0;
 }
@@ -805,19 +862,19 @@ bad:
 
 
 /*
- * Print contents of apic_imen.
+ * Print contents of unmasked IRQs.
  */
-extern	u_int apic_imen;		/* keep apic_imen 'opaque' */
 void
 imen_dump(void)
 {
 	int x;
 
 	kprintf("SMP: enabled INTs: ");
-	for (x = 0; x < 24; ++x)
-		if ((apic_imen & (1 << x)) == 0)
-        		kprintf("%d, ", x);
-	kprintf("apic_imen: 0x%08x\n", apic_imen);
+	for (x = 0; x < APIC_INTMAPSIZE; ++x) {
+		if ((int_to_apicintpin[x].flags & IOAPIC_IM_FLAG_MASKED) == 0)
+        		kprintf("%d ", x);
+	}
+	kprintf("\n");
 }
 
 
@@ -825,7 +882,7 @@ imen_dump(void)
  * Inter Processor Interrupt functions.
  */
 
-#endif	/* APIC_IO */
+#endif	/* SMP APIC-IO */
 
 /*
  * Send APIC IPI 'vector' to 'destType' via 'deliveryMode'.
@@ -850,9 +907,11 @@ apic_ipi(int dest_type, int vector, int delivery_mode)
 	if ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
 	    unsigned long rflags = read_rflags();
 	    cpu_enable_intr();
+	    DEBUG_PUSH_INFO("apic_ipi");
 	    while ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
 		lwkt_process_ipiq();
 	    }
+	    DEBUG_POP_INFO();
 	    write_rflags(rflags);
 	}
 
@@ -873,9 +932,11 @@ single_apic_ipi(int cpu, int vector, int delivery_mode)
 	if ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
 	    unsigned long rflags = read_rflags();
 	    cpu_enable_intr();
+	    DEBUG_PUSH_INFO("single_apic_ipi");
 	    while ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
 		lwkt_process_ipiq();
 	    }
+	    DEBUG_POP_INFO();
 	    write_rflags(rflags);
 	}
 	icr_hi = lapic->icr_hi & ~APIC_ID_MASK;
@@ -934,12 +995,12 @@ single_apic_ipi_passive(int cpu, int vector, int delivery_mode)
  * APIC_DELMODE_FIXED or APIC_DELMODE_LOWPRIO.
  */
 void
-selected_apic_ipi(u_int target, int vector, int delivery_mode)
+selected_apic_ipi(cpumask_t target, int vector, int delivery_mode)
 {
 	crit_enter();
 	while (target) {
-		int n = bsfl(target);
-		target &= ~(1 << n);
+		int n = BSFCPUMASK(target);
+		target &= ~CPUMASK(n);
 		single_apic_ipi(n, vector, delivery_mode);
 	}
 	crit_exit();
@@ -1002,4 +1063,56 @@ u_sleep(int count)
 	set_apic_timer(count);
 	while (read_apic_timer())
 		 /* spin */ ;
+}
+
+/*
+ * XXX: Hack: Used by pmap_init
+ */
+vm_offset_t cpu_apic_addr;
+
+void
+lapic_init(vm_offset_t lapic_addr)
+{
+	/*
+	 * lapic not mapped yet (pmap_init is called too late)
+	 */
+	lapic = pmap_mapdev_uncacheable(lapic_addr, sizeof(struct LAPIC));
+
+	cpu_apic_addr = lapic_addr;
+
+	kprintf("lapic: at 0x%08lx\n", lapic_addr);
+}
+
+static TAILQ_HEAD(, lapic_enumerator) lapic_enumerators =
+	TAILQ_HEAD_INITIALIZER(lapic_enumerators);
+
+void
+lapic_config(void)
+{
+	struct lapic_enumerator *e;
+	int error;
+
+	TAILQ_FOREACH(e, &lapic_enumerators, lapic_link) {
+		error = e->lapic_probe(e);
+		if (!error)
+			break;
+	}
+	if (e == NULL)
+		panic("can't config lapic\n");
+
+	e->lapic_enumerate(e);
+}
+
+void
+lapic_enumerator_register(struct lapic_enumerator *ne)
+{
+	struct lapic_enumerator *e;
+
+	TAILQ_FOREACH(e, &lapic_enumerators, lapic_link) {
+		if (e->lapic_prio < ne->lapic_prio) {
+			TAILQ_INSERT_BEFORE(e, ne, lapic_link);
+			return;
+		}
+	}
+	TAILQ_INSERT_TAIL(&lapic_enumerators, ne, lapic_link);
 }

@@ -17,7 +17,6 @@
  * all derivative works or modified versions.
  *
  * $FreeBSD: src/sys/i386/isa/gpib.c,v 1.29 2000/01/29 16:17:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/gpib/gpib.c,v 1.16 2008/08/02 01:14:42 dillon Exp $
  *
  */
 /*Please read the README file for usage information*/
@@ -64,9 +63,8 @@ static	d_close_t	gpclose;
 static	d_write_t	gpwrite;
 static	d_ioctl_t	gpioctl;
 
-#define CDEV_MAJOR 44
 static struct dev_ops gp_ops = {
-	{ "gp", CDEV_MAJOR, 0 },
+	{ "gp", 0, 0 },
 	.d_open =	gpopen,
 	.d_close =	gpclose,
 	.d_write =	gpwrite,

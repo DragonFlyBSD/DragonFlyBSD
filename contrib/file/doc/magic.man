@@ -1,4 +1,4 @@
-.\" $File: magic.man,v 1.60 2009/05/08 23:02:44 christos Exp $
+.\" $File: magic.man,v 1.66 2011/01/06 23:54:41 rrt Exp $
 .Dd August 30, 2008
 .Dt MAGIC __FSECTION__
 .Os
@@ -71,9 +71,31 @@ characters in the magic match both lower and upper case characters in the
 target, whereas upper case characters in the magic only match uppercase
 characters in the target.
 .It Dv pstring
-A Pascal-style string where the first byte is interpreted as the an
+A Pascal-style string where the first byte/short/int is interpreted as the an
 unsigned length.
+The length defaults to byte and can be specified as a modifier.
+The following modifiers are supported:
+.Bl -tag -compact -width B
+.It B
+A byte length (default).
+.It H
+A 2 byte big endian length.
+.It h
+A 2 byte big little length.
+.It L
+A 4 byte big endian length.
+.It l
+A 4 byte big little length.
+.It J
+The length includes itself in its count.
+.El
 The string is not NUL terminated.
+.Dq J
+is used rather than the more
+valuable
+.Dq I
+because this type of length is a feature of the JPEG
+format.
 .It Dv date
 A four-byte value interpreted as a UNIX date.
 .It Dv qdate
@@ -283,7 +305,7 @@ then print the string), with
 The special test
 .Em x
 always evaluates to true.
-.Dv message
+.It Dv message
 The message to be printed if the comparison succeeds.
 If the string contains a
 .Xr printf 3
@@ -344,11 +366,11 @@ on the line indicates the level of the test; a line with no
 .Em \*[Gt]
 at the beginning is considered to be at level 0.
 Tests are arranged in a tree-like hierarchy:
-If a the test on a line at level
+if the test on a line at level
 .Em n
 succeeds, all following tests at level
 .Em n+1
-are performed, and the messages printed if the tests succeed, untile a line
+are performed, and the messages printed if the tests succeed, until a line
 with level
 .Em n
 (or less) appears.
@@ -365,7 +387,7 @@ being examined.
 If the first character following the last
 .Em \*[Gt]
 is a
-.Em (
+.Em \&(
 then the string after the parenthesis is interpreted as an indirect offset.
 That means that the number after the parenthesis is used as an offset in
 the file.

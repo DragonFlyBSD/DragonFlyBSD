@@ -8,7 +8,7 @@
 #
 # img is now the default (produces both the .iso and .img)
 #
-gui installer img:
+gui installer img nopkgs:
 
 #########################################################################
 #				 SETUP		 			#
@@ -17,6 +17,7 @@ gui installer img:
 ISODIR?=	/usr/release
 ISOROOT?=	${ISODIR}/root
 OBJSYS=		${.OBJDIR}/../sys
+GITHOST?=	git.dragonflybsd.org
 
 MAKE_JOBS?=	$$(sysctl -n hw.ncpu)
 
@@ -29,9 +30,9 @@ MACHINE_ARCH=	x86_64
 # XXX makeshift fix to build the right kernel for the (target) architecture
 # We should configure this in the platform files somehow
 .if ${MACHINE_ARCH} == "i386"
-KERNCONF ?= GENERIC VKERNEL
+KERNCONF ?= GENERIC GENERIC_SMP
 .else
-KERNCONF ?= X86_64_GENERIC VKERNEL64
+KERNCONF ?= X86_64_GENERIC X86_64_GENERIC_SMP
 .endif
 
 PKGSRC_PREFIX?=		/usr/pkg
@@ -102,9 +103,18 @@ OLD_PKGSRC_PACKAGES?=	cdrtools-2.01.01.27nb1 \
 REQ_ROOTSKELS=	${.CURDIR}/root
 ROOTSKELS?=	${REQ_ROOTSKELS}
 
+# LIST OF PACKAGES NOT INCLUDED DUE TO BUILD ISSUES:
+#	chat/pidgin		textproc/enchant dependency is broken
+#	x11/rxvt-unicode	broken configure
+#	net/nmap		tries to access openssl/md2.h which does not
+#				exist.
+#	sysutils/idesk		dying on link __sync_fetch_and_add_4
+#
 .if make(gui)
 ISOFILE?=		${ISODIR}/dfly-gui.iso
 IMGFILE?=		${ISODIR}/dfly-gui.img
+
+.if !make(nopkgs)
 PKGSRC_PACKAGES+=	meta-pkgs/modular-xorg-apps \
 			meta-pkgs/modular-xorg-drivers \
 			meta-pkgs/modular-xorg-fonts \
@@ -116,11 +126,9 @@ PKGSRC_PACKAGES+=	meta-pkgs/modular-xorg-apps \
 			shells/zsh \
 			editors/emacs \
 			editors/vim \
-			chat/pidgin \
 			chat/irssi \
 			chat/xchat \
 			x11/modular-xorg-server \
-			x11/rxvt-unicode \
 			x11/eterm \
 			lang/perl5 \
 			editors/nano \
@@ -129,13 +137,13 @@ PKGSRC_PACKAGES+=	meta-pkgs/modular-xorg-apps \
 			archivers/zip \
 			security/sudo \
 			www/links-gui \
-			net/nmap \
 			net/wget \
 			fonts/terminus-font \
 			net/rsync \
-			sysutils/idesk \
 			time/asclock \
 			misc/screen
+.endif
+
 ROOTSKELS+=		${.CURDIR}/gui
 .endif
 
@@ -159,18 +167,15 @@ NRLOBJDIR?= /usr/obj
 #########################################################################
 
 release:	check clean buildworld1 buildkernel1 \
-		buildiso srcs customizeiso mklocatedb \
-		mkiso mkimg
+		buildiso srcs customizeiso mkiso mkimg
 
 quickrel:	check clean buildworld2 buildkernel2 \
-		buildiso srcs customizeiso mklocatedb \
-		mkiso mkimg
+		buildiso srcs customizeiso mkiso mkimg
 
 realquickrel:	check clean \
-		buildiso srcs customizeiso mklocatedb \
-		mkiso mkimg
+		buildiso srcs customizeiso mkiso mkimg
 
-restartpkgs:	check customizeiso mklocatedb mkiso mkimg
+restartpkgs:	check customizeiso mkiso mkimg
 
 quick:		quickrel
 
@@ -210,13 +215,10 @@ buildworld1 buildworld2:
 
 buildkernel1 buildkernel2:
 	cd ${.CURDIR}/..; \
-	first=; \
 	for kernconf in ${KERNCONF}; do \
 		${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} \
 			make -j ${MAKE_JOBS} ${.TARGET:C/build(.*)2/quick\1/:C/1//} \
-			KERNCONF=$${kernconf} \
-			$${first:+-DNO_MODULES}; \
-		first=done; \
+			KERNCONF=$${kernconf}; \
 	done
 
 # note that we do not want to mess with any /usr/obj directories not related
@@ -226,6 +228,9 @@ buildkernel1 buildkernel2:
 #
 # Unconditionally clean out /usr/release/root so a previous img build
 # does not blow up a future quick iso build
+#
+# We install with INSTALLSTRIPPEDMODULES to make things fit into the ISO.
+# We leave the kernel's debug variables intact.
 #
 buildiso:
 	-rm -rf ${ISOROOT}
@@ -238,31 +243,42 @@ buildiso:
 		make -m ${.CURDIR}/../share/mk DESTDIR=${ISOROOT} distribution )
 	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
 	cd ${.CURDIR}/..; \
-	first=; \
 	for kernconf in ${KERNCONF}; do \
-		make DESTDIR=${ISOROOT} \
-			installkernel KERNCONF=$${kernconf} \
-			$${first:+DESTKERNNAME=kernel.$${kernconf}} \
-			$${first:+-DNO_MODULES}; \
-		first=done; \
+		make DESTDIR=${ISOROOT} installkernel \
+			KERNCONF=$${kernconf} \
+			DESTKERNDIR=/boot/kernel.$${kernconf} \
+			INSTALLSTRIPPEDMODULES=y; \
+		ln -s kernel ${ISOROOT}/boot/kernel.$${kernconf}/kernel.BOOTP; \
+		rm -rf ${ISOROOT}/boot/kernel.$${kernconf}.old; \
 	done
-	ln -s kernel ${ISOROOT}/boot/kernel.BOOTP
+.if ${MACHINE_ARCH} == "i386"
+	mv ${ISOROOT}/boot/kernel.GENERIC ${ISOROOT}/boot/kernel.UP
+	mv ${ISOROOT}/boot/kernel.GENERIC_SMP ${ISOROOT}/boot/kernel.SMP
+.else
+	mv ${ISOROOT}/boot/kernel.X86_64_GENERIC ${ISOROOT}/boot/kernel.UP
+	mv ${ISOROOT}/boot/kernel.X86_64_GENERIC_SMP ${ISOROOT}/boot/kernel.SMP
+.endif
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.local.dist -p ${ISOROOT}/usr/local/
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
 
-# Release CD: Kernel sources (~16M) and the full pkgsrc tree (~27M)
-# Release DVD: Full sources (~90M) and the full pkgsrc tree (~27M)
+# The GUI build includes the pkgsrc tree (~1G+) while the nominal release
+# build does not.
+#
+# The GUI build includes full sources while the nominal release build
+# only includes kernel sources (~27MB).
 #
 srcs:
 .if !defined(WITHOUT_SRCS)
-	cd ${ISOROOT}/usr && make pkgsrc-create
 .if make(gui)
-	cd ${ISOROOT}/usr && make src-create
+	cd ${ISOROOT}/usr && make pkgsrc-create GITHOST=${GITHOST}
+	cd ${ISOROOT}/usr && make src-create GITHOST=${GITHOST}
 .else
 	rm -f ${ISOROOT}/usr/src-sys.tgz
+	rm -f ${ISOROOT}/usr/src-sys.tar.bz2
 	cd ${.CURDIR}/.. && tar --exclude .git -s '/^\./src/' \
-		-czf ${ISOROOT}/usr/src-sys.tgz ./Makefile ./Makefile.inc1 ./sys
+		-cf - ./Makefile ./Makefile.inc1 ./sys | \
+		bzip2 -9 > ${ISOROOT}/usr/src-sys.tar.bz2
 .endif
 .endif
 
@@ -328,20 +344,23 @@ customizeiso:
 	    ${CHROOT_CMD} "cd /usr/pkgsrc/bootstrap;    \
 		export share_dir=/usr/pkgobj/bootstrap/work/share; \
 		./bootstrap --workdir /usr/pkgobj/bootstrap/work"
-.if make(gui)
 	test -e ${ISODIR}/.didbootstrap || \
 	    echo ".ifdef BSD_PKG_MK	# added by nrelease" \
 		>> ${ISOROOT}/usr/pkg/etc/mk.conf
+	test -e ${ISODIR}/.didbootstrap || \
+	    echo "PKG_DEFAULT_OPTIONS='dri inet6'" \
+		>> ${ISOROOT}/usr/pkg/etc/mk.conf
+.if make(gui)
 	test -e ${ISODIR}/.didbootstrap || \
 	    echo "ACCEPTABLE_LICENSES+=openmotif-license" \
 		>> ${ISOROOT}/usr/pkg/etc/mk.conf
 	test -e ${ISODIR}/.didbootstrap || \
 	    echo "ACCEPTABLE_LICENSES+=vim-license" \
 		>> ${ISOROOT}/usr/pkg/etc/mk.conf
+.endif
 	test -e ${ISODIR}/.didbootstrap || \
 	    echo ".endif			# added by nrelease" \
 		>> ${ISOROOT}/usr/pkg/etc/mk.conf
-.endif
 	test -e ${ISODIR}/.didbootstrap || sync
 	test -e ${ISODIR}/.didbootstrap || touch ${ISODIR}/.didbootstrap
 	#
@@ -353,39 +372,50 @@ customizeiso:
 	    bmake ${PKGSRC_OPTIONS} clean build install)"
 .endfor
 	#
-	# Remove packages which nothing depends on and clean up
+	# Remove packages which nothing depends on, add a whatis database
+	# for pkgsrc manual pages, create an initial locate database and
+	# clean up
 	#
 	${CHROOT_CMD} "pkg_leaves | xargs pkg_delete -R"
+	${CHROOT_CMD} "makewhatis /usr/pkg/man"
 	-umount ${ISOROOT}/usr/pkgsrc/distfiles
-	umount ${ISOROOT}/dev
 	umount ${ISOROOT}/usr/pkgsrc
 	rm -rf ${ISOROOT}/usr/pkgobj
 	rm -f ${ISOROOT}/etc/resolv.conf
-	makewhatis ${ISOROOT}/usr/pkg/man
+	${CHROOT_CMD} /etc/periodic/weekly/310.locate
+	umount ${ISOROOT}/dev
+	#
+	# Recopy files that pkgsrc may have updated in /etc into /etc.hdd
+	#
+	cpdup ${ISOROOT}/etc/shells ${ISOROOT}/etc.hdd/shells
+	cpdup ${ISOROOT}/etc/group ${ISOROOT}/etc.hdd/group
 
-# So locate works
+# no iso is generated for gui builds, just img.
 #
-mklocatedb:
-	( find -s ${ISOROOT} -path ${ISOROOT}/tmp -or \
-		-path ${ISOROOT}/usr/tmp -or -path ${ISOROOT}/var/tmp \
-		-prune -o -print | sed -e 's#^${ISOROOT}##g' | \
-		/usr/libexec/locate.mklocatedb \
-		-presort >${ISOROOT}/var/db/locate.database )
-
 mkiso:
+.if !make(gui)
 	( cd ${ISOROOT}; ${PKGBIN_MKISOFS} -b boot/cdboot -no-emul-boot \
 		-R -J -o ${ISOFILE} \
 		-V "DragonFly `${.CURDIR}/../tools/gitrev.sh | cut -c -22`" . )
-
+.endif
 
 mkimg:
 	if [ ! -d ${IMGMNT} ]; then mkdir -p ${IMGMNT}; fi
 	-if [ -f ${ISODIR}/vn.which ]; then umount ${IMGMNT}; 		\
 	    vnconfig -u `cat ${ISODIR}/vn.which`; fi
-	@echo "STEP: determine required image size"
+.ifdef IMGSIZE
+	@echo "STEP: use an image size of ${IMGSIZE} 512-byte sectors"
+	rm -f ${IMGFILE}
+	sz=`bc -e "((${IMGSIZE}) * 512)" -equit`; truncate -s $${sz} ${IMGFILE}
+.else
+	@echo "STEP: determine required image size in 1GB steps"
 	sz=`du -ck ${ISOROOT} | tail -n 1 | cut -f 1`;			\
-	    sz=`bc -e "(($${sz}) / 1024) * 1.15" -equit | cut -f1 -d.`;	\
-	    dd if=/dev/zero of=${IMGFILE} bs=1m count=$${sz};
+	    sz=`bc -e "(($${sz}) * 1.15 + 999999) / 1000000" -equit | \
+	    cut -f1 -d.`;						\
+	    sz=`bc -e "(($${sz}) * 953)" -equit | cut -f1 -d.`;		\
+	    rm -f ${IMGFILE};						\
+	    truncate -s $${sz}M ${IMGFILE};
+.endif
 	fdisk -IB -p ${IMGFILE}
 	@echo "STEP: determine free vn device"
 	vnconfig -l | grep "not in use" | head -n 1 | 			\
@@ -459,13 +489,15 @@ help all:
 	@echo "make [gui] realquick - attempt to restart after world & kernel"
 	@echo "make [gui] restartpkgs - attempt to restart at the pkg building stage"
 	@echo ""
-	@echo "Extra packages may be specified with PKGSRC_EXTRA_PACKAGES"
+	@echo "PKGSRC_EXTRA_PACKAGES may be used to add additional pkgs"
+	@echo "GITHOST may be used to override git.dragonflybsd.org"
+	@echo "IMGSIZE may be used to override the .img (in 512-byte sectors)"
 
 .PHONY: release quickrel realquickrel
 .PHONY: installer
 .PHONY: quick realquick
 .PHONY: check buildworld1 buildworld2
-.PHONY: buildkernel1 buildkernel2 buildiso customizeiso mklocatedb mkiso mkimg
+.PHONY: buildkernel1 buildkernel2 buildiso customizeiso mkiso mkimg
 .PHONY: clean realclean help all srcs
 
 .include <bsd.prog.mk>

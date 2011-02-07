@@ -73,6 +73,7 @@ ldns_dname_cat(ldns_rdf *rd1, ldns_rdf *rd2)
 {
 	uint16_t left_size;
 	uint16_t size;
+	uint8_t* newd;
 
 	if (ldns_rdf_get_type(rd1) != LDNS_RDF_TYPE_DNAME ||
 			ldns_rdf_get_type(rd2) != LDNS_RDF_TYPE_DNAME) {
@@ -86,10 +87,17 @@ ldns_dname_cat(ldns_rdf *rd1, ldns_rdf *rd2)
 	if (left_size > 0 &&ldns_rdf_data(rd1)[left_size - 1] == 0) {
 		left_size--;
 	}
+        if(left_size == 0) {
+                return LDNS_STATUS_OK;
+        }
 
 	size = left_size + ldns_rdf_size(rd2);
+	newd = LDNS_XREALLOC(ldns_rdf_data(rd1), uint8_t, size);
+	if(!newd) {
+		return LDNS_STATUS_MEM_ERR;
+	}
 
-	ldns_rdf_set_data(rd1, LDNS_XREALLOC(ldns_rdf_data(rd1), uint8_t, size));
+	ldns_rdf_set_data(rd1, newd);
 	memcpy(ldns_rdf_data(rd1) + left_size, ldns_rdf_data(rd2),
 			ldns_rdf_size(rd2));
 	ldns_rdf_set_size(rd1, size);
@@ -108,10 +116,17 @@ ldns_dname_reverse(const ldns_rdf *d)
 	d_tmp = ldns_rdf_clone(d);
 
 	new = ldns_dname_new_frm_str(".");
+        if(!new)
+                return NULL;
 
 	while(ldns_dname_label_count(d_tmp) > 0) {
 		tmp = ldns_dname_label(d_tmp, 0);
 		status = ldns_dname_cat(tmp, new);
+                if(status != LDNS_STATUS_OK) {
+                        ldns_rdf_deep_free(new);
+	                ldns_rdf_deep_free(d_tmp);
+                        return NULL;
+                }
 		ldns_rdf_deep_free(new);
 		new = tmp;
 		tmp = ldns_dname_left_chop(d_tmp);
@@ -417,14 +432,20 @@ ldns_dname_compare(const ldns_rdf *dname1, const ldns_rdf *dname2)
 }
 
 int
+ldns_dname_is_wildcard(const ldns_rdf* dname)
+{
+	return ( ldns_dname_label_count(dname) > 0 &&
+		 ldns_rdf_data(dname)[0] == 1 &&
+		 ldns_rdf_data(dname)[1] == '*');
+}
+
+int
 ldns_dname_match_wildcard(const ldns_rdf *dname, const ldns_rdf *wildcard)
 {
 	ldns_rdf *wc_chopped;
 	int result;
 	/* check whether it really is a wildcard */
-	if (ldns_dname_label_count(wildcard) > 0 &&
-	    ldns_rdf_data(wildcard)[0] == 1 &&
-	    ldns_rdf_data(wildcard)[1] == '*') {
+	if (ldns_dname_is_wildcard(wildcard)) {
 		/* ok, so the dname needs to be a subdomain of the wildcard
 		 * without the *
 		 */
@@ -475,12 +496,30 @@ ldns_dname_interval(const ldns_rdf *prev, const ldns_rdf *middle,
 bool
 ldns_dname_str_absolute(const char *dname_str)
 {
+        const char* s;
 	if(dname_str && strcmp(dname_str, ".") == 0)
 		return 1;
-	return (dname_str &&
-	        strlen(dname_str) > 1 &&
-	        dname_str[strlen(dname_str) - 1] == '.' &&
-	        dname_str[strlen(dname_str) - 2] != '\\');
+        if(!dname_str || strlen(dname_str) < 2)
+                return 0;
+        if(dname_str[strlen(dname_str) - 1] != '.')
+                return 0;
+        if(dname_str[strlen(dname_str) - 2] != '\\')
+                return 1; /* ends in . and no \ before it */
+        /* so we have the case of ends in . and there is \ before it */
+        for(s=dname_str; *s; s++) {
+                if(*s == '\\') {
+                        if(s[1] && s[2] && s[3] /* check length */
+                                && isdigit(s[1]) && isdigit(s[2]) && 
+                                isdigit(s[3]))
+                                s += 3;
+                        else if(!s[1] || isdigit(s[1])) /* escape of nul,0-9 */
+                                return 0; /* parse error */
+                        else s++; /* another character escaped */
+                }
+                else if(!*(s+1) && *s == '.')
+                        return 1; /* trailing dot, unescaped */
+        }
+        return 0;
 }
 
 ldns_rdf *

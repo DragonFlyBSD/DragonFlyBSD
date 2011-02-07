@@ -24,7 +24,8 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
+ */
+/*-
  * Copyright (c) 2002 Eric Moore
  * Copyright (c) 2002 LSI Logic Corporation
  * All rights reserved.
@@ -53,8 +54,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/amr/amr_disk.c,v 1.5.2.5 2002/12/20 15:12:04 emoore Exp $
- * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.15 2007/06/17 23:50:16 dillon Exp $
+ * $FreeBSD: src/sys/dev/amr/amr_disk.c,v 1.39 2006/10/31 21:19:25 pjd Exp $
  */
 
 /*
@@ -64,24 +64,19 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/module.h>
 
-#include "amr_compat.h"
+#include <sys/bio.h>
 #include <sys/bus.h>
 #include <sys/conf.h>
-#include <sys/devicestat.h>
-#include <sys/disk.h>
 #include <sys/dtype.h>
+
 #include <sys/rman.h>
 
-#include <vm/vm.h>
-#include <vm/pmap.h>
-
-#include <machine/md_var.h>
-
-#include "amrio.h"
-#include "amrreg.h"
-#include "amrvar.h"
-#include "amr_tables.h"
+#include <dev/raid/amr/amrio.h>
+#include <dev/raid/amr/amrreg.h>
+#include <dev/raid/amr/amrvar.h>
+#include <dev/raid/amr/amr_tables.h>
 
 /* prototypes */
 static int amrd_probe(device_t dev);
@@ -89,25 +84,20 @@ static int amrd_attach(device_t dev);
 static int amrd_detach(device_t dev);
 
 static	d_open_t	amrd_open;
-static	d_close_t	amrd_close;
 static	d_strategy_t	amrd_strategy;
-static	d_ioctl_t	amrd_ioctl;
 static	d_dump_t	amrd_dump;
 
-#define AMRD_CDEV_MAJOR	133
-
 static struct dev_ops amrd_ops = {
-	{ "amrd", AMRD_CDEV_MAJOR, D_DISK },
+	{ "amrd", 0, D_DISK },
 	.d_open = amrd_open,
-	.d_close = amrd_close,
-	.d_read = physread,
-	.d_write = physwrite,
-	.d_ioctl = amrd_ioctl,
 	.d_strategy = amrd_strategy,
-	.d_dump = amrd_dump
+	.d_dump = amrd_dump,
 };
 
 static devclass_t	amrd_devclass;
+#ifdef FREEBSD_4
+int			amr_disks_registered = 0;
+#endif
 
 static device_method_t amrd_methods[] = {
     DEVMETHOD(device_probe,	amrd_probe),
@@ -127,8 +117,7 @@ DRIVER_MODULE(amrd, amr, amrd_driver, amrd_devclass, 0, 0);
 static int
 amrd_open(struct dev_open_args *ap)
 {
-    cdev_t dev = ap->a_head.a_dev;
-    struct amrd_softc	*sc = (struct amrd_softc *)dev->si_drv1;
+    struct amrd_softc	*sc = ap->a_head.a_dev->si_drv1;
 
     debug_called(1);
 
@@ -138,73 +127,38 @@ amrd_open(struct dev_open_args *ap)
     /* controller not active? */
     if (sc->amrd_controller->amr_state & AMR_STATE_SHUTDOWN)
 	return(ENXIO);
-#if 0
-    bzero(&info, sizeof(info));
-    info.d_media_blksize = AMR_BLKSIZE;			/* optional */
-    info.d_media_blocks	= sc->amrd_drive->al_size;
 
-    info.d_type       = DTYPE_SCSI;			/* mandatory */
-    info.d_secpertrack = sc->amrd_drive->al_sectors;
-    info.d_nheads	= sc->amrd_drive->al_heads;
-    info.d_ncylinders = sc->amrd_drive->al_cylinders;
-    info.d_secpercyl  = sc->amrd_drive->al_sectors * sc->amrd_drive->al_heads;
-
-    disk_setdiskinfo(&sc->amrd_disk, &info);
-#endif
-    sc->amrd_flags |= AMRD_OPEN;
     return (0);
 }
-
-static int
-amrd_close(struct dev_close_args *ap)
-{
-    cdev_t dev = ap->a_head.a_dev;
-    struct amrd_softc	*sc = (struct amrd_softc *)dev->si_drv1;
-
-    debug_called(1);
-
-    if (sc == NULL)
-	return (ENXIO);
-    sc->amrd_flags &= ~AMRD_OPEN;
-    return (0);
-}
-
-static int
-amrd_ioctl(struct dev_ioctl_args *ap)
-{
-    return (ENOTTY);
-}
-
-
 /********************************************************************************
  * System crashdump support
  */
-int
+
+static int
 amrd_dump(struct dev_dump_args *ap)
 {
     cdev_t dev = ap->a_head.a_dev;
-    struct amrd_softc	*amrd_sc = (struct amrd_softc *)dev->si_drv1;
+    off_t offset = ap->a_offset;
+    void *virtual = ap->a_virtual;
+    size_t length = ap->a_length;
+    struct amrd_softc	*amrd_sc;
     struct amr_softc	*amr_sc;
-    int			error = 0;
-    int			driveno;
+    int			error;
 
-    debug_called(1);
-
+    amrd_sc = (struct amrd_softc *)dev->si_drv1;
+    if (amrd_sc == NULL)
+	return(ENXIO);
     amr_sc  = (struct amr_softc *)amrd_sc->amrd_controller;
 
-    if (!amrd_sc || !amr_sc)
-	return(ENXIO);
-
-    driveno = amrd_sc->amrd_drive - amr_sc->amr_drive;
-
-    if (ap->a_length > 0) {
-	if ((error = amr_dump_blocks(amr_sc,driveno,ap->a_offset / AMR_BLKSIZE,
-	    (void *)ap->a_virtual,(int) ap->a_length / AMR_BLKSIZE  )) != 0)
+    if (length > 0) {
+	int	driveno = amrd_sc->amrd_drive - amr_sc->amr_drive;
+	if ((error = amr_dump_blocks(amr_sc,driveno,offset / AMR_BLKSIZE ,(void *)virtual,(int) length / AMR_BLKSIZE  )) != 0)
 	    	return(error);
+
     }
     return(0);
-
 }
+
 /*
  * Read/write routine for a buffer.  Finds the proper unit, range checks
  * arguments, and schedules the transfer.  Does not wait for the transfer
@@ -228,7 +182,7 @@ amrd_strategy(struct dev_strategy_args *ap)
 
     devstat_start_transaction(&sc->amrd_stats);
     amr_submit_bio(sc->amrd_controller, bio);
-    return(0);
+    return (0);
 
  bad:
     bp->b_flags |= B_ERROR;
@@ -238,22 +192,26 @@ amrd_strategy(struct dev_strategy_args *ap)
      */
     bp->b_resid = bp->b_bcount;
     biodone(bio);
-    return(0);
+    return (0);
 }
 
 void
-amrd_intr(struct bio *bio)
+amrd_intr(void *data)
 {
+    struct bio *bio = (struct bio *)data;
     struct buf *bp = bio->bio_buf;
+    struct amrd_softc *sc = (struct amrd_softc *)bio->bio_driver_info;
 
     debug_called(2);
 
+    devstat_end_transaction_buf(&sc->amrd_stats, bp);
     if (bp->b_flags & B_ERROR) {
 	bp->b_error = EIO;
 	debug(1, "i/o error\n");
     } else {
 	bp->b_resid = 0;
     }
+
     biodone(bio);
 }
 
@@ -270,10 +228,10 @@ amrd_probe(device_t dev)
 static int
 amrd_attach(device_t dev)
 {
-	struct disk_info info;
     struct amrd_softc	*sc = (struct amrd_softc *)device_get_softc(dev);
     device_t		parent;
-    
+    struct disk_info info;
+
     debug_called(1);
 
     parent = device_get_parent(dev);
@@ -298,19 +256,19 @@ amrd_attach(device_t dev)
     /* set maximum I/O size to match the maximum s/g size */
     sc->amrd_dev_t->si_iosize_max = (AMR_NSEG - 1) * PAGE_SIZE;
 
-	/*
-	 * Set disk info, as it appears that all needed data is available already.
-	 * Setting the disk info will also cause the probing to start.
-	 */
-	bzero(&info, sizeof(info));
+    /*
+     * Set disk info, as it appears that all needed data is available already.
+     * Setting the disk info will also cause the probing to start.
+     */
+    bzero(&info, sizeof(info));
     info.d_media_blksize = AMR_BLKSIZE;			/* optional */
-    info.d_media_blocks	= sc->amrd_drive->al_size;
+    info.d_media_blocks = sc->amrd_drive->al_size;
 
-    info.d_type       = DTYPE_SCSI;			/* mandatory */
+    info.d_type = DTYPE_SCSI;				/* mandatory */
     info.d_secpertrack = sc->amrd_drive->al_sectors;
-    info.d_nheads	= sc->amrd_drive->al_heads;
+    info.d_nheads = sc->amrd_drive->al_heads;
     info.d_ncylinders = sc->amrd_drive->al_cylinders;
-    info.d_secpercyl  = sc->amrd_drive->al_sectors * sc->amrd_drive->al_heads;
+    info.d_secpercyl = sc->amrd_drive->al_sectors * sc->amrd_drive->al_heads;
 
     disk_setdiskinfo(&sc->amrd_disk, &info);
 
@@ -324,11 +282,18 @@ amrd_detach(device_t dev)
 
     debug_called(1);
 
-    if (sc->amrd_flags & AMRD_OPEN)
+#if 0 /* XXX swildner */
+    if (sc->amrd_disk->d_flags & DISKFLAG_OPEN)
 	return(EBUSY);
+#endif
 
     devstat_remove_entry(&sc->amrd_stats);
+#ifdef FREEBSD_4
+    if (--amr_disks_registered == 0)
+	cdevsw_remove(&amrddisk_cdevsw);
+#else
     disk_destroy(&sc->amrd_disk);
+#endif
     return(0);
 }
 

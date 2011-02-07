@@ -29,7 +29,6 @@
  * @(#)rpc.rstatd.c 1.1 86/09/25 Copyr 1984 Sun Micro
  * @(#)rstat_proc.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/libexec/rpc.rstatd/rstat_proc.c,v 1.14.2.1 2002/07/11 17:17:56 alfred Exp $
- * $DragonFly: src/libexec/rpc.rstatd/rstat_proc.c,v 1.5 2005/01/31 21:20:58 joerg Exp $
  */
 
 /*
@@ -38,7 +37,6 @@
  * Copyright (c) 1984 by Sun Microsystems, Inc.
  */
 
-#include <sys/kinfo.h>
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
@@ -48,6 +46,7 @@
 
 #include <err.h>
 #include <fcntl.h>
+#include <kinfo.h>
 #include <limits.h>
 #include <signal.h>
 #include <stdio.h>
@@ -85,7 +84,7 @@ union {
 } stats_all;
 
 void updatestat();
-static stat_is_init = 0;
+static int stat_is_init = 0;
 
 #ifndef FSCALE
 #define FSCALE (1 << 8)

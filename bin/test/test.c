@@ -30,7 +30,7 @@
 #define main testcmd
 #include "bltin/bltin.h"
 #else
-static void error(const char *, ...) __attribute__((__noreturn__));
+static void error(const char *, ...) __dead2 __printflike(1, 2);
 
 static void
 error(const char *msg, ...)

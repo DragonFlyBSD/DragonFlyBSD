@@ -99,6 +99,7 @@
 #define FTP_SYNTAX_ERROR		500
 #define FTP_PROTOCOL_ERROR		999
 
+static int ftp_cmd(conn_t *, const char *, ...) __printflike(2, 3);
 static struct url cached_host;
 static conn_t	*cached_connection;
 
@@ -324,7 +325,7 @@ ftp_cwd(conn_t *conn, const char *file)
 			++beg, ++i;
 		for (++i; file + i < end && file[i] != '/'; ++i)
 			/* nothing */ ;
-		e = ftp_cmd(conn, "CWD %.*s", file + i - beg, beg);
+		e = ftp_cmd(conn, "CWD %.*s", (int)(file + i - beg), beg);
 		if (e != FTP_FILE_ACTION_OK) {
 			ftp_seterr(e);
 			return (-1);

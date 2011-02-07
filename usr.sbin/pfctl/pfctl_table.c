@@ -1,4 +1,4 @@
-/*	$OpenBSD: pfctl_table.c,v 1.66 2007/03/01 17:20:54 deraadt Exp $ */
+/*	$OpenBSD: pfctl_table.c,v 1.68 2008/06/21 10:34:08 mcbride Exp $ */
 
 /*
  * Copyright (c) 2002 Cedric Berger
@@ -61,7 +61,7 @@ static void	print_addrx(const struct pfr_addr *, const struct pfr_addr *,
 			    int);
 static void	print_astats(const struct pfr_astats *, int);
 static void	radix_perror(void);
-static void	xprintf(int, const char *, ...);
+static void	xprintf(int, const char *, ...) __printflike(2, 3);
 static void	print_iface(const struct pfi_kif *, int);
 
 static const char	*stats_text[PFR_DIR_MAX][PFR_OP_TABLE_MAX] = {
@@ -273,12 +273,14 @@ pfctl_table(int argc, char *argv[], char *tname, const char *command,
 			if (b.pfrb_size <= b.pfrb_msize)
 				break;
 		}
-		PFRB_FOREACH(p, &b)
+		PFRB_FOREACH(p, &b) {
+			((struct pfr_astats *)p)->pfras_a.pfra_fback = 0;
 			if (time(NULL) - ((struct pfr_astats *)p)->pfras_tzero >
 			     lifetime)
 				if (pfr_buf_add(&b2,
 				    &((struct pfr_astats *)p)->pfras_a))
 					err(1, "duplicate buffer");
+		}
 
 		if (opts & PF_OPT_VERBOSE)
 			flags |= PFR_FLAG_FEEDBACK;
@@ -365,13 +367,14 @@ print_table(const struct pfr_table *ta, int verbose, int debug)
 	if (!debug && !(ta->pfrt_flags & PFR_TFLAG_ACTIVE))
 		return;
 	if (verbose) {
-		printf("%c%c%c%c%c%c\t%s",
+		printf("%c%c%c%c%c%c%c\t%s",
 		    (ta->pfrt_flags & PFR_TFLAG_CONST) ? 'c' : '-',
 		    (ta->pfrt_flags & PFR_TFLAG_PERSIST) ? 'p' : '-',
 		    (ta->pfrt_flags & PFR_TFLAG_ACTIVE) ? 'a' : '-',
 		    (ta->pfrt_flags & PFR_TFLAG_INACTIVE) ? 'i' : '-',
 		    (ta->pfrt_flags & PFR_TFLAG_REFERENCED) ? 'r' : '-',
 		    (ta->pfrt_flags & PFR_TFLAG_REFDANCHOR) ? 'h' : '-',
+		    (ta->pfrt_flags & PFR_TFLAG_COUNTERS) ? 'C' : '-',
 		    ta->pfrt_name);
 		if (ta->pfrt_anchor[0])
 			printf("\t%s", ta->pfrt_anchor);
@@ -426,7 +429,7 @@ void
 print_addrx(const struct pfr_addr *ad, const struct pfr_addr *rad, int dns)
 {
 	char		ch, buf[256] = "{error}";
-	char		fb[] = { ' ', 'M', 'A', 'D', 'C', 'Z', 'X', ' ', 'Y' };
+	char		fb[] = { ' ', 'M', 'A', 'D', 'C', 'Z', 'X', ' ', 'Y', ' ' };
 	unsigned int	fback, hostnet;
 
 	fback = (rad != NULL) ? rad->pfra_fback : ad->pfra_fback;
@@ -475,6 +478,8 @@ print_astats(const struct pfr_astats *as, int dns)
 
 	print_addrx(&as->pfras_a, NULL, dns);
 	printf("\tCleared:     %s", ctime(&rtime));
+ 	if (as->pfras_a.pfra_fback == PFR_FB_NOCOUNT)
+		return;
 	for (dir = 0; dir < PFR_DIR_MAX; dir++)
 		for (op = 0; op < PFR_OP_ADDR_MAX; op++)
 			printf("\t%-12s [ Packets: %-18llu Bytes: %-18llu ]\n",

@@ -97,17 +97,16 @@ struct handle {
  */
 
 static char smp_header[] =
-"  PID %-*.*s PRI NICE  SIZE    RES STATE  C   TIME   CTIME   CPU COMMAND";
+"  PID %-*.*s NICE  SIZE   PRES   STATE CPU  TIME   CTIME    CPU COMMAND";
 
 #define smp_Proc_format \
-	"%5d %-*.*s %3d %3d%7s %6s %-6.6s %1x%7s %7s %5.2f%% %.*s"
+	"%5d %-*.*s %3d%7s %6s %7.7s %2d %6s %7s %5.2f%% %.*s"
 
 static char up_header[] =
-"  PID %-*.*s PRI NICE  SIZE    RES STATE    TIME   CTIME   CPU COMMAND";
+"  PID %-*.*s NICE  SIZE   PRES   STATE    TIME   CTIME    CPU COMMAND";
 
 #define up_Proc_format \
-	"%5d %-*.*s %3d %3d%7s %6s %-6.6s%.0d%7s %7s %5.2f%% %.*s"
-
+	"%5d %-*.*s %3d%7s %6s %7.7s%.0d %7s %7s %5.2f%% %.*s"
 
 
 /* process state names for the "STATE" column of the display */
@@ -183,7 +182,7 @@ static int pageshift;		/* log base 2 of the pagesize */
 
 /* sorting orders. first is default */
 char *ordernames[] = {
-	"cpu", "size", "res", "time", "pri", "thr", "pid", "ctime",  NULL
+  "cpu", "size", "res", "time", "pri", "thr", "pid", "ctime",  "pres", NULL
 };
 
 /* compare routines */
@@ -195,6 +194,7 @@ int compare_ctime (struct kinfo_proc **, struct kinfo_proc **);
 int compare_prio(struct kinfo_proc **, struct kinfo_proc **);
 int compare_thr (struct kinfo_proc **, struct kinfo_proc **);
 int compare_pid (struct kinfo_proc **, struct kinfo_proc **);
+int compare_pres(struct kinfo_proc **, struct kinfo_proc **);
 
 int (*proc_compares[]) (struct kinfo_proc **,struct kinfo_proc **) = {
 	proc_compare,
@@ -205,6 +205,7 @@ int (*proc_compares[]) (struct kinfo_proc **,struct kinfo_proc **) = {
 	compare_thr,
 	compare_pid,
 	compare_ctime,
+	compare_pres,
 	NULL
 };
 
@@ -361,7 +362,6 @@ get_system_info(struct system_info *si)
 		if (cp_time == NULL)
 			err(1, "cp_time");
 		cp_old = cp_time + n_cpus;
-
 		len = n_cpus * sizeof(cp_old[0]);
 		bzero(cp_time, len);
 		if (sysctlbyname("kern.cputime", cp_old, &len, NULL, 0))
@@ -623,11 +623,9 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 	    (int)PP(pp, pid),
 	    namelength, namelength,
 	    get_userid(PP(pp, ruid)),
-	    (int)((show_threads && (LP(pp, pid) == -1)) ?
-	    LP(pp, tdprio) : LP(pp, prio)),
 	    (int)xnice,
 	    format_k(PROCSIZE(pp)),
-	    format_k(pagetok(VP(pp, rssize))),
+	    format_k(pagetok(VP(pp, prssize))),
 	    status,
 	    (int)(smpmode ? LP(pp, cpuid) : 0),
 	    cputime_fmt,
@@ -704,6 +702,9 @@ static unsigned char sorted_state[] =
 #define ORDERKEY_PID \
   if ( (result = PP(p1, pid) - PP(p2, pid)) == 0)
 
+#define ORDERKEY_PRSSIZE \
+  if((result = VP(p2, prssize) - VP(p1, prssize)) == 0)
+
 /* compare_cpu - the comparison function for sorting by cpu percentage */
 
 int
@@ -768,6 +769,32 @@ compare_res(struct kinfo_proc **pp1, struct kinfo_proc **pp2)
 	p1 = *(struct kinfo_proc **) pp1;
 	p2 = *(struct kinfo_proc **) pp2;
 
+	ORDERKEY_RSSIZE
+	ORDERKEY_MEM
+	ORDERKEY_PCTCPU
+	ORDERKEY_CPTICKS
+	ORDERKEY_STATE
+	ORDERKEY_PRIO
+	{}
+
+	return (result);
+}
+
+/* compare_pres - the comparison function for sorting by proportional resident set size */
+
+int
+compare_pres(struct kinfo_proc **pp1, struct kinfo_proc **pp2)
+{
+	struct kinfo_proc *p1;
+	struct kinfo_proc *p2;
+	int result;
+	pctcpu lresult;
+
+	/* remove one level of indirection */
+	p1 = *(struct kinfo_proc **) pp1;
+	p2 = *(struct kinfo_proc **) pp2;
+
+	ORDERKEY_PRSSIZE
 	ORDERKEY_RSSIZE
 	ORDERKEY_MEM
 	ORDERKEY_PCTCPU

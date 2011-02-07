@@ -276,11 +276,16 @@ ata_pci_detach(device_t dev)
     if (ctlr->r_irq) {
 	bus_teardown_intr(dev, ctlr->r_irq, ctlr->handle);
 	bus_release_resource(dev, SYS_RES_IRQ, ATA_IRQ_RID, ctlr->r_irq);
+	ctlr->r_irq = 0;
     }
-    if (ctlr->r_res2)
+    if (ctlr->r_res2) {
 	bus_release_resource(dev, ctlr->r_type2, ctlr->r_rid2, ctlr->r_res2);
-    if (ctlr->r_res1)
+	ctlr->r_res2 = 0;
+    }
+    if (ctlr->r_res1) {
 	bus_release_resource(dev, ctlr->r_type1, ctlr->r_rid1, ctlr->r_res1);
+	ctlr->r_res1 = 0;
+    }
 
     return 0;
 }

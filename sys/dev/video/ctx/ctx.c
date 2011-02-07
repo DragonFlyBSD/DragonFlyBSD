@@ -9,7 +9,6 @@
  *	for damages incurred with its use.
  *
  * $FreeBSD: src/sys/i386/isa/ctx.c,v 1.36 2000/01/29 16:17:31 peter Exp $
- * $DragonFly: src/sys/dev/video/ctx/ctx.c,v 1.13 2008/08/02 01:14:43 dillon Exp $
  */
 
 /*
@@ -139,10 +138,9 @@ static	d_close_t	ctxclose;
 static	d_read_t	ctxread;
 static	d_write_t	ctxwrite;
 static	d_ioctl_t	ctxioctl;
-#define CDEV_MAJOR 40
 
 static struct dev_ops ctx_ops = {
-	{ "ctx", CDEV_MAJOR, 0 },
+	{ "ctx", 0, 0 },
 	.d_open =	ctxopen,
 	.d_close =	ctxclose,
 	.d_read =	ctxread,

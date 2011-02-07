@@ -119,7 +119,7 @@ dummyinit(void *dummy)
 {
 	TAILQ_INIT(&dummy_runq);
 	spin_init(&dummy_spin);
-	atomic_clear_int(&dummy_curprocmask, 1);
+	atomic_clear_cpumask(&dummy_curprocmask, 1);
 }
 SYSINIT(runqueue, SI_BOOT2_USCHED, SI_ORDER_FIRST, dummyinit, NULL)
 
@@ -156,7 +156,7 @@ dummy_acquire_curproc(struct lwp *lp)
 	 */
 	if (dd->uschedcp == lp ||
 	    (dd->uschedcp == NULL && TAILQ_EMPTY(&dummy_runq))) {
-		atomic_set_int(&dummy_curprocmask, gd->gd_cpumask);
+		atomic_set_cpumask(&dummy_curprocmask, gd->gd_cpumask);
 		dd->uschedcp = lp;
 		return;
 	}
@@ -197,12 +197,6 @@ dummy_acquire_curproc(struct lwp *lp)
  * This routine is also responsible for selecting a new thread to
  * make the current thread.
  *
- * WARNING!  The MP lock may be in an unsynchronized state due to the
- * way get_mplock() works and the fact that this function may be called
- * from a passive release during a lwkt_switch().   try_mplock() will deal 
- * with this for us but you should be aware that td_mpcount may not be
- * useable.
- *
  * MPSAFE
  */
 static void
@@ -241,14 +235,14 @@ dummy_select_curproc(globaldata_t gd)
 	spin_lock(&dummy_spin);
 	if ((lp = TAILQ_FIRST(&dummy_runq)) == NULL) {
 		dd->uschedcp = NULL;
-		atomic_clear_int(&dummy_curprocmask, gd->gd_cpumask);
+		atomic_clear_cpumask(&dummy_curprocmask, gd->gd_cpumask);
 		spin_unlock(&dummy_spin);
 	} else {
 		--dummy_runqcount;
 		TAILQ_REMOVE(&dummy_runq, lp, lwp_procq);
 		lp->lwp_flag &= ~LWP_ONRUNQ;
 		dd->uschedcp = lp;
-		atomic_set_int(&dummy_curprocmask, gd->gd_cpumask);
+		atomic_set_cpumask(&dummy_curprocmask, gd->gd_cpumask);
 		spin_unlock(&dummy_spin);
 #ifdef SMP
 		lwkt_acquire(lp->lwp_thread);
@@ -280,7 +274,7 @@ dummy_setrunqueue(struct lwp *lp)
 
 	if (dd->uschedcp == NULL) {
 		dd->uschedcp = lp;
-		atomic_set_int(&dummy_curprocmask, gd->gd_cpumask);
+		atomic_set_cpumask(&dummy_curprocmask, gd->gd_cpumask);
 		lwkt_schedule(lp->lwp_thread);
 	} else {
 		/*
@@ -309,8 +303,8 @@ dummy_setrunqueue(struct lwp *lp)
 		mask = ~dummy_curprocmask & dummy_rdyprocmask & 
 		       gd->gd_other_cpus;
 		if (mask) {
-			cpuid = bsfl(mask);
-			atomic_clear_int(&dummy_rdyprocmask, 1 << cpuid);
+			cpuid = BSFCPUMASK(mask);
+			atomic_clear_cpumask(&dummy_rdyprocmask, CPUMASK(cpuid));
 			spin_unlock(&dummy_spin);
 			lwkt_schedule(&dummy_pcpu[cpuid].helper_thread);
 		} else {
@@ -474,11 +468,11 @@ dummy_sched_thread(void *dummy)
     gd = mycpu;
     cpuid = gd->gd_cpuid;
     dd = &dummy_pcpu[cpuid];
-    cpumask = 1 << cpuid;
+    cpumask = CPUMASK(cpuid);
 
     for (;;) {
 	lwkt_deschedule_self(gd->gd_curthread);		/* interlock */
-	atomic_set_int(&dummy_rdyprocmask, cpumask);
+	atomic_set_cpumask(&dummy_rdyprocmask, cpumask);
 	spin_lock(&dummy_spin);
 	if (dd->uschedcp) {
 		/*
@@ -488,9 +482,9 @@ dummy_sched_thread(void *dummy)
 		tmpmask = ~dummy_curprocmask & dummy_rdyprocmask & 
 		          gd->gd_other_cpus;
 		if (tmpmask && dummy_runqcount) {
-			tmpid = bsfl(tmpmask);
+			tmpid = BSFCPUMASK(tmpmask);
 			KKASSERT(tmpid != cpuid);
-			atomic_clear_int(&dummy_rdyprocmask, 1 << tmpid);
+			atomic_clear_cpumask(&dummy_rdyprocmask, CPUMASK(tmpid));
 			spin_unlock(&dummy_spin);
 			lwkt_schedule(&dummy_pcpu[tmpid].helper_thread);
 		} else {
@@ -501,7 +495,7 @@ dummy_sched_thread(void *dummy)
 		TAILQ_REMOVE(&dummy_runq, lp, lwp_procq);
 		lp->lwp_flag &= ~LWP_ONRUNQ;
 		dd->uschedcp = lp;
-		atomic_set_int(&dummy_curprocmask, cpumask);
+		atomic_set_cpumask(&dummy_curprocmask, cpumask);
 		spin_unlock(&dummy_spin);
 #ifdef SMP
 		lwkt_acquire(lp->lwp_thread);
@@ -528,7 +522,7 @@ dummy_sched_thread_cpu_init(void)
 
     for (i = 0; i < ncpus; ++i) {
 	dummy_pcpu_t dd = &dummy_pcpu[i];
-	cpumask_t mask = 1 << i;
+	cpumask_t mask = CPUMASK(i);
 
 	if ((mask & smp_active_mask) == 0)
 	    continue;
@@ -544,8 +538,8 @@ dummy_sched_thread_cpu_init(void)
 	 * been enabled in rqinit().
 	 */
 	if (i)
-	    atomic_clear_int(&dummy_curprocmask, mask);
-	atomic_set_int(&dummy_rdyprocmask, mask);
+	    atomic_clear_cpumask(&dummy_curprocmask, mask);
+	atomic_set_cpumask(&dummy_rdyprocmask, mask);
     }
     if (bootverbose)
 	kprintf("\n");

@@ -177,7 +177,7 @@ struct buf {
 	int	b_kvasize;		/* size of kva for buffer */
 	int	b_dirtyoff;		/* Offset in buffer of dirty region. */
 	int	b_dirtyend;		/* Offset of end of dirty region. */
-	int	b_refs;			/* FINDBLK_REF / unrefblk() */
+	int	b_refs;			/* FINDBLK_REF/bqhold()/bqdrop() */
 	struct	xio b_xio;  		/* data buffer page list management */
 	struct  bio_ops *b_ops;		/* bio_ops used w/ b_dep */
 	struct	workhead b_dep;		/* List of filesystem dependencies. */
@@ -390,6 +390,7 @@ extern int	bioq_reorder_minor_interval;
 extern int	bioq_reorder_minor_bytes;
 
 struct uio;
+struct devstat;
 
 void	bufinit (void);
 int	bd_heatup (void);
@@ -421,10 +422,11 @@ struct buf *getpbuf_kva (int *);
 int	inmem (struct vnode *, off_t);
 struct buf *findblk (struct vnode *, off_t, int);
 struct buf *getblk (struct vnode *, off_t, int, int, int);
-struct buf *getcacheblk (struct vnode *, off_t);
+struct buf *getcacheblk (struct vnode *, off_t, int);
 struct buf *geteblk (int);
-void unrefblk(struct buf *bp);
-void regetblk(struct buf *bp);
+void	bqhold(struct buf *bp);
+void	bqdrop(struct buf *bp);
+void	regetblk(struct buf *bp);
 struct bio *push_bio(struct bio *);
 struct bio *pop_bio(struct bio *);
 int	biowait (struct bio *, const char *);
@@ -457,9 +459,9 @@ struct	buf *trypbuf_kva (int *);
 void	bio_ops_sync(struct mount *mp);
 void	vm_hold_free_pages(struct buf *bp, vm_offset_t from, vm_offset_t to);
 void	vm_hold_load_pages(struct buf *bp, vm_offset_t from, vm_offset_t to);
-void	nestiobuf_done(struct bio *mbio, int donebytes, int error);
+void	nestiobuf_done(struct bio *mbio, int donebytes, int error, struct devstat *stats);
 void	nestiobuf_init(struct bio *mbio);
-void	nestiobuf_add(struct bio *mbio, struct buf *bp, int off, size_t size);
+void	nestiobuf_add(struct bio *mbio, struct buf *bp, int off, size_t size, struct devstat *stats);
 void	nestiobuf_start(struct bio *mbio);
 void	nestiobuf_error(struct bio *mbio, int error);
 #endif	/* _KERNEL */

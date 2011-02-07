@@ -284,6 +284,7 @@ mmcsd_strategy(struct dev_strategy_args *ap)
 {
 	struct mmcsd_softc *sc;
 	struct bio *bio = ap->a_bio;
+	struct buf *bp = bio->bio_buf;
 
 	sc = (struct mmcsd_softc *)ap->a_head.a_dev->si_drv1;
 	MMCSD_LOCK(sc);
@@ -294,10 +295,9 @@ mmcsd_strategy(struct dev_strategy_args *ap)
 		wakeup(sc);
 	} else {
 		MMCSD_UNLOCK(sc);
-		/* XXX */
-		bio->bio_buf->b_error = ENXIO;
-		bio->bio_buf->b_flags |= B_ERROR;
-		bio->bio_buf->b_resid = bio->bio_buf->b_bcount;
+		bp->b_error = ENXIO;
+		bp->b_flags |= B_ERROR;
+		bp->b_resid = bp->b_bcount;
 		biodone(bio);
 	}
 	return (0);
@@ -492,7 +492,8 @@ static void
 mmcsd_task(void *arg)
 {
 	struct mmcsd_softc *sc = (struct mmcsd_softc*)arg;
-	struct bio *bp;
+	struct bio *bio;
+	struct buf *bp;
 	int sz;
 	daddr_t block, end;
 	device_t dev;
@@ -505,41 +506,41 @@ mmcsd_task(void *arg)
 		do {
 			if (sc->running == 0)
 				goto out;
-			bp = bioq_takefirst(&sc->bio_queue);
-			if (bp == NULL)
+			bio = bioq_takefirst(&sc->bio_queue);
+			if (bio == NULL)
 				lksleep(sc, &sc->sc_lock, 0, "jobqueue", 0);
-		} while (bp == NULL);
+		} while (bio == NULL);
+		bp = bio->bio_buf;
 		MMCSD_UNLOCK(sc);
-		if (bp->bio_buf->b_cmd != BUF_CMD_READ && mmc_get_read_only(dev)) {
-			bp->bio_buf->b_error = EROFS;
-			bp->bio_buf->b_resid = bp->bio_buf->b_bcount;
-			bp->bio_buf->b_flags |= B_ERROR;
-			devstat_end_transaction_buf(&sc->device_stats,
-			    bp->bio_buf);
-			biodone(bp);
+		if (bp->b_cmd != BUF_CMD_READ && mmc_get_read_only(dev)) {
+			bp->b_error = EROFS;
+			bp->b_resid = bp->b_bcount;
+			bp->b_flags |= B_ERROR;
+			devstat_end_transaction_buf(&sc->device_stats, bp);
+			biodone(bio);
 			continue;
 		}
 		MMCBUS_ACQUIRE_BUS(device_get_parent(dev), dev);
 		sz = sc->disk.d_info.d_media_blksize;
-		block = bp->bio_offset / sz;
-		end = block + (bp->bio_buf->b_bcount / sz);
-		if (bp->bio_buf->b_cmd == BUF_CMD_READ ||
-		    bp->bio_buf->b_cmd == BUF_CMD_WRITE) {
+		block = bio->bio_offset / sz;
+		end = block + (bp->b_bcount / sz);
+		if (bp->b_cmd == BUF_CMD_READ ||
+		    bp->b_cmd == BUF_CMD_WRITE) {
 			/* Access to the remaining erase block obsoletes it. */
 			if (block < sc->eend && end > sc->eblock)
 				sc->eblock = sc->eend = 0;
-			block = mmcsd_rw(sc, bp);
-		} else if (bp->bio_buf->b_cmd == BUF_CMD_FREEBLKS) {
-			block = mmcsd_delete(sc, bp);
+			block = mmcsd_rw(sc, bio);
+		} else if (bp->b_cmd == BUF_CMD_FREEBLKS) {
+			block = mmcsd_delete(sc, bio);
 		}
 		MMCBUS_RELEASE_BUS(device_get_parent(dev), dev);
 		if (block < end) {
-			bp->bio_buf->b_error = EIO;
-			bp->bio_buf->b_resid = (end - block) * sz;
-			bp->bio_buf->b_flags |= B_ERROR;
+			bp->b_error = EIO;
+			bp->b_resid = (end - block) * sz;
+			bp->b_flags |= B_ERROR;
 		}
-		devstat_end_transaction_buf(&sc->device_stats, bp->bio_buf);
-		biodone(bp);
+		devstat_end_transaction_buf(&sc->device_stats, bp);
+		biodone(bio);
 	}
 out:
 	/* tell parent we're done */

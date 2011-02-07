@@ -16,7 +16,6 @@
  * Sep, 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/sys/i386/apm/apm.c,v 1.114.2.5 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/apm/apm.c,v 1.21 2006/12/23 00:27:03 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -87,9 +86,8 @@ static void apmfilter_detach(struct knote *);
 static int apmfilter_read(struct knote *, long);
 static int apmfilter_write(struct knote *, long);
 
-#define CDEV_MAJOR 39
 static struct dev_ops apm_ops = {
-	{ "apm", CDEV_MAJOR, 0 },
+	{ "apm", 0, 0 },
 	.d_open =	apmopen,
 	.d_close =	apmclose,
 	.d_write =	apmwrite,
@@ -109,7 +107,8 @@ static int apm_debug = 0;
 
 SYSCTL_INT(_machdep, OID_AUTO, apm_suspend_delay, CTLFLAG_RW, &apm_suspend_delay, 1, "");
 SYSCTL_INT(_machdep, OID_AUTO, apm_standby_delay, CTLFLAG_RW, &apm_standby_delay, 1, "");
-SYSCTL_INT(_debug, OID_AUTO, apm_debug, CTLFLAG_RW, &apm_debug, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, apm_debug, CTLFLAG_RW, &apm_debug, 0,
+    "Enable debug output");
 
 /*
  * return  0 if the function successfull,

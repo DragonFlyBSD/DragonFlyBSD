@@ -68,6 +68,7 @@
 
 static void morecore();
 static int findbucket();
+static void xprintf(const char *, ...) __printflike(1, 2);
 
 /*
  * Pre-allocate mmap'ed pages

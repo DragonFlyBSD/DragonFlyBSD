@@ -907,7 +907,6 @@ HAL_BOOL
 ar5212SetCapability(struct ath_hal *ah, HAL_CAPABILITY_TYPE type,
 	uint32_t capability, uint32_t setting, HAL_STATUS *status)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 	struct ath_hal_5212 *ahp = AH5212(ah);
 	const HAL_CAPABILITIES *pCap = &AH_PRIVATE(ah)->ah_caps;
 	uint32_t v;
@@ -983,7 +982,7 @@ ar5212SetCapability(struct ath_hal *ah, HAL_CAPABILITY_TYPE type,
 			HAL_ANI_FIRSTEP_LEVEL,
 			HAL_ANI_SPUR_IMMUNITY_LEVEL,
 		};
-		return capability < N(cmds) ?
+		return capability < NELEM(cmds) ?
 			ar5212AniControl(ah, cmds[capability], setting) :
 			AH_FALSE;
 	}
@@ -1000,7 +999,6 @@ ar5212SetCapability(struct ath_hal *ah, HAL_CAPABILITY_TYPE type,
 		return ath_hal_setcapability(ah, type, capability,
 				setting, status);
 	}
-#undef N
 }
 
 HAL_BOOL
@@ -1069,6 +1067,41 @@ ar5212GetDiagState(struct ath_hal *ah, int request,
 				return AH_FALSE;
 			return ar5212AniSetParams(ah, args, args);
 		}
+	}
+	return AH_FALSE;
+}
+
+/*
+ * Check whether there's an in-progress NF completion.
+ *
+ * Returns AH_TRUE if there's a in-progress NF calibration, AH_FALSE
+ * otherwise.
+ */
+HAL_BOOL
+ar5212IsNFCalInProgress(struct ath_hal *ah)
+{
+	if (OS_REG_READ(ah, AR_PHY_AGC_CONTROL) & AR_PHY_AGC_CONTROL_NF)
+		return AH_TRUE;
+	return AH_FALSE;
+}
+
+/*
+ * Wait for an in-progress NF calibration to complete.
+ *
+ * The completion function waits "i" times 10uS.
+ * It returns AH_TRUE if the NF calibration completed (or was never
+ * in progress); AH_FALSE if it was still in progress after "i" checks.
+ */
+HAL_BOOL
+ar5212WaitNFCalComplete(struct ath_hal *ah, int i)
+{
+	int j;
+	if (i <= 0)
+		i = 1;	  /* it should run at least once */
+	for (j = 0; j < i; j++) {
+		if (! ar5212IsNFCalInProgress(ah))
+			return AH_TRUE;
+		OS_DELAY(10);
 	}
 	return AH_FALSE;
 }

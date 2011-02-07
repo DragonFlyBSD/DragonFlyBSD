@@ -580,7 +580,8 @@ ieee80211_fix_rate(struct ieee80211_node *ni,
 	     fixedrate != ucastrate)) {
 		IEEE80211_NOTE(vap, IEEE80211_MSG_XRATE | IEEE80211_MSG_11N, ni,
 		    "%s: flags 0x%x okrate %d error %d fixedrate 0x%x "
-		    "ucastrate %x\n", __func__, fixedrate, ucastrate, flags);
+		    "ucastrate %x\n", __func__, flags, okrate, error,
+		    fixedrate, ucastrate);
 		return badrate | IEEE80211_RATE_BASIC;
 	} else
 		return RV(okrate);
@@ -642,13 +643,12 @@ ieee80211_set_shortslottime(struct ieee80211com *ic, int onoff)
 int
 ieee80211_iserp_rateset(const struct ieee80211_rateset *rs)
 {
-#define N(a)	(sizeof(a) / sizeof(a[0]))
 	static const int rates[] = { 2, 4, 11, 22, 12, 24, 48 };
 	int i, j;
 
-	if (rs->rs_nrates < N(rates))
+	if (rs->rs_nrates < NELEM(rates))
 		return 0;
-	for (i = 0; i < N(rates); i++) {
+	for (i = 0; i < NELEM(rates); i++) {
 		for (j = 0; j < rs->rs_nrates; j++) {
 			int r = rs->rs_rates[j] & IEEE80211_RATE_VAL;
 			if (rates[i] == r)
@@ -661,7 +661,6 @@ ieee80211_iserp_rateset(const struct ieee80211_rateset *rs)
 		;
 	}
 	return 1;
-#undef N
 }
 
 /*

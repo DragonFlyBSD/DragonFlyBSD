@@ -41,8 +41,6 @@
  */
 #include <ldns/config.h>
 
-#include <ldns/ldns.h>
-
 #include <sys/types.h>
 #include <sys/param.h>
 #ifdef HAVE_SYS_SOCKET_H

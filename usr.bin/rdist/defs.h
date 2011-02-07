@@ -168,17 +168,17 @@ char	*colon(char *);
 void	 cleanup(int);
 void	 define(char *);
 void	 docmds(char **, int, char **);
-void	 error(const char *, ...);
+void	 error(const char *, ...) __printflike(1, 2);
 int	 except(char *);
 struct namelist *
 	 expand(struct namelist *, int);
 char	*exptilde(char [], char *, int);
-void	 fatal(const char *, ...);
+void	 fatal(const char *, ...) __printflike(1, 2);
 int	 inlist(struct namelist *, char *);
 void	 insert(char *,
 	    struct namelist *, struct namelist *, struct subcmd *);
 void	 install(char *, char *, int, int);
-void	 dolog(FILE *, const char *, ...);
+void	 dolog(FILE *, const char *, ...) __printflike(2, 3);
 struct namelist *
 	 lookup(char *, int, struct namelist *);
 void	 lostconn(int);

@@ -45,7 +45,6 @@
  *
  * @(#)rmpproto.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/rbootd/rmpproto.c,v 1.6.2.1 2001/02/18 02:54:11 kris Exp $
- * $DragonFly: src/libexec/rbootd/rmpproto.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -338,7 +337,10 @@ SendBootRepl(req, rconn, filelist)
 	 *  stripped file name and spoof the client into thinking that it
 	 *  really got what it wanted.
 	 */
-	filename = (filename = strrchr(filepath,'/'))? ++filename: filepath;
+	if ((filename = strrchr(filepath, '/')) != NULL)
+		filename++;
+	else
+		filename = filepath;
 
 	/*
 	 *  Check that this is a valid boot file name.

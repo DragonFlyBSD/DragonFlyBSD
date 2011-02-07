@@ -5,6 +5,7 @@
 LIB=    dialog
 INCS=	dialog.h
 MAN=	dialog.3
+WARNS?=	2
 
 SHLIB_MAJOR= 5
 SRCS=   kernel.c rc.c checklist.c inputbox.c menubox.c msgbox.c \
@@ -16,7 +17,7 @@ EXAMPLES= Makefile check1.c check2.c check3.c dselect.c fselect.c \
 	input2.c menu1.c menu2.c menu3.c msg.c prgbox.c radio1.c \
 	radio2.c radio3.c text.c tree.c yesno.c
 
-CFLAGS+= -I${.CURDIR} -Wall -Wstrict-prototypes -DLOCALE
+CFLAGS+= -I${.CURDIR} -DLOCALE
 
 LDADD+= -lncurses
 DPADD+= ${LIBNCURSES}

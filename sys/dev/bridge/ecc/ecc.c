@@ -31,8 +31,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/dev/bridge/ecc/ecc.c,v 1.2 2008/08/02 01:14:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,8 +46,6 @@
 #include <bus/pci/pcib_private.h>
 
 #include "pcib_if.h"
-
-#define arysize(ary)	(sizeof(ary)/sizeof((ary)[0]))
 
 static int setup_none(device_t dev);
 static int setup_amd64(device_t dev);
@@ -88,7 +84,7 @@ pci_ecc_probe(device_t dev)
 	vid = pci_get_vendor(dev);
 	did = pci_get_device(dev);
 
-	for (i = 0; i < arysize(mem_controllers); ++i) {
+	for (i = 0; i < NELEM(mem_controllers); ++i) {
 		if (mem_controllers[i].vid == vid &&
 		    mem_controllers[i].did == did
 		) {

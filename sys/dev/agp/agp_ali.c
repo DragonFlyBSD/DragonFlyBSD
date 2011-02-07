@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/agp/agp_ali.c,v 1.20 2007/11/12 21:51:36 jhb Exp $
- *	$DragonFly: src/sys/dev/agp/agp_ali.c,v 1.8 2008/01/07 01:34:58 corecode Exp $
  */
 
 #include "opt_bus.h"
@@ -172,7 +171,7 @@ static u_int32_t agp_ali_table[] = {
 	128*M,			/* 9 - invalid */
 	256*M,			/* 10 - invalid */
 };
-#define agp_ali_table_size (sizeof(agp_ali_table) / sizeof(agp_ali_table[0]))
+#define agp_ali_table_size NELEM(agp_ali_table)
 
 static u_int32_t
 agp_ali_get_aperture(device_t dev)

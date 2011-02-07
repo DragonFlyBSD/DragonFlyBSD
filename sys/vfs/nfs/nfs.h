@@ -308,9 +308,7 @@ MALLOC_DECLARE(M_NFSBIGFH);
 MALLOC_DECLARE(M_NFSHASH);
 #endif
 
-#ifdef ZONE_INTERRUPT
-extern vm_zone_t nfsmount_zone;
-#endif
+extern struct objcache *nfsmount_objcache;
 
 extern struct callout nfs_timer_handle;
 extern int nfs_async;

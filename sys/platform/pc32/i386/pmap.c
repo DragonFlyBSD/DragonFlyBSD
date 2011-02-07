@@ -102,6 +102,7 @@
 #define PMAP_KEEP_PDIRS
 #ifndef PMAP_SHPGPERPROC
 #define PMAP_SHPGPERPROC 200
+#define PMAP_PVLIMIT	 1400000	/* i386 kvm problems */
 #endif
 
 #if defined(DIAGNOSTIC)
@@ -547,10 +548,10 @@ pmap_init(void)
 	if (initial_pvs < MINPV)
 		initial_pvs = MINPV;
 	pvzone = &pvzone_store;
-	pvinit = (struct pv_entry *) kmem_alloc(&kernel_map,
-		initial_pvs * sizeof (struct pv_entry));
-	zbootinit(pvzone, "PV ENTRY", sizeof (struct pv_entry), pvinit,
-		initial_pvs);
+	pvinit = (void *)kmem_alloc(&kernel_map,
+				    initial_pvs * sizeof (struct pv_entry));
+	zbootinit(pvzone, "PV ENTRY", sizeof (struct pv_entry),
+		  pvinit, initial_pvs);
 
 	/*
 	 * Now it is safe to enable pv_table recording.
@@ -569,12 +570,39 @@ void
 pmap_init2(void)
 {
 	int shpgperproc = PMAP_SHPGPERPROC;
+	int entry_max;
 
 	TUNABLE_INT_FETCH("vm.pmap.shpgperproc", &shpgperproc);
 	pv_entry_max = shpgperproc * maxproc + vm_page_array_size;
+
+#ifdef PMAP_PVLIMIT
+	/*
+	 * Horrible hack for systems with a lot of memory running i386.
+	 * the calculated pv_entry_max can wind up eating a ton of KVM
+	 * so put a cap on the number of entries if the user did not
+	 * change any of the values.   This saves about 44MB of KVM on
+	 * boxes with 3+GB of ram.
+	 *
+	 * On the flip side, this makes it more likely that some setups
+	 * will run out of pv entries.  Those sysads will have to bump
+	 * the limit up with vm.pamp.pv_entries or vm.pmap.shpgperproc.
+	 */
+	if (shpgperproc == PMAP_SHPGPERPROC) {
+		if (pv_entry_max > PMAP_PVLIMIT)
+			pv_entry_max = PMAP_PVLIMIT;
+	}
+#endif
 	TUNABLE_INT_FETCH("vm.pmap.pv_entries", &pv_entry_max);
 	pv_entry_high_water = 9 * (pv_entry_max / 10);
-	zinitna(pvzone, &pvzone_obj, NULL, 0, pv_entry_max, ZONE_INTERRUPT, 1);
+
+	/*
+	 * Subtract out pages already installed in the zone (hack)
+	 */
+	entry_max = pv_entry_max - vm_page_array_size;
+	if (entry_max <= 0)
+		entry_max = 1;
+
+	zinitna(pvzone, &pvzone_obj, NULL, 0, entry_max, ZONE_INTERRUPT, 1);
 }
 
 
@@ -611,7 +639,7 @@ ptbase_assert(struct pmap *pmap)
 	/* are we current address space or kernel? */
 	if (pmap == &kernel_pmap || frame == (((unsigned)PTDpde) & PG_FRAME))
 		return;
-	KKASSERT(frame == (*mycpu->gd_GDMAP1 & PG_FRAME));
+	KKASSERT(frame == (*mdcpu->gd_GDMAP1 & PG_FRAME));
 }
 
 #else
@@ -1014,7 +1042,6 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_page_t m, pmap_inval_info_t info)
 	 * any active flushes if we block.
 	 */
 	if (m->flags & PG_BUSY) {
-		pmap_inval_flush(info);
 		while (vm_page_sleep_busy(m, FALSE, "pmuwpt"))
 			;
 	}
@@ -1102,7 +1129,6 @@ pmap_unuse_pt(pmap_t pmap, vm_offset_t va, vm_page_t mpte,
 			(pmap->pm_ptphint->pindex == ptepindex)) {
 			mpte = pmap->pm_ptphint;
 		} else {
-			pmap_inval_flush(info);
 			mpte = pmap_page_lookup( pmap->pm_pteobj, ptepindex);
 			pmap->pm_ptphint = mpte;
 		}
@@ -1695,7 +1721,8 @@ pmap_collect(void)
 	pmap_pagedaemon_waken = 0;
 
 	if (warningdone < 5) {
-		kprintf("pmap_collect: collecting pv entries -- suggest increasing PMAP_SHPGPERPROC\n");
+		kprintf("pmap_collect: collecting pv entries -- "
+			"suggest increasing PMAP_SHPGPERPROC\n");
 		warningdone++;
 	}
 
@@ -1748,6 +1775,7 @@ pmap_remove_entry(struct pmap *pmap, vm_page_t m,
 	test_m_maps_pv(m, pv);
 	TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
 	m->md.pv_list_count--;
+        m->object->agg_pv_list_count--;
 	if (TAILQ_EMPTY(&m->md.pv_list))
 		vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
 	TAILQ_REMOVE(&pmap->pm_pvlist, pv, pv_plist);
@@ -1782,6 +1810,7 @@ pmap_insert_entry(pmap_t pmap, vm_offset_t va, vm_page_t mpte, vm_page_t m)
 	TAILQ_INSERT_TAIL(&m->md.pv_list, pv, pv_list);
 	++pmap->pm_generation;
 	m->md.pv_list_count++;
+        m->object->agg_pv_list_count++;
 
 	crit_exit();
 }
@@ -2023,6 +2052,7 @@ pmap_remove_all(vm_page_t m)
 		TAILQ_REMOVE(&pv->pv_pmap->pm_pvlist, pv, pv_plist);
 		++pv->pv_pmap->pm_generation;
 		m->md.pv_list_count--;
+		m->object->agg_pv_list_count--;
 		if (TAILQ_EMPTY(&m->md.pv_list))
 			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
 		pmap_unuse_pt(pv->pv_pmap, pv->pv_va, pv->pv_ptem, &info);
@@ -2097,10 +2127,7 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 			vm_page_t m;
 
 			/*
-			 * XXX non-optimal.  Note also that there can be
-			 * no pmap_inval_flush() calls until after we modify
-			 * ptbase[sindex] (or otherwise we have to do another
-			 * pmap_inval_interlock() call).
+			 * XXX non-optimal.
 			 */
 			pmap_inval_interlock(&info, pmap, i386_ptob(sindex));
 again:
@@ -2458,12 +2485,14 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
  * Make a temporary mapping for a physical address.  This is only intended
  * to be used for panic dumps.
  *
+ * The caller is responsible for calling smp_invltlb().
+ *
  * No requirements.
  */
 void *
-pmap_kenter_temporary(vm_paddr_t pa, int i)
+pmap_kenter_temporary(vm_paddr_t pa, long i)
 {
-	pmap_kenter((vm_offset_t)crashdumpmap + (i * PAGE_SIZE), pa);
+	pmap_kenter_quick((vm_offset_t)crashdumpmap + (i * PAGE_SIZE), pa);
 	return ((void *)crashdumpmap);
 }
 
@@ -2559,9 +2588,9 @@ pmap_object_init_pt_callback(vm_page_t p, void *data)
 	}
 	if (((p->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL) &&
 	    (p->busy == 0) && (p->flags & (PG_BUSY | PG_FICTITIOUS)) == 0) {
+		vm_page_busy(p);
 		if ((p->queue - p->pc) == PQ_CACHE)
 			vm_page_deactivate(p);
-		vm_page_busy(p);
 		rel_index = p->pindex - info->start_pindex;
 		pmap_enter_quick(info->pmap,
 				 info->addr + i386_ptob(rel_index), p);
@@ -2919,6 +2948,7 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 		save_generation = ++pmap->pm_generation;
 
 		m->md.pv_list_count--;
+		m->object->agg_pv_list_count--;
 		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
 		if (TAILQ_EMPTY(&m->md.pv_list))
 			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
@@ -3414,7 +3444,7 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 		if (curthread->td_lwp == lp) {
 			pmap = vmspace_pmap(newvm);
 #if defined(SMP)
-			atomic_set_int(&pmap->pm_active, mycpu->gd_cpumask);
+			atomic_set_cpumask(&pmap->pm_active, mycpu->gd_cpumask);
 			if (pmap->pm_active & CPUMASK_LOCK)
 				pmap_interlock_wait(newvm);
 #else
@@ -3427,9 +3457,10 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 			load_cr3(curthread->td_pcb->pcb_cr3);
 			pmap = vmspace_pmap(oldvm);
 #if defined(SMP)
-			atomic_clear_int(&pmap->pm_active, mycpu->gd_cpumask);
+			atomic_clear_cpumask(&pmap->pm_active,
+					     mycpu->gd_cpumask);
 #else
-			pmap->pm_active &= ~1;
+			pmap->pm_active &= ~(cpumask_t)1;
 #endif
 		}
 	}
@@ -3452,11 +3483,13 @@ pmap_interlock_wait(struct vmspace *vm)
 	struct pmap *pmap = &vm->vm_pmap;
 
 	if (pmap->pm_active & CPUMASK_LOCK) {
+		DEBUG_PUSH_INFO("pmap_interlock_wait");
 		while (pmap->pm_active & CPUMASK_LOCK) {
 			cpu_pause();
 			cpu_ccfence();
 			lwkt_process_ipiq();
 		}
+		DEBUG_POP_INFO();
 	}
 }
 
@@ -3489,4 +3522,13 @@ int
 pmap_get_pgeflag(void)
 {
 	return pgeflag;
+}
+
+/*
+ * Used by kmalloc/kfree, page already exists at va
+ */
+vm_page_t
+pmap_kvtom(vm_offset_t va)
+{
+	return(PHYS_TO_VM_PAGE(*vtopte(va) & PG_FRAME));
 }

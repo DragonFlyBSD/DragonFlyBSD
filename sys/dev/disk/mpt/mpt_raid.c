@@ -450,9 +450,9 @@ mpt_raid_event(struct mpt_softc *mpt, request_t *req,
 
 	if (print_event) {
 		if (mpt_disk != NULL) {
-			mpt_disk_prt(mpt, mpt_disk, "");
+			mpt_disk_prt(mpt, mpt_disk, NULL);
 		} else if (mpt_vol != NULL) {
-			mpt_vol_prt(mpt, mpt_vol, "");
+			mpt_vol_prt(mpt, mpt_vol, NULL);
 		} else {
 			mpt_prt(mpt, "Volume(%d:%d", raid_event->VolumeBus,
 				raid_event->VolumeID);
@@ -475,7 +475,7 @@ mpt_raid_event(struct mpt_softc *mpt, request_t *req,
 	if (raid_event->ReasonCode == MPI_EVENT_RAID_RC_SMART_DATA) {
 		/* XXX Use CAM's print sense for this... */
 		if (mpt_disk != NULL)
-			mpt_disk_prt(mpt, mpt_disk, "");
+			mpt_disk_prt(mpt, mpt_disk, NULL);
 		else
 			mpt_prt(mpt, "Volume(%d:%d:%d: ",
 			    raid_event->VolumeBus, raid_event->VolumeID,
@@ -1190,10 +1190,10 @@ mpt_announce_disk(struct mpt_softc *mpt, struct mpt_raid_disk *mpt_disk)
 
 	disk_pg = &mpt_disk->config_page;
 	mpt_disk_prt(mpt, mpt_disk,
-		     "Physical (%s:%d:%d:0), Pass-thru (%s:%d:%d:0)\n",
+		     "Physical (%s:%d:%d:0), Pass-thru (%s:%d:%jd:0)\n",
 		     device_get_nameunit(mpt->dev), rd_bus,
 		     disk_pg->PhysDiskID, device_get_nameunit(mpt->dev),
-		     pt_bus, mpt_disk - mpt->raid_disks);
+		     pt_bus, (intmax_t)(mpt_disk - mpt->raid_disks));
 	if (disk_pg->PhysDiskSettings.HotSparePool == 0)
 		return;
 	mpt_disk_prt(mpt, mpt_disk, "Member of Hot Spare Pool%s",
@@ -1499,15 +1499,9 @@ mpt_refresh_raid_data(struct mpt_softc *mpt)
 			mpt_vol_prt(mpt, mpt_vol, "%s Priority Re-Sync\n",
 			    prio ? "High" : "Low");
 		}
-#if __FreeBSD_version >= 500000
 		mpt_vol_prt(mpt, mpt_vol, "%ju of %ju "
 			    "blocks remaining\n", (uintmax_t)left,
 			    (uintmax_t)total);
-#else
-		mpt_vol_prt(mpt, mpt_vol, "%llu of %llu "
-			    "blocks remaining\n", (uint64_t)left,
-			    (uint64_t)total);
-#endif
 
 		/* Periodically report on sync progress. */
 		mpt_schedule_raid_refresh(mpt);

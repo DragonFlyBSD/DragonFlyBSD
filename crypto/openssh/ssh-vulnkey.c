@@ -73,7 +73,7 @@ usage(void)
 }
 
 void
-describe_key(const char *msg, const Key *key, const char *comment)
+describe_key(const char *msg, Key *key, const char *comment)
 {
 	char *fp;
 
@@ -84,7 +84,7 @@ describe_key(const char *msg, const Key *key, const char *comment)
 }
 
 int
-do_key(const Key *key, const char *comment)
+do_key(Key *key, const char *comment)
 {
 	char *blacklist_file;
 	struct stat st;

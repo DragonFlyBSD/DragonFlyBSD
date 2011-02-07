@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp.c,v 1.45.2.2 2002/11/07 22:26:59 tegge Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.21 2006/12/22 23:26:24 swildner Exp $
  */
 
 /* 
@@ -590,9 +589,8 @@ static	d_close_t	rpclose;
 static	d_write_t	rpwrite;
 static	d_ioctl_t	rpioctl;
 
-#define	CDEV_MAJOR	81
 static struct dev_ops rp_ops = {
-	{ "rp", CDEV_MAJOR, D_TTY },
+	{ "rp", 0, D_TTY },
 	.d_open =	rpopen,
 	.d_close =	rpclose,
 	.d_read =	ttyread,

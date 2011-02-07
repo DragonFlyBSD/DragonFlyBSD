@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/af_ipx.c,v 1.1 2004/12/08 19:18:07 sam Exp $
- * $DragonFly: src/sbin/ifconfig/af_ipx.c,v 1.1 2006/04/02 03:33:59 sephe Exp $
  */
 
 #include <sys/types.h>
@@ -119,7 +118,7 @@ static struct afswtch af_ipx = {
 	.af_addreq	= &ipx_addreq,
 };
 
-static __constructor void
+static __constructor(100) void
 ipx_ctor(void)
 {
 	af_register(&af_ipx);

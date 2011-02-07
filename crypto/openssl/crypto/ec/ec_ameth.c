@@ -63,7 +63,7 @@
 #ifndef OPENSSL_NO_CMS
 #include <openssl/cms.h>
 #endif
-#include "../asn1/asn1_locl.h"
+#include "asn1_locl.h"
 
 static int eckey_param2type(int *pptype, void **ppval, EC_KEY *ec_key)
 	{

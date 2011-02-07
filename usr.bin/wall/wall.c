@@ -56,7 +56,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <utmp.h>
+#include "utmpentry.h"
 
 #include "ttymsg.h"
 
@@ -76,17 +76,14 @@ int
 main(int argc, char *argv[])
 {
 	struct iovec iov;
-	struct utmp utmp;
+	struct utmpentry *ep;
 	int ch;
 	int ingroup;
-	FILE *fp;
 	struct wallgroup *g;
 	struct group *grp;
 	char **np;
 	const char *p;
 	struct passwd *pw;
-	char line[sizeof(utmp.ut_line) + 1];
-	char username[sizeof(utmp.ut_name) + 1];
 
 	(void)setlocale(LC_CTYPE, "");
 
@@ -123,18 +120,15 @@ main(int argc, char *argv[])
 
 	makemsg(*argv);
 
-	if (!(fp = fopen(_PATH_UTMP, "r")))
-		err(1, "cannot read %s", _PATH_UTMP);
 	iov.iov_base = mbuf;
 	iov.iov_len = mbufsize;
+
+	getutentries(NULL, &ep);
 	/* NOSTRICT */
-	while (fread((char *)&utmp, sizeof(utmp), 1, fp) == 1) {
-		if (!utmp.ut_name[0])
-			continue;
+	for (; ep; ep = ep->next) {
 		if (grouplist) {
 			ingroup = 0;
-			strlcpy(username, utmp.ut_name, sizeof(utmp.ut_name));
-			pw = getpwnam(username);
+			pw = getpwnam(ep->name);
 			if (!pw)
 				continue;
 			for (g = grouplist; g && ingroup == 0; g = g->next) {
@@ -144,7 +138,7 @@ main(int argc, char *argv[])
 					ingroup = 1;
 				else if ((grp = getgrgid(g->gid)) != NULL) {
 					for (np = grp->gr_mem; *np; np++) {
-						if (strcmp(*np, username) == 0) {
+						if (strcmp(*np, ep->name) == 0) {
 							ingroup = 1;
 							break;
 						}
@@ -154,9 +148,11 @@ main(int argc, char *argv[])
 			if (ingroup == 0)
 				continue;
 		}
-		strncpy(line, utmp.ut_line, sizeof(utmp.ut_line));
-		line[sizeof(utmp.ut_line)] = '\0';
-		if ((p = ttymsg(&iov, 1, line, 60*5)) != NULL)
+		/* skip [xgk]dm/xserver entries (":0", ":1", etc.) */
+		if (ep->line[0] == ':' && isdigit((unsigned char)ep->line[1]))
+			continue;
+		
+		if ((p = ttymsg(&iov, 1, ep->line, 60*5)) != NULL)
 			warnx("%s", p);
 	}
 	exit(0);

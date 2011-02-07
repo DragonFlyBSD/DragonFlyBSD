@@ -56,6 +56,7 @@ struct thread;
 
 extern struct thread *dumpthread;
 extern struct pcb dumppcb;
+extern int dump_stop_usertds;
 
 /*
  * All uintX_t fields are in dump byte order, which is the same as
@@ -125,6 +126,7 @@ int set_dumper(struct dumperinfo *);
 int dump_write(struct dumperinfo *, void *, vm_offset_t, off_t, size_t);
 void dumpsys(void);
 void md_dumpsys(struct dumperinfo *);
+void dump_reactivate_cpus(void);
 
 #endif
 

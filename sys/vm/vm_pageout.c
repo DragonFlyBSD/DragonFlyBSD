@@ -99,7 +99,6 @@
 #include <vm/vm_extern.h>
 
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
 #include <vm/vm_page2.h>
 
 /*
@@ -466,14 +465,14 @@ vm_pageout_flush(vm_page_t *mc, int count, int flags)
 		 * might still be read-heavy.
 		 */
 		if (pageout_status[i] != VM_PAGER_PEND) {
-			vm_object_pip_wakeup(object);
-			vm_page_io_finish(mt);
 			if (vm_page_count_severe())
 				vm_page_deactivate(mt);
 #if 0
 			if (!vm_page_count_severe() || !vm_page_try_to_cache(mt))
 				vm_page_protect(mt, VM_PROT_READ);
 #endif
+			vm_page_io_finish(mt);
+			vm_object_pip_wakeup(object);
 		}
 	}
 	return numpagedout;
@@ -568,8 +567,8 @@ vm_pageout_object_deactivate_pages_callback(vm_page_t p, void *data)
 			if (!info->limit && (vm_pageout_algorithm || (p->act_count == 0))) {
 				vm_page_busy(p);
 				vm_page_protect(p, VM_PROT_NONE);
-				vm_page_wakeup(p);
 				vm_page_deactivate(p);
+				vm_page_wakeup(p);
 			} else {
 				TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
 				TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
@@ -675,6 +674,8 @@ vm_pageout_map_deactivate_pages(vm_map_t map, vm_pindex_t desired)
  * be trivially freed.
  *
  * The caller must hold vm_token.
+ *
+ * WARNING: vm_object_reference() can block.
  */
 static void
 vm_pageout_page_free(vm_page_t m) 
@@ -682,9 +683,9 @@ vm_pageout_page_free(vm_page_t m)
 	vm_object_t object = m->object;
 	int type = object->type;
 
+	vm_page_busy(m);
 	if (type == OBJT_SWAP || type == OBJT_DEFAULT)
 		vm_object_reference(object);
-	vm_page_busy(m);
 	vm_page_protect(m, VM_PROT_NONE);
 	vm_page_free(m);
 	if (type == OBJT_SWAP || type == OBJT_DEFAULT)
@@ -892,6 +893,7 @@ rescan0:
 			 * Clean pages can be placed onto the cache queue.
 			 * This effectively frees them.
 			 */
+			vm_page_busy(m);
 			vm_page_cache(m);
 			--inactive_shortage;
 		} else if ((m->flags & PG_WINATCFLS) == 0 && pass == 0) {
@@ -1167,13 +1169,13 @@ rescan0:
 						++recycle_count;
 					vm_page_busy(m);
 					vm_page_protect(m, VM_PROT_NONE);
-					vm_page_wakeup(m);
 					if (m->dirty == 0 &&
 					    inactive_shortage > 0) {
 						--inactive_shortage;
 						vm_page_cache(m);
 					} else {
 						vm_page_deactivate(m);
+						vm_page_wakeup(m);
 					}
 				} else {
 					vm_page_deactivate(m);
@@ -1187,17 +1189,39 @@ rescan0:
 	}
 
 	/*
-	 * We try to maintain some *really* free pages, this allows interrupt
-	 * code to be guaranteed space.  Since both cache and free queues 
-	 * are considered basically 'free', moving pages from cache to free
-	 * does not effect other calculations.
+	 * The number of actually free pages can drop down to v_free_reserved,
+	 * we try to build the free count back above v_free_min.  Note that
+	 * vm_paging_needed() also returns TRUE if v_free_count is not at
+	 * least v_free_min so that is the minimum we must build the free
+	 * count to.
+	 *
+	 * We use a slightly higher target to improve hysteresis,
+	 * ((v_free_target + v_free_min) / 2).  Since v_free_target
+	 * is usually the same as v_cache_min this maintains about
+	 * half the pages in the free queue as are in the cache queue,
+	 * providing pretty good pipelining for pageout operation.
+	 *
+	 * The system operator can manipulate vm.v_cache_min and
+	 * vm.v_free_target to tune the pageout demon.  Be sure
+	 * to keep vm.v_free_min < vm.v_free_target.
+	 *
+	 * Note that the original paging target is to get at least
+	 * (free_min + cache_min) into (free + cache).  The slightly
+	 * higher target will shift additional pages from cache to free
+	 * without effecting the original paging target in order to
+	 * maintain better hysteresis and not have the free count always
+	 * be dead-on v_free_min.
 	 *
 	 * NOTE: we are still in a critical section.
 	 *
 	 * Pages moved from PQ_CACHE to totally free are not counted in the
 	 * pages_freed counter.
 	 */
-	while (vmstats.v_free_count < vmstats.v_free_reserved) {
+	while (vmstats.v_free_count <
+	       (vmstats.v_free_min + vmstats.v_free_target) / 2) {
+		/*
+		 *
+		 */
 		static int cache_rover = 0;
 		m = vm_page_list_find(PQ_CACHE, cache_rover, FALSE);
 		if (m == NULL)
@@ -1428,8 +1452,8 @@ vm_pageout_page_stats(void)
 				 */
 				vm_page_busy(m);
 				vm_page_protect(m, VM_PROT_NONE);
-				vm_page_wakeup(m);
 				vm_page_deactivate(m);
+				vm_page_wakeup(m);
 			} else {
 				m->act_count -= min(m->act_count, ACT_DECLINE);
 				TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
@@ -1580,30 +1604,24 @@ vm_pageout_thread(void)
 		int error;
 
 		/*
-		 * Wait for an action request
+		 * Wait for an action request.  If we timeout check to
+		 * see if paging is needed (in case the normal wakeup
+		 * code raced us).
 		 */
-		crit_enter();
 		if (vm_pages_needed == 0) {
 			error = tsleep(&vm_pages_needed,
 				       0, "psleep",
 				       vm_pageout_stats_interval * hz);
-			if (error && vm_pages_needed == 0) {
+			if (error &&
+			    vm_paging_needed() == 0 &&
+			    vm_pages_needed == 0) {
 				vm_pageout_page_stats();
 				continue;
 			}
 			vm_pages_needed = 1;
 		}
-		crit_exit();
 
-		/*
-		 * If we have enough free memory, wakeup waiters.
-		 * (This is optional here)
-		 */
-		crit_enter();
-		if (!vm_page_count_min(0))
-			wakeup(&vmstats.v_free_count);
 		mycpu->gd_cnt.v_pdwakeups++;
-		crit_exit();
 
 		/*
 		 * Scan for pageout.  Try to avoid thrashing the system
@@ -1663,9 +1681,9 @@ SYSINIT(pagedaemon, SI_SUB_KTHREAD_PAGE, SI_ORDER_FIRST, kproc_start, &page_kp)
  * to possibly wake the pagedaemon up to replentish our supply.
  *
  * We try to generate some hysteresis by waking the pagedaemon up
- * when our free+cache pages go below the severe level.  The pagedaemon
- * tries to get the count back up to at least the minimum, and through
- * to the target level if possible.
+ * when our free+cache pages go below the free_min+cache_min level.
+ * The pagedaemon tries to get the count back up to at least the
+ * minimum, and through to the target level if possible.
  *
  * If the pagedaemon is already active bump vm_pages_needed as a hint
  * that there are even more requests pending.
@@ -1676,12 +1694,12 @@ SYSINIT(pagedaemon, SI_SUB_KTHREAD_PAGE, SI_ORDER_FIRST, kproc_start, &page_kp)
 void
 pagedaemon_wakeup(void)
 {
-	if (vm_page_count_severe() && curthread != pagethread) {
+	if (vm_paging_needed() && curthread != pagethread) {
 		if (vm_pages_needed == 0) {
-			vm_pages_needed = 1;
+			vm_pages_needed = 1;	/* SMP race ok */
 			wakeup(&vm_pages_needed);
 		} else if (vm_page_count_min(0)) {
-			++vm_pages_needed;
+			++vm_pages_needed;	/* SMP race ok */
 		}
 	}
 }

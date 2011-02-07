@@ -113,7 +113,12 @@ THIS SOFTWARE.
  * #define MALLOC your_malloc, where your_malloc(n) acts like malloc(n)
  *	if memory is available and otherwise does something you deem
  *	appropriate.  If MALLOC is undefined, malloc will be invoked
- *	directly -- and assumed always to succeed.
+ *	directly -- and assumed always to succeed.  Similarly, if you
+ *	want something other than the system's free() to be called to
+ *	recycle memory acquired from MALLOC, #define FREE to be the
+ *	name of the alternate routine.  (FREE or free is only called in
+ *	pathological cases, e.g., in a gdtoa call after a gdtoa return in
+ *	mode 3 with thousands of digits requested.)
  * #define Omit_Private_Memory to omit logic (added Jan. 1998) for making
  *	memory allocations from a private pool of memory when possible.
  *	When used, the private pool is PRIVATE_MEM bytes long:  2304 bytes,
@@ -162,11 +167,6 @@ THIS SOFTWARE.
  * #define NO_STRING_H to use private versions of memcpy.
  *	On some K&R systems, it may also be necessary to
  *	#define DECLARE_SIZE_T in this case.
- * #define YES_ALIAS to permit aliasing certain double values with
- *	arrays of ULongs.  This leads to slightly better code with
- *	some compilers and was always used prior to 19990916, but it
- *	is not strictly legal and can cause trouble with aggressively
- *	optimizing compilers (e.g., gcc 2.95.1 under -O2).
  * #define USE_LOCALE to use the current locale's decimal_point value.
  */
 
@@ -282,25 +282,14 @@ Exactly one of IEEE_8087, IEEE_MC68k, VAX, or IBM should be defined.
 
 typedef union { double d; ULong L[2]; } U;
 
-#ifdef YES_ALIAS
-#define dval(x) x
 #ifdef IEEE_8087
-#define word0(x) ((ULong *)&x)[1]
-#define word1(x) ((ULong *)&x)[0]
+#define word0(x) (x)->L[1]
+#define word1(x) (x)->L[0]
 #else
-#define word0(x) ((ULong *)&x)[0]
-#define word1(x) ((ULong *)&x)[1]
+#define word0(x) (x)->L[0]
+#define word1(x) (x)->L[1]
 #endif
-#else /* !YES_ALIAS */
-#ifdef IEEE_8087
-#define word0(x) ((U*)&x)->L[1]
-#define word1(x) ((U*)&x)->L[0]
-#else
-#define word0(x) ((U*)&x)->L[0]
-#define word1(x) ((U*)&x)->L[1]
-#endif
-#define dval(x) ((U*)&x)->d
-#endif /* YES_ALIAS */
+#define dval(x) (x)->d
 
 /* The following definition of Storeinc is appropriate for MIPS processors.
  * An alternative that might be better on some machines is
@@ -480,7 +469,7 @@ extern pthread_mutex_t __gdtoa_locks[2];
 		_pthread_mutex_unlock(&__gdtoa_locks[n]);	\
 } while(0)
 
-#define Kmax (sizeof(size_t) << 3)
+#define Kmax 9
 
  struct
 Bigint {
@@ -654,7 +643,7 @@ extern void memcpy_D2A ANSI((void*, const void*, size_t));
  extern int strtorxL ANSI((CONST char *, char **, int, void *));
  extern Bigint *sum ANSI((Bigint*, Bigint*));
  extern int trailz ANSI((Bigint*));
- extern double ulp ANSI((double));
+ extern double ulp ANSI((U*));
 
 #ifdef __cplusplus
 }

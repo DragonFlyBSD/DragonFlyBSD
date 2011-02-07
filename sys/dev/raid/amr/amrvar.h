@@ -52,24 +52,26 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *      $FreeBSD: src/sys/dev/amr/amrvar.h,v 1.2.2.5 2002/12/20 15:12:04 emoore Exp $
- *      $DragonFly: src/sys/dev/raid/amr/amrvar.h,v 1.11 2008/06/10 17:20:49 dillon Exp $
+ *
+ *      $FreeBSD: src/sys/dev/amr/amrvar.h,v 1.37 2010/07/28 16:24:11 mdf Exp $
  */
 
-#include <sys/thread2.h>
+#include <sys/buf2.h>
+#include <sys/devicestat.h>
+#include <sys/disk.h>
+#include <sys/lock.h>
+#include <sys/sysctl.h>
 
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500005
-# include <sys/taskqueue.h>
-#endif
+#define LSI_DESC_PCI "LSILogic MegaRAID 1.53"
 
 #ifdef AMR_DEBUG
 # define debug(level, fmt, args...)	do {if (level <= AMR_DEBUG) kprintf("%s: " fmt "\n", __func__ , ##args);} while(0)
 # define debug_called(level)		do {if (level <= AMR_DEBUG) kprintf("%s: called\n", __func__);} while(0)
 #else
-# define debug(level, fmt, args...)
-# define debug_called(level)
+# define debug(level, fmt, args...)	do {} while (0)
+# define debug_called(level)		do {} while (0)
 #endif
-#define xdebug(fmt, args...)	kprintf("%s: " fmt "\n", __func__ , ##args)
+#define xdebug(fmt, args...)	printf("%s: " fmt "\n", __func__ , ##args)
 
 /*
  * Per-logical-drive datastructure
@@ -100,41 +102,61 @@ struct amr_logdrive
 
 #define AMR_CMD_CLUSTERSIZE	(16 * 1024)
 
+typedef STAILQ_HEAD(, amr_command)	ac_qhead_t;
+typedef STAILQ_ENTRY(amr_command)	ac_link_t;
+
+union amr_ccb {
+    struct amr_passthrough	ccb_pthru;
+    struct amr_ext_passthrough	ccb_epthru;
+    uint8_t			bytes[128];
+};
+
 /*
  * Per-command control structure.
  */
 struct amr_command
 {
-    TAILQ_ENTRY(amr_command)	ac_link;
+    ac_link_t			ac_link;
 
     struct amr_softc		*ac_sc;
     u_int8_t			ac_slot;
     int				ac_status;	/* command completion status */
+    union {
+	struct amr_sgentry	*sg32;
+	struct amr_sg64entry	*sg64;
+    } ac_sg;
+    u_int32_t			ac_sgbusaddr;
+    u_int32_t			ac_sg64_lo;
+    u_int32_t			ac_sg64_hi;
     struct amr_mailbox		ac_mailbox;
     int				ac_flags;
 #define AMR_CMD_DATAIN		(1<<0)
 #define AMR_CMD_DATAOUT		(1<<1)
-#define AMR_CMD_CCB_DATAIN	(1<<2)
-#define AMR_CMD_CCB_DATAOUT	(1<<3)
+#define AMR_CMD_CCB		(1<<2)
 #define AMR_CMD_PRIORITY	(1<<4)
 #define AMR_CMD_MAPPED		(1<<5)
 #define AMR_CMD_SLEEP		(1<<6)
 #define AMR_CMD_BUSY		(1<<7)
+#define AMR_CMD_SG64		(1<<8)
+#define AC_IS_SG64(ac)		((ac)->ac_flags & AMR_CMD_SG64)
+    u_int			ac_retries;
 
     struct bio			*ac_bio;
+    void			(* ac_complete)(struct amr_command *ac);
+    void			*ac_private;
 
     void			*ac_data;
     size_t			ac_length;
     bus_dmamap_t		ac_dmamap;
-    u_int32_t			ac_dataphys;
+    bus_dmamap_t		ac_dma64map;
 
-    void			*ac_ccb_data;
-    size_t			ac_ccb_length;
-    bus_dmamap_t		ac_ccb_dmamap;
-    u_int32_t			ac_ccb_dataphys;
+    bus_dma_tag_t		ac_tag;
+    bus_dmamap_t		ac_datamap;
+    int				ac_nsegments;
+    uint32_t			ac_mb_physaddr;
 
-    void			(* ac_complete)(struct amr_command *ac);
-    void			*ac_private;
+    union amr_ccb		*ac_ccb;
+    uint32_t			ac_ccb_busaddr;
 };
 
 struct amr_command_cluster
@@ -158,6 +180,7 @@ struct amr_softc
     bus_space_tag_t		amr_btag;
     bus_dma_tag_t		amr_parent_dmat;	/* parent DMA tag */
     bus_dma_tag_t		amr_buffer_dmat;	/* data buffer DMA tag */
+    bus_dma_tag_t		amr_buffer64_dmat;
     struct resource		*amr_irq;		/* interrupt */
     void			*amr_intr;
 
@@ -170,11 +193,18 @@ struct amr_softc
 
     /* scatter/gather lists and their controller-visible mappings */
     struct amr_sgentry		*amr_sgtable;		/* s/g lists */
+    struct amr_sg64entry	*amr_sg64table;		/* 64bit s/g lists */
     u_int32_t			amr_sgbusaddr;		/* s/g table base address in bus space */
     bus_dma_tag_t		amr_sg_dmat;		/* s/g buffer DMA tag */
     bus_dmamap_t		amr_sg_dmamap;		/* map for s/g buffers */
 
+    union amr_ccb		*amr_ccb;
+    uint32_t			amr_ccb_busaddr;
+    bus_dma_tag_t		amr_ccb_dmat;
+    bus_dmamap_t		amr_ccb_dmamap;
+
     /* controller limits and features */
+    int				amr_nextslot;		/* Next slot to use for newly allocated commands */
     int				amr_maxio;		/* maximum number of I/O transactions */
     int				amr_maxdrives;		/* max number of logical drives */
     int				amr_maxchan;		/* count of SCSI channels */
@@ -188,22 +218,30 @@ struct amr_softc
 #define AMR_STATE_SUSPEND	(1<<1)
 #define AMR_STATE_INTEN		(1<<2)
 #define AMR_STATE_SHUTDOWN	(1<<3)
+#define AMR_STATE_CRASHDUMP	(1<<4)
+#define AMR_STATE_QUEUE_FRZN	(1<<5)
+#define AMR_STATE_LD_DELETE	(1<<6)
+#define AMR_STATE_REMAP_LD	(1<<7)
 
     /* per-controller queues */
     struct bio_queue_head 	amr_bioq;		/* pending I/O with no commands */
-    TAILQ_HEAD(,amr_command)	amr_ready;		/* commands ready to be submitted */
+    ac_qhead_t			amr_ready;		/* commands ready to be submitted */
     struct amr_command		*amr_busycmd[AMR_MAXCMD];
     int				amr_busyslots;
-    TAILQ_HEAD(,amr_command)	amr_completed;
-    TAILQ_HEAD(,amr_command)	amr_freecmds;
+    ac_qhead_t			amr_freecmds;
     TAILQ_HEAD(,amr_command_cluster)	amr_cmd_clusters;
 
     /* CAM attachments for passthrough */
     struct cam_sim		*amr_cam_sim[AMR_MAX_CHANNELS];
     TAILQ_HEAD(, ccb_hdr)	amr_cam_ccbq;
+    struct cam_devq		*amr_cam_devq;
 
     /* control device */
-    cdev_t			amr_dev_t;
+    struct cdev			*amr_dev_t;
+    struct lock			amr_list_lock;
+
+    struct sysctl_ctx_list	amr_sysctl_ctx;
+    struct sysctl_oid		*amr_sysctl_tree;
 
     /* controller type-specific support */
     int				amr_type;
@@ -211,17 +249,23 @@ struct amr_softc
 #define AMR_IS_QUARTZ(sc)	((sc)->amr_type & AMR_TYPE_QUARTZ)
 #define AMR_TYPE_40LD		(1<<1)
 #define AMR_IS_40LD(sc)		((sc)->amr_type & AMR_TYPE_40LD)
-    int				(* amr_submit_command)(struct amr_softc *sc);
+#define AMR_TYPE_SG64		(1<<2)
+#define AMR_IS_SG64(sc)		((sc)->amr_type & AMR_TYPE_SG64)
+    int				(* amr_submit_command)(struct amr_command *ac);
     int				(* amr_get_work)(struct amr_softc *sc, struct amr_mailbox *mbsave);
     int				(*amr_poll_command)(struct amr_command *ac);
+    int				(*amr_poll_command1)(struct amr_softc *sc, struct amr_command *ac);
     int 			support_ext_cdb;	/* greater than 10 byte cdb support */
 
     /* misc glue */
+    device_t			amr_pass;
+    int				(*amr_cam_command)(struct amr_softc *sc, struct amr_command **acp);
     struct intr_config_hook	amr_ich;		/* wait-for-interrupts probe hook */
     struct callout		amr_timeout;		/* periodic status check */
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500005
-    struct task			amr_task_complete;	/* deferred-completion task */
-#endif
+    int				amr_allow_vol_config;
+    int				amr_linux_no_adapters;
+    int				amr_ld_del_supported;
+    struct lock			amr_hw_lock;
 };
 
 /*
@@ -240,13 +284,6 @@ extern struct amr_command	*amr_alloccmd(struct amr_softc *sc);
 extern void			amr_releasecmd(struct amr_command *ac);
 
 /*
- * CAM interface
- */
-extern int		amr_cam_attach(struct amr_softc *sc);
-extern void		amr_cam_detach(struct amr_softc *sc);
-extern int		amr_cam_command(struct amr_softc *sc, struct amr_command **acp);
-
-/*
  * MegaRAID logical disk driver
  */
 struct amrd_softc 
@@ -258,16 +295,14 @@ struct amrd_softc
     struct disk		amrd_disk;
     struct devstat	amrd_stats;
     int			amrd_unit;
-    int			amrd_flags;
-#define AMRD_OPEN	(1<<0)		/* drive is open (can't detach) */
 };
 
 /*
  * Interface between driver core and disk driver (should be using a bus?)
  */
 extern int	amr_submit_bio(struct amr_softc *sc, struct bio *bio);
-extern void	amrd_intr(struct bio *bio);
-extern int	amr_dump_blocks(struct amr_softc *sc, int unit, u_int64_t lba, void *data, int blks);
+extern int 	amr_dump_blocks(struct amr_softc *sc, int unit, u_int32_t lba, void *data, int blks);
+extern void	amrd_intr(void *data);
 
 /********************************************************************************
  * Enqueue/dequeue functions
@@ -275,9 +310,8 @@ extern int	amr_dump_blocks(struct amr_softc *sc, int unit, u_int64_t lba, void *
 static __inline void
 amr_enqueue_bio(struct amr_softc *sc, struct bio *bio)
 {
-    crit_enter();
-    bioqdisksort(&sc->amr_bioq, bio);
-    crit_exit();
+
+    bioq_insert_tail(&sc->amr_bioq, bio);
 }
 
 static __inline struct bio *
@@ -285,27 +319,30 @@ amr_dequeue_bio(struct amr_softc *sc)
 {
     struct bio	*bio;
 
-    crit_enter();
     if ((bio = bioq_first(&sc->amr_bioq)) != NULL)
 	bioq_remove(&sc->amr_bioq, bio);
-    crit_exit();
     return(bio);
+}
+
+static __inline void
+amr_init_qhead(ac_qhead_t *head)
+{
+
+	STAILQ_INIT(head);
 }
 
 static __inline void
 amr_enqueue_ready(struct amr_command *ac)
 {
-    crit_enter();
-    TAILQ_INSERT_TAIL(&ac->ac_sc->amr_ready, ac, ac_link);
-    crit_exit();
+
+    STAILQ_INSERT_TAIL(&ac->ac_sc->amr_ready, ac, ac_link);
 }
 
 static __inline void
 amr_requeue_ready(struct amr_command *ac)
 {
-    crit_enter();
-    TAILQ_INSERT_HEAD(&ac->ac_sc->amr_ready, ac, ac_link);
-    crit_exit();
+
+    STAILQ_INSERT_HEAD(&ac->ac_sc->amr_ready, ac, ac_link);
 }
 
 static __inline struct amr_command *
@@ -313,39 +350,33 @@ amr_dequeue_ready(struct amr_softc *sc)
 {
     struct amr_command	*ac;
 
-    crit_enter();
-    if ((ac = TAILQ_FIRST(&sc->amr_ready)) != NULL)
-	TAILQ_REMOVE(&sc->amr_ready, ac, ac_link);
-    crit_exit();
+    if ((ac = STAILQ_FIRST(&sc->amr_ready)) != NULL)
+	STAILQ_REMOVE_HEAD(&sc->amr_ready, ac_link);
     return(ac);
 }
 
 static __inline void
-amr_enqueue_completed(struct amr_command *ac)
+amr_enqueue_completed(struct amr_command *ac, ac_qhead_t *head)
 {
-    crit_enter();
-    TAILQ_INSERT_TAIL(&ac->ac_sc->amr_completed, ac, ac_link);
-    crit_exit();
+
+    STAILQ_INSERT_TAIL(head, ac, ac_link);
 }
 
 static __inline struct amr_command *
-amr_dequeue_completed(struct amr_softc *sc)
+amr_dequeue_completed(struct amr_softc *sc, ac_qhead_t *head)
 {
     struct amr_command	*ac;
 
-    crit_enter();
-    if ((ac = TAILQ_FIRST(&sc->amr_completed)) != NULL)
-	TAILQ_REMOVE(&sc->amr_completed, ac, ac_link);
-    crit_exit();
+    if ((ac = STAILQ_FIRST(head)) != NULL)
+	STAILQ_REMOVE_HEAD(head, ac_link);
     return(ac);
 }
 
 static __inline void
 amr_enqueue_free(struct amr_command *ac)
 {
-    crit_enter();
-    TAILQ_INSERT_TAIL(&ac->ac_sc->amr_freecmds, ac, ac_link);
-    crit_exit();
+
+    STAILQ_INSERT_HEAD(&ac->ac_sc->amr_freecmds, ac, ac_link);
 }
 
 static __inline struct amr_command *
@@ -353,9 +384,7 @@ amr_dequeue_free(struct amr_softc *sc)
 {
     struct amr_command	*ac;
 
-    crit_enter();
-    if ((ac = TAILQ_FIRST(&sc->amr_freecmds)) != NULL)
-	TAILQ_REMOVE(&sc->amr_freecmds, ac, ac_link);
-    crit_exit();
+    if ((ac = STAILQ_FIRST(&sc->amr_freecmds)) != NULL)
+	STAILQ_REMOVE_HEAD(&sc->amr_freecmds, ac_link);
     return(ac);
 }

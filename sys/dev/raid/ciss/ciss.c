@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/ciss.c,v 1.2.2.25 2008/06/10 18:51:05 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.28 2008/05/18 20:30:23 pavalos Exp $
  */
 
 /*
@@ -230,10 +229,8 @@ static d_open_t		ciss_open;
 static d_close_t	ciss_close;
 static d_ioctl_t	ciss_ioctl;
 
-#define CISS_CDEV_MAJOR  166
-
 static struct dev_ops ciss_ops = {
-    { "ciss", CISS_CDEV_MAJOR, 0 },
+    { "ciss", 0, 0 },
     .d_open =		ciss_open,
     .d_close =		ciss_close,
     .d_ioctl =		ciss_ioctl

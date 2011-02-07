@@ -32,7 +32,6 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.41 2008/09/05 17:03:15 dillon Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -80,7 +79,6 @@
 #define TAP_PREALLOCATED_UNITS	4
 
 #define CDEV_NAME	"tap"
-#define CDEV_MAJOR	149
 #define TAPDEBUG	if (tapdebug) if_printf
 
 #define TAP		"tap"
@@ -98,7 +96,7 @@ static void		tapdestroy(struct tap_softc *);
 
 /* clone */
 static int		tap_clone_create(struct if_clone *, int, caddr_t);
-static void		tap_clone_destroy(struct ifnet *);
+static int		tap_clone_destroy(struct ifnet *);
 
 
 /* network interface */
@@ -119,7 +117,7 @@ static d_ioctl_t	tapioctl;
 static d_kqfilter_t	tapkqfilter;
 
 static struct dev_ops	tap_ops = {
-	{ CDEV_NAME, CDEV_MAJOR, 0 },
+	{ CDEV_NAME, 0, 0 },
 	.d_open =	tapopen,
 	.d_close =	tapclose,
 	.d_read =	tapread,
@@ -496,15 +494,19 @@ tapdestroy(struct tap_softc *tp)
  *
  *	Destroy a tap instance.
  */
-static void
+static int
 tap_clone_destroy(struct ifnet *ifp)
 {
 	struct tap_softc *tp = ifp->if_softc;
 	
+	if ((tp->tap_flags & TAP_CLONE) == 0)
+		return ENXIO;
+
 	TAPDEBUG(&tp->tap_if, "clone destroyed. minor = %#x tap_flags = 0x%x\n",
 		 minor(tp->tap_dev), tp->tap_flags);
-	if (tp->tap_flags & TAP_CLONE)
-		tapdestroy(tp);
+	tapdestroy(tp);
+
+	return 0;
 }
 
 /*

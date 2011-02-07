@@ -88,7 +88,8 @@ static int elf_trace = 0;
 SYSCTL_INT(_debug, OID_AUTO, elf_trace, CTLFLAG_RW, &elf_trace, 0, "");
 static int elf_legacy_coredump = 0;
 SYSCTL_INT(_debug, OID_AUTO, elf_legacy_coredump, CTLFLAG_RW,
-    &elf_legacy_coredump, 0, "");
+    &elf_legacy_coredump, 0,
+    "Do not dump inaccessible mappings, legacy coredump mode");
 
 static int dragonfly_match_abi_note(const Elf_Note *);
 static int freebsd_match_abi_note(const Elf_Note *);
@@ -261,6 +262,7 @@ elf_check_abi_note(struct image_params *imgp, const Elf_Phdr *ph)
 	Elf_Brandinfo *match = NULL;
 	const Elf_Note *tmp_note;
 	struct lwbuf *lwb;
+	struct lwbuf lwb_cache;
 	const char *page;
 	char *data = NULL;
 	Elf_Off off;
@@ -277,6 +279,7 @@ elf_check_abi_note(struct image_params *imgp, const Elf_Phdr *ph)
 	if (len < sizeof(Elf_Note) || len > PAGE_SIZE)
 		return NULL; /* ENOEXEC? */
 
+	lwb = &lwb_cache;
 	if (exec_map_page(imgp, off >> PAGE_SHIFT, &lwb, &page))
 		return NULL;
 
@@ -289,6 +292,7 @@ elf_check_abi_note(struct image_params *imgp, const Elf_Phdr *ph)
 		bcopy(page + firstoff, data, firstlen);
 
 		exec_unmap_page(lwb);
+		lwb = &lwb_cache;
 		if (exec_map_page(imgp, (off >> PAGE_SHIFT) + 1, &lwb, &page)) {
 			kfree(data, M_TEMP);
 			return NULL;
@@ -441,11 +445,12 @@ elf_load_section(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 	if (copy_len != 0) {
 		vm_page_t m;
 		struct lwbuf *lwb;
+		struct lwbuf lwb_cache;
 
 		m = vm_fault_object_page(object, trunc_page(offset + filsz),
 					 VM_PROT_READ, 0, &error);
 		if (m) {
-			lwb = lwbuf_alloc(m);
+			lwb = lwbuf_alloc(m, &lwb_cache);
 			error = copyout((caddr_t)lwbuf_kva(lwb),
 					(caddr_t)map_addr, copy_len);
 			lwbuf_free(lwb);
@@ -491,6 +496,7 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	struct vmspace *vmspace = p->p_vmspace;
 	struct vattr *attr;
 	struct image_params *imgp;
+	struct mount *topmnt;
 	vm_prot_t prot;
 	u_long rbase;
 	u_long base_addr = 0;
@@ -515,6 +521,7 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 		error = nlookup(nd);
 	if (error == 0)
 		error = cache_vget(&nd->nl_nch, nd->nl_cred, LK_EXCLUSIVE, &imgp->vp);
+	topmnt = nd->nl_nch.mount;
 	nlookup_done(nd);
 	if (error)
 		goto fail;
@@ -522,7 +529,7 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	/*
 	 * Check permissions, modes, uid, etc on the file, and "open" it.
 	 */
-	error = exec_check_permissions(imgp);
+	error = exec_check_permissions(imgp, topmnt);
 	if (error) {
 		vn_unlock(imgp->vp);
 		goto fail;

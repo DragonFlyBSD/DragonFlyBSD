@@ -82,7 +82,8 @@
 
 #include <vfs/union/union.h>
 
-static void mount_warning(struct mount *mp, const char *ctl, ...);
+static void mount_warning(struct mount *mp, const char *ctl, ...)
+		__printflike(2, 3);
 static int mount_path(struct proc *p, struct mount *mp, char **rb, char **fb);
 static int checkvp_chdir (struct vnode *vn, struct thread *td);
 static void checkdirs (struct nchandle *old_nch, struct nchandle *new_nch);
@@ -98,7 +99,8 @@ static int	usermount = 0;	/* if 1, non-root can mount fs. */
 
 int (*union_dircheckp) (struct thread *, struct vnode **, struct file *);
 
-SYSCTL_INT(_vfs, OID_AUTO, usermount, CTLFLAG_RW, &usermount, 0, "");
+SYSCTL_INT(_vfs, OID_AUTO, usermount, CTLFLAG_RW, &usermount, 0,
+    "Allow non-root users to mount filesystems");
 
 /*
  * Virtual File System System Calls
@@ -893,7 +895,7 @@ sync_callback(struct mount *mp, void *data __unused)
 		asyncflag = mp->mnt_flag & MNT_ASYNC;
 		mp->mnt_flag &= ~MNT_ASYNC;
 		vfs_msync(mp, MNT_NOWAIT);
-		VFS_SYNC(mp, MNT_NOWAIT);
+		VFS_SYNC(mp, MNT_NOWAIT | MNT_LAZY);
 		mp->mnt_flag |= asyncflag;
 	}
 	return(0);
@@ -1977,18 +1979,15 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 int
 sys_open(struct open_args *uap)
 {
-	CACHE_MPLOCK_DECLARE;
 	struct nlookupdata nd;
 	int error;
 
-	CACHE_GETMPLOCK1();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
 		error = kern_open(&nd, uap->flags,
 				    uap->mode, &uap->sysmsg_result);
 	}
 	nlookup_done(&nd);
-	CACHE_RELMPLOCK();
 	return (error);
 }
 
@@ -2000,19 +1999,16 @@ sys_open(struct open_args *uap)
 int
 sys_openat(struct openat_args *uap)
 {
-	CACHE_MPLOCK_DECLARE;
 	struct nlookupdata nd;
 	int error;
 	struct file *fp;
 
-	CACHE_GETMPLOCK1();
 	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
 		error = kern_open(&nd, uap->flags, uap->mode, 
 					&uap->sysmsg_result);
 	}
 	nlookup_done_at(&nd, fp);
-	CACHE_RELMPLOCK();
 	return (error);
 }
 
@@ -2776,12 +2772,10 @@ again:
 int
 sys_stat(struct stat_args *uap)
 {
-	CACHE_MPLOCK_DECLARE;
 	struct nlookupdata nd;
 	struct stat st;
 	int error;
 
-	CACHE_GETMPLOCK1();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = kern_stat(&nd, &st);
@@ -2789,7 +2783,6 @@ sys_stat(struct stat_args *uap)
 			error = copyout(&st, uap->ub, sizeof(*uap->ub));
 	}
 	nlookup_done(&nd);
-	CACHE_RELMPLOCK();
 	return (error);
 }
 
@@ -2803,12 +2796,10 @@ sys_stat(struct stat_args *uap)
 int
 sys_lstat(struct lstat_args *uap)
 {
-	CACHE_MPLOCK_DECLARE;
 	struct nlookupdata nd;
 	struct stat st;
 	int error;
 
-	CACHE_GETMPLOCK1();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
 		error = kern_stat(&nd, &st);
@@ -2816,7 +2807,6 @@ sys_lstat(struct lstat_args *uap)
 			error = copyout(&st, uap->ub, sizeof(*uap->ub));
 	}
 	nlookup_done(&nd);
-	CACHE_RELMPLOCK();
 	return (error);
 }
 
@@ -2830,7 +2820,6 @@ sys_lstat(struct lstat_args *uap)
 int
 sys_fstatat(struct fstatat_args *uap)
 {
-	CACHE_MPLOCK_DECLARE;
 	struct nlookupdata nd;
 	struct stat st;
 	int error;
@@ -2842,7 +2831,6 @@ sys_fstatat(struct fstatat_args *uap)
 
 	flags = (uap->flags & AT_SYMLINK_NOFOLLOW) ? 0 : NLC_FOLLOW;
 
-	CACHE_GETMPLOCK1();
 	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, 
 				UIO_USERSPACE, flags);
 	if (error == 0) {
@@ -2851,7 +2839,6 @@ sys_fstatat(struct fstatat_args *uap)
 			error = copyout(&st, uap->sb, sizeof(*uap->sb));
 	}
 	nlookup_done_at(&nd, fp);
-	CACHE_RELMPLOCK();
 	return (error);
 }
 

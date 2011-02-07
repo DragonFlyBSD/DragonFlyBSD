@@ -22,14 +22,13 @@
  */
 extern int	adjkerntz;
 extern int	disable_rtc_set;
-extern int	statclock_disable;
 extern u_int	timer_freq;
 extern int	timer0_max_count;
 extern int	tsc_present;
 extern int64_t	tsc_frequency;
 extern int	tsc_is_broken;
 extern int	wall_cmos_clock;
-#ifdef APIC_IO
+#ifdef SMP /* APIC-IO */
 extern int	apic_8254_intr;
 #endif
 

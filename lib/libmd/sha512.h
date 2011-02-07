@@ -31,6 +31,9 @@
 #define _SHA512_H_
 
 #include <sys/types.h>
+#define SHA384_BLOCK_LENGTH		128
+#define SHA384_DIGEST_LENGTH		48
+#define SHA384_DIGEST_STRING_LENGTH	(SHA384_DIGEST_LENGTH * 2 + 1)
 #define SHA512_BLOCK_LENGTH		128
 #define SHA512_DIGEST_LENGTH		64
 #define SHA512_DIGEST_STRING_LENGTH	(SHA512_DIGEST_LENGTH * 2 + 1)
@@ -41,8 +44,12 @@ typedef struct _SHA512_CTX {
 	u_int8_t	buffer[SHA512_BLOCK_LENGTH];
 } SHA512_CTX;
 
+typedef SHA512_CTX SHA384_CTX;
 
 __BEGIN_DECLS
+void	SHA384_Init(SHA384_CTX *);
+void	SHA384_Update(SHA384_CTX *, const u_int8_t *, size_t);
+void	SHA384_Final(u_int8_t[SHA384_DIGEST_LENGTH], SHA384_CTX *);
 void	SHA512_Init(SHA512_CTX*);
 void	SHA512_Update(SHA512_CTX*, const void *, size_t);
 void	SHA512_Final(unsigned char [SHA512_DIGEST_LENGTH], SHA512_CTX *);

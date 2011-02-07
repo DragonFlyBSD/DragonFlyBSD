@@ -34,7 +34,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/stallion.c,v 1.39.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.27 2008/08/02 01:14:43 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -750,7 +749,7 @@ COMPAT_PCI_DRIVER (stlpci, stlpcidriver);
 
 #define	CDEV_MAJOR	72
 static struct dev_ops stl_ops = {
-	{ "stl", CDEV_MAJOR, D_TTY },
+	{ "stl", 0, D_TTY },
 	.d_open =	stlopen,
 	.d_close =	stlclose,
 	.d_read =	ttyread,

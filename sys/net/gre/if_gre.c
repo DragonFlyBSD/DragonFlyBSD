@@ -1,6 +1,5 @@
 /*	$NetBSD: if_gre.c,v 1.42 2002/08/14 00:23:27 itojun Exp $ */
 /*	$FreeBSD: src/sys/net/if_gre.c,v 1.9.2.3 2003/01/23 21:06:44 sam Exp $ */
-/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.22 2008/10/27 02:56:30 sephe Exp $ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -49,7 +48,6 @@
 
 #include "opt_atalk.h"
 #include "opt_inet.h"
-#include "opt_ns.h"
 
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -102,7 +100,7 @@ static MALLOC_DEFINE(M_GRE, GRENAME, "Generic Routing Encapsulation");
 struct gre_softc_head gre_softc_list;
 
 static int	gre_clone_create(struct if_clone *, int, caddr_t);
-static void	gre_clone_destroy(struct ifnet *);
+static int	gre_clone_destroy(struct ifnet *);
 static int	gre_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static int	gre_output(struct ifnet *, struct mbuf *, struct sockaddr *,
 		    struct rtentry *rt);
@@ -208,7 +206,7 @@ gre_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	return (0);
 }
 
-static void
+static int
 gre_clone_destroy(struct ifnet *ifp)
 {
 	struct gre_softc *sc = ifp->if_softc;
@@ -222,6 +220,8 @@ gre_clone_destroy(struct ifnet *ifp)
 	if_detach(ifp);
 
 	kfree(sc, M_GRE);
+
+	return 0;
 }
 
 /*
@@ -352,11 +352,6 @@ gre_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 #ifdef NETATALK
 		case AF_APPLETALK:
 			etype = ETHERTYPE_ATALK;
-			break;
-#endif
-#ifdef NS
-		case AF_NS:
-			etype = ETHERTYPE_NS;
 			break;
 #endif
 		default:

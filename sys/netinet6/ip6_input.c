@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.38 2008/09/24 14:26:39 sephe Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -129,9 +128,6 @@
 #include <net/ip6fw/ip6_fw.h>
 
 #include <netinet6/ip6protosw.h>
-
-/* we need it for NLOOP. */
-#include "use_loop.h"
 
 #include <net/net_osdep.h>
 
@@ -275,7 +271,7 @@ ip6_input(netmsg_t msg)
 		else
 			ip6stat.ip6s_mext1++;
 	} else {
-#define M2MMAX	(sizeof(ip6stat.ip6s_m2m)/sizeof(ip6stat.ip6s_m2m[0]))
+#define M2MMAX	NELEM(ip6stat.ip6s_m2m)
 		if (m->m_next) {
 			if (m->m_flags & M_LOOP) {
 				ip6stat.ip6s_m2m[loif[0].if_index]++;	/* XXX */

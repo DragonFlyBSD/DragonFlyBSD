@@ -67,7 +67,7 @@
  * System hard and soft interrupt limits.  Note that the architecture may
  * further limit available hardware and software interrupts.
  */
-#define MAX_HARDINTS	64
+#define MAX_HARDINTS	192
 #define MAX_SOFTINTS	64
 #define FIRST_SOFTINT	MAX_HARDINTS
 #define MAX_INTS	(MAX_HARDINTS + MAX_SOFTINTS)
@@ -126,7 +126,6 @@ void register_randintr(int intr);
 void unregister_randintr(int intr);
 int next_registered_randintr(int intr);
 void sched_ithd(int intr);	/* procedure called from MD */
-void forward_fastint_remote(void *arg);		/* MD procedure (SMP) */
 int ithread_cpuid(int intr);
 
 extern char	eintrnames[];	/* end of intrnames[] */

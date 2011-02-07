@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1980 The Regents of the University of California. All rights reserved.
  * @(#)symorder.c	5.8 (Berkeley) 4/1/91
  * $FreeBSD: src/usr.bin/symorder/symorder.c,v 1.15 1999/08/28 01:05:57 peter Exp $
- * $DragonFly: src/usr.bin/symorder/symorder.c,v 1.4 2008/10/16 01:52:33 swildner Exp $
  */
 
 /*
@@ -51,6 +50,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <netinet/in.h>
 
 #define SPACE		500
 

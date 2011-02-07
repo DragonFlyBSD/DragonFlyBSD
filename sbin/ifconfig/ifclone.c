@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: head/sbin/ifconfig/ifclone.c 194799 2009-06-23 23:49:52Z delphij $
- * $DragonFly$
  */
 
 #include <sys/queue.h>
@@ -179,7 +178,7 @@ clone_Copt_cb(const char *optarg __unused)
 }
 static struct option clone_Copt = { .opt = "C", .opt_usage = "[-C]", .cb = clone_Copt_cb };
 
-static __constructor void
+static __constructor(100) void
 clone_ctor(void)
 {
 #define	N(a)	(sizeof(a) / sizeof(a[0]))

@@ -941,7 +941,7 @@ nfs_asyncio(struct vnode *vp, struct bio *bio)
 }
 
 /*
- * nfs_dio()	- Execute a BIO operation synchronously.  The BIO will be
+ * nfs_doio()	- Execute a BIO operation synchronously.  The BIO will be
  *		  completed and its error returned.  The caller is responsible
  *		  for brelse()ing it.  ONLY USE FOR BIO_SYNC IOs!  Otherwise
  *		  our error probe will be against an invalid pointer.
@@ -1056,7 +1056,6 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 	 * XXX This is having problems, give up for now.
 	 */
 	if (vn_cache_strategy(vp, bio)) {
-		kprintf("X");
 		error = biowait(&bio->bio_buf->b_bio1, "nfsrsw");
 		return (error);
 	}

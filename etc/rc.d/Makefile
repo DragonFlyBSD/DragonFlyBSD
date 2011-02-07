@@ -7,8 +7,8 @@
 #
 FILES=	DAEMON LOGIN NETWORKING SERVERS abi accounting addswap adjkerntz \
 	amd apm apmd atm1 atm2 atm3 \
-	battd bootconf bootparams btconfig bthcid ccd cleanvar \
-	cleartmp cron devd devfs dhclient diskless dmesg dumpon \
+	battd bootconf bootparams btconfig bthcid ccd cleanvar cryptdisks \
+	cleartmp cron cryptdisks devd devfs dhclient diskless dmesg dumpon \
 	fixbootfile fsck ftpd hostapd hostname hotplugd \
 	inetd initdiskless initrandom ip6fw ipfilter ipfs ipfw ipmon \
 	ipnat ipsec ipxrouted isdnd jail \
@@ -22,7 +22,7 @@ FILES=	DAEMON LOGIN NETWORKING SERVERS abi accounting addswap adjkerntz \
 	quota random rarpd rcconf resident rndcontrol root route6d routed \
 	routing rpcbind rtadvd rtsold rwho sysdb savecore sdpd securelevel \
 	sendmail sensorsd serial sppp sshd statd swap1 syscons sysctl syslogd \
-	timed ttys udevd usbd varsym vinum vkernel virecover \
+	timed ttys udevd udevd_early usbd varsym vinum vkernel virecover \
 	watchdogd wpa_supplicant \
 	ypbind yppasswdd ypserv ypset ypupdated ypxfrd
 

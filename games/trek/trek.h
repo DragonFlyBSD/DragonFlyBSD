@@ -434,7 +434,7 @@ const char	*systemname(struct quad *);
 void	torped(int);
 char	*bmove(const void *, void *, size_t);
 bool	sequal(const char *, const char *);
-void	syserr(const char *, ...);
+void	syserr(const char *, ...) __printflike(1, 2);
 void	visual(int);
 void	warp(int, int, double);
 void	dowarp(int);

@@ -50,7 +50,7 @@
 #include <net/raw_cb.h>
 
 
-static struct lwkt_token raw_token = LWKT_TOKEN_MP_INITIALIZER(raw_token);
+static struct lwkt_token raw_token = LWKT_TOKEN_INITIALIZER(raw_token);
 
 /*
  * Initialize raw connection block q.

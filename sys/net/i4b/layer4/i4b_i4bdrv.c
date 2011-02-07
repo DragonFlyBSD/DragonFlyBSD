@@ -28,7 +28,6 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_i4bdrv.c,v 1.11.2.5 2001/12/16 15:12:59 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.20 2008/01/06 16:55:52 swildner Exp $
  *
  *      last edit-date: [Sat Aug 11 18:08:10 2001]
  *
@@ -91,10 +90,8 @@ PDEVSTATIC void i4bkqfilt_detach(struct knote *);
 PDEVSTATIC int i4bkqfilt_read(struct knote *, long);
 PDEVSTATIC int i4bkqfilt_write(struct knote *, long);
 
-#define CDEV_MAJOR 60
-
 static struct dev_ops i4b_ops = {
-	{ "i4b", CDEV_MAJOR, 0 },
+	{ "i4b", 0, 0 },
 	.d_open =	i4bopen,
 	.d_close =	i4bclose,
 	.d_read =	i4bread,

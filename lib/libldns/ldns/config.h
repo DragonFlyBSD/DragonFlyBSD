@@ -28,6 +28,14 @@
 /* Define to 1 if you have the `ctime_r' function. */
 #define HAVE_CTIME_R 1
 
+/* Define to 1 if you have the declaration of `NID_secp384r1', and to 0 if you
+   don't. */
+/* #undef HAVE_DECL_NID_SECP384R1 */
+
+/* Define to 1 if you have the declaration of `NID_X9_62_prime256v1', and to 0
+   if you don't. */
+/* #undef HAVE_DECL_NID_X9_62_PRIME256V1 */
+
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #define HAVE_DLFCN_H 1
 
@@ -72,15 +80,6 @@
 
 /* Define to 1 if you have the `isblank' function. */
 #define HAVE_ISBLANK 1
-
-/* Define to 1 if you have the `crypto' library (-lcrypto). */
-#define HAVE_LIBCRYPTO 1
-
-/* Define to 1 if you have the `nsl' library (-lnsl). */
-/* #undef HAVE_LIBNSL */
-
-/* Define to 1 if you have the `socket' library (-lsocket). */
-/* #undef HAVE_LIBSOCKET */
 
 /* Define to 1 if your system has a GNU libc compatible `malloc' function, and
    to 0 otherwise. */
@@ -147,6 +146,9 @@
 /* Define to 1 if you have the `strlcpy' function. */
 #define HAVE_STRLCPY 1
 
+/* Define to 1 if you have the `strtoul' function. */
+#define HAVE_STRTOUL 1
+
 /* Define if you have Swig libraries and header files. */
 /* #undef HAVE_SWIG */
 
@@ -162,7 +164,7 @@
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #define HAVE_SYS_STAT_H 1
 
-/* Define to 1 if you have the <sys/types.h> header file. */
+/* define if you have sys/types.h */
 #define HAVE_SYS_TYPES_H 1
 
 /* Define to 1 if you have the `timegm' function. */
@@ -171,7 +173,7 @@
 /* Define to 1 if you have the <time.h> header file. */
 #define HAVE_TIME_H 1
 
-/* Define to 1 if you have the <unistd.h> header file. */
+/* define if you have unistd.h */
 #define HAVE_UNISTD_H 1
 
 /* Define to 1 if you have the <winsock2.h> header file. */
@@ -191,13 +193,16 @@
 #define PACKAGE_NAME "ldns"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "ldns 1.6.4"
+#define PACKAGE_STRING "ldns 1.6.7"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "libdns"
 
+/* Define to the home page for this package. */
+#define PACKAGE_URL ""
+
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "1.6.4"
+#define PACKAGE_VERSION "1.6.7"
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
@@ -205,8 +210,11 @@
 /* System configuration dir */
 #define SYSCONFDIR sysconfdir
 
+/* Define this to enable ECDSA support. */
+/* #undef USE_ECDSA */
+
 /* Define this to enable GOST support. */
-/* #undef USE_GOST */
+#define USE_GOST 1
 
 /* Define this to enable SHA256 and SHA512 support. */
 #define USE_SHA2 1
@@ -297,6 +305,9 @@
 /* Define to 'int' if not defined */
 /* #undef socklen_t */
 
+/* Fallback member name for socket family in struct sockaddr_storage */
+/* #undef ss_family */
+
 /* Define to `int' if <sys/types.h> does not define. */
 /* #undef ssize_t */
 
@@ -374,6 +385,10 @@
 
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef B64_PTON
 int ldns_b64_ntop(uint8_t const *src, size_t srclength,
 	 	  char *target, size_t targsize);
@@ -394,7 +409,7 @@ int ldns_b64_pton(char const *src, uint8_t *target, size_t targsize);
 /*@unused@*/
 static inline size_t ldns_b64_pton_calculate_size(size_t srcsize)
 {
-	return ((((srcsize / 4) * 3) - 2) + 2);
+	return (((((srcsize + 3) / 4) * 3)) + 1);
 }
 #endif /* !B64_NTOP */
 
@@ -438,7 +453,13 @@ void *memmove(void *dest, const void *src, size_t n);
 #ifndef HAVE_STRLCPY
 size_t strlcpy(char *dst, const char *src, size_t siz);
 #endif
+#ifdef __cplusplus
+}
+#endif
 #ifndef HAVE_GETADDRINFO
 #include "compat/fake-rfc2553.h"
+#endif
+#ifndef HAVE_STRTOUL
+#define strtoul (unsigned long)strtol
 #endif
 

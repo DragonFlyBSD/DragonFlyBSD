@@ -11,7 +11,6 @@ MAGIC=	/usr/share/misc/magic
 
 PROG=	file
 MAN=	file.1 magic.5
-WARNS?=	0
 
 CFLAGS+= -DHAVE_CONFIG_H -DMAGIC=\"${MAGIC}\"
 CFLAGS+= -I${LIBMAGICDIR}

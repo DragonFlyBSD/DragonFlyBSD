@@ -14,15 +14,21 @@
 #define _UTIL_H
 
 #include <inttypes.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <ldns/common.h>
 #include <time.h>
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define dprintf(X,Y) fprintf(stderr, (X), (Y))
 /* #define	dprintf(X, Y)  */
 
-#define LDNS_VERSION "1.6.4"
-#define LDNS_REVISION 0x010604
+#define LDNS_VERSION "1.6.7"
+#define LDNS_REVISION ((1<<16)|(6<<8)|(7))
 
 /**
  * splint static inline workaround
@@ -283,6 +289,12 @@ time_t mktime_from_utc(const struct tm *tm);
  */
 int ldns_init_random(FILE *fd, unsigned int size);
 
+/**
+ * Get random number.
+ * \return random number.
+ *
+ */
+uint16_t ldns_get_random(void);
 
 /**
  * Encode data as BubbleBabble
@@ -327,5 +339,9 @@ INLINE size_t ldns_b32_pton_calculate_size(size_t srcsize)
 	return result;
 }
 #endif /* !B32_PTON */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* !_UTIL_H */

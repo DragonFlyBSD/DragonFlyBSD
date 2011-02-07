@@ -80,9 +80,8 @@ static d_open_t		acpiopen;
 static d_close_t	acpiclose;
 static d_ioctl_t	acpiioctl;
 
-#define CDEV_MAJOR 152
 static struct dev_ops acpi_ops = {
-        { "acpi", CDEV_MAJOR, 0 },
+        { "acpi", 0, 0 },
         .d_open = acpiopen,
         .d_close = acpiclose,
         .d_ioctl = acpiioctl

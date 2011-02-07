@@ -57,6 +57,7 @@
 #include <sys/proc.h>
 #include <sys/pioctl.h>
 #include <sys/kernel.h>
+#include <sys/kerneldump.h>
 #include <sys/resourcevar.h>
 #include <sys/signalvar.h>
 #include <sys/signal2.h>
@@ -91,8 +92,9 @@
 #include <machine/tss.h>
 #include <machine/specialreg.h>
 #include <machine/globaldata.h>
+#include <machine/intr_machdep.h>
 
-#include <machine_base/isa/intr_machdep.h>
+#include <machine_base/isa/isa_intr.h>
 
 #ifdef POWERFAIL_NMI
 #include <sys/syslog.h>
@@ -259,7 +261,7 @@ recheck:
 	/*
 	 * Block here if we are in a stopped state.
 	 */
-	if (p->p_stat == SSTOP) {
+	if (p->p_stat == SSTOP || dump_stop_usertds) {
 		get_mplock();
 		tstop();
 		rel_mplock();
@@ -281,6 +283,8 @@ recheck:
 	/*
 	 * Post any pending signals.  If running a virtual kernel be sure
 	 * to restore the virtual kernel's vmspace before posting the signal.
+	 *
+	 * WARNING!  postsig() can exit and not return.
 	 */
 	if ((sig = CURSIG_TRACE(lp)) != 0) {
 		get_mplock();
@@ -403,7 +407,12 @@ trap(struct trapframe *frame)
 
 	p = td->td_proc;
 #ifdef DDB
-	if (db_active) {
+	/*
+	 * We need to allow T_DNA faults when the debugger is active since
+	 * some dumping paths do large bcopy() which use the floating
+	 * point registers for faster copying.
+	 */
+	if (db_active && frame->tf_trapno != T_DNA) {
 		eva = (frame->tf_trapno == T_PAGEFLT ? rcr2() : 0);
 		++gd->gd_trap_nesting_level;
 		MAKEMPSAFE(have_mplock);
@@ -468,11 +477,11 @@ restart:
 		if (frame->tf_eflags & PSL_VM &&
 		    (type == T_PROTFLT || type == T_STKFLT)) {
 #ifdef SMP
-			KKASSERT(td->td_mpcount > 0);
+			KKASSERT(get_mplock_count(curthread) > 0);
 #endif
 			i = vm86_emulate((struct vm86frame *)frame);
 #ifdef SMP
-			KKASSERT(td->td_mpcount > 0);
+			KKASSERT(get_mplock_count(curthread) > 0);
 #endif
 			if (i != 0) {
 				/*
@@ -536,8 +545,8 @@ restart:
 		case T_ASTFLT:		/* Allow process switch */
 			mycpu->gd_cnt.v_soft++;
 			if (mycpu->gd_reqflags & RQF_AST_OWEUPC) {
-				atomic_clear_int_nonlocked(&mycpu->gd_reqflags,
-					    RQF_AST_OWEUPC);
+				atomic_clear_int(&mycpu->gd_reqflags,
+						 RQF_AST_OWEUPC);
 				addupc_task(p, p->p_prof.pr_addr,
 					    p->p_prof.pr_ticks);
 			}
@@ -576,7 +585,6 @@ restart:
 			break;
 
 		case T_PAGEFLT:		/* page fault */
-			MAKEMPSAFE(have_mplock);
 			i = trap_pfault(frame, TRUE, eva);
 			if (i == -1)
 				goto out;
@@ -695,7 +703,6 @@ kernel_trap:
 
 		switch (type) {
 		case T_PAGEFLT:			/* page fault */
-			MAKEMPSAFE(have_mplock);
 			trap_pfault(frame, FALSE, eva);
 			goto out2;
 
@@ -901,12 +908,6 @@ kernel_trap:
 #endif
 
 out:
-#ifdef SMP
-        if (ISPL(frame->tf_cs) == SEL_UPL) {
-		KASSERT(td->td_mpcount == have_mplock,
-			("badmpcount trap/end from %p", (void *)frame->tf_eip));
-	}
-#endif
 	userret(lp, frame, sticks);
 	userexit(lp);
 out2:	;
@@ -1043,7 +1044,6 @@ trap_fatal(struct trapframe *frame, vm_offset_t eva)
 			ISPL(frame->tf_cs) == SEL_UPL ? "user" : "kernel");
 #ifdef SMP
 	/* three separate prints in case of a trap on an unmapped page */
-	kprintf("mp_lock = %08x; ", mp_lock);
 	kprintf("cpuid = %d; ", mycpu->gd_cpuid);
 	kprintf("lapic.id = %08x\n", lapic.id);
 #endif
@@ -1131,19 +1131,36 @@ trap_fatal(struct trapframe *frame, vm_offset_t eva)
  * the machine was idle when the double fault occurred. The downside
  * of this is that "trace <ebp>" in ddb won't work.
  */
+static __inline
+int
+in_kstack_guard(register_t rptr)
+{
+	thread_t td = curthread;
+
+	if ((char *)rptr >= td->td_kstack &&
+	    (char *)rptr < td->td_kstack + PAGE_SIZE) {
+		return 1;
+	}
+	return 0;
+}
+
 void
 dblfault_handler(void)
 {
 	struct mdglobaldata *gd = mdcpu;
 
-	kprintf("\nFatal double fault:\n");
+	if (in_kstack_guard(gd->gd_common_tss.tss_esp) ||
+	    in_kstack_guard(gd->gd_common_tss.tss_ebp)) {
+		kprintf("DOUBLE FAULT - KERNEL STACK GUARD HIT!\n");
+	} else {
+		kprintf("DOUBLE FAULT:\n");
+	}
 	kprintf("eip = 0x%x\n", gd->gd_common_tss.tss_eip);
 	kprintf("esp = 0x%x\n", gd->gd_common_tss.tss_esp);
 	kprintf("ebp = 0x%x\n", gd->gd_common_tss.tss_ebp);
 #ifdef SMP
 	/* three separate prints in case of a trap on an unmapped page */
-	kprintf("mp_lock = %08x; ", mp_lock);
-	kprintf("cpuid = %d; ", mycpu->gd_cpuid);
+	kprintf("cpuid = %d; ", gd->mi.gd_cpuid);
 	kprintf("lapic.id = %08x\n", lapic.id);
 #endif
 	panic("double fault");
@@ -1190,10 +1207,6 @@ syscall2(struct trapframe *frame)
 	KTR_LOG(kernentry_syscall, p->p_pid, lp->lwp_tid,
 		frame->tf_eax);
 
-#ifdef SMP
-	KASSERT(td->td_mpcount == 0,
-		("badmpcount syscall2 from %p", (void *)frame->tf_eip));
-#endif
 	userenter(td, p);	/* lazy raise our priority */
 
 	/*
@@ -1382,9 +1395,6 @@ bad:
 	/*
 	 * Release the MP lock if we had to get it
 	 */
-	KASSERT(td->td_mpcount == have_mplock, 
-		("badmpcount syscall2/end from %p callp %p",
-		(void *)frame->tf_eip, callp));
 	if (have_mplock)
 		rel_mplock();
 #endif

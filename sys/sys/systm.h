@@ -72,7 +72,7 @@ extern int selwait;		/* select timeout address */
 
 extern u_char curpriority;	/* priority of current process */
 
-extern int physmem;		/* physical memory */
+extern long physmem;		/* physical memory */
 
 extern cdev_t dumpdev;		/* dump device */
 extern u_int64_t dumplo64;	/* block number into dumpdev, start of dump */
@@ -98,6 +98,8 @@ extern int clocks_running;	/* timing/timeout subsystem is operational */
 /* XXX TGEN these don't belong here, they're MD on i386/x86_64 */
 extern u_int cpu_feature;	/* CPUID_* features */
 extern u_int cpu_feature2;	/* CPUID2_* features */
+extern u_int cpu_mi_feature;	/* CPU_MI_XXX machine-nonspecific features */
+extern cpumask_t usched_global_cpumask;
 
 extern int nfs_diskless_valid;	/* NFS diskless params were obtained */
 extern vm_paddr_t Maxmem;	/* Highest physical memory address in system */
@@ -186,7 +188,7 @@ int	log (int, const char *, ...) __printflike(2, 3);
 void	logwakeup (void);
 void	log_console (struct uio *);
 int	kprintf (const char *, ...) __printflike(1, 2);
-int	kprintf0(const char *, ...) __printflike(1, 2);
+void	kprintf0 (const char *, ...) __printflike(1, 2);
 void	krateprintf (struct krate *, const char *, ...) __printflike(2, 3);
 int	ksnprintf (char *, size_t, const char *, ...) __printflike(3, 4);
 int	ksnrprintf (char *, size_t, int, const char *, ...) __printflike(4, 5);
@@ -202,6 +204,12 @@ int	kvasnrprintf (char **, size_t, int, const char *,
 int     kvsprintf (char *buf, const char *,
 			__va_list) __printflike(2, 0);
 int	ttyprintf (struct tty *, const char *, ...) __printflike(2, 3);
+void	hexdump (const void *ptr, int length, const char *hdr, int flags);
+#define	HD_COLUMN_MASK	0xff
+#define	HD_DELIM_MASK	0xff00
+#define	HD_OMIT_COUNT	(1 << 16)
+#define	HD_OMIT_HEX	(1 << 17)
+#define	HD_OMIT_CHARS	(1 << 18)
 int	ksscanf (const char *, char const *, ...) __scanflike(2, 3);
 int	kvsscanf (const char *, char const *, __va_list) __scanflike(2, 0);
 void	kvasfree(char **);
@@ -308,6 +316,8 @@ void		setsofttq (void);
 void		schedsofttty (void);
 void		splz (void);
 void		splz_check (void);
+void		cpu_mmw_pause_int(int*, int);
+void		cpu_mmw_pause_long(long*, long);
 #endif /* __i386__ */
 
 /*

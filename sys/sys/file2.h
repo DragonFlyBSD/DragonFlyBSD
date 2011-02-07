@@ -91,20 +91,6 @@ fo_ioctl(
 }
 
 static __inline int
-fo_poll(
-	struct file *fp,
-	int events,
-	struct ucred *cred
-) {
-	int error;
-
-	fhold(fp);
-	error = (*fp->f_ops->fo_poll)(fp, events, cred);
-	fdrop(fp);
-	return (error);
-}
-
-static __inline int
 fo_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 {
 	int error;

@@ -153,7 +153,7 @@ extern TW_VOID
 /* Print if dbg_level is appropriate (by calling OS Layer). */
 extern TW_VOID	tw_cli_dbg_printf(TW_UINT8 dbg_level,
 	struct tw_cl_ctlr_handle *ctlr_handle, const TW_INT8 *cur_func,
-	TW_INT8 *fmt, ...);
+	TW_INT8 *fmt, ...) __printflike(4, 5);
 
 /* Describe meaning of each set bit in the given register. */
 extern TW_INT8	*tw_cli_describe_bits(TW_UINT32 reg, TW_INT8 *str);

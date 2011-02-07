@@ -5,34 +5,89 @@
 # To satisfy shared library or ELF linkage when only the libraries being
 # built are visible:
 #
-# libcom_err must be built before libkrb and libpam.
-# libcrypt must be built before libkrb and libpam.
-# libmd must be built before libarchive, libatm, libopie, libradius, and libtacplus.
-# libncurses must be built before libdialog, libedit and libreadline.
-# libradius must be built before libpam.
-# libtacplus must be built before libpam.
-# libutil must be built before libpam.
-# libsbuf must be built before libcam.
-# libthread_xu must be built before libpthread.
 # ${_libc_r} must be built before libpthread.
+# libcom_err must be built before libpam.
+# libcrypt must be built before libpam.
+# libmd must be built before libarchive, libatm, libopie, libradius, and libtacplus.
+# libncurses must be built before libdialog and libedit.
+# libradius must be built before libpam.
+# libsbuf must be built before libcam.
+# libtacplus must be built before libpam.
+# libthread_xu must be built before libpthread.
+# libutil must be built before libpam.
 # libpthread must be built before libprop.
 #
 # Otherwise, the SUBDIR list should be in alphabetical order.
 
-SUBDIR=	csu \
-	libbluetooth libcom_err libcrypt libm libmd libarchive \
-	libncurses libradius librt libtacplus libutil libsbuf \
-	libalias libatm libbz2 libc ${_libc_r} \
-	libcalendar libcam libcompat libdevinfo libdevstat libedit \
-	libexpat libfetch \
-	libftpio libipsec libipx libldns libkcore libkiconv libkinfo \
-	libkvm libmagic \
-	${_libmilter} ${_libncp} libnetgraph libopie libpam \
-	libpcap libposix1e libsdp libthread_xu libpthread libprop \
-	librpcsvc ${_libsm} \
-	${_libsmb} ${_libsmdb} ${_libsmutil} libstand libtelnet libusbhid \
-	${_libvgl} libwrap libxpg4 liby libypclnt libz i18n_module pam_module \
-	libc_rtld libsctp libevtr libdevattr
+SUBDIR_ORDERED=	${_libc_r} \
+	libcom_err \
+	libcrypt \
+	libmd \
+	libncurses \
+	libradius \
+	libsbuf \
+	libtacplus \
+	libthread_xu \
+	libutil \
+	libpthread
+SUBDIR=	${SUBDIR_ORDERED} \
+	csu \
+	i18n_module \
+	libalias \
+	libarchive \
+	libatm \
+	libbluetooth \
+	libbz2 \
+	libc \
+	libc_rtld \
+	libcalendar \
+	libcam \
+	libcompat \
+	libdevattr \
+	libdevinfo \
+	libdevstat \
+	libedit \
+	libevtr \
+	libexpat \
+	libfetch \
+	libfsid \
+	libftpio \
+	libipsec \
+	libipx \
+	libkcore \
+	libkiconv \
+	libkinfo \
+	libkvm \
+	libldns \
+	liblzma \
+	libm \
+	libmagic \
+	${_libmilter} \
+	libncp \
+	libnetgraph \
+	libopie \
+	libpam \
+	libpcap \
+	libposix1e \
+	libprop \
+	librpcsvc \
+	librt \
+	libsctp \
+	libsdp \
+	${_libsm} \
+	libsmb \
+	${_libsmdb} \
+	${_libsmutil} \
+	libstand \
+	libtelnet \
+	libusbhid \
+	libvgl \
+	libwrap \
+	libxpg4 \
+	liby \
+	libypclnt \
+	libz \
+	pam_module
 
 .if exists(${.CURDIR}/compat/${MACHINE_ARCH}/Makefile)
 SUBDIR+= compat/${MACHINE_ARCH}
@@ -48,9 +103,5 @@ _libsm=		libsm
 _libsmdb=	libsmdb
 _libsmutil=	libsmutil
 .endif
-
-_libncp=	libncp
-_libsmb=	libsmb
-_libvgl=	libvgl
 
 .include <bsd.subdir.mk>

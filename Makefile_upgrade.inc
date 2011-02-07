@@ -1500,6 +1500,7 @@ TO_REMOVE+=/usr/share/man/cat4/i386/amdpm.4.gz
 TO_REMOVE+=/usr/share/man/man4/i386/amdpm.4.gz
 TO_REMOVE+=/usr/include/machine/iic.h
 TO_REMOVE+=/usr/include/machine/smb.h
+TO_REMOVE+=/usr/include/machine/mouse.h
 TO_REMOVE+=/usr/share/man/cat9/spin_lock_rd.9.gz
 TO_REMOVE+=/usr/share/man/cat9/spin_lock_rd_quick.9.gz
 TO_REMOVE+=/usr/share/man/cat9/spin_lock_wr.9.gz
@@ -1534,6 +1535,31 @@ TO_REMOVE+=/usr/include/openssl/store.h
 TO_REMOVE+=/usr/include/openssl/tmdiff.h
 TO_REMOVE+=/usr/share/openssl/man/cat3/CRYPTO_set_id_callback.3.gz
 TO_REMOVE+=/usr/share/openssl/man/man3/CRYPTO_set_id_callback.3.gz
+TO_REMOVE+=/boot/beastie.4th
+TO_REMOVE+=/boot/frames.4th
+TO_REMOVE+=/boot/loader.4th
+TO_REMOVE+=/boot/screen.4th
+TO_REMOVE+=/boot/support.4th
+TO_REMOVE+=/usr/freebsd_pkg
+TO_REMOVE+=/boot/kernel/hotplug.ko
+TO_REMOVE+=/usr/include/sys/hotplug.h
+TO_REMOVE+=/usr/share/man/cat4/hotplug.4.gz
+TO_REMOVE+=/usr/share/man/man4/hotplug.4.gz
+TO_REMOVE+=/usr/include/sys/dm.h
+TO_REMOVE+=/usr/share/man/cat4/ahb.4.gz
+TO_REMOVE+=/usr/share/man/man4/ahb.4.gz
+TO_REMOVE+=/boot/kernel/ahc_eisa.ko
+TO_REMOVE+=/boot/kernel/ahc_isa.ko
+TO_REMOVE+=/usr/include/netproto/ns
+TO_REMOVE+=/usr/include/netns
+TO_REMOVE+=/usr/share/man/cat3/magic_errno.3.gz
+TO_REMOVE+=/usr/share/man/man3/magic_errno.3.gz
+TO_REMOVE+=/usr/share/man/cat3/magic_file.3.gz
+TO_REMOVE+=/usr/share/man/man3/magic_file.3.gz
+
+# XXX Remove when pfsync(4) has been fixed
+TO_REMOVE+=/usr/share/man/cat4/pfsync.4.gz
+TO_REMOVE+=/usr/share/man/man4/pfsync.4.gz
 
 # XXX Remove when adjusted to the new 802.11 framework
 TO_REMOVE+=/boot/modules/if_acx.ko

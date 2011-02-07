@@ -123,7 +123,7 @@ vfs_sync_init(void)
 	syncer_workitem_pending = hashinit(syncer_maxdelay, M_DEVBUF,
 					    &syncer_mask);
 	syncer_maxdelay = syncer_mask + 1;
-	lwkt_token_init(&syncer_token, 1, "syncer");
+	lwkt_token_init(&syncer_token, "syncer");
 }
 
 /*
@@ -413,7 +413,7 @@ sync_fsync(struct vop_fsync_args *ap)
 	/*
 	 * We only need to do something if this is a lazy evaluation.
 	 */
-	if (ap->a_waitfor != MNT_LAZY)
+	if ((ap->a_waitfor & MNT_LAZY) == 0)
 		return (0);
 
 	/*
@@ -436,7 +436,7 @@ sync_fsync(struct vop_fsync_args *ap)
 		asyncflag = mp->mnt_flag & MNT_ASYNC;
 		mp->mnt_flag &= ~MNT_ASYNC;	/* ZZZ hack */
 		vfs_msync(mp, MNT_NOWAIT);
-		VFS_SYNC(mp, MNT_LAZY);
+		VFS_SYNC(mp, MNT_NOWAIT | MNT_LAZY);
 		if (asyncflag)
 			mp->mnt_flag |= MNT_ASYNC;
 	}

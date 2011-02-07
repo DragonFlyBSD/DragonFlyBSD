@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.40 2008/08/17 04:32:34 sephe Exp $
  */
 
 /*
@@ -1747,7 +1746,6 @@ tl_encap(struct tl_softc *sc, struct tl_chain *c, struct mbuf *m_head)
 	 * the fragment pointers. Stop when we run out
  	 * of fragments or hit the end of the mbuf chain.
 	 */
-	m = m_head;
 	total_len = 0;
 
 	for (m = m_head, frag = 0; m != NULL; m = m->m_next) {

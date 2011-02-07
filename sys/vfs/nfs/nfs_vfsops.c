@@ -1,4 +1,4 @@
-/*
+    /*
  * Copyright (c) 1989, 1993, 1995
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -54,10 +54,10 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/systm.h>
+#include <sys/objcache.h>
 
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
-#include <vm/vm_zone.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -91,15 +91,15 @@ MALLOC_DEFINE(M_NFSRVDESC, "NFSV3 srvdesc", "NFS server socket descriptor");
 MALLOC_DEFINE(M_NFSUID, "NFS uid", "Nfs uid mapping structure");
 MALLOC_DEFINE(M_NFSHASH, "NFS hash", "NFS hash tables");
 
-vm_zone_t nfsmount_zone;
+struct objcache *nfsmount_objcache;
 
 struct nfsstats	nfsstats;
 SYSCTL_NODE(_vfs, OID_AUTO, nfs, CTLFLAG_RW, 0, "NFS filesystem");
-SYSCTL_STRUCT(_vfs_nfs, NFS_NFSSTATS, nfsstats, CTLFLAG_RD,
-	&nfsstats, nfsstats, "");
+SYSCTL_STRUCT(_vfs_nfs, NFS_NFSSTATS, nfsstats, CTLFLAG_RD, &nfsstats, nfsstats,
+    "Nfs stats structure");
 static int nfs_ip_paranoia = 1;
-SYSCTL_INT(_vfs_nfs, OID_AUTO, nfs_ip_paranoia, CTLFLAG_RW,
-	&nfs_ip_paranoia, 0, "");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, nfs_ip_paranoia, CTLFLAG_RW, &nfs_ip_paranoia, 0,
+    "Enable no-connection mode for protocols that support no-connection mode");
 #ifdef NFS_DEBUG
 int nfs_debug;
 SYSCTL_INT(_vfs_nfs, OID_AUTO, debug, CTLFLAG_RW, &nfs_debug, 0, "");
@@ -152,21 +152,24 @@ struct nfsv3_diskless nfsv3_diskless = { { { 0 } } };
 int nfs_diskless_valid = 0;
 
 SYSCTL_INT(_vfs_nfs, OID_AUTO, diskless_valid, CTLFLAG_RD,
-	&nfs_diskless_valid, 0, "");
+	&nfs_diskless_valid, 0,
+	"NFS diskless params were obtained");
 
 SYSCTL_STRING(_vfs_nfs, OID_AUTO, diskless_rootpath, CTLFLAG_RD,
-	nfsv3_diskless.root_hostnam, 0, "");
+	nfsv3_diskless.root_hostnam, 0,
+	"Host name for mount point");
 
 SYSCTL_OPAQUE(_vfs_nfs, OID_AUTO, diskless_rootaddr, CTLFLAG_RD,
 	&nfsv3_diskless.root_saddr, sizeof nfsv3_diskless.root_saddr,
-	"%Ssockaddr_in", "");
+	"%Ssockaddr_in", "Address of root server");
 
 SYSCTL_STRING(_vfs_nfs, OID_AUTO, diskless_swappath, CTLFLAG_RD,
-	nfsv3_diskless.swap_hostnam, 0, "");
+	nfsv3_diskless.swap_hostnam, 0,
+	"Host name for mount ppoint");
 
 SYSCTL_OPAQUE(_vfs_nfs, OID_AUTO, diskless_swapaddr, CTLFLAG_RD,
 	&nfsv3_diskless.swap_saddr, sizeof nfsv3_diskless.swap_saddr,
-	"%Ssockaddr_in","");
+	"%Ssockaddr_in", "Address of swap server");
 
 
 void nfsargs_ntoh (struct nfs_args *);
@@ -252,9 +255,16 @@ nfs_convert_diskless(void)
 		sizeof(struct ifaliasreq));
 	bcopy(&nfs_diskless.mygateway, &nfsv3_diskless.mygateway,
 		sizeof(struct sockaddr_in));
-	nfs_convert_oargs(&nfsv3_diskless.swap_args,&nfs_diskless.swap_args);
+	nfs_convert_oargs(&nfsv3_diskless.swap_args, &nfs_diskless.swap_args);
 
-	bcopy(nfs_diskless.swap_fh,nfsv3_diskless.swap_fh,NFSX_V2FH);
+	/*
+	 * Copy the NFS handle passed from the diskless code.
+	 *
+	 * XXX CURRENTLY DISABLED - bootp passes us a NFSv2 handle which
+	 * will fail utterly with HAMMER due to limitations with NFSv2
+	 * directory cookies.
+	 */
+	bcopy(nfs_diskless.swap_fh, nfsv3_diskless.swap_fh, NFSX_V2FH);
 	nfsv3_diskless.swap_fhsize = NFSX_V2FH;
 	for (i = NFSX_V2FH - 1; i >= 0; --i) {
 		if (nfs_diskless.swap_fh[i])
@@ -262,6 +272,7 @@ nfs_convert_diskless(void)
 	}
 	if (i < 0)
 		nfsv3_diskless.swap_fhsize = 0;
+	nfsv3_diskless.swap_fhsize = 0;		/* FORCE DISABLE */
 
 	bcopy(&nfs_diskless.swap_saddr,&nfsv3_diskless.swap_saddr,
 		sizeof(struct sockaddr_in));
@@ -269,9 +280,16 @@ nfs_convert_diskless(void)
 	nfsv3_diskless.swap_nblks = nfs_diskless.swap_nblks;
 	bcopy(&nfs_diskless.swap_ucred, &nfsv3_diskless.swap_ucred,
 		sizeof(struct ucred));
-	nfs_convert_oargs(&nfsv3_diskless.root_args,&nfs_diskless.root_args);
+	nfs_convert_oargs(&nfsv3_diskless.root_args, &nfs_diskless.root_args);
 
-	bcopy(nfs_diskless.root_fh,nfsv3_diskless.root_fh,NFSX_V2FH);
+	/*
+	 * Copy the NFS handle passed from the diskless code.
+	 *
+	 * XXX CURRENTLY DISABLED - bootp passes us a NFSv2 handle which
+	 * will fail utterly with HAMMER due to limitations with NFSv2
+	 * directory cookies.
+	 */
+	bcopy(nfs_diskless.root_fh, nfsv3_diskless.root_fh, NFSX_V2FH);
 	nfsv3_diskless.root_fhsize = NFSX_V2FH;
 	for (i = NFSX_V2FH - 1; i >= 0; --i) {
 		if (nfs_diskless.root_fh[i])
@@ -279,6 +297,7 @@ nfs_convert_diskless(void)
 	}
 	if (i < 0)
 		nfsv3_diskless.root_fhsize = 0;
+	nfsv3_diskless.root_fhsize = 0;		/* FORCE DISABLE */
 
 	bcopy(&nfs_diskless.root_saddr,&nfsv3_diskless.root_saddr,
 		sizeof(struct sockaddr_in));
@@ -567,8 +586,15 @@ nfs_mountroot(struct mount *mp)
 	/*
 	 * The boot code may have passed us a diskless structure.
 	 */
+	kprintf("DISKLESS %d\n", nfs_diskless_valid);
 	if (nfs_diskless_valid == 1)
 		nfs_convert_diskless();
+
+	/*
+	 * NFSv3 is required.
+	 */
+	nd->root_args.flags |= NFSMNT_NFSV3 | NFSMNT_RDIRPLUS;
+	nd->swap_args.flags |= NFSMNT_NFSV3;
 
 #define SINP(sockaddr)	((struct sockaddr_in *)(sockaddr))
 	kprintf("nfs_mountroot: interface %s ip %s",
@@ -635,8 +661,9 @@ nfs_mountroot(struct mount *mp)
 		(l >> 24) & 0xff, (l >> 16) & 0xff,
 		(l >>  8) & 0xff, (l >>  0) & 0xff,nd->root_hostnam);
 	kprintf("NFS_ROOT: %s\n",buf);
-	if ((error = nfs_mountdiskless(buf, "/", MNT_RDONLY,
-	    &nd->root_saddr, &nd->root_args, td, &vp, &mp)) != 0) {
+	error = nfs_mountdiskless(buf, "/", MNT_RDONLY, &nd->root_saddr,
+				  &nd->root_args, td, &vp, &mp);
+	if (error) {
 		mp->mnt_vfc->vfc_refcount--;
 		crit_exit();
 		return (error);
@@ -659,8 +686,9 @@ nfs_mountroot(struct mount *mp)
 			(l >> 24) & 0xff, (l >> 16) & 0xff,
 			(l >>  8) & 0xff, (l >>  0) & 0xff,nd->swap_hostnam);
 		kprintf("NFS SWAP: %s\n",buf);
-		if ((error = nfs_mountdiskless(buf, "/swap", 0,
-		    &nd->swap_saddr, &nd->swap_args, td, &vp, &swap_mp)) != 0) {
+		error = nfs_mountdiskless(buf, "/swap", 0, &nd->swap_saddr,
+					  &nd->swap_args, td, &vp, &swap_mp);
+		if (error) {
 			crit_exit();
 			return (error);
 		}
@@ -727,7 +755,8 @@ nfs_mountdiskless(char *path, char *which, int mountflag,
 	if (args->fhsize == 0) {
 		char *xpath = path;
 
-		kprintf("NFS_ROOT: No FH passed from loader, attempting mount rpc...");
+		kprintf("NFS_ROOT: No FH passed from loader, attempting "
+			"mount rpc...");
 		while (*xpath && *xpath != ':')
 			++xpath;
 		if (*xpath)
@@ -769,12 +798,18 @@ nfs_decode_args(struct nfsmount *nmp, struct nfs_args *argp)
 	 * Silently clear NFSMNT_NOCONN if it's a TCP mount, it makes
 	 * no sense in that context.
 	 */
-	if (nmp->nm_sotype == SOCK_STREAM)
+	if (nmp->nm_sotype == SOCK_STREAM) {
 		nmp->nm_flag &= ~NFSMNT_NOCONN;
+		argp->flags &= ~NFSMNT_NOCONN;
+	}
 
-	/* Also clear RDIRPLUS if not NFSv3, it crashes some servers */
-	if ((argp->flags & NFSMNT_NFSV3) == 0)
+	/*
+	 * readdirplus is NFSv3 only.
+	 */
+	if ((argp->flags & NFSMNT_NFSV3) == 0) {
 		nmp->nm_flag &= ~NFSMNT_RDIRPLUS;
+		argp->flags &= ~NFSMNT_RDIRPLUS;
+	}
 
 	/*
 	 * Re-bind if rsrvd port flag has changed
@@ -1002,7 +1037,7 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 		FREE(nam, M_SONAME);
 		return (0);
 	} else {
-		nmp = zalloc(nfsmount_zone);
+		nmp = objcache_get(nfsmount_objcache, M_WAITOK);
 		bzero((caddr_t)nmp, sizeof (struct nfsmount));
 		mtx_init(&nmp->nm_rxlock);
 		mtx_init(&nmp->nm_txlock);
@@ -1012,7 +1047,7 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 		TAILQ_INIT(&nmp->nm_reqtxq);
 		TAILQ_INIT(&nmp->nm_reqrxq);
 		mp->mnt_data = (qaddr_t)nmp;
-		lwkt_token_init(&nmp->nm_token, 1, "nfs_token");
+		lwkt_token_init(&nmp->nm_token, "nfs_token");
 	}
 	vfs_getnewfsid(mp);
 	nmp->nm_mountp = mp;
@@ -1026,14 +1061,13 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	 * the client or server somewhere.  2GB-1 may be safer.
 	 *
 	 * For V3, nfs_fsinfo will adjust this as necessary.  Assume maximum
-	 * that we can handle until we find out otherwise.
-	 * XXX Our "safe" limit on the client is what we can store in our
-	 * buffer cache using signed(!) block numbers.
+	 * that we can handle until we find out otherwise.  Note that seek
+	 * offsets are signed.
 	 */
 	if ((argp->flags & NFSMNT_NFSV3) == 0)
 		nmp->nm_maxfilesize = 0xffffffffLL;
 	else
-		nmp->nm_maxfilesize = (u_int64_t)0x80000000 * DEV_BSIZE - 1;
+		nmp->nm_maxfilesize = 0x7fffffffffffffffLL;
 
 	nmp->nm_timeo = NFS_TIMEO;
 	nmp->nm_retry = NFS_RETRANS;
@@ -1233,7 +1267,7 @@ nfs_free_mount(struct nfsmount *nmp)
 		FREE(nmp->nm_nam, M_SONAME);
 		nmp->nm_nam = NULL;
 	}
-	zfree(nfsmount_zone, nmp);
+	objcache_put(nfsmount_objcache, nmp);
 }
 
 /*
@@ -1339,7 +1373,7 @@ nfs_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
 
     if (vn_islocked(vp) || RB_EMPTY(&vp->v_rbdirty_tree))
 	return(-1);
-    if (info->waitfor == MNT_LAZY)
+    if (info->waitfor & MNT_LAZY)
 	return(-1);
     return(0);
 }

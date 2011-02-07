@@ -91,7 +91,11 @@
 static MALLOC_DEFINE(M_NETADDR, "Export Host", "Export host address structure");
 
 int numvnodes;
-SYSCTL_INT(_debug, OID_AUTO, numvnodes, CTLFLAG_RD, &numvnodes, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, numvnodes, CTLFLAG_RD, &numvnodes, 0,
+    "Number of vnodes allocated");
+int verbose_reclaims;
+SYSCTL_INT(_debug, OID_AUTO, verbose_reclaims, CTLFLAG_RD, &verbose_reclaims, 0,
+    "Output filename of reclaimed vnode(s)");
 
 enum vtype iftovt_tab[16] = {
 	VNON, VFIFO, VCHR, VNON, VDIR, VNON, VBLK, VNON,
@@ -103,23 +107,12 @@ int vttoif_tab[9] = {
 };
 
 static int reassignbufcalls;
-SYSCTL_INT(_vfs, OID_AUTO, reassignbufcalls, CTLFLAG_RW,
-		&reassignbufcalls, 0, "");
-static int reassignbufloops;
-SYSCTL_INT(_vfs, OID_AUTO, reassignbufloops, CTLFLAG_RW,
-		&reassignbufloops, 0, "");
-static int reassignbufsortgood;
-SYSCTL_INT(_vfs, OID_AUTO, reassignbufsortgood, CTLFLAG_RW,
-		&reassignbufsortgood, 0, "");
-static int reassignbufsortbad;
-SYSCTL_INT(_vfs, OID_AUTO, reassignbufsortbad, CTLFLAG_RW,
-		&reassignbufsortbad, 0, "");
-static int reassignbufmethod = 1;
-SYSCTL_INT(_vfs, OID_AUTO, reassignbufmethod, CTLFLAG_RW,
-		&reassignbufmethod, 0, "");
+SYSCTL_INT(_vfs, OID_AUTO, reassignbufcalls, CTLFLAG_RW, &reassignbufcalls,
+    0, "Number of times buffers have been reassigned to the proper list");
+
 static int check_buf_overlap = 2;	/* invasive check */
-SYSCTL_INT(_vfs, OID_AUTO, check_buf_overlap, CTLFLAG_RW,
-		&check_buf_overlap, 0, "");
+SYSCTL_INT(_vfs, OID_AUTO, check_buf_overlap, CTLFLAG_RW, &check_buf_overlap,
+    0, "Enable overlapping buffer checks");
 
 int	nfs_mount_type = -1;
 static struct lwkt_token spechash_token;
@@ -201,7 +194,7 @@ vfs_subr_init(void)
 		     KvaSize / factor2);
 	desiredvnodes = imax(desiredvnodes, maxproc * 8);
 
-	lwkt_token_init(&spechash_token, 1, "spechash");
+	lwkt_token_init(&spechash_token, "spechash");
 }
 
 /*
@@ -216,7 +209,7 @@ enum { TSP_SEC, TSP_HZ, TSP_USEC, TSP_NSEC };
 
 static int timestamp_precision = TSP_SEC;
 SYSCTL_INT(_vfs, OID_AUTO, timestamp_precision, CTLFLAG_RW,
-		&timestamp_precision, 0, "");
+		&timestamp_precision, 0, "Precision of file timestamps");
 
 /*
  * Get a current timestamp.
@@ -677,6 +670,7 @@ vfsync(struct vnode *vp, int waitfor, int passes,
 	lwkt_gettoken(&vp->v_token);
 
 	switch(waitfor) {
+	case MNT_LAZY | MNT_NOWAIT:
 	case MNT_LAZY:
 		/*
 		 * Lazy (filesystem syncer typ) Asynchronous plus limit the
@@ -1171,6 +1165,7 @@ vclean_vxlocked(struct vnode *vp, int flags)
 	int active;
 	int n;
 	vm_object_t object;
+	struct namecache *ncp;
 
 	/*
 	 * If the vnode has already been reclaimed we have nothing to do.
@@ -1179,11 +1174,17 @@ vclean_vxlocked(struct vnode *vp, int flags)
 		return;
 	vsetflags(vp, VRECLAIMED);
 
+	if (verbose_reclaims) {
+		if ((ncp = TAILQ_FIRST(&vp->v_namecache)) != NULL)
+			kprintf("Debug: reclaim %p %s\n", vp, ncp->nc_name);
+	}
+
 	/*
 	 * Scrap the vfs cache
 	 */
 	while (cache_inval_vp(vp, 0) != 0) {
-		kprintf("Warning: vnode %p clean/cache_resolution race detected\n", vp);
+		kprintf("Warning: vnode %p clean/cache_resolution "
+			"race detected\n", vp);
 		tsleep(vp, 0, "vclninv", 2);
 	}
 

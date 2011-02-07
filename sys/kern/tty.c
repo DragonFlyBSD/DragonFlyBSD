@@ -1280,9 +1280,9 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 }
 
 static struct filterops ttyread_filtops =
-	{ FILTEROP_ISFD, NULL, filt_ttyrdetach, filt_ttyread };
+	{ FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, filt_ttyrdetach, filt_ttyread };
 static struct filterops ttywrite_filtops =
-	{ FILTEROP_ISFD, NULL, filt_ttywdetach, filt_ttywrite };
+	{ FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, filt_ttywdetach, filt_ttywrite };
 
 int
 ttykqfilter(struct dev_kqfilter_args *ap)

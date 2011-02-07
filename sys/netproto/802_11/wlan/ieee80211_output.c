@@ -1804,7 +1804,7 @@ ieee80211_send_probereq(struct ieee80211_node *ni,
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_DEBUG | IEEE80211_MSG_DUMPPKTS,
 	    "send probe req on channel %u bssid %6D ssid \"%.*s\"\n",
 	    ieee80211_chan2ieee(ic, ic->ic_curchan), bssid, ":",
-	    ssidlen, ssid);
+	    (int)ssidlen, ssid);
 
 	memset(&params, 0, sizeof(params));
 	params.ibp_pri = M_WME_GETAC(m);

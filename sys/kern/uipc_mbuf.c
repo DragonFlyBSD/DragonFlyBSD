@@ -74,6 +74,7 @@
 #include "opt_mbuf_stress_test.h"
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/file.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/kernel.h>
@@ -259,18 +260,19 @@ int	nmbclusters;
 int	nmbufs;
 
 SYSCTL_INT(_kern_ipc, KIPC_MAX_LINKHDR, max_linkhdr, CTLFLAG_RW,
-	   &max_linkhdr, 0, "");
+	&max_linkhdr, 0, "Max size of a link-level header");
 SYSCTL_INT(_kern_ipc, KIPC_MAX_PROTOHDR, max_protohdr, CTLFLAG_RW,
-	   &max_protohdr, 0, "");
-SYSCTL_INT(_kern_ipc, KIPC_MAX_HDR, max_hdr, CTLFLAG_RW, &max_hdr, 0, "");
+	&max_protohdr, 0, "Max size of a protocol header");
+SYSCTL_INT(_kern_ipc, KIPC_MAX_HDR, max_hdr, CTLFLAG_RW, &max_hdr, 0,
+	"Max size of link+protocol headers");
 SYSCTL_INT(_kern_ipc, KIPC_MAX_DATALEN, max_datalen, CTLFLAG_RW,
-	   &max_datalen, 0, "");
+	&max_datalen, 0, "Max data payload size without headers");
 SYSCTL_INT(_kern_ipc, OID_AUTO, mbuf_wait, CTLFLAG_RW,
-	   &mbuf_wait, 0, "");
+	&mbuf_wait, 0, "Time in ticks to sleep after failed mbuf allocations");
 static int do_mbstat(SYSCTL_HANDLER_ARGS);
 
 SYSCTL_PROC(_kern_ipc, KIPC_MBSTAT, mbstat, CTLTYPE_STRUCT|CTLFLAG_RD,
-	0, 0, do_mbstat, "S,mbstat", "");
+	0, 0, do_mbstat, "S,mbstat", "mbuf usage statistics");
 
 static int do_mbtypes(SYSCTL_HANDLER_ARGS);
 
@@ -342,13 +344,13 @@ SYSCTL_INT(_kern_ipc, OID_AUTO, nmbufs, CTLFLAG_RD, &nmbufs, 0,
 	   "Maximum number of mbufs available"); 
 
 SYSCTL_INT(_kern_ipc, OID_AUTO, m_defragpackets, CTLFLAG_RD,
-	   &m_defragpackets, 0, "");
+	   &m_defragpackets, 0, "Number of defragment packets");
 SYSCTL_INT(_kern_ipc, OID_AUTO, m_defragbytes, CTLFLAG_RD,
-	   &m_defragbytes, 0, "");
+	   &m_defragbytes, 0, "Number of defragment bytes");
 SYSCTL_INT(_kern_ipc, OID_AUTO, m_defraguseless, CTLFLAG_RD,
-	   &m_defraguseless, 0, "");
+	   &m_defraguseless, 0, "Number of useless defragment mbuf chain operations");
 SYSCTL_INT(_kern_ipc, OID_AUTO, m_defragfailure, CTLFLAG_RD,
-	   &m_defragfailure, 0, "");
+	   &m_defragfailure, 0, "Number of failed defragment mbuf chain operations");
 #ifdef MBUF_STRESS_TEST
 SYSCTL_INT(_kern_ipc, OID_AUTO, m_defragrandomfailures, CTLFLAG_RW,
 	   &m_defragrandomfailures, 0, "");
@@ -362,11 +364,15 @@ static void m_reclaim (void);
 static void m_mclref(void *arg);
 static void m_mclfree(void *arg);
 
+/*
+ * NOTE: Default NMBUFS must take into account a possible DOS attack
+ *	 using fd passing on unix domain sockets.
+ */
 #ifndef NMBCLUSTERS
 #define NMBCLUSTERS	(512 + maxusers * 16)
 #endif
 #ifndef NMBUFS
-#define NMBUFS		(nmbclusters * 2)
+#define NMBUFS		(nmbclusters * 2 + maxfiles)
 #endif
 
 /*
@@ -700,7 +706,7 @@ retryonce:
 				mbufcluster_cache,
 				mbufphdrcluster_cache
 			};
-			const int nreclaims = __arysize(reclaimlist);
+			const int nreclaims = NELEM(reclaimlist);
 
 			if (!objcache_reclaimlist(reclaimlist, nreclaims, ocf))
 				m_reclaim();
@@ -735,7 +741,7 @@ retryonce:
 				mbuf_cache,
 				mbufcluster_cache, mbufphdrcluster_cache
 			};
-			const int nreclaims = __arysize(reclaimlist);
+			const int nreclaims = NELEM(reclaimlist);
 
 			if (!objcache_reclaimlist(reclaimlist, nreclaims, ocf))
 				m_reclaim();

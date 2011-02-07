@@ -174,7 +174,7 @@ ahci_sysctl_link_pwr_state (SYSCTL_HANDLER_ARGS)
 	int state;
 
 	state = ahci_port_link_pwr_state(ap);
-	if (state < 0 || state >= sizeof(state_names) / sizeof(state_names[0]))
+	if (state < 0 || state >= NELEM(state_names))
 		state = 0;
 
 	ksnprintf(buf, sizeof(buf), "%s", state_names[state]);

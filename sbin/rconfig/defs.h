@@ -88,8 +88,8 @@ extern void doClient(void);
 
 const char *parse_str(char **scanp, int flags);
 int udp_transact(struct sockaddr_in *sain, struct sockaddr_in *rsin, int *pfd,
-		char **bufp, int *lenp, const char *ctl, ...);
+	char **bufp, int *lenp, const char *ctl, ...) __printflike(6, 7);
 int tcp_transact(struct sockaddr_in *sain, FILE **pfi, FILE **pfo, char **bufp,
-		int *lenp, const char *ctl, ...);
+	int *lenp, const char *ctl, ...) __printf0like(6, 7);
 
 

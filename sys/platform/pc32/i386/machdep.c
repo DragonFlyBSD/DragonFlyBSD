@@ -38,8 +38,6 @@
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
  */
 
-#include "use_apm.h"
-#include "use_ether.h"
 #include "use_npx.h"
 #include "use_isa.h"
 #include "opt_atalk.h"
@@ -54,6 +52,7 @@
 #include "opt_perfmon.h"
 #include "opt_swap.h"
 #include "opt_userconfig.h"
+#include "opt_apic.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -107,16 +106,22 @@
 #include <machine/perfmon.h>
 #endif
 #include <machine/cputypes.h>
+#include <machine/intr_machdep.h>
 
 #ifdef OLD_BUS_ARCH
 #include <bus/isa/isa_device.h>
 #endif
-#include <machine_base/isa/intr_machdep.h>
+#include <machine_base/isa/isa_intr.h>
+#include <machine_base/isa/elcr_var.h>
 #include <bus/isa/rtc.h>
 #include <machine/vm86.h>
 #include <sys/random.h>
 #include <sys/ptrace.h>
 #include <machine/sigframe.h>
+
+#include <sys/machintr.h>
+#include <machine_base/icu/icu_abi.h>
+#include <machine_base/apic/ioapic_abi.h>
 
 #define PHYSMAP_ENTRIES		10
 
@@ -156,19 +161,21 @@ SYSCTL_INT(_debug, OID_AUTO, tlb_flush_count,
 	CTLFLAG_RD, &tlb_flush_count, 0, "");
 #endif
 
-int physmem = 0;
+long physmem = 0;
 
 u_long ebda_addr = 0;
 
 static int
 sysctl_hw_physmem(SYSCTL_HANDLER_ARGS)
 {
-	int error = sysctl_handle_int(oidp, 0, ctob(physmem), req);
+	u_long pmem = ctob(physmem);
+
+	int error = sysctl_handle_long(oidp, &pmem, 0, req);
 	return (error);
 }
 
-SYSCTL_PROC(_hw, HW_PHYSMEM, physmem, CTLTYPE_INT|CTLFLAG_RD,
-	0, 0, sysctl_hw_physmem, "IU", "");
+SYSCTL_PROC(_hw, HW_PHYSMEM, physmem, CTLTYPE_ULONG|CTLFLAG_RD,
+	0, 0, sysctl_hw_physmem, "LU", "Total system memory in bytes (number of pages * page size)");
 
 static int
 sysctl_hw_usermem(SYSCTL_HANDLER_ARGS)
@@ -192,7 +199,8 @@ sysctl_hw_availpages(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_hw, OID_AUTO, availpages, CTLTYPE_INT|CTLFLAG_RD,
 	0, 0, sysctl_hw_availpages, "I", "");
 
-vm_paddr_t Maxmem = 0;
+vm_paddr_t Maxmem;
+vm_paddr_t Realmem;
 
 vm_paddr_t phys_avail[PHYSMAP_ENTRIES*2+2];
 vm_paddr_t dump_avail[PHYSMAP_ENTRIES*2+2];
@@ -224,7 +232,8 @@ cpu_startup(void *dummy)
 	perfmon_init();
 #endif
 	kprintf("real memory  = %ju (%ju MB)\n",
-		(intmax_t)ptoa(Maxmem), (intmax_t)ptoa(Maxmem) / 1024 / 1024);
+		(intmax_t)Realmem,
+		(intmax_t)Realmem / 1024 / 1024);
 	/*
 	 * Display any holes after the first chunk of extended memory.
 	 */
@@ -297,7 +306,8 @@ again:
 		kprintf("Warning: nbufs capped at %d\n", nbuf);
 	}
 
-	nswbuf = max(min(nbuf/4, 256), 16);
+	/* limit to 128 on i386 */
+	nswbuf = max(min(nbuf/4, 128), 16);
 #ifdef NSWBUF_MIN
 	if (nswbuf < NSWBUF_MIN)
 		nswbuf = NSWBUF_MIN;
@@ -350,12 +360,17 @@ again:
 	bufinit();
 	vm_pager_bufferinit();
 
+	/* Log ELCR information */
+	elcr_dump();
+
 #ifdef SMP
 	/*
 	 * OK, enough kmem_alloc/malloc state should be up, lets get on with it!
 	 */
 	mp_start();			/* fire up the APs and APICs */
 	mp_announce();
+#else
+	MachIntrABI.finalize();
 #endif  /* SMP */
 	cpu_setregs();
 }
@@ -869,20 +884,27 @@ cpu_halt(void)
  * check for pending interrupts due to entering and exiting its own 
  * critical section.
  *
- * Note on cpu_idle_hlt:  On an SMP system we rely on a scheduler IPI
- * to wake a HLTed cpu up.  However, there are cases where the idlethread
- * will be entered with the possibility that no IPI will occur and in such
- * cases lwkt_switch() sets TDF_IDLE_NOHLT.
+ * NOTE: On an SMP system we rely on a scheduler IPI to wake a HLTed cpu up.
+ *	 However, there are cases where the idlethread will be entered with
+ *	 the possibility that no IPI will occur and in such cases
+ *	 lwkt_switch() sets RQF_WAKEUP. We usually check
+ *	 RQF_IDLECHECK_WK_MASK.
+ *
+ * NOTE: cpu_idle_hlt again defaults to 2 (use ACPI sleep states).  Set to
+ *	 1 to just use hlt and for debugging purposes.
  */
-static int	cpu_idle_hlt = 1;
+static int	cpu_idle_hlt = 2;
 static int	cpu_idle_hltcnt;
 static int	cpu_idle_spincnt;
+static u_int	cpu_idle_repeat = 4;
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hlt, CTLFLAG_RW,
     &cpu_idle_hlt, 0, "Idle loop HLT enable");
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hltcnt, CTLFLAG_RW,
     &cpu_idle_hltcnt, 0, "Idle loop entry halts");
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_spincnt, CTLFLAG_RW,
     &cpu_idle_spincnt, 0, "Idle loop entry spins");
+SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_repeat, CTLFLAG_RW,
+    &cpu_idle_repeat, 0, "Idle entries before acpi hlt");
 
 static void
 cpu_idle_default_hook(void)
@@ -900,7 +922,10 @@ void (*cpu_idle_hook)(void) = cpu_idle_default_hook;
 void
 cpu_idle(void)
 {
-	struct thread *td = curthread;
+	globaldata_t gd = mycpu;
+	struct thread *td = gd->gd_curthread;
+	int reqflags;
+	int quick;
 
 	crit_exit();
 	KKASSERT(td->td_critcount == 0);
@@ -911,52 +936,64 @@ cpu_idle(void)
 		lwkt_switch();
 
 		/*
-		 * If we are going to halt call splz unconditionally after
-		 * CLIing to catch any interrupt races.  Note that we are
-		 * at SPL0 and interrupts are enabled.
+		 * When halting inside a cli we must check for reqflags
+		 * races, particularly [re]schedule requests.  Running
+		 * splz() does the job.
+		 *
+		 * cpu_idle_hlt:
+		 *      0       Never halt, just spin
+		 *
+		 *      1       Always use HLT (or MONITOR/MWAIT if avail).
+		 *              This typically eats more power than the
+		 *              ACPI halt.
+		 *
+		 *      2       Use HLT/MONITOR/MWAIT up to a point and then
+		 *              use the ACPI halt (default).  This is a hybrid
+		 *              approach.  See machdep.cpu_idle_repeat.
+		 *
+		 *      3       Always use the ACPI halt.  This typically
+		 *              eats the least amount of power but the cpu
+		 *              will be slow waking up.  Slows down e.g.
+		 *              compiles and other pipe/event oriented stuff.
+		 *
+		 *
+		 * NOTE: Interrupts are enabled and we are not in a critical
+		 *       section.
+		 *
+		 * NOTE: Preemptions do not reset gd_idle_repeat.  Also we
+		 *	 don't bother capping gd_idle_repeat, it is ok if
+		 *	 it overflows.
 		 */
-		if (cpu_idle_hlt && !lwkt_runnable() &&
-		    (td->td_flags & TDF_IDLE_NOHLT) == 0) {
+		++gd->gd_idle_repeat;
+		reqflags = gd->gd_reqflags;
+		quick = (cpu_idle_hlt == 1) ||
+			(cpu_idle_hlt < 3 &&
+			 gd->gd_idle_repeat < cpu_idle_repeat);
+
+		if (quick && (cpu_mi_feature & CPU_MI_MONITOR) &&
+		    (reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
+			cpu_mmw_pause_int(&gd->gd_reqflags, reqflags);
+			++cpu_idle_hltcnt;
+		} else if (cpu_idle_hlt) {
 			__asm __volatile("cli");
 			splz();
-			if (!lwkt_runnable())
-				cpu_idle_hook();
-#ifdef SMP
-			else
-				handle_cpu_contention_mask();
-#endif
+			if ((gd->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
+				if (quick)
+					cpu_idle_default_hook();
+				else
+					cpu_idle_hook();
+			}
+			__asm __volatile("sti");
 			++cpu_idle_hltcnt;
 		} else {
-			td->td_flags &= ~TDF_IDLE_NOHLT;
 			splz();
-#ifdef SMP
 			__asm __volatile("sti");
-			handle_cpu_contention_mask();
-#else
-			__asm __volatile("sti");
-#endif
 			++cpu_idle_spincnt;
 		}
 	}
 }
 
 #ifdef SMP
-
-/*
- * This routine is called when the only runnable threads require
- * the MP lock, and the scheduler couldn't get it.  On a real cpu
- * we let the scheduler spin.
- */
-void
-handle_cpu_contention_mask(void)
-{
-	cpumask_t mask;
-
-	mask = cpu_contention_mask;
-	cpu_ccfence();
-	if (mask && bsfl(mask) != mycpu->gd_cpuid)
-		DELAY(2);
-}
 
 /*
  * This routine is called if a spinlock has been held through the
@@ -1518,17 +1555,22 @@ int15e820:
 		if (smap->length == 0)
 			goto next_run;
 
-		if (smap->base >= 0xffffffff) {
+		Realmem += smap->length;
+
+		if (smap->base >= 0xffffffffLLU) {
 			kprintf("%ju MB of memory above 4GB ignored\n",
-			    (uintmax_t)(smap->length / 1024 / 1024));
+				(uintmax_t)(smap->length / 1024 / 1024));
 			goto next_run;
 		}
 
 		for (i = 0; i <= physmap_idx; i += 2) {
 			if (smap->base < physmap[i + 1]) {
-				if (boothowto & RB_VERBOSE)
-					kprintf(
-	"Overlapping or non-montonic memory region, ignoring second region\n");
+				if (boothowto & RB_VERBOSE) {
+					kprintf("Overlapping or non-montonic "
+						"memory region, ignoring "
+						"second region\n");
+				}
+				Realmem -= smap->length;
 				goto next_run;
 			}
 		}
@@ -1540,8 +1582,8 @@ int15e820:
 
 		physmap_idx += 2;
 		if (physmap_idx == PHYSMAP_ENTRIES*2) {
-			kprintf(
-		"Too many segments in the physical address map, giving up\n");
+			kprintf("Too many segments in the physical "
+				"address map, giving up\n");
 			break;
 		}
 		physmap[physmap_idx] = smap->base;
@@ -1566,8 +1608,8 @@ next_run:
 		}
 
 		if (basemem > 640) {
-			kprintf("Preposterous BIOS basemem of %uK, truncating to 640K\n",
-				basemem);
+			kprintf("Preposterous BIOS basemem of %uK, "
+				"truncating to 640K\n", basemem);
 			basemem = 640;
 		}
 
@@ -1833,6 +1875,18 @@ do_next:
 	avail_end = phys_avail[pa_indx];
 }
 
+#ifdef SMP
+#ifdef APIC_IO
+int apic_io_enable = 1; /* Enabled by default for kernels compiled w/APIC_IO */
+#else
+int apic_io_enable = 0; /* Disabled by default for kernels compiled without */
+#endif
+TUNABLE_INT("hw.apic_io_enable", &apic_io_enable);
+extern struct machintr_abi MachIntrABI_APIC;
+#endif
+
+struct machintr_abi MachIntrABI;
+
 /*
  * IDT VECTORS:
  *	0	Divide by zero
@@ -1885,6 +1939,14 @@ init386(int first)
 	}
 	if (bootinfo.bi_envp)
 		kern_envp = (caddr_t)bootinfo.bi_envp + KERNBASE;
+
+	/*
+	 * Default MachIntrABI to ICU
+	 */
+	MachIntrABI = MachIntrABI_ICU;
+#ifdef SMP
+	TUNABLE_INT_FETCH("hw.apic_io_enable", &apic_io_enable);
+#endif
 
 	/*
 	 * start with one cpu.  Note: with one cpu, ncpus2_shift, ncpus2_mask,
@@ -2007,9 +2069,21 @@ init386(int first)
 		kprintf("WARNING: loader(8) metadata is missing!\n");
 
 #if	NISA >0
+	elcr_probe();
 	isa_defaultirq();
 #endif
 	rand_initialize();
+
+	/*
+	 * Initialize IRQ mapping
+	 *
+	 * NOTE:
+	 * SHOULD be after elcr_probe()
+	 */
+	MachIntrABI_ICU.initmap();
+#ifdef SMP
+	MachIntrABI_IOAPIC.initmap();
+#endif
 
 #ifdef DDB
 	kdb_init();
@@ -2580,14 +2654,11 @@ struct spinlock_deprecated smp_rv_spinlock;
 static void
 init_locks(void)
 {
+#ifdef SMP
 	/*
-	 * mp_lock = 0;	BSP already owns the MP lock 
-	 */
-	/*
-	 * Get the initial mp_lock with a count of 1 for the BSP.
+	 * Get the initial mplock with a count of 1 for the BSP.
 	 * This uses a LOGICAL cpu ID, ie BSP == 0.
 	 */
-#ifdef SMP
 	cpu_get_initial_mplock();
 #endif
 	/* DEPRECATED */

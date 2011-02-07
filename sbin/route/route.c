@@ -49,9 +49,6 @@
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
 #include <netatalk/at.h>
-#ifdef NS
-#include <netns/ns.h>
-#endif
 #include <arpa/inet.h>
 #include <netdb.h>
 
@@ -78,9 +75,6 @@ union	sockunion {
 	struct	sockaddr_in6 sin6;
 #endif
 	struct	sockaddr_at sat;
-#ifdef NS
-	struct	sockaddr_ns sns;
-#endif
 	struct	sockaddr_mpls smpls;
 	struct	sockaddr_dl sdl;
 	struct	sockaddr_inarp sinarp;
@@ -103,9 +97,6 @@ static int	locking, lockrest, debugonly;
 static int	mplsop, popcount, pushcount, swapcount;
 static u_long	rtm_inits;
 static uid_t	uid;
-#ifdef NS
-static short	ns_bh[] = {-1,-1,-1};
-#endif
 
 static int	 atalk_aton(const char *, struct at_addr *);
 static char	*atalk_ntoa(struct at_addr);
@@ -115,7 +106,7 @@ static void	 newroute(int, char **);
 static void	 inet_makenetandmask(u_long, struct sockaddr_in *, u_long);
 static void	 interfaces(void);
 static void	 monitor(void);
-static void	 sockaddr(char *, struct sockaddr *);
+static void	 sockaddr(const char *, struct sockaddr *);
 static void	 sodump(sup, const char *);
 static void	 bprintf(FILE *, int, u_char *);
 static void	 print_getmsg(struct rt_msghdr *, int);
@@ -123,7 +114,7 @@ static void	 print_rtmsg(struct rt_msghdr *, int);
 static void	 pmsg_common(struct rt_msghdr *);
 static void	 pmsg_addrs(char *, int);
 static void	 mask_addr(void);
-static int	 getaddr(int, char *, struct hostent **);
+static int	 getaddr(int, const char *, struct hostent **);
 static int	 rtmsg(int, int);
 static int	 prefixlen(const char *);
 #ifdef INET6
@@ -251,11 +242,6 @@ flushroutes(int argc, char **argv)
 			case K_ATALK:
 				af = AF_APPLETALK;
 				break;
-#ifdef NS
-			case K_XNS:
-				af = AF_NS;
-				break;
-#endif
 			case K_LINK:
 				af = AF_LINK;
 				break;
@@ -426,11 +412,6 @@ routename(struct sockaddr *sa)
 			atalk_ntoa(((struct sockaddr_at *)sa)->sat_addr));
 		break;
 
-#ifdef NS
-	case AF_NS:
-		return(ns_print((struct sockaddr_ns *)sa));
-#endif
-
 	case AF_LINK:
 		return(link_ntoa((struct sockaddr_dl *)sa));
 
@@ -560,12 +541,6 @@ netname(struct sockaddr *sa)
 			atalk_ntoa(((struct sockaddr_at *)sa)->sat_addr));
 		break;
 
-#ifdef NS
-	case AF_NS:
-		return(ns_print((struct sockaddr_ns *)sa));
-		break;
-#endif
-
 	case AF_LINK:
 		return(link_ntoa((struct sockaddr_dl *)sa));
 
@@ -654,12 +629,6 @@ newroute(int argc, char **argv)
 				af = PF_ROUTE;
 				aflen = sizeof(union sockunion);
 				break;
-#ifdef NS
-			case K_XNS:
-				af = AF_NS;
-				aflen = sizeof(struct sockaddr_ns);
-				break;
-#endif
 			case K_IFACE:
 			case K_INTERFACE:
 				iflag++;
@@ -989,7 +958,7 @@ inet6_makenetandmask(struct sockaddr_in6 *sin6, const char *plen)
  * returning 1 if a host address, 0 if a network address.
  */
 static int
-getaddr(int which, char *str, struct hostent **hpp)
+getaddr(int which, const char *str, struct hostent **hpp)
 {
 	sup su;
 	struct hostent *hp;
@@ -1132,20 +1101,6 @@ getaddr(int which, char *str, struct hostent **hpp)
 	}
 #endif /* INET6 */
 
-#ifdef NS
-	case AF_NS:
-		if (which == RTA_DST) {
-			struct sockaddr_ns *sms = &(so_mask.sns);
-			memset(sms, 0, sizeof(*sms));
-			sms->sns_family = 0;
-			sms->sns_len = 6;
-			sms->sns_addr.x_net = *(union ns_net *)ns_bh;
-			rtm_addrs |= RTA_NETMASK;
-		}
-		su->sns.sns_addr = ns_addr(str);
-		return(!ns_nullhost(su->sns.sns_addr));
-#endif
-
 	case AF_APPLETALK:
 		if (!atalk_aton(str, &su->sat.sat_addr))
 			errx(EX_NOHOST, "bad address: %s", str);
@@ -1270,56 +1225,6 @@ prefixlen(const char *len_str)
 	else
 		return(len);
 }
-
-#ifdef NS
-short ns_nullh[] = {0,0,0};
-
-char *
-ns_print(struct sockaddr_ns *sns)
-{
-	struct ns_addr work;
-	union { union ns_net net_e; u_long long_e; } net;
-	u_short port;
-	static char mybuf[50+MAXHOSTNAMELEN], cport[10], chost[25];
-	const char *host = "";
-	char *p;
-	u_char *q;
-
-	work = sns->sns_addr;
-	port = ntohs(work.x_port);
-	work.x_port = 0;
-	net.net_e  = work.x_net;
-	if (ns_nullhost(work) && net.long_e == 0) {
-		if (port == 0)
-			strncpy(mybuf, "*.*", sizeof(mybuf));
-		else
-			sprintf(mybuf, "*.%XH", port);
-		return(mybuf);
-	}
-
-	if (memcmp(ns_bh, work.x_host.c_host, 6) == 0)
-		host = "any";
-	else if (memcmp(ns_nullh, work.x_host.c_host, 6) == 0)
-		host = "*";
-	else {
-		q = work.x_host.c_host;
-		sprintf(chost, "%02X%02X%02X%02X%02X%02XH",
-			q[0], q[1], q[2], q[3], q[4], q[5]);
-		for (p = chost; *p == '0' && p < chost + 12; p++)
-			/* void */;
-		host = p;
-	}
-	if (port != 0)
-		sprintf(cport, ".%XH", htons(port));
-	else
-		*cport = 0;
-
-	snprintf(mybuf, sizeof(mybuf), "%lxH.%s%s",
-			(unsigned long)ntohl(net.long_e),
-			host, cport);
-	return(mybuf);
-}
-#endif
 
 static void
 interfaces(void)
@@ -1458,9 +1363,6 @@ mask_addr(void)
 	if ((rtm_addrs & RTA_DST) == 0)
 		return;
 	switch (so_dst.sa.sa_family) {
-#ifdef NS
-	case AF_NS:
-#endif
 	case AF_INET:
 #ifdef INET6
 	case AF_INET6:
@@ -1763,12 +1665,6 @@ sodump(sup su, const char *which)
 		printf("%s: atalk %s; ",
 		    which, atalk_ntoa(su->sat.sat_addr));
 		break;
-#ifdef NS
-	case AF_NS:
-		printf("%s: xns %s; ",
-		    which, ns_ntoa(su->sns.sns_addr));
-		break;
-#endif
 	}
 	fflush(stdout);
 }
@@ -1783,7 +1679,7 @@ sodump(sup su, const char *which)
 #define DELIM	(4*2)
 
 static void
-sockaddr(char *addr, struct sockaddr *sa)
+sockaddr(const char *addr, struct sockaddr *sa)
 {
 	char *cp = (char *)sa;
 	int size = sa->sa_len;

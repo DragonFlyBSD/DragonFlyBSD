@@ -1,11 +1,9 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.39 2008/08/02 01:14:43 dillon Exp $
  */
 
 #if 0
-#include "use_npx.h"
 #include "opt_auto_eoi.h"
 #endif
 
@@ -21,15 +19,19 @@
 #include "assym.s"
 
 #include "apicreg.h"
-#include "apic_ipl.h"
+#include <machine_base/apic/ioapic_ipl.h>
 #include <machine/smp.h>
-#include <machine_base/isa/intr_machdep.h>
+#include <machine/intr_machdep.h>
 
-/* convert an absolute IRQ# into a bitmask */
-#define IRQ_LBIT(irq_num)	(1 << (irq_num))
+#ifdef foo
+/* convert an absolute IRQ# into bitmask */
+#define IRQ_LBIT(irq_num)	(1UL << (irq_num & 0x3f))
+#endif
 
-/* make an index into the IO APIC from the IRQ# */
-#define REDTBL_IDX(irq_num)	(0x10 + ((irq_num) * 2))
+#define IRQ_SBITS(irq_num)	((irq_num) & 0x3f)
+
+/* convert an absolute IRQ# into gd_ipending index */
+#define IRQ_LIDX(irq_num)	((irq_num) >> 6)
 
 #ifdef SMP
 #define MPLOCKED     lock ;
@@ -53,23 +55,25 @@
  */
 #define APIC_POP_FRAME POP_FRAME
 
-/* sizeof(struct apic_intmapinfo) == 24 */
-#define IOAPICADDR(irq_num) CNAME(int_to_apicintpin) + 24 * (irq_num) + 8
-#define REDIRIDX(irq_num) CNAME(int_to_apicintpin) + 24 * (irq_num) + 16
-
+#define IOAPICADDR(irq_num) \
+	CNAME(int_to_apicintpin) + IOAPIC_IM_SIZE * (irq_num) + IOAPIC_IM_ADDR
+#define REDIRIDX(irq_num) \
+	CNAME(int_to_apicintpin) + IOAPIC_IM_SIZE * (irq_num) + IOAPIC_IM_ENTIDX
+#define IOAPICFLAGS(irq_num) \
+	CNAME(int_to_apicintpin) + IOAPIC_IM_SIZE * (irq_num) + IOAPIC_IM_FLAGS
+ 
 #define MASK_IRQ(irq_num)						\
-	APIC_IMASK_LOCK ;			/* into critical reg */	\
-	testl	$IRQ_LBIT(irq_num), apic_imen ;				\
+	IOAPIC_IMASK_LOCK ;			/* into critical reg */	\
+	testl	$IOAPIC_IM_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
 	jne	7f ;			/* masked, don't mask */	\
-	orl	$IRQ_LBIT(irq_num), apic_imen ;	/* set the mask bit */	\
+	orl	$IOAPIC_IM_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
+						/* set the mask bit */	\
 	movq	IOAPICADDR(irq_num), %rcx ;	/* ioapic addr */	\
 	movl	REDIRIDX(irq_num), %eax ;	/* get the index */	\
 	movl	%eax, (%rcx) ;			/* write the index */	\
-	movl	IOAPIC_WINDOW(%rcx), %eax ;	/* current value */	\
-	orl	$IOART_INTMASK, %eax ;		/* set the mask */	\
-	movl	%eax, IOAPIC_WINDOW(%rcx) ;	/* new value */		\
+	orl	$IOART_INTMASK,IOAPIC_WINDOW(%rcx) ;/* set the mask */	\
 7: ;						/* already masked */	\
-	APIC_IMASK_UNLOCK ;						\
+	IOAPIC_IMASK_UNLOCK ;						\
 
 /*
  * Test to see whether we are handling an edge or level triggered INT.
@@ -77,7 +81,7 @@
  *  and the EOI cycle would cause redundant INTs to occur.
  */
 #define MASK_LEVEL_IRQ(irq_num)						\
-	testl	$IRQ_LBIT(irq_num), apic_pin_trigger ;			\
+	testl	$IOAPIC_IM_FLAG_LEVEL, IOAPICFLAGS(irq_num) ;		\
 	jz	9f ;				/* edge, don't mask */	\
 	MASK_IRQ(irq_num) ;						\
 9: ;									\
@@ -88,42 +92,40 @@
 #define UNMASK_IRQ(irq_num)					\
 	cmpl	$0,%eax ;						\
 	jnz	8f ;							\
-	APIC_IMASK_LOCK ;			/* into critical reg */	\
-	testl	$IRQ_LBIT(irq_num), apic_imen ;				\
+	IOAPIC_IMASK_LOCK ;			/* into critical reg */	\
+	testl	$IOAPIC_IM_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
 	je	7f ;			/* bit clear, not masked */	\
-	andl	$~IRQ_LBIT(irq_num), apic_imen ;/* clear mask bit */	\
+	andl	$~IOAPIC_IM_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
+						/* clear mask bit */	\
 	movq	IOAPICADDR(irq_num),%rcx ;	/* ioapic addr */	\
 	movl	REDIRIDX(irq_num), %eax ;	/* get the index */	\
 	movl	%eax,(%rcx) ;			/* write the index */	\
-	movl	IOAPIC_WINDOW(%rcx),%eax ;	/* current value */	\
-	andl	$~IOART_INTMASK,%eax ;		/* clear the mask */	\
-	movl	%eax,IOAPIC_WINDOW(%rcx) ;	/* new value */		\
+	andl	$~IOART_INTMASK,IOAPIC_WINDOW(%rcx) ;/* clear the mask */ \
 7: ;									\
-	APIC_IMASK_UNLOCK ;						\
+	IOAPIC_IMASK_UNLOCK ;						\
 8: ;									\
 
-#ifdef APIC_IO
+#ifdef SMP /* APIC-IO */
 
 /*
- * Fast interrupt call handlers run in the following sequence:
+ * Interrupt call handlers run in the following sequence:
  *
  *	- Push the trap frame required by doreti
  *	- Mask the interrupt and reenable its source
- *	- If we cannot take the interrupt set its fpending bit and
- *	  doreti.  Note that we cannot mess with mp_lock at all
- *	  if we entered from a critical section!
- *	- If we can take the interrupt clear its fpending bit,
+ *	- If we cannot take the interrupt set its ipending bit and
+ *	  doreti.
+ *	- If we can take the interrupt clear its ipending bit,
  *	  call the handler, then unmask and doreti.
  *
  * YYY can cache gd base opitner instead of using hidden %fs prefixes.
  */
 
-#define	FAST_INTR(irq_num, vec_name)					\
+#define	INTR_HANDLER(irq_num)						\
 	.text ;								\
 	SUPERALIGN_TEXT ;						\
-IDTVEC(vec_name) ;							\
+IDTVEC(ioapic_intr##irq_num) ;						\
 	APIC_PUSH_FRAME ;						\
-	FAKE_MCOUNT(15*4(%esp)) ;					\
+	FAKE_MCOUNT(TF_RIP(%rsp)) ;					\
 	MASK_LEVEL_IRQ(irq_num) ;					\
 	movq	lapic, %rax ;						\
 	movl	$0, LA_EOI(%rax) ;					\
@@ -135,15 +137,23 @@ IDTVEC(vec_name) ;							\
 1: ;									\
 	/* in critical section, make interrupt pending */		\
 	/* set the pending bit and return, leave interrupt masked */	\
-	orl	$IRQ_LBIT(irq_num),PCPU(fpending) ;			\
+	movq	$1,%rcx ;						\
+	shlq	$IRQ_SBITS(irq_num),%rcx ;				\
+	movl	$IRQ_LIDX(irq_num),%edx ;				\
+	orq	%rcx,PCPU_E8(ipending,%edx) ;				\
 	orl	$RQF_INTPEND,PCPU(reqflags) ;				\
 	jmp	5f ;							\
 2: ;									\
 	/* clear pending bit, run handler */				\
-	andl	$~IRQ_LBIT(irq_num),PCPU(fpending) ;			\
+	movq	$1,%rcx ;						\
+	shlq	$IRQ_SBITS(irq_num),%rcx ;				\
+	notq	%rcx ;							\
+	movl	$IRQ_LIDX(irq_num),%edx ;				\
+	andq	%rcx,PCPU_E8(ipending,%edx) ;				\
 	pushq	$irq_num ;		/* trapframe -> intrframe */	\
 	movq	%rsp, %rdi ;		/* pass frame by reference */	\
 	incl	TD_CRITCOUNT(%rbx) ;					\
+	sti ;								\
 	call	ithread_fast_handler ;	/* returns 0 to unmask */	\
 	decl	TD_CRITCOUNT(%rbx) ;					\
 	addq	$8, %rsp ;		/* intrframe -> trapframe */	\
@@ -168,31 +178,34 @@ Xspuriousint:
 
 	/* No EOI cycle used here */
 
-	iretq
+	jmp	doreti_iret
 
 
 /*
  * Handle TLB shootdowns.
+ *
+ * NOTE: interrupts are left disabled.
  */
 	.text
 	SUPERALIGN_TEXT
 	.globl	Xinvltlb
 Xinvltlb:
-	pushq	%rax
-
-	movq	%cr3, %rax		/* invalidate the TLB */
-	movq	%rax, %cr3
-
+	APIC_PUSH_FRAME
 	movq	lapic, %rax
 	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
-
-	popq	%rax
-	iretq
-
+	FAKE_MCOUNT(TF_RIP(%rsp))
+	subq	$8,%rsp			/* make same as interrupt frame */
+	movq	%rsp,%rdi		/* pass frame by reference */
+	call	smp_invltlb_intr
+	addq	$8,%rsp			/* turn into trapframe */
+	MEXITCOUNT
+	APIC_POP_FRAME
+	jmp	doreti_iret
 
 /*
  * Executed by a CPU when it receives an Xcpustop IPI from another CPU,
  *
+ *  - We cannot call doreti
  *  - Signals its receipt.
  *  - Waits for permission to restart.
  *  - Processing pending IPIQ events while waiting.
@@ -203,63 +216,42 @@ Xinvltlb:
 	SUPERALIGN_TEXT
 	.globl Xcpustop
 Xcpustop:
-	pushq	%rbp
-	movq	%rsp, %rbp
-	/* We save registers that are not preserved across function calls. */
-	/* JG can be re-written with mov's */
-	pushq	%rax
-	pushq	%rcx
-	pushq	%rdx
-	pushq	%rsi
-	pushq	%rdi
-	pushq	%r8
-	pushq	%r9
-	pushq	%r10
-	pushq	%r11
-
-#if JG
-	/* JGXXX switch to kernel %gs? */
-	pushl	%ds			/* save current data segment */
-	pushl	%fs
-
-	movl	$KDSEL, %eax
-	mov	%ax, %ds		/* use KERNEL data segment */
-	movl	$KPSEL, %eax
-	mov	%ax, %fs
-#endif
-
+	APIC_PUSH_FRAME
 	movq	lapic, %rax
 	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
 
-	/* JG */
 	movl	PCPU(cpuid), %eax
 	imull	$PCB_SIZE, %eax
 	leaq	CNAME(stoppcbs), %rdi
 	addq	%rax, %rdi
 	call	CNAME(savectx)		/* Save process context */
-	
-		
-	movl	PCPU(cpuid), %eax
+
+	movslq	PCPU(cpuid), %rax
 
 	/*
 	 * Indicate that we have stopped and loop waiting for permission
 	 * to start again.  We must still process IPI events while in a
 	 * stopped state.
+	 *
+	 * Interrupts must remain enabled for non-IPI'd per-cpu interrupts
+	 * (e.g. Xtimer, Xinvltlb).
 	 */
 	MPLOCKED
-	btsl	%eax, stopped_cpus	/* stopped_cpus |= (1<<id) */
+	btsq	%rax, stopped_cpus	/* stopped_cpus |= (1<<id) */
+	sti
 1:
 	andl	$~RQF_IPIQ,PCPU(reqflags)
 	pushq	%rax
 	call	lwkt_smp_stopped
 	popq	%rax
-	btl	%eax, started_cpus	/* while (!(started_cpus & (1<<id))) */
+	pause
+	btq	%rax, started_cpus	/* while (!(started_cpus & (1<<id))) */
 	jnc	1b
 
 	MPLOCKED
-	btrl	%eax, started_cpus	/* started_cpus &= ~(1<<id) */
+	btrq	%rax, started_cpus	/* started_cpus &= ~(1<<id) */
 	MPLOCKED
-	btrl	%eax, stopped_cpus	/* stopped_cpus &= ~(1<<id) */
+	btrq	%rax, stopped_cpus	/* stopped_cpus &= ~(1<<id) */
 
 	test	%eax, %eax
 	jnz	2f
@@ -271,23 +263,9 @@ Xcpustop:
 
 	call	*%rax
 2:
-	popq	%r11
-	popq	%r10
-	popq	%r9
-	popq	%r8
-	popq	%rdi
-	popq	%rsi
-	popq	%rdx
-	popq	%rcx
-	popq	%rax
-
-#if JG
-	popl	%fs
-	popl	%ds			/* restore previous data segment */
-#endif
-	movq	%rbp, %rsp
-	popq	%rbp
-	iretq
+	MEXITCOUNT
+	APIC_POP_FRAME
+	jmp	doreti_iret
 
 	/*
 	 * For now just have one ipiq IPI, but what we really want is
@@ -301,7 +279,7 @@ Xipiq:
 	APIC_PUSH_FRAME
 	movq	lapic, %rax
 	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
-	FAKE_MCOUNT(15*4(%esp))
+	FAKE_MCOUNT(TF_RIP(%rsp))
 
 	incl    PCPU(cnt) + V_IPI
 	movq	PCPU(curthread),%rbx
@@ -311,6 +289,7 @@ Xipiq:
 	movq	%rsp,%rdi		/* pass frame by reference */
 	incl	PCPU(intr_nesting_level)
 	incl	TD_CRITCOUNT(%rbx)
+	sti
 	call	lwkt_process_ipiq_frame
 	decl	TD_CRITCOUNT(%rbx)
 	decl	PCPU(intr_nesting_level)
@@ -321,7 +300,7 @@ Xipiq:
 	orl	$RQF_IPIQ,PCPU(reqflags)
 	MEXITCOUNT
 	APIC_POP_FRAME
-	iretq
+	jmp	doreti_iret
 
 	.text
 	SUPERALIGN_TEXT
@@ -330,7 +309,12 @@ Xtimer:
 	APIC_PUSH_FRAME
 	movq	lapic, %rax
 	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
-	FAKE_MCOUNT(15*4(%esp))
+	FAKE_MCOUNT(TF_RIP(%rsp))
+
+	subq	$8,%rsp			/* make same as interrupt frame */
+	movq	%rsp,%rdi		/* pass frame by reference */
+	call	lapic_timer_always
+	addq	$8,%rsp			/* turn into trapframe */
 
 	incl    PCPU(cnt) + V_TIMER
 	movq	PCPU(curthread),%rbx
@@ -342,6 +326,7 @@ Xtimer:
 	movq	%rsp,%rdi		/* pass frame by reference */
 	incl	PCPU(intr_nesting_level)
 	incl	TD_CRITCOUNT(%rbx)
+	sti
 	call	lapic_timer_process_frame
 	decl	TD_CRITCOUNT(%rbx)
 	decl	PCPU(intr_nesting_level)
@@ -352,35 +337,203 @@ Xtimer:
 	orl	$RQF_TIMER,PCPU(reqflags)
 	MEXITCOUNT
 	APIC_POP_FRAME
-	iretq
+	jmp	doreti_iret
 
-#ifdef APIC_IO
+#ifdef SMP /* APIC-IO */
 
 MCOUNT_LABEL(bintr)
-	FAST_INTR(0,apic_fastintr0)
-	FAST_INTR(1,apic_fastintr1)
-	FAST_INTR(2,apic_fastintr2)
-	FAST_INTR(3,apic_fastintr3)
-	FAST_INTR(4,apic_fastintr4)
-	FAST_INTR(5,apic_fastintr5)
-	FAST_INTR(6,apic_fastintr6)
-	FAST_INTR(7,apic_fastintr7)
-	FAST_INTR(8,apic_fastintr8)
-	FAST_INTR(9,apic_fastintr9)
-	FAST_INTR(10,apic_fastintr10)
-	FAST_INTR(11,apic_fastintr11)
-	FAST_INTR(12,apic_fastintr12)
-	FAST_INTR(13,apic_fastintr13)
-	FAST_INTR(14,apic_fastintr14)
-	FAST_INTR(15,apic_fastintr15)
-	FAST_INTR(16,apic_fastintr16)
-	FAST_INTR(17,apic_fastintr17)
-	FAST_INTR(18,apic_fastintr18)
-	FAST_INTR(19,apic_fastintr19)
-	FAST_INTR(20,apic_fastintr20)
-	FAST_INTR(21,apic_fastintr21)
-	FAST_INTR(22,apic_fastintr22)
-	FAST_INTR(23,apic_fastintr23)
+	INTR_HANDLER(0)
+	INTR_HANDLER(1)
+	INTR_HANDLER(2)
+	INTR_HANDLER(3)
+	INTR_HANDLER(4)
+	INTR_HANDLER(5)
+	INTR_HANDLER(6)
+	INTR_HANDLER(7)
+	INTR_HANDLER(8)
+	INTR_HANDLER(9)
+	INTR_HANDLER(10)
+	INTR_HANDLER(11)
+	INTR_HANDLER(12)
+	INTR_HANDLER(13)
+	INTR_HANDLER(14)
+	INTR_HANDLER(15)
+	INTR_HANDLER(16)
+	INTR_HANDLER(17)
+	INTR_HANDLER(18)
+	INTR_HANDLER(19)
+	INTR_HANDLER(20)
+	INTR_HANDLER(21)
+	INTR_HANDLER(22)
+	INTR_HANDLER(23)
+	INTR_HANDLER(24)
+	INTR_HANDLER(25)
+	INTR_HANDLER(26)
+	INTR_HANDLER(27)
+	INTR_HANDLER(28)
+	INTR_HANDLER(29)
+	INTR_HANDLER(30)
+	INTR_HANDLER(31)
+	INTR_HANDLER(32)
+	INTR_HANDLER(33)
+	INTR_HANDLER(34)
+	INTR_HANDLER(35)
+	INTR_HANDLER(36)
+	INTR_HANDLER(37)
+	INTR_HANDLER(38)
+	INTR_HANDLER(39)
+	INTR_HANDLER(40)
+	INTR_HANDLER(41)
+	INTR_HANDLER(42)
+	INTR_HANDLER(43)
+	INTR_HANDLER(44)
+	INTR_HANDLER(45)
+	INTR_HANDLER(46)
+	INTR_HANDLER(47)
+	INTR_HANDLER(48)
+	INTR_HANDLER(49)
+	INTR_HANDLER(50)
+	INTR_HANDLER(51)
+	INTR_HANDLER(52)
+	INTR_HANDLER(53)
+	INTR_HANDLER(54)
+	INTR_HANDLER(55)
+	INTR_HANDLER(56)
+	INTR_HANDLER(57)
+	INTR_HANDLER(58)
+	INTR_HANDLER(59)
+	INTR_HANDLER(60)
+	INTR_HANDLER(61)
+	INTR_HANDLER(62)
+	INTR_HANDLER(63)
+	INTR_HANDLER(64)
+	INTR_HANDLER(65)
+	INTR_HANDLER(66)
+	INTR_HANDLER(67)
+	INTR_HANDLER(68)
+	INTR_HANDLER(69)
+	INTR_HANDLER(70)
+	INTR_HANDLER(71)
+	INTR_HANDLER(72)
+	INTR_HANDLER(73)
+	INTR_HANDLER(74)
+	INTR_HANDLER(75)
+	INTR_HANDLER(76)
+	INTR_HANDLER(77)
+	INTR_HANDLER(78)
+	INTR_HANDLER(79)
+	INTR_HANDLER(80)
+	INTR_HANDLER(81)
+	INTR_HANDLER(82)
+	INTR_HANDLER(83)
+	INTR_HANDLER(84)
+	INTR_HANDLER(85)
+	INTR_HANDLER(86)
+	INTR_HANDLER(87)
+	INTR_HANDLER(88)
+	INTR_HANDLER(89)
+	INTR_HANDLER(90)
+	INTR_HANDLER(91)
+	INTR_HANDLER(92)
+	INTR_HANDLER(93)
+	INTR_HANDLER(94)
+	INTR_HANDLER(95)
+	INTR_HANDLER(96)
+	INTR_HANDLER(97)
+	INTR_HANDLER(98)
+	INTR_HANDLER(99)
+	INTR_HANDLER(100)
+	INTR_HANDLER(101)
+	INTR_HANDLER(102)
+	INTR_HANDLER(103)
+	INTR_HANDLER(104)
+	INTR_HANDLER(105)
+	INTR_HANDLER(106)
+	INTR_HANDLER(107)
+	INTR_HANDLER(108)
+	INTR_HANDLER(109)
+	INTR_HANDLER(110)
+	INTR_HANDLER(111)
+	INTR_HANDLER(112)
+	INTR_HANDLER(113)
+	INTR_HANDLER(114)
+	INTR_HANDLER(115)
+	INTR_HANDLER(116)
+	INTR_HANDLER(117)
+	INTR_HANDLER(118)
+	INTR_HANDLER(119)
+	INTR_HANDLER(120)
+	INTR_HANDLER(121)
+	INTR_HANDLER(122)
+	INTR_HANDLER(123)
+	INTR_HANDLER(124)
+	INTR_HANDLER(125)
+	INTR_HANDLER(126)
+	INTR_HANDLER(127)
+	INTR_HANDLER(128)
+	INTR_HANDLER(129)
+	INTR_HANDLER(130)
+	INTR_HANDLER(131)
+	INTR_HANDLER(132)
+	INTR_HANDLER(133)
+	INTR_HANDLER(134)
+	INTR_HANDLER(135)
+	INTR_HANDLER(136)
+	INTR_HANDLER(137)
+	INTR_HANDLER(138)
+	INTR_HANDLER(139)
+	INTR_HANDLER(140)
+	INTR_HANDLER(141)
+	INTR_HANDLER(142)
+	INTR_HANDLER(143)
+	INTR_HANDLER(144)
+	INTR_HANDLER(145)
+	INTR_HANDLER(146)
+	INTR_HANDLER(147)
+	INTR_HANDLER(148)
+	INTR_HANDLER(149)
+	INTR_HANDLER(150)
+	INTR_HANDLER(151)
+	INTR_HANDLER(152)
+	INTR_HANDLER(153)
+	INTR_HANDLER(154)
+	INTR_HANDLER(155)
+	INTR_HANDLER(156)
+	INTR_HANDLER(157)
+	INTR_HANDLER(158)
+	INTR_HANDLER(159)
+	INTR_HANDLER(160)
+	INTR_HANDLER(161)
+	INTR_HANDLER(162)
+	INTR_HANDLER(163)
+	INTR_HANDLER(164)
+	INTR_HANDLER(165)
+	INTR_HANDLER(166)
+	INTR_HANDLER(167)
+	INTR_HANDLER(168)
+	INTR_HANDLER(169)
+	INTR_HANDLER(170)
+	INTR_HANDLER(171)
+	INTR_HANDLER(172)
+	INTR_HANDLER(173)
+	INTR_HANDLER(174)
+	INTR_HANDLER(175)
+	INTR_HANDLER(176)
+	INTR_HANDLER(177)
+	INTR_HANDLER(178)
+	INTR_HANDLER(179)
+	INTR_HANDLER(180)
+	INTR_HANDLER(181)
+	INTR_HANDLER(182)
+	INTR_HANDLER(183)
+	INTR_HANDLER(184)
+	INTR_HANDLER(185)
+	INTR_HANDLER(186)
+	INTR_HANDLER(187)
+	INTR_HANDLER(188)
+	INTR_HANDLER(189)
+	INTR_HANDLER(190)
+	INTR_HANDLER(191)
 MCOUNT_LABEL(eintr)
 
 #endif
@@ -390,17 +543,13 @@ MCOUNT_LABEL(eintr)
 /* variables used by stop_cpus()/restart_cpus()/Xcpustop */
 	.globl stopped_cpus, started_cpus
 stopped_cpus:
-	.long	0
+	.quad	0
 started_cpus:
-	.long	0
+	.quad	0
 
 	.globl CNAME(cpustop_restartfunc)
 CNAME(cpustop_restartfunc):
 	.quad 0
 		
-	.globl	apic_pin_trigger
-apic_pin_trigger:
-	.long	0
-
 	.text
 

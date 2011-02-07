@@ -8,7 +8,6 @@ SRCS=	route.c show.c keywords.h keywords.c
 CFLAGS+=-I.
 CFLAGS+=-DINET6
 CLEANFILES+=keywords.h keywords.c _keywords.tmp
-WARNS?=	3
 
 keywords.h:
 	echo -e "extern struct keytab {\n\tconst char\t*kt_cp;\n\tint\t\t kt_i;\n} keywords[];\n\n" > ${.TARGET}

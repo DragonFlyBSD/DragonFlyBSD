@@ -120,7 +120,7 @@ lwbuf_init(void *arg)
 }
 
 struct lwbuf *
-lwbuf_alloc(vm_page_t m)
+lwbuf_alloc(vm_page_t m, struct lwbuf *lwb_dummy __unused)
 {
     struct mdglobaldata *gd = mdcpu;
     struct lwbuf *lwb;

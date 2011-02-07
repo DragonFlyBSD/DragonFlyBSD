@@ -524,7 +524,7 @@ dump_packet(u_char *user, const struct pcap_pkthdr *h, const u_char *sp)
 	size_t len = sizeof(*h) + h->caplen;
 
 	if (len < sizeof(*h) || h->caplen > (size_t)cur_snaplen) {
-		logmsg(LOG_NOTICE, "invalid size %u (%u/%u), packet dropped",
+		logmsg(LOG_NOTICE, "invalid size %zd (%u/%u), packet dropped",
 		       len, cur_snaplen, snaplen);
 		packets_dropped++;
 		return;
@@ -567,6 +567,8 @@ main(int argc, char **argv)
 	pcap_handler phandler = dump_packet;
 	const char *errstr = NULL;
 	char *pidf = NULL;
+
+	ret = 0;
 
 	/* Neither FreeBSD nor DFly have this; Max seems to think this may
 	 * be a paranoid check. Comment it out:
@@ -725,7 +727,7 @@ main(int argc, char **argv)
 		logmsg(LOG_WARNING, "Reading stats: %s", pcap_geterr(hpcap));
 	else
 		logmsg(LOG_NOTICE,
-		    "%u packets received, %u/%u dropped (kernel/pflogd)",
+		    "%u packets received, %u/%ld dropped (kernel/pflogd)",
 		    pstat.ps_recv, pstat.ps_drop, packets_dropped);
 
 	pcap_close(hpcap);

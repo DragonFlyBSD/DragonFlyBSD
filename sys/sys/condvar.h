@@ -17,6 +17,8 @@ void	cv_destroy(struct cv *);
 int	_cv_timedwait(struct cv *, struct lock *, int timo, int wakesig);
 void	_cv_signal(struct cv *, int broadcast);
 
+int	cv_has_waiters(const struct cv *);
+
 #define	cv_wait(cv, lock)			\
 		_cv_timedwait((cv), (lock), 0, 0)
 #define	cv_wait_sig(cv, lock)			\

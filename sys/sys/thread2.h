@@ -34,6 +34,16 @@
 #endif
 
 /*
+ * Is a token held by the specified thread?
+ */
+static __inline int
+_lwkt_token_held(lwkt_token_t tok, thread_t td)
+{
+	return (tok->t_ref >= &td->td_toks_base &&
+		tok->t_ref < td->td_toks_stop);
+}
+
+/*
  * Critical section debugging
  */
 #ifdef DEBUG_CRIT_SECTIONS
@@ -204,8 +214,7 @@ crit_test(thread_t td)
 }
 
 /*
- * Return whether any threads are runnable, whether they meet mp_lock
- * requirements or not.
+ * Return whether any threads are runnable.
  */
 static __inline int
 lwkt_runnable(void)
@@ -240,6 +249,19 @@ lwkt_passive_recover(thread_t td)
     td->td_release = NULL;
 }
 
+/*
+ * cpusync support
+ */
+static __inline void
+lwkt_cpusync_init(lwkt_cpusync_t cs, cpumask_t mask,
+		  cpusync_func_t func, void *data)
+{
+	cs->cs_mask = mask;
+	/* cs->cs_mack = 0; handled by _interlock */
+	cs->cs_func = func;
+	cs->cs_data = data;
+}
+
 #ifdef SMP
 
 /*
@@ -262,13 +284,13 @@ lwkt_send_ipiq2(globaldata_t target, ipifunc2_t func, void *arg1, int arg2)
 }
 
 static __inline int
-lwkt_send_ipiq_mask(u_int32_t mask, ipifunc1_t func, void *arg)
+lwkt_send_ipiq_mask(cpumask_t mask, ipifunc1_t func, void *arg)
 {
     return(lwkt_send_ipiq3_mask(mask, (ipifunc3_t)func, arg, 0));
 }
 
 static __inline int
-lwkt_send_ipiq2_mask(u_int32_t mask, ipifunc2_t func, void *arg1, int arg2)
+lwkt_send_ipiq2_mask(cpumask_t mask, ipifunc2_t func, void *arg1, int arg2)
 {
     return(lwkt_send_ipiq3_mask(mask, (ipifunc3_t)func, arg1, arg2));
 }

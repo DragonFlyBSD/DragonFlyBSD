@@ -32,7 +32,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/gsc.c,v 1.35.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.17 2008/08/02 01:14:43 dillon Exp $
  *
  */
 
@@ -184,9 +183,8 @@ static	d_close_t	gscclose;
 static	d_read_t	gscread;
 static	d_ioctl_t	gscioctl;
 
-#define CDEV_MAJOR 47
 static struct dev_ops gsc_ops = {
-	{ "gsc", CDEV_MAJOR, 0 },
+	{ "gsc", 0, 0 },
 	.d_open =	gscopen,
 	.d_close =	gscclose,
 	.d_read =	gscread,

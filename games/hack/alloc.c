@@ -31,7 +31,7 @@ alloc(size_t lth)
 	void *ptr;
 
 	if ((ptr = malloc(lth)) == NULL)
-		panic("Cannot get %d bytes", lth);
+		panic("Cannot get %zd bytes", lth);
 	return (ptr);
 }
 

@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/ich.c,v 1.53.2.12 2007/07/12 06:39:38 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/ich.c,v 1.17 2007/11/30 07:48:57 hasso Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -34,8 +33,6 @@
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
-
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.17 2007/11/30 07:48:57 hasso Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -895,7 +892,7 @@ ich_pci_probe(device_t dev)
 
 	vendor = pci_get_vendor(dev);
 	devid = pci_get_device(dev);
-	for (i = 0; i < sizeof(ich_devs)/sizeof(ich_devs[0]); i++) {
+	for (i = 0; i < NELEM(ich_devs); i++) {
 		if (vendor == ich_devs[i].vendor &&
 				devid == ich_devs[i].devid) {
 			device_set_desc(dev, ich_devs[i].name);

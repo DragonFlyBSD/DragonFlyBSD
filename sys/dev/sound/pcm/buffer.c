@@ -181,7 +181,7 @@ sndbuf_resize(struct snd_dbuf *b, unsigned int blkcnt, unsigned int blksz)
 		goto out;
 
 	chn_unlock(b->channel);
-	tmpbuf = kmalloc(blkcnt * blksz, M_DEVBUF, M_NOWAIT);
+	tmpbuf = kmalloc(blkcnt * blksz, M_DEVBUF, M_WAITOK);
 	if (tmpbuf == NULL)
 		return ENOMEM;
 	chn_lock(b->channel);

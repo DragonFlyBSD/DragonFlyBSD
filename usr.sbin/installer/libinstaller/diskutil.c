@@ -109,7 +109,7 @@ storage_set_memsize(struct storage *s, unsigned long memsize)
 	s->ram = memsize;
 }
 
-unsigned long
+long
 storage_get_memsize(const struct storage *s)
 {
 	return(s->ram);
@@ -505,7 +505,8 @@ slices_free(struct slice *head)
 }
 
 struct subpartition *
-subpartition_new_hammer(struct slice *s, const char *mountpoint, long capacity)
+subpartition_new_hammer(struct slice *s, const char *mountpoint, long capacity,
+    int encrypted)
 {
 	struct subpartition *sp;
 
@@ -524,6 +525,7 @@ subpartition_new_hammer(struct slice *s, const char *mountpoint, long capacity)
 
 	sp->mountpoint = aura_strdup(mountpoint);
 	sp->capacity = capacity;
+	sp->encrypted = encrypted;
 	sp->type = FS_HAMMER;
 
 	/*
@@ -566,8 +568,8 @@ subpartition_new_hammer(struct slice *s, const char *mountpoint, long capacity)
  * "choose a reasonable default."
  */
 struct subpartition *
-subpartition_new(struct slice *s, const char *mountpoint, long capacity,
-		 int softupdates, long fsize, long bsize, int tmpfsbacked)
+subpartition_new_ufs(struct slice *s, const char *mountpoint, long capacity,
+    int encrypted, int softupdates, long fsize, long bsize, int tmpfsbacked)
 {
 	struct subpartition *sp, *sptmp;
 	int letter='d';
@@ -578,6 +580,7 @@ subpartition_new(struct slice *s, const char *mountpoint, long capacity,
 
 	sp->mountpoint = aura_strdup(mountpoint);
 	sp->capacity = capacity;
+	sp->encrypted = encrypted;
 	sp->type = FS_UFS;
 
 	if (fsize == -1) {
@@ -783,10 +786,22 @@ subpartition_get_bsize(const struct subpartition *sp)
 	return(sp->bsize);
 }
 
-unsigned long
+long
 subpartition_get_capacity(const struct subpartition *sp)
 {
 	return(sp->capacity);
+}
+
+void
+subpartition_clr_encrypted(struct subpartition *sp)
+{
+	sp->encrypted = 0;
+}
+
+int
+subpartition_is_encrypted(const struct subpartition *sp)
+{
+	return(sp->encrypted);
 }
 
 int
@@ -916,6 +931,22 @@ swapoff_all(const struct i_fn_args *a)
 		    a->os_root, cmd_name(a, "AWK"),
 		    a->os_root, cmd_name(a, "XARGS"),
 		    a->os_root, cmd_name(a, "SWAPOFF"))) != NULL)
+		aura_pclose(p);
+
+	return(p);
+}
+
+void *
+remove_all_mappings(const struct i_fn_args *a)
+{
+	FILE *p;
+
+	if ((p = aura_popen("%s%s -1 %sdev/mapper | %s%s -vw control | %s%s -n 1 %s%s luksClose", "r",
+		    a->os_root, cmd_name(a, "LS"),
+		    a->os_root,
+		    a->os_root, cmd_name(a, "GREP"),
+		    a->os_root, cmd_name(a, "XARGS"),
+		    a->os_root, cmd_name(a, "CRYPTSETUP"))) != NULL)
 		aura_pclose(p);
 
 	return(p);

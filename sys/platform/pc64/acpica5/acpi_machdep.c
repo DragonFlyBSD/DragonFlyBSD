@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/acpi_machdep.c,v 1.20 2004/05/05 19:51:15 njl Exp $
- * $DragonFly: src/sys/platform/pc32/acpica5/acpi_machdep.c,v 1.14 2008/09/29 06:59:45 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -64,9 +63,8 @@ static d_write_t apmwrite;
 static d_ioctl_t apmioctl;
 static d_kqfilter_t apmkqfilter;
 
-#define CDEV_MAJOR 39
 static struct dev_ops apm_ops = {
-	{ "apm", CDEV_MAJOR, 0 },
+	{ "apm", 0, 0 },
         .d_open = apmopen,
         .d_close = apmclose,
 	.d_write = apmwrite,

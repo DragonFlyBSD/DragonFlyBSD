@@ -50,10 +50,11 @@ extern int oflag;
 extern int lflag;
 extern int Tflag;
 extern sa_family_t family;
+struct utmpentry;
 
 void	 enter_lastlog(PERSON *);
 PERSON	*enter_person(struct passwd *);
-void	 enter_where(struct utmp *, PERSON *);
+void	 enter_where(struct utmpentry *, PERSON *);
 PERSON	*find_person(char *);
 int		hide(struct passwd *);
 void	 lflag_print(void);

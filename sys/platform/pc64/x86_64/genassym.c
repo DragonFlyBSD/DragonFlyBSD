@@ -182,9 +182,6 @@ ASSYM(TD_CRITCOUNT, offsetof(struct thread, td_critcount));
 ASSYM(TD_MACH, offsetof(struct thread, td_mach));
 ASSYM(TD_WCHAN, offsetof(struct thread, td_wchan));
 ASSYM(TD_NEST_COUNT, offsetof(struct thread, td_nest_count));
-#ifdef SMP
-ASSYM(TD_MPCOUNT, offsetof(struct thread, td_mpcount));
-#endif
 ASSYM(TD_FLAGS, offsetof(struct thread, td_flags));
 ASSYM(TD_SAVEFPU, offsetof(struct thread, td_savefpu));
 ASSYM(TDF_RUNNING, TDF_RUNNING);
@@ -196,12 +193,11 @@ ASSYM(MDGLOBALDATA_BASEALLOC_PAGES, MDGLOBALDATA_BASEALLOC_PAGES);
 
 ASSYM(GD_PRIVATE_TSS, offsetof(struct mdglobaldata, gd_private_tss));
 ASSYM(GD_SCRATCH_RSP, offsetof(struct mdglobaldata, gd_scratch_rsp));
-ASSYM(GD_RSP0, offsetof(struct mdglobaldata, gd_rsp0));
 ASSYM(GD_USER_FS, offsetof(struct mdglobaldata, gd_user_fs));
 ASSYM(GD_USER_GS, offsetof(struct mdglobaldata, gd_user_gs));
 ASSYM(GD_INTR_NESTING_LEVEL, offsetof(struct mdglobaldata, mi.gd_intr_nesting_level));
 
-ASSYM(GD_FPENDING, offsetof(struct mdglobaldata, gd_fpending));
+ASSYM(GD_IPENDING, offsetof(struct mdglobaldata, gd_ipending));
 ASSYM(GD_SPENDING, offsetof(struct mdglobaldata, gd_spending));
 ASSYM(GD_COMMON_TSS, offsetof(struct mdglobaldata, gd_common_tss));
 ASSYM(GD_COMMON_TSSD, offsetof(struct mdglobaldata, gd_common_tssd));
@@ -209,7 +205,7 @@ ASSYM(GD_TSS_GDT, offsetof(struct mdglobaldata, gd_tss_gdt));
 ASSYM(GD_NPXTHREAD, offsetof(struct mdglobaldata, gd_npxthread));
 ASSYM(GD_FPU_LOCK, offsetof(struct mdglobaldata, gd_fpu_lock));
 ASSYM(GD_SAVEFPU, offsetof(struct mdglobaldata, gd_savefpu));
-ASSYM(GD_OTHER_CPUS, offsetof(struct mdglobaldata, gd_other_cpus));
+ASSYM(GD_OTHER_CPUS, offsetof(struct mdglobaldata, mi.gd_other_cpus));
 ASSYM(GD_SS_EFLAGS, offsetof(struct mdglobaldata, gd_ss_eflags));
 ASSYM(GD_REQFLAGS, offsetof(struct mdglobaldata, mi.gd_reqflags));
 
@@ -240,10 +236,15 @@ ASSYM(MACHINTR_INTREN, offsetof(struct machintr_abi, intren));
 ASSYM(TDPRI_INT_SUPPORT, TDPRI_INT_SUPPORT);
 #ifdef SMP
 ASSYM(CPUMASK_LOCK, CPUMASK_LOCK);
+ASSYM(CPUMASK_BIT, CPUMASK_BIT);
 #endif
 
 #ifdef SMP
-ASSYM(AIMI_APIC_ADDRESS, offsetof(struct apic_intmapinfo, apic_address));
-ASSYM(AIMI_REDIRINDEX, offsetof(struct apic_intmapinfo, redirindex));
-ASSYM(AIMI_SIZE, sizeof(struct apic_intmapinfo));
+ASSYM(IOAPIC_IM_ADDR, offsetof(struct apic_intmapinfo, apic_address));
+ASSYM(IOAPIC_IM_ENTIDX, offsetof(struct apic_intmapinfo, redirindex));
+ASSYM(IOAPIC_IM_FLAGS, offsetof(struct apic_intmapinfo, flags));
+ASSYM(IOAPIC_IM_SIZE, sizeof(struct apic_intmapinfo));
+ASSYM(IOAPIC_IM_SZSHIFT, IOAPIC_IM_SZSHIFT);
+ASSYM(IOAPIC_IM_FLAG_LEVEL, IOAPIC_IM_FLAG_LEVEL);
+ASSYM(IOAPIC_IM_FLAG_MASKED, IOAPIC_IM_FLAG_MASKED);
 #endif

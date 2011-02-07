@@ -96,8 +96,7 @@ scsp_config(char *cfn)
 	 */
 	cfg_file = fopen(cfn, "r");
 	if (!cfg_file) {
-		scsp_log(LOG_ERR, "can't open config file %s",
-				(void *)cfn);
+		scsp_log(LOG_ERR, "can't open config file %s", cfn);
 		exit(1);
 	}
 
@@ -811,8 +810,7 @@ set_intf(char *netif)
 	 */
 	rc = verify_nif_name(netif);
 	if (rc == 0) {
-		parse_error("%s is not a valid network interface",
-				(void *)netif);
+		parse_error("%s is not a valid network interface", netif);
 		rc = 1;
 		goto set_intf_done;
 	} else if (rc < 0) {
@@ -963,8 +961,7 @@ start_server(char *name)
 		/*
 		 * Log the fact that we're updating the entry
 		 */
-		scsp_log(LOG_INFO, "updating server entry for %s",
-				(void *)name);
+		scsp_log(LOG_INFO, "updating server entry for %s", name);
 
 		/*
 		 * Free the existing cache

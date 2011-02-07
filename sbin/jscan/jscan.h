@@ -184,7 +184,7 @@ struct jdata *jseek(struct jfile *jf, int64_t transid,
 void jwrite(struct jfile *jf, struct jdata *jd);
 struct jdata *jref(struct jdata *jd);
 void jfree(struct jfile *jf, struct jdata *jd);
-void jf_warn(struct jfile *jf, const char *ctl, ...);
+void jf_warn(struct jfile *jf, const char *ctl, ...) __printflike(2, 3);
 
 struct jstream *jaddrecord(struct jsession *ss, struct jdata *jd);
 void jscan_dispose(struct jstream *js);

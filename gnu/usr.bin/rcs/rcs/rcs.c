@@ -730,7 +730,7 @@ getaccessor(opt, command)
 
 
 {
-        register c;
+        register int c;
 	register char *sp;
 
 	sp = opt;
@@ -790,7 +790,7 @@ char    *sp;
 {
 	char const *temp;
         struct  Status  *pt;
-        register        c;
+        register int    c;
 
 	while ((c = *++sp) ==' ' || c == '\t' || c == '\n')
 	    continue;
@@ -1394,7 +1394,7 @@ dolocks()
 	for (lockpt = rmvlocklst;  lockpt;  lockpt = lockpt->nextrev)
 	    if (expandsym(lockpt->revno, &numrev)) {
 		target = genrevs(numrev.string, (char *)0, (char *)0, (char *)0, &gendeltas);
-                if ( target )
+                if ( target ) {
 		   if (!(countnumflds(numrev.string)&1) && cmpnum(target->num,numrev.string))
 			rcserror("can't unlock nonexisting revision %s",
 				lockpt->revno
@@ -1402,19 +1402,21 @@ dolocks()
                    else
 			changed |= breaklock(target);
                         /* breaklock does its own diagnose */
+		}
             }
 
         /*  add new locks which stored in newlocklst  */
 	for (lockpt = newlocklst;  lockpt;  lockpt = lockpt->nextrev)
 	    changed |= setlock(lockpt->revno);
 
-	if (lockhead) /*  lock default branch or head  */
+	if (lockhead) { /*  lock default branch or head  */
 	    if (Dbranch)
 		changed |= setlock(Dbranch);
 	    else if (Head)
 		changed |= setlock(Head->num);
 	    else
 		rcswarn("can't lock an empty tree");
+	}
 	return changed;
 }
 
@@ -1433,7 +1435,7 @@ setlock(rev)
 	if (expandsym(rev, &numrev)) {
 	    target = genrevs(numrev.string, (char*)0, (char*)0,
 			     (char*)0, &gendeltas);
-            if ( target )
+            if ( target ) {
 	       if (!(countnumflds(numrev.string)&1) && cmpnum(target->num,numrev.string))
 		    rcserror("can't lock nonexisting revision %s",
 			numrev.string
@@ -1447,6 +1449,7 @@ setlock(rev)
 			return r;
 		    }
 	       }
+	    }
 	}
 	return 0;
 }
@@ -1489,7 +1492,7 @@ rcs_setstate(rev,status)
 	if (expandsym(rev, &numrev)) {
 	    target = genrevs(numrev.string, (char*)0, (char*)0,
 			     (char*)0, &gendeltas);
-            if ( target )
+            if ( target ) {
 	       if (!(countnumflds(numrev.string)&1) && cmpnum(target->num,numrev.string))
 		    rcserror("can't set state of nonexisting revision %s",
 			numrev.string
@@ -1498,6 +1501,7 @@ rcs_setstate(rev,status)
                     target->state = status;
 		    return true;
 	       }
+	    }
 	}
 	return false;
 }

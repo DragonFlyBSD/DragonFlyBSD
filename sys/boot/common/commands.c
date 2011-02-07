@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/commands.c,v 1.19 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/commands.c,v 1.4 2008/09/02 17:21:12 dillon Exp $
  */
 
 #include <stand.h>
@@ -33,7 +32,8 @@
 #include "bootstrap.h"
 
 char		*command_errmsg;
-char		command_errbuf[256];	/* XXX should have procedural interface for setting, size limit? */
+char		command_errbuf[256];
+int		CurrentCondition = 1;
 
 static int page_file(char *filename);
 
@@ -132,9 +132,13 @@ command_help(int argc, char *argv[])
 
     /* page the help text from our load path */
     /* sprintf(buf, "%s/boot/loader.help", getenv("loaddev")); */
-    if ((hfd = rel_open("loader.help", NULL, O_RDONLY)) < 0) {
-	printf("Verbose help not available, use '?' to list commands\n");
-	return(CMD_OK);
+    /* page the help text from our base path */
+    snprintf(buf, sizeof(buf), "%sloader.help", getenv("base"));
+    if ((hfd = open(buf, O_RDONLY)) < 0) {
+	if ((hfd = rel_open("loader.help", NULL, O_RDONLY)) < 0) {
+	    printf("Verbose help not available, use '?' to list commands\n");
+	    return(CMD_OK);
+	}
     }
 
     /* pick up request from arguments */
@@ -212,12 +216,18 @@ static int
 command_commandlist(int argc, char *argv[])
 {
     struct bootblk_command	**cmdp;
+    char str[81];
     
+    pager_open();
     printf("Available commands:\n");
     SET_FOREACH(cmdp, Xcommand_set) {
-	if (((*cmdp)->c_name != NULL) && ((*cmdp)->c_desc != NULL))
-	    printf("  %-15s  %s\n", (*cmdp)->c_name, (*cmdp)->c_desc);
+	if (((*cmdp)->c_name != NULL) && ((*cmdp)->c_desc != NULL)) {
+	    snprintf(str, sizeof(str), "  %-15s  %s\n",
+		(*cmdp)->c_name, (*cmdp)->c_desc);
+	    pager_output(str);
+	}
     }
+    pager_close();
     return(CMD_OK);
 }
 
@@ -425,9 +435,16 @@ static int
 page_file(char *filename)
 {
     int result;
+    int fd;
+    char *fullpath;
 
-    result = pager_file(filename);
-
+    if ((fd = rel_open(filename, &fullpath, O_RDONLY)) != -1) {
+	close(fd);
+	result = pager_file(fullpath);
+	free(fullpath);
+    } else {
+	result = -1;
+    }
     if (result == -1)
 	sprintf(command_errbuf, "error showing %s", filename);
 
@@ -479,3 +496,141 @@ command_lsdev(int argc, char *argv[])
     return(CMD_OK);
 }
 
+/*
+ * CONDITIONALS
+ */
+COMMAND_SET_COND(ifexists, "ifexists", "conditional file/dir present",
+		 command_ifexists);
+
+struct cond {
+    char    inherit;
+    char    current;
+};
+
+static struct cond CondStack[32];
+static int CondIndex;
+
+static int
+command_ifexists(int argc, char *argv[])
+{
+	if (CondIndex + 1 == sizeof(CondStack)/sizeof(CondStack[0])) {
+		sprintf(command_errbuf, "if stack too deep");
+		return(-1);
+	} else if (argc != 2) {
+		sprintf(command_errbuf, "ifexists requires one argument");
+		return(-1);
+	} else {
+		struct stat sb;
+		struct cond *cond = &CondStack[CondIndex++];
+
+		cond->inherit = CurrentCondition;
+
+		if (rel_stat(argv[1], &sb)) {
+			cond->current = 0;
+		} else {
+			cond->current = 1;
+		}
+		CurrentCondition = (cond->inherit && cond->current);
+		return(CMD_OK);
+	}
+}
+
+COMMAND_SET_COND(ifset, "ifset", "conditional kenv variable present", command_ifset);
+
+static int
+command_ifset(int argc, char *argv[])
+{
+	if (CondIndex + 1 == sizeof(CondStack)/sizeof(CondStack[0])) {
+		sprintf(command_errbuf, "if stack too deep");
+		return(-1);
+	} else if (argc != 2) {
+		sprintf(command_errbuf, "ifset requires one argument");
+		return(-1);
+	} else {
+		struct cond *cond = &CondStack[CondIndex++];
+
+		cond->inherit = CurrentCondition;
+
+		if (getenv(argv[1])) {
+			cond->current = 1;
+		} else {
+			cond->current = 0;
+		}
+		CurrentCondition = (cond->inherit && cond->current);
+		return(CMD_OK);
+	}
+}
+
+COMMAND_SET_COND(elseifexists, "elseifexists", "conditional file/dir present",
+		 command_elseifexists);
+
+static int
+command_elseifexists(int argc, char *argv[])
+{
+	if (CondIndex == 0) {
+		sprintf(command_errbuf, "elseifexists without if");
+		return(-1);
+	} else if (argc != 2) {
+		sprintf(command_errbuf, "elseifexists requires one argument");
+		return(-1);
+	} else {
+		struct stat sb;
+		struct cond *cond = &CondStack[CondIndex - 1];
+
+		if (cond->inherit == 0) {
+			CurrentCondition = 0;	/* already ran / can't run */
+		} else if (cond->current) {
+			cond->inherit = 0;	/* can't run any more */
+			cond->current = 0;
+			CurrentCondition = 0;
+		} else {
+			if (rel_stat(argv[1], &sb)) {
+				cond->current = 0;
+			} else {
+				cond->current = 1;
+			}
+			CurrentCondition = (cond->inherit && cond->current);
+		}
+		return(CMD_OK);
+	}
+}
+
+COMMAND_SET_COND(else, "else", "conditional if/else/endif", command_else);
+
+static int
+command_else(int argc, char *argv[])
+{
+	struct cond *cond;
+
+	if (CondIndex) {
+		cond = &CondStack[CondIndex - 1];
+		cond->current = !cond->current;
+		CurrentCondition = (cond->inherit && cond->current);
+		return(CMD_OK);
+	} else {
+		sprintf(command_errbuf, "else without if");
+		return(-1);
+	}
+}
+
+COMMAND_SET_COND(endif, "endif", "conditional if/else/endif", command_endif);
+
+static int
+command_endif(int argc, char *argv[])
+{
+	struct cond *cond;
+
+	if (CondIndex) {
+		--CondIndex;
+		if (CondIndex) {
+			cond = &CondStack[CondIndex - 1];
+			CurrentCondition = (cond->inherit && cond->current);
+		} else {
+			CurrentCondition = 1;
+		}
+		return(CMD_OK);
+	} else {
+		sprintf(command_errbuf, "endif without if");
+		return(-1);
+	}
+}

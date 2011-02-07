@@ -2310,7 +2310,7 @@ Var_Subst(const char str[], GNode *ctxt, bool err)
 					 */
 					if (!errorReported) {
 						Parse_Error(PARSE_FATAL,
-							    "Undefined variable \"%.*s\"", subvp.ptr - subvp.input, str);
+							    "Undefined variable \"%.*s\"", (int)(subvp.ptr - subvp.input), str);
 					}
 					errorReported = true;
 					str = subvp.ptr;
@@ -2414,7 +2414,7 @@ Var_SubstOnly(const char var[], const char str[], bool err)
 						 */
 						if (!errorReported) {
 							Parse_Error(PARSE_FATAL,
-								    "Undefined variable \"%.*s\"", subvp.ptr - subvp.input, str);
+								    "Undefined variable \"%.*s\"", (int)(subvp.ptr - subvp.input), str);
 						}
 						errorReported = true;
 						str = subvp.ptr;

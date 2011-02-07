@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  *
  * $NetBSD: rtw.c,v 1.72 2006/03/28 00:48:10 dyoung Exp $
- * $DragonFly: src/sys/dev/netif/rtw/rtw.c,v 1.13 2008/05/14 11:59:21 sephe Exp $
  */
 
 /*
@@ -719,7 +718,7 @@ out:
 	RTW_WRITE8(regs, RTW_PSR, psr & ~RTW_PSR_PSEN);
 
 	bus_space_write_region_4(regs->r_bt, regs->r_bh, RTW_DK0, rk->rk_words,
-		sizeof(rk->rk_words) / sizeof(rk->rk_words[0]));
+		NELEM(rk->rk_words));
 
 	RTW_WBW(regs, RTW_DK0, RTW_PSR);
 	RTW_WRITE8(regs, RTW_PSR, psr);
@@ -1433,7 +1432,7 @@ rtw_intr_rx(struct rtw_softc *sc, uint16_t isr)
 		len -= IEEE80211_CRC_LEN;
 
 		hwrate = __SHIFTOUT(hstat, RTW_RXSTAT_RATE_MASK);
-		if (hwrate >= sizeof(ratetbl) / sizeof(ratetbl[0])) {
+		if (hwrate >= NELEM(ratetbl)) {
 			if_printf(ifp, "unknown rate #%d\n",
 				  __SHIFTOUT(hstat, RTW_RXSTAT_RATE_MASK));
 			ifp->if_ierrors++;

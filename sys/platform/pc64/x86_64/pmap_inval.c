@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003,2004,2008 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003-2011 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -62,24 +62,14 @@
 #include <machine/pmap.h>
 #include <machine/pmap_inval.h>
 
-#ifdef SMP
-
-static void
-_cpu_invltlb(void *dummy)
-{
-    cpu_invltlb();
-}
-
-static void
-_cpu_invl1pg(void *data)
-{
-    cpu_invlpg(data);
-}
-
-#endif
+static void pmap_inval_callback(void *arg);
 
 /*
  * Initialize for add or flush
+ *
+ * The critical section is required to prevent preemption, allowing us to
+ * set CPUMASK_LOCK on the pmap.  The critical section is also assumed
+ * when lwkt_process_ipiq() is called.
  */
 void
 pmap_inval_init(pmap_inval_info_t info)
@@ -92,89 +82,63 @@ pmap_inval_init(pmap_inval_info_t info)
  * Add a (pmap, va) pair to the invalidation list and protect access
  * as appropriate.
  *
- * CPUMASK_LOCK is used to interlock thread switchins
+ * CPUMASK_LOCK is used to interlock thread switchins, otherwise another
+ * cpu can switch in a pmap that we are unaware of and interfere with our
+ * pte operation.
  */
 void
 pmap_inval_interlock(pmap_inval_info_t info, pmap_t pmap, vm_offset_t va)
 {
-#ifdef SMP
     cpumask_t oactive;
+#ifdef SMP
     cpumask_t nactive;
 
+    DEBUG_PUSH_INFO("pmap_inval_interlock");
     for (;;) {
 	oactive = pmap->pm_active & ~CPUMASK_LOCK;
 	nactive = oactive | CPUMASK_LOCK;
-	if (atomic_cmpset_int(&pmap->pm_active, oactive, nactive))
+	if (atomic_cmpset_cpumask(&pmap->pm_active, oactive, nactive))
 		break;
-	crit_enter();
 	lwkt_process_ipiq();
-	crit_exit();
+	cpu_pause();
     }
-
-    if ((info->pir_flags & PIRF_CPUSYNC) == 0) {
-	info->pir_flags |= PIRF_CPUSYNC;
-	info->pir_cpusync.cs_run_func = NULL;
-	info->pir_cpusync.cs_fin1_func = NULL;
-	info->pir_cpusync.cs_fin2_func = NULL;
-	lwkt_cpusync_start(oactive, &info->pir_cpusync);
-    } else if (pmap->pm_active & ~info->pir_cpusync.cs_mask) {
-	lwkt_cpusync_add(oactive, &info->pir_cpusync);
-    }
+    DEBUG_POP_INFO();
 #else
-    if (pmap->pm_active == 0)
-	return;
+    oactive = pmap->pm_active & ~CPUMASK_LOCK;
 #endif
-    if ((info->pir_flags & (PIRF_INVLTLB|PIRF_INVL1PG)) == 0) {
-	if (va == (vm_offset_t)-1) {
-	    info->pir_flags |= PIRF_INVLTLB;
-#ifdef SMP
-	    info->pir_cpusync.cs_fin2_func = _cpu_invltlb;
-#endif
-	} else {
-	    info->pir_flags |= PIRF_INVL1PG;
-	    info->pir_cpusync.cs_data = (void *)va;
-#ifdef SMP
-	    info->pir_cpusync.cs_fin2_func = _cpu_invl1pg;
-#endif
-	}
-    } else {
-	info->pir_flags |= PIRF_INVLTLB;
-#ifdef SMP
-	info->pir_cpusync.cs_fin2_func = _cpu_invltlb;
-#endif
-    }
+    KKASSERT((info->pir_flags & PIRF_CPUSYNC) == 0);
+    info->pir_va = va;
+    info->pir_flags = PIRF_CPUSYNC;
+    lwkt_cpusync_init(&info->pir_cpusync, oactive, pmap_inval_callback, info);
+    lwkt_cpusync_interlock(&info->pir_cpusync);
 }
 
 void
 pmap_inval_deinterlock(pmap_inval_info_t info, pmap_t pmap)
 {
+    KKASSERT(info->pir_flags & PIRF_CPUSYNC);
 #ifdef SMP
-	atomic_clear_int(&pmap->pm_active, CPUMASK_LOCK);
+    atomic_clear_cpumask(&pmap->pm_active, CPUMASK_LOCK);
 #endif
+    lwkt_cpusync_deinterlock(&info->pir_cpusync);
+    info->pir_flags = 0;
 }
 
-/*
- * Synchronize changes with target cpus.
- */
-void
-pmap_inval_flush(pmap_inval_info_t info)
+static void
+pmap_inval_callback(void *arg)
 {
-#ifdef SMP
-    if (info->pir_flags & PIRF_CPUSYNC)
-	lwkt_cpusync_finish(&info->pir_cpusync);
-#else
-    if (info->pir_flags & PIRF_INVLTLB)
+    pmap_inval_info_t info = arg;
+
+    if (info->pir_va == (vm_offset_t)-1)
 	cpu_invltlb();
-    else if (info->pir_flags & PIRF_INVL1PG)
-	cpu_invlpg(info->pir_cpusync.cs_data);
-#endif
-    info->pir_flags = 0;
+    else
+	cpu_invlpg((void *)info->pir_va);
 }
 
 void
 pmap_inval_done(pmap_inval_info_t info)
 {
-    pmap_inval_flush(info);
+    KKASSERT((info->pir_flags & PIRF_CPUSYNC) == 0);
     crit_exit_id("inval");
 }
 

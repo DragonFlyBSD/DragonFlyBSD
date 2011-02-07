@@ -195,11 +195,12 @@ cpu_lfence(void)
 static __inline void
 cpu_sfence(void)
 {
-#ifdef SMP
-	__asm __volatile("sfence" : : : "memory");
-#else
+	/*
+	 * NOTE:
+	 * Don't use 'sfence' here, as it will create a lot of
+	 * unnecessary stalls.
+	 */
 	__asm __volatile("" : : : "memory");
-#endif
 }
 
 /*
@@ -378,6 +379,7 @@ invd(void)
  */
 #ifdef SMP
 void smp_invltlb(void);
+void smp_invltlb_intr(void);
 #else
 #define smp_invltlb()
 #endif

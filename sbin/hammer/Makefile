@@ -8,11 +8,11 @@ SRCS=	hammer.c ondisk.c blockmap.c cache.c misc.c cycle.c \
 	cmd_synctid.c cmd_stats.c \
 	cmd_pseudofs.c cmd_snapshot.c cmd_mirror.c cmd_status.c \
 	cmd_cleanup.c cmd_info.c cmd_version.c cmd_volume.c \
-	cmd_config.c cmd_recover.c
+	cmd_config.c cmd_recover.c cmd_dedup.c
 MAN=	hammer.8
 
 CFLAGS+= -I${.CURDIR}/../../sys -DALIST_NO_DEBUG
-LDADD= -lm -lutil
+LDADD= -lm -lutil -lmd
 
 .PATH: ${.CURDIR}/../../sys/libkern
 SRCS+= crc32.c

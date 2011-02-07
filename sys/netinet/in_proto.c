@@ -32,7 +32,6 @@
  *
  *	@(#)in_proto.c	8.2 (Berkeley) 2/9/95
  * $FreeBSD: src/sys/netinet/in_proto.c,v 1.53.2.7 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/in_proto.c,v 1.17 2008/10/27 02:56:30 sephe Exp $
  */
 
 #include "opt_ipdivert.h"
@@ -92,11 +91,6 @@
 
 #ifdef IPXIP
 #include <netproto/ipx/ipx_ip.h>
-#endif
-
-#ifdef NSIP
-#include <netns/ns.h>
-#include <netns/ns_if.h>
 #endif
 
 #ifdef SCTP
@@ -459,22 +453,6 @@ struct protosw inetsw[] = {
 	.pr_usrreqs = &rip_usrreqs
     },
 #endif
-#ifdef NSIP
-    {
-	.pr_type = SOCK_RAW,
-	.pr_domain = &inetdomain,
-	.pr_protocol = IPPROTO_IDP,
-	.pr_flags = PR_ATOMIC|PR_ADDR|PR_LASTHDR,
-
-	.pr_input = idpip_input,
-	.pr_output = NULL,
-	.pr_ctlinput = nsip_ctlinput,
-	.pr_ctloutput = NULL,
-
-	.pr_ctlport = cpu0_ctlport,
-	.pr_usrreqs = &rip_usrreqs
-    },
-#endif
 #ifdef PIM
     {
 	.pr_type = SOCK_RAW,
@@ -543,7 +521,7 @@ struct protosw inetsw[] = {
 
 struct domain inetdomain = {
 	AF_INET, "internet", NULL, NULL, NULL,
-	inetsw, &inetsw[sizeof(inetsw)/sizeof(inetsw[0])],
+	inetsw, &inetsw[NELEM(inetsw)],
 	SLIST_ENTRY_INITIALIZER,
 	in_inithead, 32, sizeof(struct sockaddr_in),
 };

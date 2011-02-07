@@ -120,7 +120,7 @@ int driveio(struct drive *, char *, size_t, off_t, buf_cmd_t);
 int set_drive_parms(struct drive *drive);
 int init_drive(struct drive *, int);
 /* void throw_rude_remark (int, struct _ioctl_reply *, char *, ...); XXX */
-void throw_rude_remark(int, char *,...);
+void throw_rude_remark(int, char *,...) __printflike(2, 3);
 
 /* XXX die die */
 void format_config(char *config, int len);

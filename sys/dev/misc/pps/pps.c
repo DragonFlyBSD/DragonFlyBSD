@@ -7,7 +7,6 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/ppbus/pps.c,v 1.24.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/misc/pps/pps.c,v 1.17 2006/10/25 20:55:55 dillon Exp $
  *
  * This driver implements a draft-mogul-pps-api-02.txt PPS source.
  *
@@ -15,8 +14,6 @@
  * The echo output pin is pin#14
  *
  */
-
-#include "use_pps.h"
 
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -59,9 +56,8 @@ static	d_open_t	ppsopen;
 static	d_close_t	ppsclose;
 static	d_ioctl_t	ppsioctl;
 
-#define CDEV_MAJOR 89
 static struct dev_ops pps_ops = {
-	{ PPS_NAME, CDEV_MAJOR, 0 },
+	{ PPS_NAME, 0, 0 },
 	.d_open =	ppsopen,
 	.d_close =	ppsclose,
 	.d_ioctl =	ppsioctl,

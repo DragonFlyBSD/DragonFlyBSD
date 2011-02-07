@@ -72,7 +72,8 @@ int	dirchk = 1;
 int	dirchk = 0;
 #endif
 
-SYSCTL_INT(_debug, OID_AUTO, dircheck, CTLFLAG_RW, &dirchk, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, dircheck, CTLFLAG_RW, &dirchk, 0,
+    "Enable full validation checks of directory");
 
 /* true if old FS format...*/
 #define OFSFMT(vp)	((vp)->v_mount->mnt_maxsymlinklen <= 0)

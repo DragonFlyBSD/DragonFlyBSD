@@ -52,6 +52,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "utmpentry.h"
 #include <utmp.h>
 #include "finger.h"
 #include "pathnames.h"
@@ -141,26 +142,22 @@ enter_lastlog(PERSON *pn)
 	if (doit) {
 		w = walloc(pn);
 		w->info = LASTLOG;
-		bcopy(ll.ll_line, w->tty, UT_LINESIZE);
-		w->tty[UT_LINESIZE] = 0;
-		bcopy(ll.ll_host, w->host, UT_HOSTSIZE);
-		w->host[UT_HOSTSIZE] = 0;
+		asprintf(&w->tty, "%s", ll.ll_line);
+		asprintf(&w->host, "%s", ll.ll_host);
 		w->loginat = ll.ll_time;
 	}
 }
 
 void
-enter_where(struct utmp *ut, PERSON *pn)
+enter_where(struct utmpentry *ep, PERSON *pn)
 {
 	WHERE *w;
 
 	w = walloc(pn);
 	w->info = LOGGEDIN;
-	bcopy(ut->ut_line, w->tty, UT_LINESIZE);
-	w->tty[UT_LINESIZE] = 0;
-	bcopy(ut->ut_host, w->host, UT_HOSTSIZE);
-	w->host[UT_HOSTSIZE] = 0;
-	w->loginat = (time_t)ut->ut_time;
+	w->tty = ep->line;
+	w->host = ep->host;
+	w->loginat = (time_t)ep->tv.tv_sec;
 	find_idle_and_ttywrite(w);
 }
 
@@ -245,9 +242,10 @@ walloc(PERSON *pn)
 
 	if ((w = malloc(sizeof(WHERE))) == NULL)
 		err(1, NULL);
-	if (pn->whead == NULL)
+	bzero(w, sizeof(WHERE));
+	if (pn->whead == NULL) {
 		pn->whead = pn->wtail = w;
-	else {
+	} else {
 		pn->wtail->next = w;
 		pn->wtail = w;
 	}

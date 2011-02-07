@@ -39,11 +39,9 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/vm_machdep.c,v 1.10 2008/08/02 05:22:21 dillon Exp $
  */
 
 #include "use_npx.h"
-#include "use_isa.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -56,7 +54,6 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/unistd.h>
-#include <sys/dsched.h>
 
 #include <machine/clock.h>
 #include <machine/cpu.h>
@@ -302,7 +299,6 @@ cpu_lwp_exit(void)
         }
 	td->td_gd->gd_cnt.v_swtch++;
 
-	dsched_exit_thread(td);
 	crit_enter_quick(td);
 	if (td->td_flags & TDF_TSLEEPQ)
 		tsleep_remove(td);

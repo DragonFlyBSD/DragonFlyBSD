@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_zip.c,v 1.28 2008/12/06 06:45:15 kientzle Exp $");
+__FBSDID("$FreeBSD: head/lib/libarchive/archive_read_support_format_zip.c 201102 2009-12-28 03:11:36Z kientzle $");
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
@@ -36,10 +36,6 @@ __FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_zip.c,v 1.28 
 #include <time.h>
 #ifdef HAVE_ZLIB_H
 #include <zlib.h>
-#else
-/* Hmmm... This is necessary, but means that we can't correctly extract
- * even uncompressed entries on platforms that lack zlib. */
-#define	crc32(crc, buf, len) (unsigned long)0
 #endif
 
 #include "archive.h"
@@ -47,6 +43,10 @@ __FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_zip.c,v 1.28 
 #include "archive_private.h"
 #include "archive_read_private.h"
 #include "archive_endian.h"
+
+#ifndef HAVE_ZLIB_H
+#include "archive_crc32.h"
+#endif
 
 struct zip {
 	/* entry_bytes_remaining is the number of bytes we expect. */
@@ -210,7 +210,7 @@ archive_read_format_zip_bid(struct archive_read *a)
 			/* Get 4k of data beyond where we stopped. */
 			buff = __archive_read_ahead(a, offset + 4096,
 			    &bytes_avail);
-			if (bytes_avail < offset + 1)
+			if (buff == NULL)
 				break;
 			p = (const char *)buff + offset;
 			while (p + 9 < (const char *)buff + bytes_avail) {
@@ -540,8 +540,7 @@ archive_read_format_zip_read_data(struct archive_read *a,
 		return (r);
 	/* Update checksum */
 	if (*size)
-		zip->entry_crc32 =
-		    crc32(zip->entry_crc32, *buff, *size);
+		zip->entry_crc32 = crc32(zip->entry_crc32, *buff, *size);
 	/* If we hit the end, swallow any end-of-data marker. */
 	if (zip->end_of_entry) {
 		if (zip->flags & ZIP_LENGTH_AT_END) {

@@ -198,7 +198,8 @@ rn_lookup(char *key, char *mask, struct radix_node_head *head)
 	char *netmask = NULL;
 
 	if (mask != NULL) {
-		x = rn_addmask(mask, TRUE, head->rnh_treetop->rn_offset);
+		x = rn_addmask(mask, TRUE, head->rnh_treetop->rn_offset,
+			       head->rnh_maskhead);
 		if (x == NULL)
 			return (NULL);
 		netmask = x->rn_key;
@@ -429,7 +430,8 @@ on1:
 }
 
 struct radix_node *
-rn_addmask(char *netmask, boolean_t search, int skip)
+rn_addmask(char *netmask, boolean_t search, int skip,
+	   struct radix_node_head *mask_rnh)
 {
 	struct radix_node *x, *saved_x;
 	char *cp, *cplim;
@@ -437,7 +439,6 @@ rn_addmask(char *netmask, boolean_t search, int skip)
 	boolean_t maskduplicated, isnormal;
 	static int last_zeroed = 0;
 	char *addmask_key;
-	struct radix_node_head *mask_rnh = mask_rnheads[mycpuid];
 
 	if ((mlen = clen(netmask)) > max_keylen)
 		mlen = max_keylen;
@@ -566,7 +567,8 @@ rn_addroute(char *key, char *netmask, struct radix_node_head *head,
 	 * nodes and possibly save time in calculating indices.
 	 */
 	if (netmask != NULL)  {
-		if ((x = rn_addmask(netmask, FALSE, top->rn_offset)) == NULL)
+		if ((x = rn_addmask(netmask, FALSE, top->rn_offset,
+				    head->rnh_maskhead)) == NULL)
 			return (NULL);
 		b_leaf = x->rn_bit;
 		b = -1 - x->rn_bit;
@@ -725,7 +727,8 @@ rn_delete(char *key, char *netmask, struct radix_node_head *head)
 	 * Delete our route from mask lists.
 	 */
 	if (netmask != NULL) {
-		if ((x = rn_addmask(netmask, TRUE, head_off)) == NULL)
+		if ((x = rn_addmask(netmask, TRUE, head_off,
+				    head->rnh_maskhead)) == NULL)
 			return (NULL);
 		netmask = x->rn_key;
 		while (tt->rn_mask != netmask)
@@ -1014,7 +1017,7 @@ rn_walktree(struct radix_node_head *h, walktree_f_t *f, void *w)
 }
 
 int
-rn_inithead(void **head, int off)
+rn_inithead(void **head, struct radix_node_head *maskhead, int off)
 {
 	struct radix_node_head *rnh;
 	struct radix_node *root, *left, *right;
@@ -1042,6 +1045,7 @@ rn_inithead(void **head, int off)
 	right->rn_key = rn_ones;
 
 	rnh->rnh_treetop = root;
+	rnh->rnh_maskhead = maskhead;
 
 	rnh->rnh_addaddr = rn_addroute;
 	rnh->rnh_deladdr = rn_delete;
@@ -1080,7 +1084,14 @@ rn_init(void)
 		*cp++ = -1;
 
 	for (cpu = 0; cpu < ncpus; ++cpu) {
-		if (rn_inithead((void **)&mask_rnheads[cpu], 0) == 0)
+		if (rn_inithead((void **)&mask_rnheads[cpu], NULL, 0) == 0)
 			panic("rn_init 2");
 	}
+}
+
+struct radix_node_head *
+rn_cpumaskhead(int cpu)
+{
+	KKASSERT(mask_rnheads[cpu] != NULL);
+	return mask_rnheads[cpu];
 }

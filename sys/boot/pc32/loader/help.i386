@@ -3,15 +3,20 @@
 
 	$acpi_load
 
-	If the acpi_load variable is set, the ACPI module will be loaded.
-	The use of ACPI can be disabled with:
+	The ACPI driver provides support for the Advanced Configuration and
+	Power Management standard.
 
-	unset acpi_load
-	set hint.acpi.0.disabled="1"
+	If the acpi_load variable is set, the ACPI module will be loaded.
+	The ACPI driver can be disabled with:
+
+		unset acpi_load
+		set hint.acpi.0.disabled=1
 
 	Note that the ACPI autodetection sets a number of hints to
 	pass information to the ACPI module.  These should not be 
 	overridden, or system behaviour will be undefined.
+
+	See acpi.4 man page (on booted system) for full description.
 
 ################################################################################
 # Treboot DReboot the system
@@ -19,6 +24,13 @@
 	reboot
 
 	Causes the system to immediately reboot.
+
+################################################################################
+# Tbcachestat DDisplay disk block cache stats
+
+	bcachestat
+
+	Display disk block cache stats.  For debugging use only.
 
 ################################################################################
 # Theap DDisplay memory management statistics
@@ -54,8 +66,8 @@
 	set root_disk_unit=<value>
 
 	If the code which detects the disk unit number for the root disk is
-	confused, eg. by a mix of SCSI and IDE disks, or IDE disks with
-	gaps in the sequence (eg. no primary slave), the unit number can be
+	confused, e.g. by a mix of SCSI and IDE disks, or IDE disks with
+	gaps in the sequence (i.e. no primary slave), the unit number can be
 	forced by setting this variable.
 
 ################################################################################

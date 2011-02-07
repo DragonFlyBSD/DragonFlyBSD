@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/hda/hdac.c,v 1.36.2.8 2007/11/30 15:11:42 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.14 2007/12/01 08:32:11 hasso Exp $
  */
 
 /*
@@ -86,8 +85,6 @@
 
 #define HDA_DRV_TEST_REV	"20071129_0050"
 #define HDA_WIDGET_PARSER_REV	1
-
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.14 2007/12/01 08:32:11 hasso Exp $");
 
 static int hda_debug
 #ifdef HDA_DEBUG
@@ -399,8 +396,7 @@ static const struct {
 	{ "ovref", HDA_QUIRK_OVREF },
 	{ "vref", HDA_QUIRK_VREF },
 };
-#define HDAC_QUIRKS_TAB_LEN	\
-		(sizeof(hdac_quirks_tab) / sizeof(hdac_quirks_tab[0]))
+#define HDAC_QUIRKS_TAB_LEN NELEM(hdac_quirks_tab)
 
 #define HDA_BDL_MIN	2
 #define HDA_BDL_MAX	256
@@ -461,7 +457,7 @@ static const struct {
 	{ HDA_VIA_ALL,    "VIA (Unknown)"    },
 	{ HDA_SIS_ALL,    "SiS (Unknown)"    },
 };
-#define HDAC_DEVICES_LEN (sizeof(hdac_devices) / sizeof(hdac_devices[0]))
+#define HDAC_DEVICES_LEN NELEM(hdac_devices)
 
 static const struct {
 	uint16_t vendor;
@@ -473,8 +469,7 @@ static const struct {
 	{    ATI_VENDORID, 0x42, 0xf8, 0x02 },
 	{ NVIDIA_VENDORID, 0x4e, 0xf0, 0x0f },
 };
-#define HDAC_PCIESNOOP_LEN	\
-			(sizeof(hdac_pcie_snoop) / sizeof(hdac_pcie_snoop[0]))
+#define HDAC_PCIESNOOP_LEN NELEM(hdac_pcie_snoop)
 
 static const struct {
 	uint32_t	rate;
@@ -519,7 +514,7 @@ static const struct {
 	{ 132300, 0, 0x4000, 0x1000, 0x0000 },	/* (44100 * 3) / 1 */
 	{ 176400, 1, 0x4000, 0x1800, 0x0000 },	/* (44100 * 4) / 1 */
 };
-#define HDA_RATE_TAB_LEN (sizeof(hda_rate_tab) / sizeof(hda_rate_tab[0]))
+#define HDA_RATE_TAB_LEN NELEM(hda_rate_tab)
 
 /* All codecs you can eat... */
 #define HDA_CODEC_CONSTRUCT(vendor, id) \
@@ -647,7 +642,7 @@ static const struct {
 	{ HDA_CODEC_CXXXXX,    "Conexant (Unknown)" },
 	{ HDA_CODEC_VTXXXX,    "VIA (Unknown)" },
 };
-#define HDAC_CODECS_LEN	(sizeof(hdac_codecs) / sizeof(hdac_codecs[0]))
+#define HDAC_CODECS_LEN	NELEM(hdac_codecs)
 
 enum {
 	HDAC_HP_SWITCH_CTL,
@@ -736,8 +731,7 @@ static const struct {
 	    0, 0, -1, 20, { 21, -1 }, -1 },
 #endif
 };
-#define HDAC_HP_SWITCH_LEN	\
-		(sizeof(hdac_hp_switch) / sizeof(hdac_hp_switch[0]))
+#define HDAC_HP_SWITCH_LEN NELEM(hdac_hp_switch)
 
 static const struct {
 	uint32_t model;
@@ -749,8 +743,7 @@ static const struct {
 	{ HP_NX7400_SUBVENDOR, HDA_CODEC_AD1981HD, 5, 1 },
 	{ HP_NX6310_SUBVENDOR, HDA_CODEC_AD1981HD, 5, 1 },
 };
-#define HDAC_EAPD_SWITCH_LEN	\
-		(sizeof(hdac_eapd_switch) / sizeof(hdac_eapd_switch[0]))
+#define HDAC_EAPD_SWITCH_LEN NELEM(hdac_eapd_switch)
 
 /****************************************************************************
  * Function prototypes
@@ -1799,13 +1792,8 @@ hdac_scan_codecs(struct hdac_softc *sc, int num)
 	for (i = num; i < HDAC_CODEC_MAX; i++) {
 		if (HDAC_STATESTS_SDIWAKE(statests, i)) {
 			/* We have found a codec. */
-			codec = (struct hdac_codec *)kmalloc(sizeof(*codec),
-			    M_HDAC, M_ZERO | M_NOWAIT);
-			if (codec == NULL) {
-				device_printf(sc->dev,
-				    "Unable to allocate memory for codec\n");
-				continue;
-			}
+			codec = kmalloc(sizeof(*codec), M_HDAC,
+					M_ZERO | M_WAITOK);
 			codec->commands = NULL;
 			codec->responses_received = 0;
 			codec->verbs_sent = 0;
@@ -1898,14 +1886,7 @@ hdac_probe_function(struct hdac_codec *codec, nid_t nid)
 	if (fctgrptype != HDA_PARAM_FCT_GRP_TYPE_NODE_TYPE_AUDIO)
 		return (NULL);
 
-	devinfo = (struct hdac_devinfo *)kmalloc(sizeof(*devinfo), M_HDAC,
-	    M_NOWAIT | M_ZERO);
-	if (devinfo == NULL) {
-		device_printf(sc->dev, "%s: Unable to allocate ivar\n",
-		    __func__);
-		return (NULL);
-	}
-
+	devinfo = kmalloc(sizeof(*devinfo), M_HDAC, M_WAITOK | M_ZERO);
 	devinfo->nid = nid;
 	devinfo->node_type = fctgrptype;
 	devinfo->codec = codec;
@@ -1944,7 +1925,7 @@ hdac_widget_connection_parse(struct hdac_widget *w)
 		return;
 
 	entnum = HDA_PARAM_CONN_LIST_LENGTH_LONG_FORM(res) ? 2 : 4;
-	max = (sizeof(w->conns) / sizeof(w->conns[0])) - 1;
+	max = NELEM(w->conns) - 1;
 	prevcnid = 0;
 
 #define CONN_RMASK(e)		(1 << ((32 / (e)) - 1))
@@ -4022,9 +4003,9 @@ hdac_audio_parse(struct hdac_devinfo *devinfo)
 	devinfo->function.audio.inamp_cap = res;
 
 	if (devinfo->nodecnt > 0)
-		devinfo->widget = (struct hdac_widget *)kmalloc(
-		    sizeof(*(devinfo->widget)) * devinfo->nodecnt, M_HDAC,
-		    M_NOWAIT | M_ZERO);
+		devinfo->widget = kmalloc(
+		    sizeof(*(devinfo->widget)) * devinfo->nodecnt,
+		    M_HDAC, M_WAITOK | M_ZERO);
 	else
 		devinfo->widget = NULL;
 
@@ -4093,16 +4074,7 @@ hdac_audio_ctl_parse(struct hdac_devinfo *devinfo)
 	if (max < 1)
 		return;
 
-	ctls = (struct hdac_audio_ctl *)kmalloc(
-	    sizeof(*ctls) * max, M_HDAC, M_ZERO | M_NOWAIT);
-
-	if (ctls == NULL) {
-		/* Blekh! */
-		device_printf(sc->dev, "unable to allocate ctls!\n");
-		devinfo->function.audio.ctlcnt = 0;
-		return;
-	}
-
+	ctls = kmalloc(sizeof(*ctls) * max, M_HDAC, M_ZERO | M_WAITOK);
 	cnt = 0;
 	for (i = devinfo->startnode; cnt < max && i < devinfo->endnode; i++) {
 		if (cnt >= max) {
@@ -4258,7 +4230,7 @@ static const struct {
 	{ HDA_MATCH_ALL, HDA_CODEC_STACXXXX,
 	    HDA_QUIRK_SOFTPCMVOL, 0 }
 };
-#define HDAC_QUIRKS_LEN (sizeof(hdac_quirks) / sizeof(hdac_quirks[0]))
+#define HDAC_QUIRKS_LEN NELEM(hdac_quirks)
 
 static void
 hdac_vendor_patch_parse(struct hdac_devinfo *devinfo)
@@ -5309,7 +5281,7 @@ hdac_pcmchannel_setup(struct hdac_devinfo *devinfo, int dir)
 	ret = 0;
 	fmtcap = devinfo->function.audio.supp_stream_formats;
 	pcmcap = devinfo->function.audio.supp_pcm_size_rate;
-	max = (sizeof(ch->io) / sizeof(ch->io[0])) - 1;
+	max = NELEM(ch->io) - 1;
 
 	for (i = devinfo->startnode; i < devinfo->endnode && ret < max; i++) {
 		w = hdac_widget_get(devinfo, i);

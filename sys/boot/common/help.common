@@ -11,18 +11,81 @@
 	described by the term.  A term enclosed with [...] is optional,
 	and may not be required by all forms of the command.
 
-	Some commands may not be available.  Use the '?' command to list
-	most available commands.
+	Some commands may not be available in `help'.  Use the `?' command
+	to list most available commands.
 
-	If needed, disable the use of ACPI with:
+	To boot another kernel than the default in kernel/, change directory
+	to the kernel directory, and execute `loadall' and `boot' commands.
+	E.g. to do a verbose boot of kernel in kernel.XXX/:
 
-	unset acpi_load
-	set hint.acpi.0.disabled="1"
+		cd
+		cd kernel.XXX
+		loadall
+		boot -v
 
-	If needed, disable the use of EHCI with:
+	If needed, disable the ACPI driver with:
 
-	unset ehci_load
-	set hint.ehci.0.disabled="1"
+		unset acpi_load
+		set hint.acpi.0.disabled=1
+
+	If needed, disable the AHCI driver with:
+
+		unset ahci_load
+		set hint.ahci.0.disabled=1
+
+	If needed, disable the EHCI driver with:
+
+		unset ehci_load
+		set hint.ehci.0.disabled=1
+
+	For more information on ACPI, AHCI and EHCI use `help' on these topics.
+
+################################################################################
+# T<variable>=<value> DAssign value to variable
+
+	<variable>=<value>
+
+	Assign value to variable.  The value is always assigned to local
+	variable <variable>.  If <variable> is in the list of known kernel
+	environment variables or is a kernel tunable, the value is also
+	assigned to the kernel environment variable of the given name.
+	Local variables are unset if <value> is empty.  Kernel environment
+	variables may have empty values.
+
+	Two kinds of variables are maintained by this program (loader(8)):
+	local variables, that is for loader(8) use only, and kernel
+	environment variables, that kernel will have access to when it starts.
+	The assignment described above, will assign to a local variable and, if
+	it is applicable, also snoop assignment to kernel environment variable.
+
+################################################################################
+# TAHCI DControl AHCI module behaviour
+
+	$ahci_load
+
+	The AHCI driver provides support for SATA controllers conforming to
+	the Advanced Host Controller Interface specification.
+
+	The NATA driver provides support for some AHCI controllers, the AHCI
+	driver is used if both NATA and AHCI drivers provides support for a
+	controller.  If AHCI driver is disabled, NATA driver will be used.
+
+	If the ahci_load variable is set, the AHCI module will be loaded.
+	The AHCI driver can be disabled with:
+
+		unset ahci_load
+		set hint.ahci.0.disabled=1
+
+	A link speed of 1.5Gb/s can be enforced with:
+
+		set hint.ahci.force150=1
+
+	To refrain from attempting to send some higher level ATA commands
+	which some devices might not properly implement use:
+
+		set hint.ahci.nofeatures=1
+
+	See ahci.4 man page (on booted system) for full description.
 
 ################################################################################
 # Tautoboot DBoot after a delay
@@ -31,17 +94,32 @@
 
 	Displays <prompt> or a default prompt, and counts down <delay> seconds
 	before attempting to boot.  If <delay> is not specified, the default
-	value is 10.
+	value is $autoboot_delay.
 
 ################################################################################
 # Tboot DBoot immediately
 
-	boot [<kernelname>] [-<arg> ...]
+	boot [-<flag> ...] [<kernelname>]
 
-	Boot the system.  If arguments are specified, they are added to the
+	Boot the system.  If flags are specified, they are added to the
 	arguments for the kernel.  If <kernelname> is specified, and a kernel
 	has not already been loaded, it will be booted instead of the default
-	kernel.
+	kernel.  <flag> values include:
+	-a  Same as `set boot_askname'
+	-C  Same as `set boot_cdrom'
+	-c  Same as `set boot_userconfig'
+	-d  Same as `set boot_ddb'
+	-g  Same as `set boot_gdb'
+	-h  Same as `set boot_serial'
+	-m  Mute the system console
+	-p  Pause after each attached device during device probing phase
+	-r  Use statically configured device for root file system
+	-s  Same as `set boot_single'
+	-V  Same as `set boot_vidcons'
+	-v  Same as `set boot_verbose'
+
+	<flag>s can also be set via kernel_options variable.
+	See also boot.8 man page (on booted system) for <flag> values.
 
 ################################################################################
 # Techo DEcho arguments
@@ -51,7 +129,7 @@
 	Emits <message>, with no trailing newline if -n is specified.  This is
 	most useful in conjunction with scripts and the '@' line prefix.
 
-	Variables are substituted by prefixing them with $, eg.
+	Variables are substituted by prefixing them with $, e.g.
 
 		echo Current device is $currdev
 
@@ -62,23 +140,30 @@
 
 	$ehci_load
 
-	If the ehci_load variable is set, the EHCI module will be loaded.
-	The use of EHCI can be disabled with:
+	The EHCI driver provides support for the USB Enhanched Host Controller
+	Interface, which is used by USB 2.0 controllers.
 
-	unset ehci_load
-	set hint.ehci.0.disabled="1"
+	If the ehci_load variable is set, the EHCI module will be loaded.
+	The EHCI driver can be disabled with:
+
+		unset ehci_load
+		set hint.ehci.0.disabled=1
+
+	See ehci.4 man page (on booted system) for full description.
 
 ################################################################################
 # Tload DLoad a kernel or module
-	
-	load [-t <type>] <filename>
 
-	Loads the module contained in <filename> into memory.  If no other
-	modules are loaded, <filename> must be a kernel or the command will
-	fail.
+	load [-t <type>] <file> [<argument> ...]
+
+	Loads the module contained in <file> into memory.  If no other modules
+	are loaded, <file> must be a kernel or the command will fail.
 
 	If -t is specified, the module is loaded as raw data of <type>, for
 	later use by the kernel or other modules.  <type> may be any string.
+
+	Any arguments passed after the name of the file to be loaded will be
+	passed as arguments to that file.
 
 ################################################################################
 # Tls DList files
@@ -92,26 +177,28 @@
 	file sizes on some media may be very slow.
 
 ################################################################################
-# Tlsdev DList devices
+# Tlsdev DList all devices
 
 	lsdev [-v]
 
-	List all of the devices from which it may be possible to load modules.
-	If -v is specified, print more details.
+	List all devices.  Disk slices and partitions from which it may be
+	possible to load modules are marked with '*'.
+	If -v is specified, print more details, like size and position of
+	disk slices and partitions.
 
 ################################################################################
 # Tlsmod DList modules
 
 	lsmod [-v]
 
-	List loaded modules. If [-v] is specified, print more details.
+	List loaded modules.  If -v is specified, print more details.
 
 ################################################################################
 # Tmore DPage files
 
-	more <filename> [<filename> ...]
+	more <file> ...
 
-	Show contents of text files. When displaying the contents of more,
+	Show contents of text files.  When displaying the contents of more,
 	than one file, if the user elects to quit displaying a file, the
 	remaining files will not be shown.
 
@@ -128,29 +215,33 @@
 	be printed.
 
 ################################################################################
-# Tset DSet a variable
+# Tset DSet a kernel environment variable
 
-	set <variable name>
-	set <variable name>=<value>
+	set <env_variable>
+	set <env_variable>=<value>
 
-	The set command is used to set variables.
+	The set command is used to set kernel environment variables.
+
+	See also `<variable>=<value>' command for distinction on local and
+	kernel environment variables.
 
 ################################################################################
-# Tset Sautoboot_delay DSet the default autoboot delay
+# Tset Sautoboot_delay DSet the default autoboot / menu delay
 
 	set autoboot_delay=<value>
 
-	Sets the default delay for the autoboot command to <value> seconds.
+	Sets the default delay in seconds for the `autoboot' and `menu'
+	commands to wait before booting.  The default value is 10 seconds.
 
 ################################################################################
 # Tset Sbootfile DSet the default boot file set
 
-	set bootfile=<filename>[;<filename>...]
+	set bootfile=<file>[;<file>...]
 
-	Sets the default set of kernel boot filename(s). It may be overridden
+	Sets the default set of kernel boot filename(s).  It may be overridden
 	by setting the bootfile variable to a semicolon-separated list of
-	filenames, each of which will be searched for in the module_path
-	directories. The default bootfile set is "kernel".
+	filenames, each of which will be searched for in the $module_path
+	directories.  The default value is "kernel".
 
 ################################################################################
 # Tset Sboot_askname DPrompt for root device
@@ -159,6 +250,13 @@
 
 	Instructs the kernel to prompt the user for the name of the root device
 	when the kernel is booted.
+
+################################################################################
+# Tset Sboot_cdrom DBoot from CDROM
+
+	set boot_cdrom
+
+	Instructs the kernel to boot from CDROM when the kernel is booted.
 
 ################################################################################
 # Tset Sboot_ddb DDrop to the kernel debugger (DDB)
@@ -184,27 +282,61 @@
 	mode will be entered when the kernel has finished device probes.
 
 ################################################################################
+# Tset Sboot_serial DUse serial console after boot
+
+	set boot_serial
+
+	Use serial console after boot.  See also `set console' command.
+
+################################################################################
 # Tset Sboot_verbose DVerbose boot messages
 
 	set boot_verbose
 
 	Setting this variable causes extra debugging information to be printed
-	by the kernel during the boot phase.
+	by the kernel especially during the boot phase.
+
+################################################################################
+# Tset Sboot_vidcons DUse video console after boot
+
+	set boot_vidcons
+
+	Use video console after boot.  See also `set console' command.
+
+################################################################################
+# Tset Skernel_options DKernel options
+
+	set kernel_options
+
+	Set kernel boot flags.  E.g.:
+
+		set kernel_options="-v -a"
+
+	See also boot command; kernel_options sets default <flags>.
 
 ################################################################################
 # Tset Sconsole DSet the current console
 
 	set console[=<value>]
 
-	Sets the current console.  If <value> is omitted, a list of valid
-	consoles will be displayed.
+	Sets the current console.  <value> include `vidconsole', `comconsole'
+	and `nullconsole'.  If <value> is omitted, a list of valid consoles
+	will be displayed.
+
+################################################################################
+# Tset Sdefault_kernel DSet default kernel directory
+
+	set default_kernel=<path>
+
+	Selects the default kernel directory for `menu' command.  Default value
+	is "kernel".
 
 ################################################################################
 # Tset Scurrdev DSet the current device
 
 	set currdev=<device>
 
-	Selects the default device.  See lsdev for available devices.
+	Selects the default device.  See `lsdev' for available devices.
 
 ################################################################################
 # Tset Sinit_path DSet the list of init candidates
@@ -221,8 +353,9 @@
 	set module_path=<path>[;<path>...]
 
 	Sets the list of directories which will be searched in for modules
-	named in a load command or implicitly required by a dependency. The
-	default module_path is "/boot;/boot/modules;/;/modules".
+	named in a load command or implicitly required by a dependency.  An
+	empty <path> specifies the current directory.  The default value is
+	";modules".
 
 ################################################################################
 # Tset Sprompt DSet the command prompt
@@ -230,10 +363,8 @@
 	set prompt=<value>
 
 	The command prompt is displayed when the loader is waiting for input.
-	Variable substitution is performed on the prompt.  The default 
-	prompt can be set with:
-
-		set prompt=\${interpret}
+	Variable substitution is performed on the prompt.  The default value
+	is "OK".
 
 ################################################################################
 # Tset Srootdev DSet the root filesystem
@@ -247,8 +378,57 @@
 ################################################################################
 # Tset Stunables DSet kernel tunable values
 
-	Various kernel tunable parameters can be overridden by specifying new 
+	Various kernel tunable parameters can be overridden by specifying new
 	values in the environment.
+
+	set hw.pci.allow_unsupported_io_range=<value>
+
+		Allow the PCI Bridge to pass through an unsupported
+		memory range assigned by the BIOS.
+
+		value is 0 (default) or non-zero to enable.
+
+	set hw.pci.enable_io_modes=<value>
+
+		Enable PCI resources which are left off by some BIOSes
+		or are not enabled correctly by the device driver.
+
+		value is 1 (default), but this may cause problems with
+		some peripherals.  Set to 0 to disable.
+
+	set hw.physmem=<value>			MAXMEM
+
+		Limits the amount of physical memory space available to
+		the system to <value> bytes.  <value> may have a `k', `M' or
+		`G' suffix to indicate kilobytes, megabytes and gigabytes
+		respectively.  Note that the current i386 architecture
+		limits this value to 4GB.
+
+		On systems where memory cannot be accurately probed,
+		this option provides a hint as to the actual size of
+		system memory (which will be tested before use).
+
+	set hw.syscons.sc_no_suspend_vtswitch=<value>
+
+		Disable VT switching on suspend.
+
+		value is 0 (default) or non-zero to enable.
+
+	set kern.emergence_intr_enable=<value>
+
+		Setting this to 1 enables emergency interrupt polling.  All
+		interrupt handlers are executed periodically.  This mode is
+		very expensive and should only be used to get a system
+		accessible when interrupt routing is otherwise broken.  It
+		is primarily used by kernel developers to debug new systems.
+
+	set kern.emergence_intr_freq=<value>
+
+		Set the polling rate for the emergency interrupt polling
+		code.  The default is 10 (hz) to dissuade causual use.  If
+		you are doing real work with emergency interrupt polling
+		mode enabled, it is recommended that you use a frequency
+		between 100hz and 300hz.
 
 	set kern.ipc.nmbclusters=<value>	NMBCLUSTERS
 
@@ -270,66 +450,198 @@
 		Overrides the compile-time set value of TCBHASHSIZE or
 		the preset default of 512.  Must be a power of 2.
 
-	hw.syscons.sc_no_suspend_vtswitch=<value>
+	set vfs.root.mountfrom=<value>
 
-		Disable VT switching on suspend.
+		Specify root file system.  <value> is a semicolon separated
+		list of file systems.  File system format is file system type
+		and disk store, separated by colon.  This variable needs to be
+		set when using boot-only partition, which is typically mounted
+		on root file system as /boot.
 
-		value is 0 (default) or non-zero to enable.
+		One file system example:
+			hammer:da8se1a
 
-	set hw.physmem=<value>			MAXMEM (i386 only)
+		One file system HAMMER multi volume examples:
+			hammer:da8s1a:da9s1a
 
-		Limits the amount of physical memory space available to
-		the system to <value> bytes.  <value> may have a k, M or G
-		suffix to indicate kilobytes, megabytes and gigabytes
-		respectively.  Note that the current i386 architecture
-		limits this value to 4GB.
+		Several file systems, boot list, example:
+			ufs:da0s1a;hammer:ad1s1d
 
-		On systems where memory cannot be accurately probed,
-		this option provides a hint as to the actual size of
-		system memory (which will be tested before use).
+		Each file system in the list will be tried in the order
+		specified until the mount succeeds.  If all fail, the
+		`mountroot>' prompt is displayed for manual entry.
 
-	set hw.pci.allow_unsupported_io_range=<value>
-
-		Allow the PCI Bridge to pass through an unsupported
-		memory range assigned by the BIOS.
-
-		value is 0 (default) or non-zero to enable.
-
-	set hw.pci.enable_io_modes=<value>
-
-		Enable PCI resources which are left off by some BIOSes
-		or are not enabled correctly by the device driver.
-
-		value is 1 (default), but this may cause problems with
-		some peripherals.  Set to 0 to disable.
+		You may not specify devtab labels here but you can specify
+		paths available to devfs such as:
+			hammer:serno/L41JYE0G.s1d
 
 ################################################################################
-# Tshow DShow the values of variables
+# Tshow DShow values of kernel environment variable
 
-	show [<variable>]
+	show [<env_variable>]
 
-	Displays the value of <variable>, or all variables if not specified.
-	Multiple paths can be separated with a semicolon.
+	Displays the value of <env_variable>, or all kernel environment
+	variables if not specified.
+
+	See also `<variable>=<value>' command for distinction on local and
+	kernel environment variables.
 
 ################################################################################
-# Tinclude DRead commands from a script file
+# Tinclude DExecute script file
 
-	include <filename> [<filename> ...]
+	include <file> ...
 
-	The entire contents of <filename> are read into memory before executing
+	The entire contents of <file> are read into memory before executing
 	commands, so it is safe to source a file from removable media.
+
+################################################################################
+# Toptinclude DExecute script file; ignore exit status
+
+	optinclude <file> ...
+
+	The entire contents of <file> are read into memory before executing
+	commands, so it is safe to source a file from removable media.
+	Return success and execute all commands even if some commands fail.
+
+################################################################################
+# Tcd DChange directory
+
+	cd [<directory>]
+
+	Change working directory to <directory>.  Default is $base.
+
+################################################################################
+# Toptcd DChange directory; ignore exit status
+
+	optcd [<directory>]
+
+	Change working directory to <directory>.  Default is $base.
+	Return success even if changing directory fails.
+
+################################################################################
+# Tpwd DPrint working directory
+
+	pwd
+
+	Show working directory.
+
+################################################################################
+# Tlocal DList local variables
+
+	local [<local_variable> ...]
+
+	Display the value of given local variables, or all variables if not
+	specified.
+
+	See also `<variable>=<value>' command for distinction on local and
+	kernel environment variables.
+
+################################################################################
+# Tlunset DUnset local variable
+
+	lunset <local_variable>
+
+	Unset local variable: discard value and remove variable.
+
+	See also `<variable>=<value>' command for distinction on local and
+	kernel environment variables.
+
+################################################################################
+# Tlunsetif DUnset local variables if envvar true
+
+	lunsetif <local_variable> <env_variable>
+
+	Unset <local_variable> if <env_variable> is true, i.e. set to 1 or YES.
+
+	See also `<variable>=<value>' command for distinction on local and
+	kernel environment variables.
+
+################################################################################
+# Tloadall DLoad kernel + modules
+
+	loadall
+
+	Load kernel and all modules specified by MODULE_load variables.
+
+################################################################################
+# Tifexists DConditional file/dir present
+
+	ifexists <path>
+
+	Conditional <path> exists, i.e. file/dir present.
+
+################################################################################
+# Tifset DConditional kenv variable present
+
+	ifset <env_variable>
+
+	Conditional <env_variable> exists.
+
+################################################################################
+# Telseifexists DConditional file/dir present
+
+	elseifexists <path>
+
+	Conditional <path> exists, i.e. file/dir present.
+
+################################################################################
+# Telse DConditional if/else/endif
+
+	else
+
+	Conditional if/else/endif.
+
+################################################################################
+# Tendif DConditional if/else/endif
+
+	endif
+
+	Conditional if/else/endif.
+
+################################################################################
+# Tmenuclear DClear all menus
+
+	menuclear
+
+	Clear all menu bullets.
+
+################################################################################
+# Tmenuitem DAdd menu bullet
+
+	menuitem <key> <description text>
+
+	Start new menu bullet, when running menu system bullet is choosen by
+	pressing <key>.  E.g.:
+
+		menuitem a "Boot Backup kernel kernel.alt"
+
+################################################################################
+# Tmenuadd DAdd script line for menu bullet
+
+	menuadd <command line>
+
+	Add script line for current menu bullet.  E.g.:
+
+		menuadd lunsetif acpi_load hint.acpi.0.disabled
+
+################################################################################
+# Tmenu DRun menu system
+
+	menu
+
+	Run menu system.
 
 ################################################################################
 # Tread DRead input from the terminal
 
-	read [-t <value>] [-p <prompt>] [<variable name>]
+	read [-t <value>] [-p <prompt>] [<env_variable>]
 
-	The read command reads a line of input from the terminal.  If the 
+	The read command reads a line of input from the terminal.  If the
 	-t argument is specified, it will return nothing if no input has been
-	received after <value> seconds.  (Any keypress will cancel the 
+	received after <value> seconds.  (Any keypress will cancel the
 	timeout).
 
-	If -p is specified, <prompt> is printed before reading input. No 
+	If -p is specified, <prompt> is printed before reading input.  No
 	newline is emitted after the prompt.
 
 	If a variable name is supplied, the variable is set to the value read,
@@ -343,11 +655,14 @@
 	This command removes any kernel and all loaded modules from memory.
 
 ################################################################################
-# Tunset DUnset a variable
+# Tunset DUnset a kernel environment variable
 
-	unset <variable name>
+	unset <env_variable>
 
-	If allowed, the named variable's value is discarded and the variable
-	is removed.	
+	If allowed, the named kernel environment variable's value is discarded
+	and the variable is removed.
+
+	See also `<variable>=<value>' command for distinction on local and
+	kernel environment variables.
 
 ################################################################################

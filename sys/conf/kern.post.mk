@@ -124,7 +124,7 @@ kernel-install: kernel-installable
 		rm -f ${DESTDIR}${DESTKERNDIR}.old;		\
 	fi
 	mkdir -p ${DESTDIR}${DESTKERNDIR}.old
-.  if exists(${DESTDIR}${DESTKERNDIR}/${DESTKERNNAME})
+.if exists(${DESTDIR}${DESTKERNDIR}/${DESTKERNNAME})
 .ifndef NOFSCHG
 	-chflags noschg ${DESTDIR}${DESTKERNDIR}/${DESTKERNNAME}
 .endif
@@ -133,7 +133,7 @@ kernel-install: kernel-installable
 .    else
 	${OBJCOPY} --strip-debug ${DESTDIR}${DESTKERNDIR}/${DESTKERNNAME} ${DESTDIR}${DESTKERNDIR}.old/${DESTKERNNAME}
 .    endif
-.  endif
+.endif
 	@if [ -f ${DESTDIR}${DESTKERNDIR} ]; then		\
 		chflags noschg ${DESTDIR}${DESTKERNDIR};	\
 		rm -f ${DESTDIR}${DESTKERNDIR};			\
@@ -164,6 +164,8 @@ kernel-installable:
 		echo "kernel and modules have moved to /boot"; \
 		exit 1; \
 	fi
+# Skip this step for vkernels
+.if ${MACHINE_PLATFORM} != vkernel && ${MACHINE_PLATFORM} != vkernel64
 	@if [ ! -f ${DESTDIR}/boot/dloader.rc ]; then \
 		echo "You need to install a new ${DESTDIR}/boot before you"; \
 		echo "can install a new kernel, kernels are now installed"; \
@@ -172,6 +174,7 @@ kernel-installable:
 		echo "sequence."; \
 		exit 1; \
 	fi
+.endif
 	@exit 0
 
 .if !defined(MODULES_WITH_WORLD) && !defined(NO_MODULES)

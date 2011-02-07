@@ -131,7 +131,7 @@ struct globaldata {
 	lwkt_queue	gd_tdallq;		/* all threads */
 	lwkt_queue	gd_tdrunq;		/* runnable threads */
 	__uint32_t	gd_cpuid;
-	cpumask_t	gd_cpumask;		/* mask = 1<<cpuid */
+	cpumask_t	gd_cpumask;		/* mask = CPUMASK(cpuid) */
 	cpumask_t	gd_other_cpus;		/* mask of 'other' cpus */
 	struct timeval	gd_stattv;
 	int		gd_intr_nesting_level;	/* hard code, intrs, ipis */
@@ -163,7 +163,10 @@ struct globaldata {
 	int		gd_spinlocks_wr;	/* Exclusive spinlocks held */
 	struct systimer	*gd_systimer_inprog;	/* in-progress systimer */
 	int		gd_timer_running;
-	void		*gd_reserved[11];	/* future fields */
+	u_int		gd_idle_repeat;		/* repeated switches to idle */
+	int		gd_ireserved[7];
+	const char	*gd_infomsg;		/* debugging */
+	void		*gd_preserved[10];	/* future fields */
 	/* extended by <machine/globaldata.h> */
 };
 
@@ -178,6 +181,7 @@ typedef struct globaldata *globaldata_t;
 #define RQB_AST_UPCALL		6
 #define RQB_TIMER		7
 #define RQB_RUNNING		8
+#define RQB_WAKEUP		9
 
 #define RQF_IPIQ		(1 << RQB_IPIQ)
 #define RQF_INTPEND		(1 << RQB_INTPEND)
@@ -188,15 +192,41 @@ typedef struct globaldata *globaldata_t;
 #define RQF_AST_LWKT_RESCHED	(1 << RQB_AST_LWKT_RESCHED)
 #define RQF_AST_UPCALL		(1 << RQB_AST_UPCALL)
 #define RQF_RUNNING		(1 << RQB_RUNNING)
+#define RQF_WAKEUP		(1 << RQB_WAKEUP)
+
 #define RQF_AST_MASK		(RQF_AST_OWEUPC|RQF_AST_SIGNAL|\
 				RQF_AST_USER_RESCHED|RQF_AST_LWKT_RESCHED|\
 				RQF_AST_UPCALL)
 #define RQF_IDLECHECK_MASK	(RQF_IPIQ|RQF_INTPEND|RQF_TIMER)
+#define RQF_IDLECHECK_WK_MASK	(RQF_IDLECHECK_MASK|RQF_WAKEUP)
 
 /*
  * globaldata flags
  */
 #define GDF_KPRINTF		0x0001	/* kprintf() reentrancy */
+
+#endif
+
+/*
+ * MANUAL DEBUG CODE FOR DEBUGGING LOCKUPS
+ */
+#ifdef _KERNEL
+
+#if 0
+
+#define DEBUG_PUSH_INFO(msg)				\
+	const char *save_infomsg;			\
+	save_infomsg = mycpu->gd_infomsg;		\
+	mycpu->gd_infomsg = msg				\
+
+#define DEBUG_POP_INFO()	mycpu->gd_infomsg = save_infomsg
+
+#else
+
+#define DEBUG_PUSH_INFO(msg)
+#define DEBUG_POP_INFO()
+
+#endif
 
 #endif
 

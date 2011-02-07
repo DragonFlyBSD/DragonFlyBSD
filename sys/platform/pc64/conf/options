@@ -10,13 +10,14 @@ AUTO_EOI_2		opt_auto_eoi.h
 CONSPEED		opt_comconsole.h
 I586_PMC_GUPROF		opt_i586_guprof.h
 BROKEN_KEYBOARD_RESET	opt_reset.h
+APIC_IO			opt_apic.h
 
 # x86_64 SMP options
-APIC_IO			opt_global.h
+CPU_AMD64X2_INTR_SPAM	opt_cpu.h
 
 # The cpu type
 #
-HAMMER_CPU			opt_cpu.h
+HAMMER_CPU		opt_cpu.h
 MAXCONS			opt_syscons.h
 SC_ALT_MOUSE_IMAGE	opt_syscons.h
 SC_DEBUG_LEVEL		opt_syscons.h

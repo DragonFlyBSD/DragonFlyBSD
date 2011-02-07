@@ -621,7 +621,7 @@ ArchArchiveNext(struct arfile *ar)
 				    ar->fname, strerror(errno)));
 			} else {
 				ArchError(("%s: cannot read nametab: "
-				    "short read", ar->fname, strerror(errno)));
+				    "short read", ar->fname));
 			}
 			return (-1);
 		}

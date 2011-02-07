@@ -46,9 +46,9 @@
 #include <sys/namei.h>
 #include <sys/vnode.h>
 #include <sys/malloc.h>
+#include <sys/kernel.h>
 #include <sys/fnv_hash.h>
-
-#include <vm/vm_zone.h>
+#include <sys/objcache.h>
 
 #include "rpcv2.h"
 #include "nfsproto.h"
@@ -56,9 +56,13 @@
 #include "nfsmount.h"
 #include "nfsnode.h"
 
-static vm_zone_t nfsnode_zone;
+static MALLOC_DEFINE(M_NFSNODE, "NFS node", "NFS node");
+
+static struct objcache *nfsnode_objcache;
 static LIST_HEAD(nfsnodehashhead, nfsnode) *nfsnodehashtbl;
 static u_long nfsnodehash;
+static lwkt_token nfsnhash_token = LWKT_TOKEN_INITIALIZER(nfsnhash_token);
+static struct lock nfsnhash_lock;
 
 #define TRUE	1
 #define	FALSE	0
@@ -72,8 +76,9 @@ static u_long nfsnodehash;
 void
 nfs_nhinit(void)
 {
-	nfsnode_zone = zinit("NFSNODE", sizeof(struct nfsnode), 0, 0, 1);
+	nfsnode_objcache = objcache_create_simple(M_NFSNODE, sizeof(struct nfsnode));
 	nfsnodehashtbl = hashinit(desiredvnodes, M_NFSHASH, &nfsnodehash);
+	lockinit(&nfsnhash_lock, "nfsnht", 0, 0);
 }
 
 /*
@@ -82,7 +87,6 @@ nfs_nhinit(void)
  * In all cases, a pointer to a
  * nfsnode structure is returned.
  */
-static int nfs_node_hash_lock;
 
 int
 nfs_nget(struct mount *mntp, nfsfh_t *fhp, int fhsize, struct nfsnode **npp)
@@ -90,7 +94,6 @@ nfs_nget(struct mount *mntp, nfsfh_t *fhp, int fhsize, struct nfsnode **npp)
 	struct nfsnode *np, *np2;
 	struct nfsnodehashhead *nhpp;
 	struct vnode *vp;
-	struct vnode *nvp;
 	int error;
 	int lkflags;
 	struct nfsmount *nmp;
@@ -104,6 +107,8 @@ nfs_nget(struct mount *mntp, nfsfh_t *fhp, int fhsize, struct nfsnode **npp)
 		lkflags = LK_PCATCH;
 	else
 		lkflags = 0;
+
+	lwkt_gettoken(&nfsnhash_token);
 
 retry:
 	nhpp = NFSNOHASH(fnv_32_buf(fhp->fh_bytes, fhsize, FNV1_32_INIT));
@@ -129,57 +134,37 @@ loop:
 			goto loop;
 		}
 		*npp = np;
+		lwkt_reltoken(&nfsnhash_token);
 		return(0);
 	}
+
 	/*
 	 * Obtain a lock to prevent a race condition if the getnewvnode()
 	 * or MALLOC() below happens to block.
 	 */
-	if (nfs_node_hash_lock) {
-		while (nfs_node_hash_lock) {
-			nfs_node_hash_lock = -1;
-			tsleep(&nfs_node_hash_lock, 0, "nfsngt", 0);
-		}
+	if (lockmgr(&nfsnhash_lock, LK_EXCLUSIVE | LK_SLEEPFAIL))
 		goto loop;
-	}
-	nfs_node_hash_lock = 1;
 
 	/*
 	 * Allocate before getnewvnode since doing so afterward
 	 * might cause a bogus v_data pointer to get dereferenced
-	 * elsewhere if zalloc should block.
+	 * elsewhere if objcache should block.
 	 */
-	np = zalloc(nfsnode_zone);
+	np = objcache_get(nfsnode_objcache, M_WAITOK);
 		
-	error = getnewvnode(VT_NFS, mntp, &nvp, 0, 0);
+	error = getnewvnode(VT_NFS, mntp, &vp, 0, 0);
 	if (error) {
-		if (nfs_node_hash_lock < 0)
-			wakeup(&nfs_node_hash_lock);
-		nfs_node_hash_lock = 0;
-		*npp = 0;
-		zfree(nfsnode_zone, np);
+		lockmgr(&nfsnhash_lock, LK_RELEASE);
+		*npp = NULL;
+		objcache_put(nfsnode_objcache, np);
+		lwkt_reltoken(&nfsnhash_token);
 		return (error);
 	}
-	vp = nvp;
-	bzero((caddr_t)np, sizeof *np);
-	np->n_vnode = vp;
-	vp->v_data = np;
 
 	/*
-	 * Insert the nfsnode in the hash queue for its new file handle
+	 * Initialize most of (np).
 	 */
-	for (np2 = nhpp->lh_first; np2 != 0; np2 = np2->n_hash.le_next) {
-		if (mntp != NFSTOV(np2)->v_mount || np2->n_fhsize != fhsize ||
-		    bcmp((caddr_t)fhp, (caddr_t)np2->n_fhp, fhsize))
-			continue;
-		vx_put(vp);
-		if (nfs_node_hash_lock < 0)
-			wakeup(&nfs_node_hash_lock);
-		nfs_node_hash_lock = 0;
-		zfree(nfsnode_zone, np);
-		goto retry;
-	}
-	LIST_INSERT_HEAD(nhpp, np, n_hash);
+	bzero(np, sizeof (*np));
 	if (fhsize > NFS_SMALLFH) {
 		MALLOC(np->n_fhp, nfsfh_t *, fhsize, M_NFSBIGFH, M_WAITOK);
 	} else {
@@ -190,12 +175,36 @@ loop:
 	lockinit(&np->n_rslock, "nfrslk", 0, lkflags);
 
 	/*
+	 * Validate that we did not race another nfs_nget() due to blocking
+	 * here and there.
+	 */
+	for (np2 = nhpp->lh_first; np2 != 0; np2 = np2->n_hash.le_next) {
+		if (mntp != NFSTOV(np2)->v_mount || np2->n_fhsize != fhsize ||
+		    bcmp((caddr_t)fhp, (caddr_t)np2->n_fhp, fhsize)) {
+			continue;
+		}
+		vx_put(vp);
+		lockmgr(&nfsnhash_lock, LK_RELEASE);
+
+		if (np->n_fhsize > NFS_SMALLFH)
+			FREE((caddr_t)np->n_fhp, M_NFSBIGFH);
+		np->n_fhp = NULL;
+		objcache_put(nfsnode_objcache, np);
+		goto retry;
+	}
+
+	/*
+	 * Finish connecting up (np, vp) and insert the nfsnode in the
+	 * hash for its new file handle.
+	 *
 	 * nvp is locked & refd so effectively so is np.
 	 */
+	np->n_vnode = vp;
+	vp->v_data = np;
+	LIST_INSERT_HEAD(nhpp, np, n_hash);
 	*npp = np;
-	if (nfs_node_hash_lock < 0)
-		wakeup(&nfs_node_hash_lock);
-	nfs_node_hash_lock = 0;
+	lockmgr(&nfsnhash_lock, LK_RELEASE);
+	lwkt_reltoken(&nfsnhash_token);
 
 	return (0);
 }
@@ -210,7 +219,6 @@ nfs_nget_nonblock(struct mount *mntp, nfsfh_t *fhp, int fhsize,
 	struct nfsnode *np, *np2;
 	struct nfsnodehashhead *nhpp;
 	struct vnode *vp;
-	struct vnode *nvp;
 	int error;
 	int lkflags;
 	struct nfsmount *nmp;
@@ -226,6 +234,9 @@ nfs_nget_nonblock(struct mount *mntp, nfsfh_t *fhp, int fhsize,
 		lkflags = 0;
 	vp = NULL;
 	*npp = NULL;
+
+	lwkt_gettoken(&nfsnhash_token);
+
 retry:
 	nhpp = NFSNOHASH(fnv_32_buf(fhp->fh_bytes, fhsize, FNV1_32_INIT));
 loop:
@@ -244,10 +255,10 @@ loop:
 		}
 		if (NFSTOV(np) != vp) {
 			vput(vp);
-			vp = NULL;
 			goto loop;
 		}
 		*npp = np;
+		lwkt_reltoken(&nfsnhash_token);
 		return(0);
 	}
 
@@ -264,54 +275,30 @@ loop:
 	 * Obtain a lock to prevent a race condition if the getnewvnode()
 	 * or MALLOC() below happens to block.
 	 */
-	if (nfs_node_hash_lock) {
-		while (nfs_node_hash_lock) {
-			nfs_node_hash_lock = -1;
-			tsleep(&nfs_node_hash_lock, 0, "nfsngt", 0);
-		}
+	if (lockmgr(&nfsnhash_lock, LK_EXCLUSIVE | LK_SLEEPFAIL))
 		goto loop;
-	}
-	nfs_node_hash_lock = 1;
 
 	/*
 	 * Entry not found, allocate a new entry.
 	 *
 	 * Allocate before getnewvnode since doing so afterward
 	 * might cause a bogus v_data pointer to get dereferenced
-	 * elsewhere if zalloc should block.
+	 * elsewhere if objcache should block.
 	 */
-	np = zalloc(nfsnode_zone);
+	np = objcache_get(nfsnode_objcache, M_WAITOK);
 
-	error = getnewvnode(VT_NFS, mntp, &nvp, 0, 0);
+	error = getnewvnode(VT_NFS, mntp, &vp, 0, 0);
 	if (error) {
-		if (nfs_node_hash_lock < 0)
-			wakeup(&nfs_node_hash_lock);
-		nfs_node_hash_lock = 0;
-		zfree(nfsnode_zone, np);
+		lockmgr(&nfsnhash_lock, LK_RELEASE);
+		objcache_put(nfsnode_objcache, np);
+		lwkt_reltoken(&nfsnhash_token);
 		return (error);
 	}
-	vp = nvp;
-	bzero(np, sizeof (*np));
-	np->n_vnode = vp;
-	vp->v_data = np;
 
 	/*
-	 * Insert the nfsnode in the hash queue for its new file handle.
-	 * If someone raced us we free np and vp and try again.
+	 * Initialize most of (np).
 	 */
-	for (np2 = nhpp->lh_first; np2 != 0; np2 = np2->n_hash.le_next) {
-		if (mntp != NFSTOV(np2)->v_mount || np2->n_fhsize != fhsize ||
-		    bcmp((caddr_t)fhp, (caddr_t)np2->n_fhp, fhsize)) {
-			continue;
-		}
-		vx_put(vp);
-		if (nfs_node_hash_lock < 0)
-			wakeup(&nfs_node_hash_lock);
-		nfs_node_hash_lock = 0;
-		zfree(nfsnode_zone, np);
-		goto retry;
-	}
-	LIST_INSERT_HEAD(nhpp, np, n_hash);
+	bzero(np, sizeof (*np));
 	if (fhsize > NFS_SMALLFH) {
 		MALLOC(np->n_fhp, nfsfh_t *, fhsize, M_NFSBIGFH, M_WAITOK);
 	} else {
@@ -322,14 +309,48 @@ loop:
 	lockinit(&np->n_rslock, "nfrslk", 0, lkflags);
 
 	/*
+	 * Validate that we did not race another nfs_nget() due to blocking
+	 * here and there.
+	 */
+	for (np2 = nhpp->lh_first; np2 != 0; np2 = np2->n_hash.le_next) {
+		if (mntp != NFSTOV(np2)->v_mount || np2->n_fhsize != fhsize ||
+		    bcmp((caddr_t)fhp, (caddr_t)np2->n_fhp, fhsize)) {
+			continue;
+		}
+		vx_put(vp);
+		lockmgr(&nfsnhash_lock, LK_RELEASE);
+
+		if (np->n_fhsize > NFS_SMALLFH)
+			FREE((caddr_t)np->n_fhp, M_NFSBIGFH);
+		np->n_fhp = NULL;
+		objcache_put(nfsnode_objcache, np);
+
+		/*
+		 * vp state is retained on retry/loop so we must NULL it
+		 * out here or fireworks may ensue.
+		 */
+		vp = NULL;
+		goto retry;
+	}
+
+	/*
+	 * Finish connecting up (np, vp) and insert the nfsnode in the
+	 * hash for its new file handle.
+	 *
+	 * nvp is locked & refd so effectively so is np.
+	 */
+	np->n_vnode = vp;
+	vp->v_data = np;
+	LIST_INSERT_HEAD(nhpp, np, n_hash);
+
+	/*
 	 * nvp is locked & refd so effectively so is np.
 	 */
 	*npp = np;
 	error = 0;
-	if (nfs_node_hash_lock < 0)
-		wakeup(&nfs_node_hash_lock);
-	nfs_node_hash_lock = 0;
+	lockmgr(&nfsnhash_lock, LK_RELEASE);
 fail:
+	lwkt_reltoken(&nfsnhash_token);
 	return (error);
 }
 
@@ -397,16 +418,21 @@ nfs_reclaim(struct vop_reclaim_args *ap)
 	if (prtactive && vp->v_sysref.refcnt > 1)
 		vprint("nfs_reclaim: pushing active", vp);
 
-	lwkt_gettoken(&nmp->nm_token);
 
+	/*
+	 * Remove from hash table
+	 */
+	lwkt_gettoken(&nfsnhash_token);
 	if (np->n_hash.le_prev != NULL)
 		LIST_REMOVE(np, n_hash);
+	lwkt_reltoken(&nfsnhash_token);
 
 	/*
 	 * Free up any directory cookie structures and
 	 * large file handle structures that might be associated with
 	 * this nfs node.
 	 */
+	lwkt_gettoken(&nmp->nm_token);
 	if (vp->v_type == VDIR) {
 		dp = np->n_cookies.lh_first;
 		while (dp) {
@@ -429,7 +455,7 @@ nfs_reclaim(struct vop_reclaim_args *ap)
 	vp->v_data = NULL;
 
 	lwkt_reltoken(&nmp->nm_token);
-	zfree(nfsnode_zone, np);
+	objcache_put(nfsnode_objcache, np);
 
 	return (0);
 }

@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netkey/keysock.c,v 1.1.2.4 2003/01/11 19:10:59 ume Exp $
- * $DragonFly: src/sys/netproto/key/keysock.c,v 1.21 2008/11/01 04:22:16 sephe Exp $
  * $KAME: keysock.c,v 1.25 2001/08/13 20:07:41 itojun Exp $
  */
 
@@ -632,7 +631,7 @@ struct protosw keysw[] = {
 
 struct domain keydomain = {
 	PF_KEY, "key", key_init, NULL, NULL,
-	keysw, &keysw[sizeof(keysw)/sizeof(keysw[0])],
+	keysw, &keysw[NELEM(keysw)],
 };
 
 DOMAIN_SET(key);

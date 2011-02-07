@@ -53,7 +53,6 @@
 #include <machine/clock.h>
 #include <machine/cputypes.h>
 #include <machine/frame.h>
-#include <machine_base/isa/intr_machdep.h>
 #include <machine/segments.h>
 #include <machine/specialreg.h>
 #include <machine/md_var.h>
@@ -240,7 +239,7 @@ printcpuinfo(void)
 				kprintf("\n  Features2=0x%b", cpu_feature2,
 				"\020"
 				"\001SSE3"	/* SSE3 */
-				"\002PCLMULDQ"	/* PCLMULDQ instruction */
+				"\002PCLMULQDQ"	/* Carry-Less Mul Quadword */
 				"\003DTES64"	/* 64-bit Debug Trace */
 				"\004MON"	/* MONITOR/MWAIT Instructions */
 				"\005DS_CPL"	/* CPL Qualified Debug Store */
@@ -264,7 +263,7 @@ printcpuinfo(void)
 				"\027MOVBE"	/* MOVBE instruction */
 				"\030POPCNT"
 				"\031<b24>"
-				"\032AES"	/* AES instruction */
+				"\032AESNI"	/* AES Crypto*/
 				"\033XSAVE"
 				"\034OSXSAVE"
 				"\035<b28>"
@@ -481,6 +480,12 @@ identify_cpu(void)
 
 	/* XXX */
 	cpu = CPU_CLAWHAMMER;
+
+	if (cpu_feature & CPUID_SSE2)
+		cpu_mi_feature |= CPU_MI_BZERONT;
+
+	if (cpu_feature2 & CPUID2_MON)
+		cpu_mi_feature |= CPU_MI_MONITOR;
 }
 
 static u_int
@@ -488,7 +493,7 @@ find_cpu_vendor_id(void)
 {
 	int	i;
 
-	for (i = 0; i < sizeof(cpu_vendors) / sizeof(cpu_vendors[0]); i++)
+	for (i = 0; i < NELEM(cpu_vendors); i++)
 		if (strcmp(cpu_vendor, cpu_vendors[i].vendor) == 0)
 			return (cpu_vendors[i].vendor_id);
 	return (0);

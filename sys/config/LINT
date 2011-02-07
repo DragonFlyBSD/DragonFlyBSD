@@ -112,7 +112,6 @@ options 	ROOTDEVNAME=\"ufs:da0s2e\"
 # SMP OPTIONS:
 #
 # SMP enables building of a Symmetric MultiProcessor Kernel.
-# APIC_IO enables the use of the IO APIC for Symmetric I/O.
 #
 # Notes:
 #
@@ -124,13 +123,12 @@ options 	ROOTDEVNAME=\"ufs:da0s2e\"
 #   are required by your hardware.
 #
 
-# To make an SMP kernel both SMP and APIC_IO are usually
-# specified.  SMP boxes with severely broken BIOSes which
+# SMP boxes with severely broken BIOSes which
 # boot fine for non-SMP builds *might* work in SMP mode
-# if you define SMP and leave APIC_IO turned off.
+# if you disable APIC_IO by setting the loader tunable
+# hw.apic_io_enable to 0.
 #
 options 	SMP			# Symmetric MultiProcessor Kernel
-options 	APIC_IO			# Symmetric (APIC) I/O
 
 #
 # Rogue SMP hardware:
@@ -466,10 +464,6 @@ options 	MPLS			#Multi-Protocol Label Switching
 
 options 	NETATALK		#Appletalk communications protocols
 
-# These are currently broken but are shipped due to interest.
-#options 	NS			#Xerox NS protocols
-#options 	NSIP			#XNS over IP
-
 #
 # SMB/CIFS requester
 # NETSMB enables support for SMB protocol, it requires LIBMCHAIN and LIBICONV
@@ -635,7 +629,6 @@ options 	IPSTEALTH		#support for stealth forwarding
 options 	TCPDEBUG
 
 device		pf
-device		pfsync
 device		pflog
 
 #CARP
@@ -747,6 +740,7 @@ options 	NFS			#Network filesystem
 #options 	NFS_NOSERVER		#Disable the NFS-server code.
 options 	CD9660			#ISO 9660 filesystem
 options 	FDESC			#File descriptor filesystem
+options 	HPFS			#OS/2 File system
 options 	MSDOSFS			#MS DOS filesystem
 options 	NTFS			#NT filesystem
 options 	NULLFS			#NULL filesystem
@@ -835,6 +829,12 @@ options 	EXT2FS
 # stability and security issues in the current aio code that make it
 # unsuitable for inclusion on machines with untrusted local users.
 options 	VFS_AIO
+
+# Optional character code conversion support with LIBICONV.
+# Each option requires their base file system and LIBICONV.
+options 	CD9660_ICONV
+options 	MSDOSFS_ICONV
+options 	NTFS_ICONV
 
 
 #####################################################################
@@ -933,6 +933,9 @@ device		ses			#SCSI SES/SAF-TE driver
 
 # Options for device mapper
 device		dm
+device		dm_target_crypt
+device		dm_target_linear
+device		dm_target_striped
 
 # Options for iSCSI
 device	        iscsi_initiator
@@ -1044,8 +1047,7 @@ options 	MSGBUF_SIZE=40960
 #####################################################################
 # HARDWARE DEVICE CONFIGURATION
 
-# ISA and EISA devices:
-# EISA support is available for some device, so they can be auto-probed.
+# ISA devices:
 
 #
 # Mandatory ISA devices: isa, npx
@@ -1212,7 +1214,7 @@ device		npx0	at nexus? port IO_NPX flags 0x0 irq 13
 #
 
 #
-# Optional ISA and EISA devices:
+# Optional ISA devices:
 #
 
 #
@@ -1246,7 +1248,7 @@ device		stg0	at isa? port 0x140 irq 11
 # the Dell PERC 2/QC and the HP NetRAID-4M
 #
 device		aac
-options		AAC_DEBUG=4
+options		AAC_DEBUG
 device		aacp	# SCSI Passthrough interface (optional, CAM required)
 
 #
@@ -1257,6 +1259,10 @@ device		aacp	# SCSI Passthrough interface (optional, CAM required)
 device		ida		# Compaq Smart RAID
 device		mlx		# Mylex DAC960
 device		amr		# AMI MegaRAID
+device		amrp		# SCSI Passthrough interface (optional, CAM req.)
+device		mfi		# LSI MegaRAID SAS
+device		mfip		# LSI MegaRAID SAS passthrough, requires CAM
+options 	MFI_DEBUG
 
 #
 # Areca RAID (CAM is required).
@@ -1264,11 +1270,20 @@ device		amr		# AMI MegaRAID
 device		arcmsr		# Areca SATA II RAID
 
 #
+# Highpoint RocketRAID 182x.
+device		hptmv
+
+#
+# Highpoint RocketRaid 3xxx series SATA RAID
+device		hptiop
+
+#
 # 3ware ATA RAID
 #
 device		twe		# 3ware ATA RAID
 device		twa		# 3ware 9000 series PATA/SATA RAID
 options 	TWA_DEBUG=10	# enable debug messages
+device		tws		# 3ware 9750 series SATA/SAS RAID
 
 #
 # Promise Supertrack SX6000
@@ -1580,7 +1595,7 @@ device		"snd_uaudio"
 # si: Specialix SI/XIO 4-32 port terminal multiplexor
 # spic: Sony Programmable I/O controller (VAIO notebooks)
 # stl: Stallion EasyIO and EasyConnection 8/32 (ISA and PCI), EasyConnection 8/64 PCI
-# stli: Stallion EasyConnection 8/64 ISA/EISA, ONboard, Brumby (intelligent)
+# stli: Stallion EasyConnection 8/64 ISA, ONboard, Brumby (intelligent)
 # nmdm: nullmodem terminal driver (see nmdm(4))
 
 # Notes on APM
@@ -1646,9 +1661,7 @@ device		"snd_uaudio"
 #     to change src/sys/dev/serial/stl/stallion.c if you reconfigure this on the boards.
 #  The "flags" and "iosiz" settings on the stli driver depend on the board:
 #	EasyConnection 8/64 ISA:     flags 23         iosiz 0x1000
-#	EasyConnection 8/64 EISA:    flags 24         iosiz 0x10000
 #	ONboard ISA:                 flags 4          iosiz 0x10000
-#	ONboard EISA:                flags 7          iosiz 0x10000
 #	Brumby:                      flags 2          iosiz 0x4000
 #	Stallion:                    flags 1          iosiz 0x10000
 #  For the PCI cards, "device stl" will suffice.
@@ -1679,18 +1692,8 @@ device		stli0	at isa? port 0x2a0 iomem 0xcc000 flags 23 iosiz 0x1000
 # nullmodem terminal driver
 device		nmdm
 
-#
-# EISA devices:
-#
-# The EISA bus device is `eisa'.  It provides auto-detection and
-# configuration support for all devices on the EISA bus.
-#
-# The `ahb' device provides support for the Adaptec 174X adapter.
-#
 # The `ahc' device provides support for the Adaptec 274X and 284X
-# adapters.  The 284X, although a VLB card, responds to EISA probes.
-device		eisa
-device		ahb
+# adapters.
 device		ahc
 
 # The aic7xxx driver will attempt to use memory mapped I/O for all PCI
@@ -1702,14 +1705,6 @@ options 	AHC_ALLOW_MEMIO
 # The adw driver will attempt to use memory mapped I/O for all PCI
 # controllers that have it configured only if this option is set.
 options 	ADW_ALLOW_MEMIO
-
-# By default, only 10 EISA slots are probed, since the slot numbers
-# above clash with the configuration address space of the PCI subsystem,
-# and the EISA probe is not very smart about this.  This is sufficient
-# for most machines, but in particular the HP NetServer LC series comes
-# with an onboard AIC7770 dual-channel SCSI controller on EISA slot #11,
-# thus you need to bump this figure to 12 for them.
-options 	EISA_SLOTS=12
 
 #
 # PCI devices & PCI options:
@@ -1942,6 +1937,7 @@ device		amd		# AMD 53C974 (Tekram DC-390(T))
 device		isp		# Qlogic family
 device		ispfw		# Firmware for QLogic HBAs
 device		mpt		# LSI '909 FC adapters
+device		mps		# LSI-Logic MPT-Fusion 2
 device		ncr		# NCR/Symbios Logic
 device		sym		# NCR/Symbios Logic (newer chipsets)
 device		trm		# Tekram DC395U/UW/F and DC315U
@@ -2148,6 +2144,7 @@ device		nsclpcsio1 at isa? port 0x4e
 device		wbsio0	at isa? port 0x2e
 device		wbsio1	at isa? port 0x4e
 device		lm#3	at wbsio?
+device		uguru0	at isa? port 0xe0	# ABIT uGuru
 
 #---------------------------------------------------------------------------
 # ISDN4BSD
@@ -2587,6 +2584,8 @@ device 		ehci
 # General USB code (mandatory for USB)
 device		usb
 #
+# USB Bluetooth
+device		ubt
 # Fm Radio
 device		ufm
 # Generic USB device driver
@@ -2839,13 +2838,13 @@ options		MBUF_DEBUG
 options 	METEOR_TEST_VIDEO
 options 	NETATALKDEBUG
 options 	PANIC_DEBUG
+options 	PMAP_DEBUG
 options 	PSM_DEBUG=4
 options 	SCSI_NCR_DEBUG
 options 	SCSI_NCR_MAX_SYNC=10000
 options 	SCSI_NCR_MAX_WIDE=1
 options 	SCSI_NCR_MYADDR=7
 options 	SHOW_BUSYBUFS	# List buffers that prevent root unmount
-options 	SIMPLELOCK_DEBUG
 options 	SI_DEBUG
 options 	SLIP_IFF_OPTS
 options 	SOCKBUF_DEBUG
@@ -2867,7 +2866,6 @@ options 	XBONEHACK
 options	KTR
 #options KTR_CTXSW
 #options KTR_ETHERNET
-#options KTR_GIANT_CONTENTION
 #options KTR_HAMMER
 #options KTR_IF_BGE
 #options KTR_IF_EM

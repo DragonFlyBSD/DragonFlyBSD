@@ -127,7 +127,7 @@ _kvm_malloc(kvm_t *kd, size_t n)
 	void *p;
 
 	if ((p = calloc(n, sizeof(char))) == NULL)
-		_kvm_err(kd, kd->program, "can't allocate %u bytes: %s",
+		_kvm_err(kd, kd->program, "can't allocate %zd bytes: %s",
 			 n, strerror(errno));
 	return (p);
 }

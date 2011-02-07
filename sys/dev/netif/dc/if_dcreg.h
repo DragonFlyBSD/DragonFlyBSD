@@ -30,7 +30,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dcreg.h,v 1.4.2.22 2003/06/07 16:55:35 mbr Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dcreg.h,v 1.10 2006/04/30 02:02:06 sephe Exp $
  */
 
 /*
@@ -862,6 +861,15 @@ struct dc_softc {
 #define DC_DEVICEID_ADM9511	0x9511
 #define DC_DEVICEID_ADM9513	0x9513
 
+/*
+ * Abocom vendor ID
+ */
+#define DC_VENDORID_ABOCOM	0x13d1
+
+/*
+ * Abocom device IDs.
+ */
+#define DC_DEVICEID_FE2500	0xAB02
 
 /*
  * 3COM PCI vendor ID

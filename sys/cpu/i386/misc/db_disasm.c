@@ -24,7 +24,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_disasm.c,v 1.23.2.1 2001/07/29 22:48:37 kris Exp $
- * $DragonFly: src/sys/cpu/i386/misc/db_disasm.c,v 1.6 2007/01/06 08:24:41 dillon Exp $
  */
 
 /*
@@ -803,9 +802,7 @@ static const struct inst db_inst_table[256] = {
 /*ff*/	{ "",	   TRUE,  NONE,  0,	     db_Grp5 },
 };
 
-static const struct inst db_bad_inst =
-	{ "???",   FALSE, NONE,  0,	      0 }
-;
+static const struct inst db_bad_inst = { "???", FALSE, NONE, 0, 0 };
 
 #define	f_mod(byte)	((byte)>>6)
 #define	f_reg(byte)	(((byte)>>3)&0x7)

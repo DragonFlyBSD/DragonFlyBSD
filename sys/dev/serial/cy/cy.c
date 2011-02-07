@@ -30,7 +30,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.30 2008/10/20 13:16:58 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -384,9 +383,8 @@ static	d_close_t	sioclose;
 static	d_write_t	siowrite;
 static	d_ioctl_t	sioioctl;
 
-#define	CDEV_MAJOR	48
 static struct dev_ops sio_ops = {
-	{ driver_name, CDEV_MAJOR, D_TTY },
+	{ driver_name, 0, D_TTY },
 	.d_open =	sioopen,
 	.d_close =	sioclose,
 	.d_read =	ttyread,

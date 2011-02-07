@@ -485,6 +485,8 @@ static const format_flag_pair strfmon_flag_pairs[] =
   { 0, 0, 0, 0 }
 };
 
+static const format_char_info dfly_ext_char_info =
+{ NULL,   1, STD_EXT, { T89_C,  BADLEN,   BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN  }, "",	 "cR", NULL };
 
 static const format_char_info print_char_table[] =
 {
@@ -515,8 +517,8 @@ static const format_char_info print_char_table[] =
      ("%6D", ptr, ":")		-> XX:XX:XX:XX:XX:XX
      ("%*D", len, ptr, " ")	-> XX XX XX XX ...
    */
-  { "D",   1, STD_EXT, { T89_C,  BADLEN,   BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN  }, "-wp",      "cR",	NULL },
-  { "b",   1, STD_EXT, { T89_C,  BADLEN,   BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN  }, "-wp",      "",	NULL   },
+  { "D",   1, STD_EXT, { T89_V,  BADLEN,   BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN  }, "-wp",      "cR",	&dfly_ext_char_info },
+  { "b",   0, STD_EXT, { T89_I,  BADLEN,   BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN  }, "-wp",      "",	&dfly_ext_char_info },
   { "ry",  0, STD_EXT, { T89_I,  BADLEN,   BADLEN,   T89_L,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN  }, "-wp0 +#",  "i",	NULL  },
   { "z",   0, STD_EXT, { T89_UI,  T99_UC,  T89_US,  T89_UL,  T9L_ULL, TEX_ULL, T99_ST,  T99_UPD, T99_UIM }, "-wp0#",     "i",	NULL },
   { NULL,  0, 0, NOLENGTHS, NULL, NULL, NULL }
@@ -1812,56 +1814,6 @@ check_format_info_main (format_check_results *res,
 		}
 	    }
 	}
-
-      if (*format_chars == 'b')
-	{
-	  /* There should be an int arg to control the string arg.  */
-	  if (params == 0)
-	    {
-	      warning (OPT_Wformat, "too few arguments for format");
-	      return;
-	    }
-	    if (info->first_arg_num != 0)
-	    {
-	      cur_param = TREE_VALUE (params);
-	      params = TREE_CHAIN (params);
-	      ++arg_num;
-	      if ((TYPE_MAIN_VARIANT (TREE_TYPE (cur_param))
-		   != integer_type_node)
-		  &&
-		  (TYPE_MAIN_VARIANT (TREE_TYPE (cur_param))
-		   != unsigned_type_node))
-		{
-		  warning (OPT_Wformat, "bitmap is not type int (arg %d)",
-				  arg_num);
-		}
-	    }
-	}
-      if (*format_chars == 'D')
-	{
-	  /* There should be an unsigned char * arg before the string arg.  */
-	  if (params == 0)
-	    {
-	      warning (OPT_Wformat, "too few arguments for format");
-	      return;
-	    }
-	    if (info->first_arg_num != 0)
-	    {
-	      tree cur_type;
-
-	      cur_param = TREE_VALUE (params);
-	      params = TREE_CHAIN (params);
-	      ++arg_num;
-	      cur_type = TREE_TYPE (cur_param);
-	      if (TREE_CODE (cur_type) != POINTER_TYPE
-		  || TYPE_MAIN_VARIANT (TREE_TYPE (cur_type))
-		     != unsigned_char_type_node)
-		{
-		  warning (OPT_Wformat, "ethernet address is not type unsigned char * (arg %d)",
-				  arg_num);
-		}
-	    }
-        }
 
       format_char = *format_chars;
       if (format_char == 0

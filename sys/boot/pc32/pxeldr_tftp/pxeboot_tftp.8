@@ -27,7 +27,7 @@
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
-.Dd May 1, 2000
+.Dd October 6, 2010
 .Dt PXEBOOT_TFTP 8
 .Os
 .Sh NAME
@@ -84,7 +84,7 @@ respectively, or the server to make TFTP requests to.
 Note that
 .Nm
 expects to fetch
-.Pa /boot/loader.rc
+.Pa /boot/dloader.rc
 from the specified server before loading any other files.
 .Pp
 In all other respects,
@@ -105,8 +105,12 @@ For further information on Intel's PXE specifications and Wired for
 Management (WfM) systems, see
 .Pa http://developer.intel.com/ial/wfm/ .
 .Sh SEE ALSO
+.Xr dhcpd 8 Pq Pa pkgsrc/net/isc-dhcpd4 ,
+.Xr diskless 8 ,
 .Xr loader 8 ,
-.Xr pxeboot 8
+.Xr nfsd 8 ,
+.Xr pxeboot 8 ,
+.Xr tftpd 8
 .Sh HISTORY
 The
 .Nm

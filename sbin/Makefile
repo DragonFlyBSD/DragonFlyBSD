@@ -12,6 +12,8 @@ SUBDIR=	adjkerntz \
 	ccdconfig \
 	clri \
 	comcontrol \
+	cryptdisks \
+	devattr \
 	devd \
 	devfsctl \
 	dhclient \
@@ -26,6 +28,7 @@ SUBDIR=	adjkerntz \
 	fsck \
 	fsck_msdosfs \
 	fsdb \
+	fsid \
 	fsirand \
 	getdevpath \
 	growfs \

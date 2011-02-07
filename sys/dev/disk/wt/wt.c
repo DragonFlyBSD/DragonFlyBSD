@@ -21,7 +21,6 @@
  *
  * Version 1.3, Thu Nov 11 12:09:13 MSK 1993
  * $FreeBSD: src/sys/i386/isa/wt.c,v 1.57.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.21 2008/08/02 01:14:42 dillon Exp $
  *
  */
 
@@ -183,10 +182,8 @@ static	d_close_t	wtclose;
 static	d_ioctl_t	wtioctl;
 static	d_strategy_t	wtstrategy;
 
-#define CDEV_MAJOR 10
-
 static struct dev_ops wt_ops = {
-	{ "wt", CDEV_MAJOR, 0 },
+	{ "wt", 0, 0 },
 	.d_open =	wtopen,
 	.d_close =	wtclose,
 	.d_read =	physread,

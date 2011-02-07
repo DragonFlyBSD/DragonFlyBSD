@@ -1,0 +1,169 @@
+.\" Copyright (c) 2010 The DragonFly Project.  All rights reserved.
+.\" 
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Akos Kovacs <akoskovacs@gmx.com>
+.\" 
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd December 12, 2010
+.Dt LIBFSID 3
+.Os
+.Sh NAME
+.Nm fsid_probe ,
+.Nm fsid_probe_all ,
+.Nm fsid_volname ,
+.Nm fsid_volname_all ,
+.Nm fsid_fsname ,
+.Nm fsid_fs_count
+.Nd general libfsid functions
+.Sh LIBRARY
+.Lb libfsid
+.Sh SYNOPSIS
+.In libfsid.h
+.Ft fsid_t
+.Fn fsid_probe "const char *dev" "const char *fs_name"
+.Ft fsid_t
+.Fn fsid_probe_all "const char *dev"
+.Ft char *
+.Fn fsid_volname "const char *dev" "const char *fs_name"
+.Ft char *
+.Fn fsid_volname_all "const char *dev"
+.Ft char *
+.Fn fsid_fsname "fsid_t id"
+.Ft int
+.Fn fsid_fs_count "void"
+.Sh DESCRIPTION
+.\" General description
+The
+.Lb libfsid
+provides an interface to determine several filesystems
+and to get their volume labels.
+.Pp
+Most functions use the parameter
+.Fa dev
+for specifying the full path of the device and some of them have an additional
+.Fa fs_name
+parameter which is the name of the chosen filesystem.
+It can be:
+.Bl -tag -width ".Li MSDOSFS" -offset indent
+.It Li HAMMER
+A
+.Xr HAMMER 5
+filesystem
+.It Li UFS
+A
+.Xr UFS 5
+filesystem
+.It Li CD9660
+An ISO 9660 filesystem
+.It Li EXT2
+Linux' second extended filesystem
+.It Li MSDOSFS
+An
+.Xr msdos 5
+filesystem
+.El
+.Pp
+.\" fsid_probe function
+The
+.Fn fsid_probe
+function returns one of
+.Dv FSID_CD9660 ,
+.Dv FSID_EXT2 ,
+.Dv FSID_HAMMER
+or
+.Dv FSID_UFS
+if the device has the filesystem type as expected by the
+.Fa fs_name
+parameter, otherwise
+.Dv FSID_UNKNOWN .
+.Pp
+.\" fsid_probe_all function
+The
+.Fn fsid_probe_all
+function tries to identify the filesystem type.
+It returns
+.Dv FSID_UNKNOWN
+if the filesystem is unknown, or the check fails.
+Otherwise the returned value is one of:
+.Bl -tag -width ".Dv FSID_MSDOSFS" -offset indent
+.It Dv FSID_HAMMER
+A
+.Xr HAMMER 5
+filesystem
+.It Dv FSID_UFS
+A
+.Xr UFS 5
+filesystem
+.It Dv FSID_CD9660
+An ISO 9660 filesystem
+.It Dv FSID_EXT2
+Linux' second extended filesystem
+.It Dv FSID_MSDOSFS
+An
+.Xr msdos 5
+filesystem
+.El
+.Pp
+The name of the filesystem can be easily queried with the
+.Fn fsid_fsname
+function.
+.Pp
+The
+.Fn fsid_volname
+function returns the volume label, if the filesystem name is the same
+as specified by
+.Fa fs_name .
+If not, it returns
+.Dv NULL .
+.Pp
+The
+.Fn fsid_volname_all
+function returns the volume label, if the filesystem is known.
+Otherwise it returns
+.Dv NULL .
+.Pp
+The
+.Fn fsid_fsname
+function returns the name of the filesystem as a pointer to string.
+The
+.Fa id
+is usually the return value of a
+.Fn fsid_probe_all
+call.
+.Pp
+The
+.Fn fsid_fs_count
+function returns the number of supported filesystems.
+.Sh SEE ALSO
+.Xr devattr 3
+.Sh AUTHOR
+.An -nosplit
+The library and the manual page were written by
+.An Akos Kovacs
+.Aq akoskovacs@gmx.com .

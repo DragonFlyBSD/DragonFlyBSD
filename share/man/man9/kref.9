@@ -1,0 +1,103 @@
+.\"
+.\" Copyright (c) 2010, The DragonFly Project.
+.\"
+.\" This software is derived from software contributed to the DragonFly Project
+.\" by Venkatesh Srinivas <me@endeavour.zapto.org>.
+.\"
+.\" Permission to use, copy, modify, or distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR OTHER DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA, OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE, OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd December 21, 2010
+.Dt KREF 9
+.Os
+.Sh NAME
+.Nm kref_init ,
+.Nm kref_inc ,
+.Nm kref_dec
+.Nd lightweight reference counts
+.Sh SYNOPSIS
+.In sys/ref.h
+.Ft void
+.Fn kref_init "struct kref *ref" "int count"
+.Ft void
+.Fn kref_inc "struct kref *ref"
+.Ft int
+.Fn kref_dec "struct kref *ref" "void (*deconstruct)(void *, void *)" \
+"void *priv1" "void *priv2"
+.Sh DESCRIPTION
+.Pp
+Kref is a lightweight reference counting system applicable to many dynamically
+allocated structures. The space overhead of a reference count is only one
+machine word.
+.Pp
+The
+.Fn kref_init
+function initializes a reference to the value
+.Fa count .
+.Pp
+The
+.Fn kref_inc
+function increments a reference atomically with respect to preemption and to
+concurrent
+.Fn kref_inc
+calls.
+.Pp
+The
+.Fn kref_dec
+function decrements a reference atomically with respect to preemption and to
+concurrent
+.Fn kref_dec
+calls. If the reference transitions from 1 to 0, the
+.Fa deconstruct
+function is called with
+.Fa priv1
+and
+.Fa priv2
+as arguments. The
+.Fa deconstruct
+argument may be NULL.
+.Fn kref_dec
+returns 0 if it sees a 1 to 0 transition, 1 otherwise.
+.Sh NOTES
+.Pp
+An object cannot synchronize its own visibility. Therefore care must be taken
+when interleaving calls to kref_inc and kref_dec; higher level synchronization
+is often required.
+.Sh EXAMPLE
+Simple use of kref with a
+.Xr kmalloc 9
+allocated structure:
+.Bd -literal
+struct interesting {
+	int ctr;
+	struct kref ref;
+};
+
+struct interesting *thing = kmalloc(sizeof(struct interesting), M_DEVBUF);
+/* Setup reference to 1 */
+kref_init(&thing->ref, 1);
+
+/* 1 -> 2 transition */
+kref_inc(&thing->ref);
+
+/* 2 -> 1 transition ; don't call deconstruct (kfree) */
+kref_dec(&thing->ref, kfree, thing, M_DEVBUF);
+
+/* 1 -> 0 transition, so call kfree to release thing */
+kref_dec(&thing->ref, kfree, thing, M_DEVBUF);
+.Ed
+.Sh FILES
+The kref implementation is in
+.Pa /sys/kern/kern_ref.c .
+.Sh HISTORY
+kref first appeared in
+.Dx 2.9 .

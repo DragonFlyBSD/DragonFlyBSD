@@ -163,7 +163,7 @@ struct inpcbinfo tcbinfo[MAXCPU];
 struct tcpcbackqhead tcpcbackq[MAXCPU];
 
 static struct lwkt_token tcp_port_token =
-		LWKT_TOKEN_MP_INITIALIZER(tcp_port_token);
+		LWKT_TOKEN_INITIALIZER(tcp_port_token);
 
 int tcp_mssdflt = TCP_MSS;
 SYSCTL_INT(_net_inet_tcp, TCPCTL_MSSDFLT, mssdflt, CTLFLAG_RW,
@@ -331,7 +331,7 @@ tcp_init(void)
 	 * allocation to fail so do not specify MPF_INT.
 	 */
 	mpipe_init(&tcptemp_mpipe, M_TCPTEMP, sizeof(struct tcptemp),
-		    25, -1, 0, NULL);
+		    25, -1, 0, NULL, NULL, NULL);
 
 	tcp_delacktime = TCPTV_DELACK;
 	tcp_keepinit = TCPTV_KEEP_INIT;
@@ -747,45 +747,28 @@ tcp_drop(struct tcpcb *tp, int error)
 
 #ifdef SMP
 
-struct netmsg_remwildcard {
+struct netmsg_listen_detach {
 	struct netmsg_base	base;
-	struct inpcb		*nm_inp;
-	struct inpcbinfo	*nm_pcbinfo;
-#if defined(INET6)
-	int			nm_isinet6;
-#else
-	int			nm_unused01;
-#endif
+	struct tcpcb		*nm_tp;
 };
 
-/*
- * Wildcard inpcb's on SMP boxes must be removed from all cpus before the
- * inp can be detached.  We do this by cycling through the cpus, ending up
- * on the cpu controlling the inp last and then doing the disconnect.
- */
 static void
-in_pcbremwildcardhash_handler(netmsg_t msg)
+tcp_listen_detach_handler(netmsg_t msg)
 {
-	struct netmsg_remwildcard *nmsg = (struct netmsg_remwildcard *)msg;
-	int cpu;
+	struct netmsg_listen_detach *nmsg = (struct netmsg_listen_detach *)msg;
+	struct tcpcb *tp = nmsg->nm_tp;
+	int cpu = mycpuid, nextcpu;
 
-	cpu = nmsg->nm_pcbinfo->cpu;
+	if (tp->t_flags & TF_SYNCACHE)
+		syncache_destroy(tp);
 
-	if (cpu == nmsg->nm_inp->inp_pcbinfo->cpu) {
-		/* note: detach removes any wildcard hash entry */
-#ifdef INET6
-		if (nmsg->nm_isinet6)
-			in6_pcbdetach(nmsg->nm_inp);
-		else
-#endif
-			in_pcbdetach(nmsg->nm_inp);
+	in_pcbremwildcardhash_oncpu(tp->t_inpcb, &tcbinfo[cpu]);
+
+	nextcpu = cpu + 1;
+	if (nextcpu < ncpus2)
+		lwkt_forwardmsg(cpu_portfn(nextcpu), &nmsg->base.lmsg);
+	else
 		lwkt_replymsg(&nmsg->base.lmsg, 0);
-	} else {
-		in_pcbremwildcardhash_oncpu(nmsg->nm_inp, nmsg->nm_pcbinfo);
-		cpu = (cpu + 1) % ncpus2;
-		nmsg->nm_pcbinfo = &tcbinfo[cpu];
-		lwkt_forwardmsg(cpu_portfn(cpu), &nmsg->base.lmsg);
-	}
 }
 
 #endif
@@ -804,9 +787,6 @@ tcp_close(struct tcpcb *tp)
 	struct socket *so = inp->inp_socket;
 	struct rtentry *rt;
 	boolean_t dosavessthresh;
-#ifdef SMP
-	int cpu;
-#endif
 #ifdef INET6
 	boolean_t isipv6 = ((inp->inp_vflag & INP_IPV6) != 0);
 	boolean_t isafinet6 = (INP_CHECK_SOCKAF(so, AF_INET6) != 0);
@@ -814,17 +794,41 @@ tcp_close(struct tcpcb *tp)
 	const boolean_t isipv6 = FALSE;
 #endif
 
+#ifdef SMP
 	/*
-	 * The tp is not instantly destroyed in the wildcard case.  Setting
-	 * the state to TCPS_TERMINATING will prevent the TCP stack from
-	 * messing with it, though it should be noted that this change may
-	 * not take effect on other cpus until we have chained the wildcard
-	 * hash removal.
+	 * INP_WILDCARD_MP indicates that listen(2) has been called on
+	 * this socket.  This implies:
+	 * - A wildcard inp's hash is replicated for each protocol thread.
+	 * - Syncache for this inp grows independently in each protocol
+	 *   thread.
+	 * - There is more than one cpu
 	 *
-	 * XXX we currently depend on the BGL to synchronize the tp->t_state
-	 * update and prevent other tcp protocol threads from accepting new
-	 * connections on the listen socket we might be trying to close down.
+	 * We have to chain a message to the rest of the protocol threads
+	 * to cleanup the wildcard hash and the syncache.  The cleanup
+	 * in the current protocol thread is defered till the end of this
+	 * function.
+	 *
+	 * NOTE:
+	 * After cleanup the inp's hash and syncache entries, this inp will
+	 * no longer be available to the rest of the protocol threads, so we
+	 * are safe to whack the inp in the following code.
 	 */
+	if (inp->inp_flags & INP_WILDCARD_MP) {
+		struct netmsg_listen_detach nmsg;
+
+		KKASSERT(so->so_port == cpu_portfn(0));
+		KKASSERT(&curthread->td_msgport == cpu_portfn(0));
+		KKASSERT(inp->inp_pcbinfo == &tcbinfo[0]);
+
+		netmsg_init(&nmsg.base, NULL, &curthread->td_msgport,
+			    MSGF_PRIORITY, tcp_listen_detach_handler);
+		nmsg.nm_tp = tp;
+		lwkt_domsg(cpu_portfn(1), &nmsg.base.lmsg, 0);
+
+		inp->inp_flags &= ~INP_WILDCARD_MP;
+	}
+#endif
+
 	KKASSERT(tp->t_state != TCPS_TERMINATING);
 	tp->t_state = TCPS_TERMINATING;
 
@@ -960,45 +964,21 @@ no_valid_rt:
 	/* note: pcb detached later on */
 
 	tcp_destroy_timermsg(tp);
+
 	if (tp->t_flags & TF_SYNCACHE)
 		syncache_destroy(tp);
 
 	/*
-	 * Discard the inp.  In the SMP case a wildcard inp's hash (created
-	 * by a listen socket or an INADDR_ANY udp socket) is replicated
-	 * for each protocol thread and must be removed in the context of
-	 * that thread.  This is accomplished by chaining the message
-	 * through the cpus.
-	 *
-	 * If the inp is not wildcarded we simply detach, which will remove
-	 * the any hashes still present for this inp.
+	 * NOTE:
+	 * pcbdetach removes any wildcard hash entry on the current CPU.
 	 */
-#ifdef SMP
-	if (inp->inp_flags & INP_WILDCARD_MP) {
-		struct netmsg_remwildcard *nmsg;
+#ifdef INET6
+	if (isafinet6)
+		in6_pcbdetach(inp);
+	else
+#endif
+		in_pcbdetach(inp);
 
-		cpu = (inp->inp_pcbinfo->cpu + 1) % ncpus2;
-		nmsg = kmalloc(sizeof(struct netmsg_remwildcard),
-			       M_LWKTMSG, M_INTWAIT);
-		netmsg_init(&nmsg->base, NULL, &netisr_afree_rport,
-			    0, in_pcbremwildcardhash_handler);
-#ifdef INET6
-		nmsg->nm_isinet6 = isafinet6;
-#endif
-		nmsg->nm_inp = inp;
-		nmsg->nm_pcbinfo = &tcbinfo[cpu];
-		lwkt_sendmsg(cpu_portfn(cpu), &nmsg->base.lmsg);
-	} else
-#endif
-	{
-		/* note: detach removes any wildcard hash entry */
-#ifdef INET6
-		if (isafinet6)
-			in6_pcbdetach(inp);
-		else
-#endif
-			in_pcbdetach(inp);
-	}
 	tcpstat.tcps_closed++;
 	return (NULL);
 }
@@ -1134,7 +1114,6 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 	int error, i, n;
 	struct inpcb *marker;
 	struct inpcb *inp;
-	inp_gen_t gencnt;
 	globaldata_t gd;
 	int origcpu, ccpu;
 
@@ -1175,12 +1154,11 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 		int cpu_id;
 
 		cpu_id = (origcpu + ccpu) % ncpus;
-		if ((smp_active_mask & (1 << cpu_id)) == 0)
+		if ((smp_active_mask & CPUMASK(cpu_id)) == 0)
 			continue;
 		rgd = globaldata_find(cpu_id);
 		lwkt_setcpu_self(rgd);
 
-		gencnt = tcbinfo[cpu_id].ipi_gencnt;
 		n = tcbinfo[cpu_id].ipi_count;
 
 		LIST_INSERT_HEAD(&tcbinfo[cpu_id].pcblisthead, marker, inp_list);
@@ -1194,8 +1172,6 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 			LIST_INSERT_AFTER(inp, marker, inp_list);
 
 			if (inp->inp_flags & INP_PLACEMARKER)
-				continue;
-			if (inp->inp_gencnt > gencnt)
 				continue;
 			if (prison_xinpcb(req->td, inp))
 				continue;

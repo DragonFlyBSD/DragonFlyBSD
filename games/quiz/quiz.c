@@ -55,7 +55,7 @@ static u_int qsize;
 
 char	*appdstr (char *, char *, size_t);
 void	 downcase (char *);
-void	 err (const char *, ...);
+void	 err (const char *, ...) __printflike(1, 2);
 void	 get_cats (char *, char *);
 void	 get_file (const char *);
 char	*next_cat (char *);

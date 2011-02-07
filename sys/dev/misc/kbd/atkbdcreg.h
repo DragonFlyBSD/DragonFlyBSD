@@ -136,6 +136,7 @@
 #define PSM_EXPLORER_ID		4
 #define PSM_4DMOUSE_ID		6
 #define PSM_4DPLUS_ID		8
+#define PSM_4DPLUS_RFSW35_ID  24
 
 #ifdef _KERNEL
 
@@ -210,6 +211,9 @@ enum kbdc_device_ivar {
 };
 
 typedef caddr_t KBDC;
+
+#define KBDC_RID_KBD	 0
+#define KBDC_RID_AUX	 1
 
 /* function prototypes */
 

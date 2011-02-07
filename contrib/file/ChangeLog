@@ -1,3 +1,101 @@
+2011-01-16  19:31  Reuben Thomas <rrt@sc3d.org>
+
+	* Fix two potential buffer overruns in apprentice_list.
+
+2011-01-14  22:33  Reuben Thomas <rrt@sc3d.org>
+
+	* New Python binding in pure Python.
+	* Update libmagic(3).
+
+2011-01-06  21:40  Reuben Thomas <rrt@sc3d.org>
+
+	* Fix Python bindings (including recent Python 3 compatibility
+	  update).
+
+2011-01-04  18:43  Reuben Thomas <rrt@sc3d.org>
+
+	* magic/Makefile.am: make it easier to recover from magic build failures.
+	* Fix pstring length specifier parsing to avoid generating invalid
+	  magic files.
+	* Add pstring length "J" (for "JPEG") to specify that the length
+	  include itself.
+	* Fix JPEG comment parsing at last using pstring/HJ!
+	* Ignore section 5 man pages in doc/.cvsignore.
+
+2010-12-22  13:12  Christos Zoulas <christos@zoulas.com>
+
+	* Add pstring/BHhLl to specify the type of the length of pascal
+	  strings.
+
+2010-11-26  18:39  Reuben Thomas <rrt@sc3d.org>
+
+	* Fix "-e soft": it was ignored when softmagic was called
+	  during asciimagic.
+	* Improve comments and use "unsigned char" in tar.h/is_tar.c.
+
+2010-11-05  17:26  Reuben Thomas <rrt@sc3d.org>
+
+	* Make bug reporting addresses more visible.
+
+2010-11-01  18:35  Reuben Thomas <rrt@sc3d.org>
+
+	* Add tcl magic from Gustaf Neumann
+
+2010-10-24  10:42  Christos Zoulas <christos@zoulas.com>
+
+	* Fix the whitespace comparing code (Christopher Chittleborough)
+
+2010-10-06  21:05  Christos Zoulas <christos@zoulas.com>
+
+	* allow string/t to work (Jan Kaluza)
+
+2010-09-20  22:11  Reuben Thomas <rrt@sc3d.org>
+
+	* Apply some patches from Ubuntu and Fedora.
+
+2010-09-20  21:16  Reuben Thomas <rrt@sc3d.org>
+
+	* Apply all patches from Debian package 5.04-6 which have not
+	  already been applied and are not Debian-specific.
+
+2010-09-20  15:24  Reuben Thomas <rrt@sc3d.org>
+
+	* Minor security fix to softmagic.c (don't use untrusted
+	  string as printf format).
+
+2010-07-21  12:20  Christos Zoulas <christos@zoulas.com>
+
+	* MINGW32 portability from LRN
+
+	* Don't warn about escaping magic regex chars when we are in a regex.
+
+2010-07-19  10:55  Christos Zoulas <christos@zoulas.com>
+
+	* Only try to print prpsinfo for core files. (Jan Kaluza)
+
+2010-04-22  12:55  Christos Zoulas <christos@zoulas.com>
+
+	* Try more elf offsets for Debian core files.  (Arnaud Giersch)
+
+2010-02-20  15:18  Reuben Thomas <rrt@sc3d.org>
+
+	* Clarify which sort of CDF we mean.
+
+2010-02-14  22:58  Reuben Thomas <rrt@sc3d.org>
+
+	* Re-jig Zip file type magic so that unsupported special
+	  Zip types (those with "mimetype" at offset 30) can be
+	  recognized.
+
+2010-02-02  21:50  Reuben Thomas <rrt@sc3d.org>
+
+	* Add support for OCF (EPUB) files (application/epub+zip)
+
+2010-01-28  18:25  Christos Zoulas <christos@zoulas.com>
+
+	* Fix core-dump from unbound loop:
+	  https://bugzilla.redhat.com/show_bug.cgi?id=533245
+
 2010-01-22  15:45  Christos Zoulas <christos@zoulas.com>
 
 	* print proper mime for crystal reports file

@@ -886,7 +886,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 		int nid;
 
 		nid = (origcpu + n) % ncpus;
-		if ((smp_active_mask & (1 << nid)) == 0)
+		if ((smp_active_mask & CPUMASK(nid)) == 0)
 			continue;
 		rgd = globaldata_find(nid);
 		lwkt_setcpu_self(rgd);
@@ -983,6 +983,48 @@ done:
 	return (error);
 }
 
+static int
+sysctl_kern_proc_cwd(SYSCTL_HANDLER_ARGS)
+{
+	int *name = (int*) arg1;
+	u_int namelen = arg2;
+	struct proc *p;
+	int error = 0;
+	char *fullpath, *freepath;
+	struct ucred *cr1 = curproc->p_ucred;
+
+	if (namelen != 1) 
+		return (EINVAL);
+
+	lwkt_gettoken(&proc_token);
+	p = pfind((pid_t)name[0]);
+	if (p == NULL)
+		goto done;
+
+	/*
+	 * If we are not allowed to see other args, we certainly shouldn't
+	 * get the cwd either. Also check the usual trespassing.
+	 */
+	if ((!ps_argsopen) && p_trespass(cr1, p->p_ucred))
+		goto done;
+
+	PHOLD(p);
+	if (req->oldptr && p->p_fd != NULL) {
+		error = cache_fullpath(p, &p->p_fd->fd_ncdir,
+		    &fullpath, &freepath, 0);
+		if (error)
+			goto done;
+		error = SYSCTL_OUT(req, fullpath, strlen(fullpath) + 1);
+		kfree(freepath, M_TEMP);
+	}
+
+	PRELE(p);
+
+done:
+	lwkt_reltoken(&proc_token);
+	return (error);
+}
+
 SYSCTL_NODE(_kern, KERN_PROC, proc, CTLFLAG_RD,  0, "Process table");
 
 SYSCTL_PROC(_kern_proc, KERN_PROC_ALL, all, CTLFLAG_RD|CTLTYPE_STRUCT,
@@ -1023,3 +1065,6 @@ SYSCTL_NODE(_kern_proc, (KERN_PROC_PID | KERN_PROC_FLAG_LWP), pid_lwp, CTLFLAG_R
 
 SYSCTL_NODE(_kern_proc, KERN_PROC_ARGS, args, CTLFLAG_RW | CTLFLAG_ANYBODY,
 	sysctl_kern_proc_args, "Process argument list");
+
+SYSCTL_NODE(_kern_proc, KERN_PROC_CWD, cwd, CTLFLAG_RD | CTLFLAG_ANYBODY,
+	sysctl_kern_proc_cwd, "Process argument list");

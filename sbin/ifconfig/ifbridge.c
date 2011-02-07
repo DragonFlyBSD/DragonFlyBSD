@@ -33,7 +33,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifbridge.c,v 1.1.2.2 2005/12/28 04:12:58 thompsa Exp $
- * $DragonFly: src/sbin/ifconfig/ifbridge.c,v 1.2 2006/06/30 16:50:01 geekgod Exp $
  */
 
 #include <sys/param.h>
@@ -549,7 +548,7 @@ static struct afswtch af_bridge = {
 	.af_other_status = bridge_status,
 };
 
-static __constructor void
+static __constructor(100) void
 bridge_ctor(void)
 {
 #define	N(a)	(sizeof(a) / sizeof(a[0]))

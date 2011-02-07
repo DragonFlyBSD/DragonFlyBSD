@@ -610,11 +610,7 @@ nm_pci_probe(device_t dev)
 		/* Try to catch other non-ac97 cards */
 
 		if (i == NUM_BADCARDS) {
-			if (!(sc = kmalloc(sizeof(*sc), M_DEVBUF, M_NOWAIT | M_ZERO))) {
-				device_printf(dev, "cannot allocate softc\n");
-				return ENXIO;
-			}
-
+			sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
 			data = pci_read_config(dev, PCIR_COMMAND, 2);
 			pci_write_config(dev, PCIR_COMMAND, data |
 					 PCIM_CMD_PORTEN | PCIM_CMD_MEMEN |
@@ -674,11 +670,7 @@ nm_pci_attach(device_t dev)
 	struct ac97_info *codec = 0;
 	char 		status[SND_STATUSLEN];
 
-	if ((sc = kmalloc(sizeof(*sc), M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
-		device_printf(dev, "cannot allocate softc\n");
-		return ENXIO;
-	}
-
+	sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
 	sc->dev = dev;
 	sc->type = pci_get_devid(dev);
 

@@ -3,8 +3,8 @@
 #
 # $DragonFly: src/sys/platform/vkernel/conf/files,v 1.21 2008/03/20 02:14:52 dillon Exp $
 #
-emulation/dragonfly12/dfbsd12_getdirentries.c	nonoptional	compat_df12
-emulation/dragonfly12/dfbsd12_stat.c		nonoptional	compat_df12
+emulation/dragonfly12/dfbsd12_getdirentries.c	optional	compat_df12
+emulation/dragonfly12/dfbsd12_stat.c		optional	compat_df12
 vfs/smbfs/smbfs_io.c		optional	smbfs
 vfs/smbfs/smbfs_node.c		optional	smbfs
 vfs/smbfs/smbfs_smb.c		optional	smbfs

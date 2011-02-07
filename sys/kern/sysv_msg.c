@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/kern/sysv_msg.c,v 1.23.2.5 2002/12/31 08:54:53 maxim Exp $ */
-/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.18 2008/01/06 16:55:51 swildner Exp $ */
 
 /*
  * Implementation of SVID messages
@@ -207,7 +206,7 @@ sys_msgsys(struct msgsys_args *uap)
 	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
-	if (which >= sizeof(msgcalls)/sizeof(msgcalls[0]))
+	if (which >= NELEM(msgcalls))
 		return (EINVAL);
 	bcopy(&uap->a2, &uap->which,
 	      sizeof(struct msgsys_args) - offsetof(struct msgsys_args, a2));
@@ -1121,11 +1120,17 @@ TUNABLE_INT("kern.ipc.msgseg", &msginfo.msgseg);
 TUNABLE_INT("kern.ipc.msgssz", &msginfo.msgssz);
 TUNABLE_INT("kern.ipc.msgmni", &msginfo.msgmni);
 
-SYSCTL_INT(_kern_ipc, OID_AUTO, msgmax, CTLFLAG_RD, &msginfo.msgmax, 0, "");
-SYSCTL_INT(_kern_ipc, OID_AUTO, msgmni, CTLFLAG_RD, &msginfo.msgmni, 0, "");
-SYSCTL_INT(_kern_ipc, OID_AUTO, msgmnb, CTLFLAG_RD, &msginfo.msgmnb, 0, "");
-SYSCTL_INT(_kern_ipc, OID_AUTO, msgtql, CTLFLAG_RD, &msginfo.msgtql, 0, "");
-SYSCTL_INT(_kern_ipc, OID_AUTO, msgssz, CTLFLAG_RD, &msginfo.msgssz, 0, "");
-SYSCTL_INT(_kern_ipc, OID_AUTO, msgseg, CTLFLAG_RD, &msginfo.msgseg, 0, "");
+SYSCTL_INT(_kern_ipc, OID_AUTO, msgmax, CTLFLAG_RD, &msginfo.msgmax, 0,
+    "Max characters in message");
+SYSCTL_INT(_kern_ipc, OID_AUTO, msgmni, CTLFLAG_RD, &msginfo.msgmni, 0,
+    "Max message queue identifiers");
+SYSCTL_INT(_kern_ipc, OID_AUTO, msgmnb, CTLFLAG_RD, &msginfo.msgmnb, 0,
+    "Max characters in message queue");
+SYSCTL_INT(_kern_ipc, OID_AUTO, msgtql, CTLFLAG_RD, &msginfo.msgtql, 0,
+    "Max SVID messages in system");
+SYSCTL_INT(_kern_ipc, OID_AUTO, msgssz, CTLFLAG_RD, &msginfo.msgssz, 0,
+    "Power-of-two size of a message segment");
+SYSCTL_INT(_kern_ipc, OID_AUTO, msgseg, CTLFLAG_RD, &msginfo.msgseg, 0,
+    "Number of message segments");
 SYSCTL_PROC(_kern_ipc, OID_AUTO, msqids, CTLFLAG_RD,
     NULL, 0, sysctl_msqids, "", "Message queue IDs");

@@ -797,32 +797,32 @@ display_init(struct statics *statics)
     /* call resize to do the dirty work */
     top_lines = display_resize();
 
-    /* only do the rest if we need to */
-    if (top_lines > -1)
+    /*
+     * save pointers and allocate space for names.  Even if top_lines <= -1
+     * the code will dereference many of these pointers and arrays.
+     */
+    procstate_names = statics->procstate_names;
+    num_procstates = string_count(procstate_names);
+
+    lprocstates = (int *)calloc(num_procstates, sizeof(int));
+
+    cpustate_names = statics->cpustate_names;
+    num_cpustates = string_count(cpustate_names);
+    lcpustates = (int *)calloc(num_cpustates, sizeof(int));
+    cpustate_columns = (int *)calloc(num_cpustates, sizeof(int));
+    memory_names = statics->memory_names;
+    num_memory = string_count(memory_names);
+
+    /* calculate starting columns where needed */
+    cpustate_total_length = 0;
+    pp = cpustate_names;
+    ip = cpustate_columns;
+    while (*pp != NULL)
     {
-	/* save pointers and allocate space for names */
-	procstate_names = statics->procstate_names;
-	num_procstates = string_count(procstate_names);
-	lprocstates = (int *)calloc(num_procstates, sizeof(int));
-
-	cpustate_names = statics->cpustate_names;
-	num_cpustates = string_count(cpustate_names);
-	lcpustates = (int *)calloc(num_cpustates, sizeof(int));
-	cpustate_columns = (int *)calloc(num_cpustates, sizeof(int));
-	memory_names = statics->memory_names;
-	num_memory = string_count(memory_names);
-
-	/* calculate starting columns where needed */
-	cpustate_total_length = 0;
-	pp = cpustate_names;
-	ip = cpustate_columns;
-	while (*pp != NULL)
+	*ip++ = cpustate_total_length;
+	if ((i = strlen(*pp++)) > 0)
 	{
-	    *ip++ = cpustate_total_length;
-	    if ((i = strlen(*pp++)) > 0)
-	    {
-		cpustate_total_length += i + 8;
-	    }
+	    cpustate_total_length += i + 8;
 	}
     }
 

@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd September 23, 2010
+.Dd October 12, 2010
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -2858,6 +2858,14 @@ the udevd daemon will be started on boot.
 If set to
 .Dq Li NO ,
 any configured vkernels will not be started.
+.It Va vkernel_kill_timeout
+.Pq Vt int
+This defines the default number of seconds that we will wait for the
+vkernel to shut down on it's own. If after this time it's still alive,
+it will be killed with SIGKILL.
+.It Va vkernel_bin
+.Pq Vt str
+Defines the default path to the vkernel binary.
 .It Va vkernel_list
 .Pq Vt str
 A space separated list of names for vkernels.
@@ -2876,9 +2884,10 @@ vkernel_example_rootimg_list="/var/vkernel/rootimg.01"
 vkernel_example_iface_list="auto:bridge0"
 vkernel_example_logfile="/dev/null"
 vkernel_example_flags="-U"
+vkernel_example_kill_timeout="45"
 .Ed
 .Pp
-The last three are optional.
+The last five are optional.
 They default to an empty string if not set, except for logfile which defaults to
 .Pa /dev/null
 if it is not set.

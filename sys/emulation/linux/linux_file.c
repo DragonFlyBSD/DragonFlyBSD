@@ -65,7 +65,6 @@
 int
 sys_linux_creat(struct linux_creat_args *args)
 {
-	CACHE_MPLOCK_DECLARE;
 	struct nlookupdata nd;
 	char *path;
 	int error;
@@ -77,13 +76,11 @@ sys_linux_creat(struct linux_creat_args *args)
 	if (ldebug(creat))
 		kprintf(ARGS(creat, "%s, %d"), path, args->mode);
 #endif
-	CACHE_GETMPLOCK1();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = kern_open(&nd, O_WRONLY | O_CREAT | O_TRUNC,
 				  args->mode, &args->sysmsg_iresult);
 	}
-	CACHE_RELMPLOCK();
 	linux_free_path(&path);
 	return(error);
 }
@@ -94,7 +91,6 @@ sys_linux_creat(struct linux_creat_args *args)
 static int
 linux_open_common(int dfd, char *lpath, int lflags, int mode, int *iresult)
 {
-	CACHE_MPLOCK_DECLARE;
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct nlookupdata nd;
@@ -138,7 +134,6 @@ linux_open_common(int dfd, char *lpath, int lflags, int mode, int *iresult)
 	if (lflags & LINUX_O_NOCTTY)
 		flags |= O_NOCTTY;
 
-	CACHE_GETMPLOCK1();
 	error = nlookup_init_at(&nd, &fp, dfd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = kern_open(&nd, flags, mode, iresult);
@@ -174,8 +169,6 @@ linux_open_common(int dfd, char *lpath, int lflags, int mode, int *iresult)
 				kern_close(*iresult);
 		}
 	}
-
-	CACHE_RELMPLOCK();
 
 	linux_free_path(&path);
 	return error;

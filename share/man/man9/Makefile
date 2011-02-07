@@ -74,11 +74,13 @@ MAN=	accept_filter.9 \
 	devtoname.9 \
 	driver.9 \
 	DRIVER_MODULE.9 \
+	dsched.9 \
 	EVENTHANDLER.9 \
 	extattr.9 \
 	fetch.9 \
 	firmware.9 \
 	hash.9 \
+	hexdump.9 \
 	ieee80211.9 \
 	ieee80211_beacon.9 \
 	ieee80211_bmiss.9 \
@@ -102,6 +104,7 @@ MAN=	accept_filter.9 \
 	kmalloc.9 \
 	kobj.9 \
 	kprintf.9 \
+	kref.9 \
 	ksignal.9 \
 	ktr.9 \
 	lock.9 \
@@ -145,6 +148,7 @@ MAN=	accept_filter.9 \
 	sysctl.9 \
 	sysctl_add_oid.9 \
 	sysctl_ctx_init.9 \
+	SYSINIT.9 \
 	systimer.9 \
 	taskqueue.9 \
 	time.9 \
@@ -170,6 +174,8 @@ MAN=	accept_filter.9 \
 	VFS_VPTOFH.9 \
 	vget.9 \
 	vhold.9 \
+	vm_map_findspace.9 \
+	vm_page_alloc.9 \
 	vn_fullpath.9 \
 	vnode.9 \
 	VOP_ACCESS.9 \
@@ -404,6 +410,25 @@ MLINKS+=devstat.9 devicestat.9 \
 	devstat.9 devstat_end_transaction_buf.9 \
 	devstat.9 devstat_remove_entry.9 \
 	devstat.9 devstat_start_transaction.9
+MLINKS+=dsched.9 dsched_cancel_bio.9 \
+	dsched.9 dsched_debug.9 \
+	dsched.9 DSCHED_DISK_CTX_LOCK.9 \
+	dsched.9 dsched_disk_ctx_ref.9 \
+	dsched.9 DSCHED_DISK_CTX_UNLOCK.9 \
+	dsched.9 dsched_disk_ctx_unref.9 \
+	dsched.9 dsched_get_bio_dp.9 \
+	dsched.9 dsched_get_bio_priv.9 \
+	dsched.9 dsched_get_disk_priv.9 \
+	dsched.9 dsched_new_policy_thread_tdio.9 \
+	dsched.9 DSCHED_POLICY_MODULE.9 \
+	dsched.9 dsched_register.9 \
+	dsched.9 dsched_strategy_async.9 \
+	dsched.9 dsched_strategy_raw.9 \
+	dsched.9 DSCHED_THREAD_IO_LOCK.9 \
+	dsched.9 dsched_thread_io_ref.9 \
+	dsched.9 DSCHED_THREAD_IO_UNLOCK.9 \
+	dsched.9 dsched_thread_io_unref.9 \
+	dsched.9 dsched_unregister.9
 MLINKS+=EVENTHANDLER.9 EVENTHANDLER_DECLARE.9 \
 	EVENTHANDLER.9 EVENTHANDLER_DEREGISTER.9 \
 	EVENTHANDLER.9 eventhandler_deregister.9 \
@@ -538,6 +563,9 @@ MLINKS+=kprintf.9 krateprintf.9 \
 	kprintf.9 log.9 \
 	kprintf.9 tprintf.9 \
 	kprintf.9 uprintf.9
+MLINKS+=kref.9 kref_init.9 \
+	kref.9 kref_inc.9 \
+	kref.9 kref_dec.9
 MLINKS+=ksignal.9 gsignal.9 \
 	ksignal.9 pgsignal.9
 MLINKS+=ktr.9 KTR_INFO.9 \
@@ -576,6 +604,29 @@ MLINKS+=make_dev.9 destroy_dev.9 \
 	make_dev.9 make_only_dev.9 \
 	make_dev.9 reference_dev.9 \
 	make_dev.9 release_dev.9
+MLINKS+=mbuf.9 m_adj.9 \
+	mbuf.9 M_ALIGN.9 \
+	mbuf.9 m_cat.9 \
+	mbuf.9 MCLGET.9 \
+	mbuf.9 m_copyback.9 \
+	mbuf.9 m_copydata.9 \
+	mbuf.9 m_copym.9 \
+	mbuf.9 m_copypacket.9 \
+	mbuf.9 m_devget.9 \
+	mbuf.9 m_dup.9 \
+	mbuf.9 m_free.9 \
+	mbuf.9 m_freem.9 \
+	mbuf.9 MGET.9 \
+	mbuf.9 m_getclr.9 \
+	mbuf.9 MGETHDR.9 \
+	mbuf.9 m_getm.9 \
+	mbuf.9 MH_ALIGN.9 \
+	mbuf.9 M_LEADINGSPACE.9 \
+	mbuf.9 M_PREPEND.9 \
+	mbuf.9 m_pullup.9 \
+	mbuf.9 m_split.9 \
+	mbuf.9 mtod.9 \
+	mbuf.9 M_TRAILINGSPACE.9
 MLINKS+=MD5.9 MD5Init.9 \
 	MD5.9 MD5Transform.9
 MLINKS+=microtime.9 getmicrotime.9 \
@@ -781,6 +832,7 @@ MLINKS+=sysctl_ctx_init.9 sysctl_ctx_entry_add.9 \
 	sysctl_ctx_init.9 sysctl_ctx_entry_del.9 \
 	sysctl_ctx_init.9 sysctl_ctx_entry_find.9 \
 	sysctl_ctx_init.9 sysctl_ctx_free.9
+MLINKS+=SYSINIT.9 sysinit.9
 MLINKS+=systimer.9 systimer_adjust_periodic.9 \
 	systimer.9 systimer_init_oneshot.9 \
 	systimer.9 systimer_init_periodic.9 \

@@ -43,6 +43,8 @@
 #ifndef	_UTMP_H_
 #define	_UTMP_H_
 
+#include <sys/cdefs.h>
+
 #define	_PATH_UTMP	"/var/run/utmp"
 #define	_PATH_WTMP	"/var/log/wtmp"
 #define	_PATH_LASTLOG	"/var/log/lastlog"
@@ -63,5 +65,12 @@ struct utmp {
 	char	ut_host[UT_HOSTSIZE];
 	time_t	ut_time;
 };
+
+__BEGIN_DECLS
+int utmpname(const char *);
+void setutent(void);
+struct utmp *getutent(void);
+void endutent(void);
+__END_DECLS
 
 #endif /* !_UTMP_H_ */

@@ -95,10 +95,10 @@ static enum { ROVER_MID1, ROVER_MID2 } rover_state = ROVER_MID2;
 
 int  freevnodes = 0;
 SYSCTL_INT(_debug, OID_AUTO, freevnodes, CTLFLAG_RD,
-		&freevnodes, 0, "");
+	&freevnodes, 0, "Number of free nodes");
 static int wantfreevnodes = 25;
 SYSCTL_INT(_debug, OID_AUTO, wantfreevnodes, CTLFLAG_RW,
-		&wantfreevnodes, 0, "");
+	&wantfreevnodes, 0, "Desired number of free vnodes");
 #ifdef TRACKVNODE
 static ulong trackvnode;
 SYSCTL_ULONG(_debug, OID_AUTO, trackvnode, CTLFLAG_RW,
@@ -416,7 +416,7 @@ vnode_ctor(void *obj, void *private, int ocflags)
 {
 	struct vnode *vp = obj;
 
-	lwkt_token_init(&vp->v_token, 1, "vnode");
+	lwkt_token_init(&vp->v_token, "vnode");
 	lockinit(&vp->v_lock, "vnode", 0, 0);
 	ccms_dataspace_init(&vp->v_ccms);
 	TAILQ_INIT(&vp->v_namecache);

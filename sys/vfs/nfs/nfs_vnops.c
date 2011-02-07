@@ -67,7 +67,6 @@
 
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
-#include <vm/vm_zone.h>
 
 #include <sys/buf2.h>
 
@@ -1434,7 +1433,8 @@ nfs_writerpc_uio(struct vnode *vp, struct uio *uiop,
 		nfsstats.rpccnt[NFSPROC_WRITE]++;
 		len = (tsiz > nmp->nm_wsize) ? nmp->nm_wsize : tsiz;
 		nfsm_reqhead(&info, vp, NFSPROC_WRITE,
-			     NFSX_FH(info.v3) + 5 * NFSX_UNSIGNED + nfsm_rndup(len));
+			     NFSX_FH(info.v3) + 5 * NFSX_UNSIGNED +
+			     nfsm_rndup(len));
 		ERROROUT(nfsm_fhtom(&info, vp));
 		if (info.v3) {
 			tl = nfsm_build(&info, 5 * NFSX_UNSIGNED);
@@ -2438,6 +2438,12 @@ nfs_readdirrpc_uio(struct vnode *vp, struct uio *uiop)
 			*tl++ = dnp->n_cookieverf.nfsuquad[0];
 			*tl++ = dnp->n_cookieverf.nfsuquad[1];
 		} else {
+			/*
+			 * WARNING!  HAMMER DIRECTORIES WILL NOT WORK WELL
+			 * WITH NFSv2!!!  There's nothing I can really do
+			 * about it other than to hope the server supports
+			 * rdirplus w/NFSv2.
+			 */
 			tl = nfsm_build(&info, 2 * NFSX_UNSIGNED);
 			*tl++ = cookie.nfsuquad[0];
 		}
@@ -2672,7 +2678,7 @@ nfs_readdirplusrpc_uio(struct vnode *vp, struct uio *uiop)
 	while (more_dirs && bigenough) {
 		nfsstats.rpccnt[NFSPROC_READDIRPLUS]++;
 		nfsm_reqhead(&info, vp, NFSPROC_READDIRPLUS,
-			     NFSX_FH(1) + 6 * NFSX_UNSIGNED);
+			     NFSX_FH(info.v3) + 6 * NFSX_UNSIGNED);
 		ERROROUT(nfsm_fhtom(&info, vp));
 		tl = nfsm_build(&info, 6 * NFSX_UNSIGNED);
 		*tl++ = cookie.nfsuquad[0];

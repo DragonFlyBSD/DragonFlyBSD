@@ -26,7 +26,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_ar.c,v 1.12 2008/12/17 19:02:42 kientzle Exp $");
+__FBSDID("$FreeBSD: head/lib/libarchive/archive_read_support_format_ar.c 201101 2009-12-28 03:06:27Z kientzle $");
 
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
@@ -39,6 +39,9 @@ __FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_ar.c,v 1.12 2
 #endif
 #ifdef HAVE_STRING_H
 #include <string.h>
+#endif
+#ifdef HAVE_LIMITS_H
+#include <limits.h>
 #endif
 
 #include "archive.h"
@@ -134,15 +137,12 @@ archive_read_format_ar_cleanup(struct archive_read *a)
 static int
 archive_read_format_ar_bid(struct archive_read *a)
 {
-	struct ar *ar;
 	const void *h;
 
 	if (a->archive.archive_format != 0 &&
 	    (a->archive.archive_format & ARCHIVE_FORMAT_BASE_MASK) !=
 	    ARCHIVE_FORMAT_AR)
 		return(0);
-
-	ar = (struct ar *)(a->format->data);
 
 	/*
 	 * Verify the 8-byte file signature.

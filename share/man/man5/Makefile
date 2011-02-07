@@ -7,6 +7,7 @@ MAN=	acct.5 \
 	a.out.5 \
 	compilers.conf.5 \
 	core.5 \
+	crypttab.5 \
 	devfs.5 \
 	devtab.5 \
 	dir.5 \
@@ -60,6 +61,7 @@ MAN=	acct.5 \
 	utf2.5 \
 	utf8.5 \
 	utmp.5 \
+	utmpx.5 \
 	uuids.5 \
 	varsym.conf.5
 
@@ -77,5 +79,7 @@ MLINKS+=passwd.5 master.passwd.5
 MLINKS+=resolver.5 resolv.conf.5
 MLINKS+=utmp.5 lastlog.5 \
 	utmp.5 wtmp.5
+MLINKS+=utmpx.5 lastlogx.5 \
+	utmpx.5 wtmpx.5
 
 .include <bsd.prog.mk>

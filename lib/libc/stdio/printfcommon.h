@@ -223,10 +223,6 @@ __ujtoa(uintmax_t val, CHAR *endp, int base, int octzero, const char *xdigs)
 		return (__ultoa((u_long)val, endp, base, octzero, xdigs));
 	switch (base) {
 	case 10:
-		if (val < 10) {
-			*--cp = to_char(val % 10);
-			return (cp);
-		}
 		if (val > INTMAX_MAX) {
 			*--cp = to_char(val % 10);
 			sval = val / 10;

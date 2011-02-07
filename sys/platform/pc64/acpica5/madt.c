@@ -132,9 +132,10 @@ madt_map(vm_paddr_t pa, int offset, vm_offset_t length)
 		va += PAGE_SIZE;
 		pa += PAGE_SIZE;
 		length -= PAGE_SIZE;
-		pmap_kenter(va, pa);
+		pmap_kenter_quick(va, pa);
 		cpu_invlpg((void *)va);
 	}
+	smp_invltlb();
 	return (data);
 }
 
@@ -761,7 +762,7 @@ madt_set_ids(void *dummy)
 	if (madt == NULL)
 		return;
 	for (i = 0; i < ncpus; i++) {
-		if ((smp_active_mask & (1 << i)) == 0)
+		if ((smp_active_mask & CPUMASK(i)) == 0)
 			continue;
 		md = (struct mdglobaldata *)globaldata_find(i);
 		KKASSERT(md != NULL);

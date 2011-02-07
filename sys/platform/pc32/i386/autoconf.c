@@ -155,9 +155,10 @@ configure_final(void *dummy)
 	cninit_finish();
 
 	if (bootverbose) {
-#ifdef APIC_IO
-		imen_dump();
-#endif /* APIC_IO */
+#ifdef SMP /* APIC-IO */
+		if (apic_io_enable)
+			imen_dump();
+#endif
 
 		/*
 		 * Print out the BIOS's idea of the disk geometries.
@@ -235,7 +236,7 @@ boot_translate_majdev(int bmajor)
 {
 	static int conv[] = { BOOTMAJOR_CONVARY };
 
-	if (bmajor >= 0 && bmajor < sizeof(conv)/sizeof(conv[0]))
+	if (bmajor >= 0 && bmajor < NELEM(conv))
 		return(conv[bmajor]);
 	return(-1);
 }

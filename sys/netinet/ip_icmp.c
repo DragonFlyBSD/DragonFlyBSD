@@ -82,19 +82,19 @@
 
 struct icmpstat icmpstat;
 SYSCTL_STRUCT(_net_inet_icmp, ICMPCTL_STATS, stats, CTLFLAG_RW,
-	&icmpstat, icmpstat, "");
+	&icmpstat, icmpstat, "ICMP statistics");
 
 static int	icmpmaskrepl = 0;
 SYSCTL_INT(_net_inet_icmp, ICMPCTL_MASKREPL, maskrepl, CTLFLAG_RW,
-	&icmpmaskrepl, 0, "");
+	&icmpmaskrepl, 0, "Allow replies to netmask requests");
 
 static int	drop_redirect = 0;
 SYSCTL_INT(_net_inet_icmp, OID_AUTO, drop_redirect, CTLFLAG_RW,
-	&drop_redirect, 0, "");
+	&drop_redirect, 0, "Ignore ICMP redirects");
 
 static int	log_redirect = 0;
 SYSCTL_INT(_net_inet_icmp, OID_AUTO, log_redirect, CTLFLAG_RW,
-	&log_redirect, 0, "");
+	&log_redirect, 0, "Enable output about ICMP redirects");
 
 #ifdef ICMP_BANDLIM
 
@@ -105,18 +105,18 @@ SYSCTL_INT(_net_inet_icmp, OID_AUTO, log_redirect, CTLFLAG_RW,
 
 static int      icmplim = 200;
 SYSCTL_INT(_net_inet_icmp, ICMPCTL_ICMPLIM, icmplim, CTLFLAG_RW,
-	&icmplim, 0, "");
+	&icmplim, 0, "ICMP bandwidth limit");
 #else
 
 static int      icmplim = -1;
 SYSCTL_INT(_net_inet_icmp, ICMPCTL_ICMPLIM, icmplim, CTLFLAG_RD,
-	&icmplim, 0, "");
+	&icmplim, 0, "ICMP bandwidth limit");
 	
 #endif
 
 static int	icmplim_output = 1;
 SYSCTL_INT(_net_inet_icmp, OID_AUTO, icmplim_output, CTLFLAG_RW,
-	&icmplim_output, 0, "");
+	&icmplim_output, 0, "Enable output about ICMP bandwidth limits");
 
 /*
  * ICMP broadcast echo sysctl
@@ -124,7 +124,7 @@ SYSCTL_INT(_net_inet_icmp, OID_AUTO, icmplim_output, CTLFLAG_RW,
 
 static int	icmpbmcastecho = 0;
 SYSCTL_INT(_net_inet_icmp, OID_AUTO, bmcastecho, CTLFLAG_RW,
-	&icmpbmcastecho, 0, "");
+    &icmpbmcastecho, 0, "");
 
 static char	icmp_reply_src[IFNAMSIZ];
 SYSCTL_STRING(_net_inet_icmp, OID_AUTO, reply_src, CTLFLAG_RW,

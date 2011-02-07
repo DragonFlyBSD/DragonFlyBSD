@@ -138,5 +138,4 @@ static struct old_isa_driver old_drivers[] = {
 
 };
 
-#define old_drivers_count (sizeof(old_drivers) / sizeof(old_drivers[0]))
-
+#define old_drivers_count NELEM(old_drivers)

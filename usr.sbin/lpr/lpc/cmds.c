@@ -34,7 +34,6 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cmds.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/lpc/cmds.c,v 1.14.2.16 2002/07/25 23:29:39 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpc/cmds.c,v 1.4 2004/12/18 22:48:03 swildner Exp $
  */
 
 /*
@@ -71,9 +70,9 @@
 
 static char	*args2line(int argc, char **argv);
 static int	 doarg(char *_job);
-static int	 doselect(struct dirent *_d);
+static int	 doselect(const struct dirent *_d);
 static int	 kill_qtask(const char *lf);
-static int	 sortq(const void *_a, const void *_b);
+static int	 sortq(const struct dirent **_a, const struct dirent **_b);
 static int	 touch(struct jobqueue *_jq);
 static void	 unlinkf(char *_name);
 static void	 upstat(struct printer *_pp, const char *_msg, int _notify);
@@ -445,7 +444,7 @@ static int	 cln_queuecnt;		/* number of queues checked */
 static int 	 cln_testonly;		/* remove-files vs just-print-info */
 
 static int
-doselect(struct dirent *d)
+doselect(const struct dirent *d)
 {
 	int c = d->d_name[0];
 
@@ -480,14 +479,14 @@ doselect(struct dirent *d)
  *   filenames (they will have datafile names which start with `dfB*').
  */
 static int
-sortq(const void *a, const void *b)
+sortq(const struct dirent **a, const struct dirent **b)
 {
 	const int a_lt_b = -1, a_gt_b = 1, cat_other = 10;
 	const char *fname_a, *fname_b, *jnum_a, *jnum_b;
 	int cat_a, cat_b, ch, res, seq_a, seq_b;
 
-	fname_a = (*(const struct dirent * const *)a)->d_name;
-	fname_b = (*(const struct dirent * const *)b)->d_name;
+	fname_a = (*a)->d_name;
+	fname_b = (*b)->d_name;
 
 	/*
 	 * First separate filenames into cagatories.  Catagories are

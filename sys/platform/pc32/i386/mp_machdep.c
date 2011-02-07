@@ -62,10 +62,11 @@
 #include <machine/tss.h>
 #include <machine/specialreg.h>
 #include <machine/globaldata.h>
+#include <machine/pmap_inval.h>
 
 #include <machine/md_var.h>		/* setidt() */
-#include <machine_base/icu/icu.h>		/* IPIs */
-#include <machine_base/isa/intr_machdep.h>	/* IPIs */
+#include <machine_base/icu/icu.h>	/* IPIs */
+#include <machine/intr_machdep.h>	/* IPIs */
 
 #define FIXUP_EXTRA_APIC_INTS	8	/* additional entries we may create */
 
@@ -229,11 +230,9 @@ int	current_postcode;
 extern struct region_descriptor r_gdt, r_idt;
 
 int	mp_naps;		/* # of Applications processors */
-#ifdef APIC_IO
+#ifdef SMP /* APIC-IO */
 static int	mp_nbusses;	/* # of busses */
 int	mp_napics;		/* # of IO APICs */
-#endif
-#ifdef APIC_IO
 vm_offset_t io_apic_address[NAPICID];	/* NAPICID is more than enough */
 u_int32_t *io_apic_versions;
 #endif
@@ -245,7 +244,7 @@ extern int64_t tsc_offsets[];
 
 extern u_long ebda_addr;
 
-#ifdef APIC_IO
+#ifdef SMP /* APIC-IO */
 struct apic_intmapinfo	int_to_apicintpin[APIC_INTMAPSIZE];
 #endif
 
@@ -254,7 +253,7 @@ struct apic_intmapinfo	int_to_apicintpin[APIC_INTMAPSIZE];
  * We oversize these to simplify boot-time config.
  */
 int     cpu_num_to_apic_id[NAPICID];
-#ifdef APIC_IO
+#ifdef SMP /* APIC-IO */
 int     io_num_to_apic_id[NAPICID];
 #endif
 int     apic_id_to_logical[NAPICID];
@@ -305,8 +304,8 @@ static int	mptable_probe(void);
 static int	mptable_search(void);
 static int	mptable_check(vm_paddr_t);
 static int	mptable_search_sig(u_int32_t target, int count);
-static int	mptable_hyperthread_fixup(u_int, int);
-#ifdef APIC_IO
+static int	mptable_hyperthread_fixup(cpumask_t, int);
+#ifdef SMP /* APIC-IO */
 static void	mptable_pass1(struct mptable_pos *);
 static void	mptable_pass2(struct mptable_pos *);
 static void	mptable_default(int type);
@@ -320,7 +319,7 @@ static int	mptable_lapic_probe(struct lapic_enumerator *);
 static void	mptable_lapic_enumerate(struct lapic_enumerator *);
 static void	mptable_lapic_default(void);
 
-#ifdef APIC_IO
+#ifdef SMP /* APIC-IO */
 static void	setup_apic_irq_mapping(void);
 static int	apic_int_is_bus_type(int intr, int bus_type);
 #endif
@@ -559,15 +558,15 @@ mp_announce(void)
 		kprintf(", version: 0x%08x\n", cpu_apic_versions[x]);
 	}
 
-#if defined(APIC_IO)
+if (apic_io_enable) {
 	for (x = 0; x < mp_napics; ++x) {
 		kprintf(" io%d (APIC): apic id: %2d", x, IO_TO_ID(x));
 		kprintf(", version: 0x%08x", io_apic_versions[x]);
 		kprintf(", at 0x%08lx\n", io_apic_address[x]);
 	}
-#else
+} else {
 	kprintf(" Warning: APIC I/O disabled\n");
-#endif	/* APIC_IO */
+}
 }
 
 /*
@@ -650,10 +649,8 @@ init_secondary(void)
 static void
 mp_enable(u_int boot_addr)
 {
-#if defined(APIC_IO)
 	int     apic;
 	u_int   ux;
-#endif	/* APIC_IO */
 	vm_paddr_t mpfps_paddr;
 	struct mptable_pos mpt;
 
@@ -667,10 +664,10 @@ mp_enable(u_int boot_addr)
 		mptable_imcr(&mpt);
 		mptable_unmap(&mpt);
 	}
-#if defined(APIC_IO)
+if (apic_io_enable) {
 
 	if (!mpfps_paddr)
-		panic("no MP table, disable APIC_IO!\n");
+		panic("no MP table, disable APIC_IO! (set hw.apic_io_enable=0)\n");
 
 	mptable_map(&mpt, mpfps_paddr);
 
@@ -689,7 +686,7 @@ mp_enable(u_int boot_addr)
 
 	/* fill the LOGICAL io_apic_versions table */
 	for (apic = 0; apic < mp_napics; ++apic) {
-		ux = io_apic_read(apic, IOAPIC_VER);
+		ux = ioapic_read(apic, IOAPIC_VER);
 		io_apic_versions[apic] = ux;
 		io_apic_set_id(apic, IO_TO_ID(apic));
 	}
@@ -699,7 +696,7 @@ mp_enable(u_int boot_addr)
 		if (io_apic_setup(apic) < 0)
 			panic("IO APIC setup failure");
 
-#endif	/* APIC_IO */
+}
 
 	/*
 	 * These are required for SMP operation
@@ -783,8 +780,6 @@ typedef struct BUSTYPENAME {
 	char    name[7];
 }       bus_type_name;
 
-#ifdef APIC_IO
-
 static bus_type_name bus_type_table[] =
 {
 	{CBUS, "CBUS"},
@@ -828,17 +823,11 @@ static bus_datum *bus_data;
 static io_int  *io_apic_ints;
 static int nintrs;
 
-#endif
-
 static int processor_entry	(const struct PROCENTRY *entry, int cpu);
-#ifdef APIC_IO
 static int bus_entry		(const struct BUSENTRY *entry, int bus);
 static int io_apic_entry	(const struct IOAPICENTRY *entry, int apic);
 static int int_entry		(const struct INTENTRY *entry, int intr);
 static int lookup_bus_type	(char *name);
-#endif
-
-#ifdef APIC_IO
 
 static int
 mptable_ioapic_pass1_callback(void *xarg, const void *pos, int type)
@@ -983,7 +972,7 @@ mptable_pass2(struct mptable_pos *mpt)
 		bus_data[x].bus_id = 0xff;
 
 	/* clear IO APIC INT table */
-	for (x = 0; x < (nintrs + 1); ++x) {
+	for (x = 0; x < nintrs + FIXUP_EXTRA_APIC_INTS; ++x) {
 		io_apic_ints[x].int_type = 0xff;
 		io_apic_ints[x].int_vector = 0xff;
 	}
@@ -1001,8 +990,6 @@ mptable_pass2(struct mptable_pos *mpt)
 		panic("mptable_iterate_entries(ioapic_pass2) failed\n");
 }
 
-#endif	/* APIC_IO */
-
 /*
  * Check if we should perform a hyperthreading "fix-up" to
  * enumerate any logical CPU's that aren't already listed
@@ -1016,7 +1003,7 @@ mptable_pass2(struct mptable_pos *mpt)
  * with the number of logical CPU's in the processor.
  */
 static int
-mptable_hyperthread_fixup(u_int id_mask, int cpu_count)
+mptable_hyperthread_fixup(cpumask_t id_mask, int cpu_count)
 {
 	int i, id, lcpus_max, logical_cpus;
 
@@ -1062,7 +1049,7 @@ mptable_hyperthread_fixup(u_int id_mask, int cpu_count)
 		 */
 		dist = cur = prev = -1;
 		for (id = 0; id < MAXCPU; ++id) {
-			if ((id_mask & 1 << id) == 0)
+			if ((id_mask & CPUMASK(id)) == 0)
 				continue;
 
 			cur = id;
@@ -1103,13 +1090,13 @@ mptable_hyperthread_fixup(u_int id_mask, int cpu_count)
 	 * already in the table, then kill the fixup.
 	 */
 	for (id = 0; id < MAXCPU; id++) {
-		if ((id_mask & 1 << id) == 0)
+		if ((id_mask & CPUMASK(id)) == 0)
 			continue;
 		/* First, make sure we are on a logical_cpus boundary. */
 		if (id % logical_cpus != 0)
 			return 0;
 		for (i = id + 1; i < id + logical_cpus; i++)
-			if ((id_mask & 1 << i) != 0)
+			if ((id_mask & CPUMASK(i)) != 0)
 				return 0;
 	}
 	return logical_cpus;
@@ -1167,8 +1154,6 @@ mptable_unmap(struct mptable_pos *mpt)
 		mpt->mp_fps = NULL;
 	}
 }
-
-#ifdef APIC_IO
 
 void
 assign_apic_irq(int apic, int intpin, int irq)
@@ -1252,7 +1237,6 @@ allocate_apic_irq(int intr)
 	intpin = io_apic_ints[intr].dst_apic_int;
 	
 	assign_apic_irq(apic, intpin, irq);
-	io_apic_setup_intpin(apic, intpin);
 }
 
 
@@ -1552,10 +1536,15 @@ setup_apic_irq_mapping(void)
 			break;
 		}
 	}
-	/* PCI interrupt assignment is deferred */
-}
 
-#endif
+	/* Assign PCI interrupts */
+	for (x = 0; x < nintrs; ++x) {
+		if (io_apic_ints[x].int_type == 0 &&
+		    io_apic_ints[x].int_vector == 0xff && 
+		    apic_int_is_bus_type(x, PCI))
+			allocate_apic_irq(x);
+	}
+}
 
 void
 mp_set_cpuids(int cpu_id, int apic_id)
@@ -1587,8 +1576,6 @@ processor_entry(const struct PROCENTRY *entry, int cpu)
 
 	return 0;
 }
-
-#ifdef APIC_IO
 
 static int
 bus_entry(const struct BUSENTRY *entry, int bus)
@@ -1650,7 +1637,7 @@ int_entry(const struct INTENTRY *entry, int intr)
 		/* This signal goes to all IO APICS.  Select an IO APIC
 		   with sufficient number of interrupt pins */
 		for (apic = 0; apic < mp_napics; apic++)
-			if (((io_apic_read(apic, IOAPIC_VER) & 
+			if (((ioapic_read(apic, IOAPIC_VER) & 
 			      IOART_VER_MAXREDIR) >> MAXREDIRSHIFT) >= 
 			    entry->dst_apic_int)
 				break;
@@ -1755,10 +1742,11 @@ pci_apic_irq(int pciBus, int pciDevice, int pciInt)
 		    && (SRCBUSDEVICE(intr) == pciDevice)
 		    && (SRCBUSLINE(intr) == pciInt)) {	/* a candidate IRQ */
 			if (apic_int_is_bus_type(intr, PCI)) {
-				if (INTIRQ(intr) == 0xff)
-					allocate_apic_irq(intr);
-				if (INTIRQ(intr) == 0xff)
+				if (INTIRQ(intr) == 0xff) {
+					kprintf("IOAPIC: pci_apic_irq() "
+						"failed\n");
 					return -1;	/* unassigned */
+				}
 				return INTIRQ(intr);	/* exact match */
 			}
 		}
@@ -1823,8 +1811,6 @@ next_apic_irq(int irq)
 #undef INTAPIC
 #undef INTTYPE
 
-#endif
-
 /*
  * Reprogram the MB chipset to NOT redirect an ISA INTerrupt.
  *
@@ -1871,8 +1857,6 @@ undirect_pci_irq(int rirq)
 #endif  /* READY */
 }
 
-
-#ifdef APIC_IO
 
 /*
  * given a bus ID, return:
@@ -2055,7 +2039,7 @@ mptable_default(int type)
 #endif	/* 0 */
 
 	/* one and only IO APIC */
-	io_apic_id = (io_apic_read(0, IOAPIC_ID) & APIC_ID_MASK) >> 24;
+	io_apic_id = (ioapic_read(0, IOAPIC_ID) & APIC_ID_MASK) >> 24;
 
 	/*
 	 * sanity check, refer to MP spec section 3.6.6, last paragraph
@@ -2121,8 +2105,6 @@ mptable_default(int type)
 		io_apic_ints[0].int_type = 3;	/* vectored 8259 */
 }
 
-#endif	/* APIC_IO */
-
 /*
  * Map a physical memory address representing I/O into KVA.  The I/O
  * block is assumed not to cross a page boundary.
@@ -2185,6 +2167,9 @@ start_all_aps(u_int boot_addr)
 
 	/* Initialize BSP's local APIC */
 	apic_initialize(TRUE);
+
+	/* Finalize PIC */
+	MachIntrABI.finalize();
 
 	/* install the AP 1st level boot code */
 	install_ap_tramp(boot_addr);
@@ -2333,7 +2318,7 @@ start_all_aps(u_int boot_addr)
 	ncpus_fit_mask = ncpus_fit - 1;
 
 	/* build our map of 'other' CPUs */
-	mycpu->gd_other_cpus = smp_startup_mask & ~(1 << mycpu->gd_cpuid);
+	mycpu->gd_other_cpus = smp_startup_mask & ~CPUMASK(mycpu->gd_cpuid);
 	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map, sizeof(lwkt_ipiq) * ncpus);
 	bzero(mycpu->gd_ipiq, sizeof(lwkt_ipiq) * ncpus);
 
@@ -2559,7 +2544,7 @@ start_ap(struct mdglobaldata *gd, u_int boot_addr, int smibest)
 	/* wait for it to start, see ap_init() */
 	set_apic_timer(5000000);/* == 5 seconds */
 	while (read_apic_timer()) {
-		if (smp_startup_mask & (1 << gd->mi.gd_cpuid))
+		if (smp_startup_mask & CPUMASK(gd->mi.gd_cpuid))
 			return 1;	/* return SUCCESS */
 	}
 
@@ -2601,18 +2586,103 @@ smitest(void)
  * If for some reason we were unable to start all cpus we cannot safely
  * use broadcast IPIs.
  */
+
+static cpumask_t smp_invltlb_req;
+#define SMP_INVLTLB_DEBUG
+
 void
 smp_invltlb(void)
 {
 #ifdef SMP
+	struct mdglobaldata *md = mdcpu;
+#ifdef SMP_INVLTLB_DEBUG
+	long count = 0;
+	long xcount = 0;
+#endif
+
+	crit_enter_gd(&md->mi);
+	md->gd_invltlb_ret = 0;
+	++md->mi.gd_cnt.v_smpinvltlb;
+	atomic_set_cpumask(&smp_invltlb_req, md->mi.gd_cpumask);
+#ifdef SMP_INVLTLB_DEBUG
+again:
+#endif
 	if (smp_startup_mask == smp_active_mask) {
 		all_but_self_ipi(XINVLTLB_OFFSET);
 	} else {
-		selected_apic_ipi(smp_active_mask, XINVLTLB_OFFSET,
-			APIC_DELMODE_FIXED);
+		selected_apic_ipi(smp_active_mask & ~md->mi.gd_cpumask,
+				  XINVLTLB_OFFSET, APIC_DELMODE_FIXED);
 	}
+
+#ifdef SMP_INVLTLB_DEBUG
+	if (xcount)
+		kprintf("smp_invltlb: ipi sent\n");
+#endif
+	while ((md->gd_invltlb_ret & smp_active_mask & ~md->mi.gd_cpumask) !=
+	       (smp_active_mask & ~md->mi.gd_cpumask)) {
+		cpu_mfence();
+		cpu_pause();
+#ifdef SMP_INVLTLB_DEBUG
+		/* DEBUGGING */
+		if (++count == 400000000) {
+			print_backtrace(-1);
+			kprintf("smp_invltlb: endless loop %08lx %08lx, "
+				"rflags %016lx retry",
+				(long)md->gd_invltlb_ret,
+				(long)smp_invltlb_req,
+				(long)read_eflags());
+			__asm __volatile ("sti");
+			++xcount;
+			if (xcount > 2)
+				lwkt_process_ipiq();
+			if (xcount > 3) {
+				int bcpu = BSFCPUMASK(~md->gd_invltlb_ret &
+						      ~md->mi.gd_cpumask &
+						      smp_active_mask);
+				globaldata_t xgd;
+				kprintf("bcpu %d\n", bcpu);
+				xgd = globaldata_find(bcpu);
+				kprintf("thread %p %s\n", xgd->gd_curthread, xgd->gd_curthread->td_comm);
+			}
+			if (xcount > 5)
+				panic("giving up");
+			count = 0;
+			goto again;
+		}
+#endif
+	}
+	atomic_clear_cpumask(&smp_invltlb_req, md->mi.gd_cpumask);
+	crit_exit_gd(&md->mi);
 #endif
 }
+
+#ifdef SMP
+
+/*
+ * Called from Xinvltlb assembly with interrupts disabled.  We didn't
+ * bother to bump the critical section count or nested interrupt count
+ * so only do very low level operations here.
+ */
+void
+smp_invltlb_intr(void)
+{
+	struct mdglobaldata *md = mdcpu;
+	struct mdglobaldata *omd;
+	cpumask_t mask;
+	int cpu;
+
+	mask = smp_invltlb_req;
+	cpu_mfence();
+	cpu_invltlb();
+	while (mask) {
+		cpu = BSFCPUMASK(mask);
+		mask &= ~CPUMASK(cpu);
+		omd = (struct mdglobaldata *)globaldata_find(cpu);
+		atomic_set_cpumask(&omd->gd_invltlb_ret, md->mi.gd_cpumask);
+	}
+}
+
+#endif
 
 /*
  * When called the executing CPU will send an IPI to all other CPUs
@@ -2632,7 +2702,7 @@ smp_invltlb(void)
  *            from executing at same time.
  */
 int
-stop_cpus(u_int map)
+stop_cpus(cpumask_t map)
 {
 	map &= smp_active_mask;
 
@@ -2660,7 +2730,7 @@ stop_cpus(u_int map)
  *   1: ok
  */
 int
-restart_cpus(u_int map)
+restart_cpus(cpumask_t map)
 {
 	/* signal other cpus to restart */
 	started_cpus = map & smp_active_mask;
@@ -2692,7 +2762,7 @@ ap_init(void)
 	 * interrupts physically disabled and remote cpus could deadlock
 	 * trying to send us an IPI.
 	 */
-	smp_startup_mask |= 1 << mycpu->gd_cpuid;
+	smp_startup_mask |= CPUMASK(mycpu->gd_cpuid);
 	cpu_mfence();
 
 	/*
@@ -2701,9 +2771,6 @@ ap_init(void)
 	 *
 	 * Note: We are in a critical section.
 	 *
-	 * Note: We have to synchronize td_mpcount to our desired MP state
-	 * before calling cpu_try_mplock().
-	 *
 	 * Note: we are the idle thread, we can only spin.
 	 *
 	 * Note: The load fence is memory volatile and prevents the compiler
@@ -2711,17 +2778,16 @@ ap_init(void)
 	 * caching it.
 	 */
 	while (mp_finish == 0)
-	    cpu_lfence();
-	++curthread->td_mpcount;
-	while (cpu_try_mplock() == 0)
-	    ;
+		cpu_lfence();
+	while (try_mplock() == 0)
+		;
 
 	if (cpu_feature & CPUID_TSC) {
-	    /*
-	     * The BSP is constantly updating tsc0_offset, figure out the
-	     * relative difference to synchronize ktrdump.
-	     */
-	    tsc_offsets[mycpu->gd_cpuid] = rdtsc() - tsc0_offset;
+		/*
+		 * The BSP is constantly updating tsc0_offset, figure out
+		 * the relative difference to synchronize ktrdump.
+		 */
+		tsc_offsets[mycpu->gd_cpuid] = rdtsc() - tsc0_offset;
 	}
 
 	/* BSP may have changed PTD while we're waiting for the lock */
@@ -2732,12 +2798,12 @@ ap_init(void)
 #endif
 
 	/* Build our map of 'other' CPUs. */
-	mycpu->gd_other_cpus = smp_startup_mask & ~(1 << mycpu->gd_cpuid);
+	mycpu->gd_other_cpus = smp_startup_mask & ~CPUMASK(mycpu->gd_cpuid);
 
 	kprintf("SMP: AP CPU #%d Launched!\n", mycpu->gd_cpuid);
 
 	/* A quick check from sanity claus */
-	apic_id = (apic_id_to_logical[(lapic.id & 0x0f000000) >> 24]);
+	apic_id = (apic_id_to_logical[(lapic.id & 0xff000000) >> 24]);
 	if (mycpu->gd_cpuid != apic_id) {
 		kprintf("SMP: cpuid = %d\n", mycpu->gd_cpuid);
 		kprintf("SMP: apic_id = %d\n", apic_id);
@@ -2765,8 +2831,8 @@ ap_init(void)
 	 * The idle thread is never placed on the runq, make sure
 	 * nothing we've done put it there.
 	 */
-	KKASSERT(curthread->td_mpcount == 1);
-	smp_active_mask |= 1 << mycpu->gd_cpuid;
+	KKASSERT(get_mplock_count(curthread) == 1);
+	smp_active_mask |= CPUMASK(mycpu->gd_cpuid);
 
 	/*
 	 * Enable interrupts here.  idle_restore will also do it, but
@@ -2775,7 +2841,7 @@ ap_init(void)
 	 * section.
 	 */
 	__asm __volatile("sti; pause; pause"::);
-	mdcpu->gd_fpending = 0;
+	bzero(mdcpu->gd_ipending, sizeof(mdcpu->gd_ipending));
 
 	initclocks_pcpu();	/* clock interrupts (via IPIs) */
 	lwkt_process_ipiq();
@@ -2817,7 +2883,7 @@ SYSINIT(finishsmp, SI_BOOT2_FINISH_SMP, SI_ORDER_FIRST, ap_finish, NULL)
 void
 cpu_send_ipiq(int dcpu)
 {
-        if ((1 << dcpu) & smp_active_mask)
+        if (CPUMASK(dcpu) & smp_active_mask)
                 single_apic_ipi(dcpu, XIPIQ_OFFSET, APIC_DELMODE_FIXED);
 }
 
@@ -2829,7 +2895,7 @@ int
 cpu_send_ipiq_passive(int dcpu)
 {
         int r = 0;
-        if ((1 << dcpu) & smp_active_mask) {
+        if (CPUMASK(dcpu) & smp_active_mask) {
                 r = single_apic_ipi_passive(dcpu, XIPIQ_OFFSET,
                                         APIC_DELMODE_FIXED);
         }

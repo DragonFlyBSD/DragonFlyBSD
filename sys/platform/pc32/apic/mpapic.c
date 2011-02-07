@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mpapic.c,v 1.37.2.7 2003/01/25 02:31:47 peter Exp $
- * $DragonFly: src/sys/platform/pc32/apic/mpapic.c,v 1.22 2008/04/20 13:44:26 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -38,7 +37,7 @@
 #include <machine/segments.h>
 #include <sys/thread2.h>
 
-#include <machine_base/isa/intr_machdep.h>	/* Xspuriousint() */
+#include <machine/intr_machdep.h>
 
 /* XXX */
 extern pt_entry_t *SMPpt;
@@ -89,12 +88,11 @@ static const uint32_t	lapic_timer_divisors[] = {
 	APIC_TDCR_2,	APIC_TDCR_4,	APIC_TDCR_8,	APIC_TDCR_16,
 	APIC_TDCR_32,	APIC_TDCR_64,	APIC_TDCR_128,	APIC_TDCR_1
 };
-#define APIC_TIMER_NDIVISORS \
-	(int)(sizeof(lapic_timer_divisors) / sizeof(lapic_timer_divisors[0]))
+#define APIC_TIMER_NDIVISORS (int)(NELEM(lapic_timer_divisors))
 
 
 /*
- * Enable APIC, configure interrupts.
+ * Enable LAPIC, configure interrupts.
  */
 void
 apic_initialize(boolean_t bsp)
@@ -103,14 +101,14 @@ apic_initialize(boolean_t bsp)
 	u_int   temp;
 
 	/*
-	 * setup LVT1 as ExtINT on the BSP.  This is theoretically an
+	 * Setup LINT0 as ExtINT on the BSP.  This is theoretically an
 	 * aggregate interrupt input from the 8259.  The INTA cycle
 	 * will be routed to the external controller (the 8259) which
 	 * is expected to supply the vector.
 	 *
 	 * Must be setup edge triggered, active high.
 	 *
-	 * Disable LVT1 on the APs.  It doesn't matter what delivery
+	 * Disable LINT0 on the APs.  It doesn't matter what delivery
 	 * mode we use because we leave it masked.
 	 */
 	temp = lapic.lvt_lint0;
@@ -123,7 +121,8 @@ apic_initialize(boolean_t bsp)
 	lapic.lvt_lint0 = temp;
 
 	/*
-	 * setup LVT2 as NMI, masked till later.  Edge trigger, active high.
+	 * Setup LINT1 as NMI, masked till later.
+	 * Edge trigger, active high.
 	 */
 	temp = lapic.lvt_lint1;
 	temp &= ~(APIC_LVT_MASKED | APIC_LVT_TRIG_MASK | 
@@ -132,13 +131,15 @@ apic_initialize(boolean_t bsp)
 	lapic.lvt_lint1 = temp;
 
 	/*
-	 * Mask the apic error interrupt, apic performance counter
+	 * Mask the LAPIC error interrupt, LAPIC performance counter
 	 * interrupt.
 	 */
 	lapic.lvt_error = lapic.lvt_error | APIC_LVT_MASKED;
 	lapic.lvt_pcint = lapic.lvt_pcint | APIC_LVT_MASKED;
 
-	/* Set apic timer vector and mask the apic timer interrupt. */
+	/*
+	 * Set LAPIC timer vector and mask the LAPIC timer interrupt.
+	 */
 	timer = lapic.lvt_timer;
 	timer &= ~APIC_LVTT_VECTOR;
 	timer |= XTIMER_OFFSET;
@@ -149,25 +150,29 @@ apic_initialize(boolean_t bsp)
 	 * Set the Task Priority Register as needed.   At the moment allow
 	 * interrupts on all cpus (the APs will remain CLId until they are
 	 * ready to deal).  We could disable all but IPIs by setting
-	 * temp |= TPR_IPI_ONLY for cpu != 0.
+	 * temp |= TPR_IPI for cpu != 0.
 	 */
 	temp = lapic.tpr;
 	temp &= ~APIC_TPR_PRIO;		/* clear priority field */
-#ifndef APIC_IO
+#ifdef SMP /* APIC-IO */
+if (!apic_io_enable) {
+#endif
 	/*
 	 * If we are NOT running the IO APICs, the LAPIC will only be used
 	 * for IPIs.  Set the TPR to prevent any unintentional interrupts.
 	 */
-	temp |= TPR_IPI_ONLY;
+	temp |= TPR_IPI;
+#ifdef SMP /* APIC-IO */
+}
 #endif
 
 	lapic.tpr = temp;
 
 	/* 
-	 * enable the local APIC 
+	 * Enable the LAPIC 
 	 */
 	temp = lapic.svr;
-	temp |= APIC_SVR_ENABLE;	/* enable the APIC */
+	temp |= APIC_SVR_ENABLE;	/* enable the LAPIC */
 	temp &= ~APIC_SVR_FOCUS_DISABLE; /* enable lopri focus processor */
 
 	/*
@@ -202,7 +207,6 @@ apic_initialize(boolean_t bsp)
 	if (bootverbose)
 		apic_dump("apic_initialize()");
 }
-
 
 static void
 lapic_timer_set_divisor(int divisor_idx)
@@ -399,7 +403,7 @@ apic_dump(char* str)
 }
 
 
-#if defined(APIC_IO)
+#ifdef SMP /* APIC-IO */
 
 /*
  * IO APIC code,
@@ -431,15 +435,15 @@ io_apic_set_id(int apic, int id)
 {
 	u_int32_t ux;
 	
-	ux = io_apic_read(apic, IOAPIC_ID);	/* get current contents */
+	ux = ioapic_read(apic, IOAPIC_ID);	/* get current contents */
 	if (((ux & APIC_ID_MASK) >> 24) != id) {
 		kprintf("Changing APIC ID for IO APIC #%d"
 		       " from %d to %d on chip\n",
 		       apic, ((ux & APIC_ID_MASK) >> 24), id);
 		ux &= ~APIC_ID_MASK;	/* clear the ID field */
 		ux |= (id << 24);
-		io_apic_write(apic, IOAPIC_ID, ux);	/* write new value */
-		ux = io_apic_read(apic, IOAPIC_ID);	/* re-read && test */
+		ioapic_write(apic, IOAPIC_ID, ux);	/* write new value */
+		ux = ioapic_read(apic, IOAPIC_ID);	/* re-read && test */
 		if (((ux & APIC_ID_MASK) >> 24) != id)
 			panic("can't control IO APIC #%d ID, reg: 0x%08x",
 			      apic, ux);
@@ -450,7 +454,7 @@ io_apic_set_id(int apic, int id)
 int
 io_apic_get_id(int apic)
 {
-  return (io_apic_read(apic, IOAPIC_ID) & APIC_ID_MASK) >> 24;
+  return (ioapic_read(apic, IOAPIC_ID) & APIC_ID_MASK) >> 24;
 }
   
 
@@ -486,17 +490,17 @@ io_apic_setup_intpin(int apic, int pin)
 	 */
 	imen_lock();
 
-	flags = io_apic_read(apic, select) & IOART_RESV;
+	flags = ioapic_read(apic, select) & IOART_RESV;
 	flags |= IOART_INTMSET | IOART_TRGREDG | IOART_INTAHI;
 	flags |= IOART_DESTPHY | IOART_DELFIXED;
 
-	target = io_apic_read(apic, select + 1) & IOART_HI_DEST_RESV;
+	target = ioapic_read(apic, select + 1) & IOART_HI_DEST_RESV;
 	target |= 0;	/* fixed mode cpu mask of 0 - don't deliver anywhere */
 
 	vector = 0;
 
-	io_apic_write(apic, select, flags | vector);
-	io_apic_write(apic, select + 1, target);
+	ioapic_write(apic, select, flags | vector);
+	ioapic_write(apic, select + 1, target);
 
 	imen_unlock();
 
@@ -572,13 +576,13 @@ io_apic_setup_intpin(int apic, int pin)
 	imen_lock();
 
 	vector = IDT_OFFSET + irq;			/* IDT vec */
-	target = io_apic_read(apic, select + 1) & IOART_HI_DEST_RESV;
+	target = ioapic_read(apic, select + 1) & IOART_HI_DEST_RESV;
 	/* Deliver all interrupts to CPU0 (BSP) */
 	target |= (CPU_TO_ID(cpuid) << IOART_HI_DEST_SHIFT) &
 		  IOART_HI_DEST_MASK;
-	flags |= io_apic_read(apic, select) & IOART_RESV;
-	io_apic_write(apic, select, flags | vector);
-	io_apic_write(apic, select + 1, target);
+	flags |= ioapic_read(apic, select) & IOART_RESV;
+	ioapic_write(apic, select, flags | vector);
+	ioapic_write(apic, select + 1, target);
 
 	imen_unlock();
 }
@@ -650,8 +654,8 @@ ext_int_setup(int apic, int intr)
 	vector = IDT_OFFSET + intr;
 	flags = DEFAULT_EXTINT_FLAGS;
 
-	io_apic_write(apic, select, flags | vector);
-	io_apic_write(apic, select + 1, target);
+	ioapic_write(apic, select, flags | vector);
+	ioapic_write(apic, select + 1, target);
 
 	return 0;
 }
@@ -813,7 +817,7 @@ imen_dump(void)
  * Inter Processor Interrupt functions.
  */
 
-#endif	/* APIC_IO */
+#endif	/* SMP APIC-IO */
 
 /*
  * Send APIC IPI 'vector' to 'destType' via 'deliveryMode'.
@@ -838,9 +842,11 @@ apic_ipi(int dest_type, int vector, int delivery_mode)
 	if ((lapic.icr_lo & APIC_DELSTAT_MASK) != 0) {
 	    unsigned int eflags = read_eflags();
 	    cpu_enable_intr();
+	    DEBUG_PUSH_INFO("apic_ipi");
 	    while ((lapic.icr_lo & APIC_DELSTAT_MASK) != 0) {
 		lwkt_process_ipiq();
 	    }
+	    DEBUG_POP_INFO();
 	    write_eflags(eflags);
 	}
 
@@ -861,9 +867,11 @@ single_apic_ipi(int cpu, int vector, int delivery_mode)
 	if ((lapic.icr_lo & APIC_DELSTAT_MASK) != 0) {
 	    unsigned int eflags = read_eflags();
 	    cpu_enable_intr();
+	    DEBUG_PUSH_INFO("single_apic_ipi");
 	    while ((lapic.icr_lo & APIC_DELSTAT_MASK) != 0) {
 		lwkt_process_ipiq();
 	    }
+	    DEBUG_POP_INFO();
 	    write_eflags(eflags);
 	}
 	icr_hi = lapic.icr_hi & ~APIC_ID_MASK;
@@ -922,12 +930,12 @@ single_apic_ipi_passive(int cpu, int vector, int delivery_mode)
  * APIC_DELMODE_FIXED or APIC_DELMODE_LOWPRIO.
  */
 void
-selected_apic_ipi(u_int target, int vector, int delivery_mode)
+selected_apic_ipi(cpumask_t target, int vector, int delivery_mode)
 {
 	crit_enter();
 	while (target) {
-		int n = bsfl(target);
-		target &= ~(1 << n);
+		int n = BSFCPUMASK(target);
+		target &= ~CPUMASK(n);
 		single_apic_ipi(n, vector, delivery_mode);
 	}
 	crit_exit();

@@ -31,7 +31,7 @@
  *
  * Domain names are stored in \ref ldns_rdf structures, with the type
  * \ref LDNS_RDF_TYPE_DNAME
- * 
+ *
  * This module is *NOT* about the RR type called DNAME.
  */
 
@@ -41,6 +41,10 @@
 
 #include <ldns/common.h>
 #include <ldns/rdata.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define LDNS_DNAME_NORMALIZE        tolower
 
@@ -74,14 +78,14 @@ ldns_rdf *ldns_dname_reverse(const ldns_rdf *d);
  * \param[in] n the label nr to clone from, if this is 0, the complete
  *              dname is cloned
  * \return A newly allocated *rdf structure, containing the cloned dname,
- *         or NULL if either d was NULL, not a dname, or if n >= 
+ *         or NULL if either d was NULL, not a dname, or if n >=
  *         label_count
  */
 ldns_rdf *
 ldns_dname_clone_from(const ldns_rdf *d, uint16_t n);
 
 /**
- * chop one label off the left side of a dname. so 
+ * chop one label off the left side of a dname. so
  * wwww.nlnetlabs.nl, becomes nlnetlabs.nl
  * This new name is a clone and must be freed with ldns_deep_free()
  * \param[in] d the dname to chop
@@ -93,7 +97,7 @@ ldns_rdf *ldns_dname_left_chop(const ldns_rdf *d);
  * count the number of labels inside a LDNS_RDF_DNAME type rdf.
  * \param[in] *r the rdf
  * \return the number of labels
- */     
+ */
 uint8_t  ldns_dname_label_count(const ldns_rdf *r);
 
 /**
@@ -105,7 +109,7 @@ ldns_rdf *ldns_dname_new_frm_str(const char *str);
 
 /**
  * Create a new dname rdf from a string
- * \param[in] s the size of the new dname 
+ * \param[in] s the size of the new dname
  * \param[in] *data pointer to the actual data
  * \return ldns_rdf*
  */
@@ -182,5 +186,16 @@ bool ldns_dname_str_absolute(const char *dname_str);
  * \return a ldns_rdf* with the label as name or NULL on error
  */
 ldns_rdf * ldns_dname_label(const ldns_rdf *rdf, uint8_t labelpos);
+
+/**
+ * Check if dname is a wildcard, starts with *.
+ * \param[in] dname: the rdf to look in
+ * \return true if a wildcard, false if not.
+ */
+int ldns_dname_is_wildcard(const ldns_rdf* dname);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif	/* LDNS_DNAME_H */

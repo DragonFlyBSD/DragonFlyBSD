@@ -102,14 +102,14 @@ vm_mem_init(void *dummy)
 	 * Initializes resident memory structures. From here on, all physical
 	 * memory is accounted for, and we use only virtual addresses.
 	 */
-
 	vm_set_page_size();
-	virtual_start = vm_page_startup(virtual_start);
+	vm_page_startup();
+
 	/*
 	 * Initialize other VM packages
 	 */
 	vm_object_init();
 	vm_map_startup();
-	kmem_init(virtual_start, virtual_end);
+	kmem_init();
 	pmap_init();
 }

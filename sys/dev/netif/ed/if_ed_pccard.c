@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pccard.c,v 1.55 2003/12/31 04:25:00 kato Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.22 2008/08/17 04:32:33 sephe Exp $
  */
 
 #include "opt_ed.h"
@@ -329,7 +328,7 @@ ax88190_geteprom(struct ed_softc *sc)
 	DELAY(5000);
 
 	/* Card Settings */
-	for (i = 0; i < sizeof(pg_seq) / sizeof(pg_seq[0]); i++)
+	for (i = 0; i < NELEM(pg_seq); i++)
 		ed_nic_outb(sc, pg_seq[i].offset, pg_seq[i].value);
 
 	/* Get Data */

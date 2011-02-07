@@ -1,6 +1,6 @@
 #!/bin/sh
 # PROVIDE: hotplugd
-# REQUIRE: syslogd
+# REQUIRE: syslogd udevd
 
 . /etc/rc.subr
 

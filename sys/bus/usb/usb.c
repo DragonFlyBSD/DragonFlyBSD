@@ -1,7 +1,6 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.50 2008/09/26 08:21:22 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -154,7 +153,7 @@ static void usbfilt_detach(struct knote *);
 static int usbfilt(struct knote *, long);
 
 static struct dev_ops usb_ops = {
-	{ "usb", USB_CDEV_MAJOR, 0 },
+	{ "usb", 0, 0 },
 	.d_open =	usbopen,
 	.d_close =	usbclose,
 	.d_read =	usbread,

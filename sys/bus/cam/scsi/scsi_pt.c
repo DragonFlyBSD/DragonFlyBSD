@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pt.c,v 1.17 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.23 2008/05/18 20:30:20 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -119,10 +118,8 @@ static struct periph_driver ptdriver =
 
 PERIPHDRIVER_DECLARE(pt, ptdriver);
 
-#define PT_CDEV_MAJOR 61
-
 static struct dev_ops pt_ops = {
-	{ "pt", PT_CDEV_MAJOR, 0 },
+	{ "pt", 0, 0 },
 	.d_open =	ptopen,
 	.d_close =	ptclose,
 	.d_read =	physread,

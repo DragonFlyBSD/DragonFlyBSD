@@ -406,7 +406,7 @@ The number of threads in the processes (this column may also
 be labeled NLWP).
 .TP
 .B PRI
-Current priority of the process.
+Current priority of the process.  This field is no longer displayed.
 .TP
 .B NICE
 Nice amount in the range \-20 to 20, as established by the use of
@@ -416,9 +416,10 @@ the command
 .B SIZE
 Total size of the process (text, data, and stack) given in kilobytes.
 .TP
-.B RES
-Resident memory: current amount of process memory that resides in physical
-memory, given in kilobytes.
+.B PRES
+Proportional resident memory: current amount of process memory that resides
+in physical memory, given in kilobytes.  Shared memory is divided amoungst
+the processes doing the sharing.  This field replaces RES.
 .TP
 .B STATE
 Current state (typically one of \*(lqsleep\*(rq,

@@ -93,6 +93,12 @@
 #ifndef _MACHINE_PMAP_H_
 #include <machine/pmap.h>
 #endif
+#ifndef _VM_VM_OBJECT_H_
+#include <vm/vm_object.h>
+#endif
+#ifndef _SYS_NULL_H_
+#include <sys/_null.h>
+#endif
 
 struct vm_map_rb_tree;
 RB_PROTOTYPE(vm_map_rb_tree, vm_map_entry, rb_entry, rb_vm_map_compare);
@@ -104,6 +110,7 @@ RB_PROTOTYPE(vm_map_rb_tree, vm_map_entry, rb_entry, rb_vm_map_compare);
  *	vm_map_entry_t		an entry in an address map.
  */
 
+typedef u_int vm_flags_t;
 typedef u_int vm_eflags_t;
 
 /*
@@ -167,6 +174,7 @@ struct vm_map_entry {
 #define MAP_ENTRY_IN_TRANSITION		0x0100	/* entry being changed */
 #define MAP_ENTRY_NEEDS_WAKEUP		0x0200	/* waiter's in transition */
 #define MAP_ENTRY_NOCOREDUMP		0x0400	/* don't include in a core */
+#define MAP_ENTRY_KSTACK		0x0800	/* guarded kernel stack */
 
 /*
  * flags for vm_map_[un]clip_range()
@@ -217,10 +225,16 @@ struct vm_map {
 	vm_map_entry_t hint;		/* hint for quick lookups */
 	unsigned int timestamp;		/* Version number */
 	vm_map_entry_t first_free;	/* First free space hint */
+	vm_flags_t flags;		/* flags for this vm_map */
 	struct pmap *pmap;		/* Physical map */
 #define	min_offset		header.start
 #define max_offset		header.end
 };
+
+/*
+ * vm_flags_t values
+ */
+#define MAP_WIREFUTURE		0x01	/* wire all future pages */
 
 /*
  * Registered upcall
@@ -400,12 +414,44 @@ vmspace_resident_count(struct vmspace *vmspace)
 	return pmap_resident_count(vmspace_pmap(vmspace));
 }
 
+/* Calculates the proportional RSS and returning the
+ * accrued result.
+ */
+static __inline u_int
+vmspace_president_count(struct vmspace *vmspace)
+{
+	vm_map_t map = &vmspace->vm_map;
+	vm_map_entry_t cur;
+	vm_object_t object;
+	u_int count = 0;
+
+	for (cur = map->header.next; cur != &map->header; cur = cur->next) {
+		switch(cur->maptype) {
+		case VM_MAPTYPE_NORMAL:
+		case VM_MAPTYPE_VPAGETABLE:
+			if ((object = cur->object.vm_object) == NULL)
+				break;
+			if (object->type != OBJT_DEFAULT &&
+			    object->type != OBJT_SWAP) {
+				break;
+			}
+			if(object->agg_pv_list_count != 0) {
+					count += (object->resident_page_count / object->agg_pv_list_count);
+			}
+			break;
+		default:
+			break;
+		}
+	}
+	return(count);
+}
+
 /*
  * Number of kernel maps and entries to statically allocate, required
  * during boot to bootstrap the VM system.
  */
 #define MAX_KMAP	10
-#define	MAX_MAPENT	256
+#define	MAX_MAPENT	2048	/* required to support up to 64 cpus */
 
 /*
  * Copy-on-write flags for vm_map operations
@@ -417,6 +463,7 @@ vmspace_resident_count(struct vmspace *vmspace)
 #define MAP_PREFAULT_PARTIAL	0x0010
 #define MAP_DISABLE_SYNCER	0x0020
 #define MAP_IS_STACK		0x0040
+#define MAP_IS_KSTACK		0x0080
 #define MAP_DISABLE_COREDUMP	0x0100
 #define MAP_PREFAULT_MADVISE	0x0200	/* from (user) madvise request */
 
@@ -454,6 +501,7 @@ int vm_map_find (vm_map_t, vm_object_t, vm_ooffset_t,
 		 int);
 int vm_map_findspace (vm_map_t, vm_offset_t, vm_size_t, vm_size_t,
 		      int, vm_offset_t *);
+vm_offset_t vm_map_hint(struct proc *, vm_offset_t, vm_prot_t);
 int vm_map_inherit (vm_map_t, vm_offset_t, vm_offset_t, vm_inherit_t);
 void vm_map_init (struct vm_map *, vm_offset_t, vm_offset_t, pmap_t);
 int vm_map_insert (vm_map_t, int *, vm_object_t, vm_ooffset_t,
@@ -482,6 +530,8 @@ int vm_map_growstack (struct proc *p, vm_offset_t addr);
 int vmspace_swap_count (struct vmspace *vmspace);
 int vmspace_anonymous_count (struct vmspace *vmspace);
 void vm_map_set_wired_quick(vm_map_t map, vm_offset_t addr, vm_size_t size, int *);
+void vm_map_transition_wait(vm_map_t map);
+
 
 #endif
 #endif				/* _VM_VM_MAP_H_ */

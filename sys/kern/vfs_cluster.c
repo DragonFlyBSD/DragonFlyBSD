@@ -77,9 +77,11 @@ static void cluster_callback (struct bio *);
 static void cluster_setram (struct buf *);
 
 static int write_behind = 1;
-SYSCTL_INT(_vfs, OID_AUTO, write_behind, CTLFLAG_RW, &write_behind, 0, "");
+SYSCTL_INT(_vfs, OID_AUTO, write_behind, CTLFLAG_RW, &write_behind, 0,
+    "Cluster write-behind setting");
 static int max_readahead = 2 * 1024 * 1024;
-SYSCTL_INT(_vfs, OID_AUTO, max_readahead, CTLFLAG_RW, &max_readahead, 0, "");
+SYSCTL_INT(_vfs, OID_AUTO, max_readahead, CTLFLAG_RW, &max_readahead, 0,
+    "Limit in bytes for desired cluster read-ahead");
 
 extern vm_page_t	bogus_page;
 

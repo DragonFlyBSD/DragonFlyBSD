@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/maestro3.c,v 1.28.2.2 2007/03/12 02:03:25 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.12 2007/06/16 20:07:19 dillon Exp $
  */
 
 /*
@@ -63,8 +62,6 @@
 
 #include <dev/sound/pci/gnu/maestro3_reg.h>
 #include <dev/sound/pci/gnu/maestro3_dsp.h>
-
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.12 2007/06/16 20:07:19 dillon Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -459,7 +456,7 @@ m3_pchan_init(kobj_t kobj, void *devinfo, struct snd_dbuf *b, struct pcm_channel
 			DMAC_BLOCKF_SELECTOR);
 
 	/* set an armload of static initializers */
-	for(i = 0 ; i < (sizeof(pv) / sizeof(pv[0])) ; i++) {
+	for(i = 0 ; i < NELEM(pv) ; i++) {
 		m3_wr_assp_data(sc, ch->dac_data + pv[i].addr, pv[i].val);
 	}
 
@@ -803,7 +800,7 @@ m3_rchan_init(kobj_t kobj, void *devinfo, struct snd_dbuf *b, struct pcm_channel
 			DMAC_PAGE3_SELECTOR + DMAC_BLOCKF_SELECTOR);
 
 	/* set an armload of static initializers */
-	for(i = 0 ; i < (sizeof(rv) / sizeof(rv[0])) ; i++) {
+	for(i = 0 ; i < NELEM(rv) ; i++) {
 		m3_wr_assp_data(sc, ch->adc_data + rv[i].addr, rv[i].val);
 	}
 
@@ -1262,11 +1259,7 @@ m3_pci_attach(device_t dev)
 
 	M3_DEBUG(CALL, ("m3_pci_attach\n"));
 
-	if ((sc = kmalloc(sizeof(*sc), M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
-		device_printf(dev, "cannot allocate softc\n");
-		return ENXIO;
-	}
-
+	sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
 	sc->dev = dev;
 	sc->type = pci_get_devid(dev);
 	sc->sc_lock = snd_mtxcreate(device_get_nameunit(dev),
@@ -1402,11 +1395,7 @@ m3_pci_attach(device_t dev)
 	/* Create the buffer for saving the card state during suspend */
 	len = sizeof(u_int16_t) * (REV_B_CODE_MEMORY_LENGTH +
 	    REV_B_DATA_MEMORY_LENGTH);
-	sc->savemem = (u_int16_t*)kmalloc(len, M_DEVBUF, M_NOWAIT | M_ZERO);
-	if (sc->savemem == NULL) {
-		device_printf(dev, "Failed to create suspend buffer\n");
-		goto bad;
-	}
+	sc->savemem = kmalloc(len, M_DEVBUF, M_WAITOK | M_ZERO);
 
 	return 0;
 

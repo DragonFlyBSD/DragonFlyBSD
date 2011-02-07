@@ -33,7 +33,7 @@
 .\" $FreeBSD: src/sbin/newfs/newfs.8,v 1.26.2.15 2003/05/13 12:16:08 joerg Exp $
 .\" $DragonFly: src/sbin/newfs/newfs.8,v 1.7 2007/05/20 19:29:21 dillon Exp $
 .\"
-.Dd May 13, 2003
+.Dd November 24, 2010
 .Dt NEWFS 8
 .Os
 .Sh NAME
@@ -42,6 +42,7 @@
 .Nd construct a new UFS file system
 .Sh SYNOPSIS
 .Nm
+.Op Fl L Ar volname
 .Op Fl NCOU
 .Op Fl S Ar sector-size
 .Op Fl T Ar disktype
@@ -153,6 +154,8 @@ Tell
 .Nm Mount_mfs
 to copy the underlying filesystem into the MFS mount being created
 over it.
+.It Fl L Ar volname
+Add a volume label to the new file system.
 .It Fl N
 Cause the file system parameters to be printed out
 without really creating the file system.

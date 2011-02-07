@@ -418,8 +418,6 @@ static void direct_fill_rect32(video_adapter_t *, int, int, int, int, int);
 #endif /* notyet */
 #endif /* !VGA_NO_MODE_CHANGE */
 
-static void dump_buffer(u_char *, size_t);
-
 #define	ISMAPPED(pa, width)				\
 	(((pa) <= (u_long)0x1000 - (width)) 		\
 	 || ((pa) >= ISA_HOLE_START && (pa) <= 0x100000 - (width)))
@@ -498,7 +496,7 @@ map_mode_num(int mode)
     };
     int i;
 
-    for (i = 0; i < sizeof(mode_map)/sizeof(mode_map[0]); ++i) {
+    for (i = 0; i < NELEM(mode_map); ++i) {
         if (mode_map[i].from == mode)
             return mode_map[i].to;
     }
@@ -525,7 +523,7 @@ map_bios_mode_num(int bios_mode)
 	M_VGA_CG320,
     };
 
-    if (bios_mode < sizeof(vga_modes)/sizeof(vga_modes[0]))
+    if (bios_mode < NELEM(vga_modes))
 	return vga_modes[bios_mode];
 
     return M_VGA_C80x25;
@@ -1600,7 +1598,7 @@ vga_load_state(video_adapter_t *adp, void *p)
     crtc_addr = CRTC;
 
 #if VGA_DEBUG > 1
-    dump_buffer(buf, V_MODE_PARAM_SIZE);
+    hexdump(buf, V_MODE_PARAM_SIZE, NULL, HD_OMIT_CHARS | HD_OMIT_COUNT);
 #endif
 
     crit_enter();
@@ -2326,18 +2324,6 @@ vga_dev_ioctl(video_adapter_t *adp, u_long cmd, caddr_t arg)
     }
 }
 
-static void
-dump_buffer(u_char *buf, size_t len)
-{
-    int i;
-
-    for(i = 0; i < len;) {
-	kprintf("%02x ", buf[i]);
-	if ((++i % 16) == 0)
-	    kprintf("\n");
-    }
-}
-
 /*
  * diag():
  * Print some information about the video adapter and video modes,
@@ -2400,15 +2386,17 @@ vga_diag(video_adapter_t *adp, int level)
 	return 0;
 
     kprintf("VGA parameters upon power-up\n");
-    dump_buffer(adpstate.regs, sizeof(adpstate.regs));
+    hexdump(adpstate.regs, sizeof(adpstate.regs), NULL,
+	HD_OMIT_CHARS | HD_OMIT_COUNT);
 
     mp = get_mode_param(adp->va_initial_mode);
     if (mp == NULL)	/* this shouldn't be happening */
 	return 0;
     kprintf("VGA parameters in BIOS for mode %d\n", adp->va_initial_mode);
-    dump_buffer(adpstate2.regs, sizeof(adpstate2.regs));
+    hexdump(adpstate2.regs, sizeof(adpstate2.regs), NULL,
+	HD_OMIT_CHARS | HD_OMIT_COUNT);
     kprintf("VGA parameters to be used for mode %d\n", adp->va_initial_mode);
-    dump_buffer(mp, V_MODE_PARAM_SIZE);
+    hexdump(mp, V_MODE_PARAM_SIZE, NULL, HD_OMIT_CHARS | HD_OMIT_COUNT);
 
     return 0;
 }

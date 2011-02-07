@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/in6_proto.c,v 1.6.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_proto.c,v 1.14 2008/10/27 02:56:30 sephe Exp $	*/
 /*	$KAME: in6_proto.c,v 1.91 2001/05/27 13:28:35 itojun Exp $	*/
 
 /*
@@ -397,7 +396,7 @@ extern int in6_inithead (void **, int);
 struct domain inet6domain = {
 	AF_INET6, "internet6", NULL, NULL, NULL,
 	(struct protosw *)inet6sw,
-	(struct protosw *)&inet6sw[sizeof(inet6sw)/sizeof(inet6sw[0])],
+	(struct protosw *)&inet6sw[NELEM(inet6sw)],
 	SLIST_ENTRY_INITIALIZER,
 	in6_inithead, offsetof(struct sockaddr_in6, sin6_addr) << 3,
 	sizeof(struct sockaddr_in6), in6_domifattach, in6_domifdetach
@@ -524,75 +523,80 @@ sysctl_ip6_tempvltime(SYSCTL_HANDLER_ARGS)
 	return (error);
 }
 
-SYSCTL_INT(_net_inet6_ip6, IPV6CTL_FORWARDING,
-	forwarding, CTLFLAG_RW, 	&ip6_forwarding,	0, "");
-SYSCTL_INT(_net_inet6_ip6, IPV6CTL_SENDREDIRECTS,
-	redirect, CTLFLAG_RW,		&ip6_sendredirects,	0, "");
+SYSCTL_INT(_net_inet6_ip6, IPV6CTL_FORWARDING, forwarding, CTLFLAG_RW,
+    &ip6_forwarding, 0, "Enable IP forwarding between interfaces");
+SYSCTL_INT(_net_inet6_ip6, IPV6CTL_SENDREDIRECTS, redirect, CTLFLAG_RW,
+    &ip6_sendredirects, 0, "Enable sending IP redirects");
 SYSCTL_INT(_net_inet6_ip6, IPV6CTL_DEFHLIM,
-	hlim, CTLFLAG_RW,		&ip6_defhlim,	0, "");
+    hlim, CTLFLAG_RW, &ip6_defhlim, 0, "Default hop limit");
 SYSCTL_STRUCT(_net_inet6_ip6, IPV6CTL_STATS, stats, CTLFLAG_RD,
-	&ip6stat, ip6stat, "");
-SYSCTL_INT(_net_inet6_ip6, IPV6CTL_MAXFRAGPACKETS,
-	maxfragpackets, CTLFLAG_RW,	&ip6_maxfragpackets,	0, "");
-SYSCTL_INT(_net_inet6_ip6, IPV6CTL_ACCEPT_RTADV,
-	accept_rtadv, CTLFLAG_RW,	&ip6_accept_rtadv,	0, "");
+    &ip6stat, ip6stat, "IP stats");
+SYSCTL_INT(_net_inet6_ip6, IPV6CTL_MAXFRAGPACKETS, maxfragpackets,
+    CTLFLAG_RW, &ip6_maxfragpackets, 0, "Maximum packets in reassembly queue");
+SYSCTL_INT(_net_inet6_ip6, IPV6CTL_ACCEPT_RTADV, accept_rtadv,
+    CTLFLAG_RW, &ip6_accept_rtadv, 0, "Acts as a host not a router");
 SYSCTL_INT(_net_inet6_ip6, IPV6CTL_KEEPFAITH,
-	keepfaith, CTLFLAG_RW,		&ip6_keepfaith,	0, "");
+    keepfaith, CTLFLAG_RW, &ip6_keepfaith, 0,
+    "Enable packet capture for FAITH IPv4->IPv6 translator daemon");
 SYSCTL_INT(_net_inet6_ip6, IPV6CTL_LOG_INTERVAL,
 	log_interval, CTLFLAG_RW,	&ip6_log_interval,	0, "");
-SYSCTL_INT(_net_inet6_ip6, IPV6CTL_HDRNESTLIMIT,
-	hdrnestlimit, CTLFLAG_RW,	&ip6_hdrnestlimit,	0, "");
-SYSCTL_INT(_net_inet6_ip6, IPV6CTL_DAD_COUNT,
-	dad_count, CTLFLAG_RW,	&ip6_dad_count,	0, "");
-SYSCTL_INT(_net_inet6_ip6, IPV6CTL_AUTO_FLOWLABEL,
-	auto_flowlabel, CTLFLAG_RW,	&ip6_auto_flowlabel,	0, "");
-SYSCTL_INT(_net_inet6_ip6, IPV6CTL_DEFMCASTHLIM,
-	defmcasthlim, CTLFLAG_RW,	&ip6_defmcasthlim,	0, "");
-SYSCTL_INT(_net_inet6_ip6, IPV6CTL_GIF_HLIM,
-	gifhlim, CTLFLAG_RW,	&ip6_gif_hlim,			0, "");
+SYSCTL_INT(_net_inet6_ip6, IPV6CTL_HDRNESTLIMIT, hdrnestlimit, CTLFLAG_RW,
+    &ip6_hdrnestlimit,	0, "Upper limit of # of extension headers");
+SYSCTL_INT(_net_inet6_ip6, IPV6CTL_DAD_COUNT, dad_count, CTLFLAG_RW,
+    &ip6_dad_count, 0, "Number of times to perform duplicate address detectione");
+SYSCTL_INT(_net_inet6_ip6, IPV6CTL_AUTO_FLOWLABEL, auto_flowlabel, CTLFLAG_RW,
+    &ip6_auto_flowlabel, 0, "Enable attaching flowlabel automatically");
+SYSCTL_INT(_net_inet6_ip6, IPV6CTL_DEFMCASTHLIM, defmcasthlim, CTLFLAG_RW,
+    &ip6_defmcasthlim, 0, "Default multicast hop limit");
+SYSCTL_INT(_net_inet6_ip6, IPV6CTL_GIF_HLIM, gifhlim, CTLFLAG_RW,
+    &ip6_gif_hlim,	0, "Hop limit for gif encap packet");
 SYSCTL_STRING(_net_inet6_ip6, IPV6CTL_KAME_VERSION,
-	kame_version, CTLFLAG_RD,	__KAME_VERSION,		0, "");
-SYSCTL_INT(_net_inet6_ip6, IPV6CTL_USE_DEPRECATED,
-	use_deprecated, CTLFLAG_RW,	&ip6_use_deprecated,	0, "");
+	kame_version, CTLFLAG_RD,	__KAME_VERSION,		0, "Kame version");
+SYSCTL_INT(_net_inet6_ip6, IPV6CTL_USE_DEPRECATED, use_deprecated, CTLFLAG_RW,
+    &ip6_use_deprecated, 0, "Allow deprecated addr as source");
 SYSCTL_INT(_net_inet6_ip6, IPV6CTL_RR_PRUNE,
-	rr_prune, CTLFLAG_RW,	&ip6_rr_prune,			0, "");
-SYSCTL_INT(_net_inet6_ip6, IPV6CTL_USETEMPADDR,
-	use_tempaddr, CTLFLAG_RW, &ip6_use_tempaddr,		0, "");
+	rr_prune, CTLFLAG_RW,	&ip6_rr_prune,	0,
+    "Walk timer for router renumbering");
+SYSCTL_INT(_net_inet6_ip6, IPV6CTL_USETEMPADDR, use_tempaddr, CTLFLAG_RW,
+    &ip6_use_tempaddr, 0, "Whether to use temporary addresses");
 SYSCTL_OID(_net_inet6_ip6, IPV6CTL_TEMPPLTIME, temppltime,
-	   CTLTYPE_INT|CTLFLAG_RW, &ip6_temp_preferred_lifetime, 0,
-	   sysctl_ip6_temppltime, "I", "");
+    CTLTYPE_INT|CTLFLAG_RW, &ip6_temp_preferred_lifetime, 0,
+    sysctl_ip6_temppltime, "I",
+    "Preferred lifetime for tmpaddrs");
 SYSCTL_OID(_net_inet6_ip6, IPV6CTL_TEMPVLTIME, tempvltime,
-	   CTLTYPE_INT|CTLFLAG_RW, &ip6_temp_valid_lifetime, 0,
-	   sysctl_ip6_tempvltime, "I", "");
-SYSCTL_INT(_net_inet6_ip6, IPV6CTL_V6ONLY,
-	v6only,	CTLFLAG_RW,	&ip6_v6only,			0, "");
-SYSCTL_INT(_net_inet6_ip6, IPV6CTL_AUTO_LINKLOCAL,
-	auto_linklocal, CTLFLAG_RW, &ip6_auto_linklocal,	0, "");
+    CTLTYPE_INT|CTLFLAG_RW, &ip6_temp_valid_lifetime, 0,
+    sysctl_ip6_tempvltime, "I",
+    "Valid lifetime for tmpaddrs");
+SYSCTL_INT(_net_inet6_ip6, IPV6CTL_V6ONLY, v6only, CTLFLAG_RW,
+    &ip6_v6only, 0,"Forbid v4, restrict AF_INET6 socket for v6");
+SYSCTL_INT(_net_inet6_ip6, IPV6CTL_AUTO_LINKLOCAL, auto_linklocal, CTLFLAG_RW,
+    &ip6_auto_linklocal, 0, "Enable auto-assigning a link-local address");
 SYSCTL_STRUCT(_net_inet6_ip6, IPV6CTL_RIP6STATS, rip6stats, CTLFLAG_RD,
-	&rip6stat, rip6stat, "");
+    &rip6stat, rip6stat, "Raw stats");
 
 /* net.inet6.icmp6 */
-SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_REDIRACCEPT,
-	rediraccept, CTLFLAG_RW,	&icmp6_rediraccept,	0, "");
-SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_REDIRTIMEOUT,
-	redirtimeout, CTLFLAG_RW,	&icmp6_redirtimeout,	0, "");
+SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_REDIRACCEPT, rediraccept, CTLFLAG_RW,
+    &icmp6_rediraccept, 0, "If enabled, accept and process redirects");
+SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_REDIRTIMEOUT, redirtimeout, CTLFLAG_RW,
+    &icmp6_redirtimeout, 0, "Cache time for redirect routes");
 SYSCTL_STRUCT(_net_inet6_icmp6, ICMPV6CTL_STATS, stats, CTLFLAG_RD,
-	&icmp6stat, icmp6stat, "");
-SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_PRUNE,
-	nd6_prune, CTLFLAG_RW,		&nd6_prune,	0, "");
-SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_DELAY,
-	nd6_delay, CTLFLAG_RW,		&nd6_delay,	0, "");
-SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_UMAXTRIES,
-	nd6_umaxtries, CTLFLAG_RW,	&nd6_umaxtries,	0, "");
-SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_MMAXTRIES,
-	nd6_mmaxtries, CTLFLAG_RW,	&nd6_mmaxtries,	0, "");
-SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_USELOOPBACK,
-	nd6_useloopback, CTLFLAG_RW,	&nd6_useloopback, 0, "");
+    &icmp6stat, icmp6stat, "Stats");
+SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_PRUNE, nd6_prune, CTLFLAG_RW,
+    &nd6_prune, 0, "Prune interval");
+SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_DELAY, nd6_delay, CTLFLAG_RW,
+    &nd6_delay, 0, "Reachability timeout for stale neighbors");
+SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_UMAXTRIES, nd6_umaxtries, CTLFLAG_RW,
+    &nd6_umaxtries,	0, "Maximum unicast query");
+SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_MMAXTRIES, nd6_mmaxtries, CTLFLAG_RW,
+    &nd6_mmaxtries, 0, "Maximum multicast query");
+SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_USELOOPBACK, nd6_useloopback, CTLFLAG_RW,
+    &nd6_useloopback, 0, "Use loopback interface for local traffic");
 SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_NODEINFO,
-	nodeinfo, CTLFLAG_RW,	&icmp6_nodeinfo,	0, "");
+    nodeinfo, CTLFLAG_RW, &icmp6_nodeinfo, 0, "Enable/disable NI response");
 SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ERRPPSLIMIT,
-	errppslimit, CTLFLAG_RW,	&icmp6errppslim,	0, "");
-SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_MAXNUDHINT,
-	nd6_maxnudhint, CTLFLAG_RW,	&nd6_maxnudhint, 0, "");
-SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_DEBUG,
-	nd6_debug, CTLFLAG_RW,	&nd6_debug,		0, "");
+	errppslimit, CTLFLAG_RW,	&icmp6errppslim,	0,
+    "ICMPv6 error maximum packet-per-second value (default: 100pps)");
+SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_MAXNUDHINT, nd6_maxnudhint, CTLFLAG_RW,
+    &nd6_maxnudhint, 0, "Max # of subsequent upper layer hints");
+SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_DEBUG, nd6_debug, CTLFLAG_RW,
+    &nd6_debug, 0, "Enable debug output");

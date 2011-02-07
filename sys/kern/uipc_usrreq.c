@@ -62,13 +62,20 @@
 #include <sys/socketvar2.h>
 #include <sys/msgport2.h>
 
+typedef struct unp_defdiscard {
+	struct unp_defdiscard *next;
+	struct file *fp;
+} *unp_defdiscard_t;
+
 static	MALLOC_DEFINE(M_UNPCB, "unpcb", "unpcb struct");
 static	unp_gen_t unp_gencnt;
 static	u_int unp_count;
 
 static	struct unp_head unp_shead, unp_dhead;
 
-static struct lwkt_token unp_token = LWKT_TOKEN_MP_INITIALIZER(unp_token);
+static struct lwkt_token unp_token = LWKT_TOKEN_INITIALIZER(unp_token);
+static int unp_defdiscard_nest;
+static unp_defdiscard_t unp_defdiscard_base;
 
 /*
  * Unix communications domain.
@@ -677,18 +684,19 @@ static struct spinlock unp_spin = SPINLOCK_INITIALIZER(&unp_spin);
 SYSCTL_DECL(_net_local_seqpacket);
 SYSCTL_DECL(_net_local_stream);
 SYSCTL_INT(_net_local_stream, OID_AUTO, sendspace, CTLFLAG_RW, 
-	   &unpst_sendspace, 0, "");
+    &unpst_sendspace, 0, "Size of stream socket send buffer");
 SYSCTL_INT(_net_local_stream, OID_AUTO, recvspace, CTLFLAG_RW,
-	   &unpst_recvspace, 0, "");
+    &unpst_recvspace, 0, "Size of stream socket receive buffer");
 
 SYSCTL_DECL(_net_local_dgram);
 SYSCTL_INT(_net_local_dgram, OID_AUTO, maxdgram, CTLFLAG_RW,
-	   &unpdg_sendspace, 0, "");
+    &unpdg_sendspace, 0, "Max datagram socket size");
 SYSCTL_INT(_net_local_dgram, OID_AUTO, recvspace, CTLFLAG_RW,
-	   &unpdg_recvspace, 0, "");
+    &unpdg_recvspace, 0, "Size of datagram socket receive buffer");
 
 SYSCTL_DECL(_net_local);
-SYSCTL_INT(_net_local, OID_AUTO, inflight, CTLFLAG_RD, &unp_rights, 0, "");
+SYSCTL_INT(_net_local, OID_AUTO, inflight, CTLFLAG_RD, &unp_rights, 0,
+   "File descriptors in flight");
 
 static int
 unp_attach(struct socket *so, struct pru_attach_info *ai)
@@ -868,7 +876,7 @@ unp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		error = ENOTSOCK;
 		goto bad;
 	}
-	error = VOP_ACCESS(vp, VWRITE, p->p_ucred);
+	error = VOP_EACCESS(vp, VWRITE, p->p_ucred);
 	if (error)
 		goto bad;
 	so2 = vp->v_socket;
@@ -1414,6 +1422,9 @@ unp_gc(void)
 	struct file **fpp;
 	int i;
 
+	/*
+	 * Only one gc can be in-progress at any given moment
+	 */
 	spin_lock(&unp_spin);
 	if (unp_gcing) {
 		spin_unlock(&unp_spin);
@@ -1425,13 +1436,21 @@ unp_gc(void)
 	lwkt_gettoken(&unp_token);
 
 	/* 
-	 * before going through all this, set all FDs to 
-	 * be NOT defered and NOT externally accessible
+	 * Before going through all this, set all FDs to be NOT defered
+	 * and NOT externally accessible (not marked).  During the scan
+	 * a fd can be marked externally accessible but we may or may not
+	 * be able to immediately process it (controlled by FDEFER).
+	 *
+	 * If we loop sleep a bit.  The complexity of the topology can cause
+	 * multiple loops.  Also failure to acquire the socket's so_rcv
+	 * token can cause us to loop.
 	 */
-	info.defer = 0;
 	allfiles_scan_exclusive(unp_gc_clearmarks, NULL);
 	do {
+		info.defer = 0;
 		allfiles_scan_exclusive(unp_gc_checkmarks, &info);
+		if (info.defer)
+			tsleep(&info, 0, "gcagain", 1);
 	} while (info.defer);
 
 	/*
@@ -1547,10 +1566,15 @@ unp_gc_checkmarks(struct file *fp, void *data)
 	struct socket *so;
 
 	/*
-	 * If the file is not open, skip it
+	 * If the file is not open, skip it.  Make sure it isn't marked
+	 * defered or we could loop forever, in case we somehow race
+	 * something.
 	 */
-	if (fp->f_count == 0)
+	if (fp->f_count == 0) {
+		if (fp->f_flag & FDEFER)
+			atomic_clear_int(&fp->f_flag, FDEFER);
 		return(0);
+	}
 	/*
 	 * If we already marked it as 'defer'  in a
 	 * previous pass, then try process it this time
@@ -1558,7 +1582,6 @@ unp_gc_checkmarks(struct file *fp, void *data)
 	 */
 	if (fp->f_flag & FDEFER) {
 		atomic_clear_int(&fp->f_flag, FDEFER);
-		--info->defer;
 	} else {
 		/*
 		 * if it's not defered, then check if it's
@@ -1586,40 +1609,31 @@ unp_gc_checkmarks(struct file *fp, void *data)
 	 * Now check if it is possibly one of OUR sockets.
 	 */ 
 	if (fp->f_type != DTYPE_SOCKET ||
-	    (so = (struct socket *)fp->f_data) == NULL)
+	    (so = (struct socket *)fp->f_data) == NULL) {
 		return(0);
-	if (so->so_proto->pr_domain != &localdomain ||
-	    !(so->so_proto->pr_flags & PR_RIGHTS))
-		return(0);
-#ifdef notdef
-	if (so->so_rcv.ssb_flags & SSB_LOCK) {
-		/*
-		 * This is problematical; it's not clear
-		 * we need to wait for the sockbuf to be
-		 * unlocked (on a uniprocessor, at least),
-		 * and it's also not clear what to do
-		 * if sbwait returns an error due to receipt
-		 * of a signal.  If sbwait does return
-		 * an error, we'll go into an infinite
-		 * loop.  Delete all of this for now.
-		 */
-		sbwait(&so->so_rcv);
-		goto restart;
 	}
-#endif
+	if (so->so_proto->pr_domain != &localdomain ||
+	    !(so->so_proto->pr_flags & PR_RIGHTS)) {
+		return(0);
+	}
+
 	/*
-	 * So, Ok, it's one of our sockets and it IS externally
-	 * accessible (or was defered). Now we look
-	 * to see if we hold any file descriptors in its
-	 * message buffers. Follow those links and mark them 
-	 * as accessible too.
+	 * So, Ok, it's one of our sockets and it IS externally accessible
+	 * (or was defered).  Now we look to see if we hold any file
+	 * descriptors in its message buffers.  Follow those links and mark
+	 * them as accessible too.
+	 *
+	 * We are holding multiple spinlocks here, if we cannot get the
+	 * token non-blocking defer until the next loop.
 	 */
 	info->locked_fp = fp;
-	lwkt_gettoken(&so->so_rcv.ssb_token);
-/*	spin_lock_wr(&so->so_rcv.sb_spin); */
-	unp_scan(so->so_rcv.ssb_mb, unp_mark, info);
-/*	spin_unlock_wr(&so->so_rcv.sb_spin);*/
-	lwkt_reltoken(&so->so_rcv.ssb_token);
+	if (lwkt_trytoken(&so->so_rcv.ssb_token)) {
+		unp_scan(so->so_rcv.ssb_mb, unp_mark, info);
+		lwkt_reltoken(&so->so_rcv.ssb_token);
+	} else {
+		atomic_set_int(&fp->f_flag, FDEFER);
+		++info->defer;
+	}
 	return (0);
 }
 
@@ -1734,12 +1748,31 @@ unp_revoke_gc_check(struct file *fps, void *vinfo)
 	return(0);
 }
 
+/*
+ * Dispose of the fp's stored in a mbuf.
+ *
+ * The dds loop can cause additional fps to be entered onto the
+ * list while it is running, flattening out the operation and avoiding
+ * a deep kernel stack recursion.
+ */
 void
 unp_dispose(struct mbuf *m)
 {
+	unp_defdiscard_t dds;
+
 	lwkt_gettoken(&unp_token);
-	if (m)
+	++unp_defdiscard_nest;
+	if (m) {
 		unp_scan(m, unp_discard, NULL);
+	}
+	if (unp_defdiscard_nest == 1) {
+		while ((dds = unp_defdiscard_base) != NULL) {
+			unp_defdiscard_base = dds->next;
+			closef(dds->fp, NULL);
+			kfree(dds, M_UNPCB);
+		}
+	}
+	--unp_defdiscard_nest;
 	lwkt_reltoken(&unp_token);
 }
 
@@ -1785,6 +1818,9 @@ unp_scan(struct mbuf *m0, void (*op)(struct file *, void *), void *data)
 	}
 }
 
+/*
+ * Mark visibility.  info->defer is recalculated on every pass.
+ */
 static void
 unp_mark(struct file *fp, void *data)
 {
@@ -1793,16 +1829,35 @@ unp_mark(struct file *fp, void *data)
 	if ((fp->f_flag & FMARK) == 0) {
 		++info->defer;
 		atomic_set_int(&fp->f_flag, FMARK | FDEFER);
+	} else if (fp->f_flag & FDEFER) {
+		++info->defer;
 	}
 }
 
+/*
+ * Discard a fp previously held in a unix domain socket mbuf.  To
+ * avoid blowing out the kernel stack due to contrived chain-reactions
+ * we may have to defer the operation to a higher procedural level.
+ *
+ * Caller holds unp_token
+ */
 static void
 unp_discard(struct file *fp, void *data __unused)
 {
+	unp_defdiscard_t dds;
+
 	spin_lock(&unp_spin);
 	fp->f_msgcount--;
 	unp_rights--;
 	spin_unlock(&unp_spin);
-	closef(fp, NULL);
+
+	if (unp_defdiscard_nest) {
+		dds = kmalloc(sizeof(*dds), M_UNPCB, M_WAITOK|M_ZERO);
+		dds->fp = fp;
+		dds->next = unp_defdiscard_base;
+		unp_defdiscard_base = dds;
+	} else {
+		closef(fp, NULL);
+	}
 }
 

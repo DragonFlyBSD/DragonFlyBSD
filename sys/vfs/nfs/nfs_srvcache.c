@@ -73,6 +73,8 @@ static u_long nfsrvhash;
 #define	NETFAMILY(rp) \
 		(((rp)->rc_flag & RC_INETADDR) ? AF_INET : AF_ISO)
 
+struct lwkt_token srvcache_token = LWKT_TOKEN_INITIALIZER(srvcache_token);
+
 /*
  * Static array that defines which nfs rpc's are nonidempotent
  */
@@ -133,7 +135,6 @@ static int nfsv2_repstat[NFS_NPROCS] = {
 void
 nfsrv_initcache(void)
 {
-
 	nfsrvhashtbl = hashinit(desirednfsrvcache, M_NFSD, &nfsrvhash);
 	TAILQ_INIT(&nfsrvlruhead);
 }
@@ -168,6 +169,8 @@ nfsrv_getcache(struct nfsrv_descript *nd, struct nfssvc_sock *slp,
 	 */
 	if (!nd->nd_nam2)
 		return (RC_DOIT);
+
+	lwkt_gettoken(&srvcache_token);
 loop:
 	for (rp = NFSRCHASH(nd->nd_retxid)->lh_first; rp != 0;
 	    rp = rp->rc_hash.le_next) {
@@ -210,9 +213,11 @@ loop:
 				rp->rc_flag &= ~RC_WANTED;
 				wakeup((caddr_t)rp);
 			}
+			lwkt_reltoken(&srvcache_token);
 			return (ret);
 		}
 	}
+
 	nfsstats.srvcache_misses++;
 	NFS_DPF(RC, ("M%03x", nd->nd_retxid & 0xfff));
 	if (numnfsrvcache < desirednfsrvcache) {
@@ -239,9 +244,9 @@ loop:
 			rp->rc_nam = NULL;
 			rp->rc_flag &= ~RC_NAM;
 		}
-		rp->rc_flag &= (RC_LOCKED | RC_WANTED);
 	}
 	TAILQ_INSERT_TAIL(&nfsrvlruhead, rp, rc_lru);
+
 	rp->rc_state = RC_INPROG;
 	rp->rc_xid = nd->nd_retxid;
 	saddr = (struct sockaddr_in *)nd->nd_nam;
@@ -263,6 +268,8 @@ loop:
 		rp->rc_flag &= ~RC_WANTED;
 		wakeup((caddr_t)rp);
 	}
+	lwkt_reltoken(&srvcache_token);
+
 	return (RC_DOIT);
 }
 
@@ -276,6 +283,8 @@ nfsrv_updatecache(struct nfsrv_descript *nd, int repvalid, struct mbuf *repmbuf)
 
 	if (!nd->nd_nam2)
 		return;
+
+	lwkt_gettoken(&srvcache_token);
 loop:
 	for (rp = NFSRCHASH(nd->nd_retxid)->lh_first; rp != 0;
 	    rp = rp->rc_hash.le_next) {
@@ -328,9 +337,10 @@ loop:
 				rp->rc_flag &= ~RC_WANTED;
 				wakeup((caddr_t)rp);
 			}
-			return;
+			break;
 		}
 	}
+	lwkt_reltoken(&srvcache_token);
 	NFS_DPF(RC, ("L%03x", nd->nd_retxid & 0xfff));
 }
 
@@ -342,6 +352,7 @@ nfsrv_cleancache(void)
 {
 	struct nfsrvcache *rp;
 
+	lwkt_gettoken(&srvcache_token);
 	while ((rp = TAILQ_FIRST(&nfsrvlruhead)) != NULL) {
 		if (rp->rc_flag & RC_LOCKED) {
 			rp->rc_flag |= RC_WANTED;
@@ -363,6 +374,7 @@ nfsrv_cleancache(void)
 		kfree(rp, M_NFSD);
 	}
 	numnfsrvcache = 0;
+	lwkt_reltoken(&srvcache_token);
 }
 
 #endif /* NFS_NOSERVER */

@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fstat.c	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/usr.bin/fstat/fstat.c,v 1.21.2.7 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.26 2008/05/03 04:13:12 dillon Exp $
  */
 
 #include <sys/user.h>
@@ -62,7 +61,7 @@
 #include <nfs/rpcv2.h>
 #include <nfs/nfs.h>
 #include <nfs/nfsnode.h>
-
+#include <sys/devfs.h>
 
 #include <vm/vm.h>
 #include <vm/vm_map.h>
@@ -139,6 +138,7 @@ void dommap(struct proc *p);
 void vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag);
 int  ufs_filestat(struct vnode *vp, struct filestat *fsp);
 int  nfs_filestat(struct vnode *vp, struct filestat *fsp);
+int  devfs_filestat(struct vnode *vp, struct filestat *fsp);
 char *getmnton(struct mount *m, struct namecache_list *ncplist, struct nchandle *ncr);
 void pipetrans(struct pipe *pi, int i, int flag);
 void socktrans(struct socket *sock, int i);
@@ -272,7 +272,8 @@ main(int argc, char **argv)
 	exit(0);
 }
 
-char	*Uname, *Comm;
+const char *Uname;
+char	*Comm;
 int	Pid;
 
 #define PREFIX(i) \
@@ -491,6 +492,11 @@ vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag)
 				badtype = "error";
 			break;
 
+		case VT_DEVFS:
+			if (!devfs_filestat(&vn, &fst))
+				badtype = "error";
+			break;
+
 		default: {
 			static char unknown[10];
 			sprintf(unknown, "?(%x)", vn.v_tag);
@@ -623,6 +629,7 @@ nfs_filestat(struct vnode *vp, struct filestat *fsp)
 		break;
 	case VDATABASE:
 		break;
+	case VINT:
 	case VNON:
 	case VBAD:
 		return 0;
@@ -632,6 +639,23 @@ nfs_filestat(struct vnode *vp, struct filestat *fsp)
 	return 1;
 }
 
+int
+devfs_filestat(struct vnode *vp, struct filestat *fsp)
+{
+	struct devfs_node devfs_node;
+
+	if (!kread(vp->v_data, &devfs_node, sizeof (devfs_node))) {
+		dprintf(stderr, "can't read devfs_node at %p for pid %d\n",
+		    (void *)vp->v_data, Pid);
+		return 0;
+	}
+	fsp->fsid = fsp->rdev = dev2udev(vp->v_rdev);
+	fsp->fileid = devfs_node.d_dir.d_ino;
+	fsp->mode = (devfs_node.mode & ~S_IFMT) | S_IFCHR;
+	fsp->size = 0;
+
+	return 1;
+}
 
 char *
 getmnton(struct mount *m, struct namecache_list *ncplist, struct nchandle *ncr)

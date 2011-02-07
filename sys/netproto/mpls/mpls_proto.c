@@ -27,14 +27,14 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/netproto/mpls/mpls_proto.c,v 1.2 2008/11/01 04:22:16 sephe Exp $
  */
 
 #include <sys/domain.h>
 #include <sys/kernel.h>		/* SYSINIT via DOMAIN_SET */
 #include <sys/protosw.h>
 #include <sys/socket.h>
+#include <sys/globaldata.h>
+#include <sys/thread.h>
 
 #include <net/radix.h>		/* rn_inithead */
 
@@ -63,6 +63,12 @@ struct protosw mplssw[] = {
     }
 };
 
+static int
+mpls_inithead(void **head, int off)
+{
+	return rn_inithead(head, rn_cpumaskhead(mycpuid), off);
+}
+
 static	struct	domain mplsdomain = {
 	AF_MPLS,			/* dom_family */
 	"mpls",				/* dom_name */
@@ -70,10 +76,10 @@ static	struct	domain mplsdomain = {
 	NULL,				/* dom_externalize */
 	NULL,				/* dom_dispose */
 	mplssw,				/* dom_protosw */
-	&mplssw[sizeof(mplssw) / sizeof(mplssw[0])],
+	&mplssw[NELEM(mplssw)],
 					/* dom_protoswNPROTOSW */
 	SLIST_ENTRY_INITIALIZER,	/* dom_next */
-	rn_inithead,			/* dom_rtattach */
+	mpls_inithead,			/* dom_rtattach */
 	32,				/* dom_rtoffset */
 	sizeof(struct sockaddr_mpls),	/* dom_maxrtkey */
 	NULL,				/* dom_ifattach */

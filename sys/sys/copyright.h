@@ -36,7 +36,7 @@
 
 /* DragonFly */
 #define COPYRIGHT_DragonFly \
-	"Copyright (c) 2003-2010 The DragonFly Project.\n"
+	"Copyright (c) 2003-2011 The DragonFly Project.\n"
 
 /* Berkeley */
 #define COPYRIGHT_UCB \

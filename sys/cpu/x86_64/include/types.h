@@ -75,7 +75,13 @@ typedef __uint64_t	pdp_entry_t;
 typedef __uint64_t	pd_entry_t;
 typedef __uint64_t	pt_entry_t;
 #endif
-typedef __uint32_t      cpumask_t;      /* mask representing a set of cpus */
+typedef __uint64_t      cpumask_t;      /* mask representing a set of cpus */
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+#define CPUMASK(cpu)	((cpumask_t)1 << (cpu))
+#define BSRCPUMASK(mask)	bsrq(mask)
+#define BSFCPUMASK(mask)	bsfq(mask)
+#endif
 
 #define PML4SIZE	sizeof(pml4_entry_t) /* for assembly files */
 #define PDPSIZE		sizeof(pdp_entry_t) /* for assembly files */

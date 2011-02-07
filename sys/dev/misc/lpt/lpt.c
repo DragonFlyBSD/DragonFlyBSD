@@ -49,7 +49,6 @@
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  *	From Id: nlpt.c,v 1.14 1999/02/08 13:55:43 des Exp
  * $FreeBSD: src/sys/dev/ppbus/lpt.c,v 1.15.2.3 2000/07/07 00:30:40 obrien Exp $
- * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.19 2006/12/22 23:26:17 swildner Exp $
  */
 
 /*
@@ -190,9 +189,8 @@ static	d_write_t	lptwrite;
 static	d_read_t	lptread;
 static	d_ioctl_t	lptioctl;
 
-#define CDEV_MAJOR 16
 static struct dev_ops lpt_ops = {
-	{ LPT_NAME, CDEV_MAJOR, 0 },
+	{ LPT_NAME, 0, 0 },
 	.d_open =	lptopen,
 	.d_close =	lptclose,
 	.d_read =	lptread,

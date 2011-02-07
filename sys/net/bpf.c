@@ -38,7 +38,6 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.50 2008/09/23 11:28:49 sephe Exp $
  */
 
 #include "use_bpf.h"
@@ -100,10 +99,10 @@ DEVFS_DECLARE_CLONE_BITMAP(bpf);
  */
 static int bpf_bufsize = BPF_DEFAULTBUFSIZE;
 SYSCTL_INT(_debug, OID_AUTO, bpf_bufsize, CTLFLAG_RW,
-	   &bpf_bufsize, 0, "");
+   &bpf_bufsize, 0, "Current size of bpf buffer");
 int bpf_maxbufsize = BPF_MAXBUFSIZE;
 SYSCTL_INT(_debug, OID_AUTO, bpf_maxbufsize, CTLFLAG_RW,
-	   &bpf_maxbufsize, 0, "");
+   &bpf_maxbufsize, 0, "Maximum size of bpf buffer");
 
 /*
  *  bpf_iflist is the list of interfaces; each corresponds to an ifnet
@@ -141,7 +140,7 @@ static d_kqfilter_t	bpfkqfilter;
 
 #define CDEV_MAJOR 23
 static struct dev_ops bpf_ops = {
-	{ "bpf", CDEV_MAJOR, 0 },
+	{ "bpf", 0, 0 },
 	.d_open =	bpfopen,
 	.d_close =	bpfclose,
 	.d_read =	bpfread,

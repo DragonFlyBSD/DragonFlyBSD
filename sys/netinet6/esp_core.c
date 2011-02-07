@@ -205,7 +205,7 @@ esp_max_ivlen(void)
 	int ivlen;
 
 	ivlen = 0;
-	for (idx = 0; idx < sizeof(esp_algorithms)/sizeof(esp_algorithms[0]);
+	for (idx = 0; idx < NELEM(esp_algorithms);
 	     idx++) {
 		if (esp_algorithms[idx].ivlenval > ivlen)
 			ivlen = esp_algorithms[idx].ivlenval;

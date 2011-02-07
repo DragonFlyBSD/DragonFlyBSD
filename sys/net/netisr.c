@@ -34,8 +34,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/net/netisr.c,v 1.49 2008/11/01 10:29:31 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -52,6 +50,7 @@
 #include <net/if_var.h>
 #include <net/netisr.h>
 #include <machine/cpufunc.h>
+#include <machine/smp.h>
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
@@ -72,6 +71,20 @@ struct netmsg_rollup {
 	netisr_ru_t	ru_func;
 };
 
+struct netmsg_barrier {
+	struct netmsg_base	base;
+	volatile cpumask_t	*br_cpumask;
+	volatile uint32_t	br_done;
+};
+
+#define NETISR_BR_NOTDONE	0x1
+#define NETISR_BR_WAITDONE	0x80000000
+
+struct netisr_barrier {
+	struct netmsg_barrier	*br_msgs[MAXCPU];
+	int			br_isset;
+};
+
 static struct netisr netisrs[NETISR_MAX];
 static TAILQ_HEAD(,netmsg_port_registration) netreglist;
 static TAILQ_HEAD(,netmsg_rollup) netrulist;
@@ -79,6 +92,7 @@ static TAILQ_HEAD(,netmsg_rollup) netrulist;
 /* Per-CPU thread to handle any protocol.  */
 static struct thread netisr_cpu[MAXCPU];
 lwkt_port netisr_afree_rport;
+lwkt_port netisr_afree_free_so_rport;
 lwkt_port netisr_adone_rport;
 lwkt_port netisr_apanic_rport;
 lwkt_port netisr_sync_port;
@@ -94,6 +108,13 @@ SYSCTL_NODE(_net, OID_AUTO, netisr, CTLFLAG_RW, 0, "netisr");
 static void
 netisr_autofree_reply(lwkt_port_t port, lwkt_msg_t msg)
 {
+	kfree(msg, M_LWKTMSG);
+}
+
+static void
+netisr_autofree_free_so_reply(lwkt_port_t port, lwkt_msg_t msg)
+{
+	sofree(((netmsg_t)msg)->base.nm_so);
 	kfree(msg, M_LWKTMSG);
 }
 
@@ -172,6 +193,8 @@ netisr_init(void)
 	 * the message is replied to.
 	 */
 	lwkt_initport_replyonly(&netisr_afree_rport, netisr_autofree_reply);
+	lwkt_initport_replyonly(&netisr_afree_free_so_rport,
+				netisr_autofree_free_so_reply);
 	lwkt_initport_replyonly_null(&netisr_adone_rport);
 	lwkt_initport_panic(&netisr_apanic_rport);
 
@@ -311,7 +334,7 @@ netisr_queue(int num, struct mbuf *m)
 	struct netmsg_packet *pmsg;
 	lwkt_port_t port;
 
-	KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
+	KASSERT((num > 0 && num <= NELEM(netisrs)),
 		("Bad isr %d", num));
 
 	ni = &netisrs[num];
@@ -410,7 +433,7 @@ netisr_register(int num, netisr_fn_t handler, netisr_cpufn_t cpufn)
 {
 	struct netisr *ni;
 
-	KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
+	KASSERT((num > 0 && num <= NELEM(netisrs)),
 		("netisr_register: bad isr %d", num));
 	KKASSERT(handler != NULL);
 
@@ -511,7 +534,7 @@ schednetisr_remote(void *data)
 void
 schednetisr(int num)
 {
-	KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
+	KASSERT((num > 0 && num <= NELEM(netisrs)),
 		("schednetisr: bad isr %d", num));
 	KKASSERT(netisrs[num].ni_handler != NULL);
 #ifdef SMP
@@ -528,4 +551,115 @@ schednetisr(int num)
 	schednetisr_remote((void *)(intptr_t)num);
 	crit_exit();
 #endif
+}
+
+#ifdef SMP
+
+static void
+netisr_barrier_dispatch(netmsg_t nmsg)
+{
+	struct netmsg_barrier *msg = (struct netmsg_barrier *)nmsg;
+
+	atomic_clear_cpumask(msg->br_cpumask, mycpu->gd_cpumask);
+	if (*msg->br_cpumask == 0)
+		wakeup(msg->br_cpumask);
+
+	for (;;) {
+		uint32_t done = msg->br_done;
+
+		cpu_ccfence();
+		if ((done & NETISR_BR_NOTDONE) == 0)
+			break;
+
+		tsleep_interlock(&msg->br_done, 0);
+		if (atomic_cmpset_int(&msg->br_done,
+		    done, done | NETISR_BR_WAITDONE))
+			tsleep(&msg->br_done, PINTERLOCKED, "nbrdsp", 0);
+	}
+
+	lwkt_replymsg(&nmsg->lmsg, 0);
+}
+
+#endif
+
+struct netisr_barrier *
+netisr_barrier_create(void)
+{
+	struct netisr_barrier *br;
+
+	br = kmalloc(sizeof(*br), M_LWKTMSG, M_WAITOK | M_ZERO);
+	return br;
+}
+
+void
+netisr_barrier_set(struct netisr_barrier *br)
+{
+#ifdef SMP
+	volatile cpumask_t other_cpumask;
+	int i, cur_cpuid;
+
+	KKASSERT(&curthread->td_msgport == cpu_portfn(0));
+	KKASSERT(!br->br_isset);
+
+	other_cpumask = mycpu->gd_other_cpus & smp_active_mask;
+	cur_cpuid = mycpuid;
+
+	for (i = 0; i < ncpus; ++i) {
+		struct netmsg_barrier *msg;
+
+		if (i == cur_cpuid)
+			continue;
+
+		msg = kmalloc(sizeof(struct netmsg_barrier),
+			      M_LWKTMSG, M_WAITOK);
+		netmsg_init(&msg->base, NULL, &netisr_afree_rport,
+			    MSGF_PRIORITY, netisr_barrier_dispatch);
+		msg->br_cpumask = &other_cpumask;
+		msg->br_done = NETISR_BR_NOTDONE;
+
+		KKASSERT(br->br_msgs[i] == NULL);
+		br->br_msgs[i] = msg;
+	}
+
+	for (i = 0; i < ncpus; ++i) {
+		if (i == cur_cpuid)
+			continue;
+		lwkt_sendmsg(cpu_portfn(i), &br->br_msgs[i]->base.lmsg);
+	}
+
+	while (other_cpumask != 0) {
+		tsleep_interlock(&other_cpumask, 0);
+		if (other_cpumask != 0)
+			tsleep(&other_cpumask, PINTERLOCKED, "nbrset", 0);
+	}
+#endif
+	br->br_isset = 1;
+}
+
+void
+netisr_barrier_rem(struct netisr_barrier *br)
+{
+#ifdef SMP
+	int i, cur_cpuid;
+
+	KKASSERT(&curthread->td_msgport == cpu_portfn(0));
+	KKASSERT(br->br_isset);
+
+	cur_cpuid = mycpuid;
+	for (i = 0; i < ncpus; ++i) {
+		struct netmsg_barrier *msg = br->br_msgs[i];
+		uint32_t done;
+
+		msg = br->br_msgs[i];
+		br->br_msgs[i] = NULL;
+
+		if (i == cur_cpuid)
+			continue;
+
+		done = atomic_swap_int(&msg->br_done, 0);
+		if (done & NETISR_BR_WAITDONE)
+			wakeup(&msg->br_done);
+	}
+#endif
+	br->br_isset = 0;
 }

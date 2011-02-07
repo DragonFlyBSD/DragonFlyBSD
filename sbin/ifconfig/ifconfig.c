@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.113.2.4 2006/02/09 10:48:43 yar Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.30 2007/09/30 04:37:27 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -37,6 +36,7 @@
 #include <sys/time.h>
 #include <sys/module.h>
 #include <sys/linker.h>
+#include <sys/cdefs.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -100,7 +100,7 @@ static	void status(const struct afswtch *afp, int addrcount,
 		    struct sockaddr_dl *sdl, struct if_msghdr *ifm,
 		    struct ifa_msghdr *ifam);
 static	void tunnel_status(int s);
-static	void usage(void);
+static	void usage(void) __dead2;
 
 static struct afswtch *af_getbyname(const char *name);
 static struct afswtch *af_getbyfamily(int af);
@@ -253,7 +253,7 @@ main(int argc, char *argv[])
 				ifconfig(argc, argv, 1, NULL);
 				exit(0);
 			}
-			errx(1, "interface %s does not exist", name);
+			errx(1, "interface %s does not exist", ifname);
 		}
 	}
 
@@ -1139,7 +1139,7 @@ static struct cmd basic_cmds[] = {
 	DEF_CMD_ARG("pollcpu",			setifpollcpu)
 };
 
-static __constructor void
+static __constructor(100) void
 ifconfig_ctor(void)
 {
 #define	N(a)	(sizeof(a) / sizeof(a[0]))

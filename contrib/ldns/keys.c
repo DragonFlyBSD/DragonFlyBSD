@@ -23,16 +23,20 @@
 ldns_lookup_table ldns_signing_algorithms[] = {
         { LDNS_SIGN_RSAMD5, "RSAMD5" },
         { LDNS_SIGN_RSASHA1, "RSASHA1" },
-        { LDNS_SIGN_RSASHA1_NSEC3, "RSASHA1_NSEC3" },
+        { LDNS_SIGN_RSASHA1_NSEC3, "RSASHA1-NSEC3-SHA1" },
 #ifdef USE_SHA2
         { LDNS_SIGN_RSASHA256, "RSASHA256" },
         { LDNS_SIGN_RSASHA512, "RSASHA512" },
 #endif
 #ifdef USE_GOST
-        { LDNS_SIGN_GOST, "GOST" },
+        { LDNS_SIGN_ECC_GOST, "ECC-GOST" },
+#endif
+#ifdef USE_ECDSA
+        { LDNS_SIGN_ECDSAP256SHA256, "ECDSAP256SHA256" },
+        { LDNS_SIGN_ECDSAP384SHA384, "ECDSAP384SHA384" },
 #endif
         { LDNS_SIGN_DSA, "DSA" },
-        { LDNS_SIGN_DSA_NSEC3, "DSA_NSEC3" },
+        { LDNS_SIGN_DSA_NSEC3, "DSA-NSEC3-SHA1" },
         { LDNS_SIGN_HMACMD5, "hmac-md5.sig-alg.reg.int" },
         { LDNS_SIGN_HMACSHA1, "hmac-sha1" },
         { LDNS_SIGN_HMACSHA256, "hmac-sha256" },
@@ -103,6 +107,9 @@ ldns_key_new_frm_engine(ldns_key **key, ENGINE *e, char *key_id, ldns_algorithm 
 #endif
 
 #ifdef USE_GOST
+/** store GOST engine reference loaded into OpenSSL library */
+ENGINE* ldns_gost_engine = NULL;
+
 int
 ldns_key_EVP_load_gost_id(void)
 {
@@ -138,15 +145,27 @@ ldns_key_EVP_load_gost_id(void)
 	}
 
 	meth = EVP_PKEY_asn1_find_str(&e, "gost2001", -1);
-	ENGINE_finish(e);
-	ENGINE_free(e);
 	if(!meth) {
 		/* algo not found */
+		ENGINE_finish(e);
+		ENGINE_free(e);
 		return 0;
 	}
+        /* Note: do not ENGINE_finish and ENGINE_free the acquired engine
+         * on some platforms this frees up the meth and unloads gost stuff */
+        ldns_gost_engine = e;
 	
 	EVP_PKEY_asn1_get0_info(&gost_id, NULL, NULL, NULL, NULL, meth);
 	return gost_id;
+} 
+
+void ldns_key_EVP_unload_gost(void)
+{
+        if(ldns_gost_engine) {
+                ENGINE_finish(ldns_gost_engine);
+                ENGINE_free(ldns_gost_engine);
+                ldns_gost_engine = NULL;
+        }
 }
 
 /** read GOST private key */
@@ -181,6 +200,83 @@ ldns_key_new_frm_fp_gost_l(FILE* fp, int* line_nr)
 }
 #endif
 
+#ifdef USE_ECDSA
+/** calculate public key from private key */
+static int
+ldns_EC_KEY_calc_public(EC_KEY* ec)
+{
+        EC_POINT* pub_key;
+        const EC_GROUP* group;
+        group = EC_KEY_get0_group(ec);
+        pub_key = EC_POINT_new(group);
+        if(!pub_key) return 0;
+        if(!EC_POINT_copy(pub_key, EC_GROUP_get0_generator(group))) {
+                EC_POINT_free(pub_key);
+                return 0;
+        }
+        if(!EC_POINT_mul(group, pub_key, EC_KEY_get0_private_key(ec),
+                NULL, NULL, NULL)) {
+                EC_POINT_free(pub_key);
+                return 0;
+        }
+        if(EC_KEY_set_public_key(ec, pub_key) == 0) {
+                EC_POINT_free(pub_key);
+                return 0;
+        }
+        EC_POINT_free(pub_key);
+        return 1;
+}
+
+/** read ECDSA private key */
+static EVP_PKEY*
+ldns_key_new_frm_fp_ecdsa_l(FILE* fp, ldns_algorithm alg, int* line_nr)
+{
+	char token[16384];
+        ldns_rdf* b64rdf = NULL;
+        unsigned char* pp;
+        BIGNUM* bn;
+        EVP_PKEY* evp_key;
+        EC_KEY* ec;
+	if (ldns_fget_keyword_data_l(fp, "PrivateKey", ": ", token, "\n", 
+		sizeof(token), line_nr) == -1)
+		return NULL;
+	if(ldns_str2rdf_b64(&b64rdf, token) != LDNS_STATUS_OK)
+		return NULL;
+        pp = (unsigned char*)ldns_rdf_data(b64rdf);
+
+        if(alg == LDNS_ECDSAP256SHA256)
+                ec = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+        else if(alg == LDNS_ECDSAP384SHA384)
+                ec = EC_KEY_new_by_curve_name(NID_secp384r1);
+        else    ec = NULL;
+        if(!ec) {
+	        ldns_rdf_deep_free(b64rdf);
+                return NULL;
+        }
+	bn = BN_bin2bn(pp, ldns_rdf_size(b64rdf), NULL);
+	ldns_rdf_deep_free(b64rdf);
+        if(!bn) {
+                EC_KEY_free(ec);
+                return NULL;
+        }
+        EC_KEY_set_private_key(ec, bn);
+        BN_free(bn);
+        if(!ldns_EC_KEY_calc_public(ec)) {
+                EC_KEY_free(ec);
+                return NULL;
+        }
+
+        evp_key = EVP_PKEY_new();
+        if(!evp_key) {
+                EC_KEY_free(ec);
+                return NULL;
+        }
+        EVP_PKEY_assign_EC_KEY(evp_key, ec);
+
+        return evp_key;
+}
+#endif
+	
 ldns_status
 ldns_key_new_frm_fp_l(ldns_key **key, FILE *fp, int *line_nr)
 {
@@ -266,14 +362,22 @@ ldns_key_new_frm_fp_l(ldns_key **key, FILE *fp, int *line_nr)
 		fprintf(stderr, "version of ldns\n");
 #endif
 	}
-	if (strncmp(d, "249 GOST", 4) == 0) {
+	if (strncmp(d, "12 ECC-GOST", 3) == 0) {
 #ifdef USE_GOST
-		alg = LDNS_SIGN_GOST;
+		alg = LDNS_SIGN_ECC_GOST;
 #else
-		fprintf(stderr, "Warning: GOST not compiled into this ");
-		fprintf(stderr, "version of ldns\n");
+		fprintf(stderr, "Warning: ECC-GOST not compiled into this ");
+		fprintf(stderr, "version of ldns, use --enable-gost\n");
 #endif
 	}
+#ifdef USE_ECDSA
+	if (strncmp(d, "13 ECDSAP256SHA256", 3) == 0) {
+                alg = LDNS_ECDSAP256SHA256;
+        }
+	if (strncmp(d, "14 ECDSAP384SHA384", 3) == 0) {
+                alg = LDNS_ECDSAP384SHA384;
+        }
+#endif
 	if (strncmp(d, "157 HMAC-MD5", 4) == 0) {
 		alg = LDNS_SIGN_HMACMD5;
 	}
@@ -332,9 +436,13 @@ ldns_key_new_frm_fp_l(ldns_key **key, FILE *fp, int *line_nr)
 			ldns_key_set_hmac_key(k, hmac);
 #endif /* HAVE_SSL */
 			break;
-		case LDNS_SIGN_GOST:
+		case LDNS_SIGN_ECC_GOST:
 			ldns_key_set_algorithm(k, alg);
 #if defined(HAVE_SSL) && defined(USE_GOST)
+                        if(!ldns_key_EVP_load_gost_id()) {
+				ldns_key_free(k);
+                                return LDNS_STATUS_CRYPTO_ALGO_NOT_IMPL;
+                        }
 			ldns_key_set_evp_key(k, 
 				ldns_key_new_frm_fp_gost_l(fp, line_nr));
 			if(!k->_key.key) {
@@ -343,10 +451,21 @@ ldns_key_new_frm_fp_l(ldns_key **key, FILE *fp, int *line_nr)
 			}
 #endif
 			break;
+#ifdef USE_ECDSA
+               case LDNS_SIGN_ECDSAP256SHA256:
+               case LDNS_SIGN_ECDSAP384SHA384:
+                        ldns_key_set_algorithm(k, alg);
+                        ldns_key_set_evp_key(k,
+                                ldns_key_new_frm_fp_ecdsa_l(fp, alg, line_nr));
+			if(!k->_key.key) {
+				ldns_key_free(k);
+				return LDNS_STATUS_ERR;
+			}
+			break;
+#endif
 		case 0:
 		default:
 			return LDNS_STATUS_SYNTAX_ALG_ERR;
-			break;
 	}
 	key_rr = ldns_key2rr(k);
 	ldns_key_set_keytag(k, ldns_calc_keytag(key_rr));
@@ -664,6 +783,9 @@ ldns_key_new_frm_algorithm(ldns_signing_algorithm alg, uint16_t size)
 #ifdef HAVE_SSL
 	DSA *d;
 	RSA *r;
+#  ifdef USE_ECDSA
+        EC_KEY *ec = NULL;
+#  endif
 #else
 	int i;
 	uint16_t offset = 0;
@@ -733,11 +855,31 @@ ldns_key_new_frm_algorithm(ldns_signing_algorithm alg, uint16_t size)
 
 			ldns_key_set_flags(k, 0);
 			break;
-		case LDNS_SIGN_GOST:
+		case LDNS_SIGN_ECC_GOST:
 #if defined(HAVE_SSL) && defined(USE_GOST)
 			ldns_key_set_evp_key(k, ldns_gen_gost_key());
 #endif /* HAVE_SSL and USE_GOST */
+                        break;
+#ifdef USE_ECDSA
+                case LDNS_ECDSAP256SHA256:
+                case LDNS_ECDSAP384SHA384:
+                        if(alg == LDNS_ECDSAP256SHA256)
+                                ec = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+                        else if(alg == LDNS_ECDSAP384SHA384)
+                                ec = EC_KEY_new_by_curve_name(NID_secp384r1);
+                        if(!ec) return NULL;
+                        if(!EC_KEY_generate_key(ec)) {
+                                EC_KEY_free(ec);
+                                return NULL;
+                        }
+                        k->_key.key = EVP_PKEY_new();
+                        if(!k->_key.key) {
+                                EC_KEY_free(ec);
+                                return NULL;
+                        }
+                        EVP_PKEY_assign_EC_KEY(k->_key.key, ec);
 			break;
+#endif
 	}
 	ldns_key_set_algorithm(k, alg);
 	return k;
@@ -994,7 +1136,6 @@ ldns_key_list_push_key(ldns_key_list *key_list, ldns_key *key)
         ldns_key **keys;
 
         key_count = ldns_key_list_key_count(key_list);
-        keys = key_list->_keys;
 
         /* grow the array */
         keys = LDNS_XREALLOC(
@@ -1111,13 +1252,10 @@ ldns_key_gost2bin(unsigned char* data, EVP_PKEY* k, uint16_t* size)
 		return false;
 	}
 	/* omit ASN header */
-	/* insert parameters */
-	data[0] = 0;
-	data[1] = 0;
 	for(i=0; i<64; i++)
-		data[i+2] = pp[i+37];
+		data[i] = pp[i+37];
 	CRYPTO_free(pp);
-	*size = 66;
+	*size = 64;
 	return true;
 }
 #endif /* USE_GOST */
@@ -1139,6 +1277,9 @@ ldns_key2rr(const ldns_key *k)
 	RSA *rsa = NULL;
 	DSA *dsa = NULL;
 #endif /* HAVE_SSL */
+#ifdef USE_ECDSA
+        EC_KEY* ec;
+#endif
 	int internal_data = 0;
 
 	pubkey = ldns_rr_new();
@@ -1229,7 +1370,7 @@ ldns_key2rr(const ldns_key *k)
 			}
 #endif /* HAVE_SSL */
 			break;
-		case LDNS_SIGN_GOST:
+		case LDNS_SIGN_ECC_GOST:
 			ldns_rr_push_rdf(pubkey, ldns_native2rdf_int8(
 				LDNS_RDF_TYPE_ALG, ldns_key_algorithm(k)));
 #if defined(HAVE_SSL) && defined(USE_GOST)
@@ -1240,8 +1381,34 @@ ldns_key2rr(const ldns_key *k)
 				return NULL;
 			}
 			internal_data = 1;
-			break;
 #endif /* HAVE_SSL and USE_GOST */
+			break;
+#ifdef USE_ECDSA
+                case LDNS_SIGN_ECDSAP256SHA256:
+                case LDNS_SIGN_ECDSAP384SHA384:
+			ldns_rr_push_rdf(pubkey, ldns_native2rdf_int8(
+				LDNS_RDF_TYPE_ALG, ldns_key_algorithm(k)));
+                        bin = NULL;
+                        ec = EVP_PKEY_get1_EC_KEY(k->_key.key);
+                        EC_KEY_set_conv_form(ec, POINT_CONVERSION_UNCOMPRESSED);
+                        size = i2o_ECPublicKey(ec, NULL);
+                        if(!i2o_ECPublicKey(ec, &bin))
+                                return NULL;
+			if(size > 1) {
+				/* move back one byte to shave off the 0x02
+				 * 'uncompressed' indicator that openssl made
+				 * Actually its 0x04 (from implementation).
+				 */
+				assert(bin[0] == POINT_CONVERSION_UNCOMPRESSED);
+				size -= 1;
+				memmove(bin, bin+1, size);
+			}
+                        /* down the reference count for ec, its still assigned
+                         * to the pkey */
+                        EC_KEY_free(ec);
+			internal_data = 1;
+                        break;
+#endif
 		case LDNS_SIGN_HMACMD5:
 		case LDNS_SIGN_HMACSHA1:
 		case LDNS_SIGN_HMACSHA256:
@@ -1370,4 +1537,42 @@ int ldns_key_algo_supported(int algo)
 		lt++;
 	}
 	return 0;
+}
+
+ldns_signing_algorithm ldns_get_signing_algorithm_by_name(const char* name)
+{
+        /* list of (signing algorithm id, alias_name) */
+        ldns_lookup_table aliases[] = {
+                /* from bind dnssec-keygen */
+                {LDNS_SIGN_HMACMD5, "HMAC-MD5"},
+                {LDNS_SIGN_DSA_NSEC3, "NSEC3DSA"},
+                {LDNS_SIGN_RSASHA1_NSEC3, "NSEC3RSASHA1"},
+                /* old ldns usage, now RFC names */
+                {LDNS_SIGN_DSA_NSEC3, "DSA_NSEC3" },
+                {LDNS_SIGN_RSASHA1_NSEC3, "RSASHA1_NSEC3" },
+#ifdef USE_GOST
+                {LDNS_SIGN_ECC_GOST, "GOST"},
+#endif
+                /* compat with possible output */
+                {LDNS_DH, "DH"},
+                {LDNS_ECC, "ECC"},
+                {LDNS_INDIRECT, "INDIRECT"},
+                {LDNS_PRIVATEDNS, "PRIVATEDNS"},
+                {LDNS_PRIVATEOID, "PRIVATEOID"},
+                {0, NULL}};
+        ldns_lookup_table* lt = ldns_signing_algorithms;
+        while(lt->name) {
+                if(strcasecmp(lt->name, name) == 0)
+                        return lt->id;
+                lt++;
+        }
+        lt = aliases;
+        while(lt->name) {
+                if(strcasecmp(lt->name, name) == 0)
+                        return lt->id;
+                lt++;
+        }
+        if(atoi(name) != 0)
+                return atoi(name);
+        return 0;
 }

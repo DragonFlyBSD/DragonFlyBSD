@@ -33,7 +33,6 @@
 /*
  * tmpfs vnode interface.
  */
-#include <sys/cdefs.h>
 
 #include <sys/kernel.h>
 #include <sys/kern_syscall.h>
@@ -261,7 +260,7 @@ tmpfs_access(struct vop_access_args *v)
 	case VLNK:
 		/* FALLTHROUGH */
 	case VREG:
-		if (VWRITE && vp->v_mount->mnt_flag & MNT_RDONLY) {
+		if ((v->a_mode & VWRITE) && (vp->v_mount->mnt_flag & MNT_RDONLY)) {
 			error = EROFS;
 			goto out;
 		}
@@ -281,7 +280,7 @@ tmpfs_access(struct vop_access_args *v)
 		goto out;
 	}
 
-	if (VWRITE && node->tn_flags & IMMUTABLE) {
+	if ((v->a_mode & VWRITE) && (node->tn_flags & IMMUTABLE)) {
 		error = EPERM;
 		goto out;
 	}
@@ -304,6 +303,7 @@ tmpfs_getattr(struct vop_getattr_args *v)
 
 	node = VP_TO_TMPFS_NODE(vp);
 
+	lwkt_gettoken(&vp->v_mount->mnt_token);
 	tmpfs_update(vp);
 
 	vap->va_type = vp->v_type;
@@ -330,6 +330,8 @@ tmpfs_getattr(struct vop_getattr_args *v)
 	}
 	vap->va_bytes = round_page(node->tn_size);
 	vap->va_filerev = 0;
+
+	lwkt_reltoken(&vp->v_mount->mnt_token);
 
 	return 0;
 }
@@ -428,7 +430,6 @@ tmpfs_read (struct vop_read_args *ap)
 	off_t base_offset;
 	size_t offset;
 	size_t len;
-	int got_mplock;
 	int error;
 
 	error = 0;
@@ -443,40 +444,24 @@ tmpfs_read (struct vop_read_args *ap)
 	if (vp->v_type != VREG)
 		return (EINVAL);
 
-#ifdef SMP
-	if(curthread->td_mpcount)
-		got_mplock = -1;
-	else
-		got_mplock = 0;
-#else
-		got_mplock = -1;
-#endif
-
 	while (uio->uio_resid > 0 && uio->uio_offset < node->tn_size) {
 		/*
 		 * Use buffer cache I/O (via tmpfs_strategy)
 		 */
 		offset = (size_t)uio->uio_offset & BMASK;
 		base_offset = (off_t)uio->uio_offset - offset;
-		bp = getcacheblk(vp, base_offset);
+		bp = getcacheblk(vp, base_offset, BSIZE);
 		if (bp == NULL)
 		{
-			if (got_mplock == 0) {
-				got_mplock = 1;
-				get_mplock();
-			}
-
+			lwkt_gettoken(&vp->v_mount->mnt_token);
 			error = bread(vp, base_offset, BSIZE, &bp);
 			if (error) {
 				brelse(bp);
+				lwkt_reltoken(&vp->v_mount->mnt_token);
 				kprintf("tmpfs_read bread error %d\n", error);
 				break;
 			}
-		}
-
-		if (got_mplock == 0) {
-			got_mplock = 1;
-			get_mplock();
+			lwkt_reltoken(&vp->v_mount->mnt_token);
 		}
 
 		/*
@@ -495,9 +480,6 @@ tmpfs_read (struct vop_read_args *ap)
 			break;
 		}
 	}
-
-	if (got_mplock > 0)
-		rel_mplock();
 
 	TMPFS_NODE_LOCK(node);
 	node->tn_status |= TMPFS_NODE_ACCESSED;
@@ -521,7 +503,6 @@ tmpfs_write (struct vop_write_args *ap)
 	size_t offset;
 	size_t len;
 	struct rlimit limit;
-	int got_mplock;
 	int trivial = 0;
 	int kflags = 0;
 
@@ -535,6 +516,8 @@ tmpfs_write (struct vop_write_args *ap)
 	if (vp->v_type != VREG)
 		return (EINVAL);
 
+	lwkt_gettoken(&vp->v_mount->mnt_token);
+
 	oldsize = node->tn_size;
 	if (ap->a_ioflag & IO_APPEND)
 		uio->uio_offset = node->tn_size;
@@ -543,15 +526,20 @@ tmpfs_write (struct vop_write_args *ap)
 	 * Check for illegal write offsets.
 	 */
 	if (uio->uio_offset + uio->uio_resid >
-	  VFS_TO_TMPFS(vp->v_mount)->tm_maxfilesize)
+	  VFS_TO_TMPFS(vp->v_mount)->tm_maxfilesize) {
+		lwkt_reltoken(&vp->v_mount->mnt_token);
 		return (EFBIG);
+	}
 
 	if (vp->v_type == VREG && td != NULL) {
 		error = kern_getrlimit(RLIMIT_FSIZE, &limit);
-		if (error != 0)
+		if (error != 0) {
+			lwkt_reltoken(&vp->v_mount->mnt_token);
 			return error;
+		}
 		if (uio->uio_offset + uio->uio_resid > limit.rlim_cur) {
 			ksignal(td->td_proc, SIGXFSZ);
+			lwkt_reltoken(&vp->v_mount->mnt_token);
 			return (EFBIG);
 		}
 	}
@@ -562,16 +550,8 @@ tmpfs_write (struct vop_write_args *ap)
 	 */
 	extended = ((uio->uio_offset + uio->uio_resid) > node->tn_size);
 
-#ifdef SMP
-	if (curthread->td_mpcount) {
-		got_mplock = -1;
-	} else {
-		got_mplock = 1;
-		get_mplock();
-	}
-#else
-	got_mplock = -1;
-#endif
+	get_mplock();
+
 	while (uio->uio_resid > 0) {
 		/*
 		 * Use buffer cache I/O (via tmpfs_strategy)
@@ -652,8 +632,7 @@ tmpfs_write (struct vop_write_args *ap)
 		}
 	}
 
-	if (got_mplock > 0)
-		rel_mplock();
+	rel_mplock();
 
 	if (error) {
 		if (extended) {
@@ -675,6 +654,9 @@ tmpfs_write (struct vop_write_args *ap)
 done:
 
 	tmpfs_knote(vp, kflags);
+
+
+	lwkt_reltoken(&vp->v_mount->mnt_token);
 	return(error);
 }
 
@@ -706,6 +688,7 @@ tmpfs_strategy(struct vop_strategy_args *ap)
 		return(0);
 	}
 
+	lwkt_gettoken(&vp->v_mount->mnt_token);
 	node = VP_TO_TMPFS_NODE(vp);
 
 	uobj = node->tn_reg.tn_aobj;
@@ -716,6 +699,7 @@ tmpfs_strategy(struct vop_strategy_args *ap)
 	 */
 	swap_pager_strategy(uobj, bio);
 
+	lwkt_reltoken(&vp->v_mount->mnt_token);
 	return 0;
 }
 

@@ -31,6 +31,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/sfbuf.h>
+#include <sys/ref.h>
 #include <sys/objcache.h>
 
 #include <cpu/lwbuf.h>
@@ -58,7 +59,7 @@ sf_buf_cache_ctor(void *obj, void *pdata, int ocflags)
 	struct sf_buf *sf = (struct sf_buf *)obj;
 
 	sf->lwbuf = NULL;
-	sf->refs = 0;
+	kref_init(&sf->ref, 0);
 
 	return (TRUE);
 }
@@ -86,7 +87,7 @@ sf_buf_alloc(struct vm_page *m)
 	if ((sf = objcache_get(sf_buf_cache, M_WAITOK)) == NULL)
 		goto done;
 
-	if ((sf->lwbuf = lwbuf_alloc(m)) == NULL) {
+	if ((sf->lwbuf = lwbuf_alloc(m, &sf->lwbuf_cache)) == NULL) {
 		objcache_put(sf_buf_cache, sf);
 		sf = NULL;
 		goto done;
@@ -97,7 +98,7 @@ sf_buf_alloc(struct vm_page *m)
 	 */
 	lwbuf_set_global(sf->lwbuf);
 
-	sf->refs = 1;
+	kref_init(&sf->ref, 1);
 
 done:
 	return (sf);
@@ -107,26 +108,23 @@ void
 sf_buf_ref(void *arg)
 {
 	struct sf_buf *sf = arg;
-
-	atomic_add_int(&sf->refs, 1);
+	kref_inc(&sf->ref);
 }
 
 /*
  * Detach mapped page and release resources back to the system.
- *
- * Must be called at splimp.
  */
 int
 sf_buf_free(void *arg)
 {
 	struct sf_buf *sf = arg;
+	int rc;
 
-	KKASSERT(sf->refs > 0);
-	if (atomic_fetchadd_int(&sf->refs, -1) == 1) {
+	rc = KREF_DEC((&sf->ref), {
 		lwbuf_free(sf->lwbuf);
 		objcache_put(sf_buf_cache, sf);
-		return (0);
-	}
+		sf = NULL;
+	});
 
-	return (1);
+	return (rc);
 }

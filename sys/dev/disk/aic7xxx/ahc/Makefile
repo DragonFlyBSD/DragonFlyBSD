@@ -1,10 +1,9 @@
 
 # $FreeBSD: src/sys/modules/aic7xxx/ahc/Makefile,v 1.2.2.1 2002/09/02 05:47:44 scottl Exp $
-# $DragonFly: src/sys/dev/disk/aic7xxx/ahc/Makefile,v 1.6 2007/07/06 04:56:22 pavalos Exp $
 
 .PATH:	${.CURDIR}/..
 KMOD=	ahc
-SUBDIR=	ahc_eisa ahc_isa ahc_pci
+SUBDIR=	ahc_pci
 
 BEFORE_DEPEND= aic7xxx_{seq,reg}.h
 
@@ -29,7 +28,7 @@ SRCS= ${GENSRCS}
 SRCS+= aic7xxx_reg_print.c
 CFLAGS+= -DAHC_REG_PRETTY_PRINT=1
 .endif
-SRCS+= aic7xxx.c aic7xxx_93cx6.c aic7xxx_osm.c aic7770.c
+SRCS+= aic7xxx.c aic7xxx_93cx6.c aic7xxx_osm.c
 SRCS+= opt_scsi.h opt_aic7xxx.h opt_cam.h
 SRCS+= device_if.h bus_if.h pci_if.h
 

@@ -1,6 +1,5 @@
 /*	$NetBSD: pcmcia_cis_quirks.c,v 1.6 2000/04/12 21:07:55 scw Exp $ */
 /*	$FreeBSD: src/sys/dev/pccard/pccard_cis_quirks.c,v 1.15 2005/03/26 21:30:49 sam Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccard_cis_quirks.c,v 1.7 2007/07/05 12:08:53 sephe Exp $ */
 
 #define	PCCARDDEBUG
 
@@ -196,8 +195,7 @@ static struct pccard_cis_quirk pccard_cis_quirks[] = {
 	  &pccard_ndc_nd5100_func0, &pccard_ndc_nd5100_func0_cfe0 },
 };
 	
-static int n_pccard_cis_quirks =
-	sizeof(pccard_cis_quirks)/sizeof(pccard_cis_quirks[0]);
+static int n_pccard_cis_quirks = NELEM(pccard_cis_quirks);
 
 static int
 pccard_cis_quirk_match(struct pccard_softc *sc, struct pccard_cis_quirk *q)

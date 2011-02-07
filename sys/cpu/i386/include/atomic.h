@@ -526,6 +526,11 @@ ATOMIC_STORE_LOAD(long, "cmpxchgl %0,%1",  "xchgl %1,%0");
 #define	atomic_cmpset_acq_long		atomic_cmpset_long
 #define	atomic_cmpset_rel_long		atomic_cmpset_long
 
+/* cpumask_t is 32-bits on i386 */
+#define atomic_set_cpumask		atomic_set_int
+#define atomic_clear_cpumask		atomic_clear_int
+#define atomic_cmpset_cpumask		atomic_cmpset_int
+
 /* Operations on 8-bit bytes. */
 #define	atomic_set_8		atomic_set_char
 #define	atomic_set_acq_8	atomic_set_acq_char

@@ -79,7 +79,11 @@
 MCOUNT_LABEL(user)
 MCOUNT_LABEL(btrap)
 
-/* Traps that we leave interrupts disabled for.. */
+/*
+ * Interrupts are enabled for all traps, otherwise horrible livelocks
+ * can occur with the smp_invltlb and cpusync ode.
+ */
+#if 0
 #define	TRAP_NOEN(a)	\
 	subq $TF_RIP,%rsp; \
 	movq $0,TF_XFLAGS(%rsp) ; \
@@ -87,10 +91,7 @@ MCOUNT_LABEL(btrap)
 	movq $0,TF_ADDR(%rsp) ; \
 	movq $0,TF_ERR(%rsp) ; \
 	jmp alltraps_noen
-IDTVEC(dbg)
-	TRAP_NOEN(T_TRCTRAP)
-IDTVEC(bpt)
-	TRAP_NOEN(T_BPTFLT)
+#endif
 
 /* Regular traps; The cpu does not supply tf_err for these. */
 #define	TRAP(a)	 \
@@ -100,6 +101,10 @@ IDTVEC(bpt)
 	movq $0,TF_ADDR(%rsp) ; \
 	movq $0,TF_ERR(%rsp) ; \
 	jmp alltraps
+IDTVEC(dbg)
+	TRAP(T_TRCTRAP)
+IDTVEC(bpt)
+	TRAP(T_BPTFLT)
 IDTVEC(div)
 	TRAP(T_DIVIDE)
 IDTVEC(ofl)
@@ -147,8 +152,9 @@ IDTVEC(align)
 	.globl	alltraps
 	.type	alltraps,@function
 alltraps:
-	testb	$SEL_RPL_MASK,TF_CS(%rsp) /* Did we come from kernel? */
-	jz	alltraps_testi		/* already running with kernel GS.base */
+	/* Fixup %gs if coming from userland */
+	testb	$SEL_RPL_MASK,TF_CS(%rsp)
+	jz	alltraps_testi
 	swapgs
 alltraps_testi:
 	testq	$PSL_I,TF_RFLAGS(%rsp)
@@ -189,8 +195,9 @@ calltrap:
 	.globl	alltraps_noen
 	.type	alltraps_noen,@function
 alltraps_noen:
-	testb	$SEL_RPL_MASK,TF_CS(%rsp) /* Did we come from kernel? */
-	jz	alltraps_pushregs	/* already running with kernel GS.base */
+	/* Fixup %gs if coming from userland */
+	testb	$SEL_RPL_MASK,TF_CS(%rsp)
+	jz	alltraps_pushregs
 	swapgs
 	jmp	alltraps_pushregs
 
@@ -215,8 +222,8 @@ IDTVEC(dblfault)
 	movq	%r13,TF_R13(%rsp)
 	movq	%r14,TF_R14(%rsp)
 	movq	%r15,TF_R15(%rsp)
-	testb	$SEL_RPL_MASK,TF_CS(%rsp) /* Did we come from kernel? */
-	jz	1f			/* already running with kernel GS.base */
+	testb	$SEL_RPL_MASK,TF_CS(%rsp)
+	jz	1f
 	swapgs
 1:	movq	%rsp, %rdi
 	call	dblfault_handler
@@ -226,8 +233,9 @@ IDTVEC(dblfault)
 IDTVEC(page)
 	subq	$TF_ERR,%rsp
 	movq	$T_PAGEFLT,TF_TRAPNO(%rsp)
-	testb	$SEL_RPL_MASK,TF_CS(%rsp) /* Did we come from kernel? */
-	jz	1f			/* already running with kernel GS.base */
+	/* Fixup %gs if coming from userland */
+	testb	$SEL_RPL_MASK,TF_CS(%rsp)
+	jz	1f
 	swapgs
 1:
 	movq	%rdi,TF_RDI(%rsp)	/* free up a GP register */
@@ -251,11 +259,16 @@ IDTVEC(prot)
 	movq	$0,TF_ADDR(%rsp)
 	movq	$0,TF_XFLAGS(%rsp)
 	movq	%rdi,TF_RDI(%rsp)	/* free up a GP register */
+
+	/*
+	 * Fixup %gs if coming from userland.  Handle the special case where
+	 * %fs faults in doreti at the iretq instruction itself.
+	 */
 	leaq	doreti_iret(%rip),%rdi
-	cmpq	%rdi,TF_RIP(%rsp)
-	je	2f			/* kernel but with user gsbase!! */
-	testb	$SEL_RPL_MASK,TF_CS(%rsp) /* Did we come from kernel? */
-	jz	1f			/* already running with kernel GS.base */
+	cmpq	%rdi,TF_RIP(%rsp)		/* special iretq fault case */
+	je	2f
+	testb	$SEL_RPL_MASK,TF_CS(%rsp)	/* check if from userland */
+	jz	1f
 2:
 	swapgs
 1:
@@ -273,7 +286,7 @@ IDTVEC(prot)
 IDTVEC(fast_syscall)
 	swapgs
 	movq	%rsp,PCPU(scratch_rsp)
-	movq	PCPU(rsp0),%rsp
+	movq    PCPU(common_tss) + TSS_RSP0, %rsp
 	/* Now emulate a trapframe. Make the 8 byte alignment odd for call. */
 	subq	$TF_SIZE,%rsp
 	/* defer TF_RSP till we have a spare register */
@@ -432,20 +445,6 @@ ENTRY(fork_trampoline)
 	sti
 	call	splz
 
-#if defined(INVARIANTS) && defined(SMP)
-	movq	PCPU(curthread),%rax
-	cmpl	$0,TD_MPCOUNT(%rax)
-	je	1f
-	movq	$pmsg4, %rdi
-	movl	TD_MPCOUNT(%rax), %esi
-	movq	%rbx, %rdx
-	xorl	%eax, %eax
-	call	panic
-pmsg4:  .asciz	"fork_trampoline mpcount %d after calling %p"
-	/* JG what's the purpose of this alignment and is it enough on x86_64? */
-	.p2align 2
-1:
-#endif
 	/*
 	 * Return via doreti to handle ASTs.
 	 *

@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.46 2008/10/03 00:26:21 hasso Exp $
  */
 
 #include "opt_bus.h"
@@ -135,8 +134,6 @@ TUNABLE_INT("hw.bus.devctl_disable", &devctl_disable);
 SYSCTL_PROC(_hw_bus, OID_AUTO, devctl_disable, CTLTYPE_INT | CTLFLAG_RW, 0, 0,
     sysctl_devctl_disable, "I", "devctl disable");
 
-#define	CDEV_MAJOR	188
-
 static d_open_t		devopen;
 static d_close_t	devclose;
 static d_read_t		devread;
@@ -144,7 +141,7 @@ static d_ioctl_t	devioctl;
 static d_kqfilter_t	devkqfilter;
 
 static struct dev_ops devctl_ops = {
-	{ "devctl", CDEV_MAJOR, 0 },
+	{ "devctl", 0, 0 },
 	.d_open =	devopen,
 	.d_close =	devclose,
 	.d_read =	devread,

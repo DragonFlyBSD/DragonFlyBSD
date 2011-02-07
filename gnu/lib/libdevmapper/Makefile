@@ -8,17 +8,16 @@ LVM2_DISTDIR=	${LVM2_DIR}/dist
 LIB=		devmapper
 SHLIB_MAJOR?=	0
 
+CSTD?=		gnu89
+
 CFLAGS+=	-D_XOPEN_SOURCE=600
 CFLAGS+=	-I${LIBDM_DISTDIR} -I${LIBDM_DISTDIR}/misc -I${LIBDM_DISTDIR}/mm \
 		-I${LIBDM_DISTDIR}/datastruct -I${LIBDM_DISTDIR}/ioctl \
 		-I${LVM2_DISTDIR}/include \
 		-I${.CURDIR}/../../../sys/dev/disk/dm
 
-
 CFLAGS+=	-D__LIB_DEVMAPPER__ -DDM_DEVICE_UID=0 \
 		-DDM_DEVICE_GID=0 -DDM_DEVICE_MODE=0600
-
-LDADD+=		-lprop
 
 INCS+=		${LIBDM_DISTDIR}/libdevmapper.h
 

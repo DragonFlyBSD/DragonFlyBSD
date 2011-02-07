@@ -438,6 +438,40 @@ end:
 }
 
 
+int
+hammer_ioc_volume_list(hammer_transaction_t trans, hammer_inode_t ip,
+    struct hammer_ioc_volume_list *ioc)
+{
+	struct hammer_mount *hmp = trans->hmp;
+	hammer_volume_t volume;
+	int error = 0;
+	int i, cnt, len;
+
+	for (i = 0, cnt = 0; i < HAMMER_MAX_VOLUMES && cnt < ioc->nvols; i++) {
+		volume = hammer_get_volume(hmp, i, &error);
+		if (volume == NULL && error == ENOENT) {
+			error = 0;
+			continue;
+		}
+		KKASSERT(volume != NULL && error == 0);
+
+		len = strlen(volume->vol_name) + 1;
+		KKASSERT(len <= MAXPATHLEN);
+
+		error = copyout(volume->vol_name, ioc->vols[cnt].device_name,
+				len);
+		if (error) {
+			hammer_rel_volume(volume, 0);
+			return (error);
+		}
+		cnt++;
+		hammer_rel_volume(volume, 0);
+	}
+	ioc->nvols = cnt;
+
+	return (error);
+}
+
 /*
  * Iterate over all usable L1 entries of the volume and
  * the corresponding L2 entries.

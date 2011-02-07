@@ -103,7 +103,7 @@ sim_lock_assert_owned(sim_lock *lock)
 {
 	if (lock) {
 		if (lock == &sim_mplock)
-			ASSERT_MP_LOCK_HELD(curthread);
+			ASSERT_MP_LOCK_HELD();
 		else
 			KKASSERT(lockstatus(lock, curthread) != 0);
 	}

@@ -39,7 +39,6 @@
 #include <sys/queue.h>
 #include <sys/systm.h>
 #include <net/if.h>
-#include <net/pf/pfvar.h>
 
 #include <netbt/bluetooth.h>
 #include <netbt/hci.h>
@@ -125,7 +124,7 @@ l2cap_request_alloc(struct l2cap_channel *chan, uint8_t code)
 	if (req && req->lr_id == next_id)
 		return ENFILE;
 
-	req = pool_get(&l2cap_req_pool, M_NOWAIT);
+	req = zalloc(l2cap_req_pool);
 	if (req == NULL)
 		return ENOMEM;
 
@@ -173,7 +172,7 @@ l2cap_request_free(struct l2cap_req *req)
 		return;
 
 	TAILQ_REMOVE(&link->hl_reqs, req, lr_next);
-	pool_put(&l2cap_req_pool, req);
+	zfree(l2cap_req_pool, req);
 }
 
 /*

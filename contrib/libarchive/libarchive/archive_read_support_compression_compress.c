@@ -64,7 +64,7 @@
 
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_compression_compress.c,v 1.11 2008/12/06 06:45:15 kientzle Exp $");
+__FBSDID("$FreeBSD: head/lib/libarchive/archive_read_support_compression_compress.c 201094 2009-12-28 02:29:21Z kientzle $");
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
@@ -229,8 +229,8 @@ compress_bidder_init(struct archive_read_filter *self)
 
 	/* XXX MOVE THE FOLLOWING OUT OF INIT() XXX */
 
-	code = getbits(self, 8); /* Skip first signature byte. */
-	code = getbits(self, 8); /* Skip second signature byte. */
+	(void)getbits(self, 8); /* Skip first signature byte. */
+	(void)getbits(self, 8); /* Skip second signature byte. */
 
 	code = getbits(self, 8);
 	state->maxcode_bits = code & 0x1f;

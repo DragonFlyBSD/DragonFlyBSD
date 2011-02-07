@@ -32,7 +32,6 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.32 2008/01/06 16:55:53 swildner Exp $
  *
  */
 
@@ -268,9 +267,9 @@ set_user_TLS(void)
 #ifdef SMP
 static
 void
-set_user_ldt_cpusync(struct lwkt_cpusync *cmd)
+set_user_ldt_cpusync(void *arg)
 {
-	set_user_ldt(cmd->cs_data);
+	set_user_ldt(arg);
 }
 #endif
 
@@ -380,7 +379,7 @@ ki386_get_ldt(struct lwp *lwp, char *args, int *res)
 		num = min(uap->num, nldt);
 		lp = &((union descriptor *)(pcb_ldt->ldt_base))[uap->start];
 	} else {
-		nldt = (unsigned int)(sizeof(ldt) / sizeof(ldt[0]));
+		nldt = (unsigned int)(NELEM(ldt));
 		num = min(uap->num, nldt);
 		lp = &ldt[uap->start];
 	}

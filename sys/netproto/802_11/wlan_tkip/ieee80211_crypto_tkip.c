@@ -26,8 +26,6 @@
  * $DragonFly$
  */
 
-#include <sys/cdefs.h>
-
 /*
  * IEEE 802.11i TKIP crypto support.
  *

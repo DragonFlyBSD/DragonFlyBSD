@@ -203,9 +203,6 @@ struct msgbuf *msgbufp=0;
 static pt_entry_t *pt_crashdumpmap;
 static caddr_t crashdumpmap;
 
-extern pt_entry_t *SMPpt;
-extern uint64_t SMPptpa;
-
 #define DISABLE_PSE
 
 static pv_entry_t get_pv_entry (void);
@@ -413,7 +410,7 @@ vtopde(vm_offset_t va)
 }
 
 static uint64_t
-allocpages(vm_paddr_t *firstaddr, int n)
+allocpages(vm_paddr_t *firstaddr, long n)
 {
 	uint64_t ret;
 
@@ -427,7 +424,9 @@ static
 void
 create_pagetables(vm_paddr_t *firstaddr)
 {
-	int i;
+	long i;		/* must be 64 bits */
+	long nkpt_base;
+	long nkpt_phys;
 
 	/*
 	 * We are running (mostly) V=P at this point
@@ -438,27 +437,41 @@ create_pagetables(vm_paddr_t *firstaddr)
 	 *
 	 * Maxmem is in pages.
 	 */
-	nkpt = (Maxmem * (sizeof(struct vm_page) * 2) + MSGBUF_SIZE) / NBPDR;
+	ndmpdp = (ptoa(Maxmem) + NBPDP - 1) >> PDPSHIFT;
+	if (ndmpdp < 4)		/* Minimum 4GB of dirmap */
+		ndmpdp = 4;
+
+	/*
+	 * Starting at the beginning of kvm (not KERNBASE).
+	 */
+	nkpt_phys = (Maxmem * sizeof(struct vm_page) + NBPDR - 1) / NBPDR;
+	nkpt_phys += (Maxmem * sizeof(struct pv_entry) + NBPDR - 1) / NBPDR;
+	nkpt_phys += ((nkpt + nkpt + 1 + NKPML4E + NKPDPE + NDMPML4E + ndmpdp) +
+		     511) / 512;
+	nkpt_phys += 128;
+
+	/*
+	 * Starting at KERNBASE - map 2G worth of page table pages.
+	 * KERNBASE is offset -2G from the end of kvm.
+	 */
+	nkpt_base = (NPDPEPG - KPDPI) * NPTEPG;	/* typically 2 x 512 */
 
 	/*
 	 * Allocate pages
 	 */
-	KPTbase = allocpages(firstaddr, nkpt);
-	KPTphys = allocpages(firstaddr, nkpt);
+	KPTbase = allocpages(firstaddr, nkpt_base);
+	KPTphys = allocpages(firstaddr, nkpt_phys);
 	KPML4phys = allocpages(firstaddr, 1);
 	KPDPphys = allocpages(firstaddr, NKPML4E);
+	KPDphys = allocpages(firstaddr, NKPDPE);
 
 	/*
 	 * Calculate the page directory base for KERNBASE,
 	 * that is where we start populating the page table pages.
 	 * Basically this is the end - 2.
 	 */
-	KPDphys = allocpages(firstaddr, NKPDPE);
 	KPDbase = KPDphys + ((NKPDPE - (NPDPEPG - KPDPI)) << PAGE_SHIFT);
 
-	ndmpdp = (ptoa(Maxmem) + NBPDP - 1) >> PDPSHIFT;
-	if (ndmpdp < 4)		/* Minimum 4GB of dirmap */
-		ndmpdp = 4;
 	DMPDPphys = allocpages(firstaddr, NDMPML4E);
 	if ((amd_feature & AMDID_PAGE1GB) == 0)
 		DMPDphys = allocpages(firstaddr, ndmpdp);
@@ -482,11 +495,11 @@ create_pagetables(vm_paddr_t *firstaddr)
 	 * and another block is placed at KERNBASE to map the kernel binary,
 	 * data, bss, and initial pre-allocations.
 	 */
-	for (i = 0; i < nkpt; i++) {
+	for (i = 0; i < nkpt_base; i++) {
 		((pd_entry_t *)KPDbase)[i] = KPTbase + (i << PAGE_SHIFT);
 		((pd_entry_t *)KPDbase)[i] |= PG_RW | PG_V;
 	}
-	for (i = 0; i < nkpt; i++) {
+	for (i = 0; i < nkpt_phys; i++) {
 		((pd_entry_t *)KPDphys)[i] = KPTphys + (i << PAGE_SHIFT);
 		((pd_entry_t *)KPDphys)[i] |= PG_RW | PG_V;
 	}
@@ -516,7 +529,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 	/* Preset PG_M and PG_A because demotion expects it */
 	if ((amd_feature & AMDID_PAGE1GB) == 0) {
 		for (i = 0; i < NPDEPG * ndmpdp; i++) {
-			((pd_entry_t *)DMPDphys)[i] = (vm_paddr_t)i << PDRSHIFT;
+			((pd_entry_t *)DMPDphys)[i] = i << PDRSHIFT;
 			((pd_entry_t *)DMPDphys)[i] |= PG_RW | PG_V | PG_PS |
 			    PG_G | PG_M | PG_A;
 		}
@@ -705,14 +718,6 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	 */
 	pg = MDGLOBALDATA_BASEALLOC_PAGES;
 	gd = &CPU_prvspace[0].mdglobaldata;
-	gd->gd_CMAP1 = &SMPpt[pg + 0];
-	gd->gd_CMAP2 = &SMPpt[pg + 1];
-	gd->gd_CMAP3 = &SMPpt[pg + 2];
-	gd->gd_PMAP1 = &SMPpt[pg + 3];
-	gd->gd_CADDR1 = CPU_prvspace[0].CPAGE1;
-	gd->gd_CADDR2 = CPU_prvspace[0].CPAGE2;
-	gd->gd_CADDR3 = CPU_prvspace[0].CPAGE3;
-	gd->gd_PADDR1 = (pt_entry_t *)CPU_prvspace[0].PPAGE1;
 
 	cpu_invltlb();
 }
@@ -732,6 +737,11 @@ pmap_set_opt(void)
 	}
 }
 #endif
+
+/*
+ * XXX: Hack. Required by pmap_init()
+ */
+extern vm_offset_t cpu_apic_addr;
 
 /*
  *	Initialize the pmap module.
@@ -772,17 +782,20 @@ pmap_init(void)
 	if (initial_pvs < MINPV)
 		initial_pvs = MINPV;
 	pvzone = &pvzone_store;
-	pvinit = (struct pv_entry *) kmem_alloc(&kernel_map,
-		initial_pvs * sizeof (struct pv_entry));
-	zbootinit(pvzone, "PV ENTRY", sizeof (struct pv_entry), pvinit,
-		initial_pvs);
+	pvinit = (void *)kmem_alloc(&kernel_map,
+				    initial_pvs * sizeof (struct pv_entry));
+	zbootinit(pvzone, "PV ENTRY", sizeof (struct pv_entry),
+		  pvinit, initial_pvs);
 
 	/*
 	 * Now it is safe to enable pv_table recording.
 	 */
 	pmap_initialized = TRUE;
 #ifdef SMP
-	lapic = pmap_mapdev_uncacheable(cpu_apic_address, sizeof(struct LAPIC));
+	/*
+	 * XXX: Hack 
+	 */
+	lapic = pmap_mapdev_uncacheable(cpu_apic_addr, sizeof(struct LAPIC));
 #endif
 }
 
@@ -795,12 +808,21 @@ void
 pmap_init2(void)
 {
 	int shpgperproc = PMAP_SHPGPERPROC;
+	int entry_max;
 
 	TUNABLE_INT_FETCH("vm.pmap.shpgperproc", &shpgperproc);
 	pv_entry_max = shpgperproc * maxproc + vm_page_array_size;
 	TUNABLE_INT_FETCH("vm.pmap.pv_entries", &pv_entry_max);
 	pv_entry_high_water = 9 * (pv_entry_max / 10);
-	zinitna(pvzone, &pvzone_obj, NULL, 0, pv_entry_max, ZONE_INTERRUPT, 1);
+
+	/*
+	 * Subtract out pages already installed in the zone (hack)
+	 */
+	entry_max = pv_entry_max - vm_page_array_size;
+	if (entry_max <= 0)
+		entry_max = 1;
+
+	zinitna(pvzone, &pvzone_obj, NULL, 0, entry_max, ZONE_INTERRUPT, 1);
 }
 
 
@@ -1063,9 +1085,7 @@ pmap_qenter(vm_offset_t va, vm_page_t *m, int count)
 		va += PAGE_SIZE;
 		m++;
 	}
-#ifdef SMP
-	smp_invltlb();	/* XXX */
-#endif
+	smp_invltlb();
 }
 
 /*
@@ -1089,9 +1109,7 @@ pmap_qremove(vm_offset_t va, int count)
 		cpu_invlpg((void *)va);
 		va += PAGE_SIZE;
 	}
-#ifdef SMP
 	smp_invltlb();
-#endif
 }
 
 /*
@@ -1122,10 +1140,11 @@ pmap_page_lookup(vm_object_t object, vm_pindex_t pindex)
 void
 pmap_init_thread(thread_t td)
 {
-	/* enforce pcb placement */
+	/* enforce pcb placement & alignment */
 	td->td_pcb = (struct pcb *)(td->td_kstack + td->td_kstack_size) - 1;
+	td->td_pcb = (struct pcb *)((intptr_t)td->td_pcb & ~(intptr_t)0xF);
 	td->td_savefpu = &td->td_pcb->pcb_save;
-	td->td_sp = (char *)td->td_pcb - 16; /* JG is -16 needed on x86_64? */
+	td->td_sp = (char *)td->td_pcb;	/* no -16 */
 }
 
 /*
@@ -1179,7 +1198,6 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t m,
 	 * page so it cannot be freed out from under us.
 	 */
 	if (m->flags & PG_BUSY) {
-		pmap_inval_flush(info);
 		while (vm_page_sleep_busy(m, FALSE, "pmuwpt"))
 			;
 	}
@@ -1282,7 +1300,6 @@ pmap_unuse_pt(pmap_t pmap, vm_offset_t va, vm_page_t mpte,
 			mpte = pmap->pm_ptphint;
 		} else {
 #endif
-			pmap_inval_flush(info);
 			mpte = pmap_page_lookup(pmap->pm_pteobj, ptepindex);
 			pmap->pm_ptphint = mpte;
 #if JGHINT
@@ -1353,6 +1370,10 @@ pmap_pinit(struct pmap *pmap)
 	}
 	if ((ptdpg->flags & PG_ZERO) == 0)
 		bzero(pmap->pm_pml4, PAGE_SIZE);
+#ifdef PMAP_DEBUG
+	else
+		pmap_page_assertzero(VM_PAGE_TO_PHYS(ptdpg));
+#endif
 
 	pmap->pm_pml4[KPML4I] = KPDPphys | PG_RW | PG_V | PG_U;
 	pmap->pm_pml4[DMPML4I] = DMPDPphys | PG_RW | PG_V | PG_U;
@@ -1553,6 +1574,11 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 	if ((m->flags & PG_ZERO) == 0) {
 		pmap_zero_page(VM_PAGE_TO_PHYS(m));
 	}
+#ifdef PMAP_DEBUG
+	else {
+		pmap_page_assertzero(VM_PAGE_TO_PHYS(m));
+	}
+#endif
 
 	KASSERT(m->queue == PQ_NONE,
 		("_pmap_allocpte: %p->queue != PQ_NONE", m));
@@ -1564,6 +1590,8 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 	m->hold_count++;
 	if (m->wire_count++ == 0)
 		vmstats.v_wire_count++;
+	m->valid = VM_PAGE_BITS_ALL;
+	vm_page_flag_clear(m, PG_ZERO);
 
 	/*
 	 * Map the pagetable page into the process address space, if
@@ -1702,8 +1730,10 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 	pmap->pm_ptphint = m;
 	++pmap->pm_stats.resident_count;
 
+#if 0
 	m->valid = VM_PAGE_BITS_ALL;
 	vm_page_flag_clear(m, PG_ZERO);
+#endif
 	vm_page_flag_set(m, PG_MAPPED);
 	vm_page_wakeup(m);
 
@@ -1775,7 +1805,8 @@ pmap_release(struct pmap *pmap)
 	vm_object_t object = pmap->pm_pteobj;
 	struct rb_vm_page_scan_info info;
 
-	KASSERT(pmap->pm_active == 0, ("pmap still active! %08x", pmap->pm_active));
+	KASSERT(pmap->pm_active == 0,
+		("pmap still active! %016jx", (uintmax_t)pmap->pm_active));
 #if defined(DIAGNOSTIC)
 	if (object->ref_count != 1)
 		panic("pmap_release: pteobj reference count != 1");
@@ -2085,6 +2116,7 @@ pmap_remove_entry(struct pmap *pmap, vm_page_t m,
 
 	TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
 	m->md.pv_list_count--;
+	m->object->agg_pv_list_count--;
 	KKASSERT(m->md.pv_list_count >= 0);
 	if (TAILQ_EMPTY(&m->md.pv_list))
 		vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
@@ -2117,6 +2149,7 @@ pmap_insert_entry(pmap_t pmap, vm_offset_t va, vm_page_t mpte, vm_page_t m)
 	TAILQ_INSERT_TAIL(&m->md.pv_list, pv, pv_list);
 	++pmap->pm_generation;
 	m->md.pv_list_count++;
+	m->object->agg_pv_list_count++;
 
 	crit_exit();
 }
@@ -2360,6 +2393,7 @@ pmap_remove_all(vm_page_t m)
 		TAILQ_REMOVE(&pv->pv_pmap->pm_pvlist, pv, pv_plist);
 		++pv->pv_pmap->pm_generation;
 		m->md.pv_list_count--;
+		m->object->agg_pv_list_count--;
 		KKASSERT(m->md.pv_list_count >= 0);
 		if (TAILQ_EMPTY(&m->md.pv_list))
 			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
@@ -2460,10 +2494,7 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 			vm_page_t m;
 
 			/*
-			 * XXX non-optimal.  Note also that there can be
-			 * no pmap_inval_flush() calls until after we modify
-			 * ptbase[sindex] (or otherwise we have to do another
-			 * pmap_inval_add() call).
+			 * XXX non-optimal.
 			 */
 			pmap_inval_interlock(&info, pmap, sva);
 again:
@@ -2809,12 +2840,13 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 /*
  * Make a temporary mapping for a physical address.  This is only intended
  * to be used for panic dumps.
+ *
+ * The caller is responsible for calling smp_invltlb().
  */
-/* JG Needed on x86_64? */
 void *
-pmap_kenter_temporary(vm_paddr_t pa, int i)
+pmap_kenter_temporary(vm_paddr_t pa, long i)
 {
-	pmap_kenter((vm_offset_t)crashdumpmap + (i * PAGE_SIZE), pa);
+	pmap_kenter_quick((vm_offset_t)crashdumpmap + (i * PAGE_SIZE), pa);
 	return ((void *)crashdumpmap);
 }
 
@@ -2905,9 +2937,9 @@ pmap_object_init_pt_callback(vm_page_t p, void *data)
 	}
 	if (((p->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL) &&
 	    (p->busy == 0) && (p->flags & (PG_BUSY | PG_FICTITIOUS)) == 0) {
+		vm_page_busy(p);
 		if ((p->queue - p->pc) == PQ_CACHE)
 			vm_page_deactivate(p);
-		vm_page_busy(p);
 		rel_index = p->pindex - info->start_pindex;
 		pmap_enter_quick(info->pmap,
 				 info->addr + x86_64_ptob(rel_index), p);
@@ -3166,13 +3198,14 @@ pmap_zero_page(vm_paddr_t phys)
 void
 pmap_page_assertzero(vm_paddr_t phys)
 {
-	vm_offset_t virt = PHYS_TO_DMAP(phys);
-	int i;
+	vm_offset_t va = PHYS_TO_DMAP(phys);
+	size_t i;
 
 	for (i = 0; i < PAGE_SIZE; i += sizeof(long)) {
-	    if (*(long *)((char *)virt + i) != 0) {
-		panic("pmap_page_assertzero() @ %p not zero!\n", (void *)virt);
-	    }
+		if (*(long *)((char *)va + i) != 0) {
+			panic("pmap_page_assertzero() @ %p not zero!\n",
+			      (void *)(intptr_t)va);
+		}
 	}
 }
 
@@ -3336,6 +3369,7 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 		save_generation = ++pmap->pm_generation;
 
 		m->md.pv_list_count--;
+		m->object->agg_pv_list_count--;
 		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
 		if (TAILQ_EMPTY(&m->md.pv_list))
 			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
@@ -3828,7 +3862,7 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 		if (curthread->td_lwp == lp) {
 			pmap = vmspace_pmap(newvm);
 #if defined(SMP)
-			atomic_set_int(&pmap->pm_active, mycpu->gd_cpumask);
+			atomic_set_cpumask(&pmap->pm_active, mycpu->gd_cpumask);
 			if (pmap->pm_active & CPUMASK_LOCK)
 				pmap_interlock_wait(newvm);
 #else
@@ -3842,9 +3876,9 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 			load_cr3(curthread->td_pcb->pcb_cr3);
 			pmap = vmspace_pmap(oldvm);
 #if defined(SMP)
-			atomic_clear_int(&pmap->pm_active, mycpu->gd_cpumask);
+			atomic_clear_cpumask(&pmap->pm_active, mycpu->gd_cpumask);
 #else
-			pmap->pm_active &= ~1;
+			pmap->pm_active &= ~(cpumask_t)1;
 #endif
 		}
 	}
@@ -3862,11 +3896,13 @@ pmap_interlock_wait(struct vmspace *vm)
 	struct pmap *pmap = &vm->vm_pmap;
 
 	if (pmap->pm_active & CPUMASK_LOCK) {
+		DEBUG_PUSH_INFO("pmap_interlock_wait");
 		while (pmap->pm_active & CPUMASK_LOCK) {
 			cpu_pause();
 			cpu_ccfence();
 			lwkt_process_ipiq();
 		}
+		DEBUG_POP_INFO();
 	}
 }
 
@@ -3882,4 +3918,13 @@ pmap_addr_hint(vm_object_t obj, vm_offset_t addr, vm_size_t size)
 
 	addr = (addr + (NBPDR - 1)) & ~(NBPDR - 1);
 	return addr;
+}
+
+/*
+ * Used by kmalloc/kfree, page already exists at va
+ */
+vm_page_t
+pmap_kvtom(vm_offset_t va)
+{
+	return(PHYS_TO_VM_PAGE(*vtopte(va) & PG_FRAME));
 }

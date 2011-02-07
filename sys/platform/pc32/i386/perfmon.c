@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/perfmon.c,v 1.21 1999/09/25 18:24:04 phk Exp $
- * $DragonFly: src/sys/platform/pc32/i386/perfmon.c,v 1.11 2008/05/10 17:24:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -62,9 +61,8 @@ static d_close_t	perfmon_close;
 static d_open_t		perfmon_open;
 static d_ioctl_t	perfmon_ioctl;
 
-#define CDEV_MAJOR 2	/* We're really a minor of mem.c */
 static struct dev_ops perfmon_ops = {
-	{ "perfmon", CDEV_MAJOR, 0 },
+	{ "perfmon", 0, 0 },
 	.d_open =	perfmon_open,
 	.d_close =	perfmon_close,
 	.d_ioctl =	perfmon_ioctl,

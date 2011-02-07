@@ -59,7 +59,7 @@
  * Locks provide shared/exclusive sychronization.
  */
 
-#ifdef SIMPLELOCK_DEBUG
+#ifdef DEBUG_LOCKS
 #define COUNT(td, x) (td)->td_locks += (x)
 #else
 #define COUNT(td, x)
@@ -163,6 +163,9 @@ debuglockmgr(struct lock *lkp, u_int flags,
 	int error;
 	int extflags;
 	int dowakeup;
+#ifdef DEBUG_LOCKS
+	int i;
+#endif
 
 	error = 0;
 	dowakeup = 0;
@@ -184,6 +187,15 @@ debuglockmgr(struct lock *lkp, u_int flags,
 #endif
 	}
 
+#ifdef DEBUG_LOCKS
+	if (mycpu->gd_spinlocks_wr &&
+	    ((flags & LK_NOWAIT) == 0) 
+	) {
+		panic("lockmgr %s from %s:%d: called with %d spinlocks held",
+		      lkp->lk_wmesg, file, line, mycpu->gd_spinlocks_wr);
+	}
+#endif
+
 	/*
 	 * So sue me, I'm too tired.
 	 */
@@ -203,7 +215,7 @@ debuglockmgr(struct lock *lkp, u_int flags,
 		 * while there is an exclusive lock holder or while an
 		 * exclusive lock request or upgrade request is in progress.
 		 *
-		 * However, if P_DEADLKTREAT is set, we override exclusive
+		 * However, if TDF_DEADLKTREAT is set, we override exclusive
 		 * lock requests or upgrade requests ( but not the exclusive
 		 * lock itself ).
 		 */
@@ -241,6 +253,18 @@ debuglockmgr(struct lock *lkp, u_int flags,
 			spin_unlock(&lkp->lk_spinlock);
 			panic("lockmgr: not holding exclusive lock");
 		}
+
+#ifdef DEBUG_LOCKS
+		for (i = 0; i < LOCKMGR_DEBUG_ARRAY_SIZE; i++) {
+			if (td->td_lockmgr_stack[i] == lkp &&
+			    td->td_lockmgr_stack_id[i] > 0
+			) {
+				td->td_lockmgr_stack_id[i]--;
+				break;
+			}
+		}
+#endif
+
 		sharelock(lkp, lkp->lk_exclusivecount);
 		lkp->lk_exclusivecount = 0;
 		lkp->lk_flags &= ~LK_HAVE_EXCL;
@@ -292,9 +316,16 @@ debuglockmgr(struct lock *lkp, u_int flags,
 			 * We are first shared lock to request an upgrade, so
 			 * request upgrade and wait for the shared count to
 			 * drop to zero, then take exclusive lock.
+			 *
+			 * Although I don't think this can occur for
+			 * robustness we also wait for any exclusive locks
+			 * to be released.  LK_WANT_UPGRADE is supposed to
+			 * prevent new exclusive locks but might not in the
+			 * future.
 			 */
 			lkp->lk_flags |= LK_WANT_UPGRADE;
-			error = acquire(lkp, extflags, LK_SHARE_NONZERO);
+			error = acquire(lkp, extflags,
+					LK_HAVE_EXCL | LK_SHARE_NONZERO);
 			lkp->lk_flags &= ~LK_WANT_UPGRADE;
 
 			if (error)
@@ -303,13 +334,38 @@ debuglockmgr(struct lock *lkp, u_int flags,
 			lkp->lk_lockholder = td;
 			if (lkp->lk_exclusivecount != 0) {
 				spin_unlock(&lkp->lk_spinlock);
-				panic("lockmgr: non-zero exclusive count");
+				panic("lockmgr(1): non-zero exclusive count");
 			}
 			lkp->lk_exclusivecount = 1;
 #if defined(DEBUG_LOCKS)
 			lkp->lk_filename = file;
 			lkp->lk_lineno = line;
 			lkp->lk_lockername = name;
+
+        	        for (i = 0; i < LOCKMGR_DEBUG_ARRAY_SIZE; i++) {
+				/*
+				 * Recursive lockmgr path
+			 	 */
+				if (td->td_lockmgr_stack[i] == lkp &&
+				    td->td_lockmgr_stack_id[i] != 0
+				) {
+					td->td_lockmgr_stack_id[i]++;
+					goto lkmatch2;
+				}
+ 	               }
+
+			for (i = 0; i < LOCKMGR_DEBUG_ARRAY_SIZE; i++) {
+				/*
+				 * Use new lockmgr tracking slot
+			 	 */
+        	        	if (td->td_lockmgr_stack_id[i] == 0) {
+                	        	td->td_lockmgr_stack_id[i]++;
+                        		td->td_lockmgr_stack[i] = lkp;
+                        		break;
+                        	}
+			}
+lkmatch2:
+			;
 #endif
 			COUNT(td, 1);
 			break;
@@ -344,21 +400,30 @@ debuglockmgr(struct lock *lkp, u_int flags,
 		 * If we are just polling, check to see if we will sleep.
 		 */
 		if ((extflags & LK_NOWAIT) &&
-		    (lkp->lk_flags & (LK_HAVE_EXCL | LK_WANT_EXCL | LK_WANT_UPGRADE | LK_SHARE_NONZERO))) {
+		    (lkp->lk_flags & (LK_HAVE_EXCL | LK_WANT_EXCL |
+				      LK_WANT_UPGRADE | LK_SHARE_NONZERO))) {
 			error = EBUSY;
 			break;
 		}
 		/*
-		 * Try to acquire the want_exclusive flag.
+		 * Wait for exclusive lock holders to release and try to
+		 * acquire the want_exclusive flag.
 		 */
 		error = acquire(lkp, extflags, (LK_HAVE_EXCL | LK_WANT_EXCL));
 		if (error)
 			break;
 		lkp->lk_flags |= LK_WANT_EXCL;
+
 		/*
-		 * Wait for shared locks and upgrades to finish.
+		 * Wait for shared locks and upgrades to finish.  We can lose
+		 * the race against a successful shared lock upgrade in which
+		 * case LK_HAVE_EXCL will get set regardless of our
+		 * acquisition of LK_WANT_EXCL, so we have to acquire
+		 * LK_HAVE_EXCL here as well.
 		 */
-		error = acquire(lkp, extflags, LK_WANT_UPGRADE | LK_SHARE_NONZERO);
+		error = acquire(lkp, extflags, LK_HAVE_EXCL |
+					       LK_WANT_UPGRADE |
+					       LK_SHARE_NONZERO);
 		lkp->lk_flags &= ~LK_WANT_EXCL;
 		if (error)
 			break;
@@ -366,13 +431,38 @@ debuglockmgr(struct lock *lkp, u_int flags,
 		lkp->lk_lockholder = td;
 		if (lkp->lk_exclusivecount != 0) {
 			spin_unlock(&lkp->lk_spinlock);
-			panic("lockmgr: non-zero exclusive count");
+			panic("lockmgr(2): non-zero exclusive count");
 		}
 		lkp->lk_exclusivecount = 1;
 #if defined(DEBUG_LOCKS)
-			lkp->lk_filename = file;
-			lkp->lk_lineno = line;
-			lkp->lk_lockername = name;
+		lkp->lk_filename = file;
+		lkp->lk_lineno = line;
+		lkp->lk_lockername = name;
+
+                for (i = 0; i < LOCKMGR_DEBUG_ARRAY_SIZE; i++) {
+			/*
+			 * Recursive lockmgr path
+			 */
+			if (td->td_lockmgr_stack[i] == lkp &&
+			    td->td_lockmgr_stack_id[i] != 0
+			) {
+				td->td_lockmgr_stack_id[i]++;
+				goto lkmatch1;
+			}
+                }
+
+		for (i = 0; i < LOCKMGR_DEBUG_ARRAY_SIZE; i++) {
+			/*
+			 * Use new lockmgr tracking slot
+			 */
+                	if (td->td_lockmgr_stack_id[i] == 0) {
+                        	td->td_lockmgr_stack_id[i]++;
+                        	td->td_lockmgr_stack[i] = lkp;
+                        	break;
+                        }
+		}
+lkmatch1:
+		;
 #endif
 		COUNT(td, 1);
 		break;
@@ -397,6 +487,16 @@ debuglockmgr(struct lock *lkp, u_int flags,
 			} else {
 				lkp->lk_exclusivecount--;
 			}
+#ifdef DEBUG_LOCKS
+			for (i = 0; i < LOCKMGR_DEBUG_ARRAY_SIZE; i++) {
+				if (td->td_lockmgr_stack[i] == lkp &&
+				    td->td_lockmgr_stack_id[i] > 0
+				) {
+					td->td_lockmgr_stack_id[i]--;
+					break;
+				}
+			}
+#endif
 		} else if (lkp->lk_flags & LK_SHARE_NONZERO) {
 			dowakeup += shareunlock(lkp, 1);
 			COUNT(td, -1);
@@ -430,6 +530,7 @@ lockmgr_kernproc(struct lock *lp)
 	}
 }
 
+#if 0
 /*
  * Set the lock to be exclusively held.  The caller is holding the lock's
  * spinlock and the spinlock remains held on return.  A panic will occur
@@ -472,6 +573,8 @@ lockmgr_clrexclusive_interlocked(struct lock *lkp)
 	if (dowakeup)
 		wakeup((void *)lkp);
 }
+
+#endif
 
 /*
  * Initialize a lock; required before use.

@@ -90,12 +90,15 @@ struct command {
 /*** PROTOTYPES ***/
 
 struct commands	*commands_new(void);
-struct command	*command_add(struct commands *, const char *, ...);
+struct command	*command_add(struct commands *, const char *, ...)
+		     __printflike(2, 3);
 
 void		 command_set_log_mode(struct command *, int);
 void		 command_set_failure_mode(struct command *, int);
-void		 command_set_desc(struct command *, const char *, ...);
-void		 command_set_tag(struct command *, const char *, ...);
+void		 command_set_desc(struct command *, const char *, ...)
+		     __printflike(2, 3);
+void		 command_set_tag(struct command *, const char *, ...)
+		     __printflike(2, 3);
 
 struct command	*command_get_first(const struct commands *);
 struct command	*command_get_next(const struct command *);
@@ -114,6 +117,6 @@ void		 view_command_log(struct i_fn_args *);
 /* Command Generators */
 
 void		 unmount_all_under(struct i_fn_args *, struct commands *,
-				   const char *, ...);
+		     const char *, ...) __printflike(3, 4);
 
 #endif /* !__COMMANDS_H_ */

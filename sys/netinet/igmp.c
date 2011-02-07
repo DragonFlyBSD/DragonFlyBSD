@@ -82,7 +82,7 @@ static struct router_info *
 static struct igmpstat igmpstat;
 
 SYSCTL_STRUCT(_net_inet_igmp, IGMPCTL_STATS, stats, CTLFLAG_RW,
-	&igmpstat, igmpstat, "");
+	&igmpstat, igmpstat, "IGMP statistics");
 
 static int igmp_timers_are_running;
 static u_long igmp_all_hosts_group;

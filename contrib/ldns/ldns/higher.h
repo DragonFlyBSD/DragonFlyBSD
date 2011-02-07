@@ -22,6 +22,10 @@
 #include <ldns/host2str.h>
 #include <ldns/tsig.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Ask the resolver about name
  * and return all address records
@@ -101,5 +105,9 @@ bool ldns_nsec_type_check(ldns_rr *nsec, ldns_rr_type t);
  * \param[in] rdfnum a list of rdf to print.
  */
 void ldns_print_rr_rdf(FILE *fp, ldns_rr *r, int rdfnum, ...);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LDNS_HIGHER_H */

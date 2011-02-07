@@ -73,23 +73,26 @@
  * We do not have to use a locked bus cycle but we do have to use an
  * atomic instruction because an interrupt on the local cpu can modify
  * the gd_reqflags field.
+ *
+ * NOTE: need_lwkt_resched() sets RQF_WAKEUP but clear_lwkt_resched() does
+ *	 not clear it.  Only the scheduler will clear RQF_WAKEUP.
  */
 #define	need_lwkt_resched()	\
-    atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_LWKT_RESCHED)
+    atomic_set_int(&mycpu->gd_reqflags, RQF_AST_LWKT_RESCHED | RQF_WAKEUP)
 #define	need_user_resched()	\
-    atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_USER_RESCHED)
+    atomic_set_int(&mycpu->gd_reqflags, RQF_AST_USER_RESCHED)
 #define	need_proftick()		\
-    atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_OWEUPC)
+    atomic_set_int(&mycpu->gd_reqflags, RQF_AST_OWEUPC)
 #define	need_ipiq()		\
-    atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_IPIQ)
+    atomic_set_int(&mycpu->gd_reqflags, RQF_IPIQ)
 #define	signotify()		\
-    atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_SIGNAL)
+    atomic_set_int(&mycpu->gd_reqflags, RQF_AST_SIGNAL)
 #define	sigupcall()		\
-    atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_UPCALL)
+    atomic_set_int(&mycpu->gd_reqflags, RQF_AST_UPCALL)
 #define	clear_user_resched()	\
-    atomic_clear_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_USER_RESCHED)
+    atomic_clear_int(&mycpu->gd_reqflags, RQF_AST_USER_RESCHED)
 #define	clear_lwkt_resched()	\
-    atomic_clear_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_LWKT_RESCHED)
+    atomic_clear_int(&mycpu->gd_reqflags, RQF_AST_LWKT_RESCHED)
 #define	user_resched_wanted()	\
     (mycpu->gd_reqflags & RQF_AST_USER_RESCHED)
 #define	lwkt_resched_wanted()	\

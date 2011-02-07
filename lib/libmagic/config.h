@@ -13,6 +13,14 @@
 /* HAVE_DAYLIGHT */
 #define HAVE_DAYLIGHT 1
 
+/* Define to 1 if you have the declaration of `daylight', and to 0 if you
+   don't. */
+#define HAVE_DECL_DAYLIGHT 1
+
+/* Define to 1 if you have the declaration of `tzname', and to 0 if you don't.
+   */
+#define HAVE_DECL_TZNAME 1
+
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #define HAVE_DLFCN_H 1
 
@@ -21,6 +29,9 @@
 
 /* Define to 1 if you have the <fcntl.h> header file. */
 #define HAVE_FCNTL_H 1
+
+/* Define to 1 if you have the `fork' function. */
+#define HAVE_FORK 1
 
 /* Define to 1 if fseeko (and presumably ftello) exists and is declared. */
 #define HAVE_FSEEKO 1
@@ -39,6 +50,9 @@
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
+
+/* Define to 1 if you have the `gnurx' library (-lgnurx). */
+/* #undef HAVE_LIBGNURX */
 
 /* Define to 1 if you have the `z' library (-lz). */
 #define HAVE_LIBZ 1
@@ -174,6 +188,10 @@
 /* Define to 1 if you have the <zlib.h> header file. */
 #define HAVE_ZLIB_H 1
 
+/* Define to the sub-directory in which libtool stores uninstalled libraries.
+   */
+#define LT_OBJDIR ".libs/"
+
 /* Define to 1 if `major', `minor', and `makedev' are declared in <mkdev.h>.
    */
 /* #undef MAJOR_IN_MKDEV */
@@ -189,19 +207,19 @@
 #define PACKAGE "file"
 
 /* Define to the address where bug reports for this package should be sent. */
-#define PACKAGE_BUGREPORT ""
+#define PACKAGE_BUGREPORT "christos@astron.com"
 
 /* Define to the full name of this package. */
-#define PACKAGE_NAME ""
+#define PACKAGE_NAME "file"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING ""
+#define PACKAGE_STRING "file 5.05"
 
 /* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME ""
+#define PACKAGE_TARNAME "file"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION ""
+#define PACKAGE_VERSION "5.05"
 
 /* The size of `long long', as computed by sizeof. */
 #define SIZEOF_LONG_LONG 8
@@ -213,7 +231,7 @@
 /* #undef TM_IN_SYS_TIME */
 
 /* Version number of package */
-#define VERSION "5.04"
+#define VERSION "5.05"
 
 /* Number of bits in a file offset, on hosts where this is settable. */
 /* #undef _FILE_OFFSET_BITS */

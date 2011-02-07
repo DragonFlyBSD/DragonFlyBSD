@@ -324,6 +324,10 @@ ieee80211_crypto_newkey(struct ieee80211vap *vap,
 		    __func__, cip->ic_name);
 		flags |= IEEE80211_KEY_SWCRYPT;
 	}
+	if (ieee80211_force_swcrypto) {
+		flags |= IEEE80211_KEY_SWCRYPT;
+		flags |= IEEE80211_KEY_SWMIC;
+	}
 	/*
 	 * Hardware TKIP with software MIC is an important
 	 * combination; we handle it by flagging each key,
@@ -495,7 +499,7 @@ ieee80211_crypto_setkey(struct ieee80211vap *vap, struct ieee80211_key *key)
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_CRYPTO,
 	    "%s: %s keyix %u flags 0x%x mac %6D rsc %ju tsc %ju len %u\n",
 	    __func__, cip->ic_name, key->wk_keyix,
-	    key->wk_flags, key->wk_macaddr,
+	    key->wk_flags, key->wk_macaddr, ":",
 	    key->wk_keyrsc[IEEE80211_NONQOS_TID], key->wk_keytsc,
 	    key->wk_keylen);
 

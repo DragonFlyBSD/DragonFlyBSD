@@ -95,7 +95,7 @@ BITGTS:=${BITGTS} ${BITGTS:S/^/build/} ${BITGTS:S/^/install/}
 .ORDER: quickkernel installkernel
 .ORDER: quickkernel reinstallkernel
 
-PATH=	/sbin:/bin:/usr/sbin:/usr/bin
+PATH=	/sbin:/bin:/usr/sbin:/usr/bin:/usr/pkg/bin
 MAKE=	PATH=${PATH} make -m ${.CURDIR}/share/mk -f Makefile.inc1
 
 #

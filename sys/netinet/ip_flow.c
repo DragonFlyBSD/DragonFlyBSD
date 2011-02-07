@@ -433,12 +433,12 @@ void
 ipflow_slowtimo(void)
 {
 #ifdef SMP
-	uint32_t mask = 0;
+	cpumask_t mask = 0;
 	int i;
 
 	for (i = 0; i < ncpus; ++i) {
 		if (ipflow_inuse_pcpu[i])
-			mask |= 1 << i;
+			mask |= CPUMASK(i);
 	}
 	mask &= smp_active_mask;
 	if (mask != 0)

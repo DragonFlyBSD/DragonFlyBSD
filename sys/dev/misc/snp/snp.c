@@ -15,7 +15,6 @@
  * Snoop stuff.
  *
  * $FreeBSD: src/sys/dev/snp/snp.c,v 1.69.2.2 2002/05/06 07:30:02 dd Exp $
- * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.19 2007/05/08 02:31:41 dillon Exp $
  */
 
 #include "use_snp.h"
@@ -55,9 +54,8 @@ static int snpfilter_wr(struct knote *, long);
 #define SNP_PREALLOCATED_UNITS	NSNP
 #endif
 
-#define CDEV_MAJOR 53
 static struct dev_ops snp_ops = {
-	{ "snp", CDEV_MAJOR, 0 },
+	{ "snp", 0, 0 },
 	.d_open =	snpopen,
 	.d_close =	snpclose,
 	.d_read =	snpread,
@@ -739,4 +737,4 @@ static moduledata_t snp_mod = {
         snp_modevent,
         NULL
 };
-DECLARE_MODULE(snp, snp_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE + CDEV_MAJOR);
+DECLARE_MODULE(snp, snp_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE);

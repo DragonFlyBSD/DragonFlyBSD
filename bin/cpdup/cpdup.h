@@ -35,10 +35,10 @@
 #include "compat_sun.h"
 #endif
 
-void logstd(const char *ctl, ...);
-void logerr(const char *ctl, ...);
-char *mprintf(const char *ctl, ...);
-void fatal(const char *ctl, ...);
+void logstd(const char *ctl, ...) __printflike(1, 2);
+void logerr(const char *ctl, ...) __printflike(1, 2);
+char *mprintf(const char *ctl, ...) __printflike(1, 2);
+void fatal(const char *ctl, ...) __printf0like(1, 2);
 char *fextract(FILE *fi, int n, int *pc, int skip);
 
 int16_t hc_bswap16(int16_t var);

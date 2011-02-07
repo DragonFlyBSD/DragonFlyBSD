@@ -30,10 +30,14 @@
 
 /* magic sizes */
 #define MD5_SIZE 16
+#define SHA256_SIZE 32
+#define SHA512_SIZE 64
 
 char *crypt_des(const char *pw, const char *salt);
 char *crypt_md5(const char *pw, const char *salt);
 char *crypt_blowfish(const char *pw, const char *salt);
+char *crypt_sha256(const char *pw, const char *salt);
+char *crypt_sha512(const char *pw, const char *salt);
 
 extern void _crypt_to64(char *s, unsigned long v, int n);
 

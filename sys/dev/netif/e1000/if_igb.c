@@ -32,11 +32,8 @@
 ******************************************************************************/
 
 
-#ifdef HAVE_KERNEL_OPTION_HEADERS
-#include "opt_device_polling.h"
+#include "opt_polling.h"
 #include "opt_inet.h"
-#include "opt_altq.h"
-#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -45,6 +42,7 @@
 #endif
 #include <sys/bus.h>
 #include <sys/endian.h>
+#include <sys/lock.h>
 #include <sys/kernel.h>
 #include <sys/kthread.h>
 #include <sys/malloc.h>
@@ -303,7 +301,7 @@ TUNABLE_INT("hw.igb.enable_aim", &igb_enable_aim);
  * MSIX should be the default for best performance,
  * but this allows it to be forced off for testing.
  */         
-static int igb_enable_msix = 1;
+static int igb_enable_msix = 0;
 TUNABLE_INT("hw.igb.enable_msix", &igb_enable_msix);
 
 /*
@@ -642,11 +640,6 @@ igb_detach(device_t dev)
 		return (EBUSY);
 	}
 
-#ifdef DEVICE_POLLING
-	if (adapter->ifp->if_capenable & IFCAP_POLLING)
-		ether_poll_deregister(adapter->ifp);
-#endif
-
 	IGB_CORE_LOCK(adapter);
 	adapter->in_detach = 1;
 	igb_stop(adapter);
@@ -763,11 +756,17 @@ igb_start_locked(struct tx_ring *txr, struct ifnet *ifp)
 
 	IGB_TX_LOCK_ASSERT(txr);
 
-	if ((ifp->if_flags & (IFF_RUNNING|IFF_OACTIVE)) !=
-	    IFF_RUNNING)
+	if ((ifp->if_flags & (IFF_RUNNING|IFF_OACTIVE)) != IFF_RUNNING)
 		return;
-	if (!adapter->link_active)
+
+	/*
+	 * Must purge on abort from this point on or the netif will call
+	 * us endlessly.  Either that or set IFF_OACTIVE.
+	 */
+	if (!adapter->link_active) {
+		ifq_purge(&ifp->if_snd);
 		return;
+	}
 
 	while (!ifq_is_empty(&ifp->if_snd)) {
 
@@ -1003,7 +1002,7 @@ igb_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cred)
 			igb_disable_intr(adapter);
 			igb_set_multi(adapter);
 #ifdef DEVICE_POLLING
-			if (!(ifp->if_capenable & IFCAP_POLLING))
+			if ((ifp->if_flags & IFF_POLLING) == 0)
 #endif
 				igb_enable_intr(adapter);
 			IGB_CORE_UNLOCK(adapter);
@@ -1032,23 +1031,10 @@ igb_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cred)
 		reinit = 0;
 		mask = ifr->ifr_reqcap ^ ifp->if_capenable;
 #ifdef DEVICE_POLLING
-		if (mask & IFCAP_POLLING) {
-			if (ifr->ifr_reqcap & IFCAP_POLLING) {
-				error = ether_poll_register(igb_poll, ifp);
-				if (error)
-					return (error);
-				IGB_CORE_LOCK(adapter);
-				igb_disable_intr(adapter);
-				ifp->if_capenable |= IFCAP_POLLING;
-				IGB_CORE_UNLOCK(adapter);
-			} else {
-				error = ether_poll_deregister(ifp);
-				/* Enable interrupt even in error case */
-				IGB_CORE_LOCK(adapter);
-				igb_enable_intr(adapter);
-				ifp->if_capenable &= ~IFCAP_POLLING;
-				IGB_CORE_UNLOCK(adapter);
-			}
+		if (ifp->if_flags & IFF_POLLING) {
+			IGB_CORE_LOCK(adapter);
+			igb_disable_intr(adapter);
+			IGB_CORE_UNLOCK(adapter);
 		}
 #endif
 		if (mask & IFCAP_HWCSUM) {
@@ -1083,6 +1069,7 @@ igb_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cred)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
+	IOCTL_DEBUGOUT("ioctl done");
 
 	return (error);
 }
@@ -1187,7 +1174,7 @@ igb_init_locked(struct adapter *adapter)
 	 * Only enable interrupts if we are not polling, make sure
 	 * they are off otherwise.
 	 */
-	if (ifp->if_capenable & IFCAP_POLLING)
+	if (ifp->if_flags & IFF_POLLING)
 		igb_disable_intr(adapter);
 	else
 #endif /* DEVICE_POLLING */
@@ -1198,6 +1185,7 @@ igb_init_locked(struct adapter *adapter)
 
 	/* Don't reset the phy next time init gets called */
 	adapter->hw.phy.reset_disable = TRUE;
+	INIT_DEBUGOUT("igb_init: end");
 }
 
 static void
@@ -1272,9 +1260,9 @@ igb_handle_que(void *context, int pending)
 
 	/* Reenable this interrupt */
 #ifdef DEVICE_POLLING
-	if (!(ifp->if_capenable & IFCAP_POLLING))
+	if ((ifp->if_flags & IFF_POLLING) == 0)
 #endif
-	E1000_WRITE_REG(&adapter->hw, E1000_EIMS, que->eims);
+		E1000_WRITE_REG(&adapter->hw, E1000_EIMS, que->eims);
 }
 
 /* Deal with link in a sleepable context */
@@ -1846,7 +1834,7 @@ igb_set_multi(struct adapter *adapter)
 	struct ifnet	*ifp = adapter->ifp;
 	struct ifmultiaddr *ifma;
 	u32 reg_rctl = 0;
-	u8  mta[MAX_NUM_MULTICAST_ADDRESSES * ETH_ADDR_LEN];
+	static u8  mta[MAX_NUM_MULTICAST_ADDRESSES * ETH_ADDR_LEN];
 
 	int mcnt = 0;
 
@@ -1883,8 +1871,9 @@ igb_set_multi(struct adapter *adapter)
 		reg_rctl = E1000_READ_REG(&adapter->hw, E1000_RCTL);
 		reg_rctl |= E1000_RCTL_MPE;
 		E1000_WRITE_REG(&adapter->hw, E1000_RCTL, reg_rctl);
-	} else
+	} else {
 		e1000_update_mc_addr_list(&adapter->hw, mta, mcnt);
+	}
 }
 
 
@@ -1927,9 +1916,9 @@ igb_local_timer(void *arg)
 
 	/* Trigger an RX interrupt on all queues */
 #ifdef DEVICE_POLLING
-	if (!(ifp->if_capenable & IFCAP_POLLING))
+	if ((ifp->if_flags & IFF_POLLING) == 0)
 #endif
-	E1000_WRITE_REG(&adapter->hw, E1000_EICS, adapter->rx_mask);
+		E1000_WRITE_REG(&adapter->hw, E1000_EICS, adapter->rx_mask);
 	callout_reset(&adapter->timer, hz, igb_local_timer, adapter);
 	IGB_CORE_UNLOCK(adapter);
 	return;
@@ -2125,10 +2114,12 @@ igb_allocate_legacy(struct adapter *adapter)
 	/* Turn off all interrupts */
 	E1000_WRITE_REG(&adapter->hw, E1000_IMC, 0xffffffff);
 
+#if 0
 	/* MSI RID is 1 */
 	if (adapter->msix == 1)
 		rid = 1;
-
+#endif
+	rid = 0;
 	/* We allocate a single interrupt resource */
 	adapter->res = bus_alloc_resource_any(dev,
 	    SYS_RES_IRQ, &rid, RF_SHAREABLE | RF_ACTIVE);
@@ -2145,7 +2136,7 @@ igb_allocate_legacy(struct adapter *adapter)
 	TASK_INIT(&adapter->rxtx_task, 0, igb_handle_rxtx, adapter);
 	/* Make tasklet for deferred link handling */
 	TASK_INIT(&adapter->link_task, 0, igb_handle_link, adapter);
-	adapter->tq = taskqueue_create("igb_taskq", M_NOWAIT,
+	adapter->tq = taskqueue_create("igb_taskq", M_INTWAIT,
 	    taskqueue_thread_enqueue, &adapter->tq);
 	taskqueue_start_threads(&adapter->tq, 1, TDPRI_KERN_DAEMON /*PI_NET*/, -1, "%s taskq",
 	    device_get_nameunit(adapter->dev));
@@ -2209,7 +2200,7 @@ igb_allocate_msix(struct adapter *adapter)
 #endif
 		/* Make tasklet for deferred handling */
 		TASK_INIT(&que->que_task, 0, igb_handle_que, que);
-		que->tq = taskqueue_create("igb_que", M_NOWAIT,
+		que->tq = taskqueue_create("igb_que", M_INTWAIT,
 		    taskqueue_thread_enqueue, &que->tq);
 		taskqueue_start_threads(&que->tq, 1, TDPRI_KERN_DAEMON /*PI_NET*/, -1, "%s que",
 		    device_get_nameunit(adapter->dev));
@@ -2235,7 +2226,7 @@ igb_allocate_msix(struct adapter *adapter)
 
 	/* Make tasklet for deferred handling */
 	TASK_INIT(&adapter->link_task, 0, igb_handle_link, adapter);
-	adapter->tq = taskqueue_create("igb_link", M_NOWAIT,
+	adapter->tq = taskqueue_create("igb_link", M_INTWAIT,
 	    taskqueue_thread_enqueue, &adapter->tq);
 	taskqueue_start_threads(&adapter->tq, 1, TDPRI_KERN_DAEMON /*PI_NET*/, -1, "%s link",
 	    device_get_nameunit(adapter->dev));
@@ -2675,6 +2666,9 @@ igb_setup_interface(device_t dev, struct adapter *adapter)
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = igb_ioctl;
 	ifp->if_start = igb_start;
+#ifdef DEVICE_POLLING
+	ifp->if_poll = igb_poll;
+#endif
 #if __FreeBSD_version >= 800000
 	ifp->if_transmit = igb_mq_start;
 	ifp->if_qflush = igb_qflush;
@@ -2697,9 +2691,6 @@ igb_setup_interface(device_t dev, struct adapter *adapter)
 #endif
 
 	ifp->if_capenable = ifp->if_capabilities;
-#ifdef DEVICE_POLLING
-	ifp->if_capabilities |= IFCAP_POLLING;
-#endif
 
 	/*
 	 * Tell the upper layer(s) we support long frames.
@@ -2842,7 +2833,7 @@ igb_allocate_queues(struct adapter *adapter)
 	/* First allocate the top level queue structs */
 	if (!(adapter->queues =
 	    (struct igb_queue *) kmalloc(sizeof(struct igb_queue) *
-	    adapter->num_queues, M_DEVBUF, M_NOWAIT | M_ZERO))) {
+	    adapter->num_queues, M_DEVBUF, M_INTWAIT | M_ZERO))) {
 		device_printf(dev, "Unable to allocate queue memory\n");
 		error = ENOMEM;
 		goto fail;
@@ -2851,7 +2842,7 @@ igb_allocate_queues(struct adapter *adapter)
 	/* Next allocate the TX ring struct memory */
 	if (!(adapter->tx_rings =
 	    (struct tx_ring *) kmalloc(sizeof(struct tx_ring) *
-	    adapter->num_queues, M_DEVBUF, M_NOWAIT | M_ZERO))) {
+	    adapter->num_queues, M_DEVBUF, M_INTWAIT | M_ZERO))) {
 		device_printf(dev, "Unable to allocate TX ring memory\n");
 		error = ENOMEM;
 		goto tx_fail;
@@ -2860,7 +2851,7 @@ igb_allocate_queues(struct adapter *adapter)
 	/* Now allocate the RX */
 	if (!(adapter->rx_rings =
 	    (struct rx_ring *) kmalloc(sizeof(struct rx_ring) *
-	    adapter->num_queues, M_DEVBUF, M_NOWAIT | M_ZERO))) {
+	    adapter->num_queues, M_DEVBUF, M_INTWAIT | M_ZERO))) {
 		device_printf(dev, "Unable to allocate RX ring memory\n");
 		error = ENOMEM;
 		goto rx_fail;
@@ -2883,7 +2874,7 @@ igb_allocate_queues(struct adapter *adapter)
 		ksnprintf(txr->spin_name, sizeof(txr->spin_name), "%s:tx(%d)",
 		    device_get_nameunit(dev), txr->me);
 
-		spin_init(&txr->tx_spin);
+		IGB_TX_LOCK_INIT(txr);
 
 		if (igb_dma_malloc(adapter, tsize,
 			&txr->txdma, BUS_DMA_NOWAIT)) {
@@ -2923,7 +2914,7 @@ igb_allocate_queues(struct adapter *adapter)
 		ksnprintf(rxr->spin_name, sizeof(rxr->spin_name), "%s:rx(%d)",
 		    device_get_nameunit(dev), txr->me);
 
-		spin_init(&rxr->rx_spin);
+		IGB_RX_LOCK_INIT(rxr);
 
 		if (igb_dma_malloc(adapter, rsize,
 			&rxr->rxdma, BUS_DMA_NOWAIT)) {
@@ -3008,7 +2999,7 @@ igb_allocate_transmit_buffers(struct tx_ring *txr)
 
 	if (!(txr->tx_buffers =
 	    (struct igb_tx_buffer *) kmalloc(sizeof(struct igb_tx_buffer) *
-	    adapter->num_tx_desc, M_DEVBUF, M_NOWAIT | M_ZERO))) {
+	    adapter->num_tx_desc, M_DEVBUF, M_INTWAIT | M_ZERO))) {
 		device_printf(dev, "Unable to allocate tx_buffer memory\n");
 		error = ENOMEM;
 		goto fail;
@@ -3559,12 +3550,19 @@ igb_get_buf(struct rx_ring *rxr, int i, u8 clean)
 	bus_dma_segment_t	pseg[1];
 	bus_dmamap_t		map;
 	int			nsegs, error;
+	int			mbflags;
 
+	/*
+	 * Init-time loads are allowed to use a blocking mbuf allocation,
+	 * otherwise the sheer number of mbufs allocated can lead to
+	 * failures.
+	 */
+	mbflags = (clean & IGB_CLEAN_INITIAL) ? MB_WAIT : MB_DONTWAIT;
 
 	rxbuf = &rxr->rx_buffers[i];
 	mh = mp = NULL;
 	if ((clean & IGB_CLEAN_HEADER) != 0) {
-		mh = m_gethdr(MB_DONTWAIT, MT_DATA);
+		mh = m_gethdr(mbflags, MT_DATA);
 		if (mh == NULL) {
 			adapter->mbuf_header_failed++;		
 			return (ENOBUFS);
@@ -3585,8 +3583,8 @@ igb_get_buf(struct rx_ring *rxr, int i, u8 clean)
 		mh->m_flags &= ~M_PKTHDR;
 	}
 	if ((clean & IGB_CLEAN_PAYLOAD) != 0) {
-		mp = m_getl(adapter->rx_mbuf_sz,
-		    MB_DONTWAIT, MT_DATA, M_PKTHDR, NULL);
+		mp = m_getl(adapter->rx_mbuf_sz, mbflags, MT_DATA,
+			    M_PKTHDR, NULL);
 #if 0
 		mp = m_getjcl(MB_DONTWAIT, MT_DATA, M_PKTHDR,
 		    adapter->rx_mbuf_sz);
@@ -3671,7 +3669,7 @@ igb_allocate_receive_buffers(struct rx_ring *rxr)
 	bsize = sizeof(struct igb_rx_buf) * adapter->num_rx_desc;
 	if (!(rxr->rx_buffers =
 	    (struct igb_rx_buf *) kmalloc(bsize,
-	    M_DEVBUF, M_NOWAIT | M_ZERO))) {
+	    M_DEVBUF, M_INTWAIT | M_ZERO))) {
 		device_printf(dev, "Unable to allocate rx_buffer memory\n");
 		error = ENOMEM;
 		goto fail;
@@ -3813,7 +3811,8 @@ igb_setup_receive_ring(struct rx_ring *rxr)
 
 	/* Now replenish the ring mbufs */
 	for (j = 0; j < adapter->num_rx_desc; j++) {
-		if ((error = igb_get_buf(rxr, j, IGB_CLEAN_BOTH)) != 0)
+		error = igb_get_buf(rxr, j, IGB_CLEAN_BOTH | IGB_CLEAN_INITIAL);
+		if (error)
 			goto fail;
 	}
 
@@ -4076,11 +4075,14 @@ igb_free_receive_structures(struct adapter *adapter)
 #ifdef NET_LRO 
 		struct lro_ctrl	*lro = &rxr->lro;
 #endif
+		IGB_RX_LOCK(rxr);
 		igb_free_receive_buffers(rxr);
 #ifdef NET_LRO
 		tcp_lro_free(lro);
 #endif
 		igb_dma_free(adapter, &rxr->rxdma);
+		IGB_RX_UNLOCK(rxr);
+		IGB_RX_LOCK_DESTROY(rxr);
 	}
 
 	kfree(adapter->rx_rings, M_DEVBUF);

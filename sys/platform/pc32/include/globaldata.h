@@ -75,14 +75,14 @@ struct mdglobaldata {
 	struct i386tss  gd_common_tss;
 	union savefpu	gd_savefpu;	/* fast bcopy/zero temp fpu save area */
 	int		gd_fpu_lock;	/* fast bcopy/zero cpu lock */
-	int		gd_fpending;	/* fast interrupt pending */
-	int		unused002;
+	int		unused004;
+	int		unused001;
 	int		gd_spending;	/* software interrupt pending */
 	int		gd_sdelayed;	/* delayed software ints */
 	int		gd_currentldt;
 	int		gd_private_tss;
-	u_int		unused001;
-	u_int		gd_other_cpus;
+	u_int		unused002;
+	u_int		unused003;
 	u_int		gd_ss_eflags;
 	pt_entry_t	*gd_CMAP1;
 	pt_entry_t	*gd_CMAP2;
@@ -96,6 +96,8 @@ struct mdglobaldata {
 	unsigned	*gd_GDADDR1;	/* per-cpu whole page table map va */
 	u_int		gd_acpi_id;
 	u_int		gd_apic_id;
+	cpumask_t	gd_invltlb_ret;
+	u_int		gd_ipending[6];
 };
 
 #define MDGLOBALDATA_BASEALLOC_SIZE	\

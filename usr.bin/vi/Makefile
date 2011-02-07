@@ -5,6 +5,7 @@
 
 SRCDIR=		${.CURDIR}/../../contrib/nvi
 CONTRIBDIR=	${SRCDIR}
+CSTD?=	gnu89
 WARNS?=	0
 
 APISTUFF=	ex_tcl.c ex_perl.c
@@ -106,7 +107,7 @@ v_ex.c: ${CONTRIBDIR}/vi/v_ex.c ${.CURDIR}/patches/v_ex.c.patch
 ex_write.c: ${CONTRIBDIR}/ex/ex_write.c ${.CURDIR}/patches/ex_write.c.patch
 	patch -o ${.TARGET} -i ${.ALLSRC:M*.patch} ${CONTRIBDIR}/ex/${.TARGET}
 
-CLEANFILES+=	ex_notcl.c ex_noperl.c
+CLEANFILES+=	ex_notcl.c ex_noperl.c ex_write.c v_ex.c
 
 afterinstall:
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \

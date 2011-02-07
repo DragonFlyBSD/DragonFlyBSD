@@ -202,7 +202,7 @@ KTR_INFO(KTR_IF_START, if_start, chase_sched, 4,
 #endif
 #define logifstart(name, arg)	KTR_LOG(if_start_ ## name, arg)
 
-TAILQ_HEAD(, ifg_group) ifg_head;
+TAILQ_HEAD(, ifg_group) ifg_head = TAILQ_HEAD_INITIALIZER(ifg_head);
 
 /*
  * Network interface utility routines.
@@ -543,6 +543,7 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 
 	TAILQ_INIT(&ifp->if_prefixhead);
 	TAILQ_INIT(&ifp->if_multiaddrs);
+	TAILQ_INIT(&ifp->if_groups);
 	getmicrotime(&ifp->if_lastchange);
 	if (ifindex2ifnet == NULL || if_index >= if_indexlim) {
 		unsigned int n;
@@ -1765,7 +1766,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		if (so->so_proto == 0)
 			return (EOPNOTSUPP);
 #ifndef COMPAT_43
-		error = so_pru_control(so, cmd, data, ifp);
+		error = so_pru_control_direct(so, cmd, data, ifp);
 #else
 	    {
 		int ocmd = cmd;

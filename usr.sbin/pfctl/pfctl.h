@@ -1,4 +1,4 @@
-/*	$OpenBSD: pfctl.h,v 1.41 2007/05/31 04:13:37 mcbride Exp $ */
+/*	$OpenBSD: pfctl.h,v 1.43 2008/05/29 01:00:53 mcbride Exp $ */
 
 /*
  * Copyright (c) 2001 Daniel Hartmeier
@@ -48,7 +48,6 @@ struct pfr_buffer {
 	    (var) != NULL;				\
 	    (var) = pfr_buf_next((buf), (var)))
 
-void	 pfr_set_fd(int);
 int	 pfr_get_fd(void);
 int	 pfr_clr_tables(struct pfr_table *, int *, int);
 int	 pfr_add_tables(struct pfr_table *, int, int *, int);
@@ -63,9 +62,7 @@ int	 pfr_set_addrs(struct pfr_table *, struct pfr_addr *, int, int *,
 	    int *, int *, int *, int);
 int	 pfr_get_addrs(struct pfr_table *, struct pfr_addr *, int *, int);
 int	 pfr_get_astats(struct pfr_table *, struct pfr_astats *, int *, int);
-int	 pfr_clr_astats(struct pfr_table *, struct pfr_addr *, int, int *, int);
 int	 pfr_tst_addrs(struct pfr_table *, struct pfr_addr *, int, int *, int);
-int	 pfr_set_tflags(struct pfr_table *, int, int, int, int *, int *, int);
 int	 pfr_ina_define(struct pfr_table *, struct pfr_addr *, int, int *,
 	    int *, int, int);
 void	 pfr_buf_clear(struct pfr_buffer *);
@@ -112,7 +109,7 @@ struct pf_altq	*pfaltq_lookup(const char *);
 char		*rate2str(double);
 
 void	 print_addr(struct pf_addr_wrap *, sa_family_t, int);
-void	 print_host(struct pfsync_state_host *, sa_family_t, int);
+void	 print_host(struct pf_addr *, u_int16_t p, sa_family_t, int);
 void	 print_seq(struct pfsync_state_peer *);
 void	 print_state(struct pfsync_state *, int);
 int	 unmask(struct pf_addr *, sa_family_t);

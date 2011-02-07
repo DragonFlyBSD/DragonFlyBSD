@@ -403,7 +403,7 @@ vfs_findname(vfs_namemap_t *nm, char *buf, int buflen)
 void
 linprocfs_init(void)
 {
-	lwkt_token_init(&pfs_token, 1, "linprocfs");
+	lwkt_token_init(&pfs_token, "linprocfs");
 } 
 
 void

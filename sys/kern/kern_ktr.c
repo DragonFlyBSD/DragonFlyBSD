@@ -167,8 +167,6 @@ __cachealign struct ktr_cpu ktr_cpu[MAXCPU] = {
 };
 
 #ifdef SMP
-static int	ktr_sync_state = 0;
-static int	ktr_sync_count;
 static int64_t	ktr_sync_tsc;
 #endif
 struct callout	ktr_resync_callout;
@@ -229,7 +227,10 @@ static
 void 
 ktr_resync_callback(void *dummy __unused)
 {
+	struct lwkt_cpusync cs;
+#if KTR_TESTLOG
 	int count;
+#endif
 
 	KKASSERT(mycpu->gd_cpuid == 0);
 
@@ -300,72 +301,43 @@ ktr_resync_callback(void *dummy __unused)
 	if ((cpu_feature & CPUID_TSC) == 0)
 		return;
 
-	/*
-	 * Send the synchronizing IPI and wait for all cpus to get into
-	 * their spin loop.  We must process incoming IPIs while waiting
-	 * to avoid a deadlock.
-	 */
 	crit_enter();
-	ktr_sync_count = 0;
-	ktr_sync_state = 1;
+	lwkt_cpusync_init(&cs, smp_active_mask, ktr_resync_remote,
+			  (void *)(intptr_t)mycpu->gd_cpuid);
+	lwkt_cpusync_interlock(&cs);
 	ktr_sync_tsc = rdtsc();
-	count = lwkt_send_ipiq_mask(mycpu->gd_other_cpus & smp_active_mask,
-				    (ipifunc1_t)ktr_resync_remote, NULL);
-	while (ktr_sync_count != count)
-		lwkt_process_ipiq();
-
-	/*
-	 * Continuously update the TSC for cpu 0 while waiting for all other
-	 * cpus to finish stage 2.
-	 */
-	cpu_disable_intr();
-	ktr_sync_tsc = rdtsc();
-	cpu_sfence();
-	ktr_sync_state = 2;
-	cpu_sfence();
-	while (ktr_sync_count != 0) {
-		ktr_sync_tsc = rdtsc();
-		cpu_lfence();
-		cpu_nop();
-	}
-	cpu_enable_intr();
+	lwkt_cpusync_deinterlock(&cs);
 	crit_exit();
-	ktr_sync_state = 0;
 done:
 	callout_reset(&ktr_resync_callout, hz / 10, ktr_resync_callback, NULL);
 }
 
 /*
- * The remote-end of the KTR synchronization protocol runs on all cpus except
- * cpu 0.  Since this is an IPI function, it is entered with the current
- * thread in a critical section.
+ * The remote-end of the KTR synchronization protocol runs on all cpus.
+ * The one we run on the controlling cpu updates its tsc continuously
+ * until the others have finished syncing (theoretically), but we don't
+ * loop forever.
+ *
+ * This is a bit ad-hoc but we need to avoid livelocking inside an IPI
+ * callback.  rdtsc() is a synchronizing instruction (I think).
  */
 static void
-ktr_resync_remote(void *dummy __unused)
+ktr_resync_remote(void *arg)
 {
-	volatile int64_t tsc1 = ktr_sync_tsc;
-	volatile int64_t tsc2;
+	globaldata_t gd = mycpu;
+	int64_t delta;
+	int i;
 
-	/*
-	 * Inform the master that we have entered our hard loop.
-	 */
-	KKASSERT(ktr_sync_state == 1);
-	atomic_add_int(&ktr_sync_count, 1);
-	while (ktr_sync_state == 1) {
-		lwkt_process_ipiq();
+	if (gd->gd_cpuid == (int)(intptr_t)arg) {
+		for (i = 0; i < 2000; ++i)
+			ktr_sync_tsc = rdtsc();
+	} else {
+		delta = rdtsc() - ktr_sync_tsc;
+		if (tsc_offsets[gd->gd_cpuid] == 0)
+			tsc_offsets[gd->gd_cpuid] = delta;
+		tsc_offsets[gd->gd_cpuid] =
+			(tsc_offsets[gd->gd_cpuid] * 7 + delta) / 8;
 	}
-
-	/*
-	 * Now the master is in a hard loop, synchronize the TSC and
-	 * we are done.
-	 */
-	cpu_disable_intr();
-	KKASSERT(ktr_sync_state == 2);
-	tsc2 = ktr_sync_tsc;
-	if (tsc2 > tsc1)
-		tsc_offsets[mycpu->gd_cpuid] = rdtsc() - tsc2;
-	atomic_subtract_int(&ktr_sync_count, 1);
-	cpu_enable_intr();
 }
 
 #if KTR_TESTLOG

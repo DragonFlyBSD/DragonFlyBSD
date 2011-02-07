@@ -1,4 +1,4 @@
-/*	$OpenBSD: pf_norm.c,v 1.109 2007/05/28 17:16:39 henning Exp $ */
+/*	$OpenBSD: pf_norm.c,v 1.113 2008/05/07 07:07:29 markus Exp $ */
 
 /*
  * Copyright (c) 2010 The DragonFly Project.  All rights reserved.
@@ -88,7 +88,7 @@ struct mbuf		*pf_reassemble(struct mbuf **, struct pf_fragment **,
 struct mbuf		*pf_fragcache(struct mbuf **, struct ip*,
 			    struct pf_fragment **, int, int, int *);
 int			 pf_normalize_tcpopt(struct pf_rule *, struct mbuf *,
-			    struct tcphdr *, int);
+			    struct tcphdr *, int, sa_family_t);
 
 #define	DPFPRINTF(x) do {				\
 	if (pf_status.debug >= PF_DEBUG_MISC) {		\
@@ -809,6 +809,7 @@ pf_normalize_ip(struct mbuf **m0, int dir, struct pfi_kif *kif, u_short *reason,
 	u_int16_t		 max;
 	int			 ip_len;
 	int			 ip_off;
+	int			 tag = -1;
 
 	r = TAILQ_FIRST(pf_main_ruleset.rules[PF_RULESET_SCRUB].active.ptr);
 	while (r != NULL) {
@@ -829,6 +830,8 @@ pf_normalize_ip(struct mbuf **m0, int dir, struct pfi_kif *kif, u_short *reason,
 		    (struct pf_addr *)&h->ip_dst.s_addr, AF_INET,
 		    r->dst.neg, NULL))
 			r = r->skip[PF_SKIP_DST_ADDR].ptr;
+		else if (r->match_tag && !pf_match_tag(m, r, &tag))
+			r = TAILQ_NEXT(r, entries);
 		else
 			break;
 	}
@@ -971,6 +974,17 @@ pf_normalize_ip(struct mbuf **m0, int dir, struct pfi_kif *kif, u_short *reason,
 		h->ip_sum = pf_cksum_fixup(h->ip_sum, ip_ttl, h->ip_ttl, 0);
 	}
 
+	/* Enforce tos */
+	if (r->rule_flag & PFRULE_SET_TOS) {
+		u_int16_t	ov, nv;
+
+		ov = *(u_int16_t *)h;
+		h->ip_tos = r->set_tos;
+		nv = *(u_int16_t *)h;
+
+		h->ip_sum = pf_cksum_fixup(h->ip_sum, ov, nv, 0);
+	}
+
 	if (r->rule_flag & PFRULE_RANDOMID) {
 		u_int16_t ip_id = h->ip_id;
 
@@ -989,6 +1003,16 @@ pf_normalize_ip(struct mbuf **m0, int dir, struct pfi_kif *kif, u_short *reason,
 
 		h->ip_ttl = r->min_ttl;
 		h->ip_sum = pf_cksum_fixup(h->ip_sum, ip_ttl, h->ip_ttl, 0);
+	}
+	/* Enforce tos */
+	if (r->rule_flag & PFRULE_SET_TOS) {
+		u_int16_t	ov, nv;
+
+		ov = *(u_int16_t *)h;
+		h->ip_tos = r->set_tos;
+		nv = *(u_int16_t *)h;
+
+		h->ip_sum = pf_cksum_fixup(h->ip_sum, ov, nv, 0);
 	}
 	if ((r->rule_flag & (PFRULE_FRAGCROP|PFRULE_FRAGDROP)) == 0)
 		pd->flags |= PFDESC_IP_REAS;
@@ -1298,7 +1322,7 @@ pf_normalize_tcp(int dir, struct pfi_kif *kif, struct mbuf *m, int ipoff,
 	}
 
 	/* Process options */
-	if (r->max_mss && pf_normalize_tcpopt(r, m, th, off))
+	if (r->max_mss && pf_normalize_tcpopt(r, m, th, off, pd->af))
 		rewrite = 1;
 
 	/* copy back packet headers if we sanitized */
@@ -1814,17 +1838,21 @@ pf_normalize_tcp_stateful(struct mbuf *m, int off, struct pf_pdesc *pd,
 
 int
 pf_normalize_tcpopt(struct pf_rule *r, struct mbuf *m, struct tcphdr *th,
-    int off)
+    int off, sa_family_t af)
 {
 	u_int16_t	*mss;
 	int		 thoff;
 	int		 opt, cnt, optlen = 0;
 	int		 rewrite = 0;
-	u_char		*optp;
+	u_char		 opts[TCP_MAXOLEN];
+	u_char		*optp = opts;
 
 	thoff = th->th_off << 2;
 	cnt = thoff - sizeof(struct tcphdr);
-	optp = mtod(m, caddr_t) + off + sizeof(struct tcphdr);
+
+	if (cnt > 0 && !pf_pull_hdr(m, off + sizeof(*th), opts, cnt,
+	    NULL, NULL, af))
+		return (rewrite);
 
 	for (; cnt > 0; cnt -= optlen, optp += optlen) {
 		opt = optp[0];
@@ -1853,6 +1881,9 @@ pf_normalize_tcpopt(struct pf_rule *r, struct mbuf *m, struct tcphdr *th,
 			break;
 		}
 	}
+
+	if (rewrite)
+		m_copyback(m, off + sizeof(*th), thoff - sizeof(*th), opts);
 
 	return (rewrite);
 }

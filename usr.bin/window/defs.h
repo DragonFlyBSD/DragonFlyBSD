@@ -95,8 +95,7 @@ int		doconfig(void);
 void		dodefault(void);
 int		dolongcmd(char *, struct value *, int);
 int		dosource(char *);
-void		error(const char *, ...)
-    __attribute__((__format__(__printf__, 1, 2)));
+void		error(const char *, ...) __printflike(1, 2);
 void		err_end(void);
 int		findid(void);
 struct ww      *findselwin(void);
@@ -123,6 +122,6 @@ void		sizewin(struct ww *, int, int);
 void		startwin(struct ww *);
 void		stopwin(struct ww *);
 int		s_gettok(void);
-void		verror(const char *, va_list);
+void		verror(const char *, va_list) __printflike(1, 0);
 void		waitnl(struct ww *);
 int		waitnl1(struct ww *, const char *);

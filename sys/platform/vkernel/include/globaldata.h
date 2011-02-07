@@ -83,10 +83,10 @@ struct mdglobaldata {
 	int		gd_spending;	/* software interrupt pending */
 	int		gd_sdelayed;	/* delayed software ints */
 	int		gd_currentldt;
-	int		unused003;
+	int		unused001;
 	int		unused002;
-	u_int		unused001;
-	u_int		gd_other_cpus;
+	u_int		unused003;
+	u_int		unused004;
 	u_int		gd_ss_eflags;
 	vpte_t		*gd_CMAP1;	/* pointer to pte for CADDR1 */
 	vpte_t		*gd_CMAP2;

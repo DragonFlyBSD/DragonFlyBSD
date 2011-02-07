@@ -13,6 +13,10 @@
 #ifndef LDNS_RR_FUNCTIONS_H
 #define LDNS_RR_FUNCTIONS_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * \file
  *
@@ -247,5 +251,9 @@ size_t ldns_rr_dnskey_key_size_raw(const unsigned char *keydata,
  * \return the keysize in bits
  */
 size_t ldns_rr_dnskey_key_size(const ldns_rr *key);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LDNS_RR_FUNCTIONS_H */

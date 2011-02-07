@@ -457,31 +457,37 @@ dovmstat(u_int interval, int reps)
 			perror("sysctlbyname: vm.vmtotal");
 			exit(1);
 		} 
-		printf("%2d %1d %1d",
+		printf("%2ld %1ld %1ld",
 		    total.t_rq - 1, total.t_dw + total.t_pw, total.t_sw);
-#define vmstat_pgtok(a) ((a) * vms.v_page_size >> 10)
-#define rate(x)	(initial ? (x) : ((x) * 1000 + interval / 2) / interval)
-		printf(" %7ld %6ld ",
-		    (long)vmstat_pgtok(total.t_avm), (long)vmstat_pgtok(total.t_free));
-		printf("%4lu ",
-		    (u_long)rate(vmm.v_vm_faults - ovmm.v_vm_faults));
-		printf("%3lu ",
-		    (u_long)rate(vmm.v_reactivated - ovmm.v_reactivated));
-		printf("%3lu ",
-		    (u_long)rate(vmm.v_swapin + vmm.v_vnodein -
-		    (ovmm.v_swapin + ovmm.v_vnodein)));
-		printf("%3lu ",
-		    (u_long)rate(vmm.v_swapout + vmm.v_vnodeout -
-		    (ovmm.v_swapout + ovmm.v_vnodeout)));
-		printf("%3lu ",
-		    (u_long)rate(vmm.v_tfree - ovmm.v_tfree));
-		printf("%3lu ",
-		    (u_long)rate(vmm.v_pdpages - ovmm.v_pdpages));
+
+#define vmstat_pgtok(a)	\
+	(intmax_t)(((intmax_t)(a) * vms.v_page_size) >> 10)
+#define rate(x)		\
+	(intmax_t)(initial ? (x) : ((intmax_t)(x) * 1000 + interval / 2) \
+				   / interval)
+
+		printf(" %7jd %6jd ",
+		       vmstat_pgtok(total.t_avm),
+		       vmstat_pgtok(total.t_free));
+		printf("%4ju ",
+		       rate(vmm.v_vm_faults - ovmm.v_vm_faults));
+		printf("%3ju ",
+		       rate(vmm.v_reactivated - ovmm.v_reactivated));
+		printf("%3ju ",
+		       rate(vmm.v_swapin + vmm.v_vnodein -
+			    (ovmm.v_swapin + ovmm.v_vnodein)));
+		printf("%3ju ",
+		       rate(vmm.v_swapout + vmm.v_vnodeout -
+			    (ovmm.v_swapout + ovmm.v_vnodeout)));
+		printf("%3ju ",
+		       rate(vmm.v_tfree - ovmm.v_tfree));
+		printf("%3ju ",
+		       rate(vmm.v_pdpages - ovmm.v_pdpages));
 		devstats();
-		printf("%4lu %4lu %3lu ",
-		    (u_long)rate(vmm.v_intr - ovmm.v_intr),
-		    (u_long)rate(vmm.v_syscall - ovmm.v_syscall),
-		    (u_long)rate(vmm.v_swtch - ovmm.v_swtch));
+		printf("%4ju %4ju %3ju ",
+		       rate(vmm.v_intr - ovmm.v_intr),
+		       rate(vmm.v_syscall - ovmm.v_syscall),
+		       rate(vmm.v_swtch - ovmm.v_swtch));
 		cpustats();
 		printf("\n");
 		fflush(stdout);
@@ -598,6 +604,7 @@ dosum(void)
 	printf("%9u pages wired down\n", vms.v_wire_count);
 	printf("%9u pages free\n", vms.v_free_count);
 	printf("%9u bytes per page\n", vms.v_page_size);
+	printf("%9u global smp invltlbs\n", vmm.v_smpinvltlb);
 	
 	if ((nch_tmp = malloc(nch_size)) == NULL) {
 		perror("malloc");

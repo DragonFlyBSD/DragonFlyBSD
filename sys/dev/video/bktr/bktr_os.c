@@ -31,7 +31,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_os.c,v 1.54 2007/02/23 12:18:34 piso Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.21 2008/05/18 03:02:53 pavalos Exp $
  */
 
 /*
@@ -166,9 +165,8 @@ static	d_kqfilter_t	bktr_kqfilter;
 static void bktr_filter_detach(struct knote *);
 static int bktr_filter(struct knote *, long);
 
-#define CDEV_MAJOR 92 
 static struct dev_ops bktr_ops = {
-	{ "bktr", CDEV_MAJOR, 0 },
+	{ "bktr", 0, 0 },
 	.d_open =	bktr_open,
 	.d_close =	bktr_close,
 	.d_read =	bktr_read,

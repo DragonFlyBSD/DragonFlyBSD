@@ -34,7 +34,6 @@
  *
  *	@(#)tty_pty.c	8.4 (Berkeley) 2/20/95
  * $FreeBSD: src/sys/kern/tty_pty.c,v 1.74.2.4 2002/02/20 19:58:13 dillon Exp $
- * $DragonFly: src/sys/kern/tty_pty.c,v 1.21 2008/08/13 10:29:38 swildner Exp $
  */
 
 /*
@@ -49,7 +48,7 @@
  * Pseudo-teletype Driver
  * (Actually two drivers, requiring two dev_ops structures)
  */
-#include "use_pty.h"		/* XXX */
+
 #include "opt_compat.h"
 
 #include <sys/param.h>
@@ -105,7 +104,7 @@ static	d_clone_t 	ptyclone;
 static int	pty_debug_level = 0;
 
 static struct dev_ops pts98_ops = {
-	{ "pts98", 0, D_TTY },
+	{ "pts98", 0, D_TTY | D_MPSAFE },
 	.d_open =	ptsopen,
 	.d_close =	ptsclose,
 	.d_read =	ptsread,
@@ -116,7 +115,7 @@ static struct dev_ops pts98_ops = {
 };
 
 static struct dev_ops ptc98_ops = {
-	{ "ptc98", 0, D_TTY | D_MASTER },
+	{ "ptc98", 0, D_TTY | D_MASTER | D_MPSAFE },
 	.d_open =	ptcopen,
 	.d_close =	ptcclose,
 	.d_read =	ptcread,
@@ -127,9 +126,8 @@ static struct dev_ops ptc98_ops = {
 };
 #endif
 
-#define	CDEV_MAJOR_S	5
 static struct dev_ops pts_ops = {
-	{ "pts", CDEV_MAJOR_S, D_TTY },
+	{ "pts", 0, D_TTY | D_MPSAFE },
 	.d_open =	ptsopen,
 	.d_close =	ptsclose,
 	.d_read =	ptsread,
@@ -141,7 +139,7 @@ static struct dev_ops pts_ops = {
 
 #define	CDEV_MAJOR_C	6
 static struct dev_ops ptc_ops = {
-	{ "ptc", CDEV_MAJOR_C, D_TTY | D_MASTER },
+	{ "ptc", 0, D_TTY | D_MASTER | D_MPSAFE },
 	.d_open =	ptcopen,
 	.d_close =	ptcclose,
 	.d_read =	ptcread,
@@ -849,9 +847,9 @@ ptsunhold(struct tty *tp)
  * kqueue ops for pseudo-terminals.
  */
 static struct filterops ptcread_filtops =
-	{ FILTEROP_ISFD, NULL, filt_ptcrdetach, filt_ptcread };
+	{ FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, filt_ptcrdetach, filt_ptcread };
 static struct filterops ptcwrite_filtops =
-	{ FILTEROP_ISFD, NULL, filt_ptcwdetach, filt_ptcwrite };
+	{ FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, filt_ptcwdetach, filt_ptcwrite };
 
 static	int
 ptckqfilter(struct dev_kqfilter_args *ap)

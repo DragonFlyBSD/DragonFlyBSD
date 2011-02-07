@@ -263,6 +263,7 @@ extern void	twiddle(void);
 
 extern void	ngets(char *, int);
 #define gets(x)	ngets((x), 0)
+extern char 	*fgets(char *, int, int);
 extern int	fgetstr(char *, int, int);
 
 extern int	open(const char *, int);

@@ -144,7 +144,7 @@ MALLOC_DECLARE(DRM_MEM_DRAWABLE);
 #define DRM_MAX_CTXBITMAP (PAGE_SIZE * 8)
 
 				/* Internal types and structures */
-#define DRM_ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
+#define DRM_ARRAY_SIZE(x) NELEM(x)
 #define DRM_MIN(a,b) ((a)<(b)?(a):(b))
 #define DRM_MAX(a,b) ((a)>(b)?(a):(b))
 

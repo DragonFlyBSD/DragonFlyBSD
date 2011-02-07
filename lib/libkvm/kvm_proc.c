@@ -234,7 +234,7 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
 
 	for (; p != NULL; p = proc.p_list.le_next) {
 		if (KREAD(kd, (u_long)p, &proc)) {
-			_kvm_err(kd, kd->program, "can't read proc at %x", p);
+			_kvm_err(kd, kd->program, "can't read proc at %p", p);
 			return (-1);
 		}
 		if (KREAD(kd, (u_long)proc.p_ucred, &ucred)) {
@@ -263,14 +263,14 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
 		}
 
 		if (KREAD(kd, (u_long)proc.p_pgrp, &pgrp)) {
-			_kvm_err(kd, kd->program, "can't read pgrp at %x",
+			_kvm_err(kd, kd->program, "can't read pgrp at %p",
 				 proc.p_pgrp);
 			return (-1);
 		}
 		proc.p_pgrp = &pgrp;
 		if (proc.p_pptr) {
 		  if (KREAD(kd, (u_long)proc.p_pptr, &pproc)) {
-			_kvm_err(kd, kd->program, "can't read pproc at %x",
+			_kvm_err(kd, kd->program, "can't read pproc at %p",
 				 proc.p_pptr);
 			return (-1);
 		  }
@@ -288,7 +288,7 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
 		}
 
 		if (KREAD(kd, (u_long)pgrp.pg_session, &sess)) {
-			_kvm_err(kd, kd->program, "can't read session at %x",
+			_kvm_err(kd, kd->program, "can't read session at %p",
 				pgrp.pg_session);
 			return (-1);
 		}
@@ -297,7 +297,7 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
 		if ((proc.p_flag & P_CONTROLT) && sess.s_ttyp != NULL) {
 			if (KREAD(kd, (u_long)sess.s_ttyp, &tty)) {
 				_kvm_err(kd, kd->program,
-					 "can't read tty at %x", sess.s_ttyp);
+					 "can't read tty at %p", sess.s_ttyp);
 				return (-1);
 			}
 			sess.s_ttyp = &tty;
@@ -310,7 +310,7 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
 			if (tty.t_pgrp != NULL) {
 				if (KREAD(kd, (u_long)tty.t_pgrp, &tpgrp)) {
 					_kvm_err(kd, kd->program,
-						 "can't read tpgrp at %x",
+						 "can't read tpgrp at %p",
 						tty.t_pgrp);
 					return (-1);
 				}
@@ -375,7 +375,7 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
 			}
 			lwp.lwp_proc = &proc;
 			if (KREAD(kd, (u_long)lwp.lwp_thread, &thread)) {
-				_kvm_err(kd, kd->program, "can't read thread at %x",
+				_kvm_err(kd, kd->program, "can't read thread at %p",
 				    lwp.lwp_thread);
 				return (-1);
 			}
@@ -493,7 +493,7 @@ kvm_getprocs(kvm_t *kd, int op, int arg, int *cnt)
 		}
 		if (size % sizeof(struct kinfo_proc) != 0) {
 			_kvm_err(kd, kd->program,
-				"proc size mismatch (%d total, %d chunks)",
+				"proc size mismatch (%zd total, %zd chunks)",
 				size, sizeof(struct kinfo_proc));
 			return (0);
 		}
@@ -910,7 +910,7 @@ kvm_uread(kvm_t *kd, pid_t pid, u_long uva, char *buf, size_t len)
 	while (len > 0) {
 		errno = 0;
 		if (lseek(fd, (off_t)uva, 0) == -1 && errno != 0) {
-			_kvm_err(kd, kd->program, "invalid address (%x) in %s",
+			_kvm_err(kd, kd->program, "invalid address (%lx) in %s",
 			    uva, procfile);
 			break;
 		}

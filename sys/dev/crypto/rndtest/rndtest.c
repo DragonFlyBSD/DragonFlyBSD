@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/dev/rndtest/rndtest.c,v 1.1.4.1 2003/06/04 17:10:30 sam Exp $	*/
-/*	$DragonFly: src/sys/dev/crypto/rndtest/rndtest.c,v 1.9 2006/12/18 20:41:01 dillon Exp $	*/
 /*	$OpenBSD$	*/
 
 /*
@@ -46,6 +45,9 @@
 
 #include "rndtest.h"
 
+static	int rndtest_modevent(module_t, int, void *);
+static	void rndtest_report(struct rndtest_state *, int, const char *, ...)
+		 __printflike(3, 4);
 static	void rndtest_test(struct rndtest_state *);
 static	void rndtest_timeout(void *);
 
@@ -67,7 +69,7 @@ static const struct rndtest_testfunc {
 	{ rndtest_longruns },
 };
 
-#define	RNDTEST_NTESTS	(sizeof(rndtest_funcs)/sizeof(rndtest_funcs[0]))
+#define	RNDTEST_NTESTS	NELEM(rndtest_funcs)
 
 SYSCTL_NODE(_kern, OID_AUTO, rndtest, CTLFLAG_RD, 0, "RNG test parameters");
 

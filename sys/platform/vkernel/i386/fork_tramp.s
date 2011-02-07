@@ -31,10 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/fork_tramp.s,v 1.3 2007/01/22 19:37:04 corecode Exp $
  */
-
-#include "use_npx.h"
 
 #include <machine/asmacros.h>
 #include <machine/segments.h>
@@ -81,18 +78,6 @@ ENTRY(fork_trampoline)
 
 	call	splz
 
-#if defined(INVARIANTS) && defined(SMP)
-	movl	PCPU(curthread),%eax
-	cmpl	$0,TD_MPCOUNT(%eax)
-	je	1f
-	pushl	%esi
-	pushl	TD_MPCOUNT(%eax)
-	pushl	$pmsg4
-	call	panic
-pmsg4:  .asciz	"fork_trampoline mpcount %d after calling %p"
-	.p2align 2
-1:
-#endif
 	/*
 	 * Return via doreti to handle ASTs.
 	 */

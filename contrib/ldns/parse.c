@@ -1,5 +1,5 @@
 /*
- * a generic (simple) parser. Use to parse rr's, private key 
+ * a generic (simple) parser. Use to parse rr's, private key
  * information and /etc/resolv.conf files
  *
  * a Net::DNS like library for C
@@ -14,22 +14,22 @@
 #include <strings.h>
 
 ldns_lookup_table ldns_directive_types[] = {
-        { LDNS_DIR_TTL, "$TTL" },  
-        { LDNS_DIR_ORIGIN, "$ORIGIN" }, 
-        { LDNS_DIR_INCLUDE, "$INCLUDE" },  
+        { LDNS_DIR_TTL, "$TTL" },
+        { LDNS_DIR_ORIGIN, "$ORIGIN" },
+        { LDNS_DIR_INCLUDE, "$INCLUDE" },
         { 0, NULL }
 };
 
 /* add max_limit here? */
 ssize_t
 ldns_fget_token(FILE *f, char *token, const char *delim, size_t limit)
-{	
+{
 	return ldns_fget_token_l(f, token, delim, limit, NULL);
 }
 
 ssize_t
 ldns_fget_token_l(FILE *f, char *token, const char *delim, size_t limit, int *line_nr)
-{	
+{
 	int c, prev_c;
 	int p; /* 0 -> no parenthese seen, >0 nr of ( seen */
 	int com, quoted;
@@ -111,12 +111,13 @@ ldns_fget_token_l(FILE *f, char *token, const char *delim, size_t limit, int *li
 			continue;
 		}
 
-		
+
 		if (c == '\n' && p != 0 && t > token) {
 			/* in parentheses */
 			if (line_nr) {
 				*line_nr = *line_nr + 1;
 			}
+			*t++ = ' ';
 			prev_c = c;
 			continue;
 		}
@@ -170,7 +171,7 @@ ssize_t
 ldns_fget_keyword_data(FILE *f, const char *keyword, const char *k_del, char *data,
                const char *d_del, size_t data_limit)
 {
-       return ldns_fget_keyword_data_l(f, keyword, k_del, data, d_del, 
+       return ldns_fget_keyword_data_l(f, keyword, k_del, data, d_del,
 		       data_limit, NULL);
 }
 
@@ -183,9 +184,14 @@ ldns_fget_keyword_data_l(FILE *f, const char *keyword, const char *k_del, char *
        ssize_t i;
 
        fkeyword = LDNS_XMALLOC(char, LDNS_MAX_KEYWORDLEN);
-       i = 0;
+       if(!fkeyword)
+               return -1;
 
        i = ldns_fget_token(f, fkeyword, k_del, LDNS_MAX_KEYWORDLEN);
+       if(i==0 || i==-1) {
+               LDNS_FREE(fkeyword);
+               return -1;
+       }
 
        /* case??? i instead of strlen? */
        if (strncmp(fkeyword, keyword, LDNS_MAX_KEYWORDLEN - 1) == 0) {
@@ -204,7 +210,7 @@ ldns_fget_keyword_data_l(FILE *f, const char *keyword, const char *k_del, char *
 
 ssize_t
 ldns_bget_token(ldns_buffer *b, char *token, const char *delim, size_t limit)
-{	
+{
 	int c, lc;
 	int p; /* 0 -> no parenthese seen, >0 nr of ( seen */
 	int com, quoted;
@@ -227,7 +233,7 @@ ldns_bget_token(ldns_buffer *b, char *token, const char *delim, size_t limit)
 	quoted = 0;
 	t = token;
 	lc = 0;
-	if (delim[0] == '"') {
+	if (del[0] == '"') {
 		quoted = 1;
 	}
 
@@ -253,7 +259,6 @@ ldns_bget_token(ldns_buffer *b, char *token, const char *delim, size_t limit)
 		if (p < 0) {
 			/* more ) then ( */
 			*t = '\0';
-			lc = c;
 			return 0;
 		}
 
@@ -283,6 +288,7 @@ ldns_bget_token(ldns_buffer *b, char *token, const char *delim, size_t limit)
 
 		if (c == '\n' && p != 0) {
 			/* in parentheses */
+			*t++ = ' ';
 			lc = c;
 			continue;
 		}
@@ -293,10 +299,10 @@ ldns_bget_token(ldns_buffer *b, char *token, const char *delim, size_t limit)
 				goto tokenread;
                         }
 		}
-		
+
 		*t++ = c;
 		i++;
-		if (limit > 0 && i >= limit - 1) {
+		if (limit > 0 && i >= limit) {
 			*t = '\0';
 			return -1;
 		}
@@ -320,9 +326,9 @@ ldns_bget_token(ldns_buffer *b, char *token, const char *delim, size_t limit)
 tokenread:
 	ldns_bskipcs(b, delim);
 	*t = '\0';
-	
+
 	if (p != 0) {
-		return -1; 
+		return -1;
 	}
 	return (ssize_t)i;
 }
@@ -331,7 +337,7 @@ void
 ldns_bskipc(ldns_buffer *buffer, char c)
 {
         while (c == (char) ldns_buffer_read_u8_at(buffer, ldns_buffer_position(buffer))) {
-                if (ldns_buffer_available_at(buffer, 
+                if (ldns_buffer_available_at(buffer,
 					buffer->_position + sizeof(char), sizeof(char))) {
                         buffer->_position += sizeof(char);
                 } else {
@@ -411,17 +417,24 @@ ldns_bget_keyword_data(ldns_buffer *b, const char *keyword, const char *k_del, c
        ssize_t i;
 
        fkeyword = LDNS_XMALLOC(char, LDNS_MAX_KEYWORDLEN);
-       i = 0;
+       if(!fkeyword)
+               return -1; /* out of memory */
 
        i = ldns_bget_token(b, fkeyword, k_del, data_limit);
+       if(i==0 || i==-1) {
+               LDNS_FREE(fkeyword);
+               return -1; /* nothing read */
+       }
 
        /* case??? */
        if (strncmp(fkeyword, keyword, strlen(keyword)) == 0) {
+               LDNS_FREE(fkeyword);
                /* whee, the match! */
                /* retrieve it's data */
                i = ldns_bget_token(b, data, d_del, 0);
                return i;
        } else {
+               LDNS_FREE(fkeyword);
                return -1;
        }
 }

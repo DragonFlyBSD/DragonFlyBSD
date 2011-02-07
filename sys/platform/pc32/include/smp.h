@@ -45,16 +45,15 @@ extern int			bootMP_size;
 void	bootMP			(void);
 
 /* global data in apic_vector.s */
-extern volatile u_int		stopped_cpus;
-extern volatile u_int		started_cpus;
+extern volatile cpumask_t	stopped_cpus;
+extern volatile cpumask_t	started_cpus;
 
 extern volatile u_int		checkstate_probed_cpus;
 extern void (*cpustop_restartfunc) (void);
 
 /* functions in apic_ipl.s */
-void	apic_eoi		(void);
-u_int	io_apic_read		(int, int);
-void	io_apic_write		(int, int, u_int);
+u_int	ioapic_read		(int, int);
+void	ioapic_write		(int, int, u_int);
 
 /* global data in mp_machdep.c */
 extern int			mp_naps;
@@ -65,7 +64,7 @@ extern u_int32_t		*io_apic_versions;
 extern int			cpu_num_to_apic_id[];
 extern int			io_num_to_apic_id[];
 extern int			apic_id_to_logical[];
-#define APIC_INTMAPSIZE 32
+#define APIC_INTMAPSIZE 192
 /*
  * NOTE:
  * - Keep size of apic_intmapinfo power of 2
@@ -109,9 +108,9 @@ int	apic_polarity		(int, int);
 void	assign_apic_irq		(int apic, int intpin, int irq);
 void	revoke_apic_irq		(int irq);
 void	init_secondary		(void);
-int	stop_cpus		(u_int);
+int	stop_cpus		(cpumask_t);
 void	ap_init			(void);
-int	restart_cpus		(u_int);
+int	restart_cpus		(cpumask_t);
 void	forward_signal		(struct proc *);
 
 #ifndef _SYS_QUEUE_H_
@@ -137,7 +136,7 @@ void	apic_dump		(char*);
 void	apic_initialize		(boolean_t);
 void	imen_dump		(void);
 int	apic_ipi		(int, int, int);
-void	selected_apic_ipi	(u_int, int, int);
+void	selected_apic_ipi	(cpumask_t, int, int);
 void	single_apic_ipi(int cpu, int vector, int delivery_mode);
 int	single_apic_ipi_passive(int cpu, int vector, int delivery_mode);
 int	io_apic_setup		(int);
@@ -147,6 +146,7 @@ int	io_apic_get_id		(int);
 int	ext_int_setup		(int, int);
 void	lapic_config(void);
 void	lapic_enumerator_register(struct lapic_enumerator *);
+extern int apic_io_enable;
 
 #if defined(READY)
 void	clr_io_apic_mask24	(int, u_int32_t);

@@ -64,7 +64,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pager.c,v 1.54.2.2 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.c,v 1.24 2007/11/06 03:50:01 dillon Exp $
  */
 
 /*
@@ -167,7 +166,7 @@ struct pagerops *pagertab[] = {
 	&deadpagerops		/* OBJT_DEAD */
 };
 
-int npagers = sizeof(pagertab) / sizeof(pagertab[0]);
+int npagers = NELEM(pagertab);
 
 /*
  * Kernel address space for mapping pages.
@@ -195,8 +194,10 @@ static struct spinlock bswspin = SPINLOCK_INITIALIZER(&bswspin);
 static int pbuf_raw_count;
 static int pbuf_kva_count;
 
-SYSCTL_INT(_vfs, OID_AUTO, pbuf_raw_count, CTLFLAG_RD, &pbuf_raw_count, 0, "");
-SYSCTL_INT(_vfs, OID_AUTO, pbuf_kva_count, CTLFLAG_RD, &pbuf_kva_count, 0, "");
+SYSCTL_INT(_vfs, OID_AUTO, pbuf_raw_count, CTLFLAG_RD, &pbuf_raw_count, 0,
+    "Kernel virtual address space reservations");
+SYSCTL_INT(_vfs, OID_AUTO, pbuf_kva_count, CTLFLAG_RD, &pbuf_kva_count, 0,
+    "Kernel raw address space reservations");
 
 /*
  * Initialize the swap buffer list.

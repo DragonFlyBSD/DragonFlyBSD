@@ -756,7 +756,7 @@ msdosfs_sync(struct mount *mp, int waitfor)
 	/*
 	 * Flush filesystem control info.
 	 */
-	if (waitfor != MNT_LAZY) {
+	if ((waitfor & MNT_LAZY) == 0) {
 		vn_lock(pmp->pm_devvp, LK_EXCLUSIVE | LK_RETRY);
 		if ((error = VOP_FSYNC(pmp->pm_devvp, waitfor, 0)) != 0)
 			scaninfo.allerror = error;
@@ -776,7 +776,7 @@ msdosfs_sync_scan(struct mount *mp, struct vnode *vp, void *data)
 	if (vp->v_type == VNON || vp->v_type == VBAD ||
 	    ((dep->de_flag &
 	    (DE_ACCESS | DE_CREATE | DE_UPDATE | DE_MODIFIED)) == 0 &&
-	    (RB_EMPTY(&vp->v_rbdirty_tree) || info->waitfor == MNT_LAZY))) {
+	    (RB_EMPTY(&vp->v_rbdirty_tree) || (info->waitfor & MNT_LAZY)))) {
 		return(0);
 	}
 	if ((error = VOP_FSYNC(vp, info->waitfor, 0)) != 0)

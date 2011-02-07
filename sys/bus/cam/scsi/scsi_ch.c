@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_ch.c,v 1.20.2.2 2000/10/31 08:09:49 dwmalone Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.28 2008/07/18 00:07:23 dillon Exp $
  */
 /*
  * Derived from the NetBSD SCSI changer driver.
@@ -176,7 +175,6 @@ struct ch_softc {
 };
 
 #define CHUNIT(x)       (minor((x)))
-#define CH_CDEV_MAJOR	17
 
 static	d_open_t	chopen;
 static	d_close_t	chclose;
@@ -215,7 +213,7 @@ static struct periph_driver chdriver =
 PERIPHDRIVER_DECLARE(ch, chdriver);
 
 static struct dev_ops ch_ops = {
-	{ "ch", CH_CDEV_MAJOR, 0 },
+	{ "ch", 0, 0 },
 	.d_open = chopen,
 	.d_close = chclose,
 	.d_ioctl = chioctl

@@ -145,6 +145,36 @@ initializecpu(void)
 		load_cr4(rcr4() | CR4_FXSR | CR4_XMM);
 		cpu_fxsr = hw_instruction_sse = 1;
 	}
+#ifdef CPU_AMD64X2_INTR_SPAM
+	/*
+	 * Set the LINTEN bit in the HyperTransport Transaction
+	 * Control Register.
+	 *
+	 * This will cause EXTINT and NMI interrupts routed over the
+	 * hypertransport bus to be fed into the LAPIC LINT0/LINT1.  If
+	 * the bit isn't set, the interrupts will go to the general cpu
+	 * INTR/NMI pins.  On a multi-core cpus the interrupt winds up
+	 * going to ALL cpus.  The first cpu that does the interrupt ack
+	 * cycle will get the correct interrupt.  The second cpu that does
+	 * it will get a spurious interrupt vector (typically IRQ 7).
+	 */
+	if ((cpu_id & 0xff0) == 0xf30) {
+	    int32_t tcr;
+	    outl(0x0cf8,
+		    (1 << 31) | /* enable */
+		    (0 << 16) | /* bus */
+		    (24 << 11) |        /* dev (cpu + 24) */
+		    (0 << 8) |  /* func */
+		    0x68                /* reg */
+	    );
+	    tcr = inl(0xcfc);
+	    if ((tcr & 0x00010000) == 0) {
+		    outl(0xcfc, tcr|0x00010000);
+	    }
+	    outl(0x0cf8, 0);
+	}
+#endif
+
 	if ((amd_feature & AMDID_NX) != 0) {
 		msr = rdmsr(MSR_EFER) | EFER_NXE;
 		wrmsr(MSR_EFER, msr);

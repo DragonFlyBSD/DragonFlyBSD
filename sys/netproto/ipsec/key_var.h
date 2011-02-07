@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netipsec/key_var.h,v 1.1.4.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/key_var.h,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
 /*	$KAME: key_var.h,v 1.11 2001/09/12 23:05:07 sakane Exp $	*/
 
 /*
@@ -66,7 +65,6 @@
 }
 
 #ifdef _KERNEL
-#define _ARRAYLEN(p) (sizeof(p)/sizeof(p[0]))
 #define _KEYLEN(key) ((u_int)((key)->sadb_key_bits >> 3))
 #define _KEYBITS(key) ((u_int)((key)->sadb_key_bits))
 #define _KEYBUF(key) ((caddr_t)((caddr_t)(key) + sizeof(struct sadb_key)))

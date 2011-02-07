@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/dev/netif/bwi/bwimac.c,v 1.13 2008/02/15 11:15:38 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1644,17 +1642,15 @@ bwi_mac_attach(struct bwi_softc *sc, int id, uint8_t rev)
 	/*
 	 * Test whether the revision of this MAC is supported
 	 */
-#define N(arr)	(int)(sizeof(arr) / sizeof(arr[0]))
-	for (i = 0; i < N(bwi_sup_macrev); ++i) {
+	for (i = 0; i < NELEM(bwi_sup_macrev); ++i) {
 		if (bwi_sup_macrev[i] == rev)
 			break;
 	}
-	if (i == N(bwi_sup_macrev)) {
+	if (i == NELEM(bwi_sup_macrev)) {
 		device_printf(sc->sc_dev, "MAC rev %u is "
 			      "not supported\n", rev);
 		return ENXIO;
 	}
-#undef N
 
 	BWI_CREATE_MAC(mac, sc, id, rev);
 	sc->sc_nmac++;

@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/mss.c,v 1.95.2.3 2006/04/04 17:30:59 ariff Exp $
- * $DragonFly: src/sys/dev/sound/isa/mss.c,v 1.11 2007/06/16 20:07:18 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -95,9 +94,7 @@ static driver_intr_t 	mss_intr;
 
 /* prototypes for local functions */
 static int 		mss_detect(device_t dev, struct mss_info *mss);
-#ifndef PC98
 static int		opti_detect(device_t dev, struct mss_info *mss);
-#endif
 static char 		*ymf_test(device_t dev, struct mss_info *mss);
 static void		ad_unmute(struct mss_info *mss);
 
@@ -116,9 +113,7 @@ static void             ad_leave_MCE(struct mss_info *mss);
 /* OPTi-specific functions */
 static void		opti_write(struct mss_info *mss, u_char reg,
 				   u_char data);
-#ifndef PC98
 static u_char		opti_read(struct mss_info *mss, u_char reg);
-#endif
 static int		opti_init(device_t dev, struct mss_info *mss);
 
 /* io primitives */
@@ -1281,9 +1276,7 @@ mss_probe(device_t dev)
 
     	if (isa_get_logicalid(dev)) return ENXIO; /* not yet */
 
-    	mss = (struct mss_info *)kmalloc(sizeof *mss, M_DEVBUF, M_NOWAIT | M_ZERO);
-    	if (!mss) return ENXIO;
-
+	mss = kmalloc(sizeof *mss, M_DEVBUF, M_WAITOK | M_ZERO);
     	mss->io_rid = 0;
     	mss->conf_rid = -1;
     	mss->irq_rid = 0;
@@ -1376,7 +1369,6 @@ mss_detect(device_t dev, struct mss_info *mss)
     	name = "AD1848";
     	mss->bd_id = MD_AD1848; /* AD1848 or CS4248 */
 
-#ifndef PC98
 	if (opti_detect(dev, mss)) {
 		switch (mss->bd_id) {
 			case MD_OPTI924:
@@ -1389,7 +1381,6 @@ mss_detect(device_t dev, struct mss_info *mss)
 		kprintf("Found OPTi device %s\n", name);
 		if (opti_init(dev, mss) == 0) goto gotit;
 	}
-#endif
 
    	/*
      	* Check that the I/O address is in use.
@@ -1596,7 +1587,6 @@ no:
     	return ENXIO;
 }
 
-#ifndef PC98
 static int
 opti_detect(device_t dev, struct mss_info *mss)
 {
@@ -1642,7 +1632,6 @@ opti_detect(device_t dev, struct mss_info *mss)
 	}
 	return 0;
 }
-#endif
 
 static char *
 ymf_test(device_t dev, struct mss_info *mss)
@@ -1677,10 +1666,6 @@ ymf_test(device_t dev, struct mss_info *mss)
 		if (!j) {
 	    		bus_release_resource(dev, SYS_RES_IOPORT,
 			 		     mss->conf_rid, mss->conf_base);
-#ifdef PC98
-			/* PC98 need this. I don't know reason why. */
-			bus_delete_resource(dev, SYS_RES_IOPORT, mss->conf_rid);
-#endif
 	    		mss->conf_base = 0;
 	    		continue;
 		}
@@ -1704,23 +1689,16 @@ mss_doattach(device_t dev, struct mss_info *mss)
 	rdma = rman_get_start(mss->drq2);
     	if (flags & DV_F_TRUE_MSS) {
 		/* has IRQ/DMA registers, set IRQ and DMA addr */
-#ifdef PC98 /* CS423[12] in PC98 can use IRQ3,5,10,12 */
-		static char     interrupt_bits[13] =
-	        {-1, -1, -1, 0x08, -1, 0x10, -1, -1, -1, -1, 0x18, -1, 0x20};
-#else
 		static char     interrupt_bits[12] =
 	    	{-1, -1, -1, -1, -1, 0x28, -1, 0x08, -1, 0x10, 0x18, 0x20};
-#endif
 		static char     pdma_bits[4] =  {1, 2, -1, 3};
 		static char	valid_rdma[4] = {1, 0, -1, 0};
 		char		bits;
 
 		if (!mss->irq || (bits = interrupt_bits[rman_get_start(mss->irq)]) == -1)
 			goto no;
-#ifndef PC98 /* CS423[12] in PC98 don't support this. */
 		io_wr(mss, 0, bits | 0x40);	/* config port */
 		if ((io_rd(mss, 3) & 0x40) == 0) device_printf(dev, "IRQ Conflict?\n");
-#endif
 		/* Write IRQ+DMA setup */
 		if (pdma_bits[pdma] == -1) goto no;
 		bits |= pdma_bits[pdma];
@@ -1796,9 +1774,7 @@ mss_attach(device_t dev)
     	struct mss_info *mss;
     	int flags = device_get_flags(dev);
 
-    	mss = (struct mss_info *)kmalloc(sizeof *mss, M_DEVBUF, M_NOWAIT | M_ZERO);
-    	if (!mss) return ENXIO;
-
+	mss = kmalloc(sizeof *mss, M_DEVBUF, M_WAITOK | M_ZERO);
     	mss->io_rid = 0;
     	mss->conf_rid = -1;
     	mss->irq_rid = 0;
@@ -1977,10 +1953,7 @@ pnpmss_attach(device_t dev)
 {
 	struct mss_info *mss;
 
-	mss = (struct mss_info *)kmalloc(sizeof *mss, M_DEVBUF, M_NOWAIT | M_ZERO);
-	if (!mss)
-	    return ENXIO;
-
+	mss = kmalloc(sizeof *mss, M_DEVBUF, M_WAITOK | M_ZERO);
 	mss->io_rid = 0;
 	mss->conf_rid = -1;
 	mss->irq_rid = 0;
@@ -2180,7 +2153,6 @@ opti_write(struct mss_info *mss, u_char reg, u_char val)
 	}
 }
 
-#ifndef PC98
 u_char
 opti_read(struct mss_info *mss, u_char reg)
 {
@@ -2204,7 +2176,6 @@ opti_read(struct mss_info *mss, u_char reg)
 	}
 	return -1;
 }
-#endif
 
 static device_method_t pnpmss_methods[] = {
 	/* Device interface */
@@ -2249,10 +2220,7 @@ guspcm_attach(device_t dev)
 	int base, flags;
 	unsigned char ctl;
 
-	mss = (struct mss_info *)kmalloc(sizeof *mss, M_DEVBUF, M_NOWAIT | M_ZERO);
-	if (mss == NULL)
-		return ENOMEM;
-
+	mss = kmalloc(sizeof *mss, M_DEVBUF, M_WAITOK | M_ZERO);
 	mss->bd_flags = BD_F_MSS_OFFSET;
 	mss->io_rid = 2;
 	mss->conf_rid = 1;

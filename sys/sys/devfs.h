@@ -286,6 +286,7 @@ typedef void* (devfs_iterate_callback_t)(struct devfs_node *, void *);
 #define DEVFS_FIND_DEVICE_BY_UDEV	0x0B
 #define DEVFS_FIND_DEVICE_BY_NAME	0x0C
 #define DEVFS_MAKE_ALIAS		0x0D
+#define DEVFS_DESTROY_ALIAS		0x0E
 #define DEVFS_APPLY_RULES		0x0F
 #define	DEVFS_RESET_RULES		0x10
 #define DEVFS_SCAN_CALLBACK		0x11
@@ -388,6 +389,7 @@ struct devfs_node *devfs_create_device_node(struct devfs_node *, cdev_t,
 		      char *, char *, ...) __printf0like(4, 5);
 
 int devfs_destroy_device_node(struct devfs_node *, cdev_t);
+int devfs_destroy_node(struct devfs_node *, char *);
 int devfs_destroy_subnames(char *);
 int devfs_destroy_dev_by_ops(struct dev_ops *, int);
 struct devfs_node *devfs_find_device_node_by_name(struct devfs_node *, char *);
@@ -407,6 +409,7 @@ cdev_t devfs_clone(cdev_t, const char *, size_t, int, struct ucred *);
 int devfs_link_dev(cdev_t);
 
 int devfs_make_alias(const char *, cdev_t);
+int devfs_destroy_alias(const char *, cdev_t);
 
 int devfs_alias_create(char *, struct devfs_node *, int);
 
@@ -428,6 +431,10 @@ void *devfs_iterate_topology(struct devfs_node *node,
 		devfs_iterate_callback_t *callback, void *arg1);
 
 void *devfs_find_device_node_callback(struct devfs_node *, cdev_t);
+
+
+int devfs_WildCmp(const char *w, const char *s);
+int devfs_WildCaseCmp(const char *w, const char *s);
 
 #endif /* KERNEL */
 

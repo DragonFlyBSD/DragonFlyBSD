@@ -32,7 +32,6 @@
  *
  *	@(#)socket.h	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/sys/socket.h,v 1.39.2.7 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/socket.h,v 1.23 2008/11/10 18:16:51 dillon Exp $
  */
 
 #ifndef _SYS_SOCKET_H_
@@ -362,6 +361,7 @@ struct msghdr {
 #define	MSG_DONTWAIT	0x00000080	/* this message should be nonblocking */
 #define	MSG_EOF		0x00000100	/* data completes connection */
 #define	MSG_NOTIFICATION 0x00000200	/* notification message */
+#define	MSG_NOSIGNAL	 0x00000400	/* No SIGPIPE to unconnected socket stream */
 
 /*
  * These override FIONBIO.  MSG_FNONBLOCKING is functionally equivalent to

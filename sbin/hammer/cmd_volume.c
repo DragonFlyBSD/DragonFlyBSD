@@ -38,6 +38,7 @@
  *
  *   - volume-add: Add new volume to HAMMER filesystem
  *   - volume-del: Remove volume from HAMMER filesystem
+ *   - volume-list: List volumes making up a HAMMER filesystem
  */
 
 #include "hammer.h"
@@ -108,7 +109,7 @@ hammer_cmd_volume_del(char **av, int ac)
 
         fd = open(filesystem, O_RDONLY);
 	if (fd < 0) {
-		fprintf(stderr, "hammer volume-add: unable to access %s: %s\n",
+		fprintf(stderr, "hammer volume-del: unable to access %s: %s\n",
 			filesystem, strerror(errno));
 		exit(1);
 	}
@@ -125,6 +126,59 @@ hammer_cmd_volume_del(char **av, int ac)
 		exit(1);
 	}
 
+	close(fd);
+}
+
+/*
+ * volume-list <filesystem>
+ */
+void
+hammer_cmd_volume_list(char **av, int ac)
+{
+	struct hammer_ioc_volume_list ioc;
+	int fd;
+
+	if (ac != 1) {
+		fprintf(stderr, "hammer volume-list <filesystem>\n");
+		exit(1);
+	}
+
+	char *filesystem = av[0];
+
+	fd = open(filesystem, O_RDONLY);
+	if (fd < 0) {
+		fprintf(stderr,
+		    "hammer volume-list: unable to access %s: %s\n",
+		    filesystem, strerror(errno));
+		exit(1);
+	}
+
+	/*
+	 * volume-list ioctl
+	 */
+	bzero(&ioc, sizeof(ioc));
+	ioc.vols = malloc(HAMMER_MAX_VOLUMES *
+			  sizeof(struct hammer_ioc_volume));
+	if (ioc.vols == NULL) {
+		fprintf(stderr,
+		    "hammer volume-list: unable to allocate memory: %s\n",
+		    strerror(errno));
+		exit(1);
+	}
+	ioc.nvols = HAMMER_MAX_VOLUMES;
+
+	if (ioctl(fd, HAMMERIOC_LIST_VOLUMES, &ioc) < 0) {
+		fprintf(stderr, "hammer volume-list ioctl: %s\n",
+			strerror(errno));
+		free(ioc.vols);
+		exit(1);
+	}
+
+	int i;
+	for (i = 0; i < ioc.nvols; i++)
+		printf("%s\n", ioc.vols[i].device_name);
+
+	free(ioc.vols);
 	close(fd);
 }
 

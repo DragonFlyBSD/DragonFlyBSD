@@ -172,46 +172,6 @@ struct nchandle {
 #define CINV_UNUSED02	0x0002
 #define CINV_CHILDREN	0x0004	/* recursively set children to unresolved */
 
-/*
- * MP lock helper for namecache.
- *
- * CACHE_GETMPLOCK1() Conditionally gets the MP lock if cache_mpsafe
- *		      is not set, otherwise does not.
- *
- * CACHE_GETMPLOCK2() Unconditionally gets the MP lock if it is not already
- *		      held (e.g. from GETMPLOCK1).
- *
- * CACHE_RELMPLOCK()  Releases the MP lock if it was previously acquired
- *		      by GETMPLOCK1 or GETMPLOCK2.
- */
-#define CACHE_MPLOCK_DECLARE		int have_mplock
-
-#define CACHE_GETMPLOCK1()						\
-		do {							\
-			if (cache_mpsafe) {				\
-				have_mplock = 0;			\
-			} else {					\
-				get_mplock();				\
-				have_mplock = 1;			\
-			}						\
-		} while (0)
-
-#define CACHE_GETMPLOCK2()						\
-		do {							\
-			if (have_mplock == 0) {				\
-				have_mplock = 1;			\
-				get_mplock();				\
-			}						\
-		} while(0)
-
-#define CACHE_RELMPLOCK()						\
-		do {							\
-			if (have_mplock) {				\
-				have_mplock = 0;			\
-				rel_mplock();				\
-			}						\
-		} while(0)
-
 #ifdef _KERNEL
 
 extern int cache_mpsafe;

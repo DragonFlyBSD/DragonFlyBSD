@@ -107,6 +107,7 @@
 #ifdef IPSEC
 #include <netinet6/ipsec.h>
 #include <netproto/key/key.h>
+#include <netproto/ipsec/esp_var.h>
 #endif
 
 #ifdef FAST_IPSEC
@@ -137,6 +138,9 @@ int ipport_hilastauto = IPPORT_HILASTAUTO;	/* 65535 */
 #define RANGECHK(var, min, max) \
 	if ((var) < (min)) { (var) = (min); } \
 	else if ((var) > (max)) { (var) = (max); }
+
+int udpencap_enable = 1;	/* enabled by default */
+int udpencap_port = 4500;	/* triggers decapsulation */
 
 static int
 sysctl_net_ipport_check(SYSCTL_HANDLER_ARGS)
@@ -193,6 +197,30 @@ in_pcbinfo_init(struct inpcbinfo *pcbinfo)
 	pcbinfo->portsave = kmalloc(sizeof(*pcbinfo->portsave), M_PCB,
 				    M_WAITOK | M_ZERO);
 }
+
+struct baddynamicports baddynamicports;
+
+/*
+ * Check if the specified port is invalid for dynamic allocation.
+ */
+int
+in_baddynamic(u_int16_t port, u_int16_t proto)
+{
+	switch (proto) {
+	case IPPROTO_TCP:
+		return (DP_ISSET(baddynamicports.tcp, port));
+	case IPPROTO_UDP:
+#ifdef IPSEC
+		/* Cannot preset this as it is a sysctl */
+		if (port == udpencap_port)
+			return (1);
+#endif
+		return (DP_ISSET(baddynamicports.udp, port));
+	default:
+		return (0);
+	}
+}
+
 
 /*
  * Allocate a PCB and associate it with the socket.
@@ -1335,7 +1363,6 @@ in_pcblist_global(SYSCTL_HANDLER_ARGS)
 	struct inpcb *inp, *marker;
 	struct xinpcb xi;
 	int error, i, n;
-	inp_gen_t gencnt;
 
 	/*
 	 * The process of preparing the TCB list is too time-consuming and
@@ -1354,7 +1381,6 @@ in_pcblist_global(SYSCTL_HANDLER_ARGS)
 	 * OK, now we're committed to doing something.  Re-fetch ipi_count
 	 * after obtaining the generation count.
 	 */
-	gencnt = pcbinfo->ipi_gencnt;
 	n = pcbinfo->ipi_count;
 
 	marker = kmalloc(sizeof(struct inpcb), M_TEMP, M_WAITOK|M_ZERO);
@@ -1369,8 +1395,6 @@ in_pcblist_global(SYSCTL_HANDLER_ARGS)
 		LIST_INSERT_AFTER(inp, marker, inp_list);
 
 		if (inp->inp_flags & INP_PLACEMARKER)
-			continue;
-		if (inp->inp_gencnt > gencnt)
 			continue;
 		if (prison_xinpcb(req->td, inp))
 			continue;
@@ -1394,4 +1418,62 @@ in_pcblist_global(SYSCTL_HANDLER_ARGS)
 	}
 	kfree(marker, M_TEMP);
 	return(error);
+}
+
+int
+in_pcblist_global_nomarker(SYSCTL_HANDLER_ARGS, struct xinpcb **xi0, int *nxi0)
+{
+	struct inpcbinfo *pcbinfo = arg1;
+	struct inpcb *inp;
+	struct xinpcb *xi;
+	int nxi;
+
+	*nxi0 = 0;
+	*xi0 = NULL;
+
+	/*
+	 * The process of preparing the PCB list is too time-consuming and
+	 * resource-intensive to repeat twice on every request.
+	 */
+	if (req->oldptr == NULL) {
+		int n = pcbinfo->ipi_count;
+
+		req->oldidx = (n + n/8 + 10) * sizeof(struct xinpcb);
+		return 0;
+	}
+
+	if (req->newptr != NULL)
+		return EPERM;
+
+	if (pcbinfo->ipi_count == 0)
+		return 0;
+
+	nxi = 0;
+	xi = kmalloc(pcbinfo->ipi_count * sizeof(*xi), M_TEMP,
+		     M_WAITOK | M_ZERO | M_NULLOK);
+	if (xi == NULL)
+		return ENOMEM;
+
+	LIST_FOREACH(inp, &pcbinfo->pcblisthead, inp_list) {
+		struct xinpcb *xi_ptr = &xi[nxi];
+
+		if (prison_xinpcb(req->td, inp))
+			continue;
+
+		xi_ptr->xi_len = sizeof(*xi_ptr);
+		bcopy(inp, &xi_ptr->xi_inp, sizeof(*inp));
+		if (inp->inp_socket)
+			sotoxsocket(inp->inp_socket, &xi_ptr->xi_socket);
+		++nxi;
+	}
+
+	if (nxi == 0) {
+		kfree(xi, M_TEMP);
+		return 0;
+	}
+
+	*nxi0 = nxi;
+	*xi0 = xi;
+
+	return 0;
 }

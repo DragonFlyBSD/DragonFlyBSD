@@ -34,7 +34,6 @@
  *	@(#)ipx_proto.c
  *
  * $FreeBSD: src/sys/netipx/ipx_proto.c,v 1.15 1999/08/28 00:49:41 peter Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_proto.c,v 1.8 2008/11/01 04:22:15 sephe Exp $
  */
 
 #include "opt_ipx.h"
@@ -46,6 +45,8 @@
 #include <sys/kernel.h>
 #include <sys/queue.h>
 #include <sys/sysctl.h>
+#include <sys/globaldata.h>
+#include <sys/thread.h>
 
 #include <net/radix.h>
 
@@ -149,10 +150,16 @@ static struct protosw ipxsw[] = {
 #endif
 };
 
+static int
+ipx_inithead(void **head, int off)
+{
+	return rn_inithead(head, rn_cpumaskhead(mycpuid), off);
+}
+
 static struct	domain ipxdomain =
     { AF_IPX, "network systems", 0, 0, 0, 
-      ipxsw, &ipxsw[sizeof(ipxsw)/sizeof(ipxsw[0])], SLIST_ENTRY_INITIALIZER,
-      rn_inithead, 16, sizeof(struct sockaddr_ipx)};
+      ipxsw, &ipxsw[NELEM(ipxsw)], SLIST_ENTRY_INITIALIZER,
+      ipx_inithead, 16, sizeof(struct sockaddr_ipx)};
 
 DOMAIN_SET(ipx);
 SYSCTL_NODE(_net,	PF_IPX,		ipx,	CTLFLAG_RW, 0,

@@ -78,10 +78,11 @@ int	lbolt;
 int	lbolt_syncer;
 int	sched_quantum;		/* Roundrobin scheduling quantum in ticks. */
 int	ncpus;
-int	ncpus2, ncpus2_shift, ncpus2_mask;
-int	ncpus_fit, ncpus_fit_mask;
+int	ncpus2, ncpus2_shift, ncpus2_mask;	/* note: mask not cpumask_t */
+int	ncpus_fit, ncpus_fit_mask;		/* note: mask not cpumask_t */
 int	safepri;
 int	tsleep_now_works;
+int	tsleep_crypto_dump = 0;
 
 static struct callout loadav_callout;
 static struct callout schedcpu_callout;
@@ -118,7 +119,7 @@ static void	endtsleep (void *);
 static void	loadav (void *arg);
 static void	schedcpu (void *arg);
 #ifdef SMP
-static void	tsleep_wakeup(struct thread *td);
+static void	tsleep_wakeup_remote(struct thread *td);
 #endif
 
 /*
@@ -359,13 +360,13 @@ _tsleep_interlock(globaldata_t gd, const volatile void *ident, int flags)
 		id = LOOKUP(td->td_wchan);
 		TAILQ_REMOVE(&gd->gd_tsleep_hash[id], td, td_sleepq);
 		if (TAILQ_FIRST(&gd->gd_tsleep_hash[id]) == NULL)
-			atomic_clear_int(&slpque_cpumasks[id], gd->gd_cpumask);
+			atomic_clear_cpumask(&slpque_cpumasks[id], gd->gd_cpumask);
 	} else {
 		td->td_flags |= TDF_TSLEEPQ;
 	}
 	id = LOOKUP(ident);
 	TAILQ_INSERT_TAIL(&gd->gd_tsleep_hash[id], td, td_sleepq);
-	atomic_set_int(&slpque_cpumasks[id], gd->gd_cpumask);
+	atomic_set_cpumask(&slpque_cpumasks[id], gd->gd_cpumask);
 	td->td_wchan = ident;
 	td->td_wdomain = flags & PDOMAIN_MASK;
 	crit_exit_quick(td);
@@ -392,7 +393,7 @@ _tsleep_remove(thread_t td)
 		id = LOOKUP(td->td_wchan);
 		TAILQ_REMOVE(&gd->gd_tsleep_hash[id], td, td_sleepq);
 		if (TAILQ_FIRST(&gd->gd_tsleep_hash[id]) == NULL)
-			atomic_clear_int(&slpque_cpumasks[id], gd->gd_cpumask);
+			atomic_clear_cpumask(&slpque_cpumasks[id], gd->gd_cpumask);
 		td->td_wchan = NULL;
 		td->td_wdomain = 0;
 	}
@@ -412,6 +413,11 @@ tsleep_remove(thread_t td)
  * This function mus be called while in a critical section but if the
  * target thread is sleeping on a different cpu we cannot safely probe
  * td_flags.
+ *
+ * This function is only called from a different cpu via setrunnable()
+ * when the thread is in a known sleep.  However, multiple wakeups are
+ * possible and we must hold the td to prevent a race against the thread
+ * exiting.
  */
 static __inline
 void
@@ -421,7 +427,8 @@ _tsleep_wakeup(struct thread *td)
 	globaldata_t gd = mycpu;
 
 	if (td->td_gd != gd) {
-		lwkt_send_ipiq(td->td_gd, (ipifunc1_t)tsleep_wakeup, td);
+		lwkt_hold(td);
+		lwkt_send_ipiq(td->td_gd, (ipifunc1_t)tsleep_wakeup_remote, td);
 		return;
 	}
 #endif
@@ -435,9 +442,10 @@ _tsleep_wakeup(struct thread *td)
 #ifdef SMP
 static
 void
-tsleep_wakeup(struct thread *td)
+tsleep_wakeup_remote(struct thread *td)
 {
 	_tsleep_wakeup(td);
+	lwkt_rele(td);
 }
 #endif
 
@@ -477,7 +485,7 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	 * NOTE: removed KTRPOINT, it could cause races due to blocking
 	 * even in stable.  Just scrap it for now.
 	 */
-	if (tsleep_now_works == 0 || panicstr) {
+	if (!tsleep_crypto_dump && (tsleep_now_works == 0 || panicstr)) {
 		/*
 		 * After a panic, or before we actually have an operational
 		 * softclock, just give interrupts a chance, then just return;
@@ -1040,8 +1048,8 @@ wakeup_domain_one(const volatile void *ident, int domain)
  * has an effect if we are in SSLEEP.  We only break out of the
  * tsleep if LWP_BREAKTSLEEP is set, otherwise we just fix-up the state.
  *
- * NOTE: With the MP lock held we can only safely manipulate the process
- * structure.  We cannot safely manipulate the thread structure.
+ * NOTE: With proc_token held we can only safely manipulate the process
+ * structure and the lp's lwp_stat.
  */
 void
 setrunnable(struct lwp *lp)

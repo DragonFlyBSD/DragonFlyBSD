@@ -57,10 +57,6 @@ add_new_alias() {
 }
 
 delete_old_routes() {
-	# Delete existing default route. We only allow one, so no need to
-	# process $old_routers list.
-	route delete default >/dev/null 2>&1
-
 	if [ -n "$old_static_routes" ]; then
 		set $old_static_routes
 		while [ $# -gt 1 ]; do
@@ -73,8 +69,8 @@ delete_old_routes() {
 }
 
 add_new_routes() {
-	route delete default >/dev/null 2>&1
 	for router in $new_routers; do
+		route delete default >/dev/null 2>&1
 		if [ "$new_ip_address" = "$router" ]; then
 			route add default -iface $router >/dev/null 2>&1
 		else

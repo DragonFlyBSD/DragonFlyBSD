@@ -328,6 +328,9 @@ struct ath_hal_5212 {
 	uint16_t	*ah_pcdacTable;
 	u_int		ah_pcdacTableSize;
 	uint16_t	ah_ratesArray[16];
+
+	uint8_t		ah_txTrigLev;		/* current Tx trigger level */
+	uint8_t		ah_maxTxTrigLev;	/* max tx trigger level */
 };
 #define	AH5212(_ah)	((struct ath_hal_5212 *)(_ah))
 
@@ -606,4 +609,8 @@ extern	void ar5212AniPoll(struct ath_hal *, const HAL_NODE_STATS *,
 			     const struct ieee80211_channel *);
 extern	void ar5212AniReset(struct ath_hal *, const struct ieee80211_channel *,
 		HAL_OPMODE, int);
+
+extern	HAL_BOOL ar5212IsNFCalInProgress(struct ath_hal *ah);
+extern	HAL_BOOL ar5212WaitNFCalComplete(struct ath_hal *ah, int i);
+
 #endif	/* _ATH_AR5212_H_ */

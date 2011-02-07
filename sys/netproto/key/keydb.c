@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netkey/keydb.c,v 1.1.2.1 2000/07/15 07:14:42 kris Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/keydb.c,v 1.10 2008/01/05 14:02:40 swildner Exp $	*/
 /*	$KAME: keydb.c,v 1.64 2000/05/11 17:02:30 itojun Exp $	*/
 
 /*
@@ -89,7 +88,7 @@ keydb_newsecashead(void)
 	p = kmalloc(sizeof(*p), M_SECA, M_INTWAIT | M_NULLOK | M_ZERO);
 	if (!p)
 		return p;
-	for (i = 0; i < sizeof(p->savtree)/sizeof(p->savtree[0]); i++)
+	for (i = 0; i < NELEM(p->savtree); i++)
 		LIST_INIT(&p->savtree[i]);
 	return p;
 }

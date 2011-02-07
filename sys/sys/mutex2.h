@@ -38,6 +38,12 @@
 #ifndef _SYS_MUTEX_H_
 #include <sys/mutex.h>
 #endif
+#ifndef _SYS_THREAD2_H_
+#include <sys/thread2.h>
+#endif
+#ifndef _SYS_GLOBALDATA_H_
+#include <sys/globaldata.h>
+#endif
 #ifndef _MACHINE_ATOMIC_H_
 #include <machine/atomic.h>
 #endif
@@ -151,37 +157,59 @@ mtx_lock_sh_quick(mtx_t mtx, const char *ident)
 }
 
 /*
- * Short-form exclusive-lock a mutex, spin until acquired.  Recursion is
- * allowed.  This form is identical to mtx_spinlock_ex().
+ * Short-form exclusive spinlock a mutex.  Must be paired with
+ * mtx_spinunlock().
  */
 static __inline void
 mtx_spinlock(mtx_t mtx)
 {
+	globaldata_t gd = mycpu;
+
+	/*
+	 * Predispose a hard critical section
+	 */
+	++gd->gd_curthread->td_critcount;
+	cpu_ccfence();
+	++gd->gd_spinlocks_wr;
+
+	/*
+	 * If we cannot get it trivially get it the hard way.
+	 *
+	 * Note that mtx_owner will be set twice if we fail to get it
+	 * trivially, but there's no point conditionalizing it as a
+	 * conditional will be slower.
+	 */
 	if (atomic_cmpset_int(&mtx->mtx_lock, 0, MTX_EXCLUSIVE | 1) == 0)
-		_mtx_spinlock_ex(mtx);
+		_mtx_spinlock(mtx);
+	mtx->mtx_owner = gd->gd_curthread;
 }
 
-/*
- * Exclusive-lock a mutex, spin until acquired.  Recursion is allowed.
- */
-static __inline void
-mtx_spinlock_ex(mtx_t mtx)
+static __inline int
+mtx_spinlock_try(mtx_t mtx)
 {
+	globaldata_t gd = mycpu;
+
+	/*
+	 * Predispose a hard critical section
+	 */
+	++gd->gd_curthread->td_critcount;
+	cpu_ccfence();
+	++gd->gd_spinlocks_wr;
+
+	/*
+	 * If we cannot get it trivially call _mtx_spinlock_try().  This
+	 * function will clean up the hard critical section if it fails.
+	 */
 	if (atomic_cmpset_int(&mtx->mtx_lock, 0, MTX_EXCLUSIVE | 1) == 0)
-		_mtx_spinlock_ex(mtx);
+		return(_mtx_spinlock_try(mtx));
+	mtx->mtx_owner = gd->gd_curthread;
+	return (0);
 }
 
 /*
- * Share-lock a mutex, spin until acquired.  Recursion is allowed.
- */
-static __inline void
-mtx_spinlock_sh(mtx_t mtx)
-{
-	if (atomic_cmpset_int(&mtx->mtx_lock, 0, 1) == 0)
-		_mtx_spinlock_sh(mtx);
-}
-
-/*
+ * Short-form exclusive-lock a mutex, spin until acquired.  Recursion is
+ * allowed.  This form is identical to mtx_spinlock_ex().
+ *
  * Attempt to exclusive-lock a mutex, return 0 on success and
  * EAGAIN on failure.
  */
@@ -287,6 +315,21 @@ mtx_unlock_sh(mtx_t mtx)
 {
 	if (atomic_cmpset_int(&mtx->mtx_lock, 1, 0) == 0)
 		_mtx_unlock(mtx);
+}
+
+/*
+ * NOTE: spinlocks are exclusive-only
+ */
+static __inline void
+mtx_spinunlock(mtx_t mtx)
+{
+	globaldata_t gd = mycpu;
+
+	mtx_unlock(mtx);
+
+	--gd->gd_spinlocks_wr;
+	cpu_ccfence();
+	--gd->gd_curthread->td_critcount;
 }
 
 /*

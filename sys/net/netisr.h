@@ -165,6 +165,7 @@ struct netisr {
 
 extern lwkt_port netisr_adone_rport;
 extern lwkt_port netisr_afree_rport;
+extern lwkt_port netisr_afree_free_so_rport;
 extern lwkt_port netisr_apanic_rport;
 extern lwkt_port netisr_sync_port;
 
@@ -176,6 +177,10 @@ void		netisr_register_rollup(netisr_ru_t ru_func);
 
 void		netisr_characterize(int num, struct mbuf **mp, int hoff);
 int		netisr_queue(int, struct mbuf *);
+
+struct netisr_barrier *netisr_barrier_create(void);
+void		netisr_barrier_set(struct netisr_barrier *);
+void		netisr_barrier_rem(struct netisr_barrier *);
 
 void		netmsg_service_port_init(lwkt_port_t);
 void		netmsg_service_sync(void);

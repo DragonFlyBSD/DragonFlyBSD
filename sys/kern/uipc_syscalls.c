@@ -35,7 +35,6 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.92 2008/11/26 13:10:56 sephe Exp $
  */
 
 #include "opt_ktrace.h"
@@ -696,7 +695,7 @@ kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
 		if (auio->uio_resid != len && (error == ERESTART ||
 		    error == EINTR || error == EWOULDBLOCK))
 			error = 0;
-		if (error == EPIPE)
+		if (error == EPIPE && !(flags & MSG_NOSIGNAL))
 			lwpsignal(p, lp, SIGPIPE);
 	}
 #ifdef KTRACE
@@ -1644,7 +1643,6 @@ retry_lookup:
 		 *	interrupt can free the page) through to the
 		 *	vm_page_wire() call.
 		 */
-		crit_enter();
 		lwkt_gettoken(&vm_token);
 		pg = vm_page_lookup(obj, pindex);
 		if (pg == NULL) {
@@ -1652,18 +1650,17 @@ retry_lookup:
 			if (pg == NULL) {
 				vm_wait(0);
 				lwkt_reltoken(&vm_token);
-				crit_exit();
 				goto retry_lookup;
 			}
+			vm_page_wire(pg);
 			vm_page_wakeup(pg);
 		} else if (vm_page_sleep_busy(pg, TRUE, "sfpbsy")) {
 			lwkt_reltoken(&vm_token);
-			crit_exit();
 			goto retry_lookup;
+		} else {
+			vm_page_wire(pg);
 		}
-		vm_page_wire(pg);
 		lwkt_reltoken(&vm_token);
-		crit_exit();
 
 		/*
 		 * If page is not valid for what we need, initiate I/O

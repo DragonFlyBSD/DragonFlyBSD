@@ -393,10 +393,10 @@ give_sd_to_drive(int sdno)
 		    sd->driveoffset = -1;		    /* don't be confusing */
 		    set_sd_state(sd->sdno, sd_down, setstate_force);
 		    throw_rude_remark(ENOSPC,
-			"No space for %s on drive %s at offset %lld",
+			"No space for %s on drive %s at offset %jd",
 			sd->name,
 			drive->label.name,
-			sd->driveoffset);
+			(intmax_t)sd->driveoffset);
 		    return;
 		}
 		/*
@@ -1190,7 +1190,7 @@ config_subdisk(int update)
 	    else
 		size = sizespec(token[parameter]);
 	    if ((size % DEV_BSIZE) != 0)
-		throw_rude_remark(EINVAL, "sd %s, length %d not multiple of sector size", sd->name, size);
+		throw_rude_remark(EINVAL, "sd %s, length %jd not multiple of sector size", sd->name, (intmax_t)size);
 	    else
 		sd->sectors = size / DEV_BSIZE;
 	    /*

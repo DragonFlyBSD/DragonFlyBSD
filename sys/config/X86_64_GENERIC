@@ -1,5 +1,5 @@
 #
-# GENERIC -- Generic kernel configuration file for DragonFly/x86_64
+# X86_64_GENERIC -- Generic kernel configuration file for DragonFly/x86_64
 #
 # Check the LINT configuration file in sys/config, for an
 # exhaustive list of options.
@@ -60,13 +60,13 @@ options		ALTQ_FAIRQ	#fair queueing
 #options	ALTQ_DEBUG	#for debugging
 
 
-# To make an SMP kernel both SMP and APIC_IO are usually
-# specified.  SMP boxes with severely broken BIOSes which
-# boot fine for non-SMP builds *might* work in SMP mode
-# if you define SMP and leave APIC_IO turned off.
+# SMP boxes should normally be build with SMP and APIC_IO.  If SMP has
+# interrupt routing problems in APIC_IO you can disable it with the
+# hw.apic_io_enable=0 tunable or by building without the APIC_IO option.
+#
 #
 #options 	SMP			# Symmetric MultiProcessor Kernel
-#options 	APIC_IO			# Symmetric (APIC) I/O
+#options	APIC_IO			# hw.apic_io_enable = 1 by default
 
 # Debugging for Development
 options 	DDB
@@ -110,7 +110,6 @@ options 	ATA_STATIC_ID		# Static device numbering
 #options 	ATA_STATIC_ID		#Static device numbering
 
 # SCSI Controllers
-device		ahb		# EISA AHA1742 family
 device		ahc		# AHA2940 and onboard AIC7xxx devices
 device		ahd		# AHA39320/29320 and onboard AIC79xx devices
 device		amd		# AMD 53C974 (Tekram DC-390(T))
@@ -141,26 +140,28 @@ device		pass		# Passthrough device (direct SCSI access)
 device		sg		# Passthrough device (linux scsi generic)
 
 # RAID controllers interfaced to the SCSI subsystem
+device		arcmsr		# Areca SATA II RAID
 device		asr		# DPT SmartRAID V, VI and Adaptec SCSI RAID
+device		ciss		# Compaq SmartRAID 5* series
 device		dpt		# DPT Smartcache - See LINT for options!
+device		hptiop		# Highpoint RocketRaid 3xxx series
+device		hptmv		# Highpoint RocketRAID 182x
 device		iir		# Intel Integrated RAID
 device		mly		# Mylex AcceleRAID/eXtremeRAID
-device		ciss		# Compaq SmartRAID 5* series
+device		twa		# 3ware 9000 series PATA/SATA RAID
+device		tws		# 3ware 9750 series SATA/SAS RAID
 
 # RAID controllers
 device		aac		# Adaptec FSA RAID, Dell PERC2/PERC3
-#device		aacp		# SCSI passthrough for aac (requires CAM)
+device		aacp		# SCSI passthrough for aac (requires CAM)
+device		amr		# AMI MegaRAID
+device		amrp		# SCSI Passthrough interface (optional, CAM req.)
 device		ida		# Compaq Smart RAID
 device		ips		# IBM ServeRAID
-device		amr		# AMI MegaRAID
 device		mlx		# Mylex DAC960 family
+device		mfi		# LSI MegaRAID SAS
+device		mfip		# LSI MegaRAID SAS passthrough, requires CAM
 device		twe		# 3ware Escalade 7000/8000's
-device		twa		# 3ware 9000 series PATA/SATA RAID
-
-#
-# Areca RAID (CAM is required).
-#
-device		arcmsr		# Areca SATA II RAID
 
 # atkbdc0 controls both the keyboard and the PS/2 mouse
 device		atkbdc0	at isa? port IO_KBD

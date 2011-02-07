@@ -42,7 +42,7 @@
 
 __BEGIN_DECLS
 void	_pam_verbose_error(pam_handle_t *, int, const char *,
-		const char *, const char *, ...);
+		const char *, const char *, ...) __printflike(5, 6);
 __END_DECLS
 
 #define	PAM_LOG(...) \

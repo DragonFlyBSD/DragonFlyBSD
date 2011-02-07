@@ -93,9 +93,9 @@ static int	filt_piperead(struct knote *kn, long hint);
 static int	filt_pipewrite(struct knote *kn, long hint);
 
 static struct filterops pipe_rfiltops =
-	{ FILTEROP_ISFD, NULL, filt_pipedetach, filt_piperead };
+	{ FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, filt_pipedetach, filt_piperead };
 static struct filterops pipe_wfiltops =
-	{ FILTEROP_ISFD, NULL, filt_pipedetach, filt_pipewrite };
+	{ FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, filt_pipedetach, filt_pipewrite };
 
 MALLOC_DEFINE(M_PIPE, "pipe", "pipe structures");
 
@@ -350,8 +350,8 @@ pipe_create(struct pipe **cpipep)
 	vfs_timestamp(&cpipe->pipe_ctime);
 	cpipe->pipe_atime = cpipe->pipe_ctime;
 	cpipe->pipe_mtime = cpipe->pipe_ctime;
-	lwkt_token_init(&cpipe->pipe_rlock, 1, "piper");
-	lwkt_token_init(&cpipe->pipe_wlock, 1, "pipew");
+	lwkt_token_init(&cpipe->pipe_rlock, "piper");
+	lwkt_token_init(&cpipe->pipe_wlock, "pipew");
 	return (0);
 }
 

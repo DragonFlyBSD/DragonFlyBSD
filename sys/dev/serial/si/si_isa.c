@@ -58,7 +58,7 @@ si_isa_probe(device_t dev)
 	paddr = (caddr_t)rman_get_start(sc->sc_mem_res);/* physical */
 	maddr = rman_get_virtual(sc->sc_mem_res);	/* in kvm */
 
-	DPRINT((0, DBG_AUTOBOOT, "si%d: probe at virtual=0x%x physical=0x%x\n",
+	DPRINT((0, DBG_AUTOBOOT, "si%d: probe at virtual=%p physical=%p\n",
 		unit, maddr, paddr));
 
 	/*
@@ -74,7 +74,7 @@ si_isa_probe(device_t dev)
 
 	if (((u_int)paddr & 0x7fff) != 0) {
 		DPRINT((0, DBG_AUTOBOOT|DBG_FAIL,
-			"si%d: iomem (%x) not on 32k boundary\n", unit, paddr));
+			"si%d: iomem (%p) not on 32k boundary\n", unit, paddr));
 		goto fail;
 	}
 
@@ -82,7 +82,7 @@ si_isa_probe(device_t dev)
 	*maddr = 0x17;
 	if (*maddr != 0x17) {
 		DPRINT((0, DBG_AUTOBOOT|DBG_FAIL,
-			"si%d: 0x17 check fail at phys 0x%x\n", unit, paddr));
+			"si%d: 0x17 check fail at phys %p\n", unit, paddr));
 		goto fail;
 	}
 	/*
@@ -146,7 +146,7 @@ try_mk1:
 	*(maddr+0x7ff8) = 0x17;
 	if (*(maddr+0x7ff8) != (unsigned char)0x17) {
 		DPRINT((0, DBG_AUTOBOOT|DBG_FAIL,
-			"si%d: 0x17 check fail at phys 0x%x = 0x%x\n",
+			"si%d: 0x17 check fail at phys %p = 0x%x\n",
 			unit, paddr+0x77f8, *(maddr+0x77f8)));
 		goto fail;
 	}
@@ -166,7 +166,7 @@ got_card:
 	for (i = 0; i < ramsize; i++, ux++) {
 		if ((was = *ux) != (unsigned char)(i&0xff)) {
 			DPRINT((0, DBG_AUTOBOOT|DBG_FAIL,
-				"si%d: match fail at phys 0x%x, was %x should be %x\n",
+				"si%d: match fail at phys %p, was %x should be %x\n",
 				unit, paddr + i, was, i&0xff));
 			goto fail;
 		}
@@ -180,7 +180,7 @@ got_card:
 	for (i = 0; i < ramsize; i++) {
 		if ((was = *ux++) != 0) {
 			DPRINT((0, DBG_AUTOBOOT|DBG_FAIL,
-				"si%d: clear fail at phys 0x%x, was %x\n",
+				"si%d: clear fail at phys %p, was %x\n",
 				unit, paddr + i, was));
 			goto fail;
 		}

@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_disk.c,v 1.4 2003/09/22 04:59:07 njl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_disk.c,v 1.14 2008/06/10 17:20:52 dillon Exp $
  */
 
 #include <sys/devicestat.h>
@@ -52,7 +51,7 @@ static d_strategy_t ipsd_strategy;
 static d_dump_t ipsd_dump;
 
 static struct dev_ops ipsd_ops = {
-	{ "ipsd", IPSD_CDEV_MAJOR, D_DISK },
+	{ "ipsd", 0, D_DISK },
 	.d_open	=	ipsd_open,
 	.d_close =	ipsd_close,
 	.d_strategy =	ipsd_strategy,

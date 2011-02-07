@@ -149,11 +149,11 @@ static int	poll_defcpu = -1;
 SYSCTL_INT(_kern_polling, OID_AUTO, defcpu, CTLFLAG_RD,
 	&poll_defcpu, 0, "default CPU to run device polling");
 
-static uint32_t	poll_cpumask0 = 0xffffffff;
-TUNABLE_INT("kern.polling.cpumask", (int *)&poll_cpumask0);
+static cpumask_t poll_cpumask0 = (cpumask_t)-1;
+TUNABLE_ULONG("kern.polling.cpumask", (u_long *)&poll_cpumask0);
 
-static uint32_t	poll_cpumask;
-SYSCTL_INT(_kern_polling, OID_AUTO, cpumask, CTLFLAG_RD,
+static cpumask_t poll_cpumask;
+SYSCTL_LONG(_kern_polling, OID_AUTO, cpumask, CTLFLAG_RD,
 	&poll_cpumask, 0, "CPUs that can run device polling");
 
 static int	polling_enabled = 1;	/* global polling enable */
@@ -231,7 +231,7 @@ init_device_poll_pcpu(int cpuid)
 	if (cpuid >= POLLCTX_MAX)
 		return;
 
-	if (((1 << cpuid) & poll_cpumask0) == 0)
+	if ((CPUMASK(cpuid) & poll_cpumask0) == 0)
 		return;
 
 	if (poll_burst_max < MIN_POLL_BURST_MAX)
@@ -242,7 +242,7 @@ init_device_poll_pcpu(int cpuid)
 	if (poll_each_burst > poll_burst_max)
 		poll_each_burst = poll_burst_max;
 
-	poll_cpumask |= (1 << cpuid);
+	poll_cpumask |= CPUMASK(cpuid);
 
 	pctx = kmalloc(sizeof(*pctx), M_DEVBUF, M_WAITOK | M_ZERO);
 
@@ -738,7 +738,7 @@ ether_pollcpu_register(struct ifnet *ifp, int cpuid)
 	if (cpuid < 0 || cpuid >= POLLCTX_MAX)
 		return 0;
 
-	if (((1 << cpuid) & poll_cpumask) == 0) {
+	if ((CPUMASK(cpuid) & poll_cpumask) == 0) {
 		/* Polling is not supported on 'cpuid' */
 		return 0;
 	}

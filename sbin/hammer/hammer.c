@@ -416,6 +416,14 @@ main(int ac, char **av)
 			usage(1);
 		exit(0);
 	}
+	if (strcmp(av[0], "dedup-simulate") == 0) {
+		hammer_cmd_dedup_simulate(av + 1, ac - 1);
+		exit(0);
+	}
+	if (strcmp(av[0], "dedup") == 0) {
+		hammer_cmd_dedup(av + 1, ac - 1);
+		exit(0);
+	}
 	if (strcmp(av[0], "version") == 0) {
 		hammer_cmd_get_version(av + 1, ac - 1);
 		exit(0);
@@ -430,6 +438,10 @@ main(int ac, char **av)
 	}
 	if (strcmp(av[0], "volume-del") == 0) {
 		hammer_cmd_volume_del(av + 1, ac - 1);
+		exit(0);
+	}
+	if (strcmp(av[0], "volume-list") == 0) {
+		hammer_cmd_volume_list(av + 1, ac - 1);
 		exit(0);
 	}
 
@@ -569,6 +581,7 @@ usage(int exit_code)
 		"hammer version-upgrade <filesystem> <version> [force]\n"
 		"hammer volume-add <device> <filesystem>\n"
 		"hammer volume-del <device> <filesystem>\n"
+		"hammer volume-list <filesystem>\n"
 	);
 
 	fprintf(stderr, "\nHAMMER utility version 3+ commands:\n");
@@ -593,6 +606,13 @@ usage(int exit_code)
 		"hammer -f blkdevs [-qqq] show [lo:objid]\n"
 		"hammer -f blkdevs show-undo\n"
 		"hammer -f blkdevs recover <target_dir>\n"
+	);
+
+	fprintf(stderr, "\nHAMMER utility version 5+ commands:\n");
+
+	fprintf(stderr,
+		"hammer dedup-simulate <filesystem>\n"
+		"hammer dedup <filesystem>\n"
 	);
 
 	exit(exit_code);

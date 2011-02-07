@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/makewhatis/makewhatis.c,v 1.9 2002/09/04 23:29:04 dwmalone Exp $
- * $DragonFly: src/usr.sbin/makewhatis/makewhatis.c,v 1.2 2005/01/16 04:59:53 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -884,9 +883,9 @@ process_section(char *section_dir)
  * Returns whether the directory entry is a man page section.
  */
 static int
-select_sections(struct dirent *entry)
+select_sections(const struct dirent *entry)
 {
-	char *p = &entry->d_name[3];
+	const char *p = &entry->d_name[3];
 
 	if (strncmp(entry->d_name, "man", 3) != 0)
 		return(0);

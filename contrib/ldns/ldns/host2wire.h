@@ -27,6 +27,10 @@
 
 #include "ldns/util.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Copies the dname data to the buffer in wire format
  * \param[out] *buffer buffer to append the result to
@@ -152,5 +156,9 @@ ldns_status ldns_rr2wire(uint8_t **dest, const ldns_rr *rr, int, size_t *size);
  * the function also returns NULL)
  */
 ldns_status ldns_pkt2wire(uint8_t **dest, const ldns_pkt *p, size_t *size);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LDNS_HOST2WIRE_H */

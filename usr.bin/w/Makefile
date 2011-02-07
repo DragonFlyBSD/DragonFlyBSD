@@ -12,6 +12,7 @@ LDADD=	-lkvm
 LINKS=	${BINDIR}/w ${BINDIR}/uptime
 WARNS?=	2
 
+CFLAGS+=	-DSUPPORT_UTMP -DSUPPORT_UTMPX
 .PATH: ${.CURDIR}/../../bin/ps
 
 .include <bsd.prog.mk>

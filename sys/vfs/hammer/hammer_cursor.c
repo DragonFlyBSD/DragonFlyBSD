@@ -220,12 +220,12 @@ hammer_cursor_upgrade(hammer_cursor_t cursor)
 {
 	int error;
 
-	error = hammer_lock_upgrade(&cursor->node->lock);
+	error = hammer_lock_upgrade(&cursor->node->lock, 1);
 	if (error && cursor->deadlk_node == NULL) {
 		cursor->deadlk_node = cursor->node;
 		hammer_ref_node(cursor->deadlk_node);
 	} else if (error == 0 && cursor->parent) {
-		error = hammer_lock_upgrade(&cursor->parent->lock);
+		error = hammer_lock_upgrade(&cursor->parent->lock, 1);
 		if (error && cursor->deadlk_node == NULL) {
 			cursor->deadlk_node = cursor->parent;
 			hammer_ref_node(cursor->deadlk_node);
@@ -239,7 +239,7 @@ hammer_cursor_upgrade_node(hammer_cursor_t cursor)
 {
 	int error;
 
-	error = hammer_lock_upgrade(&cursor->node->lock);
+	error = hammer_lock_upgrade(&cursor->node->lock, 1);
 	if (error && cursor->deadlk_node == NULL) {
 		cursor->deadlk_node = cursor->node;
 		hammer_ref_node(cursor->deadlk_node);
@@ -255,11 +255,86 @@ void
 hammer_cursor_downgrade(hammer_cursor_t cursor)
 {
 	if (hammer_lock_excl_owned(&cursor->node->lock, curthread))
-		hammer_lock_downgrade(&cursor->node->lock);
+		hammer_lock_downgrade(&cursor->node->lock, 1);
 	if (cursor->parent &&
 	    hammer_lock_excl_owned(&cursor->parent->lock, curthread)) {
-		hammer_lock_downgrade(&cursor->parent->lock);
+		hammer_lock_downgrade(&cursor->parent->lock, 1);
 	}
+}
+
+/*
+ * Upgrade and downgrade pairs of cursors.  This is used by the dedup
+ * code which must deal with two cursors.  A special function is needed
+ * because some of the nodes may be shared between the two cursors,
+ * resulting in share counts > 1 which will normally cause an upgrade
+ * to fail.
+ */
+static __noinline
+int
+collect_node(hammer_node_t *array, int *counts, int n, hammer_node_t node)
+{
+	int i;
+
+	for (i = 0; i < n; ++i) {
+		if (array[i] == node)
+			break;
+	}
+	if (i == n) {
+		array[i] = node;
+		counts[i] = 1;
+		++i;
+	} else {
+		++counts[i];
+	}
+	return(i);
+}
+
+int
+hammer_cursor_upgrade2(hammer_cursor_t cursor1, hammer_cursor_t cursor2)
+{
+	hammer_node_t nodes[4];
+	int counts[4];
+	int error;
+	int i;
+	int n;
+
+	n = collect_node(nodes, counts, 0, cursor1->node);
+	if (cursor1->parent)
+		n = collect_node(nodes, counts, n, cursor1->parent);
+	n = collect_node(nodes, counts, n, cursor2->node);
+	if (cursor2->parent)
+		n = collect_node(nodes, counts, n, cursor2->parent);
+
+	error = 0;
+	for (i = 0; i < n; ++i) {
+		error = hammer_lock_upgrade(&nodes[i]->lock, counts[i]);
+		if (error)
+			break;
+	}
+	if (error) {
+		while (--i >= 0)
+			hammer_lock_downgrade(&nodes[i]->lock, counts[i]);
+	}
+	return (error);
+}
+
+void
+hammer_cursor_downgrade2(hammer_cursor_t cursor1, hammer_cursor_t cursor2)
+{
+	hammer_node_t nodes[4];
+	int counts[4];
+	int i;
+	int n;
+
+	n = collect_node(nodes, counts, 0, cursor1->node);
+	if (cursor1->parent)
+		n = collect_node(nodes, counts, n, cursor1->parent);
+	n = collect_node(nodes, counts, n, cursor2->node);
+	if (cursor2->parent)
+		n = collect_node(nodes, counts, n, cursor2->parent);
+
+	for (i = 0; i < n; ++i)
+		hammer_lock_downgrade(&nodes[i]->lock, counts[i]);
 }
 
 /*

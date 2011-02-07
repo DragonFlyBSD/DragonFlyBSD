@@ -39,6 +39,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/cons.h>
+#include <sys/ctype.h>
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
 
@@ -107,7 +108,12 @@ db_putchar(int c, void *arg)
 	 * the message buffer.
 	 */
 	if (!db_active) {
-		kprintf("%c", c);
+		if (c == '\r' || c == '\n' || c == '\t' ||
+		    isprint(c)) {
+			kprintf("%c", c);
+		} else {
+			kprintf("?");
+		}
 		if (!db_active)
 			return;
 		if (c == '\r' || c == '\n')
@@ -249,3 +255,53 @@ db_more(int *nl)
 	return(0);
 }
 
+/* #define TEMPORARY_DEBUGGING */
+#ifdef TEMPORARY_DEBUGGING
+
+/*
+ * Temporary Debugging, only turned on manually by kernel hackers trying
+ * to debug extremely low level code.  Adjust PCHAR_ as required.
+ */
+static void PCHAR_(int, void * __unused);
+
+void
+kprintf0(const char *fmt, ...)
+{
+	__va_list ap;
+
+	__va_start(ap, fmt);
+	kvcprintf(fmt, PCHAR_, NULL, 10, ap);
+	__va_end(ap);
+}
+
+static void
+PCHAR_(int c, void *dummy __unused)
+{
+	const int COMC_TXWAIT = 0x40000;
+	const int COMPORT = 0x2f8;		/* 0x3f8 COM1, 0x2f8 COM2 */
+	const int LSR_TXRDY = 0x20;
+	const int BAUD = 9600;
+	const int com_lsr = 5;
+	const int com_data = 0;
+	int wait;
+	static int setbaud;
+
+	if (setbaud == 0) {
+		setbaud = 1;
+		outb(COMPORT+3, 0x83);    /* DLAB + 8N1 */
+		outb(COMPORT+0, (115200 / BAUD) & 0xFF);
+		outb(COMPORT+1, (115200 / BAUD) >> 8);
+		outb(COMPORT+3, 0x03);    /* 8N1 */
+		outb(COMPORT+4, 0x03);    /* RTS+DTR */
+		outb(COMPORT+2, 0x01);    /* FIFO_ENABLE */
+	}
+
+	for (wait = COMC_TXWAIT; wait > 0; wait--) {
+		if (inb(COMPORT + com_lsr) & LSR_TXRDY) {
+			outb(COMPORT + com_data, (u_char)c);
+			break;
+		}
+	}
+}
+
+#endif

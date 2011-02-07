@@ -24,17 +24,24 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: /repoman/r/ncvs/src/lib/libc/include/namespace.h,v 1.1 2001/01/24 13:00:08 deischen Exp $
- * $DragonFly: src/lib/libc/include/namespace.h,v 1.3 2006/04/06 13:02:12 davidxu Exp $
- *
  */
 
 #ifndef _NAMESPACE_H_
 #define _NAMESPACE_H_
 
 /*
+ * Adjust names so that headers declare "hidden" names.
+ *
+ * README: When modifying this file don't forget to make the appropriate
+ *         changes in un-namespace.h!!!
+ */
+
+/*
  * ISO C (C90) section.  Most names in libc aren't in ISO C, so they
  * should be here.  Most aren't here...
  */
+#define		err				_err
+#define		warn				_warn
 #define		nsdispatch			_nsdispatch
 
 /*
@@ -207,7 +214,9 @@
 #define		sigsuspend			_sigsuspend
 #define		socket				_socket
 #define		socketpair			_socketpair
+#define		usleep				_usleep
 #define		wait4				_wait4
+#define		waitpid				_waitpid
 #define		write				_write
 #define		writev				_writev
 
@@ -240,7 +249,6 @@
 #define		system				_system
 #define		tcdrain				_tcdrain
 #define		wait				_wait
-#define		waitpid				_waitpid
 #endif
 
 #endif /* _NAMESPACE_H_ */

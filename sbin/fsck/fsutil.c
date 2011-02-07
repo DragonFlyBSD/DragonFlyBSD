@@ -65,7 +65,7 @@ static int preen = 0;
 
 extern char *__progname;
 
-static void vmsg(int, const char *, va_list);
+static void vmsg(int, const char *, va_list) __printflike(2, 0);
 
 void
 setcdevname(const char *cd, int pr)

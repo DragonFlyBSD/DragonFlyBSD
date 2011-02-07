@@ -175,8 +175,11 @@ vm_contig_pg_clean(int queue)
 				return (TRUE);
 			}
 		}
-		if ((m->dirty == 0) && (m->busy == 0) && (m->hold_count == 0))
+		KKASSERT(m->busy == 0);
+		if (m->dirty == 0 && m->hold_count == 0) {
+			vm_page_busy(m);
 			vm_page_cache(m);
+		}
 	}
 	return (FALSE);
 }
@@ -340,12 +343,16 @@ again:
 			m->valid = VM_PAGE_BITS_ALL;
 			if (m->flags & PG_ZERO)
 				vm_page_zero_count--;
-			/* Don't clear the PG_ZERO flag, we'll need it later. */
-			m->flags &= PG_ZERO;
 			KASSERT(m->dirty == 0,
 				("vm_contig_pg_alloc: page %p was dirty", m));
 			m->wire_count = 0;
 			m->busy = 0;
+
+			/*
+			 * Clear all flags except PG_ZERO and PG_WANTED.  This
+			 * also clears PG_BUSY.
+			 */
+			vm_page_flag_clear(m, ~(PG_ZERO|PG_WANTED));
 		}
 
 		/*

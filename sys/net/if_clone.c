@@ -132,7 +132,7 @@ if_clone_destroy(const char *name)
 	struct if_clone *ifc;
 	struct ifnet *ifp;
 	int bytoff, bitoff;
-	int unit;
+	int unit, error;
 
 	ifc = if_clone_lookup(name, &unit);
 	if (ifc == NULL)
@@ -148,7 +148,9 @@ if_clone_destroy(const char *name)
 	if (ifc->ifc_destroy == NULL)
 		return (EOPNOTSUPP);
 
-	(*ifc->ifc_destroy)(ifp);
+	error = ifc->ifc_destroy(ifp);
+	if (error)
+		return error;
 
 	/*
 	 * Compute offset in the bitmap and deallocate the unit.

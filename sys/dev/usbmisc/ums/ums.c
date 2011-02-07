@@ -1,6 +1,5 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ums.c,v 1.64 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.31 2008/08/14 20:55:54 hasso Exp $
  */
 
 /*
@@ -67,7 +66,7 @@
 #include <bus/usb/usb_quirks.h>
 #include <bus/usb/hid.h>
 
-#include <machine/mouse.h>
+#include <sys/mouse.h>
 
 #ifdef USB_DEBUG
 #define DPRINTF(x)	if (umsdebug) kprintf x
@@ -145,10 +144,8 @@ static d_kqfilter_t ums_kqfilter;
 static void ums_filt_detach(struct knote *);
 static int ums_filt(struct knote *, long);
 
-#define UMS_CDEV_MAJOR	111
-
 static struct dev_ops ums_ops = {
-	{ "ums", UMS_CDEV_MAJOR, 0 },
+	{ "ums", 0, 0 },
 	.d_open =	ums_open,
 	.d_close =	ums_close,
 	.d_read =	ums_read,

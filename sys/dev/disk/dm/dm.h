@@ -46,6 +46,8 @@
 #include <sys/queue.h>
 
 #include <sys/device.h>
+#include <sys/devicestat.h>
+#include <sys/diskslice.h>
 #include <sys/disklabel.h>
 
 #include <libprop/proplib.h>
@@ -93,9 +95,8 @@ typedef struct dm_table_head {
 	struct dm_table tables[2];
 
 	struct lock   table_mtx;
-	struct cv table_cv; /*IO waiting cv */
 
-	uint32_t io_cnt;
+	int	 io_cnt;
 } dm_table_head_t;
 
 #define MAX_DEV_NAME 32
@@ -108,6 +109,7 @@ typedef struct dm_table_head {
 
 typedef struct dm_pdev {
 	char name[MAX_DEV_NAME];
+	struct partinfo pdev_pinfo; /* partinfo of the underlying device */
 
 	struct vnode *pdev_vnode;
 	int ref_cnt; /* reference counter for users ofthis pdev */
@@ -120,7 +122,7 @@ typedef struct dm_pdev {
  * It points to SLIST of device tables and mirrored, snapshoted etc. devices.
  */
 TAILQ_HEAD(dm_dev_head, dm_dev);
-				
+
 typedef struct dm_dev {
 	char name[DM_NAME_LEN];
 	char uuid[DM_UUID_LEN];
@@ -131,19 +133,21 @@ typedef struct dm_dev {
 
 	struct lock dev_mtx; /* mutex for generall device lock */
 	struct cv dev_cv; /* cv for between ioctl synchronisation */
-	
+
 	uint32_t event_nr;
 	uint32_t ref_cnt;
 
 	uint32_t dev_type;
+	uint32_t is_open;
 
 	dm_table_head_t table_head;
 
 	struct dm_dev_head upcalls;
-	
+
 	struct disk *diskp;
-	struct lock diskp_mtx;
-	
+
+	struct devstat stats;
+
 	TAILQ_ENTRY(dm_dev) next_upcall; /* LIST of mirrored, snapshoted devices. */
 
 	TAILQ_ENTRY(dm_dev) next_devlist; /* Major device list. */
@@ -232,7 +236,8 @@ typedef struct dm_target {
 	char * (*status)(void *);
 	int (*strategy)(dm_table_entry_t *, struct buf *);
 	int (*upcall)(dm_table_entry_t *, struct buf *);
-	
+	int (*dump)(dm_table_entry_t *, void *data, size_t length, off_t offset);
+
 	uint32_t version[3];
 	int ref_cnt;
 	
@@ -254,14 +259,13 @@ struct cmd_function {
 
 /* device-mapper */
 void dmsetdiskinfo(struct disk *, dm_table_head_t *);
-prop_dictionary_t dmgetdiskinfo(struct disk *);
-void dmgetproperties(struct disk *, dm_table_head_t *);
 int dm_detach(dm_dev_t *);
 
 /* dm_ioctl.c */
 int dm_dev_create_ioctl(prop_dictionary_t);
 int dm_dev_list_ioctl(prop_dictionary_t);
 int dm_dev_remove_ioctl(prop_dictionary_t);
+int dm_dev_remove_all_ioctl(prop_dictionary_t);
 int dm_dev_rename_ioctl(prop_dictionary_t);
 int dm_dev_resume_ioctl(prop_dictionary_t);
 int dm_dev_status_ioctl(prop_dictionary_t);
@@ -277,9 +281,10 @@ int dm_table_load_ioctl(prop_dictionary_t);
 int dm_table_status_ioctl(prop_dictionary_t);
 
 /* dm_target.c */
+int dm_target_init(void);
+int dm_target_uninit(void);
 dm_target_t* dm_target_alloc(const char *);
 dm_target_t* dm_target_autoload(const char *);
-int dm_target_destroy(void);
 int dm_target_insert(dm_target_t *);
 prop_array_t dm_target_prop_list(void);
 dm_target_t* dm_target_lookup(const char *);
@@ -287,42 +292,7 @@ int dm_target_rem(char *);
 void dm_target_unbusy(dm_target_t *);
 void dm_target_busy(dm_target_t *);
 
-/* XXX temporally add */
-int dm_target_init(void);
-
 #define DM_MAX_PARAMS_SIZE 1024
-
-/* dm_target_zero.c */
-int dm_target_zero_init(dm_dev_t *, void**,  char *);
-char * dm_target_zero_status(void *);
-int dm_target_zero_strategy(dm_table_entry_t *, struct buf *);
-int dm_target_zero_destroy(dm_table_entry_t *);
-int dm_target_zero_deps(dm_table_entry_t *, prop_array_t);
-int dm_target_zero_upcall(dm_table_entry_t *, struct buf *);
-
-/* dm_target_error.c */
-int dm_target_error_init(dm_dev_t *, void**, char *);
-char * dm_target_error_status(void *);
-int dm_target_error_strategy(dm_table_entry_t *, struct buf *);
-int dm_target_error_deps(dm_table_entry_t *, prop_array_t);
-int dm_target_error_destroy(dm_table_entry_t *);
-int dm_target_error_upcall(dm_table_entry_t *, struct buf *);
-
-/* dm_target_linear.c */
-int dm_target_linear_init(dm_dev_t *, void**, char *);
-char * dm_target_linear_status(void *);
-int dm_target_linear_strategy(dm_table_entry_t *, struct buf *);
-int dm_target_linear_deps(dm_table_entry_t *, prop_array_t);
-int dm_target_linear_destroy(dm_table_entry_t *);
-int dm_target_linear_upcall(dm_table_entry_t *, struct buf *);
-
-/* dm_target_crypt.c */
-int dm_target_crypt_init(dm_dev_t *, void**, char *);
-char * dm_target_crypt_status(void *);
-int dm_target_crypt_strategy(dm_table_entry_t *, struct buf *);
-int dm_target_crypt_deps(dm_table_entry_t *, prop_array_t);
-int dm_target_crypt_destroy(dm_table_entry_t *);
-int dm_target_crypt_upcall(dm_table_entry_t *, struct buf *);
 
 /* Generic function used to convert char to string */
 uint64_t atoi64(const char *);
@@ -334,14 +304,6 @@ int dm_target_mirror_strategy(dm_table_entry_t *, struct buf *);
 int dm_target_mirror_deps(dm_table_entry_t *, prop_array_t);
 int dm_target_mirror_destroy(dm_table_entry_t *);
 int dm_target_mirror_upcall(dm_table_entry_t *, struct buf *);
-
-/* dm_target_stripe.c */
-int dm_target_stripe_init(dm_dev_t *, void**, char *);
-char * dm_target_stripe_status(void *);
-int dm_target_stripe_strategy(dm_table_entry_t *, struct buf *);
-int dm_target_stripe_deps(dm_table_entry_t *, prop_array_t);
-int dm_target_stripe_destroy(dm_table_entry_t *);
-int dm_target_stripe_upcall(dm_table_entry_t *, struct buf *);
 
 /* dm_target_snapshot.c */
 int dm_target_snapshot_init(dm_dev_t *, void**, char *);
@@ -373,24 +335,32 @@ void dm_table_head_init(dm_table_head_t *);
 void dm_table_head_destroy(dm_table_head_t *);
 
 /* dm_dev.c */
+int dm_dev_init(void);
+int dm_dev_uninit(void);
 dm_dev_t* dm_dev_alloc(void);
 void dm_dev_busy(dm_dev_t *);
-int dm_dev_destroy(void);
-void disable_dev(dm_dev_t *);
+int dm_dev_create(dm_dev_t **, const char *, const char *, int);
+int dm_dev_remove(dm_dev_t *);
+int dm_dev_remove_all(int);
+int dm_dev_destroy(dm_dev_t *);
 int dm_dev_free(dm_dev_t *);
-int dm_dev_init(void);
 int dm_dev_insert(dm_dev_t *);
 dm_dev_t* dm_dev_lookup(const char *, const char *, int);
 prop_array_t dm_dev_prop_list(void);
-dm_dev_t* dm_dev_rem(const char *, const char *, int);
+dm_dev_t* dm_dev_rem(dm_dev_t *, const char *, const char *, int);
 /*int dm_dev_test_minor(int);*/
 void dm_dev_unbusy(dm_dev_t *);
 
 /* dm_pdev.c */
-int dm_pdev_decr(dm_pdev_t *);
-int dm_pdev_destroy(void);
 int dm_pdev_init(void);
+int dm_pdev_uninit(void);
+int dm_pdev_decr(dm_pdev_t *);
 dm_pdev_t* dm_pdev_insert(const char *);
+off_t dm_pdev_correct_dump_offset(dm_pdev_t *, off_t);
+
+/* dm builtin magic */
+void dm_builtin_init(void *);
+void dm_builtin_uninit(void *);
 
 extern int dm_debug_level;
 MALLOC_DECLARE(M_DM);
@@ -398,6 +368,22 @@ MALLOC_DECLARE(M_DM);
 #define aprint_debug(format, ...)	\
     do { if (dm_debug_level) kprintf(format, ## __VA_ARGS__); } while(0)
 #define aprint_normal	kprintf
+
+#define DM_TARGET_MODULE(name, evh)				\
+    static moduledata_t name##_mod = {				\
+	    #name,						\
+	    evh,						\
+	    NULL						\
+    };								\
+    DECLARE_MODULE(name, name##_mod, SI_SUB_DM_TARGETS,		\
+		   SI_ORDER_ANY);				\
+    MODULE_DEPEND(name, dm, 1, 1, 1)
+
+#define DM_TARGET_BUILTIN(name, evh)				\
+    SYSINIT(name##module, SI_SUB_DM_TARGETS, SI_ORDER_ANY,	\
+	dm_builtin_init, evh);					\
+    SYSUNINIT(name##module, SI_SUB_DM_TARGETS, SI_ORDER_ANY,	\
+	dm_builtin_uninit, evh)
 
 #endif /*_KERNEL*/
 

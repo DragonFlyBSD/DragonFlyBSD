@@ -115,7 +115,8 @@ static void vm86_clear_timer_fault(void);
 static int vm86_blew_up_timer;
 
 static int timer_warn = 1;
-SYSCTL_INT(_debug, OID_AUTO, timer_warn, CTLFLAG_RW, &timer_warn, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, timer_warn, CTLFLAG_RW, &timer_warn, 0,
+    "Warn if BIOS has played with the 8254 timer");
 
 static __inline caddr_t
 MAKE_ADDR(u_short sel, u_short off)
@@ -629,7 +630,7 @@ vm86_intcall(int intnum, struct vm86frame *vmf)
 		return (EINVAL);
 
 	crit_enter();
-	ASSERT_MP_LOCK_HELD(curthread);
+	ASSERT_MP_LOCK_HELD();
 
 	vm86_setup_timer_fault();
 	vmf->vmf_trapno = intnum;
@@ -665,7 +666,7 @@ vm86_datacall(int intnum, struct vm86frame *vmf, struct vm86context *vmc)
 	int i, entry, retval;
 
 	crit_enter();
-	ASSERT_MP_LOCK_HELD(curthread);
+	ASSERT_MP_LOCK_HELD();
 
 	for (i = 0; i < vmc->npages; i++) {
 		page = vtophys(vmc->pmap[i].kva & PG_FRAME);

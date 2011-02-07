@@ -40,7 +40,7 @@
  * memory-specific data structures and algorithms to automatically
  * allocate and release resources.
  */
-#include <sys/cdefs.h>
+
 #include <sys/conf.h>
 #include <sys/param.h>
 #include <sys/limits.h>
@@ -269,6 +269,8 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	mp->mnt_kern_flag |= MNTK_RD_MPSAFE | MNTK_WR_MPSAFE | MNTK_GA_MPSAFE  |
 			     MNTK_IN_MPSAFE | MNTK_SG_MPSAFE;
 #endif
+	mp->mnt_kern_flag |= MNTK_RD_MPSAFE | MNTK_GA_MPSAFE | MNTK_SG_MPSAFE;
+	mp->mnt_kern_flag |= MNTK_WR_MPSAFE;
 	mp->mnt_kern_flag |= MNTK_NOMSYNC;
 	mp->mnt_data = (qaddr_t)tmp;
 	vfs_getnewfsid(mp);

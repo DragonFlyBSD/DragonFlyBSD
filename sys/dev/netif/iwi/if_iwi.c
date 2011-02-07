@@ -26,10 +26,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * __FBSDID("$FreeBSD: src/sys/dev/iwi/if_iwi.c,v 1.72 2009/07/10 15:28:33 rpaulo Exp $");
+ * $FreeBSD: src/sys/dev/iwi/if_iwi.c,v 1.72 2009/07/10 15:28:33 rpaulo Exp $
  */
-
-#include <sys/cdefs.h>
 
 /*-
  * Intel(R) PRO/Wireless 2200BG/2225BG/2915ABG driver
@@ -3394,7 +3392,6 @@ iwi_led_blink(struct iwi_softc *sc, int on, int off)
 static void
 iwi_led_event(struct iwi_softc *sc, int event)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 	/* NB: on/off times from the Atheros NDIS driver, w/ permission */
 	static const struct {
 		u_int		rate;		/* tx/rx iwi rate */
@@ -3424,13 +3421,13 @@ iwi_led_event(struct iwi_softc *sc, int event)
 		return;
 	switch (event) {
 	case IWI_LED_POLL:
-		j = N(blinkrates)-1;
+		j = NELEM(blinkrates)-1;
 		break;
 	case IWI_LED_TX:
 		/* read current transmission rate from adapter */
 		txrate = CSR_READ_4(sc, IWI_CSR_CURRENT_TX_RATE);
 		if (blinkrates[sc->sc_txrix].rate != txrate) {
-			for (j = 0; j < N(blinkrates)-1; j++)
+			for (j = 0; j < NELEM(blinkrates)-1; j++)
 				if (blinkrates[j].rate == txrate)
 					break;
 			sc->sc_txrix = j;
@@ -3439,7 +3436,7 @@ iwi_led_event(struct iwi_softc *sc, int event)
 		break;
 	case IWI_LED_RX:
 		if (blinkrates[sc->sc_rxrix].rate != sc->sc_rxrate) {
-			for (j = 0; j < N(blinkrates)-1; j++)
+			for (j = 0; j < NELEM(blinkrates)-1; j++)
 				if (blinkrates[j].rate == sc->sc_rxrate)
 					break;
 			sc->sc_rxrix = j;
@@ -3450,7 +3447,6 @@ iwi_led_event(struct iwi_softc *sc, int event)
 	/* XXX beware of overflow */
 	iwi_led_blink(sc, (blinkrates[j].timeOn * hz) / 1000,
 		(blinkrates[j].timeOff * hz) / 1000);
-#undef N
 }
 
 static int

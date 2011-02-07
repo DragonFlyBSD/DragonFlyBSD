@@ -57,7 +57,6 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/unistd.h>
-#include <sys/dsched.h>
 
 #include <machine/clock.h>
 #include <machine/cpu.h>
@@ -301,7 +300,6 @@ cpu_lwp_exit(void)
         }
 	td->td_gd->gd_cnt.v_swtch++;
 
-	dsched_exit_thread(td);
 	crit_enter_quick(td);
 	if (td->td_flags & TDF_TSLEEPQ)
 		tsleep_remove(td);
@@ -376,18 +374,14 @@ kvtop(void *addr)
 static void
 cpu_reset_proxy(void)
 {
-	u_int saved_mp_lock;
-
 	cpu_reset_proxy_active = 1;
 	while (cpu_reset_proxy_active == 1)
 		;	 /* Wait for other cpu to disable interupts */
-	saved_mp_lock = mp_lock;
-	mp_lock = 0;	/* BSP */
 	kprintf("cpu_reset_proxy: Grabbed mp lock for BSP\n");
 	cpu_reset_proxy_active = 3;
 	while (cpu_reset_proxy_active == 3)
 		;	/* Wait for other cpu to enable interrupts */
-	stop_cpus((1<<cpu_reset_proxyid));
+	stop_cpus(CPUMASK(cpu_reset_proxyid));
 	kprintf("cpu_reset_proxy: Stopped CPU %d\n", cpu_reset_proxyid);
 	DELAY(1000000);
 	cpu_reset_real();
@@ -402,7 +396,7 @@ cpu_reset(void)
 		cpu_reset_real();
 		/* NOTREACHED */
 	} else {
-		u_int map;
+		cpumask_t map;
 		int cnt;
 		kprintf("cpu_reset called on cpu#%d\n",mycpu->gd_cpuid);
 

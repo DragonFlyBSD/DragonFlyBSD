@@ -22,9 +22,8 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/aac.4,v 1.31.2.1.2.1 2006/12/14 23:56:26 brueffer Exp $
-.\" $DragonFly: src/share/man/man4/aac.4,v 1.8 2008/09/02 11:50:46 matthias Exp $
-.Dd May 8, 2009
+.\" $FreeBSD: src/share/man/man4/aac.4,v 1.41 2009/07/11 08:10:18 jkim Exp $
+.Dd January 7, 2011
 .Dt AAC 4
 .Os
 .Sh NAME
@@ -40,7 +39,7 @@ kernel configuration file:
 .Cd device aacp
 .Pp
 To compile in debugging code:
-.Cd options AAC_DEBUG=N
+.Cd options AAC_DEBUG
 .Ed
 .Pp
 Alternatively, to load the driver as a
@@ -74,7 +73,7 @@ The aliases
 .Pa /dev/afa?
 and
 .Pa /dev/hpn?
-exist for compatibilty with the Dell and HP versions of management tools,
+exist for compatibility with the Dell and HP versions of management tools,
 respectively.
 If the kernel is compiled with the
 .Dv COMPAT_LINUX
@@ -87,24 +86,6 @@ Linux-compatible
 .Xr ioctl 2
 interface for the management device will be enabled and will allow
 Linux-based management applications to control the card.
-.Ss Tuning
-The read-only sysctl
-.Va hw.aac.iosize_max
-defaults to 65536 and may be set at boot time to another value via
-.Xr loader 8 .
-This value determines the maximum data transfer size allowed
-to/from an array.
-Setting it higher will result in better performance,
-especially for large sequential access patterns.
-.Em Beware :
-internal limitations
-of the card limit this value to 64K for arrays with many members.
-While it may be safe to raise this value, this is done
-.Em at the operator's own risk .
-Note also that
-performance peaks at a value of 96K,
-and drops off dramatically at 128K,
-due to other limitations of the card.
 .Sh HARDWARE
 Controllers supported by the
 .Nm
@@ -113,6 +94,42 @@ driver include:
 .Bl -bullet -compact
 .It
 Adaptec AAC-364
+.It
+Adaptec RAID 2045
+.It
+Adaptec RAID 2405
+.It
+Adaptec RAID 2445
+.It
+Adaptec RAID 2805
+.It
+Adaptec RAID 3085
+.It
+Adaptec RAID 31205
+.It
+Adaptec RAID 31605
+.It
+Adaptec RAID 5085
+.It
+Adaptec RAID 51205
+.It
+Adaptec RAID 51245
+.It
+Adaptec RAID 51605
+.It
+Adaptec RAID 51645
+.It
+Adaptec RAID 52445
+.It
+Adaptec RAID 5405
+.It
+Adaptec RAID 5445
+.It
+Adaptec RAID 5805
+.It
+Adaptec SAS RAID 3405
+.It
+Adaptec SAS RAID 3805
 .It
 Adaptec SAS RAID 4000SAS
 .It
@@ -184,11 +201,35 @@ IBM ServeRAID 8i
 .It
 IBM ServeRAID 8k
 .It
+IBM ServeRAID 8s
+.It
+ICP RAID ICP5045BL
+.It
+ICP RAID ICP5085BL
+.It
+ICP RAID ICP5085SL
+.It
+ICP RAID ICP5125BR
+.It
+ICP RAID ICP5125SL
+.It
+ICP RAID ICP5165BR
+.It
+ICP RAID ICP5165SL
+.It
+ICP RAID ICP5445SL
+.It
+ICP RAID ICP5805BL
+.It
+ICP RAID ICP5805SL
+.It
 ICP ICP5085BR SAS RAID
 .It
 ICP ICP9085LI SAS RAID
 .It
 ICP ICP9047MA SATA RAID
+.It
+ICP ICP9067MA SATA RAID
 .It
 ICP ICP9087MA SATA RAID
 .It
@@ -199,9 +240,29 @@ ICP ICP9024RO SCSI RAID
 Legend S220
 .It
 Legend S230
+.It
+Sun STK RAID REM
+.It
+Sun STK RAID EM
+.It
+SG-XPCIESAS-R-IN
+.It
+SG-XPCIESAS-R-EX
+.It
+AOC-USAS-S4i
+.It
+AOC-USAS-S8i
+.It
+AOC-USAS-S4iR
+.It
+AOC-USAS-S8iR
+.It
+AOC-USAS-S8i-LP
+.It
+AOC-USAS-S8iR-LP
 .El
 .Sh FILES
-.Bl -tag -width ".Pa /dev/aacd?" -compact
+.Bl -tag -width /boot/kernel/aac.ko -compact
 .It Pa /dev/aac?
 aac management interface
 .It Pa /dev/aacd?
@@ -210,8 +271,7 @@ disk/container interface
 .Sh DIAGNOSTICS
 Compiling with
 .Dv AAC_DEBUG
-set to a number between 0 and 2
-will enable increasingly verbose debug messages.
+will enable debug messages.
 .Pp
 The adapter can send status and alert messages asynchronously
 to the driver.
@@ -221,9 +281,7 @@ and are also queued for retrieval by a management application.
 .Xr kld 4 ,
 .Xr linux 4 ,
 .Xr scsi 4 ,
-.Xr kldload 8 ,
-.Xr loader 8 ,
-.Xr sysctl 8
+.Xr kldload 8
 .Sh HISTORY
 The
 .Nm
@@ -240,6 +298,4 @@ firmware.
 The firmware version is the same as the kernel version printed in the BIOS
 POST and driver attach messages.
 .Pp
-.\"This driver will not work on systems with more than 4GB of memory.
-.\".Pp
 The controller is not actually paused on suspend/resume.

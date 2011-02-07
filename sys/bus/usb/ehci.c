@@ -3166,3 +3166,5 @@ static void
 ehci_device_isoc_done(usbd_xfer_handle xfer)
 {
 }
+
+MODULE_DEPEND(ehci, usb, 1, 1, 1);

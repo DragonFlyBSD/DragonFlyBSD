@@ -182,7 +182,7 @@ getlock(void)
 			printf("I don't know what is wrong.");
 		}
 		getret();
-		error("");
+		error("%s", "");
 		/* NOTREACHED */
 	}
 

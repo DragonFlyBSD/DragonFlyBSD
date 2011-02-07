@@ -51,32 +51,51 @@
 #ifndef _MACHINE_ATOMIC_H_
 #include <machine/atomic.h>
 #endif
+#ifndef _MACHINE_VMPARAM_H_
+#include <machine/vmparam.h>
+#endif
 
 #if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
 #error "This file should not be included by userland programs."
 #endif
 
 struct lwbuf {
-    vm_page_t		m;		/* currently mapped page */
-    vm_offset_t		kva;		/* va of mapping */
+	vm_page_t	m;	/* currently mapped page */
+	vm_offset_t	kva;	/* va of mapping */
 };
 
 static __inline vm_page_t
-lwbuf_page(struct lwbuf *lwb) {
-    return (lwb->m);
+lwbuf_page(struct lwbuf *lwb)
+{
+	return (lwb->m);
 }
 
 static __inline vm_offset_t
-lwbuf_kva(struct lwbuf *lwb) {
-    return (lwb->kva);
+lwbuf_kva(struct lwbuf *lwb)
+{
+	return (lwb->kva);
+}
+
+static __inline struct lwbuf *
+lwbuf_alloc(vm_page_t m, struct lwbuf *lwb_cache)
+{
+	struct lwbuf *lwb = lwb_cache;
+
+	lwb->m = m;
+	lwb->kva = PHYS_TO_DMAP(VM_PAGE_TO_PHYS(lwb->m));
+
+	return (lwb);
+}
+
+static __inline void
+lwbuf_free(struct lwbuf *lwb)
+{
+	lwb->m = NULL;	/* safety */
 }
 
 #define lwbuf_set_global(lwb)
 
 #if defined(_KERNEL)
-
-struct lwbuf	*lwbuf_alloc(vm_page_t);
-void		 lwbuf_free(struct lwbuf *);
 
 #endif
 

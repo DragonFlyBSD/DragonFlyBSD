@@ -109,7 +109,7 @@ static MALLOC_DEFINE(M_FAITH, FAITHNAME, "Firewall Assisted Tunnel Interface");
 LIST_HEAD(, faith_softc) faith_softc_list;
 
 int	faith_clone_create (struct if_clone *, int, caddr_t);
-void	faith_clone_destroy (struct ifnet *);
+int	faith_clone_destroy (struct ifnet *);
 
 struct if_clone faith_cloner = IF_CLONE_INITIALIZER(FAITHNAME,
     faith_clone_create, faith_clone_destroy, NFAITH, IF_MAXUNIT);
@@ -180,7 +180,7 @@ faith_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	return (0);
 }
 
-void
+int
 faith_clone_destroy(struct ifnet *ifp)
 {
 	struct faith_softc *sc = (struct faith_softc *) ifp;
@@ -190,6 +190,8 @@ faith_clone_destroy(struct ifnet *ifp)
 	if_detach(ifp);
 
 	kfree(sc, M_FAITH);
+
+	return 0;
 }
 
 int

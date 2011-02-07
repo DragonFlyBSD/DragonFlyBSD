@@ -35,9 +35,8 @@
 **(INCLUDING NEGLIGENCE OR OTHERWISE)ARISING IN ANY WAY OUT OF THE USE OF
 ** THIS SOFTWARE,EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **************************************************************************
-* $FreeBSD: src/sys/dev/arcmsr/arcmsr.h,v 1.7 2010/07/21 18:50:24 delphij Exp $
+* $FreeBSD: src/sys/dev/arcmsr/arcmsr.h,v 1.8 2010/11/13 08:58:36 delphij Exp $
 */
-#define ARCMSR_DRIVER_VERSION                        "Driver Version 1.20.00.17 2010-07-15"
 #define ARCMSR_SCSI_INITIATOR_ID                                              255
 #define ARCMSR_DEV_SECTOR_SIZE                                                512
 #define ARCMSR_MAX_XFER_SECTORS                                              4096
@@ -80,19 +79,22 @@
 #define PCI_DEVICE_ID_ARECA_1130                                           0x1130 /* Device ID	*/
 #define PCI_DEVICE_ID_ARECA_1160                                           0x1160 /* Device ID	*/
 #define PCI_DEVICE_ID_ARECA_1170                                           0x1170 /* Device ID	*/
+#define PCI_DEVICE_ID_ARECA_1200        0x1200 /* Device ID	*/
+#define PCI_DEVICE_ID_ARECA_1201        0x1201 /* Device ID	*/
 #define PCI_DEVICE_ID_ARECA_1210                                           0x1210 /* Device ID	*/
+#define PCI_DEVICE_ID_ARECA_1212        0x1212 /* Device ID	*/
 #define PCI_DEVICE_ID_ARECA_1220                                           0x1220 /* Device ID	*/
+#define PCI_DEVICE_ID_ARECA_1222        0x1222 /* Device ID	*/
 #define PCI_DEVICE_ID_ARECA_1230                                           0x1230 /* Device ID	*/
+#define PCI_DEVICE_ID_ARECA_1231        0x1231 /* Device ID	*/
 #define PCI_DEVICE_ID_ARECA_1260                                           0x1260 /* Device ID	*/
+#define PCI_DEVICE_ID_ARECA_1261        0x1261 /* Device ID	*/
 #define PCI_DEVICE_ID_ARECA_1270                                           0x1270 /* Device ID	*/
 #define PCI_DEVICE_ID_ARECA_1280                                           0x1280 /* Device ID	*/
-#define PCI_DEVICE_ID_ARECA_1212        0x1212 /* Device ID	*/
-#define PCI_DEVICE_ID_ARECA_1222        0x1222 /* Device ID	*/
 #define PCI_DEVICE_ID_ARECA_1380                                           0x1380 /* Device ID	*/
 #define PCI_DEVICE_ID_ARECA_1381                                           0x1381 /* Device ID	*/
 #define PCI_DEVICE_ID_ARECA_1680                                           0x1680 /* Device ID	*/
 #define PCI_DEVICE_ID_ARECA_1681                                           0x1681 /* Device ID	*/
-#define PCI_DEVICE_ID_ARECA_1201                                           0x1201 /* Device ID	*/
 #define PCI_DEVICE_ID_ARECA_1880        0x1880 /* Device ID	*/
 
 #define PCIDevVenIDARC1110                                           0x111017D3 /* Vendor Device ID	*/
@@ -100,19 +102,22 @@
 #define PCIDevVenIDARC1130                                           0x113017D3 /* Vendor Device ID	*/
 #define PCIDevVenIDARC1160                                           0x116017D3 /* Vendor Device ID	*/
 #define PCIDevVenIDARC1170                                           0x117017D3 /* Vendor Device ID	*/
+#define PCIDevVenIDARC1200              0x120017D3 /* Vendor Device ID	*/
+#define PCIDevVenIDARC1201              0x120117D3 /* Vendor Device ID	*/
 #define PCIDevVenIDARC1210                                           0x121017D3 /* Vendor Device ID	*/
+#define PCIDevVenIDARC1212              0x121217D3 /* Vendor Device ID	*/
 #define PCIDevVenIDARC1220                                           0x122017D3 /* Vendor Device ID	*/
+#define PCIDevVenIDARC1222              0x122217D3 /* Vendor Device ID	*/
 #define PCIDevVenIDARC1230                                           0x123017D3 /* Vendor Device ID	*/
+#define PCIDevVenIDARC1231              0x123117D3 /* Vendor Device ID	*/
 #define PCIDevVenIDARC1260                                           0x126017D3 /* Vendor Device ID	*/
+#define PCIDevVenIDARC1261              0x126117D3 /* Vendor Device ID	*/
 #define PCIDevVenIDARC1270                                           0x127017D3 /* Vendor Device ID	*/
 #define PCIDevVenIDARC1280                                           0x128017D3 /* Vendor Device ID	*/
-#define PCIDevVenIDARC1212              0x121217D3 /* Vendor Device ID	*/
-#define PCIDevVenIDARC1222              0x122217D3 /* Vendor Device ID	*/
 #define PCIDevVenIDARC1380                                           0x138017D3 /* Vendor Device ID	*/
 #define PCIDevVenIDARC1381                                           0x138117D3 /* Vendor Device ID	*/
 #define PCIDevVenIDARC1680                                           0x168017D3 /* Vendor Device ID	*/
 #define PCIDevVenIDARC1681                                           0x168117D3 /* Vendor Device ID	*/
-#define PCIDevVenIDARC1201                                           0x120117D3 /* Vendor Device ID	*/
 #define PCIDevVenIDARC1880              0x188017D3 /* Vendor Device ID	*/
 
 #ifndef PCIR_BARS
@@ -881,7 +886,7 @@ struct HBA_MessageUnit
 */
 struct HBB_DOORBELL
 {
-	u_int8_t				doorbell_reserved[132096]; /*reserved */
+	u_int8_t				doorbell_reserved[ARCMSR_DRV2IOP_DOORBELL]; /*reserved */
 	u_int32_t				drv2iop_doorbell;          /*offset 0x00020400:00,01,02,03: window of "instruction flags" from driver to iop */
 	u_int32_t				drv2iop_doorbell_mask;     /*                  04,05,06,07: doorbell mask */
 	u_int32_t				iop2drv_doorbell;          /*                  08,09,10,11: window of "instruction flags" from iop to driver */
@@ -894,7 +899,7 @@ struct HBB_DOORBELL
 */
 struct HBB_RWBUFFER
 {
-	u_int8_t				message_reserved0[64000];   /*reserved */
+	u_int8_t				message_reserved0[ARCMSR_MSGCODE_RWBUFFER];   /*reserved */
 	u_int32_t				msgcode_rwbuffer[256];      /*offset 0x0000fa00:   0,   1,   2,   3,...,1023: message code read write 1024bytes */
 	u_int32_t				message_wbuffer[32];        /*offset 0x0000fe00:1024,1025,1026,1027,...,1151: user space data to iop 128bytes */
 	u_int32_t				message_reserved1[32];      /*                  1152,1153,1154,1155,...,1279: message reserved*/

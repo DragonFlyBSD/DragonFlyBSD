@@ -125,13 +125,30 @@ ENTRY(cpu_heavy_switch)
 	movl	%ebp,PCB_EBP(%edx)
 	movl	%esi,PCB_ESI(%edx)
 	movl	%edi,PCB_EDI(%edx)
+	movl	4(%esp),%edi			/* EDI = newthread */
 
-	movl	%ecx,%ebx			/* EBX = curthread */
-	movl	TD_LWP(%ecx),%ecx
+	/*
+	 * Clear the cpu bit in the pmap active mask.  The restore
+	 * function will set the bit in the pmap active mask.
+	 *
+	 * Special case: when switching between threads sharing the
+	 * same vmspace if we avoid clearing the bit we do not have
+	 * to reload %cr3 (if we clear the bit we could race page
+	 * table ops done by other threads and would have to reload
+	 * %cr3, because those ops will not know to IPI us).
+	 */
+	movl	%ecx,%ebx			/* EBX = oldthread */
+	movl	TD_LWP(%ecx),%ecx		/* ECX = oldlwp */
+	movl	TD_LWP(%edi),%esi		/* ESI = newlwp */
+	movl	LWP_VMSPACE(%ecx),%ecx		/* ECX = oldvmspace */
+	testl	%esi,%esi			/* might not be a heavy */
+	jz	1f
+	cmpl	LWP_VMSPACE(%esi),%ecx		/* same vmspace? */
+	je	2f
+1:
 	movl	PCPU(cpuid), %eax
-	movl	LWP_VMSPACE(%ecx), %ecx		/* ECX = vmspace */
 	MPLOCKED btrl	%eax, VM_PMAP+PM_ACTIVE(%ecx)
-
+2:
 	/*
 	 * Push the LWKT switch restore function, which resumes a heavy
 	 * weight process.  Note that the LWKT switcher is based on
@@ -192,7 +209,7 @@ ENTRY(cpu_heavy_switch)
 	 * thread but %esp still points to the old thread's stack, but
 	 * we are protected by a critical section so it is ok.
 	 */
-	movl	12(%esp),%eax		/* EAX = newtd, EBX = oldtd */
+	movl	%edi,%eax		/* EAX = newtd, EBX = oldtd */
 	movl	%eax,PCPU(curthread)
 	movl	TD_SP(%eax),%esp
 	ret
@@ -282,6 +299,15 @@ ENTRY(cpu_heavy_restore)
 	 * Tell the pmap that our cpu is using the VMSPACE now.  We cannot
 	 * safely test/reload %cr3 until after we have set the bit in the
 	 * pmap (remember, we do not hold the MP lock in the switch code).
+	 *
+	 * Also note that when switching between two lwps sharing the
+	 * same vmspace we have already avoided clearing the cpu bit
+	 * in pm_active.  If we had cleared it other cpus would not know
+	 * to IPI us and we would have to unconditionally reload %cr3.
+	 *
+	 * Also note that if the pmap is undergoing an atomic inval/mod
+	 * that is unaware that our cpu has been added to it we have to
+	 * wait for it to complete before we can continue.
 	 */
 	movl	LWP_VMSPACE(%ecx), %ecx		/* ECX = vmspace */
 	movl	PCPU(cpumask), %esi

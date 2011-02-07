@@ -48,7 +48,7 @@ usage(FILE *stream, const char *progname)
 	fprintf(stream, "\t-a\t\tfallback to EDNS0 and TCP if the answer is truncated\n");
 	fprintf(stream, "\t-b <bufsize>\tuse <bufsize> as the buffer size (defaults to 512 b)\n");
 	fprintf(stream, "\t-c <file>\t\tuse file for rescursive nameserver configuration (/etc/resolv.conf)\n");
-	fprintf(stream, "\t-k <file>\tspecify a file that contains a trusted DNSSEC key [**]\n");
+	fprintf(stream, "\t-k <file>\tspecify a file that contains a trusted DNSSEC key (DNSKEY|DS) [**]\n");
 	fprintf(stream, "\t\t\tused to verify any signatures in the current answer\n");
 	fprintf(stream, "\t-o <mnemonic>\tset flags to: [QR|qr][AA|aa][TC|tc][RD|rd][CD|cd][RA|ra][AD|ad]\n");
 	fprintf(stream, "\t\t\tlowercase: unset bit, uppercase: set bit\n");
@@ -912,9 +912,7 @@ main(int argc, char *argv[])
 	ldns_rr_list_deep_free(cmdline_rr_list);
 	ldns_rdf_deep_free(trace_start_name);
 	xfree(progname);
-/*
 	xfree(tsig_name);
-*/
 	xfree(tsig_data);
 	xfree(tsig_algorithm);
 

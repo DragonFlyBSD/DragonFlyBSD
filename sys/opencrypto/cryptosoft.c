@@ -1017,8 +1017,10 @@ swcr_freesession_slot(struct swcr_data **swdp, u_int32_t sid)
 		case CRYPTO_SHA1:
 			axf = swd->sw_axf;
 
-			if (swd->sw_ictx)
+			if (swd->sw_ictx) {
+				bzero(swd->sw_ictx, axf->ctxsize);
 				kfree(swd->sw_ictx, M_CRYPTO_DATA);
+			}
 			break;
 
 		case CRYPTO_DEFLATE_COMP:

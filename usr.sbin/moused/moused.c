@@ -49,7 +49,7 @@
  * $DragonFly: src/usr.sbin/moused/moused.c,v 1.7 2008/11/12 21:44:59 swildner Exp $
  */
 #include <machine/console.h>
-#include <machine/mouse.h>
+#include <sys/mouse.h>
 #include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/consio.h>
@@ -223,6 +223,7 @@ static symtab_t	rmodels[] = {
     { "IntelliMouse Explorer",	MOUSE_MODEL_EXPLORER },
     { "4D Mouse",		MOUSE_MODEL_4D },
     { "4D+ Mouse",		MOUSE_MODEL_4DPLUS },
+    { "Synaptics Touchpad",	MOUSE_MODEL_SYNAPTICS },
     { "generic",		MOUSE_MODEL_GENERIC },
     { NULL,			MOUSE_MODEL_UNKNOWN },
 };

@@ -92,11 +92,6 @@
 #include <netproto/ipx/ipx_if.h>
 #endif
 
-#ifdef NS
-#include <netns/ns.h>
-#include <netns/ns_if.h>
-#endif
-
 #include "if_sppp.h"
 
 #define IOCTL_CMD_T	u_long
@@ -655,15 +650,6 @@ sppp_input(struct ifnet *ifp, struct mbuf *m)
 			do_account++;
 			break;
 #endif
-#ifdef NS
-		case PPP_XNS:
-			/* XNS IDPCP not implemented yet */
-			if (sp->pp_phase == PHASE_NETWORK) {
-				isr = NETISR_NS;
-			}
-			do_account++;
-			break;
-#endif
 		}
 		break;
 	case CISCO_MULTICAST:
@@ -701,12 +687,6 @@ sppp_input(struct ifnet *ifp, struct mbuf *m)
 #ifdef IPX
 		case ETHERTYPE_IPX:
 			isr = NETISR_IPX;
-			do_account++;
-			break;
-#endif
-#ifdef NS
-		case ETHERTYPE_NS:
-			isr = NETISR_NS
 			do_account++;
 			break;
 #endif
@@ -934,12 +914,6 @@ sppp_output_serialized(struct ifnet *ifp, struct mbuf *m,
 			if (sp->state[IDX_IPV6CP] != STATE_OPENED)
 				rv = ENETDOWN;
 		}
-		break;
-#endif
-#ifdef NS
-	case AF_NS:     /* Xerox NS Protocol */
-		h->protocol = htons (sp->pp_mode == IFF_CISCO ?
-			ETHERTYPE_NS : PPP_XNS);
 		break;
 #endif
 #ifdef IPX

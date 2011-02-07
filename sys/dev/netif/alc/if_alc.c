@@ -30,8 +30,6 @@
 
 /* Driver for Atheros AR8131/AR8132 PCIe Ethernet. */
 
-#include <sys/cdefs.h>
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>

@@ -24,11 +24,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/spicreg.h,v 1.2.2.1 2002/04/15 00:52:12 will Exp $
- * $DragonFly: src/sys/dev/misc/spic/spicreg.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
  *
  */
-
-#define CDEV_MAJOR	160
 
 /*
  * Find the PCI device that holds the G10 register needed to map in the SPIC

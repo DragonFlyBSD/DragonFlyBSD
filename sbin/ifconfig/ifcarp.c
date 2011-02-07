@@ -26,7 +26,6 @@
 /*
  * $FreeBSD: src/sbin/ifconfig/ifcarp.c,v 1.2 2005/02/22 14:07:47 glebius Exp $
  * $OpenBSD: ifconfig.c,v 1.82 2003/10/19 05:43:35 mcbride Exp $
- * $DragonFly: src/sbin/ifconfig/ifcarp.c,v 1.1 2007/08/16 20:03:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -250,7 +249,7 @@ static struct afswtch af_carp = {
 	.af_other_status = carp_status,
 };
 
-static __constructor void
+static __constructor(100) void
 carp_ctor(void)
 {
 #define	N(a)	(sizeof(a) / sizeof(a[0]))

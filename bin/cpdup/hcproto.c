@@ -47,6 +47,8 @@ static int rc_getgroups(hctransaction_t trans, struct HCHead *);
 
 static int getmygroups(gid_t **gidlist);
 
+static int silentwarning(int *, const char *, ...) __printflike(2, 3);
+
 struct HCDesc HCDispatchTable[] = {
     { HC_HELLO,		rc_hello },
     { HC_STAT,		rc_stat },

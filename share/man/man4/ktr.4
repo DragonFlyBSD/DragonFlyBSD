@@ -37,7 +37,6 @@
 .Cd options KTR_VERBOSE=1
 .Cd options KTR_ALL
 .Cd options KTR_ETHERNET
-.Cd options KTR_GIANT_CONTENTION
 .Cd options KTR_IF_BGE
 .Cd options KTR_IF_EM
 .Cd options KTR_IF_START
@@ -76,7 +75,7 @@ By default the buffer contains 2048 entries.
 For debugging purposes, the following
 .Nm
 related kernel options exist:
-.Bl -tag -width ".Dv KTR_GIANT_CONTENTION"
+.Bl -tag -width ".Dv KTR_SPIN_CONTENTION"
 .It Dv KTR_ALL
 turns on all options
 .It Dv KTR_ETHERNET
@@ -84,8 +83,6 @@ cost of
 .Fn ether_input_chain
 and
 .Fn ether_input_dispatch
-.It Dv KTR_GIANT_CONTENTION
-contention of the giant lock
 .It Dv KTR_IF_BGE
 .Xr bge 4
 interrupts and sent/received packets

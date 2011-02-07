@@ -66,6 +66,12 @@ typedef __uint32_t	pd_entry_t;
 typedef __uint32_t	pt_entry_t;
 typedef __uint32_t	cpumask_t;	/* mask representing a set of cpus */
 
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+#define CPUMASK(cpu)		(1U << (cpu))
+#define BSRCPUMASK(mask)	bsrl(mask)
+#define BSFCPUMASK(mask)	bsfl(mask)
+#endif
+
 #define PDESIZE         sizeof(pd_entry_t) /* for assembly files */
 #define PTESIZE         sizeof(pt_entry_t) /* for assembly files */
 

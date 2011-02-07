@@ -747,7 +747,7 @@ fexpandsym(source, target, fp)
 			for (bp = tp;  *bp=='0' && isdigit(bp[1]);  bp++)
 				continue;
 
-			if (!*bp)
+			if (!*bp) {
 			    if (s || *sp!='.')
 				break;
 			    else {
@@ -763,6 +763,7 @@ fexpandsym(source, target, fp)
 				bp = tp = target->string;
 				tlim = tp + target->size;
 			    }
+			}
 		}
 
 		while ((*tp++ = *bp++))

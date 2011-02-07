@@ -75,7 +75,7 @@
 
 #ifndef SMP
 #include <machine_base/icu/icu.h>
-#include <machine_base/isa/intr_machdep.h>
+#include <machine/intr_machdep.h>
 #include <bus/isa/isa.h>
 #endif
 
@@ -152,8 +152,6 @@ static	void	fpusave		(union savefpu *);
 static	void	fpurstor	(union savefpu *);
 
 int	hw_float;		/* XXX currently just alias for npx_exists */
-
-extern int bzeront_avail;
 
 SYSCTL_INT(_hw,HW_FLOATINGPT, floatingpoint,
 	CTLFLAG_RD, &hw_float, 0, 
@@ -495,8 +493,6 @@ npx_attach(device_t dev)
 		}
 	}
 
-	if ((cpu_feature & CPUID_SSE2) && mmxopt)
-		bzeront_avail = 1;
 #endif
 #if 0
 	if (cpu_class == CPUCLASS_586 && npx_ex16 && npx_exists &&

@@ -39,7 +39,6 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.42 2007/11/20 21:03:48 dillon Exp $
  */
 
 /*
@@ -156,7 +155,7 @@ static struct proc_target {
 #endif
 #undef N
 };
-static const int nproc_targets = sizeof(proc_targets) / sizeof(proc_targets[0]);
+static const int nproc_targets = NELEM(proc_targets);
 
 static pid_t atopid (const char *, u_int);
 

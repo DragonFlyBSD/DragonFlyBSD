@@ -163,6 +163,11 @@ static const struct usbd_quirk_entry {
  /* MGE UPS Systems ProtectionCenter */
  { .idVendor = 0x0463, .idProduct = 0xffff, .bcdDevice = ANY,
    .quirks   = { UQ_HID_IGNORE }},
+
+ /* Apple usb keyboard */
+ { .idVendor = 0x05ac, .idProduct = 0x0221, .bcdDevice = ANY,
+   .quirks   = { UQ_NO_SET_PROTO}},
+
  { 0, 0, 0, { 0 } }
 };
 

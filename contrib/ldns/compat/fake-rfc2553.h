@@ -44,6 +44,10 @@
 #include <netdb.h>
 #include <limits.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * First, socket and INET6 related definitions 
  */
@@ -170,6 +174,10 @@ void freeaddrinfo(struct addrinfo *);
 int getnameinfo(const struct sockaddr *, size_t, char *, size_t, 
     char *, size_t, int);
 #endif /* !HAVE_GETNAMEINFO */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* !_FAKE_RFC2553_H */
 

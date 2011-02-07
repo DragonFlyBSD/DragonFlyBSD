@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/dev/hifn/hifn7751.c,v 1.5.2.5 2003/06/04 17:56:59 sam Exp $ */
-/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751.c,v 1.14 2007/12/04 09:11:12 hasso Exp $ */
 /* $OpenBSD: hifn7751.c,v 1.120 2002/05/17 00:33:34 deraadt Exp $	*/
 
 /*
@@ -1073,7 +1072,7 @@ hifn_enable_crypto(struct hifn_softc *sc)
 	u_int32_t dmacfg, ramcfg, encl, addr, i;
 	char *offtbl = NULL;
 
-	for (i = 0; i < sizeof(pci2id)/sizeof(pci2id[0]); i++) {
+	for (i = 0; i < NELEM(pci2id); i++) {
 		if (pci2id[i].pci_vendor == pci_get_vendor(sc->sc_dev) &&
 		    pci2id[i].pci_prod == pci_get_device(sc->sc_dev)) {
 			offtbl = pci2id[i].card_id;

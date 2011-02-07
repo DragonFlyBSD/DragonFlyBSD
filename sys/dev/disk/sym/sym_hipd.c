@@ -56,13 +56,11 @@
  */
 
 /* $FreeBSD: src/sys/dev/sym/sym_hipd.c,v 1.6.2.12 2001/12/02 19:01:10 groudier Exp $ */
-/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.24 2008/05/18 20:30:22 pavalos Exp $ */
 
 #define SYM_DRIVER_NAME	"sym-1.6.5-20000902"
 
 /* #define SYM_DEBUG_GENERIC_SUPPORT */
 
-#include "use_pci.h"
 #include <sys/param.h>
 
 /*
@@ -8801,8 +8799,7 @@ static struct sym_pci_chip sym_pci_dev_table[] = {
  FE_RAM|FE_IO256|FE_LEDC}
 };
 
-#define sym_pci_num_devs \
-	(sizeof(sym_pci_dev_table) / sizeof(sym_pci_dev_table[0]))
+#define sym_pci_num_devs NELEM(sym_pci_dev_table)
 
 /*
  *  Look up the chip table.

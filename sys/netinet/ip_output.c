@@ -306,17 +306,6 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 reroute:
 	pkt_dst = next_hop ? next_hop->sin_addr : ip->ip_dst;
 
-#ifdef INVARIANTS
-	if (IN_MULTICAST(ntohl(pkt_dst.s_addr))) {
-		/*
-		 * XXX
-		 * Multicast is not MPSAFE yet.  Caller must hold
-		 * BGL when output a multicast IP packet.
-		 */
-		ASSERT_MP_LOCK_HELD(curthread);
-	}
-#endif
-
 	dst = (struct sockaddr_in *)&ro->ro_dst;
 	/*
 	 * If there is a cached route,
@@ -463,10 +452,14 @@ reroute:
 				 */
 				if (!rsvp_on)
 					imo = NULL;
-				if (ip_mforward &&
-				    ip_mforward(ip, ifp, m, imo) != 0) {
-					m_freem(m);
-					goto done;
+				if (ip_mforward) {
+					get_mplock();
+					if (ip_mforward(ip, ifp, m, imo) != 0) {
+						m_freem(m);
+						rel_mplock();
+						goto done;
+					}
+					rel_mplock();
 				}
 			}
 		}
@@ -2186,6 +2179,8 @@ ip_mloopback(struct ifnet *ifp, struct mbuf *m, struct sockaddr_in *dst,
 			dst->sin_family = AF_INET;
 		}
 #endif
+		get_mplock();	/* is if_simloop() mpsafe yet? */
 		if_simloop(ifp, copym, dst->sin_family, 0);
+		rel_mplock();
 	}
 }

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/msun/amd64/fenv.c,v 1.4 2007/01/05 07:15:26 das Exp $
+ * $FreeBSD: src/lib/msun/amd64/fenv.c,v 1.5 2010/02/03 20:23:47 kib Exp $
  */
 
 #include <sys/cdefs.h>
@@ -86,7 +86,7 @@ fegetenv(fenv_t *envp)
 int
 feholdexcept(fenv_t *envp)
 {
-	int mxcsr;
+	__uint32_t mxcsr;
 
 	__stmxcsr(&mxcsr);
 	__fnstenv(&envp->__x87);
@@ -114,7 +114,8 @@ feupdateenv(const fenv_t *envp)
 int
 __feenableexcept(int mask)
 {
-	int mxcsr, control, omask;
+	__uint32_t mxcsr, omask;
+	__uint16_t control;
 
 	mask &= FE_ALL_EXCEPT;
 	__fnstcw(&control);

@@ -11,7 +11,6 @@
  * based on tools/build.c by Linus Torvalds
  *
  * $FreeBSD: src/usr.bin/kzip/kzip.c,v 1.13.2.2 2000/07/20 10:35:20 kris Exp $
- * $DragonFly: src/usr.bin/kzip/kzip.c,v 1.3 2003/10/04 20:36:47 hmp Exp $
  */
 
 #include <err.h>
@@ -26,10 +25,105 @@
 #include <a.out.h>
 #include <string.h>
 
+/*
+ * This is the limit because a kzip'ed kernel loads at 3Mb and
+ * ends up at 1Mb
+ */
 #define MAXIMAGE	(2*1024*1024)
-	/* This is the limit because a kzip'ed kernel loads at 3Mb and
-	 * ends up at 1Mb
+
+static char string_names[] = {"_input_data\0_input_len\0"};
+
+static struct nlist var_names[2] = {                    /* Symbol table */
+	{ { (char*)  4 }, N_EXT|N_TEXT, 0, 0, 0 },      /* _input_data  */
+	{ { (char*) 16 }, N_EXT|N_TEXT, 0, 0, 0 },      /* _input_len */
+};
+
+static int
+extract(char *file)
+{
+	int sz;
+	char buf[BUFSIZ];
+	struct exec hdr;
+
+	if (read(0, (char *)&hdr, sizeof(hdr)) != sizeof(hdr))
+		err(2, "%s", file);
+	if (hdr.a_magic != ZMAGIC)
+		errx(2, "bad magic in file %s, probably not a kernel", file);
+	if (lseek(0, N_TXTOFF(hdr), 0) < 0)
+		err(2, "%s", file);
+
+	sz = N_SYMOFF(hdr) - N_TXTOFF(hdr);
+
+	while (sz) {
+		size_t l;
+		ssize_t n;
+
+		l = sz;
+		if (l > sizeof(buf))
+			l = sizeof(buf);
+
+		n = read(0, buf, l);
+		if (n != l) {
+			if (n == -1)
+				err(1, "%s", file);
+			else
+				errx(1, "unexpected EOF");
+		}
+
+		write(1, buf, l);
+		sz -= l;
+	}
+	exit(0);
+}
+
+static int
+piggyback(char *file)
+{
+	int n, len;
+	struct exec hdr;                        /* object header */
+	char image[MAXIMAGE];                   /* kernel image buffer */
+
+	len = 0;
+	while ((n = read(0, &image[len], sizeof(image)-len+1)) > 0)
+	      len += n;
+
+	if (n < 0)
+		err(1, "stdin");
+
+	if (len >= sizeof(image))
+		errx(1, "input too large");
+
+	/*
+	 *      Output object header
 	 */
+	memset(&hdr,0,sizeof hdr);
+	hdr.a_magic = OMAGIC;
+	hdr.a_text = len + sizeof(long);
+	hdr.a_syms = sizeof(var_names);
+	write(1, (char *)&hdr, sizeof(hdr));
+
+	/*
+	 *      Output text segment (compressed system & len)
+	 */
+	write(1, image, len);
+	write(1, (char *)&len, sizeof(len));
+
+	/*
+	 *      Output symbol table
+	 */
+	var_names[1].n_value = len;
+	write(1, (char *)&var_names, sizeof(var_names));
+
+	/*
+	 *      Output string table
+	 */
+	len = sizeof(string_names) + sizeof(len);
+	write(1, (char *)&len, sizeof(len));
+	write(1, string_names, sizeof(string_names));
+
+	return (0);
+}
+
 static void
 usage(void)
 {
@@ -88,17 +182,17 @@ main(int argc, char **argv)
 	}
 
 	/* figure out how big the uncompressed image will be */
-	if (read (fdi, (char *)&hdr, sizeof(hdr)) != sizeof(hdr))
+	if (read(fdi, (char *)&hdr, sizeof(hdr)) != sizeof(hdr))
 		err(2, "%s", argv[1]);
 
 	size = hdr.a_text + hdr.a_data + hdr.a_bss;
 	entry = hdr.a_entry & 0x00FFFFFF;
 
-	lseek (fdi, 0, SEEK_SET);
+	lseek(fdi, 0, SEEK_SET);
 
 	if (verbose) {
-		printf("real kernel start address will be: 0x%x\n", entry);
-		printf("real kernel end   address will be: 0x%x\n", entry+size);
+		printf("real kernel start address will be: 0x%lx\n", entry);
+		printf("real kernel end   address will be: 0x%lx\n", entry+size);
 	}
 
 
@@ -133,7 +227,7 @@ main(int argc, char **argv)
 		close(pipe2[0]); close(pipe2[1]);
 		close(fdi); close(fdo);
 		execlp("gzip", "gzip", "-9", "-n", NULL);
-		exit (0);
+		exit(0);
 	}
 
 	Ppiggy = fork();
@@ -180,7 +274,7 @@ main(int argc, char **argv)
 		offset = forceaddr;
 	else {
 		/* a kludge to dynamically figure out where to start it */
-		if (stat (obj, &st) < 0) {
+		if (stat(obj, &st) < 0) {
 			warn("cannot get size of compressed data");
 			return 3;
 		}
@@ -225,7 +319,7 @@ main(int argc, char **argv)
 		}
 
 		/* figure out how big the compressed image is */
-		if (read (fdn, (char *)&hdr, sizeof(hdr)) != sizeof(hdr)) {
+		if (read(fdn, (char *)&hdr, sizeof(hdr)) != sizeof(hdr)) {
 			warn("%s", obj);
 			return 3;
 		}
@@ -239,97 +333,4 @@ main(int argc, char **argv)
 
 	unlink(obj);
 	exit(0);
-}
-
-int
-extract (char *file)
-{
-	int sz;
-	char buf[BUFSIZ];
-	struct exec hdr;
-
-	if (read (0, (char *)&hdr, sizeof(hdr)) != sizeof(hdr))
-		err(2, "%s", file);
-	if (hdr.a_magic != ZMAGIC)
-		errx(2, "bad magic in file %s, probably not a kernel", file);
-	if (lseek (0, N_TXTOFF(hdr), 0) < 0)
-		err(2, "%s", file);
-
-	sz = N_SYMOFF (hdr) - N_TXTOFF (hdr);
-
-	while (sz) {
-		int l, n;
-
-		l = sz;
-		if (l > sizeof(buf))
-			l = sizeof(buf);
-
-		n = read (0, buf, l);
-		if (n != l) {
-			if (n == -1)
-				err(1, "%s", file);
-			else
-				errx(1, "unexpected EOF");
-		}
-
-		write (1, buf, l);
-		sz -= l;
-	}
-	exit(0);
-}
-
-
-char string_names[] = {"_input_data\0_input_len\0"};
-
-struct nlist var_names[2] = {                           /* Symbol table */
-	{ { (char*)  4 }, N_EXT|N_TEXT, 0, 0, 0 },      /* _input_data  */
-	{ { (char*) 16 }, N_EXT|N_TEXT, 0, 0, 0 },      /* _input_len */
-};
-
-int
-piggyback(char *file)
-{
-	int n, len;
-	struct exec hdr;                        /* object header */
-	char image[MAXIMAGE];                   /* kernel image buffer */
-
-	len = 0;
-	while ((n = read (0, &image[len], sizeof(image)-len+1)) > 0)
-	      len += n;
-
-	if (n < 0)
-		err(1, "stdin");
-
-	if (len >= sizeof(image))
-		errx(1, "input too large");
-
-	/*
-	 *      Output object header
-	 */
-	memset(&hdr,0,sizeof hdr);
-	hdr.a_magic = OMAGIC;
-	hdr.a_text = len + sizeof(long);
-	hdr.a_syms = sizeof(var_names);
-	write (1, (char *)&hdr, sizeof(hdr));
-
-	/*
-	 *      Output text segment (compressed system & len)
-	 */
-	write (1, image, len);
-	write (1, (char *)&len, sizeof(len));
-
-	/*
-	 *      Output symbol table
-	 */
-	var_names[1].n_value = len;
-	write (1, (char *)&var_names, sizeof(var_names));
-
-	/*
-	 *      Output string table
-	 */
-	len = sizeof(string_names) + sizeof(len);
-	write (1, (char *)&len, sizeof(len));
-	write (1, string_names, sizeof(string_names));
-
-	return (0);
 }

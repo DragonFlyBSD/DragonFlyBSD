@@ -32,7 +32,7 @@
 #include "file.h"
 
 #ifndef	lint
-FILE_RCSID("@(#)$File: file.c,v 1.136 2009/12/06 23:18:04 rrt Exp $")
+FILE_RCSID("@(#)$File: file.c,v 1.140 2010/11/30 14:58:53 rrt Exp $")
 #endif	/* lint */
 
 #include "magic.h"
@@ -73,15 +73,16 @@ int getopt_long(int argc, char * const *argv, const char *optstring, const struc
 #include "patchlevel.h"
 
 #ifdef S_IFLNK
-#define FILE_FLAGS "-bchikLNnprsvz0"
+#define FILE_FLAGS "-bchikLlNnprsvz0"
 #else
-#define FILE_FLAGS "-bcikNnprsvz0"
+#define FILE_FLAGS "-bciklNnprsvz0"
 #endif
 
 # define USAGE  \
     "Usage: %s [" FILE_FLAGS \
 	"] [--apple] [--mime-encoding] [--mime-type]\n" \
-    "            [-e testname] [-F separator] [-f namefile] [-m magicfiles] file ...\n" \
+    "            [-e testname] [-F separator] [-f namefile] [-m magicfiles] " \
+    "file ...\n" \
     "       %s -C [-m magicfiles]\n" \
     "       %s [--help]\n"
 
@@ -106,7 +107,7 @@ private const struct option long_options[] = {
 #undef OPT_LONGONLY
     {0, 0, NULL, 0}
 };
-#define OPTSTRING	"bcCde:f:F:hikLm:nNprsvz0"
+#define OPTSTRING	"bcCde:f:F:hiklLm:nNprsvz0"
 
 private const struct {
 	const char *name;
@@ -120,6 +121,7 @@ private const struct {
 	{ "encoding",	MAGIC_NO_CHECK_ENCODING },
 	{ "soft",	MAGIC_NO_CHECK_SOFT },
 	{ "tar",	MAGIC_NO_CHECK_TAR },
+	{ "text",	MAGIC_NO_CHECK_TEXT },	/* synonym for ascii */
 	{ "tokens",	MAGIC_NO_CHECK_TOKENS },
 };
 
@@ -227,6 +229,9 @@ main(int argc, char *argv[])
 		case 'k':
 			flags |= MAGIC_CONTINUE;
 			break;
+		case 'l':
+			action = FILE_LIST;
+			break;
 		case 'm':
 			magicfile = optarg;
 			break;
@@ -248,7 +253,7 @@ main(int argc, char *argv[])
 			flags |= MAGIC_DEVICES;
 			break;
 		case 'v':
-			if (magicfile == NULL) 
+			if (magicfile == NULL)
 				magicfile = magic_getpath(magicfile, action);
 			(void)fprintf(stderr, "%s-%d.%.2d\n", progname,
 				       FILE_VERSION_MAJOR, patchlevel);
@@ -281,6 +286,7 @@ main(int argc, char *argv[])
 	switch(action) {
 	case FILE_CHECK:
 	case FILE_COMPILE:
+	case FILE_LIST:
 		/*
 		 * Don't try to check/compile ~/.magic unless we explicitly
 		 * ask for it.
@@ -291,8 +297,19 @@ main(int argc, char *argv[])
 			    strerror(errno));
 			return 1;
 		}
-		c = action == FILE_CHECK ? magic_check(magic, magicfile) :
-		    magic_compile(magic, magicfile);
+		switch(action) {
+		case FILE_CHECK:
+			c = magic_check(magic, magicfile);
+			break;
+		case FILE_COMPILE:
+			c = magic_compile(magic, magicfile);
+			break;
+		case FILE_LIST:
+			c = magic_list(magic, magicfile);
+			break;
+		default:
+			abort();
+		}
 		if (c == -1) {
 			(void)fprintf(stderr, "%s: %s\n", progname,
 			    magic_error(magic));
@@ -407,8 +424,7 @@ process(struct magic_set *ms, const char *inname, int wid)
 		(void)printf("%s", std_in ? "/dev/stdin" : inname);
 		if (nulsep)
 			(void)putc('\0', stdout);
-		else
-			(void)printf("%s", separator);
+		(void)printf("%s", separator);
 		(void)printf("%*s ",
 		    (int) (nopad ? 0 : (wid - file_mbswidth(inname))), "");
 	}

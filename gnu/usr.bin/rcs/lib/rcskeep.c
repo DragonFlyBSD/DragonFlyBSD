@@ -244,8 +244,9 @@ getoldkeys(fp)
             default:
                continue;
             }
-	    if (!c)
+	    if (!c) {
 		Igeteof_(fp, c, c=0;)
+            }
 	    if (c != KDELIM) {
 		workerror("closing %c missing on keyword", KDELIM);
 		return false;
@@ -386,8 +387,9 @@ keepid(c, fp, b)
 	struct buf *b;
 /* Get previous identifier from C+FP into B.  */
 {
-	if (!c)
+	if (!c) {
 	    Igeteof_(fp, c, return false;)
+	}
 	if (!get0val(c, fp, b, false))
 	    return false;
 	checksid(b->string);

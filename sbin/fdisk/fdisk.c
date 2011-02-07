@@ -113,7 +113,7 @@ typedef struct cmd {
     int			n_args;
     struct arg {
 	char	argtype;
-	int	arg_val;
+	long long arg_val;
     }			args[MAX_ARGS];
 } CMD;
 
@@ -1111,7 +1111,7 @@ parse_config_line(char *line, CMD *command)
 		break;		/* assume end of line */
 	    }
 	    end = NULL;
-	    command->args[command->n_args].arg_val = strtol(cp, &end, 0);
+	    command->args[command->n_args].arg_val = strtoll(cp, &end, 0);
 	    if (cp == end)
 	    {
 		break;		/* couldn't parse number */

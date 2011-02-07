@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)talkd.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/talkd/talkd.c,v 1.11.2.1 2001/10/18 12:30:42 des Exp $
- * $DragonFly: src/libexec/talkd/talkd.c,v 1.3 2003/11/14 03:54:31 dillon Exp $
  */
 
 /*
@@ -57,6 +56,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "extern.h"
+
 CTL_MSG		request;
 CTL_RESPONSE	response;
 
@@ -64,20 +65,15 @@ int	sockt;
 int	debug = 0;
 long	lastmsgtime;
 
-char    hostname[MAXHOSTNAMELEN];
+char	hostname[MAXHOSTNAMELEN];
 
 #define TIMEOUT 30
 #define MAXIDLE 120
 
-void process_request (CTL_MSG *, CTL_RESPONSE *);
-void timeout();
-
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
-	register CTL_MSG *mp = &request;
+	CTL_MSG *mp = &request;
 	int cc;
 
 #ifdef NOTDEF
@@ -121,7 +117,7 @@ main(argc, argv)
 }
 
 void
-timeout()
+timeout(int sig __unused)
 {
 	int save_errno = errno;
 

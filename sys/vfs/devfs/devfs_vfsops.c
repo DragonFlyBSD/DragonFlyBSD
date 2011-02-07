@@ -94,6 +94,8 @@ devfs_vfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	size = sizeof("devfs") - 1;
 	bcopy("devfs", mp->mnt_stat.f_mntfromname, size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
+	copyinstr(path, mp->mnt_stat.f_mntonname,
+	    sizeof(mp->mnt_stat.f_mntonname) -1, &size);
 	devfs_vfs_statfs(mp, &mp->mnt_stat, cred);
 
 	/*

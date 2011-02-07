@@ -87,11 +87,8 @@ main(int argc, char *argv[])
 	struct statfs *mntbuf;
 	struct addrinfo hints;
 
-	/* Start disks transferring immediately. */
-	sync();
-
 	all = errs = 0;
-	while ((ch = getopt(argc, argv, "Aafh:t:v")) != -1)
+	while ((ch = getopt(argc, argv, "Aafh:t:v")) != -1) {
 		switch (ch) {
 		case 'A':
 			all = 2;
@@ -118,6 +115,7 @@ main(int argc, char *argv[])
 			usage();
 			/* NOTREACHED */
 		}
+	}
 	argc -= optind;
 	argv += optind;
 

@@ -194,7 +194,7 @@ state(const KINFO *k, const struct varent *vent)
 
 		case LSRUN:
 			*cp = 'R';
-			if (KI_LWP(k, tdflags) & TDF_RUNNING) {
+			if (KI_LWP(k, tdflags) & (TDF_RUNNING | TDF_RUNQ)) {
 			    ++cp;
 			    sprintf(cp, "%d", KI_LWP(k, cpuid));
 			    while (cp[1])
@@ -452,8 +452,20 @@ cputime(const KINFO *k, const struct varent *vent)
 	psecs = (psecs + 5000) / 10000;
 	secs += psecs / 100;
 	psecs = psecs % 100;
-	snprintf(obuff, sizeof(obuff),
-	    "%3ld:%02ld%c%02ld", secs/60, secs%60, decimal_point, psecs);
+#if 1
+	if (secs >= 86400) {
+		snprintf(obuff, sizeof(obuff), "%3ldd%02ld:%02ld",
+			secs / 86400, secs / (60 * 60) % 24, secs / 60 % 60);
+	} else if (secs >= 100 * 60) {
+		snprintf(obuff, sizeof(obuff), "%2ld:%02ld:%02ld",
+			secs / 60 / 60, secs / 60 % 60, secs % 60);
+	} else
+#endif
+	{
+		snprintf(obuff, sizeof(obuff), "%3ld:%02ld%c%02ld",
+			 secs / 60, secs % 60,
+			 decimal_point, psecs);
+	}
 	printf("%*s", vent->width, obuff);
 }
 

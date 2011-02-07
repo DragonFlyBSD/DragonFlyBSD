@@ -102,11 +102,14 @@ struct disk_info {
  *		  cd's don't have disklabels and the default compat label
  *		  does not implement an 'a' partition.
  *
- * COMPARTMBR	- used by the vn device to request that one sector be
+ * COMPATMBR	- used by the vn device to request that one sector be
  *		  reserved as if an MBR were present even when one isn't.
  *
  * MBRQUIET	- silently ignore MBR probe if unable to read sector 0.
  *		  used by VN.
+ *
+ * DEVICEMAPPER	- used by the device mapper (dm). Adds a '.' between the
+ *		  device name and the slice/part stuff (i.e. foo.s0).
  */
 #define DSO_NOLABELS		0x0001
 #define DSO_ONESLICE		0x0002
@@ -115,6 +118,7 @@ struct disk_info {
 #define DSO_COMPATMBR		0x0010
 #define DSO_RAWEXTENSIONS	0x0020
 #define DSO_MBRQUIET		0x0040
+#define DSO_DEVICEMAPPER	0x0080
 
 /*
  * Disk management structure - automated disklabel support.
@@ -123,6 +127,7 @@ struct disk {
 	struct dev_ops		*d_dev_ops;	/* our device switch */
 	struct dev_ops		*d_raw_ops;	/* the raw device switch */
 	u_int			d_flags;
+	int			d_opencount;	/* The current open count */
 	cdev_t			d_rawdev;	/* backing raw device */
 	cdev_t			d_cdev;		/* special whole-disk part */
 	struct diskslices	*d_slice;
@@ -142,11 +147,14 @@ struct disk {
 
 #ifdef _KERNEL
 cdev_t disk_create (int unit, struct disk *disk, struct dev_ops *raw_ops);
+cdev_t disk_create_clone (int unit, struct disk *disk, struct dev_ops *raw_ops);
 cdev_t disk_create_named(const char *name, int unit, struct disk *dp, struct dev_ops *raw_ops);
+cdev_t disk_create_named_clone(const char *name, int unit, struct disk *dp, struct dev_ops *raw_ops);
 cdev_t disk_locate (const char *devname);
 void disk_destroy (struct disk *disk);
 void disk_setdiskinfo (struct disk *disk, struct disk_info *info);
 int disk_setdisktype(struct disk *disk, const char *type);
+int disk_getopencount(struct disk *disk);
 void disk_setdiskinfo_sync(struct disk *disk, struct disk_info *info);
 int disk_dumpcheck (cdev_t dev, u_int64_t *count, u_int64_t *blkno, u_int *secsize);
 int disk_dumpconf(cdev_t dev, u_int onoff);

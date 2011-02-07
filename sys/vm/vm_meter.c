@@ -59,19 +59,26 @@ struct vmstats vmstats;
 static int maxslp = MAXSLP;
 
 SYSCTL_UINT(_vm, VM_V_FREE_MIN, v_free_min,
-	CTLFLAG_RW, &vmstats.v_free_min, 0, "");
+	CTLFLAG_RW, &vmstats.v_free_min, 0,
+	"Minimum number of pages desired free");
 SYSCTL_UINT(_vm, VM_V_FREE_TARGET, v_free_target,
-	CTLFLAG_RW, &vmstats.v_free_target, 0, "");
+	CTLFLAG_RW, &vmstats.v_free_target, 0,
+	"Number of pages desired free");
 SYSCTL_UINT(_vm, VM_V_FREE_RESERVED, v_free_reserved,
-	CTLFLAG_RW, &vmstats.v_free_reserved, 0, "");
+	CTLFLAG_RW, &vmstats.v_free_reserved, 0,
+	"Number of pages reserved for deadlock");
 SYSCTL_UINT(_vm, VM_V_INACTIVE_TARGET, v_inactive_target,
-	CTLFLAG_RW, &vmstats.v_inactive_target, 0, "");
+	CTLFLAG_RW, &vmstats.v_inactive_target, 0,
+	"Number of pages desired inactive");
 SYSCTL_UINT(_vm, VM_V_CACHE_MIN, v_cache_min,
-	CTLFLAG_RW, &vmstats.v_cache_min, 0, "");
+	CTLFLAG_RW, &vmstats.v_cache_min, 0,
+	"Min number of pages desired on cache queue");
 SYSCTL_UINT(_vm, VM_V_CACHE_MAX, v_cache_max,
-	CTLFLAG_RW, &vmstats.v_cache_max, 0, "");
+	CTLFLAG_RW, &vmstats.v_cache_max, 0,
+	"Max number of pages in cached obj");
 SYSCTL_UINT(_vm, VM_V_PAGEOUT_FREE_MIN, v_pageout_free_min,
-	CTLFLAG_RW, &vmstats.v_pageout_free_min, 0, "");
+	CTLFLAG_RW, &vmstats.v_pageout_free_min, 0,
+	"Min number pages reserved for kernel");
 SYSCTL_UINT(_vm, OID_AUTO, v_free_severe,
 	CTLFLAG_RW, &vmstats.v_free_severe, 0, "");
 
@@ -126,7 +133,19 @@ do_vmtotal(SYSCTL_HANDLER_ARGS)
 			continue;
 		if (object->type == OBJT_DEVICE)
 			continue;
-		totalp->t_vm += object->size;
+		if (object->size >= 0x7FFFFFFF) {
+			/*
+			 * Probably unbounded anonymous memory (really
+			 * bounded by related vm_map_entry structures which
+			 * we do not have access to in this loop).
+			 */
+			totalp->t_vm += object->resident_page_count;
+		} else {
+			/*
+			 * It's questionable how useful this is but...
+			 */
+			totalp->t_vm += object->size;
+		}
 		totalp->t_rm += object->resident_page_count;
 		if (object->flags & OBJ_ACTIVE) {
 			totalp->t_avm += object->size;
@@ -320,15 +339,15 @@ SYSCTL_NODE(_vm_stats, OID_AUTO, misc, CTLFLAG_RW, 0, "VM meter misc stats");
 SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_swtch, CTLTYPE_UINT|CTLFLAG_RD,
 	0, VMMETEROFF(v_swtch), vcnt, "IU", "Context switches");
 SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_intrans_coll, CTLTYPE_UINT|CTLFLAG_RD,
-	0, VMMETEROFF(v_intrans_coll), vcnt, "IU", "");
+	0, VMMETEROFF(v_intrans_coll), vcnt, "IU", "Intransit map collisions (total)");
 SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_intrans_wait, CTLTYPE_UINT|CTLFLAG_RD,
-	0, VMMETEROFF(v_intrans_wait), vcnt, "IU", "");
+	0, VMMETEROFF(v_intrans_wait), vcnt, "IU", "Intransit map collisions which blocked");
 SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_forwarded_ints, CTLTYPE_UINT|CTLFLAG_RD,
-	0, VMMETEROFF(v_forwarded_ints), vcnt, "IU", "");
+	0, VMMETEROFF(v_forwarded_ints), vcnt, "IU", "Forwarded interrupts due to MP lock");
 SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_forwarded_hits, CTLTYPE_UINT|CTLFLAG_RD,
-	0, VMMETEROFF(v_forwarded_hits), vcnt, "IU", "");
+	0, VMMETEROFF(v_forwarded_hits), vcnt, "IU", "Forwarded hits due to MP lock");
 SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_forwarded_misses, CTLTYPE_UINT|CTLFLAG_RD,
-	0, VMMETEROFF(v_forwarded_misses), vcnt, "IU", "");
+	0, VMMETEROFF(v_forwarded_misses), vcnt, "IU", "Forwarded misses due to MP lock");
 SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_trap, CTLTYPE_UINT|CTLFLAG_RD,
 	0, VMMETEROFF(v_trap), vcnt, "IU", "Traps");
 SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_syscall, CTLTYPE_UINT|CTLFLAG_RD,
@@ -373,14 +392,16 @@ SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_reactivated, CTLTYPE_UINT|CTLFLAG_RD,
 	0, VMMETEROFF(v_reactivated), vcnt, "IU", "Reactivated pages");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_pdwakeups, CTLTYPE_UINT|CTLFLAG_RD,
 	0, VMMETEROFF(v_pdwakeups), vcnt, "IU", "Pagedaemon wakeups");
+SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_ppwakeups, CTLTYPE_UINT|CTLFLAG_RD,
+	0, VMMETEROFF(v_ppwakeups), vcnt, "IU", "vm_wait wakeups");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_pdpages, CTLTYPE_UINT|CTLFLAG_RD,
 	0, VMMETEROFF(v_pdpages), vcnt, "IU", "Pagedaemon page scans");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_dfree, CTLTYPE_UINT|CTLFLAG_RD,
-	0, VMMETEROFF(v_dfree), vcnt, "IU", "");
+	0, VMMETEROFF(v_dfree), vcnt, "IU", "Pages freed by daemon");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_pfree, CTLTYPE_UINT|CTLFLAG_RD,
-	0, VMMETEROFF(v_pfree), vcnt, "IU", "");
+	0, VMMETEROFF(v_pfree), vcnt, "IU", "Pages freed by exiting processes");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_tfree, CTLTYPE_UINT|CTLFLAG_RD,
-	0, VMMETEROFF(v_tfree), vcnt, "IU", "");
+	0, VMMETEROFF(v_tfree), vcnt, "IU", "Total pages freed");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_forks, CTLTYPE_UINT|CTLFLAG_RD,
 	0, VMMETEROFF(v_forks), vcnt, "IU", "Number of fork() calls");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_vforks, CTLTYPE_UINT|CTLFLAG_RD,
@@ -399,37 +420,53 @@ SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_kthreadpages, CTLTYPE_UINT|CTLFLAG_RD,
 	0, VMMETEROFF(v_kthreadpages), vcnt, "IU", "VM pages affected by fork() by kernel");
 
 SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
-	v_page_size, CTLFLAG_RD, &vmstats.v_page_size, 0, "");
+	v_page_size, CTLFLAG_RD, &vmstats.v_page_size, 0,
+	"Page size in bytes");
 SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
-	v_page_count, CTLFLAG_RD, &vmstats.v_page_count, 0, "");
+	v_page_count, CTLFLAG_RD, &vmstats.v_page_count, 0, 
+	"Total number of pages in system");
 SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
-	v_free_reserved, CTLFLAG_RD, &vmstats.v_free_reserved, 0, "");
+	v_free_reserved, CTLFLAG_RD, &vmstats.v_free_reserved, 0,
+	"Number of pages reserved for deadlock");
 SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
-	v_free_target, CTLFLAG_RD, &vmstats.v_free_target, 0, "");
+	v_free_target, CTLFLAG_RD, &vmstats.v_free_target, 0,
+	"Number of pages desired free");
 SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
-	v_free_min, CTLFLAG_RD, &vmstats.v_free_min, 0, "");
+	v_free_min, CTLFLAG_RD, &vmstats.v_free_min, 0,
+	"Minimum number of pages desired free");
 SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
-	v_free_count, CTLFLAG_RD, &vmstats.v_free_count, 0, "");
+	v_free_count, CTLFLAG_RD, &vmstats.v_free_count, 0,
+	"Number of pages free");
 SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
-	v_wire_count, CTLFLAG_RD, &vmstats.v_wire_count, 0, "");
+	v_wire_count, CTLFLAG_RD, &vmstats.v_wire_count, 0,
+	"Number of pages wired down");
 SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
-	v_active_count, CTLFLAG_RD, &vmstats.v_active_count, 0, "");
+	v_active_count, CTLFLAG_RD, &vmstats.v_active_count, 0,
+	"Number of pages active");
 SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
-	v_inactive_target, CTLFLAG_RD, &vmstats.v_inactive_target, 0, "");
+	v_inactive_target, CTLFLAG_RD, &vmstats.v_inactive_target, 0,
+	"Number of pages desired inactive");
 SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
-	v_inactive_count, CTLFLAG_RD, &vmstats.v_inactive_count, 0, "");
+	v_inactive_count, CTLFLAG_RD, &vmstats.v_inactive_count, 0,
+	"Number of pages inactive");
 SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
-	v_cache_count, CTLFLAG_RD, &vmstats.v_cache_count, 0, "");
+	v_cache_count, CTLFLAG_RD, &vmstats.v_cache_count, 0,
+	"Number of pages on buffer cache queue");
 SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
-	v_cache_min, CTLFLAG_RD, &vmstats.v_cache_min, 0, "");
+	v_cache_min, CTLFLAG_RD, &vmstats.v_cache_min, 0,
+	"Min number of pages desired on cache queue");
 SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
-	v_cache_max, CTLFLAG_RD, &vmstats.v_cache_max, 0, "");
+	v_cache_max, CTLFLAG_RD, &vmstats.v_cache_max, 0,
+	"Max number of pages in cached obj");
 SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
-	v_pageout_free_min, CTLFLAG_RD, &vmstats.v_pageout_free_min, 0, "");
+	v_pageout_free_min, CTLFLAG_RD, &vmstats.v_pageout_free_min, 0,
+	"Min number pages reserved for kernel");
 SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
-	v_interrupt_free_min, CTLFLAG_RD, &vmstats.v_interrupt_free_min, 0, "");
+	v_interrupt_free_min, CTLFLAG_RD, &vmstats.v_interrupt_free_min, 0,
+	"Reserved number of pages for int code");
 SYSCTL_INT(_vm_stats_misc, OID_AUTO,
-	zero_page_count, CTLFLAG_RD, &vm_page_zero_count, 0, "");
+	zero_page_count, CTLFLAG_RD, &vm_page_zero_count, 0,
+	"Number of zeroing pages");
 
 /*
  * No requirements.

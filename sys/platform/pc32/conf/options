@@ -16,6 +16,7 @@ I586_PMC_GUPROF		opt_i586_guprof.h
 WLCACHE			opt_wavelan.h
 WLDEBUG			opt_wavelan.h
 BROKEN_KEYBOARD_RESET	opt_reset.h
+APIC_IO			opt_apic.h
 
 # Options for emulators.  These should only be used at config time, so
 # they are handled like options for static file systems
@@ -24,7 +25,6 @@ COMPAT_LINUX		opt_dontuse.h
 LINPROCFS		opt_dontuse.h	#Linux compatible procfs
 
 # i386 SMP options
-APIC_IO			opt_global.h
 
 # Change KVM size.  Changes things all over the kernel.
 KVA_PAGES		opt_global.h
@@ -61,6 +61,8 @@ CYRIX_CACHE_REALLY_WORKS	opt_cpu.h
 NO_MEMORY_HOLE			opt_cpu.h
 CPU_DISABLE_SSE			opt_cpu.h
 CPU_ATHLON_SSE_HACK		opt_cpu.h
+CPU_HAS_SSE2			opt_global.h
+CPU_HAS_FXSR			opt_global.h
 
 # The CPU type affects the endian conversion functions all over the kernel.
 I486_CPU		opt_global.h
@@ -112,8 +114,6 @@ KBDIO_DEBUG		opt_kbd.h
 USERCONFIG		opt_userconfig.h
 VISUAL_USERCONFIG	opt_userconfig.h
 INTRO_USERCONFIG	opt_userconfig.h
-
-EISA_SLOTS		opt_eisa.h
 
 FE_8BIT_SUPPORT		opt_fe.h
 

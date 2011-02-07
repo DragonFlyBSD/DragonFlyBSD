@@ -354,7 +354,7 @@ int			path_changed(struct resp_buf *base,
 void			check_vif_state(void);
 
 int			main(int argc, char **argv);
-void			dolog(int, int, char *, ...);
+void			dolog(int, int, char *, ...) __printflike(3, 4);
 static void		usage(void);
 
 

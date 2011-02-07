@@ -106,6 +106,9 @@ int __ktrfmtlex(YYSTYPE *);
 
 void __ktrfmt_error (struct ktrfmt_parse_ctx *, const char *);
 
+static void do_parse_err(struct ktrfmt_parse_ctx *, const char *, ...)
+		__printflike(2, 3);
+
 static
 void
 do_parse_err(struct ktrfmt_parse_ctx *ctx, const char *fmt, ...)

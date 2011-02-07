@@ -36,6 +36,7 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	sysctlnametomib.c syslog.c telldir.c termios.c time.c times.c \
 	toascii.c tolower.c toupper.c ttyname.c ttyslot.c \
 	ualarm.c ucontext.c ulimit.c uname.c unvis.c usleep.c utime.c \
+	utmp.c utmpx.c \
 	valloc.c vis.c wait.c wait3.c waitpid.c wordexp.c
 
 .if ${LIB} != {c_rtld}
@@ -51,12 +52,12 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	confstr.3 ctermid.3 ctype.3 daemon.3 \
 	devname.3 directory.3 dirname.3 \
 	dladdr.3 dlinfo.3 dlopen.3 \
-	err.3 exec.3 \
+	endutxent.3 err.3 exec.3 \
 	fmtcheck.3 fmtmsg.3 fnmatch.3 fpclassify.3 frexp.3 ftok.3 fts.3 ftw.3 \
 	getbootfile.3 getbsize.3 getcap.3 getcontext.3 getcwd.3 \
 	getdevpath.3 \
 	getdiskbyname.3 getdisktabbyname.3 getdomainname.3 getfsent.3 \
-	getgrent.3 getgrouplist.3 gethostname.3 getloadavg.3 \
+	getgrent.3 getgrouplist.3 gethostname.3 getlastlogx.3 getloadavg.3 \
 	getmntinfo.3 getnetgrent.3 getobjformat.3 getosreldate.3 \
 	getpagesize.3 getpass.3 getpeereid.3 getprogname.3 getpwent.3 \
 	getttyent.3 getusershell.3 getvfsbyname.3 getvfsent.3 \
@@ -87,6 +88,9 @@ MLINKS+=directory.3 closedir.3 directory.3 dirfd.3 directory.3 opendir.3 \
 	directory.3 seekdir.3 directory.3 telldir.3 directory.3 fdopendir.3
 MLINKS+=devname.3 devname_r.3 devname.3 fdevname.3 devname.3 fdevname_r.3
 MLINKS+=dlopen.3 dlclose.3 dlopen.3 dlerror.3 dlopen.3 dlsym.3
+MLINKS+=endutxent.3 getutxent.3 endutxent.3 getutxid.3 \
+	endutxent.3 getutxline.3 endutxent.3 pututxline.3 \
+	endutxent.3 setutxent.3 endutxent.3 setutxdb.3
 MLINKS+=err.3 err_set_exit.3 err.3 err_set_file.3 err.3 errc.3 err.3 errx.3 \
 	err.3 verr.3 err.3 verrc.3 err.3 verrx.3 err.3 vwarn.3 err.3 vwarnc.3 \
 	err.3 vwarnx.3 err.3 warnc.3 err.3 warn.3 err.3 warnx.3
@@ -110,6 +114,9 @@ MLINKS+=getgrent.3 endgrent.3 getgrent.3 getgrent_r.3 getgrent.3 getgrgid.3 \
 	getgrent.3 getgrgid_r.3 getgrent.3 getgrnam.3 getgrent.3 getgrnam_r.3 \
 	getgrent.3 setgrent.3 getgrent.3 setgroupent.3
 MLINKS+=gethostname.3 sethostname.3
+MLINKS+=getlastlogx.3 updlastlogx.3 getlastlogx.3 getutmp.3 \
+	getlastlogx.3 getutmpx.3 getlastlogx.3 updwtmpx.3 \
+	getlastlogx.3 utmpxname.3
 MLINKS+=getmntinfo.3 getmntvinfo.3
 MLINKS+=getnetgrent.3 endnetgrent.3 getnetgrent.3 innetgr.3 \
 	getnetgrent.3 setnetgrent.3

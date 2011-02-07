@@ -70,7 +70,6 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.79 2008/08/31 13:18:28 aggelos Exp $
  */
 
 #include "opt_compat.h"
@@ -125,7 +124,7 @@ static	 d_open_t  fdopen;
 
 #define CDEV_MAJOR 22
 static struct dev_ops fildesc_ops = {
-	{ "FD", CDEV_MAJOR, 0 },
+	{ "FD", 0, 0 },
 	.d_open =	fdopen,
 };
 
@@ -817,7 +816,7 @@ sys_close(struct close_args *uap)
 }
 
 /*
- * MPALMOSTSAFE - acquires mplock around knote_fdclose() calls
+ * MPSAFE
  */
 int
 kern_close(int fd)
@@ -988,8 +987,8 @@ sys_fpathconf(struct fpathconf_args *uap)
 }
 
 static int fdexpand;
-SYSCTL_INT(_debug, OID_AUTO, fdexpand, CTLFLAG_RD, &fdexpand,
-	   0, "");
+SYSCTL_INT(_debug, OID_AUTO, fdexpand, CTLFLAG_RD, &fdexpand, 0,
+    "Number of times a file table has been expanded");
 
 /*
  * Grow the file table so it can hold through descriptor (want).
@@ -1319,6 +1318,8 @@ fdrevoke(void *f_data, short f_type, struct ucred *cred)
 
 /*
  * Locate matching file pointers directly.
+ *
+ * WARNING: allfiles_scan_exclusive() holds a spinlock through these calls!
  */
 static int
 fdrevoke_check_callback(struct file *fp, void *vinfo)
@@ -2781,7 +2782,6 @@ struct fileops badfileops = {
 	.fo_read = badfo_readwrite,
 	.fo_write = badfo_readwrite,
 	.fo_ioctl = badfo_ioctl,
-	.fo_poll = badfo_poll,
 	.fo_kqfilter = badfo_kqfilter,
 	.fo_stat = badfo_stat,
 	.fo_close = badfo_close,
@@ -2803,12 +2803,6 @@ badfo_ioctl(struct file *fp, u_long com, caddr_t data,
 	    struct ucred *cred, struct sysmsg *msgv)
 {
 	return (EBADF);
-}
-
-int
-badfo_poll(struct file *fp, int events, struct ucred *cred)
-{
-	return (0);
 }
 
 /*

@@ -42,9 +42,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <utmp.h>
+#include "utmpentry.h"
 
-typedef char   namebuf[UT_NAMESIZE];
+typedef char   namebuf[32];
 
 static int scmp(const void *, const void *);
 static void usage(void);
@@ -52,11 +52,11 @@ static void usage(void);
 int
 main(int argc, char **argv)
 {
+	struct utmpentry *ep;
 	namebuf *names = NULL;
 	int ncnt = 0;
 	int nmax = 0;
 	int cnt;
-	struct utmp utmp;
 	int ch;
 
 	while ((ch = getopt(argc, argv, "")) != -1) {
@@ -68,27 +68,24 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (!freopen(_PATH_UTMP, "r", stdin))
-		err(1, "can't open %s", _PATH_UTMP);
-	while (fread((char *)&utmp, sizeof(utmp), 1, stdin) == 1) {
-		if (*utmp.ut_name) {
-			if (ncnt >= nmax) {
-				nmax += 32;
-				names = realloc(names,
-					sizeof (*names) * nmax);
-				if (names == NULL)
-					err(1, "realloc");
-			}
-			strncpy(names[ncnt], utmp.ut_name, UT_NAMESIZE);
-			++ncnt;
+	getutentries(NULL, &ep);
+	for (; ep; ep = ep->next) {
+		if (ncnt >= nmax) {
+			nmax += 32;
+			names = realloc(names,
+				sizeof (*names) * nmax);
+			if (names == NULL)
+				err(1, "realloc");
 		}
+		strcpy(names[ncnt], ep->name);
+		++ncnt;
 	}
 	if (ncnt) {
-		qsort(names, ncnt, UT_NAMESIZE, scmp);
-		printf("%.*s", UT_NAMESIZE, names[0]);
+		qsort(names, ncnt, 32, scmp);
+		printf("%.*s", 32, names[0]);
 		for (cnt = 1; cnt < ncnt; ++cnt) {
-			if (strncmp(names[cnt], names[cnt - 1], UT_NAMESIZE))
-				printf(" %.*s", UT_NAMESIZE, names[cnt]);
+			if (strcmp(names[cnt], names[cnt - 1]))
+				printf(" %.*s", 32, names[cnt]);
 		}
 		printf("\n");
 	}
@@ -105,5 +102,5 @@ usage(void)
 int
 scmp(const void *p, const void *q)
 {
-	return(strncmp(p, q, UT_NAMESIZE));
+	return(strncmp(p, q, 32));
 }

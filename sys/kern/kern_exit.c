@@ -69,6 +69,7 @@
 #include <sys/caps.h>
 #include <sys/unistd.h>
 #include <sys/eventhandler.h>
+#include <sys/dsched.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -117,10 +118,8 @@ struct lwplist deadlwp_list[MAXCPU];
 int
 sys_exit(struct exit_args *uap)
 {
-	get_mplock();
 	exit1(W_EXITCODE(uap->rval, 0));
 	/* NOTREACHED */
-	rel_mplock();
 }
 
 /*
@@ -282,6 +281,8 @@ exit1(int rv)
 		    WTERMSIG(rv), WEXITSTATUS(rv));
 		panic("Going nowhere without my init!");
 	}
+
+	get_mplock();
 
 	varsymset_clean(&p->p_varsymset);
 	lockuninit(&p->p_varsymset.vx_lock);
@@ -529,13 +530,19 @@ exit1(int rv)
 			wakeup((caddr_t)pp);
 	}
 
-	if (p->p_sigparent && p->p_pptr != initproc) {
-	        ksignal(p->p_pptr, p->p_sigparent);
+	/* lwkt_gettoken(&proc_token); */
+	q = p->p_pptr;
+	if (p->p_sigparent && q != initproc) {
+		PHOLD(q);
+	        ksignal(q, p->p_sigparent);
+		PRELE(q);
 	} else {
-	        ksignal(p->p_pptr, SIGCHLD);
+	        ksignal(q, SIGCHLD);
 	}
+	/* lwkt_reltoken(&proc_token); */
+	/* NOTE: p->p_pptr can get ripped out */
 
-	wakeup((caddr_t)p->p_pptr);
+	wakeup(p->p_pptr);
 	/*
 	 * cpu_exit is responsible for clearing curproc, since
 	 * it is heavily integrated with the thread/switching sequence.
@@ -610,21 +617,34 @@ lwp_exit(int masterexit)
 	PHOLD(p);
 
 	/*
+	 * Do any remaining work that might block on us.  We should be
+	 * coded such that further blocking is ok after decrementing
+	 * p_nthreads but don't take the chance.
+	 */
+	dsched_exit_thread(td);
+	biosched_done(curthread);
+
+	/*
 	 * We have to use the reaper for all the LWPs except the one doing
 	 * the master exit.  The LWP doing the master exit can just be
 	 * left on p_lwps and the process reaper will deal with it
 	 * synchronously, which is much faster.
+	 *
+	 * Wakeup anyone waiting on p_nthreads to drop to 1 or 0.
 	 */
 	if (masterexit == 0) {
 		lwp_rb_tree_RB_REMOVE(&p->p_lwp_tree, lp);
 		--p->p_nthreads;
-		wakeup(&p->p_nthreads);
+		if (p->p_nthreads <= 1)
+			wakeup(&p->p_nthreads);
 		LIST_INSERT_HEAD(&deadlwp_list[mycpuid], lp, u.lwp_reap_entry);
-		taskqueue_enqueue(taskqueue_thread[mycpuid], deadlwp_task[mycpuid]);
+		taskqueue_enqueue(taskqueue_thread[mycpuid],
+				  deadlwp_task[mycpuid]);
 	} else {
 		--p->p_nthreads;
+		if (p->p_nthreads <= 1)
+			wakeup(&p->p_nthreads);
 	}
-	biosched_done(curthread);
 	cpu_lwp_exit();
 }
 
@@ -664,10 +684,12 @@ lwp_wait(struct lwp *lp)
 	 * and let the caller deal with sleeping and calling
 	 * us again.
 	 */
-	if ((td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK|TDF_EXITING)) !=
-	    TDF_EXITING)
+	if ((td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK|
+			     TDF_EXITING|TDF_RUNQ)) != TDF_EXITING) {
 		return (0);
-
+	}
+	KASSERT((td->td_flags & TDF_TSLEEPQ) == 0,
+		("lwp_wait: td %p (%s) still on sleep queue", td, td->td_comm));
 	return (1);
 }
 

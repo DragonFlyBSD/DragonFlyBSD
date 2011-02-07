@@ -306,7 +306,7 @@ Prototypes may have an extra space after a tab to enable function names
 to line up:
 .Bd -literal
 static char	*function(int, const char *, struct foo *, struct bar *,
-			  struct baz **);
+		     struct baz **);
 static void	 usage(void);
 
 /*
@@ -339,9 +339,7 @@ Elements in a
 .Ic switch
 statement that cascade should have a
 .Li FALLTHROUGH
-comment, unless they contain no code of their own, as in the
-.Ic case '?'
-element in the example below.
+comment, unless they contain no code of their own.
 Numerical arguments should be checked for accuracy.
 Code that cannot be reached should have a
 .Li NOTREACHED
@@ -363,7 +361,6 @@ comment.
 				usage();
 			}
 			break;
-		case '?':
 		default:
 			usage();
 			/* NOTREACHED */
@@ -720,6 +717,9 @@ placed in a single set of brackets.
 "usage: f [-a | -b] [-c [-dEe] [-n number]]\en"
 .Ed
 .Bd -literal
+void
+usage(void)
+{
 	fprintf(stderr, "usage: f [-ab]\en");
 	exit(EX_USAGE);
 }

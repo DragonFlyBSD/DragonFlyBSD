@@ -76,7 +76,8 @@ MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 \
 	kldfind.2 kldfirstmod.2 kldload.2 kldnext.2 kldstat.2 kldsym.2 \
 	kldunload.2 ktrace.2 kqueue.2 link.2 listen.2 lseek.2 \
 	lwp_create.2 lwp_gettid.2 lwp_kill.2 \
-	madvise.2 mincore.2 minherit.2 mkdir.2 mkfifo.2 mknod.2 mlock.2 mmap.2 \
+	madvise.2 mincore.2 minherit.2 mkdir.2 mkfifo.2 mknod.2 mlock.2 \
+	mlockall.2 mmap.2 \
 	modfind.2 modnext.2 modstat.2 \
 	mount.2 mountctl.2 mprotect.2 msync.2 munmap.2 nanosleep.2 \
 	nfssvc.2 ntp_adjtime.2 ntp_gettime.2 \
@@ -138,6 +139,7 @@ MLINKS+=mkdir.2 mkdirat.2
 MLINKS+=mkfifo.2 mkfifoat.2
 MLINKS+=mknod.2 mknodat.2
 MLINKS+=mlock.2 munlock.2
+MLINKS+=mlockall.2 munlockall.2
 MLINKS+=modnext.2 modfnext.2
 MLINKS+=mount.2 unmount.2
 MLINKS+=open.2 openat.2

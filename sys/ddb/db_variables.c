@@ -24,7 +24,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_variables.c,v 1.18 1999/08/28 00:41:11 peter Exp $
- * $DragonFly: src/sys/ddb/db_variables.c,v 1.4 2005/12/23 21:35:44 swildner Exp $
  */
 
 /*
@@ -52,8 +51,7 @@ static struct db_variable db_vars[] = {
 	{ "maxwidth",	&db_max_width, NULL },
 	{ "tabstops",	&db_tab_stop_width, NULL },
 };
-static struct db_variable *db_evars = 
-		db_vars + sizeof(db_vars)/sizeof(db_vars[0]);
+static struct db_variable *db_evars = db_vars + NELEM(db_vars);
 
 static int
 db_find_variable(struct db_variable **varp)

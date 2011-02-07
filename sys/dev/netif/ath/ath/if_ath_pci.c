@@ -30,8 +30,6 @@
  * $DragonFly$
  */
 
-#include <sys/cdefs.h>
-
 /*
  * PCI/Cardbus front-end for the Atheros Wireless LAN controller driver.
  */

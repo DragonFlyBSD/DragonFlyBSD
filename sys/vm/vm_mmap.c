@@ -17,10 +17,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -41,7 +37,6 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.39 2007/04/30 07:18:57 dillon Exp $
  */
 
 /*
@@ -249,14 +244,10 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 			return (EINVAL);
 	} else {
 		/*
-		 * Set a reasonable start point for the hint if it was
-		 * not specified or if it falls within the heap space.
-		 * Hinted mmap()s do not allocate out of the heap space.
+		 * Get a hint of where to map. It also provides mmap offset
+		 * randomization if enabled.
 		 */
-		if (addr == 0 ||
-		    (addr >= round_page((vm_offset_t)vms->vm_taddr) &&
-		     addr < round_page((vm_offset_t)vms->vm_daddr + maxdsiz)))
-			addr = round_page((vm_offset_t)vms->vm_daddr + maxdsiz);
+		addr = vm_map_hint(p, addr, prot);
 	}
 
 	if (flags & MAP_ANON) {
@@ -1026,29 +1017,109 @@ sys_mlock(struct mlock_args *uap)
 }
 
 /*
- * mlockall_args(int how)
- *
- * Dummy routine, doesn't actually do anything.
+ * mlockall(int how)
  *
  * No requirements
  */
 int
 sys_mlockall(struct mlockall_args *uap)
 {
-	return (ENOSYS);
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	vm_map_t map = &p->p_vmspace->vm_map;
+	vm_map_entry_t entry;
+	int how = uap->how;
+	int rc = KERN_SUCCESS;
+
+	if (((how & MCL_CURRENT) == 0) && ((how & MCL_FUTURE) == 0))
+		return (EINVAL);
+
+	rc = priv_check_cred(td->td_ucred, PRIV_ROOT, 0);
+	if (rc) 
+		return (rc);
+
+	vm_map_lock(map);
+	do {
+		if (how & MCL_CURRENT) {
+			for(entry = map->header.next;
+			    entry != &map->header;
+			    entry = entry->next);
+
+			rc = ENOSYS;
+			break;
+		}
+	
+		if (how & MCL_FUTURE)
+			map->flags |= MAP_WIREFUTURE;
+	} while(0);
+	vm_map_unlock(map);
+
+	return (rc);
 }
 
 /*
- * munlockall_args(void)
+ * munlockall(void)
  *
- * Dummy routine, doesn't actually do anything.
+ *	Unwire all user-wired map entries, cancel MCL_FUTURE.
  *
  * No requirements
  */
 int
 sys_munlockall(struct munlockall_args *uap)
 {
-	return (ENOSYS);
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	vm_map_t map = &p->p_vmspace->vm_map;
+	vm_map_entry_t entry;
+	int rc = KERN_SUCCESS;
+
+	vm_map_lock(map);
+
+	/* Clear MAP_WIREFUTURE to cancel mlockall(MCL_FUTURE) */
+	map->flags &= ~MAP_WIREFUTURE;
+
+retry:
+	for (entry = map->header.next;
+	     entry != &map->header;
+	     entry = entry->next) {
+		if ((entry->eflags & MAP_ENTRY_USER_WIRED) == 0)
+			continue;
+
+		/*
+		 * If we encounter an in-transition entry, we release the 
+		 * map lock and retry the scan; we do not decrement any
+		 * wired_count more than once because we do not touch
+		 * any entries with MAP_ENTRY_USER_WIRED not set.
+		 *
+ 		 * There is a potential interleaving with concurrent
+		 * mlockall()s here -- if we abort a scan, an mlockall()
+		 * could start, wire a number of entries before our 
+		 * current position in, and then stall itself on this
+		 * or any other in-transition entry. If that occurs, when
+		 * we resume, we will unwire those entries. 
+ 		 */
+		if (entry->eflags & MAP_ENTRY_IN_TRANSITION) {
+			entry->eflags |= MAP_ENTRY_NEEDS_WAKEUP;
+			++mycpu->gd_cnt.v_intrans_coll;
+			++mycpu->gd_cnt.v_intrans_wait;
+			vm_map_transition_wait(map);
+			goto retry;
+		}
+
+		KASSERT(entry->wired_count > 0, 
+			("wired_count was 0 with USER_WIRED set! %p", entry));
+	
+		/* Drop wired count, if it hits zero, unwire the entry */
+		entry->eflags &= ~MAP_ENTRY_USER_WIRED;
+		entry->wired_count--;
+		if (entry->wired_count == 0)
+			vm_fault_unwire(map, entry);
+	}
+
+	map->timestamp++;
+	vm_map_unlock(map);
+
+	return (rc);
 }
 
 /*
@@ -1313,6 +1384,10 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 			goto out;
 		}
 	}
+
+	/* If a process has marked all future mappings for wiring, do so */
+	if ((rv == KERN_SUCCESS) && (map->flags & MAP_WIREFUTURE))
+		vm_map_unwire(map, *addr, *addr + size, FALSE);
 
 	/*
 	 * Set the access time on the vnode

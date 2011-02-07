@@ -1426,10 +1426,7 @@ es_pci_attach(device_t dev)
 	kobj_class_t    ct = NULL;
 	uint32_t devid;
 
-	if ((es = kmalloc(sizeof *es, M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
-		device_printf(dev, "cannot allocate softc\n");
-		return ENXIO;
-	}
+	es = kmalloc(sizeof *es, M_DEVBUF, M_WAITOK | M_ZERO);
 	es->lock = snd_mtxcreate(device_get_nameunit(dev), "sound softc");
 	es->dev = dev;
 	es->escfg = 0;

@@ -423,9 +423,15 @@ mark_ecn(struct mbuf *m, struct altq_pktattr *pktattr, int flags)
 	void *hdr;
 	int  af;
 
-	KKASSERT(m->m_pkthdr.fw_flags & PF_MBUF_STRUCTURE);
-	af = m->m_pkthdr.pf.ecn_af;
-	hdr = m->m_pkthdr.pf.hdr;
+	if (m->m_pkthdr.fw_flags & PF_MBUF_STRUCTURE) {
+		af = m->m_pkthdr.pf.ecn_af;
+		hdr = m->m_pkthdr.pf.hdr;
+	} else if (pktattr) {
+		af = pktattr->pattr_af;
+		hdr = pktattr->pattr_hdr;
+	} else {
+		return (0);
+	}
 
 	if (af != AF_INET && af != AF_INET6)
 		return (0);

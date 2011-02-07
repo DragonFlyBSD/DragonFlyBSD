@@ -15,10 +15,10 @@ MAN=	aac.4 \
 	adv.4 \
 	adw.4 \
 	ae.4 \
+	aesni.4 \
 	age.4 \
 	agp.4 \
 	aha.4 \
-	ahb.4 \
 	ahc.4 \
 	ahci.4 \
 	ahd.4 \
@@ -98,7 +98,8 @@ MAN=	aac.4 \
 	gre.4 \
 	gusc.4 \
 	hifn.4 \
-	hotplug.4 \
+	hptiop.4 \
+	hptmv.4 \
 	ichsmb.4 \
 	icmp.4 \
 	icmp6.4 \
@@ -106,6 +107,7 @@ MAN=	aac.4 \
 	ieee80211.4 \
 	ifmedia.4 \
 	ifmib.4 \
+	igb.4 \
 	iic.4 \
 	iicbb.4 \
 	iicbus.4 \
@@ -146,6 +148,7 @@ MAN=	aac.4 \
 	lpt.4 \
 	md.4 \
 	mem.4 \
+	mfi.4 \
 	miibus.4 \
 	mlx.4 \
 	mly.4 \
@@ -154,6 +157,7 @@ MAN=	aac.4 \
 	mn.4 \
 	moscom.4 \
 	mouse.4 \
+	mps.4 \
 	mpt.4 \
 	msk.4 \
 	mtio.4 \
@@ -208,7 +212,6 @@ MAN=	aac.4 \
 	pcn.4 \
 	pf.4 \
 	pflog.4 \
-	pfsync.4 \
 	pim.4 \
 	polling.4 \
 	powernow.4 \
@@ -303,6 +306,7 @@ MAN=	aac.4 \
 	tun.4 \
 	twa.4 \
 	twe.4 \
+	tws.4 \
 	txp.4 \
 	uark.4 \
 	ubsa.4 \
@@ -315,6 +319,7 @@ MAN=	aac.4 \
 	uftdi.4 \
 	ugen.4 \
 	ugensa.4 \
+	uguru.4 \
 	uhci.4 \
 	uhid.4 \
 	uhidev.4 \
@@ -357,8 +362,11 @@ MAN=	aac.4 \
 	xpt.4 \
 	zero.4
 
+# XXX re-add when pfsync(4) has been fixed
+#	pfsync.4 \
+
 # XXX re-add when adjusted to the new 802.11 framework
-#MAN+=	acx.4 \
+#	acx.4 \
 #	bwi.4 \
 #	iwl.4 \
 #	rtw.4 \

@@ -1,9 +1,6 @@
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
-/* Define if building universal (internal helper macro) */
-/* #undef AC_APPLE_UNIVERSAL_BUILD */
-
 /* Define if you have a getaddrinfo that fails for the all-zeros IPv6 address
    */
 /* #undef AIX_GETNAMEINFO_HACK */
@@ -27,7 +24,7 @@
 /* #undef BROKEN_GETGROUPS */
 
 /* FreeBSD glob does not do what we need */
-#define BROKEN_GLOB 1
+/* #undef BROKEN_GLOB */
 
 /* Define if you system's inet_ntoa is busted (e.g. Irix gcc issue) */
 /* #undef BROKEN_INET_NTOA */
@@ -84,9 +81,6 @@
 /* Define if you want to specify the path to your lastlog file */
 /* #undef CONF_LASTLOG_FILE */
 
-/* Define if you want to specify the path to your utmpx file */
-/* #undef CONF_UTMPX_FILE */
-
 /* Define if you want to specify the path to your utmp file */
 #define CONF_UTMP_FILE "/var/run/utmp"
 
@@ -118,13 +112,16 @@
 /* #undef DISABLE_UTMP */
 
 /* Define if you don't want to use utmpx */
-#define DISABLE_UTMPX 1
+/* #define DISABLE_UTMPX */
 
 /* Define if you don't want to use wtmp */
 /* #undef DISABLE_WTMP */
 
 /* Define if you don't want to use wtmpx */
 #define DISABLE_WTMPX 1
+
+/* Enable for PKCS#11 support */
+#define ENABLE_PKCS11 
 
 /* Builtin PRNG command timeout */
 #define ENTROPY_TIMEOUT_MSEC 200
@@ -322,7 +319,7 @@
 /* #undef HAVE_ENDUTENT */
 
 /* Define to 1 if you have the `endutxent' function. */
-/* #undef HAVE_ENDUTXENT */
+#define HAVE_ENDUTXENT 1
 
 /* Define if your system has /etc/default/login */
 /* #undef HAVE_ETC_DEFAULT_LOGIN */
@@ -448,13 +445,16 @@
 /* #undef HAVE_GETUTLINE */
 
 /* Define to 1 if you have the `getutxent' function. */
-/* #undef HAVE_GETUTXENT */
+#define HAVE_GETUTXENT 1
 
 /* Define to 1 if you have the `getutxid' function. */
 /* #undef HAVE_GETUTXID */
 
 /* Define to 1 if you have the `getutxline' function. */
 /* #undef HAVE_GETUTXLINE */
+
+/* Define to 1 if you have the `getutxuser' function. */
+/* #undef HAVE_GETUTXUSER */
 
 /* Define to 1 if you have the `get_default_context_with_level' function. */
 /* #undef HAVE_GET_DEFAULT_CONTEXT_WITH_LEVEL */
@@ -464,6 +464,9 @@
 
 /* Define to 1 if you have the <glob.h> header file. */
 #define HAVE_GLOB_H 1
+
+/* Define to 1 if you have the `group_from_gid' function. */
+#define HAVE_GROUP_FROM_GID 1
 
 /* Define to 1 if you have the <gssapi_generic.h> header file. */
 /* #undef HAVE_GSSAPI_GENERIC_H */
@@ -490,7 +493,7 @@
 #define HAVE_HOST_IN_UTMP 1
 
 /* Define if you have ut_host in utmpx.h */
-/* #undef HAVE_HOST_IN_UTMPX */
+#define HAVE_HOST_IN_UTMPX 1
 
 /* Define to 1 if you have the <iaf.h> header file. */
 /* #undef HAVE_IAF_H */
@@ -502,7 +505,7 @@
 /* #undef HAVE_ID_IN_UTMP */
 
 /* Define if you have ut_id in utmpx.h */
-/* #undef HAVE_ID_IN_UTMPX */
+#define HAVE_ID_IN_UTMPX  1
 
 /* Define to 1 if you have the `inet_aton' function. */
 #define HAVE_INET_ATON 1
@@ -549,14 +552,14 @@
 /* Define if system has libiaf that supports set_id */
 /* #undef HAVE_LIBIAF */
 
+/* Define to 1 if you have the `network' library (-lnetwork). */
+/* #undef HAVE_LIBNETWORK */
+
 /* Define to 1 if you have the `nsl' library (-lnsl). */
 /* #undef HAVE_LIBNSL */
 
 /* Define to 1 if you have the `pam' library (-lpam). */
 #define HAVE_LIBPAM 1
-
-/* Define to 1 if you have the `sectok' library (-lsectok). */
-/* #undef HAVE_LIBSECTOK */
 
 /* Define to 1 if you have the `socket' library (-lsocket). */
 /* #undef HAVE_LIBSOCKET */
@@ -577,7 +580,7 @@
 /* #undef HAVE_LINUX_IF_TUN_H */
 
 /* Define if your libraries define login() */
-#define HAVE_LOGIN 1
+/* #undef HAVE_LOGIN */
 
 /* Define to 1 if you have the <login_cap.h> header file. */
 #define HAVE_LOGIN_CAP_H 1
@@ -707,7 +710,7 @@
 /* #undef HAVE_PUTUTLINE */
 
 /* Define to 1 if you have the `pututxline' function. */
-/* #undef HAVE_PUTUTXLINE */
+#define HAVE_PUTUTXLINE 1
 
 /* Define if your password has a pw_change field */
 #define HAVE_PW_CHANGE_IN_PASSWD 1
@@ -739,9 +742,6 @@
 /* define if you have sa_family_t data type */
 #define HAVE_SA_FAMILY_T 1
 
-/* Define to 1 if you have the <sectok.h> header file. */
-/* #undef HAVE_SECTOK_H */
-
 /* Define if you have SecureWare-based protected password database */
 /* #undef HAVE_SECUREWARE */
 
@@ -766,6 +766,9 @@
 /* Define to 1 if you have the `seteuid' function. */
 #define HAVE_SETEUID 1
 
+/* Define to 1 if you have the `setgroupent' function. */
+#define HAVE_SETGROUPENT 1
+
 /* Define to 1 if you have the `setgroups' function. */
 #define HAVE_SETGROUPS 1
 
@@ -774,6 +777,9 @@
 
 /* Define to 1 if you have the `setluid' function. */
 /* #undef HAVE_SETLUID */
+
+/* Define to 1 if you have the `setpassent' function. */
+#define HAVE_SETPASSENT 1
 
 /* Define to 1 if you have the `setpcred' function. */
 /* #undef HAVE_SETPCRED */
@@ -802,8 +808,11 @@
 /* Define to 1 if you have the `setutent' function. */
 /* #undef HAVE_SETUTENT */
 
+/* Define to 1 if you have the `setutxdb' function. */
+/* #undef HAVE_SETUTXDB */
+
 /* Define to 1 if you have the `setutxent' function. */
-/* #undef HAVE_SETUTXENT */
+#define HAVE_SETUTXENT 1
 
 /* Define to 1 if you have the `setvbuf' function. */
 #define HAVE_SETVBUF 1
@@ -891,6 +900,9 @@
 
 /* Define to 1 if you have the `strnvis' function. */
 #define HAVE_STRNVIS 1
+
+/* Define to 1 if you have the `strptime' function. */
+#define HAVE_STRPTIME 1
 
 /* Define to 1 if you have the `strsep' function. */
 #define HAVE_STRSEP 1
@@ -1046,13 +1058,13 @@
 /* #undef HAVE_TV_IN_UTMP */
 
 /* Define if you have ut_tv in utmpx.h */
-/* #undef HAVE_TV_IN_UTMPX */
+#define HAVE_TV_IN_UTMPX 1
 
 /* Define if you have ut_type in utmp.h */
 /* #undef HAVE_TYPE_IN_UTMP */
 
 /* Define if you have ut_type in utmpx.h */
-/* #undef HAVE_TYPE_IN_UTMPX */
+#define HAVE_TYPE_IN_UTMPX 1
 
 /* Define to 1 if you have the <ucred.h> header file. */
 /* #undef HAVE_UCRED_H */
@@ -1078,6 +1090,9 @@
 /* Define to 1 if you have the <usersec.h> header file. */
 /* #undef HAVE_USERSEC_H */
 
+/* Define to 1 if you have the `user_from_uid' function. */
+#define HAVE_USER_FROM_UID 1
+
 /* Define to 1 if you have the <util.h> header file. */
 /* #undef HAVE_UTIL_H */
 
@@ -1094,7 +1109,7 @@
 /* #undef HAVE_UTMPXNAME */
 
 /* Define to 1 if you have the <utmpx.h> header file. */
-/* #undef HAVE_UTMPX_H */
+#define HAVE_UTMPX_H 1
 
 /* Define to 1 if you have the <utmp.h> header file. */
 #define HAVE_UTMP_H 1
@@ -1186,6 +1201,9 @@
 /* Define to whatever link() returns for "not supported" if it doesn't return
    EOPNOTSUPP. */
 /* #undef LINK_OPNOTSUPP_ERRNO */
+
+/* Adjust Linux out-of-memory killer */
+/* #undef LINUX_OOM_ADJUST */
 
 /* max value of long long calculated by configure */
 /* #undef LLONG_MAX */
@@ -1306,9 +1324,6 @@
 /* Define if your skeychallenge() function takes 4 arguments (NetBSD) */
 /* #undef SKEYCHALLENGE_4ARG */
 
-/* Define if you want smartcard support */
-/* #undef SMARTCARD */
-
 /* Define as const if snprintf() can declare const char *fmt */
 #define SNPRINTF_CONST const
 
@@ -1376,9 +1391,6 @@
 /* Use libedit for sftp */
 #define USE_LIBEDIT 1
 
-/* Define if you want smartcard support using OpenSC */
-/* #undef USE_OPENSC */
-
 /* Enable OpenSSL engine support */
 /* #undef USE_OPENSSL_ENGINE */
 
@@ -1387,9 +1399,6 @@
 
 /* Use PIPES instead of a socketpair() */
 /* #undef USE_PIPES */
-
-/* Define if you want smartcard support using sectok */
-/* #undef USE_SECTOK */
 
 /* Define if you have Solaris process contracts */
 /* #undef USE_SOLARIS_PROCESS_CONTRACTS */
@@ -1416,17 +1425,9 @@
 /* Define if you want SELinux support. */
 /* #undef WITH_SELINUX */
 
-/* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
-   significant byte first (like Motorola and SPARC, unlike Intel). */
-#if defined AC_APPLE_UNIVERSAL_BUILD
-# if defined __BIG_ENDIAN__
-#  define WORDS_BIGENDIAN 1
-# endif
-#else
-# ifndef WORDS_BIGENDIAN
-/* #  undef WORDS_BIGENDIAN */
-# endif
-#endif
+/* Define to 1 if your processor stores words with the most significant byte
+   first (like Motorola and SPARC, unlike Intel and VAX). */
+/* #undef WORDS_BIGENDIAN */
 
 /* Define if xauth is found in your path */
 /* #undef XAUTH_PATH */

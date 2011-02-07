@@ -371,22 +371,12 @@ log_spec: /* Nothing */
 %%
 
 void
-#if __STDC__
 parse_error(const char *fmt, ...)
-#else
-parse_error(fmt, va_alist)
-	char	*fmt;
-	va_dcl
-#endif
 {
 	va_list	ap;
 	char	buff[256];
 
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 
 	vsprintf(buff, fmt, ap);
 	scsp_log(LOG_ERR, "%s: Config file error at line %d: %s\n",

@@ -1,4 +1,4 @@
-/*	$OpenBSD: pfctl_altq.c,v 1.92 2007/05/27 05:15:17 claudio Exp $	*/
+/*	$OpenBSD: pfctl_altq.c,v 1.94 2008/07/25 17:43:44 martynas Exp $	*/
 
 /*
  * Copyright (c) 2002
@@ -148,8 +148,8 @@ qname_to_qid(const char *qname)
 }
 
 void
-print_altq(const struct pf_altq *a, unsigned level, struct node_queue_bw *bw,
-	struct node_queue_opt *qopts)
+print_altq(const struct pf_altq *a, unsigned int level,
+    struct node_queue_bw *bw, struct node_queue_opt *qopts)
 {
 	if (a->qname[0] != 0) {
 		print_queue(a, level, bw, 1, qopts);
@@ -189,10 +189,11 @@ print_altq(const struct pf_altq *a, unsigned level, struct node_queue_bw *bw,
 }
 
 void
-print_queue(const struct pf_altq *a, unsigned level, struct node_queue_bw *bw,
-    int print_interface, struct node_queue_opt *qopts)
+print_queue(const struct pf_altq *a, unsigned int level,
+    struct node_queue_bw *bw, int print_interface,
+    struct node_queue_opt *qopts)
 {
-	unsigned	i;
+	unsigned int	i;
 
 	printf("queue ");
 	for (i = 0; i < level; ++i)
@@ -1050,9 +1051,6 @@ print_fairq_opts(const struct pf_altq *a, const struct node_queue_opt *qopts)
 /*
  * admission control using generalized service curve
  */
-#ifndef	INFINITY
-#define	INFINITY	HUGE_VAL  /* positive infinity defined in <math.h> */
-#endif
 
 /* add a new service curve to a generalized service curve */
 static void

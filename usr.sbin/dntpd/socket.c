@@ -54,7 +54,8 @@ udp_socket(const char *target, int port, struct sockaddr *sam,
     error = getaddrinfo(target, servname, &hints, &res0);
     if (error) {
 	if (dns_error_policy == LOG_DNS_ERROR)
-	    logerr("getaddrinfo (%s) init error", target, gai_strerror(error));
+	    logerr("getaddrinfo (%s) init error: %s", target,
+		gai_strerror(error));
         return(-1);
     }
 

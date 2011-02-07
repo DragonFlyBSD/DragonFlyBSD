@@ -345,6 +345,11 @@ struct hammer_ioc_volume {
 	int64_t			mem_area_size;
 };
 
+struct hammer_ioc_volume_list {
+	struct hammer_ioc_volume *vols;
+	int nvols;
+};
+
 union hammer_ioc_mrecord_any {
 	struct hammer_ioc_mrecord_head	head;
 	struct hammer_ioc_mrecord_rec	rec;
@@ -438,6 +443,30 @@ struct hammer_ioc_config {
 };
 
 /*
+ * HAMMERIOC_DEDUP
+ */
+struct hammer_ioc_dedup {
+	struct hammer_ioc_head	head;
+	struct hammer_base_elm	elm1;
+	struct hammer_base_elm	elm2; /* candidate for dedup */
+};
+
+#define HAMMER_IOC_DEDUP_CMP_FAILURE	0x0001 /* verification failed */
+#define HAMMER_IOC_DEDUP_UNDERFLOW	0x0002 /* bigblock underflow */
+#define HAMMER_IOC_DEDUP_INVALID_ZONE	0x0004 /* we can't dedup all zones */
+
+/*
+ * HAMMERIOC_GET_DATA
+ */
+struct hammer_ioc_data {
+	struct hammer_ioc_head		head;
+	struct hammer_base_elm		elm;	/* btree key to lookup */
+	struct hammer_btree_leaf_elm	leaf;
+	void				*ubuf;	/* user buffer */
+	int				size;	/* max size */
+};
+
+/*
  * Ioctl cmd ids
  */
 #define HAMMERIOC_PRUNE		_IOWR('h',1,struct hammer_ioc_prune)
@@ -463,6 +492,9 @@ struct hammer_ioc_config {
 #define HAMMERIOC_GET_CONFIG	_IOWR('h',21,struct hammer_ioc_config)
 #define HAMMERIOC_SET_CONFIG	_IOWR('h',22,struct hammer_ioc_config)
 #define HAMMERIOC_DEL_VOLUME 	_IOWR('h',24,struct hammer_ioc_volume)
+#define HAMMERIOC_DEDUP		_IOWR('h',25,struct hammer_ioc_dedup)
+#define HAMMERIOC_GET_DATA	_IOWR('h',26,struct hammer_ioc_data)
+#define HAMMERIOC_LIST_VOLUMES	_IOWR('h',27,struct hammer_ioc_volume_list)
 
 #endif
 

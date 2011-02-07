@@ -121,7 +121,7 @@ The 80GB version of this SSD
 will have a write endurance of approximately 80TB.
 .Pp
 MLC SSDs have a 1000-10000x write endurance, while the lower density
-higher-cost SLC SSDs have an approximately 10000-100000x write endurance.
+higher-cost SLC SSDs have a 10000-100000x write endurance, approximately.
 MLC SSDs can be used for the swapcache (and swap) as long as the system
 manager is cognizant of its limitations.
 .Pp
@@ -383,14 +383,137 @@ For example, a system with a measly 192MB of RAM and SSD swap can run
 a -j 8 parallel build world in a little less than twice the time it
 would take if the system had 2GB of RAM, whereas it would take 5x to 10x
 as long with normal HD based swap.
+.Sh USING SWAPCACHE WITH NORMAL HARD DRIVES
+Although
+.Nm
+is designed to work with SSD-based storage it can also be used with
+HD-based storage as an aid for offloading the primary storage system.
+Here we need to make a distinction between using RAID for fanning out
+storage verses using RAID for redundancy.  There are numerous situations
+where RAID-based redundancy does not make sense.
+.Pp
+A good example would be in an environment where the servers themselves
+are redundant and can suffer a total failure without effecting
+ongoing operations.  When the primary storage requirements easily fit onto
+a single large-capacity drive it doesn't make a whole lot of sense to
+use RAID if your only desire is to improve performance.  If you had a farm
+of, say, 20 servers supporting the same facility adding RAID to each one
+would not accomplish anything other than to bloat your deployment and
+maintenance costs.
+.Pp
+In these sorts of situations it may be desirable and convenient to have
+the primary filesystem for each machine on a single large drive and then
+use the
+.Nm
+facility to offload the drive and make the machine more effective without
+actually distributing the filesystem itself across multiple drives.
+For the purposes of offloading while a SSD would be the most effective
+from a performance standpoint, a second medium sized HD with its much lower
+cost and higher capacity might actually be more cost effective.
+.Pp
+In cases where you might desire to use
+.Nm
+with a normal hard drive you should probably consider running a 64-bit
+.Dx
+instead of a 32-bit system.
+The 64-bit build is capable of supporting much larger swap configurations
+(upwards of 512G) and would be a more suitable match against a medium-sized
+HD.
+.Sh EXPLANATION OF STATIC VS DYNAMIC WEARING LEVELING, AND WRITE-COMBINING
+Modern SSDs keep track of space that has never been written to.
+This would also include space freed up via TRIM, but simply not
+touching a bit of storage in a factory fresh SSD works just as well.
+Once you touch (write to) the storage all bets are off, even if
+you reformat/repartition later.  It takes sending the SSD a
+whole-device TRIM command or special format command to take it back
+to its factory-fresh condition (sans wear already present).
+.Pp
+SSDs have wear leveling algorithms which are responsible for trying
+to even out the erase/write cycles across all flash cells in the
+storage.  The better a job the SSD can do the longer the SSD will
+remain usable.
+.Pp
+The more unused storage there is from the SSDs point of view the
+easier a time the SSD has running its wear leveling algorithms.
+Basically the wear leveling algorithm in a modern SSD (say Intel or OCZ)
+uses a combination of static and dynamic leveling.  Static is the
+best, allowing the SSD to reuse flash cells that have not been
+erased very much by moving static (unchanging) data out of them and
+into other cells that have more wear.  Dynamic wear leveling involves
+writing data to available flash cells and then marking the cells containing
+the previous copy of the data as being free/reusable.  Dynamic wear leveling
+is the worst kind but the easiest to implement.  Modern SSDs use a combination
+of both algorithms plus also do write-combining.
+.Pp
+USB sticks often use only dynamic wear leveling and have short life spans
+because of that.
+.Pp
+In anycase, any unused space in the SSD effectively makes the dynamic
+wear leveling the SSD does more efficient by giving the SSD more 'unused'
+space above and beyond the physical space it reserves beyond its stated
+storage capacity to cycle data throgh, so the SSD lasts longer in theory.
+.Pp
+Write-combining is a feature whereby the SSD is able to reduced write
+amplification effects by combining OS writes of smaller, discrete,
+non-contiguous logical sectors into a single contiguous 128KB physical
+flash block.
+.Pp
+On the flip side write-combining also results in more complex lookup tables
+which can become fragmented over time and reduce the SSDs read performance.
+Fragmentation can also occur when write-combined blocks are rewritten
+piecemeal.
+Modern SSDs can regain the lost performance by de-combining previously
+write-combined areas as part of their static wear leveling algorithm, but
+at the cost of extra write/erase cycles which slightly increase write
+amplification effects.
+Operating systems can also help maintain the SSDs performance by utilizing
+larger blocks.
+Write-combining results in a net-reduction
+of write-amplification effects but due to having to de-combine later and
+other fragmentary effects it isn't 100%.
+From testing with Intel devices write-amplification can be well controlled
+in the 2x-4x range with the OS doing 16K writes, verses a worst-case
+8x write-amplification with 16K blocks, 32x with 4K blocks, and a truly
+horrid worst-case with 512 byte blocks.
+.Pp
+The
+.Dx
+.Nm
+feature utilizes 64K-128K writes and is specifically designed to minimize
+write amplification and write-combining stresses.
+In terms of placing an actual filesystem on the SSD, the
+.Dx
+.Xr hammer 8
+filesystem utilizes 16K blocks and is well behaved as long as you limit
+reblocking operations.
+For UFS you should create the filesystem with at least a 4K fragment
+size, verses the default 2K.
+Modern Windows filesystems use 4K clusters but it is unclear how SSD-friendly
+NTFS is.
 .Sh WARNINGS
 I am going to repeat and expand a bit on SSD wear.
 Wear on SSDs is a function of the write durability of the cells,
-whether the SSD implements static or dynamic wear leveling, and
-write amplification effects based on the type of write activity.
-Write amplification occurs due to wasted space when the SSD must
-erase and rewrite the underlying flash blocks.
-E.g.\& MLC flash uses 128KB erase/write blocks.
+whether the SSD implements static or dynamic wear leveling (or both),
+write amplification effects when the OS does not issue write-aligned 128KB
+ops or when the SSD is unable to write-combine adjacent logical sectors,
+or if the SSD has a poor write-combining algorithm for non-adjacent sectors.
+In addition some additional erase/rewrite activity occurs from cleanup
+operations the SSD performs as part of its static wear leveling algorithms
+and its write-decombining algorithms (necessary to maintain performance over
+time).  MLC flash uses 128KB physical write/erase blocks while SLC flash
+typically uses 64KB physical write/erase blocks.
+.Pp
+The algorithms the SSD implements in its firmware are probably the most
+important part of the device and a major differentiator between e.g. SATA
+and USB-based SSDs.  SATA form factor drives will universally be far superior
+to USB storage sticks.
+SSDs can also have wildly different wearout rates and wildly different
+performance curves over time.
+For example the performance of a SSD which does not implement
+write-decombining can seriously degrade over time as its lookup
+tables become severely fragmented.
+For the purposes of this manual page we are primarily using Intel and OCZ
+drives when describing performance and wear issues.
 .Pp
 .Nm
 parameters should be carefully chosen to avoid early wearout.
@@ -418,10 +541,6 @@ Keep in mind that if you use a larger portion of the SSD's advertised
 storage the SSD will not know if/when you decide to use less unless
 appropriate TRIM commands are sent (if supported), or a low level
 factory erase is issued.
-.Pp
-The swapcache is designed for use with SSDs configured as swap and
-will generally not improve performance when a normal hard drive is used
-for swap.
 .Pp
 .Nm smartctl
 (from pkgsrc's sysutils/smartmontools) may be used to retrieve
@@ -461,7 +580,7 @@ In tests over several hundred days we have validated a write endurance
 greater than 200TB on the 40G Intel X25V using
 .Nm .
 .Pp
-In contrast, most filesystems directly stored on a SSD have
+In contrast, filesystems directly stored on a SSD could have
 fairly severe write amplification effects and will have durabilities
 ranging closer to the vendor-specified limit.
 .Pp
@@ -492,6 +611,7 @@ is usable with both technologies.
 .Xr chflags 1 ,
 .Xr fstab 5 ,
 .Xr disklabel64 8 ,
+.Xr hammer 8 ,
 .Xr swapon 8
 .Sh HISTORY
 .Nm

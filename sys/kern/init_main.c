@@ -96,11 +96,16 @@ struct lwp lwp0;
 struct thread thread0;
 
 int cmask = CMASK;
+u_int cpu_mi_feature;
+cpumask_t usched_global_cpumask;
 extern	struct user *proc0paddr;
 extern int fallback_elf_brand;
 
 int	boothowto = 0;		/* initialized so that it can be patched */
-SYSCTL_INT(_debug, OID_AUTO, boothowto, CTLFLAG_RD, &boothowto, 0, "");
+SYSCTL_INT(_debug, OID_AUTO, boothowto, CTLFLAG_RD, &boothowto, 0,
+    "Reboot flags, from console subsystem");
+SYSCTL_ULONG(_kern, OID_AUTO, usched_global_cpumask, CTLFLAG_RW,
+    &usched_global_cpumask, 0, "global user scheduler cpumask");
 
 /*
  * This ensures that there is at least one entry so that the sysinit_set
@@ -163,9 +168,6 @@ mi_proc0init(struct globaldata *gd, struct user *proc0paddr)
 {
 	lwkt_init_thread(&thread0, proc0paddr, LWKT_THREAD_STACK, 0, gd);
 	lwkt_set_comm(&thread0, "thread0");
-#ifdef SMP
-	thread0.td_mpcount = 1;	/* will hold mplock initially */
-#endif
 	RB_INIT(&proc0.p_lwp_tree);
 	spin_init(&proc0.p_spin);
 	proc0.p_lasttid = 0;	/* +1 = next TID */
@@ -173,7 +175,7 @@ mi_proc0init(struct globaldata *gd, struct user *proc0paddr)
 	lwp0.lwp_thread = &thread0;
 	lwp0.lwp_proc = &proc0;
 	proc0.p_usched = usched_init();
-	lwp0.lwp_cpumask = 0xFFFFFFFF;
+	lwp0.lwp_cpumask = (cpumask_t)-1;
 	varsymset_init(&proc0.p_varsymset, NULL);
 	thread0.td_flags |= TDF_RUNNING;
 	thread0.td_proc = &proc0;
@@ -297,7 +299,7 @@ SYSINIT(announce, SI_BOOT1_COPYRIGHT, SI_ORDER_FIRST, print_caddr_t, copyright)
 static void
 leavecrit(void *dummy __unused)
 {
-	MachIntrABI.finalize();
+	MachIntrABI.stabilize();
 	cpu_enable_intr();
 	MachIntrABI.cleanup();
 	crit_exit();
@@ -703,9 +705,10 @@ mi_gdinit(struct globaldata *gd, int cpuid)
 	TAILQ_INIT(&gd->gd_systimerq);
 	gd->gd_sysid_alloc = cpuid;	/* prime low bits for cpu lookup */
 	gd->gd_cpuid = cpuid;
-	gd->gd_cpumask = (cpumask_t)1 << cpuid;
+	gd->gd_cpumask = CPUMASK(cpuid);
 	lwkt_gdinit(gd);
 	vm_map_entry_reserve_cpu_init(gd);
 	sleep_gdinit(gd);
+	usched_global_cpumask |= CPUMASK(cpuid);
 }
 

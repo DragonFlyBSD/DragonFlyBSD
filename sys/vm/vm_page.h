@@ -111,6 +111,7 @@ typedef enum vm_page_event { VMEVENT_NONE, VMEVENT_COW } vm_page_event_t;
 
 struct vm_page_action {
 	LIST_ENTRY(vm_page_action) entry;
+	struct vm_page		*m;
 	vm_page_event_t		event;
 	void			(*func)(struct vm_page *,
 					struct vm_page_action *);
@@ -166,10 +167,12 @@ struct vm_page {
 	vm_paddr_t phys_addr;		/* physical address of page */
 	struct md_page md;		/* machine dependant stuff */
 	u_short	queue;			/* page queue index */
-	u_short	flags;			/* see below */
 	u_short	pc;			/* page color */
 	u_char	act_count;		/* page usage count */
 	u_char	busy;			/* page busy count */
+	u_char	unused01;
+	u_char	unused02;
+	u_int32_t flags;		/* see below */
 	u_int	wire_count;		/* wired down maps refs (P) */
 	int 	hold_count;		/* page hold count */
 
@@ -177,14 +180,14 @@ struct vm_page {
 	 * NOTE that these must support one bit per DEV_BSIZE in a page!!!
 	 * so, on normal X86 kernels, they must be at least 8 bits wide.
 	 */
-#if PAGE_SIZE == 4096
 	u_char	valid;			/* map of valid DEV_BSIZE chunks */
 	u_char	dirty;			/* map of dirty DEV_BSIZE chunks */
-#elif PAGE_SIZE == 8192
-	u_short	valid;			/* map of valid DEV_BSIZE chunks */
-	u_short	dirty;			/* map of dirty DEV_BSIZE chunks */
+
+	int	ku_pagecnt;		/* kmalloc helper */
+#ifdef VM_PAGE_DEBUG
+	const char *busy_func;
+	int	busy_line;
 #endif
-	LIST_HEAD(,vm_page_action) action_list;
 };
 
 #ifndef __VM_PAGE_T_DEFINED__
@@ -313,22 +316,23 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
  *  PG_SWAPPED indicates that the page is backed by a swap block.  Any
  *  VM object type other than OBJT_DEFAULT can have swap-backed pages now.
  */
-#define	PG_BUSY		0x0001		/* page is in transit (O) */
-#define	PG_WANTED	0x0002		/* someone is waiting for page (O) */
-#define PG_WINATCFLS	0x0004		/* flush dirty page on inactive q */
-#define	PG_FICTITIOUS	0x0008		/* physical page doesn't exist (O) */
-#define	PG_WRITEABLE	0x0010		/* page is writeable */
-#define PG_MAPPED	0x0020		/* page is mapped (managed) */
-#define	PG_ZERO		0x0040		/* page is zeroed */
-#define PG_REFERENCED	0x0080		/* page has been referenced */
-#define PG_CLEANCHK	0x0100		/* page will be checked for cleaning */
-#define PG_SWAPINPROG	0x0200		/* swap I/O in progress on page	     */
-#define PG_NOSYNC	0x0400		/* do not collect for syncer */
-#define PG_UNMANAGED	0x0800		/* No PV management for page */
-#define PG_MARKER	0x1000		/* special queue marker page */
-#define PG_RAM		0x2000		/* read ahead mark */
-#define PG_SWAPPED	0x4000		/* backed by swap */
-#define PG_NOTMETA	0x8000		/* do not back with swap */
+#define	PG_BUSY		0x00000001	/* page is in transit (O) */
+#define	PG_WANTED	0x00000002	/* someone is waiting for page (O) */
+#define PG_WINATCFLS	0x00000004	/* flush dirty page on inactive q */
+#define	PG_FICTITIOUS	0x00000008	/* physical page doesn't exist (O) */
+#define	PG_WRITEABLE	0x00000010	/* page is writeable */
+#define PG_MAPPED	0x00000020	/* page is mapped (managed) */
+#define	PG_ZERO		0x00000040	/* page is zeroed */
+#define PG_REFERENCED	0x00000080	/* page has been referenced */
+#define PG_CLEANCHK	0x00000100	/* page will be checked for cleaning */
+#define PG_SWAPINPROG	0x00000200	/* swap I/O in progress on page	     */
+#define PG_NOSYNC	0x00000400	/* do not collect for syncer */
+#define PG_UNMANAGED	0x00000800	/* No PV management for page */
+#define PG_MARKER	0x00001000	/* special queue marker page */
+#define PG_RAM		0x00002000	/* read ahead mark */
+#define PG_SWAPPED	0x00004000	/* backed by swap */
+#define PG_NOTMETA	0x00008000	/* do not back with swap */
+#define PG_ACTIONLIST	0x00010000	/* lookaside action list present */
 	/* u_short, only 16 flag bits */
 
 /*
@@ -386,14 +390,31 @@ extern long first_page;			/* first physical page number */
 static __inline void
 vm_page_flag_set(vm_page_t m, unsigned int bits)
 {
-	atomic_set_short(&(m)->flags, bits);
+	atomic_set_int(&(m)->flags, bits);
 }
 
 static __inline void
 vm_page_flag_clear(vm_page_t m, unsigned int bits)
 {
-	atomic_clear_short(&(m)->flags, bits);
+	atomic_clear_int(&(m)->flags, bits);
 }
+
+#ifdef VM_PAGE_DEBUG
+
+static __inline void
+_vm_page_busy(vm_page_t m, const char *func, int lineno)
+{
+	ASSERT_LWKT_TOKEN_HELD(&vm_token);
+	KASSERT((m->flags & PG_BUSY) == 0,
+		("vm_page_busy: page already busy!!!"));
+	vm_page_flag_set(m, PG_BUSY);
+	m->busy_func = func;
+	m->busy_line = lineno;
+}
+
+#define vm_page_busy(m)	_vm_page_busy(m, __func__, __LINE__)
+
+#else
 
 static __inline void
 vm_page_busy(vm_page_t m)
@@ -403,6 +424,8 @@ vm_page_busy(vm_page_t m)
 		("vm_page_busy: page already busy!!!"));
 	vm_page_flag_set(m, PG_BUSY);
 }
+
+#endif
 
 /*
  *	vm_page_flash:
@@ -459,10 +482,6 @@ vm_page_io_finish(vm_page_t m)
 #define VM_PAGE_BITS_ALL 0xff
 #endif
 
-#if PAGE_SIZE == 8192
-#define VM_PAGE_BITS_ALL 0xffff
-#endif
-
 /*
  * Note: the code will always use nominally free pages from the free list
  * before trying other flag-specified sources. 
@@ -492,7 +511,7 @@ void vm_page_insert (vm_page_t, struct vm_object *, vm_pindex_t);
 vm_page_t vm_page_lookup (struct vm_object *, vm_pindex_t);
 void vm_page_remove (vm_page_t);
 void vm_page_rename (vm_page_t, struct vm_object *, vm_pindex_t);
-vm_offset_t vm_page_startup (vm_offset_t);
+void vm_page_startup (void);
 vm_page_t vm_add_new_page (vm_paddr_t pa);
 void vm_page_unmanage (vm_page_t);
 void vm_page_unwire (vm_page_t, int);
@@ -516,6 +535,8 @@ vm_offset_t vm_contig_pg_kmap(int, u_long, vm_map_t, int);
 void vm_contig_pg_free(int, u_long);
 void vm_page_event_internal(vm_page_t, vm_page_event_t);
 void vm_page_dirty(vm_page_t m);
+void vm_page_register_action(vm_page_action_t action, vm_page_event_t event);
+void vm_page_unregister_action(vm_page_action_t action);
 
 /*
  * Reduce the protection of a page.  This routine never raises the 

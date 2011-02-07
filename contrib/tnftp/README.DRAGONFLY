@@ -1,4 +1,1 @@
 Original source is obtained from NetBSD's usr.bin/ftp.
-
-cvs import hint:
-cvs import -I CVS -I Makefile src/contrib/tnftp NETBSD tnftp_YYYYMMDD

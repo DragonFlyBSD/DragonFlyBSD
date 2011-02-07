@@ -383,21 +383,20 @@ ath_hal_mac_usec(struct ath_hal *ah, u_int clks)
 void
 ath_hal_setupratetable(struct ath_hal *ah, HAL_RATE_TABLE *rt)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 	int i;
 
 	if (rt->rateCodeToIndex[0] != 0)	/* already setup */
 		return;
-	for (i = 0; i < N(rt->rateCodeToIndex); i++)
+	for (i = 0; i < NELEM(rt->rateCodeToIndex); i++)
 		rt->rateCodeToIndex[i] = (uint8_t) -1;
 	for (i = 0; i < rt->rateCount; i++) {
 		uint8_t code = rt->info[i].rateCode;
 		uint8_t cix = rt->info[i].controlRate;
 
-		HALASSERT(code < N(rt->rateCodeToIndex));
+		HALASSERT(code < NELEM(rt->rateCodeToIndex));
 		rt->rateCodeToIndex[code] = i;
 		HALASSERT((code | rt->info[i].shortPreamble) <
-		    N(rt->rateCodeToIndex));
+		    NELEM(rt->rateCodeToIndex));
 		rt->rateCodeToIndex[code | rt->info[i].shortPreamble] = i;
 		/*
 		 * XXX for 11g the control rate to use for 5.5 and 11 Mb/s
@@ -410,7 +409,6 @@ ath_hal_setupratetable(struct ath_hal *ah, HAL_RATE_TABLE *rt)
 		rt->info[i].spAckDuration = ath_hal_computetxtime(ah, rt,
 			WLAN_CTRL_FRAME_SIZE, cix, AH_TRUE);
 	}
-#undef N
 }
 
 HAL_STATUS

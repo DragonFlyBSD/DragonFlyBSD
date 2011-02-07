@@ -81,6 +81,7 @@
 #include <sys/buf2.h>
 #include <sys/mplock2.h>
 
+#include <machine/cpu.h>
 #include <machine/clock.h>
 #include <machine/md_var.h>
 #include <machine/smp.h>		/* smp_active_mask, cpuid */
@@ -631,6 +632,7 @@ dump_conf(void *dummy)
 
 	path = kmalloc(MNAMELEN, M_TEMP, M_WAITOK);
 	if (TUNABLE_STR_FETCH("dumpdev", path, MNAMELEN) != 0) {
+		sync_devs();
 		dev = kgetdiskbyname(path);
 		if (dev != NULL)
 			dumpdev = dev;
@@ -765,7 +767,6 @@ panic(const char *fmt, ...)
 	kprintf("panic: %s\n", buf);
 #ifdef SMP
 	/* two separate prints in case of an unmapped page and trap */
-	kprintf("mp_lock = %08x; ", mp_lock);
 	kprintf("cpuid = %d\n", mycpu->gd_cpuid);
 #endif
 
@@ -777,11 +778,23 @@ panic(const char *fmt, ...)
 	wdog_disable();
 #endif
 
+	/*
+	 * Enter the debugger or fall through & dump.  Entering the
+	 * debugger will stop cpus.  If not entering the debugger stop
+	 * cpus here.
+	 */
 #if defined(DDB)
 	if (newpanic && trace_on_panic)
 		print_backtrace(-1);
 	if (debugger_on_panic)
 		Debugger("panic");
+	else
+#endif
+#ifdef SMP
+	if (newpanic)
+		stop_cpus(mycpu->gd_other_cpus);
+#else
+	;
 #endif
 	boot(bootopt);
 }
@@ -879,4 +892,38 @@ dumpsys(void)
 		dumping++;
 		md_dumpsys(&dumper);
 	}
+}
+
+int dump_stop_usertds = 0;
+
+#ifdef SMP
+static
+void
+need_user_resched_remote(void *dummy)
+{
+	need_user_resched();
+}
+#endif
+
+void
+dump_reactivate_cpus(void)
+{
+#ifdef SMP
+	globaldata_t gd;
+	int cpu, seq;
+#endif
+
+	dump_stop_usertds = 1;
+
+	need_user_resched();
+
+#ifdef SMP
+	for (cpu = 0; cpu < ncpus; cpu++) {
+		gd = globaldata_find(cpu);
+		seq = lwkt_send_ipiq(gd, need_user_resched_remote, NULL);
+		lwkt_wait_ipiq(gd, seq);
+	}
+
+	restart_cpus(stopped_cpus);
+#endif
 }

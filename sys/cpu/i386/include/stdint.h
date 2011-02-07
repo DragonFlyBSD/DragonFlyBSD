@@ -128,6 +128,6 @@ typedef volatile int	__atomic_intr_t;
 		  (static_cast<type *> (0)->field))))
 #endif  
 
-#define __arysize(ary)		(sizeof(ary)/sizeof((ary)[0]))
+#define __arysize(ary)         (sizeof(ary)/sizeof((ary)[0]))
 
 #endif /* _CPU_STDINT_H_ */

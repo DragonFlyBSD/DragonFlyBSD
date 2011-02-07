@@ -34,8 +34,13 @@ ukbdmap.h			optional	ukbd_dflt_keymap	\
 	no-obj no-implicit-rule before-depend				\
 	clean		"ukbdmap.h"
 #
-emulation/dragonfly12/dfbsd12_getdirentries.c	nonoptional compat_df12
-emulation/dragonfly12/dfbsd12_stat.c	nonoptional compat_df12
+hptmvraid.o			optional	hptmv			\
+	dependency	"$S/dev/raid/hptmv/i386-elf.raid.o.uu"		\
+	compile-with	"uudecode < $S/dev/raid/hptmv/i386-elf.raid.o.uu" \
+	no-implicit-rule
+#
+emulation/dragonfly12/dfbsd12_getdirentries.c	optional compat_df12
+emulation/dragonfly12/dfbsd12_stat.c	optional compat_df12
 #
 emulation/linux/linux_emuldata.c	optional	compat_linux
 emulation/linux/linux_epoll.c	optional	compat_linux
@@ -101,7 +106,6 @@ acpi_wakecode.h				optional        acpi		\
 dev/crypto/glxsb/glxsb.c		optional	glxsb
 dev/crypto/glxsb/glxsb_hash.c		optional	glxsb
 dev/netif/ed/if_ed_isa.c		optional	ed isa
-bus/eisa/eisaconf.c			optional	eisa
 dev/video/fb/fb.c			optional	fb
 dev/video/fb/fb.c			optional	vga
 dev/video/fb/splash.c			optional	splash
@@ -154,6 +158,7 @@ cpu/i386/misc/ktr.c			optional	ktr
 cpu/i386/misc/db_disasm.c		optional	ddb
 cpu/i386/misc/i386-gdbstub.c		optional	ddb
 cpu/i386/misc/bzeront.s			standard
+cpu/i386/misc/monitor.s			standard
 platform/pc32/i386/autoconf.c		standard
 platform/pc32/i386/bios.c		standard
 platform/pc32/i386/bioscall.s		standard
@@ -165,7 +170,9 @@ platform/pc32/i386/elan-mmcr.c		optional	cpu_elan
 platform/pc32/i386/geode.c		optional	cpu_geode
 platform/pc32/i386/cs5536.c		optional	cpu_geode
 platform/pc32/i386/exception.s		standard
-platform/pc32/isa/ipl.s			standard
+platform/pc32/i386/ipl.s		standard
+platform/pc32/i386/ipl_funcs.c		standard		   \
+	compile-with	"${CC} -c ${CFLAGS} ${WERROR} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
 platform/pc32/i386/globals.s		standard
 platform/pc32/i386/i686_mem.c		standard
 platform/pc32/i386/identcpu.c		standard
@@ -178,12 +185,13 @@ platform/pc32/i386/tls.c		standard
 # arch/i386/i386/locore.s		standard
 platform/pc32/i386/machdep.c		standard
 platform/pc32/i386/math_emulate.c	optional	math_emulate
+platform/pc32/icu/icu.c			standard
 platform/pc32/icu/icu_abi.c		standard
 platform/pc32/icu/icu_ipl.s		standard
 platform/pc32/icu/icu_vector.s		standard
-platform/pc32/apic/apic_abi.c		optional	smp
+platform/pc32/apic/ioapic_abi.c		optional	smp
 platform/pc32/apic/mpapic.c		optional	smp
-platform/pc32/apic/apic_ipl.s		optional	smp
+platform/pc32/apic/ioapic_ipl.s		optional	smp
 platform/pc32/apic/apic_vector.s	optional	smp
 platform/pc32/i386/est.c		optional	cpu_enable_est
 # temporarily not in build until we get the 'apic' option working on UP
@@ -214,6 +222,7 @@ platform/pc32/i386/vm_machdep.c		standard
 platform/pc32/i386/cpufreq_machdep.c	standard
 platform/pc32/isa/asc.c			optional	asc
 platform/pc32/isa/clock.c		standard nowerror
+platform/pc32/isa/elcr.c		standard
 dev/video/ctx/ctx.c			optional	ctx
 dev/serial/cy/cy.c			optional	cy
 dev/netif/elink_layer/elink.c		optional	ep
@@ -226,9 +235,7 @@ dev/netif/el/if_el.c			optional	el
 dev/netif/le/if_le.c			optional	le
 dev/netif/rdp/if_rdp.c			optional nowerror	rdp
 dev/netif/wl/if_wl.c			optional	wl
-platform/pc32/isa/intr_machdep.c	standard
-platform/pc32/isa/ipl_funcs.c		standard		   \
-	compile-with	"${CC} -c ${CFLAGS} ${WERROR} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
+platform/pc32/isa/isa_intr.c		standard
 bus/isa/i386/isa.c			optional	isa
 bus/isa/i386/isa_compat.c		optional nowerror	isa compat_oldisa
 bus/isa/i386/isa_dma.c			optional	isa
@@ -240,7 +247,7 @@ bus/pci/i386/legacy.c			optional	pci
 bus/pci/i386/pci_bus.c			optional	pci
 bus/pci/i386/pci_cfgreg.c		optional	pci
 bus/pci/i386/pci_pir.c			optional	pci
-bus/pci/i386/mptable_pci.c		optional	pci smp apic_io
+bus/pci/i386/mptable_pci.c		optional	pci smp
 platform/pc32/isa/pmtimer.c		optional	pmtimer acpi
 # XXX drhodus
 platform/pc32/isa/prof_machdep.c	optional	profiling-routine

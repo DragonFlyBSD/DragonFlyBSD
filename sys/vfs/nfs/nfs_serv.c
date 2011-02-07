@@ -84,7 +84,6 @@
 
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
-#include <vm/vm_zone.h>
 #include <vm/vm_object.h>
 
 #include <sys/buf2.h>
@@ -131,11 +130,14 @@ static struct timespec	nfsver;
 SYSCTL_DECL(_vfs_nfs);
 
 int nfs_async;
-SYSCTL_INT(_vfs_nfs, OID_AUTO, async, CTLFLAG_RW, &nfs_async, 0, "");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, async, CTLFLAG_RW, &nfs_async, 0,
+    "Enable unstable and fast writes");
 static int nfs_commit_blks;
 static int nfs_commit_miss;
-SYSCTL_INT(_vfs_nfs, OID_AUTO, commit_blks, CTLFLAG_RW, &nfs_commit_blks, 0, "");
-SYSCTL_INT(_vfs_nfs, OID_AUTO, commit_miss, CTLFLAG_RW, &nfs_commit_miss, 0, "");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, commit_blks, CTLFLAG_RW, &nfs_commit_blks, 0,
+    "Number of committed blocks");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, commit_miss, CTLFLAG_RW, &nfs_commit_miss, 0,
+    "Number of nfs blocks committed from dirty buffers");
 
 static int nfsrv_access (struct mount *, struct vnode *, int,
 			struct ucred *, int, struct thread *, int);
@@ -1229,7 +1231,6 @@ nfsrv_writegather(struct nfsrv_descript **ndp, struct nfssvc_sock *slp,
 	i = 0;
 	len = 0;
 #endif
-	*mrq = NULL;
 	if (*ndp) {
 	    nfsd = *ndp;
 	    *ndp = NULL;
@@ -1310,7 +1311,6 @@ nfsmout:
 	    /*
 	     * Add this entry to the hash and time queues.
 	     */
-	    crit_enter();
 	    owp = NULL;
 	    wp = slp->ns_tq.lh_first;
 	    while (wp && wp->nd_time < nfsd->nd_time) {
@@ -1353,7 +1353,6 @@ nfsmout:
 		    LIST_INSERT_HEAD(wpp, nfsd, nd_hash);
 		}
 	    }
-	    crit_exit();
 	}
     
 	/*
@@ -1362,7 +1361,6 @@ nfsmout:
 	 */
 loop1:
 	cur_usec = nfs_curusec();
-	crit_enter();
 	for (nfsd = slp->ns_tq.lh_first; nfsd; nfsd = owp) {
 		owp = nfsd->nd_tq.le_next;
 		if (nfsd->nd_time > cur_usec)
@@ -1372,14 +1370,15 @@ loop1:
 		NFS_DPF(WG, ("P%03x", nfsd->nd_retxid & 0xfff));
 		LIST_REMOVE(nfsd, nd_tq);
 		LIST_REMOVE(nfsd, nd_hash);
-		crit_exit();
 		info.mrep = nfsd->nd_mrep;
+		info.mreq = NULL;
 		info.v3 = (nfsd->nd_flag & ND_NFSV3);
 		nfsd->nd_mrep = NULL;
 		cred = &nfsd->nd_cr;
 		forat_ret = aftat_ret = 1;
 		error = nfsrv_fhtovp(&nfsd->nd_fh, 1, &mp, &vp, cred, slp, 
-		    nfsd->nd_nam, &rdonly, (nfsd->nd_flag & ND_KERBAUTH), TRUE);
+				     nfsd->nd_nam, &rdonly,
+				     (nfsd->nd_flag & ND_KERBAUTH), TRUE);
 		if (!error) {
 		    if (info.v3)
 			forat_ret = VOP_GETATTR(vp, &forat);
@@ -1490,7 +1489,6 @@ loop1:
 		     * Done. Put it at the head of the timer queue so that
 		     * the final phase can return the reply.
 		     */
-		    crit_enter();
 		    if (nfsd != swp) {
 			nfsd->nd_time = 0;
 			LIST_INSERT_HEAD(&slp->ns_tq, nfsd, nd_tq);
@@ -1499,30 +1497,29 @@ loop1:
 		    if (nfsd) {
 			LIST_REMOVE(nfsd, nd_tq);
 		    }
-		    crit_exit();
 		} while (nfsd);
-		crit_enter();
 		swp->nd_time = 0;
 		LIST_INSERT_HEAD(&slp->ns_tq, swp, nd_tq);
-		crit_exit();
 		goto loop1;
 	}
-	crit_exit();
 
 	/*
 	 * Search for a reply to return.
 	 */
-	crit_enter();
-	for (nfsd = slp->ns_tq.lh_first; nfsd; nfsd = nfsd->nd_tq.le_next)
+	for (nfsd = slp->ns_tq.lh_first; nfsd; nfsd = nfsd->nd_tq.le_next) {
 		if (nfsd->nd_mreq) {
 		    NFS_DPF(WG, ("X%03x", nfsd->nd_retxid & 0xfff));
 		    LIST_REMOVE(nfsd, nd_tq);
-		    *mrq = nfsd->nd_mreq;
-		    *ndp = nfsd;
 		    break;
 		}
-	crit_exit();
-	*mrq = info.mreq;
+	}
+	if (nfsd) {
+		*ndp = nfsd;
+		*mrq = nfsd->nd_mreq;
+	} else {
+		*ndp = NULL;
+		*mrq = NULL;
+	}
 	return (0);
 }
 
@@ -3591,7 +3588,8 @@ nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 
 		if (vp->v_object &&
 		   (vp->v_object->flags & OBJ_MIGHTBEDIRTY)) {
-			vm_object_page_clean(vp->v_object, off / PAGE_SIZE, (cnt + PAGE_MASK) / PAGE_SIZE, OBJPC_SYNC);
+			vm_object_page_clean(vp->v_object, off / PAGE_SIZE,
+			    (cnt + PAGE_MASK) / PAGE_SIZE, OBJPC_SYNC);
 		}
 
 		crit_enter();

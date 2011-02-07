@@ -14,7 +14,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd December 5, 2009
+.Dd November 14, 2010
 .Dt HOTPLUGD 8
 .Os
 .Sh NAME
@@ -22,21 +22,14 @@
 .Nd devices hot plugging monitor daemon
 .Sh SYNOPSIS
 .Nm
-.Op Fl d Ar device
 .Sh DESCRIPTION
 The
 .Nm
-daemon monitors the
-.Xr hotplug 4
-pseudo-device, acting on signaled events by executing the scripts in the
+daemon uses
+.Xr devattr 3
+acting on signaled events by executing the scripts in the
 .Pa /etc/hotplug
 directory.
-By default it uses the
-.Pa /dev/hotplug
-device for reading events from, but an alternative device can be
-specified with the
-.Fl d
-option.
 .Pp
 Actions can be configured either for device attachment or detachment.
 On device attachment the
@@ -113,12 +106,19 @@ case $DEVCLASS in
 esac
 .Ed
 .Sh SEE ALSO
-.Xr hotplug 4
+.Xr devattr 3
 .Sh HISTORY
 The
 .Nm
 program first appeared in
 .Ox 3.6 .
+.Pp
+The
+.Nm
+program was adapted to use
+.Xr devattr 3
+in
+.Dx 2.9 .
 .Sh AUTHORS
 The
 .Nm

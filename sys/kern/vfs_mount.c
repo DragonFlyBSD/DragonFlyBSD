@@ -136,13 +136,14 @@ static TAILQ_HEAD(,bio_ops) bio_ops_list = TAILQ_HEAD_INITIALIZER(bio_ops_list);
 void
 vfs_mount_init(void)
 {
-	lwkt_token_init(&mountlist_token, 1, "mntlist");
-	lwkt_token_init(&mntvnode_token, 1, "mntvnode");
-	lwkt_token_init(&mntid_token, 1, "mntid");
+	lwkt_token_init(&mountlist_token, "mntlist");
+	lwkt_token_init(&mntvnode_token, "mntvnode");
+	lwkt_token_init(&mntid_token, "mntid");
 	TAILQ_INIT(&mountscan_list);
 	TAILQ_INIT(&mntvnodescan_list);
 	mount_init(&dummymount);
 	dummymount.mnt_flag |= MNT_RDONLY;
+	dummymount.mnt_kern_flag |= MNTK_ALL_MPSAFE;
 }
 
 /*
@@ -321,7 +322,7 @@ void
 mount_init(struct mount *mp)
 {
 	lockinit(&mp->mnt_lock, "vfslock", 0, 0);
-	lwkt_token_init(&mp->mnt_token, 1, "permnt");
+	lwkt_token_init(&mp->mnt_token, "permnt");
 
 	TAILQ_INIT(&mp->mnt_nvnodelist);
 	TAILQ_INIT(&mp->mnt_reservedvnlist);
@@ -679,11 +680,12 @@ static int vnlruproc_sig;
 void
 vnlru_proc_wait(void)
 {
+	tsleep_interlock(&vnlruproc_sig, 0);
 	if (vnlruproc_sig == 0) {
 		vnlruproc_sig = 1;      /* avoid unnecessary wakeups */
 		wakeup(vnlruthread);
 	}
-	tsleep(&vnlruproc_sig, 0, "vlruwk", hz);
+	tsleep(&vnlruproc_sig, PINTERLOCKED, "vlruwk", hz);
 }
 
 static void 
@@ -723,7 +725,7 @@ vnlru_proc(void)
 		if (numvnodes - freevnodes <= desiredvnodes * 9 / 10) {
 			vnlruproc_sig = 0;
 			wakeup(&vnlruproc_sig);
-			tsleep(td, 0, "vlruwt", hz);
+			tsleep(vnlruthread, 0, "vlruwt", hz);
 			continue;
 		}
 		cache_hysteresis();
@@ -751,7 +753,7 @@ vnlru_proc(void)
 		if (done == 0) {
 			++vnlru_nowhere;
 			if (vnlru_nowhere % 10 == 0)
-				tsleep(td, 0, "vlrup", hz * 3);
+				tsleep(vnlruthread, 0, "vlrup", hz * 3);
 			if (vnlru_nowhere % 100 == 0)
 				kprintf("vnlru_proc: vnode recycler stopped working!\n");
 			if (vnlru_nowhere == 1000)
@@ -1003,7 +1005,7 @@ vmntvnodescan(
 	struct vmntvnodescan_info info;
 	struct vnode *vp;
 	int r = 0;
-	int maxcount = 1000000;
+	int maxcount = mp->mnt_nvnodelistsize * 2;
 	int stopcount = 0;
 	int count = 0;
 
@@ -1016,13 +1018,15 @@ vmntvnodescan(
 	 * so this isn't perfect.  Create a slop factor of 2x.
 	 */
 	if (flags & VMSC_ONEPASS)
-		stopcount = mp->mnt_nvnodelistsize * 2;
+		stopcount = mp->mnt_nvnodelistsize;
 
 	info.vp = TAILQ_FIRST(&mp->mnt_nvnodelist);
 	TAILQ_INSERT_TAIL(&mntvnodescan_list, &info, entry);
 	while ((vp = info.vp) != NULL) {
-		if (--maxcount == 0)
-			panic("maxcount reached during vmntvnodescan");
+		if (--maxcount == 0) {
+			kprintf("Warning: excessive fssync iteration\n");
+			maxcount = mp->mnt_nvnodelistsize * 2;
+		}
 
 		/*
 		 * Skip if visible but not ready, or special (e.g.

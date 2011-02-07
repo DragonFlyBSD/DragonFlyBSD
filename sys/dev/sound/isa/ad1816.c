@@ -601,9 +601,7 @@ ad1816_attach(device_t dev)
 	struct ad1816_info *ad1816;
     	char status[SND_STATUSLEN], status2[SND_STATUSLEN];
 
-	ad1816 = (struct ad1816_info *)kmalloc(sizeof *ad1816, M_DEVBUF, M_NOWAIT | M_ZERO);
-	if (!ad1816) return ENXIO;
-
+	ad1816 = kmalloc(sizeof *ad1816, M_DEVBUF, M_WAITOK | M_ZERO);
 	ad1816->lock = snd_mtxcreate(device_get_nameunit(dev), "sound softc");
 	ad1816->io_rid = 2;
 	ad1816->irq_rid = 0;

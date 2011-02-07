@@ -131,6 +131,7 @@ static int salvo, blitz, closepack;
 
 #define	PR	addstr
 
+static void prompt(int, const char *, ...) __printflike(2, 3);
 static bool checkplace (int, ship_t *, int);
 static int getcoord (int);
 int playagain (void);

@@ -208,8 +208,8 @@ scsp_trace_msg(Scsp_dcs *dcsp, Scsp_msg *msg, int dir)
 	 * Write the message to the trace file, if it's open
 	 */
 	if (scsp_trace_file) {
-		scsp_trace("SCSP message at 0x%x %s %s\n",
-				(u_long)msg,
+		scsp_trace("SCSP message at %p %s %s\n",
+				msg,
 				(dir ? "received from" : "sent to"),
 				format_ip_addr(&addr));
 		print_scsp_msg(scsp_trace_file, msg);

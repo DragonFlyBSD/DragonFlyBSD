@@ -247,14 +247,19 @@ main(int argc, char **argv)
 			char pathbuf[PATH_MAX];
 			const char *ttypath;
 
-			if (strcmp(optarg, "co") == 0)
+			if (strcmp(optarg, "co") == 0) {
 				ttypath = _PATH_CONSOLE;
-			else if (*optarg != '/') {
-				snprintf(pathbuf,
-				    sizeof(pathbuf), "%s%s", _PATH_TTY, optarg);
+			} else if (*optarg >= '0' && *optarg <= '9') {
+				snprintf(pathbuf, sizeof(pathbuf),
+					 "%spts/%s", _PATH_DEV, optarg);
 				ttypath = pathbuf;
-			} else
+			} else if (*optarg != '/') {
+				snprintf(pathbuf, sizeof(pathbuf),
+					 "%s%s", _PATH_TTY, optarg);
+				ttypath = pathbuf;
+			} else {
 				ttypath = optarg;
+			}
 			if (stat(ttypath, &sb) == -1)
 				err(1, "%s", ttypath);
 			if (!S_ISCHR(sb.st_mode))

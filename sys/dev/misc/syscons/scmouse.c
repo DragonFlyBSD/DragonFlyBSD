@@ -38,7 +38,7 @@
 #include <sys/thread2.h>
 
 #include <machine/console.h>
-#include <machine/mouse.h>
+#include <sys/mouse.h>
 
 #include "syscons.h"
 

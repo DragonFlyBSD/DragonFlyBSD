@@ -212,7 +212,22 @@ ldns_verify_denial(ldns_pkt *pkt, ldns_rdf *name, ldns_rr_type type, ldns_rr_lis
 			}
 		}
 		ldns_rr_list_deep_free(nsecs);
-	}
+	} else if( (nsecs = ldns_pkt_rr_list_by_type(pkt, LDNS_RR_TYPE_NSEC3, LDNS_SECTION_ANY_NOQUESTION)) ) {
+                ldns_rr_list* sigs = ldns_pkt_rr_list_by_type(pkt, LDNS_RR_TYPE_RRSIG, LDNS_SECTION_ANY_NOQUESTION);
+                ldns_rr* q = ldns_rr_new();
+                if(!sigs) return LDNS_STATUS_MEM_ERR;
+                if(!q) return LDNS_STATUS_MEM_ERR;
+                ldns_rr_set_question(q, 1);
+                ldns_rr_set_ttl(q, 0);
+                ldns_rr_set_owner(q, ldns_rdf_clone(name));
+                if(!ldns_rr_owner(q)) return LDNS_STATUS_MEM_ERR;
+                ldns_rr_set_type(q, type);
+                
+                result = ldns_dnssec_verify_denial_nsec3(q, nsecs, sigs, ldns_pkt_get_rcode(pkt), type, ldns_pkt_ancount(pkt) == 0);
+                ldns_rr_free(q);
+		ldns_rr_list_deep_free(nsecs);
+		ldns_rr_list_deep_free(sigs);
+        }
 	return result;
 }
 

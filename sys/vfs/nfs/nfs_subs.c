@@ -64,7 +64,6 @@
 #include <vm/vm.h>
 #include <vm/vm_object.h>
 #include <vm/vm_extern.h>
-#include <vm/vm_zone.h>
 
 #include <sys/buf2.h>
 
@@ -78,6 +77,8 @@
 #include "nfsrtt.h"
 
 #include <netinet/in.h>
+
+MALLOC_DEFINE(M_NFSMOUNT, "NFS mount", "NFS mount");
 
 /*
  * Data items converted to xdr at startup, since they are constant
@@ -103,7 +104,7 @@ int nfs_ticks;
  * Protect master lists only.  Primary protection uses the per-mount
  * and per nfssvc_sock tokens.
  */
-struct lwkt_token nfs_token = LWKT_TOKEN_MP_INITIALIZER(unp_token);
+struct lwkt_token nfs_token = LWKT_TOKEN_INITIALIZER(unp_token);
 
 static int nfs_pbuf_freecnt = -1;	/* start out unlimited */
 
@@ -571,7 +572,7 @@ int
 nfs_init(struct vfsconf *vfsp)
 {
 	callout_init(&nfs_timer_handle);
-	nfsmount_zone = zinit("NFSMOUNT", sizeof(struct nfsmount), 0, 0, 1);
+	nfsmount_objcache = objcache_create_simple(M_NFSMOUNT, sizeof(struct nfsmount));
 
 	nfs_mount_type = vfsp->vfc_typenum;
 	nfsrtt.pos = 0;

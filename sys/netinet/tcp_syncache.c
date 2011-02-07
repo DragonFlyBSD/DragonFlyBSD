@@ -406,11 +406,8 @@ syncache_destroy(struct tcpcb *tp)
 	for (i = 0; i < tcp_syncache.hashsize; i++) {
 		bucket = &syncache_percpu->hashbase[i];
 		TAILQ_FOREACH(sc, &bucket->sch_bucket, sc_hash) {
-			if (sc->sc_tp == tp) {
+			if (sc->sc_tp == tp)
 				sc->sc_tp = NULL;
-				tp->t_flags &= ~TF_SYNCACHE;
-				break;
-			}
 		}
 	}
 }
@@ -444,10 +441,8 @@ syncache_drop(struct syncache *sc, struct syncache_head *sch)
 	/*
 	 * Cleanup
 	 */
-	if (sc->sc_tp) {
-		sc->sc_tp->t_flags &= ~TF_SYNCACHE;
+	if (sc->sc_tp)
 		sc->sc_tp = NULL;
-	}
 
 	/*
 	 * Remove the entry from the syncache timer/timeout queue.  Note
@@ -1009,10 +1004,6 @@ syncache_add(struct in_conninfo *inc, struct tcpopt *to, struct tcphdr *th,
 		/*
 		 * PCB may have changed, pick up new values.
 		 */
-		if (sc->sc_tp) {
-			sc->sc_tp->t_flags &= ~TF_SYNCACHE;
-			tp->t_flags |= TF_SYNCACHE;
-		}
 		sc->sc_tp = tp;
 		sc->sc_inp_gencnt = tp->t_inpcb->inp_gencnt;
 		if (syncache_respond(sc, m) == 0) {
@@ -1035,7 +1026,6 @@ syncache_add(struct in_conninfo *inc, struct tcpopt *to, struct tcphdr *th,
 	sc->sc_inc.inc_fport = inc->inc_fport;
 	sc->sc_inc.inc_lport = inc->inc_lport;
 	sc->sc_tp = tp;
-	tp->t_flags |= TF_SYNCACHE;
 #ifdef INET6
 	sc->sc_inc.inc_isipv6 = inc->inc_isipv6;
 	if (inc->inc_isipv6) {

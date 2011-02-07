@@ -52,25 +52,22 @@ and
 .Xr bstring 3 .
 .Sh MEMORY ALLOCATION
 .Bl -hang -width 10n
-.It Xo
-.Ft "void *"
-.Fn malloc "size_t size"
-.Xc
+.It \
+Ft "void *" \
+Fn malloc "size_t size"
 .Pp
 Allocate
 .Fa size
 bytes of memory from the heap using a best-fit algorithm.
-.It Xo
-.Ft void
-.Fn free "void *ptr"
-.Xc
+.It \
+Ft void \
+Fn free "void *ptr"
 .Pp
 Free the allocated object at
 .Fa ptr .
-.It Xo
-.Ft void
-.Fn setheap "void *start" "void *limit"
-.Xc
+.It \
+Ft void \
+Fn setheap "void *start" "void *limit"
 .Pp
 Initialise the heap.
 This function must be called before calling
@@ -82,14 +79,13 @@ and
 .Fa limit
 will be used for the heap; attempting to allocate beyond this will result
 in a panic.
-.It Xo
-.Ft "char *"
-.Fn sbrk "int junk"
-.Xc
+.It \
+Ft "char *" \
+Fn sbrk "int junk"
 .Pp
 Provides the behaviour of
 .Fn sbrk 0 ,
-ie. returns the highest point that the heap has reached.
+i.e.\& returns the highest point that the heap has reached.
 This value can
 be used during testing to determine the actual heap usage.
 The
@@ -102,35 +98,29 @@ to the traditional shell-supported environment.
 Major enhancements are support
 for set/unset hook functions.
 .Bl -hang -width 10n
-.It Xo
-.Ft "char *"
-.Fn getenv "const char *name"
-.Xc
-.It Xo
-.Ft int
-.Fn setenv "const char *name" "char *value" "int overwrite"
-.Xc
-.It Xo
-.Ft int
-.Fn putenv "const char *string"
-.Xc
-.It Xo
-.Ft int
-.Fn unsetenv "const char *name"
-.Xc
+.It \
+Ft "char *" \
+Fn getenv "const char *name"
+.It \
+Ft int \
+Fn setenv "const char *name" "char *value" "int overwrite"
+.It \
+Ft int \
+Fn putenv "const char *string"
+.It \
+Ft int \
+Fn unsetenv "const char *name"
 .Pp
 These functions behave similarly to their standard library counterparts.
-.It Xo
-.Ft "struct env_var *"
-.Fn env_getenv "const char *name"
-.Xc
+.It \
+Ft "struct env_var *" \
+Fn env_getenv "const char *name"
 .Pp
 Looks up a variable in the environment and returns its entire
 data structure.
-.It Xo
-.Ft int
-.Fn env_setenv "const char *name" "int flags" "char *value" "ev_sethook_t sethook" "ev_unsethook_t unsethook"
-.Xc
+.It \
+Ft int \
+Fn env_setenv "const char *name" "int flags" "char *value" "ev_sethook_t sethook" "ev_unsethook_t unsethook"
 .Pp
 Creates a new or sets an existing environment variable called
 .Fa name .
@@ -165,26 +155,21 @@ may be used to prevent a variable being unset.
 .El
 .Sh STANDARD LIBRARY SUPPORT
 .Bl -hang -width 10n
-.It Xo
-.Ft int
-.Fn getopt "int argc" "char * const *argv" "const char *optstring"
-.Xc
-.It Xo
-.Ft long
-.Fn strtol "const char *nptr" "char **endptr" "int base"
-.Xc
-.It Xo
-.Ft void
-.Fn srandom "unsigned long seed"
-.Xc
-.It Xo
-.Ft "unsigned long"
-.Fn random void
-.Xc
-.It Xo
-.Ft "char *"
-.Fn strerror "int error"
-.Xc
+.It \
+Ft int \
+Fn getopt "int argc" "char * const *argv" "const char *optstring"
+.It \
+Ft long \
+Fn strtol "const char *nptr" "char **endptr" "int base"
+.It \
+Ft void \
+Fn srandom "unsigned long seed"
+.It \
+Ft "unsigned long" \
+Fn random void
+.It \
+Ft "char *" \
+Fn strerror "int error"
 .Pp
 Returns error messages for the subset of
 .Va errno
@@ -194,14 +179,12 @@ values supported by
 .Pp
 Requires
 .In assert.h .
-.It Xo
-.Ft int
-.Fn setjmp "jmp_buf env"
-.Xc
-.It Xo
-.Ft void
-.Fn longjmp "jmp_buf env" "int val"
-.Xc
+.It \
+Ft int \
+Fn setjmp "jmp_buf env"
+.It \
+Ft void \
+Fn longjmp "jmp_buf env" "int val"
 .Pp
 Defined as
 .Fn _setjmp
@@ -213,18 +196,16 @@ Requires
 .El
 .Sh CHARACTER I/O
 .Bl -hang -width 10n
-.It Xo
-.Ft void
-.Fn gets "char *buf"
-.Xc
+.It \
+Ft void \
+Fn gets "char *buf"
 .Pp
 Read characters from the console into
 .Fa buf .
 All of the standard cautions apply to this function.
-.It Xo
-.Ft void
-.Fn ngets "char *buf" "size_t size"
-.Xc
+.It \
+Ft void \
+Fn ngets "char *buf" "size_t size"
 .Pp
 Read at most
 .Fa size
@@ -234,10 +215,24 @@ If
 .Fa size
 is less than 1, the function's behaviour is as for
 .Fn gets .
-.It Xo
-.Ft int
-.Fn fgetstr "char *buf" "int size" "int fd"
-.Xc
+.It \
+Ft char * \
+Fn fgets "char *buf" "int size" "int fd"
+.Pp
+Read a line of at most
+.Fa size Ns -1
+characters into
+.Fa buf .
+Line terminating characters are not stripped,
+and the buffer is always nul-terminated.
+Upon successful completion a pointer to the string is returned.
+If end-of-file occurs before any characters are read,
+NULL is returned and the buffer contents remain unchanged.
+If an error occurs,
+NULL is returned and the buffer contents are indeterminate.
+.It \
+Ft int \
+Fn fgetstr "char *buf" "int size" "int fd"
 .Pp
 Read a line of at most
 .Fa size
@@ -248,22 +243,18 @@ nul-terminated.
 Returns the number of characters in
 .Fa buf
 if successful, or -1 if a read error occurs.
-.It Xo
-.Ft int
-.Fn printf "const char *fmt" "..."
-.Xc
-.It Xo
-.Ft void
-.Fn vprintf "const char *fmt" "va_list ap"
-.Xc
-.It Xo
-.Ft int
-.Fn sprintf "char *buf" "const char *fmt" "..."
-.Xc
-.It Xo
-.Ft void
-.Fn vsprintf "char *buf" "const char *fmt" "va_list ap"
-.Xc
+.It \
+Ft int \
+Fn printf "const char *fmt" "..."
+.It \
+Ft void \
+Fn vprintf "const char *fmt" "va_list ap"
+.It \
+Ft int \
+Fn sprintf "char *buf" "const char *fmt" "..."
+.It \
+Ft void \
+Fn vsprintf "char *buf" "const char *fmt" "va_list ap"
 .Pp
 The *printf functions implement a subset of the standard
 .Fn printf
@@ -286,7 +277,7 @@ regval,
 );
 .Ed
 .Pp
-where <base> is the output expressed as a control character, e.g. \e10 gives
+where <base> is the output expressed as a control character, e.g.\& \e10 gives
 octal, \e20 gives hex.
 Each <arg> is a sequence of characters, the first of
 which gives the bit number to be inspected (origin 1) and the next characters
@@ -328,49 +319,39 @@ ptr,
 .El
 .Sh CHARACTER TESTS AND CONVERSIONS
 .Bl -hang -width 10n
-.It Xo
-.Ft int
-.Fn isupper "int c"
-.Xc
-.It Xo
-.Ft int
-.Fn islower "int c"
-.Xc
-.It Xo
-.Ft int
-.Fn isspace "int c"
-.Xc
-.It Xo
-.Ft int
-.Fn isdigit "int c"
-.Xc
-.It Xo
-.Ft int
-.Fn isxdigit "int c"
-.Xc
-.It Xo
-.Ft int
-.Fn isascii "int c"
-.Xc
-.It Xo
-.Ft int
-.Fn isalpha "int c"
-.Xc
-.It Xo
-.Ft int
-.Fn toupper "int c"
-.Xc
-.It Xo
-.Ft int
-.Fn tolower "int c"
-.Xc
+.It \
+Ft int \
+Fn isupper "int c"
+.It \
+Ft int \
+Fn islower "int c"
+.It \
+Ft int \
+Fn isspace "int c"
+.It \
+Ft int \
+Fn isdigit "int c"
+.It \
+Ft int \
+Fn isxdigit "int c"
+.It \
+Ft int \
+Fn isascii "int c"
+.It \
+Ft int \
+Fn isalpha "int c"
+.It \
+Ft int \
+Fn toupper "int c"
+.It \
+Ft int \
+Fn tolower "int c"
 .El
 .Sh FILE I/O
 .Bl -hang -width 10n
-.It Xo
-.Ft int
-.Fn open "const char *path" "int flags"
-.Xc
+.It \
+Ft int \
+Fn open "const char *path" "int flags"
 .Pp
 Similar to the behaviour as specified in
 .Xr open 2 ,
@@ -384,41 +365,34 @@ argument may be one of
 and
 .Dv O_RDWR
 (although no filesystems currently support writing).
-.It Xo
-.Ft int
-.Fn close "int fd"
-.Xc
-.It Xo
-.Ft void
-.Fn closeall void
-.Xc
+.It \
+Ft int \
+Fn close "int fd"
+.It \
+Ft void \
+Fn closeall void
 .Pp
 Close all open files.
-.It Xo
-.Ft ssize_t
-.Fn read "int fd" "void *buf" "size_t len"
-.Xc
-.It Xo
-.Ft ssize_t
-.Fn write "int fd" "void *buf" "size_t len"
-.Xc
+.It \
+Ft ssize_t \
+Fn read "int fd" "void *buf" "size_t len"
+.It \
+Ft ssize_t \
+Fn write "int fd" "void *buf" "size_t len"
 .Pp
 (No filesystems currently support writing.)
-.It Xo
-.Ft off_t
-.Fn lseek "int fd" "off_t offset" "int whence"
-.Xc
+.It \
+Ft off_t \
+Fn lseek "int fd" "off_t offset" "int whence"
 .Pp
 Files being automatically uncompressed during reading cannot seek backwards
 from the current point.
-.It Xo
-.Ft int
-.Fn stat "const char *path" "struct stat *sb"
-.Xc
-.It Xo
-.Ft int
-.Fn fstat "int fd" "struct stat *sb"
-.Xc
+.It \
+Ft int \
+Fn stat "const char *path" "struct stat *sb"
+.It \
+Ft int \
+Fn fstat "int fd" "struct stat *sb"
 .Pp
 The
 .Fn stat
@@ -438,25 +412,22 @@ filesystem always reports files having uid/gid of zero.
 .Nm
 supplies a simple internal pager to ease reading the output of large commands.
 .Bl -hang -width 10n
-.It Xo
-.Ft void
-.Fn pager_open
-.Xc
+.It \
+Ft void \
+Fn pager_open
 .Pp
 Initialises the pager and tells it that the next line output will be the
 top of the display.
 The environment variable LINES is consulted to determine the number of
 lines to be displayed before pausing.
-.It Xo
-.Ft void
-.Fn pager_close void
-.Xc
+.It \
+Ft void \
+Fn pager_close void
 .Pp
 Closes the pager.
-.It Xo
-.Ft int
-.Fn pager_output "char *lines"
-.Xc
+.It \
+Ft int \
+Fn pager_output "char *lines"
 .Pp
 Sends the lines in the nul-terminated buffer at
 .Fa lines
@@ -466,10 +437,9 @@ of lines being output (wrapped lines are not accounted for).
 .Fn pager_output
 will return zero when all of the lines have been output, or nonzero if the
 display was paused and the user elected to quit.
-.It Xo
-.Ft int
-.Fn pager_file "char *fname"
-.Xc
+.It \
+Ft int \
+Fn pager_file "char *fname"
 .Pp
 Attempts to open and display the file
 .Fa fname .
@@ -479,12 +449,11 @@ or 1 if the user elects to quit while reading.
 .El
 .Sh MISC
 .Bl -hang -width 10n
-.It Xo
-.Ft void
-.Fn twiddle void
-.Xc
+.It \
+Ft void \
+Fn twiddle void
 .Pp
-Successive calls emit the characters in the sequence |, /, -, \\ followed by a
+Successive calls emit the characters in the sequence |, /, -, \e followed by a
 backspace in order to provide reassurance to the user.
 .El
 .Sh REQUIRED LOW-LEVEL SUPPORT
@@ -530,25 +499,22 @@ returns.
 .Pp
 The consumer must provide the following support functions:
 .Bl -hang -width 10n
-.It Xo
-.Ft int
-.Fn getchar void
-.Xc
+.It \
+Ft int \
+Fn getchar void
 .Pp
 Return a character from the console, used by
 .Fn gets ,
 .Fn ngets
 and pager functions.
-.It Xo
-.Ft int
-.Fn ischar void
-.Xc
+.It \
+Ft int \
+Fn ischar void
 .Pp
 Returns nonzero if a character is waiting from the console.
-.It Xo
-.Ft void
-.Fn putchar int
-.Xc
+.It \
+Ft void \
+Fn putchar int
 .Pp
 Write a character to the console, used by
 .Fn gets ,
@@ -558,10 +524,9 @@ Write a character to the console, used by
 and
 .Fn twiddle
 and thus by many other functions for debugging and informational output.
-.It Xo
-.Ft int
-.Fn devopen "struct open_file *of" "const char *name" "char **file"
-.Xc
+.It \
+Ft int \
+Fn devopen "struct open_file *of" "const char *name" "char **file"
 .Pp
 Open the appropriate device for the file named in
 .Fa name ,
@@ -582,10 +547,9 @@ always precede the path component, but may otherwise be arbitrarily formatted.
 Used by
 .Fn open
 and thus for all device-related I/O.
-.It Xo
-.Ft int
-.Fn devclose "struct open_file *of"
-.Xc
+.It \
+Ft int \
+Fn devclose "struct open_file *of"
 .Pp
 Close the device allocated for
 .Fa of .
@@ -593,10 +557,9 @@ The device driver itself will already have been called for the close;
 this call should clean up any allocation made by
 .Fn devopen
 only.
-.It Xo
-.Ft void
-.Fn panic "const char *msg" "..."
-.Xc
+.It \
+Ft void \
+Fn panic "const char *msg" "..."
 .Pp
 Signal a fatal and unrecoverable error condition.
 The

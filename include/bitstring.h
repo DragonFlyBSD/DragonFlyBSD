@@ -148,4 +148,69 @@ typedef	unsigned char bitstr_t;
 	*(value) = _value; \
 } while (0)
 
+#define _fls(mask, value) do { \
+	int _fmask = (mask); \
+	int *_value = (value); \
+	int _bit = 0; \
+	if (_fmask == 0) { \
+		*(_value) = 0; \
+		break; \
+	} \
+	for (_bit = 1; _fmask != 1; _bit++) \
+		_fmask = (unsigned char) _fmask >> 1; \
+	*(_value) = _bit; \
+} while (0)
+
+				/* find last bit set in name */
+#define bit_fls(name, nbits, value) do { \
+	bitstr_t *_name = (name); \
+	int _nbits = (nbits); \
+	int _byte = _bit_byte(_nbits - 1); \
+	int *_value = (value); \
+	int _mask = 0;\
+	if (_nbits > 0) \
+		for (; _byte >= 0; _byte--) { \
+			if (!_name[_byte]) \
+				continue; \
+			_fls(_name[_byte], &_mask); \
+			break; \
+		} \
+	*(_value) = (_mask * (_byte + 1)) - 1; \
+} while (0)
+
+				/* find clear range of length len */
+#define bit_nsearch(name, nbits, value, len) do { \
+	bitstr_t *_name = (name); \
+	int _nbits = (nbits); \
+	int *_value = (value); \
+	int _len = (len); \
+	int _bit, _bit0; \
+	int _tmplen = _len; \
+	int _match = 0; \
+	*(_value) = -1; \
+	for (_bit = 0; _bit < _nbits; _bit++) { \
+		if (_match == 0) { \
+			if (bit_test((_name), _bit) == 0) { \
+				_match = 1; \
+				_tmplen--; \
+				_bit0 = _bit; \
+			} else { \
+				continue; \
+			} \
+		} else { \
+			if (_tmplen >= 0) { \
+				if (bit_test((_name), _bit) == 0) { \
+					_tmplen--; \
+				} else { \
+					_match = 0; \
+					_tmplen = _len; \
+					continue; \
+				} \
+			} else { \
+				*(_value) = _bit0; \
+			} \
+		} \
+	} \
+} while (0)
+
 #endif /* !_BITSTRING_H_ */

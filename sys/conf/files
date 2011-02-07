@@ -67,13 +67,11 @@ dev/disk/dm/dm_ioctl.c			optional dm
 dev/disk/dm/dm_pdev.c			optional dm
 dev/disk/dm/dm_table.c			optional dm
 dev/disk/dm/dm_target.c			optional dm
-dev/disk/dm/dm_target_crypt.c		optional dm
 dev/disk/dm/dm_target_error.c		optional dm
-dev/disk/dm/dm_target_linear.c		optional dm
-#dev/disk/dm/dm_target_mirror.c		optional dm
-#dev/disk/dm/dm_target_snapshot.c	optional dm
-dev/disk/dm/dm_target_stripe.c		optional dm
 dev/disk/dm/dm_target_zero.c		optional dm
+dev/disk/dm/targets/crypt/dm_target_crypt.c	optional dm_target_crypt
+dev/disk/dm/targets/linear/dm_target_linear.c	optional dm_target_linear
+dev/disk/dm/targets/striped/dm_target_striped.c	optional dm_target_striped
 
 dev/disk/iscsi/initiator/isc_cam.c	optional iscsi_initiator scbus
 dev/disk/iscsi/initiator/isc_sm.c	optional iscsi_initiator scbus
@@ -120,12 +118,12 @@ ddb/db_trap.c				optional ddb
 ddb/db_variables.c			optional ddb
 ddb/db_watch.c				optional ddb
 ddb/db_write_cmd.c			optional ddb
-dev/raid/aac/aac.c			optional nowerror aac
+dev/raid/aac/aac.c			optional aac
+dev/raid/aac/aac_cam.c			optional aacp aac
 dev/raid/aac/aac_debug.c		optional aac
 dev/raid/aac/aac_disk.c			optional aac
-dev/raid/aac/aac_pci.c			optional aac pci
 dev/raid/aac/aac_linux.c		optional aac compat_linux
-dev/raid/aac/aac_cam.c			optional aacp aac
+dev/raid/aac/aac_pci.c			optional aac pci
 dev/raid/arcmsr/arcmsr.c		optional arcmsr pci
 
 
@@ -136,7 +134,6 @@ dev/pccard/cardbus/cardbus.c		optional cardbus
 dev/pccard/cardbus/cardbus_cis.c	optional cardbus
 dev/pccard/exca/exca.c			optional cbb
 
-dev/disk/advansys/adv_eisa.c		optional adv eisa
 dev/disk/advansys/adv_pci.c		optional adv pci
 dev/disk/advansys/advansys.c		optional adv
 dev/disk/advansys/advlib.c		optional adv
@@ -195,18 +192,15 @@ dev/disk/nata/atapi-cam.c		optional natapicam
 dev/disk/nata/atapi-cd.c		optional natapicd
 dev/disk/nata/atapi-fd.c		optional natapifd
 dev/disk/nata/atapi-tape.c		optional natapist
-dev/raid/amr/amr_cam.c			optional amr
-dev/raid/amr/amr_disk.c			optional amr
-dev/raid/amr/amr_pci.c			optional amr
 dev/raid/amr/amr.c			optional amr
+dev/raid/amr/amr_cam.c			optional amrp amr
+dev/raid/amr/amr_disk.c			optional amr
+#dev/raid/amr/amr_linux.c		optional amr compat_linux
+dev/raid/amr/amr_pci.c			optional amr pci
 dev/disk/aha/aha.c			optional aha
 dev/disk/aha/aha_isa.c			optional aha isa
-dev/disk/ahb/ahb.c			optional ahb eisa
 dev/disk/aic/aic.c			optional aic
 dev/disk/aic/aic_pccard.c		optional aic pccard
-dev/disk/aic7xxx/aic7770.c		optional ahc
-dev/disk/aic7xxx/ahc_eisa.c		optional ahc eisa
-dev/disk/aic7xxx/ahc_isa.c		optional ahc isa
 dev/disk/aic7xxx/ahc_pci.c		optional ahc pci
 dev/disk/aic7xxx/aic7xxx.c		optional ahc
 dev/disk/aic7xxx/aic7xxx_93cx6.c	optional ahc
@@ -313,7 +307,6 @@ dev/netif/bfe/if_bfe.c			optional bfe
 dev/netif/bge/if_bge.c			optional bge
 dev/disk/buslogic/bt.c			optional bt
 dev/disk/buslogic/bt_isa.c		optional bt isa
-dev/disk/buslogic/bt_eisa.c		optional bt eisa
 dev/disk/buslogic/bt_pci.c		optional bt pci
 dev/disk/ccd/ccd.c			optional ccd
 dev/raid/ciss/ciss.c			optional ciss
@@ -325,14 +318,12 @@ dev/misc/dcons/dcons_crom.c	optional dcons_crom
 dev/misc/dcons/dcons_os.c	optional dcons
 #dev/raid/dpt/dpt_control.c	optional dpt
 dev/raid/dpt/dpt_scsi.c	optional dpt
-dev/raid/dpt/dpt_eisa.c	optional dpt eisa
 dev/raid/dpt/dpt_pci.c	optional dpt pci
 dev/netif/ed/if_ed.c		optional nowerror ed
 dev/netif/ed/if_ed_pccard.c	optional ed pccard
 dev/netif/ed/if_ed_pci.c	optional ed pci
 dev/netif/ep/if_ep.c		optional ep
 dev/netif/ep/if_ep_isa.c	optional ep isa
-dev/netif/ep/if_ep_eisa.c	optional ep eisa
 dev/netif/ep/if_ep_pccard.c	optional ep pccard
 dev/netif/em/if_em.c		optional em
 dev/netif/emx/if_emx.c		optional emx
@@ -391,6 +382,12 @@ dev/atm/hfa/fore_stats.c	optional nowerror hfa
 dev/atm/hfa/fore_timer.c	optional hfa
 dev/atm/hfa/fore_transmit.c	optional nowerror hfa
 dev/atm/hfa/fore_vcm.c		optional hfa
+dev/raid/hptiop/hptiop.c	optional hptiop scbus
+dev/raid/hptmv/entry.c		optional hptmv
+dev/raid/hptmv/mv.c		optional hptmv
+dev/raid/hptmv/gui_lib.c	optional hptmv
+dev/raid/hptmv/hptproc.c	optional hptmv
+dev/raid/hptmv/ioctl.c		optional hptmv
 dev/netif/ie/if_ie.c		optional nowerror ie isa
 dev/powermng/ichsmb/ichsmb.c	optional ichsmb
 dev/powermng/ichsmb/ichsmb_pci.c	optional ichsmb pci
@@ -399,7 +396,6 @@ dev/powermng/kate/kate.c	optional kate pci
 dev/powermng/km/km.c		optional km pci
 dev/raid/ida/ida.c		optional ida
 dev/raid/ida/ida_disk.c	optional ida
-dev/raid/ida/ida_eisa.c	optional ida eisa
 dev/raid/ida/ida_pci.c	optional ida pci
 dev/disk/isp/isp_freebsd.c	optional isp
 dev/disk/isp/isp.c		optional isp
@@ -607,6 +603,12 @@ dev/netif/rum/if_rum.c		optional rum
 dev/netif/ural/if_ural.c	optional ural
 dev/netif/lge/if_lge.c	optional lge
 dev/disk/md/md.c		optional md
+dev/raid/mfi/mfi.c		optional mfi
+dev/raid/mfi/mfi_debug.c	optional mfi
+dev/raid/mfi/mfi_pci.c		optional mfi pci
+dev/raid/mfi/mfi_disk.c		optional mfi
+dev/raid/mfi/mfi_linux.c	optional mfi compat_linux
+dev/raid/mfi/mfi_cam.c		optional mfip scbus
 dev/netif/mii_layer/mii.c		optional miibus
 dev/netif/mii_layer/mii_physubr.c	optional miibus
 dev/netif/mii_layer/ukphy.c		optional miibus
@@ -644,6 +646,11 @@ bus/mmc/mmc.c			optional mmc
 bus/mmc/mmcbr_if.m		standard
 bus/mmc/mmcbus_if.m		standard
 dev/disk/mmcsd/mmcsd.c		optional mmcsd
+dev/disk/mps/mps.c		optional mps
+dev/disk/mps/mps_pci.c		optional mps pci
+dev/disk/mps/mps_sas.c		optional mps
+dev/disk/mps/mps_table.c	optional mps
+dev/disk/mps/mps_user.c		optional mps
 dev/disk/mpt/mpt.c		optional mpt
 dev/disk/mpt/mpt_cam.c		optional mpt
 dev/disk/mpt/mpt_debug.c	optional mpt
@@ -696,7 +703,6 @@ bus/smbus/smb.c			optional smb
 dev/serial/si/si.c		optional si
 dev/serial/si/si2_z280.c	optional si
 dev/serial/si/si3_t225.c	optional si
-dev/serial/si/si_eisa.c	optional si eisa
 dev/serial/si/si_isa.c		optional si isa
 dev/serial/si/si_pci.c		optional si pci
 dev/netif/sln/if_sln.c		optional sln pci
@@ -726,6 +732,11 @@ dev/raid/twa/tw_osl_cam.c		optional twa
 dev/raid/twa/tw_osl_freebsd.c		optional twa
 dev/raid/twe/twe.c			optional twe
 dev/raid/twe/twe_freebsd.c		optional twe
+dev/raid/tws/tws.c			optional tws
+dev/raid/tws/tws_cam.c			optional tws
+dev/raid/tws/tws_hdm.c			optional tws
+dev/raid/tws/tws_services.c		optional tws
+dev/raid/tws/tws_user.c			optional tws
 dev/netif/tx/if_tx.c			optional tx
 dev/netif/txp/if_txp.c		optional txp
 dev/raid/vinum/vinum.c		optional vinum
@@ -749,7 +760,6 @@ dev/raid/ips/ips_ioctl.c		optional ips
 dev/raid/ips/ips_pci.c			optional ips
 dev/disk/vn/vn.c			optional vn
 dev/netif/vx/if_vx.c			optional vx
-dev/netif/vx/if_vx_eisa.c		optional vx eisa
 dev/netif/vx/if_vx_pci.c		optional vx pci
 dev/netif/wi/if_wi.c			optional wi
 dev/netif/wi/if_wi_pccard.c		optional wi pccard
@@ -853,6 +863,7 @@ vfs/isofs/cd9660/cd9660_rrip.c	optional cd9660
 vfs/isofs/cd9660/cd9660_util.c	optional cd9660
 vfs/isofs/cd9660/cd9660_vfsops.c	optional cd9660
 vfs/isofs/cd9660/cd9660_vnops.c	optional cd9660
+vfs/isofs/cd9660/cd9660_iconv/cd9660_iconv.c	optional cd9660_iconv
 vfs/udf/osta.c			optional udf
 vfs/udf/udf_vfsops.c		optional udf
 vfs/udf/udf_vnops.c		optional udf
@@ -904,6 +915,7 @@ kern/kern_proc.c	standard
 kern/kern_prot.c	standard
 kern/kern_nrandom.c	standard
 kern/kern_resource.c	standard
+kern/kern_ref.c		standard
 kern/kern_plimit.c	standard
 kern/kern_slaballoc.c	standard
 kern/kern_systimer.c	standard
@@ -916,7 +928,6 @@ kern/kern_memio.c	standard
 kern/kern_udev.c	standard
 kern/kern_upcall.c	standard
 kern/kern_sfbuf.c	standard
-kern/kern_mplock.c	standard
 kern/kern_subr.c	standard
 kern/kern_iosched.c	standard
 kern/kern_usched.c	standard
@@ -1044,17 +1055,25 @@ vfs/procfs/procfs_rlimit.c	optional procfs
 vfs/union/union_subr.c		optional union
 vfs/union/union_vfsops.c	optional union
 vfs/union/union_vnops.c		optional union
+vfs/hpfs/hpfs_alsubr.c		optional hpfs
+vfs/hpfs/hpfs_hash.c		optional hpfs
+vfs/hpfs/hpfs_lookup.c		optional hpfs
+vfs/hpfs/hpfs_subr.c		optional hpfs
+vfs/hpfs/hpfs_vfsops.c		optional hpfs
+vfs/hpfs/hpfs_vnops.c		optional hpfs
 vfs/msdosfs/msdosfs_conv.c	optional nowerror msdosfs
 vfs/msdosfs/msdosfs_denode.c	optional msdosfs
 vfs/msdosfs/msdosfs_fat.c	optional msdosfs
 vfs/msdosfs/msdosfs_lookup.c	optional msdosfs
 vfs/msdosfs/msdosfs_vfsops.c	optional msdosfs
 vfs/msdosfs/msdosfs_vnops.c	optional msdosfs
-vfs/ntfs/ntfs_vfsops.c		optional ntfs
-vfs/ntfs/ntfs_vnops.c		optional ntfs
-vfs/ntfs/ntfs_subr.c		optional ntfs
+vfs/msdosfs/msdosfs_iconv/msdosfs_iconv.c	optional msdosfs_iconv
 vfs/ntfs/ntfs_compr.c		optional ntfs
 vfs/ntfs/ntfs_ihash.c		optional ntfs
+vfs/ntfs/ntfs_subr.c		optional ntfs
+vfs/ntfs/ntfs_vfsops.c		optional ntfs
+vfs/ntfs/ntfs_vnops.c		optional ntfs
+vfs/ntfs/ntfs_iconv/ntfs_iconv.c	optional ntfs_iconv
 net/altq/altq_cbq.c		optional altq
 net/altq/altq_hfsc.c		optional altq
 net/altq/altq_priq.c		optional altq
@@ -1080,7 +1099,7 @@ net/gif/if_gif.c		optional gif
 net/gre/if_gre.c		optional gre
 net/pfil.c			standard
 net/pf/if_pflog.c		optional pflog
-net/pf/if_pfsync.c		optional pfsync
+net/pf/if_pfsync.c		optional pf
 net/pf/pf.c			optional pf
 net/pf/pf_if.c			optional pf
 net/pf/pf_subr.c		optional pf
@@ -1536,17 +1555,6 @@ netproto/ncp/ncp_nls.c		optional ncp
 netproto/ncp/ncp_rq.c		optional ncp
 netproto/ncp/ncp_sock.c		optional ncp
 netproto/ncp/ncp_subr.c		optional ncp
-netproto/ns/idp_usrreq.c	optional ns
-netproto/ns/ns.c		optional ns
-netproto/ns/ns_error.c		optional ns
-netproto/ns/ns_input.c		optional ns
-netproto/ns/ns_ip.c		optional ns
-netproto/ns/ns_output.c		optional ns
-netproto/ns/ns_pcb.c		optional ns
-netproto/ns/ns_proto.c		optional nowerror ns
-netproto/ns/ns_cksum.c		optional ns
-netproto/ns/spp_debug.c		optional ns
-netproto/ns/spp_usrreq.c	optional ns
 vfs/nfs/nfs_bio.c		optional nfs
 vfs/nfs/nfs_node.c		optional nfs
 vfs/nfs/nfs_serv.c		optional nfs
@@ -1629,7 +1637,6 @@ dev/video/meteor/meteor.c	optional meteor pci
 dev/disk/ncr/ncr.c		optional ncr
 dev/disk/sym/sym_hipd.c		optional sym				\
 	dependency	"$S/dev/disk/sym/sym_{conf,defs}.h"
-bus/pci/eisa_pci.c		optional pci eisa
 bus/pci/fixup_pci.c		optional pci
 bus/pci/hostb_pci.c		optional pci
 bus/pci/ignore_pci.c		optional pci
@@ -1703,6 +1710,7 @@ vfs/hammer/hammer_undo.c	optional hammer
 vfs/hammer/hammer_redo.c	optional hammer
 vfs/hammer/hammer_vfsops.c	optional hammer
 vfs/hammer/hammer_vnops.c	optional hammer
+vfs/hammer/hammer_dedup.c	optional hammer
 #tmpfs static filesystem for debugging should be marked as optional tmpfs
 vfs/tmpfs/tmpfs_fifoops.c	standard
 vfs/tmpfs/tmpfs_subr.c		standard
@@ -1755,6 +1763,7 @@ bus/usb/usb_quirks.c		optional usb
 bus/usb/hid.c			optional usb
 bus/usb/uhub.c			optional usb
 dev/usbmisc/moscom/moscom.c	optional moscom ucom
+dev/usbmisc/ubt/ubt.c		optional ubt
 dev/usbmisc/uark/uark.c		optional uark ucom
 dev/usbmisc/uchcom/uchcom.c	optional uchcom ucom
 dev/usbmisc/ufm/ufm.c		optional ufm
@@ -1888,8 +1897,9 @@ libkern/strtoul.c			standard
 libkern/strtouq.c			standard
 #libkern/stack_protector.c		standard
 libiconv/iconv.c			optional libiconv
-libiconv/iconv_xlat.c			optional libiconv
 libiconv/iconv_converter_if.m		optional libiconv
+libiconv/iconv_xlat.c			optional libiconv
+libiconv/iconv_xlat16.c			optional libiconv
 libprop/prop_array.c			standard
 libprop/prop_array_util.c		standard
 libprop/prop_bool.c			standard
@@ -1985,6 +1995,7 @@ dev/powermng/aps/aps.c			optional aps isa
 dev/powermng/it/it.c			optional it isa
 dev/powermng/lm/lm78.c			optional lm isa
 dev/powermng/lm/lm78_isa.c		optional lm isa
+dev/powermng/uguru/uguru.c		optional uguru isa
 dev/powermng/wbsio/wbsio.c		optional wbsio isa
 emulation/43bsd/43bsd_socket.c		optional compat_43
 emulation/43bsd/43bsd_stats.c		optional compat_43

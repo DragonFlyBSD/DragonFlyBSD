@@ -126,8 +126,6 @@
 #include "spinlock.h"
 #include "un-namespace.h"
 
-static char rcsid[] = "$Id: nmalloc.c,v 1.37 2010/07/23 08:20:35 sv5679 Exp $";
-
 /*
  * Linked list of large allocations
  */
@@ -194,7 +192,6 @@ typedef struct slglobaldata {
 
 #define SLZF_UNOTZEROD		0x0001
 
-#define MAG_NORECURSE 		0x01
 #define FASTSLABREALLOC		0x02
 
 /*
@@ -291,11 +288,12 @@ typedef struct magazine_pair {
 typedef struct magazine_depot {
 	struct magazinelist full;
 	struct magazinelist empty;
-	pthread_spinlock_t lock;
+	spinlock_t	lock;
 } magazine_depot;
 
 typedef struct thr_mags {
 	magazine_pair	mags[NZONES];
+	struct magazine	*newmag;
 	int		init;
 } thr_mags;
 
@@ -303,7 +301,7 @@ typedef struct thr_mags {
  * this variable when the code is compiled -fPIC */
 #define TLS_ATTRIBUTE __attribute__ ((tls_model ("initial-exec")));
 
-static int mtmagazine_free_live = 0;
+static int mtmagazine_free_live;
 static __thread thr_mags thread_mags TLS_ATTRIBUTE;
 static pthread_key_t thread_mags_key;
 static pthread_once_t thread_mags_once = PTHREAD_ONCE_INIT;
@@ -319,9 +317,7 @@ static const int ZoneMask = ZALLOC_ZONE_SIZE - 1;
 
 static int opt_madvise = 0;
 static int opt_utrace = 0;
-static int malloc_started = 0;
 static int g_malloc_flags = 0;
-static spinlock_t malloc_init_lock;
 static struct slglobaldata	SLGlobalData;
 static bigalloc_t bigalloc_array[BIGHSIZE];
 static spinlock_t bigspin_array[BIGXSIZE];
@@ -348,8 +344,8 @@ static void mtmagazine_init(void);
 static void mtmagazine_destructor(void *);
 static slzone_t zone_alloc(int flags);
 static void zone_free(void *z);
-static void _mpanic(const char *ctl, ...);
-static void malloc_init(void);
+static void _mpanic(const char *ctl, ...) __printflike(1, 2);
+static void malloc_init(void) __constructor(0);
 #if defined(INVARIANTS)
 static void chunk_mark_allocated(slzone_t z, void *chunk);
 static void chunk_mark_free(slzone_t z, void *chunk);
@@ -383,14 +379,6 @@ malloc_init(void)
 {
 	const char *p = NULL;
 
-	if (__isthreaded) {
-		_SPINLOCK(&malloc_init_lock);
-		if (malloc_started) {
-			_SPINUNLOCK(&malloc_init_lock);
-			return;
-		}
-	}
-
 	if (issetugid() == 0) 
 		p = getenv("MALLOC_OPTIONS");
 
@@ -407,12 +395,35 @@ malloc_init(void)
 		}
 	}
 
-	malloc_started = 1;
-
-	if (__isthreaded)
-		_SPINUNLOCK(&malloc_init_lock);
-
 	UTRACE((void *) -1, 0, NULL);
+}
+
+/*
+ * We have to install a handler for nmalloc thread teardowns when
+ * the thread is created.  We cannot delay this because destructors in
+ * sophisticated userland programs can call malloc() for the first time
+ * during their thread exit.
+ *
+ * This routine is called directly from pthreads.
+ */
+void
+_nmalloc_thr_init(void)
+{
+	thr_mags *tp;
+
+	/*
+	 * Disallow mtmagazine operations until the mtmagazine is
+	 * initialized.
+	 */
+	tp = &thread_mags;
+	tp->init = -1;
+
+	if (mtmagazine_free_live == 0) {
+		mtmagazine_free_live = 1;
+		pthread_once(&thread_mags_once, mtmagazine_init);
+	}
+	pthread_setspecific(thread_mags_key, tp);
+	tp->init = 1;
 }
 
 /*
@@ -436,14 +447,14 @@ static __inline void
 depot_lock(magazine_depot *dp) 
 {
 	if (__isthreaded)
-		pthread_spin_lock(&dp->lock);
+		_SPINLOCK(&dp->lock);
 }
 
 static __inline void
 depot_unlock(magazine_depot *dp)
 {
 	if (__isthreaded)
-		pthread_spin_unlock(&dp->lock);
+		_SPINUNLOCK(&dp->lock);
 }
 
 static __inline void
@@ -784,9 +795,6 @@ _slaballoc(size_t size, int flags)
 	int off;
 	void *obj;
 
-	if (!malloc_started) 
-		malloc_init();
-
 	/*
 	 * Handle the degenerate size == 0 case.  Yes, this does happen.
 	 * Return a special pointer.  This is to maintain compatibility with
@@ -852,7 +860,6 @@ _slaballoc(size_t size, int flags)
 	 * exhausted pull one off the free list or allocate a new one.
 	 */
 	if ((z = slgd->ZoneAry[zi]) == NULL) {
-		
 		z = zone_alloc(flags);
 		if (z == NULL)
 			goto fail;
@@ -1008,12 +1015,13 @@ _slabrealloc(void *ptr, size_t size)
 	slzone_t z;
 	size_t chunking;
 
-	if (ptr == NULL || ptr == ZERO_LENGTH_PTR)
+	if (ptr == NULL || ptr == ZERO_LENGTH_PTR) {
 		return(_slaballoc(size, 0));
+	}
 
 	if (size == 0) {
-	    free(ptr);
-	    return(ZERO_LENGTH_PTR);
+		free(ptr);
+		return(ZERO_LENGTH_PTR);
 	}
 
 	/*
@@ -1069,8 +1077,9 @@ _slabrealloc(void *ptr, size_t size)
 	 */
 	if (size < ZoneLimit) {
 		zoneindex(&size, &chunking);
-		if (z->z_ChunkSize == size)
+		if (z->z_ChunkSize == size) {
 			return(ptr);
+		}
 	}
 
 	/*
@@ -1094,8 +1103,9 @@ _slabrealloc(void *ptr, size_t size)
  * checking memory limits in malloc.
  *
  * flags:
- *	MAG_NORECURSE		Skip magazine layer
- *	FASTSLABREALLOC		Fast call from realloc
+ *	FASTSLABREALLOC		Fast call from realloc, *rbigp already
+ *				unlinked.
+ *
  * MPSAFE
  */
 static void
@@ -1124,22 +1134,14 @@ _slabfree(void *ptr, int flags, bigalloc_t *rbigp)
 	if (ptr == ZERO_LENGTH_PTR)
 		return;
 
-	/* Ensure that a destructor is in-place for thread-exit */
-	if (mtmagazine_free_live == 0) {
-		mtmagazine_free_live = 1;
-		pthread_once(&thread_mags_once, &mtmagazine_init);
-	}
-
 	/*
 	 * Handle oversized allocations.
 	 */
 	if ((bigp = bigalloc_check_and_lock(ptr)) != NULL) {
 		while ((big = *bigp) != NULL) {
 			if (big->base == ptr) {
-				if ((flags & FASTSLABREALLOC) == 0) {
-					*bigp = big->next;
-					bigalloc_unlock(ptr);
-				}
+				*bigp = big->next;
+				bigalloc_unlock(ptr);
 fastslabrealloc:
 				size = big->bytes;
 				_slabfree(big, 0, NULL);
@@ -1168,8 +1170,7 @@ fastslabrealloc:
 	if (g_malloc_flags & SAFLAG_ZERO)
 		bzero(ptr, size);
 
-	if (((flags & MAG_NORECURSE) == 0) && 
-	    (mtmagazine_free(zi, ptr) == 0))
+	if (mtmagazine_free(zi, ptr) == 0)
 		return;
 
 	pgno = ((char *)ptr - (char *)z) >> PAGE_SHIFT;
@@ -1236,6 +1237,7 @@ fastslabrealloc:
 		z->z_Magic = -1;
 		z->z_Next = NULL;
 		zone_free(z);
+		/* slgd lock released */
 		return;
 	}
 	slgd_unlock(slgd);
@@ -1275,36 +1277,39 @@ chunk_mark_free(slzone_t z, void *chunk)
 
 #endif
 
+/*
+ * Allocate and return a magazine.  NULL is returned and *burst is adjusted
+ * if the magazine is empty.
+ */
 static __inline void *
 magazine_alloc(struct magazine *mp, int *burst)
 {
-	void *obj =  NULL;
+	void *obj;
 
-	do {
-		if (mp != NULL && MAGAZINE_NOTEMPTY(mp)) {
-			obj = mp->objects[--mp->rounds];
-			break;
-		} 
+	if (mp == NULL)
+		return(NULL);
+	if (MAGAZINE_NOTEMPTY(mp)) {
+		obj = mp->objects[--mp->rounds];
+		return(obj);
+	}
 
-		/* Return burst factor to caller */
-		if ((mp->flags & M_BURST) && (burst != NULL)) {
-			*burst = mp->burst_factor;
+	/*
+	 * Return burst factor to caller along with NULL
+	 */
+	if ((mp->flags & M_BURST) && (burst != NULL)) {
+		*burst = mp->burst_factor;
+	}
+	/* Reduce burst factor by NSCALE; if it hits 1, disable BURST */
+	if ((mp->flags & M_BURST) && (mp->flags & M_BURST_EARLY) &&
+	    (burst != NULL)) {
+		mp->burst_factor -= M_BURST_NSCALE;
+		if (mp->burst_factor <= 1) {
+			mp->burst_factor = 1;
+			mp->flags &= ~(M_BURST);
+			mp->flags &= ~(M_BURST_EARLY);
 		}
-
-		/* Reduce burst factor by NSCALE; if it hits 1, disable BURST */
-		if ((mp->flags & M_BURST) && (mp->flags & M_BURST_EARLY) &&
-		    (burst != NULL)) {
-			mp->burst_factor -= M_BURST_NSCALE;
-			if (mp->burst_factor <= 1) {
-				mp->burst_factor = 1;
-				mp->flags &= ~(M_BURST);
-				mp->flags &= ~(M_BURST_EARLY);
-			}
-		}
-
-	} while (0);
-
-	return obj;
+	}
+	return (NULL);
 }
 
 static __inline int
@@ -1324,46 +1329,62 @@ mtmagazine_alloc(int zi)
 	thr_mags *tp;
 	struct magazine *mp, *emptymag;
 	magazine_depot *d;
-	void *obj = NULL;
+	void *obj;
 
+	/*
+	 * Do not try to access per-thread magazines while the mtmagazine
+	 * is being initialized or destroyed.
+	 */
 	tp = &thread_mags;
+	if (tp->init < 0)
+		return(NULL);
 
+	/*
+	 * Primary per-thread allocation loop
+	 */
 	for (;;) {
-		/* If the loaded magazine has rounds, allocate and return */
-		if (((mp = tp->mags[zi].loaded) != NULL) &&
-		    MAGAZINE_NOTEMPTY(mp)) {
-			obj = magazine_alloc(mp, NULL);
+		/*
+		 * If the loaded magazine has rounds, allocate and return
+		 */
+		mp = tp->mags[zi].loaded;
+		obj = magazine_alloc(mp, NULL);
+		if (obj)
 			break;
-		}
 
-		/* If the prev magazine is full, swap with loaded and retry */
-		if (((mp = tp->mags[zi].prev) != NULL) &&
-		    MAGAZINE_FULL(mp)) {
-			swap_mags(&tp->mags[zi]);
+		/*
+		 * If the prev magazine is full, swap with the loaded
+		 * magazine and retry.
+		 */
+		mp = tp->mags[zi].prev;
+		if (mp && MAGAZINE_FULL(mp)) {
+			MASSERT(mp->rounds != 0);
+			swap_mags(&tp->mags[zi]);	/* prev now empty */
 			continue;
 		}
 
-		/* Lock the depot and check if it has any full magazines; if so
-		 * we return the prev to the emptymag list, move loaded to prev
-		 * load a full magazine, and retry */
+		/*
+		 * Try to get a full magazine from the depot.  Cycle
+		 * through depot(full)->loaded->prev->depot(empty).
+		 * Retry if a full magazine was available from the depot.
+		 *
+		 * Return NULL (caller will fall through) if no magazines
+		 * can be found anywhere.
+		 */
 		d = &depots[zi];
 		depot_lock(d);
-
-		if (!SLIST_EMPTY(&d->full)) {
-			emptymag = tp->mags[zi].prev;
-			tp->mags[zi].prev = tp->mags[zi].loaded;
-			tp->mags[zi].loaded = SLIST_FIRST(&d->full);
+		emptymag = tp->mags[zi].prev;
+		if (emptymag)
+			SLIST_INSERT_HEAD(&d->empty, emptymag, nextmagazine);
+		tp->mags[zi].prev = tp->mags[zi].loaded;
+		mp = SLIST_FIRST(&d->full);	/* loaded magazine */
+		tp->mags[zi].loaded = mp;
+		if (mp) {
 			SLIST_REMOVE_HEAD(&d->full, nextmagazine);
-
-			/* Return emptymag to the depot */
-			if (emptymag != NULL)
-				SLIST_INSERT_HEAD(&d->empty, emptymag, nextmagazine);
-
+			MASSERT(MAGAZINE_NOTEMPTY(mp));
 			depot_unlock(d);
 			continue;
-		} else {
-			depot_unlock(d);
 		}
+		depot_unlock(d);
 		break;
 	} 
 
@@ -1374,80 +1395,104 @@ static int
 mtmagazine_free(int zi, void *ptr)
 {
 	thr_mags *tp;
-	struct magazine *mp, *loadedmag, *newmag;
+	struct magazine *mp, *loadedmag;
 	magazine_depot *d;
 	int rc = -1;
 
+	/*
+	 * Do not try to access per-thread magazines while the mtmagazine
+	 * is being initialized or destroyed.
+	 */
 	tp = &thread_mags;
+	if (tp->init < 0)
+		return(-1);
 
-	if (tp->init == 0) {
-		pthread_setspecific(thread_mags_key, tp);
-		tp->init = 1;
-	}
-
+	/*
+	 * Primary per-thread freeing loop
+	 */
 	for (;;) {
-		/* If the loaded magazine has space, free directly to it */
-		if (((mp = tp->mags[zi].loaded) != NULL) && 
-		    MAGAZINE_NOTFULL(mp)) {
-			rc = magazine_free(mp, ptr);
-			break;
+		/*
+		 * Make sure a new magazine is available in case we have
+		 * to use it.  Staging the newmag allows us to avoid
+		 * some locking/reentrancy complexity.
+		 *
+		 * Temporarily disable the per-thread caches for this
+		 * allocation to avoid reentrancy and/or to avoid a
+		 * stack overflow if the [zi] happens to be the same that
+		 * would be used to allocate the new magazine.
+		 */
+		if (tp->newmag == NULL) {
+			tp->init = -1;
+			tp->newmag = _slaballoc(sizeof(struct magazine),
+						SAFLAG_ZERO);
+			tp->init = 1;
+			if (tp->newmag == NULL) {
+				rc = -1;
+				break;
+			}
 		}
- 
-		/* If the prev magazine is empty, swap with loaded and retry */
-		if (((mp = tp->mags[zi].prev) != NULL) &&
-		    MAGAZINE_EMPTY(mp)) {
-			swap_mags(&tp->mags[zi]);
+
+		/*
+		 * If the loaded magazine has space, free directly to it
+		 */
+		rc = magazine_free(tp->mags[zi].loaded, ptr);
+		if (rc == 0)
+			break;
+
+		/*
+		 * If the prev magazine is empty, swap with the loaded
+		 * magazine and retry.
+		 */
+		mp = tp->mags[zi].prev;
+		if (mp && MAGAZINE_EMPTY(mp)) {
+			MASSERT(mp->rounds == 0);
+			swap_mags(&tp->mags[zi]);	/* prev now full */
 			continue;
 		}
 
-		/* Lock the depot; if there are any empty magazines, move the
-		 * prev to the depot's fullmag list, move loaded to previous,
-		 * and move a new emptymag to loaded, and retry. */
-
+		/*
+		 * Try to get an empty magazine from the depot.  Cycle
+		 * through depot(empty)->loaded->prev->depot(full).
+		 * Retry if an empty magazine was available from the depot.
+		 */
 		d = &depots[zi];
 		depot_lock(d);
 
-		if (!SLIST_EMPTY(&d->empty)) {
-			loadedmag = tp->mags[zi].prev;
-			tp->mags[zi].prev = tp->mags[zi].loaded;
-			tp->mags[zi].loaded = SLIST_FIRST(&d->empty);
+		if ((loadedmag = tp->mags[zi].prev) != NULL)
+			SLIST_INSERT_HEAD(&d->full, loadedmag, nextmagazine);
+		tp->mags[zi].prev = tp->mags[zi].loaded;
+		mp = SLIST_FIRST(&d->empty);
+		if (mp) {
+			tp->mags[zi].loaded = mp;
 			SLIST_REMOVE_HEAD(&d->empty, nextmagazine);
-
-			/* Return loadedmag to the depot */
-			if (loadedmag != NULL)
-				SLIST_INSERT_HEAD(&d->full, loadedmag, 
-						  nextmagazine);
-			depot_unlock(d);
-			continue;
-		} 
-
-		/* Allocate an empty magazine, add it to the depot, retry */
-		newmag = _slaballoc(sizeof(struct magazine), SAFLAG_ZERO);
-		if (newmag != NULL) {
-			newmag->capacity = M_MAX_ROUNDS;
-			newmag->rounds = 0;
-
-			SLIST_INSERT_HEAD(&d->empty, newmag, nextmagazine);
-			depot_unlock(d);
-			continue;
+			MASSERT(MAGAZINE_NOTFULL(mp));
 		} else {
-			depot_unlock(d);
-			rc = -1;
+			mp = tp->newmag;
+			tp->newmag = NULL;
+			mp->capacity = M_MAX_ROUNDS;
+			mp->rounds = 0;
+			mp->flags = 0;
+			tp->mags[zi].loaded = mp;
 		}
-		break;
+		depot_unlock(d);
 	} 
 
 	return rc;
 }
 
 static void 
-mtmagazine_init(void) {
-	int i = 0;
-	i = pthread_key_create(&thread_mags_key,&mtmagazine_destructor);
-	if (i != 0)
+mtmagazine_init(void)
+{
+	int error;
+
+	error = pthread_key_create(&thread_mags_key, mtmagazine_destructor);
+	if (error)
 		abort();
 }
 
+/*
+ * This function is only used by the thread exit destructor
+ */
 static void
 mtmagazine_drain(struct magazine *mp)
 {
@@ -1455,7 +1500,7 @@ mtmagazine_drain(struct magazine *mp)
 
 	while (MAGAZINE_NOTEMPTY(mp)) {
 		obj = magazine_alloc(mp, NULL);
-		_slabfree(obj, MAG_NORECURSE, NULL);
+		_slabfree(obj, 0, NULL);
 	}
 }
 
@@ -1464,6 +1509,10 @@ mtmagazine_drain(struct magazine *mp)
  *
  * When a thread exits, we reclaim all its resources; all its magazines are
  * drained and the structures are freed. 
+ *
+ * WARNING!  The destructor can be called multiple times if the larger user
+ *	     program has its own destructors which run after ours which
+ *	     allocate or free memory.
  */
 static void
 mtmagazine_destructor(void *thrp)
@@ -1472,16 +1521,35 @@ mtmagazine_destructor(void *thrp)
 	struct magazine *mp;
 	int i;
 
+	/*
+	 * Prevent further use of mtmagazines while we are destructing
+	 * them, as well as for any destructors which are run after us
+	 * prior to the thread actually being destroyed.
+	 */
+	tp->init = -1;
+
 	for (i = 0; i < NZONES; i++) {
 		mp = tp->mags[i].loaded;
-		if (mp != NULL && MAGAZINE_NOTEMPTY(mp))
-			mtmagazine_drain(mp);
-		_slabfree(mp, MAG_NORECURSE, NULL);
+		tp->mags[i].loaded = NULL;
+		if (mp) {
+			if (MAGAZINE_NOTEMPTY(mp))
+				mtmagazine_drain(mp);
+			_slabfree(mp, 0, NULL);
+		}
 
 		mp = tp->mags[i].prev;
-		if (mp != NULL && MAGAZINE_NOTEMPTY(mp))
-			mtmagazine_drain(mp);
-		_slabfree(mp, MAG_NORECURSE, NULL);
+		tp->mags[i].prev = NULL;
+		if (mp) {
+			if (MAGAZINE_NOTEMPTY(mp))
+				mtmagazine_drain(mp);
+			_slabfree(mp, 0, NULL);
+		}
+	}
+
+	if (tp->newmag) {
+		mp = tp->newmag;
+		tp->newmag = NULL;
+		_slabfree(mp, 0, NULL);
 	}
 }
 
@@ -1503,30 +1571,23 @@ zone_alloc(int flags)
 	slgd_unlock(slgd);
 
 	z = magazine_alloc(&zone_magazine, &burst);
-	if (z == NULL) {
-		if (burst == 1)
-			zone_magazine_unlock();
-
+	if (z == NULL && burst == 1) {
+		zone_magazine_unlock();
 		z = _vmem_alloc(ZoneSize * burst, ZoneSize, flags);
-		if (z == NULL) {
-			zone_magazine_unlock();
-			slgd_lock(slgd);
-			return (NULL);
+	} else if (z == NULL) {
+		z = _vmem_alloc(ZoneSize * burst, ZoneSize, flags);
+		if (z) {
+			for (i = 1; i < burst; i++) {
+				j = magazine_free(&zone_magazine,
+						  (char *) z + (ZoneSize * i));
+				MASSERT(j == 0);
+			}
 		}
-
-		for (i = 1; i < burst; i++) {
-			j = magazine_free(&zone_magazine,
-					  (char *) z + (ZoneSize * i));
-			MASSERT(j == 0);
-		}
-
-		if (burst != 1)
-			zone_magazine_unlock();
+		zone_magazine_unlock();
 	} else {
 		z->z_Flags |= SLZF_UNOTZEROD;
 		zone_magazine_unlock();
 	}
-
 	slgd_lock(slgd);
 	return z;
 }
@@ -1534,7 +1595,7 @@ zone_alloc(int flags)
 /*
  * zone_free()
  *
- * Releases the slgd lock prior to unmap, if unmapping is necessary
+ * Release a zone and unlock the slgd lock.
  */
 static void
 zone_free(void *z)
@@ -1553,9 +1614,11 @@ zone_free(void *z)
 
 	i = magazine_free(&zone_magazine, z);
 
-	/* If we failed to free, collect excess magazines; release the zone
+	/*
+	 * If we failed to free, collect excess magazines; release the zone
 	 * magazine lock, and then free to the system via _vmem_free. Re-enable
-	 * BURST mode for the magazine. */
+	 * BURST mode for the magazine.
+	 */
 	if (i == -1) {
 		j = zone_magazine.rounds - zone_magazine.low_factor;
 		for (i = 0; i < j; i++) {

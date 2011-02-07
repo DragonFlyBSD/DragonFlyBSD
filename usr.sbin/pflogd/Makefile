@@ -8,6 +8,5 @@ CFLAGS+= -DHAVE_SNPRINTF
 PROG=	pflogd
 SRCS=	pflogd.c privsep.c privsep_fdpass.c
 MAN=	pflogd.8
-WARNS?=	4
 
 .include <bsd.prog.mk>

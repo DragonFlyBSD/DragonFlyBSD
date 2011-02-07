@@ -66,7 +66,6 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.60 2008/11/26 12:49:43 sephe Exp $
  */
 
 /*
@@ -360,7 +359,7 @@ extern	void (*bridge_dn_p)(struct mbuf *, struct ifnet *);
 static int	bridge_rtable_prune_period = BRIDGE_RTABLE_PRUNE_PERIOD;
 
 static int	bridge_clone_create(struct if_clone *, int, caddr_t);
-static void	bridge_clone_destroy(struct ifnet *);
+static int	bridge_clone_destroy(struct ifnet *);
 
 static int	bridge_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	bridge_mutecaps(struct bridge_ifinfo *, struct ifnet *, int);
@@ -573,8 +572,7 @@ const struct bridge_control bridge_control_table[] = {
 	{ bridge_ioctl_delspan,		sizeof(struct ifbreq),
 	  BC_F_COPYIN|BC_F_SUSER },
 };
-static const int bridge_control_table_size =
-    sizeof(bridge_control_table) / sizeof(bridge_control_table[0]);
+static const int bridge_control_table_size = NELEM(bridge_control_table);
 
 LIST_HEAD(, bridge_softc) bridge_list;
 
@@ -731,7 +729,7 @@ bridge_delete_dispatch(netmsg_t msg)
  *
  *	Destroy a bridge instance.
  */
-static void
+static int
 bridge_clone_destroy(struct ifnet *ifp)
 {
 	struct bridge_softc *sc = ifp->if_softc;
@@ -762,6 +760,8 @@ bridge_clone_destroy(struct ifnet *ifp)
 	kfree(sc->sc_iflists, M_DEVBUF);
 
 	kfree(sc, M_DEVBUF);
+
+	return 0;
 }
 
 /*
@@ -2184,6 +2184,18 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 		 */
 		KASSERT(bifp->if_bridge == NULL,
 			("loop created in bridge_input"));
+		if (pfil_member != 0) {
+			if (inet_pfil_hook.ph_hashooks > 0
+#ifdef INET6
+			    || inet6_pfil_hook.ph_hashooks > 0
+#endif
+			) {
+				if (bridge_pfil(&m, NULL, ifp, PFIL_IN) != 0)
+					goto out;
+				if (m == NULL)
+					goto out;
+			}
+		}
 		new_ifp = bifp;
 		goto out;
 	}

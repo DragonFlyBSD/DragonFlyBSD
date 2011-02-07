@@ -31,9 +31,8 @@
 .\"
 .\"     From: @(#)send.2	8.2 (Berkeley) 2/21/94
 .\" $FreeBSD: src/lib/libc/sys/send.2,v 1.10.2.6 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/send.2,v 1.9 2007/06/30 19:03:52 swildner Exp $
 .\"
-.Dd February 15, 1995
+.Dd October 6, 2010
 .Dt SEND 2
 .Os
 .Sh NAME
@@ -111,6 +110,7 @@ parameter may include one or more of the following:
 #define	MSG_DONTROUTE	0x4   /* bypass routing, use direct interface */
 #define MSG_EOR		0x8   /* data completes record */
 #define	MSG_EOF		0x100 /* data completes transaction */
+#define MSG_NOSIGNAL	0x400 /* No SIGPIPE to unconnected socket stream */
 .Ed
 .Pp
 The flag
@@ -135,6 +135,12 @@ sockets in the
 protocol family.
 .Dv MSG_DONTROUTE
 is usually used only by diagnostic or routing programs.
+.Dv MSG_NOSIGNAL
+requests not to send the
+.Dv SIGPIPE
+signal if an attempt to
+.Nm
+is made on a stream-oriented socket that is no longer connected.
 .Pp
 See
 .Xr recv 2

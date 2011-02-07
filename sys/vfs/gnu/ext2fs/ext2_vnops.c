@@ -254,7 +254,7 @@ ext2_fsync_bp(struct buf *bp, void *data)
 	 * Wait for I/O associated with indirect blocks to complete,
 	 * since there is no way to quickly wait for them below.
 	 */
-	if (bp->b_vp == info->vp || info->waitfor == MNT_NOWAIT)
+	if (bp->b_vp == info->vp || (info->waitfor & MNT_NOWAIT))
 		bawrite(bp);
 	else
 		bwrite(bp);

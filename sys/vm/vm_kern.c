@@ -149,8 +149,10 @@ vm_offset_t
 kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 {
 	vm_offset_t addr;
+	vm_offset_t gstart;
 	vm_offset_t i;
 	int count;
+	int cow;
 
 	size = round_page(size);
 
@@ -158,6 +160,14 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 		count = vm_map_entry_kreserve(MAP_RESERVE_COUNT);
 	else
 		count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
+
+	if (kmflags & KM_STACK) {
+		cow = MAP_IS_KSTACK;
+		gstart = PAGE_SIZE;
+	} else {
+		cow = 0;
+		gstart = 0;
+	}
 
 	/*
 	 * Use the kernel object for wired-down kernel pages. Assume that no
@@ -181,7 +191,7 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 		      &kernel_object, addr, addr, addr + size,
 		      VM_MAPTYPE_NORMAL,
 		      VM_PROT_ALL, VM_PROT_ALL,
-		      0);
+		      cow);
 	vm_map_unlock(map);
 	if (kmflags & KM_KRESERVE)
 		vm_map_entry_krelease(count);
@@ -205,9 +215,8 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 	 * We're intentionally not activating the pages we allocate to prevent a
 	 * race with page-out.  vm_map_wire will wire the pages.
 	 */
-
 	lwkt_gettoken(&vm_token);
-	for (i = 0; i < size; i += PAGE_SIZE) {
+	for (i = gstart; i < size; i += PAGE_SIZE) {
 		vm_page_t mem;
 
 		mem = vm_page_grab(&kernel_object, OFF_TO_IDX(addr + i),
@@ -222,6 +231,8 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 
 	/*
 	 * And finally, mark the data as non-pageable.
+	 *
+	 * NOTE: vm_map_wire() handles any kstack guard.
 	 */
 	vm_map_wire(map, (vm_offset_t)addr, addr + size, kmflags);
 
@@ -351,22 +362,18 @@ kmem_free_wakeup(vm_map_t map, vm_offset_t addr, vm_size_t size)
 }
 
 /*
- * Create the kernel_map and insert mappings to cover areas already
- * allocated or reserved thus far.  That is, the area (KvaStart,start)
- * and (end,KvaEnd) must be marked as allocated.
+ * Create the kernel_ma for (KvaStart,KvaEnd) and insert mappings to
+ * cover areas already allocated or reserved thus far.
  *
- * virtual2_start/end is a cutout Between KvaStart and start,
- * for x86_64 due to the location of KERNBASE (at -2G).
- *
- * We could use a min_offset of 0 instead of KvaStart, but since the
- * min_offset is not used for any calculations other then a bounds check
- * it does not effect readability.  KvaStart is more appropriate.
+ * The areas (virtual_start, virtual_end) and (virtual2_start, virtual2_end)
+ * are available so the cutouts are the areas around these ranges between
+ * KvaStart and KvaEnd.
  *
  * Depend on the zalloc bootstrap cache to get our vm_map_entry_t.
  * Called from the low level boot code only.
  */
 void
-kmem_init(vm_offset_t start, vm_offset_t end)
+kmem_init(void)
 {
 	vm_offset_t addr;
 	vm_map_t m;
@@ -388,14 +395,14 @@ kmem_init(vm_offset_t start, vm_offset_t end)
 		}
 		addr = virtual2_end;
 	}
-	if (addr < start) {
+	if (addr < virtual_start) {
 		vm_map_insert(m, &count, NULL, (vm_offset_t) 0,
-			      addr, start,
+			      addr, virtual_start,
 			      VM_MAPTYPE_NORMAL,
 			      VM_PROT_ALL, VM_PROT_ALL,
 			      0);
 	}
-	addr = end;
+	addr = virtual_end;
 	if (addr < KvaEnd) {
 		vm_map_insert(m, &count, NULL, (vm_offset_t) 0,
 			      addr, KvaEnd,
@@ -418,8 +425,8 @@ kvm_size(SYSCTL_HANDLER_ARGS)
 
 	return sysctl_handle_long(oidp, &ksize, 0, req);
 }
-SYSCTL_PROC(_vm, OID_AUTO, kvm_size, CTLTYPE_LONG|CTLFLAG_RD,
-    0, 0, kvm_size, "IU", "Size of KVM");
+SYSCTL_PROC(_vm, OID_AUTO, kvm_size, CTLTYPE_ULONG|CTLFLAG_RD,
+    0, 0, kvm_size, "LU", "Size of KVM");
  
 /*
  * No requirements.
@@ -431,6 +438,6 @@ kvm_free(SYSCTL_HANDLER_ARGS)
 
 	return sysctl_handle_long(oidp, &kfree, 0, req);
 }
-SYSCTL_PROC(_vm, OID_AUTO, kvm_free, CTLTYPE_LONG|CTLFLAG_RD,
-    0, 0, kvm_free, "IU", "Amount of KVM free");
+SYSCTL_PROC(_vm, OID_AUTO, kvm_free, CTLTYPE_ULONG|CTLFLAG_RD,
+    0, 0, kvm_free, "LU", "Amount of KVM free");
 

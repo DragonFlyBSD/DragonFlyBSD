@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/kern/sysv_sem.c,v 1.69 2004/03/17 09:37:13 cperciva Exp $ */
-/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.19 2008/01/06 16:55:51 swildner Exp $ */
 
 /*
  * Implementation of SVID semaphores
@@ -138,16 +137,26 @@ TUNABLE_INT("kern.ipc.semusz", &seminfo.semusz);
 TUNABLE_INT("kern.ipc.semvmx", &seminfo.semvmx);
 TUNABLE_INT("kern.ipc.semaem", &seminfo.semaem);
 
-SYSCTL_INT(_kern_ipc, OID_AUTO, semmap, CTLFLAG_RW, &seminfo.semmap, 0, "");
-SYSCTL_INT(_kern_ipc, OID_AUTO, semmni, CTLFLAG_RD, &seminfo.semmni, 0, "");
-SYSCTL_INT(_kern_ipc, OID_AUTO, semmns, CTLFLAG_RD, &seminfo.semmns, 0, "");
-SYSCTL_INT(_kern_ipc, OID_AUTO, semmnu, CTLFLAG_RD, &seminfo.semmnu, 0, "");
-SYSCTL_INT(_kern_ipc, OID_AUTO, semmsl, CTLFLAG_RW, &seminfo.semmsl, 0, "");
-SYSCTL_INT(_kern_ipc, OID_AUTO, semopm, CTLFLAG_RD, &seminfo.semopm, 0, "");
-SYSCTL_INT(_kern_ipc, OID_AUTO, semume, CTLFLAG_RD, &seminfo.semume, 0, "");
-SYSCTL_INT(_kern_ipc, OID_AUTO, semusz, CTLFLAG_RD, &seminfo.semusz, 0, "");
-SYSCTL_INT(_kern_ipc, OID_AUTO, semvmx, CTLFLAG_RW, &seminfo.semvmx, 0, "");
-SYSCTL_INT(_kern_ipc, OID_AUTO, semaem, CTLFLAG_RW, &seminfo.semaem, 0, "");
+SYSCTL_INT(_kern_ipc, OID_AUTO, semmap, CTLFLAG_RW, &seminfo.semmap, 0,
+    "Number of entries in semaphore map");
+SYSCTL_INT(_kern_ipc, OID_AUTO, semmni, CTLFLAG_RD, &seminfo.semmni, 0,
+    "Number of semaphore identifiers");
+SYSCTL_INT(_kern_ipc, OID_AUTO, semmns, CTLFLAG_RD, &seminfo.semmns, 0,
+    "Total number of semaphores");
+SYSCTL_INT(_kern_ipc, OID_AUTO, semmnu, CTLFLAG_RD, &seminfo.semmnu, 0,
+    "Total number of undo structures");
+SYSCTL_INT(_kern_ipc, OID_AUTO, semmsl, CTLFLAG_RW, &seminfo.semmsl, 0,
+    "Max number of semaphores per id");
+SYSCTL_INT(_kern_ipc, OID_AUTO, semopm, CTLFLAG_RD, &seminfo.semopm, 0,
+    "Max number of operations per semop call");
+SYSCTL_INT(_kern_ipc, OID_AUTO, semume, CTLFLAG_RD, &seminfo.semume, 0,
+    "Max number of undo entries per process");
+SYSCTL_INT(_kern_ipc, OID_AUTO, semusz, CTLFLAG_RD, &seminfo.semusz, 0,
+    "Size in bytes of undo structure");
+SYSCTL_INT(_kern_ipc, OID_AUTO, semvmx, CTLFLAG_RW, &seminfo.semvmx, 0,
+    "Semaphore maximum value");
+SYSCTL_INT(_kern_ipc, OID_AUTO, semaem, CTLFLAG_RW, &seminfo.semaem, 0,
+    "Adjust on exit max value");
 
 #if 0
 RO seminfo.semmap	/* SEMMAP unused */
@@ -200,7 +209,7 @@ sys_semsys(struct semsys_args *uap)
 	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
-	if (which >= sizeof(semcalls)/sizeof(semcalls[0]))
+	if (which >= NELEM(semcalls))
 		return (EINVAL);
 	bcopy(&uap->a2, &uap->which,
 	      sizeof(struct semsys_args) - offsetof(struct semsys_args, a2));

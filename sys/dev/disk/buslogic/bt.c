@@ -2,7 +2,6 @@
  * Generic driver for the BusLogic MultiMaster SCSI host adapters
  * Product specific probe and attach routines can be found in:
  * sys/dev/buslogic/bt_isa.c	BT-54X, BT-445 cards
- * sys/dev/buslogic/bt_eisa.c	BT-74X, BT-75x cards, SDC3222F
  * sys/dev/buslogic/bt_pci.c	BT-946, BT-948, BT-956, BT-958 cards
  *
  * Copyright (c) 1998, 1999 Justin T. Gibbs.
@@ -30,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt.c,v 1.25.2.1 2000/08/02 22:32:26 peter Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.19 2008/05/18 20:30:22 pavalos Exp $
  */
 
  /*
@@ -166,7 +164,7 @@ u_long bt_unit = 0;
  * XXX
  * Do our own re-probe protection until a configuration
  * manager can do it for us.  This ensures that we don't
- * reprobe a card already found by the EISA or PCI probes.
+ * reprobe a card already found by the PCI probes.
  */
 struct bt_isa_port bt_isa_ports[] =
 {
@@ -466,7 +464,6 @@ bt_fetch_adapter_info(device_t dev)
 	 *		BT-542B/742A (revision H)
 	 *	2.xx	BusLogic "A" Series Host Adapters:
 	 *		BT-542B/742A (revision G and below)
-	 *	0.xx	AMI FastDisk VLB/EISA BusLogic Clone Host Adapter
 	 */
 	length_param = sizeof(esetup_info);
 	error = bt_cmd(bt, BOP_INQUIRE_ESETUP_INFO, &length_param, /*parmlen*/1,
@@ -485,10 +482,6 @@ bt_fetch_adapter_info(device_t dev)
 		&& (strncmp(bt->firmware_ver, "2.1", 3) == 0
 		 || strncmp(bt->firmware_ver, "2.20", 4) == 0)) {
 		ksnprintf(bt->model, sizeof(bt->model), "742A");
-	} else if (esetup_info.bus_type == 'E'
-		&& bt->firmware_ver[0] == '0') {
-		/* AMI FastDisk EISA Series 441 0.x */
-		ksnprintf(bt->model, sizeof(bt->model), "747A");
 	} else {
 		ha_model_data_t model_data;
 		int i;

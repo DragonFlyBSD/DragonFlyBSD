@@ -54,3 +54,9 @@ _cv_signal(struct cv *c, int broadcast)
 out:
 	spin_unlock(&c->cv_lock);
 }
+
+int
+cv_has_waiters(const struct cv *c)
+{
+	return (c->cv_waiters);
+}

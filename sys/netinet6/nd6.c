@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.c,v 1.2.2.15 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.30 2008/05/27 01:10:43 dillon Exp $	*/
 /*	$KAME: nd6.c,v 1.144 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -72,8 +71,6 @@
 #include <netinet6/nd6.h>
 #include <netinet6/in6_prefix.h>
 #include <netinet/icmp6.h>
-
-#include "use_loop.h"
 
 #include <net/net_osdep.h>
 
@@ -2054,9 +2051,9 @@ static int nd6_sysctl_prlist(SYSCTL_HANDLER_ARGS);
 SYSCTL_DECL(_net_inet6_icmp6);
 #endif
 SYSCTL_NODE(_net_inet6_icmp6, ICMPV6CTL_ND6_DRLIST, nd6_drlist,
-	CTLFLAG_RD, nd6_sysctl_drlist, "");
+	CTLFLAG_RD, nd6_sysctl_drlist, "List default routers");
 SYSCTL_NODE(_net_inet6_icmp6, ICMPV6CTL_ND6_PRLIST, nd6_prlist,
-	CTLFLAG_RD, nd6_sysctl_prlist, "");
+	CTLFLAG_RD, nd6_sysctl_prlist, "List prefixes");
 
 static int
 nd6_sysctl_drlist(SYSCTL_HANDLER_ARGS)

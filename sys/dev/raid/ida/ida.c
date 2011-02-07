@@ -28,18 +28,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida.c,v 1.7.2.3 2001/03/01 01:57:32 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.17 2008/06/10 17:20:50 dillon Exp $
  */
 
 /*
  * Generic driver for Compaq SMART RAID adapters.
  *
  * Specific probe routines are in:
- *	pci/ida_pci.c		
- *	i386/eisa/ida_eisa.c
+ *	dev/raid/ida/ida_pci.c
  */
-
-#include <use_pci.h>
 
 #include <sys/param.h>
 #include <sys/kernel.h>

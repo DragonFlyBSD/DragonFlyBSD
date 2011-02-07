@@ -206,7 +206,7 @@ BTOOLSPATH= ${BTOOLSDEST}/usr/sbin:${BTOOLSDEST}/usr/bin:${BTOOLSDEST}/bin:${BTO
 # The strict temporary command path contains all binaries required
 # by the buildworld system after the cross-tools stage.
 #
-STRICTTMPPATH=	${CTOOLSDEST}/usr/sbin:${CTOOLSDEST}/usr/bin:${CTOOLSDEST}/bin:${CTOOLSDEST}/usr/games:${BTOOLSDEST}/usr/sbin:${BTOOLSDEST}/usr/bin:${BTOOLSDEST}/bin:${BTOOLSDEST}/usr/games
+STRICTTMPPATH=	${CTOOLSDEST}/usr/sbin:${CTOOLSDEST}/usr/bin:${CTOOLSDEST}/bin:${CTOOLSDEST}/usr/games:${BTOOLSDEST}/usr/sbin:${BTOOLSDEST}/usr/bin:${BTOOLSDEST}/bin:${BTOOLSDEST}/usr/games:/usr/pkg/bin
 
 TMPDIR?=	/tmp
 TMPPID!=	echo $$$$
@@ -875,7 +875,7 @@ _startup_libs41=	gnu/lib/gcc41/csu gnu/lib/gcc41/libgcc
 _startup_libs44=	gnu/lib/gcc44/csu gnu/lib/gcc44/libgcc
 _startup_libs=		lib/csu lib/libc lib/libc_rtld
 
-_prebuild_libs=		lib/libbz2 lib/libz
+_prebuild_libs=		lib/libbz2 lib/liblzma lib/libz
 _prebuild_libs+=	lib/libutil
 
 _generic_libs=	gnu/lib

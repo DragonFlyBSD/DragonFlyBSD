@@ -88,7 +88,7 @@
  * Use SMP_MAXCPU instead of MAXCPU for structures that are intended to
  * remain compatible between UP and SMP builds.
  */
-#define SMP_MAXCPU	16
+#define SMP_MAXCPU	63
 #ifdef SMP
 #define MAXCPU		SMP_MAXCPU
 #else
@@ -145,7 +145,7 @@
 #define MAXDUMPPGS	(DFLTPHYS/PAGE_SIZE)
 
 #define IOPAGES	2		/* pages of i/o permission bitmap */
-#define UPAGES	3		/* pages of u-area */
+#define UPAGES	4		/* pages of u-area */
 
 /*
  * Ceiling on amount of swblock kva space, can be changed via
@@ -166,9 +166,12 @@
  * Ceiling on size of buffer cache (really only effects write queueing,
  * the VM page cache is not effected), can be changed via
  * kern.maxbcache /boot/loader.conf variable.
+ *
+ * On x86_64 boxes this can also improve HAMMER's flushing and cache
+ * performance so use a much higher value than i386.
  */
 #ifndef VM_BCACHE_SIZE_MAX
-#define VM_BCACHE_SIZE_MAX	(400L * 1024 * 1024)
+#define VM_BCACHE_SIZE_MAX	(1000L * 1024 * 1024)
 #endif
 
 /*

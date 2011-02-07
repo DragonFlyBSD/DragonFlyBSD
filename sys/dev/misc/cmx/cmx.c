@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cmx/cmx.c,v 1.1 2008/03/06 08:09:45 rink Exp $
- * $DragonFly: src/sys/dev/misc/cmx/cmx.c,v 1.2 2008/08/08 18:33:11 hasso Exp $
  */
 
 /*
@@ -138,9 +137,8 @@ static void cmx_filter_detach(struct knote *);
 static int cmx_filter_read(struct knote *, long);
 static int cmx_filter_write(struct knote *, long);
 
-#define CDEV_MAJOR	185
 static struct dev_ops cmx_ops = {
-	{ "cmx", CDEV_MAJOR, 0 },
+	{ "cmx", 0, 0 },
 	.d_open =	cmx_open,
 	.d_close =	cmx_close,
 	.d_read =	cmx_read,

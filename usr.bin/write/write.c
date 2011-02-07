@@ -54,7 +54,7 @@
 #include <signal.h>
 #include <time.h>
 #include <unistd.h>
-#include <utmp.h>
+#include "utmpentry.h"
 
 static void	done(int);
 static void	do_write(const char *, const char *, uid_t, int *);
@@ -132,21 +132,17 @@ usage(void)
 static int
 utmp_chk(const char *user, const char *tty)
 {
-	struct utmp u;
-	int ufd;
+	struct utmpentry *ep;
 
-	if ((ufd = open(_PATH_UTMP, O_RDONLY)) < 0)
-		err(1, "open failed: %s\n", _PATH_UTMP);
+	getutentries(NULL, &ep);
 
-	while (read(ufd, (char *) &u, sizeof(u)) == sizeof(u)) {
-		if (strncmp(user, u.ut_name, sizeof(u.ut_name)) == 0 &&
-		    strncmp(tty, u.ut_line, sizeof(u.ut_line)) == 0) {
-			close(ufd);
+	for (; ep; ep = ep->next) {
+		if (strcmp(user, ep->name) == 0 &&
+		    strcmp(tty, ep->line) == 0) {
 			return(0);
 		}
 	}
 
-	close(ufd);
 	return(1);
 }
 
@@ -164,37 +160,33 @@ utmp_chk(const char *user, const char *tty)
 static void
 search_utmp(const char *user, char *tty, size_t ttyl, const char *mytty, uid_t myuid)
 {
-	struct utmp u;
+	struct utmpentry *ep;
 	time_t bestatime, atime;
-	int ufd, nloggedttys, nttys, msgsok, user_is_me;
-	char atty[UT_LINESIZE + 1];
+	int nloggedttys, nttys, msgsok, user_is_me;
 
-	if ((ufd = open(_PATH_UTMP, O_RDONLY)) < 0)
-		err(1, "open failed: %s", _PATH_UTMP);
+	getutentries(NULL, &ep);
 
 	nloggedttys = nttys = 0;
 	bestatime = 0;
 	user_is_me = 0;
-	while (read(ufd, (char *) &u, sizeof(u)) == sizeof(u))
-		if (strncmp(user, u.ut_name, sizeof(u.ut_name)) == 0) {
+	for (; ep; ep = ep->next)
+		if (strcmp(user, ep->name) == 0) {
 			++nloggedttys;
-			strlcpy(atty, u.ut_line, ttyl);
-			if (term_chk(atty, &msgsok, &atime, 0))
+			if (term_chk(ep->line, &msgsok, &atime, 0))
 				continue;	/* bad term? skip */
 			if (myuid && !msgsok)
 				continue;	/* skip ttys with msgs off */
-			if (strcmp(atty, mytty) == 0) {
+			if (strcmp(ep->line, mytty) == 0) {
 				user_is_me = 1;
 				continue;	/* don't write to yourself */
 			}
 			++nttys;
 			if (atime > bestatime) {
 				bestatime = atime;
-				strlcpy(tty, atty, ttyl);
+				strlcpy(tty, ep->line, ttyl);
 			}
 		}
 
-	close(ufd);
 	if (nloggedttys == 0)
 		errx(1, "%s is not logged in", user);
 	if (nttys == 0) {

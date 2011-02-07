@@ -63,6 +63,8 @@ Currently these include the
 .Tn NBS
 .Tn Data Encryption Standard (DES) ,
 .Tn MD5
+.Tn SHA256
+.Tn SHA512
 and
 .Tn Blowfish .
 The algorithm used will depend upon the format of the Salt (following
@@ -176,6 +178,10 @@ Currently supported algorithms are:
 .It
 MD5
 .It
+SHA256
+.It
+SHA512
+.It
 Blowfish
 .El
 .Pp
@@ -210,7 +216,9 @@ Valid values are
 .\" NOTICE: Also make sure to update this, too, as well
 .\"
 .Ql des ,
-.Ql blf
+.Ql blf ,
+.Ql sha256 ,
+.Ql sha512 ,
 and
 .Ql md5 .
 .Pp

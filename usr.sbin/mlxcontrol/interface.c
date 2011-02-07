@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/usr.sbin/mlxcontrol/interface.c,v 1.2.2.1 2000/04/24 19:44:46 msmith Exp $
- *	$DragonFly: src/usr.sbin/mlxcontrol/interface.c,v 1.3 2003/08/08 04:18:46 dillon Exp $
+ *	$FreeBSD: src/usr.sbin/mlxcontrol/interface.c,v 1.3 2008/09/12 17:40:17 sepotvin Exp $
  */
 
 #include <fcntl.h>
@@ -80,16 +79,18 @@ void
 mlxd_foreach_ctrlr(int unit, void *arg)
 {
     struct mlxd_foreach_action	*ma = (struct mlxd_foreach_action *)arg;
-    int				i, fd;
+    int				i, fd, ctrlfd;
     
     /* Get the device */
-    if ((fd = open(ctrlrpath(unit), 0)) < 0)
+    if ((ctrlfd = open(ctrlrpath(unit), 0)) < 0)
 	return;
     
     for (i = -1; ;) {
 	/* Get the unit number of the next child device */
-	if (ioctl(fd, MLX_NEXT_CHILD, &i) < 0)
+	if (ioctl(ctrlfd, MLX_NEXT_CHILD, &i) < 0) {
+	    close(ctrlfd);
 	    return;
+	}
 	
 	/* check that we can open this unit */
 	if ((fd = open(drivepath(i), 0)) >= 0)
@@ -123,7 +124,7 @@ static struct
 } mlxd_find_ctrlr_param;
 
 static void
-mlxd_find_ctrlr_search(int unit, void *arg)
+mlxd_find_ctrlr_search(int unit, void *arg __unused)
 {
     int				i, fd;
     

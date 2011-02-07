@@ -38,7 +38,6 @@
  *
  *	@(#)cd9660_util.c	8.3 (Berkeley) 12/5/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_util.c,v 1.13.2.1 2001/02/27 12:36:34 sobomax Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_util.c,v 1.4 2004/04/12 23:18:55 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -106,8 +105,7 @@ isofncmp(u_char *fn, int fnlen, u_char *isofn, int isolen, int joliet_level,
         u_short c, d;
         u_char *fnend = fn + fnlen, *isoend = isofn + isolen;
         for (; fn < fnend; ) {
-                d = sgetrune(fn, fnend - fn, (char const **)&fn, flags, lhandle)
-;
+                d = sgetrune(fn, fnend - fn, (char const **)&fn, flags, lhandle);
                 if (isofn == isoend)
                         return d;
                 isofn += isochar(isofn, isoend, joliet_level, &c, NULL, flags, handle);

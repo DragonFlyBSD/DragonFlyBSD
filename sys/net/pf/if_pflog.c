@@ -1,4 +1,4 @@
-/*	$OpenBSD: if_pflog.c,v 1.24 2007/05/26 17:13:30 jason Exp $	*/
+/*	$OpenBSD: if_pflog.c,v 1.27 2007/12/20 02:53:02 brad Exp $	*/
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
  * Angelos D. Keromytis (kermit@csd.uch.gr) and 
@@ -17,7 +17,7 @@
  * and Niels Provos.
  * Copyright (c) 2001, Angelos D. Keromytis, Niels Provos.
  *
- * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2010 The DragonFly Project.  All rights reserved.
  *
  * Permission to use, copy, and modify this software with or without fee
  * is hereby granted, provided that this entire notice is included in
@@ -90,7 +90,7 @@ int	pflogioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 void	pflogrtrequest(int, struct rtentry *, struct sockaddr *);
 void	pflogstart(struct ifnet *);
 int	pflog_clone_create(struct if_clone *, int, caddr_t);
-void pflog_clone_destroy(struct ifnet *);
+int	pflog_clone_destroy(struct ifnet *);
 
 LIST_HEAD(, pflog_softc)	pflogif_list;
 struct if_clone	pflog_cloner =
@@ -121,11 +121,11 @@ pflog_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 		return (EINVAL);
 	}
 
-	if ((pflogif = kmalloc(sizeof(*pflogif), M_DEVBUF, M_WAITOK)) == NULL) {
+	if ((pflogif = kmalloc(sizeof(*pflogif),
+		M_DEVBUF, M_WAITOK|M_ZERO)) == NULL) {
 		lwkt_reltoken(&pf_token);
 		return (ENOMEM);
 	}
-	bzero(pflogif, sizeof(*pflogif));
 
 	pflogif->sc_unit = unit;
 	lwkt_reltoken(&pf_token);
@@ -153,7 +153,7 @@ pflog_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	return (0);
 }
 
-void
+int
 pflog_clone_destroy(struct ifnet *ifp)
 {
 	struct pflog_softc	*pflogif = ifp->if_softc;
@@ -173,6 +173,8 @@ pflog_clone_destroy(struct ifnet *ifp)
 	lwkt_gettoken(&pf_token);
 	kfree(pflogif, M_DEVBUF);
 	lwkt_reltoken(&pf_token);
+
+	return 0;
 }
 
 /*
@@ -224,9 +226,6 @@ pflogioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	lwkt_gettoken(&pf_token);
 
 	switch (cmd) {
-	case SIOCSIFADDR:
-	case SIOCAIFADDR:
-	case SIOCSIFDSTADDR:
 	case SIOCSIFFLAGS:
 		lwkt_reltoken(&pf_token);
 		if (ifp->if_flags & IFF_UP)
@@ -328,6 +327,8 @@ pflog_modevent(module_t mod, int type, void *data)
 {
 	int error = 0;
 
+	struct pflog_softc *pflogif, *tmp;
+
 	lwkt_gettoken(&pf_token);
 
 	switch (type) {
@@ -341,9 +342,8 @@ pflog_modevent(module_t mod, int type, void *data)
 	case MOD_UNLOAD:
 		lwkt_reltoken(&pf_token);
 		if_clone_detach(&pflog_cloner);
-		while (!LIST_EMPTY(&pflogif_list)) {
-			pflog_clone_destroy(
-				&LIST_FIRST(&pflogif_list)->sc_if);
+		LIST_FOREACH_MUTABLE(pflogif, &pflogif_list, sc_list, tmp) {
+			pflog_clone_destroy(&pflogif->sc_if);
 		}
 		lwkt_gettoken(&pf_token);
 		break;
@@ -361,8 +361,6 @@ static moduledata_t pflog_mod = {
 	pflog_modevent,
 	0
 };
-
-#define PFLOG_MODVER 1
 
 DECLARE_MODULE(pflog, pflog_mod, SI_SUB_PSEUDO, SI_ORDER_ANY);
 MODULE_VERSION(pflog, PFLOG_MODVER);

@@ -66,19 +66,23 @@ static struct mbtypenames {
  * Print mbuf statistics.
  */
 void
-mbpr(u_long mbaddr, u_long mbtaddr, u_long nmbcaddr, u_long nmbufaddr)
+mbpr(u_long mbaddr, u_long mbtaddr, u_long nmbcaddr, u_long nmbufaddr,
+     u_long ncpusaddr)
 {
 	u_long totmem, totpossible;
-	int i;
-	struct mbstat mbstat;
+	struct mbstat *mbstat;
 	struct mbtypenames *mp;
 	int name[3], nmbclusters, nmbufs, nmbtypes;
 	size_t nmbclen, nmbuflen, mbstatlen, mbtypeslen;
 	u_long *mbtypes;
+	int ncpus;
+	int n;
+	int i;
 	bool *seen;	/* "have we seen this type yet?" */
 
 	mbtypes = NULL;
 	seen = NULL;
+	mbstat = NULL;
 
 	/*
 	 * XXX
@@ -89,11 +93,6 @@ mbpr(u_long mbaddr, u_long mbtaddr, u_long nmbcaddr, u_long nmbufaddr)
 		warn("sysctl: retrieving mbtypes length");
 		goto err;
 	}
-	if ((mbtypes = malloc(mbtypeslen)) == NULL) {
-		warn("malloc: %lu bytes for mbtypes", (u_long)mbtypeslen);
-		goto err;
-	}
-
 	nmbtypes = mbtypeslen / sizeof(*mbtypes);
 	if ((seen = calloc(nmbtypes, sizeof(*seen))) == NULL) {
 		warn("calloc");
@@ -101,24 +100,42 @@ mbpr(u_long mbaddr, u_long mbtaddr, u_long nmbcaddr, u_long nmbufaddr)
 	}
 
 	if (mbaddr) {
-		if (kread(mbaddr, (char *)&mbstat, sizeof mbstat))
+		if (kread(ncpusaddr, (char *)&ncpus, sizeof ncpus))
 			goto err;
-		if (kread(mbtaddr, (char *)mbtypes, mbtypeslen))
+		mbstat = malloc(sizeof(*mbstat) * ncpus);
+		if (kread(mbaddr, (char *)mbstat, sizeof *mbstat * ncpus))
+			goto err;
+		mbtypes = malloc(mbtypeslen * ncpus);
+		if (kread(mbtaddr, (char *)mbtypes, mbtypeslen * ncpus))
 			goto err;
 		if (kread(nmbcaddr, (char *)&nmbclusters, sizeof(int)))
 			goto err;
 		if (kread(nmbufaddr, (char *)&nmbufs, sizeof(int)))
 			goto err;
+		for (n = 1; n < ncpus; ++n) {
+			mbstat[0].m_mbufs += mbstat[n].m_mbufs;
+			mbstat[0].m_clusters += mbstat[n].m_clusters;
+			mbstat[0].m_drops += mbstat[n].m_drops;
+			mbstat[0].m_wait += mbstat[n].m_wait;
+			mbstat[0].m_drain += mbstat[n].m_drain;
+
+			for (i = 0; i < nmbtypes; ++i) {
+				mbtypes[i] += mbtypes[n * nmbtypes + i];
+			}
+		}
 	} else {
 		name[0] = CTL_KERN;
 		name[1] = KERN_IPC;
 		name[2] = KIPC_MBSTAT;
-		mbstatlen = sizeof mbstat;
-		if (sysctl(name, 3, &mbstat, &mbstatlen, 0, 0) < 0) {
+		mbstat = malloc(sizeof(*mbstat));
+		mbstatlen = sizeof *mbstat;
+		/* fake ncpus, kernel will aggregate mbstat array for us */
+		if (sysctl(name, 3, mbstat, &mbstatlen, 0, 0) < 0) {
 			warn("sysctl: retrieving mbstat");
 			goto err;
 		}
 
+		mbtypes = malloc(mbtypeslen);
 		if (sysctlbyname("kern.ipc.mbtypes", mbtypes, &mbtypeslen, NULL,
 		    0) < 0) {
 			warn("sysctl: retrieving mbtypes");
@@ -140,18 +157,19 @@ mbpr(u_long mbaddr, u_long mbtaddr, u_long nmbcaddr, u_long nmbufaddr)
 	}
 
 #undef MSIZE
-#define MSIZE		(mbstat.m_msize)
+#define MSIZE		(mbstat->m_msize)
 #undef MCLBYTES
-#define	MCLBYTES	(mbstat.m_mclbytes)
+#define	MCLBYTES	(mbstat->m_mclbytes)
 
-	printf("%lu/%u mbufs in use (current/max):\n", mbstat.m_mbufs, nmbufs);
+	printf("%lu/%u mbufs in use (current/max):\n", mbstat->m_mbufs, nmbufs);
 	printf("%lu/%u mbuf clusters in use (current/max)\n",
-		mbstat.m_clusters, nmbclusters);
+		mbstat->m_clusters, nmbclusters);
 	for (mp = mbtypenames; mp->mt_name; mp++)
 		if (mbtypes[mp->mt_type]) {
 			seen[mp->mt_type] = YES;
-			printf("\t%lu mbufs and mbuf clusters allocated to %s\n",
-			    mbtypes[mp->mt_type], mp->mt_name);
+			printf("\t%lu mbufs and mbuf clusters "
+			       "allocated to %s\n",
+			       mbtypes[mp->mt_type], mp->mt_name);
 		}
 	seen[MT_FREE] = YES;
 	for (i = 0; i < nmbtypes; i++)
@@ -159,15 +177,17 @@ mbpr(u_long mbaddr, u_long mbtaddr, u_long nmbcaddr, u_long nmbufaddr)
 			printf("\t%lu mbufs and mbuf clusters allocated to <mbuf type %d>\n",
 			    mbtypes[i], i);
 		}
-	totmem = mbstat.m_mbufs * MSIZE + mbstat.m_clusters * MCLBYTES;
+	totmem = mbstat->m_mbufs * MSIZE + mbstat->m_clusters * MCLBYTES;
 	totpossible = nmbclusters * MCLBYTES + MSIZE * nmbufs; 
 	printf("%lu Kbytes allocated to network (%lu%% of mb_map in use)\n",
 		totmem / 1024, (totmem * 100) / totpossible);
-	printf("%lu requests for memory denied\n", mbstat.m_drops);
-	printf("%lu requests for memory delayed\n", mbstat.m_wait);
-	printf("%lu calls to protocol drain routines\n", mbstat.m_drain);
+	printf("%lu requests for memory denied\n", mbstat->m_drops);
+	printf("%lu requests for memory delayed\n", mbstat->m_wait);
+	printf("%lu calls to protocol drain routines\n", mbstat->m_drain);
 
 err:
+	if (mbstat != NULL)
+		free(mbstat);
 	if (mbtypes != NULL)
 		free(mbtypes);
 	if (seen != NULL)

@@ -36,7 +36,8 @@
 .Dt RENAME 2
 .Os
 .Sh NAME
-.Nm rename
+.Nm rename ,
+.Nm renameat
 .Nd change the name of a file
 .Sh LIBRARY
 .Lb libc
@@ -133,7 +134,7 @@ of the file for the respective path parameter.
 .\"Hard links to directories should be
 .\"replaced by symbolic links by the system administrator.
 .Sh RETURN VALUES
-.Rv -std rename
+.Rv -std rename renameat
 .Sh ERRORS
 .Fn Rename
 will fail and neither of the argument files will be

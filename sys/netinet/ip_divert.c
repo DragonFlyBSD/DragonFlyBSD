@@ -59,16 +59,12 @@
 #include <sys/priv.h>
 #include <sys/in_cksum.h>
 #include <sys/lock.h>
-#ifdef SMP
 #include <sys/msgport.h>
-#endif
 
 #include <net/if.h>
 #include <net/route.h>
 
-#ifdef SMP
 #include <net/netmsg2.h>
-#endif
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
 
@@ -127,7 +123,7 @@ static u_long	div_recvspace = DIVRCVQ;	/* XXX sysctl ? */
 
 static struct mbuf *ip_divert(struct mbuf *, int, int);
 
-static struct lwkt_token div_token = LWKT_TOKEN_MP_INITIALIZER(div_token);
+static struct lwkt_token div_token = LWKT_TOKEN_INITIALIZER(div_token);
 
 /*
  * Initialize divert connection block queue.

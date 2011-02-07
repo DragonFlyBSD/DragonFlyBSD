@@ -87,6 +87,10 @@ hammer_cmd_config(char **av, int ac)
 	config.head.error = 0;
 
 	fd = open(av[1], O_RDONLY);
+	if (fd < 0) {
+		err(2, "hammer config: %s", av[1]);
+		/* not reached */
+	}
 	n = read(fd, config.config.text, sizeof(config.config.text) - 1);
 	if (n == sizeof(config.config.text) - 1) {
 		err(2, "hammer config: config file too big, limit %zu bytes",
@@ -131,6 +135,7 @@ hammer_cmd_viconfig(char **av, int ac)
                         "#snapshots 1d 60d\n"
                         "#prune     1d 5m\n"
                         "#rebalance 1d 5m\n"
+                        "#dedup     1d 5m\n"
                         "#reblock   1d 5m\n"
                         "#recopy    30d 10m\n");
 		config.head.error = 0;

@@ -1,4 +1,4 @@
-/*	$OpenBSD: pf_if.c,v 1.46 2006/12/13 09:01:59 itojun Exp $ */
+/*	$OpenBSD: pf_if.c,v 1.54 2008/06/14 16:55:28 mk Exp $ */
 
 /*
  * Copyright 2005 Henning Brauer <henning@openbsd.org>
@@ -210,7 +210,6 @@ pfi_kif_get(const char *kif_name)
 	if ((kif = kmalloc(sizeof(*kif), PFI_MTYPE, M_WAITOK)) == NULL)
 		return (NULL);
 
-	bzero(kif, sizeof(*kif));
 	strlcpy(kif->pfik_name, kif_name, sizeof(kif->pfik_name));
 	kif->pfik_tzero = time_second;
 	TAILQ_INIT(&kif->pfik_dynaddrs);
@@ -313,7 +312,7 @@ pfi_detach_ifnet(struct ifnet *ifp)
 
 	if ((kif = (struct pfi_kif *)ifp->if_pf_kif) == NULL)
 		return;
-	
+
 	crit_enter();
 	pfi_update++;
 	pfi_kif_update(kif);
@@ -418,9 +417,9 @@ pfi_dynaddr_setup(struct pf_addr_wrap *aw, sa_family_t af)
 
 	if (aw->type != PF_ADDR_DYNIFTL)
 		return (0);
-	if ((dyn = pool_get(&pfi_addr_pl, PR_NOWAIT)) == NULL)
+	if ((dyn = pool_get(&pfi_addr_pl, PR_WAITOK | PR_LIMITFAIL | PR_ZERO))
+	    == NULL)
 		return (1);
-	bzero(dyn, sizeof(*dyn));
 
 	crit_enter();
 	if (!strcmp(aw->v.ifname, "self"))
@@ -697,48 +696,57 @@ pfi_if_compare(struct pfi_kif *p, struct pfi_kif *q)
 }
 
 void
-pfi_fill_oldstatus(struct pf_status *pfs)
+pfi_update_status(const char *name, struct pf_status *pfs)
 {
 	struct pfi_kif		*p;
 	struct pfi_kif_cmp 	 key;
+	struct ifg_member	 p_member, *ifgm;
+	TAILQ_HEAD(, ifg_member) ifg_members;
 	int			 i, j, k;
 
-	strlcpy(key.pfik_ifname, pfs->ifname, sizeof(key.pfik_ifname));
+	strlcpy(key.pfik_ifname, name, sizeof(key.pfik_ifname));
 	crit_enter();
 	p = RB_FIND(pfi_ifhead, &pfi_ifs, (struct pfi_kif *)&key);
 	if (p == NULL) {
 		crit_exit();
 		return;
 	}
-	bzero(pfs->pcounters, sizeof(pfs->pcounters));
-	bzero(pfs->bcounters, sizeof(pfs->bcounters));
-	for (i = 0; i < 2; i++)
-		for (j = 0; j < 2; j++)
-			for (k = 0; k < 2; k++) {
-				pfs->pcounters[i][j][k] =
-					p->pfik_packets[i][j][k];
-				pfs->bcounters[i][j] +=
-					p->pfik_bytes[i][j][k];
-			}
-	crit_exit();
-}
-
-int
-pfi_clr_istats(const char *name)
-{
-	struct pfi_kif	*p;
-
-	crit_enter();
-	RB_FOREACH(p, pfi_ifhead, &pfi_ifs) {
-		if (pfi_skip_if(name, p))
+	if (p->pfik_group != NULL) {
+		bcopy(&p->pfik_group->ifg_members, &ifg_members,
+		    sizeof(ifg_members));
+	} else {
+		/* build a temporary list for p only */
+		bzero(&p_member, sizeof(p_member));
+		p_member.ifgm_ifp = p->pfik_ifp;
+		TAILQ_INIT(&ifg_members);
+		TAILQ_INSERT_TAIL(&ifg_members, &p_member, ifgm_next);
+	}
+	if (pfs) {
+		bzero(pfs->pcounters, sizeof(pfs->pcounters));
+		bzero(pfs->bcounters, sizeof(pfs->bcounters));
+	}
+	TAILQ_FOREACH(ifgm, &ifg_members, ifgm_next) {
+		if (ifgm->ifgm_ifp == NULL)
 			continue;
-		bzero(p->pfik_packets, sizeof(p->pfik_packets));
-		bzero(p->pfik_bytes, sizeof(p->pfik_bytes));
-		p->pfik_tzero = time_second;
+		p = (struct pfi_kif *)ifgm->ifgm_ifp->if_pf_kif;
+
+		/* just clear statistics */
+		if (pfs == NULL) {
+			bzero(p->pfik_packets, sizeof(p->pfik_packets));
+			bzero(p->pfik_bytes, sizeof(p->pfik_bytes));
+			p->pfik_tzero = time_second;
+			continue;
+		}
+		for (i = 0; i < 2; i++)
+			for (j = 0; j < 2; j++)
+				for (k = 0; k < 2; k++) {
+					pfs->pcounters[i][j][k] +=
+						p->pfik_packets[i][j][k];
+					pfs->bcounters[i][j] +=
+						p->pfik_bytes[i][j][k];
+				}
 	}
 	crit_exit();
-
-	return (0);
 }
 
 int

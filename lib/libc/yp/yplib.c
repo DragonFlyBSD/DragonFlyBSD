@@ -28,7 +28,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/yp/yplib.c,v 1.51 2007/07/24 13:06:08 simon Exp $
- * $DragonFly: src/lib/libc/yp/yplib.c,v 1.9 2006/08/03 16:40:46 swildner Exp $
  */
 
 #include "namespace.h"
@@ -51,7 +50,6 @@
 #include "libc_private.h"
 
 bool_t	xdr_ypresp_all_seq(XDR *, u_long *);
-int	_yp_check(char **);
 
 int (*ypresp_allfn)(unsigned long, char *, int, char *, int, void *);
 

@@ -30,14 +30,10 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/platform/pc32/i386/bzero.s,v 1.5 2006/10/23 15:42:45 dillon Exp $
  */
 /*
  * void bzero(void *buf, u_int len)	(arguments passed on stack)
  */
-
-#include "use_npx.h"
 
 #include <machine/asmacros.h>
 #include <machine/cputypes.h>

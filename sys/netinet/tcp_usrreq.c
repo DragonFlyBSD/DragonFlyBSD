@@ -344,16 +344,21 @@ tcp6_usr_bind(netmsg_t msg)
 struct netmsg_inswildcard {
 	struct netmsg_base	base;
 	struct inpcb		*nm_inp;
-	struct inpcbinfo	*nm_pcbinfo;
 };
 
 static void
 in_pcbinswildcardhash_handler(netmsg_t msg)
 {
 	struct netmsg_inswildcard *nm = (struct netmsg_inswildcard *)msg;
+	int cpu = mycpuid, nextcpu;
 
-	in_pcbinswildcardhash_oncpu(nm->nm_inp, nm->nm_pcbinfo);
-	lwkt_replymsg(&nm->base.lmsg, 0);
+	in_pcbinswildcardhash_oncpu(nm->nm_inp, &tcbinfo[cpu]);
+
+	nextcpu = cpu + 1;
+	if (nextcpu < ncpus2)
+		lwkt_forwardmsg(cpu_portfn(nextcpu), &nm->base.lmsg);
+	else
+		lwkt_replymsg(&nm->base.lmsg, 0);
 }
 
 #endif
@@ -370,43 +375,39 @@ tcp_usr_listen(netmsg_t msg)
 	struct inpcb *inp;
 	struct tcpcb *tp;
 #ifdef SMP
-	int cpu;
+	struct netmsg_inswildcard nm;
 #endif
 
 	COMMON_START(so, inp, 0);
 	if (inp->inp_lport == 0) {
 		error = in_pcbbind(inp, NULL, td);
-		if (error != 0)
+		if (error)
 			goto out;
 	}
 
 	tp->t_state = TCPS_LISTEN;
+	tp->t_flags |= TF_SYNCACHE;
 	tp->tt_msg = NULL; /* Catch any invalid timer usage */
+
 #ifdef SMP
-	/*
-	 * We have to set the flag because we can't have other cpus
-	 * messing with our inp's flags.
-	 */
-	inp->inp_flags |= INP_WILDCARD_MP;
-	for (cpu = 0; cpu < ncpus2; cpu++) {
-		struct netmsg_inswildcard *nm;
+	if (ncpus > 1) {
+		/*
+		 * We have to set the flag because we can't have other cpus
+		 * messing with our inp's flags.
+		 */
+		inp->inp_flags |= INP_WILDCARD_MP;
 
-		if (cpu == mycpu->gd_cpuid) {
-			in_pcbinswildcardhash(inp);
-			continue;
-		}
+		KKASSERT(so->so_port == cpu_portfn(0));
+		KKASSERT(&curthread->td_msgport == cpu_portfn(0));
+		KKASSERT(inp->inp_pcbinfo == &tcbinfo[0]);
 
-		nm = kmalloc(sizeof(struct netmsg_inswildcard),
-			     M_LWKTMSG, M_INTWAIT);
-		netmsg_init(&nm->base, NULL, &netisr_afree_rport,
-			    0, in_pcbinswildcardhash_handler);
-		nm->nm_inp = inp;
-		nm->nm_pcbinfo = &tcbinfo[cpu];
-		lwkt_sendmsg(cpu_portfn(cpu), &nm->base.lmsg);
+		netmsg_init(&nm.base, NULL, &curthread->td_msgport,
+			    MSGF_PRIORITY, in_pcbinswildcardhash_handler);
+		nm.nm_inp = inp;
+		lwkt_domsg(cpu_portfn(1), &nm.base.lmsg, 0);
 	}
-#else
-	in_pcbinswildcardhash(inp);
 #endif
+	in_pcbinswildcardhash(inp);
 	COMMON_END(PRU_LISTEN);
 }
 
@@ -421,7 +422,7 @@ tcp6_usr_listen(netmsg_t msg)
 	struct inpcb *inp;
 	struct tcpcb *tp;
 #ifdef SMP
-	int cpu;
+	struct netmsg_inswildcard nm;
 #endif
 
 	COMMON_START(so, inp, 0);
@@ -431,34 +432,33 @@ tcp6_usr_listen(netmsg_t msg)
 		else
 			inp->inp_vflag &= ~INP_IPV4;
 		error = in6_pcbbind(inp, NULL, td);
+		if (error)
+			goto out;
 	}
-	if (error == 0)
-		tp->t_state = TCPS_LISTEN;
+
+	tp->t_state = TCPS_LISTEN;
+	tp->t_flags |= TF_SYNCACHE;
+	tp->tt_msg = NULL; /* Catch any invalid timer usage */
+
 #ifdef SMP
-	/*
-	 * We have to set the flag because we can't have other cpus
-	 * messing with our inp's flags.
-	 */
-	inp->inp_flags |= INP_WILDCARD_MP;
-	for (cpu = 0; cpu < ncpus2; cpu++) {
-		struct netmsg_inswildcard *nm;
+	if (ncpus > 1) {
+		/*
+		 * We have to set the flag because we can't have other cpus
+		 * messing with our inp's flags.
+		 */
+		inp->inp_flags |= INP_WILDCARD_MP;
 
-		if (cpu == mycpu->gd_cpuid) {
-			in_pcbinswildcardhash(inp);
-			continue;
-		}
+		KKASSERT(so->so_port == cpu_portfn(0));
+		KKASSERT(&curthread->td_msgport == cpu_portfn(0));
+		KKASSERT(inp->inp_pcbinfo == &tcbinfo[0]);
 
-		nm = kmalloc(sizeof(struct netmsg_inswildcard),
-			     M_LWKTMSG, M_INTWAIT);
-		netmsg_init(&nm->base, NULL, &netisr_afree_rport,
-			    0, in_pcbinswildcardhash_handler);
-		nm->nm_inp = inp;
-		nm->nm_pcbinfo = &tcbinfo[cpu];
-		lwkt_sendmsg(cpu_portfn(cpu), &nm->base.lmsg);
+		netmsg_init(&nm.base, NULL, &curthread->td_msgport,
+			    MSGF_PRIORITY, in_pcbinswildcardhash_handler);
+		nm.nm_inp = inp;
+		lwkt_domsg(cpu_portfn(1), &nm.base.lmsg, 0);
 	}
-#else
-	in_pcbinswildcardhash(inp);
 #endif
+	in_pcbinswildcardhash(inp);
 	COMMON_END(PRU_LISTEN);
 }
 #endif /* INET6 */

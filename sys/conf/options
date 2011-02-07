@@ -31,15 +31,7 @@
 # opt_<name-of-option-in-lower-case>.h
 
 # Adaptec Array Controller driver options
-AAC_DEBUG		opt_aac.h	# Debugging levels:
-					# 0 - quiet, only emit warnings
-					# 1 - noisy, emit major function
-					#     points and things done
-					# 2 - noisier, emit trace items
-					#     in loops, etc.
-					# 3 - even more noisy, more function
-					#     points
-					# 4 - noisiest
+AAC_DEBUG		opt_aac.h
 
 # Adaptec aic7xxx SCSI controller options
 AHC_ALLOW_MEMIO		opt_aic7xxx.h	# Allow PCI devices to use memory
@@ -95,6 +87,7 @@ LIBICONV
 MD_NSECT	opt_md.h
 MD_ROOT		opt_md.h
 MD_ROOT_SIZE	opt_md.h
+MFI_DEBUG	opt_mfi.h
 NSWAPDEV	opt_swap.h
 NSWBUF_MIN	opt_swap.h
 PPS_SYNC	opt_ntp.h
@@ -141,6 +134,7 @@ INCLUDE_CONFIG_FILE	opt_config.h
 # options in a never-included header.
 EXT2FS		opt_dontuse.h
 FDESC		opt_dontuse.h
+HPFS		opt_dontuse.h
 MFS		opt_dontuse.h
 MSDOSFS		opt_dontuse.h
 NULLFS		opt_dontuse.h
@@ -162,6 +156,11 @@ NWFS
 USERFS
 TMPFS
 HAMMER
+
+# filesystems and libiconv bridge
+CD9660_ICONV	opt_dontuse.h
+MSDOSFS_ICONV	opt_dontuse.h
+NTFS_ICONV	opt_dontuse.h
 
 # If you are following the conditions in the copyright,
 # you can enable soft-updates which will speed up a lot of things
@@ -310,7 +309,6 @@ LIBMCHAIN
 MPLS			opt_mpls.h
 NCP			opt_ncp.h
 NETATALK		opt_atalk.h
-NS			opt_ns.h
 PPP_BSDCOMP		opt_ppp.h
 PPP_DEFLATE		opt_ppp.h
 PPP_FILTER		opt_ppp.h
@@ -476,12 +474,13 @@ DEBUG_LOCKS		opt_global.h
 DEBUG_CRIT_SECTIONS	opt_global.h
 DIAGNOSTIC		opt_global.h
 INVARIANTS		opt_global.h
-SIMPLELOCK_DEBUG	opt_global.h
 VFS_BIO_DEBUG		opt_global.h
 DEBUG_INTERRUPTS	opt_global.h
 SOCKBUF_DEBUG		opt_global.h
 PANIC_DEBUG		opt_global.h
 MBUF_DEBUG		opt_global.h
+PMAP_DEBUG		opt_global.h
+VM_PAGE_DEBUG		opt_global.h
 
 # Sample system/interrupt PC
 DEBUG_PCTRACK		opt_pctrack.h
@@ -593,7 +592,6 @@ KTR_IPIQ			opt_ktr.h
 KTR_MSGPORT			opt_ktr.h
 KTR_ENTRIES			opt_global.h
 KTR_VERBOSE			opt_ktr.h
-KTR_GIANT_CONTENTION		opt_ktr.h
 KTR_SPIN_CONTENTION		opt_ktr.h
 KTR_IF_BGE			opt_ktr.h
 KTR_IF_EM			opt_ktr.h
@@ -690,3 +688,5 @@ TDMA_TXRATE_11NA_DEFAULT	opt_tdma.h
 TDMA_TXRATE_11NG_DEFAULT	opt_tdma.h
 
 PANIC_REBOOT_WAIT_TIME	opt_panic.h
+
+MCLSHIFT		opt_global.h

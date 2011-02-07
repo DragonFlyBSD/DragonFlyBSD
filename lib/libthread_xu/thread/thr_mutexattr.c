@@ -171,3 +171,5 @@ __strong_reference(_pthread_mutexattr_getkind_np, pthread_mutexattr_getkind_np);
 __strong_reference(_pthread_mutexattr_gettype, pthread_mutexattr_gettype);
 __strong_reference(_pthread_mutexattr_settype, pthread_mutexattr_settype);
 __strong_reference(_pthread_mutexattr_destroy, pthread_mutexattr_destroy);
+__strong_reference(_pthread_mutexattr_getpshared, pthread_mutexattr_getpshared);
+__strong_reference(_pthread_mutexattr_setpshared, pthread_mutexattr_setpshared);

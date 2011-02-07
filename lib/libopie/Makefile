@@ -1,17 +1,18 @@
 # Makefile for libopie
 #
 # $FreeBSD: src/lib/libopie/Makefile,v 1.10.2.3 2002/07/15 14:17:08 des Exp $
-# $DragonFly: src/lib/libopie/Makefile,v 1.4 2006/01/18 02:33:35 dillon Exp $
 #
 OPIE_DIST?=	${.CURDIR}/../../contrib/opie
 DIST_DIR=	${OPIE_DIST}/${.CURDIR:T}
 SHLIB_MAJOR=    3
+WARNS?=		1
 
 KEYFILE?=	\"/etc/opiekeys\"
 
 .PATH: ${DIST_DIR} ${OPIE_DIST}/libmissing
 
 LIB=	opie
+CSTD?=	gnu89
 SRCS=	atob8.c btoa8.c btoh.c challenge.c getsequence.c hash.c hashlen.c \
 	keycrunch.c lock.c lookup.c newseed.c parsechallenge.c passcheck.c \
 	passwd.c randomchallenge.c readpass.c unlock.c verify.c version.c \

@@ -1,6 +1,5 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.36 2008/07/18 00:07:23 dillon Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -427,10 +426,8 @@ PERIPHDRIVER_DECLARE(sa, sadriver);
 #define D_TAPE 0
 #endif
 
-#define SA_CDEV_MAJOR 14
-
 static struct dev_ops sa_ops = {
-	{ "sa", SA_CDEV_MAJOR, D_TAPE },
+	{ "sa", 0, D_TAPE },
 	.d_open =	saopen,
 	.d_close =	saclose,
 	.d_read =	physread,

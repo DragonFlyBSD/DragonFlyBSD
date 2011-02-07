@@ -43,8 +43,10 @@
 .Nm bit_clear ,
 .Nm bit_decl ,
 .Nm bit_ffs ,
+.Nm bit_fls ,
 .Nm bit_nclear ,
 .Nm bit_nset ,
+.Nm bit_nsearch ,
 .Nm bit_set ,
 .Nm bitstr_size ,
 .Nm bit_test
@@ -62,9 +64,13 @@
 .Ft void
 .Fn bit_ffs "bitstr_t *name" "int nbits" "int *value"
 .Ft void
+.Fn bit_fls "bitstr_t *name" "int nbits" "int *value"
+.Ft void
 .Fn bit_nclear "bitstr_t *name" "int start" "int stop"
 .Ft void
 .Fn bit_nset "bitstr_t *name" "int start" "int stop"
+.Ft void
+.Fn bit_nsearch "bitstr_t *name" "int nbits" "int *value" "int len"
 .Ft void
 .Fn bit_set "bitstr_t *name" "int bit"
 .Ft int
@@ -154,6 +160,26 @@ If all bits are set, the location referenced by
 .Fa value
 is set to \-1.
 .Pp
+The macro
+.Fn bit_fls
+stores in the location referenced by
+.Fa value
+the zero-based number of the highest bit set in array of
+.Fa nbits
+bits referenced by
+.Fa name .
+.Pp
+The macro
+.Fn bit_nsearch
+stores in the location referenced by
+.Fa value
+the zero-based index of a span of clear bits of length
+.Fa len
+in the array of
+.Fa nbits
+bits referenced by
+.Fa name .
+.Pp
 The arguments to these macros are evaluated only once and may safely
 have side effects.
 .Sh EXAMPLES
@@ -189,3 +215,9 @@ The
 .Nm bitstring
 functions first appeared in
 .Bx 4.4 .
+The
+.Fn bit_fls
+and
+.Fn bit_nsearch
+routines first appeared in
+.Dx 2.9 .

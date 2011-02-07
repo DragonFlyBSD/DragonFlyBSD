@@ -54,35 +54,45 @@ extern u_int32_t		mptramp_pagetables;
 void	bootMP			(void);
 
 /* global data in apic_vector.s */
-extern volatile u_int		stopped_cpus;
-extern volatile u_int		started_cpus;
+extern volatile cpumask_t	stopped_cpus;
+extern volatile cpumask_t	started_cpus;
 
 extern volatile u_int		checkstate_probed_cpus;
 extern void (*cpustop_restartfunc) (void);
 
 /* functions in apic_ipl.s */
-u_int	io_apic_read		(int, int);
-void	io_apic_write		(int, int, u_int);
+u_int	ioapic_read		(int, int);
+void	ioapic_write		(int, int, u_int);
 
 /* global data in mp_machdep.c */
-extern int			bsp_apic_ready;
+extern int			apic_io_enable;
 extern int			mp_naps;
-extern int			mp_nbusses;
 extern int			mp_napics;
-extern vm_offset_t		cpu_apic_address;
 extern vm_offset_t		io_apic_address[];
 extern u_int32_t		cpu_apic_versions[];
 extern u_int32_t		*io_apic_versions;
 extern int			cpu_num_to_apic_id[];
 extern int			io_num_to_apic_id[];
 extern int			apic_id_to_logical[];
-#define APIC_INTMAPSIZE 24
+#define APIC_INTMAPSIZE 192
+/*
+ * NOTE:
+ * - Keep size of apic_intmapinfo power of 2
+ * - Update IOAPIC_IM_SZSHIFT after changing apic_intmapinfo size
+ */
 struct apic_intmapinfo {
   	int ioapic;
 	int int_pin;
 	volatile void *apic_address;
 	int redirindex;
+	uint32_t flags;		/* IOAPIC_IM_FLAG_ */
+	uint32_t pad[2];
 };
+#define IOAPIC_IM_SZSHIFT	5
+
+#define IOAPIC_IM_FLAG_LEVEL	0x1	/* default to edge trigger */
+#define IOAPIC_IM_FLAG_MASKED	0x2
+
 extern struct apic_intmapinfo	int_to_apicintpin[];
 extern struct pcb		stoppcbs[];
 
@@ -108,10 +118,24 @@ int	apic_polarity		(int, int);
 void	assign_apic_irq		(int apic, int intpin, int irq);
 void	revoke_apic_irq		(int irq);
 void	init_secondary		(void);
-int	stop_cpus		(u_int);
+int	stop_cpus		(cpumask_t);
 void	ap_init			(void);
-int	restart_cpus		(u_int);
+int	restart_cpus		(cpumask_t);
 void	forward_signal		(struct proc *);
+
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
+
+struct lapic_enumerator {
+	int	lapic_prio;
+	TAILQ_ENTRY(lapic_enumerator) lapic_link;
+	int	(*lapic_probe)(struct lapic_enumerator *);
+	void	(*lapic_enumerate)(struct lapic_enumerator *);
+};
+
+#define LAPIC_ENUM_PRIO_MPTABLE	20
+#define LAPIC_ENUM_PRIO_MADT	40
 
 /* global data in mpapic.c */
 extern volatile lapic_t		*lapic;
@@ -122,7 +146,7 @@ void	apic_dump		(char*);
 void	apic_initialize		(boolean_t);
 void	imen_dump		(void);
 int	apic_ipi		(int, int, int);
-void	selected_apic_ipi	(u_int, int, int);
+void	selected_apic_ipi	(cpumask_t, int, int);
 void	single_apic_ipi(int cpu, int vector, int delivery_mode);
 int	single_apic_ipi_passive(int cpu, int vector, int delivery_mode);
 int	io_apic_setup		(int);
@@ -130,11 +154,8 @@ void	io_apic_setup_intpin	(int, int);
 void	io_apic_set_id		(int, int);
 int	io_apic_get_id		(int);
 int	ext_int_setup		(int, int);
-
-/* functions in mp_madt.c */
-vm_paddr_t	madt_probe(void);
-vm_offset_t	madt_pass1(vm_paddr_t);
-int		madt_pass2(vm_paddr_t, int);
+void	lapic_config(void);
+void	lapic_enumerator_register(struct lapic_enumerator *);
 
 #if defined(READY)
 void	clr_io_apic_mask24	(int, u_int32_t);

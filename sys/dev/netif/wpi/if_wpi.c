@@ -2034,17 +2034,21 @@ wpi_start_locked(struct ifnet *ifp)
 	}
 
 	for (;;) {
-		IF_DEQUEUE(&ifp->if_snd, m);
+		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL)
 			break;
 		ac = M_WME_GETAC(m);
 		if (sc->txq[ac].queued > sc->txq[ac].count - 8) {
 			/* there is no place left in this ring */
-			ifq_prepend(&ifp->if_snd, m);
+			/*
+			 * XXX: we CANNOT do it this way. If something
+			 * is prepended already, this is going to blow.
+			 */
 			ifp->if_flags |= IFF_OACTIVE;
+			ifq_prepend(&ifp->if_snd, m);
 			break;
 		}
-		ni = ieee80211_ref_node((struct ieee80211_node *)m->m_pkthdr.rcvif);
+		ni = (struct ieee80211_node *) m->m_pkthdr.rcvif;
 		if (wpi_tx_data(sc, m, ni, ac) != 0) {
 			ieee80211_free_node(ni);
 			ifp->if_oerrors++;
