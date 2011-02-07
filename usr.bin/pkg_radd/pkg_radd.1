@@ -47,11 +47,11 @@ variable to the
 default
 .Xr pkgsrc 7
 binary package server or uses the global
-.Pa /etc/settings.conf
+.Pa /etc/pkg_radd.conf
 config file to calculate
 .Ev PKG_PATH .
 In
-.Pa /etc/settings.conf ,
+.Pa /etc/pkg_radd.conf ,
 set
 .Ev BINPKG_BASE
 to your favorite binary packages mirror URL to allow
@@ -87,7 +87,7 @@ If you add the following line
 .Dl "BINPKG_BASE=http://mirror-master.dragonflybsd.org/packages"
 .Pp
 to
-.Pa /etc/settings.conf ,
+.Pa /etc/pkg_radd.conf ,
 .Nm
 fetches packages from the main
 .Dx
