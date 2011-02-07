@@ -29,6 +29,7 @@
 #ifdef SHELL
 #define main testcmd
 #include "bltin/bltin.h"
+#include "error.h"
 #else
 static void error(const char *, ...) __dead2 __printflike(1, 2);
 

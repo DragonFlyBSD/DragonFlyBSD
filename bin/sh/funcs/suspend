@@ -1,3 +1,4 @@
+#-
 # Copyright (c) 1991, 1993
 #	The Regents of the University of California.  All rights reserved.
 #
@@ -33,11 +34,10 @@
 # SUCH DAMAGE.
 #
 #	@(#)suspend	8.2 (Berkeley) 5/4/95
-# $FreeBSD: src/bin/sh/funcs/suspend,v 1.6 1999/08/27 23:15:35 peter Exp $
-# $DragonFly: src/bin/sh/funcs/suspend,v 1.2 2003/06/17 04:22:50 dillon Exp $
+# $FreeBSD: src/bin/sh/funcs/suspend,v 1.9 2010/11/13 22:20:46 jilles Exp $
 
 suspend() {
 	local -
-	set +j
+	set +m
 	kill -TSTP 0
 }

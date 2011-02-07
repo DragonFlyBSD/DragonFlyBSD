@@ -1,6 +1,8 @@
 /*-
- * Copyright (c) 1991, 1993
+ * Copyright (c) 1993
  *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 2007
+ *	Herbert Xu <herbert@gondor.apana.org.au>.  All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
  * Kenneth Almquist.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -33,48 +31,61 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)shell.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/shell.h,v 1.21 2010/10/13 22:18:03 obrien Exp $
+ * $FreeBSD: src/bin/sh/arith_yacc.h,v 1.1 2011/02/08 23:18:06 jilles Exp $
  */
 
-#ifndef SHELL_H_
-#define SHELL_H_
+#define ARITH_ASS 1
 
-#include <inttypes.h>
+#define ARITH_OR 2
+#define ARITH_AND 3
+#define ARITH_BAD 4
+#define ARITH_NUM 5
+#define ARITH_VAR 6
+#define ARITH_NOT 7
 
-/*
- * The follow should be set to reflect the type of system you have:
- *	JOBS -> 1 if you have Berkeley job control, 0 otherwise.
- *	define DEBUG=1 to compile in debugging (set global "debug" to turn on)
- *	define DEBUG=2 to compile in and turn on debugging.
- *
- * When debugging is on, debugging info will be written to ./trace and
- * a quit signal will generate a core dump.
- */
+#define ARITH_BINOP_MIN 8
+#define ARITH_LE 8
+#define ARITH_GE 9
+#define ARITH_LT 10
+#define ARITH_GT 11
+#define ARITH_EQ 12
+#define ARITH_REM 13
+#define ARITH_BAND 14
+#define ARITH_LSHIFT 15
+#define ARITH_RSHIFT 16
+#define ARITH_MUL 17
+#define ARITH_ADD 18
+#define ARITH_BOR 19
+#define ARITH_SUB 20
+#define ARITH_BXOR 21
+#define ARITH_DIV 22
+#define ARITH_NE 23
+#define ARITH_BINOP_MAX 24
 
+#define ARITH_ASS_MIN 24
+#define ARITH_REMASS 24
+#define ARITH_BANDASS 25
+#define ARITH_LSHIFTASS 26
+#define ARITH_RSHIFTASS 27
+#define ARITH_MULASS 28
+#define ARITH_ADDASS 29
+#define ARITH_BORASS 30
+#define ARITH_SUBASS 31
+#define ARITH_BXORASS 32
+#define ARITH_DIVASS 33
+#define ARITH_ASS_MAX 34
 
-#define	JOBS 1
-/* #define DEBUG 1 */
+#define ARITH_LPAREN 34
+#define ARITH_RPAREN 35
+#define ARITH_BNOT 36
+#define ARITH_QMARK 37
+#define ARITH_COLON 38
 
-/*
- * Type of used arithmetics. SUSv3 requires us to have at least signed long.
- */
-typedef intmax_t arith_t;
-#define	ARITH_FORMAT_STR  "%" PRIdMAX
-#define	atoarith_t(arg)  strtoimax(arg, NULL, 0)
-#define	strtoarith_t(nptr, endptr, base)  strtoimax(nptr, endptr, base)
+union yystype {
+	arith_t val;
+	char *name;
+};
 
-typedef void *pointer;
-#define MKINIT  /* empty */
+extern union yystype yylval;
 
-#include <sys/cdefs.h>
-
-extern char nullstr[1];		/* null string */
-
-#ifdef DEBUG
-#define TRACE(param)  sh_trace param
-#else
-#define TRACE(param)
-#endif
-
-#endif /* !SHELL_H_ */
+int yylex(void);

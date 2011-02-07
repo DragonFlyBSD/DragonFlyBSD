@@ -34,8 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)expand.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/expand.h,v 1.12 2004/04/06 20:06:51 markm Exp $
- * $DragonFly: src/bin/sh/expand.h,v 1.3 2007/01/07 08:26:55 pavalos Exp $
+ * $FreeBSD: src/bin/sh/expand.h,v 1.15 2010/12/28 21:27:08 jilles Exp $
  */
 
 struct strlist {
@@ -57,13 +56,16 @@ struct arglist {
 #define	EXP_VARTILDE	0x4	/* expand tildes in an assignment */
 #define	EXP_REDIR	0x8	/* file glob for a redirection (1 match only) */
 #define EXP_CASE	0x10	/* keeps quotes around for CASE pattern */
+#define EXP_SPLIT_LIT	0x20	/* IFS split literal text ${v+-a b c} */
+#define EXP_LIT_QUOTED	0x40	/* for EXP_SPLIT_LIT, start off quoted */
 
 
 union node;
 void expandhere(union node *, int);
 void expandarg(union node *, struct arglist *, int);
 void expari(int);
-int patmatch(char *, char *, int);
+int patmatch(const char *, const char *, int);
 void rmescapes(char *);
-int casematch(union node *, char *);
+int casematch(union node *, const char *);
+int expandhassideeffects(const char *);
 int wordexpcmd(int, char **);

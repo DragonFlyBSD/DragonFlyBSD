@@ -34,8 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)error.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/error.h,v 1.17 2004/04/06 20:06:51 markm Exp $
- * $DragonFly: src/bin/sh/error.h,v 1.4 2007/01/06 03:44:04 pavalos Exp $
+ * $FreeBSD: src/bin/sh/error.h,v 1.21 2011/02/04 22:47:55 jilles Exp $
  */
 
 /*
@@ -61,8 +60,7 @@ extern volatile sig_atomic_t exception;
 /* exceptions */
 #define EXINT 0		/* SIGINT received */
 #define EXERROR 1	/* a generic error */
-#define EXSHELLPROC 2	/* execute a shell procedure */
-#define EXEXEC 3	/* command execution failed */
+#define EXEXEC 2	/* command execution failed */
 
 
 /*
@@ -77,14 +75,17 @@ extern volatile sig_atomic_t intpending;
 
 #define INTOFF suppressint++
 #define INTON { if (--suppressint == 0 && intpending) onint(); }
+#define is_int_on() suppressint
+#define SETINTON(s) suppressint = (s)
 #define FORCEINTON {suppressint = 0; if (intpending) onint();}
 #define CLEAR_PENDING_INT intpending = 0
 #define int_pending() intpending
 
-void exraise(int);
+void exraise(int) __dead2;
 void onint(void);
-void error(const char *, ...) __printf0like(1, 2);
-void exerror(int, const char *, ...) __printf0like(2, 3);
+void warning(const char *, ...) __printflike(1, 2);
+void error(const char *, ...) __printf0like(1, 2) __dead2;
+void exerror(int, const char *, ...) __printf0like(2, 3) __dead2;
 
 
 /*

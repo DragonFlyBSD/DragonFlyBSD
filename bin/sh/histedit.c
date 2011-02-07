@@ -34,8 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)histedit.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/histedit.c,v 1.29 2006/08/04 07:56:31 yar Exp $
- * $DragonFly: src/bin/sh/histedit.c,v 1.12 2008/02/13 15:13:37 matthias Exp $
+ * $FreeBSD: src/bin/sh/histedit.c,v 1.42 2010/12/29 19:39:51 jilles Exp $
  */
 
 #include <sys/param.h>
@@ -68,7 +67,7 @@ EditLine *el;	/* editline cookie */
 int displayhist;
 static FILE *el_in, *el_out, *el_err;
 
-STATIC char *fc_replace(const char *, char *, char *);
+static char *fc_replace(const char *, char *, char *);
 
 /*
  * Set history and editing status.  Called whenever the status may
@@ -92,13 +91,13 @@ histedit(void)
 			if (hist != NULL)
 				sethistsize(histsizeval());
 			else
-				out2str("sh: can't initialize history\n");
+				out2fmt_flush("sh: can't initialize history\n");
 		}
 		if (editing && !el && isatty(0)) { /* && isatty(2) ??? */
 			/*
 			 * turn editing on
 			 */
-			char *term, *shname;
+			char *term;
 
 			INTOFF;
 			if (el_in == NULL)
@@ -116,9 +115,6 @@ histedit(void)
 			}
 			else
 				unsetenv("TERM");
-			shname = arg0;
-			if (shname[0] == '-')
-				shname++;
 			el = el_init(arg0, el_in, el_out, el_err);
 			if (el != NULL) {
 				if (hist)
@@ -129,7 +125,7 @@ histedit(void)
 				    _el_fn_complete);
 			} else {
 bad:
-				out2str("sh: can't initialize editing\n");
+				out2fmt_flush("sh: can't initialize editing\n");
 			}
 			INTON;
 		} else if (!editing && el) {
@@ -177,6 +173,13 @@ sethistsize(const char *hs)
 	}
 }
 
+void
+setterm(const char *term)
+{
+	if (rootshell && el != NULL && term != NULL)
+		el_set(el, EL_TERMINAL, term);
+}
+
 int
 histcmd(int argc, char **argv)
 {
@@ -190,8 +193,9 @@ histcmd(int argc, char **argv)
 	char *pat = NULL, *repl = NULL;
 	static int active = 0;
 	struct jmploc jmploc;
-	struct jmploc *volatile savehandler;
-	char editfile[PATH_MAX];
+	struct jmploc *savehandler;
+	char editfilestr[PATH_MAX];
+	char *volatile editfile;
 	FILE *efp = NULL;
 	int oldhistnum;
 
@@ -229,24 +233,24 @@ histcmd(int argc, char **argv)
 		}
 	argc -= optind, argv += optind;
 
+	savehandler = handler;
 	/*
 	 * If executing...
 	 */
 	if (lflg == 0 || editor || sflg) {
 		lflg = 0;	/* ignore */
-		editfile[0] = '\0';
+		editfile = NULL;
 		/*
 		 * Catch interrupts to reset active counter and
 		 * cleanup temp files.
 		 */
 		if (setjmp(jmploc.loc)) {
 			active = 0;
-			if (*editfile)
+			if (editfile)
 				unlink(editfile);
 			handler = savehandler;
 			longjmp(handler->loc, 1);
 		}
-		savehandler = handler;
 		handler = &jmploc;
 		if (++active > MAXHISTLOOPS) {
 			active = 0;
@@ -294,7 +298,7 @@ histcmd(int argc, char **argv)
 		laststr = argv[1];
 		break;
 	default:
-		error("too many args");
+		error("too many arguments");
 	}
 	/*
 	 * Turn into event numbers.
@@ -320,12 +324,13 @@ histcmd(int argc, char **argv)
 	if (editor) {
 		int fd;
 		INTOFF;		/* easier */
-		sprintf(editfile, "%s/_shXXXXXX", _PATH_TMP);
-		if ((fd = mkstemp(editfile)) < 0)
+		sprintf(editfilestr, "%s/_shXXXXXX", _PATH_TMP);
+		if ((fd = mkstemp(editfilestr)) < 0)
 			error("can't create temporary file %s", editfile);
+		editfile = editfilestr;
 		if ((efp = fdopen(fd, "w")) == NULL) {
 			close(fd);
-			error("can't allocate stdio buffer for temp");
+			error("Out of space");
 		}
 	}
 
@@ -345,14 +350,16 @@ histcmd(int argc, char **argv)
 				out1fmt("%5d ", he.num);
 			out1str(he.str);
 		} else {
-			const char *s = pat ?
-			   fc_replace(he.str, pat, repl) : he.str;
+			char *s = pat ?
+			   fc_replace(he.str, pat, repl) :
+			   __DECONST(char *, he.str);
 
 			if (sflg) {
 				if (displayhist) {
 					out2str(s);
+					flushout(out2);
 				}
-				evalstring(strcpy(stalloc(strlen(s) + 1), s));
+				evalstring(s, 0);
 				if (displayhist && hist) {
 					/*
 					 *  XXX what about recursive and
@@ -384,7 +391,7 @@ histcmd(int argc, char **argv)
 		fclose(efp);
 		editcmd = stalloc(strlen(editor) + strlen(editfile) + 2);
 		sprintf(editcmd, "%s %s", editor, editfile);
-		evalstring(editcmd);	/* XXX - should use no JC command */
+		evalstring(editcmd, 0);	/* XXX - should use no JC command */
 		INTON;
 		readcmdfile(editfile);	/* XXX - should read back - quick tst */
 		unlink(editfile);
@@ -394,10 +401,11 @@ histcmd(int argc, char **argv)
 		--active;
 	if (displayhist)
 		displayhist = 0;
+	handler = savehandler;
 	return 0;
 }
 
-STATIC char *
+static char *
 fc_replace(const char *s, char *p, char *r)
 {
 	char *dest;
@@ -406,21 +414,20 @@ fc_replace(const char *s, char *p, char *r)
 	STARTSTACKSTR(dest);
 	while (*s) {
 		if (*s == *p && strncmp(s, p, plen) == 0) {
-			while (*r)
-				STPUTC(*r++, dest);
+			STPUTS(r, dest);
 			s += plen;
 			*p = '\0';	/* so no more matches */
 		} else
 			STPUTC(*s++, dest);
 	}
-	STACKSTRNUL(dest);
+	STPUTC('\0', dest);
 	dest = grabstackstr(dest);
 
 	return (dest);
 }
 
 int
-not_fcnumber(char *s)
+not_fcnumber(const char *s)
 {
 	if (s == NULL)
 		return (0);

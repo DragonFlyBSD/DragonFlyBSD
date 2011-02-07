@@ -30,10 +30,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/bin/sh/cd.h,v 1.5.2.1 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/cd.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $FreeBSD: src/bin/sh/cd.h,v 1.8 2010/04/17 14:35:46 jilles Exp $
  */
 
-char	*getpwd(void);
+void	 pwd_init(int);
 int	 cdcmd (int, char **);
 int	 pwdcmd(int, char **);

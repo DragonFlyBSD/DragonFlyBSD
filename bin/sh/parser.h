@@ -34,8 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)parser.h	8.3 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/parser.h,v 1.11 2006/11/05 18:36:05 stefanf Exp $
- * $DragonFly: src/bin/sh/parser.h,v 1.4 2007/01/07 16:58:30 pavalos Exp $
+ * $FreeBSD: src/bin/sh/parser.h,v 1.15 2010/10/29 13:42:18 jilles Exp $
  */
 
 /* control characters in argument strings */
@@ -48,6 +47,7 @@
 #define	CTLARI	'\206'
 #define	CTLENDARI '\207'
 #define	CTLQUOTEMARK '\210'
+#define	CTLQUOTEEND '\211' /* only for ${v+-...} */
 
 /* variable substitution byte (follows CTLVAR) */
 #define VSTYPE		0x0f	/* type of variable substitution */
@@ -78,9 +78,10 @@
 extern int tokpushback;
 #define NEOF ((union node *)&tokpushback)
 extern int whichprompt;		/* 1 == PS1, 2 == PS2 */
+extern const char *const parsekwd[];
 
 
 union node *parsecmd(int);
 void fixredir(union node *, const char *, int);
-int goodname(char *);
+int goodname(const char *);
 const char *getprompt(void *);

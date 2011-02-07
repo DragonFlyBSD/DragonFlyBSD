@@ -34,12 +34,12 @@
  * SUCH DAMAGE.
  *
  *	@(#)nodes.c.pat	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/nodes.c.pat,v 1.15 2004/04/06 20:06:51 markm Exp $
- * $DragonFly: src/bin/sh/nodes.c.pat,v 1.4 2007/01/14 03:59:57 pavalos Exp $
+ * $FreeBSD: src/bin/sh/nodes.c.pat,v 1.18 2010/10/13 22:18:03 obrien Exp $
  */
 
 #include <sys/param.h>
 #include <stdlib.h>
+#include <stddef.h>
 /*
  * Routine for dealing with parsed shell commands.
  */
@@ -50,42 +50,57 @@
 #include "mystring.h"
 
 
-STATIC int     funcblocksize;	/* size of structures in function */
-STATIC int     funcstringsize;	/* size of strings in node */
-STATIC pointer funcblock;	/* block to allocate function from */
-STATIC char   *funcstring;	/* block to allocate strings from */
+static int     funcblocksize;	/* size of structures in function */
+static int     funcstringsize;	/* size of strings in node */
+static pointer funcblock;	/* block to allocate function from */
+static char   *funcstring;	/* block to allocate strings from */
 
 %SIZES
 
 
-STATIC void calcsize(union node *);
-STATIC void sizenodelist(struct nodelist *);
-STATIC union node *copynode(union node *);
-STATIC struct nodelist *copynodelist(struct nodelist *);
-STATIC char *nodesavestr(char *);
+static void calcsize(union node *);
+static void sizenodelist(struct nodelist *);
+static union node *copynode(union node *);
+static struct nodelist *copynodelist(struct nodelist *);
+static char *nodesavestr(char *);
 
 
+struct funcdef {
+	unsigned int refcount;
+	union node n;
+};
 
 /*
  * Make a copy of a parse tree.
  */
 
-union node *
+struct funcdef *
 copyfunc(union node *n)
 {
+	struct funcdef *fn;
+
 	if (n == NULL)
 		return NULL;
-	funcblocksize = 0;
+	funcblocksize = offsetof(struct funcdef, n);
 	funcstringsize = 0;
 	calcsize(n);
-	funcblock = ckmalloc(funcblocksize + funcstringsize);
-	funcstring = (char *)funcblock + funcblocksize;
-	return copynode(n);
+	fn = ckmalloc(funcblocksize + funcstringsize);
+	fn->refcount = 1;
+	funcblock = (char *)fn + offsetof(struct funcdef, n);
+	funcstring = (char *)fn + funcblocksize;
+	copynode(n);
+	return fn;
 }
 
 
+union node *
+getfuncnode(struct funcdef *fn)
+{
+	return fn == NULL ? NULL : &fn->n;
+}
 
-STATIC void
+
+static void
 calcsize(union node *n)
 {
 	%CALCSIZE
@@ -93,7 +108,7 @@ calcsize(union node *n)
 
 
 
-STATIC void
+static void
 sizenodelist(struct nodelist *lp)
 {
 	while (lp) {
@@ -105,7 +120,7 @@ sizenodelist(struct nodelist *lp)
 
 
 
-STATIC union node *
+static union node *
 copynode(union node *n)
 {
 	union node *new;
@@ -115,7 +130,7 @@ copynode(union node *n)
 }
 
 
-STATIC struct nodelist *
+static struct nodelist *
 copynodelist(struct nodelist *lp)
 {
 	struct nodelist *start;
@@ -135,7 +150,7 @@ copynodelist(struct nodelist *lp)
 
 
 
-STATIC char *
+static char *
 nodesavestr(char *s)
 {
 	char *p = s;
@@ -149,14 +164,26 @@ nodesavestr(char *s)
 }
 
 
+void
+reffunc(struct funcdef *fn)
+{
+	if (fn)
+		fn->refcount++;
+}
+
 
 /*
- * Free a parse tree.
+ * Decrement the reference count of a function definition, freeing it
+ * if it falls to 0.
  */
 
 void
-freefunc(union node *n)
+unreffunc(struct funcdef *fn)
 {
-	if (n)
-		ckfree(n);
+	if (fn) {
+		fn->refcount--;
+		if (fn->refcount > 0)
+			return;
+		ckfree(fn);
+	}
 }

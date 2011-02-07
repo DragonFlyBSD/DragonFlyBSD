@@ -50,10 +50,7 @@
 #define main printfcmd
 #include "bltin/bltin.h"
 #include "memalloc.h"
-#else
-#define	warnx1(a, b, c)		warnx(a)
-#define	warnx2(a, b, c)		warnx(a, b)
-#define	warnx3(a, b, c)		warnx(a, b, c)
+#include "error.h"
 #endif
 
 #ifndef BUILTIN
@@ -150,8 +147,7 @@ next:		for (start = fmt;; ++fmt) {
 					return (rval);
 				}
 				if (end == 1) {
-					warnx1("missing format character",
-					    NULL, NULL);
+					warnx("missing format character");
 					return (1);
 				}
 				end = 1;
@@ -200,7 +196,7 @@ next:		for (start = fmt;; ++fmt) {
 		} else
 			precision = 0;
 		if (!*fmt) {
-			warnx1("missing format character", NULL, NULL);
+			warnx("missing format character");
 			return (1);
 		}
 
@@ -218,7 +214,7 @@ next:		for (start = fmt;; ++fmt) {
 			p = strdup(getstr());
 #endif
 			if (p == NULL) {
-				warnx2("%s", strerror(ENOMEM), NULL);
+				warnx("%s", strerror(ENOMEM));
 				return (1);
 			}
 			getout = escape(p);
@@ -274,7 +270,7 @@ next:		for (start = fmt;; ++fmt) {
 			break;
 		}
 		default:
-			warnx2("illegal format character %c", convch, NULL);
+			warnx("illegal format character %c", convch);
 			return (1);
 		}
 		*fmt = nextch;
@@ -299,7 +295,7 @@ mkquad(char *str, int ch)
 		if ((newcopy = realloc(copy, newlen)) == NULL)
 #endif
 		{
-			warnx2("%s", strerror(ENOMEM), NULL);
+			warnx("%s", strerror(ENOMEM));
 			return (NULL);
 		}
 		copy = newcopy;
@@ -404,7 +400,7 @@ getint(int *ip)
 		return (1);
 	rval = 0;
 	if (val < INT_MIN || val > INT_MAX) {
-		warnx3("%s: %s", *gargv, strerror(ERANGE));
+		warnx("%s: %s", *gargv, strerror(ERANGE));
 		rval = 1;
 	}
 	*ip = (int)val;
@@ -435,15 +431,15 @@ getlonglongs(long long *qp, unsigned long long *uqp, int signedconv)
 	else
 		*uqp = strtoull(*gargv, &ep, 0);
 	if (ep == *gargv) {
-		warnx2("%s: expected numeric value", *gargv, NULL);
+		warnx("%s: expected numeric value", *gargv);
 		rval = 1;
 	}
 	else if (*ep != '\0') {
-		warnx2("%s: not completely converted", *gargv, NULL);
+		warnx("%s: not completely converted", *gargv);
 		rval = 1;
 	}
 	if (errno == ERANGE) {
-		warnx3("%s: %s", *gargv, strerror(ERANGE));
+		warnx("%s: %s", *gargv, strerror(ERANGE));
 		rval = 1;
 	}
 	++gargv;
@@ -468,14 +464,14 @@ getdouble(double *dp)
 	errno = 0;
 	*dp = strtod(*gargv, &ep);
 	if (ep == *gargv) {
-		warnx2("%s: expected numeric value", *gargv, NULL);
+		warnx("%s: expected numeric value", *gargv);
 		rval = 1;
 	} else if (*ep != '\0') {
-		warnx2("%s: not completely converted", *gargv, NULL);
+		warnx("%s: not completely converted", *gargv);
 		rval = 1;
 	}
 	if (errno == ERANGE) {
-		warnx3("%s: %s", *gargv, strerror(ERANGE));
+		warnx("%s: %s", *gargv, strerror(ERANGE));
 		rval = 1;
 	}
 	++gargv;

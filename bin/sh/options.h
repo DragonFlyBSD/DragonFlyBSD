@@ -34,8 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)options.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/options.h,v 1.9.2.3 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/options.h,v 1.4 2006/09/28 22:29:44 pavalos Exp $
+ * $FreeBSD: src/bin/sh/options.h,v 1.15 2009/12/27 18:04:05 jilles Exp $
  */
 
 struct shparam {
@@ -109,7 +108,7 @@ extern char *arg0;		/* $0 */
 extern struct shparam shellparam;  /* $@ */
 extern char **argptr;		/* argument list for builtin commands */
 extern const char *shoptarg;	/* set by nextopt */
-extern const char *optptr;	/* used by nextopt */
+extern char *nextopt_optptr;	/* used by nextopt */
 
 void procargs(int, char **);
 void optschanged(void);

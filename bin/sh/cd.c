@@ -34,8 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)cd.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/cd.c,v 1.35 2006/06/12 21:06:00 stefanf Exp $
- * $DragonFly: src/bin/sh/cd.c,v 1.5 2007/01/05 22:18:52 pavalos Exp $
+ * $FreeBSD: src/bin/sh/cd.c,v 1.45 2010/12/21 20:47:06 jilles Exp $
  */
 
 #include <sys/types.h>
@@ -64,15 +63,18 @@
 #include "show.h"
 #include "cd.h"
 
-STATIC int cdlogical(char *);
-STATIC int cdphysical(char *);
-STATIC int docd(char *, int, int);
-STATIC char *getcomponent(void);
-STATIC int updatepwd(char *);
+static int cdlogical(char *);
+static int cdphysical(char *);
+static int docd(char *, int, int);
+static char *getcomponent(void);
+static char *findcwd(char *);
+static void updatepwd(char *);
+static char *getpwd(void);
+static char *getpwd2(void);
 
-STATIC char *curdir = NULL;	/* current working directory */
-STATIC char *prevdir;		/* previous working directory */
-STATIC char *cdcomppath;
+static char *curdir = NULL;	/* current working directory */
+static char *prevdir;		/* previous working directory */
+static char *cdcomppath;
 
 int
 cdcmd(int argc, char **argv)
@@ -142,7 +144,7 @@ cdcmd(int argc, char **argv)
  * Actually change the directory.  In an interactive shell, print the
  * directory name if "print" is nonzero.
  */
-STATIC int
+static int
 docd(char *dest, int print, int phys)
 {
 
@@ -158,7 +160,7 @@ docd(char *dest, int print, int phys)
 	return 0;
 }
 
-STATIC int
+static int
 cdlogical(char *dest)
 {
 	char *p;
@@ -189,8 +191,7 @@ cdlogical(char *dest)
 			STPUTC('/', p);
 		first = 0;
 		component = q;
-		while (*q)
-			STPUTC(*q++, p);
+		STPUTS(q, p);
 		if (equal(component, ".."))
 			continue;
 		STACKSTRNUL(p);
@@ -201,23 +202,29 @@ cdlogical(char *dest)
 	}
 
 	INTOFF;
-	if (updatepwd(badstat ? NULL : dest) < 0 || chdir(curdir) < 0) {
+	if ((p = findcwd(badstat ? NULL : dest)) == NULL || chdir(p) < 0) {
 		INTON;
 		return (-1);
 	}
+	updatepwd(p);
 	INTON;
 	return (0);
 }
 
-STATIC int
+static int
 cdphysical(char *dest)
 {
+	char *p;
 
 	INTOFF;
-	if (chdir(dest) < 0 || updatepwd(NULL) < 0) {
+	if (chdir(dest) < 0) {
 		INTON;
 		return (-1);
 	}
+	p = findcwd(NULL);
+	if (p == NULL)
+		warning("warning: failed to get name of current directory");
+	updatepwd(p);
 	INTON;
 	return (0);
 }
@@ -226,7 +233,7 @@ cdphysical(char *dest)
  * Get the next component of the path name pointed to by cdcomppath.
  * This routine overwrites the string pointed to by cdcomppath.
  */
-STATIC char *
+static char *
 getcomponent(void)
 {
 	char *p;
@@ -247,47 +254,25 @@ getcomponent(void)
 }
 
 
-/*
- * Update curdir (the name of the current directory) in response to a
- * cd command.  We also call hashcd to let the routines in exec.c know
- * that the current directory has changed.
- */
-STATIC int
-updatepwd(char *dir)
+static char *
+findcwd(char *dir)
 {
 	char *new;
 	char *p;
-
-	hashcd();				/* update command hash table */
 
 	/*
 	 * If our argument is NULL, we don't know the current directory
 	 * any more because we traversed a symbolic link or something
 	 * we couldn't stat().
 	 */
-	if (dir == NULL || curdir == NULL)  {
-		if (prevdir)
-			ckfree(prevdir);
-		INTOFF;
-		prevdir = curdir;
-		curdir = NULL;
-		if (getpwd() == NULL) {
-			INTON;
-			return (-1);
-		}
-		setvar("PWD", curdir, VEXPORT);
-		setvar("OLDPWD", prevdir, VEXPORT);
-		INTON;
-		return (0);
-	}
+	if (dir == NULL || curdir == NULL)
+		return getpwd2();
 	cdcomppath = stalloc(strlen(dir) + 1);
 	scopy(dir, cdcomppath);
 	STARTSTACKSTR(new);
 	if (*dir != '/') {
-		p = curdir;
-		while (*p)
-			STPUTC(*p++, new);
-		if (p[-1] == '/')
+		STPUTS(curdir, new);
+		if (STTOPC(new) == '/')
 			STUNPUTC(new);
 	}
 	while ((p = getcomponent()) != NULL) {
@@ -295,29 +280,37 @@ updatepwd(char *dir)
 			while (new > stackblock() && (STUNPUTC(new), *new) != '/');
 		} else if (*p != '\0' && ! equal(p, ".")) {
 			STPUTC('/', new);
-			while (*p)
-				STPUTC(*p++, new);
+			STPUTS(p, new);
 		}
 	}
 	if (new == stackblock())
 		STPUTC('/', new);
 	STACKSTRNUL(new);
-	INTOFF;
+	return stackblock();
+}
+
+/*
+ * Update curdir (the name of the current directory) in response to a
+ * cd command.  We also call hashcd to let the routines in exec.c know
+ * that the current directory has changed.
+ */
+static void
+updatepwd(char *dir)
+{
+	hashcd();				/* update command hash table */
+
 	if (prevdir)
 		ckfree(prevdir);
 	prevdir = curdir;
-	curdir = savestr(stackblock());
+	curdir = dir ? savestr(dir) : NULL;
 	setvar("PWD", curdir, VEXPORT);
 	setvar("OLDPWD", prevdir, VEXPORT);
-	INTON;
-
-	return (0);
 }
 
 int
 pwdcmd(int argc, char **argv)
 {
-	char buf[PATH_MAX];
+	char *p;
 	int ch, phys;
 
 	optreset = 1; optind = 1; opterr = 0; /* initialize getopt */
@@ -345,9 +338,9 @@ pwdcmd(int argc, char **argv)
 		out1str(curdir);
 		out1c('\n');
 	} else {
-		if (getcwd(buf, sizeof(buf)) == NULL)
+		if ((p = getpwd2()) == NULL)
 			error(".: %s", strerror(errno));
-		out1str(buf);
+		out1str(p);
 		out1c('\n');
 	}
 
@@ -355,30 +348,66 @@ pwdcmd(int argc, char **argv)
 }
 
 /*
- * Find out what the current directory is. If we already know the current
- * directory, this routine returns immediately.
+ * Get the current directory and cache the result in curdir.
  */
-char *
+static char *
 getpwd(void)
 {
-	char buf[PATH_MAX];
+	char *p;
 
 	if (curdir)
 		return curdir;
-	if (getcwd(buf, sizeof(buf)) == NULL) {
-		char *pwd = getenv("PWD");
-		struct stat stdot, stpwd;
 
-		if (pwd && *pwd == '/' && stat(".", &stdot) != -1 &&
-		    stat(pwd, &stpwd) != -1 &&
-		    stdot.st_dev == stpwd.st_dev &&
-		    stdot.st_ino == stpwd.st_ino) {
-			curdir = savestr(pwd);
-			return curdir;
-		}
-		return NULL;
-	}
-	curdir = savestr(buf);
+	p = getpwd2();
+	if (p != NULL)
+		curdir = savestr(p);
 
 	return curdir;
+}
+
+#define MAXPWD 256
+
+/*
+ * Return the current directory.
+ */
+static char *
+getpwd2(void)
+{
+	char *pwd;
+	int i;
+
+	for (i = MAXPWD;; i *= 2) {
+		pwd = stalloc(i);
+		if (getcwd(pwd, i) != NULL)
+			return pwd;
+		stunalloc(pwd);
+		if (errno != ERANGE)
+			break;
+	}
+
+	return NULL;
+}
+
+/*
+ * Initialize PWD in a new shell.
+ * If the shell is interactive, we need to warn if this fails.
+ */
+void
+pwd_init(int warn)
+{
+	char *pwd;
+	struct stat stdot, stpwd;
+
+	pwd = lookupvar("PWD");
+	if (pwd && *pwd == '/' && stat(".", &stdot) != -1 &&
+	    stat(pwd, &stpwd) != -1 &&
+	    stdot.st_dev == stpwd.st_dev &&
+	    stdot.st_ino == stpwd.st_ino) {
+		if (curdir)
+			ckfree(curdir);
+		curdir = savestr(pwd);
+	}
+	if (getpwd() == NULL && warn)
+		out2fmt_flush("sh: cannot determine working directory\n");
+	setvar("PWD", curdir, VEXPORT);
 }

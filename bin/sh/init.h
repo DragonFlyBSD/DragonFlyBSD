@@ -34,10 +34,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)init.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/init.h,v 1.6.2.1 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/init.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $FreeBSD: src/bin/sh/init.h,v 1.9 2011/02/04 22:47:55 jilles Exp $
  */
 
-void init(void);
-void reset(void);
-void initshellproc(void);
+void	init(void);
+void	reset(void);

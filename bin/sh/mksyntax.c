@@ -35,8 +35,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mksyntax.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/mksyntax.c,v 1.14.2.3 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/mksyntax.c,v 1.4 2006/09/28 04:19:40 pavalos Exp $
+ * $FreeBSD: src/bin/sh/mksyntax.c,v 1.34 2010/11/20 14:30:28 jilles Exp $
  */
 
 /*
@@ -70,6 +69,7 @@ struct synclass synclass[] = {
 	{ "CEOF",	"end of file" },
 	{ "CCTL",	"like CWORD, except it must be escaped" },
 	{ "CSPCL",	"these terminate a word" },
+	{ "CIGN",       "character should be ignored" },
 	{ NULL,		NULL }
 };
 
@@ -134,10 +134,7 @@ main(int argc __unused, char **argv __unused)
 
 	/* Determine the characteristics of chars. */
 	c = -1;
-	if (c < 0)
-		sign = 1;
-	else
-		sign = 0;
+	sign = (c > 0) ? 0 : 1;
 	for (nbits = 1 ; ; nbits++) {
 		d = (1 << nbits) - 1;
 		if (d == c)
@@ -230,8 +227,7 @@ main(int argc __unused, char **argv __unused)
 	add("\n", "CNL");
 	add("\\", "CBACK");
 	add("`", "CBQUOTE");
-	add("'", "CSQUOTE");
-	add("\"", "CDQUOTE");
+	add("\"", "CIGN");
 	add("$", "CVAR");
 	add("}", "CENDVAR");
 	add("(", "CLP");
@@ -240,8 +236,8 @@ main(int argc __unused, char **argv __unused)
 	filltable("0");
 	fputs("\n/* character classification table */\n", cfile);
 	add("0123456789", "ISDIGIT");
-	add("abcdefghijklmnopqrstucvwxyz", "ISLOWER");
-	add("ABCDEFGHIJKLMNOPQRSTUCVWXYZ", "ISUPPER");
+	add("abcdefghijklmnopqrstuvwxyz", "ISLOWER");
+	add("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "ISUPPER");
 	add("_", "ISUNDER");
 	add("#?$!-*@", "ISSPECL");
 	print("is_type");
@@ -283,6 +279,7 @@ init(void)
 	syntax[base + CTLARI] = "CCTL";
 	syntax[base + CTLENDARI] = "CCTL";
 	syntax[base + CTLQUOTEMARK] = "CCTL";
+	syntax[base + CTLQUOTEEND] = "CCTL";
 }
 
 
@@ -337,12 +334,12 @@ print(const char *name)
  */
 
 static const char *macro[] = {
-	"#define is_digit(c)\t((is_type+SYNBASE)[c] & ISDIGIT)",
+	"#define is_digit(c)\t((is_type+SYNBASE)[(int)c] & ISDIGIT)",
 	"#define is_eof(c)\t((c) == PEOF)",
-	"#define is_alpha(c)\t(((c) < CTLESC || (c) > CTLQUOTEMARK) && isalpha((unsigned char) (c)))",
-	"#define is_name(c)\t(((c) < CTLESC || (c) > CTLQUOTEMARK) && ((c) == '_' || isalpha((unsigned char) (c))))",
-	"#define is_in_name(c)\t(((c) < CTLESC || (c) > CTLQUOTEMARK) && ((c) == '_' || isalnum((unsigned char) (c))))",
-	"#define is_special(c)\t((is_type+SYNBASE)[c] & (ISSPECL|ISDIGIT))",
+	"#define is_alpha(c)\t((is_type+SYNBASE)[(int)c] & (ISUPPER|ISLOWER))",
+	"#define is_name(c)\t((is_type+SYNBASE)[(int)c] & (ISUPPER|ISLOWER|ISUNDER))",
+	"#define is_in_name(c)\t((is_type+SYNBASE)[(int)c] & (ISUPPER|ISLOWER|ISUNDER|ISDIGIT))",
+	"#define is_special(c)\t((is_type+SYNBASE)[(int)c] & (ISSPECL|ISDIGIT))",
 	NULL
 };
 
@@ -352,7 +349,7 @@ output_type_macros(void)
 	const char **pp;
 
 	if (digit_contig)
-		macro[0] = "#define is_digit(c)\t((unsigned)((c) - '0') <= 9)";
+		macro[0] = "#define is_digit(c)\t((unsigned int)((c) - '0') <= 9)";
 	for (pp = macro ; *pp ; pp++)
 		fprintf(hfile, "%s\n", *pp);
 	if (digit_contig)

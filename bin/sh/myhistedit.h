@@ -31,8 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)myhistedit.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/myhistedit.h,v 1.7.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/myhistedit.h,v 1.3 2004/03/19 18:39:41 cpressey Exp $
+ * $FreeBSD: src/bin/sh/myhistedit.h,v 1.12 2010/06/02 19:16:58 jilles Exp $
  */
 
 #include <histedit.h>
@@ -43,8 +42,9 @@ extern int displayhist;
 
 void histedit(void);
 void sethistsize(const char *);
+void setterm(const char *);
 int histcmd(int, char **);
-int not_fcnumber(char *);
+int not_fcnumber(const char *);
 int str_to_event(const char *, int);
 int bindcmd(int, char **);
 

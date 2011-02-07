@@ -34,8 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)exec.h	8.3 (Berkeley) 6/8/95
- * $FreeBSD: src/bin/sh/exec.h,v 1.15 2006/04/09 12:21:20 stefanf Exp $
- * $DragonFly: src/bin/sh/exec.h,v 1.5 2007/01/07 01:14:53 pavalos Exp $
+ * $FreeBSD: src/bin/sh/exec.h,v 1.22 2011/02/05 14:08:51 jilles Exp $
  */
 
 /* values of cmdtype */
@@ -51,30 +50,34 @@ enum {
 	TYPECMD_TYPE		/* type */
 };
 
+union node;
 struct cmdentry {
 	int cmdtype;
 	union param {
 		int index;
-		union node *func;
+		struct funcdef *func;
 	} u;
 	int special;
 };
 
 
-extern const char *pathopt;		/* set by padvance */
+/* action to find_command() */
+#define DO_ERR		0x01	/* prints errors */
+#define DO_NOFUNC	0x02	/* don't return shell functions, for command */
+
+extern const char *pathopt;	/* set by padvance */
 extern int exerrno;		/* last exec error */
 
-void shellexec(char **, char **, const char *, int);
+void shellexec(char **, char **, const char *, int) __dead2;
 char *padvance(const char **, const char *);
 int hashcmd(int, char **);
-void find_command(char *, struct cmdentry *, int, const char *);
-int find_builtin(char *, int *);
+void find_command(const char *, struct cmdentry *, int, const char *);
+int find_builtin(const char *, int *);
 void hashcd(void);
 void changepath(const char *);
-void deletefuncs(void);
-void addcmdentry(char *, struct cmdentry *);
-void defun(char *, union node *);
-int unsetfunc(char *);
-int typecmd_impl(int, char **, int);
+void addcmdentry(const char *, struct cmdentry *);
+void defun(const char *, union node *);
+int unsetfunc(const char *);
+int typecmd_impl(int, char **, int, const char *);
 int typecmd(int, char **);
-void clearcmdentry(int);
+void clearcmdentry(void);

@@ -38,10 +38,17 @@
 
 #include <ctype.h>
 #include <err.h>
+#include <errno.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef SHELL
+#define main killcmd
+#include "bltin/bltin.h"
+#include "error.h"
+#endif
 
 static void	nosig(const char *);
 static void	printsignals(FILE *);
@@ -70,16 +77,16 @@ main(int argc, char **argv)
 				usage();
 			numsig = strtol(*argv, &ep, 10);
 			if (**argv == '\0' || *ep != '\0')
-				errx(1, "illegal signal number: %s", *argv);
+				errx(2, "illegal signal number: %s", *argv);
 			if (numsig >= 128)
 				numsig -= 128;
 			if (numsig <= 0 || numsig >= sys_nsig)
 				nosig(*argv);
 			printf("%s\n", sys_signame[numsig]);
-			exit(0);
+			return (0);
 		}
 		printsignals(stdout);
-		exit(0);
+		return (0);
 	}
 
 	if (strcmp(*argv, "-s") == 0) {
@@ -102,7 +109,7 @@ main(int argc, char **argv)
 		} else if (isdigit(**argv)) {
 			numsig = strtol(*argv, &ep, 10);
 			if (**argv == '\0' || *ep != '\0')
-				errx(1, "illegal signal number: %s", *argv);
+				errx(2, "illegal signal number: %s", *argv);
 			if (numsig < 0 || numsig >= sys_nsig)
 				nosig(*argv);
 		} else
@@ -117,17 +124,25 @@ main(int argc, char **argv)
 		usage();
 
 	for (errors = 0; argc; argc--, argv++) {
-		pid = (pid_t)strtol(*argv, &ep, 10);
-		if (**argv == '\0' || *ep != '\0') {
-			warnx("illegal process id: %s", *argv);
-			errors = 1;
-		} else if (kill(pid, numsig) == -1) {
+#ifdef SHELL
+		if (**argv == '%')
+			pid = getjobpgrp(*argv);
+		else
+#endif
+		{
+			pid = (pid_t)strtol(*argv, &ep, 10);
+			if (**argv == '\0' || *ep != '\0') {
+				warnx("illegal process id: %s", *argv);
+				errors = 1;
+			}
+		}
+		if (kill(pid, numsig) == -1) {
 			warn("%s", *argv);
 			errors = 1;
 		}
 	}
 
-	exit(errors);
+	return (errors);
 }
 
 static int
@@ -149,7 +164,11 @@ nosig(const char *name)
 {
 	warnx("unknown signal %s; valid signals:", name);
 	printsignals(stderr);
-	exit(1);
+#ifdef SHELL
+	error(NULL);
+#else
+	exit(2);
+#endif
 }
 
 static void
@@ -174,5 +193,9 @@ usage(void)
 		"       kill -l [exit_status]",
 		"       kill -signal_name pid ...",
 		"       kill -signal_number pid ...");
-	exit(1);
+#ifdef SHELL
+	error(NULL);
+#else
+	exit(2);
+#endif
 }

@@ -34,8 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)alias.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/alias.h,v 1.6.2.1 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/alias.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $FreeBSD: src/bin/sh/alias.h,v 1.10 2011/02/04 22:47:55 jilles Exp $
  */
 
 #define ALIASINUSE	1
@@ -47,7 +46,6 @@ struct alias {
 	int flag;
 };
 
-struct alias *lookupalias(char *, int);
+struct alias *lookupalias(const char *, int);
 int aliascmd(int, char **);
 int unaliascmd(int, char **);
-void rmaliases(void);

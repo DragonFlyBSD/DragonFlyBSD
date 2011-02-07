@@ -34,8 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)output.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/bin/sh/output.c,v 1.20 2005/12/08 21:00:39 stefanf Exp $
- * $DragonFly: src/bin/sh/output.c,v 1.4 2007/01/14 05:12:40 pavalos Exp $
+ * $FreeBSD: src/bin/sh/output.c,v 1.28 2010/12/11 17:47:27 jilles Exp $
  */
 
 /*
@@ -64,14 +63,13 @@
 
 
 #define OUTBUFSIZ BUFSIZ
-#define BLOCK_OUT -2		/* output to a fixed block of memory */
-#define MEM_OUT -3		/* output to dynamically allocated memory */
+#define MEM_OUT -2		/* output to dynamically allocated memory */
 #define OUTPUT_ERR 01		/* error occurred on output */
 
 static int doformat_wr(void *, const char *, int);
 
 struct output output = {NULL, 0, NULL, OUTBUFSIZ, 1, 0};
-struct output errout = {NULL, 0, NULL, 100, 2, 0};
+struct output errout = {NULL, 0, NULL, 256, 2, 0};
 struct output memout = {NULL, 0, NULL, 0, MEM_OUT, 0};
 struct output *out1 = &output;
 struct output *out2 = &errout;
@@ -94,6 +92,12 @@ RESET {
 
 #endif
 
+
+void
+outcslow(int c, struct output *file)
+{
+	outc(c, file);
+}
 
 void
 out1str(const char *p)
@@ -122,10 +126,7 @@ out2qstr(const char *p)
 void
 outstr(const char *p, struct output *file)
 {
-	while (*p)
-		outc(*p++, file);
-	if (file == out2)
-		flushout(file);
+	outbin(p, strlen(p), file);
 }
 
 /* Like outstr(), but quote for re-input into the shell. */
@@ -133,46 +134,56 @@ void
 outqstr(const char *p, struct output *file)
 {
 	char ch;
+	int inquotes;
 
 	if (p[0] == '\0') {
 		outstr("''", file);
 		return;
 	}
-	if (p[strcspn(p, "|&;<>()$`\\\"'")] == '\0' && (!ifsset() ||
-	    p[strcspn(p, ifsval())] == '\0')) {
+	/* Caller will handle '=' if necessary */
+	if (p[strcspn(p, "|&;<>()$`\\\"' \t\n*?[~#")] == '\0' ||
+			strcmp(p, "[") == 0) {
 		outstr(p, file);
 		return;
 	}
 
-	out1c('\'');
+	inquotes = 0;
 	while ((ch = *p++) != '\0') {
 		switch (ch) {
 		case '\'':
-			/*
-			 * Can't quote single quotes inside single quotes;
-			 * close them, write escaped single quote, open again.
-			 */
-			outstr("'\\''", file);
+			/* Can't quote single quotes inside single quotes. */
+			if (inquotes)
+				outcslow('\'', file);
+			inquotes = 0;
+			outstr("\\'", file);
 			break;
 		default:
+			if (!inquotes)
+				outcslow('\'', file);
+			inquotes = 1;
 			outc(ch, file);
 		}
 	}
-	out1c('\'');
+	if (inquotes)
+		outcslow('\'', file);
 }
 
-STATIC char out_junk[16];
+void
+outbin(const void *data, size_t len, struct output *file)
+{
+	const char *p;
+
+	p = data;
+	while (len-- > 0)
+		outc(*p++, file);
+}
 
 void
 emptyoutbuf(struct output *dest)
 {
 	int offset;
 
-	if (dest->fd == BLOCK_OUT) {
-		dest->nextc = out_junk;
-		dest->nleft = sizeof out_junk;
-		dest->flags |= OUTPUT_ERR;
-	} else if (dest->buf == NULL) {
+	if (dest->buf == NULL) {
 		INTOFF;
 		dest->buf = ckmalloc(dest->bufsize);
 		dest->nextc = dest->buf;
@@ -249,7 +260,7 @@ out1fmt(const char *fmt, ...)
 }
 
 void
-dprintf(const char *fmt, ...)
+out2fmt_flush(const char *fmt, ...)
 {
 	va_list ap;
 
@@ -263,35 +274,23 @@ void
 fmtstr(char *outbuf, int length, const char *fmt, ...)
 {
 	va_list ap;
-	struct output strout;
 
-	strout.nextc = outbuf;
-	strout.nleft = length;
-	strout.fd = BLOCK_OUT;
-	strout.flags = 0;
+	INTOFF;
 	va_start(ap, fmt);
-	doformat(&strout, fmt, ap);
+	vsnprintf(outbuf, length, fmt, ap);
 	va_end(ap);
-	outc('\0', &strout);
-	if (strout.flags & OUTPUT_ERR)
-		outbuf[length - 1] = '\0';
+	INTON;
 }
 
 static int
 doformat_wr(void *cookie, const char *buf, int len)
 {
 	struct output *o;
-	int origlen;
-	unsigned char c;
 
 	o = (struct output *)cookie;
-	origlen = len;
-	while (len-- != 0) {
-		c = (unsigned char)*buf++;
-		outc(c, o);
-	}
+	outbin(buf, len, o);
 
-	return (origlen);
+	return (len);
 }
 
 void
@@ -310,7 +309,7 @@ doformat(struct output *dest, const char *f, va_list ap)
  */
 
 int
-xwrite(int fd, char *buf, int nbytes)
+xwrite(int fd, const char *buf, int nbytes)
 {
 	int ntry;
 	int i;
