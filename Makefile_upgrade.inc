@@ -1586,4 +1586,3 @@ TO_REMOVE+=/usr/share/man/man4/i386/ndis.4.gz
 TO_REMOVE+=/usr/sbin/ndiscvt
 TO_REMOVE+=/usr/share/man/cat8/ndiscvt.8.gz
 TO_REMOVE+=/usr/share/man/man8/ndiscvt.8.gz
-TO_REMOVE+=/etc/settings.conf
