@@ -9,6 +9,18 @@
 # mailing list with the details.
 
 +-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY FROM 2.8 to later versions                +
++-----------------------------------------------------------------------+
+
+pkg_radd settings
+=================
+
+The config file for pkg_radd has moved from /etc/settings.conf to 
+/etc/pkg_radd.conf.  Save the contents of settings.conf before upgrading
+if this is needed.  This warning only applies if /etc/settings.conf 
+exists.  pkg_radd will continue to work with defaults.
+
++-----------------------------------------------------------------------+
 +         20100927							+
 +         UPGRADING DRAGONFLY FROM 2.6 to 2.8 or HEAD			+
 +-----------------------------------------------------------------------+

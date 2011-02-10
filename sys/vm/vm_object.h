@@ -62,7 +62,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.h,v 1.63.2.3 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.h,v 1.14 2007/06/08 02:00:47 dillon Exp $
  */
 
 /*
@@ -87,9 +86,7 @@
 #ifndef _SYS_THREAD_H_
 #include <sys/thread.h>
 #endif
-#ifndef _MACHINE_ATOMIC_H_
 #include <machine/atomic.h>
-#endif
 #ifndef _VM_VM_H_
 #include <vm/vm.h>
 #endif

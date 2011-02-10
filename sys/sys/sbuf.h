@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *      $FreeBSD: src/sys/sys/sbuf.h,v 1.7.2.2 2002/03/12 01:00:28 archie Exp $
- *      $DragonFly: src/sys/sys/sbuf.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_SBUF_H_
@@ -35,12 +34,8 @@
 #ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
 #endif
-#ifndef _MACHINE_STDINT_H_
 #include <machine/stdint.h>
-#endif
-#ifndef _MACHINE_STDARG_H_
 #include <machine/stdarg.h>
-#endif
 
 /*
  * Structure definition

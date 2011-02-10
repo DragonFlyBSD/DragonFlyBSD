@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/linker.h,v 1.17.2.1 2002/03/11 01:13:53 dd Exp $
- * $DragonFly: src/sys/sys/linker.h,v 1.11 2008/02/06 22:37:46 nth Exp $
  */
 
 #ifndef _SYS_LINKER_H_
@@ -42,9 +41,7 @@
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
-#ifndef _MACHINE_ELF_H_
 #include <machine/elf.h>
-#endif
 
 #include <sys/module.h>
 

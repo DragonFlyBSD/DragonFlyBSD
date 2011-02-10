@@ -22,8 +22,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/include/stdarg.h,v 1.4 2006/01/24 21:43:33 joerg Exp $
  */
 
 #ifndef _STDARG_H_
@@ -33,9 +31,7 @@
 #include <sys/cdefs.h>
 #endif
 
-#ifndef _MACHINE_STDARG_H_
 #include <machine/stdarg.h>
-#endif
 
 #ifndef _VA_LIST_DECLARED
 typedef	__va_list	va_list;

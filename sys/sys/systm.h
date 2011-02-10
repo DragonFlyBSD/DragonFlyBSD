@@ -37,7 +37,6 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.81 2008/09/11 00:35:49 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -50,9 +49,7 @@
 #ifndef _MACHINE_TYPES_H_
 #include <machine/types.h>
 #endif
-#ifndef _MACHINE_STDARG_H_
 #include <machine/stdarg.h>
-#endif
 #include <machine/atomic.h>
 #include <machine/cpufunc.h>
 #include <sys/callout.h>

@@ -1,8 +1,8 @@
 # $FreeBSD: src/secure/lib/libcrypto/Makefile.inc,v 1.7.2.11 2003/02/20 15:07:32 nectar Exp $
 # $DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.18 2008/09/27 21:04:45 pavalos Exp $
 
-OSSLVERSION=	1.0.0c
-OSSLDATE=	2010-12-02
+OSSLVERSION=	1.0.0d
+OSSLDATE=	2011-02-08
 LCRYPTO_SRC=	${.CURDIR}/../../../crypto/openssl
 LCRYPTO_DOC=	${LCRYPTO_SRC}/doc
 

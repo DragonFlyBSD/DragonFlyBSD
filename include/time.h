@@ -36,7 +36,6 @@
  * SUCH DAMAGE.
  *
  *	@(#)time.h	8.3 (Berkeley) 1/21/94
- * $DragonFly: src/include/time.h,v 1.7 2008/06/05 17:53:10 swildner Exp $
  */
 
 #ifndef _TIME_H_
@@ -44,9 +43,7 @@
 
 #include <sys/cdefs.h>
 
-#ifndef _MACHINE_STDINT_H_
 #include <machine/stdint.h>
-#endif
 #include <machine/uvparam.h>
 #include <sys/_posix.h>
 

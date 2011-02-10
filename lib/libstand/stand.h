@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/stand.h,v 1.18.2.8 2002/06/17 11:22:39 sobomax Exp $
- * $DragonFly: src/lib/libstand/stand.h,v 1.11 2008/09/13 11:38:58 corecode Exp $
  * From	$NetBSD: stand.h,v 1.22 1997/06/26 19:17:40 drochner Exp $	
  */
 
@@ -63,9 +62,7 @@
  *	@(#)stand.h	8.1 (Berkeley) 6/11/93
  */
 
-#ifndef _MACHINE_STDARG_H_
 #include <machine/stdarg.h>	/* __va_list */
-#endif
 #include <sys/types.h>
 #include <sys/cdefs.h>
 #include <sys/stat.h>

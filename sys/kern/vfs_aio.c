@@ -40,12 +40,12 @@
 #include <sys/vnode.h>
 #include <sys/conf.h>
 #include <sys/event.h>
+#include <sys/objcache.h>
 
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
-#include <vm/vm_zone.h>
 #include <sys/aio.h>
 
 #include <sys/file2.h>
@@ -241,7 +241,13 @@ SYSINIT(aio, SI_SUB_VFS, SI_ORDER_ANY, aio_onceonly, NULL);
  *	aiol	list io job pointer - internal to aio_suspend XXX
  *	aiolio	list io jobs
  */
-static vm_zone_t kaio_zone, aiop_zone, aiocb_zone, aiol_zone, aiolio_zone;
+static struct objcache *kaio_oc, *aiop_oc, *aiocb_oc, *aiol_oc, *aiolio_oc;
+
+static MALLOC_DEFINE(M_AIO, "AIO", "AIO");
+static MALLOC_DEFINE(M_AIOP, "AIO proc", "AIO process");
+static MALLOC_DEFINE(M_AIOCB, "AIO cb", "AIO cb");
+static MALLOC_DEFINE(M_AIOL, "AIO list io", "AIO list io");
+static MALLOC_DEFINE(M_AIOLIO, "AIO list io job", "AIO list io job");
 
 /*
  * Startup initialization
@@ -254,11 +260,11 @@ aio_onceonly(void *na)
 	TAILQ_INIT(&aio_jobs);
 	TAILQ_INIT(&aio_bufjobs);
 	TAILQ_INIT(&aio_freejobs);
-	kaio_zone = zinit("AIO", sizeof(struct kaioinfo), 0, 0, 1);
-	aiop_zone = zinit("AIOP", sizeof(struct aioproclist), 0, 0, 1);
-	aiocb_zone = zinit("AIOCB", sizeof(struct aiocblist), 0, 0, 1);
-	aiol_zone = zinit("AIOL", AIO_LISTIO_MAX*sizeof(intptr_t), 0, 0, 1);
-	aiolio_zone = zinit("AIOLIO", sizeof(struct aio_liojob), 0, 0, 1);
+	kaio_oc = objcache_create_simple(M_AIO, sizeof(struct kaioinfo));
+	aiop_oc = objcache_create_simple(M_AIOP, sizeof(struct aioproclist));
+	aiocb_oc = objcache_create_simple(M_AIOCB, sizeof(struct aiocblist));
+	aiol_oc = objcache_create_simple(M_AIOL, AIO_LISTIO_MAX*sizeof(intptr_t));
+	aiolio_oc = objcache_create_simple(M_AIOLIO, sizeof(struct aio_liojob));
 	aiod_timeout = AIOD_TIMEOUT_DEFAULT;
 	aiod_lifetime = AIOD_LIFETIME_DEFAULT;
 	jobrefid = 1;
@@ -273,7 +279,7 @@ aio_init_aioinfo(struct proc *p)
 {
 	struct kaioinfo *ki;
 	if (p->p_aioinfo == NULL) {
-		ki = zalloc(kaio_zone);
+		ki = objcache_get(kaio_oc, M_WAITOK);
 		p->p_aioinfo = ki;
 		ki->kaio_flags = 0;
 		ki->kaio_maxactive_count = max_aio_per_proc;
@@ -386,7 +392,7 @@ aio_free_entry(struct aiocblist *aiocbe)
 	}
 	if (lj && (lj->lioj_buffer_count == 0) && (lj->lioj_queue_count == 0)) {
 		TAILQ_REMOVE(&ki->kaio_liojoblist, lj, lioj_list);
-		zfree(aiolio_zone, lj);
+		objcache_put(aiolio_oc, lj);
 	}
 	aiocbe->jobstate = JOBST_NULL;
 	callout_stop(&aiocbe->timeout);
@@ -499,7 +505,7 @@ restart4:
 		if ((lj->lioj_buffer_count == 0) && (lj->lioj_queue_count ==
 		    0)) {
 			TAILQ_REMOVE(&ki->kaio_liojoblist, lj, lioj_list);
-			zfree(aiolio_zone, lj);
+			objcache_put(aiolio_oc, lj);
 		} else {
 #ifdef DIAGNOSTIC
 			kprintf("LIO job not cleaned up: B:%d, BF:%d, Q:%d, "
@@ -511,7 +517,7 @@ restart4:
 		}
 	}
 
-	zfree(kaio_zone, ki);
+	objcache_put(kaio_oc, ki);
 	p->p_aioinfo = NULL;
 #endif /* VFS_AIO */
 }
@@ -643,7 +649,7 @@ aio_daemon(void *uproc, struct trapframe *frame)
 	 * Allocate and ready the aio control info.  There is one aiop structure
 	 * per daemon.
 	 */
-	aiop = zalloc(aiop_zone);
+	aiop = objcache_get(aiop_oc, M_WAITOK);
 	aiop->aioproc = mycp;
 	aiop->aioprocflags |= AIOP_FREE;
 
@@ -812,7 +818,7 @@ aio_daemon(void *uproc, struct trapframe *frame)
 				    (num_aio_procs > target_aio_procs)) {
 					TAILQ_REMOVE(&aio_freeproc, aiop, list);
 					crit_exit();
-					zfree(aiop_zone, aiop);
+					objcache_put(aiop_oc, aiop);
 					num_aio_procs--;
 #ifdef DIAGNOSTIC
 					if (mycp->p_vmspace->vm_sysref.refcnt <= 1) {
@@ -1107,7 +1113,7 @@ _aio_aqueue(struct aiocb *job, struct aio_liojob *lj, int type)
 	if ((aiocbe = TAILQ_FIRST(&aio_freejobs)) != NULL)
 		TAILQ_REMOVE(&aio_freejobs, aiocbe, list);
 	else
-		aiocbe = zalloc (aiocb_zone);
+		aiocbe = objcache_get(aiocb_oc, M_WAITOK);
 
 	aiocbe->inputcharge = 0;
 	aiocbe->outputcharge = 0;
@@ -1471,8 +1477,8 @@ sys_aio_suspend(struct aio_suspend_args *uap)
 	get_mplock();
 
 	njoblist = 0;
-	ijoblist = zalloc(aiol_zone);
-	ujoblist = zalloc(aiol_zone);
+	ijoblist = objcache_get(aiol_oc, M_WAITOK);
+	ujoblist = objcache_get(aiol_oc, M_WAITOK);
 	cbptr = uap->aiocbp;
 
 	for (i = 0; i < uap->nent; i++) {
@@ -1485,8 +1491,8 @@ sys_aio_suspend(struct aio_suspend_args *uap)
 	}
 
 	if (njoblist == 0) {
-		zfree(aiol_zone, ijoblist);
-		zfree(aiol_zone, ujoblist);
+		objcache_put(aiol_oc, ijoblist);
+		objcache_put(aiol_oc, ujoblist);
 		error = 0;
 		goto done;
 	}
@@ -1500,8 +1506,8 @@ sys_aio_suspend(struct aio_suspend_args *uap)
 				    ijoblist[i]) {
 					if (ujoblist[i] != cb->uuaiocb)
 						error = EINVAL;
-					zfree(aiol_zone, ijoblist);
-					zfree(aiol_zone, ujoblist);
+					objcache_put(aiol_oc, ijoblist);
+					objcache_put(aiol_oc, ujoblist);
 					goto done;
 				}
 			}
@@ -1517,8 +1523,8 @@ sys_aio_suspend(struct aio_suspend_args *uap)
 					crit_exit();
 					if (ujoblist[i] != cb->uuaiocb)
 						error = EINVAL;
-					zfree(aiol_zone, ijoblist);
-					zfree(aiol_zone, ujoblist);
+					objcache_put(aiol_oc, ijoblist);
+					objcache_put(aiol_oc, ujoblist);
 					goto done;
 				}
 			}
@@ -1529,13 +1535,13 @@ sys_aio_suspend(struct aio_suspend_args *uap)
 		crit_exit();
 
 		if (error == ERESTART || error == EINTR) {
-			zfree(aiol_zone, ijoblist);
-			zfree(aiol_zone, ujoblist);
+			objcache_put(aiol_oc, ijoblist);
+			objcache_put(aiol_oc, ujoblist);
 			error = EINTR;
 			goto done;
 		} else if (error == EWOULDBLOCK) {
-			zfree(aiol_zone, ijoblist);
-			zfree(aiol_zone, ujoblist);
+			objcache_put(aiol_oc, ijoblist);
+			objcache_put(aiol_oc, ujoblist);
 			error = EAGAIN;
 			goto done;
 		}
@@ -1844,7 +1850,7 @@ sys_lio_listio(struct lio_listio_args *uap)
 		goto done;
 	}
 
-	lj = zalloc(aiolio_zone);
+	lj = objcache_get(aiolio_oc, M_WAITOK);
 	if (lj == NULL) {
 		error = EAGAIN;
 		goto done;
@@ -1864,11 +1870,11 @@ sys_lio_listio(struct lio_listio_args *uap)
 		error = copyin(uap->sig, &lj->lioj_signal,
 		    sizeof(lj->lioj_signal));
 		if (error) {
-			zfree(aiolio_zone, lj);
+			objcache_put(aiolio_oc, lj);
 			goto done;
 		}
 		if (!_SIG_VALID(lj->lioj_signal.sigev_signo)) {
-			zfree(aiolio_zone, lj);
+			objcache_put(aiolio_oc, lj);
 			error = EINVAL;
 			goto done;
 		}

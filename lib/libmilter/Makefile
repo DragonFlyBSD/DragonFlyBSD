@@ -1,5 +1,4 @@
 # $FreeBSD: src/lib/libmilter/Makefile,v 1.1.2.2 2002/07/22 14:21:49 ru Exp $
-# $DragonFly: src/lib/libmilter/Makefile,v 1.9 2007/04/14 17:43:48 gshapiro Exp $
 
 SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.14
 .PATH:	${SENDMAIL_DIR}/libmilter ${SENDMAIL_DIR}/libsm
@@ -15,6 +14,7 @@ INCSDIR=${INCLUDEDIR}/libmilter
 INCS=	${SENDMAIL_DIR}/include/libmilter/mfapi.h \
 	${SENDMAIL_DIR}/include/libmilter/mfdef.h
 LIB=	milter
+WARNS?=	2
 
 SRCS+=	sm_os.h
 SRCS+=	main.c engine.c listener.c handler.c comm.c monitor.c smfi.c \

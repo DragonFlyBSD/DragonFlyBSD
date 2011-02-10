@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/endian.h,v 1.2.2.1 2002/09/09 05:45:04 imp Exp $
- * $DragonFly: src/sys/sys/endian.h,v 1.5 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_ENDIAN_H_
@@ -35,9 +34,7 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
-#ifndef _MACHINE_ENDIAN_H_
 #include <machine/endian.h>
-#endif
 
 /*
  * General byte order swapping functions.

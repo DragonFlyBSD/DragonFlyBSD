@@ -37,7 +37,6 @@
  *
  *	@(#)types.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/types.h,v 1.40.2.2 2001/04/21 14:53:06 ume Exp $
- * $DragonFly: src/sys/sys/types.h,v 1.24 2008/08/10 22:09:51 dillon Exp $
  */
 
 #ifndef _SYS_TYPES_H_
@@ -49,9 +48,7 @@
 #ifndef _STDINT_H_
 #include <stdint.h>
 #endif
-#ifndef _MACHINE_STDARG_H_
 #include <machine/stdarg.h>
-#endif
 #ifndef _MACHINE_ENDIANT_H_
 #include <machine/endian.h>
 #endif

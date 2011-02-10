@@ -28,7 +28,6 @@
  *	should not include this file.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/platform/vkernel/include/globaldata.h,v 1.8 2008/04/28 07:05:07 dillon Exp $
  */
 
 #ifndef _MACHINE_GLOBALDATA_H_
@@ -45,15 +44,9 @@
 #ifndef _SYS_VKERNEL_H_
 #include <sys/vkernel.h>	/* vpte_t */
 #endif
-#ifndef _MACHINE_SEGMENTS_H_
 #include <machine/segments.h>	/* struct segment_descriptor */
-#endif
-#ifndef _MACHINE_TSS_H_
 #include <machine/tss.h>	/* struct i386tss */
-#endif
-#ifndef _MACHINE_NPX_H_
 #include <machine/npx.h>
-#endif
 
 /*
  * Note on interrupt control.  Pending interrupts not yet dispatched are

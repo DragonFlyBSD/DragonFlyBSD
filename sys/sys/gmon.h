@@ -32,15 +32,12 @@
  *
  *	@(#)gmon.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/sys/gmon.h,v 1.15 1999/08/28 00:51:45 peter Exp $
- * $DragonFly: src/sys/sys/gmon.h,v 1.3 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_GMON_H_
 #define _SYS_GMON_H_
 
-#ifndef _MACHINE_PROFILE_H_
 #include <machine/profile.h>
-#endif
 
 /*
  * Structure prepended to gmon.out profiling data file.

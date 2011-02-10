@@ -44,9 +44,7 @@
 #ifndef _SYS_GLOBALDATA_H_
 #include <sys/globaldata.h>
 #endif
-#ifndef _MACHINE_ATOMIC_H_
 #include <machine/atomic.h>
-#endif
 
 /*
  * Initialize a new mutex, placing it in an unlocked state with no refs.

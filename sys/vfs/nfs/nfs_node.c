@@ -46,9 +46,9 @@
 #include <sys/namei.h>
 #include <sys/vnode.h>
 #include <sys/malloc.h>
+#include <sys/kernel.h>
 #include <sys/fnv_hash.h>
-
-#include <vm/vm_zone.h>
+#include <sys/objcache.h>
 
 #include "rpcv2.h"
 #include "nfsproto.h"
@@ -56,7 +56,9 @@
 #include "nfsmount.h"
 #include "nfsnode.h"
 
-static vm_zone_t nfsnode_zone;
+static MALLOC_DEFINE(M_NFSNODE, "NFS node", "NFS node");
+
+static struct objcache *nfsnode_objcache;
 static LIST_HEAD(nfsnodehashhead, nfsnode) *nfsnodehashtbl;
 static u_long nfsnodehash;
 static lwkt_token nfsnhash_token = LWKT_TOKEN_INITIALIZER(nfsnhash_token);
@@ -74,7 +76,7 @@ static struct lock nfsnhash_lock;
 void
 nfs_nhinit(void)
 {
-	nfsnode_zone = zinit("NFSNODE", sizeof(struct nfsnode), 0, 0, 1);
+	nfsnode_objcache = objcache_create_simple(M_NFSNODE, sizeof(struct nfsnode));
 	nfsnodehashtbl = hashinit(desiredvnodes, M_NFSHASH, &nfsnodehash);
 	lockinit(&nfsnhash_lock, "nfsnht", 0, 0);
 }
@@ -146,15 +148,15 @@ loop:
 	/*
 	 * Allocate before getnewvnode since doing so afterward
 	 * might cause a bogus v_data pointer to get dereferenced
-	 * elsewhere if zalloc should block.
+	 * elsewhere if objcache should block.
 	 */
-	np = zalloc(nfsnode_zone);
+	np = objcache_get(nfsnode_objcache, M_WAITOK);
 		
 	error = getnewvnode(VT_NFS, mntp, &vp, 0, 0);
 	if (error) {
 		lockmgr(&nfsnhash_lock, LK_RELEASE);
 		*npp = NULL;
-		zfree(nfsnode_zone, np);
+		objcache_put(nfsnode_objcache, np);
 		lwkt_reltoken(&nfsnhash_token);
 		return (error);
 	}
@@ -187,7 +189,7 @@ loop:
 		if (np->n_fhsize > NFS_SMALLFH)
 			FREE((caddr_t)np->n_fhp, M_NFSBIGFH);
 		np->n_fhp = NULL;
-		zfree(nfsnode_zone, np);
+		objcache_put(nfsnode_objcache, np);
 		goto retry;
 	}
 
@@ -281,14 +283,14 @@ loop:
 	 *
 	 * Allocate before getnewvnode since doing so afterward
 	 * might cause a bogus v_data pointer to get dereferenced
-	 * elsewhere if zalloc should block.
+	 * elsewhere if objcache should block.
 	 */
-	np = zalloc(nfsnode_zone);
+	np = objcache_get(nfsnode_objcache, M_WAITOK);
 
 	error = getnewvnode(VT_NFS, mntp, &vp, 0, 0);
 	if (error) {
 		lockmgr(&nfsnhash_lock, LK_RELEASE);
-		zfree(nfsnode_zone, np);
+		objcache_put(nfsnode_objcache, np);
 		lwkt_reltoken(&nfsnhash_token);
 		return (error);
 	}
@@ -321,7 +323,7 @@ loop:
 		if (np->n_fhsize > NFS_SMALLFH)
 			FREE((caddr_t)np->n_fhp, M_NFSBIGFH);
 		np->n_fhp = NULL;
-		zfree(nfsnode_zone, np);
+		objcache_put(nfsnode_objcache, np);
 
 		/*
 		 * vp state is retained on retry/loop so we must NULL it
@@ -453,7 +455,7 @@ nfs_reclaim(struct vop_reclaim_args *ap)
 	vp->v_data = NULL;
 
 	lwkt_reltoken(&nmp->nm_token);
-	zfree(nfsnode_zone, np);
+	objcache_put(nfsnode_objcache, np);
 
 	return (0);
 }

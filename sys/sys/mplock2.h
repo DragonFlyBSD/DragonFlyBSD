@@ -6,9 +6,7 @@
 #ifndef _SYS_MPLOCK2_H_
 #define _SYS_MPLOCK2_H_
 
-#ifndef _MACHINE_ATOMIC_H_
 #include <machine/atomic.h>
-#endif
 #ifndef _SYS_THREAD_H_
 #include <sys/thread.h>
 #endif

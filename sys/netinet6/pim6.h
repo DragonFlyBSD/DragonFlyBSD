@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/pim6.h,v 1.1.2.1 2000/07/15 07:14:36 kris Exp $	*/
-/*	$DragonFly: src/sys/netinet6/pim6.h,v 1.4 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: pim6.h,v 1.3 2000/03/25 07:23:58 sumikawa Exp $	*/
 
 /*
@@ -37,9 +36,7 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
-#ifndef _MACHINE_ENDIAN_H_
 #include <machine/endian.h>
-#endif
 
 /*
  * Protocol Independent Multicast (PIM) definitions

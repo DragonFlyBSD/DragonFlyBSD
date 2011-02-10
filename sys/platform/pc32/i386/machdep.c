@@ -121,6 +121,7 @@
 
 #include <sys/machintr.h>
 #include <machine_base/icu/icu_abi.h>
+#include <machine_base/apic/ioapic_abi.h>
 
 #define PHYSMAP_ENTRIES		10
 
@@ -2072,6 +2073,17 @@ init386(int first)
 	isa_defaultirq();
 #endif
 	rand_initialize();
+
+	/*
+	 * Initialize IRQ mapping
+	 *
+	 * NOTE:
+	 * SHOULD be after elcr_probe()
+	 */
+	MachIntrABI_ICU.initmap();
+#ifdef SMP
+	MachIntrABI_IOAPIC.initmap();
+#endif
 
 #ifdef DDB
 	kdb_init();

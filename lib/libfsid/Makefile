@@ -1,7 +1,6 @@
 LIB=	fsid
 SRCS=	libfsid.c ufs.c hammer.c cd9660.c msdosfs.c ext2.c 
 INCS=	libfsid.h
-WARNS?=	6
 CFLAGS+=	-D_FSID_INTERNAL
 MAN=	 libfsid.3
 MLINKS+=	libfsid.3 fsid_probe.3

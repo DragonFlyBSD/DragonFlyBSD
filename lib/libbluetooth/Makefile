@@ -1,5 +1,4 @@
 # $NetBSD: Makefile,v 1.3 2007/05/28 12:06:18 tls Exp $
-# $DragonFly: src/lib/libbluetooth/Makefile,v 1.1 2008/01/03 11:47:52 hasso Exp $
 
 SYSDIR= ${.CURDIR}/../../sys/
 
@@ -7,7 +6,6 @@ LIB=		bluetooth
 SHLIB_MAJOR=	3
 SRCS=		bluetooth.c devaddr.c
 MAN=		bluetooth.3
-WARNS?=		6
 
 CFLAGS+=	-I${.CURDIR} -I${SYSDIR}
 

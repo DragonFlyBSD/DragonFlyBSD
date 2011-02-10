@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/sys/syslink_msg.h,v 1.11 2007/08/13 17:47:20 dillon Exp $
  */
 /*
  * The syslink infrastructure implements an optimized RPC mechanism across a 
@@ -48,9 +46,7 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
-#ifndef _MACHINE_ATOMIC_H_
 #include <machine/atomic.h>
-#endif
 
 typedef int32_t		sl_auxdata_t;	/* auxillary data element */
 typedef u_int32_t	sl_rlabel_t;	/* reply label routing id */

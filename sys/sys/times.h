@@ -37,15 +37,12 @@
  *
  *	@(#)times.h	8.4 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/times.h,v 1.6 1999/12/29 04:24:48 peter Exp $
- * $DragonFly: src/sys/sys/times.h,v 1.5 2003/11/15 19:28:42 asmodai Exp $
  */
 
 #ifndef	_SYS_TIMES_H_
 #define	_SYS_TIMES_H_
 
-#ifndef _MACHINE_STDINT_H_
 #include <machine/stdint.h>
-#endif
 
 #ifndef _CLOCK_T_DECLARED
 #define _CLOCK_T_DECLARED

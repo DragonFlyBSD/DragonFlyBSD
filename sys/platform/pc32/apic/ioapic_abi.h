@@ -41,6 +41,8 @@
 #ifndef _ARCH_APIC_IOAPIC_ABI_H_
 #define _ARCH_APIC_IOAPIC_ABI_H_
 
+#ifdef SMP	/* APIC_IO */
 extern struct machintr_abi MachIntrABI_IOAPIC;
+#endif
 
 #endif	/* !_ARCH_APIC_IOAPIC_ABI_H_ */

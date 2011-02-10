@@ -37,15 +37,12 @@
  *
  *	@(#)signal.h	8.4 (Berkeley) 5/4/95
  * $FreeBSD: src/sys/sys/signal.h,v 1.23.2.2 2001/04/19 01:38:35 alfred Exp $
- * $DragonFly: src/sys/sys/signal.h,v 1.6 2007/01/14 07:59:08 dillon Exp $
  */
 
 #ifndef	_SYS_SIGNAL_H_
 #define	_SYS_SIGNAL_H_
 
-#ifndef _MACHINE_STDINT_H_
 #include <machine/stdint.h>	/* for __ types */
-#endif
 #include <sys/cdefs.h>
 #include <sys/_posix.h>
 

@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/mchain.h,v 1.1.2.1 2001/05/18 11:01:23 bp Exp $
- * $DragonFly: src/sys/sys/mchain.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
  */
 #ifndef _SYS_MCHAIN_H_
 #define _SYS_MCHAIN_H_
@@ -38,9 +37,7 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
-#ifndef _MACHINE_ENDIAN_H_
 #include <machine/endian.h>
-#endif
 
 /*
  * This macros probably belongs to the endian.h

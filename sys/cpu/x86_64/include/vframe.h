@@ -35,12 +35,8 @@
 #ifndef _CPU_VFRAME_H_
 #define _CPU_VFRAME_H_
 
-#ifndef _MACHINE_NPX_H_
 #include <machine/npx.h>
-#endif
-#ifndef _MACHINE_SEGMENTS_H_
 #include <machine/segments.h>
-#endif
 
 /*
  * Virtualized external frame.  This is used by the virtual kernel in

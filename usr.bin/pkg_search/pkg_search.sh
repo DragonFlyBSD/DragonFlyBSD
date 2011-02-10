@@ -39,7 +39,7 @@ set_binpkg_sites() {
 UNAME=`uname -s`
 osver=`uname -r | awk -F - '{ print $1; }'`
 cpuver=`uname -p | awk -F - '{ print $1; }'`
-[ -f /etc/settings.conf ] && . /etc/settings.conf
+[ -f /etc/pkg_radd.conf ] && . /etc/pkg_radd.conf
 set_binpkg_sites
 
 NO_INDEX=0

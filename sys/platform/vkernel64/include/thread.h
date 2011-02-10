@@ -30,19 +30,13 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/platform/vkernel/include/thread.h,v 1.2 2007/01/08 03:33:43 dillon Exp $
  */
 
 #ifndef	_MACHINE_THREAD_H_
 #define	_MACHINE_THREAD_H_
 
-#ifndef _MACHINE_VFRAME_H_
 #include <machine/vframe.h>
-#endif
-#ifndef _MACHINE_NPX_H_
 #include <machine/npx.h>
-#endif
 
 struct md_thread {
     unsigned int	mtd_unused;	/* used to be mtd_cpl */

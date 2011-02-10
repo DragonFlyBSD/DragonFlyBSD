@@ -38,9 +38,7 @@
 #ifndef _CPU_TYPES_H_
 #define	_CPU_TYPES_H_
 
-#ifndef _MACHINE_STDINT_H_
 #include <machine/stdint.h>
-#endif
 
 #if defined(__x86_64__)
 typedef	__int64_t	__segsz_t;	/* segment size */

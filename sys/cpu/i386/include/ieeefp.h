@@ -1,4 +1,5 @@
 /*-
+ * Copyright (c) 2003 Peter Wemm.
  * Copyright (c) 1990 Andrew Moore, Talke Studio
  * All rights reserved.
  *
@@ -31,28 +32,29 @@
  * SUCH DAMAGE.
  *
  * 	from: @(#) ieeefp.h 	1.0 (Berkeley) 9/23/93
- * $FreeBSD: src/sys/i386/include/ieeefp.h,v 1.8 2003/01/19 06:01:33 marcel Exp $
- */
-
-/*
- *	IEEE floating point type and constant definitions.
+ * $FreeBSD: src/sys/i386/include/ieeefp.h,v 1.14 2008/01/11 18:59:35 bde Exp $
  */
 
 #ifndef _CPU_IEEEFP_H_
 #define _CPU_IEEEFP_H_
 
 /*
- * FP rounding modes
+ * IEEE floating point type, constant and function definitions.
+ * XXX: FP*FLD and FP*OFF are undocumented pollution.
+ */
+
+/*
+ * Rounding modes.
  */
 typedef enum {
 	FP_RN=0,	/* round to nearest */
-	FP_RM,		/* round down to minus infinity */
-	FP_RP,		/* round up to plus infinity */
+	FP_RM,		/* round down towards minus infinity */
+	FP_RP,		/* round up towards plus infinity */
 	FP_RZ		/* truncate */
 } fp_rnd_t;
 
 /*
- * FP precision modes
+ * Precision (i.e., rounding precision) modes.
  */
 typedef enum {
 	FP_PS=0,	/* 24 bit (single-precision) */
@@ -64,7 +66,7 @@ typedef enum {
 #define fp_except_t	int
 
 /*
- * FP exception masks
+ * Exception bit masks.
  */
 #define FP_X_INV	0x01	/* invalid operation */
 #define FP_X_DNML	0x02	/* denormal */
@@ -75,105 +77,177 @@ typedef enum {
 #define FP_X_STK	0x40	/* stack fault */
 
 /*
- * FP registers
- */
-#define FP_MSKS_REG	0	/* exception masks */
-#define FP_PRC_REG	0	/* precision */
-#define FP_RND_REG	0	/* direction */
-#define FP_STKY_REG	1	/* sticky flags */
-
-/*
- * FP register bit field masks
+ * FPU control word bit-field masks.
  */
 #define FP_MSKS_FLD	0x3f	/* exception masks field */
 #define FP_PRC_FLD	0x300	/* precision control field */
-#define FP_RND_FLD	0xc00	/* round control field */
+#define	FP_RND_FLD	0xc00	/* rounding control field */
+
+/*
+ * FPU status word bit-field masks.
+ */
 #define FP_STKY_FLD	0x3f	/* sticky flags field */
 
 /*
- * FP register bit field offsets
+ * FPU control word bit-field offsets (shift counts).
  */
 #define FP_MSKS_OFF	0	/* exception masks offset */
 #define FP_PRC_OFF	8	/* precision control offset */
-#define FP_RND_OFF	10	/* round control offset */
+#define	FP_RND_OFF	10	/* rounding control offset */
+
+/*
+ * FPU status word bit-field offsets (shift counts).
+ */
 #define FP_STKY_OFF	0	/* sticky flags offset */
 
 #ifdef __GNUC__
 
-#define	__fldenv(addr)	__asm __volatile("fldenv %0" : : "m" (*(addr)))
-#define	__fnstenv(addr)	__asm __volatile("fnstenv %0" : "=m" (*(addr)))
-#define	__fnstcw(addr)	__asm __volatile("fnstcw %0" : "=m" (*(addr)))
-#define	__fnstsw(addr)	__asm __volatile("fnstsw %0" : "=m" (*(addr)))
+#define	_fldcw(addr)	__asm __volatile("fldcw %0" : : "m" (*(addr)))
+#define	_fldenv(addr)	__asm __volatile("fldenv %0" : : "m" (*(addr)))
+#define	_fnclex()	__asm __volatile("fnclex")
+#define	_fnstcw(addr)	__asm __volatile("fnstcw %0" : "=m" (*(addr)))
+#define	_fnstenv(addr)	__asm __volatile("fnstenv %0" : "=m" (*(addr)))
+#define	_fnstsw(addr)	__asm __volatile("fnstsw %0" : "=m" (*(addr)))
 
 /*
- * return the contents of a FP register
+ * Load the control word.  Be careful not to trap if there is a currently
+ * unmasked exception (ones that will become freshly unmasked are not a
+ * problem).  This case must be handled by a save/restore of the
+ * environment or even of the full x87 state.  Accessing the environment
+ * is very inefficient, so only do it when necessary.
  */
-static __inline__ int
-__fpgetreg(int _reg)
+static __inline void
+_fnldcw(unsigned short _cw, unsigned short _newcw)
 {
-	unsigned short _mem;
+	struct {
+		unsigned _cw;
+		unsigned _other[6];
+	} _env;
+	unsigned short _sw;
 
-	/*-
-	 * This is more efficient than it looks.  The switch gets optimized
-	 * away if _reg is constant.
-	 *
-	 * The default case only supports _reg == 0.  We could handle more
-	 * registers (e.g., tags) using fnstenv, but the interface doesn't
-	 * support more.
-	 */
-	switch(_reg) {
-	default:
-		__fnstcw(&_mem);
-		break;
-	case FP_STKY_REG:
-		__fnstsw(&_mem);
-		break;
+	if ((_cw & FP_MSKS_FLD) != FP_MSKS_FLD) {
+		_fnstsw(&_sw);
+		if (((_sw & ~_cw) & FP_STKY_FLD) != 0) {
+			_fnstenv(&_env);
+			_env._cw = _newcw;
+			_fldenv(&_env);
+			return;
+		}
 	}
-	return _mem;
+	_fldcw(&_newcw);
+}
+
+static __inline fp_rnd_t
+fpgetround(void)
+{
+	unsigned short _cw;
+
+	_fnstcw(&_cw);
+	return ((fp_rnd_t)((_cw & FP_RND_FLD) >> FP_RND_OFF));
+}
+
+static __inline fp_rnd_t
+fpsetround(fp_rnd_t _m)
+{
+	fp_rnd_t _p;
+	unsigned short _cw, _newcw;
+
+	_fnstcw(&_cw);
+	_p = (fp_rnd_t)((_cw & FP_RND_FLD) >> FP_RND_OFF);
+	_newcw = _cw & ~FP_RND_FLD;
+	_newcw |= (_m << FP_RND_OFF) & FP_RND_FLD;
+	_fnldcw(_cw, _newcw);
+	return (_p);
+}
+
+static __inline fp_prec_t
+fpgetprec(void)
+{
+	unsigned short _cw;
+
+	_fnstcw(&_cw);
+	return ((fp_prec_t)((_cw & FP_PRC_FLD) >> FP_PRC_OFF));
+}
+
+static __inline fp_prec_t
+fpsetprec(fp_prec_t _m)
+{
+	fp_prec_t _p;
+	unsigned short _cw, _newcw;
+
+	_fnstcw(&_cw);
+	_p = (fp_prec_t)((_cw & FP_PRC_FLD) >> FP_PRC_OFF);
+	_newcw = _cw & ~FP_PRC_FLD;
+	_newcw |= (_m << FP_PRC_OFF) & FP_PRC_FLD;
+	_fnldcw(_cw, _newcw);
+	return (_p);
 }
 
 /*
- * set a FP mode; return previous mode
+ * Get or set the exception mask.
+ * Note that the x87 mask bits are inverted by the API -- a mask bit of 1
+ * means disable for x87 and SSE, but for fp*mask() it means enable.
  */
-static __inline__ int
-__fpsetreg(int _m, int _reg, int _fld, int _off)
-{
-	unsigned _env[7];
-	unsigned _p;
 
-	/*
-	 * _reg == 0 could be handled better using fnstcw/fldcw.
-	 */
-	__fnstenv(_env);
-	_p =  (_env[_reg] & _fld) >> _off;
-	_env[_reg] = (_env[_reg] & ~_fld) | (_m << _off & _fld);
-	__fldenv(_env);
-	return _p;
+static __inline fp_except_t
+fpgetmask(void)
+{
+	unsigned short _cw;
+
+	_fnstcw(&_cw);
+	return ((~_cw & FP_MSKS_FLD) >> FP_MSKS_OFF);
+}
+
+static __inline fp_except_t
+fpsetmask(fp_except_t _m)
+{
+	fp_except_t _p;
+	unsigned short _cw, _newcw;
+
+	_fnstcw(&_cw);
+	_p = (~_cw & FP_MSKS_FLD) >> FP_MSKS_OFF;
+	_newcw = _cw & ~FP_MSKS_FLD;
+	_newcw |= (~_m << FP_MSKS_OFF) & FP_MSKS_FLD;
+	_fnldcw(_cw, _newcw);
+	return (_p);
+}
+
+static __inline fp_except_t
+fpgetsticky(void)
+{
+	unsigned _ex;
+	unsigned short _sw;
+
+	_fnstsw(&_sw);
+	_ex = (_sw & FP_STKY_FLD) >> FP_STKY_OFF;
+	return ((fp_except_t)_ex);
+}
+
+static __inline fp_except_t
+fpresetsticky(fp_except_t _m)
+{
+	struct {
+		unsigned _cw;
+		unsigned _sw;
+		unsigned _other[5];
+	} _env;
+	fp_except_t _p;
+
+	_m &= FP_STKY_FLD >> FP_STKY_OFF;
+	_p = fpgetsticky();
+	if ((_p & ~_m) == _p)
+		return (_p);
+	if ((_p & ~_m) == 0) {
+		_fnclex();
+		return (_p);
+	}
+	_fnstenv(&_env);
+	_env._sw &= ~_m;
+	_fldenv(&_env);
+	return (_p);
 }
 
 #endif /* __GNUC__ */
-
-/*
- * SysV/386 FP control interface
- */
-#define	fpgetround()	((fp_rnd_t)					\
-	((__fpgetreg(FP_RND_REG) & FP_RND_FLD) >> FP_RND_OFF))
-#define	fpsetround(m)	((fp_rnd_t)					\
-	__fpsetreg((m), FP_RND_REG, FP_RND_FLD, FP_RND_OFF))
-#define	fpgetprec()	((fp_prec_t)					\
-	((__fpgetreg(FP_PRC_REG) & FP_PRC_FLD) >> FP_PRC_OFF))
-#define	fpsetprec(m)	((fp_prec_t)					\
-	__fpsetreg((m), FP_PRC_REG, FP_PRC_FLD, FP_PRC_OFF))
-#define	fpgetmask()	((fp_except_t)					\
-	((~__fpgetreg(FP_MSKS_REG) & FP_MSKS_FLD) >> FP_MSKS_OFF))
-#define	fpsetmask(m)	((fp_except_t)					\
-	(~__fpsetreg(~(m), FP_MSKS_REG, FP_MSKS_FLD, FP_MSKS_OFF)) &	\
-	    (FP_MSKS_FLD >> FP_MSKS_OFF))
-#define	fpgetsticky()	((fp_except_t)					\
-	((__fpgetreg(FP_STKY_REG) & FP_STKY_FLD) >> FP_STKY_OFF))
-#define	fpresetsticky(m) ((fp_except_t)					\
-	__fpsetreg(0, FP_STKY_REG, (m), FP_STKY_OFF))
-#define	fpsetsticky(m)	fpresetsticky(m)
 
 /* Suppress prototypes in the MI header. */
 #define	_IEEEFP_INLINED_	1

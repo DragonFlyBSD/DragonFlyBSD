@@ -1,5 +1,4 @@
 # $FreeBSD: src/lib/libc_r/Makefile,v 1.24.2.7 2002/10/22 14:44:02 fjoe Exp $
-# $DragonFly: src/lib/libc_r/Makefile,v 1.8 2005/05/03 19:56:37 joerg Exp $
 #
 # All library objects contain rcsid strings by default; they may be
 # excluded as a space-saving measure.  To produce a library that does
@@ -9,6 +8,7 @@
 LIB=c_r
 SHLIB_MAJOR= 5
 CSTD?=gnu89
+WARNS?=1
 CFLAGS+=-DLIBC_RCS -DSYSLIBC_RCS -I${.CURDIR}/../libc/include
 CFLAGS+=-DPTHREAD_KERNEL -D_THREAD_SAFE -I${.CURDIR}/uthread
 CFLAGS+=-I${.CURDIR}/../../include

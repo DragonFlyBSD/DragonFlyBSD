@@ -1,7 +1,4 @@
-# $DragonFly: src/lib/libpam/Makefile,v 1.4 2005/07/14 14:21:16 joerg Exp $
-
 LIB=	pam
-WARNS?=	6
 
 SRCDIR=	${.CURDIR}/../../contrib/openpam
 CONTRIBDIR=	${SRCDIR}/lib

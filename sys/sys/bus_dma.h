@@ -67,7 +67,6 @@
 /*
  * $NetBSD: bus.h,v 1.12 1997/10/01 08:25:15 fvdl Exp $
  * $FreeBSD: src/sys/i386/include/bus_dma.h,v 1.15.2.2 2002/11/21 23:36:01 sam Exp $
- * $DragonFly: src/sys/sys/bus_dma.h,v 1.1 2006/10/25 20:56:03 dillon Exp $
  */
 
 #ifndef _SYS_BUS_DMA_H_
@@ -76,9 +75,7 @@
 /*
  * Include machine-specific bus stuff
  */
-#ifndef _MACHINE_BUS_DMA_H_
 #include <machine/bus_dma.h>	/* bus_addr_t */
-#endif
 
 /*
  * Flags used in various bus DMA methods.

@@ -1,5 +1,3 @@
-# $DragonFly: src/lib/libkcore/Makefile,v 1.4 2005/05/01 02:30:50 hmp Exp $
-
 .PATH: ${.CURDIR}/../../sys/kern ${.CURDIR}/../../lib/libkinfo
 
 LIB=	kcore
@@ -11,7 +9,6 @@ INCS=	kcore.h
 NOMAN=
 
 CFLAGS+=	-I${.CURDIR}
-WARNS?=	6
 
 SHLIB_MAJOR?= 2
 

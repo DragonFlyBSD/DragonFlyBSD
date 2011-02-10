@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/sys/vkernel.h,v 1.10 2007/07/01 01:11:37 dillon Exp $
  */
 
 #ifndef _SYS_VKERNEL_H_
@@ -57,15 +55,9 @@
 #ifndef _SYS_THREAD_H_
 #include <sys/thread.h>
 #endif
-#ifndef _MACHINE_FRAME_H_
 #include <machine/frame.h>
-#endif
-#ifndef _MACHINE_VFRAME_H_
 #include <machine/vframe.h>
-#endif
-#ifndef _MACHINE_LIMITS_H_
 #include <machine/limits.h>
-#endif
 
 struct vmspace_rb_tree;
 struct vmspace_entry;

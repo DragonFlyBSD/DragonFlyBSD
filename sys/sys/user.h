@@ -32,7 +32,6 @@
  *
  *	@(#)user.h	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/sys/user.h,v 1.24.2.1 2001/10/11 08:20:18 peter Exp $
- * $DragonFly: src/sys/sys/user.h,v 1.18 2007/02/25 23:17:13 corecode Exp $
  */
 
 #ifndef _SYS_USER_H_
@@ -96,9 +95,7 @@
 #ifndef _MACHINE_PCB_H_
 #include <machine/pcb.h>
 #endif
-#ifndef _MACHINE_COREDUMP_H_
 #include <machine/coredump.h>
-#endif
 #include <sys/kinfo.h>
 
 #endif

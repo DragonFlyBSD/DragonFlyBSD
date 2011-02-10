@@ -62,7 +62,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.28 2008/05/09 07:24:48 dillon Exp $
  */
 
 /*
@@ -88,9 +87,7 @@
 #ifndef _VM_PMAP_H_
 #include <vm/pmap.h>
 #endif
-#ifndef _MACHINE_ATOMIC_H_
 #include <machine/atomic.h>
-#endif
 
 #ifdef _KERNEL
 

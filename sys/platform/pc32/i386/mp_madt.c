@@ -116,6 +116,7 @@ struct acpi_madt_ent {
 
 #define MADT_ENT_LAPIC		0
 #define MADT_ENT_IOAPIC		1
+#define MADT_ENT_INTSRC_OVR	2
 #define MADT_ENT_LAPIC_ADDR	5
 
 /* MADT Processor Local APIC */
@@ -136,6 +137,28 @@ struct acpi_madt_ioapic {
 	uint32_t		mio_addr;
 	uint32_t		mio_gsi_base;
 } __packed;
+
+/* MADT Interrupt Source Override */
+struct acpi_madt_intsrc_ovr {
+	struct acpi_madt_ent	miso_hdr;
+	uint8_t			miso_bus;
+	uint8_t			miso_src;
+	uint32_t		miso_gsi;
+	uint16_t		miso_flags;	/* MADT_ISO_ */
+} __packed;
+
+#define MADT_ISO_POLA_MASK	0x3
+#define MADT_ISO_POLA_SHIFT	0
+#define MADT_ISO_POLA_CONFORM	0
+#define MADT_ISO_POLA_HIGH	1
+#define MADT_ISO_POLA_RSVD	2
+#define MADT_ISO_POLA_LOW	3
+#define MADT_ISO_TRIG_MASK	0xc
+#define MADT_ISO_TRIG_SHIFT	2
+#define MADT_ISO_TRIG_CONFORM	0
+#define MADT_ISO_TRIG_EDGE	1
+#define MADT_ISO_TRIG_RSVD	2
+#define MADT_ISO_TRIG_LEVEL	3
 
 /* MADT Local APIC Address Override */
 struct acpi_madt_lapic_addr {
@@ -588,8 +611,8 @@ madt_iterate_entries(struct acpi_madt *madt, madt_iter_t func, void *arg)
 		cur += ent->me_len;
 
 		/*
-		 * Only Local APIC and I/O APIC are defined in
-		 * ACPI specification 1.0 - 3.0
+		 * Only Local APIC, I/O APIC and Interrupt Source Override
+		 * are defined in ACPI specification 1.0 - 4.0
 		 */
 		switch (ent->me_type) {
 		case MADT_ENT_LAPIC:
@@ -604,6 +627,15 @@ madt_iterate_entries(struct acpi_madt *madt, madt_iter_t func, void *arg)
 			if (ent->me_len < sizeof(struct acpi_madt_ioapic)) {
 				kprintf("madt_iterate_entries: invalid MADT "
 					"ioapic entry len %d\n", ent->me_len);
+				error = EINVAL;
+			}
+			break;
+
+		case MADT_ENT_INTSRC_OVR:
+			if (ent->me_len < sizeof(struct acpi_madt_intsrc_ovr)) {
+				kprintf("madt_iterate_entries: invalid MADT "
+					"intsrc_ovr entry len %d\n",
+					ent->me_len);
 				error = EINVAL;
 			}
 			break;
