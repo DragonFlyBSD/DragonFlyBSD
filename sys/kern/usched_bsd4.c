@@ -187,9 +187,9 @@ SYSCTL_INT(_debug, OID_AUTO, choose_affinity, CTLFLAG_RD,
 static int usched_bsd4_rrinterval = (ESTCPUFREQ + 9) / 10;
 SYSCTL_INT(_kern, OID_AUTO, usched_bsd4_rrinterval, CTLFLAG_RW,
         &usched_bsd4_rrinterval, 0, "");
-static int usched_bsd4_decay = ESTCPUINCR / 2;
+static int usched_bsd4_decay = 1;
 SYSCTL_INT(_kern, OID_AUTO, usched_bsd4_decay, CTLFLAG_RW,
-        &usched_bsd4_decay, 0, "");
+        &usched_bsd4_decay, 0, "Extra decay when not running");
 
 /*
  * Initialize the run queues at boot time.
@@ -703,9 +703,11 @@ bsd4_recalculate_estcpu(struct lwp *lp)
 		if ((nleft = nticks - lp->lwp_cpticks) < 0)
 			nleft = 0;
 		if (usched_debug == lp->lwp_proc->p_pid) {
-			kprintf("pid %d tid %d estcpu %d cpticks %d nticks %d nleft %d",
-				lp->lwp_proc->p_pid, lp->lwp_tid, lp->lwp_estcpu,
-				lp->lwp_cpticks, nticks, nleft);
+			kprintf("pid %d tid %d estcpu %d cpticks %d "
+				"nticks %d nleft %d",
+				lp->lwp_proc->p_pid, lp->lwp_tid,
+				lp->lwp_estcpu, lp->lwp_cpticks,
+				nticks, nleft);
 		}
 
 		/*
@@ -715,20 +717,30 @@ bsd4_recalculate_estcpu(struct lwp *lp)
 		if ((loadfac = bsd4_runqcount) < 2)
 			loadfac = 2;
 		ndecay = nleft * usched_bsd4_decay * 2 * 
-			(PRIO_MAX * 2 - lp->lwp_proc->p_nice) / (loadfac * PRIO_MAX * 2);
+			(PRIO_MAX * 2 - lp->lwp_proc->p_nice) /
+			(loadfac * PRIO_MAX * 2);
 
 		/*
 		 * Adjust p_estcpu.  Handle a border case where batch jobs
 		 * can get stalled long enough to decay to zero when they
 		 * shouldn't.
+		 *
+		 * Only adjust estcpu downward if the lwp is not in a
+		 * runnable state.  Note that normal tsleeps or timer ticks
+		 * will adjust estcpu up or down.   The decay we do here
+		 * is not really needed and may be removed in the future.
 		 */
-		if (lp->lwp_estcpu > ndecay * 2)
-			lp->lwp_estcpu -= ndecay;
-		else
-			lp->lwp_estcpu >>= 1;
+		if (lp->lwp_stat != LSRUN) {
+			if (lp->lwp_estcpu > ndecay * 2)
+				lp->lwp_estcpu -= ndecay;
+			else
+				lp->lwp_estcpu >>= 1;
+		}
 
-		if (usched_debug == lp->lwp_proc->p_pid)
-			kprintf(" ndecay %d estcpu %d\n", ndecay, lp->lwp_estcpu);
+		if (usched_debug == lp->lwp_proc->p_pid) {
+			kprintf(" ndecay %d estcpu %d\n",
+				ndecay, lp->lwp_estcpu);
+		}
 		bsd4_resetpriority(lp);
 		lp->lwp_cpbase = cpbase;
 		lp->lwp_cpticks = 0;
@@ -882,6 +894,11 @@ bsd4_yield(struct lwp *lp)
  *
  * Interactive processes will decay the boosted estcpu quickly while batch
  * processes will tend to compound it.
+ *
+ * NOTE: We don't want to dock the parent too much because it may cause
+ *	 the parent to 'go batch' too quickly in cases where the children
+ *	 are short-lived.
+ *
  * XXX lwp should be "spawning" instead of "forking"
  *
  * MPSAFE
@@ -891,7 +908,7 @@ bsd4_forking(struct lwp *plp, struct lwp *lp)
 {
 	lp->lwp_estcpu = ESTCPULIM(plp->lwp_estcpu + ESTCPUPPQ);
 	lp->lwp_origcpu = lp->lwp_estcpu;
-	plp->lwp_estcpu = ESTCPULIM(plp->lwp_estcpu + ESTCPUPPQ);
+	plp->lwp_estcpu = ESTCPULIM(plp->lwp_estcpu + 1);
 }
 
 /*
