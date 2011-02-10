@@ -251,6 +251,11 @@ main(int ac, char **av)
 		"on a nightly basis. The periodic.conf(5) variable\n"
 		"'daily_clean_hammer_enable' can be unset to disable this.\n"
 		"Also see 'man hammer' and 'man HAMMER' for more information.\n");
+	if (total < 10*GIG) {
+		printf("\nWARNING: The minimum UNDO/REDO FIFO is 500MB, you"
+		       "really should not\n"
+		       " try to format a HAMMER filesystem this small\n");
+	}
 	if (total < 50*GIG) {
 		printf("\nWARNING: HAMMER filesystems less than 50GB are "
 			"not recommended!\n"
