@@ -368,6 +368,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 
 	RB_INIT(&p2->p_lwp_tree);
 	spin_init(&p2->p_spin);
+	lwkt_token_init(&p2->p_token, "iproc");
 	p2->p_lasttid = -1;	/* first tid will be 0 */
 
 	/*

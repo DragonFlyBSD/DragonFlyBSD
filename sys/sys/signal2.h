@@ -75,7 +75,10 @@ lwp_delsig(struct lwp *lp, int sig)
  * process, 0 if none.  If there is a pending stop signal with default
  * action, the process stops in issignal().
  *
- * MP SAFE
+ * This function does not interlock pending signals.  If the caller needs
+ * to interlock the caller must acquire the per-proc token.
+ *
+ * MPSAFE
  */
 static __inline
 int

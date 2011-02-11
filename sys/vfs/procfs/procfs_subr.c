@@ -292,6 +292,8 @@ procfs_rw(struct vop_read_args *ap)
 	}
 	pfs->pfs_lockowner = curproc->p_pid;
 
+	lwkt_gettoken(&p->p_token);
+
 	switch (pfs->pfs_type) {
 	case Pnote:
 	case Pnotepg:
@@ -342,7 +344,9 @@ procfs_rw(struct vop_read_args *ap)
 		rtval = EOPNOTSUPP;
 		break;
 	}
+	lwkt_reltoken(&p->p_token);
 	LWPRELE(lp);
+
 	pfs->pfs_lockowner = 0;
 	lwkt_reltoken(&proc_token);
 	wakeup(&pfs->pfs_lockowner);

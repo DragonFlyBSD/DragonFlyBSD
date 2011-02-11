@@ -785,7 +785,8 @@ loop:
 		    p->p_pid != pid && p->p_pgid != -pid)
 			continue;
 
-		/* This special case handles a kthread spawned by linux_clone 
+		/*
+		 * This special case handles a kthread spawned by linux_clone
 		 * (see linux_misc.c).  The linux_wait4 and linux_waitpid 
 		 * functions need to be able to distinguish between waiting
 		 * on a process and waiting on a thread.  It is a thread if

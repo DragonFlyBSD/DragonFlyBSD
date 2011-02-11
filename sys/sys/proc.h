@@ -322,6 +322,7 @@ struct	proc {
 	void		(*p_userret)(void);/* p: return-to-user hook */
 
 	struct spinlock p_spin;		/* Spinlock for LWP access to proc */
+	struct lwkt_token p_token;	/* Token for LWP access to proc */
 };
 
 #define lwp_wchan	lwp_thread->td_wchan

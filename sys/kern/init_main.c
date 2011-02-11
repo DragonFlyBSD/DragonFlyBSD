@@ -170,6 +170,7 @@ mi_proc0init(struct globaldata *gd, struct user *proc0paddr)
 	lwkt_set_comm(&thread0, "thread0");
 	RB_INIT(&proc0.p_lwp_tree);
 	spin_init(&proc0.p_spin);
+	lwkt_token_init(&proc0.p_token, "iproc");
 	proc0.p_lasttid = 0;	/* +1 = next TID */
 	lwp_rb_tree_RB_INSERT(&proc0.p_lwp_tree, &lwp0);
 	lwp0.lwp_thread = &thread0;

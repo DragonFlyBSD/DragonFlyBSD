@@ -526,7 +526,20 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 			ident, wmesg, lp->lwp_stat));
 
 	/*
+	 * We interlock the sleep queue if the caller has not already done
+	 * it for us.  This must be done before we potentially acquire any
+	 * tokens or we can loose the wakeup.
+	 */
+	if ((flags & PINTERLOCKED) == 0) {
+		id = LOOKUP(ident);
+		_tsleep_interlock(gd, ident, flags);
+	}
+
+	/*
 	 * Setup for the current process (if this is a process). 
+	 *
+	 * We hold the process token if lp && catch.  The resume
+	 * code will release it.
 	 */
 	if (lp) {
 		if (catch) {
@@ -538,6 +551,7 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 			 * Early termination only occurs when tsleep() is
 			 * entered while in a normal LSRUN state.
 			 */
+			lwkt_gettoken(&p->p_token);
 			if ((sig = CURSIG(lp)) != 0)
 				goto resume;
 
@@ -552,29 +566,19 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 				goto resume;
 
 			/*
-			 * Causes ksignal to wake us up when.
+			 * Causes ksignal to wake us up if a signal is
+			 * received (interlocked with p->p_token).
 			 */
 			lp->lwp_flag |= LWP_SINTR;
 		}
+	} else {
+		KKASSERT(p == NULL);
 	}
 
 	/*
-	 * We interlock the sleep queue if the caller has not already done
-	 * it for us.
-	 */
-	if ((flags & PINTERLOCKED) == 0) {
-		id = LOOKUP(ident);
-		_tsleep_interlock(gd, ident, flags);
-	}
-
-	/*
-	 *
-	 * If no interlock was set we do an integrated interlock here.
 	 * Make sure the current process has been untangled from
 	 * the userland scheduler and initialize slptime to start
-	 * counting.  We must interlock the sleep queue before doing
-	 * this to avoid wakeup/process-ipi races which can occur under
-	 * heavy loads.
+	 * counting.
 	 */
 	if (lp) {
 		p->p_usched->release_curproc(lp);
@@ -683,6 +687,8 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	 * interlock, the user must poll it prior to any system call
 	 * that it wishes to interlock a mailbox signal against since
 	 * the flag is cleared on *any* system call that sleeps.
+	 *
+	 * p->p_token is held in the p && catch case.
 	 */
 resume:
 	if (p) {
@@ -696,6 +702,8 @@ resume:
 					error = ERESTART;
 			}
 		}
+		if (catch)
+			lwkt_reltoken(&p->p_token);
 		lp->lwp_flag &= ~(LWP_BREAKTSLEEP | LWP_SINTR);
 		p->p_flag &= ~P_MAILBOX;
 	}
@@ -842,17 +850,20 @@ endtsleep(void *arg)
 	struct lwp *lp;
 
 	crit_enter();
-	lwkt_gettoken(&proc_token);
+	lp = td->td_lwp;
+
+	if (lp)
+		lwkt_gettoken(&lp->lwp_proc->p_token);
 
 	/*
 	 * cpu interlock.  Thread flags are only manipulated on
 	 * the cpu owning the thread.  proc flags are only manipulated
-	 * by the older of the MP lock.  We have both.
+	 * by the holder of p->p_token.  We have both.
 	 */
 	if (td->td_flags & TDF_TSLEEP_DESCHEDULED) {
 		td->td_flags |= TDF_TIMEOUT;
 
-		if ((lp = td->td_lwp) != NULL) {
+		if (lp) {
 			lp->lwp_flag |= LWP_BREAKTSLEEP;
 			if (lp->lwp_proc->p_stat != SSTOP)
 				setrunnable(lp);
@@ -860,7 +871,8 @@ endtsleep(void *arg)
 			_tsleep_wakeup(td);
 		}
 	}
-	lwkt_reltoken(&proc_token);
+	if (lp)
+		lwkt_reltoken(&lp->lwp_proc->p_token);
 	crit_exit();
 }
 
@@ -1044,17 +1056,17 @@ wakeup_domain_one(const volatile void *ident, int domain)
 /*
  * setrunnable()
  *
- * Make a process runnable.  The proc_token must be held on call.  This only
- * has an effect if we are in SSLEEP.  We only break out of the
+ * Make a process runnable.  lp->lwp_proc->p_token must be held on call.
+ * This only has an effect if we are in SSLEEP.  We only break out of the
  * tsleep if LWP_BREAKTSLEEP is set, otherwise we just fix-up the state.
  *
- * NOTE: With proc_token held we can only safely manipulate the process
+ * NOTE: With p_token held we can only safely manipulate the process
  * structure and the lp's lwp_stat.
  */
 void
 setrunnable(struct lwp *lp)
 {
-	ASSERT_LWKT_TOKEN_HELD(&proc_token);
+	ASSERT_LWKT_TOKEN_HELD(&lp->lwp_proc->p_token);
 	crit_enter();
 	if (lp->lwp_stat == LSSTOP)
 		lp->lwp_stat = LSSLEEP;
