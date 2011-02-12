@@ -739,11 +739,6 @@ pmap_set_opt(void)
 #endif
 
 /*
- * XXX: Hack. Required by pmap_init()
- */
-extern vm_offset_t cpu_apic_addr;
-
-/*
  *	Initialize the pmap module.
  *	Called by vm_init, to initialize any structures that the pmap
  *	system needs to map virtual memory.
@@ -791,12 +786,6 @@ pmap_init(void)
 	 * Now it is safe to enable pv_table recording.
 	 */
 	pmap_initialized = TRUE;
-#ifdef SMP
-	/*
-	 * XXX: Hack 
-	 */
-	lapic = pmap_mapdev_uncacheable(cpu_apic_addr, sizeof(struct LAPIC));
-#endif
 }
 
 /*

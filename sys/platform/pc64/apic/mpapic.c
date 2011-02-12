@@ -1065,20 +1065,10 @@ u_sleep(int count)
 		 /* spin */ ;
 }
 
-/*
- * XXX: Hack: Used by pmap_init
- */
-vm_offset_t cpu_apic_addr;
-
 void
 lapic_map(vm_offset_t lapic_addr)
 {
-	/*
-	 * lapic not mapped yet (pmap_init is called too late)
-	 */
 	lapic = pmap_mapdev_uncacheable(lapic_addr, sizeof(struct LAPIC));
-
-	cpu_apic_addr = lapic_addr;
 
 	kprintf("lapic: at 0x%08lx\n", lapic_addr);
 }
