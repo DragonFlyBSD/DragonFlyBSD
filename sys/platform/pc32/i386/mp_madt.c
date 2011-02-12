@@ -139,26 +139,26 @@ struct acpi_madt_ioapic {
 } __packed;
 
 /* MADT Interrupt Source Override */
-struct acpi_madt_intsrc_ovr {
-	struct acpi_madt_ent	miso_hdr;
-	uint8_t			miso_bus;
-	uint8_t			miso_src;
-	uint32_t		miso_gsi;
-	uint16_t		miso_flags;	/* MADT_ISO_ */
+struct acpi_madt_intsrc {
+	struct acpi_madt_ent	mint_hdr;
+	uint8_t			mint_bus;
+	uint8_t			mint_src;
+	uint32_t		mint_gsi;
+	uint16_t		mint_flags;	/* MADT_INT_ */
 } __packed;
 
-#define MADT_ISO_POLA_MASK	0x3
-#define MADT_ISO_POLA_SHIFT	0
-#define MADT_ISO_POLA_CONFORM	0
-#define MADT_ISO_POLA_HIGH	1
-#define MADT_ISO_POLA_RSVD	2
-#define MADT_ISO_POLA_LOW	3
-#define MADT_ISO_TRIG_MASK	0xc
-#define MADT_ISO_TRIG_SHIFT	2
-#define MADT_ISO_TRIG_CONFORM	0
-#define MADT_ISO_TRIG_EDGE	1
-#define MADT_ISO_TRIG_RSVD	2
-#define MADT_ISO_TRIG_LEVEL	3
+#define MADT_INT_POLA_MASK	0x3
+#define MADT_INT_POLA_SHIFT	0
+#define MADT_INT_POLA_CONFORM	0
+#define MADT_INT_POLA_HIGH	1
+#define MADT_INT_POLA_RSVD	2
+#define MADT_INT_POLA_LOW	3
+#define MADT_INT_TRIG_MASK	0xc
+#define MADT_INT_TRIG_SHIFT	2
+#define MADT_INT_TRIG_CONFORM	0
+#define MADT_INT_TRIG_EDGE	1
+#define MADT_INT_TRIG_RSVD	2
+#define MADT_INT_TRIG_LEVEL	3
 
 /* MADT Local APIC Address Override */
 struct acpi_madt_lapic_addr {
@@ -495,9 +495,9 @@ madt_iterate_entries(struct acpi_madt *madt, madt_iter_t func, void *arg)
 			break;
 
 		case MADT_ENT_INTSRC_OVR:
-			if (ent->me_len < sizeof(struct acpi_madt_intsrc_ovr)) {
+			if (ent->me_len < sizeof(struct acpi_madt_intsrc)) {
 				kprintf("madt_iterate_entries: invalid MADT "
-					"intsrc_ovr entry len %d\n",
+					"intsrc entry len %d\n",
 					ent->me_len);
 				error = EINVAL;
 			}
