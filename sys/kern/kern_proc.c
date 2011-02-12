@@ -394,12 +394,15 @@ fixjobc(struct proc *p, struct pgrp *pgrp, int entering)
 {
 	struct pgrp *hispgrp;
 	struct session *mysession;
+	struct proc *np;
 
 	/*
 	 * Check p's parent to see whether p qualifies its own process
 	 * group; if so, adjust count for p's process group.
 	 */
 	lwkt_gettoken(&proc_token);
+	lwkt_gettoken(&p->p_token);	/* p_children scan */
+
 	mysession = pgrp->pg_session;
 	if ((hispgrp = p->p_pptr->p_pgrp) != pgrp &&
 	    hispgrp->pg_session == mysession) {
@@ -414,16 +417,17 @@ fixjobc(struct proc *p, struct pgrp *pgrp, int entering)
 	 * their process groups; if so, adjust counts for children's
 	 * process groups.
 	 */
-	LIST_FOREACH(p, &p->p_children, p_sibling) {
-		if ((hispgrp = p->p_pgrp) != pgrp &&
+	LIST_FOREACH(np, &p->p_children, p_sibling) {
+		if ((hispgrp = np->p_pgrp) != pgrp &&
 		    hispgrp->pg_session == mysession &&
-		    p->p_stat != SZOMB) {
+		    np->p_stat != SZOMB) {
 			if (entering)
 				hispgrp->pg_jobc++;
 			else if (--hispgrp->pg_jobc == 0)
 				orphanpg(hispgrp);
 		}
 	}
+	lwkt_reltoken(&p->p_token);
 	lwkt_reltoken(&proc_token);
 }
 

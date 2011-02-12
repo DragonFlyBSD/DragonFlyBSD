@@ -504,7 +504,7 @@ tunioctl(struct dev_ioctl_args *ap)
 		return (fsetown(*(int *)ap->a_data, &tp->tun_sigio));
 
 	case FIOGETOWN:
-		*(int *)ap->a_data = fgetown(tp->tun_sigio);
+		*(int *)ap->a_data = fgetown(&tp->tun_sigio);
 		return (0);
 
 	/* This is deprecated, FIOSETOWN should be used instead. */
@@ -513,7 +513,7 @@ tunioctl(struct dev_ioctl_args *ap)
 
 	/* This is deprecated, FIOGETOWN should be used instead. */
 	case TIOCGPGRP:
-		*(int *)ap->a_data = -fgetown(tp->tun_sigio);
+		*(int *)ap->a_data = -fgetown(&tp->tun_sigio);
 		return (0);
 
 	default:

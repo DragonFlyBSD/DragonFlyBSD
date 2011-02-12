@@ -945,7 +945,7 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 			lwkt_reltoken(&tty_token);
 			return (ENOTTY);
 		}
-		*(int *)data = fgetown(tp->t_sigio);
+		*(int *)data = fgetown(&tp->t_sigio);
 		break;
 
 	case TIOCEXCL:			/* set exclusive use of tty */

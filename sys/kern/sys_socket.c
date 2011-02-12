@@ -51,7 +51,6 @@
 #include <sys/filedesc.h>
 #include <sys/ucred.h>
 
-#include <sys/mplock2.h>
 #include <sys/socketvar2.h>
 
 #include <net/if.h>
@@ -68,7 +67,7 @@ struct	fileops socketops = {
 };
 
 /*
- * MPALMOSTSAFE - acquires mplock
+ * MPSAFE
  */
 int
 soo_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
@@ -77,7 +76,6 @@ soo_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	int error;
 	int msgflags;
 
-	get_mplock();
 	so = (struct socket *)fp->f_data;
 
 	if (fflags & O_FBLOCKING)
@@ -90,12 +88,11 @@ soo_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		msgflags = 0;
 
 	error = so_pru_soreceive(so, NULL, uio, NULL, NULL, &msgflags);
-	rel_mplock();
 	return (error);
 }
 
 /*
- * MPALMOSTSAFE - acquires mplock
+ * MPSAFE
  */
 int
 soo_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
@@ -104,7 +101,6 @@ soo_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	int error;
 	int msgflags;
 
-	get_mplock();
 	so = (struct socket *)fp->f_data;
 
 	if (fflags & O_FBLOCKING)
@@ -117,12 +113,11 @@ soo_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		msgflags = 0;
 
 	error = so_pru_sosend(so, NULL, uio, NULL, NULL, msgflags, uio->uio_td);
-	rel_mplock();
 	return (error);
 }
 
 /*
- * MPALMOSTSAFE - acquires mplock
+ * MPSAFE
  */
 int
 soo_ioctl(struct file *fp, u_long cmd, caddr_t data,
@@ -131,7 +126,6 @@ soo_ioctl(struct file *fp, u_long cmd, caddr_t data,
 	struct socket *so;
 	int error;
 
-	get_mplock();
 	so = (struct socket *)fp->f_data;
 
 	switch (cmd) {
@@ -155,14 +149,14 @@ soo_ioctl(struct file *fp, u_long cmd, caddr_t data,
 		error = fsetown(*(int *)data, &so->so_sigio);
 		break;
 	case FIOGETOWN:
-		*(int *)data = fgetown(so->so_sigio);
+		*(int *)data = fgetown(&so->so_sigio);
 		error = 0;
 		break;
 	case SIOCSPGRP:
 		error = fsetown(-(*(int *)data), &so->so_sigio);
 		break;
 	case SIOCGPGRP:
-		*(int *)data = -fgetown(so->so_sigio);
+		*(int *)data = -fgetown(&so->so_sigio);
 		error = 0;
 		break;
 	case SIOCATMARK:
@@ -184,12 +178,11 @@ soo_ioctl(struct file *fp, u_long cmd, caddr_t data,
 		}
 		break;
 	}
-	rel_mplock();
 	return (error);
 }
 
 /*
- * MPSAFE - acquires mplock
+ * MPSAFE
  */
 int
 soo_stat(struct file *fp, struct stat *ub, struct ucred *cred)
@@ -218,38 +211,34 @@ soo_stat(struct file *fp, struct stat *ub, struct ucred *cred)
 }
 
 /*
- * MPALMOSTSAFE - acquires mplock
+ * MPSAFE
  */
 int
 soo_close(struct file *fp)
 {
 	int error;
 
-	get_mplock();
 	fp->f_ops = &badfileops;
 	if (fp->f_data)
 		error = soclose((struct socket *)fp->f_data, fp->f_flag);
 	else
 		error = 0;
 	fp->f_data = NULL;
-	rel_mplock();
 	return (error);
 }
 
 /*
- * MPALMOSTSAFE - acquires mplock
+ * MPSAFE
  */
 int
 soo_shutdown(struct file *fp, int how)
 {
 	int error;
 
-	get_mplock();
 	if (fp->f_data)
 		error = soshutdown((struct socket *)fp->f_data, how);
 	else
 		error = 0;
-	rel_mplock();
 	return (error);
 }
 

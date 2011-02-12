@@ -2034,6 +2034,7 @@ sigexit(struct lwp *lp, int sig)
 {
 	struct proc *p = lp->lwp_proc;
 
+	lwkt_gettoken(&p->p_token);
 	p->p_acflag |= AXSIG;
 	if (sigprop(sig) & SA_CORE) {
 		lp->lwp_sig = sig;
@@ -2053,6 +2054,7 @@ sigexit(struct lwp *lp, int sig)
 			    sig &~ WCOREFLAG,
 			    sig & WCOREFLAG ? " (core dumped)" : "");
 	}
+	lwkt_reltoken(&p->p_token);
 	exit1(W_EXITCODE(0, sig));
 	/* NOTREACHED */
 }

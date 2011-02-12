@@ -90,6 +90,8 @@ static void killlwps(struct lwp *lp);
 static MALLOC_DEFINE(M_ATEXIT, "atexit", "atexit callback");
 static MALLOC_DEFINE(M_ZOMBIE, "zombie", "zombie proc status");
 
+static struct lwkt_token deadlwp_token = LWKT_TOKEN_INITIALIZER(deadlwp_token);
+
 /*
  * callout list for things to do at exit time
  */
@@ -112,8 +114,6 @@ struct lwplist deadlwp_list[MAXCPU];
  *	Death of process.
  *
  * SYS_EXIT_ARGS(int rval)
- *
- * MPALMOSTSAFE
  */
 int
 sys_exit(struct exit_args *uap)
@@ -131,6 +131,7 @@ sys_exit(struct exit_args *uap)
 int
 sys_extexit(struct extexit_args *uap)
 {
+	struct proc *p = curproc;
 	int action, who;
 	int error;
 
@@ -158,7 +159,7 @@ sys_extexit(struct extexit_args *uap)
 		return (EINVAL);
 	}
 
-	get_mplock();
+	lwkt_gettoken(&p->p_token);
 
 	switch (who) {
 	case EXTEXIT_LWP:
@@ -168,20 +169,21 @@ sys_extexit(struct extexit_args *uap)
 		 * later, otherwise the proc will be an UNDEAD and not even a
 		 * SZOMB!
 		 */
-		if (curproc->p_nthreads > 1) {
-			lwp_exit(0);
+		if (p->p_nthreads > 1) {
+			lwp_exit(0);	/* called w/ p_token held */
 			/* NOT REACHED */
 		}
 		/* else last lwp in proc:  do the real thing */
 		/* FALLTHROUGH */
 	default:	/* to help gcc */
 	case EXTEXIT_PROC:
+		lwkt_reltoken(&p->p_token);
 		exit1(W_EXITCODE(uap->status, 0));
 		/* NOTREACHED */
 	}
 
 	/* NOTREACHED */
-	rel_mplock(); /* safety */
+	lwkt_reltoken(&p->p_token);	/* safety */
 }
 
 /*
@@ -276,14 +278,13 @@ exit1(int rv)
 	struct exitlist *ep;
 	int error;
 
+	lwkt_gettoken(&p->p_token);
+
 	if (p->p_pid == 1) {
 		kprintf("init died (signal %d, exit %d)\n",
 		    WTERMSIG(rv), WEXITSTATUS(rv));
 		panic("Going nowhere without my init!");
 	}
-
-	get_mplock();
-
 	varsymset_clean(&p->p_varsymset);
 	lockuninit(&p->p_varsymset.vx_lock);
 	/*
@@ -566,6 +567,8 @@ exit1(int rv)
 
 /*
  * Eventually called by every exiting LWP
+ *
+ * p->p_token must be held.  mplock may be held and will be released.
  */
 void
 lwp_exit(int masterexit)
@@ -578,6 +581,7 @@ lwp_exit(int masterexit)
 	 * lwp_exit() may be called without setting LWP_WEXIT, so
 	 * make sure it is set here.
 	 */
+	ASSERT_LWKT_TOKEN_HELD(&p->p_token);
 	lp->lwp_flag |= LWP_WEXIT;
 
 	/*
@@ -637,14 +641,22 @@ lwp_exit(int masterexit)
 		--p->p_nthreads;
 		if (p->p_nthreads <= 1)
 			wakeup(&p->p_nthreads);
+		lwkt_gettoken(&deadlwp_token);
 		LIST_INSERT_HEAD(&deadlwp_list[mycpuid], lp, u.lwp_reap_entry);
 		taskqueue_enqueue(taskqueue_thread[mycpuid],
 				  deadlwp_task[mycpuid]);
+		lwkt_reltoken(&deadlwp_token);
 	} else {
 		--p->p_nthreads;
 		if (p->p_nthreads <= 1)
 			wakeup(&p->p_nthreads);
 	}
+
+	/*
+	 * Release p_token.  The mp_token may also be held and we depend on
+	 * the lwkt_switch() code to clean it up.
+	 */
+	lwkt_reltoken(&p->p_token);
 	cpu_lwp_exit();
 }
 
@@ -758,11 +770,12 @@ kern_wait(pid_t pid, int *status, int options, struct rusage *rusage, int *res)
 		pid = -q->p_pgid;
 	if (options &~ (WUNTRACED|WNOHANG|WCONTINUED|WLINUXCLONE))
 		return (EINVAL);
-	get_mplock();
+
+	lwkt_gettoken(&q->p_token);
 loop:
 	/*
-	 * Hack for backwards compatibility with badly written user code.  
-	 * Or perhaps we have to do this anyway, it is unclear. XXX
+	 * All sorts of things can change due to blocking so we have to loop
+	 * all the way back up here.
 	 *
 	 * The problem is that if a process group is stopped and the parent
 	 * is doing a wait*(..., WUNTRACED, ...), it will see the STOP
@@ -773,17 +786,19 @@ loop:
 	 *
 	 * Previously the CONT would overwrite the STOP because the tstop
 	 * was handled within tsleep(), and the parent would only see
-	 * the CONT when both are stopped and continued together.  This litte
+	 * the CONT when both are stopped and continued together.  This little
 	 * two-line hack restores this effect.
 	 */
 	while (q->p_stat == SSTOP)
             tstop();
 
 	nfound = 0;
+
 	LIST_FOREACH(p, &q->p_children, p_sibling) {
 		if (pid != WAIT_ANY &&
-		    p->p_pid != pid && p->p_pgid != -pid)
+		    p->p_pid != pid && p->p_pgid != -pid) {
 			continue;
+		}
 
 		/*
 		 * This special case handles a kthread spawned by linux_clone
@@ -806,6 +821,7 @@ loop:
 			 * the master thread, otherwise we may race reaping
 			 * non-master threads.
 			 */
+			lwkt_gettoken(&p->p_token);
 			while (p->p_nthreads > 0) {
 				tsleep(&p->p_nthreads, 0, "lwpzomb", hz);
 			}
@@ -824,6 +840,7 @@ loop:
 				reaplwp(lp);
 			}
 			KKASSERT(p->p_nthreads == 0);
+			lwkt_reltoken(&p->p_token);
 
 			/*
 			 * Don't do anything really bad until all references
@@ -838,12 +855,6 @@ loop:
 			 */
 			while (p->p_lock)
 				tsleep(p, 0, "reap3", hz);
-
-			/* scheduling hook for heuristic */
-			/* XXX no lwp available, we need a different heuristic */
-			/*
-			p->p_usched->heuristic_exiting(td->td_lwp, deadlp);
-			*/
 
 			/* Take care of our return values. */
 			*res = p->p_pid;
@@ -940,25 +951,29 @@ loop:
 	error = tsleep((caddr_t)q, PCATCH, "wait", 0);
 	if (error) {
 done:
-		rel_mplock();
+		lwkt_reltoken(&q->p_token);
 		return (error);
 	}
 	goto loop;
 }
 
 /*
- * make process 'parent' the new parent of process 'child'.
+ * Make process 'parent' the new parent of process 'child'.
  */
 void
 proc_reparent(struct proc *child, struct proc *parent)
 {
-
 	if (child->p_pptr == parent)
 		return;
-
+	PHOLD(parent);
+	lwkt_gettoken(&child->p_token);
+	lwkt_gettoken(&parent->p_token);
 	LIST_REMOVE(child, p_sibling);
 	LIST_INSERT_HEAD(&parent->p_children, child, p_sibling);
 	child->p_pptr = parent;
+	lwkt_reltoken(&parent->p_token);
+	lwkt_reltoken(&child->p_token);
+	PRELE(parent);
 }
 
 /*
@@ -1018,12 +1033,12 @@ reaplwps(void *context, int dummy)
 	struct lwplist *lwplist = context;
 	struct lwp *lp;
 
-	get_mplock();
+	lwkt_gettoken(&deadlwp_token);
 	while ((lp = LIST_FIRST(lwplist))) {
 		LIST_REMOVE(lp, u.lwp_reap_entry);
 		reaplwp(lp);
 	}
-	rel_mplock();
+	lwkt_reltoken(&deadlwp_token);
 }
 
 static void

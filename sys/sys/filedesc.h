@@ -176,7 +176,7 @@ int	holdsock (struct filedesc *fdp, int fdes, struct file **fpp);
 int	holdvnode (struct filedesc *fdp, int fd, struct file **fpp);
 int	fdissequential (struct file *);
 void	fdsequential (struct file *, int);
-pid_t	fgetown (struct sigio *);
+pid_t	fgetown (struct sigio **);
 int	fsetown (pid_t, struct sigio **);
 void	funsetown (struct sigio *);
 void	funsetownlst (struct sigiolst *);

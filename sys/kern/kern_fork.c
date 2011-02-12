@@ -68,7 +68,6 @@
 #include <sys/thread2.h>
 #include <sys/signal2.h>
 #include <sys/spinlock2.h>
-#include <sys/mplock2.h>
 
 #include <sys/dsched.h>
 
@@ -118,14 +117,12 @@ sys_fork(struct fork_args *uap)
 	struct proc *p2;
 	int error;
 
-	get_mplock();
 	error = fork1(lp, RFFDG | RFPROC | RFPGLOCK, &p2);
 	if (error == 0) {
 		start_forked_proc(lp, p2);
 		uap->sysmsg_fds[0] = p2->p_pid;
 		uap->sysmsg_fds[1] = 0;
 	}
-	rel_mplock();
 	return error;
 }
 
@@ -139,14 +136,12 @@ sys_vfork(struct vfork_args *uap)
 	struct proc *p2;
 	int error;
 
-	get_mplock();
 	error = fork1(lp, RFFDG | RFPROC | RFPPWAIT | RFMEM | RFPGLOCK, &p2);
 	if (error == 0) {
 		start_forked_proc(lp, p2);
 		uap->sysmsg_fds[0] = p2->p_pid;
 		uap->sysmsg_fds[1] = 0;
 	}
-	rel_mplock();
 	return error;
 }
 
@@ -173,7 +168,6 @@ sys_rfork(struct rfork_args *uap)
 	if ((uap->flags & RFKERNELONLY) != 0)
 		return (EINVAL);
 
-	get_mplock();
 	error = fork1(lp, uap->flags | RFPGLOCK, &p2);
 	if (error == 0) {
 		if (p2)
@@ -181,7 +175,6 @@ sys_rfork(struct rfork_args *uap)
 		uap->sysmsg_fds[0] = p2 ? p2->p_pid : 0;
 		uap->sysmsg_fds[1] = 0;
 	}
-	rel_mplock();
 	return error;
 }
 
@@ -200,7 +193,7 @@ sys_lwp_create(struct lwp_create_args *uap)
 	if (error)
 		goto fail2;
 
-	get_mplock();
+	lwkt_gettoken(&p->p_token);
 	plimit_lwp_fork(p);	/* force exclusive access */
 	lp = lwp_fork(curthread->td_lwp, p, RFPROC);
 	error = cpu_prepare_lwp(lp, &params);
@@ -219,7 +212,7 @@ sys_lwp_create(struct lwp_create_args *uap)
 	lp->lwp_stat = LSRUN;
 	p->p_usched->setrunqueue(lp);
 	crit_exit();
-	rel_mplock();
+	lwkt_reltoken(&p->p_token);
 
 	return (0);
 
@@ -231,7 +224,7 @@ fail:
 	lp->lwp_thread->td_flags |= TDF_EXITING;
 	PHOLD(p);
 	lwp_dispose(lp);
-	rel_mplock();
+	lwkt_reltoken(&p->p_token);
 fail2:
 	return (error);
 }
@@ -254,6 +247,9 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	if ((flags & (RFFDG|RFCFDG)) == (RFFDG|RFCFDG))
 		return (EINVAL);
 
+	lwkt_gettoken(&p1->p_token);
+	pgrp = NULL;
+
 	/*
 	 * Here we don't create a new process, but we divorce
 	 * certain parts of a process from itself.
@@ -263,8 +259,10 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 		 * This kind of stunt does not work anymore if
 		 * there are native threads (lwps) running
 		 */
-		if (p1->p_nthreads != 1)
-			return (EINVAL);
+		if (p1->p_nthreads != 1) {
+			error = EINVAL;
+			goto done;
+		}
 
 		vm_fork(p1, 0, flags);
 
@@ -288,7 +286,8 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 			}
 		}
 		*procp = NULL;
-		return (0);
+		error = 0;
+		goto done;
 	}
 
 	/*
@@ -301,8 +300,6 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * and cause the process group lock to be held indefinitely.  If
 	 * a STOP occurs, the fork will be restarted after the CONT.
 	 */
-	error = 0;
-	pgrp = NULL;
 	if ((flags & RFPGLOCK) && (pgrp = p1->p_pgrp) != NULL) {
 		lockmgr(&pgrp->pg_lock, LK_SHARED);
 		if (CURSIG_NOBLOCK(lp1)) {
@@ -439,10 +436,13 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 		fdtol = NULL;
 	} else {
 		p2->p_fd = fdshare(p1);
-		if (p1->p_fdtol == NULL)
+		if (p1->p_fdtol == NULL) {
+			lwkt_gettoken(&p1->p_token);
 			p1->p_fdtol =
 				filedesc_to_leader_alloc(NULL,
 							 p1->p_leader);
+			lwkt_reltoken(&p1->p_token);
+		}
 		if ((flags & RFTHREAD) != 0) {
 			/*
 			 * Shared file descriptor table and
@@ -497,8 +497,12 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	else
 		pptr = p1;
 	p2->p_pptr = pptr;
-	LIST_INSERT_HEAD(&pptr->p_children, p2, p_sibling);
 	LIST_INIT(&p2->p_children);
+
+	lwkt_gettoken(&pptr->p_token);
+	LIST_INSERT_HEAD(&pptr->p_children, p2, p_sibling);
+	lwkt_reltoken(&pptr->p_token);
+
 	varsymset_init(&p2->p_varsymset, &p1->p_varsymset);
 	callout_init(&p2->p_ithandle);
 
@@ -571,7 +575,9 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * Return child proc pointer to parent.
 	 */
 	*procp = p2;
+	error = 0;
 done:
+	lwkt_reltoken(&p1->p_token);
 	if (pgrp)
 		lockmgr(&pgrp->pg_lock, LK_RELEASE);
 	return (error);

@@ -394,9 +394,7 @@ sys_utrace(struct utrace_args *uap)
 	if (!copyin(uap->addr, cp, uap->len)) {
 		kth->ktr_buf = cp;
 		kth->ktr_len = uap->len;
-		get_mplock();
 		ktrwrite(td->td_lwp, kth, NULL);
-		rel_mplock();
 	}
 	FREE(kth, M_KTRACE);
 	FREE(cp, M_KTRACE);
@@ -416,9 +414,7 @@ ktrdestroy(struct ktrace_node **tracenodep)
 	if ((tracenode = *tracenodep) != NULL) {
 		*tracenodep = NULL;
 		KKASSERT(tracenode->kn_refs > 0);
-		/* XXX not MP safe yet */
-		--tracenode->kn_refs;
-		if (tracenode->kn_refs == 0) {
+		if (atomic_fetchadd_int(&tracenode->kn_refs, -1) == 1) {
 			vn_close(tracenode->kn_vp, FREAD|FWRITE);
 			tracenode->kn_vp = NULL;
 			FREE(tracenode, M_KTRACE);
@@ -436,7 +432,7 @@ ktrinherit(ktrace_node_t tracenode)
 {
 	if (tracenode) {
 		KKASSERT(tracenode->kn_refs > 0);
-		++tracenode->kn_refs;
+		atomic_add_int(&tracenode->kn_refs, 1);
 	}
 	return(tracenode);
 }
@@ -475,29 +471,44 @@ ktrsetchildren(struct thread *td, struct proc *top, int ops, int facs,
 	       ktrace_node_t tracenode)
 {
 	struct proc *p;
+	struct proc *np;
 	int ret = 0;
 
-	p = top;
-	for (;;) {
+	np = top;
+	if (np) {
+		PHOLD(np);
+	}
+
+	while ((p = np) != NULL) {
+		lwkt_gettoken(&p->p_token);
 		ret |= ktrops(td, p, ops, facs, tracenode);
+
 		/*
 		 * If this process has children, descend to them next,
 		 * otherwise do any siblings, and if done with this level,
 		 * follow back up the tree (but not past top).
 		 */
-		if (!LIST_EMPTY(&p->p_children))
-			p = LIST_FIRST(&p->p_children);
-		else for (;;) {
-			if (p == top)
-				return (ret);
-			if (LIST_NEXT(p, p_sibling)) {
-				p = LIST_NEXT(p, p_sibling);
-				break;
+		if (!LIST_EMPTY(&p->p_children)) {
+			np = LIST_FIRST(&p->p_children);
+		} else {
+			for (;;) {
+				if (p == top) {
+					np = NULL;
+					break;
+				}
+				if (LIST_NEXT(p, p_sibling)) {
+					np = LIST_NEXT(p, p_sibling);
+					break;
+				}
+				np = p->p_pptr;
 			}
-			p = p->p_pptr;
 		}
+		if (np)
+			PHOLD(np);
+		lwkt_reltoken(&p->p_token);
+		PRELE(p);
 	}
-	/*NOTREACHED*/
+	return (ret);
 }
 
 static void

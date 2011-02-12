@@ -917,7 +917,7 @@ bpfioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case FIOGETOWN:
-		*(int *)ap->a_data = fgetown(d->bd_sigio);
+		*(int *)ap->a_data = fgetown(&d->bd_sigio);
 		break;
 
 	/* This is deprecated, FIOSETOWN should be used instead. */
@@ -927,7 +927,7 @@ bpfioctl(struct dev_ioctl_args *ap)
 
 	/* This is deprecated, FIOGETOWN should be used instead. */
 	case TIOCGPGRP:
-		*(int *)ap->a_data = -fgetown(d->bd_sigio);
+		*(int *)ap->a_data = -fgetown(&d->bd_sigio);
 		break;
 
 	case BIOCSRSIG:		/* Set receive signal */

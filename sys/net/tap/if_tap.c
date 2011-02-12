@@ -730,7 +730,7 @@ tapioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case FIOGETOWN:
-		*(int *)data = fgetown(tp->tap_sigio);
+		*(int *)data = fgetown(&tp->tap_sigio);
 		break;
 
 	/* this is deprecated, FIOSETOWN should be used instead */
@@ -740,7 +740,7 @@ tapioctl(struct dev_ioctl_args *ap)
 
 	/* this is deprecated, FIOGETOWN should be used instead */
 	case TIOCGPGRP:
-		*(int *)data = -fgetown(tp->tap_sigio);
+		*(int *)data = -fgetown(&tp->tap_sigio);
 		break;
 
 	/* VMware/VMnet port ioctl's */
