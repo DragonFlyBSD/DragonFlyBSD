@@ -2994,7 +2994,7 @@ mptable_lapic_default(void)
 	mp_naps = 1; /* exclude BSP */
 
 	/* Map local apic before the id field is accessed */
-	lapic_init(DEFAULT_APIC_BASE);
+	lapic_map(DEFAULT_APIC_BASE);
 
 	bsp_apicid = APIC_ID(lapic->id);
 	ap_apicid = (bsp_apicid == 0) ? 1 : 0;
@@ -3092,7 +3092,7 @@ mptable_lapic_enumerate(struct lapic_enumerator *e)
 	KKASSERT(arg2.found_bsp);
 
 	/* Map local apic */
-	lapic_init(lapic_addr);
+	lapic_map(lapic_addr);
 
 	mptable_unmap(&mpt);
 }

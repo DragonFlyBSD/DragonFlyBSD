@@ -1071,7 +1071,7 @@ u_sleep(int count)
 vm_offset_t cpu_apic_addr;
 
 void
-lapic_init(vm_offset_t lapic_addr)
+lapic_map(vm_offset_t lapic_addr)
 {
 	/*
 	 * lapic not mapped yet (pmap_init is called too late)
