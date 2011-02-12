@@ -422,7 +422,10 @@ madt_check(vm_paddr_t madt_paddr)
 	madt = madt_sdth_map(madt_paddr);
 	KKASSERT(madt != NULL);
 
-	if (madt->madt_hdr.sdth_rev != 1 && madt->madt_hdr.sdth_rev != 2) {
+	/*
+	 * MADT in ACPI specification 1.0 - 4.0
+	 */
+	if (madt->madt_hdr.sdth_rev < 1 || madt->madt_hdr.sdth_rev > 3) {
 		kprintf("madt_check: unsupported MADT revision %d\n",
 			madt->madt_hdr.sdth_rev);
 		error = EOPNOTSUPP;
