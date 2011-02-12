@@ -693,7 +693,7 @@ static struct madt_lapic_enumerator	madt_lapic_enumerator = {
 };
 
 static void
-madt_apic_register(void)
+madt_lapic_register(void)
 {
 	int prio;
 
@@ -703,6 +703,4 @@ madt_apic_register(void)
 
 	lapic_enumerator_register(&madt_lapic_enumerator.enumerator);
 }
-SYSINIT(madt, SI_BOOT2_PRESMP, SI_ORDER_ANY, madt_apic_register, 0);
-
-
+SYSINIT(madt, SI_BOOT2_PRESMP, SI_ORDER_ANY, madt_lapic_register, 0);
