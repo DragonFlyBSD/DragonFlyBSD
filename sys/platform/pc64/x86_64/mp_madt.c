@@ -180,8 +180,8 @@ static int			madt_check(vm_paddr_t);
 static int			madt_iterate_entries(struct acpi_madt *,
 				    madt_iter_t, void *);
 
-static vm_offset_t		madt_pass1(void);
-static int			madt_pass2(int);
+static vm_offset_t		madt_lapic_pass1(void);
+static int			madt_lapic_pass2(int);
 
 static void			madt_lapic_enumerate(struct lapic_enumerator *);
 static int			madt_lapic_probe(struct lapic_enumerator *);
@@ -412,118 +412,6 @@ back:
 }
 
 static int
-madt_pass1_callback(void *xarg, const struct acpi_madt_ent *ent)
-{
-	const struct acpi_madt_lapic_addr *lapic_addr_ent;
-	uint64_t *addr64 = xarg;
-
-	if (ent->me_type != MADT_ENT_LAPIC_ADDR)
-		return 0;
-	if (ent->me_len < sizeof(*lapic_addr_ent)) {
-		kprintf("madt_pass1: invalid LAPIC address override length\n");
-		return 0;
-	}
-	lapic_addr_ent = (const struct acpi_madt_lapic_addr *)ent;
-
-	*addr64 = lapic_addr_ent->mla_lapic_addr;
-	return 0;
-}
-
-static vm_offset_t
-madt_pass1(void)
-{
-	struct acpi_madt *madt;
-	vm_offset_t lapic_addr;
-	uint64_t lapic_addr64;
-	int error;
-
-	KKASSERT(madt_phyaddr != 0);
-
-	madt = madt_sdth_map(madt_phyaddr);
-	KKASSERT(madt != NULL);
-
-	MADT_VPRINTF("LAPIC address 0x%08x, flags %#x\n",
-		     madt->madt_lapic_addr, madt->madt_flags);
-	lapic_addr = madt->madt_lapic_addr;
-
-	lapic_addr64 = 0;
-	error = madt_iterate_entries(madt, madt_pass1_callback, &lapic_addr64);
-	if (error)
-		panic("madt_iterate_entries(pass1) failed\n");
-
-	if (lapic_addr64 != 0) {
-		kprintf("ACPI MADT: 64bits lapic address 0x%lx\n",
-			lapic_addr64);
-		lapic_addr = lapic_addr64;
-	}
-
-	madt_sdth_unmap(&madt->madt_hdr);
-
-	return lapic_addr;
-}
-
-struct madt_pass2_cbarg {
-	int	cpu;
-	int	bsp_found;
-	int	bsp_apic_id;
-};
-
-static int
-madt_pass2_callback(void *xarg, const struct acpi_madt_ent *ent)
-{
-	const struct acpi_madt_lapic *lapic_ent;
-	struct madt_pass2_cbarg *arg = xarg;
-
-	if (ent->me_type != MADT_ENT_LAPIC)
-		return 0;
-
-	lapic_ent = (const struct acpi_madt_lapic *)ent;
-	if (lapic_ent->ml_flags & MADT_LAPIC_ENABLED) {
-		MADT_VPRINTF("cpu_id %d, apic_id %d\n",
-			     lapic_ent->ml_cpu_id, lapic_ent->ml_apic_id);
-		if (lapic_ent->ml_apic_id == arg->bsp_apic_id) {
-			mp_set_cpuids(0, lapic_ent->ml_apic_id);
-			arg->bsp_found = 1;
-		} else {
-			mp_set_cpuids(arg->cpu, lapic_ent->ml_apic_id);
-			arg->cpu++;
-		}
-	}
-	return 0;
-}
-
-static int
-madt_pass2(int bsp_apic_id)
-{
-	struct acpi_madt *madt;
-	struct madt_pass2_cbarg arg;
-	int error;
-
-	MADT_VPRINTF("BSP apic id %d\n", bsp_apic_id);
-
-	KKASSERT(madt_phyaddr != 0);
-
-	madt = madt_sdth_map(madt_phyaddr);
-	KKASSERT(madt != NULL);
-
-	bzero(&arg, sizeof(arg));
-	arg.cpu = 1;
-	arg.bsp_apic_id = bsp_apic_id;
-
-	error = madt_iterate_entries(madt, madt_pass2_callback, &arg);
-	if (error)
-		panic("madt_iterate_entries(pass2) failed\n");
-
-	KKASSERT(arg.bsp_found);
-	KKASSERT(arg.cpu > 1);
-	mp_naps = arg.cpu - 1; /* exclude BSP */
-
-	madt_sdth_unmap(&madt->madt_hdr);
-
-	return 0;
-}
-
-static int
 madt_check(vm_paddr_t madt_paddr)
 {
 	struct acpi_madt *madt;
@@ -622,6 +510,120 @@ madt_iterate_entries(struct acpi_madt *madt, madt_iter_t func, void *arg)
 	return error;
 }
 
+static int
+madt_lapic_pass1_callback(void *xarg, const struct acpi_madt_ent *ent)
+{
+	const struct acpi_madt_lapic_addr *lapic_addr_ent;
+	uint64_t *addr64 = xarg;
+
+	if (ent->me_type != MADT_ENT_LAPIC_ADDR)
+		return 0;
+	if (ent->me_len < sizeof(*lapic_addr_ent)) {
+		kprintf("madt_lapic_pass1: "
+			"invalid LAPIC address override length\n");
+		return 0;
+	}
+	lapic_addr_ent = (const struct acpi_madt_lapic_addr *)ent;
+
+	*addr64 = lapic_addr_ent->mla_lapic_addr;
+	return 0;
+}
+
+static vm_offset_t
+madt_lapic_pass1(void)
+{
+	struct acpi_madt *madt;
+	vm_offset_t lapic_addr;
+	uint64_t lapic_addr64;
+	int error;
+
+	KKASSERT(madt_phyaddr != 0);
+
+	madt = madt_sdth_map(madt_phyaddr);
+	KKASSERT(madt != NULL);
+
+	MADT_VPRINTF("LAPIC address 0x%08x, flags %#x\n",
+		     madt->madt_lapic_addr, madt->madt_flags);
+	lapic_addr = madt->madt_lapic_addr;
+
+	lapic_addr64 = 0;
+	error = madt_iterate_entries(madt, madt_lapic_pass1_callback,
+				     &lapic_addr64);
+	if (error)
+		panic("madt_iterate_entries(pass1) failed\n");
+
+	if (lapic_addr64 != 0) {
+		kprintf("ACPI MADT: 64bits lapic address 0x%lx\n",
+			lapic_addr64);
+		lapic_addr = lapic_addr64;
+	}
+
+	madt_sdth_unmap(&madt->madt_hdr);
+
+	return lapic_addr;
+}
+
+struct madt_lapic_pass2_cbarg {
+	int	cpu;
+	int	bsp_found;
+	int	bsp_apic_id;
+};
+
+static int
+madt_lapic_pass2_callback(void *xarg, const struct acpi_madt_ent *ent)
+{
+	const struct acpi_madt_lapic *lapic_ent;
+	struct madt_lapic_pass2_cbarg *arg = xarg;
+
+	if (ent->me_type != MADT_ENT_LAPIC)
+		return 0;
+
+	lapic_ent = (const struct acpi_madt_lapic *)ent;
+	if (lapic_ent->ml_flags & MADT_LAPIC_ENABLED) {
+		MADT_VPRINTF("cpu_id %d, apic_id %d\n",
+			     lapic_ent->ml_cpu_id, lapic_ent->ml_apic_id);
+		if (lapic_ent->ml_apic_id == arg->bsp_apic_id) {
+			mp_set_cpuids(0, lapic_ent->ml_apic_id);
+			arg->bsp_found = 1;
+		} else {
+			mp_set_cpuids(arg->cpu, lapic_ent->ml_apic_id);
+			arg->cpu++;
+		}
+	}
+	return 0;
+}
+
+static int
+madt_lapic_pass2(int bsp_apic_id)
+{
+	struct acpi_madt *madt;
+	struct madt_lapic_pass2_cbarg arg;
+	int error;
+
+	MADT_VPRINTF("BSP apic id %d\n", bsp_apic_id);
+
+	KKASSERT(madt_phyaddr != 0);
+
+	madt = madt_sdth_map(madt_phyaddr);
+	KKASSERT(madt != NULL);
+
+	bzero(&arg, sizeof(arg));
+	arg.cpu = 1;
+	arg.bsp_apic_id = bsp_apic_id;
+
+	error = madt_iterate_entries(madt, madt_lapic_pass2_callback, &arg);
+	if (error)
+		panic("madt_iterate_entries(pass2) failed\n");
+
+	KKASSERT(arg.bsp_found);
+	KKASSERT(arg.cpu > 1);
+	mp_naps = arg.cpu - 1; /* exclude BSP */
+
+	madt_sdth_unmap(&madt->madt_hdr);
+
+	return 0;
+}
+
 struct madt_lapic_probe_cbarg {
 	int		cpu_count;
 	vm_offset_t	lapic_addr;
@@ -695,15 +697,15 @@ madt_lapic_enumerate(struct lapic_enumerator *e)
 
 	KKASSERT(madt_phyaddr != 0);
 
-	lapic_addr = madt_pass1();
+	lapic_addr = madt_lapic_pass1();
 	if (lapic_addr == 0)
 		panic("madt_lapic_enumerate: no local apic\n");
 
 	lapic_map(lapic_addr);
 
 	bsp_apic_id = APIC_ID(lapic->id);
-	if (madt_pass2(bsp_apic_id))
-		panic("madt_lapic_enumerate: madt_pass2 failed\n");
+	if (madt_lapic_pass2(bsp_apic_id))
+		panic("madt_lapic_enumerate: madt_lapic_pass2 failed\n");
 }
 
 static struct lapic_enumerator	madt_lapic_enumerator = {
@@ -713,7 +715,7 @@ static struct lapic_enumerator	madt_lapic_enumerator = {
 };
 
 static void
-madt_lapic_register(void)
+madt_lapic_enum_register(void)
 {
 	int prio;
 
@@ -723,4 +725,4 @@ madt_lapic_register(void)
 
 	lapic_enumerator_register(&madt_lapic_enumerator);
 }
-SYSINIT(madt_lapic, SI_BOOT2_PRESMP, SI_ORDER_ANY, madt_lapic_register, 0);
+SYSINIT(madt_lapic, SI_BOOT2_PRESMP, SI_ORDER_ANY, madt_lapic_enum_register, 0);
