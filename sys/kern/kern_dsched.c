@@ -722,8 +722,10 @@ dsched_thread_io_alloc(struct disk *dp, struct dsched_thread_ctx *tdctx,
 	if (pol->new_tdio)
 		pol->new_tdio(tdio);
 
+	lockmgr(&tdio->diskctx->lock, LK_EXCLUSIVE);
 	TAILQ_INSERT_TAIL(&tdio->diskctx->tdio_list, tdio, dlink);
 	tdio->flags |= DSCHED_LINKED_DISK_CTX;
+	lockmgr(&tdio->diskctx->lock, LK_RELEASE);
 
 	if (tdctx) {
 		tdio->tdctx = tdctx;
