@@ -1004,6 +1004,9 @@ find_lwp_for_signal(struct proc *p, int sig)
  *
  * Other ignored signals are discarded immediately.
  *
+ * If the caller wishes to call this function from a hard code section the
+ * caller must already hold p->p_token (see kern_clock.c).
+ *
  * No requirements.
  */
 void
@@ -1015,6 +1018,9 @@ ksignal(struct proc *p, int sig)
 /*
  * The core for ksignal.  lp may be NULL, then a suitable thread
  * will be chosen.  If not, lp MUST be a member of p.
+ *
+ * If the caller wishes to call this function from a hard code section the
+ * caller must already hold p->p_token.
  *
  * No requirements.
  */

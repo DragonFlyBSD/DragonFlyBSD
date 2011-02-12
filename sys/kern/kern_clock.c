@@ -538,10 +538,12 @@ hardclock(systimer_t info, struct intrframe *frame)
 	need_lwkt_resched();
 
 	/*
-	 * ITimer handling is per-tick, per-cpu.  I don't think ksignal()
-	 * is mpsafe on curproc, so XXX get the mplock.
+	 * ITimer handling is per-tick, per-cpu.
+	 *
+	 * We must acquire the per-process token in order for ksignal()
+	 * to be non-blocking.
 	 */
-	if ((p = curproc) != NULL && lwkt_trytoken(&proc_token)) {
+	if ((p = curproc) != NULL && lwkt_trytoken(&p->p_token)) {
 		crit_enter_hard();
 		if (frame && CLKF_USERMODE(frame) &&
 		    timevalisset(&p->p_timer[ITIMER_VIRTUAL].it_value) &&
@@ -551,7 +553,7 @@ hardclock(systimer_t info, struct intrframe *frame)
 		    itimerdecr(&p->p_timer[ITIMER_PROF], ustick) == 0)
 			ksignal(p, SIGPROF);
 		crit_exit_hard();
-		lwkt_reltoken(&proc_token);
+		lwkt_reltoken(&p->p_token);
 	}
 	setdelayed();
 }
