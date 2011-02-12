@@ -1,0 +1,13 @@
+#$FreeBSD: src/tools/regression/bin/sh/builtins/case1.0,v 1.1 2007/10/04 16:14:48 stefanf Exp $
+f()
+{
+	false
+	case $1 in
+	foo) true ;;
+	bar) false ;;
+	esac
+}
+
+f foo || exit 1
+f bar && exit 1
+f quux || exit 1

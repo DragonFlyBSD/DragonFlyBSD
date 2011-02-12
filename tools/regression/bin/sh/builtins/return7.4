@@ -1,0 +1,6 @@
+# $FreeBSD: src/tools/regression/bin/sh/builtins/return7.4,v 1.1 2010/09/11 15:07:40 jilles Exp $
+
+f() {
+	while return 4; do exit 3; done
+}
+f

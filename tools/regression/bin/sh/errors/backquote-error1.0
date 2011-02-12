@@ -1,0 +1,4 @@
+# $FreeBSD: src/tools/regression/bin/sh/errors/backquote-error1.0,v 1.3 2010/10/12 18:20:38 obrien Exp $
+
+echo 'echo `for` echo ".BAD"CODE.' | ${SH} +m -i 2>&1 | grep -q BADCODE && exit 1
+exit 0

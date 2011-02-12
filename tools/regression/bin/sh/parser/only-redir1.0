@@ -1,0 +1,3 @@
+# $FreeBSD: src/tools/regression/bin/sh/parser/only-redir1.0,v 1.1 2010/07/18 12:45:31 jilles Exp $
+</dev/null &
+wait $!

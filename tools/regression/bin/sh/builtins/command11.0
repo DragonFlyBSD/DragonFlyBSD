@@ -1,0 +1,14 @@
+# $FreeBSD: src/tools/regression/bin/sh/builtins/command11.0,v 1.1 2010/03/14 14:24:35 jilles Exp $
+
+failures=0
+
+check() {
+	if ! eval "[ $* ]"; then
+		echo "Failed: $*"
+		: $((failures += 1))
+	fi
+}
+
+check '"$({ command eval \{ shift x\; \} 2\>/dev/null; } >/dev/null; echo hi)" = hi'
+
+exit $((failures > 0))

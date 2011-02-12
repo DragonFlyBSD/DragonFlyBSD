@@ -1,0 +1,11 @@
+# $FreeBSD: src/tools/regression/bin/sh/execution/shellproc1.0,v 1.1 2011/02/02 22:03:18 jilles Exp $
+
+T=`mktemp -d "${TMPDIR:-/tmp}/sh-test.XXXXXXXX"` || exit
+trap 'rm -rf "${T}"' 0
+cat <<EOF >"$T/testshellproc"
+printf 'this '
+echo is a test
+EOF
+chmod 755 "$T/testshellproc"
+PATH=$T:$PATH
+[ "`testshellproc`" = "this is a test" ]
