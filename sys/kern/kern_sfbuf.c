@@ -31,7 +31,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/sfbuf.h>
-#include <sys/ref.h>
+#include <sys/refcount.h>
 #include <sys/objcache.h>
 
 #include <cpu/lwbuf.h>
@@ -59,7 +59,7 @@ sf_buf_cache_ctor(void *obj, void *pdata, int ocflags)
 	struct sf_buf *sf = (struct sf_buf *)obj;
 
 	sf->lwbuf = NULL;
-	kref_init(&sf->ref, 0);
+	refcount_init(&sf->ref, 0);
 
 	return (TRUE);
 }
@@ -98,7 +98,7 @@ sf_buf_alloc(struct vm_page *m)
 	 */
 	lwbuf_set_global(sf->lwbuf);
 
-	kref_init(&sf->ref, 1);
+	refcount_init(&sf->ref, 1);
 
 done:
 	return (sf);
@@ -108,23 +108,26 @@ void
 sf_buf_ref(void *arg)
 {
 	struct sf_buf *sf = arg;
-	kref_inc(&sf->ref);
+
+	refcount_acquire(&sf->ref);
 }
 
 /*
  * Detach mapped page and release resources back to the system.
+ *
+ * Returns non-zero (TRUE) if this was the last release of the sfbuf.
+ *
+ * (matching the same API that refcount_release() uses to reduce confusion)
  */
 int
 sf_buf_free(void *arg)
 {
 	struct sf_buf *sf = arg;
-	int rc;
 
-	rc = KREF_DEC((&sf->ref), {
+	if (refcount_release(&sf->ref)) {
 		lwbuf_free(sf->lwbuf);
 		objcache_put(sf_buf_cache, sf);
-		sf = NULL;
-	});
-
-	return (rc);
+		return (1);
+	}
+	return (0);
 }

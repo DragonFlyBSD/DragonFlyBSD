@@ -915,7 +915,6 @@ kern/kern_proc.c	standard
 kern/kern_prot.c	standard
 kern/kern_nrandom.c	standard
 kern/kern_resource.c	standard
-kern/kern_ref.c		standard
 kern/kern_plimit.c	standard
 kern/kern_slaballoc.c	standard
 kern/kern_systimer.c	standard
