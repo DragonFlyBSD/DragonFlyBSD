@@ -1,5 +1,6 @@
 #!/bin/sh
-#
+
+#-
 # Copyright (c) June 1996 Wolfram Schneider <wosch@FreeBSD.org>. Berlin.
 # All rights reserved. 
 #
@@ -23,50 +24,35 @@
 # LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
+
 #
 # TEST.sh - check if test(1) or builtin test works
 #
-# $FreeBSD: src/bin/test/TEST.sh,v 1.6.2.1 2000/07/01 03:13:10 ps Exp $
-# $DragonFly: src/bin/test/TEST.sh,v 1.2 2003/06/17 04:22:50 dillon Exp $
+# $FreeBSD: src/tools/regression/bin/test/regress.sh,v 1.1 2010/11/08 23:15:10 jilles Exp $
 
-# force a specified test program, e.g. `env test=/bin/test sh TEST.sh'
+# force a specified test program, e.g. `env test=/bin/test sh regress.sh'
 : ${test=test}		
-
-ERROR=0 FAILED=0
 
 t ()
 {
 	# $1 -> exit code
 	# $2 -> $test expression
 
-	echo -n "$1: $test $2 "
-
+	count=$((count+1))
 	# check for syntax errors
 	syntax="`eval $test $2 2>&1`"
-	if test -z "$syntax"; then
-
-	case $1 in
-		0) if eval $test $2; then echo " OK"; else failed;fi;;
-		1) if eval $test $2; then failed; else echo " OK";fi;;
-	esac
-
+	ret=$?
+	if test -n "$syntax"; then
+		printf "not ok %s - (syntax error)\n" "$count $2"
+	elif [ "$ret" != "$1" ]; then
+		printf "not ok %s - (got $ret, expected $1)\n" "$count $2"
 	else
-		error
+		printf "ok %s\n" "$count $2"
 	fi
 }
 
-error () 
-{
-	echo ""; echo "	$syntax"
-	ERROR=`expr $ERROR + 1`
-}
-
-failed () 
-{
-	echo ""; echo "	failed"
-	FAILED=`expr $FAILED + 1`
-}
-
+count=0
+echo "1..94"
 
 t 0 'b = b' 
 t 1 'b != b' 
@@ -132,5 +118,42 @@ t 0 '"a" -a ! ""'
 t 1 '""'
 t 0 '! ""'
 
-echo ""
-echo "Syntax errors: $ERROR Failed: $FAILED"
+t 0 '!'
+t 0 '\('
+t 0 '\)'
+
+t 1 '\( = \)'
+t 0 '\( != \)'
+t 0 '\( ! \)'
+t 0 '\( \( \)'
+t 0 '\( \) \)'
+t 0 '! = !'
+t 1 '! != !'
+t 1 '-n = \)'
+t 0 '! != \)'
+t 1 '! = a'
+t 0 '! != -n'
+t 0 '! -c /etc/passwd'
+
+t 0 '! \( = \)'
+t 1 '! \( != \)'
+t 1 '! = = ='
+t 0 '! = = \)'
+t 0 '! "" -o ""'
+t 1 '! "x" -o ""'
+t 1 '! "" -o "x"'
+t 1 '! "x" -o "x"'
+t 0 '\( -f /etc/passwd \)'
+t 1 '\( ! = \)'
+t 0 '\( ! "" \)'
+t 1 '\( ! -e \)'
+
+t 0 '0 -eq 0 -a -d /'
+t 0 '-s = "" -o "" = ""'
+t 0 '"" = "" -o -s = ""'
+t 1 '-s = "" -o -s = ""'
+t 0 '-z x -o x = "#" -o x = x'
+t 1 '-z y -o y = "#" -o y = x'
+t 0 '0 -ne 0 -o ! -f /'
+t 0 '1 -ne 0 -o ! -f /etc/passwd'
+t 1 '0 -ne 0 -o ! -f /etc/passwd'
