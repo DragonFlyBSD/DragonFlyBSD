@@ -165,7 +165,11 @@ command(const KINFO *k, const struct varent *vent)
 void
 ucomm(const KINFO *k, const struct varent *vent)
 {
-	printf("%-*s", vent->width, make_printable(KI_PROC(k, comm)));
+	/* Do not pad the last field */
+	if (STAILQ_NEXT(vent, link) == NULL)
+		printf("%s", make_printable(KI_PROC(k, comm)));
+	else
+		printf("%-*s", vent->width, make_printable(KI_PROC(k, comm)));
 }
 
 void
