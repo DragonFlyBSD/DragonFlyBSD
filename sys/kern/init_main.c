@@ -64,6 +64,7 @@
 #include <sys/malloc.h>
 #include <sys/machintr.h>
 
+#include <sys/refcount.h>
 #include <sys/file2.h>
 #include <sys/thread2.h>
 #include <sys/sysref2.h>
@@ -370,14 +371,19 @@ proc0_init(void *dummy __unused)
 	 * Create process 0 (the swapper).
 	 */
 	LIST_INSERT_HEAD(&allproc, p, p_list);
-	p->p_pgrp = &pgrp0;
 	LIST_INSERT_HEAD(PGRPHASH(0), &pgrp0, pg_hash);
 	LIST_INIT(&pgrp0.pg_members);
+	lwkt_token_init(&pgrp0.pg_token, "pgrp0");
+	refcount_init(&pgrp0.pg_refs, 1);
+	lockinit(&pgrp0.pg_lock, "pgwt0", 0, 0);
 	LIST_INSERT_HEAD(&pgrp0.pg_members, p, p_pglist);
 
 	pgrp0.pg_session = &session0;
 	session0.s_count = 1;
 	session0.s_leader = p;
+
+	pgref(&pgrp0);
+	p->p_pgrp = &pgrp0;
 
 	p->p_sysent = &aout_sysvec;
 

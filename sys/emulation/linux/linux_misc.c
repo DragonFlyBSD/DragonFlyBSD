@@ -1705,6 +1705,7 @@ sys_linux_getppid(struct linux_getppid_args *args)
 	} else {
 		args->sysmsg_result = parent->p_pid;
 	}
+	PRELE(p);
 
 out:
 	return (0);
@@ -1840,6 +1841,7 @@ sys_linux_sched_getaffinity(struct linux_sched_getaffinity_args *args)
 	get_mplock();
 	if (args->pid == 0) {
 		p = curproc;
+		PHOLD(p);
 	} else {
 		p = pfind(args->pid);
 		if (p == NULL) {
@@ -1862,6 +1864,8 @@ done:
 	if (error == 0)
 		args->sysmsg_iresult = sizeof(cpumask_t);
 #endif
+	if (p)
+		PRELE(p);
 	return (error);
 }
 

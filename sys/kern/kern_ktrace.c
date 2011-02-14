@@ -299,19 +299,25 @@ sys_ktrace(struct ktrace_args *uap)
 	 */
 	if (uap->pid < 0) {
 		/*
-		 * by process group
+		 * By process group.  Process group is referenced, preventing
+		 * disposal.
 		 */
 		pg = pgfind(-uap->pid);
 		if (pg == NULL) {
 			error = ESRCH;
 			goto done;
 		}
+		lwkt_gettoken(&pg->pg_token);
 		LIST_FOREACH(p, &pg->pg_members, p_pglist) {
+			PHOLD(p);
 			if (descend)
 				ret |= ktrsetchildren(td, p, ops, facs, tracenode);
 			else
 				ret |= ktrops(td, p, ops, facs, tracenode);
+			PRELE(p);
 		}
+		lwkt_reltoken(&pg->pg_token);
+		pgrel(pg);
 	} else {
 		/*
 		 * by pid
@@ -325,6 +331,7 @@ sys_ktrace(struct ktrace_args *uap)
 			ret |= ktrsetchildren(td, p, ops, facs, tracenode);
 		else
 			ret |= ktrops(td, p, ops, facs, tracenode);
+		PRELE(p);
 	}
 	if (!ret)
 		error = EPERM;

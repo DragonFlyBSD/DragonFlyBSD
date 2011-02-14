@@ -521,29 +521,34 @@ exit1(int rv)
 	 */
 	if (p->p_pptr->p_sigacts->ps_flag & PS_NOCLDWAIT) {
 		struct proc *pp = p->p_pptr;
+
+		PHOLD(pp);
+		lwkt_gettoken(&pp->p_token);
 		proc_reparent(p, initproc);
+
 		/*
 		 * If this was the last child of our parent, notify
 		 * parent, so in case he was wait(2)ing, he will
-		 * continue.
+		 * continue.  This function interlocks with pptr->p_token.
 		 */
 		if (LIST_EMPTY(&pp->p_children))
 			wakeup((caddr_t)pp);
+		lwkt_reltoken(&pp->p_token);
+		PRELE(pp);
 	}
 
 	/* lwkt_gettoken(&proc_token); */
 	q = p->p_pptr;
+	PHOLD(q);
 	if (p->p_sigparent && q != initproc) {
-		PHOLD(q);
 	        ksignal(q, p->p_sigparent);
-		PRELE(q);
 	} else {
 	        ksignal(q, SIGCHLD);
 	}
+	wakeup(p->p_pptr);
+	PRELE(q);
 	/* lwkt_reltoken(&proc_token); */
 	/* NOTE: p->p_pptr can get ripped out */
-
-	wakeup(p->p_pptr);
 	/*
 	 * cpu_exit is responsible for clearing curproc, since
 	 * it is heavily integrated with the thread/switching sequence.
@@ -866,12 +871,13 @@ loop:
 			 * If we got the child via a ptrace 'attach',
 			 * we need to give it back to the old parent.
 			 */
-			if (p->p_oppid && (t = pfind(p->p_oppid))) {
+			if (p->p_oppid && (t = pfind(p->p_oppid)) != NULL) {
 				p->p_oppid = 0;
 				proc_reparent(p, t);
 				ksignal(t, SIGCHLD);
 				wakeup((caddr_t)t);
 				error = 0;
+				PRELE(t);
 				goto done;
 			}
 
@@ -948,7 +954,11 @@ loop:
 		error = 0;
 		goto done;
 	}
-	error = tsleep((caddr_t)q, PCATCH, "wait", 0);
+
+	/*
+	 * Wait for signal - interlocked using q->p_token.
+	 */
+	error = tsleep(q, PCATCH, "wait", 0);
 	if (error) {
 done:
 		lwkt_reltoken(&q->p_token);

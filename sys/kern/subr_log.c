@@ -115,7 +115,7 @@ logclose(struct dev_close_args *ap)
 	log_open = 0;
 	callout_stop(&logsoftc.sc_callout);
 	logsoftc.sc_state = 0;
-	funsetown(logsoftc.sc_sigio);
+	funsetown(&logsoftc.sc_sigio);
 	return (0);
 }
 

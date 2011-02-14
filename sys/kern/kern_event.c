@@ -209,21 +209,21 @@ filt_procattach(struct knote *kn)
 	int immediate;
 
 	immediate = 0;
-	lwkt_gettoken(&proc_token);
 	p = pfind(kn->kn_id);
 	if (p == NULL && (kn->kn_sfflags & NOTE_EXIT)) {
 		p = zpfind(kn->kn_id);
 		immediate = 1;
 	}
 	if (p == NULL) {
-		lwkt_reltoken(&proc_token);
 		return (ESRCH);
 	}
 	if (!PRISON_CHECK(curthread->td_ucred, p->p_ucred)) {
-		lwkt_reltoken(&proc_token);
+		if (p)
+			PRELE(p);
 		return (EACCES);
 	}
 
+	lwkt_gettoken(&p->p_token);
 	kn->kn_ptr.p_proc = p;
 	kn->kn_flags |= EV_CLEAR;		/* automatically set */
 
@@ -245,7 +245,8 @@ filt_procattach(struct knote *kn)
 	 */
 	if (immediate && filt_proc(kn, NOTE_EXIT))
 		KNOTE_ACTIVATE(kn);
-	lwkt_reltoken(&proc_token);
+	lwkt_reltoken(&p->p_token);
+	PRELE(p);
 
 	return (0);
 }
@@ -1200,7 +1201,7 @@ kqueue_close(struct file *fp)
 	kqueue_terminate(kq);
 
 	fp->f_data = NULL;
-	funsetown(kq->kq_sigio);
+	funsetown(&kq->kq_sigio);
 
 	kfree(kq, M_KQUEUE);
 	return (0);

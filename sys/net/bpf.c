@@ -369,7 +369,7 @@ bpfclose(struct dev_close_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct bpf_d *d = dev->si_drv1;
 
-	funsetown(d->bd_sigio);
+	funsetown(&d->bd_sigio);
 	crit_enter();
 	if (d->bd_state == BPF_WAITING)
 		callout_stop(&d->bd_callout);

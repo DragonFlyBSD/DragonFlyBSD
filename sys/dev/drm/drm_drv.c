@@ -672,7 +672,7 @@ int drm_close(struct dev_close_args *ap)
 	    !dev->driver->reclaim_buffers_locked)
 		drm_reclaim_buffers(dev, file_priv);
 
-	funsetown(dev->buf_sigio);
+	funsetown(&dev->buf_sigio);
 
 	if (dev->driver->postclose != NULL)
 		dev->driver->postclose(dev, file_priv);

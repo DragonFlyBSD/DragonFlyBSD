@@ -415,7 +415,6 @@ linux_do_tkill(l_int tgid, l_int pid, l_int sig)
 			goto done2;
 		}
 	}
-	PHOLD(p);
 
 	EMUL_LOCK();
 	em = emuldata_get(p);

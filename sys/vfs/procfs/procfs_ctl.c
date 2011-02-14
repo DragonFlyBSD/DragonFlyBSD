@@ -218,8 +218,10 @@ procfs_control(struct proc *curp, struct lwp *lp, int op)
 			struct proc *pp;
 
 			pp = pfind(p->p_oppid);
-			if (pp)
+			if (pp) {
 				proc_reparent(p, pp);
+				PRELE(pp);
+			}
 		}
 
 		p->p_oppid = 0;

@@ -122,8 +122,6 @@ struct reg;
 struct fpreg;
 struct dbreg;
 
-#define PFIND(pid) ((pid) ? pfind(pid) : &proc0)
-
 void procfs_exit (struct thread *);
 int procfs_freevp (struct vnode *);
 int procfs_allocvp (struct mount *, struct vnode **, long, pfstype);

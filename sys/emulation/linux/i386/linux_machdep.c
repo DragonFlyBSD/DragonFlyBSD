@@ -421,10 +421,10 @@ sys_linux_exit_group(struct linux_exit_group_args *args)
 		LIST_INSERT_AFTER(e, em, threads);
 		if ((e->flags & EMUL_DIDKILL) == 0) {
 			e->flags |= EMUL_DIDKILL;
-			KKASSERT(pfind(e->proc->p_pid) == e->proc);
-			get_mplock();
+			lwkt_gettoken(&proc_token);
+			KKASSERT(pfindn(e->proc->p_pid) == e->proc);
 			ksignal(e->proc, SIGKILL);
-			rel_mplock();
+			lwkt_reltoken(&proc_token);
 		}
 	}
 

@@ -719,10 +719,10 @@ sys_linux_get_robust_list(struct linux_get_robust_list_args *args)
 		if (priv_check(curthread, PRIV_CRED_SETUID) ||
 		    priv_check(curthread, PRIV_CRED_SETEUID)/* ||
 		    p_candebug(curproc, p) */) {
+			PRELE(p);
 			return (EPERM);
 		}
-		
-
+		PRELE(p);
 	}
 
 	error = copyout(&len, args->len, sizeof(l_size_t));

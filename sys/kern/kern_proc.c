@@ -56,6 +56,7 @@
 #include <sys/user.h>
 #include <machine/smp.h>
 
+#include <sys/refcount.h>
 #include <sys/spinlock2.h>
 #include <sys/mplock2.h>
 
@@ -161,15 +162,36 @@ inferior(struct proc *p)
 }
 
 /*
- * Locate a process by number
- *
- * XXX TODO - change API to PHOLD() the returned process ?
+ * Locate a process by number.  The returned process will be referenced and
+ * must be released with PRELE().
  *
  * No requirements.
- * The caller must hold proc_token if the caller wishes a stable result.
  */
 struct proc *
 pfind(pid_t pid)
+{
+	struct proc *p;
+
+	lwkt_gettoken(&proc_token);
+	LIST_FOREACH(p, PIDHASH(pid), p_hash) {
+		if (p->p_pid == pid) {
+			PHOLD(p);
+			lwkt_reltoken(&proc_token);
+			return (p);
+		}
+	}
+	lwkt_reltoken(&proc_token);
+	return (NULL);
+}
+
+/*
+ * Locate a process by number.  The returned process is NOT referenced.
+ * The caller should hold proc_token if the caller wishes a stable result.
+ *
+ * No requirements.
+ */
+struct proc *
+pfindn(pid_t pid)
 {
 	struct proc *p;
 
@@ -184,11 +206,25 @@ pfind(pid_t pid)
 	return (NULL);
 }
 
+void
+pgref(struct pgrp *pgrp)
+{
+	refcount_acquire(&pgrp->pg_refs);
+}
+
+void
+pgrel(struct pgrp *pgrp)
+{
+	if (refcount_release(&pgrp->pg_refs))
+		pgdelete(pgrp);
+}
+
 /*
- * Locate a process group by number
+ * Locate a process group by number.  The returned process group will be
+ * referenced w/pgref() and must be released with pgrel() (or assigned
+ * somewhere if you wish to keep the reference).
  *
  * No requirements.
- * The caller must hold proc_token if the caller wishes a stable result.
  */
 struct pgrp *
 pgfind(pid_t pgid)
@@ -198,6 +234,7 @@ pgfind(pid_t pgid)
 	lwkt_gettoken(&proc_token);
 	LIST_FOREACH(pgrp, PGRPHASH(pgid), pg_hash) {
 		if (pgrp->pg_id == pgid) {
+			refcount_acquire(&pgrp->pg_refs);
 			lwkt_reltoken(&proc_token);
 			return (pgrp);
 		}
@@ -215,9 +252,9 @@ int
 enterpgrp(struct proc *p, pid_t pgid, int mksess)
 {
 	struct pgrp *pgrp;
+	struct pgrp *opgrp;
 	int error;
 
-	lwkt_gettoken(&proc_token);
 	pgrp = pgfind(pgid);
 
 	KASSERT(pgrp == NULL || !mksess,
@@ -233,7 +270,7 @@ enterpgrp(struct proc *p, pid_t pgid, int mksess)
 		 */
 		KASSERT(p->p_pid == pgid,
 			("enterpgrp: new pgrp and pid != pgid"));
-		if ((np = pfind(savepid)) == NULL || np != p) {
+		if ((np = pfindn(savepid)) == NULL || np != p) {
 			error = ESRCH;
 			goto fatal;
 		}
@@ -267,28 +304,38 @@ enterpgrp(struct proc *p, pid_t pgid, int mksess)
 		LIST_INSERT_HEAD(PGRPHASH(pgid), pgrp, pg_hash);
 		pgrp->pg_jobc = 0;
 		SLIST_INIT(&pgrp->pg_sigiolst);
+		lwkt_token_init(&pgrp->pg_token, "pgrp_token");
+		refcount_init(&pgrp->pg_refs, 1);
 		lockinit(&pgrp->pg_lock, "pgwt", 0, 0);
 	} else if (pgrp == p->p_pgrp) {
+		pgrel(pgrp);
 		goto done;
-	}
+	} /* else pgfind() referenced the pgrp */
 
 	/*
 	 * Adjust eligibility of affected pgrps to participate in job control.
 	 * Increment eligibility counts before decrementing, otherwise we
 	 * could reach 0 spuriously during the first call.
 	 */
+	lwkt_gettoken(&pgrp->pg_token);
+	lwkt_gettoken(&p->p_token);
 	fixjobc(p, pgrp, 1);
 	fixjobc(p, p->p_pgrp, 0);
-
-	LIST_REMOVE(p, p_pglist);
-	if (LIST_EMPTY(&p->p_pgrp->pg_members))
-		pgdelete(p->p_pgrp);
+	while ((opgrp = p->p_pgrp) != NULL) {
+		opgrp = p->p_pgrp;
+		lwkt_gettoken(&opgrp->pg_token);
+		LIST_REMOVE(p, p_pglist);
+		p->p_pgrp = NULL;
+		lwkt_reltoken(&opgrp->pg_token);
+		pgrel(opgrp);
+	}
 	p->p_pgrp = pgrp;
 	LIST_INSERT_HEAD(&pgrp->pg_members, p, p_pglist);
+	lwkt_reltoken(&p->p_token);
+	lwkt_reltoken(&pgrp->pg_token);
 done:
 	error = 0;
 fatal:
-	lwkt_reltoken(&proc_token);
 	return (error);
 }
 
@@ -300,19 +347,30 @@ fatal:
 int
 leavepgrp(struct proc *p)
 {
-	lwkt_gettoken(&proc_token);
-	LIST_REMOVE(p, p_pglist);
-	if (LIST_EMPTY(&p->p_pgrp->pg_members))
-		pgdelete(p->p_pgrp);
-	p->p_pgrp = NULL;
-	lwkt_reltoken(&proc_token);
+	struct pgrp *pg = p->p_pgrp;
+
+	lwkt_gettoken(&p->p_token);
+	pg = p->p_pgrp;
+	if (pg) {
+		pgref(pg);
+		lwkt_gettoken(&pg->pg_token);
+		if (p->p_pgrp == pg) {
+			p->p_pgrp = NULL;
+			LIST_REMOVE(p, p_pglist);
+			pgrel(pg);
+		}
+		lwkt_reltoken(&pg->pg_token);
+		lwkt_reltoken(&p->p_token);	/* avoid chaining on rel */
+		pgrel(pg);
+	} else {
+		lwkt_reltoken(&p->p_token);
+	}
 	return (0);
 }
 
 /*
- * Delete a process group
- *
- * The caller must hold proc_token.
+ * Delete a process group.  Must be called only after the last ref has been
+ * released.
  */
 static void
 pgdelete(struct pgrp *pgrp)
@@ -400,8 +458,8 @@ fixjobc(struct proc *p, struct pgrp *pgrp, int entering)
 	 * Check p's parent to see whether p qualifies its own process
 	 * group; if so, adjust count for p's process group.
 	 */
-	lwkt_gettoken(&proc_token);
 	lwkt_gettoken(&p->p_token);	/* p_children scan */
+	lwkt_gettoken(&pgrp->pg_token);
 
 	mysession = pgrp->pg_session;
 	if ((hispgrp = p->p_pptr->p_pgrp) != pgrp &&
@@ -418,17 +476,26 @@ fixjobc(struct proc *p, struct pgrp *pgrp, int entering)
 	 * process groups.
 	 */
 	LIST_FOREACH(np, &p->p_children, p_sibling) {
+		PHOLD(np);
+		lwkt_gettoken(&np->p_token);
 		if ((hispgrp = np->p_pgrp) != pgrp &&
 		    hispgrp->pg_session == mysession &&
 		    np->p_stat != SZOMB) {
+			pgref(hispgrp);
+			lwkt_gettoken(&hispgrp->pg_token);
 			if (entering)
 				hispgrp->pg_jobc++;
 			else if (--hispgrp->pg_jobc == 0)
 				orphanpg(hispgrp);
+			lwkt_reltoken(&hispgrp->pg_token);
+			pgrel(hispgrp);
 		}
+		lwkt_reltoken(&np->p_token);
+		PRELE(np);
 	}
+	KKASSERT(pgrp->pg_refs > 0);
+	lwkt_reltoken(&pgrp->pg_token);
 	lwkt_reltoken(&p->p_token);
-	lwkt_reltoken(&proc_token);
 }
 
 /*
@@ -436,7 +503,7 @@ fixjobc(struct proc *p, struct pgrp *pgrp, int entering)
  * if there are any stopped processes in the group,
  * hang-up all process in that group.
  *
- * The caller must hold proc_token.
+ * The caller must hold pg_token.
  */
 static void
 orphanpg(struct pgrp *pg)
@@ -700,8 +767,9 @@ DB_SHOW_COMMAND(pgrpdump, pgrpdump)
 
 /*
  * Locate a process on the zombie list.  Return a process or NULL.
+ * The returned process will be referenced and the caller must release
+ * it with PRELE().
  *
- * The caller must hold proc_token if a stable result is desired.
  * No other requirements.
  */
 struct proc *
@@ -712,6 +780,7 @@ zpfind(pid_t pid)
 	lwkt_gettoken(&proc_token);
 	LIST_FOREACH(p, &zombproc, p_list) {
 		if (p->p_pid == pid) {
+			PHOLD(p);
 			lwkt_reltoken(&proc_token);
 			return (p);
 		}
@@ -797,7 +866,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 
 	lwkt_gettoken(&proc_token);
 	if (oid == KERN_PROC_PID) {
-		p = pfind((pid_t)name[0]);
+		p = pfindn((pid_t)name[0]);
 		if (p == NULL)
 			goto post_threads;
 		if (!PRISON_CHECK(cr1, p->p_ucred))
@@ -941,7 +1010,7 @@ sysctl_kern_proc_args(SYSCTL_HANDLER_ARGS)
 		return (EINVAL);
 
 	lwkt_gettoken(&proc_token);
-	p = pfind((pid_t)name[0]);
+	p = pfindn((pid_t)name[0]);
 	if (p == NULL)
 		goto done;
 
@@ -1001,7 +1070,7 @@ sysctl_kern_proc_cwd(SYSCTL_HANDLER_ARGS)
 		return (EINVAL);
 
 	lwkt_gettoken(&proc_token);
-	p = pfind((pid_t)name[0]);
+	p = pfindn((pid_t)name[0]);
 	if (p == NULL)
 		goto done;
 

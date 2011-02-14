@@ -573,6 +573,7 @@ sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
     mouse_info_t *mouse;
     scr_stat *cur_scp;
     scr_stat *scp;
+    struct proc *oproc;
     int f;
 
     scp = SC_STAT(tp->t_dev);
@@ -586,14 +587,20 @@ sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	switch (mouse->operation) {
 	case MOUSE_MODE:
 	    if (ISSIGVALID(mouse->u.mode.signal)) {
+		oproc = scp->mouse_proc;
 		scp->mouse_signal = mouse->u.mode.signal;
 		scp->mouse_proc = curproc;
 		scp->mouse_pid = curproc->p_pid;
-	    }
-	    else {
+		PHOLD(curproc);
+	    } else {
+		oproc = scp->mouse_proc;
 		scp->mouse_signal = 0;
 		scp->mouse_proc = NULL;
 		scp->mouse_pid = 0;
+	    }
+	    if (oproc) {
+		    PRELE(oproc);
+		    oproc = NULL;
 	    }
 	    return 0;
 
@@ -688,10 +695,13 @@ sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	    if (cur_scp->mouse_signal) {
     		/* has controlling process died? */
 		if (cur_scp->mouse_proc && 
-		    (cur_scp->mouse_proc != pfind(cur_scp->mouse_pid))){
+		    (cur_scp->mouse_proc != pfindn(cur_scp->mouse_pid))){
+			oproc = cur_scp->mouse_proc;
 		    	cur_scp->mouse_signal = 0;
 			cur_scp->mouse_proc = NULL;
 			cur_scp->mouse_pid = 0;
+			if (oproc)
+				PRELE(oproc);
 		} else {
 		    ksignal(cur_scp->mouse_proc, cur_scp->mouse_signal);
 		    break;
@@ -741,10 +751,13 @@ sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 
 	    if (cur_scp->mouse_signal) {
 		if (cur_scp->mouse_proc && 
-		    (cur_scp->mouse_proc != pfind(cur_scp->mouse_pid))){
+		    (cur_scp->mouse_proc != pfindn(cur_scp->mouse_pid))){
+			oproc = cur_scp->mouse_proc;
 		    	cur_scp->mouse_signal = 0;
 			cur_scp->mouse_proc = NULL;
 			cur_scp->mouse_pid = 0;
+			if (oproc)
+				PRELE(oproc);
 		} else {
 		    ksignal(cur_scp->mouse_proc, cur_scp->mouse_signal);
 		    break;

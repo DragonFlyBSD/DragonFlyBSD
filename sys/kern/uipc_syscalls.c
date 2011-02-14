@@ -1372,7 +1372,8 @@ sf_buf_mfree(void *arg)
 	vm_page_t m;
 
 	m = sf_buf_page(sf);
-	if (sf_buf_free(sf) == 0) {
+	if (sf_buf_free(sf)) {
+		/* sf invalid now */
 		vm_page_unwire(m, 0);
 		if (m->wire_count == 0 && m->object == NULL)
 			vm_page_try_to_free(m);

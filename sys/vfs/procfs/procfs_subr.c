@@ -274,13 +274,14 @@ procfs_rw(struct vop_read_args *ap)
 
 	lwkt_gettoken(&proc_token);
 
-	p = PFIND(pfs->pfs_pid);
+	p = pfind(pfs->pfs_pid);
 	if (p == NULL) {
 		lwkt_reltoken(&proc_token);
 		return (EINVAL);
 	}
 	if (p->p_pid == 1 && securelevel > 0 && uio->uio_rw == UIO_WRITE) {
 		lwkt_reltoken(&proc_token);
+		PRELE(p);
 		return (EACCES);
 	}
 	/* XXX lwp */
@@ -350,6 +351,7 @@ procfs_rw(struct vop_read_args *ap)
 	pfs->pfs_lockowner = 0;
 	lwkt_reltoken(&proc_token);
 	wakeup(&pfs->pfs_lockowner);
+	PRELE(p);
 
 	return rtval;
 }

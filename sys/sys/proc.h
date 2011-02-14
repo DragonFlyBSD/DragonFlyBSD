@@ -106,7 +106,9 @@ struct	pgrp {
 	struct  sigiolst pg_sigiolst;	/* List of sigio sources. */
 	pid_t	pg_id;			/* Pgrp id. */
 	int	pg_jobc;	/* # procs qualifying pgrp for job control */
-	struct lock pg_lock;		/* Lock during fork */
+	u_int	pg_refs;
+	struct lwkt_token pg_token;
+	struct lock pg_lock;
 };
 
 #define	PS_NOCLDWAIT	0x0001	/* No zombies if child dies */
@@ -437,7 +439,9 @@ extern void stopevent(struct proc*, unsigned int, unsigned int);
 	} while (0)
 
 /*
- * Hold process in memory, don't destruct , normally for ptrace/procfs work
+ * Hold process in memory, don't destruct, used by ktrace, procfs, sigio,
+ * and signaling code (e.g. ksignal()).
+ *
  * MPSAFE
  */
 #define PHOLD(p)	atomic_add_int(&(p)->p_lock, 1)
@@ -489,9 +493,12 @@ extern	u_long ps_arg_cache_limit;
 extern	int ps_argsopen;
 extern	int ps_showallprocs;
 
-struct proc *pfind (pid_t);	/* Find process by id. */
-struct pgrp *pgfind (pid_t);	/* Find process group by id. */
-struct proc *zpfind (pid_t);	/* Find zombie process by id. */
+struct proc *pfind (pid_t);	/* Find process by id w/ref */
+struct proc *pfindn (pid_t);	/* Find process by id wo/ref */
+struct pgrp *pgfind (pid_t);	/* Find process group by id w/ref */
+struct proc *zpfind (pid_t);	/* Find zombie process by id w/ref */
+void pgref (struct pgrp *);	/* Ref pgrp preventing disposal */
+void pgrel (struct pgrp *);	/* Deref pgrp & dispose on 1->0 trans */
 
 struct globaldata;
 struct lwp_params;

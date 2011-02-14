@@ -236,7 +236,8 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 {
 	struct proc *p1 = lp1->lwp_proc;
 	struct proc *p2, *pptr;
-	struct pgrp *pgrp;
+	struct pgrp *p1grp;
+	struct pgrp *plkgrp;
 	uid_t uid;
 	int ok, error;
 	static int curfail = 0;
@@ -248,7 +249,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 		return (EINVAL);
 
 	lwkt_gettoken(&p1->p_token);
-	pgrp = NULL;
+	plkgrp = NULL;
 
 	/*
 	 * Here we don't create a new process, but we divorce
@@ -300,8 +301,10 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * and cause the process group lock to be held indefinitely.  If
 	 * a STOP occurs, the fork will be restarted after the CONT.
 	 */
-	if ((flags & RFPGLOCK) && (pgrp = p1->p_pgrp) != NULL) {
-		lockmgr(&pgrp->pg_lock, LK_SHARED);
+	p1grp = p1->p_pgrp;
+	if ((flags & RFPGLOCK) && (plkgrp = p1->p_pgrp) != NULL) {
+		pgref(plkgrp);
+		lockmgr(&plkgrp->pg_lock, LK_SHARED);
 		if (CURSIG_NOBLOCK(lp1)) {
 			error = ERESTART;
 			goto done;
@@ -483,7 +486,10 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * race a ^C being sent to the process group by not receiving it
 	 * at all prior to this line.
 	 */
+	pgref(p1grp);
+	lwkt_gettoken(&p1grp->pg_token);
 	LIST_INSERT_AFTER(p1, p2, p_pglist);
+	lwkt_reltoken(&p1grp->pg_token);
 
 	/*
 	 * Attach the new process to its parent.
@@ -578,8 +584,10 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	error = 0;
 done:
 	lwkt_reltoken(&p1->p_token);
-	if (pgrp)
-		lockmgr(&pgrp->pg_lock, LK_RELEASE);
+	if (plkgrp) {
+		lockmgr(&plkgrp->pg_lock, LK_RELEASE);
+		pgrel(plkgrp);
+	}
 	return (error);
 }
 

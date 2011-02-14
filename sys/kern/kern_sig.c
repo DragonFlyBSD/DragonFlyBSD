@@ -692,11 +692,16 @@ dokillpg(int sig, int pgid, int all)
 			 * zero pgid means send to my process group.
 			 */
 			pgrp = cp->p_pgrp;
+			pgref(pgrp);
 		} else {
 			pgrp = pgfind(pgid);
 			if (pgrp == NULL)
 				return (ESRCH);
 		}
+
+		/*
+		 * Must interlock all signals against fork
+		 */
 		lockmgr(&pgrp->pg_lock, LK_EXCLUSIVE);
 		LIST_FOREACH(p, &pgrp->pg_members, p_pglist) {
 			if (p->p_pid <= 1 || 
@@ -710,6 +715,7 @@ dokillpg(int sig, int pgid, int all)
 				ksignal(p, sig);
 		}
 		lockmgr(&pgrp->pg_lock, LK_RELEASE);
+		pgrel(pgrp);
 	}
 	return (info.nfound ? 0 : ESRCH);
 }
@@ -754,7 +760,6 @@ kern_kill(int sig, pid_t pid, lwpid_t tid)
 			lwkt_reltoken(&proc_token);
 			return (ESRCH);
 		}
-		PHOLD(p);
 		lwkt_gettoken(&p->p_token);
 		if (!CANSIGNAL(p, sig)) {
 			lwkt_reltoken(&p->p_token);
@@ -871,13 +876,18 @@ pgsignal(struct pgrp *pgrp, int sig, int checkctty)
 {
 	struct proc *p;
 
+	/*
+	 * Must interlock all signals against fork
+	 */
 	if (pgrp) {
+		pgref(pgrp);
 		lockmgr(&pgrp->pg_lock, LK_EXCLUSIVE);
 		LIST_FOREACH(p, &pgrp->pg_members, p_pglist) {
 			if (checkctty == 0 || p->p_flag & P_CONTROLT)
 				ksignal(p, sig);
 		}
 		lockmgr(&pgrp->pg_lock, LK_RELEASE);
+		pgrel(pgrp);
 	}
 }
 
@@ -937,9 +947,10 @@ trapsignal(struct lwp *lp, int sig, u_long code)
 }
 
 /*
- * Find a suitable lwp to deliver the signal to.
+ * Find a suitable lwp to deliver the signal to.  Returns NULL if all
+ * lwps hold the signal blocked.
  *
- * Returns NULL if all lwps hold the signal blocked.
+ * Caller must hold p->p_token.
  */
 static struct lwp *
 find_lwp_for_signal(struct proc *p, int sig)
@@ -955,8 +966,10 @@ find_lwp_for_signal(struct proc *p, int sig)
 	 * soon anyways.
 	 */
 	lp = lwkt_preempted_proc();
-	if (lp != NULL && lp->lwp_proc == p && !SIGISMEMBER(lp->lwp_sigmask, sig))
+	if (lp != NULL && lp->lwp_proc == p &&
+	    !SIGISMEMBER(lp->lwp_sigmask, sig)) {
 		return (lp);
+	}
 
 	run = sleep = stop = NULL;
 	FOREACH_LWP_IN_PROC(lp, p) {
@@ -1037,6 +1050,7 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 
 	KKASSERT(lp == NULL || lp->lwp_proc == p);
 
+	PHOLD(p);
 	lwkt_gettoken(&p->p_token);
 
 	prop = sigprop(sig);
@@ -1056,6 +1070,7 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		 */
 		if (lp && (lp->lwp_flag & LWP_WEXIT)) {
 			lwkt_reltoken(&p->p_token);
+			PRELE(p);
 			return;
 		}
 
@@ -1066,6 +1081,7 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		 */
 		if (SIGISMEMBER(p->p_sigignore, sig)) {
 			lwkt_reltoken(&p->p_token);
+			PRELE(p);
 			return;
 		}
 		if (SIGISMEMBER(p->p_sigcatch, sig))
@@ -1090,6 +1106,7 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		if (prop & SA_TTYSTOP && p->p_pgrp->pg_jobc == 0 &&
 		    action == SIG_DFL) {
 			lwkt_reltoken(&p->p_token);
+			PRELE(p);
 		        return;
 		}
 		SIG_CONTSIGMASK(p->p_siglist);
@@ -1252,6 +1269,7 @@ active_process:
 
 out:
 	lwkt_reltoken(&p->p_token);
+	PRELE(p);
 	crit_exit();
 }
 
@@ -2268,14 +2286,20 @@ pgsigio(struct sigio *sigio, int sig, int checkctty)
 			ksignal(sigio->sio_proc, sig);
 	} else if (sigio->sio_pgid < 0) {
 		struct proc *p;
+		struct pgrp *pg = sigio->sio_pgrp;
 
-		lockmgr(&sigio->sio_pgrp->pg_lock, LK_EXCLUSIVE);
-		LIST_FOREACH(p, &sigio->sio_pgrp->pg_members, p_pglist) {
+		/*
+		 * Must interlock all signals against fork
+		 */
+		pgref(pg);
+		lockmgr(&pg->pg_lock, LK_EXCLUSIVE);
+		LIST_FOREACH(p, &pg->pg_members, p_pglist) {
 			if (CANSIGIO(sigio->sio_ruid, sigio->sio_ucred, p) &&
 			    (checkctty == 0 || (p->p_flag & P_CONTROLT)))
 				ksignal(p, sig);
 		}
-		lockmgr(&sigio->sio_pgrp->pg_lock, LK_RELEASE);
+		lockmgr(&pg->pg_lock, LK_RELEASE);
+		pgrel(pg);
 	}
 }
 

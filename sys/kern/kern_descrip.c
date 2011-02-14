@@ -645,26 +645,46 @@ retry:
  * MPSAFE
  */
 void
-funsetown(struct sigio *sigio)
+funsetown(struct sigio **sigiop)
 {
+	struct pgrp *pgrp;
+	struct proc *p;
+	struct sigio *sigio;
+
+	if ((sigio = *sigiop) != NULL) {
+		lwkt_gettoken(&proc_token);	/* protect sigio */
+		KKASSERT(sigiop == sigio->sio_myref);
+		sigio = *sigiop;
+		*sigiop = NULL;
+		lwkt_reltoken(&proc_token);
+	}
 	if (sigio == NULL)
 		return;
-	lwkt_gettoken(&proc_token);
-	*(sigio->sio_myref) = NULL;
+
 	if (sigio->sio_pgid < 0) {
-		SLIST_REMOVE(&sigio->sio_pgrp->pg_sigiolst, sigio,
-			     sigio, sio_pgsigio);
+		pgrp = sigio->sio_pgrp;
+		sigio->sio_pgrp = NULL;
+		lwkt_gettoken(&pgrp->pg_token);
+		SLIST_REMOVE(&pgrp->pg_sigiolst, sigio, sigio, sio_pgsigio);
+		lwkt_reltoken(&pgrp->pg_token);
+		pgrel(pgrp);
 	} else /* if ((*sigiop)->sio_pgid > 0) */ {
-		SLIST_REMOVE(&sigio->sio_proc->p_sigiolst, sigio,
-			     sigio, sio_pgsigio);
+		p = sigio->sio_proc;
+		sigio->sio_proc = NULL;
+		PHOLD(p);
+		lwkt_gettoken(&p->p_token);
+		SLIST_REMOVE(&p->p_sigiolst, sigio, sigio, sio_pgsigio);
+		lwkt_reltoken(&p->p_token);
+		PRELE(p);
 	}
-	lwkt_reltoken(&proc_token);
 	crfree(sigio->sio_ucred);
+	sigio->sio_ucred = NULL;
 	kfree(sigio, M_SIGIO);
 }
 
 /*
- * Free a list of sigio structures.
+ * Free a list of sigio structures.  Caller is responsible for ensuring
+ * that the list is MPSAFE.
  *
  * MPSAFE
  */
@@ -673,10 +693,8 @@ funsetownlst(struct sigiolst *sigiolst)
 {
 	struct sigio *sigio;
 
-	lwkt_gettoken(&proc_token);
 	while ((sigio = SLIST_FIRST(sigiolst)) != NULL)
-		funsetown(sigio);
-	lwkt_reltoken(&proc_token);
+		funsetown(sigio->sio_myref);
 }
 
 /*
@@ -690,17 +708,16 @@ funsetownlst(struct sigiolst *sigiolst)
 int
 fsetown(pid_t pgid, struct sigio **sigiop)
 {
-	struct proc *proc;
-	struct pgrp *pgrp;
+	struct proc *proc = NULL;
+	struct pgrp *pgrp = NULL;
 	struct sigio *sigio;
 	int error;
 
 	if (pgid == 0) {
-		funsetown(*sigiop);
+		funsetown(sigiop);
 		return (0);
 	}
 
-	lwkt_gettoken(&proc_token);
 	if (pgid > 0) {
 		proc = pfind(pgid);
 		if (proc == NULL) {
@@ -720,8 +737,6 @@ fsetown(pid_t pgid, struct sigio **sigiop)
 			error = EPERM;
 			goto done;
 		}
-
-		pgrp = NULL;
 	} else /* if (pgid < 0) */ {
 		pgrp = pgfind(-pgid);
 		if (pgrp == NULL) {
@@ -741,27 +756,39 @@ fsetown(pid_t pgid, struct sigio **sigiop)
 			error = EPERM;
 			goto done;
 		}
-
-		proc = NULL;
 	}
-	funsetown(*sigiop);
-	sigio = kmalloc(sizeof(struct sigio), M_SIGIO, M_WAITOK);
+	sigio = kmalloc(sizeof(struct sigio), M_SIGIO, M_WAITOK | M_ZERO);
 	if (pgid > 0) {
+		KKASSERT(pgrp == NULL);
+		lwkt_gettoken(&proc->p_token);
 		SLIST_INSERT_HEAD(&proc->p_sigiolst, sigio, sio_pgsigio);
 		sigio->sio_proc = proc;
+		lwkt_reltoken(&proc->p_token);
 	} else {
+		KKASSERT(proc == NULL);
+		lwkt_gettoken(&pgrp->pg_token);
 		SLIST_INSERT_HEAD(&pgrp->pg_sigiolst, sigio, sio_pgsigio);
 		sigio->sio_pgrp = pgrp;
+		lwkt_reltoken(&pgrp->pg_token);
+		pgrp = NULL;
 	}
 	sigio->sio_pgid = pgid;
 	sigio->sio_ucred = crhold(curthread->td_ucred);
 	/* It would be convenient if p_ruid was in ucred. */
 	sigio->sio_ruid = sigio->sio_ucred->cr_ruid;
 	sigio->sio_myref = sigiop;
+
+	lwkt_gettoken(&proc_token);
+	while (*sigiop)
+		funsetown(sigiop);
 	*sigiop = sigio;
+	lwkt_reltoken(&proc_token);
 	error = 0;
 done:
-	lwkt_reltoken(&proc_token);
+	if (pgrp)
+		pgrel(pgrp);
+	if (proc)
+		PRELE(proc);
 	return (error);
 }
 

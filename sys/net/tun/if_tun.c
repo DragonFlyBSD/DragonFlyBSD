@@ -216,7 +216,7 @@ tunclose(struct dev_close_args *ap)
 	ifp->if_flags &= ~IFF_RUNNING;
 	if_purgeaddrs_nolink(ifp);
 
-	funsetown(tp->tun_sigio);
+	funsetown(&tp->tun_sigio);
 	KNOTE(&tp->tun_rkq.ki_note, 0);
 
 	TUNDEBUG(ifp, "closed\n");

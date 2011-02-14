@@ -172,26 +172,35 @@ procfs_open(struct vop_open_args *ap)
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
 	struct proc *p1, *p2;
+	int error;
 
-	p2 = PFIND(pfs->pfs_pid);
+	p2 = pfind(pfs->pfs_pid);
 	if (p2 == NULL)
 		return (ENOENT);
-	if (pfs->pfs_pid && !PRISON_CHECK(ap->a_cred, p2->p_ucred))
-		return (ENOENT);
+	if (pfs->pfs_pid && !PRISON_CHECK(ap->a_cred, p2->p_ucred)) {
+		error = ENOENT;
+		goto done;
+	}
 
 	switch (pfs->pfs_type) {
 	case Pmem:
 		if (((pfs->pfs_flags & FWRITE) && (ap->a_mode & O_EXCL)) ||
-		    ((pfs->pfs_flags & O_EXCL) && (ap->a_mode & FWRITE)))
-			return (EBUSY);
+		    ((pfs->pfs_flags & O_EXCL) && (ap->a_mode & FWRITE))) {
+			error = EBUSY;
+			goto done;
+		}
 
 		p1 = curproc;
 		KKASSERT(p1);
 		/* Can't trace a process that's currently exec'ing. */ 
-		if ((p2->p_flag & P_INEXEC) != 0)
-			return EAGAIN;
-		if (!CHECKIO(p1, p2) || p_trespass(ap->a_cred, p2->p_ucred))
-			return (EPERM);
+		if ((p2->p_flag & P_INEXEC) != 0) {
+			error = EAGAIN;
+			goto done;
+		}
+		if (!CHECKIO(p1, p2) || p_trespass(ap->a_cred, p2->p_ucred)) {
+			error = EPERM;
+			goto done;
+		}
 
 		if (ap->a_mode & FWRITE)
 			pfs->pfs_flags = ap->a_mode & (FWRITE|O_EXCL);
@@ -201,8 +210,10 @@ procfs_open(struct vop_open_args *ap)
 	default:
 		break;
 	}
-
-	return (vop_stdopen(ap));
+	error = vop_stdopen(ap);
+done:
+	PRELE(p2);
+	return error;
 }
 
 /*
@@ -235,6 +246,7 @@ procfs_close(struct vop_close_args *ap)
 		 * told to stop on an event, but then the requesting process
 		 * has gone away or forgotten about it.
 		 */
+		p = NULL;
 		if ((ap->a_vp->v_opencount < 2)
 		    && (p = pfind(pfs->pfs_pid))
 		    && !(p->p_pfsflags & PF_LINGER)) {
@@ -244,6 +256,8 @@ procfs_close(struct vop_close_args *ap)
 			spin_unlock(&p->p_spin);
 			wakeup(&p->p_step);
 		}
+		if (p)
+			PRELE(p);
 		break;
 	default:
 		break;
@@ -271,14 +285,20 @@ procfs_ioctl(struct vop_ioctl_args *ap)
 	if (procp == NULL)
 		return ENOTTY;
 	p = curproc;
-	if (p == NULL)
-		return EINVAL;
+	if (p == NULL) {
+		error = EINVAL;
+		goto done;
+	}
 
 	/* Can't trace a process that's currently exec'ing. */ 
-	if ((procp->p_flag & P_INEXEC) != 0)
-		return EAGAIN;
-	if (!CHECKIO(p, procp) || p_trespass(ap->a_cred, procp->p_ucred))
-		return EPERM;
+	if ((procp->p_flag & P_INEXEC) != 0) {
+		error = EAGAIN;
+		goto done;
+	}
+	if (!CHECKIO(p, procp) || p_trespass(ap->a_cred, procp->p_ucred)) {
+		error = EPERM;
+		goto done;
+	}
 
 	switch (ap->a_command) {
 	case PIOCBIS:
@@ -295,7 +315,7 @@ procfs_ioctl(struct vop_ioctl_args *ap)
 #define NFLAGS	(PF_ISUGID)
 	  flags = (unsigned char)*(unsigned int*)ap->a_data;
 	  if (flags & NFLAGS && (error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0)))
-	    return error;
+	    goto done;
 	  procp->p_pfsflags = flags;
 	  break;
 	case PIOCGFL:
@@ -334,7 +354,7 @@ procfs_ioctl(struct vop_ioctl_args *ap)
 	    spin_unlock(&procp->p_spin);
 	    error = tsleep(&procp->p_stype, PCATCH | PINTERLOCKED, "piocwait", 0);
 	    if (error)
-	      return error;
+	      goto done;
 	    spin_lock(&procp->p_spin);
 	  }
 	  spin_unlock(&procp->p_spin);
@@ -350,19 +370,27 @@ procfs_ioctl(struct vop_ioctl_args *ap)
 	   *	   the MP lock.  However, the caller is presumably interlocked
 	   *	   by having waited.
 	   */
-	  if (procp->p_step == 0)
-	    return EINVAL;	/* Can only start a stopped process */
+	  if (procp->p_step == 0) {
+	    error = EINVAL;	/* Can only start a stopped process */
+	    goto done;
+	  }
 	  if ((signo = *(int*)ap->a_data) != 0) {
-	    if (signo >= NSIG || signo <= 0)
-	      return EINVAL;
+	    if (signo >= NSIG || signo <= 0) {
+	      error = EINVAL;
+	      goto done;
+	    }
 	    ksignal(procp, signo);
 	  }
 	  procp->p_step = 0;
 	  wakeup(&procp->p_step);
 	  break;
 	default:
-	  return (ENOTTY);
+	  error = ENOTTY;
+	  goto done;
 	}
+	error = 0;
+done:
+	PRELE(procp);
 	return 0;
 }
 
@@ -481,13 +509,15 @@ procfs_getattr(struct vop_getattr_args *ap)
 	switch (pfs->pfs_type) {
 	case Proot:
 	case Pcurproc:
-		procp = 0;
+		procp = NULL;
 		break;
 
 	default:
-		procp = PFIND(pfs->pfs_pid);
-		if (procp == NULL || procp->p_ucred == NULL)
-			return (ENOENT);
+		procp = pfind(pfs->pfs_pid);
+		if (procp == NULL || procp->p_ucred == NULL) {
+			error = ENOENT;
+			goto done;
+		}
 	}
 
 	error = 0;
@@ -627,7 +657,9 @@ procfs_getattr(struct vop_getattr_args *ap)
 	default:
 		panic("procfs_getattr");
 	}
-
+done:
+	if (procp)
+		PRELE(procp);
 	return (error);
 }
 
@@ -699,6 +731,7 @@ procfs_lookup(struct vop_old_lookup_args *ap)
 	if (cnp->cn_nameiop == NAMEI_DELETE || cnp->cn_nameiop == NAMEI_RENAME)
 		return (EROFS);
 
+	p = NULL;
 	error = 0;
 	if (cnp->cn_namelen == 1 && *pname == '.') {
 		*vpp = dvp;
@@ -721,7 +754,7 @@ procfs_lookup(struct vop_old_lookup_args *ap)
 		if (pid == NO_PID)
 			break;
 
-		p = PFIND(pid);
+		p = pfind(pid);
 		if (p == NULL)
 			break;
 
@@ -741,7 +774,7 @@ procfs_lookup(struct vop_old_lookup_args *ap)
 			goto out;
 		}
 
-		p = PFIND(pfs->pfs_pid);
+		p = pfind(pfs->pfs_pid);
 		if (p == NULL)
 			break;
 		/* XXX lwp */
@@ -787,6 +820,8 @@ out:
 			vn_unlock(dvp);
 		}
 	}
+	if (p)
+		PRELE(p);
 	return (error);
 }
 
@@ -857,18 +892,22 @@ procfs_readdir_proc(struct vop_readdir_args *ap)
 	struct uio *uio = ap->a_uio;
 
 	pfs = VTOPFS(ap->a_vp);
-	p = PFIND(pfs->pfs_pid);
+	p = pfind(pfs->pfs_pid);
 	if (p == NULL)
 		return(0);
-	if (!PRISON_CHECK(ap->a_cred, p->p_ucred))
-		return(0);
-	/* XXX lwp */
+	if (!PRISON_CHECK(ap->a_cred, p->p_ucred)) {
+		error = 0;
+		goto done;
+	}
+	/* XXX lwp, not MPSAFE */
 	lp = FIRST_LWP_IN_PROC(p);
 
 	error = 0;
 	i = (int)uio->uio_offset;
-	if (i < 0)
-		return (EINVAL);
+	if (i < 0) {
+		error = EINVAL;
+		goto done;
+	}
 
 	for (pt = &proc_targets[i];
 	     !error && uio->uio_resid > 0 && i < nproc_targets; pt++, i++) {
@@ -883,8 +922,10 @@ procfs_readdir_proc(struct vop_readdir_args *ap)
 	}
 
 	uio->uio_offset = (off_t)i;
-
-	return(0);
+	error = 0;
+done:
+	PRELE(p);
+	return error;
 }
 
 struct procfs_readdir_root_info {
@@ -1032,19 +1073,26 @@ procfs_readlink(struct vop_readlink_args *ap)
 	 * from under us...
 	 */
 	case Pfile:
-		procp = PFIND(pfs->pfs_pid);
+		procp = pfind(pfs->pfs_pid);
 		if (procp == NULL || procp->p_ucred == NULL) {
 			kprintf("procfs_readlink: pid %d disappeared\n",
 			    pfs->pfs_pid);
+			if (procp)
+				PRELE(procp);
 			return (uiomove("unknown", sizeof("unknown") - 1,
 			    ap->a_uio));
 		}
 		error = cache_fullpath(procp, &procp->p_textnch, &fullpath, &freepath, 0);
-		if (error != 0)
+		if (error != 0) {
+			if (procp)
+				PRELE(procp);
 			return (uiomove("unknown", sizeof("unknown") - 1,
 			    ap->a_uio));
+		}
 		error = uiomove(fullpath, strlen(fullpath), ap->a_uio);
 		kfree(freepath, M_TEMP);
+		if (procp)
+			PRELE(procp);
 		return (error);
 	default:
 		return (EINVAL);

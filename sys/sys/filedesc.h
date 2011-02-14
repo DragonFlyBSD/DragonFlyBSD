@@ -133,8 +133,7 @@ struct	sigio {
 		struct	pgrp *siu_pgrp; /* process group to receive ... */
 	} sio_u;
 	SLIST_ENTRY(sigio) sio_pgsigio;	/* sigio's for process or group */
-	struct	sigio **sio_myref;	/* location of the pointer that holds
-					 * the reference to this structure */
+	struct  sigio **sio_myref;	/* location of the pointer that holds */
 	struct	ucred *sio_ucred;	/* current credentials */
 	uid_t	sio_ruid;		/* real user id */
 	pid_t	sio_pgid;		/* pgid for signals */
@@ -178,7 +177,7 @@ int	fdissequential (struct file *);
 void	fdsequential (struct file *, int);
 pid_t	fgetown (struct sigio **);
 int	fsetown (pid_t, struct sigio **);
-void	funsetown (struct sigio *);
+void	funsetown (struct sigio **);
 void	funsetownlst (struct sigiolst *);
 void	setugidsafety (struct proc *p);
 void	allfiles_scan_exclusive(int (*callback)(struct file *, void *), void *data);

@@ -963,7 +963,7 @@ scioctl(struct dev_ioctl_args *ap)
 	DPRINTF(5, ("sc%d: VT_SETMODE ", sc->unit));
 	if (scp->smode.mode == VT_PROCESS) {
 	    lwkt_gettoken(&proc_token);
-    	    if (scp->proc == pfind(scp->pid) && scp->proc != curproc) {
+	    if (scp->proc == pfindn(scp->pid) && scp->proc != curproc) {
 		DPRINTF(5, ("error EPERM\n"));
 		lwkt_reltoken(&proc_token);
 		lwkt_reltoken(&tty_token);
@@ -2353,7 +2353,7 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
 	cur_scp->proc &&
 	lwkt_trytoken(&proc_token)) {
 
-	if (cur_scp->proc != pfind(cur_scp->pid)) {
+	if (cur_scp->proc != pfindn(cur_scp->pid)) {
 	    /* 
 	     * The controlling process has died!!.  Do some clean up.
 	     * NOTE:`cur_scp->proc' and `cur_scp->smode.mode' 
@@ -2556,7 +2556,7 @@ vt_proc_alive(scr_stat *scp)
     lwkt_gettoken(&tty_token);
     lwkt_gettoken(&proc_token);
     if (scp->proc) {
-	if (scp->proc == pfind(scp->pid)) {
+	if (scp->proc == pfindn(scp->pid)) {
 	    lwkt_reltoken(&proc_token);
 	    lwkt_reltoken(&tty_token);
 	    return TRUE;

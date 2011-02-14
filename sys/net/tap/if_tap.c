@@ -424,12 +424,12 @@ tapclose(struct dev_close_args *ap)
 		rt_ifannouncemsg(ifp, IFAN_DEPARTURE);
 	}
 
-	funsetown(tp->tap_sigio);
+	funsetown(&tp->tap_sigio);
 	tp->tap_sigio = NULL;
 	KNOTE(&tp->tap_rkq.ki_note, 0);
 
 	tp->tap_flags &= ~TAP_OPEN;
-	funsetown(tp->tap_sigtd);
+	funsetown(&tp->tap_sigtd);
 	tp->tap_sigtd = NULL;
 
 	taprefcnt --;
