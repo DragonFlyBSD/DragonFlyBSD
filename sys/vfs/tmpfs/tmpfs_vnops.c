@@ -49,8 +49,6 @@
 #include <sys/vfsops.h>
 #include <sys/vnode.h>
 
-#include <sys/mplock2.h>
-
 #include <vm/vm.h>
 #include <vm/vm_object.h>
 #include <vm/vm_page.h>
@@ -550,8 +548,6 @@ tmpfs_write (struct vop_write_args *ap)
 	 */
 	extended = ((uio->uio_offset + uio->uio_resid) > node->tn_size);
 
-	get_mplock();
-
 	while (uio->uio_resid > 0) {
 		/*
 		 * Use buffer cache I/O (via tmpfs_strategy)
@@ -631,8 +627,6 @@ tmpfs_write (struct vop_write_args *ap)
 			break;
 		}
 	}
-
-	rel_mplock();
 
 	if (error) {
 		if (extended) {
@@ -1574,9 +1568,7 @@ filt_tmpfsread(struct knote *kn, long hint)
 	 * Handle possible MP race interlock on filter check/write
 	 */
 	if (kn->kn_data == 0) {
-		get_mplock();
 		kn->kn_data = (off < INTPTR_MAX) ? off : INTPTR_MAX;
-		rel_mplock();
 	}
 	return (kn->kn_data != 0);
 }
