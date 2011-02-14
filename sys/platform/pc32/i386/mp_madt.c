@@ -116,7 +116,7 @@ struct acpi_madt_ent {
 
 #define MADT_ENT_LAPIC		0
 #define MADT_ENT_IOAPIC		1
-#define MADT_ENT_INTSRC_OVR	2
+#define MADT_ENT_INTSRC		2
 #define MADT_ENT_LAPIC_ADDR	5
 
 /* MADT Processor Local APIC */
@@ -141,11 +141,13 @@ struct acpi_madt_ioapic {
 /* MADT Interrupt Source Override */
 struct acpi_madt_intsrc {
 	struct acpi_madt_ent	mint_hdr;
-	uint8_t			mint_bus;
+	uint8_t			mint_bus;	/* MADT_INT_BUS_ */
 	uint8_t			mint_src;
 	uint32_t		mint_gsi;
 	uint16_t		mint_flags;	/* MADT_INT_ */
 } __packed;
+
+#define MADT_INT_BUS_ISA	0
 
 #define MADT_INT_POLA_MASK	0x3
 #define MADT_INT_POLA_SHIFT	0
@@ -186,7 +188,11 @@ static int			madt_lapic_pass2(int);
 static void			madt_lapic_enumerate(struct lapic_enumerator *);
 static int			madt_lapic_probe(struct lapic_enumerator *);
 
-extern u_long	ebda_addr;
+static void			madt_ioapic_enumerate(
+				    struct ioapic_enumerator *);
+static int			madt_ioapic_probe(struct ioapic_enumerator *);
+
+extern u_long			ebda_addr;
 
 static vm_paddr_t		madt_phyaddr;
 
@@ -494,7 +500,7 @@ madt_iterate_entries(struct acpi_madt *madt, madt_iter_t func, void *arg)
 			}
 			break;
 
-		case MADT_ENT_INTSRC_OVR:
+		case MADT_ENT_INTSRC:
 			if (ent->me_len < sizeof(struct acpi_madt_intsrc)) {
 				kprintf("madt_iterate_entries: invalid MADT "
 					"intsrc entry len %d\n",
@@ -556,7 +562,8 @@ madt_lapic_pass1(void)
 		panic("madt_iterate_entries(pass1) failed\n");
 
 	if (lapic_addr64 != 0) {
-		kprintf("Warning: 64bits lapic address 0x%llx\n", lapic_addr64);
+		kprintf("ACPI MADT: warning 64bits lapic address 0x%llx\n",
+			lapic_addr64);
 		/* XXX vm_offset_t is 32bits on i386 */
 		lapic_addr = lapic_addr64;
 	}
@@ -583,7 +590,7 @@ madt_lapic_pass2_callback(void *xarg, const struct acpi_madt_ent *ent)
 
 	lapic_ent = (const struct acpi_madt_lapic *)ent;
 	if (lapic_ent->ml_flags & MADT_LAPIC_ENABLED) {
-		MADT_VPRINTF("cpu_id %d, apic_id %d\n",
+		MADT_VPRINTF("cpu id %d, apic id %d\n",
 			     lapic_ent->ml_cpu_id, lapic_ent->ml_apic_id);
 		if (lapic_ent->ml_apic_id == arg->bsp_apic_id) {
 			mp_set_cpuids(0, lapic_ent->ml_apic_id);
@@ -729,3 +736,151 @@ madt_lapic_enum_register(void)
 	lapic_enumerator_register(&madt_lapic_enumerator);
 }
 SYSINIT(madt_lapic, SI_BOOT2_PRESMP, SI_ORDER_ANY, madt_lapic_enum_register, 0);
+
+struct madt_ioapic_probe_cbarg {
+	int	ioapic_cnt;
+	int	gsi_base0;
+};
+
+static int
+madt_ioapic_probe_callback(void *xarg, const struct acpi_madt_ent *ent)
+{
+	struct madt_ioapic_probe_cbarg *arg = xarg;
+
+	if (ent->me_type == MADT_ENT_INTSRC) {
+		const struct acpi_madt_intsrc *intsrc_ent;
+		int trig, pola;
+
+		intsrc_ent = (const struct acpi_madt_intsrc *)ent;
+
+		if (intsrc_ent->mint_bus != MADT_INT_BUS_ISA) {
+			kprintf("ACPI MADT: warning intsrc bus is not ISA "
+				"(%d)\n", intsrc_ent->mint_bus);
+		}
+
+		trig = (intsrc_ent->mint_flags & MADT_INT_TRIG_MASK) >>
+		       MADT_INT_TRIG_SHIFT;
+		if (trig != MADT_INT_TRIG_EDGE &&
+		    trig != MADT_INT_TRIG_CONFORM) {
+			kprintf("ACPI MADT: warning invalid intsrc trig "
+				"(%d)\n", trig);
+		}
+
+		pola = (intsrc_ent->mint_flags & MADT_INT_POLA_MASK) >>
+		       MADT_INT_POLA_SHIFT;
+		if (pola != MADT_INT_POLA_HIGH &&
+		    pola != MADT_INT_POLA_CONFORM) {
+			kprintf("ACPI MADT: warning invalid intsrc pola "
+				"(%d)\n", pola);
+		}
+
+		/* XXX magic number */
+		if (intsrc_ent->mint_src >= 16) {
+			kprintf("madt_ioapic_probe: invalid intsrc irq (%d)\n",
+				intsrc_ent->mint_src);
+			return EINVAL;
+		}
+	} else if (ent->me_type == MADT_ENT_IOAPIC) {
+		const struct acpi_madt_ioapic *ioapic_ent;
+
+		ioapic_ent = (const struct acpi_madt_ioapic *)ent;
+		if (ioapic_ent->mio_addr == 0) {
+			kprintf("madt_ioapic_probe: zero IOAPIC address\n");
+			return EINVAL;
+		}
+
+		arg->ioapic_cnt++;
+		if (ioapic_ent->mio_gsi_base == 0)
+			arg->gsi_base0 = 1;
+	}
+	return 0;
+}
+
+static int
+madt_ioapic_probe(struct ioapic_enumerator *e)
+{
+	struct madt_ioapic_probe_cbarg arg;
+	struct acpi_madt *madt;
+	int error;
+
+	if (madt_phyaddr == 0)
+		return ENXIO;
+
+	madt = madt_sdth_map(madt_phyaddr);
+	KKASSERT(madt != NULL);
+
+	bzero(&arg, sizeof(arg));
+
+	error = madt_iterate_entries(madt, madt_ioapic_probe_callback, &arg);
+	if (!error) {
+		if (arg.ioapic_cnt == 0) {
+			kprintf("madt_ioapic_probe: no IOAPIC\n");
+			error = ENXIO;
+		}
+		if (!arg.gsi_base0) {
+			kprintf("madt_ioapic_probe: no GSI base 0\n");
+			error = EINVAL;
+		}
+	}
+
+	madt_sdth_unmap(&madt->madt_hdr);
+	return error;
+}
+
+static int
+madt_ioapic_enum_callback(void *xarg, const struct acpi_madt_ent *ent)
+{
+	if (ent->me_type == MADT_ENT_INTSRC) {
+		const struct acpi_madt_intsrc *intsrc_ent;
+
+		intsrc_ent = (const struct acpi_madt_intsrc *)ent;
+		MADT_VPRINTF("INTSRC irq %d -> gsi %u\n",
+			     intsrc_ent->mint_src, intsrc_ent->mint_gsi);
+	} else if (ent->me_type == MADT_ENT_IOAPIC) {
+		const struct acpi_madt_ioapic *ioapic_ent;
+
+		ioapic_ent = (const struct acpi_madt_ioapic *)ent;
+		MADT_VPRINTF("IOAPIC addr 0x%08x, apic id %d, gsi base %u\n",
+			     ioapic_ent->mio_addr, ioapic_ent->mio_apic_id,
+			     ioapic_ent->mio_gsi_base);
+	}
+	return 0;
+}
+
+static void
+madt_ioapic_enumerate(struct ioapic_enumerator *e)
+{
+	struct acpi_madt *madt;
+	int error;
+
+	KKASSERT(madt_phyaddr != 0);
+
+	madt = madt_sdth_map(madt_phyaddr);
+	KKASSERT(madt != NULL);
+
+	error = madt_iterate_entries(madt, madt_ioapic_enum_callback, NULL);
+	if (error)
+		panic("madt_ioapic_enumerate failed\n");
+
+	madt_sdth_unmap(&madt->madt_hdr);
+}
+
+static struct ioapic_enumerator	madt_ioapic_enumerator = {
+	.ioapic_prio = IOAPIC_ENUM_PRIO_MADT,
+	.ioapic_probe = madt_ioapic_probe,
+	.ioapic_enumerate = madt_ioapic_enumerate
+};
+
+static void
+madt_ioapic_enum_register(void)
+{
+	int prio;
+
+	prio = IOAPIC_ENUM_PRIO_MADT;
+	kgetenv_int("hw.madt_ioapic_prio", &prio);
+	madt_ioapic_enumerator.ioapic_prio = prio;
+
+	ioapic_enumerator_register(&madt_ioapic_enumerator);
+}
+SYSINIT(madt_ioapic, SI_BOOT2_PRESMP, SI_ORDER_ANY,
+	madt_ioapic_enum_register, 0);

@@ -1106,3 +1106,43 @@ lapic_enumerator_register(struct lapic_enumerator *ne)
 	}
 	TAILQ_INSERT_TAIL(&lapic_enumerators, ne, lapic_link);
 }
+
+static TAILQ_HEAD(, ioapic_enumerator) ioapic_enumerators =
+	TAILQ_HEAD_INITIALIZER(ioapic_enumerators);
+
+void
+ioapic_config(void)
+{
+	struct ioapic_enumerator *e;
+	int error;
+
+	TAILQ_FOREACH(e, &ioapic_enumerators, ioapic_link) {
+		error = e->ioapic_probe(e);
+		if (!error)
+			break;
+	}
+	if (e == NULL) {
+#ifdef notyet
+		panic("can't config I/O APIC\n");
+#else
+		kprintf("no I/O APIC\n");
+		return;
+#endif
+	}
+
+	e->ioapic_enumerate(e);
+}
+
+void
+ioapic_enumerator_register(struct ioapic_enumerator *ne)
+{
+	struct ioapic_enumerator *e;
+
+	TAILQ_FOREACH(e, &ioapic_enumerators, ioapic_link) {
+		if (e->ioapic_prio < ne->ioapic_prio) {
+			TAILQ_INSERT_BEFORE(e, ne, ioapic_link);
+			return;
+		}
+	}
+	TAILQ_INSERT_TAIL(&ioapic_enumerators, ne, ioapic_link);
+}

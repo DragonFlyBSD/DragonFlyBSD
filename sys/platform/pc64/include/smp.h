@@ -134,8 +134,18 @@ struct lapic_enumerator {
 	void	(*lapic_enumerate)(struct lapic_enumerator *);
 };
 
-#define LAPIC_ENUM_PRIO_MPTABLE	20
-#define LAPIC_ENUM_PRIO_MADT	40
+#define LAPIC_ENUM_PRIO_MPTABLE		20
+#define LAPIC_ENUM_PRIO_MADT		40
+
+struct ioapic_enumerator {
+	int	ioapic_prio;
+	TAILQ_ENTRY(ioapic_enumerator) ioapic_link;
+	int	(*ioapic_probe)(struct ioapic_enumerator *);
+	void	(*ioapic_enumerate)(struct ioapic_enumerator *);
+};
+
+#define IOAPIC_ENUM_PRIO_MPTABLE	20
+#define IOAPIC_ENUM_PRIO_MADT		10
 
 /* global data in mpapic.c */
 extern volatile lapic_t		*lapic;
@@ -156,6 +166,8 @@ int	io_apic_get_id		(int);
 int	ext_int_setup		(int, int);
 void	lapic_config(void);
 void	lapic_enumerator_register(struct lapic_enumerator *);
+void	ioapic_config(void);
+void	ioapic_enumerator_register(struct ioapic_enumerator *);
 
 #if defined(READY)
 void	clr_io_apic_mask24	(int, u_int32_t);

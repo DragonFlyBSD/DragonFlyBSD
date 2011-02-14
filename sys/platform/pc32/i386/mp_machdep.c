@@ -658,6 +658,9 @@ mp_enable(u_int boot_addr)
 
 	lapic_config();
 
+	if (apic_io_enable)
+		ioapic_config();
+
 	mpfps_paddr = mptable_probe();
 	if (mpfps_paddr) {
 		mptable_map(&mpt, mpfps_paddr);
