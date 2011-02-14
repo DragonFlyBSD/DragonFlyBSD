@@ -114,24 +114,18 @@ ENTRY(IOAPIC_INTREN)
  */
 
 /*
- * u_int ioapic_read(int apic, int select);
+ * u_int ioapic_read(volatile void *ioapic, int select);
  */
 ENTRY(ioapic_read)
-	movl	%edi, %ecx		/* IOAPIC # */
-	movq	ioapic, %rax
-	movq	(%rax,%rcx,8), %rdx	/* IOAPIC base register address */
-	movl	%esi, (%rdx)		/* write the target register index */
-	movl	IOAPIC_WINDOW(%rdx), %eax /* read the IOAPIC register data */
+	movl	%esi, (%rdi)		/* write the target register index */
+	movl	IOAPIC_WINDOW(%rdi), %eax /* read the IOAPIC register data */
 	ret				/* %eax = register value */
 
 /*
- * void ioapic_write(int apic, int select, u_int value);
+ * void ioapic_write(volatile void *ioapic, int select, u_int value);
  */
 ENTRY(ioapic_write)
-	movl	%edi, %ecx		/* IOAPIC # */
-	movq	ioapic, %rax
-	movq	(%rax,%rcx,8), %r8	/* IOAPIC base register address */
-	movl	%esi, (%r8)		/* write the target register index */
-	movl	%edx, IOAPIC_WINDOW(%r8) /* write the IOAPIC register data */
+	movl	%esi, (%rdi)		/* write the target register index */
+	movl	%edx, IOAPIC_WINDOW(%rdi) /* write the IOAPIC register data */
 	ret				/* %eax = void */
 #endif

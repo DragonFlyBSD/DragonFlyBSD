@@ -435,15 +435,15 @@ io_apic_set_id(int apic, int id)
 {
 	u_int32_t ux;
 	
-	ux = ioapic_read(apic, IOAPIC_ID);	/* get current contents */
+	ux = ioapic_read(ioapic[apic], IOAPIC_ID);	/* get current contents */
 	if (((ux & APIC_ID_MASK) >> 24) != id) {
 		kprintf("Changing APIC ID for IO APIC #%d"
 		       " from %d to %d on chip\n",
 		       apic, ((ux & APIC_ID_MASK) >> 24), id);
 		ux &= ~APIC_ID_MASK;	/* clear the ID field */
 		ux |= (id << 24);
-		ioapic_write(apic, IOAPIC_ID, ux);	/* write new value */
-		ux = ioapic_read(apic, IOAPIC_ID);	/* re-read && test */
+		ioapic_write(ioapic[apic], IOAPIC_ID, ux);	/* write new value */
+		ux = ioapic_read(ioapic[apic], IOAPIC_ID);	/* re-read && test */
 		if (((ux & APIC_ID_MASK) >> 24) != id)
 			panic("can't control IO APIC #%d ID, reg: 0x%08x",
 			      apic, ux);
@@ -454,7 +454,7 @@ io_apic_set_id(int apic, int id)
 int
 io_apic_get_id(int apic)
 {
-  return (ioapic_read(apic, IOAPIC_ID) & APIC_ID_MASK) >> 24;
+  return (ioapic_read(ioapic[apic], IOAPIC_ID) & APIC_ID_MASK) >> 24;
 }
   
 
@@ -490,17 +490,17 @@ io_apic_setup_intpin(int apic, int pin)
 	 */
 	imen_lock();
 
-	flags = ioapic_read(apic, select) & IOART_RESV;
+	flags = ioapic_read(ioapic[apic], select) & IOART_RESV;
 	flags |= IOART_INTMSET | IOART_TRGREDG | IOART_INTAHI;
 	flags |= IOART_DESTPHY | IOART_DELFIXED;
 
-	target = ioapic_read(apic, select + 1) & IOART_HI_DEST_RESV;
+	target = ioapic_read(ioapic[apic], select + 1) & IOART_HI_DEST_RESV;
 	target |= 0;	/* fixed mode cpu mask of 0 - don't deliver anywhere */
 
 	vector = 0;
 
-	ioapic_write(apic, select, flags | vector);
-	ioapic_write(apic, select + 1, target);
+	ioapic_write(ioapic[apic], select, flags | vector);
+	ioapic_write(ioapic[apic], select + 1, target);
 
 	imen_unlock();
 
@@ -576,13 +576,13 @@ io_apic_setup_intpin(int apic, int pin)
 	imen_lock();
 
 	vector = IDT_OFFSET + irq;			/* IDT vec */
-	target = ioapic_read(apic, select + 1) & IOART_HI_DEST_RESV;
+	target = ioapic_read(ioapic[apic], select + 1) & IOART_HI_DEST_RESV;
 	/* Deliver all interrupts to CPU0 (BSP) */
 	target |= (CPU_TO_ID(cpuid) << IOART_HI_DEST_SHIFT) &
 		  IOART_HI_DEST_MASK;
-	flags |= ioapic_read(apic, select) & IOART_RESV;
-	ioapic_write(apic, select, flags | vector);
-	ioapic_write(apic, select + 1, target);
+	flags |= ioapic_read(ioapic[apic], select) & IOART_RESV;
+	ioapic_write(ioapic[apic], select, flags | vector);
+	ioapic_write(ioapic[apic], select + 1, target);
 
 	imen_unlock();
 }
@@ -654,8 +654,8 @@ ext_int_setup(int apic, int intr)
 	vector = IDT_OFFSET + intr;
 	flags = DEFAULT_EXTINT_FLAGS;
 
-	ioapic_write(apic, select, flags | vector);
-	ioapic_write(apic, select + 1, target);
+	ioapic_write(ioapic[apic], select, flags | vector);
+	ioapic_write(ioapic[apic], select + 1, target);
 
 	return 0;
 }

@@ -644,13 +644,13 @@ ioapic_vectorctl(int op, int intr, int flags)
 			imen_lock();
 
 			select = int_to_apicintpin[intr].redirindex;
-			value = ioapic_read(int_to_apicintpin[intr].ioapic,
+			value = ioapic_read(int_to_apicintpin[intr].apic_address,
 					    select);
 			value |= IOART_INTMSET;
 
-			ioapic_write(int_to_apicintpin[intr].ioapic,
+			ioapic_write(int_to_apicintpin[intr].apic_address,
 				     select, (value & ~APIC_TRIGMOD_MASK));
-			ioapic_write(int_to_apicintpin[intr].ioapic,
+			ioapic_write(int_to_apicintpin[intr].apic_address,
 				     select, (value & ~IOART_INTVEC) | vector);
 
 			imen_unlock();
@@ -680,12 +680,12 @@ ioapic_vectorctl(int op, int intr, int flags)
 			imen_lock();
 
 			select = int_to_apicintpin[intr].redirindex;
-			value = ioapic_read(int_to_apicintpin[intr].ioapic,
+			value = ioapic_read(int_to_apicintpin[intr].apic_address,
 					    select);
 
-			ioapic_write(int_to_apicintpin[intr].ioapic,
+			ioapic_write(int_to_apicintpin[intr].apic_address,
 				     select, (value & ~APIC_TRIGMOD_MASK));
-			ioapic_write(int_to_apicintpin[intr].ioapic,
+			ioapic_write(int_to_apicintpin[intr].apic_address,
 				     select, (value & ~IOART_INTVEC) | vector);
 
 			imen_unlock();
