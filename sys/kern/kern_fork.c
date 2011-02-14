@@ -387,13 +387,16 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	    (unsigned) ((caddr_t)&p2->p_endcopy - (caddr_t)&p2->p_startcopy));
 
 	/*
-	 * Duplicate sub-structures as needed.
-	 * Increase reference counts on shared objects.
+	 * Duplicate sub-structures as needed.  Increase reference counts
+	 * on shared objects.
+	 *
+	 * NOTE: because we are now on the allproc list it is possible for
+	 *	 other consumers to gain temporary references to p2
+	 *	 (p2->p_lock can change).
 	 */
 	if (p1->p_flag & P_PROFIL)
 		startprofclock(p2);
 	p2->p_ucred = crhold(lp1->lwp_thread->td_ucred);
-	KKASSERT(p2->p_lock == 0);
 
 	if (jailed(p2->p_ucred))
 		p2->p_flag |= P_JAILED;
