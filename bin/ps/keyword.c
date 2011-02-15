@@ -87,7 +87,7 @@ static const VAR var[] = {
 	{"batch", "BAT", NULL, 0, lpest, NULL, 3, LPOFF(origcpu), UINT, "d", NULL},
 	{"blocked", "", "sigmask", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
 	{"caught", "", "sigcatch", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
-	{"command", "CMD", NULL, COMM|LJUST|USER, command, NULL, 16, 0, 0, NULL,
+	{"command", "COMMAND", NULL, COMM|LJUST|USER, command, NULL, 16, 0, 0, NULL,
 		NULL},
 	{"cpu", "CPU", NULL, 0, lpest, NULL, 3, LPOFF(estcpu), UINT, "d", NULL},
 	{"cputime", "", "time", 0, NULL, NULL, 0, 0, 0, NULL, NULL},

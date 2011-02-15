@@ -98,6 +98,7 @@ void
 command(const KINFO *k, const struct varent *vent)
 {
 	int left;
+	int indent;
 	char *cp, *vis_env, *vis_args;
 
 	if (cflag) {
@@ -117,19 +118,33 @@ command(const KINFO *k, const struct varent *vent)
 		if ((vis_env = malloc(strlen(k->ki_env) * 4 + 1)) == NULL)
 			err(1, NULL);
 		strvis(vis_env, k->ki_env, VIS_TAB | VIS_NL | VIS_NOSLASH);
-	} else
+	} else {
 		vis_env = NULL;
+	}
+
+	indent = k->ki_indent;
+	if (indent < 0)
+		indent = 0;
 
 	if (STAILQ_NEXT(vent, link) == NULL) {
 		/* last field */
 		if (termwidth == UNLIMITED) {
 			if (vis_env)
 				printf("%s ", vis_env);
+			while (indent) {
+				putchar(' ');
+				--indent;
+			}
 			printf("%s", vis_args);
 		} else {
 			left = termwidth - (totwidth - vent->width);
 			if (left < 1) /* already wrapped, just use std width */
 				left = vent->width;
+			while (indent && left > 1) {
+				putchar(' ');
+				--indent;
+				--left;
+			}
 			if ((cp = vis_env) != NULL) {
 				while (--left >= 0 && *cp)
 					putchar(*cp++);

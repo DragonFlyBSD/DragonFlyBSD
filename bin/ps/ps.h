@@ -45,6 +45,12 @@ typedef struct kinfo {
 	struct kinfo_proc *ki_proc;	/* proc info structure */
 	const char *ki_args;		/* exec args */
 	const char *ki_env;		/* environment */
+	int	ki_indent;		/* used by dochain */
+	struct kinfo *ki_hnext;		/* used by dochain */
+	struct kinfo *ki_cbase;		/* used by dochain */
+	struct kinfo **ki_ctailp;	/* used by dochain */
+	struct kinfo *ki_cnext;		/* used by dochain */
+	struct kinfo *ki_parent;	/* used by dochain */
 } KINFO;
 
 /* Variables. */

@@ -66,7 +66,11 @@
 
 #define SEP ", \t"		/* username separators */
 
-KINFO *kinfo;
+#define KHSIZE	2048
+#define KHMASK	(KHSIZE - 1)
+
+KINFO *KInfo;
+KINFO **KSort;
 struct varent *vhead, *vtail;
 
 int	eval;			/* exit value */
@@ -80,10 +84,10 @@ int	numcpus;		/* hw.ncpu */
 static int needuser, needcomm, needenv;
 #if defined(LAZY_PS)
 static int forceuread=0;
-#define PS_ARGS	"aCcefgHhjLlM:mN:O:o:p:rSTt:U:uvwx"
+#define PS_ARGS	"aCcefgHhjLlM:mN:O:o:p:rRSTt:U:uvwx"
 #else
 static int forceuread=1;
-#define PS_ARGS	"aCcegHhjLlM:mN:O:o:p:rSTt:U:uvwx"
+#define PS_ARGS	"aCcegHhjLlM:mN:O:o:p:rRSTt:U:uvwx"
 #endif
 
 enum sort { DEFAULT, SORTMEM, SORTCPU } sortby = DEFAULT;
@@ -92,6 +96,7 @@ static const char *getfmt (char **(*)(kvm_t *, const struct kinfo_proc *, int),
 		    KINFO *, char *, int);
 static char	*kludge_oldps_options (char *);
 static int	 pscomp (const void *, const void *);
+static void	 dochain (KINFO **ksort, int nentries);
 static void	 saveuser (KINFO *);
 static void	 scanvars (void);
 static void	 dynsizevars (KINFO *);
@@ -123,6 +128,7 @@ main(int argc, char **argv)
 	uid_t *uids;
 	int all, ch, flag, i, fmt, ofmt, lineno, nentries, nocludge, dropgid;
 	int prtheader, wflag, what, xflg, uid, nuids, showtid;
+	int chainflg;
 	char errbuf[_POSIX2_LINE_MAX];
 	const char *cp, *nlistf, *memf;
 	size_t btime_size = sizeof(struct timeval);
@@ -159,12 +165,14 @@ main(int argc, char **argv)
 	}
 
 	all = fmt = ofmt = prtheader = wflag = xflg = showtid = 0;
+	chainflg = 0;
 	pid = -1;
 	nuids = 0;
 	uids = NULL;
 	ttydev = NODEV;
 	dropgid = 0;
 	memf = nlistf = _PATH_DEVNULL;
+
 	while ((ch = getopt(argc, argv, PS_ARGS)) != -1)
 		switch((char)ch) {
 		case 'a':
@@ -234,6 +242,9 @@ main(int argc, char **argv)
 			break;
 		case 'r':
 			sortby = SORTCPU;
+			break;
+		case 'R':
+			chainflg = 1;
 			break;
 		case 'S':
 			sumrusage = 1;
@@ -392,13 +403,19 @@ main(int argc, char **argv)
 	 */
 	if ((kp = kvm_getprocs(kd, what, flag, &nentries)) == NULL)
 		errx(1, "%s", kvm_geterr(kd));
-	if ((kinfo = malloc(nentries * sizeof(*kinfo))) == NULL)
+	if ((KInfo = calloc(nentries, sizeof(KINFO))) == NULL)
 		err(1, NULL);
+	if ((KSort = malloc(nentries * sizeof(KINFO *))) == NULL)
+		err(1, NULL);
+
 	for (i = nentries; --i >= 0; ++kp) {
-		kinfo[i].ki_proc = kp;
+		KInfo[i].ki_proc = kp;
+		KInfo[i].ki_indent = -1;
+		KInfo[i].ki_ctailp = &KInfo[i].ki_cbase;
 		if (needuser)
-			saveuser(&kinfo[i]);
-		dynsizevars(&kinfo[i]);
+			saveuser(&KInfo[i]);
+		dynsizevars(&KInfo[i]);
+		KSort[i] = &KInfo[i];
 	}
 
 	sizevars();
@@ -412,24 +429,32 @@ main(int argc, char **argv)
 	/*
 	 * sort proc list
 	 */
-	qsort(kinfo, nentries, sizeof(KINFO), pscomp);
+	qsort(KSort, nentries, sizeof(KINFO *), pscomp);
+
+	/*
+	 * rejigger and indent children, parent(s) and children
+	 * at each level retain the above sort characteristics.
+	 */
+	if (chainflg)
+		dochain(KSort, nentries);
+
 	/*
 	 * for each proc, call each variable output function.
 	 */
 	for (i = lineno = 0; i < nentries; i++) {
-		if (xflg == 0 && (KI_PROC(&kinfo[i], tdev) == NODEV ||
-		    (KI_PROC(&kinfo[i], flags) & P_CONTROLT ) == 0))
+		if (xflg == 0 && (KI_PROC(KSort[i], tdev) == NODEV ||
+		    (KI_PROC(KSort[i], flags) & P_CONTROLT ) == 0))
 			continue;
 		if (nuids > 1) {
 			for (uid = 0; uid < nuids; uid++)
-				if (KI_PROC(&kinfo[i], uid) ==
+				if (KI_PROC(KSort[i], uid) ==
 				    uids[uid])
 					break;
 			if (uid == nuids)
 				continue;
 		}
 		STAILQ_FOREACH(vent, &var_head, link) {
-			(vent->var->oproc)(&kinfo[i], vent);
+			(vent->var->oproc)(KSort[i], vent);
 			if (STAILQ_NEXT(vent, link) != NULL)
 				putchar(' ');
 		}
@@ -573,24 +598,117 @@ saveuser(KINFO *ki)
 }
 
 static int
-pscomp(const void *a, const void *b)
+pscomp(const void *arg_a, const void *arg_b)
 {
 	int i;
+	const KINFO *a = arg_a;
+	const KINFO *b = arg_b;
+
 #define VSIZE(k) (KI_PROC(k, vm_dsize) + KI_PROC(k, vm_ssize) + \
 		  KI_PROC(k, vm_tsize))
 
 #if 0
 	if (sortby == SORTIAC)
-		return (KI_PROC((const KINFO *)a)->p_usdata.bsd4.interactive - KI_PROC((const KINFO *)b)->p_usdata.bsd4.interactive);
+		return (KI_PROC(a)->p_usdata.bsd4.interactive - KI_PROC(b)->p_usdata.bsd4.interactive);
 #endif
 	if (sortby == SORTCPU)
-		return (getpcpu((const KINFO *)b) - getpcpu((const KINFO *)a));
+		return (getpcpu(b) - getpcpu(a));
 	if (sortby == SORTMEM)
-		return (VSIZE((const KINFO *)b) - VSIZE((const KINFO *)a));
-	i =  KI_PROC((const KINFO *)a, tdev) - KI_PROC((const KINFO *)b, tdev);
+		return (VSIZE(b) - VSIZE(a));
+	i =  KI_PROC(a, tdev) - KI_PROC(b, tdev);
 	if (i == 0)
-		i = KI_PROC((const KINFO *)a, pid) - KI_PROC((const KINFO *)b, pid);
+		i = KI_PROC(a, pid) - KI_PROC(b, pid);
 	return (i);
+}
+
+/*
+ * Chain (-R) option.  Sub-sorts by parent/child association.
+ */
+static int dochain_final(KINFO **kfinal, KINFO *base, int j);
+
+static void
+dochain (KINFO **ksort, int nentries)
+{
+	int i;
+	int j;
+	int hi;
+	pid_t ppid;
+	KINFO *scan;
+	KINFO **khash;
+	KINFO **kfinal;
+
+	/*
+	 * First hash all the pids so we can quickly locate the
+	 * parent pids.
+	 */
+	khash = calloc(KHSIZE, sizeof(KINFO *));
+	kfinal = calloc(nentries, sizeof(KINFO *));
+
+	for (i = 0; i < nentries; ++i) {
+		hi = KI_PROC(ksort[i], pid) & KHMASK;
+
+		ksort[i]->ki_hnext = khash[hi];
+		khash[hi] = ksort[i];
+	}
+
+	/*
+	 * Now run through the list and create the parent associations.
+	 */
+	for (i = 0; i < nentries; ++i) {
+		ppid = KI_PROC(ksort[i], ppid);
+
+		if (ppid <= 0 || KI_PROC(ksort[i], pid) <= 0) {
+			scan = NULL;
+		} else {
+			for (scan = khash[ppid & KHMASK];
+			     scan;
+			     scan = scan->ki_hnext) {
+				if (ppid == KI_PROC(scan, pid))
+					break;
+			}
+		}
+		if (scan) {
+			ksort[i]->ki_parent = scan;
+			*scan->ki_ctailp = ksort[i];
+			scan->ki_ctailp = &ksort[i]->ki_cnext;
+		}
+	}
+
+	/*
+	 * Now regenerate the list starting at root entries, then copyback.
+	 */
+	for (i = j = 0; i < nentries; ++i) {
+		if (ksort[i]->ki_parent == NULL) {
+			printf("FFF\n");
+			ksort[i]->ki_indent = 0;
+			j = dochain_final(kfinal, ksort[i], j);
+		}
+	}
+	printf("%d/%d\n", j, nentries);
+	if (i != j)
+		errx(1, "dochain failed");
+
+	bcopy(kfinal, ksort, nentries * sizeof(kfinal[0]));
+	free(kfinal);
+	free(khash);
+}
+
+static int
+dochain_final(KINFO **kfinal, KINFO *base, int j)
+{
+	KINFO *scan;
+
+	kfinal[j++] = base;
+	for (scan = base->ki_cbase; scan; scan = scan->ki_cnext) {
+		/*
+		 * Don't let us loop
+		 */
+		if (scan->ki_indent >= 0)
+			continue;
+		scan->ki_indent = base->ki_indent + 1;
+		j = dochain_final(kfinal, scan, j);
+	}
+	return (j);
 }
 
 /*
