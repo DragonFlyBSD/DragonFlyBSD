@@ -752,32 +752,38 @@ madt_ioapic_probe_callback(void *xarg, const struct acpi_madt_ent *ent)
 
 		intsrc_ent = (const struct acpi_madt_intsrc *)ent;
 
+		/* XXX magic number */
+		if (intsrc_ent->mint_src >= 16) {
+			kprintf("madt_ioapic_probe: invalid intsrc irq (%d)\n",
+				intsrc_ent->mint_src);
+			return EINVAL;
+		}
+
+		if (intsrc_ent->mint_src == intsrc_ent->mint_gsi) {
+			kprintf("ACPI MADT: warning intsrc irq %d "
+				"no gsi change\n", intsrc_ent->mint_src);
+		}
+
 		if (intsrc_ent->mint_bus != MADT_INT_BUS_ISA) {
-			kprintf("ACPI MADT: warning intsrc bus is not ISA "
-				"(%d)\n", intsrc_ent->mint_bus);
+			kprintf("ACPI MADT: warning intsrc irq %d "
+				"bus is not ISA (%d)\n",
+				intsrc_ent->mint_src, intsrc_ent->mint_bus);
 		}
 
 		trig = (intsrc_ent->mint_flags & MADT_INT_TRIG_MASK) >>
 		       MADT_INT_TRIG_SHIFT;
 		if (trig != MADT_INT_TRIG_EDGE &&
 		    trig != MADT_INT_TRIG_CONFORM) {
-			kprintf("ACPI MADT: warning invalid intsrc trig "
-				"(%d)\n", trig);
+			kprintf("ACPI MADT: warning invalid intsrc irq %d "
+				"trig (%d)\n", intsrc_ent->mint_src, trig);
 		}
 
 		pola = (intsrc_ent->mint_flags & MADT_INT_POLA_MASK) >>
 		       MADT_INT_POLA_SHIFT;
 		if (pola != MADT_INT_POLA_HIGH &&
 		    pola != MADT_INT_POLA_CONFORM) {
-			kprintf("ACPI MADT: warning invalid intsrc pola "
-				"(%d)\n", pola);
-		}
-
-		/* XXX magic number */
-		if (intsrc_ent->mint_src >= 16) {
-			kprintf("madt_ioapic_probe: invalid intsrc irq (%d)\n",
-				intsrc_ent->mint_src);
-			return EINVAL;
+			kprintf("ACPI MADT: warning invalid intsrc irq %d "
+				"pola (%d)\n", intsrc_ent->mint_src, pola);
 		}
 	} else if (ent->me_type == MADT_ENT_IOAPIC) {
 		const struct acpi_madt_ioapic *ioapic_ent;
@@ -833,6 +839,9 @@ madt_ioapic_enum_callback(void *xarg, const struct acpi_madt_ent *ent)
 		const struct acpi_madt_intsrc *intsrc_ent;
 
 		intsrc_ent = (const struct acpi_madt_intsrc *)ent;
+		if (intsrc_ent->mint_src == intsrc_ent->mint_gsi)
+			return 0;
+
 		MADT_VPRINTF("INTSRC irq %d -> gsi %u\n",
 			     intsrc_ent->mint_src, intsrc_ent->mint_gsi);
 	} else if (ent->me_type == MADT_ENT_IOAPIC) {
