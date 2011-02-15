@@ -679,12 +679,10 @@ dochain (KINFO **ksort, int nentries)
 	 */
 	for (i = j = 0; i < nentries; ++i) {
 		if (ksort[i]->ki_parent == NULL) {
-			printf("FFF\n");
 			ksort[i]->ki_indent = 0;
 			j = dochain_final(kfinal, ksort[i], j);
 		}
 	}
-	printf("%d/%d\n", j, nentries);
 	if (i != j)
 		errx(1, "dochain failed");
 
