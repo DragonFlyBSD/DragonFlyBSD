@@ -75,6 +75,17 @@ typedef struct SLChunk {
     struct SLChunk *c_Next;
 } SLChunk;
 
+#if defined(SLAB_DEBUG)
+/*
+ * Only used for kernels compiled w/SLAB_DEBUG
+ */
+struct ZSources {
+    const char *file;
+    int line;
+};
+
+#endif
+
 /*
  * The IN-BAND zone header is placed at the beginning of each zone.
  *
@@ -100,6 +111,11 @@ typedef struct SLZone {
     SLChunk	*z_RChunks;	/* linked list of chunks remote cpu */
     int		z_RSignal;	/* signal interlock */
     int		z_RCount;	/* prevent local destruction w/inflight ipis */
+#if defined(SLAB_DEBUG)
+#define SLAB_DEBUG_ENTRIES	32	/* must be power of 2 */
+    struct ZSources z_Sources[SLAB_DEBUG_ENTRIES];
+    struct ZSources z_AltSources[SLAB_DEBUG_ENTRIES];
+#endif
 #if defined(INVARIANTS)
     __uint32_t	z_Bitmap[];	/* bitmap of free chunks for sanity check */
 #endif
