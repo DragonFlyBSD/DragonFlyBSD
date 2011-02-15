@@ -74,6 +74,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>		/* for curproc, pageproc */
+#include <sys/thread.h>
 #include <sys/vnode.h>
 #include <sys/vmmeter.h>
 #include <sys/mman.h>
@@ -1810,6 +1811,18 @@ vm_object_set_writeable_dirty(vm_object_t object)
 		}
 	}
 	lwkt_reltoken(&vm_token);
+}
+
+void
+vm_object_lock(vm_object_t object)
+{
+	lwkt_gettoken(&object->tok);
+}
+
+void
+vm_object_unlock(vm_object_t object)
+{
+	lwkt_reltoken(&object->tok);
 }
 
 #include "opt_ddb.h"
