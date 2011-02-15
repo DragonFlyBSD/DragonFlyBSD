@@ -483,23 +483,33 @@ exit1(int rv)
 	 */
 	proc_move_allproc_zombie(p);
 
+	/*
+	 * Reparent all of this process's children to the init process.
+	 * We must hold initproc->p_token in order to mess with
+	 * initproc->p_children.  We already hold p->p_token (to remove
+	 * the children from our list).
+	 */
 	q = LIST_FIRST(&p->p_children);
-	if (q)		/* only need this if any child is S_ZOMB */
-		wakeup((caddr_t) initproc);
-	for (; q != 0; q = nq) {
-		nq = LIST_NEXT(q, p_sibling);
-		LIST_REMOVE(q, p_sibling);
-		LIST_INSERT_HEAD(&initproc->p_children, q, p_sibling);
-		q->p_pptr = initproc;
-		q->p_sigparent = SIGCHLD;
-		/*
-		 * Traced processes are killed
-		 * since their existence means someone is screwing up.
-		 */
-		if (q->p_flag & P_TRACED) {
-			q->p_flag &= ~P_TRACED;
-			ksignal(q, SIGKILL);
+	if (q) {
+		lwkt_gettoken(&initproc->p_token);
+		while (q) {
+			nq = LIST_NEXT(q, p_sibling);
+			LIST_REMOVE(q, p_sibling);
+			LIST_INSERT_HEAD(&initproc->p_children, q, p_sibling);
+			q->p_pptr = initproc;
+			q->p_sigparent = SIGCHLD;
+			/*
+			 * Traced processes are killed
+			 * since their existence means someone is screwing up.
+			 */
+			if (q->p_flag & P_TRACED) {
+				q->p_flag &= ~P_TRACED;
+				ksignal(q, SIGKILL);
+			}
+			q = nq;
 		}
+		lwkt_reltoken(&initproc->p_token);
+		wakeup(initproc);
 	}
 
 	/*
@@ -523,7 +533,6 @@ exit1(int rv)
 		struct proc *pp = p->p_pptr;
 
 		PHOLD(pp);
-		lwkt_gettoken(&pp->p_token);
 		proc_reparent(p, initproc);
 
 		/*
@@ -533,7 +542,6 @@ exit1(int rv)
 		 */
 		if (LIST_EMPTY(&pp->p_children))
 			wakeup((caddr_t)pp);
-		lwkt_reltoken(&pp->p_token);
 		PRELE(pp);
 	}
 
@@ -969,21 +977,32 @@ done:
 
 /*
  * Make process 'parent' the new parent of process 'child'.
+ *
+ * p_children/p_sibling requires the parent's token, and
+ * changing pptr requires the child's token, so we have to
+ * get three tokens to do this operation.
  */
 void
 proc_reparent(struct proc *child, struct proc *parent)
 {
-	if (child->p_pptr == parent)
+	struct proc *opp = child->p_pptr;
+
+	if (opp == parent)
 		return;
+	PHOLD(opp);
 	PHOLD(parent);
+	lwkt_gettoken(&opp->p_token);
 	lwkt_gettoken(&child->p_token);
 	lwkt_gettoken(&parent->p_token);
+	KKASSERT(child->p_pptr == opp);
 	LIST_REMOVE(child, p_sibling);
 	LIST_INSERT_HEAD(&parent->p_children, child, p_sibling);
 	child->p_pptr = parent;
 	lwkt_reltoken(&parent->p_token);
 	lwkt_reltoken(&child->p_token);
+	lwkt_reltoken(&opp->p_token);
 	PRELE(parent);
+	PRELE(opp);
 }
 
 /*
