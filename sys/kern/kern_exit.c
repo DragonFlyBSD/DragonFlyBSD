@@ -299,7 +299,6 @@ exit1(int rv)
 	}
 
 	caps_exit(lp->lwp_thread);
-	aio_proc_rundown(p);
 
 	/* are we a task leader? */
 	if (p == p->p_leader) {

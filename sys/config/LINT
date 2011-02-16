@@ -825,11 +825,6 @@ options		MSDOSFS_DEBUG		# Enable MSDOSFS Debugging
 #
 options 	EXT2FS
 
-# Use real implementations of the aio_* system calls.  There are numerous
-# stability and security issues in the current aio code that make it
-# unsuitable for inclusion on machines with untrusted local users.
-options 	VFS_AIO
-
 # Optional character code conversion support with LIBICONV.
 # Each option requires their base file system and LIBICONV.
 options 	CD9660_ICONV

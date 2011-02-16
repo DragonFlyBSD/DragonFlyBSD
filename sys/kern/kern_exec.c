@@ -713,11 +713,6 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 	p->p_flag |= P_INEXEC;
 
 	/*
-	 * Prevent a pending AIO from modifying the new address space.
-	 */
-	aio_proc_rundown(imgp->proc);
-
-	/*
 	 * Blow away entire process VM, if address space not shared,
 	 * otherwise, create a new VM space so that other threads are
 	 * not disrupted.  If we are execing a resident vmspace we
