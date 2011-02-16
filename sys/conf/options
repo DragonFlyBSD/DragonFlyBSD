@@ -117,7 +117,6 @@ MSGTQL		opt_sysvipc.h
 UCONSOLE
 ICMP_BANDLIM
 SHOW_BUSYBUFS
-VFS_AIO
 DIRECTIO	opt_directio.h
 
 # POSIX kernel options
