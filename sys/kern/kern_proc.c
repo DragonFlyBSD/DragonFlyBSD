@@ -1002,6 +1002,7 @@ sysctl_kern_proc_args(SYSCTL_HANDLER_ARGS)
 	int *name = (int*) arg1;
 	u_int namelen = arg2;
 	struct proc *p;
+	struct pargs *opa;
 	struct pargs *pa;
 	int error = 0;
 	struct ucred *cr1 = curproc->p_ucred;
@@ -1009,10 +1010,11 @@ sysctl_kern_proc_args(SYSCTL_HANDLER_ARGS)
 	if (namelen != 1) 
 		return (EINVAL);
 
-	lwkt_gettoken(&proc_token);
 	p = pfindn((pid_t)name[0]);
 	if (p == NULL)
-		goto done;
+		goto done2;
+	lwkt_gettoken(&p->p_token);
+	PHOLD(p);
 
 	if ((!ps_argsopen) && p_trespass(cr1, p->p_ucred))
 		goto done;
@@ -1021,38 +1023,37 @@ sysctl_kern_proc_args(SYSCTL_HANDLER_ARGS)
 		error = EPERM;
 		goto done;
 	}
-
-	PHOLD(p);
 	if (req->oldptr && p->p_args != NULL) {
 		error = SYSCTL_OUT(req, p->p_args->ar_args,
 				   p->p_args->ar_length);
 	}
-	if (req->newptr == NULL) {
-		PRELE(p);
+	if (req->newptr == NULL)
 		goto done;
-	}
-
-	if (p->p_args && --p->p_args->ar_ref == 0) 
-		FREE(p->p_args, M_PARGS);
-	p->p_args = NULL;
 
 	if (req->newlen + sizeof(struct pargs) > ps_arg_cache_limit) {
-		PRELE(p);
 		goto done;
 	}
 
-	MALLOC(pa, struct pargs *, sizeof(struct pargs) + req->newlen, 
-	       M_PARGS, M_WAITOK);
-	pa->ar_ref = 1;
+	pa = kmalloc(sizeof(struct pargs) + req->newlen, M_PARGS, M_WAITOK);
+	refcount_init(&pa->ar_ref, 1);
 	pa->ar_length = req->newlen;
 	error = SYSCTL_IN(req, pa->ar_args, req->newlen);
-	if (!error)
-		p->p_args = pa;
-	else
-		FREE(pa, M_PARGS);
-	PRELE(p);
+	if (error) {
+		kfree(pa, M_PARGS);
+		goto done;
+	}
+
+	opa = p->p_args;
+	p->p_args = pa;
+
+	KKASSERT(opa->ar_ref > 0);
+	if (refcount_release(&opa->ar_ref)) {
+		kfree(opa, M_PARGS);
+	}
 done:
-	lwkt_reltoken(&proc_token);
+	PRELE(p);
+	lwkt_reltoken(&p->p_token);
+done2:
 	return (error);
 }
 

@@ -65,6 +65,7 @@
 #include <vm/vm_extern.h>
 
 #include <sys/vmmeter.h>
+#include <sys/refcount.h>
 #include <sys/thread2.h>
 #include <sys/signal2.h>
 #include <sys/spinlock2.h>
@@ -402,7 +403,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 		p2->p_flag |= P_JAILED;
 
 	if (p2->p_args)
-		p2->p_args->ar_ref++;
+		refcount_acquire(&p2->p_args->ar_ref);
 
 	p2->p_usched = p1->p_usched;
 	/* XXX: verify copy of the secondary iosched stuff */
