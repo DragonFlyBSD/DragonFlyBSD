@@ -187,6 +187,7 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 	object->generation++;
 	object->swblock_count = 0;
 	RB_INIT(&object->swblock_root);
+	lwkt_token_init(&object->tok, "vmobjtk");
 
 	lwkt_gettoken(&vmobj_token);
 	TAILQ_INSERT_TAIL(&vm_object_list, object, object_list);
@@ -1743,8 +1744,10 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
 		return (TRUE);
 	}
 
+	vm_object_lock(prev_object);
 	if (prev_object->type != OBJT_DEFAULT &&
 	    prev_object->type != OBJT_SWAP) {
+		vm_object_unlock(prev_object);
 		return (FALSE);
 	}
 
@@ -1759,8 +1762,10 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
 	 * pages not mapped to prev_entry may be in use anyway)
 	 */
 
-	if (prev_object->backing_object != NULL)
+	if (prev_object->backing_object != NULL) {
+		vm_object_unlock(prev_object);
 		return (FALSE);
+	}
 
 	prev_size >>= PAGE_SHIFT;
 	next_size >>= PAGE_SHIFT;
@@ -1768,6 +1773,7 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
 
 	if ((prev_object->ref_count > 1) &&
 	    (prev_object->size != next_pindex)) {
+		vm_object_unlock(prev_object);
 		return (FALSE);
 	}
 
@@ -1789,6 +1795,8 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
 	 */
 	if (next_pindex + next_size > prev_object->size)
 		prev_object->size = next_pindex + next_size;
+
+	vm_object_unlock(prev_object);
 	return (TRUE);
 }
 
