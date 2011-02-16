@@ -169,6 +169,9 @@ struct mptable_pos {
 	vm_size_t	mp_cth_mapsz;
 };
 
+#define MPTABLE_POS_USE_DEFAULT(mpt) \
+	((mpt)->mp_fps->mpfb1 != 0 || (mpt)->mp_cth == NULL)
+
 typedef	int	(*mptable_iter_func)(void *, const void *, int);
 
 /*
@@ -331,6 +334,7 @@ cpumask_t smp_active_mask = 1;	/* which cpus are ready for IPIs etc? */
 SYSCTL_INT(_machdep, OID_AUTO, smp_active, CTLFLAG_RD, &smp_active_mask, 0, "");
 
 static vm_paddr_t	mptable_fps_phyaddr;
+static int		mptable_use_default;
 
 /*
  * Calculate usable address in base memory for AP trampoline code.
@@ -353,8 +357,27 @@ mp_bootaddress(u_int basemem)
 static void
 mptable_probe(void)
 {
+	struct mptable_pos mpt;
+	int error;
+
 	KKASSERT(mptable_fps_phyaddr == 0);
+
 	mptable_fps_phyaddr = mptable_search();
+	if (mptable_fps_phyaddr == 0)
+		return;
+
+	error = mptable_map(&mpt);
+	if (error) {
+		mptable_fps_phyaddr = 0;
+		return;
+	}
+
+	if (MPTABLE_POS_USE_DEFAULT(&mpt)) {
+		kprintf("MPTABLE: use default configuration\n");
+		mptable_use_default = 1;
+	}
+
+	mptable_unmap(&mpt);
 }
 SYSINIT(mptable_probe, SI_BOOT2_PRESMP, SI_ORDER_FIRST, mptable_probe, 0);
 
@@ -2950,23 +2973,17 @@ mptable_lapic_enumerate(struct lapic_enumerator *e)
 	int error, logical_cpus = 0;
 	vm_offset_t lapic_addr;
 
-	error = mptable_map(&mpt);
-	if (error)
-		panic("mptable_lapic_enumerate mptable_map failed\n");
-
-	KKASSERT(mpt.mp_fps != NULL);
-
-	/*
-	 * Check for use of 'default' configuration
-	 */
-	if (mpt.mp_fps->mpfb1 != 0) {
+	if (mptable_use_default) {
 		mptable_lapic_default();
-		mptable_unmap(&mpt);
 		return;
 	}
 
+	error = mptable_map(&mpt);
+	if (error)
+		panic("mptable_lapic_enumerate mptable_map failed\n");
+	KKASSERT(!MPTABLE_POS_USE_DEFAULT(&mpt));
+
 	cth = mpt.mp_cth;
-	KKASSERT(cth != NULL);
 
 	/* Save local apic address */
 	lapic_addr = (vm_offset_t)cth->apic_address;
@@ -3061,18 +3078,17 @@ mptable_lapic_probe(struct lapic_enumerator *e)
 	if (mptable_fps_phyaddr == 0)
 		return ENXIO;
 
+	if (mptable_use_default)
+		return 0;
+
 	error = mptable_map(&mpt);
 	if (error)
 		return error;
-
-	if (mpt.mp_fps->mpfb1 != 0)
-		goto done;
+	KKASSERT(!MPTABLE_POS_USE_DEFAULT(&mpt));
 
 	error = EINVAL;
-
 	cth = mpt.mp_cth;
-	if (cth == NULL)
-		goto done;
+
 	if (cth->apic_address == 0)
 		goto done;
 
