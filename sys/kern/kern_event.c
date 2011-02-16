@@ -1520,7 +1520,7 @@ knote_dequeue(struct knote *kn)
 static struct knote *
 knote_alloc(void)
 {
-	return kmalloc(sizeof(struct knote), M_KQUEUE, M_NOWAIT);
+	return kmalloc(sizeof(struct knote), M_KQUEUE, M_WAITOK);
 }
 
 static void
