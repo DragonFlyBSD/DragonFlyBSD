@@ -778,6 +778,7 @@ kern_wait(pid_t pid, int *status, int options, struct rusage *rusage, int *res)
 	struct proc *q = td->td_proc;
 	struct proc *p, *t;
 	struct pargs *pa;
+	struct sigacts *ps;
 	int nfound, error;
 
 	if (pid == 0)
@@ -919,14 +920,16 @@ loop:
 			 */
 			pa = p->p_args;
 			p->p_args = NULL;
-
 			if (pa && refcount_release(&pa->ar_ref)) {
 				kfree(pa, M_PARGS);
 				pa = NULL;
 			}
-			if (--p->p_sigacts->ps_refcnt == 0) {
-				kfree(p->p_sigacts, M_SUBPROC);
-				p->p_sigacts = NULL;
+
+			ps = p->p_sigacts;
+			p->p_sigacts = NULL;
+			if (ps && refcount_release(&ps->ps_refcnt)) {
+				kfree(ps, M_SUBPROC);
+				ps = NULL;
 			}
 
 			vm_waitproc(p);

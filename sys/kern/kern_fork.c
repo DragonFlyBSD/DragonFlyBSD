@@ -411,12 +411,12 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 
 	if (flags & RFSIGSHARE) {
 		p2->p_sigacts = p1->p_sigacts;
-		p2->p_sigacts->ps_refcnt++;
+		refcount_acquire(&p2->p_sigacts->ps_refcnt);
 	} else {
-		p2->p_sigacts = (struct sigacts *)kmalloc(sizeof(*p2->p_sigacts),
-		    M_SUBPROC, M_WAITOK);
+		p2->p_sigacts = kmalloc(sizeof(*p2->p_sigacts),
+					M_SUBPROC, M_WAITOK);
 		bcopy(p1->p_sigacts, p2->p_sigacts, sizeof(*p2->p_sigacts));
-		p2->p_sigacts->ps_refcnt = 1;
+		refcount_init(&p2->p_sigacts->ps_refcnt, 1);
 	}
 	if (flags & RFLINUXTHPN) 
 	        p2->p_sigparent = SIGUSR1;

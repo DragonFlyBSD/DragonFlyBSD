@@ -185,6 +185,8 @@ kern_execve(struct nlookupdata *nd, struct image_args *args)
 	struct proc *p = td->td_proc;
 	register_t *stack_base;
 	struct pargs *pa;
+	struct sigacts *ops;
+	struct sigacts *nps;
 	int error, len, i;
 	struct image_params image_params, *imgp;
 	struct vattr attr;
@@ -347,15 +349,16 @@ interpret:
 	 * handlers. In execsigs(), the new process will have its signals
 	 * reset.
 	 */
-	if (p->p_sigacts->ps_refcnt > 1) {
-		struct sigacts *newsigacts;
-
-		newsigacts = (struct sigacts *)kmalloc(sizeof(*newsigacts),
-		       M_SUBPROC, M_WAITOK);
-		bcopy(p->p_sigacts, newsigacts, sizeof(*newsigacts));
-		p->p_sigacts->ps_refcnt--;
-		p->p_sigacts = newsigacts;
-		p->p_sigacts->ps_refcnt = 1;
+	ops = p->p_sigacts;
+	if (ops->ps_refcnt > 1) {
+		nps = kmalloc(sizeof(*nps), M_SUBPROC, M_WAITOK);
+		bcopy(ops, nps, sizeof(*nps));
+		refcount_init(&nps->ps_refcnt, 1);
+		p->p_sigacts = nps;
+		if (refcount_release(&ops->ps_refcnt)) {
+			kfree(ops, M_SUBPROC);
+			ops = NULL;
+		}
 	}
 
 	/*

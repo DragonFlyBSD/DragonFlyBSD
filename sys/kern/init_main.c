@@ -413,7 +413,7 @@ proc0_init(void *dummy __unused)
 
 	/* Create sigacts. */
 	p->p_sigacts = &sigacts0;
-	p->p_sigacts->ps_refcnt = 1;
+	refcount_init(&p->p_sigacts->ps_refcnt, 1);
 
 	/* Initialize signal state for process 0. */
 	siginit(p);
