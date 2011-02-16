@@ -408,8 +408,8 @@ main(int argc, char **argv)
 	if ((KSort = malloc(nentries * sizeof(KINFO *))) == NULL)
 		err(1, NULL);
 
-	for (i = nentries; --i >= 0; ++kp) {
-		KInfo[i].ki_proc = kp;
+	for (i = 0; i < nentries; ++i) {
+		KInfo[i].ki_proc = &kp[i];
 		KInfo[i].ki_indent = -1;
 		KInfo[i].ki_ctailp = &KInfo[i].ki_cbase;
 		if (needuser)
