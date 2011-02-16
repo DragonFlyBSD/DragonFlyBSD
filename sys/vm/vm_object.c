@@ -246,15 +246,9 @@ vm_object_allocate(objtype_t type, vm_pindex_t size)
 void
 vm_object_reference(vm_object_t object)
 {
-	if (object) {
-		lwkt_gettoken(&vmobj_token);
-		object->ref_count++;
-		if (object->type == OBJT_VNODE) {
-			vref(object->handle);
-			/* XXX what if the vnode is being destroyed? */
-		}
-		lwkt_reltoken(&vmobj_token);
-	}
+	lwkt_gettoken(&vmobj_token);
+	vm_object_reference_locked(object);
+	lwkt_reltoken(&vmobj_token);
 }
 
 void
@@ -262,11 +256,13 @@ vm_object_reference_locked(vm_object_t object)
 {
 	if (object) {
 		ASSERT_LWKT_TOKEN_HELD(&vmobj_token);
+		vm_object_lock(object);
 		object->ref_count++;
 		if (object->type == OBJT_VNODE) {
 			vref(object->handle);
 			/* XXX what if the vnode is being destroyed? */
 		}
+		vm_object_unlock(object);
 	}
 }
 
