@@ -449,6 +449,8 @@ static inthand_t *ioapic_intr[IOAPIC_HWI_VECTORS] = {
 	&IDTVEC(ioapic_intr191)
 };
 
+#define IOAPIC_HWI_SYSCALL	(IDT_OFFSET_SYSCALL - IDT_OFFSET)
+
 static struct ioapic_irqmap {
 	int			im_type;	/* IOAPIC_IMT_ */
 	enum intr_trigger	im_trig;
@@ -458,6 +460,7 @@ static struct ioapic_irqmap {
 #define IOAPIC_IMT_UNUSED	0
 #define IOAPIC_IMT_RESERVED	1
 #define IOAPIC_IMT_LINE		2
+#define IOAPIC_IMT_SYSCALL	3
 
 extern void	IOAPIC_INTREN(int);
 extern void	IOAPIC_INTRDIS(int);
@@ -615,7 +618,7 @@ ioapic_vectorctl(int op, int intr, int flags)
 	register_t ef;
 
 	if (intr < 0 || intr >= IOAPIC_HWI_VECTORS ||
-	    intr == IDT_OFFSET_SYSCALL - IDT_OFFSET)
+	    intr == IOAPIC_HWI_SYSCALL)
 		return EINVAL;
 
 	ef = read_rflags();
@@ -700,7 +703,7 @@ ioapic_setdefault(void)
 	int intr;
 
 	for (intr = 0; intr < IOAPIC_HWI_VECTORS; ++intr) {
-		if (intr == IDT_OFFSET_SYSCALL - IDT_OFFSET)
+		if (intr == IOAPIC_HWI_SYSCALL)
 			continue;
 		setidt(IDT_OFFSET + intr, ioapic_intr[intr], SDT_SYSIGT,
 		       SEL_KPL, 0);
@@ -720,6 +723,7 @@ ioapic_initmap(void)
 		map->im_trig = INTR_TRIGGER_EDGE;
 		map->im_gsi = i;
 	}
+	ioapic_irqmaps[IOAPIC_HWI_SYSCALL].im_type = IOAPIC_IMT_SYSCALL;
 }
 
 #endif	/* SMP */
