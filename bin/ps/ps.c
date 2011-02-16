@@ -600,9 +600,9 @@ saveuser(KINFO *ki)
 static int
 pscomp(const void *arg_a, const void *arg_b)
 {
+	const KINFO *a = *(KINFO * const *)arg_a;
+	const KINFO *b = *(KINFO * const *)arg_b;
 	int i;
-	const KINFO *a = arg_a;
-	const KINFO *b = arg_b;
 
 #define VSIZE(k) (KI_PROC(k, vm_dsize) + KI_PROC(k, vm_ssize) + \
 		  KI_PROC(k, vm_tsize))
