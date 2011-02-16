@@ -3100,8 +3100,9 @@ static struct lapic_enumerator	mptable_lapic_enumerator = {
 };
 
 static void
-mptable_apic_register(void)
+mptable_lapic_enum_register(void)
 {
 	lapic_enumerator_register(&mptable_lapic_enumerator);
 }
-SYSINIT(madt, SI_BOOT2_PRESMP, SI_ORDER_ANY, mptable_apic_register, 0);
+SYSINIT(mptable_lapic, SI_BOOT2_PRESMP, SI_ORDER_ANY,
+	mptable_lapic_enum_register, 0);
