@@ -1990,6 +1990,18 @@ vm_page_event_internal(vm_page_t m, vm_page_event_t event)
 }
 
 
+void
+vm_page_lock(vm_page_t m)
+{
+	lwkt_getpooltoken(m);
+}
+
+void
+vm_page_unlock(vm_page_t m)
+{
+	lwkt_relpooltoken(m);
+}
+
 #include "opt_ddb.h"
 #ifdef DDB
 #include <sys/kernel.h>

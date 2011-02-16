@@ -89,6 +89,7 @@ static struct icu_irqmap {
 #define ICU_IMT_UNUSED		0	/* KEEP THIS */
 #define ICU_IMT_RESERVED	1
 #define ICU_IMT_LINE		2
+#define ICU_IMT_SYSCALL		3
 
 extern void	ICU_INTREN(int);
 extern void	ICU_INTRDIS(int);
@@ -305,4 +306,5 @@ icu_initmap(void)
 			}
 		}
 	}
+	icu_irqmaps[i].im_type = ICU_IMT_SYSCALL;
 }

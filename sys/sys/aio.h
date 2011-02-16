@@ -166,9 +166,6 @@ struct aiocblist {
 struct socket;
 struct signalsockbuf;
 
-void	aio_proc_rundown(struct proc *p);
-void	aio_swake(struct socket *, struct signalsockbuf *);
-
 #endif
 
 #endif

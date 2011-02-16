@@ -286,9 +286,7 @@ static void	mp_enable(u_int boot_addr);
 
 static int	mptable_iterate_entries(const mpcth_t,
 		    mptable_iter_func, void *);
-static int	mptable_probe(void);
 static int	mptable_search(void);
-static int	mptable_check(vm_paddr_t);
 static long	mptable_search_sig(u_int32_t target, int count);
 static int	mptable_hyperthread_fixup(cpumask_t, int);
 #ifdef SMP /* APIC-IO */
@@ -297,7 +295,7 @@ static void	mptable_pass2(struct mptable_pos *);
 static void	mptable_default(int type);
 static void	mptable_fix(void);
 #endif
-static int	mptable_map(struct mptable_pos *, vm_paddr_t);
+static int	mptable_map(struct mptable_pos *);
 static void	mptable_unmap(struct mptable_pos *);
 static void	mptable_imcr(struct mptable_pos *);
 
@@ -321,6 +319,8 @@ cpumask_t smp_active_mask = 1;	/* which cpus are ready for IPIs etc? */
 SYSCTL_INT(_machdep, OID_AUTO, smp_active, CTLFLAG_RD, &smp_active_mask, 0, "");
 static u_int	bootMP_size;
 
+static vm_paddr_t	mptable_fps_phyaddr;
+
 /*
  * Calculate usable address in base memory for AP trampoline code.
  */
@@ -342,17 +342,13 @@ mp_bootaddress(u_int basemem)
 }
 
 
-static int
+static void
 mptable_probe(void)
 {
-	int mpfps_paddr;
-
-	mpfps_paddr = mptable_search();
-	if (mptable_check(mpfps_paddr))
-		return 0;
-
-	return mpfps_paddr;
+	KKASSERT(mptable_fps_phyaddr == 0);
+	mptable_fps_phyaddr = mptable_search();
 }
+SYSINIT(mptable_probe, SI_BOOT2_PRESMP, SI_ORDER_FIRST, mptable_probe, 0);
 
 /*
  * Look for an Intel MP spec table (ie, SMP capable hardware).
@@ -390,77 +386,6 @@ mptable_search(void)
 
 	/* nothing found */
 	return 0;
-}
-
-struct mptable_check_cbarg {
-	int	cpu_count;
-	int	found_bsp;
-};
-
-static int
-mptable_check_callback(void *xarg, const void *pos, int type)
-{
-	const struct PROCENTRY *ent;
-	struct mptable_check_cbarg *arg = xarg;
-
-	if (type != 0)
-		return 0;
-	ent = pos;
-
-	if ((ent->cpu_flags & PROCENTRY_FLAG_EN) == 0)
-		return 0;
-	arg->cpu_count++;
-
-	if (ent->cpu_flags & PROCENTRY_FLAG_BP) {
-		if (arg->found_bsp) {
-			kprintf("more than one BSP in base MP table\n");
-			return EINVAL;
-		}
-		arg->found_bsp = 1;
-	}
-	return 0;
-}
-
-static int
-mptable_check(vm_paddr_t mpfps_paddr)
-{
-	struct mptable_pos mpt;
-	struct mptable_check_cbarg arg;
-	mpcth_t cth;
-	int error;
-
-	if (mpfps_paddr == 0)
-		return EOPNOTSUPP;
-
-	error = mptable_map(&mpt, mpfps_paddr);
-	if (error)
-		return error;
-
-	if (mpt.mp_fps->mpfb1 != 0)
-		goto done;
-
-	error = EINVAL;
-
-	cth = mpt.mp_cth;
-	if (cth == NULL)
-		goto done;
-	if (cth->apic_address == 0)
-		goto done;
-
-	bzero(&arg, sizeof(arg));
-	error = mptable_iterate_entries(cth, mptable_check_callback, &arg);
-	if (!error) {
-		if (arg.cpu_count == 0) {
-			kprintf("MP table contains no processor entries\n");
-			error = EINVAL;
-		} else if (!arg.found_bsp) {
-			kprintf("MP table does not contains BSP entry\n");
-			error = EINVAL;
-		}
-	}
-done:
-	mptable_unmap(&mpt);
-	return error;
 }
 
 static int
@@ -672,7 +597,6 @@ mp_enable(u_int boot_addr)
 {
 	int     apic;
 	u_int   ux;
-	vm_paddr_t mpfps_paddr;
 	struct mptable_pos mpt;
 
 	POSTCODE(MP_ENABLE_POST);
@@ -682,18 +606,17 @@ mp_enable(u_int boot_addr)
 	if (apic_io_enable)
 		ioapic_config();
 
-	mpfps_paddr = mptable_probe();
-	if (mpfps_paddr) {
-		mptable_map(&mpt, mpfps_paddr);
+	if (mptable_fps_phyaddr) {
+		mptable_map(&mpt);
 		mptable_imcr(&mpt);
 		mptable_unmap(&mpt);
 	}
 if (apic_io_enable) {
 
-	if (!mpfps_paddr)
+	if (!mptable_fps_phyaddr)
 		panic("no MP table, disable APIC_IO! (set hw.apic_io_enable=0)\n");
 
-	mptable_map(&mpt, mpfps_paddr);
+	mptable_map(&mpt);
 
 	/*
 	 * Examine the MP table for needed info
@@ -1127,15 +1050,17 @@ mptable_hyperthread_fixup(cpumask_t id_mask, int cpu_count)
 }
 
 static int
-mptable_map(struct mptable_pos *mpt, vm_paddr_t mpfps_paddr)
+mptable_map(struct mptable_pos *mpt)
 {
 	mpfps_t fps = NULL;
 	mpcth_t cth = NULL;
 	vm_size_t cth_mapsz = 0;
 
+	KKASSERT(mptable_fps_phyaddr != 0);
+
 	bzero(mpt, sizeof(*mpt));
 
-	fps = pmap_mapdev(mpfps_paddr, sizeof(*fps));
+	fps = pmap_mapdev(mptable_fps_phyaddr, sizeof(*fps));
 	if (fps->pap != 0) {
 		/*
 		 * Map configuration table header to get
@@ -2984,11 +2909,6 @@ mptable_imcr(struct mptable_pos *mpt)
 			       mpt->mp_fps->mpfb2 & 0x80);
 }
 
-struct mptable_lapic_enumerator {
-	struct lapic_enumerator	enumerator;
-	vm_paddr_t		mpfps_paddr;
-};
-
 static void
 mptable_lapic_default(void)
 {
@@ -3023,12 +2943,8 @@ mptable_lapic_enumerate(struct lapic_enumerator *e)
 	mpcth_t cth;
 	int error, logical_cpus = 0;
 	vm_offset_t lapic_addr;
-	vm_paddr_t mpfps_paddr;
-
-	mpfps_paddr = ((struct mptable_lapic_enumerator *)e)->mpfps_paddr;
-	KKASSERT(mpfps_paddr != 0);
  
-	error = mptable_map(&mpt, mpfps_paddr);
+	error = mptable_map(&mpt);
 	if (error)
 		panic("mptable_lapic_enumerate mptable_map failed\n");
 
@@ -3100,30 +3016,88 @@ mptable_lapic_enumerate(struct lapic_enumerator *e)
 	mptable_unmap(&mpt);
 }
 
+struct mptable_lapic_probe_cbarg {
+	int	cpu_count;
+	int	found_bsp;
+};
+
 static int
-mptable_lapic_probe(struct lapic_enumerator *e)
+mptable_lapic_probe_callback(void *xarg, const void *pos, int type)
 {
-	vm_paddr_t mpfps_paddr;
+	const struct PROCENTRY *ent;
+	struct mptable_lapic_probe_cbarg *arg = xarg;
 
-	mpfps_paddr = mptable_probe();
-	if (mpfps_paddr == 0)
-		return ENXIO;
+	if (type != 0)
+		return 0;
+	ent = pos;
 
-	((struct mptable_lapic_enumerator *)e)->mpfps_paddr = mpfps_paddr;
+	if ((ent->cpu_flags & PROCENTRY_FLAG_EN) == 0)
+		return 0;
+	arg->cpu_count++;
+
+	if (ent->cpu_flags & PROCENTRY_FLAG_BP) {
+		if (arg->found_bsp) {
+			kprintf("more than one BSP in base MP table\n");
+			return EINVAL;
+		}
+		arg->found_bsp = 1;
+	}
 	return 0;
 }
 
-static struct mptable_lapic_enumerator	mptable_lapic_enumerator = {
-	.enumerator = {
-		.lapic_prio = LAPIC_ENUM_PRIO_MPTABLE,
-		.lapic_probe = mptable_lapic_probe,
-		.lapic_enumerate = mptable_lapic_enumerate
+static int
+mptable_lapic_probe(struct lapic_enumerator *e)
+{
+	struct mptable_pos mpt;
+	struct mptable_lapic_probe_cbarg arg;
+	mpcth_t cth;
+	int error;
+
+	if (mptable_fps_phyaddr == 0)
+		return ENXIO;
+
+	error = mptable_map(&mpt);
+	if (error)
+		return error;
+
+	if (mpt.mp_fps->mpfb1 != 0)
+		goto done;
+
+	error = EINVAL;
+
+	cth = mpt.mp_cth;
+	if (cth == NULL)
+		goto done;
+	if (cth->apic_address == 0)
+		goto done;
+
+	bzero(&arg, sizeof(arg));
+	error = mptable_iterate_entries(cth,
+		    mptable_lapic_probe_callback, &arg);
+	if (!error) {
+		if (arg.cpu_count == 0) {
+			kprintf("MP table contains no processor entries\n");
+			error = EINVAL;
+		} else if (!arg.found_bsp) {
+			kprintf("MP table does not contains BSP entry\n");
+			error = EINVAL;
+		}
 	}
+done:
+	mptable_unmap(&mpt);
+	return error;
+}
+
+static struct lapic_enumerator	mptable_lapic_enumerator = {
+	.lapic_prio = LAPIC_ENUM_PRIO_MPTABLE,
+	.lapic_probe = mptable_lapic_probe,
+	.lapic_enumerate = mptable_lapic_enumerate
 };
 
 static void
-mptable_apic_register(void)
+mptable_lapic_enum_register(void)
 {
-	lapic_enumerator_register(&mptable_lapic_enumerator.enumerator);
+	lapic_enumerator_register(&mptable_lapic_enumerator);
 }
-SYSINIT(madt, SI_BOOT2_PRESMP, SI_ORDER_ANY, mptable_apic_register, 0);
+SYSINIT(mptable_lapic, SI_BOOT2_PRESMP, SI_ORDER_ANY,
+	mptable_lapic_enum_register, 0);
