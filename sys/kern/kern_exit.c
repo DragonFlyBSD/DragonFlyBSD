@@ -79,6 +79,7 @@
 #include <vm/vm_extern.h>
 #include <sys/user.h>
 
+#include <sys/refcount.h>
 #include <sys/thread2.h>
 #include <sys/sysref2.h>
 #include <sys/mplock2.h>
@@ -776,6 +777,7 @@ kern_wait(pid_t pid, int *status, int options, struct rusage *rusage, int *res)
 	struct lwp *lp;
 	struct proc *q = td->td_proc;
 	struct proc *p, *t;
+	struct pargs *pa;
 	int nfound, error;
 
 	if (pid == 0)
@@ -915,9 +917,13 @@ loop:
 			/*
 			 * Remove unused arguments
 			 */
-			if (p->p_args && --p->p_args->ar_ref == 0)
-				FREE(p->p_args, M_PARGS);
+			pa = p->p_args;
+			p->p_args = NULL;
 
+			if (pa && refcount_release(&pa->ar_ref)) {
+				kfree(pa, M_PARGS);
+				pa = NULL;
+			}
 			if (--p->p_sigacts->ps_refcnt == 0) {
 				kfree(p->p_sigacts, M_SUBPROC);
 				p->p_sigacts = NULL;
