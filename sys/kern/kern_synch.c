@@ -206,6 +206,12 @@ schedcpu_stats(struct proc *p, void *data __unused)
 {
 	struct lwp *lp;
 
+	/*
+	 * Threads may not be completely set up if process in SIDL state.
+	 */
+	if (p->p_stat == SIDL)
+		return(0);
+
 	crit_enter();
 	p->p_swtime++;
 	FOREACH_LWP_IN_PROC(lp, p) {
