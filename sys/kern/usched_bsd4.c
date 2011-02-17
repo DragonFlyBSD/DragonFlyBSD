@@ -63,18 +63,14 @@
 
 /*
  * NICEPPQ	- number of nice units per priority queue
- * ESTCPURAMP	- number of scheduler ticks for estcpu to switch queues
  *
  * ESTCPUPPQ	- number of estcpu units per priority queue
  * ESTCPUMAX	- number of estcpu units
- * ESTCPUINCR	- amount we have to increment p_estcpu per scheduling tick at
- *		  100% cpu.
  */
 #define NICEPPQ		2
-#define ESTCPURAMP	4
 #define ESTCPUPPQ	512
 #define ESTCPUMAX	(ESTCPUPPQ * NQS)
-#define ESTCPUINCR	(ESTCPUPPQ / ESTCPURAMP)
+#define BATCHMAX	(ESTCPUFREQ * 30)
 #define PRIO_RANGE	(PRIO_MAX - PRIO_MIN + 1)
 
 #define ESTCPULIM(v)	min((v), ESTCPUMAX)
@@ -83,8 +79,8 @@ TAILQ_HEAD(rq, lwp);
 
 #define lwp_priority	lwp_usdata.bsd4.priority
 #define lwp_rqindex	lwp_usdata.bsd4.rqindex
-#define lwp_origcpu	lwp_usdata.bsd4.origcpu
 #define lwp_estcpu	lwp_usdata.bsd4.estcpu
+#define lwp_batch	lwp_usdata.bsd4.batch
 #define lwp_rqtype	lwp_usdata.bsd4.rqtype
 
 static void bsd4_acquire_curproc(struct lwp *lp);
@@ -96,7 +92,7 @@ static void bsd4_schedulerclock(struct lwp *lp, sysclock_t period,
 static void bsd4_recalculate_estcpu(struct lwp *lp);
 static void bsd4_resetpriority(struct lwp *lp);
 static void bsd4_forking(struct lwp *plp, struct lwp *lp);
-static void bsd4_exiting(struct lwp *plp, struct lwp *lp);
+static void bsd4_exiting(struct lwp *lp, struct proc *);
 static void bsd4_yield(struct lwp *lp);
 
 #ifdef SMP
@@ -187,9 +183,12 @@ SYSCTL_INT(_debug, OID_AUTO, choose_affinity, CTLFLAG_RD,
 static int usched_bsd4_rrinterval = (ESTCPUFREQ + 9) / 10;
 SYSCTL_INT(_kern, OID_AUTO, usched_bsd4_rrinterval, CTLFLAG_RW,
         &usched_bsd4_rrinterval, 0, "");
-static int usched_bsd4_decay = 1;
+static int usched_bsd4_decay = 8;
 SYSCTL_INT(_kern, OID_AUTO, usched_bsd4_decay, CTLFLAG_RW,
         &usched_bsd4_decay, 0, "Extra decay when not running");
+static int usched_bsd4_batch_time = 10;
+SYSCTL_INT(_kern, OID_AUTO, usched_bsd4_batch_time, CTLFLAG_RW,
+        &usched_bsd4_batch_time, 0, "Minimum batch counter value");
 
 /*
  * Initialize the run queues at boot time.
@@ -610,19 +609,9 @@ bsd4_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 	}
 
 	/*
-	 * As the process accumulates cpu time p_estcpu is bumped and may
-	 * push the process into another scheduling queue.  It typically
-	 * takes 4 ticks to bump the queue.
+	 * Adjust estcpu upward using a real time equivalent calculation.
 	 */
-	lp->lwp_estcpu = ESTCPULIM(lp->lwp_estcpu + ESTCPUINCR);
-
-	/*
-	 * Reducing p_origcpu over time causes more of our estcpu to be
-	 * returned to the parent when we exit.  This is a small tweak
-	 * for the batch detection heuristic.
-	 */
-	if (lp->lwp_origcpu)
-		--lp->lwp_origcpu;
+	lp->lwp_estcpu = ESTCPULIM(lp->lwp_estcpu + ESTCPUMAX / ESTCPUFREQ + 1);
 
 	/*
 	 * Spinlocks also hold a critical section so there should not be
@@ -663,10 +652,9 @@ bsd4_recalculate_estcpu(struct lwp *lp)
 {
 	globaldata_t gd = mycpu;
 	sysclock_t cpbase;
-	int loadfac;
-	int ndecay;
-	int nticks;
-	int nleft;
+	sysclock_t ttlticks;
+	int estcpu;
+	int decay_factor;
 
 	/*
 	 * We have to subtract periodic to get the last schedclock
@@ -685,64 +673,98 @@ bsd4_recalculate_estcpu(struct lwp *lp)
 		bsd4_resetpriority(lp);
 		lp->lwp_cpbase = cpbase;
 		lp->lwp_cpticks = 0;
+		lp->lwp_batch -= ESTCPUFREQ;
+		if (lp->lwp_batch < 0)
+			lp->lwp_batch = 0;
 	} else if (lp->lwp_cpbase != cpbase) {
 		/*
 		 * Adjust estcpu if we are in a different tick.  Don't waste
 		 * time if we are in the same tick. 
 		 * 
 		 * First calculate the number of ticks in the measurement
-		 * interval.  The nticks calculation can wind up 0 due to
+		 * interval.  The ttlticks calculation can wind up 0 due to
 		 * a bug in the handling of lwp_slptime  (as yet not found),
 		 * so make sure we do not get a divide by 0 panic.
 		 */
-		nticks = (cpbase - lp->lwp_cpbase) / gd->gd_schedclock.periodic;
-		if (nticks <= 0)
-			nticks = 1;
-		updatepcpu(lp, lp->lwp_cpticks, nticks);
-
-		if ((nleft = nticks - lp->lwp_cpticks) < 0)
-			nleft = 0;
-		if (usched_debug == lp->lwp_proc->p_pid) {
-			kprintf("pid %d tid %d estcpu %d cpticks %d "
-				"nticks %d nleft %d",
-				lp->lwp_proc->p_pid, lp->lwp_tid,
-				lp->lwp_estcpu, lp->lwp_cpticks,
-				nticks, nleft);
+		ttlticks = (cpbase - lp->lwp_cpbase) /
+			   gd->gd_schedclock.periodic;
+		if (ttlticks < 0) {
+			ttlticks = 0;
+			lp->lwp_cpbase = cpbase;
 		}
+		if (ttlticks == 0)
+			return;
+		updatepcpu(lp, lp->lwp_cpticks, ttlticks);
 
 		/*
-		 * Calculate a decay value based on ticks remaining scaled
-		 * down by the instantanious load and p_nice.
-		 */
-		if ((loadfac = bsd4_runqcount) < 2)
-			loadfac = 2;
-		ndecay = nleft * usched_bsd4_decay * 2 * 
-			(PRIO_MAX * 2 - lp->lwp_proc->p_nice) /
-			(loadfac * PRIO_MAX * 2);
-
-		/*
-		 * Adjust p_estcpu.  Handle a border case where batch jobs
-		 * can get stalled long enough to decay to zero when they
-		 * shouldn't.
+		 * Calculate the percentage of one cpu used factoring in ncpus
+		 * and the load and adjust estcpu.  Handle degenerate cases
+		 * by adding 1 to bsd4_runqcount.
 		 *
-		 * Only adjust estcpu downward if the lwp is not in a
-		 * runnable state.  Note that normal tsleeps or timer ticks
-		 * will adjust estcpu up or down.   The decay we do here
-		 * is not really needed and may be removed in the future.
+		 * estcpu is scaled by ESTCPUMAX.
+		 *
+		 * bsd4_runqcount is the excess number of user processes
+		 * that cannot be immediately scheduled to cpus.  We want
+		 * to count these as running to avoid range compression
+		 * in the base calculation (which is the actual percentage
+		 * of one cpu used).
 		 */
-		if (lp->lwp_stat != LSRUN) {
-			if (lp->lwp_estcpu > ndecay * 2)
-				lp->lwp_estcpu -= ndecay;
-			else
-				lp->lwp_estcpu >>= 1;
+		estcpu = (lp->lwp_cpticks * ESTCPUMAX) *
+			 (bsd4_runqcount + ncpus) / (ncpus * ttlticks);
+
+		/*
+		 * If estcpu is > 50% we become more batch-like
+		 * If estcpu is <= 50% we become less batch-like
+		 *
+		 * It takes 30 cpu seconds to traverse the entire range.
+		 */
+		if (estcpu > ESTCPUMAX / 2) {
+			lp->lwp_batch += ttlticks;
+			if (lp->lwp_batch > BATCHMAX)
+				lp->lwp_batch = BATCHMAX;
+		} else {
+			lp->lwp_batch -= ttlticks;
+			if (lp->lwp_batch < 0)
+				lp->lwp_batch = 0;
 		}
 
 		if (usched_debug == lp->lwp_proc->p_pid) {
-			kprintf(" ndecay %d estcpu %d\n",
-				ndecay, lp->lwp_estcpu);
+			kprintf("pid %d lwp %p estcpu %3d %3d bat %d cp %d/%d",
+				lp->lwp_proc->p_pid, lp,
+				estcpu, lp->lwp_estcpu,
+				lp->lwp_batch,
+				lp->lwp_cpticks, ttlticks);
 		}
+
+		/*
+		 * Adjust lp->lwp_esetcpu.  The decay factor determines how
+		 * quickly lwp_estcpu collapses to its realtime calculation.
+		 * A slower collapse gives us a more accurate number but
+		 * can cause a cpu hog to eat too much cpu before the
+		 * scheduler decides to downgrade it.
+		 *
+		 * NOTE: p_nice is accounted for in bsd4_resetpriority(),
+		 *	 and not here, but we must still ensure that a
+		 *	 cpu-bound nice -20 process does not completely
+		 *	 override a cpu-bound nice +20 process.
+		 *
+		 * NOTE: We must use ESTCPULIM() here to deal with any
+		 *	 overshoot.
+		 */
+		decay_factor = usched_bsd4_decay;
+		if (decay_factor < 1)
+			decay_factor = 1;
+		if (decay_factor > 1024)
+			decay_factor = 1024;
+
+		lp->lwp_estcpu = ESTCPULIM(
+			(lp->lwp_estcpu * decay_factor + estcpu) /
+			(decay_factor + 1));
+
+		if (usched_debug == lp->lwp_proc->p_pid)
+			kprintf(" finalestcpu %d\n", lp->lwp_estcpu);
 		bsd4_resetpriority(lp);
-		lp->lwp_cpbase = cpbase;
+		lp->lwp_cpbase += ttlticks * gd->gd_schedclock.periodic;
 		lp->lwp_cpticks = 0;
 	}
 }
@@ -767,6 +789,8 @@ bsd4_resetpriority(struct lwp *lp)
 	int newpriority;
 	u_short newrqtype;
 	int reschedcpu;
+	int checkpri;
+	int estcpu;
 
 	/*
 	 * Calculate the new priority and queue type
@@ -783,8 +807,20 @@ bsd4_resetpriority(struct lwp *lp)
 			     (lp->lwp_rtprio.prio & PRIMASK);
 		break;
 	case RTP_PRIO_NORMAL:
+		/*
+		 * Detune estcpu based on batchiness.  lwp_batch ranges
+		 * from 0 to  BATCHMAX.  Limit estcpu for the sake of
+		 * the priority calculation to between 50% and 100%.
+		 */
+		estcpu = lp->lwp_estcpu * (lp->lwp_batch + BATCHMAX) /
+			 (BATCHMAX * 2);
+
+		/*
+		 * p_nice piece		Adds (0-40) * 2		0-80
+		 * estcpu		Adds 16384  * 4 / 512   0-128
+		 */
 		newpriority = (lp->lwp_proc->p_nice - PRIO_MIN) * PPQ / NICEPPQ;
-		newpriority += lp->lwp_estcpu * PPQ / ESTCPUPPQ;
+		newpriority += estcpu * PPQ / ESTCPUPPQ;
 		newpriority = newpriority * MAXPRI / (PRIO_RANGE * PPQ /
 			      NICEPPQ + ESTCPUMAX * PPQ / ESTCPUPPQ);
 		newpriority = PRIBASE_NORMAL + (newpriority & PRIMASK);
@@ -812,15 +848,17 @@ bsd4_resetpriority(struct lwp *lp)
 			lp->lwp_rqtype = newrqtype;
 			lp->lwp_rqindex = (newpriority & PRIMASK) / PPQ;
 			bsd4_setrunqueue_locked(lp);
-			reschedcpu = lp->lwp_thread->td_gd->gd_cpuid;
+			checkpri = 1;
 		} else {
 			lp->lwp_rqtype = newrqtype;
 			lp->lwp_rqindex = (newpriority & PRIMASK) / PPQ;
-			reschedcpu = -1;
+			checkpri = 0;
 		}
+		reschedcpu = lp->lwp_thread->td_gd->gd_cpuid;
 	} else {
 		lp->lwp_priority = newpriority;
 		reschedcpu = -1;
+		checkpri = 1;
 	}
 
 	/*
@@ -835,11 +873,16 @@ bsd4_resetpriority(struct lwp *lp)
 	 * below causes a spurious need_user_resched() on the target CPU
 	 * and dd->pri to be wrong for a short period of time, both of
 	 * which are harmless.
+	 *
+	 * If checkpri is 0 we are adjusting the priority of the current
+	 * process, possibly higher (less desireable), so ignore the upri
+	 * check which will fail in that case.
 	 */
 	if (reschedcpu >= 0) {
 		dd = &bsd4_pcpu[reschedcpu];
 		if ((bsd4_rdyprocmask & CPUMASK(reschedcpu)) &&
-		    (dd->upri & ~PRIMASK) > (lp->lwp_priority & ~PRIMASK)) {
+		    (checkpri == 0 ||
+		     (dd->upri & ~PRIMASK) > (lp->lwp_priority & ~PRIMASK))) {
 #ifdef SMP
 			if (reschedcpu == mycpu->gd_cpuid) {
 				spin_unlock(&bsd4_spin);
@@ -892,13 +935,6 @@ bsd4_yield(struct lwp *lp)
  * reschedule the parent).   This comprises the main part of our batch
  * detection heuristic for both parallel forking and sequential execs.
  *
- * Interactive processes will decay the boosted estcpu quickly while batch
- * processes will tend to compound it.
- *
- * NOTE: We don't want to dock the parent too much because it may cause
- *	 the parent to 'go batch' too quickly in cases where the children
- *	 are short-lived.
- *
  * XXX lwp should be "spawning" instead of "forking"
  *
  * MPSAFE
@@ -906,29 +942,36 @@ bsd4_yield(struct lwp *lp)
 static void
 bsd4_forking(struct lwp *plp, struct lwp *lp)
 {
-	lp->lwp_estcpu = ESTCPULIM(plp->lwp_estcpu + ESTCPUPPQ);
-	lp->lwp_origcpu = lp->lwp_estcpu;
-	plp->lwp_estcpu = ESTCPULIM(plp->lwp_estcpu + 1);
+	/*
+	 * Put the child 4 queue slots (out of 32) higher than the parent
+	 * (less desireable than the parent).
+	 */
+	lp->lwp_estcpu = ESTCPULIM(plp->lwp_estcpu + ESTCPUPPQ * 4);
+
+	/*
+	 * The batch status of children always starts out centerline
+	 * and will inch-up or inch-down as appropriate.  It takes roughly
+	 * ~15 seconds of >50% cpu to hit the limit.
+	 */
+	lp->lwp_batch = BATCHMAX / 2;
+
+	/*
+	 * Dock the parent a cost for the fork, protecting us from fork
+	 * bombs.  If the parent is forking quickly make the child more
+	 * batchy.
+	 */
+	plp->lwp_estcpu = ESTCPULIM(plp->lwp_estcpu + ESTCPUPPQ / 16);
 }
 
 /*
- * Called when the parent reaps a child.   Propogate cpu use by the child
- * back to the parent.
+ * Called when a parent waits for a child.
  *
  * MPSAFE
  */
 static void
-bsd4_exiting(struct lwp *plp, struct lwp *lp)
+bsd4_exiting(struct lwp *lp, struct proc *child_proc)
 {
-	int delta;
-
-	if (plp->lwp_proc->p_pid != 1) {
-		delta = lp->lwp_estcpu - lp->lwp_origcpu;
-		if (delta > 0)
-			plp->lwp_estcpu = ESTCPULIM(plp->lwp_estcpu + delta);
-	}
 }
-
 
 /*
  * chooseproc() is called when a cpu needs a user process to LWKT schedule,

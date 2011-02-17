@@ -40,7 +40,7 @@ struct usched {
     void (*recalculate)(struct lwp *);
     void (*resetpriority)(struct lwp *);
     void (*heuristic_forking)(struct lwp *, struct lwp *);
-    void (*heuristic_exiting)(struct lwp *, struct lwp *);
+    void (*heuristic_exiting)(struct lwp *, struct proc *);
     void (*setcpumask)(struct usched *, cpumask_t);
     void (*yield)(struct lwp *);
 };
@@ -53,7 +53,7 @@ union usched_data {
 	short	priority;	/* lower is better */
 	char	unused01;	/* (currently not used) */
 	char	rqindex;
-	int	origcpu;
+	int	batch;		/* batch mode heuristic */
 	int	estcpu;		/* dynamic priority modification */
 	u_short rqtype;		/* protected copy of rtprio type */
 	u_short	unused02;

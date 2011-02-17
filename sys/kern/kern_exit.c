@@ -873,6 +873,8 @@ loop:
 
 			/* Take care of our return values. */
 			*res = p->p_pid;
+			p->p_usched->heuristic_exiting(td->td_lwp, p);
+
 			if (status)
 				*status = p->p_xstat;
 			if (rusage)
@@ -943,6 +945,7 @@ loop:
 			p->p_flag |= P_WAITED;
 
 			*res = p->p_pid;
+			p->p_usched->heuristic_exiting(td->td_lwp, p);
 			if (status)
 				*status = W_STOPCODE(p->p_xstat);
 			/* Zero rusage so we get something consistent. */
@@ -953,6 +956,7 @@ loop:
 		}
 		if (options & WCONTINUED && (p->p_flag & P_CONTINUED)) {
 			*res = p->p_pid;
+			p->p_usched->heuristic_exiting(td->td_lwp, p);
 			p->p_flag &= ~P_CONTINUED;
 
 			if (status)
