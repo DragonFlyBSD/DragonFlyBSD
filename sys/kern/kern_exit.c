@@ -62,7 +62,6 @@
 #include <sys/filedesc.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
-#include <sys/aio.h>
 #include <sys/jail.h>
 #include <sys/kern_syscall.h>
 #include <sys/upcall.h>

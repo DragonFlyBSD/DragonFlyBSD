@@ -52,7 +52,6 @@
 #include <sys/sysctl.h>
 #include <sys/vnode.h>
 #include <sys/vmmeter.h>
-#include <sys/aio.h>
 #include <sys/libkern.h>
 
 #include <cpu/lwbuf.h>

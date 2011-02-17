@@ -2,7 +2,7 @@ LIB=rt
 SHLIB_MAJOR=0
 WARNS?=2
 
-SRCS+= mq.c
+SRCS+= mq.c aio.c
 
 MAN+=	mq_close.2 mq_getattr.2 mq_notify.2 mq_open.2 mq_receive.2 \
 	mq_send.2 mq_setattr.2 mq_unlink.2
