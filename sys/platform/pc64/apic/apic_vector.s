@@ -139,8 +139,8 @@ IDTVEC(ioapic_intr##irq_num) ;						\
 	/* set the pending bit and return, leave interrupt masked */	\
 	movq	$1,%rcx ;						\
 	shlq	$IRQ_SBITS(irq_num),%rcx ;				\
-	movl	$IRQ_LIDX(irq_num),%edx ;				\
-	orq	%rcx,PCPU_E8(ipending,%edx) ;				\
+	movq	$IRQ_LIDX(irq_num),%rdx ;				\
+	orq	%rcx,PCPU_E8(ipending,%rdx) ;				\
 	orl	$RQF_INTPEND,PCPU(reqflags) ;				\
 	jmp	5f ;							\
 2: ;									\
@@ -148,8 +148,8 @@ IDTVEC(ioapic_intr##irq_num) ;						\
 	movq	$1,%rcx ;						\
 	shlq	$IRQ_SBITS(irq_num),%rcx ;				\
 	notq	%rcx ;							\
-	movl	$IRQ_LIDX(irq_num),%edx ;				\
-	andq	%rcx,PCPU_E8(ipending,%edx) ;				\
+	movq	$IRQ_LIDX(irq_num),%rdx ;				\
+	andq	%rcx,PCPU_E8(ipending,%rdx) ;				\
 	pushq	$irq_num ;		/* trapframe -> intrframe */	\
 	movq	%rsp, %rdi ;		/* pass frame by reference */	\
 	incl	TD_CRITCOUNT(%rbx) ;					\
