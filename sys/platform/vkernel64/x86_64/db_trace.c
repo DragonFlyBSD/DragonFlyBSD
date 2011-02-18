@@ -660,7 +660,6 @@ static
 void
 dl_symbol_values(long callpc, const char **name)
 {
-/*
 	Dl_info info;
 
 	if (*name == NULL) {
@@ -669,5 +668,4 @@ dl_symbol_values(long callpc, const char **name)
 				*name = info.dli_sname;
 		}
 	}
-*/
 }
