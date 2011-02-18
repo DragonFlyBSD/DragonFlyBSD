@@ -172,6 +172,29 @@ struct mptable_pos {
 #define MPTABLE_POS_USE_DEFAULT(mpt) \
 	((mpt)->mp_fps->mpfb1 != 0 || (mpt)->mp_cth == NULL)
 
+struct mptable_bus {
+	int		mb_id;
+	int		mb_type;	/* MPTABLE_BUS_ */
+	TAILQ_ENTRY(mptable_bus) mb_link;
+};
+
+#define MPTABLE_BUS_ISA		0
+#define MPTABLE_BUS_PCI		1
+
+struct mptable_bus_info {
+	TAILQ_HEAD(, mptable_bus) mbi_list;
+};
+
+struct mptable_pci_int {
+	int		mpci_bus;
+	int		mpci_dev;
+	int		mpci_pin;
+
+	int		mpci_ioapic;
+	int		mpci_ioapic_pin;
+	TAILQ_ENTRY(mptable_pci_int) mpci_link;
+};
+
 typedef	int	(*mptable_iter_func)(void *, const void *, int);
 
 /*
@@ -315,6 +338,9 @@ static void	mptable_fix(void);
 static int	mptable_map(struct mptable_pos *);
 static void	mptable_unmap(struct mptable_pos *);
 static void	mptable_imcr(struct mptable_pos *);
+static void	mptable_bus_info_alloc(const mpcth_t,
+		    struct mptable_bus_info *);
+static void	mptable_bus_info_free(struct mptable_bus_info *);
 
 static int	mptable_lapic_probe(struct lapic_enumerator *);
 static void	mptable_lapic_enumerate(struct lapic_enumerator *);
@@ -335,6 +361,8 @@ SYSCTL_INT(_machdep, OID_AUTO, smp_active, CTLFLAG_RD, &smp_active_mask, 0, "");
 
 static vm_paddr_t	mptable_fps_phyaddr;
 static int		mptable_use_default;
+static TAILQ_HEAD(, mptable_pci_int) mptable_pci_int_list =
+	TAILQ_HEAD_INITIALIZER(mptable_pci_int_list);
 
 /*
  * Calculate usable address in base memory for AP trampoline code.
@@ -2854,6 +2882,72 @@ cpu_send_ipiq_passive(int dcpu)
 }
 #endif
 
+static int
+mptable_bus_info_callback(void *xarg, const void *pos, int type)
+{
+	struct mptable_bus_info *bus_info = xarg;
+	const struct BUSENTRY *ent;
+	struct mptable_bus *bus;
+
+	if (type != 1)
+		return 0;
+	ent = pos;
+
+	bus = NULL;
+	if (strncmp(ent->bus_type, "PCI", 3) == 0) {
+		bus = kmalloc(sizeof(*bus), M_TEMP, M_WAITOK | M_ZERO);
+		bus->mb_type = MPTABLE_BUS_PCI;
+	} else if (strncmp(ent->bus_type, "ISA", 3) == 0) {
+		bus = kmalloc(sizeof(*bus), M_TEMP, M_WAITOK | M_ZERO);
+		bus->mb_type = MPTABLE_BUS_ISA;
+	}
+
+	if (bus != NULL) {
+		const struct mptable_bus *bus1;
+
+		TAILQ_FOREACH(bus1, &bus_info->mbi_list, mb_link) {
+			if (bus1->mb_id == ent->bus_id) {
+				kprintf("mptable_bus_info_alloc: "
+					"duplicated bus id (%d)\n", bus1->mb_id);
+				break;
+			}
+		}
+
+		if (bus1 == NULL) {
+			bus->mb_id = ent->bus_id;
+			TAILQ_INSERT_TAIL(&bus_info->mbi_list, bus, mb_link);
+		} else {
+			kfree(bus, M_TEMP);
+			return EINVAL;
+		}
+	}
+	return 0;
+}
+
+static void
+mptable_bus_info_alloc(const mpcth_t cth, struct mptable_bus_info *bus_info)
+{
+	int error;
+
+	bzero(bus_info, sizeof(*bus_info));
+	TAILQ_INIT(&bus_info->mbi_list);
+
+	error = mptable_iterate_entries(cth, mptable_bus_info_callback, bus_info);
+	if (error)
+		mptable_bus_info_free(bus_info);
+}
+
+static void
+mptable_bus_info_free(struct mptable_bus_info *bus_info)
+{
+	struct mptable_bus *bus;
+
+	while ((bus = TAILQ_FIRST(&bus_info->mbi_list)) != NULL) {
+		TAILQ_REMOVE(&bus_info->mbi_list, bus, mb_link);
+		kfree(bus, M_TEMP);
+	}
+}
+
 struct mptable_lapic_cbarg1 {
 	int	cpu_count;
 	int	ht_fixup;
@@ -3122,3 +3216,135 @@ mptable_lapic_enum_register(void)
 }
 SYSINIT(mptable_lapic, SI_BOOT2_PRESMP, SI_ORDER_ANY,
 	mptable_lapic_enum_register, 0);
+
+static int
+mptable_pci_int_callback(void *xarg, const void *pos, int type)
+{
+	const struct mptable_bus_info *bus_info = xarg;
+	const struct mptable_bus *bus;
+	struct mptable_pci_int *pci_int;
+	const struct INTENTRY *ent;
+	int pci_pin, pci_dev;
+
+	if (type != 3)
+		return 0;
+	ent = pos;
+
+	if (ent->int_type != 0)
+		return 0;
+
+	TAILQ_FOREACH(bus, &bus_info->mbi_list, mb_link) {
+		if (bus->mb_type == MPTABLE_BUS_PCI &&
+		    bus->mb_id == ent->src_bus_id)
+			break;
+	}
+	if (bus == NULL)
+		return 0;
+
+	pci_pin = ent->src_bus_irq & 0x3;
+	pci_dev = (ent->src_bus_irq >> 2) & 0x1f;
+
+	TAILQ_FOREACH(pci_int, &mptable_pci_int_list, mpci_link) {
+		if (pci_int->mpci_bus == ent->src_bus_id &&
+		    pci_int->mpci_dev == pci_dev &&
+		    pci_int->mpci_pin == pci_pin) {
+			if (pci_int->mpci_ioapic == ent->dst_apic_id &&
+			    pci_int->mpci_ioapic_pin == ent->dst_apic_int) {
+				kprintf("MPTABLE: warning duplicated "
+					"PCI int entry for "
+					"bus %d, dev %d, pin %d\n",
+					pci_int->mpci_bus,
+					pci_int->mpci_dev,
+					pci_int->mpci_pin);
+				return 0;
+			} else {
+				kprintf("mptable_pci_int_register: "
+					"conflict PCI int entry for "
+					"bus %d, dev %d, pin %d, "
+					"IOAPIC %d.%d -> %d.%d\n",
+					pci_int->mpci_bus,
+					pci_int->mpci_dev,
+					pci_int->mpci_pin,
+					pci_int->mpci_ioapic,
+					pci_int->mpci_ioapic_pin,
+					ent->dst_apic_id,
+					ent->dst_apic_int);
+				return EINVAL;
+			}
+		}
+	}
+
+	pci_int = kmalloc(sizeof(pci_int), M_DEVBUF, M_WAITOK | M_ZERO);
+
+	pci_int->mpci_bus = ent->src_bus_id;
+	pci_int->mpci_dev = pci_dev;
+	pci_int->mpci_pin = pci_pin;
+	pci_int->mpci_ioapic = ent->dst_apic_id;
+	pci_int->mpci_ioapic_pin = ent->dst_apic_int;
+
+	TAILQ_INSERT_TAIL(&mptable_pci_int_list, pci_int, mpci_link);
+
+	return 0;
+}
+
+static void
+mptable_pci_int_register(void)
+{
+	struct mptable_bus_info bus_info;
+	const struct mptable_bus *bus;
+	struct mptable_pci_int *pci_int;
+	struct mptable_pos mpt;
+	int error, force_pci0, npcibus;
+	mpcth_t cth;
+
+	if (mptable_fps_phyaddr == 0)
+		return;
+
+	if (mptable_use_default)
+		return;
+
+	error = mptable_map(&mpt);
+	if (error)
+		panic("mptable_pci_int_register: mptable_map failed\n");
+	KKASSERT(!MPTABLE_POS_USE_DEFAULT(&mpt));
+
+	cth = mpt.mp_cth;
+
+	mptable_bus_info_alloc(cth, &bus_info);
+	if (TAILQ_EMPTY(&bus_info.mbi_list))
+		goto done;
+
+	npcibus = 0;
+	TAILQ_FOREACH(bus, &bus_info.mbi_list, mb_link) {
+		if (bus->mb_type == MPTABLE_BUS_PCI)
+			++npcibus;
+	}
+	if (npcibus == 0) {
+		mptable_bus_info_free(&bus_info);
+		goto done;
+	} else if (npcibus == 1) {
+		force_pci0 = 1;
+	}
+
+	error = mptable_iterate_entries(cth,
+		    mptable_pci_int_callback, &bus_info);
+
+	mptable_bus_info_free(&bus_info);
+
+	if (error) {
+		while ((pci_int = TAILQ_FIRST(&mptable_pci_int_list)) != NULL) {
+			TAILQ_REMOVE(&mptable_pci_int_list, pci_int, mpci_link);
+			kfree(pci_int, M_DEVBUF);
+		}
+		goto done;
+	}
+
+	if (force_pci0) {
+		TAILQ_FOREACH(pci_int, &mptable_pci_int_list, mpci_link)
+			pci_int->mpci_bus = 0;
+	}
+done:
+	mptable_unmap(&mpt);
+}
+SYSINIT(mptable_pci, SI_BOOT2_PRESMP, SI_ORDER_ANY,
+	mptable_pci_int_register, 0);
