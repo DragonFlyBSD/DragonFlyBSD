@@ -4455,10 +4455,17 @@ pf_test_state_tcp(struct pf_state **state, int direction, struct pfi_kif *kif,
 		struct pf_state_key *nk = (*state)->key[pd->didx];
 
 		if (PF_ANEQ(pd->src, &nk->addr[pd->sidx], pd->af) ||
-		    nk->port[pd->sidx] != th->th_sport) 
+		    nk->port[pd->sidx] != th->th_sport)  {
+			/*
+			 * The translated source address may be completely
+			 * unrelated to the saved link header, make sure
+			 * a bridge doesn't try to use it.
+			 */
+			m->m_pkthdr.fw_flags &= ~BRIDGE_MBUF_TAGGED;
 			pf_change_ap(pd->src, &th->th_sport, pd->ip_sum,
 			    &th->th_sum, &nk->addr[pd->sidx],
 			    nk->port[pd->sidx], 0, pd->af);
+		}
 
 		if (PF_ANEQ(pd->dst, &nk->addr[pd->didx], pd->af) ||
 		    nk->port[pd->didx] != th->th_dport) {
@@ -4532,10 +4539,17 @@ pf_test_state_udp(struct pf_state **state, int direction, struct pfi_kif *kif,
 		struct pf_state_key *nk = (*state)->key[pd->didx];
 
 		if (PF_ANEQ(pd->src, &nk->addr[pd->sidx], pd->af) ||
-		    nk->port[pd->sidx] != uh->uh_sport)
+		    nk->port[pd->sidx] != uh->uh_sport) {
+			/*
+			 * The translated source address may be completely
+			 * unrelated to the saved link header, make sure
+			 * a bridge doesn't try to use it.
+			 */
+			m->m_pkthdr.fw_flags &= ~BRIDGE_MBUF_TAGGED;
 			pf_change_ap(pd->src, &uh->uh_sport, pd->ip_sum,
 			    &uh->uh_sum, &nk->addr[pd->sidx],
 			    nk->port[pd->sidx], 1, pd->af);
+		}
 
 		if (PF_ANEQ(pd->dst, &nk->addr[pd->didx], pd->af) ||
 		    nk->port[pd->didx] != uh->uh_dport) {
