@@ -3317,6 +3317,7 @@ pf_unload(void)
 		pf_maskhead->rnh_walktree(pf_maskhead,
 			pf_mask_del, pf_maskhead);
 		Free(pf_maskhead);
+		pf_maskhead = NULL;
 	}
 	return 0;
 }

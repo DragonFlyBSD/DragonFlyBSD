@@ -846,6 +846,12 @@ pf_state_insert(struct pfi_kif *kif, struct pf_state_key *skw,
 		s->id = htobe64(pf_status.stateid++);
 		s->creatorid = pf_status.hostid;
 	}
+
+	/*
+	 * Calculate hash code for altq
+	 */
+	s->hash = crc32(s->key[PF_SK_WIRE], sizeof(*sks));
+
 	if (RB_INSERT(pf_state_tree_id, &tree_id, s) != NULL) {
 		if (pf_status.debug >= PF_DEBUG_MISC) {
 			kprintf("pf: state insert failed: "
