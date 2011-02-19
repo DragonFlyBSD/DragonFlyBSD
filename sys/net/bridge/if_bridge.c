@@ -1863,6 +1863,21 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 	eh = mtod(m, struct ether_header *);
 
 	/*
+	 * LINK0 - Enables transparent bridge mode.
+	 */
+	if (eh->ether_type == htons(ETHERTYPE_IP) ||
+	    eh->ether_type == htons(ETHERTYPE_IPV6)) {
+		if ((bifp->if_flags & IFF_LINK0) &&
+		    (m->m_pkthdr.fw_flags & BRIDGE_MBUF_TAGGED) &&
+		    bridge_rtlookup(sc, m->m_pkthdr.br.ether.ether_shost) !=
+		    bridge_rtlookup(sc, eh->ether_dhost)) {
+			    bcopy(m->m_pkthdr.br.ether.ether_shost,
+			      eh->ether_shost,
+			      sizeof(eh->ether_shost));
+		}
+	}
+
+	/*
 	 * If bridge is down, but the original output interface is up,
 	 * go ahead and send out that interface.  Otherwise, the packet
 	 * is dropped below.
@@ -1976,6 +1991,22 @@ bridge_start(struct ifnet *ifp)
 			}
 		}
 		eh = mtod(m, struct ether_header *);
+
+		/*
+		 * LINK0 - Enable transparent bridge mode (see comments
+		 *	   in the first LINK0 section above).
+		 */
+		if (eh->ether_type == htons(ETHERTYPE_IP) ||
+		    eh->ether_type == htons(ETHERTYPE_IPV6)) {
+			if ((ifp->if_flags & IFF_LINK0) &&
+			    (m->m_pkthdr.fw_flags & BRIDGE_MBUF_TAGGED) &&
+			    bridge_rtlookup(sc, m->m_pkthdr.br.ether.ether_shost) !=
+			    bridge_rtlookup(sc, eh->ether_dhost)) {
+				bcopy(m->m_pkthdr.br.ether.ether_shost,
+				      eh->ether_shost,
+				      sizeof(eh->ether_shost));
+			}
+		}
 
 		BPF_MTAP(ifp, m);
 		ifp->if_opackets++;
@@ -2174,7 +2205,12 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 		goto out;
 	}
 
+	/*
+	 * Handle the ether_header
+	 */
 	eh = mtod(m, struct ether_header *);
+	m->m_pkthdr.fw_flags |= BRIDGE_MBUF_TAGGED;
+	bcopy(eh, &m->m_pkthdr.br.ether, sizeof(*eh));
 
 	if (memcmp(eh->ether_dhost, IF_LLADDR(bifp), ETHER_ADDR_LEN) == 0) {
 		/*

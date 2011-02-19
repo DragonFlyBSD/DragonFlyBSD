@@ -2675,12 +2675,18 @@ pf_get_translation(struct pf_pdesc *pd, struct mbuf *m, int off, int direction,
 		naddr = &(*nkp)->addr[1];
 		nport = &(*nkp)->port[1];
 
+		/*
+		 * NOTE: Currently all translations will clear
+		 *	 BRIDGE_MBUF_TAGGED, telling the bridge to
+		 *	 ignore the original input encapsulation.
+		 */
 		switch (r->action) {
 		case PF_NONAT:
 		case PF_NOBINAT:
 		case PF_NORDR:
 			return (NULL);
 		case PF_NAT:
+			m->m_pkthdr.fw_flags &= ~BRIDGE_MBUF_TAGGED;
 			if (pf_get_sport(pd->af, pd->proto, r, saddr,
 			    daddr, dport, naddr, nport, r->rpool.proxy_port[0],
 			    r->rpool.proxy_port[1], sn)) {
@@ -2693,6 +2699,7 @@ pf_get_translation(struct pf_pdesc *pd, struct mbuf *m, int off, int direction,
 			}
 			break;
 		case PF_BINAT:
+			m->m_pkthdr.fw_flags &= ~BRIDGE_MBUF_TAGGED;
 			switch (direction) {
 			case PF_OUT:
 				if (r->rpool.cur->addr.type == PF_ADDR_DYNIFTL){
@@ -2769,6 +2776,7 @@ pf_get_translation(struct pf_pdesc *pd, struct mbuf *m, int off, int direction,
 			}
 			break;
 		case PF_RDR: {
+			m->m_pkthdr.fw_flags &= ~BRIDGE_MBUF_TAGGED;
 			if (pf_map_addr(pd->af, r, saddr, naddr, NULL, sn))
 				return (NULL);
 			if ((r->rpool.opts & PF_POOL_TYPEMASK) ==
