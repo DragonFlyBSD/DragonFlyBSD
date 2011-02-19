@@ -3274,7 +3274,7 @@ mptable_pci_int_callback(void *xarg, const void *pos, int type)
 		}
 	}
 
-	pci_int = kmalloc(sizeof(pci_int), M_DEVBUF, M_WAITOK | M_ZERO);
+	pci_int = kmalloc(sizeof(*pci_int), M_DEVBUF, M_WAITOK | M_ZERO);
 
 	pci_int->mpci_bus = ent->src_bus_id;
 	pci_int->mpci_dev = pci_dev;
