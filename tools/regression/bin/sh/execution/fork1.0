@@ -1,7 +1,10 @@
-# $FreeBSD: src/tools/regression/bin/sh/execution/fork1.0,v 1.2 2010/10/12 18:20:38 obrien Exp $
+# $FreeBSD: src/tools/regression/bin/sh/execution/fork1.0,v 1.3 2011/02/19 13:22:18 jilles Exp $
+
+shname=${SH%% *}
+shname=${shname##*/}
 
 result=$(${SH} -c 'ps -p $$ -o comm=')
 test "$result" = "ps" || exit 1
 
 result=$(${SH} -c 'ps -p $$ -o comm=; :')
-test "$result" = "sh" || exit 1
+test "$result" = "$shname" || exit 1

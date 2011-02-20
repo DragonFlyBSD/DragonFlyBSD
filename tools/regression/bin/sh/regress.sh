@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/sh/regress.sh,v 1.4 2010/10/12 18:20:38 obrien Exp $
+# $FreeBSD: src/tools/regression/bin/sh/regress.sh,v 1.5 2011/02/19 13:23:13 jilles Exp $
 
 if [ -z "${SH}" ]; then
 	echo '${SH} is not set, please correct and re-run.'
@@ -9,7 +9,6 @@ export SH=${SH}
 COUNTER=1
 
 do_test() {
-	local c
 	c=${COUNTER}
 	COUNTER=$((COUNTER+1))
 	${SH} $1 > tmp.stdout 2> tmp.stderr

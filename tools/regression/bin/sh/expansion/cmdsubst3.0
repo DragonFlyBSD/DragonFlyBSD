@@ -1,4 +1,7 @@
-# $FreeBSD: src/tools/regression/bin/sh/expansion/cmdsubst3.0,v 1.1 2010/12/16 23:28:20 jilles Exp $
+# $FreeBSD: src/tools/regression/bin/sh/expansion/cmdsubst3.0,v 1.2 2011/02/18 20:37:09 jilles Exp $
+
+unset LC_ALL
+export LC_CTYPE=en_US.ISO8859-1
 
 e=
 for i in 0 1 2 3; do
