@@ -1556,6 +1556,15 @@ TO_REMOVE+=/usr/share/man/cat3/magic_errno.3.gz
 TO_REMOVE+=/usr/share/man/man3/magic_errno.3.gz
 TO_REMOVE+=/usr/share/man/cat3/magic_file.3.gz
 TO_REMOVE+=/usr/share/man/man3/magic_file.3.gz
+TO_REMOVE+=/usr/include/sys/ref.h
+TO_REMOVE+=/usr/share/man/cat/cat9/kref.9.gz
+TO_REMOVE+=/usr/share/man/cat/man9/kref.9.gz
+TO_REMOVE+=/usr/share/man/cat/cat9/kref_dec.9.gz
+TO_REMOVE+=/usr/share/man/cat/man9/kref_dec.9.gz
+TO_REMOVE+=/usr/share/man/cat/cat9/kref_inc.9.gz
+TO_REMOVE+=/usr/share/man/cat/man9/kref_inc.9.gz
+TO_REMOVE+=/usr/share/man/cat/cat9/kref_init.9.gz
+TO_REMOVE+=/usr/share/man/cat/man9/kref_init.9.gz
 
 # XXX Remove when pfsync(4) has been fixed
 TO_REMOVE+=/usr/share/man/cat4/pfsync.4.gz
