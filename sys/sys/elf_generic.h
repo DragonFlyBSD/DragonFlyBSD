@@ -83,7 +83,7 @@ __ElfType(Sym);
 
 #else
 
-#warning "must include sys/elf32.h or sy/elf64.h before sys/elf_generic.h"
+#warning "must include sys/elf32.h or sys/elf64.h before sys/elf_generic.h"
 
 #endif /* __ELF_WORD_SIZE */
 
