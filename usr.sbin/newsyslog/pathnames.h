@@ -18,12 +18,12 @@ M.I.T. and the M.I.T. S.I.P.B. make no representations about
 the suitability of this software for any purpose.  It is
 provided "as is" without express or implied warranty.
 
- $FreeBSD: src/usr.sbin/newsyslog/pathnames.h,v 1.2.2.2 2003/04/27 04:11:22 gad Exp $
- $DragonFly: src/usr.sbin/newsyslog/pathnames.h,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ $FreeBSD: src/usr.sbin/newsyslog/pathnames.h,v 1.4 2011/01/31 10:57:54 mm Exp $
 
 */
 
-#define _PATH_CONF	"/etc/newsyslog.conf"
-#define _PATH_SYSLOGPID	_PATH_VARRUN "syslog.pid"
-#define _PATH_BZIP2	"/usr/bin/bzip2"
-#define _PATH_GZIP	"/usr/bin/gzip"
+#define	_PATH_CONF	"/etc/newsyslog.conf"
+#define	_PATH_SYSLOGPID	_PATH_VARRUN "syslog.pid"
+#define	_PATH_BZIP2	"/usr/bin/bzip2"
+#define	_PATH_GZIP	"/usr/bin/gzip"
+#define	_PATH_XZ	"/usr/bin/xz"
