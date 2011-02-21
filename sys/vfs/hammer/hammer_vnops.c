@@ -581,15 +581,18 @@ hammer_vop_write(struct vop_write_args *ap)
 		 * Control the number of pending records associated with
 		 * this inode.  If too many have accumulated start a
 		 * flush.  Try to maintain a pipeline with the flusher.
+		 *
+		 * NOTE: It is possible for other sources to grow the
+		 *	 records but not necessarily issue another flush,
+		 *	 so use a timeout and ensure that a re-flush occurs.
 		 */
 		if (ip->rsv_recs >= hammer_limit_inode_recs) {
 			hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
-		}
-		if (ip->rsv_recs >= hammer_limit_inode_recs * 2) {
-			while (ip->rsv_recs >= hammer_limit_inode_recs) {
+			while (ip->rsv_recs >= hammer_limit_inode_recs * 2) {
+				ip->flags |= HAMMER_INODE_RECSW;
 				tsleep(&ip->rsv_recs, 0, "hmrwww", hz);
+				hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
 			}
-			hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
 		}
 
 #if 0

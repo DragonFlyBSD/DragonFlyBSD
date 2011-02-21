@@ -104,7 +104,7 @@ int hammer_count_io_locked;
 int hammer_limit_dirtybufspace;		/* per-mount */
 int hammer_limit_running_io;		/* per-mount */
 int hammer_limit_recs;			/* as a whole XXX */
-int hammer_limit_inode_recs = 1024;	/* per inode */
+int hammer_limit_inode_recs = 2048;	/* per inode */
 int hammer_limit_reclaim;
 int hammer_live_dedup_cache_size = DEDUP_CACHE_SIZE;
 int hammer_limit_redo = 4096 * 1024;	/* per inode */

@@ -447,8 +447,11 @@ hammer_rel_mem_record(struct hammer_record *record)
 
 				if (RB_EMPTY(&record->ip->rec_tree))
 					hammer_test_inode(record->ip);
-				if (ip->rsv_recs == hammer_limit_inode_recs - 1)
+				if ((ip->flags & HAMMER_INODE_RECSW) &&
+				    ip->rsv_recs <= hammer_limit_inode_recs/2) {
+					ip->flags &= ~HAMMER_INODE_RECSW;
 					wakeup(&ip->rsv_recs);
+				}
 			}
 
 			/*
