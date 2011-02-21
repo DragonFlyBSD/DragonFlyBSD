@@ -14,6 +14,7 @@ INSTALLFLAGS+=	-fschg
 .endif
 MLINKS=		rtld.1 ld-elf.so.1.1
 MLINKS+=	rtld.1 ld-elf.so.2.1
+MLINKS+=	rtld.1 _rtld_functrace.3
 
 .if exists(${.CURDIR}/${MACHINE_ARCH}/Makefile.inc)
 .include "${.CURDIR}/${MACHINE_ARCH}/Makefile.inc"
