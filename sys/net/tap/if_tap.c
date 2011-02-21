@@ -969,7 +969,6 @@ tapkqfilter(struct dev_kqfilter_args *ap)
 		break;
 	default:
 		ap->a_result = EOPNOTSUPP;
-		rel_mplock();
 		return(0);
 	}
 
