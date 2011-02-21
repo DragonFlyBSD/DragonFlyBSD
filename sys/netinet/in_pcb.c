@@ -1171,7 +1171,10 @@ in_pcbinsconnhash(struct inpcb *inp)
 	}
 #endif
 
-	KASSERT(!(inp->inp_flags & INP_CONNECTED), ("already on hash list"));
+	KASSERT(!(inp->inp_flags & INP_WILDCARD),
+		("already on wildcardhash\n"));
+	KASSERT(!(inp->inp_flags & INP_CONNECTED),
+		("already on connhash\n"));
 	inp->inp_flags |= INP_CONNECTED;
 
 	/*
@@ -1265,11 +1268,14 @@ void
 in_pcbinswildcardhash(struct inpcb *inp)
 {
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
-	
-	KKASSERT(pcbinfo != NULL);
+
+	KASSERT(!(inp->inp_flags & INP_CONNECTED),
+		("already on connhash\n"));
+	KASSERT(!(inp->inp_flags & INP_WILDCARD),
+		("already on wildcardhash\n"));
+	inp->inp_flags |= INP_WILDCARD;
 
 	in_pcbinswildcardhash_oncpu(inp, pcbinfo);
-	inp->inp_flags |= INP_WILDCARD;
 }
 
 void
