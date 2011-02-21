@@ -379,6 +379,10 @@ tcp_usr_listen(netmsg_t msg)
 #endif
 
 	COMMON_START(so, inp, 0);
+
+	if (tp->t_flags & TF_LISTEN)
+		goto out;
+
 	if (inp->inp_lport == 0) {
 		error = in_pcbbind(inp, NULL, td);
 		if (error)
@@ -386,7 +390,7 @@ tcp_usr_listen(netmsg_t msg)
 	}
 
 	tp->t_state = TCPS_LISTEN;
-	tp->t_flags |= TF_SYNCACHE;
+	tp->t_flags |= TF_LISTEN;
 	tp->tt_msg = NULL; /* Catch any invalid timer usage */
 
 #ifdef SMP
@@ -432,6 +436,10 @@ tcp6_usr_listen(netmsg_t msg)
 #endif
 
 	COMMON_START(so, inp, 0);
+
+	if (tp->t_flags & TF_LISTEN)
+		goto out;
+
 	if (inp->inp_lport == 0) {
 		if (!(inp->inp_flags & IN6P_IPV6_V6ONLY))
 			inp->inp_vflag |= INP_IPV4;
@@ -443,7 +451,7 @@ tcp6_usr_listen(netmsg_t msg)
 	}
 
 	tp->t_state = TCPS_LISTEN;
-	tp->t_flags |= TF_SYNCACHE;
+	tp->t_flags |= TF_LISTEN;
 	tp->tt_msg = NULL; /* Catch any invalid timer usage */
 
 #ifdef SMP

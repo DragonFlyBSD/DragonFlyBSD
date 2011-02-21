@@ -759,7 +759,7 @@ tcp_listen_detach_handler(netmsg_t msg)
 	struct tcpcb *tp = nmsg->nm_tp;
 	int cpu = mycpuid, nextcpu;
 
-	if (tp->t_flags & TF_SYNCACHE)
+	if (tp->t_flags & TF_LISTEN)
 		syncache_destroy(tp);
 
 	in_pcbremwildcardhash_oncpu(tp->t_inpcb, &tcbinfo[cpu]);
@@ -965,7 +965,7 @@ no_valid_rt:
 
 	tcp_destroy_timermsg(tp);
 
-	if (tp->t_flags & TF_SYNCACHE)
+	if (tp->t_flags & TF_LISTEN)
 		syncache_destroy(tp);
 
 	/*
