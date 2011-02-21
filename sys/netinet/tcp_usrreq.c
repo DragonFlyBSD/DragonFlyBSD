@@ -395,6 +395,12 @@ tcp_usr_listen(netmsg_t msg)
 		 * We have to set the flag because we can't have other cpus
 		 * messing with our inp's flags.
 		 */
+		KASSERT(!(inp->inp_flags & INP_CONNECTED),
+			("already on connhash\n"));
+		KASSERT(!(inp->inp_flags & INP_WILDCARD),
+			("already on wildcardhash\n"));
+		KASSERT(!(inp->inp_flags & INP_WILDCARD_MP),
+			("already on MP wildcardhash\n"));
 		inp->inp_flags |= INP_WILDCARD_MP;
 
 		KKASSERT(so->so_port == cpu_portfn(0));
@@ -446,6 +452,12 @@ tcp6_usr_listen(netmsg_t msg)
 		 * We have to set the flag because we can't have other cpus
 		 * messing with our inp's flags.
 		 */
+		KASSERT(!(inp->inp_flags & INP_CONNECTED),
+			("already on connhash\n"));
+		KASSERT(!(inp->inp_flags & INP_WILDCARD),
+			("already on wildcardhash\n"));
+		KASSERT(!(inp->inp_flags & INP_WILDCARD_MP),
+			("already on MP wildcardhash\n"));
 		inp->inp_flags |= INP_WILDCARD_MP;
 
 		KKASSERT(so->so_port == cpu_portfn(0));
