@@ -188,7 +188,7 @@ for printing out the functions as they are called, this code can be used:
 .Bd -literal -offset indent
 #include <string.h>
 
-int nl = 10;
+static int nl = 10;
 
 int
 _rtld_functrace(const char *callerso, const char *calleeso,
