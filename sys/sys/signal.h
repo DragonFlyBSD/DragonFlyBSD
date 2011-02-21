@@ -215,14 +215,18 @@ struct sigevent {
 	union {
 		int	__sigev_signo;	/* Signal number */
 		int	__sigev_notify_kqueue;
+		void	*__sigev_notify_attributes;
 	} __sigev_u;
 	union sigval sigev_value;	/* Signal value */
+	void (*sigev_notify_function)(union sigval);
 };
 #define sigev_signo		__sigev_u.__sigev_signo
+#define sigev_notify_attributes	__sigev_u.__sigev_notify_attributes
 #define sigev_notify_kqueue	__sigev_u.__sigev_notify_kqueue
 
 #define	SIGEV_NONE	0		/* No async notification */
 #define	SIGEV_SIGNAL	1		/* Generate a queued signal */
+#define SIGEV_THREAD	2		/* Call back in a pthread */
 #define SIGEV_KEVENT	3		/* Generate a kevent */
 
 typedef struct __siginfo {
