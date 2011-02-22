@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/dlfcn.h,v 1.10.2.3 2003/02/20 20:42:45 kan Exp $
- * $DragonFly: src/include/dlfcn.h,v 1.5 2004/02/26 13:58:25 joerg Exp $
  */
 
 #ifndef _DLFCN_H_
@@ -43,26 +42,26 @@
 /*
  * Modes and flags for dlopen().
  */
-#define RTLD_LAZY	1	/* Bind function calls lazily */
-#define RTLD_NOW	2	/* Bind function calls immediately */
-#define RTLD_MODEMASK	0x3
-#define RTLD_GLOBAL	0x100	/* Make symbols globally available */
-#define RTLD_LOCAL	0	/* Opposite of RTLD_GLOBAL, and the default */
-#define RTLD_TRACE	0x200	/* Trace loaded objects and exit */
+#define	RTLD_LAZY	1	/* Bind function calls lazily. */
+#define	RTLD_NOW	2	/* Bind function calls immediately. */
+#define	RTLD_MODEMASK	0x3
+#define	RTLD_GLOBAL	0x100	/* Make symbols globally available. */
+#define	RTLD_LOCAL	0	/* Opposite of RTLD_GLOBAL, and the default. */
+#define	RTLD_TRACE	0x200	/* Trace loaded objects and exit. */
 
 /*
  * Request arguments for dlinfo().
  */
-#define	RTLD_DI_LINKMAP		2
-#define	RTLD_DI_SERINFO		4
-#define	RTLD_DI_SERINFOSIZE	5
-#define	RTLD_DI_ORIGIN		6
+#define	RTLD_DI_LINKMAP		2	/* Obtain link map. */
+#define	RTLD_DI_SERINFO		4	/* Obtain search path info. */
+#define	RTLD_DI_SERINFOSIZE	5	/*  ... query for required space. */
+#define	RTLD_DI_ORIGIN		6	/* Obtain object origin */
 
 /*
  * Special handle arguments for dlsym()/dlinfo().
  */
-#define RTLD_NEXT	((void *) -1)	/* Search subsequent objects */
-#define RTLD_DEFAULT	((void *) -2)	/* Use default search algorithm */
+#define	RTLD_NEXT	((void *) -1)	/* Search subsequent objects. */
+#define	RTLD_DEFAULT	((void *) -2)	/* Use default search algorithm. */
 #define	RTLD_SELF	((void *) -3)	/* Search the caller itself. */
 
 #if __BSD_VISIBLE
@@ -70,10 +69,10 @@
  * Structure filled in by dladdr().
  */
 typedef struct dl_info {
-	const char	*dli_fname;	/* Pathname of shared object */
-	void		*dli_fbase;	/* Base address of shared object */
-	const char	*dli_sname;	/* Name of nearest symbol */
-	void		*dli_saddr;	/* Address of nearest symbol */
+	const char	*dli_fname;	/* Pathname of shared object. */
+	void		*dli_fbase;	/* Base address of shared object. */
+	const char	*dli_sname;	/* Name of nearest symbol. */
+	void		*dli_saddr;	/* Address of nearest symbol. */
 } Dl_info;
 
 /*
@@ -112,7 +111,7 @@ typedef void (*dlfunc_t)(struct __dlfunc_arg);
 #endif /* __BSD_VISIBLE */
 
 __BEGIN_DECLS
-/* XSI functions first */
+/* XSI functions first. */
 int		 dlclose(void *);
 const char 	*dlerror(void);
 void		*dlopen(const char *, int);

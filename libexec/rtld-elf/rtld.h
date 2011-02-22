@@ -23,7 +23,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.h,v 1.15.2.6 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.h,v 1.11 2005/05/11 19:47:06 dillon Exp $
  */
 
 #ifndef RTLD_H /* { */
@@ -213,6 +212,7 @@ extern Elf_Addr _GLOBAL_OFFSET_TABLE_[];
  */
 const char	*basename(const char *);
 int		 do_copy_relocations(Obj_Entry *);
+
 unsigned long	 elf_hash(const char *);
 const Elf_Sym	 *find_symdef(unsigned long, const Obj_Entry *,
 			      const Obj_Entry **, bool, SymCache *);
@@ -234,4 +234,5 @@ void		 *allocate_module_tls(int);
 bool		 allocate_tls_offset(Obj_Entry *);
 void		 free_tls_offset(Obj_Entry *);
 void		 allocate_initial_tls(Obj_Entry *);
+
 #endif /* } */

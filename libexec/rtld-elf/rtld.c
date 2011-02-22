@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.29 2008/01/08 00:02:04 corecode Exp $
  */
 
 /*
@@ -277,7 +276,6 @@ wlock_release(void)
  *
  * The return value is the main program's entry point.
  */
-
 func_ptr_type
 _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
 {
@@ -1348,14 +1346,12 @@ find_object2(const char *path, int *fd, struct stat *sb)
 	_rtld_error("Cannot open \"%s\"", path);
 	return(NULL);
     }
-
     if (fstat(*fd, sb) == -1) {
 	_rtld_error("Cannot fstat \"%s\"", path);
 	close(*fd);
 	*fd = -1;
 	return NULL;
     }
-
     for (obj = obj_list->next;  obj != NULL;  obj = obj->next) {
 	if (obj->ino == sb->st_ino && obj->dev == sb->st_dev) {
 	    close(*fd);
@@ -1397,7 +1393,6 @@ load_object(char *path)
 	free(path);
 	return(NULL);
     }
-
     dbg("loading \"%s\"", path);
     obj = map_object(fd, path, &sb);
     close(fd);
@@ -1414,8 +1409,8 @@ load_object(char *path)
     obj_count++;
     linkmap_add(obj);	/* for GDB & dlinfo() */
 
-    dbg("  %p .. %p: %s", obj->mapbase, obj->mapbase + obj->mapsize - 1,
-	obj->path);
+    dbg("  %p .. %p: %s", obj->mapbase,
+         obj->mapbase + obj->mapsize - 1, obj->path);
     if (obj->textrel)
         dbg("  WARNING: %s has impure text", obj->path);
 
@@ -1778,6 +1773,7 @@ dlclose(void *handle)
 
     /* Unreference the object and its dependencies. */
     root->dl_refcount--;
+
     unref_dag(root);
 
     if (root->refcount == 0) {
@@ -1837,12 +1833,11 @@ dlopen(const char *name, int mode)
 
     if (obj) {
 	obj->dl_refcount++;
-	if ((mode & RTLD_GLOBAL) && objlist_find(&list_global, obj) == NULL)
+	if (mode & RTLD_GLOBAL && objlist_find(&list_global, obj) == NULL)
 	    objlist_push_tail(&list_global, obj);
 	mode &= RTLD_MODEMASK;
 	if (*old_obj_tail != NULL) {		/* We loaded something new. */
 	    assert(*old_obj_tail == obj);
-
 	    result = load_needed_objects(obj);
 	    if (result != -1 && ld_tracing)
 		goto trace;
@@ -2505,6 +2500,7 @@ symlook_obj(const char *name, unsigned long hash, const Obj_Entry *obj,
 
 	    if (symnum >= obj->nchains)
 		return NULL;	/* Bad object */
+
 	    symp = obj->symtab + symnum;
 	    strp = obj->strtab + symp->st_name;
 
@@ -2719,7 +2715,6 @@ tls_get_addr_common(void **dtvp, int index, size_t offset)
 	    dtv[index + 1] = (Elf_Addr)allocate_module_tls(index);
 	wlock_release();
     }
-
     return (void*) (dtv[index + 1] + offset);
 }
 
