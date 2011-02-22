@@ -1327,9 +1327,12 @@ ether_input_oncpu(struct ifnet *ifp, struct mbuf *m)
  *
  * This function should be used by pseudo interface (e.g. vlan(4)),
  * when it tries to claim that the packet is received by it.
+ *
+ * REINPUT_KEEPRCVIF
+ * REINPUT_RUNBPF
  */
 void
-ether_reinput_oncpu(struct ifnet *ifp, struct mbuf *m, int run_bpf)
+ether_reinput_oncpu(struct ifnet *ifp, struct mbuf *m, int reinput_flags)
 {
 	/* Discard packet if interface is not up */
 	if (!(ifp->if_flags & IFF_UP)) {
@@ -1337,8 +1340,15 @@ ether_reinput_oncpu(struct ifnet *ifp, struct mbuf *m, int run_bpf)
 		return;
 	}
 
-	/* Change receiving interface */
-	m->m_pkthdr.rcvif = ifp;
+	/*
+	 * Change receiving interface.  The bridge will often pass a flag to
+	 * ask that this not be done so ARPs get applied to the correct
+	 * side.
+	 */
+	if ((reinput_flags & REINPUT_KEEPRCVIF) == 0 ||
+	    m->m_pkthdr.rcvif == NULL) {
+		m->m_pkthdr.rcvif = ifp;
+	}
 
 	/* Update statistics */
 	ifp->if_ipackets++;
@@ -1346,7 +1356,7 @@ ether_reinput_oncpu(struct ifnet *ifp, struct mbuf *m, int run_bpf)
 	if (m->m_flags & (M_MCAST | M_BCAST))
 		ifp->if_imcasts++;
 
-	if (run_bpf)
+	if (reinput_flags & REINPUT_RUNBPF)
 		BPF_MTAP(ifp, m);
 
 	ether_input_oncpu(ifp, m);

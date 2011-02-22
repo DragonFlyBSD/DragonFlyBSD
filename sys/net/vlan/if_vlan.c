@@ -553,7 +553,7 @@ vlan_input(struct mbuf *m)
 	 */
 	m->m_flags &= ~M_VLANTAG;
 
-	ether_reinput_oncpu(&ifv->ifv_if, m, 1);
+	ether_reinput_oncpu(&ifv->ifv_if, m, REINPUT_RUNBPF);
 }
 
 static void
