@@ -2188,6 +2188,10 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 
 	/*
 	 * Handle the ether_header
+	 *
+	 * In all cases if the packet is destined for us via our MAC
+	 * we must clear BRIDGE_MBUF_TAGGED to ensure that we don't
+	 * repeat the source MAC out the same interface.
 	 */
 	eh = mtod(m, struct ether_header *);
 	m->m_pkthdr.fw_flags |= BRIDGE_MBUF_TAGGED;
@@ -2199,6 +2203,7 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 		 * bridge, and return the packet back to ifnet.if_input for
 		 * local processing.
 		 */
+		m->m_pkthdr.fw_flags &= ~BRIDGE_MBUF_TAGGED;
 		KASSERT(bifp->if_bridge == NULL,
 			("loop created in bridge_input"));
 		if (pfil_member != 0) {
@@ -2286,7 +2291,11 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 			 *
 			 * Leave m_pkthdr.rcvif alone, so ARP replies are
 			 * processed as coming in on the correct interface.
+			 *
+			 * Clear the bridge flag for local processing in
+			 * case the packet gets routed.
 			 */
+			mc2->m_pkthdr.fw_flags &= ~BRIDGE_MBUF_TAGGED;
 			ether_reinput_oncpu(bifp, mc2, REINPUT_KEEPRCVIF);
 		}
 
@@ -2330,6 +2339,7 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 				bridge_rtupdate(sc, eh->ether_shost,
 						ifp, IFBAF_DYNAMIC);
 			}
+			m->m_pkthdr.fw_flags &= ~BRIDGE_MBUF_TAGGED;
 			goto out;
 		}
 
@@ -2352,6 +2362,10 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	 */
 out:
 	if (new_ifp != NULL) {
+		/*
+		 * Clear the bridge flag for local processing in
+		 * case the packet gets routed.
+		 */
 		ether_reinput_oncpu(new_ifp, m,
 				    REINPUT_KEEPRCVIF|REINPUT_RUNBPF);
 		m = NULL;
@@ -3715,9 +3729,14 @@ bridge_handoff(struct ifnet *dst_ifp, struct mbuf *m, int from_us)
 		 * mandatory or ARP replies will wind up on the wrong
 		 * interface.
 		 *
-		 * Otherwise if we are in transparent mode
+		 * Also override ether_shost when relaying a packet out
+		 * the same interface it came in on, due to multi-homed
+		 * addresses & default routes, otherwise switches will
+		 * get very confused.
+		 *
+		 * Otherwise if we are in transparent mode.
 		 */
-		if (from_us) {
+		if (from_us || m->m_pkthdr.rcvif == dst_ifp) {
 			m_copyback(m,
 				   offsetof(struct ether_header, ether_shost),
 				   ETHER_ADDR_LEN, IF_LLADDR(dst_ifp));
