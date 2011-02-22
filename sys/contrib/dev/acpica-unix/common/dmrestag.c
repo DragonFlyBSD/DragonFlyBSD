@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -387,7 +387,7 @@ static ACPI_RESOURCE_TAG        *AcpiGbl_ResourceTags [] =
 
 static UINT32                   AcpiGbl_NextResourceId = 0;
 static UINT8                    AcpiGbl_NextPrefix = 0;
-static UINT8                    AcpiGbl_Prefix[ACPI_NUM_RES_PREFIX] =
+static char                     AcpiGbl_Prefix[ACPI_NUM_RES_PREFIX] =
                                     {'Y','Z','J','K','X'};
 
 
@@ -549,13 +549,6 @@ AcpiDmGetResourceNode (
             return (Node);
         }
 
-        /* List is circular, this flag marks the end */
-
-        if (Node->Flags & ANOBJ_END_OF_PEER_LIST)
-        {
-            return (NULL);
-        }
-
         Node = Node->Peer;
     }
 
@@ -711,8 +704,8 @@ AcpiDmUpdateResourceName (
 
     Name[0] = '_';
     Name[1] = AcpiGbl_Prefix[AcpiGbl_NextPrefix];
-    Name[2] = AcpiUtHexToAsciiChar (AcpiGbl_NextResourceId, 4);
-    Name[3] = AcpiUtHexToAsciiChar (AcpiGbl_NextResourceId, 0);
+    Name[2] = AcpiUtHexToAsciiChar ((UINT64) AcpiGbl_NextResourceId, 4);
+    Name[3] = AcpiUtHexToAsciiChar ((UINT64) AcpiGbl_NextResourceId, 0);
 
     /* Update globals for next name */
 

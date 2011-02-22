@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -235,7 +235,7 @@ AcpiUtGetEventName (
 
 char
 AcpiUtHexToAsciiChar (
-    ACPI_INTEGER            Integer,
+    UINT64                  Integer,
     UINT32                  Position);
 
 BOOLEAN
@@ -470,7 +470,7 @@ AcpiUtValueExit (
     const char              *FunctionName,
     const char              *ModuleName,
     UINT32                  ComponentId,
-    ACPI_INTEGER            Value);
+    UINT64                  Value);
 
 void
 AcpiUtPtrExit (
@@ -536,10 +536,6 @@ AcpiUtDeleteInternalObjectList (
  * uteval - object evaluation
  */
 ACPI_STATUS
-AcpiUtOsiImplementation (
-    ACPI_WALK_STATE         *WalkState);
-
-ACPI_STATUS
 AcpiUtEvaluateObject (
     ACPI_NAMESPACE_NODE     *PrefixNode,
     char                    *Path,
@@ -550,17 +546,7 @@ ACPI_STATUS
 AcpiUtEvaluateNumericObject (
     char                    *ObjectName,
     ACPI_NAMESPACE_NODE     *DeviceNode,
-    ACPI_INTEGER            *Address);
-
-ACPI_STATUS
-AcpiUtExecute_HID (
-    ACPI_NAMESPACE_NODE     *DeviceNode,
-    ACPI_DEVICE_ID          *Hid);
-
-ACPI_STATUS
-AcpiUtExecute_CID (
-    ACPI_NAMESPACE_NODE     *DeviceNode,
-    ACPI_COMPATIBLE_ID_LIST **ReturnCidList);
+    UINT64                  *Value);
 
 ACPI_STATUS
 AcpiUtExecute_STA (
@@ -568,14 +554,31 @@ AcpiUtExecute_STA (
     UINT32                  *StatusFlags);
 
 ACPI_STATUS
-AcpiUtExecute_UID (
+AcpiUtExecutePowerMethods (
     ACPI_NAMESPACE_NODE     *DeviceNode,
-    ACPI_DEVICE_ID          *Uid);
+    const char              **MethodNames,
+    UINT8                   MethodCount,
+    UINT8                   *OutValues);
+
+
+/*
+ * utids - device ID support
+ */
+ACPI_STATUS
+AcpiUtExecute_HID (
+    ACPI_NAMESPACE_NODE     *DeviceNode,
+    ACPI_DEVICE_ID          **ReturnId);
 
 ACPI_STATUS
-AcpiUtExecute_Sxds (
+AcpiUtExecute_UID (
     ACPI_NAMESPACE_NODE     *DeviceNode,
-    UINT8                   *Highest);
+    ACPI_DEVICE_ID          **ReturnId);
+
+ACPI_STATUS
+AcpiUtExecute_CID (
+    ACPI_NAMESPACE_NODE     *DeviceNode,
+    ACPI_DEVICE_ID_LIST     **ReturnCidList);
+
 
 /*
  * utlock - reader/writer locks
@@ -637,6 +640,10 @@ AcpiUtCreatePackageObject (
     UINT32                  Count);
 
 ACPI_OPERAND_OBJECT *
+AcpiUtCreateIntegerObject (
+    UINT64                  Value);
+
+ACPI_OPERAND_OBJECT *
 AcpiUtCreateBufferObject (
     ACPI_SIZE               BufferSize);
 
@@ -648,6 +655,34 @@ ACPI_STATUS
 AcpiUtGetObjectSize(
     ACPI_OPERAND_OBJECT     *Obj,
     ACPI_SIZE               *ObjLength);
+
+
+/*
+ * utosi - Support for the _OSI predefined control method
+ */
+ACPI_STATUS
+AcpiUtInitializeInterfaces (
+    void);
+
+void
+AcpiUtInterfaceTerminate (
+    void);
+
+ACPI_STATUS
+AcpiUtInstallInterface (
+    ACPI_STRING             InterfaceName);
+
+ACPI_STATUS
+AcpiUtRemoveInterface (
+    ACPI_STRING             InterfaceName);
+
+ACPI_INTERFACE_INFO *
+AcpiUtGetInterface (
+    ACPI_STRING             InterfaceName);
+
+ACPI_STATUS
+AcpiUtOsiImplementation (
+    ACPI_WALK_STATE         *WalkState);
 
 
 /*
@@ -709,16 +744,16 @@ AcpiUtDeleteGenericState (
  */
 ACPI_STATUS
 AcpiUtDivide (
-    ACPI_INTEGER            InDividend,
-    ACPI_INTEGER            InDivisor,
-    ACPI_INTEGER            *OutQuotient,
-    ACPI_INTEGER            *OutRemainder);
+    UINT64                  InDividend,
+    UINT64                  InDivisor,
+    UINT64                  *OutQuotient,
+    UINT64                  *OutRemainder);
 
 ACPI_STATUS
 AcpiUtShortDivide (
-    ACPI_INTEGER            InDividend,
+    UINT64                  InDividend,
     UINT32                  Divisor,
-    ACPI_INTEGER            *OutQuotient,
+    UINT64                  *OutQuotient,
     UINT32                  *OutRemainder);
 
 /*
@@ -727,6 +762,10 @@ AcpiUtShortDivide (
 const char *
 AcpiUtValidateException (
     ACPI_STATUS             Status);
+
+BOOLEAN
+AcpiUtIsPciRootBridge (
+    char                    *Id);
 
 BOOLEAN
 AcpiUtIsAmlTable (
@@ -752,6 +791,10 @@ AcpiUtStrupr (
     char                    *SrcString);
 
 void
+AcpiUtStrlwr (
+    char                    *SrcString);
+
+void
 AcpiUtPrintString (
     char                    *String,
     UINT8                   MaxLength);
@@ -773,7 +816,7 @@ ACPI_STATUS
 AcpiUtStrtoul64 (
     char                    *String,
     UINT32                  Base,
-    ACPI_INTEGER            *RetInteger);
+    UINT64                  *RetInteger);
 
 /* Values for Base above (16=Hex, 10=Decimal) */
 
@@ -924,7 +967,44 @@ AcpiUtCreateList (
     UINT16                  ObjectSize,
     ACPI_MEMORY_LIST        **ReturnCache);
 
+#endif /* ACPI_DBG_TRACK_ALLOCATIONS */
 
-#endif
+
+/*
+ * utxferror - various error/warning output functions
+ */
+void ACPI_INTERNAL_VAR_XFACE
+AcpiUtPredefinedWarning (
+    const char              *ModuleName,
+    UINT32                  LineNumber,
+    char                    *Pathname,
+    UINT8                   NodeFlags,
+    const char              *Format,
+    ...);
+
+void ACPI_INTERNAL_VAR_XFACE
+AcpiUtPredefinedInfo (
+    const char              *ModuleName,
+    UINT32                  LineNumber,
+    char                    *Pathname,
+    UINT8                   NodeFlags,
+    const char              *Format,
+    ...);
+
+void
+AcpiUtNamespaceError (
+    const char              *ModuleName,
+    UINT32                  LineNumber,
+    const char              *InternalName,
+    ACPI_STATUS             LookupStatus);
+
+void
+AcpiUtMethodError (
+    const char              *ModuleName,
+    UINT32                  LineNumber,
+    const char              *Message,
+    ACPI_NAMESPACE_NODE     *Node,
+    const char              *Path,
+    ACPI_STATUS             LookupStatus);
 
 #endif /* _ACUTILS_H */

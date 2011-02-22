@@ -9,7 +9,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -319,7 +319,7 @@ AcpiEnterSleepState (
     if ((AcpiGbl_SleepTypeA > ACPI_SLEEP_TYPE_MAX) ||
         (AcpiGbl_SleepTypeB > ACPI_SLEEP_TYPE_MAX))
     {
-        ACPI_ERROR ((AE_INFO, "Sleep values out of range: A=%X B=%X",
+        ACPI_ERROR ((AE_INFO, "Sleep values out of range: A=0x%X B=0x%X",
             AcpiGbl_SleepTypeA, AcpiGbl_SleepTypeB));
         return_ACPI_STATUS (AE_AML_OPERAND_VALUE);
     }
@@ -345,10 +345,13 @@ AcpiEnterSleepState (
 
     if (SleepState != ACPI_STATE_S5)
     {
-        /* Disable BM arbitration */
-
+        /*
+         * Disable BM arbitration. This feature is contained within an
+         * optional register (PM2 Control), so ignore a BAD_ADDRESS
+         * exception.
+         */
         Status = AcpiWriteBitRegister (ACPI_BITREG_ARB_DISABLE, 1);
-        if (ACPI_FAILURE (Status))
+        if (ACPI_FAILURE (Status) && (Status != AE_BAD_ADDRESS))
         {
             return_ACPI_STATUS (Status);
         }
@@ -393,7 +396,7 @@ AcpiEnterSleepState (
         return_ACPI_STATUS (Status);
     }
     ACPI_DEBUG_PRINT ((ACPI_DB_INIT,
-        "Entering sleep state [S%d]\n", SleepState));
+        "Entering sleep state [S%u]\n", SleepState));
 
     /* Clear the SLP_EN and SLP_TYP fields */
 
@@ -683,10 +686,13 @@ AcpiLeaveSleepState (
             AcpiGbl_FixedEventInfo[ACPI_EVENT_POWER_BUTTON].StatusRegisterId,
             ACPI_CLEAR_STATUS);
 
-    /* Enable BM arbitration */
-
+    /*
+     * Enable BM arbitration. This feature is contained within an
+     * optional register (PM2 Control), so ignore a BAD_ADDRESS
+     * exception.
+     */
     Status = AcpiWriteBitRegister (ACPI_BITREG_ARB_DISABLE, 0);
-    if (ACPI_FAILURE (Status))
+    if (ACPI_FAILURE (Status) && (Status != AE_BAD_ADDRESS))
     {
         return_ACPI_STATUS (Status);
     }

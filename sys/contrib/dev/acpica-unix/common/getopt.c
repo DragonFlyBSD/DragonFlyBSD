@@ -9,7 +9,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -126,7 +126,6 @@
 
 int   AcpiGbl_Opterr = 1;
 int   AcpiGbl_Optind = 1;
-int   AcpiGbl_Optopt;
 char  *AcpiGbl_Optarg;
 
 
@@ -171,9 +170,7 @@ AcpiGetopt(
 
     /* Get the option */
 
-    CurrentChar =
-    AcpiGbl_Optopt =
-    argv[AcpiGbl_Optind][CurrentCharPtr];
+    CurrentChar = argv[AcpiGbl_Optind][CurrentCharPtr];
 
     /* Make sure that the option is legal */
 
@@ -195,9 +192,9 @@ AcpiGetopt(
 
     if (*++OptsPtr == ':')
     {
-        if (argv[AcpiGbl_Optind][CurrentCharPtr+1] != '\0')
+        if (argv[AcpiGbl_Optind][(int) (CurrentCharPtr+1)] != '\0')
         {
-            AcpiGbl_Optarg = &argv[AcpiGbl_Optind++][CurrentCharPtr+1];
+            AcpiGbl_Optarg = &argv[AcpiGbl_Optind++][(int) (CurrentCharPtr+1)];
         }
         else if (++AcpiGbl_Optind >= argc)
         {
@@ -218,9 +215,9 @@ AcpiGetopt(
 
     else if (*OptsPtr == '^')
     {
-        if (argv[AcpiGbl_Optind][CurrentCharPtr+1] != '\0')
+        if (argv[AcpiGbl_Optind][(int) (CurrentCharPtr+1)] != '\0')
         {
-            AcpiGbl_Optarg = &argv[AcpiGbl_Optind][CurrentCharPtr+1];
+            AcpiGbl_Optarg = &argv[AcpiGbl_Optind][(int) (CurrentCharPtr+1)];
         }
         else
         {

@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -193,6 +193,15 @@ AcpiInitializeSubsystem (
         return_ACPI_STATUS (Status);
     }
 
+    /* Initialize the global OSI interfaces list with the static names */
+
+    Status = AcpiUtInitializeInterfaces ();
+    if (ACPI_FAILURE (Status))
+    {
+        ACPI_EXCEPTION ((AE_INFO, Status, "During OSI interfaces initialization"));
+        return_ACPI_STATUS (Status);
+    }
+
     /* If configured, initialize the AML debugger */
 
     ACPI_DEBUGGER_EXEC (Status = AcpiDbInitialize ());
@@ -360,6 +369,16 @@ AcpiInitializeObjects (
     }
 
     /*
+     * Execute any module-level code that was detected during the table load
+     * phase. Although illegal since ACPI 2.0, there are many machines that
+     * contain this type of code. Each block of detected executable AML code
+     * outside of any control method is wrapped with a temporary control
+     * method object and placed on a global list. The methods on this list
+     * are executed below.
+     */
+    AcpiNsExecModuleCodeList ();
+
+    /*
      * Initialize the objects that remain uninitialized. This runs the
      * executable AML that may be part of the declaration of these objects:
      * OperationRegions, BufferFields, Buffers, and Packages.
@@ -393,27 +412,6 @@ AcpiInitializeObjects (
     }
 
     /*
-     * Initialize the GPE blocks defined in the FADT (GPE block 0 and 1).
-     * The runtime GPEs are enabled here.
-     *
-     * This is where the _PRW methods are executed for the GPEs. These
-     * methods can only be executed after the SCI and Global Lock handlers are
-     * installed and initialized.
-     *
-     * GPEs can only be enabled after the _REG, _STA, and _INI methods have
-     * been run. This ensures that all Operation Regions and all Devices have
-     * been initialized and are ready.
-     */
-    if (!(Flags & ACPI_NO_EVENT_INIT))
-    {
-        Status = AcpiEvInstallFadtGpes ();
-        if (ACPI_FAILURE (Status))
-        {
-            return (Status);
-        }
-    }
-
-    /*
      * Empty the caches (delete the cached objects) on the assumption that
      * the table load filled them up more than they will be at runtime --
      * thus wasting non-paged memory.
@@ -437,7 +435,7 @@ ACPI_EXPORT_SYMBOL (AcpiInitializeObjects)
  *
  * RETURN:      Status
  *
- * DESCRIPTION: Shutdown the ACPI subsystem.  Release all resources.
+ * DESCRIPTION: Shutdown the ACPICA subsystem and release all resources.
  *
  ******************************************************************************/
 
@@ -451,14 +449,27 @@ AcpiTerminate (
     ACPI_FUNCTION_TRACE (AcpiTerminate);
 
 
+    /* Just exit if subsystem is already shutdown */
+
+    if (AcpiGbl_Shutdown)
+    {
+        ACPI_ERROR ((AE_INFO, "ACPI Subsystem is already terminated"));
+        return_ACPI_STATUS (AE_OK);
+    }
+
+    /* Subsystem appears active, go ahead and shut it down */
+
+    AcpiGbl_Shutdown = TRUE;
+    AcpiGbl_StartupFlags = 0;
+    ACPI_DEBUG_PRINT ((ACPI_DB_INFO, "Shutting down ACPI Subsystem\n"));
+
     /* Terminate the AML Debugger if present */
 
-    ACPI_DEBUGGER_EXEC(AcpiGbl_DbTerminateThreads = TRUE);
+    ACPI_DEBUGGER_EXEC (AcpiGbl_DbTerminateThreads = TRUE);
 
     /* Shutdown and free all resources */
 
     AcpiUtSubsystemShutdown ();
-
 
     /* Free the mutex objects */
 
@@ -480,8 +491,8 @@ AcpiTerminate (
 
 ACPI_EXPORT_SYMBOL (AcpiTerminate)
 
-#ifndef ACPI_ASL_COMPILER
 
+#ifndef ACPI_ASL_COMPILER
 /*******************************************************************************
  *
  * FUNCTION:    AcpiSubsystemStatus
@@ -707,5 +718,144 @@ AcpiPurgeCachedObjects (
 
 ACPI_EXPORT_SYMBOL (AcpiPurgeCachedObjects)
 
-#endif /* ACPI_ASL_COMPILER */
+
+/*****************************************************************************
+ *
+ * FUNCTION:    AcpiInstallInterface
+ *
+ * PARAMETERS:  InterfaceName       - The interface to install
+ *
+ * RETURN:      Status
+ *
+ * DESCRIPTION: Install an _OSI interface to the global list
+ *
+ ****************************************************************************/
+
+ACPI_STATUS
+AcpiInstallInterface (
+    ACPI_STRING             InterfaceName)
+{
+    ACPI_STATUS             Status;
+    ACPI_INTERFACE_INFO     *InterfaceInfo;
+
+
+    /* Parameter validation */
+
+    if (!InterfaceName || (ACPI_STRLEN (InterfaceName) == 0))
+    {
+        return (AE_BAD_PARAMETER);
+    }
+
+    (void) AcpiOsAcquireMutex (AcpiGbl_OsiMutex, ACPI_WAIT_FOREVER);
+
+    /* Check if the interface name is already in the global list */
+
+    InterfaceInfo = AcpiUtGetInterface (InterfaceName);
+    if (InterfaceInfo)
+    {
+        /*
+         * The interface already exists in the list. This is OK if the
+         * interface has been marked invalid -- just clear the bit.
+         */
+        if (InterfaceInfo->Flags & ACPI_OSI_INVALID)
+        {
+            InterfaceInfo->Flags &= ~ACPI_OSI_INVALID;
+            Status = AE_OK;
+        }
+        else
+        {
+            Status = AE_ALREADY_EXISTS;
+        }
+    }
+    else
+    {
+        /* New interface name, install into the global list */
+
+        Status = AcpiUtInstallInterface (InterfaceName);
+    }
+
+    AcpiOsReleaseMutex (AcpiGbl_OsiMutex);
+    return (Status);
+}
+
+ACPI_EXPORT_SYMBOL (AcpiInstallInterface)
+
+
+/*****************************************************************************
+ *
+ * FUNCTION:    AcpiRemoveInterface
+ *
+ * PARAMETERS:  InterfaceName       - The interface to remove
+ *
+ * RETURN:      Status
+ *
+ * DESCRIPTION: Remove an _OSI interface from the global list
+ *
+ ****************************************************************************/
+
+ACPI_STATUS
+AcpiRemoveInterface (
+    ACPI_STRING             InterfaceName)
+{
+    ACPI_STATUS             Status;
+
+
+    /* Parameter validation */
+
+    if (!InterfaceName || (ACPI_STRLEN (InterfaceName) == 0))
+    {
+        return (AE_BAD_PARAMETER);
+    }
+
+    (void) AcpiOsAcquireMutex (AcpiGbl_OsiMutex, ACPI_WAIT_FOREVER);
+
+    Status = AcpiUtRemoveInterface (InterfaceName);
+
+    AcpiOsReleaseMutex (AcpiGbl_OsiMutex);
+    return (Status);
+}
+
+ACPI_EXPORT_SYMBOL (AcpiRemoveInterface)
+
+
+/*****************************************************************************
+ *
+ * FUNCTION:    AcpiInstallInterfaceHandler
+ *
+ * PARAMETERS:  Handler             - The _OSI interface handler to install
+ *                                    NULL means "remove existing handler"
+ *
+ * RETURN:      Status
+ *
+ * DESCRIPTION: Install a handler for the predefined _OSI ACPI method.
+ *              invoked during execution of the internal implementation of
+ *              _OSI. A NULL handler simply removes any existing handler.
+ *
+ ****************************************************************************/
+
+ACPI_STATUS
+AcpiInstallInterfaceHandler (
+    ACPI_INTERFACE_HANDLER  Handler)
+{
+    ACPI_STATUS             Status = AE_OK;
+
+
+    (void) AcpiOsAcquireMutex (AcpiGbl_OsiMutex, ACPI_WAIT_FOREVER);
+
+    if (Handler && AcpiGbl_InterfaceHandler)
+    {
+        Status = AE_ALREADY_EXISTS;
+    }
+    else
+    {
+        AcpiGbl_InterfaceHandler = Handler;
+    }
+
+    AcpiOsReleaseMutex (AcpiGbl_OsiMutex);
+    return (Status);
+}
+
+ACPI_EXPORT_SYMBOL (AcpiInstallInterfaceHandler)
+
+#endif /* !ACPI_ASL_COMPILER */
 

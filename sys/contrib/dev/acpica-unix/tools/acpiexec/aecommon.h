@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -120,11 +120,6 @@
 #pragma warning(disable:4100)   /* warning C4100: unreferenced formal parameter */
 #endif
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <signal.h>
-
 #include "acpi.h"
 #include "accommon.h"
 #include "acparser.h"
@@ -135,8 +130,34 @@
 #include "acinterp.h"
 #include "acapps.h"
 
-extern FILE                     *AcpiGbl_DebugFile;
-extern BOOLEAN                  AcpiGbl_IgnoreErrors;
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <signal.h>
+
+extern FILE                 *AcpiGbl_DebugFile;
+extern BOOLEAN              AcpiGbl_IgnoreErrors;
+extern UINT8                AcpiGbl_RegionFillValue;
+
+/* Check for unexpected exceptions */
+
+#define AE_CHECK_STATUS(Name, Status, Expected) \
+    if (Status != Expected) \
+    { \
+        AcpiOsPrintf ("Unexpected %s from %s (%s-%d)\n", \
+            AcpiFormatException (Status), #Name, _AcpiModuleName, __LINE__); \
+    }
+
+/* Check for unexpected non-AE_OK errors */
+
+#define AE_CHECK_OK(Name, Status)   AE_CHECK_STATUS (Name, Status, AE_OK);
+
+typedef struct ae_table_desc
+{
+    ACPI_TABLE_HEADER       *Table;
+    struct ae_table_desc    *Next;
+
+} AE_TABLE_DESC;
 
 /*
  * Debug Regions
@@ -164,13 +185,14 @@ typedef struct ae_debug_regions
 #define OSD_PRINT(lvl,fp)               TEST_OUTPUT_LEVEL(lvl) {\
                                             AcpiOsPrintf PARAM_LIST(fp);}
 
-void __cdecl
+void ACPI_SYSTEM_XFACE
 AeCtrlCHandler (
     int                     Sig);
 
 ACPI_STATUS
 AeBuildLocalTables (
-    ACPI_TABLE_HEADER       *UserTable);
+    UINT32                  TableCount,
+    AE_TABLE_DESC           *TableList);
 
 ACPI_STATUS
 AeInstallTables (
@@ -210,7 +232,11 @@ AeDisplayAllMethods (
     UINT32                  DisplayCount);
 
 ACPI_STATUS
-AeInstallHandlers (
+AeInstallEarlyHandlers (
+    void);
+
+ACPI_STATUS
+AeInstallLateHandlers (
     void);
 
 void
@@ -222,12 +248,21 @@ AeRegionHandler (
     UINT32                  Function,
     ACPI_PHYSICAL_ADDRESS   Address,
     UINT32                  BitWidth,
-    ACPI_INTEGER            *Value,
+    UINT64                  *Value,
     void                    *HandlerContext,
     void                    *RegionContext);
 
 UINT32
 AeGpeHandler (
+    ACPI_HANDLE             GpeDevice,
+    UINT32                  GpeNumber,
+    void                    *Context);
+
+void
+AeGlobalEventHandler (
+    UINT32                  Type,
+    ACPI_HANDLE             GpeDevice,
+    UINT32                  EventNumber,
     void                    *Context);
 
 #endif /* _AECOMMON */

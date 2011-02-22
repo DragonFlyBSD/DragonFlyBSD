@@ -9,7 +9,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -122,13 +122,6 @@
 #define _COMPONENT          ACPI_COMPILER
         ACPI_MODULE_NAME    ("aslopcodes")
 
-
-/* UUID support */
-
-static UINT8 OpcMapToUUID[16] =
-{
-    6,4,2,0,11,9,16,14,19,21,24,26,28,30,32,34
-};
 
 /* Local prototypes */
 
@@ -328,7 +321,7 @@ OpcSetOptimalIntegerSize (
             }
             break;
 
-        case ACPI_INTEGER_MAX:
+        case ACPI_UINT64_MAX:
 
             /* Check for table integer width (32 or 64) */
 
@@ -568,7 +561,7 @@ OpcDoEisaId (
 
             if (i < 3)
             {
-                if (!isupper (InString[i]))
+                if (!isupper ((int) InString[i]))
                 {
                     Status = AE_BAD_PARAMETER;
                 }
@@ -576,7 +569,7 @@ OpcDoEisaId (
 
             /* Last 4 characters must be hex digits */
 
-            else if (!isxdigit (InString[i]))
+            else if (!isxdigit ((int) InString[i]))
             {
                 Status = AE_BAD_PARAMETER;
             }
@@ -592,9 +585,9 @@ OpcDoEisaId (
         /* Create ID big-endian first (bits are contiguous) */
 
         BigEndianId =
-            (UINT32) (InString[0] - 0x40) << 26 |
-            (UINT32) (InString[1] - 0x40) << 21 |
-            (UINT32) (InString[2] - 0x40) << 16 |
+            (UINT32) ((UINT8) (InString[0] - 0x40)) << 26 |
+            (UINT32) ((UINT8) (InString[1] - 0x40)) << 21 |
+            (UINT32) ((UINT8) (InString[2] - 0x40)) << 16 |
 
             (UtHexCharToValue (InString[3])) << 12 |
             (UtHexCharToValue (InString[4])) << 8  |
@@ -641,49 +634,20 @@ OpcDoUuId (
     char                    *InString;
     char                    *Buffer;
     ACPI_STATUS             Status = AE_OK;
-    UINT32                  i;
     ACPI_PARSE_OBJECT       *NewOp;
 
 
     InString = (char *) Op->Asl.Value.String;
-
-    if (ACPI_STRLEN (InString) != 36)
-    {
-        Status = AE_BAD_PARAMETER;
-    }
-    else
-    {
-        /* Check all 36 characters for correct format */
-
-        for (i = 0; i < 36; i++)
-        {
-            if ((i == 8) || (i == 13) || (i == 18) || (i == 23))
-            {
-                if (InString[i] != '-')
-                {
-                    Status = AE_BAD_PARAMETER;
-                }
-            }
-            else
-            {
-                if (!isxdigit (InString[i]))
-                {
-                    Status = AE_BAD_PARAMETER;
-                }
-            }
-        }
-    }
-
     Buffer = UtLocalCalloc (16);
 
+    Status = AuValidateUuid (InString);
     if (ACPI_FAILURE (Status))
     {
         AslError (ASL_ERROR, ASL_MSG_INVALID_UUID, Op, Op->Asl.Value.String);
     }
-    else for (i = 0; i < 16; i++)
+    else
     {
-        Buffer[i]  = (char) (UtHexCharToValue (InString[OpcMapToUUID[i]]) << 4);
-        Buffer[i] |= (char)  UtHexCharToValue (InString[OpcMapToUUID[i] + 1]);
+        (void) AuConvertStringToUuid (InString, Buffer);
     }
 
     /* Change Op to a Buffer */

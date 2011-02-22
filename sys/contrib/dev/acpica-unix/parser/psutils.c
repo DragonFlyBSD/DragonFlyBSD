@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -280,11 +280,11 @@ AcpiPsFreeOp (
 
     if (Op->Common.Flags & ACPI_PARSEOP_GENERIC)
     {
-        ACPI_OS_RELEASE_OBJECT(AcpiGbl_PsNodeCache, Op);
+        (void) AcpiOsReleaseObject (AcpiGbl_PsNodeCache, Op);
     }
     else
     {
-        ACPI_OS_RELEASE_OBJECT(AcpiGbl_PsNodeExtCache, Op);
+        (void) AcpiOsReleaseObject (AcpiGbl_PsNodeExtCache, Op);
     }
 }
 

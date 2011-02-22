@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -116,8 +116,21 @@
 #ifndef __ACMSVC_H__
 #define __ACMSVC_H__
 
-#define COMPILER_DEPENDENT_INT64   __int64
-#define COMPILER_DEPENDENT_UINT64  unsigned __int64
+/* Eliminate warnings for "old" (non-secure) versions of clib functions */
+
+#ifndef _CRT_SECURE_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
+/* Eliminate warnings for POSIX clib function names (open, write, etc.) */
+
+#ifndef _CRT_NONSTDC_NO_DEPRECATE
+#define _CRT_NONSTDC_NO_DEPRECATE
+#endif
+
+#define COMPILER_DEPENDENT_INT64    __int64
+#define COMPILER_DEPENDENT_UINT64   unsigned __int64
+#define ACPI_INLINE                 __inline
 
 /*
  * Calling conventions:
@@ -179,5 +192,8 @@
 /* warn C4131: uses old-style declarator (iASL compiler only) */
 #pragma warning(disable:4131)
 
+#if _MSC_VER > 1200 /* Versions above VC++ 6 */
+#pragma warning( disable : 4295 ) /* needed for acpredef.h array */
+#endif
 
 #endif /* __ACMSVC_H__ */

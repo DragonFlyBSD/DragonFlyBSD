@@ -9,7 +9,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -114,13 +114,12 @@
  *
  *****************************************************************************/
 
+#include <acpi.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <io.h>
-
-#include <acpi.h>
 
 typedef struct ExternalFindInfo
 {
@@ -171,7 +170,7 @@ AcpiOsOpenDirectory (
     SearchInfo = calloc (sizeof (EXTERNAL_FIND_INFO), 1);
     if (!SearchInfo)
     {
-        return NULL;
+        return (NULL);
     }
 
     /* Allocate space for the full wildcard path */
@@ -180,7 +179,7 @@ AcpiOsOpenDirectory (
     if (!FullWildcardSpec)
     {
         printf ("Could not allocate buffer for wildcard pathname\n");
-        return NULL;
+        return (NULL);
     }
 
     /* Create the full wildcard path */
@@ -198,7 +197,7 @@ AcpiOsOpenDirectory (
 
         free (FullWildcardSpec);
         free (SearchInfo);
-        return NULL;
+        return (NULL);
     }
 
     /* Save the info in the return structure */
@@ -217,7 +216,7 @@ AcpiOsOpenDirectory (
  *
  * PARAMETERS:  DirHandle           - Created via AcpiOsOpenDirectory
  *
- * RETURN:      Next filename matched.  NULL if no more matches.
+ * RETURN:      Next filename matched. NULL if no more matches.
  *
  * DESCRIPTION: Get the next file in the directory that matches the wildcard
  *              specification.
@@ -254,7 +253,7 @@ AcpiOsGetNextFilename (
             Status = _findnext (SearchInfo->FindHandle, &SearchInfo->DosInfo);
             if (Status != 0)
             {
-                return NULL;
+                return (NULL);
             }
         }
 
@@ -288,7 +287,7 @@ AcpiOsGetNextFilename (
             break;
 
         default:
-            return NULL;
+            return (NULL);
         }
     }
 
@@ -302,7 +301,7 @@ AcpiOsGetNextFilename (
  *
  * PARAMETERS:  DirHandle           - Created via AcpiOsOpenDirectory
  *
- * RETURN:      None.
+ * RETURN:      None
  *
  * DESCRIPTION: Close the open directory and cleanup.
  *

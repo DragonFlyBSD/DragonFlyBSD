@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -120,19 +120,19 @@
 
 /* Local prototypes */
 
-void
+static void
 AeNotifyHandler (
     ACPI_HANDLE             Device,
     UINT32                  Value,
     void                    *Context);
 
-void
+static void
 AeDeviceNotifyHandler (
     ACPI_HANDLE             Device,
     UINT32                  Value,
     void                    *Context);
 
-ACPI_STATUS
+static ACPI_STATUS
 AeExceptionHandler (
     ACPI_STATUS             AmlStatus,
     ACPI_NAME               Name,
@@ -140,22 +140,62 @@ AeExceptionHandler (
     UINT32                  AmlOffset,
     void                    *Context);
 
-ACPI_STATUS
+static ACPI_STATUS
 AeTableHandler (
     UINT32                  Event,
     void                    *Table,
     void                    *Context);
 
-ACPI_STATUS
+static ACPI_STATUS
 AeRegionInit (
     ACPI_HANDLE             RegionHandle,
     UINT32                  Function,
     void                    *HandlerContext,
     void                    **RegionContext);
 
+static void
+AeAttachedDataHandler (
+    ACPI_HANDLE             Object,
+    void                    *Data);
 
-UINT32                      SigintCount = 0;
-AE_DEBUG_REGIONS            AeRegions;
+static UINT32
+AeInterfaceHandler (
+    ACPI_STRING             InterfaceName,
+    UINT32                  Supported);
+
+static UINT32
+AeEventHandler (
+    void                    *Context);
+
+static UINT32               SigintCount = 0;
+static AE_DEBUG_REGIONS     AeRegions;
+
+
+/*
+ * We will override default region handlers for memory and I/O. Especially
+ * the SystemMemory handler, which must be implemented locally to simulate
+ * memory operation regions. Do not override the PCI_Config handler since
+ * we would like to exercise the default handler code. Do not override
+ * DataTable handler, since the default handler works correctly under
+ * acpiexec (and is used by the test suites.)
+ */
+static ACPI_ADR_SPACE_TYPE  DefaultSpaceIdList[] =
+{
+    ACPI_ADR_SPACE_SYSTEM_MEMORY,
+    ACPI_ADR_SPACE_SYSTEM_IO
+};
+
+/*
+ * We will install handlers for some of the various address space IDs
+ */
+static ACPI_ADR_SPACE_TYPE  SpaceIdList[] =
+{
+    ACPI_ADR_SPACE_EC,
+    ACPI_ADR_SPACE_SMBUS,
+    ACPI_ADR_SPACE_PCI_BAR_TARGET,
+    ACPI_ADR_SPACE_IPMI,
+    ACPI_ADR_SPACE_FIXED_HARDWARE
+};
 
 
 /******************************************************************************
@@ -170,7 +210,7 @@ AE_DEBUG_REGIONS            AeRegions;
  *
  *****************************************************************************/
 
-void __cdecl
+void ACPI_SYSTEM_XFACE
 AeCtrlCHandler (
     int                     Sig)
 {
@@ -178,7 +218,7 @@ AeCtrlCHandler (
     signal (SIGINT, SIG_IGN);
     SigintCount++;
 
-    AcpiOsPrintf ("Caught a ctrl-c (#%d)\n\n", SigintCount);
+    AcpiOsPrintf ("Caught a ctrl-c (#%u)\n\n", SigintCount);
 
     if (AcpiGbl_MethodExecuting)
     {
@@ -209,7 +249,7 @@ AeCtrlCHandler (
  *
  *****************************************************************************/
 
-void
+static void
 AeNotifyHandler (
     ACPI_HANDLE                 Device,
     UINT32                      Value,
@@ -259,7 +299,6 @@ AeNotifyHandler (
         (void) AcpiEvaluateObject (Device, "_NOT", NULL, NULL);
         break;
     }
-
 }
 
 
@@ -277,7 +316,7 @@ AeNotifyHandler (
  *
  *****************************************************************************/
 
-void
+static void
 AeDeviceNotifyHandler (
     ACPI_HANDLE                 Device,
     UINT32                      Value,
@@ -308,7 +347,7 @@ AeDeviceNotifyHandler (
  *
  *****************************************************************************/
 
-ACPI_STATUS
+static ACPI_STATUS
 AeExceptionHandler (
     ACPI_STATUS             AmlStatus,
     ACPI_NAME               Name,
@@ -352,7 +391,7 @@ AeExceptionHandler (
     Arg[1].String.Length = ACPI_STRLEN (Exception);
 
     Arg[2].Type = ACPI_TYPE_INTEGER;
-    Arg[2].Integer.Value = ACPI_TO_INTEGER (AcpiOsGetThreadId());
+    Arg[2].Integer.Value = AcpiOsGetThreadId();
 
     /* Setup return buffer */
 
@@ -407,26 +446,31 @@ AeExceptionHandler (
  *
  *****************************************************************************/
 
-char                *TableEvents[] =
+static char                *TableEvents[] =
 {
     "LOAD",
     "UNLOAD",
     "UNKNOWN"
 };
 
-ACPI_STATUS
+static ACPI_STATUS
 AeTableHandler (
     UINT32                  Event,
     void                    *Table,
     void                    *Context)
 {
+    ACPI_STATUS             Status;
+
 
     if (Event > ACPI_NUM_TABLE_EVENTS)
     {
         Event = ACPI_NUM_TABLE_EVENTS;
     }
 
-    /* TBD: could dump entire table header, need a header dump routine */
+    /* Enable any GPEs associated with newly-loaded GPE methods */
+
+    Status = AcpiUpdateAllGpes ();
+    AE_CHECK_OK (AcpiUpdateAllGpes, Status);
 
     printf ("[AcpiExec] Table Event %s, [%4.4s] %p\n",
         TableEvents[Event], ((ACPI_TABLE_HEADER *) Table)->Signature, Table);
@@ -438,17 +482,122 @@ AeTableHandler (
  *
  * FUNCTION:    AeGpeHandler
  *
- * DESCRIPTION: GPE handler for acpiexec
+ * DESCRIPTION: Common GPE handler for acpiexec
  *
  *****************************************************************************/
 
 UINT32
 AeGpeHandler (
+    ACPI_HANDLE             GpeDevice,
+    UINT32                  GpeNumber,
     void                    *Context)
 {
+    ACPI_NAMESPACE_NODE     *DeviceNode = (ACPI_NAMESPACE_NODE *) GpeDevice;
 
 
-    AcpiOsPrintf ("Received a GPE at handler\n");
+    AcpiOsPrintf ("[AcpiExec] GPE Handler received GPE%02X (GPE block %4.4s)\n",
+        GpeNumber, GpeDevice ? DeviceNode->Name.Ascii : "FADT");
+
+    return (ACPI_REENABLE_GPE);
+}
+
+
+/******************************************************************************
+ *
+ * FUNCTION:    AeGlobalEventHandler
+ *
+ * DESCRIPTION: Global GPE/Fixed event handler
+ *
+ *****************************************************************************/
+
+void
+AeGlobalEventHandler (
+    UINT32                  Type,
+    ACPI_HANDLE             Device,
+    UINT32                  EventNumber,
+    void                    *Context)
+{
+    char                    *TypeName;
+
+
+    switch (Type)
+    {
+    case ACPI_EVENT_TYPE_GPE:
+        TypeName = "GPE";
+        break;
+
+    case ACPI_EVENT_TYPE_FIXED:
+        TypeName = "FixedEvent";
+        break;
+
+    default:
+        TypeName = "UNKNOWN";
+        break;
+    }
+
+    AcpiOsPrintf ("[AcpiExec] Global Event Handler received: Type %s Number %.2X Dev %p\n",
+        TypeName, EventNumber, Device);
+}
+
+
+/******************************************************************************
+ *
+ * FUNCTION:    AeAttachedDataHandler
+ *
+ * DESCRIPTION: Handler for deletion of nodes with attached data (attached via
+ *              AcpiAttachData)
+ *
+ *****************************************************************************/
+
+static void
+AeAttachedDataHandler (
+    ACPI_HANDLE             Object,
+    void                    *Data)
+{
+    ACPI_NAMESPACE_NODE     *Node = ACPI_CAST_PTR (ACPI_NAMESPACE_NODE, Data);
+
+
+    AcpiOsPrintf ("Received an attached data deletion on %4.4s\n",
+        Node->Name.Ascii);
+}
+
+
+/******************************************************************************
+ *
+ * FUNCTION:    AeInterfaceHandler
+ *
+ * DESCRIPTION: Handler for _OSI invocations
+ *
+ *****************************************************************************/
+
+static UINT32
+AeInterfaceHandler (
+    ACPI_STRING             InterfaceName,
+    UINT32                  Supported)
+{
+    ACPI_FUNCTION_NAME (AeInterfaceHandler);
+
+
+    ACPI_DEBUG_PRINT ((ACPI_DB_INFO,
+        "Received _OSI (\"%s\"), is %ssupported\n",
+        InterfaceName, Supported == 0 ? "not " : ""));
+
+    return (Supported);
+}
+
+
+/******************************************************************************
+ *
+ * FUNCTION:    AeEventHandler
+ *
+ * DESCRIPTION: Handler for Fixed Events
+ *
+ *****************************************************************************/
+
+static UINT32
+AeEventHandler (
+    void                    *Context)
+{
     return (0);
 }
 
@@ -465,7 +614,7 @@ AeGpeHandler (
  *
  *****************************************************************************/
 
-ACPI_STATUS
+static ACPI_STATUS
 AeRegionInit (
     ACPI_HANDLE                 RegionHandle,
     UINT32                      Function,
@@ -477,13 +626,13 @@ AeRegionInit (
      */
     *RegionContext = RegionHandle;
 
-    return AE_OK;
+    return (AE_OK);
 }
 
 
 /******************************************************************************
  *
- * FUNCTION:    AeInstallHandlers
+ * FUNCTION:    AeInstallLateHandlers
  *
  * PARAMETERS:  None
  *
@@ -493,11 +642,63 @@ AeRegionInit (
  *
  *****************************************************************************/
 
-ACPI_ADR_SPACE_TYPE         SpaceId[] = {0, 1, 2, 3, 4, 5, 6, 0x80};
-#define AEXEC_NUM_REGIONS   8
+ACPI_STATUS
+AeInstallLateHandlers (
+    void)
+{
+    ACPI_STATUS             Status;
+    UINT32                  i;
+
+
+    /* Install some fixed event handlers */
+
+    Status = AcpiInstallFixedEventHandler (ACPI_EVENT_GLOBAL, AeEventHandler, NULL);
+    AE_CHECK_OK (AcpiInstallFixedEventHandler, Status);
+
+    Status = AcpiInstallFixedEventHandler (ACPI_EVENT_RTC, AeEventHandler, NULL);
+    AE_CHECK_OK (AcpiInstallFixedEventHandler, Status);
+
+    /*
+     * Install handlers for some of the "device driver" address spaces
+     * such as EC, SMBus, etc.
+     */
+    for (i = 0; i < ACPI_ARRAY_LENGTH (SpaceIdList); i++)
+    {
+        /* Install handler at the root object */
+
+        Status = AcpiInstallAddressSpaceHandler (AcpiGbl_RootNode,
+                        SpaceIdList[i], AeRegionHandler, AeRegionInit, NULL);
+        if (ACPI_FAILURE (Status))
+        {
+            ACPI_EXCEPTION ((AE_INFO, Status,
+                "Could not install an OpRegion handler for %s space(%u)",
+                AcpiUtGetRegionName((UINT8) SpaceIdList[i]), SpaceIdList[i]));
+            return (Status);
+        }
+    }
+
+    return (AE_OK);
+}
+
+
+/******************************************************************************
+ *
+ * FUNCTION:    AeInstallEarlyHandlers
+ *
+ * PARAMETERS:  None
+ *
+ * RETURN:      Status
+ *
+ * DESCRIPTION: Install handlers for the AcpiExec utility.
+ *
+ * Notes:       Don't install handler for PCI_Config, we want to use the
+ *              default handler to exercise that code.
+ *
+ *****************************************************************************/
 
 ACPI_STATUS
-AeInstallHandlers (void)
+AeInstallEarlyHandlers (
+    void)
 {
     ACPI_STATUS             Status;
     UINT32                  i;
@@ -506,6 +707,13 @@ AeInstallHandlers (void)
 
     ACPI_FUNCTION_ENTRY ();
 
+
+    Status = AcpiInstallInterfaceHandler (AeInterfaceHandler);
+    if (ACPI_FAILURE (Status))
+    {
+        printf ("Could not install interface handler, %s\n",
+            AcpiFormatException (Status));
+    }
 
     Status = AcpiInstallTableHandler (AeTableHandler, NULL);
     if (ACPI_FAILURE (Status))
@@ -560,8 +768,12 @@ AeInstallHandlers (void)
 
         Status = AcpiInstallNotifyHandler (Handle, ACPI_ALL_NOTIFY,
                                             AeNotifyHandler, NULL);
+        AE_CHECK_OK (AcpiInstallNotifyHandler, Status);
+
         Status = AcpiRemoveNotifyHandler (Handle, ACPI_ALL_NOTIFY,
                                             AeNotifyHandler);
+        AE_CHECK_OK (AcpiRemoveNotifyHandler, Status);
+
         Status = AcpiInstallNotifyHandler (Handle, ACPI_ALL_NOTIFY,
                                             AeNotifyHandler, NULL);
         if (ACPI_FAILURE (Status))
@@ -569,29 +781,39 @@ AeInstallHandlers (void)
             printf ("Could not install a notify handler, %s\n",
                 AcpiFormatException (Status));
         }
+
+        Status = AcpiAttachData (Handle, AeAttachedDataHandler, Handle);
+        AE_CHECK_OK (AcpiAttachData, Status);
+
+        Status = AcpiDetachData (Handle, AeAttachedDataHandler);
+        AE_CHECK_OK (AcpiDetachData, Status);
+
+        Status = AcpiAttachData (Handle, AeAttachedDataHandler, Handle);
+        AE_CHECK_OK (AcpiAttachData, Status);
     }
     else
     {
         printf ("No _SB_ found, %s\n", AcpiFormatException (Status));
     }
 
-    /* Set a handler for all supported operation regions */
 
-    for (i = 0; i < AEXEC_NUM_REGIONS; i++)
+    /*
+     * Install handlers that will override the default handlers for some of
+     * the space IDs.
+     */
+    for (i = 0; i < ACPI_ARRAY_LENGTH (DefaultSpaceIdList); i++)
     {
-        Status = AcpiRemoveAddressSpaceHandler (AcpiGbl_RootNode,
-                        SpaceId[i], AeRegionHandler);
+        /* Install handler at the root object */
 
-        /* Install handler at the root object.
-         * TBD: all default handlers should be installed here!
-         */
         Status = AcpiInstallAddressSpaceHandler (AcpiGbl_RootNode,
-                        SpaceId[i], AeRegionHandler, AeRegionInit, NULL);
+                    DefaultSpaceIdList[i], AeRegionHandler,
+                    AeRegionInit, NULL);
         if (ACPI_FAILURE (Status))
         {
             ACPI_EXCEPTION ((AE_INFO, Status,
-                "Could not install an OpRegion handler for %s space(%d)",
-                AcpiUtGetRegionName((UINT8) SpaceId[i]), SpaceId[i]));
+                "Could not install a default OpRegion handler for %s space(%u)",
+                AcpiUtGetRegionName ((UINT8) DefaultSpaceIdList[i]),
+                DefaultSpaceIdList[i]));
             return (Status);
         }
     }
@@ -602,8 +824,7 @@ AeInstallHandlers (void)
      */
     AeRegions.NumberOfRegions = 0;
     AeRegions.RegionList = NULL;
-
-    return Status;
+    return (Status);
 }
 
 
@@ -625,12 +846,13 @@ AeRegionHandler (
     UINT32                  Function,
     ACPI_PHYSICAL_ADDRESS   Address,
     UINT32                  BitWidth,
-    ACPI_INTEGER            *Value,
+    UINT64                  *Value,
     void                    *HandlerContext,
     void                    *RegionContext)
 {
 
-    ACPI_OPERAND_OBJECT     *RegionObject = (ACPI_OPERAND_OBJECT*) RegionContext;
+    ACPI_OPERAND_OBJECT     *RegionObject = ACPI_CAST_PTR (ACPI_OPERAND_OBJECT, RegionContext);
+    UINT8                   *Buffer = ACPI_CAST_PTR (UINT8, Value);
     ACPI_PHYSICAL_ADDRESS   BaseAddress;
     ACPI_SIZE               Length;
     BOOLEAN                 BufferExists;
@@ -649,7 +871,7 @@ AeRegionHandler (
      */
     if (RegionObject->Region.Type != ACPI_TYPE_REGION)
     {
-        return AE_OK;
+        return (AE_OK);
     }
 
     /*
@@ -681,8 +903,9 @@ AeRegionHandler (
             AcpiUtGetRegionName (RegionObject->Region.SpaceId),
             (UINT32) Address));
 
-    if (SpaceId == ACPI_ADR_SPACE_SYSTEM_IO)
+    switch (SpaceId)
     {
+    case ACPI_ADR_SPACE_SYSTEM_IO:
         /*
          * For I/O space, exercise the port validation
          */
@@ -690,10 +913,12 @@ AeRegionHandler (
         {
         case ACPI_READ:
             Status = AcpiHwReadPort (Address, (UINT32 *) Value, BitWidth);
+            AE_CHECK_OK (AcpiHwReadPort, Status);
             break;
 
         case ACPI_WRITE:
             Status = AcpiHwWritePort (Address, (UINT32) *Value, BitWidth);
+            AE_CHECK_OK (AcpiHwWritePort, Status);
             break;
 
         default:
@@ -707,10 +932,11 @@ AeRegionHandler (
         }
 
         /* Now go ahead and simulate the hardware */
-    }
+        break;
 
-    else if (SpaceId == ACPI_ADR_SPACE_SMBUS)
-    {
+
+    case ACPI_ADR_SPACE_SMBUS:
+
         Length = 0;
 
         switch (Function & ACPI_IO_MASK)
@@ -769,13 +995,37 @@ AeRegionHandler (
 
         for (i = 0; i < Length; i++)
         {
-            ((UINT8 *) Value)[i+2] = (UINT8) (0xA0 + i);
+            Buffer[i+2] = (UINT8) (0xA0 + i);
         }
 
-        ((UINT8 *) Value)[0] = 0x7A;
-        ((UINT8 *) Value)[1] = (UINT8) Length;
+        Buffer[0] = 0x7A;
+        Buffer[1] = (UINT8) Length;
+        return (AE_OK);
 
-        return AE_OK;
+
+    case ACPI_ADR_SPACE_IPMI: /* ACPI 4.0 */
+
+        AcpiOsPrintf ("AcpiExec: Received IPMI request: "
+            "Address %X BaseAddress %X Length %X Width %X BufferLength %u\n",
+            (UINT32) Address, (UINT32) BaseAddress,
+            Length, BitWidth, Buffer[1]);
+
+        /*
+         * Regardless of a READ or WRITE, this handler is passed a 66-byte
+         * buffer in which to return the IPMI status/length/data.
+         *
+         * Return some example data to show use of the bidirectional buffer
+         */
+        Buffer[0] = 0;       /* Status byte */
+        Buffer[1] = 64;      /* Return buffer data length */
+        Buffer[2] = 0;       /* Completion code */
+        Buffer[3] = 0x34;    /* Power measurement */
+        Buffer[4] = 0x12;    /* Power measurement */
+        Buffer[65] = 0xEE;   /* last buffer byte */
+        return (AE_OK);
+
+    default:
+        break;
     }
 
     /*
@@ -812,17 +1062,20 @@ AeRegionHandler (
         RegionElement = AcpiOsAllocate (sizeof (AE_REGION));
         if (!RegionElement)
         {
-            return AE_NO_MEMORY;
+            return (AE_NO_MEMORY);
         }
 
         RegionElement->Buffer = AcpiOsAllocate (Length);
         if (!RegionElement->Buffer)
         {
             AcpiOsFree (RegionElement);
-            return AE_NO_MEMORY;
+            return (AE_NO_MEMORY);
         }
 
-        ACPI_MEMSET (RegionElement->Buffer, 0, Length);
+        /* Initialize the region with the default fill value */
+
+        ACPI_MEMSET (RegionElement->Buffer, AcpiGbl_RegionFillValue, Length);
+
         RegionElement->Address      = BaseAddress;
         RegionElement->Length       = Length;
         RegionElement->SpaceId      = SpaceId;
@@ -860,23 +1113,23 @@ AeRegionHandler (
      * NOTE: RegionElement->Length is in bytes, therefore it we compare against
      * ByteWidth (see above)
      */
-    if (((ACPI_INTEGER) Address + ByteWidth) >
-        ((ACPI_INTEGER)(RegionElement->Address) + RegionElement->Length))
+    if (((UINT64) Address + ByteWidth) >
+        ((UINT64)(RegionElement->Address) + RegionElement->Length))
     {
         ACPI_WARNING ((AE_INFO,
-            "Request on [%4.4s] is beyond region limit Req-%X+%X, Base=%X, Len-%X",
+            "Request on [%4.4s] is beyond region limit Req-0x%X+0x%X, Base=0x%X, Len-0x%X",
             (RegionObject->Region.Node)->Name.Ascii, (UINT32) Address,
             ByteWidth, (UINT32)(RegionElement->Address),
             RegionElement->Length));
 
-        return AE_AML_REGION_LIMIT;
+        return (AE_AML_REGION_LIMIT);
     }
 
     /*
      * Get BufferValue to point to the "address" in the buffer
      */
     BufferValue = ((UINT8 *) RegionElement->Buffer +
-                    ((ACPI_INTEGER) Address - (ACPI_INTEGER) RegionElement->Address));
+                    ((UINT64) Address - (UINT64) RegionElement->Address));
 
 DoFunction:
 
@@ -900,10 +1153,10 @@ DoFunction:
         break;
 
     default:
-        return AE_BAD_PARAMETER;
+        return (AE_BAD_PARAMETER);
     }
-    return AE_OK;
-}
 
+    return (AE_OK);
+}
 
 

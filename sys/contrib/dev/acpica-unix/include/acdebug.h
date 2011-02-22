@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -117,7 +117,7 @@
 #define __ACDEBUG_H__
 
 
-#define ACPI_DEBUG_BUFFER_SIZE  4196
+#define ACPI_DEBUG_BUFFER_SIZE  0x4000      /* 16K buffer for return objects */
 
 typedef struct CommandInfo
 {
@@ -126,12 +126,18 @@ typedef struct CommandInfo
 
 } COMMAND_INFO;
 
-
 typedef struct ArgumentInfo
 {
     char                    *Name;          /* Argument Name */
 
 } ARGUMENT_INFO;
+
+typedef struct acpi_execute_walk
+{
+    UINT32                  Count;
+    UINT32                  MaxCount;
+
+} ACPI_EXECUTE_WALK;
 
 
 #define PARAM_LIST(pl)                  pl
@@ -164,9 +170,9 @@ AcpiDbSingleStep (
 /*
  * dbcmds - debug commands and output routines
  */
-ACPI_STATUS
-AcpiDbDisassembleMethod (
-    char                    *Name);
+ACPI_NAMESPACE_NODE *
+AcpiDbConvertToNode (
+    char                    *InString);
 
 void
 AcpiDbDisplayTableInfo (
@@ -178,64 +184,17 @@ AcpiDbUnloadAcpiTable (
     char                    *InstanceArg);
 
 void
-AcpiDbSetMethodBreakpoint (
-    char                    *Location,
-    ACPI_WALK_STATE         *WalkState,
-    ACPI_PARSE_OBJECT       *Op);
-
-void
-AcpiDbSetMethodCallBreakpoint (
-    ACPI_PARSE_OBJECT       *Op);
-
-void
-AcpiDbGetBusInfo (
-    void);
-
-void
-AcpiDbDisassembleAml (
-    char                    *Statements,
-    ACPI_PARSE_OBJECT       *Op);
-
-void
-AcpiDbDumpNamespace (
-    char                    *StartArg,
-    char                    *DepthArg);
-
-void
-AcpiDbDumpNamespaceByOwner (
-    char                    *OwnerArg,
-    char                    *DepthArg);
-
-void
 AcpiDbSendNotify (
     char                    *Name,
     UINT32                  Value);
 
 void
-AcpiDbSetMethodData (
-    char                    *TypeArg,
-    char                    *IndexArg,
-    char                    *ValueArg);
-
-ACPI_STATUS
-AcpiDbDisplayObjects (
-    char                    *ObjTypeArg,
-    char                    *DisplayCountArg);
-
-ACPI_STATUS
-AcpiDbFindNameInNamespace (
-    char                    *NameArg);
-
-void
-AcpiDbSetScope (
-    char                    *Name);
+AcpiDbDisplayInterfaces (
+    char                    *ActionArg,
+    char                    *InterfaceNameArg);
 
 ACPI_STATUS
 AcpiDbSleep (
-    char                    *ObjectArg);
-
-void
-AcpiDbFindReferences (
     char                    *ObjectArg);
 
 void
@@ -251,7 +210,7 @@ AcpiDbDisplayGpes (
     void);
 
 void
-AcpiDbCheckIntegrity (
+AcpiDbDisplayHandlers (
     void);
 
 void
@@ -259,13 +218,82 @@ AcpiDbGenerateGpe (
     char                    *GpeArg,
     char                    *BlockArg);
 
+
+/*
+ * dbmethod - control method commands
+ */
+void
+AcpiDbSetMethodBreakpoint (
+    char                    *Location,
+    ACPI_WALK_STATE         *WalkState,
+    ACPI_PARSE_OBJECT       *Op);
+
+void
+AcpiDbSetMethodCallBreakpoint (
+    ACPI_PARSE_OBJECT       *Op);
+
+void
+AcpiDbSetMethodData (
+    char                    *TypeArg,
+    char                    *IndexArg,
+    char                    *ValueArg);
+
+ACPI_STATUS
+AcpiDbDisassembleMethod (
+    char                    *Name);
+
+void
+AcpiDbDisassembleAml (
+    char                    *Statements,
+    ACPI_PARSE_OBJECT       *Op);
+
+void
+AcpiDbBatchExecute (
+    char                    *CountArg);
+
+
+/*
+ * dbnames - namespace commands
+ */
+void
+AcpiDbSetScope (
+    char                    *Name);
+
+void
+AcpiDbDumpNamespace (
+    char                    *StartArg,
+    char                    *DepthArg);
+
+void
+AcpiDbDumpNamespaceByOwner (
+    char                    *OwnerArg,
+    char                    *DepthArg);
+
+ACPI_STATUS
+AcpiDbFindNameInNamespace (
+    char                    *NameArg);
+
 void
 AcpiDbCheckPredefinedNames (
     void);
 
+ACPI_STATUS
+AcpiDbDisplayObjects (
+    char                    *ObjTypeArg,
+    char                    *DisplayCountArg);
+
 void
-AcpiDbBatchExecute (
+AcpiDbCheckIntegrity (
     void);
+
+void
+AcpiDbFindReferences (
+    char                    *ObjectArg);
+
+void
+AcpiDbGetBusInfo (
+    void);
+
 
 /*
  * dbdisply - debug display commands
@@ -312,6 +340,7 @@ void
 AcpiDbDisplayArgumentObject (
     ACPI_OPERAND_OBJECT     *ObjDesc,
     ACPI_WALK_STATE         *WalkState);
+
 
 /*
  * dbexec - debugger control method execution

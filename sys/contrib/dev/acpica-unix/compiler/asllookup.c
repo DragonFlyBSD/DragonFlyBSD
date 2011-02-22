@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -180,11 +180,7 @@ LsDoOnePathname (
     void                    *Context,
     void                    **ReturnValue);
 
-void
-LsSetupNsList (
-    void                    *Handle);
-
-ACPI_PARSE_OBJECT *
+static ACPI_PARSE_OBJECT *
 LkGetNameOp (
     ACPI_PARSE_OBJECT       *Op);
 
@@ -216,7 +212,7 @@ LsDoOneNamespaceObject (
 
     Gbl_NumNamespaceObjects++;
 
-    FlPrintFile (ASL_FILE_NAMESPACE_OUTPUT, "%5d  [%d]  %*s %4.4s - %s",
+    FlPrintFile (ASL_FILE_NAMESPACE_OUTPUT, "%5u  [%u]  %*s %4.4s - %s",
         Gbl_NumNamespaceObjects, Level, (Level * 3), " ",
         &Node->Name,
         AcpiUtGetTypeName (Node->Type));
@@ -526,7 +522,7 @@ LsDisplayNamespace (
     /* Walk entire namespace from the root */
 
     Status = AcpiNsWalkNamespace (ACPI_TYPE_ANY, ACPI_ROOT_OBJECT,
-                ACPI_UINT32_MAX, FALSE, LsDoOneNamespaceObject,
+                ACPI_UINT32_MAX, FALSE, LsDoOneNamespaceObject, NULL,
                 NULL, NULL);
 
     /* Print the full pathname for each namespace node */
@@ -534,7 +530,7 @@ LsDisplayNamespace (
     FlPrintFile (ASL_FILE_NAMESPACE_OUTPUT, "\nNamespace pathnames\n\n");
 
     Status = AcpiNsWalkNamespace (ACPI_TYPE_ANY, ACPI_ROOT_OBJECT,
-                ACPI_UINT32_MAX, FALSE, LsDoOnePathname,
+                ACPI_UINT32_MAX, FALSE, LsDoOnePathname, NULL,
                 NULL, NULL);
 
     return (Status);
@@ -598,7 +594,7 @@ LkObjectExists (
     /* Walk entire namespace from the supplied root */
 
     Status = AcpiNsWalkNamespace (ACPI_TYPE_ANY, ACPI_ROOT_OBJECT,
-                ACPI_UINT32_MAX, FALSE, LsCompareOneNamespaceObject,
+                ACPI_UINT32_MAX, FALSE, LsCompareOneNamespaceObject, NULL,
                 Name, NULL);
     if (Status == AE_CTRL_TRUE)
     {
@@ -623,7 +619,7 @@ LkObjectExists (
  *
  ******************************************************************************/
 
-ACPI_PARSE_OBJECT *
+static ACPI_PARSE_OBJECT *
 LkGetNameOp (
     ACPI_PARSE_OBJECT       *Op)
 {
@@ -753,7 +749,7 @@ LkFindUnreferencedObjects (
     /* Walk entire namespace from the supplied root */
 
     (void) AcpiNsWalkNamespace (ACPI_TYPE_ANY, ACPI_ROOT_OBJECT,
-                ACPI_UINT32_MAX, FALSE, LkIsObjectUsed,
+                ACPI_UINT32_MAX, FALSE, LkIsObjectUsed, NULL,
                 NULL, NULL);
 }
 
@@ -1245,7 +1241,7 @@ LkNamespaceLocateBegin (
              */
             if (PassedArgs != Node->Value)
             {
-                sprintf (MsgBuffer, "%s requires %d", Op->Asl.ExternalName,
+                sprintf (MsgBuffer, "%s requires %u", Op->Asl.ExternalName,
                             Node->Value);
 
                 if (PassedArgs < Node->Value)
@@ -1337,6 +1333,7 @@ LkNamespaceLocateBegin (
                 break;
 
             case REGION_SMBUS:
+            case REGION_IPMI:
 
                 if ((UINT8) Op->Asl.Parent->Asl.Value.Integer != AML_FIELD_ACCESS_BUFFER)
                 {

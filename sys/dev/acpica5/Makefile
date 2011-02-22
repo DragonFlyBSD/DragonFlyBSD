@@ -33,19 +33,21 @@ KMOD	= acpi
 # ACPI CA sources
 SRCS+=	dbcmds.c dbdisply.c dbexec.c dbfileio.c dbhistry.c
 SRCS+=	dbinput.c dbstats.c dbutils.c dbxface.c
+SRCS+=	dbmethod.c dbnames.c
 SRCS+=	dmbuffer.c dmnames.c dmobject.c dmopcode.c dmresrc.c dmresrcl.c
 SRCS+=	dmresrcs.c dmutils.c dmwalk.c
 SRCS+=	dsfield.c dsinit.c dsmethod.c dsmthdat.c
 SRCS+=	dsobject.c dsopcode.c dsutils.c dswexec.c dswload.c
-SRCS+=	dswscope.c dswstate.c evevent.c evgpe.c evgpeblk.c
+SRCS+=	dswscope.c dswstate.c dsargs.c dscontrol.c dswload2.c
+SRCS+=  evevent.c evgpe.c evgpeblk.c evgpeinit.c evgpeutil.c evxfgpe.c
 SRCS+=	evmisc.c evregion.c evrgnini.c evsci.c evxface.c
 SRCS+=	evxfevnt.c evxfregn.c exconfig.c exconvrt.c excreate.c
 SRCS+=	exdump.c exfield.c exfldio.c exmisc.c exmutex.c
 SRCS+=	exnames.c exoparg1.c exoparg2.c exoparg3.c exoparg6.c
 SRCS+=	exprep.c exregion.c exresnte.c exresolv.c exresop.c
-SRCS+=	exstore.c exstoren.c exstorob.c exsystem.c exutils.c
-SRCS+=	hwacpi.c hwgpe.c hwregs.c hwsleep.c hwtimer.c hwvalid.c hwxface.c
-SRCS+=	nsaccess.c nsalloc.c nsdump.c nseval.c nsinit.c
+SRCS+=	exstore.c exstoren.c exstorob.c exsystem.c exutils.c exdebug.c
+SRCS+=	hwacpi.c hwgpe.c hwregs.c hwsleep.c hwtimer.c hwvalid.c hwxface.c hwpci.c
+SRCS+=	nsaccess.c nsalloc.c nsdump.c nseval.c nsinit.c nsrepair.c nsrepair2.c
 SRCS+=	nsload.c nsnames.c nsobject.c nsparse.c nssearch.c nspredef.c
 SRCS+=	nsutils.c nswalk.c nsxfeval.c nsxfname.c nsxfobj.c
 SRCS+=	psargs.c psloop.c psopcode.c psparse.c psscope.c
@@ -56,7 +58,7 @@ SRCS+=	rsxface.c tbfadt.c tbfind.c tbinstal.c
 SRCS+=	tbutils.c tbxface.c tbxfroot.c utalloc.c
 SRCS+=	utclib.c utcopy.c utdebug.c utdelete.c uteval.c utlock.c
 SRCS+=	utglobal.c utinit.c utmath.c utmisc.c utmutex.c utobject.c
-SRCS+=	utresrc.c utstate.c utxface.c
+SRCS+=	utresrc.c utstate.c utxface.c utdecode.c utids.c utosi.c utxferror.c
 
 # OSD layer
 #

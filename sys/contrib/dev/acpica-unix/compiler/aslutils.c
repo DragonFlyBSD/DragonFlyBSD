@@ -9,7 +9,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -117,8 +117,10 @@
 
 #include "aslcompiler.h"
 #include "aslcompiler.y.h"
+#include "acdisasm.h"
 #include "acnamesp.h"
 #include "amlcode.h"
+#include <acapps.h>
 
 #define _COMPONENT          ACPI_COMPILER
         ACPI_MODULE_NAME    ("aslutils")
@@ -130,7 +132,7 @@ static const char * const       *yytname = &AslCompilername[254];
 extern const char * const       yytname[];
 #endif
 
-char                    HexLookup[] =
+char                        AslHexLookup[] =
 {
     '0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'
 };
@@ -142,7 +144,7 @@ static ACPI_STATUS
 UtStrtoul64 (
     char                    *String,
     UINT32                  Base,
-    ACPI_INTEGER            *RetInteger);
+    UINT64                  *RetInteger);
 
 static void
 UtPadNameWithUnderscores (
@@ -153,6 +155,50 @@ static void
 UtAttachNameseg (
     ACPI_PARSE_OBJECT       *Op,
     char                    *Name);
+
+
+/*******************************************************************************
+ *
+ * FUNCTION:    UtDisplaySupportedTables
+ *
+ * PARAMETERS:  None
+ *
+ * RETURN:      None
+ *
+ * DESCRIPTION: Print all supported ACPI table names.
+ *
+ ******************************************************************************/
+
+void
+UtDisplaySupportedTables (
+    void)
+{
+    ACPI_DMTABLE_DATA       *TableData;
+    UINT32                  i = 6;
+
+
+    printf ("\nACPI tables supported by iASL subsystems in "
+        "version %8.8X:\n"
+        "  ASL and Data Table compilers\n"
+        "  AML and Data Table disassemblers\n"
+        "  ACPI table template generator\n\n", ACPI_CA_VERSION);
+
+    /* Special tables */
+
+    printf ("%8u) %s    %s\n", 1, ACPI_SIG_DSDT, "Differentiated System Description Table");
+    printf ("%8u) %s    %s\n", 2, ACPI_SIG_SSDT, "Secondary System Description Table");
+    printf ("%8u) %s    %s\n", 3, ACPI_SIG_FADT, "Fixed ACPI Description Table (FADT)");
+    printf ("%8u) %s    %s\n", 4, ACPI_SIG_FACS, "Firmware ACPI Control Structure");
+    printf ("%8u) %s    %s\n", 5, ACPI_RSDP_NAME, "Root System Description Pointer");
+
+    /* All data tables with common table header */
+
+    for (TableData = AcpiDmTableData; TableData->Signature; TableData++)
+    {
+        printf ("%8u) %s    %s\n", i, TableData->Signature, TableData->Name);
+        i++;
+    }
+}
 
 
 /*******************************************************************************
@@ -214,6 +260,8 @@ UtLocalCalloc (
             Gbl_CurrentLineNumber, Gbl_LogicalLineNumber,
             Gbl_InputByteCount, Gbl_CurrentColumn,
             Gbl_Files[ASL_FILE_INPUT].Filename, NULL);
+
+        CmCleanupAndExit ();
         exit (1);
     }
 
@@ -338,8 +386,8 @@ UtConvertByteToHex (
     Buffer[0] = '0';
     Buffer[1] = 'x';
 
-    Buffer[2] = (UINT8) HexLookup[(RawByte >> 4) & 0xF];
-    Buffer[3] = (UINT8) HexLookup[RawByte & 0xF];
+    Buffer[2] = (UINT8) AslHexLookup[(RawByte >> 4) & 0xF];
+    Buffer[3] = (UINT8) AslHexLookup[RawByte & 0xF];
 }
 
 
@@ -364,8 +412,8 @@ UtConvertByteToAsmHex (
 {
 
     Buffer[0] = '0';
-    Buffer[1] = (UINT8) HexLookup[(RawByte >> 4) & 0xF];
-    Buffer[2] = (UINT8) HexLookup[RawByte & 0xF];
+    Buffer[1] = (UINT8) AslHexLookup[(RawByte >> 4) & 0xF];
+    Buffer[2] = (UINT8) AslHexLookup[RawByte & 0xF];
     Buffer[3] = 'h';
 }
 
@@ -519,37 +567,61 @@ UtDisplaySummary (
     {
         /* Compiler name and version number */
 
-        FlPrintFile (FileId, "%s version %X [%s]\n",
-            CompilerId, (UINT32) ACPI_CA_VERSION, __DATE__);
+        FlPrintFile (FileId, "%s version %X%s [%s]\n",
+            ASL_COMPILER_NAME, (UINT32) ACPI_CA_VERSION, ACPI_WIDTH, __DATE__);
     }
 
-    /* Input/Output summary */
-
-    FlPrintFile (FileId,
-        "ASL Input:  %s - %d lines, %d bytes, %d keywords\n",
-        Gbl_Files[ASL_FILE_INPUT].Filename, Gbl_CurrentLineNumber,
-        Gbl_InputByteCount, TotalKeywords);
-
-    /* AML summary */
-
-    if ((Gbl_ExceptionCount[ASL_ERROR] == 0) || (Gbl_IgnoreErrors))
+    if (Gbl_FileType == ASL_INPUT_TYPE_ASCII_DATA)
     {
         FlPrintFile (FileId,
-            "AML Output: %s - %d bytes, %d named objects, %d executable opcodes\n\n",
-            Gbl_Files[ASL_FILE_AML_OUTPUT].Filename, Gbl_TableLength,
-            TotalNamedObjects, TotalExecutableOpcodes);
+            "Table Input:   %s - %u lines, %u bytes, %u fields\n",
+            Gbl_Files[ASL_FILE_INPUT].Filename, Gbl_CurrentLineNumber,
+            Gbl_InputByteCount, Gbl_InputFieldCount);
+
+        if ((Gbl_ExceptionCount[ASL_ERROR] == 0) || (Gbl_IgnoreErrors))
+        {
+            FlPrintFile (FileId,
+                "Binary Output: %s - %u bytes\n\n",
+                Gbl_Files[ASL_FILE_AML_OUTPUT].Filename, Gbl_TableLength);
+        }
+    }
+    else
+    {
+        /* Input/Output summary */
+
+        FlPrintFile (FileId,
+            "ASL Input:  %s - %u lines, %u bytes, %u keywords\n",
+            Gbl_Files[ASL_FILE_INPUT].Filename, Gbl_CurrentLineNumber,
+            Gbl_InputByteCount, TotalKeywords);
+
+        /* AML summary */
+
+        if ((Gbl_ExceptionCount[ASL_ERROR] == 0) || (Gbl_IgnoreErrors))
+        {
+            FlPrintFile (FileId,
+                "AML Output: %s - %u bytes, %u named objects, %u executable opcodes\n\n",
+                Gbl_Files[ASL_FILE_AML_OUTPUT].Filename, Gbl_TableLength,
+                TotalNamedObjects, TotalExecutableOpcodes);
+        }
     }
 
     /* Error summary */
 
     FlPrintFile (FileId,
-        "Compilation complete. %d Errors, %d Warnings, %d Remarks, %d Optimizations\n",
+        "Compilation complete. %u Errors, %u Warnings, %u Remarks",
         Gbl_ExceptionCount[ASL_ERROR],
         Gbl_ExceptionCount[ASL_WARNING] +
             Gbl_ExceptionCount[ASL_WARNING2] +
             Gbl_ExceptionCount[ASL_WARNING3],
-        Gbl_ExceptionCount[ASL_REMARK],
-        Gbl_ExceptionCount[ASL_OPTIMIZATION]);
+        Gbl_ExceptionCount[ASL_REMARK]);
+
+    if (Gbl_FileType != ASL_INPUT_TYPE_ASCII_DATA)
+    {
+        FlPrintFile (FileId,
+            ", %u Optimizations", Gbl_ExceptionCount[ASL_OPTIMIZATION]);
+    }
+
+    FlPrintFile (FileId, "\n");
 }
 
 
@@ -846,12 +918,12 @@ UtAttachNamepathToOwner (
  *
  ******************************************************************************/
 
-ACPI_INTEGER
+UINT64
 UtDoConstant (
     char                    *String)
 {
     ACPI_STATUS             Status;
-    ACPI_INTEGER            Converted;
+    UINT64                  Converted;
     char                    ErrBuf[64];
 
 
@@ -888,11 +960,11 @@ static ACPI_STATUS
 UtStrtoul64 (
     char                    *String,
     UINT32                  Base,
-    ACPI_INTEGER            *RetInteger)
+    UINT64                  *RetInteger)
 {
     UINT32                  Index;
     UINT32                  Sign;
-    ACPI_INTEGER            ReturnValue = 0;
+    UINT64                  ReturnValue = 0;
     ACPI_STATUS             Status = AE_OK;
 
 
@@ -916,7 +988,7 @@ UtStrtoul64 (
 
     /* Skip over any white space in the buffer: */
 
-    while (isspace (*String) || *String == '\t')
+    while (isspace ((int) *String) || *String == '\t')
     {
         ++String;
     }
@@ -948,7 +1020,7 @@ UtStrtoul64 (
     {
         if (*String == '0')
         {
-            if (tolower (*(++String)) == 'x')
+            if (tolower ((int) *(++String)) == 'x')
             {
                 Base = 16;
                 ++String;
@@ -975,7 +1047,7 @@ UtStrtoul64 (
 
     if (Base == 16 &&
         *String == '0' &&
-        tolower (*(++String)) == 'x')
+        tolower ((int) *(++String)) == 'x')
     {
         String++;
     }
@@ -984,14 +1056,14 @@ UtStrtoul64 (
 
     while (*String)
     {
-        if (isdigit (*String))
+        if (isdigit ((int) *String))
         {
             Index = ((UINT8) *String) - '0';
         }
         else
         {
-            Index = (UINT8) toupper (*String);
-            if (isupper ((char) Index))
+            Index = (UINT8) toupper ((int) *String);
+            if (isupper ((int) Index))
             {
                 Index = Index - 'A' + 10;
             }
@@ -1008,8 +1080,8 @@ UtStrtoul64 (
 
         /* Check to see if value is out of range: */
 
-        if (ReturnValue > ((ACPI_INTEGER_MAX - (ACPI_INTEGER) Index) /
-                            (ACPI_INTEGER) Base))
+        if (ReturnValue > ((ACPI_UINT64_MAX - (UINT64) Index) /
+                            (UINT64) Base))
         {
             goto ErrorExit;
         }

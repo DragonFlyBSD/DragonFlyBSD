@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -462,7 +462,7 @@ AcpiUtDeleteGenericState (
 
     if (State)
     {
-        ACPI_OS_RELEASE_OBJECT(AcpiGbl_StateCache, State);
+        (void) AcpiOsReleaseObject (AcpiGbl_StateCache, State);
     }
     return_VOID;
 }

@@ -9,7 +9,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -513,11 +513,11 @@ CgWriteTableHeader (
 
     /* Compiler ID */
 
-    strncpy (TableHeader.AslCompilerId, CompilerCreatorId, 4);
+    strncpy (TableHeader.AslCompilerId, ASL_CREATOR_ID, 4);
 
     /* Compiler version */
 
-    TableHeader.AslCompilerRevision = CompilerCreatorRevision;
+    TableHeader.AslCompilerRevision = ASL_REVISION;
 
     /* Table length. Checksum zero for now, will rewrite later */
 

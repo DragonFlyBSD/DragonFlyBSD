@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -612,7 +612,7 @@ AcpiDbDisplayResults (
     for (i = 0; i < ResultCount; i++)
     {
         ObjDesc = Frame->Results.ObjDesc[Index];
-        AcpiOsPrintf ("Result%d: ", i);
+        AcpiOsPrintf ("Result%u: ", i);
         AcpiDmDisplayInternalObject (ObjDesc, WalkState);
         if (Index == 0)
         {
@@ -682,42 +682,52 @@ AcpiDbDisplayObjectType (
     char                    *ObjectArg)
 {
     ACPI_HANDLE             Handle;
-    ACPI_BUFFER             Buffer;
     ACPI_DEVICE_INFO        *Info;
     ACPI_STATUS             Status;
     UINT32                  i;
 
 
     Handle = ACPI_TO_POINTER (ACPI_STRTOUL (ObjectArg, NULL, 16));
-    Buffer.Length = ACPI_ALLOCATE_LOCAL_BUFFER;
 
-    Status = AcpiGetObjectInfo (Handle, &Buffer);
-    if (ACPI_SUCCESS (Status))
+    Status = AcpiGetObjectInfo (Handle, &Info);
+    if (ACPI_FAILURE (Status))
     {
-        Info = Buffer.Pointer;
-        AcpiOsPrintf (
-            "S1D-%2.2X S2D-%2.2X S3D-%2.2X S4D-%2.2X    HID: %s, ADR: %8.8X%8.8X, Status %8.8X\n",
-            Info->HighestDstates[0], Info->HighestDstates[1],
-            Info->HighestDstates[2], Info->HighestDstates[3],
-            Info->HardwareId.Value,
-            ACPI_FORMAT_UINT64 (Info->Address),
-            Info->CurrentStatus);
+        AcpiOsPrintf ("Could not get object info, %s\n",
+            AcpiFormatException (Status));
+        return;
+    }
 
-        if (Info->Valid & ACPI_VALID_CID)
+    AcpiOsPrintf ("ADR: %8.8X%8.8X, STA: %8.8X, Flags: %X\n",
+        ACPI_FORMAT_UINT64 (Info->Address),
+        Info->CurrentStatus, Info->Flags);
+
+    AcpiOsPrintf ("S1D-%2.2X S2D-%2.2X S3D-%2.2X S4D-%2.2X\n",
+        Info->HighestDstates[0], Info->HighestDstates[1],
+        Info->HighestDstates[2], Info->HighestDstates[3]);
+
+    AcpiOsPrintf ("S0W-%2.2X S1W-%2.2X S2W-%2.2X S3W-%2.2X S4W-%2.2X\n",
+        Info->LowestDstates[0], Info->LowestDstates[1],
+        Info->LowestDstates[2], Info->LowestDstates[3],
+        Info->LowestDstates[4]);
+
+    if (Info->Valid & ACPI_VALID_HID)
+    {
+        AcpiOsPrintf ("HID: %s\n", Info->HardwareId.String);
+    }
+    if (Info->Valid & ACPI_VALID_UID)
+    {
+        AcpiOsPrintf ("UID: %s\n", Info->UniqueId.String);
+    }
+    if (Info->Valid & ACPI_VALID_CID)
+    {
+        for (i = 0; i < Info->CompatibleIdList.Count; i++)
         {
-            for (i = 0; i < Info->CompatibilityId.Count; i++)
-            {
-                AcpiOsPrintf ("CID #%d: %s\n", i,
-                    Info->CompatibilityId.Id[i].Value);
-            }
+            AcpiOsPrintf ("CID %u: %s\n", i,
+                Info->CompatibleIdList.Ids[i].String);
         }
+    }
 
-        ACPI_FREE (Info);
-    }
-    else
-    {
-        AcpiOsPrintf ("%s\n", AcpiFormatException (Status));
-    }
+    ACPI_FREE (Info);
 }
 
 
@@ -806,6 +816,7 @@ AcpiDbDisplayGpes (
     ACPI_GPE_XRUPT_INFO     *GpeXruptInfo;
     ACPI_GPE_EVENT_INFO     *GpeEventInfo;
     ACPI_GPE_REGISTER_INFO  *GpeRegisterInfo;
+    char                    *GpeType;
     UINT32                  GpeIndex;
     UINT32                  Block = 0;
     UINT32                  i;
@@ -834,17 +845,25 @@ AcpiDbDisplayGpes (
                 AcpiOsPrintf ("Could not convert name to pathname\n");
             }
 
-            AcpiOsPrintf ("\nBlock %d - Info %p  DeviceNode %p [%s]\n",
-                Block, GpeBlock, GpeBlock->Node, Buffer);
+            if (GpeBlock->Node == AcpiGbl_FadtGpeDevice)
+            {
+                GpeType = "FADT-defined GPE block";
+            }
+            else
+            {
+                GpeType = "GPE Block Device";
+            }
+
+            AcpiOsPrintf ("\nBlock %u - Info %p  DeviceNode %p [%s] - %s\n",
+                Block, GpeBlock, GpeBlock->Node, Buffer, GpeType);
 
             AcpiOsPrintf ("    Registers:    %u (%u GPEs)\n",
-                GpeBlock->RegisterCount,
-                ACPI_MUL_8 (GpeBlock->RegisterCount));
+                GpeBlock->RegisterCount, GpeBlock->GpeCount);
 
-            AcpiOsPrintf ("    GPE range:    0x%X to 0x%X\n",
+            AcpiOsPrintf ("    GPE range:    0x%X to 0x%X on interrupt %u\n",
                 GpeBlock->BlockBaseNumber,
-                GpeBlock->BlockBaseNumber +
-                    (GpeBlock->RegisterCount * 8) -1);
+                GpeBlock->BlockBaseNumber + (GpeBlock->GpeCount - 1),
+                GpeXruptInfo->InterruptNumber);
 
             AcpiOsPrintf (
                 "    RegisterInfo: %p  Status %8.8X%8.8X Enable %8.8X%8.8X\n",
@@ -861,9 +880,12 @@ AcpiDbDisplayGpes (
                 GpeRegisterInfo = &GpeBlock->RegisterInfo[i];
 
                 AcpiOsPrintf (
-                    "    Reg %u:  WakeEnable %2.2X, RunEnable %2.2X  Status %8.8X%8.8X Enable %8.8X%8.8X\n",
-                    i, GpeRegisterInfo->EnableForWake,
+                    "    Reg %u: (GPE %.2X-%.2X)  RunEnable %2.2X WakeEnable %2.2X"
+                    " Status %8.8X%8.8X Enable %8.8X%8.8X\n",
+                    i, GpeRegisterInfo->BaseGpeNumber,
+                    GpeRegisterInfo->BaseGpeNumber + (ACPI_GPE_REGISTER_WIDTH - 1),
                     GpeRegisterInfo->EnableForRun,
+                    GpeRegisterInfo->EnableForWake,
                     ACPI_FORMAT_UINT64 (GpeRegisterInfo->StatusAddress.Address),
                     ACPI_FORMAT_UINT64 (GpeRegisterInfo->EnableAddress.Address));
 
@@ -874,18 +896,20 @@ AcpiDbDisplayGpes (
                     GpeIndex = (i * ACPI_GPE_REGISTER_WIDTH) + j;
                     GpeEventInfo = &GpeBlock->EventInfo[GpeIndex];
 
-                    if (!(GpeEventInfo->Flags & ACPI_GPE_DISPATCH_MASK))
+                    if ((GpeEventInfo->Flags & ACPI_GPE_DISPATCH_MASK) ==
+                        ACPI_GPE_DISPATCH_NONE)
                     {
-                        /* This GPE is not used (no method or handler) */
+                        /* This GPE is not used (no method or handler), ignore it */
 
                         continue;
                     }
 
                     AcpiOsPrintf (
-                        "        GPE %.3X: %p Flags %2.2X: ",
-                        GpeBlock->BlockBaseNumber + GpeIndex,
-                        GpeEventInfo,
-                        GpeEventInfo->Flags);
+                        "        GPE %.2X: %p  RunRefs %2.2X Flags %2.2X (",
+                        GpeBlock->BlockBaseNumber + GpeIndex, GpeEventInfo,
+                        GpeEventInfo->RuntimeCount, GpeEventInfo->Flags);
+
+                    /* Decode the flags byte */
 
                     if (GpeEventInfo->Flags & ACPI_GPE_LEVEL_TRIGGERED)
                     {
@@ -896,50 +920,28 @@ AcpiDbDisplayGpes (
                         AcpiOsPrintf ("Edge,  ");
                     }
 
-                    switch (GpeEventInfo->Flags & ACPI_GPE_TYPE_MASK)
+                    if (GpeEventInfo->Flags & ACPI_GPE_CAN_WAKE)
                     {
-                    case ACPI_GPE_TYPE_WAKE:
-                        AcpiOsPrintf ("WakeOnly: ");
-                        break;
-                    case ACPI_GPE_TYPE_RUNTIME:
-                        AcpiOsPrintf (" RunOnly: ");
-                        break;
-                    case ACPI_GPE_TYPE_WAKE_RUN:
-                        AcpiOsPrintf (" WakeRun: ");
-                        break;
-                    default:
-                        AcpiOsPrintf (" NotUsed: ");
-                        break;
-                    }
-
-                    if (GpeEventInfo->Flags & ACPI_GPE_WAKE_ENABLED)
-                    {
-                        AcpiOsPrintf ("[Wake 1 ");
+                        AcpiOsPrintf ("CanWake, ");
                     }
                     else
                     {
-                        AcpiOsPrintf ("[Wake 0 ");
-                    }
-
-                    if (GpeEventInfo->Flags & ACPI_GPE_RUN_ENABLED)
-                    {
-                        AcpiOsPrintf ("Run 1], ");
-                    }
-                    else
-                    {
-                        AcpiOsPrintf ("Run 0], ");
+                        AcpiOsPrintf ("RunOnly, ");
                     }
 
                     switch (GpeEventInfo->Flags & ACPI_GPE_DISPATCH_MASK)
                     {
-                    case ACPI_GPE_DISPATCH_NOT_USED:
+                    case ACPI_GPE_DISPATCH_NONE:
                         AcpiOsPrintf ("NotUsed");
+                        break;
+                    case ACPI_GPE_DISPATCH_METHOD:
+                        AcpiOsPrintf ("Method");
                         break;
                     case ACPI_GPE_DISPATCH_HANDLER:
                         AcpiOsPrintf ("Handler");
                         break;
-                    case ACPI_GPE_DISPATCH_METHOD:
-                        AcpiOsPrintf ("Method");
+                    case ACPI_GPE_DISPATCH_NOTIFY:
+                        AcpiOsPrintf ("Notify");
                         break;
                     default:
                         AcpiOsPrintf ("UNKNOWN: %X",
@@ -947,7 +949,7 @@ AcpiDbDisplayGpes (
                         break;
                     }
 
-                    AcpiOsPrintf ("\n");
+                    AcpiOsPrintf (")\n");
                 }
             }
             Block++;
@@ -957,5 +959,140 @@ AcpiDbDisplayGpes (
     }
 }
 
-#endif /* ACPI_DEBUGGER */
+/*******************************************************************************
+ *
+ * FUNCTION:    AcpiDbDisplayHandlers
+ *
+ * PARAMETERS:  None
+ *
+ * RETURN:      None
+ *
+ * DESCRIPTION: Display the currently installed global handlers
+ *
+ ******************************************************************************/
 
+#define ACPI_PREDEFINED_PREFIX          "%25s (%.2X) : "
+#define ACPI_HANDLER_NAME_STRING               "%30s : "
+#define ACPI_HANDLER_PRESENT_STRING                    "%-9s (%p)\n"
+#define ACPI_HANDLER_NOT_PRESENT_STRING                "%-9s\n"
+
+/* All predefined Space IDs */
+
+static ACPI_ADR_SPACE_TYPE  SpaceIdList[] =
+{
+    ACPI_ADR_SPACE_SYSTEM_MEMORY,
+    ACPI_ADR_SPACE_SYSTEM_IO,
+    ACPI_ADR_SPACE_PCI_CONFIG,
+    ACPI_ADR_SPACE_EC,
+    ACPI_ADR_SPACE_SMBUS,
+    ACPI_ADR_SPACE_CMOS,
+    ACPI_ADR_SPACE_PCI_BAR_TARGET,
+    ACPI_ADR_SPACE_IPMI,
+    ACPI_ADR_SPACE_DATA_TABLE,
+    ACPI_ADR_SPACE_FIXED_HARDWARE
+};
+
+/* Global handler information */
+
+typedef struct acpi_handler_info
+{
+    void                    *Handler;
+    char                    *Name;
+
+} ACPI_HANDLER_INFO;
+
+ACPI_HANDLER_INFO           HandlerList[] =
+{
+    {&AcpiGbl_SystemNotify.Handler,     "System Notifications"},
+    {&AcpiGbl_DeviceNotify.Handler,     "Device Notifications"},
+    {&AcpiGbl_TableHandler,             "ACPI Table Events"},
+    {&AcpiGbl_ExceptionHandler,         "Control Method Exceptions"},
+    {&AcpiGbl_InterfaceHandler,         "OSI Invocations"}
+};
+
+
+void
+AcpiDbDisplayHandlers (
+    void)
+{
+    ACPI_OPERAND_OBJECT     *ObjDesc;
+    ACPI_OPERAND_OBJECT     *HandlerObj;
+    ACPI_ADR_SPACE_TYPE     SpaceId;
+    UINT32                  i;
+
+
+    /* Operation region handlers */
+
+    AcpiOsPrintf ("\nOperation Region Handlers:\n");
+
+    ObjDesc = AcpiNsGetAttachedObject (AcpiGbl_RootNode);
+    if (ObjDesc)
+    {
+        for (i = 0; i < ACPI_ARRAY_LENGTH (SpaceIdList); i++)
+        {
+            SpaceId = SpaceIdList[i];
+            HandlerObj = ObjDesc->Device.Handler;
+
+            AcpiOsPrintf (ACPI_PREDEFINED_PREFIX,
+                AcpiUtGetRegionName ((UINT8) SpaceId), SpaceId);
+
+            while (HandlerObj)
+            {
+                if (i == HandlerObj->AddressSpace.SpaceId)
+                {
+                    AcpiOsPrintf (ACPI_HANDLER_PRESENT_STRING,
+                        (HandlerObj->AddressSpace.HandlerFlags &
+                            ACPI_ADDR_HANDLER_DEFAULT_INSTALLED) ? "Default" : "User",
+                        HandlerObj->AddressSpace.Handler);
+                    goto FoundHandler;
+                }
+
+                HandlerObj = HandlerObj->AddressSpace.Next;
+            }
+
+            /* There is no handler for this SpaceId */
+
+            AcpiOsPrintf ("None\n");
+
+        FoundHandler:;
+        }
+    }
+
+    /* Fixed event handlers */
+
+    AcpiOsPrintf ("\nFixed Event Handlers:\n");
+
+    for (i = 0; i < ACPI_NUM_FIXED_EVENTS; i++)
+    {
+        AcpiOsPrintf (ACPI_PREDEFINED_PREFIX, AcpiUtGetEventName (i), i);
+        if (AcpiGbl_FixedEventHandlers[i].Handler)
+        {
+            AcpiOsPrintf (ACPI_HANDLER_PRESENT_STRING, "User",
+                AcpiGbl_FixedEventHandlers[i].Handler);
+        }
+        else
+        {
+            AcpiOsPrintf (ACPI_HANDLER_NOT_PRESENT_STRING, "None");
+        }
+    }
+
+    /* Miscellaneous global handlers */
+
+    AcpiOsPrintf ("\nMiscellaneous Global Handlers:\n");
+
+    for (i = 0; i < ACPI_ARRAY_LENGTH (HandlerList); i++)
+    {
+        AcpiOsPrintf (ACPI_HANDLER_NAME_STRING, HandlerList[i].Name);
+        if (HandlerList[i].Handler)
+        {
+            AcpiOsPrintf (ACPI_HANDLER_PRESENT_STRING, "User",
+                HandlerList[i].Handler);
+        }
+        else
+        {
+            AcpiOsPrintf (ACPI_HANDLER_NOT_PRESENT_STRING, "None");
+        }
+    }
+}
+
+#endif /* ACPI_DEBUGGER */

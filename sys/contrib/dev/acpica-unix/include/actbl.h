@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -116,9 +116,25 @@
 #ifndef __ACTBL_H__
 #define __ACTBL_H__
 
+
+/*******************************************************************************
+ *
+ * Fundamental ACPI tables
+ *
+ * This file contains definitions for the ACPI tables that are directly consumed
+ * by ACPICA. All other tables are consumed by the OS-dependent ACPI-related
+ * device drivers and other OS support code.
+ *
+ * The RSDP and FACS do not use the common ACPI table header. All other ACPI
+ * tables use the header.
+ *
+ ******************************************************************************/
+
+
 /*
- * Values for description table header signatures. Useful because they make
- * it more difficult to inadvertently type in the wrong signature.
+ * Values for description table header signatures for tables defined in this
+ * file. Useful because they make it more difficult to inadvertently type in
+ * the wrong signature.
  */
 #define ACPI_SIG_DSDT           "DSDT"      /* Differentiated System Description Table */
 #define ACPI_SIG_FADT           "FACP"      /* Fixed ACPI Description Table */
@@ -137,23 +153,17 @@
  */
 #pragma pack(1)
 
-
 /*
- * These are the ACPI tables that are directly consumed by the subsystem.
- *
- * The RSDP and FACS do not use the common ACPI table header. All other ACPI
- * tables use the header.
- *
  * Note about bitfields: The UINT8 type is used for bitfields in ACPI tables.
  * This is the only type that is even remotely portable. Anything else is not
  * portable, so do not use any other bitfield types.
  */
 
+
 /*******************************************************************************
  *
- * ACPI Table Header. This common header is used by all tables except the
- * RSDP and FACS. The define is used for direct inclusion of header into
- * other ACPI tables
+ * Master ACPI Table Header. This common header is used by all ACPI tables
+ * except the RSDP and FACS.
  *
  ******************************************************************************/
 
@@ -172,13 +182,16 @@ typedef struct acpi_table_header
 } ACPI_TABLE_HEADER;
 
 
-/*
+/*******************************************************************************
+ *
  * GAS - Generic Address Structure (ACPI 2.0+)
  *
  * Note: Since this structure is used in the ACPI tables, it is byte aligned.
- * If misalignment is not supported, access to the Address field must be
- * performed with care.
- */
+ * If misaliged access is not supported by the hardware, accesses to the
+ * 64-bit Address field must be performed with care.
+ *
+ ******************************************************************************/
+
 typedef struct acpi_generic_address
 {
     UINT8                   SpaceId;                /* Address space where struct or register exists */
@@ -193,6 +206,7 @@ typedef struct acpi_generic_address
 /*******************************************************************************
  *
  * RSDP - Root System Description Pointer (Signature is "RSD PTR ")
+ *        Version 2
  *
  ******************************************************************************/
 
@@ -210,12 +224,34 @@ typedef struct acpi_table_rsdp
 
 } ACPI_TABLE_RSDP;
 
-#define ACPI_RSDP_REV0_SIZE     20                  /* Size of original ACPI 1.0 RSDP */
+/* Standalone struct for the ACPI 1.0 RSDP */
+
+typedef struct acpi_rsdp_common
+{
+    char                    Signature[8];
+    UINT8                   Checksum;
+    char                    OemId[ACPI_OEM_ID_SIZE];
+    UINT8                   Revision;
+    UINT32                  RsdtPhysicalAddress;
+
+} ACPI_RSDP_COMMON;
+
+/* Standalone struct for the extended part of the RSDP (ACPI 2.0+) */
+
+typedef struct acpi_rsdp_extension
+{
+    UINT32                  Length;
+    UINT64                  XsdtPhysicalAddress;
+    UINT8                   ExtendedChecksum;
+    UINT8                   Reserved[3];
+
+} ACPI_RSDP_EXTENSION;
 
 
 /*******************************************************************************
  *
  * RSDT/XSDT - Root System Description Tables
+ *             Version 1 (both)
  *
  ******************************************************************************/
 
@@ -250,23 +286,31 @@ typedef struct acpi_table_facs
     UINT32                  Flags;
     UINT64                  XFirmwareWakingVector;  /* 64-bit version of the Firmware Waking Vector (ACPI 2.0+) */
     UINT8                   Version;                /* Version of this table (ACPI 2.0+) */
-    UINT8                   Reserved[31];           /* Reserved, must be zero */
+    UINT8                   Reserved[3];            /* Reserved, must be zero */
+    UINT32                  OspmFlags;              /* Flags to be set by OSPM (ACPI 4.0) */
+    UINT8                   Reserved1[24];          /* Reserved, must be zero */
 
 } ACPI_TABLE_FACS;
 
-/* Flag macros */
+/* Masks for GlobalLock flag field above */
 
-#define ACPI_FACS_S4_BIOS_PRESENT (1)               /* 00: S4BIOS support is present */
+#define ACPI_GLOCK_PENDING          (1)             /* 00: Pending global lock ownership */
+#define ACPI_GLOCK_OWNED            (1<<1)          /* 01: Global lock is owned */
 
-/* Global lock flags */
+/* Masks for Flags field above  */
 
-#define ACPI_GLOCK_PENDING      0x01                /* 00: Pending global lock ownership */
-#define ACPI_GLOCK_OWNED        0x02                /* 01: Global lock is owned */
+#define ACPI_FACS_S4_BIOS_PRESENT   (1)             /* 00: S4BIOS support is present */
+#define ACPI_FACS_64BIT_WAKE        (1<<1)          /* 01: 64-bit wake vector supported (ACPI 4.0) */
+
+/* Masks for OspmFlags field above */
+
+#define ACPI_FACS_64BIT_ENVIRONMENT (1)             /* 00: 64-bit wake environment is required (ACPI 4.0) */
 
 
 /*******************************************************************************
  *
  * FADT - Fixed ACPI Description Table (Signature "FACP")
+ *        Version 4
  *
  ******************************************************************************/
 
@@ -330,7 +374,7 @@ typedef struct acpi_table_fadt
 } ACPI_TABLE_FADT;
 
 
-/* FADT Boot Architecture Flags (BootFlags) */
+/* Masks for FADT Boot Architecture Flags (BootFlags) */
 
 #define ACPI_FADT_LEGACY_DEVICES    (1)         /* 00: [V2] System has LPC or ISA bus devices */
 #define ACPI_FADT_8042              (1<<1)      /* 01: [V3] System has an 8042 controller on port 60/64 */
@@ -338,7 +382,7 @@ typedef struct acpi_table_fadt
 #define ACPI_FADT_NO_MSI            (1<<3)      /* 03: [V4] Message Signaled Interrupts (MSI) must not be enabled */
 #define ACPI_FADT_NO_ASPM           (1<<4)      /* 04: [V4] PCIe ASPM control must not be enabled */
 
-/* FADT flags */
+/* Masks for FADT flags */
 
 #define ACPI_FADT_WBINVD            (1)         /* 00: [V1] The wbinvd instruction works properly */
 #define ACPI_FADT_WBINVD_FLUSH      (1<<1)      /* 01: [V1] wbinvd flushes but does not invalidate caches */
@@ -362,7 +406,7 @@ typedef struct acpi_table_fadt
 #define ACPI_FADT_APIC_PHYSICAL     (1<<19)     /* 19: [V4] All local xAPICs must use physical dest mode (ACPI 3.0) */
 
 
-/* FADT Prefered Power Management Profiles */
+/* Values for PreferredProfile (Prefered Power Management Profiles) */
 
 enum AcpiPreferedPmProfiles
 {
@@ -381,6 +425,9 @@ enum AcpiPreferedPmProfiles
 #pragma pack()
 
 
+/*
+ * Internal table-related structures
+ */
 typedef union acpi_name_union
 {
     UINT32                          Integer;
@@ -388,9 +435,9 @@ typedef union acpi_name_union
 
 } ACPI_NAME_UNION;
 
-/*
- * Internal ACPI Table Descriptor. One per ACPI table
- */
+
+/* Internal ACPI Table Descriptor. One per ACPI table. */
+
 typedef struct acpi_table_desc
 {
     ACPI_PHYSICAL_ADDRESS           Address;
@@ -402,7 +449,7 @@ typedef struct acpi_table_desc
 
 } ACPI_TABLE_DESC;
 
-/* Flags for above */
+/* Masks for Flags field above */
 
 #define ACPI_TABLE_ORIGIN_UNKNOWN       (0)
 #define ACPI_TABLE_ORIGIN_MAPPED        (1)
@@ -416,9 +463,26 @@ typedef struct acpi_table_desc
  * Get the remaining ACPI tables
  */
 #include "actbl1.h"
+#include "actbl2.h"
 
 /* Macros used to generate offsets to specific table fields */
 
 #define ACPI_FADT_OFFSET(f)             (UINT8) ACPI_OFFSET (ACPI_TABLE_FADT, f)
+
+/*
+ * Sizes of the various flavors of FADT. We need to look closely
+ * at the FADT length because the version number essentially tells
+ * us nothing because of many BIOS bugs where the version does not
+ * match the expected length. In other words, the length of the
+ * FADT is the bottom line as to what the version really is.
+ *
+ * For reference, the values below are as follows:
+ *     FADT V1  size: 0x74
+ *     FADT V2  size: 0x84
+ *     FADT V3+ size: 0xF4
+ */
+#define ACPI_FADT_V1_SIZE       (UINT32) (ACPI_FADT_OFFSET (Flags) + 4)
+#define ACPI_FADT_V2_SIZE       (UINT32) (ACPI_FADT_OFFSET (Reserved4[0]) + 3)
+#define ACPI_FADT_V3_SIZE       (UINT32) (sizeof (ACPI_TABLE_FADT))
 
 #endif /* __ACTBL_H__ */

@@ -9,7 +9,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -121,6 +121,9 @@
 #define LINUX_HEADER_SIGNATURE              " * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS"
 #define LINES_IN_ASL_HEADER                 29 /* Header as output from disassembler */
 
+#include "acpi.h"
+#include "accommon.h"
+
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -131,9 +134,6 @@
 #include <direct.h>
 #endif
 #include <errno.h>
-
-#include "acpi.h"
-#include "accommon.h"
 
 
 /* Fixups for non-Win32 compilation */
@@ -278,6 +278,7 @@ extern ACPI_CONVERSION_TABLE       LinuxConversionTable;
 extern ACPI_CONVERSION_TABLE       CleanupConversionTable;
 extern ACPI_CONVERSION_TABLE       StatsConversionTable;
 extern ACPI_CONVERSION_TABLE       CustomConversionTable;
+extern ACPI_CONVERSION_TABLE       LicenseConversionTable;
 
 
 /* Prototypes */

@@ -807,7 +807,7 @@ acpi_cpu_idle(void)
 {
     struct	acpi_cpu_softc *sc;
     struct	acpi_cx *cx_next;
-    uint32_t	start_time, end_time;
+    uint64_t	start_time, end_time;
     int		bm_active, cx_next_idx, i;
 
     /* If disabled, return immediately. */

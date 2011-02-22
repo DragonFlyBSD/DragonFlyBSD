@@ -9,7 +9,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -132,7 +132,7 @@ AsDetectLoneLineFeeds (
     char                    *Filename,
     char                    *Buffer);
 
-static inline int
+static ACPI_INLINE int
 AsMaxInt (int a, int b)
 {
     return (a > b ? a : b);
@@ -341,13 +341,13 @@ AsDetectLoneLineFeeds (
         {
             if (!Gbl_IgnoreLoneLineFeeds)
             {
-                printf ("%s: ****File has UNIX format**** (LF only, not CR/LF) %d lines\n",
+                printf ("%s: ****File has UNIX format**** (LF only, not CR/LF) %u lines\n",
                     Filename, LfCount);
             }
         }
         else
         {
-            printf ("%s: %d lone linefeeds in file\n", Filename, LfCount);
+            printf ("%s: %u lone linefeeds in file\n", Filename, LfCount);
         }
         return TRUE;
     }
@@ -409,7 +409,8 @@ AsConvertFile (
 
     Gbl_StructDefs = strstr (FileBuffer, "/* acpisrc:StructDefs");
     Gbl_Files++;
-    VERBOSE_PRINT (("Processing %u bytes\n", strlen (FileBuffer)));
+    VERBOSE_PRINT (("Processing %u bytes\n",
+        (unsigned int) strlen (FileBuffer)));
 
     if (ConversionTable->LowerCaseTable)
     {
@@ -795,7 +796,7 @@ AsGetFile (
     Buffer = calloc (Size * 2, 1);
     if (!Buffer)
     {
-        printf ("Could not allocate buffer of size %d\n", Size * 2);
+        printf ("Could not allocate buffer of size %u\n", Size * 2);
         goto ErrorExit;
     }
 

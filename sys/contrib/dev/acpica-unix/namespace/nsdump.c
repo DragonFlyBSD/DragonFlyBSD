@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -286,7 +286,7 @@ AcpiNsDumpOneObject (
         return (AE_OK);
     }
 
-    ThisNode = AcpiNsMapHandleToNode (ObjHandle);
+    ThisNode = AcpiNsValidateHandle (ObjHandle);
     if (!ThisNode)
     {
         ACPI_DEBUG_PRINT ((ACPI_DB_INFO, "Invalid object handle %p\n",
@@ -314,7 +314,7 @@ AcpiNsDumpOneObject (
 
         if (Type > ACPI_TYPE_LOCAL_MAX)
         {
-            ACPI_WARNING ((AE_INFO, "Invalid ACPI Object Type %08X", Type));
+            ACPI_WARNING ((AE_INFO, "Invalid ACPI Object Type 0x%08X", Type));
         }
 
         AcpiOsPrintf ("%4.4s", AcpiUtGetNodeName (ThisNode));
@@ -537,7 +537,7 @@ AcpiNsDumpOneObject (
             return (AE_OK);
         }
 
-        AcpiOsPrintf ("(R%d)", ObjDesc->Common.ReferenceCount);
+        AcpiOsPrintf ("(R%u)", ObjDesc->Common.ReferenceCount);
 
         switch (Type)
         {
@@ -725,10 +725,24 @@ AcpiNsDumpObjects (
     ACPI_HANDLE             StartHandle)
 {
     ACPI_WALK_INFO          Info;
+    ACPI_STATUS             Status;
 
 
     ACPI_FUNCTION_ENTRY ();
 
+
+    /*
+     * Just lock the entire namespace for the duration of the dump.
+     * We don't want any changes to the namespace during this time,
+     * especially the temporary nodes since we are going to display
+     * them also.
+     */
+    Status = AcpiUtAcquireMutex (ACPI_MTX_NAMESPACE);
+    if (ACPI_FAILURE (Status))
+    {
+        AcpiOsPrintf ("Could not acquire namespace mutex\n");
+        return;
+    }
 
     Info.DebugLevel = ACPI_LV_TABLES;
     Info.OwnerId = OwnerId;
@@ -736,7 +750,9 @@ AcpiNsDumpObjects (
 
     (void) AcpiNsWalkNamespace (Type, StartHandle, MaxDepth,
                 ACPI_NS_WALK_NO_UNLOCK | ACPI_NS_WALK_TEMP_NODES,
-                AcpiNsDumpOneObject, (void *) &Info, NULL);
+                AcpiNsDumpOneObject, NULL, (void *) &Info, NULL);
+
+    (void) AcpiUtReleaseMutex (ACPI_MTX_NAMESPACE);
 }
 
 

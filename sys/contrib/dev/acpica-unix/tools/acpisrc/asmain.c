@@ -9,7 +9,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -191,8 +191,8 @@ AsStricmp (
 
     do
     {
-        c1 = tolower (*String1);
-        c2 = tolower (*String2);
+        c1 = tolower ((int) *String1);
+        c2 = tolower ((int) *String2);
 
         String1++;
         String2++;
@@ -340,6 +340,7 @@ AsDisplayUsage (
     printf ("\n");
     printf ("Usage: acpisrc [-c|l|u] [-dsvy] <SourceDir> <DestinationDir>\n\n");
     printf ("Where: -c          Generate cleaned version of the source\n");
+    printf ("       -h          Insert dual-license header into all modules\n");
     printf ("       -l          Generate Linux version of the source\n");
     printf ("       -u          Generate Custom source translation\n");
     printf ("\n");
@@ -372,9 +373,7 @@ main (
     UINT32                  FileType;
 
 
-    printf ("ACPI Source Code Conversion Utility");
-    printf (" version %8.8X", ((UINT32) ACPI_CA_VERSION));
-    printf (" [%s]\n\n",  __DATE__);
+    printf (ACPI_COMMON_SIGNON ("ACPI Source Code Conversion Utility"));
 
     if (argc < 2)
     {
@@ -384,7 +383,7 @@ main (
 
     /* Command line options */
 
-    while ((j = AcpiGetopt (argc, argv, "cdlqsuvy")) != EOF) switch(j)
+    while ((j = AcpiGetopt (argc, argv, "cdhlqsuvy")) != EOF) switch(j)
     {
     case 'l':
         /* Linux code generation */
@@ -400,6 +399,13 @@ main (
 
         printf ("Code cleanup\n");
         ConversionTable = &CleanupConversionTable;
+        break;
+
+    case 'h':
+        /* Inject Dual-license header */
+
+        printf ("Inserting Dual-license header to all modules\n");
+        ConversionTable = &LicenseConversionTable;
         break;
 
     case 's':

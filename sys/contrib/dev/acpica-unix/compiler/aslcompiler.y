@@ -10,7 +10,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -400,6 +400,7 @@ AslLocalAllocate (unsigned int Size);
 %token <i> PARSEOP_REGIONSPACE_CMOS
 %token <i> PARSEOP_REGIONSPACE_EC
 %token <i> PARSEOP_REGIONSPACE_IO
+%token <i> PARSEOP_REGIONSPACE_IPMI
 %token <i> PARSEOP_REGIONSPACE_MEM
 %token <i> PARSEOP_REGIONSPACE_PCI
 %token <i> PARSEOP_REGIONSPACE_PCIBAR
@@ -463,6 +464,13 @@ AslLocalAllocate (unsigned int Size);
 %token <i> PARSEOP_XOR
 %token <i> PARSEOP_ZERO
 
+/*
+ * Special functions. These should probably stay at the end of this
+ * table.
+ */
+%token <i> PARSEOP___DATE__
+%token <i> PARSEOP___FILE__
+%token <i> PARSEOP___LINE__
 
 /*
  * Production names
@@ -765,7 +773,6 @@ AslLocalAllocate (unsigned int Size);
 %type <n> OptionalParameterTypesPackage
 %type <n> OptionalReference
 %type <n> OptionalAccessSize
-
 
 %type <n> TermArgItem
 %type <n> NameStringItem
@@ -2175,6 +2182,7 @@ RegionSpaceKeyword
     | PARSEOP_REGIONSPACE_SMBUS             {$$ = TrCreateLeafNode (PARSEOP_REGIONSPACE_SMBUS);}
     | PARSEOP_REGIONSPACE_CMOS              {$$ = TrCreateLeafNode (PARSEOP_REGIONSPACE_CMOS);}
     | PARSEOP_REGIONSPACE_PCIBAR            {$$ = TrCreateLeafNode (PARSEOP_REGIONSPACE_PCIBAR);}
+    | PARSEOP_REGIONSPACE_IPMI              {$$ = TrCreateLeafNode (PARSEOP_REGIONSPACE_IPMI);}
     ;
 
 AddressSpaceKeyword
@@ -2386,7 +2394,10 @@ QWordConstExpr
 ConstExprTerm
     : PARSEOP_ZERO                  {$$ = TrCreateValuedLeafNode (PARSEOP_ZERO, 0);}
     | PARSEOP_ONE                   {$$ = TrCreateValuedLeafNode (PARSEOP_ONE, 1);}
-    | PARSEOP_ONES                  {$$ = TrCreateValuedLeafNode (PARSEOP_ONES, ACPI_INTEGER_MAX);}
+    | PARSEOP_ONES                  {$$ = TrCreateValuedLeafNode (PARSEOP_ONES, ACPI_UINT64_MAX);}
+    | PARSEOP___DATE__              {$$ = TrCreateConstantLeafNode (PARSEOP___DATE__);}
+    | PARSEOP___FILE__              {$$ = TrCreateConstantLeafNode (PARSEOP___FILE__);}
+    | PARSEOP___LINE__              {$$ = TrCreateConstantLeafNode (PARSEOP___LINE__);}
     ;
 
 /* OptionalCount must appear before ByteList or an incorrect reduction will result */
@@ -3140,7 +3151,6 @@ NameStringItem
     | ',' error                     {$$ = AslDoError (); yyclearin;}
     ;
 
-
 %%
 
 
@@ -3162,7 +3172,7 @@ AslLocalAllocate (unsigned int Size)
     void                *Mem;
 
 
-    DbgPrint (ASL_PARSE_OUTPUT, "\nAslLocalAllocate: Expanding Stack to %d\n\n", Size);
+    DbgPrint (ASL_PARSE_OUTPUT, "\nAslLocalAllocate: Expanding Stack to %u\n\n", Size);
 
     Mem = ACPI_ALLOCATE_ZEROED (Size);
     if (!Mem)

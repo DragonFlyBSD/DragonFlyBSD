@@ -108,7 +108,7 @@ AcpiOsWritePort(ACPI_IO_ADDRESS OutPort, UINT32 Value, UINT32 Width)
 }
 
 ACPI_STATUS
-AcpiOsReadPciConfiguration(ACPI_PCI_ID *PciId, UINT32 Register, void *Value,
+AcpiOsReadPciConfiguration(ACPI_PCI_ID *PciId, UINT32 Register, UINT64 *Value,
     UINT32 Width)
 {
     u_int32_t	byte_width = Width / 8;
@@ -127,8 +127,10 @@ AcpiOsReadPciConfiguration(ACPI_PCI_ID *PciId, UINT32 Register, void *Value,
 	*(u_int16_t *)Value = val & 0xffff;
 	break;
     case 32:
-	*(u_int32_t *)Value = val;
+	*(u_int32_t *)Value = val & 0xffffffff;
 	break;
+    case 64:
+    *(u_int64_t *)Value = val;
     default:
 	/* debug trap goes here */
 	break;
@@ -140,7 +142,7 @@ AcpiOsReadPciConfiguration(ACPI_PCI_ID *PciId, UINT32 Register, void *Value,
 
 ACPI_STATUS
 AcpiOsWritePciConfiguration(ACPI_PCI_ID *PciId, UINT32 Register,
-    ACPI_INTEGER Value, UINT32 Width)
+    UINT64 Value, UINT32 Width)
 {
     u_int32_t	byte_width = Width / 8;
 
@@ -148,7 +150,7 @@ AcpiOsWritePciConfiguration(ACPI_PCI_ID *PciId, UINT32 Register,
     	return (AE_NOT_EXIST);
 
     pci_cfgregwrite(PciId->Bus, PciId->Device, PciId->Function, Register,
-	Value, byte_width);
+                    (u_int32_t) Value, byte_width); /* XXX casting */
 
     return (AE_OK);
 }
@@ -212,44 +214,4 @@ acpi_bus_number(ACPI_HANDLE root, ACPI_HANDLE curr, ACPI_PCI_ID *PciId)
     if (header == PCIM_HDRTYPE_CARDBUS && subclass == PCIS_BRIDGE_CARDBUS)
 	bus = pci_cfgregread(bus, slot, func, PCIR_SECBUS_2, 1);
     return (bus);
-}
-
-/*
- * Find the bus number for a device
- *
- * rhandle: handle for the root bus
- * chandle: handle for the device
- * PciId: pointer to device slot and function, we fill out bus
- */
-void
-AcpiOsDerivePciId(ACPI_HANDLE rhandle, ACPI_HANDLE chandle, ACPI_PCI_ID **PciId)
-{
-    ACPI_HANDLE parent;
-    ACPI_STATUS status;
-    int bus;
-
-    if (pci_cfgregopen() == 0)
-	panic("AcpiOsDerivePciId unable to initialize pci bus");
-
-    /* Try to read _BBN for bus number if we're at the root */
-    bus = 0;
-    if (rhandle == chandle) {
-	status = acpi_GetInteger(rhandle, "_BBN", &bus);
-	if (ACPI_FAILURE(status) && bootverbose)
-	    kprintf("AcpiOsDerivePciId: root bus has no _BBN, assuming 0\n");
-    }
-
-    /*
-     * Get the parent handle and call the recursive case.  It is not
-     * clear why we seem to be getting a chandle that points to a child
-     * of the desired slot/function but passing in the parent handle
-     * here works.
-     */
-    if (ACPI_SUCCESS(AcpiGetParent(chandle, &parent)))
-	bus = acpi_bus_number(rhandle, parent, *PciId);
-    (*PciId)->Bus = bus;
-    if (bootverbose) {
-	kprintf("AcpiOsDerivePciId: bus %d dev %d func %d\n",
-	    (*PciId)->Bus, (*PciId)->Device, (*PciId)->Function);
-    }
 }

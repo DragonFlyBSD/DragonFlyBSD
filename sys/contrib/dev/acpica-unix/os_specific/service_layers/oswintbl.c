@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -114,24 +114,37 @@
  *****************************************************************************/
 
 
+#include "acpi.h"
+
 #ifdef WIN32
 #pragma warning(disable:4115)   /* warning C4115: (caused by rpcasync.h) */
-
 #include <windows.h>
-#include <winbase.h>
 
 #elif WIN64
 #include <windowsx.h>
 #endif
-
-#include "acpi.h"
-#include "accommon.h"
 
 #define _COMPONENT          ACPI_OS_SERVICES
         ACPI_MODULE_NAME    ("oswintbl")
 
 
 static char             KeyBuffer[64];
+static char             ErrorBuffer[64];
+
+
+/* Little front-end to win FormatMessage */
+
+char *
+OsFormatException (
+    LONG                Status)
+{
+
+    ErrorBuffer[0] = 0;
+    FormatMessage (FORMAT_MESSAGE_FROM_SYSTEM, NULL, Status, 0,
+        ErrorBuffer, 64, NULL);
+
+    return (ErrorBuffer);
+}
 
 
 /******************************************************************************
@@ -169,7 +182,7 @@ OsGetTable (
         ACPI_STRCAT (KeyBuffer, Signature);
 
         Status = RegOpenKeyEx (HKEY_LOCAL_MACHINE, KeyBuffer,
-                    0L, KEY_ALL_ACCESS, &Handle);
+                    0L, KEY_READ, &Handle);
 
         if (Status != ERROR_SUCCESS)
         {
@@ -187,8 +200,9 @@ OsGetTable (
             }
             else
             {
-                AcpiOsPrintf ("Could not find %s in registry at %s\n",
-                    Signature, KeyBuffer);
+                AcpiOsPrintf (
+                    "Could not find %s in registry at %s: %s (Status=0x%X)\n",
+                    Signature, KeyBuffer, OsFormatException (Status), Status);
                 return (NULL);
             }
         }
@@ -212,7 +226,8 @@ OsGetTable (
         Status = RegOpenKey (Handle, KeyBuffer, &SubKey);
         if (Status != ERROR_SUCCESS)
         {
-            AcpiOsPrintf ("Could not open %s entry\n", Signature);
+            AcpiOsPrintf ("Could not open %s entry: %s\n",
+                Signature, OsFormatException (Status));
             return (NULL);
         }
 
@@ -230,7 +245,8 @@ OsGetTable (
                     NULL, &Type, NULL, 0);
         if (Status != ERROR_SUCCESS)
         {
-            AcpiOsPrintf ("Could not get %s registry entry\n", Signature);
+            AcpiOsPrintf ("Could not get %s registry entry: %s\n",
+                Signature, OsFormatException (Status));
             return (NULL);
         }
 
@@ -246,7 +262,8 @@ OsGetTable (
     Status = RegQueryValueEx (Handle, KeyBuffer, NULL, NULL, NULL, &DataSize);
     if (Status != ERROR_SUCCESS)
     {
-        AcpiOsPrintf ("Could not read the %s table size\n", Signature);
+        AcpiOsPrintf ("Could not read the %s table size: %s\n",
+            Signature, OsFormatException (Status));
         return (NULL);
     }
 
@@ -264,7 +281,8 @@ OsGetTable (
                 (UCHAR *) ReturnTable, &DataSize);
     if (Status != ERROR_SUCCESS)
     {
-        AcpiOsPrintf ("Could not read %s data\n", Signature);
+        AcpiOsPrintf ("Could not read %s data: %s\n",
+            Signature, OsFormatException (Status));
         AcpiOsFree (ReturnTable);
         return (NULL);
     }

@@ -217,7 +217,8 @@ EcUnlock(struct acpi_ec_softc *sc)
     ACPI_SERIAL_END(ec);
 }
 
-static uint32_t		EcGpeHandler(void *Context);
+static uint32_t		EcGpeHandler(ACPI_HANDLE GpeDevice,
+                                 UINT32 GpeNumber, void *Context);
 static ACPI_STATUS	EcSpaceSetup(ACPI_HANDLE Region, UINT32 Function,
 				void *Context, void **return_Context);
 static ACPI_STATUS	EcSpaceHandler(UINT32 Function,
@@ -516,15 +517,9 @@ acpi_ec_attach(device_t dev)
 	goto error;
     }
 
-    /* Enable runtime GPEs for the handler. */
-    Status = AcpiSetGpeType(sc->ec_gpehandle, sc->ec_gpebit,
-			    ACPI_GPE_TYPE_RUNTIME);
-    if (ACPI_FAILURE(Status)) {
-	device_printf(dev, "AcpiSetGpeType failed: %s\n",
-		      AcpiFormatException(Status));
-	goto error;
-    }
-    Status = AcpiEnableGpe(sc->ec_gpehandle, sc->ec_gpebit, ACPI_NOT_ISR);
+    /* Enable runtime GPEs done internally by AcpiEnableGpe() */
+
+    Status = AcpiEnableGpe(sc->ec_gpehandle, sc->ec_gpebit);
     if (ACPI_FAILURE(Status)) {
 	device_printf(dev, "AcpiEnableGpe failed: %s\n",
 		      AcpiFormatException(Status));
@@ -574,7 +569,7 @@ acpi_ec_shutdown(device_t dev)
 
     /* Disable the GPE so we don't get EC events during shutdown. */
     sc = device_get_softc(dev);
-    AcpiDisableGpe(sc->ec_gpehandle, sc->ec_gpebit, ACPI_NOT_ISR);
+    AcpiDisableGpe(sc->ec_gpehandle, sc->ec_gpebit);
     return (0);
 }
 
@@ -670,7 +665,7 @@ EcGpeQueryHandler(void *Context)
  * called from an unknown lock context.
  */
 static uint32_t
-EcGpeHandler(void *Context)
+EcGpeHandler(ACPI_HANDLE GpeDevice, UINT32 GpeNumber, void *Context)
 {
     struct acpi_ec_softc *sc = Context;
     ACPI_STATUS		       Status;

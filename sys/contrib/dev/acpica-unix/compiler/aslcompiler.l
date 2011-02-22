@@ -10,7 +10,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -115,11 +115,11 @@
  *
  *****************************************************************************/
 
+#include "aslcompiler.h"
+#include "aslcompiler.y.h"
 
 #include <stdlib.h>
 #include <string.h>
-#include "aslcompiler.h"
-#include "aslcompiler.y.h"
 YYSTYPE AslCompilerlval;
 
 /*
@@ -386,6 +386,7 @@ NamePathTail                [.]{NameSeg}
 "SMBus"                     { count (0); return (PARSEOP_REGIONSPACE_SMBUS); }
 "SystemCMOS"                { count (0); return (PARSEOP_REGIONSPACE_CMOS); }
 "PciBarTarget"              { count (0); return (PARSEOP_REGIONSPACE_PCIBAR); }
+"IPMI"                      { count (0); return (PARSEOP_REGIONSPACE_IPMI); }
 
 "FFixedHW"                  { count (0); return (PARSEOP_ADDRESSSPACE_FFIXEDHW); }
 
@@ -463,6 +464,9 @@ NamePathTail                [.]{NameSeg}
 "AddressRangeNVS"           { count (0); return (PARSEOP_ADDRESSTYPE_NVS); }
 "AddressRangeACPI"          { count (0); return (PARSEOP_ADDRESSTYPE_ACPI); }
 
+"__DATE__"                  { count (0); return (PARSEOP___DATE__); }
+"__FILE__"                  { count (0); return (PARSEOP___FILE__); }
+"__LINE__"                  { count (0); return (PARSEOP___LINE__); }
 
 "{"                         { count (0); return('{'); }
 "}"                         { count (0); return('}'); }
@@ -724,7 +728,7 @@ InsertLineBuffer (
              * Warning if we have split a long source line.
              * <Probably overkill>
              */
-            sprintf (MsgBuffer, "Max %d", ASL_LINE_BUFFER_SIZE);
+            sprintf (MsgBuffer, "Max %u", ASL_LINE_BUFFER_SIZE);
             AslCommonError (ASL_WARNING, ASL_MSG_LONG_LINE,
                             Gbl_CurrentLineNumber, Gbl_LogicalLineNumber,
                             Gbl_CurrentLineOffset, Gbl_CurrentColumn,

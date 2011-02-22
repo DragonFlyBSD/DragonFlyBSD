@@ -9,7 +9,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -117,6 +117,7 @@
 
 #include "aslcompiler.h"
 #include "aslcompiler.y.h"
+#include <time.h>
 
 #define _COMPONENT          ACPI_COMPILER
         ACPI_MODULE_NAME    ("asltree")
@@ -466,10 +467,79 @@ TrCreateLeafNode (
     Op = TrAllocateNode (ParseOpcode);
 
     DbgPrint (ASL_PARSE_OUTPUT,
-        "\nCreateLeafNode  Ln/Col %d/%d NewNode %p  Op %s\n\n",
+        "\nCreateLeafNode  Ln/Col %u/%u NewNode %p  Op %s\n\n",
         Op->Asl.LineNumber, Op->Asl.Column, Op, UtGetOpName(ParseOpcode));
 
     return Op;
+}
+
+
+/*******************************************************************************
+ *
+ * FUNCTION:    TrCreateConstantLeafNode
+ *
+ * PARAMETERS:  ParseOpcode         - The constant opcode
+ *
+ * RETURN:      Pointer to the new node.  Aborts on allocation failure
+ *
+ * DESCRIPTION: Create a leaf node (no children or peers) for one of the
+ *              special constants - __LINE__, __FILE__, and __DATE__.
+ *
+ * Note: An implemenation of __FUNC__ cannot happen here because we don't
+ * have a full parse tree at this time and cannot find the parent control
+ * method. If it is ever needed, __FUNC__ must be implemented later, after
+ * the parse tree has been fully constructed.
+ *
+ ******************************************************************************/
+
+ACPI_PARSE_OBJECT *
+TrCreateConstantLeafNode (
+    UINT32                  ParseOpcode)
+{
+    ACPI_PARSE_OBJECT       *Op = NULL;
+    time_t                  CurrentTime;
+    char                    *StaticTimeString;
+    char                    *TimeString;
+
+
+    switch (ParseOpcode)
+    {
+    case PARSEOP___LINE__:
+        Op = TrAllocateNode (PARSEOP_INTEGER);
+        Op->Asl.Value.Integer = Op->Asl.LineNumber;
+        break;
+
+    case PARSEOP___FILE__:
+        Op = TrAllocateNode (PARSEOP_STRING_LITERAL);
+
+        /* Op.Asl.Filename contains the full pathname to the file */
+
+        Op->Asl.Value.String = Op->Asl.Filename;
+        break;
+
+   case PARSEOP___DATE__:
+        Op = TrAllocateNode (PARSEOP_STRING_LITERAL);
+
+        /* Get a copy of the current time */
+
+        CurrentTime = time (NULL);
+        StaticTimeString = ctime (&CurrentTime);
+        TimeString = UtLocalCalloc (strlen (StaticTimeString) + 1);
+        strcpy (TimeString, StaticTimeString);
+
+        TimeString[strlen(TimeString) -1] = 0;  /* Remove trailing newline */
+        Op->Asl.Value.String = TimeString;
+        break;
+
+    default: /* This would be an internal error */
+        return (NULL);
+    }
+
+    DbgPrint (ASL_PARSE_OUTPUT,
+        "\nCreateConstantLeafNode  Ln/Col %u/%u NewNode %p  Op %s  Value %8.8X%8.8X  ",
+        Op->Asl.LineNumber, Op->Asl.Column, Op, UtGetOpName (ParseOpcode),
+        ACPI_FORMAT_UINT64 (Op->Asl.Value.Integer));
+    return (Op);
 }
 
 
@@ -490,7 +560,7 @@ TrCreateLeafNode (
 ACPI_PARSE_OBJECT *
 TrCreateValuedLeafNode (
     UINT32                  ParseOpcode,
-    ACPI_INTEGER            Value)
+    UINT64                  Value)
 {
     ACPI_PARSE_OBJECT       *Op;
 
@@ -498,7 +568,7 @@ TrCreateValuedLeafNode (
     Op = TrAllocateNode (ParseOpcode);
 
     DbgPrint (ASL_PARSE_OUTPUT,
-        "\nCreateValuedLeafNode  Ln/Col %d/%d NewNode %p  Op %s  Value %8.8X%8.8X  ",
+        "\nCreateValuedLeafNode  Ln/Col %u/%u NewNode %p  Op %s  Value %8.8X%8.8X  ",
         Op->Asl.LineNumber, Op->Asl.Column, Op, UtGetOpName(ParseOpcode),
         ACPI_FORMAT_UINT64 (Value));
     Op->Asl.Value.Integer = Value;
@@ -575,7 +645,7 @@ TrCreateNode (
     Op = TrAllocateNode (ParseOpcode);
 
     DbgPrint (ASL_PARSE_OUTPUT,
-        "\nCreateNode  Ln/Col %d/%d NewParent %p Child %d Op %s  ",
+        "\nCreateNode  Ln/Col %u/%u NewParent %p Child %u Op %s  ",
         Op->Asl.LineNumber, Op->Asl.Column, Op, NumChildren, UtGetOpName(ParseOpcode));
 
     /* Some extra debug output based on the parse opcode */
@@ -694,7 +764,7 @@ TrLinkChildren (
     TrSetEndLineNumber (Op);
 
     DbgPrint (ASL_PARSE_OUTPUT,
-        "\nLinkChildren  Line [%d to %d] NewParent %p Child %d Op %s  ",
+        "\nLinkChildren  Line [%u to %u] NewParent %p Child %u Op %s  ",
         Op->Asl.LineNumber, Op->Asl.EndLine,
         Op, NumChildren, UtGetOpName(Op->Asl.ParseOpcode));
 
@@ -882,7 +952,7 @@ TrLinkPeerNodes (
 
 
     DbgPrint (ASL_PARSE_OUTPUT,
-        "\nLinkPeerNodes: (%d) ", NumPeers);
+        "\nLinkPeerNodes: (%u) ", NumPeers);
 
     va_start (ap, NumPeers);
     This = va_arg (ap, ACPI_PARSE_OBJECT *);
@@ -893,7 +963,7 @@ TrLinkPeerNodes (
      */
     for (i = 0; i < (NumPeers -1); i++)
     {
-        DbgPrint (ASL_PARSE_OUTPUT, "%d=%p ", (i+1), This);
+        DbgPrint (ASL_PARSE_OUTPUT, "%u=%p ", (i+1), This);
 
         while (This->Asl.Next)
         {

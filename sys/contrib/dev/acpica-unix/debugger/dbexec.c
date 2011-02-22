@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2009, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2011, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -176,9 +176,11 @@ AcpiDbExecuteMethod (
     ACPI_OBJECT_LIST        ParamObjects;
     ACPI_OBJECT             Params[ACPI_METHOD_NUM_ARGS];
     ACPI_HANDLE             Handle;
-    ACPI_BUFFER             Buffer;
     UINT32                  i;
     ACPI_DEVICE_INFO        *ObjInfo;
+
+
+    ACPI_FUNCTION_TRACE (DbExecuteMethod);
 
 
     if (AcpiGbl_DbOutputToFile && !AcpiDbgLevel)
@@ -191,29 +193,30 @@ AcpiDbExecuteMethod (
     Status = AcpiGetHandle (NULL, Info->Pathname, &Handle);
     if (ACPI_FAILURE (Status))
     {
-        return (Status);
+        return_ACPI_STATUS (Status);
     }
 
     /* Get the object info for number of method parameters */
 
-    Buffer.Length = ACPI_ALLOCATE_LOCAL_BUFFER;
-    Status = AcpiGetObjectInfo (Handle, &Buffer);
+    Status = AcpiGetObjectInfo (Handle, &ObjInfo);
     if (ACPI_FAILURE (Status))
     {
-        return (Status);
+        return_ACPI_STATUS (Status);
     }
 
     ParamObjects.Pointer = NULL;
     ParamObjects.Count   = 0;
 
-    ObjInfo = Buffer.Pointer;
     if (ObjInfo->Type == ACPI_TYPE_METHOD)
     {
         /* Are there arguments to the method? */
 
         if (Info->Args && Info->Args[0])
         {
-            for (i = 0; Info->Args[i] && i < ACPI_METHOD_NUM_ARGS; i++)
+            for (i = 0; Info->Args[i] &&
+                (i < ACPI_METHOD_NUM_ARGS) &&
+                (i < ObjInfo->ParamCount);
+                i++)
             {
                 Params[i].Type          = ACPI_TYPE_INTEGER;
                 Params[i].Integer.Value = ACPI_STRTOUL (Info->Args[i], NULL, 16);
@@ -246,7 +249,7 @@ AcpiDbExecuteMethod (
                 default:
 
                     Params[i].Type           = ACPI_TYPE_INTEGER;
-                    Params[i].Integer.Value  = i * (ACPI_INTEGER) 0x1000;
+                    Params[i].Integer.Value  = i * (UINT64) 0x1000;
                     break;
                 }
             }
@@ -256,7 +259,7 @@ AcpiDbExecuteMethod (
         }
     }
 
-    ACPI_FREE (Buffer.Pointer);
+    ACPI_FREE (ObjInfo);
 
     /* Prepare for a return object of arbitrary size */
 
@@ -272,7 +275,20 @@ AcpiDbExecuteMethod (
     AcpiGbl_CmSingleStep = FALSE;
     AcpiGbl_MethodExecuting = FALSE;
 
-    return (Status);
+    if (ACPI_FAILURE (Status))
+    {
+        ACPI_EXCEPTION ((AE_INFO, Status,
+        "while executing %s from debugger", Info->Pathname));
+
+        if (Status == AE_BUFFER_OVERFLOW)
+        {
+            ACPI_ERROR ((AE_INFO,
+            "Possible overflow of internal debugger buffer (size 0x%X needed 0x%X)",
+                ACPI_DEBUG_BUFFER_SIZE, (UINT32) ReturnObj->Length));
+        }
+    }
+
+    return_ACPI_STATUS (Status);
 }
 
 
@@ -456,7 +472,7 @@ AcpiDbExecute (
     if (*Name == '*')
     {
         (void) AcpiWalkNamespace (ACPI_TYPE_METHOD, ACPI_ROOT_OBJECT,
-                    ACPI_UINT32_MAX, AcpiDbExecutionWalk, NULL, NULL);
+                    ACPI_UINT32_MAX, AcpiDbExecutionWalk, NULL, NULL, NULL);
         return;
     }
     else
@@ -487,7 +503,7 @@ AcpiDbExecute (
      * Allow any handlers in separate threads to complete.
      * (Such as Notify handlers invoked from AML executed above).
      */
-    AcpiOsSleep ((ACPI_INTEGER) 10);
+    AcpiOsSleep ((UINT64) 10);
 
 
 #ifdef ACPI_DEBUG_OUTPUT
@@ -570,14 +586,12 @@ AcpiDbMethodThread (
     if (Info->InitArgs)
     {
         AcpiDbUInt32ToHexString (Info->NumCreated, Info->IndexOfThreadStr);
-        AcpiDbUInt32ToHexString (ACPI_TO_INTEGER (AcpiOsGetThreadId ()),
-            Info->IdOfThreadStr);
+        AcpiDbUInt32ToHexString ((UINT32) AcpiOsGetThreadId (), Info->IdOfThreadStr);
     }
 
     if (Info->Threads && (Info->NumCreated < Info->NumThreads))
     {
-        Info->Threads[Info->NumCreated++] =
-            ACPI_TO_INTEGER (AcpiOsGetThreadId());
+        Info->Threads[Info->NumCreated++] = AcpiOsGetThreadId();
     }
 
     LocalInfo = *Info;
@@ -605,7 +619,7 @@ AcpiDbMethodThread (
 #if 0
         if ((i % 100) == 0)
         {
-            AcpiOsPrintf ("%d executions, Thread 0x%x\n", i, AcpiOsGetThreadId ());
+            AcpiOsPrintf ("%u executions, Thread 0x%x\n", i, AcpiOsGetThreadId ());
         }
 
         if (ReturnObj.Length)
@@ -725,8 +739,8 @@ AcpiDbCreateExecutionThreads (
     /* Array to store IDs of threads */
 
     AcpiGbl_DbMethodInfo.NumThreads = NumThreads;
-    Size = 4 * AcpiGbl_DbMethodInfo.NumThreads;
-    AcpiGbl_DbMethodInfo.Threads = (UINT32 *) AcpiOsAllocate (Size);
+    Size = sizeof (ACPI_THREAD_ID) * AcpiGbl_DbMethodInfo.NumThreads;
+    AcpiGbl_DbMethodInfo.Threads = AcpiOsAllocate (Size);
     if (AcpiGbl_DbMethodInfo.Threads == NULL)
     {
         AcpiOsPrintf ("No memory for thread IDs array\n");
