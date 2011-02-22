@@ -332,6 +332,9 @@ static int	mptable_lapic_probe(struct lapic_enumerator *);
 static void	mptable_lapic_enumerate(struct lapic_enumerator *);
 static void	mptable_lapic_default(void);
 
+static int	mptable_ioapic_probe(struct ioapic_enumerator *);
+static void	mptable_ioapic_enumerate(struct ioapic_enumerator *);
+
 #ifdef SMP /* APIC-IO */
 static void	setup_apic_irq_mapping(void);
 static int	apic_int_is_bus_type(int intr, int bus_type);
@@ -3343,3 +3346,227 @@ done:
 }
 SYSINIT(mptable_pci, SI_BOOT2_PRESMP, SI_ORDER_ANY,
 	mptable_pci_int_register, 0);
+
+struct mptable_ioapic_probe_cbarg {
+	const struct mptable_bus_info *bus_info;
+	int 	ioapic_cnt;
+};
+
+static int
+mptable_ioapic_probe_callback(void *xarg, const void *pos, int type)
+{
+	struct mptable_ioapic_probe_cbarg *arg = xarg;
+
+	if (type == 3) {
+		const struct INTENTRY *ent = pos;
+		const struct mptable_bus *bus;
+
+		if (ent->int_type != 0)
+			return 0;
+
+		TAILQ_FOREACH(bus, &arg->bus_info->mbi_list, mb_link) {
+			if (bus->mb_type == MPTABLE_BUS_ISA &&
+			    bus->mb_id == ent->src_bus_id)
+				break;
+		}
+		if (bus == NULL)
+			return 0;
+
+		/* XXX magic number */
+		if (ent->src_bus_irq >= 16) {
+			kprintf("mptable_ioapic_probe: invalid ISA irq "
+				"(%d)\n", ent->src_bus_irq);
+			return EINVAL;
+		}
+	} else if (type == 2) {
+		const struct IOAPICENTRY *ent = pos;
+
+		if ((ent->apic_flags & IOAPICENTRY_FLAG_EN) == 0)
+			return 0;
+
+		if (ent->apic_address == 0) {
+			kprintf("mptable_ioapic_probe: zero IOAPIC address\n");
+			return EINVAL;
+		}
+		arg->ioapic_cnt++;
+	}
+	return 0;
+}
+
+static int
+mptable_ioapic_probe(struct ioapic_enumerator *e)
+{
+	struct mptable_ioapic_probe_cbarg arg;
+	struct mptable_bus_info bus_info;
+	struct mptable_pos mpt;
+	mpcth_t cth;
+	int error;
+
+	if (mptable_fps_phyaddr == 0)
+		return ENXIO;
+
+	if (mptable_use_default)
+		return 0;
+
+	error = mptable_map(&mpt);
+	if (error)
+		panic("mptable_ioapic_probe: mptable_map failed\n");
+	KKASSERT(!MPTABLE_POS_USE_DEFAULT(&mpt));
+
+	cth = mpt.mp_cth;
+
+	mptable_bus_info_alloc(cth, &bus_info);
+
+	bzero(&arg, sizeof(arg));
+	arg.bus_info = &bus_info;
+
+	error = mptable_iterate_entries(cth,
+		    mptable_ioapic_probe_callback, &arg);
+	if (!error) {
+		if (arg.ioapic_cnt == 0) {
+			kprintf("mptable_ioapic_probe: no IOAPIC\n");
+			error = ENXIO;
+		}
+	}
+
+	mptable_bus_info_free(&bus_info);
+	mptable_unmap(&mpt);
+
+	return error;
+}
+
+static int
+mptable_ioapic_enum_callback(void *xarg, const void *pos, int type)
+{
+	const struct IOAPICENTRY *ent;
+
+	if (type != 2)
+		return 0;
+
+	ent = pos;
+
+	if ((ent->apic_flags & IOAPICENTRY_FLAG_EN) == 0)
+		return 0;
+
+	if (bootverbose) {
+		kprintf("MPTABLE: IOAPIC addr 0x%08x, apic id %d\n",
+			ent->apic_address, ent->apic_id);
+	}
+	return 0;
+}
+
+struct mptable_ioapic_int_cbarg {
+	const struct mptable_bus_info *bus_info;
+	int	ioapic_nint;
+};
+
+static int
+mptable_ioapic_int_callback(void *xarg, const void *pos, int type)
+{
+	struct mptable_ioapic_int_cbarg *arg = xarg;
+	const struct mptable_bus *bus;
+	const struct INTENTRY *ent;
+
+	if (type != 3)
+		return 0;
+
+	arg->ioapic_nint++;
+
+	ent = pos;
+	if (ent->int_type != 0)
+		return 0;
+
+	TAILQ_FOREACH(bus, &arg->bus_info->mbi_list, mb_link) {
+		if (bus->mb_type == MPTABLE_BUS_ISA &&
+		    bus->mb_id == ent->src_bus_id)
+			break;
+	}
+	if (bus == NULL)
+		return 0;
+
+	/* XXX rough estimation */
+	if (ent->src_bus_irq != ent->dst_apic_int) {
+		if (bootverbose) {
+			kprintf("MPTABLE: INTSRC irq %d -> GSI %d\n",
+				ent->src_bus_irq, ent->dst_apic_int);
+		}
+	}
+	return 0;
+}
+
+static void
+mptable_ioapic_enumerate(struct ioapic_enumerator *e)
+{
+	struct mptable_bus_info bus_info;
+	struct mptable_pos mpt;
+	mpcth_t cth;
+	int error;
+
+	KKASSERT(mptable_fps_phyaddr != 0);
+
+	if (mptable_use_default) {
+		if (bootverbose) {
+			kprintf("MPTABLE: IOAPIC address 0xfec00000 "
+				"(default)\n");
+			kprintf("MPTABLE: INTSRC irq 0 -> GSI 2 (default)\n");
+		}
+		/* TODO default ioapic and intsrc */
+		return;
+	}
+
+	error = mptable_map(&mpt);
+	if (error)
+		panic("mptable_ioapic_probe: mptable_map failed\n");
+	KKASSERT(!MPTABLE_POS_USE_DEFAULT(&mpt));
+
+	cth = mpt.mp_cth;
+
+	error = mptable_iterate_entries(cth,
+		    mptable_ioapic_enum_callback, NULL);
+	if (error)
+		panic("mptable_ioapic_enum failed\n");
+
+	mptable_bus_info_alloc(cth, &bus_info);
+
+	if (TAILQ_EMPTY(&bus_info.mbi_list)) {
+		if (bootverbose)
+			kprintf("MPTABLE: INTSRC irq 0 -> GSI 2 (no bus)\n");
+		/* TODO default intsrc */
+	} else {
+		struct mptable_ioapic_int_cbarg arg;
+
+		bzero(&arg, sizeof(arg));
+		arg.bus_info = &bus_info;
+
+		error = mptable_iterate_entries(cth,
+			    mptable_ioapic_int_callback, &arg);
+		if (error)
+			panic("mptable_ioapic_int failed\n");
+
+		if (arg.ioapic_nint == 0) {
+			if (bootverbose) {
+				kprintf("MPTABLE: INTSRC irq 0 -> GSI 2 "
+					"(no int)\n");
+			}
+			/* TODO default intsrc */
+		}
+	}
+
+	mptable_bus_info_free(&bus_info);
+
+	mptable_unmap(&mpt);
+}
+
+static struct ioapic_enumerator	mptable_ioapic_enumerator = {
+	.ioapic_prio = IOAPIC_ENUM_PRIO_MPTABLE,
+	.ioapic_probe = mptable_ioapic_probe,
+	.ioapic_enumerate = mptable_ioapic_enumerate
+};
+
+static void
+mptable_ioapic_enum_register(void)
+{
+	ioapic_enumerator_register(&mptable_ioapic_enumerator);
+}
+SYSINIT(mptable_ioapic, SI_BOOT2_PRESMP, SI_ORDER_ANY,
+	mptable_ioapic_enum_register, 0);
