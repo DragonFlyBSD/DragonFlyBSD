@@ -4462,6 +4462,7 @@ pf_test_state_tcp(struct pf_state **state, int direction, struct pfi_kif *kif,
 			 * a bridge doesn't try to use it.
 			 */
 			m->m_pkthdr.fw_flags &= ~BRIDGE_MBUF_TAGGED;
+			m->m_flags &= ~M_HASH;
 			pf_change_ap(pd->src, &th->th_sport, pd->ip_sum,
 			    &th->th_sum, &nk->addr[pd->sidx],
 			    nk->port[pd->sidx], 0, pd->af);
@@ -4546,6 +4547,7 @@ pf_test_state_udp(struct pf_state **state, int direction, struct pfi_kif *kif,
 			 * a bridge doesn't try to use it.
 			 */
 			m->m_pkthdr.fw_flags &= ~BRIDGE_MBUF_TAGGED;
+			m->m_flags &= ~M_HASH;
 			pf_change_ap(pd->src, &uh->uh_sport, pd->ip_sum,
 			    &uh->uh_sum, &nk->addr[pd->sidx],
 			    nk->port[pd->sidx], 1, pd->af);

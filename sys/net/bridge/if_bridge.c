@@ -458,7 +458,7 @@ static int	bridge_ip6_checkbasic(struct mbuf **mp);
 static int	bridge_fragment(struct ifnet *, struct mbuf *,
 		    struct ether_header *, int, struct llc *);
 static void	bridge_enqueue_handler(netmsg_t);
-static void	bridge_handoff(struct ifnet *, struct mbuf *);
+static void	bridge_handoff(struct ifnet *, struct mbuf *, int);
 
 static void	bridge_del_bif_handler(netmsg_t);
 static void	bridge_add_bif_handler(netmsg_t);
@@ -1843,6 +1843,7 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 	struct bridge_softc *sc = ifp->if_bridge;
 	struct ether_header *eh;
 	struct ifnet *dst_if, *bifp;
+	int from_us;
 
 	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
 
@@ -1862,20 +1863,10 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 	}
 	eh = mtod(m, struct ether_header *);
 
-	/*
-	 * LINK0 - Enables transparent bridge mode.
-	 */
-	if (eh->ether_type == htons(ETHERTYPE_IP) ||
-	    eh->ether_type == htons(ETHERTYPE_IPV6)) {
-		if ((bifp->if_flags & IFF_LINK0) &&
-		    (m->m_pkthdr.fw_flags & BRIDGE_MBUF_TAGGED) &&
-		    bridge_rtlookup(sc, m->m_pkthdr.br.ether.ether_shost) !=
-		    bridge_rtlookup(sc, eh->ether_dhost)) {
-			    bcopy(m->m_pkthdr.br.ether.ether_shost,
-			      eh->ether_shost,
-			      sizeof(eh->ether_shost));
-		}
-	}
+	if (memcmp(eh->ether_dhost, IF_LLADDR(bifp), ETHER_ADDR_LEN) == 0)
+		from_us = 1;
+	else
+		from_us = 0;
 
 	/*
 	 * If bridge is down, but the original output interface is up,
@@ -1935,7 +1926,11 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 					continue;
 				}
 			}
-			bridge_handoff(dst_if, mc);
+
+			/*
+			 * If the packet is 'from' us override ether_shost.
+			 */
+			bridge_handoff(dst_if, mc, from_us);
 
 			if (nbif != NULL && !nbif->bif_onlist) {
 				KKASSERT(bif->bif_onlist);
@@ -1956,7 +1951,7 @@ sendunicast:
 	if ((dst_if->if_flags & IFF_RUNNING) == 0)
 		m_freem(m);
 	else
-		bridge_handoff(dst_if, m);
+		bridge_handoff(dst_if, m, from_us);
 	return (0);
 }
 
@@ -1964,7 +1959,6 @@ sendunicast:
  * bridge_start:
  *
  *	Start output on a bridge.
- *
  */
 static void
 bridge_start(struct ifnet *ifp)
@@ -1992,22 +1986,6 @@ bridge_start(struct ifnet *ifp)
 		}
 		eh = mtod(m, struct ether_header *);
 
-		/*
-		 * LINK0 - Enable transparent bridge mode (see comments
-		 *	   in the first LINK0 section above).
-		 */
-		if (eh->ether_type == htons(ETHERTYPE_IP) ||
-		    eh->ether_type == htons(ETHERTYPE_IPV6)) {
-			if ((ifp->if_flags & IFF_LINK0) &&
-			    (m->m_pkthdr.fw_flags & BRIDGE_MBUF_TAGGED) &&
-			    bridge_rtlookup(sc, m->m_pkthdr.br.ether.ether_shost) !=
-			    bridge_rtlookup(sc, eh->ether_dhost)) {
-				bcopy(m->m_pkthdr.br.ether.ether_shost,
-				      eh->ether_shost,
-				      sizeof(eh->ether_shost));
-			}
-		}
-
 		BPF_MTAP(ifp, m);
 		ifp->if_opackets++;
 
@@ -2024,6 +2002,9 @@ bridge_start(struct ifnet *ifp)
 
 /*
  * bridge_forward:
+ *
+ *	Forward packets received on a bridge interface via the input
+ *	path.
  *
  *	The forwarding function of the bridge.
  */
@@ -2150,7 +2131,7 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 		if (m == NULL)
 			return;
 	}
-	bridge_handoff(dst_if, m);
+	bridge_handoff(dst_if, m, 0);
 }
 
 /*
@@ -2300,10 +2281,13 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 #endif
 		if (mc2 != NULL) {
 			/*
-			 * Don't tap to bpf(4) again; we have
-			 * already done the tapping.
+			 * Don't tap to bpf(4) again; we have already done
+			 * the tapping.
+			 *
+			 * Leave m_pkthdr.rcvif alone, so ARP replies are
+			 * processed as coming in on the correct interface.
 			 */
-			ether_reinput_oncpu(bifp, mc2, 0);
+			ether_reinput_oncpu(bifp, mc2, REINPUT_KEEPRCVIF);
 		}
 
 		/* Return the original packet for local processing. */
@@ -2329,7 +2313,12 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 		if (bif->bif_ifp->if_type != IFT_ETHER)
 			continue;
 
-		/* It is destined for us. */
+		/*
+		 * It is destined for us.  Reinput on the same interface
+		 * it came in on so things like ARP responses get assigned
+		 * to the correct member (the incoming interface) and not
+		 * to the member which happens to have the matching dhost.
+		 */
 		if (memcmp(IF_LLADDR(bif->bif_ifp), eh->ether_dhost,
 		    ETHER_ADDR_LEN) == 0) {
 			if (bif->bif_ifp != ifp) {
@@ -2356,9 +2345,15 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	/* Perform the bridge forwarding function. */
 	bridge_forward(sc, m);
 	m = NULL;
+
+	/*
+	 * Leave m_pkthdr.rcvif alone, so ARP replies are
+	 * processed as coming in on the correct interface.
+	 */
 out:
 	if (new_ifp != NULL) {
-		ether_reinput_oncpu(new_ifp, m, 1);
+		ether_reinput_oncpu(new_ifp, m,
+				    REINPUT_KEEPRCVIF|REINPUT_RUNBPF);
 		m = NULL;
 	}
 	return (m);
@@ -2430,15 +2425,23 @@ bridge_start_bcast(struct bridge_softc *sc, struct mbuf *m)
  */
 static void
 bridge_broadcast(struct bridge_softc *sc, struct ifnet *src_if,
-    struct mbuf *m)
+		 struct mbuf *m)
 {
 	struct bridge_iflist *bif, *nbif;
+	struct ether_header *eh;
 	struct mbuf *mc;
 	struct ifnet *dst_if, *bifp;
 	int used = 0;
+	int from_us;
 
 	bifp = sc->sc_ifp;
 	ASSERT_IFNET_NOT_SERIALIZED_ALL(bifp);
+
+	eh = mtod(m, struct ether_header *);
+	if (memcmp(eh->ether_dhost, IF_LLADDR(src_if), ETHER_ADDR_LEN) == 0)
+		from_us = 1;
+	else
+		from_us = 0;
 
 	if (inet_pfil_hook.ph_hashooks > 0
 #ifdef INET6
@@ -2503,7 +2506,7 @@ bridge_broadcast(struct bridge_softc *sc, struct ifnet *src_if,
 			if (mc == NULL)
 				continue;
 		}
-		bridge_handoff(dst_if, mc);
+		bridge_handoff(dst_if, mc, from_us);
 
 		if (nbif != NULL && !nbif->bif_onlist) {
 			KKASSERT(bif->bif_onlist);
@@ -3688,13 +3691,16 @@ bridge_enqueue_handler(netmsg_t msg)
 	m = nmp->nm_packet;
 	dst_ifp = nmp->base.lmsg.u.ms_resultp;
 
-	bridge_handoff(dst_ifp, m);
+	bridge_handoff(dst_ifp, m, 1);
 }
 
 static void
-bridge_handoff(struct ifnet *dst_ifp, struct mbuf *m)
+bridge_handoff(struct ifnet *dst_ifp, struct mbuf *m, int from_us)
 {
 	struct mbuf *m0;
+	struct ifnet *bifp;
+
+	bifp = ((struct bridge_softc *)dst_ifp->if_bridge)->sc_ifp;
 
 	/* We may be sending a fragment so traverse the mbuf */
 	for (; m; m = m0) {
@@ -3702,6 +3708,26 @@ bridge_handoff(struct ifnet *dst_ifp, struct mbuf *m)
 
 		m0 = m->m_nextpkt;
 		m->m_nextpkt = NULL;
+
+		/*
+		 * If being sent from our host override ether_shost
+		 * so any replies go the correct interface.  This is
+		 * mandatory or ARP replies will wind up on the wrong
+		 * interface.
+		 *
+		 * Otherwise if we are in transparent mode
+		 */
+		if (from_us) {
+			m_copyback(m,
+				   offsetof(struct ether_header, ether_shost),
+				   ETHER_ADDR_LEN, IF_LLADDR(dst_ifp));
+		} else if ((bifp->if_flags & IFF_LINK0) &&
+			   (m->m_pkthdr.fw_flags & BRIDGE_MBUF_TAGGED)) {
+			m_copyback(m,
+				   offsetof(struct ether_header, ether_shost),
+				   ETHER_ADDR_LEN,
+				   m->m_pkthdr.br.ether.ether_shost);
+		}
 
 		if (ifq_is_enabled(&dst_ifp->if_snd))
 			altq_etherclassify(&dst_ifp->if_snd, m, &pktattr);

@@ -657,7 +657,16 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 
 		/* the following is not an error when doing bridging */
 		if (rt->rt_ifp != ifp) {
+			if (ifp->if_bridge &&
+			    rt->rt_ifp->if_bridge == ifp->if_bridge) {
+				rt->rt_ifp = ifp;
+				sdl->sdl_type = ifp->if_type;
+				sdl->sdl_index = ifp->if_index;
+				if (dologging && log_arp_wrong_iface < 2)
+					dologging = 0;
+			}
 			if (dologging && log_arp_wrong_iface) {
+
 				log(LOG_ERR,
 				    "arp: %s is on %s "
 				    "but got reply from %*D on %s\n",

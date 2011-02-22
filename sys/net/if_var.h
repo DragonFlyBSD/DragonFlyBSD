@@ -717,6 +717,10 @@ ifa_forwardmsg(struct lwkt_msg *_lmsg, int _nextcpu)
 	ifnet_forwardmsg(_lmsg, _nextcpu);
 }
 
+#define REINPUT_KEEPRCVIF	0x0001	/* ether_reinput_oncpu() */
+#define REINPUT_RUNBPF 		0x0002	/* ether_reinput_oncpu() */
+
+
 extern	struct ifnethead ifnet;
 extern struct	ifnet	**ifindex2ifnet;
 extern	int ifqmaxlen;
