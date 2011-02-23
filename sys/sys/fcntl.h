@@ -110,6 +110,7 @@
 #define O_FUNBUFFERED	0x01000000	/* force unbuffered (direct) I/O */
 #define O_FBUFFERED	0x02000000	/* force buffered I/O */
 #define O_MAPONREAD	0x04000000	/* memory map read buffer */
+#define O_FRNONBLOCKING	0x08000000	/* nonblocking I/O no disk wait */
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #define FREVOKED	0x10000000	/* revoked by fdrevoke() */
@@ -120,7 +121,7 @@
 
 #define O_FMASK		(O_FBLOCKING|O_FNONBLOCKING|O_FAPPEND|O_FOFFSET|\
 			 O_FSYNCWRITE|O_FASYNCWRITE|O_FUNBUFFERED|O_FBUFFERED|\
-			 O_MAPONREAD)
+			 O_MAPONREAD|O_FRNONBLOCKING)
 
 #ifdef _KERNEL
 /* convert from open() flags to/from fflags; convert O_RD/WR to FREAD/FWRITE */
