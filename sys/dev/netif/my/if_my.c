@@ -1551,7 +1551,7 @@ my_ifmedia_sts(struct ifnet * ifp, struct ifmediareq * ifmr)
 	advert = my_phy_readreg(sc, PHY_ANAR);
 
 #if 0				/* this version did not support 1000M, */
-	if (sc->my_pinfo->my_vid = MarvellPHYID0) {
+	if (sc->my_pinfo->my_vid == MarvellPHYID0) {
 		ability2 = my_phy_readreg(sc, PHY_1000SR);
 		if (ability2 & PHY_1000SR_1000BTXFULL) {
 			advert = 0;
