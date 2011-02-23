@@ -160,6 +160,8 @@ static void	bstp_make_forwarding(struct bridge_softc *,
 		    struct bridge_iflist *);
 static void	bstp_make_blocking(struct bridge_softc *,
 		    struct bridge_iflist *);
+static void	bstp_make_l1blocking(struct bridge_softc *sc,
+		    struct bridge_iflist *bif);
 static void	bstp_set_port_state(struct bridge_iflist *, uint8_t);
 #ifdef notused
 static void	bstp_set_bridge_priority(struct bridge_softc *, uint64_t);
@@ -218,7 +220,8 @@ bstp_transmit_config(struct bridge_softc *sc, struct bridge_iflist *bif)
 	    = bif->bif_topology_change_acknowledge;
 	bif->bif_config_bpdu.cu_topology_change = sc->sc_topology_change;
 
-	if (bif->bif_config_bpdu.cu_message_age < sc->sc_max_age) {
+	if (bif->bif_config_bpdu.cu_message_age < sc->sc_max_age ||
+	    (sc->sc_ifp->if_flags & IFF_LINK1)) {
 		bif->bif_topology_change_acknowledge = 0;
 		bif->bif_config_pending = 0;
 		bstp_send_config_bpdu(sc, bif, &bif->bif_config_bpdu);
@@ -228,7 +231,7 @@ bstp_transmit_config(struct bridge_softc *sc, struct bridge_iflist *bif)
 
 static void
 bstp_send_config_bpdu(struct bridge_softc *sc, struct bridge_iflist *bif,
-    struct bstp_config_unit *cu)
+		      struct bstp_config_unit *cu)
 {
 	struct ifnet *ifp;
 	struct mbuf *m;
@@ -352,9 +355,11 @@ bstp_config_bpdu_generation(struct bridge_softc *sc)
 	LIST_FOREACH_MUTABLE(bif, &sc->sc_iflists[mycpuid], bif_next, nbif) {
 		if ((bif->bif_flags & IFBIF_STP) == 0)
 			continue;
-		if (bstp_designated_port(sc, bif) &&
-		    (bif->bif_state != BSTP_IFSTATE_DISABLED))
+		if (bif->bif_state != BSTP_IFSTATE_DISABLED &&
+		    ((sc->sc_ifp->if_flags & IFF_LINK1) ||
+		     bstp_designated_port(sc, bif))) {
 			bstp_transmit_config(sc, bif);
+		}
 
 		if (nbif != NULL && !nbif->bif_onlist) {
 			KKASSERT(bif->bif_onlist);
@@ -551,8 +556,9 @@ bstp_make_forwarding(struct bridge_softc *sc, struct bridge_iflist *bif)
 static void
 bstp_make_blocking(struct bridge_softc *sc, struct bridge_iflist *bif)
 {
-	if ((bif->bif_state != BSTP_IFSTATE_DISABLED) &&
-	    (bif->bif_state != BSTP_IFSTATE_BLOCKING)) {
+	if (bif->bif_state != BSTP_IFSTATE_DISABLED &&
+	    bif->bif_state != BSTP_IFSTATE_BLOCKING &&
+	    bif->bif_state != BSTP_IFSTATE_L1BLOCKING) {
 		if ((bif->bif_state == BSTP_IFSTATE_FORWARDING) ||
 		    (bif->bif_state == BSTP_IFSTATE_LEARNING)) {
 			if (bif->bif_change_detection_enabled) {
@@ -562,6 +568,24 @@ bstp_make_blocking(struct bridge_softc *sc, struct bridge_iflist *bif)
 		bstp_set_port_state(bif, BSTP_IFSTATE_BLOCKING);
 		bridge_rtdelete(sc, bif->bif_ifp, IFBF_FLUSHDYN);
 		bstp_timer_stop(&bif->bif_forward_delay_timer);
+	}
+}
+
+static void
+bstp_make_l1blocking(struct bridge_softc *sc, struct bridge_iflist *bif)
+{
+	switch(bif->bif_state) {
+	case BSTP_IFSTATE_LISTENING:
+	case BSTP_IFSTATE_LEARNING:
+	case BSTP_IFSTATE_FORWARDING:
+	case BSTP_IFSTATE_BLOCKING:
+		bstp_set_port_state(bif, BSTP_IFSTATE_L1BLOCKING);
+		bridge_rtdelete(sc, bif->bif_ifp, IFBF_FLUSHDYN);
+		bstp_timer_stop(&bif->bif_forward_delay_timer);
+		bstp_timer_stop(&bif->bif_link1_timer);
+		break;
+	default:
+		break;
 	}
 }
 
@@ -611,6 +635,19 @@ bstp_input(struct bridge_softc *sc, struct bridge_iflist *bif, struct mbuf *m)
 
 	if ((bif->bif_flags & IFBIF_STP) == 0)
 		goto out;
+
+	/*
+	 * The L1BLOCKING (ping pong failover) test needs to reset the
+	 * timer if LINK1 is active.
+	 */
+	if (bif->bif_state == BSTP_IFSTATE_L1BLOCKING) {
+		bstp_set_port_state(bif, BSTP_IFSTATE_BLOCKING);
+		if (sc->sc_ifp->if_flags & IFF_LINK1)
+			bstp_timer_start(&bif->bif_link1_timer, 0);
+		bstp_make_forwarding(sc, bif);
+	} else if (sc->sc_ifp->if_flags & IFF_LINK1) {
+		bstp_timer_start(&bif->bif_link1_timer, 0);
+	}
 
 	eh = mtod(m, struct ether_header *);
 
@@ -700,7 +737,13 @@ bstp_received_config_bpdu(struct bridge_softc *sc, struct bridge_iflist *bif,
 			bstp_port_state_selection(sc);
 
 			if ((bstp_root_bridge(sc) == 0) && root) {
-				bstp_timer_stop(&sc->sc_hello_timer);
+				/*
+				 * We continuously transmit hello's if
+				 * link1 is set (topology change bit will
+				 * be zero so they shouldn't propagate).
+				 */
+				if ((sc->sc_ifp->if_flags & IFF_LINK1) == 0)
+					bstp_timer_stop(&sc->sc_hello_timer);
 
 				if (sc->sc_topology_change_detected) {
 					bstp_timer_stop(
@@ -733,16 +776,23 @@ bstp_received_tcn_bpdu(struct bridge_softc *sc, struct bridge_iflist *bif,
 	}
 }
 
+/*
+ * link1 forces continuous hello's (the bridge interface must be cycled
+ * to start them up), so keep the timer hot if that is the case, otherwise
+ * only send HELLO's if we are the root.
+ */
 static void
 bstp_hello_timer_expiry(struct bridge_softc *sc)
 {
 	bstp_config_bpdu_generation(sc);
-	bstp_timer_start(&sc->sc_hello_timer, 0);
+
+	if ((sc->sc_ifp->if_flags & IFF_LINK1) || bstp_root_bridge(sc))
+		bstp_timer_start(&sc->sc_hello_timer, 0);
 }
 
 static void
 bstp_message_age_timer_expiry(struct bridge_softc *sc,
-    struct bridge_iflist *bif)
+			      struct bridge_iflist *bif)
 {
 	int root;
 
@@ -751,6 +801,11 @@ bstp_message_age_timer_expiry(struct bridge_softc *sc,
 	bstp_configuration_update(sc);
 	bstp_port_state_selection(sc);
 
+	/*
+	 * If we've become the root and were not the root before
+	 * we have some cleanup to do.  This also occurs if we
+	 * wind up being completely isolated.
+	 */
 	if ((bstp_root_bridge(sc)) && (root == 0)) {
 		sc->sc_max_age = sc->sc_bridge_max_age;
 		sc->sc_hello_time = sc->sc_bridge_hello_time;
@@ -812,6 +867,18 @@ bstp_hold_timer_expiry(struct bridge_softc *sc, struct bridge_iflist *bif)
 {
 	if (bif->bif_config_pending)
 		bstp_transmit_config(sc, bif);
+}
+
+/*
+ * If no traffic received directly on this port for the specified
+ * period with link1 set we go into a special blocking mode to
+ * fail-over traffic to another port.
+ */
+static void
+bstp_link1_timer_expiry(struct bridge_softc *sc, struct bridge_iflist *bif)
+{
+	if (sc->sc_ifp->if_flags & IFF_LINK1)
+		bstp_make_l1blocking(sc, bif);
 }
 
 static int
@@ -885,6 +952,8 @@ bstp_initialization(struct bridge_softc *sc)
 		    bstp_tick, sc);
 
 	LIST_FOREACH_MUTABLE(bif, &sc->sc_iflists[mycpuid], bif_next, nbif) {
+		if (sc->sc_ifp->if_flags & IFF_LINK1)
+			bstp_timer_start(&bif->bif_link1_timer, 0);
 		if (bif->bif_flags & IFBIF_STP)
 			bstp_ifupdstatus(sc, bif);
 		else
@@ -914,6 +983,7 @@ bstp_stop(struct bridge_softc *sc)
 		bstp_timer_stop(&bif->bif_hold_timer);
 		bstp_timer_stop(&bif->bif_message_age_timer);
 		bstp_timer_stop(&bif->bif_forward_delay_timer);
+		bstp_timer_stop(&bif->bif_link1_timer);
 	}
 
 	callout_stop(&sc->sc_bstpcallout);
@@ -942,12 +1012,15 @@ bstp_initialize_port(struct bridge_softc *sc, struct bridge_iflist *bif)
 	bstp_timer_stop(&bif->bif_message_age_timer);
 	bstp_timer_stop(&bif->bif_forward_delay_timer);
 	bstp_timer_stop(&bif->bif_hold_timer);
+	bstp_timer_stop(&bif->bif_link1_timer);
 }
 
 static void
 bstp_enable_port(struct bridge_softc *sc, struct bridge_iflist *bif)
 {
 	bstp_initialize_port(sc, bif);
+	if (sc->sc_ifp->if_flags & IFF_LINK1)
+		bstp_timer_start(&bif->bif_link1_timer, 0);
 	bstp_port_state_selection(sc);
 }
 
@@ -963,6 +1036,7 @@ bstp_disable_port(struct bridge_softc *sc, struct bridge_iflist *bif)
 	bif->bif_config_pending = 0;
 	bstp_timer_stop(&bif->bif_message_age_timer);
 	bstp_timer_stop(&bif->bif_forward_delay_timer);
+	bstp_timer_stop(&bif->bif_link1_timer);
 	bstp_configuration_update(sc);
 	bstp_port_state_selection(sc);
 	bridge_rtdelete(sc, bif->bif_ifp, IFBF_FLUSHDYN);
@@ -1192,6 +1266,10 @@ bstp_tick_handler(netmsg_t msg)
 		if (bstp_timer_expired(&bif->bif_hold_timer,
 		    sc->sc_hold_time))
 			bstp_hold_timer_expiry(sc, bif);
+
+		if (bstp_timer_expired(&bif->bif_link1_timer,
+		    sc->sc_hello_time * 10))
+			bstp_link1_timer_expiry(sc, bif);
 	}
 
 	if (sc->sc_ifp->if_flags & IFF_RUNNING)

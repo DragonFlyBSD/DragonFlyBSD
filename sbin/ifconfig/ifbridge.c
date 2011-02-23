@@ -116,6 +116,7 @@ bridge_interfaces(int s, const char *prefix)
 		"learning",
 		"forwarding",
 		"blocking",
+		"blocking (link1)"
 	};
 	struct ifbifconf bifc;
 	struct ifbreq *req;
@@ -163,6 +164,14 @@ bridge_interfaces(int s, const char *prefix)
 				printf(" <unknown state %d>",
 				    req->ifbr_state);
 			printf("\n");
+			printf("%sdesignated root:   %016jx\n",
+				pad, (intmax_t)req->ifbr_designated_root);
+			printf("%sdesignated bridge: %016jx\n",
+				pad, (intmax_t)req->ifbr_designated_bridge);
+			printf("%sdesignated cost:   %u\n",
+				pad, req->ifbr_designated_cost);
+			printf("%sdesignated port:   %u\n",
+				pad, req->ifbr_designated_port);
 		}
 	}
 

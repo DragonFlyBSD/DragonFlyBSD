@@ -120,6 +120,11 @@ struct ifbreq {
 	uint8_t		ifbr_priority;		/* member if STP priority */
 	uint8_t		ifbr_path_cost;		/* member if STP cost */
 	uint8_t		ifbr_portno;		/* member if port number */
+	uint64_t	ifbr_designated_root;	/* current root id */
+	uint64_t	ifbr_designated_bridge;	/* current bridge id */
+	uint32_t	ifbr_designated_cost;	/* current cost calc */
+	uint16_t	ifbr_designated_port;	/* current port calc */
+	uint16_t	unused01;
 };
 
 /* BRDGGIFFLAGS, BRDGSIFFLAGS */
@@ -141,6 +146,7 @@ struct ifbreq {
 #define	BSTP_IFSTATE_LEARNING	2
 #define	BSTP_IFSTATE_FORWARDING	3
 #define	BSTP_IFSTATE_BLOCKING	4
+#define	BSTP_IFSTATE_L1BLOCKING	5	/* link1 blocking mode no-activity */
 
 /*
  * Interface list structure.
@@ -239,6 +245,7 @@ struct bridge_ifinfo {
 	struct bridge_timer	bifi_hold_timer;
 	struct bridge_timer	bifi_message_age_timer;
 	struct bridge_timer	bifi_forward_delay_timer;
+	struct bridge_timer	bifi_link1_timer;
 	struct bstp_config_unit	bifi_config_bpdu;
 	uint16_t		bifi_port_id;
 	uint16_t		bifi_designated_port;
@@ -258,6 +265,7 @@ struct bridge_ifinfo {
 #define bif_hold_timer			bif_info->bifi_hold_timer
 #define bif_message_age_timer		bif_info->bifi_message_age_timer
 #define bif_forward_delay_timer		bif_info->bifi_forward_delay_timer
+#define bif_link1_timer			bif_info->bifi_link1_timer
 #define bif_config_bpdu			bif_info->bifi_config_bpdu
 #define bif_port_id			bif_info->bifi_port_id
 #define bif_designated_port		bif_info->bifi_designated_port

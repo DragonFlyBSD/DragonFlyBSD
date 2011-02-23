@@ -1251,6 +1251,10 @@ bridge_ioctl_gifflags(struct bridge_softc *sc, void *arg)
 	req->ifbr_priority = bif->bif_priority;
 	req->ifbr_path_cost = bif->bif_path_cost;
 	req->ifbr_portno = bif->bif_ifp->if_index & 0xff;
+	req->ifbr_designated_root = bif->bif_designated_root;
+	req->ifbr_designated_bridge = bif->bif_designated_bridge;
+	req->ifbr_designated_cost = bif->bif_designated_cost;
+	req->ifbr_designated_port = bif->bif_designated_port;
 
 	return (0);
 }
@@ -1363,6 +1367,10 @@ bridge_ioctl_gifs(struct bridge_softc *sc, void *arg)
 		breq->ifbr_priority = bif->bif_priority;
 		breq->ifbr_path_cost = bif->bif_path_cost;
 		breq->ifbr_portno = bif->bif_ifp->if_index & 0xff;
+		breq->ifbr_designated_root = bif->bif_designated_root;
+		breq->ifbr_designated_bridge = bif->bif_designated_bridge;
+		breq->ifbr_designated_cost = bif->bif_designated_cost;
+		breq->ifbr_designated_port = bif->bif_designated_port;
 		breq++;
 		count++;
 		len -= sizeof(*breq);
@@ -1841,6 +1849,7 @@ static int
 bridge_output(struct ifnet *ifp, struct mbuf *m)
 {
 	struct bridge_softc *sc = ifp->if_bridge;
+	struct bridge_iflist *bif, *nbif;
 	struct ether_header *eh;
 	struct ifnet *dst_if, *bifp;
 	int from_us;
@@ -1887,7 +1896,6 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 	else
 		dst_if = bridge_rtlookup(sc, eh->ether_dhost);
 	if (dst_if == NULL) {
-		struct bridge_iflist *bif, *nbif;
 		struct mbuf *mc;
 		int used = 0;
 
@@ -1909,6 +1917,7 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 			if (dst_if != ifp &&
 			    (bif->bif_flags & IFBIF_STP) != 0) {
 				switch (bif->bif_state) {
+				case BSTP_IFSTATE_L1BLOCKING:
 				case BSTP_IFSTATE_BLOCKING:
 				case BSTP_IFSTATE_LISTENING:
 				case BSTP_IFSTATE_DISABLED:
@@ -1944,8 +1953,44 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 
 sendunicast:
 	/*
-	 * XXX Spanning tree consideration here?
+	 * If STP is enabled on the target and it is not in a good state
+	 * scan all bridged interfaces for any with a matching MAC which is
+	 * in a good state and use that one.
+	 *
+	 * We need to do this because arp entries tag onto a particular
+	 * interface and if it happens to be dead then the packets will
+	 * go into a bit bucket.
 	 */
+	bif = bridge_lookup_member_if(sc, dst_if);
+	if (bif->bif_flags & IFBIF_STP) {
+		switch (bif->bif_state) {
+		case BSTP_IFSTATE_L1BLOCKING:
+		case BSTP_IFSTATE_BLOCKING:
+		case BSTP_IFSTATE_LISTENING:
+		case BSTP_IFSTATE_DISABLED:
+			LIST_FOREACH_MUTABLE(bif, &sc->sc_iflists[mycpuid],
+					     bif_next, nbif) {
+				if (memcmp(IF_LLADDR(bif->bif_ifp),
+					   IF_LLADDR(dst_if),
+					   ETHER_ADDR_LEN) != 0) {
+					continue;
+				}
+				if (bif->bif_state == BSTP_IFSTATE_L1BLOCKING||
+				    bif->bif_state == BSTP_IFSTATE_BLOCKING ||
+				    bif->bif_state == BSTP_IFSTATE_LISTENING||
+				    bif->bif_state == BSTP_IFSTATE_DISABLED) {
+					continue;
+				}
+				dst_if = bif->bif_ifp;
+				break;
+			}
+			break;
+		default:
+			/* keep dst_if */
+			break;
+		}
+	}
+
 	if (sc->sc_span)
 		bridge_span(sc, m);
 	if ((dst_if->if_flags & IFF_RUNNING) == 0)
@@ -2035,6 +2080,7 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 
 	if (bif->bif_flags & IFBIF_STP) {
 		switch (bif->bif_state) {
+		case BSTP_IFSTATE_L1BLOCKING:
 		case BSTP_IFSTATE_BLOCKING:
 		case BSTP_IFSTATE_LISTENING:
 		case BSTP_IFSTATE_DISABLED:
@@ -2111,6 +2157,7 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 		switch (bif->bif_state) {
 		case BSTP_IFSTATE_DISABLED:
 		case BSTP_IFSTATE_BLOCKING:
+		case BSTP_IFSTATE_L1BLOCKING:
 			m_freem(m);
 			return;
 		}
@@ -2238,7 +2285,7 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	if (m->m_flags & (M_BCAST | M_MCAST)) {
 		/* Tap off 802.1D packets; they do not get forwarded. */
 		if (memcmp(eh->ether_dhost, bstp_etheraddr,
-		    ETHER_ADDR_LEN) == 0) {
+			    ETHER_ADDR_LEN) == 0) {
 			ifnet_serialize_all(bifp);
 			bstp_input(sc, bif, m);
 			ifnet_deserialize_all(bifp);
@@ -2250,6 +2297,7 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 
 		if (bif->bif_flags & IFBIF_STP) {
 			switch (bif->bif_state) {
+			case BSTP_IFSTATE_L1BLOCKING:
 			case BSTP_IFSTATE_BLOCKING:
 			case BSTP_IFSTATE_LISTENING:
 			case BSTP_IFSTATE_DISABLED:
@@ -2305,6 +2353,7 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 
 	if (bif->bif_flags & IFBIF_STP) {
 		switch (bif->bif_state) {
+		case BSTP_IFSTATE_L1BLOCKING:
 		case BSTP_IFSTATE_BLOCKING:
 		case BSTP_IFSTATE_LISTENING:
 		case BSTP_IFSTATE_DISABLED:
@@ -2401,6 +2450,7 @@ bridge_start_bcast(struct bridge_softc *sc, struct mbuf *m)
 
 		if (bif->bif_flags & IFBIF_STP) {
 			switch (bif->bif_state) {
+			case BSTP_IFSTATE_L1BLOCKING:
 			case BSTP_IFSTATE_BLOCKING:
 			case BSTP_IFSTATE_DISABLED:
 				continue;
@@ -2481,6 +2531,7 @@ bridge_broadcast(struct bridge_softc *sc, struct ifnet *src_if,
 
 		if (bif->bif_flags & IFBIF_STP) {
 			switch (bif->bif_state) {
+			case BSTP_IFSTATE_L1BLOCKING:
 			case BSTP_IFSTATE_BLOCKING:
 			case BSTP_IFSTATE_DISABLED:
 				continue;
