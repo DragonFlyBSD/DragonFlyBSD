@@ -2011,7 +2011,7 @@ device		stge		# Sundance/Tamarack TC9021 Gigabit Ethernet
 device		msk		# Marvell/SysKonnect Yukon II Gigabit Ethernet
 device		jme		# JMicron Gigabit/Fast Ethernet
 
-device		meteor
+#device		meteor
 
 
 # Brooktree driver has been ported to the new I2C framework. Thus,
