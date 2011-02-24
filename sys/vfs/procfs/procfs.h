@@ -153,6 +153,8 @@ int procfs_validdbregs (struct lwp *);
 int procfs_validmap (struct lwp *);
 int procfs_validtype (struct lwp *);
 
+struct proc *pfs_pfind(pid_t);
+
 #define PROCFS_LOCKED	0x01
 #define PROCFS_WANT	0x02
 
