@@ -375,7 +375,7 @@ hammer_vop_read(struct vop_read_args *ap)
 			error = 0;
 			goto skip;
 		} else {
-			if (ap->a_ioflag & (IO_NDELAY | IO_NRDELAY))
+			if (ap->a_ioflag & IO_NRDELAY)
 				return (EWOULDBLOCK);
 		}
 
