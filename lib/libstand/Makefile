@@ -20,7 +20,7 @@ CFLAGS+=	-ffreestanding
 
 .if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "x86_64"
 CFLAGS+=	-mpreferred-stack-boundary=2
-CPUTYPE=	i386
+FORCE_CPUTYPE=	i386
 .endif
 
 .if ${MACHINE_ARCH} == "x86_64"

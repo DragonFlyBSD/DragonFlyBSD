@@ -7,7 +7,7 @@ LOADER_ADDRESS?=	0x200000
 CFLAGS+=		-ffreestanding -mpreferred-stack-boundary=2
 
 # override CPU type, so that gcc doesn't insert mmx/sse instructions
-CPUTYPE=		i386
+FORCE_CPUTYPE=		i386
 
 WARNS?=	1
 

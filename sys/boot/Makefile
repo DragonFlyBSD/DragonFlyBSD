@@ -5,11 +5,6 @@
 .MAKEFLAGS:  MACHINE_ARCH=i386 MACHINE_PLATFORM=pc32 REALLY_X86_64=true
 .endif
 
-.if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "x86_64"
-CPUTYPE=	i386
-.makeenv CPUTYPE
-.endif
-
 # Build DLoader
 SUBDIR+=		dloader
 
