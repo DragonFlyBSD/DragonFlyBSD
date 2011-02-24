@@ -1,8 +1,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/bktr.4,v 1.31 2006/01/21 14:58:25 netchild Exp $
-.\" $DragonFly: src/share/man/man4/bktr.4,v 1.8 2007/10/03 19:27:08 swildner Exp $
 .\"
-.Dd October 3, 2007
+.Dd February 24, 2011
 .Dt BKTR 4
 .Os
 .Sh NAME
@@ -23,6 +22,7 @@ capture and
 .Em VBI
 capture on low cost, high performance boards.
 The driver is based on the Matrox Meteor driver and uses the same API.
+The Meteor driver has since been removed.
 The
 .Nm
 driver should support most video cards based on the
@@ -223,7 +223,7 @@ VideoLogic Captivator PCI
 .Sh FILES
 .Bl -tag -width /usr/share/examples/meteor -compact
 .It Pa /usr/share/examples/meteor
-Examples of what you can do with the (similarly designed) Meteor driver.
+Examples of what you could do with the (similarly designed) Meteor driver.
 .It Pa /usr/pkgsrc/multimedia/fxtv
 A TV and Camera display program utilizing the
 .Nm
@@ -251,8 +251,7 @@ or the
 port.
 .El
 .Sh SEE ALSO
-.Xr cxm 4 ,
-.Xr meteor 4
+.Xr cxm 4
 .Sh HISTORY
 The
 .Nm

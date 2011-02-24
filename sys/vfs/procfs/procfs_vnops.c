@@ -174,7 +174,7 @@ procfs_open(struct vop_open_args *ap)
 	struct proc *p1, *p2;
 	int error;
 
-	p2 = pfind(pfs->pfs_pid);
+	p2 = pfs_pfind(pfs->pfs_pid);
 	if (p2 == NULL)
 		return (ENOENT);
 	if (pfs->pfs_pid && !PRISON_CHECK(ap->a_cred, p2->p_ucred)) {
@@ -513,7 +513,7 @@ procfs_getattr(struct vop_getattr_args *ap)
 		break;
 
 	default:
-		procp = pfind(pfs->pfs_pid);
+		procp = pfs_pfind(pfs->pfs_pid);
 		if (procp == NULL || procp->p_ucred == NULL) {
 			error = ENOENT;
 			goto done;
@@ -754,7 +754,7 @@ procfs_lookup(struct vop_old_lookup_args *ap)
 		if (pid == NO_PID)
 			break;
 
-		p = pfind(pid);
+		p = pfs_pfind(pid);
 		if (p == NULL)
 			break;
 
@@ -774,7 +774,7 @@ procfs_lookup(struct vop_old_lookup_args *ap)
 			goto out;
 		}
 
-		p = pfind(pfs->pfs_pid);
+		p = pfs_pfind(pfs->pfs_pid);
 		if (p == NULL)
 			break;
 		/* XXX lwp */
@@ -892,7 +892,7 @@ procfs_readdir_proc(struct vop_readdir_args *ap)
 	struct uio *uio = ap->a_uio;
 
 	pfs = VTOPFS(ap->a_vp);
-	p = pfind(pfs->pfs_pid);
+	p = pfs_pfind(pfs->pfs_pid);
 	if (p == NULL)
 		return(0);
 	if (!PRISON_CHECK(ap->a_cred, p->p_ucred)) {
@@ -1073,7 +1073,7 @@ procfs_readlink(struct vop_readlink_args *ap)
 	 * from under us...
 	 */
 	case Pfile:
-		procp = pfind(pfs->pfs_pid);
+		procp = pfs_pfind(pfs->pfs_pid);
 		if (procp == NULL || procp->p_ucred == NULL) {
 			kprintf("procfs_readlink: pid %d disappeared\n",
 			    pfs->pfs_pid);

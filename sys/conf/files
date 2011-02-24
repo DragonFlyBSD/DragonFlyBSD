@@ -1632,7 +1632,6 @@ dev/powermng/amdpm/amdpm.c	optional amdpm pci
 dev/powermng/amdsmb/amdsmb.c	optional amdsmb pci
 dev/powermng/intpm/intpm.c	optional intpm pci
 dev/powermng/viapm/viapm.c	optional viapm pci
-dev/video/meteor/meteor.c	optional meteor pci
 dev/disk/ncr/ncr.c		optional ncr
 dev/disk/sym/sym_hipd.c		optional sym				\
 	dependency	"$S/dev/disk/sym/sym_{conf,defs}.h"

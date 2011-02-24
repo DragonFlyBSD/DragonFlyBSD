@@ -1573,7 +1573,6 @@ device		"snd_uaudio"
 # ctx: Cortex-I frame grabber
 # apm: Laptop Advanced Power Management (experimental)
 # spigot: The Creative Labs Video Spigot video-acquisition board
-# meteor: Matrox Meteor video capture board
 # bktr: Brooktree bt848/848a/849a/878/879 video capture and TV Tuner board
 # cy: Cyclades serial driver
 # dgb: Digiboard PC/Xi and PC/Xe series driver (ALPHA QUALITY!)
@@ -1862,17 +1861,6 @@ options 	AHD_REG_PRETTY_PRINT
 # Dell Precision desktop machines and the integrated 3c905-TX chips
 # in Dell Latitude laptop docking stations.
 #
-# The `meteor' device is a PCI video capture board. It can also have the
-# following options:
-#   options METEOR_ALLOC_PAGES=xxx	preallocate kernel pages for data entry
-#	figure (ROWS*COLUMN*BYTES_PER_PIXEL*FRAME+PAGE_SIZE-1)/PAGE_SIZE
-#   options METEOR_DEALLOC_PAGES	remove all allocated pages on close(2)
-#   options METEOR_DEALLOC_ABOVE=xxx	remove all allocated pages above the
-#	specified amount. If this value is below the allocated amount no action
-#	taken
-#   options METEOR_SYSTEM_DEFAULT={METEOR_PAL|METEOR_NTSC|METEOR_SECAM}, used
-#	for initialization of fps routine when a signal is not present.
-#
 # The 'bktr' device is a PCI video capture device using the Brooktree
 # bt848/bt848a/bt849a/bt878/bt879 chipset. When used with a TV Tuner it forms a
 # TV card, eg Miro PC/TV, Hauppauge WinCast/TV WinTV, VideoLogic Captivator,
@@ -2010,9 +1998,6 @@ device		ti		# Alteon (``Tigon I'', ``Tigon II'')
 device		stge		# Sundance/Tamarack TC9021 Gigabit Ethernet
 device		msk		# Marvell/SysKonnect Yukon II Gigabit Ethernet
 device		jme		# JMicron Gigabit/Fast Ethernet
-
-device		meteor
-
 
 # Brooktree driver has been ported to the new I2C framework. Thus,
 # you'll need to have the following 3 lines in the kernel config.
@@ -2829,7 +2814,6 @@ options 	LOCKF_DEBUG
 options 	LOUTB
 #options	MAXFILES=xxx
 options		MBUF_DEBUG
-options 	METEOR_TEST_VIDEO
 options 	NETATALKDEBUG
 options 	PANIC_DEBUG
 options 	PMAP_DEBUG
