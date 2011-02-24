@@ -195,14 +195,14 @@
  * interface is ripped from the percpu list during the blocking operation,
  * the iteration still could keep going:
  *
- * LIST_FOREACH_MUTABLE(bif, sc->sc_iflists[mycpuid], bif_next, nbif) {
+ * TAILQ_FOREACH_MUTABLE(bif, sc->sc_iflists[mycpuid], bif_next, nbif) {
  *     blocking operation;
  *     blocking operation;
  *     ...
  *     ...
  *     if (nbif != NULL && !nbif->bif_onlist) {
  *         KKASSERT(bif->bif_onlist);
- *         nbif = LIST_NEXT(bif, bif_next);
+ *         nbif = TAILQ_NEXT(bif, bif_next);
  *     }
  * }
  *
@@ -355,6 +355,7 @@ eventhandler_tag	bridge_detach_cookie = NULL;
 extern	struct mbuf *(*bridge_input_p)(struct ifnet *, struct mbuf *);
 extern	int (*bridge_output_p)(struct ifnet *, struct mbuf *);
 extern	void (*bridge_dn_p)(struct mbuf *, struct ifnet *);
+extern  struct ifnet *(*bridge_interface_p)(void *if_bridge);
 
 static int	bridge_rtable_prune_period = BRIDGE_RTABLE_PRUNE_PERIOD;
 
@@ -365,10 +366,12 @@ static int	bridge_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	bridge_mutecaps(struct bridge_ifinfo *, struct ifnet *, int);
 static void	bridge_ifdetach(void *, struct ifnet *);
 static void	bridge_init(void *);
+static int	bridge_from_us(struct bridge_softc *, struct ether_header *);
 static void	bridge_stop(struct ifnet *);
 static void	bridge_start(struct ifnet *);
 static struct mbuf *bridge_input(struct ifnet *, struct mbuf *);
 static int	bridge_output(struct ifnet *, struct mbuf *);
+static struct ifnet *bridge_interface(void *if_bridge);
 
 static void	bridge_forward(struct bridge_softc *, struct mbuf *m);
 
@@ -426,6 +429,8 @@ static int	bridge_ioctl_init(struct bridge_softc *, void *);
 static int	bridge_ioctl_stop(struct bridge_softc *, void *);
 static int	bridge_ioctl_add(struct bridge_softc *, void *);
 static int	bridge_ioctl_del(struct bridge_softc *, void *);
+static void	bridge_ioctl_fillflags(struct bridge_softc *sc,
+				struct bridge_iflist *bif, struct ifbreq *req);
 static int	bridge_ioctl_gifflags(struct bridge_softc *, void *);
 static int	bridge_ioctl_sifflags(struct bridge_softc *, void *);
 static int	bridge_ioctl_scache(struct bridge_softc *, void *);
@@ -458,17 +463,15 @@ static int	bridge_ip6_checkbasic(struct mbuf **mp);
 static int	bridge_fragment(struct ifnet *, struct mbuf *,
 		    struct ether_header *, int, struct llc *);
 static void	bridge_enqueue_handler(netmsg_t);
-static void	bridge_handoff(struct ifnet *, struct mbuf *, int);
+static void	bridge_handoff(struct bridge_softc *, struct ifnet *,
+		    struct mbuf *, int);
 
 static void	bridge_del_bif_handler(netmsg_t);
 static void	bridge_add_bif_handler(netmsg_t);
-static void	bridge_set_bifflags_handler(netmsg_t);
 static void	bridge_del_bif(struct bridge_softc *, struct bridge_ifinfo *,
 		    struct bridge_iflist_head *);
 static void	bridge_add_bif(struct bridge_softc *, struct bridge_ifinfo *,
 		    struct ifnet *);
-static void	bridge_set_bifflags(struct bridge_softc *,
-		    struct bridge_ifinfo *, uint32_t);
 
 SYSCTL_DECL(_net_link);
 SYSCTL_NODE(_net_link, IFT_BRIDGE, bridge, CTLFLAG_RW, 0, "Bridge");
@@ -476,12 +479,15 @@ SYSCTL_NODE(_net_link, IFT_BRIDGE, bridge, CTLFLAG_RW, 0, "Bridge");
 static int pfil_onlyip = 1; /* only pass IP[46] packets when pfil is enabled */
 static int pfil_bridge = 1; /* run pfil hooks on the bridge interface */
 static int pfil_member = 1; /* run pfil hooks on the member interface */
+static int bridge_debug;
 SYSCTL_INT(_net_link_bridge, OID_AUTO, pfil_onlyip, CTLFLAG_RW,
     &pfil_onlyip, 0, "Only pass IP packets when pfil is enabled");
 SYSCTL_INT(_net_link_bridge, OID_AUTO, pfil_bridge, CTLFLAG_RW,
     &pfil_bridge, 0, "Packet filter on the bridge interface");
 SYSCTL_INT(_net_link_bridge, OID_AUTO, pfil_member, CTLFLAG_RW,
     &pfil_member, 0, "Packet filter on the member interface");
+SYSCTL_INT(_net_link_bridge, OID_AUTO, debug, CTLFLAG_RW,
+    &bridge_debug, 0, "Bridge debug mode");
 
 struct bridge_control_arg {
 	union {
@@ -589,6 +595,7 @@ bridge_modevent(module_t mod, int type, void *data)
 		if_clone_attach(&bridge_cloner);
 		bridge_input_p = bridge_input;
 		bridge_output_p = bridge_output;
+		bridge_interface_p = bridge_interface;
 		bridge_detach_cookie = EVENTHANDLER_REGISTER(
 		    ifnet_detach_event, bridge_ifdetach, NULL,
 		    EVENTHANDLER_PRI_ANY);
@@ -604,6 +611,7 @@ bridge_modevent(module_t mod, int type, void *data)
 		if_clone_detach(&bridge_cloner);
 		bridge_input_p = NULL;
 		bridge_output_p = NULL;
+		bridge_interface_p = NULL;
 #if notyet
 		bstp_linkstate_p = NULL;
 #endif
@@ -664,9 +672,9 @@ bridge_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	sc->sc_iflists = kmalloc(sizeof(*sc->sc_iflists) * ncpus,
 				 M_DEVBUF, M_WAITOK);
 	for (cpu = 0; cpu < ncpus; ++cpu)
-		LIST_INIT(&sc->sc_iflists[cpu]);
+		TAILQ_INIT(&sc->sc_iflists[cpu]);
 
-	LIST_INIT(&sc->sc_spanlist);
+	TAILQ_INIT(&sc->sc_spanlist);
 
 	ifp->if_softc = sc;
 	if_initname(ifp, ifc->ifc_name, unit);
@@ -675,7 +683,7 @@ bridge_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	ifp->if_ioctl = bridge_ioctl;
 	ifp->if_start = bridge_start;
 	ifp->if_init = bridge_init;
-	ifp->if_type = IFT_BRIDGE;
+	ifp->if_type = IFT_ETHER;
 	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 	ifq_set_ready(&ifp->if_snd);
 	ifp->if_hdrlen = ETHER_HDR_LEN;
@@ -695,7 +703,7 @@ bridge_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	ether_ifattach(ifp, eaddr, NULL);
 	/* Now undo some of the damage... */
 	ifp->if_baudrate = 0;
-	ifp->if_type = IFT_BRIDGE;
+	/*ifp->if_type = IFT_BRIDGE;*/
 
 	crit_enter();	/* XXX MP */
 	LIST_INSERT_HEAD(&bridge_list, sc, sc_list);
@@ -713,10 +721,10 @@ bridge_delete_dispatch(netmsg_t msg)
 
 	ifnet_serialize_all(bifp);
 
-	while ((bif = LIST_FIRST(&sc->sc_iflists[mycpuid])) != NULL)
+	while ((bif = TAILQ_FIRST(&sc->sc_iflists[mycpuid])) != NULL)
 		bridge_delete_member(sc, bif, 0);
 
-	while ((bif = LIST_FIRST(&sc->sc_spanlist)) != NULL)
+	while ((bif = TAILQ_FIRST(&sc->sc_spanlist)) != NULL)
 		bridge_delete_span(sc, bif);
 
 	ifnet_deserialize_all(bifp);
@@ -920,7 +928,7 @@ bridge_lookup_member(struct bridge_softc *sc, const char *name)
 {
 	struct bridge_iflist *bif;
 
-	LIST_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
+	TAILQ_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
 		if (strcmp(bif->bif_ifp->if_xname, name) == 0)
 			return (bif);
 	}
@@ -937,7 +945,7 @@ bridge_lookup_member_if(struct bridge_softc *sc, struct ifnet *member_ifp)
 {
 	struct bridge_iflist *bif;
 
-	LIST_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
+	TAILQ_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
 		if (bif->bif_ifp == member_ifp)
 			return (bif);
 	}
@@ -955,7 +963,7 @@ bridge_lookup_member_ifinfo(struct bridge_softc *sc,
 {
 	struct bridge_iflist *bif;
 
-	LIST_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
+	TAILQ_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
 		if (bif->bif_info == bif_info)
 			return (bif);
 	}
@@ -1016,7 +1024,7 @@ bridge_delete_member(struct bridge_softc *sc, struct bridge_iflist *bif,
 	 * after we make sure that no one is accessing them,
 	 * i.e. after following netmsg_service_sync()
 	 */
-	LIST_INIT(&saved_bifs);
+	TAILQ_INIT(&saved_bifs);
 	bridge_del_bif(sc, bif_info, &saved_bifs);
 
 	/*
@@ -1029,9 +1037,9 @@ bridge_delete_member(struct bridge_softc *sc, struct bridge_iflist *bif,
 	/*
 	 * Free the removed bifs
 	 */
-	KKASSERT(!LIST_EMPTY(&saved_bifs));
-	while ((bif = LIST_FIRST(&saved_bifs)) != NULL) {
-		LIST_REMOVE(bif, bif_next);
+	KKASSERT(!TAILQ_EMPTY(&saved_bifs));
+	while ((bif = TAILQ_FIRST(&saved_bifs)) != NULL) {
+		TAILQ_REMOVE(&saved_bifs, bif, bif_next);
 		kfree(bif, M_DEVBUF);
 	}
 
@@ -1063,7 +1071,7 @@ bridge_delete_span(struct bridge_softc *sc, struct bridge_iflist *bif)
 	KASSERT(bif->bif_ifp->if_bridge == NULL,
 	    ("%s: not a span interface", __func__));
 
-	LIST_REMOVE(bif, bif_next);
+	TAILQ_REMOVE(&sc->sc_iflists[mycpuid], bif, bif_next);
 	kfree(bif, M_DEVBUF);
 }
 
@@ -1141,13 +1149,13 @@ bridge_ioctl_add(struct bridge_softc *sc, void *arg)
 		return (ENOENT);
 
 	/* If it's in the span list, it can't be a member. */
-	LIST_FOREACH(bif, &sc->sc_spanlist, bif_next)
+	TAILQ_FOREACH(bif, &sc->sc_spanlist, bif_next)
 		if (ifs == bif->bif_ifp)
 			return (EBUSY);
 
 	/* Allow the first Ethernet member to define the MTU */
 	if (ifs->if_type != IFT_GIF) {
-		if (LIST_EMPTY(&sc->sc_iflists[mycpuid])) {
+		if (TAILQ_EMPTY(&sc->sc_iflists[mycpuid])) {
 			bifp->if_mtu = ifs->if_mtu;
 		} else if (bifp->if_mtu != ifs->if_mtu) {
 			if_printf(bifp, "invalid MTU for %s\n", ifs->if_xname);
@@ -1245,18 +1253,46 @@ bridge_ioctl_gifflags(struct bridge_softc *sc, void *arg)
 	bif = bridge_lookup_member(sc, req->ifbr_ifsname);
 	if (bif == NULL)
 		return (ENOENT);
+	bridge_ioctl_fillflags(sc, bif, req);
+	return (0);
+}
 
+static void
+bridge_ioctl_fillflags(struct bridge_softc *sc, struct bridge_iflist *bif,
+		       struct ifbreq *req)
+{
 	req->ifbr_ifsflags = bif->bif_flags;
 	req->ifbr_state = bif->bif_state;
 	req->ifbr_priority = bif->bif_priority;
 	req->ifbr_path_cost = bif->bif_path_cost;
 	req->ifbr_portno = bif->bif_ifp->if_index & 0xff;
-	req->ifbr_designated_root = bif->bif_designated_root;
-	req->ifbr_designated_bridge = bif->bif_designated_bridge;
-	req->ifbr_designated_cost = bif->bif_designated_cost;
-	req->ifbr_designated_port = bif->bif_designated_port;
-
-	return (0);
+	if (bif->bif_flags & IFBIF_STP) {
+		req->ifbr_peer_root = bif->bif_peer_root;
+		req->ifbr_peer_bridge = bif->bif_peer_bridge;
+		req->ifbr_peer_cost = bif->bif_peer_cost;
+		req->ifbr_peer_port = bif->bif_peer_port;
+		if (bstp_supersedes_port_info(sc, bif)) {
+			req->ifbr_designated_root = bif->bif_peer_root;
+			req->ifbr_designated_bridge = bif->bif_peer_bridge;
+			req->ifbr_designated_cost = bif->bif_peer_cost;
+			req->ifbr_designated_port = bif->bif_peer_port;
+		} else {
+			req->ifbr_designated_root = sc->sc_bridge_id;
+			req->ifbr_designated_bridge = sc->sc_bridge_id;
+			req->ifbr_designated_cost = bif->bif_path_cost +
+						    bif->bif_peer_cost;
+			req->ifbr_designated_port = bif->bif_port_id;
+		}
+	} else {
+		req->ifbr_peer_root = 0;
+		req->ifbr_peer_bridge = 0;
+		req->ifbr_peer_cost = 0;
+		req->ifbr_peer_port = 0;
+		req->ifbr_designated_root = 0;
+		req->ifbr_designated_bridge = 0;
+		req->ifbr_designated_cost = 0;
+		req->ifbr_designated_port = 0;
+	}
 }
 
 static int
@@ -1287,10 +1323,8 @@ bridge_ioctl_sifflags(struct bridge_softc *sc, void *arg)
 		}
 	}
 
-	ifnet_deserialize_all(bifp);
-	bridge_set_bifflags(sc, bif->bif_info, req->ifbr_ifsflags);
-	ifnet_serialize_all(bifp);
-
+	bif->bif_flags = (bif->bif_flags & IFBIF_KEEPMASK) |
+			 (req->ifbr_ifsflags & ~IFBIF_KEEPMASK);
 	if (bifp->if_flags & IFF_RUNNING)
 		bstp_initialization(sc);
 
@@ -1332,9 +1366,9 @@ bridge_ioctl_gifs(struct bridge_softc *sc, void *arg)
 	int count, len;
 
 	count = 0;
-	LIST_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next)
+	TAILQ_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next)
 		count++;
-	LIST_FOREACH(bif, &sc->sc_spanlist, bif_next)
+	TAILQ_FOREACH(bif, &sc->sc_spanlist, bif_next)
 		count++;
 
 	if (bifc->ifbic_len == 0) {
@@ -1356,26 +1390,18 @@ bridge_ioctl_gifs(struct bridge_softc *sc, void *arg)
 	bc_arg->bca_kptr = breq;
 
 	count = 0;
-	LIST_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
+	TAILQ_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
 		if (len < sizeof(*breq))
 			break;
 
 		strlcpy(breq->ifbr_ifsname, bif->bif_ifp->if_xname,
 			sizeof(breq->ifbr_ifsname));
-		breq->ifbr_ifsflags = bif->bif_flags;
-		breq->ifbr_state = bif->bif_state;
-		breq->ifbr_priority = bif->bif_priority;
-		breq->ifbr_path_cost = bif->bif_path_cost;
-		breq->ifbr_portno = bif->bif_ifp->if_index & 0xff;
-		breq->ifbr_designated_root = bif->bif_designated_root;
-		breq->ifbr_designated_bridge = bif->bif_designated_bridge;
-		breq->ifbr_designated_cost = bif->bif_designated_cost;
-		breq->ifbr_designated_port = bif->bif_designated_port;
+		bridge_ioctl_fillflags(sc, bif, breq);
 		breq++;
 		count++;
 		len -= sizeof(*breq);
 	}
-	LIST_FOREACH(bif, &sc->sc_spanlist, bif_next) {
+	TAILQ_FOREACH(bif, &sc->sc_spanlist, bif_next) {
 		if (len < sizeof(*breq))
 			break;
 
@@ -1665,12 +1691,13 @@ bridge_ioctl_addspan(struct bridge_softc *sc, void *arg)
 	struct ifbreq *req = arg;
 	struct bridge_iflist *bif;
 	struct ifnet *ifs;
+	struct bridge_ifinfo *bif_info;
 
 	ifs = ifunit(req->ifbr_ifsname);
 	if (ifs == NULL)
 		return (ENOENT);
 
-	LIST_FOREACH(bif, &sc->sc_spanlist, bif_next)
+	TAILQ_FOREACH(bif, &sc->sc_spanlist, bif_next)
 		if (ifs == bif->bif_ifp)
 			return (EBUSY);
 
@@ -1687,12 +1714,19 @@ bridge_ioctl_addspan(struct bridge_softc *sc, void *arg)
 		return (EINVAL);
 	}
 
+	/*
+	 * bif_info is needed for bif_flags
+	 */
+        bif_info = kmalloc(sizeof(*bif_info), M_DEVBUF, M_WAITOK | M_ZERO);
+        bif_info->bifi_ifp = ifs;
+
 	bif = kmalloc(sizeof(*bif), M_DEVBUF, M_WAITOK | M_ZERO);
 	bif->bif_ifp = ifs;
+	bif->bif_info = bif_info;
 	bif->bif_flags = IFBIF_SPAN;
 	/* NOTE: span bif does not need bridge_ifinfo */
 
-	LIST_INSERT_HEAD(&sc->sc_spanlist, bif, bif_next);
+	TAILQ_INSERT_HEAD(&sc->sc_spanlist, bif, bif_next);
 
 	sc->sc_span = 1;
 
@@ -1710,7 +1744,7 @@ bridge_ioctl_delspan(struct bridge_softc *sc, void *arg)
 	if (ifs == NULL)
 		return (ENOENT);
 
-	LIST_FOREACH(bif, &sc->sc_spanlist, bif_next)
+	TAILQ_FOREACH(bif, &sc->sc_spanlist, bif_next)
 		if (ifs == bif->bif_ifp)
 			break;
 
@@ -1719,7 +1753,7 @@ bridge_ioctl_delspan(struct bridge_softc *sc, void *arg)
 
 	bridge_delete_span(sc, bif);
 
-	if (LIST_EMPTY(&sc->sc_spanlist))
+	if (TAILQ_EMPTY(&sc->sc_spanlist))
 		sc->sc_span = 0;
 
 	return (0);
@@ -1760,7 +1794,7 @@ bridge_ifdetach_dispatch(netmsg_t msg)
 
 		ifnet_serialize_all(bifp);
 
-		LIST_FOREACH(bif, &sc->sc_spanlist, bif_next)
+		TAILQ_FOREACH(bif, &sc->sc_spanlist, bif_next)
 			if (ifp == bif->bif_ifp) {
 				bridge_delete_span(sc, bif);
 				break;
@@ -1816,6 +1850,28 @@ bridge_stop(struct ifnet *ifp)
 }
 
 /*
+ * Returns TRUE if the packet is being sent 'from us'... from our bridge
+ * interface or from any member of our bridge interface.  This is used
+ * later on to force the MAC to be the MAC of our bridge interface.
+ */
+static int
+bridge_from_us(struct bridge_softc *sc, struct ether_header *eh)
+{
+	struct bridge_iflist *bif;
+
+	if (memcmp(eh->ether_shost, IF_LLADDR(sc->sc_ifp), ETHER_ADDR_LEN) == 0)
+		return (1);
+
+	TAILQ_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
+		if (memcmp(eh->ether_shost, IF_LLADDR(bif->bif_ifp),
+			   ETHER_ADDR_LEN) == 0) {
+			return (1);
+		}
+	}
+	return (0);
+}
+
+/*
  * bridge_enqueue:
  *
  *	Enqueue a packet on a bridge member interface.
@@ -1853,6 +1909,7 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 	struct ether_header *eh;
 	struct ifnet *dst_if, *bifp;
 	int from_us;
+	int priority;
 
 	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
 
@@ -1865,17 +1922,18 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 	}
 	bifp = sc->sc_ifp;
 
+	/*
+	 * Acquire header
+	 */
 	if (m->m_len < ETHER_HDR_LEN) {
 		m = m_pullup(m, ETHER_HDR_LEN);
-		if (m == NULL)
+		if (m == NULL) {
+			bifp->if_oerrors++;
 			return (0);
+		}
 	}
 	eh = mtod(m, struct ether_header *);
-
-	if (memcmp(eh->ether_dhost, IF_LLADDR(bifp), ETHER_ADDR_LEN) == 0)
-		from_us = 1;
-	else
-		from_us = 0;
+	from_us = bridge_from_us(sc, eh);
 
 	/*
 	 * If bridge is down, but the original output interface is up,
@@ -1895,6 +1953,7 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 		dst_if = NULL;
 	else
 		dst_if = bridge_rtlookup(sc, eh->ether_dhost);
+
 	if (dst_if == NULL) {
 		struct mbuf *mc;
 		int used = 0;
@@ -1902,7 +1961,7 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 		if (sc->sc_span)
 			bridge_span(sc, m);
 
-		LIST_FOREACH_MUTABLE(bif, &sc->sc_iflists[mycpuid],
+		TAILQ_FOREACH_MUTABLE(bif, &sc->sc_iflists[mycpuid],
 				     bif_next, nbif) {
 			dst_if = bif->bif_ifp;
 			if ((dst_if->if_flags & IFF_RUNNING) == 0)
@@ -1925,7 +1984,7 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 				}
 			}
 
-			if (LIST_NEXT(bif, bif_next) == NULL) {
+			if (TAILQ_NEXT(bif, bif_next) == NULL) {
 				used = 1;
 				mc = m;
 			} else {
@@ -1939,11 +1998,11 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 			/*
 			 * If the packet is 'from' us override ether_shost.
 			 */
-			bridge_handoff(dst_if, mc, from_us);
+			bridge_handoff(sc, dst_if, mc, from_us);
 
 			if (nbif != NULL && !nbif->bif_onlist) {
 				KKASSERT(bif->bif_onlist);
-				nbif = LIST_NEXT(bif, bif_next);
+				nbif = TAILQ_NEXT(bif, bif_next);
 			}
 		}
 		if (used == 0)
@@ -1953,41 +2012,64 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 
 sendunicast:
 	/*
-	 * If STP is enabled on the target and it is not in a good state
-	 * scan all bridged interfaces for any with a matching MAC which is
-	 * in a good state and use that one.
+	 * If STP is enabled on the target we are an equal opportunity
+	 * employer and do not necessarily output to dst_if.  Instead
+	 * scan available links with the same MAC as the current dst_if
+	 * and choose the best one.
 	 *
-	 * We need to do this because arp entries tag onto a particular
+	 * We also need to do this because arp entries tag onto a particular
 	 * interface and if it happens to be dead then the packets will
 	 * go into a bit bucket.
+	 *
+	 * If LINK2 is set the matching links are bonded and we-round robin.
+	 * (the MAC address must be the same for the participating links).
+	 * In this case links in a STP BLOCKING state are allowed for unicast
+	 * packets.
 	 */
 	bif = bridge_lookup_member_if(sc, dst_if);
 	if (bif->bif_flags & IFBIF_STP) {
-		switch (bif->bif_state) {
-		case BSTP_IFSTATE_L1BLOCKING:
-		case BSTP_IFSTATE_BLOCKING:
-		case BSTP_IFSTATE_LISTENING:
-		case BSTP_IFSTATE_DISABLED:
-			LIST_FOREACH_MUTABLE(bif, &sc->sc_iflists[mycpuid],
-					     bif_next, nbif) {
-				if (memcmp(IF_LLADDR(bif->bif_ifp),
-					   IF_LLADDR(dst_if),
-					   ETHER_ADDR_LEN) != 0) {
-					continue;
-				}
-				if (bif->bif_state == BSTP_IFSTATE_L1BLOCKING||
-				    bif->bif_state == BSTP_IFSTATE_BLOCKING ||
-				    bif->bif_state == BSTP_IFSTATE_LISTENING||
-				    bif->bif_state == BSTP_IFSTATE_DISABLED) {
-					continue;
-				}
-				dst_if = bif->bif_ifp;
+		priority = 0;
+		TAILQ_FOREACH_MUTABLE(bif, &sc->sc_iflists[mycpuid],
+				     bif_next, nbif) {
+			if (memcmp(IF_LLADDR(bif->bif_ifp),
+				   IF_LLADDR(dst_if),
+				   ETHER_ADDR_LEN) != 0) {
+				continue;
+			}
+
+			switch(bif->bif_state) {
+			case BSTP_IFSTATE_BLOCKING:
+				if (sc->sc_ifp->if_flags & IFF_LINK2)
+					break;
+				/* fall through */
+			case BSTP_IFSTATE_L1BLOCKING:
+			case BSTP_IFSTATE_LISTENING:
+			case BSTP_IFSTATE_DISABLED:
+				continue;
+			default:
 				break;
 			}
-			break;
-		default:
-			/* keep dst_if */
-			break;
+			if ((bif->bif_ifp->if_flags & IFF_RUNNING) == 0)
+				continue;
+
+			/*
+			 * XXX we need to use the toepliz hash or
+			 *     something like that instead of
+			 *     round-robining.
+			 */
+			if (sc->sc_ifp->if_flags & IFF_LINK2) {
+				dst_if = bif->bif_ifp;
+				TAILQ_REMOVE(&sc->sc_iflists[mycpuid],
+					bif, bif_next);
+				TAILQ_INSERT_TAIL(
+					&sc->sc_iflists[mycpuid],
+					bif, bif_next);
+				break;
+			}
+			if (bif->bif_priority > priority) {
+				priority = bif->bif_priority;
+				dst_if = bif->bif_ifp;
+			}
 		}
 	}
 
@@ -1996,8 +2078,25 @@ sendunicast:
 	if ((dst_if->if_flags & IFF_RUNNING) == 0)
 		m_freem(m);
 	else
-		bridge_handoff(dst_if, m, from_us);
+		bridge_handoff(sc, dst_if, m, from_us);
 	return (0);
+}
+
+/*
+ * Returns the bridge interface associated with an ifc.
+ * Pass ifp->if_bridge (must not be NULL).  Used by the ARP
+ * code to supply the bridge for the is-at info, making
+ * the bridge responsible for matching local addresses.
+ *
+ * Without this the ARP code will supply bridge member interfaces
+ * for the is-at which makes it difficult the bridge to fail-over
+ * interfaces (amoung other things).
+ */
+static struct ifnet *
+bridge_interface(void *if_bridge)
+{
+	struct bridge_softc *sc = if_bridge;
+	return (sc->sc_ifp);
 }
 
 /*
@@ -2056,9 +2155,10 @@ bridge_start(struct ifnet *ifp)
 static void
 bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 {
-	struct bridge_iflist *bif;
+	struct bridge_iflist *bif, *nbif;
 	struct ifnet *src_if, *dst_if, *ifp;
 	struct ether_header *eh;
+	int priority;
 
 	src_if = m->m_pkthdr.rcvif;
 	ifp = sc->sc_ifp;
@@ -2080,12 +2180,19 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 
 	if (bif->bif_flags & IFBIF_STP) {
 		switch (bif->bif_state) {
-		case BSTP_IFSTATE_L1BLOCKING:
 		case BSTP_IFSTATE_BLOCKING:
+			if ((sc->sc_ifp->if_flags & IFF_LINK2) &&
+			    (m->m_flags & (M_BCAST|M_MCAST)) == 0) {
+				break;
+			}
+			/* fall through */
+		case BSTP_IFSTATE_L1BLOCKING:
 		case BSTP_IFSTATE_LISTENING:
 		case BSTP_IFSTATE_DISABLED:
 			m_freem(m);
 			return;
+		default:
+			break;
 		}
 	}
 
@@ -2097,14 +2204,16 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 	 * the address.
 	 */
 	if ((bif->bif_flags & IFBIF_LEARNING) != 0 &&
+	    bif->bif_state != BSTP_IFSTATE_BLOCKING &&
 	    ETHER_IS_MULTICAST(eh->ether_shost) == 0 &&
 	    (eh->ether_shost[0] == 0 &&
 	     eh->ether_shost[1] == 0 &&
 	     eh->ether_shost[2] == 0 &&
 	     eh->ether_shost[3] == 0 &&
 	     eh->ether_shost[4] == 0 &&
-	     eh->ether_shost[5] == 0) == 0)
+	     eh->ether_shost[5] == 0) == 0) {
 		bridge_rtupdate(sc, eh->ether_shost, src_if, IFBAF_DYNAMIC);
+	}
 
 	if ((bif->bif_flags & IFBIF_STP) != 0 &&
 	    bif->bif_state == BSTP_IFSTATE_LEARNING) {
@@ -2139,13 +2248,8 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 	}
 
 	/*
-	 * At this point, we're dealing with a unicast frame
-	 * going to a different interface.
+	 * Unicast, kinda replicates the output side of bridge_output().
 	 */
-	if ((dst_if->if_flags & IFF_RUNNING) == 0) {
-		m_freem(m);
-		return;
-	}
 	bif = bridge_lookup_member_if(sc, dst_if);
 	if (bif == NULL) {
 		/* Not a member of the bridge (anymore?) */
@@ -2154,13 +2258,59 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 	}
 
 	if (bif->bif_flags & IFBIF_STP) {
-		switch (bif->bif_state) {
-		case BSTP_IFSTATE_DISABLED:
-		case BSTP_IFSTATE_BLOCKING:
-		case BSTP_IFSTATE_L1BLOCKING:
-			m_freem(m);
-			return;
+		priority = 0;
+		TAILQ_FOREACH_MUTABLE(bif, &sc->sc_iflists[mycpuid],
+				     bif_next, nbif) {
+			if (memcmp(IF_LLADDR(bif->bif_ifp),
+				   IF_LLADDR(dst_if),
+				   ETHER_ADDR_LEN) != 0) {
+				continue;
+			}
+
+			switch(bif->bif_state) {
+			case BSTP_IFSTATE_BLOCKING:
+				if (sc->sc_ifp->if_flags & IFF_LINK2)
+					break;
+				/* fall through */
+			case BSTP_IFSTATE_L1BLOCKING:
+			case BSTP_IFSTATE_LISTENING:
+			case BSTP_IFSTATE_DISABLED:
+				continue;
+			default:
+				break;
+			}
+
+			if ((bif->bif_ifp->if_flags & IFF_RUNNING) == 0)
+				continue;
+
+			/*
+			 * XXX we need to use the toepliz hash or
+			 *     something like that instead of
+			 *     round-robining.
+			 */
+			if (sc->sc_ifp->if_flags & IFF_LINK2) {
+				dst_if = bif->bif_ifp;
+				TAILQ_REMOVE(&sc->sc_iflists[mycpuid],
+					bif, bif_next);
+				TAILQ_INSERT_TAIL(
+					&sc->sc_iflists[mycpuid],
+					bif, bif_next);
+				break;
+			}
+			if (bif->bif_priority > priority) {
+				priority = bif->bif_priority;
+				dst_if = bif->bif_ifp;
+			}
 		}
+	}
+
+	/*
+	 * At this point, we're dealing with a unicast frame
+	 * going to a different interface.
+	 */
+	if ((dst_if->if_flags & IFF_RUNNING) == 0) {
+		m_freem(m);
+		return;
 	}
 
 	if (inet_pfil_hook.ph_hashooks > 0
@@ -2178,7 +2328,7 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 		if (m == NULL)
 			return;
 	}
-	bridge_handoff(dst_if, m, 0);
+	bridge_handoff(sc, dst_if, m, 0);
 }
 
 /*
@@ -2239,10 +2389,61 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	 * In all cases if the packet is destined for us via our MAC
 	 * we must clear BRIDGE_MBUF_TAGGED to ensure that we don't
 	 * repeat the source MAC out the same interface.
+	 *
+	 * This first test against our bridge MAC is the fast-path.
+	 *
+	 * NOTE!  The bridge interface can serve as an endpoint for
+	 *	  communication but normally there are no IPs associated
+	 *	  with it so you cannot route through it.  Instead what
+	 *	  you do is point your default route *THROUGH* the bridge
+	 *	  to the actual default router for one of the bridged spaces.
+	 *
+	 *	  Another possibility is to put all your IP specifications
+	 *	  on the bridge instead of on the individual interfaces.  If
+	 *	  you do this it should be possible to use the bridge as an
+	 *	  end point and route (rather than switch) through it using
+	 *	  the default route or ipfw forwarding rules.
 	 */
+
+	/*
+	 * Acquire header
+	 */
+	if (m->m_len < ETHER_HDR_LEN) {
+		m = m_pullup(m, ETHER_HDR_LEN);
+		if (m == NULL)
+			goto out;
+	}
 	eh = mtod(m, struct ether_header *);
 	m->m_pkthdr.fw_flags |= BRIDGE_MBUF_TAGGED;
 	bcopy(eh, &m->m_pkthdr.br.ether, sizeof(*eh));
+
+	if ((bridge_debug & 1) &&
+	    (ntohs(eh->ether_type) == ETHERTYPE_ARP ||
+	    ntohs(eh->ether_type) == ETHERTYPE_REVARP)) {
+		kprintf("%02x:%02x:%02x:%02x:%02x:%02x "
+			"%02x:%02x:%02x:%02x:%02x:%02x type %04x "
+			"lla %02x:%02x:%02x:%02x:%02x:%02x\n",
+			eh->ether_dhost[0],
+			eh->ether_dhost[1],
+			eh->ether_dhost[2],
+			eh->ether_dhost[3],
+			eh->ether_dhost[4],
+			eh->ether_dhost[5],
+			eh->ether_shost[0],
+			eh->ether_shost[1],
+			eh->ether_shost[2],
+			eh->ether_shost[3],
+			eh->ether_shost[4],
+			eh->ether_shost[5],
+			eh->ether_type,
+			((u_char *)IF_LLADDR(bifp))[0],
+			((u_char *)IF_LLADDR(bifp))[1],
+			((u_char *)IF_LLADDR(bifp))[2],
+			((u_char *)IF_LLADDR(bifp))[3],
+			((u_char *)IF_LLADDR(bifp))[4],
+			((u_char *)IF_LLADDR(bifp))[5]
+		);
+	}
 
 	if (memcmp(eh->ether_dhost, IF_LLADDR(bifp), ETHER_ADDR_LEN) == 0) {
 		/*
@@ -2283,7 +2484,9 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 		bridge_span(sc, m);
 
 	if (m->m_flags & (M_BCAST | M_MCAST)) {
-		/* Tap off 802.1D packets; they do not get forwarded. */
+		/*
+		 * Tap off 802.1D packets; they do not get forwarded.
+		 */
 		if (memcmp(eh->ether_dhost, bstp_etheraddr,
 			    ETHER_ADDR_LEN) == 0) {
 			ifnet_serialize_all(bifp);
@@ -2295,6 +2498,10 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 			goto out;
 		}
 
+		/*
+		 * Other than 802.11d packets, ignore packets if the
+		 * interface is not in a good state.
+		 */
 		if (bif->bif_flags & IFBIF_STP) {
 			switch (bif->bif_state) {
 			case BSTP_IFSTATE_L1BLOCKING:
@@ -2344,20 +2551,41 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 			 * case the packet gets routed.
 			 */
 			mc2->m_pkthdr.fw_flags &= ~BRIDGE_MBUF_TAGGED;
-			ether_reinput_oncpu(bifp, mc2, REINPUT_KEEPRCVIF);
+			ether_reinput_oncpu(bifp, mc2, 0);
 		}
 
 		/* Return the original packet for local processing. */
 		goto out;
 	}
 
+	/*
+	 * Input of a unicast packet.  We have to allow unicast packets
+	 * input from links in the BLOCKING state.
+	 *
+	 * NOTE: We explicitly ignore normal packets received on a link
+	 *	 in the BLOCKING state.  The point of being in that state
+	 *	 is to avoid getting duplicate packets.
+	 *
+	 *	 HOWEVER, if LINK2 is set the normal spanning tree code
+	 *	 will mark an interface BLOCKING to avoid multi-cast/broadcast
+	 *	 loops.  Unicast packets CAN still loop if we allow the
+	 *	 case (hence we only do it in LINK2), but it isn't quite as
+	 *	 bad as a broadcast packet looping.
+	 */
 	if (bif->bif_flags & IFBIF_STP) {
 		switch (bif->bif_state) {
-		case BSTP_IFSTATE_L1BLOCKING:
+#if 0
 		case BSTP_IFSTATE_BLOCKING:
+			if (sc->sc_ifp->if_flags & IFF_LINK2)
+				break;
+			/* fall through */
+#endif
+		case BSTP_IFSTATE_L1BLOCKING:
 		case BSTP_IFSTATE_LISTENING:
 		case BSTP_IFSTATE_DISABLED:
 			goto out;
+		default:
+			break;
 		}
 	}
 
@@ -2367,34 +2595,38 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	 * This loop is MPSAFE; the only blocking operation (bridge_rtupdate)
 	 * is followed by breaking out of the loop.
 	 */
-	LIST_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
+	TAILQ_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
 		if (bif->bif_ifp->if_type != IFT_ETHER)
 			continue;
 
 		/*
-		 * It is destined for us.  Reinput on the same interface
-		 * it came in on so things like ARP responses get assigned
-		 * to the correct member (the incoming interface) and not
-		 * to the member which happens to have the matching dhost.
+		 * It is destined for an interface linked to the bridge.
+		 * We want the bridge itself to take care of link level
+		 * forwarding to member interfaces so reinput on the bridge.
+		 * i.e. if you ping an IP on a target interface associated
+		 * with the bridge, the arp is-at response should indicate
+		 * the bridge MAC.
 		 */
 		if (memcmp(IF_LLADDR(bif->bif_ifp), eh->ether_dhost,
-		    ETHER_ADDR_LEN) == 0) {
+			   ETHER_ADDR_LEN) == 0) {
 			if (bif->bif_ifp != ifp) {
 				/* XXX loop prevention */
 				m->m_flags |= M_ETHER_BRIDGED;
-				new_ifp = bif->bif_ifp;
 			}
 			if (bif->bif_flags & IFBIF_LEARNING) {
 				bridge_rtupdate(sc, eh->ether_shost,
 						ifp, IFBAF_DYNAMIC);
 			}
+			new_ifp = bifp; /* not bif->bif_ifp */
 			m->m_pkthdr.fw_flags &= ~BRIDGE_MBUF_TAGGED;
 			goto out;
 		}
 
-		/* We just received a packet that we sent out. */
+		/*
+		 * Ignore received packets that were sent by us.
+		 */
 		if (memcmp(IF_LLADDR(bif->bif_ifp), eh->ether_shost,
-		    ETHER_ADDR_LEN) == 0) {
+			   ETHER_ADDR_LEN) == 0) {
 			m_freem(m);
 			m = NULL;
 			goto out;
@@ -2406,8 +2638,9 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	m = NULL;
 
 	/*
-	 * Leave m_pkthdr.rcvif alone, so ARP replies are
-	 * processed as coming in on the correct interface.
+	 * ether_reinput_oncpu() will reprocess rcvif as
+	 * coming from new_ifp (since we do not specify
+	 * REINPUT_KEEPRCVIF).
 	 */
 out:
 	if (new_ifp != NULL) {
@@ -2415,8 +2648,7 @@ out:
 		 * Clear the bridge flag for local processing in
 		 * case the packet gets routed.
 		 */
-		ether_reinput_oncpu(new_ifp, m,
-				    REINPUT_KEEPRCVIF|REINPUT_RUNBPF);
+		ether_reinput_oncpu(new_ifp, m, REINPUT_RUNBPF);
 		m = NULL;
 	}
 	return (m);
@@ -2445,7 +2677,7 @@ bridge_start_bcast(struct bridge_softc *sc, struct mbuf *m)
 	 * Following loop is MPSAFE; nothing is blocking
 	 * in the loop body.
 	 */
-	LIST_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
+	TAILQ_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
 		dst_if = bif->bif_ifp;
 
 		if (bif->bif_flags & IFBIF_STP) {
@@ -2464,7 +2696,7 @@ bridge_start_bcast(struct bridge_softc *sc, struct mbuf *m)
 		if ((dst_if->if_flags & IFF_RUNNING) == 0)
 			continue;
 
-		if (LIST_NEXT(bif, bif_next) == NULL) {
+		if (TAILQ_NEXT(bif, bif_next) == NULL) {
 			mc = m;
 			used = 1;
 		} else {
@@ -2502,10 +2734,7 @@ bridge_broadcast(struct bridge_softc *sc, struct ifnet *src_if,
 	ASSERT_IFNET_NOT_SERIALIZED_ALL(bifp);
 
 	eh = mtod(m, struct ether_header *);
-	if (memcmp(eh->ether_dhost, IF_LLADDR(src_if), ETHER_ADDR_LEN) == 0)
-		from_us = 1;
-	else
-		from_us = 0;
+	from_us = bridge_from_us(sc, eh);
 
 	if (inet_pfil_hook.ph_hashooks > 0
 #ifdef INET6
@@ -2524,7 +2753,7 @@ bridge_broadcast(struct bridge_softc *sc, struct ifnet *src_if,
 			return;
 	}
 
-	LIST_FOREACH_MUTABLE(bif, &sc->sc_iflists[mycpuid], bif_next, nbif) {
+	TAILQ_FOREACH_MUTABLE(bif, &sc->sc_iflists[mycpuid], bif_next, nbif) {
 		dst_if = bif->bif_ifp;
 		if (dst_if == src_if)
 			continue;
@@ -2545,7 +2774,7 @@ bridge_broadcast(struct bridge_softc *sc, struct ifnet *src_if,
 		if ((dst_if->if_flags & IFF_RUNNING) == 0)
 			continue;
 
-		if (LIST_NEXT(bif, bif_next) == NULL) {
+		if (TAILQ_NEXT(bif, bif_next) == NULL) {
 			mc = m;
 			used = 1;
 		} else {
@@ -2571,11 +2800,11 @@ bridge_broadcast(struct bridge_softc *sc, struct ifnet *src_if,
 			if (mc == NULL)
 				continue;
 		}
-		bridge_handoff(dst_if, mc, from_us);
+		bridge_handoff(sc, dst_if, mc, from_us);
 
 		if (nbif != NULL && !nbif->bif_onlist) {
 			KKASSERT(bif->bif_onlist);
-			nbif = LIST_NEXT(bif, bif_next);
+			nbif = TAILQ_NEXT(bif, bif_next);
 		}
 	}
 	if (used == 0)
@@ -2598,7 +2827,7 @@ bridge_span(struct bridge_softc *sc, struct mbuf *m)
 	bifp = sc->sc_ifp;
 	ifnet_serialize_all(bifp);
 
-	LIST_FOREACH(bif, &sc->sc_spanlist, bif_next) {
+	TAILQ_FOREACH(bif, &sc->sc_spanlist, bif_next) {
 		dst_if = bif->bif_ifp;
 
 		if ((dst_if->if_flags & IFF_RUNNING) == 0)
@@ -3214,7 +3443,8 @@ bridge_rtnode_insert(struct bridge_softc *sc, struct bridge_rtnode *brt)
 
 	lbrt = LIST_FIRST(&sc->sc_rthashs[mycpuid][hash]);
 	if (lbrt == NULL) {
-		LIST_INSERT_HEAD(&sc->sc_rthashs[mycpuid][hash], brt, brt_hash);
+		LIST_INSERT_HEAD(&sc->sc_rthashs[mycpuid][hash],
+				  brt, brt_hash);
 		goto out;
 	}
 
@@ -3756,16 +3986,17 @@ bridge_enqueue_handler(netmsg_t msg)
 	m = nmp->nm_packet;
 	dst_ifp = nmp->base.lmsg.u.ms_resultp;
 
-	bridge_handoff(dst_ifp, m, 1);
+	bridge_handoff(dst_ifp->if_bridge, dst_ifp, m, 1);
 }
 
 static void
-bridge_handoff(struct ifnet *dst_ifp, struct mbuf *m, int from_us)
+bridge_handoff(struct bridge_softc *sc, struct ifnet *dst_ifp,
+	       struct mbuf *m, int from_us)
 {
 	struct mbuf *m0;
 	struct ifnet *bifp;
 
-	bifp = ((struct bridge_softc *)dst_ifp->if_bridge)->sc_ifp;
+	bifp = sc->sc_ifp;
 
 	/* We may be sending a fragment so traverse the mbuf */
 	for (; m; m = m0) {
@@ -3776,9 +4007,10 @@ bridge_handoff(struct ifnet *dst_ifp, struct mbuf *m, int from_us)
 
 		/*
 		 * If being sent from our host override ether_shost
-		 * so any replies go the correct interface.  This is
-		 * mandatory or ARP replies will wind up on the wrong
-		 * interface.
+		 * with the bridge MAC.  This is mandatory for ARP
+		 * so things don't get confused.  In particular we
+		 * don't want ARPs to get associated with link interfaces
+		 * under the bridge which might or might not stay valid.
 		 *
 		 * Also override ether_shost when relaying a packet out
 		 * the same interface it came in on, due to multi-homed
@@ -3790,14 +4022,14 @@ bridge_handoff(struct ifnet *dst_ifp, struct mbuf *m, int from_us)
 		if (from_us || m->m_pkthdr.rcvif == dst_ifp) {
 			m_copyback(m,
 				   offsetof(struct ether_header, ether_shost),
-				   ETHER_ADDR_LEN, IF_LLADDR(dst_ifp));
+				   ETHER_ADDR_LEN, IF_LLADDR(sc->sc_ifp));
 		} else if ((bifp->if_flags & IFF_LINK0) &&
 			   (m->m_pkthdr.fw_flags & BRIDGE_MBUF_TAGGED)) {
 			m_copyback(m,
 				   offsetof(struct ether_header, ether_shost),
 				   ETHER_ADDR_LEN,
 				   m->m_pkthdr.br.ether.ether_shost);
-		}
+		} /* else retain shost */
 
 		if (ifq_is_enabled(&dst_ifp->if_snd))
 			altq_etherclassify(&dst_ifp->if_snd, m, &pktattr);
@@ -3855,11 +4087,15 @@ bridge_add_bif_handler(netmsg_t msg)
 
 	bif = kmalloc(sizeof(*bif), M_DEVBUF, M_WAITOK | M_ZERO);
 	bif->bif_ifp = amsg->br_bif_ifp;
-	bif->bif_flags = IFBIF_LEARNING | IFBIF_DISCOVER;
 	bif->bif_onlist = 1;
 	bif->bif_info = amsg->br_bif_info;
 
-	LIST_INSERT_HEAD(&sc->sc_iflists[mycpuid], bif, bif_next);
+	/*
+	 * runs through bif_info
+	 */
+	bif->bif_flags = IFBIF_LEARNING | IFBIF_DISCOVER;
+
+	TAILQ_INSERT_HEAD(&sc->sc_iflists[mycpuid], bif, bif_next);
 
 	ifnet_forwardmsg(&amsg->base.lmsg, mycpuid + 1);
 }
@@ -3899,10 +4135,10 @@ bridge_del_bif_handler(netmsg_t msg)
 
 	/* Remove the bif from the current CPU's iflist */
 	bif->bif_onlist = 0;
-	LIST_REMOVE(bif, bif_next);
+	TAILQ_REMOVE(dmsg->br_bif_list, bif, bif_next);
 
 	/* Save the removed bif for later freeing */
-	LIST_INSERT_HEAD(dmsg->br_bif_list, bif, bif_next);
+	TAILQ_INSERT_HEAD(dmsg->br_bif_list, bif, bif_next);
 
 	ifnet_forwardmsg(&dmsg->base.lmsg, mycpuid + 1);
 }
@@ -3922,42 +4158,4 @@ bridge_del_bif(struct bridge_softc *sc, struct bridge_ifinfo *bif_info,
 	dmsg.br_bif_list = saved_bifs;
 
 	ifnet_domsg(&dmsg.base.lmsg, 0);
-}
-
-static void
-bridge_set_bifflags_handler(netmsg_t msg)
-{
-	struct netmsg_brsflags *smsg = (struct netmsg_brsflags *)msg;
-	struct bridge_softc *sc;
-	struct bridge_iflist *bif;
-
-	sc = smsg->br_softc;
-
-	/*
-	 * Locate the bif associated with the br_bif_info
-	 * on the current CPU
-	 */
-	bif = bridge_lookup_member_ifinfo(sc, smsg->br_bif_info);
-	KKASSERT(bif != NULL && bif->bif_onlist);
-
-	bif->bif_flags = smsg->br_bif_flags;
-
-	ifnet_forwardmsg(&smsg->base.lmsg, mycpuid + 1);
-}
-
-static void
-bridge_set_bifflags(struct bridge_softc *sc, struct bridge_ifinfo *bif_info,
-		    uint32_t bif_flags)
-{
-	struct netmsg_brsflags smsg;
-
-	ASSERT_IFNET_NOT_SERIALIZED_ALL(sc->sc_ifp);
-
-	netmsg_init(&smsg.base, NULL, &curthread->td_msgport,
-		    0, bridge_set_bifflags_handler);
-	smsg.br_softc = sc;
-	smsg.br_bif_info = bif_info;
-	smsg.br_bif_flags = bif_flags;
-
-	ifnet_domsg(&smsg.base.lmsg, 0);
 }

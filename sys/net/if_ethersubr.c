@@ -134,6 +134,7 @@ static void ether_restore_header(struct mbuf **, const struct ether_header *,
 struct mbuf *(*bridge_input_p)(struct ifnet *, struct mbuf *);
 int (*bridge_output_p)(struct ifnet *, struct mbuf *);
 void (*bridge_dn_p)(struct mbuf *, struct ifnet *);
+struct ifnet *(*bridge_interface_p)(void *if_bridge);
 
 static int ether_resolvemulti(struct ifnet *, struct sockaddr **,
 			      struct sockaddr *);
@@ -152,6 +153,7 @@ static boolean_t ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst,
 static int ether_ipfw;
 static u_int ether_restore_hdr;
 static u_int ether_prepend_hdr;
+static int ether_debug;
 
 #ifdef RSS_DEBUG
 static u_int ether_pktinfo_try;
@@ -162,6 +164,8 @@ static u_int ether_rss_nohash;
 
 SYSCTL_DECL(_net_link);
 SYSCTL_NODE(_net_link, IFT_ETHER, ether, CTLFLAG_RW, 0, "Ethernet");
+SYSCTL_INT(_net_link_ether, OID_AUTO, debug, CTLFLAG_RW,
+	   &ether_debug, 0, "Ether debug");
 SYSCTL_INT(_net_link_ether, OID_AUTO, ipfw, CTLFLAG_RW,
 	   &ether_ipfw, 0, "Pass ether pkts through firewall");
 SYSCTL_UINT(_net_link_ether, OID_AUTO, restore_hdr, CTLFLAG_RW,
@@ -424,6 +428,20 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 bad:
 	m_freem(m);
 	return (error);
+}
+
+/*
+ * Returns the bridge interface an ifp is associated
+ * with.
+ *
+ * Only call if ifp->if_bridge != NULL.
+ */
+struct ifnet *
+ether_bridge_interface(struct ifnet *ifp)
+{
+	if (bridge_interface_p)
+		return(bridge_interface_p(ifp->if_bridge));
+	return (ifp);
 }
 
 /*
@@ -1081,8 +1099,35 @@ ether_demux_oncpu(struct ifnet *ifp, struct mbuf *m)
 	 */
 	if (((ifp->if_flags & (IFF_PROMISC | IFF_PPROMISC)) == IFF_PROMISC) &&
 	    !ETHER_IS_MULTICAST(eh->ether_dhost) &&
-	    bcmp(eh->ether_dhost, IFP2AC(ifp)->ac_enaddr, ETHER_ADDR_LEN))
-		discard = 1;
+	    bcmp(eh->ether_dhost, IFP2AC(ifp)->ac_enaddr, ETHER_ADDR_LEN)) {
+		if (ether_debug & 1) {
+			kprintf("%02x:%02x:%02x:%02x:%02x:%02x "
+				"%02x:%02x:%02x:%02x:%02x:%02x "
+				"%04x vs %02x:%02x:%02x:%02x:%02x:%02x\n",
+				eh->ether_dhost[0],
+				eh->ether_dhost[1],
+				eh->ether_dhost[2],
+				eh->ether_dhost[3],
+				eh->ether_dhost[4],
+				eh->ether_dhost[5],
+				eh->ether_shost[0],
+				eh->ether_shost[1],
+				eh->ether_shost[2],
+				eh->ether_shost[3],
+				eh->ether_shost[4],
+				eh->ether_shost[5],
+				eh->ether_type,
+				((u_char *)IFP2AC(ifp)->ac_enaddr)[0],
+				((u_char *)IFP2AC(ifp)->ac_enaddr)[1],
+				((u_char *)IFP2AC(ifp)->ac_enaddr)[2],
+				((u_char *)IFP2AC(ifp)->ac_enaddr)[3],
+				((u_char *)IFP2AC(ifp)->ac_enaddr)[4],
+				((u_char *)IFP2AC(ifp)->ac_enaddr)[5]
+			);
+		}
+		if ((ether_debug & 2) == 0)
+			discard = 1;
+	}
 
 post_stats:
 	if (IPFW_LOADED && ether_ipfw != 0 && !discard) {

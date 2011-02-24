@@ -172,6 +172,16 @@ bridge_interfaces(int s, const char *prefix)
 				pad, req->ifbr_designated_cost);
 			printf("%sdesignated port:   %u\n",
 				pad, req->ifbr_designated_port);
+			if (verbose) {
+				printf("%speer root:   %016jx\n",
+					pad, (intmax_t)req->ifbr_peer_root);
+				printf("%speer bridge: %016jx\n",
+					pad, (intmax_t)req->ifbr_peer_bridge);
+				printf("%speer cost:   %u\n",
+					pad, req->ifbr_peer_cost);
+				printf("%speer port:   %u\n",
+					pad, req->ifbr_peer_port);
+			}
 		}
 	}
 

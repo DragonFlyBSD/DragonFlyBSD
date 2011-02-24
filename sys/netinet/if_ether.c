@@ -141,6 +141,8 @@ static	LIST_HEAD(, llinfo_arp) llinfo_arp_list[MAXCPU];
 static int	arp_maxtries = 5;
 static int	useloopback = 1; /* use loopback interface for local traffic */
 static int	arp_proxyall = 0;
+static int	arp_refresh = 60; /* refresh arp cache ~60 (not impl yet) */
+static int	arp_restricted_match = 0;
 
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, maxtries, CTLFLAG_RW,
 	   &arp_maxtries, 0, "ARP resolution attempts before returning error");
@@ -148,6 +150,10 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, useloopback, CTLFLAG_RW,
 	   &useloopback, 0, "Use the loopback interface for local traffic");
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, proxyall, CTLFLAG_RW,
 	   &arp_proxyall, 0, "Enable proxy ARP for all suitable requests");
+SYSCTL_INT(_net_link_ether_inet, OID_AUTO, restricted_match, CTLFLAG_RW,
+	   &arp_restricted_match, 0, "Only match against the sender");
+SYSCTL_INT(_net_link_ether_inet, OID_AUTO, refresh, CTLFLAG_RW,
+	   &arp_refresh, 0, "Preemptively refresh the ARP");
 
 static void	arp_rtrequest(int, struct rtentry *, struct rt_addrinfo *);
 static void	arprequest(struct ifnet *, const struct in_addr *,
@@ -405,6 +411,14 @@ arprequest(struct ifnet *ifp, const struct in_addr *sip,
 {
 	struct mbuf *m;
 
+	if (enaddr == NULL) {
+		if (ifp->if_bridge) {
+			enaddr = IF_LLADDR(ether_bridge_interface(ifp));
+		} else {
+			enaddr = IF_LLADDR(ifp);
+		}
+	}
+
 	m = arpreq_alloc(ifp, sip, tip, enaddr);
 	if (m == NULL)
 		return;
@@ -423,6 +437,13 @@ arprequest_async(struct ifnet *ifp, const struct in_addr *sip,
 	struct mbuf *m;
 	struct netmsg_packet *pmsg;
 
+	if (enaddr == NULL) {
+		if (ifp->if_bridge) {
+			enaddr = IF_LLADDR(ether_bridge_interface(ifp));
+		} else {
+			enaddr = IF_LLADDR(ifp);
+		}
+	}
 	m = arpreq_alloc(ifp, sip, tip, enaddr);
 	if (m == NULL)
 		return;
@@ -499,7 +520,7 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 			arprequest(ifp,
 				   &SIN(rt->rt_ifa->ifa_addr)->sin_addr,
 				   &SIN(dst)->sin_addr,
-				   IF_LLADDR(ifp));
+				   NULL);
 			la->la_preempt--;
 		}
 
@@ -533,7 +554,7 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 				arprequest(ifp,
 					   &SIN(rt->rt_ifa->ifa_addr)->sin_addr,
 					   &SIN(dst)->sin_addr,
-					   IF_LLADDR(ifp));
+					   NULL);
 			} else {
 				rt->rt_flags |= RTF_REJECT;
 				rt->rt_expire += arpt_down;
@@ -655,18 +676,37 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 	if (la && (rt = la->la_rt) && (sdl = SDL(rt->rt_gateway))) {
 		struct in_addr isaddr = { saddr };
 
-		/* the following is not an error when doing bridging */
+		/*
+		 * Normally arps coming in on the wrong interface are ignored,
+		 * but if we are bridging and the two interfaces belong to
+		 * the same bridge, or one is a member of the bridge which
+		 * is the other, then it isn't an error.
+		 */
 		if (rt->rt_ifp != ifp) {
+			/*
+			 * (1) ifp and rt_ifp both members of same bridge
+			 * (2) rt_ifp member of bridge ifp
+			 * (3) ifp member of bridge rt_ifp
+			 *
+			 * Always replace rt_ifp with the bridge ifc.
+			 */
+			struct ifnet *nifp;
+
 			if (ifp->if_bridge &&
 			    rt->rt_ifp->if_bridge == ifp->if_bridge) {
-				rt->rt_ifp = ifp;
-				sdl->sdl_type = ifp->if_type;
-				sdl->sdl_index = ifp->if_index;
-				if (dologging && log_arp_wrong_iface < 2)
-					dologging = 0;
+				nifp = ether_bridge_interface(ifp);
+			} else if (rt->rt_ifp->if_bridge &&
+				   ether_bridge_interface(rt->rt_ifp) == ifp) {
+				nifp = ifp;
+			} else if (ifp->if_bridge &&
+				   ether_bridge_interface(ifp) == rt->rt_ifp) {
+				nifp = rt->rt_ifp;
+			} else {
+				nifp = NULL;
 			}
-			if (dologging && log_arp_wrong_iface) {
 
+			if ((log_arp_wrong_iface == 1 && nifp == NULL) ||
+			    log_arp_wrong_iface == 2) {
 				log(LOG_ERR,
 				    "arp: %s is on %s "
 				    "but got reply from %*D on %s\n",
@@ -675,7 +715,16 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 				    ifp->if_addrlen, (u_char *)ar_sha(ah), ":",
 				    ifp->if_xname);
 			}
-			return;
+			if (nifp == NULL)
+				return;
+
+			/*
+			 * nifp is our man!  Replace rt_ifp and adjust
+			 * the sdl.
+			 */
+			ifp = rt->rt_ifp = nifp;
+			sdl->sdl_type = ifp->if_type;
+			sdl->sdl_index = ifp->if_index;
 		}
 		if (sdl->sdl_alen &&
 		    bcmp(ar_sha(ah), LLADDR(sdl), sdl->sdl_alen)) {
@@ -722,8 +771,9 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 			return;
 		}
 		memcpy(LLADDR(sdl), ar_sha(ah), sdl->sdl_alen = ah->ar_hln);
-		if (rt->rt_expire != 0)
+		if (rt->rt_expire != 0) {
 			rt->rt_expire = time_second + arpt_keep;
+		}
 		rt->rt_flags &= ~RTF_REJECT;
 		la->la_asked = 0;
 		la->la_preempt = arp_maxtries;
@@ -832,8 +882,11 @@ in_arpinput(struct mbuf *m)
 	 * then accept the address.
 	 *
 	 * For a bridge, we accept the address if the receive interface and
-	 * the interface owning the address are on the same bridge.
-	 * (This will change slightly when we have clusters of interfaces).
+	 * the interface owning the address are on the same bridge, and
+	 * use the bridge MAC as the is-at response.  The bridge will be
+	 * responsible for handling the packet.
+	 *
+	 * (1) Check target IP against our local IPs
 	 */
 	LIST_FOREACH(iac, INADDR_HASH(itaddr.s_addr), ia_hash) {
 		ia = iac->ia;
@@ -845,13 +898,27 @@ in_arpinput(struct mbuf *m)
 		if (ia->ia_ifp->if_type == IFT_CARP)
 			continue;
 #endif
+		if (ifp->if_bridge && ia->ia_ifp &&
+		    ifp->if_bridge == ia->ia_ifp->if_bridge) {
+			ifp = ether_bridge_interface(ifp);
+			goto match;
+		}
+		if (ia->ia_ifp && ia->ia_ifp->if_bridge &&
+		    ether_bridge_interface(ia->ia_ifp) == ifp) {
+			goto match;
+		}
+		if (ifp->if_bridge && ether_bridge_interface(ifp) ==
+		    ia->ia_ifp) {
+			goto match;
+		}
 		if (ia->ia_ifp == ifp)
 			goto match;
 
-		if (ifp->if_bridge && ia->ia_ifp && 
-		    ifp->if_bridge == ia->ia_ifp->if_bridge)
-			goto match;
 	}
+
+	/*
+	 * (2) Check sender IP against our local IPs
+	 */
 	LIST_FOREACH(iac, INADDR_HASH(isaddr.s_addr), ia_hash) {
 		ia = iac->ia;
 
@@ -862,13 +929,24 @@ in_arpinput(struct mbuf *m)
 		if (ia->ia_ifp->if_type == IFT_CARP)
 			continue;
 #endif
+		if (ifp->if_bridge && ia->ia_ifp &&
+		    ifp->if_bridge == ia->ia_ifp->if_bridge) {
+			ifp = ether_bridge_interface(ifp);
+			goto match;
+		}
+		if (ia->ia_ifp && ia->ia_ifp->if_bridge &&
+		    ether_bridge_interface(ia->ia_ifp) == ifp) {
+			goto match;
+		}
+		if (ifp->if_bridge && ether_bridge_interface(ifp) ==
+		    ia->ia_ifp) {
+			goto match;
+		}
+
 		if (ia->ia_ifp == ifp)
 			goto match;
-
-		if (ifp->if_bridge && ia->ia_ifp &&
-		    ifp->if_bridge == ia->ia_ifp->if_bridge)
-			goto match;
 	}
+
 	/*
 	 * No match, use the first inet address on the receive interface
 	 * as a dummy address for the rest of the function.
@@ -881,6 +959,7 @@ in_arpinput(struct mbuf *m)
 			goto match;
 		}
 	}
+
 	/*
 	 * If we got here, we didn't find any suitable interface,
 	 * so drop the packet.
@@ -914,6 +993,17 @@ match:
 	}
 	if (ifp->if_flags & IFF_STATICARP)
 		goto reply;
+
+	/*
+	 * When arp_restricted_match is true and the ARP response is not
+	 * specifically targetted to me, ignore it.  Otherwise the entry
+	 * timeout may be updated for an old MAC.
+	 */
+	if (arp_restricted_match && itaddr.s_addr != myaddr.s_addr) {
+		m_freem(m);
+		return;
+	}
+
 #ifdef SMP
 	netmsg_init(&msg.base, NULL, &curthread->td_msgport,
 		    0, arp_update_msghandler);
@@ -987,10 +1077,10 @@ reply:
 	ah->ar_pro = htons(ETHERTYPE_IP); /* let's be sure! */
 	switch (ifp->if_type) {
 	case IFT_ETHER:
-	/*
-	 * May not be correct for types not explictly
-	 * listed, but it is our best guess.
-	 */
+		/*
+		 * May not be correct for types not explictly
+		 * listed, but it is our best guess.
+		 */
 	default:
 		eh = (struct ether_header *)sa.sa_data;
 		memcpy(eh->ether_dhost, ar_tha(ah), sizeof eh->ether_dhost);
@@ -1107,7 +1197,7 @@ arp_ifinit(struct ifnet *ifp, struct ifaddr *ifa)
 {
 	if (IA_SIN(ifa)->sin_addr.s_addr != INADDR_ANY) {
 		arprequest_async(ifp, &IA_SIN(ifa)->sin_addr,
-				 &IA_SIN(ifa)->sin_addr, IF_LLADDR(ifp));
+				 &IA_SIN(ifa)->sin_addr, NULL);
 	}
 	ifa->ifa_rtrequest = arp_rtrequest;
 	ifa->ifa_flags |= RTF_CLONING;

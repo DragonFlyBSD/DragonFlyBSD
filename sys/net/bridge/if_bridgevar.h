@@ -120,11 +120,16 @@ struct ifbreq {
 	uint8_t		ifbr_priority;		/* member if STP priority */
 	uint8_t		ifbr_path_cost;		/* member if STP cost */
 	uint8_t		ifbr_portno;		/* member if port number */
-	uint64_t	ifbr_designated_root;	/* current root id */
-	uint64_t	ifbr_designated_bridge;	/* current bridge id */
-	uint32_t	ifbr_designated_cost;	/* current cost calc */
-	uint16_t	ifbr_designated_port;	/* current port calc */
+	uint64_t	ifbr_designated_root;	/* synthesized */
+	uint64_t	ifbr_designated_bridge;
+	uint32_t	ifbr_designated_cost;
+	uint16_t	ifbr_designated_port;
 	uint16_t	unused01;
+	uint64_t	ifbr_peer_root;		/* from peer */
+	uint64_t	ifbr_peer_bridge;	/* from peer */
+	uint32_t	ifbr_peer_cost;		/* from peer */
+	uint16_t	ifbr_peer_port;		/* from peer */
+	uint16_t	unused02;
 };
 
 /* BRDGGIFFLAGS, BRDGSIFFLAGS */
@@ -132,8 +137,13 @@ struct ifbreq {
 #define	IFBIF_DISCOVER		0x02	/* if sends packets w/ unknown dest. */
 #define	IFBIF_STP		0x04	/* if participates in spanning tree */
 #define	IFBIF_SPAN		0x08	/* if is a span port */
+#define	IFBIF_DESIGNATED	0x10	/* mostly age timer expired */
+#define	IFBIF_ROOT		0x20	/* selected root or near-root */
 
-#define	IFBIFBITS	"\020\1LEARNING\2DISCOVER\3STP\4SPAN"
+#define IFBIF_KEEPMASK		(IFBIF_SPAN | IFBIF_DESIGNATED | IFBIF_ROOT)
+
+#define	IFBIFBITS	"\020\1LEARNING\2DISCOVER\3STP\4SPAN\5DESIGNATED" \
+			"\6ROOT"
 
 /* BRDGFLUSH */
 #define	IFBF_FLUSHDYN		0x00	/* flush learned addresses only */
@@ -238,17 +248,19 @@ struct bstp_tcn_unit {
  * Bridge interface entry.
  */
 struct bridge_ifinfo {
-	uint64_t		bifi_designated_root;
-	uint64_t		bifi_designated_bridge;
+	uint64_t		bifi_peer_root;
+	uint64_t		bifi_peer_bridge;
+	uint32_t		bifi_peer_cost;
+	uint16_t		bifi_peer_port;
+	uint16_t		bifi_unused02;
+	uint16_t		bifi_port_id;
 	uint32_t		bifi_path_cost;
-	uint32_t		bifi_designated_cost;
 	struct bridge_timer	bifi_hold_timer;
 	struct bridge_timer	bifi_message_age_timer;
 	struct bridge_timer	bifi_forward_delay_timer;
 	struct bridge_timer	bifi_link1_timer;
 	struct bstp_config_unit	bifi_config_bpdu;
-	uint16_t		bifi_port_id;
-	uint16_t		bifi_designated_port;
+	uint32_t		bifi_flags;	/* member if flags */
 	uint8_t			bifi_state;
 	uint8_t			bifi_topology_change_acknowledge;
 	uint8_t			bifi_config_pending;
@@ -258,35 +270,36 @@ struct bridge_ifinfo {
 	int			bifi_mutecap;	/* member muted caps */
 };
 
-#define bif_designated_root		bif_info->bifi_designated_root
-#define bif_designated_bridge		bif_info->bifi_designated_bridge
+#define bif_peer_root			bif_info->bifi_peer_root
+#define bif_peer_bridge			bif_info->bifi_peer_bridge
+#define bif_peer_cost			bif_info->bifi_peer_cost
+#define bif_peer_port			bif_info->bifi_peer_port
 #define bif_path_cost			bif_info->bifi_path_cost
-#define bif_designated_cost		bif_info->bifi_designated_cost
 #define bif_hold_timer			bif_info->bifi_hold_timer
 #define bif_message_age_timer		bif_info->bifi_message_age_timer
 #define bif_forward_delay_timer		bif_info->bifi_forward_delay_timer
 #define bif_link1_timer			bif_info->bifi_link1_timer
 #define bif_config_bpdu			bif_info->bifi_config_bpdu
 #define bif_port_id			bif_info->bifi_port_id
-#define bif_designated_port		bif_info->bifi_designated_port
 #define bif_state			bif_info->bifi_state
+#define bif_flags			bif_info->bifi_flags
 #define bif_topology_change_acknowledge	\
 	bif_info->bifi_topology_change_acknowledge
 #define bif_config_pending		bif_info->bifi_config_pending
 #define bif_change_detection_enabled	bif_info->bifi_change_detection_enabled
 #define bif_priority			bif_info->bifi_priority
+#define bif_message_age_timer		bif_info->bifi_message_age_timer
 
 /*
  * Bridge interface list entry.
  */
 struct bridge_iflist {
-	LIST_ENTRY(bridge_iflist) bif_next;
+	TAILQ_ENTRY(bridge_iflist) bif_next;
 	struct ifnet		*bif_ifp;	/* member if */
-	uint32_t		bif_flags;	/* member if flags */
 	int			bif_onlist;
 	struct bridge_ifinfo	*bif_info;
 };
-LIST_HEAD(bridge_iflist_head, bridge_iflist);
+TAILQ_HEAD(bridge_iflist_head, bridge_iflist);
 
 /*
  * Bridge route info.
@@ -318,10 +331,13 @@ struct bridge_softc {
 	struct arpcom           sc_arp;
 	struct ifnet		*sc_ifp;	/* make this an interface */
 	LIST_ENTRY(bridge_softc) sc_list;
-	uint64_t		sc_designated_root;
 	uint64_t		sc_bridge_id;
-	struct bridge_ifinfo	*sc_root_port;
-	uint32_t		sc_root_path_cost;
+	uint64_t		sc_designated_root;
+	uint64_t		sc_designated_bridge;
+	uint32_t		sc_designated_cost;	/* root path cost */
+	uint16_t		sc_designated_port;
+	uint16_t		sc_unused01;
+	struct bridge_iflist	*sc_root_port;
 	uint16_t		sc_max_age;
 	uint16_t		sc_hello_time;
 	uint16_t		sc_forward_delay;
@@ -368,6 +384,9 @@ void	bstp_stop(struct bridge_softc *);
 void	bstp_input(struct bridge_softc *, struct bridge_iflist *,
 		   struct mbuf *);
 void	bstp_tick_handler(netmsg_t);
+int	bstp_supersedes_port_info(struct bridge_softc *,
+		   struct bridge_iflist *);
+
 
 void	bridge_enqueue(struct ifnet *, struct mbuf *);
 
