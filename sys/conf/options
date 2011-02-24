@@ -532,13 +532,6 @@ BKTR_430_FX_MODE		opt_bktr.h
 BKTR_SIS_VIA_MODE		opt_bktr.h
 BKTR_NEW_MSP34XX_DRIVER		opt_bktr.h
 
-# meteor opt_meteor.h
-METEOR_ALLOC_PAGES	opt_meteor.h
-METEOR_TEST_VIDEO	opt_meteor.h
-METEOR_SYSTEM_DEFAULT	opt_meteor.h
-METEOR_DEALLOC_PAGES	opt_meteor.h
-METEOR_DEALLOC_ABOVE	opt_meteor.h
-
 # Various mi ISA bus flags
 COMPAT_OLDISA		opt_compat_oldisa.h
 COM_ESP			opt_sio.h
