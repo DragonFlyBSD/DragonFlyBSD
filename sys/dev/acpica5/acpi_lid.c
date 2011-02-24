@@ -117,8 +117,7 @@ acpi_lid_attach(device_t dev)
     AcpiInstallNotifyHandler(sc->lid_handle, ACPI_DEVICE_NOTIFY,
 			     acpi_lid_notify_handler, sc);
 
-    /* Enable the GPE for wake/runtime. */
-    acpi_wake_init(dev);
+    /* Enable the GPE for wake */
     acpi_wake_set_enable(dev, 1);
 
     return (0);

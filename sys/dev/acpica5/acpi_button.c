@@ -162,8 +162,7 @@ acpi_button_attach(device_t dev)
 	return_VALUE (ENXIO);
     }
 
-    /* Enable the GPE for wake/runtime. */
-    acpi_wake_init(dev);
+    /* Enable the GPE for wake */
     acpi_wake_set_enable(dev, 1);
     
     return_VALUE (0);
