@@ -116,6 +116,7 @@ bridge_interfaces(int s, const char *prefix)
 		"learning",
 		"forwarding",
 		"blocking",
+		"bonded",
 		"blocking (link1)"
 	};
 	struct ifbifconf bifc;
@@ -156,7 +157,7 @@ bridge_interfaces(int s, const char *prefix)
 			printf("%s", pad);
 			printf("port %u priority %u",
 			    req->ifbr_portno, req->ifbr_priority);
-			printf(" path cost %u", req->ifbr_path_cost);
+			printf(" pathcost %u", req->ifbr_path_cost);
 			if (req->ifbr_state <
 			    sizeof(stpstates) / sizeof(stpstates[0]))
 				printf(" %s", stpstates[req->ifbr_state]);
@@ -164,6 +165,8 @@ bridge_interfaces(int s, const char *prefix)
 				printf(" <unknown state %d>",
 				    req->ifbr_state);
 			printf("\n");
+			printf("%sbondweight %u\n",
+				pad, req->ifbr_bond_weight);
 			printf("%sdesignated root:   %016jx\n",
 				pad, (intmax_t)req->ifbr_designated_root);
 			printf("%sdesignated bridge: %016jx\n",
@@ -522,6 +525,27 @@ setbridge_ifpathcost(const char *ifn, const char *cost, int s,
 }
 
 static void
+setbridge_ifbondweight(const char *ifn, const char *cost, int s,
+    const struct afswtch *afp)
+{
+	struct ifbreq req;
+	u_long val;
+
+	memset(&req, 0, sizeof(req));
+
+	if (get_val(cost, &val) < 0 || (val & ~0xff) != 0)
+		errx(1, "invalid value: %s",  cost);
+
+	strlcpy(req.ifbr_ifsname, ifn, sizeof(req.ifbr_ifsname));
+	if (val > 65535)
+		val = 65535;
+	req.ifbr_bond_weight = (uint16_t)val;
+
+	if (do_cmd(s, BRDGSBONDWGHT, &req, sizeof(req), 1) < 0)
+		err(1, "BRDGSBONDWGHT %s",  cost);
+}
+
+static void
 setbridge_timeout(const char *arg, int d, int s, const struct afswtch *afp)
 {
 	struct ifbrparam param;
@@ -559,6 +583,7 @@ static struct cmd bridge_cmds[] = {
 	DEF_CMD_ARG("priority",		setbridge_priority),
 	DEF_CMD_ARG2("ifpriority",	setbridge_ifpriority),
 	DEF_CMD_ARG2("ifpathcost",	setbridge_ifpathcost),
+	DEF_CMD_ARG2("ifbondweight",	setbridge_ifbondweight),
 	DEF_CMD_ARG("timeout",		setbridge_timeout),
 };
 static struct afswtch af_bridge = {

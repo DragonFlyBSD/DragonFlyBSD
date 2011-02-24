@@ -155,6 +155,8 @@ static void	bstp_make_blocking(struct bridge_softc *,
 		    struct bridge_iflist *);
 static void	bstp_make_l1blocking(struct bridge_softc *sc,
 		    struct bridge_iflist *bif);
+static void	bstp_adjust_bonded_states(struct bridge_softc *sc,
+		    struct bridge_iflist *obif);
 static void	bstp_set_port_state(struct bridge_iflist *, uint8_t);
 #ifdef notused
 static void	bstp_set_bridge_priority(struct bridge_softc *, uint64_t);
@@ -607,7 +609,7 @@ set_port2:
  * (yet), or the peer who is closest to the root. We push this port towards
  * a FORWARDING state as well.
  *
- * Any remaining ports are pushed towards a BLOCKED state.  Both sides of
+ * Any remaining ports are pushed towards a BLOCKING state.  Both sides of
  * the port (us and our peer) should wind up placing the two ends in this
  * state or bad things happen.
  */
@@ -661,7 +663,8 @@ bstp_clear_peer_info(struct bridge_softc *sc, struct bridge_iflist *bif)
 static void
 bstp_make_forwarding(struct bridge_softc *sc, struct bridge_iflist *bif)
 {
-	if (bif->bif_state == BSTP_IFSTATE_BLOCKING) {
+	if (bif->bif_state == BSTP_IFSTATE_BLOCKING ||
+	    bif->bif_state == BSTP_IFSTATE_BONDED) {
 		bstp_set_port_state(bif, BSTP_IFSTATE_LISTENING);
 		bstp_timer_start(&bif->bif_forward_delay_timer, 0);
 	}
@@ -672,6 +675,7 @@ bstp_make_blocking(struct bridge_softc *sc, struct bridge_iflist *bif)
 {
 	if (bif->bif_state != BSTP_IFSTATE_DISABLED &&
 	    bif->bif_state != BSTP_IFSTATE_BLOCKING &&
+	    bif->bif_state != BSTP_IFSTATE_BONDED &&
 	    bif->bif_state != BSTP_IFSTATE_L1BLOCKING) {
 		if ((bif->bif_state == BSTP_IFSTATE_FORWARDING) ||
 		    (bif->bif_state == BSTP_IFSTATE_LEARNING)) {
@@ -682,17 +686,22 @@ bstp_make_blocking(struct bridge_softc *sc, struct bridge_iflist *bif)
 		bstp_set_port_state(bif, BSTP_IFSTATE_BLOCKING);
 		bridge_rtdelete(sc, bif->bif_ifp, IFBF_FLUSHDYN);
 		bstp_timer_stop(&bif->bif_forward_delay_timer);
+		if (sc->sc_ifp->if_flags & IFF_LINK2)
+			bstp_adjust_bonded_states(sc, bif);
 	}
 }
 
 static void
 bstp_make_l1blocking(struct bridge_softc *sc, struct bridge_iflist *bif)
 {
+	int was_forwarding = (bif->bif_state == BSTP_IFSTATE_FORWARDING);
+
 	switch(bif->bif_state) {
 	case BSTP_IFSTATE_LISTENING:
 	case BSTP_IFSTATE_LEARNING:
 	case BSTP_IFSTATE_FORWARDING:
 	case BSTP_IFSTATE_BLOCKING:
+	case BSTP_IFSTATE_BONDED:
 		bstp_set_port_state(bif, BSTP_IFSTATE_L1BLOCKING);
 		bridge_rtdelete(sc, bif->bif_ifp, IFBF_FLUSHDYN);
 		bstp_timer_stop(&bif->bif_forward_delay_timer);
@@ -702,9 +711,56 @@ bstp_make_l1blocking(struct bridge_softc *sc, struct bridge_iflist *bif)
 			bstp_configuration_update(sc);
 			bstp_port_state_selection(sc);
 		}
+		if (was_forwarding && (sc->sc_ifp->if_flags & IFF_LINK2))
+			bstp_adjust_bonded_states(sc, bif);
 		break;
 	default:
 		break;
+	}
+}
+
+/*
+ * Member (bif) changes to or from a FORWARDING state.  All members in the
+ * same bonding group which are in a BLOCKING or BONDED state must be set
+ * to either BLOCKING or BONDED based on whether any members in the bonding
+ * group remain in the FORWARDING state.
+ *
+ * Going between the BLOCKING and BONDED states does not require a
+ * configuration update.
+ */
+static void
+bstp_adjust_bonded_states(struct bridge_softc *sc, struct bridge_iflist *obif)
+{
+	struct bridge_iflist *bif;
+	int state = BSTP_IFSTATE_BLOCKING;
+
+	TAILQ_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
+		if ((bif->bif_flags & IFBIF_STP) == 0)
+			continue;
+		if (bif->bif_state != BSTP_IFSTATE_FORWARDING)
+			continue;
+		if (memcmp(IF_LLADDR(bif->bif_ifp), IF_LLADDR(obif->bif_ifp),
+			   ETHER_ADDR_LEN) != 0) {
+			continue;
+		}
+		state = BSTP_IFSTATE_BONDED;
+		break;
+	}
+	TAILQ_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
+		if ((bif->bif_flags & IFBIF_STP) == 0)
+			continue;
+		if (bif->bif_state != BSTP_IFSTATE_BLOCKING &&
+		    bif->bif_state != BSTP_IFSTATE_BONDED) {
+			continue;
+		}
+		if (memcmp(IF_LLADDR(bif->bif_ifp), IF_LLADDR(obif->bif_ifp),
+			   ETHER_ADDR_LEN) != 0) {
+			continue;
+		}
+		if (bif->bif_bond_weight == 0)
+			bif->bif_state = BSTP_IFSTATE_BLOCKING;
+		else
+			bif->bif_state = state;
 	}
 }
 
@@ -978,6 +1034,8 @@ bstp_forward_delay_timer_expiry(struct bridge_softc *sc,
 		    bif->bif_change_detection_enabled) {
 			bstp_topology_change_detection(sc);
 		}
+		if (sc->sc_ifp->if_flags & IFF_LINK2)
+			bstp_adjust_bonded_states(sc, bif);
 	}
 }
 
@@ -1150,6 +1208,10 @@ bstp_stop(struct bridge_softc *sc)
 static void
 bstp_initialize_port(struct bridge_softc *sc, struct bridge_iflist *bif)
 {
+	int needs_adjust = (bif->bif_state == BSTP_IFSTATE_FORWARDING ||
+			    bif->bif_state == BSTP_IFSTATE_BLOCKING ||
+			    bif->bif_state == BSTP_IFSTATE_BONDED);
+
 	bstp_set_port_state(bif, BSTP_IFSTATE_BLOCKING);
 	bstp_clear_peer_info(sc, bif);
 	bif->bif_topology_change_acknowledge = 0;
@@ -1159,6 +1221,8 @@ bstp_initialize_port(struct bridge_softc *sc, struct bridge_iflist *bif)
 	bstp_timer_stop(&bif->bif_forward_delay_timer);
 	bstp_timer_stop(&bif->bif_hold_timer);
 	bstp_timer_stop(&bif->bif_link1_timer);
+	if (needs_adjust && (sc->sc_ifp->if_flags & IFF_LINK2))
+		bstp_adjust_bonded_states(sc, bif);
 }
 
 static void
@@ -1173,6 +1237,7 @@ bstp_enable_port(struct bridge_softc *sc, struct bridge_iflist *bif)
 static void
 bstp_disable_port(struct bridge_softc *sc, struct bridge_iflist *bif)
 {
+	int was_forwarding = (bif->bif_state == BSTP_IFSTATE_FORWARDING);
 	int iamroot;
 
 	iamroot = bstp_root_bridge(sc);
@@ -1187,6 +1252,8 @@ bstp_disable_port(struct bridge_softc *sc, struct bridge_iflist *bif)
 	bstp_configuration_update(sc);
 	bstp_port_state_selection(sc);
 	bridge_rtdelete(sc, bif->bif_ifp, IFBF_FLUSHDYN);
+	if (was_forwarding && (sc->sc_ifp->if_flags & IFF_LINK2))
+		bstp_adjust_bonded_states(sc, bif);
 
 	if (iamroot == 0 && bstp_root_bridge(sc)) {
 		sc->sc_max_age = sc->sc_bridge_max_age;

@@ -109,6 +109,7 @@
 #define	BRDGSIFCOST		22	/* set if path cost (ifbreq) */
 #define	BRDGADDS		23	/* add bridge span member (ifbreq) */
 #define	BRDGDELS		24	/* delete bridge span member (ifbreq) */
+#define BRDGSBONDWGHT		25	/* set bonding weighting (ifbreq) */
 
 /*
  * Generic bridge control request.
@@ -130,6 +131,9 @@ struct ifbreq {
 	uint32_t	ifbr_peer_cost;		/* from peer */
 	uint16_t	ifbr_peer_port;		/* from peer */
 	uint16_t	unused02;
+	uint16_t	ifbr_bond_weight;
+	uint16_t	unused03;
+	uint32_t	unused04[8];
 };
 
 /* BRDGGIFFLAGS, BRDGSIFFLAGS */
@@ -156,7 +160,8 @@ struct ifbreq {
 #define	BSTP_IFSTATE_LEARNING	2
 #define	BSTP_IFSTATE_FORWARDING	3
 #define	BSTP_IFSTATE_BLOCKING	4
-#define	BSTP_IFSTATE_L1BLOCKING	5	/* link1 blocking mode no-activity */
+#define	BSTP_IFSTATE_BONDED	5	/* link2 bonding mode */
+#define	BSTP_IFSTATE_L1BLOCKING	6	/* link1 blocking mode no-activity */
 
 /*
  * Interface list structure.
@@ -268,6 +273,7 @@ struct bridge_ifinfo {
 	uint8_t			bifi_priority;
 	struct ifnet		*bifi_ifp;	/* member if */
 	int			bifi_mutecap;	/* member muted caps */
+	int			bifi_bond_weight; /* when link2 active */
 };
 
 #define bif_peer_root			bif_info->bifi_peer_root
@@ -289,6 +295,7 @@ struct bridge_ifinfo {
 #define bif_change_detection_enabled	bif_info->bifi_change_detection_enabled
 #define bif_priority			bif_info->bifi_priority
 #define bif_message_age_timer		bif_info->bifi_message_age_timer
+#define bif_bond_weight			bif_info->bifi_bond_weight
 
 /*
  * Bridge interface list entry.
@@ -298,6 +305,7 @@ struct bridge_iflist {
 	struct ifnet		*bif_ifp;	/* member if */
 	int			bif_onlist;
 	struct bridge_ifinfo	*bif_info;
+	int			bif_bond_count;	/* when link2 active */
 };
 TAILQ_HEAD(bridge_iflist_head, bridge_iflist);
 

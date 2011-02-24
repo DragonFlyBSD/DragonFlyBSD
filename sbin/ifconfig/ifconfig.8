@@ -2053,6 +2053,16 @@ to
 .Ar value .
 The default is 128.
 The minimum is 0 and the maximum is 255.
+.Pp
+The priority is used to select which interface out of all
+forwarding and bonded interfaces with the same MAC
+to output a packet on whe
+.Cm link2
+mode is not being used.
+Note that interfaces in the 'blocking' state do not participate
+in the priority selection.
+If the priorities are the same on a non-bonded member, the
+designated member will be used.
 .It Cm ifpathcost Ar interface Ar value
 Set the Spanning Tree path cost of
 .Ar interface
@@ -2060,6 +2070,46 @@ to
 .Ar value .
 The default is 55.
 The minimum is 0 and the maximum is 65535.
+.Pp
+The path cost is added to both incoming and outgoing packets on the
+member, lower values will make the member more valuable.
+.It Cm ifbondweight Ar interface Ar value
+Set the number of packets to output on a bonded member before
+round-robining to the next member.
+The default is 1.
+Larger values or different values for each member can be used
+if bursting would be beneficial or if the outgoing bandwidth
+on each of the members is assymetric.
+For example, one specify a value of 6 on tap0 and 4 on tap1
+for a 6:4 ratio.
+Remember that this also controls packet bursting.
+.It Cm link0
+The link0 option enables transparent bridging mode.
+The bridge will make every effort to retain the ethernet header
+when forwarding packets between interfaces, making the bridging
+function work more like a hardware bridge device.
+.It Cm link1
+The link1 option enables keepalive transmission and automatically
+places a member into a special blocked mode if no keepalive reception
+occurs.
+If either sides of the link uses this option then both sides must use
+this option.
+This option is impemented by sending CFG updates on the hello interval
+to the remote.
+The link is considered lost after 10 intervals (typically 20 seconds).
+.It Cm link2
+The link2 option enables channel bonding (see also ifbondweight).
+All member interfaces with the same mac address are considered to
+be in a bonding group.
+When something like
+.Xr tap 4
+is used, you can manually control or copy the mac to create bonding groups.
+When interface bonding is enabled normally blocked interfaces belonging
+to the same bonding group as an active forwarding interface will be
+changed to the bonding state.
+Both sides of link the member represents must operate in bonding mode
+for this to work, otherwise the remote end may decide to throw away
+half your packets.
 .El
 .Pp
 The following parameters are specific to IP tunnel interfaces,
