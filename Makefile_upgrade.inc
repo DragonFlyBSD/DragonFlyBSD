@@ -1565,6 +1565,7 @@ TO_REMOVE+=/usr/share/man/cat/cat9/kref_inc.9.gz
 TO_REMOVE+=/usr/share/man/cat/man9/kref_inc.9.gz
 TO_REMOVE+=/usr/share/man/cat/cat9/kref_init.9.gz
 TO_REMOVE+=/usr/share/man/cat/man9/kref_init.9.gz
+TO_REMOVE+=/usr/include/dev/video/meteor/meteor_reg.h
 TO_REMOVE+=/usr/share/man/cat4/i386/meteor.4.gz
 TO_REMOVE+=/usr/share/man/man4/i386/meteor.4.gz
 
