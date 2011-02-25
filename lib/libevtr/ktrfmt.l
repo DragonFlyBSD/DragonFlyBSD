@@ -2,6 +2,7 @@
 
 #include <assert.h>
 //#define YYSTYPE struct token
+#define YY_NO_INPUT
 #include <stdlib.h>
 #include "ktrfmt.tab.h"
 #include "tok.h"

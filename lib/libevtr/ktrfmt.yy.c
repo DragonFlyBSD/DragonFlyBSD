@@ -73,6 +73,7 @@ typedef int flex_int32_t;
 typedef unsigned char flex_uint8_t; 
 typedef unsigned short int flex_uint16_t;
 typedef unsigned int flex_uint32_t;
+#endif /* ! C99 */
 
 /* Limits of integral types. */
 #ifndef INT8_MIN
@@ -102,8 +103,6 @@ typedef unsigned int flex_uint32_t;
 #ifndef UINT32_MAX
 #define UINT32_MAX             (4294967295U)
 #endif
-
-#endif /* ! C99 */
 
 #endif /* ! FLEXINT_H */
 
@@ -161,15 +160,7 @@ typedef unsigned int flex_uint32_t;
 
 /* Size of default input buffer. */
 #ifndef YY_BUF_SIZE
-#ifdef __ia64__
-/* On IA-64, the buffer size is 16k, not 8k.
- * Moreover, YY_BUF_SIZE is 2*YY_READ_BUF_SIZE in the general case.
- * Ditto for the __ia64__ case accordingly.
- */
-#define YY_BUF_SIZE 32768
-#else
 #define YY_BUF_SIZE 16384
-#endif /* __ia64__ */
 #endif
 
 /* The state buf must be large enough to hold one state per character in the main buffer.
@@ -502,6 +493,7 @@ char *__ktrfmttext;
 
 #include <assert.h>
 //#define YYSTYPE struct token
+#define YY_NO_INPUT
 #include <stdlib.h>
 #include "ktrfmt.tab.h"
 #include "tok.h"
@@ -555,7 +547,7 @@ newstr(const char *s)
 	return r;
 }
 
-#line 559 "ktrfmt.yy.c"
+#line 551 "ktrfmt.yy.c"
 
 #define INITIAL 0
 
@@ -638,12 +630,7 @@ static int input (void );
 
 /* Amount of stuff to slurp up with each read. */
 #ifndef YY_READ_BUF_SIZE
-#ifdef __ia64__
-/* On IA-64, the buffer size is 16k, not 8k */
-#define YY_READ_BUF_SIZE 16384
-#else
 #define YY_READ_BUF_SIZE 8192
-#endif /* __ia64__ */
 #endif
 
 /* Copy whatever the last rule matched to the standard output. */
@@ -651,7 +638,7 @@ static int input (void );
 /* This used to be an fputs(), but since the string might contain NUL's,
  * we now use fwrite().
  */
-#define ECHO do { if (fwrite( __ktrfmttext, __ktrfmtleng, 1, __ktrfmtout )) {} } while (0)
+#define ECHO fwrite( __ktrfmttext, __ktrfmtleng, 1, __ktrfmtout )
 #endif
 
 /* Gets input and stuffs it into "buf".  number of characters read, or YY_NULL,
@@ -662,7 +649,7 @@ static int input (void );
 	if ( YY_CURRENT_BUFFER_LVALUE->yy_is_interactive ) \
 		{ \
 		int c = '*'; \
-		size_t n; \
+		int n; \
 		for ( n = 0; n < max_size && \
 			     (c = getc( __ktrfmtin )) != EOF && c != '\n'; ++n ) \
 			buf[n] = (char) c; \
@@ -748,9 +735,9 @@ YY_DECL
     
         YYSTYPE * yylval;
     
-#line 72 "ktrfmt.l"
+#line 73 "ktrfmt.l"
 
-#line 754 "ktrfmt.yy.c"
+#line 741 "ktrfmt.yy.c"
 
     yylval = yylval_param;
 
@@ -837,12 +824,12 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 73 "ktrfmt.l"
+#line 74 "ktrfmt.l"
 { /* ignore */ }
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 74 "ktrfmt.l"
+#line 75 "ktrfmt.l"
 {
 	size_t len;
 	yylval->tok = tok_new();
@@ -859,7 +846,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 87 "ktrfmt.l"
+#line 88 "ktrfmt.l"
 {
 	yylval->tok = tok_new();
 	yylval->tok->type = TOK_ID;
@@ -870,7 +857,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 94 "ktrfmt.l"
+#line 95 "ktrfmt.l"
 {
 	yylval->tok = tok_new();
 	yylval->tok->type = TOK_CTOR;
@@ -881,7 +868,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 101 "ktrfmt.l"
+#line 102 "ktrfmt.l"
 {
 	yylval->tok = tok_new();
 	yylval->tok->type = TOK_INT;
@@ -892,7 +879,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 108 "ktrfmt.l"
+#line 109 "ktrfmt.l"
 {
 	yylval->tok = tok_new();
 	yylval->tok->type = TOK_INT;
@@ -903,7 +890,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 115 "ktrfmt.l"
+#line 116 "ktrfmt.l"
 {
 	yylval = NULL;
 	printd(LEX, "TOK_EQ\n");
@@ -912,7 +899,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 120 "ktrfmt.l"
+#line 121 "ktrfmt.l"
 {
 	yylval = NULL;
 	printd(LEX, "TOK_DOT\n");
@@ -921,7 +908,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 125 "ktrfmt.l"
+#line 126 "ktrfmt.l"
 {
 	yylval = NULL;
 	printd(LEX, "TOK_LEFT_BRACK\n");
@@ -930,7 +917,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 130 "ktrfmt.l"
+#line 131 "ktrfmt.l"
 {
 	yylval = NULL;
 	printd(LEX, "TOK_RIGHT_BRACK\n");
@@ -939,10 +926,10 @@ YY_RULE_SETUP
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 136 "ktrfmt.l"
+#line 137 "ktrfmt.l"
 ECHO;
 	YY_BREAK
-#line 946 "ktrfmt.yy.c"
+#line 933 "ktrfmt.yy.c"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -1663,8 +1650,8 @@ YY_BUFFER_STATE __ktrfmt_scan_string (yyconst char * yystr )
 
 /** Setup the input buffer state to scan the given bytes. The next call to __ktrfmtlex() will
  * scan from a @e copy of @a bytes.
- * @param yybytes the byte buffer to scan
- * @param _yybytes_len the number of bytes in the buffer pointed to by @a bytes.
+ * @param bytes the byte buffer to scan
+ * @param len the number of bytes in the buffer pointed to by @a bytes.
  * 
  * @return the newly allocated buffer state object.
  */
@@ -1903,6 +1890,7 @@ void __ktrfmtfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 136 "ktrfmt.l"
+#line 137 "ktrfmt.l"
+
 
 
