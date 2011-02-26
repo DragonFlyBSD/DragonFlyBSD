@@ -47,9 +47,11 @@ static void 	*_aio_thr_start(void *);
 static void
 _aio_notify(struct sigevent *sigevp)
 {
+#if 0 /* not yet */
 	int sig;
 	union sigval sv;
 	pid_t pid;
+#endif
 	pthread_t thr;
 
 	switch (sigevp->sigev_notify) {
@@ -64,7 +66,7 @@ _aio_notify(struct sigevent *sigevp)
 		break;
 
 	case SIGEV_SIGNAL:
-#ifdef notyet
+#if 0 /* not yet */
 		pid = getpid();
 		sig = sigevp->sigev_signo;
 		sv = sigevp->sigev_value;
@@ -73,8 +75,7 @@ _aio_notify(struct sigevent *sigevp)
 		break;
 
 	case SIGEV_KEVENT:
-#ifdef notyet
-#endif
+		/* not yet */
 		break;
 	}
 }
