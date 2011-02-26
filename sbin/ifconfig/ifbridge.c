@@ -592,7 +592,7 @@ static struct afswtch af_bridge = {
 	.af_other_status = bridge_status,
 };
 
-static __constructor(100) void
+static __constructor(101) void
 bridge_ctor(void)
 {
 #define	N(a)	(sizeof(a) / sizeof(a[0]))

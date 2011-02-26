@@ -249,7 +249,7 @@ static struct afswtch af_carp = {
 	.af_other_status = carp_status,
 };
 
-static __constructor(100) void
+static __constructor(101) void
 carp_ctor(void)
 {
 #define	N(a)	(sizeof(a) / sizeof(a[0]))
