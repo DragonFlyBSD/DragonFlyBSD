@@ -28,7 +28,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/apmd/apmdlex.l,v 1.2.2.1 2001/08/13 17:30:30 nsayer Exp $
- * $DragonFly: src/usr.sbin/apmd/apmdlex.l,v 1.3 2004/11/25 01:20:33 joerg Exp $
  */
 
 #include <string.h>
@@ -37,7 +36,8 @@
 #include "apmd.h"
 #include "y.tab.h"
 
-/* We don't need it, avoid the warning. */
+/* We don't need them, avoid the warnings. */
+#define YY_NO_INPUT
 #define YY_NO_UNPUT
 
 int lineno;
