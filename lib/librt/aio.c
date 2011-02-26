@@ -21,10 +21,7 @@
  * routines.
  *
  * This version cannot perform asynchronous notification of I/O completion
- * on DragonFly via SIGEV_THREAD or SIGEV_SIGNAL.
- *
- *    1) SIGEV_THREAD is not supported by DFly's sigevent structure or any
- *	 other machinery in libthread or librt.
+ * on DragonFly via SIGEV_SIGNAL.
  *
  *    2) SIGEV_SIGNAL code is present, but if-ed out under 'notyet'; Dfly
  *	 does not support sigqueue(), so we cannot control the payload to
@@ -43,39 +40,51 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/aio.h>
+#include <pthread.h>
+
+static void 	*_aio_thr_start(void *);
 
 static void
-_aio_signal(struct aiocb *ap)
+_aio_notify(struct sigevent *sigevp)
 {
-#ifdef notyet
 	int sig;
 	union sigval sv;
 	pid_t pid;
+	pthread_t thr;
 
-	if (ap->aio_sigevent.sigev_notify == SIGEV_NONE)
+	switch (sigevp->sigev_notify) {
+	case SIGEV_NONE:
 		return;
 
-	sig = ap->aio_sigevent.sigev_signo;
-	sv = ap->aio_sigevent.sigev_value;
-	
-	sigqueue(pid, sig, sv);
+	case SIGEV_THREAD:
+		pthread_create(&thr, 
+			       sigevp->sigev_notify_attributes,
+			       _aio_thr_start,
+			       sigevp);
+		break;
+
+	case SIGEV_SIGNAL:
+#ifdef notyet
+		pid = getpid();
+		sig = sigevp->sigev_signo;
+		sv = sigevp->sigev_value;
+		sigqueue(pid, sig, sv);
 #endif
+		break;
+
+	case SIGEV_KEVENT:
+#ifdef notyet
+#endif
+		break;
+	}
 }
 
-static void
-_lio_signal(struct sigevent *sigevp)
+static void *
+_aio_thr_start(void *vsigevp)
 {
-#ifdef notyet
-	int sig;
-	union sigval sv;
-	pid_t pid;
-
-	pid = getpid();
-	sig = sigevp->sigev_signo;
-	sv = sigevp->sigev_value;
-
-	sigqueue(pid, sig, sv);
-#endif
+	struct sigevent *sigevp = vsigevp;
+	sigevp->sigev_notify_function(sigevp->sigev_value);
+	return (NULL);
 }
 
 /*
@@ -87,7 +96,8 @@ int
 aio_read(struct aiocb *ap)
 {
 #ifndef notyet
-	if (ap->aio_sigevent.sigev_notify != SIGEV_NONE)
+	if ((ap->aio_sigevent.sigev_notify != SIGEV_NONE) &&
+	    (ap->aio_sigevent.sigev_notify != SIGEV_THREAD))
 		return (ENOSYS);
 #endif
 
@@ -97,7 +107,7 @@ aio_read(struct aiocb *ap)
 			     ap->aio_offset);
 	ap->_aio_err = errno;
 
-	_aio_signal(ap);
+	_aio_notify(&ap->aio_sigevent);
 
 	return (0);
 }
@@ -106,7 +116,8 @@ int
 aio_write(struct aiocb *ap)
 {
 #ifndef notyet
-	if (ap->aio_sigevent.sigev_notify != SIGEV_NONE)
+	if ((ap->aio_sigevent.sigev_notify != SIGEV_NONE) &&
+	    (ap->aio_sigevent.sigev_notify != SIGEV_THREAD))
 		return (ENOSYS);
 #endif
 
@@ -116,7 +127,7 @@ aio_write(struct aiocb *ap)
 			      ap->aio_offset);
 	ap->_aio_err = errno;
 
-	_aio_signal(ap);
+	_aio_notify(&ap->aio_sigevent);
 
 	return (0);
 }
@@ -125,14 +136,15 @@ int
 aio_fsync(int op, struct aiocb *ap)
 {
 #ifndef notyet
-	if (ap->aio_sigevent.sigev_notify != SIGEV_NONE)
+	if ((ap->aio_sigevent.sigev_notify != SIGEV_NONE) &&
+	    (ap->aio_sigevent.sigev_notify != SIGEV_THREAD))
 		return (ENOSYS);
 #endif
 
 	ap->_aio_val = fsync(ap->aio_fildes);
 	ap->_aio_err = errno;
 
-	_aio_signal(ap);
+	_aio_notify(&ap->aio_sigevent);
 
 	return(0);
 }
@@ -144,7 +156,8 @@ lio_listio(int mode, struct aiocb *const apv[], int nent,
 	int i;
 
 #ifndef notyet
-	if (sigevp && sigevp->sigev_notify != SIGEV_NONE)
+	if ((sigevp->sigev_notify != SIGEV_NONE) &&
+	    (sigevp->sigev_notify != SIGEV_THREAD))
 		return (ENOSYS);
 #endif
 
@@ -161,10 +174,9 @@ lio_listio(int mode, struct aiocb *const apv[], int nent,
 		}
 
 	if (sigevp && 
-	    (mode == LIO_NOWAIT) &&
-	    (sigevp->sigev_notify == SIGEV_SIGNAL)
+	    (mode == LIO_NOWAIT)
 	   ) {
-		_lio_signal(sigevp);
+		_aio_notify(sigevp);
 	}
 
 	return (0);

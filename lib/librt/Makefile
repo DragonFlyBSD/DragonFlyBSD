@@ -1,6 +1,7 @@
 LIB=rt
 SHLIB_MAJOR=0
 WARNS?=2
+LDADD+=-pthread
 
 SRCS+= mq.c aio.c
 
