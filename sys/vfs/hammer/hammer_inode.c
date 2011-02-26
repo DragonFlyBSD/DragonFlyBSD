@@ -2365,32 +2365,62 @@ hammer_wait_inode(hammer_inode_t ip)
 	hammer_flush_group_t flg;
 
 	flg = NULL;
-	if ((ip->hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR) == 0) {
-		while (ip->flush_state != HAMMER_FST_IDLE &&
-		       (ip->hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR) == 0) {
-			if (ip->flush_state == HAMMER_FST_SETUP)
-				hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
 
-			/*
-			 * If the inode was already being flushed its flg
-			 * may not have been queued to the backend.  We have
-			 * to make sure it gets queued or we can wind up
-			 * blocked or deadlocked (particularly if we are
-			 * the vnlru thread).
-			 */
+	/*
+	 * The inode can be in a SETUP state in which case RESIGNAL
+	 * should be set.  If RESIGNAL is not set then the previous
+	 * flush completed and a later operation placed the inode
+	 * in a passive setup state again, so we're done.
+	 *
+	 * The inode can be in a FLUSH state in which case we
+	 * can just wait for completion.
+	 */
+	while (ip->flush_state == HAMMER_FST_FLUSH ||
+	    (ip->flush_state == HAMMER_FST_SETUP &&
+	     (ip->flags & HAMMER_INODE_RESIGNAL))) {
+		/*
+		 * Don't try to flush on a critical error
+		 */
+		if (ip->hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR)
+			break;
+
+		/*
+		 * If the inode was already being flushed its flg
+		 * may not have been queued to the backend.  We
+		 * have to make sure it gets queued or we can wind
+		 * up blocked or deadlocked (particularly if we are
+		 * the vnlru thread).
+		 */
+		if (ip->flush_state == HAMMER_FST_FLUSH) {
 			KKASSERT(ip->flush_group);
 			if (ip->flush_group->closed == 0) {
 				kprintf("hammer: debug: forcing async "
 					"flush ip %016jx\n",
 					(intmax_t)ip->obj_id);
-				hammer_flusher_async(ip->hmp, ip->flush_group);
-			}
-			if (ip->flush_state != HAMMER_FST_IDLE) {
-				ip->flags |= HAMMER_INODE_FLUSHW;
-				tsleep(&ip->flags, 0, "hmrwin", 0);
+				hammer_flusher_async(ip->hmp,
+						     ip->flush_group);
+				continue; /* retest */
 			}
 		}
+
+		/*
+		 * In a flush state with the flg queued to the backend
+		 * or in a setup state with RESIGNAL set, we can safely
+		 * wait.
+		 */
+		ip->flags |= HAMMER_INODE_FLUSHW;
+		tsleep(&ip->flags, 0, "hmrwin", 0);
 	}
+
+#if 0
+	/*
+	 * The inode may have been in a passive setup state,
+	 * call flush to make sure we get signaled.
+	 */
+	if (ip->flush_state == HAMMER_FST_SETUP)
+		hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+#endif
+
 }
 
 /*
