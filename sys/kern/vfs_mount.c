@@ -869,7 +869,6 @@ mountlist_scan(int (*callback)(struct mount *, void *), void *data, int how)
 {
 	struct mountscan_info info;
 	struct mount *mp;
-	thread_t td;
 	int count;
 	int res;
 
@@ -880,7 +879,6 @@ mountlist_scan(int (*callback)(struct mount *, void *), void *data, int how)
 	TAILQ_INSERT_TAIL(&mountscan_list, &info, msi_entry);
 
 	res = 0;
-	td = curthread;
 
 	if (how & MNTSCAN_FORWARD) {
 		info.msi_node = TAILQ_FIRST(&mountlist);

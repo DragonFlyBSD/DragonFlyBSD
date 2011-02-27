@@ -914,13 +914,11 @@ sys_quotactl(struct quotactl_args *uap)
 {
 	struct nlookupdata nd;
 	struct thread *td;
-	struct proc *p;
 	struct mount *mp;
 	int error;
 
 	get_mplock();
 	td = curthread;
-	p = td->td_proc;
 	if (td->td_ucred->cr_prison && !prison_quotas) {
 		error = EPERM;
 		goto done;
@@ -2626,7 +2624,6 @@ kern_stat(struct nlookupdata *nd, struct stat *st)
 {
 	int error;
 	struct vnode *vp;
-	thread_t td;
 
 	if ((error = nlookup(nd)) != 0)
 		return (error);
@@ -2634,7 +2631,6 @@ again:
 	if ((vp = nd->nl_nch.ncp->nc_vp) == NULL)
 		return (ENOENT);
 
-	td = curthread;
 	if ((error = vget(vp, LK_SHARED)) != 0)
 		return (error);
 	error = vn_stat(vp, st, nd->nl_cred);
