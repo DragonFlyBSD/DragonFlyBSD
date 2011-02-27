@@ -32,7 +32,6 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.84 2008/11/15 11:58:16 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -567,13 +566,13 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	 * create a Link Level name for this device
 	 */
 	namelen = strlen(ifp->if_xname);
-#define _offsetof(t, m) ((int)((caddr_t)&((t *)0)->m))
-	masklen = _offsetof(struct sockaddr_dl, sdl_data[0]) + namelen;
+	masklen = offsetof(struct sockaddr_dl, sdl_data[0]) + namelen;
 	socksize = masklen + ifp->if_addrlen;
 #define ROUNDUP(a) (1 + (((a) - 1) | (sizeof(long) - 1)))
 	if (socksize < sizeof(*sdl))
 		socksize = sizeof(*sdl);
 	socksize = ROUNDUP(socksize);
+#undef ROUNDUP
 	ifasize = sizeof(struct ifaddr) + 2 * socksize;
 	ifa = ifa_create(ifasize, M_WAITOK);
 	sdl = (struct sockaddr_dl *)(ifa + 1);
