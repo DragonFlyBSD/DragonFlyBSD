@@ -6,7 +6,7 @@ INSTALLOBJS+=	crt1.o crti.o crtn.o gcrt1.o
 CLEANFILES+=	crt1.o crti.o crtn.o gcrt1.o
 WARNS?=		2
 
-CFLAGS+=	-elf -Wall -fkeep-inline-functions \
+CFLAGS+=	-elf -fkeep-inline-functions
 		-I${CSUDIR}/../common
 LDFLAGS+=	-elf
 
