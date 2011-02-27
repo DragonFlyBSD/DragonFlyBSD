@@ -132,7 +132,9 @@ SYSCTL_INT(_machdep, OID_AUTO, enable_panic_key, CTLFLAG_RW, &enable_panic_key,
 
 static	int	debugger;
 static	cdev_t	cctl_dev;
+#if 0
 static	timeout_t blink_screen_callout;
+#endif
 static  void	sc_blink_screen(scr_stat *scp);
 static	struct mtx	syscons_mtx = MTX_INITIALIZER;
 
@@ -3825,6 +3827,7 @@ sc_blink_screen(scr_stat *scp)
     }
 }
 
+#if 0
 static void
 blink_screen_callout(void *arg)
 {
@@ -3854,7 +3857,7 @@ blink_screen_callout(void *arg)
 		      blink_screen_callout, scp);
     }
 }
-
+#endif
 
 /*
  * Allocate active keyboard. Try to allocate "kbdmux" keyboard first, and,
