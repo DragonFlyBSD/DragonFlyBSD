@@ -453,6 +453,7 @@ bstp_configuration_update(struct bridge_softc *sc)
 	uint64_t	designated_root = sc->sc_bridge_id;
 	uint64_t	designated_bridge = sc->sc_bridge_id;
 	uint32_t	designated_cost = 0xFFFFFFFFU;
+	uint32_t	designated_root_cost = 0xFFFFFFFFU;
 	uint16_t	designated_port = 65535;
 	struct bridge_iflist *root_port = NULL;
 	struct bridge_iflist *bif;
@@ -510,6 +511,7 @@ bstp_configuration_update(struct bridge_softc *sc)
 set_port:
 		designated_root = bif->bif_peer_root;
 		designated_cost = bif->bif_peer_cost + bif->bif_path_cost;
+		designated_root_cost = bif->bif_peer_cost;
 		designated_bridge = bif->bif_peer_bridge;
 		designated_port = bif->bif_peer_port;
 		root_port = bif;
@@ -546,11 +548,18 @@ set_port:
 		 * select the root port (IFBIF_DESIGNATED is set at the
 		 * end).
 		 *
-		 * We do NOT use peer info here.
+		 * Since we are the root the peer cost should already include
+		 * our path cost.  We still need the combined costs from both
+		 * our point of view and the peer's point of view to match
+		 * up with the peer.
+		 *
+		 * If we used ONLY our path cost here we would have no peer
+		 * path cost in the calculation and would reach a different
+		 * conclusion than our peer has reached.
 		 */
-		if (bif->bif_path_cost > designated_cost)
+		if (bif->bif_peer_cost > designated_cost)
 			continue;
-		if (bif->bif_path_cost < designated_cost)
+		if (bif->bif_peer_cost < designated_cost)
 			goto set_port2;
 
 		if (bif->bif_port_id > designated_port)
@@ -560,10 +569,13 @@ set_port:
 		/* degenerate case (possible peer collision w/our key */
 
 		/*
-		 * New port
+		 * New port.  Since we are the root, the root cost is always
+		 * 0.  Since we are the root the peer path should be our
+		 * path cost + peer path cost.
 		 */
 set_port2:
-		designated_cost = bif->bif_path_cost;
+		designated_cost = bif->bif_peer_cost;
+		designated_root_cost = 0;
 		designated_bridge = sc->sc_bridge_id;
 		designated_port = bif->bif_port_id;
 		root_port = bif;
@@ -584,8 +596,7 @@ set_port2:
 	 */
 	if (root_port) {
 		sc->sc_designated_root = designated_root;
-		sc->sc_designated_cost = designated_cost -
-					 root_port->bif_path_cost;
+		sc->sc_designated_cost = designated_root_cost;
 		sc->sc_designated_bridge = designated_bridge;
 		sc->sc_designated_port = designated_port;
 		root_port->bif_flags |= IFBIF_DESIGNATED | IFBIF_ROOT;
